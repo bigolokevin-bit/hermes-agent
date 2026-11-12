@@ -248,6 +248,10 @@ class GatewayInboundMixin(GatewayInboundHooksMixin, GatewayInboundTranscriptionM
         if not getattr(event, "_bot_loop_admitted", False) and not (
                 self._admit_bot_message_for_source(source) and self._admit_bot_chain(event)):
             return None
+        # Seakoi patch (S7b-2): fire-and-forget copy of admitted Feishu messages to C1.
+        from gateway.channel_event_bridge import forward_inbound_event
+
+        forward_inbound_event(event, source)
         return event, source, False
 
     def _hm_estop_turn_allowed(self, event: MessageEvent, source: SessionSource) -> bool:
