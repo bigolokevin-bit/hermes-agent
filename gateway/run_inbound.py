@@ -249,9 +249,15 @@ class GatewayInboundMixin(GatewayInboundHooksMixin, GatewayInboundTranscriptionM
                 self._admit_bot_message_for_source(source) and self._admit_bot_chain(event)):
             return None
         # Seakoi patch (S7b-2): fire-and-forget copy of admitted Feishu messages to C1.
-        from gateway.channel_event_bridge import forward_inbound_event
+        # P1-2 fix: the durable-FIFO drain re-enters ``_handle_message`` for the SAME admitted
+        # message with ``executing_admission`` set (session_ingress), so this pass re-ran the
+        # forward a second time per message — the observed double POST (C1 answered the replay
+        # with duplicate=true). One POST per admitted message = intake pass only; genuine
+        # re-admissions of a message_id still POST and rely on C1's dedupeKey, never skipped.
+        if not executing_admission.get():
+            from gateway.channel_event_bridge import forward_inbound_event
 
-        forward_inbound_event(event, source)
+            forward_inbound_event(event, source)
         return event, source, False
 
     def _hm_estop_turn_allowed(self, event: MessageEvent, source: SessionSource) -> bool:
