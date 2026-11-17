@@ -11,6 +11,10 @@ Behaviour contract (S7b-2):
   success ``channel_event_posted`` (message_id/event_id/duplicate),
   failure ``channel_event_post_failed`` (message_id + HTTP code or exception class;
   never message text or tokens).
+- Mentions passthrough (V1 group-@ gate): Feishu ``mentions`` are forwarded as
+  ``content.mentions = [{"externalId", "name"?}]``. When there are none the key is
+  omitted entirely, so the legacy body shape stays byte-identical. Dedupe and
+  fire-and-forget (never-retry) semantics are unchanged.
 """
 from __future__ import annotations
 
@@ -71,6 +75,53 @@ def _sender_ids(event: Any, source: Any) -> dict:
     }
 
 
+def _mentions(event: Any) -> list:
+    """Map Feishu ``mentions`` from the raw event to the C1 ``content.mentions`` shape.
+
+    Reads ``raw["event"]["message"]["mentions"]`` first, then the flat
+    ``raw["message"]["mentions"]``. Per entry ``externalId`` is the first non-empty
+    of ``id.open_id`` / ``id.union_id`` / ``id.user_id`` (entries without one are
+    dropped: the C1 contract requires externalId); ``name`` passes through only
+    when non-empty. Never raises: any missing or odd-shaped input yields ``[]``.
+    """
+    out: list = []
+    try:
+        raw = getattr(event, "raw_message", None)
+        if not isinstance(raw, dict):
+            return []
+        items = None
+        inner = raw.get("event")
+        if isinstance(inner, dict):
+            msg = inner.get("message")
+            if isinstance(msg, dict) and "mentions" in msg:
+                items = msg.get("mentions")
+        if items is None:
+            msg = raw.get("message")
+            if isinstance(msg, dict):
+                items = msg.get("mentions")
+        if not isinstance(items, list):
+            return []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            ident = item.get("id")
+            if not isinstance(ident, dict):
+                continue
+            external_id = (
+                ident.get("open_id") or ident.get("union_id") or ident.get("user_id")
+            )
+            if not external_id:
+                continue
+            entry: dict = {"externalId": external_id}
+            name = item.get("name")
+            if name:
+                entry["name"] = name
+            out.append(entry)
+    except Exception:  # noqa: BLE001 - defensive: raw shape varies across event kinds
+        return []
+    return out
+
+
 def build_payload(event: Any, source: Any) -> Optional[dict]:
     """Map an admitted MessageEvent to the C1 ChannelEvent body (camelCase wire form).
 
@@ -96,6 +147,10 @@ def build_payload(event: Any, source: Any) -> Optional[dict]:
     text = getattr(event, "text", "") or ""
     if len(text) > _MAX_TEXT_CHARS:
         text = text[:_MAX_TEXT_CHARS] + "…[truncated]"
+    content: dict = {"text": text}
+    mentions = _mentions(event)
+    if mentions:  # empty => no key at all: legacy body stays byte-identical
+        content["mentions"] = mentions
     return {
         "eventId": _PLACEHOLDER_EVENT_ID,
         "tenantId": (os.environ.get("SEAKOI_C1_TENANT_ID") or "").strip(),
@@ -112,7 +167,7 @@ def build_payload(event: Any, source: Any) -> Optional[dict]:
             "subjectUserId": ids["user_id"] or ids["source_user_id"],
             "senderType": "bot" if is_bot else "person",
         },
-        "content": {"text": text},
+        "content": content,
         "receivedAt": _iso_ms(getattr(event, "timestamp", None)),
         "status": "accepted",
     }
