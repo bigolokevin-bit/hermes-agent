@@ -50,8 +50,13 @@ _RETRY_DELAYS: Tuple[float, ...] = (0.5, 1.0)  # between attempts => 3 attempts 
 _MAX_ATTEMPTS = len(_RETRY_DELAYS) + 1
 _TOTAL_BUDGET_SECONDS = 4.0  # hard cap per event: attempts + sleeps + transport
 _SPOOL_ENV = "SEAKOI_BRIDGE_SPOOL"
-_SPOOL_DEFAULT_PATH = "~/.local/state/sekoi-ops/bridge-spool.jsonl"
+_SPOOL_DEFAULT_PATH = "~/.local/state/seakoi-ops/bridge-spool.jsonl"
+# The default once dropped the ``a`` in ``seakoi``; that directory is never written
+# again and only exists so a host already running the buggy build can be migrated.
+_SPOOL_LEGACY_DEFAULT_PATH = "~/.local/state/sekoi-ops/bridge-spool.jsonl"
 _SPOOL_CAP = 200
+
+_legacy_spool_migrated = False
 
 _background_tasks: Set["asyncio.Task[None]"] = set()
 _spool_lock: Optional[asyncio.Lock] = None
@@ -213,6 +218,39 @@ def _spool_path() -> str:
     return os.path.expanduser(raw or _SPOOL_DEFAULT_PATH)
 
 
+def _migrate_legacy_spool_once(target: str) -> None:
+    """Best-effort move of a spool left in the misspelled default directory.
+
+    Runs at most once per process, on first spool use. Only a plain rename inside
+    the same filesystem is attempted; anything that goes wrong is logged as a
+    warning and the legacy file is left exactly where it was — losing a replay
+    opportunity is preferable to losing the entry or crashing the bridge. Logs
+    name the two paths and the line count, never a payload. The once-per-process flag
+    is raised only when a move actually succeeds, so a host whose first attempt hits a
+    filesystem error keeps trying on the next spool use.
+    """
+    global _legacy_spool_migrated
+    if _legacy_spool_migrated:
+        return
+    legacy = os.path.expanduser(_SPOOL_LEGACY_DEFAULT_PATH)
+    if target == legacy or not os.path.isfile(legacy) or os.path.exists(target):
+        return
+    try:
+        os.makedirs(os.path.dirname(target) or ".", exist_ok=True)
+        os.rename(legacy, target)
+        with open(target, encoding="utf-8") as handle:
+            lines = sum(1 for line in handle if line.strip())
+    except Exception as exc:  # migration must never break the bridge
+        logger.warning(
+            "channel_event_spool_migrate_failed: error=%s", type(exc).__name__
+        )
+        return
+    _legacy_spool_migrated = True
+    logger.info(
+        "channel_event_spool_migrated: from=%s to=%s lines=%s", legacy, target, lines
+    )
+
+
 def _spool_lock_for_running_loop() -> asyncio.Lock:
     """Return the process' one spool lock, bound to the running loop.
 
@@ -303,6 +341,7 @@ async def _spool_append(entry: dict) -> None:
     """Append one entry under the spool lock, dropping the oldest past the cap."""
     async with _spool_lock_for_running_loop():
         path = _spool_path()
+        _migrate_legacy_spool_once(path)
         entries, corrupt = _spool_read(path)
         if corrupt:
             logger.warning("bridge_spool_corrupt_lines_dropped: count=%s", corrupt)
@@ -329,6 +368,7 @@ async def _replay_spool_locked(base: str) -> None:
     re-posted with their stored payload, hence their original dedupeKey.
     """
     path = _spool_path()
+    _migrate_legacy_spool_once(path)
     if not os.path.isfile(path):
         return
     entries, corrupt = _spool_read(path)
