@@ -1,12 +1,10 @@
 /**
- * duty 值班台 pane — placeholder manifest (stage 1, lane A).
- * PRD Section 3 row 1 / Section 4.2: NEW pane (skeleton:1840-2035), 8 cards
- * in fixed order; the four-gate aggregate endpoint does not exist (GAP-01),
- * so the pane is an honest 'planned' placeholder until stage 2 wires the
- * front-end aggregation (employees/run-stats/budget-usage/approval-stats,
- * each gate labelled with source and time; unknown != pass).
- * No fake data, no JSX here — stage 2 renders the placeholder shell from
- * this registry entry.
+ * duty 值班台 pane — 8 cards in fixed order (PRD §3 row 1 / §4.2).
+ *
+ * The front-end aggregate is implemented in this module (employees /
+ * run-stats / budget-usage / approval-stats). Each of the four gates carries
+ * its own source label and time; a missing source renders 「待核实」 and never
+ * enters the numerator. Stage 2 wiring: the pane is now a real reuse target.
  */
 import type { ModuleManifest } from '../../shell/registry';
 
@@ -18,8 +16,10 @@ const manifest: ModuleManifest = {
       label: '值班台',
       // ROUTE_TABLE row 1 (appendix A) — navigable, never a dead link.
       route: '#/overview',
-      kind: 'planned',
-      dataSource: 'employees/run-stats/budget-usage/approval-stats 聚合（GAP-01）',
+      kind: 'reuse',
+      reuse: () => import('./DutyPage'),
+      dataSource:
+        'employees / run-stats / budget-usage / approval-stats（四门逐门标来源；缺失标待核实）',
     },
   ],
 };
