@@ -1,8 +1,5 @@
-$ node scripts/crawl-routes.mjs --base http://127.0.0.1:9119
---- stdout ---
 {
   "script": "crawl-routes",
-  "mode": "fetch",
   "base": "http://127.0.0.1:9119",
   "routesTs": "src/shell/routes.ts",
   "routes": 51,
@@ -20,9 +17,537 @@ $ node scripts/crawl-routes.mjs --base http://127.0.0.1:9119
     "spa-fallback": 74
   },
   "deadLinks": [],
+  "transportNote": "200 text/html = the SPA shell served the form (client routing). Every served HTML body shares this many distinct sha256 digests; the server therefore cannot distinguish the routes, which is why the content judgement is rendered, not fetched.",
+  "uniqueHtmlShells": 1,
+  "contentMethod": "render",
+  "contentDriver": "/Users/kevin_studio/Projects/seakoi-console-web/package.json",
+  "contentReason": null,
+  "rootShell": {
+    "url": "http://127.0.0.1:9119/",
+    "hasMainEl": true,
+    "mainChars": 0,
+    "headSample": ""
+  },
+  "contentChecked": 51,
+  "contentRows": [
+    {
+      "route": "#/access",
+      "source": "COMPAT_MODULES",
+      "kind": "compat-module",
+      "mainChars": 110,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 角色与权限 · 规划中 数据源未"
+    },
+    {
+      "route": "#/approvals",
+      "source": "CONSOLE_TABS",
+      "kind": "tab",
+      "mainChars": 87,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 审批申请读取失败 刷新 审批申请没能加载出来 "
+    },
+    {
+      "route": "#/approvals?tab=history",
+      "source": "CONSOLE_TABS",
+      "kind": "tab",
+      "mainChars": 106,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 历史决策 · 规划中 上游页面尚未接入本壳（复"
+    },
+    {
+      "route": "#/approvals?tab=mine",
+      "source": "COMPAT_TABS",
+      "kind": "compat-tab",
+      "mainChars": 87,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 审批申请读取失败 刷新 审批申请没能加载出来 "
+    },
+    {
+      "route": "#/approvals?tab=pending&view=mine",
+      "source": "VIEW_DEEP_LINKS",
+      "kind": "view",
+      "mainChars": 87,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 审批申请读取失败 刷新 审批申请没能加载出来 "
+    },
+    {
+      "route": "#/approvals?tab=pending&view=release",
+      "source": "VIEW_DEEP_LINKS",
+      "kind": "view",
+      "mainChars": 87,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 审批申请读取失败 刷新 审批申请没能加载出来 "
+    },
+    {
+      "route": "#/approvals?tab=policy",
+      "source": "COMPAT_TABS",
+      "kind": "compat-tab",
+      "mainChars": 87,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 审批申请读取失败 刷新 审批申请没能加载出来 "
+    },
+    {
+      "route": "#/approvals?tab=release",
+      "source": "COMPAT_TABS",
+      "kind": "compat-tab",
+      "mainChars": 87,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 审批申请读取失败 刷新 审批申请没能加载出来 "
+    },
+    {
+      "route": "#/audit",
+      "source": "COMPAT_MODULES",
+      "kind": "compat-module",
+      "mainChars": 132,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 审计事件 · 规划中 上游页面尚"
+    },
+    {
+      "route": "#/capabilities",
+      "source": "CONSOLE_TABS",
+      "kind": "tab",
+      "mainChars": 3293,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "平台 · 控制台 能力与接入 技能 工具与 MCP 模型与单价 平台接入 FILTERS ALL"
+    },
+    {
+      "route": "#/capabilities?tab=channels",
+      "source": "CONSOLE_TABS",
+      "kind": "tab",
+      "mainChars": 38,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "平台 · 控制台 能力与接入 技能 工具与 MCP 模型与单价 平台接入 ⠸"
+    },
+    {
+      "route": "#/capabilities?tab=models",
+      "source": "CONSOLE_TABS",
+      "kind": "tab",
+      "mainChars": 794,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "平台 · 控制台 能力与接入 技能 工具与 MCP 模型与单价 平台接入 MODEL SETTI"
+    },
+    {
+      "route": "#/capabilities?tab=tools",
+      "source": "CONSOLE_TABS",
+      "kind": "tab",
+      "mainChars": 10430,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "平台 · 控制台 能力与接入 技能 工具与 MCP 模型与单价 平台接入 Your MCP se"
+    },
+    {
+      "route": "#/employees",
+      "source": "CONSOLE_TABS",
+      "kind": "tab",
+      "mainChars": 109,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "运营 · 控制台 数字员工 列表 能力与权限 数字员工 刷新 无法加载数字员工列表 Unexpe"
+    },
+    {
+      "route": "#/employees?tab=matrix",
+      "source": "CONSOLE_TABS",
+      "kind": "tab",
+      "mainChars": 370,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "运营 · 控制台 数字员工 列表 能力与权限 能力与权限矩阵 谁被授了什么、谁还没有，放在同一张"
+    },
+    {
+      "route": "#/employees/:employeeId",
+      "source": "DETAIL_TAB",
+      "kind": "detail-zone",
+      "mainChars": 98,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "工作台 配置 任务 运行 证据 返回数字员工 无法加载该员工 Unexpected token "
+    },
+    {
+      "route": "#/employees/:employeeId?zone=config",
+      "source": "DETAIL_ZONES_EXTRA",
+      "kind": "detail-zone",
+      "mainChars": 98,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "工作台 配置 任务 运行 证据 返回数字员工 无法加载该员工 Unexpected token "
+    },
+    {
+      "route": "#/employees/:employeeId?zone=evidence",
+      "source": "DETAIL_ZONES_EXTRA",
+      "kind": "detail-zone",
+      "mainChars": 98,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "工作台 配置 任务 运行 证据 返回数字员工 无法加载该员工 Unexpected token "
+    },
+    {
+      "route": "#/employees/:employeeId?zone=runs",
+      "source": "DETAIL_ZONES_EXTRA",
+      "kind": "detail-zone",
+      "mainChars": 98,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "工作台 配置 任务 运行 证据 返回数字员工 无法加载该员工 Unexpected token "
+    },
+    {
+      "route": "#/employees/:employeeId?zone=tasks",
+      "source": "DETAIL_ZONES_EXTRA",
+      "kind": "detail-zone",
+      "mainChars": 98,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "工作台 配置 任务 运行 证据 返回数字员工 无法加载该员工 Unexpected token "
+    },
+    {
+      "route": "#/identity",
+      "source": "CONSOLE_TABS",
+      "kind": "tab",
+      "mainChars": 118,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 · 规划中 数据源未落"
+    },
+    {
+      "route": "#/identity?tab=admins",
+      "source": "COMPAT_TABS",
+      "kind": "compat-tab",
+      "mainChars": 118,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 · 规划中 数据源未落"
+    },
+    {
+      "route": "#/identity?tab=binding",
+      "source": "COMPAT_TABS",
+      "kind": "compat-tab",
+      "mainChars": 118,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 · 规划中 数据源未落"
+    },
+    {
+      "route": "#/identity?tab=checks",
+      "source": "COMPAT_TABS",
+      "kind": "compat-tab",
+      "mainChars": 118,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 · 规划中 数据源未落"
+    },
+    {
+      "route": "#/identity?tab=departments",
+      "source": "CONSOLE_TABS",
+      "kind": "tab",
+      "mainChars": 115,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 组织与部门 · 规划中 数据源未"
+    },
+    {
+      "route": "#/identity?tab=people&view=admins",
+      "source": "VIEW_DEEP_LINKS",
+      "kind": "view",
+      "mainChars": 118,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 · 规划中 数据源未落"
+    },
+    {
+      "route": "#/identity?tab=roles",
+      "source": "CONSOLE_TABS",
+      "kind": "tab",
+      "mainChars": 110,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 角色与权限 · 规划中 数据源未"
+    },
+    {
+      "route": "#/identity?tab=tenant",
+      "source": "COMPAT_TABS",
+      "kind": "compat-tab",
+      "mainChars": 118,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 · 规划中 数据源未落"
+    },
+    {
+      "route": "#/knowledge",
+      "source": "CONSOLE_TABS",
+      "kind": "tab",
+      "mainChars": 120,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 知识空间 · 规划中 数据源未落地（"
+    },
+    {
+      "route": "#/knowledge?tab=citations",
+      "source": "COMPAT_TABS",
+      "kind": "compat-tab",
+      "mainChars": 123,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 证据与引用 · 规划中 上游页面尚未"
+    },
+    {
+      "route": "#/knowledge?tab=evidence",
+      "source": "CONSOLE_TABS",
+      "kind": "tab",
+      "mainChars": 123,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 证据与引用 · 规划中 上游页面尚未"
+    },
+    {
+      "route": "#/knowledge?tab=ingest",
+      "source": "COMPAT_TABS",
+      "kind": "compat-tab",
+      "mainChars": 95,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 数据源 · 规划中 数据源未落地（G"
+    },
+    {
+      "route": "#/knowledge?tab=retrieval",
+      "source": "COMPAT_TABS",
+      "kind": "compat-tab",
+      "mainChars": 123,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 证据与引用 · 规划中 上游页面尚未"
+    },
+    {
+      "route": "#/knowledge?tab=scope",
+      "source": "COMPAT_TABS",
+      "kind": "compat-tab",
+      "mainChars": 120,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 知识空间 · 规划中 数据源未落地（"
+    },
+    {
+      "route": "#/knowledge?tab=sources",
+      "source": "CONSOLE_TABS",
+      "kind": "tab",
+      "mainChars": 95,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 数据源 · 规划中 数据源未落地（G"
+    },
+    {
+      "route": "#/metrics",
+      "source": "COMPAT_MODULES",
+      "kind": "compat-module",
+      "mainChars": 815,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "TOKEN ANALYTICS HIDDEN The token, cost, and per-"
+    },
+    {
+      "route": "#/org",
+      "source": "COMPAT_MODULES",
+      "kind": "compat-module",
+      "mainChars": 118,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 · 规划中 数据源未落"
+    },
+    {
+      "route": "#/overview",
+      "source": "CONSOLE_TABS",
+      "kind": "tab",
+      "mainChars": 462,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 四门取"
+    },
+    {
+      "route": "#/overview?tab=usage",
+      "source": "CONSOLE_TABS",
+      "kind": "tab",
+      "mainChars": 839,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 TOKEN ANALYTICS HIDDEN T"
+    },
+    {
+      "route": "#/sessions",
+      "source": "COMPAT_MODULES",
+      "kind": "compat-module",
+      "mainChars": 352,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "44 Total 44 Active in store 0 Archived 139 Messa"
+    },
+    {
+      "route": "#/system",
+      "source": "CONSOLE_TABS",
+      "kind": "tab",
+      "mainChars": 2037,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 Host OS Darwin 2"
+    },
+    {
+      "route": "#/system?tab=defaults",
+      "source": "CONSOLE_TABS",
+      "kind": "tab",
+      "mainChars": 134,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 默认设置 · 规划中 上游页面尚"
+    },
+    {
+      "route": "#/system?tab=events",
+      "source": "CONSOLE_TABS",
+      "kind": "tab",
+      "mainChars": 132,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 审计事件 · 规划中 上游页面尚"
+    },
+    {
+      "route": "#/system?tab=events&view=anomaly",
+      "source": "VIEW_DEEP_LINKS",
+      "kind": "view",
+      "mainChars": 132,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 审计事件 · 规划中 上游页面尚"
+    },
+    {
+      "route": "#/system?tab=retention",
+      "source": "COMPAT_TABS",
+      "kind": "compat-tab",
+      "mainChars": 132,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 审计事件 · 规划中 上游页面尚"
+    },
+    {
+      "route": "#/system?tab=security",
+      "source": "COMPAT_TABS",
+      "kind": "compat-tab",
+      "mainChars": 132,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 审计事件 · 规划中 上游页面尚"
+    },
+    {
+      "route": "#/system?tab=version",
+      "source": "CONSOLE_TABS",
+      "kind": "tab",
+      "mainChars": 90,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 版本 · 规划中 上游页面尚未接"
+    },
+    {
+      "route": "#/work",
+      "source": "CONSOLE_TABS",
+      "kind": "tab",
+      "mainChars": 168,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "运营 · 控制台 任务与运行 任务 运行 任务看板 按后端状态看任务；拖动排序未启用，状态不会被"
+    },
+    {
+      "route": "#/work?tab=board&view=cron",
+      "source": "VIEW_DEEP_LINKS",
+      "kind": "view",
+      "mainChars": 168,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "运营 · 控制台 任务与运行 任务 运行 任务看板 按后端状态看任务；拖动排序未启用，状态不会被"
+    },
+    {
+      "route": "#/work?tab=cron",
+      "source": "COMPAT_TABS",
+      "kind": "compat-tab",
+      "mainChars": 168,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "运营 · 控制台 任务与运行 任务 运行 任务看板 按后端状态看任务；拖动排序未启用，状态不会被"
+    },
+    {
+      "route": "#/work?tab=runs",
+      "source": "CONSOLE_TABS",
+      "kind": "tab",
+      "mainChars": 205,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 0,
+      "headSample": "运营 · 控制台 任务与运行 任务 运行 运行 按时间看运行；失败原因只在详情里给，不用颜色代替"
+    }
+  ],
+  "distinctMainHeads": 25,
+  "medianMainChars": 118,
+  "contentEmpty": [],
+  "contentEmptyCount": 0,
+  "routesRenderedWithoutMainEl": 0,
+  "routesWithConsoleErrors": 0,
   "parseErrors": [],
-  "note": "200 text/html = the SPA shell served the deep link (client routing); only 4xx/5xx and transport failures count as deadLinks.",
   "ok": true
 }
---- stderr ---
 exit=0

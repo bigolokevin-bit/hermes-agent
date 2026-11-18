@@ -1,38 +1,43 @@
 #!/usr/bin/env node
-// lane-D gate — fetch-based route probe (replaces the playwright crawler).
+// lane-D gate — route probe with TWO judgements: transport (fetch) + content (render).
 //
-// WHY: this fork does not install playwright/@playwright/test (pnpm-lock pins
-// 1.64.0, but `require.resolve('playwright')` from web/ is MODULE_NOT_FOUND)
-// and lane D must not add dependencies. A plain HTTP probe answers the
-// question crawl-routes exists for on a client-routed SPA: does the server
-// answer each address form, with which status and content type.
+// 1) TRANSPORT (fetch, no dependencies): every appendix-A address form (51) and
+//    every redirect form (23) is requested from --base; 4xx/5xx or a transport
+//    failure counts as a deadLink. 200 text/html only proves the server answered.
 //
-// Address forms come from web/src/shell/routes.ts as it is actually written:
-//   * 51 appendix-A rows = CONSOLE_TABS(22) + DETAIL_TAB(1)
-//     + DETAIL_ZONES_EXTRA(4) + VIEW_DEEP_LINKS(5) + COMPAT_TABS(14)
-//     + COMPAT_MODULES(5); every row carries `hash` (PRD literal) and `path`
-//     (react-router form).
-//   * REDIRECTS is excluded from the 51 and probed as the 23 redirect-only
-//     forms, via each row's `from` object.
-//   * `:employeeId` in a path form is substituted with a live id from
-//     GET /api/employees?limit=1 when one exists (recorded in
-//     `paramSubstitution`); if none can be resolved the literal is probed and
-//     the row is marked paramUnresolved.
+// 2) CONTENT (rendered): L0's second judgement — for each of the 51 routes the
+//    visible <main> text must be length > 0 AND must not equal the root shell's
+//    text, otherwise `content-empty:<route>` is a violation.
 //
-// Judgement (per the lane-D brief's known pitfall: bare /hermes and deep links
-// return 200 text/html from the SPA fallback, not 301):
-//   * deadLinks counts ONLY 4xx/5xx responses and transport failures.
-//   * 200 text/html            -> 'spa-fallback' (client route; server cannot 404 it)
-//   * 2xx application/json     -> 'api'
-//   * 3xx                      -> 'redirect'
-// Exit 0 when deadLinks is empty, 1 otherwise.
+// WHY CONTENT CANNOT COME FROM FETCH (measured, not assumed): the server answers
+// every address form with the SAME 1.4 KB client-render shell — GET / and GET
+// /work return byte-identical bodies (same sha256) and that shell contains no
+// <main> element at all, so a fetch-level "main text length" is 0 for every
+// route *and* for the root. Reporting that as 51 content-empty would be a
+// verdict about my instrument, not about the product, and reporting it as 0
+// would be a fake green. So content is judged in a headless browser:
+//   * playwright is resolved from this repo first, then from the sibling
+//     checkout's node_modules (lane D must not install anything — the sibling
+//     host already has it), and the browser is the chromium already in
+//     ~/Library/Caches/ms-playwright;
+//   * if no renderer can be loaded, contentMethod is 'unavailable' and ok=false
+//     — the gate never passes without a content verdict;
+//   * --no-render runs the transport leg only and still exits non-zero,
+//     explicitly labelled contentUnverified.
+//
+// Exit 0 only when: 51 routes + 23 redirects parsed, deadLinks = 0,
+// contentEmpty = 0, parseErrors = 0, and the content leg really rendered.
 //
 // Usage: node web/scripts/crawl-routes.mjs [--base http://127.0.0.1:9119]
-//                                          [--timeout 8000] [--concurrency 6]
+//        [--timeout 8000] [--concurrency 6] [--render-concurrency 3]
+//        [--no-render] [--nav-timeout 30000] [--settle 400]
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
+import os from 'node:os';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'); // web/
 const ROUTES_TS = path.join(ROOT, 'src', 'shell', 'routes.ts');
@@ -42,7 +47,9 @@ const ROUTES_TS = path.join(ROOT, 'src', 'shell', 'routes.ts');
 const argv = process.argv.slice(2);
 if (argv.includes('--help') || argv.includes('-h')) {
   console.log('usage: crawl-routes.mjs [--base URL] [--timeout MS] [--concurrency N]');
-  console.log('  reads web/src/shell/routes.ts and probes 51 appendix-A forms + 23 redirect forms');
+  console.log('       [--render-concurrency N] [--no-render] [--nav-timeout MS] [--settle MS]');
+  console.log('  transport leg: fetch every address form, 4xx/5xx = deadLink');
+  console.log('  content leg:   render each of the 51 routes, main text must be >0 and != root shell text');
   process.exit(0);
 }
 const flagOf = (name, dflt) => {
@@ -55,14 +62,55 @@ const flagOf = (name, dflt) => {
 const BASE = String(flagOf('base', 'http://127.0.0.1:9119')).replace(/\/+$/, '');
 const TIMEOUT = Number(flagOf('timeout', '8000'));
 const CONCURRENCY = Math.max(1, Number(flagOf('concurrency', '6')));
+const RENDER_CONCURRENCY = Math.max(1, Number(flagOf('render-concurrency', '3')));
+const NAV_TIMEOUT = Number(flagOf('nav-timeout', '30000'));
+const SETTLE = Number(flagOf('settle', '400'));
+const NO_RENDER = argv.includes('--no-render');
 
-// --- scanner helpers --------------------------------------------------------
+// --- scanner helpers (routes.ts is data; comments stripped first, an apostrophe
+//     inside a comment otherwise desynchronises the quote tracker and silently
+//     drops rows) -------------------------------------------------------------
 
-/**
- * Given text and the index of an opening bracket, return the balanced slice
- * `[text, endIdxAfterClose]`. Quote- and escape-aware.
- */
-function balancedSlice(src, open) {
+function stripComments(text) {
+  let out = '';
+  let quote = null;
+  for (let i = 0; i < text.length; i += 1) {
+    const c = text[i];
+    if (quote) {
+      out += c;
+      if (c === '\\') {
+        out += text[i + 1] ?? '';
+        i += 1;
+        continue;
+      }
+      if (c === quote) quote = null;
+      continue;
+    }
+    if (c === '"' || c === "'" || c === '`') {
+      quote = c;
+      out += c;
+      continue;
+    }
+    if (c === '/' && text[i + 1] === '/') {
+      const nl = text.indexOf('\n', i);
+      const end = nl === -1 ? text.length : nl;
+      out += text.slice(i, end).replace(/[^\n]/g, ' ');
+      i = end - 1;
+      continue;
+    }
+    if (c === '/' && text[i + 1] === '*') {
+      const close = text.indexOf('*/', i + 2);
+      const end = close === -1 ? text.length : close + 2;
+      out += text.slice(i, end).replace(/[^\n]/g, ' ');
+      i = end - 1;
+      continue;
+    }
+    out += c;
+  }
+  return out;
+}
+
+function balanced(src, open) {
   let depth = 0;
   let quote = null;
   for (let i = open; i < src.length; i += 1) {
@@ -72,11 +120,8 @@ function balancedSlice(src, open) {
       else if (c === quote) quote = null;
       continue;
     }
-    if (c === '"' || c === "'" || c === '`') {
-      quote = c;
-      continue;
-    }
-    if (c === '[' || c === '{' || c === '(') depth += 1;
+    if (c === '"' || c === "'" || c === '`') quote = c;
+    else if (c === '[' || c === '{' || c === '(') depth += 1;
     else if (c === ']' || c === '}' || c === ')') {
       depth -= 1;
       if (depth === 0) return [src.slice(open, i + 1), i + 1];
@@ -85,35 +130,14 @@ function balancedSlice(src, open) {
   return [src.slice(open), src.length];
 }
 
-/** Find the `[` that opens the array literal of `const NAME … = [`. */
-function declArrayOpen(src, name) {
+function declAssign(src, name, bracket) {
   const at = src.search(new RegExp(`\\b(?:export\\s+)?const\\s+${name}\\b`));
   if (at === -1) return -1;
-  const assign = /=\s*\[/.exec(src.slice(at));
+  const assign = new RegExp(`=\\s*\\${bracket}`).exec(src.slice(at));
   if (!assign) return -1;
   return at + assign.index + assign[0].length - 1;
 }
 
-/** Object literals at the top level of the array `NAME = [...]`. */
-function arrayObjects(src, name) {
-  const open = declArrayOpen(src, name);
-  if (open === -1) return null;
-  const [body] = balancedSlice(src, open);
-  return topLevelObjects(src, open, open + body.length);
-}
-
-/** The single object of `const NAME … = { ... }`. */
-function objectOfDecl(src, name) {
-  const at = src.search(new RegExp(`\\b(?:export\\s+)?const\\s+${name}\\b`));
-  if (at === -1) return null;
-  const assign = /=\s*\{/.exec(src.slice(at));
-  if (!assign) return null;
-  const open = at + assign.index + assign[0].length - 1;
-  const [body] = balancedSlice(src, open);
-  return body;
-}
-
-/** Object literals one level inside src[open] (which must be `[`). */
 function topLevelObjects(src, open, close) {
   const out = [];
   let depth = 0;
@@ -125,96 +149,48 @@ function topLevelObjects(src, open, close) {
       else if (c === quote) quote = null;
       continue;
     }
-    if (c === '"' || c === "'" || c === '`') {
-      quote = c;
-      continue;
-    }
-    if (c === '{') {
+    if (c === '"' || c === "'" || c === '`') quote = c;
+    else if (c === '{') {
       if (depth === 1) {
-        const [text, next] = balancedSlice(src, i);
+        const [text, next] = balanced(src, i);
         out.push(text);
         i = next - 1;
-        depth = 1; // balancedSlice left depth at its own base; array stays at 1
         continue;
       }
       depth += 1;
-      continue;
-    }
-    if (c === '[' || c === '(') depth += 1;
+    } else if (c === '[' || c === '(') depth += 1;
     else if (c === ']' || c === ')' || c === '}') depth -= 1;
   }
   return out;
 }
 
-/**
- * Blank out `//` and block comments while preserving length and newlines.
- * String-aware: an apostrophe inside a comment (e.g. "appendix A's") must not
- * be mistaken for a quote, and `//` inside a string must not look like a
- * comment — routes.ts has both, and getting it wrong silently drops rows.
- */
-function stripComments(text) {
-  const out = [];
-  let quote = null;
-  let i = 0;
-  const blank = (s) => s.replace(/[^\n]/g, ' ');
-  while (i < text.length) {
-    const c = text[i];
-    if (quote) {
-      if (c === '\\') {
-        out.push(text.slice(i, i + 2));
-        i += 2;
-        continue;
-      }
-      if (c === quote) quote = null;
-      out.push(c);
-      i += 1;
-      continue;
-    }
-    if (c === '"' || c === "'" || c === '`') {
-      quote = c;
-      out.push(c);
-      i += 1;
-      continue;
-    }
-    if (c === '/' && text[i + 1] === '/') {
-      const nl = text.indexOf('\n', i);
-      const end = nl === -1 ? text.length : nl;
-      out.push(blank(text.slice(i, end)));
-      i = end;
-      continue;
-    }
-    if (c === '/' && text[i + 1] === '*') {
-      const close = text.indexOf('*/', i + 2);
-      const end = close === -1 ? text.length : close + 2;
-      out.push(blank(text.slice(i, end)));
-      i = end;
-      continue;
-    }
-    out.push(c);
-    i += 1;
-  }
-  return out.join('');
+function arrayObjects(src, name) {
+  const open = declAssign(src, name, '[');
+  if (open === -1) return null;
+  const [, next] = balanced(src, open);
+  return topLevelObjects(src, open, next);
 }
 
-/** First string literal value for `key: "…"|'…'|`…`` inside an object text. */
+function objectOfDecl(src, name) {
+  const open = declAssign(src, name, '{');
+  if (open === -1) return null;
+  return balanced(src, open)[0];
+}
+
 function strField(objText, key) {
   const m = new RegExp(`\\b${key}\\s*:\\s*(['"\`])([^'"\`]*)\\1`).exec(objText);
   return m ? m[2] : null;
 }
 
-/** The `{ … }` object assigned to `key:` inside an object text. */
 function objectField(objText, key) {
   const m = new RegExp(`\\b${key}\\s*:\\s*\\{`).exec(objText);
   if (!m) return null;
-  const open = objText.indexOf('{', m.index);
-  const [text] = balancedSlice(objText, open);
-  return text;
+  return balanced(objText, objText.indexOf('{', m.index))[0];
 }
 
 // --- collect forms ----------------------------------------------------------
 
 const src = stripComments(readFileSync(ROUTES_TS, 'utf8'));
-
 const ROW_ARRAYS = ['CONSOLE_TABS', 'DETAIL_ZONES_EXTRA', 'VIEW_DEEP_LINKS', 'COMPAT_TABS', 'COMPAT_MODULES'];
 const mainRows = [];
 const parseErrors = [];
@@ -263,7 +239,7 @@ for (const o of redirectObjs ?? []) {
   redirectRows.push({ source: 'REDIRECTS', hash, path: p, kind: 'redirect' });
 }
 
-// --- probe ------------------------------------------------------------------
+// --- transport leg ----------------------------------------------------------
 
 async function probe(url) {
   const startedAt = Date.now();
@@ -275,15 +251,24 @@ async function probe(url) {
     });
     const ct = res.headers.get('content-type') || '';
     let bytes = 0;
+    let digest = null;
     try {
-      bytes = (await res.arrayBuffer()).byteLength;
+      const buf = Buffer.from(await res.arrayBuffer());
+      bytes = buf.byteLength;
+      digest = createHash('sha256').update(buf).digest('hex').slice(0, 16);
     } catch {
       /* body unreadable; the status still counts */
     }
-    return { status: res.status, contentType: ct.split(';')[0].trim(), bytes, ms: Date.now() - startedAt, location: res.headers.get('location') };
+    return {
+      status: res.status,
+      contentType: ct.split(';')[0].trim(),
+      bytes,
+      digest,
+      ms: Date.now() - startedAt,
+    };
   } catch (err) {
     const cause = err && err.cause ? ` (${String(err.cause.message ?? err.cause).slice(0, 80)})` : '';
-    return { status: null, contentType: null, bytes: 0, ms: Date.now() - startedAt, error: `${err.name}: ${err.message}${cause}`.slice(0, 200) };
+    return { status: null, contentType: null, bytes: 0, digest: null, ms: Date.now() - startedAt, error: `${err.name}: ${err.message}${cause}`.slice(0, 200) };
   }
 }
 
@@ -318,14 +303,7 @@ const params = await resolveEmployeeId();
 const targets = [...mainRows, ...redirectRows].map((row) => {
   const parametrized = /:[A-Za-z_][A-Za-z0-9_]*/.test(row.path);
   const pathProbe = parametrized && params.id ? row.path.replace(/:[A-Za-z_][A-Za-z0-9_]*/g, params.id) : row.path;
-  return {
-    ...row,
-    pathProbe,
-    paramUnresolved: parametrized && !params.id,
-    // A fragment is never sent to the server, so every form is probed through
-    // its react-router `path`; `hash` is kept for traceability.
-    url: `${BASE}${pathProbe}`,
-  };
+  return { ...row, pathProbe, paramUnresolved: parametrized && !params.id, url: `${BASE}${pathProbe}` };
 });
 
 const results = [];
@@ -357,9 +335,167 @@ const deadLinks = results
   .filter((r) => r.verdict === 'dead' || r.verdict === 'transport-error')
   .map((r) => ({ url: r.url, hash: r.hash, source: r.source, status: r.status ?? null, error: r.error ?? null }));
 
+// Proof that the transport leg cannot see content: hash every served HTML body.
+const htmlDigests = results.filter((r) => r.contentType === 'text/html').map((r) => r.digest);
+const uniqueHtmlShells = [...new Set(htmlDigests)].length;
+
+// --- content leg (rendered) -------------------------------------------------
+
+/**
+ * playwright is resolved without installing anything: this repo first, then the
+ * sibling checkout that already carries it. Returns null when unavailable so the
+ * gate can fail loudly instead of reporting a content verdict it never made.
+ */
+async function loadPlaywright() {
+  try {
+    return { pw: await import('playwright'), from: 'this repo' };
+  } catch {
+    /* fall through to the sibling host */
+  }
+  const hosts = [
+    '/Users/kevin_studio/Projects/seakoi-console-web/package.json',
+    '/Users/kevin_studio/Projects/seakoi-agent-os-console-ui/package.json',
+  ];
+  for (const host of hosts) {
+    try {
+      const req = createRequire(host);
+      return { pw: req('playwright'), from: host };
+    } catch {
+      /* try next host */
+    }
+  }
+  return null;
+}
+
+function chromiumCandidates() {
+  return [
+    process.env.LANE_D_CHROMIUM,
+    process.env.PW_CHROMIUM,
+    path.join(os.homedir(), 'Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/' +
+      'Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing'),
+    path.join(os.homedir(), 'Library/Caches/ms-playwright/chromium-1256/chrome-mac-arm64/' +
+      'Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing'),
+  ].filter(Boolean);
+}
+
+/** Runs in the browser. Passed as a function (Playwright serialises its
+ *  source); passing it as a *string* hands back an uncalled function object and
+ *  silently yields undefined fields. */
+function mainTextProbe() {
+  const el = document.querySelector('main') || document.querySelector('.main') || document.querySelector('[data-console-main]');
+  // No <main> is itself a finding, never a licence to measure the shell's
+  // chrome instead: body text starts with the same banner on every route, so a
+  // body fallback would report "content present" for an empty pane.
+  if (!el) return { where: null, len: 0, head: '', hasMainEl: false };
+  const txt = (el.innerText || '').replace(/\s+/g, ' ').trim();
+  return { where: el.tagName.toLowerCase(), len: txt.length, head: txt.slice(0, 120), hasMainEl: true };
+}
+
+async function contentRender() {
+  const loaded = await loadPlaywright();
+  if (!loaded) return { method: 'unavailable', reason: 'playwright not resolvable (no-install lane)', rows: [], root: null };
+
+  const { chromium } = loaded.pw;
+  let browser = null;
+  const tried = [];
+  for (const exe of chromiumCandidates()) {
+    try {
+      browser = await chromium.launch({ executablePath: exe });
+      break;
+    } catch (e) {
+      tried.push(`${path.basename(path.dirname(exe))}: ${String(e.message ?? e).slice(0, 60)}`);
+    }
+  }
+  if (!browser) {
+    try {
+      browser = await chromium.launch();
+      tried.push('default: launched from playwright registry');
+    } catch (e) {
+      return { method: 'unavailable', reason: `chromium launch failed (${tried.join(' | ')})`, rows: [], root: null, driver: loaded.from };
+    }
+  }
+
+  const measure = async (url) => {
+    const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await ctx.newPage();
+    const consoleErrors = [];
+    page.on('console', (m) => {
+      if (m.type() === 'error') consoleErrors.push(m.text().slice(0, 160));
+    });
+    page.on('pageerror', (e) => consoleErrors.push(String(e.message ?? e).slice(0, 160)));
+    let navError = null;
+    let httpStatus = null;
+    try {
+      const res = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT });
+      httpStatus = res ? res.status() : null;
+      await page.waitForTimeout(SETTLE);
+    } catch (e) {
+      navError = String(e.message ?? e).slice(0, 160);
+    }
+    const probeResult = navError
+      ? { where: null, len: 0, head: '', hasMainEl: false }
+      : await page.evaluate(mainTextProbe).catch(() => ({ where: null, len: 0, head: '(eval failed)', hasMainEl: false }));
+    await ctx.close();
+    return { ...probeResult, url, httpStatus, navError, consoleErrors: consoleErrors.length, consoleErrorSample: consoleErrors[0] ?? null };
+  };
+
+  const root = await measure(`${BASE}/`);
+
+  const rows = [];
+  let cursor = 0;
+  const worker = async () => {
+    for (;;) {
+      const i = cursor;
+      cursor += 1;
+      if (i >= mainRows.length) return;
+      const row = mainRows[i];
+      // hash form, as the shell actually routes (App keeps both hash + path)
+      const r = await measure(`${BASE}/${row.hash}`);
+      rows.push({ hash: row.hash, source: row.source, kind: row.kind, ...r });
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(RENDER_CONCURRENCY, mainRows.length) }, worker));
+  await browser.close();
+
+  rows.sort((a, b) => a.hash.localeCompare(b.hash));
+  return { method: 'render', driver: loaded.from, rows, root };
+}
+
+let content = { method: 'skipped', reason: '--no-render', rows: [], root: null };
+if (!NO_RENDER) content = await contentRender();
+
+// L0's assertion, per rendered route: main text length > 0 AND not the root
+// shell's text. On this build the root path carries NO main text (rootShell
+// .mainChars === 0), so clause 2 is degenerate here — recorded as measured
+// instead of being quietly dropped: the binding failures are len<=0 (empty
+// pane) and "no <main> at all" (pane never mounted).
+const rootHead = content.root ? (content.root.head ?? '') : '';
+const contentEmpty = [];
+if (content.method === 'render') {
+  for (const r of content.rows) {
+    let verdict = null;
+    if (!r.hasMainEl) verdict = 'content-empty:no-main-element';
+    else if (r.len <= 0) verdict = 'content-empty';
+    else if (r.head === rootHead) verdict = 'content-empty:root-shell-text';
+    if (verdict) {
+      contentEmpty.push({
+        route: r.hash,
+        source: r.source,
+        verdict,
+        mainChars: r.len,
+        rootChars: content.root ? content.root.len : null,
+        httpStatus: r.httpStatus ?? null,
+        navError: r.navError,
+        headSample: r.head.slice(0, 60),
+      });
+    }
+  }
+}
+
+const contentVerified = content.method === 'render';
+
 const out = {
   script: 'crawl-routes',
-  mode: 'fetch',
   base: BASE,
   routesTs: path.relative(ROOT, ROUTES_TS),
   routes: mainRows.length,
@@ -370,9 +506,50 @@ const out = {
   statusByCode,
   verdicts,
   deadLinks,
+  transportNote: '200 text/html = the SPA shell served the form (client routing). Every served HTML body shares this many distinct sha256 digests; the server therefore cannot distinguish the routes, which is why the content judgement is rendered, not fetched.',
+  uniqueHtmlShells,
+  contentMethod: content.method,
+  contentDriver: content.driver ?? null,
+  contentReason: content.reason ?? null,
+  rootShell: content.root
+    ? {
+        url: content.root.url,
+        hasMainEl: content.root.hasMainEl,
+        mainChars: content.root.len,
+        headSample: (content.root.head ?? '').slice(0, 60),
+      }
+    : null,
+  contentChecked: content.method === 'render' ? content.rows.length : 0,
+  contentRows:
+    content.method === 'render'
+      ? content.rows.map((r) => ({
+          route: r.hash,
+          source: r.source,
+          kind: r.kind,
+          mainChars: r.len,
+          hasMainEl: r.hasMainEl,
+          httpStatus: r.httpStatus,
+          consoleErrors: r.consoleErrors,
+          headSample: r.head.slice(0, 48),
+        }))
+      : [],
+  distinctMainHeads: content.method === 'render' ? new Set(content.rows.map((r) => r.head)).size : null,
+  medianMainChars:
+    content.method === 'render'
+      ? content.rows.map((r) => r.len).sort((a, b) => a - b)[Math.floor(content.rows.length / 2)]
+      : null,
+  contentEmpty,
+  contentEmptyCount: contentEmpty.length,
+  routesRenderedWithoutMainEl: content.method === 'render' ? content.rows.filter((r) => !r.hasMainEl).length : null,
+  routesWithConsoleErrors: content.method === 'render' ? content.rows.filter((r) => r.consoleErrors > 0).length : null,
   parseErrors,
-  note: '200 text/html = the SPA shell served the deep link (client routing); only 4xx/5xx and transport failures count as deadLinks.',
-  ok: deadLinks.length === 0 && parseErrors.length === 0 && mainRows.length === 51 && redirectRows.length === 23,
+  ok:
+    deadLinks.length === 0
+    && parseErrors.length === 0
+    && mainRows.length === 51
+    && redirectRows.length === 23
+    && contentVerified
+    && contentEmpty.length === 0,
 };
 console.log(JSON.stringify(out, null, 2));
 process.exit(out.ok ? 0 : 1);

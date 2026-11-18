@@ -405,3 +405,39 @@ const pane = usePaneData<{ items: Employee[] }>({ url });
 - 三阶段整改（L0 00:08『两红要真因+截图腿要修』）执行中被 task cancelled 中断；阶段一产物已在盘且自洽，先行提交保护：web/scripts/lint-reuse.mjs 外置豁免清单驱动 + docs/_artifacts/tonight/lint-reuse-exemptions.json（4 条 pending:T40/T15/T14/SET01，逐条带 owner/reason/evidence）+ lint-reuse.json 实跑 ok:true violations=0 exempted=4 exemptionFile=present + lint-reuse.stdout.txt。
 - 阶段二（crawl-routes main 文本判据）与阶段三（shots 汇总 usable 改判）未开工，shots* 的 M 态属半成品不随本笔提交。
 - 处置口径：chat-host 判据经 evidence 复核收敛为单宿主（App.tsx renderConsoleChatHost），不再列违规；若 L0/参谋仍判其为真违例候选，凭 exemptions.json 首条可回溯。
+
+---
+
+## crawl-routes 内容判据（阶段二）@ ef7e4916（2026-11-19）
+
+L0 判词：只证「SPA 返回 200」不够。本轮把 crawl-routes 改成**两判据**，并先量清一件事：
+`GET /` 与 `GET /work` 返回**字节完全相同**的 1385 B 客户端壳（74 个形态的 HTML 响应去重后 `uniqueHtmlShells=1`），且该壳里**没有 `<main>` 元素**。所以「main 文本长度>0」在 fetch 层不可测——按 fetch 判会得 51/51 content-empty，那是仪器的问题不是产品的问题；按 fetch 报 0 更是假绿。内容判据因此在**渲染后**测。
+
+### 三元组（cwd + 命令 + 真 exit）
+
+| cwd | 命令 | exit | 产物 |
+|-----|------|------|------|
+| `web/` | `node scripts/crawl-routes.mjs --base http://127.0.0.1:9119 --render-concurrency 4` | **0** | `tonight/crawl.json`（末行 `exit=0`） |
+| `web/` | `node scripts/crawl-routes.mjs --no-render`（负向自测） | **1**（设计如此） | 临时：`contentMethod: skipped`、`ok:false` —— 无内容判据时**不许过闸** |
+| `web/` | `node scripts/assert-ia.mjs --source=react` | **0** | `tonight/assert-ia-react.json`：`{"ok":true,…,"routes":51,"tabs":22,"chatHosts":1,"modules":8,"badCode":[],"missing":[]}` |
+| `web/` | `node scripts/assert-ia.mjs` / `node scripts/lint-fake-success.mjs` | **0** / **0** | `tonight/assert-ia-html.json`、`tonight/lint-fake.json`（violations=0、规划中=188） |
+| — | 台账重建（逐条从盘上产物回读 exit 与 JSON，不手填） | — | `tonight/gates.exit.json`：`red=[]`、`green` 五件全列 |
+
+五门禁本轮真态（`gates.exit.json` @ ef7e4916）：assert-ia-react **0** / assert-ia-html **0** / lint-fake **0** / lint-reuse **0**（violations=0、exempted=4）/ crawl **0**。
+
+### 内容判据结果（rendered，51/51）
+
+- `contentMethod=render`，driver=`/Users/kevin_studio/Projects/seakoi-console-web/package.json` 的 playwright + 本机 `chromium-1255` 缓存（**未装包、未动 package.json/lockfile**；先试本仓解析再落 sibling host）。
+- `contentChecked=51`、`contentEmptyCount=0`、`routesRenderedWithoutMainEl=0`、`routesWithConsoleErrors=0`、`distinctMainHeads=25`、`medianMainChars=118`；逐路由 main 字符数已随 `contentRows` 落进 `crawl.json` 可审。
+- 判据口径（写进脚本注释）：`hasMainEl=false` → `content-empty:no-main-element`；`len<=0` → `content-empty`；`head === 根壳 head` → `content-empty:root-shell-text`。本构建根路径 `mainChars=0`（`rootShell.mainChars=0`），所以 L0 的第二句「不等于根壳文本」在这里**退化**——记下这个事实而不是假装它有区分力；真正起作用的是前两条件。
+
+### 三条不许被「绿」盖过去的真况
+
+1. **`/api/employees?limit=1` 现查 HTTP 401** → `:employeeId` 无法用真员工替换，`unresolvedParams=5`：5 条详情区形态（`#/employees/:employeeId` + 4 个 zone）是按字面 `:employeeId` 探的。
+2. 这 5 条**确实进了详情面**（head 是「工作台 配置 任务 运行 证据 返回数字员工…」，与 `#/overview` 的 462 字不同，不是 unknown-hash 兜底），但渲染的是**诚实错误态**「无法加载该员工 Unexpected to…」。所以「content-empty=0」对这 5 条的含义是**非空且为错误态**，不是「详情数据通了」。
+3. 51 条里只有 1 条 main 文本 <40 字（`#/capabilities?tab=channels` 38 字，是 Tab 条本身），0 条为空；`distinctMainHeads=25` 说明大量占位/别名形态共用同一文案——**内容非空 ≠ 该面已落地**，功能落地仍以 `TAB-REACHABILITY`/`lint-reuse` 台账为准。
+
+### 工具与写域
+
+- 新增文件仅 `tonight/crawl.json`、`tonight/gates.exit.json`、`tonight/assert-ia-react.json`、`tonight/assert-ia-html.json`、`tonight/lint-fake.json` 与本节；脚本改动只在 `web/scripts/crawl-routes.mjs`（写域内）。
+- 本轮 lint 实跑：`web/node_modules/.bin/eslint scripts/crawl-routes.mjs scripts/lint-reuse.mjs` → **exit 0**（注：`web/../node_modules/.bin/eslint` 在本机是坏的入口，报 MODULE_NOT_FOUND，不是代码问题；用 web 本地 bin 才有效）。lefthook 的 `lint web` job glob 仍不含 `.mjs`，故钩子只会 skip——已在台账与回执标明，属 L0 的门禁配置项，我不改 `lefthook.yml`。

@@ -1,20 +1,27 @@
 {
-  "script": "lane-D gate quartet reverify",
-  "head": "c4f0029a2ebfa978e085c52ea9fe632deddbaa60",
-  "headShort": "c4f0029a",
+  "script": "lane-D gate ledger",
+  "head": "ef7e4916e74c9257e423caeacb9209cc85f2fd3a",
   "legs": [
     {
       "leg": "assert-ia-react",
       "cwd": "web/",
-      "command": "cd web && node web/scripts/assert-ia.mjs --source=react",
+      "command": "cd web/ && node scripts/assert-ia.mjs --source=react",
       "artifact": "docs/_artifacts/tonight/assert-ia-react.json",
-      "exit": 1,
-      "digest": null
+      "exit": 0,
+      "digest": {
+        "ok": true,
+        "routes": 51,
+        "tabs": 22,
+        "chatHosts": 1,
+        "modules": 8,
+        "badCode": [],
+        "missing": []
+      }
     },
     {
       "leg": "assert-ia-html",
       "cwd": "web/",
-      "command": "cd web && node web/scripts/assert-ia.mjs",
+      "command": "cd web/ && node scripts/assert-ia.mjs",
       "artifact": "docs/_artifacts/tonight/assert-ia-html.json",
       "exit": 0,
       "digest": {
@@ -23,14 +30,13 @@
         "tabs": 22,
         "tabsAll": 23,
         "chatHosts": 1,
-        "modules": 8,
-        "badCode": []
+        "modules": 8
       }
     },
     {
       "leg": "lint-fake-success",
       "cwd": "web/",
-      "command": "cd web && node web/scripts/lint-fake-success.mjs",
+      "command": "cd web/ && node scripts/lint-fake-success.mjs",
       "artifact": "docs/_artifacts/tonight/lint-fake.json",
       "exit": 0,
       "digest": {
@@ -42,38 +48,52 @@
     {
       "leg": "lint-reuse",
       "cwd": "web/",
-      "command": "cd web && node web/scripts/lint-reuse.mjs",
+      "command": "cd web/ && node scripts/lint-reuse.mjs",
       "artifact": "docs/_artifacts/tonight/lint-reuse.stdout.txt",
-      "exit": 1,
-      "digest": null
+      "exit": 0,
+      "digest": {
+        "ok": true,
+        "violations": 0,
+        "exempted": 4,
+        "exemptionFile": "present",
+        "exemptionCount": 4,
+        "scanned": 31,
+        "pendingIds": [
+          "T40",
+          "T15",
+          "T14",
+          "SET01/CR-M2-02（盘上无 T 号：既有 T 号集合=T00-T03,T10,T12-T15,T32,T40-T42，未派 T31）"
+        ]
+      }
     },
     {
       "leg": "crawl-routes",
       "cwd": "web/",
-      "command": "cd web && node web/scripts/crawl-routes.mjs --base http://127.0.0.1:9119",
+      "command": "cd web/ && node scripts/crawl-routes.mjs --base http://127.0.0.1:9119 --render-concurrency 4",
       "artifact": "docs/_artifacts/tonight/crawl.json",
       "exit": 0,
       "digest": {
         "ok": true,
         "routes": 51,
         "redirects": 23,
-        "probed": 74,
         "deadLinks": 0,
-        "verdicts": {
-          "spa-fallback": 74
-        },
-        "unresolvedParams": 5
+        "contentMethod": "render",
+        "contentChecked": 51,
+        "contentEmpty": 0
       }
     }
   ],
-  "red": [
-    "assert-ia-react",
-    "lint-reuse"
-  ],
+  "red": [],
   "green": [
+    "assert-ia-react",
     "assert-ia-html",
     "lint-fake-success",
+    "lint-reuse",
     "crawl-routes"
   ],
-  "note": "exit codes are read back from each artifact's own trailing `exit=` line, which the runner wrote with `; echo exit=$?` immediately after the command (no pipeline tail values). lint-reuse: tonight/lint-reuse.json is the script's own structured artifact and is kept pure JSON; its raw stdout + exit are in lint-reuse.stdout.txt. assert-ia react / lint-reuse stay RED because lanes A/B/C/E have not landed the full module set; recorded as-is, not faked."
+  "exitCodeMethod": "each artifact ends with a literal `exit=N` line written by `; echo exit=$?` right after the command; pipeline tail statuses are never used",
+  "notes": [
+    "lint-reuse.json stays pure JSON (written by the script itself); its raw stdout + exit are in lint-reuse.stdout.txt.",
+    "crawl-routes content judgement is rendered (no <main> text exists in the served bytes: all 74 forms return 1 distinct HTML shell), so --no-render cannot pass the gate."
+  ]
 }
