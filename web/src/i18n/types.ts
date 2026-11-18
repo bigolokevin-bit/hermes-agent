@@ -105,7 +105,18 @@ export interface Translations {
       plugins: string;
       sessions: string;
       skills: string;
+      /** Console surfaces; absent keys fall back to the English nav label. */
+      [key: string]: string;
     };
+    /** Four-layer navigation group headings. */
+    navGroups?: {
+      operations?: string;
+      governance?: string;
+      runtime?: string;
+      system?: string;
+    };
+    /** Badge for intentionally non-navigable future entries. */
+    comingSoon?: string;
     modelToolsSheetSubtitle: string;
     modelToolsSheetTitle: string;
     navigation: string;

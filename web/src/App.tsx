@@ -24,15 +24,20 @@ import {
   Activity,
   BarChart3,
   BookOpen,
+  Building2,
+  ClipboardList,
   Clock,
   Code,
+  Contact,
   Cpu,
   Database,
   Download,
   Eye,
   FolderOpen,
   FileText,
+  Gauge,
   Globe,
+  Handshake,
   Heart,
   KeyRound,
   Menu,
@@ -141,11 +146,29 @@ function UnknownRouteFallback({ pluginsLoading }: { pluginsLoading: boolean }) {
   return <Navigate to="/sessions" replace />;
 }
 
+type NavGroupKey = "operations" | "governance" | "runtime" | "system";
+
+const NAV_GROUP_ORDER: NavGroupKey[] = [
+  "operations",
+  "governance",
+  "runtime",
+  "system",
+];
+
+/** English literals are the fallback when a locale has not translated a group. */
+const NAV_GROUP_FALLBACK: Record<NavGroupKey, string> = {
+  operations: "Operations",
+  governance: "Governance",
+  runtime: "Runtime",
+  system: "System",
+};
+
 const CHAT_NAV_ITEM: NavItem = {
   path: "/chat",
   labelKey: "chat",
   label: "Chat",
   icon: Terminal,
+  group: "runtime",
 };
 
 /**
@@ -194,45 +217,212 @@ function ChatRouteSink() {
 }
 
 const BUILTIN_NAV_REST: NavItem[] = [
-  { path: "/employees", label: "员工", icon: Users },
-  { path: "/approvals", label: "审批", icon: FileText },
-  { path: "/runs", label: "运行", icon: Activity },
+  // 1) Business operations — the four live console surfaces plus two
+  //    explicitly-labelled placeholders. Placeholders never navigate: they
+  //    render as non-interactive rows with a "coming soon" badge so no
+  //    click can land on a blank page.
+  {
+    path: "/employees",
+    labelKey: "employees",
+    label: "Employees",
+    icon: Users,
+    group: "operations",
+  },
+  {
+    path: "/approvals",
+    labelKey: "approvals",
+    label: "Approvals",
+    icon: FileText,
+    group: "operations",
+  },
+  {
+    path: "/tasks",
+    labelKey: "tasks",
+    label: "Tasks",
+    icon: ClipboardList,
+    group: "operations",
+    placeholder: true,
+  },
+  {
+    path: "/collaboration",
+    labelKey: "collaboration",
+    label: "Collaboration",
+    icon: Handshake,
+    group: "operations",
+    placeholder: true,
+  },
+  {
+    path: "/runs",
+    labelKey: "runs",
+    label: "Runs",
+    icon: Activity,
+    group: "operations",
+  },
+
+  // 2) Enterprise governance — no upstream routes exist yet, so every entry
+  //    is a labelled placeholder rather than a link to an empty page.
+  {
+    path: "/knowledge",
+    labelKey: "knowledge",
+    label: "Knowledge",
+    icon: BookOpen,
+    group: "governance",
+    placeholder: true,
+  },
+  {
+    path: "/organization",
+    labelKey: "organization",
+    label: "Organization",
+    icon: Building2,
+    group: "governance",
+    placeholder: true,
+  },
+  {
+    path: "/tenant-quota",
+    labelKey: "tenantQuota",
+    label: "Tenant & quota",
+    icon: Gauge,
+    group: "governance",
+    placeholder: true,
+  },
+  {
+    path: "/access-control",
+    labelKey: "accessControl",
+    label: "Access control",
+    icon: Shield,
+    group: "governance",
+    placeholder: true,
+  },
+  {
+    path: "/directory",
+    labelKey: "directory",
+    label: "People directory",
+    icon: Contact,
+    group: "governance",
+    placeholder: true,
+  },
+
+  // 3) Runtime — every existing upstream route is preserved verbatim.
   {
     path: "/sessions",
     labelKey: "sessions",
     label: "Sessions",
     icon: MessageSquare,
+    group: "runtime",
   },
-  { path: "/files", label: "Files", icon: FolderOpen },
+  {
+    path: "/files",
+    labelKey: "files",
+    label: "Files",
+    icon: FolderOpen,
+    group: "runtime",
+  },
   {
     path: "/analytics",
     labelKey: "analytics",
     label: "Analytics",
     icon: BarChart3,
+    group: "runtime",
   },
   {
     path: "/models",
     labelKey: "models",
     label: "Models",
     icon: Cpu,
+    group: "runtime",
   },
-  { path: "/logs", labelKey: "logs", label: "Logs", icon: FileText },
-  { path: "/cron", labelKey: "cron", label: "Cron", icon: Clock },
-  { path: "/skills", labelKey: "skills", label: "Skills", icon: Package },
-  { path: "/plugins", labelKey: "plugins", label: "Plugins", icon: Puzzle },
-  { path: "/mcp", label: "MCP", icon: Plug },
-  { path: "/channels", label: "Channels", icon: Radio },
-  { path: "/webhooks", label: "Webhooks", icon: Webhook },
-  { path: "/pairing", label: "Pairing", icon: ShieldCheck },
-  { path: "/profiles", labelKey: "profiles", label: "Profiles", icon: Users },
-  { path: "/config", labelKey: "config", label: "Config", icon: Settings },
-  { path: "/env", labelKey: "keys", label: "Keys", icon: KeyRound },
-  { path: "/system", label: "System", icon: Wrench },
+  {
+    path: "/mcp",
+    labelKey: "mcp",
+    label: "MCP",
+    icon: Plug,
+    group: "runtime",
+  },
+  {
+    path: "/channels",
+    labelKey: "channels",
+    label: "Channels",
+    icon: Radio,
+    group: "runtime",
+  },
+  {
+    path: "/cron",
+    labelKey: "cron",
+    label: "Cron",
+    icon: Clock,
+    group: "runtime",
+  },
+  {
+    path: "/logs",
+    labelKey: "logs",
+    label: "Logs",
+    icon: FileText,
+    group: "runtime",
+  },
+  {
+    path: "/system",
+    labelKey: "system",
+    label: "System",
+    icon: Wrench,
+    group: "runtime",
+  },
+
+  // 4) System — all remaining upstream surfaces, none removed.
+  {
+    path: "/config",
+    labelKey: "config",
+    label: "Config",
+    icon: Settings,
+    group: "system",
+  },
+  {
+    path: "/env",
+    labelKey: "env",
+    label: "Keys",
+    icon: KeyRound,
+    group: "system",
+  },
   {
     path: "/docs",
     labelKey: "documentation",
     label: "Documentation",
     icon: BookOpen,
+    group: "system",
+  },
+  {
+    path: "/plugins",
+    labelKey: "plugins",
+    label: "Plugins",
+    icon: Puzzle,
+    group: "system",
+  },
+  {
+    path: "/skills",
+    labelKey: "skills",
+    label: "Skills",
+    icon: Package,
+    group: "system",
+  },
+  {
+    path: "/profiles",
+    labelKey: "profiles",
+    label: "Profiles",
+    icon: Users,
+    group: "system",
+  },
+  {
+    path: "/webhooks",
+    labelKey: "webhooks",
+    label: "Webhooks",
+    icon: Webhook,
+    group: "system",
+  },
+  {
+    path: "/pairing",
+    labelKey: "pairing",
+    label: "Pairing",
+    icon: ShieldCheck,
+    group: "system",
   },
 ];
 
@@ -668,18 +858,45 @@ export default function App() {
               className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden border-t border-current/10 py-2"
               aria-label={t.app.navigation}
             >
-              <ul className="flex flex-col">
-                {sidebarNav.coreItems.map((item) => (
-                  <SidebarNavLink
-                    closeMobile={closeMobile}
-                    collapsed={isDesktopCollapsed}
-                    item={item}
-                    key={item.path}
-                    t={t}
-                    tooltipWarmRef={tooltipWarmRef}
-                  />
-                ))}
-              </ul>
+              {NAV_GROUP_ORDER.map((group) => {
+                const items = sidebarNav.coreItems.filter(
+                  (item) => item.group === group,
+                );
+                if (items.length === 0) return null;
+                const heading =
+                  t.app.navGroups?.[group] ?? NAV_GROUP_FALLBACK[group];
+                return (
+                  <div
+                    className="flex flex-col pb-2"
+                    key={group}
+                    role="group"
+                    aria-labelledby={`hermes-sidebar-${group}-heading`}
+                  >
+                    <span
+                      className={cn(
+                        "px-5 pt-2.5 pb-1",
+                        "font-sans text-display text-xs tracking-[0.12em] text-text-tertiary",
+                        isDesktopCollapsed && "lg:hidden",
+                      )}
+                      id={`hermes-sidebar-${group}-heading`}
+                    >
+                      {heading}
+                    </span>
+                    <ul className="flex flex-col">
+                      {items.map((item) => (
+                        <SidebarNavLink
+                          closeMobile={closeMobile}
+                          collapsed={isDesktopCollapsed}
+                          item={item}
+                          key={item.path}
+                          t={t}
+                          tooltipWarmRef={tooltipWarmRef}
+                        />
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
 
               {sidebarNav.pluginItems.length > 0 && (
                 <div
@@ -874,6 +1091,50 @@ function SidebarNavLink({
   const navLabel = labelKey
     ? ((t.app.nav as Record<string, string>)[labelKey] ?? label)
     : label;
+  const comingSoon = t.app.comingSoon ?? "Coming soon";
+
+  // Placeholders are deliberately not links: a future module must not open a
+  // blank route, and a disabled <button> would still look like a dead control.
+  // A labelled, non-interactive row communicates the intended IA without
+  // pretending the surface exists yet.
+  if (item.placeholder) {
+    return (
+      <li>
+        <div
+          aria-disabled="true"
+          className={cn(
+            "relative flex flex-col gap-1 px-5 py-2.5",
+            "font-sans text-display uppercase text-sm tracking-[0.08em]",
+            "text-text-tertiary/70 select-none",
+          )}
+          data-nav-placeholder={item.path}
+          title={`${navLabel} — ${comingSoon}`}
+        >
+          <span className="flex min-w-0 items-start gap-2">
+            <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span
+              className={cn(
+                "min-w-0 flex-1 leading-tight break-words transition-opacity duration-300",
+                collapsed ? "lg:opacity-0" : "lg:opacity-100",
+              )}
+            >
+              {navLabel}
+            </span>
+          </span>
+          <span
+            className={cn(
+              "ml-5 shrink-0 self-start border border-current/20 px-1.5 py-0.5",
+              "text-[10px] leading-tight tracking-normal",
+              collapsed && "lg:hidden",
+            )}
+          >
+            {comingSoon}
+          </span>
+        </div>
+      </li>
+    );
+  }
+
   const showTooltip = (event: MouseEvent<HTMLElement> | FocusEvent<HTMLElement>) => {
     setHovered(true);
     setTooltipAnchor(event.currentTarget);
@@ -1368,6 +1629,8 @@ interface NavItem {
   label: string;
   labelKey?: string;
   path: string;
+  group?: NavGroupKey;
+  placeholder?: boolean;
 }
 
 interface SidebarIconWithTooltipProps {
