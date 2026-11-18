@@ -42,7 +42,7 @@ vi.mock("@/pages/ChatPage", () => ({
 }));
 
 import ChatModulePage from "@/modules/chat/ChatModulePage";
-import { chatModuleManifest } from "@/modules/chat/manifest";
+import { chatModuleManifest } from "@/modules/chat/chatNav";
 
 let container: HTMLDivElement;
 let root: Root;

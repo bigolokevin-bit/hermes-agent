@@ -7,7 +7,13 @@
   "hiddenDetail": 1,
   "modules": 8,
   "chatHosts": 1,
-  "kinds": { "tab": 22, "detail-zone": 5, "view": 5, "compat-tab": 14, "compat-module": 5 },
+  "kinds": {
+    "tab": 22,
+    "detail-zone": 5,
+    "view": 5,
+    "compat-tab": 14,
+    "compat-module": 5
+  },
   "countLaw": "51 = 22 visible tab forwards + 5 detail zones + 5 view deep links + 14 tab-level compat + 5 module-level compat (PRD v4.1 appendix A L265-321); 23 redirect-only forms = 4 roots + skills 7 + models 7 + channels 5 (A.2 L323-337); total address forms 74",
   "sources": {
     "routes.ts tables": "dumped by scratch node harness from web/src/shell/routes.ts (51-hash findRoute roundtrip + uniqueness + redirect/compat target checks all passed)",
@@ -36,21 +42,60 @@
     "chatHosts3": "see stage2.chatHostsNote"
   },
   "pathConflictsFlaggedForStage2": [
-    { "form": "#/knowledge (route row 12)", "against": "existing App '/knowledge' (upstream KnowledgePage; BOUNDARY-09 says FilesPage 不进)" },
-    { "form": "#/metrics (route row 47)", "against": "existing App '/analytics' (upstream AnalyticsPage = same surface as usage tab)" },
-    { "form": "#/sessions (route row 48)", "against": "existing App '/sessions' (upstream SessionsPage)" },
-    { "form": "#/cron (redirect)", "against": "existing App '/cron' (upstream CronPage)" },
-    { "form": "#/skills (redirect)", "against": "existing App '/skills' (upstream SkillsPage)" },
-    { "form": "#/models (redirect)", "against": "existing App '/models' (upstream ModelsPage)" },
-    { "form": "#/channels (redirect)", "against": "existing App '/channels' (upstream ChannelsPage)" }
+    {
+      "form": "#/knowledge (route row 12)",
+      "against": "existing App '/knowledge' (upstream KnowledgePage; BOUNDARY-09 says FilesPage 不进)"
+    },
+    {
+      "form": "#/metrics (route row 47)",
+      "against": "existing App '/analytics' (upstream AnalyticsPage = same surface as usage tab)"
+    },
+    {
+      "form": "#/sessions (route row 48)",
+      "against": "existing App '/sessions' (upstream SessionsPage)"
+    },
+    {
+      "form": "#/cron (redirect)",
+      "against": "existing App '/cron' (upstream CronPage)"
+    },
+    {
+      "form": "#/skills (redirect)",
+      "against": "existing App '/skills' (upstream SkillsPage)"
+    },
+    {
+      "form": "#/models (redirect)",
+      "against": "existing App '/models' (upstream ModelsPage)"
+    },
+    {
+      "form": "#/channels (redirect)",
+      "against": "existing App '/channels' (upstream ChannelsPage)"
+    }
   ],
   "stage2ConflictResolutions": [
-    { "form": "#/knowledge", "served": "/knowledge console module page (GAP-03 honest empty panes; stage-1 note 'App already mounts KnowledgePage/FilesPage' was factually wrong — only a placeholder nav item, no route existed; FilesPage never imported, BOUNDARY-09 kept)" },
-    { "form": "#/metrics", "served": "/analytics (existing upstream AnalyticsPage — compat entry points at the existing page per brief 1)" },
-    { "form": "#/sessions", "served": "/sessions (existing SessionsPage keeps authority; compat row does NOT hijack it)" },
-    { "form": "#/cron #/skills #/models #/channels (+19 sub-tab forms)", "served": "hash forms → /work /capabilities via REDIRECTS (never enter navigation); bare browser paths keep the upstream pages" },
-    { "form": "/employees /approvals /system /employees/:employeeId", "served": "console adapter route fronts the generic map (react-router 8.4 first-match tie-break, verified); default pane composes the UNTOUCHED builtin page (list/pending/health/detail); plugin tab.override demotes the console adapter" },
-    { "form": "bare /employees/:employeeId", "served": "existing EmployeeDetailPage (probe fallback, brief 5); workbench+chat-host surface on explicit ?zone=workbench / overview / chat (ZONE_ALIAS); deviation from PRD 'default opens workbench' noted — bare deep links keep the live B-lane surface" }
+    {
+      "form": "#/knowledge",
+      "served": "/knowledge console module page (GAP-03 honest empty panes; stage-1 note 'App already mounts KnowledgePage/FilesPage' was factually wrong — only a placeholder nav item, no route existed; FilesPage never imported, BOUNDARY-09 kept)"
+    },
+    {
+      "form": "#/metrics",
+      "served": "/analytics (existing upstream AnalyticsPage — compat entry points at the existing page per brief 1)"
+    },
+    {
+      "form": "#/sessions",
+      "served": "/sessions (existing SessionsPage keeps authority; compat row does NOT hijack it)"
+    },
+    {
+      "form": "#/cron #/skills #/models #/channels (+19 sub-tab forms)",
+      "served": "hash forms → /work /capabilities via REDIRECTS (never enter navigation); bare browser paths keep the upstream pages"
+    },
+    {
+      "form": "/employees /approvals /system /employees/:employeeId",
+      "served": "console adapter route fronts the generic map (react-router 8.4 first-match tie-break, verified); default pane composes the UNTOUCHED builtin page (list/pending/health/detail); plugin tab.override demotes the console adapter"
+    },
+    {
+      "form": "bare /employees/:employeeId",
+      "served": "existing EmployeeDetailPage (probe fallback, brief 5); workbench+chat-host surface on explicit ?zone=workbench / overview / chat (ZONE_ALIAS); deviation from PRD 'default opens workbench' noted — bare deep links keep the live B-lane surface"
+    }
   ],
   "knownLimitations": [
     "skeleton is dark-theme only: no light token block exists in console-v4-skeleton.html (single --bg: definition, zero 'light'/data-theme matches); tokens.css therefore carries the one :root block verbatim",
@@ -60,5 +105,22 @@
     "stage-2: view deep links (?view=admins/mine/release/cron/anomaly) land on the canonical pane and keep the chip param in the URL; per-pane view chips render in the later detail pass (honest: panes for the 5 view rows are the destination tabs themselves).",
     "stage-2: capabilities·models / overview·usage ledger-vs-estimate labeling and channels BOUNDARY-07 review ride on the reused upstream pages (整块 reuse, zero edits) — content-level acceptance (§10 T5) not re-verified here.",
     "stage-2: ConsoleChatMount wraps ChatModulePage while the upstream persistent /chat host remains (untouched). If a user latched /chat earlier and opens the detail workbench, two scoped ChatPage subtrees can coexist (upstream keep-alive + employee-scoped with CHAT-04 token rotation). M0 structural contract (one data-chat-host element) holds; runtime single-PTY arbitration flagged to orchestrator for the chat lane."
-  ]
+  ],
+  "stage3": {
+    "merged": "2026-11-19 lane branches duty(T10 2241ca88)+matrix(T13 156897bf)+work(T14/T15 165215c9) via feaef411/25ae8737/edbc9575, employees(T12 363bb79b) earlier via 36127bab",
+    "manifests": "8 IA-group manifest.ts (overview/employees/work/approvals/identity/knowledge/capabilities/system), 22 tab entries = CONSOLE_TABS exact-equality law enforced in registry.validateRegistry(); chat lane manifest renamed to chatNav.ts (not a manifest file); per-page manifests removed",
+    "assertIaReact": {
+      "ok": true,
+      "routes": 51,
+      "tabs": 22,
+      "chatHosts": 1,
+      "modules": 8,
+      "badCode": [],
+      "missing": [],
+      "note": "assert-ia.mjs listSourceFiles now skips *.test.tsx per its own header comment (integration-lane patch, D co-review asked)"
+    },
+    "liveWiring": "App.tsx lazy-imports DutyPage(#/overview duty), MatrixModulePage(#/employees?tab=matrix), TasksBoardModulePage(#/work board), RunsModulePage(#/work?tab=runs); list keeps upstream EmployeesPage; verified live on :9119 probe 00:19 — 5/5 panes data-state=ready plannedCount=0",
+    "entry": "assets/index-CynjunXk.js",
+    "gates": "pnpm --filter web build EXIT=0 (built 2.50s); vitest 84 files / 566 tests pass; 22/22 tab reachability re-run pass (docs/_artifacts/A/TAB-REACHABILITY.md prior batch)"
+  }
 }

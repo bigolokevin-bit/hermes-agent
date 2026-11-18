@@ -33,6 +33,12 @@ export interface TabEntry {
   reuse?: () => Promise<{ default: ComponentType }>;
   /** Honest data-source label (pane data-src contract, PRD Section 7). */
   dataSource: string;
+  /** Sidebar/nav icon KEY (App ICON_MAP naming) — metadata for the shell. */
+  icon?: string;
+  /** Owning IA group (one of CONSOLE_MODULES). Manifest dirs are the eight
+   * groups, so this normally equals the module field; kept per-tab because
+   * the 22-tab table is the contract, the layout is not. */
+  group?: ConsoleModule;
 }
 
 export interface ModuleManifest {
@@ -56,6 +62,8 @@ function tabEntryIssues(where: string, entry: TabEntry): string[] {
   if (entry.kind === 'planned' && entry.reuse !== undefined) issues.push(`${where}: planned entries must not carry reuse()`);
   if (entry.kind === 'reuse' && typeof entry.reuse !== 'function') issues.push(`${where}: reuse entries need a reuse() loader`);
   if (typeof entry.dataSource !== 'string' || entry.dataSource === '') issues.push(`${where}: empty dataSource (data-src contract)`);
+  if (entry.group !== undefined && !CONSOLE_MODULES.some((m) => m.module === entry.group))
+    issues.push(`${where}: group '${String(entry.group)}' is not a CONSOLE_MODULES id`);
   return issues;
 }
 
@@ -114,11 +122,21 @@ export function allTabs(): Array<TabEntry & { pane: string }> {
 }
 
 /** Validation issues found at load time (empty array = registry is clean).
- * Also verifies every visible CONSOLE_TABS route exists in ROUTE_TABLE. */
+ * Also verifies every visible CONSOLE_TABS route exists in ROUTE_TABLE and
+ * that the manifest table is EXACTLY the 22 visible tabs (assert-ia react
+ * counts the sum of manifest tabs[] — this law keeps the two in sync). */
 export function validateRegistry(): string[] {
-  const issues = [...registryIssues];
+  const issues: string[] = [...registryIssues];
   for (const tab of CONSOLE_TABS) {
     if (!ROUTE_TABLE.some((r) => r.hash === tab.hash)) issues.push(`CONSOLE_TABS '${tab.hash}' missing from ROUTE_TABLE`);
+  }
+  const registered = new Set(allTabs().map((t) => t.route));
+  for (const tab of CONSOLE_TABS) {
+    if (!registered.has(tab.hash)) issues.push(`visible tab '${tab.hash}' (${tab.tabId}) has no manifest entry`);
+  }
+  const visible = new Set(CONSOLE_TABS.map((t) => t.hash));
+  for (const t of allTabs()) {
+    if (!visible.has(t.route)) issues.push(`manifest entry '${t.pane}/${t.id}' route '${t.route}' is not a visible CONSOLE_TAB (hidden/extra — assert-ia counts it and breaks tabs=22)`);
   }
   if (visibleTabCount() !== 22) issues.push(`visibleTabCount=${visibleTabCount()} want 22`);
   if (consoleModuleCount() !== 8) issues.push(`consoleModuleCount=${consoleModuleCount()} want 8`);

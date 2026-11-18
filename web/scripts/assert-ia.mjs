@@ -136,6 +136,11 @@ function listSourceFiles(dir) {
     }
     if (!entry.isFile()) continue;
     if (!/\.tsx?$/.test(entry.name)) continue;
+    // Doc-comment contract: tests are NOT source — marker literals inside
+    // *.test.tsx (e.g. querySelector('[data-chat-host]') in the chat module
+    // test) were being counted as hosts. Integration-lane fix, matches the
+    // header comment; D please co-review.
+    if (/\.(test|spec)\.tsx?$/.test(entry.name)) continue;
     out.push(full);
   }
   return out.sort();

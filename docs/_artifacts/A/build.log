@@ -361,3 +361,9 @@ Arbitrations recorded (§8.4-style deviations, stage-2 brief authority):
 
 ✓ built in 2.13s
 built /Users/kevin_studio/Projects/forks/hermes-agent/hermes_cli/web_dist/index.html
+
+[wave-1 16:19:44] merges feaef411/25ae8737/edbc9575 + 8 IA-group manifests + App live wiring
+pnpm --filter web build EXIT=0, entry assets/index-CynjunXk.js, built in 2.50s (atomic swap)
+assert-ia --source=react: {"ok":true,"routes":51,"tabs":22,"chatHosts":1,"modules":8,"badCode":[],"missing":[]}
+vitest 84 files/566 tests PASS
+live re-probe :9119 duty/board/runs/matrix/list panes data-state=ready plannedCount=0 (raw /T/laneA-wiring-probe.out)

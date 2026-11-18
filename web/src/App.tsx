@@ -88,6 +88,16 @@ const DocsPage = lazy(() => import("@/pages/DocsPage"));
 const EmployeesPage = lazy(() => import("@/pages/EmployeesPage"));
 const EmployeeDetailPage = lazy(() => import("@/pages/EmployeeDetailPage"));
 const ApprovalsPage = lazy(() => import("@/pages/ApprovalsPage"));
+// Wave-1 module pages (lanes T10/T13/T14/T15) — integration wiring into the
+// console live maps below; manifests' reuse loaders stay metadata-only.
+const DutyConsolePage = lazy(() => import("@/modules/duty/DutyPage"));
+const MatrixConsolePage = lazy(() =>
+  import("@/modules/matrix/MatrixModulePage").then((m) => ({
+    default: m.MatrixModulePage,
+  })),
+);
+const TasksBoardConsolePage = lazy(() => import("@/modules/tasks/TasksBoardModulePage"));
+const RunsConsolePage = lazy(() => import("@/modules/runs/RunsModulePage"));
 const RunsPage = lazy(() => import("@/pages/RunsPage"));
 const EnvPage = lazy(() => import("@/pages/EnvPage"));
 const FilesPage = lazy(() => import("@/pages/FilesPage"));
@@ -1091,13 +1101,18 @@ export default function App() {
                         element={
                           <ConsoleModulePage
                             module="overview"
-                            live={{ usage: <AnalyticsPage /> }}
+                            live={{ duty: <DutyConsolePage />, usage: <AnalyticsPage /> }}
                           />
                         }
                       />
                       <Route
                         path="/work"
-                        element={<ConsoleModulePage module="work" />}
+                        element={
+                          <ConsoleModulePage
+                            module="work"
+                            live={{ board: <TasksBoardConsolePage />, runs: <RunsConsolePage /> }}
+                          />
+                        }
                       />
                       <Route
                         path="/identity"
@@ -1127,7 +1142,7 @@ export default function App() {
                           element={
                             <ConsoleModulePage
                               module="employees"
-                              live={{ list: <EmployeesPage /> }}
+                              live={{ list: <EmployeesPage />, matrix: <MatrixConsolePage /> }}
                             />
                           }
                         />
