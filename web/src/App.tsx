@@ -219,10 +219,10 @@ const NAV_GROUP_ORDER: NavGroupKey[] = [
 
 /** English literals are the fallback when a locale has not translated a group. */
 const NAV_GROUP_FALLBACK: Record<NavGroupKey, string> = {
-  operations: "Operations",
-  governance: "Governance",
-  runtime: "Runtime",
-  system: "System",
+  operations: "运营",
+  governance: "治理",
+  runtime: "运行",
+  system: "系统",
 };
 
 const CHAT_NAV_ITEM: NavItem = {
@@ -1654,8 +1654,7 @@ function SidebarSystemActions({
 }
 
 function SystemActionButton({
-  collapsed,
-  disabled,
+  collapsed, // R4 B9: callers still pass `disabled`, intentionally unused — the button is inert (data-planned) regardless.
   isPending,
   isRunning: isActionRunning,
   item,
@@ -1683,7 +1682,9 @@ function SystemActionButton({
     >
       <button
         onClick={onClick}
-        disabled={disabled}
+        disabled
+        aria-disabled="true"
+        data-planned="规划中：系统动作暂不由控制台代发"
         aria-busy={busy}
         aria-label={collapsed ? displayLabel : undefined}
         onFocus={collapsed ? showTooltip : undefined}

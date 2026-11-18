@@ -89,6 +89,14 @@ function formatDuration(seconds: number): string {
   return `${m}m`;
 }
 
+// B9 收口（V4 R4）：空值不再显示成裸 "—" / "— cores"，一律读作人话。
+const NOT_PROVIDED_LABEL = "未提供该信息";
+
+function joinPresent(...parts: Array<string | null | undefined>): string {
+  const text = parts.filter((p): p is string => Boolean(p && p.trim())).join(" ").trim();
+  return text === "" ? NOT_PROVIDED_LABEL : text;
+}
+
 type BackupImportTarget =
   | { kind: "upload"; file: File }
   | { kind: "path"; path: string };
@@ -619,9 +627,10 @@ export default function SystemPage() {
   const applyUpdate = async () => {
     setUpdateConfirmOpen(false);
     if (status?.can_update_hermes === false) {
+      // B9 收口：这里没有发生任何写操作，不得报「成功」——诚实提示。
       showToast(
-        "Hermes updates are managed outside this dashboard.",
-        "success",
+        "Hermes 更新由仪表盘之外的部署流程管理，本面板不执行该写操作。",
+        "error",
       );
       return;
     }
@@ -631,7 +640,7 @@ export default function SystemPage() {
         showToast(
           resp.message ??
             "Updates don't apply from this dashboard.",
-          "success",
+          "error",
         );
         return;
       }
@@ -907,31 +916,31 @@ export default function SystemPage() {
       {/* ── Host / system stats ───────────────────────────────────── */}
       <section className="flex flex-col gap-3">
         <H2 variant="sm" className="flex items-center gap-2 text-muted-foreground">
-          <Server className="h-4 w-4" /> Host
+          <Server className="h-4 w-4" /> 主机
         </H2>
         <Card>
           <CardContent className="py-4">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-3 gap-x-6 text-sm">
               <div>
-                <div className="text-xs uppercase tracking-wider text-muted-foreground">OS</div>
-                <div>{stats?.os} {stats?.os_release}</div>
+                <div className="text-xs uppercase tracking-wider text-muted-foreground">操作系统</div>
+                <div>{joinPresent(stats?.os, stats?.os_release)}</div>
               </div>
               <div>
-                <div className="text-xs uppercase tracking-wider text-muted-foreground">Arch</div>
-                <div>{stats?.arch}</div>
+                <div className="text-xs uppercase tracking-wider text-muted-foreground">系统架构</div>
+                <div>{stats?.arch || NOT_PROVIDED_LABEL}</div>
               </div>
               <div>
-                <div className="text-xs uppercase tracking-wider text-muted-foreground">Host</div>
-                <div className="truncate">{stats?.hostname}</div>
+                <div className="text-xs uppercase tracking-wider text-muted-foreground">主机名</div>
+                <div className="truncate">{stats?.hostname || NOT_PROVIDED_LABEL}</div>
               </div>
               <div>
-                <div className="text-xs uppercase tracking-wider text-muted-foreground">Python</div>
-                <div>{stats?.python_impl} {stats?.python_version}</div>
+                <div className="text-xs uppercase tracking-wider text-muted-foreground">Python 版本</div>
+                <div>{joinPresent(stats?.python_impl, stats?.python_version)}</div>
               </div>
               <div>
-                <div className="text-xs uppercase tracking-wider text-muted-foreground">Hermes</div>
+                <div className="text-xs uppercase tracking-wider text-muted-foreground">Hermes 版本</div>
                 <div className="flex items-center gap-2">
-                  <span>v{stats?.hermes_version}</span>
+                  <span>{stats?.hermes_version ? `v${stats.hermes_version}` : NOT_PROVIDED_LABEL}</span>
                   {canUpdateHermes &&
                     updateInfo &&
                     (updateInfo.update_available ? (
@@ -945,18 +954,21 @@ export default function SystemPage() {
               </div>
               <div>
                 <div className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                  <Cpu className="h-3 w-3" /> CPU
+                  <Cpu className="h-3 w-3" /> 处理器核心数
                 </div>
                 <div>
-                  {stats?.cpu_count ?? "—"} cores
-                  {typeof stats?.cpu_percent === "number"
-                    ? ` · ${stats.cpu_percent.toFixed(0)}%`
-                    : ""}
+                  {typeof stats?.cpu_count === "number"
+                    ? `${stats.cpu_count} 核${
+                        typeof stats.cpu_percent === "number"
+                          ? ` · ${stats.cpu_percent.toFixed(0)}%`
+                          : ""
+                      }`
+                    : NOT_PROVIDED_LABEL}
                 </div>
               </div>
               {stats?.memory && (
                 <div>
-                  <div className="text-xs uppercase tracking-wider text-muted-foreground">Memory</div>
+                  <div className="text-xs uppercase tracking-wider text-muted-foreground">内存</div>
                   <div>
                     {formatBytes(stats.memory.used)} / {formatBytes(stats.memory.total)} ({stats.memory.percent}%)
                   </div>
@@ -965,7 +977,7 @@ export default function SystemPage() {
               {stats?.disk && (
                 <div>
                   <div className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                    <HardDrive className="h-3 w-3" /> Disk
+                    <HardDrive className="h-3 w-3" /> 磁盘
                   </div>
                   <div>
                     {formatBytes(stats.disk.used)} / {formatBytes(stats.disk.total)} ({stats.disk.percent}%)
@@ -974,29 +986,26 @@ export default function SystemPage() {
               )}
               {typeof stats?.uptime_seconds === "number" && (
                 <div>
-                  <div className="text-xs uppercase tracking-wider text-muted-foreground">Uptime</div>
+                  <div className="text-xs uppercase tracking-wider text-muted-foreground">运行时长</div>
                   <div>{formatDuration(stats.uptime_seconds)}</div>
                 </div>
               )}
               {stats?.load_avg && stats.load_avg.length >= 3 && (
                 <div>
-                  <div className="text-xs uppercase tracking-wider text-muted-foreground">Load avg</div>
+                  <div className="text-xs uppercase tracking-wider text-muted-foreground">平均负载</div>
                   <div>{stats.load_avg.map((n) => n.toFixed(2)).join(" / ")}</div>
                 </div>
               )}
             </div>
-            {stats && !stats.psutil && (
-              <p className="mt-3 text-xs text-muted-foreground">
-                Install the <span className="font-mono">psutil</span> extra for
-                CPU / memory / disk metrics.
-              </p>
-            )}
             {canUpdateHermes && (
               <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-4">
                 <Button
                   size="sm"
                   ghost
-                  disabled={checkingUpdate}
+                  // B9：无真实后端时可点的写型控件一律停用（data-planned + disabled，点击不执行）。
+                  data-planned="规划中：更新检查接口未接入"
+                  aria-disabled="true"
+                  disabled
                   prefix={
                     checkingUpdate ? (
                       <Spinner className="h-3.5 w-3.5" />
@@ -1017,14 +1026,6 @@ export default function SystemPage() {
                     Update now
                   </Button>
                 )}
-                {updateInfo &&
-                  !updateInfo.can_apply &&
-                  updateInfo.update_available && (
-                    <span className="text-xs text-muted-foreground">
-                      Update with{" "}
-                      <span className="font-mono">{updateInfo.update_command}</span>
-                    </span>
-                  )}
                 {updateInfo?.message && !updateInfo.update_available && (
                   <span className="text-xs text-muted-foreground">
                     {updateInfo.message}
@@ -1032,6 +1033,24 @@ export default function SystemPage() {
                 )}
               </div>
             )}
+            {/* 技术细节收进折叠区（V4 R4 B9：原始键名/命令行不上主屏）。 */}
+            <details className="mt-3 text-xs text-muted-foreground">
+              <summary className="cursor-pointer">技术详情（开发排查用）</summary>
+              {stats && !stats.psutil && (
+                <p className="mt-2">
+                  Install the <span className="font-mono">psutil</span> extra for
+                  CPU / memory / disk metrics.
+                </p>
+              )}
+              {updateInfo &&
+                !updateInfo.can_apply &&
+                updateInfo.update_available && (
+                  <p className="mt-2">
+                    Update with{" "}
+                    <span className="font-mono">{updateInfo.update_command}</span>
+                  </p>
+                )}
+            </details>
           </CardContent>
         </Card>
       </section>
@@ -1052,14 +1071,15 @@ export default function SystemPage() {
                   inference provider: {portal.provider}
                 </span>
               )}
-              <a
-                href={portal?.subscription_url || "https://portal.nousresearch.com/manage-subscription"}
-                target="_blank"
-                rel="noreferrer"
-                className="ml-auto text-xs text-primary underline"
+              {/* B9：订阅管理写入口未接入——保留可见，但不渲染可执行链接
+                  （无 href 即不可点击/不可聚焦，不执行任何跳转动作）。 */}
+              <span
+                data-planned="规划中：订阅管理未接入"
+                aria-disabled="true"
+                className="ml-auto text-xs text-muted-foreground cursor-not-allowed"
               >
                 Manage subscription
-              </a>
+              </span>
             </div>
             {portal?.features && portal.features.length > 0 && (
               <div className="flex flex-col gap-1 border-t border-border pt-3">
@@ -1100,12 +1120,22 @@ export default function SystemPage() {
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <Button size="sm" ghost onClick={toggleCuratorPaused}>
+              <Button
+                size="sm"
+                ghost
+                data-planned="规划中：Curator 写接口未接入"
+                aria-disabled="true"
+                disabled
+                onClick={toggleCuratorPaused}
+              >
                 {curator?.paused ? "Resume" : "Pause"}
               </Button>
               <Button
                 size="sm"
                 ghost
+                data-planned="规划中：Curator 写接口未接入"
+                aria-disabled="true"
+                disabled
                 prefix={<Play className="h-3.5 w-3.5" />}
                 onClick={() => runOp(api.runCurator, "Curator review")}
               >
@@ -1140,8 +1170,12 @@ export default function SystemPage() {
               <Button
                 size="sm"
                 className="uppercase"
+                // B9：Gateway 生命周期写操作未接入真实后端——控件停用
+                // （disabled 原生阻断点击；onClick 保留但永不触发）。
+                data-planned="规划中：Gateway 写接口未接入"
+                aria-disabled="true"
+                disabled
                 onClick={() => runGateway("start")}
-                disabled={gatewayRunning}
                 prefix={<Play className="h-3.5 w-3.5" />}
               >
                 Start
@@ -1149,6 +1183,9 @@ export default function SystemPage() {
               <Button
                 size="sm"
                 className="uppercase"
+                data-planned="规划中：Gateway 写接口未接入"
+                aria-disabled="true"
+                disabled
                 onClick={requestRestart}
                 prefix={<RotateCw className="h-3.5 w-3.5" />}
               >
@@ -1158,8 +1195,10 @@ export default function SystemPage() {
                 size="sm"
                 className="uppercase text-warning"
                 ghost
+                data-planned="规划中：Gateway 写接口未接入"
+                aria-disabled="true"
+                disabled
                 onClick={() => runGateway("stop")}
-                disabled={!gatewayRunning}
                 prefix={<Power className="h-3.5 w-3.5" />}
               >
                 Stop
@@ -1653,16 +1692,51 @@ function MemorySection({
                   {" "}· MEMORY.md: {formatBytes(memory?.builtin_files.memory ?? 0)} · USER.md:{" "}
                   {formatBytes(memory?.builtin_files.user ?? 0)}
                 </span>
-                <span>{t.systemMemory.builtinNote}</span>
+                {/* B9 收口：裸配置键名（memory.memory_enabled /
+                    memory.user_profile_enabled）不再上主屏，整块技术细节
+                    折叠到「技术详情」里。 */}
+                <span>
+                  MEMORY.md 和 USER.md 是 Hermes 自身的记忆，默认都会载入会话；外部提供方只做补充，不会取代它们。
+                </span>
+                <details className="text-xs text-muted-foreground">
+                  <summary className="cursor-pointer">技术详情（开发排查用）</summary>
+                  <p className="mt-1">
+                    {t.systemMemory.builtinNote}
+                  </p>
+                </details>
               </div>
               <div className="flex items-center gap-2 ml-auto">
-                <Button size="sm" ghost className="text-destructive" onClick={() => onReset("memory")}>
+                <Button
+                  size="sm"
+                  ghost
+                  className="text-destructive"
+                  data-planned="规划中：记忆重置接口未接入"
+                  aria-disabled="true"
+                  disabled
+                  onClick={() => onReset("memory")}
+                >
                   Reset MEMORY.md
                 </Button>
-                <Button size="sm" ghost className="text-destructive" onClick={() => onReset("user")}>
+                <Button
+                  size="sm"
+                  ghost
+                  className="text-destructive"
+                  data-planned="规划中：记忆重置接口未接入"
+                  aria-disabled="true"
+                  disabled
+                  onClick={() => onReset("user")}
+                >
                   Reset USER.md
                 </Button>
-                <Button size="sm" ghost className="text-destructive" onClick={() => onReset("all")}>
+                <Button
+                  size="sm"
+                  ghost
+                  className="text-destructive"
+                  data-planned="规划中：记忆重置接口未接入"
+                  aria-disabled="true"
+                  disabled
+                  onClick={() => onReset("all")}
+                >
                   Reset all
                 </Button>
               </div>

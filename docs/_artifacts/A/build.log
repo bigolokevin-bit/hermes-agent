@@ -376,3 +376,7 @@ live re-probe :9119: usage/identity x2/evidence/capabilities x3/approvals x2/sys
 [r4-stage-1a 01:39] items 2/3/4-shell/5-shell landed (fixer B modules + orchestrator App/shell)
 REDIRECTS 23->24 (#/matrix row); assert-ia react ok:true routes=51 tabs=22 chatHosts=1 modules=8
 pnpm --filter web build EXIT=0 built 2.90s entry assets/index-1yqr2leR.js; vitest src/shell 27/27; vitest runs/tasks/approvals 5 files 61 green
+
+[r4-stage-1b 01:52] item1 B9 16 controls data-planned+aria-disabled+disabled (SystemPage x10/SkillsPage/SessionsPage/ChannelsPage, fixer A) + fake-success 2条改诚实 (applyUpdate) + Host 标签中文化+空值「未提供该信息」+<details>技术详情 + memory 裸键名折叠
+App lane sidebar 收口: SidebarSystemActions 全按钮 inert (data-planned), WebhooksPage restart 停用, NAV_GROUP_FALLBACK 中文化
+pnpm --filter web build EXIT=0 2.92s entry assets/index-CSg6PqWl.js sha256 68ea689d5ee2fa9a38aa9b2a22b0b1af0cb9e253f498d0c0803c5fd778c053ae (final, after lint-fix); vitest src/pages src/shell 13 files/90 green

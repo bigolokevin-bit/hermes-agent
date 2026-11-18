@@ -530,6 +530,14 @@ export function ConsoleRunsAdapter({ fallback }: { fallback: ReactNode }) {
 
 /* ------------------------------------------------------------------ *
  * Sidebar — two tiers: 4 groups × 8 modules (skeleton MODULES block)
+ *
+ * V4 R4 B9 收口（侧栏中英双系统）：ConsoleNav 的 DOM 文本只有中文——
+ * 分组标题、模块锚点标签均来自 routes.ts 的中文 label（CONSOLE_MODULES
+ * 冻结 IA 数据，禁止在此处追加英文重复项或英文副标签；英文模块标识符
+ * 只允许出现在 data-mod 契约标记与 URL path 中，assert-ia 按 data-mod
+ * 计数，不得从 DOM 移除）。上游英文回退导航（App.tsx 的
+ * NAV_GROUP_FALLBACK / SidebarNavLink / SidebarSystemActions「Restart
+ * gateway」页脚）不在本写域，由 App lane 处理。
  * ------------------------------------------------------------------ */
 
 const CONSOLE_GROUPS = ["运营", "治理", "平台", "系统"] as const;

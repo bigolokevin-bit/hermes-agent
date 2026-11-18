@@ -511,7 +511,9 @@ export default function WebhooksPage() {
               size="sm"
               className="uppercase shrink-0"
               onClick={handleRestart}
-              disabled={restarting}
+              disabled
+              aria-disabled="true"
+              data-planned="规划中：重启网关暂不由控制台代发"
               prefix={restarting ? <Spinner /> : <RotateCw className="h-4 w-4" />}
             >
               {restarting ? "Restarting…" : "Restart gateway"}

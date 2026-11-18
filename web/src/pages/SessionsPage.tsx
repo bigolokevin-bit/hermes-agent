@@ -937,6 +937,10 @@ export default function SessionsPage() {
       <Button
         outlined
         size="sm"
+        // B9：Prune/Import 写接口无真实后端时不得可执行（停用不删路由）。
+        data-planned="规划中：会话写接口未接入"
+        aria-disabled="true"
+        disabled
         onClick={() => setPruneOpen(true)}
         prefix={<Archive />}
       >
@@ -1921,7 +1925,9 @@ export default function SessionsPage() {
                 outlined
                 size="sm"
                 className="shrink-0"
-                disabled={importingSessions}
+                data-planned="规划中：会话写接口未接入"
+                aria-disabled="true"
+                disabled
                 onClick={() => importInputRef.current?.click()}
                 aria-label="Import exported sessions"
                 title="Import exported session JSON or JSONL"

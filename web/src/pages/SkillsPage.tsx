@@ -436,6 +436,7 @@ export default function SkillsPage() {
                 <PanelItem
                   icon={Search}
                   label="Browse hub"
+                  planned="规划中：技能 hub 写入口未接入"
                   active={view === "hub"}
                   onClick={() => {
                     setView("hub");
@@ -547,6 +548,10 @@ export default function SkillsPage() {
                     <Button
                       size="sm"
                       outlined
+                      // B9：技能写入口无真实后端时不得可执行（停用，不删路由）。
+                      data-planned="规划中：技能写入口未接入"
+                      aria-disabled="true"
+                      disabled
                       onClick={openLearn}
                       prefix={<Sparkles />}
                     >
@@ -555,6 +560,9 @@ export default function SkillsPage() {
                     <Button
                       size="sm"
                       outlined
+                      data-planned="规划中：技能写入口未接入"
+                      aria-disabled="true"
+                      disabled
                       onClick={openCreateEditor}
                       prefix={<Plus />}
                     >
@@ -573,10 +581,23 @@ export default function SkillsPage() {
                     </p>
                     {skills.length === 0 && (
                       <div className="flex flex-wrap justify-center gap-2">
-                        <Button size="sm" onClick={() => setView("hub")}>
+                        <Button
+                          size="sm"
+                          data-planned="规划中：技能 hub 写入口未接入"
+                          aria-disabled="true"
+                          disabled
+                          onClick={() => setView("hub")}
+                        >
                           {t.skills.browseHub ?? en.skills.browseHub}
                         </Button>
-                        <Button size="sm" outlined onClick={openCreateEditor}>
+                        <Button
+                          size="sm"
+                          outlined
+                          data-planned="规划中：技能写入口未接入"
+                          aria-disabled="true"
+                          disabled
+                          onClick={openCreateEditor}
+                        >
                           {t.skills.createSkill ?? en.skills.createSkill}
                         </Button>
                       </div>
@@ -809,15 +830,19 @@ function SkillRow({
   );
 }
 
-function PanelItem({ active, icon: Icon, label, onClick }: PanelItemProps) {
+function PanelItem({ active, icon: Icon, label, onClick, planned }: PanelItemProps) {
   return (
     <ListItem
       active={active}
       onClick={onClick}
+      // B9：规划中入口停用（data-planned + aria-disabled + disabled）。
+      data-planned={planned}
+      aria-disabled={planned ? "true" : undefined}
+      disabled={planned !== undefined}
       className={cn(
         "rounded-none whitespace-nowrap px-2.5 py-1.5",
         "font-mondwest text-[0.7rem] tracking-[0.08em] uppercase",
-        active && "bg-foreground/90 text-background hover:text-background",
+        active && !planned && "bg-foreground/90 text-background hover:text-background",
       )}
     >
       <Icon className="h-3.5 w-3.5 shrink-0" />
@@ -831,6 +856,8 @@ interface PanelItemProps {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   onClick: () => void;
+  /** 有值 = 写入口未接入的规划中控件：DOM 带 data-planned 且不可执行。 */
+  planned?: string;
 }
 
 interface SkillRowProps {

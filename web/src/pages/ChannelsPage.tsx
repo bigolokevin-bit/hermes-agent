@@ -326,9 +326,12 @@ export default function ChannelsPage() {
       <Button
         className="uppercase"
         size="sm"
+        // B9：Gateway 重启写操作停用（data-planned + disabled，不删上游路由）。
+        data-planned="规划中：Gateway 写接口未接入"
+        aria-disabled="true"
+        disabled
         onClick={handleRestart}
-        disabled={restarting}
-        prefix={restarting ? <Spinner /> : <RotateCw className="h-4 w-4" />}
+        prefix={<RotateCw className="h-4 w-4" />}
       >
         {restarting ? "Restarting…" : "Restart gateway"}
       </Button>,
@@ -367,8 +370,11 @@ export default function ChannelsPage() {
             <Button
               size="sm"
               className="uppercase shrink-0"
+              // B9：同上——banner 内的重启网关写操作也停用。
+              data-planned="规划中：Gateway 写接口未接入"
+              aria-disabled="true"
+              disabled
               onClick={handleRestart}
-              disabled={restarting}
               prefix={restarting ? <Spinner /> : <RotateCw className="h-4 w-4" />}
             >
               {restarting ? "Restarting…" : "Restart now"}
