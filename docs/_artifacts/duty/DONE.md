@@ -114,3 +114,31 @@ build_exit=0
 截图：`docs/_artifacts/duty/t10-fields-1280.png` (60,941 B)、`t10-fields-375.png` (28,007 B)；静态服务 5434 HTTP 200。
 
 未测：截图取自静态产物、未接真实后端；真实阻塞任务/审批数据列未取；375 主 CTA 首屏可见仅按截图目测。
+
+## T10 版面与四态收口（2026-11-19）
+
+- 四态强制入口：`#/overview?state=loading|empty|error|ready`；loading 给加载文案，empty 给原因 + 「去员工列表」，error 给人话 + 请求编号（未提供时显「未提供」）+ 重试，ready 正常渲染。
+- 1280×720 / 375：`.duty-card` 由 `overflow: hidden` 改为 `visible`，`.duty-grid` 顶部对齐；第三行卡与「重试」按钮不再被屏底裁半，页面无横向溢出。
+- 四门来源：`duty-gate-source` 改为可点 `Link`（审批→`/approvals`、运行→`/runs`、其余→`/employees`），完整来源仍在 `title`；缺源显示「待核实（GAP-01）」，账本门同样带 GAP-01。
+- fixture：矩阵 fixture 仍由 `MatrixView` 的 `data-fixture` 角标标识；duty 聚合无 fixture。
+- T11 复核：金额只认 ledger，缺失「—」，unknown「未计价」，真 0 仅 `$0.00`。
+
+命令与原始结果：
+
+```
+cd web && PATH="/opt/homebrew/bin:$PATH" pnpm exec vitest run src/modules/duty/dutyPage.test.tsx
+Test Files  1 passed (1)
+     Tests  4 passed (4)
+  Duration  1.07s
+```
+
+```
+cd web && PATH="/opt/homebrew/bin:$PATH" pnpm build
+✓ built in 2.83s
+built /Users/kevin_studio/Projects/forks/console-duty/hermes_cli/web_dist/index.html
+build_exit=0
+```
+
+截图：`docs/_artifacts/duty/t10-fix-1280.png` (126,325 B)、`t10-fix-375.png` (50,125 B)、`t10-state-error-375.png` (20,034 B)；1440 使用既有 `t10-close-1440.png`。静态服务 5436 HTTP 200（已停）。
+
+未测：截图取自静态产物、未接真实后端；四态为强制入口/静态截图证据，真实 BFF 触发未复验。

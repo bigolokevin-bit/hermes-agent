@@ -43,6 +43,7 @@
 }
 
 .duty-grid {
+  align-items: start;
   display: grid;
   gap: 16px;
   min-width: 0;
@@ -58,7 +59,7 @@
 
 .duty-card {
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .duty-card-bd {
@@ -543,3 +544,5 @@
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
+
+.duty-gate-source { text-decoration: underline; text-underline-offset: 2px; }
