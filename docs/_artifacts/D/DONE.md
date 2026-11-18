@@ -399,3 +399,9 @@ const pane = usePaneData<{ items: Employee[] }>({ url });
 
 1. **台账是 4 条不是 5 条**：上一轮快照里的 `chat-host-not-unique`（判 chat/ 与 employee-detail/ 两处 import ChatPage = 入口不唯一）经复核是**脚本假阳**——旧正则在 `employee-detail/EmployeeDetailWorkbench.tsx:97` 命中的是用户可见文案字符串 `"生产环境在此 import Hermes ChatPage（同源部署…）"`，不是 import 语句；同时它**漏掉**了 chat/ 的真实动态 import（`import(` 后无空白）。R3 已改为**结构化**判定（只取静态 `from '…'` / 动态 `import('…')` / `export * from` 的模块说明符，外加 `<ChatHost` JSX 挂载），现在 `chatHostFiles` = 1（chat，via `<ChatHost> mount`），R3 自然通过，故无需也不应为它写豁免。若 L0 仍认为「employee-detail 复用 ChatPage」是 DoD-6 的真违例候选，那是判定口径问题，不是台账问题，请回话我按口径改规则而不是加豁免。
 2. **`tonight/lint-reuse.json` 仍是脚本自产的纯 JSON**：任务书写「`; echo exit=$?` 覆盖 tonight/lint-reuse.json」，但该路径是脚本自己的机读产物（其它车道在 `json.load` 它），追加 `exit=` 行会把它变成非 JSON。故真码记在 `lint-reuse.stdout.txt` 与 `gates.exit.json`，JSON 保持可解析。这是延续既定的处置口径，非新发明。
+
+## 门禁七轮·阶段一 lint-reuse 豁免台账（2026-11-19 00:3x，orchestrator 代中断 fixer 收尾提交）
+
+- 三阶段整改（L0 00:08『两红要真因+截图腿要修』）执行中被 task cancelled 中断；阶段一产物已在盘且自洽，先行提交保护：web/scripts/lint-reuse.mjs 外置豁免清单驱动 + docs/_artifacts/tonight/lint-reuse-exemptions.json（4 条 pending:T40/T15/T14/SET01，逐条带 owner/reason/evidence）+ lint-reuse.json 实跑 ok:true violations=0 exempted=4 exemptionFile=present + lint-reuse.stdout.txt。
+- 阶段二（crawl-routes main 文本判据）与阶段三（shots 汇总 usable 改判）未开工，shots* 的 M 态属半成品不随本笔提交。
+- 处置口径：chat-host 判据经 evidence 复核收敛为单宿主（App.tsx renderConsoleChatHost），不再列违规；若 L0/参谋仍判其为真违例候选，凭 exemptions.json 首条可回溯。
