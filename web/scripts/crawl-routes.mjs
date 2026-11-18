@@ -30,7 +30,7 @@
 //
 // Usage: node web/scripts/crawl-routes.mjs [--base http://127.0.0.1:9119]
 //        [--timeout 8000] [--concurrency 6] [--render-concurrency 3]
-//        [--no-render] [--nav-timeout 30000] [--settle 400]
+//        [--no-render] [--nav-timeout 30000] [--settle-cap 4000]
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -47,7 +47,7 @@ const ROUTES_TS = path.join(ROOT, 'src', 'shell', 'routes.ts');
 const argv = process.argv.slice(2);
 if (argv.includes('--help') || argv.includes('-h')) {
   console.log('usage: crawl-routes.mjs [--base URL] [--timeout MS] [--concurrency N]');
-  console.log('       [--render-concurrency N] [--no-render] [--nav-timeout MS] [--settle MS]');
+  console.log('       [--render-concurrency N] [--no-render] [--nav-timeout MS] [--settle-cap MS]');
   console.log('  transport leg: fetch every address form, 4xx/5xx = deadLink');
   console.log('  content leg:   render each of the 51 routes, main text must be >0 and != root shell text');
   process.exit(0);
@@ -62,9 +62,13 @@ const flagOf = (name, dflt) => {
 const BASE = String(flagOf('base', 'http://127.0.0.1:9119')).replace(/\/+$/, '');
 const TIMEOUT = Number(flagOf('timeout', '8000'));
 const CONCURRENCY = Math.max(1, Number(flagOf('concurrency', '6')));
-const RENDER_CONCURRENCY = Math.max(1, Number(flagOf('render-concurrency', '3')));
+// Serialized by default: 4-way concurrency starved paints and made panes read
+// as near-empty (#/system 33 chars vs 2039 serialized, vs 2039 in the shots
+// leg). Content numbers are timing-sensitive; do not raise this to "speed up"
+// the gate without re-baselining against shots-summary.json.
+const RENDER_CONCURRENCY = Math.max(1, Number(flagOf('render-concurrency', '1')));
 const NAV_TIMEOUT = Number(flagOf('nav-timeout', '30000'));
-const SETTLE = Number(flagOf('settle', '400'));
+const SETTLE_CAP = Number(flagOf('settle-cap', '4000'));
 const NO_RENDER = argv.includes('--no-render');
 
 // --- scanner helpers (routes.ts is data; comments stripped first, an apostrophe
@@ -391,6 +395,31 @@ function mainTextProbe() {
   return { where: el.tagName.toLowerCase(), len: txt.length, head: txt.slice(0, 120), hasMainEl: true };
 }
 
+/**
+ * Wait until the pane's <main> text stops growing (stable twice in a row and
+ * non-empty), instead of a blind fixed delay. A fixed 400 ms measured
+ * `#/capabilities?tab=channels` at 38 chars (just the tab strip) while the
+ * screenshot leg measured the same route at 90+ on the same build — i.e. the
+ * probe was racing the paint. Stability polling removes that class of phantom
+ * "near-empty" reading; the cap keeps a hung pane from hanging the gate.
+ */
+async function settleMain(page, capMs = 4000) {
+  const read = () =>
+    page.evaluate(() => {
+      const el = document.querySelector('main') || document.querySelector('.main') || document.querySelector('[data-console-main]');
+      return el ? (el.innerText || '').trim().length : 0;
+    }).catch(() => 0);
+  let prev = -1;
+  const started = Date.now();
+  while (Date.now() - started < capMs) {
+    await page.waitForTimeout(200);
+    const cur = await read();
+    if (cur > 0 && cur === prev) return cur;
+    prev = cur;
+  }
+  return prev;
+}
+
 async function contentRender() {
   const loaded = await loadPlaywright();
   if (!loaded) return { method: 'unavailable', reason: 'playwright not resolvable (no-install lane)', rows: [], root: null };
@@ -428,7 +457,7 @@ async function contentRender() {
     try {
       const res = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT });
       httpStatus = res ? res.status() : null;
-      await page.waitForTimeout(SETTLE);
+      await settleMain(page, SETTLE_CAP);
     } catch (e) {
       navError = String(e.message ?? e).slice(0, 160);
     }
@@ -510,6 +539,11 @@ const out = {
   uniqueHtmlShells,
   contentMethod: content.method,
   contentDriver: content.driver ?? null,
+  // Recorded because it changes the answer: at --render-concurrency 4 four
+  // panes contend for one browser and several were read mid-paint (#/system
+  // measured 33 chars vs 2039 when serialized). The content leg therefore runs
+  // serialized by default; raise it only knowingly.
+  contentRenderConcurrency: RENDER_CONCURRENCY,
   contentReason: content.reason ?? null,
   rootShell: content.root
     ? {

@@ -1,5 +1,3 @@
-$ cd web && node scripts/lint-reuse.mjs
---- stdout ---
 violations=0
 exempted=4
   exempted chat / 对话 ChatPage (pending T40): 复用已落地（web/src/modules/chat/ChatModulePage.tsx:59 lazy import @/pages/ChatPage），缺的是 reuse 声明本身；chat/ 目录没有 manifest.ts，只能靠标记声明，补声明属 web/src 写域，非 D 车道可改。落地（补上声明）后从本清单删除。
@@ -9,8 +7,8 @@ exempted=4
 {
   "script": "lint-reuse",
   "root": "web/src/modules",
-  "scanned": 31,
-  "reuseMarkers": 5,
+  "scanned": 40,
+  "reuseMarkers": 8,
   "chatHostFiles": [
     {
       "file": "web/src/modules/chat/ChatModulePage.tsx",
@@ -23,7 +21,9 @@ exempted=4
     "employees",
     "identity",
     "knowledge",
+    "org",
     "overview",
+    "people",
     "system",
     "work"
   ],
@@ -101,13 +101,11 @@ exempted=4
       "owner": "employees",
       "declaredWhere": "web/src/modules/employees/manifest.ts（matrix tab）",
       "declared": true,
-      "codeMentions": 1,
-      "via": "marker web/src/modules/matrix/MatrixModulePage.tsx:78"
+      "codeMentions": 2,
+      "via": "marker web/src/modules/employee-detail/EmployeeDetailModulePage.test.tsx:144"
     }
   ],
   "violations": [],
   "count": 0,
   "ok": true
 }
---- stderr ---
-exit=0

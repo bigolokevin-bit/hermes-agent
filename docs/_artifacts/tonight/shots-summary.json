@@ -1,5 +1,5 @@
 {
-  "base": "http://127.0.0.1:9119",
+  "base": "http://127.0.0.1:9122",
   "navForm": "hash #/<route>",
   "routesEnumerated": 51,
   "expectedShots": 102,
@@ -7,12 +7,12 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 0,
-    "head": "",
+    "textLen": 106,
+    "head": "Chats Automation All Any chat source Import sessions No sessions yet Start a c",
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 27,
+  "distinctMainHeads": 25,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -31,13 +31,13 @@
     {
       "route": "#/approvals",
       "viewport": "1440",
-      "chars": 92,
+      "chars": 121,
       "hasMainEl": true
     },
     {
       "route": "#/approvals",
       "viewport": "375",
-      "chars": 92,
+      "chars": 121,
       "hasMainEl": true
     },
     {
@@ -55,61 +55,61 @@
     {
       "route": "#/approvals?tab=mine",
       "viewport": "1440",
-      "chars": 92,
+      "chars": 121,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=mine",
       "viewport": "375",
-      "chars": 92,
+      "chars": 121,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=mine",
       "viewport": "1440",
-      "chars": 92,
+      "chars": 121,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=mine",
       "viewport": "375",
-      "chars": 92,
+      "chars": 121,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=release",
       "viewport": "1440",
-      "chars": 92,
+      "chars": 121,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=release",
       "viewport": "375",
-      "chars": 92,
+      "chars": 121,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=policy",
       "viewport": "1440",
-      "chars": 92,
+      "chars": 121,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=policy",
       "viewport": "375",
-      "chars": 92,
+      "chars": 121,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=release",
       "viewport": "1440",
-      "chars": 92,
+      "chars": 121,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=release",
       "viewport": "375",
-      "chars": 92,
+      "chars": 121,
       "hasMainEl": true
     },
     {
@@ -127,61 +127,61 @@
     {
       "route": "#/capabilities",
       "viewport": "1440",
-      "chars": 3378,
+      "chars": 267,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities",
       "viewport": "375",
-      "chars": 3217,
+      "chars": 259,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "1440",
-      "chars": 38,
+      "chars": 304,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "375",
-      "chars": 38,
+      "chars": 304,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=models",
       "viewport": "1440",
-      "chars": 796,
+      "chars": 250,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=models",
       "viewport": "375",
-      "chars": 796,
+      "chars": 250,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=tools",
       "viewport": "1440",
-      "chars": 10632,
+      "chars": 352,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=tools",
       "viewport": "375",
-      "chars": 10632,
+      "chars": 352,
       "hasMainEl": true
     },
     {
       "route": "#/employees",
       "viewport": "1440",
-      "chars": 113,
+      "chars": 100,
       "hasMainEl": true
     },
     {
       "route": "#/employees",
       "viewport": "375",
-      "chars": 113,
+      "chars": 100,
       "hasMainEl": true
     },
     {
@@ -199,61 +199,61 @@
     {
       "route": "#/employees/:employeeId",
       "viewport": "1440",
-      "chars": 102,
+      "chars": 89,
       "hasMainEl": true
     },
     {
       "route": "#/employees/:employeeId",
       "viewport": "375",
-      "chars": 102,
+      "chars": 89,
       "hasMainEl": true
     },
     {
       "route": "#/employees/:employeeId?zone=config",
       "viewport": "1440",
-      "chars": 102,
+      "chars": 89,
       "hasMainEl": true
     },
     {
       "route": "#/employees/:employeeId?zone=config",
       "viewport": "375",
-      "chars": 102,
+      "chars": 89,
       "hasMainEl": true
     },
     {
       "route": "#/employees/:employeeId?zone=evidence",
       "viewport": "1440",
-      "chars": 102,
+      "chars": 89,
       "hasMainEl": true
     },
     {
       "route": "#/employees/:employeeId?zone=evidence",
       "viewport": "375",
-      "chars": 102,
+      "chars": 89,
       "hasMainEl": true
     },
     {
       "route": "#/employees/:employeeId?zone=runs",
       "viewport": "1440",
-      "chars": 102,
+      "chars": 89,
       "hasMainEl": true
     },
     {
       "route": "#/employees/:employeeId?zone=runs",
       "viewport": "375",
-      "chars": 102,
+      "chars": 89,
       "hasMainEl": true
     },
     {
       "route": "#/employees/:employeeId?zone=tasks",
       "viewport": "1440",
-      "chars": 102,
+      "chars": 89,
       "hasMainEl": true
     },
     {
       "route": "#/employees/:employeeId?zone=tasks",
       "viewport": "375",
-      "chars": 102,
+      "chars": 89,
       "hasMainEl": true
     },
     {
@@ -463,13 +463,13 @@
     {
       "route": "#/overview",
       "viewport": "1440",
-      "chars": 488,
+      "chars": 528,
       "hasMainEl": true
     },
     {
       "route": "#/overview",
       "viewport": "375",
-      "chars": 488,
+      "chars": 528,
       "hasMainEl": true
     },
     {
@@ -487,25 +487,25 @@
     {
       "route": "#/sessions",
       "viewport": "1440",
-      "chars": 352,
+      "chars": 106,
       "hasMainEl": true
     },
     {
       "route": "#/sessions",
       "viewport": "375",
-      "chars": 352,
+      "chars": 106,
       "hasMainEl": true
     },
     {
       "route": "#/system",
       "viewport": "1440",
-      "chars": 2040,
+      "chars": 1467,
       "hasMainEl": true
     },
     {
       "route": "#/system",
       "viewport": "375",
-      "chars": 2039,
+      "chars": 1467,
       "hasMainEl": true
     },
     {
@@ -583,64 +583,110 @@
     {
       "route": "#/work",
       "viewport": "1440",
-      "chars": 175,
+      "chars": 176,
       "hasMainEl": true
     },
     {
       "route": "#/work",
       "viewport": "375",
-      "chars": 175,
+      "chars": 176,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=board&view=cron",
       "viewport": "1440",
-      "chars": 175,
+      "chars": 176,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=board&view=cron",
       "viewport": "375",
-      "chars": 175,
+      "chars": 176,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=cron",
       "viewport": "1440",
-      "chars": 175,
+      "chars": 176,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=cron",
       "viewport": "375",
-      "chars": 175,
+      "chars": 176,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=runs",
       "viewport": "1440",
-      "chars": 210,
+      "chars": 207,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=runs",
       "viewport": "375",
-      "chars": 210,
+      "chars": 207,
       "hasMainEl": true
     }
   ],
-  "routesWithConsoleErrors": 0,
-  "consoleErrorRoutes": [],
+  "routesWithConsoleErrors": 51,
+  "consoleErrorRoutes": [
+    "#/access",
+    "#/approvals",
+    "#/approvals?tab=history",
+    "#/approvals?tab=mine",
+    "#/approvals?tab=pending&view=mine",
+    "#/approvals?tab=pending&view=release",
+    "#/approvals?tab=policy",
+    "#/approvals?tab=release",
+    "#/audit",
+    "#/capabilities",
+    "#/capabilities?tab=channels",
+    "#/capabilities?tab=models",
+    "#/capabilities?tab=tools",
+    "#/employees",
+    "#/employees?tab=matrix",
+    "#/employees/:employeeId",
+    "#/employees/:employeeId?zone=config",
+    "#/employees/:employeeId?zone=evidence",
+    "#/employees/:employeeId?zone=runs",
+    "#/employees/:employeeId?zone=tasks",
+    "#/identity",
+    "#/identity?tab=admins",
+    "#/identity?tab=binding",
+    "#/identity?tab=checks",
+    "#/identity?tab=departments",
+    "#/identity?tab=people&view=admins",
+    "#/identity?tab=roles",
+    "#/identity?tab=tenant",
+    "#/knowledge",
+    "#/knowledge?tab=citations",
+    "#/knowledge?tab=evidence",
+    "#/knowledge?tab=ingest",
+    "#/knowledge?tab=retrieval",
+    "#/knowledge?tab=scope",
+    "#/knowledge?tab=sources",
+    "#/metrics",
+    "#/org",
+    "#/overview",
+    "#/overview?tab=usage",
+    "#/sessions",
+    "#/system",
+    "#/system?tab=defaults",
+    "#/system?tab=events",
+    "#/system?tab=events&view=anomaly",
+    "#/system?tab=retention",
+    "#/system?tab=security",
+    "#/system?tab=version",
+    "#/work",
+    "#/work?tab=board&view=cron",
+    "#/work?tab=cron",
+    "#/work?tab=runs"
+  ],
   "overflowing": [],
   "driver": {
     "playwrightFrom": "/Users/kevin_studio/Projects/seakoi-console-web/package.json",
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
-  "ok": true,
-  "screenshotMode": "playwright",
-  "rootMainEmpty": true,
-  "staleInheritedPngs": 0,
-  "servedEntryBefore": "index-CynjunXk.js",
-  "servedEntryAfter": "index-CynjunXk.js",
-  "note": "2026-11-19 orchestrator finalization: png 102/102 reshoot after 00:59:45 (writer session duds at 00:46 with 00:42-45 stale generation); servedEntry verified same before/after via live curl; staleInheritedPngs=0 by mtime histogram."
+  "ok": false
 }
