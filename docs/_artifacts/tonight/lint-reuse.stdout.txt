@@ -111,4 +111,3 @@ exempted=4
 }
 --- stderr ---
 exit=0
-NOTE: tonight/lint-reuse.json is this same run's structured artifact, written by the script itself to that fixed path; it is kept pure JSON (an appended exit line would break it for other readers). The real exit code is the line above and in gates.exit.json.

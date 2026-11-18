@@ -1,3 +1,5 @@
+$ cd web && node scripts/assert-ia.mjs
+--- stdout ---
 {
   "script": "assert-ia",
   "file": "docs/console-v4-skeleton.html",
@@ -43,4 +45,5 @@
   ],
   "ok": true
 }
+--- stderr ---
 exit=0

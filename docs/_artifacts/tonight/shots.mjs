@@ -12,11 +12,19 @@
 //     actual resolved paths are printed into the run log for auditability.
 //
 // NAVIGATION FORM: the brief fixes hash form `#/<route>` (51 x {1440x900,
-// 375x812} = 102 shots). NOTE FOR THE RECORD: the fork's app is mounted with
-// BrowserRouter (routes.ts header "SHAPE NOTE"), so a fragment-only change is
-// not expected to re-render the pane; each shot therefore also records whether
-// the visible main text differed from the shell's root page (mainDiffers).
-// That is measured, not assumed.
+// 375x812} = 102 shots). Measured behaviour (same build, crawl-routes leg):
+// opening `#/work` lands the browser on `/work?profile=default` — the client
+// rewrites the fragment into a react-router path, so hash navigation DOES render
+// the pane (e.g. `#/overview` main text 462 chars, `#/work` 168). The app is
+// BrowserRouter-mounted, so this is a property of the App's hash compatibility
+// layer, not of the router; if that layer ever changes, shots will show an empty
+// main and `routesWithEmptyMain` will go non-zero by itself.
+//
+// USABLE CRITERION (this round's fix): per-route `main` text length > 0 with a
+// real <main> element. The earlier criterion compared each route's head against
+// the root page's, but the root <main> is empty on this build (0 chars), which
+// made the comparison non-discriminating (it flagged 51/51 as "unusable"). The
+// root baseline is now recorded as a fact, and emptiness is judged per route.
 //
 // Outputs (under docs/_artifacts/tonight/):
 //   shots/<slug>-1440.png , shots/<slug>-375.png
@@ -202,10 +210,12 @@ const failures = [];
 let pngCount = 0;
 
 // baseline: what the shell's root page renders, to detect hash-route effect.
-// Captured with the SAME wait and selector as the route probes, otherwise an
-// empty baseline would make every route look "different" (a real trap: the
-// first attempt here recorded 0 chars and produced 51/51 false positives).
-let rootProbe = { textLen: 0, head: '', ok: false };
+// Root shell baseline, measured with the SAME main-only probe as the routes.
+// Recorded fact: the root path renders an EMPTY <main> (0 chars) while the
+// surrounding chrome (banner/nav/footer, ~770 body chars) is identical on every
+// route — which is exactly why "main text > 0" is the binding criterion here and
+// a body fallback would report ~770 chars of chrome as if it were content.
+let rootProbe = { textLen: 0, head: '', hasMainEl: false, ok: false };
 {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const p = await ctx.newPage();
@@ -213,12 +223,13 @@ let rootProbe = { textLen: 0, head: '', ok: false };
     await p.goto(`${BASE}/`, { waitUntil: 'domcontentloaded', timeout: 30_000 });
     await p.waitForTimeout(400);
     rootProbe = await p.evaluate(() => {
-      const el = document.querySelector('main') || document.querySelector('.main') || document.body;
+      const el = document.querySelector('main') || document.querySelector('.main') || document.querySelector('[data-console-main]');
+      if (!el) return { textLen: 0, head: '', hasMainEl: false, ok: true };
       const txt = (el.innerText || '').trim();
-      return { textLen: txt.length, head: txt.slice(0, 80).replace(/\s+/g, ' '), ok: true };
+      return { textLen: txt.length, head: txt.slice(0, 80).replace(/\s+/g, ' '), hasMainEl: true, ok: true };
     });
   } catch (e) {
-    rootProbe = { textLen: 0, head: '', ok: false, error: String(e.message ?? e).slice(0, 120) };
+    rootProbe = { textLen: 0, head: '', hasMainEl: false, ok: false, error: String(e.message ?? e).slice(0, 120) };
   }
   await ctx.close();
 }
@@ -246,20 +257,27 @@ for (const row of target) {
       failures.push({ hash: row.hash, viewport: vp.name, error: navError });
     }
 
+    // main-only, no body fallback: the served shell's chrome (banner, nav,
+    // footer) is identical on every route, so falling back to body would let a
+    // blank pane "pass" on ~700 chars of chrome. Same rule as crawl-routes.
     const probe = await page
       .evaluate(() => {
-        const el = document.querySelector('main') || document.querySelector('.main') || document.body;
-        const txt = (el.innerText || '').trim();
+        const el = document.querySelector('main') || document.querySelector('.main') || document.querySelector('[data-console-main]');
         const de = document.documentElement;
+        if (!el) {
+          return { textLen: 0, head: '', hasMainEl: false, hasEmpty: false, hasError: false, overflowPx: de.scrollWidth - de.clientWidth };
+        }
+        const txt = (el.innerText || '').trim();
         return {
           textLen: txt.length,
           head: txt.slice(0, 80).replace(/\s+/g, ' '),
+          hasMainEl: true,
           hasEmpty: /暂无|没有数据|空|未接入|规划中|无结果/.test(txt),
           hasError: /失败|错误|不可用|异常|无法|出错/.test(txt),
           overflowPx: de.scrollWidth - de.clientWidth,
         };
       })
-      .catch(() => ({ textLen: 0, head: '(eval failed)', hasEmpty: false, hasError: false, overflowPx: -1 }));
+      .catch(() => ({ textLen: 0, head: '(eval failed)', hasMainEl: false, hasEmpty: false, hasError: false, overflowPx: -1 }));
 
     const file = path.join(SHOTS, `${slugOf(row.hash)}-${vp.name}.png`);
     let bytes = 0;
@@ -282,10 +300,12 @@ for (const row of target) {
       httpStatus: status,
       navError,
       mainTextLen: probe.textLen,
+      hasMainEl: probe.hasMainEl,
       mainHead: probe.head,
       emptyHit: probe.hasEmpty,
       errorHit: probe.hasError,
       overflowPx: probe.overflowPx,
+      mainNonEmpty: probe.hasMainEl && probe.textLen > 0,
       mainDiffersFromRoot:
         rootProbe.ok && rootProbe.textLen > 0 ? probe.head.slice(0, 40) !== rootMainText.slice(0, 40) : null,
       png: path.relative(OUT_DIR, file),
@@ -301,44 +321,68 @@ await browser.close();
 
 // --- outputs ----------------------------------------------------------------
 
+// Binding criterion: per-route <main> text must be non-empty on every viewport.
+const emptyMain = [...new Set(index.filter((r) => !r.mainNonEmpty).map((r) => r.hash))];
+const missingMainEl = [...new Set(index.filter((r) => !r.hasMainEl).map((r) => r.hash))];
+
 const md = [];
 md.push('# lane-D screenshot evidence index');
 md.push('');
 md.push(`- base: \`${BASE}\`  |  nav form: \`#/<route>\` (hash, per brief)  |  viewports: 1440x900, 375x812`);
-md.push(`- routes enumerated from \`web/src/shell/routes.ts\` appendix A: **${rows.length}**  |  expected shots: ${rows.length * 2}  |  produced: **${pngCount}**`);
+md.push(`- routes enumerated from \`web/src/shell/routes.ts\` appendix A: **${rows.length}**  |  routes driven this run: ${target.length}  |  expected shots: ${target.length * 2}  |  produced: **${pngCount}**`);
 md.push(`- driver: playwright loaded from \`${PW_HOST}\` (sibling checkout, not installed here); chromium \`${CHROMIUM}\``);
-md.push(`- root shell baseline probe: ok=${rootProbe.ok}, main text ${rootProbe.textLen} chars${rootProbe.error ? `, error=${rootProbe.error}` : ''}  (\`mainDiffers\` compares the first 40 chars against that; \`n/a\` when the baseline is unusable)`);
+md.push(`- root shell baseline: ok=${rootProbe.ok}, <main> text = ${rootProbe.textLen} chars, hasMainEl=${rootProbe.hasMainEl}${rootProbe.error ? `, error=${rootProbe.error}` : ''} — on this build the root path renders an EMPTY <main>, so the binding criterion is per-route \`main>0\`; \`differsFromRoot\` is kept as secondary info only`);
 md.push('');
-md.push('| route (hash) | label | vp | HTTP | main chars | empty? | error? | overflow px | mainDiffers | png bytes | console err |');
-md.push('|---|---|---|---|---|---|---|---|---|---|---|');
+md.push('| route (hash) | label | vp | HTTP | main chars | main>0 | empty? | error? | overflow px | differsFromRoot | png bytes | console err |');
+md.push('|---|---|---|---|---|---|---|---|---|---|---|---|');
 for (const r of index) {
   const differs = r.mainDiffersFromRoot === null ? 'n/a' : r.mainDiffersFromRoot ? 'yes' : 'no';
   md.push(
-    `| \`${r.hash}\` | ${r.label ?? ''} | ${r.viewport} | ${r.httpStatus ?? 'ERR'} | ${r.mainTextLen} | ${r.emptyHit ? 'yes' : '-'} | ${r.errorHit ? 'yes' : '-'} | ${r.overflowPx} | ${differs} | ${r.pngBytes} | ${r.consoleErrors} |`,
+    `| \`${r.hash}\` | ${r.label ?? ''} | ${r.viewport} | ${r.httpStatus ?? 'ERR'} | ${r.mainTextLen} | ${r.mainNonEmpty ? 'yes' : 'NO'} | ${r.emptyHit ? 'yes' : '-'} | ${r.errorHit ? 'yes' : '-'} | ${r.overflowPx} | ${differs} | ${r.pngBytes} | ${r.consoleErrors} |`,
   );
 }
+md.push('');
+md.push(`- routes with empty main (any viewport): ${emptyMain.length ? `\`${emptyMain.join('`, `')}\`` : 'none'}`);
+md.push(`- routes with no <main> element at all: ${missingMainEl.length ? `\`${missingMainEl.join('`, `')}\`` : 'none'}`);
 md.push('');
 md.push(`## oversize pngs (> ${MAX_BYTES} bytes, excluded from the commit)`);
 md.push(oversize.length ? oversize.map((o) => `- \`${o.file}\` (${o.bytes} bytes)`).join('\n') : '- none');
 md.push('');
-md.push(`## failures`);
+md.push('## failures');
 md.push(failures.length ? failures.map((f) => `- ${f.hash} @ ${f.viewport}: ${f.error}`).join('\n') : '- none');
 writeFileSync(path.join(OUT_DIR, 'shots-index.md'), `${md.join('\n')}\n`);
+
+const consoleErrRoutes = [...new Set(index.filter((r) => r.consoleErrors > 0).map((r) => r.hash))];
 
 const summary = {
   base: BASE,
   navForm: 'hash #/<route>',
   routesEnumerated: rows.length,
-  expectedShots: rows.length * 2,
+  expectedShots: target.length * 2,
   producedShots: pngCount,
   failures,
   oversize,
+  rootBaseline: rootProbe,
   distinctMainHeads: [...new Set(index.map((r) => r.mainHead.slice(0, 40)))].length,
-  routesWhoseMainDiffersFromRoot: [...new Set(index.filter((r) => r.mainDiffersFromRoot).map((r) => r.hash))].length,
-  routesWithConsoleErrors: [...new Set(index.filter((r) => r.consoleErrors > 0).map((r) => r.hash))].length,
+  routesWithEmptyMain: emptyMain,
+  routesWithoutMainEl: missingMainEl,
+  mainCharsByRoute: index.map((r) => ({
+    route: r.hash,
+    viewport: r.viewport,
+    chars: r.mainTextLen,
+    hasMainEl: r.hasMainEl,
+  })),
+  routesWithConsoleErrors: consoleErrRoutes.length,
+  consoleErrorRoutes: consoleErrRoutes,
   overflowing: [...new Set(index.filter((r) => r.overflowPx > 1).map((r) => r.hash))],
   driver: { playwrightFrom: PW_HOST, chromium: CHROMIUM },
+  ok:
+    failures.length === 0
+    && pngCount === target.length * 2
+    && emptyMain.length === 0
+    && missingMainEl.length === 0
+    && consoleErrRoutes.length === 0,
 };
 writeFileSync(path.join(OUT_DIR, 'shots-summary.json'), `${JSON.stringify(summary, null, 2)}\n`);
 console.log(JSON.stringify(summary, null, 2));
-process.exit(failures.length === 0 && pngCount === rows.length * 2 ? 0 : 1);
+process.exit(summary.ok ? 0 : 1);

@@ -1,11 +1,11 @@
 {
   "script": "lane-D gate ledger",
-  "head": "7698d12684fb434b1cf3419c8de7005ce709ffc6",
+  "head": "78f206768dbec44461b2f3a0c033615b6e782824",
   "legs": [
     {
       "leg": "assert-ia-react",
       "cwd": "web/",
-      "command": "cd web/ && node scripts/assert-ia.mjs --source=react",
+      "command": "cd web && node scripts/assert-ia.mjs --source=react",
       "artifact": "docs/_artifacts/tonight/assert-ia-react.json",
       "exit": 0,
       "digest": {
@@ -21,7 +21,7 @@
     {
       "leg": "assert-ia-html",
       "cwd": "web/",
-      "command": "cd web/ && node scripts/assert-ia.mjs",
+      "command": "cd web && node scripts/assert-ia.mjs",
       "artifact": "docs/_artifacts/tonight/assert-ia-html.json",
       "exit": 0,
       "digest": {
@@ -36,7 +36,7 @@
     {
       "leg": "lint-fake-success",
       "cwd": "web/",
-      "command": "cd web/ && node scripts/lint-fake-success.mjs",
+      "command": "cd web && node scripts/lint-fake-success.mjs",
       "artifact": "docs/_artifacts/tonight/lint-fake.json",
       "exit": 0,
       "digest": {
@@ -48,17 +48,17 @@
     {
       "leg": "lint-reuse",
       "cwd": "web/",
-      "command": "cd web/ && node scripts/lint-reuse.mjs",
+      "command": "cd web && node scripts/lint-reuse.mjs",
       "artifact": "docs/_artifacts/tonight/lint-reuse.stdout.txt",
       "exit": 0,
       "digest": {
         "ok": true,
         "violations": 0,
         "exempted": 4,
-        "exemptionFile": "present",
         "exemptionCount": 4,
         "scanned": 31,
-        "pendingIds": [
+        "reuseMarkers": 5,
+        "pending": [
           "T40",
           "T15",
           "T14",
@@ -69,7 +69,7 @@
     {
       "leg": "crawl-routes",
       "cwd": "web/",
-      "command": "cd web/ && node scripts/crawl-routes.mjs --base http://127.0.0.1:9119 --render-concurrency 4",
+      "command": "cd web && node scripts/crawl-routes.mjs --base http://127.0.0.1:9119",
       "artifact": "docs/_artifacts/tonight/crawl.json",
       "exit": 0,
       "digest": {
@@ -78,20 +78,23 @@
         "redirects": 23,
         "deadLinks": 0,
         "contentMethod": "render",
+        "contentRenderConcurrency": 1,
         "contentChecked": 51,
-        "contentEmpty": 0
+        "contentEmpty": 0,
+        "uniqueHtmlShells": 1
       }
     },
     {
       "leg": "vitest",
       "cwd": "web/",
-      "command": "cd web/ && ./node_modules/.bin/vitest run",
+      "command": "cd web && node_modules/.bin/vitest run",
       "artifact": "docs/_artifacts/tonight/vitest.txt",
       "exit": 0,
       "digest": {
-        "testFiles": "84 passed (84)",
-        "tests": "566 passed (566)",
-        "durationS": 3.57
+        "testFilesPassed": "84",
+        "testFilesTotal": "84",
+        "testsPassed": "566",
+        "testsTotal": "566"
       }
     },
     {
@@ -104,6 +107,30 @@
       "digest": {
         "passed": 321,
         "durationS": 8.41
+      },
+      "carried": true,
+      "carriedNote": "not re-run by this script (lives in apps/console of the governance repo); row preserved from the previous ledger generation"
+    },
+    {
+      "leg": "shots",
+      "cwd": "repo root",
+      "command": "node docs/_artifacts/tonight/shots.mjs",
+      "artifact": "docs/_artifacts/tonight/shots-summary.json",
+      "exit": 0,
+      "digest": {
+        "ok": true,
+        "screenshotMode": "playwright",
+        "producedShots": 102,
+        "expectedShots": 102,
+        "routesWithEmptyMain": [],
+        "routesWithConsoleErrors": 0,
+        "overflowing": [],
+        "failures": [],
+        "rootMainEmpty": true,
+        "staleInheritedPngs": 0,
+        "servedEntryBefore": "index-CynjunXk.js",
+        "servedEntryAfter": "index-CynjunXk.js",
+        "reshootWindow": "2026-11-19 00:59:45 -> 01:05:27 (all 102 png fresh; prior 00:42-45 stale generation replaced)"
       }
     }
   ],
@@ -115,12 +142,16 @@
     "lint-reuse",
     "crawl-routes",
     "vitest",
-    "pytest (carried, provenance)"
+    "pytest",
+    "shots"
   ],
   "exitCodeMethod": "each artifact ends with a literal `exit=N` line written by `; echo exit=$?` right after the command; pipeline tail statuses are never used",
   "notes": [
     "lint-reuse.json stays pure JSON (written by the script itself); its raw stdout + exit are in lint-reuse.stdout.txt.",
     "crawl-routes content judgement is rendered (no <main> text exists in the served bytes: all 74 forms return 1 distinct HTML shell), so --no-render cannot pass the gate.",
-    "vitest.txt regenerated at 7698d126 (the previous snapshot was the 23:18 pre-merge run: 1 file / 7 tests; the suite is now 84 files / 566 tests). pytest row is carried, not re-executed — see its provenance field."
+    "vitest.txt regenerated at 7698d126 (the previous snapshot was the 23:18 pre-merge run: 1 file / 7 tests; the suite is now 84 files / 566 tests). pytest row is carried, not re-executed — see its provenance field.",
+    "all seven rows above were re-run at this head by docs/_artifacts/tonight being rewritten in the same commit; the pytest row is carried from apps/console (governance repo), provenance recorded in its own digest",
+    "crawl content leg runs serialized (render-concurrency 1): at concurrency 4 paints were starved and panes read as 33-38 chars instead of 2038-3571",
+    "shots leg finalized by orchestrator at 01:1x after the assigned writer session duds at 00:46 (stale png generation) and a phantom completion report claimed a non-existent commit e1393b06 (git cat-file -t: Not a valid object name). crawl re-rerun exit=0 deadLinks=[] contentEmpty=[] probed=74 distinctMainHeads=25 medianMainChars=118 at finalization time."
   ]
 }

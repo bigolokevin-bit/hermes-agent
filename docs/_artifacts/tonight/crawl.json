@@ -21,6 +21,7 @@
   "uniqueHtmlShells": 1,
   "contentMethod": "render",
   "contentDriver": "/Users/kevin_studio/Projects/seakoi-console-web/package.json",
+  "contentRenderConcurrency": 1,
   "contentReason": null,
   "rootShell": {
     "url": "http://127.0.0.1:9119/",
@@ -434,11 +435,11 @@
       "route": "#/system",
       "source": "CONSOLE_TABS",
       "kind": "tab",
-      "mainChars": 2037,
+      "mainChars": 33,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
-      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 Host OS Darwin 2"
+      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 ⠸"
     },
     {
       "route": "#/system?tab=defaults",
@@ -550,4 +551,3 @@
   "parseErrors": [],
   "ok": true
 }
-exit=0

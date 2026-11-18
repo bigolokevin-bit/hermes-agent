@@ -1,3 +1,5 @@
+$ cd web && node scripts/assert-ia.mjs --source=react
+--- stdout ---
 {
   "script": "assert-ia",
   "mode": "react",
@@ -66,4 +68,5 @@
   "ok": true
 }
 {"ok":true,"mode":"react","routes":51,"tabs":22,"chatHosts":1,"modules":8,"badCode":[],"missing":[]}
+--- stderr ---
 exit=0

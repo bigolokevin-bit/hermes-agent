@@ -417,7 +417,7 @@ L0 判词：只证「SPA 返回 200」不够。本轮把 crawl-routes 改成**�
 
 | cwd | 命令 | exit | 产物 |
 |-----|------|------|------|
-| `web/` | `node scripts/crawl-routes.mjs --base http://127.0.0.1:9119 --render-concurrency 4` | **0** | `tonight/crawl.json`（末行 `exit=0`） |
+| `web/` | `node scripts/crawl-routes.mjs --base http://127.0.0.1:9119`（默认串行渲染） | **0** | `tonight/crawl.json`（末行 `exit=0`） |
 | `web/` | `node scripts/crawl-routes.mjs --no-render`（负向自测） | **1**（设计如此） | 临时：`contentMethod: skipped`、`ok:false` —— 无内容判据时**不许过闸** |
 | `web/` | `node scripts/assert-ia.mjs --source=react` | **0** | `tonight/assert-ia-react.json`：`{"ok":true,…,"routes":51,"tabs":22,"chatHosts":1,"modules":8,"badCode":[],"missing":[]}` |
 | `web/` | `node scripts/assert-ia.mjs` / `node scripts/lint-fake-success.mjs` | **0** / **0** | `tonight/assert-ia-html.json`、`tonight/lint-fake.json`（violations=0、规划中=188） |
@@ -427,15 +427,19 @@ L0 判词：只证「SPA 返回 200」不够。本轮把 crawl-routes 改成**�
 
 ### 内容判据结果（rendered，51/51）
 
-- `contentMethod=render`，driver=`/Users/kevin_studio/Projects/seakoi-console-web/package.json` 的 playwright + 本机 `chromium-1255` 缓存（**未装包、未动 package.json/lockfile**；先试本仓解析再落 sibling host）。
-- `contentChecked=51`、`contentEmptyCount=0`、`routesRenderedWithoutMainEl=0`、`routesWithConsoleErrors=0`、`distinctMainHeads=25`、`medianMainChars=118`；逐路由 main 字符数已随 `contentRows` 落进 `crawl.json` 可审。
+- `contentMethod=render`、`contentRenderConcurrency=1`，driver=`/Users/kevin_studio/Projects/seakoi-console-web/package.json` 的 playwright + 本机 `chromium-1255` 缓存（**未装包、未动 package.json/lockfile**；先试本仓解析再落 sibling host）。
+- `contentChecked=51`、`contentEmptyCount=0`、`routesRenderedWithoutMainEl=0`、`routesWithConsoleErrors=0`、`distinctMainHeads=25`；逐路由 main 字符数随 `contentRows` 落进 `crawl.json` 可审：min 87、median 118、max 10430。
+- **测量法本身的两处坑（本轮踩到并修）**：
+  1. **并发饥饿会造出假空面**：`--render-concurrency 4` 时 `#/system` 读成 33 字、`#/capabilities?tab=channels` 38 字；改串行后同一构建读出 2038 与 3571，与截图腿的 2039/3577 对齐。故渲染判据默认**串行**，并把并发度写进产物字段（`contentRenderConcurrency`）——数字随仪器负载变化时，读数必须能追溯到仪器配置。
+  2. **定长等待会读到画到一半的帧**：原 `--settle 400` 改为稳定轮询 `settleMain`（连续两次文本不再生长且>0 才算稳定，上限 `--settle-cap 4000`），消除「残文当内容」这一类假读。
+- 两条腿之间仍有 ±0.5–5% 的文本长度差（截图腿 min 90 vs crawl min 87，`#/overview` 488 vs 462）：两腿等待方式不同（shots 用定长 400ms，crawl 用稳定轮询），差值来自迟到的小段文本（时间戳/角标），**不影响**「非空且为 pane 文本」的判定；因此本轮只把「main 非空」当判据，不把字符数当阈值门。
 - 判据口径（写进脚本注释）：`hasMainEl=false` → `content-empty:no-main-element`；`len<=0` → `content-empty`；`head === 根壳 head` → `content-empty:root-shell-text`。本构建根路径 `mainChars=0`（`rootShell.mainChars=0`），所以 L0 的第二句「不等于根壳文本」在这里**退化**——记下这个事实而不是假装它有区分力；真正起作用的是前两条件。
 
 ### 三条不许被「绿」盖过去的真况
 
 1. **`/api/employees?limit=1` 现查 HTTP 401** → `:employeeId` 无法用真员工替换，`unresolvedParams=5`：5 条详情区形态（`#/employees/:employeeId` + 4 个 zone）是按字面 `:employeeId` 探的。
 2. 这 5 条**确实进了详情面**（head 是「工作台 配置 任务 运行 证据 返回数字员工…」，与 `#/overview` 的 462 字不同，不是 unknown-hash 兜底），但渲染的是**诚实错误态**「无法加载该员工 Unexpected to…」。所以「content-empty=0」对这 5 条的含义是**非空且为错误态**，不是「详情数据通了」。
-3. 51 条里只有 1 条 main 文本 <40 字（`#/capabilities?tab=channels` 38 字，是 Tab 条本身），0 条为空；`distinctMainHeads=25` 说明大量占位/别名形态共用同一文案——**内容非空 ≠ 该面已落地**，功能落地仍以 `TAB-REACHABILITY`/`lint-reuse` 台账为准。
+3. 串行重测后：51 条**全部非空**（min 87 字、median 118、max 10430），0 条 main 为空、0 条缺 `<main>`；但 `distinctMainHeads=25` 说明约一半形态共用同一文案（别名/兼容行落到同一 pane），且 87-120 字这一档基本是占位面的「规划中/GAP」文案——**内容非空 ≠ 该面已落地**，功能落地仍以 `TAB-REACHABILITY` 与 `lint-reuse` 豁免台账为准。（先前一版此处写「只有 1 条 <40 字」，那是并发饥饿下的假读，已按串行结果更正。）
 
 ### 工具与写域
 
@@ -450,3 +454,13 @@ L0 判词：只证「SPA 返回 200」不够。本轮把 crawl-routes 改成**�
 - **vitest 行（现跑）**：`cd web/ && ./node_modules/.bin/vitest run` → **exit=0**，`Test Files 84 passed (84) / Tests 566 passed (566)`，原始 stdout 覆盖 `tonight/vitest.txt`（末行 `exit=0`）。注：上一版 vitest.txt 是 23:18（合流前）的 1 文件/7 测试快照，已过时；首跑误用 `--reporter=basic`（vitest4 无此内建 reporter，exit=1）属仪器错误，已按默认 reporter 重跑取真码。
 - **pytest 行（carry，不假跑）**：`tonight/pytest.log`（Nov 18 23:20）`321 passed in 8.41s` → exit 0。本 head 未复跑：`.venv/bin/python -m pytest` 逐字报 `No module named pytest`（homebrew python3.15 同），canonical runner `scripts/run_tests.sh` 会全量同步 pm.testenv（34k 测试套件）超出本车道写域与本轮授权。有效性论证已写进 legs[].provenance：`git diff --stat c4f0029a..HEAD -- '*.py'` 为空，23:20 之后的提交（f0e85bd4/dab959ff/ef7e4916/7698d126）未触任何 .py，carry 的 exit 对本树 Python 仍成立。
 - 台账 head 字段更新为 7698d126；`green` 列全七件（pytest 标注 carried）。
+
+## 门禁八轮·阶段三定稿收口（2026-11-19 01:1x，orchestrator 代哑火/幻影写者收尾）
+
+写者会话 ses_e107df2ecffeYIeKXkjD7fWBvb 自 00:46:53 后零文件写入（哑火实证：shots.mjs/shots-summary mtime 静止 15+ 分钟双采样；task_status=stopped/interrupted，已 task_cancel 终结）。其幻影完成回报宣称的 commit `e1393b06` 经 `git cat-file -t` = Not a valid object name、`git log --all | grep` 0 命中、ls-remote=7698d126 三重证伪——fixer 通道就此弃用，本节由 orchestrator 按 L0 判据直接收口（写域仅 docs/_artifacts/tonight/** 与 DONE.md）。
+
+- **png 代次实证**：盘上 102 张全为 00:42-00:45 旧代次（早于任何 dist 读数），零当代 ⇒ 整腿重拍成立。
+- **整腿重拍**：`node docs/_artifacts/tonight/shots.mjs` → **SHOTS-RC=0 ok:true**；driver 逐字 playwrightFrom=/Users/kevin_studio/Projects/seakoi-console-web/package.json + chromium-1255（createRequire 复用，零装包）；102/102 全当代（find ! -newermt 00:59:45 计数=0，最新 01:05:11，run.log=01:05:27）；routesEnumerated=51、rootBaseline textLen=0（hasMainEl:true）→ rootMainEmpty=true 记为事实、routesWithEmptyMain=[]、routesWithConsoleErrors=0、overflowing=[]、failures=[]、distinctMainHeads=26。
+- **shots-summary 定稿五键（写后回读证实）**：screenshotMode="playwright"、rootMainEmpty=true、staleInheritedPngs=0、servedEntryBefore=servedEntryAfter="index-CynjunXk.js"（拍启/拍毕两次当场 curl 同值，dist mtime Nov 19 00:18:22 窗内未变）。
+- **crawl 定稿复跑**：`node scripts/crawl-routes.mjs --base http://127.0.0.1:9119 > tonight/crawl.json` → **exit=0**，ok:true、deadLinks=[]、contentEmpty=[]、probed=74、distinctMainHeads=25、medianMainChars=118（render 判据口径与 --no-render exit=1 负向自注不变）。
+- **gates.exit.json**：新增 shots leg（exit 0+digest 全值），notes 记哑火/幻影证伪与收口人。七门禁+shots 八腿全绿 red=[]。

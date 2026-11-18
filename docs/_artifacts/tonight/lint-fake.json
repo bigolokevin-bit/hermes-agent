@@ -1,3 +1,5 @@
+$ cd web && node scripts/lint-fake-success.mjs
+--- stdout ---
 {
   "script": "lint-fake-success",
   "file": "docs/console-v4-skeleton.html",
@@ -10,4 +12,5 @@
   "violations": [],
   "ok": true
 }
+--- stderr ---
 exit=0
