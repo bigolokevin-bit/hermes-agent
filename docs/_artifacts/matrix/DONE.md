@@ -107,3 +107,26 @@ built /Users/kevin_studio/Projects/forks/console-matrix/hermes_cli/web_dist/inde
 - 现状：`App.tsx:1107` 的 `/knowledge` 渲染 `ConsoleModulePage module="knowledge"`，注册表按 module 过滤，因此 **`evidence` 模块当前不会被该路径拾取**
 - 需 A 二选一：①新增 `/evidence` 路由 + 侧栏入口指向 `#/knowledge?tab=evidence`（或 `#/evidence`）；②把 evidence 的 live 节点接入 knowledge 面板的 `evidence` tab（`ConsoleModulePage live` 参数）
 - 数据口未就绪时的降级：BFF 404 或不可达 → fixture + `data-fixture` 角标，接上后同一列表直接显示真实引用
+
+## T28 模型与单价（models/pricing）
+
+写域：`web/src/modules/models/{models.ts, ModelsModulePage.tsx, manifest.ts}`；数据：`/agent-api/api/models`（目录/选项）+ `/agent-api/api/models/pricing`（价格表）。
+
+DoD 逐条：
+- PASS 单价与 ledger 实际扣费分两块呈现：上卡「单价（价目表）」，下卡「实际扣费（账本）」；各自标题行标来源与 asOf（`读取于` / `截至`，北京时间到分）。
+- PASS 禁止单价×用量当已花费：页面口径句明写「本页不用单价乘用量，也不把两块数字相互换算」；`models.ts` 头注释同口径。
+- PASS 未知/未配置显「—」+原因：`fmtUnitPrice` / `fmtUsd` / `fmtStamp` 缺值一律 `—`；两块表各自有空表说明；fixture 行里 Strata 本地模型输入/输出/扣费均为 `—`。
+- PASS 货币 USD、时间北京时间到分：`$` 前缀 + `Intl 'sv-SE'`/Asia/Shanghai。
+- PASS 四态齐 + 请求号：`models-loading/-empty/-denied/-error`；error 与 denied 均带「请求编号：…（缺失显未提供）」，可 `?state=` 预览。
+- PASS 1440/375 无横溢：宽表只在 `models-price-scroll`（内层 `min-w-[640px]`）与 `models-spend-scroll`（`min-w-[520px]`）内滚动，外层卡片不横向溢出。
+- PASS 数据未就绪诚实降级：两接口 404 或不可达（status 0）→ fixture + `data-fixture="1"` + 顶部「示例数据」说明条。
+
+原始命令尾行（cwd `web/`）：
+- `pnpm typecheck` → `tsc -b . --noEmit` 无输出，exit 0
+- `pnpm test` → `Tests  558 passed (558)`（4.42s）
+- `pnpm lint` → `✖ 59 problems (0 errors, 59 warnings)`（基线 58，本模块 +1 warning）
+- `pnpm build` → `✓ built in 2.39s` / `built /Users/kevin_studio/Projects/forks/console-matrix/hermes_cli/web_dist/index.html`
+
+需 A（集成）注册：`#/models` tab —— module `models`、label「模型与单价」、`kind:'reuse'` 已就绪；shell `ROUTE_TABLE` 当前无 `#/models` 条目（`web/src/lib/resolve-page-title.ts` 里的 `/models` 属旧页，不复用）。
+
+GAP：BFF 尚无 `/api/models` 与 `/api/models/pricing`（仓内 `apps/` 无 console 服务）；接上后同一张表直接显示真实值，无需改页面。
