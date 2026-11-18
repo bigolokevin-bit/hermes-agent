@@ -385,7 +385,9 @@ function ZoneError({ title, message, requestId, onRetry, testid }: { title: stri
         <TriangleAlert className="h-5 w-5 text-amber-400" />
         <p className="text-sm">{title}没能加载出来</p>
         <p className="text-xs text-white/55">{message}</p>
-        <p className="font-mono text-xs text-white/45">请求编号：{requestId ?? "未提供"}</p>
+        <p className="font-mono text-xs text-white/45">
+          {requestId ? `请求编号：${requestId}` : "本次请求未记录编号，可复制时间与操作路径反馈"}
+        </p>
         <Button size="sm" outlined onClick={onRetry}>
           <RefreshCw className="mr-2 h-4 w-4" />
           重试

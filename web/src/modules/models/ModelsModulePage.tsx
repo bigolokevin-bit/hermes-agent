@@ -33,9 +33,9 @@ function readForcedState(params: URLSearchParams): Phase | null {
   return raw && FORCED.has(raw) ? (raw as Phase) : null;
 }
 
-function requestIdOf(error: unknown): string {
-  if (error instanceof ApiError) return error.requestId ?? '未提供';
-  return '未提供';
+function requestIdOf(error: unknown): string | null {
+  if (error instanceof ApiError) return error.requestId ?? null;
+  return null;
 }
 
 export function ModelsModulePage() {
@@ -43,7 +43,7 @@ export function ModelsModulePage() {
   const forced = readForcedState(params);
   const [phase, setPhase] = useState<Phase>(forced ?? 'loading');
   const [payload, setPayload] = useState<ModelsPayload | null>(null);
-  const [failure, setFailure] = useState<{ message: string; requestId: string } | null>(null);
+  const [failure, setFailure] = useState<{ message: string; requestId: string | null } | null>(null);
   const [token, setToken] = useState(0);
 
   useEffect(() => {
@@ -173,9 +173,11 @@ export function ModelsModulePage() {
           <CardContent className="space-y-2 p-6 text-sm" data-testid="models-denied">
             <p className="font-medium">你看不到这组单价</p>
             <p className="text-muted-foreground">
-              可能是这一页不存在，也可能是当前账号没有查看模型与计价的权限。两种情况给同一句话。
+              可能是这一页不存在，也可能是当前账号没有查看模型与计价的权限。
             </p>
-            <p className="text-xs text-muted-foreground">请求编号：{params.get('rid') ?? '未提供'}</p>
+            <p className="text-xs text-muted-foreground">
+              {params.get('rid') ? `请求编号：${params.get('rid')}` : '本次请求未记录编号，可复制时间与操作路径反馈'}
+            </p>
             <Button size="sm" outlined onClick={retry}>
               刷新试试
             </Button>
@@ -188,7 +190,9 @@ export function ModelsModulePage() {
           <CardContent className="space-y-2 p-6 text-sm" data-testid="models-error">
             <p className="font-medium">这几条单价没能读出来</p>
             <p className="text-muted-foreground">{failure?.message ?? API_UNREACHABLE_MESSAGE}</p>
-            <p className="text-xs text-muted-foreground">请求编号：{failure?.requestId ?? '未提供'}</p>
+            <p className="text-xs text-muted-foreground">
+              {failure?.requestId ? `请求编号：${failure.requestId}` : '本次请求未记录编号，可复制时间与操作路径反馈'}
+            </p>
             <Button size="sm" outlined onClick={retry}>
               重试
             </Button>

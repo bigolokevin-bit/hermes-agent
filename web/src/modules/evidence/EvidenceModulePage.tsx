@@ -295,7 +295,7 @@ export function EvidenceModulePage() {
             这次读取没有成功，可能是服务一时忙。刚才的读取没有改动任何东西。
           </p>
           <p className="text-xs" style={{ color: 'var(--fg-3)' }}>
-            请求编号：{requestId ?? '未提供'}
+            {requestId ? `请求编号：${requestId}` : '本次请求未记录编号，可复制时间与操作路径反馈'}
           </p>
           <Button size="sm" onClick={retry} data-testid="evidence-error-retry">
             重试
@@ -310,10 +310,10 @@ export function EvidenceModulePage() {
             <span className="font-medium">你看不到这些引用</span>
           </div>
           <p className="text-sm" style={{ color: 'var(--fg-2)' }}>
-            可能是这页不存在，也可能是你的账号还没有查看证据的权限。两种情况给同一句话。
+            可能是这页不存在，也可能是你的账号还没有查看证据的权限。
           </p>
           <p className="text-xs" style={{ color: 'var(--fg-3)' }}>
-            请求编号：{requestId ?? '未提供'}
+            {requestId ? `请求编号：${requestId}` : '本次请求未记录编号，可复制时间与操作路径反馈'}
           </p>
           <div className="flex gap-2">
             <Button size="sm" outlined onClick={retry} data-testid="evidence-denied-retry">

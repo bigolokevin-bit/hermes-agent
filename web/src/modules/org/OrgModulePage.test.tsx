@@ -149,7 +149,7 @@ describe("OrgModulePage — 组织与部门 (T21)", () => {
     await renderPage();
     const denied = container.querySelector('[data-testid="org-denied"]');
     expect(denied?.textContent).toContain("待核实");
-    expect(denied?.textContent).toContain("GAP-02");
+    expect(denied?.textContent).toContain("上游部门数据接口尚未接入");
     expect(denied?.textContent).toContain("重试");
     expect(denied?.querySelector('[data-testid="org-apply"]')?.textContent).toContain("申请接入");
     expect(container.querySelector('[data-testid="org-list"]')).toBeNull();

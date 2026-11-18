@@ -56,9 +56,9 @@ export function buildReadiness(
     source,
   });
 
-  const v1 = unknown("V1", "群@", "E_GROUP_WHITELIST", "工位与渠道事件 · 渠道事件读路由未接入");
-  const v2 = unknown("V2", "ReBAC", "E_SCOPE_MISS", "有效配置与策略校验 · 策略校验读路由未接入");
-  const v3 = unknown("V3", "引用", "E_NO_CITATION", "知识空间与引用 · 知识读侧未接入");
+  const v1 = unknown("V1", "群@", "E_GROUP_WHITELIST", "工位与渠道事件 · 渠道事件数据源未接入");
+  const v2 = unknown("V2", "ReBAC", "E_SCOPE_MISS", "有效配置与策略校验 · 策略校验数据源未接入");
+  const v3 = unknown("V3", "引用", "E_NO_CITATION", "知识空间与引用 · 知识数据源未接入");
 
   let v6: GateView;
   if (total === null || employees === null || employees.length < total) {

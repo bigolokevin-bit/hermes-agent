@@ -12,12 +12,17 @@ type State =
   | { k: "error"; requestId: string | null }
   | { k: "ready"; rows: SkillRow[] };
 
-function requestId(error: unknown): string {
+function requestId(error: unknown): string | null {
   if (error instanceof ApiError && error.requestId) return error.requestId;
   if (error !== null && typeof error === "object" && "requestId" in error && typeof error.requestId === "string" && error.requestId) {
     return error.requestId;
   }
-  return "未提供";
+  return null;
+}
+
+/** QA V4-R4 条目5: 缺编号时给可执行的话术，不写「未提供」；编号也不发明。 */
+function requestIdNote(id: string | null): string {
+  return id ? `请求号：${id}` : "本次请求未记录编号，可复制时间与操作路径反馈";
 }
 
 function forcedState(state: FixtureState | null): State | null {
@@ -32,6 +37,7 @@ export function SkillsPage() {
   const [selected, setSelected] = useState<SkillRow | null>(null);
   const [detail, setDetail] = useState<Record<string, unknown> | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const [detailFailed, setDetailFailed] = useState(false);
   const fixture = currentFixtureState();
 
   const load = useCallback(async (showLoading = true) => {
@@ -66,10 +72,12 @@ export function SkillsPage() {
     setSelected(row);
     setDetail(null);
     setDetailError(null);
+    setDetailFailed(false);
     try {
       setDetail(readDetail(await fetchJSON<unknown>(`/agent-api/api/skills/${encodeURIComponent(row.id)}`)));
     } catch (error) {
       setDetailError(requestId(error));
+      setDetailFailed(true);
     }
   };
 
@@ -105,9 +113,9 @@ export function SkillsPage() {
               <Badge tone="outline">{selected.scope}</Badge>
               <Badge tone={selected.enabled === "enabled" ? "success" : "outline"}>{displayEnabled(selected.enabled)}</Badge>
             </div>
-            {detailError ? (
+            {detailFailed ? (
               <div role="alert" className="space-y-2 text-sm text-white/70">
-                <p>详情暂时无法读取。请求号：{detailError}</p>
+                <p>详情暂时无法读取。{requestIdNote(detailError)}</p>
                 <Button size="sm" outlined onClick={() => void openDetail(selected)}>重试</Button>
               </div>
             ) : detail ? (
@@ -144,7 +152,7 @@ export function SkillsPage() {
         <Card><CardContent className="flex flex-col items-center gap-3 py-10 text-center" data-testid="skills-error" role="alert">
           <p className="text-sm text-white/80">技能列表暂时无法读取</p>
           <p className="text-xs text-white/50">请稍后重试。</p>
-          <p className="text-xs text-white/40">请求号：{visibleState.requestId}</p>
+          <p className="text-xs text-white/40">{requestIdNote(visibleState.requestId)}</p>
           <Button size="sm" outlined onClick={retry}>重试</Button>
         </CardContent></Card>
       ) : (

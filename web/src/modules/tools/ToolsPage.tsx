@@ -58,7 +58,7 @@ export function ToolsPage() {
       {fixture ? (
         <div className="flex flex-wrap items-start gap-2 rounded-md border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-xs text-amber-100" data-testid="tools-fixture-note">
           <Badge tone="warning">示例数据</Badge>
-          <p className="min-w-0 flex-1">BFF 尚未注册 /api/mcp/servers 代理（GAP-04），接通后自动显示真实数据。</p>
+          <p className="min-w-0 flex-1">工具连接的数据接口尚未接入本控制台，接通后自动显示真实数据。</p>
         </div>
       ) : null}
 

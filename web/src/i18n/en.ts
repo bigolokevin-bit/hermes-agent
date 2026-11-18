@@ -57,7 +57,8 @@ export const en: Translations = {
   app: {
     brand: "Hermes Agent",
     brandShort: "HA",
-    closeNavigation: "Close navigation",
+    // R4 item 6: Chinese is the only navigation system (L0 ruling).
+    closeNavigation: "关闭导航",
     closeModelTools: "Close model and tools",
     footer: {
       org: "Nous Research",
@@ -121,7 +122,7 @@ export const en: Translations = {
     modelToolsSheetTitle: "Model",
     navigation: "Navigation",
     openDocumentation: "Open documentation in a new tab",
-    openNavigation: "Open navigation",
+    openNavigation: "打开导航",
     pluginNavSection: "Plugins",
     sessionsActiveCount: "{count} active",
     statusOverview: "Status overview",
@@ -661,12 +662,12 @@ export const en: Translations = {
   },
 
   language: {
-    switchTo: "Switch language",
+    switchTo: "切换语言", // R4 item 6: nav chrome Chinese-only.
   },
 
   theme: {
-    title: "Theme",
-    switchTheme: "Switch theme",
+    title: "主题",
+    switchTheme: "切换主题",
     fontTitle: "Font",
     fontDefault: "Theme default",
     fontDefaultHint: "Use the active theme's font",

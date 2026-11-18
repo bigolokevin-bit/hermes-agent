@@ -81,11 +81,11 @@ describe("RunsPage denied state", () => {
     expect(document.body.innerHTML).toBe(forbidden);
   });
 
-  it("says 「未提供」 when the gateway sends no request id", async () => {
+  it("says the no-trace sentence when the gateway sends no request id", async () => {
     await mountWith(async () => {
       throw new ApiError("gate", { status: 403, body: "<html>bad gateway</html>", url: "/x" });
     });
-    expect(text()).toContain("请求编号：未提供");
+    expect(text()).toContain("请求编号未记录");
     expect(text()).not.toContain("bad gateway");
   });
 });
@@ -168,7 +168,7 @@ describe("RunsPage rows", () => {
       throw new SyntaxError(`Unexpected token '<', "<!DOCTYPE "... is not valid JSON`);
     });
     expect(text()).toContain("服务回的内容认不出来");
-    expect(text()).toContain("请求编号：未提供");
+    expect(text()).toContain("请求编号未记录");
     expect(text()).not.toContain("DOCTYPE");
     expect(text()).not.toContain("JSON");
     expect(labels()).toContain("重试");

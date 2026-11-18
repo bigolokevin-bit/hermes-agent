@@ -170,7 +170,7 @@ export default function MatrixView() {
         <Card>
           <CardContent className="duty-error" role="alert">
             <p>{state.message}</p>
-            <p className="duty-req">请求编号 {state.requestId ?? "未提供"}</p>
+            <p className="duty-req">{state.requestId ? `请求编号 ${state.requestId}` : "本次请求未记录编号，可复制时间与操作路径反馈"}</p>
             <Button size="sm" outlined onClick={load} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
               重试
             </Button>

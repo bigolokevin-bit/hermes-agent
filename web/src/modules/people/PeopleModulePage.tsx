@@ -37,7 +37,7 @@ type Resource<T> =
 
 const DENIED_FORBIDDEN = "你没有查看这块数据的权限。";
 const GAP02_MESSAGE =
-  "人员目录待核实（GAP-02：毕升用户接口尚未接入本控制台）。接入后这里会自动显示真实名单。";
+  "人员目录待核实（上游用户中心接口尚未接入本控制台）。接入后这里会自动显示真实名单。";
 
 function isRecord(value: unknown): value is Rec {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -288,7 +288,7 @@ export default function PeopleModulePage() {
           testid="people-error"
           icon={<TriangleAlert className="h-4 w-4 text-rose-300/80" aria-hidden />}
           title="没能加载出人员目录"
-          body={`${people.message}${people.requestId ? `（请求编号：${people.requestId}）` : "（请求编号：未提供）"}`}
+          body={`${people.message}${people.requestId ? `（请求编号：${people.requestId}）` : "（本次请求未记录编号，可复制时间与操作路径反馈）"}`}
           onRetry={() => setReload((n) => n + 1)}
         />
       ) : null}

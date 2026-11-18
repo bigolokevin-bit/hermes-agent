@@ -36,30 +36,30 @@ interface RailGroup {
 const RAIL_GROUPS: readonly RailGroup[] = [
   {
     key: "id",
-    label: "身份与四道门",
+    label: "身份与上岗检查",
     lines: [
-      "身份绑定：待核实（GAP-02 毕升 /api/v1/user/* 未接）",
-      "四道门：待核实（GAP-01 聚合端点未落地，unknown ≠ 可上岗）",
-      "交集结论：接入前不判定",
+      "身份绑定：待核实（上游用户中心接口尚未接入）",
+      "上岗检查：待核实（汇总数据尚未接入，核实前不判定可上岗）",
+      "汇总结论：数据接入前不判定",
     ],
   },
   {
     key: "budget",
     label: "预算",
     lines: [
-      "额度/消耗：待核实（金额唯一来源 ledger；估算必须标「预估」）",
-      "口径：budget-usage 聚合接入前保持本占位",
+      "额度/消耗：待核实（金额以计费账本为准，估算一律标「预估」）",
+      "汇总数据接入前保持本提示",
     ],
   },
   {
     key: "cap",
     label: "能力",
-    lines: ["技能/工具/知识覆盖：待核实（fixture 门 BOUNDARY-12）"],
+    lines: ["技能/工具/知识覆盖：待核实（数据源尚未接入）"],
   },
   {
     key: "runs",
     label: "最近运行",
-    lines: ["runs?employee=：接入后显示最近记录；cost 缺失渲染「—」"],
+    lines: ["最近运行：接入后显示最近记录；费用缺失标「—」"],
   },
 ];
 
@@ -90,14 +90,14 @@ export default function EmployeeDetailWorkbench({
           color: "var(--fg-2)",
         }}
       >
-        <span style={{ color: "var(--fg)" }}>Hermes 对话 · 同源挂载点</span>
+        <span style={{ color: "var(--fg)" }}>Hermes 对话</span>
         <span>
           {employeeId === ""
-            ? "缺少员工编号，不建立任何终端连接（绑定之前零连接）。"
-            : "生产环境在此 import Hermes ChatPage（同源部署，/api/pty WebSocket）；本壳不自绘消息流。"}
+            ? "缺少员工编号，无法确定对话对象。"
+            : "接入后，这里会打开与该员工的对话；本页不自行绘制消息流。"}
         </span>
         <span className="font-mono text-xs" style={{ color: "var(--fg-3)" }}>
-          依赖：同源反代 · PTY 票据 · Profile scope
+          对话服务尚未接入
         </span>
       </div>
     );

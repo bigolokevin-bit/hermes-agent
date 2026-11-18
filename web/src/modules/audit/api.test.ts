@@ -302,11 +302,11 @@ describe("failure copy keeps the trace id and hides the wire", () => {
     expect(read.technical).toContain("HTTP 503");
   });
 
-  it("says 未提供 when the answer carried no id, and never invents one", async () => {
+  it("says 未记录编号 when the answer carried no id, and never invents one", async () => {
     const { ApiError } = await import("@/lib/api-error");
     const err = new ApiError("no", { status: 403, body: "", url: listUrl() });
     expect(err.requestId).toBeUndefined();
-    expect(requestIdLine(null)).toBe("请求编号：未提供");
+    expect(requestIdLine(null)).toBe("本次请求未记录编号，可复制时间与操作路径反馈");
     expect(requestIdLine("rid-1")).toBe("请求编号：rid-1");
   });
 

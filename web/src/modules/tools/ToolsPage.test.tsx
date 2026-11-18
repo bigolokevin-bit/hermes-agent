@@ -37,7 +37,7 @@ describe("ToolsPage", () => {
     await render();
     expect(container.querySelector('[data-fixture="1"]')).toBeTruthy();
     expect(container.textContent).toContain("示例数据");
-    expect(container.textContent).toContain("GAP-04");
+    expect(container.textContent).toContain("工具连接的数据接口尚未接入本控制台");
     expect(container.textContent).toContain("远端拒绝");
     expect(container.textContent).toContain("未提供检查时刻");
   });

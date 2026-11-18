@@ -67,7 +67,7 @@ function StateLine({
       <div className="duty-error" role="alert">
         <p>{state.message}</p>
         <p className="duty-req">
-          请求编号 {state.requestId ?? "未提供"}
+          {state.requestId ? `请求编号 ${state.requestId}` : "本次请求未记录编号，可复制时间与操作路径反馈"}
         </p>
         <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
           重试
@@ -126,14 +126,14 @@ function GateRow({ gate, narrowest }: { gate: GateView; narrowest: boolean }) {
         {gate.inferred ? <em>推断</em> : null}
       </span>
       <span className={cn("duty-gate-value", unknown && "is-unknown")}>
-        {unknown ? "待核实（GAP-01）" : `${dashed(gate.pass)} / ${dashed((gate.pass ?? 0) + (gate.fail ?? 0))}`}
+        {unknown ? "待核实" : `${dashed(gate.pass)} / ${dashed((gate.pass ?? 0) + (gate.fail ?? 0))}`}
       </span>
       <span className="duty-gate-source" title={gate.source}>
         {gate.source}
       </span>
       <i
         className={cn("duty-dot", unknown ? "is-unknown" : gate.state === "pass" ? "is-ok" : "is-warn")}
-        title={unknown ? "证据源缺失，未计入可上岗分子" : gate.state === "pass" ? "通过" : `${gate.fail ?? "—"} 人未达`}
+        title={unknown ? "证据源缺失，暂不计入可上岗人数" : gate.state === "pass" ? "通过" : `${gate.fail ?? "—"} 人未达`}
       />
     </div>
   );
@@ -146,18 +146,18 @@ function ReadinessCard({ employees, stats, onRetry }: { employees: Loadable<Empl
   );
   const state = employees.k === "error" ? employees : stats.k === "error" ? stats : employees;
   return (
-    <HCard title="可上岗" meta="四门取交集" testid="duty-ready">
-      <StateLine state={state} onRetry={onRetry} loadingText="正在汇总四道门…">
+    <HCard title="可上岗" meta="各项检查全部通过才计入" testid="duty-ready">
+      <StateLine state={state} onRetry={onRetry} loadingText="正在汇总各项检查…">
         <p className="duty-num" data-testid="duty-ready-value">
           {readiness.confirmed === null ? "—" : readiness.confirmed}
           <em>{readiness.total === null ? "—" : `/ ${readiness.total} 可上岗`}</em>
         </p>
         <p className="duty-say">
           {readiness.unknownGates > 0
-            ? `${readiness.unknownGates} 道门证据源未接入，可上岗数暂不能判定`
+            ? `${readiness.unknownGates} 项检查的数据源尚未接入，可上岗人数暂不能判定`
             : readiness.confirmed === readiness.total
-              ? "四门全过，全部在册员工可上岗"
-              : `最窄门${readiness.narrowest ? `：${readiness.narrowest.name}` : "待定位"}`}
+              ? "各项检查全部通过，在册员工均可上岗"
+              : `通过人数最少的一项：${readiness.narrowest ? readiness.narrowest.name : "待核实"}`}
         </p>
         <div className="duty-gates">
           {readiness.gates.map((g) => (
@@ -165,7 +165,7 @@ function ReadinessCard({ employees, stats, onRetry }: { employees: Loadable<Empl
           ))}
         </div>
         <p className="duty-note">
-          四门各自独立判定，再取交集；待核实不计入分子，也不当成 0。
+          各项检查独立判定，全部通过才算可上岗；标「待核实」的项既不算通过，也不算不通过。
         </p>
       </StateLine>
     </HCard>
@@ -391,7 +391,7 @@ function BlockerRow({ item }: { item: BlockerItem }) {
         <p className="duty-blocker-meta">
           下一步动作：{item.nextAction}
           {item.affectsReadiness ? " · 影响上岗率" : ""}
-          {item.overSLA ? " · 影响 SLA" : ""}
+          {item.overSLA ? " · 已超处理时限" : ""}
         </p>
         <p className="duty-blocker-reason">补充：{item.reason}</p>
       </div>
@@ -553,13 +553,13 @@ function HealthStrip({
     <div className="duty-health" data-testid="duty-health">
       <div className="duty-health-item">
         <span>发布</span>
-        <b>待核实（GAP-01）</b>
-        <em>版本发布读模型未接入</em>
+        <b>待核实</b>
+        <em>版本发布数据源未接入</em>
       </div>
       <div className="duty-health-item">
         <span>出站</span>
-        <b>待核实（GAP-01）</b>
-        <em>网关健康读路由未接入</em>
+        <b>待核实</b>
+        <em>网关健康数据源未接入</em>
       </div>
       <div className="duty-health-item">
         <span>账本</span>

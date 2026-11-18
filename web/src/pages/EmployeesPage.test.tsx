@@ -103,7 +103,7 @@ describe("EmployeesPage", () => {
     await render();
     const text = container.textContent ?? "";
     expect(text).toContain("尚未开放");
-    expect(text).toContain("请求编号：未提供");
+    expect(text).toContain("请求编号未记录");
     expect(text).toContain("重试");
     // 不渲染任何员工行
     expect(text).not.toContain("在岗");

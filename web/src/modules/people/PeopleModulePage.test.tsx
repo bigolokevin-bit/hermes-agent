@@ -167,7 +167,7 @@ describe("PeopleModulePage — T20 人员目录", () => {
     await render();
     const denied = container.querySelector('[data-testid="people-denied"]');
     expect(denied?.textContent).toContain("待核实");
-    expect(denied?.textContent).toContain("GAP-02");
+    expect(denied?.textContent).toContain("上游用户中心接口尚未接入");
     expect(denied?.textContent).toContain("重试");
     expect(container.querySelector('[data-testid="people-list"]')).toBeNull();
   });

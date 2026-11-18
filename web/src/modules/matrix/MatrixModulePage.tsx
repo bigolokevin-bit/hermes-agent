@@ -239,7 +239,9 @@ export function MatrixModulePage() {
               <ShieldAlert className="size-8 text-amber-300/80" aria-hidden="true" />
               <p className="text-sm text-white/80">你看不到这份矩阵</p>
               <p className="max-w-md text-xs text-white/50">可能是这页不存在，也可能是你的账号还没有查看权限。</p>
-              <p className="text-xs text-white/40">请求编号：{errorNote?.requestId ?? "未提供"}</p>
+              <p className="text-xs text-white/40">
+                {errorNote?.requestId ? `请求编号：${errorNote.requestId}` : "本次请求未记录编号，可复制时间与操作路径反馈"}
+              </p>
               <Button size="sm" outlined onClick={retry} data-testid="matrix-denied-retry">
                 刷新试试
               </Button>
@@ -251,7 +253,9 @@ export function MatrixModulePage() {
               <TriangleAlert className="size-8 text-rose-300/80" aria-hidden="true" />
               <p className="text-sm text-white/80">这份矩阵没能读出来</p>
               <p className="max-w-md text-xs text-white/50">刚才的读取没有改动任何东西，可以重试一次。</p>
-              <p className="text-xs text-white/40">请求编号：{errorNote?.requestId ?? "未提供"}</p>
+              <p className="text-xs text-white/40">
+                {errorNote?.requestId ? `请求编号：${errorNote.requestId}` : "本次请求未记录编号，可复制时间与操作路径反馈"}
+              </p>
               <Button size="sm" outlined onClick={retry} data-testid="matrix-error-retry">
                 重试
               </Button>

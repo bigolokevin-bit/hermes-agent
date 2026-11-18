@@ -20,7 +20,7 @@ const manifest: ModuleManifest = {
       // ROUTE_TABLE row 9 — visible nav tab under the identity module.
       route: '#/identity',
       kind: 'planned',
-      dataSource: '毕升 /api/v1/user/*（GAP-02）；缺→待核实',
+      dataSource: '上游用户中心接口（尚未接入本控制台，缺→待核实）',
     },
   ],
 };

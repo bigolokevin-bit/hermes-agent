@@ -28,6 +28,11 @@ import { cn, themedBody } from "@/lib/utils";
 type Tone = "default" | "destructive" | "outline" | "secondary" | "success" | "warning";
 
 const APPROVALS_PATH = "/agent-api/api/approvals";
+// R4 item 5: honest copy when no trace id came back (replaces 「未提供」).
+function reqLine(id: string | null | undefined): string {
+  return id ? `请求编号：${id}` : "请求编号未记录，可复制时间与操作路径反馈";
+}
+
 
 // ── Formatting ───────────────────────────────────────────────────────
 // One funnel for every user-facing value: no raw ISO string, `undefined`, `NaN`
@@ -293,7 +298,7 @@ const REQUEST_ID_KEYS = ["request_id", "requestId", "trace_id", "traceId", "x-re
 
 /**
  * The gateway's trace id, read from the error body — the shared fetch wrapper
- * hands callers the body, not the response headers. Absent stays "未提供"; we
+ * hands callers the body, not the response headers. Absent falls back to the no-trace sentence; we
  * never invent an id.
  */
 function requestIdFrom(body: string | undefined): string | null {
@@ -353,7 +358,7 @@ function DeniedPanel({ failure }: { failure: Failure | null }) {
           这块内容要么尚未对你开放，要么当前环境还没有提供它。这里不会显示任何猜测的内容。
           需要处理审批时，请联系工作区管理员为你开通。
         </p>
-        <p className="text-xs text-muted-foreground">请求编号：{failure?.requestId ?? "未提供"}</p>
+        <p className="text-xs text-muted-foreground">{reqLine(failure?.requestId)}</p>
       </CardContent>
     </Card>
   );
@@ -372,7 +377,7 @@ function ErrorPanel({ failure, onRetry }: { failure: Failure; onRetry: () => voi
           审批申请没能加载出来
         </div>
         <p className="text-xs text-muted-foreground">{failure.sentence}</p>
-        <p className="text-xs text-muted-foreground">请求编号：{failure.requestId ?? "未提供"}</p>
+        <p className="text-xs text-muted-foreground">{reqLine(failure.requestId)}</p>
         <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
           重试
         </Button>
@@ -601,7 +606,7 @@ export default function ApprovalsPage() {
 
           {pageFailure && (
             <p className="break-words text-xs text-destructive">
-              后续记录没有加载成功：{pageFailure.sentence}（请求编号：{pageFailure.requestId ?? "未提供"}）
+              后续记录没有加载成功：{pageFailure.sentence}（{reqLine(pageFailure.requestId)}）
             </p>
           )}
 

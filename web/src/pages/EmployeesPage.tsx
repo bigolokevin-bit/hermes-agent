@@ -67,6 +67,11 @@ export function money(value: unknown): string {
   })}`;
 }
 
+// R4 item 5: honest copy when no trace id came back (replaces 「未提供」).
+function reqLine(id: string | null | undefined): string {
+  return id ? `请求编号：${id}` : "请求编号未记录，可复制时间与操作路径反馈";
+}
+
 /** 计数：缺失 → 「—」；真实 0 → 「0」。 */
 export function countDash(value: unknown): string {
   const n = toNum(value);
@@ -520,7 +525,7 @@ export function ErrorStateBlock({
             {title}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">{body}</p>
-          <p className="mt-1 text-xs text-muted-foreground">请求编号：{requestId ?? "未提供"}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{reqLine(requestId)}</p>
           <Button size="sm" outlined className="mt-2" onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
             重试
           </Button>

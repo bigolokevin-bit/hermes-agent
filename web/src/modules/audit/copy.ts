@@ -3,7 +3,8 @@
  *
  * The surface never shows an HTTP code, a wire field name or a raw body: those
  * live in `technical`, which only the 「详情」/「技术详情」 disclosure and `title`
- * attributes carry. A missing request id stays 「未提供」 — it is never invented.
+ * attributes carry. A missing request id says 「本次请求未记录编号…」 — it is never
+ * invented.
  *
  * The verify panel has one more rule than the list: a check that could not run
  * says 「本环境未启用」 and names why. It never borrows the wording of a check
@@ -85,4 +86,5 @@ export function verifyFailure(err: unknown, info: { status: number; requestId: s
 }
 
 /** The request-id line, shared by every panel so the wording never drifts. */
-export const requestIdLine = (id: string | null): string => `请求编号：${id ?? "未提供"}`;
+export const requestIdLine = (id: string | null): string =>
+  id ? `请求编号：${id}` : "本次请求未记录编号，可复制时间与操作路径反馈";

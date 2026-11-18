@@ -19,7 +19,7 @@ const manifest: ModuleManifest = {
       icon: 'LayoutDashboard',
       reuse: () => import('../duty/DutyPage'),
       dataSource:
-        'employees / run-stats / budget-usage / approval-stats（四门逐门标来源；缺失标待核实）',
+        '值班台聚合：员工、运行统计、用量预算、审批统计四类数据（逐项标注来源，缺失时标待核实）',
     },
     {
       id: 'usage',

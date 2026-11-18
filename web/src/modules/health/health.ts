@@ -18,9 +18,9 @@ export const PROBE_DEFINITIONS = [
 
 export const PILOT_ROW: ProbeRow = {
   id: "bisheng",
-  name: "毕昇平台",
+  name: "上游业务平台",
   status: "unknown",
-  reason: "探针未接入（GAP-05），请看接入说明。",
+  reason: "探针未接入，请看接入说明。",
   collectedAt: null,
   requestId: null,
 };

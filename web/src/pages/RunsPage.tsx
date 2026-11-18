@@ -26,6 +26,11 @@ import { cn, themedBody } from "@/lib/utils";
 type Tone = "default" | "destructive" | "outline" | "secondary" | "success" | "warning";
 
 const RUNS_PATH = "/agent-api/api/runs";
+// R4 item 5: honest copy when no trace id came back (replaces 「未提供」).
+function reqLine(id: string | null | undefined): string {
+  return id ? `请求编号：${id}` : "请求编号未记录，可复制时间与操作路径反馈";
+}
+
 
 // ── Formatting ───────────────────────────────────────────────────────
 // Every user-facing value is rendered through one of these so no raw ISO
@@ -364,7 +369,7 @@ function DeniedPanel({ subject, failure }: { subject: string; failure: Failure |
           需要查看时，请联系工作区管理员为你开通。
         </p>
         <p className="text-xs text-muted-foreground">
-          请求编号：{failure?.requestId ?? "未提供"}
+          {reqLine(failure?.requestId)}
         </p>
       </CardContent>
     </Card>
@@ -385,7 +390,7 @@ function ErrorPanel({ failure, onRetry }: { failure: Failure; onRetry: () => voi
         </div>
         <p className="text-xs text-muted-foreground">{failure.sentence}</p>
         <p className="text-xs text-muted-foreground">
-          请求编号：{failure.requestId ?? "未提供"}
+          {reqLine(failure.requestId)}
         </p>
         <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
           重试
@@ -612,7 +617,7 @@ export default function RunsPage() {
 
           {pageFailure && (
             <p className="break-words text-xs text-destructive">
-              后续记录没有加载成功：{pageFailure.sentence}（请求编号：{pageFailure.requestId ?? "未提供"}）
+              后续记录没有加载成功：{pageFailure.sentence}（{reqLine(pageFailure.requestId)}）
             </p>
           )}
 

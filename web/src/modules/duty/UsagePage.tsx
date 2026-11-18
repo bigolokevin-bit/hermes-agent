@@ -173,7 +173,7 @@ function ErrorCard({
             : state.message || humanizeStatus(state.status)}
         </p>
         <p className="font-mono text-xs text-white/45">
-          请求编号：{state.requestId ?? "未提供"}
+          {state.requestId ? `请求编号：${state.requestId}` : "本次请求未记录编号，可复制时间与操作路径反馈"}
         </p>
         <div>
           <Button size="sm" outlined onClick={onRetry} data-testid="usage-retry">

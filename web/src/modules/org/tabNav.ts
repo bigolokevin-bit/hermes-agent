@@ -19,7 +19,7 @@ const manifest: ModuleManifest = {
       // ROUTE_TABLE row 149 — exact hash match; visible sub-tab of #/identity.
       route: '#/identity?tab=departments',
       kind: 'planned',
-      dataSource: '毕升 getDepartmentApi（GAP-02）',
+      dataSource: '上游部门接口（尚未接入本控制台）',
     },
   ],
 };

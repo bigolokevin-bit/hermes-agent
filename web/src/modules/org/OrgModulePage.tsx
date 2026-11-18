@@ -42,7 +42,7 @@ type Resource<T> =
 
 const DENIED_FORBIDDEN = "你没有查看这块数据的权限。";
 const GAP02_MESSAGE =
-  "组织架构待核实（GAP-02：毕升部门接口 getDepartmentApi 尚未接入本控制台）。接入后这里会自动显示真实部门树。";
+  "组织架构待核实（上游部门数据接口尚未接入本控制台）。接入后这里会自动显示真实部门树。";
 
 function isRecord(value: unknown): value is Rec {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -331,8 +331,7 @@ export default function OrgModulePage() {
           extra={
             org.message === GAP02_MESSAGE ? (
               <p data-testid="org-apply" className="text-xs leading-relaxed text-white/55">
-                申请接入：请在平台工单里引用 GAP-02（毕升部门接口 getDepartmentApi），
-                说明用于控制台「组织与部门」页，申请将该数据源接入 BFF。
+                申请接入：请提交平台工单，说明用于控制台「组织与部门」页，申请接入部门数据接口。
               </p>
             ) : undefined
           }
@@ -344,7 +343,7 @@ export default function OrgModulePage() {
           testid="org-error"
           icon={<TriangleAlert className="h-4 w-4 text-rose-300/80" aria-hidden />}
           title="没能加载出组织架构"
-          body={`${org.message}${org.requestId ? `（请求编号：${org.requestId}）` : "（请求编号：未提供）"}`}
+          body={`${org.message}${org.requestId ? `（请求编号：${org.requestId}）` : "（本次请求未记录编号，可复制时间与操作路径反馈）"}`}
           onRetry={() => setReload((n) => n + 1)}
         />
       ) : null}

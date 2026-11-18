@@ -319,11 +319,12 @@ describe("whole-panel states", () => {
     await waitFor(() => asked === 1 && text().includes("已显示 2 条"), "retry loaded");
   });
 
-  it("an error with no id says 未提供 instead of inventing one", async () => {
+  it("an error with no id gives the copy-and-report fallback instead of inventing one", async () => {
     await mount(async () => {
       throw new ApiError("gone", { status: 502, body: "bad gateway", url: "/agent-api/api/audit" });
     });
-    expect(text()).toContain("请求编号：未提供");
+    expect(text()).toContain("本次请求未记录编号，可复制时间与操作路径反馈");
+    expect(text()).not.toContain("未提供");
   });
 
   it("403 and 404 draw one identical body with no rows above it", async () => {
@@ -360,7 +361,7 @@ describe("whole-panel states", () => {
     await open("empty");
     expect(document.querySelector("[data-testid='audit-events-empty'][data-fixture='empty']")).toBeTruthy();
     await open("error");
-    expect(text()).toContain("请求编号：未提供");
+    expect(text()).toContain("本次请求未记录编号，可复制时间与操作路径反馈");
     expect(document.querySelector("[data-fixture='error']")).toBeTruthy();
     await open("denied");
     expect(document.querySelector("[data-fixture='denied']")).toBeTruthy();

@@ -4,7 +4,8 @@
  *
  * The denied body is deliberately ONE body: 403 and 404 say the same sentence,
  * and no row is ever drawn above it. The error body always carries the human
- * sentence, 「请求编号：…」 (or 「未提供」), a retry, and a 「详情」 disclosure that
+ * sentence, 「请求编号：…」 (or the 「未记录编号」 fallback line since V4-R4), a
+ * retry, and a 「详情」 disclosure that
  * is the only place raw technical lines appear.
  *
  * `data-fixture` marks a state that came from the shell's `?state=` repro, so a
