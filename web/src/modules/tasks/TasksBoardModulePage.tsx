@@ -13,7 +13,6 @@ import { AlertTriangle, Inbox, RefreshCw, ShieldAlert, UserRound } from "lucide-
 import { Badge, Button, Card, CardContent } from "@nous-research/ui";
 import { fetchJSON } from "@/lib/api";
 import { API_UNREACHABLE_MESSAGE, ApiError, humanizeStatus } from "@/lib/api-error";
-import { cn } from "@/lib/utils";
 
 type TaskStatus = "open" | "in_progress" | "blocked" | "done" | "cancelled";
 type TaskRow = {
@@ -120,16 +119,16 @@ function assigneeLabel(task: TaskRow): string {
   return "未指派";
 }
 
-function priorityLabel(value?: string | null): { text: string; tone: "danger" | "warning" | "neutral" } {
+function priorityLabel(value?: string | null): { text: string; tone?: "warning" } {
   switch (value) {
     case "high":
-      return { text: "高优先级", tone: "danger" };
+      return { text: "高优先级", tone: "warning" };
     case "normal":
-      return { text: "普通", tone: "warning" };
+      return { text: "普通" };
     case "low":
-      return { text: "低优先级", tone: "neutral" };
+      return { text: "低优先级" };
     default:
-      return { text: "未定级", tone: "neutral" };
+      return { text: "未定级" };
   }
 }
 
@@ -181,7 +180,7 @@ export function TasksBoardModulePage() {
         SOURCE_URLS.map((url) => fetchJSON<unknown>(url)),
       );
       const merged = new Map<string, TaskRow>();
-      bodies.forEach((body) => rowsFrom(body).forEach((row) => merged.set(row.taskId, row)));
+      bodies.forEach((body: unknown) => rowsFrom(body).forEach((row) => merged.set(row.taskId, row)));
       const rows = Array.from(merged.values()).sort((a, b) =>
         (a.dueAt ?? "").localeCompare(b.dueAt ?? ""),
       );
@@ -250,7 +249,7 @@ export function TasksBoardModulePage() {
         </div>
         <Button
           size="sm"
-          variant="outlined"
+          outlined
           onClick={() => setNotice(true)}
           data-testid="tasks-board-create"
         >
@@ -297,8 +296,8 @@ export function TasksBoardModulePage() {
                 请求编号：{state.requestId ?? "未提供"}
               </p>
             </div>
-            <Button size="sm" variant="outlined" onClick={retry} data-testid="tasks-board-retry">
-              <RefreshCw className={cn("mr-2 h-4 w-4", state.phase === "loading" && "animate-spin")} />
+            <Button size="sm" outlined onClick={retry} data-testid="tasks-board-retry">
+              <RefreshCw className={"mr-2 h-4 w-4"} />
               重试
             </Button>
           </CardContent>
@@ -311,7 +310,7 @@ export function TasksBoardModulePage() {
             <Inbox className="h-8 w-8 text-white/40" />
             <h2 className="text-lg font-semibold">没有待处理任务</h2>
             <p className="text-sm text-white/60">新的任务进入后会出现在这里。</p>
-            <Button size="sm" variant="outlined" onClick={() => setNotice(true)}>
+            <Button size="sm" outlined onClick={() => setNotice(true)}>
               新建任务
             </Button>
           </CardContent>

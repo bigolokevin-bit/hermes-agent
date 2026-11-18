@@ -1,0 +1,29 @@
+$ node web/scripts/crawl-routes.mjs --base http://127.0.0.1:9119
+--- stdout ---
+--- stderr ---
+node:internal/modules/cjs/loader:1564
+  const err = new Error(message);
+              ^
+
+Error: Cannot find module 'playwright'
+Require stack:
+- /Users/kevin_studio/Projects/forks/hermes-agent/web/scripts/crawl-routes.mjs
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+    at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+    at Module._load (node:internal/modules/cjs/loader:1341:5)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16)
+    at file:///Users/kevin_studio/Projects/forks/hermes-agent/web/scripts/crawl-routes.mjs:16:22
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/Users/kevin_studio/Projects/forks/hermes-agent/web/scripts/crawl-routes.mjs'
+  ]
+}
+
+Node.js v24.22.0
+--- exit code ---
+1

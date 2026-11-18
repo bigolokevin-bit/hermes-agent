@@ -1,0 +1,38 @@
+{
+  "violations": [
+    {
+      "file": "web/src/modules",
+      "line": 0,
+      "rule": "reuse-marker-incomplete",
+      "message": "五处复用标记缺一：未见 reuse: 对话 ChatPage（modules/ 内现有 reuse: 标记 0 处）"
+    },
+    {
+      "file": "web/src/modules",
+      "line": 0,
+      "rule": "reuse-marker-incomplete",
+      "message": "五处复用标记缺一：未见 reuse: 运行详情 RunDetailPage（modules/ 内现有 reuse: 标记 0 处）"
+    },
+    {
+      "file": "web/src/modules",
+      "line": 0,
+      "rule": "reuse-marker-incomplete",
+      "message": "五处复用标记缺一：未见 reuse: 任务看板 TasksListPage（modules/ 内现有 reuse: 标记 0 处）"
+    },
+    {
+      "file": "web/src/modules",
+      "line": 0,
+      "rule": "reuse-marker-incomplete",
+      "message": "五处复用标记缺一：未见 reuse: schema 表单 AutoField（modules/ 内现有 reuse: 标记 0 处）"
+    },
+    {
+      "file": "web/src/modules",
+      "line": 0,
+      "rule": "reuse-marker-incomplete",
+      "message": "五处复用标记缺一：未见 reuse: 能力矩阵 /v1/matrix/employees 数据口（modules/ 内现有 reuse: 标记 0 处）"
+    }
+  ],
+  "count": 5,
+  "scanned": 20,
+  "root": "web/src/modules",
+  "reuseMarkers": 0
+}
