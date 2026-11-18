@@ -245,12 +245,18 @@ for (const row of target) {
     });
     page.on('pageerror', (e) => consoleErrors.push(String(e.message ?? e).slice(0, 160)));
 
-    const url = `${BASE}/${row.hash}`;
+    // L0 拍板口径（2026-11-19 卡·门禁 D 预跑）：9122 是 python http.server
+    // 纯静态，只有根路径保证 200，直链 path 形态必 404。截图导航改为
+    // 「先落根路径进壳，再 SPA 内导航」——location.hash 赋值等价点击侧栏，
+    // 不再对每路由发直链 goto，避免全 404 假红。
     let status = null;
     let navError = null;
     try {
-      const res = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+      const res = await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded', timeout: 30_000 });
       status = res ? res.status() : null;
+      await page.waitForTimeout(400);
+      const h = row.hash.startsWith('#') ? row.hash : `#${row.hash}`;
+      await page.evaluate((hh) => { location.hash = hh; }, h);
       await page.waitForTimeout(400);
     } catch (e) {
       navError = String(e.message ?? e).slice(0, 160);

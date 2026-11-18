@@ -478,3 +478,12 @@ L0 新落点：`http://127.0.0.1:9122`（python http.server --directory hermes_c
 - pytest：carry 321 passed（provenance 见上轮 legs[]，本轮无 .py 变更）。
 - 采纳哑火写者合法仪器修复：`web/scripts/crawl-routes.mjs`（--render-concurrency 默认 1、--settle-cap 稳定轮询、mainTextProbe 补强）。
 - **待决策（报 L0）**：①9122 要当 V4 入口需带 SPA fallback + /api 反代（或 crawl/shots 腿继续以 9119 为准、9122 仅做静态资产核验）；②assert-ia react 基线 tabs=22/modules=8 是否升 24/10 归 A/L0 定标。
+
+## D 门禁基线预跑 @ 0149a890（2026-11-19 01:5x，L0『等 A 首笔』卡：不依赖 A 的两件）
+
+- **5423：未另起**（lsof -iTCP:5423 无 LISTEN、curl 空）。running 进程：本车道无遗留。9122 入口=拍板确认（唯一 V4 验收入口）。
+- ① 基线快照（现值原样存，不修规则）：
+  - `tonight/react-baseline.json`：assert-ia --source=react **exit=0**，counts{routes:51 tabs:22 chatHosts:1 modules:8} missing=[] badCode=[] ok:true（A 已接 P0 修单+8-group fold-in 后转绿）。
+  - `tonight/lint-reuse-baseline.json`：lint-reuse **exit=1**，violations=3 全为 exemption-stale（RunDetailPage/TasksListPage/AutoField 三项豁免对应声明现已在 work/system manifest 落地，按清单纪律应删）；exempted=1（chat→T40 仍有效）；scanned=84 reuseMarkers=37。**台账清理与复跑属 A 首笔后统一复跑腿，本轮只存档不修。**
+- ② crawl@9122 复跑：exit=1，probed=74，deadLinks=74 全 path 形态 404，contentEmpty=0（render 判据 51/51 非空）——9122 python http.server 无 SPA fallback 的直链 404 属环境项；按拍板口径「根路径进入再点导航」判，脚本侧改法见 ③。
+- ③ shots.mjs 导航改法（本轮不重拍，等 A 首笔后复跑 102）：每路由不再 `page.goto(BASE+'/'+hash)` 直链，改为 `page.goto(BASE+'/')` 落根进壳 → `page.evaluate(({h})=>{location.hash=h})` SPA 内导航（等价点击侧栏）→ settle 轮询 → 两视口截图；node --check SYNTAX-OK。
