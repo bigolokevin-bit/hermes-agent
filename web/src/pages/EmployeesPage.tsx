@@ -235,6 +235,7 @@ export function humanize(err: unknown): string {
 }
 
 export function requestIdOf(err: unknown): string | null {
+  if (err instanceof ApiError && err.requestId) return err.requestId;
   const body = err instanceof ApiError ? err.body : "";
   if (!body.trim().startsWith("{")) return null;
   let parsed: unknown;

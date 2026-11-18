@@ -336,7 +336,7 @@ function failureFrom(err: unknown): Failure {
     };
   }
   const status = err.status;
-  const requestId = requestIdFrom(err.body);
+  const requestId = (err instanceof ApiError && err.requestId ? err.requestId : requestIdFrom(err.body));
   const technical = err.details;
   let sentence: string;
   if (status === 0) sentence = "连不上提供这些数据的服务，请确认它已启动后重试。";

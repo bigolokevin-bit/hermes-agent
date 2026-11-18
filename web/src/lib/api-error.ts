@@ -74,13 +74,16 @@ export class ApiError extends Error {
   readonly body: string;
   /** Request URL (path only), for diagnostics. */
   readonly url: string;
+  /** Request id echoed by the BFF (x-console-request-id / x-request-id). */
+  readonly requestId?: string;
 
-  constructor(message: string, init: { status: number; body: string; url: string }) {
+  constructor(message: string, init: { status: number; body: string; url: string; requestId?: string }) {
     super(message);
     this.name = "ApiError";
     this.status = init.status;
     this.body = init.body;
     this.url = init.url;
+    this.requestId = init.requestId;
   }
 
   /** Multi-line technical detail for a Copy-details action or console. */
@@ -90,9 +93,14 @@ export class ApiError extends Error {
   }
 }
 
-export function apiErrorFromResponse(status: number, body: string, url: string): ApiError {
+export function apiErrorFromResponse(
+  status: number,
+  body: string,
+  url: string,
+  requestId?: string,
+): ApiError {
   const detail = extractDetail(body);
-  return new ApiError(detail ?? humanizeStatus(status), { status, body, url });
+  return new ApiError(detail ?? humanizeStatus(status), { status, body, url, requestId });
 }
 
 export function apiErrorFromNetworkFailure(cause: unknown, url: string): ApiError {

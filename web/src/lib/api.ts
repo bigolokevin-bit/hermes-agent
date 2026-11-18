@@ -232,7 +232,9 @@ export async function fetchJSON<T>(
   }
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
-    const err = apiErrorFromResponse(res.status, text, url);
+    const requestId =
+      res.headers.get("x-console-request-id") ?? res.headers.get("x-request-id") ?? undefined;
+    const err = apiErrorFromResponse(res.status, text, url, requestId);
     console.warn("[api]", err.details);
     throw err;
   }
