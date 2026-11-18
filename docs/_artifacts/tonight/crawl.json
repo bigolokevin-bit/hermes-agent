@@ -8,7 +8,7 @@
   "unresolvedParams": 5,
   "paramSubstitution": {
     "id": null,
-    "note": "GET /api/employees?limit=1 -> HTTP 404"
+    "note": "parse failed: SyntaxError: Unexpected token '<', \"<!doctype \"... is not valid JSON"
   },
   "statusByCode": {
     "200": 75
@@ -26,8 +26,8 @@
   "rootShell": {
     "url": "http://127.0.0.1:9122/",
     "hasMainEl": true,
-    "mainChars": 626,
-    "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 你没有"
+    "mainChars": 242,
+    "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 今日运"
   },
   "contentChecked": 51,
   "contentRows": [
@@ -39,7 +39,9 @@
       "mainChars": 104,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 9,
+      "consoleErrors": 0,
+      "consoleErrorEnv": null,
+      "evalError": null,
       "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 角色与权限 · 规划中 数据源未"
     },
     {
@@ -47,77 +49,91 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 184,
+      "mainChars": 10,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 10,
-      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 审批申请暂不可用 暂时无法查看审批申请 这块内"
+      "consoleErrors": 36,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
+      "headSample": "⠋ Loading…"
     },
     {
       "route": "#/approvals?tab=history",
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 230,
+      "mainChars": 10,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 10,
-      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 审批历史暂不可用 全部 待处理 已通过 已拒绝"
+      "consoleErrors": 55,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
+      "headSample": "⠋ Loading…"
     },
     {
       "route": "#/approvals?tab=mine",
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 184,
+      "mainChars": 81,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 10,
-      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 审批申请暂不可用 暂时无法查看审批申请 这块内"
+      "consoleErrors": 17,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
+      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 正在读取待处理审批… ⠋ 刷新 还没有选中申请"
     },
     {
       "route": "#/approvals?tab=pending&view=mine",
       "source": "VIEW_DEEP_LINKS",
       "kind": "view",
       "verdict": "content-ok",
-      "mainChars": 184,
+      "mainChars": 10,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 10,
-      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 审批申请暂不可用 暂时无法查看审批申请 这块内"
+      "consoleErrors": 55,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
+      "headSample": "⠋ Loading…"
     },
     {
       "route": "#/approvals?tab=pending&view=release",
       "source": "VIEW_DEEP_LINKS",
       "kind": "view",
       "verdict": "content-ok",
-      "mainChars": 184,
+      "mainChars": 10,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 10,
-      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 审批申请暂不可用 暂时无法查看审批申请 这块内"
+      "consoleErrors": 26,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
+      "headSample": "⠋ Loading…"
     },
     {
       "route": "#/approvals?tab=policy",
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 184,
+      "mainChars": 81,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 10,
-      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 审批申请暂不可用 暂时无法查看审批申请 这块内"
+      "consoleErrors": 36,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
+      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 正在读取待处理审批… ⠋ 刷新 还没有选中申请"
     },
     {
       "route": "#/approvals?tab=release",
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 184,
+      "mainChars": 81,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 10,
-      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 审批申请暂不可用 暂时无法查看审批申请 这块内"
+      "consoleErrors": 26,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
+      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 正在读取待处理审批… ⠋ 刷新 还没有选中申请"
     },
     {
       "route": "#/audit",
@@ -127,7 +143,9 @@
       "mainChars": 100,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 9,
+      "consoleErrors": 0,
+      "consoleErrorEnv": null,
+      "evalError": null,
       "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 审计事件 · 规划中 上游页面尚"
     },
     {
@@ -135,10 +153,12 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 101,
+      "mainChars": 65,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 10,
+      "consoleErrors": 37,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
       "headSample": "平台 · 控制台 能力与接入 技能 工具与 MCP 模型与单价 平台接入 技能 已登记的技能及其"
     },
     {
@@ -149,7 +169,9 @@
       "mainChars": 303,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 10,
+      "consoleErrors": 0,
+      "consoleErrorEnv": null,
+      "evalError": null,
       "headSample": "平台 · 控制台 能力与接入 技能 工具与 MCP 模型与单价 平台接入 The gateway"
     },
     {
@@ -157,10 +179,12 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 143,
+      "mainChars": 90,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 10,
+      "consoleErrors": 161,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
       "headSample": "平台 · 控制台 能力与接入 技能 工具与 MCP 模型与单价 平台接入 模型与单价 价目表和账"
     },
     {
@@ -168,10 +192,12 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 225,
+      "mainChars": 70,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 10,
+      "consoleErrors": 25,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
       "headSample": "平台 · 控制台 能力与接入 技能 工具与 MCP 模型与单价 平台接入 工具与 MCP 查看已"
     },
     {
@@ -179,32 +205,38 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 108,
+      "mainChars": 10,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 11,
-      "headSample": "运营 · 控制台 数字员工 列表 能力与权限 数字员工 刷新 无法打开数字员工列表 该数据源尚未"
+      "consoleErrors": 26,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
+      "headSample": "⠋ Loading…"
     },
     {
       "route": "#/employees?tab=matrix",
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 382,
+      "mainChars": 10,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 10,
-      "headSample": "运营 · 控制台 数字员工 列表 能力与权限 能力与权限矩阵 谁被授了什么、谁还没有，放在同一张"
+      "consoleErrors": 93,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
+      "headSample": "⠋ Loading…"
     },
     {
       "route": "#/employees/:employeeId",
       "source": "DETAIL_TAB",
       "kind": "detail-zone",
       "verdict": "content-ok",
-      "mainChars": 107,
+      "mainChars": 49,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 11,
+      "consoleErrors": 1,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
       "headSample": "工作台 配置 任务 运行 证据 员工 · EMPLOYEE — 概览 能力与权限 审批 运行 审"
     },
     {
@@ -212,21 +244,25 @@
       "source": "DETAIL_ZONES_EXTRA",
       "kind": "detail-zone",
       "verdict": "content-ok",
-      "mainChars": 107,
+      "mainChars": 39,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 11,
-      "headSample": "工作台 配置 任务 运行 证据 员工 · EMPLOYEE — 概览 能力与权限 审批 运行 审"
+      "consoleErrors": 3,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
+      "headSample": "工作台 配置 任务 运行 证据 加载中… 强制态：?state=loading"
     },
     {
       "route": "#/employees/:employeeId?zone=evidence",
       "source": "DETAIL_ZONES_EXTRA",
       "kind": "detail-zone",
       "verdict": "content-ok",
-      "mainChars": 107,
+      "mainChars": 49,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 11,
+      "consoleErrors": 1,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
       "headSample": "工作台 配置 任务 运行 证据 员工 · EMPLOYEE — 概览 能力与权限 审批 运行 审"
     },
     {
@@ -234,32 +270,38 @@
       "source": "DETAIL_ZONES_EXTRA",
       "kind": "detail-zone",
       "verdict": "content-ok",
-      "mainChars": 49,
+      "mainChars": 39,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 10,
-      "headSample": "工作台 配置 任务 运行 证据 员工 · EMPLOYEE — 概览 能力与权限 审批 运行 审"
+      "consoleErrors": 1,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
+      "headSample": "工作台 配置 任务 运行 证据 加载中… 强制态：?state=loading"
     },
     {
       "route": "#/employees/:employeeId?zone=tasks",
       "source": "DETAIL_ZONES_EXTRA",
       "kind": "detail-zone",
       "verdict": "content-ok",
-      "mainChars": 107,
+      "mainChars": 39,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 11,
-      "headSample": "工作台 配置 任务 运行 证据 员工 · EMPLOYEE — 概览 能力与权限 审批 运行 审"
+      "consoleErrors": 3,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
+      "headSample": "工作台 配置 任务 运行 证据 加载中… 强制态：?state=loading"
     },
     {
       "route": "#/identity",
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 125,
+      "mainChars": 73,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 11,
+      "consoleErrors": 57,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
       "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册真人名录 · 姓名"
     },
     {
@@ -267,10 +309,12 @@
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 125,
+      "mainChars": 73,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 11,
+      "consoleErrors": 89,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
       "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册真人名录 · 姓名"
     },
     {
@@ -278,32 +322,38 @@
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 125,
+      "mainChars": 10,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 11,
-      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册真人名录 · 姓名"
+      "consoleErrors": 27,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
+      "headSample": "⠋ Loading…"
     },
     {
       "route": "#/identity?tab=checks",
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 125,
+      "mainChars": 10,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 11,
-      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册真人名录 · 姓名"
+      "consoleErrors": 17,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
+      "headSample": "⠋ Loading…"
     },
     {
       "route": "#/identity?tab=departments",
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 149,
+      "mainChars": 55,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 11,
+      "consoleErrors": 28,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
       "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 组织与部门 部门树 · 上下级关"
     },
     {
@@ -311,10 +361,12 @@
       "source": "VIEW_DEEP_LINKS",
       "kind": "view",
       "verdict": "content-ok",
-      "mainChars": 125,
+      "mainChars": 73,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 11,
+      "consoleErrors": 73,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
       "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册真人名录 · 姓名"
     },
     {
@@ -325,19 +377,23 @@
       "mainChars": 104,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 9,
+      "consoleErrors": 0,
+      "consoleErrorEnv": null,
+      "evalError": null,
       "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 角色与权限 · 规划中 数据源未"
     },
     {
       "route": "#/identity?tab=tenant",
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
-      "verdict": "content-ok",
-      "mainChars": 125,
-      "hasMainEl": true,
+      "verdict": "probe-error:page.evaluate: Execution context was destroyed, most likely because of a navigation | retry: page.evaluate: Execution context was destroyed, most likely because of a navigation.",
+      "mainChars": 0,
+      "hasMainEl": false,
       "httpStatus": 200,
-      "consoleErrors": 11,
-      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册真人名录 · 姓名"
+      "consoleErrors": 49,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": "page.evaluate: Execution context was destroyed, most likely because of a navigation | retry: page.evaluate: Execution context was destroyed, most likely because of a navigation.",
+      "headSample": ""
     },
     {
       "route": "#/knowledge",
@@ -347,7 +403,9 @@
       "mainChars": 107,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 9,
+      "consoleErrors": 0,
+      "consoleErrorEnv": null,
+      "evalError": null,
       "headSample": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 知识空间 · 规划中 数据源未落地（"
     },
     {
@@ -355,10 +413,12 @@
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 532,
+      "mainChars": 129,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 10,
+      "consoleErrors": 81,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
       "headSample": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 证据与引用 回答、运行与审计留下的引"
     },
     {
@@ -366,10 +426,12 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 532,
+      "mainChars": 129,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 10,
+      "consoleErrors": 16,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
       "headSample": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 证据与引用 回答、运行与审计留下的引"
     },
     {
@@ -380,7 +442,9 @@
       "mainChars": 97,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 9,
+      "consoleErrors": 0,
+      "consoleErrorEnv": null,
+      "evalError": null,
       "headSample": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 数据源 · 规划中 数据源未落地（G"
     },
     {
@@ -388,11 +452,13 @@
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 532,
+      "mainChars": 10,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 10,
-      "headSample": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 证据与引用 回答、运行与审计留下的引"
+      "consoleErrors": 47,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
+      "headSample": "⠋ Loading…"
     },
     {
       "route": "#/knowledge?tab=scope",
@@ -402,7 +468,9 @@
       "mainChars": 107,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 9,
+      "consoleErrors": 0,
+      "consoleErrorEnv": null,
+      "evalError": null,
       "headSample": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 知识空间 · 规划中 数据源未落地（"
     },
     {
@@ -413,7 +481,9 @@
       "mainChars": 97,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 9,
+      "consoleErrors": 0,
+      "consoleErrorEnv": null,
+      "evalError": null,
       "headSample": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 数据源 · 规划中 数据源未落地（G"
     },
     {
@@ -424,7 +494,9 @@
       "mainChars": 815,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 10,
+      "consoleErrors": 0,
+      "consoleErrorEnv": null,
+      "evalError": null,
       "headSample": "TOKEN ANALYTICS HIDDEN The token, cost, and per-"
     },
     {
@@ -432,55 +504,65 @@
       "source": "COMPAT_MODULES",
       "kind": "compat-module",
       "verdict": "content-ok",
-      "mainChars": 125,
+      "mainChars": 73,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 11,
+      "consoleErrors": 16,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
       "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册真人名录 · 姓名"
     },
     {
       "route": "#/overview",
       "source": "CONSOLE_TABS",
       "kind": "tab",
-      "verdict": "content-ok",
-      "mainChars": 626,
-      "hasMainEl": true,
+      "verdict": "probe-error:page.evaluate: Execution context was destroyed, most likely because of a navigation | retry: page.evaluate: Execution context was destroyed, most likely because of a navigation",
+      "mainChars": 0,
+      "hasMainEl": false,
       "httpStatus": 200,
-      "consoleErrors": 20,
-      "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检"
+      "consoleErrors": 387,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": "page.evaluate: Execution context was destroyed, most likely because of a navigation | retry: page.evaluate: Execution context was destroyed, most likely because of a navigation",
+      "headSample": ""
     },
     {
       "route": "#/overview?tab=usage",
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 101,
+      "mainChars": 10,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 10,
-      "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 用量数据暂不可见 该数据源尚未开放，或你没有查看"
+      "consoleErrors": 36,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
+      "headSample": "⠋ Loading…"
     },
     {
       "route": "#/sessions",
       "source": "COMPAT_MODULES",
       "kind": "compat-module",
       "verdict": "content-ok",
-      "mainChars": 104,
+      "mainChars": 1,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 14,
-      "headSample": "Chats Automation All Any chat source Import sess"
+      "consoleErrors": 36,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
+      "headSample": "⠋"
     },
     {
       "route": "#/system",
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 237,
+      "mainChars": 81,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 12,
-      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 系统健康 实例活着吗 健康 1 "
+      "consoleErrors": 243,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
+      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 系统健康 实例活着吗 健康 0 "
     },
     {
       "route": "#/system?tab=defaults",
@@ -490,7 +572,9 @@
       "mainChars": 102,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 9,
+      "consoleErrors": 0,
+      "consoleErrorEnv": null,
+      "evalError": null,
       "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 默认设置 · 规划中 上游页面尚"
     },
     {
@@ -501,7 +585,9 @@
       "mainChars": 100,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 9,
+      "consoleErrors": 0,
+      "consoleErrorEnv": null,
+      "evalError": null,
       "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 审计事件 · 规划中 上游页面尚"
     },
     {
@@ -512,7 +598,9 @@
       "mainChars": 100,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 9,
+      "consoleErrors": 0,
+      "consoleErrorEnv": null,
+      "evalError": null,
       "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 审计事件 · 规划中 上游页面尚"
     },
     {
@@ -523,7 +611,9 @@
       "mainChars": 100,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 9,
+      "consoleErrors": 0,
+      "consoleErrorEnv": null,
+      "evalError": null,
       "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 审计事件 · 规划中 上游页面尚"
     },
     {
@@ -534,7 +624,9 @@
       "mainChars": 100,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 9,
+      "consoleErrors": 0,
+      "consoleErrorEnv": null,
+      "evalError": null,
       "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 审计事件 · 规划中 上游页面尚"
     },
     {
@@ -545,7 +637,9 @@
       "mainChars": 90,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 9,
+      "consoleErrors": 0,
+      "consoleErrorEnv": null,
+      "evalError": null,
       "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 版本 · 规划中 上游页面尚未接"
     },
     {
@@ -553,10 +647,12 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 222,
+      "mainChars": 129,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 14,
+      "consoleErrors": 401,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
       "headSample": "运营 · 控制台 任务与运行 任务 运行 任务看板 按后端状态看任务；拖动排序未启用，状态不会被"
     },
     {
@@ -564,10 +660,12 @@
       "source": "VIEW_DEEP_LINKS",
       "kind": "view",
       "verdict": "content-ok",
-      "mainChars": 222,
+      "mainChars": 129,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 14,
+      "consoleErrors": 113,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
       "headSample": "运营 · 控制台 任务与运行 任务 运行 任务看板 按后端状态看任务；拖动排序未启用，状态不会被"
     },
     {
@@ -575,10 +673,12 @@
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 222,
+      "mainChars": 129,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 14,
+      "consoleErrors": 86,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
       "headSample": "运营 · 控制台 任务与运行 任务 运行 任务看板 按后端状态看任务；拖动排序未启用，状态不会被"
     },
     {
@@ -586,27 +686,77 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 269,
+      "mainChars": 178,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 11,
+      "consoleErrors": 30,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
       "headSample": "运营 · 控制台 任务与运行 任务 运行 运营 · 控制台 · 运行 运行 按时间看运行；失败原"
     }
   ],
-  "distinctMainHeads": 26,
-  "medianMainChars": 125,
+  "distinctMainHeads": 23,
+  "medianMainChars": 81,
   "contentEmpty": [],
   "contentEmptyCount": 0,
-  "routesRenderedWithoutMainEl": 0,
-  "routesWithConsoleErrors": 51,
+  "mode": "auth-attributed",
+  "envAttribution": {
+    "auth-required-401": 36
+  },
+  "probeErrors": [
+    {
+      "route": "#/identity?tab=tenant",
+      "source": "COMPAT_TABS",
+      "verdict": "probe-error:page.evaluate: Execution context was destroyed, most likely because of a navigation | retry: page.evaluate: Execution context was destroyed, most likely because of a navigation."
+    },
+    {
+      "route": "#/overview",
+      "source": "CONSOLE_TABS",
+      "verdict": "probe-error:page.evaluate: Execution context was destroyed, most likely because of a navigation | retry: page.evaluate: Execution context was destroyed, most likely because of a navigation"
+    }
+  ],
+  "deniedEndpoints": [
+    "401 /agent-api/api/__health-probe__",
+    "401 /agent-api/api/approval-stats",
+    "401 /agent-api/api/approvals",
+    "401 /agent-api/api/employee-stats",
+    "401 /agent-api/api/employees",
+    "401 /agent-api/api/employees/%3AemployeeId",
+    "401 /agent-api/api/hermes-summary",
+    "401 /agent-api/api/hermes-usage",
+    "401 /agent-api/api/matrix",
+    "401 /agent-api/api/mcp/servers",
+    "401 /agent-api/api/models",
+    "401 /agent-api/api/run-activity",
+    "401 /agent-api/api/run-events",
+    "401 /agent-api/api/run-stats",
+    "401 /agent-api/api/runs",
+    "401 /agent-api/api/sessions",
+    "401 /agent-api/api/skills",
+    "401 /agent-api/api/tasks",
+    "401 /agent-api/api/v1/dept/list",
+    "401 /agent-api/api/v1/user/list"
+  ],
+  "strictGates": {
+    "parseErrors": 0,
+    "mainRows": 51,
+    "redirectRows": 24,
+    "contentVerified": true
+  },
+  "notes": [
+    "redirects=24 vs 门定值 23（routes.ts 并发新增形态，归因非判红；门值更新归 L0/A）"
+  ],
+  "routesRenderedWithoutMainEl": 2,
+  "routesWithConsoleErrors": 36,
   "parseErrors": [],
   "ok": false,
-  "headHash": "a655e02e",
+  "headHash": "e0fa680c",
   "exitCode": 1,
   "counts": {
     "probed": 75,
     "deadLinks": 0,
     "contentEmpty": 0,
+    "probeErrors": 2,
     "verdicts": {
       "spa-hash": 75
     }

@@ -85,13 +85,6 @@
   "violations": [],
   "count": 0,
   "ok": true,
-  "headHash": "242d8a33",
-  "exitCode": 0,
-  "counts": {
-    "scanned": 84,
-    "reuseMarkers": 37,
-    "exemptionCount": 1,
-    "violations": 0,
-    "exempted": 1
-  }
+  "headHash": "e0fa680c",
+  "exitCode": 0
 }

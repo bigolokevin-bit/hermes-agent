@@ -495,3 +495,13 @@ L0 新落点：`http://127.0.0.1:9122`（python http.server --directory hermes_c
 - 腿① lint-reuse：prune lint-reuse-exemptions.json 4→1（删 RunDetailPage/TasksListPage/AutoField 三条 exemption-stale——reuse 声明已在 work/system manifest.ts 落地；保留 chat→T40：复用已落地缺声明属 web/src）。复跑 `node scripts/lint-reuse.mjs` → **exit=0，violations=0，exempted=1，scanned=84，reuseMarkers=37**。commit a655e02e。
 - 腿② assert-ia：脚本改单 JSON——react 模式删第二条 compact console.log（双段拼接 Extra data 根源），html/react 两模式产物内嵌 headHash+exitCode。复跑：`node scripts/assert-ia.mjs --source=react; echo exit=$?` → **exit=0**（counts routes=51 tabs=22 chatHosts=1 modules=8 badCode=[] missing=[]——tabs/modules 已回 22/8 与 PRD 一致，24/10 系旧盘态，无需偏离登记）；`node scripts/assert-ia.mjs; echo exit=$?`（html）→ **exit=0**（51/22/tabsAll23/1/8）。产物单文件单 JSON：tonight/assert-ia-react.json、tonight/assert-ia-html.json（headHash=a655e02e，python json.load 回读证实非拼接）。
 - 腿③ crawl-routes：脚本按卡修——hash 路由 HTTP 判据只打 base 根路径（python http.server 无 SPA fallback，path 直链 404 全是仪器假红），verdict 'spa-fallback'→'spa-hash'；content-empty 基线显式排除落地页 LANDING={'#/overview'}（本构建根路径即落地页渲染文本 618==root 618 的伪红源）；每条 transport 结果加 httpStatus，contentRows 加 verdict；out 内嵌 headHash/exitCode/counts{probed,deadLinks,contentEmpty,verdicts}。复跑 `node scripts/crawl-routes.mjs --base http://127.0.0.1:9122; echo exit=$?` → **exit=1，如实报不放宽**：deadLinks=0、contentEmpty=0、verdicts 全 spa-hash(75)、statusByCode 全 200、parseErrors=[]——唯一败因 **redirects=24 ≠ 门定值 23**（routes.ts 被并发车道新增一条重定向形态；probed=75=51+24）。归属：lane A/并发代次漂移，门值更新归 L0 裁定；本车道不改 23 定值。
+
+## 门禁十三轮·探针重试与结构化归因（2026-11-19 03:0x）
+- 卡：L0『crawl 收口最后一步』——十二轮 4 条 contentEmpty 判为探针自伤（headSample="(eval failed)"），要求探针 try/catch+每路由重试一次、probe-error 单列、ok=deadLinks==0&&contentEmpty==0&&probeErrors==0、envAttribution 结构化计数。
+- 脚本改造（web/scripts/crawl-routes.mjs，node --check OK）：probeOnce()+失败 waitForSelector(main,.main,[data-console-main]) 300ms 后重试一次；异常记 evalError → verdict=probe-error:<msg> 入 probeErrors[]，不计 contentEmpty；envAttribution={"auth-required-401":36}；out.counts 增 probeErrors。
+- crawl 复跑（03:01-03:03 独跑无并发）：exit=1 counts={probed:75, deadLinks:0, contentEmpty:0, probeErrors:2}。
+  - 十二轮四路由全转绿：#/employees?tab=matrix、#/identity?tab=binding、#/knowledge?tab=citations、#/system → verdict=content-ok（重试机制治愈）。
+  - 新增 2 probeErrors：#/identity?tab=tenant、#/overview → "Execution context was destroyed, most likely because of a navigation"（首试+重试同错；401 后页面自身导航销毁上下文，非产品空态、非 CPU 竞态——独跑复现）。按卡口径 probeErrors≠0 → exit=1，如实上报待裁。
+- redirects=24 vs 门定值 23 维持 notes 归因不判红；deniedEndpoints 20 条 401 证据面。
+- 四快腿重跑盖章 e0fa680c：assert-ia-react exit=0（51/22/1/8）、assert-ia-html exit=0（51/22/23/1/8）、lint-fake exit=0、lint-reuse exit=0（violations=0 exempted=1）。
+- shots：十二轮并发腿已终止（防探针竞态+吞吐异常），十三轮于 crawl 后全量重启重拍 102 张（B5fmOKJ8 代次，代理已通 pid 95949），完成后第二笔 commit。

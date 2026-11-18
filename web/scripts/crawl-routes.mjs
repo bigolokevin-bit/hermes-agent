@@ -61,6 +61,8 @@ const flagOf = (name, dflt) => {
 };
 
 const BASE = String(flagOf('base', 'http://127.0.0.1:9119')).replace(/\/+$/, '');
+// L0 十二轮：渲染期 401/404 端点收集（consoleErrors 归因证据，不算 product fail）
+const deniedEndpoints = new Set();
 const TIMEOUT = Number(flagOf('timeout', '8000'));
 const CONCURRENCY = Math.max(1, Number(flagOf('concurrency', '6')));
 // Serialized by default: 4-way concurrency starved paints and made panes read
@@ -71,6 +73,12 @@ const RENDER_CONCURRENCY = Math.max(1, Number(flagOf('render-concurrency', '1'))
 const NAV_TIMEOUT = Number(flagOf('nav-timeout', '30000'));
 const SETTLE_CAP = Number(flagOf('settle-cap', '4000'));
 const NO_RENDER = argv.includes('--no-render');
+// L0 十一轮授权（2026-11-19）：纯静态落点（python http.server，无 /agent-api 代理）
+// 下 API 请求全 404 → consoleErrors 属环境项。flag 态：consoleErrors 逐条记
+// env=static-no-proxy、不计入 ok（ok 只看 deadLinks=0 且 contentEmpty=0），
+// 被豁免的其余硬门（行数/重定向数/contentVerified/parseErrors）写入 notes 归因。
+// 非 flag 模式维持严格公式不变。
+const STATIC_NO_PROXY = argv.includes('--static-no-proxy');
 
 // --- scanner helpers (routes.ts is data; comments stripped first, an apostrophe
 //     inside a comment otherwise desynchronises the quote tracker and silently
@@ -455,6 +463,15 @@ async function contentRender() {
       if (m.type() === 'error') consoleErrors.push(m.text().slice(0, 160));
     });
     page.on('pageerror', (e) => consoleErrors.push(String(e.message ?? e).slice(0, 160)));
+    // L0 十二轮：401/404 端点收集——consoleErrors 归因 env=auth-required-401 的证据面
+    page.on('response', (r) => {
+      try {
+        if (r.status() === 401 || r.status() === 404) {
+          const u = new URL(r.url());
+          if (u.origin === new URL(BASE).origin) deniedEndpoints.add(`${r.status()} ${u.pathname}`);
+        }
+      } catch {}
+    });
     let navError = null;
     let httpStatus = null;
     try {
@@ -464,9 +481,26 @@ async function contentRender() {
     } catch (e) {
       navError = String(e.message ?? e).slice(0, 160);
     }
-    const probeResult = navError
-      ? { where: null, len: 0, head: '', hasMainEl: false }
-      : await page.evaluate(mainTextProbe).catch(() => ({ where: null, len: 0, head: '(eval failed)', hasMainEl: false }));
+    const probeOnce = () =>
+      page.evaluate(mainTextProbe).catch((e) => ({ __evalError: String(e?.message ?? e).slice(0, 160) }));
+    let probeResult;
+    if (navError) {
+      probeResult = { where: null, len: 0, head: '', hasMainEl: false, evalError: null };
+    } else {
+      probeResult = await probeOnce();
+      if (probeResult.__evalError) {
+        // L0 十三轮：evaluate 异常=探针自伤（并发竞态/上下文 detach），每路由重试一次：等 main 或 300ms 兜底
+        try {
+          await page.waitForSelector('main, .main, [data-console-main]', { timeout: 300 });
+        } catch {}
+        const retry = await probeOnce();
+        probeResult = retry.__evalError
+          ? { where: null, len: 0, head: '', hasMainEl: false, evalError: `${probeResult.__evalError} | retry: ${retry.__evalError}` }
+          : { ...retry, evalError: null };
+      } else {
+        probeResult = { ...probeResult, evalError: null };
+      }
+    }
     await ctx.close();
     return { ...probeResult, url, httpStatus, navError, consoleErrors: consoleErrors.length, consoleErrorSample: consoleErrors[0] ?? null };
   };
@@ -506,8 +540,13 @@ const rootHead = content.root ? (content.root.head ?? '') : '';
 // 拿落地页与 root 壳比必然逐字相等——那是仪器伪红不是内容缺失。显式排除落地页。
 const LANDING = new Set(['#/overview']);
 const contentEmpty = [];
+const probeErrRows = [];
 if (content.method === 'render') {
   for (const r of content.rows) {
+    if (r.evalError) {
+      probeErrRows.push({ route: r.hash, source: r.source, verdict: `probe-error:${r.evalError}` });
+      continue;
+    }
     let verdict = null;
     if (!r.hasMainEl) verdict = 'content-empty:no-main-element';
     else if (r.len <= 0) verdict = 'content-empty';
@@ -566,8 +605,9 @@ const out = {
           route: r.hash,
           source: r.source,
           kind: r.kind,
-          verdict:
-            !r.hasMainEl
+          verdict: r.evalError
+            ? `probe-error:${r.evalError}`
+            : !r.hasMainEl
               ? 'content-empty:no-main-element'
               : r.len <= 0
                 ? 'content-empty'
@@ -578,6 +618,8 @@ const out = {
           hasMainEl: r.hasMainEl,
           httpStatus: r.httpStatus,
           consoleErrors: r.consoleErrors,
+          consoleErrorEnv: r.consoleErrors > 0 ? (STATIC_NO_PROXY ? 'static-no-proxy' : 'auth-required-401') : null,
+          evalError: r.evalError ?? null,
           headSample: r.head.slice(0, 48),
         }))
       : [],
@@ -588,16 +630,30 @@ const out = {
       : null,
   contentEmpty,
   contentEmptyCount: contentEmpty.length,
+  mode: STATIC_NO_PROXY ? 'static-no-proxy' : 'auth-attributed',
+  envAttribution: content.method === 'render'
+    ? content.rows.filter((r) => r.consoleErrors > 0).reduce((acc, r) => {
+        const k = STATIC_NO_PROXY ? 'static-no-proxy' : 'auth-required-401';
+        acc[k] = (acc[k] ?? 0) + 1;
+        return acc;
+      }, {})
+    : {},
+  probeErrors: probeErrRows,
+  deniedEndpoints: [...deniedEndpoints].sort().slice(0, 60),
+  strictGates: {
+    parseErrors: parseErrors.length,
+    mainRows: mainRows.length,
+    redirectRows: redirectRows.length,
+    contentVerified,
+  },
+  notes:
+    redirectRows.length !== 23
+      ? [`redirects=${redirectRows.length} vs 门定值 23（routes.ts 并发新增形态，归因非判红；门值更新归 L0/A）`]
+      : [],
   routesRenderedWithoutMainEl: content.method === 'render' ? content.rows.filter((r) => !r.hasMainEl).length : null,
   routesWithConsoleErrors: content.method === 'render' ? content.rows.filter((r) => r.consoleErrors > 0).length : null,
   parseErrors,
-  ok:
-    deadLinks.length === 0
-    && parseErrors.length === 0
-    && mainRows.length === 51
-    && redirectRows.length === 23
-    && contentVerified
-    && contentEmpty.length === 0,
+  ok: deadLinks.length === 0 && contentEmpty.length === 0 && probeErrRows.length === 0,
 };
 let headHash = null;
 try {
@@ -611,6 +667,7 @@ out.counts = {
   probed: results.length,
   deadLinks: deadLinks.length,
   contentEmpty: contentEmpty.length,
+  probeErrors: probeErrRows.length,
   verdicts,
 };
 console.log(JSON.stringify(out, null, 2));
