@@ -28,6 +28,7 @@ import { api, type AuthMeResponse } from "@/lib/api";
 import { ApiError } from "@/lib/api-error";
 import { shouldHideAuthWidget } from "./auth-widget-visibility";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n";
 import { LogOut } from "lucide-react";
 
 interface AuthWidgetProps {
@@ -43,6 +44,7 @@ function truncateUserId(id: string): string {
 }
 
 export function AuthWidget({ className }: AuthWidgetProps) {
+  const { t } = useI18n();
   const [me, setMe] = useState<AuthMeResponse | null>(null);
   const [hidden, setHidden] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,7 +72,7 @@ export function AuthWidget({ className }: AuthWidgetProps) {
           setHidden(true);
           return;
         }
-        setError("auth status unavailable");
+        setError(t.app.auth?.statusUnavailable ?? "auth status unavailable");
       });
     return () => {
       cancelled = true;
@@ -127,14 +129,14 @@ export function AuthWidget({ className }: AuthWidgetProps) {
         className,
       )}
       role="status"
-      aria-label={`Logged in as ${label}`}
+      aria-label={(t.app.auth?.loggedInAs ?? "Logged in as {{name}}").replace("{{name}}", label)}
     >
       <div className="flex min-w-0 flex-col">
         <span className="truncate font-mono text-foreground/90" title={me.user_id}>
           {label}
         </span>
         <span className="truncate text-muted-foreground/70">
-          via {me.provider}
+          {(t.app.auth?.viaProvider ?? "via {{provider}}").replace("{{provider}}", me.provider)}
         </span>
       </div>
       <button
@@ -146,8 +148,8 @@ export function AuthWidget({ className }: AuthWidgetProps) {
           "transition-colors hover:bg-current/10 hover:text-foreground",
           "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-current/40",
         )}
-        aria-label="Log out"
-        title="Log out"
+        aria-label={t.app.auth?.logout ?? "Log out"}
+        title={t.app.auth?.logout ?? "Log out"}
       >
         <LogOut className="h-3.5 w-3.5" />
       </button>

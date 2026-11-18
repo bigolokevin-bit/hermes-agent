@@ -57,6 +57,12 @@ export const zhHant: Translations = {
     footer: {
       org: "Nous Research",
     },
+    auth: {
+      statusUnavailable: "登入狀態不可用",
+      loggedInAs: "已登入：{{name}}",
+      viaProvider: "透過 {{provider}}",
+      logout: "登出",
+    },
     activeSessionsLabel: "使用中工作階段：",
     gatewayStatusLabel: "閘道狀態：",
     gatewayStrip: {

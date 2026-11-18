@@ -56,6 +56,12 @@ export const zh: Translations = {
     footer: {
       org: "Nous Research",
     },
+    auth: {
+      statusUnavailable: "登录状态不可用",
+      loggedInAs: "已登录：{{name}}",
+      viaProvider: "通过 {{provider}}",
+      logout: "退出登录",
+    },
     activeSessionsLabel: "活跃会话：",
     gatewayStatusLabel: "网关状态：",
     gatewayStrip: {

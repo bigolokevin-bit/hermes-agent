@@ -62,6 +62,12 @@ export const en: Translations = {
     footer: {
       org: "Nous Research",
     },
+    auth: {
+      statusUnavailable: "auth status unavailable",
+      loggedInAs: "Logged in as {{name}}",
+      viaProvider: "via {{provider}}",
+      logout: "Log out",
+    },
     activeSessionsLabel: "Active Sessions:",
     gatewayStatusLabel: "Gateway Status:",
     gatewayStrip: {

@@ -81,6 +81,13 @@ export interface Translations {
     footer: {
       org: string;
     };
+    /** Sidebar auth widget (optional; English fallbacks live in the component). */
+    auth?: {
+      statusUnavailable: string;
+      loggedInAs: string;
+      viaProvider: string;
+      logout: string;
+    };
     activeSessionsLabel: string;
     gatewayStatusLabel: string;
     gatewayStrip: {
