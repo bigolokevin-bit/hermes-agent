@@ -126,7 +126,7 @@ function GateRow({ gate, narrowest }: { gate: GateView; narrowest: boolean }) {
         {gate.inferred ? <em>推断</em> : null}
       </span>
       <span className={cn("duty-gate-value", unknown && "is-unknown")}>
-        {unknown ? "待核实" : `${dashed(gate.pass)} / ${dashed((gate.pass ?? 0) + (gate.fail ?? 0))}`}
+        {unknown ? "待核实（GAP-01）" : `${dashed(gate.pass)} / ${dashed((gate.pass ?? 0) + (gate.fail ?? 0))}`}
       </span>
       <span className="duty-gate-source" title={gate.source}>
         {gate.source}
@@ -539,12 +539,12 @@ function HealthStrip({
     <div className="duty-health" data-testid="duty-health">
       <div className="duty-health-item">
         <span>发布</span>
-        <b>待核实</b>
+        <b>待核实（GAP-01）</b>
         <em>版本发布读模型未接入</em>
       </div>
       <div className="duty-health-item">
         <span>出站</span>
-        <b>待核实</b>
+        <b>待核实（GAP-01）</b>
         <em>网关健康读路由未接入</em>
       </div>
       <div className="duty-health-item">

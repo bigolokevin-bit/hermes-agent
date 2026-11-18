@@ -77,3 +77,12 @@ build_exit=0
 截图：`docs/_artifacts/duty/t11-1440.png` (113,534 B)、`t11-375.png` (56,818 B)；静态服务 5431 HTTP 200。
 
 未测：截图取自静态产物、未接真实后端；真实 `hermes-usage` 200 与账本数据未取；`budget-usage` 组织级参数未在本页单独调用（账本金额已由 usage 响应的 cost 块承载），如 BFF 要求独立调用需下一阶段补。
+
+## T10 收口复核（2026-11-19）
+
+- 8 卡缺源/不可判定一律显示「待核实（GAP-01）」，不计入分子、不写成 0；每门保留 source 文本，已有去处（运行/任务/审批/活跃）的卡片仍可点回对应页。
+- 四态：loading 骨架 / empty 带原因 / error 人话 + 请求号 + 重试 / denied 降级；`dutyPage.test.tsx` 4/4 覆盖固定八卡、未知门、错误请求号与 fixture 边界。
+- T11 复核（无代码改动）：金额只取 `hermes-usage.cost` 账本块（`cost_usd`/`cost_status`/`rows`/`per_employee`），null/`unknown` → 「未计价」，缺失 → 「—」，真实 0 才显示 `$0.00`；未做前端计价或二次舍入；四态与 403≡404 同体已实现；宽表仅卡内滚动。
+- 证据：`pnpm exec vitest run src/modules/duty/dutyPage.test.tsx` → 4 passed（1 file，855ms）；`pnpm build` → EXIT 0，`✓ built in 2.35s`，`hermes_cli/web_dist/index.html`。
+- 截图：`docs/_artifacts/duty/t10-close-1440.png` (72,249 B)、`t10-close-1280.png` (60,944 B)、`t10-close-375.png` (28,007 B)；静态服务 5433 HTTP 200。
+- 未测：截图取自静态构建、未接真实后端；真实四门读数、交互与明主题未复验；GAP-01（四门聚合端点）仍缺。
