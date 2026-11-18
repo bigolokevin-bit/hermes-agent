@@ -48,3 +48,23 @@ ln -sfn ../../../web/node_modules/vitest apps/shared/node_modules/vitest
 
 - BFF `/api/matrix` 就绪后：删掉 fixture 兜底分支即可（reader 已按契约形状解析，无需改 UI）。
 - 补：能力分组筛选、员工搜索（等真实数据字段确认）。
+
+## 收口自检（2026-11-19，基于 156897bf）
+
+| # | DoD | 结果 | 证据 |
+|---|---|---|---|
+| 1 | 必带 `reuse:/v1/matrix/employees` | PASS | 4 处：`matrix.ts:5` 头注、`manifest.ts:8` 头注 + `:21` reuse()、`MatrixModulePage.tsx:78` 紧贴 fetchJSON |
+| 2 | 未知/缺源格显式「待核实」+ GAP | PASS | unknown 单元格带 `data-gap="1"`、`title="GAP：后端没有给出这一格…"`、小号 `GAP` 徽标；不空白不猜 |
+| 3 | 双视角真切换 | PASS | `?view=people|resource`，`setParams(..., {replace:true})` 不刷新，`buildMatrixView` 重算行列 |
+| 4 | 四态真 | PASS | loading/empty(带原因)/error(人话+请求号+重试)/denied(降级页)；`?state=` 可预览 |
+| 5 | 姓名 · 8 位短码、宽表仅表内滚 | PASS | `employeeLabel` = 「姓名 · XXXXXXXX」，原值仅 title；`matrix-scroll` overflow-x-auto，内层 min-w-[720px] |
+| 6 | fixture 角标与端点说明 | PASS | `data-fixture="1"` + 「示例数据」badge + `matrix-fixture-note`：等 `/api/matrix` |
+
+原始命令尾行（cwd `web/`）：
+
+```
+pnpm test      → Test Files  82 passed (82) / Tests  558 passed (558)
+pnpm lint      → ✖ 57 problems (0 errors, 57 warnings)
+pnpm typecheck → exit 0（无输出）
+pnpm build     → ✓ built in 2.13s · hermes_cli/web_dist/index.html
+```

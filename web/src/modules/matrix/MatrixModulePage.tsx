@@ -51,8 +51,13 @@ function CellPill({ state }: { state: MatrixCellState }) {
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-dashed border-white/25 px-2 py-0.5 text-[11px] text-white/60">
+    <span
+      className="inline-flex items-center gap-1 rounded-full border border-dashed border-white/25 px-2 py-0.5 text-[11px] text-white/60"
+      data-gap="1"
+      title="GAP：后端没有给出这一格，按「待核实」显示，不猜授权"
+    >
       <span aria-hidden="true">?</span>待核实
+      <span className="rounded-sm bg-white/10 px-1 text-[9px] tracking-wide text-white/50">GAP</span>
     </span>
   );
 }
