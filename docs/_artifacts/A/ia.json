@@ -14,6 +14,27 @@
     "skeleton probes": "data-tabname unique=23 (grep), data-hidetab=2, data-mod distinct=8, data-chat-host=1",
     "assert-ia.mjs": "lane D web/scripts/assert-ia.mjs --source=react run read-only at stage-1 close: routes=51 PASS, badCode=[] PASS; tabs/modules/chatHosts deltas owned by other lanes (see build.log [6])"
   },
+  "stage2": {
+    "wired": "2026-11-18 App.tsx console shell (lane A stage 2) — see docs/_artifacts/A/build.log [stage-2]",
+    "navModules": 8,
+    "tabsWired": 22,
+    "chatHosts": 1,
+    "chatHostsNote": "runtime DOM: exactly one [data-chat-host] element app-wide (App.tsx ConsoleChatMount, employee-detail workbench zone only, wraps ChatModulePage import-only). The react-mode static scan still reports 3 because the chat lane's own ChatModulePage.test.tsx carries 2 marker literals (attrs=2) on top of ChatModulePage.tsx mounts=1 — lane-A scan contribution is 0; collapse belongs to the chat lane or a scripts scan-exclusion (lane D), both foreign write domains.",
+    "fallbackImplemented": true,
+    "fallbackScope": "unknown '#/…' hash forms → /overview (bridge, PRD §7 negative tonight-case); unknown browser paths keep the upstream Navigate → /sessions (brief 1 'keep intact')",
+    "roViewImplemented": true,
+    "roViewMechanism": "?roview=1 on system·defaults / capabilities·models → whole-pane 403 + req_xxxxxxxx (labelled front-end placeholder request number) + tab strip hidden, matching skeleton L7692-7700 semantics",
+    "stateForcing": "integrated with the lane's T03 fixture primitive (shell/fixtures.ts: FixtureProvider + ConsoleFixtureChrome mirror/badge in App, panes read per-view ?state= first, context global switch second); 'denied' additionally accepted per §8.1-3 wording",
+    "hashBridge": "shell/bridge.ts resolveHashTarget: findRoute (REDIRECTS + alias passes) → canonical browser location, window.search global params (state=, employee=…) carried through with hash-derived keys winning on collision",
+    "existenceProbe": "import.meta.glob ../modules/*/*ModulePage.tsx — detail: employee-detail|employees EmployeeDetailModulePage; runs: runs|tasks RunsModulePage; absent today → existing pages serve (brief 5 fallback), no rebuild-free magic",
+    "detailParamFix": "pages/EmployeeDetailPage.tsx useParams: employeeId authoritative, legacy id fallback (tracked test mounts ':id' — dual-read keeps both green)"
+  },
+  "stage2CountsAttribution": {
+    "assertReactRuns": "EXIT 1 — routes=51 PASS badCode=[] PASS; tabs=5 modules=6 chatHosts=3 (unchanged stage-1 baseline)",
+    "tabs5": "assert-ia sums tabs:[...] across modules/*/manifest.ts; lane A owns exactly the 5 placeholder manifests. The 17 other visible tabs belong to foreign modules (chat/tasks/employees) or module dirs that don't exist yet (identity/knowledge/capabilities/system/approvals) — outside the stage-2 delivery list. Shell-level 22/8/23 invariants hold via registry.validateRegistry + console.tsx DOM (bridge.test/console.test assert).",
+    "modules6": "react mode counts manifest-carrying dirs (6). Sidebar module contract = 8 ConsoleModules (routes.ts/registry), rendered as 8 data-mod nav anchors + 8 sections on every console page.",
+    "chatHosts3": "see stage2.chatHostsNote"
+  },
   "pathConflictsFlaggedForStage2": [
     { "form": "#/knowledge (route row 12)", "against": "existing App '/knowledge' (upstream KnowledgePage; BOUNDARY-09 says FilesPage 不进)" },
     { "form": "#/metrics (route row 47)", "against": "existing App '/analytics' (upstream AnalyticsPage = same surface as usage tab)" },
@@ -23,8 +44,21 @@
     { "form": "#/models (redirect)", "against": "existing App '/models' (upstream ModelsPage)" },
     { "form": "#/channels (redirect)", "against": "existing App '/channels' (upstream ChannelsPage)" }
   ],
+  "stage2ConflictResolutions": [
+    { "form": "#/knowledge", "served": "/knowledge console module page (GAP-03 honest empty panes; stage-1 note 'App already mounts KnowledgePage/FilesPage' was factually wrong — only a placeholder nav item, no route existed; FilesPage never imported, BOUNDARY-09 kept)" },
+    { "form": "#/metrics", "served": "/analytics (existing upstream AnalyticsPage — compat entry points at the existing page per brief 1)" },
+    { "form": "#/sessions", "served": "/sessions (existing SessionsPage keeps authority; compat row does NOT hijack it)" },
+    { "form": "#/cron #/skills #/models #/channels (+19 sub-tab forms)", "served": "hash forms → /work /capabilities via REDIRECTS (never enter navigation); bare browser paths keep the upstream pages" },
+    { "form": "/employees /approvals /system /employees/:employeeId", "served": "console adapter route fronts the generic map (react-router 8.4 first-match tie-break, verified); default pane composes the UNTOUCHED builtin page (list/pending/health/detail); plugin tab.override demotes the console adapter" },
+    { "form": "bare /employees/:employeeId", "served": "existing EmployeeDetailPage (probe fallback, brief 5); workbench+chat-host surface on explicit ?zone=workbench / overview / chat (ZONE_ALIAS); deviation from PRD 'default opens workbench' noted — bare deep links keep the live B-lane surface" }
+  ],
   "knownLimitations": [
     "skeleton is dark-theme only: no light token block exists in console-v4-skeleton.html (single --bg: definition, zero 'light'/data-theme matches); tokens.css therefore carries the one :root block verbatim",
-    "src/modules/chat/manifest.ts (lane created independently, plugin-tab shape without ModuleManifest default export) is skipped by registry with console.warn — cross-lane contract collision reported to orchestrator, not fixed (foreign write domain)"
+    "src/modules/chat/manifest.ts (lane created independently, plugin-tab shape without ModuleManifest default export) is skipped by registry with console.warn — cross-lane contract collision reported to orchestrator, not fixed (foreign write domain)",
+    "stage-2: sidebar keeps the full upstream nav BELOW the console nav section (skeleton sidebar = console-only). Removal would strand 12+ live upstream surfaces (sessions/files/cron/logs/config/env/docs/plugins/profiles/webhooks/pairing/chat); pruning is an orchestrator UX decision, contract attributes (data-mod/data-tabname) are contributed only by the console nav.",
+    "stage-2: ia-smoke.spec.ts probes `${BASE_URL}/#/…` hash forms; served build must start at '/' for the bridge to convert them — direct probes of '/#/work?tab=runs' work, but the spec's note 'switch BASE to path forms if browser-routing only' does NOT apply: hash forms are first-class via the bridge.",
+    "stage-2: view deep links (?view=admins/mine/release/cron/anomaly) land on the canonical pane and keep the chip param in the URL; per-pane view chips render in the later detail pass (honest: panes for the 5 view rows are the destination tabs themselves).",
+    "stage-2: capabilities·models / overview·usage ledger-vs-estimate labeling and channels BOUNDARY-07 review ride on the reused upstream pages (整块 reuse, zero edits) — content-level acceptance (§10 T5) not re-verified here.",
+    "stage-2: ConsoleChatMount wraps ChatModulePage while the upstream persistent /chat host remains (untouched). If a user latched /chat earlier and opens the detail workbench, two scoped ChatPage subtrees can coexist (upstream keep-alive + employee-scoped with CHAT-04 token rotation). M0 structural contract (one data-chat-host element) holds; runtime single-PTY arbitration flagged to orchestrator for the chat lane."
   ]
 }

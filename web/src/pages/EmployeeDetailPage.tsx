@@ -146,8 +146,15 @@ const TABS = [
 ] as const;
 
 export default function EmployeeDetailPage() {
-  const params = useParams<{ id: string }>();
-  const rawId = params.id ? decodeURIComponent(params.id) : "";
+  // Snapshot fix (PRD §9.1 lane A): the live route registers `:employeeId`
+  // (App PATH_COMPONENT '/employees/:employeeId' and shell/routes DETAIL_TAB
+  // agree on this spelling), so reading only `id` — the stale snapshot shape
+  // — gave rawId === "" for every real visit and the page always fell to the
+  // empty state. Both spellings are accepted, `employeeId` authoritative,
+  // so the legacy-`:id` test harness keeps passing too.
+  const params = useParams<{ employeeId?: string; id?: string }>();
+  const rawParam = params.employeeId ?? params.id ?? "";
+  const rawId = rawParam !== "" ? decodeURIComponent(rawParam) : "";
   const { state, reload } = useEmployeeDetail(rawId);
 
   const detail = state.k === "ready" ? state.data : null;

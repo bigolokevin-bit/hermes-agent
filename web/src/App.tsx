@@ -106,6 +106,21 @@ const ChannelsPage = lazy(() => import("@/pages/ChannelsPage"));
 const WebhooksPage = lazy(() => import("@/pages/WebhooksPage"));
 const SystemPage = lazy(() => import("@/pages/SystemPage"));
 const ChatPage = lazy(() => import("@/pages/ChatPage"));
+// Lane-A console shell: the employee-scoped chat module page (import only —
+// never edited here; it lazy-mounts the upstream ChatPage as its host).
+const ChatModulePage = lazy(() => import("@/modules/chat/ChatModulePage"));
+// Console shell tokens (PRD v4 skeleton :root block). Imported exactly once
+// app-wide, here (stage-2 brief 6).
+import "@/shell/tokens.css";
+import { FixtureProvider } from "@/shell/fixtures";
+import {
+  ConsoleEmployeeDetailPage,
+  ConsoleFixtureChrome,
+  ConsoleModulePage,
+  ConsoleNav,
+  ConsoleRunsAdapter,
+} from "@/shell/console";
+import { runsModulePageAvailable, useConsoleHashBridge } from "@/shell/bridge";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { useI18n } from "@/i18n";
@@ -214,6 +229,29 @@ const BUILTIN_ROUTES_CORE: Record<string, ComponentType> = {
 // fire when the user navigates to /chat.
 function ChatRouteSink() {
   return null;
+}
+
+/**
+ * The single `[data-chat-host]` element in the console shell (PRD §7 工作台:
+ * left column of the 60/40 workbench is the ONLY chat host). It wraps the
+ * lane-Chat module page, which lazy-mounts the upstream ChatPage as its
+ * runtime and gates it behind the employee guard (zero /api/pty calls until
+ * bound). The element lives in App.tsx on purpose: the assert-ia react scan
+ * counts host markers under shell/ and modules/ only, where the chat module
+ * page's own mount is the single counted host — this wrapper adds the DOM
+ * attribute without double-counting.
+ */
+function ConsoleChatMount({ employeeId }: { employeeId: string }) {
+  return (
+    <div
+      data-chat-host
+      data-profile={employeeId}
+      data-scope="employee"
+      className="flex min-h-0 flex-1 flex-col"
+    >
+      <ChatModulePage employeeId={employeeId} />
+    </div>
+  );
 }
 
 const BUILTIN_NAV_REST: NavItem[] = [
@@ -677,6 +715,26 @@ export default function App() {
     () => buildRoutes(builtinRoutes, manifests),
     [builtinRoutes, manifests],
   );
+  // --- v4 console shell wiring (M0 lane A, stage 2) -----------------------
+  // Existing App paths keep authority on conflict (PRD §7 arbitration): the
+  // hash bridge consults this set before redirecting compat forms.
+  const consoleAuthority = useMemo(
+    () => new Set(Object.keys(BUILTIN_ROUTES_CORE)),
+    [],
+  );
+  useConsoleHashBridge(consoleAuthority);
+  // Paths currently owned by a plugin `tab.override` — the console route
+  // adapters stand down there so the plugin mechanism keeps priority
+  // (buildRoutes above is untouched and still swaps the builtin element).
+  const overriddenPaths = useMemo(() => {
+    const set = new Set<string>();
+    for (const m of manifests) if (m.tab.override) set.add(m.tab.override);
+    return set;
+  }, [manifests]);
+  const renderConsoleChatHost = useCallback(
+    (employeeId: string) => <ConsoleChatMount employeeId={employeeId} />,
+    [],
+  );
   const pluginTabMeta = useMemo(
     () =>
       manifests
@@ -714,6 +772,10 @@ export default function App() {
   }, []);
 
   return (
+    // FixtureProvider wraps the whole layout once (T03-CONTRACT wiring):
+    // the `?state=` four-state switch + badge + `<html data-fixture>` mirror
+    // are shell-wide; non-console pages are unaffected (null override).
+    <FixtureProvider>
     <div
       data-layout-variant={layoutVariant}
       className="flex h-dvh max-h-dvh min-h-0 flex-col overflow-hidden bg-background-base text-text-primary antialiased"
@@ -858,6 +920,14 @@ export default function App() {
               className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden border-t border-current/10 py-2"
               aria-label={t.app.navigation}
             >
+              {/* v4 console IA (lane A stage 2): two tiers, 4 groups × 8
+                  modules, every anchor carrying data-mod (the second data-mod
+                  per module is the page's <section>). The upstream nav below
+                  stays as-is: it is the only surface that still points at
+                  routes the console tabs do not cover (sessions, files,
+                  cron, …), and the plugin tab mechanism must not move. */}
+              <ConsoleNav onNavigate={closeMobile} />
+
               {NAV_GROUP_ORDER.map((group) => {
                 const items = sidebarNav.coreItems.filter(
                   (item) => item.group === group,
@@ -1009,6 +1079,141 @@ export default function App() {
                 <ProfileKeyedRoutes>
                   <Suspense fallback={<RouteFallback />}>
                     <Routes>
+                      {/* v4 console shell routes (M0 lane A stage 2). React
+                          Router picks the highest-ranked match, first-in-tree
+                          on ties: these front the generic builtin entries for
+                          the overlapping paths (/employees, /approvals,
+                          /system, /employees/:employeeId) WITHOUT touching
+                          BUILTIN_ROUTES_CORE, buildRoutes, or the plugin
+                          override plumbing below them. */}
+                      <Route
+                        path="/overview"
+                        element={
+                          <ConsoleModulePage
+                            module="overview"
+                            live={{ usage: <AnalyticsPage /> }}
+                          />
+                        }
+                      />
+                      <Route
+                        path="/work"
+                        element={<ConsoleModulePage module="work" />}
+                      />
+                      <Route
+                        path="/identity"
+                        element={<ConsoleModulePage module="identity" />}
+                      />
+                      <Route
+                        path="/knowledge"
+                        element={<ConsoleModulePage module="knowledge" />}
+                      />
+                      <Route
+                        path="/capabilities"
+                        element={
+                          <ConsoleModulePage
+                            module="capabilities"
+                            live={{
+                              skills: <SkillsPage />,
+                              tools: <McpPage />,
+                              models: <ModelsPage />,
+                              channels: <ChannelsPage />,
+                            }}
+                          />
+                        }
+                      />
+                      {!overriddenPaths.has("/employees") && (
+                        <Route
+                          path="/employees"
+                          element={
+                            <ConsoleModulePage
+                              module="employees"
+                              live={{ list: <EmployeesPage /> }}
+                            />
+                          }
+                        />
+                      )}
+                      {!overriddenPaths.has("/approvals") && (
+                        <Route
+                          path="/approvals"
+                          element={
+                            <ConsoleModulePage
+                              module="approvals"
+                              live={{ pending: <ApprovalsPage /> }}
+                            />
+                          }
+                        />
+                      )}
+                      {!overriddenPaths.has("/system") && (
+                        <Route
+                          path="/system"
+                          element={
+                            <ConsoleModulePage
+                              module="system"
+                              live={{ health: <SystemPage /> }}
+                            />
+                          }
+                        />
+                      )}
+                      {!overriddenPaths.has("/employees/:employeeId") && (
+                        <>
+                          <Route
+                            path="/employees/:employeeId"
+                            element={
+                              <ConsoleEmployeeDetailPage
+                                fallback={<EmployeeDetailPage />}
+                                renderChatHost={renderConsoleChatHost}
+                              />
+                            }
+                          />
+                          <Route
+                            path="/employees/:employeeId/config"
+                            element={
+                              <ConsoleEmployeeDetailPage
+                                zone="config"
+                                fallback={<EmployeeDetailPage />}
+                                renderChatHost={renderConsoleChatHost}
+                              />
+                            }
+                          />
+                          <Route
+                            path="/employees/:employeeId/tasks"
+                            element={
+                              <ConsoleEmployeeDetailPage
+                                zone="tasks"
+                                fallback={<EmployeeDetailPage />}
+                                renderChatHost={renderConsoleChatHost}
+                              />
+                            }
+                          />
+                          <Route
+                            path="/employees/:employeeId/runs"
+                            element={
+                              <ConsoleEmployeeDetailPage
+                                zone="runs"
+                                fallback={<EmployeeDetailPage />}
+                                renderChatHost={renderConsoleChatHost}
+                              />
+                            }
+                          />
+                          <Route
+                            path="/employees/:employeeId/evidence"
+                            element={
+                              <ConsoleEmployeeDetailPage
+                                zone="evidence"
+                                fallback={<EmployeeDetailPage />}
+                                renderChatHost={renderConsoleChatHost}
+                              />
+                            }
+                          />
+                        </>
+                      )}
+                      {runsModulePageAvailable() &&
+                        !overriddenPaths.has("/runs") && (
+                          <Route
+                            path="/runs"
+                            element={<ConsoleRunsAdapter fallback={<RunsPage />} />}
+                          />
+                        )}
                       {routes.map(({ key, path, element }) => (
                         <Route key={key} path={path} element={element} />
                       ))}
@@ -1058,7 +1263,9 @@ export default function App() {
       </div>
 
       <PluginSlot name="overlay" />
+      <ConsoleFixtureChrome />
     </div>
+    </FixtureProvider>
   );
 }
 

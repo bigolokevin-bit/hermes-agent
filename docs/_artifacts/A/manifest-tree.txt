@@ -1,3 +1,4 @@
+# refreshed 2026-11-18 stage-2: web/src/modules/** + web/src/shell/** (tracked+untracked, as on disk)
 modules/board/manifest.ts
 modules/chat/ChatModulePage.test.tsx
 modules/chat/ChatModulePage.tsx
@@ -14,11 +15,18 @@ modules/duty/index.ts
 modules/duty/manifest.ts
 modules/duty/types.ts
 modules/duty/useDutyData.ts
+modules/employee-detail/EmployeeDetailWorkbench.tsx
 modules/employee-detail/manifest.ts
 modules/employees/EmployeesModulePage.tsx
 modules/matrix/manifest.ts
 modules/runs/manifest.ts
 modules/tasks/TasksBoardModulePage.tsx
+shell/bridge.test.ts
+shell/bridge.ts
+shell/console.test.tsx
+shell/console.tsx
+shell/fixtures.test.ts
+shell/fixtures.ts
 shell/registry.ts
 shell/routes.ts
 shell/tokens.css

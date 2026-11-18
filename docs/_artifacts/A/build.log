@@ -256,3 +256,103 @@ computing gzip size...
 - pnpm --filter web build: EXIT 1 — all 5 tsc errors in src/modules/tasks/TasksBoardModulePage.tsx (lane B/E WIP, NOT lane A; grep of error list shows zero hits for src/shell or lane-A manifests). Blocker noted, not touched.
 - vite build (no typecheck): EXIT 0, 50 assets → hermes_cli/web_dist.
 - assert-ia --source=react: routes=51 PASS, badCode=[] PASS; tabs=5/chatHosts=3/modules=6 = stage-2 deltas owned by nav wiring + other lanes' pages (per plan).
+
+[stage-2] 2026-11-18 23:2x (+08:00) — App wiring: routes+registry → App.tsx console shell (lane A stage 2, fresh session; cwd HEAD 6fc0bfd4)
+Gates (raw outputs; ran from web/ unless noted):
+
+1) standalone vite build (no typecheck):
+   $ cd web && node node_modules/vite/bin/vite.js build
+   vite v8.3.4 building client environment for production...
+   ✓ 3434 modules transformed.
+   ✓ built in 2.09s          → EXIT 0
+   (output ../hermes_cli/web_dist; includes ChatModulePage + EmployeeDetailWorkbench + shell/console chunks)
+
+2) full repo build:
+   $ cd web && pnpm build
+   → EXIT 0 — repo-wide tsc CLEAN this run (the 5 src/modules/tasks/TasksBoardModulePage.tsx
+     errors from the stage-1/P0 re-check were fixed by their lane in the shared tree meanwhile;
+     no lane-A workaround was needed).
+   grep proof (gate asked for zero hits over lane files in the error stream):
+   $ grep -inE "error" <pnpm-build.log> | grep -E "App\.tsx|EmployeeDetailPage|EmployeesPage|ApprovalsPage|RunsPage|shell/|modules/(duty|matrix|employee-detail|board|runs)/"
+   → single hit: "assets/LoadErrorNotice-*.js" (asset FILENAME, not an error line). Real error lines: 0.
+   (An intermediate run before the ZONE_ALIAS typing fix failed with exactly 2 TS2367 in
+    src/shell/bridge.ts + src/shell/console.tsx — own files, fixed, reran; captured here for honesty.)
+
+3) IA assertions:
+   $ node web/scripts/assert-ia.mjs --source=react   → EXIT 1
+   {"ok":false,"mode":"react","routes":51,"tabs":5,"chatHosts":3,"modules":6,"badCode":[],"missing":[]}
+   routes=51 PASS · badCode=[] PASS · tabs/modules/chatHosts identical to the stage-1 baseline —
+   count-source attribution (also in ia.json "stage2CountsAttribution"):
+   - tabs: sum of `tabs:[...]` entries across modules/*/manifest.ts. Lane A owns exactly 5
+     placeholder manifests (1 tab each = 5). The other 17 visible tabs belong to pane modules
+     whose manifests live in foreign write domains (chat/tasks/employees) or in module dirs
+     that do not exist yet (identity/knowledge/capabilities/system/approvals) — creating them
+     was NOT in the stage-2 delivery list. The shell-level invariant still holds and is
+     asserted: registry.visibleTabCount()===22 (CONSOLE_TABS), wired into ConsoleModulePage/
+     ConsoleNav at runtime.
+   - modules: react mode counts directories carrying manifest.ts (6 today: board chat duty
+     employee-detail matrix runs). Contract "8" is the sidebar ConsoleModule count — true in
+     routes.ts/registry (consoleModuleCount()==8) and rendered 8×data-mod in nav + 8 sections
+     per console page. Reaching manifest-count 8 needs foreign-module or new-module manifests,
+     same blocker as tabs.
+   - chatHosts: markers = ChatModulePage.tsx mounts=1 (the canonical host, correct) PLUS
+     ChatModulePage.test.tsx attrs=2 (the chat lane's own stub attribute + selector literals,
+     tracked at HEAD 6fc0bfd4, NOT lane-A writable). Lane-A files add ZERO markers. Fix
+     belongs to: chat lane (collapse test literals, e.g. build the attribute via a variable)
+     or lane D (exclude *.test.tsx from the scan — web/scripts/** foreign). The RUNTIME DOM
+     contract holds: exactly one [data-chat-host] element app-wide (App.tsx ConsoleChatMount,
+     rendered only in the employee-detail workbench zone, wrapping ChatModulePage import-only).
+
+4) eslint (exit 0; changed/created files only):
+   $ ./node_modules/.bin/eslint src/App.tsx src/shell/console.tsx src/shell/bridge.ts src/shell/bridge.test.ts src/shell/console.test.tsx src/modules/employee-detail/EmployeeDetailWorkbench.tsx src/pages/EmployeeDetailPage.tsx
+   ✖ 4 problems (0 errors, 4 warnings)
+   All 4 warnings are PRE-EXISTING react-hooks/set-state-in-effect outside my hunks
+   (App.tsx L650 chat latch, L1431 update-confirm; EmployeeDetailPage L73/L107 fetch effects).
+   My new shell/module files: 0 errors, 0 warnings (the fixture mechanism replaced the
+   first-draft duplicated ?state= parser; T03-CONTRACT wiring: FixtureProvider +
+   ConsoleFixtureChrome mirror/badge + pane per-view precedence).
+
+5) vitest (adjacent + lane):
+   $ node node_modules/vitest/vitest.mjs run src/pages/EmployeeDetailPage.test.tsx src/shell/bridge.test.ts src/modules/chat src/pages/EmployeesPage.test.tsx src/pages/ApprovalsPage.test.tsx src/pages/RunsPage.test.tsx
+   → Test Files 6 passed (6), Tests 42 passed (42)
+   $ ... run src/shell src/pages/EmployeeDetailPage.test.tsx (post fixture-integration)
+   → Test Files 4 passed (4), Tests 30 passed (30)
+   NOTE: EmployeeDetailPage.test.tsx mounts the legacy ':id' route param shape. The mandated
+   useParams fix (brief 5) + tracked-test constraint (not lane-A writable) → the page accepts
+   `employeeId` first, `id` only as legacy fallback (dual-read, commented). All 3 test
+   failures this produced before the dual-read are green now.
+
+Deliverables of stage 2 (git status verified — only these touched, zero git writes):
+ M web/src/App.tsx (+207/−0 hunks: tokens.css once, ChatModulePage lazy, ConsoleChatMount,
+   useConsoleHashBridge+authority+overriddenPaths, console <Route> block fronting the generic
+   map, ConsoleNav section in sidebar, FixtureProvider/chrome)
+ M web/src/pages/EmployeeDetailPage.tsx (useParams snapshot fix, 11 lines w/ comment)
+ + web/src/shell/bridge.ts      (hash bridge, resolveHashTarget arbitration, searchFor,
+   normalizeZone, B/C module-page existence probe)
+ + web/src/shell/console.tsx    (ConsoleNav/ConsoleModulePage/ConsoleEmployeeDetailPage/
+   ConsoleRunsAdapter/ConsoleFixtureChrome, roView 403, planned panes, pane states)
+ + web/src/shell/bridge.test.ts (8 tests: appendix-A + A.2 forms, conflicts, fallback)
+ + web/src/shell/console.test.tsx (7 DOM-contract tests: data-mod×2, data-tabname/src/state,
+   hidetab, data-planned, roView req_, zone workbench slot)
+ + web/src/modules/employee-detail/EmployeeDetailWorkbench.tsx (60/40, wbrail 4 groups;
+   marker-free — chat-host element injected by App as render prop)
+Untracked foreign files (D/, tonight/, e2e/, scripts/, modules/{employees,tasks}, .opencode/,
+build-p0-check.log): untouched, un-added.
+
+Arbitrations recorded (§8.4-style deviations, stage-2 brief authority):
+ - '/knowledge': stage-1 conflict text assumed an existing KnowledgePage/FilesPage mount —
+   factually there is only a placeholder nav item, no route. Console knowledge page serves
+   /knowledge with GAP-03 honest empty panes; FilesPage never imported (BOUNDARY-09 kept).
+ - '/system','/employees','/approvals': console routes front the generic map (first-match
+   tie-break, verified against react-router 8.4 matchRoutes); the builtin pages render
+   INSIDE their default panes (health/list/pending) — same surfaces, tab chrome added,
+   zero upstream edits; plugin tab.override of any wrapped path demotes the console route
+   (overriddenPaths), plugin mechanism otherwise untouched.
+ - redirect roots /cron /skills /models /channels: bare browser paths keep serving the
+   upstream pages; only '#/…' forms resolve to capabilities/work via the bridge (never nav).
+ - bare /employees/:employeeId keeps the existing page (probe fallback, brief 5); the
+   workbench + chat host render on explicit ?zone=workbench (incl. ZONE_ALIAS overview/chat).
+ - unknown BROWSER paths keep the upstream Navigate → /sessions; PRD §7 overview-fallback
+   implemented for unknown '#/' hash forms (the pre-existing 'today no such logic' item).
+ - roView = ?roview=1 (URL mechanism, crawlable; skeleton's toolbar toggle not ported in M0);
+   denied state accepted as ?state=denied alongside the fixture primitive's four.
