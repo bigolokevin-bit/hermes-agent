@@ -53,3 +53,27 @@ built /Users/kevin_studio/Projects/forks/console-duty/hermes_cli/web_dist/index.
 - 截图取自静态构建、未接真实后端：展示的是诚实加载/错误/待核实态，不是真实业务数据态；真实 BFF 200 与四门真实读数未取。
 - 未做浏览器交互回归（搜索/滚动）与明主题截图；1280/375 仅按无横溢目测截图。
 - `GAP-01`（四门聚合端点）仍不存在，前端聚合口径已按「逐门标来源、缺源待核实」实现。
+## T11 用量与成本
+
+- 实现：`web/src/modules/duty/UsagePage.tsx`；`manifest.ts` 新增第二 Tab `usage`（route `#/overview?tab=usage`，kind `reuse`）。
+- 数据：`/agent-api/api/hermes-usage?days=30` 的 `tokens`（input/output/cache/reasoning）与 `by_model`；金额只取同响应 `cost` 账本块（`cost_usd` / `cost_status` / `rows` / `per_employee`），缺失或 `unknown` 显示「未计价」，绝不显示 0.00；空值「—」并附原因。
+- 页面：四态（loading 骨架 / empty 带原因 / error 人话+请求号+重试 / denied 降级，403≡404 同体）；支持壳层 `?state=` 强制态；员工引用只显「员工 · 短码」，技术值进 title；宽表只在卡内横向滚动，1440/375 无页面横溢。
+- 口径：不做前端计价、不二次舍入、不把缺失当 0；`by_model` 为空显示原因而不是空表。
+
+命令与原始结果：
+
+```
+cd web && PATH="/opt/homebrew/bin:$PATH" pnpm exec tsc -p tsconfig.lanee.json   # 临时配置 extends tsconfig.app.json
+tsc_exit=0
+```
+
+```
+cd web && PATH="/opt/homebrew/bin:$PATH" pnpm build
+✓ built in 2.65s
+built /Users/kevin_studio/Projects/forks/console-duty/hermes_cli/web_dist/index.html
+build_exit=0
+```
+
+截图：`docs/_artifacts/duty/t11-1440.png` (113,534 B)、`t11-375.png` (56,818 B)；静态服务 5431 HTTP 200。
+
+未测：截图取自静态产物、未接真实后端；真实 `hermes-usage` 200 与账本数据未取；`budget-usage` 组织级参数未在本页单独调用（账本金额已由 usage 响应的 cost 块承载），如 BFF 要求独立调用需下一阶段补。

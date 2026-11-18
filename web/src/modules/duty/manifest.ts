@@ -21,6 +21,14 @@ const manifest: ModuleManifest = {
       dataSource:
         'employees / run-stats / budget-usage / approval-stats（四门逐门标来源；缺失标待核实）',
     },
+    {
+      id: 'usage',
+      label: '用量与成本',
+      route: '#/overview?tab=usage',
+      kind: 'reuse',
+      reuse: () => import('./UsagePage'),
+      dataSource: 'hermes-usage / budget-usage（ledger 唯一金额源；缺账目标未计价）',
+    },
   ],
 };
 
