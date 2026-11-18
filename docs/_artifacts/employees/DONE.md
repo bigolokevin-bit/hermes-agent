@@ -96,3 +96,51 @@ BLOCKED: PeopleModulePage 运行时接线 — bridge.ts 无 people probe 候选�
 
 - `@nous-research/ui` Button 无 `variant` prop（build 才报，测试 stub 吞掉了）——正确写法 `outlined` 布尔，同 T18。
 - 测试 stub CardContent 必须 `{...rest}` 透传，否则 data-testid 丢失、ready 用例假崩。
+
+---
+
+## T21 · 组织与部门（org tree module）
+
+commit pending · 分支 lane/console-employees · 2026-11-19
+
+### 定向 vitest（org + people 复跑）
+
+```
+ Test Files  2 passed (2)
+      Tests  18 passed (18)
+```
+
+org 单跑：`Test Files 1 passed (1) / Tests 9 passed (9), Duration 760ms`
+
+### 全量 vitest
+
+```
+ Test Files  1 failed | 84 passed (85)
+      Tests  2 failed | 587 passed (589)
+VITEST_EXIT=1
+```
+FAILS: 仍为 T18 已知 collateral 两条（console.test.tsx bare fallback + ?zone=workbench chat-host-slot），T21 未新增失败，org manifest 未破 registry 断言。
+
+### 构建
+
+```
+✓ built in 2.38s
+built /Users/kevin_studio/Projects/forks/console-employees/hermes_cli/web_dist/index.html
+BUILD_EXIT=0
+```
+
+chunk：assets/OrgModulePage-DCVRJzXP.js
+sha256=cf4d8cc48a65662a84a8c1e6227a26314e6dd6d0d4070f1772ae4e06d8e3ac97
+
+### lint
+
+- eslint src/modules/org/ → `0 errors, 1 warning`（react-hooks/set-state-in-effect，同 T18/T20 基线噪音）
+- lint-reuse → `violations=4`（全基线既有缺标记 ChatPage/RunDetailPage/TasksListPage/AutoField），org 零新增；tonight/lint-reuse.json 快照 scanned 27→30
+
+### 交付与 GAP-02
+
+- 写域：web/src/modules/org/{OrgModulePage.tsx,test,manifest.ts}
+- 端点实打顺序：/agent-api/api/v1/dept/list → /agent-api/api/v1/dept/tree；全部 404 → 诚实 denied「组织架构待核实（GAP-02：毕升部门接口 getDepartmentApi 尚未接入本控制台）」+ org-apply 申请入口段（工单引用 GAP-02）
+- 扁平 parent_id 行与嵌套 children[] 同构收平建树；人数缺失只写「人数待核实」，绝不渲染「共 0 人」；原始 dept_id 只进 title=记录号 N
+- BLOCKED: org 页运行时接线——bridge.ts 无 org probe 候选，#/identity?tab=departments 仍渲染 planned 占位（同 T20，待 lane A）
+- manifest route '#/identity?tab=departments' 与 ROUTE_TABLE 行 149 hash 精确一致；kind planned（registry 快照理由同 T18/T20）
