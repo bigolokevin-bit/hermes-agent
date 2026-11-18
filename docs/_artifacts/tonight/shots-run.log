@@ -1,0 +1,17 @@
+{
+  "base": "http://127.0.0.1:9119",
+  "navForm": "hash #/<route>",
+  "routesEnumerated": 51,
+  "expectedShots": 102,
+  "producedShots": 102,
+  "failures": [],
+  "oversize": [],
+  "distinctMainHeads": 27,
+  "routesWhoseMainDiffersFromRoot": 51,
+  "routesWithConsoleErrors": 0,
+  "overflowing": [],
+  "driver": {
+    "playwrightFrom": "/Users/kevin_studio/Projects/seakoi-console-web/package.json",
+    "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
+  }
+}

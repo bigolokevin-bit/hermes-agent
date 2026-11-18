@@ -1,0 +1,49 @@
+$ node scripts/assert-ia.mjs
+--- stdout ---
+{
+  "script": "assert-ia",
+  "file": "docs/console-v4-skeleton.html",
+  "counts": {
+    "routes": 51,
+    "tabs": 22,
+    "tabsAll": 23,
+    "chatHosts": 1,
+    "modules": 8
+  },
+  "badCode": [],
+  "checks": [
+    {
+      "name": "routes",
+      "ok": true,
+      "actual": 51,
+      "expected": ">=51"
+    },
+    {
+      "name": "tabs",
+      "ok": true,
+      "actual": 22,
+      "expected": 22
+    },
+    {
+      "name": "chatHosts",
+      "ok": true,
+      "actual": 1,
+      "expected": 1
+    },
+    {
+      "name": "modules",
+      "ok": true,
+      "actual": 8,
+      "expected": 8
+    },
+    {
+      "name": "badCode",
+      "ok": true,
+      "actual": [],
+      "expected": []
+    }
+  ],
+  "ok": true
+}
+--- stderr ---
+exit=0

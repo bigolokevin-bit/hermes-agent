@@ -1,0 +1,43 @@
+$ node ../scripts/build/web.mjs
+Error: TypeScript build failed (2)
+[96msrc/modules/tasks/TasksBoardModulePage.tsx[0m:[93m253[0m:[93m11[0m - [91merror[0m[90m TS2322: [0mType '{ children: string; size: "sm"; variant: string; onClick: () => void; "data-testid": string; }' is not assignable to type 'IntrinsicAttributes & ButtonProps'.
+  Property 'variant' does not exist on type 'IntrinsicAttributes & ButtonProps'.
+
+[7m253[0m           variant="outlined"
+[7m   [0m [91m          ~~~~~~~[0m
+[96msrc/modules/tasks/TasksBoardModulePage.tsx[0m:[93m300[0m:[93m31[0m - [91merror[0m[90m TS2322: [0mType '{ children: (string | Element)[]; size: "sm"; variant: string; onClick: () => void; "data-testid": string; }' is not assignable to type 'IntrinsicAttributes & ButtonProps'.
+  Property 'variant' does not exist on type 'IntrinsicAttributes & ButtonProps'.
+
+[7m300[0m             <Button size="sm" variant="outlined" onClick={retry} data-testid="tasks-board-retry">
+[7m   [0m [91m                              ~~~~~~~[0m
+[96msrc/modules/tasks/TasksBoardModulePage.tsx[0m:[93m301[0m:[93m56[0m - [91merror[0m[90m TS2367: [0mThis comparison appears to be unintentional because the types '"error" | "denied"' and '"loading"' have no overlap.
+
+[7m301[0m               <RefreshCw className={cn("mr-2 h-4 w-4", state.phase === "loading" && "animate-spin")} />
+[7m   [0m [91m                                                       ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/modules/tasks/TasksBoardModulePage.tsx[0m:[93m314[0m:[93m31[0m - [91merror[0m[90m TS2322: [0mType '{ children: string; size: "sm"; variant: string; onClick: () => void; }' is not assignable to type 'IntrinsicAttributes & ButtonProps'.
+  Property 'variant' does not exist on type 'IntrinsicAttributes & ButtonProps'.
+
+[7m314[0m             <Button size="sm" variant="outlined" onClick={() => setNotice(true)}>
+[7m   [0m [91m                              ~~~~~~~[0m
+[96msrc/modules/tasks/TasksBoardModulePage.tsx[0m:[93m343[0m:[93m36[0m - [91merror[0m[90m TS2322: [0mType '"warning" | "danger" | "neutral"' is not assignable to type 'Tone | undefined'.
+  Type '"danger"' is not assignable to type 'Tone | undefined'.
+
+[7m343[0m                             <Badge tone={priority.tone}>{priority.text}</Badge>
+[7m   [0m [91m                                   ~~~~[0m
+
+  [96m../node_modules/.pnpm/@nous-research+ui@0.19.1_@observablehq+plot@0.6.17_@react-three+fiber@9.8.1_@types+reac_51ffad3e504ba0533b99d6f1bb105559/node_modules/@nous-research/ui/dist/ui/components/badge.d.ts[0m:[93m4[0m:[93m5[0m
+    [7m4[0m     tone?: Tone;
+    [7m [0m [96m    ~~~~[0m
+    The expected type comes from property 'tone' which is declared here on type 'IntrinsicAttributes & BadgeProps'
+
+    at typecheck (file:///Users/kevin_studio/Projects/forks/hermes-agent/scripts/build/web.mjs:113:11)
+    at withProduct.source.source (file:///Users/kevin_studio/Projects/forks/hermes-agent/scripts/build/web.mjs:130:5)
+    at withProduct (file:///Users/kevin_studio/Projects/forks/hermes-agent/scripts/build/frontend-common.mjs:139:11)
+    at buildWeb (file:///Users/kevin_studio/Projects/forks/hermes-agent/scripts/build/web.mjs:129:9)
+    at async file:///Users/kevin_studio/Projects/forks/hermes-agent/scripts/build/web.mjs:155:20
+[ELIFECYCLE] Command failed with exit code 1.
+Error: ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL
+
+  × "pnpm recursive run" failed in /Users/kevin_studio/Projects/forks/hermes-
+  │ agent/web
+

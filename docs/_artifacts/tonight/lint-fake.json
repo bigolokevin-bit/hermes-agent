@@ -1,22 +1,16 @@
-$ cd web && node scripts/lint-fake-success.mjs
+$ node scripts/lint-fake-success.mjs
 --- stdout ---
---- stderr ---
-node:fs:483
-    return binding.readFileUtf8(path, stringToFlags(options.flag));
-                   ^
-
-Error: ENOENT: no such file or directory, open '/Users/kevin_studio/Projects/forks/hermes-agent/web/docs/console-v4-skeleton.html'
-    at readFileSync (node:fs:483:20)
-    at file:///Users/kevin_studio/Projects/forks/hermes-agent/web/scripts/lint-fake-success.mjs:22:13
-    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
-    at async node:internal/modules/esm/loader:647:26
-    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
-  errno: -2,
-  code: 'ENOENT',
-  syscall: 'open',
-  path: '/Users/kevin_studio/Projects/forks/hermes-agent/web/docs/console-v4-skeleton.html'
+{
+  "script": "lint-fake-success",
+  "file": "docs/console-v4-skeleton.html",
+  "linesScanned": 9252,
+  "allowedInfo": {
+    "规划中": 188,
+    "不会保存": 1,
+    "未接入": 22
+  },
+  "violations": [],
+  "ok": true
 }
-
-Node.js v24.22.0
---- exit code ---
-1
+--- stderr ---
+exit=0

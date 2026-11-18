@@ -1,0 +1,72 @@
+$ node scripts/assert-ia.mjs --source=react
+--- stdout ---
+{
+  "script": "assert-ia",
+  "mode": "react",
+  "file": [
+    "web/src/shell/routes.ts",
+    "web/src/modules/*/manifest.ts"
+  ],
+  "sources": {
+    "routesTs": true,
+    "routeForm": "hash-rows",
+    "manifests": [
+      "web/src/modules/board/manifest.ts",
+      "web/src/modules/chat/manifest.ts",
+      "web/src/modules/duty/manifest.ts",
+      "web/src/modules/employee-detail/manifest.ts",
+      "web/src/modules/employees/manifest.ts",
+      "web/src/modules/matrix/manifest.ts",
+      "web/src/modules/runs/manifest.ts"
+    ],
+    "scannedFiles": 30,
+    "chatHostMarkers": [
+      "web/src/modules/chat/ChatModulePage.test.tsx attrs=2 mounts=0",
+      "web/src/modules/chat/ChatModulePage.tsx attrs=0 mounts=1"
+    ]
+  },
+  "missing": [],
+  "counts": {
+    "routes": 51,
+    "tabs": 6,
+    "chatHosts": 3,
+    "modules": 7
+  },
+  "badCode": [],
+  "checks": [
+    {
+      "name": "routes",
+      "ok": true,
+      "actual": 51,
+      "expected": 51
+    },
+    {
+      "name": "tabs",
+      "ok": false,
+      "actual": 6,
+      "expected": 22
+    },
+    {
+      "name": "chatHosts",
+      "ok": false,
+      "actual": 3,
+      "expected": 1
+    },
+    {
+      "name": "modules",
+      "ok": false,
+      "actual": 7,
+      "expected": 8
+    },
+    {
+      "name": "badCode",
+      "ok": true,
+      "actual": [],
+      "expected": []
+    }
+  ],
+  "ok": false
+}
+{"ok":false,"mode":"react","routes":51,"tabs":6,"chatHosts":3,"modules":7,"badCode":[],"missing":[]}
+--- stderr ---
+exit=1
