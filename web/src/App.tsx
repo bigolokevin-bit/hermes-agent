@@ -80,6 +80,10 @@ import type { SystemAction } from "@/contexts/system-actions-context";
 // every admin surface (and heavy deps like xterm) up front.
 const ConfigPage = lazy(() => import("@/pages/ConfigPage"));
 const DocsPage = lazy(() => import("@/pages/DocsPage"));
+const EmployeesPage = lazy(() => import("@/pages/EmployeesPage"));
+const EmployeeDetailPage = lazy(() => import("@/pages/EmployeeDetailPage"));
+const ApprovalsPage = lazy(() => import("@/pages/ApprovalsPage"));
+const RunsPage = lazy(() => import("@/pages/RunsPage"));
 const EnvPage = lazy(() => import("@/pages/EnvPage"));
 const FilesPage = lazy(() => import("@/pages/FilesPage"));
 const SessionsPage = lazy(() => import("@/pages/SessionsPage"));
@@ -175,6 +179,10 @@ const BUILTIN_ROUTES_CORE: Record<string, ComponentType> = {
   "/config": ConfigPage,
   "/env": EnvPage,
   "/docs": DocsPage,
+  "/employees": EmployeesPage,
+  "/employees/:employeeId": EmployeeDetailPage,
+  "/approvals": ApprovalsPage,
+  "/runs": RunsPage,
 };
 
 // Route placeholder for /chat.  The persistent ChatPage host (rendered
@@ -186,6 +194,9 @@ function ChatRouteSink() {
 }
 
 const BUILTIN_NAV_REST: NavItem[] = [
+  { path: "/employees", label: "员工", icon: Users },
+  { path: "/approvals", label: "审批", icon: FileText },
+  { path: "/runs", label: "运行", icon: Activity },
   {
     path: "/sessions",
     labelKey: "sessions",
