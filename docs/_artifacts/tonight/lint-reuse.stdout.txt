@@ -1,54 +1,114 @@
-$ node scripts/lint-reuse.mjs
+$ cd web && node scripts/lint-reuse.mjs
 --- stdout ---
-violations=5
-web/src/modules:0 reuse-marker-incomplete 五处复用标记缺一：未见 reuse: 对话 ChatPage（modules/ 内现有 reuse: 标记 1 处）
-web/src/modules:0 reuse-marker-incomplete 五处复用标记缺一：未见 reuse: 运行详情 RunDetailPage（modules/ 内现有 reuse: 标记 1 处）
-web/src/modules:0 reuse-marker-incomplete 五处复用标记缺一：未见 reuse: 任务看板 TasksListPage（modules/ 内现有 reuse: 标记 1 处）
-web/src/modules:0 reuse-marker-incomplete 五处复用标记缺一：未见 reuse: schema 表单 AutoField（modules/ 内现有 reuse: 标记 1 处）
-web/src/modules:0 reuse-marker-incomplete 五处复用标记缺一：未见 reuse: 能力矩阵 /v1/matrix/employees 数据口（modules/ 内现有 reuse: 标记 1 处）
+violations=0
+exempted=4
+  exempted chat / 对话 ChatPage (pending T40): 复用已落地（web/src/modules/chat/ChatModulePage.tsx:59 lazy import @/pages/ChatPage），缺的是 reuse 声明本身；chat/ 目录没有 manifest.ts，只能靠标记声明，补声明属 web/src 写域，非 D 车道可改。落地（补上声明）后从本清单删除。
+  exempted work / 运行详情 RunDetailPage (pending T15): 运行面代码已在 modules/runs（RunsModulePage.tsx + runsPage.ts）且被 shell/bridge.ts:211 探针接线，但 web/src/modules/work/manifest.ts 的 runs tab 仍 kind:'planned'、无 reuse 声明。声明补齐（改成 kind:'reuse' 或加 reuse: 标记）后从本清单删除。
+  exempted work / 任务看板 TasksListPage (pending T14): 任务板代码已在 modules/tasks（TasksBoardModulePage.tsx），work/manifest.ts 的 board tab 仍 kind:'planned'、无 reuse 声明。声明补齐后从本清单删除。
+  exempted system / schema 表单 AutoField (pending SET01/CR-M2-02（盘上无 T 号：既有 T 号集合=T00-T03,T10,T12-T15,T32,T40-T42，未派 T31）): 该面在未落地：web/src/modules/** 内 0 处引用 AutoField/SchemaForm（lint 现算 mentions=0），AutoField 只被上游 web/src/pages/ConfigPage.tsx 使用。system/manifest.ts defaults tab 仍 kind:'planned'（routes.ts row 20 注：SET-01 基线 CR-M2-02 未落地）。模块侧接线并补声明后从本清单删除；若 L0 派了 T 号请回填 pending。
 {
   "script": "lint-reuse",
   "root": "web/src/modules",
-  "scanned": 22,
-  "reuseMarkers": 1,
+  "scanned": 31,
+  "reuseMarkers": 5,
   "chatHostFiles": [
-    "web/src/modules/employee-detail/EmployeeDetailWorkbench.tsx"
-  ],
-  "violations": [
     {
-      "file": "web/src/modules",
-      "line": 0,
-      "rule": "reuse-marker-incomplete",
-      "message": "五处复用标记缺一：未见 reuse: 对话 ChatPage（modules/ 内现有 reuse: 标记 1 处）"
-    },
-    {
-      "file": "web/src/modules",
-      "line": 0,
-      "rule": "reuse-marker-incomplete",
-      "message": "五处复用标记缺一：未见 reuse: 运行详情 RunDetailPage（modules/ 内现有 reuse: 标记 1 处）"
-    },
-    {
-      "file": "web/src/modules",
-      "line": 0,
-      "rule": "reuse-marker-incomplete",
-      "message": "五处复用标记缺一：未见 reuse: 任务看板 TasksListPage（modules/ 内现有 reuse: 标记 1 处）"
-    },
-    {
-      "file": "web/src/modules",
-      "line": 0,
-      "rule": "reuse-marker-incomplete",
-      "message": "五处复用标记缺一：未见 reuse: schema 表单 AutoField（modules/ 内现有 reuse: 标记 1 处）"
-    },
-    {
-      "file": "web/src/modules",
-      "line": 0,
-      "rule": "reuse-marker-incomplete",
-      "message": "五处复用标记缺一：未见 reuse: 能力矩阵 /v1/matrix/employees 数据口（modules/ 内现有 reuse: 标记 1 处）"
+      "file": "web/src/modules/chat/ChatModulePage.tsx",
+      "via": "<ChatHost> mount"
     }
   ],
-  "count": 5,
-  "ok": false
+  "modulesWithManifest": [
+    "approvals",
+    "capabilities",
+    "employees",
+    "identity",
+    "knowledge",
+    "overview",
+    "system",
+    "work"
+  ],
+  "reuseKindModules": [
+    "employees",
+    "overview"
+  ],
+  "exemptionFile": "present",
+  "exemptionCount": 4,
+  "exempted": [
+    {
+      "surface": "对话 ChatPage",
+      "module": "chat",
+      "pending": "T40",
+      "reason": "复用已落地（web/src/modules/chat/ChatModulePage.tsx:59 lazy import @/pages/ChatPage），缺的是 reuse 声明本身；chat/ 目录没有 manifest.ts，只能靠标记声明，补声明属 web/src 写域，非 D 车道可改。落地（补上声明）后从本清单删除。",
+      "evidence": "web/src/modules/chat/ChatModulePage.tsx:59；App.tsx:121 + App.tsx:245-262 renderConsoleChatHost 单宿主；T02-ENDPOINT-RECONCILIATION.md L33 记 G8=T40 chat 宿主"
+    },
+    {
+      "surface": "运行详情 RunDetailPage",
+      "module": "work",
+      "pending": "T15",
+      "reason": "运行面代码已在 modules/runs（RunsModulePage.tsx + runsPage.ts）且被 shell/bridge.ts:211 探针接线，但 web/src/modules/work/manifest.ts 的 runs tab 仍 kind:'planned'、无 reuse 声明。声明补齐（改成 kind:'reuse' 或加 reuse: 标记）后从本清单删除。",
+      "evidence": "lint 现算：模块内提及该面文件数=2；work/manifest.ts runs tab kind='planned'；web/src/shell/bridge.ts:211 RunsModulePage；console.tsx:530 渲染"
+    },
+    {
+      "surface": "任务看板 TasksListPage",
+      "module": "work",
+      "pending": "T14",
+      "reason": "任务板代码已在 modules/tasks（TasksBoardModulePage.tsx），work/manifest.ts 的 board tab 仍 kind:'planned'、无 reuse 声明。声明补齐后从本清单删除。",
+      "evidence": "lint 现算：模块内提及该面文件数=2；work/manifest.ts board tab kind='planned'；docs/_artifacts/A/TAB-REACHABILITY.md L13「tasks 模块已交付未接线，待 E 车道 manifest」"
+    },
+    {
+      "surface": "schema 表单 AutoField",
+      "module": "system",
+      "pending": "SET01/CR-M2-02（盘上无 T 号：既有 T 号集合=T00-T03,T10,T12-T15,T32,T40-T42，未派 T31）",
+      "reason": "该面在未落地：web/src/modules/** 内 0 处引用 AutoField/SchemaForm（lint 现算 mentions=0），AutoField 只被上游 web/src/pages/ConfigPage.tsx 使用。system/manifest.ts defaults tab 仍 kind:'planned'（routes.ts row 20 注：SET-01 基线 CR-M2-02 未落地）。模块侧接线并补声明后从本清单删除；若 L0 派了 T 号请回填 pending。",
+      "evidence": "grep -rn 'AutoField|SchemaForm' web/src/modules = 0 命中；web/src/components/AutoField.tsx 的唯一消费者是 web/src/pages/ConfigPage.tsx；docs/_artifacts/D/T02-ENDPOINT-RECONCILIATION.md G6（20 system/defaults）"
+    }
+  ],
+  "surfaces": [
+    {
+      "surface": "对话 ChatPage",
+      "owner": "chat",
+      "declaredWhere": "web/src/modules/chat/（该目录无 manifest.ts，只能靠 reuse: 标记声明）",
+      "declared": false,
+      "codeMentions": 3,
+      "via": null
+    },
+    {
+      "surface": "运行详情 RunDetailPage",
+      "owner": "work",
+      "declaredWhere": "web/src/modules/work/manifest.ts（row 6 runs tab）",
+      "declared": false,
+      "codeMentions": 2,
+      "via": null
+    },
+    {
+      "surface": "任务看板 TasksListPage",
+      "owner": "work",
+      "declaredWhere": "web/src/modules/work/manifest.ts（row 5 board tab）",
+      "declared": false,
+      "codeMentions": 2,
+      "via": null
+    },
+    {
+      "surface": "schema 表单 AutoField",
+      "owner": "system",
+      "declaredWhere": "web/src/modules/system/manifest.ts",
+      "declared": false,
+      "codeMentions": 0,
+      "via": null
+    },
+    {
+      "surface": "能力矩阵 /v1/matrix/employees 数据口",
+      "owner": "employees",
+      "declaredWhere": "web/src/modules/employees/manifest.ts（matrix tab）",
+      "declared": true,
+      "codeMentions": 1,
+      "via": "marker web/src/modules/matrix/MatrixModulePage.tsx:78"
+    }
+  ],
+  "violations": [],
+  "count": 0,
+  "ok": true
 }
 --- stderr ---
-exit=1
-NOTE: tonight/lint-reuse.json is this same run's structured artifact, written by the script itself; it is kept pure JSON (appending an exit line would break it). The exit code is here and in gates.exit.json.
+exit=0
+NOTE: tonight/lint-reuse.json is this same run's structured artifact, written by the script itself to that fixed path; it is kept pure JSON (an appended exit line would break it for other readers). The real exit code is the line above and in gates.exit.json.

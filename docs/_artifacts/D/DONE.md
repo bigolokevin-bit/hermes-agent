@@ -361,3 +361,41 @@ const pane = usePaneData<{ items: Employee[] }>({ url });
 
 - lane-D 首批 13 个文件的内容已上线于 **`f25f0677`**（原提交 `0a227c51` 被并发车道 amend 吞并；已采纳方案 A：内容等价即算上线，不补署名提交，见上轮 `git diff 0a227c51 f25f0677 -- <13 paths>` = 0 字节）。
 - `docs/_artifacts/D/6-commit-hook-blocked.txt` 按拍板**已删除**（`just` 阻塞已解除，旧钩子日志无价值）。
+
+---
+
+## lint-reuse 豁免台账（区分「未落地」与「违规」）@ f0e85bd4（2026-11-19）
+
+开工现查：`HEAD == FETCH_HEAD == f0e85bd4`（`feat(console): 8 IA-group manifests + App live wiring`），工作区仅本车道 9 个路径为脏。
+
+### 三元组（cwd + 命令 + 真 exit）
+
+| cwd | 命令 | exit | 产物 |
+|-----|------|------|------|
+| `web/` | `node scripts/lint-reuse.mjs` | **0** | `tonight/lint-reuse.json`（脚本自产纯 JSON）+ `tonight/lint-reuse.stdout.txt`（原始 stdout/stderr + `exit=0`） |
+| `web/` | `mv tonight/lint-reuse-exemptions.json /tmp && node scripts/lint-reuse.mjs`（回滚安全测试） | **1** | `/tmp/rollback.txt`：`violations=4`、`exemptionFile: "missing"`，随后台账已还原（4 条） |
+| 临时 fixture | R5 失效检测：给 chat 补上 `reuse: 对话 ChatPage` 后台账仍在列 | **1** | 命中 `exemption-stale 豁免已失效须删除：对话 ChatPage 现已声明（pending=T40）` |
+
+### 规则摘要（脚本头注释同步）
+
+- R1 `local-impl-needs-marker`：模块文件本地定义 `useChat`/`TaskBoard`/`SchemaForm` 而本文件无 reuse 声明（`reuse:` 标记或 manifest `kind:'reuse'`）→ 违规。
+- R2 `hardcoded-matrix`：`skills: […emp_…]` 硬编码员工×技能数组 → 违规，**不可豁免**。
+- R3 `chat-host-not-unique`：modules/ 下 import ChatPage/ChatHost 的文件数 >1 → 违规，**不可豁免**。
+- R4 `reuse-marker-incomplete`：五个复用面（对话 ChatPage / 运行详情 RunDetailPage / 任务看板 TasksListPage / schema 表单 AutoField / 能力矩阵 /v1/matrix/employees）逐个判定，声明方式两选一：某处 `reuse:` 标记文本点名该面，或宿主模块 manifest 有 `kind:'reuse'`（这是 lanes 实际采用的约定，T10 duty / T12 employees / T13 matrix 都这么写）。清单外命中才判违规。
+- R5 `exemption-stale`：豁免项对应的面一旦声明，必须从台账删除，否则判违规——防止豁免台账烂成永久白名单。
+- 台账：`docs/_artifacts/tonight/lint-reuse-exemptions.json`，条目 `{module, reuse, pending, owner, reason, evidence, rules?}`；文件缺失 = 零豁免（照判 R4 违规）。
+
+### 现态结果：violations=0 / exempted=4 / scanned=31 / reuseMarkers=5
+
+| 面 | 宿主 | pending | 真因（未落地 vs 落地缺声明） |
+|----|------|---------|------------------------------|
+| 对话 ChatPage | chat | T40（lane B chat 宿主） | **已落地缺声明**：`chat/ChatModulePage.tsx:59` 已 `lazy(() => import("@/pages/ChatPage"))`，但 chat/ 无 manifest.ts，无处写 `kind:'reuse'`；补声明属 web/src 写域 |
+| 运行详情 RunDetailPage | work | T15（console-work，已合 edbc9575） | **已落地缺声明**：代码在 `modules/runs`、经 `shell/bridge.ts:211` 接线并 `console.tsx:530` 渲染，而 `work/manifest.ts` runs tab 仍 `kind:'planned'` |
+| 任务看板 TasksListPage | work | T14（console-work，已合 edbc9575） | **已落地缺声明**：代码在 `modules/tasks`；A 车道 `TAB-REACHABILITY.md` L13 自证「tasks 模块已交付未接线，待 E 车道 manifest」 |
+| schema 表单 AutoField | system | `SET01/CR-M2-02`（**盘上无 T 号**） | **真未落地**：modules/ 内 `AutoField`/`SchemaForm` 0 引用，AutoField 仅上游 `pages/ConfigPage.tsx` 使用；`system/manifest.ts` defaults tab `kind:'planned'`（routes.ts row 20 注 CR-M2-02 未落地） |
+| 能力矩阵 /v1/matrix/employees | employees | 不需豁免 | **已声明**：`matrix/MatrixModulePage.tsx:78` 与 `matrix/matrix.ts:5` 带 `reuse: /v1/matrix/employees`，`employees/manifest.ts` matrix tab `kind:"reuse"` |
+
+### 两处必须记在案上的偏离与纠正
+
+1. **台账是 4 条不是 5 条**：上一轮快照里的 `chat-host-not-unique`（判 chat/ 与 employee-detail/ 两处 import ChatPage = 入口不唯一）经复核是**脚本假阳**——旧正则在 `employee-detail/EmployeeDetailWorkbench.tsx:97` 命中的是用户可见文案字符串 `"生产环境在此 import Hermes ChatPage（同源部署…）"`，不是 import 语句；同时它**漏掉**了 chat/ 的真实动态 import（`import(` 后无空白）。R3 已改为**结构化**判定（只取静态 `from '…'` / 动态 `import('…')` / `export * from` 的模块说明符，外加 `<ChatHost` JSX 挂载），现在 `chatHostFiles` = 1（chat，via `<ChatHost> mount`），R3 自然通过，故无需也不应为它写豁免。若 L0 仍认为「employee-detail 复用 ChatPage」是 DoD-6 的真违例候选，那是判定口径问题，不是台账问题，请回话我按口径改规则而不是加豁免。
+2. **`tonight/lint-reuse.json` 仍是脚本自产的纯 JSON**：任务书写「`; echo exit=$?` 覆盖 tonight/lint-reuse.json」，但该路径是脚本自己的机读产物（其它车道在 `json.load` 它），追加 `exit=` 行会把它变成非 JSON。故真码记在 `lint-reuse.stdout.txt` 与 `gates.exit.json`，JSON 保持可解析。这是延续既定的处置口径，非新发明。
