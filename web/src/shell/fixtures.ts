@@ -213,10 +213,19 @@ const FIXTURE_ACCENTS: Readonly<Record<FixtureState, string>> = {
  * Fixed-corner badge, rendered ONLY when a URL override is active.
  * data-testid="shell-fixture-badge" + data-fixture attr for e2e. Inline
  * styles, tokens.css vars with fallbacks only — no stylesheet edits.
+ * `state` prop (router-accurate value from ConsoleFixtureChrome) wins over
+ * the context override: react-router pushState navigations fire neither
+ * popstate nor hashchange, so inside the Router the caller is the fresher
+ * source (T03-CONTRACT caveat; deviation registered in T03-CONTRACT.md).
  */
-export function FixtureBadge(): ReactNode {
+export function FixtureBadge({
+  state = undefined,
+}: {
+  state?: FixtureState | null;
+} = {}): ReactNode {
   const { override } = useFixtureState();
-  if (override === null) return null;
+  const active = state === undefined ? override : state;
+  if (active === null) return null;
   const rootStyle = {
     position: 'fixed' as const,
     right: '12px',
@@ -236,18 +245,18 @@ export function FixtureBadge(): ReactNode {
     pointerEvents: 'none' as const,
   };
   const tagStyle = { color: 'var(--fg-3, #9aa49e)', letterSpacing: '0.08em' };
-  const labelStyle = { color: FIXTURE_ACCENTS[override], fontWeight: 600 };
+  const labelStyle = { color: FIXTURE_ACCENTS[active], fontWeight: 600 };
   return createElement(
     'div',
     {
       'data-testid': 'shell-fixture-badge',
-      'data-fixture': override,
+      'data-fixture': active,
       role: 'status',
       'aria-live': 'polite',
       style: rootStyle,
     },
     createElement('span', { style: tagStyle }, 'FIXTURE'),
-    createElement('span', { style: labelStyle }, FIXTURE_LABELS[override]),
+    createElement('span', { style: labelStyle }, FIXTURE_LABELS[active]),
   );
 }
 

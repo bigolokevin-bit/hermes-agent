@@ -356,3 +356,8 @@ Arbitrations recorded (§8.4-style deviations, stage-2 brief authority):
    implemented for unknown '#/' hash forms (the pre-existing 'today no such logic' item).
  - roView = ?roview=1 (URL mechanism, crawlable; skeleton's toolbar toggle not ported in M0);
    denied state accepted as ?state=denied alongside the fixture primitive's four.
+
+[closeout 23:46:18] pnpm --filter web build EXIT=0 (tree incl. bridge bootHash + fixture-chrome fixes)
+
+✓ built in 2.13s
+built /Users/kevin_studio/Projects/forks/hermes-agent/hermes_cli/web_dist/index.html

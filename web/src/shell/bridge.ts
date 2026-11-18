@@ -141,20 +141,42 @@ export function normalizeZone(raw: string): string {
  * shell/fixtures, plus deep-link params like `employee=`) are carried over;
  * canonical hash-derived params win on key collisions.
  */
+/**
+ * Boot-time hash snapshot. On a `#/…` boot, App's bridge effect navigates,
+ * but ProfileProvider's effect (parent effects commit after child effects)
+ * re-asserts `?profile=` from the location it captured at render — stomping
+ * the redirect back to `/` within the same commit, by which time the live
+ * URL no longer carries the fragment. Capturing it at module-evaluation
+ * time (scripts run long before React mounts) keeps PRD deep links
+ * addressable under that race; the snapshot is cleared as soon as the
+ * canonical location has actually landed, so normal boots are untouched.
+ */
+let bootHash =
+  typeof window === "undefined" ? "" : window.location.hash;
+
 export function useConsoleHashBridge(authoritative: ReadonlySet<string>): void {
   const navigate = useNavigate();
   const { pathname, search } = useLocation();
   useEffect(() => {
-    const raw = window.location.hash;
-    if (!raw.startsWith("#/")) return;
+    const raw = window.location.hash !== "" ? window.location.hash : bootHash;
+    if (!raw.startsWith("#/")) {
+      bootHash = "";
+      return;
+    }
     const target = resolveHashTarget(raw, authoritative);
+    // Landed (possibly after a re-assert above re-navigated): stop replaying.
+    if (bootHash !== "" && pathname === target.pathname) {
+      bootHash = "";
+    }
     const merged = new URLSearchParams(window.location.search);
     new URLSearchParams(target.search).forEach((value, key) => {
       merged.set(key, value);
     });
     const qs = merged.toString();
+    const wanted = qs === "" ? "" : `?${qs}`;
+    if (pathname === target.pathname && search === wanted) return;
     navigate(
-      { pathname: target.pathname, search: qs === "" ? "" : `?${qs}` },
+      { pathname: target.pathname, search: wanted },
       { replace: true },
     );
   }, [navigate, pathname, search, authoritative]);

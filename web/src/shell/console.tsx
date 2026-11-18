@@ -35,8 +35,8 @@
  * import is the lane-A workbench placeholder.
  */
 
-import { Suspense, useMemo, type ReactNode } from "react";
-import { NavLink, useParams, useSearchParams } from "react-router";
+import { Suspense, useEffect, useMemo, type ReactNode } from "react";
+import { NavLink, useLocation, useParams, useSearchParams } from "react-router";
 import {
   CONSOLE_MODULES,
   CONSOLE_TABS,
@@ -56,7 +56,8 @@ import {
 } from "./bridge";
 import {
   FixtureBadge,
-  useFixtureMirror,
+  applyFixtureAttribute,
+  parseFixtureState,
   useFixtureState,
 } from "./fixtures";
 import EmployeeDetailWorkbench from "../modules/employee-detail/EmployeeDetailWorkbench";
@@ -72,8 +73,17 @@ import EmployeeDetailWorkbench from "../modules/employee-detail/EmployeeDetailWo
  * context value, matching the contract's per-view-over-global precedence).
  */
 export function ConsoleFixtureChrome(): ReactNode {
-  useFixtureMirror(document.documentElement);
-  return <FixtureBadge />;
+  // react-router pushState navigations fire neither popstate nor hashchange
+  // (T03-CONTRACT caveat), and the bridge lands the in-hash ?state= onto the
+  // canonical search — so inside the Router the location itself is the
+  // freshest source. Feed the mirror + badge from it; the provider context
+  // still serves non-router consumers (live hash edits, manual resets).
+  const { search } = useLocation();
+  const override = parseFixtureState(search, window.location.hash);
+  useEffect(() => {
+    applyFixtureAttribute(document.documentElement, override);
+  }, [override]);
+  return <FixtureBadge state={override} />;
 }
 
 /** `?state=` value: the per-view search param wins (reliable across every
