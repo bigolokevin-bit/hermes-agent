@@ -215,6 +215,9 @@ export interface BlockerItem {
   object: string;
   reason: string;
   responsibleModule: string;
+  step: string;
+  waitingOn: string;
+  waitingSince?: string;
   nextAction: string;
   affectsReadiness: boolean;
   overSLA: boolean;
