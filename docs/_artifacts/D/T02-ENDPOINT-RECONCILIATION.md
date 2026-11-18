@@ -34,7 +34,7 @@ pytest 基线：`321 passed in 8.41s`（cd apps/console && uv run --no-project -
 | G9 | 26 runs?employee= / 25 tasks?employee= | 参数名口径 | BFF 透传名=employeeId（runs）/assignee（tasks） | 页面声明 URL 时用 BFF 真名，usePaneData 文档注明 |
 
 ## usePaneData 契约（T02 交付判据「任一页接入只需声明 URL」）
-- `usePaneData<T>({ url, params?, retryOn? }) → { state: 'loading'|'empty'|'error'|'ready', data, error:{ message, requestId }, retry() }`
+- `usePaneData<T>({ url, itemsKey?, ignoreForceState? }) → { state: 'loading'|'empty'|'error'|'ready', data, error:{ message, requestId, status }, retry() }`
 - 请求号透传：读响应头 X-Console-Request-Id，error 态上屏「人话+请求号」（DoD 2）。
 - 失败重试一次：仅网络/5xx 自动重试 1 次；4xx 不重试（BFF 门序拒绝即终局）。
 - 四态：loading/empty(带原因)/error(消息+请求号)/ready；?state= 强制复现由 T03(A) fixture 门配合。
