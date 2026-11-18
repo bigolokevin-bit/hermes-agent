@@ -30,7 +30,7 @@
     "work"
   ],
   "exemptionFile": "present",
-  "exemptionCount": 4,
+  "exemptionCount": 1,
   "exempted": [
     {
       "surface": "对话 ChatPage",
@@ -78,30 +78,20 @@
       "owner": "employees",
       "declaredWhere": "web/src/modules/employees/manifest.ts（matrix tab）",
       "declared": true,
-      "codeMentions": 2,
+      "codeMentions": 1,
       "via": "marker web/src/modules/employee-detail/EmployeeDetailModulePage.test.tsx:144"
     }
   ],
-  "violations": [
-    {
-      "file": "docs/_artifacts/tonight/lint-reuse-exemptions.json",
-      "line": 0,
-      "rule": "exemption-stale",
-      "message": "豁免已失效须删除：运行详情 RunDetailPage 现已声明（pending=T15），落地了就按纪律从清单移除"
-    },
-    {
-      "file": "docs/_artifacts/tonight/lint-reuse-exemptions.json",
-      "line": 0,
-      "rule": "exemption-stale",
-      "message": "豁免已失效须删除：任务看板 TasksListPage 现已声明（pending=T14），落地了就按纪律从清单移除"
-    },
-    {
-      "file": "docs/_artifacts/tonight/lint-reuse-exemptions.json",
-      "line": 0,
-      "rule": "exemption-stale",
-      "message": "豁免已失效须删除：schema 表单 AutoField 现已声明（pending=SET01/CR-M2-02（盘上无 T 号：既有 T 号集合=T00-T03,T10,T12-T15,T32,T40-T42，未派 T31）），落地了就按纪律从清单移除"
-    }
-  ],
-  "count": 3,
-  "ok": false
+  "violations": [],
+  "count": 0,
+  "ok": true,
+  "headHash": "242d8a33",
+  "exitCode": 0,
+  "counts": {
+    "scanned": 84,
+    "reuseMarkers": 37,
+    "exemptionCount": 1,
+    "violations": 0,
+    "exempted": 1
+  }
 }

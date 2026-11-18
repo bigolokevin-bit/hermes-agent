@@ -6,33 +6,8 @@
     "owner": "lane B（chat 宿主接线，PRD §7 工作台唯一 [data-chat-host]）",
     "reason": "复用已落地（web/src/modules/chat/ChatModulePage.tsx:59 lazy import @/pages/ChatPage），缺的是 reuse 声明本身；chat/ 目录没有 manifest.ts，只能靠标记声明，补声明属 web/src 写域，非 D 车道可改。落地（补上声明）后从本清单删除。",
     "evidence": "web/src/modules/chat/ChatModulePage.tsx:59；App.tsx:121 + App.tsx:245-262 renderConsoleChatHost 单宿主；T02-ENDPOINT-RECONCILIATION.md L33 记 G8=T40 chat 宿主",
-    "rules": ["reuse-marker-incomplete"]
-  },
-  {
-    "module": "work",
-    "reuse": "运行详情 RunDetailPage",
-    "pending": "T15",
-    "owner": "lane console-work（T15 runs list + 只读详情，已合入 edbc9575）",
-    "reason": "运行面代码已在 modules/runs（RunsModulePage.tsx + runsPage.ts）且被 shell/bridge.ts:211 探针接线，但 web/src/modules/work/manifest.ts 的 runs tab 仍 kind:'planned'、无 reuse 声明。声明补齐（改成 kind:'reuse' 或加 reuse: 标记）后从本清单删除。",
-    "evidence": "lint 现算：模块内提及该面文件数=2；work/manifest.ts runs tab kind='planned'；web/src/shell/bridge.ts:211 RunsModulePage；console.tsx:530 渲染",
-    "rules": ["reuse-marker-incomplete"]
-  },
-  {
-    "module": "work",
-    "reuse": "任务看板 TasksListPage",
-    "pending": "T14",
-    "owner": "lane console-work（T14 任务板五态 + 只读详情，已合入 edbc9575）",
-    "reason": "任务板代码已在 modules/tasks（TasksBoardModulePage.tsx），work/manifest.ts 的 board tab 仍 kind:'planned'、无 reuse 声明。声明补齐后从本清单删除。",
-    "evidence": "lint 现算：模块内提及该面文件数=2；work/manifest.ts board tab kind='planned'；docs/_artifacts/A/TAB-REACHABILITY.md L13「tasks 模块已交付未接线，待 E 车道 manifest」",
-    "rules": ["reuse-marker-incomplete"]
-  },
-  {
-    "module": "system",
-    "reuse": "schema 表单 AutoField",
-    "pending": "SET01/CR-M2-02（盘上无 T 号：既有 T 号集合=T00-T03,T10,T12-T15,T32,T40-T42，未派 T31）",
-    "owner": "待 L0 指派（schema 表单面随 SET-01 基线落地，CR-M2-02 未落地）",
-    "reason": "该面在未落地：web/src/modules/** 内 0 处引用 AutoField/SchemaForm（lint 现算 mentions=0），AutoField 只被上游 web/src/pages/ConfigPage.tsx 使用。system/manifest.ts defaults tab 仍 kind:'planned'（routes.ts row 20 注：SET-01 基线 CR-M2-02 未落地）。模块侧接线并补声明后从本清单删除；若 L0 派了 T 号请回填 pending。",
-    "evidence": "grep -rn 'AutoField|SchemaForm' web/src/modules = 0 命中；web/src/components/AutoField.tsx 的唯一消费者是 web/src/pages/ConfigPage.tsx；docs/_artifacts/D/T02-ENDPOINT-RECONCILIATION.md G6（20 system/defaults）",
-    "rules": ["reuse-marker-incomplete"]
+    "rules": [
+      "reuse-marker-incomplete"
+    ]
   }
 ]
