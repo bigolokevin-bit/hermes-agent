@@ -98,6 +98,39 @@ const MatrixConsolePage = lazy(() =>
 );
 const TasksBoardConsolePage = lazy(() => import("@/modules/tasks/TasksBoardModulePage"));
 const RunsConsolePage = lazy(() => import("@/modules/runs/RunsModulePage"));
+// Wave-2 module pages (lanes T05/T11/T18-21/T25-30) — same live-map policy.
+const UsageConsolePage = lazy(() => import("@/modules/duty/UsagePage"));
+const PeopleConsolePage = lazy(() => import("@/modules/people/PeopleModulePage"));
+const OrgConsolePage = lazy(() => import("@/modules/org/OrgModulePage"));
+const EvidenceConsolePage = lazy(() =>
+  import("@/modules/evidence/EvidenceModulePage").then((m) => ({
+    default: m.EvidenceModulePage,
+  })),
+);
+const CapSkillsConsolePage = lazy(() =>
+  import("@/modules/skills/SkillsPage").then((m) => ({ default: m.SkillsPage })),
+);
+const CapToolsConsolePage = lazy(() =>
+  import("@/modules/tools/ToolsPage").then((m) => ({ default: m.ToolsPage })),
+);
+const CapModelsConsolePage = lazy(() =>
+  import("@/modules/models/ModelsModulePage").then((m) => ({
+    default: m.ModelsModulePage,
+  })),
+);
+const HealthConsolePage = lazy(() =>
+  import("@/modules/health/HealthPage").then((m) => ({ default: m.HealthPage })),
+);
+const ApprovalsPendingConsolePage = lazy(() =>
+  import("@/modules/approvals/ApprovalsPendingModulePage").then((m) => ({
+    default: m.ApprovalsPendingModulePage,
+  })),
+);
+const ApprovalsHistoryConsolePage = lazy(() =>
+  import("@/modules/approvals/ApprovalsHistoryModulePage").then((m) => ({
+    default: m.ApprovalsHistoryModulePage,
+  })),
+);
 const RunsPage = lazy(() => import("@/pages/RunsPage"));
 const EnvPage = lazy(() => import("@/pages/EnvPage"));
 const FilesPage = lazy(() => import("@/pages/FilesPage"));
@@ -1088,7 +1121,7 @@ export default function App() {
                         element={
                           <ConsoleModulePage
                             module="overview"
-                            live={{ duty: <DutyConsolePage />, usage: <AnalyticsPage /> }}
+                            live={{ duty: <DutyConsolePage />, usage: <UsageConsolePage /> }}
                           />
                         }
                       />
@@ -1103,11 +1136,21 @@ export default function App() {
                       />
                       <Route
                         path="/identity"
-                        element={<ConsoleModulePage module="identity" />}
+                        element={
+                          <ConsoleModulePage
+                            module="identity"
+                            live={{ people: <PeopleConsolePage />, departments: <OrgConsolePage /> }}
+                          />
+                        }
                       />
                       <Route
                         path="/knowledge"
-                        element={<ConsoleModulePage module="knowledge" />}
+                        element={
+                          <ConsoleModulePage
+                            module="knowledge"
+                            live={{ evidence: <EvidenceConsolePage /> }}
+                          />
+                        }
                       />
                       <Route
                         path="/capabilities"
@@ -1115,9 +1158,9 @@ export default function App() {
                           <ConsoleModulePage
                             module="capabilities"
                             live={{
-                              skills: <SkillsPage />,
-                              tools: <McpPage />,
-                              models: <ModelsPage />,
+                              skills: <CapSkillsConsolePage />,
+                              tools: <CapToolsConsolePage />,
+                              models: <CapModelsConsolePage />,
                               channels: <ChannelsPage />,
                             }}
                           />
@@ -1140,7 +1183,10 @@ export default function App() {
                           element={
                             <ConsoleModulePage
                               module="approvals"
-                              live={{ pending: <ApprovalsPage /> }}
+                              live={{
+                                pending: <ApprovalsPendingConsolePage />,
+                                history: <ApprovalsHistoryConsolePage />,
+                              }}
                             />
                           }
                         />
@@ -1151,7 +1197,7 @@ export default function App() {
                           element={
                             <ConsoleModulePage
                               module="system"
-                              live={{ health: <SystemPage /> }}
+                              live={{ health: <HealthConsolePage /> }}
                             />
                           }
                         />

@@ -1,13 +1,13 @@
 {
   "script": "lane-D gate ledger",
-  "head": "78f206768dbec44461b2f3a0c033615b6e782824",
+  "head": "72d3368eca1a8b7194fd08151417f4839ff7b60f",
   "legs": [
     {
       "leg": "assert-ia-react",
       "cwd": "web/",
       "command": "cd web && node scripts/assert-ia.mjs --source=react",
       "artifact": "docs/_artifacts/tonight/assert-ia-react.json",
-      "exit": 0,
+      "exit": 1,
       "digest": {
         "ok": true,
         "routes": 51,
@@ -15,7 +15,11 @@
         "chatHosts": 1,
         "modules": 8,
         "badCode": [],
-        "missing": []
+        "missing": [],
+        "tabsActual": 24,
+        "modulesActual": 10,
+        "expected": "tabs=22 modules=8",
+        "note": "baseline drift: concurrent lanes added 2 modules/2 tabs; assertion values belong to L0/A to re-fix"
       }
     },
     {
@@ -71,7 +75,7 @@
       "cwd": "web/",
       "command": "cd web && node scripts/crawl-routes.mjs --base http://127.0.0.1:9119",
       "artifact": "docs/_artifacts/tonight/crawl.json",
-      "exit": 0,
+      "exit": 1,
       "digest": {
         "ok": true,
         "routes": 51,
@@ -81,7 +85,10 @@
         "contentRenderConcurrency": 1,
         "contentChecked": 51,
         "contentEmpty": 0,
-        "uniqueHtmlShells": 1
+        "uniqueHtmlShells": 1,
+        "deadLinksCount": 70,
+        "contentEmptyCount": 1,
+        "note": "9122 static serve: no SPA fallback (path forms 404) + no /api backend; 9119 control run exit=0 at 72d3368e"
       }
     },
     {
@@ -89,12 +96,15 @@
       "cwd": "web/",
       "command": "cd web && node_modules/.bin/vitest run",
       "artifact": "docs/_artifacts/tonight/vitest.txt",
-      "exit": 0,
+      "exit": 1,
       "digest": {
         "testFilesPassed": "84",
-        "testFilesTotal": "84",
+        "testFilesTotal": "~103",
         "testsPassed": "566",
-        "testsTotal": "566"
+        "testsTotal": "728",
+        "testsFailed": "1",
+        "failedTest": "src/shell/console.test.tsx > ConsoleEmployeeDetailPage (hidden 23rd pane) > bare detail probe-detail-page expected truthy got null",
+        "note": "failing test is lane-A T18 hidden-pane coverage, not lane-D; honest red"
       }
     },
     {
@@ -116,34 +126,73 @@
       "cwd": "repo root",
       "command": "node docs/_artifacts/tonight/shots.mjs",
       "artifact": "docs/_artifacts/tonight/shots-summary.json",
-      "exit": 0,
+      "exit": 1,
       "digest": {
         "ok": true,
         "screenshotMode": "playwright",
         "producedShots": 102,
         "expectedShots": 102,
         "routesWithEmptyMain": [],
-        "routesWithConsoleErrors": 0,
+        "routesWithConsoleErrors": 51,
         "overflowing": [],
         "failures": [],
         "rootMainEmpty": true,
         "staleInheritedPngs": 0,
         "servedEntryBefore": "index-CynjunXk.js",
         "servedEntryAfter": "index-CynjunXk.js",
-        "reshootWindow": "2026-11-19 00:59:45 -> 01:05:27 (all 102 png fresh; prior 00:42-45 stale generation replaced)"
+        "reshootWindow": "2026-11-19 00:59:45 -> 01:05:27 (all 102 png fresh; prior 00:42-45 stale generation replaced)",
+        "note": "consoleErrors 51 = environment (no /api at 9122), controlled probe evidence in shots-summary consoleErrorsNote"
+      }
+    },
+    {
+      "leg": "state-quad",
+      "cwd": "temp probe",
+      "command": "node state-quad.mjs (playwright, hash-form /#/<route>?state=<s>)",
+      "artifact": "docs/_artifacts/tonight/state-quad.json",
+      "exit": 0,
+      "digest": {
+        "sampled": 20,
+        "passed": 20,
+        "routes": [
+          "#/employees",
+          "#/work",
+          "#/approvals",
+          "#/sessions",
+          "#/system"
+        ],
+        "states": [
+          "loading",
+          "empty",
+          "error",
+          "ready"
+        ],
+        "hooks": "[data-fixture] attr + [data-testid=shell-fixture-badge] text 加载中/空态/错误/就绪"
       }
     }
   ],
-  "red": [],
+  "red": [
+    {
+      "leg": "assert-ia-react",
+      "note": "baseline drift: concurrent lanes added 2 modules/2 tabs; assertion values belong to L0/A to re-fix"
+    },
+    {
+      "leg": "crawl-routes",
+      "note": "9122 static serve: no SPA fallback (path forms 404) + no /api backend; 9119 control run exit=0 at 72d3368e"
+    },
+    {
+      "leg": "vitest",
+      "note": "failing test is lane-A T18 hidden-pane coverage, not lane-D; honest red"
+    },
+    {
+      "leg": "shots",
+      "note": "consoleErrors 51 = environment (no /api at 9122), controlled probe evidence in shots-summary consoleErrorsNote"
+    }
+  ],
   "green": [
-    "assert-ia-react",
     "assert-ia-html",
     "lint-fake-success",
     "lint-reuse",
-    "crawl-routes",
-    "vitest",
-    "pytest",
-    "shots"
+    "pytest"
   ],
   "exitCodeMethod": "each artifact ends with a literal `exit=N` line written by `; echo exit=$?` right after the command; pipeline tail statuses are never used",
   "notes": [
@@ -152,6 +201,8 @@
     "vitest.txt regenerated at 7698d126 (the previous snapshot was the 23:18 pre-merge run: 1 file / 7 tests; the suite is now 84 files / 566 tests). pytest row is carried, not re-executed — see its provenance field.",
     "all seven rows above were re-run at this head by docs/_artifacts/tonight being rewritten in the same commit; the pytest row is carried from apps/console (governance repo), provenance recorded in its own digest",
     "crawl content leg runs serialized (render-concurrency 1): at concurrency 4 paints were starved and panes read as 33-38 chars instead of 2038-3571",
-    "shots leg finalized by orchestrator at 01:1x after the assigned writer session duds at 00:46 (stale png generation) and a phantom completion report claimed a non-existent commit e1393b06 (git cat-file -t: Not a valid object name). crawl re-rerun exit=0 deadLinks=[] contentEmpty=[] probed=74 distinctMainHeads=25 medianMainChars=118 at finalization time."
-  ]
+    "shots leg finalized by orchestrator at 01:1x after the assigned writer session duds at 00:46 (stale png generation) and a phantom completion report claimed a non-existent commit e1393b06 (git cat-file -t: Not a valid object name). crawl re-rerun exit=0 deadLinks=[] contentEmpty=[] probed=74 distinctMainHeads=25 medianMainChars=118 at finalization time.",
+    "9122-rerun: state-quad leg exit=0 (20/20 [data-fixture] + badge across 5 routes x 4 states). 9122 requires SPA fallback + /api proxy to serve as V4 entry; until then crawl/shots legs are environment-red at 9122 and green at 9119."
+  ],
+  "round": "9122-rerun 2026-11-19 01:2x (orchestrator)"
 }

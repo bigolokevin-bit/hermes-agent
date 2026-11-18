@@ -5,6 +5,15 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ComponentProps, ReactElement } from "react";
 
+// Wave-2: T18 shipped the real detail module page, so the bridge existence
+// probe (shell/bridge.ts DetailModulePage) resolves and serves the hidetab
+// pane. The probe's lazy glob is mocked with a synchronous stub — the same
+// probe-consumes-module-page contract is covered without importing the
+// 890-line page's API surface into jsdom.
+vi.mock("../modules/employee-detail/EmployeeDetailModulePage", () => ({
+  default: () => <div data-testid="probe-detail-page" />,
+}));
+
 import {
   ConsoleEmployeeDetailPage,
   ConsoleModulePage,
@@ -29,6 +38,14 @@ afterEach(() => {
 
 function renderAt(element: ReactElement, entry: string) {
   act(() => {
+    root.render(<MemoryRouter initialEntries={[entry]}>{element}</MemoryRouter>);
+  });
+}
+
+// Wave-2: the detail probe lazy-loads the (mocked) module page — flush the
+// Suspense microtask so the lazy component actually mounts before asserting.
+async function renderAtAsync(element: ReactElement, entry: string) {
+  await act(async () => {
     root.render(<MemoryRouter initialEntries={[entry]}>{element}</MemoryRouter>);
   });
 }
@@ -134,8 +151,8 @@ describe("ConsoleEmployeeDetailPage (hidden 23rd pane)", () => {
     </Routes>
   );
 
-  it("bare detail keeps the fallback surface inside the hidetab pane", () => {
-    renderAt(
+  it("bare detail: the probe's module page serves the hidetab pane (T18 landed; fallback shadowed)", async () => {
+    await renderAtAsync(
       detailRoute({ fallback: <div data-testid="existing-detail" /> }),
       "/employees/emp_9f3a4b7c",
     );
@@ -143,11 +160,16 @@ describe("ConsoleEmployeeDetailPage (hidden 23rd pane)", () => {
     expect(pane?.getAttribute("data-tabname")).toBe("详情");
     expect(pane?.getAttribute("data-hidetab")).toBe("1");
     expect(pane?.getAttribute("data-state")).toBe("ready");
-    expect(pane?.querySelector('[data-testid="existing-detail"]')).toBeTruthy();
+    // Probe hit → module page wins over the legacy fallback (stage-2 brief 5
+    // fallback stays for trees without the page, see console.tsx L464-475).
+    expect(
+      container.querySelector('[data-testid="probe-detail-page"]'),
+    ).toBeTruthy();
+    expect(container.querySelector('[data-testid="existing-detail"]')).toBeFalsy();
     expect(container.querySelectorAll('[role="tab"][data-zone]').length).toBe(5);
   });
 
-  it("?zone=workbench renders the 60/40 workbench through the App chat-host slot (injected as-is, exactly once)", () => {
+  it("?zone=workbench: probe page owns the workbench surface (60/40 + chat host moved into T18's page in wave 2)", async () => {
     // The real App wrapper carries the host attribute; the stub uses a
     // testid so this shell/ file stays marker-free for the assert-ia scan.
     const renderChatHost = (employeeId: string) => (
@@ -155,24 +177,25 @@ describe("ConsoleEmployeeDetailPage (hidden 23rd pane)", () => {
         chat-host-stub
       </div>
     );
-    renderAt(
+    await renderAtAsync(
       detailRoute({
         fallback: <div data-testid="existing-detail" />,
         renderChatHost,
       }),
       "/employees/emp_9f3a4b7c?zone=workbench",
     );
-    expect(container.querySelector('[data-testid="existing-detail"]')).toBeFalsy();
-    const slots = container.querySelectorAll('[data-testid="chat-host-slot"]');
-    expect(slots.length).toBe(1);
-    expect(slots[0]?.getAttribute("data-profile")).toBe("emp_9f3a4b7c");
-    // wbrail four groups, id/budget expanded by default.
-    const toggles = container.querySelectorAll("button[aria-expanded]");
-    expect(toggles.length).toBe(4);
+    // Probe resolves for every zone query (T18 header note), so the shell's
+    // legacy EmployeeDetailWorkbench + App-injected chat-host slot are NOT
+    // mounted here anymore; the module page carries the single
+    // [data-chat-host] itself (T40 moved the marker into ChatModulePage;
+    // assert-ia counts exactly one static host). The hidden-详情 pane and
+    // zone strip are still shell-owned and must hold:
     expect(
-      Array.from(toggles).filter(
-        (b) => b.getAttribute("aria-expanded") === "true",
-      ).length,
-    ).toBe(2);
+      container.querySelector('[data-testid="probe-detail-page"]'),
+    ).toBeTruthy();
+    expect(container.querySelectorAll('[data-testid="chat-host-slot"]').length).toBe(0);
+    const pane = container.querySelector(".pane");
+    expect(pane?.getAttribute("data-tabname")).toBe("详情");
+    expect(container.querySelectorAll('[role="tab"][data-zone]').length).toBe(5);
   });
 });

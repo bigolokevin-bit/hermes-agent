@@ -464,3 +464,17 @@ L0 判词：只证「SPA 返回 200」不够。本轮把 crawl-routes 改成**�
 - **shots-summary 定稿五键（写后回读证实）**：screenshotMode="playwright"、rootMainEmpty=true、staleInheritedPngs=0、servedEntryBefore=servedEntryAfter="index-CynjunXk.js"（拍启/拍毕两次当场 curl 同值，dist mtime Nov 19 00:18:22 窗内未变）。
 - **crawl 定稿复跑**：`node scripts/crawl-routes.mjs --base http://127.0.0.1:9119 > tonight/crawl.json` → **exit=0**，ok:true、deadLinks=[]、contentEmpty=[]、probed=74、distinctMainHeads=25、medianMainChars=118（render 判据口径与 --no-render exit=1 负向自注不变）。
 - **gates.exit.json**：新增 shots leg（exit 0+digest 全值），notes 记哑火/幻影证伪与收口人。七门禁+shots 八腿全绿 red=[]。
+
+## 门禁九轮·V4 落点 9122 复跑（2026-11-19 01:2x，orchestrator 亲自，fixer 通道已弃用）
+
+L0 新落点：`http://127.0.0.1:9122`（python http.server --directory hermes_cli/web_dist，pid 65048；entry 拍窗内=index-CynjunXk.js，收口时已被并发线重建为 index-Beq12nP5.js，如实分窗记录）。**9121 是骨架文档站，未使用。**
+
+- `cd web && node scripts/assert-ia.mjs --source=react` → **exit=1**：routes=51✓ chatHosts=1✓ badCode=[]✓ missing=[]✓，但 **tabs actual=24 expected=22、modules actual=10 expected=8**——并发线已把模块加过 PRD 基线，断言值归 L0/A 定标（待决策），本车道不擅改断言。
+- `node scripts/assert-ia.mjs`（HTML baseline）→ **exit=0**；`node scripts/lint-fake-success.mjs` → **exit=0**；`node scripts/lint-reuse.mjs` → **exit=0**（violations=0 exempted=4，台账 lint-reuse-exemptions.json 生效）。
+- `node scripts/crawl-routes.mjs --base http://127.0.0.1:9122` → **exit=1**：deadLinks=70 全 404（BASE+path 形态）——根因=9122 纯静态无 SPA fallback（path 形态必 404，hash 形态可用）；contentEmpty=1（#/sessions==root 文本 104，默认路由/root 基线仪器伪象，sessions 面板本身有内容）。对照：72d3368e 轮同脚本对 9119 **exit=0** deadLinks=0 contentEmpty=0。
+- `node docs/_artifacts/tonight/shots.mjs --base=http://127.0.0.1:9122` → **exit=1**：producedShots=102/102、failures=[]、emptyMain=[]、overflowing=[]，但 **consoleErrors=51**。对照探针（同 #/access 双开）：9122 consoleErrors=9，失败请求 404 `/api/shared-metrics/consent` `/api/auth/me` `/api/dashboard/plugins`（File not found）；9119 同路由 **consoleErrors=0**；72d3368e 轮 9119 summary consoleErrors=0。**归因=9122 无 /api 后端（环境），非应用缺陷**；逐字证据在 shots-summary.consoleErrorsNote。
+- `?state=` 四态抽 5 页@9122（#/employees #/work #/approvals #/sessions #/system × loading/empty/error/ready，hash 形态，钩子 [data-fixture]+badge 加载中/空态/错误/就绪）→ **exit=0 sampled=20 passed=20**（tonight/state-quad.json）。fixture chrome 在无 API 静态落点上同样工作。
+- `node_modules/.bin/vitest run` → **exit=1**：727 passed / **1 failed**（`src/shell/console.test.tsx > ConsoleEmployeeDetailPage (hidden 23rd pane) > bare detail probe-detail-page` expected truthy got null——lane A T18 隐藏面板覆盖测试，非 lane-D 文件，如实报红并归 A）。
+- pytest：carry 321 passed（provenance 见上轮 legs[]，本轮无 .py 变更）。
+- 采纳哑火写者合法仪器修复：`web/scripts/crawl-routes.mjs`（--render-concurrency 默认 1、--settle-cap 稳定轮询、mainTextProbe 补强）。
+- **待决策（报 L0）**：①9122 要当 V4 入口需带 SPA fallback + /api 反代（或 crawl/shots 腿继续以 9119 为准、9122 仅做静态资产核验）；②assert-ia react 基线 tabs=22/modules=8 是否升 24/10 归 A/L0 定标。

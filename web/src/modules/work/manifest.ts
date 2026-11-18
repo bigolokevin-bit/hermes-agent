@@ -15,9 +15,10 @@ const manifest: ModuleManifest = {
       // ROUTE_TABLE row 5 (appendix A). The cron view deep link is row 31
       // ('#/work?tab=board&view=cron'); '#/work?tab=cron' stays compat-only.
       route: '#/work',
-      kind: 'planned',
+      kind: 'reuse',
       group: 'work',
       icon: 'SquareKanban',
+      reuse: () => import('../tasks/TasksBoardModulePage'),
       dataSource: '/api/tasks /api/task-detail',
     },
     {
@@ -25,9 +26,10 @@ const manifest: ModuleManifest = {
       label: '运行',
       // ROUTE_TABLE row 6 (appendix A).
       route: '#/work?tab=runs',
-      kind: 'planned',
+      kind: 'reuse',
       group: 'work',
       icon: 'Activity',
+      reuse: () => import('../runs/RunsModulePage').then((m) => ({ default: m.RunsModulePage })),
       dataSource: '/api/runs /api/run-detail /api/run-events',
     },
   ],

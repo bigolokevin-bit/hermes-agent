@@ -688,5 +688,13 @@
     "playwrightFrom": "/Users/kevin_studio/Projects/seakoi-console-web/package.json",
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
-  "ok": false
+  "ok": false,
+  "screenshotMode": "playwright",
+  "rootMainEmpty": false,
+  "staleInheritedPngs": 0,
+  "servedEntryBefore": "index-CynjunXk.js",
+  "servedEntryAfter": "index-CynjunXk.js",
+  "consoleErrorsNote": "51/51 routes show console errors at 9122: controlled probe on #/access -> 9122 consoleErrors=9 netFail 404 /api/shared-metrics/consent,/api/auth/me,/api/dashboard/plugins (python http.server File not found); same route at 9119 consoleErrors=0; 72d3368e-round summary (base 9119) consoleErrors=0. Attribution: 9122 static serve has NO /api backend and NO SPA fallback -> environment, not app. crawl deadLinks=70 all BASE+path 404 same cause. contentEmpty=1 (#/sessions == root text 104) = default-route/root-baseline instrument artifact, sessions pane itself renders content.",
+  "servedEntryNote": "shots window (01:06-01:14) served index-CynjunXk.js verified at run start and at summary write 01:14:58; at finalization 01:2x the concurrent lane had already rebuilt dist to index-Beq12nP5.js (live curl) - pngs precede that rebuild, honest window recorded.",
+  "rootMainEmptyNote": "9122 round rootBaseline.textLen=104: static root falls to default route which renders sessions-like shell text; differs from 9119 round (textLen=0). Instrument/root-route artifact, recorded in contentEmpty=1 note."
 }

@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 
 import { ROUTE_TABLE } from "@/shell/routes";
-import auditManifest, { auditModuleManifest } from "./manifest";
+import auditManifest, { auditModuleManifest } from "./tabNav";
 
 describe("audit manifest", () => {
   it("is the flat nav shape with the Chinese label and an existing icon key", () => {
@@ -35,9 +35,14 @@ describe("audit manifest", () => {
     expect(auditManifest.tabs[0]!.reuse).toBeUndefined();
   });
 
-  it("the registry finds no problem with it", async () => {
+  it("is deliberately NOT a registry manifest (8 IA-group law) — events tab lives in system", async () => {
     const { validateRegistry, getManifest } = await import("@/shell/registry");
     expect(validateRegistry().filter((issue) => issue.includes("audit"))).toEqual([]);
-    expect(getManifest("audit")?.tabs[0]?.label).toBe("审计事件");
+    // Integration-law adjudication (wave 2): the registry loads exactly the 8
+    // IA-group manifests; audit is module navigation data (tabNav.ts), not a
+    // registry module — renaming kept this file's data assertions above green.
+    expect(getManifest("audit")).toBeUndefined();
+    const events = getManifest("system")?.tabs.find((t) => t.id === "events");
+    expect(events?.route).toBe("#/system?tab=events");
   });
 });

@@ -13,9 +13,10 @@ const manifest: ModuleManifest = {
       id: 'health',
       label: '系统健康',
       route: '#/system',
-      kind: 'planned',
+      kind: 'reuse',
       group: 'system',
       icon: 'HeartPulse',
+      reuse: () => import('../health/HealthPage').then((m) => ({ default: m.HealthPage })),
       dataSource: '/api/hermes-summary + BFF/domain 真探针',
     },
     {
