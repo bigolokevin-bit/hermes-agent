@@ -98,3 +98,45 @@ ln -sfn ../../../web/node_modules/vitest apps/shared/node_modules/vitest
 - 「四服务」文档未枚举 → 定为 控制台 / Hermes 运行时 / 域服务 / 毕昇平台；毕昇无探针端点故恒未知。
 - 控制台探针判据 = 「收到任何 HTTP 响应即存活」（含 404 统一信封）。
 - 域服务探针暂复用 `/api/skills`（活代理、幂等 GET、开销小）；后续如增专用探针路由可一行替换。
+
+---
+
+## 追加：T31 默认设置 + T32 版本（2026-11-19 波3，基线 242d8a33）
+
+### 提交
+- `672d18d9 feat(console): defaults settings page, read-only with not-landed states (T31)` — `web/src/modules/settings/{manifest.ts,settings.ts,SettingsPage.tsx,SettingsPage.test.tsx}`
+- `39007942 feat(console): version page from build-injected vars, honest unknown (T32)` — `web/src/modules/version/{manifest.ts,version.ts,VersionPage.tsx,VersionPage.test.tsx}`
+
+### 数据口与判据
+- T31：GET `/agent-api/api/config`。BFF 无 `/api/config`（CR-M2-02 未落地）→ 404 即当前 ready 态：写开关（审批流变更提交/会话发送）与上游连通自检一律显「未启用」+原因；页头横幅「写入开关状态未知（本次未能读取）——在确认前按只读处理。」；三态 schema 解析已写好，接通后自动按 已开启/未开启/未知 显示（未知=neutral，不等同关）；全页零写控件（仅「重新读取」），去处链接只指已有 hash（#/system、#/employees）。
+- T32：构建注入 VITE_BUILD_IDENTITY/REF/COMMIT/TIME 四变量；未注入=「未知」+原因（禁兜底假值）；提交号屏显 8 位短码、完整值进 title；构建时间北京时间到分；依赖关键版本读 `web/package.json` 清单。本页无网络请求：错误态预览如实标注「本地信息，无请求号」，不伪造请求号与重试按钮。
+
+### 原始 stdout（门禁）
+T32 交付轮（同 T31 口径复跑）：
+
+```text
+$ corepack pnpm vitest run src/modules/version
+   Duration  472ms (transform 164ms, setup 0ms, import 183ms, tests 30ms, environment 204ms)
+
+$ corepack pnpm test
+ Test Files  99 passed (99)
+      Tests  742 passed (742)
+
+$ corepack pnpm lint
+✖ 75 problems (0 errors, 75 warnings)
+```
+
+T31 交付轮：focused 4 passed；全量 98 files/739 passed；lint 0 errors/75 warnings（settings/version 模块 0 命中）。
+
+### 截图（未交付说明）
+上屏截图需 App.tsx live map 挂载 defaults/version tab（web/src 属 A 写域，本轮令禁碰）。此前预演拍的 4 张因壳未挂载渲染成上游 System 页，无效，已删除不入证据链。证据=模块级测试 + `?state=` 四态预览；A 侧挂载后可按 9122 代理口补拍。
+
+### 需 A 注册 / 接线（增补，接前文清单）
+1. App.tsx live map：`#/system?tab=defaults` → SettingsPage、`#/system?tab=version` → VersionPage（manifest 已自动注册，壳渲染映射缺此两 tab）。
+2. BFF GET `/api/config`（CR-M2-02 自检口最小面：writeSwitches 三态 + upstreams[]）。
+3. 构建注入 VITE_BUILD_* 四变量（hermes-build.json 现仅 sourceHash/outputHash，无 commit/时间；建议 scripts/build/freshness 阶段写入 vite define）。
+4. GAP 台账登记 GAP-04（BFF /api/mcp/servers 代理）、GAP-05（毕昇健康探针+接入说明）。
+
+### 假定（追加）
+- T31「未启用」（未落地）与「未开启」（读到 false）严格区分，依用户判据原文。
+- T32 以构建注入为唯一事实源；未注入时全行未知属预期显示而非缺陷。
