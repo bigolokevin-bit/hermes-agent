@@ -130,7 +130,7 @@ export function resourceRows(rows: MatrixRow[], field: "skills" | "tools" | "kno
       name,
       covered,
       total,
-      employees: employees.map((e) => e.name ?? e.employeeId),
+      employees: employees.map((e) => e.name ?? `员工 · ${e.employeeId.slice(-4)}`),
       state: covered === 0 ? "zero" : covered === 1 ? "single" : "normal",
     };
   });

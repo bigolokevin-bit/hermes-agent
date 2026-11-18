@@ -123,3 +123,13 @@ export function lifecycleLabel(raw: string | undefined): string {
   };
   return raw ? map[raw] ?? "—" : "—";
 }
+
+/** Never show a bare emp_/employee: id on screen; keep the tail only. */
+export function employeeLabel(name: string | undefined, id: string): string {
+  if (name && name.trim()) return name.trim();
+  const tail = id
+    .replace(/^[^:]*:/, "")
+    .replace(/[^0-9A-Za-z]/g, "")
+    .slice(-4);
+  return tail ? `员工 · ${tail}` : "员工";
+}

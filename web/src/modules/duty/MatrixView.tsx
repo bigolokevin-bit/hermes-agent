@@ -8,7 +8,7 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { cn } from "@/lib/utils";
 import { fetchMatrix, humanError, requestIdOf, statusOf } from "./api";
 import { CAP_RESOURCES, MATRIX_FIXTURE, normalizeMatrixRow, resourceRows } from "./fixture";
-import { lifecycleLabel, shortId } from "./format";
+import { employeeLabel, lifecycleLabel } from "./format";
 import type { MatrixRow } from "./types";
 import "./duty.css";
 
@@ -207,7 +207,7 @@ export default function MatrixView() {
               {filtered.map((r) => (
                 <li key={r.employeeId} className="duty-mtable duty-mrow">
                   <span className="duty-mname">
-                    <Link to={`/employees/${encodeURIComponent(r.employeeId)}`}>{r.name ?? shortId(r.employeeId)}</Link>
+                    <Link to={`/employees/${encodeURIComponent(r.employeeId)}`}>{employeeLabel(r.name, r.employeeId)}</Link>
                     <em>{r.title ?? "—"}</em>
                   </span>
                   <span data-label="状态"><LifecycleBadge value={r.lifecycleState} /></span>
