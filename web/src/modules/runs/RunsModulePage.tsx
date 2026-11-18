@@ -52,6 +52,19 @@ type DetailState =
 
 type EmployeeMap = Map<string, string>;
 
+/**
+ * QA V4-R4 条目2: every error panel needs a real way out. The shell and the
+ * footer carry no contact affordance today (grep: 0 mailto / 联系入口 in
+ * src/shell), so this is the documented mailto default — not a dead `href="#"`.
+ * Replace with the ops-team address once one exists.
+ */
+const CONTACT_ADMIN_HREF = "mailto:workspace-admin@hermes.local?subject=Hermes%20%E6%8E%A7%E5%88%B6%E5%8F%B0%E9%97%AE%E9%A2%98%E5%8F%8D%E9%A6%88";
+
+/** QA V4-R4 条目5: a missing request id says what the person can do instead. */
+function requestIdText(id: string | null): string {
+  return id ? `请求编号 ${id}` : "本次请求未记录编号，可复制时间与操作路径反馈";
+}
+
 function sinceIso(key: SinceKey): string {
   const hours = SINCE_OPTIONS.find((x) => x.value === key)?.hours ?? 24;
   return new Date(Date.now() - hours * 3600_000).toISOString();
@@ -94,13 +107,30 @@ function ErrorCard({
         <div className="min-w-0">
           <h2 className="text-base font-semibold">{denied ? "运行记录暂不可见" : "运行记录没能加载出来"}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{state.message}</p>
-          <p className="mt-2 break-all font-mono text-xs text-muted-foreground">请求编号 {state.requestId ?? "未提供"}</p>
+          <p className="mt-2 break-all text-xs text-muted-foreground">{requestIdText(state.requestId)}</p>
         </div>
-        {!denied ? (
-          <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-4 w-4" />}>
-            重试
-          </Button>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          {!denied ? (
+            <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-4 w-4" />}>
+              重试
+            </Button>
+          ) : null}
+          {/* QA V4-R4 条目2: 真出口 — 壳内路由可达，不是装饰。 */}
+          <Link
+            to="/overview"
+            data-testid={`${testid}-back`}
+            className="inline-flex h-8 items-center rounded-md border border-border px-3 text-sm hover:bg-muted/40"
+          >
+            返回控制台
+          </Link>
+          <a
+            href={CONTACT_ADMIN_HREF}
+            data-testid={`${testid}-contact`}
+            className="inline-flex h-8 items-center rounded-md border border-border px-3 text-sm hover:bg-muted/40"
+          >
+            联系管理员
+          </a>
+        </div>
       </CardContent>
     </Card>
   );
@@ -132,7 +162,7 @@ function Detail({ state, onClose, onRetry }: { state: DetailState; onClose: () =
         ) : state.k === "error" ? (
           <div className="space-y-2" role="alert">
             <p className="text-sm">{state.message}</p>
-            <p className="break-all font-mono text-xs text-muted-foreground">请求编号 {state.requestId ?? "未提供"}</p>
+            <p className="break-all text-xs text-muted-foreground">{requestIdText(state.requestId)}</p>
             {state.status !== 403 && state.status !== 404 ? (
               <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />}>重试</Button>
             ) : null}
@@ -300,13 +330,25 @@ export function RunsModulePage() {
     return { failed, running };
   }, [list.rows]);
 
+  // QA V4-R4 条目1: 没有成功取到数就没有「0」。只有请求成功且确认为空才允许硬零。
+  const countsUnknown = list.phase === "loading" || list.phase === "error" || list.phase === "denied";
+  const countsUnreadable = list.phase === "error" || list.phase === "denied";
+
   const retry = useCallback(() => setTick((n) => n + 1), []);
 
   return (
     <div className="min-w-0 space-y-4" data-testid="runs-page">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="flex items-center gap-2 font-mondwest text-2xl font-semibold"><Activity className="h-5 w-5" />运行</h1>
+          {/* QA V4-R4 条目3: 面包屑 — 模块内没有既有惯例，按壳内分组（运营）与控制台入口内联。 */}
+          <nav aria-label="面包屑" className="text-xs text-muted-foreground" data-testid="runs-breadcrumb">
+            <Link to="/overview" className="underline decoration-dotted underline-offset-2 hover:text-foreground">运营</Link>
+            <span aria-hidden="true"> · </span>
+            <Link to="/overview" className="underline decoration-dotted underline-offset-2 hover:text-foreground">控制台</Link>
+            <span aria-hidden="true"> · </span>
+            <span aria-current="page">运行</span>
+          </nav>
+          <h1 className="mt-1 flex items-center gap-2 font-mondwest text-2xl font-semibold"><Activity className="h-5 w-5" />运行</h1>
           <p className="mt-1 text-sm text-muted-foreground">按时间看运行；失败原因只在详情里给，不用颜色代替事实。</p>
         </div>
         <Button
@@ -321,7 +363,14 @@ export function RunsModulePage() {
       </header>
 
       <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm" data-testid="runs-summary">
-        <span data-testid="status">本页 {list.rows.length} 次 · 失败 {counts.failed} · 运行中 {counts.running}</span>
+        <span data-testid="status">
+          本页 {countsUnknown ? "—" : list.rows.length} 次 · 失败 {countsUnknown ? "—" : counts.failed} · 运行中 {countsUnknown ? "—" : counts.running}
+        </span>
+        {countsUnreadable ? (
+          <span data-testid="runs-summary-caveat" className="text-xs text-muted-foreground">
+            {list.phase === "denied" ? "暂时读不到运行数据（没有查看权限）" : "暂时读不到运行数据（接口不可达）"}，数字不作零处理
+          </span>
+        ) : null}
         <span data-testid="next-action">下一步：点一行看失败原因</span>
         <span data-testid="owner">负责人：运行所属员工</span>
       </div>

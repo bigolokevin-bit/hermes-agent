@@ -3,13 +3,15 @@
  *
  * The denied body is deliberately ONE body: 403 and 404 say the same sentence,
  * and no row is ever drawn above it. The error body always carries the human
- * sentence, 「请求编号：…」 (or 「未提供」), a retry, and a 「详情」 disclosure that
+ * sentence, 「请求编号：…」 (or the 「未记录编号」 fallback line since V4-R4),
+ * a retry, and a 「详情」 disclosure that
  * is the only place raw technical lines appear.
  *
  * `data-fixture` marks a state that came from the shell's `?state=` repro, so a
  * reviewer can tell it apart from an answer the service actually gave.
  */
 import { useState, type ReactNode } from "react";
+import { Link } from "react-router";
 import { ChevronDown, ChevronUp, Inbox, RefreshCw, ShieldAlert, TriangleAlert } from "lucide-react";
 
 import { Button } from "@nous-research/ui/ui/components/button";
@@ -25,6 +27,35 @@ interface Marked {
 
 const fixtureAttr = (fixture: string | undefined): { "data-fixture"?: string } =>
   fixture ? { "data-fixture": fixture } : {};
+
+/**
+ * QA V4-R4 条目2: 零结果与错误面板都要有真出口。壳与页脚没有既有联系入口
+ * （grep：src/shell 内 0 个 mailto/联系），所以给带注释的 mailto 缺省，
+ * 不是死链。运维给出真实地址后替换此常量。
+ */
+const CONTACT_ADMIN_HREF = "mailto:workspace-admin@hermes.local?subject=Hermes%20%E6%8E%A7%E5%88%B6%E5%8F%B0%E9%97%AE%E9%A2%98%E5%8F%8D%E9%A6%88";
+
+/** The exit row shared by the zero-result and denied panels: a real route home. */
+function PanelExits({ testId }: { testId: string }): ReactNode {
+  return (
+    <div className="flex min-w-0 flex-wrap items-center justify-center gap-2" data-testid={testId}>
+      <Link
+        to="/overview"
+        data-testid={`${testId}-back`}
+        className="inline-flex h-8 items-center rounded-md border border-border px-3 text-sm hover:bg-muted/40"
+      >
+        返回控制台
+      </Link>
+      <a
+        href={CONTACT_ADMIN_HREF}
+        data-testid={`${testId}-contact`}
+        className="inline-flex h-8 items-center rounded-md border border-border px-3 text-sm hover:bg-muted/40"
+      >
+        联系管理员
+      </a>
+    </div>
+  );
+}
 
 /** The only place engineering values reach the screen: collapsed until clicked. */
 export function DetailsDisclosure({
@@ -88,6 +119,7 @@ export function EmptyPanel({
         <Button size="sm" outlined onClick={onRefresh} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
           刷新
         </Button>
+        <PanelExits testId={`${testId}-exits`} />
       </CardContent>
     </Card>
   );
@@ -142,6 +174,7 @@ export function DeniedPanel({ failure, fixture }: Marked & { failure: FailureCop
           需要处理审批时，请联系工作区管理员为你开通。
         </p>
         <p className="break-words text-xs text-muted-foreground">{requestIdLine(failure?.requestId ?? null)}</p>
+        <PanelExits testId="approvals-denied-exits" />
       </CardContent>
     </Card>
   );

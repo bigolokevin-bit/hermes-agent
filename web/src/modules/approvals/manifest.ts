@@ -16,7 +16,7 @@ const manifest: ModuleManifest = {
       group: 'approvals',
       icon: 'Inbox',
       reuse: () => import('./ApprovalsPendingModulePage').then((m) => ({ default: m.ApprovalsPendingModulePage })),
-      dataSource: '/api/approvals /api/approval?id=',
+      dataSource: '待处理审批列表与审批详情接口',
     },
     {
       id: 'history',
@@ -26,7 +26,7 @@ const manifest: ModuleManifest = {
       group: 'approvals',
       icon: 'History',
       reuse: () => import('./ApprovalsHistoryModulePage').then((m) => ({ default: m.ApprovalsHistoryModulePage })),
-      dataSource: '/api/approvals?status=（8 态）',
+      dataSource: '审批历史接口（八种状态）',
     },
   ],
 };

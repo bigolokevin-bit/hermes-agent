@@ -139,11 +139,29 @@ describe("pending queue states", () => {
     await waitFor(() => (document.body.textContent ?? "").includes("对外发送本周报表"), "rows painted");
   });
 
-  it("empty names the reason and the next step", async () => {
+  it("empty names the reason and the next step, and carries a real way out", async () => {
     await mount(async () => ({ items: [] }));
     expect(text()).toContain("现在没有需要你处理的申请");
     expect(text()).toContain("提出后立刻出现在这里");
     expect(buttonNamed("刷新")).toBeTruthy();
+    // QA V4-R4 条目2: 零结果面板必须有真出口，不许死链。
+    const back = document.querySelector("[data-testid='approvals-empty-exits-back']") as HTMLAnchorElement;
+    expect(back?.getAttribute("href")).toBe("/overview");
+    expect(back?.textContent).toContain("返回控制台");
+    const contact = document.querySelector("[data-testid='approvals-empty-exits-contact']") as HTMLAnchorElement;
+    expect(contact?.getAttribute("href")).toMatch(/^mailto:/);
+    expect(contact?.textContent).toContain("联系管理员");
+  });
+
+  it("a failed read with no request id gives the copy-and-report fallback, never 「未提供」", async () => {
+    await mount(async (url) => {
+      throw new ApiError("down", { status: 0, body: "", url });
+    });
+    expect(text()).toContain("连不上审批服务");
+    expect(text()).toContain("本次请求未记录编号，可复制时间与操作路径反馈");
+    expect(text()).not.toContain("未提供");
+    // 失败时队列不给任何数字口径，不给假零。
+    expect(text()).not.toContain("共 0 条");
   });
 
   it("an unreadable answer is a failure, not an empty queue", async () => {
@@ -399,7 +417,8 @@ describe("the ?state= repro switch (web/src/shell/fixtures.ts)", () => {
 
     await forcedMount("error");
     expect(document.querySelector("[data-fixture='error']")).toBeTruthy();
-    expect(text()).toContain("请求编号：未提供");
+    expect(text()).toContain("本次请求未记录编号，可复制时间与操作路径反馈");
+    expect(text()).not.toContain("未提供");
 
     await forcedMount("denied");
     expect(document.querySelector("[data-fixture='denied']")).toBeTruthy();

@@ -16,7 +16,7 @@ const manifest: ModuleManifest = {
       group: 'identity',
       icon: 'Users',
       reuse: () => import('../people/PeopleModulePage'),
-      dataSource: '毕升 /api/v1/user/*（GAP-02）；缺→待核实',
+      dataSource: '人员目录来自统一用户体系（接口对接核实中）',
     },
     {
       id: 'departments',
@@ -26,7 +26,7 @@ const manifest: ModuleManifest = {
       group: 'identity',
       icon: 'Building2',
       reuse: () => import('../org/OrgModulePage'),
-      dataSource: '毕升 getDepartmentApi（GAP-02）',
+      dataSource: '组织架构数据（接口对接核实中）',
     },
     {
       id: 'roles',
@@ -35,7 +35,7 @@ const manifest: ModuleManifest = {
       kind: 'planned',
       group: 'identity',
       icon: 'ShieldCheck',
-      dataSource: '毕升 /api/role/*（GAP-02）',
+      dataSource: '角色与权限数据（接口对接核实中）',
     },
   ],
 };

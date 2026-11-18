@@ -19,7 +19,7 @@ const manifest: ModuleManifest = {
       group: 'work',
       icon: 'SquareKanban',
       reuse: () => import('../tasks/TasksBoardModulePage'),
-      dataSource: '/api/tasks /api/task-detail',
+      dataSource: '任务列表与任务详情接口',
     },
     {
       id: 'runs',
@@ -30,7 +30,7 @@ const manifest: ModuleManifest = {
       group: 'work',
       icon: 'Activity',
       reuse: () => import('../runs/RunsModulePage').then((m) => ({ default: m.RunsModulePage })),
-      dataSource: '/api/runs /api/run-detail /api/run-events',
+      dataSource: '运行记录、运行详情与运行事件接口',
     },
   ],
 };

@@ -3,7 +3,7 @@
  *
  * The surface never shows an HTTP code, a wire field name or a raw body: those
  * live in `technical`, which only the 「详情」 disclosure and `title` attributes
- * carry. A missing request id stays 「未提供」 — it is never invented.
+ * carry. A missing request id names the fallback action — it is never invented.
  */
 import { errorMessage } from "@/lib/api-error";
 import { humanSentence } from "./model";
@@ -53,5 +53,7 @@ export function writeFailure(
   return { sentence, requestId: info.requestId, technical: info.technical };
 }
 
-/** The request-id line, shared by every panel so the wording never drifts. */
-export const requestIdLine = (id: string | null): string => `请求编号：${id ?? "未提供"}`;
+/** The request-id line, shared by every panel so the wording never drifts.
+ * QA V4-R4 条目5: a missing id names the fallback action instead of 「未提供」. */
+export const requestIdLine = (id: string | null): string =>
+  id ? `请求编号：${id}` : "本次请求未记录编号，可复制时间与操作路径反馈";

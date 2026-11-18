@@ -16,7 +16,7 @@ const manifest: ModuleManifest = {
       kind: 'planned',
       group: 'knowledge',
       icon: 'Library',
-      dataSource: 'knowledge registration（GAP-03）→诚实空态',
+      dataSource: '知识空间登记（读取接口未开放，显示诚实空态）',
     },
     {
       id: 'sources',
@@ -25,7 +25,7 @@ const manifest: ModuleManifest = {
       kind: 'planned',
       group: 'knowledge',
       icon: 'Database',
-      dataSource: '无端点（GAP-03）',
+      dataSource: '数据源管理（尚无读取接口）',
     },
     {
       id: 'evidence',
@@ -35,7 +35,7 @@ const manifest: ModuleManifest = {
       group: 'knowledge',
       icon: 'Quote',
       reuse: () => import('../evidence/EvidenceModulePage').then((m) => ({ default: m.EvidenceModulePage })),
-      dataSource: '/api/run-events citations + /api/audit',
+      dataSource: '运行事件引用与审计接口',
     },
   ],
 };

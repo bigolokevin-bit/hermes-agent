@@ -10,10 +10,12 @@
  *     (VIEW_ALIAS) + 14 tab-level compat (TAB_ALIAS) + 5 module-level compat
  *     (ALIAS rows with no sub-tab mapping: metrics/sessions/org/access/audit).
  *   - Appendix A.2 (L323-337): the 23 redirect-only forms (4 roots
+ *       [+1 '/matrix' row added by R4 item 3 — deviation, see REDIRECTS])
  *     #/cron #/skills #/models #/channels + 19 sub-tab aliases: skills-7
  *     including the tools→tools cross-tab, models-7, channels-5).
  *     Redirect-only means: NEVER enters navigation.
- *   Total address forms: 51 + 23 = 74 (crawl-routes.mjs coverage baseline).
+ *   Total address forms: 51 + 24 = 75 (R4 item-3 matrix row; crawl baseline
+ *   was 74 — lane D refreshes crawl-routes.mjs coverage).
  *   - Section 3 (L27-55): the 22 visible tab labels (中文), routes, data
  *     sources; +1 hidden detail pane = 23 data-tabname entries.
  *   - Section 7 (L122-129) alignment contract notes:
@@ -127,56 +129,56 @@ export const ZONE_ALIAS: Readonly<Record<string, DetailZone>> = {
 export const CONSOLE_TABS: readonly ConsoleRoute[] = [
   // #1 duty 值班台 — NEW (skeleton:1840-2035); GAP-01: four-gate aggregate
   // endpoint does not exist; front-end aggregates, each gate labels source.
-  { hash: '#/overview', path: '/overview', module: 'overview', tabId: 'duty', kind: 'tab', visible: true, label: '值班台', dataSource: 'employees/run-stats/budget-usage/approval-stats 聚合（GAP-01）', planned: true },
+  { hash: '#/overview', path: '/overview', module: 'overview', tabId: 'duty', kind: 'tab', visible: true, label: '值班台', dataSource: '员工、用量、预算与审批数据汇总（聚合接口建设中）', planned: true },
   // #2 usage 用量与成本 — reuse Hermes AnalyticsPage; ledger is the only
   // money source; estimates must be labelled 预估.
   { hash: '#/overview?tab=usage', path: '/overview', module: 'overview', tabId: 'usage', kind: 'tab', visible: true, label: '用量与成本', dataSource: 'hermes-usage/budget-usage（ledger 唯一金额源）', tab: 'usage' },
   // #3 list 列表 — ported fork EmployeesPage (already at /employees).
-  { hash: '#/employees', path: '/employees', module: 'employees', tabId: 'list', kind: 'tab', visible: true, label: '列表', dataSource: '/api/matrix（D 补）→回落 /api/employees' },
+  { hash: '#/employees', path: '/employees', module: 'employees', tabId: 'list', kind: 'tab', visible: true, label: '列表', dataSource: '员工与能力矩阵接口（读取失败时回落员工列表）' },
   // #4 matrix 能力与权限 — NEW (skeleton:2315-2384); fixture gate BOUNDARY-12.
-  { hash: '#/employees?tab=matrix', path: '/employees', module: 'employees', tabId: 'matrix', kind: 'tab', visible: true, label: '能力与权限', dataSource: '/api/matrix→domain /v1/matrix/employees', tab: 'matrix' },
+  { hash: '#/employees?tab=matrix', path: '/employees', module: 'employees', tabId: 'matrix', kind: 'tab', visible: true, label: '能力与权限', dataSource: '员工能力矩阵接口', tab: 'matrix' },
   // #5 board 任务 — V2 TasksListPage (真源); done never rolls back.
-  { hash: '#/work', path: '/work', module: 'work', tabId: 'board', kind: 'tab', visible: true, label: '任务', dataSource: '/api/tasks /api/task-detail' },
+  { hash: '#/work', path: '/work', module: 'work', tabId: 'board', kind: 'tab', visible: true, label: '任务', dataSource: '任务列表与任务详情接口' },
   // #6 runs 运行 — V2 RunDetailPage + fork RunsPage; missing cost renders —.
-  { hash: '#/work?tab=runs', path: '/work', module: 'work', tabId: 'runs', kind: 'tab', visible: true, label: '运行', dataSource: '/api/runs /api/run-detail /api/run-events', tab: 'runs' },
+  { hash: '#/work?tab=runs', path: '/work', module: 'work', tabId: 'runs', kind: 'tab', visible: true, label: '运行', dataSource: '运行记录、运行详情与运行事件接口', tab: 'runs' },
   // #7 pending 待处理 — ported fork ApprovalsPage; decision write is live.
-  { hash: '#/approvals', path: '/approvals', module: 'approvals', tabId: 'pending', kind: 'tab', visible: true, label: '待处理', dataSource: '/api/approvals /api/approval?id=' },
+  { hash: '#/approvals', path: '/approvals', module: 'approvals', tabId: 'pending', kind: 'tab', visible: true, label: '待处理', dataSource: '待处理审批列表与审批详情接口' },
   // #8 history 历史决策 — NEW; same endpoint pure projection (8 states).
-  { hash: '#/approvals?tab=history', path: '/approvals', module: 'approvals', tabId: 'history', kind: 'tab', visible: true, label: '历史决策', dataSource: '/api/approvals?status=（8 态）', tab: 'history' },
+  { hash: '#/approvals?tab=history', path: '/approvals', module: 'approvals', tabId: 'history', kind: 'tab', visible: true, label: '历史决策', dataSource: '审批历史接口（八种状态）', tab: 'history' },
   // #9 people 人员目录 — GAP-02: 毕升 endpoints unverified → 待核实.
-  { hash: '#/identity', path: '/identity', module: 'identity', tabId: 'people', kind: 'tab', visible: true, label: '人员目录', dataSource: '毕升 /api/v1/user/*（GAP-02）；缺→待核实', planned: true },
+  { hash: '#/identity', path: '/identity', module: 'identity', tabId: 'people', kind: 'tab', visible: true, label: '人员目录', dataSource: '人员目录来自统一用户体系（接口对接核实中）', planned: true },
   // #10 departments 组织与部门 — GAP-02.
-  { hash: '#/identity?tab=departments', path: '/identity', module: 'identity', tabId: 'departments', kind: 'tab', visible: true, label: '组织与部门', dataSource: '毕升 getDepartmentApi（GAP-02）', tab: 'departments', planned: true },
+  { hash: '#/identity?tab=departments', path: '/identity', module: 'identity', tabId: 'departments', kind: 'tab', visible: true, label: '组织与部门', dataSource: '组织架构数据（接口对接核实中）', tab: 'departments', planned: true },
   // #11 roles 角色与权限 — GAP-02; write entry never renders (SET-01).
-  { hash: '#/identity?tab=roles', path: '/identity', module: 'identity', tabId: 'roles', kind: 'tab', visible: true, label: '角色与权限', dataSource: '毕升 /api/role/*（GAP-02）', tab: 'roles', planned: true },
+  { hash: '#/identity?tab=roles', path: '/identity', module: 'identity', tabId: 'roles', kind: 'tab', visible: true, label: '角色与权限', dataSource: '角色与权限数据（接口对接核实中）', tab: 'roles', planned: true },
   // #12 spaces 知识空间 — GAP-03: honest empty state; FilesPage must NOT
   // enter (BOUNDARY-09), while App.tsx already mounts upstream KnowledgePage
   // at /knowledge — path collision, stage 2 arbitrates precedence.
-  { hash: '#/knowledge', path: '/knowledge', module: 'knowledge', tabId: 'spaces', kind: 'tab', visible: true, label: '知识空间', dataSource: 'knowledge registration（GAP-03）→诚实空态', planned: true, conflict: "existing App route '/knowledge' renders upstream KnowledgePage/FilesPage; PRD BOUNDARY-09 says FilesPage 不进 — stage 2 decides precedence" },
+  { hash: '#/knowledge', path: '/knowledge', module: 'knowledge', tabId: 'spaces', kind: 'tab', visible: true, label: '知识空间', dataSource: '知识空间登记（读取接口未开放，显示诚实空态）', planned: true, conflict: "existing App route '/knowledge' renders upstream KnowledgePage/FilesPage; PRD BOUNDARY-09 says FilesPage 不进 — stage 2 decides precedence" },
   // #13 sources 数据源 — GAP-03: no endpoint; test/sync disabled.
-  { hash: '#/knowledge?tab=sources', path: '/knowledge', module: 'knowledge', tabId: 'sources', kind: 'tab', visible: true, label: '数据源', dataSource: '无端点（GAP-03）', tab: 'sources', planned: true },
+  { hash: '#/knowledge?tab=sources', path: '/knowledge', module: 'knowledge', tabId: 'sources', kind: 'tab', visible: true, label: '数据源', dataSource: '数据源管理（尚无读取接口）', tab: 'sources', planned: true },
   // #14 evidence 证据与引用 — NEW; NO_EVIDENCE rows explicit, no fallback.
-  { hash: '#/knowledge?tab=evidence', path: '/knowledge', module: 'knowledge', tabId: 'evidence', kind: 'tab', visible: true, label: '证据与引用', dataSource: '/api/run-events citations + /api/audit', tab: 'evidence' },
+  { hash: '#/knowledge?tab=evidence', path: '/knowledge', module: 'knowledge', tabId: 'evidence', kind: 'tab', visible: true, label: '证据与引用', dataSource: '运行事件引用与审计接口', tab: 'evidence' },
   // #15 skills 技能 — Hermes SkillsPage 整块; toggle is profile-level.
-  { hash: '#/capabilities', path: '/capabilities', module: 'capabilities', tabId: 'skills', kind: 'tab', visible: true, label: '技能', dataSource: '/api/skills /api/skills/<id>（已活）' },
+  { hash: '#/capabilities', path: '/capabilities', module: 'capabilities', tabId: 'skills', kind: 'tab', visible: true, label: '技能', dataSource: '技能列表与技能详情接口' },
   // #16 tools 工具与 MCP — Hermes McpPage 整块; CRUD disabled.
-  { hash: '#/capabilities?tab=tools', path: '/capabilities', module: 'capabilities', tabId: 'tools', kind: 'tab', visible: true, label: '工具与 MCP', dataSource: 'Hermes /api/mcp/servers（原生面）', tab: 'tools' },
+  { hash: '#/capabilities?tab=tools', path: '/capabilities', module: 'capabilities', tabId: 'tools', kind: 'tab', visible: true, label: '工具与 MCP', dataSource: '工具与 MCP 服务（上游原生页面）', tab: 'tools' },
   // #17 models 模型与单价 — Hermes ModelsPage; ledger amounts authoritative;
   // roView 403.
-  { hash: '#/capabilities?tab=models', path: '/capabilities', module: 'capabilities', tabId: 'models', kind: 'tab', visible: true, label: '模型与单价', dataSource: 'Hermes /api/model/options + SEAKOI_MODEL_PRICING_FILE；金额以 ledger 为准', tab: 'models' },
+  { hash: '#/capabilities?tab=models', path: '/capabilities', module: 'capabilities', tabId: 'models', kind: 'tab', visible: true, label: '模型与单价', dataSource: '模型选项与单价（金额以计费台账为准）', tab: 'models' },
   // #18 channels 平台接入 — Hermes ChannelsPage 整块; zero per-agent
   // fields (BOUNDARY-07).
-  { hash: '#/capabilities?tab=channels', path: '/capabilities', module: 'capabilities', tabId: 'channels', kind: 'tab', visible: true, label: '平台接入', dataSource: 'Hermes /api/platforms（原生）', tab: 'channels' },
+  { hash: '#/capabilities?tab=channels', path: '/capabilities', module: 'capabilities', tabId: 'channels', kind: 'tab', visible: true, label: '平台接入', dataSource: '平台接入（上游原生页面）', tab: 'channels' },
   // #19 health 系统健康 — real probes only; unknown ≠ healthy.
-  { hash: '#/system', path: '/system', module: 'system', tabId: 'health', kind: 'tab', visible: true, label: '系统健康', dataSource: '/api/hermes-summary + BFF/domain 真探针' },
+  { hash: '#/system', path: '/system', module: 'system', tabId: 'health', kind: 'tab', visible: true, label: '系统健康', dataSource: '系统摘要与真实连通性探针' },
   // #20 defaults 默认设置 — zero write entries (SET-01); roView 403;
   // CR-M2-02 baseline not landed → contract unfrozen.
-  { hash: '#/system?tab=defaults', path: '/system', module: 'system', tabId: 'defaults', kind: 'tab', visible: true, label: '默认设置', dataSource: 'SET-01 基线（CR-M2-02 未落地）；运行时 /api/config schema 内', tab: 'defaults' },
+  { hash: '#/system?tab=defaults', path: '/system', module: 'system', tabId: 'defaults', kind: 'tab', visible: true, label: '默认设置', dataSource: '默认设置基线（配置接口尚未开放）', tab: 'defaults' },
   // #21 version 版本 — NEW minimal; build-injected info only.
   { hash: '#/system?tab=version', path: '/system', module: 'system', tabId: 'version', kind: 'tab', visible: true, label: '版本', dataSource: '构建产物注入', tab: 'version' },
   // #22 events 审计事件 — 毕升 LogPage contract + V2 AuditListPage;
   // never leak tokens.
-  { hash: '#/system?tab=events', path: '/system', module: 'system', tabId: 'events', kind: 'tab', visible: true, label: '审计事件', dataSource: '/api/audit /api/audit-detail /api/audit-verify', tab: 'events' },
+  { hash: '#/system?tab=events', path: '/system', module: 'system', tabId: 'events', kind: 'tab', visible: true, label: '审计事件', dataSource: '审计事件、审计详情与校验接口', tab: 'events' },
 ];
 
 /**
@@ -285,6 +287,11 @@ export interface ConsoleRedirect {
 }
 
 export const REDIRECTS: readonly ConsoleRedirect[] = [
+  // R4 fix-order item 3 (deviation from PRD A.2's 23 rows, recorded): QA
+  // probed '/matrix' and found NOHOST — matrix is a tab of employees, so it
+  // gets a redirect-only row of its own (redirect forms 23→24, total 75;
+  // ROUTE_TABLE stays 51, assert-ia routes count unaffected).
+  { from: { hash: '#/matrix', path: '/matrix' }, to: { hash: '#/employees?tab=matrix', path: '/employees', tab: 'matrix' } },
   // 4 module roots. All four paths currently serve bare upstream pages in
   // App.tsx; the shell plan mounts those pages INSIDE the capabilities panes
   // (§3 整块 reuse), so the redirect-vs-page precedence is a stage-2 call.
@@ -416,7 +423,8 @@ for (const redirect of REDIRECTS) {
   REDIRECT_INDEX.set(pathKey(redirect.from), redirect);
 }
 
-/** Resolve one of the 23 appendix A.2 redirect-only forms to its canonical
+/** Resolve one of the appendix A.2 redirect-only forms (23 + matrix row = 24)
+ *  to its canonical
  * target hash. Accepts '#/…', '/…', or '/…?tab=…' spellings. Returns null
  * for anything that is not redirect-only. */
 export function resolveRedirect(location: string): string | null {
@@ -542,7 +550,7 @@ const countsOk =
   kindCount('view') === 5 &&
   kindCount('compat-tab') === 14 &&
   kindCount('compat-module') === 5 &&
-  REDIRECTS.length === 23 &&
+  REDIRECTS.length === 24 &&
   CONSOLE_MODULES.length === 8;
 if (!countsOk) {
   throw new Error(
@@ -550,6 +558,6 @@ if (!countsOk) {
       `visible=${CONSOLE_TABS.length} (want 22) tabnames=${TABNAME_ENTRIES.length} (want 23) ` +
       `detail=${kindCount('detail-zone')}/5 view=${kindCount('view')}/5 ` +
       `compatTab=${kindCount('compat-tab')}/14 compatModule=${kindCount('compat-module')}/5 ` +
-      `redirects=${REDIRECTS.length}/23 modules=${CONSOLE_MODULES.length}/8`,
+      `redirects=${REDIRECTS.length}/24 modules=${CONSOLE_MODULES.length}/8`,
   );
 }

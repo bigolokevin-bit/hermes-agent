@@ -18,7 +18,7 @@ const manifest: ModuleManifest = {
       group: 'capabilities',
       icon: 'Sparkles',
       reuse: () => import('../skills/SkillsPage').then((m) => ({ default: m.SkillsPage })),
-      dataSource: '/api/skills /api/skills/<id>（已活）',
+      dataSource: '技能列表与技能详情接口',
     },
     {
       id: 'tools',
@@ -28,7 +28,7 @@ const manifest: ModuleManifest = {
       group: 'capabilities',
       icon: 'Wrench',
       reuse: () => import('../tools/ToolsPage').then((m) => ({ default: m.ToolsPage })),
-      dataSource: 'Hermes /api/mcp/servers（原生面）',
+      dataSource: '工具与 MCP 服务（上游原生页面）',
     },
     {
       id: 'models',
@@ -38,7 +38,7 @@ const manifest: ModuleManifest = {
       group: 'capabilities',
       icon: 'Cpu',
       reuse: () => import('../models/ModelsModulePage').then((m) => ({ default: m.ModelsModulePage })),
-      dataSource: 'Hermes /api/model/options + SEAKOI_MODEL_PRICING_FILE；金额以 ledger 为准',
+      dataSource: '模型选项与单价（金额以计费台账为准）',
     },
     {
       id: 'channels',
@@ -47,7 +47,7 @@ const manifest: ModuleManifest = {
       kind: 'planned',
       group: 'capabilities',
       icon: 'Radio',
-      dataSource: 'Hermes /api/platforms（原生）',
+      dataSource: '平台接入（上游原生页面）',
     },
   ],
 };

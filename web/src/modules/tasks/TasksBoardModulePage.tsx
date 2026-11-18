@@ -6,7 +6,7 @@
  * did not confirm. Missing values render "—"; unknown states stay unknown.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { AlertTriangle, Inbox, RefreshCw, ShieldAlert, X } from "lucide-react";
 
 import { Badge } from "@nous-research/ui/ui/components/badge";
@@ -42,6 +42,18 @@ type DetailState =
   | { k: "loading"; id: string }
   | { k: "ready"; id: string; data: TaskDetail }
   | { k: "error"; id: string; status: number; message: string; requestId: string | null };
+
+/**
+ * QA V4-R4 条目2: 错误面板要有真出口。壳与页脚没有既有联系入口（grep：
+ * src/shell 内 0 个 mailto/联系），所以给带注释的 mailto 缺省，不是死链。
+ * 运维给出真实地址后替换此常量。
+ */
+const CONTACT_ADMIN_HREF = "mailto:workspace-admin@hermes.local?subject=Hermes%20%E6%8E%A7%E5%88%B6%E5%8F%B0%E9%97%AE%E9%A2%98%E5%8F%8D%E9%A6%88";
+
+/** QA V4-R4 条目5: 缺编号时给可执行的话术，不写「未提供」。 */
+function requestIdText(id: string | null): string {
+  return id ? `请求编号 ${id}` : "本次请求未记录编号，可复制时间与操作路径反馈";
+}
 
 function BoardSkeleton() {
   return (
@@ -105,9 +117,7 @@ function TaskDetailCard({
         ) : state.k === "error" ? (
           <div className="space-y-2" role="alert">
             <p className="text-sm">{state.message}</p>
-            <p className="break-all font-mono text-xs text-muted-foreground">
-              请求编号 {state.requestId ?? "未提供"}
-            </p>
+            <p className="break-words text-xs text-muted-foreground">{requestIdText(state.requestId)}</p>
             {state.status !== 403 && state.status !== 404 ? (
               <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
                 重试
@@ -225,6 +235,11 @@ export function TasksBoardModulePage() {
     return { open, blocked };
   }, [grouped]);
 
+  // QA V4-R4 条目1: 取数失败或还在加载时，汇总不给硬零——只有请求成功且
+  // 数据确为空才允许显示 0。
+  const countsUnknown = board.phase === "loading" || board.phase === "error" || board.phase === "denied";
+  const countsUnreadable = board.phase === "error" || board.phase === "denied";
+
   const retry = useCallback(() => {
     setTick((n) => n + 1);
   }, []);
@@ -251,8 +266,13 @@ export function TasksBoardModulePage() {
 
       <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm" data-testid="tasks-board-summary">
         <span data-testid="status">
-          待处理 <b>{counts.open}</b> · 阻塞 <b>{counts.blocked}</b>
+          待处理 <b>{countsUnknown ? "—" : counts.open}</b> · 阻塞 <b>{countsUnknown ? "—" : counts.blocked}</b>
         </span>
+        {countsUnreadable ? (
+          <span data-testid="tasks-summary-caveat" className="text-xs text-muted-foreground">
+            {board.phase === "denied" ? "暂时读不到任务数据（没有查看权限）" : "暂时读不到任务数据（接口不可达）"}，数字不作零处理
+          </span>
+        ) : null}
         <span data-testid="next-action">下一步：处理阻塞任务</span>
         <span data-testid="owner">负责人：任务指派对象</span>
       </div>
@@ -291,15 +311,30 @@ export function TasksBoardModulePage() {
                 {board.phase === "denied" ? "任务看板暂不可见" : "任务没能加载出来"}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">{board.message}</p>
-              <p className="mt-2 break-all font-mono text-xs text-muted-foreground">
-                请求编号 {board.requestId ?? "未提供"}
-              </p>
+              <p className="mt-2 break-words text-xs text-muted-foreground">{requestIdText(board.requestId)}</p>
             </div>
-            {board.phase === "error" ? (
-              <Button size="sm" outlined onClick={retry} prefix={<RefreshCw className="h-4 w-4" />}>
-                重试
-              </Button>
-            ) : null}
+            <div className="flex flex-wrap items-center gap-2">
+              {board.phase === "error" ? (
+                <Button size="sm" outlined onClick={retry} prefix={<RefreshCw className="h-4 w-4" />}>
+                  重试
+                </Button>
+              ) : null}
+              {/* QA V4-R4 条目2: 真出口 — hash 壳内 react-router 路由可达。 */}
+              <Link
+                to="/overview"
+                data-testid="tasks-board-back"
+                className="inline-flex h-8 items-center rounded-md border border-border px-3 text-sm hover:bg-muted/40"
+              >
+                返回控制台
+              </Link>
+              <a
+                href={CONTACT_ADMIN_HREF}
+                data-testid="tasks-board-contact"
+                className="inline-flex h-8 items-center rounded-md border border-border px-3 text-sm hover:bg-muted/40"
+              >
+                联系管理员
+              </a>
+            </div>
           </CardContent>
         </Card>
       ) : null}

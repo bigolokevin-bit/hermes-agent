@@ -73,7 +73,8 @@ describe("ConsoleModulePage pane contract", () => {
     const pane = container.querySelector(".pane");
     expect(pane?.getAttribute("data-tabname")).toBe("值班台");
     expect(pane?.getAttribute("data-tab")).toBe("duty");
-    expect(pane?.getAttribute("data-src")).toContain("GAP-01");
+    // R4 item 4: dataSource surfaces human copy; internal GAP ids stay in code comments.
+    expect(pane?.getAttribute("data-src")).toContain("聚合接口建设中");
     expect(pane?.getAttribute("data-state")).toBe("empty");
     const planned = pane?.querySelector("[data-planned]");
     expect(planned).toBeTruthy();
@@ -118,7 +119,8 @@ describe("ConsoleModulePage pane contract", () => {
     const pane = container.querySelector(".pane");
     expect(pane?.getAttribute("data-state")).toBe("denied");
     expect(pane?.textContent).toContain("403");
-    expect(pane?.textContent).toMatch(/req_[0-9a-f]{8}/);
+    // R4 item 5: no fabricated req_ ids — honest no-trace copy instead.
+    expect(pane?.textContent).toContain("本次请求未记录编号");
     expect(pane?.textContent).toContain("只读审计员视角");
   });
 

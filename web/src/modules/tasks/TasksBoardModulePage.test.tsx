@@ -132,4 +132,32 @@ describe("TasksBoardModulePage", () => {
     expect(container.textContent).toContain("重试");
     expect(container.textContent).not.toContain("HTTP");
   });
+
+  it("never shows hard zeros when the board cannot load: — plus reason line and real exits", async () => {
+    fetchJSON.mockImplementation((url: string) =>
+      Promise.reject(new ApiError("down", { status: 0, body: "", url })),
+    );
+    await render();
+    const text = container.textContent ?? "";
+    // 假零整改：失败时是「—」，不是「待处理 0 / 阻塞 0」；附原因行。
+    expect(text).toContain("待处理 — · 阻塞 —");
+    expect(text).not.toContain("待处理 0");
+    expect(text).not.toContain("阻塞 0");
+    expect(text).toContain("暂时读不到任务数据（接口不可达），数字不作零处理");
+    // 错误面板真出口。
+    const err = container.querySelector('[data-testid="tasks-board-error"]');
+    expect(err?.querySelector('a[href="/overview"]')?.textContent).toContain("返回控制台");
+    expect(err?.querySelector('a[href^="mailto:"]')?.textContent).toContain("联系管理员");
+    // 请求编号话术。
+    expect(text).toContain("本次请求未记录编号，可复制时间与操作路径反馈");
+    expect(text).not.toContain("未提供");
+  });
+
+  it("a successful read with no tasks still shows zero, honestly", async () => {
+    fetchJSON.mockImplementation(() => Promise.resolve({ items: [] }));
+    await render();
+    expect(container.textContent).toContain("待处理 0 · 阻塞 0");
+    expect(container.querySelector('[data-testid="tasks-board-empty"]')).toBeTruthy();
+    expect(container.textContent).not.toContain("数字不作零处理");
+  });
 });

@@ -140,6 +140,11 @@ describe("the eight states", () => {
     await pick("superseded");
     expect(text()).toContain("「已被新单替代」状态下没有记录");
     expect(text()).toContain("换一个结果看看");
+    // QA V4-R4 条目2: 零结果面板必须有真出口，不许死链。
+    const back = document.querySelector("[data-testid='approvals-history-empty-exits-back']") as HTMLAnchorElement;
+    expect(back?.getAttribute("href")).toBe("/overview");
+    const contact = document.querySelector("[data-testid='approvals-history-empty-exits-contact']") as HTMLAnchorElement;
+    expect(contact?.getAttribute("href")).toMatch(/^mailto:/);
   });
 
   it("opens from the URL with the state already chosen", async () => {
@@ -231,7 +236,8 @@ describe("history whole-panel states", () => {
     await open("empty");
     expect(text()).toContain("状态下没有记录");
     await open("error");
-    expect(text()).toContain("请求编号：未提供");
+    expect(text()).toContain("本次请求未记录编号，可复制时间与操作路径反馈");
+    expect(text()).not.toContain("未提供");
     await open("denied");
     expect(document.querySelector("[data-fixture='denied']")).toBeTruthy();
     expect(document.querySelectorAll("[data-testid^='approval-row-']")).toHaveLength(0);

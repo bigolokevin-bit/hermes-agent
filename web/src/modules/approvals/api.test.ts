@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 
 import { decisionUrl, detailUrl, failureInfo, isDenied, listUrl } from "./api";
-import { readFailure, writeFailure } from "./copy";
+import { readFailure, requestIdLine, writeFailure } from "./copy";
 import {
   approvalDetailFrom,
   approvalsPageFrom,
@@ -65,12 +65,15 @@ describe("failure copy keeps the trace id and hides the wire", () => {
     expect(write.sentence).not.toMatch(/503|HTTP/);
   });
 
-  it("says 未提供 when the answer carried no id, and never invents one", async () => {
+  it("keeps the request id null when the answer carried none, and never invents one", async () => {
     const { ApiError } = await import("@/lib/api-error");
     const err = new ApiError("no", { status: 403, body: "", url: listUrl("pending", null) });
     const info = failureInfo(err);
     expect(info.requestId).toBeNull();
     expect(writeFailure(err, "reject", info).requestId).toBeNull();
+    // QA V4-R4 条目5: the line a person reads when there is no id.
+    expect(requestIdLine(null)).toBe("本次请求未记录编号，可复制时间与操作路径反馈");
+    expect(requestIdLine("x-1")).toBe("请求编号：x-1");
   });
 
   it("a refused decision names what happened, not the code", () => {

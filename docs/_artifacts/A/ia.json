@@ -1,7 +1,7 @@
 {
   "routes": 51,
-  "redirectForms": 23,
-  "totalForms": 74,
+  "redirectForms": 24,
+  "totalForms": 75,
   "visibleTabs": 22,
   "tabnames": 23,
   "hiddenDetail": 1,
@@ -134,5 +134,21 @@
     "manifests8": "overview/employees/work/approvals/identity/knowledge/capabilities/system — reuse loaders now for duty,usage,list,matrix,board,runs,pending,history,people,departments,evidence,skills,tools,models,health; planned: spaces,sources,defaults,version,events,channels,history? no (history reuse)",
     "liveWiring": "App.tsx swapped 10 console live panes to module pages (usage=UsageConsolePage people/org/evidence/cap skills-tools-models/health/approvals pending+history); list keeps upstream EmployeesPage; probe serves detail via T18 EmployeeDetailModulePage",
     "gates": "assert-ia react ok:true 51/22/1/8 badCode=[]; pnpm --filter web build EXIT=0 (2.92s); vitest 97 files/728 tests PASS; live :9119 probe 10 swapped tabs paneState=ready planned=0 (raw /T/laneA-wave2-probe.js.out)"
+  },
+  "stage5": {
+    "card": "R4 P0 fix order (V4 branch-layer BRANCH-FAIL), 2026-11-19 ~01:39",
+    "redirectDeviation": "REDIRECTS 23->24: added #/matrix -> #/employees?tab=matrix (QA NOHOST defect, item 3). ROUTE_TABLE stays 51, assert-ia routes=51 unaffected. crawl-routes baseline 74->75 forms (lane D refresh needed).",
+    "items": {
+      "3-landing": "App.tsx RootRedirect + UnknownRouteFallback Navigate /sessions -> /overview; Route /matrix -> redirect /employees?tab=matrix",
+      "3-workbench": "no standalone nav entry exists; console.tsx ZONE_LABELS workbench=工作台 inside hidden detail pane = L0 ruling compliant (evidence-only)",
+      "5-shell": "console.tsx fabricated req_ removed; NO_TRACE_COPY=本次请求未记录编号，可复制时间与操作路径反馈 in StateBlock error/denied + AuditorDeniedBlock; console.test.tsx assert updated",
+      "2-modules": "fixer lane: runs/tasks fake zeros -> 「—」+原因, error panels real exits (Link /overview + mailto CONTACT_ADMIN_HREF), approvals PanelExits, runs breadcrumb 运营 · 控制台 · 运行; vitest 3 modules 5 files/61 green",
+      "4-sweep": "jargon 39 replacements (毕升//api/v1/user/*/GAP-0x/knowledge registration/SET-01/CR-M2-02/（8 态）/（已活）/（原生面）/SEAKOI_MODEL_PRICING_FILE -> plain Chinese) across shell/routes.ts + 8 group manifests; console.test data-src assert updated; module-tail text + capability English errors + sidebar bilingual = fixer A/C lanes"
+    },
+    "gates": {
+      "build": "EXIT 0 built 2.90s entry assets/index-1yqr2leR.js",
+      "vitest-shell": "3 files 27/27",
+      "assert-ia-react": "ok:true routes=51 tabs=22 chatHosts=1 modules=8 badCode=[]"
+    }
   }
 }

@@ -372,3 +372,7 @@ live re-probe :9119 duty/board/runs/matrix/list panes data-state=ready plannedCo
 test contracts updated: console.test detail pair (probe serves pane, T40 host in ChatModulePage), audit manifest.test (not a registry manifest)
 pnpm --filter web build EXIT=0 built 2.92s; vitest 97/97 files 728/728 tests; assert-ia react {"ok":true,routes:51,tabs:22,chatHosts:1,modules:8}
 live re-probe :9119: usage/identity x2/evidence/capabilities x3/approvals x2/system = 10/10 data-state=ready planned=0
+
+[r4-stage-1a 01:39] items 2/3/4-shell/5-shell landed (fixer B modules + orchestrator App/shell)
+REDIRECTS 23->24 (#/matrix row); assert-ia react ok:true routes=51 tabs=22 chatHosts=1 modules=8
+pnpm --filter web build EXIT=0 built 2.90s entry assets/index-1yqr2leR.js; vitest src/shell 27/27; vitest runs/tasks/approvals 5 files 61 green

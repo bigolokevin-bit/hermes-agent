@@ -155,4 +155,58 @@ describe("RunsModulePage", () => {
     expect(container.textContent).toContain("运行记录暂不可见");
     expect(container.textContent).toContain("req-404");
   });
+
+  it("shows a 运营 · 控制台 breadcrumb that routes to the console", async () => {
+    fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
+    await render();
+    const nav = container.querySelector('[data-testid="runs-breadcrumb"]');
+    expect(nav).toBeTruthy();
+    expect(nav?.textContent).toContain("运营");
+    expect(nav?.textContent).toContain("控制台");
+    expect(nav?.textContent).toContain("运行");
+    expect(nav?.querySelector('a[href="/overview"]')).toBeTruthy();
+  });
+
+  it("never shows hard zeros when the fetch fails: — plus reason line and real exits", async () => {
+    fetchJSON.mockImplementation((url: string) =>
+      Promise.reject(new ApiError("down", { status: 0, body: "", url })),
+    );
+    await render();
+    const text = container.textContent ?? "";
+    // 假零整改：失败时数字是「—」，不是 0；并附原因行。
+    expect(text).toContain("本页 — 次 · 失败 — · 运行中 —");
+    expect(text).not.toContain("0 次");
+    expect(text).not.toContain("失败 0");
+    expect(text).not.toContain("运行中 0");
+    expect(text).toContain("暂时读不到运行数据（接口不可达），数字不作零处理");
+    // 错误面板真出口：返回控制台（路由可达）+ 联系管理员（真实 href）。
+    const back = container.querySelector('[data-testid="runs-error-back"]') as HTMLAnchorElement;
+    expect(back?.getAttribute("href")).toBe("/overview");
+    const contact = container.querySelector('[data-testid="runs-error-contact"]') as HTMLAnchorElement;
+    expect(contact?.getAttribute("href")).toMatch(/^mailto:/);
+    expect(contact?.textContent).toContain("联系管理员");
+    // 请求编号话术：没有编号时给可执行说明，不再写「未提供」。
+    expect(text).toContain("本次请求未记录编号，可复制时间与操作路径反馈");
+    expect(text).not.toContain("未提供");
+  });
+
+  it("denied panel carries the same real exits", async () => {
+    fetchJSON.mockImplementation((url: string) =>
+      Promise.reject(new ApiError("gone", { status: 404, body: "{}", url, requestId: "req-404" })),
+    );
+    await render();
+    expect(container.querySelector('[data-testid="runs-denied-back"]')?.getAttribute("href")).toBe("/overview");
+    expect(container.querySelector('[data-testid="runs-denied-contact"]')?.getAttribute("href")).toMatch(/^mailto:/);
+    expect(container.textContent).toContain("暂时读不到运行数据（没有查看权限），数字不作零处理");
+    expect(container.textContent).not.toContain("0 次");
+  });
+
+  it("an empty result after a successful read still shows zero, honestly", async () => {
+    fetchJSON.mockImplementation((url: string) =>
+      url.includes("/api/runs") ? Promise.resolve({ items: [] }) : Promise.resolve(ok(url)),
+    );
+    await render();
+    expect(container.textContent).toContain("本页 0 次 · 失败 0 · 运行中 0");
+    expect(container.textContent).not.toContain("数字不作零处理");
+  });
 });

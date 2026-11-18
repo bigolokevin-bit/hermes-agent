@@ -193,7 +193,9 @@ function RouteFallback({ label = "Loading…" }: { label?: string }) {
 }
 
 function RootRedirect() {
-  return <Navigate to="/sessions" replace />;
+  // R4 item 3: default landing is the console overview (值班台), not the
+  // English upstream /sessions page. The /sessions route itself stays.
+  return <Navigate to="/overview" replace />;
 }
 
 function UnknownRouteFallback({ pluginsLoading }: { pluginsLoading: boolean }) {
@@ -201,7 +203,9 @@ function UnknownRouteFallback({ pluginsLoading }: { pluginsLoading: boolean }) {
     // Render nothing during the plugin-load window — a spinner here would just flash.
     return null;
   }
-  return <Navigate to="/sessions" replace />;
+  // R4 item 3: unknown paths fall back to /overview (PRD §7 negative case);
+  // previously they landed on /sessions, an all-English upstream page.
+  return <Navigate to="/overview" replace />;
 }
 
 type NavGroupKey = "operations" | "governance" | "runtime" | "system";
@@ -1151,6 +1155,13 @@ export default function App() {
                             live={{ evidence: <EvidenceConsolePage /> }}
                           />
                         }
+                      />
+                      {/* R4 item 3: '/matrix' was NOHOST — it is the matrix
+                          tab of the employees module, so it redirects there
+                          (mirrors the '#/matrix' REDIRECTS row in routes.ts). */}
+                      <Route
+                        path="/matrix"
+                        element={<Navigate to="/employees?tab=matrix" replace />}
                       />
                       <Route
                         path="/capabilities"

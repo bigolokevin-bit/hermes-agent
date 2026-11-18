@@ -17,7 +17,7 @@ const manifest: ModuleManifest = {
       group: 'employees',
       icon: 'UserRound',
       reuse: () => import('./EmployeesModulePage').then((m) => ({ default: m.EmployeesModulePage })),
-      dataSource: '/api/matrix（D 补）→回落 /api/employees',
+      dataSource: '员工与能力矩阵接口（读取失败时回落员工列表）',
     },
     {
       id: 'matrix',
@@ -27,7 +27,7 @@ const manifest: ModuleManifest = {
       group: 'employees',
       icon: 'Grid3x3',
       reuse: () => import('../matrix/MatrixModulePage').then((m) => ({ default: m.MatrixModulePage })),
-      dataSource: '/api/matrix→domain /v1/matrix/employees（fixture 门 BOUNDARY-12）',
+      dataSource: '员工能力矩阵接口（fixture 门 BOUNDARY-12）',
     },
   ],
 };

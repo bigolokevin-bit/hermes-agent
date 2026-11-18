@@ -131,19 +131,12 @@ const shellStyle = {
   color: "var(--fg)",
 } as const;
 
-/** One request-ref per mount for the honest 403/error blocks — labelled as
- * a front-end placeholder, never presented as a real backend correlation id. */
-function requestRef(): string {
-  const rand =
-    typeof globalThis.crypto !== "undefined" &&
-    typeof globalThis.crypto.randomUUID === "function"
-      ? globalThis.crypto.randomUUID().replace(/-/g, "").slice(0, 8)
-      : String(Date.now() % 0xffffffff).padStart(8, "0");
-  return `req_${rand}`;
-}
+/* R4 item 5: the shell has no backend trace id to show in forced states —
+ * a fabricated req_xxxx placeholder was worse than none. Honest wording
+ * replaces it everywhere (真实 trace-id 由数据层透出时另行渲染). */
+const NO_TRACE_COPY = "本次请求未记录编号，可复制时间与操作路径反馈";
 
 function StateBlock({ state }: { state: PaneForced }) {
-  const ref = useMemo(() => requestRef(), []);
   const frame = {
     className: "flex min-h-[12rem] flex-col items-center justify-center gap-2 p-5 text-sm",
     style: shellStyle,
@@ -172,8 +165,8 @@ function StateBlock({ state }: { state: PaneForced }) {
     return (
       <div role="status" aria-live="polite" {...frame}>
         <span style={{ color: "var(--bad)" }}>加载失败</span>
-        <span className="font-mono text-xs" style={{ color: "var(--fg-3)" }}>
-          {ref}（前端占位请求号）
+        <span className="text-xs" style={{ color: "var(--fg-3)" }}>
+          {NO_TRACE_COPY}
         </span>
         <span className="text-xs" style={{ color: "var(--fg-3)" }}>
           强制态：?state=error
@@ -185,8 +178,8 @@ function StateBlock({ state }: { state: PaneForced }) {
     <div role="status" aria-live="polite" {...frame}>
       <span className="font-mono text-lg">403</span>
       <span>无权限或未开放（403 与 404 同一整页文案）</span>
-      <span className="font-mono text-xs" style={{ color: "var(--fg-3)" }}>
-        {ref}（前端占位请求号）
+      <span className="text-xs" style={{ color: "var(--fg-3)" }}>
+        {NO_TRACE_COPY}
       </span>
       <span className="text-xs" style={{ color: "var(--fg-3)" }}>
         强制态：?state=denied
@@ -198,7 +191,6 @@ function StateBlock({ state }: { state: PaneForced }) {
 /** roView auditor view: whole-page 403 + 请求号 (§7 全局; skeleton
  * L7692-7700). 403 and 404 share one body (§8.1-3). */
 function AuditorDeniedBlock() {
-  const ref = useMemo(() => requestRef(), []);
   return (
     <div
       role="status"
@@ -209,8 +201,8 @@ function AuditorDeniedBlock() {
     >
       <span className="font-mono text-2xl">403</span>
       <span>无权访问 · 只读审计员视角</span>
-      <span className="font-mono text-xs" style={{ color: "var(--fg-3)" }}>
-        {ref} · 只读审计员视角 · 前端占位请求号
+      <span className="text-xs" style={{ color: "var(--fg-3)" }}>
+        {NO_TRACE_COPY} · 只读审计员视角
       </span>
       <span className="text-xs" style={{ color: "var(--fg-3)" }}>
         审计员（roView）不可进入 defaults/models 的写入面；退出视角请移除 ?roview=1。
