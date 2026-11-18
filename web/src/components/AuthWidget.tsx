@@ -47,7 +47,7 @@ export function AuthWidget({ className }: AuthWidgetProps) {
   const { t } = useI18n();
   const [me, setMe] = useState<AuthMeResponse | null>(null);
   const [hidden, setHidden] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -72,7 +72,7 @@ export function AuthWidget({ className }: AuthWidgetProps) {
           setHidden(true);
           return;
         }
-        setError(t.app.auth?.statusUnavailable ?? "auth status unavailable");
+        setError(true);
       });
     return () => {
       cancelled = true;
@@ -89,7 +89,7 @@ export function AuthWidget({ className }: AuthWidgetProps) {
           className,
         )}
       >
-        {error}
+        {t.app.auth?.statusUnavailable ?? "auth status unavailable"}
       </div>
     );
   }
