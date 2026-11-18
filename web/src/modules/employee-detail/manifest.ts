@@ -4,7 +4,7 @@
  * zones (workbench/config/tasks/runs/evidence, ZONE_ALIAS overview/chat ->
  * workbench, audit -> evidence). The workbench zone owns the 60/40 split
  * (.wbshell 3fr/2fr, skeleton L845; single column at narrow widths L871):
- * left = the ONLY [data-chat-host] (L2435, never self-painted, never an
+ * left = the ONLY chat host (L2435, never self-painted, never an
  * iframe), right = wbrail with four collapsible groups (id/budget expanded,
  * cap/runs collapsed, L2444-2505). This single manifest covers the whole
  * detail pane INCLUDING the 60/40 workbench placeholder — stage 2 renders

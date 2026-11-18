@@ -232,26 +232,13 @@ function ChatRouteSink() {
 }
 
 /**
- * The single `[data-chat-host]` element in the console shell (PRD §7 工作台:
- * left column of the 60/40 workbench is the ONLY chat host). It wraps the
- * lane-Chat module page, which lazy-mounts the upstream ChatPage as its
- * runtime and gates it behind the employee guard (zero /api/pty calls until
- * bound). The element lives in App.tsx on purpose: the assert-ia react scan
- * counts host markers under shell/ and modules/ only, where the chat module
- * page's own mount is the single counted host — this wrapper adds the DOM
- * attribute without double-counting.
+ * Thin route wrapper for the chat module. The chat host marker lives inside
+ * ChatModulePage, which lazy-mounts the upstream ChatPage and gates it behind
+ * the employee guard (zero /api/pty calls until bound). Keeping the marker
+ * there makes the module the one and only host.
  */
 function ConsoleChatMount({ employeeId }: { employeeId: string }) {
-  return (
-    <div
-      data-chat-host
-      data-profile={employeeId}
-      data-scope="employee"
-      className="flex min-h-0 flex-1 flex-col"
-    >
-      <ChatModulePage employeeId={employeeId} />
-    </div>
-  );
+  return <ChatModulePage employeeId={employeeId} />;
 }
 
 const BUILTIN_NAV_REST: NavItem[] = [

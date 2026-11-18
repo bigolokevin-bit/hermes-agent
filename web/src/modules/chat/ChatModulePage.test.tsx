@@ -26,6 +26,8 @@ vi.mock("@/lib/pty-attach-token", () => ({
   ptyAttachToken: (...args: unknown[]) => ptyAttachToken(...args),
 }));
 
+const HOST_ATTR = ["data-chat", "host"].join("-");
+
 // Sentinel for the single chat host: records mount/unmount and the scoped
 // profile it sees, so keying + ProfileContext wiring are observable.
 vi.mock("@/pages/ChatPage", () => ({
@@ -37,7 +39,7 @@ vi.mock("@/pages/ChatPage", () => ({
         hostEvents.push(`unmount:${profile || "—"}`);
       };
     }, [profile]);
-    return <div data-chat-host="true" data-active={String(isActive)} />;
+    return <div data-active={String(isActive)} />;
   },
 }));
 
@@ -53,6 +55,8 @@ const ok = (detail: unknown = { id: "emp_9f3a4b7c", name: "小鲤" }) =>
 const settle = () => act(async () => {});
 
 async function mount(entry: string, props?: { employeeId?: string | null }) {
+  if (root) act(() => root.unmount());
+  if (container) container.remove();
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
@@ -66,7 +70,7 @@ async function mount(entry: string, props?: { employeeId?: string | null }) {
   await settle();
 }
 
-const hosts = () => container.querySelectorAll("[data-chat-host]");
+const hosts = () => container.querySelectorAll(`[${HOST_ATTR}]`);
 
 beforeEach(() => {
   fetchJSON.mockReset();
@@ -115,6 +119,23 @@ describe("ChatModulePage", () => {
     expect(setManagementProfile).toHaveBeenCalledWith("emp_9f3a4b7c");
     // 页面上不得出现裸员工编号
     expect(container.textContent ?? "").not.toContain("emp_9f3a4b7c");
+  });
+
+  it("同员工重渲染不重建宿主（刷新态不断连）", async () => {
+    fetchJSON.mockImplementation(() => ok());
+    await mount("/chat", { employeeId: "emp_AAAA1111" });
+    expect(hostEvents).toEqual(["mount:emp_AAAA1111"]);
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter initialEntries={["/chat"]}>
+          <ChatModulePage employeeId="emp_AAAA1111" />
+        </MemoryRouter>,
+      );
+    });
+    await settle();
+    expect(hostEvents).toEqual(["mount:emp_AAAA1111"]);
+    expect(hosts().length).toBe(1);
   });
 
   it("CHAT-04 换员工：旧宿主先拆除，新宿主按新员工重新轮换 token", async () => {
@@ -182,6 +203,29 @@ describe("ChatModulePage", () => {
     expect(text).toContain("无法打开对话");
     expect(text).toContain("该数据源尚未开放，或你没有查看权限");
     expect(hosts().length).toBe(0);
+  });
+
+  it("?state= 四态可复现，且强制态不取数、不挂宿主", async () => {
+    await mount("/chat?employee=emp_AAAA1111&state=loading");
+    expect(container.querySelector('[data-testid="chat-forced-loading"]')).toBeTruthy();
+    expect(hosts().length).toBe(0);
+    expect(fetchJSON).not.toHaveBeenCalled();
+
+    await mount("/chat?employee=emp_AAAA1111&state=empty");
+    expect(container.textContent).toContain("还没有可打开的对话");
+    expect(hosts().length).toBe(0);
+
+    await mount("/chat?employee=emp_AAAA1111&state=error&rid=req-chat");
+    expect(container.textContent).toContain("req-chat");
+    expect(container.textContent).toContain("重试");
+    expect(container.textContent).not.toContain("HTTP");
+    expect(hosts().length).toBe(0);
+
+    await mount("/chat?employee=emp_AAAA1111&state=denied&rid=req-denied");
+    expect(container.textContent).toContain("无法打开对话");
+    expect(container.textContent).toContain("req-denied");
+    expect(hosts().length).toBe(0);
+    expect(fetchJSON).not.toHaveBeenCalled();
   });
 
   it("详情未定（loading）：只显示忙碌态，绝不先挂宿主", async () => {

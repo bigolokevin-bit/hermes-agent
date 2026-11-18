@@ -160,3 +160,65 @@ $ cd web && pnpm exec vitest run src/modules/runs
   若要跳 Hermes 运行时原生详情，需要新增上游 UI 路由（不在本车道写域）。
 - ④ 仍是禁用态：BFF 没有 `POST /runs` 写路由；等 D 打开后才可真正新建 Run。
 - 截图使用临时 dev preview + mock 200，preview 文件已删除；真实 BFF 200 未取。
+
+---
+
+# T40 — 对话宿主接入（唯一 chat host）
+
+- Host marker moved into `web/src/modules/chat/ChatModulePage.tsx`; the App wrapper no longer
+  carries a second marker. Literal-count gate:
+
+```bash
+$ grep -rc "data-chat-host" web/src | grep -v ':0'
+web/src/modules/chat/ChatModulePage.tsx:1
+```
+
+- No self-drawn bubbles / second chat UI: the module still lazy-mounts the upstream `ChatPage`;
+  session list/create/resume remain the upstream component's job.
+- Sessions list now calls the BFF: `api.getSessions` targets `/agent-api/api/sessions` (BFF maps
+  `profile` and creates the profile on first chat). Session messages/PTY resume stay on the upstream
+  runtime because the BFF exposes no message/PTY route.
+- `?state=loading|empty|error|denied` is reproducible without fetching or mounting the host; error and
+  denied carry a request id (`rid`) and retry where retry can help.
+- Empty state now has a real binding guide link to `/employees`.
+- Same-employee rerender keeps the host mounted (no disconnect); switching employee unmounts the old
+  host before rotating the attach token (CHAT-04 test).
+
+## T40 commands + raw output
+
+```bash
+$ cd web && pnpm exec vitest run src/modules/chat
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+```
+
+```bash
+$ PATH="/opt/homebrew/bin:$PATH" pnpm --filter web build
+✓ built in 2.13s
+built /Users/kevin_studio/Projects/forks/console-work/hermes_cli/web_dist/index.html
+# EXIT: 0
+```
+
+```bash
+# Chrome CDP, forced empty state:
+{"w":1440,"h":900,"sw":1440,"bw":1440,"hosts":0}
+{"w":375,"h":812,"sw":375,"bw":375,"hosts":0}
+ERRORS:0
+# ready-state module test asserts exactly 1 host marker.
+```
+
+## T40 screenshots
+
+- `docs/_artifacts/work/shots/t40-1440.png`
+- `docs/_artifacts/work/shots/t40-375.png`
+
+## T40 honest gaps / cross-file wiring
+
+- Unique-marker acceptance required three minimal edits outside `modules/chat`: remove the duplicate
+  marker wrapper in `App.tsx`, de-literalize comments in `shell/console.tsx` +
+  `modules/employee-detail/{EmployeeDetailWorkbench,manifest}.tsx`, and point `lib/api.ts:getSessions`
+  at the BFF. No routes/registry/tokens/package.json changed.
+- Chat UI is still the upstream `ChatPage`; this lane does not own its internal session-switch close
+  behavior beyond keying the host by employee id.
+- Live bound-chat 200/WS was not exercised (no runtime token in worktree); screenshots use the forced
+  empty state. 1440/375 overflow and console-error-zero are measured on that state.

@@ -436,7 +436,7 @@ export const api = {
     const options = normalizeSessionQueryOptions(profileOrOptions, order);
     return fetchJSON<PaginatedSessions>(
       appendSessionFilters(
-        `/api/sessions?limit=${limit}&offset=${offset}&order=${options.order ?? order}`,
+        `/agent-api/api/sessions?limit=${limit}&offset=${offset}&order=${options.order ?? order}`,
         options,
       ),
     );
