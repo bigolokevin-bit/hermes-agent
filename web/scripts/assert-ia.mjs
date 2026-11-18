@@ -28,8 +28,17 @@
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { execSync } from 'node:child_process';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+// 十轮三红收口（L0 02:45 卡②）：单文件单 JSON 产物内嵌代次与真实退出码。
+const HEAD_HASH = (() => {
+  try {
+    return execSync('git rev-parse --short HEAD', { cwd: ROOT, encoding: 'utf8' }).trim();
+  } catch {
+    return null;
+  }
+})();
 const HTML_PATH = path.join(ROOT, 'docs', 'console-v4-skeleton.html');
 
 // --- mode ------------------------------------------------------------------
@@ -111,6 +120,8 @@ const summary = {
   badCode,
   checks,
   ok: failed.length === 0,
+  headHash: HEAD_HASH,
+  exitCode: failed.length === 0 ? 0 : 1,
 };
 
 console.log(JSON.stringify(summary, null, 2));
@@ -382,12 +393,12 @@ function assertReactSource() {
         badCode,
         checks,
         ok,
+        headHash: HEAD_HASH,
+        exitCode: ok ? 0 : 1,
       },
       null,
       2,
     ),
   );
-  // compact digest line (same key style as the detailed summary above)
-  console.log(JSON.stringify({ ok, mode: 'react', routes, tabs, chatHosts: chat.hosts, modules, badCode, missing }));
   return ok ? 0 : 1;
 }

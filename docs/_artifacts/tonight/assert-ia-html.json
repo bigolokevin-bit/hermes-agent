@@ -41,5 +41,7 @@
       "expected": []
     }
   ],
-  "ok": true
+  "ok": true,
+  "headHash": "a655e02e",
+  "exitCode": 0
 }
