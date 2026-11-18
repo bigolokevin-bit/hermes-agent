@@ -68,3 +68,42 @@ pnpm lint      → ✖ 57 problems (0 errors, 57 warnings)
 pnpm typecheck → exit 0（无输出）
 pnpm build     → ✓ built in 2.13s · hermes_cli/web_dist/index.html
 ```
+
+## T25 证据与引用（`web/src/modules/evidence/`）
+
+DoD 自证（本模块，2026-11-19）：
+
+| 条目 | 结果 | 证据 |
+|---|---|---|
+| ① 引用列表消费 `/agent-api/*` | PASS | `EvidenceModulePage.tsx`：`// reuse: /v1/run-events/citations` 紧贴 `fetchJSON('/agent-api/api/run-events?kind=citation&limit=50')`；数据层 `evidence.ts` 亦带 `reuse: /v1/run-events/citations` |
+| ② 每条引用可点回原文 | PASS | 有站内 `href` → `<Link>打开原文</Link>`；无 href → 静态块「原文不可达」+ 具体原因（不渲染可点控件） |
+| ③ 缺失/未知 id 显「待核实」 | PASS | `data-gap="1"` + `evidence-gap-<id>` + GAP 小标；员工显示「姓名 · 8 位短码」，裸 id 只在 `title` |
+| ④ 四态真 + 请求号 + 403/404 同体 | PASS | `evidence-loading/-empty/-error/-denied`；error/denied 均带请求编号（缺失显「未提供」）与重试；403 与 404 文案同体 |
+| ⑤ 1440/375 无横溢 | PASS（结构） | 列表为 `ul.divide-y` 单列卡片，无固定宽表格；标题/摘要 `break-words` |
+| ⑥ fixture 带 `data-fixture` + GAP 号 | PASS | 根节点 `data-fixture="1"`、`Badge tone="warning">示例数据`、`evidence-fixture-note` 写明 `GAP-1：等 /api/run-events 与 /api/audit` |
+
+原始命令尾行（cwd `web/`）：
+
+```
+$ pnpm test
+Tests  558 passed (558)
+Duration  3.62s
+
+$ pnpm lint
+✖ 58 problems (0 errors, 58 warnings)
+
+$ pnpm typecheck   # tsc -b . --noEmit
+（无输出，exit 0）
+
+$ pnpm build
+✓ built in 2.30s
+built /Users/kevin_studio/Projects/forks/console-matrix/hermes_cli/web_dist/index.html
+```
+
+### 需 A 注册的路由清单（T25）
+
+- 模块：`web/src/modules/evidence`，manifest `module: 'evidence'`，tab `id: 'evidence'`，tab 名「证据与引用」
+- hash：`#/knowledge?tab=evidence`（`web/src/shell/routes.ts` 第 158–159 行已存在该行，`module: 'knowledge'`）
+- 现状：`App.tsx:1107` 的 `/knowledge` 渲染 `ConsoleModulePage module="knowledge"`，注册表按 module 过滤，因此 **`evidence` 模块当前不会被该路径拾取**
+- 需 A 二选一：①新增 `/evidence` 路由 + 侧栏入口指向 `#/knowledge?tab=evidence`（或 `#/evidence`）；②把 evidence 的 live 节点接入 knowledge 面板的 `evidence` tab（`ConsoleModulePage live` 参数）
+- 数据口未就绪时的降级：BFF 404 或不可达 → fixture + `data-fixture` 角标，接上后同一列表直接显示真实引用
