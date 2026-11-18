@@ -117,6 +117,13 @@ function HCard({
   );
 }
 
+function gateRoute(gate: GateView): string {
+  const text = `${gate.name}${gate.source}`;
+  if (text.includes("审批")) return "/approvals";
+  if (text.includes("运行")) return "/runs";
+  return "/employees";
+}
+
 function GateRow({ gate, narrowest }: { gate: GateView; narrowest: boolean }) {
   const unknown = gate.state === "unknown";
   return (
@@ -128,9 +135,9 @@ function GateRow({ gate, narrowest }: { gate: GateView; narrowest: boolean }) {
       <span className={cn("duty-gate-value", unknown && "is-unknown")}>
         {unknown ? "待核实" : `${dashed(gate.pass)} / ${dashed((gate.pass ?? 0) + (gate.fail ?? 0))}`}
       </span>
-      <span className="duty-gate-source" title={gate.source}>
+      <Link className="duty-gate-source" to={gateRoute(gate)} title={gate.source}>
         {gate.source}
-      </span>
+      </Link>
       <i
         className={cn("duty-dot", unknown ? "is-unknown" : gate.state === "pass" ? "is-ok" : "is-warn")}
         title={unknown ? "证据源缺失，暂不计入可上岗人数" : gate.state === "pass" ? "通过" : `${gate.fail ?? "—"} 人未达`}
@@ -563,7 +570,7 @@ function HealthStrip({
       </div>
       <div className="duty-health-item">
         <span>账本</span>
-        <b>{cost.k === "error" || runs.k === "error" ? "待核实" : "已接入"}</b>
+        <b>{cost.k === "error" || runs.k === "error" ? "待核实（GAP-01）" : "已接入"}</b>
         <em>{cost.k === "error" ? "成本账本读取失败" : totals ? "只认账本实际金额" : "运行合计未返回"}</em>
       </div>
     </div>
@@ -572,6 +579,40 @@ function HealthStrip({
 
 export default function DutyPage() {
   const { data, reload, loading } = useDutyData();
+
+  const forced = (() => {
+    const match = window.location.hash.match(/[?&]state=([^&]+)/);
+    return match ? decodeURIComponent(match[1]) : "";
+  })();
+  if (forced === "loading") {
+    return (
+      <div className="duty-page" data-testid="duty-page">
+        <p className="duty-note">正在读取值班数据…</p>
+      </div>
+    );
+  }
+  if (forced === "empty") {
+    return (
+      <div className="duty-page" data-testid="duty-page">
+        <div className="duty-empty">
+          <p>当前没有可显示的值班数据。</p>
+          <p>数据源返回为空，可能尚未接入。</p>
+          <Link className="duty-link" to="/employees">去员工列表</Link>
+        </div>
+      </div>
+    );
+  }
+  if (forced === "error") {
+    return (
+      <div className="duty-page" data-testid="duty-page">
+        <div className="duty-empty">
+          <p>值班数据暂时不可用。</p>
+          <p>请求编号：未提供</p>
+          <Button outlined onClick={reload}>重试</Button>
+        </div>
+      </div>
+    );
+  }
   const totalEmployees =
     data.stats.k === "ready" ? lifecycleTotal(data.stats.data) : null;
 
