@@ -1,0 +1,249 @@
+// @vitest-environment jsdom
+import { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { MemoryRouter, Route, Routes } from "react-router";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ReactElement, ReactNode } from "react";
+
+vi.mock("@/lib/api", () => ({ fetchJSON: vi.fn() }));
+
+// @nous-research/ui ships .webp assets that node-sser vitest cannot load (no
+// existing suite in this repo ever imported it — T12 included). Stub the four
+// primitives with the DOM shapes the module relies on.
+vi.mock("@nous-research/ui", () => ({
+  Badge: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
+  Button: ({
+    children,
+    onClick,
+    ...rest
+  }: {
+    children?: ReactNode;
+    onClick?: () => void;
+    [k: string]: unknown;
+  }) => (
+    <button type="button" onClick={onClick} {...(rest as Record<string, never>)}>
+      {children}
+    </button>
+  ),
+  Card: ({ children, ...rest }: { children?: ReactNode; [k: string]: unknown }) => (
+    <div {...(rest as Record<string, never>)}>{children}</div>
+  ),
+  CardContent: ({ children, className }: { children?: ReactNode; className?: string }) => (
+    <div className={className}>{children}</div>
+  ),
+}));
+
+import { fetchJSON } from "@/lib/api";
+import { ApiError } from "@/lib/api-error";
+import EmployeeDetailModulePage from "@/modules/employee-detail/EmployeeDetailModulePage";
+
+let container: HTMLDivElement;
+let root: Root;
+(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+const EMP = "emp_A3F1B2C4D5E6";
+
+beforeEach(() => {
+  container = document.createElement("div");
+  document.body.appendChild(container);
+  root = createRoot(container);
+});
+
+afterEach(() => {
+  act(() => root.unmount());
+  container.remove();
+  vi.restoreAllMocks();
+  vi.clearAllMocks();
+});
+
+function mockApi(handler: (url: string) => Promise<unknown>) {
+  vi.mocked(fetchJSON).mockImplementation(((url: string) => handler(url)) as never);
+}
+
+const silent502 = (url: string, requestId = "req-default") =>
+  Promise.reject(new ApiError("服务暂时不可用。", { status: 502, body: "", url, requestId }));
+const missing = (url: string) =>
+  Promise.reject(new ApiError("not found", { status: 404, body: "", url }));
+const forbidden = (url: string) =>
+  Promise.reject(new ApiError("forbidden", { status: 403, body: "", url }));
+
+async function renderAt(element: ReactElement, entry: string) {
+  await act(async () => {
+    root.render(
+      <MemoryRouter initialEntries={[entry]}>
+        <Routes>
+          <Route path="/employees/:employeeId" element={element} />
+        </Routes>
+      </MemoryRouter>,
+    );
+  });
+  // flush the fetch promise chain
+  for (let i = 0; i < 4; i += 1) await act(async () => {});
+}
+
+const at = (zone?: string) =>
+  `/employees/${encodeURIComponent(EMP)}${zone ? `?zone=${zone}` : ""}`;
+
+const page = <EmployeeDetailModulePage employeeId={EMP} />;
+
+describe("EmployeeDetailModulePage — overview", () => {
+  it("loading: skeleton, no engineering text", async () => {
+    mockApi(() => new Promise(() => {}));
+    await renderAt(page, at());
+    expect(container.querySelector('[data-testid="emp-detail-overview-loading"]')).toBeTruthy();
+    expect(container.textContent).not.toMatch(/emp_|human:|undefined/);
+  });
+
+  it("ready from the employee detail endpoint: name · code, lifecycle badge", async () => {
+    mockApi((url) =>
+      url.includes(`/api/employees/${encodeURIComponent(EMP)}`)
+        ? Promise.resolve({ name: "小鲤", title: "客服专员", lifecycleState: "active", ownerUserId: "human:kevin", updatedAt: "2026-11-18T02:30:00Z" })
+        : silent502(url),
+    );
+    await renderAt(page, at());
+    const card = container.querySelector('[data-testid="emp-detail-overview"]');
+    expect(card?.textContent).toContain("小鲤 · A3F1B2C4");
+    expect(card?.textContent).toContain("在岗");
+    expect(card?.textContent).toContain("真人操作");
+    expect(card?.textContent).toContain("2026-11-18 10:30");
+    expect(card?.textContent).not.toContain(`emp_`);
+    expect(card?.querySelector("dd")?.getAttribute("title")).toBe(EMP);
+  });
+
+  it("detail 404 falls back to the matrix row before declaring missing", async () => {
+    mockApi((url) =>
+      url.includes(`/api/employees/`)
+        ? missing(url)
+        : url.includes("/api/matrix")
+          ? Promise.resolve({ items: [{ name: "阿澜", lifecycleState: "paused", risk: "medium" }] })
+          : silent502(url),
+    );
+    await renderAt(page, at());
+    const card = container.querySelector('[data-testid="emp-detail-overview"]');
+    expect(card?.textContent).toContain("阿澜");
+    expect(card?.textContent).toContain("已暂停");
+  });
+
+  it("error carries the plain sentence, request id, and a retry", async () => {
+    mockApi((url) => silent502(url, "req-77"));
+    await renderAt(page, at());
+    const err = container.querySelector('[data-testid="emp-detail-overview-error"]');
+    expect(err?.textContent).toContain("请求编号：req-77");
+    expect(err?.textContent).toContain("重试");
+    expect(err?.textContent).not.toMatch(/HTTP 502|ApiError/);
+  });
+
+  it("empty overview: cause shown, never a blank pane", async () => {
+    mockApi((url) => (url.includes("/api/employees/") ? Promise.resolve({}) : Promise.resolve({ items: [] })));
+    await renderAt(page, at());
+    const card = container.querySelector('[data-testid="emp-detail-overview-empty"]');
+    expect(card?.textContent).toContain("还没找到这位员工的档案");
+  });
+});
+
+describe("EmployeeDetailModulePage — capability (reuse: /v1/matrix/employees)", () => {
+  it("missing values render 待核实, never a fake 0", async () => {
+    mockApi((url) =>
+      url.includes("/api/matrix")
+        ? Promise.resolve({ items: [{ capabilities: ["数据查询", { name: "外呼" }], scope: "系统内置" }] })
+        : Promise.resolve({ items: [] }),
+    );
+    await renderAt(page, at("config"));
+    const card = container.querySelector('[data-testid="emp-detail-capability"]');
+    expect(card?.textContent).toContain("数据查询");
+    expect(card?.textContent).toContain("外呼");
+    expect(card?.textContent).toContain("待核实");
+    expect(card?.textContent).not.toMatch(/风险级别\s*0/);
+  });
+
+  it("403 → permission sentence, not a fake empty", async () => {
+    mockApi((url) => forbidden(url));
+    await renderAt(page, at("config"));
+    const denied = container.querySelector('[data-testid="emp-detail-capability-denied"]');
+    expect(denied?.textContent).toContain("你没有查看这块数据的权限");
+    expect(denied?.textContent).toContain("重试");
+  });
+
+  it("404 → honest not-connected state", async () => {
+    mockApi((url) => missing(url));
+    await renderAt(page, at("config"));
+    const denied = container.querySelector('[data-testid="emp-detail-capability-denied"]');
+    expect(denied?.textContent).toContain("还没接入");
+  });
+});
+
+describe("EmployeeDetailModulePage — approvals / runs / audit", () => {
+  it("approval rows link to the real approvals surface; raw task id stays in title", async () => {
+    mockApi((url) =>
+      url.includes("/api/approvals")
+        ? Promise.resolve({
+            items: [
+              { taskId: "task_9F3A1B2C3D", status: "pending", title: "预算上调", createdAt: "2026-11-18T04:00:00Z", amountUsd: 300 },
+            ],
+          })
+        : Promise.resolve({}),
+    );
+    await renderAt(page, at("tasks"));
+    const card = container.querySelector('[data-testid="emp-detail-approvals"]');
+    const link = card?.querySelector("a");
+    expect(link?.getAttribute("href")).toBe("/approvals");
+    expect(link?.getAttribute("title")).toBe("task_9F3A1B2C3D");
+    expect(card?.textContent).not.toContain("task_9F3A1B2C3D");
+    expect(card?.textContent).toContain("待审批");
+    expect(card?.textContent).toContain("2026-11-18 12:00");
+    expect(card?.textContent).toContain("$300.00");
+  });
+
+  it("runs: USD money, Beijing minute time, zero tokens stay 0", async () => {
+    mockApi((url) =>
+      url.includes("/api/runs")
+        ? Promise.resolve({
+            items: [{ runId: "run_X1Y2Z3", status: "completed", startedAt: "2026-11-18T16:30:00Z", costUsd: 2.5, totalTokens: 0 }],
+          })
+        : Promise.resolve({}),
+    );
+    await renderAt(page, at("runs"));
+    const card = container.querySelector('[data-testid="emp-detail-runs"]');
+    expect(card?.querySelector("a")?.getAttribute("href")).toBe("/runs");
+    expect(card?.textContent).toContain("$2.50");
+    expect(card?.textContent).toContain("2026-11-19 00:30");
+    expect(card?.textContent).toContain("已完成");
+    expect(card?.textContent).not.toContain("run_X1Y2Z3");
+  });
+
+  it("audit: actor codes are masked, action verbs become words", async () => {
+    mockApi((url) =>
+      url.includes("/api/audit")
+        ? Promise.resolve({
+            items: [{ createdAt: "2026-11-18T01:00:00Z", actor: "emp_B2C4D6E8F0", action: "budget.update", detail: "上调预算" }],
+          })
+        : Promise.resolve({}),
+    );
+    await renderAt(page, at("evidence"));
+    const card = container.querySelector('[data-testid="emp-detail-audit"]');
+    expect(card?.textContent).toContain("预算调整");
+    expect(card?.textContent).toContain("B2C4D6E8");
+    expect(card?.textContent).not.toContain("emp_B2C4D6E8F0");
+    expect(card?.querySelector('[title="emp_B2C4D6E8F0"]')).toBeTruthy();
+  });
+
+  it("approvals empty names the reason", async () => {
+    mockApi(() => Promise.resolve({ items: [] }));
+    await renderAt(page, at("tasks"));
+    const card = container.querySelector('[data-testid="emp-detail-approvals-empty"]');
+    expect(card?.textContent).toContain("还没有审批事项");
+  });
+});
+
+describe("EmployeeDetailModulePage — tabs", () => {
+  it("five tabs, shell-zone spellings, overview lands on the bare path", async () => {
+    mockApi(() => Promise.resolve({}));
+    await renderAt(page, at("tasks"));
+    const tabs = Array.from(container.querySelectorAll('[role="tab"]'));
+    expect(tabs.map((t) => t.textContent)).toEqual(["概览", "能力与权限", "审批", "运行", "审计"]);
+    expect(tabs[0]?.getAttribute("href")).toBe(`/employees/${encodeURIComponent(EMP)}`);
+    expect(tabs[1]?.getAttribute("href")).toContain("?zone=capability");
+    const active = tabs.find((t) => t.getAttribute("aria-selected") === "true");
+    expect(active?.textContent).toBe("审批");
+  });
+});
