@@ -122,5 +122,17 @@
     "liveWiring": "App.tsx lazy-imports DutyPage(#/overview duty), MatrixModulePage(#/employees?tab=matrix), TasksBoardModulePage(#/work board), RunsModulePage(#/work?tab=runs); list keeps upstream EmployeesPage; verified live on :9119 probe 00:19 — 5/5 panes data-state=ready plannedCount=0",
     "entry": "assets/index-CynjunXk.js",
     "gates": "pnpm --filter web build EXIT=0 (built 2.50s); vitest 84 files / 566 tests pass; 22/22 tab reachability re-run pass (docs/_artifacts/A/TAB-REACHABILITY.md prior batch)"
+  },
+  "stage4": {
+    "merged": "2026-11-19 wave-2 six branches --no-ff: employees 66e20355>bde11a9a, work cf51e6a4>30e285ea, duty 49a66ece>2abec922, matrix aa696273>e4c53cbd, caps 77dda983>fc194452, approvals 23f1cc31>c48cd64a (card tip d23f5538 is ancestor)",
+    "adjudications": [
+      "old per-page manifests (employee-detail x2 DU, duty DU) kept deleted, entries folded into IA-group manifests",
+      "tonight/lint-reuse.json conflict took theirs",
+      "T40 chat-host move into ChatModulePage accepted (App wrapper plain)",
+      "8 lane manifest.ts renamed tabNav.ts (registry stays 8 files); audit manifest.test last case rewritten to new law"
+    ],
+    "manifests8": "overview/employees/work/approvals/identity/knowledge/capabilities/system — reuse loaders now for duty,usage,list,matrix,board,runs,pending,history,people,departments,evidence,skills,tools,models,health; planned: spaces,sources,defaults,version,events,channels,history? no (history reuse)",
+    "liveWiring": "App.tsx swapped 10 console live panes to module pages (usage=UsageConsolePage people/org/evidence/cap skills-tools-models/health/approvals pending+history); list keeps upstream EmployeesPage; probe serves detail via T18 EmployeeDetailModulePage",
+    "gates": "assert-ia react ok:true 51/22/1/8 badCode=[]; pnpm --filter web build EXIT=0 (2.92s); vitest 97 files/728 tests PASS; live :9119 probe 10 swapped tabs paneState=ready planned=0 (raw /T/laneA-wave2-probe.js.out)"
   }
 }

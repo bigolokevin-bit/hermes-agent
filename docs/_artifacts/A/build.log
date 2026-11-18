@@ -367,3 +367,8 @@ pnpm --filter web build EXIT=0, entry assets/index-CynjunXk.js, built in 2.50s (
 assert-ia --source=react: {"ok":true,"routes":51,"tabs":22,"chatHosts":1,"modules":8,"badCode":[],"missing":[]}
 vitest 84 files/566 tests PASS
 live re-probe :9119 duty/board/runs/matrix/list panes data-state=ready plannedCount=0 (raw /T/laneA-wiring-probe.out)
+
+[wave-2 01:26] six merges bde11a9a/30e285ea/2abec922/e4c53cbd/fc194452/c48cd64a + manifest fold-in (8 tabNav renames) + App live swaps
+test contracts updated: console.test detail pair (probe serves pane, T40 host in ChatModulePage), audit manifest.test (not a registry manifest)
+pnpm --filter web build EXIT=0 built 2.92s; vitest 97/97 files 728/728 tests; assert-ia react {"ok":true,routes:51,tabs:22,chatHosts:1,modules:8}
+live re-probe :9119: usage/identity x2/evidence/capabilities x3/approvals x2/system = 10/10 data-state=ready planned=0
