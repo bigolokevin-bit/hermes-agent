@@ -1,6 +1,6 @@
 {
   "script": "lane-D gate ledger",
-  "head": "ef7e4916e74c9257e423caeacb9209cc85f2fd3a",
+  "head": "7698d12684fb434b1cf3419c8de7005ce709ffc6",
   "legs": [
     {
       "leg": "assert-ia-react",
@@ -81,6 +81,30 @@
         "contentChecked": 51,
         "contentEmpty": 0
       }
+    },
+    {
+      "leg": "vitest",
+      "cwd": "web/",
+      "command": "cd web/ && ./node_modules/.bin/vitest run",
+      "artifact": "docs/_artifacts/tonight/vitest.txt",
+      "exit": 0,
+      "digest": {
+        "testFiles": "84 passed (84)",
+        "tests": "566 passed (566)",
+        "durationS": 3.57
+      }
+    },
+    {
+      "leg": "pytest",
+      "cwd": "repo root",
+      "command": "pytest（上轮口径；本轮未复跑，见 provenance）",
+      "artifact": "docs/_artifacts/tonight/pytest.log",
+      "exit": 0,
+      "provenance": "carried: Nov 18 23:20 run, `321 passed in 8.41s` (pytest exit 0). Not re-executed at this head: bare python3 and .venv have no pytest module (verbatim: `/Users/kevin_studio/Projects/forks/hermes-agent/.venv/bin/python: No module named pytest`), and the canonical runner scripts/run_tests.sh re-syncs the full pm.testenv (34k-test suite) which is outside lane-D's write scope. Validity for this head: `git diff --stat c4f0029a..HEAD -- '*.py'` is empty — no Python file changed between the 23:20 run and ef7e4916/7698d126, so the carried exit is still the exit for this tree's Python code.",
+      "digest": {
+        "passed": 321,
+        "durationS": 8.41
+      }
     }
   ],
   "red": [],
@@ -89,11 +113,14 @@
     "assert-ia-html",
     "lint-fake-success",
     "lint-reuse",
-    "crawl-routes"
+    "crawl-routes",
+    "vitest",
+    "pytest (carried, provenance)"
   ],
   "exitCodeMethod": "each artifact ends with a literal `exit=N` line written by `; echo exit=$?` right after the command; pipeline tail statuses are never used",
   "notes": [
     "lint-reuse.json stays pure JSON (written by the script itself); its raw stdout + exit are in lint-reuse.stdout.txt.",
-    "crawl-routes content judgement is rendered (no <main> text exists in the served bytes: all 74 forms return 1 distinct HTML shell), so --no-render cannot pass the gate."
+    "crawl-routes content judgement is rendered (no <main> text exists in the served bytes: all 74 forms return 1 distinct HTML shell), so --no-render cannot pass the gate.",
+    "vitest.txt regenerated at 7698d126 (the previous snapshot was the 23:18 pre-merge run: 1 file / 7 tests; the suite is now 84 files / 566 tests). pytest row is carried, not re-executed — see its provenance field."
   ]
 }

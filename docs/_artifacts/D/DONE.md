@@ -441,3 +441,12 @@ L0 判词：只证「SPA 返回 200」不够。本轮把 crawl-routes 改成**�
 
 - 新增文件仅 `tonight/crawl.json`、`tonight/gates.exit.json`、`tonight/assert-ia-react.json`、`tonight/assert-ia-html.json`、`tonight/lint-fake.json` 与本节；脚本改动只在 `web/scripts/crawl-routes.mjs`（写域内）。
 - 本轮 lint 实跑：`web/node_modules/.bin/eslint scripts/crawl-routes.mjs scripts/lint-reuse.mjs` → **exit 0**（注：`web/../node_modules/.bin/eslint` 在本机是坏的入口，报 MODULE_NOT_FOUND，不是代码问题；用 web 本地 bin 才有效）。lefthook 的 `lint web` job glob 仍不含 `.mjs`，故钩子只会 skip——已在台账与回执标明，属 L0 的门禁配置项，我不改 `lefthook.yml`。
+
+## 阶段二补账：gates.exit.json 五门禁+pytest 行（2026-11-19 00:5x，第二 fixer 会话）
+
+7698d126（并行会话以本车道名义提交并推送的阶段二）落地后，本会话按 L0 00:08 口径补齐其台账缺口：`gates.exit.json` 原只列 assert-ia×2/lint-fake/lint-reuse/crawl 五件，缺 **vitest** 与 **pytest** 行（L0 明令「五门禁+pytest 行保留」）。
+
+- **crawl 独立复核**：本会话在 7698d126 的同内容脚本（`git diff HEAD -- web/scripts/crawl-routes.mjs` 为空）上重跑 `node scripts/crawl-routes.mjs --base http://127.0.0.1:9119`，**exit=0**，与已入库 crawl.json 逐键比对 `ok/routes/redirects/probed/uniqueHtmlShells/contentMethod/contentChecked/contentEmptyCount/routesRenderedWithoutMainEl/routesWithConsoleErrors/unresolvedParams/deadLinks/rootShell` **全部 MATCH**。两红判据真绿：deadLinks=0、contentEmpty=0。
+- **vitest 行（现跑）**：`cd web/ && ./node_modules/.bin/vitest run` → **exit=0**，`Test Files 84 passed (84) / Tests 566 passed (566)`，原始 stdout 覆盖 `tonight/vitest.txt`（末行 `exit=0`）。注：上一版 vitest.txt 是 23:18（合流前）的 1 文件/7 测试快照，已过时；首跑误用 `--reporter=basic`（vitest4 无此内建 reporter，exit=1）属仪器错误，已按默认 reporter 重跑取真码。
+- **pytest 行（carry，不假跑）**：`tonight/pytest.log`（Nov 18 23:20）`321 passed in 8.41s` → exit 0。本 head 未复跑：`.venv/bin/python -m pytest` 逐字报 `No module named pytest`（homebrew python3.15 同），canonical runner `scripts/run_tests.sh` 会全量同步 pm.testenv（34k 测试套件）超出本车道写域与本轮授权。有效性论证已写进 legs[].provenance：`git diff --stat c4f0029a..HEAD -- '*.py'` 为空，23:20 之后的提交（f0e85bd4/dab959ff/ef7e4916/7698d126）未触任何 .py，carry 的 exit 对本树 Python 仍成立。
+- 台账 head 字段更新为 7698d126；`green` 列全七件（pytest 标注 carried）。
