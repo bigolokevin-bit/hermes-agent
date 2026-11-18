@@ -10,6 +10,10 @@
  * detail pane INCLUDING the 60/40 workbench placeholder — stage 2 renders
  * the honest shell from this entry plus the zone rows in ROUTE_TABLE
  * (appendix A rows 23-27).
+ * T18 update: this directory now ships EmployeeDetailModulePage.tsx, which the
+ * bridge probe picks up and renders for every zone query. kind stays 'planned'
+ * deliberately — the page loads through the probe, not through this entry's
+ * kind flag; switching the flag would only churn the registry snapshot.
  */
 import type { ModuleManifest } from '../../shell/registry';
 
