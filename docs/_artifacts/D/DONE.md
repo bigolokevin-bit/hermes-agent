@@ -345,7 +345,9 @@ This worktree is shared with lanes A/B/C/E on the same branch. While lane D work
 接入用法（**文档形式，未改任何页面文件** —— `modules/`、`shell/`、`App.tsx` 均禁碰）：
 
 ```tsx
-const pane = usePaneData<{ items: Employee[] }>({ url: "/api/employees", params: { limit: 20 } });
+// PaneQuery 只有 url/itemsKey/ignoreForceState——参数先拼进 url（buildUrl 未导出，用 URLSearchParams）
+const url = `/api/employees?${new URLSearchParams({ limit: "20" }).toString()}`;
+const pane = usePaneData<{ items: Employee[] }>({ url });
 // pane.state: loading|empty|error|ready；pane.error.requestId 上屏；失败自动重试一次
 ```
 
