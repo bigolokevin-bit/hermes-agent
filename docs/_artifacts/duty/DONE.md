@@ -86,3 +86,31 @@ build_exit=0
 - 证据：`pnpm exec vitest run src/modules/duty/dutyPage.test.tsx` → 4 passed（1 file，855ms）；`pnpm build` → EXIT 0，`✓ built in 2.35s`，`hermes_cli/web_dist/index.html`。
 - 截图：`docs/_artifacts/duty/t10-close-1440.png` (72,249 B)、`t10-close-1280.png` (60,944 B)、`t10-close-375.png` (28,007 B)；静态服务 5433 HTTP 200。
 - 未测：截图取自静态构建、未接真实后端；真实四门读数、交互与明主题未复验；GAP-01（四门聚合端点）仍缺。
+
+## T10 五字段阻塞卡收口（2026-11-19）
+
+- 阻塞卡改为五字段：**阻塞对象 / 卡在哪一步 / 等谁 / 已等时长（北京时间到分） / 下一步动作**；缺项显示「—」。
+- 已等时长由 `waitingSince` 计算（失败运行取 `startedAt`、阻塞任务取 `updatedAt`、审批取 `createdAt`），展示「N 分钟/小时（YYYY-MM-DD HH:mm 起）」；时间不可解析时 `—`，不补 0。
+- 保留下一步动作与「去处理」真实去向：`/runs?status=failed`、`/tasks/:id`、`/approvals/:id`；来源标注仍在每门 `title` 中。
+- 四态保持：loading 骨架 / empty 带原因 / error 人话+请求号+重试 / denied 降级；403/404 同体。
+- T11 复核：金额仍只认 ledger `cost` 块，缺失/unknown 显「未计价」，真 0 仅 `$0.00`，无 `?? 0`。
+
+命令与原始结果：
+
+```
+cd web && PATH="/opt/homebrew/bin:$PATH" pnpm exec vitest run src/modules/duty/dutyPage.test.tsx
+Test Files  1 passed (1)
+     Tests  4 passed (4)
+  Duration  1.20s
+```
+
+```
+cd web && PATH="/opt/homebrew/bin:$PATH" pnpm build
+✓ built in 2.48s
+built /Users/kevin_studio/Projects/forks/console-duty/hermes_cli/web_dist/index.html
+build_exit=0
+```
+
+截图：`docs/_artifacts/duty/t10-fields-1280.png` (60,941 B)、`t10-fields-375.png` (28,007 B)；静态服务 5434 HTTP 200。
+
+未测：截图取自静态产物、未接真实后端；真实阻塞任务/审批数据列未取；375 主 CTA 首屏可见仅按截图目测。

@@ -368,18 +368,32 @@ function ActivityCard({ activity, onRetry }: { activity: Loadable<ActivityBody>;
   );
 }
 
+function waitLabel(since?: string): string {
+  if (!since) return "—";
+  const ms = Date.parse(since);
+  if (!Number.isFinite(ms)) return "—";
+  const pad = (n: number) => (n < 10 ? `0${n}` : String(n));
+  const d = new Date(ms + 480 * 60_000);
+  const mins = Math.max(0, Math.floor((Date.now() - ms) / 60_000));
+  const dur = mins < 60 ? `${mins} 分钟` : `${Math.floor(mins / 60)} 小时 ${mins % 60} 分钟`;
+  return `${dur}（${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} 起）`;
+}
+
 function BlockerRow({ item }: { item: BlockerItem }) {
   return (
     <li className="duty-blocker">
       <Badge tone={item.overSLA ? "destructive" : "warning"}>{item.overSLA ? "超时" : "阻塞"}</Badge>
       <div className="duty-blocker-main">
-        <p>{item.object}</p>
+        <p>阻塞对象：{item.object}</p>
+        <p className="duty-blocker-fields">
+          卡在哪一步：{item.step || "—"} · 等谁：{item.waitingOn || "—"} · 已等时长：{waitLabel(item.waitingSince)}
+        </p>
         <p className="duty-blocker-meta">
-          责任 {item.responsibleModule} · 下一步 {item.nextAction}
+          下一步动作：{item.nextAction}
           {item.affectsReadiness ? " · 影响上岗率" : ""}
           {item.overSLA ? " · 影响 SLA" : ""}
         </p>
-        <p className="duty-blocker-reason">{item.reason}</p>
+        <p className="duty-blocker-reason">补充：{item.reason}</p>
       </div>
       <Link className="duty-link" to={item.href}>
         去处理
@@ -437,7 +451,7 @@ function BlockersCard({
           ))}
         </ul>
       )}
-      <p className="duty-note">阻塞卡五字段：对象 · 原因 · 责任模块 · 下一步 · 是否影响上岗率/SLA</p>
+      <p className="duty-note">阻塞卡五字段：阻塞对象 · 卡在哪一步 · 等谁 · 已等时长 · 下一步动作</p>
     </HCard>
   );
 }

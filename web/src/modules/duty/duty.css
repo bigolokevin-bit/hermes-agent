@@ -537,3 +537,9 @@
   .duty-blocker > .duty-link { grid-column: 2; }
   .duty-heat { gap: 1px; }
 }
+.duty-blocker-fields {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
