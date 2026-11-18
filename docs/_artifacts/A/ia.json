@@ -1,0 +1,30 @@
+{
+  "routes": 51,
+  "redirectForms": 23,
+  "totalForms": 74,
+  "visibleTabs": 22,
+  "tabnames": 23,
+  "hiddenDetail": 1,
+  "modules": 8,
+  "chatHosts": 1,
+  "kinds": { "tab": 22, "detail-zone": 5, "view": 5, "compat-tab": 14, "compat-module": 5 },
+  "countLaw": "51 = 22 visible tab forwards + 5 detail zones + 5 view deep links + 14 tab-level compat + 5 module-level compat (PRD v4.1 appendix A L265-321); 23 redirect-only forms = 4 roots + skills 7 + models 7 + channels 5 (A.2 L323-337); total address forms 74",
+  "sources": {
+    "routes.ts tables": "dumped by scratch node harness from web/src/shell/routes.ts (51-hash findRoute roundtrip + uniqueness + redirect/compat target checks all passed)",
+    "skeleton probes": "data-tabname unique=23 (grep), data-hidetab=2, data-mod distinct=8, data-chat-host=1",
+    "assert-ia.mjs": "lane D web/scripts/assert-ia.mjs --source=react run read-only at stage-1 close: routes=51 PASS, badCode=[] PASS; tabs/modules/chatHosts deltas owned by other lanes (see build.log [6])"
+  },
+  "pathConflictsFlaggedForStage2": [
+    { "form": "#/knowledge (route row 12)", "against": "existing App '/knowledge' (upstream KnowledgePage; BOUNDARY-09 says FilesPage 不进)" },
+    { "form": "#/metrics (route row 47)", "against": "existing App '/analytics' (upstream AnalyticsPage = same surface as usage tab)" },
+    { "form": "#/sessions (route row 48)", "against": "existing App '/sessions' (upstream SessionsPage)" },
+    { "form": "#/cron (redirect)", "against": "existing App '/cron' (upstream CronPage)" },
+    { "form": "#/skills (redirect)", "against": "existing App '/skills' (upstream SkillsPage)" },
+    { "form": "#/models (redirect)", "against": "existing App '/models' (upstream ModelsPage)" },
+    { "form": "#/channels (redirect)", "against": "existing App '/channels' (upstream ChannelsPage)" }
+  ],
+  "knownLimitations": [
+    "skeleton is dark-theme only: no light token block exists in console-v4-skeleton.html (single --bg: definition, zero 'light'/data-theme matches); tokens.css therefore carries the one :root block verbatim",
+    "src/modules/chat/manifest.ts (lane created independently, plugin-tab shape without ModuleManifest default export) is skipped by registry with console.warn — cross-lane contract collision reported to orchestrator, not fixed (foreign write domain)"
+  ]
+}

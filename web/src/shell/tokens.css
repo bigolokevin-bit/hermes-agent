@@ -1,0 +1,46 @@
+/*
+ * Console shell visual tokens — copied VERBATIM from the frozen skeleton:
+ *   ~/Projects/seakoi-console-web/docs/console-v4-skeleton.html, lines 59-83
+ *   (the `:root` block under the "tokens" comment; PRD v4.1 B8: the skeleton
+ *   is the single source of truth — numbers disagree, fix the PRD not the
+ *   skeleton; do not hand-edit values here, re-copy instead).
+ *
+ * THEME NOTE (verified 2026-11-18 by probe): the skeleton defines ONE token
+ * block only — the dark theme. There is no light-theme override anywhere
+ * (no `[data-theme]` selector, no second `--bg:` definition, no case-
+ * insensitive 'light' match in the file). The only other `:root` rule is a
+ * responsive layout tweak inside @media(max-width:900px) (`--side:0px`),
+ * which is shell geometry, not a visual token — deliberately excluded.
+ * A light theme, when it ships, will be added as a [data-theme="light"]
+ * block here; until then this file is dark-only by source of truth.
+ *
+ * Stage 1: intentionally NOT imported by app code yet (stage 2 wires it in
+ * App/main entry). An orphan CSS file does not affect the Vite build.
+ * No selectors in this file beyond the :root token block.
+ */
+
+:root{
+  --bg:#041c1c;
+  --panel:#061f1f;
+  --panel-2:#082424;
+  --sunk:#03181a;
+  --line:rgba(255,230,203,.14);
+  --line-2:rgba(255,230,203,.30);
+  --line-3:rgba(255,230,203,.07);
+  --line-strong:rgba(255,230,203,.40);   /* 虚线控件边，≥3:1 */
+  --fg:#ffe6cb;
+  --fg-2:rgba(255,230,203,.68);
+  --fg-3:#9aa49e;   /* 三级灰 ≥4.5:1（实测 6.5:1） */
+  --fg-4:#8d9791;   /* 四级灰 ≥4.5:1（实测 5.9:1），层级靠字号/字重 */
+  --ok:#4ade80;
+  --warn:#ffbd38;
+  --bad:#fb2c36;
+  --info:#7fb3c8;
+  --r:6px;
+  --r-sm:4px;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,"Segoe UI",sans-serif;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Songti SC","Noto Serif SC",Georgia,serif;
+  --side:208px;
+  --bar:27px;
+}

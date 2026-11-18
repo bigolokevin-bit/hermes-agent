@@ -1,0 +1,258 @@
+=== Lane A stage-1 build log — hermes-agent @ b9f85d6e lane/hermes-console — 2026-11-18
+=== Gate: pnpm --filter web build (runs tsc then vite via scripts/build/web.mjs)
+
+--- [1] pnpm --filter web build (attempt 1) — EXIT 1 (NOT caused by lane A files)
+$ node ../scripts/build/web.mjs
+Error: TypeScript build failed (2)
+[96msrc/modules/tasks/TasksBoardModulePage.tsx[0m:[93m253[0m:[93m11[0m - [91merror[0m[90m TS2322: [0mType '{ children: string; size: "sm"; variant: string; onClick: () => void; "data-testid": string; }' is not assignable to type 'IntrinsicAttributes & ButtonProps'.
+  Property 'variant' does not exist on type 'IntrinsicAttributes & ButtonProps'.
+
+[7m253[0m           variant="outlined"
+[7m   [0m [91m          ~~~~~~~[0m
+[96msrc/modules/tasks/TasksBoardModulePage.tsx[0m:[93m300[0m:[93m31[0m - [91merror[0m[90m TS2322: [0mType '{ children: (string | Element)[]; size: "sm"; variant: string; onClick: () => void; "data-testid": string; }' is not assignable to type 'IntrinsicAttributes & ButtonProps'.
+  Property 'variant' does not exist on type 'IntrinsicAttributes & ButtonProps'.
+
+[7m300[0m             <Button size="sm" variant="outlined" onClick={retry} data-testid="tasks-board-retry">
+[7m   [0m [91m                              ~~~~~~~[0m
+[96msrc/modules/tasks/TasksBoardModulePage.tsx[0m:[93m301[0m:[93m56[0m - [91merror[0m[90m TS2367: [0mThis comparison appears to be unintentional because the types '"error" | "denied"' and '"loading"' have no overlap.
+
+[7m301[0m               <RefreshCw className={cn("mr-2 h-4 w-4", state.phase === "loading" && "animate-spin")} />
+[7m   [0m [91m                                                       ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/modules/tasks/TasksBoardModulePage.tsx[0m:[93m314[0m:[93m31[0m - [91merror[0m[90m TS2322: [0mType '{ children: string; size: "sm"; variant: string; onClick: () => void; }' is not assignable to type 'IntrinsicAttributes & ButtonProps'.
+  Property 'variant' does not exist on type 'IntrinsicAttributes & ButtonProps'.
+
+[7m314[0m             <Button size="sm" variant="outlined" onClick={() => setNotice(true)}>
+[7m   [0m [91m                              ~~~~~~~[0m
+[96msrc/modules/tasks/TasksBoardModulePage.tsx[0m:[93m343[0m:[93m36[0m - [91merror[0m[90m TS2322: [0mType '"warning" | "danger" | "neutral"' is not assignable to type 'Tone | undefined'.
+  Type '"danger"' is not assignable to type 'Tone | undefined'.
+
+[7m343[0m                             <Badge tone={priority.tone}>{priority.text}</Badge>
+[7m   [0m [91m                                   ~~~~[0m
+
+  [96m../node_modules/.pnpm/@nous-research+ui@0.19.1_@observablehq+plot@0.6.17_@react-three+fiber@9.8.1_@types+reac_51ffad3e504ba0533b99d6f1bb105559/node_modules/@nous-research/ui/dist/ui/components/badge.d.ts[0m:[93m4[0m:[93m5[0m
+    [7m4[0m     tone?: Tone;
+    [7m [0m [96m    ~~~~[0m
+    The expected type comes from property 'tone' which is declared here on type 'IntrinsicAttributes & BadgeProps'
+
+    at typecheck (file:///Users/kevin_studio/Projects/forks/hermes-agent/scripts/build/web.mjs:113:11)
+    at withProduct.source.source (file:///Users/kevin_studio/Projects/forks/hermes-agent/scripts/build/web.mjs:130:5)
+    at withProduct (file:///Users/kevin_studio/Projects/forks/hermes-agent/scripts/build/frontend-common.mjs:139:11)
+    at buildWeb (file:///Users/kevin_studio/Projects/forks/hermes-agent/scripts/build/web.mjs:129:9)
+    at async file:///Users/kevin_studio/Projects/forks/hermes-agent/scripts/build/web.mjs:155:20
+[ELIFECYCLE] Command failed with exit code 1.
+Error: ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL
+
+  × "pnpm recursive run" failed in /Users/kevin_studio/Projects/forks/hermes-
+  │ agent/web
+
+
+--- [2] pnpm --filter web build (retry, minutes later) — EXIT 1 (failing set rotated between attempts: other lanes are actively editing shared src/modules)
+$ node ../scripts/build/web.mjs
+Error: TypeScript build failed (2)
+[96msrc/modules/chat/ChatModulePage.test.tsx[0m:[93m34[0m:[93m15[0m - [91merror[0m[90m TS2345: [0mArgument of type '() => () => number' is not assignable to parameter of type 'EffectCallback'.
+  Type '() => number' is not assignable to type 'void | Destructor'.
+    Type '() => number' is not assignable to type 'Destructor'.
+      Type 'number' is not assignable to type 'void | { [UNDEFINED_VOID_ONLY]: never; }'.
+
+[7m34[0m     useEffect(() => {
+[7m  [0m [91m              ~~~~~~~[0m
+[96msrc/modules/tasks/TasksBoardModulePage.tsx[0m:[93m253[0m:[93m11[0m - [91merror[0m[90m TS2322: [0mType '{ children: string; size: "sm"; variant: string; onClick: () => void; "data-testid": string; }' is not assignable to type 'IntrinsicAttributes & ButtonProps'.
+  Property 'variant' does not exist on type 'IntrinsicAttributes & ButtonProps'.
+
+[7m253[0m           variant="outlined"
+[7m   [0m [91m          ~~~~~~~[0m
+[96msrc/modules/tasks/TasksBoardModulePage.tsx[0m:[93m300[0m:[93m31[0m - [91merror[0m[90m TS2322: [0mType '{ children: (string | Element)[]; size: "sm"; variant: string; onClick: () => void; "data-testid": string; }' is not assignable to type 'IntrinsicAttributes & ButtonProps'.
+  Property 'variant' does not exist on type 'IntrinsicAttributes & ButtonProps'.
+
+[7m300[0m             <Button size="sm" variant="outlined" onClick={retry} data-testid="tasks-board-retry">
+[7m   [0m [91m                              ~~~~~~~[0m
+[96msrc/modules/tasks/TasksBoardModulePage.tsx[0m:[93m301[0m:[93m56[0m - [91merror[0m[90m TS2367: [0mThis comparison appears to be unintentional because the types '"error" | "denied"' and '"loading"' have no overlap.
+
+[7m301[0m               <RefreshCw className={cn("mr-2 h-4 w-4", state.phase === "loading" && "animate-spin")} />
+[7m   [0m [91m                                                       ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/modules/tasks/TasksBoardModulePage.tsx[0m:[93m314[0m:[93m31[0m - [91merror[0m[90m TS2322: [0mType '{ children: string; size: "sm"; variant: string; onClick: () => void; }' is not assignable to type 'IntrinsicAttributes & ButtonProps'.
+  Property 'variant' does not exist on type 'IntrinsicAttributes & ButtonProps'.
+
+[7m314[0m             <Button size="sm" variant="outlined" onClick={() => setNotice(true)}>
+[7m   [0m [91m                              ~~~~~~~[0m
+[96msrc/modules/tasks/TasksBoardModulePage.tsx[0m:[93m343[0m:[93m36[0m - [91merror[0m[90m TS2322: [0mType '"warning" | "danger" | "neutral"' is not assignable to type 'Tone | undefined'.
+  Type '"danger"' is not assignable to type 'Tone | undefined'.
+
+[7m343[0m                             <Badge tone={priority.tone}>{priority.text}</Badge>
+[7m   [0m [91m                                   ~~~~[0m
+
+  [96m../node_modules/.pnpm/@nous-research+ui@0.19.1_@observablehq+plot@0.6.17_@react-three+fiber@9.8.1_@types+reac_51ffad3e504ba0533b99d6f1bb105559/node_modules/@nous-research/ui/dist/ui/components/badge.d.ts[0m:[93m4[0m:[93m5[0m
+    [7m4[0m     tone?: Tone;
+    [7m [0m [96m    ~~~~[0m
+    The expected type comes from property 'tone' which is declared here on type 'IntrinsicAttributes & BadgeProps'
+
+    at typecheck (file:///Users/kevin_studio/Projects/forks/hermes-agent/scripts/build/web.mjs:113:11)
+    at withProduct.source.source (file:///Users/kevin_studio/Projects/forks/hermes-agent/scripts/build/web.mjs:130:5)
+    at withProduct (file:///Users/kevin_studio/Projects/forks/hermes-agent/scripts/build/frontend-common.mjs:139:11)
+    at buildWeb (file:///Users/kevin_studio/Projects/forks/hermes-agent/scripts/build/web.mjs:129:9)
+    at async file:///Users/kevin_studio/Projects/forks/hermes-agent/scripts/build/web.mjs:155:20
+[ELIFECYCLE] Command failed with exit code 1.
+Error: ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL
+
+  × "pnpm recursive run" failed in /Users/kevin_studio/Projects/forks/hermes-
+  │ agent/web
+
+
+--- [3] project typecheck (pnpm exec tsc -b . --noEmit) full output:
+src/modules/chat/ChatModulePage.test.tsx(34,15): error TS2345: Argument of type '() => () => number' is not assignable to parameter of type 'EffectCallback'.
+  Type '() => number' is not assignable to type 'void | Destructor'.
+    Type '() => number' is not assignable to type 'Destructor'.
+      Type 'number' is not assignable to type 'void | { [UNDEFINED_VOID_ONLY]: never; }'.
+src/modules/tasks/TasksBoardModulePage.tsx(253,11): error TS2322: Type '{ children: string; size: "sm"; variant: string; onClick: () => void; "data-testid": string; }' is not assignable to type 'IntrinsicAttributes & ButtonProps'.
+  Property 'variant' does not exist on type 'IntrinsicAttributes & ButtonProps'.
+src/modules/tasks/TasksBoardModulePage.tsx(300,31): error TS2322: Type '{ children: (string | Element)[]; size: "sm"; variant: string; onClick: () => void; "data-testid": string; }' is not assignable to type 'IntrinsicAttributes & ButtonProps'.
+  Property 'variant' does not exist on type 'IntrinsicAttributes & ButtonProps'.
+src/modules/tasks/TasksBoardModulePage.tsx(301,56): error TS2367: This comparison appears to be unintentional because the types '"error" | "denied"' and '"loading"' have no overlap.
+src/modules/tasks/TasksBoardModulePage.tsx(314,31): error TS2322: Type '{ children: string; size: "sm"; variant: string; onClick: () => void; }' is not assignable to type 'IntrinsicAttributes & ButtonProps'.
+  Property 'variant' does not exist on type 'IntrinsicAttributes & ButtonProps'.
+src/modules/tasks/TasksBoardModulePage.tsx(343,36): error TS2322: Type '"warning" | "danger" | "neutral"' is not assignable to type 'Tone | undefined'.
+  Type '"danger"' is not assignable to type 'Tone | undefined'.
+
+--- [4] Attribution: unique files with TS errors in [3]:
+    src/modules/chat/ChatModulePage.test.tsx
+    src/modules/tasks/TasksBoardModulePage.tsx
+    lane-A file error count (shell/ + five manifests): 0
+
+--- [5] Vite bundling stage alone (pnpm exec vite build, web/) — EXIT 0:
+vite v8.3.4 building client environment for production...
+transforming...
+✓ 2296 modules transformed.
+rendering chunks...
+computing gzip size...
+../hermes_cli/web_dist/index.html                                       1.09 kB │ gzip:   0.45 kB
+../hermes_cli/web_dist/assets/Mondwest-Regular-CWscgue7.woff2          23.82 kB
+../hermes_cli/web_dist/assets/RulesExpanded-Regular-l8uVympt.woff2     33.82 kB
+../hermes_cli/web_dist/assets/RulesExpanded-Bold-DZA7s8Pa.woff2        35.01 kB
+../hermes_cli/web_dist/assets/RulesCompressed-Regular-BSXFyF4x.woff2   37.76 kB
+../hermes_cli/web_dist/assets/RulesCompressed-Medium-CA76_CrB.woff2    38.84 kB
+../hermes_cli/web_dist/assets/Collapse-Bold-mgICk9-_.woff2             59.14 kB
+../hermes_cli/web_dist/assets/Collapse-Regular-DysayoTY.woff2          62.81 kB
+../hermes_cli/web_dist/assets/xterm-BrP-ENHg.css                        3.93 kB │ gzip:   1.01 kB
+../hermes_cli/web_dist/assets/index-rl6xY1qY.css                      117.57 kB │ gzip:  18.14 kB
+../hermes_cli/web_dist/assets/usePageHeader-8W2sH5EC.js                 0.29 kB │ gzip:   0.22 kB
+../hermes_cli/web_dist/assets/utils-LS00pgN8.js                         0.53 kB │ gzip:   0.29 kB
+../hermes_cli/web_dist/assets/rolldown-runtime-CbXtAM7H.js              0.58 kB │ gzip:   0.36 kB
+../hermes_cli/web_dist/assets/DeleteConfirmDialog-BtIEepJt.js           0.61 kB │ gzip:   0.37 kB
+../hermes_cli/web_dist/assets/useModalBehavior-MQvZcr3g.js              0.62 kB │ gzip:   0.39 kB
+../hermes_cli/web_dist/assets/clipboard-owkvc3zk.js                     0.73 kB │ gzip:   0.44 kB
+../hermes_cli/web_dist/assets/terminal-font-refit-Dmois6_8.js           0.83 kB │ gzip:   0.44 kB
+../hermes_cli/web_dist/assets/mcp-server-create-B0VgoYzF.js             0.92 kB │ gzip:   0.46 kB
+../hermes_cli/web_dist/assets/LoadErrorNotice-3BKX6HGD.js               1.74 kB │ gzip:   0.90 kB
+../hermes_cli/web_dist/assets/DocsPage-C2gmcCVl.js                      1.96 kB │ gzip:   1.08 kB
+../hermes_cli/web_dist/assets/ConfirmDialog-QOK4hwyI.js                 2.10 kB │ gzip:   1.01 kB
+../hermes_cli/web_dist/assets/PairingPage-BOY1gxZE.js                   4.88 kB │ gzip:   1.67 kB
+../hermes_cli/web_dist/assets/LogsPage-CFCzRDyE.js                      7.50 kB │ gzip:   3.29 kB
+../hermes_cli/web_dist/assets/FilesPage-fdsyfNMD.js                    10.16 kB │ gzip:   3.35 kB
+../hermes_cli/web_dist/assets/WebhooksPage-YoGMeXm8.js                 12.58 kB │ gzip:   3.85 kB
+../hermes_cli/web_dist/assets/ModelReloadConfirm-CGpJLWY_.js           12.98 kB │ gzip:   4.97 kB
+../hermes_cli/web_dist/assets/ProfileBuilderPage-D7EAAtST.js           14.87 kB │ gzip:   4.50 kB
+../hermes_cli/web_dist/assets/EmployeesPage-ALp8wVcu.js                15.52 kB │ gzip:   6.33 kB
+../hermes_cli/web_dist/assets/RunsPage-KShC4iMl.js                     15.97 kB │ gzip:   6.50 kB
+../hermes_cli/web_dist/assets/ApprovalsPage-BWPZee9r.js                16.18 kB │ gzip:   6.43 kB
+../hermes_cli/web_dist/assets/McpPage-BJzpD1Z_.js                      17.82 kB │ gzip:   5.22 kB
+../hermes_cli/web_dist/assets/ConfigPage-DDTPi4um.js                   18.00 kB │ gzip:   6.02 kB
+../hermes_cli/web_dist/assets/AnalyticsPage-Cgx-NCZb.js                20.17 kB │ gzip:   6.02 kB
+../hermes_cli/web_dist/assets/EmployeeDetailPage-QaaNgpLQ.js           21.10 kB │ gzip:   7.74 kB
+../hermes_cli/web_dist/assets/ProfilesPage-BTOLJkXj.js                 25.23 kB │ gzip:   7.10 kB
+../hermes_cli/web_dist/assets/EnvPage-CSET2wX3.js                      29.75 kB │ gzip:   7.95 kB
+../hermes_cli/web_dist/assets/ModelsPage-DnOsgBJF.js                   35.08 kB │ gzip:  10.90 kB
+../hermes_cli/web_dist/assets/PluginsPage-rMQ9YH2G.js                  36.94 kB │ gzip:  10.90 kB
+../hermes_cli/web_dist/assets/ChannelsPage-DrgMjoqE.js                 37.75 kB │ gzip:  10.68 kB
+../hermes_cli/web_dist/assets/SystemPage-C3memjfw.js                   44.79 kB │ gzip:  12.50 kB
+../hermes_cli/web_dist/assets/SkillsPage-D1TC6fLH.js                   44.93 kB │ gzip:  12.80 kB
+../hermes_cli/web_dist/assets/CronPage-Cq7Y_eXx.js                     45.50 kB │ gzip:  14.70 kB
+../hermes_cli/web_dist/assets/SessionsPage-BzXhj5Ov.js                 49.61 kB │ gzip:  15.06 kB
+../hermes_cli/web_dist/assets/vendor-Bz1HdeZA.js                       53.53 kB │ gzip:  18.92 kB
+../hermes_cli/web_dist/assets/api-BQnnIjWe.js                          54.23 kB │ gzip:  14.40 kB
+../hermes_cli/web_dist/assets/ChatPage-C4gDne43.js                     54.31 kB │ gzip:  19.02 kB
+../hermes_cli/web_dist/assets/index-BXeep_8m.js                        96.43 kB │ gzip:  32.99 kB
+../hermes_cli/web_dist/assets/react-vendor-CYcH5p6a.js                257.75 kB │ gzip:  81.89 kB
+../hermes_cli/web_dist/assets/ui-sUcfgcDT.js                          292.18 kB │ gzip:  95.65 kB
+../hermes_cli/web_dist/assets/xterm-DL6ywjCu.js                       473.46 kB │ gzip: 122.31 kB
+../hermes_cli/web_dist/assets/i18n-C61yqdmZ.js                        509.43 kB │ gzip: 152.36 kB
+
+✓ built in 1.87s
+
+--- [6] lane D assert-ia.mjs --source=react (RUN READ-ONLY, script unmodified) — EXIT 1
+    routes=51 PASS (external confirmation of appendix A transcription); badCode=[] PASS.
+    tabs=5/modules=6/chatHosts=3 mismatches are NOT lane-A: scanner sums manifest tabs: arrays
+    (stage 1 ships 5 placeholder panes by design; chat lane's manifest.ts + ChatModulePage
+    contribute the 6th module and all 3 chatHost markers). HTML-baseline mode needs
+    web/docs/console-v4-skeleton.html which does not exist in the fork (lane D open item).
+{
+  "script": "assert-ia",
+  "mode": "react",
+  "file": [
+    "web/src/shell/routes.ts",
+    "web/src/modules/*/manifest.ts"
+  ],
+  "sources": {
+    "routesTs": true,
+    "routeForm": "hash-rows",
+    "manifests": [
+      "web/src/modules/board/manifest.ts",
+      "web/src/modules/chat/manifest.ts",
+      "web/src/modules/duty/manifest.ts",
+      "web/src/modules/employee-detail/manifest.ts",
+      "web/src/modules/matrix/manifest.ts",
+      "web/src/modules/runs/manifest.ts"
+    ],
+    "scannedFiles": 22,
+    "chatHostMarkers": [
+      "web/src/modules/chat/ChatModulePage.test.tsx attrs=2 mounts=0",
+      "web/src/modules/chat/ChatModulePage.tsx attrs=0 mounts=1"
+    ]
+  },
+  "missing": [],
+  "counts": {
+    "routes": 51,
+    "tabs": 5,
+    "chatHosts": 3,
+    "modules": 6
+  },
+  "badCode": [],
+  "checks": [
+    {
+      "name": "routes",
+      "ok": true,
+      "actual": 51,
+      "expected": 51
+    },
+    {
+      "name": "tabs",
+      "ok": false,
+      "actual": 5,
+      "expected": 22
+    },
+    {
+      "name": "chatHosts",
+      "ok": false,
+      "actual": 3,
+      "expected": 1
+    },
+    {
+      "name": "modules",
+      "ok": false,
+      "actual": 6,
+      "expected": 8
+    },
+    {
+      "name": "badCode",
+      "ok": true,
+      "actual": [],
+      "expected": []
+    }
+  ],
+  "ok": false
+}
+{"ok":false,"mode":"react","routes":51,"tabs":5,"chatHosts":3,"modules":6,"badCode":[],"missing":[]}
+
+[orchestrator re-verify 2026-11-18 10:5x, post l4p5 landings 93065b1d/2595b26c]
+- pnpm --filter web build: EXIT 1 — all 5 tsc errors in src/modules/tasks/TasksBoardModulePage.tsx (lane B/E WIP, NOT lane A; grep of error list shows zero hits for src/shell or lane-A manifests). Blocker noted, not touched.
+- vite build (no typecheck): EXIT 0, 50 assets → hermes_cli/web_dist.
+- assert-ia --source=react: routes=51 PASS, badCode=[] PASS; tabs=5/chatHosts=3/modules=6 = stage-2 deltas owned by nav wiring + other lanes' pages (per plan).
