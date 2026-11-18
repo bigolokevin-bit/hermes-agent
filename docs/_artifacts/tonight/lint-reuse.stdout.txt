@@ -1,0 +1,56 @@
+$ cd web && node scripts/lint-reuse.mjs
+--- stdout ---
+violations=5
+web/src/modules:0 reuse-marker-incomplete 五处复用标记缺一：未见 reuse: 对话 ChatPage（modules/ 内现有 reuse: 标记 0 处）
+web/src/modules:0 reuse-marker-incomplete 五处复用标记缺一：未见 reuse: 运行详情 RunDetailPage（modules/ 内现有 reuse: 标记 0 处）
+web/src/modules:0 reuse-marker-incomplete 五处复用标记缺一：未见 reuse: 任务看板 TasksListPage（modules/ 内现有 reuse: 标记 0 处）
+web/src/modules:0 reuse-marker-incomplete 五处复用标记缺一：未见 reuse: schema 表单 AutoField（modules/ 内现有 reuse: 标记 0 处）
+web/src/modules:0 reuse-marker-incomplete 五处复用标记缺一：未见 reuse: 能力矩阵 /v1/matrix/employees 数据口（modules/ 内现有 reuse: 标记 0 处）
+{
+  "script": "lint-reuse",
+  "root": "web/src/modules",
+  "scanned": 21,
+  "reuseMarkers": 0,
+  "chatHostFiles": [
+    "web/src/modules/employee-detail/EmployeeDetailWorkbench.tsx"
+  ],
+  "violations": [
+    {
+      "file": "web/src/modules",
+      "line": 0,
+      "rule": "reuse-marker-incomplete",
+      "message": "五处复用标记缺一：未见 reuse: 对话 ChatPage（modules/ 内现有 reuse: 标记 0 处）"
+    },
+    {
+      "file": "web/src/modules",
+      "line": 0,
+      "rule": "reuse-marker-incomplete",
+      "message": "五处复用标记缺一：未见 reuse: 运行详情 RunDetailPage（modules/ 内现有 reuse: 标记 0 处）"
+    },
+    {
+      "file": "web/src/modules",
+      "line": 0,
+      "rule": "reuse-marker-incomplete",
+      "message": "五处复用标记缺一：未见 reuse: 任务看板 TasksListPage（modules/ 内现有 reuse: 标记 0 处）"
+    },
+    {
+      "file": "web/src/modules",
+      "line": 0,
+      "rule": "reuse-marker-incomplete",
+      "message": "五处复用标记缺一：未见 reuse: schema 表单 AutoField（modules/ 内现有 reuse: 标记 0 处）"
+    },
+    {
+      "file": "web/src/modules",
+      "line": 0,
+      "rule": "reuse-marker-incomplete",
+      "message": "五处复用标记缺一：未见 reuse: 能力矩阵 /v1/matrix/employees 数据口（modules/ 内现有 reuse: 标记 0 处）"
+    }
+  ],
+  "count": 5,
+  "ok": false
+}
+--- stderr ---
+--- exit code ---
+1
+
+NOTE: the fixed-name file tonight/lint-reuse.json is this script's OWN structured artifact (written by the run above, same command, same invocation); raw stdout is kept here so the JSON artifact is not overwritten with text.

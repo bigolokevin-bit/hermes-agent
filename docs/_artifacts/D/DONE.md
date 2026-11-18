@@ -296,7 +296,7 @@ ESLINT_EXIT=0
 - `web/scripts/lint-fake-success.mjs` (verbatim copy)
 - `web/scripts/lint-reuse.mjs` (new)
 - `web/e2e/ia-smoke.spec.ts`, `web/e2e/density.spec.ts` (new)
-- `docs/_artifacts/D/1-assert-ia-html.txt` … `5-lint-reuse.txt` (five raw gate logs) and `docs/_artifacts/D/DONE.md` (this file). `docs/_artifacts/D/6-commit-hook-blocked.txt` exists on disk in this worktree but is intentionally left uncommitted.
+- `docs/_artifacts/D/1-assert-ia-html.txt` … `5-lint-reuse.txt` (five raw gate logs) and `docs/_artifacts/D/DONE.md` (this file). `docs/_artifacts/D/6-commit-hook-blocked.txt` was a hook-failure transcript from the `just` outage: it was never committed and has since been deleted (see the `T00 收口 + T02` section below).
 - `docs/_artifacts/tonight/lint-reuse.json` (written by `lint-reuse.mjs` itself)
 
 ## Commit status at capture time
@@ -311,3 +311,51 @@ Lane D wrote nothing outside its 13 delivered paths: nothing under `web/src/`, n
 ## Concurrent-lane caveat (read before trusting a number)
 
 This worktree is shared with lanes A/B/C/E on the same branch. While lane D worked, `web/src/shell/` and `web/src/modules/` appeared and kept changing (module count moved 5 -> 6 -> 7 during the session). Gates 2 and 5 above are a snapshot of live disk state at the timestamp on top; re-run them after lane A settles. Lane D wrote nothing under `web/src/`.
+
+---
+
+## T00 收口 + T02 @ f25f0677（2026-11-18）
+
+波 0 第二轮。HEAD 基线 `f25f0677`（= 远端 tip，先 fetch 坐实 local==FETCH_HEAD，无需 rebase）。
+
+> 时效说明：本节所有产物（vitest/ia/crawl/lint-fake/lint-reuse/build/pytest）都在 `f25f0677` 树态下采集。提交前再次 fetch 时 tip 已前进到 `c3746cc6`（lane A 的 `feat(console): shell fixture primitive ?state= four-state repro (Wave-0 T03)`，只动 `web/src/shell/fixtures*.ts` 与 `docs/_artifacts/A/T03-CONTRACT.md`，未卷入 lane-D 文件）。因此 gate 2/5 里的 `tabs/modules/reuseMarkers` 是 `f25f0677` 的快照而非本提交树的重算；`console.tsx` 在 `c3746cc6` 仍是未跟踪状态（`git ls-tree HEAD web/src/shell/console.tsx` 为空），故第 6 行的 BUILD_FAIL 归因不变。
+
+### 五命令三元组（cwd + 完整命令 + 期望/实际）
+
+| # | cwd | 命令 | 期望 | 实际（exit） | 产物 |
+|---|-----|------|------|--------------|------|
+| 1 | `web/` | `node_modules/.bin/vitest run src/lib/usePaneData.test.ts` | T02 hook 纯函数层全绿 | **exit 0** — `Test Files 1 passed (1)` / `Tests 7 passed (7)` / `Duration 82ms` | `tonight/vitest.txt` |
+| 2 | `web/` | `node scripts/assert-ia.mjs --source=react` | routes=51, tabs=22, chatHosts=1, modules=8, badCode=[] | **exit 1** — routes **51 ✓**、tabs **5 ✗**、chatHosts **3 ✗**、modules **6 ✗**、badCode `[] ✓`、missing `[]`（lane A 仍在落 manifest，非 lane-D bug） | `tonight/ia.json`（react 段 + `--- baseline(html) ---` 段） |
+| 2b | `web/` | `node scripts/assert-ia.mjs`（HTML baseline） | 与上游脚本逐字一致 | **exit 1** — `ENOENT … web/docs/console-v4-skeleton.html`（本 fork 无 `docs/`，逐字行为即如此；等价性另在临时 fixture 用同一份 skeleton 验过 stdout byte-identical） | 同上 `tonight/ia.json` 尾段 |
+| 3 | `web/` | `node scripts/crawl-routes.mjs --base http://127.0.0.1:9119` | 逐路由 deadLinks/overflow 清单 | **exit 1** — `Cannot find module 'playwright'` = **TOOL_MISSING**；9119 本身在服（`/api/status` HTTP 200），未重启、未加依赖 | `tonight/crawl.json` |
+| 4 | `web/` | `node scripts/lint-fake-success.mjs` | violations=0 | **exit 1** — `ENOENT … console-v4-skeleton.html`（同 2b 根因） | `tonight/lint-fake.json` |
+| 5 | `web/` | `node scripts/lint-reuse.mjs` | 五处复用标记齐、无硬编码 | **exit 1** — `violations=5`，全为 `reuse-marker-incomplete`；`scanned=21`、`reuseMarkers=0` | `tonight/lint-reuse.json`（脚本自产）+ `tonight/lint-reuse.stdout.txt` |
+
+构建与主仓腿：
+
+| # | cwd | 命令 | 实际（exit） | 产物 |
+|---|-----|------|--------------|------|
+| 6 | 仓根 | `nvm use 26 && npx --yes pnpm@12.15.0 --filter web build`（node v26.13.1） | **exit 1 — BUILD_FAIL，非 lane-D 成因**：`TypeScript build failed (2)`，两处均在 `src/shell/console.tsx:210:9` 与 `src/shell/console.tsx:603:30`（TS2367 `ZoneId` 与 `""` 无重叠；该文件是 **lane A 当日未跟踪新文件**，不在 lane-D 写域，故只报不改）。日志内 `usePaneData` 出现 0 次，lane-D 两文件未引入任何错误。无 `vite built` 行。 | `tonight/build.log` |
+| 7 | 主仓 m0-d 树 `apps/console` | `uv run --no-project --with pytest python -m pytest tests -q`（本轮按派工直接取产物尾行，lane-D 未在主仓执行） | 尾行 `321 passed in 8.41s` | `tonight/pytest.log` |
+
+### T02 交付：`web/src/lib/usePaneData.ts` + `usePaneData.test.ts`
+
+写域例外（仅此二文件进 `web/src/lib/`）：`cp` 后 `cmp` 双双 IDENTICAL，`web/src/lib` 文件数 119 → 121。
+
+接入用法（**文档形式，未改任何页面文件** —— `modules/`、`shell/`、`App.tsx` 均禁碰）：
+
+```tsx
+const pane = usePaneData<{ items: Employee[] }>({ url: "/api/employees", params: { limit: 20 } });
+// pane.state: loading|empty|error|ready；pane.error.requestId 上屏；失败自动重试一次
+```
+
+口径（详见 `T02-ENDPOINT-RECONCILIATION.md`）：请求号取 BFF 头 `X-Console-Request-Id` 且错误态必须能拿到；仅网络错误与 5xx 自动重试一次、4xx 不重试；`items:[]` 或 `data:null` 判 empty；`?state=` 可短路复现四态供 QA 逐态验收。
+
+### 命名冲突处置（一处偏离派工字面）
+
+派工第 3 步要求 lint-reuse 的**原始 stdout** 落到固定名 `tonight/lint-reuse.json`，但 `lint-reuse.mjs` 自身就把结构化 JSON 写在同名路径（该 JSON 是第一轮已入库的机读产物）。用文本覆盖会毁掉 JSON 契约，因此：脚本自产的 `lint-reuse.json` 保留（本轮已刷新，`python3 -c json.load` 复验 keys=`count/reuseMarkers/root/scanned/violations`、`count=5`、`scanned=21`），原始 stdout 另存 `tonight/lint-reuse.stdout.txt`（文件内 NOTE 行说明缘由）。
+
+### 上轮遗留处置
+
+- lane-D 首批 13 个文件的内容已上线于 **`f25f0677`**（原提交 `0a227c51` 被并发车道 amend 吞并；已采纳方案 A：内容等价即算上线，不补署名提交，见上轮 `git diff 0a227c51 f25f0677 -- <13 paths>` = 0 字节）。
+- `docs/_artifacts/D/6-commit-hook-blocked.txt` 按拍板**已删除**（`just` 阻塞已解除，旧钩子日志无价值）。

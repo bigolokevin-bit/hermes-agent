@@ -1,0 +1,12 @@
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - `__dirname` (vitest.config.ts:17:25). Use `import.meta.dirname` instead
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.12 /Users/kevin_studio/Projects/forks/hermes-agent/web
+
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  23:18:40
+   Duration  82ms (transform 12ms, setup 0ms, import 18ms, tests 10ms, environment 0ms)
+

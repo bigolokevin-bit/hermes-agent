@@ -1,0 +1,95 @@
+$ cd web && node scripts/assert-ia.mjs --source=react
+--- stdout ---
+{
+  "script": "assert-ia",
+  "mode": "react",
+  "file": [
+    "web/src/shell/routes.ts",
+    "web/src/modules/*/manifest.ts"
+  ],
+  "sources": {
+    "routesTs": true,
+    "routeForm": "hash-rows",
+    "manifests": [
+      "web/src/modules/board/manifest.ts",
+      "web/src/modules/chat/manifest.ts",
+      "web/src/modules/duty/manifest.ts",
+      "web/src/modules/employee-detail/manifest.ts",
+      "web/src/modules/matrix/manifest.ts",
+      "web/src/modules/runs/manifest.ts"
+    ],
+    "scannedFiles": 27,
+    "chatHostMarkers": [
+      "web/src/modules/chat/ChatModulePage.test.tsx attrs=2 mounts=0",
+      "web/src/modules/chat/ChatModulePage.tsx attrs=0 mounts=1"
+    ]
+  },
+  "missing": [],
+  "counts": {
+    "routes": 51,
+    "tabs": 5,
+    "chatHosts": 3,
+    "modules": 6
+  },
+  "badCode": [],
+  "checks": [
+    {
+      "name": "routes",
+      "ok": true,
+      "actual": 51,
+      "expected": 51
+    },
+    {
+      "name": "tabs",
+      "ok": false,
+      "actual": 5,
+      "expected": 22
+    },
+    {
+      "name": "chatHosts",
+      "ok": false,
+      "actual": 3,
+      "expected": 1
+    },
+    {
+      "name": "modules",
+      "ok": false,
+      "actual": 6,
+      "expected": 8
+    },
+    {
+      "name": "badCode",
+      "ok": true,
+      "actual": [],
+      "expected": []
+    }
+  ],
+  "ok": false
+}
+{"ok":false,"mode":"react","routes":51,"tabs":5,"chatHosts":3,"modules":6,"badCode":[],"missing":[]}
+--- stderr ---
+--- exit code ---
+1
+--- baseline(html) ---
+$ cd web && node scripts/assert-ia.mjs
+--- stdout ---
+--- stderr ---
+node:fs:483
+    return binding.readFileUtf8(path, stringToFlags(options.flag));
+                   ^
+
+Error: ENOENT: no such file or directory, open '/Users/kevin_studio/Projects/forks/hermes-agent/web/docs/console-v4-skeleton.html'
+    at readFileSync (node:fs:483:20)
+    at file:///Users/kevin_studio/Projects/forks/hermes-agent/web/scripts/assert-ia.mjs:67:14
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/kevin_studio/Projects/forks/hermes-agent/web/docs/console-v4-skeleton.html'
+}
+
+Node.js v24.22.0
+--- exit code ---
+1
