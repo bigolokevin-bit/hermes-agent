@@ -119,3 +119,44 @@ $ cd web && pnpm exec vitest run src/modules/runs
 - Cursor reads beyond the first 30 rows are shown as「还有更多」text, not silently paginated; a load-more
   control belongs to the next pass.
 - Live BFF 200 / real 400 fixture was not available in the worktree; 400 rendering is covered by vitest.
+
+---
+
+# T15 深化 — costStatus / upstream 深链 / ToolIntent / 重试语义
+
+- ① 成本三态：`known`（upstream/estimated/mixed）显示金额 +「已计价」徽章；`unknown` 与 `missing`
+  强制显示 `—`，并给出可见原因（账本无计价记录 / 服务未返回计价状态），不显示 0、不空白。
+- ② `upstreamRunId` 深链：详情内为真实链接 `/runs?upstream=<id>`，落地页展示上游编号与说明；
+  不是 `#` 死链。上游运行时没有可复用的详情 UI，页面不伪造上游数据。
+- ③ 时间线：`tool_result` 事件读 `payload.resultRef`；有值显示短引用，缺失显式「未记录」。
+- ④ 重试：只显示禁用的「重试（新建运行）」，文案写明会生成新 runId、绝不复用本条；写入接口未开放，
+  不发送假成功请求。
+- ⑤ 四态：loading / empty / error（请求号+重试）/ denied（403/404 同体），400 另有人话说明。
+- ⑥ 375：`document.scrollWidth=375`，详情与表格均无横向溢出。
+
+## T15 深化命令 + 原始输出
+
+```bash
+$ PATH="/opt/homebrew/bin:$PATH" pnpm --filter web build
+✓ built in 2.30s
+built /Users/kevin_studio/Projects/forks/console-work/hermes_cli/web_dist/index.html
+# EXIT: 0
+# assets: 55 files / 2.8M
+$ cd web && pnpm exec vitest run src/modules/runs
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+```
+
+```bash
+# 375 viewport after opening a run:
+{"w":375,"sw":375,"detail":true,"events":5}
+```
+
+截图已覆盖更新：`docs/_artifacts/work/shots/t15-1440.png`、`t15-375.png`。
+
+## T15 深化诚实缺口
+
+- 上游运行没有详情页可用，② 的深链落在本控制台的真实 `?upstream=` 路由，而不是外部上游详情；
+  若要跳 Hermes 运行时原生详情，需要新增上游 UI 路由（不在本车道写域）。
+- ④ 仍是禁用态：BFF 没有 `POST /runs` 写路由；等 D 打开后才可真正新建 Run。
+- 截图使用临时 dev preview + mock 200，preview 文件已删除；真实 BFF 200 未取。
