@@ -69,3 +69,53 @@ the real BFF.
 
 - T15: runs list + detail (`/api/runs`, `/api/run-detail`, `/api/run-events`), 400 status readings, four states,
   Beijing time, missing `—`, no raw employee ids.
+
+---
+
+# T15 — 运行列表 + 只读详情（同分支第二交付）
+
+- Scope: `web/src/modules/runs/**` only; no App/routes/registry/tokens changes.
+- Source: `GET /agent-api/api/runs?since=&status=&limit=&cursor=`, `GET /agent-api/api/run-detail?id=`,
+  `GET /agent-api/api/run-events?runId=&limit=50`.
+- Behaviour: list filters by status and 24h/7d/30d; row click opens read-only detail + event timeline.
+  `400` is rendered as「这次筛选没有被接受，请调整状态或时间范围后重试」with request id, never an empty list.
+  Cost missing → `—`; `reasonCode` and event types are humanized; unknown values stay `其他事件`/`—`.
+  No retry/cancel write control is rendered (write routes are outside this lane).
+
+## T15 commands + raw output
+
+```bash
+$ PATH="/opt/homebrew/bin:$PATH" pnpm --filter web build
+✓ built in 2.29s
+built /Users/kevin_studio/Projects/forks/console-work/hermes_cli/web_dist/index.html
+# EXIT: 0
+# assets: 55 files / 2.8M (dist total 3.5M)
+$ grep -o "runs-table" hermes_cli/web_dist/assets/RunsModulePage-*.js
+runs-table
+```
+
+```bash
+$ cd web && pnpm exec vitest run src/modules/runs
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+```
+
+```bash
+# 375 viewport metrics after opening a run:
+{"w":375,"sw":375,"detail":true,"events":3}
+# document.scrollWidth == 375 → no horizontal overflow
+```
+
+## T15 screenshots
+
+- `docs/_artifacts/work/shots/t15-1440.png`
+- `docs/_artifacts/work/shots/t15-375.png`
+
+## T15 honest gaps
+
+- Runs module is not yet mounted in the shell: `ConsoleRunsAdapter` probes `modules/runs/RunsModulePage.tsx`
+  and will front `/runs` once the shell lane lands; App/routes/registry are outside this lane.
+- Screenshots use the temporary dev preview with a mocked 200 response; preview file was deleted before commit.
+- Cursor reads beyond the first 30 rows are shown as「还有更多」text, not silently paginated; a load-more
+  control belongs to the next pass.
+- Live BFF 200 / real 400 fixture was not available in the worktree; 400 rendering is covered by vitest.
