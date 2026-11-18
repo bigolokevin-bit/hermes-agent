@@ -3,550 +3,31 @@
   "base": "http://127.0.0.1:9122",
   "routesTs": "src/shell/routes.ts",
   "routes": 51,
-  "redirects": 23,
-  "probed": 74,
+  "redirects": 24,
+  "probed": 75,
   "unresolvedParams": 5,
   "paramSubstitution": {
     "id": null,
-    "note": "GET /api/employees?limit=1 -> HTTP ERR TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
+    "note": "GET /api/employees?limit=1 -> HTTP 404"
   },
   "statusByCode": {
-    "ERR": 74
+    "200": 75
   },
   "verdicts": {
-    "transport-error": 74
+    "spa-hash": 75
   },
-  "deadLinks": [
-    {
-      "url": "http://127.0.0.1:9122/access",
-      "hash": "#/access",
-      "source": "COMPAT_MODULES",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/audit",
-      "hash": "#/audit",
-      "source": "COMPAT_MODULES",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/metrics",
-      "hash": "#/metrics",
-      "source": "COMPAT_MODULES",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/org",
-      "hash": "#/org",
-      "source": "COMPAT_MODULES",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/sessions",
-      "hash": "#/sessions",
-      "source": "COMPAT_MODULES",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/approvals",
-      "hash": "#/approvals?tab=mine",
-      "source": "COMPAT_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/approvals",
-      "hash": "#/approvals?tab=release",
-      "source": "COMPAT_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/approvals",
-      "hash": "#/approvals?tab=policy",
-      "source": "COMPAT_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/identity",
-      "hash": "#/identity?tab=tenant",
-      "source": "COMPAT_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/identity",
-      "hash": "#/identity?tab=admins",
-      "source": "COMPAT_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/identity",
-      "hash": "#/identity?tab=binding",
-      "source": "COMPAT_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/identity",
-      "hash": "#/identity?tab=checks",
-      "source": "COMPAT_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/knowledge",
-      "hash": "#/knowledge?tab=scope",
-      "source": "COMPAT_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/knowledge",
-      "hash": "#/knowledge?tab=ingest",
-      "source": "COMPAT_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/knowledge",
-      "hash": "#/knowledge?tab=retrieval",
-      "source": "COMPAT_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/knowledge",
-      "hash": "#/knowledge?tab=citations",
-      "source": "COMPAT_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/system",
-      "hash": "#/system?tab=security",
-      "source": "COMPAT_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/system",
-      "hash": "#/system?tab=retention",
-      "source": "COMPAT_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/work",
-      "hash": "#/work?tab=cron",
-      "source": "COMPAT_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/approvals",
-      "hash": "#/approvals",
-      "source": "CONSOLE_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/approvals",
-      "hash": "#/approvals?tab=history",
-      "source": "CONSOLE_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/capabilities",
-      "hash": "#/capabilities",
-      "source": "CONSOLE_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/capabilities",
-      "hash": "#/capabilities?tab=tools",
-      "source": "CONSOLE_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/capabilities",
-      "hash": "#/capabilities?tab=models",
-      "source": "CONSOLE_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/capabilities",
-      "hash": "#/capabilities?tab=channels",
-      "source": "CONSOLE_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/employees",
-      "hash": "#/employees",
-      "source": "CONSOLE_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/employees",
-      "hash": "#/employees?tab=matrix",
-      "source": "CONSOLE_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/identity",
-      "hash": "#/identity",
-      "source": "CONSOLE_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/identity",
-      "hash": "#/identity?tab=departments",
-      "source": "CONSOLE_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/identity",
-      "hash": "#/identity?tab=roles",
-      "source": "CONSOLE_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/knowledge",
-      "hash": "#/knowledge",
-      "source": "CONSOLE_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/knowledge",
-      "hash": "#/knowledge?tab=sources",
-      "source": "CONSOLE_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/knowledge",
-      "hash": "#/knowledge?tab=evidence",
-      "source": "CONSOLE_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/overview",
-      "hash": "#/overview",
-      "source": "CONSOLE_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/overview",
-      "hash": "#/overview?tab=usage",
-      "source": "CONSOLE_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/system",
-      "hash": "#/system",
-      "source": "CONSOLE_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/system",
-      "hash": "#/system?tab=defaults",
-      "source": "CONSOLE_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/system",
-      "hash": "#/system?tab=version",
-      "source": "CONSOLE_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/system",
-      "hash": "#/system?tab=events",
-      "source": "CONSOLE_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/work",
-      "hash": "#/work",
-      "source": "CONSOLE_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/work",
-      "hash": "#/work?tab=runs",
-      "source": "CONSOLE_TABS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/employees/:employeeId",
-      "hash": "#/employees/:employeeId",
-      "source": "DETAIL_TAB",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/employees/:employeeId/config",
-      "hash": "#/employees/:employeeId?zone=config",
-      "source": "DETAIL_ZONES_EXTRA",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/employees/:employeeId/evidence",
-      "hash": "#/employees/:employeeId?zone=evidence",
-      "source": "DETAIL_ZONES_EXTRA",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/employees/:employeeId/runs",
-      "hash": "#/employees/:employeeId?zone=runs",
-      "source": "DETAIL_ZONES_EXTRA",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/employees/:employeeId/tasks",
-      "hash": "#/employees/:employeeId?zone=tasks",
-      "source": "DETAIL_ZONES_EXTRA",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/channels",
-      "hash": "#/channels",
-      "source": "REDIRECTS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/channels",
-      "hash": "#/channels?tab=connections",
-      "source": "REDIRECTS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/channels",
-      "hash": "#/channels?tab=groups",
-      "source": "REDIRECTS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/channels",
-      "hash": "#/channels?tab=send",
-      "source": "REDIRECTS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/channels",
-      "hash": "#/channels?tab=mapping",
-      "source": "REDIRECTS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/channels",
-      "hash": "#/channels?tab=failures",
-      "source": "REDIRECTS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/cron",
-      "hash": "#/cron",
-      "source": "REDIRECTS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/models",
-      "hash": "#/models",
-      "source": "REDIRECTS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/models",
-      "hash": "#/models?tab=catalog",
-      "source": "REDIRECTS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/models",
-      "hash": "#/models?tab=providers",
-      "source": "REDIRECTS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/models",
-      "hash": "#/models?tab=budget",
-      "source": "REDIRECTS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/models",
-      "hash": "#/models?tab=usage",
-      "source": "REDIRECTS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/models",
-      "hash": "#/models?tab=ledger",
-      "source": "REDIRECTS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/models",
-      "hash": "#/models?tab=routing",
-      "source": "REDIRECTS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/models",
-      "hash": "#/models?tab=price",
-      "source": "REDIRECTS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/skills",
-      "hash": "#/skills",
-      "source": "REDIRECTS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/skills",
-      "hash": "#/skills?tab=published",
-      "source": "REDIRECTS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/skills",
-      "hash": "#/skills?tab=review",
-      "source": "REDIRECTS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/skills",
-      "hash": "#/skills?tab=discover",
-      "source": "REDIRECTS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/skills",
-      "hash": "#/skills?tab=bindings",
-      "source": "REDIRECTS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/skills",
-      "hash": "#/skills?tab=history",
-      "source": "REDIRECTS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/skills",
-      "hash": "#/skills?tab=quality",
-      "source": "REDIRECTS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/skills",
-      "hash": "#/skills?tab=tools",
-      "source": "REDIRECTS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/approvals",
-      "hash": "#/approvals?tab=pending&view=mine",
-      "source": "VIEW_DEEP_LINKS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/approvals",
-      "hash": "#/approvals?tab=pending&view=release",
-      "source": "VIEW_DEEP_LINKS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/identity",
-      "hash": "#/identity?tab=people&view=admins",
-      "source": "VIEW_DEEP_LINKS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/system",
-      "hash": "#/system?tab=events&view=anomaly",
-      "source": "VIEW_DEEP_LINKS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    },
-    {
-      "url": "http://127.0.0.1:9122/work",
-      "hash": "#/work?tab=board&view=cron",
-      "source": "VIEW_DEEP_LINKS",
-      "status": null,
-      "error": "TypeError: fetch failed (connect ECONNREFUSED 127.0.0.1:9122)"
-    }
-  ],
+  "deadLinks": [],
   "transportNote": "200 text/html = the SPA shell served the form (client routing). Every served HTML body shares this many distinct sha256 digests; the server therefore cannot distinguish the routes, which is why the content judgement is rendered, not fetched.",
-  "uniqueHtmlShells": 0,
+  "uniqueHtmlShells": 1,
   "contentMethod": "render",
   "contentDriver": "/Users/kevin_studio/Projects/seakoi-console-web/package.json",
   "contentRenderConcurrency": 1,
   "contentReason": null,
   "rootShell": {
     "url": "http://127.0.0.1:9122/",
-    "hasMainEl": false,
-    "mainChars": 0,
-    "headSample": ""
+    "hasMainEl": true,
+    "mainChars": 626,
+    "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 你没有"
   },
   "contentChecked": 51,
   "contentRows": [
@@ -554,1030 +35,580 @@
       "route": "#/access",
       "source": "COMPAT_MODULES",
       "kind": "compat-module",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 104,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 9,
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 角色与权限 · 规划中 数据源未"
     },
     {
       "route": "#/approvals",
       "source": "CONSOLE_TABS",
       "kind": "tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 184,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 10,
+      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 审批申请暂不可用 暂时无法查看审批申请 这块内"
     },
     {
       "route": "#/approvals?tab=history",
       "source": "CONSOLE_TABS",
       "kind": "tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 230,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 10,
+      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 审批历史暂不可用 全部 待处理 已通过 已拒绝"
     },
     {
       "route": "#/approvals?tab=mine",
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 184,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 10,
+      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 审批申请暂不可用 暂时无法查看审批申请 这块内"
     },
     {
       "route": "#/approvals?tab=pending&view=mine",
       "source": "VIEW_DEEP_LINKS",
       "kind": "view",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 184,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 10,
+      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 审批申请暂不可用 暂时无法查看审批申请 这块内"
     },
     {
       "route": "#/approvals?tab=pending&view=release",
       "source": "VIEW_DEEP_LINKS",
       "kind": "view",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 184,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 10,
+      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 审批申请暂不可用 暂时无法查看审批申请 这块内"
     },
     {
       "route": "#/approvals?tab=policy",
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 184,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 10,
+      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 审批申请暂不可用 暂时无法查看审批申请 这块内"
     },
     {
       "route": "#/approvals?tab=release",
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 184,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 10,
+      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 审批申请暂不可用 暂时无法查看审批申请 这块内"
     },
     {
       "route": "#/audit",
       "source": "COMPAT_MODULES",
       "kind": "compat-module",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 100,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 9,
+      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 审计事件 · 规划中 上游页面尚"
     },
     {
       "route": "#/capabilities",
       "source": "CONSOLE_TABS",
       "kind": "tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 101,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 10,
+      "headSample": "平台 · 控制台 能力与接入 技能 工具与 MCP 模型与单价 平台接入 技能 已登记的技能及其"
     },
     {
       "route": "#/capabilities?tab=channels",
       "source": "CONSOLE_TABS",
       "kind": "tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 303,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 10,
+      "headSample": "平台 · 控制台 能力与接入 技能 工具与 MCP 模型与单价 平台接入 The gateway"
     },
     {
       "route": "#/capabilities?tab=models",
       "source": "CONSOLE_TABS",
       "kind": "tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 143,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 10,
+      "headSample": "平台 · 控制台 能力与接入 技能 工具与 MCP 模型与单价 平台接入 模型与单价 价目表和账"
     },
     {
       "route": "#/capabilities?tab=tools",
       "source": "CONSOLE_TABS",
       "kind": "tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 225,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 10,
+      "headSample": "平台 · 控制台 能力与接入 技能 工具与 MCP 模型与单价 平台接入 工具与 MCP 查看已"
     },
     {
       "route": "#/employees",
       "source": "CONSOLE_TABS",
       "kind": "tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 108,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 11,
+      "headSample": "运营 · 控制台 数字员工 列表 能力与权限 数字员工 刷新 无法打开数字员工列表 该数据源尚未"
     },
     {
       "route": "#/employees?tab=matrix",
       "source": "CONSOLE_TABS",
       "kind": "tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 382,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 10,
+      "headSample": "运营 · 控制台 数字员工 列表 能力与权限 能力与权限矩阵 谁被授了什么、谁还没有，放在同一张"
     },
     {
       "route": "#/employees/:employeeId",
       "source": "DETAIL_TAB",
       "kind": "detail-zone",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 107,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 11,
+      "headSample": "工作台 配置 任务 运行 证据 员工 · EMPLOYEE — 概览 能力与权限 审批 运行 审"
     },
     {
       "route": "#/employees/:employeeId?zone=config",
       "source": "DETAIL_ZONES_EXTRA",
       "kind": "detail-zone",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 107,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 11,
+      "headSample": "工作台 配置 任务 运行 证据 员工 · EMPLOYEE — 概览 能力与权限 审批 运行 审"
     },
     {
       "route": "#/employees/:employeeId?zone=evidence",
       "source": "DETAIL_ZONES_EXTRA",
       "kind": "detail-zone",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 107,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 11,
+      "headSample": "工作台 配置 任务 运行 证据 员工 · EMPLOYEE — 概览 能力与权限 审批 运行 审"
     },
     {
       "route": "#/employees/:employeeId?zone=runs",
       "source": "DETAIL_ZONES_EXTRA",
       "kind": "detail-zone",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 49,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 10,
+      "headSample": "工作台 配置 任务 运行 证据 员工 · EMPLOYEE — 概览 能力与权限 审批 运行 审"
     },
     {
       "route": "#/employees/:employeeId?zone=tasks",
       "source": "DETAIL_ZONES_EXTRA",
       "kind": "detail-zone",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 107,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 11,
+      "headSample": "工作台 配置 任务 运行 证据 员工 · EMPLOYEE — 概览 能力与权限 审批 运行 审"
     },
     {
       "route": "#/identity",
       "source": "CONSOLE_TABS",
       "kind": "tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 125,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 11,
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册真人名录 · 姓名"
     },
     {
       "route": "#/identity?tab=admins",
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 125,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 11,
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册真人名录 · 姓名"
     },
     {
       "route": "#/identity?tab=binding",
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 125,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 11,
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册真人名录 · 姓名"
     },
     {
       "route": "#/identity?tab=checks",
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 125,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 11,
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册真人名录 · 姓名"
     },
     {
       "route": "#/identity?tab=departments",
       "source": "CONSOLE_TABS",
       "kind": "tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 149,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 11,
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 组织与部门 部门树 · 上下级关"
     },
     {
       "route": "#/identity?tab=people&view=admins",
       "source": "VIEW_DEEP_LINKS",
       "kind": "view",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 125,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 11,
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册真人名录 · 姓名"
     },
     {
       "route": "#/identity?tab=roles",
       "source": "CONSOLE_TABS",
       "kind": "tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 104,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 9,
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 角色与权限 · 规划中 数据源未"
     },
     {
       "route": "#/identity?tab=tenant",
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 125,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 11,
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册真人名录 · 姓名"
     },
     {
       "route": "#/knowledge",
       "source": "CONSOLE_TABS",
       "kind": "tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 107,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 9,
+      "headSample": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 知识空间 · 规划中 数据源未落地（"
     },
     {
       "route": "#/knowledge?tab=citations",
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 532,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 10,
+      "headSample": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 证据与引用 回答、运行与审计留下的引"
     },
     {
       "route": "#/knowledge?tab=evidence",
       "source": "CONSOLE_TABS",
       "kind": "tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 532,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 10,
+      "headSample": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 证据与引用 回答、运行与审计留下的引"
     },
     {
       "route": "#/knowledge?tab=ingest",
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 97,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 9,
+      "headSample": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 数据源 · 规划中 数据源未落地（G"
     },
     {
       "route": "#/knowledge?tab=retrieval",
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 532,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 10,
+      "headSample": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 证据与引用 回答、运行与审计留下的引"
     },
     {
       "route": "#/knowledge?tab=scope",
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 107,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 9,
+      "headSample": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 知识空间 · 规划中 数据源未落地（"
     },
     {
       "route": "#/knowledge?tab=sources",
       "source": "CONSOLE_TABS",
       "kind": "tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 97,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 9,
+      "headSample": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 数据源 · 规划中 数据源未落地（G"
     },
     {
       "route": "#/metrics",
       "source": "COMPAT_MODULES",
       "kind": "compat-module",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 815,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 10,
+      "headSample": "TOKEN ANALYTICS HIDDEN The token, cost, and per-"
     },
     {
       "route": "#/org",
       "source": "COMPAT_MODULES",
       "kind": "compat-module",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 125,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 11,
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册真人名录 · 姓名"
     },
     {
       "route": "#/overview",
       "source": "CONSOLE_TABS",
       "kind": "tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 626,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 20,
+      "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检"
     },
     {
       "route": "#/overview?tab=usage",
       "source": "CONSOLE_TABS",
       "kind": "tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 101,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 10,
+      "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 用量数据暂不可见 该数据源尚未开放，或你没有查看"
     },
     {
       "route": "#/sessions",
       "source": "COMPAT_MODULES",
       "kind": "compat-module",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 104,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 14,
+      "headSample": "Chats Automation All Any chat source Import sess"
     },
     {
       "route": "#/system",
       "source": "CONSOLE_TABS",
       "kind": "tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 237,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 12,
+      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 系统健康 实例活着吗 健康 1 "
     },
     {
       "route": "#/system?tab=defaults",
       "source": "CONSOLE_TABS",
       "kind": "tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 102,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 9,
+      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 默认设置 · 规划中 上游页面尚"
     },
     {
       "route": "#/system?tab=events",
       "source": "CONSOLE_TABS",
       "kind": "tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 100,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 9,
+      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 审计事件 · 规划中 上游页面尚"
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "source": "VIEW_DEEP_LINKS",
       "kind": "view",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 100,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 9,
+      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 审计事件 · 规划中 上游页面尚"
     },
     {
       "route": "#/system?tab=retention",
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 100,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 9,
+      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 审计事件 · 规划中 上游页面尚"
     },
     {
       "route": "#/system?tab=security",
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 100,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 9,
+      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 审计事件 · 规划中 上游页面尚"
     },
     {
       "route": "#/system?tab=version",
       "source": "CONSOLE_TABS",
       "kind": "tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 90,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 9,
+      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 版本 · 规划中 上游页面尚未接"
     },
     {
       "route": "#/work",
       "source": "CONSOLE_TABS",
       "kind": "tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 222,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 14,
+      "headSample": "运营 · 控制台 任务与运行 任务 运行 任务看板 按后端状态看任务；拖动排序未启用，状态不会被"
     },
     {
       "route": "#/work?tab=board&view=cron",
       "source": "VIEW_DEEP_LINKS",
       "kind": "view",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 222,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 14,
+      "headSample": "运营 · 控制台 任务与运行 任务 运行 任务看板 按后端状态看任务；拖动排序未启用，状态不会被"
     },
     {
       "route": "#/work?tab=cron",
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 222,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 14,
+      "headSample": "运营 · 控制台 任务与运行 任务 运行 任务看板 按后端状态看任务；拖动排序未启用，状态不会被"
     },
     {
       "route": "#/work?tab=runs",
       "source": "CONSOLE_TABS",
       "kind": "tab",
-      "mainChars": 0,
-      "hasMainEl": false,
-      "httpStatus": null,
-      "consoleErrors": 0,
-      "headSample": ""
+      "verdict": "content-ok",
+      "mainChars": 269,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 11,
+      "headSample": "运营 · 控制台 任务与运行 任务 运行 运营 · 控制台 · 运行 运行 按时间看运行；失败原"
     }
   ],
-  "distinctMainHeads": 1,
-  "medianMainChars": 0,
-  "contentEmpty": [
-    {
-      "route": "#/access",
-      "source": "COMPAT_MODULES",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/access\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/access\", waiting until \"domcon",
-      "headSample": ""
-    },
-    {
-      "route": "#/approvals",
-      "source": "CONSOLE_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/approvals\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/approvals\", waiting until \"",
-      "headSample": ""
-    },
-    {
-      "route": "#/approvals?tab=history",
-      "source": "CONSOLE_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/approvals?tab=history\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/approvals?tab=h",
-      "headSample": ""
-    },
-    {
-      "route": "#/approvals?tab=mine",
-      "source": "COMPAT_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/approvals?tab=mine\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/approvals?tab=mine",
-      "headSample": ""
-    },
-    {
-      "route": "#/approvals?tab=pending&view=mine",
-      "source": "VIEW_DEEP_LINKS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/approvals?tab=pending&view=mine\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/appro",
-      "headSample": ""
-    },
-    {
-      "route": "#/approvals?tab=pending&view=release",
-      "source": "VIEW_DEEP_LINKS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/approvals?tab=pending&view=release\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/ap",
-      "headSample": ""
-    },
-    {
-      "route": "#/approvals?tab=policy",
-      "source": "COMPAT_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/approvals?tab=policy\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/approvals?tab=po",
-      "headSample": ""
-    },
-    {
-      "route": "#/approvals?tab=release",
-      "source": "COMPAT_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/approvals?tab=release\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/approvals?tab=r",
-      "headSample": ""
-    },
-    {
-      "route": "#/audit",
-      "source": "COMPAT_MODULES",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/audit\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/audit\", waiting until \"domconte",
-      "headSample": ""
-    },
-    {
-      "route": "#/capabilities",
-      "source": "CONSOLE_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/capabilities\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/capabilities\", waiting u",
-      "headSample": ""
-    },
-    {
-      "route": "#/capabilities?tab=channels",
-      "source": "CONSOLE_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/capabilities?tab=channels\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/capabilitie",
-      "headSample": ""
-    },
-    {
-      "route": "#/capabilities?tab=models",
-      "source": "CONSOLE_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/capabilities?tab=models\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/capabilities?",
-      "headSample": ""
-    },
-    {
-      "route": "#/capabilities?tab=tools",
-      "source": "CONSOLE_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/capabilities?tab=tools\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/capabilities?t",
-      "headSample": ""
-    },
-    {
-      "route": "#/employees",
-      "source": "CONSOLE_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/employees\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/employees\", waiting until \"",
-      "headSample": ""
-    },
-    {
-      "route": "#/employees?tab=matrix",
-      "source": "CONSOLE_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/employees?tab=matrix\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/employees?tab=ma",
-      "headSample": ""
-    },
-    {
-      "route": "#/employees/:employeeId",
-      "source": "DETAIL_TAB",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/employees/:employeeId\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/employees/:empl",
-      "headSample": ""
-    },
-    {
-      "route": "#/employees/:employeeId?zone=config",
-      "source": "DETAIL_ZONES_EXTRA",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/employees/:employeeId?zone=config\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/emp",
-      "headSample": ""
-    },
-    {
-      "route": "#/employees/:employeeId?zone=evidence",
-      "source": "DETAIL_ZONES_EXTRA",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/employees/:employeeId?zone=evidence\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/e",
-      "headSample": ""
-    },
-    {
-      "route": "#/employees/:employeeId?zone=runs",
-      "source": "DETAIL_ZONES_EXTRA",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/employees/:employeeId?zone=runs\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/emplo",
-      "headSample": ""
-    },
-    {
-      "route": "#/employees/:employeeId?zone=tasks",
-      "source": "DETAIL_ZONES_EXTRA",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/employees/:employeeId?zone=tasks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/empl",
-      "headSample": ""
-    },
-    {
-      "route": "#/identity",
-      "source": "CONSOLE_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/identity\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/identity\", waiting until \"do",
-      "headSample": ""
-    },
-    {
-      "route": "#/identity?tab=admins",
-      "source": "COMPAT_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/identity?tab=admins\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/identity?tab=admi",
-      "headSample": ""
-    },
-    {
-      "route": "#/identity?tab=binding",
-      "source": "COMPAT_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/identity?tab=binding\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/identity?tab=bin",
-      "headSample": ""
-    },
-    {
-      "route": "#/identity?tab=checks",
-      "source": "COMPAT_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/identity?tab=checks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/identity?tab=chec",
-      "headSample": ""
-    },
-    {
-      "route": "#/identity?tab=departments",
-      "source": "CONSOLE_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/identity?tab=departments\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/identity?tab",
-      "headSample": ""
-    },
-    {
-      "route": "#/identity?tab=people&view=admins",
-      "source": "VIEW_DEEP_LINKS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/identity?tab=people&view=admins\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/ident",
-      "headSample": ""
-    },
-    {
-      "route": "#/identity?tab=roles",
-      "source": "CONSOLE_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/identity?tab=roles\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/identity?tab=roles",
-      "headSample": ""
-    },
-    {
-      "route": "#/identity?tab=tenant",
-      "source": "COMPAT_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/identity?tab=tenant\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/identity?tab=tena",
-      "headSample": ""
-    },
-    {
-      "route": "#/knowledge",
-      "source": "CONSOLE_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/knowledge\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/knowledge\", waiting until \"",
-      "headSample": ""
-    },
-    {
-      "route": "#/knowledge?tab=citations",
-      "source": "COMPAT_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/knowledge?tab=citations\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/knowledge?tab",
-      "headSample": ""
-    },
-    {
-      "route": "#/knowledge?tab=evidence",
-      "source": "CONSOLE_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/knowledge?tab=evidence\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/knowledge?tab=",
-      "headSample": ""
-    },
-    {
-      "route": "#/knowledge?tab=ingest",
-      "source": "COMPAT_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/knowledge?tab=ingest\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/knowledge?tab=in",
-      "headSample": ""
-    },
-    {
-      "route": "#/knowledge?tab=retrieval",
-      "source": "COMPAT_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/knowledge?tab=retrieval\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/knowledge?tab",
-      "headSample": ""
-    },
-    {
-      "route": "#/knowledge?tab=scope",
-      "source": "COMPAT_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/knowledge?tab=scope\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/knowledge?tab=sco",
-      "headSample": ""
-    },
-    {
-      "route": "#/knowledge?tab=sources",
-      "source": "CONSOLE_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/knowledge?tab=sources\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/knowledge?tab=s",
-      "headSample": ""
-    },
-    {
-      "route": "#/metrics",
-      "source": "COMPAT_MODULES",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/metrics\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/metrics\", waiting until \"domc",
-      "headSample": ""
-    },
-    {
-      "route": "#/org",
-      "source": "COMPAT_MODULES",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/org\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/org\", waiting until \"domcontentlo",
-      "headSample": ""
-    },
-    {
-      "route": "#/overview",
-      "source": "CONSOLE_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/overview\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/overview\", waiting until \"do",
-      "headSample": ""
-    },
-    {
-      "route": "#/overview?tab=usage",
-      "source": "CONSOLE_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/overview?tab=usage\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/overview?tab=usage",
-      "headSample": ""
-    },
-    {
-      "route": "#/sessions",
-      "source": "COMPAT_MODULES",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/sessions\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/sessions\", waiting until \"do",
-      "headSample": ""
-    },
-    {
-      "route": "#/system",
-      "source": "CONSOLE_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/system\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/system\", waiting until \"domcon",
-      "headSample": ""
-    },
-    {
-      "route": "#/system?tab=defaults",
-      "source": "CONSOLE_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/system?tab=defaults\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/system?tab=defaul",
-      "headSample": ""
-    },
-    {
-      "route": "#/system?tab=events",
-      "source": "CONSOLE_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/system?tab=events\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/system?tab=events\",",
-      "headSample": ""
-    },
-    {
-      "route": "#/system?tab=events&view=anomaly",
-      "source": "VIEW_DEEP_LINKS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/system?tab=events&view=anomaly\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/system",
-      "headSample": ""
-    },
-    {
-      "route": "#/system?tab=retention",
-      "source": "COMPAT_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/system?tab=retention\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/system?tab=reten",
-      "headSample": ""
-    },
-    {
-      "route": "#/system?tab=security",
-      "source": "COMPAT_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/system?tab=security\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/system?tab=securi",
-      "headSample": ""
-    },
-    {
-      "route": "#/system?tab=version",
-      "source": "CONSOLE_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/system?tab=version\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/system?tab=version",
-      "headSample": ""
-    },
-    {
-      "route": "#/work",
-      "source": "CONSOLE_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/work\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/work\", waiting until \"domcontent",
-      "headSample": ""
-    },
-    {
-      "route": "#/work?tab=board&view=cron",
-      "source": "VIEW_DEEP_LINKS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/work?tab=board&view=cron\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/work?tab=boa",
-      "headSample": ""
-    },
-    {
-      "route": "#/work?tab=cron",
-      "source": "COMPAT_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/work?tab=cron\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/work?tab=cron\", waiting",
-      "headSample": ""
-    },
-    {
-      "route": "#/work?tab=runs",
-      "source": "CONSOLE_TABS",
-      "verdict": "content-empty:no-main-element",
-      "mainChars": 0,
-      "rootChars": 0,
-      "httpStatus": null,
-      "navError": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9122/#/work?tab=runs\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:9122/#/work?tab=runs\", waiting",
-      "headSample": ""
-    }
-  ],
-  "contentEmptyCount": 51,
-  "routesRenderedWithoutMainEl": 51,
-  "routesWithConsoleErrors": 0,
+  "distinctMainHeads": 26,
+  "medianMainChars": 125,
+  "contentEmpty": [],
+  "contentEmptyCount": 0,
+  "routesRenderedWithoutMainEl": 0,
+  "routesWithConsoleErrors": 51,
   "parseErrors": [],
-  "ok": false
+  "ok": false,
+  "headHash": "a655e02e",
+  "exitCode": 1,
+  "counts": {
+    "probed": 75,
+    "deadLinks": 0,
+    "contentEmpty": 0,
+    "verdicts": {
+      "spa-hash": 75
+    }
+  }
 }

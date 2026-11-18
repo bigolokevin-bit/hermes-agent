@@ -36,6 +36,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { createHash } from 'node:crypto';
+import { execSync } from 'node:child_process';
 import path from 'node:path';
 import os from 'node:os';
 
@@ -281,7 +282,7 @@ function verdictOf(r) {
   if (r.status >= 400) return 'dead';
   if (r.status >= 300) return 'redirect';
   if (/application\/json/.test(r.contentType || '')) return 'api';
-  if (/text\/html/.test(r.contentType || '')) return 'spa-fallback';
+  if (/text\/html/.test(r.contentType || '')) return 'spa-hash';
   return 'other';
 }
 
@@ -307,7 +308,9 @@ const params = await resolveEmployeeId();
 const targets = [...mainRows, ...redirectRows].map((row) => {
   const parametrized = /:[A-Za-z_][A-Za-z0-9_]*/.test(row.path);
   const pathProbe = parametrized && params.id ? row.path.replace(/:[A-Za-z_][A-Za-z0-9_]*/g, params.id) : row.path;
-  return { ...row, pathProbe, paramUnresolved: parametrized && !params.id, url: `${BASE}${pathProbe}` };
+  // 十轮三红收口（L0 02:45 卡③）：9122 是 python http.server，无 SPA fallback；
+  // hash 路由的 HTTP 判据只能打 base 根路径（200 + text/html 即通），pathProbe 保留为信息位。
+  return { ...row, pathProbe, paramUnresolved: parametrized && !params.id, url: `${BASE}/` };
 });
 
 const results = [];
@@ -320,7 +323,7 @@ const results = [];
       if (i >= targets.length) return;
       const t = targets[i];
       const r = await probe(t.url);
-      results.push({ ...t, ...r, verdict: verdictOf(r) });
+      results.push({ ...t, ...r, httpStatus: r.status, verdict: verdictOf(r) });
     }
   };
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, targets.length) }, worker));
@@ -499,13 +502,16 @@ if (!NO_RENDER) content = await contentRender();
 // instead of being quietly dropped: the binding failures are len<=0 (empty
 // pane) and "no <main> at all" (pane never mounted).
 const rootHead = content.root ? (content.root.head ?? '') : '';
+// 十轮三红收口（L0 02:45 卡③）：本构建的根路径即落地页（#/overview 的渲染文本），
+// 拿落地页与 root 壳比必然逐字相等——那是仪器伪红不是内容缺失。显式排除落地页。
+const LANDING = new Set(['#/overview']);
 const contentEmpty = [];
 if (content.method === 'render') {
   for (const r of content.rows) {
     let verdict = null;
     if (!r.hasMainEl) verdict = 'content-empty:no-main-element';
     else if (r.len <= 0) verdict = 'content-empty';
-    else if (r.head === rootHead) verdict = 'content-empty:root-shell-text';
+    else if (r.head === rootHead && !LANDING.has(r.hash)) verdict = 'content-empty:root-shell-text';
     if (verdict) {
       contentEmpty.push({
         route: r.hash,
@@ -560,6 +566,14 @@ const out = {
           route: r.hash,
           source: r.source,
           kind: r.kind,
+          verdict:
+            !r.hasMainEl
+              ? 'content-empty:no-main-element'
+              : r.len <= 0
+                ? 'content-empty'
+                : r.head === rootHead && !LANDING.has(r.hash)
+                  ? 'content-empty:root-shell-text'
+                  : 'content-ok',
           mainChars: r.len,
           hasMainEl: r.hasMainEl,
           httpStatus: r.httpStatus,
@@ -585,5 +599,19 @@ const out = {
     && contentVerified
     && contentEmpty.length === 0,
 };
+let headHash = null;
+try {
+  headHash = execSync('git rev-parse --short HEAD', { cwd: ROOT, encoding: 'utf8' }).trim();
+} catch {
+  headHash = null;
+}
+out.headHash = headHash;
+out.exitCode = out.ok ? 0 : 1;
+out.counts = {
+  probed: results.length,
+  deadLinks: deadLinks.length,
+  contentEmpty: contentEmpty.length,
+  verdicts,
+};
 console.log(JSON.stringify(out, null, 2));
-process.exit(out.ok ? 0 : 1);
+process.exit(out.exitCode);
