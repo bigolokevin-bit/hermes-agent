@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useParams, useSearchParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
 import { Spinner } from "@nous-research/ui/ui/components/spinner";
 
 import { fetchJSON, setManagementProfile } from "@/lib/api";
@@ -224,32 +224,80 @@ export default function ChatModulePage({
   }, [outer.profile]);
   useEffect(() => () => setManagementProfile(outerProfileRef.current), []);
 
-  const { state, armedFor, reload } = useEmployeeGuard(employeeId);
+  const forced = searchParams.get("state");
+  const forceRid = searchParams.get("rid");
+  const { state, armedFor, reload } = useEmployeeGuard(forced ? "" : employeeId);
 
   // CHAT-04: ready only for the id this fetch cycle resolved, and only after
   // the attach token rotated; every other commit shows busy/error/empty. The
   // host subtree is keyed by id, so an id switch unmounts the old ChatPage —
   // closing its WebSocket (ChatPage.tsx:1546-1584 cleanup) — before a new
   // host can arm for the incoming employee.
-  const showHost = employeeId !== "" && state.k === "ready" && armedFor === employeeId;
-  const showBusy = employeeId !== "" && !showHost && state.k !== "error";
+  const showHost = forced === null && employeeId !== "" && state.k === "ready" && armedFor === employeeId;
+  const showBusy = forced === null && employeeId !== "" && !showHost && state.k !== "error";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
+      {forced !== null ? (
+        <div data-testid={`chat-forced-${forced}`}>
+          {forced === "loading" ? <BusyHost /> : null}
+          {forced === "empty" ? (
+            <>
+              <EmptyBlock
+                text="还没有可打开的对话"
+                hint="先绑定一位数字员工，再从员工详情进入对话；绑定之前不会建立任何终端连接。"
+              />
+              <div className="flex justify-center">
+                <Link className="text-sm underline decoration-dotted underline-offset-2" to="/employees">
+                  去选择数字员工
+                </Link>
+              </div>
+            </>
+          ) : null}
+          {forced === "error" ? (
+            <ErrorStateBlock
+              status={502}
+              message="对话暂时不可用。"
+              requestId={forceRid}
+              deniedTitle="无法打开对话"
+              errorTitle="对话暂时不可用"
+              onRetry={reload}
+            />
+          ) : null}
+          {forced === "denied" ? (
+            <ErrorStateBlock
+              status={403}
+              message="forbidden"
+              requestId={forceRid}
+              deniedTitle="无法打开对话"
+              errorTitle="对话暂时不可用"
+              onRetry={reload}
+            />
+          ) : null}
+        </div>
+      ) : null}
+
       {/* Empty (CHAT-02): no bound employee → neutral panel, and NO host
           mounted at all, so zero /api/pty requests can leave this page. */}
-      {employeeId === "" && (
-        <EmptyBlock
-          text="尚未绑定数字员工"
-          hint="从「数字员工」列表打开一位员工，再切到它的「对话」Tab；也可以直接访问 /chat?employee=<员工编号> 绑定一位。绑定之前不会建立任何终端连接。"
-        />
+      {forced === null && employeeId === "" && (
+        <>
+          <EmptyBlock
+            text="尚未绑定数字员工"
+            hint="从「数字员工」列表打开一位员工，再切到它的「对话」Tab；绑定之前不会建立任何终端连接。"
+          />
+          <div className="flex justify-center">
+            <Link className="text-sm underline decoration-dotted underline-offset-2" to="/employees">
+              去选择数字员工
+            </Link>
+          </div>
+        </>
       )}
 
       {showBusy && <BusyHost />}
 
       {/* Error / denied (CHAT-03): human words + request id + retry;
           403/404 collapse into the honest 「无权限或未开放」 wording. */}
-      {employeeId !== "" && state.k === "error" && (
+      {forced === null && employeeId !== "" && state.k === "error" && (
         <ErrorStateBlock
           status={state.status}
           message={state.message}
@@ -263,11 +311,18 @@ export default function ChatModulePage({
       {/* Ready (CHAT-01): the upstream page IS the chat. Keyed by employee
           id so a switch tears the old WS down before the new host arms. */}
       {showHost && (
-        <ScopedToEmployee key={employeeId} employeeId={employeeId}>
-          <Suspense fallback={<BusyHost />}>
-            <ChatHost isActive={isActive} />
-          </Suspense>
-        </ScopedToEmployee>
+        <div
+          data-chat-host
+          data-profile={employeeId}
+          data-scope="employee"
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          <ScopedToEmployee key={employeeId} employeeId={employeeId}>
+            <Suspense fallback={<BusyHost />}>
+              <ChatHost isActive={isActive} />
+            </Suspense>
+          </ScopedToEmployee>
+        </div>
       )}
     </div>
   );

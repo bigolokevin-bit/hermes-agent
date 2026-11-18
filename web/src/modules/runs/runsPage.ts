@@ -213,6 +213,35 @@ export function duration(start?: string, end?: string): string {
   return min < 60 ? `${min}m ${sec % 60}s` : `${Math.floor(min / 60)}h ${min % 60}m`;
 }
 
+export type CostState = "known" | "unknown" | "missing";
+
+/** costStatus is the only authority for whether a cost figure is usable. */
+export function costState(run: Pick<RunRow, "costStatus" | "costUsd">): CostState {
+  if (run.costStatus === "unknown") return "unknown";
+  if (!run.costStatus) return "missing";
+  return "known";
+}
+
+export function costText(run: Pick<RunRow, "costStatus" | "costUsd">): string {
+  return costState(run) === "known" ? usd(run.costUsd) : "—";
+}
+
+export function costBadgeLabel(run: Pick<RunRow, "costStatus">): string {
+  const state = costState(run);
+  if (state === "unknown") return "未知";
+  if (state === "missing") return "未记录";
+  return "已计价";
+}
+
+export function costReason(run: Pick<RunRow, "costStatus" | "costUsd">): string {
+  const state = costState(run);
+  if (state === "unknown") return "账本没有这条运行的计价记录，金额按未知处理";
+  if (state === "missing") return "服务未返回计价状态，金额按未记录处理";
+  if (run.costStatus === "estimated") return "金额为估算值";
+  if (run.costStatus === "mixed") return "金额含上游账本与估算两种来源";
+  return "金额来自上游账本";
+}
+
 export function usd(v?: number | null): string {
   if (v == null || !Number.isFinite(v)) return "—";
   return `$${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -274,4 +303,11 @@ export function taskLabel(raw?: string): string {
   if (!raw) return "—";
   const bare = raw.replace(/^[^:]*:/, "").replace(/[^0-9A-Za-z]/g, "");
   return bare ? `任务 · ${bare.slice(-4).toUpperCase()}` : "任务";
+}
+
+/** resultRef is stored on ToolIntent, not always echoed by the event API. */
+export function resultRef(ev: { eventType?: string; payload?: Record<string, unknown> }): string | null {
+  if (ev.eventType !== "tool_result") return null;
+  const raw = ev.payload?.resultRef ?? ev.payload?.result_ref;
+  return typeof raw === "string" && raw.trim() ? raw.trim() : null;
 }

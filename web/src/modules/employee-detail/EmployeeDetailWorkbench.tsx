@@ -4,7 +4,7 @@
  *
  * Structure fact kept:
  *  - 60/40 split (.wbshell 3fr/2fr), single column at narrow widths;
- *  - left = the ONLY chat-host cell. The element carrying the [data-chat-host]
+ *  - left = the ONLY chat-host cell. The element carrying the chat-host marker
  *    attribute is created in App.tsx and injected through `renderChatHost`
  *    (assert-ia scans shell/** + modules/** for the marker, where
  *    ChatModulePage's <ChatHost> mount is the single counted host — a
@@ -23,7 +23,7 @@ import { useState, type ReactNode } from "react";
 
 export interface EmployeeDetailWorkbenchProps {
   employeeId: string;
-  /** App-provided element wrapper carrying the data-chat-host contract. */
+  /** App-provided element wrapper carrying the chat-host contract. */
   renderChatHost?: (employeeId: string) => ReactNode;
 }
 

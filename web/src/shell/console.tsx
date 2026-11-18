@@ -21,7 +21,7 @@
  *    the B/C existence probe and fall back to the existing
  *    EmployeeDetailPage. The explicit `?zone=workbench` form (incl. the
  *    ZONE_ALIAS overview/chat spellings) renders the lane-A 60/40 workbench
- *    whose left cell carries the ONLY `[data-chat-host]`; the element with
+ *    whose left cell carries the ONLY chat-host marker; the element with
  *    that attribute is supplied by App (renderChatHost) so the marker
  *    literal stays outside shell/ and modules/ — assert-ia's react scan
  *    counts those trees, where ChatModulePage's own host mount is the one

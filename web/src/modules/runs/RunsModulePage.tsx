@@ -3,6 +3,7 @@
  * /api/run-detail, /api/run-events. No retry/cancel write is exposed.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router";
 import { Activity, AlertTriangle, Inbox, RefreshCw, ShieldAlert, X } from "lucide-react";
 
 import { Badge } from "@nous-research/ui/ui/components/badge";
@@ -13,12 +14,17 @@ import { fetchJSON } from "@/lib/api";
 import {
   beijing,
   duration,
+  costBadgeLabel,
+  costReason,
+  costState,
+  costText,
   errorInfo,
   eventLabel,
   loadRunDetail,
   loadRunEvents,
   loadRuns,
   reasonLabel,
+  resultRef,
   shortId,
   taskLabel,
   statusLabel,
@@ -135,13 +141,32 @@ function Detail({ state, onClose, onRetry }: { state: DetailState; onClose: () =
           <>
             <div className="grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
               <div><span className="block text-[11px] uppercase tracking-wide text-muted-foreground">状态</span><Badge tone={statusTone(state.run.status)}>{statusLabel(state.run.status)}</Badge></div>
-              <div><span className="block text-[11px] uppercase tracking-wide text-muted-foreground">成本</span><span>{usd(state.run.costUsd)}</span></div>
+              <div>
+                <span className="block text-[11px] uppercase tracking-wide text-muted-foreground">成本</span>
+                <span>{costText(state.run)}</span>{" "}
+                <Badge tone={costState(state.run) === "known" ? "success" : costState(state.run) === "unknown" ? "warning" : "outline"}>{costBadgeLabel(state.run)}</Badge>
+                <span className="mt-1 block text-[11px] text-muted-foreground">{costReason(state.run)}</span>
+              </div>
               <div><span className="block text-[11px] uppercase tracking-wide text-muted-foreground">预算上限</span><span>{usd(state.run.budgetCapUsd)}</span></div>
               <div><span className="block text-[11px] uppercase tracking-wide text-muted-foreground">尝试</span><span>{state.run.attemptNo ?? "—"}</span></div>
               <div><span className="block text-[11px] uppercase tracking-wide text-muted-foreground">结束</span><span>{beijing(state.run.endedAt)}</span></div>
               <div><span className="block text-[11px] uppercase tracking-wide text-muted-foreground">失败原因</span><span>{reasonLabel(state.run.reasonCode)}</span></div>
               <div><span className="block text-[11px] uppercase tracking-wide text-muted-foreground">任务</span><span title={state.run.taskId}>{taskLabel(state.run.taskId)}</span></div>
               <div><span className="block text-[11px] uppercase tracking-wide text-muted-foreground">事件</span><span>{state.events.length} 条{state.eventsError ? "（部分读取失败）" : ""}</span></div>
+              <div className="sm:col-span-2">
+                <span className="block text-[11px] uppercase tracking-wide text-muted-foreground">上游运行</span>
+                {state.run.upstreamRunId ? (
+                  <Link
+                    className="text-sm underline decoration-dotted underline-offset-2"
+                    to={`/runs?upstream=${encodeURIComponent(state.run.upstreamRunId)}`}
+                    title={state.run.upstreamRunId}
+                  >
+                    上游运行 {shortId(state.run.upstreamRunId)}
+                  </Link>
+                ) : (
+                  <span>—</span>
+                )}
+              </div>
             </div>
             {state.eventsError ? <p className="text-xs text-muted-foreground">{state.eventsError}</p> : null}
             <div className="space-y-2">
@@ -153,13 +178,27 @@ function Detail({ state, onClose, onRetry }: { state: DetailState; onClose: () =
                   {state.events.map((ev) => (
                     <li key={ev.seq} className="flex min-w-0 flex-wrap items-baseline gap-2 border-b border-border pb-2 text-sm last:border-0">
                       <span className="font-mono text-xs text-muted-foreground">#{ev.seq}</span>
-                      <span className="min-w-0 flex-1">{eventLabel(ev.eventType)}</span>
+                      <span className="min-w-0 flex-1">
+                        {eventLabel(ev.eventType)}
+                        {ev.eventType === "tool_result" ? (
+                          <span className="ml-2 text-xs text-muted-foreground" title={resultRef(ev) ?? undefined}>
+                            结果引用：{resultRef(ev) ? shortId(resultRef(ev) as string) : "未记录"}
+                          </span>
+                        ) : null}
+                      </span>
                       <span className="text-xs text-muted-foreground">{beijing(ev.occurredAt)}</span>
                     </li>
                   ))}
                 </ol>
               )}
-              <p className="text-xs text-muted-foreground">事件只读；重试会新建一次运行，不在本页触发。</p>
+              <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
+                <Button size="sm" outlined disabled data-testid="run-retry-planned" title="写入接口未开放">
+                  重试（新建运行）
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  重试会新建一次运行并生成新编号，不会复用本条 runId；写入接口尚未开放，本页不发送请求。
+                </span>
+              </div>
             </div>
           </>
         )}
@@ -169,6 +208,9 @@ function Detail({ state, onClose, onRetry }: { state: DetailState; onClose: () =
 }
 
 export function RunsModulePage() {
+  const [sp, setSp] = useSearchParams();
+  const runParam = sp.get("run");
+  const upstream = sp.get("upstream");
   const [since, setSince] = useState<SinceKey>("7d");
   const [status, setStatus] = useState("");
   const [list, setList] = useState<ListState>({ phase: "loading", rows: [], cursor: null, status: 0, message: "", requestId: null });
@@ -176,6 +218,24 @@ export function RunsModulePage() {
   const [employees, setEmployees] = useState<EmployeeMap>(new Map());
   const [selected, setSelected] = useState<string | null>(null);
   const [detail, setDetail] = useState<DetailState>({ k: "idle" });
+
+  useEffect(() => {
+    if (runParam) setSelected(runParam);
+  }, [runParam]);
+
+  useEffect(() => {
+    if (upstream) setSelected(null);
+  }, [upstream]);
+
+  const openRun = useCallback((id: string) => {
+    setSelected(id);
+    setSp({ run: id }, { replace: true });
+  }, [setSp]);
+
+  const closeRun = useCallback(() => {
+    setSelected(null);
+    setSp({}, { replace: true });
+  }, [setSp]);
 
   useEffect(() => {
     let alive = true;
@@ -289,7 +349,20 @@ export function RunsModulePage() {
         </CardContent>
       </Card>
 
-      <Detail state={detail} onClose={() => setSelected(null)} onRetry={retry} />
+      {upstream ? (
+        <Card data-testid="upstream-panel">
+          <CardContent className="flex flex-col items-start gap-2 p-4">
+            <h2 className="text-base font-semibold">上游运行</h2>
+            <p className="break-all font-mono text-xs text-muted-foreground" data-testid="upstream-run-id">{upstream}</p>
+            <p className="text-sm text-muted-foreground">
+              这是 Hermes 运行时的上游编号。控制台没有上游详情页，编号可用于运行时排查；本页不会伪造上游数据。
+            </p>
+            <Link className="text-sm underline decoration-dotted underline-offset-2" to="/runs">返回运行列表</Link>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <Detail state={detail} onClose={closeRun} onRetry={retry} />
 
       {list.phase === "loading" ? <Skeleton /> : null}
       {list.phase === "empty" ? (
@@ -318,14 +391,20 @@ export function RunsModulePage() {
                     type="button"
                     className="grid w-full min-w-0 grid-cols-1 gap-x-3 gap-y-1 px-4 py-3 text-left text-sm hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:outline-none sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.7fr)_minmax(0,0.8fr)]"
                     data-testid={`run-row-${row.runId}`}
-                    onClick={() => setSelected(row.runId)}
+                    onClick={() => openRun(row.runId)}
                   >
                     <span className="font-mono text-xs" title={row.runId}>{shortId(row.runId)}</span>
                     <span className="min-w-0 truncate">{rowLabel(row, employees)}</span>
                     <span className="min-w-0 truncate" title={row.taskId}>{taskLabel(row.taskId)}</span>
                     <span>{beijing(row.startedAt)}</span>
                     <span>{duration(row.startedAt, row.endedAt)}</span>
-                    <span>{usd(row.costUsd)}</span>
+                    <span className="flex min-w-0 flex-col items-start gap-0.5" title={costReason(row)}>
+                      <span>{costText(row)}</span>
+                      <Badge tone={costState(row) === "known" ? "success" : costState(row) === "unknown" ? "warning" : "outline"}>{costBadgeLabel(row)}</Badge>
+                      {costState(row) !== "known" ? (
+                        <span className="text-[10px] leading-tight text-muted-foreground">{costReason(row)}</span>
+                      ) : null}
+                    </span>
                     <span><Badge tone={statusTone(row.status)}>{statusLabel(row.status)}</Badge></span>
                   </button>
                 </li>
