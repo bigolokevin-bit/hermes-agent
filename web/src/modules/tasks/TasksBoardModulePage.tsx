@@ -1,163 +1,57 @@
 /**
- * Lane E · tasks board module (PRD v4.1 `#/work`, default open column).
+ * Lane work · T14 task board (`#/work`, board tab).
  *
- * Read path only. Source: `/agent-api/api/tasks` with explicit status filters
- * (the BFF refuses unfiltered queries). Four real states are driven by the
- * request; the shell may force one with `?state=loading|empty|error|denied`.
- * No write path is exposed until lane C opens task creation.
+ * Read-only: list reads five status columns, detail reads one task. There is
+ * no drag/transition call, so the board can never show a state the backend
+ * did not confirm. Missing values render "—"; unknown states stay unknown.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
-import { AlertTriangle, Inbox, RefreshCw, ShieldAlert, UserRound } from "lucide-react";
+import { AlertTriangle, Inbox, RefreshCw, ShieldAlert, X } from "lucide-react";
 
-import { Badge, Button, Card, CardContent } from "@nous-research/ui";
-import { fetchJSON } from "@/lib/api";
-import { API_UNREACHABLE_MESSAGE, ApiError, humanizeStatus } from "@/lib/api-error";
+import { Badge } from "@nous-research/ui/ui/components/badge";
+import { Button } from "@nous-research/ui/ui/components/button";
+import { Card, CardContent } from "@nous-research/ui/ui/components/card";
+import {
+  actorLabel,
+  beijing,
+  BOARD_STATUSES,
+  detailError,
+  EMPTY_BOARD,
+  loadBoard,
+  loadDetail,
+  priorityLabel,
+  shortRef,
+  sourceLabel,
+  statusLabel,
+  type BoardState,
+  type TaskDetail,
+  type TaskRow,
+} from "./tasksBoard";
 
-type TaskStatus = "open" | "in_progress" | "blocked" | "done" | "cancelled";
-type TaskRow = {
-  taskId: string;
-  title: string;
-  status: string;
-  priority?: string | null;
-  assignee?: { type?: string; id?: string } | null;
-  dueAt?: string | null;
-  updatedAt?: string | null;
-  progressNote?: string | null;
+const COLUMN_LABEL: Record<(typeof BOARD_STATUSES)[number], string> = {
+  open: "待处理",
+  in_progress: "进行中",
+  blocked: "阻塞",
+  done: "已完成",
+  cancelled: "已取消",
 };
-type Phase = "loading" | "ready" | "empty" | "error" | "denied";
-type BoardState = {
-  phase: Phase;
-  rows: TaskRow[];
-  status: number;
-  message: string;
-  requestId?: string;
-};
 
-const SOURCE_URLS = [
-  "/agent-api/api/tasks?status=open&limit=100",
-  "/agent-api/api/tasks?status=blocked&limit=100",
-];
-const COLUMNS: Array<{ key: TaskStatus; label: string }> = [
-  { key: "open", label: "待处理" },
-  { key: "in_progress", label: "进行中" },
-  { key: "blocked", label: "阻塞" },
-];
-const INITIAL: BoardState = { phase: "loading", rows: [], status: 0, message: "" };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function pickString(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim() ? value : undefined;
-}
-
-function errorInfo(err: unknown): { status: number; message: string; requestId?: string } {
-  if (err instanceof ApiError) {
-    const e = err as ApiError & { status?: number; requestId?: string };
-    return {
-      status: typeof e.status === "number" ? e.status : 0,
-      message: e.message || API_UNREACHABLE_MESSAGE,
-      requestId: e.requestId,
-    };
-  }
-  return { status: 0, message: API_UNREACHABLE_MESSAGE };
-}
-
-function rowsFrom(body: unknown): TaskRow[] {
-  if (!isRecord(body) || !Array.isArray(body.items)) return [];
-  return body.items.flatMap((raw): TaskRow[] => {
-    if (!isRecord(raw)) return [];
-    const taskId = pickString(raw.taskId) ?? pickString(raw.id);
-    const title = pickString(raw.title);
-    if (!taskId || !title) return [];
-    return [
-      {
-        taskId,
-        title,
-        status: pickString(raw.status) ?? "open",
-        priority: pickString(raw.priority) ?? null,
-        assignee: isRecord(raw.assignee) ? (raw.assignee as TaskRow["assignee"]) : null,
-        dueAt: pickString(raw.dueAt) ?? null,
-        updatedAt: pickString(raw.updatedAt) ?? null,
-        progressNote: pickString(raw.progressNote) ?? null,
-      },
-    ];
-  });
-}
-
-function pad(value: number): string {
-  return value < 10 ? `0${value}` : String(value);
-}
-
-function beijing(iso?: string | null): string {
-  if (!iso) return "—";
-  const ms = Date.parse(iso);
-  if (!Number.isFinite(ms)) return "—";
-  const d = new Date(ms + 480 * 60_000);
-  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
-}
-
-function shortCode(id?: string | null): string | null {
-  if (!id) return null;
-  const bare = id.replace(/^employee:/, "").replace(/^emp_/, "");
-  const code = bare.replace(/[^0-9a-z]/gi, "").slice(0, 8).toUpperCase();
-  return code || null;
-}
-
-function assigneeLabel(task: TaskRow): string {
-  const ref = task.assignee;
-  if (!ref?.id) return "未指派";
-  if (ref.type === "employee" || ref.id.startsWith("employee:") || ref.id.startsWith("emp_")) {
-    const code = shortCode(ref.id);
-    return code ? `员工 · ${code}` : "未指派";
-  }
-  if (ref.type === "human" || ref.id.startsWith("human:")) {
-    return `用户 #${ref.id.replace(/^human:/, "")}`;
-  }
-  return "未指派";
-}
-
-function priorityLabel(value?: string | null): { text: string; tone?: "warning" } {
-  switch (value) {
-    case "high":
-      return { text: "高优先级", tone: "warning" };
-    case "normal":
-      return { text: "普通" };
-    case "low":
-      return { text: "低优先级" };
-    default:
-      return { text: "未定级" };
-  }
-}
-
-function statusLabel(value: string): string {
-  switch (value) {
-    case "open":
-      return "待处理";
-    case "in_progress":
-      return "进行中";
-    case "blocked":
-      return "阻塞";
-    case "done":
-      return "已完成";
-    case "cancelled":
-      return "已取消";
-    default:
-      return "未知状态";
-  }
-}
+type DetailState =
+  | { k: "idle" }
+  | { k: "loading"; id: string }
+  | { k: "ready"; id: string; data: TaskDetail }
+  | { k: "error"; id: string; status: number; message: string; requestId: string | null };
 
 function BoardSkeleton() {
   return (
-    <div className="grid gap-4 lg:grid-cols-3" data-testid="tasks-board-loading">
-      {[0, 1, 2].map((index) => (
-        <Card key={index} className="animate-pulse">
+    <div className="grid min-w-0 gap-3 md:grid-cols-2 xl:grid-cols-5" data-testid="tasks-board-loading" aria-busy="true">
+      {BOARD_STATUSES.map((status) => (
+        <Card key={status} className="min-w-0">
           <CardContent className="space-y-3 p-4">
-            <div className="h-4 w-24 rounded bg-white/10" />
-            {[0, 1, 2].map((row) => (
-              <div key={row} className="h-20 rounded-lg bg-white/5" />
+            <div className="h-4 w-20 animate-pulse rounded bg-muted" />
+            {[0, 1].map((i) => (
+              <div key={i} className="h-20 animate-pulse rounded-lg bg-muted/60" />
             ))}
           </CardContent>
         </Card>
@@ -166,189 +60,291 @@ function BoardSkeleton() {
   );
 }
 
+function DetailField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 min-w-0 break-words text-sm">{children}</dd>
+    </div>
+  );
+}
+
+function TaskDetailCard({
+  state,
+  onClose,
+  onRetry,
+}: {
+  state: DetailState;
+  onClose: () => void;
+  onRetry: () => void;
+}) {
+  if (state.k === "idle") return null;
+  const title = state.k === "ready" ? state.data.title : "任务详情";
+  return (
+    <Card className="min-w-0" data-testid={`task-detail-${state.k}`}>
+      <CardContent className="space-y-4 p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="truncate text-base font-semibold" title={title}>{title}</h2>
+            {state.k === "ready" ? (
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {statusLabel(state.data.status)} · 更新 {beijing(state.data.updatedAt)}
+              </p>
+            ) : null}
+          </div>
+          <Button size="sm" outlined onClick={onClose} prefix={<X className="h-3.5 w-3.5" />}>
+            关闭
+          </Button>
+        </div>
+
+        {state.k === "loading" ? (
+          <div className="space-y-2" aria-busy="true">
+            <div className="h-4 w-2/3 animate-pulse rounded bg-muted" />
+            <div className="h-4 w-1/2 animate-pulse rounded bg-muted" />
+          </div>
+        ) : state.k === "error" ? (
+          <div className="space-y-2" role="alert">
+            <p className="text-sm">{state.message}</p>
+            <p className="break-all font-mono text-xs text-muted-foreground">
+              请求编号 {state.requestId ?? "未提供"}
+            </p>
+            {state.status !== 403 && state.status !== 404 ? (
+              <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
+                重试
+              </Button>
+            ) : null}
+          </div>
+        ) : (
+          <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <DetailField label="优先级">{priorityLabel(state.data.priority).text}</DetailField>
+            <DetailField label="负责人">{actorLabel(state.data.assignee)}</DetailField>
+            <DetailField label="截止时间">{beijing(state.data.dueAt)}</DetailField>
+            <DetailField label="来源">{sourceLabel(state.data.source)}</DetailField>
+            <DetailField label="创建人">{actorLabel(state.data.createdBy)}</DetailField>
+            <DetailField label="创建时间">{beijing(state.data.createdAt)}</DetailField>
+            <DetailField label="任务编号">
+              <span className="font-mono text-xs" title={state.data.taskId}>{shortRef(state.data.taskId)}</span>
+            </DetailField>
+            <DetailField label="完成时间">{beijing(state.data.closedAt)}</DetailField>
+            <DetailField label="关联任务">
+              {state.data.relatedTaskIds?.length ? `${state.data.relatedTaskIds.length} 项` : "—"}
+            </DetailField>
+            <div className="sm:col-span-2 xl:col-span-3">
+              <DetailField label="说明">{state.data.description ?? "—"}</DetailField>
+            </div>
+            <div className="sm:col-span-2 xl:col-span-3">
+              <DetailField label="最近进展">{state.data.progressNote ?? "—"}</DetailField>
+            </div>
+            {state.data.status === "blocked" || state.data.status === "cancelled" ? (
+              <div className="sm:col-span-2 xl:col-span-3">
+                <DetailField label="状态原因">{state.data.statusReason ?? "—"}</DetailField>
+              </div>
+            ) : null}
+          </dl>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function TasksBoardModulePage() {
   const [params] = useSearchParams();
   const forced = params.get("state");
-  const [state, setState] = useState<BoardState>(INITIAL);
-  const [notice, setNotice] = useState(false);
+  const forceRid = params.get("rid");
+  const [board, setBoard] = useState<BoardState>(EMPTY_BOARD);
   const [tick, setTick] = useState(0);
-
-  const load = useCallback(async () => {
-    setState((prev) => ({ ...prev, phase: "loading" }));
-    try {
-      const bodies = await Promise.all(
-        SOURCE_URLS.map((url) => fetchJSON<unknown>(url)),
-      );
-      const merged = new Map<string, TaskRow>();
-      bodies.forEach((body: unknown) => rowsFrom(body).forEach((row) => merged.set(row.taskId, row)));
-      const rows = Array.from(merged.values()).sort((a, b) =>
-        (a.dueAt ?? "").localeCompare(b.dueAt ?? ""),
-      );
-      setState({
-        phase: rows.length ? "ready" : "empty",
-        rows,
-        status: 200,
-        message: "",
-      });
-    } catch (err) {
-      const info = errorInfo(err);
-      const denied = info.status === 403 || info.status === 404;
-      setState({
-        phase: denied ? "denied" : "error",
-        rows: [],
-        status: info.status,
-        message: info.status ? humanizeStatus(info.status) : info.message,
-        requestId: info.requestId,
-      });
-    }
-  }, []);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [detail, setDetail] = useState<DetailState>({ k: "idle" });
 
   useEffect(() => {
+    let alive = true;
     if (forced === "loading") {
-      setState((prev) => ({ ...prev, phase: "loading" }));
-      return;
+      setBoard({ ...EMPTY_BOARD, phase: "loading" });
+      return () => { alive = false; };
     }
     if (forced === "empty") {
-      setState({ phase: "empty", rows: [], status: 200, message: "" });
-      return;
+      setBoard({ phase: "empty", rows: [], status: 200, message: "", requestId: null });
+      return () => { alive = false; };
     }
     if (forced === "denied") {
-      setState({ phase: "denied", rows: [], status: 403, message: "该数据源尚未开放，或你没有查看权限。", requestId: params.get("rid") ?? undefined });
-      return;
+      setBoard({
+        phase: "denied",
+        rows: [],
+        status: 403,
+        message: "没有查看任务看板的权限，或该数据源尚未接入。",
+        requestId: forceRid ?? null,
+      });
+      return () => { alive = false; };
     }
     if (forced === "error") {
-      setState({ phase: "error", rows: [], status: 502, message: humanizeStatus(502), requestId: params.get("rid") ?? undefined });
-      return;
+      setBoard({
+        phase: "error",
+        rows: [],
+        status: 502,
+        message: "任务服务暂时没有响应，请稍后重试。",
+        requestId: forceRid ?? null,
+      });
+      return () => { alive = false; };
     }
-    void load();
-  }, [forced, load, params, tick]);
+    setBoard((prev) => ({ ...prev, phase: "loading" }));
+    void loadBoard().then((next) => {
+      if (alive) setBoard(next);
+    });
+    return () => { alive = false; };
+  }, [forced, forceRid, tick]);
 
-  const counts = useMemo(() => {
-    const open = state.rows.filter((row) => row.status === "open").length;
-    const blocked = state.rows.filter((row) => row.status === "blocked").length;
-    return { open, blocked };
-  }, [state.rows]);
+  useEffect(() => {
+    if (!selected) {
+      setDetail({ k: "idle" });
+      return () => {};
+    }
+    let alive = true;
+    setDetail({ k: "loading", id: selected });
+    void loadDetail(selected)
+      .then((data) => alive && setDetail({ k: "ready", id: selected, data }))
+      .catch((err: unknown) => {
+        if (!alive) return;
+        const info = detailError(err);
+        setDetail({ k: "error", id: selected, ...info });
+      });
+    return () => { alive = false; };
+  }, [selected, tick]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, TaskRow[]>();
-    COLUMNS.forEach((column) => map.set(column.key, []));
-    state.rows.forEach((row) => {
+    for (const status of BOARD_STATUSES) map.set(status, []);
+    for (const row of board.rows) {
       if (map.has(row.status)) map.get(row.status)!.push(row);
-    });
+    }
     return map;
-  }, [state.rows]);
+  }, [board.rows]);
 
-  const retry = () => setTick((value) => value + 1);
+  const counts = useMemo(() => {
+    const open = grouped.get("open")?.length ?? 0;
+    const blocked = grouped.get("blocked")?.length ?? 0;
+    return { open, blocked };
+  }, [grouped]);
+
+  const retry = useCallback(() => {
+    setTick((n) => n + 1);
+  }, []);
 
   return (
-    <div className="space-y-6" data-testid="tasks-board">
+    <div className="min-w-0 space-y-4" data-testid="tasks-board">
       <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <h1 className="font-mondwest text-2xl font-semibold">任务看板</h1>
-          <p className="mt-1 text-sm text-white/60">看待处理与阻塞任务，先处理卡住的那一张。</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            按后端状态看任务；拖动排序未启用，状态不会被前端改写。
+          </p>
         </div>
         <Button
           size="sm"
           outlined
-          onClick={() => setNotice(true)}
-          data-testid="tasks-board-create"
+          onClick={retry}
+          disabled={board.phase === "loading"}
+          prefix={<RefreshCw className={"h-4 w-4" + (board.phase === "loading" ? " animate-spin" : "")} />}
         >
-          新建任务
+          刷新
         </Button>
       </header>
 
-      <div className="flex flex-wrap gap-4 text-sm" data-testid="tasks-board-summary">
+      <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm" data-testid="tasks-board-summary">
         <span data-testid="status">
           待处理 <b>{counts.open}</b> · 阻塞 <b>{counts.blocked}</b>
         </span>
         <span data-testid="next-action">下一步：处理阻塞任务</span>
         <span data-testid="owner">负责人：任务指派对象</span>
       </div>
+      <p className="text-xs text-muted-foreground">
+        仅显示本页已加载的任务，不是全量统计；新建与状态迁移待写入车间接线后开放。
+      </p>
 
-      {notice ? (
-        <Card data-testid="tasks-board-create-notice">
-          <CardContent className="p-4 text-sm text-white/70">
-            创建入口由薄壳车道接线后开放；本页当前只读。
+      <TaskDetailCard
+        state={detail}
+        onClose={() => setSelected(null)}
+        onRetry={() => setTick((n) => n + 1)}
+      />
+
+      {board.phase === "loading" ? <BoardSkeleton /> : null}
+
+      {board.phase === "empty" ? (
+        <Card data-testid="tasks-board-empty">
+          <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
+            <Inbox className="h-8 w-8 text-muted-foreground" />
+            <h2 className="text-lg font-semibold">还没有任务</h2>
+            <p className="text-sm text-muted-foreground">任务进入看板后会按状态出现在这里。</p>
           </CardContent>
         </Card>
       ) : null}
 
-      {state.phase === "loading" ? <BoardSkeleton /> : null}
-
-      {state.phase === "error" || state.phase === "denied" ? (
-        <Card data-testid={`tasks-board-${state.phase}`}>
+      {board.phase === "error" || board.phase === "denied" ? (
+        <Card data-testid={`tasks-board-${board.phase}`}>
           <CardContent className="flex flex-col items-start gap-3 p-5">
-            {state.phase === "denied" ? (
+            {board.phase === "denied" ? (
               <ShieldAlert className="h-5 w-5 text-amber-400" />
             ) : (
               <AlertTriangle className="h-5 w-5 text-rose-400" />
             )}
-            <div>
+            <div className="min-w-0">
               <h2 className="text-base font-semibold">
-                {state.phase === "denied" ? "任务看板暂不可见" : "任务没能加载出来"}
+                {board.phase === "denied" ? "任务看板暂不可见" : "任务没能加载出来"}
               </h2>
-              <p className="mt-1 text-sm text-white/60">
-                {state.phase === "denied"
-                  ? "该数据源尚未开放，或你没有查看权限。请确认后台已接入对应服务，或联系管理员开通权限。"
-                  : state.message}
-              </p>
-              <p className="mt-2 font-mono text-xs text-white/50">
-                请求编号：{state.requestId ?? "未提供"}
+              <p className="mt-1 text-sm text-muted-foreground">{board.message}</p>
+              <p className="mt-2 break-all font-mono text-xs text-muted-foreground">
+                请求编号 {board.requestId ?? "未提供"}
               </p>
             </div>
-            <Button size="sm" outlined onClick={retry} data-testid="tasks-board-retry">
-              <RefreshCw className={"mr-2 h-4 w-4"} />
-              重试
-            </Button>
+            {board.phase === "error" ? (
+              <Button size="sm" outlined onClick={retry} prefix={<RefreshCw className="h-4 w-4" />}>
+                重试
+              </Button>
+            ) : null}
           </CardContent>
         </Card>
       ) : null}
 
-      {state.phase === "empty" ? (
-        <Card data-testid="tasks-board-empty">
-          <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
-            <Inbox className="h-8 w-8 text-white/40" />
-            <h2 className="text-lg font-semibold">没有待处理任务</h2>
-            <p className="text-sm text-white/60">新的任务进入后会出现在这里。</p>
-            <Button size="sm" outlined onClick={() => setNotice(true)}>
-              新建任务
-            </Button>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {state.phase === "ready" ? (
-        <div className="grid gap-4 lg:grid-cols-3" data-testid="tasks-board-columns">
-          {COLUMNS.map((column) => {
-            const rows = grouped.get(column.key) ?? [];
+      {board.phase === "ready" ? (
+        <div className="grid min-w-0 gap-3 md:grid-cols-2 xl:grid-cols-5" data-testid="tasks-board-columns">
+          {BOARD_STATUSES.map((status) => {
+            const rows = grouped.get(status) ?? [];
             return (
-              <section key={column.key} className="space-y-3" data-testid={`tasks-column-${column.key}`}>
-                <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-semibold text-white/80">{column.label}</h2>
+              <section key={status} className="min-w-0 space-y-2" data-testid={`tasks-column-${status}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-sm font-semibold">{COLUMN_LABEL[status]}</h2>
                   <Badge>{rows.length}</Badge>
                 </div>
                 {rows.length === 0 ? (
-                  <p className="rounded-lg border border-white/10 p-4 text-xs text-white/45">
+                  <p className="rounded-lg border border-border p-3 text-xs text-muted-foreground">
                     这一列暂无任务
                   </p>
                 ) : (
                   rows.map((row) => {
                     const priority = priorityLabel(row.priority);
                     return (
-                      <Card key={row.taskId} data-testid={`tasks-card-${row.taskId}`}>
-                        <CardContent className="space-y-2 p-4">
-                          <div className="flex items-start justify-between gap-2">
-                            <h3 className="text-sm font-medium">{row.title}</h3>
+                      <Card
+                        key={row.taskId}
+                        data-testid={`tasks-card-${row.taskId}`}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`查看任务 ${row.title}`}
+                        className="cursor-pointer transition-colors hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                        onClick={() => setSelected(row.taskId)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            setSelected(row.taskId);
+                          }
+                        }}
+                      >
+                        <CardContent className="space-y-2 p-3">
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <h3 className="min-w-0 flex-1 text-sm font-medium">{row.title}</h3>
                             <Badge tone={priority.tone}>{priority.text}</Badge>
                           </div>
-                          <p className="text-xs text-white/55">
-                            {statusLabel(row.status)} · 截止 {beijing(row.dueAt)}
-                          </p>
-                          <p className="text-xs text-white/55">{row.progressNote ?? "—"}</p>
-                          <p className="flex items-center gap-1 text-xs text-white/45">
-                            <UserRound className="h-3.5 w-3.5" />
-                            {assigneeLabel(row)}
-                          </p>
+                          <p className="text-xs text-muted-foreground">截止 {beijing(row.dueAt)}</p>
+                          <p className="line-clamp-2 text-xs text-muted-foreground">{row.progressNote ?? "—"}</p>
+                          <p className="text-xs text-muted-foreground">{actorLabel(row.assignee)}</p>
                         </CardContent>
                       </Card>
                     );
