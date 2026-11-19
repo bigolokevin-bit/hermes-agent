@@ -251,3 +251,57 @@ $ ./node_modules/.bin/tsc -b . --noEmit
 
 - 本 lane 未改 `App.tsx` / `shell/**` / manifest / package：`/overview` 当前仍由 App 的 `live={{ duty: <DutyConsolePage /> }}` 挂旧值班台；本页是 ready-to-mount 的 `OverviewPage`，需集成侧把 `/overview` 的 live 节点切到本页后才会上屏。
 - 因此本轮未对真实 `/overview` 做浏览器截图；1440/1280/375 仅按 CSS 断点与测试覆盖，未像素复验。
+
+## R10 ⑦ 单价 / 版本真修（2026-11-19）
+
+- 同步主干：`git merge --no-ff origin/lane/hermes-console` → `3cef4626`（主树 5e28aa04）；`docs/_artifacts/tonight` 与主树同代次，porcelain 0。
+- 取数层新增 `web/src/modules/models/fetchJson.ts` 的 `fetchJsonStrict`：content-type 非 JSON 或 body 以 `<` 开头 → 抛 `ApiError("这个接口还没有接入数据服务；当前返回的是页面，不是数据。")`；JSON.parse 失败 → `ApiError("这个接口返回的内容无法解析为数据…")`；不把原始 `Unexpected token '<'` 或 HTML 上屏，保留 request id。
+- `ModelsModulePage` 三个端点改用 `fetchJsonStrict`；`VersionPage` 新增「模型单价」卡，读同一价格端点，列模型/提供方/输入/输出/价格生效，来源 + 读取于北京时间到分；未知 `—`。
+- 单价与账本仍分区：价格卡只放标价；账本卡只放 `cost.cost_usd` 实扣、`cost_status`、行数；页面脚注禁止单价×用量。
+
+### 原始 stdout
+
+```text
+$ cd web && npx vitest run
+ Test Files  112 passed (112)
+      Tests  972 passed (972)
+
+$ ./node_modules/.bin/tsc -b . --noEmit
+# EXIT: 0
+
+$ cd /Users/kevin_studio/Projects/forks/console-gov && pnpm --filter web build
+built /Users/kevin_studio/Projects/forks/console-gov/hermes_cli/web_dist/index.html
+# EXIT: 0
+```
+
+### DOM 读数（Chrome CDP，1440×900）
+
+真实 401（本机 5427 + `/agent-api` 代理 8182）：
+
+```text
+/system?tab=version
+模型单价
+来源：模型价格表
+需要登录：这个页面的登录状态已经失效。重新登录后就能继续查看。
+请求编号：e86c1471f64141fdaa4f150f5ebafb4d
+单价是价目表标价；实际扣费在「模型与单价」页的账本卡，不用单价乘次数推算。
+```
+
+200 形态（临时 fetch stub，仅用于读 DOM，不提交）：
+
+```text
+/models
+单价（价目表） · 来源：模型价格表 · 读取于 2026-11-19 10:00
+DeepSeek V3  deepseek  $0.14 / 百万 token  $0.28 / 百万 token  2026-11-19 10:00
+实际扣费（账本） · 来源：平台扣费账本 · 截至 2026-11-19 10:00
+账本合计 $12.48 · 计价状态 账本实测 · 账本行数 42
+
+/system?tab=version
+模型单价 · 来源：模型价格表 · 读取于 2026-11-19 10:00
+DeepSeek V3  deepseek  $0.14 / 百万 token  $0.28 / 百万 token  2026-11-19 10:00
+```
+
+### 边界
+
+- 真实 200 未取得（本机无登录态，`/agent-api` 返回 401）；DOM 200 段来自临时 fixture stub，仅证明渲染与分区，不冒充线上数据。
+- 未改 App/shell/manifest/package；`/models` 与 `/system?tab=version` 的 live 节点由现有 shell 提供。
