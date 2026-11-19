@@ -1,26 +1,31 @@
 /**
- * Knowledge tabs — read-side adapters.
+ * Knowledge module — read-side adapters for every surface under `/knowledge`.
  *
- * GAP-03: the console BFF exposes no knowledge/document/retrieval read route.
- * Probes return `console.unknown_route` (404). The page therefore renders
- * 「未接入」 for those tabs and never fabricates spaces, documents or hits.
- * The evidence tab reuses the real run-events citation read; it has no fixture
- * fallback here.
+ * GAP-03: the console BFF has no knowledge read side. Probed on 2026-11-19 with
+ * the real login cookie (the token value was never printed, and never is):
+ *
+ *   GET /agent-api/api/knowledge/search?q=员工&limit=5  404 console.unknown_route      0 rows
+ *   GET /agent-api/api/knowledge/citations?limit=5      404 knowledge.not_wired        0 rows
+ *   GET /agent-api/api/knowledge/spaces                 404 knowledge.not_wired        0 rows
+ *   GET /agent-api/api/documents?limit=50               404 console.unknown_route      0 rows
+ *   GET /agent-api/api/audit?action=kb.read&limit=50    200 { events: [] }             0 rows
+ *   GET /agent-api/api/sessions?limit=20                200 { sessions: [], total: 0 } 0 rows
+ *   GET /agent-api/api/console-sessions/<id>            404 (no session to read)
+ *
+ * So every surface makes one real request and renders the answer it got: rows when
+ * the read is wired; ONE body for a 403 and a 404 alike when it is not, because the
+ * screen must not reveal which of the two the service actually said. Nothing here
+ * fabricates a row, a count or a sample, and no fixture stands in for a missing read.
  */
 
 export const KNOWLEDGE_GAP = "GAP-03";
 
-export const GAP03_HUMAN =
-  "知识服务读取接口尚未接入本控制台。接入后这里会自动显示真实数据；现在不展示样例，也不把缺失值写成 0。";
-
-export type KnowledgePhase =
-  | "loading"
-  | "ready"
-  | "empty"
-  | "unavailable"
-  | "error"
-  | "denied"
-  | "login";
+/**
+ * The single sentence behind a 403 and a 404. It carries no status, no route and no
+ * service code, and says what changes when the read is wired.
+ */
+export const UNWIRED_HUMAN =
+  "知识服务的读取口现在没有给出数据：接口尚未接入本控制台，或当前账号没有查看它的权限。接入或开通后，这里会自动显示真实数据；在此之前不展示样例，也不把缺失值写成 0。";
 
 export type KnowledgeTab = "spaces" | "ingest" | "retrieval" | "evidence";
 
@@ -31,20 +36,39 @@ export const TAB_LABEL: Record<KnowledgeTab, string> = {
   evidence: "证据与引用",
 };
 
-export const TAB_SOURCE: Record<KnowledgeTab, string> = {
+export const TAB_ORDER: KnowledgeTab[] = ["spaces", "ingest", "retrieval", "evidence"];
+
+/** Read URLs — one per surface, so every body can say where it came from. */
+export const SPACES_URL = "/agent-api/api/knowledge/spaces";
+export const DOCUMENTS_URL = "/agent-api/api/documents?limit=50";
+export const RECORDS_URL = "/agent-api/api/audit?action=kb.read&limit=50";
+export const SESSIONS_URL = "/agent-api/api/sessions?limit=20";
+export const CITATIONS_URL = "/agent-api/api/knowledge/citations?limit=20";
+
+const SEARCH_LIMIT = 12;
+
+/**
+ * The knowledge search read. Without a keyword it still calls the endpoint, which is
+ * how a reviewer sees whether search is wired before typing anything.
+ */
+export function searchUrl(query: string): string {
+  const params = new URLSearchParams();
+  const trimmed = query.trim();
+  if (trimmed !== "") params.set("q", trimmed);
+  params.set("limit", String(SEARCH_LIMIT));
+  return `/agent-api/api/knowledge/search?${params.toString()}`;
+}
+
+export type SurfaceKey = "spaces" | "ingest" | "search" | "records" | "citations" | "session-cites";
+
+/** Human label for each surface's source line — no route, no field name. */
+export const SURFACE_SOURCE: Record<SurfaceKey, string> = {
   spaces: "知识空间登记",
   ingest: "文档与数据接入登记",
-  retrieval: "检索审计记录",
-  evidence: "会话引用记录",
-};
-
-export type Endpoint = { url: string; testid: string };
-
-export const ENDPOINTS: Record<KnowledgeTab, Endpoint> = {
-  spaces: { url: "/agent-api/api/knowledge/spaces", testid: "knw4-source-spaces" },
-  ingest: { url: "/agent-api/api/documents?limit=50", testid: "knw4-source-ingest" },
-  retrieval: { url: "/agent-api/api/audit?action=kb.read&limit=50", testid: "knw4-source-retrieval" },
-  evidence: { url: "/agent-api/api/sessions?limit=20", testid: "knw4-source-evidence" },
+  search: "知识库检索",
+  records: "检索审计记录",
+  citations: "知识库引用登记",
+  "session-cites": "会话中的引用记录",
 };
 
 type Rec = Record<string, unknown>;
@@ -65,13 +89,26 @@ export interface KnowledgeRow {
   statusReason: string | null;
 }
 
+/**
+ * One reference to a document: a search hit or a citation. Both are drawn by the same
+ * list, because both answer the same four questions — which document, from where, when,
+ * and whether the original can be opened.
+ */
 export interface CitationRow {
   id: string;
   title: string;
   titleReason: string | null;
   kind: string;
+  kindRaw: string | null;
+  kindReason: string | null;
+  source: string;
+  sourceRaw: string | null;
+  sourceReason: string | null;
+  summary: string | null;
+  summaryReason: string | null;
   employee: string;
   employeeRaw: string | null;
+  employeeReason: string | null;
   at: string;
   atRaw: string | null;
   atReason: string | null;
@@ -102,13 +139,13 @@ export interface SessionSummary {
   updatedAt: string | null;
 }
 
-export interface KnowledgePayload {
-  rows: KnowledgeRow[];
-  citations: CitationRow[];
-  retrieval: RetrievalRow[];
+/** What one surface read: its rows, and how fresh the answer says they are. */
+export interface SurfaceValue<T> {
+  rows: T[];
   stamp: string | null;
   stampReason: string | null;
-  scannedSessions: number | null;
+  /** Sessions actually read, for a surface that had to read sessions to find rows. */
+  scanned: number | null;
 }
 
 const BJT = new Intl.DateTimeFormat("sv-SE", {
@@ -165,23 +202,42 @@ function formatBytes(value: number | null): string | null {
   return `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
+/** The envelope keys the BFF uses for a row list; an unknown shape yields no rows. */
+const ROW_KEYS = [
+  "items",
+  "data",
+  "rows",
+  "list",
+  "events",
+  "results",
+  "hits",
+  "citations",
+  "documents",
+  "sessions",
+] as const;
+
 function rowsOf(body: unknown): Rec[] | null {
   if (Array.isArray(body)) return body.filter(isRecord);
   if (!isRecord(body)) return null;
-  const direct = [body.items, body.data, body.rows, body.list, body.events];
-  for (const value of direct) {
+  for (const key of ROW_KEYS) {
+    const value = body[key];
     if (Array.isArray(value)) return value.filter(isRecord);
   }
   if (isRecord(body.data)) {
-    const nested = [body.data.items, body.data.rows, body.data.list];
-    for (const value of nested) {
+    for (const key of ROW_KEYS) {
+      const value = body.data[key];
       if (Array.isArray(value)) return value.filter(isRecord);
     }
   }
   return null;
 }
 
-function stampOf(body: unknown): { stamp: string | null; stampReason: string | null } {
+interface Stamp {
+  stamp: string | null;
+  stampReason: string | null;
+}
+
+function stampOf(body: unknown): Stamp {
   if (!isRecord(body)) {
     return { stamp: null, stampReason: "上游响应没有带采集时间，数据截至时间未知。" };
   }
@@ -202,6 +258,17 @@ function stampOf(body: unknown): { stamp: string | null; stampReason: string | n
   return stamp
     ? { stamp, stampReason: null }
     : { stamp: null, stampReason: "上游采集时间无法解析，数据截至时间未知。" };
+}
+
+/**
+ * When the data is: the envelope's own collection time if it carried one, otherwise the
+ * newest row time. Never the browser's clock.
+ */
+function newestOf(times: (string | null)[], envelope: Stamp, reason: string): Stamp {
+  if (envelope.stamp) return envelope;
+  const sorted = times.filter((value): value is string => Boolean(value)).sort();
+  const latest = sorted.length > 0 ? beijing(sorted[sorted.length - 1]) : null;
+  return { stamp: latest, stampReason: latest ? null : reason };
 }
 
 function kindLabel(raw: string | null, tab: KnowledgeTab): string {
@@ -233,7 +300,7 @@ function statusLabel(raw: string | null): string {
   return "待核实";
 }
 
-function rowOf(row: Rec, tab: KnowledgeTab): KnowledgeRow {
+export function readRowOf(row: Rec, tab: KnowledgeTab): KnowledgeRow {
   const id = pickString(
     row.spaceId,
     row.space_id,
@@ -255,7 +322,17 @@ function rowOf(row: Rec, tab: KnowledgeTab): KnowledgeRow {
     row.docName,
     row.doc_name,
   );
-  const kindRaw = pickString(row.kind, row.type, row.scope, row.space_type, row.spaceType, row.doc_type, row.docType, row.mimeType, row.mime_type);
+  const kindRaw = pickString(
+    row.kind,
+    row.type,
+    row.scope,
+    row.space_type,
+    row.spaceType,
+    row.doc_type,
+    row.docType,
+    row.mimeType,
+    row.mime_type,
+  );
   const count = pickNumber(
     row.docCount,
     row.doc_count,
@@ -275,13 +352,19 @@ function rowOf(row: Rec, tab: KnowledgeTab): KnowledgeRow {
     row.size,
   );
   const sizeText = formatBytes(bytes);
-  const updatedRaw = pickString(row.updatedAt, row.updated_at, row.modifiedAt, row.modified_at, row.lastUpdated, row.last_updated);
+  const updatedRaw = pickString(
+    row.updatedAt,
+    row.updated_at,
+    row.modifiedAt,
+    row.modified_at,
+    row.lastUpdated,
+    row.last_updated,
+  );
   const updatedAt = beijing(updatedRaw);
   const statusRaw = pickString(row.status, row.state, row.indexStatus, row.index_status);
-  const status = statusLabel(statusRaw);
   return {
     id,
-    name: name ?? "待核实",
+    name: name ?? "—",
     nameReason: name ? null : "上游未提供名称",
     kind: kindLabel(kindRaw, tab),
     kindRaw,
@@ -290,57 +373,226 @@ function rowOf(row: Rec, tab: KnowledgeTab): KnowledgeRow {
     scaleReason: count !== null || sizeText !== null ? null : "上游未提供条数或大小",
     updatedAt: updatedAt ?? "—",
     updatedReason: updatedAt ? null : updatedRaw ? "更新时间无法解析" : "上游未提供更新时间",
-    status,
+    status: statusLabel(statusRaw),
     statusRaw,
     statusReason: statusRaw ? null : "上游未提供状态",
   };
 }
 
-function citationOf(row: Rec): CitationRow {
-  const id = pickString(row.id, row.eventId, row.event_id, row.citationId, row.citation_id) ?? "";
-  const title = pickString(
-    row.title,
-    row.doc,
-    row.documentRef,
-    row.document_ref,
+/** A row's human-readable origin: the document or space name, else a short code. */
+function sourceOf(row: Rec): { source: string; sourceRaw: string | null; sourceReason: string | null } {
+  const name = pickString(
+    row.sourceName,
+    row.source_name,
+    row.source,
     row.documentName,
     row.document_name,
-    row.name,
+    row.documentTitle,
+    row.docTitle,
+    row.doc_title,
+    row.fileName,
+    row.file_name,
+    row.spaceName,
+    row.space_name,
+  );
+  const kindRaw = pickString(row.sourceKind, row.source_kind, row.sourceType, row.source_type);
+  const idRaw = pickString(
+    row.sourceId,
+    row.source_id,
+    row.documentId,
+    row.document_id,
+    row.docId,
+    row.doc_id,
+    row.spaceId,
+    row.space_id,
+  );
+  const code = shortCode(idRaw);
+  if (name) return { source: name, sourceRaw: idRaw, sourceReason: null };
+  if (code) return { source: `${kindLabel(kindRaw, "evidence")} · ${code}`, sourceRaw: idRaw, sourceReason: null };
+  return { source: "—", sourceRaw: null, sourceReason: "上游没有给出来源文档或空间" };
+}
+
+/** Only an in-site location can be opened; anything else says why it cannot. */
+function linkOf(row: Rec): { href: string | null; unreachable: string | null } {
+  const raw = pickString(
+    row.href,
+    row.url,
+    row.link,
+    row.documentUrl,
+    row.document_url,
+    row.fileUrl,
+    row.file_url,
+  );
+  const href = raw && (raw.startsWith("/") || raw.startsWith("#")) ? raw : null;
+  if (href) return { href, unreachable: null };
+  return {
+    href: null,
+    unreachable: raw
+      ? "上游给出的原文位置不是站内地址，无法直接打开。"
+      : "上游没有给出原文位置，无法打开原文。",
+  };
+}
+
+function employeeOf(row: Rec): {
+  employee: string;
+  employeeRaw: string | null;
+  employeeReason: string | null;
+} {
+  const employeeId = pickString(row.employeeId, row.employee_id);
+  const employeeName = pickString(row.employeeName, row.employee_name);
+  const code = shortCode(employeeId);
+  if (employeeName && code) {
+    return { employee: `${employeeName} · ${code}`, employeeRaw: employeeId, employeeReason: null };
+  }
+  if (employeeName) return { employee: employeeName, employeeRaw: null, employeeReason: null };
+  if (code) return { employee: `员工 · ${code}`, employeeRaw: employeeId, employeeReason: null };
+  return { employee: "—", employeeRaw: null, employeeReason: "上游没有说明这段内容是谁留下的" };
+}
+
+function summaryOf(row: Rec): { summary: string | null; summaryReason: string | null } {
+  const summary = pickString(
     row.summary,
     row.snippet,
+    row.excerpt,
     row.quote,
+    row.text,
+    row.content,
+  );
+  return { summary, summaryReason: summary ? null : "上游没有给出这段内容的摘要" };
+}
+
+/**
+ * One reference row: a knowledge citation or a search hit. `at` prefers the row's own
+ * time; the session scan injects the carrying message's time when the citation has none.
+ */
+export function citationOf(raw: unknown): CitationRow {
+  const row = isRecord(raw) ? raw : {};
+  const id = pickString(row.id, row.citationId, row.citation_id, row.eventId, row.event_id) ?? "";
+  const title = pickString(
+    row.title,
+    row.documentTitle,
+    row.document_title,
+    row.doc,
+    row.documentName,
+    row.document_name,
+    row.documentRef,
+    row.document_ref,
+    row.name,
     row.docId,
     row.doc_id,
   );
-  const atRaw = pickString(row.at, row.createdAt, row.created_at, row.occurredAt, row.occurred_at, row.time);
   const kindRaw = pickString(row.kind, row.type, row.sourceType, row.source_type);
-  const employeeId = pickString(row.employeeId, row.employee_id);
-  const employeeName = pickString(row.employeeName, row.employee_name, row.name);
-  const code = shortCode(employeeId);
-  const employee = employeeName && code
-    ? `${employeeName} · ${code}`
-    : employeeName ?? (code ? `员工 · ${code}` : "未指派");
+  const source = sourceOf(row);
+  const summary = summaryOf(row);
+  const employee = employeeOf(row);
+  const atRaw = pickString(
+    row.at,
+    row.createdAt,
+    row.created_at,
+    row.occurredAt,
+    row.occurred_at,
+    row.citedAt,
+    row.cited_at,
+    row.time,
+  );
   const at = beijing(atRaw);
-  const hrefRaw = pickString(row.href, row.url, row.link);
-  const href = hrefRaw && (hrefRaw.startsWith("/") || hrefRaw.startsWith("#")) ? hrefRaw : null;
-  const unreachable = href
-    ? null
-    : hrefRaw
-      ? "上游给出的原文位置不是站内地址，无法直接打开。"
-      : "上游没有给出原文位置，无法打开原文。";
+  const link = linkOf(row);
   return {
     id,
-    title: title ?? "待核实",
-    titleReason: title ? null : "上游引用记录没有给出标题或文档名",
+    title: title ?? "—",
+    titleReason: title ? null : "上游记录没有给出标题或文档名",
     kind: kindLabel(kindRaw, "evidence"),
-    employee,
-    employeeRaw: employeeId,
+    kindRaw,
+    kindReason: kindRaw ? null : "上游记录没有给出类型",
+    ...source,
+    ...summary,
+    ...employee,
     at: at ?? "—",
     atRaw,
-    atReason: at ? null : atRaw ? "引用时间无法解析" : "上游引用记录没有给出时间",
-    href,
-    unreachable,
+    atReason: at ? null : atRaw ? "时间无法解析" : "上游记录没有给出时间",
+    href: link.href,
+    unreachable: link.unreachable,
   };
+}
+
+/** A row list of references — same shape for search hits and citations. */
+function referencesOf(body: unknown): SurfaceValue<CitationRow> {
+  const envelope = stampOf(body);
+  const rows = rowsOf(body);
+  if (rows === null) return { rows: [], ...envelope, scanned: null };
+  const mapped = rows.map(citationOf);
+  const newest = newestOf(
+    mapped.map((row) => row.atRaw),
+    envelope,
+    "上游响应没有带采集时间，也没有可用的记录时间，数据截至时间未知。",
+  );
+  return { rows: mapped, ...newest, scanned: null };
+}
+
+/** Hits from the knowledge search read. */
+export function readSearch(body: unknown): SurfaceValue<CitationRow> {
+  return referencesOf(body);
+}
+
+/** Citations from the knowledge citations read. */
+export function readCitations(body: unknown): SurfaceValue<CitationRow> {
+  return referencesOf(body);
+}
+
+/** Space / document rows from their own reads. */
+export function readRows(body: unknown, tab: KnowledgeTab): SurfaceValue<KnowledgeRow> {
+  const envelope = stampOf(body);
+  const rows = rowsOf(body);
+  if (rows === null) return { rows: [], ...envelope, scanned: null };
+  return { rows: rows.map((row) => readRowOf(row, tab)), ...envelope, scanned: null };
+}
+
+export function readSessions(body: unknown): SessionSummary[] {
+  const rows = rowsOf(body) ?? [];
+  return rows
+    .map((row) => {
+      const sessionId = pickString(row.sessionId, row.session_id, row.id);
+      if (!sessionId) return null;
+      const employeeId = pickString(row.employeeId, row.employee_id);
+      const count = pickNumber(row.messageCount, row.message_count) ?? 0;
+      const updatedAt = pickString(row.updatedAt, row.updated_at);
+      return { sessionId, employeeId, messageCount: count, updatedAt };
+    })
+    .filter((row): row is SessionSummary => row !== null);
+}
+
+/** Citations the assistant messages of one session left behind. */
+export function citationsFromDetail(body: unknown, session: SessionSummary): CitationRow[] {
+  if (!isRecord(body) || !Array.isArray(body.messages)) return [];
+  const out: CitationRow[] = [];
+  for (const message of body.messages) {
+    if (!isRecord(message) || !Array.isArray(message.citations)) continue;
+    const messageAt = pickString(message.createdAt, message.created_at);
+    for (const raw of message.citations) {
+      const row: Rec = isRecord(raw) ? raw : { title: typeof raw === "string" ? raw : null };
+      out.push(
+        citationOf({
+          ...row,
+          employeeId: session.employeeId,
+          at: pickString(row.at, row.createdAt, row.created_at) ?? messageAt,
+        }),
+      );
+    }
+  }
+  return out;
+}
+
+/** What the session scan read: how many sessions, and the citations they carried. */
+export function sessionCitations(
+  sessions: SessionSummary[],
+  citations: CitationRow[],
+): SurfaceValue<CitationRow> {
+  const newest = newestOf(
+    [...citations.map((row) => row.atRaw), ...sessions.map((row) => row.updatedAt)],
+    { stamp: null, stampReason: null },
+    "接口已响应，但会话和引用都没有给出可用时间，数据截至时间未知。",
+  );
+  return { rows: citations, ...newest, scanned: sessions.length };
 }
 
 function decisionLabel(raw: string | null): string {
@@ -366,7 +618,6 @@ function retrievalOf(row: Rec): RetrievalRow {
   const actor = isRecord(row.actor) ? row.actor : null;
   const actorRaw = actor ? pickString(actor.id, actor.userId, actor.user_id, actor.name) : null;
   const actorCode = shortCode(actorRaw);
-  const actorText = actorCode ? `员工 · ${actorCode}` : "未指派";
   const decisionRaw = pickString(row.decision);
   const outcomeRaw = pickString(row.outcome);
   const resource = isRecord(row.resource) ? row.resource : null;
@@ -375,107 +626,49 @@ function retrievalOf(row: Rec): RetrievalRow {
   const targetId = shortCode(resourceId);
   const typeLabel =
     resourceType === "kb_query" ? "知识查询" : resourceType === "knowledge" ? "知识空间" : "检索对象";
-  const target = targetId ? `${typeLabel} · ${targetId}` : "—";
   const atRaw = pickString(row.occurredAt, row.occurred_at, row.recordedAt, row.recorded_at);
   const at = beijing(atRaw);
   const runId = pickString(row.runId, row.run_id);
-  const href = runId && runId.startsWith("run_") ? `/runs/${encodeURIComponent(runId)}` : null;
   return {
     id,
-    actor: actorText,
+    actor: actorCode ? `员工 · ${actorCode}` : "—",
     actorRaw,
     decision: decisionLabel(decisionRaw),
     decisionRaw,
     outcome: outcomeLabel(outcomeRaw),
     outcomeRaw,
-    target,
+    target: targetId ? `${typeLabel} · ${targetId}` : "—",
     targetRaw: resourceId,
     at: at ?? "—",
     atRaw,
     atReason: at ? null : atRaw ? "检索时间无法解析" : "上游事件没有给出时间",
-    href,
+    href: runId && runId.startsWith("run_") ? `/runs/${encodeURIComponent(runId)}` : null,
   };
 }
 
-export function readSessions(body: unknown): SessionSummary[] {
-  const rows = rowsOf(body) ?? [];
-  return rows
-    .map((row) => {
-      const sessionId = pickString(row.sessionId, row.session_id, row.id);
-      if (!sessionId) return null;
-      const employeeId = pickString(row.employeeId, row.employee_id);
-      const count = pickNumber(row.messageCount, row.message_count) ?? 0;
-      const updatedAt = pickString(row.updatedAt, row.updated_at);
-      return { sessionId, employeeId, messageCount: count, updatedAt };
-    })
-    .filter((row): row is SessionSummary => row !== null);
-}
-
-export function citationsFromDetail(body: unknown, session: SessionSummary): CitationRow[] {
-  if (!isRecord(body) || !Array.isArray(body.messages)) return [];
-  const out: CitationRow[] = [];
-  for (const message of body.messages) {
-    if (!isRecord(message) || !Array.isArray(message.citations)) continue;
-    for (const raw of message.citations) {
-      const row = isRecord(raw) ? raw : { title: typeof raw === "string" ? raw : null };
-      const result = citationOf({
-        ...row,
-        employeeId: session.employeeId,
-        createdAt: pickString(message.createdAt, message.created_at),
-        at: pickString(message.createdAt, message.created_at),
-      });
-      out.push(result);
-    }
-  }
-  return out;
-}
-
-export function emptyPayload(tab: KnowledgeTab, stamp = stampOf(null)): KnowledgePayload {
-  return { rows: [], citations: [], retrieval: [], scannedSessions: tab === "evidence" ? 0 : null, ...stamp };
-}
-
-export function readKnowledge(tab: KnowledgeTab, body: unknown): KnowledgePayload {
-  const stamp = stampOf(body);
+/** Audit rows of knowledge reads — who looked, what was decided, what came of it. */
+export function readRecords(body: unknown): SurfaceValue<RetrievalRow> {
+  const envelope = stampOf(body);
   const rows = rowsOf(body);
-  if (tab === "evidence") {
-    if (rows === null) return emptyPayload(tab, stamp);
-    return { rows: [], citations: rows.map(citationOf), retrieval: [], scannedSessions: null, ...stamp };
-  }
-  if (tab === "retrieval") {
-    if (rows === null) return emptyPayload(tab, stamp);
-    const retrieval = rows.map(retrievalOf);
-    const latest = retrieval
-      .map((row) => row.atRaw)
-      .filter((value): value is string => Boolean(value))
-      .sort()
-      .at(-1);
-    const resolved = stamp.stamp ?? (latest ? beijing(latest) : null);
-    return {
-      rows: [],
-      citations: [],
-      retrieval,
-      scannedSessions: null,
-      stamp: resolved,
-      stampReason: resolved ? null : stamp.stampReason,
-    };
-  }
-  if (rows === null) return emptyPayload(tab, stamp);
-  return { rows: rows.map((row) => rowOf(row, tab)), citations: [], retrieval: [], scannedSessions: null, ...stamp };
-}
-
-export function isForcedState(value: string): value is "loading" | "empty" | "error" | "denied" {
-  return value === "loading" || value === "empty" || value === "error" || value === "denied";
+  if (rows === null) return { rows: [], ...envelope, scanned: null };
+  const mapped = rows.map(retrievalOf);
+  const newest = newestOf(
+    mapped.map((row) => row.atRaw),
+    envelope,
+    "上游响应没有带采集时间，也没有可用的事件时间，数据截至时间未知。",
+  );
+  return { rows: mapped, ...newest, scanned: null };
 }
 
 export function initialTab(value: string | null, panel: string | null = null): KnowledgeTab {
   const internal = (panel ?? "").toLowerCase();
   if (internal === "ingest" || internal === "sources") return "ingest";
-  if (internal === "retrieval") return "retrieval";
+  if (internal === "retrieval" || internal === "search") return "retrieval";
   if (internal === "evidence" || internal === "citations") return "evidence";
   if (internal === "spaces" || internal === "scope") return "spaces";
   const tab = (value ?? "").toLowerCase();
   if (tab === "ingest" || tab === "sources") return "ingest";
-  if (tab === "retrieval") return "retrieval";
+  if (tab === "retrieval" || tab === "search") return "retrieval";
   if (tab === "evidence" || tab === "citations") return "evidence";
   return "spaces";
 }
