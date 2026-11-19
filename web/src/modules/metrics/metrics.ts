@@ -1172,3 +1172,34 @@ export function sparkSummaryText(spark: SparkGrid, windowLabel: string): string 
   }
   return `${windowLabel}趋势：共 ${summary.observed} 个时段有记录；首值 ${summary.first} 次；末值 ${summary.last} 次；峰值 ${summary.peak} 次；最低 ${summary.low} 次。没有返回的时段不计入。`;
 }
+
+// ---- metL: the current view as plain text ---------------------------------
+// The summary repeats the numbers this page already rendered from the batch of
+// reads it holds. It never fetches, never recomputes money from price × usage,
+// and never prints an internal id. A real 0 stays `$0.00` / `0`; a missing
+// number stays `—`.
+
+export type MetricsSummaryInput = {
+  windowId: string;
+  windowLabel: string;
+  runs: number | null;
+  costUsd: number | null;
+  groupBy: 'model' | 'employee';
+  /** Top-level asOf of the batch that produced the numbers above; null when absent. */
+  asOf: string | null;
+  /** When the user asked for the copy, as an ISO stamp. */
+  generatedAt: string;
+};
+
+export function metricsSummaryText(input: MetricsSummaryInput): string {
+  const asOf = isoOrNull(input.asOf);
+  return [
+    '运行分析摘要',
+    `窗口：${input.windowLabel}（${input.windowId}）`,
+    `运行数：${formatCount(input.runs)}`,
+    `实扣金额：${formatUsd(input.costUsd)}`,
+    `占比口径：成本分摊按${input.groupBy === 'employee' ? '员工' : '模型'}分组的账本实扣计算，占比合计 100%，保留一位小数`,
+    `采集时刻：${asOf ? formatBeijing(asOf) : '—'}`,
+    `生成时刻：${formatBeijing(input.generatedAt)}（北京时间）`,
+  ].join('\n');
+}

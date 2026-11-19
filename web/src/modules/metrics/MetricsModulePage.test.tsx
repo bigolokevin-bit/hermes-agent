@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/lib/api-error';
 
 const api = vi.hoisted(() => ({ fetchJsonStrict: vi.fn() }));
-const clip = vi.hoisted(() => ({ copyTextToClipboard: vi.fn(() => Promise.resolve(true)) }));
+const clip = vi.hoisted(() => ({ copyTextToClipboard: vi.fn((text: string) => Promise.resolve(Boolean(text))) }));
 vi.mock('@/modules/models/fetchJson', () => ({ fetchJsonStrict: api.fetchJsonStrict }));
 vi.mock('@/lib/clipboard', () => ({ copyTextToClipboard: clip.copyTextToClipboard }));
 
@@ -2086,5 +2086,111 @@ describe('metK — chart accessibility alternatives', () => {
     expect(summary).toContain('末值 13 次');
     expect(summary).toContain('峰值 13 次');
     expect(summary).toContain('最低 13 次');
+  });
+});
+
+// ---- metL: copy the current view as plain text -----------------------------
+// The copy repeats the numbers already on screen and reads nothing again; a
+// real zero stays $0.00 / 0, a missing value stays «—», and no internal id or
+// raw field name goes into the text.
+
+describe('metL — copy the current view summary', () => {
+  it('copies the same numbers the page shows without reading anything again', async () => {
+    await mount(usageRouter());
+    await waitFor(
+      () => document.querySelector('[data-testid="met6-runs-value"]')?.textContent === '0',
+      'runs value',
+    );
+    clip.copyTextToClipboard.mockClear();
+    const before = urls().length;
+
+    await act(async () => {
+      (document.querySelector('[data-testid="metL-copy"]') as HTMLButtonElement).click();
+    });
+    await waitFor(
+      () => document.querySelector('[data-testid="metL-copy-status"]')?.textContent === '已复制',
+      'copy status',
+    );
+
+    expect(urls().length).toBe(before);
+    expect(clip.copyTextToClipboard).toHaveBeenCalledTimes(1);
+    const body = String(clip.copyTextToClipboard.mock.calls[0][0]);
+    expect(body).toContain('运行分析摘要');
+    expect(body).toContain('窗口：最近 24 小时（24h）');
+    expect(body).toContain('运行数：0');
+    expect(body).toContain('实扣金额：$0.00');
+    expect(body).toContain('占比口径：成本分摊按模型分组的账本实扣计算');
+    expect(body).toContain('采集时刻：—');
+    expect(body).toMatch(/生成时刻：\d{4}-\d{2}-\d{2} \d{2}:\d{2}（北京时间）/);
+    expect(body).not.toContain('emp_');
+    expect(document.querySelector('[data-testid="metL-fallback"]')).toBeNull();
+  });
+
+  it('reports the collection time of the batch when the upstream returned one', async () => {
+    const base = usageRouter();
+    await mount((url) =>
+      url.includes('run-stats')
+        ? Promise.resolve({ ...STATS_24H, asOf: '2026-11-19T20:12:00.000Z', asOfSource: 'bff' })
+        : base(url),
+    );
+    clip.copyTextToClipboard.mockClear();
+
+    await act(async () => {
+      (document.querySelector('[data-testid="metL-copy"]') as HTMLButtonElement).click();
+    });
+    await waitFor(
+      () => document.querySelector('[data-testid="metL-copy-status"]')?.textContent === '已复制',
+      'copy status',
+    );
+
+    const body = String(clip.copyTextToClipboard.mock.calls[0][0]);
+    expect(body).toContain('采集时刻：2026-11-20 04:12');
+    // The window id of the current view is the only identifier in the text.
+    expect(body).not.toContain('emp_');
+    expect(body).not.toContain('2026-11-19T');
+  });
+
+  it('offers a selectable fallback when the clipboard refuses', async () => {
+    clip.copyTextToClipboard.mockResolvedValueOnce(false);
+    await mount(usageRouter());
+    await waitFor(
+      () => document.querySelector('[data-testid="met6-runs-value"]')?.textContent === '0',
+      'runs value',
+    );
+    clip.copyTextToClipboard.mockClear();
+
+    await act(async () => {
+      (document.querySelector('[data-testid="metL-copy"]') as HTMLButtonElement).click();
+    });
+    await waitFor(
+      () => document.querySelector('[data-testid="metL-copy-status"]')?.textContent === '复制没成功',
+      'copy failure',
+    );
+
+    const fallback = document.querySelector('[data-testid="metL-fallback-text"]') as HTMLTextAreaElement;
+    expect(fallback).toBeTruthy();
+    expect(fallback.readOnly).toBe(true);
+    expect(fallback.value).toBe(String(clip.copyTextToClipboard.mock.calls[0][0]));
+    expect(fallback.value).toContain('运行分析摘要');
+  });
+
+  it('keeps the grouping caliber in step with the visible share table', async () => {
+    await mount(usageRouter(), '/metrics?groupBy=employee');
+    await waitFor(
+      () => document.querySelector('[data-testid="met8-view-employee"]')?.getAttribute('aria-pressed') === 'true',
+      'employee view',
+    );
+    clip.copyTextToClipboard.mockClear();
+
+    await act(async () => {
+      (document.querySelector('[data-testid="metL-copy"]') as HTMLButtonElement).click();
+    });
+    await waitFor(
+      () => document.querySelector('[data-testid="metL-copy-status"]')?.textContent === '已复制',
+      'copy status',
+    );
+
+    const body = String(clip.copyTextToClipboard.mock.calls[0][0]);
+    expect(body).toContain('占比口径：成本分摊按员工分组');
   });
 });

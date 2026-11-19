@@ -192,3 +192,15 @@
 - **同源**：热力摘要与表格取自 `grid = buildHeatGrid(view.activity)`，趋势摘要取自同一个 `spark = sparkSlots(...)`；不另发请求（测试实测展开/收起前后请求数相等）。
 - 验证：定向 82 例（基线 78，+4）；全量 132 files / 1486 passed（另有 2 条上游 employee-detail unhandled rejection 为既存噪声）；tsc 全仓 55 条既存基线、`modules/metrics` 0；build entry `assets/index-BRl7Bi9x.js` sha256 `5c65bb2f…24d6`，entry 内 `metK-heat-summary` 0，chunk `MetricsModulePage-BN_0W06-.js` 三个 metK 标记各 1。
 - 未测项：真浏览器 + 读屏软件走查未做（标签为 DOM 字符串断言）；表格按星期汇总而非按具体日期拆分（活动接口的格子轴就是星期 × 小时，最近多周时为聚合值）。
+
+## 当前视图摘要复制（metL，2026-11-20）
+
+页头「复制摘要」把当前窗口的关键数字写成纯文本，直接进剪贴板；同一段文字在剪贴板被拒时落到页面上的可选中文本框。
+
+- 文案（逐行）：`运行分析摘要` / `窗口：<名称>（<id>）` / `运行数：<N|—>` / `实扣金额：<$x.xx|—>` / `占比口径：成本分摊按<模型|员工>分组的账本实扣计算，占比合计 100%，保留一位小数` / `采集时刻：<北京时间到分|—>` / `生成时刻：<北京时间到分>（北京时间）`。
+- 数据同源：运行数取 `usage.stats.totals.runs`，金额取 `usage.day.total`，占比口径取页面 `groupBy`，采集时刻取本批 `run-stats` 与 `budget-usage` 各自顶层 `asOf/asOfSource` 中较晚的一个（`isoOrNull` 只认 ISO）；生成时刻在点击瞬间取本机时钟。**复制处理函数不发任何请求**——实测点击前后 `urls().length` 相等。
+- 真 0：运行数 `0`、金额 `$0.00`；缺失：各自 `—`，不按 0 补。文本内不含内部 id、字段名、凭据。
+- 反馈：`metL-copy-status` 为 `role="status" aria-live="polite"`，成功「已复制」；失败「复制没成功」并渲染 `metL-fallback`（`textarea` 只读、聚焦即全选、内容与剪贴板目标逐字相同）。
+- testid：`metL-copy`、`metL-copy-status`、`metL-fallback`、`metL-fallback-text`；met5–metK 全族不变。
+- 验证：定向 86（基线 82）；全量 132 files / 1490 passed（另 2 条上游 employee-detail 未处理拒绝为既存噪声）；`tsc` 全仓 55 条既存、本模块 0；build entry `assets/index-CntxHrw-.js` sha256 `5459a683696af4bdb8fea81ac371418ef92a6453a74c6e98462652b5e3e6f3ee`，entry 内 `metL-copy` 命中 0，chunk `MetricsModulePage-Ua4kF51Z.js` 命中 1。
+- 未测项：真浏览器剪贴板权限拒绝路径未实机走查（以 mock 返回 false 覆盖）；复制内容粘贴到外部编辑器未人工比对。

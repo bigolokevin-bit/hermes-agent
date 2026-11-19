@@ -43,6 +43,7 @@ import {
   heatFromStats,
   heatGridSummary,
   isoOrNull,
+  metricsSummaryText,
   withGapNote,
   type ExportGap,
   ledgerAsOf,
@@ -350,6 +351,8 @@ export function MetricsModulePage() {
   const [retryingBlock, setRetryingBlock] = useState<UsageBlockKind | null>(null);
   const [selected, setSelected] = useState<{ dow: number; hour: number } | null>(null);
   const [heatTableOpen, setHeatTableOpen] = useState(false);
+  const [summaryStatus, setSummaryStatus] = useState<'idle' | 'done' | 'failed'>('idle');
+  const [summaryText, setSummaryText] = useState('');
   const [sources, setSources] = useState<Record<string, SourceStamp>>({});
   const [sourcesOpen, setSourcesOpen] = useState(false);
   const [sourcesSeen, setSourcesSeen] = useState(false);
@@ -1301,6 +1304,31 @@ export function MetricsModulePage() {
   const sourceList = sourceRows(sources);
   const newestSource = latestSourceAsOf(sourceList);
 
+  // metL — the plain-text summary repeats what this page already shows. Both
+  // numbers and the collection time come from the batch in hand; the copy
+  // handler issues no request.
+  const summaryRuns =
+    usageReady && usageReady.stats.kind === 'ready' ? usageReady.stats.value.stats.totals.runs : null;
+  const summaryCost = usageReady && usageReady.day.kind === 'ready' ? usageReady.day.value.total : null;
+  const summaryAsOf =
+    [sources['run-stats']?.asOf ?? null, sources['budget-usage']?.asOf ?? null]
+      .filter((stamp): stamp is string => typeof stamp === 'string' && stamp.length > 0)
+      .sort()
+      .at(-1) ?? null;
+  const copySummary = () => {
+    const text = metricsSummaryText({
+      windowId: usageWindow.id,
+      windowLabel: usageWindow.label,
+      runs: summaryRuns,
+      costUsd: summaryCost,
+      groupBy,
+      asOf: summaryAsOf,
+      generatedAt: new Date().toISOString(),
+    });
+    setSummaryText(text);
+    void copyTextToClipboard(text).then((ok) => setSummaryStatus(ok ? 'done' : 'failed'));
+  };
+
   return (
     <main className="met5-page" data-testid="met5-page">
       <div className="met5-head">
@@ -1308,17 +1336,41 @@ export function MetricsModulePage() {
           <h1>运行分析</h1>
           <p>按星期与小时看运行都落在什么时段。没有记录的格子显示「—」，不补 0。</p>
         </div>
-        <Button
-          size="sm"
-          outlined
-          disabled={view.kind === 'loading'}
-          onClick={() => setAttempt((value) => value + 1)}
-          data-testid="met5-refresh"
-        >
-          <RefreshCw className="size-3.5" aria-hidden="true" />
-          刷新
-        </Button>
+        <div className="met5-acts">
+          <Button size="sm" outlined onClick={copySummary} data-testid="metL-copy">
+            <Copy className="size-3.5" aria-hidden="true" />
+            复制摘要
+          </Button>
+          <Button
+            size="sm"
+            outlined
+            disabled={view.kind === 'loading'}
+            onClick={() => setAttempt((value) => value + 1)}
+            data-testid="met5-refresh"
+          >
+            <RefreshCw className="size-3.5" aria-hidden="true" />
+            刷新
+          </Button>
+          <span className="metL-status" role="status" aria-live="polite" data-testid="metL-copy-status">
+            {summaryStatus === 'done' ? '已复制' : summaryStatus === 'failed' ? '复制没成功' : ''}
+          </span>
+        </div>
       </div>
+
+      {summaryStatus === 'failed' ? (
+        <div className="metL-fallback" data-testid="metL-fallback">
+          <p>
+            这次没能写入剪贴板，可能是浏览器没有给权限。下面这段文字可以直接选中复制，内容与刚才要复制的一样。
+          </p>
+          <textarea
+            readOnly
+            value={summaryText}
+            aria-label="运行分析摘要文本"
+            data-testid="metL-fallback-text"
+            onFocus={(event) => event.currentTarget.select()}
+          />
+        </div>
+      ) : null}
 
       {usageView.kind === 'loading' ? (
         <Card data-testid="met6-loading">
