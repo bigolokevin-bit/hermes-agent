@@ -1184,12 +1184,7 @@ export default function App() {
                       />
                       <Route
                         path="/identity"
-                        element={
-                          <ConsoleModulePage
-                            module="identity"
-                            live={{ people: <PeopleConsolePage />, departments: <OrgConsolePage />, roles: <AccessConsolePage /> }}
-                          />
-                        }
+                        element={<AdminsAwareIdentity />}
                       />
                       <Route
                         path="/knowledge"
@@ -1587,6 +1582,22 @@ function SidebarNavLink({
 /* R17 auth5: sidebar session chip wired to the same-origin /auth bridge
  * (lane D). Anonymous visitors get a real way into /login; signed-in users
  * see who they are and can sign out. Tokens and raw ids never reach screen. */
+
+/* R29 alias: /identity?tab=admins lands on the gov access module in its
+ * admins view (the page body reads ?view=admins). The entry URL spelling
+ * stays a shell-level alias; no module body changes. */
+function AdminsAwareIdentity(): ReactNode {
+  const [sp] = useSearchParams();
+  if (sp.get("tab") === "admins") {
+    return <Navigate to="/identity?tab=roles&view=admins" replace />;
+  }
+  return (
+    <ConsoleModulePage
+      module="identity"
+      live={{ people: <PeopleConsolePage />, departments: <OrgConsolePage />, roles: <AccessConsolePage /> }}
+    />
+  );
+}
 
 export function AuditAwareEntry(): ReactNode {
   const [sp] = useSearchParams();

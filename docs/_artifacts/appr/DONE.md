@@ -460,3 +460,10 @@ F7 审计入口+别名：App.tsx nav 治理组新增 /audit「审计事件」（
 ②创建成功即时可见：afterCreate=setSelected+setTick→loadBoard 重拉列表（不刷新页面新任务即现）+成功卡 tsk4-copy-new-id 复制钮（短码上屏、剪贴全值，TaskCreateForm.test 断言 writeText(tk_ABCDEF1234567890)）。
 ③创建失败分级人话：csrf 两码专属句优先→401 写话术→403「这个写入没有被后台允许…」→400「提交的内容后台没有接受…」→其它通用；均带 RequestIdCopy 可复制 rid+重试，无假成功。
 验证：定向 approvals+tasks 68 passed；全量 122 files/1224 passed 0 fail。基线申报：本地 tip=05d558b7（工单基线 4dd7966f=L0 合批 merge 笔不在 lane/console-appr 分支上，05d558b7 为其祖先，无冲突面）。
+
+## 别名与版面扫尾（fix(console): tab aliases and responsive sweep）
+①?tab=admins 注册=App.tsx 新 AdminsAwareIdentity 包装 /identity Route：tab=admins→Navigate /identity?tab=roles&view=admins replace（gov AccessModulePage 自带 view=admins 管理员视图，页体零改动；routes.ts line239 compat admins→people&view=admins 旧落错槽由此修正；grep AdminsAwareIdentity=2；9122 仍旧代次，落点断言 QA 合批后复跑）。
+②cron/retention/evidence 别名=TAB_ALIAS routes.ts line334-338 在位（work:{cron:board}、system:{security,retention:events}；knowledge evidence=原生 tabId）+ConsoleModulePage resolveTab 链不变=仍生效。
+③三档复扫：ego iframe 脚本两轮不可靠（读 0/静默），降级结构证据=T42/ov6 轮 375=375 实测在案、本单未动布局代码、App.tsx 主容器 overflow-x-hidden 兜底、shell+pages 115 passed。
+④工程语言复扫（9122 旧代次活体 innerText）：shell/pages 零命中；2 处转报=（a）/system 32hex d43285e6f65d40bb84f7249aca385a6f 上屏属 modules/health 页体（禁碰域，转 aud/gov/L0）；（b）/audit（→/system?tab=events）ap_123DE49B9A1F42A197679681F1 全量句柄上屏属 modules/audit 页体（禁碰域转报）。
+验证：assert-ia 两模式 exit0（51/22/1/8 未破）；定向 shell+pages 16 files 115 passed；全量 122 files/1224 passed 0 fail。
