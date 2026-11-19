@@ -305,3 +305,82 @@ DeepSeek V3  deepseek  $0.14 / 百万 token  $0.28 / 百万 token  2026-11-19 10
 
 - 真实 200 未取得（本机无登录态，`/agent-api` 返回 401）；DOM 200 段来自临时 fixture stub，仅证明渲染与分区，不冒充线上数据。
 - 未改 App/shell/manifest/package；`/models` 与 `/system?tab=version` 的 live 节点由现有 shell 提供。
+
+## MET5 /metrics 7×24 运行热力（2026-11-19）
+
+- 提交：`5e1774c9 feat(console): metrics 7x24 run heatmap (met5)`（4 files，+942）
+- 写域：`web/src/modules/metrics/**`；未改 App.tsx / shell / manifest / package / lock。
+- 数据：`/agent-api/api/run-activity?weeks=1|4|12&tz=Asia/Shanghai`。接口存在但本机无登录态，实测 401（`console.unauthenticated`），未取得真实 200。
+- 口径：7 天×24 小时格；接口未返回的格显 `—`（`is-missing`），显式 `count:0` 显真 0（`is-zero`）；未知不补 0。
+- 时间窗只有 7 天 / 4 周（28 天）/ 12 周（84 天）；端点按整周汇总，不提供 24h 窗口，页面明示，不做假入口。
+- 每格 title/aria-label 含计数与北京时间范围；点击显示所选格；`met5-*` testid。
+- 四态：加载骨架 / 正常 / 空（不补 0）/ 错（人话 + 可复制请求编号 + 重试）；`?state=loading|empty|error` 仅预览，零取数并带 `data-fixture="1"`。
+
+### 自测
+
+```text
+$ cd web && ./node_modules/.bin/tsc -b . --noEmit
+# EXIT: 0
+
+$ cd web && npx vitest run src/modules/metrics
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+
+$ cd web && npx vitest run
+ Test Files  114 passed (114)
+      Tests  1020 passed (1020)
+
+$ cd /Users/kevin_studio/Projects/forks/console-gov && pnpm --filter web build
+built /Users/kevin_studio/Projects/forks/console-gov/hermes_cli/web_dist/index.html
+# EXIT: 0
+```
+
+### DOM 读数（Chrome CDP，临时预览 harness，已删除）
+
+```text
+1440×900: bodySW=1440 bodyCW=1440 pageSW=1440 scrollSW=1389 scrollCW=1389 cells=168
+1280×800: bodySW=1280 bodyCW=1280 pageSW=1280 scrollSW=1229 scrollCW=1229 cells=168
+375×812:  bodySW=375 bodyCW=375 pageSW=375 scrollSW=620 scrollCW=339 cells=168
+```
+
+375 仅热力图容器内横向滚动，页面无横溢。截图：`docs/_artifacts/gov/shots/met5-1440.png`、`met5-1280.png`、`met5-375.png`。
+
+### 需壳层注册的路由清单
+
+1. `web/src/App.tsx` 增加 `/metrics` 惰性路由，指向 `web/src/modules/metrics/MetricsModulePage.tsx`。
+2. 侧栏/导航项指向 `/metrics`（或 bridge 将 `#/metrics` 指向新页）。
+3. 现状：`shell/routes.ts` 的 `#/metrics` 是 hidden compat 行，映射到 `#/overview?tab=usage`；`shell/bridge.ts` 把 `#/metrics` 映射到 `/analytics`；App.tsx 无 `/metrics` 路由。
+
+### 边界
+
+- 真实 200 未取得；401 仅证明路径存在。
+- 未做 24h 窗口（端点不支持）。
+- 页面在新路由注册前仍不可达 `/metrics`。
+
+### 观察者复核修正（MET5）
+
+首轮截图复核 FAIL：热力格与图例无色块；375 右半日不可见且无滑动提示，滚动边界有半格残影。根因是 `metrics.css` 使用了本主题不存在的 `hsl(var(--primary/--muted/...))` 令牌。已改为 `color-mix(var(--midground-base))` 与 `var(--color-*)`；375 增加「左右滑动热力图，查看 12–23 点」提示与右缘渐隐。复测：168 格全部渲染（167 有底色，1 格斜纹缺失），1440/1280/375 body 均等于视口，375 仅热力容器内滚动（620/307）。截图已覆盖更新。
+
+### R11 自查：模块被挂载后的单价与解析错误（2026-11-19）
+
+- 修复提交：`87e92c36 fix(console): surface human model read errors (R11)`。
+- 原因：R11 实测的 `/models` 仍指向旧 `@/pages/ModelsPage`；模块本身未被该路由挂载。
+- 挂载契约：`ModelsModulePage` 为**具名导出**，无 props；不读 `tab` 参数，只读 `?state=loading|empty|error|denied` 预览；testid 前缀 `mdl4-*`；三块数据各读 `/agent-api/api/models`、`/agent-api/api/models/pricing`、`/agent-api/api/hermes-usage?days=30`。
+- 非 JSON 兜底改为直接上屏 `ApiError` 的人话（HTML 页面 →「这个接口还没有接入数据服务…」），并保留请求编号；不再只显示泛化错误，也绝不出现 `Unexpected token`。
+
+临时 Vite harness（`/models` MemoryRouter + fetch 200 stub，已删除）DOM 读数：
+
+```text
+200 JSON 场景：
+单价 词族 = 6
+单价（价目表） / 实际扣费（账本） / $0.14 / 百万 token / $12.48 均命中
+Unexpected token = 0
+
+HTML 兜底场景（price 端点返回 text/html + x-console-request-id）：
+单价 词族 = 7
+「单价表读取失败」「这个接口还没有接入数据服务」命中
+请求编号 req-html-dom-1 命中
+Unexpected token = 0
+```
+
+全量：`114 files / 1021 passed`；`tsc` 0；`pnpm --filter web build` EXIT 0。
