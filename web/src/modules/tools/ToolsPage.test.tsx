@@ -89,12 +89,21 @@ describe("real reads", () => {
     await mount();
     expect(urls().sort()).toEqual([
       "/agent-api/api/mcp/servers",
+      "/agent-api/api/tools",
       "/agent-api/api/tools/toolsets",
       "/api/mcp/servers",
+      "/api/tools",
       "/api/tools/toolsets",
     ]);
 
     expect(document.querySelector("[data-testid='tol5-page']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='tl3-page']")).toBeTruthy();
+    expect(document.querySelectorAll("[data-testid^='tl3-row-']")).toHaveLength(6);
+    const planned = document.querySelector<HTMLButtonElement>("[data-testid='tl3-planned-create']")!;
+    expect(planned.disabled).toBe(true);
+    expect(planned.getAttribute("data-planned")).toBe("true");
+    expect(planned.getAttribute("aria-disabled")).toBe("true");
+    expect(planned.getAttribute("title")).toContain("还没有工具写入口");
   });
 
   it("renders toolset and MCP rows with type, enabled state, credential state and last-call gap", async () => {
@@ -105,7 +114,12 @@ describe("real reads", () => {
     expect(text()).toContain("MCP · HTTP 服务");
     expect(text()).toContain("MCP · 本地进程");
     const web = rows()[0]!;
-    expect(web.querySelector("[data-testid='tol5-status']")?.textContent).toBe("启用");
+    expect(web.querySelector("[data-testid='tol5-status']")?.textContent).toBe("正常");
+    expect(web.querySelector("[data-testid='tl3-name']")?.textContent).toContain("网页搜索");
+    expect(web.querySelector("[data-testid='tl3-type']")?.textContent).toContain("内置");
+    expect(web.querySelector("[data-testid='tl3-status']")?.textContent).toBe("正常");
+    expect(web.querySelector("[data-testid='tl3-updated']")?.textContent).toContain("最近更新：—");
+    expect(web.querySelector("[data-testid='tl3-updated']")?.textContent).toContain("没有提供最近更新时间");
     expect(web.querySelector("[data-testid='tol5-credential']")?.textContent).toContain("已配置");
     expect(web.querySelector("[data-testid='tol5-last']")?.textContent).toContain("最近调用：—");
     expect(web.querySelector("[data-testid='tol5-last']")?.textContent).toContain("不表示从未调用");
@@ -155,8 +169,11 @@ describe("failures and gaps", () => {
     await mount(failed(403, "/api/tools/toolsets", "req-deny"));
     expect(document.querySelector("[data-testid='tol5-denied']")).toBeTruthy();
     expect(rows()).toHaveLength(0);
-    expect(text()).toContain("工具与 MCP 读口未接入");
+    expect(text()).toContain("工具读口未接入");
     expect(text()).toContain("请求编号：req-deny");
+    expect(document.querySelector("[data-testid='tl3-apply']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='tl3-request-id']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='tl3-retry']")).toBeTruthy();
     expect(text()).not.toMatch(/\/api\/|403|GAP-04/);
   });
 
@@ -165,7 +182,7 @@ describe("failures and gaps", () => {
     expect(document.querySelector("[data-testid='tol5-denied']")).toBeTruthy();
     expect(document.querySelector("[data-testid='tol5-fixture-note']")).toBeNull();
     expect(rows()).toHaveLength(0);
-    expect(text()).toContain("工具与 MCP 读口未接入");
+    expect(text()).toContain("工具读口未接入");
     expect(text()).toContain("请求编号：req-deny");
     expect(text()).not.toMatch(/\/api\/|403|404|GAP-04|字段示例/);
     expect(document.querySelector("[data-testid='tol5-denied']")?.getAttribute("title")).toBe("GAP-04");
@@ -178,7 +195,7 @@ describe("failures and gaps", () => {
       return Promise.reject(new ApiError("不是数据", { status, body: "<!doctype html>", url }));
     });
     expect(document.querySelector("[data-testid='tol5-denied']")).toBeTruthy();
-    expect(text()).toContain("工具与 MCP 读口未接入");
+    expect(text()).toContain("工具读口未接入");
     expect(text()).not.toMatch(/Unexpected token|<!doctype|HTTP|\/api\//i);
   });
 

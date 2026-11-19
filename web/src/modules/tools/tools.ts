@@ -15,8 +15,10 @@
 import { ApiError, errorMessage } from "@/lib/api-error";
 import { fetchJsonStrict } from "@/modules/models/fetchJson";
 
+export const TOOLS_PATH = "/agent-api/api/tools";
 export const TOOLSETS_PATH = "/agent-api/api/tools/toolsets";
 export const SERVERS_PATH = "/agent-api/api/mcp/servers";
+export const TOOLS_PATHS = [TOOLS_PATH, "/api/tools"] as const;
 export const TOOLSETS_PATHS = [TOOLSETS_PATH, "/api/tools/toolsets"] as const;
 export const SERVERS_PATHS = [SERVERS_PATH, "/api/mcp/servers"] as const;
 export const GAP = "GAP-04";
@@ -38,6 +40,8 @@ export interface ToolRow {
   credentialReason: string | null;
   lastUsed: string | null;
   lastUsedReason: string | null;
+  updatedAt: string | null;
+  updatedAtReason: string | null;
   rawId: string | null;
   detail: string[];
   failure?: string | null;
@@ -184,7 +188,7 @@ export function beijingMinute(value: string | null): string | null {
 }
 
 export const STATUS_LABEL: Record<ToolStatus, string> = {
-  enabled: "启用",
+  enabled: "正常",
   disabled: "停用",
   unknown: "待核实",
 };
@@ -237,6 +241,25 @@ function credentialOf(value: boolean | null): { state: CredentialState; raw: str
   return { state: "unknown", raw: null, reason: "接口没有说明凭据是否已配置。" };
 }
 
+const UPDATED_KEYS = [
+  "updated_at",
+  "updatedAt",
+  "modified_at",
+  "modifiedAt",
+  "last_updated",
+  "lastUpdated",
+  "last_update",
+  "lastUpdate",
+] as const;
+
+function updatedAtOf(rec: Record<string, unknown>): { value: string | null; reason: string | null } {
+  const raw = pick(rec, UPDATED_KEYS);
+  if (!raw) return { value: null, reason: "接口没有提供最近更新时间。" };
+  const value = beijingMinute(raw);
+  if (value) return { value, reason: null };
+  return { value: null, reason: "接口给出的最近更新时间无法解析。" };
+}
+
 function toolsetRows(value: unknown, index: number): ToolRow[] {
   const rec = record(value);
   if (!rec) return [];
@@ -251,6 +274,7 @@ function toolsetRows(value: unknown, index: number): ToolRow[] {
   const platform = pick(rec, ["platform_label", "platform"]);
   const cred = credentialOf(configured);
   const lastUsed = lastUsedOf(rec);
+  const updated = updatedAtOf(rec);
   const base = {
     type: groupName,
     typeReason: null,
@@ -262,6 +286,8 @@ function toolsetRows(value: unknown, index: number): ToolRow[] {
     credentialReason: cred.reason,
     lastUsed: lastUsed.value,
     lastUsedReason: lastUsed.reason,
+    updatedAt: updated.value,
+    updatedAtReason: updated.reason,
     ...failureOf(rec),
     source: "toolset" as const,
   };
@@ -304,6 +330,7 @@ function serverRow(value: unknown, index: number): ToolRow | null {
           ? { state: "configured" as const, raw: auth ?? "declared", reason: null }
           : { state: "unknown" as const, raw: null, reason: "接口没有说明这个连接是否需要凭据。" };
   const lastUsed = lastUsedOf(rec);
+  const updated = updatedAtOf(rec);
   const detail = [
     `连接标识：${pick(rec, ["id", "serverId", "server_id"]) ?? rawName}`,
     `传输方式：${transport}`,
@@ -324,11 +351,69 @@ function serverRow(value: unknown, index: number): ToolRow | null {
     credentialReason: credential.reason,
     lastUsed: lastUsed.value,
     lastUsedReason: lastUsed.reason,
+    updatedAt: updated.value,
+    updatedAtReason: updated.reason,
     ...failureOf(rec),
     rawId: rawName,
     detail,
     source: "mcp",
   };
+}
+
+function flatToolRow(value: unknown, index: number): ToolRow | null {
+  const rec = record(value);
+  if (!rec) return null;
+  const rawName = pick(rec, ["name", "label", "tool", "tool_name", "toolName", "id"]);
+  if (!rawName) return null;
+  const enabledRaw = rec.enabled ?? rec.available ?? rec.active;
+  const enabled = bool(enabledRaw);
+  const cred = credentialOf(bool(rec.configured ?? rec.credential_configured ?? rec.credentialConfigured));
+  const lastUsed = lastUsedOf(rec);
+  const updated = updatedAtOf(rec);
+  const rawType = pick(rec, ["type", "category", "source", "group"]);
+  return {
+    key: `tool:${rawName}:${index}`,
+    name: humanToolName(rawName),
+    nameReason: null,
+    type: rawType ? (/[\u4e00-\u9fff]/.test(rawType) ? rawType : "工具") : "工具",
+    typeReason: rawType ? null : "接口没有提供类型或来源。",
+    status: enabled === true ? "enabled" : enabled === false ? "disabled" : "unknown",
+    statusRaw: enabledRaw === undefined || enabledRaw === null ? null : String(enabledRaw),
+    statusReason: enabled === null ? "接口没有说明这个工具是否启用。" : null,
+    credential: cred.state,
+    credentialRaw: cred.raw,
+    credentialReason: cred.reason,
+    lastUsed: lastUsed.value,
+    lastUsedReason: lastUsed.reason,
+    updatedAt: updated.value,
+    updatedAtReason: updated.reason,
+    ...failureOf(rec),
+    rawId: rawName,
+    detail: [`工具标识：${rawName}`],
+    source: "toolset",
+  };
+}
+
+export function readInventory(payload: unknown): ToolRow[] | null {
+  const list = Array.isArray(payload)
+    ? payload
+    : (() => {
+        const outer = record(payload);
+        if (!outer) return null;
+        const raw = outer.items ?? outer.tools ?? outer.data;
+        return Array.isArray(raw) ? raw : null;
+      })();
+  if (!list) return null;
+  const rows: ToolRow[] = [];
+  list.forEach((value, index) => {
+    const rec = record(value);
+    if (rec && Array.isArray(rec.tools)) rows.push(...toolsetRows(value, index));
+    else {
+      const row = flatToolRow(value, index);
+      if (row) rows.push(row);
+    }
+  });
+  return rows;
 }
 
 export function readToolsets(payload: unknown): ToolRow[] | null {
@@ -378,6 +463,10 @@ async function fetchFirst(
   }
   if (firstOther !== null) throw firstOther;
   throw lastMissing ?? missingRoute(paths[paths.length - 1]);
+}
+
+export async function fetchInventory(): Promise<ToolRow[]> {
+  return fetchFirst([...TOOLS_PATHS, ...TOOLSETS_PATHS], readInventory);
 }
 
 export async function fetchToolsets(): Promise<ToolRow[]> {

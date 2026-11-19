@@ -1701,3 +1701,13 @@ built /private/tmp/health-r38/index.html
 - Build to `/tmp/skills-build` blocked by that same baseline typecheck (BUILD_EXIT 2); no 9122 rebuild.
 - DOM (ready, two rows): 1440/1280/375 `bodySW==bodyCW==pageSW==pageCW==vw`; 375 table scroll 760/373 inside card only. Screenshots `docs/_artifacts/gov/shots/skl4-{1440,1280,375}.png`.
 - Boundaries: no App/shell/routes/registry/manifest/package·lock/web scripts/ops changes; no install; no main merge; no observer.
+
+## R43 /capabilities?tab=tools 工具清单真数据面（2026-11-20）
+
+- 基线：merge `bc94be67`（`origin/lane/hermes-console` f0419b0b，gate 代次 02a7385c）；未 reset，`bd5fc469`（skills）保留为祖先。
+- 端点实测（9122，登录 cookie 只读、不打印）：`/agent-api/api/tools` → **404** `console.unknown_route`；`/agent-api/api/tools/toolsets` → **404**；`/agent-api/api/mcp/servers` → **404**。同源 `/api/tools*` → **200 text/html**（SPA 外壳，非 JSON）。9119 原生：`/api/tools` → 404 No such API endpoint；`/api/tools/toolsets` → **200，26 toolsets**；`/api/mcp/servers` → **200，0 servers**。
+- 实现：`fetchInventory` 依次尝试 `/agent-api/api/tools` → `/api/tools` → 既有 toolsets 两候选；平铺数组/`{items|tools|data}` 与 toolsets 形状均可读。行字段：工具名、类型/来源、启用态（正常/停用/待核实）、最近更新时间（BJT 到分；缺失 `—` + title/可见原因）。原「最近调用」保留但不再冒充更新时间。
+- 页面：新增 `tl3-page`、`tl3-row-*`、`tl3-name/type/status/updated`、`tl3-request-id`、`tl3-retry`、`tl3-apply`、`tl3-planned-create`；保留全部 `tol5-*` 旧标记。403 与 404 同一「工具读口未接入」体，GAP-04 只在 title；错误态可复制请求编号+重试；零写入口，仅一个不可点「新建工具」（data-planned + aria-disabled + title）。
+- 验证：`npx vitest run src/modules/tools` → **2 files / 23 tests passed**；全量 `npx vitest run` → **131 files / 1404 passed**；`tsc -b . --noEmit` → 仅基线 `employees/EmployeesModulePage.test.tsx(73,5) TS18047`，本域 0。DOM（临时 harness，已删；Vite 5454 / Chrome 9256）：1440/1280/375 `vw=bodySW=bodyCW=pageSW=pageCW`，行 3，状态 正常，最近更新 `—` + 原因，`data-fixture` 为 null；四态 testid 与文案逐态不同（loading/empty/error/denied）。
+- 截图：`docs/_artifacts/gov/shots/tl3-{1440,1280,375}.png`。
+- 边界：只改 `web/src/modules/tools/**` 与 DONE/截图；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并入 main、未重建 9122；无独立观察者。

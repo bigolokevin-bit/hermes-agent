@@ -36,16 +36,19 @@ function RequestId({ failure }: { failure: FailureCopy | null }): ReactNode {
   const id = failure?.requestId ?? null;
   if (!id) {
     return (
-      <span className="min-w-0 break-words text-xs text-muted-foreground" data-testid="tol5-request-id" title={requestIdLine(null)}>
-        请求编号：未提供
+      <span className="contents" data-testid="tl3-request-id">
+        <span className="min-w-0 break-words text-xs text-muted-foreground" data-testid="tol5-request-id" title={requestIdLine(null)}>
+          请求编号：未提供
+        </span>
       </span>
     );
   }
   return (
-    <span className="flex min-w-0 flex-wrap items-center gap-1 text-xs text-muted-foreground" data-testid="tol5-request-id">
-      请求编号：
-      <code className="min-w-0 break-all font-mono" data-testid="tol5-request-id-value">{id}</code>
-      <button
+    <span className="contents" data-testid="tl3-request-id">
+      <span className="flex min-w-0 flex-wrap items-center gap-1 text-xs text-muted-foreground" data-testid="tol5-request-id">
+        请求编号：
+        <code className="min-w-0 break-all font-mono" data-testid="tol5-request-id-value">{id}</code>
+        <button
         type="button"
         aria-label="复制请求编号"
         className="inline-flex shrink-0 items-center gap-1 underline underline-offset-2"
@@ -54,8 +57,9 @@ function RequestId({ failure }: { failure: FailureCopy | null }): ReactNode {
         }}
       >
         {copied === "done" ? <Check className="h-3 w-3" aria-hidden /> : <Copy className="h-3 w-3" aria-hidden />}
-        {copied === "done" ? "已复制" : copied === "failed" ? "复制失败" : "复制"}
-      </button>
+          {copied === "done" ? "已复制" : copied === "failed" ? "复制失败" : "复制"}
+        </button>
+      </span>
     </span>
   );
 }
@@ -73,14 +77,19 @@ function Row({ row }: { row: ToolRow }): ReactNode {
       data-testid="tol5-row"
       data-status={row.status}
       data-source={row.source}
-      title={[row.rawId, row.statusReason, row.credentialReason, row.lastUsedReason].filter(Boolean).join(" · ") || undefined}
+      title={[row.rawId, row.statusReason, row.credentialReason, row.lastUsedReason, row.updatedAtReason].filter(Boolean).join(" · ") || undefined}
     >
+      <span className="sr-only" data-testid={`tl3-row-${row.key.replace(/[^a-zA-Z0-9_-]+/g, "-")}`} />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <p className="min-w-0 break-words text-sm" data-testid="tol5-name">{row.name}</p>
-        <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="tol5-type">{kindLabel(row)}</p>
+        <p className="min-w-0 break-words text-sm" data-testid="tol5-name"><span data-testid="tl3-name">{row.name}</span></p>
+        <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="tol5-type"><span data-testid="tl3-type">{kindLabel(row)}</span></p>
         <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="tol5-last">
           最近调用：{row.lastUsed ?? "—"}
           {row.lastUsed === null && row.lastUsedReason ? <span className="ml-1">{row.lastUsedReason}</span> : null}
+        </p>
+        <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="tl3-updated">
+          最近更新：{row.updatedAt ?? "—"}
+          {row.updatedAt === null && row.updatedAtReason ? <span className="ml-1">{row.updatedAtReason}</span> : null}
         </p>
         {row.failure || row.failureReason ? (
           <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="tol5-failure">
@@ -99,7 +108,7 @@ function Row({ row }: { row: ToolRow }): ReactNode {
             tone={row.status === "enabled" ? "success" : row.status === "disabled" ? "destructive" : "secondary"}
             title={row.statusReason ?? undefined}
           >
-            <span data-testid="tol5-status">{STATUS_LABEL[row.status]}</span>
+            <span data-testid="tol5-status"><span data-testid="tl3-status">{STATUS_LABEL[row.status]}</span></span>
           </Badge>
           {row.statusReason ? (
             <span className="min-w-0 break-words text-[11px] text-muted-foreground" data-testid="tol5-status-reason">
@@ -131,10 +140,11 @@ function FailurePanel({
       title={denied ? GAP : failure?.technical ?? undefined}
     >
       <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-6">
+        <span className="sr-only" data-testid={denied ? "tl3-denied" : login ? "tl3-login" : "tl3-error"} />
         <div className="flex min-w-0 items-center gap-2 text-sm">
           {denied ? <ShieldAlert className="h-4 w-4 shrink-0" aria-hidden /> : <TriangleAlert className="h-4 w-4 shrink-0" aria-hidden />}
           <span className="min-w-0 break-words">
-            {denied ? "工具与 MCP 读口未接入" : login ? "需要重新登录" : "工具与 MCP 清单没能加载出来"}
+            {denied ? "工具读口未接入" : login ? "需要重新登录" : "工具与 MCP 清单没能加载出来"}
           </span>
         </div>
         <p className="max-w-prose break-words text-xs text-muted-foreground">
@@ -144,10 +154,17 @@ function FailurePanel({
               ? "登录状态已经失效，请刷新页面重新登录后再看这份清单。"
               : failure?.sentence ?? "读取工具与 MCP 清单时出了问题，请稍后重试。"}
         </p>
+        {denied ? (
+          <a href="#/approvals" className="text-xs underline underline-offset-2" data-testid="tl3-apply">
+            提交开通申请
+          </a>
+        ) : null}
         <RequestId failure={failure} />
-        <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />} data-testid="tol5-retry">
-          重试
-        </Button>
+        <span className="contents" data-testid="tl3-retry">
+          <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />} data-testid="tol5-retry">
+            重试
+          </Button>
+        </span>
       </CardContent>
     </Card>
   );
@@ -174,6 +191,7 @@ export function ToolsPage(): ReactNode {
     if (phase === "loading") {
       return (
         <div className="flex min-w-0 flex-col gap-2" data-testid="tol5-loading" aria-busy="true" data-fixture={forced ?? undefined}>
+          <span className="sr-only" data-testid="tl3-loading" />
           {[0, 1, 2, 3].map((row) => (
             <div key={row} className="animate-pulse rounded-md border border-border bg-card px-4 py-4" aria-hidden="true">
               <div className="h-3 w-1/3 rounded-sm bg-muted" />
@@ -190,6 +208,7 @@ export function ToolsPage(): ReactNode {
       return (
         <Card className="border-border bg-card" data-testid="tol5-empty" data-fixture={forced ?? undefined}>
           <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
+            <span className="sr-only" data-testid="tl3-empty" />
             <Inbox className="h-6 w-6 text-muted-foreground" aria-hidden />
             <p className={`min-w-0 break-words text-sm ${themedBody}`}>服务已响应，清单里没有工具或 MCP 连接</p>
             <p className="max-w-prose break-words text-xs text-muted-foreground">
@@ -247,6 +266,7 @@ export function ToolsPage(): ReactNode {
   })();
 
   return (
+    <section className="flex min-w-0 w-full max-w-full flex-col" data-testid="tl3-page">
     <div
       className="tol5-page flex min-w-0 w-full max-w-full flex-col gap-3"
       data-testid="tol5-page"
@@ -260,16 +280,29 @@ export function ToolsPage(): ReactNode {
             只读工具目录与已登记的 MCP 连接；不新建、不改配置、不连接任何服务，也不显示任何凭据值。
           </p>
         </div>
-        <Button
-          size="sm"
-          outlined
-          onClick={tools.reload}
-          disabled={phase === "loading" || forced !== null}
-          data-testid="tol5-refresh"
-          prefix={phase === "loading" ? <Spinner className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" />}
-        >
-          重新读取
-        </Button>
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            outlined
+            disabled
+            aria-disabled="true"
+            data-planned="true"
+            title="控制台还没有工具写入口；接入后会提供登记与启用管理。"
+            data-testid="tl3-planned-create"
+          >
+            新建工具
+          </Button>
+          <Button
+            size="sm"
+            outlined
+            onClick={tools.reload}
+            disabled={phase === "loading" || forced !== null}
+            data-testid="tol5-refresh"
+            prefix={phase === "loading" ? <Spinner className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" />}
+          >
+            重新读取
+          </Button>
+        </div>
       </div>
 
       {forced ? (
@@ -298,6 +331,7 @@ export function ToolsPage(): ReactNode {
 
       {body}
     </div>
+    </section>
   );
 }
 
