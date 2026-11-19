@@ -613,3 +613,67 @@ describe('MetricsModulePage — export and delta', () => {
     expect(delta?.getAttribute('title')).toContain('上一周期没有可比的运行数');
   });
 });
+
+// ---- met6: budget vs actual -------------------------------------------------
+
+describe('MetricsModulePage — budget vs actual', () => {
+  it('lists ledger spend per employee and keeps cap-derived cells at —', async () => {
+    await mount(breakdownRouter());
+    const row = document.querySelector('[data-testid="met6-budget-row-0"]');
+    expect(row?.textContent).toContain('小鲤 · AAAABBBB');
+    expect(row?.textContent).toContain('$0.30');
+    // No cap in the ledger → budget, remaining and usage are «—» with a title reason.
+    expect(document.querySelectorAll('[data-testid="met6-budget-table"] tbody tr')).toHaveLength(2);
+    expect(row?.querySelectorAll('td')[1].textContent).toBe('—');
+    expect(row?.querySelectorAll('td')[3].textContent).toBe('—');
+    expect(row?.querySelectorAll('td')[4].textContent).toBe('—');
+    expect(row?.querySelectorAll('td')[1].getAttribute('title')).toContain('账本没有给出预算上限');
+    expect(document.querySelector('[data-testid="met6-budget-total"]')?.textContent).toBe('$0.40');
+    expect(document.querySelector('[data-testid="met6-budget-source"]')?.textContent).toContain('平台扣费账本');
+  });
+
+  it('colours a cap when the row carries one', async () => {
+    await mount(
+      breakdownRouter({
+        ledger: (url) =>
+          Promise.resolve(
+            url.includes('periodKind=month')
+              ? {
+                  items: [
+                    { employeeId: 'emp_aaaabbbbcccc', period: '2026-11', periodKind: 'month', costUsd: 0.12, limitUsd: 0.1, updatedAt: '2026-11-14T19:25:51.543Z' },
+                    { employeeId: 'emp_ddddeeeeffff', period: '2026-11', periodKind: 'month', costUsd: 0.085, limitUsd: 0.1, updatedAt: '2026-11-13T06:41:33.974Z' },
+                  ],
+                  missingEmployeeIds: [],
+                }
+              : { items: [], missingEmployeeIds: [] },
+          ),
+      }),
+    );
+
+    const first = document.querySelector('[data-testid="met6-budget-row-0"]');
+    const second = document.querySelector('[data-testid="met6-budget-row-1"]');
+    expect(first?.textContent).toContain('120%');
+    expect(first?.querySelectorAll('td')[4].className).toContain('is-over');
+    expect(second?.textContent).toContain('85%');
+    expect(second?.querySelectorAll('td')[4].className).toContain('is-warn');
+    expect(first?.querySelectorAll('td')[3].textContent).toBe('-$0.02');
+  });
+
+  it('says the budget read is not connected instead of drawing zeros', async () => {
+    await mount(
+      breakdownRouter({
+        ledger: (url) =>
+          Promise.resolve(
+            url.includes('periodKind=month')
+              ? { items: [], missingEmployeeIds: [] }
+              : { items: [], missingEmployeeIds: [] },
+          ),
+      }),
+    );
+    const empty = document.querySelector('[data-testid="met6-budget-empty"]');
+    expect(empty?.textContent).toContain('预算读口未接入');
+    expect(empty?.textContent).not.toContain('$0.00');
+    expect(document.querySelector('[data-testid="met6-budget-table"]')).toBeNull();
+    expect(empty?.querySelector('p[title]')?.getAttribute('title')).toContain('GAP-MET6-01');
+  });
+});

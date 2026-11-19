@@ -21,6 +21,7 @@ import {
   WEEKDAY_LABELS,
   WINDOWS,
   WINDOW_PRESETS,
+  budgetLines,
   beijingDayKey,
   buildHeatGrid,
   cellRangeLabel,
@@ -45,6 +46,7 @@ import {
   readRunStats,
   previousRange,
   toCsv,
+  usageTone,
   shareOf,
   sparkSlots,
   usageWindowOf,
@@ -590,6 +592,7 @@ export function MetricsModulePage() {
       : null;
   const sparkPeak = spark && spark.max !== null && spark.max > 0 ? spark.max : 1;
   const monthSnapshot = usageReady && usageReady.month.kind === 'ready' ? usageReady.month.value : null;
+  const budgetRows = monthSnapshot ? budgetLines(monthSnapshot.rows, monthSnapshot.names) : [];
 
   const breakdownView: BreakdownState = forced
     ? forced === 'loading'
@@ -1053,6 +1056,80 @@ export function MetricsModulePage() {
                 {breakdownView.note ? <p className="met6-hint">{breakdownView.note}</p> : null}
               </>
             ) : null}
+          </div>
+
+          <div className="met6-budget" data-testid="met6-budget">
+            <div className="met6-cat-head">
+              <h3>预算执行 vs 实扣</h3>
+            </div>
+            {budgetRows.length > 0 ? (
+              <>
+                <div className="met6-table-scroll">
+                  <table className="met6-table" data-testid="met6-budget-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">科目</th>
+                        <th scope="col">预算</th>
+                        <th scope="col">已用</th>
+                        <th scope="col">剩余</th>
+                        <th scope="col">使用率</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {budgetRows.map((line, index) => (
+                        <tr key={line.key} data-testid={`met6-budget-row-${index}`}>
+                          <td>
+                            <span className="met6-rowname">{line.subject}</span>
+                            <span className="met6-rowsub">{line.asOf ? formatBeijing(line.asOf) : '—'}</span>
+                          </td>
+                          <td className="met6-num" title={line.gap ?? undefined}>
+                            {formatUsd(line.budget)}
+                          </td>
+                          <td className="met6-num">{formatUsd(line.used)}</td>
+                          <td className="met6-num" title={line.gap ?? undefined}>
+                            {formatUsd(line.remaining)}
+                          </td>
+                          <td
+                            className={`met6-num met6-budget-pct is-${usageTone(line.usagePct) ?? 'none'}`}
+                            title={line.gap ?? '按账本上限与实际扣费计算'}
+                          >
+                            {line.usagePct === null ? '—' : `${line.usagePct}%`}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="met6-source" data-testid="met6-budget-source">
+                  来源：平台扣费账本（本月行） · 截至{' '}
+                  {monthSnapshot?.asOf ? formatBeijing(monthSnapshot.asOf) : '—'}
+                  {' · 合计 '}
+                  <span className="font-mono" data-testid="met6-budget-total">
+                    {formatUsd(usageReady && usageReady.month.kind === 'ready' ? usageReady.month.value.total : null)}
+                  </span>
+                </p>
+                <p className="met6-hint">
+                  已用只认账本实扣；账本没有给出预算上限时，预算、剩余与使用率显示「—」，不按 0 记，也不拿单价乘数量。
+                </p>
+              </>
+            ) : (
+              <Card data-testid="met6-budget-empty">
+                <CardContent className="space-y-2 p-4">
+                  <p className="font-medium">预算读口未接入</p>
+                  <p className="text-sm text-muted-foreground" title={USAGE_GAP}>
+                    账本在这个租户还没有返回任何预算行，所以这块不画表、不补 0，也不放样例数据。
+                  </p>
+                  <RequestId
+                    id={
+                      usageReady && usageReady.month.kind === 'unavailable' ? usageReady.month.requestId : null
+                    }
+                  />
+                  <Button size="sm" outlined onClick={() => setAttempt((value) => value + 1)} data-testid="met6-budget-retry">
+                    重试
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </section>
       )}

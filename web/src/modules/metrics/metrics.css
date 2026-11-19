@@ -467,3 +467,21 @@
     min-width: 480px;
   }
 }
+
+/* ---- met6: budget vs actual ---------------------------------------------- */
+.met6-budget {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.met6-budget-pct.is-over {
+  color: #f4737a;
+  font-weight: 650;
+}
+
+.met6-budget-pct.is-warn {
+  color: #f2b155;
+  font-weight: 650;
+}
