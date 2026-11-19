@@ -1,0 +1,77 @@
+[
+  {
+    "label": "1440",
+    "file": "/tmp/aud-shots/audit-1440.png",
+    "url": "/system?tab=events",
+    "title": "Hermes Agent - Dashboard",
+    "text": "HERMES\nAGENT\n控制台\n运营\n运营总览\n数字员工\n任务与运行\n审批与发布门\n治理\n人员与访问\n知识与数据\n平台\n能力与接入\n系统\n系统设置\n业务运营\n数字员工\n审批\n任务\n协作\n未接入\n运行\n企业治理\n知识\n组织与人员\n租户与配额\n未接入\n访问控制\n未接入\n人员名录\n组织与部门\n角色与权限\n知识空间\n审计事件\n运行时\nCHAT\nSESSIONS\nFILES\nMODELS\nMCP\n平台接入\nCRON\nLOGS\nSYSTEM\n系统\nCONFIG\nKEYS\nDOCUMENTATION\nPLUGINS\nSKILLS\nPROFILES\nWEBHOOKS\nPAIRING\nSystem\nRestart Gateway\n规划中\nHERMES TEAL\nEN\n暂时确认不到登录状态\n—\nNous Research\nSystem\n系统 · 控制台\n系统设置\n系统健康\n默认设置\n版本\n审计事件\n\n这个筛选条件里没有审计事件\n\n时间为北京时间\n刷新\n时间窗\n时间窗：最近 24 小时\n时间窗：最近 7 天\n时间窗：最近 30 天\n不限时间\n事件类型\n全部事件类型\n安装技能\n按审批结论执行\n按审批结论执行\n变更接入渠道\n驳回技能提案\n驳回审批\n驳回审批\n采纳技能提案\n超出预算\n撤回审批申请\n创建任务\n调用工具\n调整模型分配\n调整预算\n对外发送消息\n对外发送消息失败\n发布数字员工新版本\n发布数字员工新版本\n发起委托\n分配角色\n给出审批结论\n更新技能\n更新任务\n核对完整性链\n回滚数字员工版本\n接受委托\n结束会话\n轮换接口密钥\n批准审批\n评估策略\n启动一次运行\n启用数字员工\n取消任务\n取消运行\n任务失败\n删除文档\n上传文档\n审批超时未处理\n收回权限\n授予权限\n提高权限\n提交技能提案\n提交审批申请\n提交审批申请\n添加成员\n停用数字员工\n完成任务\n写入运行事件\n卸载技能\n谢绝委托\n新建会话\n新建数字员工\n新增知识来源\n修改策略\n修改数字员工配置\n要求修改后重新提交\n移除成员\n移除知识来源\n移交负责人\n用新单替代审批\n运行失败\n运行完成\n运行完成\n指派任务\n重建索引\n重试运行\n操作者\n未接入\n\n按现在的筛选条件，这个窗口里没有审计事件\n\n把时间窗放宽一格，或换一种事件类型再看。确实没有记录，也是这个筛选下的真实答案。\n\n刷新\n\n还没有选中事件\n\n点开左侧任意一条可以看到它当时的操作者、对象、结果与原因。要核对整段时间的链是否接得上，请用「完整性校验」。",
+    "sw": 1440,
+    "cw": 1440,
+    "aud01": [
+      "aud01-status",
+      "aud01-refresh",
+      "aud01-filters",
+      "aud01-filter-window",
+      "aud01-filter-type",
+      "aud01-filter-operator",
+      "aud01-empty"
+    ],
+    "pages": [
+      "agent-v2-page-audit"
+    ],
+    "audAll": 8,
+    "pageRoot": true,
+    "rows": 0,
+    "fixture": 0
+  },
+  {
+    "label": "1280",
+    "file": "/tmp/aud-shots/audit-1280.png",
+    "url": "/system?tab=events",
+    "title": "Hermes Agent - Dashboard",
+    "text": "HERMES\nAGENT\n控制台\n运营\n运营总览\n数字员工\n任务与运行\n审批与发布门\n治理\n人员与访问\n知识与数据\n平台\n能力与接入\n系统\n系统设置\n业务运营\n数字员工\n审批\n任务\n协作\n未接入\n运行\n企业治理\n知识\n组织与人员\n租户与配额\n未接入\n访问控制\n未接入\n人员名录\n组织与部门\n角色与权限\n知识空间\n审计事件\n运行时\nCHAT\nSESSIONS\nFILES\nMODELS\nMCP\n平台接入\nCRON\nLOGS\nSYSTEM\n系统\nCONFIG\nKEYS\nDOCUMENTATION\nPLUGINS\nSKILLS\nPROFILES\nWEBHOOKS\nPAIRING\nSystem\nRestart Gateway\n规划中\nHERMES TEAL\nEN\n暂时确认不到登录状态\n—\nNous Research\nSystem\n系统 · 控制台\n系统设置\n系统健康\n默认设置\n版本\n审计事件\n\n这个筛选条件里没有审计事件\n\n时间为北京时间\n刷新\n时间窗\n时间窗：最近 24 小时\n时间窗：最近 7 天\n时间窗：最近 30 天\n不限时间\n事件类型\n全部事件类型\n安装技能\n按审批结论执行\n按审批结论执行\n变更接入渠道\n驳回技能提案\n驳回审批\n驳回审批\n采纳技能提案\n超出预算\n撤回审批申请\n创建任务\n调用工具\n调整模型分配\n调整预算\n对外发送消息\n对外发送消息失败\n发布数字员工新版本\n发布数字员工新版本\n发起委托\n分配角色\n给出审批结论\n更新技能\n更新任务\n核对完整性链\n回滚数字员工版本\n接受委托\n结束会话\n轮换接口密钥\n批准审批\n评估策略\n启动一次运行\n启用数字员工\n取消任务\n取消运行\n任务失败\n删除文档\n上传文档\n审批超时未处理\n收回权限\n授予权限\n提高权限\n提交技能提案\n提交审批申请\n提交审批申请\n添加成员\n停用数字员工\n完成任务\n写入运行事件\n卸载技能\n谢绝委托\n新建会话\n新建数字员工\n新增知识来源\n修改策略\n修改数字员工配置\n要求修改后重新提交\n移除成员\n移除知识来源\n移交负责人\n用新单替代审批\n运行失败\n运行完成\n运行完成\n指派任务\n重建索引\n重试运行\n操作者\n未接入\n\n按现在的筛选条件，这个窗口里没有审计事件\n\n把时间窗放宽一格，或换一种事件类型再看。确实没有记录，也是这个筛选下的真实答案。\n\n刷新\n\n还没有选中事件\n\n点开左侧任意一条可以看到它当时的操作者、对象、结果与原因。要核对整段时间的链是否接得上，请用「完整性校验」。",
+    "sw": 1280,
+    "cw": 1280,
+    "aud01": [
+      "aud01-status",
+      "aud01-refresh",
+      "aud01-filters",
+      "aud01-filter-window",
+      "aud01-filter-type",
+      "aud01-filter-operator",
+      "aud01-empty"
+    ],
+    "pages": [
+      "agent-v2-page-audit"
+    ],
+    "audAll": 8,
+    "pageRoot": true,
+    "rows": 0,
+    "fixture": 0
+  },
+  {
+    "label": "375",
+    "file": "/tmp/aud-shots/audit-375.png",
+    "url": "/system?tab=events",
+    "title": "Hermes Agent - Dashboard",
+    "text": "菜单\nHermes Agent\nHERMES\nAGENT\n控制台\n运营\n运营总览\n数字员工\n任务与运行\n审批与发布门\n治理\n人员与访问\n知识与数据\n平台\n能力与接入\n系统\n系统设置\n业务运营\n数字员工\n审批\n任务\n协作\n未接入\n运行\n企业治理\n知识\n组织与人员\n租户与配额\n未接入\n访问控制\n未接入\n人员名录\n组织与部门\n角色与权限\n知识空间\n审计事件\n运行时\nCHAT\nSESSIONS\nFILES\nMODELS\nMCP\n平台接入\nCRON\nLOGS\nSYSTEM\n系统\nCONFIG\nKEYS\nDOCUMENTATION\nPLUGINS\nSKILLS\nPROFILES\nWEBHOOKS\nPAIRING\nSystem\nRestart Gateway\n规划中\n暂时确认不到登录状态\n—\nNous Research\nSystem\n系统 · 控制台\n系统设置\n系统健康\n默认设置\n版本\n审计事件\n\n这个筛选条件里没有审计事件\n\n时间为北京时间\n刷新\n时间窗\n时间窗：最近 24 小时\n时间窗：最近 7 天\n时间窗：最近 30 天\n不限时间\n事件类型\n全部事件类型\n安装技能\n按审批结论执行\n按审批结论执行\n变更接入渠道\n驳回技能提案\n驳回审批\n驳回审批\n采纳技能提案\n超出预算\n撤回审批申请\n创建任务\n调用工具\n调整模型分配\n调整预算\n对外发送消息\n对外发送消息失败\n发布数字员工新版本\n发布数字员工新版本\n发起委托\n分配角色\n给出审批结论\n更新技能\n更新任务\n核对完整性链\n回滚数字员工版本\n接受委托\n结束会话\n轮换接口密钥\n批准审批\n评估策略\n启动一次运行\n启用数字员工\n取消任务\n取消运行\n任务失败\n删除文档\n上传文档\n审批超时未处理\n收回权限\n授予权限\n提高权限\n提交技能提案\n提交审批申请\n提交审批申请\n添加成员\n停用数字员工\n完成任务\n写入运行事件\n卸载技能\n谢绝委托\n新建会话\n新建数字员工\n新增知识来源\n修改策略\n修改数字员工配置\n要求修改后重新提交\n移除成员\n移除知识来源\n移交负责人\n用新单替代审批\n运行失败\n运行完成\n运行完成\n指派任务\n重建索引\n重试运行\n操作者\n未接入\n\n按现在的筛选条件，这个窗口里没有审计事件\n\n把时间窗放宽一格，或换一种事件类型再看。确实没有记录，也是这个筛选下的真实答案。\n\n刷新\n\n还没有选中事件\n\n点开左侧任意一条可以看到它当时的操作者、对象、结果与原因。要核对整段时间的链是否接得上，请用「完整性校验」。",
+    "sw": 375,
+    "cw": 375,
+    "aud01": [
+      "aud01-status",
+      "aud01-refresh",
+      "aud01-filters",
+      "aud01-filter-window",
+      "aud01-filter-type",
+      "aud01-filter-operator",
+      "aud01-empty"
+    ],
+    "pages": [
+      "agent-v2-page-audit"
+    ],
+    "audAll": 8,
+    "pageRoot": true,
+    "rows": 0,
+    "fixture": 0
+  }
+]

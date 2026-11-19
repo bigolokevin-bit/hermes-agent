@@ -3,18 +3,24 @@
  *
  * Every call goes to the console BFF over the same-origin proxy; nothing here is
  * mocked and the `/api/` segment is part of the route (the shell's own proxy
- * table only forwards `/agent-api/api/…`). Paths as the task names them:
- *   list    `GET /agent-api/api/audit`                 (`?limit=&cursor=`)
- *   detail  `GET /agent-api/api/audit/detail?id=`
- *   verify  `GET /agent-api/api/audit/verify?from=&to=`
+ * table only forwards `/agent-api/api/…`). Paths as PROBED LIVE 2026-11-19 on
+ * the console dev server (127.0.0.1:9122, authenticated session — full table
+ * in docs/_artifacts/aud/DONE.md «TASK audit closeout»):
+ *   list    `GET /agent-api/api/audit`                 (`?limit=&cursor=`)   200
+ *   detail  `GET /agent-api/api/audit-detail?id=`                            200
+ *           (`/api/audit/detail?id=` is 404 `console.unknown_route` — removed)
+ *   verify  `GET /agent-api/api/audit-verify?from=&to=`                      200
+ *           (`/api/audit/verify` is 404 `console.unknown_route` — removed)
  *
- * RECONCILIATION NOTE (recorded in docs/_artifacts/appr/DONE.md §T33-7): this
- * repo's BFF route table (`docs/_artifacts/D/T02-ENDPOINT-RECONCILIATION.md:16`)
- * lists the same three as `/api/audit*` and `/api/audit-verify`, and says
- * `/api/audit` is gated by `require_any` (one of seven filters). The task's
- * spelling is used here verbatim; a route that does not exist answers 404, and
- * the pages show that as 不可用 / 本环境未启用 with the request id — never a
- * guessed row.
+ * RECONCILIATION NOTE (recorded in docs/_artifacts/appr/DONE.md §T33-7 and
+ * settled by the live probe): the BFF route table
+ * (`docs/_artifacts/D/T02-ENDPOINT-RECONCILIATION.md:16`) lists the three as
+ * `/api/audit*` and `/api/audit-verify`, and `/api/audit` really is gated by
+ * `require_any` — the 400 body names the seven: `runId taskId actorId
+ * resourceId action from to`. A list read with only `limit` answers 400
+ * `console.missing_filter`, so the pages always carry a bounded window.
+ * Routes that do not exist answer 404, and the pages show that as 不可用 /
+ * 本环境未启用 with the request id — never a guessed row.
  *
  * The BFF forwards upstream shapes verbatim, so every field is read defensively
  * in model.ts: an absent value stays absent (rendered `—` with a reason) and
@@ -26,8 +32,8 @@ import { ApiError } from "@/lib/api-error";
 import { auditDetailFrom, auditPageFrom, verifyResultFrom, type AuditDetail, type AuditPage, type VerifyResult } from "./model";
 
 export const LIST_PATH = "/agent-api/api/audit";
-export const DETAIL_PATH = "/agent-api/api/audit/detail";
-export const VERIFY_PATH = "/agent-api/api/audit/verify";
+export const DETAIL_PATH = "/agent-api/api/audit-detail";
+export const VERIFY_PATH = "/agent-api/api/audit-verify";
 
 /** The BFF's own cursor page size; kept explicit so both panes ask the same thing. */
 export const PAGE_LIMIT = 50;
@@ -43,21 +49,26 @@ function appendQuery(url: string, key: string, value: string | null | undefined)
  * person did not choose that filter, so the parameter is dropped from the URL
  * rather than sent empty.
  *
- * `eventType` carries the code as this module's vocabulary spells it
- * (`approval_approved`); `from`/`to` are the two ISO instants of the chosen
- * time window. Both genuinely change what is asked — see the URL assertions in
- * `api.test.ts`. The parameter *names* follow the BFF route table
- * (`require_any` seven-filter gate, docs/_artifacts/D/T02-ENDPOINT-RECONCILIATION.md);
- * the seven names themselves are not sampled in this repo, which is why the
- * operator filter is rendered 未接入 (GAP-06) instead of as a live control.
+ * LIVE PROBE (2026-11-19, session-authenticated, table in
+ * docs/_artifacts/aud/DONE.md): the event-type filter's real wire parameter is
+ * `action` — `event_type` is accepted but IGNORED (the whole unfiltered ledger
+ * comes back), so sending it would be a control that pretends. `action` is
+ * matched EXACTLY: the dotted spelling the service uses (`task.created`)
+ * returns its rows, an underscore respelling (`task_created`) returns zero.
+ * That is why the choices are the sampled live codes verbatim
+ * (`LIVE_ACTION_CODES` in model.ts), not this module's internal vocabulary.
+ * `from`/`to` are the two ISO instants of the chosen time window and were
+ * probed working. `actorId` also exists on the wire, but there is no operator
+ * directory to pick a value from, so the operator control stays 未接入 (GAP-06).
  */
 export interface ListFilters {
-  eventType: string | null;
+  /** Wire name `action`; the event-type filter's chosen live code. */
+  action: string | null;
   from: string | null;
   to: string | null;
 }
 
-export const NO_FILTERS: ListFilters = { eventType: null, from: null, to: null };
+export const NO_FILTERS: ListFilters = { action: null, from: null, to: null };
 
 /**
  * One page of the ledger. `cursor` is the opaque value the previous answer
@@ -67,7 +78,7 @@ export const NO_FILTERS: ListFilters = { eventType: null, from: null, to: null }
 export function listUrl(cursor: string | null = null, filters: ListFilters = NO_FILTERS, limit = PAGE_LIMIT): string {
   let url = LIST_PATH;
   url = appendQuery(url, "limit", String(limit));
-  url = appendQuery(url, "event_type", filters.eventType);
+  url = appendQuery(url, "action", filters.action);
   url = appendQuery(url, "from", filters.from);
   url = appendQuery(url, "to", filters.to);
   url = appendQuery(url, "cursor", cursor);

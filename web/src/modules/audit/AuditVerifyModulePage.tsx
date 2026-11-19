@@ -2,7 +2,7 @@
  * 时间窗完整性校验 (screen 3 of the audit surface, `aud03-*`).
  *
  * One real call, and only when a person asks for it:
- *   `GET /agent-api/api/audit/verify?from=<ISO>&to=<ISO>`
+ *   `GET /agent-api/api/audit-verify?from=<ISO>&to=<ISO>`
  *
  * Nothing here is implied. The check does not run on page load, and a result is
  * only ever what the service answered:

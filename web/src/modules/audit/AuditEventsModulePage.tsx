@@ -4,8 +4,17 @@
  * detail drawer's are `aud02-*`, the window check's are `aud03-*`.
  *
  * Two real reads, one screen:
- *   `GET /agent-api/api/audit?limit=50[&event_type=&from=&to=&cursor=]`  the ledger
- *   `GET /agent-api/api/audit/detail?id=<eventId>`                       one record
+ *   `GET /agent-api/api/audit?limit=50[&action=&from=&to=&cursor=]`           the ledger
+ *   `GET /agent-api/api/audit-detail?id=<eventId>`                             one record
+ *
+ * The 时间窗 and 事件类型 filters change the request (asserted in
+ * `AuditEventsModulePage.test.tsx` and `api.test.ts`); the event-type filter
+ * carries the code under the wire name `action` (a live probe showed `event_type`
+ * is accepted but IGNORED). Every window choice is bounded because `require_any`
+ * rejects an unfiltered scan (400 `console.missing_filter`), so there is no
+ * 不限时间 option. The 操作者 filter is rendered 未接入 (GAP-06): the real
+ * parameter (`actorId`) exists but only takes machine handles, and there is no
+ * named-operator directory to build a person-readable picker from.
  *
  * What the list says (PRD 每字段口径):
  *   时间     北京时间到分，标签写明「（北京时间）」；服务没给时间就显示「—」并说明原因
@@ -14,11 +23,6 @@
  *   类型     已知动作给中文；不认识的按原样显示，绝不机翻成我们没得到的说法
  *   结果     成功 / 失败（被拒）/ 待完成，失败再带一句人话原因
  *   请求编号 可复制；服务没给就写「未提供」，不留空、不写 0
- *
- * The 时间窗 and 事件类型 filters change the request (asserted in
- * `AuditEventsModulePage.test.tsx`). The 操作者 filter is rendered
- * disabled-by-design with 「未接入」: the read side has no such
- * parameter to send, so a live control there would be a dead one.
  *
  * The detail body has zero raw field names on screen; every technical value
  * collapses into 「技术详情」, closed by default (closed means those strings are
@@ -45,17 +49,17 @@ import { DEFAULT_WINDOW, WINDOW_CHOICES, windowBounds, type WindowKey } from "./
 /**
  * The 时间窗 filter is a set of named windows, not two date inputs: the choice
  * converts to the same two instants the verify pane sends, and the choice that
- * is on screen is the choice that goes on the wire. `null` = 不限时间, which
- * drops both parameters rather than sending empty ones.
+ * is on screen is the choice that goes on the wire.
+ *
+ * There is deliberately NO 不限时间 option: the list route is gated by
+ * `require_any` (one of seven filters) and the probe returned HTTP 400
+ * `console.missing_filter` for a request that carried only `limit`. An
+ * unbounded scan is rejected by the service, so the control does not offer
+ * one — every window choice always sends a real `from`+`to` pair.
  */
-type WindowChoice = WindowKey | "all";
+const WINDOW_FILTER_CHOICES = WINDOW_CHOICES;
 
-const WINDOW_FILTER_CHOICES: readonly { value: WindowChoice; label: string }[] = [
-  ...WINDOW_CHOICES.map((item) => ({ value: item.value as WindowChoice, label: item.label })),
-  { value: "all", label: "不限时间" },
-];
-
-const DEFAULT_WINDOW_FILTER: WindowChoice = DEFAULT_WINDOW;
+const DEFAULT_WINDOW_FILTER: WindowKey = DEFAULT_WINDOW;
 
 export function AuditFilterBar({
   windowChoice,
@@ -63,9 +67,9 @@ export function AuditFilterBar({
   onWindowChange,
   onEventTypeChange,
 }: {
-  windowChoice: WindowChoice;
+  windowChoice: WindowKey;
   eventType: string;
-  onWindowChange: (next: WindowChoice) => void;
+  onWindowChange: (next: WindowKey) => void;
   onEventTypeChange: (next: string) => void;
 }): ReactNode {
   const choices = useMemo(() => eventTypeChoices(), []);
@@ -78,11 +82,11 @@ export function AuditFilterBar({
           data-testid="aud01-filter-window"
           className="h-8 min-w-0 max-w-40 rounded-md border border-border bg-transparent px-2 text-sm"
           value={windowChoice}
-          onChange={(event) => onWindowChange(event.target.value as WindowChoice)}
+          onChange={(event) => onWindowChange(event.target.value as WindowKey)}
         >
           {WINDOW_FILTER_CHOICES.map((item) => (
             <option key={item.value} value={item.value}>
-              {item.value === "all" ? item.label : `时间窗：${item.label}`}
+              {`时间窗：${item.label}`}
             </option>
           ))}
         </select>
@@ -106,11 +110,15 @@ export function AuditFilterBar({
         </select>
       </label>
 
-      {/* A control we cannot make real: the read side has no operator parameter
-          to send (GAP-06), so it is rendered disabled-by-design and says so. */}
+      {/* A control we cannot make real WITHOUT showing engineering language:
+          the live probe found `actorId` filters correctly, but it only accepts
+          machine handles (`employee-api`), and there is no named-operator
+          directory to build a person-readable picker from. A free-text handle
+          box would put raw ids on the human layer (against the zero-engineering
+          rule), so it stays 未接入 until a named-operator source exists. */}
       <span
         className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground"
-        title="GAP-06：审计读取端没有可用的操作者筛选参数，接上之前不做会误导的死控件"
+        title="GAP-06：操作者筛选参数 actorId 实测存在且生效，但只接受机器句柄（如 employee-api），本环境没有可展示真名的操作者目录，故不做原始句柄输入框"
       >
         <select
           aria-label="操作者筛选（未接入）"
@@ -120,7 +128,7 @@ export function AuditFilterBar({
         >
           <option>操作者</option>
         </select>
-        <Badge tone="secondary" title="GAP-06：操作者筛选未接入">
+        <Badge tone="secondary" title="GAP-06：操作者筛选未接入（缺真名目录，非缺参数）">
           未接入
         </Badge>
       </span>
@@ -134,13 +142,15 @@ export function AuditEventsModulePage(): ReactNode {
   // The URL owns the selected record, so a shared link opens the same event.
   const selected = params.get("id");
 
-  const [windowChoice, setWindowChoice] = useState<WindowChoice>(DEFAULT_WINDOW_FILTER);
+  const [windowChoice, setWindowChoice] = useState<WindowKey>(DEFAULT_WINDOW_FILTER);
   const [eventType, setEventType] = useState("");
 
   const filters = useMemo<ListFilters>(() => {
-    if (windowChoice === "all") return { eventType: eventType || null, from: null, to: null };
+    // The window is never unbounded (see AuditFilterBar); each choice carries a
+    // real from+to pair, so a bare `?limit=` scan that the service 400s is
+    // never asked. An unchosen type drops the `action` parameter entirely.
     const bounds = windowBounds(windowChoice);
-    return { eventType: eventType || null, from: bounds.from, to: bounds.to };
+    return { action: eventType || null, from: bounds.from, to: bounds.to };
   }, [windowChoice, eventType]);
 
   const list = useAuditList(forced, filters);
@@ -165,10 +175,7 @@ export function AuditEventsModulePage(): ReactNode {
     setParams(draft, { replace: true });
   }, [params, setParams]);
 
-  const windowLabel =
-    windowChoice === "all"
-      ? "不限时间"
-      : WINDOW_FILTER_CHOICES.find((item) => item.value === windowChoice)?.label ?? "不限时间";
+  const windowLabel = WINDOW_FILTER_CHOICES.find((item) => item.value === windowChoice)?.label ?? "最近 7 天";
 
   const statusLine = (() => {
     if (list.phase === "loading") return `正在读取审计事件（${windowLabel}）…`;
@@ -294,16 +301,8 @@ export function AuditEventsModulePage(): ReactNode {
 
           {list.phase === "empty" ? (
             <EmptyPanel
-              reason={
-                filters.eventType || filters.from
-                  ? "按现在的筛选条件，这个窗口里没有审计事件"
-                  : "服务回了这个环境里最近的审计事件为空"
-              }
-              nextStep={
-                filters.eventType || filters.from
-                  ? "把时间窗放宽一格，或换一种事件类型再看。确实没有记录，也是这个筛选下的真实答案。"
-                  : "可能是这段时间确实没有动作，也可能是记录还没有开始写入。稍后再刷新一次，或让管理员确认审计写入是否已开启。"
-              }
+              reason="按现在的筛选条件，这个时间窗里没有审计事件"
+              nextStep="把时间窗放宽一格，或换一种事件类型再看。这个窗口确实没有记录，本身就是筛选后的真实答案——服务不接受不带任何筛选条件的全表扫描，所以这里始终有一个时间窗。"
               onRefresh={list.reload}
               testId="aud01-empty"
               fixture={list.forced ? "empty" : undefined}
@@ -355,8 +354,8 @@ export function AuditEventsModulePage(): ReactNode {
                 label="技术详情"
                 lines={[
                   `本页读取条数：${list.rows.length + list.unreadable}`,
-                  `筛选条件：${filters.eventType ? `event_type=${filters.eventType}` : "event_type 未带"}`,
-                  `时间窗：${filters.from && filters.to ? `${filters.from} → ${filters.to}` : "未带（不限时间）"}`,
+                  `筛选条件：${filters.action ? `action=${filters.action}` : "action 未带"}`,
+                  `时间窗：${filters.from && filters.to ? `${filters.from} → ${filters.to}` : "未带"}`,
                   list.next ? "" : "服务端没有再给下一页的游标",
                 ]}
               />
