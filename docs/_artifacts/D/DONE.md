@@ -812,3 +812,13 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
   crawl-anon DL0/CE0/PE0 routesCE=51（env 归因）、crawl-auth DL0/CE0/PE0 routesCE=21、
   shots 102/102 failures=[] 三键齐 ceAuthority=login-state obsCE=0、anon 19/19 auxiliary、state-quad 20/20。
 - vitest 120 files/1180 passed（原文入 tonight/vitest.txt；卡未给本期数字，无矛盾）。
+
+## 四十二轮 · 九件终代次重章 @ c9266b55（entry C4DIeOJD，硬截止 18:05）— 2026-11-19 17:1x
+
+- 三件套现查全对：c9266b55=local=FETCH_HEAD、porcelain=0、entry C4DIeOJD 155732B sha 65cb3caa…0baeb==磁盘==served（拍窗前后同值）、pid 61816、20 路由 200。
+- 九件一次性 tmp+os.replace 全章 head=c9266b55 ok exit=0：ia-react/html{51,22,1,8}、lint-fake v0、lint-reuse v0 e1、
+  crawl-anon DL0/CE0/PE0 routesCE=51（env 归因）、crawl-auth routesCE=23、shots 102/102 failures=[] 三键齐 obsCE=0 ceAuthority=login-state、
+  anon 19/19 auxiliary ok=failures==0&&produced==expected、state-quad 20/20。vitest 原文 120 files/1187 passed == 卡面。
+- 旧账残留清理核查：tonight/ 树内无 crawl.json/gates.exit.json/react-baseline.json 等非本代次件；
+  docs/_artifacts/A/ia.json 存在但属车道 A 写域，D 不越权删，报 L0 处置。
+- commit 单笔 chore(gates): full gate ledger stamped at c9266b55 (entry C4DIeOJD)。
