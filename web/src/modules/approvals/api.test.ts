@@ -54,6 +54,33 @@ describe("approvals csrf double-submit guard (CSRF order)", () => {
   });
 });
 
+describe("R24 person handles from the real BFF shape", () => {
+  it("unwraps object handles and never paints an absent person as 未指派", async () => {
+    const { requesterView, workerView } = await import("./model");
+    const by = requesterView({ requestedBy: { type: "user", id: "1" } });
+    expect(by.label).toBe("成员 · 1");
+    expect(by.raw).toBe("1");
+    const worker = workerView({ employee: { name: "小鲤", id: "emp_86A81CE8FF6F42E187BCF2B540" } });
+    expect(worker.label).toBe("小鲤");
+    const missing = requesterView({});
+    expect(missing.label).toBe("—");
+    expect(missing.raw).toBeNull();
+    expect(missing.label).not.toBe("未指派");
+  });
+
+  it("reads the action hash from argsDigest when the strict key is absent", async () => {
+    const { approvalDetailFrom } = await import("./model");
+    const detail = approvalDetailFrom({
+      approvalId: "ap_R24",
+      type: "grant_escalation",
+      status: "consumed",
+      argsDigest: "d4e5f6a7b8c9",
+    });
+    expect(detail.actionHash).toBe("d4e5f6a7b8c9");
+    expect(detail.kind.label).not.toBe("—");
+  });
+});
+
 describe("approvals endpoints", () => {
   it("asks the list route with the state the pane chose", () => {
     expect(listUrl("pending", null)).toBe("/agent-api/api/approvals?status=pending&limit=50");
