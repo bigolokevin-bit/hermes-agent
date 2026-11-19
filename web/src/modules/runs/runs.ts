@@ -534,12 +534,16 @@ export async function loadRunEvents(runId: string): Promise<{ items: RunEvent[];
 }
 
 /**
- * Retry means a NEW run: a fresh id is created upstream and this page
- * navigates to it — the current runId is never reused or rewritten.
- * The write route is the task-named contract name; the BFF gates every path
- * behind identity (see DONE §6), so nothing about it is proven from here.
- * The answer must carry the new id — without one there is nothing honest to
- * navigate to, and this throws instead of pretending.
+ * Retry means a NEW run: a fresh id is created upstream and the page would
+ * navigate to it — the current runId is never reused or rewritten. The answer
+ * must carry the new id; without one there is nothing honest to navigate to,
+ * and this throws instead of pretending.
+ *
+ * Measured 2026-11-20 on the served console: POST /api/run-retry answers
+ * HTTP 405 {"code":"console.read_only"} and GET answers 404
+ * {"code":"console.unknown_route"} — the write channel is closed at the
+ * console, so the page renders the entry disabled with that reason instead of
+ * calling this. The helper stays for the generation that opens the channel.
  */
 export async function requestRetryRun(runId: string): Promise<string> {
   const body = await fetchJSON<unknown>("/agent-api/api/run-retry", {

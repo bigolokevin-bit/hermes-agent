@@ -355,6 +355,17 @@ describe("the detail pane", () => {
     expect(text()).toContain("工具意图");
     expect(text()).toContain("结果引用：ev-intent-7");
     expect(document.querySelector("[data-tool-event='tool_intent']")).not.toBeNull();
+    // R29 tail: each tool event carries its own readable result-ref cell, and a
+    // missing reference says so in the row instead of being left blank.
+    const presentRef = document.querySelector("[data-testid='run5-result-ref-3']");
+    expect(presentRef).toBeTruthy();
+    expect(presentRef?.getAttribute("data-result-ref")).toBe("present");
+    expect(presentRef?.getAttribute("title")).toBe("rn-step-9"); // raw handle only in the title
+    const absentRef = document.querySelector("[data-testid='run5-result-ref-4']");
+    expect(absentRef).toBeTruthy();
+    expect(absentRef?.getAttribute("data-result-ref")).toBe("absent");
+    expect(absentRef?.textContent).toContain("未记录");
+    expect(absentRef?.getAttribute("title")).toContain("没有带回结果引用");
     expect(document.querySelectorAll("[data-testid^='run5-event-']")).toHaveLength(6);
     expect(text()).toContain("陈可");
     expect(text()).not.toContain("emp_9f3a4b7c");
@@ -446,20 +457,25 @@ describe("the detail pane", () => {
     await waitFor(() => document.querySelector("[data-testid='run5-timeline']") !== null, "events after retry");
   });
 
-  it("the retry entry is copy only: it is not a control and sends no write", async () => {
-    // R28: the write channel is not connected in this generation, so the entry
-    // is a sentence with data-planned + aria-disabled, not a button. A click on
-    // a non-control cannot start a run, and no POST may leave the page.
+  it("the retry entry is disabled with the measured reason: no click, no write, no invented id", async () => {
+    // Measured 2026-11-20 against the served console: POST /api/run-retry answers
+    // 405 console.read_only (only GET/HEAD allowed) and GET answers 404
+    // console.unknown_route. The write channel is closed at the console, so the
+    // entry is a disabled control that names the measurement — a click can start
+    // nothing and no new id may be invented or the old one reused.
     api.fetchJSON.mockImplementation(detailOk({ retry: async () => ({ runId: "rn_01NEW9F3A4B7C8D9E0F1A2B3" }) }));
     await render(`/runs?run=${encodeURIComponent(DETAIL.runId)}`);
     await waitFor(() => document.querySelector("[data-testid='run5-detail']") !== null, "detail");
-    const entry = document.querySelector("[data-testid='run5-retry-new']") as HTMLElement;
+    const entry = document.querySelector("[data-testid='run5-retry-new']") as HTMLButtonElement;
     expect(entry).toBeTruthy();
-    expect(entry.tagName).not.toBe("BUTTON");
-    expect(entry.getAttribute("data-planned")).toBe("true");
+    expect(entry.tagName).toBe("BUTTON");
+    expect(entry.disabled).toBe(true);
     expect(entry.getAttribute("aria-disabled")).toBe("true");
-    expect(entry.getAttribute("title")).toContain("写入口还没有接通");
-    expect(entry.textContent).toContain("写入口未接通");
+    expect(entry.getAttribute("data-planned")).toBe("true");
+    expect(entry.getAttribute("data-endpoint-http")).toBe("405");
+    expect(entry.getAttribute("title")).toContain("405");
+    expect(entry.getAttribute("title")).toContain("console.read_only");
+    expect(entry.textContent).toContain("当前环境只读");
     expect(text()).toContain("重试的语义是新建一次运行并生成新编号");
     await act(async () => {
       entry.click();
@@ -470,7 +486,7 @@ describe("the detail pane", () => {
     expect(text()).toContain("运行 · X1XZ"); // still the same run, unchanged
   });
 
-  it("every row carries a real anchor whose href is the hash form of its run", async () => {
+  it("every row carries a real anchor whose href carries the run path segment", async () => {
     api.fetchJSON.mockImplementation(detailOk({}));
     await render("/runs?window=7d");
     await waitFor(() => rowNodes() === 1, "list ready");
