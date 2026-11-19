@@ -500,6 +500,8 @@ type OverviewState =
   | { phase: "empty" }
   | { phase: "denied"; message: string }
   | { phase: "error"; message: string; requestId: string | null }
+  /** R28-1: the backend said this id does not exist (or we may not see it). */
+  | { phase: "notfound"; requestId: string | null }
   | { phase: "ready"; data: Rec };
 
 function useOverview(empId: string, nonce: number): OverviewState {
@@ -518,6 +520,13 @@ function useOverview(empId: string, nonce: number): OverviewState {
         // `{}` from the detail route means "no profile here" — say it as an
         // empty state, never render a card of dashes.
         if (isRecord(body) && Object.keys(body).length > 0) {
+          // R28-1: even a 200 body must BE this employee — a borrowed
+          // record (name or budget) for an unknown id is fabrication.
+          const gotKey = pickString(body.employeeId, body.employee_id, body.id);
+          if (gotKey && gotKey !== empId) {
+            setState({ phase: "notfound", requestId: null });
+            return;
+          }
           setState({ phase: "ready", data: body });
         } else {
           setState({ phase: "empty" });
@@ -537,7 +546,16 @@ function useOverview(empId: string, nonce: number): OverviewState {
           const body = await fetchJSON<unknown>(`/agent-api/api/matrix?employee=${encodeURIComponent(empId)}`);
           if (cancelled) return;
           const first = itemsOf(body)[0];
-          if (first) setState({ phase: "ready", data: first });
+          // R28-1: only a row that IS this employee may render. Borrowing a
+          // real name or budget for an unknown id is fabrication, so an
+          // absent/401'd/404'd detail with a mismatched row says not-found.
+          const rowKey = first ? pickString(first.employeeId, first.employee_id, first.id) : null;
+          if (first && (rowKey === null || rowKey === empId)) setState({ phase: "ready", data: first });
+          else if (status === 404 || status === 401)
+            setState({
+              phase: "notfound",
+              requestId: err instanceof ApiError ? (err.requestId ?? null) : null,
+            });
           // No detail row and no matrix row for this id: the employee simply
           // is not in the directory — say so plainly (empty), do not blame
           // the wiring.
@@ -575,6 +593,24 @@ function OverviewZone({ state, onRetry, empId }: { state: OverviewState; onRetry
   }
   if (state.phase === "denied") {
     return <ZoneDenied title="员工档案" message={state.message} onRetry={onRetry} testid="ed5-overview-denied" />;
+  }
+  if (state.phase === "notfound") {
+    return (
+      <Card data-testid="ed5-overview-notfound">
+        <CardContent className="flex flex-col items-start gap-2 p-4">
+          <p className="text-sm">员工不存在或无权查看。</p>
+          <p className="text-xs text-white/45">
+            <RequestIdCopy
+              requestId={state.requestId}
+              fallback="本次请求没有带回编号；可复制时间与页面路径反馈。"
+            />
+          </p>
+          <Link className="text-xs underline underline-offset-2" to="/employees">
+            返回员工列表
+          </Link>
+        </CardContent>
+      </Card>
+    );
   }
   if (state.phase === "error") {
     return (

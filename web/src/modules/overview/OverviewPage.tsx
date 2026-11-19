@@ -364,7 +364,7 @@ export function OverviewView({
           <ShieldAlert className="ov5-watermark" aria-hidden />
         </KpiCard>
         <KpiCard title="今日成本" value={kpis.costUsd === null ? '—' : usd(kpis.costUsd)} foot={kpis.costPartial ? <>账本未覆盖全部员工{kpis.costMissing > 0 ? `（${kpis.costMissing} 人缺账本）` : ''}</> : <>美元 · 账本实扣</>} source="成本账本（日）" stamps={[{ source: '成本账本', state: data.budgetDay }]} testid="ov6-kpi-cost" issues={[{ label: '成本账本', state: data.budgetDay, gap: OVERVIEW_GAP.cost }]} onRetry={onRetry} note={kpis.costUsd === null ? '成本口径未齐' : null} noteTitle={kpis.costUsd === null ? OVERVIEW_GAP.cost : undefined} />
-        <KpiCard title="健康检查" value={`${healthSources.filter((s) => s.state.k === 'ready').length}/${healthSources.length} 来源正常`} foot={<span>{healthSources.every((s) => s.state.k === 'ready') ? '全部来源已读到' : healthSources.filter((s) => s.state.k !== 'ready').map((s) => `${s.label}未就绪`).join(' · ')}</span>} source="本页数据源实时聚合" stamps={[]} testid="ov6-kpi-health" issues={[]} onRetry={onRetry} note="独立健康探针未接入" noteTitle={OVERVIEW_GAP.health} />
+        <KpiCard title="健康检查" value={`${healthSources.filter((s) => s.state.k === 'ready').length}/${healthSources.length} 来源正常`} foot={<span>{healthSources.every((s) => s.state.k === 'ready') ? '全部来源已读到' : healthSources.filter((s) => s.state.k !== 'ready').map((s) => `${s.label}未就绪`).join(' · ')}</span>} source="本页数据源实时聚合" stamps={[{ source: '运行统计', state: data.todayStats }]} testid="ov6-kpi-health" issues={[]} onRetry={onRetry} note="独立健康探针未接入" noteTitle={OVERVIEW_GAP.health} />
       </div>
 
       <div className="ov5-grid">

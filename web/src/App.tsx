@@ -98,6 +98,9 @@ const MatrixConsolePage = lazy(() =>
   })),
 );
 const TasksBoardConsolePage = lazy(() => import("@/modules/tasks/TasksBoardModulePage"));
+/* R28 item 6: mount the gov cron page body (cron5-*) on the /work?tab=cron
+ * alias slot instead of silently falling back to the board. */
+const CronConsolePage = lazy(() => import("@/modules/cron/CronModulePage"));
 // R10 item 7: audit events page body is delivered by lane aud; the shell only
 // wires it into the /system live slots (?tab=events).
 const AuditEventsConsolePage = lazy(() =>
@@ -483,7 +486,7 @@ const BUILTIN_NAV_REST: NavItem[] = [
     group: "runtime",
   },
   {
-    path: "/system?tab=events",
+    path: "/audit",
     label: "审计事件",
     icon: ShieldCheck,
     group: "governance",
@@ -1176,12 +1179,7 @@ export default function App() {
                       />
                       <Route
                         path="/work"
-                        element={
-                          <ConsoleModulePage
-                            module="work"
-                            live={{ board: <TasksBoardConsolePage />, runs: <RunsConsolePage /> }}
-                          />
-                        }
+                        element={<CronAwareWork />}
                       />
                       <Route
                         path="/identity"
@@ -1587,6 +1585,19 @@ function SidebarNavLink({
 /* R29 alias: /identity?tab=admins lands on the gov access module in its
  * admins view (the page body reads ?view=admins). The entry URL spelling
  * stays a shell-level alias; no module body changes. */
+function CronAwareWork(): ReactNode {
+  const [sp] = useSearchParams();
+  if (sp.get("tab") === "cron") {
+    return <CronConsolePage />;
+  }
+  return (
+    <ConsoleModulePage
+      module="work"
+      live={{ board: <TasksBoardConsolePage />, runs: <RunsConsolePage /> }}
+    />
+  );
+}
+
 function AdminsAwareIdentity(): ReactNode {
   const [sp] = useSearchParams();
   if (sp.get("tab") === "admins") {

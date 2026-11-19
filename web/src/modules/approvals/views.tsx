@@ -249,9 +249,7 @@ export function ApprovalDetailBody({
                 </button>
               </>
             ) : (
-              <span data-testid="apd5-request-id-missing" title="本次读取没有携带请求编号">
-                本次请求未记录编号，可复制时间与操作路径反馈
-              </span>
+              <span data-testid="apd5-request-id-missing" title="这条记录没有带回请求编号">—</span>
             )}
           </dd>
         </div>
@@ -261,15 +259,21 @@ export function ApprovalDetailBody({
         <p className="min-w-0 break-words text-xs text-muted-foreground">事由：{detail.reason}</p>
       ) : null}
 
-      {detail.approvers.labels.length ? (
-        <p
-          className="min-w-0 break-words text-xs text-muted-foreground"
-          title={detail.approvers.raw ?? undefined}
-          data-testid="apd5-approver"
-        >
-          审批人：{detail.approvers.labels.join("、")}
-        </p>
-      ) : null}
+      {/* R28 item 2: the approver slot is always present; empty means a
+        * dash with a reason, never a missing field. */}
+      <p
+        className="min-w-0 break-words text-xs text-muted-foreground"
+        data-testid="apd5-field-approver"
+      >
+        审批人：
+        {detail.approvers.labels.length ? (
+          <span data-testid="apd5-approver" title={detail.approvers.raw ?? undefined}>
+            {detail.approvers.labels.join("、")}
+          </span>
+        ) : (
+          <span title="单据没有带回审批人">—</span>
+        )}
+      </p>
 
       {detail.supersededBy ? (
         <p className="min-w-0 break-words text-xs text-warning">这张单已被另一张替代，请到「待处理」里查看新单。</p>
