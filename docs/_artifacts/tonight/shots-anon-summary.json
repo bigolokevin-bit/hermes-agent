@@ -14,7 +14,7 @@
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 24,
+  "distinctMainHeads": 26,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -243,7 +243,7 @@
     {
       "route": "#/employees/:employeeId?zone=runs",
       "viewport": "375",
-      "chars": 42,
+      "chars": 51,
       "hasMainEl": true
     },
     {
@@ -261,7 +261,7 @@
     {
       "route": "#/identity",
       "viewport": "1440",
-      "chars": 163,
+      "chars": 161,
       "hasMainEl": true
     },
     {
@@ -291,7 +291,7 @@
     {
       "route": "#/identity?tab=binding",
       "viewport": "375",
-      "chars": 163,
+      "chars": 161,
       "hasMainEl": true
     },
     {
@@ -345,7 +345,7 @@
     {
       "route": "#/identity?tab=tenant",
       "viewport": "1440",
-      "chars": 163,
+      "chars": 161,
       "hasMainEl": true
     },
     {
@@ -585,7 +585,7 @@
     {
       "route": "#/work",
       "viewport": "1440",
-      "chars": 299,
+      "chars": 319,
       "hasMainEl": true
     },
     {
@@ -631,9 +631,11 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 2,
+  "consoleErrorsObservedByShots": 4,
   "consoleErrorRoutesObservedByShots": [
-    "#/work",
+    "#/identity",
+    "#/identity?tab=binding",
+    "#/identity?tab=tenant",
     "#/work?tab=cron"
   ],
   "ceAuthority": "login-state",
@@ -645,12 +647,12 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "b71c4535",
+  "headHash": "01175128",
   "exitCode": 0,
-  "entry": "assets/index-CtwYCCz8.js",
-  "entrySha256": "6ea23b5f8a8751c545c77bec7ca71700949f6d0639d33ecac657dcec4be41b3f",
+  "entry": "assets/index-BgiPXYqY.js",
+  "entrySha256": "8ee87ff8a903557aa7a8b2cec84bf083c9a5d7b03452c856cbb51ed67348b89d",
   "entryBytes": 166638,
-  "servedEntryBefore": "index-CtwYCCz8.js",
-  "servedEntryAfter": "index-CtwYCCz8.js",
+  "servedEntryBefore": "index-BgiPXYqY.js",
+  "servedEntryAfter": "index-BgiPXYqY.js",
   "auxiliary": true
 }
