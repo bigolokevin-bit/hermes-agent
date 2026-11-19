@@ -9,8 +9,8 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 675,
-    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 — 刷新 可上岗 各项检查全部通过才计入 数据截至 — · 来源 员工目",
+    "textLen": 729,
+    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 刷新 可上岗 各项检查全部通过才计入 数据截至 —（北京",
     "hasMainEl": true,
     "ok": true
   },
@@ -117,13 +117,13 @@
     {
       "route": "#/audit",
       "viewport": "1440",
-      "chars": 6046,
+      "chars": 6005,
       "hasMainEl": true
     },
     {
       "route": "#/audit",
       "viewport": "375",
-      "chars": 6046,
+      "chars": 6061,
       "hasMainEl": true
     },
     {
@@ -141,19 +141,19 @@
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "1440",
-      "chars": 128,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/capabilities?tab=channels",
-      "viewport": "375",
       "chars": 1034,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/capabilities?tab=channels",
+      "viewport": "375",
+      "chars": 128,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=models",
       "viewport": "1440",
-      "chars": 391,
+      "chars": 104,
       "hasMainEl": true
     },
     {
@@ -237,7 +237,7 @@
     {
       "route": "#/employees/:employeeId?zone=runs",
       "viewport": "1440",
-      "chars": 115,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -465,13 +465,13 @@
     {
       "route": "#/overview",
       "viewport": "1440",
-      "chars": 1222,
+      "chars": 483,
       "hasMainEl": true
     },
     {
       "route": "#/overview",
       "viewport": "375",
-      "chars": 1222,
+      "chars": 1276,
       "hasMainEl": true
     },
     {
@@ -525,49 +525,49 @@
     {
       "route": "#/system?tab=events",
       "viewport": "1440",
-      "chars": 6046,
+      "chars": 6061,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events",
       "viewport": "375",
-      "chars": 6046,
+      "chars": 6061,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "1440",
-      "chars": 6046,
+      "chars": 6061,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "375",
-      "chars": 6046,
+      "chars": 6061,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=retention",
       "viewport": "1440",
-      "chars": 6046,
+      "chars": 6061,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=retention",
       "viewport": "375",
-      "chars": 6046,
+      "chars": 6061,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=security",
       "viewport": "1440",
-      "chars": 6046,
+      "chars": 6061,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=security",
       "viewport": "375",
-      "chars": 6046,
+      "chars": 6061,
       "hasMainEl": true
     },
     {
@@ -597,7 +597,7 @@
     {
       "route": "#/work?tab=board&view=cron",
       "viewport": "1440",
-      "chars": 1921,
+      "chars": 205,
       "hasMainEl": true
     },
     {
@@ -633,10 +633,10 @@
   ],
   "consoleErrorsObservedByShots": 1,
   "consoleErrorRoutesObservedByShots": [
-    "#/identity?tab=people&view=admins"
+    "#/audit"
   ],
   "ceAuthority": "login-state",
-  "routesWithEnvOnlyConsoleErrors": 27,
+  "routesWithEnvOnlyConsoleErrors": 26,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
   "overflowing": [],
   "driver": {
@@ -644,11 +644,11 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "9fedd46f",
+  "headHash": "bc7671a1",
   "exitCode": 0,
-  "entry": "assets/index-tDlDDulZ.js",
-  "entrySha256": "80c791fb4c47571b50feb9f5184fd5c9d65b9baf120d7eb0b5dc2adb83f2b4f1",
+  "entry": "assets/index-BHzDls-M.js",
+  "entrySha256": "1c2aa6f9944b245183ffe6c5f20b08a7f4a901f1807e6284dbdf992945551a03",
   "entryBytes": 163539,
-  "servedEntryBefore": "index-tDlDDulZ.js",
-  "servedEntryAfter": "index-tDlDDulZ.js"
+  "servedEntryBefore": "index-BHzDls-M.js",
+  "servedEntryAfter": "index-BHzDls-M.js"
 }

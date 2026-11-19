@@ -199,18 +199,20 @@ export function SecurityModulePage(): ReactNode {
 
       <div className="sec5-grid">
         <Section title="登录与会话" testid="sec5-session">
-          {session.length ? session.map((item) => <ItemRow key={item.key} item={item} />) : <p className="sec5-note">未读到登录与会话配置；不填默认值。</p>}
+          {session.length ? session.map((item) => item.key === "twoFactor" ? (
+            <div key={item.key} data-testid="sec5-mfa"><ItemRow item={item} /></div>
+          ) : <ItemRow key={item.key} item={item} />) : <p className="sec5-note">未读到登录与会话配置；不填默认值。</p>}
         </Section>
-        <Section title="密钥与凭据" testid="sec5-secrets">
+        <div data-testid="sec5-keyring"><Section title="密钥与凭据" testid="sec5-secrets">
           {secrets.length ? secrets.map((item) => <ItemRow key={item.key} item={item} />) : <p className="sec5-note">未读到密钥配置；不展示任何密钥值。</p>}
           <p className="sec5-note">这里只显示已配置 / 未配置 / 未知，不显示密钥内容。</p>
-        </Section>
+        </Section></div>
       </div>
 
-      <Section title="高风险操作" testid="sec5-risk">
+      <div data-testid="sec5-risky"><Section title="高风险操作" testid="sec5-risk">
         <RiskList state={risk} onRetry={reload} />
         <p className="sec5-note">来源：{SEC_SOURCE} · 只读</p>
-      </Section>
+      </Section></div>
 
       <Card className="sec5-card">
         <CardContent data-testid="sec5-planned">
@@ -225,7 +227,7 @@ export function SecurityModulePage(): ReactNode {
           </div>
         </CardContent>
       </Card>
-      <p className="sec5-note" data-testid="sec5-count">已读取 {counts} 项安全配置；缺失或未知项不按 0 计算。</p>
+      <p className="sec5-note" data-testid="sec5-summary" data-count={counts}>已读取 {counts} 项安全配置；缺失或未知项不按 0 计算。</p>
     </section>
   );
 }
