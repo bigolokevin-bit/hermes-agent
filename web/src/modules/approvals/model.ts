@@ -294,6 +294,14 @@ export interface StatusView extends StatusCopy {
   raw: string | null;
 }
 
+/** R29 item 4: business text may quote raw operator handles (e.g. a seed
+ * ticket reason saying "human:1"). On screen those handles read as 「人员」;
+ * the untouched sentence goes to the card's title attribute. */
+export function humanizeHandles(text: string | null): string | null {
+  if (!text) return text;
+  return text.replace(/\b(?:human|user):[0-9A-Za-z._-]+/g, "人员");
+}
+
 export function statusView(raw: string | null): StatusView {
   const key = raw?.trim().toLowerCase() ?? "";
   const hit = CANONICAL[key] ?? ALIASES[key];

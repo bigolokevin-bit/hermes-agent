@@ -101,6 +101,9 @@ const TasksBoardConsolePage = lazy(() => import("@/modules/tasks/TasksBoardModul
 /* R28 item 6: mount the gov cron page body (cron5-*) on the /work?tab=cron
  * alias slot instead of silently falling back to the board. */
 const CronConsolePage = lazy(() => import("@/modules/cron/CronModulePage"));
+/* R29 item 3: the retention panel (ret4-*, lane aud) mounts on the
+ * /system?tab=retention alias slot instead of falling to events. */
+const RetentionConsolePage = lazy(() => import("@/modules/audit/RetentionModulePage"));
 // R10 item 7: audit events page body is delivered by lane aud; the shell only
 // wires it into the /system live slots (?tab=events).
 const AuditEventsConsolePage = lazy(() =>
@@ -1243,21 +1246,7 @@ export default function App() {
                       {!overriddenPaths.has("/system") && (
                         <Route
                           path="/system"
-                          element={
-                            <ParkedAwareSystem
-                              system={
-                                <ConsoleModulePage
-                                  module="system"
-                                  live={{
-                                    health: <HealthConsolePage />,
-                                    defaults: <SettingsConsolePage />,
-                                    version: <VersionConsolePage />,
-                                    events: <AuditEventsConsolePage />,
-                                  }}
-                                />
-                              }
-                            />
-                          }
+                          element={<SystemAwareTabs />}
                         />
                       )}
                       {/* R10 item 7: compat routes mirroring the frozen
@@ -1589,6 +1578,28 @@ function SidebarNavLink({
 /* R29 alias: /identity?tab=admins lands on the gov access module in its
  * admins view (the page body reads ?view=admins). The entry URL spelling
  * stays a shell-level alias; no module body changes. */
+function SystemAwareTabs(): ReactNode {
+  const [sp] = useSearchParams();
+  if (sp.get("tab") === "retention") {
+    return <RetentionConsolePage />;
+  }
+  return (
+    <ParkedAwareSystem
+      system={
+        <ConsoleModulePage
+          module="system"
+          live={{
+            health: <HealthConsolePage />,
+            defaults: <SettingsConsolePage />,
+            version: <VersionConsolePage />,
+            events: <AuditEventsConsolePage />,
+          }}
+        />
+      }
+    />
+  );
+}
+
 function CronAwareWork(): ReactNode {
   const [sp] = useSearchParams();
   if (sp.get("tab") === "cron") {

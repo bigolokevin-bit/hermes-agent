@@ -644,6 +644,22 @@ export function ConsoleNav({ onNavigate }: { onNavigate?: () => void }) {
           </div>
         );
       })}
+      {/* R29 item 2: the audit surface is reachable from the console sidebar;
+        * a plain anchor so the DOM keeps a single Chinese label. */}
+      <NavLink
+        to="/audit"
+        onClick={onNavigate}
+        className={({ isActive }) =>
+          [
+            "relative flex items-center gap-3 px-5 py-2",
+            "font-sans text-display text-sm tracking-[0.08em] whitespace-nowrap no-underline",
+            "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-midground",
+            isActive ? "text-midground" : "text-text-secondary hover:text-midground",
+          ].join(" ")
+        }
+      >
+        审计
+      </NavLink>
     </div>
   );
 }

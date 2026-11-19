@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import { CsrfMissingError, decisionUrl, detailUrl, failureInfo, isDenied, listUrl, postDecision } from "./api";
 import { readFailure, requestIdLine, writeFailure } from "./copy";
 import {
+  humanizeHandles,
   approvalDetailFrom,
   approvalsPageFrom,
   beijing,
@@ -53,6 +54,15 @@ describe("R25 detail eight fields (PRD 4.2 keys exist, values honest)", () => {
     expect(d.dataScope).toBeNull();
     expect(d.requestId).toBeNull();
     expect(d.requester.label).not.toContain("human:");
+  });
+});
+
+describe("R29 business-text handle masking", () => {
+  it("humanizes human:/user: handles inside reason prose, keeps everything else", () => {
+    expect(humanizeHandles("种子单 decision 行保持 human:1）")).toBe("种子单 decision 行保持人员）");
+    expect(humanizeHandles("双句柄 human:9 与 user:42 同屏")).toBe("双句柄人员与人员同屏");
+    expect(humanizeHandles("工号 emp_86A81CE8 不受本项影响")).toContain("emp_86A81CE8");
+    expect(humanizeHandles(null)).toBeNull();
   });
 });
 

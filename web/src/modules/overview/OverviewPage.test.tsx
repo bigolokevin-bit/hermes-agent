@@ -74,6 +74,31 @@ describe('OverviewPage forced states', () => {
 });
 
 describe('OverviewView', () => {
+  it('R29: every overview card carries a source stamp and the page a top as-of', async () => {
+    await render(
+      <OverviewView
+        data={dataFixture()}
+        matrix={{ k: 'ready', data: { items: [{ employeeId: 'emp_2', risk: { failedRuns: 2 } }] } }}
+        loading={false}
+        onRetry={() => {}}
+      />,
+    );
+    const ids = [
+      'ov6-asof',
+      'ov6-kpi-employees-stamp',
+      'ov6-kpi-runs-stamp',
+      'ov6-kpi-pending-stamp',
+      'ov6-kpi-cost-stamp',
+      'ov6-kpi-health-stamp',
+      'ov6-trend-stamp',
+      'ov6-activity-stamp',
+      'ov6-blockers-stamp',
+    ];
+    for (const id of ids) {
+      expect(container.querySelector(`[data-testid="${id}"]`), id).toBeTruthy();
+    }
+  });
+
   it('renders KPIs, trend, recent activity and blockers from real data', async () => {
     await render(
       <OverviewView
