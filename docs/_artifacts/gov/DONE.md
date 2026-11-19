@@ -1828,3 +1828,17 @@ built /private/tmp/health-r38/index.html
 - DOM（临时 harness，已删；Vite 5465 / Chrome 9266）：1440/1280/375 技能页与工具页 `bodySW=bodyCW=pageSW=pageCW=视口`，详情 1 行展开；技能详情 口径名 资料整理 / 来源 平台内置 / 启用态 正常 / 最近更新 `2026-11-19 14:30` / 读口 `/agent-api/api/skills` / 采集时刻 `2026-11-20 07:49`，title `asOfSource：台账快照`（stub 证明 asOfSource 只进 title）；`?q=资料` 与 `?q=网页` 展开前后保持。工具详情读口 `/api/tools/toolsets`，数组无顶层 asOf →「该字段未返回」+title。
 - 截图：`docs/_artifacts/gov/shots/cap7-skills-{1440,1280,375}.png`、`cap7-tools-{1440,375}.png`。
 - 边界：只改 `web/src/modules/{capabilities,skills,tools}/**` 与 DONE/截图；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；无独立观察者。
+
+## R54 /capabilities 排序与 URL 同源 + 导出顺序一致（cap8，2026-11-20）
+
+- 基线：显式 refspec fetch 后 `git merge --no-ff origin/lane/hermes-console` 报 Already up to date；从已推 `764922cf` 继续，未 reset。
+- 排序实现：新增 `capabilities/sorting.ts`——`?sort=name|type|updated&dir=asc|desc` 为唯一来源；`none→asc→desc→none` 循环；缺值恒排最后、并列保留台账原序；未知 sort/非法 dir 回落默认序。技能表三列表头与工具页排序条均用真 `<button type="button">`（键盘 Enter/Space 原生可触发），`th` / `columnheader` 上 `aria-sort=ascending|descending|none`，指示符 `↕/↑/↓`。
+- URL 同源：点击排序写入 `sort`/`dir` 并保留 `tab`、`q`、`state`；粘 URL 与刷新直接复现（技能 `?sort=name&dir=asc`、工具同）；`state` 清空排序回到默认序。
+- 零额外请求：技能点表头 fetch 计数 1→1；工具 6→6（DOM 实测，排序只重排内存行）。
+- 导出同序：`cap6-export` 的 CSV 行序与当前表体逐行相同。
+  - 技能按 `updated` 升序：DOM 首 Gamma / 末 Delta；CSV 首 `Gamma,平台内置,正常,2026-11-10 14:00`、末 `Delta,平台内置,正常,2026-11-14 14:00`，共 5 行 + 表头。
+  - 工具按名称升序后切 `updated`（全缺）：DOM 首 网页搜索 / 末 doc write；CSV 首 `网页搜索,网页搜索与抓取,enabled,`、末 `doc write,Doc,enabled,`，共 6 行 + 表头；工具导出顺序按表体两段（工具集 → MCP）拼接，不再用可能交错的原始数组。
+  - 无排序参：默认序 DOM 与 CSV 同序（单测 `B2/A1/C3` 与工具默认首末对照）。
+- 验证：`npx vitest run src/modules/capabilities src/modules/skills src/modules/tools` → **5 files / 52 tests passed**；全量 `npx vitest run` → **136 files / 1483 passed**，另有 2 个基线 employee-detail unhandled。`tsc -b . --noEmit` 本域 0（6 行均为基线 employee-detail/employees）。
+- DOM（临时 harness，已删；Vite 5467 / Chrome 9268）：1440/1280/375 技能与工具 `bodySW=bodyCW=pageSW=pageCW=视口`；`aria-sort` 点击前 `名称↑`、点击后 `最近更新↑`（ascending）；`?q=` 与 `tab` 保持。截图 `docs/_artifacts/gov/shots/cap8-skills-{1440,1280,375}.png`、`cap8-tools-{1440,375}.png`。
+- `cap8-*` 新增；`cap4/5/6/7`、`skl4`、`tl3` 未破。边界：只改 `web/src/modules/{capabilities,skills,tools}/**` 与 DONE/截图；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；无独立观察者。

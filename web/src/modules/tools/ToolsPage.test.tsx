@@ -4,7 +4,7 @@
 
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api-error";
@@ -29,6 +29,11 @@ async function waitFor(cond: () => boolean, label = "condition"): Promise<void> 
   }
 }
 
+function LocationProbe(): React.ReactNode {
+  const loc = useLocation();
+  return <span data-testid="cap8-location">{loc.search}</span>;
+}
+
 async function render(entry: string): Promise<void> {
   await act(async () => root?.unmount());
   document.body.replaceChildren();
@@ -36,12 +41,38 @@ async function render(entry: string): Promise<void> {
   document.body.append(container);
   root = createRoot(container);
   await act(async () => {
-    root?.render(<MemoryRouter initialEntries={[entry]}><ToolsPage /></MemoryRouter>);
+    root?.render(<MemoryRouter initialEntries={[entry]}><LocationProbe /><ToolsPage /></MemoryRouter>);
   });
 }
 
 const text = (): string => document.body.textContent ?? "";
 const rows = (): Element[] => [...document.querySelectorAll("[data-testid='tol5-row']")];
+
+async function exportCsv(): Promise<string> {
+  const blobs: Blob[] = [];
+  const originalCreate = URL.createObjectURL;
+  const originalRevoke = URL.revokeObjectURL;
+  const originalClick = HTMLAnchorElement.prototype.click;
+  URL.createObjectURL = ((blob: Blob) => { blobs.push(blob); return "blob:cap8"; }) as typeof URL.createObjectURL;
+  URL.revokeObjectURL = (() => undefined) as typeof URL.revokeObjectURL;
+  HTMLAnchorElement.prototype.click = function click() { /* capture only */ };
+  try {
+    await act(async () => document.querySelector<HTMLButtonElement>("[data-testid='cap6-export']")!.click());
+  } finally {
+    URL.createObjectURL = originalCreate;
+    URL.revokeObjectURL = originalRevoke;
+    HTMLAnchorElement.prototype.click = originalClick;
+  }
+  const blob = blobs[0];
+  expect(blob).toBeTruthy();
+  return await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(blob!);
+  });
+}
+
 const urls = (): string[] => api.fetchJsonStrict.mock.calls.map((call) => String(call[0])).filter((url) => url !== "undefined");
 
 const TOOLSETS = [
@@ -317,6 +348,64 @@ describe("row detail", () => {
     expect(document.querySelectorAll("[data-testid='cap7-detail-tools']")).toHaveLength(0);
     expect(document.querySelector<HTMLInputElement>("[data-testid='cap5-search']")?.value).toBe("网页");
     expect(rows()).toHaveLength(2);
+  });
+});
+
+describe("sortable columns", () => {
+  it("sorts by URL, cycles aria-sort and never refetches on sort clicks", async () => {
+    const handler = (url?: string) => {
+      if (!url) return Promise.resolve({});
+      if (url === "/api/tools") {
+        return Promise.resolve({
+          items: [
+            { name: "B2", enabled: true, updated_at: "2026-11-18T06:00:00Z" },
+            { name: "A1", enabled: true, updated_at: "2026-11-19T06:00:00Z" },
+            { name: "C3", enabled: false, updated_at: "2026-11-17T06:00:00Z" },
+          ],
+          asOf: "2026-11-19T06:00:00Z",
+        });
+      }
+      return Promise.reject(new ApiError("missing", { status: 404, body: "{}", url }));
+    };
+    await mount(handler, "/capabilities?tab=tools&sort=name&dir=asc");
+    const order = () => rows().map((row) => row.textContent ?? "");
+    expect(order()[0]).toContain("A1");
+    expect(order()[2]).toContain("C3");
+    const csv = await exportCsv();
+    const lines = csv.trim().split("\r\n");
+    expect(lines[0]).toBe("name,type,enabled,updated_at");
+    expect(lines[1]).toMatch(/^A1,/);
+    expect(order()[0]).toMatch(/^A1/);
+    expect(lines[3]).toMatch(/^C3,/);
+    expect(order()[2]).toMatch(/^C3/);
+    expect(document.querySelector("[data-testid='cap8-location']")?.textContent).toContain("sort=name");
+    expect(document.querySelector("[aria-sort='ascending']")?.textContent).toContain("名称");
+    expect(api.fetchJsonStrict).toHaveBeenCalledTimes(4);
+    await act(async () => document.querySelector<HTMLButtonElement>("[data-testid='cap8-sort-name']")!.click());
+    expect(document.querySelector("[data-testid='cap8-location']")?.textContent).toContain("dir=desc");
+    expect(order()[0]).toContain("C3");
+    expect(order()[2]).toContain("A1");
+    expect(document.querySelector("[aria-sort='descending']")?.textContent).toContain("名称");
+    await act(async () => document.querySelector<HTMLButtonElement>("[data-testid='cap8-sort-name']")!.click());
+    expect(document.querySelector("[data-testid='cap8-location']")?.textContent).not.toContain("sort=");
+    expect(document.querySelector("[aria-sort='ascending']")).toBeNull();
+    expect(document.querySelector("[aria-sort='none']")?.textContent).toContain("名称");
+    expect(order()[0]).toContain("B2");
+    expect(api.fetchJsonStrict).toHaveBeenCalledTimes(4);
+  });
+});
+
+describe("export order", () => {
+  it("exports the same default order the table renders, including the MCP section tail", async () => {
+    await mount();
+    const order = rows().map((row) => row.textContent ?? "");
+    const csv = await exportCsv();
+    const lines = csv.trim().split("\r\n");
+    expect(order[0]).toContain("网页搜索");
+    expect(order[order.length - 1]).toContain("旧连接");
+    expect(lines[1]).toContain("网页搜索");
+    expect(lines[lines.length - 1]).toContain("旧连接");
+    expect(lines.length - 1).toBe(order.length);
   });
 });
 

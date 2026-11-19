@@ -19,6 +19,7 @@ import { CapabilityCounts, publishCapabilityCount } from "../capabilities/counts
 import { CapabilityRowDetail } from "../capabilities/rowDetail";
 import { CapabilitySearch } from "../capabilities/search";
 import { CapabilityExport } from "../capabilities/csvExport";
+import { applySort, ariaSort, cycleSort, readSort, sortRows, type SortKey } from "../capabilities/sorting";
 import "./skills.css";
 
 type State =
@@ -105,6 +106,7 @@ function Cell({ value, reason }: { value: string | null; reason: string }) {
 export function SkillsPage() {
   const [sp, setSp] = useSearchParams();
   const q = (sp.get("q") ?? "").trim();
+  const sort = readSort(sp);
   const [state, setState] = useState<State>({ k: "loading" });
   const [attempt, setAttempt] = useState(0);
   const [openSkill, setOpenSkill] = useState<string | null>(null);
@@ -162,8 +164,16 @@ export function SkillsPage() {
   const visibleRows = page.k === "ready" && q
     ? page.rows.filter((row) => row.name.toLocaleLowerCase().includes(q.toLocaleLowerCase()))
     : page.k === "ready" ? page.rows : [];
+  const sortedRows = sortRows(visibleRows, sort, (row: SkillRow, key) =>
+    key === "name" ? row.name : key === "type" ? row.source : row.updatedAt);
+  const onSort = (key: SortKey) => {
+    const next = cycleSort(sort, key);
+    const params = new URLSearchParams(sp);
+    applySort(params, next);
+    setSp(params);
+  };
   const setQ = (next: string) => {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(sp);
     if (next) params.set("q", next); else params.delete("q");
     setSp(params, { replace: true });
   };
@@ -190,7 +200,7 @@ export function SkillsPage() {
         <div className="skl4-actions">
           <CapabilityExport
             tab="skills"
-            rows={visibleRows.map((row) => ({
+            rows={sortedRows.map((row) => ({
               name: row.name === "—" ? null : row.name,
               type: row.source,
               enabled: row.status,
@@ -256,15 +266,27 @@ export function SkillsPage() {
               <table className="skl4-table" data-testid="skl4-table">
                 <thead>
                   <tr>
-                    <th scope="col">技能名</th>
-                    <th scope="col">来源/类型</th>
+                    <th scope="col" aria-sort={ariaSort(sort, "name")}>
+                      <button type="button" className="cap8-sort" data-testid="cap8-sort-name" onClick={() => onSort("name")}>
+                        技能名<span className="cap8-indicator" data-testid="cap8-indicator-name">{ariaSort(sort, "name") === "ascending" ? "↑" : ariaSort(sort, "name") === "descending" ? "↓" : "↕"}</span>
+                      </button>
+                    </th>
+                    <th scope="col" aria-sort={ariaSort(sort, "type")}>
+                      <button type="button" className="cap8-sort" data-testid="cap8-sort-type" onClick={() => onSort("type")}>
+                        来源/类型<span className="cap8-indicator" data-testid="cap8-indicator-type">{ariaSort(sort, "type") === "ascending" ? "↑" : ariaSort(sort, "type") === "descending" ? "↓" : "↕"}</span>
+                      </button>
+                    </th>
                     <th scope="col">启用态</th>
-                    <th scope="col">最近更新</th>
+                    <th scope="col" aria-sort={ariaSort(sort, "updated")}>
+                      <button type="button" className="cap8-sort" data-testid="cap8-sort-updated" onClick={() => onSort("updated")}>
+                        最近更新<span className="cap8-indicator" data-testid="cap8-indicator-updated">{ariaSort(sort, "updated") === "ascending" ? "↑" : ariaSort(sort, "updated") === "descending" ? "↓" : "↕"}</span>
+                      </button>
+                    </th>
                     <th scope="col">共享范围</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {visibleRows.map((row) => (
+                  {sortedRows.map((row) => (
                     <Fragment key={row.id}>
                     <tr data-testid={`skl4-row-${row.id}`} title={row.id}>
                       <td>

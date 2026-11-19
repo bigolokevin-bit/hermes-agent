@@ -31,6 +31,7 @@ import { forcedStateOf, useToolsData } from "./useToolsData";
 import { CapabilityCounts, publishCapabilityCount } from "../capabilities/counts";
 import { CapabilitySearch } from "../capabilities/search";
 import { CapabilityExport } from "../capabilities/csvExport";
+import { applySort, ariaSort, cycleSort, readSort, sortRows, type SortKey } from "../capabilities/sorting";
 import { CapabilityRowDetail } from "../capabilities/rowDetail";
 import "./tools.css";
 
@@ -213,12 +214,21 @@ export function ToolsPage(): ReactNode {
   const tools = useToolsData(forced);
   const { phase, rows } = tools;
   const q = (params.get("q") ?? "").trim();
+  const sort = readSort(params);
   const needle = q.toLowerCase();
   const visibleRows = needle ? rows.filter((row) => row.name.toLowerCase().includes(needle)) : rows;
-  const disabled = visibleRows.filter((row) => row.status === "disabled").length;
-  const unknown = visibleRows.filter((row) => row.status === "unknown").length;
-  const toolRows = visibleRows.filter((row) => row.source === "toolset");
-  const mcpRows = visibleRows.filter((row) => row.source === "mcp");
+  const sortedRows = sortRows(visibleRows, sort, (row: ToolRow, key) =>
+    key === "name" ? row.name : key === "type" ? row.type : row.updatedAt);
+  const disabled = sortedRows.filter((row) => row.status === "disabled").length;
+  const unknown = sortedRows.filter((row) => row.status === "unknown").length;
+  const toolRows = sortedRows.filter((row) => row.source === "toolset");
+  const mcpRows = sortedRows.filter((row) => row.source === "mcp");
+  const onSort = (key: SortKey) => {
+    const next = cycleSort(sort, key);
+    const search = new URLSearchParams(params);
+    applySort(search, next);
+    setParams(search);
+  };
   const setQ = (next: string) => {
     const search = new URLSearchParams(params);
     if (next) search.set("q", next);
@@ -377,7 +387,7 @@ export function ToolsPage(): ReactNode {
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <CapabilityExport
             tab="tools"
-            rows={visibleRows.map((row) => ({
+            rows={[...toolRows, ...mcpRows].map((row) => ({
               name: row.name,
               type: row.type,
               enabled: row.status,
@@ -426,6 +436,23 @@ export function ToolsPage(): ReactNode {
 
       {phase === "ready" ? (
         <CapabilitySearch value={q} total={rows.length} onChange={setQ} />
+      ) : null}
+
+      {phase === "ready" ? (
+        <div className="cap8-sortbar" role="row" data-testid="cap8-sortbar">
+          <span className="cap8-sortlabel">排序</span>
+          {([
+            ["name", "名称"],
+            ["type", "类型/来源"],
+            ["updated", "最近更新"],
+          ] as Array<[SortKey, string]>).map(([key, label]) => (
+            <span key={key} role="columnheader" aria-sort={ariaSort(sort, key)}>
+              <button type="button" className="cap8-sort" data-testid={`cap8-sort-${key}`} onClick={() => onSort(key)}>
+                {label}<span className="cap8-indicator" data-testid={`cap8-indicator-${key}`}>{ariaSort(sort, key) === "ascending" ? "↑" : ariaSort(sort, key) === "descending" ? "↓" : "↕"}</span>
+              </button>
+            </span>
+          ))}
+        </div>
       ) : null}
 
       {phase === "ready" ? (
