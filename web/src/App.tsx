@@ -117,6 +117,10 @@ const VersionConsolePage = lazy(() =>
 const UsageConsolePage = lazy(() => import("@/modules/duty/UsagePage"));
 const PeopleConsolePage = lazy(() => import("@/modules/people/PeopleModulePage"));
 const OrgConsolePage = lazy(() => import("@/modules/org/OrgModulePage"));
+/* R13 item 1: governance page bodies delivered by lane gov — default
+ * exports, wired straight into the identity/knowledge live slots. */
+const AccessConsolePage = lazy(() => import("@/modules/access/AccessModulePage"));
+const KnowledgeConsolePage = lazy(() => import("@/modules/knowledge/KnowledgeModulePage"));
 const EvidenceConsolePage = lazy(() =>
   import("@/modules/evidence/EvidenceModulePage").then((m) => ({
     default: m.EvidenceModulePage,
@@ -380,6 +384,27 @@ const BUILTIN_NAV_REST: NavItem[] = [
     path: "/identity?tab=people",
     label: "人员名录",
     icon: Contact,
+    group: "governance",
+  },
+  /* R13 item 1: governance tabs with delivered page bodies get real nav
+   * entries (live slots in /identity and /knowledge). Still-pending items
+   * above keep their honest placeholder state. */
+  {
+    path: "/identity?tab=departments",
+    label: "组织与部门",
+    icon: Building2,
+    group: "governance",
+  },
+  {
+    path: "/identity?tab=roles",
+    label: "角色与权限",
+    icon: ShieldCheck,
+    group: "governance",
+  },
+  {
+    path: "/knowledge?tab=spaces",
+    label: "知识空间",
+    icon: BookOpen,
     group: "governance",
   },
 
@@ -1170,7 +1195,7 @@ export default function App() {
                         element={
                           <ConsoleModulePage
                             module="identity"
-                            live={{ people: <PeopleConsolePage />, departments: <OrgConsolePage /> }}
+                            live={{ people: <PeopleConsolePage />, departments: <OrgConsolePage />, roles: <AccessConsolePage /> }}
                           />
                         }
                       />
@@ -1179,7 +1204,7 @@ export default function App() {
                         element={
                           <ConsoleModulePage
                             module="knowledge"
-                            live={{ evidence: <EvidenceConsolePage /> }}
+                            live={{ evidence: <EvidenceConsolePage />, spaces: <KnowledgeConsolePage /> }}
                           />
                         }
                       />
