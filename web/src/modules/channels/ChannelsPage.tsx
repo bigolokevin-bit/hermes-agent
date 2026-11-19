@@ -45,7 +45,7 @@ import { Spinner } from "@nous-research/ui/ui/components/spinner";
 
 import { themedBody } from "@/lib/utils";
 
-import { DeniedPanel, EmptyPanel, ErrorPanel, LoadingPanel, ReproNote, TechnicalDisclosure } from "./states";
+import { DeniedPanel, EmptyPanel, ErrorPanel, LoadingPanel, TechnicalDisclosure } from "./states";
 import {
   CREDENTIAL_LABEL,
   FILTERS,
@@ -61,7 +61,7 @@ import {
   type LedgerRow,
   type RowStatus,
 } from "./channels";
-import { forcedStateOf, useChannelsData } from "./useChannelsData";
+import { useChannelsData } from "./useChannelsData";
 
 /** The 本次核验 line's own honest word when the read cycle carried no instant. */
 const NO_CHECK_REASON = "这一轮没有记下核验的时刻";
@@ -279,14 +279,10 @@ function SourcesLedger({ ledger }: { ledger: LedgerRow[] }): ReactNode {
 
 export function ChannelsPage(): ReactNode {
   const [params, setParams] = useSearchParams();
-  const forced = forcedStateOf(params.get("state"));
   const filter = filterOf(params.get("status"));
-  const data = useChannelsData(forced, filter);
+  const data = useChannelsData(filter);
   const { phase, rows, ledger } = data;
   const shown = applyFilter(rows, filter);
-
-  const isForced = forced !== null;
-  const forcedTitle = isForced ? "复现腿不发起真实请求，去掉 ?state= 即为真实读取" : undefined;
 
   const availableCount = shown.filter((row) => row.status === "available").length;
   const disabledCount = shown.filter((row) => row.status === "disabled").length;
@@ -321,8 +317,7 @@ export function ChannelsPage(): ReactNode {
           data-testid="chn4-filter-status"
           className="h-8 min-w-0 max-w-40 rounded-md border border-border bg-transparent px-2 text-sm"
           value={filter}
-          disabled={isForced}
-          title={isForced ? forcedTitle : "换这个条件会重新向服务要一次数据"}
+          title="换这个条件会重新向服务要一次数据"
           onChange={(event) => {
             const next = new URLSearchParams(params);
             if (event.target.value === "all") next.delete("status");
@@ -341,9 +336,8 @@ export function ChannelsPage(): ReactNode {
         size="sm"
         outlined
         onClick={data.reload}
-        disabled={phase === "loading" || isForced}
+        disabled={phase === "loading"}
         aria-busy={phase === "loading"}
-        title={forcedTitle}
         data-testid="chn4-retry"
         prefix={phase === "loading" ? <Spinner className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" />}
       >
@@ -353,26 +347,25 @@ export function ChannelsPage(): ReactNode {
   );
 
   const body = (() => {
-    if (phase === "loading") return <LoadingPanel fixture={forced === "loading" ? "loading" : undefined} />;
+    if (phase === "loading") return <LoadingPanel />;
     // Denied and error are the two states where nothing else may be painted:
     // the platform rows are not there, and neither are the source rows, because
     // a pane that could not read anything has nothing honest to say per source.
     if (phase === "denied") {
-      return <DeniedPanel requestId={data.failure?.requestId ?? null} fixture={forced === "denied" ? "denied" : undefined} />;
+      return <DeniedPanel requestId={data.failure?.requestId ?? null} />;
     }
     if (phase === "error") {
       return (
         <ErrorPanel
           failure={data.failure ?? { sentence: "读取接入清单时出了问题，请稍后重试。", requestId: null, technical: null }}
           onRetry={data.reload}
-          fixture={forced === "error" ? "error" : undefined}
         />
       );
     }
     if (phase === "empty") {
       return (
         <div className="flex min-w-0 flex-col gap-3">
-          <EmptyPanel onRetry={data.reload} fixture={forced === "empty" ? "empty" : undefined} />
+          <EmptyPanel onRetry={data.reload} />
           <SourcesLedger ledger={ledger} />
         </div>
       );
@@ -406,7 +399,6 @@ export function ChannelsPage(): ReactNode {
       className="flex min-w-0 w-full max-w-full flex-col gap-3"
       data-testid="chn4-page"
       data-page="channels"
-      data-fixture={forced ?? undefined}
     >
       <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-2">
         <div className="min-w-0">
@@ -417,8 +409,6 @@ export function ChannelsPage(): ReactNode {
         </div>
         {filterBar}
       </div>
-
-      {isForced ? <ReproNote state={forced} /> : null}
 
       <p className="min-w-0 break-words text-xs text-muted-foreground" aria-live="polite" data-testid="chn4-status">
         {phase === "loading"

@@ -2,8 +2,8 @@
 // COLLAB list page. The assertions are about what a person can check with
 // their eyes: the real route is the one asked, rows only ever come from an
 // answer, 401 reads as 需要登录 (never as a failure or a zero), 403 and 404
-// draw one identical body with nothing above it, and a `?state=` repro asks
-// for nothing at all.
+// draw one identical body with nothing above it. R32 removed the `?state=`
+// repro leg: every panel here comes from the service's own answer.
 
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -322,52 +322,6 @@ describe("the four states and the login leg", () => {
     await waitFor(() => document.querySelector("[data-testid='col5-error-request-id-value-absent']") !== null, "absent id");
     expect(text()).toContain("未提供");
     expect(html()).not.toContain("undefined");
-  });
-});
-
-describe("the ?state= repro legs ask for nothing", () => {
-  const thrower = (): never => {
-    throw new Error("a repro leg must not reach the network");
-  };
-
-  beforeEach(() => {
-    api.fetchJSON.mockImplementation(thrower);
-  });
-
-  it.each(["loading", "empty", "error", "denied"])("draws %s from the URL alone", async (state) => {
-    await render(`/collab?state=${state}`);
-    await waitFor(() => document.querySelector(`[data-testid='col5-${state}']`) !== null, state);
-    expect(api.fetchJSON.mock.calls).toHaveLength(0);
-    expect(document.querySelector("[data-testid='col5-page']")?.getAttribute("data-fixture")).toBe(state);
-    expect(document.querySelector("[data-testid='col5-forced-note']")?.textContent).toContain(`?state=${state}`);
-    expect(document.querySelector("[data-testid='col5-forced-note']")?.textContent).toContain("GAP-10");
-    expect(document.querySelector(`[data-testid='col5-${state}']`)?.getAttribute("data-fixture")).toBe(state);
-  });
-
-  it("disables the control that would ask", async () => {
-    await render("/collab?state=error");
-    await waitFor(() => document.querySelector("[data-testid='col5-error']") !== null, "error repro");
-    const refresh = document.querySelector("[data-testid='col5-refresh']") as HTMLButtonElement | null;
-    expect(refresh?.disabled).toBe(true);
-    const retry = document.querySelector("[data-testid='col5-error-retry']") as HTMLButtonElement | null;
-    expect(retry?.disabled).toBe(true);
-  });
-
-  it("paints no rows on any repro leg", async () => {
-    for (const state of ["loading", "empty", "error", "denied"]) {
-      await render(`/collab?state=${state}`);
-      await waitFor(() => document.querySelector(`[data-testid='col5-${state}']`) !== null, state);
-      expect(rowNodes()).toBe(0);
-      expect(document.querySelector("[data-testid='col5-table']")).toBeNull();
-    }
-  });
-
-  it("treats ?state=ready as a real read, not a repro", async () => {
-    api.fetchJSON.mockImplementation(okList([DELEG_A]));
-    await render("/collab?state=ready");
-    await waitFor(() => rowNodes() === 1, "real read");
-    expect(api.fetchJSON.mock.calls.length).toBeGreaterThan(0);
-    expect(document.querySelector("[data-testid='col5-page']")?.hasAttribute("data-fixture")).toBe(false);
   });
 });
 
