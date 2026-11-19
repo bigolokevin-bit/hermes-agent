@@ -40,6 +40,9 @@ import {
   TASKS_URL,
   UNWIRED_HUMAN,
   citationsFromDetail,
+  INGEST_STATUS_UNWIRED_HEAD,
+  INGEST_STATUS_UNWIRED_HUMAN,
+  INGEST_STATUS_URL,
   initialTab,
   readCitations,
   readRecords,
@@ -636,10 +639,10 @@ function IngestSurface({ nonce }: { nonce: string }): ReactNode {
 }
 
 /** What the data-source reads answer as 接入任务, in the operator's own words. */
-function TaskTable({ rows }: { rows: IngestTaskRow[] }): ReactNode {
+function TaskTable({ rows, testid }: { rows: IngestTaskRow[]; testid: string }): ReactNode {
   return (
     <div className="knw5-scroll">
-      <table className="knw5-table" data-testid="knw5-ingest-tasks-table">
+      <table className="knw5-table" data-testid={`${testid}-table`}>
         <thead>
           <tr>
             <th scope="col">来源名称</th>
@@ -651,7 +654,7 @@ function TaskTable({ rows }: { rows: IngestTaskRow[] }): ReactNode {
         </thead>
         <tbody>
           {rows.map((row, index) => (
-            <tr key={row.id || `task-${index}`} data-testid="knw5-ingest-tasks-row" title={row.id || undefined}>
+            <tr key={row.id || `task-${index}`} data-testid={`${testid}-row`} title={row.id || undefined}>
               <td data-label="来源名称">
                 <span className="knw5-name">{row.name}</span>
                 <Reason>{row.nameReason}</Reason>
@@ -661,7 +664,7 @@ function TaskTable({ rows }: { rows: IngestTaskRow[] }): ReactNode {
                 <Reason>{row.kindReason}</Reason>
               </td>
               <td data-label="最近同步">
-                <span data-testid="knw5-ingest-tasks-time">
+                <span data-testid={`${testid}-time`}>
                   {row.timeLabel ? `${row.timeLabel}：${row.at}` : row.at}
                 </span>
                 <Reason>{row.atReason}</Reason>
@@ -680,18 +683,18 @@ function TaskTable({ rows }: { rows: IngestTaskRow[] }): ReactNode {
                 </Badge>
                 <Reason>{row.statusReason}</Reason>
                 {row.failure ? (
-                  <span className="knw5-sub" data-testid="knw5-ingest-tasks-failure" title={row.failureRaw ?? undefined}>
+                  <span className="knw5-sub" data-testid={`${testid}-failure`} title={row.failureRaw ?? undefined}>
                     {row.failure}
                   </span>
                 ) : null}
                 {row.failure === null && row.failureRaw ? (
-                  <span className="knw5-sub" data-testid="knw5-ingest-tasks-failure" title={row.failureRaw}>
+                  <span className="knw5-sub" data-testid={`${testid}-failure`} title={row.failureRaw}>
                     上游记的原因偏技术，这里不原样上屏；悬停可看原文。
                   </span>
                 ) : null}
               </td>
               <td data-label="条目数">
-                <span data-testid="knw5-ingest-tasks-count">{row.count}</span>
+                <span data-testid={`${testid}-count`}>{row.count}</span>
                 {row.extra ? <span className="knw5-sub">{row.extra}</span> : null}
                 <Reason>{row.countReason}</Reason>
               </td>
@@ -700,6 +703,31 @@ function TaskTable({ rows }: { rows: IngestTaskRow[] }): ReactNode {
         </tbody>
       </table>
     </div>
+  );
+}
+
+/**
+ * 入库状态：the dispatcher-named status read. Same row shape as 数据源接入任务
+ * because the questions are the same (which source, when, how far, how many), but
+ * it is a separate request with its own provenance line and its own honest
+ * 「未接入」 wording — the two reads never borrow each other's numbers.
+ */
+function IngestStatusSurface({ nonce }: { nonce: string }): ReactNode {
+  const surface = useSurface<IngestTaskRow>(
+    () => fetchJsonStrict(INGEST_STATUS_URL).then(readTasks),
+    `ingest-status|${nonce}`,
+  );
+  return (
+    <Surface
+      testid="knw5-ingest-status"
+      source="ingest-status"
+      state={surface.state}
+      onRetry={surface.retry}
+      unwiredHead={INGEST_STATUS_UNWIRED_HEAD}
+      unwiredHuman={INGEST_STATUS_UNWIRED_HUMAN}
+      empty={() => <p>接口已响应，但没有给出入库中的来源；这不等于一个源都没有，也不写 0 个源。</p>}
+      render={(value) => <TaskTable rows={value.rows} testid="knw5-ingest-status" />}
+    />
   );
 }
 
@@ -717,7 +745,7 @@ function IngestTasksSurface({ nonce }: { nonce: string }): ReactNode {
       unwiredHead={TASKS_UNWIRED_HEAD}
       unwiredHuman={TASKS_UNWIRED_HUMAN}
       empty={() => <p>接口已响应，但没有给出接入中的数据源；这不等于一个源都没有，也不显示 0 个。</p>}
-      render={(value) => <TaskTable rows={value.rows} />}
+      render={(value) => <TaskTable rows={value.rows} testid="knw5-ingest-tasks" />}
     />
   );
 }
@@ -967,6 +995,7 @@ export default function KnowledgeModulePage() {
               {tab === "spaces" ? <SpacesSurface nonce={nonce} /> : null}
               {tab === "ingest" ? (
                 <>
+                  <IngestStatusSurface nonce={nonce} />
                   <IngestTasksSurface nonce={nonce} />
                   <IngestSurface nonce={nonce} />
                 </>
