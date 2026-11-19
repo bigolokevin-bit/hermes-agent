@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 import {
   EmptyBlock,
   ErrorStateBlock,
-  PRESENCE,
+  LIFECYCLE,
   RowsSkeleton,
   StatusBadge,
   WORK,
@@ -30,6 +30,7 @@ import {
   humanize,
   idOf,
   isRecord,
+  lifecycleOf,
   money,
   nameOf,
   pickStr,
@@ -206,7 +207,7 @@ export default function EmployeeDetailPage() {
                   {dn?.text ?? "—"}
                 </h1>
                 <div className="mt-1 flex items-center gap-2">
-                  <StatusBadge value={detail.status ?? detail.state ?? detail.presence} table={PRESENCE} />
+                  <StatusBadge value={lifecycleOf(detail)} table={LIFECYCLE} unknownLabel="待核实" />
                 </div>
               </div>
             </div>
@@ -330,7 +331,7 @@ function OverviewPanel({ detail, rawId }: { detail: Rec; rawId: string }) {
             <Info term="模型提供方">{provider ?? "—"}</Info>
             <Info term="负责人">{owner ?? "未指派"}</Info>
             <Info term="在岗状态">
-              <StatusBadge value={detail.status ?? detail.state ?? detail.presence} table={PRESENCE} />
+              <StatusBadge value={lifecycleOf(detail)} table={LIFECYCLE} unknownLabel="待核实" />
             </Info>
             <Info term="创建时间">{created}</Info>
             <Info term="最近活动">{lastSeen}</Info>

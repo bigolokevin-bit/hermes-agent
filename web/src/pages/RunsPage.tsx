@@ -297,6 +297,8 @@ interface Failure {
   sentence: string;
   requestId: string | null;
   technical: string | null;
+  /** R5 item 1: a 401 gets an explicit re-login exit next to 重试. */
+  authExpired?: boolean;
 }
 
 const REQUEST_ID_KEYS = ["request_id", "requestId", "trace_id", "traceId", "x-request-id", "correlation_id"] as const;
@@ -349,7 +351,7 @@ function failureFrom(err: unknown): Failure {
   else if (status === 429) sentence = "请求太频繁，请稍等一会儿再试。";
   else if (status >= 500) sentence = "服务在处理时出了错，请稍后重试。";
   else sentence = humanSentence(errorMessage(err)) ?? "读取运行记录时出现问题，请稍后重试。";
-  return { sentence, requestId, technical };
+  return { sentence, requestId, technical, authExpired: status === 401 };
 }
 
 function isDenied(err: unknown): boolean {
@@ -395,6 +397,16 @@ function ErrorPanel({ failure, onRetry }: { failure: Failure; onRetry: () => voi
         <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
           重试
         </Button>
+        {failure.authExpired && (
+          <Button
+            size="sm"
+            outlined
+            data-testid="auth-reload-exit"
+            onClick={() => window.location.reload()}
+          >
+            刷新重新登录
+          </Button>
+        )}
       </CardContent>
     </Card>
   );

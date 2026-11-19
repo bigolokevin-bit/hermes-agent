@@ -114,9 +114,16 @@ function lifecycleTone(value?: string | null): "success" | "warning" | undefined
   return undefined;
 }
 
+const USD_FMT = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
 function money(value?: number | null): string {
   if (value === null || value === undefined || !Number.isFinite(value)) return "—";
-  return `$${value.toFixed(2)}`;
+  return USD_FMT.format(value);
 }
 
 

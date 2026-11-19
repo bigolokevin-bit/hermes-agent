@@ -218,14 +218,21 @@ export function fmtStamp(iso: string | null | undefined): string {
 }
 
 /** USD 两位小数；未知给 `—`（绝不写 0 冒充「没花钱」）。 */
+const USD_FMT = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
 export function fmtUsd(value: number | null): string {
   if (value === null || !Number.isFinite(value)) return '—';
-  return `$${value.toFixed(2)}`;
+  return USD_FMT.format(value);
 }
 
 /** 每百万 token 单价；未知给 `—`。 */
 export function fmtUnitPrice(value: number | null, currency: string | null): string {
   if (value === null || !Number.isFinite(value)) return '—';
   const unit = currency === 'USD' || currency === null ? '$' : `${currency} `;
-  return `${unit}${value.toFixed(2)} / 百万 token`;
+  return `${unit}${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / 百万 token`;
 }

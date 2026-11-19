@@ -72,7 +72,7 @@ import {
   attemptDashboardTokenReloadOnce,
   clearDashboardTokenReloadAttempt,
 } from "@/lib/dashboard-auth-reload";
-import { apiErrorFromNetworkFailure, apiErrorFromResponse } from "@/lib/api-error";
+import { apiErrorFromNetworkFailure, apiErrorFromResponse, authExpiredError, AUTH_NAVIGATION_GRACE_MS } from "@/lib/api-error";
 import type { AutomationBlueprint } from "@/lib/automation-blueprints";
 
 // Ephemeral session token for protected endpoints.
@@ -206,8 +206,10 @@ export async function fetchJSON<T>(
         /* SSR / privacy mode — ignore */
       }
       window.location.assign(body.login_url);
-      // Never resolve — the page is about to unload.
-      return new Promise<T>(() => {});
+      // R5 item 1: the page is about to unload — but if the browser blocks the
+      // navigation, reject after a grace period so consumers render the plain
+      // 「需要登录」 state instead of hanging on Loading forever.
+      return pendingAuthNavigation<T>(url);
     }
     // Loopback mode: ``_SESSION_TOKEN`` rotates on every server restart
     // (``hermes update``, ``hermes gateway restart``, etc.). A tab kept
@@ -220,7 +222,9 @@ export async function fetchJSON<T>(
     // middleware failure that should not reload-loop.
     if (!window.__HERMES_AUTH_REQUIRED__ && !options?.allowUnauthorized) {
       if (attemptDashboardTokenReloadOnce()) {
-        return new Promise<T>(() => {});
+        // R5 item 1: same escape hatch — a blocked or ineffective reload must
+        // end in the login state, never an endless Loading skeleton.
+        return pendingAuthNavigation<T>(url);
       }
     }
   }
@@ -241,9 +245,18 @@ export async function fetchJSON<T>(
   return res.json();
 }
 
+// R5 item 1: escape hatch for 401 paths that full-page navigate (login_url
+// redirect or stale-token reload). Normally the page unloads and this never
+// fires; if the navigation is blocked, the promise rejects after a grace
+// period with the plain 「需要登录」 error so the UI exits Loading.
+function pendingAuthNavigation<T>(url: string): Promise<T> {
+  return new Promise<T>((_, reject) => {
+    setTimeout(() => reject(authExpiredError(url)), AUTH_NAVIGATION_GRACE_MS);
+  });
+}
+
 /** Encode a plugin registry key for URL paths (preserves `/` segment separators). */
-function pluginPath(name: string): string {
-  return name.split("/").map(encodeURIComponent).join("/");
+function pluginPath(name: string): string {  return name.split("/").map(encodeURIComponent).join("/");
 }
 
 /**

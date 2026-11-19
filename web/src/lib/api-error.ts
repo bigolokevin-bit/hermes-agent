@@ -15,7 +15,9 @@ export const API_UNREACHABLE_MESSAGE =
 /** Status → plain sentence, used when the body carries no usable `detail`. */
 const STATUS_COPY: Record<number, string> = {
   400: "The dashboard sent a request the server could not understand.",
-  401: "Your dashboard session has expired. Reload the page to sign in again.",
+  // R5 item 1: 401 must read as plain Chinese on screen — every consumer
+  // renders this sentence; the old English copy leaked raw text to users.
+  401: "需要登录：这个页面的登录状态已经失效。重新登录后就能继续查看。",
   403: "You are not allowed to do that on this dashboard.",
   404: "The server could not find what the dashboard asked for.",
   409: "That change conflicts with the current state on the server.",
@@ -99,6 +101,11 @@ export function apiErrorFromResponse(
   url: string,
   requestId?: string,
 ): ApiError {
+  // R5 item 1: a 401 is always the login sentence — never the gate's raw
+  // English envelope (`unauthenticated`/`session_expired`), never a detail.
+  if (status === 401) {
+    return new ApiError(humanizeStatus(401), { status, body, url, requestId });
+  }
   const detail = extractDetail(body);
   return new ApiError(detail ?? humanizeStatus(status), { status, body, url, requestId });
 }
@@ -107,6 +114,21 @@ export function apiErrorFromNetworkFailure(cause: unknown, url: string): ApiErro
   const body = cause instanceof Error ? `${cause.name}: ${cause.message}` : String(cause);
   return new ApiError(API_UNREACHABLE_MESSAGE, { status: 0, body, url });
 }
+
+/**
+ * R5 item 1: the escape hatch for the two 401 paths that full-page navigate
+ * (gate login_url / stale-token reload). Those navigations unload the page,
+ * so the pending promise never matters — but when a browser blocks or the
+ * reload does not fix the session, the SPA would hang on Loading forever.
+ * This error rejects the pending call after a grace period so the UI shows
+ * the plain 「需要登录」 state with its retry affordance instead.
+ */
+export function authExpiredError(url: string, requestId?: string): ApiError {
+  return new ApiError(humanizeStatus(401), { status: 401, body: "", url, requestId });
+}
+
+/** Grace period before a pending full-page auth navigation is treated as failed. */
+export const AUTH_NAVIGATION_GRACE_MS = 6000;
 
 /**
  * The one way to turn a caught `unknown` into toast/inline text. Never yields

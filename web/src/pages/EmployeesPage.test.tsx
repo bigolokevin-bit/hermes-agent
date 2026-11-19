@@ -138,7 +138,7 @@ describe("EmployeesPage", () => {
     expect(list).toBeTruthy();
     expect(list?.querySelectorAll('[data-testid="emp-l-row"]').length).toBe(2);
     const link = container.querySelector<HTMLAnchorElement>('[data-testid="emp-l-name-link"]');
-    expect(link).toBeTruthy();
+    if (!link) throw new Error("emp-l-name-link is missing");
     expect(link.getAttribute("href")).toBe("/employees/emp_9F3A1B2C3D4E");
   });
 
@@ -171,5 +171,26 @@ describe("EmployeesPage", () => {
     resolveEmployees([{ id: "emp_D4", name: "丁", lifecycleState: "active", spend: 1234.5 }]);
     await render();
     expect(container.textContent).toContain("$1,234.50");
+  });
+
+  it("R5-1: 401 不再静默挂死 — 「需要登录」人话 + 可复制请求编号 + 重试与重新登录出口", async () => {
+    fetchJSON.mockImplementation((url: string) =>
+      Promise.reject(
+        new ApiError("unauthenticated", {
+          status: 401,
+          body: "",
+          url,
+          requestId: "req-401-77",
+        }),
+      ),
+    );
+    await render();
+    const text = container.textContent ?? "";
+    expect(text).toContain("需要登录");
+    expect(text).toContain("req-401-77");
+    expect(text).toContain("重试");
+    expect(container.querySelector('[data-testid="auth-reload-exit"]')).toBeTruthy();
+    // 绝不能停在无限 loading 骨架
+    expect(container.querySelector('[aria-busy="true"]')).toBeFalsy();
   });
 });
