@@ -82,7 +82,7 @@ export function MatrixModulePage() {
     setPhase("loading");
     setErrorNote(null);
     // reuse: /v1/matrix/employees
-    fetchJSON<unknown>("/agent-api/api/v1/matrix/employees")
+    fetchJSON<unknown>("/agent-api/api/matrix")
       .then((body) => {
         if (!live) return;
         const next = readMatrixPayload(body);

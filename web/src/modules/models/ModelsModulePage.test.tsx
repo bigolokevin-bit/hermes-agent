@@ -8,8 +8,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiError } from '@/lib/api-error';
 
-const api = vi.hoisted(() => ({ fetchJSON: vi.fn() }));
-vi.mock('@/lib/api', () => ({ fetchJSON: api.fetchJSON }));
+const api = vi.hoisted(() => ({ fetchJsonStrict: vi.fn() }));
+vi.mock('./fetchJson', () => ({ fetchJsonStrict: api.fetchJsonStrict }));
 vi.mock('@/lib/clipboard', () => ({ copyTextToClipboard: () => Promise.resolve(true) }));
 
 import { ModelsModulePage } from './ModelsModulePage';
@@ -42,12 +42,12 @@ async function render(entry: string, page: ReactNode): Promise<void> {
 }
 
 const text = (): string => document.body.textContent ?? '';
-const urls = (): string[] => api.fetchJSON.mock.calls.map((call) => String(call[0]));
+const urls = (): string[] => api.fetchJsonStrict.mock.calls.map((call) => String(call[0]));
 const busy = (): boolean => document.querySelector('.animate-pulse') !== null;
 
 async function mount(handler: (url: string) => Promise<unknown>, entry = '/models'): Promise<void> {
-  api.fetchJSON.mockReset();
-  api.fetchJSON.mockImplementation(handler);
+  api.fetchJsonStrict.mockReset();
+  api.fetchJsonStrict.mockImplementation(handler);
   await render(entry, <ModelsModulePage />);
   await waitFor(() => !busy(), 'state settled');
 }

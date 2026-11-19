@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 /**
  * 数字员工列表页（只读）。
  *
- * 数据来自 BFF：先试 `/agent-api/api/v1/matrix/employees`，拿不到再退到
+ * 数据来自 BFF：先试 `/agent-api/api/matrix`，拿不到再退到
  * `/agent-api/api/employees`。两个都失败时如实降级，绝不编造行。本页不写任何数据，
  * 唯一可点的东西就是跳转。
  *
@@ -425,7 +425,7 @@ export function useResourceList(urls: string[]): {
 
 export default function EmployeesPage() {
   const { state, reload } = useResourceList([
-    "/agent-api/api/v1/matrix/employees",
+    "/agent-api/api/matrix",
     "/agent-api/api/employees",
   ]);
 

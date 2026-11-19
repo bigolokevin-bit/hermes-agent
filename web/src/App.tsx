@@ -97,6 +97,13 @@ const MatrixConsolePage = lazy(() =>
   })),
 );
 const TasksBoardConsolePage = lazy(() => import("@/modules/tasks/TasksBoardModulePage"));
+// R10 item 7: audit events page body is delivered by lane aud; the shell only
+// wires it into the /system live slots (?tab=events).
+const AuditEventsConsolePage = lazy(() =>
+  import("@/modules/audit/AuditEventsModulePage").then((m) => ({
+    default: m.AuditEventsModulePage,
+  })),
+);
 const RunsConsolePage = lazy(() => import("@/modules/runs/RunsModulePage"));
 // L0 IA freeze: settings/version are system sub-tabs, not top-level modules.
 // Their pages render through the /system live slots below (?tab=defaults|version).
@@ -405,11 +412,19 @@ const BUILTIN_NAV_REST: NavItem[] = [
     group: "runtime",
   },
   {
-    path: "/channels",
-    labelKey: "channels",
-    label: "Channels",
+    // R10 item 7: single-language console surface — Chinese label, and the
+    // link targets the console capabilities tab instead of the bare upstream
+    // shell (which now redirects here anyway).
+    path: "/capabilities?tab=channels",
+    label: "平台接入",
     icon: Radio,
     group: "runtime",
+  },
+  {
+    path: "/system?tab=events",
+    label: "审计事件",
+    icon: ShieldCheck,
+    group: "governance",
   },
   {
     path: "/cron",
@@ -1212,11 +1227,27 @@ export default function App() {
                                 health: <HealthConsolePage />,
                                 defaults: <SettingsConsolePage />,
                                 version: <VersionConsolePage />,
+                                events: <AuditEventsConsolePage />,
                               }}
                             />
                           }
                         />
                       )}
+                      {/* R10 item 7: compat routes mirroring the frozen
+                          routes.ts table — /audit reaches the /system audit
+                          live slot (routes.ts:257), and /channels defers to
+                          the V4 capabilities?tab=channels surface (routes.ts:
+                          171) instead of the bare upstream English shell.
+                          First-in-tree wins, so these front the generic
+                          builtin entries without touching the route map. */}
+                      <Route
+                        path="/audit"
+                        element={<Navigate to="/system?tab=events" replace />}
+                      />
+                      <Route
+                        path="/channels"
+                        element={<Navigate to="/capabilities?tab=channels" replace />}
+                      />
                       {!overriddenPaths.has("/employees/:employeeId") && (
                         <>
                           <Route
