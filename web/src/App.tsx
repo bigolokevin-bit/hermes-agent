@@ -104,6 +104,10 @@ const CronConsolePage = lazy(() => import("@/modules/cron/CronModulePage"));
 /* R29 item 3: the retention panel (ret4-*, lane aud) mounts on the
  * /system?tab=retention alias slot instead of falling to events. */
 const RetentionConsolePage = lazy(() => import("@/modules/audit/RetentionModulePage"));
+// R35 release c1: the gov-delivered security surface mounts under the
+// existing /system?tab=security URL (routes.ts compat entry, visible:false)
+// — no new tab, no registry count change.
+const SecurityConsolePage = lazy(() => import("@/modules/security/SecurityModulePage"));
 // R10 item 7: audit events page body is delivered by lane aud; the shell only
 // wires it into the /system live slots (?tab=events).
 const AuditEventsConsolePage = lazy(() =>
@@ -1598,6 +1602,9 @@ function SidebarNavLink({
  * stays a shell-level alias; no module body changes. */
 function SystemAwareTabs(): ReactNode {
   const [sp] = useSearchParams();
+  if (sp.get("tab") === "security") {
+    return <SecurityConsolePage />;
+  }
   if (sp.get("tab") === "retention") {
     return <RetentionConsolePage />;
   }

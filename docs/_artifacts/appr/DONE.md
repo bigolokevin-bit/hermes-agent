@@ -578,3 +578,13 @@ KPI 族：五卡 data-testid=ov6-kpi-<name> 统一在位+新增 data-duty-testid
 - web/src/modules/tasks/TasksBoardModulePage.test.tsx:133 — `...resolveDetail(),` → `...(resolveDetail() as Record<string, unknown>)`（unknown 不可 spread，TS2698 清零试）。
 
 验收：`tsc -b . --noEmit` EXIT=2，写域四域 grep 命中=0；剩余 src 红仅 1 行=src/modules/security/SecurityModulePage.tsx（写域外，挂账 R36 清单）+ apps/shared TS2307 环境噪声（写域外）。定向 vitest（approvals/duty/employee-detail/tasks）9 files/145 passed exit0；全量 129 files/1319 passed（≥基线 127/1306，merge 带入他人用例）。
+
+## R35 放行条件①：sec5 壳层挂载（2026-11-20 02:0x，lane/console-appr）
+
+基线：fetch 后 reset --hard origin/lane/hermes-console = **7e7b92cd**（工单预期 e4c03f8c 为旧指针，wave-4 合并后实际 tip；toplevel 校验通过，porc=0）。代码含 gov security 页体（184dd521 系已并入）。
+
+挂载（只动壳层，不碰页体）：App.tsx line107-110 新 `const SecurityConsolePage = lazy(() => import("@/modules/security/SecurityModulePage"))`（默认导出已在，无需改模块）；line1605-1607 SystemAwareTabs 在 retention 判断前拦截 `sp.get("tab")==="security"` → 直接渲 SecurityConsolePage（App 级 Suspense line1166 兜底 loading）。`/system?tab=security` 与 `?tab=security&view=anomaly` 变体同点命中；routes.ts 既有条目（line256 compat-tab visible:false、line348 TAB_ALIAS、line356）一律未改——**不新增 Tab、registry 计数不动**。
+
+四态/零写入口=模块既有实现（gov 交付）：loading/empty/error（可复制 rid+重试）/gap（403≡404 同体「未接入」+原因，GAP 编号只进 title）；planned 按钮 data-planned+aria-disabled+title；本轮 SecurityModulePage.test 加 sec5-page DOM 唯一性锁（toHaveLength(1)，q 助手用 document 级查询的坑同修）。
+
+自证读数：①App.tsx 107/110/1605 + routes.ts 256/348/356（上列）②sec5-page 命中=1（新锁）；sec5 家族 40 个 testid（page/loading/empty/error/gap/retry/risk-* /mfa/keyring/session/secrets/planned-*/summary/refresh/copy/req…）③assert-ia html/react 两模式 exit 0，routes 51 / tabs 22 / tabsAll 23 / chatHosts 1 / modules 8 全不变 ④定向 security+audit+shell 16 files/195 passed exit 0；全量 129 files/1319 passed=基线绿。9122 停旧代次禁重建：活体 DOM 读数待下一代次复核，本轮以 jsdom 实测交付。

@@ -9,25 +9,25 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 728,
+    "textLen": 729,
     "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 刷新 可上岗 各项检查全部通过才计入 数据截至 —（北京",
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 26,
+  "distinctMainHeads": 27,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
     {
       "route": "#/access",
       "viewport": "1440",
-      "chars": 436,
+      "chars": 194,
       "hasMainEl": true
     },
     {
       "route": "#/access",
       "viewport": "375",
-      "chars": 410,
+      "chars": 194,
       "hasMainEl": true
     },
     {
@@ -141,7 +141,7 @@
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "1440",
-      "chars": 1034,
+      "chars": 128,
       "hasMainEl": true
     },
     {
@@ -153,7 +153,7 @@
     {
       "route": "#/capabilities?tab=models",
       "viewport": "1440",
-      "chars": 388,
+      "chars": 391,
       "hasMainEl": true
     },
     {
@@ -177,7 +177,7 @@
     {
       "route": "#/employees",
       "viewport": "1440",
-      "chars": 224,
+      "chars": 278,
       "hasMainEl": true
     },
     {
@@ -333,13 +333,13 @@
     {
       "route": "#/identity?tab=roles",
       "viewport": "1440",
-      "chars": 436,
+      "chars": 194,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=roles",
       "viewport": "375",
-      "chars": 410,
+      "chars": 194,
       "hasMainEl": true
     },
     {
@@ -393,13 +393,13 @@
     {
       "route": "#/knowledge?tab=ingest",
       "viewport": "1440",
-      "chars": 538,
+      "chars": 550,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=ingest",
       "viewport": "375",
-      "chars": 538,
+      "chars": 550,
       "hasMainEl": true
     },
     {
@@ -429,13 +429,13 @@
     {
       "route": "#/knowledge?tab=sources",
       "viewport": "1440",
-      "chars": 538,
+      "chars": 550,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=sources",
       "viewport": "375",
-      "chars": 538,
+      "chars": 550,
       "hasMainEl": true
     },
     {
@@ -465,13 +465,13 @@
     {
       "route": "#/overview",
       "viewport": "1440",
-      "chars": 483,
+      "chars": 729,
       "hasMainEl": true
     },
     {
       "route": "#/overview",
       "viewport": "375",
-      "chars": 1275,
+      "chars": 1276,
       "hasMainEl": true
     },
     {
@@ -489,7 +489,7 @@
     {
       "route": "#/sessions",
       "viewport": "1440",
-      "chars": 106,
+      "chars": 104,
       "hasMainEl": true
     },
     {
@@ -579,7 +579,7 @@
     {
       "route": "#/system?tab=version",
       "viewport": "375",
-      "chars": 415,
+      "chars": 406,
       "hasMainEl": true
     },
     {
@@ -631,13 +631,14 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 2,
+  "consoleErrorsObservedByShots": 3,
   "consoleErrorRoutesObservedByShots": [
-    "#/capabilities?tab=models",
-    "#/identity"
+    "#/employees",
+    "#/sessions",
+    "#/system?tab=version"
   ],
   "ceAuthority": "login-state",
-  "routesWithEnvOnlyConsoleErrors": 27,
+  "routesWithEnvOnlyConsoleErrors": 26,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
   "overflowing": [],
   "driver": {
@@ -645,11 +646,11 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "165e62a5",
+  "headHash": "6c9db598",
   "exitCode": 0,
-  "entry": "assets/index-DpFqr-g2.js",
-  "entrySha256": "1f439c11f8152303f22c6bedc311c9e0cf415cf4ae1ccde89b348572563dc8bc",
-  "entryBytes": 163539,
-  "servedEntryBefore": "index-DpFqr-g2.js",
-  "servedEntryAfter": "index-DpFqr-g2.js"
+  "entry": "assets/index-yycnIwR9.js",
+  "entrySha256": "eb925c5c8ae782e556403c0ffbd20d1cd1804811d65ddecacd2988a96c22aabb",
+  "entryBytes": 163770,
+  "servedEntryBefore": "index-yycnIwR9.js",
+  "servedEntryAfter": "index-yycnIwR9.js"
 }

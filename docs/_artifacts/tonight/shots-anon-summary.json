@@ -117,7 +117,7 @@
     {
       "route": "#/audit",
       "viewport": "1440",
-      "chars": 371,
+      "chars": 379,
       "hasMainEl": true
     },
     {
@@ -219,7 +219,7 @@
     {
       "route": "#/employees/:employeeId?zone=config",
       "viewport": "375",
-      "chars": 42,
+      "chars": 51,
       "hasMainEl": true
     },
     {
@@ -230,35 +230,35 @@
     },
     {
       "route": "#/employees/:employeeId?zone=evidence",
+      "viewport": "375",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=runs",
+      "viewport": "1440",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=runs",
+      "viewport": "375",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=tasks",
+      "viewport": "1440",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=tasks",
       "viewport": "375",
       "chars": 51,
       "hasMainEl": true
     },
     {
-      "route": "#/employees/:employeeId?zone=runs",
-      "viewport": "1440",
-      "chars": 42,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=runs",
-      "viewport": "375",
-      "chars": 42,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=tasks",
-      "viewport": "1440",
-      "chars": 42,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=tasks",
-      "viewport": "375",
-      "chars": 42,
-      "hasMainEl": true
-    },
-    {
       "route": "#/identity",
       "viewport": "1440",
       "chars": 163,
@@ -519,7 +519,7 @@
     {
       "route": "#/system?tab=defaults",
       "viewport": "375",
-      "chars": 121,
+      "chars": 118,
       "hasMainEl": true
     },
     {
@@ -631,9 +631,10 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 1,
+  "consoleErrorsObservedByShots": 2,
   "consoleErrorRoutesObservedByShots": [
-    "#/audit"
+    "#/audit",
+    "#/system?tab=defaults"
   ],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
@@ -644,12 +645,12 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "165e62a5",
+  "headHash": "6c9db598",
   "exitCode": 0,
-  "entry": "assets/index-DpFqr-g2.js",
-  "entrySha256": "1f439c11f8152303f22c6bedc311c9e0cf415cf4ae1ccde89b348572563dc8bc",
-  "entryBytes": 163539,
-  "servedEntryBefore": "index-DpFqr-g2.js",
-  "servedEntryAfter": "index-DpFqr-g2.js",
+  "entry": "assets/index-yycnIwR9.js",
+  "entrySha256": "eb925c5c8ae782e556403c0ffbd20d1cd1804811d65ddecacd2988a96c22aabb",
+  "entryBytes": 163770,
+  "servedEntryBefore": "index-yycnIwR9.js",
+  "servedEntryAfter": "index-yycnIwR9.js",
   "auxiliary": true
 }

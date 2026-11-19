@@ -669,3 +669,59 @@ export function usageTone(pct: number | null): UsageTone | null {
   if (pct >= 80) return 'warn';
   return 'ok';
 }
+
+// ---- MET6: 7×24 activity grid from run-stats --------------------------------
+
+export interface StatHeatCell {
+  dow: Weekday;
+  hour: number;
+  runs: number | null;
+  present: boolean;
+  level: 0 | 1 | 2 | 3 | 4;
+}
+
+export interface StatHeatGrid {
+  rows: { dow: Weekday; label: string; cells: StatHeatCell[] }[];
+  presentCells: number;
+  total: number | null;
+  max: number | null;
+}
+
+/**
+ * Fold hourly run buckets into a Beijing 7×24 grid. A bucket the endpoint
+ * returned with `runs: 0` is a real idle hour; an hour it never returned stays
+ * missing («—») and is never painted as zero.
+ */
+export function heatFromStats(stats: RunStats): StatHeatGrid {
+  const seen = new Map<string, number>();
+  for (const bucket of stats.buckets) {
+    if (!bucket.bucketStart || bucket.runs === null) continue;
+    const date = new Date(bucket.bucketStart);
+    if (Number.isNaN(date.getTime())) continue;
+    const parts = beijingParts(date);
+    const hour = Number(
+      new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Shanghai', hour: '2-digit', hourCycle: 'h23' }).format(date),
+    );
+    if (!Number.isFinite(hour)) continue;
+    seen.set(`${parts.dow}-${hour}`, bucket.runs);
+  }
+  const values = [...seen.values()].filter((value) => value > 0);
+  const max = values.length > 0 ? Math.max(...values) : null;
+  const rows = ([1, 2, 3, 4, 5, 6, 7] as const).map((dow) => ({
+    dow,
+    label: WEEKDAY_LABELS[dow - 1],
+    cells: Array.from({ length: 24 }, (_, hour) => {
+      const key = `${dow}-${hour}`;
+      const present = seen.has(key);
+      const runs = present ? seen.get(key) ?? null : null;
+      return { dow, hour, runs, present, level: levelOf(runs, max) };
+    }),
+  }));
+  const flat = rows.flatMap((row) => row.cells).filter((cell) => cell.present);
+  return {
+    rows,
+    presentCells: flat.length,
+    total: flat.length > 0 ? flat.reduce((sum, cell) => sum + (cell.runs ?? 0), 0) : null,
+    max,
+  };
+}

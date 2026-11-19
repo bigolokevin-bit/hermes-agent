@@ -398,3 +398,100 @@ $ npx vite build --outDir /private/tmp/knw8-dist --emptyOutDir
 边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
 manifest 数量 / package / lock / web/scripts / ops；未重启或重建 9122；无 force、无 amend、
 无 `--no-verify`、无 `git add -A`。
+
+---
+
+# KNW5 追加 R36：数据源接入面按源成行（2026-11-20 BJT）
+
+基线：porcelain 空 + `git merge-base --is-ancestor HEAD 165e62a5` 为真 → `git reset --hard 165e62a5`
+（快进保留历史；上一轮 `916776a1` 已在目标内，来路未改动 `modules/knowledge`）。
+
+## 一、探针（cookie 只在 curl 命令内拼 Header，值零回显；9122 只读、未重启、未重建）
+
+```text
+404  console.unknown_route   /agent-api/api/knowledge/ingest            rid 55916ccd9157  rows=0
+404  console.unknown_route   /agent-api/api/knowledge/ingest?limit=20   rid 80438d8c2bcb  rows=0
+404  knowledge.not_wired     /agent-api/api/knowledge/sources           rid 5c5702a285c9  rows=0
+404  knowledge.not_wired     /agent-api/api/knowledge/sources?limit=20  rid 8239ff522d5a  rows=0
+404  console.unknown_route   /agent-api/api/knowledge/tasks?limit=20    rid 1820343bcc86  rows=0
+404  console.unknown_route   /agent-api/api/knowledge/documents?limit=20 rid 7e680f528339 rows=0
+404  documents.read_not_wired /agent-api/api/documents?limit=50         rid 25a095c794b4  rows=0   ← 本轮新出现的专属码
+404  knowledge.not_wired     /agent-api/api/knowledge/spaces?limit=20   rid b855f850405b  rows=0
+404  knowledge.not_wired     /agent-api/api/knowledge/citations?limit=20 rid 8d555ba188a5 rows=0
+404  console.unknown_route   /agent-api/api/knowledge/search?limit=12   rid 0107ba390552  rows=0
+```
+
+接入面的指定读口仍是 BFF 点名的 `/api/knowledge/sources`（`knowledge.not_wired`）；
+`ingest|tasks|ingest/tasks|documents|datasets` 都是裸 unknown_route，不当契约。
+新观察：`/api/documents` 已从通用 unknown_route 换成本环境专属的
+`documents.read_not_wired`——两个读口的失败语义不同，页面正文因此各自点名自己那份
+（此前两条都念同一句通用文案）。
+
+## 二、按源成行（wired 模式真实 DOM 文本，375 与 1440 同读）
+
+```text
+列头：来源名称 / 类型 / 最近同步 / 状态 / 条目数     data-state=ready data-len=5  sw=375 vw=375
+row1 人事制度库 | SharePoint | 最近同步：2026-11-19 14:40 | 同步中 | 1,380 条 · 已处理 412 条
+row2 法务合同归档 | 对象存储 | 最近同步：2026-11-19 13:05 | 已完成 | 0 条           ← 上游真给 0
+row3 薪酬口径外部镜像 | 网页抓取 | 最近更新：2026-11-19 12:20 | 失败 凭据已过期，无法登录源站
+     条目数=— 上游没有给出这一条有多少条目                                          ← 时间来自更新字段，如实写
+row4 工单系统接口 | 接口同步 | 最近同步=— 上游没有给出时间 | 失败 上游记的原因偏技术，这里不原样上屏；悬停可看原文。
+     条目数=— 约 5.0 MB 上游没有给出这一条有多少条目                                ← 大小不冒充条目数
+row5 —（副行依次说明缺什么）| 待核实 上游没有给出同步状态 | — 上游没有给出这一条有多少条目
+```
+
+- 时间口径与空间面对齐：先看真正的同步/索引时间并写「最近同步」，只有更新/登记时间时
+  就据实写「最近更新 / 登记时间」，一律北京时区到分。
+- 状态词：待同步 / 同步中 / 失败 / 已完成（另有确实存在的 部分完成 / 已停用 / 已取消）；
+  没给或认不出来 → 待核实 + 原因。
+- 条目数只认“多少条”的字段；真 0 写「0 条」，缺就「—」+原因；代码里没有 `?? 0`，
+  屏面也没有样例行或「0 个源」。
+- 屏面零工程语言：路由、状态码、字段名、`ECONNREFUSED`/`retries` 均不出现
+  （类型列里的 SharePoint 是工具名，不是字段名；已逐词在浏览器文本里核对）。
+
+## 三、未接入正文（一份，点名自己的读口；403 与 404 逐字同体）
+
+```text
+404 /api/knowledge/sources  → head「数据源接入读口未接入」 title=GAP-03  retry+apply 齐  table=false  fixture=0
+403 /api/knowledge/sources  → 同上正文逐字一致，只有请求编号不同
+404 /api/documents          → head「文档登记读口未接入」 …不写「0 篇」
+```
+
+## 四、门禁复核（Chromium 无头；today / wired / denied × 1440 / 1280 / 375）
+
+```text
+深链 5/5：?tab=ingest、?tab=sources、根、?tab=retrieval、?tab=citations → 面板依次 ingest/ingest/spaces/retrieval/evidence
+选中态：模块内 [role="tab"][aria-selected=true] = knw5-tab-ingest 等，四 tab 4/4
+刷新/后退：reload 仍 knw5-tab-ingest；back 回到 knw5-tab-retrieval（符合历史语义）
+溢出：docSW == vw == bodySW（1440/1280/375），页容器 SW==CW，OVERFLOW 元素 0
+[data-fixture]：三模式全 0；写入口 0（检索面的关键词框是读侧）
+泄漏：GAP-03 / 403 / 404 / 500 / 路由 / not_wired / unknown_route / sourceId / itemCount /
+      totalItems / syncStatus / lastError / sizeBytes / ECONNREFUSED  全部 false
+页面报错：none
+```
+
+## 五、验证尾行（本轮）
+
+```text
+$ npx vitest run src/modules/knowledge
+ Test Files  2 passed (2)
+      Tests  29 passed (29)
+
+$ npx vitest run
+ Test Files  129 passed (129)
+      Tests  1327 passed (1327)
+
+$ npx eslint src/modules/knowledge
+（无输出，exit 0）
+
+$ npx tsc -b . --noEmit | grep modules/knowledge
+（无输出，本模块 0 错）
+
+$ npx vite build --outDir /tmp/knw9-dist --emptyOutDir
+✓ built in 3.87s   （产物只落 /tmp）
+```
+
+`pnpm build` 的全项目 typecheck 仍停在非本域文件，按指示未追、未改。
+
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package / lock / web/scripts / ops；未重启或重建 9122；无 force / amend / `--no-verify` / `git add -A`。

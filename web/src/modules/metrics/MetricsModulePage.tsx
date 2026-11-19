@@ -37,6 +37,7 @@ import {
   formatRate,
   formatUnitPrice,
   formatUsd,
+  heatFromStats,
   ledgerAsOf,
   ledgerTotal,
   readActivity,
@@ -57,6 +58,7 @@ import {
   type HeatCell,
   type LedgerRow,
   type PriceRow,
+  type StatHeatGrid,
   type RunStats,
   type UsageWindowId,
 } from './metrics';
@@ -107,6 +109,8 @@ interface BreakdownLine {
   share: number | null;
   asOf: string | null;
 }
+
+type HeatState = { kind: 'loading' } | UsageBlock<StatHeatGrid>;
 
 type BreakdownState =
   | { kind: 'loading' }
@@ -234,6 +238,8 @@ export function MetricsModulePage() {
   const [state, setState] = useState<PageState>({ kind: 'loading' });
   const [usage, setUsage] = useState<UsageState>({ kind: 'loading' });
   const [breakdown, setBreakdown] = useState<BreakdownState>({ kind: 'loading' });
+  const [heat, setHeat] = useState<HeatState>({ kind: 'loading' });
+  const [heatAt, setHeatAt] = useState<string>(new Date().toISOString());
   const [attempt, setAttempt] = useState(0);
   const [selected, setSelected] = useState<{ dow: number; hour: number } | null>(null);
 
@@ -513,6 +519,39 @@ export function MetricsModulePage() {
     };
   }, [attempt, forced, loadBreakdown, usageWindow.id, viewMode]);
 
+  const loadHeat = useCallback(async (signal: { live: boolean }) => {
+    setHeat({ kind: 'loading' });
+    const to = new Date();
+    const from = new Date(to.getTime() - 7 * 24 * 3_600_000);
+    try {
+      const parsed = readRunStats(
+        await fetchJsonStrict(
+          `/agent-api/api/run-stats?from=${encodeURIComponent(from.toISOString())}` +
+            `&to=${encodeURIComponent(to.toISOString())}&bucket=hour`,
+        ),
+      );
+      if (!signal.live) return;
+      if (parsed.kind === 'invalid') {
+        setHeat({ kind: 'unavailable', reason: parsed.reason, gap: null, requestId: null });
+        return;
+      }
+      setHeat({ kind: 'ready', value: heatFromStats(parsed.stats) });
+      setHeatAt(new Date().toISOString());
+    } catch (error) {
+      if (!signal.live) return;
+      setHeat({ kind: 'unavailable', ...blockFailure(error) });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (forced) return;
+    const signal = { live: true };
+    void loadHeat(signal);
+    return () => {
+      signal.live = false;
+    };
+  }, [attempt, forced, loadHeat]);
+
   const view: PageState = forced
     ? forced === 'loading'
       ? { kind: 'loading' }
@@ -593,6 +632,22 @@ export function MetricsModulePage() {
   const sparkPeak = spark && spark.max !== null && spark.max > 0 ? spark.max : 1;
   const monthSnapshot = usageReady && usageReady.month.kind === 'ready' ? usageReady.month.value : null;
   const budgetRows = monthSnapshot ? budgetLines(monthSnapshot.rows, monthSnapshot.names) : [];
+
+  const heatView: HeatState = forced
+    ? forced === 'loading'
+      ? { kind: 'loading' }
+      : forced === 'empty'
+        ? { kind: 'ready', value: { rows: [], presentCells: 0, total: null, max: null } }
+        : {
+            kind: 'unavailable',
+            reason:
+              forced === 'denied'
+                ? '这项数据当前读不到：可能还没有接入，也可能当前账号没有查看权限。'
+                : '这次没能读取这项数据，请稍后重试。',
+            gap: forced === 'denied' ? USAGE_GAP : null,
+            requestId: null,
+          }
+    : heat;
 
   const breakdownView: BreakdownState = forced
     ? forced === 'loading'
@@ -1130,6 +1185,99 @@ export function MetricsModulePage() {
                 </CardContent>
               </Card>
             )}
+          </div>
+
+          <div className="met6-heat" data-testid="met6-heat">
+            <div className="met6-cat-head">
+              <h3>7×24 活跃热力</h3>
+              <span className="met6-hint">最近 7 天 · 北京时间</span>
+            </div>
+            {heatView.kind === 'loading' ? (
+              <Card data-testid="met6-heat-loading">
+                <CardContent className="p-4">
+                  <div className="met5-skeleton h-32 w-full" />
+                </CardContent>
+              </Card>
+            ) : null}
+            {heatView.kind === 'unavailable' ? (
+              <Card data-testid="met6-heat-unavailable">
+                <CardContent className="space-y-2 p-4">
+                  <p className="font-medium">这份活跃热力暂时读不到</p>
+                  <p className="text-sm text-muted-foreground" title={heatView.gap ?? undefined}>
+                    {heatView.reason}
+                  </p>
+                  <RequestId id={heatView.requestId} />
+                  <Button size="sm" outlined onClick={() => setAttempt((value) => value + 1)} data-testid="met6-heat-retry">
+                    重试
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : null}
+            {heatView.kind === 'ready' && heatView.value.presentCells === 0 ? (
+              <Card data-testid="met6-heat-empty">
+                <CardContent className="space-y-2 p-4">
+                  <p className="font-medium">最近 7 天没有按小时的运行记录</p>
+                  <p className="text-sm text-muted-foreground">
+                    接口一个运行时段都没有返回，所以不画格子、不补 0，也不把空白当成「运行了 0 次」。
+                  </p>
+                  <Button size="sm" outlined onClick={() => setAttempt((value) => value + 1)} data-testid="met6-heat-retry">
+                    重试
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : null}
+            {heatView.kind === 'ready' && heatView.value.presentCells > 0 ? (
+              <>
+                <div className="met5-scroll">
+                  <div className="met5-gridwrap">
+                    <div className="met5-grid" data-testid="met6-heat-grid">
+                      <span className="met5-corner" aria-hidden="true" />
+                      {Array.from({ length: 24 }, (_, hour) => (
+                        <span key={hour} className="met5-hour" aria-hidden="true">
+                          {String(hour).padStart(2, '0')}
+                        </span>
+                      ))}
+                      {heatView.value.rows.map((row) => (
+                        <div className="met5-rowline" key={row.dow} role="row">
+                          <span className="met5-day" role="rowheader">{row.label}</span>
+                          {row.cells.map((cell) => {
+                            const tone = !cell.present ? 'is-missing' : cell.runs === 0 ? 'is-zero' : `is-l${cell.level}`;
+                            const hh = String(cell.hour).padStart(2, '0');
+                            const label = cell.present
+                              ? `${row.label} ${hh}:00–${hh}:59 · ${cell.runs} 次（北京时间）`
+                              : `${row.label} ${hh}:00–${hh}:59 · 接口未返回这一格（—）`;
+                            return (
+                              <button
+                                key={cell.hour}
+                                type="button"
+                                role="gridcell"
+                                className={`met5-cell ${tone}`}
+                                data-testid={`met6-heat-cell-${cell.dow}-${cell.hour}`}
+                                title={label}
+                                aria-label={label}
+                              >
+                                <span className="met5-cell-dot" aria-hidden="true" />
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <p className="met6-source" data-testid="met6-heat-source">
+                  来源：运行统计（每小时，最近 7 天） · 读取于 {formatBeijing(heatAt)}
+                  {' · 有记录 '}
+                  <span className="font-mono" data-testid="met6-heat-count">{heatView.value.presentCells}</span>
+                  {' 格 · 合计 '}
+                  <span className="font-mono" data-testid="met6-heat-total">{formatCount(heatView.value.total)}</span>
+                  {' 次'}
+                </p>
+                <p className="met6-hint">
+                  返回 0 的格子是「这一小时真的没跑」；接口没返回的格子标「—」，两者不混。左右滑动看 12–23 点。
+                </p>
+              </>
+            ) : null}
           </div>
         </section>
       )}

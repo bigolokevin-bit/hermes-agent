@@ -19,11 +19,6 @@ import { themedBody } from "@/lib/utils";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import { requestIdLine, type FailureCopy } from "./copy";
 
-interface Marked {
-  /** Set to the state name when the pane is showing the `?state=` repro. */
-  fixture?: string;
-}
-
 /** 请求编号 has its own honest word: the answer simply did not carry one. */
 export const NO_REQUEST_ID = "未提供";
 
@@ -140,7 +135,7 @@ export function TechnicalDisclosure({
   );
 }
 
-export function LoadingPanel({ testId = "audit-loading" }: Marked & { testId?: string }): ReactNode {
+export function LoadingPanel({ testId = "audit-loading" }: { testId?: string }): ReactNode {
   return (
     <div className="flex min-w-0 flex-col gap-2" data-testid={testId}>
       {[0, 1, 2, 3].map((row) => (
@@ -158,7 +153,7 @@ export function EmptyPanel({
   nextStep,
   onRefresh,
   testId = "audit-empty",
-}: Marked & { reason: string; nextStep: string; onRefresh: () => void; testId?: string }): ReactNode {
+}: { reason: string; nextStep: string; onRefresh: () => void; testId?: string }): ReactNode {
   return (
     <Card className="border-border bg-card" data-testid={testId}>
       <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
@@ -178,7 +173,7 @@ export function ErrorPanel({
   onRetry,
   title = "审计事件没能加载出来",
   testId = "audit-error",
-}: Marked & { failure: FailureCopy; onRetry: () => void; title?: string; testId?: string; fixture?: string }): ReactNode {
+}: { failure: FailureCopy; onRetry: () => void; title?: string; testId?: string }): ReactNode {
   return (
     <Card
       role="alert"
@@ -206,7 +201,7 @@ export function ErrorPanel({
 export function DeniedPanel({
   failure,
   testId = "audit-denied",
-}: Marked & { failure: FailureCopy | null; testId?: string }): ReactNode {
+}: { failure: FailureCopy | null; testId?: string }): ReactNode {
   return (
     <Card
       role="alert"
@@ -235,7 +230,7 @@ export function VerifyUnavailablePanel({
   failure,
   onRetry,
   testId = "aud03-unavailable",
-}: Marked & { failure: FailureCopy; onRetry: () => void; testId?: string }): ReactNode {
+}: { failure: FailureCopy; onRetry: () => void; testId?: string }): ReactNode {
   return (
     // No `title` here on purpose: the raw answer differs between a 403 and a
     // 404, and this body must not. The technical line is reachable collapsed.
