@@ -115,7 +115,7 @@ function KpiCard({
             </div>
           ) : null,
         )}
-        <Freshness items={stamps} testid={`${testid}-stamps`} />
+        <Freshness items={stamps} testid={`${testid}-stamp`} />
         {note ? <div className="ov5-note" title={noteTitle}>{note}</div> : null}
       </CardContent>
     </Card>
@@ -350,6 +350,15 @@ export function OverviewView({
           刷新
         </Button>
       </header>
+
+      <p className="ov5-sub" data-testid="ov6-asof">
+        {(() => {
+          const shown = [data.stats, data.todayStats, data.employees, data.approvalStats, data.budgetDay]
+            .map((state) => sourceStamp(state).shown)
+            .filter((x): x is string => Boolean(x) && x !== '时间未知');
+          return shown.length > 0 ? `数据截至 ${shown.sort()[0]}（北京时间）· 每卡来源见卡内标注` : '数据截至 —';
+        })()}
+      </p>
 
       {anyLoading ? <div className="ov5-skeleton" aria-busy="true" aria-label="总览加载中" data-testid="ov6-loading"><span /><span /><span /></div> : null}
 

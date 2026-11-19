@@ -66,6 +66,17 @@ describe("ConsoleNav (two tiers, 8 modules)", () => {
     // Default module links land on the canonical bare paths.
     expect(anchors[0]?.getAttribute("href")).toBe("/overview");
   });
+
+  it("R29: the sidebar carries a Chinese audit anchor into /audit", () => {
+    renderAt(<ConsoleNav />, "/overview");
+    const audit = Array.from(container.querySelectorAll("a")).find(
+      (a) => a.getAttribute("href") === "/audit",
+    );
+    expect(audit).toBeTruthy();
+    expect(audit?.textContent).toBe("审计");
+    // data-mod contract stays exactly the 8 IA modules
+    expect(container.querySelectorAll("a[data-mod]").length).toBe(8);
+  });
 });
 
 describe("ConsoleModulePage pane contract", () => {

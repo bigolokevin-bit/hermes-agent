@@ -289,7 +289,7 @@ describe("the ?state= repro legs", () => {
         await mount(ok(LEDGER_ANSWER), entry);
       }
       expect(urls()).toHaveLength(0);
-      expect(el("usg4-page")?.getAttribute("data-fixture")).toBe(state);
+      expect(el("usg4-page")).toBeTruthy(); // R31: repro carries on-screen copy, no data-fixture attr
       expect(text()).toContain(`?state=${state}`);
       expect(text()).toContain("GAP-07");
       expect((el("usg4-reload") as HTMLButtonElement | null)?.disabled).toBe(true);

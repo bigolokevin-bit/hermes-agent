@@ -342,7 +342,7 @@ describe("history whole-panel states", () => {
       );
     };
     await open("loading");
-    expect(document.querySelector("[data-fixture='loading']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='apr5-forced-note']")).toBeTruthy();
     expect(document.querySelector("[data-testid='apr5-loading']")).toBeTruthy();
     expect(api.fetchJSON).not.toHaveBeenCalled();
     await open("empty");
@@ -354,7 +354,7 @@ describe("history whole-panel states", () => {
     expect(document.querySelector("[data-testid='apr5-error']")).toBeTruthy();
     expect(document.querySelector("[data-testid='apr5-retry']")).toBeTruthy();
     await open("denied");
-    expect(document.querySelector("[data-fixture='denied']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='apr5-forced-note']")).toBeTruthy();
     expect(document.querySelector("[data-testid='apr5-denied']")).toBeTruthy();
     expect(document.querySelectorAll("[data-testid^='apr5-row-']")).toHaveLength(0);
   });

@@ -16,7 +16,7 @@
  * reason in `title`. They cannot run, and the page never reports a fake success.
  *
  * `?state=` is the shell's repro leg (`web/src/shell/fixtures.ts`); it paints a
- * state without issuing a request and marks the root with `data-fixture`.
+ * state without issuing a request.
  */
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
@@ -28,7 +28,6 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { fetchJSON } from "@/lib/api";
 import { themedBody } from "@/lib/utils";
 
-import { fixtureAttr } from "./fixture";
 import {
   FIELD_REASON,
   GAP,
@@ -77,7 +76,7 @@ const PENDING: Read = { phase: "loading", sections: [], asOf: null, failure: nul
 function forcedRead(state: Phase): Read {
   if (state === "ready") {
     // The repro surface shows a fully answered shape so the table itself can be
-    // reviewed; the root carries data-fixture and no request is made.
+    // reviewed; no request is made.
     return { phase: "ready", sections: unwiredSections(UNWIRED_REASON).map((row) => ({ ...row })), asOf: null, failure: null, probe: RETENTION_PATH };
   }
   if (state === "unwired") {
@@ -216,14 +215,13 @@ function PlannedActions(): ReactNode {
   );
 }
 
-function DeniedPanel({ requestId, fixture }: { requestId: string | null; fixture?: string }): ReactNode {
+function DeniedPanel({ requestId }: { requestId: string | null; fixture?: string }): ReactNode {
   return (
     <Card
       role="alert"
       aria-label="数据保留与清理不可用"
       className="border-border bg-card"
       data-testid="ret4-denied"
-      {...fixtureAttr(fixture)}
     >
       <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
         <ShieldAlert className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
@@ -241,7 +239,6 @@ function DeniedPanel({ requestId, fixture }: { requestId: string | null; fixture
 function ErrorPanel({
   failure,
   onRetry,
-  fixture,
 }: {
   failure: Failure | null;
   onRetry: () => void;
@@ -253,7 +250,6 @@ function ErrorPanel({
       title={failure?.technical ?? undefined}
       className="border-destructive/40 bg-destructive/5"
       data-testid="ret4-error"
-      {...fixtureAttr(fixture)}
     >
       <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-6">
         <div className="flex min-w-0 items-center gap-2 text-sm text-destructive">
@@ -346,7 +342,6 @@ export function RetentionModulePage(): ReactNode {
       className="flex min-w-0 flex-col gap-4"
       data-testid="ret4-page"
       data-page="retention"
-      {...fixtureAttr(forced ?? undefined)}
     >
       <header className="flex min-w-0 flex-col gap-1">
         <h1 className={`m-0 min-w-0 break-words text-xl font-semibold ${themedBody}`}>数据保留与清理</h1>
@@ -384,7 +379,7 @@ export function RetentionModulePage(): ReactNode {
       {read.phase === "error" ? <ErrorPanel failure={read.failure} onRetry={retry} fixture={forced ?? undefined} /> : null}
 
       {read.phase === "unwired" ? (
-        <Card className="border-border bg-card" data-testid="ret4-unwired-note" {...fixtureAttr(forced ?? undefined)}>
+        <Card className="border-border bg-card" data-testid="ret4-unwired-note">
           <CardContent className="flex min-w-0 items-start gap-2 px-4 py-3">
             <Gauge className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             <p className="m-0 max-w-prose break-words text-xs text-muted-foreground" title={`${GAP}：${UNWIRED_REASON}`}>

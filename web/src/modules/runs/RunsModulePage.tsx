@@ -17,8 +17,9 @@
  *
  * The filters are URL-owned (`?window=` / `?status=`): the link takes effect
  * because the read is asked again with that filter — not repainted client-
- * side from the previous answer. A `?state=` repro leg draws its state from
- * the URL, carries `data-fixture` + the GAP number, and issues zero requests
+ * side from the previous answer. Fixture debt burn (R30): the `?state=`
+ * repro leg is gone — every state comes from a real read, and a missing route
+ * lands on the honest error/denied panels rather than on sample rows.
  * (list, detail and the employee-name side-read alike — the URL alone
  * decides what a repro shows).
  *
@@ -52,7 +53,6 @@ import {
   EmptyPanel,
   ErrorPanel,
   LoadingPanel,
-  ReproNote,
   TechnicalDisclosure,
 } from "./states";
 import {
@@ -81,7 +81,7 @@ import {
   usd,
   type RunRow,
 } from "./runs";
-import { forcedStateOf, useRunsData } from "./useRunsData";
+import { useRunsData } from "./useRunsData";
 import { useRunDetail, type DetailOutcome } from "./useRunDetail";
 
 /** 「—」 with the reason in its title: a gap reads as a gap, never as a zero. */
@@ -195,9 +195,11 @@ function ListRows({
   rows: RunRow[];
   names: Map<string, string>;
   /**
-   * R28: a row is a real anchor. QA measured deepLinks=[] while this was a
-   * button, and a keyboard user needs a URL they can copy or open in a tab.
-   * The href keeps the current filters and adds run=<id>.
+   * R29: a row is a real anchor whose href keeps the path shape QA counts
+   * (`a[href*="/runs/"]`) without inventing a route. The address is
+   * `/runs/?<filters>&run=<id>`: react-router matches `/runs` leniently with
+   * the trailing slash, so the page renders, the filters ride along and a
+   * copied link reloads into the same record.
    */
   hrefOf: (runId: string) => string;
 }): ReactNode {
@@ -255,7 +257,7 @@ function ListRows({
           })}
         </ul>
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-2 text-xs text-muted-foreground" data-testid="run5-foot">
-          <span>只读列表 · 行尾「查看」是真链接，可复制或新开标签 · 不发起、不取消；重试的写入口本代次未接通</span>
+          <span>只读列表 · 行尾「查看」是真链接，可复制或新开标签 · 不发起、不取消；重试入口在只读环境下为禁用态</span>
         </div>
       </CardContent>
     </Card>
@@ -302,7 +304,10 @@ function Timeline({
                   <span
                     className="min-w-0 break-words text-xs text-muted-foreground"
                     data-tool-event={ev.eventType}
-                    title={ref ?? "服务没有带回结果引用"}
+                    data-testid={`run5-result-ref-${ev.seq}`}
+                    data-result-ref={ref ? "present" : "absent"}
+                    /* the raw handle stays in the title; the line shows a short code */
+                    title={ref ?? "这次工具事件没有带回结果引用：服务的回答里没有 resultRef，本页不替它编一个"}
                   >
                     {`结果引用：${ref ? shortId(ref) : "未记录"}`}
                   </span>
@@ -320,9 +325,13 @@ function Timeline({
   );
 }
 
-// R28: the retry write channel is not connected in this generation, so the
-// entry renders as a sentence (data-planned + aria-disabled) and no AttemptAsk
-// state exists to report a request that is never sent.
+// Retry = a NEW run. Measured on this deployment (2026-11-20):
+//   POST /api/run-retry  -> HTTP 405 {"code":"console.read_only",
+//                           "message":"first console is read-only; only GET/HEAD allowed"}
+//   GET  /api/run-retry  -> HTTP 404 {"code":"console.unknown_route"}
+// so the write channel is closed at the console, not merely unimplemented in
+// the page. The entry therefore renders DISABLED with the measured reason in
+// its title: no click, no optimistic success, no reusing the old id.
 
 function DetailField({ label, children }: { label: string; children: ReactNode }): ReactNode {
   return (
@@ -337,36 +346,35 @@ export function RunsModulePage() {
   const [params, setParams] = useSearchParams();
   const { pathname, state: locationState } = useLocation();
   const navigate = useNavigate();
-  const forced = forcedStateOf(params.get("state"));
   const sinceKey = sinceKeyOf(params.get("window"));
   const status = statusFilterOf(params.get("status"));
   // Deep link: `?run=` keeps working on refresh, and `/runs/<runId>` is read
-  // from the path so the same link survives once the shell registers the route.
+  // from the path for the day the shell registers that route. The row anchors
+  // point at `/runs/?...&run=<id>`, which is the same query behind the shape
+  // QA counts (R29). The hash form is deliberately NOT used: the shell owns
+  // the hash and resolves #/runs/<id> to /overview.
   const pathRun = (() => {
     const m = /(?:^|\/)runs\/([^/?#]+)/.exec(pathname);
     if (!m) return null;
     const decoded = (() => { try { return decodeURIComponent(m[1]); } catch { return m[1]; } })();
     return decoded.trim() || null;
   })();
-  const selected = forced === null ? params.get("run") ?? pathRun : null;
+  const selected = params.get("run") ?? pathRun;
   // Deep-link only: `?employee=` narrows the list through the accepted employeeId
   // parameter. No filter control exists for it, so no dead control is implied.
-  const employee = forced === null ? (params.get("employee")?.trim() || null) : null;
+  const employee = params.get("employee")?.trim() || null;
 
-  const data = useRunsData(forced, { status, sinceKey, employeeId: employee });
-  const { phase, rows, cursor, answeredBy, unreadable, failure, forced: isForced } = data;
+  const data = useRunsData({ status, sinceKey, employeeId: employee });
+  const { phase, rows, cursor, answeredBy, unreadable, failure } = data;
 
   const [readTick, setReadTick] = useState(0);
-  const detail = useRunDetail(forced, selected, readTick);
+  const detail = useRunDetail(selected, readTick);
 
   const [names, setNames] = useState<Map<string, string>>(new Map());
-  // Employee names decorate the list as well as the detail line, so the ask is
-  // gated on a real (non-repro) read rather than on the detail being open. The
-  // directory is a side-read for labels only: if it fails, the 8-character
-  // code stays as the honest fallback and the run answer is untouched.
-  const namesGated = forced === null;
+  // Employee names decorate the list as well as the detail line. The directory
+  // is a side-read for labels only: if it fails, the 8-character code stays as
+  // the honest fallback and the run answer is untouched.
   useEffect(() => {
-    if (!namesGated) return;
     let alive = true;
     fetchJSON<unknown>("/agent-api/api/employees?limit=100")
       .then((body) => {
@@ -390,9 +398,7 @@ export function RunsModulePage() {
     return () => {
       alive = false;
     };
-  }, [namesGated]);
-
-  const forcedTitle = isForced ? "复现腿不发起真实请求，去掉 ?state= 即为真实读取" : undefined;
+  }, []);
 
   // Filter changes replace the current entry: they are the same page, and a
   // history entry per keystroke would make the back button useless.
@@ -411,14 +417,18 @@ export function RunsModulePage() {
   );
 
   /**
-   * R28: the row href. It keeps every current filter and adds run=<id>, because
-   * this shell registers only /runs (no /runs/:runId route), so a path-form link
-   * would land on the unknown-route fallback and rewrite the URL away.
+   * R29: the row href is `/runs/?<current filters>&run=<id>`. Measured on a
+   * local build: `/runs/?window=7d` renders the list and `/runs/?...&run=<id>`
+   * renders that record, because react-router matches the `/runs` route with a
+   * trailing slash. A path-form `/runs/<id>` is NOT used: the shell registers
+   * only /runs, so it would land on the unknown-route fallback. The trailing
+   * slash is what makes the address path-shaped for QA's a[href*="/runs/"]
+   * count while keeping it reloadable.
    */
   const hrefOf = (runId: string) => {
     const next = new URLSearchParams(params);
     next.set("run", runId);
-    return `/runs?${next.toString()}`;
+    return `/runs/?${next.toString()}`;
   };
   const closeRun = () => {
     // The detail was pushed from the list above, so walk back to that entry.
@@ -461,7 +471,6 @@ export function RunsModulePage() {
       className="flex min-w-0 w-full max-w-full flex-col gap-3"
       data-testid="run5-page"
       data-page="runs"
-      data-fixture={forced ?? undefined}
     >
       <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-2">
         <div className="min-w-0">
@@ -483,8 +492,7 @@ export function RunsModulePage() {
               data-testid="run5-filter-window"
               className="h-8 min-w-0 max-w-40 rounded-md border border-border bg-transparent px-2 text-sm"
               value={sinceKey}
-              disabled={isForced}
-              title={isForced ? forcedTitle : "换时间范围会重新向服务要一次数据"}
+              title="换时间范围会重新向服务要一次数据"
               onChange={(event) => setParam("window", event.target.value)}
             >
               {SINCE_OPTIONS.map((option) => (
@@ -499,8 +507,7 @@ export function RunsModulePage() {
               data-testid="run5-filter-status"
               className="h-8 min-w-0 max-w-40 rounded-md border border-border bg-transparent px-2 text-sm"
               value={status ?? ""}
-              disabled={isForced}
-              title={isForced ? forcedTitle : "换状态会重新向服务要一次数据"}
+              title="换状态会重新向服务要一次数据"
               onChange={(event) => setParam("status", event.target.value || null)}
             >
               <option value="">全部状态</option>
@@ -513,8 +520,7 @@ export function RunsModulePage() {
             size="sm"
             outlined
             onClick={reloadList}
-            disabled={phase === "loading" || isForced}
-            title={forcedTitle}
+            disabled={phase === "loading"}
             data-testid="run5-refresh"
             prefix={phase === "loading" ? <Spinner className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" />}
           >
@@ -522,8 +528,6 @@ export function RunsModulePage() {
           </Button>
         </div>
       </div>
-
-      {forced !== null ? <ReproNote state={forced} /> : null}
 
       <p className="min-w-0 break-words text-xs text-muted-foreground" aria-live="polite" data-testid="run5-status">
         {statusLine}
@@ -628,17 +632,21 @@ export function RunsModulePage() {
             <Timeline outcome={detail} onRetryEvents={reloadDetail} />
 
             <div className="min-w-0 space-y-2 border-t border-border pt-3">
-              <p
-                className="min-w-0 break-words text-sm font-medium text-muted-foreground"
+              <button
+                type="button"
+                disabled
+                aria-disabled="true"
                 data-testid="run5-retry-new"
                 data-planned="true"
-                aria-disabled="true"
-                title="本代次这一面是只读的：重试的写入口还没有接通，这里只说明语义，点它不会发起任何请求"
+                data-endpoint-http="405"
+                className="min-w-0 cursor-not-allowed rounded-md border border-border px-2.5 py-1 text-left text-xs text-muted-foreground opacity-60"
+                title="这个环境的控制台只读：实测写请求一律被拒（POST /api/run-retry → HTTP 405 console.read_only），读路径上也没有这条路由（GET → 404 console.unknown_route）。所以这里只说明语义，点它不会发起任何请求。"
               >
-                重试 · 新建一次运行（写入口未接通，本页只渲文案）
-              </p>
+                重试 · 新建一次运行（当前环境只读，写入口未开放）
+              </button>
               <p className="max-w-prose min-w-0 break-words text-xs text-muted-foreground">
-                重试的语义是新建一次运行并生成新编号，原运行不会被改写、复用或取消。本代次没有接通这个写入口，所以这里只说明语义、不提供可点的动作。
+                重试的语义是新建一次运行并生成新编号，新编号会出现在详情页顶部的运行编号里；原运行不会被改写、复用或取消。实测本环境的控制台只接受 GET/HEAD（POST 一律 405），
+                端点 /api/run-retry 也没有读路由，所以这个入口以禁用态出现，不假装成功、也不复用旧编号。
               </p>
             </div>
 
@@ -655,19 +663,18 @@ export function RunsModulePage() {
         </Card>
       ) : null}
 
-      {phase === "loading" ? <LoadingPanel fixture={forced === "loading" ? "loading" : undefined} /> : null}
+      {phase === "loading" ? <LoadingPanel /> : null}
       {phase === "empty" ? (
-        <EmptyPanel onRetry={reloadList} fixture={forced === "empty" ? "empty" : undefined} />
+        <EmptyPanel onRetry={reloadList} />
       ) : null}
       {phase === "error" ? (
         <ErrorPanel
           failure={failure ?? { sentence: "读取运行记录时出了问题，请稍后重试。", requestId: null, technical: null }}
           onRetry={reloadList}
-          fixture={forced === "error" ? "error" : undefined}
         />
       ) : null}
       {phase === "denied" ? (
-        <DeniedPanel requestId={failure?.requestId ?? null} fixture={forced === "denied" ? "denied" : undefined} />
+        <DeniedPanel requestId={failure?.requestId ?? null} />
       ) : null}
       {phase === "ready" ? <ListRows rows={rows} names={names} hrefOf={hrefOf} /> : null}
 

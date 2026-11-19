@@ -9,14 +9,12 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
 import { Check, Copy, Inbox, RefreshCw, ShieldAlert, TriangleAlert } from "lucide-react";
-
 import { Badge } from "@nous-research/ui/ui/components/badge";
 import { Button } from "@nous-research/ui/ui/components/button";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { Spinner } from "@nous-research/ui/ui/components/spinner";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import { themedBody } from "@/lib/utils";
-
 import {
   CRON_GAP,
   fetchCronJobs,
@@ -27,13 +25,10 @@ import {
   type FailureCopy,
 } from "./cron";
 import "./cron.css";
-
 type Phase = "loading" | "ready" | "empty" | "error" | "denied" | "login";
 type Forced = "loading" | "empty" | "error" | "denied";
 const FORCED = new Set<string>(["loading", "empty", "error", "denied"]);
-
 const STATUS_LABEL = { enabled: "启用", disabled: "停用", unknown: "待核实" } as const;
-
 function RequestId({ failure }: { failure: FailureCopy | null }): ReactNode {
   const [copied, setCopied] = useState<"idle" | "done" | "failed">("idle");
   const id = failure?.requestId ?? null;
@@ -62,7 +57,6 @@ function RequestId({ failure }: { failure: FailureCopy | null }): ReactNode {
     </span>
   );
 }
-
 function JobRow({ row }: { row: CronRow }): ReactNode {
   const dimmed = row.status !== "enabled";
   return (
@@ -107,7 +101,6 @@ function JobRow({ row }: { row: CronRow }): ReactNode {
     </div>
   );
 }
-
 export function CronModulePage(): ReactNode {
   const [params] = useSearchParams();
   const forcedRaw = params.get("state");
@@ -116,9 +109,7 @@ export function CronModulePage(): ReactNode {
   const [rows, setRows] = useState<CronRow[]>([]);
   const [failure, setFailure] = useState<FailureCopy | null>(null);
   const [attempt, setAttempt] = useState(0);
-
   const reload = useCallback(() => setAttempt((n) => n + 1), []);
-
   useEffect(() => {
     if (forced) {
       if (forced === "loading") setPhase("loading");
@@ -152,11 +143,10 @@ export function CronModulePage(): ReactNode {
       alive = false;
     };
   }, [attempt, forced]);
-
   const body = (() => {
     if (phase === "loading") {
       return (
-        <div className="flex min-w-0 flex-col gap-2" data-testid="cron5-loading" aria-busy="true" data-fixture={forced ?? undefined}>
+        <div className="flex min-w-0 flex-col gap-2" data-testid="cron5-loading" aria-busy="true">
           {[0, 1, 2].map((i) => (
             <div key={i} className="animate-pulse rounded-md border border-border bg-card px-4 py-4" aria-hidden>
               <div className="h-3 w-1/3 rounded-sm bg-muted" />
@@ -174,7 +164,6 @@ export function CronModulePage(): ReactNode {
           role="alert"
           className={denied ? "border-border bg-card" : "border-destructive/40 bg-destructive/5"}
           data-testid={denied ? "cron5-denied" : login ? "cron5-login" : "cron5-error"}
-          data-fixture={forced ?? undefined}
           title={denied ? CRON_GAP : failure?.technical ?? undefined}
         >
           <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-6">
@@ -206,7 +195,7 @@ export function CronModulePage(): ReactNode {
     }
     if (phase === "empty") {
       return (
-        <Card className="border-border bg-card" data-testid="cron5-empty" data-fixture={forced ?? undefined}>
+        <Card className="border-border bg-card" data-testid="cron5-empty">
           <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
             <Inbox className="h-6 w-6 text-muted-foreground" aria-hidden />
             <p className={`min-w-0 break-words text-sm ${themedBody}`}>服务已响应，没有定时任务</p>
@@ -228,13 +217,11 @@ export function CronModulePage(): ReactNode {
       </Card>
     );
   })();
-
   return (
     <div
       className="cron5-page flex min-w-0 w-full max-w-full flex-col gap-3"
       data-testid="cron5-page"
       data-page="cron"
-      data-fixture={forced ?? undefined}
     >
       <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-2">
         <div className="min-w-0">
@@ -254,13 +241,11 @@ export function CronModulePage(): ReactNode {
           重新读取
         </Button>
       </div>
-
       {forced ? (
         <p className="min-w-0 break-words text-xs text-warning" data-testid="cron5-forced-note" title={CRON_GAP}>
           {`这是用 ?state=${forced} 复现出来的状态，不是服务此刻的回答。`}
         </p>
       ) : null}
-
       <p className="min-w-0 break-words text-xs text-muted-foreground" aria-live="polite" data-testid="cron5-status-line">
         {phase === "loading"
           ? "正在读取定时任务…"
@@ -272,10 +257,8 @@ export function CronModulePage(): ReactNode {
                 ? "这一面当前看不到内容"
                 : "这次读取没有成功"}
       </p>
-
       {body}
     </div>
   );
 }
-
 export default CronModulePage;

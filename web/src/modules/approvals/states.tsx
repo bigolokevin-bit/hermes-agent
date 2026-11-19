@@ -7,7 +7,7 @@
  * a retry, and a 「详情」 disclosure that
  * is the only place raw technical lines appear.
  *
- * `data-fixture` marks a state that came from the shell's `?state=` repro, so a
+ * fixture attributes were retired (R29 fixture-debt burn); `?state=` repros stay marked by the on-screen note's `?state=` repro, so a
  * reviewer can tell it apart from an answer the service actually gave.
  */
 import { useState, type ReactNode } from "react";
@@ -20,13 +20,9 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { themedBody } from "@/lib/utils";
 import { type FailureCopy } from "./copy";
 
-interface Marked {
-  /** Set to the state name when the pane is showing the `?state=` repro. */
-  fixture?: string;
-}
-
-const fixtureAttr = (fixture: string | undefined): { "data-fixture"?: string } =>
-  fixture ? { "data-fixture": fixture } : {};
+// R29 fixture-debt burn: the `?state=` repro is marked by the on-screen
+// apr5-forced-note text; panels no longer carry a fixture attribute.
+type Marked = Record<string, never>;
 
 /**
  * The request-id line, with a copy control that writes the SAME string that is
@@ -151,9 +147,9 @@ export function DetailsDisclosure({
   );
 }
 
-export function LoadingPanel({ testId = "apr5-loading", fixture }: Marked & { testId?: string }): ReactNode {
+export function LoadingPanel({ testId = "apr5-loading" }: Marked & { testId?: string }): ReactNode {
   return (
-    <div className="flex min-w-0 flex-col gap-2" data-testid={testId} {...fixtureAttr(fixture)}>
+    <div className="flex min-w-0 flex-col gap-2" data-testid={testId} >
       {[0, 1, 2, 3].map((row) => (
         <div key={row} className="animate-pulse rounded-md border border-border bg-card px-4 py-4" aria-hidden="true">
           <div className="h-3 w-1/2 rounded-sm bg-muted" />
@@ -169,10 +165,9 @@ export function EmptyPanel({
   nextStep,
   onRefresh,
   testId = "apr5-empty",
-  fixture,
 }: Marked & { reason: string; nextStep: string; onRefresh: () => void; testId?: string }): ReactNode {
   return (
-    <Card className="border-border bg-card" data-testid={testId} {...fixtureAttr(fixture)}>
+    <Card className="border-border bg-card" data-testid={testId} >
       <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
         <Inbox className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
         <p className={`min-w-0 break-words text-sm ${themedBody}`}>{reason}</p>
@@ -192,7 +187,6 @@ export function ErrorPanel({
   title = "审批申请没能加载出来",
   testId = "apr5-error",
   retryTestId,
-  fixture,
 }: Marked & { failure: FailureCopy; onRetry: () => void; title?: string; testId?: string; retryTestId?: string }): ReactNode {
   return (
     <Card
@@ -200,7 +194,7 @@ export function ErrorPanel({
       title={failure.technical ?? undefined}
       className="border-destructive/40 bg-destructive/5"
       data-testid={testId}
-      {...fixtureAttr(fixture)}
+      
     >
       <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-6">
         <div className="flex min-w-0 items-center gap-2 text-sm text-destructive">
@@ -219,14 +213,14 @@ export function ErrorPanel({
 }
 
 /** 403 and 404 both land here, and they read exactly the same. */
-export function DeniedPanel({ failure, fixture }: Marked & { failure: FailureCopy | null }): ReactNode {
+export function DeniedPanel({ failure }: Marked & { failure: FailureCopy | null }): ReactNode {
   return (
     <Card
       role="alert"
       aria-label="审批申请不可用"
       className="border-border bg-card"
       data-testid="apr5-denied"
-      {...fixtureAttr(fixture)}
+      
     >
       <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
         <ShieldAlert className="h-6 w-6 text-muted-foreground" aria-hidden="true" />

@@ -21,7 +21,7 @@
  * parameter of the next request (asserted in usage.test.ts and the page test).
  * Raw ids, status tokens, ISO instants and HTTP codes live in `title` and the
  * collapsed 「技术详情」 only. `?state=` repro legs fetch nothing and carry
- * `data-fixture` plus the GAP number they belong to (GAP-07); every control
+ * the GAP number they belong to (GAP-07) in on-screen copy; every control
  * on a repro leg is disabled with its reason, never a dead click.
  */
 import { useState, type ReactNode } from "react";
@@ -94,9 +94,8 @@ function MoneyText({ cell, testId, besideReason }: { cell: MoneyCell; testId: st
   );
 }
 
-function fixtureAttr(fixture: string | undefined): { "data-fixture"?: string } {
-  return fixture ? { "data-fixture": fixture } : {};
-}
+// R31 fixture-debt burn: `?state=` repros carry no fixture attribute;
+// the on-screen copy states they are a repro, not a service answer.
 
 /** What a repro panel says so nobody reads it as a service answer. */
 function ReproNote({ state }: { state: string }): ReactNode {
@@ -174,9 +173,9 @@ function TechnicalDisclosure({ lines, testId }: { lines: string[]; testId: strin
   );
 }
 
-function LoadingPanel({ fixture }: { fixture?: string }): ReactNode {
+function LoadingPanel(): ReactNode {
   return (
-    <div className="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-4" data-testid="usg4-loading" aria-busy="true" {...fixtureAttr(fixture)}>
+    <div className="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-4" data-testid="usg4-loading" aria-busy="true">
       {Array.from({ length: 4 }).map((_, index) => (
         <Card key={index}>
           <CardContent className="h-24 animate-pulse p-4" aria-hidden="true" />
@@ -196,7 +195,7 @@ function EmptyPanel({
   fixture?: string;
 }): ReactNode {
   return (
-    <Card data-testid="usg4-empty" {...fixtureAttr(fixture)}>
+    <Card data-testid="usg4-empty">
       <CardContent className="flex min-w-0 flex-col items-start gap-2 p-6">
         <div className="flex min-w-0 items-center gap-2">
           <Inbox className="h-5 w-5 shrink-0 text-white/70" aria-hidden="true" />
@@ -233,7 +232,7 @@ function ErrorPanel({
   fixture?: string;
 }): ReactNode {
   return (
-    <Card role="alert" title={failure.technical ?? undefined} data-testid="usg4-error" {...fixtureAttr(fixture)}>
+    <Card role="alert" title={failure.technical ?? undefined} data-testid="usg4-error">
       <CardContent className="flex min-w-0 flex-col items-start gap-2 p-6">
         <div className="flex min-w-0 items-center gap-2 text-sm text-white/85">
           <TriangleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -263,9 +262,9 @@ function ErrorPanel({
  * the request id only, so it cannot repeat anything the two answers differ on.
  * No data row is ever drawn above it.
  */
-function DeniedPanel({ requestId, fixture }: { requestId: string | null; fixture?: string }): ReactNode {
+function DeniedPanel({ requestId }: { requestId: string | null }): ReactNode {
   return (
-    <Card role="alert" aria-label="用量与成本不可见" data-testid="usg4-denied" {...fixtureAttr(fixture)}>
+    <Card role="alert" aria-label="用量与成本不可见" data-testid="usg4-denied">
       <CardContent className="flex min-w-0 flex-col items-center gap-2 p-10 text-center">
         <ShieldAlert className="h-6 w-6 text-white/70" aria-hidden="true" />
         <p className="min-w-0 break-words text-sm">暂时看不到用量与成本</p>
@@ -324,7 +323,7 @@ export function UsagePage() {
   );
 
   const readyView = (): ReactNode => {
-    if (!read) return <LoadingPanel fixture={fixture} />;
+    if (!read) return <LoadingPanel />;
     const cost = read.cost;
 
     return (
@@ -499,15 +498,15 @@ export function UsagePage() {
   };
 
   const body = (): ReactNode => {
-    if (phase === "loading") return <LoadingPanel fixture={fixture} />;
-    if (phase === "denied") return <DeniedPanel requestId={failure?.requestId ?? null} fixture={fixture} />;
+    if (phase === "loading") return <LoadingPanel />;
+    if (phase === "denied") return <DeniedPanel requestId={failure?.requestId ?? null} />;
     if (phase === "error" && failure) return <ErrorPanel failure={failure} onRetry={reload} fixture={fixture} />;
     if (phase === "empty") return <EmptyPanel onRetry={reload} windowName={windowLabel(windowKey)} fixture={fixture} />;
     return readyView();
   };
 
   return (
-    <div className="min-w-0 space-y-4 p-4 md:p-6" data-testid="usg4-page" {...fixtureAttr(fixture)}>
+    <div className="min-w-0 space-y-4 p-4 md:p-6" data-testid="usg4-page">
       {header}
       {forced ? <ReproNote state={forced} /> : null}
       {body()}

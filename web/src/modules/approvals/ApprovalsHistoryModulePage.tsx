@@ -122,10 +122,10 @@ export function ApprovalsHistoryModulePage(): ReactNode {
       );
     }
     if (detail.phase === "loading") {
-      return <LoadingPanel testId="apr5-detail-loading" fixture={detail.forced ? "loading" : undefined} />;
+      return <LoadingPanel testId="apr5-detail-loading" />;
     }
     if (detail.phase === "denied") {
-      return <DeniedPanel failure={detail.failure} fixture={detail.forced ? "denied" : undefined} />;
+      return <DeniedPanel failure={detail.failure} />;
     }
     if (detail.phase === "error" || !detail.detail) {
       return (
@@ -134,7 +134,6 @@ export function ApprovalsHistoryModulePage(): ReactNode {
           onRetry={detail.reload}
           title="这条记录没能加载出来"
           testId="apr5-detail-error"
-          fixture={detail.forced ? "error" : undefined}
         />
       );
     }
@@ -217,12 +216,12 @@ export function ApprovalsHistoryModulePage(): ReactNode {
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
         <section className="flex min-w-0 flex-col gap-2" data-testid="apr5-list" aria-label="历史决策列表">
-          {list.phase === "loading" ? <LoadingPanel fixture={list.forced ? "loading" : undefined} /> : null}
+          {list.phase === "loading" ? <LoadingPanel /> : null}
 
-          {list.phase === "denied" ? <DeniedPanel failure={list.failure} fixture={list.forced ? "denied" : undefined} /> : null}
+          {list.phase === "denied" ? <DeniedPanel failure={list.failure} /> : null}
 
           {list.phase === "error" && list.failure ? (
-            <ErrorPanel failure={list.failure} onRetry={list.reload} retryTestId="apr5-retry" fixture={list.forced ? "error" : undefined} />
+            <ErrorPanel failure={list.failure} onRetry={list.reload} retryTestId="apr5-retry" />
           ) : null}
 
           {list.phase === "empty" ? (
@@ -231,7 +230,6 @@ export function ApprovalsHistoryModulePage(): ReactNode {
               nextStep="换一个结果看看，或点「全部」把所有历史决策列出来。"
               onRefresh={list.reload}
               testId="apr5-empty-history"
-              fixture={list.forced ? "empty" : undefined}
             />
           ) : null}
 

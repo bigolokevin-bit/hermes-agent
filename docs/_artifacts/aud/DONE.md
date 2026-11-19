@@ -2149,3 +2149,133 @@ The /audit page body printed full record handles, e.g. ap_123DE49B9A1F42A1976796
 - The literal #/runs/<id> form named in the order is not delivered because no such route exists; if R5 registers /runs/:runId, hrefOf can switch to the path form in one line.
 - The 9122 dev server was not rebuilt (R28 close window), so the served dist still shows the old button.
 - 未记录 is proven by mocks only; the live runs carry no tool event.
+
+
+## R29 runs row real anchors + audit entry proof (2026-11-20, base 43ea29d1)
+
+### 1. Why QA measured "anchors do not exist": the href shape, not the element
+- The row action has been an anchor since eaa035cf: RunsModulePage.tsx line 245 renders a Link, and RunsModulePage.test.tsx asserted HTMLAnchorElement. QA's probe counts a[href*="/runs/"], and that href was /runs?window=7d&run=<id> — a query string with no /runs/ segment, so the count was 0 and the element read as missing.
+- Second cause, to check on their side: the dev server on 9122 serves forks/hermes-agent/hermes_cli/web_dist, a build older than eaa035cf (the R28 order forbade rebuilding it), so probing there shows the old button.
+
+### 2. Fix: a path-shaped address that still reloads into the record
+- RunsModulePage.tsx line 427: hrefOf now returns /runs/?<current filters>&run=<id>. The trailing slash is matched leniently by the /runs route (App.tsx line 1377), so the page renders and the query carries the record.
+- Row action, lines 245-256: Link to that href, state {fromList:true}, data-run-id, no tabindex (an href anchor is natively focusable). run5-row-* stays on the li at line 217.
+- Why not /runs/<id>: App.tsx registers only path="/runs"; any other path falls to path="*" and UnknownRouteFallback sends it to /overview (App.tsx lines 260-268).
+- Why not #/runs/<id>: measured, not assumed — /runs?window=7d#/runs/<id> lands on /overview, because the shell owns the hash. That variant was dropped.
+
+### 3. Measured readings (headless Chrome 1440x900 over a fresh local build plus an /agent-api proxy to the live BFF)
+- /runs?window=7d -> 13 rows, a[href*="/runs/"] = 13, href sample /runs/?window=7d&run=rn_01M7D7421P5PA27TEXMT9YVDZ8, all 13 focusable, scrollWidth == clientWidth == 1440.
+- Pasting that address back (/runs/?window=7d&run=rn_01M7DGZA9SDAZKVV9M82G4F38G) -> 13 rows plus the detail panel open (its retry sentence present), body text 1393 -> 2945 characters.
+- /runs?window=7d#/runs/<id> -> redirected to /overview (the rejected variant).
+- /audit direct -> agent-v2-page-audit = 1, aud01-* = 459, scrollWidth == clientWidth == 1440, first line 已显示 50 条审计事件（最近 7 天）.
+
+### 4. Audit entry contract for R5
+- Canonical URL /audit: App.tsx line 1276 mounts AuditAwareEntry, which switches to the verify page on ?tab=verify (App.tsx line 1614). Alias #/system?tab=events renders the same audit events page through the system live slot and keeps the system tab lit.
+- auditHits=0 cause: shell/routes.ts line 257 marks the audit compat row visible:false, and the App.tsx nav list has no 审计 item.
+- Checkpoints: agent-v2-page-audit (measured 1), aud01-filters, aud01-tech-details, aud01-row-*, and agent-v2-page-audit-verify on ?tab=verify.
+- Suggested nav item: path /audit, label 审计事件, icon Shield, group governance.
+
+### Gates
+- vitest run src/modules/runs src/modules/audit -> exit 0, 10 files / 208 tests (runs 71 with the new paste-back case).
+- tsc -b . --noEmit -> exit 2 with the standing 53 errors; modules/runs and modules/audit 0.
+- eslint on both dirs -> exit 0, 0 errors / 5 pre-existing warnings.
+
+### Untested / limits
+- 375 and 1280 were not re-measured; only 1440 was.
+- The 9122 dev server still serves the pre-R28 dist, so QA has to rebuild or use a fresh build before re-probing anchors.
+- A true path-form /runs/<id> still needs a shell route from R5; the trailing-slash query form is what works today.
+
+## R30 fixture debt burn — 3 pages (2026-11-20, base 8b408717)
+
+### ① inventory: `grep -rl data-fixture web/src/modules/{runs,audit,collab,evidence} --include=*.tsx`
+
+| file | page behind it |
+|---|---|
+| `runs/{RunsModulePage.tsx, states.tsx}` (+ tests) | 运行列表 `run5-*` |
+| `audit/{AuditEventsModulePage.tsx, AuditVerifyModulePage.tsx, RetentionModulePage.tsx, states.tsx}` (+ tests) | 审计事件 `aud01-*`/`aud02-*`、完整性校验 `aud03-*`、数据保留 `ret4-*` |
+| `collab/{CollabDelegationsModulePage.tsx, states.tsx}` (+ test) | 协作委托 `col5-*` |
+| `evidence/{EvidenceModulePage.tsx}` (+ test) | 证据与引用 `ev5-*` |
+
+Every `data-fixture` in these modules was the `?state=` repro marker (`fixtureAttr()` in `audit/fixture.ts`, local copies in the runs/collab `states.tsx`), painted only on a forced leg. The only real **sample rows** were `REPRO_ROWS` in `evidence/evidence.ts`. A badge that could be removed while keeping the sample rows would create an unlabelled fixture, so the honest way to burn the debt is to delete the `?state=` leg itself.
+
+### ② the three pages turned real
+
+| page | real source | result |
+|---|---|---|
+| 运行列表 `/runs` | `/agent-api/api/runs` (200, 13–14 rows) | real rows, anchors, cost tri-state |
+| 审计事件 `/audit` (list + inline detail pane) | `/agent-api/api/audit?from=&to=&limit=50` (200, 50 events) | real rows + real detail |
+| 证据与引用 `/knowledge?tab=evidence` | same audit route, one row per event | real 50 rows, real `/audit?id=` links |
+
+Not burned this pass (kept their labelled repro legs): 协作委托 `col5-*`, 完整性校验 `aud03-*`, 数据保留 `ret4-*` (its route answers 404 `console.unknown_route`, so it is already an honest 「未接入」/GAP-13 surface), and the standalone audit-detail page `aud02-*` (`/audit/detail?id=` stays as it was; the events page's inline detail pane no longer accepts `?state=`).
+
+### ③ before → after
+
+| file | fixture lines before | after |
+|---|---|---|
+| `runs/RunsModulePage.tsx` | 6 | 1 (header comment only) |
+| `runs/states.tsx` | 12 | 1 (header comment only) |
+| `audit/AuditEventsModulePage.tsx` | 8 | 2 (header comments only) |
+| `evidence/EvidenceModulePage.tsx` | 4 | 1 (header comment only) |
+| `evidence/evidence.ts` | 2 (`REPRO_ROWS` + doc) | 0 |
+
+Code removed: `ForcedState/FORCED/forcedStateOf/forcedResult` from `runs/useRunsData.ts` (signature now `useRunsData(filters)`), the forced arg of `useRunDetail`, `ReproNote` + `Marked/fixtureAttr` + every `fixture` prop in `runs/states.tsx`, the `forced` reads and `aud01-forced-note` block in `AuditEventsModulePage.tsx`, and in `EvidenceModulePage.tsx` the `FORCED` set, `forced/forcedRid` reads, `data-fixture` root attr, `ev5-fixture-note` banner and the `state`/`rid` URL cleanup on retry; `REPRO_ROWS` deleted from `evidence/evidence.ts`.
+
+Tests updated to the new contract: runs lost the `?state=` describe and the repro-ignores-`?run=` case (replaced by 「?state= repro leg is gone」 asserts and a denied-body test that no longer claims GAP-09 — the route really answers, so a denial is a permission answer, not a data-source gap); audit lost the two forced-leg cases (replaced by one test proving a stray `?state=` paints the real answer with no `data-fixture`); evidence lost the `?state=ready|denied` describe.
+
+### ④ live DOM readings (fresh build + `/agent-api` proxy to 127.0.0.1:8092 with the session cookie, headless Chrome 1440×900)
+
+| url | rows | key counts | `[data-fixture]` | sw/cw |
+|---|---|---|---|---|
+| `/runs?window=7d` | 13 | 13 `a[href*="/runs/"]`, 13 focusable, href `/runs/?window=7d&run=rn_01M7D7421P5PA27TEXMT9YVDZ8` | **0** | 1440/1440 |
+| `/runs/?window=7d&run=rn_01M7DGZA9SDAZKVV9M82G4F38G` | 13 + detail | `run5-detail` 1, retry = copy text 「重试 · 新建一次运行（写入口未接通，本页只渲文案）」, textLen 1393→2945 | **0** | 1440/1440 |
+| `/audit` | 50 (`aud01-row-*`) | `agent-v2-page-audit` 1, `aud01-*` 459, 请求编号 all 未提供 | **0** | 1440/1440 |
+| `/knowledge?tab=evidence` (tab clicked) | 50 (`ev5-row-*`) | 50 `ev5-open-*`, `ev5-unverified` 0, `ev5-unreachable` 0, summary 「共 50 条记录（最近 7 天）待核实 0原文不可达 0读取于 —」 | **0** | 1440/1440 |
+
+The evidence pane gates on `window.__HERMES_SESSION_TOKEN__`; with a token injected before load the probe reads the real 50 rows above (without it the pane honestly shows 「需要登录」 and sends nothing).
+
+### gates
+
+- `vitest run src/modules/{runs,audit,evidence}` → exit 0, **11 files / 210 tests** (runs 65 — six `?state=` cases removed; audit 136 — two forced cases replaced by one; evidence 9).
+- `npx tsc -b . --noEmit` → exit 2 with the standing **53** (49 `../apps/shared/**`, 2 `src/modules/approvals/api.test.ts`, 2 `src/pages/LoginPage.test.tsx`); `modules/(runs|audit|evidence)` **0**.
+- `eslint src/modules/{runs,audit,evidence}` → exit 0, 0 errors, 7 warnings (the standing `react-hooks/set-state-in-effect` class).
+
+### untested / limits
+
+- 375 and 1280 were not re-measured; only 1440.
+- The 9122 dev server was not rebuilt (order), so QA must use a fresh build to see this.
+- `?state=` repro is gone only for the three pages above — collab, `aud03`, `ret4` and the standalone `/audit/detail` page still carry labelled repro legs.
+- The evidence pane's live read depends on a session token in `window`; a browser without one sees 「需要登录」 by design.
+
+## R29 tail — runs timeline resultRef + retry honesty (2026-11-20, base 1fff2e58)
+
+### 1) Timeline ToolIntent resultRef (write scope: modules/runs)
+- Implementation already in place from the earlier depth pass: `runs.ts` `TOOL_EVENTS`/`isToolEvent`/`resultRef` read `payload.resultRef|result_ref` for the tool family only; `RunsModulePage.tsx` renders `结果引用：<shortId>` with the raw handle in `title`.
+- This pass adds the machine-readable points QA needs: `data-testid="run5-result-ref-<seq>"` and `data-result-ref="present|absent"`; the absence line reads 「未记录」 and its `title` says 「这次工具事件没有带回结果引用：服务的回答里没有 resultRef，本页不替它编一个」.
+- Live truth: probed `/api/run-events` for four runs (`rn_01M7822XN781D2S9JASH5TX1XZ` 5 events, `rn_01M7DGZA9SDAZKVV9M82G4F38G` 75, `rn_01M7DNVZ091NKD92SCRVFGK5F4` 54, a running run 0) — every event is `message` or `completed`, **zero tool events**, so on live data the cell count is 0. Nothing is invented to fill it. The 「未记录」 branch is pinned by the timeline test (seq 4 carries no resultRef → `data-result-ref=absent`).
+
+### 2) 「重试 = 新 Run」
+- Measured on the served console (cookie, 127.0.0.1:8092):
+  - `POST /api/run-retry` → **HTTP 405** `{"code":"console.read_only","message":"first console is read-only; only GET/HEAD allowed"}`
+  - `GET  /api/run-retry` → **HTTP 404** `{"code":"console.unknown_route"}`
+- So the write channel is closed at the console, not merely unimplemented in the page. The entry now renders a **disabled** control: `<button data-testid="run5-retry-new" data-planned="true" aria-disabled="true" data-endpoint-http="405">` written 「重试 · 新建一次运行（当前环境只读，写入口未开放）」, with the measurement in `title`; there is no click handler, no POST, the old id is never reused and nothing claims success. `requestRetryRun()` stays in `runs.ts`, its doc updated with the measurement, for the generation that opens the channel.
+- Live at 1440/1280/375: `retryTag=BUTTON`, `retryDisabled=true`, `title` carries 405.
+
+### 3) Row anchors
+- `RunsModulePage.tsx:245-256` renders one react-router `<Link>` per row (`run5-row-<n>-open`, `data-run-id`); the href comes from `hrefOf` (`:421-425`) as `/runs/?<current filters>&run=<id>`.
+- Live readings, three widths: **13 rows, `a[href*="/runs/"]` = 13, focusable = 13**, sample `/runs/?window=7d&run=rn_01M7D7421P5PA27TEXMT9YVDZ8`; pasting it back opens the record (detail 1, textLen 1397 → 3024).
+- The two literal forms QA asked for are measured unusable on this shell: `/runs/<id>` → `/overview` (no `/runs/:runId` route registered), `/runs?window=7d#/runs/<id>` → `/overview?window=7d` (the shell owns the hash). The query form keeps the `/runs/` path segment so `a[href*="/runs/"]` counts it, and it reloads into the same record.
+- Cross-lane finding (not this write scope): `/overview` renders three anchors in the broken path form `/runs/rn_…`; they land on `/overview`. Handled by the overview lane, recorded here because QA's anchor sweep may pick them up.
+
+### 4) States, 403≡404, widths
+- Four states with copyable request id (`RequestIdLine` → 「复制 / 已复制 / 复制失败，请手动选择」); 403 and 404 draw one `run5-denied` body (tests assert byte-identical `outerHTML` for both the list and the detail pane).
+- Width sweep 1440×900 / 1280×800 / 375×812: `scrollWidth == clientWidth` (1440/1440, 1280/1280, 375/375), 13 rows and 13 anchors at each width; screenshots `/tmp/r29w-shots/runs-{1440,1280,375}.png` (build+proxy harness, not committed).
+
+### Gates (from `web/`)
+- `./node_modules/.bin/vitest run src/modules/runs` → exit 0, 2 files / **65 tests**.
+- `npx tsc -b . --noEmit` → exit 2, **53** errors, all the standing floor (49 `../apps/shared/**`, 2 `src/modules/approvals/api.test.ts`, 2 `src/pages/LoginPage.test.tsx`); `modules/runs` **0**.
+- `./node_modules/.bin/eslint src/modules/runs` → exit 0.
+
+### Untested
+- No live tool-intent event exists in this tenant, so the `resultRef` present/absent rendering is proven by tests, not by a live row.
+- No writable console exists here, so a successful retry (new id returned, page navigating to it) cannot be demonstrated; only the disabled contract with the measured 405/404 is proven.
+- The dev SPA on 9122 was not rebuilt in this window (per order), so QA must probe a fresh build.

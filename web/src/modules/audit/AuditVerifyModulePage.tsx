@@ -15,7 +15,6 @@
  *
  * The window bounds are ISO on the wire and never on the screen: the page
  * shows Beijing wall clock, labelled as such. `?state=` is the shell's QA repro
- * and stamps `data-fixture`.
  */
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
@@ -25,7 +24,6 @@ import { Button } from "@nous-research/ui/ui/components/button";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 
 import type { FailureCopy, VerifyFailure } from "./copy";
-import { fixtureAttr } from "./fixture";
 import { beijing } from "./model";
 import { ErrorPanel, LoadingPanel, VerifyUnavailablePanel } from "./states";
 import { VerifyResultBody } from "./views";
@@ -101,7 +99,7 @@ export function AuditVerifyModulePage(): ReactNode {
     }
     // The honest empty for this pane: nobody has asked, so nothing was checked.
     return (
-      <Card className="border-border bg-card" data-testid="aud03-idle" {...fixtureAttr(verify.forced ? "empty" : undefined)}>
+      <Card className="border-border bg-card" data-testid="aud03-idle">
         <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
           <ShieldQuestion className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
           <p className="min-w-0 break-words text-sm">还没有运行校验</p>

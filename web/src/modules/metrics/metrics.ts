@@ -205,3 +205,288 @@ export function windowRangeLabel(activity: Activity): string {
   if (!activity.from || !activity.to) return '—';
   return `${formatBeijing(activity.from)} — ${formatBeijing(activity.to)}`;
 }
+
+// ---- MET6: usage & cost -----------------------------------------------------
+//
+// Two read-only sources, kept apart on purpose:
+//   runs  → /api/run-stats  (runtime run ledger: counts and outcome rates)
+//   cost  → /api/budget-usage (policy budget ledger: the money that was
+//           actually charged per employee/period)
+// Money is never derived from run counts, tokens, prices or another window.
+// A ledger row that says 0 is a real `$0.00`; a period with no row is «—»,
+// never `$0.00` and never a filled-in zero.
+
+export const USAGE_GAP = 'GAP-MET6-01';
+
+/** Employee ids per budget-usage read; keeps the query string well under
+ *  proxy limits when a tenant has many employees. */
+export const LEDGER_CHUNK = 50;
+
+export interface RunTotals {
+  runs: number | null;
+  succeeded: number | null;
+  failed: number | null;
+  running: number | null;
+  sampleCount: number | null;
+  successRate: number | null;
+}
+
+export interface RunBucket {
+  bucketStart: string | null;
+  runs: number | null;
+}
+
+export interface RunStats {
+  from: string | null;
+  to: string | null;
+  buckets: RunBucket[];
+  totals: RunTotals;
+}
+
+export type ParsedRunStats = { kind: 'ok'; stats: RunStats } | { kind: 'invalid'; reason: string };
+
+function totalsOf(raw: Record<string, unknown>): RunTotals {
+  return {
+    runs: numberOrNull(raw.runs),
+    succeeded: numberOrNull(raw.succeeded),
+    failed: numberOrNull(raw.failed),
+    running: numberOrNull(raw.running),
+    sampleCount: numberOrNull(raw.sampleCount),
+    successRate: numberOrNull(raw.successRate),
+  };
+}
+
+/** Read the run-stats body. Absent numbers stay null; nothing is filled in. */
+export function readRunStats(payload: unknown): ParsedRunStats {
+  if (!isRecord(payload) || !isRecord(payload.totals)) {
+    return { kind: 'invalid', reason: '返回内容里没有运行统计。' };
+  }
+  const buckets: RunBucket[] = Array.isArray(payload.buckets)
+    ? payload.buckets
+        .filter(isRecord)
+        .map((raw) => ({ bucketStart: text(raw.bucketStart), runs: numberOrNull(raw.runs) }))
+    : [];
+  return {
+    kind: 'ok',
+    stats: {
+      from: text(payload.from),
+      to: text(payload.to),
+      buckets,
+      totals: totalsOf(payload.totals),
+    },
+  };
+}
+
+export interface LedgerRow {
+  employeeId: string | null;
+  period: string | null;
+  tokensUsed: number | null;
+  costUsd: number | null;
+  updatedAt: string | null;
+}
+
+export type ParsedLedger =
+  | { kind: 'ok'; rows: LedgerRow[]; missing: string[] }
+  | { kind: 'invalid'; reason: string };
+
+/** Read a budget-ledger query body. `items` absent is a malformed body, not
+ *  "no cost": an empty `items` array is the honest zero-row answer. */
+export function readLedger(payload: unknown): ParsedLedger {
+  if (!isRecord(payload) || !Array.isArray(payload.items)) {
+    return { kind: 'invalid', reason: '返回内容里没有账本行。' };
+  }
+  const rows: LedgerRow[] = payload.items.filter(isRecord).map((raw) => ({
+    employeeId: text(raw.employeeId),
+    period: text(raw.period),
+    tokensUsed: numberOrNull(raw.tokensUsed),
+    costUsd: numberOrNull(raw.costUsd),
+    updatedAt: text(raw.updatedAt),
+  }));
+  const missing = Array.isArray(payload.missingEmployeeIds)
+    ? payload.missingEmployeeIds.filter((id): id is string => typeof id === 'string')
+    : [];
+  return { kind: 'ok', rows, missing };
+}
+
+/** Sum of the ledger rows that carry a number. No rows → null (not 0). */
+export function ledgerTotal(rows: LedgerRow[]): number | null {
+  let sum = 0;
+  let priced = 0;
+  for (const row of rows) {
+    if (row.costUsd === null) continue;
+    sum += row.costUsd;
+    priced += 1;
+  }
+  return priced > 0 ? sum : null;
+}
+
+/** Latest ledger write time across rows — the honest "as of" for the money. */
+export function ledgerAsOf(rows: LedgerRow[]): string | null {
+  let latest: string | null = null;
+  for (const row of rows) {
+    if (!row.updatedAt) continue;
+    if (latest === null || row.updatedAt > latest) latest = row.updatedAt;
+  }
+  return latest;
+}
+
+/** USD with cents. A missing value is «—», never $0.00. */
+export function formatUsd(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) return '—';
+  return `$${value.toFixed(2)}`;
+}
+
+export function formatCount(value: number | null): string {
+  return value === null || !Number.isFinite(value) ? '—' : String(value);
+}
+
+/** 0.9967 → 99.7%; null → «—». Only formats a rate the server computed. */
+export function formatRate(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) return '—';
+  const pct = Math.round(value * 1000) / 10;
+  return `${pct}%`;
+}
+
+/** Beijing calendar day key, `YYYY-MM-DD`. */
+export function beijingDayKey(date: Date): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? '';
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
+
+/** Beijing 00:00 for a day key, as an ISO instant (UTC offset +08:00). */
+export function beijingDayStartIso(key: string): string {
+  return new Date(`${key}T00:00:00+08:00`).toISOString();
+}
+
+export function chunkIds(ids: string[], size = LEDGER_CHUNK): string[][] {
+  const step = Math.max(1, Math.floor(size));
+  const chunks: string[][] = [];
+  for (let index = 0; index < ids.length; index += step) chunks.push(ids.slice(index, index + step));
+  return chunks;
+}
+
+export interface SparkSlot {
+  hour: number;
+  runs: number | null;
+}
+
+export interface SparkGrid {
+  slots: SparkSlot[];
+  max: number | null;
+  observed: number;
+}
+
+/**
+ * Place returned hourly buckets onto the 24-slot window that starts at `from`.
+ * Hours the endpoint did not return stay null — they are drawn as empty slots,
+ * never as zero-height bars that would claim "this hour ran 0 times".
+ */
+export function sparkSlots(stats: RunStats, from: string, to: string, count = 24): SparkGrid {
+  const start = new Date(from).getTime();
+  const end = new Date(to).getTime();
+  const span = Number.isFinite(start) && Number.isFinite(end) ? Math.max(1, end - start) : 86_400_000;
+  const width = Math.max(1, Math.floor(count));
+  const slots: SparkSlot[] = Array.from({ length: width }, (_, hour) => ({ hour, runs: null }));
+  let max: number | null = null;
+  let observed = 0;
+  for (const bucket of stats.buckets) {
+    if (!bucket.bucketStart || bucket.runs === null) continue;
+    const at = new Date(bucket.bucketStart).getTime();
+    if (!Number.isFinite(at) || !Number.isFinite(start)) continue;
+    const slot = Math.floor(((at - start) / span) * width);
+    if (slot < 0 || slot >= width) continue;
+    slots[slot] = { hour: slot, runs: bucket.runs };
+    observed += 1;
+    max = max === null || bucket.runs > max ? bucket.runs : max;
+  }
+  return { slots, max, observed };
+}
+// ---- MET6: window presets, unit price, employee short code ------------------
+
+export const WINDOW_PRESETS = [
+  { id: '24h', label: '最近 24 小时', hours: 24, bucket: 'hour', slots: 24 },
+  { id: '7d', label: '最近 7 天', hours: 168, bucket: 'day', slots: 7 },
+  { id: '30d', label: '最近 30 天', hours: 720, bucket: 'day', slots: 30 },
+] as const;
+
+export type UsageWindowId = (typeof WINDOW_PRESETS)[number]['id'];
+
+export function usageWindowOf(value: unknown): (typeof WINDOW_PRESETS)[number] {
+  const found = WINDOW_PRESETS.find((preset) => preset.id === value);
+  return found ?? WINDOW_PRESETS[0];
+}
+
+/** Half-open window ending `now`, as ISO instants. */
+export function windowRange(now: Date, id: UsageWindowId): { from: string; to: string } {
+  const preset = usageWindowOf(id);
+  return {
+    from: new Date(now.getTime() - preset.hours * 3_600_000).toISOString(),
+    to: now.toISOString(),
+  };
+}
+
+/** 8-char upper-case employee code, matching the rest of the console. */
+export function shortCode(id: string | null): string {
+  if (!id) return '—';
+  const bare = id.replace(/^emp_/i, '').replace(/[^A-Za-z0-9]/g, '');
+  return bare ? bare.slice(0, 8).toUpperCase() : '—';
+}
+
+export function employeeLabel(name: string | null, id: string | null): string {
+  const code = shortCode(id);
+  if (name && name.trim()) return `${name.trim()} · ${code}`;
+  return code === '—' ? '未署名员工' : `员工 · ${code}`;
+}
+
+export interface PriceRow {
+  modelId: string | null;
+  label: string;
+  inputPerMillion: number | null;
+  outputPerMillion: number | null;
+  currency: string | null;
+  asOf: string | null;
+}
+
+export type ParsedPricing = { kind: 'ok'; rows: PriceRow[]; asOf: string | null } | { kind: 'invalid'; reason: string };
+
+/** Read the model price list. Absent prices stay null and print as «—»; the
+ *  page never multiplies them by usage to invent a charge. */
+export function readPricing(payload: unknown): ParsedPricing {
+  if (!isRecord(payload)) return { kind: 'invalid', reason: '返回内容里没有价目表。' };
+  const container = Array.isArray(payload.prices)
+    ? payload.prices
+    : Array.isArray(payload.items)
+      ? payload.items
+      : Array.isArray(payload.models)
+        ? payload.models
+        : null;
+  if (container === null) return { kind: 'invalid', reason: '返回内容里没有价目表。' };
+  const rows: PriceRow[] = [];
+  for (const raw of container) {
+    if (!isRecord(raw)) continue;
+    const modelId = text(raw.modelId) ?? text(raw.id) ?? text(raw.model);
+    rows.push({
+      modelId,
+      label: text(raw.label) ?? text(raw.name) ?? modelId ?? '未命名模型',
+      inputPerMillion: numberOrNull(raw.inputPerMillion ?? raw.input),
+      outputPerMillion: numberOrNull(raw.outputPerMillion ?? raw.output),
+      currency: text(raw.currency),
+      asOf: text(raw.asOf),
+    });
+  }
+  const asOfRaw = text(payload.asOf);
+  return { kind: 'ok', rows, asOf: asOfRaw };
+}
+
+/** `$0.14 / 百万 token`; a missing price is «—». */
+export function formatUnitPrice(value: number | null, currency: string | null): string {
+  if (value === null || !Number.isFinite(value)) return '—';
+  const symbol = currency === null || currency.toUpperCase() === 'USD' ? '$' : '';
+  return `${symbol}${value.toFixed(2)} / 百万 token`;
+}

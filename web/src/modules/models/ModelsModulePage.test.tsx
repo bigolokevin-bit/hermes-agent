@@ -211,4 +211,14 @@ describe('ModelsModulePage', () => {
     expect(text()).toContain('不用单价乘用量');
     expect(text()).toContain('不把两块数字相互换算');
   });
+  it('uses the same neutral unavailable blocks for 403 and 404', async () => {
+    await mount((url) => Promise.reject(new ApiError('forbidden', { status: 403, body: '', url })));
+    const t = text();
+    expect(t).toContain('模型目录未接入（GAP-07）');
+    expect(t).toContain('单价表未接入（GAP-07）');
+    expect(t).toContain('扣费账本未接入（GAP-07）');
+    expect(t).not.toContain('没有权限查看');
+    expect(t).not.toContain('/api/');
+  });
+
 });

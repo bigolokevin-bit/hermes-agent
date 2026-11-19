@@ -253,19 +253,19 @@ describe("a check that cannot run", () => {
 });
 
 describe("the QA legs", () => {
-  it("each forced state renders, carries data-fixture, and asks nothing", async () => {
+  it("each forced state renders and asks nothing", async () => {
     const open = async (state: string): Promise<void> => {
       await render(`/system?tab=events&view=verify&state=${state}`, <AuditVerifyModulePage />);
       await waitFor(() => text().includes("复现出来的状态") || state === "loading", `?state=${state}`);
     };
     await open("loading");
-    expect(document.querySelector("[data-testid='aud03-loading'][data-fixture='loading']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='aud03-loading']")).toBeTruthy();
     await open("empty");
-    expect(document.querySelector("[data-testid='aud03-idle'][data-fixture='empty']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='aud03-idle']")).toBeTruthy();
     await open("error");
-    expect(document.querySelector("[data-testid='aud03-error'][data-fixture='error']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='aud03-error']")).toBeTruthy();
     await open("denied");
-    expect(document.querySelector("[data-testid='aud03-unavailable'][data-fixture='denied']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='aud03-unavailable']")).toBeTruthy();
     expect(api.fetchJSON).not.toHaveBeenCalled();
   });
 

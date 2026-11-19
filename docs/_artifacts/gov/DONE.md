@@ -1340,3 +1340,58 @@ $ cd web && npx vitest run
 - Cron export contract for R5: `web/src/modules/cron/CronModulePage.tsx` exports named `CronModulePage` and default same, no props; root `cron5-page`; testid family `cron5-row|name|schedule|status|result|last|next|loading|empty|denied|error|retry|request-id|apply|refresh|status-line`. Source is same-origin Hermes `GET /api/cron/jobs`; unavailable body is 「定时任务读口未接入」 + reason + `/approvals` (GAP only in title). No module change was required this round.
 - Registration needed from R5: `#/work?tab=cron` (and `#/cron`) → `CronModulePage`; current bridge redirects to board, so `cron5Count` stays 0 until shell maps the slot.
 - Verification: `npx vitest run src/modules/employee-detail` → **14/14**; full suite after this change (see receipt). No App/shell/routes/registry/manifest/package changes.
+
+ HEAD
+## R29 retention tab rendering (2026-11-19, base da807e4f)
+
+- Root cause: `system` aliases `retention -> events`, so `/system?tab=retention` mounts the events live node and the retention module was never rendered.
+- `AuditEventsModulePage` now dispatches `?tab=retention` (and `?view=retention`) to `RetentionModulePage` before the audit hooks/page render; the URL is left intact. Shell strip label is still 「审计事件」 because `CONSOLE_TABS` has no retention tab and shell/routes are not in this write domain; the rendered pane is `ret4-page` with `data-page=retention`.
+- Retention behavior unchanged: missing `/api/retention` → `ret4-unwired-note` + four sections all 未接入 + `—` reasons, no 0; write actions `data-planned=true` + `aria-disabled=true` + title; 403/404 same denied body; request id + retry.
+- DOM (Vite 5448, Chrome CDP 9248, `?tab=retention&state=unwired`): 1440 body/page **1440/1133**, 375 **375/353**; `ret4-page=true`, rendered ret4 testid nodes **45**, planned buttons 2 (both disabled/aria-disabled/title); shell selected tab label `审计事件` (alias limitation above).
+- Test: `npx vitest run src/modules/audit/AuditEventsModulePage.test.tsx` → **41/41**; full suite below. No App/shell/routes/registry/package edits.
+
+
+## R29 retention mount contract (2026-11-19, base 43ea29d1)
+
+- Module export: `web/src/modules/audit/RetentionModulePage.tsx` exports named `RetentionModulePage` and default `RetentionModulePage`; **no props** (reads `?state=loading|ready|unwired|error|denied` from its own router context). Page root `ret4-page` + `data-page="retention"`.
+- Mount slot: App `/system` `ConsoleModulePage module="system" live={{ ..., retention: <RetentionConsolePage /> }}` plus a `CONSOLE_TABS` row with `tabId="retention"` / route `#/system?tab=retention`. Today `shell/routes.ts:247` folds `retention` into `events` and `bridge.test.ts` asserts that redirect, so the page is unreachable at the target URL; App/shell/routes are outside this write domain.
+- Expected shell tab key: `retention` (label 数据保留与清理). If R5 keeps the compat redirect, retention cannot win over the events tab.
+- ret4 testid family (45 rendered testid nodes in the no-route fixture; unique ids include): `ret4-page`, `ret4-summary`, `ret4-refresh`, `ret4-sections`, `ret4-section-{audit,runs,sessions,uploads}`, `ret4-unwired-{...}`, `ret4-unwired-note`, `ret4-days|last|next|used|limit|share-{...}`, `ret4-note-{...}`, `ret4-planned`, `ret4-planned-cleanup`, `ret4-planned-policy`, `ret4-loading|denied|error`, `ret4-error-request-id|ret4-error-retry`, `ret4-denied-request-id`, `ret4-tech-details`.
+- Fixture render: temporary vitest (deleted after run) mounted the page at `/system?tab=retention` with `/api/retention` 404 `console.unknown_route` → **45 ret4 testid nodes**, four sections all 未接入, 24 field values `—`, two planned write buttons disabled/aria-disabled/title; existing suite `RetentionModulePage.test.tsx` is **9/9**.
+- No App/shell/routes/registry/package/lock/scripts/ops edits; no fake 0/sample rows.
+
+## R30 fixture debt burn — 3 gov pages (2026-11-19, branch lane/console-gov)
+
+### Inventory before (grep -rl data-fixture, modules scope)
+`people/PeopleModulePage`, `org/OrgModulePage`, `access/AccessModulePage`, `tenant/TenantQuotaPage`, `settings/SettingsPage`, `cron/CronModulePage`, `retention` (none), `health/HealthPage`, `models/ModelsModulePage`, `tools/ToolsPage` + `tools/states.tsx`, `version/VersionPage`, `knowledge/KnowledgeModulePage` (plus their test files).
+
+### Selected three: real source or honest gap
+- `cron/CronModulePage`: real same-origin Hermes `GET /api/cron/jobs`; 200 data shape covered by tests (name, human schedule, last/next BJT, status, result reason). Production `data-fixture` attributes **4 → 0**; test references **2 → 0**.
+- `health/HealthPage`: real probe reads `/agent-api/api/__health-probe__`, `/api/hermes-summary`, `/api/skills`; 403/404 surfaces honest 未接入 and raw status/GAP stay in title. Production `data-fixture` **1 → 0**; no test reference.
+- `knowledge/KnowledgeModulePage`: citations use real sessions + console-session details, retrieval uses real `audit?action=kb.read`; spaces/ingest 404 show 未接入 + reason, no sample. Production `data-fixture` **1 → 0**; test references **2 → 0**.
+- No page invents 0: missing values render `—` + reason; `?state=` QA previews remain as explicit `?state=` fixtures but no `data-fixture` marker (removed per this task).
+
+### DOM/test readings after
+- `cron5-page` + cron5 testid family (21 unique), `hlt4-page` + health family (10 unique), `knw4-page` + knowledge family (25 unique); targeted vitest **4 files / 29 tests passed**.
+- No production `data-fixture` remains in the three selected modules (`grep -rl` empty).
+
+ HEAD
+## R31 version + models deep pass (2026-11-19, base 1fff2e58)
+
+- Version (`/system?tab=version`): build identity/ref/commit/time stay `未知` + explicit release-pipeline reason; injected commit is shortened to 8 chars with full value in title; build time uses Beijing `YYYY-MM-DD HH:mm`. Price block now has a retry and copyable request id; 403 and 404 share one neutral `单价表未接入，或当前账号无权读取` body with `GAP-07` only in `title`, no path.
+- Models (`/capabilities?tab=models`): catalog/price/ledger remain separate with their own source and `asOf`; price and ledger never multiply; unknown `—`/「未计价」, no `$0.00`. 403 and 404 now both map to the same block-level 「未接入（GAP-07）」 bodies; 401 stays login-denied.
+- Testids unchanged: `ver4-*` and `mdl4-*`.
+- Verification: `npx vitest run src/modules/version` → **6/6**; `npx vitest run src/modules/models` → **12/12**; full suite below. No App/shell/routes/package/lock/scripts/ops changes.
+
+
+## R32 fixture debt batch 2 + audit words (2026-11-19, base 1fff2e58)
+
+### Inventory before (`grep -rl data-fixture web/src/modules/{audit,health,retention,settings} --include=*.tsx`)
+`audit/AuditDetailModulePage.test.tsx` (3), `audit/AuditEventsModulePage.tsx` (1), `audit/AuditEventsModulePage.test.tsx` (1), `audit/AuditVerifyModulePage.tsx` (1), `audit/AuditVerifyModulePage.test.tsx` (5), `audit/RetentionModulePage.tsx` (2), `audit/RetentionModulePage.test.tsx` (2), `audit/states.tsx` (1), `settings/SettingsPage.tsx` (1); health had 0.
+### After
+- Production `data-fixture` attributes removed from audit states/verify/retention/settings and audit fixture helper deleted; `grep -rl data-fixture` over the four modules returns **0 files**. Production occurrences **6 → 0**; test assertions **11 → 0**.
+- Audit events wording: `CopyValue` now masks a 32-hex request handle to its first 8 chars on screen with the full value in `title`; copy still copies full. Event types/outcomes/actors/times remain humanized; raw values stay in titles/technical fold.
+- Data truth: audit events/detail/verify are real `/agent-api/api/audit*` reads (missing route/denied render 未接入/同体 403/404); retention `/api/retention` is honest 未接入 (four areas, `—`); settings uses `/api/config` with 未接入/未知 reasons. No fake 0.
+### DOM/test readings
+- Vite 5450 / CDP 9250: 1440/1280/375 body width exactly viewport for `/system?tab=events|health|defaults`; `[data-fixture]` count **0**; audit page present at 1280/375, health/settings roots present.
+- `npx vitest run src/modules/audit src/modules/settings src/modules/health` → **10 files / 147 passed**; full suite below.

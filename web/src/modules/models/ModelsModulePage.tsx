@@ -79,8 +79,8 @@ function sourceFrom<T>(
   const status = error instanceof ApiError ? error.status : 0;
   const requestId = requestIdOf(error);
   const message = messageOf(error);
-  if (status === 404) return { phase: 'unavailable', data: null, requestId, message };
-  if (status === 401 || status === 403) return { phase: 'denied', data: null, requestId, message };
+  if (status === 403 || status === 404) return { phase: 'unavailable', data: null, requestId, message };
+  if (status === 401) return { phase: 'denied', data: null, requestId, message };
   return { phase: 'error', data: null, requestId, message };
 }
 

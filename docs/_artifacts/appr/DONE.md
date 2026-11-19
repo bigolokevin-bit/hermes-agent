@@ -473,3 +473,28 @@ F7 审计入口+别名：App.tsx nav 治理组新增 /audit「审计事件」（
 ②approver 位=views 恒渲染 p data-testid=apd5-field-approver（内层 apd5-approver 双标保留），labels 空=「—」+title 单据没有带回审批人。③apd5-field-request-id 空态=「—」+title 这条记录没有带回请求编号（禁复用错误卡文案）。④裸 human:：代码链三重实证 isMachineHandle(SCHEME_PREFIX 含冒号)/maskHandle(<4→裸名词「审批人」)/personView(≥1→人员·短码 否则 —)全掩码，活体两处属旧代次，请 QA 合批后复跑归零。
 ⑤/overview 八卡截至：健康检查卡补 stamps（运行统计 todayStats asOf）后 8/8 卡均有「数据截至 BJT 到分 · 来源」Freshness（ov6-*-stamp），sourceStamp 只认服务端时间缺不显假。⑥侧栏审计入口 nav path /system?tab=events→/audit（AuditAwareEntry 路由在，用户可达）。⑦/work?tab=cron：CronAwareWork 元素分支挂 gov CronModulePage（cron5-* 上屏，禁静默回落 board；TAB_ALIAS 归一被前拦截）；页体零改动只挂载。
 验证：定向 employee-detail 16、approvals 全绿；全量 vitest 126 files/1268 passed 0 fail；assert-ia 不受影响（routes.ts 未动）。9122 仍旧代次（ad72c31c/D3sU0dej），全部 DOM 活体读数需 L0 合批重建后 QA 复跑。
+
+## R28b cron 槽位契约续（fix(console): honor gov cron slot contract for /cron alias）
+基线：本地 lane/console-appr merge origin/lane/hermes-console(da807e4f)=无冲突，gov 74957c6d zone 真渲与 de17dda9 notfound 五处共存（grep 复核，未回退 gov）；merge 代替 rebase 因禁 force 且远端 lane/console-appr=de17dda9 为祖先，ff push 成立。
+契约（74957c6d docs/_artifacts/gov/DONE.md 原文）：#/work?tab=cron 与 #/cron 两槽 → CronModulePage。/work?tab=cron 已由 CronAwareWork 挂（de17dda9）；本笔新增顶层 Route /cron → CronConsolePage（console 块 first-in-tree 先于 BUILTIN 上游 CronPage，未删上游路由）。
+验证：shell+pages 16 files 115 passed；全量 126 files/1269 passed 0 fail。活体 cron5Count DOM 读数待 L0 合批重建后 QA 复跑。
+
+## R29 收尾（四项 DOM 自证读数+行号，fix 第二笔）
+- 项1 overview asof+八卡来源：OverviewPage.tsx line354 ov6-asof；KpiCard Freshness testid ov6-<card>-stamp（line118 模板）→9 testid DOM 存在性=vitest OverviewPage.test 新用例 9 querySelector 全非 null（overview 9 passed）。
+- 项2 侧栏 /audit 入口：console.tsx line650 NavLink to=/audit（无 data-mod，a[data-mod]=8 契约不破）；console.test 新用例断 a[href=/audit]+文本「审计」=DOM 读数①；代码 grep 行号=自证②。
+- 项3 retention 挂载：App.tsx line1249 /system element=<SystemAwareTabs/>（tab=retention→RetentionConsolePage，ret4-* 页体只挂载）；9122 旧代次活体 ret4 读数待合批，DOM 证据=组件链+行号。
+- 项4 human 掩码：model.ts line300 humanizeHandles；views.tsx line112/详情事由 p title=原值+掩码文；api.test 三断言（人员出现+human:/user: 零残留+emp_ 保留）99 passed。活体两处裸 human:=种子单 reasonText 业务正文（EGO R29-LIST/DETAIL 上下文实证），显示层掩码后=0。
+验证：定向 approvals+shell+overview=9 files 99 passed 0 fail。
+
+## 夹具债清零·appr 域 3 页（feat(console): fixture debt burn - 3 appr pages real or honest）
+清单（工单第一步）：grep -rl data-fixture web/src/modules/{approvals,tasks,employee-detail} --include=*.tsx 改前命中=approvals/{states.tsx,两页 test}；tasks=0、employee-detail=0（前轮已真数据）。
+改后：生产码（非 test）data-fixture 命中=0（grep 实测 wc -l=0）；states.tsx fixtureAttr 机制删除、两页 16 处 fixture={} 传参摘除；?state= 复现保留数据行为（useApprovalsData forced 机制不动），标注改屏上诚实文本 apr5-forced-note（Pending line225/History line212『这是用 ?state= 复现出来的状态，不是服务此刻的回答。』）；两 test 6 处属性断言换 forced-note testid 断言。
+3 页 DOM 读数（vitest=DOM 证据）：Pending forced loading/empty/error/denied 四态各 apr5-loading/apr5-empty/apr5-error+apr5-retry/apr5-denied+forced-note 全存在（用例 marks it as a repro 绿）；History 同（loading/denied 两态绿）；真数据态=既有全绿用例（approvals 域 55 passed）：200 渲染真值、事由 humanizeHandles 掩码、金额 ledger、BJT 到分、8 位短码。
+验证：定向 approvals 3 files 55 passed；全量 126 files/1272 passed 0 fail。
+
+## duty 页夹具清零 + 四门来源标注（feat(console): duty gate sources and fixture burn）
+清单（工单①）：grep -rl data-fixture web/src/modules/duty 改前命中=4 文件（UsagePage.tsx fixtureAttr 机制+MatrixView.tsx 样例回落+UsagePage.test+dutyPage.test）。改后生产码命中=0（grep 实测 UsagePage/MatrixView 均 0；test 内仅剩 toBeNull 反向断言，非夹具）。
+夹具处置：①MatrixView 404→MATRIX_FIXTURE 样例回落删除，改整块诚实「能力矩阵未接入」（matrix-unwired：人话+GAP-06 进 title+重试，不展示占位数据；MATRIX_FIXTURE import 摘除，dutyPage.test 两用例同步改未接入/非未接入断言）；②UsagePage fixtureAttr 函数与 5 处属性展开删除，?state= 复现腿保留屏上诚实文本（『这是用 ?state= 复现出来的状态…GAP-07』line104）与控件禁用 title，repro 用例断言由属性改文本+testid。
+四门 asOf（工单②）：types GateView+asOf:string|null；buildReadiness 第三参 stamp=stats 回答的 asOf/generatedAt 经 beijing 到分；GateRow 渲染——unknown 门显「未接入 · 截至 —」（title=code：该数据源尚未接入，没有采集时间；V1/V2/V3 code 只进 title），V6 有 stamp 显「截至 <BJT 到分>」、无 stamp 显「截至 —」+title 原因；无假 0。
+testid 双标（工单④）：本轮未破既有——duty-gate-*/duty-ready-value/duty-page 等 data-testid=ov6-*+data-duty-testid=duty-* 双标在位（R28 落），usage usg4-*、matrix matrix-* 前缀不动（域内自有家族），四态/rid 可复制/403≡404 既有机制未逆。
+验证：定向 duty 3 files 49 passed；全量 126 files/1272 passed 0 fail。9122=1fff2e58 代次由 R30 QA 活体跑，本车道 DOM 读数以上述 vitest 断言+grep 为准。
