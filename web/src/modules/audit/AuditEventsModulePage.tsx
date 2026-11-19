@@ -27,8 +27,9 @@
  * The detail body has zero raw field names on screen; every technical value
  * collapses into 「技术详情」, closed by default (closed means those strings are
  * not in the DOM at all). 403 and 404 draw one identical denied body and never
- * leave rows above it. `?state=` is the shell's QA repro and stamps
- * `data-fixture` so a reviewer can tell it from a live answer.
+ * leave rows above it. Fixture debt burn (R30): this pane no longer reads
+ * `?state=` — every list/detail state below comes from a real read, so there is
+ * no `data-fixture` badge to mistake for an answer.
  */
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
@@ -42,7 +43,7 @@ import { Spinner } from "@nous-research/ui/ui/components/spinner";
 import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel, TechnicalDisclosure, VerifyUnavailablePanel } from "./states";
 import { AuditEventDetailBody, AuditEventRowCard, VerifyResultBody } from "./views";
 import RetentionModulePage from "./RetentionModulePage";
-import { forcedStateOf, useAuditDetail, useAuditList, useAuditVerify } from "./useAuditData";
+import { useAuditDetail, useAuditList, useAuditVerify } from "./useAuditData";
 import type { FailureCopy } from "./copy";
 import type { VerifyFailure } from "./copy";
 import { eventTypeChoices } from "./model";
@@ -151,7 +152,6 @@ export function AuditEventsModulePage(): ReactNode {
 
 function AuditEventsSurface(): ReactNode {
   const [params, setParams] = useSearchParams();
-  const forced = forcedStateOf(params.get("state"));
   // The URL owns the selected record, so a shared link opens the same event.
   const selected = params.get("id");
 
@@ -166,8 +166,11 @@ function AuditEventsSurface(): ReactNode {
     return { action: eventType || null, from: bounds.from, to: bounds.to };
   }, [windowChoice, eventType]);
 
-  const list = useAuditList(forced, filters);
-  const detail = useAuditDetail(selected, forced);
+  // No `?state=` leg on this pane: a list or detail state is only what the
+  // service answered. A missing route degrades through readFailure() to an
+  // honest sentence plus the request id, never to sample rows.
+  const list = useAuditList(null, filters);
+  const detail = useAuditDetail(selected, null);
   const [unaddressable, setUnaddressable] = useState(false);
   // One row at a time owns the technical fold: the panel id stays unique and
   // clicking 详情 really expands something every time (R19 tail b).
@@ -234,10 +237,10 @@ function AuditEventsSurface(): ReactNode {
       );
     }
     if (detail.phase === "loading") {
-      return <LoadingPanel testId="aud02-detail-loading" fixture={detail.forced ? "loading" : undefined} />;
+      return <LoadingPanel testId="aud02-detail-loading" />;
     }
     if (detail.phase === "denied") {
-      return <DeniedPanel failure={detail.failure} fixture={detail.forced ? "denied" : undefined} testId="aud02-detail-denied" />;
+      return <DeniedPanel failure={detail.failure} testId="aud02-detail-denied" />;
     }
     if (detail.phase === "error" || !detail.detail) {
       return (
@@ -246,7 +249,6 @@ function AuditEventsSurface(): ReactNode {
           onRetry={detail.reload}
           title="这条事件没能加载出来"
           testId="aud02-detail-error"
-          fixture={detail.forced ? "error" : undefined}
         />
       );
     }
@@ -307,12 +309,6 @@ function AuditEventsSurface(): ReactNode {
         onEventTypeChange={setEventType}
       />
 
-      {list.forced ? (
-        <p className="min-w-0 break-words text-xs text-warning" data-testid="aud01-forced-note">
-          这是用 ?state= 复现出来的状态，不是服务此刻的回答。
-        </p>
-      ) : null}
-
       {/* The window check lives on the list too, and it says exactly one of
           four things: asking, the real counts, 本环境未启用 + why + where, or a
           plain failure. A 404 route answers 「本环境未启用」, never a generic
@@ -369,10 +365,10 @@ function AuditEventsSurface(): ReactNode {
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
         <section className="flex min-w-0 flex-col gap-2" aria-label="审计事件列表">
-          {list.phase === "loading" ? <LoadingPanel testId="aud01-loading" fixture={list.forced ? "loading" : undefined} /> : null}
+          {list.phase === "loading" ? <LoadingPanel testId="aud01-loading" /> : null}
 
           {list.phase === "denied" ? (
-            <DeniedPanel failure={list.failure} fixture={list.forced ? "denied" : undefined} testId="aud01-denied" />
+            <DeniedPanel failure={list.failure} testId="aud01-denied" />
           ) : null}
 
           {list.phase === "error" && list.failure ? (
@@ -380,7 +376,6 @@ function AuditEventsSurface(): ReactNode {
               failure={list.failure}
               onRetry={list.reload}
               testId="aud01-error"
-              fixture={list.forced ? "error" : undefined}
             />
           ) : null}
 
@@ -390,7 +385,6 @@ function AuditEventsSurface(): ReactNode {
               nextStep="把时间窗放宽一格，或换一种事件类型再看。这个窗口确实没有记录，本身就是筛选后的真实答案——服务不接受不带任何筛选条件的全表扫描，所以这里始终有一个时间窗。"
               onRefresh={list.reload}
               testId="aud01-empty"
-              fixture={list.forced ? "empty" : undefined}
             />
           ) : null}
 

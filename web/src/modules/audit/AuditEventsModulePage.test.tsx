@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // T33 — 审计事件列表 + 详情抽屉。断言的是屏幕上的话：时间是北京时间且写明、
 // 操作者只以短码出现、事件类型不认识就按原样、结果只有那三种说法；
-// 四态由服务的回答驱动，403 与 404 同体且上面不留行；`?state=` 腿带 data-fixture。
+// 四态由服务的回答驱动，403 与 404 同体且上面不留行；R30 起不再有 `?state=` 复现腿。
 
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -377,33 +377,8 @@ describe("whole-panel states", () => {
     expect(await once(404)).toBe(forbidden);
   });
 
-  it("each state also opens from the URL, marked as a repro", async () => {
-    api.fetchJSON.mockReset();
-    const open = async (state: string): Promise<void> => {
-      await render(`/system?tab=events&state=${state}`, <AuditEventsModulePage />);
-      await waitFor(
-        () => (document.body.textContent ?? "").includes("复现出来的状态") || state === "loading",
-        `?state=${state} painted`,
-      );
-    };
-    await open("loading");
-    expect(document.querySelector("[data-fixture='loading']")).toBeTruthy();
-    expect(api.fetchJSON).not.toHaveBeenCalled();
-    await open("empty");
-    expect(document.querySelector("[data-testid='aud01-empty'][data-fixture='empty']")).toBeTruthy();
-    await open("error");
-    expect(text()).toContain("本次请求未记录编号，可复制时间与操作路径反馈");
-    expect(document.querySelector("[data-fixture='error']")).toBeTruthy();
-    await open("denied");
-    expect(document.querySelector("[data-fixture='denied']")).toBeTruthy();
-    expect(document.querySelectorAll("[data-testid^='aud01-row-']")).toHaveLength(0);
-    expect(api.fetchJSON).not.toHaveBeenCalled();
-  });
-
-  it("a real answer takes over once the repro is off", async () => {
+  it("the ?state= repro leg is gone: a stray query never fakes a state", async () => {
     await mount(undefined, "/system?tab=events&state=empty");
-    expect(document.querySelector("[data-fixture='empty']")).toBeTruthy();
-    await mount();
     expect(text()).toContain("已显示 2 条审计事件");
     expect(document.querySelector("[data-fixture]")).toBeNull();
   });

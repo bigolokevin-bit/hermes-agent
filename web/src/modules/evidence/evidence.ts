@@ -226,38 +226,3 @@ export function citationsUrl(now: Date): string {
   return `/agent-api/api/audit?${params.toString()}`;
 }
 
-/**
- * `?state=` reproduction rows. They exist only so QA can see the painted row
- * shapes without a backend, always behind `data-fixture` and a GAP in the title.
- */
-export const REPRO_ROWS: CitationRow[] = [
-  {
-    id: 'repro-1',
-    eventId: 'ev_01M7DEY8ZQ4R7T2V8X0Y2A4B6C',
-    sourceLabel: '员工操作',
-    actorLabel: '员工 · 86A81CE8',
-    actorTitle: 'emp_86A81CE8FF6F42E187BCF2B540',
-    targetTypeLabel: '员工',
-    targetLabel: '86A81CE8',
-    targetTitle: 'emp_86A81CE8FF6F42E187BCF2B540',
-    at: '2026-11-17T09:18:42.117Z',
-    href: '/audit?id=ev_01M7DEY8ZQ4R7T2V8X0Y2A4B6C',
-    unverified: false,
-    unreachableReason: '',
-  },
-  {
-    id: 'repro-2',
-    eventId: '',
-    sourceLabel: '运行时',
-    actorLabel: '系统 · employee-api',
-    actorTitle: 'employee-api',
-    targetTypeLabel: '运行',
-    targetLabel: 'rn_01M7…GPWJ',
-    targetTitle: 'rn_01M7DEY86XMD8J2SJZES4TGPWJ',
-    at: '2026-11-17T10:02:00.000Z',
-    href: null,
-    unverified: true,
-    unreachableReason:
-      '服务的回答里没有给出这条记录的事件编号，所以点不回原文；编号补齐后这里会自动变成可跳转。',
-  },
-];
