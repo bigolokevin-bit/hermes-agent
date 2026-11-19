@@ -451,25 +451,25 @@ describe("the ?state= repro switch (web/src/shell/fixtures.ts)", () => {
 
   it("shows each state on demand and marks it as a repro", async () => {
     await forcedMount("loading");
-    expect(document.querySelector("[data-fixture='loading']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='apr5-forced-note']")).toBeTruthy();
     expect(document.querySelector("[data-testid='apr5-loading']")).toBeTruthy();
     expect(text()).toContain("正在读取待处理审批…");
     expect(api.fetchJSON).not.toHaveBeenCalled();
 
     await forcedMount("empty");
-    expect(document.querySelector("[data-fixture='empty']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='apr5-forced-note']")).toBeTruthy();
     expect(document.querySelector("[data-testid='apr5-empty']")).toBeTruthy();
     expect(text()).toContain("现在没有需要你处理的申请");
 
     await forcedMount("error");
-    expect(document.querySelector("[data-fixture='error']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='apr5-forced-note']")).toBeTruthy();
     expect(document.querySelector("[data-testid='apr5-error']")).toBeTruthy();
     expect(document.querySelector("[data-testid='apr5-retry']")).toBeTruthy();
     expect(text()).toContain("本次请求未记录编号，可复制时间与操作路径反馈");
     expect(text()).not.toContain("未提供");
 
     await forcedMount("denied");
-    expect(document.querySelector("[data-fixture='denied']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='apr5-forced-note']")).toBeTruthy();
     expect(document.querySelector("[data-testid='apr5-denied']")).toBeTruthy();
     expect(text()).toContain("暂时无法查看审批申请");
     expect(document.querySelectorAll("[data-testid^='apr5-row-']")).toHaveLength(0);

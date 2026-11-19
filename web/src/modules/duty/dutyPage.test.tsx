@@ -100,14 +100,15 @@ describe("DutyPage", () => {
 });
 
 describe("MatrixView", () => {
-  it("uses the labelled fixture only when the matrix route is absent", async () => {
+  it("states 未接入 honestly when the matrix route is absent (R31: no sample rows)", async () => {
     fetchJSON.mockImplementation((url: string) =>
       Promise.reject(new ApiError("missing", { status: 404, body: "{}", url })),
     );
     await render(<MatrixView />);
-    expect(container.querySelector('[data-fixture="true"]')).toBeTruthy();
-    expect(container.textContent).toContain("样例");
-    expect(container.textContent).toContain("陈可");
+    expect(container.querySelector('[data-testid="matrix-unwired"]')).toBeTruthy();
+    expect(container.textContent).toContain("能力矩阵未接入");
+    expect(container.textContent).not.toContain("样例");
+    expect(container.textContent).not.toContain("陈可");
   });
 
   it("never falls back to the fixture on a real 500", async () => {
@@ -115,7 +116,7 @@ describe("MatrixView", () => {
       Promise.reject(new ApiError("boom", { status: 500, body: "{}", url, requestId: "req-mx" })),
     );
     await render(<MatrixView />);
-    expect(container.querySelector('[data-fixture="true"]')).toBeFalsy();
+    expect(container.querySelector('[data-testid="matrix-unwired"]')).toBeFalsy();
     expect(container.textContent).toContain("请求编号 req-mx");
     expect(container.textContent).not.toContain("陈可");
   });
