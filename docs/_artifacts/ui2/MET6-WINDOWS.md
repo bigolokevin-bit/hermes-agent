@@ -216,3 +216,20 @@ metB 的「采集时刻」列内新增滞后徽标，不新增列、不改版式
 - testid：`metM-stale-<key>`（仅滞后时存在）；`metB-source-asof-<key>` 文本仍为纯时间（徽标是其兄弟节点），metB/metC 既有断言不变。
 - 验证：定向 90（基线 86）；全量 132 files / 1494 passed（2 条上游既存噪声）；tsc 全仓 55 既存、本模块 0；lint 0 error；build entry `assets/index-BuqX7qEx.js` sha256 `d13e24166f58b7a39cdc4236d366916faeba2a460b82113613958be7a4dbaff4`，entry 内 `metM-stale`=0，chunk `MetricsModulePage-CGLfyiDt.js`=1。
 - 未测项：真实上游滞后返回未联调（以固定 asOf 偏移覆盖）；浏览器时钟偏差场景未测。
+
+## 口径回归护栏（metN，2026-11-20）
+
+新增 `web/src/modules/metrics/metrics.caliber.test.ts`（`.ts`，无 JSX），把已交付的六条口径钉成回归断言；每条断言都在标题里写明它守的是哪一条。
+
+- R1 真 0 ≠ 缺失：屏上 `$0.00` vs `—`；导出 `0.00` vs 空字段。
+- R2 采集时刻只取 payload 顶层 ISO：六个别名 `asOf / as_of / collectedAt / collected_at / generatedAt / generated_at` 任一合法即用；非 ISO、缺省、空串、嵌套对象一律 null，屏上「—」且 title「上游未返回采集时刻」。用假时钟（`vi.setSystemTime('2031-03-04T05:06:07Z')`）验证屏上与导出都不出现该本机日期。
+- R3 滞后判定：`asOf` 与本次读取时刻都为真 ISO 才计算；差值 > 15 分钟才标；恰好 15 分钟、缺失、非 ISO、负值（未来）都不标。
+- R4 导出行序 = 表体行序：默认成本降序与 `?sort=model&dir=asc` 两种，CSV 首列顺序逐项等于屏上 `met7-row-*` 首列顺序。
+- R5 缺块注记：固定为末行、以 `# 本次导出缺少 N 块：…` 开头，不进入数据行、不计入「可导出 N 行」；无缺块时不加行。
+- R6 口径列恒在：`SHARE_CSV_HEADER` 末两列恒为 `as_of,window`，缺值留空；零行时仍只有表头；文件带 UTF-8 BOM（按字节 `EF BB BF` 断言）。
+
+发现并修复（同单产品改动）：`readSourceStamp` 原先只认 `payload.asOf`，`readPricing / readModelUsage / readModelCost` 用 `text()` 接受任意字符串——不满足「六个别名 + 只认 ISO」。现统一走新增的 `readTopAsOf(payload)`（按 `TOP_ASOF_KEYS` 顺序取第一个合法 ISO），四个读取函数共用同一判据。
+
+- 验证：单文件 12 例；`src/modules/metrics` 2 files / 102 passed；全量 133 files / 1506 passed（2 条上游 employee-detail 未处理拒绝为既存噪声）；`tsc` 全仓 55 条既存基线、`modules/metrics` 0。
+- build entry `assets/index-DZ3ixbOI.js` sha256 `e3d1042d0f4692ab3df331a33ac48a79922a69cabfb5742bcbaa8f25341369fc`，entry 内 `readTopAsOf` 与 `metB-source-toggle` 均 0；chunk `MetricsModulePage-C2Expni7.js` 内 `metB-source-toggle` 1。
+- 未测项：浏览器真实剪贴板/下载与表格顺序的人工对照未走查（均为字符串级断言）；`asOf` 恰为未来时间时不判滞后，属设计选择，未与上游约定核对。

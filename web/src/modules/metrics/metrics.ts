@@ -486,7 +486,7 @@ export function readPricing(payload: unknown): ParsedPricing {
       asOf: text(raw.asOf),
     });
   }
-  const asOfRaw = text(payload.asOf);
+  const asOfRaw = readTopAsOf(payload);
   return { kind: 'ok', rows, asOf: asOfRaw };
 }
 
@@ -549,7 +549,7 @@ export type ParsedModelUsage =
  *  missing cost stays null and the view prints «—» with its reason. */
 export function readModelUsage(payload: unknown): ParsedModelUsage {
   if (!isRecord(payload)) return { kind: 'invalid', reason: '返回内容里没有用量明细。' };
-  const asOf = text(payload.asOf) ?? text(payload.as_of) ?? text(payload.generatedAt);
+  const asOf = readTopAsOf(payload);
   const costBlock = isRecord(payload.cost) ? payload.cost : null;
   const costUsd = costBlock ? numberOrNull(costBlock.cost_usd) : null;
   if (!Array.isArray(payload.by_model)) return { kind: 'ok', lines: [], costUsd, asOf };
@@ -641,8 +641,7 @@ const MODEL_COST_MONEY_KEYS = ['actual_cost_usd', 'actualCostUsd', 'cost_usd', '
 
 export function readModelCost(payload: unknown): ParsedModelCost {
   if (!isRecord(payload)) return { kind: 'invalid', reason: '返回内容里没有按模型的用量。' };
-  const asOf =
-    text(payload.asOf) ?? text(payload.as_of) ?? text(payload.generated_at) ?? text(payload.generatedAt);
+  const asOf = readTopAsOf(payload);
   const costBlock = isRecord(payload.cost) ? payload.cost : null;
   const rowsRaw = Array.isArray(payload.by_model)
     ? payload.by_model
@@ -798,6 +797,30 @@ export function isoOrNull(value: unknown): string | null {
   const raw = value.trim();
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/.test(raw)) return null;
   return Number.isNaN(Date.parse(raw)) ? null : raw;
+}
+
+/** The names an envelope may carry its collection time under, in priority order. */
+export const TOP_ASOF_KEYS = [
+  'asOf',
+  'as_of',
+  'collectedAt',
+  'collected_at',
+  'generatedAt',
+  'generated_at',
+] as const;
+
+/**
+ * The top-level collection time of one payload, under any of its accepted
+ * names. Only a full ISO instant qualifies: a free-form or missing value is
+ * null, never the local clock.
+ */
+export function readTopAsOf(payload: unknown): string | null {
+  if (!isRecord(payload)) return null;
+  for (const key of TOP_ASOF_KEYS) {
+    const value = isoOrNull(payload[key]);
+    if (value !== null) return value;
+  }
+  return null;
 }
 
 // ---- MET-A: export the current cost-share view ------------------------------
@@ -1018,7 +1041,7 @@ export function isIsoStamp(value: unknown): value is string {
 export function readSourceStamp(payload: unknown): { asOf: string | null; asOfSource: string | null } {
   if (!isRecord(payload)) return { asOf: null, asOfSource: null };
   return {
-    asOf: isIsoStamp(payload.asOf) ? payload.asOf : null,
+    asOf: readTopAsOf(payload),
     asOfSource: text(payload.asOfSource),
   };
 }
