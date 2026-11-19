@@ -1033,3 +1033,107 @@ machine without a signed-in cookie. That is stated rather than simulated.
 - Whether the running BFF enforces `status`/`since` as required filters for this
   route — only the accepted name set is pinned here.
 - Pixel-level overflow at 1440/1280/375 (no browser fixture in this worktree).
+
+## TASK approvals closeout (2026-11-19, base 2767ac9b)
+
+写域：`web/src/modules/approvals/**`（**未**编辑 `manifest.ts`）、本文件。写域外一律未改：
+`App.tsx`、`web/src/shell/**`、`web/src/pages/**`（含旧 `ApprovalsPage.tsx`，它自带 `@/components/RequestIdCopy`，
+本车道未触碰共享组件）、其他模块、i18n、`package.json`/锁文件。未跑任何 install / force / amend / rebase。
+受派 HEAD：`2767ac9b`（tree clean 起步）。
+
+### 1. 命令与原始尾行（均在 `web/` 下跑，`PATH` 先 `export /opt/homebrew/bin`）
+
+```
+npx vitest run src/modules/approvals --reporter=dot
+  → exit 0
+      Test Files  3 passed (3)
+           Tests  48 passed (48)   # 基线 45 → 新增 3 条（八态实证 + 错误腿复制 + 拒绝腿复制）
+
+npx tsc -b . --noEmit
+  → exit 2
+      grep -c "error TS"                      = 49
+      grep "error TS" | grep -vc '../apps/shared/' = 0   # 非 apps/shared 的错：0
+      grep "error TS" | grep -c approvals     = 0        # approvals 模块贡献：0（与基线一致，允许条件成立）
+
+npx eslint src/modules/approvals
+  → exit 0
+      ✖ 2 problems (0 errors, 2 warnings)
+      # 两条 warning 均为基线既有：useApprovalsData.ts:141:9 与 :218:7
+      # （react-hooks/set-state-in-effect），本任务未新增任何 error/warning
+```
+
+### 2. testid 迁移（`approvals-*` / `approval-*` → `apr4-*`，一元素一 id，旧 id 不残留）
+
+- 页面根：`approvals-pending`→`apr4-page-pending`；`approvals-history`→`apr4-page-history`
+- 列表容器：`<section>` 新增 `apr4-list`（两页各一）
+- 筛选条：`<div role="group">` 新增 `apr4-filter`；八态胶囊 `approvals-filter-<value>`→`apr4-filter-<value>`
+  （即 `apr4-filter-pending` … `apr4-filter-superseded` + `apr4-filter-all`）；未知值 `approvals-filter-unknown`→`apr4-filter-unknown`
+- 行卡：`approval-row-<key>`→`apr4-row-<key>`；行内「详情」`approval-row-details-<key>`→`apr4-row-details-<key>`
+- 详情抽屉：`approval-detail`→`apr4-detail`；瞬态 `approval-detail-empty/loading/error/unaddressable`、
+  `approval-history-detail*` 统一为 `apr4-detail-empty/loading/error/unaddressable` 与 `apr4-detail`
+- 操作区：`approval-actions`→`apr4-actions`；备注框 id `approval-comment`→`apr4-comment`（含 `htmlFor`）
+- 面板态（states.tsx）：`approvals-loading/empty/error/denied/inline-failure/details`→`apr4-loading/empty/error/denied/inline-failure/details`；
+  拒绝出口 `approvals-denied-exits`→`apr4-denied-exits`；历史空态 `approvals-history-empty`→`apr4-empty-history`
+- 重试：错误面板新增 `apr4-retry`（列表腿经 `retryTestId="apr4-retry"`，详情腿走 `${testId}-retry` 以免重号）
+- 强制态注记：`approvals-forced-note`→`apr4-forced-note`
+- 请求编号 + 复制：见 §4
+- `model.ts` 里 `key: rawId ?? \`approval-${index}\`` 是行键的无 id 兜底值（喂进 `apr4-row-<key>`），
+  非任何元素的 data-testid，故保留；测试选择器已全部改为 `apr4-*`。
+
+### 3. 八态筛选真生效（`ApprovalsHistoryModulePage.test.tsx` 单测逐态驱动）
+
+| 状态（model.ts 拼写） | 落到请求的参数 | 该态里测试实测到的行数 |
+|---|---|---|
+| pending | `status=pending&limit=50` | 1（`等待你点头的发布`） |
+| approved | `status=approved&limit=50` | 1（`上月预算追加`） |
+| rejected | `status=rejected&limit=50` | 1（`临时提权申请`） |
+| revise_requested | `status=revise_requested&limit=50` | 1（`对外报价单`） |
+| expired | `status=expired&limit=50` | 1（`过期未处理的采购`） |
+| cancelled | `status=cancelled&limit=50` | 1（`发起人撤回的转账`） |
+| consumed | `status=consumed&limit=50` | 1（`已执行的批量导出`） |
+| superseded | `status=superseded&limit=50` | 1（`被新单替代的发布`） |
+| 全部 | 请求里**不含** `status=`（参数丢弃，绝不发 `status=all`） | 8（八态各一行同时铺回） |
+
+该测试断言：逐态的 URL 含且仅含该拼写的 `status=`；每态行卡数与该态 mock 载荷数一致，且其余七态的行标题
+一律 `not.toContain`（可分辨载荷，非同一批行）；点「全部」后清空计数再断言最后一条列表请求不带 `status=`
+也不带 `status=all`，行卡数回到 8。页面本身（`CHOICES` 由 `STATUS_FILTERS` 全量映射）已把八个规范值都送进请求，
+无「只发子集」需修。
+
+### 4. 复制闭环（copy round-trip）
+
+states.tsx 新增模块内 `RequestIdCopyField`（lane 本地等价物，未改共享 `@/components/RequestIdCopy`）：
+屏显 `<code data-testid="apr4-request-id">{requestId}</code>`，复制按钮 `data-testid="apr4-copy-request-id"`，
+`onClick` 调 `navigator.clipboard.writeText(requestId)`；`copied` 态显示 `已复制`/`复制失败，请手动选择`（`apr4-copy-state`）。
+缺 id 时保留原诚实句「本次请求未记录编号，可复制时间与操作路径反馈」（`apr4-request-id-missing`）且**不渲染按钮、不臆造值**。
+断言点（jsdom 无 clipboard，测试用 `Object.defineProperty(window.navigator,"clipboard",{value:{writeText}})` 打桩）：
+
+- 错误腿：pending（`requestId=b6g1c2d3`）与 history（`hs-copy-err`）各断言 `shownRequestId()==id`、
+  `writeText` 恰调 1 次、`toHaveBeenCalledWith(id)`、且 `String(writeText.mock.calls[0][0])===shownRequestId()`。
+- 拒绝腿：history（`hs-copy-deny`）同样断言屏显==写入==`apr4-request-id`；pending 拒绝腿断言 `apr4-request-id`
+  在屏、`apr4-copy-request-id` 存在。
+- 缺 id 腿：pending status=0（无 requestId）断言 `apr4-request-id` 为 null、`apr4-request-id-missing` 存在、复制按钮为 null。
+
+### 5. 403 ≡ 404 + 四态 + 响应式
+
+- 同一具身：DeniedPanel 单一组件，testid `apr4-denied`；403 与 404 渲染后取 `document.body.innerHTML` 逐字节相等
+  （pending `ap-9c31` 腿、history `hs-deny` 腿均已断言 `expect(404body).toBe(403body)`）。
+- 不先铺行：拒绝态里 `querySelectorAll("[data-testid^='apr4-row-']")` 长度为 0（列表在拒绝前已清空）。
+- 不回显路径：`apr4-denied` 面板内 technical 不上屏；两页拒绝测试均断言 innerHTML `not.toContain("/agent-api")`。
+- 四态齐备：loading skeleton（`apr4-loading`）/ 空态带 reason+next step（`apr4-empty`、历史 `apr4-empty-history`）/
+  错误态带人话+请求编号+重试（`apr4-error` + `apr4-retry`）/ 拒绝态（`apr4-denied`）。`?state=` 复现测试逐态断言四个 id 在场，
+  且带 `data-fixture` 标记为复现而非服务回答。
+- 响应式（DOM 类契约，非像素）：页面根 `apr4-page-*` 断言 className 含 `min-w-0` 与 `max-w-full`；
+  面板长句 `<p>` 含 `break-words`；布局用 flex + `minmax(0, …)` grid，无固定像素宽（`min-w-0`/`break-words` 全程保留）。
+  1440/1280/375 的像素级溢出无法在本 worktree 取真，见 §6。
+
+### 6. screenshots not produced
+
+**未产出任何截图**。原因：本任务两个页面（`ApprovalsPendingModulePage`/`ApprovalsHistoryModulePage`）
+只由 `manifest.ts` 懒加载挂载，而该 worktree 的 shell/App 未把它们挂到可导航路由，且此 worktree 无浏览器 fixture
+（vitest 用 jsdom，无像素渲染面），并禁止任何 install（不得引入 playwright/puppeteer/截图依赖）。
+故 1440/1280/375 的溢出仅以 §5 的 DOM 类契约（flex/`min-w-0`/`break-words`/无固定宽）证明，不以截图证明。
+
+### 7. 未能在本 worktree 证实的项
+
+- 真后端 200 与各态真实行数（身份门先于参数校验，本机无签名 cookie → 复现态用 `?state=` 与 mock 载荷，非实测服务）。
+- 1440/1280/375 像素级不溢出（无浏览器 fixture、禁 install）。
