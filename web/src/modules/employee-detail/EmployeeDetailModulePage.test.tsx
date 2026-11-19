@@ -183,7 +183,7 @@ describe("EmployeeDetailModulePage — approvals / runs / audit", () => {
           })
         : Promise.resolve({}),
     );
-    await renderAt(page, at("tasks"));
+    await renderAt(page, at("approvals"));
     const card = container.querySelector('[data-testid="ed5-approvals"]');
     const link = card?.querySelector("a");
     expect(link?.getAttribute("href")).toBe("/approvals");
@@ -255,7 +255,7 @@ describe("EmployeeDetailModulePage — approvals / runs / audit", () => {
 
   it("approvals empty names the reason", async () => {
     mockApi(() => Promise.resolve({ items: [] }));
-    await renderAt(page, at("tasks"));
+    await renderAt(page, at("approvals"));
     const card = container.querySelector('[data-testid="ed5-approvals-empty"]');
     expect(card?.textContent).toContain("还没有审批事项");
   });
@@ -264,7 +264,7 @@ describe("EmployeeDetailModulePage — approvals / runs / audit", () => {
 describe("EmployeeDetailModulePage — tabs", () => {
   it("five tabs, shell-zone spellings, overview lands on the bare path", async () => {
     mockApi(() => Promise.resolve({}));
-    await renderAt(page, at("tasks"));
+    await renderAt(page, at("approvals"));
     const tabs = Array.from(container.querySelectorAll('[role="tab"]'));
     expect(tabs.map((t) => t.textContent)).toEqual(["概览", "能力与权限", "审批", "运行", "审计"]);
     expect(tabs[0]?.getAttribute("href")).toBe(`/employees/${encodeURIComponent(EMP)}`);
@@ -403,3 +403,76 @@ describe("EmployeeDetailModulePage — R28 not-found honesty", () => {
     }
   });
 });
+
+describe("EmployeeDetailModulePage — tasks zone (R43)", () => {
+  it("queries by real assignee and renders title link, 待核实 status, priority words, BJT minute", async () => {
+    const urls: string[] = [];
+    mockApi((url) => {
+      urls.push(url);
+      if (url.includes("/api/tasks")) {
+        return Promise.resolve({
+          items: [
+            { taskId: "tk_0762C4D5", title: "周报合并", status: "open", priority: "high", updatedAt: "2026-11-18T02:00:00Z" },
+            { taskId: "tk_1B4EA3C9", status: "reviewing", priority: "normal", updatedAt: "2026-11-17T01:30:00Z" },
+          ],
+        });
+      }
+      return Promise.resolve({});
+    });
+    await renderAt(page, at("tasks"));
+    const call = urls.find((u) => u.includes("/api/tasks"));
+    expect(call).toContain("assignee=employee%3A" + EMP);
+    expect(call).toContain("limit=20");
+    const link = container.querySelector('[data-testid="ed5-zone-tasks-name-tk_0762C4D5"]');
+    expect(link?.getAttribute("href")).toBe("/tasks/tk_0762C4D5");
+    expect(link?.textContent).toBe("周报合并");
+    expect(link?.getAttribute("title")).toBe("tk_0762C4D5");
+    expect(container.textContent).toContain("待处理");
+    expect(container.textContent).toContain("待核实");
+    expect(container.textContent).toContain("高优先级");
+    expect(container.textContent).toContain("2026-11-18 10:00");
+    expect(container.textContent).toContain("2026-11-17 09:30");
+    // untitled row falls back to a masked code, never a bare tk_ id
+    expect(container.querySelector('[data-testid="ed5-zone-tasks-name-tk_1B4EA3C9"]')?.textContent).toBe("任务 · 1B4EA3C9");
+    expect(container.querySelector('[data-testid="ed5-zone-tasks-list"]')).toBeTruthy();
+  });
+
+  it("an empty server answer states 该员工暂无任务 with the filter note", async () => {
+    mockApi((url) => (url.includes("/api/tasks") ? Promise.resolve({ items: [] }) : Promise.resolve({})));
+    await renderAt(page, at("tasks"));
+    const card = container.querySelector('[data-testid="ed5-zone-tasks-empty"]');
+    expect(card?.textContent).toContain("该员工暂无任务");
+    expect(card?.textContent).toContain("不放宽筛选");
+    expect(container.querySelector('[data-testid="ed5-zone-tasks"]')).toBeNull();
+  });
+
+  it("task error keeps plain copy with a copyable rid and retry; 403 and 404 share one body", async () => {
+    mockApi((url) =>
+      url.includes("/api/tasks")
+        ? Promise.reject(new ApiError("服务暂时不可用。", { status: 502, body: "", url, requestId: "req-tsk-43" }))
+        : Promise.resolve({}),
+    );
+    await renderAt(page, at("tasks"));
+    const card = container.querySelector('[data-testid="ed5-zone-tasks-error"]');
+    expect(card?.textContent).toContain("任务没能加载出来");
+    expect(card?.textContent).toContain("请求编号：req-tsk-43");
+    expect(card?.querySelector('[data-testid="req-copy"]')).toBeTruthy();
+    expect(Array.from(card?.querySelectorAll("button") ?? []).some((b) => b.textContent?.includes("重试"))).toBe(true);
+  });
+
+  it("task zone 403 and 404 share one denied body with no path echo", async () => {
+    mockApi((url) => (url.includes("/api/tasks") ? forbidden(url) : Promise.resolve({})));
+    await renderAt(page, at("tasks"));
+    const denied403 = container.querySelector('[data-testid="ed5-zone-tasks-denied"]')?.textContent;
+    expect(denied403).toBeTruthy();
+    expect(denied403).toContain("任务");
+    expect(denied403).not.toContain("api/tasks");
+    act(() => root.unmount());
+    root = createRoot(container);
+    mockApi((url) => (url.includes("/api/tasks") ? missing(url) : Promise.resolve({})));
+    await renderAt(page, at("tasks"));
+    const denied404 = container.querySelector('[data-testid="ed5-zone-tasks-denied"]')?.textContent;
+    expect(denied404).toBe(denied403);
+  });
+});
+

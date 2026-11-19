@@ -690,3 +690,15 @@ KPI 族：五卡 data-testid=ov6-kpi-<name> 统一在位+新增 data-duty-testid
 - 八卡 ov6-<card>-stamp 零改动（工单③）。
 
 自证读数：dutyPage.test 新 2 用例——部分源有 asOf（run-stats 11-18 / budget-usage 11-20T05:20Z / approval-stats 11-19）→ 上屏「采集时刻 北京时间 2026-11-20 13:20」（最大）+title 含「最新的一个上屏」；全缺 → 「采集时刻 —（北京时间）」+title 含「未返回采集时间的来源：今日运行统计…」。OverviewPage.test 既有夹具（approvalStats 04:24Z 最新）断言精确「2026-11-19 12:24」。定向 overview+duty 4 files/61 passed exit0；assert-ia 两模式 exit0 51/22/1/8；全量 131 files/1389 passed（基线 1387+2）。9122==b71c4535 取证代次未重建：活体 ov6-asof 读数待并入后代次。
+
+## R43 员工详情「任务」区真数据（2026-11-20，lane/console-appr）
+
+基线：显式 refspec fetch + reset --hard origin/lane/hermes-console = d26a66d5（ledger at 01175128，entry BgiPXYqY），toplevel ✓ porc=0。写域=modules/employee-detail/**+DONE（App/shell/routes 零改动）。
+
+实现（EmployeeDetailModulePage.tsx）：mapShellZone 的 `case "tasks"` 由借用 approvals 改为独立 tasklist 区（导航五区不变，chat 区先例形态）；TasksZone 四态齐（ed5-zone-tasks-loading/denied/error/empty/list，ZoneError 人话+RequestIdCopy(req-copy)+重试同卡；403≡404 同体 DENIED_COPY 不回显路径）；行族=ed5-zone-tasks-row-<taskId>/ed5-zone-tasks-name-<taskId>（真 a[href="/tasks/<taskId>"] 可聚焦，深链 R40 已挂载；无标题行回落「任务 · 短码」，裸 tk_ 不上屏，完整 id 进 title）；列=标题/状态人话（statusLabel SSOT 从 modules/tasks/tasksBoard 只读 import，未知=待核实）/优先级（priorityLabel，缺=未定级）/更新时间 beijing() BJT 到分；空集=「该员工暂无任务。」+「不放宽筛选来凑数」+筛选口径提示；尾注只读零写入口。
+
+BFF 关键读数（9122==01175128 活体，只读）：工单点名 URL `GET /api/tasks?employeeId=emp_86A8…&limit=20`→200 n=20，但换一个员工 `employeeId=emp_217A…`→**同 200 n=20 同首行**=employeeId 不在 BFF passthrough 白名单（server.py:380-392 现查=(assignee,status,dueBefore,limit,cursor)）且被静默忽略、未过滤；对照真过滤腿 `assignee=employee:<id>&limit=20`→200 n=10（该员工）与 200 n=0（另一员工）=服务端真收窄。⇒ 页面查询=**/api/tasks?assignee=employee%3A<id>&limit=20**（诚实归属口径），employeeId 参数形态按工单要求如实上报，禁假过滤。
+
+测试：既有 3 用例入口由 at("tasks")（旧借 approvals 映射）改为 at("approvals")（语义=审批区本尊，断言文本零改动）；新增 R43 describe 4 用例：①真查询带 assignee=employee%3A<EMP>+limit=20、行 href=/tasks/tk_0762C4D5、待处理/待核实/高优先级、BJT 10:00/09:30、无标题行=「任务 · 1B4EA3C9」（用 tasksBoard.short8 全站口径——坑：模块自研 shortCode 会把 tk_ 计进短码=TK1B4EA3，已换 short8）②空集诚实句+不放宽筛选+面板卡不渲 ③error=人话+请求编号：req-tsk-43 冒号形制+req-copy+重试同卡（坑：querySelector("button") 先命中复制钮，断言改 some(含「重试」)；**同一 it 内二次 mockApi+renderAt 不会重发请求（useResourceList deps=[url,nonce] 未变）=403≡404 必须拆独立 it（root 重建习语）**）。定向 employee-detail 26 passed exit0；assert-ia 两模式 exit0（51/22/1/8 未动）；tsc 本域零红；全量 **131 files/1399 passed**（≥基线 1387）。
+
+三档横溢：jsdom 不可测，形态学=行网格 grid-cols-1 md:grid-cols-[1.8fr_.8fr_.8fr_1fr]+min-w-0 truncate+列头 md:grid（与 chat 区同构已验），如实报。9122 取证代次禁重建：活体行读数待并入后代次。
