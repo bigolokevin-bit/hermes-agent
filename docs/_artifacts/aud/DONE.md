@@ -2855,3 +2855,14 @@ Untested: the four-state body lengths are jsdom readings, not browser pixels; th
 - Gates: vitest src/modules/audit exit 0 (10 files / 161 tests); tsc -b reports 50 errors (the standing floor, none in this module); eslint src/modules/audit exit 0 (0 errors / 4 pre-existing warnings).
 - Live: /audit?window=7d at 1440/1280/375 is sw==cw (1440/1440, 1280/1280, 375/375), 50 rows, textLen 5521, export button enabled. The 7d window returns no nextCursor, so there is no live second page to click; the pagination behaviour is proven by the module tests (two-page mock: page 1 next writes cursor=cur_page2, the second fetch carries it, aud2-page reads 第 2 页, aud2-total reads 总数不可用, prev pops back to page 1).
 - Untested: a live second page (the service had no next cursor); no per-element pixel diff; 9122 not rebuilt, main not merged.
+
+## Audit filtered CSV export (2026-11-20, base 61dd1db8)
+
+- 新按钮 aud5-export（导出当前筛选 CSV）与计数 aud5-export-count（将导出 N 条），仅在 ready 且有行时可用；空集时 disabled + aria-disabled + title「当前筛选无事件可导出」。
+- 纯前端生成：filteredCsvText 输出 BOM + 固定英文表头 time,actor,action,resource,rid，每行一条（时间 BJT 到分；操作者/动作/对象为人话标签；请求编号缺失留空，不填 0）；行数等于当前已加载行数。
+- RFC 4180 转义：字段含逗号、引号或换行时整体加引号并把内部引号翻倍；实测样例 actor 标签 Li, "A" 输出 "Li, ""A"""。
+- 文件名 audit-<window>-<actor>-<resource>-YYYYMMDD-HHmm.csv，全部 ASCII；实测 audit-7d-all-all-20261120-0647.csv。
+- 未加端点、未改后端；aud01-export（中文列）保持原样；aud2-*/aud3-*/aud01-*/agent-v2-page-audit* 未破。
+- 口径披露：上一轮 actor/资源类型筛选 BLOCKED 未实现，故文件名两段固定为 all；导出范围是当前已加载的这一页（时间窗 + 游标页），不是整个窗口（服务没有 total）。
+- 门禁：vitest src/modules/audit exit 0（10 files/167 tests）；tsc -b 50 条既有地板、本模块 0；eslint 0 errors（4 既有 warnings）。
+- 未测：浏览器内真实下载点击（Blob 契约由 vitest 断言）；无逐元素像素比对；9122 未重建、未并 main。
