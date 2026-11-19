@@ -134,9 +134,9 @@ describe("KnowledgeModulePage", () => {
     fetchMock.mockResolvedValue({ items: [] });
     const cases = [
       ["/knowledge?tab=sources", "ingest", "/agent-api/api/documents?limit=50"],
-      ["/knowledge?tab=retrieval", "retrieval", "/agent-api/api/retrieval"],
-      ["/knowledge?tab=citations", "evidence", "/agent-api/api/run-events?kind=citation&limit=50"],
-      ["/knowledge?tab=evidence", "evidence", "/agent-api/api/run-events?kind=citation&limit=50"],
+      ["/knowledge?tab=retrieval", "retrieval", "/agent-api/api/audit?action=kb.read&limit=50"],
+      ["/knowledge?tab=citations", "evidence", "/agent-api/api/sessions?limit=20"],
+      ["/knowledge?tab=evidence", "evidence", "/agent-api/api/sessions?limit=20"],
     ] as const;
     for (const [path, panel, url] of cases) {
       await render(path);
@@ -158,7 +158,7 @@ describe("KnowledgeModulePage", () => {
       "knw4-tab-retrieval",
     );
     expect(container.querySelector('[data-testid="knw4-panel"]')?.getAttribute("data-tab")).toBe("retrieval");
-    expect(fetchMock).toHaveBeenLastCalledWith("/agent-api/api/retrieval");
+    expect(fetchMock).toHaveBeenLastCalledWith("/agent-api/api/audit?action=kb.read&limit=50");
   });
 
   it("keeps the selected panel in the URL and restores it on re-render", async () => {
@@ -180,31 +180,36 @@ describe("KnowledgeModulePage", () => {
     expect(fetchMock).toHaveBeenLastCalledWith("/agent-api/api/documents?limit=50");
   });
 
-  it("renders real citations with an open link and an honest unreachable reason", async () => {
-    fetchMock.mockImplementation((url: string) =>
-      url.includes("run-events")
-        ? Promise.resolve({
-            items: [
-              {
-                id: "cit_1",
-                kind: "citation",
-                title: "季度报告",
-                employeeId: "u_123456789",
-                employeeName: "陈可",
-                at: "2026-11-19T06:00:00Z",
-                href: "/runs/run_1",
-              },
-              { id: "cit_2", title: "没有原文位置" },
-            ],
-          })
-        : Promise.reject(apiError(404, "这个数据接口还没有接入。")),
-    );
+  it("renders real session citations with an open link and an honest unreachable reason", async () => {
+    fetchMock.mockImplementation((url: string) => {
+      if (url.includes("/api/sessions")) {
+        return Promise.resolve({
+          items: [{ sessionId: "cs_123456789", employeeId: "u_123456789", messageCount: 2 }],
+        });
+      }
+      if (url.includes("/console-sessions/cs_123456789")) {
+        return Promise.resolve({
+          messages: [
+            { role: "user", createdAt: "2026-11-19T05:59:00Z", content: "问" },
+            {
+              role: "assistant",
+              createdAt: "2026-11-19T06:00:00Z",
+              citations: [
+                { id: "cit_1", type: "citation", title: "季度报告", href: "/runs/run_1" },
+                { id: "cit_2", title: "没有原文位置" },
+              ],
+            },
+          ],
+        });
+      }
+      return Promise.reject(apiError(404, "这个数据接口还没有接入。"));
+    });
     await render("/knowledge?tab=evidence");
-    expect(fetchMock).toHaveBeenCalledWith("/agent-api/api/run-events?kind=citation&limit=50");
+    expect(fetchMock).toHaveBeenCalledWith("/agent-api/api/sessions?limit=20");
     expect(container.querySelectorAll('[data-testid="knw4-citation-row"]')).toHaveLength(2);
     const text = container.textContent ?? "";
     expect(text).toContain("季度报告");
-    expect(text).toContain("陈可");
+    expect(text).toContain("员工 · 23456789");
     expect(text).toContain("2026-11-19 14:00");
     expect(container.querySelector('[data-testid="knw4-citation-open"]')?.getAttribute("href")).toBe(
       "/runs/run_1",
@@ -213,6 +218,36 @@ describe("KnowledgeModulePage", () => {
     expect(text).toContain("上游没有给出原文位置");
     expect(text).not.toContain("u_123456789");
     expect(text).not.toContain("示例");
+  });
+
+  it("renders real retrieval audit rows with human decisions and no raw fields", async () => {
+    fetchMock.mockResolvedValue({
+      events: [
+        {
+          event_id: "ev_123456789",
+          occurred_at: "2026-11-19T06:10:00Z",
+          actor: { type: "employee", id: "emp_ABCDEF123456789" },
+          decision: "allow",
+          outcome: "success",
+          resource: { type: "kb_query", id: "kbq_123456789" },
+          run_id: "run_123456789",
+        },
+      ],
+    });
+    await render("/knowledge?tab=retrieval");
+    expect(fetchMock).toHaveBeenCalledWith("/agent-api/api/audit?action=kb.read&limit=50");
+    expect(container.querySelectorAll('[data-testid="knw4-retrieval-row"]')).toHaveLength(1);
+    const text = container.textContent ?? "";
+    expect(text).toContain("员工 · 23456789");
+    expect(text).toContain("允许");
+    expect(text).toContain("成功");
+    expect(text).toContain("知识查询");
+    expect(text).toContain("2026-11-19 14:10");
+    expect(container.querySelector('[data-testid="knw4-retrieval-open"]')?.getAttribute("href")).toBe(
+      "/runs/run_123456789",
+    );
+    expect(text).not.toContain("kbq_123456789");
+    expect(text).not.toContain("ev_123456789");
   });
 
   it("keeps a copyable request id and retries a 500 without showing HTTP codes", async () => {
