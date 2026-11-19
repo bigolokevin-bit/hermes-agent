@@ -17,6 +17,8 @@ const SPACES = "/agent-api/api/knowledge/spaces?limit=20";
 const DOCUMENTS = "/agent-api/api/documents?limit=50";
 const TASKS = "/agent-api/api/knowledge/sources?limit=20";
 const INGEST_STATUS = "/agent-api/api/knowledge/ingest-status?limit=20";
+const docsUrlFor = (id: string) => `/agent-api/api/documents?limit=50&spaceId=${id}`;
+const DOCS_SPACE = docsUrlFor("sp_hr");
 const SEARCH_NO_QUERY = "/agent-api/api/knowledge/search?limit=12";
 const SEARCH_STAFF = "/agent-api/api/knowledge/search?q=%E5%91%98%E5%B7%A5&limit=12";
 const CITATIONS = "/agent-api/api/knowledge/citations?limit=20";
@@ -245,6 +247,7 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
             { spaceId: "sp_url", name: "对外口径镜像", origin: "https://mirror.example.com/kb/policy", documentCount: 18, status: "unknown_value" },
             { spaceId: "sp_fail", name: "断掉的数据库空间", repository: "crm-mysql", status: "failed", lastError: "凭据过期，无法读取库表清单", chunkCount: 512 },
             { spaceId: "sp_bare" },
+            { name: "没给标识的空间", documentCount: 3, status: "synced" },
           ],
         });
       }
@@ -255,14 +258,19 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
 
     await render("/knowledge?tab=spaces");
     expect(attr("knw5-spaces", "data-state")).toBe("ready");
-    expect(attr("knw5-spaces", "data-len")).toBe("5");
+    expect(attr("knw5-spaces", "data-len")).toBe("6");
     const rows = container.querySelectorAll('[data-testid="knw5-spaces-row"]');
-    expect(rows).toHaveLength(5);
-    const cell = (i: number, id: string) =>
-      (rows[i]?.querySelector(`[data-testid="${id}"]`)?.textContent ?? "").replace(/\s+/g, " ").trim();
+    expect(rows).toHaveLength(6);
+    const cell = (i: number, id: string) => {
+      const sel = id === "knw5-space-name" ? "[data-testid='knw5-space-link'],[data-testid='knw5-space-name']" : `[data-testid="${id}"]`;
+      return (rows[i]?.querySelector(sel)?.textContent ?? "").replace(/\s+/g, " ").trim();
+    };
 
     // 来源人话：直给的名字、认得出的工具、只有链接时给主机名
     expect(cell(0, "knw5-space-name")).toContain("人事制度空间");
+    // 有标识的空间行是真实可聚焦链接，点进去就是这个空间的文档列表
+    const link0 = rows[0]?.querySelector('[data-testid="knw5-space-link"]') as HTMLAnchorElement | null;
+    expect(link0?.getAttribute("href")).toContain("space=sp_hr");
     expect(cell(0, "knw5-space-source")).toBe("SharePoint · 集团人事库");
     expect(cell(0, "knw5-space-docs")).toBe("1,240 篇");
     expect(cell(0, "knw5-space-time")).toContain("最近同步：2026-11-19 14:20");
@@ -285,6 +293,12 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(cell(4, "knw5-space-docs")).toBe("—");
     expect(cell(4, "knw5-space-time")).toBe("—");
     expect(cell(4, "knw5-space-status")).toContain("待核实");
+
+    // 没有标识的空间不硬造链接，直说点不进去
+    const nameless = rows[5]?.querySelector('[data-testid="knw5-space-link"]');
+    expect(nameless).toBeNull();
+    expect((rows[5]?.querySelector('[data-testid="knw5-space-name"]')?.textContent ?? "")).toContain("没给标识的空间");
+    expect((rows[5]?.textContent ?? "").replace(/\s+/g, " ")).toContain("点不进文档列表");
 
     const text = container.textContent ?? "";
     expect(text).toContain("来源：知识空间登记 · 数据截至 2026-11-19 15:00");
@@ -325,6 +339,175 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(attr("knw5-spaces", "data-len")).toBe("0");
     expect(byTestid("knw5-spaces-empty")?.textContent ?? "").toContain("这不等于「没有空间」");
     expect(container.querySelectorAll('[data-testid="knw5-spaces-row"]')).toHaveLength(0);
+  });
+
+  it("lists a space's documents as focusable rows with honest gaps and a local filter", async () => {
+    const DOC_ROWS = {
+      asOf: "2026-11-19T08:00:00Z",
+      documents: [
+        { documentId: "doc_manual", fileName: "员工手册.pdf", mimeType: "application/pdf", sizeBytes: 2516582, updatedAt: "2026-11-19T07:10:00Z", url: "/documents/doc_manual" },
+        { documentId: "doc_xlsx", title: "薪酬口径表.xlsx", docType: "xlsx", sizeBytes: 40960, lastSyncAt: "2026-11-19T05:30:00Z" },
+        { documentId: "doc_nothing" },
+      ],
+    };
+    fetchMock.mockImplementation((url: string) => {
+      if (url === docsUrlFor("sp_hr")) return Promise.resolve(DOC_ROWS);
+      if (url === SPACES) return fail(404, "这个数据接口还没有接入。", "rid-spaces-x");
+      return fail(404, "这个数据接口还没有接入。");
+    });
+
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    expect(urlsCalled()).toContain(DOCS_SPACE);
+    expect(urlsCalled()).not.toContain("/agent-api/api/documents?limit=50");
+    expect(attr("kn3-docs", "data-state")).toBe("ready");
+    expect(attr("kn3-docs", "data-len")).toBe("3");
+    const rows = container.querySelectorAll('[data-testid="kn3-docs-row"]');
+    expect(rows).toHaveLength(3);
+    const texts = [...rows].map((tr) => (tr.textContent ?? "").replace(/\s+/g, " ").trim());
+    expect(texts[0]).toContain("员工手册.pdf");
+    expect(texts[0]).toContain("PDF");
+    expect(texts[0]).toContain("2.4 MB");
+    expect(texts[0]).toContain("2026-11-19 15:10");
+    expect(texts[1]).toContain("表格");
+    expect(texts[1]).toContain("40.0 KB");
+    expect(texts[1]).toContain("最近同步：2026-11-19 13:30".replace("最近同步：", ""));
+    // 缺值：屏面是「—」，原因在 title
+    expect(texts[2]).toContain("—");
+    const bare = rows[2] as Element;
+    const sizeHint = bare.querySelector('[data-testid="kn3-docs-size"]')?.getAttribute("title") ?? "";
+    expect(sizeHint).toBe("上游没有给出文件大小");
+    expect(bare.querySelector('[data-testid="kn3-docs-type"]')?.getAttribute("title")).toBe("上游没有给出文档类型");
+    expect(bare.querySelector('[data-testid="kn3-docs-updated"]')?.getAttribute("title")).toBe("上游没有给出更新时间");
+    expect(bare.querySelector('[data-testid="kn3-docs-name"]')?.getAttribute("title")).toBe("上游没有给出这份文档叫什么");
+
+    // 每一行都是真实可聚焦的 a[href]
+    const anchors = container.querySelectorAll('a[data-testid="kn3-docs-name"]');
+    expect(anchors).toHaveLength(3);
+    expect((anchors[0] as HTMLAnchorElement).getAttribute("href")).toContain("doc=doc_manual");
+    expect(anchors[0].getAttribute("tabindex")).toBeNull();
+
+    // 行展开：站内可打开；站外要写原因
+    await click("kn3-docs-name");
+    expect(byTestid("kn3-docs-detail")).toBeTruthy();
+    expect(attr("kn3-docs-detail-open", "href")).toBe("/documents/doc_manual");
+    expect(byTestid("kn3-docs-detail-open")).toBeTruthy();
+    await click("kn3-docs-name");
+    expect(byTestid("kn3-docs-detail")).toBeNull();
+
+    await clickNth("kn3-docs-name", 1);
+    expect(byTestid("kn3-docs-detail-unreachable")).toBeTruthy();
+    expect(byTestid("kn3-docs-detail-unreachable")?.textContent ?? "").toContain("上游没有给出原文位置");
+
+    // 本地筛选必须自己说明是本地筛选
+    const note = byTestid("kn3-docs-filter-note")?.textContent ?? "";
+    expect(note).toContain("本地筛选");
+    expect(note).toContain("不再问一次服务");
+    const callsBefore = fetchMock.mock.calls.length;
+    await type("kn3-docs-filter-input", "薪酬");
+    expect(attr("kn3-docs", "data-len")).toBe("1");
+    expect(fetchMock.mock.calls.length).toBe(callsBefore);
+    const only = container.querySelectorAll('[data-testid="kn3-docs-row"]');
+    expect(only).toHaveLength(1);
+    expect(only[0].textContent ?? "").toContain("薪酬口径表.xlsx");
+
+    await type("kn3-docs-filter-input", "不存在的关键词");
+    const emptyFiltered = byTestid("kn3-docs-empty")?.textContent ?? "";
+    expect(emptyFiltered).toContain("本地筛选没有匹配");
+    expect(emptyFiltered).toContain("3 份文档");
+    expect(emptyFiltered).not.toContain("该空间暂无文档");
+
+    await type("kn3-docs-filter-input", "");
+    expect(container.textContent ?? "").toContain("员工手册.pdf");
+
+    // 返回链接把详情位关掉，回到空间列表
+    await click("kn3-docs-back");
+    expect((byTestid("loc")?.textContent ?? "")).not.toContain("space=sp_hr");
+    expect(byTestid("knw5-spaces")).toBeTruthy();
+
+    // 原始 id 与字段名不上屏
+    const screen = container.textContent ?? "";
+    for (const banned of ["doc_manual", "doc_xlsx", "documentId", "sizeBytes", "mimeType", "limit=50", "/api/"]) {
+      expect(screen, banned).not.toContain(banned);
+    }
+  });
+
+  it("draws one 空间不存在或未授权 body for 403 and 404, and a real empty list", async () => {
+    const bodyOf = (node: Element | null) =>
+      Array.from(node?.querySelectorAll("b, .knw5-wrap") ?? [])
+        .map((part) => part.textContent ?? "")
+        .join(" ")
+        .replace(/\s+/g, " ");
+
+    fetchMock.mockImplementation((url: string) =>
+      url === docsUrlFor("sp_missing") ? fail(404, "这个数据接口还没有接入。", "rid-docs-gone") : fail(404, "这个数据接口还没有接入。", "rid-other"),
+    );
+    await render("/knowledge?tab=spaces&space=sp_missing");
+    const gone = byTestid("kn3-docs-unwired");
+    expect(gone?.querySelector("b")?.textContent).toBe("空间不存在或未授权");
+    expect(gone?.getAttribute("title")).toBe("GAP-03");
+    expect(bodyOf(gone)).toContain("不靠回答的差别去猜");
+    expect(container.textContent).toContain("请求编号：rid-docs-gone");
+    expect(byTestid("kn3-docs-retry")).toBeTruthy();
+    expect(byTestid("kn3-docs-table")).toBeNull();
+
+    fetchMock.mockImplementation((url: string) =>
+      url === docsUrlFor("sp_missing") ? fail(403, "没有查看这项数据的权限。", "rid-docs-denied") : fail(404, "这个数据接口还没有接入。"),
+    );
+    await render("/knowledge?tab=spaces&space=sp_missing");
+    expect(bodyOf(byTestid("kn3-docs-unwired"))).toBe(bodyOf(gone));
+    expect(container.textContent).toContain("请求编号：rid-docs-denied");
+
+    // 200 空列表：该空间暂无文档（不是未接入）
+    fetchMock.mockImplementation((url: string) =>
+      url === docsUrlFor("sp_empty") ? Promise.resolve({ documents: [] }) : fail(404, "这个数据接口还没有接入。"),
+    );
+    await render("/knowledge?tab=spaces&space=sp_empty");
+    expect(attr("kn3-docs", "data-state")).toBe("ready");
+    expect(attr("kn3-docs", "data-len")).toBe("0");
+    const emptyText = byTestid("kn3-docs-empty")?.textContent ?? "";
+    expect(emptyText).toContain("该空间暂无文档");
+    expect(emptyText).not.toContain("未接入");
+
+    // 500：错误态换内容，rid 可复制
+    fetchMock.mockImplementation((url: string) =>
+      url === docsUrlFor("sp_boom") ? fail(500, "数据服务暂时没有响应，请稍后重试。", "rid-docs-busy") : fail(404, "这个数据接口还没有接入。"),
+    );
+    await render("/knowledge?tab=spaces&space=sp_boom");
+    expect(byTestid("kn3-docs-error")).toBeTruthy();
+    expect(byTestid("kn3-docs-unwired")).toBeNull();
+    expect(container.textContent).toContain("请求编号：rid-docs-busy");
+    expect(byTestid("kn3-docs-retry")).toBeTruthy();
+
+    // 骨架
+    let release: (value: unknown) => void = () => {};
+    fetchMock.mockImplementation(() => new Promise((resolve) => { release = resolve; }));
+    await render("/knowledge?tab=spaces&space=sp_slow");
+    expect(byTestid("kn3-docs-loading")).toBeTruthy();
+    expect(attr("kn3-docs", "data-state")).toBe("loading");
+    await act(async () => { release({ documents: [{ documentId: "d1", fileName: "a.md", mimeType: "md" }] }); });
+    await act(async () => {});
+    expect(attr("kn3-docs", "data-state")).toBe("ready");
+    expect(container.textContent ?? "").toContain("Markdown");
+
+    // 详情位不是新路由：普通 URL 不带 space 时仍是空间列表，且没有写入控件
+    fetchMock.mockResolvedValue({ items: [] });
+    await render("/knowledge?tab=spaces");
+    expect(byTestid("kn3-docs")).toBeNull();
+    expect(byTestid("knw5-spaces")).toBeTruthy();
+    expect(container.querySelector('[data-testid="knw5-page"] form[method="post"]')).toBeNull();
+    expect(attr("knw5-page", "data-fixture")).toBeNull();
+
+    // 切面板把详情位一起清掉，四 tab 仍 4/4
+    await click("knw5-tab-retrieval");
+    const loc = (byTestid("loc")?.textContent ?? "").replace(/^\?/, "");
+    expect(loc).not.toContain("space=");
+    expect(loc).not.toContain("doc=");
+    for (const key of ["spaces", "ingest", "retrieval", "evidence"]) {
+      expect(byTestid(`knw5-tab-${key}`)).toBeTruthy();
+    }
+    await render(`/knowledge?${loc}&space=sp_hr&doc=doc_manual`);
+    expect((byTestid("loc")?.textContent ?? "")).toContain("panel=retrieval");
+    expect(byTestid("kn3-docs")).toBeNull();
   });
 
   it("keeps the 失败 reason human on screen and technical text only in the title", async () => {

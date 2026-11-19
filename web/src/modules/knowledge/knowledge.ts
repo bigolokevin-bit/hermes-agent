@@ -43,6 +43,14 @@ export const UNWIRED_HUMAN =
  * The spaces surface names its own read and its own way forward, and it says which
  * other surface can already be read while this one stays closed.
  */
+/**
+ * One paragraph for every way this space can be unreadable — 403, 404 and a missing
+ * space id all draw it, because the page must not guess which answer the service gave.
+ */
+export const SPACE_DOC_UNWIRED_HEAD = "空间不存在或未授权";
+export const SPACE_DOC_UNWIRED_HUMAN =
+  "这个空间可能不存在，当前账号可能没有查看它的权限，或者文档读口本身尚未接入本控制台。这三种情况这里给同一段说明：页面不靠回答的差别去猜服务给了哪一个。读口接上或权限开通后，这里会列出这个空间里的真实文档；在此之前不编文档、不放样例、也不给数量。";
+
 export const SPACES_UNWIRED_HEAD = "知识空间未接入";
 export const SPACES_UNWIRED_HUMAN =
   "知识空间接口尚未接入本控制台，或当前账号没有查看它的权限。现在这里列不出任何空间：不编空间、不放样例，也不给数量。想先看在用知识的内容，可以打开「证据与引用」看会话里留下的引用；要开通这枚读口，去审批中心提交申请。接入或开通后，这页会自动列出真实空间、各自的来源、文档数、最近同步时间与状态。";
@@ -86,6 +94,20 @@ export const TAB_ORDER: KnowledgeTab[] = ["spaces", "ingest", "retrieval", "evid
 /** Read URLs — one per surface, so every body can say where it came from. */
 export const SPACES_URL = "/agent-api/api/knowledge/spaces?limit=20";
 export const DOCUMENTS_URL = "/agent-api/api/documents?limit=50";
+
+/**
+ * The document list of one space. `/api/documents` is the designated document read:
+ * the BFF names it as its own fail-closed route (R34 NC③ — `documents.read_not_wired`,
+ * 「前端请显『未接入』」), and today the route is intercepted before any query is read,
+ * so `spaceId` is the natural filter once it is wired but is NOT proven server-side.
+ * That is also why the 名称 filter on this surface is local and says so.
+ */
+export function documentsUrl(spaceId: string): string {
+  const params = new URLSearchParams();
+  params.set("limit", "50");
+  params.set("spaceId", spaceId);
+  return `/agent-api/api/documents?${params.toString()}`;
+}
 export const RECORDS_URL = "/agent-api/api/audit?action=kb.read&limit=50";
 /**
  * The session list the citation scan reads. The canonical console-session collection is
@@ -133,6 +155,7 @@ export function searchUrl(query: string): string {
 
 export type SurfaceKey =
   | "spaces"
+  | "space-docs"
   | "ingest-status"
   | "tasks"
   | "documents"
@@ -144,6 +167,7 @@ export type SurfaceKey =
 /** Human label for each surface's source line — no route, no field name. */
 export const SURFACE_SOURCE: Record<SurfaceKey, string> = {
   spaces: "知识空间登记",
+  "space-docs": "空间内文档登记",
   "ingest-status": "知识入库状态",
   tasks: "数据源接入任务",
   documents: "文档与数据接入登记",
@@ -371,6 +395,8 @@ const ROW_KEYS = [
   "hits",
   "citations",
   "documents",
+  "docs",
+  "files",
   "sessions",
 ] as const;
 
@@ -1211,6 +1237,100 @@ function spaceOf(row: Rec): SpaceRow {
     statusReason: statusRaw ? null : "上游没有给出空间状态",
     ...failure,
   };
+}
+
+/**
+ * 一个文档行：名称 / 类型 / 大小 / 更新。缺的那一项显示「—」，原因写进 `title`，
+ * 屏面不出现字段名；数量与大小都不猜。
+ */
+export interface DocRow {
+  id: string;
+  name: string;
+  /** 缺字段的原因，只进 title。 */
+  nameHint: string | null;
+  type: string;
+  typeRaw: string | null;
+  typeHint: string | null;
+  size: string;
+  sizeHint: string | null;
+  at: string;
+  atRaw: string | null;
+  atHint: string | null;
+  /** 站内可打开的原文位置；站外或缺失为 null。 */
+  href: string | null;
+  /** 打不开时这一条自己的原因（屏面可见）。 */
+  unreachable: string | null;
+}
+
+/** 文档类型的人话；认不出的值原样留着（它就是运营认得的扩展名）。 */
+function docTypeLabel(raw: string | null): string {
+  if (!raw) return "—";
+  const lower = raw.toLowerCase().replace(/^\./, "");
+  const map: Record<string, string> = {
+    pdf: "PDF",
+    doc: "Word 文档",
+    docx: "Word 文档",
+    word: "Word 文档",
+    xls: "表格",
+    xlsx: "表格",
+    csv: "表格（CSV）",
+    ppt: "演示文稿",
+    pptx: "演示文稿",
+    md: "Markdown",
+    markdown: "Markdown",
+    txt: "文本",
+    text: "文本",
+    json: "结构化数据",
+    html: "网页",
+    htm: "网页",
+    png: "图片",
+    jpg: "图片",
+    jpeg: "图片",
+  };
+  if (map[lower]) return map[lower];
+  const mime = raw.toLowerCase().split("/").pop() ?? "";
+  if (map[mime]) return map[mime];
+  return raw;
+}
+
+function docOf(row: Rec): DocRow {
+  const id = pickString(row.documentId, row.document_id, row.docId, row.doc_id, row.fileId, row.file_id, row.id) ?? "";
+  const name = pickString(row.fileName, row.file_name, row.documentName, row.document_name, row.title, row.name);
+  const typeRaw = pickString(row.docType, row.doc_type, row.mimeType, row.mime_type, row.fileType, row.file_type, row.type, row.extension, row.suffix);
+  const bytes = pickNumber(row.sizeBytes, row.size_bytes, row.storageBytes, row.storage_bytes, row.bytes, row.size);
+  const size = formatBytes(bytes);
+  const moment = syncMomentOf(row);
+  const at = beijing(moment.atRaw);
+  const link = linkOf(row);
+  return {
+    id,
+    name: name ?? "—",
+    nameHint: name ? null : "上游没有给出这份文档叫什么",
+    type: docTypeLabel(typeRaw),
+    typeRaw,
+    typeHint: typeRaw ? null : "上游没有给出文档类型",
+    size: size ?? "—",
+    sizeHint: size ? null : bytes !== null ? "上游给的数值读不出可读大小" : "上游没有给出文件大小",
+    at: at ?? "—",
+    atRaw: moment.atRaw,
+    atHint: at ? null : moment.atRaw ? "上游给的时间读不出是哪一刻" : "上游没有给出更新时间",
+    href: link.href,
+    unreachable: link.unreachable,
+  };
+}
+
+/** Documents of one space, from the designated document read. */
+export function readSpaceDocuments(body: unknown): SurfaceValue<DocRow> {
+  const envelope = stampOf(body);
+  const rows = rowsOf(body);
+  if (rows === null) return { rows: [], ...envelope, scanned: null };
+  const mapped = rows.map(docOf);
+  const newest = newestOf(
+    mapped.map((row) => row.atRaw),
+    envelope,
+    "上游响应没有带采集时间，文档也没有给出可用时间，数据截至时间未知。",
+  );
+  return { rows: mapped, ...newest, scanned: null };
 }
 
 /** Spaces from the designated knowledge-space read. */
