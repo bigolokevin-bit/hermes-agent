@@ -72,6 +72,8 @@ const CONCURRENCY = Math.max(1, Number(flagOf('concurrency', '6')));
 const RENDER_CONCURRENCY = Math.max(1, Number(flagOf('render-concurrency', '1')));
 const NAV_TIMEOUT = Number(flagOf('nav-timeout', '30000'));
 const SETTLE_CAP = Number(flagOf('settle-cap', '4000'));
+// L0 恢复单第2步：--auth-state <playwright storageState JSON 路径> 注入登录态
+const AUTH_STATE = flagOf('auth-state', null);
 const NO_RENDER = argv.includes('--no-render');
 // L0 十一轮授权（2026-11-19）：纯静态落点（python http.server，无 /agent-api 代理）
 // 下 API 请求全 404 → consoleErrors 属环境项。flag 态：consoleErrors 逐条记
@@ -456,7 +458,7 @@ async function contentRender() {
   }
 
   const measure = async (url) => {
-    const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, ...(AUTH_STATE ? { storageState: AUTH_STATE } : {}) });
     const page = await ctx.newPage();
     const consoleErrors = [];
     page.on('console', (m) => {
