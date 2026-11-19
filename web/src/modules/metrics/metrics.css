@@ -822,3 +822,17 @@
   line-height: 1.6;
   overflow-wrap: anywhere;
 }
+
+/* metM — a source whose collection time trails this read */
+.metM-stale {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border: 1px solid color-mix(in srgb, var(--color-warning, #d97706) 45%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-warning, #d97706) 14%, transparent);
+  color: var(--color-warning-foreground, inherit);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: nowrap;
+}

@@ -990,6 +990,8 @@ export const SOURCE_CATALOG: SourceDescriptor[] = [
 export type SourceStamp = {
   asOf: string | null;
   asOfSource: string | null;
+  /** When this client finished the read that produced `asOf`; never the data clock. */
+  fetchedAt: string | null;
   error: string | null;
   gap: string | null;
   requestId: string | null;
@@ -998,6 +1000,7 @@ export type SourceStamp = {
 export const EMPTY_SOURCE_STAMP: SourceStamp = {
   asOf: null,
   asOfSource: null,
+  fetchedAt: null,
   error: null,
   gap: null,
   requestId: null,
@@ -1037,25 +1040,31 @@ export function sourceKeyOfPath(path: string): SourceKey | null {
  */
 export function mergeSourceStamp(
   prev: SourceStamp | undefined,
-  next: { asOf: string | null; asOfSource: string | null },
+  next: { asOf: string | null; asOfSource: string | null; fetchedAt?: string | null },
 ): SourceStamp {
   const base = prev ?? EMPTY_SOURCE_STAMP;
   let asOf = base.asOf;
   let asOfSource = base.asOfSource;
+  let fetchedAt = base.fetchedAt;
   if (next.asOf) {
     const nextMs = Date.parse(next.asOf);
     const baseMs = base.asOf ? Date.parse(base.asOf) : Number.NEGATIVE_INFINITY;
     if (!Number.isFinite(baseMs) || nextMs >= baseMs) {
       asOf = next.asOf;
       asOfSource = next.asOfSource ?? base.asOfSource;
+      // The read time belongs to the read whose collection time we are showing.
+      fetchedAt = next.fetchedAt ?? fetchedAt;
     }
+  } else if (!base.asOf) {
+    fetchedAt = next.fetchedAt ?? fetchedAt;
   }
-  return { asOf, asOfSource, error: null, gap: null, requestId: null };
+  return { asOf, asOfSource, fetchedAt, error: null, gap: null, requestId: null };
 }
 
 export type SourceRow = SourceDescriptor & {
   asOf: string | null;
   asOfSource: string | null;
+  fetchedAt: string | null;
   state: 'ok' | 'degraded' | 'down';
   error: string | null;
   gap: string | null;
@@ -1075,12 +1084,34 @@ export function sourceRows(stamps: Record<string, SourceStamp>): SourceRow[] {
       ...descriptor,
       asOf: stamp.asOf,
       asOfSource: stamp.asOfSource,
+      fetchedAt: stamp.fetchedAt,
       state,
       error: stamp.error,
       gap: stamp.gap,
       requestId: stamp.requestId,
     };
   });
+}
+
+/** A source whose collection time trails the read by more than this is called stale. */
+export const SOURCE_STALE_MS = 15 * 60 * 1000;
+
+/**
+ * Compare the upstream collection time with the moment this client finished
+ * reading. Only a real ISO pair can be stale: a source without a collection
+ * time is never called fresh *or* stale, and the local clock never stands in
+ * for a missing upstream stamp.
+ */
+export function sourceStaleness(
+  row: Pick<SourceRow, 'asOf' | 'fetchedAt'>,
+  thresholdMs = SOURCE_STALE_MS,
+): { stale: boolean; ageMs: number | null } {
+  if (!isIsoStamp(row.asOf) || !isIsoStamp(row.fetchedAt)) return { stale: false, ageMs: null };
+  const asOfMs = Date.parse(row.asOf);
+  const readMs = Date.parse(row.fetchedAt);
+  if (!Number.isFinite(asOfMs) || !Number.isFinite(readMs)) return { stale: false, ageMs: null };
+  const ageMs = readMs - asOfMs;
+  return { stale: ageMs > thresholdMs, ageMs };
 }
 
 /** The newest upstream collection time across the sources, for the summary line. */

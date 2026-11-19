@@ -44,6 +44,8 @@ import {
   heatGridSummary,
   isoOrNull,
   metricsSummaryText,
+  sourceStaleness,
+  SOURCE_STALE_MS,
   withGapNote,
   type ExportGap,
   ledgerAsOf,
@@ -372,7 +374,10 @@ export function MetricsModulePage() {
       const payload = await fetchJsonStrict(path);
       if (key && epoch === sourceEpoch.current) {
         setSourcesSeen(true);
-        setSources((prev) => ({ ...prev, [key]: mergeSourceStamp(prev[key], readSourceStamp(payload)) }));
+        setSources((prev) => ({
+          ...prev,
+          [key]: mergeSourceStamp(prev[key], { ...readSourceStamp(payload), fetchedAt: new Date().toISOString() }),
+        }));
       }
       return payload;
     } catch (error) {
@@ -2537,18 +2542,30 @@ export function MetricsModulePage() {
                       <code className="metB-path" role="cell">
                         {row.path}
                       </code>
-                      <span
-                        role="cell"
-                        data-testid={`metB-source-asof-${row.key}`}
-                        title={
-                          row.asOf
-                            ? row.asOfSource
-                              ? `采集时刻来自 ${row.asOfSource}`
-                              : '上游返回的采集时刻'
-                            : '上游未返回采集时刻'
-                        }
-                      >
-                        {row.asOf ? formatBeijing(row.asOf) : '—'}
+                      <span role="cell" className="metB-asofcell">
+                        <span
+                          data-testid={`metB-source-asof-${row.key}`}
+                          title={
+                            row.asOf
+                              ? row.asOfSource
+                                ? `采集时刻来自 ${row.asOfSource}`
+                                : '上游返回的采集时刻'
+                              : '上游未返回采集时刻'
+                          }
+                        >
+                          {row.asOf ? formatBeijing(row.asOf) : '—'}
+                        </span>
+                        {sourceStaleness(row).stale ? (
+                          <span
+                            className="metM-stale"
+                            data-testid={`metM-stale-${row.key}`}
+                            title={`采集时刻 ${formatBeijing(row.asOf)} · 读取时刻 ${formatBeijing(row.fetchedAt)} · 判据：读取时刻比采集时刻晚超过 ${Math.round(
+                              SOURCE_STALE_MS / 60_000,
+                            )} 分钟就提示「数据可能滞后」。读取时刻是这次读取完成的时刻，不是数据时刻；缺失采集时刻的读口不判滞后。`}
+                          >
+                            数据可能滞后
+                          </span>
+                        ) : null}
                       </span>
                       <span
                         role="cell"

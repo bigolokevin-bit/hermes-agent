@@ -2194,3 +2194,69 @@ describe('metL — copy the current view summary', () => {
     expect(body).toContain('占比口径：成本分摊按员工分组');
   });
 });
+
+// ---- metM: staleness hints in the freshness block --------------------------
+// A collection time is compared with the moment this client finished reading —
+// never with the local clock standing in for data. More than 15 minutes behind
+// gets a spoken badge; a missing or malformed stamp is never called stale.
+
+describe('metM — staleness hints', () => {
+  const isoMinutesAgo = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
+
+  it('flags a collection time more than fifteen minutes behind the read', async () => {
+    await mount(sourceRouter({ ...STATS_24H, asOf: isoMinutesAgo(40), asOfSource: 'bff' }));
+    await openSources();
+
+    const badge = document.querySelector('[data-testid="metM-stale-run-stats"]');
+    expect(badge?.textContent).toBe('数据可能滞后');
+    const title = badge?.getAttribute('title') ?? '';
+    expect(title).toContain('读取时刻');
+    expect(title).toContain('15 分钟');
+    expect(title).toContain('不是数据时刻');
+    // Sources without a collection time are not flagged.
+    expect(document.querySelector('[data-testid="metM-stale-run-activity"]')).toBeNull();
+  });
+
+  it('leaves a recent stamp and a missing stamp unflagged', async () => {
+    await mount(sourceRouter({ ...STATS_24H, asOf: isoMinutesAgo(1) }));
+    await openSources();
+
+    expect(document.querySelector('[data-testid="metM-stale-run-stats"]')).toBeNull();
+    expect(document.querySelector('[data-testid="metB-source-asof-run-activity"]')?.textContent).toBe('—');
+    expect(document.querySelector('[data-testid="metM-stale-run-activity"]')).toBeNull();
+  });
+
+  it('never turns a malformed stamp into a verdict', async () => {
+    await mount(sourceRouter({ ...STATS_24H, asOf: 'yesterday' }));
+    await openSources();
+
+    expect(document.querySelector('[data-testid="metB-source-asof-run-stats"]')?.textContent).toBe('—');
+    expect(document.querySelector('[data-testid="metM-stale-run-stats"]')).toBeNull();
+  });
+
+  it('re-judges after a window switch instead of keeping the old verdict', async () => {
+    let phase: 'old' | 'fresh' = 'old';
+    const asOf = () => isoMinutesAgo(phase === 'old' ? 90 : 1);
+    await mount(
+      sourceRouter((url: string) =>
+        url.includes('bucket=day')
+          ? { ...STATS_7D, asOf: asOf() }
+          : { ...STATS_24H, asOf: asOf() },
+      ),
+    );
+    await openSources();
+    expect(document.querySelector('[data-testid="metM-stale-run-stats"]')).toBeTruthy();
+
+    phase = 'fresh';
+    await act(async () => {
+      (document.querySelector('[data-testid="met6-window-7d"]') as HTMLButtonElement).click();
+    });
+    await waitFor(
+      () => document.querySelector('[data-testid="met6-runs-value"]')?.textContent === '13',
+      '7d runs',
+    );
+
+    expect(document.querySelector('[data-testid="metM-stale-run-stats"]')).toBeNull();
+    expect(document.querySelector('[data-testid="metB-source-table"]')).toBeTruthy();
+  });
+});

@@ -204,3 +204,15 @@
 - testid：`metL-copy`、`metL-copy-status`、`metL-fallback`、`metL-fallback-text`；met5–metK 全族不变。
 - 验证：定向 86（基线 82）；全量 132 files / 1490 passed（另 2 条上游 employee-detail 未处理拒绝为既存噪声）；`tsc` 全仓 55 条既存、本模块 0；build entry `assets/index-CntxHrw-.js` sha256 `5459a683696af4bdb8fea81ac371418ef92a6453a74c6e98462652b5e3e6f3ee`，entry 内 `metL-copy` 命中 0，chunk `MetricsModulePage-Ua4kF51Z.js` 命中 1。
 - 未测项：真浏览器剪贴板权限拒绝路径未实机走查（以 mock 返回 false 覆盖）；复制内容粘贴到外部编辑器未人工比对。
+
+## 数据新鲜度滞后提示（metM，2026-11-20）
+
+metB 的「采集时刻」列内新增滞后徽标，不新增列、不改版式。
+
+- 判据：每个读口的顶层 ISO `asOf` 与本客户端**本次读取完成时刻**比较；差值 > 15 分钟（`SOURCE_STALE_MS`）标「数据可能滞后」。读取时刻随成功响应写入 `SourceStamp.fetchedAt`，只与产生该 `asOf` 的那次读取配对。
+- 缺失/非 ISO：`asOf` 一律「—」，**不判滞后**（也绝不把本机时钟当采集时刻）。
+- title 写清三个事实：采集时刻、读取时刻、判据「读取时刻比采集时刻晚超过 15 分钟」；并注明读取时刻不是数据时刻。
+- 切窗/切视角/重试会清空本批 stamps 并重新判定；展开态不变。
+- testid：`metM-stale-<key>`（仅滞后时存在）；`metB-source-asof-<key>` 文本仍为纯时间（徽标是其兄弟节点），metB/metC 既有断言不变。
+- 验证：定向 90（基线 86）；全量 132 files / 1494 passed（2 条上游既存噪声）；tsc 全仓 55 既存、本模块 0；lint 0 error；build entry `assets/index-BuqX7qEx.js` sha256 `d13e24166f58b7a39cdc4236d366916faeba2a460b82113613958be7a4dbaff4`，entry 内 `metM-stale`=0，chunk `MetricsModulePage-CGLfyiDt.js`=1。
+- 未测项：真实上游滞后返回未联调（以固定 asOf 偏移覆盖）；浏览器时钟偏差场景未测。
