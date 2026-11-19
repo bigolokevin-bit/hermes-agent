@@ -427,3 +427,16 @@ testid：家族 ov5-→ov6- 全量升级（page 32+test 19 处，CSS class 保�
 修复：model.ts kind 改取数序 changeKind/change_kind→binding.changeKind→kind/category→type(仅非 business_action)；views.tsx 类型 Field 补 testId=apd5-field-change-kind ⇒ 8/8 testid：change-kind/verdict/decided-at/approver/action-hash/recipient/scope/request-id。maskHandle 对短句柄 human:1 显「审批人」（无裸句柄上屏，合规不修）。
 八字段逐项读数（真样本，api.test R25 用例锁定）：changeKind=对外发送消息✓ verdict=—（decisions 空诚实）✓ decidedAt=2026-11-17 21:09✓ approver=审批人·无裸 human:✓ actionHash=sha256:apr02（面板短码+title+复制钮）✓ recipient=—（无键诚实）✓ dataScope=null→—✓ requestId=null→—+未记录句✓；requester 解包无裸 human:。
 验证：定向 approvals 3 files 53 passed；全量 122 files/1223 passed 0 fail。曾试 History.test 组件级用例污染既有 describe 已回滚改函数级锁。served 代次 d6d9bb07 属 L0 合批，需 L0 重建 dist 后 QA 复跑 8/8。
+
+## T18 员工详情五区真数据深化（feat(console): employee detail five zones real data）
+五区实测表（ego 登录态经 9122 BFF，样本 emp_86A81CE8FF6F42E187BCF2B540，2026-11-19）：
+| 区 | 端点 | 读数 | 屏上口径 |
+|---|---|---|---|
+| 概览 | /api/employees/{id} → 回落 /api/matrix?employee= | 404 console.unknown_route → 200 n=3 rid 41f1… | 真数据（回落链既有）|
+| 能力与权限 | /api/matrix?employee= | 200 n=3 | 真数据 |
+| 审批 | /api/approvals?employeeId= | 200 n=8（D 别名增补后可用）| 真数据 8 行 |
+| 运行 | /api/runs?employeeId= | 200 真行 rn_01M7D7421P5PA27TEXMT9YVDZ8 running costStatus=unknown | 成本「—」（真值缺失不假 0）|
+| 审计 | /api/audit?actorId=&limit=50 | 200 {events:[]} 该员工暂无事件 | 诚实空态；from/to 全量通道见 ev_2BAA7DD7F3BC4767AF39764D91 证明解析已通 |
+修复四处：itemsOf 兼容 audit {events:[...]} 信封（此前只认 items→audit 永远假空）；readAudit actor 对象解包（{type:system,id:employee-api}→name/id 回落，emp_ 句柄仍走 actorLabel 8 位掩码）；runs 区 URL employee=→employeeId=（BFF runs 要求 employeeId 过滤，employee= 必 400 missing_filter）；audit 区 URL employee=→actorId=（BFF audit 白名单无 employee 键，400 console.missing_filter）。
+gap 台账（报 L0 转 D）：BFF 缺 GET /api/employees/{id} 详情路由（404 console.unknown_route）——概览已按既有 matrix 回落合规，非屏面缺口。
+验证：定向 employee-detail 13 passed；全量 vitest 122 files/1223 passed 0 fail。9122 屏幕 DOM 复跑待 L0 合批重建代次。

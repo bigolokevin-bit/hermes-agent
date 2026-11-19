@@ -66,8 +66,10 @@ function pickNumber(...values: unknown[]): number | null {
 }
 
 function itemsOf(body: unknown): Rec[] {
-  if (isRecord(body) && Array.isArray(body.items)) {
-    return body.items.filter(isRecord);
+  if (isRecord(body)) {
+    if (Array.isArray(body.items)) return body.items.filter(isRecord);
+    // T18: the audit channel wraps its list in `{ events: [...] }`.
+    if (Array.isArray(body.events)) return body.events.filter(isRecord);
   }
   return [];
 }
@@ -301,7 +303,9 @@ type AuditRow = { at: string | null; actor: string | null; action: string | null
 function readAudit(body: unknown): AuditRow[] {
   return itemsOf(body).map((item) => ({
     at: pickString(item.createdAt, item.created_at, item.time, item.timestamp, item.occurredAt),
-    actor: pickString(item.actor, item.actorId, item.userId, item.operator),
+    actor: isRecord(item.actor)
+      ? pickString((item.actor as Rec).name, (item.actor as Rec).id)
+      : pickString(item.actor, item.actorId, item.userId, item.operator),
     action: pickString(item.action, item.actionType, item.event, item.kind),
     detail: pickString(item.detail, item.summary, item.message),
   }));
@@ -420,8 +424,8 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
   const overview = useOverview(empId, reload.overview);
   const capability = useResourceList(zone === "capability" ? `/agent-api/api/matrix?employee=${enc}` : "", reload.capability, readMatrix);
   const approvals = useResourceList(zone === "approvals" ? `/agent-api/api/approvals?employeeId=${enc}` : "", reload.approvals, readApprovals);
-  const runs = useResourceList(zone === "runs" ? `/agent-api/api/runs?employee=${enc}` : "", reload.runs, readRuns);
-  const audit = useResourceList(zone === "audit" ? `/agent-api/api/audit?employee=${enc}` : "", reload.audit, readAudit);
+  const runs = useResourceList(zone === "runs" ? `/agent-api/api/runs?employeeId=${enc}` : "", reload.runs, readRuns);
+  const audit = useResourceList(zone === "audit" ? `/agent-api/api/audit?actorId=${enc}&limit=50` : "", reload.audit, readAudit);
 
   const name = overview.phase === "ready" ? pickString(overview.data.name) : null;
   const titleJob = overview.phase === "ready" ? pickString(overview.data.title, overview.data.role, overview.data.position) : null;
