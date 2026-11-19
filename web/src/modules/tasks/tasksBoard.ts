@@ -12,6 +12,7 @@ export type BoardStatus = (typeof BOARD_STATUSES)[number];
 export interface Actor {
   type?: string;
   id?: string;
+  name?: string;
 }
 
 export interface TaskRow {
@@ -23,6 +24,8 @@ export interface TaskRow {
   dueAt?: string;
   updatedAt?: string;
   progressNote?: string;
+  /** T14 R2: real cost from the API; missing stays missing ("—"), never 0. */
+  cost?: number;
 }
 
 export interface TaskDetail extends TaskRow {
@@ -44,6 +47,8 @@ export interface BoardState {
   status: number;
   message: string;
   requestId: string | null;
+  /** T14 R2: employee id → 姓名, read from the live directory; best-effort. */
+  nameMap: Record<string, string>;
 }
 
 export const EMPTY_BOARD: BoardState = {
@@ -52,6 +57,7 @@ export const EMPTY_BOARD: BoardState = {
   status: 0,
   message: "",
   requestId: null,
+  nameMap: {},
 };
 
 function record(v: unknown): v is Record<string, unknown> {
@@ -64,7 +70,16 @@ export function str(v: unknown): string | undefined {
 
 function actor(v: unknown): Actor | null {
   if (!record(v)) return null;
-  return { type: str(v.type), id: str(v.id) };
+  return { type: str(v.type), id: str(v.id), name: str(v.name) ?? str(v.displayName) ?? str(v.display_name) };
+}
+
+function num(v: unknown): number | undefined {
+  if (typeof v === "number") return Number.isFinite(v) ? v : undefined;
+  if (typeof v === "string" && v.trim()) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : undefined;
+  }
+  return undefined;
 }
 
 export function normalizeTask(v: unknown): TaskRow | null {
@@ -81,6 +96,7 @@ export function normalizeTask(v: unknown): TaskRow | null {
     dueAt: str(v.dueAt),
     updatedAt: str(v.updatedAt),
     progressNote: str(v.progressNote),
+    cost: num(v.cost ?? v.cost_usd ?? v.costUsd ?? v.spend),
   };
 }
 
@@ -130,13 +146,37 @@ export function errorInfo(err: unknown): ErrorInfo {
   return { status, message: "任务数据读取失败，请重试。", requestId };
 }
 
+/** T14 R2: best-effort 员工 id → 姓名 from the live matrix directory. */
+export function collectNames(body: unknown): Record<string, string> {
+  const map: Record<string, string> = {};
+  const add = (rec: Record<string, unknown>) => {
+    const id = str(rec.employeeId) ?? str(rec.employee_id) ?? str(rec.id) ?? str(rec.agent);
+    const name = str(rec.name) ?? str(rec.displayName) ?? str(rec.display_name);
+    if (id && name && /^(emp|agent)[_-]/i.test(id)) map[id] = name;
+  };
+  if (Array.isArray(body)) {
+    for (const r of body) if (record(r)) add(r);
+  } else if (record(body)) {
+    const items = Array.isArray(body.items)
+      ? body.items
+      : Array.isArray(body.data)
+        ? body.data
+        : Object.values(body);
+    for (const r of items) if (record(r)) add(r);
+  }
+  return map;
+}
+
 export async function loadBoard(): Promise<BoardState> {
   try {
-    const bodies = await Promise.all(
-      BOARD_STATUSES.map((status) =>
-        fetchJSON<unknown>(`/agent-api/api/tasks?status=${status}&limit=50`),
+    const [bodies, directory] = await Promise.all([
+      Promise.all(
+        BOARD_STATUSES.map((status) =>
+          fetchJSON<unknown>(`/agent-api/api/tasks?status=${status}&limit=50`),
+        ),
       ),
-    );
+      fetchJSON<unknown>("/agent-api/api/v1/matrix/employees").catch(() => null),
+    ]);
     const seen = new Set<string>();
     const rows: TaskRow[] = [];
     for (const body of bodies) {
@@ -152,6 +192,7 @@ export async function loadBoard(): Promise<BoardState> {
       status: 200,
       message: "",
       requestId: null,
+      nameMap: directory === null ? {} : collectNames(directory),
     };
   } catch (err) {
     const info = errorInfo(err);
@@ -161,6 +202,7 @@ export async function loadBoard(): Promise<BoardState> {
       status: info.status,
       message: info.message,
       requestId: info.requestId,
+      nameMap: {},
     };
   }
 }
@@ -204,7 +246,8 @@ export function statusLabel(value: string): string {
     case "blocked": return "阻塞";
     case "done": return "已完成";
     case "cancelled": return "已取消";
-    default: return "未知状态";
+    // T14 R2: an API status we do not recognise is 待核实, never a guess.
+    default: return "待核实";
   }
 }
 
@@ -217,22 +260,47 @@ export function priorityLabel(value?: string): { text: string; tone: "warning" |
   }
 }
 
-function tailOf(id: string): string {
-  const bare = id.replace(/^[^:]*:/, "").replace(/[^0-9A-Za-z]/g, "");
-  return bare.slice(-4).toUpperCase() || "————";
+/** 8 位短码：去前缀取字母数字前 8 位大写（全站消歧口径，T14 R2）。 */
+function short8(id: string): string {
+  const bare = id.replace(/^[^:]*:/, "").replace(/^[A-Za-z]{2,8}[_-]/, "");
+  const alnum = bare.replace(/[^0-9A-Za-z]/g, "").toUpperCase();
+  return alnum.slice(0, 8) || "—";
 }
 
-/** 「姓名」 if present, otherwise 「员工 · 末4」 — never a bare emp_ id. */
+/** 「姓名 · 8位短码」；无姓名时「员工 · 8位短码」——永不裸 emp_ id。 */
 export function employeeLabel(id?: string, name?: string): string {
-  if (name && name.trim()) return name.trim();
+  if (name && name.trim()) {
+    return id ? `${name.trim()} · ${short8(id)}` : name.trim();
+  }
   if (!id) return "未指派";
-  return `员工 · ${tailOf(id)}`;
+  return `员工 · ${short8(id)}`;
 }
 
-export function actorLabel(actorValue: Actor | null | undefined): string {
+export function actorLabel(
+  actorValue: Actor | null | undefined,
+  nameMap?: Record<string, string>,
+): string {
   if (!actorValue?.id) return "未指派";
-  if (actorValue.type === "human" || /^human:/i.test(actorValue.id)) return "人员";
-  return employeeLabel(actorValue.id);
+  const known = nameMap?.[actorValue.id];
+  const name = actorValue.name ?? known;
+  if (actorValue.type === "human" || /^human:/i.test(actorValue.id) || /^user:/i.test(actorValue.id)) {
+    // 真人同样带短码，同名可区分；有名字就用名字。
+    return name && known ? `${name} · ${short8(actorValue.id)}` : name ? `${name} · ${short8(actorValue.id)}` : `人员 · ${short8(actorValue.id)}`;
+  }
+  return employeeLabel(actorValue.id, name);
+}
+
+/** 金额（美元）：真实 0 → $0.00；缺失 → 「—」，绝不假零。 */
+const USD_FMT = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+export function money(value: number | undefined | null): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return "—";
+  return USD_FMT.format(value);
 }
 
 export function sourceLabel(source: TaskDetail["source"]): string {

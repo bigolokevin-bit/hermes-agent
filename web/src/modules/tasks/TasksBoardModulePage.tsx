@@ -20,6 +20,7 @@ import {
   EMPTY_BOARD,
   loadBoard,
   loadDetail,
+  money,
   priorityLabel,
   shortRef,
   sourceLabel,
@@ -57,7 +58,7 @@ function requestIdText(id: string | null): string {
 
 function BoardSkeleton() {
   return (
-    <div className="grid min-w-0 gap-3 md:grid-cols-2 xl:grid-cols-5" data-testid="tasks-board-loading" aria-busy="true">
+    <div className="grid min-w-0 gap-3 md:grid-cols-2 xl:grid-cols-5" data-testid="tsk4-loading" aria-busy="true">
       {BOARD_STATUSES.map((status) => (
         <Card key={status} className="min-w-0">
           <CardContent className="space-y-3 p-4">
@@ -83,17 +84,19 @@ function DetailField({ label, children }: { label: string; children: React.React
 
 function TaskDetailCard({
   state,
+  nameMap,
   onClose,
   onRetry,
 }: {
   state: DetailState;
+  nameMap: Record<string, string>;
   onClose: () => void;
   onRetry: () => void;
 }) {
   if (state.k === "idle") return null;
   const title = state.k === "ready" ? state.data.title : "任务详情";
   return (
-    <Card className="min-w-0" data-testid={`task-detail-${state.k}`}>
+    <Card className="min-w-0" data-testid={`tsk4-detail-${state.k}`}>
       <CardContent className="space-y-4 p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -127,10 +130,11 @@ function TaskDetailCard({
         ) : (
           <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             <DetailField label="优先级">{priorityLabel(state.data.priority).text}</DetailField>
-            <DetailField label="负责人">{actorLabel(state.data.assignee)}</DetailField>
+            <DetailField label="负责人">{actorLabel(state.data.assignee, nameMap)}</DetailField>
             <DetailField label="截止时间">{beijing(state.data.dueAt)}</DetailField>
+            <DetailField label="成本">{money(state.data.cost)}</DetailField>
             <DetailField label="来源">{sourceLabel(state.data.source)}</DetailField>
-            <DetailField label="创建人">{actorLabel(state.data.createdBy)}</DetailField>
+            <DetailField label="创建人">{actorLabel(state.data.createdBy, nameMap)}</DetailField>
             <DetailField label="创建时间">{beijing(state.data.createdAt)}</DetailField>
             <DetailField label="任务编号">
               <span className="font-mono text-xs" title={state.data.taskId}>{shortRef(state.data.taskId)}</span>
@@ -173,7 +177,7 @@ export function TasksBoardModulePage() {
       return () => { alive = false; };
     }
     if (forced === "empty") {
-      setBoard({ phase: "empty", rows: [], status: 200, message: "", requestId: null });
+      setBoard({ phase: "empty", rows: [], status: 200, message: "", requestId: null, nameMap: {} });
       return () => { alive = false; };
     }
     if (forced === "denied") {
@@ -183,6 +187,7 @@ export function TasksBoardModulePage() {
         status: 403,
         message: "没有查看任务看板的权限，或该数据源尚未接入。",
         requestId: forceRid ?? null,
+        nameMap: {},
       });
       return () => { alive = false; };
     }
@@ -193,6 +198,7 @@ export function TasksBoardModulePage() {
         status: 502,
         message: "任务服务暂时没有响应，请稍后重试。",
         requestId: forceRid ?? null,
+        nameMap: {},
       });
       return () => { alive = false; };
     }
@@ -245,7 +251,7 @@ export function TasksBoardModulePage() {
   }, []);
 
   return (
-    <div className="min-w-0 space-y-4" data-testid="tasks-board">
+    <div className="min-w-0 space-y-4" data-testid="tsk4-board">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="font-mondwest text-2xl font-semibold">任务看板</h1>
@@ -264,7 +270,7 @@ export function TasksBoardModulePage() {
         </Button>
       </header>
 
-      <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm" data-testid="tasks-board-summary">
+      <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm" data-testid="tsk4-summary">
         <span data-testid="status">
           待处理 <b>{countsUnknown ? "—" : counts.open}</b> · 阻塞 <b>{countsUnknown ? "—" : counts.blocked}</b>
         </span>
@@ -282,6 +288,7 @@ export function TasksBoardModulePage() {
 
       <TaskDetailCard
         state={detail}
+        nameMap={board.nameMap}
         onClose={() => setSelected(null)}
         onRetry={() => setTick((n) => n + 1)}
       />
@@ -289,7 +296,7 @@ export function TasksBoardModulePage() {
       {board.phase === "loading" ? <BoardSkeleton /> : null}
 
       {board.phase === "empty" ? (
-        <Card data-testid="tasks-board-empty">
+        <Card data-testid="tsk4-empty">
           <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
             <Inbox className="h-8 w-8 text-muted-foreground" />
             <h2 className="text-lg font-semibold">还没有任务</h2>
@@ -299,7 +306,7 @@ export function TasksBoardModulePage() {
       ) : null}
 
       {board.phase === "error" || board.phase === "denied" ? (
-        <Card data-testid={`tasks-board-${board.phase}`}>
+        <Card data-testid={`tsk4-${board.phase}`}>
           <CardContent className="flex flex-col items-start gap-3 p-5">
             {board.phase === "denied" ? (
               <ShieldAlert className="h-5 w-5 text-amber-400" />
@@ -322,14 +329,14 @@ export function TasksBoardModulePage() {
               {/* QA V4-R4 条目2: 真出口 — hash 壳内 react-router 路由可达。 */}
               <Link
                 to="/overview"
-                data-testid="tasks-board-back"
+                data-testid="tsk4-back"
                 className="inline-flex h-8 items-center rounded-md border border-border px-3 text-sm hover:bg-muted/40"
               >
                 返回控制台
               </Link>
               <a
                 href={CONTACT_ADMIN_HREF}
-                data-testid="tasks-board-contact"
+                data-testid="tsk4-contact"
                 className="inline-flex h-8 items-center rounded-md border border-border px-3 text-sm hover:bg-muted/40"
               >
                 联系管理员
@@ -340,11 +347,11 @@ export function TasksBoardModulePage() {
       ) : null}
 
       {board.phase === "ready" ? (
-        <div className="grid min-w-0 gap-3 md:grid-cols-2 xl:grid-cols-5" data-testid="tasks-board-columns">
+        <div className="grid min-w-0 gap-3 md:grid-cols-2 xl:grid-cols-5" data-testid="tsk4-columns">
           {BOARD_STATUSES.map((status) => {
             const rows = grouped.get(status) ?? [];
             return (
-              <section key={status} className="min-w-0 space-y-2" data-testid={`tasks-column-${status}`}>
+              <section key={status} className="min-w-0 space-y-2" data-testid={`tsk4-col-${status}`}>
                 <div className="flex items-center justify-between gap-2">
                   <h2 className="text-sm font-semibold">{COLUMN_LABEL[status]}</h2>
                   <Badge>{rows.length}</Badge>
@@ -359,7 +366,7 @@ export function TasksBoardModulePage() {
                     return (
                       <Card
                         key={row.taskId}
-                        data-testid={`tasks-card-${row.taskId}`}
+                        data-testid={`tsk4-card-${row.taskId}`}
                         role="button"
                         tabIndex={0}
                         aria-label={`查看任务 ${row.title}`}
@@ -378,8 +385,11 @@ export function TasksBoardModulePage() {
                             <Badge tone={priority.tone}>{priority.text}</Badge>
                           </div>
                           <p className="text-xs text-muted-foreground">截止 {beijing(row.dueAt)}</p>
+                          <p className="text-xs text-muted-foreground">
+                            更新 {beijing(row.updatedAt)} · 成本 {money(row.cost)}
+                          </p>
                           <p className="line-clamp-2 text-xs text-muted-foreground">{row.progressNote ?? "—"}</p>
-                          <p className="text-xs text-muted-foreground">{actorLabel(row.assignee)}</p>
+                          <p className="text-xs text-muted-foreground">{actorLabel(row.assignee, board.nameMap)}</p>
                         </CardContent>
                       </Card>
                     );
