@@ -353,7 +353,28 @@ const ACTION_LABEL: Record<string, string> = {
   approval_decided: "给出审批结论",
   grant_created: "授予权限",
   employee_create_denied: "驳回新建数字员工",
+  // ── LIVE additions, 2026-11-20 (R31). Seven codes the list rendered as bare
+  // dotted machine words; each label is again a direct word-by-word reading of
+  // the code, not an interpretation of what happened. `dispatch.event` is left
+  // out on purpose: its two words name no object in this vocabulary, so it
+  // falls to the shared unmapped label below and its raw spelling rides the
+  // row title (never the other way round).
+  employee_lifecycle_transitioned: "变更员工生命周期",
+  employee_lifecycle_denied: "驳回员工生命周期变更",
+  workstation_bound: "绑定工位",
+  workstation_bind_conflict: "工位绑定冲突",
+  budget_ledger_entry_applied: "记录一笔预算流水",
+  budget_ledger_ensured: "核对预算账本",
+  budget_soft_alert_sent: "发出预算提醒",
 };
+
+/**
+ * The one label an unmapped `action` is allowed to show. R31: a screen never
+ * prints the dotted machine spelling — an unlisted code reads 其他事件 and the
+ * raw value lives in the row title and the technical fold, so a person sees
+ * words and support still gets the exact code.
+ */
+export const OTHER_ACTION_LABEL = "其他事件";
 
 /**
  * The `action` codes sampled verbatim off the running BFF (2026-11-19 session
@@ -398,10 +419,10 @@ function normalize(raw: string | null): string {
 }
 
 export interface ActionView {
-  /** Chinese for a code we know; the code itself when we do not. */
+  /** Chinese for a code we know; 其他事件 when we do not. Never the raw code. */
   label: string;
   raw: string | null;
-  /** False = the label is the raw code, shown because we refuse to guess. */
+  /** False = the code is unmapped, so the surface says 其他事件 and keeps raw in a title. */
   known: boolean;
 }
 
@@ -410,7 +431,7 @@ export function actionView(raw: string | null): ActionView {
   const hit = key ? ACTION_LABEL[key] : undefined;
   if (hit) return { label: hit, raw, known: true };
   const text = (raw ?? "").trim();
-  return { label: text || "—", raw, known: false };
+  return { label: text ? OTHER_ACTION_LABEL : "—", raw, known: false };
 }
 
 /**
@@ -468,6 +489,10 @@ export function humanSentence(value: string | null): string | null {
   if (!oneLine || oneLine.length > 220) return null;
   if (/[{}<>]|\bat\s+\S+\.\S+|https?:\/\//i.test(oneLine)) return null;
   if (/^\d{3}\s/.test(oneLine)) return null;
+  // A bare vocabulary token (`not_applicable`, `dispatch.event`) is a machine
+  // spelling, not a sentence: the screen says 「其他事件」/no reason line and the
+  // token stays in the technical fold (R31, measured live on 22 rows).
+  if (/^[a-z][a-z0-9]*(?:[._][a-z0-9]+)+$/i.test(oneLine)) return null;
   return oneLine;
 }
 
@@ -478,7 +503,6 @@ const OCCURRED_KEYS = ["occurredAt", "occurred_at", "at", "created_at", "created
 const RECORDED_KEYS = ["recordedAt", "recorded_at", "ingestedAt", "ingested_at", "writtenAt", "written_at"] as const;
 const ACTION_KEYS = ["action", "event_type", "eventType", "type", "operation", "eventName", "event_name", "op"] as const;
 const OUTCOME_KEYS = ["outcome", "result", "status", "state"] as const;
-const DECISION_KEYS = ["decision", "decisionOutcome", "decision_outcome", "verdict"] as const;
 const REASON_KEYS = ["message", "reason", "reasonText", "reason_text", "detail", "description", "summary", "note", "comment"] as const;
 const ERROR_MESSAGE_KEYS = ["messageRedacted", "message_redacted", "message", "detail", "reason"] as const;
 const ERROR_CODE_KEYS = ["code", "errorCode", "error_code"] as const;
@@ -592,7 +616,10 @@ const RESOURCE_NOUN: Record<string, string> = {
 };
 
 function resourceNoun(type: string): string {
-  return RESOURCE_NOUN[normalize(type)] ?? type.trim();
+  // R31: an unmapped resource type used to print its English token (e.g.
+  // `creation_attempt`) in the 对象 column. It now reads 对象; the raw type
+  // stays in the resource id's title and in the technical fold.
+  return RESOURCE_NOUN[normalize(type)] ?? "对象";
 }
 
 function errorText(rec: Record<string, unknown>): string | null {
@@ -605,14 +632,18 @@ function errorCode(rec: Record<string, unknown>): string | null {
   return nested ? pickText(nested, ERROR_CODE_KEYS) : null;
 }
 
-/** The failure sentence the screen shows: a person's words, or an honest gap. */
-function reasonOf(rec: Record<string, unknown>, outcome: OutcomeView): string | null {
+/**
+ * The reason line the screen shows: a person's words, or nothing at all.
+ *
+ * R31: it used to fall back to the `decision` vocabulary, so every successful
+ * `task.created` painted 「原因：not_applicable」 — an enum spelling presented as
+ * a cause. The decision is its own field (and its own badge where it belongs);
+ * a row only carries a 原因 when the answer carries a sentence.
+ */
+function reasonOf(rec: Record<string, unknown>): string | null {
   const fromError = errorText(rec);
   if (fromError) return fromError;
-  const decision = humanSentence(pickText(rec, DECISION_KEYS));
-  const plain = humanSentence(pickText(rec, REASON_KEYS));
-  if (outcome.kind === "failure") return plain ?? null;
-  return plain ?? decision;
+  return humanSentence(pickText(rec, REASON_KEYS));
 }
 
 /**
@@ -656,7 +687,7 @@ function rowFrom(item: unknown, index: number): AuditRow | null {
     recordedAt: beijing(pick(rec, RECORDED_KEYS)),
     requestId: requestIdOf(rec),
     correlation: correlationOf(rec),
-    reason: reasonOf(rec, outcome),
+    reason: reasonOf(rec),
   };
 }
 
@@ -885,7 +916,7 @@ export function auditDetailFrom(payload: unknown): AuditDetail | null {
     sourceSystem,
     requestId,
     correlation,
-    reason: reasonOf(body, outcome),
+    reason: reasonOf(body),
     code,
     change,
     links: linksOf(body),

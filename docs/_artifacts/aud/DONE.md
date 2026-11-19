@@ -2279,3 +2279,73 @@ The evidence pane gates on `window.__HERMES_SESSION_TOKEN__`; with a token injec
 - No live tool-intent event exists in this tenant, so the `resultRef` present/absent rendering is proven by tests, not by a live row.
 - No writable console exists here, so a successful retry (new id returned, page navigating to it) cannot be demonstrated; only the disabled contract with the measured 405/404 is proven.
 - The dev SPA on 9122 was not rebuilt in this window (per order), so QA must probe a fresh build.
+
+## R31 audit wording + handle masking (2026-11-20, base 3bff4208)
+
+写域 `web/src/modules/audit/**` + `docs/_artifacts/aud/**`；单 commit `fix(console): audit wording and handle masking`。
+
+### ① 词族：事件类型 / 对象一律人话
+- `model.ts` 新增 7 个本代次真实出现过的事件类型中文词条（逐字转译，不解释语义）：
+  `employee.lifecycle.transitioned → 变更员工生命周期`、`employee.lifecycle.denied → 驳回员工生命周期变更`、
+  `workstation.bound → 绑定工位`、`workstation.bind_conflict → 工位绑定冲突`、
+  `budget.ledger_entry_applied → 记录一笔预算流水`、`budget.ledger_ensured → 核对预算账本`、
+  `budget.soft_alert_sent → 发出预算提醒`。
+- 未登记的类型不再回裸码：`actionView` 未知分支 → `其他事件`（新增导出 `OTHER_ACTION_LABEL`），原码只进 `title`
+  （行首按钮 title = `事件类型原值 · 事件标识原值`，详情头 h2 同）。
+- `resourceNoun` 未知类型回退由 `type.trim()`（英文 token 上屏）改为 `对象`。
+
+### ② 句柄：屏上 8 位短码，原值进 title/复制
+- `states.tsx` `CopyValue.shown`：纯 32hex → 前 8 位；scheme 句柄（`/^[a-z][a-z0-9]{1,11}_[0-9A-Za-z]{9,}$/i`）→ `前缀_…末8`；
+  其余原样。`title` 与复制始终是全值（提供给支持同学引用的编号）。
+- 实测短码样例：`任务 · 1FDFC8BB`、`任务 · EB643088`、`任务 · 3D0F3E81`（22 条标签全部 8 位）。
+- 32hex 命中数 **改前 0 → 改后 0**；16+ hex 连续串 **0 → 0**（本页从未把摘要哈希铺上人话层，`maskedDigest` 只给前 10 + …）。
+
+### ③ 本轮新发现的真实的机器词：`原因：not_applicable`（22 行）
+- 根因：`reasonOf` 在非失败行把 `decision` 枚举当「原因」兜底（`return plain ?? decision`），本租户 22 条 `task.created` 的
+  `decision` 都是 `not_applicable`，于是每行都被写上一句「原因：not_applicable」。
+- 修复：`reasonOf` 只认 `error.messageRedacted` 或 `REASON_KEYS` 里的人话，**不再借用 decision**（`DECISION_KEYS` 一并删除，
+  判定枚举不再伪装成原因）；`humanSentence` 追加一条闸门：整串就是 `word_word` / `word.word` 形态的机器词 → 视为非句子、返回 null。
+- 实测：「原因：not_applicable」 **22 → 0**；页面文本长度 6855 → 6148 字符。
+
+### ④ 时间与详情深链
+- 时间列/详情时间行均为 `Asia/Shanghai` 到分（实测 `2026-11-18 00:58`），原始时刻只在技术折叠里。
+- 深链改用 `?detail=<eventId>`（`AuditEventsModulePage.tsx:186-200` 写、`:156` 读），并保留 `?id=` 作为旧链接兼容；
+  技术字段仍在「技术详情」折叠内（默认关闭）。
+- 实测 `/audit?detail=ev_2BAA7DD7F3BC4767AF39764D91`：**改前详情面板 0（链接无效）→ 改后 1**（`aud02-detail` 出现，
+  文本 6386 字符，列表 6148，差 238 = 详情内容），刷新同一地址仍打开同一条事件。
+
+### ⑤ 校验与四态
+- `完整性校验` 仍打真路由 `GET /agent-api/api/audit-verify?from=&to=`（`api.ts` `VERIFY_PATH`，未改）；未启用腿仍是
+  「本环境未启用」+原因+去处（`aud03-unavailable`）。实测按钮在位（`aud01-verify` = 1）。
+- 四态齐（loading/ready/empty/error），错误态人话 + 可复制请求编号（缺失「未提供」，实测 50 行请求编号全为「未提供」）；
+  403 与 404 共用同一 `DeniedPanel` 正文（既有用例逐字断言 `outerHTML` 相同）。
+
+### 实测读数（本地新构建 + `/agent-api` 真 BFF 代理，headless Chrome）
+| 读数 | 改前 3bff4208 | 改后 |
+|---|---|---|
+| `/audit?window=7d` 文本长度 | 6855 | **6148** |
+| 屏上裸事件类型码（`dispatch.event` 等） | **19**（8 种） | **0** |
+| 「其他事件」 | 0 | **9** |
+| 「原因：not_applicable」 | **22** | **0** |
+| 32hex / 16+hex 连续串 | 0 / 0 | 0 / 0 |
+| 8 位短码标签 | 22 | 22 |
+| 行数 / `aud01-*` 元素数 | 50 / 459 | 50 / 459 |
+| `/audit?detail=<id>` 详情面板 | **0** | **1** |
+| 1440 / 1280 / 375 | 1440 ✓ | sw==cw（1440/1440、1280/1280、375/375） |
+
+改前页面上仍有 22 条「原因：」行是服务手写的**英文**句子（`denied by domain validation; raw message not stored in audit` 22 条、
+`dispatch failure detail redacted; raw message never stored (see runtime logs)` 4 条）
+——按「上游原文透传、页面不代译」的口径保留，未翻译、未改写，列入未测/已知项。
+
+### Gates（从 `web/`）
+- `./node_modules/.bin/vitest run src/modules/audit` → exit 0，8 files / **142 tests**（改前 137，+5：未知类型→其他事件、7 词条、对象回退、深链两条、decision-as-cause 回归）。
+- `npx tsc -b . --noEmit` → exit 2，**65** 条；`grep -c "modules/audit"` = **0**。地板由 53 涨到 65，增量全在**他人写域**
+  （`src/modules/approvals/ApprovalsPendingModulePage.tsx` 6、`ApprovalsHistoryModulePage.tsx` 6、`src/modules/approvals/api.test.ts` 2、
+  `src/pages/LoginPage.test.tsx` 2），本车道未触碰。
+- `./node_modules/.bin/eslint src/modules/audit` → exit 0，0 errors / 5 warnings（既有 `react-hooks/set-state-in-effect`）。
+- lefthook `lint web` 真跑，未绕过。
+
+### 未测 / 已知项
+- 26 条服务手写英文原因句按原文透传，未翻译（代译会改写服务的事实陈述）。
+- 1280/375 只算了 `scrollWidth == clientWidth`，未做像素级并排截图比对。
+- 真 403/404 腿本会话未出现（仅有 mock 级逐字同体断言）；`完整性校验` 的 S3 断链腿未造真实数据。

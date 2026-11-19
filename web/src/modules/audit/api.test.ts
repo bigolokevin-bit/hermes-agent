@@ -80,9 +80,10 @@ describe("audit endpoints", () => {
     expect(choices.some((c) => c.value === "task.created")).toBe(true);
     expect(choices.some((c) => c.value === "task_created")).toBe(false);
     expect(choices.some((c) => c.value === "approval_approved")).toBe(false);
-    // known codes get the Chinese word; an unknown live code is offered verbatim
+    // known codes get the Chinese word; an unmapped live code is offered as 其他事件
+    // (the dropdown carries the label only — the wire value stays the raw code)
     expect(choices.find((c) => c.value === "employee.create.denied")?.label).toBe("驳回新建数字员工");
-    expect(choices.find((c) => c.value === "dispatch.event")?.label).toBe("dispatch.event");
+    expect(choices.find((c) => c.value === "dispatch.event")?.label).toBe("其他事件");
     // a chosen label is what the wire must carry
     for (const choice of choices) {
       expect(listUrl(null, { action: choice.value, from: null, to: null })).toContain(`&action=${encodeURIComponent(choice.value)}`);
@@ -124,12 +125,24 @@ describe("event vocabulary", () => {
     expect(actionView("run.failed").label).toBe("运行失败");
   });
 
-  it("shows an unknown action verbatim and says it is unmapped", () => {
+  it("calls an unmapped action 其他事件 and keeps the raw code beside it", () => {
     const odd = actionView("quantum.recalibration");
-    expect(odd.label).toBe("quantum.recalibration");
+    expect(odd.label).toBe("其他事件");
     expect(odd.known).toBe(false);
     expect(odd.raw).toBe("quantum.recalibration");
     expect(actionView(null).label).toBe("—");
+  });
+
+  it("names the live actions this generation met, in Chinese", () => {
+    // 2026-11-20 R31: these seven codes came back from a live sample with no
+    // label. They are translated word for word, never interpreted.
+    expect(actionView("employee.lifecycle.transitioned").label).toBe("变更员工生命周期");
+    expect(actionView("employee.lifecycle.denied").label).toBe("驳回员工生命周期变更");
+    expect(actionView("workstation.bound").label).toBe("绑定工位");
+    expect(actionView("workstation.bind_conflict").label).toBe("工位绑定冲突");
+    expect(actionView("budget.ledger_entry_applied").label).toBe("记录一笔预算流水");
+    expect(actionView("budget.ledger_ensured").label).toBe("核对预算账本");
+    expect(actionView("budget.soft_alert_sent").label).toBe("发出预算提醒");
   });
 
   it("has exactly the three outcome words, plus an honest fourth", () => {
@@ -250,6 +263,21 @@ describe("read model", () => {
     })!.rows;
     expect(rows[0]!.reason).toBe("内存不足，运行被中断");
     expect(rows[1]!.reason).toBeNull();
+  });
+
+  it("never dresses a decision vocabulary word up as a cause", () => {
+    const rows = auditPageFrom({
+      items: [
+        { id: "s", action: "task_created", outcome: "success", decision: "not_applicable" },
+        { id: "t", action: "task_created", outcome: "success", reason: "not_applicable" },
+        { id: "u", action: "task_created", outcome: "success", reason: "创建人补了一次重试" },
+      ],
+    })!.rows;
+    // R31: 「原因：not_applicable」 was painted on 22 live rows — an enum spelling
+    // offered as a cause. No sentence, no reason line; the raw stays in the fold.
+    expect(rows[0]!.reason).toBeNull();
+    expect(rows[1]!.reason).toBeNull();
+    expect(rows[2]!.reason).toBe("创建人补了一次重试");
   });
 
   it("reads a detail answer wrapped or bare, and keeps technical keys for the disclosure", () => {
@@ -475,10 +503,23 @@ describe("live-sampled answer shapes", () => {
     expect(row.reason).toBe("denied by domain validation; raw message not stored in audit");
   });
 
-  it("an unknown live code still renders verbatim, not machine-translated", () => {
+  it("an unmapped live code reads 其他事件, never the machine spelling", () => {
     const page = auditPageFrom({ events: [{ ...LIVE_EVENT, action: "dispatch.event" }] })!;
-    expect(page.rows[0]!.action.label).toBe("dispatch.event");
+    expect(page.rows[0]!.action.label).toBe("其他事件");
     expect(page.rows[0]!.action.known).toBe(false);
+    expect(page.rows[0]!.action.raw).toBe("dispatch.event");
+  });
+
+  it("an unlisted resource type reads 对象 — the English token never becomes the label", () => {
+    const page = auditPageFrom({
+      events: [{ ...LIVE_EVENT, resource: { type: "zzz_unknown", id: "zz_ABCD1234EF567890" } }],
+    })!;
+    const label = page.rows[0]!.resource.label;
+    expect(label.startsWith("对象 · ")).toBe(true);
+    expect(label).not.toContain("zzz_unknown");
+    expect(label).not.toContain("zz_ABCD1234EF567890");
+    // the short code is the last eight alphanumerics, uppercased nowhere
+    expect(label).toContain("EF567890");
   });
 
   it("reads the bare detail object audit-detail answers, with the tenant masked", () => {
