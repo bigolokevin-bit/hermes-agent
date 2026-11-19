@@ -1005,3 +1005,10 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 九件全 exit=0：ia-html/react ok{51,22,1,8}；lint-fake v=[]；lint-reuse v=0 exempt=1（chat→T40）；crawl-anon DL0/CE0/PE0 routesCE=51（401 归因）；crawl-auth routesCE=27；state-quad 20/20 文本重建注 source。
 - shots main(auth) 102/102 failures=[] ceAuth=login-state obs=2 仅观测（#/capabilities?tab=models、#/identity，envOnly=27 不入 ok）；shots-anon auxiliary=true 102/102 mode=anon obs=1（#/audit）envOnly=51 匿名实锤 ok=true；三键全值注入（entry 全名未拼 index-，pngs=102 同名覆盖，临时区已清）。
 - 上一代 bc7671a1（83 轮账本 7e7b92cd）作废未重做；web/src 未碰；他人脏零沾染；9122 v4_proxy 受管、caddy 28034、8092 5950 全程未动。
+
+## 八十六轮·波终代次九件重章 @ 6c9db598（2026-11-20 02:2x，一波一盖）
+
+- 代次：wave-6 并窗终代次 6c9db598（appr 486ba16e / aud b5ec0f0b / gov 1d52efb6 / ui1 b886b72d / ui2 fb35264e），entry index-yycnIwR9.js 163770B sha eb925c5c…aabb；三向互证过（盘==9122==8183），21 路由 200；上一代 e4c03f8c/165e62a5 作废不重做。
+- 九件全 exit=0 盖 6c9db598：ia-html/react ok{51,22,1,8}｜lint-fake v=[]｜lint-reuse v=0 exempt=1 chat→T40（stdout 抄件）｜crawl-anon DL0/CE0/PE0 routesCE51(401归因)｜crawl-auth routesCE27（85轮27持平）｜state-quad 20/20 文本重建注 source。
+- shots main(auth) 102/102 failures=[] oversize=[] ceAuth=login-state obs=3 仅观测（#/employees、#/sessions、#/system?tab=version，不入 ok）distinctMainHeads=27 rootBaseline textLen=729 真数据；三键全值+拍后 curl 复证未漂。shots-anon auxiliary=true 102/102 mode=anon obs=2（#/audit、#/system?tab=defaults）envOnly=51。anon png 同名覆盖 pngs=102。
+- 环境：9122 v4_proxy 受管未动、caddy 8183 28034、8092 pid 5950；web/src 未碰；他人脏零沾染；auth-state 昨夜 23:5x 版窗内。
