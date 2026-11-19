@@ -134,6 +134,9 @@ describe("KnowledgeModulePage", () => {
     fetchMock.mockResolvedValue({ items: [] });
     const cases = [
       ["/knowledge?tab=spaces", "spaces", "/agent-api/api/knowledge/spaces"],
+      ["/knowledge?tab=spaces&panel=ingest", "ingest", "/agent-api/api/documents?limit=50"],
+      ["/knowledge?tab=spaces&panel=retrieval", "retrieval", "/agent-api/api/audit?action=kb.read&limit=50"],
+      ["/knowledge?tab=spaces&panel=evidence", "evidence", "/agent-api/api/sessions?limit=20"],
       ["/knowledge?tab=ingest", "ingest", "/agent-api/api/documents?limit=50"],
       ["/knowledge?tab=sources", "ingest", "/agent-api/api/documents?limit=50"],
       ["/knowledge?tab=retrieval", "retrieval", "/agent-api/api/audit?action=kb.read&limit=50"],

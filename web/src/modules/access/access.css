@@ -259,3 +259,63 @@
     font-size: 11px;
   }
 }
+
+/* T22 R22 roles matrix: expandable member rows and copyable request id */
+.role5-expand {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.role5-expand > span[aria-hidden] {
+  display: inline-flex;
+  width: 14px;
+  flex: 0 0 14px;
+  justify-content: center;
+  color: var(--color-muted-foreground);
+}
+.role5-table tr.is-open > td {
+  background: color-mix(in srgb, var(--color-muted) 55%, transparent);
+}
+.role5-members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.role5-members li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.role5-table td[colspan] {
+  padding-top: 0;
+}
+.acc4-copy {
+  margin-left: 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  background: transparent;
+  padding: 1px 5px;
+  color: var(--color-muted-foreground);
+  font-size: 10px;
+  cursor: pointer;
+}
+@media (max-width: 560px) {
+  .role5-table td[colspan] {
+    padding: 8px 0 4px;
+  }
+  .role5-members {
+    flex-direction: column;
+  }
+}

@@ -20,18 +20,27 @@ function normaliseKnowledgeDeepLink(): void {
   if (!/\/knowledge\/?$/.test(window.location.pathname)) return;
   const params = new URLSearchParams(window.location.search);
   const raw = (params.get('tab') ?? '').toLowerCase();
+  const currentPanel = (params.get('panel') ?? '').toLowerCase();
   const panel =
-    raw === 'sources' || raw === 'ingest'
+    currentPanel === 'sources' || currentPanel === 'ingest'
       ? 'ingest'
-      : raw === 'retrieval'
+      : currentPanel === 'retrieval'
         ? 'retrieval'
-        : raw === 'citations' || raw === 'evidence'
+        : currentPanel === 'citations' || currentPanel === 'evidence'
           ? 'evidence'
-          : raw === 'scope' || raw === 'spaces'
+          : currentPanel === 'scope' || currentPanel === 'spaces'
             ? 'spaces'
-            : null;
+            : raw === 'sources' || raw === 'ingest'
+              ? 'ingest'
+              : raw === 'retrieval'
+                ? 'retrieval'
+                : raw === 'citations' || raw === 'evidence'
+                  ? 'evidence'
+                  : raw === 'scope' || raw === 'spaces'
+                    ? 'spaces'
+                    : null;
   if (panel === null) return;
-  if (raw === 'spaces' && !params.has('panel')) return;
+  if (raw === 'spaces' && panel === 'spaces' && !params.has('panel')) return;
   params.set('tab', 'spaces');
   params.set('panel', panel);
   window.history.replaceState(

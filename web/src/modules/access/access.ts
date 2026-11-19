@@ -137,17 +137,97 @@ const BJT = new Intl.DateTimeFormat('sv-SE', {
   hourCycle: 'h23',
 });
 
+export interface RoleMember {
+  name: string;
+  code: string;
+  rawId: string | null;
+}
+
 export interface RoleView {
   name: string;
   nameReason: string | null;
-  scope: string;
-  scopeReason: string | null;
-  scopeRaw: string | null;
   memberCount: number | null;
   memberReason: string | null;
+  permissions: string[];
+  permissionsRaw: string[];
+  permissionsReason: string | null;
+  source: string;
+  sourceReason: string | null;
+  sourceRaw: string | null;
+  members: RoleMember[];
+  membersReason: string | null;
   updatedAt: string | null;
   updatedReason: string | null;
   rawId: string | null;
+}
+
+/** Human words for the permission keys the role read may carry. Unknown keys
+ * become 「其他权限」; the raw key stays in the cell title. */
+export function permissionLabel(raw: string): string {
+  const key = raw.trim().toLowerCase();
+  const words: Record<string, string> = {
+    '*': '全部权限',
+    'employee.read': '查看员工',
+    'employee.write': '编辑员工',
+    'employee.manage': '管理员工',
+    'knowledge.read': '查看知识',
+    'knowledge.write': '编辑知识',
+    'approval.read': '查看审批',
+    'approval.decide': '处理审批',
+    'run.read': '查看运行',
+    'run.write': '管理运行',
+    'audit.read': '查看审计',
+    'settings.read': '查看设置',
+    'settings.write': '修改设置',
+    'role.manage': '管理角色',
+    'tenant.manage': '管理租户',
+    'read': '查看',
+    'write': '写入',
+    'manage': '管理',
+    'approve': '审批',
+    'admin': '管理员',
+  };
+  return words[key] ?? '其他权限';
+}
+
+function permissionsOf(row: Rec): { words: string[]; raw: string[]; reason: string | null } {
+  const value = row.permissions ?? row.permission_keys ?? row.permissionKeys ?? row.actions ?? row.action_keys;
+  if (!Array.isArray(value)) {
+    return { words: [], raw: [], reason: '上游未提供关键权限' };
+  }
+  const raw = value
+    .map((item) => (typeof item === 'string' ? item.trim() : isRecord(item) ? pickString(item.key, item.code, item.name, item.action) : null))
+    .filter((item): item is string => Boolean(item));
+  if (raw.length === 0) return { words: [], raw: [], reason: '上游未提供关键权限' };
+  return { words: raw.map(permissionLabel), raw, reason: null };
+}
+
+function roleSource(row: Rec): { label: string; reason: string | null; raw: string | null } {
+  const raw = pickString(row.source, row.role_source, row.roleSource, row.role_type, row.roleType, row.type);
+  const flag = row.is_builtin ?? row.isBuiltin ?? row.builtin;
+  if (typeof flag === 'boolean') return { label: flag ? '内置' : '自定义', reason: null, raw: flag ? 'builtin' : 'custom' };
+  const key = (raw ?? '').toLowerCase();
+  if (['builtin', 'system', 'default', 'platform'].includes(key)) return { label: '内置', reason: null, raw };
+  if (['custom', 'user', 'tenant'].includes(key)) return { label: '自定义', reason: null, raw };
+  if (raw) return { label: '—', reason: '来源值暂无法归类', raw };
+  return { label: '—', reason: '上游未提供来源', raw: null };
+}
+
+function membersOf(row: Rec): { members: RoleMember[]; reason: string | null } {
+  const value = row.members ?? row.users ?? row.member_list ?? row.memberList;
+  if (!Array.isArray(value)) {
+    return { members: [], reason: '上游未提供成员明细' };
+  }
+  const members = value.map((item) => {
+    if (typeof item === 'string') {
+      return { name: item, code: item === '' ? '未指派' : '未指派', rawId: null };
+    }
+    if (isRecord(item)) {
+      return { name: personName(item), code: shortCode(item), rawId: rawId(item) || null };
+    }
+    return { name: '未指派', code: '未指派', rawId: null };
+  });
+  return { members, reason: members.length === 0 ? '上游返回空成员列表' : null };
 }
 
 function numberOf(...values: unknown[]): number | null {
@@ -171,20 +251,6 @@ function beijing(value: string | null): string | null {
 
 export function roleView(row: Rec): RoleView {
   const name = pickString(row.role_name, row.roleName, row.name, row.role_code, row.roleCode);
-  const scopeRaw = pickString(row.scope, row.scope_type, row.scopeType, row.data_scope, row.dataScope);
-  const normalized = scopeRaw?.toLowerCase() ?? null;
-  const scope =
-    normalized === null
-      ? '—'
-      : ['tenant', 'global', 'all', 'tenant-shared', 'org', 'organization'].includes(normalized)
-        ? '全租户'
-        : ['department', 'dept', 'team'].includes(normalized)
-          ? '按部门'
-          : ['employee', 'self', 'personal', 'own'].includes(normalized)
-            ? '仅本人'
-            : normalized === 'custom'
-              ? '自定义'
-              : '其他范围';
   const memberCount = numberOf(
     row.member_count,
     row.memberCount,
@@ -197,19 +263,78 @@ export function roleView(row: Rec): RoleView {
   );
   const updatedRaw = pickString(row.updated_at, row.updatedAt, row.modified_at, row.modifiedAt);
   const updatedAt = beijing(updatedRaw);
+  const permissions = permissionsOf(row);
+  const source = roleSource(row);
+  const members = membersOf(row);
   return {
     name: name ?? '待核实',
     nameReason: name ? null : '上游未提供角色名',
-    scope,
-    scopeReason: scopeRaw ? (scope === '其他范围' ? '上游范围值暂无法归类' : null) : '上游未提供数据范围',
-    scopeRaw,
     memberCount,
     memberReason: memberCount === null ? '上游未提供成员数' : null,
+    permissions: permissions.words,
+    permissionsRaw: permissions.raw,
+    permissionsReason: permissions.reason,
+    source: source.label,
+    sourceReason: source.reason,
+    sourceRaw: source.raw,
+    members: members.members,
+    membersReason: members.reason,
     updatedAt,
     updatedReason: updatedAt ? null : updatedRaw ? '更新时间无法解析' : '上游未提供更新时间',
     rawId: pickString(row.role_id, row.roleId, row.id, row.role_code, row.roleCode),
   };
 }
+
+/**
+ * R22 layout preview only. It is rendered solely when the role read is
+ * unavailable (404/403) and is explicitly marked `data-fixture="1"`; it must
+ * never be presented as live roles.
+ */
+export const ROLE_FIXTURE: Rec[] = [
+  {
+    role_id: 'role_builtin_admin',
+    role_name: '平台管理员',
+    member_count: 3,
+    source: 'builtin',
+    permissions: ['*', 'role.manage', 'audit.read', 'tenant.manage'],
+    updated_at: '2026-11-19T07:10:00Z',
+    members: [
+      { user_id: 'u_1234567890abcdef', realname: '林一舟' },
+      { user_id: 'u_abcdef1234567890', realname: '陈可' },
+      { user_id: 'u_0000000000000000' },
+    ],
+  },
+  {
+    role_id: 'role_builtin_operator',
+    role_name: '运营值班',
+    member_count: 2,
+    source: 'builtin',
+    permissions: ['employee.read', 'run.read', 'approval.decide'],
+    updated_at: '2026-11-18T09:20:00Z',
+    members: [
+      { user_id: 'u_1111222233334444', realname: '周宁' },
+      { user_id: 'u_5555666677778888', realname: '许澄' },
+    ],
+  },
+  {
+    role_id: 'role_custom_knowledge',
+    role_name: '知识维护',
+    member_count: 1,
+    source: 'custom',
+    permissions: ['knowledge.read', 'knowledge.write', 'audit.read'],
+    updated_at: '2026-11-17T03:05:00Z',
+    members: [{ user_id: 'u_9999000011112222', realname: '叶禾' }],
+  },
+  {
+    role_id: 'role_custom_empty',
+    role_name: '待分配角色',
+    member_count: 0,
+    source: 'custom',
+    permissions: [],
+    updated_at: null,
+    members: [],
+  },
+];
 
 export async function loadList(
   endpoints: string[],
