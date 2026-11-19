@@ -46,7 +46,7 @@ async function render(entry: string, page: ReactNode): Promise<void> {
 const text = (): string => document.body.textContent ?? "";
 const urls = (): string[] => api.fetchJSON.mock.calls.map((call) => String(call[0]));
 const chip = (value: string): HTMLButtonElement =>
-  document.querySelector(`[data-testid='apr4-filter-${value}']`) as HTMLButtonElement;
+  document.querySelector(`[data-testid='apr5-filter-${value}']`) as HTMLButtonElement;
 
 /** One record per state, so a filter that ignored `status=` would show 8 rows. */
 const ROWS_BY_STATE: Record<string, unknown[]> = {
@@ -85,9 +85,9 @@ const pick = async (value: string): Promise<void> => {
   );
 };
 
-/** The row CARDS only (not their 「详情」 disclosure, whose id also starts apr4-row-). */
+/** The row CARDS only (not their 「详情」 disclosure, whose id also starts apr5-row-). */
 const rowNodes = (): HTMLElement[] =>
-  Array.from(document.querySelectorAll("[data-testid^='apr4-row-']")).filter(
+  Array.from(document.querySelectorAll("[data-testid^='apr5-row-']")).filter(
     (el) => !(el.getAttribute("data-testid") ?? "").includes("-details-"),
   ) as HTMLElement[];
 
@@ -101,9 +101,9 @@ const stubClipboard = (): ReturnType<typeof vi.fn> => {
   return writeText;
 };
 const copyButton = (): HTMLButtonElement | null =>
-  document.querySelector("[data-testid='apr4-copy-request-id']") as HTMLButtonElement | null;
+  document.querySelector("[data-testid='apr5-copy-request-id']") as HTMLButtonElement | null;
 const shownRequestId = (): string | null =>
-  (document.querySelector("[data-testid='apr4-request-id']") as HTMLElement | null)?.textContent ?? null;
+  (document.querySelector("[data-testid='apr5-request-id']") as HTMLElement | null)?.textContent ?? null;
 
 beforeEach(() => {
   api.fetchJSON.mockReset();
@@ -159,7 +159,7 @@ describe("the eight states", () => {
       expect(rowNodes()).toHaveLength(expected.length);
       for (const row of expected) {
         expect(text()).toContain(row.title);
-        expect(document.querySelector(`[data-testid='apr4-row-${row.approvalId}']`)).toBeTruthy();
+        expect(document.querySelector(`[data-testid='apr5-row-${row.approvalId}']`)).toBeTruthy();
       }
       // no other state's row is painted while this filter is active
       for (const other of canonical) {
@@ -207,9 +207,9 @@ describe("the eight states", () => {
     expect(text()).toContain("「已被新单替代」状态下没有记录");
     expect(text()).toContain("换一个结果看看");
     // QA V4-R4 条目2: 零结果面板必须有真出口，不许死链。
-    const back = document.querySelector("[data-testid='apr4-empty-history-exits-back']") as HTMLAnchorElement;
+    const back = document.querySelector("[data-testid='apr5-empty-history-exits-back']") as HTMLAnchorElement;
     expect(back?.getAttribute("href")).toBe("/overview");
-    const contact = document.querySelector("[data-testid='apr4-empty-history-exits-contact']") as HTMLAnchorElement;
+    const contact = document.querySelector("[data-testid='apr5-empty-history-exits-contact']") as HTMLAnchorElement;
     expect(contact?.getAttribute("href")).toMatch(/^mailto:/);
   });
 
@@ -275,14 +275,14 @@ describe("history whole-panel states", () => {
     expect(text()).toContain("暂时无法查看审批申请");
     expect(text()).toContain("请求编号：hs-deny");
     // one denied body, under the apr4 id, with no path echo
-    expect(document.querySelector("[data-testid='apr4-denied']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='apr5-denied']")).toBeTruthy();
     expect(forbidden).not.toContain("/agent-api");
-    expect(document.querySelectorAll("[data-testid^='apr4-row-']")).toHaveLength(0);
+    expect(document.querySelectorAll("[data-testid^='apr5-row-']")).toHaveLength(0);
     // overflow discipline: the page shrinks, the long sentence breaks
-    const root = document.querySelector("[data-testid='apr4-page-history']") as HTMLElement;
+    const root = document.querySelector("[data-testid='apr5-page-history']") as HTMLElement;
     expect(root.className).toContain("min-w-0");
     expect(root.className).toContain("max-w-full");
-    const denied = document.querySelector("[data-testid='apr4-denied']") as HTMLElement;
+    const denied = document.querySelector("[data-testid='apr5-denied']") as HTMLElement;
     expect(denied.querySelector("p.break-words")).toBeTruthy();
     // 404 is byte-identical to 403
     expect(await once(404)).toBe(forbidden);
@@ -293,7 +293,7 @@ describe("history whole-panel states", () => {
     await mount(async () => {
       throw new ApiError("gateway", { status: 500, body: "", url: "/agent-api/api/approvals", requestId: "hs-copy-err" });
     });
-    expect(document.querySelector("[data-testid='apr4-error']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='apr5-error']")).toBeTruthy();
     expect(shownRequestId()).toBe("hs-copy-err");
     const btn = copyButton();
     expect(btn).toBeTruthy();
@@ -311,7 +311,7 @@ describe("history whole-panel states", () => {
     await mount(async () => {
       throw new ApiError("denied", { status: 403, body: "", url: "/agent-api/api/approvals", requestId: "hs-copy-deny" });
     });
-    expect(document.querySelector("[data-testid='apr4-denied']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='apr5-denied']")).toBeTruthy();
     expect(shownRequestId()).toBe("hs-copy-deny");
     const btn = copyButton();
     expect(btn).toBeTruthy();
@@ -343,19 +343,19 @@ describe("history whole-panel states", () => {
     };
     await open("loading");
     expect(document.querySelector("[data-fixture='loading']")).toBeTruthy();
-    expect(document.querySelector("[data-testid='apr4-loading']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='apr5-loading']")).toBeTruthy();
     expect(api.fetchJSON).not.toHaveBeenCalled();
     await open("empty");
     expect(text()).toContain("状态下没有记录");
-    expect(document.querySelector("[data-testid='apr4-empty-history']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='apr5-empty-history']")).toBeTruthy();
     await open("error");
     expect(text()).toContain("本次请求未记录编号，可复制时间与操作路径反馈");
     expect(text()).not.toContain("未提供");
-    expect(document.querySelector("[data-testid='apr4-error']")).toBeTruthy();
-    expect(document.querySelector("[data-testid='apr4-retry']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='apr5-error']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='apr5-retry']")).toBeTruthy();
     await open("denied");
     expect(document.querySelector("[data-fixture='denied']")).toBeTruthy();
-    expect(document.querySelector("[data-testid='apr4-denied']")).toBeTruthy();
-    expect(document.querySelectorAll("[data-testid^='apr4-row-']")).toHaveLength(0);
+    expect(document.querySelector("[data-testid='apr5-denied']")).toBeTruthy();
+    expect(document.querySelectorAll("[data-testid^='apr5-row-']")).toHaveLength(0);
   });
 });
