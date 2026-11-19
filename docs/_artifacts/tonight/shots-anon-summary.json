@@ -207,7 +207,7 @@
     {
       "route": "#/employees/:employeeId",
       "viewport": "375",
-      "chars": 42,
+      "chars": 51,
       "hasMainEl": true
     },
     {
@@ -255,7 +255,7 @@
     {
       "route": "#/employees/:employeeId?zone=tasks",
       "viewport": "375",
-      "chars": 51,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -303,7 +303,7 @@
     {
       "route": "#/identity?tab=checks",
       "viewport": "375",
-      "chars": 163,
+      "chars": 161,
       "hasMainEl": true
     },
     {
@@ -519,7 +519,7 @@
     {
       "route": "#/system?tab=defaults",
       "viewport": "375",
-      "chars": 118,
+      "chars": 121,
       "hasMainEl": true
     },
     {
@@ -631,10 +631,9 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 2,
+  "consoleErrorsObservedByShots": 1,
   "consoleErrorRoutesObservedByShots": [
-    "#/audit",
-    "#/system?tab=defaults"
+    "#/identity?tab=checks"
   ],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
@@ -645,12 +644,12 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "6c9db598",
+  "headHash": "e08cbb60",
   "exitCode": 0,
-  "entry": "assets/index-yycnIwR9.js",
-  "entrySha256": "eb925c5c8ae782e556403c0ffbd20d1cd1804811d65ddecacd2988a96c22aabb",
+  "entry": "assets/index-DNlTCozE.js",
+  "entrySha256": "a798a5960e18608be7ee79bcca881bc4849d93bb927fa1461b311c865b831b6b",
   "entryBytes": 163770,
-  "servedEntryBefore": "index-yycnIwR9.js",
-  "servedEntryAfter": "index-yycnIwR9.js",
+  "servedEntryBefore": "index-DNlTCozE.js",
+  "servedEntryAfter": "index-DNlTCozE.js",
   "auxiliary": true
 }

@@ -1,10 +1,10 @@
 {
-  "raw": "state-quad: sampled=20 passed=20 base=http://127.0.0.1:9122 head=6c9db598",
+  "raw": "state-quad: sampled=20 passed=20 base=http://127.0.0.1:9122 head=e08cbb60",
   "source": "docs/_artifacts/tonight/state-quad.mjs text output, rebuilt by L7 (脚本自 56 轮起纯文本输出)",
   "sampled": 20,
   "passed": 20,
   "total": 20,
   "ok": true,
   "exitCode": 0,
-  "headHash": "6c9db598"
+  "headHash": "e08cbb60"
 }

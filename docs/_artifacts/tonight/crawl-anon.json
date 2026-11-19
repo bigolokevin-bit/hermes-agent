@@ -244,10 +244,10 @@
       "source": "DETAIL_ZONES_EXTRA",
       "kind": "detail-zone",
       "verdict": "content-ok",
-      "mainChars": 49,
+      "mainChars": 137,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 1,
+      "consoleErrors": 3,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
       "headSample": "工作台 配置 任务 运行 证据 员工 · EMPLOYEE — 概览 能力与权限 审批 运行 审"
@@ -257,10 +257,10 @@
       "source": "DETAIL_ZONES_EXTRA",
       "kind": "detail-zone",
       "verdict": "content-ok",
-      "mainChars": 49,
+      "mainChars": 137,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 1,
+      "consoleErrors": 3,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
       "headSample": "工作台 配置 任务 运行 证据 员工 · EMPLOYEE — 概览 能力与权限 审批 运行 审"
@@ -299,10 +299,10 @@
       "mainChars": 159,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 3,
+      "consoleErrors": 4,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册真人名录 · 姓名"
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册人员名录 · 姓名"
     },
     {
       "route": "#/identity?tab=admins",
@@ -312,10 +312,10 @@
       "mainChars": 159,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 3,
+      "consoleErrors": 4,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册真人名录 · 姓名"
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册人员名录 · 姓名"
     },
     {
       "route": "#/identity?tab=binding",
@@ -325,10 +325,10 @@
       "mainChars": 159,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 3,
+      "consoleErrors": 4,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册真人名录 · 姓名"
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册人员名录 · 姓名"
     },
     {
       "route": "#/identity?tab=checks",
@@ -338,10 +338,10 @@
       "mainChars": 159,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 3,
+      "consoleErrors": 4,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册真人名录 · 姓名"
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册人员名录 · 姓名"
     },
     {
       "route": "#/identity?tab=departments",
@@ -364,10 +364,10 @@
       "mainChars": 159,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 3,
+      "consoleErrors": 4,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册真人名录 · 姓名"
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册人员名录 · 姓名"
     },
     {
       "route": "#/identity?tab=roles",
@@ -390,10 +390,10 @@
       "mainChars": 159,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 3,
+      "consoleErrors": 4,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册真人名录 · 姓名"
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册人员名录 · 姓名"
     },
     {
       "route": "#/knowledge",
@@ -507,10 +507,10 @@
       "mainChars": 159,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 3,
+      "consoleErrors": 4,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册真人名录 · 姓名"
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册人员名录 · 姓名"
     },
     {
       "route": "#/overview",
@@ -695,7 +695,7 @@
       "headSample": "运营 · 控制台 任务与运行 任务 运行 控制台 · 运行 运行 按时间看运行记录。这一面只读："
     }
   ],
-  "distinctMainHeads": 35,
+  "distinctMainHeads": 36,
   "medianMainChars": 172,
   "contentEmpty": [],
   "contentEmptyCount": 0,
@@ -756,7 +756,7 @@
   "routesWithConsoleErrors": 51,
   "parseErrors": [],
   "ok": true,
-  "headHash": "6c9db598",
+  "headHash": "e08cbb60",
   "exitCode": 0,
   "counts": {
     "probed": 75,
