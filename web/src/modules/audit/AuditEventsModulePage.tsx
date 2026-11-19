@@ -32,7 +32,7 @@
  * no fixture badge to mistake for an answer.
  */
 import { useCallback, useMemo, useState, type ReactNode } from "react";
-import { useSearchParams } from "react-router";
+import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { Download, ReceiptText, RefreshCw, ShieldCheck } from "lucide-react";
 
 import { Badge } from "@nous-research/ui/ui/components/badge";
@@ -201,6 +201,8 @@ export function AuditEventsModulePage(): ReactNode {
 
 function AuditEventsSurface(): ReactNode {
   const [params, setParams] = useSearchParams();
+  const { state: locationState } = useLocation();
+  const navigate = useNavigate();
   // R31: the URL owns the selected record, so a shared or refreshed link opens
   // the same event. `?detail=<eventId>` is the documented spelling; `?id=` is
   // still read because links handed out before this change must keep working.
@@ -252,18 +254,27 @@ function AuditEventsSurface(): ReactNode {
       draft.delete("id");
       if (rawId === null) draft.delete("detail");
       else draft.set("detail", rawId);
-      setParams(draft, { replace: true });
+      // R39: opening a record is its own history entry, so Back returns to the
+      // list with its filters (and the browser's scroll position) intact.
+      setParams(draft, { replace: false, state: { fromList: true } });
     },
     [params, setParams],
   );
 
   const closeDetail = useCallback(() => {
     setUnaddressable(false);
+    // R39: a record opened from the list was pushed as its own entry, so closing
+    // walks back to it. A deep-linked record has nothing behind it and clears in
+    // place rather than leaving the app.
+    if (locationState?.fromList === true) {
+      navigate(-1);
+      return;
+    }
     const draft = new URLSearchParams(params);
     draft.delete("id");
     draft.delete("detail");
-    setParams(draft, { replace: true });
-  }, [params, setParams]);
+    setParams(draft, { replace: true, state: locationState ?? null });
+  }, [locationState, navigate, params, setParams]);
 
   const setWindow = useCallback(
     (next: FilterWindowKey) => {
@@ -273,9 +284,9 @@ function AuditEventsSurface(): ReactNode {
         draft.delete("from");
         draft.delete("to");
       }
-      setParams(draft, { replace: true });
+      setParams(draft, { replace: true, state: locationState ?? null });
     },
-    [params, setParams],
+    [locationState, params, setParams],
   );
 
   const setCustomFrom = useCallback(
@@ -285,9 +296,9 @@ function AuditEventsSurface(): ReactNode {
       const iso = parseBeijingInput(next);
       if (iso) draft.set("from", iso);
       else draft.delete("from");
-      setParams(draft, { replace: true });
+      setParams(draft, { replace: true, state: locationState ?? null });
     },
-    [params, setParams],
+    [locationState, params, setParams],
   );
 
   const setCustomTo = useCallback(
@@ -297,9 +308,9 @@ function AuditEventsSurface(): ReactNode {
       const iso = parseBeijingInput(next);
       if (iso) draft.set("to", iso);
       else draft.delete("to");
-      setParams(draft, { replace: true });
+      setParams(draft, { replace: true, state: locationState ?? null });
     },
-    [params, setParams],
+    [locationState, params, setParams],
   );
 
   const windowLabel = WINDOW_FILTER_CHOICES.find((item) => item.value === windowChoice)?.label ?? "最近 7 天";

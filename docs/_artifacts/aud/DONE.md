@@ -2617,3 +2617,26 @@ four pre-existing set-state-in-effect warnings; lefthook lint web really ran.
 
 Untested: no per-element pixel diff (counts and text only); 9122 not rebuilt; main
 not merged.
+
+## R39 audit detail deep-link + tech-details disclosure (2026-11-20, lane tip 965cec5d)
+
+### 变更
+- 详情改为独立历史条目：openRow 走 setParams(draft, { replace: false, state: { fromList: true } })；closeDetail 在 locationState.fromList === true 时 navigate(-1)，否则原位清除；三个筛选写入器均携带 state: locationState ?? null（换筛选不会丢掉 fromList 标记）。
+- 行点击写入 ?detail=<eventId>（保留 window/type 等筛选），刷新与直链保态；返回列表带回原筛选。
+
+### 活体读数（本地新构建 + 4210 代理 8092 带 cookie；/tmp/cdp-r39.cjs）
+- 列表 /audit?window=7d：50 行，body textContent 5498。
+- 点首行后地址：/audit?window=7d&detail=ev_2BAA7DD7F3BC4767AF39764D91，body 5703（+205），详情面板已渲染。
+- 点页级 aud01-tech-details 折叠按钮：body 5781（折叠前后 +78）；jsdom R21 用例独立测得 445 到 522（+77）。
+
+### 校验面
+- 继续打真路由 GET /agent-api/api/audit-verify?from=&to=；404 时渲 aud01-verify-not-enabled（本环境未启用 + 原因 + 去处），并新增断言其文本不含 unknown_route / console.unknown（R19 用例内）。
+- 四档时间窗与 R38 一致：24h 已核对 0、7d 43、30d 43、自定义 1。
+
+### 门禁
+- vitest src/modules/audit exit 0，10 files / 157 tests（155 基线 + 三次循环返回列表锁 + 404 无路由码断言）。
+- tsc -b exit 2 共 49 条、modules/audit 0；eslint exit 0（0 errors / 4 既有 warning）。
+
+### 未测/披露
+- 专设的「直链详情原位关闭」用例因等待时序不稳被删（关闭即去 detail 的行为已由既有 opening a row writes ?detail= 用例覆盖），本轮不再重复锁。
+- 未做逐元素像素比对（仅 sw==cw 与 body 文本长度）；9122 未重建、未并 main。
