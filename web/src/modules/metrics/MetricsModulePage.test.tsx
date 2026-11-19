@@ -677,3 +677,58 @@ describe('MetricsModulePage — budget vs actual', () => {
     expect(empty?.querySelector('p[title]')?.getAttribute('title')).toContain('GAP-MET6-01');
   });
 });
+
+// ---- met6: 7×24 heat from run-stats ----------------------------------------
+
+const HEAT_STATS = {
+  from: '2026-11-13T00:00:00.000Z',
+  to: '2026-11-20T00:00:00.000Z',
+  bucket: 'hour',
+  buckets: [
+    { bucketStart: '2026-11-14T14:00:00.000Z', runs: 4 },
+    { bucketStart: '2026-11-14T15:00:00.000Z', runs: 0 },
+  ],
+  totals: { runs: 4, succeeded: 4, failed: 0, running: 0, sampleCount: 4, successRate: 1 },
+};
+
+function heatRouter(buckets: unknown[] = HEAT_STATS.buckets) {
+  return (url: string): Promise<unknown> => {
+    if (url.includes('run-activity')) return Promise.resolve(activityBody());
+    if (url.includes('run-stats')) return Promise.resolve({ ...HEAT_STATS, buckets });
+    if (url.includes('/api/employees')) return Promise.resolve(EMPLOYEE_BODY);
+    if (url.includes('models/pricing')) return Promise.reject(new ApiError('missing', { status: 404, body: '', url }));
+    if (url.includes('budget-usage')) return Promise.resolve(DAY_SPLIT);
+    if (url.includes('hermes-usage')) return Promise.resolve(HERMES_USAGE);
+    return Promise.resolve({});
+  };
+}
+
+describe('MetricsModulePage — 7×24 heat', () => {
+  it('draws 168 cells and keeps a returned 0 apart from a missing hour', async () => {
+    await mount(heatRouter());
+
+    expect(document.querySelectorAll('[data-testid^="met6-heat-cell-"]')).toHaveLength(168);
+    const busy = document.querySelector('[data-testid="met6-heat-cell-6-22"]') as HTMLButtonElement;
+    const idle = document.querySelector('[data-testid="met6-heat-cell-6-23"]') as HTMLButtonElement;
+    const missing = document.querySelector('[data-testid="met6-heat-cell-1-0"]') as HTMLButtonElement;
+
+    expect(busy.className).not.toContain('is-missing');
+    expect(busy.getAttribute('title')).toContain('4 次');
+    expect(busy.getAttribute('title')).toContain('（北京时间）');
+    expect(idle.className).toContain('is-zero');
+    expect(idle.getAttribute('title')).toContain('0 次');
+    expect(missing.className).toContain('is-missing');
+    expect(missing.getAttribute('title')).toContain('接口未返回这一格');
+
+    expect(document.querySelector('[data-testid="met6-heat-count"]')?.textContent).toBe('2');
+    expect(document.querySelector('[data-testid="met6-heat-total"]')?.textContent).toBe('4');
+    expect(document.querySelector('[data-testid="met6-heat-source"]')?.textContent).toContain('运行统计');
+  });
+
+  it('says there is no hourly record instead of painting a zero grid', async () => {
+    await mount(heatRouter([]));
+    expect(document.querySelector('[data-testid="met6-heat-empty"]')).toBeTruthy();
+    expect(document.querySelector('[data-testid="met6-heat-grid"]')).toBeNull();
+    expect(text()).not.toContain('met6-heat-cell-1-0');
+  });
+});
