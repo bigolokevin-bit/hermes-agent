@@ -9,7 +9,7 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 494,
+    "textLen": 493,
     "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 今日运行 运行记录 今日成本 成本账本 发布 ",
     "hasMainEl": true,
     "ok": true
@@ -243,7 +243,7 @@
     {
       "route": "#/employees/:employeeId?zone=runs",
       "viewport": "375",
-      "chars": 51,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -255,7 +255,7 @@
     {
       "route": "#/employees/:employeeId?zone=tasks",
       "viewport": "375",
-      "chars": 42,
+      "chars": 51,
       "hasMainEl": true
     },
     {
@@ -465,13 +465,13 @@
     {
       "route": "#/overview",
       "viewport": "1440",
-      "chars": 1012,
+      "chars": 1011,
       "hasMainEl": true
     },
     {
       "route": "#/overview",
       "viewport": "375",
-      "chars": 1012,
+      "chars": 1011,
       "hasMainEl": true
     },
     {
@@ -621,13 +621,13 @@
     {
       "route": "#/work?tab=runs",
       "viewport": "1440",
-      "chars": 1336,
+      "chars": 1335,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=runs",
       "viewport": "375",
-      "chars": 1308,
+      "chars": 1307,
       "hasMainEl": true
     }
   ],
@@ -642,11 +642,11 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "ea077983",
+  "headHash": "4dd7966f",
   "exitCode": 0,
-  "entry": "assets/index-BaWk2O1s.js",
-  "entrySha256": "c94c1bae31641a81d8a24cbbc2b8c781d64b856ea411ecd2ff085a85456741b8",
+  "entry": "assets/index-BzzNjw7T.js",
+  "entrySha256": "adc6daed4f18d20add13e34a90aefbdd7c99d38cd78af634fd020e9194d2eb8b",
   "entryBytes": 158940,
-  "servedEntryBefore": "index-BaWk2O1s.js",
-  "servedEntryAfter": "index-BaWk2O1s.js"
+  "servedEntryBefore": "assets/index-BzzNjw7T.js",
+  "servedEntryAfter": "assets/index-BzzNjw7T.js"
 }

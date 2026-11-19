@@ -921,3 +921,12 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 九件全 exit=0 单文件单 JSON+exitCode+tmp/os.replace：assert-ia-html/react ok {51,22,1,8}（脚本自盖章）；lint-fake ok violations=[]；lint-reuse ok violations=[] exempted=1（chat→T40）；crawl-anon ok DL0/CE0/PE0 routesCE=51（匿名 401 归因）；crawl-auth ok routesCE=22（持平 62 轮）；state-quad 20/20 文本输出重建 JSON（绝对路径法，注 source）。
 - shots main(auth) 102/102 failures=[] oversize=[] consoleErrorsObservedByShots=0 ceAuthority=login-state，拍后 served 仍 BaWk2O1s；summary 三键全值。shots-anon auxiliary=true 102/102 mode=anon（mktemp 隔离目录法，同名覆盖口径不变：仓库留一套 png+两份 summary）。
 - 环境：9122 pid 64868、caddy 8183 pid 28034、8092 pid 43857 未动；web/src 未碰。上一代 a37fe73e 按卡作废不重做。
+
+## 六十四轮·九件账本重章 @ 4dd7966f（2026-11-19 21:3x）
+
+- 卡：九件一次性重章 headHash=4dd7966f（merge lane/console-appr R26 fixes F1/F2/F4/F6/F7），entry assets/index-BzzNjw7T.js / 158940B / sha256 adc6daed4f18d20add13e34a90aefbdd7c99d38cd78af634fd020e9194d2eb8b；上一代 ea077983 作废不重做。≤25min。
+- 代次互证：本地 HEAD=远端（FETCH_HEAD=4dd7966fcaf7…）；磁盘 entry 158940B mtime 21:29:32 shasum 全等卡面；9122 与 8183 served 均 BzzNjw7T；porcelain（滤他人脏）=0。
+- 九腿全 exit=0 盖 4dd7966f：assert-ia-html/react ok {51,22,1,8}；lint-fake ok violations=[]；lint-reuse ok v=[] exempted=1（chat→T40）；crawl-anon ok DL0/CE0/PE0 routesCE=51（匿名 401 归因）；crawl-auth ok DL0/CE0/PE0 routesCE=22（持平 62/63 轮；趋势 23→22→21→22→22→22）；state-quad 20/20（文本输出重建 JSON 注 source，同 58 轮配方）。
+- shots main(auth)：102/102，failures=[]，oversize=[]，consoleErrorsObservedByShots=0，ceAuthority=login-state，distinctMainHeads=27，routesWithEmptyMain=[]；rootBaseline textLen=493 真数据上屏（overview 1011/audit 7882/work 1782）；拍后 served 复证仍 BzzNjw7T 未漂。summary 注入 headHash/exitCode/entry 全名/entrySha256 全值/entryBytes=158940/servedEntryBefore=After=index-BzzNjw7T.js。
+- 环境：9122 pid 64868、caddy 8183 pid 28034、8092 pid 43857 未动；auth-state 19:1x 版窗内；web/src 未碰、他人脏零沾染。
+- shots-anon（auxiliary，mktemp /tmp/shots-anon64 隔离目录法）：102/102，mode=anon，failures=[]，obs=0，routesWithEnvOnlyConsoleErrors=51，rootBaseline 含『登录状态已过期』文本=匿名实锤；同名覆盖口径 mv 回 tonight/shots（pngs=102）；summary 注入 auxiliary=true+同六键。

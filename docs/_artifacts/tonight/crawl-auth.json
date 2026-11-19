@@ -26,8 +26,8 @@
   "rootShell": {
     "url": "http://127.0.0.1:9122/",
     "hasMainEl": true,
-    "mainChars": 745,
-    "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 — —"
+    "mainChars": 501,
+    "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 今日运"
   },
   "contentChecked": 51,
   "contentRows": [
@@ -517,7 +517,7 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 975,
+      "mainChars": 974,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
@@ -686,7 +686,7 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 1331,
+      "mainChars": 1330,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
@@ -735,7 +735,7 @@
   "routesWithConsoleErrors": 22,
   "parseErrors": [],
   "ok": true,
-  "headHash": "ea077983",
+  "headHash": "4dd7966f",
   "exitCode": 0,
   "counts": {
     "probed": 75,
