@@ -771,3 +771,17 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
   - state-quad 20/20（现跑覆盖后重注 ok/exitCode 并回读）
 - redirects=24 vs 门定值 23：按既定口径入 crawl notes 归因，不判红（门值更新归 L0/A）。
 - 环境注记：9122 served==磁盘全程未漂（拍前后双 curl 同值 px6GtnGJ）；禁改 web/src、禁启停 9122 均遵守。
+
+## 三十七轮 · 9122 登录/会话桥（参谋令，16:30 截止）— 2026-11-19 15:4x
+
+- 需求：9122 拿同源 `access_token_cookie`，让 18:00-19:00 人工可登入看真数据。
+- 实施：l7-ops `ops/v4_proxy.py` 增仅回环 `/auth/captcha|login|whoami|logout`（commit `ae8bdc7e`，lane/L7-t15）；
+  RSA PKCS#1 v1.5 走 `uv run --with cryptography`（口令 stdin 管道，零 argv/日志/落盘）；
+  上游=Bisheng 7860；`/auth/*` 先于 /agent-api 与 SPA 兜底；非回环 403。
+- 验收：captcha 200 出 key；login `{ok:true}` + Set-Cookie(HttpOnly,Lax)；带 jar employees=200 items=1、无 cookie=401；
+  whoami 有 cookie `{user_id:1,granted:true,display:opsadmin}`、无 cookie 401；logout 清 cookie。
+  日志 grep password/captcha_char/Set-Cookie/access_token_cookie=<值>/Bearer ey 全 0 命中。
+- 受管重启：launchctl kickstart -k gui/501/cn.seakoi.v4-serve，pid 99197→61410→**61816**（终版），lsof 127.0.0.1:9122 LISTEN。
+- 坑：`uv run ... python -` 会把 payload 当程序读致 stdout 空（首版 login 500=crypto_unavailable）——程序走 `-c`、payload 走 stdin。
+- 回退：`cd /Users/kevin_studio/Projects/l7-ops && git revert --no-edit ae8bdc7e && launchctl kickstart -k gui/$(id -u)/cn.seakoi.v4-serve`
+- 证据：docs/_artifacts/D/AUTH-BRIDGE.md（四段原始 stdout+行号+判据片段）。
