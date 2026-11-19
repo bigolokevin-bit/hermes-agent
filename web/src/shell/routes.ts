@@ -114,6 +114,16 @@ export const CONSOLE_MODULES: readonly ConsoleModuleMeta[] = [
 /** Employee-detail zones (skeleton L5294) + zone aliases (L5295). */
 export const ZONES = ['workbench', 'config', 'tasks', 'runs', 'evidence'] as const;
 export type DetailZone = (typeof ZONES)[number];
+/**
+ * R34 腿③：显式路径别名表（非 SPA 兜底）。/duty 是**有意归一**到
+ * /overview——值班台语义已并入运营总览的 duty 标签页，App.tsx 以
+ * <Navigate to="/overview" replace> 消费本表；它不进 REDIRECTS 数据行
+ * 是因为附录 A 计数法把 redirects 锁在 24/24（routes.ts:561 自检）。
+ */
+export const PATH_ALIASES: Readonly<Record<string, string>> = {
+  "/duty": "/overview",
+};
+
 export const ZONE_ALIAS: Readonly<Record<string, DetailZone>> = {
   overview: 'workbench',
   chat: 'workbench',

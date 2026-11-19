@@ -330,10 +330,13 @@ const ZONES = [
   { id: "audit", label: "审计" },
 ] as const;
 
-type ZoneId = (typeof ZONES)[number]["id"];
+type ZoneId = (typeof ZONES)[number]["id"] | "chat";
 
 function mapShellZone(raw: string): ZoneId {
   switch (raw) {
+    case "chat":
+      // PRD 聊天区：只读会话摘要，深链 ?zone=chat 可达；导航条保持五区不变。
+      return "chat";
     case "capability":
       return "capability";
     case "approvals":
@@ -416,6 +419,121 @@ function ZoneError({ title, message, requestId, onRetry, testid }: { title: stri
 }
 
 /* ------------------------------------------------------------------ *
+ * chat zone (PRD 聊天区) — read-only session summary, never a host
+ * ------------------------------------------------------------------ */
+
+type ChatRow = {
+  title: string | null;
+  lastAt: string | null;
+  messages: number | null;
+  status: string | null;
+  ref: string | null;
+};
+
+function readSessions(body: unknown): ChatRow[] {
+  const rows: ChatRow[] = [];
+  for (const item of itemsOf(body)) {
+    const counts = [item.messageCount, item.message_count];
+    const num = counts.find((v): v is number => typeof v === "number" && Number.isFinite(v));
+    rows.push({
+      title: pickString(item.title, item.name, item.sessionTitle),
+      lastAt: pickString(item.lastMessageAt, item.last_message_at, item.updatedAt, item.updated_at, item.createdAt),
+      messages: num === undefined ? null : num,
+      status: pickString(item.status, item.state),
+      ref: pickString(item.sessionId, item.session_id, item.id),
+    });
+  }
+  return rows;
+}
+
+function chatStatusLabel(raw: string | null): string {
+  if (!raw) return "待核实";
+  const s0 = raw.toLowerCase();
+  if (s0 === "active" || s0 === "open") return "进行中";
+  if (s0 === "archived" || s0 === "closed" || s0 === "ended") return "已结束";
+  return "待核实";
+}
+
+function ChatZone({ resource, empId, onRetry }: { resource: Resource<ChatRow[]>; empId: string; onRetry: () => void }) {
+  if (!empId) {
+    return (
+      <ZoneEmpty
+        testid="ed5-zone-chat-empty"
+        title="缺少员工编号，无法确定对话对象。"
+        hint="本页只按员工读取会话摘要，不自行绘制消息流。"
+      />
+    );
+  }
+  if (resource.phase === "loading") return <ZoneLoading testid="ed5-zone-chat-loading" />;
+  if (resource.phase === "denied") {
+    return <ZoneDenied title="对话记录" message={resource.message} onRetry={onRetry} testid="ed5-zone-chat-denied" />;
+  }
+  if (resource.phase === "error") {
+    return (
+      <ZoneError
+        title="对话记录"
+        message={resource.message}
+        requestId={resource.requestId}
+        onRetry={onRetry}
+        testid="ed5-zone-chat-error"
+      />
+    );
+  }
+  if (resource.phase === "empty") {
+    return (
+      <Card data-testid="ed5-zone-chat-empty">
+        <CardContent className="flex flex-col items-center gap-3 p-8 text-center">
+          <Inbox className="h-6 w-6 text-white/40" />
+          <p className="text-sm">该员工的对话记录尚未接入。</p>
+          <p className="text-xs text-white/50">
+            接口确认可达，服务端确认该员工当前没有已落库的会话；本页不造数，也不在这里开启对话。
+          </p>
+          <p
+            className="font-mono text-xs text-white/40"
+            title="GAP：console-sessions 上游路由族由 L2 车道交付，尚未合入部署面；要聊天请去“对话”页（全站唯一对话承载）。"
+          >
+            原因与数据源缺口见悬停。
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+  return (
+    <Card data-testid="ed5-zone-chat">
+      <CardContent className="p-0">
+        <div className="hidden grid-cols-[minmax(0,1.4fr)_minmax(0,0.9fr)_minmax(0,0.5fr)_minmax(0,0.6fr)] gap-2 border-b border-white/10 px-4 py-2 text-xs text-white/45 md:grid">
+          <span>会话</span>
+          <span>最后消息时间</span>
+          <span>消息数</span>
+          <span>状态</span>
+        </div>
+        <ul className="divide-y divide-white/5" data-testid="ed5-zone-chat-list">
+          {resource.data.map((row, i) => (
+            <li
+              key={`${row.ref ?? "chat"}-${i}`}
+              data-testid="ed5-zone-chat-row"
+              className="grid grid-cols-1 gap-1 px-4 py-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,0.9fr)_minmax(0,0.5fr)_minmax(0,0.6fr)] md:items-center md:gap-2"
+            >
+              <span className="min-w-0 truncate text-sm" title={row.ref ?? undefined}>
+                {row.title ?? `会话 · ${row.ref ? shortCode(row.ref) : "待核实"}`}
+              </span>
+              <span className="font-mono text-xs text-white/55">{beijing(row.lastAt)}</span>
+              <span className="text-xs text-white/55">{row.messages === null ? "—" : `${row.messages} 条`}</span>
+              <span title={row.status ?? undefined}>
+                <Badge tone={row.status === null ? "neutral" : "info"}>{chatStatusLabel(row.status)}</Badge>
+              </span>
+            </li>
+          ))}
+        </ul>
+        <p className="px-4 py-2 text-xs text-white/45">
+          只读摘要 · 本页不提供对话写入入口；要继续聊天请前往“对话”页。
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ------------------------------------------------------------------ *
  * page
  * ------------------------------------------------------------------ */
 
@@ -429,7 +547,7 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
   const enc = encodeURIComponent(empId);
   const zone = mapShellZone(sp.get("zone") ?? "");
 
-  const [reload, setReload] = useState<Record<ZoneId, number>>({ overview: 0, capability: 0, approvals: 0, runs: 0, audit: 0 });
+  const [reload, setReload] = useState<Record<ZoneId, number>>({ overview: 0, capability: 0, approvals: 0, runs: 0, audit: 0, chat: 0 });
   const retry = (z: ZoneId) => setReload((prev) => ({ ...prev, [z]: prev[z] + 1 }));
 
   const overview = useOverview(empId, reload.overview);
@@ -437,6 +555,11 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
   const approvals = useResourceList(zone === "approvals" ? `/agent-api/api/approvals?employeeId=${enc}` : "", reload.approvals, readApprovals);
   const runs = useResourceList(zone === "runs" ? `/agent-api/api/runs?employeeId=${enc}` : "", reload.runs, readRuns);
   const audit = useResourceList(zone === "audit" ? `/agent-api/api/audit?resourceId=${enc}&limit=50` : "", reload.audit, readAudit);
+  const chat = useResourceList(
+    zone === "chat" && empId ? `/agent-api/api/console-sessions?employeeId=${enc}&limit=5` : "",
+    reload.chat,
+    readSessions,
+  );
 
   const name = overview.phase === "ready" ? pickString(overview.data.name) : null;
   const titleJob = overview.phase === "ready" ? pickString(overview.data.title, overview.data.role, overview.data.position) : null;
@@ -498,6 +621,7 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
       ) : null}
       {zone === "runs" ? <RunsZone resource={runs} onRetry={() => retry("runs")} /> : null}
       {zone === "audit" ? <AuditZone resource={audit} onRetry={() => retry("audit")} /> : null}
+      {zone === "chat" ? <ChatZone resource={chat} empId={empId} onRetry={() => retry("chat")} /> : null}
     </section>
   );
 }

@@ -342,4 +342,64 @@ describe("EmployeeDetailModulePage — R28 not-found honesty", () => {
     expect(container.textContent).toContain("小鲤");
     expect(container.textContent).not.toContain("员工不存在");
   });
+
+  // ---- R35 · PRD 聊天区：真数据或诚实未接入（只读摘要，禁第二 chat host） ----
+
+  it("chat zone: real session rows render title/BJT minute/count/plain status", async () => {
+    mockApi((url) => {
+      if (url.includes("console-sessions")) {
+        return Promise.resolve({
+          items: [
+            { sessionId: "sess_7C1D2E3F", title: "周报讨论", updatedAt: "2026-11-18T02:00:00Z", messageCount: 12, status: "active" },
+            { sessionId: "sess_9A8B", status: "archived" },
+          ],
+        });
+      }
+      return Promise.resolve({ items: [] });
+    });
+    await renderAt(<EmployeeDetailModulePage />, `/employees/${EMP}?zone=chat`);
+    expect(container.querySelector('[data-testid="ed5-zone-chat"]')).toBeTruthy();
+    expect(container.querySelectorAll('[data-testid="ed5-zone-chat-row"]')).toHaveLength(2);
+    const text = container.textContent ?? "";
+    expect(text).toContain("周报讨论");
+    expect(text).toContain("2026-11-18 10:00");
+    expect(text).toContain("12 条");
+    expect(text).toContain("进行中");
+    expect(text).toContain("已结束");
+    expect(text).not.toContain("sess_9A8B");
+    // ②本区不是宿主、不是消息流、零写入口
+    expect(container.querySelector("[data-chat-host]")).toBeNull();
+    expect(text).not.toContain("发送");
+    // 导航条仍是五区
+    const tabs = Array.from(container.querySelectorAll("[role='tab'], [data-zone]")).filter((el) => el.getAttribute("data-zone") !== "chat");
+    expect(tabs.length).toBeGreaterThanOrEqual(5);
+  });
+
+  it("chat zone: an empty server answer states 尚未接入 with the reason in the title", async () => {
+    mockApi((url) => Promise.resolve(url.includes("console-sessions") ? { items: [] } : { items: [] }));
+    await renderAt(<EmployeeDetailModulePage />, `/employees/${EMP}?zone=chat`);
+    const empty = container.querySelector('[data-testid="ed5-zone-chat-empty"]');
+    expect(empty).toBeTruthy();
+    expect(container.textContent).toContain("该员工的对话记录尚未接入");
+    expect(container.textContent).not.toContain("会话摘要为空（bug");
+  });
+
+  it("chat zone: error keeps plain copy with a copyable rid and retry", async () => {
+    mockApi((url) => (url.includes("console-sessions") ? silent502(url, "req-chat-1") : Promise.resolve({ items: [] })));
+    await renderAt(<EmployeeDetailModulePage />, `/employees/${EMP}?zone=chat`);
+    const err = container.querySelector('[data-testid="ed5-zone-chat-error"]');
+    expect(err).toBeTruthy();
+    expect(container.textContent).toContain("请求编号：req-chat-1");
+    expect(container.textContent).toContain("重试");
+  });
+
+  it("chat zone: 403 and 404 share one denied body and echo no path", async () => {
+    for (const fail of [forbidden, missing]) {
+      mockApi((url) => (url.includes("console-sessions") ? fail(url) : Promise.resolve({ items: [] })));
+      await renderAt(<EmployeeDetailModulePage />, `/employees/${EMP}?zone=chat`);
+      expect(container.querySelector('[data-testid="ed5-zone-chat-denied"]')).toBeTruthy();
+      expect(container.textContent).toContain("这块数据还没接入，或你没有查看权限");
+      expect(container.textContent).not.toContain("console-sessions");
+    }
+  });
 });

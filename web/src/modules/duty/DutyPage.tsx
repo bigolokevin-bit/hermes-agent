@@ -129,7 +129,7 @@ function HCard({
                 : `取不到采集时间：${stamp.reason ?? "上游响应没有带采集时间"}`
             }
           >
-            数据截至 {stamp.shown ?? "—"} · 来源 {stamp.source}
+            数据截至 {stamp.shown ?? "—（北京时间）"} · 来源 {stamp.source}
           </p>
         ) : null}
         {children}
@@ -667,7 +667,7 @@ export default function DutyPage() {
     return (
       <div className="duty-page" data-testid="ov6-page" data-duty-testid="duty-page">
         <p className="duty-note">正在读取值班数据…</p>
-        <p className="duty-note" data-testid="ov6-asof" title="取不到采集时间：数据还在读取">采集时刻 —</p>
+        <p className="duty-note" data-testid="ov6-asof" title="取不到采集时间：数据还在读取">采集时刻 —（北京时间）</p>
       </div>
     );
   }
@@ -677,7 +677,7 @@ export default function DutyPage() {
         <div className="duty-empty">
           <p>当前没有可显示的值班数据。</p>
           <p>数据源返回为空，可能尚未接入。</p>
-          <p className="duty-note" data-testid="ov6-asof" title="取不到采集时间：上游响应没有带采集时间">采集时刻 —</p>
+          <p className="duty-note" data-testid="ov6-asof" title="取不到采集时间：上游响应没有带采集时间">采集时刻 —（北京时间）</p>
           <Link className="duty-link" to="/employees">去员工列表</Link>
         </div>
       </div>
@@ -689,7 +689,7 @@ export default function DutyPage() {
         <div className="duty-empty">
           <p>值班数据暂时不可用。</p>
           <p>请求编号：未提供</p>
-          <p className="duty-note" data-testid="ov6-asof" title="取不到采集时间：本次读取失败">采集时刻 —</p>
+          <p className="duty-note" data-testid="ov6-asof" title="取不到采集时间：本次读取失败">采集时刻 —（北京时间）</p>
           <Button outlined onClick={reload}>重试</Button>
         </div>
       </div>
@@ -720,7 +720,7 @@ export default function DutyPage() {
                 data-testid="ov6-asof"
                 title={stamp ? "取各来源响应自带的采集时间上屏" : `取不到采集时间：${reason}`}
               >
-                {stamp ? `采集时刻 北京时间 ${beijing(stamp)}` : "采集时刻 —"}
+                {stamp ? `采集时刻 北京时间 ${beijing(stamp)}` : "采集时刻 —（北京时间）"}
               </span>
             );
           })()}
