@@ -20,27 +20,34 @@ import {
   USAGE_GAP,
   WEEKDAY_LABELS,
   WINDOWS,
+  WINDOW_PRESETS,
   beijingDayKey,
-  beijingDayStartIso,
   buildHeatGrid,
   cellRangeLabel,
   chunkIds,
   formatBeijing,
+  employeeLabel,
   formatCount,
   formatRate,
+  formatUnitPrice,
   formatUsd,
   ledgerAsOf,
   ledgerTotal,
   readActivity,
   readLedger,
+  readPricing,
   readRunStats,
   sparkSlots,
+  usageWindowOf,
+  windowRange,
   windowOf,
   windowRangeLabel,
   type Activity,
   type HeatCell,
   type LedgerRow,
+  type PriceRow,
   type RunStats,
+  type UsageWindowId,
 } from './metrics';
 import './metrics.css';
 
@@ -67,9 +74,10 @@ type UsageBlock<T> =
 interface LedgerSnapshot {
   total: number | null;
   asOf: string | null;
-  rows: number;
+  rows: LedgerRow[];
   missing: number;
   truncated: boolean;
+  names: Record<string, string>;
 }
 
 interface TrendSnapshot {
@@ -82,10 +90,11 @@ type UsageState =
   | { kind: 'loading' }
   | {
       kind: 'ready';
-      runs: UsageBlock<RunStats>;
-      trend: UsageBlock<TrendSnapshot>;
+      window: UsageWindowId;
+      stats: UsageBlock<TrendSnapshot>;
       day: UsageBlock<LedgerSnapshot>;
       month: UsageBlock<LedgerSnapshot>;
+      pricing: UsageBlock<{ rows: PriceRow[]; asOf: string | null }>;
       loadedAt: string;
     };
 
@@ -110,20 +119,22 @@ function blockFailure(error: unknown): { reason: string; gap: string | null; req
   return { reason: '这次没能读取这项数据，请稍后重试。', gap: null, requestId };
 }
 
-function employeeIdsOf(payload: unknown): { ids: string[]; truncated: boolean } {
-  if (typeof payload !== 'object' || payload === null) return { ids: [], truncated: false };
+function employeeIdsOf(payload: unknown): { ids: string[]; names: Record<string, string>; truncated: boolean } {
+  if (typeof payload !== 'object' || payload === null) return { ids: [], names: {}, truncated: false };
   const record = payload as { items?: unknown; nextCursor?: unknown };
-  const ids = Array.isArray(record.items)
-    ? record.items
-        .map((item) =>
-          typeof item === 'object' && item !== null && typeof (item as { employeeId?: unknown }).employeeId === 'string'
-            ? (item as { employeeId: string }).employeeId
-            : null,
-        )
-        .filter((id): id is string => id !== null)
-    : [];
+  const ids: string[] = [];
+  const names: Record<string, string> = {};
+  if (Array.isArray(record.items)) {
+    for (const item of record.items) {
+      if (typeof item !== 'object' || item === null) continue;
+      const row = item as { employeeId?: unknown; name?: unknown };
+      if (typeof row.employeeId !== 'string') continue;
+      ids.push(row.employeeId);
+      if (typeof row.name === 'string' && row.name.trim()) names[row.employeeId] = row.name.trim();
+    }
+  }
   const truncated = typeof record.nextCursor === 'string' && record.nextCursor.trim().length > 0;
-  return { ids, truncated };
+  return { ids, names, truncated };
 }
 
 function requestIdOf(error: unknown): string | null {
@@ -180,6 +191,7 @@ function cellText(cell: HeatCell): string {
 export function MetricsModulePage() {
   const [params, setParams] = useSearchParams();
   const forced = readForced(params);
+  const usageWindow = usageWindowOf(params.get('window'));
   const activeWindow = windowOf(params.get('w'));
   const weeks = activeWindow.weeks;
   const [state, setState] = useState<PageState>({ kind: 'loading' });
@@ -219,13 +231,12 @@ export function MetricsModulePage() {
     };
   }, [attempt, forced, load]);
 
-  const loadUsage = useCallback(async (signal: { live: boolean }) => {
+  const loadUsage = useCallback(async (signal: { live: boolean }, windowId: UsageWindowId) => {
     setUsage({ kind: 'loading' });
+    const preset = usageWindowOf(windowId);
     const now = new Date();
+    const range = windowRange(now, windowId);
     const today = beijingDayKey(now);
-    const dayFrom = beijingDayStartIso(today);
-    const nowIso = now.toISOString();
-    const from24h = new Date(now.getTime() - 86_400_000).toISOString();
     const monthKey = today.slice(0, 7);
 
     const readBlock = async <T,>(
@@ -242,26 +253,16 @@ export function MetricsModulePage() {
       }
     };
 
-    const runs = await readBlock(
+    const stats = await readBlock(
       () =>
         fetchJsonStrict(
-          `/agent-api/api/run-stats?from=${encodeURIComponent(dayFrom)}&to=${encodeURIComponent(nowIso)}&bucket=day`,
-        ),
-      (body) => {
-        const parsed = readRunStats(body);
-        return parsed.kind === 'ok' ? { ok: true, value: parsed.stats } : { ok: false, reason: parsed.reason };
-      },
-    );
-
-    const trend = await readBlock(
-      () =>
-        fetchJsonStrict(
-          `/agent-api/api/run-stats?from=${encodeURIComponent(from24h)}&to=${encodeURIComponent(nowIso)}&bucket=hour`,
+          `/agent-api/api/run-stats?from=${encodeURIComponent(range.from)}` +
+            `&to=${encodeURIComponent(range.to)}&bucket=${preset.bucket}`,
         ),
       (body) => {
         const parsed = readRunStats(body);
         return parsed.kind === 'ok'
-          ? { ok: true, value: { stats: parsed.stats, from: from24h, to: nowIso } }
+          ? { ok: true, value: { stats: parsed.stats, from: range.from, to: range.to } }
           : { ok: false, reason: parsed.reason };
       },
     );
@@ -269,7 +270,14 @@ export function MetricsModulePage() {
     const ledgerSnapshot = async (periodKind: 'day' | 'month', period: string): Promise<LedgerSnapshot> => {
       const directory = employeeIdsOf(await fetchJsonStrict('/agent-api/api/employees?limit=200'));
       if (directory.ids.length === 0) {
-        return { total: null, asOf: null, rows: 0, missing: 0, truncated: directory.truncated };
+        return {
+          total: null,
+          asOf: null,
+          rows: [],
+          missing: 0,
+          truncated: directory.truncated,
+          names: directory.names,
+        };
       }
       const bodies = await Promise.all(
         chunkIds(directory.ids).map((ids) =>
@@ -290,9 +298,10 @@ export function MetricsModulePage() {
       return {
         total: ledgerTotal(rows),
         asOf: ledgerAsOf(rows),
-        rows: rows.length,
+        rows,
         missing,
         truncated: directory.truncated,
+        names: directory.names,
       };
     };
 
@@ -305,18 +314,28 @@ export function MetricsModulePage() {
       (body) => ({ ok: true, value: body as LedgerSnapshot }),
     );
 
+    const pricing = await readBlock(
+      () => fetchJsonStrict('/agent-api/api/models/pricing'),
+      (body) => {
+        const parsed = readPricing(body);
+        return parsed.kind === 'ok'
+          ? { ok: true, value: { rows: parsed.rows, asOf: parsed.asOf } }
+          : { ok: false, reason: parsed.reason };
+      },
+    );
+
     if (!signal.live) return;
-    setUsage({ kind: 'ready', runs, trend, day, month, loadedAt: new Date().toISOString() });
+    setUsage({ kind: 'ready', window: windowId, stats, day, month, pricing, loadedAt: new Date().toISOString() });
   }, []);
 
   useEffect(() => {
     if (forced) return;
     const signal = { live: true };
-    void loadUsage(signal);
+    void loadUsage(signal, usageWindow.id);
     return () => {
       signal.live = false;
     };
-  }, [attempt, forced, loadUsage]);
+  }, [attempt, forced, loadUsage, usageWindow.id]);
 
   const view: PageState = forced
     ? forced === 'loading'
@@ -329,86 +348,80 @@ export function MetricsModulePage() {
   const grid = view.kind === 'ready' ? buildHeatGrid(view.activity) : null;
   const selectedCell = selected && grid ? grid.rows[selected.dow - 1]?.cells[selected.hour] ?? null : null;
 
+  const forcedDown = {
+    kind: 'unavailable' as const,
+    reason:
+      forced === 'denied'
+        ? '这项数据当前读不到：可能还没有接入，也可能当前账号没有查看权限。'
+        : '这次没能读取这项数据，请稍后重试。',
+    gap: forced === 'denied' ? USAGE_GAP : null,
+    requestId: null,
+  };
+  const forcedEmptyLedger: UsageBlock<LedgerSnapshot> = {
+    kind: 'ready',
+    value: { total: null, asOf: null, rows: [], missing: 0, truncated: false, names: {} },
+  };
+
   const usageView: UsageState = forced
     ? forced === 'loading'
       ? { kind: 'loading' }
       : {
           kind: 'ready',
-          runs:
+          window: usageWindow.id,
+          stats:
             forced === 'empty'
               ? {
                   kind: 'ready',
                   value: {
-                    from: null,
-                    to: null,
-                    buckets: [],
-                    totals: { runs: 0, succeeded: 0, failed: 0, running: 0, sampleCount: 0, successRate: null },
-                  },
-                }
-              : {
-                  kind: 'unavailable',
-                  reason:
-                    forced === 'denied'
-                      ? '这项数据当前读不到：可能还没有接入，也可能当前账号没有查看权限。'
-                      : '这次没能读取这项数据，请稍后重试。',
-                  gap: forced === 'denied' ? USAGE_GAP : null,
-                  requestId: null,
-                },
-          trend:
-            forced === 'empty'
-              ? {
-                  kind: 'ready',
-                  value: {
-                    stats: { from: null, to: null, buckets: [], totals: { runs: 0, succeeded: 0, failed: 0, running: 0, sampleCount: 0, successRate: null } },
+                    stats: {
+                      from: null,
+                      to: null,
+                      buckets: [],
+                      totals: { runs: 0, succeeded: 0, failed: 0, running: 0, sampleCount: 0, successRate: null },
+                    },
                     from: new Date().toISOString(),
                     to: new Date().toISOString(),
                   },
                 }
-              : {
-                  kind: 'unavailable',
-                  reason:
-                    forced === 'denied'
-                      ? '这项数据当前读不到：可能还没有接入，也可能当前账号没有查看权限。'
-                      : '这次没能读取这项数据，请稍后重试。',
-                  gap: forced === 'denied' ? USAGE_GAP : null,
-                  requestId: null,
-                },
-          day:
-            forced === 'empty'
-              ? { kind: 'ready', value: { total: null, asOf: null, rows: 0, missing: 0, truncated: false } }
-              : {
-                  kind: 'unavailable',
-                  reason:
-                    forced === 'denied'
-                      ? '这项数据当前读不到：可能还没有接入，也可能当前账号没有查看权限。'
-                      : '这次没能读取这项数据，请稍后重试。',
-                  gap: forced === 'denied' ? USAGE_GAP : null,
-                  requestId: null,
-                },
-          month: { kind: 'ready', value: { total: null, asOf: null, rows: 0, missing: 0, truncated: false } },
+              : forcedDown,
+          day: forced === 'empty' ? forcedEmptyLedger : forcedDown,
+          month: forced === 'empty' ? forcedEmptyLedger : forcedDown,
+          pricing: forcedDown,
           loadedAt: new Date().toISOString(),
         }
     : usage;
 
   const usageReady = usageView.kind === 'ready' ? usageView : null;
-  const usageBlocks = usageReady ? [usageReady.runs, usageReady.trend, usageReady.day] : [];
+  const usageBlocks = usageReady ? [usageReady.stats, usageReady.day, usageReady.pricing] : [];
   const usageDown = usageReady !== null && usageBlocks.every((block) => block.kind === 'unavailable');
   const usageDenied =
     usageDown && usageBlocks.every((block) => block.kind === 'unavailable' && block.gap === USAGE_GAP);
   const usageQuiet =
     usageReady !== null &&
     !usageDown &&
-    usageReady.runs.kind === 'ready' &&
-    usageReady.runs.value.totals.runs === 0 &&
-    usageReady.trend.kind === 'ready' &&
-    usageReady.trend.value.stats.buckets.length === 0 &&
+    usageReady.stats.kind === 'ready' &&
+    usageReady.stats.value.stats.totals.runs === 0 &&
+    usageReady.stats.value.stats.buckets.length === 0 &&
     usageReady.day.kind === 'ready' &&
-    usageReady.day.value.rows === 0;
+    usageReady.day.value.rows.length === 0;
   const spark =
-    usageReady && usageReady.trend.kind === 'ready'
-      ? sparkSlots(usageReady.trend.value.stats, usageReady.trend.value.from, usageReady.trend.value.to)
+    usageReady && usageReady.stats.kind === 'ready'
+      ? sparkSlots(
+          usageReady.stats.value.stats,
+          usageReady.stats.value.from,
+          usageReady.stats.value.to,
+          usageWindowOf(usageReady.window).slots,
+        )
       : null;
   const sparkPeak = spark && spark.max !== null && spark.max > 0 ? spark.max : 1;
+  const monthSnapshot = usageReady && usageReady.month.kind === 'ready' ? usageReady.month.value : null;
+
+  const chooseUsageWindow = (next: UsageWindowId) => {
+    const query = new URLSearchParams(params);
+    if (next === '24h') query.delete('window');
+    else query.set('window', next);
+    setParams(query, { replace: true });
+  };
 
   const chooseWindow = (nextWeeks: number) => {
     setSelected(null);
@@ -449,8 +462,23 @@ export function MetricsModulePage() {
           <div className="met6-head">
             <h2>用量与成本</h2>
             <p>
-              运行数和金额分属两本账：运行统计给次数与成功率，平台扣费账本给实际扣掉的钱。金额只读账本，不由运行数或单价换算。
+              运行数与金额分属两本账：运行统计给次数与成功率，平台扣费账本给实际扣掉的钱，模型价目表给单价。三者各说各的，不互相换算。
             </p>
+          </div>
+
+          <div className="met6-window" role="group" aria-label="统计时间窗">
+            {WINDOW_PRESETS.map((preset) => (
+              <Button
+                key={preset.id}
+                size="sm"
+                outlined={preset.id !== usageWindow.id}
+                aria-pressed={preset.id === usageWindow.id}
+                onClick={() => chooseUsageWindow(preset.id)}
+                data-testid={`met6-window-${preset.id}`}
+              >
+                {preset.label}
+              </Button>
+            ))}
           </div>
 
           {usageDown ? (
@@ -479,9 +507,9 @@ export function MetricsModulePage() {
           {usageQuiet ? (
             <Card data-testid="met6-empty">
               <CardContent className="space-y-2 p-6">
-                <p className="font-medium">今天还没有用量记录</p>
+                <p className="font-medium">这个窗口还没有用量记录</p>
                 <p className="text-sm text-muted-foreground">
-                  运行统计没有返回今天的运行，账本也没有今天的实扣行，因此这里既没有次数也没有金额——不补 0，也不拿别的时段顶替。
+                  运行统计没有返回这个窗口的运行，账本也没有今天的实扣行，因此这里既没有次数也没有金额——不补 0，也不拿别的时段顶替。
                 </p>
               </CardContent>
             </Card>
@@ -490,25 +518,31 @@ export function MetricsModulePage() {
           <div className="met6-grid">
             <Card className="met6-card" data-testid="met6-runs">
               <CardContent className="space-y-1 p-4">
-                <p className="met6-label">今日运行</p>
+                <p className="met6-label">{usageWindow.label}运行</p>
                 <p className="met6-value" data-testid="met6-runs-value">
-                  {usageReady && usageReady.runs.kind === 'ready' ? formatCount(usageReady.runs.value.totals.runs) : '—'}
+                  {usageReady && usageReady.stats.kind === 'ready'
+                    ? formatCount(usageReady.stats.value.stats.totals.runs)
+                    : '—'}
                 </p>
                 <p className="met6-sub">
                   成功率{' '}
                   <span data-testid="met6-rate-value">
-                    {usageReady && usageReady.runs.kind === 'ready'
-                      ? formatRate(usageReady.runs.value.totals.successRate)
+                    {usageReady && usageReady.stats.kind === 'ready'
+                      ? formatRate(usageReady.stats.value.stats.totals.successRate)
                       : '—'}
                   </span>
                 </p>
-                <p className="met6-hint">今天 00:00 起（北京时间）；没有可统计样本时成功率显示「—」。</p>
+                <p className="met6-hint">
+                  {usageReady && usageReady.stats.kind === 'ready'
+                    ? `${formatBeijing(usageReady.stats.value.from)} — ${formatBeijing(usageReady.stats.value.to)}（北京时间）`
+                    : '窗口按北京时间计算；没有可统计样本时成功率显示「—」。'}
+                </p>
                 <p className="met6-source" data-testid="met6-runs-source">
                   来源：运行统计 · 读取于 {usageReady ? formatBeijing(usageReady.loadedAt) : '—'}
                 </p>
-                {usageReady && usageReady.runs.kind === 'unavailable' ? (
-                  <p className="met6-gap" data-testid="met6-runs-gap" title={usageReady.runs.gap ?? undefined}>
-                    {usageReady.runs.reason}
+                {usageReady && usageReady.stats.kind === 'unavailable' ? (
+                  <p className="met6-gap" data-testid="met6-runs-gap" title={usageReady.stats.gap ?? undefined}>
+                    {usageReady.stats.reason}
                   </p>
                 ) : null}
               </CardContent>
@@ -516,7 +550,7 @@ export function MetricsModulePage() {
 
             <Card className="met6-card" data-testid="met6-cost">
               <CardContent className="space-y-1 p-4">
-                <p className="met6-label">今日成本</p>
+                <p className="met6-label">实扣金额（账本）</p>
                 <p className="met6-value" data-testid="met6-cost-value">
                   {usageReady && usageReady.day.kind === 'ready' ? formatUsd(usageReady.day.value.total) : '—'}
                 </p>
@@ -527,8 +561,8 @@ export function MetricsModulePage() {
                   </span>
                 </p>
                 <p className="met6-hint">
-                  {usageReady && usageReady.day.kind === 'ready' && usageReady.day.value.rows > 0
-                    ? `账本实扣，按 ${usageReady.day.value.rows} 条员工日账合计`
+                  {usageReady && usageReady.day.kind === 'ready' && usageReady.day.value.rows.length > 0
+                    ? `今日账本实扣，按 ${usageReady.day.value.rows.length} 条员工日账合计`
                     : '账本实扣；没有实扣行时显示「—」，不按 0 记。'}
                 </p>
                 <p className="met6-source" data-testid="met6-cost-source">
@@ -547,35 +581,53 @@ export function MetricsModulePage() {
                 ) : null}
                 {usageReady && usageReady.day.kind === 'ready' && usageReady.day.value.total === null ? (
                   <p className="met6-gap" data-testid="met6-cost-gap">
-                    {usageReady.day.value.rows > 0
+                    {usageReady.day.value.rows.length > 0
                       ? '账本行没有给出金额，所以显示「—」。'
                       : '今天还没有账本实扣记录，所以显示「—」。'}
                   </p>
+                ) : null}
+                {monthSnapshot && monthSnapshot.rows.length > 0 ? (
+                  <ul className="met6-rows" data-testid="met6-cost-rows">
+                    {monthSnapshot.rows.slice(0, 8).map((row, index) => (
+                      <li key={`${row.employeeId ?? 'row'}-${index}`} className="met6-row">
+                        <span className="met6-row-who">
+                          {employeeLabel(row.employeeId ? monthSnapshot.names[row.employeeId] ?? null : null, row.employeeId)}
+                        </span>
+                        <span className="met6-row-period">{row.period ?? '—'}</span>
+                        <span className="met6-row-amount font-mono">{formatUsd(row.costUsd)}</span>
+                        <span className="met6-row-asof">{row.updatedAt ? formatBeijing(row.updatedAt) : '—'}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                {monthSnapshot && monthSnapshot.rows.length > 0 ? (
+                  <p className="met6-hint">明细只列账本行；金额原样来自账本，不做换算。</p>
                 ) : null}
               </CardContent>
             </Card>
 
             <Card className="met6-card" data-testid="met6-trend">
               <CardContent className="space-y-1 p-4">
-                <p className="met6-label">最近 24 小时</p>
+                <p className="met6-label">{usageWindow.label}趋势</p>
                 {spark && spark.observed > 0 ? (
                   <svg
                     className="met6-spark"
                     viewBox="0 0 240 48"
                     preserveAspectRatio="none"
                     role="img"
-                    aria-label={`最近 24 小时每小时运行数，共 ${spark.observed} 个时段有记录`}
+                    aria-label={`${usageWindow.label}每${usageWindow.bucket === 'hour' ? '小时' : '天'}运行数，共 ${spark.observed} 个时段有记录`}
                     data-testid="met6-sparkline"
                   >
                     {spark.slots.map((slot) => {
                       if (slot.runs === null) return null;
                       const height = Math.max(2, Math.round(((slot.runs ?? 0) / sparkPeak) * 44));
+                      const width = 240 / spark.slots.length;
                       return (
                         <rect
                           key={slot.hour}
-                          x={slot.hour * 10 + 1}
+                          x={slot.hour * width + width * 0.1}
                           y={48 - height}
-                          width={8}
+                          width={width * 0.8}
                           height={height}
                           rx={1.5}
                         />
@@ -584,20 +636,54 @@ export function MetricsModulePage() {
                   </svg>
                 ) : (
                   <p className="met6-value met6-value-small" data-testid="met6-trend-value">
-                    {usageReady && usageReady.trend.kind === 'ready' ? '没有运行' : '—'}
+                    {usageReady && usageReady.stats.kind === 'ready' ? '没有运行' : '—'}
                   </p>
                 )}
                 <p className="met6-hint">
                   {spark && spark.observed > 0
-                    ? `每小时一根柱，共 ${spark.observed} 个时段有记录；空档表示那个小时接口没有返回运行，不按 0 画。`
-                    : '最近 24 小时没有运行记录，所以没有趋势可画。'}
+                    ? `共 ${spark.observed} 个时段有记录；空档表示那个时段接口没有返回运行，不按 0 画。`
+                    : `${usageWindow.label}没有运行记录，所以没有趋势可画。`}
                 </p>
                 <p className="met6-source" data-testid="met6-trend-source">
-                  来源：运行统计（每小时） · 读取于 {usageReady ? formatBeijing(usageReady.loadedAt) : '—'}
+                  来源：运行统计（每{usageWindow.bucket === 'hour' ? '小时' : '天'}） · 读取于{' '}
+                  {usageReady ? formatBeijing(usageReady.loadedAt) : '—'}
                 </p>
-                {usageReady && usageReady.trend.kind === 'unavailable' ? (
-                  <p className="met6-gap" data-testid="met6-trend-gap" title={usageReady.trend.gap ?? undefined}>
-                    {usageReady.trend.reason}
+                {usageReady && usageReady.stats.kind === 'unavailable' ? (
+                  <p className="met6-gap" data-testid="met6-trend-gap" title={usageReady.stats.gap ?? undefined}>
+                    {usageReady.stats.reason}
+                  </p>
+                ) : null}
+              </CardContent>
+            </Card>
+
+            <Card className="met6-card" data-testid="met6-price">
+              <CardContent className="space-y-1 p-4">
+                <p className="met6-label">单价（价目表）</p>
+                {usageReady && usageReady.pricing.kind === 'ready' && usageReady.pricing.value.rows.length > 0 ? (
+                  <ul className="met6-rows" data-testid="met6-price-rows">
+                    {usageReady.pricing.value.rows.slice(0, 5).map((row, index) => (
+                      <li key={`${row.modelId ?? 'model'}-${index}`} className="met6-row">
+                        <span className="met6-row-who">{row.label}</span>
+                        <span className="met6-row-amount font-mono">{formatUnitPrice(row.inputPerMillion, row.currency)}</span>
+                        <span className="met6-row-asof">{row.asOf ? formatBeijing(row.asOf) : '—'}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="met6-value met6-value-small" data-testid="met6-price-value">
+                    {usageReady && usageReady.pricing.kind === 'ready' ? '价目表为空' : '—'}
+                  </p>
+                )}
+                <p className="met6-hint">单价是标价，不是扣费；本页不拿单价乘用量。缺失的单价显示「—」。</p>
+                <p className="met6-source" data-testid="met6-price-source">
+                  来源：模型价目表 · 截至{' '}
+                  {usageReady && usageReady.pricing.kind === 'ready' && usageReady.pricing.value.asOf
+                    ? formatBeijing(usageReady.pricing.value.asOf)
+                    : '—'}
+                </p>
+                {usageReady && usageReady.pricing.kind === 'unavailable' ? (
+                  <p className="met6-gap" data-testid="met6-price-gap" title={usageReady.pricing.gap ?? undefined}>
+                    {usageReady.pricing.reason}
                   </p>
                 ) : null}
               </CardContent>

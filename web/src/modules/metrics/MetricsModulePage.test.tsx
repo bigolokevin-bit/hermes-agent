@@ -177,50 +177,50 @@ describe('MetricsModulePage', () => {
     }
   });
 });
-// ---- met6: usage & cost -----------------------------------------------------
-// The claims that matter: run counts and the success rate come from one read,
-// money only from the ledger (a real 0 is $0.00, no row is «—»), the 24h spark
-// only draws hours the endpoint returned, and 403/404 are byte-identical.
+// ---- met6: usage & cost (window switching, ledger money, unit price) -------
+// The claims that matter: `?window=` really changes the request and the
+// numbers, money only comes from the ledger (a real 0 is $0.00, no row is «—»),
+// unit price is a separate source, and 403/404 are byte-identical.
 
-const RUN_TOTALS = {
-  runs: 13,
-  succeeded: 12,
-  failed: 0,
-  cancelled: 0,
-  interrupted: 0,
-  running: 1,
-  pending: 0,
-  costUsd: 0.12,
-  unknownRuns: 0,
-  sampleCount: 12,
-  successRate: 0.9967,
-};
-
-const TODAY_STATS = {
+const STATS_24H = {
   from: '2026-11-18T16:00:00.000Z',
-  to: '2026-11-19T12:00:00.000Z',
-  bucket: 'day',
-  buckets: [{ bucketStart: '2026-11-19T00:00:00.000Z', runs: 13, succeeded: 12, failed: 0 }],
-  totals: RUN_TOTALS,
-};
-
-const TREND_STATS = {
-  from: '2026-11-18T12:00:00.000Z',
-  to: '2026-11-19T12:00:00.000Z',
+  to: '2026-11-19T16:00:00.000Z',
   bucket: 'hour',
-  buckets: [
-    { bucketStart: '2026-11-18T18:00:00.000Z', runs: 4 },
-    { bucketStart: '2026-11-19T02:00:00.000Z', runs: 9 },
-  ],
-  totals: RUN_TOTALS,
+  buckets: [],
+  totals: { runs: 0, succeeded: 0, failed: 0, running: 0, sampleCount: 0, successRate: null },
 };
 
-const EMPLOYEE_BODY = { items: [{ employeeId: 'emp_a' }, { employeeId: 'emp_b' }], nextCursor: null };
+const STATS_7D = {
+  from: '2026-11-12T16:00:00.000Z',
+  to: '2026-11-19T16:00:00.000Z',
+  bucket: 'day',
+  buckets: [{ bucketStart: '2026-11-14T00:00:00.000Z', runs: 13 }],
+  totals: { runs: 13, succeeded: 12, failed: 0, running: 1, sampleCount: 12, successRate: 1 },
+};
+
+const STATS_30D = {
+  from: '2026-10-20T16:00:00.000Z',
+  to: '2026-11-19T16:00:00.000Z',
+  bucket: 'day',
+  buckets: [
+    { bucketStart: '2026-11-13T00:00:00.000Z', runs: 1 },
+    { bucketStart: '2026-11-14T00:00:00.000Z', runs: 13 },
+  ],
+  totals: { runs: 14, succeeded: 13, failed: 0, running: 1, sampleCount: 13, successRate: 1 },
+};
+
+const EMPLOYEE_BODY = {
+  items: [
+    { employeeId: 'emp_aaaabbbbcccc', name: '小鲤' },
+    { employeeId: 'emp_ddddeeeeffff', name: '小满' },
+  ],
+  nextCursor: null,
+};
 
 const LEDGER_DAY = {
   items: [
     {
-      employeeId: 'emp_a',
+      employeeId: 'emp_aaaabbbbcccc',
       period: '2026-11-19',
       periodKind: 'day',
       tokensUsed: 148176,
@@ -229,23 +229,37 @@ const LEDGER_DAY = {
       updatedAt: '2026-11-19T03:20:00.000Z',
     },
   ],
-  missingEmployeeIds: ['emp_b'],
+  missingEmployeeIds: ['emp_ddddeeeeffff'],
 };
 
 const LEDGER_MONTH = {
   items: [
-    { employeeId: 'emp_a', period: '2026-11', periodKind: 'month', costUsd: 0.121198, updatedAt: '2026-11-14T19:25:51.543Z' },
-    { employeeId: 'emp_b', period: '2026-11', periodKind: 'month', costUsd: 0.011498, updatedAt: '2026-11-13T06:41:33.974Z' },
+    { employeeId: 'emp_aaaabbbbcccc', period: '2026-11', periodKind: 'month', costUsd: 0.121198, updatedAt: '2026-11-14T19:25:51.543Z' },
+    { employeeId: 'emp_ddddeeeeffff', period: '2026-11', periodKind: 'month', costUsd: 0.011498, updatedAt: '2026-11-13T06:41:33.974Z' },
   ],
   missingEmployeeIds: [],
 };
 
-function usageRouter(overrides: { ledger?: (url: string) => Promise<unknown> } = {}) {
+function statsFor(url: string): unknown {
+  const from = new URL(url, 'http://local').searchParams.get('from');
+  const hours = from ? (Date.now() - Date.parse(from)) / 3_600_000 : 0;
+  if (hours <= 25) return STATS_24H;
+  if (hours >= 600) return STATS_30D;
+  return STATS_7D;
+}
+
+function usageRouter(
+  overrides: { ledger?: (url: string) => Promise<unknown>; pricing?: () => Promise<unknown> } = {},
+) {
   return (url: string): Promise<unknown> => {
+    if (overrides.pricing && url.includes('models/pricing')) return overrides.pricing();
     if (overrides.ledger && url.includes('budget-usage')) return overrides.ledger(url);
     if (url.includes('run-activity')) return Promise.resolve(activityBody());
-    if (url.includes('run-stats')) return Promise.resolve(url.includes('bucket=hour') ? TREND_STATS : TODAY_STATS);
+    if (url.includes('run-stats')) return Promise.resolve(statsFor(url));
     if (url.includes('/api/employees')) return Promise.resolve(EMPLOYEE_BODY);
+    if (url.includes('models/pricing')) {
+      return Promise.reject(new ApiError('missing', { status: 404, body: '', url }));
+    }
     if (url.includes('periodKind=month')) return Promise.resolve(LEDGER_MONTH);
     if (url.includes('periodKind=day')) return Promise.resolve(LEDGER_DAY);
     return Promise.resolve({});
@@ -253,26 +267,57 @@ function usageRouter(overrides: { ledger?: (url: string) => Promise<unknown> } =
 }
 
 describe('MetricsModulePage — usage & cost (met6)', () => {
-  it('renders run counts, the rate and ledger money from their own reads', async () => {
+  it('reads the 24h window by default and keeps price and money apart', async () => {
     await mount(usageRouter());
 
-    expect(document.querySelector('[data-testid="met6-runs-value"]')?.textContent).toBe('13');
-    expect(document.querySelector('[data-testid="met6-rate-value"]')?.textContent).toBe('99.7%');
-    // A ledger row that says 0 is a real zero.
+    expect(document.querySelector('[data-testid="met6-runs-value"]')?.textContent).toBe('0');
+    expect(document.querySelector('[data-testid="met6-rate-value"]')?.textContent).toBe('—');
+    expect(document.querySelector('[data-testid="met6-trend-value"]')?.textContent).toBe('没有运行');
+    // Ledger row with costUsd 0 is a real zero; month sums the two rows.
     expect(document.querySelector('[data-testid="met6-cost-value"]')?.textContent).toBe('$0.00');
-    // Month total = the two ledger rows that exist.
     expect(document.querySelector('[data-testid="met6-cost-month"]')?.textContent).toBe('$0.13');
-    expect(document.querySelectorAll('[data-testid="met6-sparkline"] rect')).toHaveLength(2);
+    expect(document.querySelectorAll('[data-testid="met6-cost-rows"] li')).toHaveLength(2);
+    expect(document.querySelector('[data-testid="met6-cost-rows"]')?.textContent).toContain('小鲤 · AAAABBBB');
+    // Unit price is its own source and is not connected here.
+    expect(document.querySelector('[data-testid="met6-price-value"]')?.textContent).toBe('—');
+    expect(document.querySelector('[data-testid="met6-price-gap"]')?.textContent).toContain('这项数据当前读不到');
 
     const called = urls();
-    expect(called.some((url) => url.includes('/api/run-stats?') && url.includes('bucket=day'))).toBe(true);
-    expect(called.some((url) => url.includes('/api/run-stats?') && url.includes('bucket=hour'))).toBe(true);
-    expect(called.some((url) => url.includes('/api/employees?limit=200'))).toBe(true);
-    expect(called.some((url) => url.includes('budget-usage') && url.includes('employeeId=emp_a,emp_b'))).toBe(true);
-    expect(called.some((url) => url.includes('periodKind=day'))).toBe(true);
-
-    // The fixture marker is gone for good.
+    const statsCall = called.find((url) => url.includes('run-stats')) ?? '';
+    expect(statsCall).toContain('bucket=hour');
+    expect(statsCall).toContain('from=');
+    expect(statsCall).toContain('to=');
+    expect(called.some((url) => url.includes('budget-usage') && url.includes('periodKind=day'))).toBe(true);
+    expect(called.some((url) => url.includes('budget-usage') && url.includes('periodKind=month'))).toBe(true);
     expect(document.querySelector('[data-testid="met5-page"]')?.getAttribute('data-fixture')).toBeNull();
+  });
+
+  it('really switches windows: 7d and 30d issue their own request and numbers', async () => {
+    await mount(usageRouter());
+
+    await act(async () => {
+      (document.querySelector('[data-testid="met6-window-7d"]') as HTMLButtonElement).click();
+    });
+    await waitFor(() => document.querySelector('[data-testid="met6-runs-value"]')?.textContent === '13', '7d runs');
+    const sevenDayUrl = urls().filter((url) => url.includes('run-stats')).at(-1) ?? '';
+    expect(sevenDayUrl).toContain('bucket=day');
+    const sevenFrom = new Date(
+      new URL(sevenDayUrl, 'http://local').searchParams.get('from') as string,
+    ).getTime();
+    expect(Math.round((Date.now() - sevenFrom) / 3_600_000)).toBeGreaterThanOrEqual(167);
+    expect(document.querySelectorAll('[data-testid="met6-sparkline"] rect')).toHaveLength(1);
+    expect(document.querySelector('[data-testid="met6-rate-value"]')?.textContent).toBe('100%');
+
+    await act(async () => {
+      (document.querySelector('[data-testid="met6-window-30d"]') as HTMLButtonElement).click();
+    });
+    await waitFor(() => document.querySelector('[data-testid="met6-runs-value"]')?.textContent === '14', '30d runs');
+    const monthUrl = urls().filter((url) => url.includes('run-stats')).at(-1) ?? '';
+    const monthFrom = new Date(
+      new URL(monthUrl, 'http://local').searchParams.get('from') as string,
+    ).getTime();
+    expect(Math.round((Date.now() - monthFrom) / 3_600_000)).toBeGreaterThanOrEqual(719);
+    expect(document.querySelectorAll('[data-testid="met6-sparkline"] rect')).toHaveLength(2);
   });
 
   it('shows — with a reason when the ledger has no row for the period', async () => {
@@ -282,7 +327,7 @@ describe('MetricsModulePage — usage & cost (met6)', () => {
           Promise.resolve(
             url.includes('periodKind=month')
               ? { items: [], missingEmployeeIds: [] }
-              : { items: [], missingEmployeeIds: ['emp_a', 'emp_b'] },
+              : { items: [], missingEmployeeIds: ['emp_aaaabbbbcccc'] },
           ),
       }),
     );
@@ -291,14 +336,14 @@ describe('MetricsModulePage — usage & cost (met6)', () => {
     expect(document.querySelector('[data-testid="met6-cost-month"]')?.textContent).toBe('—');
     expect(text()).toContain('今天还没有账本实扣记录');
     expect(text()).not.toContain('$0.00');
-    expect(document.querySelector('[data-testid="met6-runs-value"]')?.textContent).toBe('13');
+    expect(document.querySelector('[data-testid="met6-cost-rows"]')).toBeNull();
   });
 
   it('gives 403 and 404 the same block copy', async () => {
     const run = async (status: number): Promise<string> => {
       await mount((url) => {
         if (url.includes('run-activity')) return Promise.resolve(activityBody());
-        if (url.includes('run-stats') || url.includes('/api/employees')) {
+        if (url.includes('run-stats') || url.includes('/api/employees') || url.includes('models/pricing')) {
           return Promise.reject(new ApiError('denied', { status, body: '', url, requestId: 'req-same' }));
         }
         return Promise.resolve(LEDGER_DAY);
@@ -314,29 +359,31 @@ describe('MetricsModulePage — usage & cost (met6)', () => {
     expect(fourOhFour).not.toContain('GAP-');
   });
 
-  it('says there is no trend when the 24h window returned no buckets', async () => {
-    // The router answers run-stats with data; force the empty 24h body instead.
-    await mount((url) => {
-      if (url.includes('run-activity')) return Promise.resolve(activityBody());
-      if (url.includes('bucket=hour')) {
-        return Promise.resolve({ ...TREND_STATS, buckets: [], totals: { ...RUN_TOTALS, runs: 0 } });
-      }
-      if (url.includes('run-stats')) return Promise.resolve(TODAY_STATS);
-      if (url.includes('/api/employees')) return Promise.resolve(EMPLOYEE_BODY);
-      if (url.includes('periodKind=month')) return Promise.resolve(LEDGER_MONTH);
-      return Promise.resolve(LEDGER_DAY);
-    });
+  it('renders the four preview states without issuing a request', async () => {
+    api.fetchJsonStrict.mockReset();
+    api.fetchJsonStrict.mockImplementation(() => Promise.resolve({}));
 
-    expect(document.querySelector('[data-testid="met6-sparkline"]')).toBeNull();
-    expect(document.querySelector('[data-testid="met6-trend-value"]')?.textContent).toBe('没有运行');
-    expect(text()).toContain('最近 24 小时没有运行记录');
+    await render('/metrics?state=loading', <MetricsModulePage />);
+    expect(document.querySelector('[data-testid="met6-loading"]')).toBeTruthy();
+
+    await render('/metrics?state=empty', <MetricsModulePage />);
+    expect(document.querySelector('[data-testid="met6-empty"]')).toBeTruthy();
+
+    await render('/metrics?state=error', <MetricsModulePage />);
+    expect(document.querySelector('[data-testid="met6-error"]')).toBeTruthy();
+
+    await render('/metrics?state=denied', <MetricsModulePage />);
+    expect(document.querySelector('[data-testid="met6-denied"]')).toBeTruthy();
+
+    expect(urls()).toEqual([]);
   });
 
-  it('keeps engineering language and raw amounts out of the visible copy', async () => {
+  it('keeps engineering language and raw ids out of the visible copy', async () => {
     await mount(usageRouter());
     const section = document.querySelector('[data-testid="met6-section"]')?.textContent ?? '';
-    for (const token of ['/api', 'run-stats', 'budget-usage', 'HTTP', 'ISO', 'GAP-', 'tokensUsed', 'emp_']) {
+    for (const token of ['/api', 'run-stats', 'budget-usage', 'models/pricing', 'HTTP', 'ISO', 'GAP-', 'tokensUsed', 'emp_']) {
       expect(section).not.toContain(token);
     }
+    expect(section).not.toContain('?? 0');
   });
 });
