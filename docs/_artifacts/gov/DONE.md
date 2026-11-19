@@ -754,3 +754,62 @@ built /Users/kevin_studio/Projects/forks/console-gov/hermes_cli/web_dist/index.h
 - 真实 200 未取得（无登录态）；截图数据为临时 fixture 的 DOM 证明，不代表线上数值。
 - 自动恢复为 20 秒静默重试，只在前端运行期间生效；不保证服务恢复瞬间立即刷新。
 - 独立观察者未跑，完成 DOM 测量与截图自检。
+
+## HLT5 · 系统健康三探针新鲜度（2026-11-19）
+
+### 交付
+
+- 基线 `c4c6e750`（在 OV5 尾项之后）；页面 commit `0c9dfaa1 feat(console): health probe freshness and copyable request ids (hlt5)`，push `77de5a32..0c9dfaa1 lane/console-gov`。
+- 文件：`web/src/modules/health/{HealthPage.tsx,HealthPage.test.tsx,health.ts}`。未改 App/shell/manifest/pages/scripts/package。
+- 三探针：控制台服务（BFF 健康口径）、Hermes 运行时（`/api/hermes-summary`，BFF 转发到 9119）、域服务（`/api/skills`，BFF 转发到 8101）。浏览器只经 BFF 同源访问，不直连 8101/9119。
+- 每项显示「正常 / 异常 / 未知」+ 人话原因；采集时刻统一 `YYYY-MM-DD HH:mm`（北京时间）。没有可记录时间时显式「采集时刻：时间未知（本次没有收到可记录的时间）」，不补浏览器时间。
+- 失败探针显示「请求编号：…」+ 复制按钮；整页全无响应时显示可复制请求编号 + 重试。
+- 不默认绿勾：仅拿到 HTTP 响应才判正常；无响应为未知/异常；未接入仍为未知 + 人话原因。
+
+### 端点真实度
+
+```text
+本轮无登录态，未取得真实 200。三条路径均经 8182 BFF：
+/agent-api/api/__health-probe__
+/agent-api/api/hermes-summary
+/agent-api/api/skills
+401 只证明鉴权门先于路由；页面按响应/失败如实显示正常/异常/未知。
+```
+
+### 原始 stdout
+
+```text
+$ cd web && ./node_modules/.bin/tsc -b . --noEmit
+# TSC_EXIT=0
+
+$ cd web && npx vitest run src/modules/health
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+
+$ cd web && npx vitest run
+ Test Files  118 passed (118)
+      Tests  1158 passed (1158)
+
+$ cd /Users/kevin_studio/Projects/forks/console-gov && PATH="/opt/homebrew/bin:$PATH" pnpm --filter web build
+built /Users/kevin_studio/Projects/forks/console-gov/hermes_cli/web_dist/index.html
+# BUILD_EXIT=0
+```
+
+### DOM 读数（Chrome CDP，临时 harness，已删除）
+
+```text
+1440×900: vw=1440 bodySW=1440 bodyCW=1440 pageSW=1410 pageCW=1408 rows=4
+375×812:  vw=375 bodySW=375 bodyCW=375 pageSW=345 pageCW=343 rows=4
+```
+
+375 为单列探针卡，状态、原因、请求编号、复制与采集时刻均可见，无横向溢出。截图：`docs/_artifacts/gov/shots/hlt5-1440.png`、`hlt5-375.png`。
+
+### 需壳层注册的路由/槽位清单
+
+- 无。`/system?tab=health` 已由 App/shell 挂到 health 模块；本页未改 App/shell/manifest。
+
+### 边界
+
+- 真实 200 未取得（无登录态）；截图数据来自临时 fetch stub 的 DOM 证明，不代表线上读数。
+- 探针经 BFF，不直接连接 8101/9119；BFF 到上游的转发失败会按「上游返回异常」呈现，不冒充端口直连。
+- 独立观察者未跑，完成 DOM 测量与截图自检。
