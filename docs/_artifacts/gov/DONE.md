@@ -988,3 +988,48 @@ built /private/tmp/knowledge-r19/index.html
 - 直接深链 `#/knowledge?tab=sources`：App 的 live map 无 `sources` 节点 → 当前落 `PlannedBlock`，**本页代码不会挂载**；需把 `sources` 指向 `KnowledgeConsolePage`。
 - 直接深链 `?tab=retrieval|citations|evidence`：shell 解析到 `evidence`，App 挂的是 `web/src/modules/evidence/EvidenceModulePage`（仍是另一模块，且 404 回落 fixture），**不会挂本页**；需把该节点也指向 `KnowledgeConsolePage`。
 - 因此本 commit 只完成了 knowledge 模块内映射与下钻；四值深链的端到端验收需 L0/R5 改 App live map 后才能通过。写域限制导致这一项不能在 knowledge 模块内单独闭合。
+
+## R20 尾项 d 返工（2026-11-19 18:2x）
+
+### 根因与修复
+- QA 的「两值错位」根因是模块把 `?tab=` 只在首次渲染读入 `useState`，之后仅搜索串变化时不会重新选择面板（同一挂载实例保留旧 tab）。
+- 现在 `?tab=` / `?panel=` 直接派生内部面板，URL 是唯一事实源：点 tab 写回 `panel=`，刷新、回退、直接深链都解析同一面板，无陈旧 state。
+- 新增回归测试：同一挂载实例从 `?tab=sources` 导航到 `?tab=retrieval`，选中态与面板必须同时切到 `knw4-tab-retrieval` / `data-tab=retrieval`。
+
+### 四 tab 映射与 DOM 读数
+| `?tab=` | 选中 testid | `knw4-panel` | len |
+|---|---|---|---|
+| sources | `knw4-tab-ingest` | ingest | 2 |
+| retrieval | `knw4-tab-retrieval` | retrieval | 2 |
+| citations | `knw4-tab-evidence` | evidence | 2 |
+| evidence | `knw4-tab-evidence` | evidence | 2 |
+
+```text
+1440 sources   tab=knw4-tab-ingest    panel=ingest    len=2 rows=2 citations=0 body=1440/1440 page=1440/1440
+1440 retrieval tab=knw4-tab-retrieval panel=retrieval len=2 rows=2 citations=0 body=1440/1440 page=1440/1440
+1440 citations tab=knw4-tab-evidence  panel=evidence  len=2 rows=0 citations=2 body=1440/1440 page=1440/1440
+1440 evidence  tab=knw4-tab-evidence  panel=evidence  len=2 rows=0 citations=2 body=1440/1440 page=1440/1440
+375  sources   tab=knw4-tab-ingest    panel=ingest    len=2 rows=2 citations=0 body=375/375 page=375/375
+375  retrieval tab=knw4-tab-retrieval panel=retrieval len=2 rows=2 citations=0 body=375/375 page=375/375
+375  citations tab=knw4-tab-evidence  panel=evidence  len=2 rows=0 citations=2 body=375/375 page=375/375
+375  evidence  tab=knw4-tab-evidence  panel=evidence  len=2 rows=0 citations=2 body=375/375 page=375/375
+```
+
+- 404 仍是 `knw4-gap`，`title=GAP-03`，可见文案只有「未接入」；zeroCount=0；四态未破。
+
+### 原始 stdout
+
+```text
+$ npx vitest run src/modules/knowledge
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+
+$ ./node_modules/.bin/tsc -b . --noEmit
+TSC_EXIT=0
+```
+
+### 仍需壳层注册（App.tsx / shell 非本 lane 写域）
+
+- `#/knowledge?tab=sources` 的端到端深链仍需 App live map 增加 `sources` 节点；否则 shell 仍落 `PlannedBlock`，模块不会被挂载。
+- `?tab=retrieval|citations|evidence` 的端到端深链仍需 App 将 `evidence` 节点指向 `KnowledgeConsolePage`；当前仍挂 `EvidenceModulePage`。
+- 本次提交保证的是「模块一旦挂载，四值与 URL 一一对应且刷新/回退/同实例切换保态」；端到端壳层映射无法在 `web/src/modules/knowledge/**` 内单独闭合。

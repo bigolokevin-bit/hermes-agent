@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { MemoryRouter, useLocation } from "react-router";
+import { MemoryRouter, useLocation, useNavigate } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api-error";
@@ -16,6 +16,15 @@ import KnowledgeModulePage from "./KnowledgeModulePage";
 function LocationProbe() {
   const loc = useLocation();
   return <div data-testid="loc">{loc.search}</div>;
+}
+
+function JumpProbe() {
+  const navigate = useNavigate();
+  return (
+    <button data-testid="jump-retrieval" onClick={() => navigate("/knowledge?tab=retrieval")}>
+      jump
+    </button>
+  );
 }
 
 let container: HTMLDivElement;
@@ -46,6 +55,7 @@ async function render(path = "/knowledge") {
       <MemoryRouter initialEntries={[path]}>
         <KnowledgeModulePage />
         <LocationProbe />
+        <JumpProbe />
       </MemoryRouter>,
     );
   });
@@ -135,6 +145,20 @@ describe("KnowledgeModulePage", () => {
       expect(container.querySelector('[data-testid="knw4-panel"]')?.getAttribute("data-tab")).toBe(panel);
       expect(fetchMock).toHaveBeenLastCalledWith(url);
     }
+  });
+
+  it("switches panels when only the URL changes, without a stale tab state", async () => {
+    fetchMock.mockResolvedValue({ items: [] });
+    await render("/knowledge?tab=sources");
+    expect(container.querySelector('[role="tab"][aria-selected="true"]')?.getAttribute("data-testid")).toBe(
+      "knw4-tab-ingest",
+    );
+    await click("jump-retrieval");
+    expect(container.querySelector('[role="tab"][aria-selected="true"]')?.getAttribute("data-testid")).toBe(
+      "knw4-tab-retrieval",
+    );
+    expect(container.querySelector('[data-testid="knw4-panel"]')?.getAttribute("data-tab")).toBe("retrieval");
+    expect(fetchMock).toHaveBeenLastCalledWith("/agent-api/api/retrieval");
   });
 
   it("keeps the selected panel in the URL and restores it on re-render", async () => {
