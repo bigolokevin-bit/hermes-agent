@@ -237,7 +237,7 @@ export default function PeopleModulePage() {
   }, [people, query]);
 
   return (
-    <section className="flex flex-col gap-4" data-testid="people-page">
+    <section className="flex flex-col gap-4" data-testid="ppl4-page">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <h1 className="font-mondwest text-xl text-white/90">人员目录</h1>
@@ -248,7 +248,7 @@ export default function PeopleModulePage() {
         </div>
         <div className="flex items-center gap-2">
           <input
-            data-testid="people-search"
+            data-testid="ppl4-search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="搜索姓名、账号或部门"
@@ -263,7 +263,7 @@ export default function PeopleModulePage() {
 
       {people.phase === "loading" ? (
         <section
-          data-testid="people-loading"
+          data-testid="ppl4-loading"
           className="flex flex-col gap-2 rounded-lg border border-white/5 bg-white/[0.02] p-4"
           aria-label="正在加载人员目录"
         >
@@ -275,7 +275,7 @@ export default function PeopleModulePage() {
 
       {people.phase === "denied" ? (
         <StateShell
-          testid="people-denied"
+          testid="ppl4-denied"
           icon={<ShieldAlert className="h-4 w-4 text-amber-300/80" aria-hidden />}
           title={people.message === DENIED_FORBIDDEN ? "暂时看不到人员目录" : "数据源待核实"}
           body={people.message}
@@ -285,7 +285,7 @@ export default function PeopleModulePage() {
 
       {people.phase === "error" ? (
         <StateShell
-          testid="people-error"
+          testid="ppl4-error"
           icon={<TriangleAlert className="h-4 w-4 text-rose-300/80" aria-hidden />}
           title="没能加载出人员目录"
           body={`${people.message}${people.requestId ? `（请求编号：${people.requestId}）` : "（本次请求未记录编号，可复制时间与操作路径反馈）"}`}
@@ -295,7 +295,7 @@ export default function PeopleModulePage() {
 
       {people.phase === "empty" ? (
         <StateShell
-          testid="people-empty"
+          testid="ppl4-empty"
           icon={<Inbox className="h-4 w-4 text-white/30" aria-hidden />}
           title="目录暂时是空的"
           body="后台还没有登记在册人员。接入完成后这里会自动出现名单。"
@@ -306,7 +306,7 @@ export default function PeopleModulePage() {
       {people.phase === "ready" ? (
         people.data.length === 0 ? (
           <StateShell
-            testid="people-empty"
+            testid="ppl4-empty"
             icon={<Inbox className="h-4 w-4 text-white/30" aria-hidden />}
             title="目录暂时是空的"
             body="后台还没有登记在册人员。接入完成后这里会自动出现名单。"
@@ -314,14 +314,14 @@ export default function PeopleModulePage() {
           />
         ) : rows.length === 0 ? (
           <StateShell
-            testid="people-nomatch"
+            testid="ppl4-nomatch"
             icon={<Inbox className="h-4 w-4 text-white/30" aria-hidden />}
             title={`没有匹配「${query.trim()}」的人员`}
             body="换个关键词试试；清空搜索可看全部名单。"
           />
         ) : (
           <Card className="border-white/5 bg-white/[0.02]">
-            <CardContent className="p-0" data-testid="people-list">
+            <CardContent className="p-0" data-testid="ppl4-list">
               <div className="hidden md:grid md:grid-cols-[1.4fr_1.2fr_1fr_0.8fr_1.2fr] gap-2 border-b border-white/5 px-4 py-2 text-xs text-white/40">
                 <span>姓名</span>
                 <span>账号</span>
@@ -334,7 +334,7 @@ export default function PeopleModulePage() {
                   <li
                     key={r.key}
                     className="grid grid-cols-1 gap-1 px-4 py-2 md:grid-cols-[1.4fr_1.2fr_1fr_0.8fr_1.2fr] md:gap-2 md:items-center"
-                    data-testid="people-row"
+                    data-testid="ppl4-row"
                     title={r.rawId ? `记录号 ${r.rawId}` : undefined}
                   >
                     <span className="flex items-center gap-2 text-sm text-white/85 min-w-0">
@@ -350,7 +350,7 @@ export default function PeopleModulePage() {
                     <span>
                       <Badge tone={r.status.tone}>{r.status.text}</Badge>
                     </span>
-                    <span className="text-xs text-white/55 md:text-sm md:text-white/60" data-testid="people-last-active">
+                    <span className="text-xs text-white/55 md:text-sm md:text-white/60" data-testid="ppl4-last-active">
                       {r.lastActive ?? "待核实"}
                     </span>
                   </li>
