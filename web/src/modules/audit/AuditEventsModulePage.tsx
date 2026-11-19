@@ -33,7 +33,7 @@
  */
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
-import { Download, ReceiptText, RefreshCw, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Download, ReceiptText, RefreshCw, ShieldCheck } from "lucide-react";
 
 import { Badge } from "@nous-research/ui/ui/components/badge";
 import { Button } from "@nous-research/ui/ui/components/button";
@@ -71,6 +71,19 @@ import {
  * one — every window choice always sends a real `from`+`to` pair.
  */
 const WINDOW_FILTER_CHOICES = FILTER_WINDOW_CHOICES;
+
+/**
+ * aud8: a new question or a new page is a new answer set, so the cursor stack
+ * and the two inline folds are dropped together. The folds survive the trip
+ * into 详情 and back (that URL history is untouched); they do not survive a
+ * changed filter, because a row opened under the wider question may not even
+ * be on screen any more.
+ */
+function resetPagingAndFolds(draft: URLSearchParams): void {
+  draft.delete("cursor");
+  draft.delete("preview");
+  draft.delete("tech");
+}
 
 export function AuditFilterBar({
   windowChoice,
@@ -185,6 +198,84 @@ export function AuditFilterBar({
           未接入
         </Badge>
       </span>
+
+      {/* aud8: same honesty for 资源. The route names `resourceId` as one of
+          its seven accepted filters, but this environment never probed what it
+          filters by (DONE.md gap list) and there is no resource directory to
+          pick a real id from — so no picker is offered, while a `?resource=`
+          handed over in the address is passed through verbatim below. */}
+      <span
+        className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground"
+        title="resourceId 由该路由的 400 体点名为可接受筛选，但本环境未单独验证其过滤效果，也没有可挑选的资源目录；不做假下拉"
+      >
+        <select
+          aria-label="资源筛选（未接入）"
+          className="h-8 min-w-0 max-w-40 rounded-md border border-border bg-transparent px-2 text-sm"
+          disabled
+          data-testid="aud8-filter-resource"
+        >
+          <option>资源</option>
+        </select>
+        <Badge tone="secondary" title="资源筛选未接入：缺资源目录，且过滤效果未单独实测">
+          未接入
+        </Badge>
+      </span>
+    </div>
+  );
+}
+
+/**
+ * aud8: the two filters that arrive through the address instead of a picker.
+ * A handle the person pasted is honoured on the wire — and shown in human
+ * words, the raw handle living in the `title` like every other id on this
+ * surface. Clearing drops the parameter and re-reads without it.
+ */
+function AuditUrlFilterChips({
+  actor,
+  resource,
+  onClear,
+}: {
+  actor: string;
+  resource: string;
+  onClear: (key: "actor" | "resource") => void;
+}): ReactNode {
+  if (!actor && !resource) return null;
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="aud8-url-filters">
+      {actor ? (
+        <span
+          className="flex min-w-0 items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-xs text-muted-foreground"
+          data-testid="aud8-actor-chip"
+          title={`地址栏带入的操作者句柄（原值 ${actor}）已作为 actorId 发给服务；实测该参数生效，但它只吃机器句柄，界面上不铺原始值`}
+        >
+          操作者已按句柄筛选
+          <button
+            type="button"
+            className="underline underline-offset-2"
+            onClick={() => onClear("actor")}
+            data-testid="aud8-actor-clear"
+          >
+            取消
+          </button>
+        </span>
+      ) : null}
+      {resource ? (
+        <span
+          className="flex min-w-0 items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-xs text-muted-foreground"
+          data-testid="aud8-resource-chip"
+          title={`地址栏带入的资源编号（原值 ${resource}）已作为 resourceId 发给服务；该参数由路由接受，但其过滤效果本环境未单独实测，条数以服务回答为准`}
+        >
+          资源已按编号筛选
+          <button
+            type="button"
+            className="underline underline-offset-2"
+            onClick={() => onClear("resource")}
+            data-testid="aud8-resource-clear"
+          >
+            取消
+          </button>
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -211,14 +302,26 @@ function AuditEventsSurface(): ReactNode {
   // R34: the filter set is URL-owned, so a refreshed or shared link keeps the
   // same window. `?window=custom` reads its instants from `?from=`/`?to=`.
   const windowChoice = filterWindowOf(params.get("window"));
-  const [eventType, setEventType] = useState("");
+  // aud8: the rest of the filter set joins the address, so 「详情→返回」 and a
+  // pasted URL restore the same question, not just the same window. The wire
+  // name of the type filter stays `action` (`event_type` is ignored upstream);
+  // `?type=` is the human-side spelling.
+  const eventType = params.get("type") ?? "";
+  // aud8: honoured-only-from-the-address filters. No control invents a value.
+  const actor = params.get("actor") ?? "";
+  const resource = params.get("resource") ?? "";
 
+  // aud8: the memo keys on the two instants it actually reads, not on the whole
+  // address. `?preview=` and `?detail=` are navigation state, not a new
+  // question: a fold opening must not re-ask the service for the same page.
+  const customFromParam = params.get("from");
+  const customToParam = params.get("to");
   const bounds = useMemo(
     () =>
       windowChoice === "custom"
-        ? customBounds(params.get("from"), params.get("to"))
+        ? customBounds(customFromParam, customToParam)
         : windowBounds(windowChoice),
-    [windowChoice, params],
+    [windowChoice, customFromParam, customToParam],
   );
   // An incomplete custom range is not a question the service can answer: the
   // screen says what is missing and no request is issued (the route rejects an
@@ -231,8 +334,14 @@ function AuditEventsSurface(): ReactNode {
     // The window is never unbounded (see AuditFilterBar); each choice carries a
     // real from+to pair, so a bare `?limit=` scan that the service 400s is
     // never asked. An unchosen type drops the `action` parameter entirely.
-    return { action: eventType || null, from: bounds?.from ?? "", to: bounds?.to ?? "" };
-  }, [bounds, eventType]);
+    return {
+      action: eventType || null,
+      from: bounds?.from ?? "",
+      to: bounds?.to ?? "",
+      actor: actor || null,
+      resource: resource || null,
+    };
+  }, [actor, bounds, eventType, resource]);
 
   // No `?state=` leg on this pane: a list or detail state is only what the
   // service answered. A missing route degrades through readFailure() to an
@@ -243,10 +352,13 @@ function AuditEventsSurface(): ReactNode {
   const list = useAuditList(null, filters, !customInvalid, startCursor);
   const detail = useAuditDetail(selected, null);
   const [unaddressable, setUnaddressable] = useState(false);
-  // One row at a time owns the technical fold: the panel id stays unique and
-  // clicking 详情 really expands something every time (R19 tail b).
-  const [openTech, setOpenTech] = useState<string | null>(null);
-  const [openPreview, setOpenPreview] = useState<string | null>(null);
+  // aud8: the two inline folds are URL-owned now (they used to be page-local),
+  // so an opened preview or technical fold survives 详情→返回 and a pasted
+  // address. One row owns each fold at a time, so the panel ids stay unique.
+  // Changing the question (window / type / cursor) drops them: rows that were
+  // read under a wider filter must not stay unfolded on a narrowed screen.
+  const openTech = params.get("tech");
+  const openPreview = params.get("preview");
   const [typesOpen, setTypesOpen] = useState(false);
   // The window check is a read the person asks for; it never runs on load and
   // it is not driven by `?state=` (that repro belongs to the aud03 pane).
@@ -281,15 +393,56 @@ function AuditEventsSurface(): ReactNode {
     setParams(draft, { replace: true, state: locationState ?? null });
   }, [locationState, navigate, params, setParams]);
 
+  /** aud8: writes one address-owned state key in place, keeping the rest. */
+  const writeParam = useCallback(
+    (key: string, value: string | null) => {
+      const draft = new URLSearchParams(params);
+      if (value === null || value === "") draft.delete(key);
+      else draft.set(key, value);
+      setParams(draft, { replace: true, state: locationState ?? null });
+    },
+    [locationState, params, setParams],
+  );
+
+  /** One row at a time owns each fold, so the panel ids stay unique. */
+  const setFold = useCallback(
+    (key: "tech" | "preview", rowKey: string) => {
+      writeParam(key, params.get(key) === rowKey ? null : rowKey);
+    },
+    [params, writeParam],
+  );
+
+  const setType = useCallback(
+    (next: string) => {
+      const draft = new URLSearchParams(params);
+      if (next) draft.set("type", next);
+      else draft.delete("type");
+      resetPagingAndFolds(draft);
+      setParams(draft, { replace: true, state: locationState ?? null });
+    },
+    [locationState, params, setParams],
+  );
+
+  /** aud8: the address-borne filters are cleared the same way they arrive. */
+  const clearUrlFilter = useCallback(
+    (key: "actor" | "resource") => {
+      const draft = new URLSearchParams(params);
+      draft.delete(key);
+      resetPagingAndFolds(draft);
+      setParams(draft, { replace: true, state: locationState ?? null });
+    },
+    [locationState, params, setParams],
+  );
+
   const setWindow = useCallback(
     (next: FilterWindowKey) => {
       const draft = new URLSearchParams(params);
-      draft.delete("cursor");
       draft.set("window", next);
       if (next !== "custom") {
         draft.delete("from");
         draft.delete("to");
       }
+      resetPagingAndFolds(draft);
       setParams(draft, { replace: true, state: locationState ?? null });
     },
     [locationState, params, setParams],
@@ -298,7 +451,7 @@ function AuditEventsSurface(): ReactNode {
   const setCustomFrom = useCallback(
     (next: string) => {
       const draft = new URLSearchParams(params);
-      draft.delete("cursor");
+      resetPagingAndFolds(draft);
       draft.set("window", "custom");
       const iso = parseBeijingInput(next);
       if (iso) draft.set("from", iso);
@@ -311,7 +464,7 @@ function AuditEventsSurface(): ReactNode {
   const setCustomTo = useCallback(
     (next: string) => {
       const draft = new URLSearchParams(params);
-      draft.delete("cursor");
+      resetPagingAndFolds(draft);
       draft.set("window", "custom");
       const iso = parseBeijingInput(next);
       if (iso) draft.set("to", iso);
@@ -324,6 +477,7 @@ function AuditEventsSurface(): ReactNode {
   const goNext = useCallback(() => {
     if (!list.next) return;
     const draft = new URLSearchParams(params);
+    resetPagingAndFolds(draft);
     draft.append("cursor", list.next);
     setParams(draft, { replace: true });
   }, [list.next, params, setParams]);
@@ -332,7 +486,7 @@ function AuditEventsSurface(): ReactNode {
     const stack = params.getAll("cursor");
     if (!stack.length) return;
     const draft = new URLSearchParams(params);
-    draft.delete("cursor");
+    resetPagingAndFolds(draft);
     for (const value of stack.slice(0, -1)) draft.append("cursor", value);
     setParams(draft, { replace: true });
   }, [params, setParams]);
@@ -429,6 +583,48 @@ function AuditEventsSurface(): ReactNode {
     );
   })();
 
+  // aud8: the preview's 「打开详情」 link carries the reading state with it
+  // (window, type, cursor stack, folds), so the record opens on the page it
+  // was reached from instead of dropping back to a bare first page.
+  const detailHref = useCallback(
+    (rawId: string): string => {
+      const draft = new URLSearchParams(params);
+      draft.delete("id");
+      draft.set("detail", rawId);
+      return `/audit?${draft.toString()}`;
+    },
+    [params],
+  );
+
+  // aud8: a real way back. `aud02-detail-close` folds the record away; this is
+  // the 「返回列表」 exit the workorder asks for — it walks to the list entry
+  // the record was opened from, so the page, the filters and the row that was
+  // unfolded are all still there, instead of leaning on the browser's Back.
+  const backExit =
+    selected || unaddressable ? (
+      <Button
+        size="sm"
+        outlined
+        onClick={closeDetail}
+        data-testid="aud8-back-to-list"
+        prefix={<ArrowLeft className="h-3.5 w-3.5" />}
+        title="回到列表：筛选、页码与已展开的行都在原处"
+      >
+        返回列表
+      </Button>
+    ) : null;
+
+  // aud8: one line that states the restored state in words, so 「恢复后的界面
+  // 值」 is readable on the screen and assertable from the DOM.
+  const restoredLine = [
+    `时间窗：${windowLabel}`,
+    eventType ? `类型：${eventType}` : "类型：全部",
+    actor ? "操作者：按地址句柄" : "操作者：未筛",
+    resource ? "资源：按地址编号" : "资源：未筛",
+    `第 ${pageNo} 页`,
+    openPreview ? "有一行预览展开" : "无展开行",
+  ].join(" · ");
+
   return (
     <div className="flex min-w-0 w-full max-w-full flex-col gap-3" data-testid="agent-v2-page-audit" data-page="audit">
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
@@ -503,8 +699,16 @@ function AuditEventsSurface(): ReactNode {
         onWindowChange={setWindow}
         onCustomFrom={setCustomFrom}
         onCustomTo={setCustomTo}
-        onEventTypeChange={setEventType}
+        onEventTypeChange={setType}
       />
+
+      {/* aud8: every piece of reading state above is in the address, so this
+          line is what a pasted link restores — stated in words, not implied. */}
+      <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud8-state-line">
+        {restoredLine}
+      </p>
+
+      <AuditUrlFilterChips actor={actor} resource={resource} onClear={clearUrlFilter} />
 
       {/* The window check lives on the list too, and it says exactly one of
           four things: asking, the real counts, 本环境未启用 + why + where, or a
@@ -655,7 +859,7 @@ function AuditEventsSurface(): ReactNode {
                 <div
                   className="flex min-w-0 flex-col gap-1"
                   key={row.key}
-                  onKeyDown={(event) => { if (event.key === "Escape") setOpenPreview(null); }}
+                  onKeyDown={(event) => { if (event.key === "Escape") writeParam("preview", null); }}
                 >
                   <button
                     type="button"
@@ -663,7 +867,7 @@ function AuditEventsSurface(): ReactNode {
                     aria-expanded={openPreview === row.key}
                     aria-controls={"aud6-preview-" + row.key}
                     data-testid={"aud6-toggle-" + row.key}
-                    onClick={() => setOpenPreview((current) => (current === row.key ? null : row.key))}
+                    onClick={() => setFold("preview", row.key)}
                   >
                     {openPreview === row.key ? "收起预览" : "预览这一条"}
                   </button>
@@ -672,10 +876,12 @@ function AuditEventsSurface(): ReactNode {
                     selected={row.rawId !== null && row.rawId === selected}
                     onOpen={() => openRow(row.rawId)}
                     techOpen={openTech === row.key}
-                    onToggleTech={() => setOpenTech((current) => (current === row.key ? null : row.key))}
+                    onToggleTech={() => setFold("tech", row.key)}
                     testId={`aud01-row-${row.key}`}
                   />
-                  {openPreview === row.key ? <AuditRowPreview row={row} testId={"aud6-preview-" + row.key} /> : null}
+                  {openPreview === row.key ? (
+                    <AuditRowPreview row={row} testId={"aud6-preview-" + row.key} detailHref={detailHref} />
+                  ) : null}
                 </div>
               ))}
 
@@ -693,13 +899,23 @@ function AuditEventsSurface(): ReactNode {
                 <span className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud2-page">
                   第 {pageNo} 页 · 已加载 {list.rows.length} 条
                 </span>
-                <span
-                  className="min-w-0 break-words text-xs text-muted-foreground"
-                  data-testid="aud2-total"
-                  title="服务没有给出总数；游标分页不能自算总数，本页只数已加载的行"
-                >
-                  总数不可用
-                </span>
+                {list.total === null ? (
+                  <span
+                    className="min-w-0 break-words text-xs text-muted-foreground"
+                    data-testid="aud2-total"
+                    title="服务没有给出总数；游标分页不能自算总数，本页只数已加载的行"
+                  >
+                    总数不可用
+                  </span>
+                ) : (
+                  <span
+                    className="min-w-0 break-words text-xs text-muted-foreground"
+                    data-testid="aud2-total"
+                    title="这个数由服务在回答里带回（顶层 total），不是本页行数相加"
+                  >
+                    共 {list.total} 条
+                  </span>
+                )}
                 <span className="contents" data-testid="aud2-prev">
                   <Button size="sm" outlined disabled={pageNo === 1} onClick={goPrev}>
                     上一页
@@ -730,6 +946,11 @@ function AuditEventsSurface(): ReactNode {
                   `本页读取条数：${list.rows.length + list.unreadable}`,
                   `筛选条件：${filters.action ? `action=${filters.action}` : "action 未带"}`,
                   `时间窗：${filters.from && filters.to ? `${filters.from} → ${filters.to}` : "未带"}`,
+                  // aud8: the two address-borne filters are part of what was
+                  // asked, so the fold says whether they went on the wire.
+                  `操作者：${filters.actor ? `actorId=${filters.actor}` : "未带"}`,
+                  `资源：${filters.resource ? `resourceId=${filters.resource}` : "未带"}`,
+                  `总数：${list.total === null ? "服务未给" : String(list.total)}`,
                   list.next ? "" : "服务端没有再给下一页的游标",
                 ]}
               />
@@ -738,6 +959,7 @@ function AuditEventsSurface(): ReactNode {
         </section>
 
         <aside className="flex min-w-0 flex-col gap-3 lg:sticky lg:top-4 lg:self-start" aria-label="事件详情">
+          {backExit}
           {drawer}
         </aside>
       </div>

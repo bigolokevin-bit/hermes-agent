@@ -427,7 +427,20 @@ export function VerifyResultBody({
 }
 
 /** R50: the inline preview a row opens in place - the same loaded row, no request. */
-export function AuditRowPreview({ row, testId }: { row: AuditRow; testId: string }): ReactNode {
+export function AuditRowPreview({
+  row,
+  testId,
+  detailHref,
+}: {
+  row: AuditRow;
+  testId: string;
+  /**
+   * aud8: where 「打开详情」 goes. The list passes a link that carries its own
+   * reading state (window, type, cursor stack, folds) so returning lands back
+   * on the same page; the default keeps the bare spelling for any other host.
+   */
+  detailHref?: (rawId: string) => string;
+}): ReactNode {
   const at = beijingSeconds(row.occurredAtRaw) ?? row.occurredAt;
   return (
     <div
@@ -460,7 +473,11 @@ export function AuditRowPreview({ row, testId }: { row: AuditRow; testId: string
           {row.requestId ?? "该字段未返回"}
         </span>
         {row.rawId ? (
-          <a className="underline" href={"/audit?detail=" + encodeURIComponent(row.rawId)} data-testid={testId + "-open"}>
+          <a
+            className="underline"
+            href={detailHref ? detailHref(row.rawId) : `/audit?detail=${encodeURIComponent(row.rawId)}`}
+            data-testid={testId + "-open"}
+          >
             打开详情
           </a>
         ) : null}

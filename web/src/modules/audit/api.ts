@@ -66,9 +66,24 @@ export interface ListFilters {
   action: string | null;
   from: string | null;
   to: string | null;
+  /**
+   * aud8: wire name `actorId`. Live probe #11 (2026-11-19) showed it exists
+   * AND filters (50/50 rows back with `actor.id === employee-api`), but it only
+   * takes a machine handle — there is no named-operator directory to build a
+   * picker from, so the on-screen picker stays 未接入 (GAP-06) while a handle
+   * handed over in the URL (`?actor=`) is honoured on the wire, never invented.
+   * Optional because a filter set predating aud8 simply carries neither key.
+   */
+  actor?: string | null;
+  /**
+   * aud8: wire name `resourceId`. Named by the route's own 400 body as one of
+   * the seven accepted filters, but never probed on its own (DONE.md gap list),
+   * so the screen says 「效果未单独验证」 rather than claiming a filtered answer.
+   */
+  resource?: string | null;
 }
 
-export const NO_FILTERS: ListFilters = { action: null, from: null, to: null };
+export const NO_FILTERS: ListFilters = { action: null, from: null, to: null, actor: null, resource: null };
 
 /**
  * One page of the ledger. `cursor` is the opaque value the previous answer
@@ -81,6 +96,10 @@ export function listUrl(cursor: string | null = null, filters: ListFilters = NO_
   url = appendQuery(url, "action", filters.action);
   url = appendQuery(url, "from", filters.from);
   url = appendQuery(url, "to", filters.to);
+  // aud8: the two handle filters, only when the URL handed one over. An
+  // unchosen filter is dropped from the wire, never sent empty.
+  url = appendQuery(url, "actorId", filters.actor ?? null);
+  url = appendQuery(url, "resourceId", filters.resource ?? null);
   url = appendQuery(url, "cursor", cursor);
   return url;
 }
