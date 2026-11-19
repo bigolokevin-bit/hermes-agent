@@ -2,8 +2,8 @@
 
 日期：2026-11-19（Asia/Shanghai）。作者：Fixer（受派会话）。
 提交（`lane/console-aud`，基线 `c28ebc16`）：`0c04ecb8` 列表 → `20ccb789` 详情 → `7fe0e412` 校验 →
-`79aa086b` 筛选 URL 断言与列表口径注释补记 → `bc75fb4a` 本文件台账 → 其后一次把「失败面板里的请求编号」改成可复制
-（`CopyValue` / `RequestIdLine` 收进 `states.tsx`，三面共用；新增断言两个 testid）。哈希以 `git log --oneline c28ebc16..HEAD` 现查为准。
+`79aa086b` 筛选 URL 断言与列表口径注释补记 → `bc75fb4a` 本文件台账 → `c7270b5c` 失败面板里的请求编号改为可复制
+（`CopyValue` / `RequestIdLine` 收进 `states.tsx`，三面共用，并加了两条 testid 断言）。
 写域：`web/src/modules/audit/**`、`docs/_artifacts/aud/**`。写域外一律未改：`App.tsx`、`web/src/shell/**`、
 任何 `manifest.ts`（本模块继续用 `tabNav.ts`，未新建/未编辑 `manifest.ts`）、`web/src/pages/**`、
 `web/scripts/**`、`package.json`、锁文件、`node_modules`、其他模块、i18n。未跑任何 install。
@@ -71,7 +71,7 @@ $ cd web && ./node_modules/.bin/vitest run src/modules/audit
 VITEST_EXIT=0
  Test Files  5 passed (5)
       Tests  96 passed (96)
-   Duration  1.38s
+   Duration  1.26s (transform 1.11s, setup 0ms, import 1.86s, tests 401ms, environment 1.26s)
 
 $ cd web && ./node_modules/.bin/eslint src/modules/audit
 ESLINT_EXIT=0
