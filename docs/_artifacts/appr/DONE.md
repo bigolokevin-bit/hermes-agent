@@ -357,3 +357,10 @@ Test Files  3 passed (3)
 EXIT=0
 assert-ia：node scripts/assert-ia.mjs A=0；--source=react B=0（51/22/1/8 未破，App.tsx 仅加 React Route 数据层未动）。
 截图/屏幕读数受限声明：本车道禁建 9122、静态预览无 BFF，DOM 级 col4Count/apd5 计数由 L0 合并代次复跑；375 无横溢由 Field flex min-w-0 结构与既有 apr5 全页 375=375 读数支撑。
+
+## auth5 登录页与会话组件（feat(console): login page and session widget，2026-11-19）
+交付：/login 页（账号/密码/验证码+点图刷新；成功 sessionStorage 轻标记+navigate /overview；失败按 code 人话+可复制请求编号+重试；aria-busy+busyRef 防连点）；App.tsx Auth5Session 侧栏组件（GET /auth/whoami：ok→display(空=未命名账号)/角色(缺失—)/租户(内部 id 形态不裸上屏显—)+退出登录 POST /auth/logout→/login；401/异常→未登录+去登录→/login；loading 骨架）；pages 三页 401 整页态主出口「刷新重新登录」→「去登录」href=/login（EmployeesPage/RunsPage/ApprovalsPage，各 1 处，重试钮保留）。
+testid：auth5-page/form/loading/user/password/captcha-input/captcha-image/error/copy-request-id/copy-state/request-id-missing/submit/retry + widget/display/role/tenant/logout/goto-login。
+whoami 登录前/后读数声明：lane D 的 /auth 桥本车道未联调（桥未上线或不可依赖），登录前=未登录+去登录、登录后=display+退出登录 两条出口由 LoginPage.test 5 用例（mock fetch，含 POST 契约 body 断言与 captcha_invalid 自动刷新）与 Auth5Session 代码锚点交付；真桥联调待 D 回执后 QA 复跑。
+残留如实报：modules/matrix/MatrixModulePage.tsx 的「刷新重新登录」出口 1 处属禁碰写域，转报 L0/aud。
+测试原始读数：LoginPage.test 5 passed；定向 pages+shell 14 files 105 passed；全量 vitest 1161 passed EXIT=0；assert-ia 两模式 exit 0/0（51/22/1/8）。
