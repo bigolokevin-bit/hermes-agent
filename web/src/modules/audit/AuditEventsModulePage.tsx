@@ -33,7 +33,7 @@
  */
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
-import { ReceiptText, RefreshCw, ShieldCheck } from "lucide-react";
+import { Download, ReceiptText, RefreshCw, ShieldCheck } from "lucide-react";
 
 import { Badge } from "@nous-research/ui/ui/components/badge";
 import { Button } from "@nous-research/ui/ui/components/button";
@@ -48,7 +48,16 @@ import type { FailureCopy } from "./copy";
 import type { VerifyFailure } from "./copy";
 import { eventTypeChoices } from "./model";
 import type { ListFilters } from "./api";
-import { DEFAULT_WINDOW, WINDOW_CHOICES, windowBounds, type WindowKey } from "./window";
+import { downloadCsv, exportName } from "./export";
+import {
+  FILTER_WINDOW_CHOICES,
+  beijingInputValue,
+  customBounds,
+  filterWindowOf,
+  parseBeijingInput,
+  windowBounds,
+  type FilterWindowKey,
+} from "./window";
 
 /**
  * The 时间窗 filter is a set of named windows, not two date inputs: the choice
@@ -61,19 +70,27 @@ import { DEFAULT_WINDOW, WINDOW_CHOICES, windowBounds, type WindowKey } from "./
  * unbounded scan is rejected by the service, so the control does not offer
  * one — every window choice always sends a real `from`+`to` pair.
  */
-const WINDOW_FILTER_CHOICES = WINDOW_CHOICES;
-
-const DEFAULT_WINDOW_FILTER: WindowKey = DEFAULT_WINDOW;
+const WINDOW_FILTER_CHOICES = FILTER_WINDOW_CHOICES;
 
 export function AuditFilterBar({
   windowChoice,
+  customFrom,
+  customTo,
+  customInvalid,
   eventType,
   onWindowChange,
+  onCustomFrom,
+  onCustomTo,
   onEventTypeChange,
 }: {
-  windowChoice: WindowKey;
+  windowChoice: FilterWindowKey;
+  customFrom: string;
+  customTo: string;
+  customInvalid: boolean;
   eventType: string;
-  onWindowChange: (next: WindowKey) => void;
+  onWindowChange: (next: FilterWindowKey) => void;
+  onCustomFrom: (next: string) => void;
+  onCustomTo: (next: string) => void;
   onEventTypeChange: (next: string) => void;
 }): ReactNode {
   const choices = useMemo(() => eventTypeChoices(), []);
@@ -86,7 +103,7 @@ export function AuditFilterBar({
           data-testid="aud01-filter-window"
           className="h-8 min-w-0 max-w-40 rounded-md border border-border bg-transparent px-2 text-sm"
           value={windowChoice}
-          onChange={(event) => onWindowChange(event.target.value as WindowKey)}
+          onChange={(event) => onWindowChange(event.target.value as FilterWindowKey)}
         >
           {WINDOW_FILTER_CHOICES.map((item) => (
             <option key={item.value} value={item.value}>
@@ -95,6 +112,38 @@ export function AuditFilterBar({
           ))}
         </select>
       </label>
+
+      {windowChoice === "custom" ? (
+        <div className="flex min-w-0 flex-wrap items-end gap-2" data-testid="aud01-custom-window">
+          <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="aud01-custom-from">
+            <span className="text-muted-foreground">开始（北京时间）</span>
+            <input
+              id="aud01-custom-from"
+              data-testid="aud01-custom-from"
+              type="datetime-local"
+              className="h-8 min-w-0 rounded-md border border-border bg-transparent px-2 text-sm"
+              value={customFrom}
+              onChange={(event) => onCustomFrom(event.target.value)}
+            />
+          </label>
+          <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="aud01-custom-to">
+            <span className="text-muted-foreground">结束（北京时间）</span>
+            <input
+              id="aud01-custom-to"
+              data-testid="aud01-custom-to"
+              type="datetime-local"
+              className="h-8 min-w-0 rounded-md border border-border bg-transparent px-2 text-sm"
+              value={customTo}
+              onChange={(event) => onCustomTo(event.target.value)}
+            />
+          </label>
+          {customInvalid ? (
+            <p className="min-w-0 break-words text-xs text-warning" data-testid="aud01-custom-error">
+              自定义时间窗需要两栏都填好，且开始早于结束；在那之前不会去读。
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="aud01-filter-type">
         <span className="text-muted-foreground">事件类型</span>
@@ -157,21 +206,36 @@ function AuditEventsSurface(): ReactNode {
   // still read because links handed out before this change must keep working.
   const selected = params.get("detail") ?? params.get("id");
 
-  const [windowChoice, setWindowChoice] = useState<WindowKey>(DEFAULT_WINDOW_FILTER);
+  // R34: the filter set is URL-owned, so a refreshed or shared link keeps the
+  // same window. `?window=custom` reads its instants from `?from=`/`?to=`.
+  const windowChoice = filterWindowOf(params.get("window"));
   const [eventType, setEventType] = useState("");
+
+  const bounds = useMemo(
+    () =>
+      windowChoice === "custom"
+        ? customBounds(params.get("from"), params.get("to"))
+        : windowBounds(windowChoice),
+    [windowChoice, params],
+  );
+  // An incomplete custom range is not a question the service can answer: the
+  // screen says what is missing and no request is issued (the route rejects an
+  // unbounded or inverted scan).
+  const customInvalid = windowChoice === "custom" && bounds === null;
+  const customFrom = windowChoice === "custom" ? beijingInputValue(params.get("from")) : "";
+  const customTo = windowChoice === "custom" ? beijingInputValue(params.get("to")) : "";
 
   const filters = useMemo<ListFilters>(() => {
     // The window is never unbounded (see AuditFilterBar); each choice carries a
     // real from+to pair, so a bare `?limit=` scan that the service 400s is
     // never asked. An unchosen type drops the `action` parameter entirely.
-    const bounds = windowBounds(windowChoice);
-    return { action: eventType || null, from: bounds.from, to: bounds.to };
-  }, [windowChoice, eventType]);
+    return { action: eventType || null, from: bounds?.from ?? "", to: bounds?.to ?? "" };
+  }, [bounds, eventType]);
 
   // No `?state=` leg on this pane: a list or detail state is only what the
   // service answered. A missing route degrades through readFailure() to an
   // honest sentence plus the request id, never to sample rows.
-  const list = useAuditList(null, filters);
+  const list = useAuditList(null, filters, !customInvalid);
   const detail = useAuditDetail(selected, null);
   const [unaddressable, setUnaddressable] = useState(false);
   // One row at a time owns the technical fold: the panel id stays unique and
@@ -201,9 +265,54 @@ function AuditEventsSurface(): ReactNode {
     setParams(draft, { replace: true });
   }, [params, setParams]);
 
+  const setWindow = useCallback(
+    (next: FilterWindowKey) => {
+      const draft = new URLSearchParams(params);
+      draft.set("window", next);
+      if (next !== "custom") {
+        draft.delete("from");
+        draft.delete("to");
+      }
+      setParams(draft, { replace: true });
+    },
+    [params, setParams],
+  );
+
+  const setCustomFrom = useCallback(
+    (next: string) => {
+      const draft = new URLSearchParams(params);
+      draft.set("window", "custom");
+      const iso = parseBeijingInput(next);
+      if (iso) draft.set("from", iso);
+      else draft.delete("from");
+      setParams(draft, { replace: true });
+    },
+    [params, setParams],
+  );
+
+  const setCustomTo = useCallback(
+    (next: string) => {
+      const draft = new URLSearchParams(params);
+      draft.set("window", "custom");
+      const iso = parseBeijingInput(next);
+      if (iso) draft.set("to", iso);
+      else draft.delete("to");
+      setParams(draft, { replace: true });
+    },
+    [params, setParams],
+  );
+
   const windowLabel = WINDOW_FILTER_CHOICES.find((item) => item.value === windowChoice)?.label ?? "最近 7 天";
 
+  const exportOff = customInvalid || list.phase !== "ready" || list.rows.length === 0;
+  const exportTitle = exportOff
+    ? customInvalid
+      ? "自定义时间窗不完整，没有可导出的记录"
+      : "当前筛选没有可导出的记录"
+    : "导出当前筛选结果为 CSV（北京时间）";
+
   const statusLine = (() => {
+    if (customInvalid) return "自定义时间窗还不完整：两栏都填好且开始早于结束才会去读";
     if (list.phase === "loading") return `正在读取审计事件（${windowLabel}）…`;
     if (list.phase === "empty") return "这个筛选条件里没有审计事件";
     if (list.phase === "denied") return "审计事件暂不可用";
@@ -282,8 +391,20 @@ function AuditEventsSurface(): ReactNode {
           <Button
             size="sm"
             outlined
+            onClick={() => downloadCsv(list.rows, exportName(windowLabel))}
+            disabled={exportOff}
+            aria-disabled={exportOff}
+            title={exportTitle}
+            data-testid="aud01-export"
+            prefix={<Download className="h-3.5 w-3.5" />}
+          >
+            导出 CSV
+          </Button>
+          <Button
+            size="sm"
+            outlined
             onClick={() => verify.run(filters.from, filters.to)}
-            disabled={verify.phase === "loading"}
+            disabled={verify.phase === "loading" || customInvalid}
             data-testid="aud01-verify"
             prefix={
               verify.phase === "loading" ? <Spinner className="h-3.5 w-3.5" /> : <ShieldCheck className="h-3.5 w-3.5" />
@@ -308,8 +429,13 @@ function AuditEventsSurface(): ReactNode {
 
       <AuditFilterBar
         windowChoice={windowChoice}
+        customFrom={customFrom}
+        customTo={customTo}
+        customInvalid={customInvalid}
         eventType={eventType}
-        onWindowChange={setWindowChoice}
+        onWindowChange={setWindow}
+        onCustomFrom={setCustomFrom}
+        onCustomTo={setCustomTo}
         onEventTypeChange={setEventType}
       />
 
@@ -369,13 +495,19 @@ function AuditEventsSurface(): ReactNode {
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
         <section className="flex min-w-0 flex-col gap-2" aria-label="审计事件列表">
-          {list.phase === "loading" ? <LoadingPanel testId="aud01-loading" /> : null}
+          {customInvalid ? (
+            <p className="min-w-0 break-words text-xs text-warning" data-testid="aud01-custom-hint">
+              自定义时间窗还不完整，本页没有向服务发请求（不会退化成全表扫描）。把两栏填好、开始早于结束，就会去读。
+            </p>
+          ) : null}
 
-          {list.phase === "denied" ? (
+          {!customInvalid && list.phase === "loading" ? <LoadingPanel testId="aud01-loading" /> : null}
+
+          {!customInvalid && list.phase === "denied" ? (
             <DeniedPanel failure={list.failure} testId="aud01-denied" />
           ) : null}
 
-          {list.phase === "error" && list.failure ? (
+          {!customInvalid && list.phase === "error" && list.failure ? (
             <ErrorPanel
               failure={list.failure}
               onRetry={list.reload}
@@ -383,7 +515,7 @@ function AuditEventsSurface(): ReactNode {
             />
           ) : null}
 
-          {list.phase === "empty" ? (
+          {!customInvalid && list.phase === "empty" ? (
             <EmptyPanel
               reason="按现在的筛选条件，这个时间窗里没有审计事件"
               nextStep="把时间窗放宽一格，或换一种事件类型再看。这个窗口确实没有记录，本身就是筛选后的真实答案——服务不接受不带任何筛选条件的全表扫描，所以这里始终有一个时间窗。"
@@ -392,7 +524,7 @@ function AuditEventsSurface(): ReactNode {
             />
           ) : null}
 
-          {list.phase === "ready" ? (
+          {!customInvalid && list.phase === "ready" ? (
             <>
               {list.rows.map((row) => (
                 <AuditEventRowCard

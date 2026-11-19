@@ -103,6 +103,17 @@ async function choose(testId: string, value: string): Promise<void> {
   });
 }
 
+/** Type into a datetime-local control the way React tracks the value. */
+async function typeInto(testId: string, value: string): Promise<void> {
+  const node = document.querySelector<HTMLInputElement>(`[data-testid='${testId}']`);
+  if (!node) throw new Error(`input ${testId} not found`);
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+  await act(async () => {
+    setter?.call(node, value);
+    node.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
 const lastUrl = (): string => {
   const all = urls();
   return all[all.length - 1] ?? "";
@@ -502,7 +513,7 @@ describe("the filters change the request (aud01)", () => {
       expect(lastUrl()).toMatch(/&to=\d{4}-\d{2}-\d{2}T/);
     }
     const options = Array.from(document.querySelectorAll("[data-testid='aud01-filter-window'] option"));
-    expect(options.map((o) => o.getAttribute("value"))).toEqual(["24h", "7d", "30d"]);
+    expect(options.map((o) => o.getAttribute("value"))).toEqual(["24h", "7d", "30d", "custom"]);
     expect(text()).not.toContain("不限时间");
   });
 
@@ -796,5 +807,87 @@ describe("retention tab dispatch", () => {
     expect(document.querySelector('[data-testid="ret4-page"]')).toBeTruthy();
     expect(document.querySelector('[data-testid="ret4-unwired-note"]')).toBeTruthy();
     expect(document.body.textContent).not.toContain("agent-v2-page-audit");
+  });
+});
+
+describe("R34 — a real window and an honest export", () => {
+  it("keeps a custom window in the address and asks exactly that span", async () => {
+    api.fetchJSON.mockReset();
+    answer(EVENTS);
+    await render(
+      "/system?tab=events&window=custom&from=2026-11-17T01:00:00.000Z&to=2026-11-17T02:30:00.000Z",
+      <><AuditEventsModulePage /><LocationProbe /></>,
+    );
+    await waitFor(() => urls().length > 0, "custom read asked");
+    expect(spanOf(lastUrl())).toBe(90 * 60 * 1000);
+    const decoded = decodeURIComponent(lastUrl());
+    expect(decoded).toContain("from=2026-11-17T01:00:00.000Z");
+    expect(decoded).toContain("to=2026-11-17T02:30:00.000Z");
+    expect(document.querySelector<HTMLInputElement>("[data-testid='aud01-custom-from']")?.value).toBe("2026-11-17T09:00");
+    expect(document.querySelector<HTMLInputElement>("[data-testid='aud01-custom-to']")?.value).toBe("2026-11-17T10:30");
+    expect(locationText()).toContain("window=custom");
+  });
+
+  it("asks nothing while a custom window is half filled, and says what is missing", async () => {
+    await mount(undefined, "/system?tab=events&window=custom");
+    expect(urls()).toHaveLength(0);
+    expect(document.querySelector("[data-testid='aud01-custom-hint']")).not.toBeNull();
+    expect(text()).toContain("自定义时间窗还不完整");
+    expect(document.querySelector("[data-testid='aud01-export']")?.getAttribute("aria-disabled")).toBe("true");
+  });
+
+  it("turning the two inputs into a valid range asks for that range", async () => {
+    await mount(undefined, "/system?tab=events&window=custom");
+    expect(urls()).toHaveLength(0);
+    await typeInto("aud01-custom-from", "2026-11-17T09:00");
+    await typeInto("aud01-custom-to", "2026-11-17T10:30");
+    await waitFor(() => urls().length > 0 && spanOf(lastUrl()) === 90 * 60 * 1000, "custom range read");
+    const decoded = decodeURIComponent(lastUrl());
+    expect(decoded).toContain("from=2026-11-17T01:00:00.000Z");
+    expect(decoded).toContain("to=2026-11-17T02:30:00.000Z");
+  });
+
+  it("exports the Chinese header and one line per row, without inventing a zero", async () => {
+    const bodies: string[] = [];
+    const RealBlob = window.Blob;
+    const realCreate = URL.createObjectURL;
+    const realRevoke = URL.revokeObjectURL;
+    let fileName = "";
+    const clickSpy = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(function (this: HTMLAnchorElement) {
+        fileName = this.download;
+      });
+    class SpyBlob extends RealBlob {
+      constructor(parts: BlobPart[], options?: BlobPropertyBag) {
+        super(parts, options);
+        bodies.push(String(parts[0] ?? ""));
+      }
+    }
+    window.Blob = SpyBlob as unknown as typeof Blob;
+    URL.createObjectURL = vi.fn(() => "blob:audit") as unknown as typeof URL.createObjectURL;
+    URL.revokeObjectURL = vi.fn() as unknown as typeof URL.revokeObjectURL;
+    try {
+      await mount();
+      const node = document.querySelector<HTMLElement>("[data-testid='aud01-export']");
+      expect(node?.getAttribute("aria-disabled")).toBe("false");
+      await act(async () => {
+        node?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      });
+      expect(bodies).toHaveLength(1);
+      const lines = bodies[0].replace(/^\uFEFF/, "").split("\r\n").filter((line) => line !== "");
+      expect(lines[0]).toBe("时间,类型,结果,操作者,对象,请求编号");
+      expect(lines).toHaveLength(3);
+      expect(lines[1]).toContain("2026-11-19 09:20");
+      expect(lines[1]).toContain("李思 · 6d7e8f90");
+      // the second event never carried a request number: the cell stays empty.
+      expect(lines[2]?.endsWith(",")).toBe(true);
+      expect(fileName).toMatch(/^audit-.+-\d{8}-\d{4}\.csv$/);
+    } finally {
+      window.Blob = RealBlob;
+      URL.createObjectURL = realCreate;
+      URL.revokeObjectURL = realRevoke;
+      clickSpy.mockRestore();
+    }
   });
 });
