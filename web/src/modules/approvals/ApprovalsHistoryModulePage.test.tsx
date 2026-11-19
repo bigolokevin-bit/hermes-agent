@@ -358,4 +358,58 @@ describe("history whole-panel states", () => {
     expect(document.querySelector("[data-testid='apr5-denied']")).toBeTruthy();
     expect(document.querySelectorAll("[data-testid^='apr5-row-']")).toHaveLength(0);
   });
+
+  it("R26 F1: clicking the row card itself opens the detail with all eight PRD fields", async () => {
+    const sample = {
+      approvalId: "ap_123DE49B9A1F42A197679681F1",
+      tenantId: "t_seakoi_pilot",
+      type: "business_action",
+      status: "expired",
+      requestedBy: { type: "user", id: "human:1" },
+      action: "message.send",
+      resource: { employeeId: "emp_86A81CE8FF6F42E187BCF2B540", channel: "feishu" },
+      argsDigest: "sha256:apr02",
+      binding: { changeKind: "message_send", runId: "run_apr02_seed" },
+      riskLevel: "high",
+      reasonText: "APR-02 VG live seed",
+      approvers: [{ userId: "human:1", role: "owner" }],
+      requiredApprovals: 1,
+      decisions: [],
+      createdAt: "2026-11-16T13:09:04.322Z",
+      decidedAt: "2026-11-17T13:09:04.322Z",
+      expiresAt: "2026-11-17T13:09:04.322Z",
+      remainingSeconds: 0,
+      ttlSeconds: 86400,
+      policyDecisionId: "pd_apr02_seed_20261116",
+    };
+    await mount(async (url) => {
+      if (url.includes("/api/approval?id=")) return sample;
+      return { items: [sample] };
+    });
+    const card = document.querySelector("[data-testid^='apr5-row-']") as HTMLElement | null;
+    expect(card, "row card").toBeTruthy();
+    await act(async () => {
+      card!.click();
+    });
+    // The history pane passes testId="apr5-detail" explicitly; the eight
+    // PRD fields inside carry the apd5-field-* family regardless.
+    await waitFor(() => document.querySelector("[data-testid='apr5-detail']") !== null, "detail opened");
+    expect(document.querySelector("[data-testid='apr5-detail-empty']")).toBeNull();
+    for (const key of [
+      "apd5-field-change-kind",
+      "apd5-field-verdict",
+      "apd5-field-decided-at",
+      "apd5-field-recipient",
+      "apd5-field-scope",
+      "apd5-field-action-hash",
+      "apd5-field-request-id",
+      "apd5-approver",
+    ]) {
+      expect(document.querySelector(`[data-testid='${key}']`), key).toBeTruthy();
+    }
+    const detailText = document.querySelector("[data-testid='apr5-detail']")?.textContent ?? "";
+    expect(detailText).not.toContain("human:");
+    expect(detailText).not.toContain("emp_");
+    expect(document.querySelector("[data-testid='apd5-field-change-kind']")?.textContent).toContain("对外发送消息");
+  });
 });

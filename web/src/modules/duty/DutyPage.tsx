@@ -105,7 +105,12 @@ function HCard({
   testid: string;
 }) {
   return (
-    <Card className="duty-card" data-card="duty" data-testid={testid}>
+    <Card
+      className="duty-card"
+      data-card="duty"
+      data-testid={testid.replace(/^duty-/, "ov6-")}
+      data-duty-testid={testid}
+    >
       <CardContent className="duty-card-bd">
         <div className="duty-card-hd">
           <h2>{title}</h2>
@@ -129,7 +134,8 @@ function GateRow({ gate, narrowest }: { gate: GateView; narrowest: boolean }) {
   return (
     <div
       className={cn("duty-gate", narrowest && "is-narrow")}
-      data-testid={`duty-gate-${gate.key}`}
+      data-testid={`ov6-gate-${gate.key}`}
+      data-duty-testid={`duty-gate-${gate.key}`}
       // R7.1 item 8: the internal gate code (V1…V6) and the fact that a state
       // is inferred live in the tooltip, never on screen.
       title={`${gate.key} · ${gate.name}${gate.inferred ? " · 当前状态由现有数据推断，待数据源接入后确认" : ""}`}
@@ -158,7 +164,7 @@ function ReadinessCard({ employees, stats, onRetry }: { employees: Loadable<Empl
   return (
     <HCard title="可上岗" meta="各项检查全部通过才计入" testid="duty-ready">
       <StateLine state={state} onRetry={onRetry} loadingText="正在汇总各项检查…">
-        <p className="duty-num" data-testid="duty-ready-value">
+        <p className="duty-num" data-testid="ov6-ready-value" data-duty-testid="duty-ready-value">
           {readiness.confirmed === null ? "—" : readiness.confirmed}
           <em>{readiness.total === null ? "—" : `/ ${readiness.total} 可上岗`}</em>
         </p>
@@ -560,7 +566,7 @@ function HealthStrip({
 }) {
   const totals = runs.k === "ready" ? runTotals(runs.data) : null;
   return (
-    <div className="duty-health" data-testid="duty-health">
+    <div className="duty-health" data-testid="ov6-health" data-duty-testid="duty-health">
       <div className="duty-health-item">
         <span>发布</span>
         <b>待核实</b>
@@ -597,14 +603,14 @@ export default function DutyPage() {
   })();
   if (forced === "loading") {
     return (
-      <div className="duty-page" data-testid="duty-page">
+      <div className="duty-page" data-testid="ov6-page" data-duty-testid="duty-page">
         <p className="duty-note">正在读取值班数据…</p>
       </div>
     );
   }
   if (forced === "empty") {
     return (
-      <div className="duty-page" data-testid="duty-page">
+      <div className="duty-page" data-testid="ov6-page" data-duty-testid="duty-page">
         <div className="duty-empty">
           <p>当前没有可显示的值班数据。</p>
           <p>数据源返回为空，可能尚未接入。</p>
@@ -615,7 +621,7 @@ export default function DutyPage() {
   }
   if (forced === "error") {
     return (
-      <div className="duty-page" data-testid="duty-page">
+      <div className="duty-page" data-testid="ov6-page" data-duty-testid="duty-page">
         <div className="duty-empty">
           <p>值班数据暂时不可用。</p>
           <p>请求编号：未提供</p>
@@ -628,12 +634,26 @@ export default function DutyPage() {
     data.stats.k === "ready" ? lifecycleTotal(data.stats.data) : null;
 
   return (
-    <div className="duty-page" data-testid="duty-page">
+    <div className="duty-page" data-testid="ov6-page" data-duty-testid="duty-page">
       <header className="duty-head">
         <div className="duty-title">
           <ShieldCheck className="h-5 w-5" aria-hidden />
           <h1>值班台</h1>
           <span>运营总览 · 只读</span>
+          {(() => {
+            const stamp =
+              data.todayStats.k === "ready" &&
+              typeof (data.todayStats.data as { asOf?: unknown }).asOf === "string"
+                ? ((data.todayStats.data as { asOf: string }).asOf)
+                : data.stats.k === "ready" && typeof (data.stats.data as { asOf?: unknown }).asOf === "string"
+                  ? ((data.stats.data as { asOf: string }).asOf)
+                  : null;
+            return stamp ? (
+              <span className="duty-meta" data-testid="ov6-asof">
+                采集于 {beijing(stamp)}
+              </span>
+            ) : null;
+          })()}
         </div>
         <div className="duty-head-actions">
           <Button
