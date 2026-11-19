@@ -90,7 +90,7 @@ describe("EmployeeDetailModulePage — overview", () => {
   it("loading: skeleton, no engineering text", async () => {
     mockApi(() => new Promise(() => {}));
     await renderAt(page, at());
-    expect(container.querySelector('[data-testid="emp-detail-overview-loading"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="ed5-overview-loading"]')).toBeTruthy();
     expect(container.textContent).not.toMatch(/emp_|human:|undefined/);
   });
 
@@ -101,7 +101,7 @@ describe("EmployeeDetailModulePage — overview", () => {
         : silent502(url),
     );
     await renderAt(page, at());
-    const card = container.querySelector('[data-testid="emp-detail-overview"]');
+    const card = container.querySelector('[data-testid="ed5-overview"]');
     expect(card?.textContent).toContain("小鲤 · A3F1B2C4");
     expect(card?.textContent).toContain("在岗");
     expect(card?.textContent).toContain("真人操作");
@@ -119,7 +119,7 @@ describe("EmployeeDetailModulePage — overview", () => {
           : silent502(url),
     );
     await renderAt(page, at());
-    const card = container.querySelector('[data-testid="emp-detail-overview"]');
+    const card = container.querySelector('[data-testid="ed5-overview"]');
     expect(card?.textContent).toContain("阿澜");
     expect(card?.textContent).toContain("已暂停");
   });
@@ -127,7 +127,7 @@ describe("EmployeeDetailModulePage — overview", () => {
   it("error carries the plain sentence, request id, and a retry", async () => {
     mockApi((url) => silent502(url, "req-77"));
     await renderAt(page, at());
-    const err = container.querySelector('[data-testid="emp-detail-overview-error"]');
+    const err = container.querySelector('[data-testid="ed5-overview-error"]');
     expect(err?.textContent).toContain("请求编号：req-77");
     expect(err?.textContent).toContain("重试");
     expect(err?.textContent).not.toMatch(/HTTP 502|ApiError/);
@@ -136,7 +136,7 @@ describe("EmployeeDetailModulePage — overview", () => {
   it("empty overview: cause shown, never a blank pane", async () => {
     mockApi((url) => (url.includes("/api/employees/") ? Promise.resolve({}) : Promise.resolve({ items: [] })));
     await renderAt(page, at());
-    const card = container.querySelector('[data-testid="emp-detail-overview-empty"]');
+    const card = container.querySelector('[data-testid="ed5-overview-empty"]');
     expect(card?.textContent).toContain("还没找到这位员工的档案");
   });
 });
@@ -149,7 +149,7 @@ describe("EmployeeDetailModulePage — capability (reuse: /v1/matrix/employees)"
         : Promise.resolve({ items: [] }),
     );
     await renderAt(page, at("config"));
-    const card = container.querySelector('[data-testid="emp-detail-capability"]');
+    const card = container.querySelector('[data-testid="ed5-capability"]');
     expect(card?.textContent).toContain("数据查询");
     expect(card?.textContent).toContain("外呼");
     expect(card?.textContent).toContain("待核实");
@@ -159,15 +159,15 @@ describe("EmployeeDetailModulePage — capability (reuse: /v1/matrix/employees)"
   it("403 → permission sentence, not a fake empty", async () => {
     mockApi((url) => forbidden(url));
     await renderAt(page, at("config"));
-    const denied = container.querySelector('[data-testid="emp-detail-capability-denied"]');
-    expect(denied?.textContent).toContain("你没有查看这块数据的权限");
+    const denied = container.querySelector('[data-testid="ed5-capability-denied"]');
+    expect(denied?.textContent).toContain("这块数据还没接入，或你没有查看权限");
     expect(denied?.textContent).toContain("重试");
   });
 
   it("404 → honest not-connected state", async () => {
     mockApi((url) => missing(url));
     await renderAt(page, at("config"));
-    const denied = container.querySelector('[data-testid="emp-detail-capability-denied"]');
+    const denied = container.querySelector('[data-testid="ed5-capability-denied"]');
     expect(denied?.textContent).toContain("还没接入");
   });
 });
@@ -184,7 +184,7 @@ describe("EmployeeDetailModulePage — approvals / runs / audit", () => {
         : Promise.resolve({}),
     );
     await renderAt(page, at("tasks"));
-    const card = container.querySelector('[data-testid="emp-detail-approvals"]');
+    const card = container.querySelector('[data-testid="ed5-approvals"]');
     const link = card?.querySelector("a");
     expect(link?.getAttribute("href")).toBe("/approvals");
     expect(link?.getAttribute("title")).toBe("task_9F3A1B2C3D");
@@ -203,7 +203,7 @@ describe("EmployeeDetailModulePage — approvals / runs / audit", () => {
         : Promise.resolve({}),
     );
     await renderAt(page, at("runs"));
-    const card = container.querySelector('[data-testid="emp-detail-runs"]');
+    const card = container.querySelector('[data-testid="ed5-runs"]');
     expect(card?.querySelector("a")?.getAttribute("href")).toBe("/runs");
     expect(card?.textContent).toContain("$2.50");
     expect(card?.textContent).toContain("2026-11-19 00:30");
@@ -220,7 +220,7 @@ describe("EmployeeDetailModulePage — approvals / runs / audit", () => {
         : Promise.resolve({}),
     );
     await renderAt(page, at("evidence"));
-    const card = container.querySelector('[data-testid="emp-detail-audit"]');
+    const card = container.querySelector('[data-testid="ed5-audit"]');
     expect(card?.textContent).toContain("预算调整");
     expect(card?.textContent).toContain("B2C4D6E8");
     expect(card?.textContent).not.toContain("emp_B2C4D6E8F0");
@@ -230,7 +230,7 @@ describe("EmployeeDetailModulePage — approvals / runs / audit", () => {
   it("approvals empty names the reason", async () => {
     mockApi(() => Promise.resolve({ items: [] }));
     await renderAt(page, at("tasks"));
-    const card = container.querySelector('[data-testid="emp-detail-approvals-empty"]');
+    const card = container.querySelector('[data-testid="ed5-approvals-empty"]');
     expect(card?.textContent).toContain("还没有审批事项");
   });
 });
