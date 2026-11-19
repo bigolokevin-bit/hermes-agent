@@ -141,8 +141,9 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(notFound).toBeTruthy();
     expect(notFound?.getAttribute("title")).toBe("GAP-03");
     const notFoundText = bodyOf(notFound);
-    expect(notFoundText).toContain("知识空间读口未接入");
-    expect(notFoundText).toContain("也不写「0 个」");
+    expect(notFoundText).toContain("知识空间未接入");
+    expect(notFoundText).toContain("去审批中心提交申请");
+    expect(notFoundText).not.toContain("0 个");
     expect(container.textContent).toContain("请求编号：rid-notfound");
     expect(byTestid("knw5-spaces-table")).toBeNull();
     expect(container.querySelector('a[href="/approvals"]')).toBeTruthy();
@@ -190,9 +191,13 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(attr("knw5-spaces", "data-len")).toBe("5");
     expect(container.querySelectorAll('[data-testid="knw5-spaces-row"]')).toHaveLength(5);
     const text = container.textContent ?? "";
-    for (const head of ["空间名称", "文档数", "最近同步", "状态"]) expect(text).toContain(head);
+    for (const head of ["空间名称", "来源", "文档数", "最近同步", "状态"]) expect(text).toContain(head);
     expect(text).toContain("产品知识");
     expect(text).toContain("团队空间");
+    expect(byTestid("knw5-space-source")?.textContent ?? "").toBe("—");
+    expect((byTestid("knw5-space-source")?.closest("td")?.textContent ?? "").replace(/\s+/g, " ")).toContain(
+      "上游没有说明这个空间的内容从哪里来",
+    );
     expect(text).toContain("128 篇");
     expect(text).toContain("最近同步：2026-11-19 14:00");
     expect(text).toContain("已同步");
@@ -221,6 +226,107 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(attr("knw5-spaces-row", "title")).toBe("space_123456789");
   });
 
+  it("renders spaces depth: 空间名 / 来源人话 / 文档数真 0 与缺失分开 / 最近同步 BJT / 状态词", async () => {
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) {
+        return Promise.resolve({
+          asOf: "2026-11-19T07:00:00Z",
+          items: [
+            {
+              spaceId: "sp_hr",
+              name: "人事制度空间",
+              scope: "team",
+              sourceName: "SharePoint · 集团人事库",
+              docCount: 1240,
+              lastSyncAt: "2026-11-19T06:20:00Z",
+              status: "synced",
+            },
+            { spaceId: "sp_zero", name: "空的知识空间", provider: "s3", totalDocuments: 0, syncedAt: "2026-11-19T04:00:00Z", state: "ready" },
+            { spaceId: "sp_url", name: "对外口径镜像", origin: "https://mirror.example.com/kb/policy", documentCount: 18, status: "unknown_value" },
+            { spaceId: "sp_fail", name: "断掉的数据库空间", repository: "crm-mysql", status: "failed", lastError: "凭据过期，无法读取库表清单", chunkCount: 512 },
+            { spaceId: "sp_bare" },
+          ],
+        });
+      }
+      if (url === INGEST_STATUS) return fail(404, "这个数据接口还没有接入。", "rid-status-x");
+      if (url === TASKS) return fail(404, "这个数据接口还没有接入。", "rid-tasks-x");
+      return fail(404, "这个数据接口还没有接入。", "rid-docs-x");
+    });
+
+    await render("/knowledge?tab=spaces");
+    expect(attr("knw5-spaces", "data-state")).toBe("ready");
+    expect(attr("knw5-spaces", "data-len")).toBe("5");
+    const rows = container.querySelectorAll('[data-testid="knw5-spaces-row"]');
+    expect(rows).toHaveLength(5);
+    const cell = (i: number, id: string) =>
+      (rows[i]?.querySelector(`[data-testid="${id}"]`)?.textContent ?? "").replace(/\s+/g, " ").trim();
+
+    // 来源人话：直给的名字、认得出的工具、只有链接时给主机名
+    expect(cell(0, "knw5-space-name")).toContain("人事制度空间");
+    expect(cell(0, "knw5-space-source")).toBe("SharePoint · 集团人事库");
+    expect(cell(0, "knw5-space-docs")).toBe("1,240 篇");
+    expect(cell(0, "knw5-space-time")).toContain("最近同步：2026-11-19 14:20");
+    expect(cell(0, "knw5-space-status")).toContain("已同步");
+    expect(cell(1, "knw5-space-source")).toBe("对象存储");
+    expect(cell(1, "knw5-space-docs")).toBe("0 篇");            // 真 0
+    expect(cell(1, "knw5-space-status")).toContain("可用");
+    expect(cell(2, "knw5-space-source")).toContain("mirror.example.com");
+    expect(cell(2, "knw5-space-status")).toContain("待核实");   // 认不出的值不猜
+
+    // 失败：原因直出；只有分块数时不冒充文档数
+    expect(cell(3, "knw5-space-status")).toContain("失败");
+    expect(cell(3, "knw5-space-failure")).toContain("凭据过期，无法读取库表清单");
+    expect(cell(3, "knw5-space-docs")).toContain("—");
+    expect(cell(3, "knw5-space-docs-extra")).toBe("分块 512 段");
+
+    // 全缺的一条：逐项说缺，绝不借别条或别端点的数字
+    expect(cell(4, "knw5-space-name")).toBe("—");
+    expect(cell(4, "knw5-space-source")).toBe("—");
+    expect(cell(4, "knw5-space-docs")).toBe("—");
+    expect(cell(4, "knw5-space-time")).toBe("—");
+    expect(cell(4, "knw5-space-status")).toContain("待核实");
+
+    const text = container.textContent ?? "";
+    expect(text).toContain("来源：知识空间登记 · 数据截至 2026-11-19 15:00");
+    for (const banned of ["sp_hr", "sp_zero", "sp_bare", "sourceName", "docCount", "totalDocuments", "chunkCount", "https://mirror.example.com/kb", "unknown_value", "/api/"]) {
+      expect(text, banned).not.toContain(banned);
+    }
+    // 这一面不放写入控件
+    expect(container.querySelectorAll('[data-testid="knw5-page"] button[type="submit"], [data-testid="knw5-page"] textarea, [data-testid="knw5-page"] select').length).toBe(0);
+    expect(attr("knw5-page", "data-fixture")).toBeNull();
+
+    // 404 与 403：同一份「知识空间未接入」正文 + 去处；GAP 只在 title
+    const bodyOf = (node: Element | null) =>
+      Array.from(node?.querySelectorAll("b, .knw5-wrap") ?? [])
+        .map((part) => part.textContent ?? "")
+        .join(" ")
+        .replace(/\s+/g, " ");
+    fetchMock.mockImplementation(() => fail(404, "这个数据接口还没有接入。", "rid-space-gone"));
+    await render("/knowledge?tab=spaces");
+    const gone = byTestid("knw5-spaces-unwired");
+    expect(gone?.querySelector("b")?.textContent).toBe("知识空间未接入");
+    expect(gone?.getAttribute("title")).toBe("GAP-03");
+    expect(bodyOf(gone)).toContain("去审批中心提交申请");
+    expect(bodyOf(gone)).toContain("证据与引用");
+    expect(bodyOf(gone)).not.toContain("0 个");
+    expect(byTestid("knw5-spaces-table")).toBeNull();
+    expect(byTestid("knw5-spaces-apply")).toBeTruthy();
+    expect(container.textContent).toContain("请求编号：rid-space-gone");
+
+    fetchMock.mockImplementation(() => fail(403, "没有查看这项数据的权限。", "rid-space-denied"));
+    await render("/knowledge?tab=spaces");
+    expect(bodyOf(byTestid("knw5-spaces-unwired"))).toBe(bodyOf(gone));
+    expect(container.textContent).toContain("请求编号：rid-space-denied");
+
+    // 200 空列表：诚实空态，不写数量
+    fetchMock.mockResolvedValue({ items: [] });
+    await render("/knowledge?tab=spaces");
+    expect(attr("knw5-spaces", "data-state")).toBe("ready");
+    expect(attr("knw5-spaces", "data-len")).toBe("0");
+    expect(byTestid("knw5-spaces-empty")?.textContent ?? "").toContain("这不等于「没有空间」");
+    expect(container.querySelectorAll('[data-testid="knw5-spaces-row"]')).toHaveLength(0);
+  });
+
   it("keeps the 失败 reason human on screen and technical text only in the title", async () => {
     fetchMock.mockResolvedValue({
       items: [
@@ -232,7 +338,7 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     const text = container.textContent ?? "";
     expect(text).toContain("凭据已过期，请重新授权后重试");
     expect(text).not.toContain("ECONNREFUSED");
-    const hidden = container.querySelector('[data-testid="knw5-spaces-failure"][title*="ECONNREFUSED"]');
+    const hidden = container.querySelector('[data-testid="knw5-space-failure"][title*="ECONNREFUSED"]');
     expect(hidden).toBeTruthy();
     expect(hidden?.textContent ?? "").toContain("悬停可看原文");
     expect(text).toContain("12 篇");
@@ -246,7 +352,7 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(attr("knw5-spaces", "data-len")).toBe("0");
     const text = container.textContent ?? "";
     expect(text).toContain("接口已响应，但列表为空");
-    expect(text).toContain("也不写 0 个");
+    expect(text).toContain("这不等于「没有空间」");
     expect(text).not.toContain("0 个空间");
     expect(text).not.toContain("共 0");
     // 这一份回答没带采集时间：时间那行要如实说未知并给原因。

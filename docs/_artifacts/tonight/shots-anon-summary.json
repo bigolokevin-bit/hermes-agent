@@ -14,7 +14,7 @@
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 26,
+  "distinctMainHeads": 25,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -207,7 +207,7 @@
     {
       "route": "#/employees/:employeeId",
       "viewport": "375",
-      "chars": 42,
+      "chars": 143,
       "hasMainEl": true
     },
     {
@@ -230,23 +230,23 @@
     },
     {
       "route": "#/employees/:employeeId?zone=evidence",
-      "viewport": "375",
-      "chars": 42,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=runs",
-      "viewport": "1440",
-      "chars": 42,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=runs",
       "viewport": "375",
       "chars": 51,
       "hasMainEl": true
     },
     {
+      "route": "#/employees/:employeeId?zone=runs",
+      "viewport": "1440",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=runs",
+      "viewport": "375",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
       "route": "#/employees/:employeeId?zone=tasks",
       "viewport": "1440",
       "chars": 42,
@@ -261,7 +261,7 @@
     {
       "route": "#/identity",
       "viewport": "1440",
-      "chars": 161,
+      "chars": 163,
       "hasMainEl": true
     },
     {
@@ -291,7 +291,7 @@
     {
       "route": "#/identity?tab=binding",
       "viewport": "375",
-      "chars": 161,
+      "chars": 163,
       "hasMainEl": true
     },
     {
@@ -345,7 +345,7 @@
     {
       "route": "#/identity?tab=tenant",
       "viewport": "1440",
-      "chars": 161,
+      "chars": 163,
       "hasMainEl": true
     },
     {
@@ -609,7 +609,7 @@
     {
       "route": "#/work?tab=cron",
       "viewport": "1440",
-      "chars": 299,
+      "chars": 319,
       "hasMainEl": true
     },
     {
@@ -631,13 +631,8 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 4,
-  "consoleErrorRoutesObservedByShots": [
-    "#/identity",
-    "#/identity?tab=binding",
-    "#/identity?tab=tenant",
-    "#/work?tab=cron"
-  ],
+  "consoleErrorsObservedByShots": 0,
+  "consoleErrorRoutesObservedByShots": [],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
@@ -647,12 +642,12 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "01175128",
+  "headHash": "02a7385c",
   "exitCode": 0,
-  "entry": "assets/index-BgiPXYqY.js",
-  "entrySha256": "8ee87ff8a903557aa7a8b2cec84bf083c9a5d7b03452c856cbb51ed67348b89d",
-  "entryBytes": 166638,
-  "servedEntryBefore": "index-BgiPXYqY.js",
-  "servedEntryAfter": "index-BgiPXYqY.js",
+  "entry": "assets/index-DmuaaNyX.js",
+  "entrySha256": "224e4d53090047cefd5d178562b7959d38f1134d8e5317633c3c16ee01813216",
+  "entryBytes": 166682,
+  "servedEntryBefore": "index-DmuaaNyX.js",
+  "servedEntryAfter": "index-DmuaaNyX.js",
   "auxiliary": true
 }
