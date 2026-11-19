@@ -652,3 +652,207 @@ VITE_EXIT=0       ✓ built in 3.08s   （仅补出包证据；产物落仓外�
 2. `/channels` 上游英文壳在真实路由上的消退：要等 R5 接线后复测。
 3. `pnpm run build` 全链通过：被 apps/shared 基线错误拦停，只有分离的两段证据
    （tsc 基线口径 + vite 段单独通过）。
+
+---
+
+# TASK COLLAB（协作委托只读页）— 2026-11-19，基线 `44eedfaa`，branch `lane/console-aud`
+
+派单口径：写域 `web/src/modules/collab/**` + 本段；`col4-*` testid；真端点、真状态码、零编造行；
+`?state=` 复现腿带 `data-fixture` + GAP 且零请求；页面内零写控件；未碰 `App.tsx`、`shell/**`、任何
+`manifest.ts`、`pages/**`、`web/scripts/**`、`package.json`/锁文件、其它 modules、i18n；未跑 install。
+
+## CL1. 挂载契约（给 R5 写入方）
+
+| 项 | 值 |
+|---|---|
+| 入口文件 | `web/src/modules/collab/CollabDelegationsModulePage.tsx` |
+| 导出 | `CollabDelegationsModulePage`（具名 + default） |
+| props | **零 props**；状态只从 react-router `useSearchParams` 读，挂载即渲染 |
+| 期望路由 | `/collab`（浏览器路径，与 `App.tsx` 既有 `/runs`、`/audit` 同族） |
+| 可接受 query | `?state=loading|empty|error|denied`（复现腿）；其余 query 一律忽略 |
+| 面包屑去向 | `控制台` → `/overview`（本页只此一个链接，真实存在） |
+| 写动作去处 | 只出文字：接受／拒绝／交接／完成 归任务详情，本页不代为操作（无灰按钮、无死控件） |
+
+命名说明：文件名落在 `shell/bridge.ts` 的 `../modules/*/*ModulePage.tsx` glob 上（vite 已把它切成
+懒块 `CollabDelegationsModulePage-DnHeuRfD.js`，见 CL5），R5 只需照 `RunsModulePage` 的
+`pickModulePage([...])` 形状加一条即可，不必改本页。
+
+### 需壳层注册的路由清单（交 R5）
+
+1. 注册 `/collab` → 懒加载 `web/src/modules/collab/CollabDelegationsModulePage.tsx` 的
+   `CollabDelegationsModulePage`（零 props）。
+2. 侧栏项：`App.tsx` 现有 `{ path: "/collaboration", label: "协作", placeholder: true }`（`App.tsx:330`）。
+   本页的期望路径是 `/collab`。两种收尾都算接线完成，但**必须只留一个真页**：
+   - A（推荐）：把该条目的 `path` 改为 `/collab` 并去掉 `placeholder`；
+   - B：保留 `/collaboration` 作 compat 别名重定向到 `/collab`（照 `shell/routes.ts` 的 REDIRECTS 口径，
+     别名不进导航）。
+3. `web/src/shell/routes.ts`：把 `/collab`（以及若选 B 的 `/collaboration` 别名）补进 ROUTE_TABLE，
+   `data-src` 写 `GET /agent-api/api/delegations`；本页 `kind` 应为 `planned`——
+   读口在本机没有采到任何 2xx 样本，直到真实身份联调通过才可改 `reuse`。
+4. `web/src/lib/api.ts` 的 `CONSOLE_SURFACE_PATH_RE`（`api.ts:263`）不含 `collab`：本页已用
+   `fetchJSON(..., { allowUnauthorized: true })` 自行绕开 401 的整页 reload，所以 R5 **不必**改这一行；
+   若后续把 `/collab` 并入「壳统一处理 401」那一族，请同时去掉本页的这个选项，别两处都管。
+5. 未新建、未编辑任何 `manifest.ts` / `tabNav.ts`：本页不进 22-tab 表，直到路由与读口都落定。
+
+## CL2. 端点实探状态码（2026-11-19 13:14 CST 本机实测，非推断）
+
+页面只发一条请求：`GET /agent-api/api/delegations?limit=50`（`/api/` 段保留）。直连 `127.0.0.1:8092`
+（`L4ConsoleBFF/0.1 Python/3.9.6`，无身份头）实测：
+
+```
+GET /agent-api/api/delegations?limit=50  -> 404  rid 7b2027efc9044bd4b52d1cb9de4b0795
+     body {"code": "console.not_found", "message": "static asset not found"}
+GET /api/delegations?limit=50            -> 401  rid 61202b1f3a38499c81e104e78a13b539
+     X-Console-Reason: identity-check-failed
+     body {"code": "console.unauthenticated", "message": "identity check failed"}
+GET /agent-api/delegations（丢掉 /api/ 段）-> 404  rid 10410570bffe4bb0a3f690d595372d45
+对照同族：GET /agent-api/api/runs        -> 404  rid 7d0158d3a01b4e74a936c0f574332071
+          GET /api/runs                  -> 401  rid a0b9292ba9d044d7be5bf73db3e3b5e2
+另一个落点（上游 dashboard `127.0.0.1:9119`，uvicorn）：
+          GET /api/delegations           -> 401  {"detail":"Unauthorized"}（无 X-Console-* 头）
+          GET /agent-api/api/delegations -> 200  text/html（SPA 兜底页，不是接口回答）
+```
+
+读数口径（照实，不美化）：
+- **8092 上带 `/agent-api` 前缀的那条拼法回答 404**，因为该端口把 `/agent-api/…` 当静态路径找；
+  `/agent-api` 前缀归网关，网关剥掉后才落到 `/api/delegations`，那里才是 401 的身份门。
+  同一现象在同族的 `/agent-api/api/runs` 上复现，所以这不是本路端的拼法问题，而是**两个端口两套门**。
+- 派单口径说「无身份会 401」在 `/api/delegations` 上成立（已实测）；在 `/agent-api/api/delegations`
+  的直连腿上是 404。本页对 404 的处理是 **denied 同体腿**（与 403 逐字节同体），对 401 的处理是
+  **「需要登录」腿**——两条腿都不画行、都不写零、都不编数据。
+- 9119 的 `/agent-api/api/delegations` 返回 200 + HTML：那不是接口回答，`fetchJSON` 解析不成
+  委托列表，本页读作 error 腿并写明「这份回答不是委托清单」，绝不按 HTML 画行。
+
+## CL3. 四态触发方式（可复跑口径）
+
+| 状态 | 真实触发（本机可复跑） | `?state=` 复现 | 页面 testid |
+|---|---|---|---|
+| 加载中 | 请求在途（骨架屏，不是「0 条」） | `?state=loading` | `col4-loading` |
+| 空态 | 2xx 且 `items:[]`（本机无身份，**未采到**，只在测试里以 2xx 驱动） | `?state=empty` | `col4-empty` |
+| 错误 | 400/429/5xx/连不上/200 非列表形状 → 人话 + 可复制请求编号（缺失显「未提供」）+ 重试 | `?state=error` | `col4-error` |
+| 不可见 | 403，或 404（本机 `/agent-api/api/delegations` 直连即是 404）→ 与 403 逐字节同体、同 code+rid、不回显路径、上方无任何行 | `?state=denied` | `col4-denied` |
+| 需要登录 | 401（`/api/delegations` 直连即 401，`X-Console-Reason: identity-check-failed`）——**不是错误腿**：中性卡、无 `role=alert`、无行、无计数，给「登录后回到本页重新读取」+ 请求编号 | 不设复现值（真读专属） | `col4-login` |
+
+- 列（6 条，只读）：委托方 / 受托方 / 范围（可做什么、对谁）/ 状态人话 / 生效至（北京时间到分）/ 来源；
+  两侧姓名口径 `姓名 · 8 位短码`，只有句柄时 `委托员工|受托员工 · 短码`，受托方无归属时 `未指派`；
+  裸 `emp_…` / `human:…` / 全串只进 `title` 与折叠「技术详情」。
+- 状态词表按冻结的 DELEGATION v1.0：`requested/accepted/handed_off/completed/rejected/expired` →
+  已提出，等待接受／已接受／已交接回发起方／已完成／已拒绝／已过期；不认识的说「状态未识别」，
+  原文进 `title`，永不裸上屏。
+
+## CL4. `data-fixture` 值
+
+- 腿值：`loading` / `empty` / `error` / `denied`，同时打在页根 `col4-page` 与对应面板上；
+  复现腿页上打「这是用 ?state=… 复现出来的状态…（GAP-10）」，**零请求**（测试用「任何 fetch 即抛错」
+  的 mock 钉死），`col4-refresh` 与面板重试全部 disabled 并写明原因。
+- `?state=ready` 与其余值不算复现：走真实读取且页根无 `data-fixture`（测试钉住）。
+- 401「需要登录」腿**没有** `data-fixture` 值：它只能由服务真回答出来，复现腿无法伪造一个登录状态。
+
+## CL5. 门禁（精确退出码）
+
+```
+$ cd web && npx tsc -b . --noEmit
+TSC_EXIT=2        49 条 error TS 行，全部在 ../apps/shared/**（基线同款）；
+                  grep -v '^\.\./apps/shared' 后 error TS 行数 = 0；src/modules/collab = 0 条
+
+$ cd web && npx vitest run src/modules/collab
+VITEST_EXIT=0     Test Files  2 passed (2)   Tests  84 passed (84)   Duration 0.78s
+                  ← delegations.test.ts 47 例（路由逐字/单条请求/形状门/401≠error/403≡404 同句同码/
+                    短码与「未指派」/状态与来源词表/北京时间到分/生效三态）
+                    + CollabDelegationsModulePage.test.tsx 37 例（真路由只问一次、六列表头逐字、
+                      行上屏零工程语言、四态与登录腿、403≡404 outerHTML 逐字节、复现腿零 fetch、
+                      重试真生效、零写控件穷举（每个 button 必须归 重新读取/复制/技术详情 三类）、
+                      布局 min-w-0 与 minmax(0,…)、四条腿逐一零工程语言扫描）
+
+$ cd web && npx eslint src/modules/collab
+ESLINT_EXIT=0     无输出（0 problems；无 set-state-in-effect 告警）
+
+$ cd web && npx vitest run          （全量跑了三次，三次都照实记）
+第一次  VITEST_FULL_EXIT=0
+        Test Files  115 passed (115)   Tests  1092 passed (1092)   Duration 10.33s
+        （本车道当时 79 例；他道那两处编辑尚未落盘）
+第二次  vitest 自带 Start 13:16:52 —— VITEST_FULL_EXIT=1
+        Test Files  1 failed | 114 passed (115)   Tests  1 failed | 1097 passed (1098)   Duration 5.97s
+        唯一失败文件名：src/modules/channels/channels.test.ts
+          > reading one source's answer > paints the name, the plain type and the masked handle
+            AssertionError: expected 'disabled' to be 'unavailable'
+        归因：`web/src/modules/channels/**` 有**他道在共享工作树里的在途未提交编辑**
+        （channels.ts mtime 13:15:57 给 RowStatus 加了 "disabled"，ChannelsPage.tsx mtime 13:16:14），
+        不是本车道文件；本车道未 add、未 revert、未改它一行。
+第三次  vitest 自带 Start 13:17:41 —— VITEST_FULL_EXIT=0
+        Test Files  115 passed (115)   Tests  1100 passed (1100)   Duration 5.77s
+        （他道那两处编辑落定后同一用例自己转绿；本车道 84 例三次都在全量里全绿）
+
+$ cd web && pnpm run build
+BUILD_EXIT=1      死在 scripts/build/web.mjs 的 typecheck 段（对整 solution 跑 tsc -b，
+                  被上述 49 条 apps/shared 基线错误拦停，未进 vite 段）；环境性，与本车道代码无关
+
+$ cd web && npx vite build --outDir <temp>/aud-collab-build --emptyOutDir   （绕 typecheck 段的补测）
+VITE_EXIT=0       ✓ built in 3.23s；产物落仓外临时目录，未触碰仓内文件；
+                  懒块名 CollabDelegationsModulePage-DnHeuRfD.js（仅块名，不声称 entry sha）
+```
+
+## CL6. DOM 读数
+
+**不可产出（真实浏览器）**，原因照实：`/collab` 尚未由壳层注册（`App.tsx` 与 `shell/**` 在本车道写域外），
+浏览器里没有任何地址能到本组件；本车道禁 install、未起 dev server、未跑 Playwright 用例，
+所以 1440/1280/375 的像素级读数与横溢实测**本轮没有数字可写，也不编一个**。
+
+能取到的是 jsdom 结构读数（`vitest run src/modules/collab`，共 84 例）：
+
+- 页根 `col4-page`，`data-page="collab"`，`class` 含 `min-w-0`；`html()` 内无任何 `width:\s*\d+px` 写死宽度（测试钉住）。
+- 行网格 `grid-cols-[minmax(0,1fr)_minmax(0,1fr)]`（375 两列堆叠）→ `sm:` 六列
+  `minmax(0,1fr)×2 + minmax(0,1.4fr) + minmax(0,0.9fr) + minmax(0,1fr) + minmax(0,0.9fr)`，
+  请求编号与短码走 `break-words`/`break-all`。
+- 表头文案实测（sm 及以上）：`委托方／受托方／范围／状态／生效至／来源` 逐字等值断言（toEqual 数组）。
+- 就绪态一行的 DOM：`col4-row-0-from|to|scope|status|validity|source|code|tech`；
+  「技术详情」关闭时字符串 `delegation dl_…` 不在 DOM 里，点开才出现（断言两条都做到了）。
+- 计数行读数口径：就绪/空态 → `本页 N 条（最多按 50 条读取，不是全量统计）`；
+  其余态 → `本页 — 条（暂时读不到委托数据，数字不作零处理）`；被丢掉的无编号行单列
+  `另有 M 条…没有算在上面`，从不并进 N。
+- 全 DOM 文本扫描（就绪／错误／不可见／需要登录四条腿逐一跑）：零 `emp_`、零 `human:`、零裸 `dl_0`、
+  零 HTTP 码（400/401/403/404/429/500/502/503 逐一正则挡住）、零 ISO 串、零 `undefined`/`NaN`、
+  零裸字段名（`delegationId`/`expiresAt`/`fromEmployeeId`/`toEmployeeId`/`createdAt`/`scopeText`）、
+  零路径回显（`agent-api`、`/api/delegations`）。
+
+## CL7. 本轮文件（全在写域内）
+
+- 新增 `web/src/modules/collab/delegations.ts`（数据/口径层：单条真路由、形状门、词表、短码、北京时间、
+  生效三态、范围拼装）。
+- 新增 `web/src/modules/collab/states.tsx`（骨架／空／错误／不可见／需要登录五块面板 + 可复制编号 +
+  技术详情折叠 + 复现腿声明）。
+- 新增 `web/src/modules/collab/useDelegations.ts`（读取腿：`?state=` 复现零请求、attempt 键防串台）。
+- 新增 `web/src/modules/collab/CollabDelegationsModulePage.tsx`（页，零 props）。
+- 新增 `web/src/modules/collab/delegations.test.ts`（47 例）、
+  `web/src/modules/collab/CollabDelegationsModulePage.test.tsx`（37 例）。
+- 本段 `docs/_artifacts/aud/DONE.md`。
+- GAP-10 为本车道新取号：落笔前 grep `web/src/**` 与 `docs/_artifacts/**`，GAP-01…GAP-09 已被占，10 空闲。
+- 未碰 `App.tsx`、`shell/**`、任何 `manifest.ts`、`pages/**`、`web/scripts/**`、`package.json`/`pnpm-lock.yaml`、
+  其它 modules、i18n；未跑 install。工作树里 `web/src/modules/channels/channels.ts` 有**他道在改的**未提交
+  编辑（不是本车道产物，本轮未 add、未 revert）。
+
+## CL8. 未验项（照实留）
+
+1. 真实浏览器 DOM／1440、1280、375 像素级横溢：路由未注册 + 禁 install + 无浏览器夹具落点，未实测（CL6）。
+2. 2xx 真负载的字段名：本机无身份，`/api/delegations` 恒 401、`/agent-api/api/delegations` 恒 404，
+   **没有任何一条委托被真实读到过**。范围／生效至／来源三列的键名全部是候选表
+   （`scope|scopeText|summary|description|intent`、`expiresAt|expires_at|validUntil|valid_until|until`、
+   `source|origin|createdVia|via`），冻结的 DELEGATION v1.0 里本就没有这三列的字段——真数据到达需回填；
+   读不到时上屏「未记录」+ 原因，不写 0、不写空串。
+3. 受托方姓名的第二个来源（员工目录 `/agent-api/api/employees` 侧读）本轮**未接**：
+   本页只用回答自带的 `*Name` 字段，读不到就掩码成「受托员工 · 短码」。派单口径要的是
+   「姓名 · 8 位短码」或「未指派」，姓名能否真出现取决于回答是否带名，未联调。
+4. 空态腿的 2xx 真回答未采到（同 2）；本轮空态只在测试里由 `{items: []}` 驱动，屏上话术已就位。
+5. 401 是否真的经网关落到 `/api/delegations`（而不是别的拼法）：本机两个端口两套门（CL2），
+   网关剥前缀那一跳没有仓内证据，属推断；本页对两种回答都有确定腿（401→登录、404→不可见）。
+6. `limit=50` 是否被 BFF 接受、是否支持 `status`/游标参数：未验（无身份）。参数名一旦被判 400，
+   页面已有的「这次读取缺少服务要求的条件」人话腿会接住。
+7. `pnpm run build` 全链通过：被 apps/shared 基线错误拦停，只有分离的两段证据（tsc 基线口径 + vite 段通过）。
+8. `pnpm-lock.yaml` 未验证——未跑 install，未改锁。
+9. 接线：`/collab` 与侧栏条目归 R5（CL1 清单），本车道未动壳。
+
+## R11. `/channels` 中文词族补丁（未启用／禁用）
+
+- **改了哪些词**：`未启用` 上了徽标词表（`STATUS_LABEL.disabled`）、筛选选项（`FILTERS` 第 4 项）与计数句新桶「未启用 d」；`禁用` 上了四条人话原因（`DISABLED_TOKENS`：已被禁用／已被管理员禁用／配置里已经把它禁用／处于禁用状态，均写「需要先启用后再读取」）。`disabled` 从 `DOWN_TOKENS` 挪进 `DISABLED_TOKENS`，判定顺序 CONNECTED→DISABLED→DOWN，行上落 `data-status="disabled"`；模块内 grep 命中：改前 `未启用` 0、`禁用` 0 → 改后 `未启用` 19、`禁用` 10（只看 `channels.ts`+`ChannelsPage.tsx` 为 10／6）。
+- **测试数**：新增 3 条（`channels.test.ts` 38→39：`statusOf` 四个禁用拼写 + 词表；`ChannelsPage.test.tsx` 39→41：禁用行出「未启用」且 `data-status="disabled"`、「未启用」筛选只留禁用行），既有断言无一条改弱；`npx vitest run src/modules/channels` → exit 0，`Test Files 2 passed (2) / Tests 80 passed (80)`；`npx tsc -b . --noEmit` → exit 2，49 条全在 `../apps/shared/**`，`src/modules` 0；`npx eslint src/modules/channels` → exit 0 无输出。
+- **未验项**：真负载里是否真会出现 `disabled`／`switched_off` 这类 token、服务是否按 `&status=disabled` 过滤，本机无身份未联调（沿用 GAP-08 口径，页面仍按同一条件自己再挑一遍）；简报给的句式「已被管理员禁用…」只用在 `disabled_by_admin` 上——`disabled` 本身不证明是谁关的，按本模块「不臆造主语」纪律收口为「已被禁用…」，差一词已在此留痕；真实浏览器 DOM 读数未做。
