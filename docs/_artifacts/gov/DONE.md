@@ -1263,3 +1263,35 @@ $ cd web && npx vitest run
 ```
 - tsc 仅剩基线既有 `src/modules/approvals/api.test.ts` 与 `src/pages/LoginPage.test.tsx` 错误（非本写域），本模块无新增类型错误。
 
+
+## R26 cron / retention page bodies + registration list (2026-11-19)
+
+Base `a37fe73e` (gate ledger `16562a76`). Write domain: `web/src/modules/cron/**`, `web/src/modules/audit/**`, `web/src/modules/access/**`, `docs/_artifacts/gov/**`. No App/shell/routes/registry/manifest/pages/scripts/package/lock changes.
+
+### F3 定时任务（/work?tab=cron）
+- Page body already reads same-origin Hermes `GET /api/cron/jobs` (live probe 200, 1 job `l7-state-backup`, `10 4 * * *` → 每天 04:10, last 2026-11-19 04:10, next 2026-11-20 04:10, enabled, ok). No sample/0 fallback.
+- Unavailable state now says 「定时任务读口未接入」 + human reason + `/approvals` application link (`cron5-apply`); `cron5-*` family unchanged; 403/404 one body, `title=GAP-CRON-01`.
+- Export: named `CronModulePage`, default same; body root `cron5-page`; rows `cron5-row`, name/schedule/status/result/last/next; `cron5-loading|empty|denied|error|retry|request-id|apply`.
+- Shell registration still required: `/work?tab=cron` must render `@/modules/cron/CronModulePage` (currently bridge redirects to board).
+
+### F5 数据保留与清理（/system?tab=retention）
+- Page body exists with four sections audit/runs/sessions/uploads; `/api/retention` live probe 404 `console.unknown_route` → each section `未接入`, all values `—` with reason; no 0-day/0-byte fallback.
+- Ready shape defensively reads retention days, last cleanup, next run, used/limit bytes and computes occupancy; times BJT to minute. Write actions are `data-planned` + `aria-disabled` + `title`, never success.
+- Export: named `RetentionModulePage`, default same; root `ret4-page`; `ret4-section-*`, `ret4-unwired-*`, `ret4-days|last|next|used|limit|share-*`, `ret4-planned-*`, `ret4-denied`, `ret4-error`, `ret4-unwired-note`, `ret4-summary`.
+- Shell registration still required: `/system?tab=retention` must render `@/modules/audit/RetentionModulePage` (currently bridge redirects to events).
+
+### adm5 registration list (R25)
+- Access export: `AccessModulePage` default; admins panel via `?view=admins` (module also accepts `?tab=admins` when mounted). Testids: `adm5-gap`, `adm5-admin-table`, `adm5-admin-row`, `adm5-admin-account|role|login|risk|status`, `adm5-risk-panel`, `adm5-risk-table`, `adm5-risk-row`, `adm5-risk-time|category|action|object|actor`, `adm5-risk-copy`, `adm5-risk-request-id`, `adm5-risk-gap`, `adm5-risk-empty`, `adm5-risk-error`.
+- Shell needs `admins` tab/slot on `/identity` (deep link `/identity?tab=admins`); currently reachable at `/identity?tab=roles&view=admins`.
+
+### Raw stdout
+```text
+$ cd web && npx vitest run src/modules/cron
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+
+$ cd web && npx vitest run src/modules/audit/RetentionModulePage.test.tsx
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+```
+- Route count at `/work?tab=cron` and `/system?tab=retention` remains 0 until R5 mounts the exports above; this lane cannot edit shell/App/routes.
