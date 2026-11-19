@@ -98,9 +98,26 @@
   text-underline-offset: 3px;
 }
 
-.ov5-asof {
+.ov5-stamps {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 8px;
   color: var(--color-muted-foreground);
   font-size: 11px;
+}
+
+.ov5-stamp {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  overflow-wrap: anywhere;
+}
+
+.ov5-stamp em {
+  font-style: normal;
+  color: var(--color-muted-foreground);
+  opacity: 0.9;
 }
 
 .ov5-note {

@@ -9,14 +9,11 @@ import { fetchMatrix, load } from '../duty/api';
 import { beijing, dashed, employeeLabel, shortId, usd } from '../duty/format';
 import { useDutyData, type DutyData } from '../duty/useDutyData';
 import type { Loadable, MatrixBody, RunStatsBody } from '../duty/types';
-import { buildKpis, blockerRows, trendPoints, OVERVIEW_GAP } from './overview';
+import { buildKpis, blockerRows, sourceStamp, trendPoints, OVERVIEW_GAP } from './overview';
 import './overview.css';
 
 type Forced = 'loading' | 'empty' | 'error';
-
-function readAtNow(): string {
-  return beijing(new Date().toISOString());
-}
+type StampSource = { source: string; state: Loadable<unknown> };
 
 function RequestId({ id }: { id: string | null }) {
   const [copied, setCopied] = useState(false);
@@ -48,6 +45,24 @@ function Source({ children }: { children: ReactNode }) {
   return <span className="ov5-source">{children}</span>;
 }
 
+function Freshness({ items, testid }: { items: StampSource[]; testid?: string }) {
+  return (
+    <div className="ov5-stamps" data-testid={testid}>
+      {items.map(({ source, state }) => {
+        const stamp = sourceStamp(state);
+        return (
+          <div className="ov5-stamp" key={source}>
+            <span>
+              数据截至 {stamp.shown ?? '时间未知'} · 来源 {source}
+            </span>
+            {stamp.reason ? <em>原因：{stamp.reason}</em> : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 type KpiIssue = { label: string; state: Loadable<unknown>; gap?: string };
 
 function KpiCard({
@@ -55,7 +70,7 @@ function KpiCard({
   value,
   foot,
   source,
-  readAt,
+  stamps,
   testid,
   note,
   noteTitle,
@@ -67,7 +82,7 @@ function KpiCard({
   value: ReactNode;
   foot?: ReactNode;
   source: string;
-  readAt: string;
+  stamps: StampSource[];
   testid: string;
   note?: ReactNode;
   noteTitle?: string;
@@ -100,14 +115,14 @@ function KpiCard({
             </div>
           ) : null,
         )}
-        <div className="ov5-asof">读取于 {readAt}</div>
+        <Freshness items={stamps} testid={`${testid}-stamps`} />
         {note ? <div className="ov5-note" title={noteTitle}>{note}</div> : null}
       </CardContent>
     </Card>
   );
 }
 
-function Trend({ stats, readAt, onRetry }: { stats: Loadable<RunStatsBody>; readAt: string; onRetry: () => void }) {
+function Trend({ stats, onRetry }: { stats: Loadable<RunStatsBody>; onRetry: () => void }) {
   const points = stats.k === 'ready' ? trendPoints(stats.data) : [];
   const max = Math.max(1, ...points.map((p) => p.runs ?? 0));
   return (
@@ -115,8 +130,9 @@ function Trend({ stats, readAt, onRetry }: { stats: Loadable<RunStatsBody>; read
       <CardContent className="ov5-block-bd">
         <div className="ov5-block-hd">
           <h2>近 14 天运行趋势</h2>
-          <Source>运行统计 · 读取于 {readAt}</Source>
+          <Source>运行统计</Source>
         </div>
+        <Freshness items={[{ source: '运行统计', state: stats }]} testid="ov5-trend-stamp" />
         {stats.k === 'loading' ? (
           <div className="ov5-skeleton" aria-busy="true" aria-label="趋势加载中"><span /><span /><span /></div>
         ) : stats.k === 'error' ? (
@@ -169,6 +185,7 @@ function RecentActivity({ data, onRetry }: { data: DutyData; onRetry: () => void
           <h2>最近活动</h2>
           <Link to="/runs">全部运行<ArrowRight className="h-3.5 w-3.5" /></Link>
         </div>
+        <Freshness items={[{ source: '运行记录', state: runs }]} testid="ov5-activity-stamp" />
         {runs.k === 'loading' ? (
           <div className="ov5-skeleton" aria-busy="true" aria-label="最近活动加载中"><span /><span /><span /></div>
         ) : runs.k === 'error' ? (
@@ -207,7 +224,13 @@ function Blockers({ data, onRetry }: { data: DutyData; onRetry: () => void }) {
   const tasks = data.blockedTasks.k === 'ready' ? data.blockedTasks.data : null;
   const approvals = data.approvals.k === 'ready' ? data.approvals.data : null;
   const rows = data.recentRuns.k === 'loading' ? [] : blockerRows({ failedRuns: failed, blockedTasks: tasks, approvals });
-  const unavailable = [data.failedRuns, data.blockedTasks, data.approvals].some((s) => s.k === 'error');
+  const blockSources = [
+    { source: '失败运行', state: data.failedRuns },
+    { source: '阻塞任务', state: data.blockedTasks },
+    { source: '待审批', state: data.approvals },
+  ];
+  const unavailable = blockSources.some(({ state }) => state.k === 'error');
+  const firstBlockError = blockSources.map(({ state }) => state).find((state) => state.k === 'error');
   return (
     <Card className="ov5-block" data-testid="ov5-blockers">
       <CardContent className="ov5-block-bd">
@@ -215,9 +238,11 @@ function Blockers({ data, onRetry }: { data: DutyData; onRetry: () => void }) {
           <h2>阻塞队列</h2>
           <Source>失败运行 / 阻塞任务 / 待审批</Source>
         </div>
+        <Freshness items={blockSources} testid="ov5-blockers-stamp" />
         {unavailable ? (
           <div className="ov5-inline-error" role="alert">
             <span>有阻塞源未接入，下面是已读到的部分，不代表全部。</span>
+            <RequestId id={firstBlockError?.k === 'error' ? firstBlockError.requestId : null} />
             <Button size="sm" outlined onClick={onRetry} data-testid="ov5-blockers-retry">重试</Button>
           </div>
         ) : null}
@@ -246,13 +271,11 @@ function Blockers({ data, onRetry }: { data: DutyData; onRetry: () => void }) {
 export function OverviewView({
   data,
   matrix,
-  readAt,
   loading,
   onRetry,
 }: {
   data: DutyData;
   matrix: Loadable<MatrixBody>;
-  readAt: string;
   loading: boolean;
   onRetry: () => void;
 }) {
@@ -323,20 +346,20 @@ export function OverviewView({
       {anyLoading ? <div className="ov5-skeleton" aria-busy="true" aria-label="总览加载中" data-testid="ov5-loading"><span /><span /><span /></div> : null}
 
       <div className="ov5-kpis">
-        <KpiCard title="员工" value={dashed(kpis.total)} foot={<>在岗 <b>{dashed(kpis.active)}</b> · 有风险 <b>{dashed(kpis.atRisk)}</b></>} source="员工统计 / 风险矩阵" readAt={readAt} testid="ov5-kpi-employees" issues={[{ label: '员工统计', state: data.employees }, ...(matrix.k === 'error' ? [{ label: '风险矩阵', state: matrix, gap: OVERVIEW_GAP.risk }] : [])]} onRetry={onRetry} note={kpis.atRisk === null ? '风险口径未接入' : null} noteTitle={kpis.atRisk === null ? OVERVIEW_GAP.risk : undefined}>
+        <KpiCard title="员工" value={dashed(kpis.total)} foot={<>在岗 <b>{dashed(kpis.active)}</b> · 有风险 <b>{dashed(kpis.atRisk)}</b></>} source="员工统计 / 风险矩阵" stamps={[{ source: '员工统计', state: data.stats }, { source: '风险矩阵', state: matrix }]} testid="ov5-kpi-employees" issues={[{ label: '员工统计', state: data.employees }, ...(matrix.k === 'error' ? [{ label: '风险矩阵', state: matrix, gap: OVERVIEW_GAP.risk }] : [])]} onRetry={onRetry} note={kpis.atRisk === null ? '风险口径未接入' : null} noteTitle={kpis.atRisk === null ? OVERVIEW_GAP.risk : undefined}>
           <Users className="ov5-watermark" aria-hidden />
         </KpiCard>
-        <KpiCard title="今日运行" value={dashed(kpis.runs)} foot={<>失败 <b>{dashed(kpis.failed)}</b> · 失败率 <b>{kpis.failureRate === null ? '—' : `${kpis.failureRate}%`}</b></>} source="运行统计（今日）" readAt={readAt} testid="ov5-kpi-runs" issues={[{ label: '运行统计', state: data.todayStats, gap: OVERVIEW_GAP.runs }]} onRetry={onRetry} note={kpis.runs === 0 && kpis.failureRate === null ? '今天还没有运行，失败率不计算' : null} noteTitle={kpis.runs === 0 && kpis.failureRate === null ? OVERVIEW_GAP.runs : undefined}>
+        <KpiCard title="今日运行" value={dashed(kpis.runs)} foot={<>失败 <b>{dashed(kpis.failed)}</b> · 失败率 <b>{kpis.failureRate === null ? '—' : `${kpis.failureRate}%`}</b></>} source="运行统计（今日）" stamps={[{ source: '运行统计', state: data.todayStats }]} testid="ov5-kpi-runs" issues={[{ label: '运行统计', state: data.todayStats, gap: OVERVIEW_GAP.runs }]} onRetry={onRetry} note={kpis.runs === 0 && kpis.failureRate === null ? '今天还没有运行，失败率不计算' : null} noteTitle={kpis.runs === 0 && kpis.failureRate === null ? OVERVIEW_GAP.runs : undefined}>
           <Gauge className="ov5-watermark" aria-hidden />
         </KpiCard>
-        <KpiCard title="待审批" value={dashed(kpis.pending)} foot={<Link to="/approvals">去审批中心<ArrowRight className="h-3.5 w-3.5" /></Link>} source="审批统计" readAt={readAt} testid="ov5-kpi-pending" issues={[{ label: '审批统计', state: data.approvalStats, gap: OVERVIEW_GAP.approvals }]} onRetry={onRetry}>
+        <KpiCard title="待审批" value={dashed(kpis.pending)} foot={<Link to="/approvals">去审批中心<ArrowRight className="h-3.5 w-3.5" /></Link>} source="审批统计" stamps={[{ source: '审批统计', state: data.approvalStats }]} testid="ov5-kpi-pending" issues={[{ label: '审批统计', state: data.approvalStats, gap: OVERVIEW_GAP.approvals }]} onRetry={onRetry}>
           <ShieldAlert className="ov5-watermark" aria-hidden />
         </KpiCard>
-        <KpiCard title="今日成本" value={kpis.costUsd === null ? '—' : usd(kpis.costUsd)} foot={kpis.costPartial ? <>账本未覆盖全部员工{kpis.costMissing > 0 ? `（${kpis.costMissing} 人缺账本）` : ''}</> : <>美元 · 账本实扣</>} source="成本账本（日）" readAt={readAt} testid="ov5-kpi-cost" issues={[{ label: '成本账本', state: data.budgetDay, gap: OVERVIEW_GAP.cost }]} onRetry={onRetry} note={kpis.costUsd === null ? '成本口径未齐' : null} noteTitle={kpis.costUsd === null ? OVERVIEW_GAP.cost : undefined} />
+        <KpiCard title="今日成本" value={kpis.costUsd === null ? '—' : usd(kpis.costUsd)} foot={kpis.costPartial ? <>账本未覆盖全部员工{kpis.costMissing > 0 ? `（${kpis.costMissing} 人缺账本）` : ''}</> : <>美元 · 账本实扣</>} source="成本账本（日）" stamps={[{ source: '成本账本', state: data.budgetDay }]} testid="ov5-kpi-cost" issues={[{ label: '成本账本', state: data.budgetDay, gap: OVERVIEW_GAP.cost }]} onRetry={onRetry} note={kpis.costUsd === null ? '成本口径未齐' : null} noteTitle={kpis.costUsd === null ? OVERVIEW_GAP.cost : undefined} />
       </div>
 
       <div className="ov5-grid">
-        <Trend stats={data.stats14} readAt={readAt} onRetry={onRetry} />
+        <Trend stats={data.stats14} onRetry={onRetry} />
         <RecentActivity data={data} onRetry={onRetry} />
         <Blockers data={data} onRetry={onRetry} />
       </div>
@@ -347,7 +370,6 @@ export function OverviewView({
 function LiveOverview() {
   const { data, reload, loading } = useDutyData();
   const [matrix, setMatrix] = useState<Loadable<MatrixBody>>({ k: 'loading' });
-  const [readAt, setReadAt] = useState(readAtNow);
 
   const loadMatrix = useCallback(() => {
     setMatrix({ k: 'loading' });
@@ -359,12 +381,23 @@ function LiveOverview() {
   }, [loadMatrix]);
 
   const retry = useCallback(() => {
-    setReadAt(readAtNow());
     loadMatrix();
     reload();
   }, [loadMatrix, reload]);
 
-  return <OverviewView data={data} matrix={matrix} readAt={readAt} loading={loading} onRetry={retry} />;
+  const hasError =
+    matrix.k === 'error' || Object.values(data).some((state) => state.k === 'error');
+
+  // The domain service can restart underneath us. Keep one quiet retry in
+  // flight while any source is down so a recovered service fills in without
+  // a manual reload; a click on retry simply restarts the same path.
+  useEffect(() => {
+    if (!hasError) return;
+    const timer = window.setTimeout(retry, 20_000);
+    return () => window.clearTimeout(timer);
+  }, [hasError, retry]);
+
+  return <OverviewView data={data} matrix={matrix} loading={loading} onRetry={retry} />;
 }
 
 export function OverviewPage() {
