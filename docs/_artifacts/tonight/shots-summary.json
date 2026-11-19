@@ -9,12 +9,12 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 490,
+    "textLen": 491,
     "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 今日运行 运行记录 今日成本 成本账本 发布 ",
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 27,
+  "distinctMainHeads": 28,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -45,13 +45,13 @@
     {
       "route": "#/approvals?tab=history",
       "viewport": "1440",
-      "chars": 1396,
+      "chars": 1386,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=history",
       "viewport": "375",
-      "chars": 1396,
+      "chars": 1386,
       "hasMainEl": true
     },
     {
@@ -147,13 +147,13 @@
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "375",
-      "chars": 128,
+      "chars": 1034,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=models",
       "viewport": "1440",
-      "chars": 104,
+      "chars": 391,
       "hasMainEl": true
     },
     {
@@ -207,7 +207,7 @@
     {
       "route": "#/employees/:employeeId",
       "viewport": "375",
-      "chars": 115,
+      "chars": 51,
       "hasMainEl": true
     },
     {
@@ -231,7 +231,7 @@
     {
       "route": "#/employees/:employeeId?zone=evidence",
       "viewport": "375",
-      "chars": 42,
+      "chars": 36,
       "hasMainEl": true
     },
     {
@@ -267,7 +267,7 @@
     {
       "route": "#/identity",
       "viewport": "375",
-      "chars": 157,
+      "chars": 75,
       "hasMainEl": true
     },
     {
@@ -465,13 +465,13 @@
     {
       "route": "#/overview",
       "viewport": "1440",
-      "chars": 1004,
+      "chars": 1005,
       "hasMainEl": true
     },
     {
       "route": "#/overview",
       "viewport": "375",
-      "chars": 1004,
+      "chars": 1005,
       "hasMainEl": true
     },
     {
@@ -596,23 +596,23 @@
     },
     {
       "route": "#/work?tab=board&view=cron",
-      "viewport": "1440",
-      "chars": 1782,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/work?tab=board&view=cron",
-      "viewport": "375",
-      "chars": 1782,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/work?tab=cron",
       "viewport": "1440",
       "chars": 145,
       "hasMainEl": true
     },
     {
+      "route": "#/work?tab=board&view=cron",
+      "viewport": "375",
+      "chars": 1782,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/work?tab=cron",
+      "viewport": "1440",
+      "chars": 1782,
+      "hasMainEl": true
+    },
+    {
       "route": "#/work?tab=cron",
       "viewport": "375",
       "chars": 1782,
@@ -621,32 +621,36 @@
     {
       "route": "#/work?tab=runs",
       "viewport": "1440",
-      "chars": 1283,
+      "chars": 1284,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=runs",
       "viewport": "375",
-      "chars": 1255,
+      "chars": 1256,
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 0,
-  "consoleErrorRoutesObservedByShots": [],
+  "consoleErrorsObservedByShots": 1,
+  "consoleErrorRoutesObservedByShots": [
+    "#/employees/:employeeId?zone=evidence"
+  ],
   "ceAuthority": "login-state",
-  "routesWithEnvOnlyConsoleErrors": 21,
+  "routesWithEnvOnlyConsoleErrors": 22,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
-  "overflowing": [],
+  "overflowing": [
+    "#/employees/:employeeId?zone=evidence"
+  ],
   "driver": {
     "playwrightFrom": "/Users/kevin_studio/Projects/seakoi-console-web/package.json",
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "da807e4f",
+  "headHash": "1fff2e58",
   "exitCode": 0,
-  "entry": "assets/index-BM8v0tKe.js",
-  "entrySha256": "fc597ad02ce847a375c02ed7631f40d7854fd318a25995274ec896100b4f94cc",
-  "entryBytes": 159647,
-  "servedEntryBefore": "index-BM8v0tKe.js",
-  "servedEntryAfter": "index-BM8v0tKe.js"
+  "entry": "assets/index-CG7jx7Y5.js",
+  "entrySha256": "997955878965aea8a1ec4e7fef5bd2a53200344fc5a81409b91c1e53382f371a",
+  "entryBytes": 160611,
+  "servedEntryBefore": "index-CG7jx7Y5.js",
+  "servedEntryAfter": "index-CG7jx7Y5.js"
 }

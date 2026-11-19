@@ -631,9 +631,10 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 1,
+  "consoleErrorsObservedByShots": 2,
   "consoleErrorRoutesObservedByShots": [
-    "#/approvals?tab=policy"
+    "#/employees/:employeeId",
+    "#/system?tab=retention"
   ],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
@@ -644,12 +645,12 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "auxiliary": true,
-  "headHash": "da807e4f",
+  "headHash": "1fff2e58",
   "exitCode": 0,
-  "entry": "assets/index-BM8v0tKe.js",
-  "entrySha256": "fc597ad02ce847a375c02ed7631f40d7854fd318a25995274ec896100b4f94cc",
-  "entryBytes": 159647,
-  "servedEntryBefore": "index-BM8v0tKe.js",
-  "servedEntryAfter": "index-BM8v0tKe.js"
+  "entry": "assets/index-CG7jx7Y5.js",
+  "entrySha256": "997955878965aea8a1ec4e7fef5bd2a53200344fc5a81409b91c1e53382f371a",
+  "entryBytes": 160611,
+  "servedEntryBefore": "index-CG7jx7Y5.js",
+  "servedEntryAfter": "index-CG7jx7Y5.js",
+  "auxiliary": true
 }
