@@ -140,7 +140,7 @@ export function ApprovalDetailBody({
       </div>
 
       <dl className="flex min-w-0 flex-wrap gap-x-5 gap-y-1 text-xs">
-        <Field label="类型" value={detail.kind.label} />
+        <Field label="类型" value={detail.kind.label} testId="apd5-field-change-kind" />
         <Field
           label="申请人"
           value={detail.requester.label}

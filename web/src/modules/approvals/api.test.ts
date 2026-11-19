@@ -17,6 +17,45 @@ import {
   statusView,
 } from "./model";
 
+describe("R25 detail eight fields (PRD 4.2 keys exist, values honest)", () => {
+  const sample = {
+    approvalId: "ap_123DE49B9A1F42A197679681F1",
+    type: "business_action",
+    status: "expired",
+    requestedBy: { type: "user", id: "human:1" },
+    argsDigest: "sha256:apr02",
+    binding: { changeKind: "message_send", runId: "run_apr02_seed" },
+    riskLevel: "high",
+    reasonText: "APR-02 VG live seed",
+    approvers: [{ userId: "human:1", role: "owner" }],
+    requiredApprovals: 1,
+    decisions: [],
+    createdAt: "2026-11-16T13:09:04.322Z",
+    decidedAt: "2026-11-17T13:09:04.322Z",
+    expiresAt: "2026-11-17T13:09:04.322Z",
+    remainingSeconds: 0,
+    ttlSeconds: 86400,
+    policyDecisionId: "pd_apr02_seed_20261116",
+    tenantId: "t_seakoi_pilot",
+    action: "message.send",
+    resource: { employeeId: "emp_86A81CE8FF6F42E187BCF2B540", channel: "feishu" },
+  };
+  it("carries all eight fields: changeKind from binding, no bare handles, honest dashes", () => {
+    const detail = approvalDetailFrom(sample);
+    expect(detail).toBeTruthy();
+    const d = detail as NonNullable<typeof detail>;
+    expect(d.kind.label).toBe("对外发送消息");
+    expect(d.decisions).toHaveLength(0);
+    expect(d.decided).toBe("2026-11-17 21:09");
+    expect(d.approvers.labels.join(";")).not.toContain("human:");
+    expect(d.actionHash).toBe("sha256:apr02");
+    expect(d.recipient.label).toBe("—");
+    expect(d.dataScope).toBeNull();
+    expect(d.requestId).toBeNull();
+    expect(d.requester.label).not.toContain("human:");
+  });
+});
+
 describe("approvals csrf double-submit guard (CSRF order)", () => {
   it("maps the two CSRF 403 codes to plain sentences with a copyable rid", async () => {
     const { ApiError } = await import("@/lib/api-error");
