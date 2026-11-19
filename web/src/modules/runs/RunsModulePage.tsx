@@ -304,8 +304,11 @@ export function RunsModulePage() {
   const status = statusFilterOf(params.get("status"));
   const selected = forced === null ? params.get("run") : null;
   const upstream = forced === null ? params.get("upstream") : null;
+  // Deep-link only: `?employee=` narrows the list through the accepted employeeId
+  // parameter. No filter control exists for it, so no dead control is implied.
+  const employee = forced === null ? (params.get("employee")?.trim() || null) : null;
 
-  const data = useRunsData(forced, { status, sinceKey });
+  const data = useRunsData(forced, { status, sinceKey, employeeId: employee });
   const { phase, rows, cursor, answeredBy, unreadable, failure, forced: isForced } = data;
 
   const [readTick, setReadTick] = useState(0);
