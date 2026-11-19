@@ -495,7 +495,7 @@ function decisionEntries(rec: Record<string, unknown>): DecisionEntry[] {
     const whoRaw = pickText(one, ["userId", "user_id", "by", "actor", "approver"]);
     const whoName = pickText(one, ["name", "displayName", "userName"]);
     out.push({
-      who: whoName && !isMachineHandle(whoName) ? whoName : maskHandle(whoRaw ?? "", "审批人") || "未署名",
+      who: whoName && !isMachineHandle(whoName) ? whoName : maskHandle(whoRaw ?? "", "审批人") || "未指派",
       whoRaw,
       verdict: verdictLabel(verdictRaw),
       verdictRaw,

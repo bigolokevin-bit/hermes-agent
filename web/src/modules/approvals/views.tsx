@@ -275,19 +275,25 @@ export function ApprovalDetailBody({
         <p className="min-w-0 break-words text-xs text-warning">这张单已被另一张替代，请到「待处理」里查看新单。</p>
       ) : null}
 
-      {detail.decisions.length ? (
-        <ul className="flex min-w-0 flex-col gap-1 text-xs">
-          {detail.decisions.map((entry, index) => (
-            <li key={`${entry.who}-${index}`} className="min-w-0 break-words text-muted-foreground" data-testid="apd5-decision">
-              <span title={entry.whoRaw ?? undefined}>{entry.who}</span> · {entry.verdict}
-              {entry.at ? ` · ${entry.at}` : ""}
-              {entry.note ? ` · 备注：${entry.note}` : ""}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="min-w-0 break-words text-xs text-muted-foreground">还没有人给出结论。</p>
-      )}
+      {/* apd7: the decision replay is a titled read-only block — every entry
+        * names who decided (masked handle or 未指派), the verdict, the Beijing
+        * minute, and the note; an empty list says so plainly. */}
+      <section className="flex min-w-0 flex-col gap-1" data-testid="apd5-replay" aria-label="决策回放（只读）">
+        <h3 className="text-xs font-medium text-muted-foreground">决策回放 · 只读</h3>
+        {detail.decisions.length ? (
+          <ul className="flex min-w-0 flex-col gap-1 text-xs">
+            {detail.decisions.map((entry, index) => (
+              <li key={`${entry.who}-${index}`} className="min-w-0 break-words text-muted-foreground" data-testid="apd5-decision">
+                <span title={entry.whoRaw ?? undefined}>{entry.who}</span> · {entry.verdict}
+                {entry.at ? ` · ${entry.at}` : ""}
+                {entry.note ? ` · 意见：${entry.note}` : ""}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="apd5-replay-empty">无决策记录。</p>
+        )}
+      </section>
 
       <DetailsDisclosure testId={`${testId}-details`} lines={details} />
 
