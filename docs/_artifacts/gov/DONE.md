@@ -1685,3 +1685,19 @@ built /private/tmp/health-r38/index.html
 - 截图：`docs/_artifacts/gov/shots/ret4-1440.png`、`ret4-1280.png`、`ret4-375.png`。
 - 验证：`npx vitest run src/modules/audit/RetentionModulePage.test.tsx` → **1 file / 11 tests passed**；`npx vitest run src/modules/audit` → **10 files / 161 passed**；全量 `npx vitest run` → **131 files / 1388 passed**；`tsc -b . --noEmit` 仅基线 `src/modules/employees/EmployeesModulePage.test.tsx(73,5): TS18047`，本域 0 错。
 - 边界：仅改 `web/src/modules/audit/**` + `docs/_artifacts/gov/**`；未改 App/shell/routes/registry/package·lock/web scripts/ops；未 install；未并 main、未重建 9122；未跑独立观察者。
+
+## R42 skills real-data surface (SKL4)
+
+- Base: `d26a66d5` (web/src 01175128). Write domain: `web/src/modules/skills/**` + this DONE.
+- Endpoint truth (9122, auth cookie, value never printed):
+  - `GET /agent-api/api/skills` -> **200 application/json**, `{"items":[],"asOf":"2026-11-19T22:15:01.655Z"}` (true empty, 0 rows).
+  - `GET /api/skills` -> **200 text/html** (SPA shell), not a data API.
+- Page: columns 技能名 / 来源/类型 / 启用态 / 最近更新 / 共享范围; source/status humanized with unknown raw -> 其他来源/待核实; missing `—` + reason; BJT to minute; no fake 0.
+- 403 and 404 share the same 「技能读口未接入」 body, GAP-SKL4-01 only in `title`, `#/approvals` apply link.
+- Four states content-switch: `?state=loading|empty|error&rid=...`; error shows copyable request id + retry and clearing preview re-fetches; ready reads live.
+- Zero write: `skl4-planned-create` disabled, `data-planned`, `aria-disabled`, reason in `title`; no other write controls.
+- Tests: `npx vitest run src/modules/skills` -> **1 file / 11 tests passed**. Full suite -> **131 files / 1399 passed**.
+- `tsc -b . --noEmit`: only baseline `src/modules/employees/EmployeesModulePage.test.tsx(73,5) TS18047`; zero skills errors.
+- Build to `/tmp/skills-build` blocked by that same baseline typecheck (BUILD_EXIT 2); no 9122 rebuild.
+- DOM (ready, two rows): 1440/1280/375 `bodySW==bodyCW==pageSW==pageCW==vw`; 375 table scroll 760/373 inside card only. Screenshots `docs/_artifacts/gov/shots/skl4-{1440,1280,375}.png`.
+- Boundaries: no App/shell/routes/registry/manifest/package·lock/web scripts/ops changes; no install; no main merge; no observer.

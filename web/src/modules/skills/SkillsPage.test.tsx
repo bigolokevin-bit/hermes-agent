@@ -53,14 +53,15 @@ describe("SkillsPage", () => {
     await render();
 
     const headers = [...container.querySelectorAll("th")].map((node) => node.textContent);
-    expect(headers).toEqual(["名称", "来源", "状态", "更新时间", "共享范围"]);
+    expect(headers).toEqual(["技能名", "来源/类型", "启用态", "最近更新", "共享范围"]);
     expect(text()).toContain("资料整理");
     expect(text()).toContain("团队共享");
-    expect(text()).toContain("台账列表未提供来源");
-    expect(text()).toContain("台账列表未提供状态");
+    expect(text()).toContain("类型：团队共享");
+    expect(text()).toContain("台账列表未提供启用状态");
     expect(text()).toContain("台账列表未提供更新时间");
     expect(text()).toContain("质检");
     expect(text()).toContain("平台内置");
+    expect(text()).toContain("正常");
     expect(text()).toContain("2026-11-19 13:30");
     expect(text()).toContain("读取于 2026-11-19 14:00");
   });
@@ -89,26 +90,79 @@ describe("SkillsPage", () => {
     fetchJsonStrict.mockResolvedValue({ items: [] });
     await render();
     expect(container.querySelector('[data-testid="skl4-empty"]')).toBeTruthy();
-    expect(text()).toContain("不显示 0 个技能");
+    expect(text()).toContain("不补样例行");
   });
 
   it("puts the GAP id only in the title when the endpoint is missing", async () => {
     fetchJsonStrict.mockRejectedValue(new ApiError("missing", { status: 404, body: "", url: "/agent-api/api/skills" }));
     await render();
-    expect(text()).toContain("技能数据还没有接入");
+    expect(text()).toContain("技能读口未接入");
     expect(document.querySelector('[data-testid="skl4-error"] p[title]')?.getAttribute("title")).toBe("GAP-SKL4-01");
     expect(text()).not.toContain("GAP-");
     expect(text()).not.toContain("404");
     expect(container.querySelector('[data-testid="skl4-retry"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="skl4-apply"]')).toBeTruthy();
+  });
+
+  it("renders 403 and 404 with the same neutral body and no status code", async () => {
+    fetchJsonStrict.mockRejectedValue(new ApiError("denied", { status: 403, body: "", url: "/agent-api/api/skills" }));
+    await render();
+    expect(text()).toContain("技能读口未接入");
+    expect(text()).toContain("当前账号无权查看");
+    expect(text()).not.toContain("403");
+    expect(document.querySelector('[data-testid="skl4-error"] p[title]')?.getAttribute("title")).toBe("GAP-SKL4-01");
+    expect(container.querySelector('[data-testid="skl4-apply"]')).toBeTruthy();
+  });
+
+  it("keeps the row testid and humanizes source and status", async () => {
+    fetchJsonStrict.mockResolvedValue({
+      items: [{ skillId: "skill-12345678", name: "资料整理", source: "builtin", status: "disabled", scope: "tenant-shared" }],
+    });
+    await render();
+    const row = container.querySelector('[data-testid="skl4-row-skill-12345678"]');
+    expect(row).toBeTruthy();
+    expect(row?.textContent).toContain("平台内置");
+    expect(row?.textContent).toContain("停用");
   });
 
   it("previews the error fixture without fetching and marks data-fixture", async () => {
-    window.history.replaceState({}, "", "/?state=error");
+    window.history.replaceState({}, "", "/?state=error&rid=abc12345");
     await act(async () => { root.render(<SkillsPage />); });
     await act(async () => {});
     expect(fetchJsonStrict).not.toHaveBeenCalled();
     expect(container.querySelector('[data-testid="skl4-page"]')?.getAttribute("data-fixture")).toBe("error");
     expect(container.querySelector('[data-testid="skl4-error"]')).toBeTruthy();
+    expect(text()).toContain("abc12345");
+    expect(container.querySelector('[data-testid="skl4-error"] button[aria-label="复制请求编号"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="skl4-apply"]')).toBeTruthy();
+  });
+
+  it("switches loading and empty preview content without fetching", async () => {
+    for (const state of ["loading", "empty"] as const) {
+      window.history.replaceState({}, "", `/?state=${state}`);
+      await act(async () => { root.render(<SkillsPage />); });
+      await act(async () => {});
+      expect(fetchJsonStrict).not.toHaveBeenCalled();
+      expect(container.querySelector(`[data-testid="skl4-${state}"]`)).toBeTruthy();
+      expect(text()).toContain(state === "loading" ? "正在读取技能" : "还没有已登记的技能");
+      act(() => root.unmount());
+      root = createRoot(container);
+    }
+  });
+
+  it("leaves the error preview and retries the live read", async () => {
+    window.history.replaceState({}, "", "/?state=error&rid=abc12345");
+    fetchJsonStrict.mockResolvedValue({ items: [{ skillId: "s2", name: "恢复后的技能", status: "active" }] });
+    await act(async () => { root.render(<SkillsPage />); });
+    await act(async () => {});
+    expect(fetchJsonStrict).not.toHaveBeenCalled();
+    const retry = container.querySelector('[data-testid="skl4-retry"]') as HTMLButtonElement | null;
+    await act(async () => { retry?.click(); });
+    await act(async () => {});
+    expect(window.location.search).not.toContain("state=");
+    expect(fetchJsonStrict).toHaveBeenCalledWith("/agent-api/api/skills");
+    expect(text()).toContain("恢复后的技能");
+    expect(container.querySelector('[data-testid="skl4-error"]')).toBeNull();
   });
 
   it("leaks no engineering names or raw ids into the page", async () => {
