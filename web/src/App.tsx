@@ -114,7 +114,13 @@ const VersionConsolePage = lazy(() =>
   import("@/modules/version/VersionPage").then((m) => ({ default: m.VersionPage })),
 );
 // Wave-2 module pages (lanes T05/T11/T18-21/T25-30) — same live-map policy.
-const UsageConsolePage = lazy(() => import("@/modules/duty/UsagePage"));
+/* R15 item 2: the gov metrics module (met5-* compatibility table, 7×24
+ * heat) is the usage tab's page body; /metrics compat-redirects here. */
+const MetricsConsolePage = lazy(() =>
+  import("@/modules/metrics/MetricsModulePage").then((m) => ({
+    default: m.MetricsModulePage,
+  })),
+);
 const PeopleConsolePage = lazy(() => import("@/modules/people/PeopleModulePage"));
 const OrgConsolePage = lazy(() => import("@/modules/org/OrgModulePage"));
 /* R13 item 1: governance page bodies delivered by lane gov — default
@@ -1177,7 +1183,7 @@ export default function App() {
                         element={
                           <ConsoleModulePage
                             module="overview"
-                            live={{ duty: <DutyConsolePage />, usage: <UsageConsolePage /> }}
+                            live={{ duty: <DutyConsolePage />, usage: <MetricsConsolePage /> }}
                           />
                         }
                       />
@@ -1292,6 +1298,20 @@ export default function App() {
                       <Route
                         path="/models"
                         element={<Navigate to="/capabilities?tab=models" replace />}
+                      />
+                      {/* R15 item 1: /skills renders the gov skills module
+                        (skl4-*, real data) through its capabilities tab,
+                        mirroring routes.ts — not the upstream English shell. */}
+                      <Route
+                        path="/skills"
+                        element={<Navigate to="/capabilities?tab=skills" replace />}
+                      />
+                      {/* R15 item 2: /metrics compat-redirects to the usage
+                        tab, whose live slot now carries the gov metrics
+                        module (met5-*), mirroring routes.ts #/metrics. */}
+                      <Route
+                        path="/metrics"
+                        element={<Navigate to="/overview?tab=usage" replace />}
                       />
                       {!overriddenPaths.has("/employees/:employeeId") && (
                         <>
