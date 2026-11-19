@@ -1,63 +1,148 @@
 /**
- * tools & MCP data layer — T27 (lane console-aud closeout).
+ * 工具与 MCP — read-side adapters.
  *
- * One real read, no mock layer, no fallback rows:
- *   `GET /agent-api/api/mcp/servers`
+ * Two real Hermes dashboard reads, both same-origin and authenticated by the
+ * app's normal fetchJSON path (session token in loopback, cookie in gated mode):
+ *   GET /api/tools/toolsets
+ *   GET /api/mcp/servers
  *
- * The `/api/` segment is part of the route: the console BFF only forwards
- * `/agent-api/api/…`, so dropping it addresses a static path instead. The local
- * BFF has not registered this proxy yet (GAP-04, docs/_artifacts/caps/DONE.md),
- * which is exactly why nothing here may invent a server: an unregistered route
- * answers 404 and the screen says so, it does not answer with a demo row.
- *
- * The BFF forwards the upstream shape verbatim and this repo carries no sample
- * of it, so every field is read defensively. An absent value stays absent and
- * renders 「—」 plus the reason — never `0`, never an empty string, never a
- * guessed name. Raw ids, upstream status tokens and field names go to `title`
- * attributes and the collapsed 「技术详情」, not to the sentence layer.
+ * No fixture is ever painted for a successful answer. The only fixture is the
+ * clearly marked field example shown when BOTH routes are absent (404), and it
+ * carries data-fixture + a GAP title; it never impersonates a live row.
  */
 import { ApiError, errorMessage } from "@/lib/api-error";
 import { fetchJSON } from "@/lib/api";
 
-export const SERVERS_PATH = "/agent-api/api/mcp/servers";
-
-/** GAP that names why this pane has no live data source yet. */
+export const TOOLSETS_PATH = "/api/tools/toolsets";
+export const SERVERS_PATH = "/api/mcp/servers";
 export const GAP = "GAP-04";
 
-/** Page size asked for; the denominator on screen is stated against it. */
-export const PAGE_LIMIT = 50;
+export type ToolStatus = "enabled" | "disabled" | "unknown";
+export type CredentialState = "configured" | "missing" | "unknown";
 
-export type ServerStatus = "available" | "unavailable" | "unknown";
-
-export interface ServerRow {
-  /** Stable React key. Never shown. */
+export interface ToolRow {
   key: string;
-  /** Human name as the upstream sent it, or null when it sent none. */
-  name: string | null;
-  status: ServerStatus;
-  /** Human sentence for why it is down; null when the upstream said nothing. */
-  reason: string | null;
-  /** Raw check instant (wire form); rendered through `beijingMinute` only. */
-  checkedAt: string | null;
-  /** Upstream id/handle — `title` and 「技术详情」 only. */
+  name: string;
+  nameReason: string | null;
+  type: string;
+  typeReason: string | null;
+  status: ToolStatus;
+  statusRaw: string | null;
+  statusReason: string | null;
+  credential: CredentialState;
+  credentialRaw: string | null;
+  credentialReason: string | null;
+  lastUsed: string | null;
+  lastUsedReason: string | null;
   rawId: string | null;
-  /** Upstream status token — 「技术详情」 only. */
-  rawStatus: string | null;
-  /** The wire-shaped reason the human layer folded away — 「技术详情」 only. */
-  rawReason: string | null;
+  detail: string[];
+  source: "toolset" | "mcp";
 }
 
-export type ServersRead =
-  | {
-      kind: "rows";
-      rows: ServerRow[];
-      /** Total the answer declared, if it declared one. null renders 「—」. */
-      declaredTotal: number | null;
-      nextCursor: string | null;
-      /** Rows the answer carried but that could not be read at all. */
-      unreadable: number;
-    }
-  | { kind: "shape" };
+export interface FixtureRead {
+  kind: "fixture";
+}
+
+export interface RowsRead {
+  kind: "rows";
+  rows: ToolRow[];
+  toolsetRows: number;
+  mcpRows: number;
+}
+
+export type ToolRead = RowsRead | FixtureRead;
+
+const TOOLSET_LABEL: Record<string, string> = {
+  web: "网页搜索与抓取",
+  browser: "浏览器自动化",
+  terminal: "终端与进程",
+  file: "文件操作",
+  code_execution: "代码执行",
+  vision: "图像分析",
+  video: "视频分析",
+  image_gen: "图像生成",
+  video_gen: "视频生成",
+  x_search: "X 搜索",
+  tts: "文本转语音",
+  stt: "语音转文字",
+  skills: "技能",
+  todo: "任务规划",
+  kanban: "看板",
+  memory: "记忆",
+  context_engine: "上下文引擎",
+  session_search: "会话检索",
+  connections: "连接管理",
+  clarify: "澄清提问",
+  delegation: "任务委派",
+  cronjob: "定时任务",
+  discord: "Discord 参与",
+  discord_admin: "Discord 管理",
+  computer_use: "电脑操作",
+  a2a: "A2A 协作",
+};
+
+const TOOL_LABEL: Record<string, string> = {
+  web_extract: "网页内容提取",
+  web_search: "网页搜索",
+  browser_cdp: "浏览器控制",
+  browser_dialog: "浏览器对话框",
+  browser_exec: "浏览器执行",
+  browser_vault: "浏览器凭据",
+  process_manage: "进程管理",
+  terminal: "终端",
+  patch: "文件补丁",
+  read_file: "读取文件",
+  search_files: "搜索文件",
+  write_file: "写入文件",
+  execute_code: "执行代码",
+  vision_analyze: "图像分析",
+  video_analyze: "视频分析",
+  image_generate: "生成图像",
+  video_generate: "生成视频",
+  xai_video_edit: "视频编辑",
+  xai_video_extend: "视频延长",
+  x_search: "X 搜索",
+  text_to_speech: "文本转语音",
+  skill_manage: "技能管理",
+  skill_view: "查看技能",
+  skills_list: "技能列表",
+  todo_list: "待办列表",
+  kanban_attach: "看板挂接",
+  kanban_attach_url: "看板挂接链接",
+  kanban_attachments: "看板附件",
+  kanban_block: "看板阻塞",
+  kanban_comment: "看板评论",
+  kanban_complete: "看板完成",
+  kanban_create: "创建看板",
+  kanban_heartbeat: "看板心跳",
+  kanban_link: "看板关联",
+  kanban_list: "看板列表",
+  kanban_request_changes: "看板要求修改",
+  kanban_request_review: "看板请求复核",
+  kanban_schedule: "看板排期",
+  kanban_show: "查看看板",
+  kanban_unblock: "看板解除阻塞",
+  memory: "记忆",
+  session_search: "会话检索",
+  manage_connections: "连接管理",
+  clarify: "澄清提问",
+  delegate_task: "委派任务",
+  cronjob_manage: "定时任务管理",
+  discord: "Discord 参与",
+  discord_admin: "Discord 管理",
+  computer_use: "电脑操作",
+  a2a_call: "A2A 调用",
+  a2a_discover: "A2A 发现",
+  a2a_history: "A2A 历史",
+  a2a_list: "A2A 列表",
+  a2a_orchestrate: "A2A 编排",
+};
+
+const TRANSPORT_LABEL: Record<string, string> = {
+  http: "HTTP 服务",
+  stdio: "本地进程",
+  unknown: "传输方式未知",
+};
 
 function record(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === "object" && !Array.isArray(value)
@@ -71,6 +156,13 @@ function text(value: unknown): string | null {
   return null;
 }
 
+function bool(value: unknown): boolean | null {
+  if (typeof value === "boolean") return value;
+  if (value === 1 || value === "1" || value === "true") return true;
+  if (value === 0 || value === "0" || value === "false") return false;
+  return null;
+}
+
 function pick(rec: Record<string, unknown>, keys: readonly string[]): string | null {
   for (const key of keys) {
     const found = text(rec[key]);
@@ -79,146 +171,6 @@ function pick(rec: Record<string, unknown>, keys: readonly string[]): string | n
   return null;
 }
 
-function count(value: unknown): number | null {
-  if (typeof value === "number") return Number.isFinite(value) && value >= 0 ? value : null;
-  const raw = text(value);
-  if (!raw || !/^\d+$/.test(raw)) return null;
-  return Number.parseInt(raw, 10);
-}
-
-const NAME_KEYS = ["displayName", "display_name", "name", "title", "label", "serverName", "server_name"] as const;
-const ID_KEYS = ["id", "serverId", "server_id", "slug", "key", "name", "url", "endpoint"] as const;
-const STATUS_KEYS = ["status", "state", "connectionStatus", "connection_status", "health"] as const;
-const REASON_KEYS = [
-  "reason",
-  "message",
-  "detail",
-  "error",
-  "lastError",
-  "last_error",
-  "errorMessage",
-  "error_message",
-  "statusMessage",
-] as const;
-const CHECKED_KEYS = [
-  "lastCheckedAt",
-  "last_checked_at",
-  "checkedAt",
-  "checked_at",
-  "lastSeen",
-  "last_seen",
-  "updatedAt",
-  "updated_at",
-  "connectedAt",
-  "connected_at",
-] as const;
-
-/** The upstream spells liveness five different ways; anything else is unknown. */
-function statusOf(value: string | null): { status: ServerStatus; token: string | null } {
-  const token = value?.toLowerCase().replace(/[\s-]+/g, "_") ?? null;
-  if (!token) return { status: "unknown", token: null };
-  if (["available", "connected", "online", "ok", "healthy", "up", "active", "ready"].includes(token)) {
-    return { status: "available", token: value };
-  }
-  if (["unavailable", "disconnected", "offline", "down", "error", "failed", "unhealthy", "degraded"].includes(token)) {
-    return { status: "unavailable", token: value };
-  }
-  return { status: "unknown", token: value };
-}
-
-/**
- * A reason sentence a person can act on. The upstream's own words win when it
- * has them; a machine handle or an HTTP-looking string is folded away instead,
- * because putting it on the screen would be engineering language in the human
- * layer. When it said nothing, the caller renders 「—」 with the reason.
- */
-function reasonOf(rec: Record<string, unknown>): string | null {
-  const raw = pick(rec, REASON_KEYS);
-  if (raw === null) return null;
-  if (/^[{[]/.test(raw)) return null;
-  if (/^\d{3}$/.test(raw)) return null;
-  if (/^[a-z][a-z0-9_.-]{4,}$/i.test(raw) && !/[。，、；\s]/.test(raw)) return null;
-  return raw.length > 200 ? `${raw.slice(0, 200)}…` : raw;
-}
-
-/** Raw reason, kept for 「技术详情」 when the human layer had to fold it away. */
-function rawReasonOf(rec: Record<string, unknown>): string | null {
-  return pick(rec, REASON_KEYS);
-}
-
-function rowOf(value: unknown, index: number): ServerRow | null {
-  const rec = record(value);
-  if (!rec) return null;
-  const name = pick(rec, NAME_KEYS);
-  const rawId = pick(rec, ID_KEYS);
-  // A row that is neither named nor identified is not a row; it is counted.
-  if (!name && !rawId) return null;
-  const { status } = statusOf(pick(rec, STATUS_KEYS));
-  const checked = pick(rec, CHECKED_KEYS);
-  return {
-    key: rawId ?? `row-${index}`,
-    name,
-    status,
-    reason: status === "available" ? null : reasonOf(rec),
-    checkedAt: checked,
-    rawId,
-    rawStatus: pick(rec, STATUS_KEYS),
-    rawReason: status === "available" ? null : rawReasonOf(rec),
-  };
-}
-
-/** The array of servers, wherever the answer chose to hang it. */
-function rowsOf(payload: unknown): unknown[] | null {
-  if (Array.isArray(payload)) return payload;
-  const outer = record(payload);
-  if (!outer) return null;
-  for (const key of ["servers", "items", "data", "result", "mcpServers", "mcp_servers", "list"]) {
-    const value = outer[key];
-    if (Array.isArray(value)) return value;
-    const nested = record(value);
-    if (nested) {
-      for (const inner of ["servers", "items", "list"]) {
-        if (Array.isArray(nested[inner])) return nested[inner] as unknown[];
-      }
-    }
-  }
-  return null;
-}
-
-/**
- * The one read of the server list. `shape` means the answer was not a list of
- * servers at all: that is a failure the page reports, never an empty ledger and
- * never a row assembled from what seemed likely.
- */
-export function readServers(payload: unknown): ServersRead {
-  const list = rowsOf(payload);
-  if (list === null) return { kind: "shape" };
-  const rows: ServerRow[] = [];
-  let unreadable = 0;
-  list.forEach((value, index) => {
-    const row = rowOf(value, index);
-    if (row) rows.push(row);
-    else unreadable += 1;
-  });
-  const outer = record(payload);
-  const declared = outer ? count(outer["total"] ?? outer["totalCount"] ?? outer["total_count"] ?? outer["count"]) : null;
-  const cursor = outer ? pick(outer, ["nextCursor", "next_cursor", "cursor"]) : null;
-  return { kind: "rows", rows, declaredTotal: declared, nextCursor: cursor, unreadable };
-}
-
-/** The route, exactly as the task names it, `/api/` segment included. */
-export function serversUrl(limit = PAGE_LIMIT): string {
-  return `${SERVERS_PATH}?limit=${encodeURIComponent(String(limit))}`;
-}
-
-export async function fetchServers(): Promise<ServersRead> {
-  return readServers(await fetchJSON<unknown>(serversUrl()));
-}
-
-/**
- * Beijing wall clock to the minute. `null` means the value was not an instant
- * at all, and the caller writes 「—」 plus that reason rather than a time.
- */
 export function beijingMinute(value: string | null): string | null {
   if (!value) return null;
   const raw = value.trim();
@@ -227,7 +179,7 @@ export function beijingMinute(value: string | null): string | null {
   else if (/^\d{11,13}$/.test(raw)) date = new Date(Number(raw));
   else if (/^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2})?/.test(raw)) date = new Date(raw);
   if (!date || Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat("zh-CN", {
+  return new Intl.DateTimeFormat("sv-SE", {
     timeZone: "Asia/Shanghai",
     year: "numeric",
     month: "2-digit",
@@ -235,19 +187,146 @@ export function beijingMinute(value: string | null): string | null {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
-  })
-    .format(date)
-    .replace(/\//g, "-");
+  }).format(date);
 }
 
-/* ------------------------------------------------------------------ *
- * Failures — the four states the page owes a person
- * ------------------------------------------------------------------ */
+export const STATUS_LABEL: Record<ToolStatus, string> = {
+  enabled: "启用",
+  disabled: "停用",
+  unknown: "待核实",
+};
+
+export const CREDENTIAL_LABEL: Record<CredentialState, string> = {
+  configured: "已配置",
+  missing: "未配置",
+  unknown: "未知",
+};
+
+function credentialOf(value: boolean | null): { state: CredentialState; raw: string | null; reason: string | null } {
+  if (value === true) return { state: "configured", raw: "true", reason: null };
+  if (value === false) return { state: "missing", raw: "false", reason: null };
+  return { state: "unknown", raw: null, reason: "接口没有说明凭据是否已配置。" };
+}
+
+function toolsetRows(value: unknown, index: number): ToolRow[] {
+  const rec = record(value);
+  if (!rec) return [];
+  const rawName = pick(rec, ["name", "toolset", "id"]);
+  const label = pick(rec, ["label", "displayName", "display_name"]);
+  if (!rawName && !label) return [];
+  const key = rawName ?? label ?? `toolset-${index}`;
+  const groupName = (rawName ? TOOLSET_LABEL[rawName] : null) ?? label ?? rawName ?? "工具集";
+  const enabled = bool(rec.enabled ?? rec.available);
+  const configured = bool(rec.configured);
+  const tools = Array.isArray(rec.tools) ? rec.tools.map(text).filter((x): x is string => x !== null) : [];
+  const platform = pick(rec, ["platform_label", "platform"]);
+  const cred = credentialOf(configured);
+  const base = {
+    type: groupName,
+    typeReason: null,
+    status: (enabled === true ? "enabled" : enabled === false ? "disabled" : "unknown") as ToolRow["status"],
+    statusRaw: enabled === null ? null : String(enabled),
+    statusReason: enabled === null ? "接口没有说明这个工具集是否启用。" : null,
+    credential: cred.state,
+    credentialRaw: cred.raw,
+    credentialReason: cred.reason,
+    lastUsed: null,
+    lastUsedReason: "接口没有提供最近调用时间。",
+    source: "toolset" as const,
+  };
+  const detailBase = [
+    `工具集标识：${rawName ?? key}`,
+    platform ? `适用平台：${platform}` : null,
+    `包含工具：${tools.length ? tools.join("、") : "接口没有列出"}`,
+  ].filter((line): line is string => line !== null);
+
+  if (tools.length === 0) return [];
+
+  return tools.map((tool) => ({
+    ...base,
+    key: `toolset:${key}:${tool}`,
+    name: TOOL_LABEL[tool] ?? tool.replace(/_/g, " "),
+    nameReason: null,
+    rawId: tool,
+    detail: detailBase,
+  }));
+}
+
+function serverRow(value: unknown, index: number): ToolRow | null {
+  const rec = record(value);
+  if (!rec) return null;
+  const rawName = pick(rec, ["name", "displayName", "display_name", "title", "label", "id"]);
+  if (!rawName) return null;
+  const enabled = bool(rec.enabled);
+  const transport = pick(rec, ["transport", "type"]) ?? "unknown";
+  const auth = pick(rec, ["auth"]);
+  const env = record(rec.env);
+  const headers = record(rec.headers);
+  const credentialsDeclared = auth !== null || (env && Object.keys(env).length > 0) || (headers && Object.keys(headers).length > 0);
+  const credential = credentialsDeclared
+    ? { state: "configured" as const, raw: auth ?? "declared", reason: null }
+    : { state: "unknown" as const, raw: null, reason: "接口没有说明这个连接是否需要凭据。" };
+  const detail = [
+    `连接标识：${pick(rec, ["id", "serverId", "server_id"]) ?? rawName}`,
+    `传输方式：${transport}`,
+    auth ? "认证方式：已在服务端登记" : null,
+    `来源：${pick(rec, ["source"]) ?? "配置"}`,
+  ].filter((line): line is string => line !== null);
+  return {
+    key: `mcp:${rawName}:${index}`,
+    name: rawName,
+    nameReason: null,
+    type: `MCP · ${TRANSPORT_LABEL[transport.toLowerCase()] ?? "其他传输"}`,
+    typeReason: null,
+    status: enabled === true ? "enabled" : enabled === false ? "disabled" : "unknown",
+    statusRaw: enabled === null ? null : String(enabled),
+    statusReason: enabled === null ? "接口没有说明这个连接是否启用。" : null,
+    credential: credential.state,
+    credentialRaw: credential.raw,
+    credentialReason: credential.reason,
+    lastUsed: null,
+    lastUsedReason: "接口没有提供最近调用时间。",
+    rawId: rawName,
+    detail,
+    source: "mcp",
+  };
+}
+
+export function readToolsets(payload: unknown): ToolRow[] | null {
+  if (!Array.isArray(payload)) return null;
+  const rows: ToolRow[] = [];
+  payload.forEach((value, index) => rows.push(...toolsetRows(value, index)));
+  return rows;
+}
+
+export function readServers(payload: unknown): ToolRow[] | null {
+  const outer = record(payload);
+  if (!outer) return null;
+  const raw = outer.servers ?? outer.items ?? outer.data;
+  if (!Array.isArray(raw)) return null;
+  const rows: ToolRow[] = [];
+  raw.forEach((value, index) => {
+    const row = serverRow(value, index);
+    if (row) rows.push(row);
+  });
+  return rows;
+}
+
+export async function fetchToolsets(): Promise<ToolRow[]> {
+  const rows = readToolsets(await fetchJSON<unknown>(TOOLSETS_PATH));
+  if (rows === null) throw new Error("工具集回答不是一份清单");
+  return rows;
+}
+
+export async function fetchServers(): Promise<ToolRow[]> {
+  const rows = readServers(await fetchJSON<unknown>(SERVERS_PATH));
+  if (rows === null) throw new Error("MCP 连接回答不是一份清单");
+  return rows;
+}
 
 export interface FailureInfo {
   status: number;
   requestId: string | null;
-  /** Raw multi-line detail for 「技术详情」 and `title` only. */
   technical: string | null;
 }
 
@@ -256,47 +335,115 @@ export function failureInfo(err: unknown): FailureInfo {
   return { status: -1, requestId: null, technical: err instanceof Error ? err.message : String(err) };
 }
 
-/** 403 and 404 are the same body: neither is reachable for the person reading. */
 export function isDenied(status: number): boolean {
-  return status === 403 || status === 404;
+  return status === 403;
+}
+
+export function isMissingRoute(status: number): boolean {
+  return status === 404;
 }
 
 export interface FailureCopy {
-  /** What the panel says. Never a status code, a route or a field name. */
   sentence: string;
   requestId: string | null;
   technical: string | null;
 }
 
-/** Human wording per status; anything unnameable falls back to the service's own sentence. */
 export function readFailure(err: unknown, info: FailureInfo): FailureCopy {
-  const { status } = info;
+  const status = info.status;
   let sentence: string;
   if (status === 0 || status === -1) sentence = "连不上工具与 MCP 的服务，请确认它已经启动，然后重试。";
-  else if (status === 400) sentence = "这次读取的筛选条件服务端没有接受，没能返回连接列表。请重试一次。";
-  else if (status === 401) sentence = "登录状态已经失效，请刷新页面重新登录后再看这份连接清单。";
+  else if (status === 400) sentence = "这次读取的筛选条件服务端没有接受，没能返回清单。请重试一次。";
+  else if (status === 401) sentence = "登录状态已经失效，请刷新页面重新登录后再看这份清单。";
   else if (status === 429) sentence = "请求太频繁了，请稍等一会儿再试。";
   else if (status >= 500) sentence = "工具与 MCP 的服务在处理时出了错，请稍后重试。";
-  else sentence = errorMessage(err) ?? "读取工具与 MCP 连接时出了问题，请稍后重试。";
+  else sentence = errorMessage(err) ?? "读取工具与 MCP 清单时出了问题，请稍后重试。";
   return { sentence, requestId: info.requestId, technical: info.technical };
 }
 
-/** The answer arrived but is not a list of servers: a failure, not an empty list. */
 export function shapeFailure(): FailureCopy {
   return {
-    sentence: "服务回的内容不是一份连接清单，这里没能读出任何 MCP 连接。",
+    sentence: "服务回的内容不是工具或 MCP 连接清单，这里没能读出任何一条。",
     requestId: null,
     technical: "unexpected payload shape",
   };
 }
 
-/** The request-id line, shared so the wording never drifts between panels. */
 export const requestIdLine = (id: string | null): string =>
   id ? `请求编号：${id}` : "本次请求未记录编号，可复制时间与操作路径反馈";
 
-/** The status word on the badge. Unknown is 「—」, never a made-up state. */
-export const STATUS_LABEL: Record<ServerStatus, string> = {
-  available: "正常",
-  unavailable: "不可用",
-  unknown: "—",
-};
+/** Clearly marked field example; only for the both-routes-404 case. */
+export const FIXTURE_ROWS: ToolRow[] = [
+  {
+    key: "fixture:web",
+    name: "网页搜索与抓取",
+    nameReason: null,
+    type: "工具集",
+    typeReason: null,
+    status: "enabled",
+    statusRaw: "true",
+    statusReason: null,
+    credential: "configured",
+    credentialRaw: "true",
+    credentialReason: null,
+    lastUsed: null,
+    lastUsedReason: "示例行：接口未接入，没有最近调用时间。",
+    rawId: "web",
+    detail: ["字段示例", "工具集标识：web", "包含工具：web_search、web_extract"],
+    source: "toolset",
+  },
+  {
+    key: "fixture:kanban",
+    name: "看板",
+    nameReason: null,
+    type: "工具集",
+    typeReason: null,
+    status: "disabled",
+    statusRaw: "false",
+    statusReason: null,
+    credential: "missing",
+    credentialRaw: "false",
+    credentialReason: null,
+    lastUsed: null,
+    lastUsedReason: "示例行：接口未接入，没有最近调用时间。",
+    rawId: "kanban",
+    detail: ["字段示例", "工具集标识：kanban", "包含工具：kanban_create、kanban_list"],
+    source: "toolset",
+  },
+  {
+    key: "fixture:mcp-http",
+    name: "文档检索",
+    nameReason: null,
+    type: "MCP · HTTP 服务",
+    typeReason: null,
+    status: "enabled",
+    statusRaw: "true",
+    statusReason: null,
+    credential: "configured",
+    credentialRaw: "declared",
+    credentialReason: null,
+    lastUsed: null,
+    lastUsedReason: "示例行：接口未接入，没有最近调用时间。",
+    rawId: "docs-search",
+    detail: ["字段示例", "连接标识：docs-search", "传输方式：http"],
+    source: "mcp",
+  },
+  {
+    key: "fixture:mcp-unknown",
+    name: "日程连接",
+    nameReason: null,
+    type: "MCP · 本地进程",
+    typeReason: null,
+    status: "unknown",
+    statusRaw: null,
+    statusReason: "示例行：接口没有说明启用状态。",
+    credential: "unknown",
+    credentialRaw: null,
+    credentialReason: "示例行：接口没有说明凭据状态。",
+    lastUsed: null,
+    lastUsedReason: "示例行：接口未接入，没有最近调用时间。",
+    rawId: "calendar",
+    detail: ["字段示例", "连接标识：calendar", "传输方式：stdio"],
+    source: "mcp",
+  },
+];
