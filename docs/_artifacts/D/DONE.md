@@ -1048,3 +1048,10 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 九件全 exit=0 盖 53a3ef4c：ia-html/react ok{51,22,1,8}｜lint-fake v=[]｜lint-reuse v=0 exempt=1 chat→T40（stdout 抄件）｜crawl-anon DL0/CE0/PE0 routesCE51(401归因)｜crawl-auth routesCE27（26→27 波动，环境项）｜state-quad 20/20 文本重建注 source。
 - shots main(auth) 102/102 failures=[] oversize=[] ceAuth=login-state obs=2 仅观测（#/employees/:employeeId、#/identity，不入 ok）distinctMainHeads=26 rootBaseline textLen=729 真数据；三键全值+拍后 curl 复证未漂。shots-anon auxiliary=true 102/102 mode=anon obs=2（#/approvals?tab=release、#/employees）envOnly=51。anon png 同名覆盖 pngs=102。
 - 环境：9122 v4_proxy 95667 未动、caddy 8183 28034、8092 pid 95651；web/src 未碰；他人脏零沾染；auth-state 昨夜 23:5x 版窗内。
+
+## 九十三轮·波终代次九件重章 @ b71c4535（2026-11-20 06:0x，wave-13）
+
+- 代次：b71c4535『merge(lane/console-ui2): wave-13』（五线并入，远端 b71c45358d5a）；entry index-CtwYCCz8.js 166638B sha 6ea23b5f8a8751c5…be41b3f；三向互证过（盘==9122(95667)==8183），21/21 路由 200；上一代 53a3ef4c 作废不重做。
+- 九件全 exit=0 盖 b71c4535：ia-html/react ok{51,22,1,8}｜lint-fake v=[]｜lint-reuse v=0 exempt=1 chat→T40（stdout 抄件）｜crawl-anon DL0/CE0/PE0 routesCE51(401归因)｜crawl-auth routesCE26｜state-quad 20/20 文本重建注 source。
+- shots main(auth) 102/102 failures=[] oversize=[] ceAuth=login-state **obs=0（登录面全干净）** distinctMainHeads=25 rootBaseline textLen=729 真数据 envOnly=26；三键全值+拍后 curl 复证未漂。shots-anon auxiliary=true 102/102 mode=anon obs=2（#/work、#/work?tab=cron）envOnly=51。anon png 同名覆盖 pngs=102。
+- 环境：9122 v4_proxy 95667、caddy 8183 28034、8092 95651 均未动；web/src 未碰；他人脏零沾染；auth-state 昨夜 23:5x 版窗内。

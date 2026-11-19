@@ -14,7 +14,7 @@
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 26,
+  "distinctMainHeads": 25,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -141,7 +141,7 @@
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "1440",
-      "chars": 1032,
+      "chars": 128,
       "hasMainEl": true
     },
     {
@@ -153,13 +153,13 @@
     {
       "route": "#/capabilities?tab=models",
       "viewport": "1440",
-      "chars": 104,
+      "chars": 517,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=models",
       "viewport": "375",
-      "chars": 375,
+      "chars": 517,
       "hasMainEl": true
     },
     {
@@ -201,13 +201,13 @@
     {
       "route": "#/employees/:employeeId",
       "viewport": "1440",
-      "chars": 36,
+      "chars": 42,
       "hasMainEl": true
     },
     {
       "route": "#/employees/:employeeId",
       "viewport": "375",
-      "chars": 42,
+      "chars": 115,
       "hasMainEl": true
     },
     {
@@ -267,7 +267,7 @@
     {
       "route": "#/identity",
       "viewport": "375",
-      "chars": 375,
+      "chars": 377,
       "hasMainEl": true
     },
     {
@@ -393,7 +393,7 @@
     {
       "route": "#/knowledge?tab=ingest",
       "viewport": "1440",
-      "chars": 747,
+      "chars": 276,
       "hasMainEl": true
     },
     {
@@ -405,13 +405,13 @@
     {
       "route": "#/knowledge?tab=retrieval",
       "viewport": "1440",
-      "chars": 469,
+      "chars": 497,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=retrieval",
       "viewport": "375",
-      "chars": 469,
+      "chars": 497,
       "hasMainEl": true
     },
     {
@@ -465,7 +465,7 @@
     {
       "route": "#/overview",
       "viewport": "1440",
-      "chars": 729,
+      "chars": 1276,
       "hasMainEl": true
     },
     {
@@ -585,37 +585,37 @@
     {
       "route": "#/work",
       "viewport": "1440",
-      "chars": 1921,
+      "chars": 1956,
       "hasMainEl": true
     },
     {
       "route": "#/work",
       "viewport": "375",
-      "chars": 205,
+      "chars": 1956,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=board&view=cron",
       "viewport": "1440",
-      "chars": 1921,
+      "chars": 1956,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=board&view=cron",
       "viewport": "375",
-      "chars": 1921,
+      "chars": 1956,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=cron",
       "viewport": "1440",
-      "chars": 1921,
+      "chars": 1956,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=cron",
       "viewport": "375",
-      "chars": 1921,
+      "chars": 1956,
       "hasMainEl": true
     },
     {
@@ -631,13 +631,10 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 2,
-  "consoleErrorRoutesObservedByShots": [
-    "#/employees/:employeeId",
-    "#/identity"
-  ],
+  "consoleErrorsObservedByShots": 0,
+  "consoleErrorRoutesObservedByShots": [],
   "ceAuthority": "login-state",
-  "routesWithEnvOnlyConsoleErrors": 28,
+  "routesWithEnvOnlyConsoleErrors": 26,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
   "overflowing": [],
   "driver": {
@@ -645,11 +642,11 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "53a3ef4c",
+  "headHash": "b71c4535",
   "exitCode": 0,
-  "entry": "assets/index-BXJbyCwh.js",
-  "entrySha256": "bae3a970ec9fec7ea6ce48bbe9a1130dc41653adf04925303b5064125ef47508",
-  "entryBytes": 166648,
-  "servedEntryBefore": "index-BXJbyCwh.js",
-  "servedEntryAfter": "index-BXJbyCwh.js"
+  "entry": "assets/index-CtwYCCz8.js",
+  "entrySha256": "6ea23b5f8a8751c545c77bec7ca71700949f6d0639d33ecac657dcec4be41b3f",
+  "entryBytes": 166638,
+  "servedEntryBefore": "index-CtwYCCz8.js",
+  "servedEntryAfter": "index-CtwYCCz8.js"
 }
