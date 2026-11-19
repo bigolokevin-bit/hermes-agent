@@ -36,6 +36,8 @@ import {
   SEARCH_UNWIRED_HUMAN,
   SPACE_DOC_UNWIRED_HEAD,
   SPACE_DOC_UNWIRED_HUMAN,
+  docScopeNote,
+  spaceScopeNote,
   SPACES_UNWIRED_HEAD,
   SPACES_UNWIRED_HUMAN,
   TASKS_UNWIRED_HEAD,
@@ -653,22 +655,104 @@ function SpaceTable({ rows, spaceLink }: { rows: SpaceRow[]; spaceLink: (id: str
   );
 }
 
-function SpacesSurface({ nonce, spaceLink }: { nonce: string; spaceLink: (id: string) => string }): ReactNode {
+/**
+ * The spaces list plus the cross-space keyword box on top of it.
+ *
+ * Probed 2026-11-20 with the login cookie: the space read answers the same
+ * `knowledge.not_wired` envelope whether or not `q` is attached (`/api/knowledge/spaces`
+ * rid 2d1c31a157, `?q=人事` rid 5ee17e9c79, `?limit=20&q=人事` rid 1d642de41d, and
+ * `/api/knowledge/sources?limit=20&q=人事` rid 062fdadca8), and `/api/console-sessions`
+ * and `/api/audit` simply ignore an added `q`. No read accepts a keyword today, so the
+ * box filters what this read already returned and says exactly that — it never claims a
+ * server-side search, and typing a keyword issues no request at all.
+ */
+function SpacesSurface({
+  nonce,
+  spaceLink,
+  keyword,
+  onCommitKeyword,
+  onClearKeyword,
+}: {
+  nonce: string;
+  spaceLink: (id: string) => string;
+  keyword: string;
+  onCommitKeyword: (value: string) => void;
+  onClearKeyword: () => void;
+}): ReactNode {
   const surface = useSurface<SpaceRow>(
     () => fetchJsonStrict(SPACES_URL).then(readSpaces),
     `spaces|${nonce}`,
   );
+  // Typed text is local; the URL keyword wins on refresh, back/forward and share.
+  const [draft, setDraft] = useState<{ from: string; text: string }>({ from: keyword, text: keyword });
+  const text = draft.from === keyword ? draft.text : keyword;
+  const loaded = surface.state.kind === "ready" ? surface.state.value.rows : [];
+  const needle = text.trim().toLowerCase();
+  const shown = needle === "" ? loaded : loaded.filter((row) => row.name.toLowerCase().includes(needle) || row.source.toLowerCase().includes(needle));
+  const clear = () => {
+    setDraft({ from: keyword, text: "" });
+    onClearKeyword();
+  };
+
   return (
-    <Surface
-      testid="knw5-spaces"
-      source="spaces"
-      state={surface.state}
-      onRetry={surface.retry}
-      unwiredHead={SPACES_UNWIRED_HEAD}
-      unwiredHuman={SPACES_UNWIRED_HUMAN}
-      empty={() => <p>当前没有读到知识空间。接口已响应，但列表为空；这不等于「没有空间」，也不写 0 个。</p>}
-      render={(value) => <SpaceTable rows={value.rows} spaceLink={spaceLink} />}
-    />
+    <>
+      <form
+        className="knw5-form"
+        data-testid="kn8-global-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onCommitKeyword(text);
+        }}
+      >
+        <label className="knw5-field">
+          <span className="knw5-sr-only">跨空间搜索</span>
+          <input
+            className="knw5-input"
+            type="search"
+            value={text}
+            onChange={(event) => setDraft({ from: keyword, text: event.target.value })}
+            placeholder="按空间名或来源搜索"
+            data-testid="kn8-global-input"
+          />
+        </label>
+        <Button size="sm" type="submit" prefix={<Search className="h-3.5 w-3.5" aria-hidden />} data-testid="kn8-global-submit">
+          搜索
+        </Button>
+        {keyword !== "" || text.trim() !== "" ? (
+          <Button size="sm" outlined onClick={clear} data-testid="kn8-global-clear">
+            清空
+          </Button>
+        ) : null}
+      </form>
+
+      <p className="knw5-sub" data-testid="kn8-scope-note">
+        {spaceScopeNote(surface.state.kind === "ready" ? loaded.length : null)}
+        {surface.state.kind === "ready" && needle !== "" ? `命中 ${shown.length} 个。` : null}
+      </p>
+
+      <Surface
+        testid="knw5-spaces"
+        source="spaces"
+        state={surface.state.kind === "ready" ? { kind: "ready", value: { ...surface.state.value, rows: shown } } : surface.state}
+        onRetry={surface.retry}
+        unwiredHead={SPACES_UNWIRED_HEAD}
+        unwiredHuman={SPACES_UNWIRED_HUMAN}
+        empty={() =>
+          needle === "" ? (
+            <p>当前没有读到知识空间。接口已响应，但列表为空；这不等于「没有空间」，也不写 0 个。</p>
+          ) : (
+            <p>
+              没有匹配的空间：已加载的 {loaded.length} 个空间里没有名字或来源含「{text.trim()}」的空间。
+              这是本地筛选的结果，不代表库里没有这样的空间。
+              <button type="button" className="knw5-drill" data-testid="kn8-global-empty-clear" onClick={clear}>
+                清空
+              </button>
+            </p>
+          )
+        }
+        render={(value) => <SpaceTable rows={value.rows} spaceLink={spaceLink} />}
+      />
+    </>
   );
 }
 
@@ -1157,8 +1241,8 @@ function DocumentNameSearch({
 
       <p className="knw5-sub" data-testid="kn6-search-note">
         {surface.state.kind === "ready"
-          ? `仅在当前已加载 ${loaded.length} 条内搜索：这份文档读口今天不接受关键词参数（实测 q 与 query 回答一致），所以这里不叫全库搜索；换关键词不会再请求一次。`
-          : "仅在当前已加载的条目内搜索：这份文档读口今天不接受关键词参数，所以这里不叫全库搜索。"}
+          ? docScopeNote(loaded.length)
+          : docScopeNote(null)}
       </p>
 
       <Surface
@@ -1699,7 +1783,13 @@ function containerQuery(key: string): HTMLElement | null {
             <RefDrill.Provider value={{ open: drilled, toggle: toggleDrill }}>
               {tab === "spaces" ? (
                 spaceId === "" ? (
-                  <SpacesSurface nonce={nonce} spaceLink={spaceLink} />
+                  <SpacesSurface
+                    nonce={nonce}
+                    spaceLink={spaceLink}
+                    keyword={query}
+                    onCommitKeyword={commitKeyword}
+                    onClearKeyword={clearKeyword}
+                  />
                 ) : (
                   <SpaceDetailSurface
                     nonce={nonce}

@@ -40,6 +40,30 @@ export const UNWIRED_HUMAN =
  * missing. A 403 and a 404 still draw this same pair — only the request id differs.
  */
 /**
+ * Scope sentences for the two keyword boxes. A loaded count is only stated when the
+ * read really returned rows: saying 「已加载 0 个」 would look exactly like the fake
+ * zero this page refuses everywhere else.
+ */
+export function spaceScopeNote(loaded: number | null): string {
+  const head = "仅在当前已加载的空间内搜索：空间读口今天不接受关键词参数（实测带 q 与不带 q 回答一致），所以这里不叫全库搜索，键入也不会再请求一次。";
+  return loaded === null
+    ? "只在已加载的空间里搜索：空间读口今天不接受关键词参数，所以这里不叫全库搜索。"
+    : loaded > 0
+      ? `仅在当前已加载 ${loaded} 个空间内搜索：空间读口今天不接受关键词参数（实测带 q 与不带 q 回答一致），所以这里不叫全库搜索，键入也不会再请求一次。`
+      : `这一份空间回答里没有可筛的空间：${head.slice(head.indexOf("：") + 1)}`;
+}
+
+export function docScopeNote(loaded: number | null): string {
+  if (loaded === null) {
+    return "只在已加载的文档里搜索：这份文档读口今天不接受关键词参数，所以这里不叫全库搜索。";
+  }
+  if (loaded > 0) {
+    return `仅在当前已加载 ${loaded} 条内搜索：这份文档读口今天不接受关键词参数（实测 q 与 query 回答一致），所以这里不叫全库搜索；换关键词不会再请求一次。`;
+  }
+  return "这一份文档回答里没有可筛的文档：这份文档读口今天不接受关键词参数（实测 q 与 query 回答一致），所以这里不叫全库搜索。";
+}
+
+/**
  * The spaces surface names its own read and its own way forward, and it says which
  * other surface can already be read while this one stays closed.
  */
