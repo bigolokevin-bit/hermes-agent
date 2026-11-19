@@ -12,6 +12,10 @@
  * the current pair simply renders as loading — so changing the filter cannot
  * leave the previous answer on screen pretending to be the filtered one, and
  * 「重新读取」 really asks again.
+ *
+ * R32 fixture debt burn: the `?state=` repro leg was removed. Every state this
+ * pane paints now comes from a real read; a missing or failed source degrades
+ * to the honest panel, never to sample rows.
  */
 import { useCallback, useEffect, useState } from "react";
 
@@ -20,36 +24,10 @@ import {
   settle,
   PENDING_RESULT,
   type ChannelsReadResult,
-  type Phase,
   type StatusFilter,
 } from "./channels";
 
-export type ForcedState = "loading" | "empty" | "error" | "denied";
-
-const FORCED: readonly string[] = ["loading", "empty", "error", "denied"];
-
-/** `?state=` is the shell's QA handle; `ready` is deliberately not reproducible. */
-export function forcedStateOf(raw: string | null): ForcedState | null {
-  return raw !== null && FORCED.includes(raw) ? (raw as ForcedState) : null;
-}
-
-/** The settled state minus the parts a forced leg cannot honestly claim. */
-const FORCED_SENTENCE = "这条腿是用 ?state= 复现的，服务此刻没有回答过。";
-
-function forcedResult(state: ForcedState): ChannelsReadResult {
-  if (state === "loading") return PENDING_RESULT;
-  if (state === "empty") return { ...PENDING_RESULT, phase: "empty" };
-  const failure = { sentence: FORCED_SENTENCE, requestId: null, technical: null };
-  return {
-    ...PENDING_RESULT,
-    phase: state as Phase,
-    failure,
-  };
-}
-
 export interface ChannelsState extends ChannelsReadResult {
-  /** True when the phase came from `?state=` instead of from the service. */
-  forced: boolean;
   reload: () => void;
 }
 
@@ -59,7 +37,7 @@ export interface ChannelsState extends ChannelsReadResult {
  * is stored under: choosing a filter asks the service again instead of
  * repainting the previous answer.
  */
-export function useChannelsData(forced: ForcedState | null, filter: StatusFilter): ChannelsState {
+export function useChannelsData(filter: StatusFilter): ChannelsState {
   const [attempt, setAttempt] = useState(0);
   const [read, setRead] = useState<{ attempt: number; filter: StatusFilter; settled: ChannelsReadResult } | null>(
     null,
@@ -68,7 +46,6 @@ export function useChannelsData(forced: ForcedState | null, filter: StatusFilter
   const reload = useCallback(() => setAttempt((value) => value + 1), []);
 
   useEffect(() => {
-    if (forced !== null) return;
     let alive = true;
     const asked = attempt;
     const askedFilter = filter;
@@ -97,12 +74,8 @@ export function useChannelsData(forced: ForcedState | null, filter: StatusFilter
     return () => {
       alive = false;
     };
-  }, [attempt, filter, forced]);
-
-  if (forced !== null) {
-    return { ...forcedResult(forced), forced: true, reload };
-  }
+  }, [attempt, filter]);
 
   const current = read !== null && read.attempt === attempt && read.filter === filter ? read.settled : PENDING_RESULT;
-  return { ...current, forced: false, reload };
+  return { ...current, reload };
 }

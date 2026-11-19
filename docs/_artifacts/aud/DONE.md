@@ -2349,3 +2349,56 @@ The evidence pane gates on `window.__HERMES_SESSION_TOKEN__`; with a token injec
 - 26 条服务手写英文原因句按原文透传，未翻译（代译会改写服务的事实陈述）。
 - 1280/375 只算了 `scrollWidth == clientWidth`，未做像素级并排截图比对。
 - 真 403/404 腿本会话未出现（仅有 mock 级逐字同体断言）；`完整性校验` 的 S3 断链腿未造真实数据。
+
+## R32 fixture debt burn — channels/collab/retention (2026-11-20, base 9c7789f6)
+
+### 1. Inventory (grep -rl data-fixture, *.tsx, five modules)
+
+| 文件 | 页 | 改前命中 | 改后 |
+|---|---|---|---|
+| `channels/ChannelsPage.tsx` | 平台接入与数据源 | 1（根 `data-fixture`） | 0 |
+| `channels/states.tsx` | 同上（面板） | 3（注释 + `fixtureAttr` + `ReproNote`） | 1（仅头注释说明已移除） |
+| `channels/ChannelsPage.test.tsx` | 同上（测试） | 4 | 1（仅一条「屏上不得出现 data-fixture」的反断言） |
+| `collab/CollabDelegationsModulePage.tsx` | 协作委托 | 2（根属性 + `ReproNote`） | 0 |
+| `collab/states.tsx` | 同上（面板） | 3 | 1（仅头注释） |
+| `collab/CollabDelegationsModulePage.test.tsx` | 同上（测试） | 3 | 0 |
+| `audit/RetentionModulePage.tsx` | 数据保留 | 0（但自带 `?state=` 腿会画假 ready 区块） | 0（腿已删） |
+| `audit/RetentionModulePage.test.tsx` | 同上（测试） | 0 | 0（两条 `?state=` 用例已删） |
+| `runs/states.tsx` | 运行列表 | 1（R30 后仅注释） | 1（注释） |
+| `audit/*`、`evidence/*` 其余 | 审计/证据 | 0（R30 已烧） | 0 |
+
+### 2. 选中的三页与理由
+1. **channels 平台接入与数据源** — 真源可用：`GET /agent-api/api/hermes-summary` → 200，`gateway.platforms` = `api_server` + `feishu`。转真数据。
+2. **collab 协作委托** — 真源可用：`GET /agent-api/api/delegations` → 200 `{"items":[],"asOf":…}`，本租户真实 0 条。转真数据（诚实空态 + 服务自己的 asOf）。
+3. **audit 数据保留** — 8 条候选路由全部 404 `console.unknown_route`，BFF 路由矩阵无此行。诚实「未接入」+原因；同时删掉会画假 `ready` 区块的复现腿。
+
+未选（保留，如实披露）：`audit/AuditDetailModulePage.tsx`、`audit/AuditVerifyModulePage.tsx` 仍接受 `forced`/`fixture` 参数走 `?state=` 腿；`audit/states.tsx` 的 `Marked.fixture` 仍声明但已不渲染 `data-fixture` 角标（R30 遗留），因此这两页属于「无角标的复现腿」，与 R30 的判据仍有距离，留给下一轮。
+
+### 3. 代码改动
+- `channels/useChannelsData.ts`：删 `ForcedState`/`FORCED`/`forcedStateOf`/`forcedResult`/`FORCED_SENTENCE`；签名 `useChannelsData(filter)`；结果不再带 `forced`。
+- `channels/states.tsx`：删 `Marked`/`fixtureAttr`/`ReproNote` 及各面板 `fixture` 参数与 spread 属性。
+- `channels/ChannelsPage.tsx`：删 `forced`/`isForced`/`forcedTitle`、根 `data-fixture`、`<ReproNote>`、控件上的 forced 禁用与 title 覆盖（保留真实 title）；四个面板不再传 `fixture`。
+- `collab/useDelegations.ts`：删 `ForcedState`/`FORCED`/`forcedStateOf`/`forcedResult`；`useDelegations()` 零参数。
+- `collab/states.tsx`：删 `Marked`/`fixtureAttr`/`ReproNote` 与面板 `fixture` props；去掉重试按钮的 `disabled={Boolean(fixture)}` 与「复现腿不发起请求」标题；**同时删掉两句已经不成立的 GAP-10 断言**（委托写入通道其实未验证，但「清单读取未接通」是假的——路由 200）：空态改为「要发起一份委托，请到任务详情里指派受托员工（本页只读，不提供发起入口）。」，拒绝态改为「这份委托清单的读取路由已经接通；这一屏只说明当前账号读不到它。」
+- `collab/CollabDelegationsModulePage.tsx`：删 `forced`/`isForced`/`reloadTitle`/`data-fixture`/`<ReproNote>`；刷新禁用只看 loading。
+- `audit/RetentionModulePage.tsx`：删本地 `FORCED`/`forcedStateOf`/`forcedRead`、`useSearchParams` 与 forced 分支；重试改为纯计数 bump；`ret4-*` testid 与「未接入 + GAP-13 只进 title」全部保留。
+- 测试：三个 `?state=` 复现 describe 整块删除（channels 1 块、collab 1 块、retention 1 块）；保留全部真实面用例（短码、BJT、四态、403≡404 逐字相同、请求编号、深链）。
+
+### 4. 活体读数（本地新构建 entry `assets/index-CTLBokn9.js`，`/tmp/serve-audh.cjs` 4210 静态服务 + `/agent-api/*` 代理到 8092 带 cookie）
+| 页 | url | 读数 |
+|---|---|---|
+| 平台接入 | `/channels`（改写为 `/capabilities?tab=channels`） | textLen 1175；**2 行真平台**：API 服务（接口服务 · 已连接）、飞书（消息平台 · 已连接）；凭据「未知，服务的回答里没有给出这份凭据的状态，本页不替它猜，也不显示任何令牌内容」；最近事件（北京时间）`2026-11-20 00:47`；`[data-fixture]` **0**；1440/1280/375 三档 sw==cw |
+| 协作委托 | `/collab` | textLen 467；诚实空态「读取成功，这个租户目前没有委托记录」+ 下一步；`[data-fixture]` **0**；三档 sw==cw |
+| 数据保留 | `/system?tab=retention` | textLen 828；「4 个区块都未接入：这个环境没有可读的保留策略源。」+ 每区块「未接入」+「不拿 0 天或 0 字节去顶替」；`[data-fixture]` **0**；三档 sw==cw |
+
+### 5. 门禁（`web/` 下）
+- `./node_modules/.bin/vitest run src/modules/channels src/modules/collab src/modules/audit` → **exit 0，12 files / 328 tests**。
+- `npx tsc -b . --noEmit` → exit 2，**67** 条 error TS，本域三模块 **0**；地板由 65 涨到 67，增量全在他人写域：`src/modules/approvals/{ApprovalsPendingModulePage,ApprovalsHistoryModulePage}.tsx` 6+6、`src/modules/approvals/api.test.ts` 2、`src/pages/LoginPage.test.tsx` 2、`src/modules/tasks/TasksBoardModulePage.test.tsx` 1、`src/modules/security/SecurityModulePage.tsx` 1，另 49 条在 `../apps/shared/**`。
+- `./node_modules/.bin/eslint src/modules/channels src/modules/collab src/modules/audit` → exit 0，0 errors / 4 warnings（均为既有 `react-hooks/set-state-in-effect`：`RetentionModulePage.tsx:248`、`useAuditData.ts:145/221/318`）。
+- lefthook `lint web` 真跑。
+
+### 6. 未测
+- 375/1280 只取 sw==cw 与文本长度，未做逐元素像素比对；截图落在 /tmp，未入库。
+- 本租户 `delegations` 真 0 条，行级布局（七列、委托链）仍由 mock 用例证明。
+- retention 页面在真实环境永远走「未接入」分支，`ready` 分支只剩 mock 覆盖。
+- `audit/AuditDetailModulePage`、`AuditVerifyModulePage` 的无角标复现腿未处理（写明在本节第 2 部分）。

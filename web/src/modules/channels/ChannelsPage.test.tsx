@@ -4,8 +4,8 @@
 // rows only ever come from an answer, a platform nobody explained is greyed and
 // reads 「未知」 instead of a green 「已接入」, the four states are the service's
 // answer and not a fallback, 403 and 404 draw one identical body with no row
-// above it, the filter and the refresh both change what is asked, and a `?state=`
-// repro asks for nothing at all.
+// above it, and the filter and the refresh both change what is asked. R32
+// removed the `?state=` repro leg: nothing here paints without an answer.
 
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -629,48 +629,6 @@ describe("the controls change what is asked", () => {
     });
     await waitFor(() => !skeleton(), "second read settled");
     expect(urls().length).toBeGreaterThan(first);
-  });
-});
-
-describe("the repro legs the shell gives QA", () => {
-  it("each forced state renders, carries data-fixture with its GAP, and asks nothing", async () => {
-    api.fetchJSON.mockReset();
-    const open = async (state: string): Promise<void> => {
-      await render(`/capabilities?tab=channels&state=${state}`, <ChannelsPage />);
-      await waitFor(
-        () => (document.body.textContent ?? "").includes("复现出来的状态") || state === "loading",
-        `${state} painted`,
-      );
-    };
-    for (const state of ["loading", "empty", "error", "denied"]) {
-      await open(state);
-      const page = document.querySelector("[data-testid='chn4-page']")!;
-      expect(page.getAttribute("data-fixture")).toBe(state);
-      expect(text()).toContain("这是用 ?state=");
-      expect(text()).toContain("GAP-08");
-      expect(api.fetchJSON).not.toHaveBeenCalled();
-      const retry = document.querySelector<HTMLButtonElement>("[data-testid='chn4-retry']")!;
-      expect(retry.disabled).toBe(true);
-      expect(document.querySelector<HTMLSelectElement>("[data-testid='chn4-filter-status']")!.disabled).toBe(true);
-    }
-  });
-
-  it("a repro is never dressed up as real data", async () => {
-    api.fetchJSON.mockReset();
-    await render("/capabilities?tab=channels&state=ready", <ChannelsPage />);
-    await waitFor(() => !skeleton(), "real read settled");
-    // `ready` is not reproducible: the pane asks the service instead
-    expect(api.fetchJSON).toHaveBeenCalled();
-    expect(html()).not.toContain("data-fixture");
-  });
-
-  it("no repro leg paints a platform that nobody sent", async () => {
-    api.fetchJSON.mockReset();
-    for (const state of ["loading", "empty", "error", "denied"]) {
-      await render(`/capabilities?tab=channels&state=${state}`, <ChannelsPage />);
-      await waitFor(() => statusRows() === 0, `${state} paints no rows`);
-      expect(statusRows()).toBe(0);
-    }
   });
 });
 

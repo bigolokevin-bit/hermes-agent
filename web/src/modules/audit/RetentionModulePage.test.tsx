@@ -238,19 +238,3 @@ describe("four states", () => {
     await waitFor(() => q("ret4-unwired-note") !== null, "unwired after settle");
   });
 });
-
-describe("?state= repro legs", () => {
-  it("ready paints the four sections without a single request and marks the page", async () => {
-    await render("/system?tab=retention&state=ready");
-    await waitFor(() => q("ret4-sections") !== null, "sections");
-    expect(calls()).toBe(0);
-    expect(q("ret4-unwired-audit")).not.toBeNull();
-  });
-
-  it("denied paints one body with the repro id and never calls the service", async () => {
-    await render("/system?tab=retention&state=denied");
-    await waitFor(() => q("ret4-denied") !== null, "denied");
-    expect(calls()).toBe(0);
-    expect(q("ret4-denied-request-id")?.textContent).toContain("ret4-repro-rid");
-  });
-});

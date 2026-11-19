@@ -15,11 +15,12 @@
  * buttons that are `disabled` + `aria-disabled` + `data-planned` and carry the
  * reason in `title`. They cannot run, and the page never reports a fake success.
  *
- * `?state=` is the shell's repro leg (`web/src/shell/fixtures.ts`); it paints a
- * state without issuing a request.
+ * R32 fixture debt burn: the `?state=` repro leg was removed. No retention or
+ * clean-up route exists on this deployment (eight candidates probed 404
+ * `console.unknown_route`), so the honest screen is 「未接入」 with its reason —
+ * never a painted 保留天数 table.
  */
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { useSearchParams } from "react-router";
 import { CalendarClock, Database, Gauge, HardDrive, RefreshCw, ShieldAlert, TriangleAlert } from "lucide-react";
 
 import { Button } from "@nous-research/ui/ui/components/button";
@@ -49,12 +50,6 @@ import { LoadingPanel, RequestIdLine, TechnicalDisclosure } from "./states";
 
 export type Phase = "loading" | "ready" | "unwired" | "error" | "denied";
 
-const FORCED: readonly string[] = ["loading", "ready", "unwired", "error", "denied"];
-
-export function forcedStateOf(raw: string | null): Phase | null {
-  return raw !== null && FORCED.includes(raw) ? (raw as Phase) : null;
-}
-
 interface Failure {
   status: number;
   requestId: string | null;
@@ -72,36 +67,6 @@ interface Read {
 }
 
 const PENDING: Read = { phase: "loading", sections: [], asOf: null, failure: null, probe: RETENTION_PATH };
-
-function forcedRead(state: Phase): Read {
-  if (state === "ready") {
-    // The repro surface shows a fully answered shape so the table itself can be
-    // reviewed; no request is made.
-    return { phase: "ready", sections: unwiredSections(UNWIRED_REASON).map((row) => ({ ...row })), asOf: null, failure: null, probe: RETENTION_PATH };
-  }
-  if (state === "unwired") {
-    return { phase: "unwired", sections: unwiredSections(), asOf: null, failure: null, probe: RETENTION_PATH };
-  }
-  if (state === "error") {
-    return {
-      phase: "error",
-      sections: [],
-      asOf: null,
-      failure: { status: 503, requestId: "ret4-repro-rid", technical: "repro leg ?state=error", code: null },
-      probe: RETENTION_PATH,
-    };
-  }
-  if (state === "denied") {
-    return {
-      phase: "denied",
-      sections: [],
-      asOf: null,
-      failure: { status: 404, requestId: "ret4-repro-rid", technical: "repro leg ?state=denied", code: null },
-      probe: RETENTION_PATH,
-    };
-  }
-  return PENDING;
-}
 
 /** One labelled field; a missing value is `—` with the reason in `title`. */
 function Field({
@@ -215,7 +180,7 @@ function PlannedActions(): ReactNode {
   );
 }
 
-function DeniedPanel({ requestId }: { requestId: string | null; fixture?: string }): ReactNode {
+function DeniedPanel({ requestId }: { requestId: string | null }): ReactNode {
   return (
     <Card
       role="alert"
@@ -242,7 +207,6 @@ function ErrorPanel({
 }: {
   failure: Failure | null;
   onRetry: () => void;
-  fixture?: string;
 }): ReactNode {
   return (
     <Card
@@ -272,21 +236,14 @@ function ErrorPanel({
 }
 
 export function RetentionModulePage(): ReactNode {
-  const [params] = useSearchParams();
-  const forced = forcedStateOf(params.get("state"));
   const [attempt, setAttempt] = useState(0);
   const [read, setRead] = useState<Read>(PENDING);
 
   const retry = useCallback(() => {
-    if (forced !== null) return;
     setAttempt((value) => value + 1);
-  }, [forced]);
+  }, []);
 
   useEffect(() => {
-    if (forced !== null) {
-      setRead(forcedRead(forced));
-      return;
-    }
     let alive = true;
     setRead(PENDING);
     void fetchJSON<unknown>(RETENTION_PATH, undefined, { allowUnauthorized: true })
@@ -325,7 +282,7 @@ export function RetentionModulePage(): ReactNode {
     return () => {
       alive = false;
     };
-  }, [attempt, forced]);
+  }, [attempt]);
 
   const answered = read.sections.filter((row) => !row.unwired).length;
   const total = SECTIONS.length;
@@ -355,7 +312,7 @@ export function RetentionModulePage(): ReactNode {
           size="sm"
           outlined
           onClick={retry}
-          disabled={forced !== null || read.phase === "loading"}
+          disabled={read.phase === "loading"}
           aria-busy={read.phase === "loading"}
           prefix={<RefreshCw className="h-3.5 w-3.5" />}
           data-testid="ret4-refresh"
@@ -374,9 +331,9 @@ export function RetentionModulePage(): ReactNode {
         ) : null}
       </div>
 
-      {read.phase === "loading" ? <LoadingPanel testId="ret4-loading" fixture={forced ?? undefined} /> : null}
-      {read.phase === "denied" ? <DeniedPanel requestId={read.failure?.requestId ?? null} fixture={forced ?? undefined} /> : null}
-      {read.phase === "error" ? <ErrorPanel failure={read.failure} onRetry={retry} fixture={forced ?? undefined} /> : null}
+      {read.phase === "loading" ? <LoadingPanel testId="ret4-loading" /> : null}
+      {read.phase === "denied" ? <DeniedPanel requestId={read.failure?.requestId ?? null} /> : null}
+      {read.phase === "error" ? <ErrorPanel failure={read.failure} onRetry={retry} /> : null}
 
       {read.phase === "unwired" ? (
         <Card className="border-border bg-card" data-testid="ret4-unwired-note">
