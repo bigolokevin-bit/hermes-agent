@@ -141,7 +141,7 @@
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "1440",
-      "chars": 128,
+      "chars": 326,
       "hasMainEl": true
     },
     {
@@ -642,16 +642,16 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "2767ac9b",
-  "entry": "assets/index-BKZoUKl8.js",
-  "entrySha256": "8d1f98cc4aea8e5d708c7f8fcc981d4cd9bdd66791012f8f0e37ba2b3e995e53",
-  "entryBytes": 154051,
-  "medianMainChars": 192.5,
-  "shotWindow": "14:15:31-14:16:25 local",
-  "servedEntryBefore": "assets/index-BKZoUKl8.js",
-  "servedEntryAfter": "assets/index-BKZoUKl8.js",
+  "headHash": "07027950",
+  "entry": "assets/index-7AT3YJpH.js",
+  "entrySha256": "4f4d505e45bed3bc9f7408429356fd90cba6726288be0d4d3ed119fe6aa4b9bf",
+  "entryBytes": 154237,
+  "medianMainChars": 194.0,
+  "shotWindow": "14:22:53-14:23:49 local",
+  "servedEntryBefore": "assets/index-7AT3YJpH.js",
+  "servedEntryAfter": "assets/index-7AT3YJpH.js",
   "env": "9122 proxy-live (anon 401 / auth 200); CE 权威=登录态, 观察字段仅旁证",
-  "ceCaliber": "ceAuthority=login-state; crawl-auth routesCE=21 denied=18; crawl-anon routesCE=43 denied=31; ok 不含 CE 项（L0 二十九轮裁定落码）",
+  "ceCaliber": "ceAuthority=login-state; crawl-auth routesCE=22 denied=18; crawl-anon routesCE=43 denied=31; ok 不含 CE 项（L0 二十九轮裁定落码）",
   "anonEvidence": "crawl-anon ok=True exit=0 probed=75 DL=0 CE=0 PE=0 routesCE=43(env 旁证); shots-anon 辅助腿见 shots-anon-summary.json",
   "exitCode": 0
 }
