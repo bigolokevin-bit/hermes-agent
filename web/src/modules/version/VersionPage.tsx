@@ -6,7 +6,7 @@ import { MODELS_GAP, fmtStamp, fmtUnitPrice, readPrices, type ModelPriceRow } fr
 import { currentFixtureState, fixtureView } from "../../shell/fixtures";
 import { readBuildRows, readDependencyRows, type BuildEnv, type BuildRow, type DependencyRow } from "./version";
 
-type State = { k: "loading" } | { k: "empty" } | { k: "error"; requestId: string } | { k: "ready"; build: BuildRow[]; dependencies: DependencyRow[] };
+type State = { k: "loading" } | { k: "empty" } | { k: "error"; requestId: string | null } | { k: "ready"; build: BuildRow[]; dependencies: DependencyRow[] };
 type PriceState =
   | { k: "loading" }
   | { k: "ready"; rows: ModelPriceRow[]; asOf: string | null }
@@ -76,7 +76,7 @@ export function VersionPage() {
   const forced = currentFixtureState();
   const preview = fixtureView<State | null>(forced ?? "ready", {
     loading: () => ({ k: "loading" }), empty: () => ({ k: "empty" }),
-    error: () => ({ k: "error", requestId: "—（本地信息，无请求号）" }), ready: () => null,
+    error: () => ({ k: "error", requestId: null }), ready: () => null,
   });
 
   const build = readBuildRows(import.meta.env as unknown as BuildEnv);
@@ -123,6 +123,17 @@ export function VersionPage() {
       <header>
         <h1 className="font-mondwest text-xl">版本</h1>
         <p className="mt-1 text-sm text-white/55">构建与依赖信息</p>
+        <button
+          type="button"
+          className="mt-3 rounded-md border border-white/15 px-2.5 py-1 text-xs text-white/45"
+          data-planned="1"
+          aria-disabled="true"
+          title="下载诊断包还没有接上：等打包与脱敏通道就绪后再开放"
+          data-testid="ver4-planned-export"
+          onClick={(event) => event.preventDefault()}
+        >
+          下载诊断包（计划中）
+        </button>
       </header>
 
       {view.k === "loading" ? (
@@ -151,7 +162,7 @@ export function VersionPage() {
             <h2 className="text-sm font-medium text-white/85">依赖版本</h2>
             <dl className="divide-y divide-white/10">
               {view.dependencies.map((item) => (
-                <div key={item.name} className="flex min-w-0 flex-wrap items-start justify-between gap-3 py-3 first:pt-0 last:pb-0" title={item.name}>
+                <div key={item.name} className="flex min-w-0 flex-wrap items-start justify-between gap-3 py-3 first:pt-0 last:pb-0" title={item.name} data-testid={`ver4-dep-${item.name.replace(/[^a-z0-9]+/gi, '-')}`}>
                   <dt className="break-all text-sm text-white/70">{item.name}</dt>
                   <dd className="min-w-0 text-right">
                     {item.version ? <span className="break-all text-sm text-white/85">{item.version}</span> : <span className="inline-flex flex-wrap items-center justify-end gap-2"><StateBadge unknown /><span className="text-sm text-white/55">未知</span></span>}
