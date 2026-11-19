@@ -87,6 +87,9 @@ import type { SystemAction } from "@/contexts/system-actions-context";
 const ConfigPage = lazy(() => import("@/pages/ConfigPage"));
 const DocsPage = lazy(() => import("@/pages/DocsPage"));
 const EmployeesPage = lazy(() => import("@/pages/EmployeesPage"));
+// R38: /employees 列表 tab 挂 T12 模块页（带 ?q=&lifecycle= 真筛选）；
+// legacy pages/EmployeesPage 不再作为 live slot。
+const EmployeesModulePage = lazy(() => import("@/modules/employees/EmployeesModulePage"));
 const EmployeeDetailPage = lazy(() => import("@/pages/EmployeeDetailPage"));
 const ApprovalsPage = lazy(() => import("@/pages/ApprovalsPage"));
 // Wave-1 module pages (lanes T10/T13/T14/T15) — integration wiring into the
@@ -1229,7 +1232,7 @@ export default function App() {
                           element={
                             <ConsoleModulePage
                               module="employees"
-                              live={{ list: <EmployeesPage />, matrix: <MatrixConsolePage /> }}
+                              live={{ list: <EmployeesModulePage />, matrix: <MatrixConsolePage /> }}
                             />
                           }
                         />
