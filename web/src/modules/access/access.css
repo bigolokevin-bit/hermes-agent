@@ -3,6 +3,8 @@
   flex-direction: column;
   gap: 14px;
   min-width: 0;
+  padding: 4px 12px 32px;
+  overflow-x: hidden;
   color: var(--color-foreground);
 }
 
@@ -209,4 +211,51 @@
 
 .role5-table tr:last-child td {
   border-bottom: 0;
+}
+
+@media (max-width: 560px) {
+  .role5-scroll {
+    overflow-x: visible;
+  }
+
+  .role5-table {
+    min-width: 0;
+  }
+
+  .role5-table thead {
+    display: none;
+  }
+
+  .role5-table,
+  .role5-table tbody,
+  .role5-table tr,
+  .role5-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .role5-table tr {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .role5-table tr:last-child {
+    border-bottom: 0;
+  }
+
+  .role5-table td {
+    position: relative;
+    padding: 4px 0 4px 96px;
+    border: 0;
+  }
+
+  .role5-table td::before {
+    position: absolute;
+    top: 4px;
+    left: 0;
+    width: 86px;
+    content: attr(data-label);
+    color: var(--color-muted-foreground);
+    font-size: 11px;
+  }
 }

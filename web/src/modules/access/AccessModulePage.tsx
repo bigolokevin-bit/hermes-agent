@@ -107,19 +107,19 @@ function RoleRow({ row }: { row: Rec }) {
   const view = roleView(row);
   return (
     <tr data-testid="role5-row" title={view.rawId || undefined}>
-      <td data-testid="role5-name">
+      <td data-label="角色名" data-testid="role5-name">
         {view.name}
         {view.nameReason ? <span className="acc4-meta">{view.nameReason}</span> : null}
       </td>
-      <td data-testid="role5-scope" title={view.scopeRaw || undefined}>
+      <td data-label="范围" data-testid="role5-scope" title={view.scopeRaw || undefined}>
         {view.scope}
         {view.scopeReason ? <span className="acc4-meta">{view.scopeReason}</span> : null}
       </td>
-      <td data-testid="role5-members">
+      <td data-label="成员数" data-testid="role5-members">
         {view.memberCount ?? "—"}
         {view.memberReason ? <span className="acc4-meta">{view.memberReason}</span> : null}
       </td>
-      <td data-testid="role5-updated">
+      <td data-label="更新时间" data-testid="role5-updated">
         {view.updatedAt ?? "—"}
         {view.updatedReason ? <span className="acc4-meta">{view.updatedReason}</span> : null}
       </td>
