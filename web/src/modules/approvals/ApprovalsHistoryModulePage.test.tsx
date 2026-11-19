@@ -409,6 +409,8 @@ describe("history whole-panel states", () => {
     }
     const detailText = document.querySelector("[data-testid='apr5-detail']")?.textContent ?? "";
     expect(detailText).not.toContain("human:");
+    expect(document.querySelector("[data-testid='apd5-replay']")).toBeTruthy();
+    expect(detailText).toContain("无决策记录");
     expect(detailText).not.toContain("emp_");
     expect(document.querySelector("[data-testid='apd5-field-change-kind']")?.textContent).toContain("对外发送消息");
   });

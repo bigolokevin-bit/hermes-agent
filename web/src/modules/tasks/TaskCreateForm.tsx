@@ -122,7 +122,11 @@ export function TaskCreateForm({
           ? csrfCopy.sentence
           : info.status === 401
             ? "需要登录：登录状态已失效，任务没有提交。重新登录后再试。"
-            : `任务没有创建成功：${info.message}`,
+            : info.status === 403
+              ? "这个写入没有被后台允许，任务没有提交。需要开通时，请联系工作区管理员。"
+              : info.status === 400
+                ? "提交的内容后台没有接受，任务没有提交。请检查标题与指派后重试。"
+                : `任务没有创建成功：${info.message}`,
         requestId: csrfCopy?.requestId ?? info.requestId,
       });
     }
@@ -136,6 +140,17 @@ export function TaskCreateForm({
           {state.id ? (
             <p className="text-xs text-muted-foreground">
               新任务编号 <code title={state.id}>{shortRef(state.id)}</code>
+              <button
+                type="button"
+                aria-label="复制新任务编号"
+                data-testid="tsk4-copy-new-id"
+                className="ml-1 text-xs underline underline-offset-2"
+                onClick={() => {
+                  void navigator.clipboard?.writeText(state.k === "success" && state.id ? state.id : "");
+                }}
+              >
+                复制
+              </button>
               ，已在看板中打开它的详情。
             </p>
           ) : (

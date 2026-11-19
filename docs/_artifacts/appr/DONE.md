@@ -454,3 +454,9 @@ F4 任务板裸 0：空列 Badge{rows.length} 0→「—」+title 口径（真 0
 F6 值班台 testid 契约：DutyPage 双标=HCard data-testid duty-→ov6- 动态+data-duty-testid 保旧名；gate/ready-value/health/page 独立行同样双标；grep data-testid="duty 残留=0；header 新增 ov6-asof「采集于 {beijing(asOf)}」（todayStats/stats body.asOf，缺不显假）。dutyPage.test 一处选择器同步 data-duty-testid。duty 页体此行改动为工单 F6 点名授权。
 F7 审计入口+别名：App.tsx nav 治理组新增 /audit「审计事件」（ShieldCheck，页体属 aud）；?tab=cron|admins|retention 归一已由 shell/routes.ts TAB_ALIAS line334-338（work.cron→board/identity.admins→people/system.retention→events）+ConsoleModulePage resolveTab 链满足，未新增代码。
 验证：定向 approvals+tasks+duty+overview=9 files 125 passed；全量 vitest 122 files/1224 passed 0 fail。屏幕活体读数待 L0 合批重建（本单未 build）。
+
+## apd7 审批决策回放 + 任务创建链收口（feat(console): approvals decision replay and task create closeout）
+①决策回放只读块（views.tsx）：section data-testid=apd5-replay + 标题「决策回放 · 只读」；逐条=决定人（姓名·8位短码/人员·短码/未指派，原值进 title）· 决定（通过/驳回/要求修改）· 时间 BJT 到分 · 意见：note；空数组=apd5-replay-empty「无决策记录。」（替旧句「还没有人给出结论。」）；model decisionEntries who 兜底未署名→未指派。活体读数（ego 登录态）：consumed 列表 3 条各带 1 决策；样本 ap_AEEC078E0C824E749513AFEC9A 详情 200 decisionCount=1 first={userId human:1,verdict approve,comment…,decidedAt 2026-11-15T04:21Z}→屏上=人员·短码/通过/2026-11-15 12:21/意见全文。
+②创建成功即时可见：afterCreate=setSelected+setTick→loadBoard 重拉列表（不刷新页面新任务即现）+成功卡 tsk4-copy-new-id 复制钮（短码上屏、剪贴全值，TaskCreateForm.test 断言 writeText(tk_ABCDEF1234567890)）。
+③创建失败分级人话：csrf 两码专属句优先→401 写话术→403「这个写入没有被后台允许…」→400「提交的内容后台没有接受…」→其它通用；均带 RequestIdCopy 可复制 rid+重试，无假成功。
+验证：定向 approvals+tasks 68 passed；全量 122 files/1224 passed 0 fail。基线申报：本地 tip=05d558b7（工单基线 4dd7966f=L0 合批 merge 笔不在 lane/console-appr 分支上，05d558b7 为其祖先，无冲突面）。

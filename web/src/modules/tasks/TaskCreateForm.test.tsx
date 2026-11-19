@@ -200,6 +200,14 @@ describe("TaskCreateForm (T-create)", () => {
     const code = ok?.querySelector("code");
     expect(code?.getAttribute("title")).toBe("tk_ABCDEF1234567890");
     expect(code?.textContent).toBe("tk_ABC…7890");
+    const clip = vi.fn(async () => {});
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: clip } });
+    const copyBtn = ok?.querySelector<HTMLButtonElement>('[data-testid="tsk4-copy-new-id"]');
+    expect(copyBtn).toBeTruthy();
+    await act(async () => {
+      copyBtn!.click();
+    });
+    expect(clip).toHaveBeenCalledWith("tk_ABCDEF1234567890");
   });
 
   it("honestly says so when the backend confirms without an id", async () => {
