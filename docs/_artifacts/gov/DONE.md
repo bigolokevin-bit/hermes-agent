@@ -813,3 +813,55 @@ built /Users/kevin_studio/Projects/forks/console-gov/hermes_cli/web_dist/index.h
 - 真实 200 未取得（无登录态）；截图数据来自临时 fetch stub 的 DOM 证明，不代表线上读数。
 - 探针经 BFF，不直接连接 8101/9119；BFF 到上游的转发失败会按「上游返回异常」呈现，不冒充端口直连。
 - 独立观察者未跑，完成 DOM 测量与截图自检。
+
+## R17 — ov5 / ten4 来源与 asOf 核销（2026-11-19 15:4x）
+
+### 基线
+
+- `git rev-parse --show-toplevel` = `/Users/kevin_studio/Projects/forks/console-gov`
+- fetch + `git reset --hard origin/lane/hermes-console` = `d0fbd25a`；porcelain 0。
+- 远端 `lane/console-gov` 已有上一轮 ov5/hlt5，按非 force 方式合并：`901858d3`（merge，保留两端历史）。
+
+### 交付
+
+| 页 | commit | 口径 |
+|---|---|---|
+| `/overview` | `7cfbd59c`（cherry-pick 自上一轮同码提交） | 每张 KPI 卡显式「来源 + 数据截至 北京时间到分」；来源不可得显示「未接入」+人话原因；GAP 只进 `title`；真 0 显 0，缺失 `—`。趋势/最近活动/阻塞队列同样带来源与时间戳；错误自动 20s 重试，手动重试全量刷新。 |
+| `/identity?tab=tenant` | `091b95f7` | 当前用量带单位（人/次）与 payload 内 asOf；payload 无时间戳时显示「数据截至 时间未知」+原因，**不用浏览器时间冒充**；额度上限 `—` +「来源：额度上限 · 待核实」+原因；真 0 保留；GAP 只进 `title`；失败行请求编号可复制；零写入口，仅 `/approvals` 去处链接。 |
+
+### 原始 stdout
+
+```text
+$ ./node_modules/.bin/tsc -b . --noEmit
+TSC_EXIT=0
+
+$ npx vitest run src/modules/tenant
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+
+$ npx vitest run
+ Test Files  118 passed (118)
+      Tests  1160 passed (1160)
+
+$ PATH="/opt/homebrew/bin:$PATH" pnpm --filter web build
+BUILD_EXIT=0
+built .../hermes_cli/web_dist/index.html
+```
+
+### DOM 读数（Chrome CDP，临时 harness 已删除）
+
+```text
+1440x900 vw=1440 bodySW=1440 bodyCW=1440 pageSW=1442 pageCW=1440 asOf=yes gapVisible=false unit=yes
+1280x800 vw=1280 bodySW=1280 bodyCW=1280 pageSW=1282 pageCW=1280 asOf=yes gapVisible=false unit=yes
+375x812  vw=375  bodySW=375  bodyCW=375  pageSW=377  pageCW=375 asOf=yes gapVisible=false unit=yes
+```
+
+- body 三档均无横溢；pageSW 的 +2px 来自 `@nous-research/ui` 刷新按钮的装饰边框（body 不产生横向滚动），非内容溢出。
+- 截图：`docs/_artifacts/gov/shots/ov5-1440.png`、`ov5-1280.png`、`ov5-375.png`；`ten4-1440.png`、`ten4-1280.png`、`ten4-375.png`。
+
+### 边界
+
+- 无登录态，未取得真实 200；页面四态与 asOf 口径由 vitest + DOM fixture 证明。
+- 未跑独立观察者；截图为本地视觉自检。
+- 未改 `App.tsx` / `shell/**` / `pages/**` / manifest / scripts / package / lock；未 install。
+- `ten4` 真实空态仅用于「两个来源都返回但都没有可用总数」；真 0 不再被当成空态。
