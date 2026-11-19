@@ -122,9 +122,9 @@ describe("AccessModulePage roles", () => {
     expect(gap?.getAttribute("title")).toContain("GAP-ROL5-01");
     expect(container.textContent).not.toContain("GAP-");
     expect(container.querySelector('a[href="/approvals"]')?.textContent).toContain("提交开通申请");
-    expect(container.querySelector('[data-testid="ac3-fixture-note"]')?.textContent).toContain("示例布局");
-    expect(container.querySelector('[data-testid="ac3-page"]')?.getAttribute("data-fixture")).toBe("1");
-    expect(container.querySelectorAll('[data-testid="ac3-row"]').length).toBeGreaterThan(0);
+    expect(container.querySelector('[data-testid="ac3-fixture-note"]')).toBeNull();
+    expect(container.querySelector('[data-testid="ac3-page"]')?.hasAttribute("data-fixture")).toBe(false);
+    expect(container.querySelectorAll('[data-testid="ac3-row"]')).toHaveLength(0);
   });
 
   it("uses the same neutral body for 403 and 404", async () => {
@@ -161,10 +161,10 @@ describe("AccessModulePage roles", () => {
     expect(container.textContent).not.toContain("HTTP");
   });
 
-  it("marks forced states as fixtures and does not fetch", async () => {
+  it("forced error is live-state only: no sample rows, no fixture mark and no fetch", async () => {
     await render("/access?state=error");
     expect(fetchJSON).not.toHaveBeenCalled();
-    expect(container.querySelector('[data-testid="ac3-page"]')?.getAttribute("data-fixture")).toBe("1");
+    expect(container.querySelector('[data-testid="ac3-page"]')?.hasAttribute("data-fixture")).toBe(false);
     expect(container.querySelector('.acc4-error')).toBeTruthy();
   });
 

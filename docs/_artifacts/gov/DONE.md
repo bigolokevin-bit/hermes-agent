@@ -1446,3 +1446,49 @@ $ cd web && npx vitest run
 - Credential remains only 已配置/未配置/未知; added test that a missing-credential row with `API_KEY=super-secret-value` in payload prints no key/secret text.
 - 403 and 404 now share one neutral `未接入` body, no fixture/sample, GAP only in `title`; four states, copyable rid, retry, `tol5-*`.
 - Tests: `npx vitest run src/modules/tools` → 2 files / 20 passed.
+
+
+## R36 fixture debt burn — org5 + access (2026-11-20)
+
+Base: `165e62a5` (workspace HEAD `e4c03f8c` gate ledger). Write domain only org/access modules + this file.
+
+Initial `grep -rl data-fixture` across the 12 module dirs:
+```
+web/src/modules/org/OrgModulePage.test.tsx
+web/src/modules/org/OrgModulePage.tsx
+web/src/modules/access/AccessModulePage.tsx
+web/src/modules/access/AccessModulePage.test.tsx
+web/src/modules/tenant/TenantQuotaPage.tsx
+web/src/modules/tenant/TenantQuotaPage.test.tsx
+web/src/modules/tools/states.tsx
+web/src/modules/tools/ToolsPage.test.tsx
+web/src/modules/tools/ToolsPage.tsx
+web/src/modules/knowledge/KnowledgeModulePage.test.tsx
+web/src/modules/knowledge/KnowledgeModulePage.tsx
+```
+Chosen pages: **org5** and **access** (the two pages that painted sample rows as a 404/forced fallback).
+
+### org5 (`web/src/modules/org/**`)
+- Deleted `FIXTURE_DEPTS` and the `?state=ready` sample tree; `ready` is no longer a forced state. A request for `?state=ready` now reads the real service.
+- Removed `data-fixture` from the page shell and the 预览状态 note. 403 and 404 now share exactly one body (`MISSING_REASON`) with `GAP-02` only in `title`; 401 remains a login error, 5xx error keeps copyable request id + retry.
+- Real data path untouched: `/agent-api/api/v1/dept/list|tree`, tree default expanded, columns 部门名/上级部门/人数/负责人/更新时间, missing `—` + reason, owner 姓名 · 8位短码 or 未指派, BJT.
+
+### access (`web/src/modules/access/**`)
+- Deleted `ROLE_FIXTURE`, `rolePreview`, the 示例布局 note and all `data-fixture` marks.
+- 403/404 both render the same `ac3-gap` body (`GAP-ROL5-01` only in `title`), zero sample rows; real role/member/admin data paths unchanged; error keeps copyable request id + retry.
+- No write controls exist on either page (nothing to mark `data-planned`).
+
+### Verification
+- `npx vitest run src/modules/org src/modules/access` -> **2 files / 26 tests passed**.
+- `npx vitest run` -> **129 files / 1326 tests passed**.
+- `./node_modules/.bin/tsc -b . --noEmit` -> **TSC_EXIT=0**.
+- No build run (module-only, no CSS change).
+- DOM at 1440/1280/375 (temporary harness, 404 stubs): both pages `bodySW==bodyCW==vw` and `pageSW==pageCW` at all three widths; `data-fixture=false`, org `org5-denied=true`, access `ac3-gap=true`, zero 示例 text.
+
+### Endpoint truth
+- org `/api/v1/dept/list` and `/api/v1/dept/tree` remain absent/401-gated at BFF; page shows 未接入, no sample.
+- access `/api/v1/role/list` and `/api/v1/roles` remain absent; page shows 未接入, no sample.
+
+### Boundaries
+- No App/shell/routes/registry/manifest/package/lock/scripts/ops changes; no install; no `git add -A`.
+- No live 200 obtained; no independent observer.

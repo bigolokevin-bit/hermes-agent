@@ -285,56 +285,7 @@ export function roleView(row: Rec): RoleView {
   };
 }
 
-/**
- * R22 layout preview only. It is rendered solely when the role read is
- * unavailable (404/403) and is explicitly marked `data-fixture="1"`; it must
- * never be presented as live roles.
- */
-export const ROLE_FIXTURE: Rec[] = [
-  {
-    role_id: 'role_builtin_admin',
-    role_name: '平台管理员',
-    member_count: 3,
-    source: 'builtin',
-    permissions: ['*', 'role.manage', 'audit.read', 'tenant.manage'],
-    updated_at: '2026-11-19T07:10:00Z',
-    members: [
-      { user_id: 'u_1234567890abcdef', realname: '林一舟' },
-      { user_id: 'u_abcdef1234567890', realname: '陈可' },
-      { user_id: 'u_0000000000000000' },
-    ],
-  },
-  {
-    role_id: 'role_builtin_operator',
-    role_name: '运营值班',
-    member_count: 2,
-    source: 'builtin',
-    permissions: ['employee.read', 'run.read', 'approval.decide'],
-    updated_at: '2026-11-18T09:20:00Z',
-    members: [
-      { user_id: 'u_1111222233334444', realname: '周宁' },
-      { user_id: 'u_5555666677778888', realname: '许澄' },
-    ],
-  },
-  {
-    role_id: 'role_custom_knowledge',
-    role_name: '知识维护',
-    member_count: 1,
-    source: 'custom',
-    permissions: ['knowledge.read', 'knowledge.write', 'audit.read'],
-    updated_at: '2026-11-17T03:05:00Z',
-    members: [{ user_id: 'u_9999000011112222', realname: '叶禾' }],
-  },
-  {
-    role_id: 'role_custom_empty',
-    role_name: '待分配角色',
-    member_count: 0,
-    source: 'custom',
-    permissions: [],
-    updated_at: null,
-    members: [],
-  },
-];
+
 
 export async function loadList(
   endpoints: string[],
