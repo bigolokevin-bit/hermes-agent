@@ -27,6 +27,24 @@ function statusTone(status: ProbeStatus): "success" | "destructive" | "warning" 
   return "warning";
 }
 
+function RowRequestId({ id }: { id: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    void navigator.clipboard?.writeText(id).then(
+      () => setCopied(true),
+      () => setCopied(false),
+    );
+  };
+  return (
+    <span className="flex flex-wrap items-center gap-2 text-xs text-white/55">
+      <span>请求编号：{id}</span>
+      <button type="button" className="underline underline-offset-2 hover:text-white/80" onClick={copy}>
+        {copied ? "已复制" : "复制"}
+      </button>
+    </span>
+  );
+}
+
 function readRequestId(results: PromiseSettledResult<unknown>[]): string {
   for (let index = results.length - 1; index >= 0; index -= 1) {
     const result = results[index];
@@ -110,7 +128,11 @@ export function HealthPage() {
       ) : view.k === "error" ? (
         <Card><CardContent className="flex flex-col items-center gap-3 py-10 text-center" data-testid="hlt4-error" role="alert">
           <p className="text-sm text-white/80">所有探针均未收到响应</p>
-          <p className="text-xs text-white/40">请求号：{view.requestId}</p>
+          {view.requestId.startsWith("—") ? (
+            <p className="text-xs text-white/40">请求编号：未提供（这次没有收到可记录的请求编号）</p>
+          ) : (
+            <RowRequestId id={view.requestId} />
+          )}
           <Button size="sm" outlined onClick={() => { void runProbes(); }}>重试</Button>
         </CardContent></Card>
       ) : (
@@ -120,7 +142,10 @@ export function HealthPage() {
               <div className="min-w-0 flex-1">
                 <p className="break-words text-sm text-white/85">{row.name}</p>
                 {row.reason ? <p className="mt-1 break-words text-xs text-white/55">{row.reason}</p> : null}
-                <p className="mt-1 text-xs text-white/40">采集时刻：{row.collectedAt ?? "—（未采集）"}</p>
+                {row.requestId ? <div className="mt-1" data-testid={`hlt4-reqid-${row.id}`}><RowRequestId id={row.requestId}/></div> : null}
+                <p className="mt-1 break-words text-xs text-white/40">
+                  {row.collectedAt ? `采集时刻：${row.collectedAt}` : "采集时刻：时间未知（本次没有收到可记录的时间）"}
+                </p>
               </div>
               <Badge tone={statusTone(row.status)} data-testid={`hlt4-status-${row.id}`}>{statusLabel(row.status)}</Badge>
             </div>
