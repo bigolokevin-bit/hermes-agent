@@ -44,6 +44,15 @@ const CHOICES: readonly { value: string; label: string; sends: string | null }[]
 
 const ALL_RAW = "全部状态";
 
+/** R44: the shareable queue shortcuts travel as real server-side status
+ * values through the same URL mechanism as the eight-state group. */
+const QUEUE_SHORTCUTS: readonly { value: string; label: string; sends: string | null }[] = [
+  { value: "status-all", label: "全部", sends: null },
+  { value: "status-pending", label: "待办", sends: "pending" },
+  { value: "status-approved", label: "已批", sends: "approved" },
+  { value: "status-rejected", label: "已拒", sends: "rejected" },
+];
+
 export function ApprovalsHistoryModulePage(): ReactNode {
   const [params, setParams] = useSearchParams();
   const forced = forcedStateOf(params.get("state"));
@@ -164,6 +173,11 @@ export function ApprovalsHistoryModulePage(): ReactNode {
                   ? "审批历史读取失败"
                   : `已显示 ${list.rows.length} 条「${summary}」记录${list.next ? "，下面还有更多" : ""}`}
         </p>
+        {list.phase === "ready" ? (
+          <span className="font-mono text-xs text-muted-foreground" data-testid="apv5-count" title="计数与下方列表同源：同一份服务端返回的行数">
+            {list.rows.length}
+          </span>
+        ) : null}
         {list.phase !== "denied" ? (
           <Button
             size="sm"
@@ -202,6 +216,47 @@ export function ApprovalsHistoryModulePage(): ReactNode {
         })}
       </div>
 
+      {/* R44: risk and time-window axes are stated, not faked. The BFF
+        * whitelist (status, limit, cursor) drops risk/window/since — live
+        * probe measured the same set with and without them — so no client
+        * side filtering happens here. */}
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5" role="group" aria-label="队列筛选（可分享）" data-testid="apv5-filter">
+        {QUEUE_SHORTCUTS.map((choice) => {
+          const active = choice.sends === null ? activeValue === "all" : activeValue === choice.sends;
+          return (
+            <Button
+              key={choice.value}
+              size="xs"
+              outlined
+              invert={active}
+              aria-pressed={active}
+              onClick={() => choose(choice.sends)}
+              data-testid={`apv5-filter-${choice.value}`}
+            >
+              {choice.label}
+            </Button>
+          );
+        })}
+        <select
+          aria-label="按风险档筛选"
+          data-testid="apv5-filter-risk"
+          disabled
+          title="后台尚未开放风险档筛选：带 risk=high 实测仍返回与该参数无关的全量集合（status=all 下 8 条同集），为避免假过滤此项暂不提供。"
+          className="rounded-md border border-white/15 bg-transparent px-2 py-1 text-xs text-muted-foreground opacity-60"
+        >
+          <option value="">风险档：暂不可筛</option>
+        </select>
+        <select
+          aria-label="按时间窗筛选"
+          data-testid="apv5-filter-window"
+          disabled
+          title="后台尚未开放时间窗筛选：带 window=24h/since=… 实测与不带参同集合，为避免假过滤此项暂不提供。"
+          className="rounded-md border border-white/15 bg-transparent px-2 py-1 text-xs text-muted-foreground opacity-60"
+        >
+          <option value="">时间窗：暂不可筛</option>
+        </select>
+      </div>
+
       {!known ? (
         <p className="min-w-0 break-words text-xs text-warning" data-testid="apr5-filter-unknown">
           这个筛选值不在已知的八种结果里，系统仍按原样去读；读到的内容可能与服务端的状态说法不一致。
@@ -226,7 +281,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
 
           {list.phase === "empty" ? (
             <EmptyPanel
-              reason={`「${summary}」状态下没有记录`}
+              reason={`该条件下无审批：「${summary}」结果下没有记录`}
               nextStep="换一个结果看看，或点「全部」把所有历史决策列出来。"
               onRefresh={list.reload}
               testId="apr5-empty-history"

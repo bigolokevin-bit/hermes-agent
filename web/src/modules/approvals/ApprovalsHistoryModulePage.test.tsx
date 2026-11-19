@@ -198,13 +198,43 @@ describe("the eight states", () => {
     expect(text()).not.toContain("过期未处理的采购");
   });
 
+  it("R44: shareable queue shortcuts ride the real status parameter, count is same-source, honest axes stay disabled", async () => {
+    await mount();
+    const sc = (v: string) => document.querySelector(`[data-testid='apv5-filter-${v}']`) as HTMLButtonElement;
+    expect(sc("status-pending")).toBeTruthy();
+    expect(sc("status-all")).toBeTruthy();
+    const before = urls().length;
+    await act(async () => {
+      sc("status-rejected").click();
+    });
+    await waitFor(() => text().includes("临时提权申请"), "rejected row");
+    const fresh = urls().slice(before).filter((u) => u.includes("api/approvals"));
+    expect(fresh).toHaveLength(1);
+    expect(fresh[0]).toContain("status=rejected");
+    // A shared/refreshed URL reopens exactly the same answer, and both the
+    // shortcut and the eight-state chip read the same active source.
+    await render("/approvals?tab=history&status=pending", <ApprovalsHistoryModulePage />);
+    await waitFor(() => text().includes("等待你点头的发布"), "pending replay");
+    expect(sc("status-pending").getAttribute("aria-pressed")).toBe("true");
+    expect(chip("pending").getAttribute("aria-pressed")).toBe("true");
+    expect(document.querySelector("[data-testid='apv5-count']")?.textContent).toBe("1");
+    expect(text()).toContain("已显示 1 条「待处理」记录");
+    // Risk and window are stated, never faked: disabled with the measured
+    // reason in the title.
+    const risk = document.querySelector("[data-testid='apv5-filter-risk']") as HTMLSelectElement;
+    expect(risk.disabled).toBe(true);
+    expect(risk.title).toContain("假过滤");
+    const win = document.querySelector("[data-testid='apv5-filter-window']") as HTMLSelectElement;
+    expect(win.disabled).toBe(true);
+  });
+
   it("a state with no history says so, and 全部 drops the parameter", async () => {
     await mount();
     await pick("consumed");
     expect(text()).toContain("已执行的批量导出");
     api.fetchJSON.mockImplementation(async () => ({ items: [] }));
     await pick("superseded");
-    expect(text()).toContain("「已被新单替代」状态下没有记录");
+    expect(text()).toContain("该条件下无审批：「已被新单替代」结果下没有记录");
     expect(text()).toContain("换一个结果看看");
     // QA V4-R4 条目2: 零结果面板必须有真出口，不许死链。
     const back = document.querySelector("[data-testid='apr5-empty-history-exits-back']") as HTMLAnchorElement;
@@ -346,7 +376,7 @@ describe("history whole-panel states", () => {
     expect(document.querySelector("[data-testid='apr5-loading']")).toBeTruthy();
     expect(api.fetchJSON).not.toHaveBeenCalled();
     await open("empty");
-    expect(text()).toContain("状态下没有记录");
+    expect(text()).toContain("该条件下无审批");
     expect(document.querySelector("[data-testid='apr5-empty-history']")).toBeTruthy();
     await open("error");
     expect(text()).toContain("本次请求未记录编号，可复制时间与操作路径反馈");
@@ -413,6 +443,77 @@ describe("history whole-panel states", () => {
     expect(detailText).toContain("无决策记录");
     expect(detailText).not.toContain("emp_");
     expect(document.querySelector("[data-testid='apd5-field-change-kind']")?.textContent).toContain("对外发送消息");
+  });
+
+  it("R46: apd6 shows submit, recorded nodes in service order, outstanding approvers and honest gaps", async () => {
+    const sample = {
+      approvalId: "ap_trail_1",
+      title: "批量导出",
+      status: "pending",
+      type: "data_export",
+      requestedBy: { type: "user", id: "human:7", name: "张三" },
+      createdAt: "2026-11-18T02:30:00Z",
+      approvers: [
+        { userId: "employee:emp_217A91BA995044DFBB3E2E940B", name: "小鲤" },
+        { userId: "human:7", name: "张三" },
+      ],
+      requiredApprovals: 2,
+      decisions: [{ verdict: "approve", by: "human:7", name: "张三", decidedAt: "2026-11-18T03:00:00Z" }],
+      requestId: "req-trail",
+    };
+    await mount(async (url) => {
+      if (url.includes("/api/approval?id=")) return sample;
+      return { items: [sample] };
+    });
+    const card = document.querySelector("[data-testid^='apr5-row-']") as HTMLElement;
+    await act(async () => {
+      card.click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='apd6-trail']") !== null, "trail mounted");
+    const trail = document.querySelector("[data-testid='apd6-trail']");
+    expect(trail?.textContent).toContain("提交 · 张三 · 2026-11-18 10:30");
+    expect(document.querySelector("[data-testid='apd6-step-node-0']")?.textContent).toContain(
+      "节点 1 · 张三 · 通过 · 2026-11-18 11:00 · 意见：未填",
+    );
+    expect(document.querySelector("[data-testid='apd6-step-node-1']")).toBeNull();
+    const pending = document.querySelector("[data-testid='apd6-step-pending-0']");
+    expect(pending?.textContent).toContain("小鲤");
+    expect(pending?.textContent).toContain("待办");
+    expect(pending?.textContent).toContain("该段无记录");
+    expect(document.querySelector("[data-testid='apd6-step-final']")?.textContent).toContain("终态 ·");
+    expect(document.querySelector("[data-testid='apd6-step-links']")?.textContent).toContain("该段无记录");
+    // the trail never shows a bare handle or invents an order
+    expect(trail?.textContent).not.toContain("human:");
+    expect(trail?.textContent).not.toContain("emp_");
+  });
+
+  it("R46: when the ticket carries run/task ids the trail links them for real", async () => {
+    const sample = {
+      approvalId: "ap_trail_2",
+      title: "清理过期文件",
+      status: "approved",
+      type: "cleanup",
+      requestedBy: { type: "user", id: "human:1", name: "李四" },
+      createdAt: "2026-11-17T01:00:00Z",
+      approvers: [{ userId: "human:1", name: "李四" }],
+      decisions: [{ verdict: "approve", by: "human:1", name: "李四", decidedAt: "2026-11-17T02:00:00Z", comment: "可以" }],
+      runId: "run_217A91BA995044DF",
+      taskId: "tk_217A91BA995044DF",
+    };
+    await mount(async (url) => {
+      if (url.includes("/api/approval?id=")) return sample;
+      return { items: [sample] };
+    });
+    const card = document.querySelector("[data-testid^='apr5-row-']") as HTMLElement;
+    await act(async () => {
+      card.click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='apd6-trail']") !== null, "trail mounted");
+    const run = document.querySelector("[data-testid='apd6-link-run']") as HTMLAnchorElement | null;
+    expect(run?.getAttribute("href")).toBe("/runs/run_217A91BA995044DF");
+    const task = document.querySelector("[data-testid='apd6-link-task']") as HTMLAnchorElement | null;
+    expect(task?.getAttribute("href")).toBe("/tasks/tk_217A91BA995044DF");
+    expect(document.querySelector("[data-testid='apd6-step-node-0']")?.textContent).toContain("意见：可以");
   });
 
   it("R31 obs: the approver field renders once and bare human:1 reads 人员 with the handle in the title", async () => {
