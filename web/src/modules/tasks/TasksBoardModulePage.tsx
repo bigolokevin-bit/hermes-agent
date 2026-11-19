@@ -36,6 +36,9 @@ import {
 } from "./tasksBoard";
 import { TaskCreateForm } from "./TaskCreateForm";
 
+/** 组内排序键：优先级高→低，同级按更新时间新→旧；未知按最后。 */
+const PRIORITY_RANK: Record<string, number> = { high: 0, urgent: 0, normal: 1, low: 2 };
+
 const COLUMN_LABEL: Record<(typeof BOARD_STATUSES)[number], string> = {
   open: "待处理",
   in_progress: "进行中",
@@ -58,10 +61,6 @@ type DetailState =
 const CONTACT_ADMIN_HREF = "mailto:workspace-admin@hermes.local?subject=Hermes%20%E6%8E%A7%E5%88%B6%E5%8F%B0%E9%97%AE%E9%A2%98%E5%8F%8D%E9%A6%88";
 
 /** QA V4-R4 条目5: 缺编号时给可执行的话术，不写「未提供」。 */
-function requestIdText(id: string | null): string {
-  return id ? `请求编号 ${id}` : "本次请求未记录编号，可复制时间与操作路径反馈";
-}
-
 function BoardSkeleton() {
   return (
     <div className="grid min-w-0 gap-3 md:grid-cols-2 xl:grid-cols-5" data-testid="tsk4-loading" aria-busy="true">
@@ -243,6 +242,10 @@ export function TasksBoardModulePage() {
   const fAssignee = params.get("assignee");
   const fCursor = params.get("cursor");
   const filterActive = Boolean(fStatus) || Boolean(fAssignee);
+  // R41: the single-query panel view follows the STATUS filter only. An
+  // assignee filter keeps the five-column board and is passed to each leg,
+  // so column counts stay linked to the filter instead of hiding the board.
+  const panelActive = Boolean(fStatus);
   const [filtered, setFiltered] = useState<FilterResult | null>(null);
   const [cursorStack, setCursorStack] = useState<string[]>([]);
 
@@ -289,7 +292,7 @@ export function TasksBoardModulePage() {
   }, [patchParams]);
 
   useEffect(() => {
-    if (!filterActive) {
+    if (!panelActive) {
       setFiltered(null);
       return;
     }
@@ -298,7 +301,7 @@ export function TasksBoardModulePage() {
       if (alive) setFiltered(res);
     });
     return () => { alive = false; };
-  }, [filterActive, fStatus, fAssignee, fCursor, tick]);
+  }, [panelActive, fStatus, fAssignee, fCursor, tick]);
 
   const assigneeOptions = useMemo(
     () =>
@@ -373,12 +376,12 @@ export function TasksBoardModulePage() {
     setBoard((prev) => ({ ...prev, phase: "loading" }));
     // P2: the filter view replaces the columns, so only the directory leg
     // runs — one real /api/tasks query comes from loadFiltered below.
-    const loader = filterActive ? loadNamesOnly : loadBoard;
+    const loader = panelActive ? loadNamesOnly : () => loadBoard(fAssignee);
     void loader().then((next) => {
       if (alive) setBoard(next);
     });
     return () => { alive = false; };
-  }, [forced, forceRid, tick, filterActive]);
+  }, [forced, forceRid, tick, panelActive, fAssignee]);
 
   useEffect(() => {
     if (!selected) {
@@ -422,6 +425,13 @@ export function TasksBoardModulePage() {
     for (const status of BOARD_STATUSES) map.set(status, []);
     for (const row of board.rows) {
       if (map.has(row.status)) map.get(row.status)!.push(row);
+    }
+    for (const rows of map.values()) {
+      rows.sort(
+        (a, b) =>
+          (PRIORITY_RANK[a.priority ?? ""] ?? 3) - (PRIORITY_RANK[b.priority ?? ""] ?? 3) ||
+          String(b.updatedAt ?? "").localeCompare(String(a.updatedAt ?? "")),
+      );
     }
     return map;
   }, [board.rows]);
@@ -528,7 +538,7 @@ export function TasksBoardModulePage() {
         </Button>
       </div>
 
-      {filterActive ? (
+      {panelActive ? (
         <section className="min-w-0 space-y-3" data-testid="tsk4-filter-view">
           {!filtered ? (
             <BoardSkeleton />
@@ -626,7 +636,7 @@ export function TasksBoardModulePage() {
         </section>
       ) : null}
 
-      {!filterActive ? (
+      {!panelActive ? (
       <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm" data-testid="tsk4-summary">
         <span data-testid="status">
           待处理 <b>{countsUnknown ? "—" : counts.open}</b> · 阻塞 <b>{countsUnknown ? "—" : counts.blocked}</b>
@@ -640,7 +650,7 @@ export function TasksBoardModulePage() {
         <span data-testid="owner">负责人：任务指派对象</span>
       </div>
       ) : null}
-      {!filterActive ? (
+      {!panelActive ? (
       <p className="text-xs text-muted-foreground">
         仅显示本页已加载的任务，不是全量统计；新建走任务服务真接口，状态迁移待写入车间接线后开放。
       </p>
@@ -653,9 +663,9 @@ export function TasksBoardModulePage() {
         onRetry={() => setTick((n) => n + 1)}
       />
 
-      {!filterActive && board.phase === "loading" ? <BoardSkeleton /> : null}
+      {!panelActive && board.phase === "loading" ? <BoardSkeleton /> : null}
 
-      {!filterActive && board.phase === "empty" ? (
+      {!panelActive && board.phase === "empty" ? (
         <Card data-testid="tsk4-empty">
           <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
             <Inbox className="h-8 w-8 text-muted-foreground" />
@@ -665,7 +675,7 @@ export function TasksBoardModulePage() {
         </Card>
       ) : null}
 
-      {!filterActive && (board.phase === "error" || board.phase === "denied") ? (
+      {!panelActive && (board.phase === "error" || board.phase === "denied") ? (
         <Card data-testid={`tsk4-${board.phase}`}>
           <CardContent className="flex flex-col items-start gap-3 p-5">
             {board.phase === "denied" ? (
@@ -678,14 +688,17 @@ export function TasksBoardModulePage() {
                 {board.phase === "denied" ? "任务看板暂不可见" : "任务没能加载出来"}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">{board.message}</p>
-              <p className="mt-2 break-words text-xs text-muted-foreground">{requestIdText(board.requestId)}</p>
+              <p className="mt-2 break-words text-xs text-muted-foreground">
+                <RequestIdCopy
+                  requestId={board.requestId}
+                  fallback="本次请求未记录编号，可复制时间与操作路径反馈"
+                />
+              </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {board.phase === "error" ? (
-                <Button size="sm" outlined onClick={retry} prefix={<RefreshCw className="h-4 w-4" />}>
-                  重试
-                </Button>
-              ) : null}
+              <Button size="sm" outlined onClick={retry} data-testid="tsk4-retry" prefix={<RefreshCw className="h-4 w-4" />}>
+                重试
+              </Button>
               {/* QA V4-R4 条目2: 真出口 — hash 壳内 react-router 路由可达。 */}
               <Link
                 to="/overview"
@@ -706,7 +719,7 @@ export function TasksBoardModulePage() {
         </Card>
       ) : null}
 
-      {!filterActive && board.phase === "ready" ? (
+      {!panelActive && board.phase === "ready" ? (
         <div className="grid min-w-0 gap-3 md:grid-cols-2 xl:grid-cols-5" data-testid="tsk4-columns">
           {BOARD_STATUSES.map((status) => {
             const rows = grouped.get(status) ?? [];
@@ -717,12 +730,12 @@ export function TasksBoardModulePage() {
                   {rows.length === 0 ? (
                     <Badge title="这一列当前是空的；空列不计数为 0">—</Badge>
                   ) : (
-                    <Badge>{rows.length}</Badge>
+                    <Badge title="排序：优先级（高→低），同级按更新时间（新→旧）">{rows.length} 条（本页已加载）</Badge>
                   )}
                 </div>
                 {rows.length === 0 ? (
-                  <p className="rounded-lg border border-border p-3 text-xs text-muted-foreground">
-                    这一列暂无任务
+                  <p className="rounded-lg border border-border p-3 text-xs text-muted-foreground" data-testid={`tsk4-emptycol-${status}`}>
+                    本列暂无任务{fAssignee ? "（当前正按负责人筛选，清空筛选或换一位负责人可见更多）" : ""}
                   </p>
                 ) : (
                   rows.map((row) => {

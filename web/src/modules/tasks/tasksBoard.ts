@@ -188,12 +188,14 @@ export function collectNames(body: unknown): Record<string, string> {
   return map;
 }
 
-export async function loadBoard(): Promise<BoardState> {
+export async function loadBoard(assignee?: string | null): Promise<BoardState> {
   try {
     const [bodies, directory] = await Promise.all([
       Promise.all(
         BOARD_STATUSES.map((status) =>
-          fetchJSON<unknown>(`/agent-api/api/tasks?status=${status}&limit=50`),
+          fetchJSON<unknown>(
+            `/agent-api/api/tasks?status=${status}&limit=50${assignee ? `&assignee=${encodeURIComponent(assignee)}` : ""}`,
+          ),
         ),
       ),
       fetchJSON<unknown>("/agent-api/api/matrix").catch(() => null),
