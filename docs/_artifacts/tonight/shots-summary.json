@@ -9,12 +9,12 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 493,
+    "textLen": 494,
     "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 今日运行 运行记录 今日成本 成本账本 发布 ",
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 27,
+  "distinctMainHeads": 26,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -141,13 +141,13 @@
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "1440",
-      "chars": 1034,
+      "chars": 128,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "375",
-      "chars": 128,
+      "chars": 1034,
       "hasMainEl": true
     },
     {
@@ -255,55 +255,55 @@
     {
       "route": "#/employees/:employeeId?zone=tasks",
       "viewport": "375",
-      "chars": 51,
+      "chars": 42,
       "hasMainEl": true
     },
     {
       "route": "#/identity",
       "viewport": "1440",
-      "chars": 129,
+      "chars": 157,
       "hasMainEl": true
     },
     {
       "route": "#/identity",
       "viewport": "375",
-      "chars": 129,
+      "chars": 157,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=admins",
       "viewport": "1440",
-      "chars": 129,
+      "chars": 157,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=admins",
       "viewport": "375",
-      "chars": 129,
+      "chars": 157,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=binding",
       "viewport": "1440",
-      "chars": 129,
+      "chars": 157,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=binding",
       "viewport": "375",
-      "chars": 129,
+      "chars": 157,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=checks",
       "viewport": "1440",
-      "chars": 129,
+      "chars": 157,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=checks",
       "viewport": "375",
-      "chars": 129,
+      "chars": 157,
       "hasMainEl": true
     },
     {
@@ -321,13 +321,13 @@
     {
       "route": "#/identity?tab=people&view=admins",
       "viewport": "1440",
-      "chars": 129,
+      "chars": 157,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=people&view=admins",
       "viewport": "375",
-      "chars": 129,
+      "chars": 157,
       "hasMainEl": true
     },
     {
@@ -345,13 +345,13 @@
     {
       "route": "#/identity?tab=tenant",
       "viewport": "1440",
-      "chars": 129,
+      "chars": 157,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=tenant",
       "viewport": "375",
-      "chars": 129,
+      "chars": 157,
       "hasMainEl": true
     },
     {
@@ -453,25 +453,25 @@
     {
       "route": "#/org",
       "viewport": "1440",
-      "chars": 129,
+      "chars": 157,
       "hasMainEl": true
     },
     {
       "route": "#/org",
       "viewport": "375",
-      "chars": 129,
+      "chars": 157,
       "hasMainEl": true
     },
     {
       "route": "#/overview",
       "viewport": "1440",
-      "chars": 1011,
+      "chars": 1012,
       "hasMainEl": true
     },
     {
       "route": "#/overview",
       "viewport": "375",
-      "chars": 1011,
+      "chars": 1012,
       "hasMainEl": true
     },
     {
@@ -597,16 +597,16 @@
     {
       "route": "#/work?tab=board&view=cron",
       "viewport": "1440",
-      "chars": 1782,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/work?tab=board&view=cron",
-      "viewport": "375",
       "chars": 145,
       "hasMainEl": true
     },
     {
+      "route": "#/work?tab=board&view=cron",
+      "viewport": "375",
+      "chars": 1782,
+      "hasMainEl": true
+    },
+    {
       "route": "#/work?tab=cron",
       "viewport": "1440",
       "chars": 1782,
@@ -621,20 +621,20 @@
     {
       "route": "#/work?tab=runs",
       "viewport": "1440",
-      "chars": 1335,
+      "chars": 1336,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=runs",
       "viewport": "375",
-      "chars": 1307,
+      "chars": 1308,
       "hasMainEl": true
     }
   ],
   "consoleErrorsObservedByShots": 0,
   "consoleErrorRoutesObservedByShots": [],
   "ceAuthority": "login-state",
-  "routesWithEnvOnlyConsoleErrors": 22,
+  "routesWithEnvOnlyConsoleErrors": 21,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
   "overflowing": [],
   "driver": {
@@ -642,11 +642,11 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "4dd7966f",
+  "headHash": "1f3fe2ad",
   "exitCode": 0,
-  "entry": "assets/index-BzzNjw7T.js",
-  "entrySha256": "adc6daed4f18d20add13e34a90aefbdd7c99d38cd78af634fd020e9194d2eb8b",
-  "entryBytes": 158940,
-  "servedEntryBefore": "assets/index-BzzNjw7T.js",
-  "servedEntryAfter": "assets/index-BzzNjw7T.js"
+  "entry": "assets/index-DE2Dr0C5.js",
+  "entrySha256": "74f2f276ed6f58d5b2e77f632a905069b21ee28670e249e167991d80aef762e9",
+  "entryBytes": 158988,
+  "servedEntryBefore": "index-DE2Dr0C5.js",
+  "servedEntryAfter": "index-DE2Dr0C5.js"
 }

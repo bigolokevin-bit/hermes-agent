@@ -14,7 +14,7 @@
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 25,
+  "distinctMainHeads": 26,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -255,55 +255,55 @@
     {
       "route": "#/employees/:employeeId?zone=tasks",
       "viewport": "375",
-      "chars": 42,
+      "chars": 51,
       "hasMainEl": true
     },
     {
       "route": "#/identity",
       "viewport": "1440",
-      "chars": 161,
+      "chars": 163,
       "hasMainEl": true
     },
     {
       "route": "#/identity",
       "viewport": "375",
-      "chars": 161,
+      "chars": 163,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=admins",
       "viewport": "1440",
-      "chars": 161,
+      "chars": 163,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=admins",
       "viewport": "375",
-      "chars": 161,
+      "chars": 163,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=binding",
       "viewport": "1440",
-      "chars": 161,
+      "chars": 163,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=binding",
       "viewport": "375",
-      "chars": 161,
+      "chars": 163,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=checks",
       "viewport": "1440",
-      "chars": 161,
+      "chars": 163,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=checks",
       "viewport": "375",
-      "chars": 161,
+      "chars": 163,
       "hasMainEl": true
     },
     {
@@ -321,13 +321,13 @@
     {
       "route": "#/identity?tab=people&view=admins",
       "viewport": "1440",
-      "chars": 161,
+      "chars": 163,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=people&view=admins",
       "viewport": "375",
-      "chars": 161,
+      "chars": 163,
       "hasMainEl": true
     },
     {
@@ -345,13 +345,13 @@
     {
       "route": "#/identity?tab=tenant",
       "viewport": "1440",
-      "chars": 161,
+      "chars": 163,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=tenant",
       "viewport": "375",
-      "chars": 161,
+      "chars": 163,
       "hasMainEl": true
     },
     {
@@ -453,13 +453,13 @@
     {
       "route": "#/org",
       "viewport": "1440",
-      "chars": 161,
+      "chars": 163,
       "hasMainEl": true
     },
     {
       "route": "#/org",
       "viewport": "375",
-      "chars": 161,
+      "chars": 163,
       "hasMainEl": true
     },
     {
@@ -642,12 +642,12 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "4dd7966f",
+  "headHash": "1f3fe2ad",
   "exitCode": 0,
   "auxiliary": true,
-  "entry": "assets/index-BzzNjw7T.js",
-  "entrySha256": "adc6daed4f18d20add13e34a90aefbdd7c99d38cd78af634fd020e9194d2eb8b",
-  "entryBytes": 158940,
-  "servedEntryBefore": "assets/index-BzzNjw7T.js",
-  "servedEntryAfter": "assets/index-BzzNjw7T.js"
+  "entry": "assets/index-DE2Dr0C5.js",
+  "entrySha256": "74f2f276ed6f58d5b2e77f632a905069b21ee28670e249e167991d80aef762e9",
+  "entryBytes": 158988,
+  "servedEntryBefore": "index-DE2Dr0C5.js",
+  "servedEntryAfter": "index-DE2Dr0C5.js"
 }

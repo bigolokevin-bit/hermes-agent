@@ -930,3 +930,11 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - shots main(auth)：102/102，failures=[]，oversize=[]，consoleErrorsObservedByShots=0，ceAuthority=login-state，distinctMainHeads=27，routesWithEmptyMain=[]；rootBaseline textLen=493 真数据上屏（overview 1011/audit 7882/work 1782）；拍后 served 复证仍 BzzNjw7T 未漂。summary 注入 headHash/exitCode/entry 全名/entrySha256 全值/entryBytes=158940/servedEntryBefore=After=index-BzzNjw7T.js。
 - 环境：9122 pid 64868、caddy 8183 pid 28034、8092 pid 43857 未动；auth-state 19:1x 版窗内；web/src 未碰、他人脏零沾染。
 - shots-anon（auxiliary，mktemp /tmp/shots-anon64 隔离目录法）：102/102，mode=anon，failures=[]，obs=0，routesWithEnvOnlyConsoleErrors=51，rootBaseline 含『登录状态已过期』文本=匿名实锤；同名覆盖口径 mv 回 tonight/shots（pngs=102）；summary 注入 auxiliary=true+同六键。
+
+## 六十七轮·九件账本重章 @ 1f3fe2ad（entry DE2Dr0C5，2026-11-19 22:5x）
+
+- 代次四向互证：HEAD=1f3fe2ad=远端；磁盘 hermes_cli/web_dist/assets/index-DE2Dr0C5.js 158988B sha 74f2f276…762e9 全等卡面；9122==8183==DE2Dr0C5；porcelain（滤他人脏）=0。
+- 九腿全 exit=0：assert-ia-react/html ok {51,22,1,8}（自盖章）；lint-fake ok v=[]；lint-reuse ok v=0 exempted=1（chat→T40）；crawl-anon ok DL0/CE0/PE0 routesCE=51（401 归因）；crawl-auth ok routesCE=21；state-quad 20/20 文本重建 JSON。
+- shots main(auth) 102/102 failures=[] obs=0 ceAuth=login-state，三键=DE2Dr0C5/74f2f276…/158988，拍后 served 复证未漂；shots-anon auxiliary=true 102/102 mode=anon（mktemp /tmp/shots-anon67 隔离同名覆盖 mv 回，pngs=102）。
+- 坑注：crawl-routes.mjs 在 web/scripts——必须 cd web 跑（本拍首跑 repo 根 exit=1=MODULE_NOT_FOUND 非环境红，纠正即绿）；python heredoc print 关键字参数笔误会中断后续盖章段，拆跑补齐。
+- 环境：9122 v4_proxy 受管 pid 63777、caddy 8183 pid 28034、8092 pid 76933 全程未动；web/src 未碰；他人脏零沾染。
