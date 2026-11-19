@@ -189,3 +189,40 @@ export function ledgerMoney(ledger: ModelLedger): string {
   if (ledger.status === 'unknown') return '未计价';
   return fmtUsd(ledger.spent);
 }
+// ---- reconciliation: per-model usage tokens (reference only) ----------------
+
+export type UsageLine = { model: string; inputTokens: number | null; outputTokens: number | null; apiCalls: number | null };
+
+/** Read `by_model` from Hermes usage. Missing numbers stay null. */
+export function readUsageLines(payload: unknown): UsageLine[] {
+  if (typeof payload !== 'object' || payload === null) return [];
+  const rows = (payload as { by_model?: unknown }).by_model;
+  if (!Array.isArray(rows)) return [];
+  const lines: UsageLine[] = [];
+  for (const raw of rows) {
+    if (typeof raw !== 'object' || raw === null) continue;
+    const row = raw as Record<string, unknown>;
+    const model = typeof row.model === 'string' ? row.model : typeof row.modelId === 'string' ? row.modelId : null;
+    if (!model) continue;
+    const num = (value: unknown): number | null => (typeof value === 'number' && Number.isFinite(value) ? value : null);
+    lines.push({
+      model,
+      inputTokens: num(row.input_tokens ?? row.inputTokens),
+      outputTokens: num(row.output_tokens ?? row.outputTokens),
+      apiCalls: num(row.api_calls ?? row.apiCalls),
+    });
+  }
+  return lines;
+}
+
+/** Reference-only estimate: unit price × tokens. Never called spend. */
+export function estimateUsd(
+  inputPerMillion: number | null,
+  outputPerMillion: number | null,
+  inputTokens: number | null,
+  outputTokens: number | null,
+): number | null {
+  if (inputPerMillion === null || outputPerMillion === null) return null;
+  if (inputTokens === null || outputTokens === null) return null;
+  return (inputTokens / 1_000_000) * inputPerMillion + (outputTokens / 1_000_000) * outputPerMillion;
+}
