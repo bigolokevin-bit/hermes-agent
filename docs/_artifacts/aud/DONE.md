@@ -293,3 +293,71 @@ ESLINT_EXIT=0     ✖ 3 problems (0 errors, 3 warnings)
 4. 视觉/截图核对：未做。
 5. `../apps/shared` 的 49 项 tsc 既有错误：写域外，未修。
 6. 「重新读取」在真实 401 环境下的登录跳转：本模块只读、不碰会话，未实现也未验（与审计三面同口径）。
+
+---
+
+# TASK T29/T24（小手术）— 数据源面的 `ds4-*` 测试 id（2026-11-19）
+
+派单：给 channels 模块的 T24 数据源账本补 `ds4-*` 稳定测试 id，**不改任何行为、文案、布局、数据逻辑**；
+`chn4-*` 一律保留原值、原位、原精确匹配。
+
+## T1. 加了哪些 id（`web/src/modules/channels/ChannelsPage.tsx`）
+
+- `ds4-ledger`：`SourcesLedger` 的 `CardContent`（`chn4-sources` 的 Card 根仍在，包着它）。
+- `ds4-row`：每条账本行的内容容器 `div`；外层行 div 仍是 `chn4-source-<N>`（`data-status`、`data-gap` 不动），
+  断言用 `closest("[data-status]")` 回到行。
+- `ds4-status`：账本徽章的 `display: contents` 包裹 `span`（仓内既有模式，见 `App.tsx:1347`），
+  徽章本体继续拿 `chn4-source-<N>-badge`；渠道行的徽章不带 marker，零变化。
+- `ds4-gap`：`缺口编号 GAP-…` 那个 `<p>`（此前没有 testid，直接落位）。
+- `ds4-request`：**没有加**——这一面是只读的，全模块 grep「申请」0 命中，不存在申请入口链接/按钮；
+  按判据不造控件。
+
+## T2. 新增断言（`ChannelsPage.test.tsx` 新 describe「the data-source ledger carries its own ds4-* ids」，3 例）
+
+1. `ds4-ledger` 包住 4 条 `ds4-row`，且 `chn4-source-2`、`chn4-source-2-details`、`chn4-row-0-badge` 仍按原值可查；
+2. 4 个 `ds4-status` 逐一与所在行 `data-status` 的词对上（已接入/未接入/未知），徽章的 chn4 id 共存；
+3. 端点缺席的行上 `ds4-gap` 带缺口编号（fixture 里 3 个：GAP-08×2、GAP-04×1），答到了的那行没有 gap 单元格。
+
+## T3. 门禁（精确退出码）
+
+```
+$ cd web && npx tsc -b . --noEmit
+TSC_EXIT=2        49 error TS 行：全部在 ../apps/shared；src/modules/channels=0、shared 以外=0（与基线一致）
+$ cd web && ./node_modules/.bin/vitest run src/modules/channels
+VITEST_EXIT=0     Test Files 2 passed (2)   Tests 77 passed (77)   Duration 1.10s
+                  ← 原 74（channels.test.ts 38 + ChannelsPage.test.tsx 36）+ 本轮 3
+$ cd web && ./node_modules/.bin/eslint src/modules/channels
+ESLINT_EXIT=0     无输出（0 problems）
+```
+
+## T4. 端点实探状态码（本轮重跑，本机 BFF `127.0.0.1:8092`，`L4ConsoleBFF/0.1`，无身份头）
+
+```
+GET /api/messaging/platforms?limit=50   -> 401
+GET /api/channels?limit=50              -> 401
+GET /api/datasources?limit=50           -> 401
+GET /api/mcp/servers?limit=50           -> 401
+GET /api/gateway-connections?limit=50   -> 401
+GET /api/connectors?limit=50            -> 401
+响应头样例：X-Console-Request-Id: a98c795132e841c9b801c66fd44dd991
+```
+
+门在路由之前：六条全部 401，带不带筛选从外部分辨不出来；前端 401 走「登录状态已经失效」人话腿，
+不画任何行。真实 2xx 下 `ds4-gap` 是否缺席、GAP 编号是否变化，仍要真身份才能验。
+
+## T5. `?state=` 复现腿与 `data-fixture` 值
+
+- 腿值：`loading` / `empty` / `error` / `denied`（页根 `data-fixture="<state>"`，`chn4-page` 上）；
+  写 `?state=ready` 不发复现、照真读取且不打 `data-fixture`（既有测试钉住）。
+- 复现腿页面同时打「这是用 ?state=… 复现出来的状态」+ GAP-08；复现腿不发请求，`chn4-retry` 与筛选禁用。
+- 复现的 loading/empty/error/denied 四腿账本为空 → `ds4-*` 也不存在（`SourcesLedger` 空表返回 null），与 `chn4-sources` 同进退。
+- 测试里的 fixture 值（非屏上）：`byUrl` 用 `/agent-api/api/messaging/platforms` 回 2xx、其余路由统一
+  `ApiError 404 {"code":"console.not_found"}`（requestId `chn-probe`）。
+
+## T6. 未验项（照实留）
+
+1. `contents` 包裹的像素级回归：类名与 `App.tsx:1347` 同款、jsdom 无布局，1440/375 未截图实测；
+   理论上 `display:contents` 不产生盒子，徽章位置与间距不应变。
+2. 真身份（2xx 真负载）下的 `ds4-*` 行为：本机没有可过 `identity-check` 的身份头，未验。
+3. `ds4-request` 缺席的判定依据是当前模块无申请入口；若后续接入带申请入口的真实渠道面，需另补 id 与断言。
+4. 页面接线（shell 路由）仍归接线车道；本轮只动 `web/src/modules/channels/` 两文件 + 本段。
