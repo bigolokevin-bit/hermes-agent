@@ -25,14 +25,14 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 
 import { DeniedPanel, ErrorPanel, LoadingPanel } from "./states";
 import { AuditEventDetailBody } from "./views";
-import { forcedStateOf, useAuditDetail } from "./useAuditData";
+import { useAuditDetail } from "./useAuditData";
 
 export function AuditDetailModulePage(): ReactNode {
+  // R37: no ?state= repro leg — all four states come from the service's answer.
   const [params] = useSearchParams();
-  const forced = forcedStateOf(params.get("state"));
   // R31: the documented spelling is `?detail=`; `?id=` stays readable for old links.
   const id = params.get("detail") ?? params.get("id");
-  const detail = useAuditDetail(id, forced);
+  const detail = useAuditDetail(id, null);
 
   const statusLine = (() => {
     if (!id) return "还没有指定要看哪一条事件";
@@ -58,11 +58,11 @@ export function AuditDetailModulePage(): ReactNode {
       );
     }
     if (detail.phase === "loading") {
-      return <LoadingPanel testId="aud02-detail-loading" fixture={detail.forced ? "loading" : undefined} />;
+      return <LoadingPanel testId="aud02-detail-loading" />;
     }
     if (detail.phase === "denied") {
       return (
-        <DeniedPanel failure={detail.failure} fixture={detail.forced ? "denied" : undefined} testId="aud02-detail-denied" />
+        <DeniedPanel failure={detail.failure} testId="aud02-detail-denied" />
       );
     }
     if (detail.phase === "error" || !detail.detail) {
@@ -72,7 +72,6 @@ export function AuditDetailModulePage(): ReactNode {
           onRetry={detail.reload}
           title="这条事件没能加载出来"
           testId="aud02-detail-error"
-          fixture={detail.forced ? "error" : undefined}
         />
       );
     }
@@ -86,12 +85,6 @@ export function AuditDetailModulePage(): ReactNode {
       </p>
 
       <p className="min-w-0 break-words text-xs text-muted-foreground">时间为北京时间，精确到分。</p>
-
-      {detail.forced ? (
-        <p className="min-w-0 break-words text-xs text-warning" data-testid="aud02-forced-note">
-          这是用 ?state= 复现出来的状态，不是服务此刻的回答。
-        </p>
-      ) : null}
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)]">
         <section className="flex min-w-0 flex-col gap-2" aria-label="事件详情">

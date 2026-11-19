@@ -2543,3 +2543,35 @@ Scope: web/src/modules/runs/** only (page, data layer, tests) plus this ledger.
 ### Untested / disclosed
 - The live event stream on this tenant carries only 消息/完成 events, so the tool-reference, 原文不可达 and 失败原因 branches are test-proven only (grep on the live dump: 结果引用 0, 未记录 0, 待核实 0, 原文不可达 0).
 - No per-element pixel comparison (only sw==cw plus text length); 9122 not rebuilt and main not merged per the order.
+
+## R37 fixture debt burn - 2 aud pages (2026-11-20, base 165e62a5 / lane tip e4c03f8c)
+
+### Inventory (grep -rl data-fixture, *.tsx)
+- audit / runs / collab / evidence: **no live data-fixture attribute left**. The only hits are header comments in `collab/states.tsx` and `runs/states.tsx` (left by the R32 / R30 burns).
+- Live markers in this checkout belong to other lanes: `tenant/TenantQuotaPage.tsx:286,303,325`, `tools/states.tsx:39-40` + `tools/ToolsPage.tsx:133,173,188,261`, `access/AccessModulePage.tsx:498,519`. All three are outside this round's write domain.
+
+### The one in-scope page that still carried a repro leg
+`web/src/modules/audit/AuditDetailModulePage.tsx` (standalone aud02 detail) read `?state=` through `forcedStateOf` and passed `fixture=` to three panels, while `audit/states.tsx` no longer rendered any marker for it - an unlabelled repro leg.
+
+Changes:
+- `forcedStateOf` import and the `forced` value deleted; `useAuditDetail(id, null)`.
+- The three `fixture={detail.forced ? ... }` props and the `aud02-forced-note` block deleted; header comment records that all four states now come from the service's own answer.
+- `audit/states.tsx`: dead `Marked` interface and its `fixture?: string` member removed, plus the `fixture?: string` fragment in `ErrorPanel`'s inline props.
+- Test rewritten: `a stray ?state= no longer fakes a state: the record is read for real` loops loading/empty/error/denied, asserts the real `audit-detail?id=` read happens, `aud02-detail` renders, and neither `aud02-forced-note` nor 「复现出来的状态」 appears.
+- The hook-level `forced` capability in `useAuditData.ts` is left in place but no page passes a non-null value (documented, not refactored inside this time box).
+
+### Second page: does not exist inside the write domain
+After R30 (runs/audit-events/evidence) and R32 (channels/collab/retention) and R35 (audit verify), no second page in `web/src/modules/{audit,runs,collab,evidence}` carries a `data-fixture` marker or a `?state=` leg. The three live marker surfaces listed above are in `tenant` / `tools` / `access` and were forbidden this round. Reported plainly rather than inventing a second burn.
+
+### Gates
+- `vitest run src/modules/audit` -> exit 0, **10 files / 154 tests**.
+- `npx tsc -b . --noEmit` -> **49** errors, `modules/audit` **0** (the floor dropped from 73 to 49 on this base generation; none belong to this module).
+- `eslint src/modules/audit` -> exit 0, 0 errors / 4 pre-existing `react-hooks/set-state-in-effect` warnings (`RetentionModulePage.tsx:248`, `useAuditData.ts:152,228,325`).
+
+### Live reading
+`/audit/detail?id=ev_2BAA7DD7F3BC4767AF39764D91` is **not a mounted route** in this generation: the shell rewrites it to `/overview` (probe url `/overview`, `pageAudit 0`, `aud01 0`, textLen 1413 at 1440; 1257 with sw==cw at 1440/1280/375). No pixel evidence can be produced for this page until the shell registers it; the burn is proven by the module suite.
+
+### Untested / pending
+- Standalone audit-detail route mount (shell lane).
+- Per-element pixel diff (only sw==cw + textLen on the shell).
+- 9122 not rebuilt; main not merged.
