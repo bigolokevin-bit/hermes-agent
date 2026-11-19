@@ -1,5 +1,6 @@
 import { activeCount, buildBlockers, buildCost, lifecycleTotal, runTotals } from '../duty/aggregate';
-import { num } from '../duty/types';
+import { beijing } from '../duty/format';
+import { isRecord, num } from '../duty/types';
 import type { ApprovalRow, BudgetBody, Loadable, MatrixBody, RunRow, RunStatsBody, TaskRow } from '../duty/types';
 import { normalizeMatrixRow } from '../duty/fixture';
 
@@ -13,6 +14,61 @@ export const OVERVIEW_GAP = {
   activity: 'GAP-OV5-ACTIVITY',
   blockers: 'GAP-OV5-BLOCKERS',
 } as const;
+
+const STAMP_KEYS = [
+  'asOf',
+  'as_of',
+  'generatedAt',
+  'generated_at',
+  'snapshotAt',
+  'snapshot_at',
+  'updatedAt',
+  'updated_at',
+  'collectedAt',
+  'collected_at',
+  'lastUpdated',
+  'last_updated',
+] as const;
+
+function rawStamp(data: unknown): string | null {
+  if (!isRecord(data)) return null;
+  for (const key of STAMP_KEYS) {
+    const value = data[key];
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  for (const key of ['meta', 'source', 'ledger'] as const) {
+    const nested = data[key];
+    if (!isRecord(nested)) continue;
+    for (const stampKey of STAMP_KEYS) {
+      const value = nested[stampKey];
+      if (typeof value === 'string' && value.trim()) return value.trim();
+    }
+  }
+  return null;
+}
+
+export interface SourceStamp {
+  /** Beijing wall clock to the minute; null when the source supplied no stamp. */
+  shown: string | null;
+  /** Why the time is unknown. Always set when `shown` is null. */
+  reason: string | null;
+}
+
+/**
+ * Read the service's own collection stamp. A client fetch time is never
+ * substituted here: that would make stale data look fresh.
+ */
+export function sourceStamp(state: Loadable<unknown> | null): SourceStamp {
+  if (!state) return { shown: null, reason: '没有可读取的来源' };
+  if (state.k === 'loading') return { shown: null, reason: '数据还在读取' };
+  if (state.k === 'error') return { shown: null, reason: '本次读取失败，取不到采集时间' };
+  const raw = rawStamp(state.data);
+  if (!raw) return { shown: null, reason: '上游响应没有带采集时间' };
+  const shown = beijing(raw);
+  return shown === '—'
+    ? { shown: null, reason: '上游采集时间无法解析' }
+    : { shown, reason: null };
+}
 
 export interface KpiView {
   total: number | null;
