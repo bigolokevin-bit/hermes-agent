@@ -20,11 +20,17 @@
  * an id that has to appear at all appears as 「连接 · 后4位」.
  *
  * The 数据源 ledger is the T24 half: one row per data source this page asked,
- * saying what that ask returned. Where the endpoint does not exist, the row
- * carries the GAP number instead of a status it cannot prove. Its acceptance
- * ids are the `ds4-*` family (`ds4-ledger`, `ds4-row`, `ds4-status`, `ds4-gap`
- * — no 申请入口 exists on this read-only surface, so no `ds4-request`); every
- * `chn4-*` id on the same elements stays exactly as it was.
+ * saying what that ask returned — its kind, its 来源 in human words, whether it
+ * is 已接入、未接入 or 待核实, the gap number behind any verdict that is not
+ * 已接入, and its 最近同步 taken from the answer itself (「—」 plus the reason when
+ * the answer carried no instant; this page's own 本次核验 sits on its own line
+ * and never stands in for a sync stamp). Nothing in the ledger reads 「未知」: an
+ * unverifiable source is 待核实, which names the work left rather than shrugging.
+ * Its acceptance ids are the `ds4-*` family (`ds4-ledger`, `ds4-row`,
+ * `ds4-status`, `ds4-gap`, plus `ds4-kind`, `ds4-origin`, `ds4-sync`,
+ * `ds4-checked` for the new columns — no 申请入口 exists on this read-only
+ * surface, so no `ds4-request`); every `chn4-*` id on the same elements stays
+ * exactly as it was.
  *
  * Read-only by design: no enable, no test-connection, no save, no delete.
  */
@@ -43,6 +49,8 @@ import { DeniedPanel, EmptyPanel, ErrorPanel, LoadingPanel, ReproNote, Technical
 import {
   FILTERS,
   GAP,
+  LEDGER_STATUS_LABEL,
+  NO_SYNC_REASON,
   STATUS_LABEL,
   applyFilter,
   beijingMinute,
@@ -52,6 +60,9 @@ import {
   type RowStatus,
 } from "./channels";
 import { forcedStateOf, useChannelsData } from "./useChannelsData";
+
+/** The 本次核验 line's own honest word when the read cycle carried no instant. */
+const NO_CHECK_REASON = "这一轮没有记下核验的时刻";
 
 /** 「—」 with the reason in its `title`, so a gap reads as a gap and not as a zero. */
 function Dashed({ reason }: { reason: string }): ReactNode {
@@ -66,13 +77,24 @@ function Dashed({ reason }: { reason: string }): ReactNode {
  * The only badge vocabulary this page has. Never a word that means 「健康」.
  * `marker` is the stable `ds4-*` id the acceptance harness queries; it sits on
  * a layout-invisible `contents` wrapper so the badge keeps its own `chn4-*`
- * testid untouched. Only the ledger passes one.
+ * testid untouched. Only the ledger passes one. `label` lets the ledger use its
+ * own three words without touching the platform rows' vocabulary.
  */
-function StatusBadge({ status, testId, marker }: { status: RowStatus; testId: string; marker?: string }): ReactNode {
+function StatusBadge({
+  status,
+  testId,
+  marker,
+  label,
+}: {
+  status: RowStatus;
+  testId: string;
+  marker?: string;
+  label?: string;
+}): ReactNode {
   const tone = status === "available" ? "success" : status === "unavailable" ? "destructive" : "secondary";
   const badge = (
     <Badge tone={tone} data-testid={testId}>
-      {STATUS_LABEL[status]}
+      {label ?? STATUS_LABEL[status]}
     </Badge>
   );
   if (!marker) return badge;
@@ -151,11 +173,19 @@ function ChannelRowCard({ row, testId }: { row: ChannelRow; testId: string }): R
   );
 }
 
+/**
+ * One 数据源 row: name, kind in Chinese, whose list it speaks for, what this
+ * read actually returned, the gap number whenever it is not 已接入, and 最近同步
+ * taken from the answer alone. An absent timestamp is 「—」 with the reason in its
+ * `title` — this page's own clock has its own line and never stands in for it.
+ */
 function LedgerRowCard({ row, testId }: { row: LedgerRow; testId: string }): ReactNode {
   const dimmed = row.status !== "available";
-  const seen = beijingMinute(row.checkedAt);
+  const sync = row.syncedAt ? beijingMinute(row.syncedAt) : { text: null as string | null, reason: NO_SYNC_REASON };
+  const checked = beijingMinute(row.checkedAt);
   const technical = [
     row.rawPath ? `读取地址：${row.rawPath}` : null,
+    row.syncedAt ? `最近同步原值：${row.syncedAt}` : null,
     row.rawDetail ? `详情原值：${row.rawDetail}` : null,
     row.gap ? `缺口编号：${row.gap}` : null,
   ].filter((line): line is string => line !== null);
@@ -171,19 +201,29 @@ function LedgerRowCard({ row, testId }: { row: LedgerRow; testId: string }): Rea
     >
       <div className="flex min-w-0 flex-1 flex-col gap-1" data-testid="ds4-row">
         <p className="min-w-0 break-words text-sm">{row.label}</p>
+        <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="ds4-kind">
+          {`类型：${row.kindLabel}`}
+        </p>
+        <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="ds4-origin" title={row.rawPath ?? undefined}>
+          {`来源：${row.originLabel}`}
+        </p>
         <p className="min-w-0 break-words text-xs text-muted-foreground">{row.reason}</p>
         {row.gap ? (
           <p className="min-w-0 break-words text-xs text-muted-foreground" title={row.rawPath ?? undefined} data-testid="ds4-gap">
             {`缺口编号 ${row.gap}`}
           </p>
         ) : null}
-        <p className="min-w-0 break-words text-xs text-muted-foreground">
+        <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="ds4-sync">
+          最近同步（北京时间）：
+          {sync.text ?? <Dashed reason={sync.reason} />}
+        </p>
+        <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="ds4-checked">
           本次核验（北京时间）：
-          {seen.text ?? <Dashed reason={seen.reason} />}
+          {checked.text ?? <Dashed reason={NO_CHECK_REASON} />}
         </p>
         {technical.length ? <TechnicalDisclosure lines={technical} testId={`${testId}-details`} /> : null}
       </div>
-      <StatusBadge status={row.status} testId={`${testId}-badge`} marker="ds4-status" />
+      <StatusBadge status={row.status} testId={`${testId}-badge`} marker="ds4-status" label={LEDGER_STATUS_LABEL[row.status]} />
     </div>
   );
 }
@@ -196,7 +236,8 @@ function SourcesLedger({ ledger }: { ledger: LedgerRow[] }): ReactNode {
         <div className="flex min-w-0 flex-col gap-1 border-b border-border px-4 py-3">
           <p className={`min-w-0 break-words text-sm ${themedBody}`}>数据源</p>
           <p className="min-w-0 break-words text-xs text-muted-foreground">
-            这一轮读取里，每个数据源各自回答了什么。没接通的那几行留在这里，写明原因与缺口编号，不记成零个。
+            这一轮读取里，每个数据源各自回答了什么：它是哪一类、来源是哪份清单、接没接通、最近同步到什么时候。
+            没接通与待核实的行都留在这里，写明原因与缺口编号，不记成零个；回答里没有时间就写「—」并说明，不拿本页的时刻顶替。
           </p>
         </div>
         {ledger.map((row, index) => (
