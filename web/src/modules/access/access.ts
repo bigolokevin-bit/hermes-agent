@@ -22,7 +22,9 @@ export type Resource<T> =
 export const GAP02_PEOPLE =
   "人员目录待核实（GAP-02）：上游用户中心接口尚未接入本控制台。接入后这里会自动显示真实名单。";
 export const GAP02_ROLES =
-  "角色与权限待核实（GAP-02）：上游角色接口尚未接入本控制台。接入后这里会自动显示真实角色。";
+  "角色与权限待核实：上游角色接口尚未接入本控制台。接入后这里会自动显示真实角色。";
+
+export const ROLE_GAP = "GAP-ROL5-01";
 
 export const PEOPLE_ENDPOINTS = [
   "/agent-api/api/v1/user/list",
@@ -123,6 +125,90 @@ export function adminsOf(people: Rec[]): AdminView {
     return hit === true;
   });
   return { rows, known };
+}
+
+const BJT = new Intl.DateTimeFormat('sv-SE', {
+  timeZone: 'Asia/Shanghai',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
+
+export interface RoleView {
+  name: string;
+  nameReason: string | null;
+  scope: string;
+  scopeReason: string | null;
+  scopeRaw: string | null;
+  memberCount: number | null;
+  memberReason: string | null;
+  updatedAt: string | null;
+  updatedReason: string | null;
+  rawId: string | null;
+}
+
+function numberOf(...values: unknown[]): number | null {
+  for (const value of values) {
+    if (typeof value === 'number' && Number.isFinite(value) && value >= 0) return value;
+    if (typeof value === 'string' && value.trim() !== '') {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed) && parsed >= 0) return parsed;
+    }
+    if (Array.isArray(value)) return value.length;
+  }
+  return null;
+}
+
+function beijing(value: string | null): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return BJT.format(date);
+}
+
+export function roleView(row: Rec): RoleView {
+  const name = pickString(row.role_name, row.roleName, row.name, row.role_code, row.roleCode);
+  const scopeRaw = pickString(row.scope, row.scope_type, row.scopeType, row.data_scope, row.dataScope);
+  const normalized = scopeRaw?.toLowerCase() ?? null;
+  const scope =
+    normalized === null
+      ? '—'
+      : ['tenant', 'global', 'all', 'tenant-shared', 'org', 'organization'].includes(normalized)
+        ? '全租户'
+        : ['department', 'dept', 'team'].includes(normalized)
+          ? '按部门'
+          : ['employee', 'self', 'personal', 'own'].includes(normalized)
+            ? '仅本人'
+            : normalized === 'custom'
+              ? '自定义'
+              : '其他范围';
+  const memberCount = numberOf(
+    row.member_count,
+    row.memberCount,
+    row.members_count,
+    row.membersCount,
+    row.user_count,
+    row.userCount,
+    row.members,
+    row.users,
+  );
+  const updatedRaw = pickString(row.updated_at, row.updatedAt, row.modified_at, row.modifiedAt);
+  const updatedAt = beijing(updatedRaw);
+  return {
+    name: name ?? '待核实',
+    nameReason: name ? null : '上游未提供角色名',
+    scope,
+    scopeReason: scopeRaw ? (scope === '其他范围' ? '上游范围值暂无法归类' : null) : '上游未提供数据范围',
+    scopeRaw,
+    memberCount,
+    memberReason: memberCount === null ? '上游未提供成员数' : null,
+    updatedAt,
+    updatedReason: updatedAt ? null : updatedRaw ? '更新时间无法解析' : '上游未提供更新时间',
+    rawId: pickString(row.role_id, row.roleId, row.id, row.role_code, row.roleCode),
+  };
 }
 
 export async function loadList(

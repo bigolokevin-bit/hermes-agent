@@ -10,12 +10,13 @@ import {
   GAP02_ROLES,
   PEOPLE_ENDPOINTS,
   ROLE_ENDPOINTS,
+  ROLE_GAP,
   adminsOf,
   loadList,
   permissionSource,
   personName,
   rawId,
-  roleName,
+  roleView,
   shortCode,
   type Rec,
   type Resource,
@@ -72,7 +73,7 @@ function GroupState({
   }
   if (resource.phase === "unavailable") {
     return (
-      <div className="acc4-gap" data-testid="acc4-gap">
+      <div className="acc4-gap" data-testid={gap === GAP02_ROLES ? "role5-gap" : "acc4-gap"} title={gap === GAP02_ROLES ? ROLE_GAP : undefined}>
         <b>未接入</b>
         <span>{gap}</span>
         <Link className="acc4-link" to="/approvals">
@@ -103,12 +104,26 @@ function GroupState({
 }
 
 function RoleRow({ row }: { row: Rec }) {
+  const view = roleView(row);
   return (
-    <li className="acc4-row" data-testid="acc4-role-row">
-      <span className="acc4-name" title={rawId(row) || undefined}>{roleName(row)}</span>
-      <Badge tone="outline">{shortCode(row)}</Badge>
-      <span className="acc4-meta">{permissionSource(row)}</span>
-    </li>
+    <tr data-testid="role5-row" title={view.rawId || undefined}>
+      <td data-label="角色名" data-testid="role5-name">
+        {view.name}
+        {view.nameReason ? <span className="acc4-meta">{view.nameReason}</span> : null}
+      </td>
+      <td data-label="范围" data-testid="role5-scope" title={view.scopeRaw || undefined}>
+        {view.scope}
+        {view.scopeReason ? <span className="acc4-meta">{view.scopeReason}</span> : null}
+      </td>
+      <td data-label="成员数" data-testid="role5-members">
+        {view.memberCount ?? "—"}
+        {view.memberReason ? <span className="acc4-meta">{view.memberReason}</span> : null}
+      </td>
+      <td data-label="更新时间" data-testid="role5-updated">
+        {view.updatedAt ?? "—"}
+        {view.updatedReason ? <span className="acc4-meta">{view.updatedReason}</span> : null}
+      </td>
+    </tr>
   );
 }
 
@@ -138,7 +153,9 @@ export default function AccessModulePage() {
     void loadList(ROLE_ENDPOINTS, GAP02_ROLES).then(setRoles);
   }, []);
 
-  useEffect(() => reload(), [reload]);
+  useEffect(() => {
+    if (!FORCED.has(forced)) reload();
+  }, [forced, reload]);
 
   const admins = useMemo(
     () => adminsOf(people.phase === "ready" ? people.data : []),
@@ -153,7 +170,7 @@ export default function AccessModulePage() {
 
   if (FORCED.has(forced)) {
     return (
-      <div className="acc4-page" data-testid="acc4-page">
+      <div className="acc4-page" data-testid="acc4-page" data-fixture="1">
         <header className="acc4-head">
           <ShieldCheck className="h-5 w-5" />
           <h1>访问控制</h1>
@@ -205,11 +222,23 @@ export default function AccessModulePage() {
           {view === "roles" ? (
             <GroupState resource={roles} gap={GAP02_ROLES} onRetry={reload}>
               {(rows) => (
-                <ul className="acc4-list">
-                  {rows.map((row, i) => (
-                    <RoleRow key={rawId(row) || `role-${i}`} row={row} />
-                  ))}
-                </ul>
+                <div className="role5-scroll">
+                  <table className="role5-table" data-testid="role5-table">
+                    <thead>
+                      <tr>
+                        <th>角色名</th>
+                        <th>范围</th>
+                        <th>成员数</th>
+                        <th>更新时间</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((row, i) => (
+                        <RoleRow key={rawId(row) || `role-${i}`} row={row} />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </GroupState>
           ) : view === "members" ? (

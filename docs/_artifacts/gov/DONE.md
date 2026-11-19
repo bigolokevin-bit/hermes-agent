@@ -522,3 +522,116 @@ built /Users/kevin_studio/Projects/forks/console-gov/hermes_cli/web_dist/index.h
 - 真实 200 未取得；401 只证明路径存在。
 - 列表不提供逐行详情；来源/状态/更新时间字段若上游后续补入，同一列直接显示。
 - 无需壳层注册（`/skills` 已在 App 路由与侧栏）。
+
+## OV5 /overview 聚合收口（2026-11-19）
+
+- 提交：`bbefbdba feat(console): overview aggregation honesty and retries (ov5)`（4 files，+126/−22）
+- 写域：`web/src/modules/overview/**`；`/overview` 已由壳层挂载，未改 App.tsx / shell / manifest / package。
+- 数据源（逐卡标注）：
+  - 员工：`/agent-api/api/employee-stats`（总数/在岗）；风险数另读 `/agent-api/api/matrix`。
+  - 今日运行：`/agent-api/api/run-stats`（北京当日窗口，totals.runs/failed）。
+  - 待审批：`/agent-api/api/approval-stats`。
+  - 今日成本：`/agent-api/api/budget-usage`（periodKind=day，账本实扣）。
+  - 趋势：`/agent-api/api/run-stats` 近 14 天 buckets；最近活动：`/agent-api/api/runs`；阻塞：失败运行 / 阻塞任务 / 待审批。
+- 缺失与错误：KPI 源失败时值显 `—`，卡片内显「<来源>未接入：<人话原因>」、可复制请求编号与重试；GAP-OV5-* 编号只进 `title`，正文不显示。趋势/最近活动/阻塞各自带重试，部分阻塞源失败时只展示已读部分并明示不代表全部。
+- `读取于` 是本次读取完成的客户端北京时间（BJT 到分）；现有 BFF payload 不提供源端 asOf，未伪造源时间。该限制在页面不显示、由本证据披露。
+- 趋势 bucket 缺字段不再补 0：缺 `runs` 显示带斜纹的 `—` 柱，显式 0 才是真 0。
+- 四态：加载/正常/空/错；`?state=loading|empty|error` 预览不取数且带 `data-fixture="1"`；`?state=ready` 不再作为夹具态，真实正常态直接走实时数据。
+- 空态：仅在所有核心源 ready 且员工/运行/待审批均为 0 时出现「还没有可汇总的数据」+ 去员工页；不把读不到当 0。
+- testid `ov5-*`。
+
+### 自测
+
+```text
+$ cd web && ./node_modules/.bin/tsc -b . --noEmit
+# EXIT: 0
+
+$ cd web && npx vitest run src/modules/overview
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+
+$ cd web && npx vitest run
+ Test Files  118 passed (118)
+      Tests  1142 passed (1142)
+
+$ cd /Users/kevin_studio/Projects/forks/console-gov && pnpm --filter web build
+built /Users/kevin_studio/Projects/forks/console-gov/hermes_cli/web_dist/index.html
+# EXIT: 0
+```
+
+### DOM 读数（Chrome CDP，临时预览 harness，已删除）
+
+```text
+1440×900: vw=1440 bodySW=1440 bodyCW=1440 kpis=4 activityRows=3
+1280×800: vw=1280 bodySW=1280 bodyCW=1280 kpis=4 activityRows=3
+375×812:  vw=375 bodySW=375 bodyCW=375 kpis=4 activityRows=3
+```
+
+三档 body 均无横向滚动；卡片装饰性弧形边框仅在页面内部伸出 2px，已由页面 `overflow-x` 裁切，不影响页面宽度。截图：`docs/_artifacts/gov/shots/ov5-1440.png`、`ov5-1280.png`、`ov5-375.png`。
+
+### 边界
+
+- 未取得真实 200（本机无登录态）；数据源端点存在性与错误态由代码/测试覆盖。
+- 源端 asOf 未提供，页面只标「读取于」（读取完成时间），不冒充账本/统计的生成时间。
+- 页面未改壳层；`/overview` 路由与侧栏均由既有壳层提供。
+
+### 观察者复核修正（OV5）
+
+- 首轮观察者判 FAIL：1440 第 4 张 KPI 卡与右列卡边框贴边/缺失；1440/1280 趋势图无可见柱体。
+- 根因：`overview.css` 使用了本应用不存在的 shadcn 变量（`--fg-*`、`--border`、`--chart-1`、`--surface-2`、`--r-sm`、`--bg-2`），边框与柱体颜色为空；同时页面无内边距，卡片右边框落在视口边缘被裁。
+- 修复：全部改用 Tailwind v4 token（`--color-border`、`--color-foreground`、`--color-muted-foreground`、`--color-muted`、`--midground-base`、`--radius-sm`）；`.ov5-page` 增加 `padding: 4px 2px 32px` 与 `overflow-x: hidden`。
+- 复测（Chrome CDP）：1440/1280/375 `bodySW == vw`，`pageSW == pageCW`（1440/1280/375），14 根柱均渲染（首柱高度 50px）；375 改为 1500px 高截图，趋势/最近活动/阻塞全部入镜。三张截图已覆盖更新。
+- 验证：build EXIT 0；overview 定向 7/7；全量 118/1142；`tsc` 0。
+
+## ROL5 /identity?tab=roles 角色与权限（2026-11-19）
+
+- 提交：`2152b011 feat(console): roles and permissions read-only page (role5)`（4 files，+242/−35）
+- 写域：`web/src/modules/access/**`；路由与 `/identity` live map 已由壳层提供，未改 App/shell/manifest/package。
+- 数据口：`/agent-api/api/v1/role/list?page=1&limit=200` 与 `/agent-api/api/v1/roles?page=1&limit=200`，经 8182 实测均 **401**（鉴权门在路由前，无法据此证明 404）；BFF `apps/console/server.py` 源码无 role/grant 路由。因此页面按「未接入」呈现，不造假角色/0 成员。
+- 列：角色名 / 范围（人话，原值只进 title）/ 成员数（缺失 `—` + 原因）/ 更新时间（北京时间 `YYYY-MM-DD HH:mm`，缺失或无法解析 `—` + 原因）。
+- GAP-ROL5-01 只进 `title`；可见文案为「未接入」+ 原因 + `/approvals` 申请入口。
+- 只读：无新建/编辑/删除/授权/撤销按钮或输入控件；成员/管理员视图保留原样。
+- 四态：加载/正常/空/错；错态人话 + 请求编号（有则显示）+ 重试；403 仍为无权访问，401 显示需要登录；`?state=` 预览带 `data-fixture="1"` 且不发请求。
+- testid `role5-*`（role5-table/row/name/scope/members/updated/gap）；成员/管理员保留 `acc4-*`。
+
+### 自测
+
+```text
+$ cd web && ./node_modules/.bin/tsc -b . --noEmit
+# EXIT: 0
+
+$ cd web && npx vitest run src/modules/access
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+
+$ cd web && npx vitest run
+ Test Files  118 passed (118)
+      Tests  1145 passed (1145)
+
+$ cd /Users/kevin_studio/Projects/forks/console-gov && pnpm --filter web build
+built /Users/kevin_studio/Projects/forks/console-gov/hermes_cli/web_dist/index.html
+# EXIT: 0
+```
+
+### DOM 读数（Chrome CDP，临时 harness，已删除）
+
+```text
+1440×900: vw=1440 bodySW=1440 bodyCW=1440 table=1438 rows=2
+1280×800: vw=1280 bodySW=1280 bodyCW=1280 table=1278 rows=2
+375×812:  vw=375 bodySW=375 bodyCW=375 table=680 scrollCW=373 rows=2
+```
+
+375 仅角色表容器内横向滚动，页面 body 无横溢。截图：`docs/_artifacts/gov/shots/role5-1440.png`、`role5-1280.png`、`role5-375.png`。
+
+### 边界
+
+- 无真实角色 200（无登录态）；401 只证明鉴权门存在，不能证明路由存在；BFF 源码无角色路由。
+- 角色范围/成员数/更新时间字段取决于未来上游契约；当前缺字段一律 `—` + 原因，不补 0。
+
+### ROL5 观察者复核修正
+
+- 首次复核 FAIL：1440/1280/375 页脚「权」与返回链「返」首字在 x=0 被裁切；375 第四列「更新时间」完全在屏外且没有滚动提示。
+- 修正 commit `da92c448 fix(console): roles edge padding and mobile table (role5)`：`.acc4-page` 增加 `4px 12px 32px` 内边距与 `overflow-x:hidden`；四个角色字段加 `data-label`；≤560px 角色表改为堆叠卡片（隐藏表头，表格/行/单元格 block，左侧 96px 标签位），不再依赖横向滚动。
+- 修正后 DOM：1440/1280 body 与 page 宽度精确等于视口，表格无横溢；375 body/page=375，表格容器 `scrollSW=349/scrollCW=349`、`overflowX=visible`，四字段堆叠可见。
+- 第二次观察者复核：**PASS 1440 / 1280 / 375**。页脚与返回链首字完整；375 四字段全部可见，`更新时间 2026-11-19 13:30` 在卡片内；无横向溢出。仅非阻塞的 2px 对齐差与 375 截图下方空白，无需改码。
+- 截图已覆盖：`docs/_artifacts/gov/shots/role5-1440.png`、`role5-1280.png`、`role5-375.png`。

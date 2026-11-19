@@ -3,6 +3,8 @@
   flex-direction: column;
   gap: 16px;
   min-width: 0;
+  padding: 4px 2px 32px;
+  overflow-x: hidden;
 }
 
 .ov5-head {
@@ -15,7 +17,7 @@
 
 .ov5-eyebrow {
   margin: 0 0 2px;
-  color: var(--fg-3);
+  color: var(--color-muted-foreground);
   font-size: 11px;
   letter-spacing: 0.12em;
 }
@@ -28,7 +30,7 @@
 .ov5-sub {
   margin: 4px 0 0;
   max-width: 64ch;
-  color: var(--fg-2);
+  color: var(--color-muted-foreground);
   font-size: 13px;
 }
 
@@ -64,7 +66,7 @@
 }
 
 .ov5-source {
-  color: var(--fg-3);
+  color: var(--color-muted-foreground);
   font-size: 11px;
   font-weight: 400;
 }
@@ -81,7 +83,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 8px;
-  color: var(--fg-2);
+  color: var(--color-muted-foreground);
   font-size: 12px;
 }
 
@@ -91,21 +93,33 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: var(--fg);
+  color: var(--color-foreground);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 
 .ov5-asof {
-  color: var(--fg-3);
+  color: var(--color-muted-foreground);
   font-size: 11px;
 }
 
 .ov5-note {
   margin: 0;
-  color: var(--fg-3);
+  color: var(--color-muted-foreground);
   font-size: 12px;
   overflow-wrap: anywhere;
+}
+
+.ov5-kpi-issue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--color-border);
+  color: var(--color-muted-foreground);
+  font-size: 11px;
 }
 
 .ov5-watermark {
@@ -167,24 +181,35 @@
   align-items: center;
 }
 
+.ov5-bar.is-missing .ov5-bar-track {
+  border-bottom-style: dashed;
+  background: repeating-linear-gradient(
+    135deg,
+    transparent,
+    transparent 4px,
+    var(--color-muted) 4px,
+    var(--color-muted) 8px
+  );
+}
+
 .ov5-bar-track {
   display: flex;
   width: 100%;
   height: 92px;
   align-items: flex-end;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .ov5-bar-track i {
   display: block;
   width: 100%;
   border-radius: 2px 2px 0 0;
-  background: var(--chart-1, var(--fg-2));
+  background: var(--midground-base);
   opacity: 0.7;
 }
 
 .ov5-bar em {
-  color: var(--fg-3);
+  color: var(--color-muted-foreground);
   font-size: 9px;
   font-style: normal;
   white-space: nowrap;
@@ -192,7 +217,7 @@
 
 .ov5-block-foot {
   margin: 0;
-  color: var(--fg-3);
+  color: var(--color-muted-foreground);
   font-size: 11px;
 }
 
@@ -211,7 +236,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 6px 10px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--color-border);
   padding: 8px 0;
   font-size: 12px;
 }
@@ -221,7 +246,7 @@
 }
 
 .ov5-rows a {
-  color: var(--fg);
+  color: var(--color-foreground);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -237,15 +262,15 @@
   flex-direction: column;
   gap: 8px;
   padding: 14px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-sm, 6px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
 }
 
 .ov5-skeleton span {
   display: block;
   height: 12px;
   border-radius: 4px;
-  background: var(--surface-2, var(--border));
+  background: var(--color-muted);
 }
 
 .ov5-skeleton span:nth-child(1) { width: 60%; }
@@ -257,7 +282,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  color: var(--fg-2);
+  color: var(--color-muted-foreground);
   font-size: 12px;
 }
 
@@ -266,7 +291,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  color: var(--fg-2);
+  color: var(--color-muted-foreground);
   font-size: 12px;
 }
 
@@ -275,16 +300,16 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  color: var(--fg-3);
+  color: var(--color-muted-foreground);
   font-size: 11px;
   overflow-wrap: anywhere;
 }
 
 .ov5-req button {
-  border: 1px solid var(--border);
+  border: 1px solid var(--color-border);
   border-radius: 4px;
   padding: 2px 6px;
-  color: var(--fg-2);
+  color: var(--color-muted-foreground);
   font-size: 11px;
 }
 
