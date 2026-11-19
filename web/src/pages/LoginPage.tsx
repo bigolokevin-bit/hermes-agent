@@ -12,8 +12,16 @@ import { useNavigate, useSearchParams } from "react-router";
 
 import { RequestIdCopy } from "@/components/RequestIdCopy";
 
-type Captcha = { captcha_key: string; captcha: string; request_id?: string | null };
-type LoginReply = { ok?: boolean; code?: string; request_id?: string | null };
+type Captcha = { captcha_key: string; captcha: string; request_id?: string | null; rid?: string | null };
+type LoginReply = { ok?: boolean; code?: string; request_id?: string | null; rid?: string | null };
+
+/** R18-2: the bridge carries the trace id as `rid`; older shapes used `request_id`. */
+function ridOf(body: { rid?: unknown; request_id?: unknown } | null | undefined): string | null {
+  if (!body) return null;
+  if (typeof body.rid === "string" && body.rid.trim()) return body.rid.trim();
+  if (typeof body.request_id === "string" && body.request_id.trim()) return body.request_id.trim();
+  return null;
+}
 
 const FAILURE_COPY: Record<string, string> = {
   "auth.invalid_credentials": "用户名或密码错误。",
@@ -103,15 +111,17 @@ export default function LoginPage(): ReactNode {
         }
         if (who && who.ok) {
           sessionStorage.setItem("auth5.session", "1");
+          // R18: tell the sidebar identity widget to re-read whoami.
+          window.dispatchEvent(new Event("auth5:session"));
           navigate("/overview", { replace: true });
           return;
         }
-        setFailure({ sentence: "登录成功但会话未建立，请重试。", requestId: body?.request_id ?? captcha.request_id ?? null });
+        setFailure({ sentence: "登录成功但会话未建立，请重试。", requestId: ridOf(body) ?? ridOf(who ? await who.json().catch(() => null) : null) ?? ridOf(captcha) });
         setPhase("failed");
         return;
       }
       const code = body && typeof body.code === "string" ? body.code : "other";
-      const rid = body?.request_id ?? captcha.request_id ?? null;
+      const rid = ridOf(body) ?? ridOf(captcha);
       setFailure({ sentence: FAILURE_COPY[code] ?? GENERIC_FAILURE, requestId: rid });
       setPhase("failed");
       if (code === "auth.captcha_invalid") void loadCaptcha();

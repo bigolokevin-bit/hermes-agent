@@ -372,3 +372,9 @@ whoami 登录前/后读数声明：lane D 的 /auth 桥本车道未联调（桥�
 暂存区：web/src/shell/ParkedPage.tsx——8 项 files/logs/cron/plugins/pairing/webhooks/env/docs，每项 名称+原路径+保留理由（照抄 A.3）+负责车道+最近复核 2026-11-19；整卡 Link to=原路径（SPA 内跳不硬刷）；横幅 parked-banner；testid parked-page + parked-item-* ×8。挂载=/system 元素级 ParkedAwareSystem（useSearchParams tab=parked 分支），routes.ts/registry/侧栏零写入，不算 IA 视图。车道列 A.3 无原文，假定统一「L0 集成（上游 Hermes 页）」待 PRD 勘误。
 验证原始读数：vitest src/shell 4 files 33 passed（含 ParkedPage.test 4 用例：8 testid+hrefs 全对+tab=parked 渲染+普通 /system 不受影响）；全量 120 files 1177 passed；assert-ia HTML exit0 + --source=react exit0（51/22/1/8 不变量保持）；tsc --noEmit web 单包 exit0。
 deadLinks：本车道未起 9123 preview（时间盒），待 L0 合并构建后 crawl-routes 复跑；8 个 Link 目标均为现存上游静态路由（未删除），预期 0 死链。
+
+## R18-2 失败 rid 上屏 + 身份件刷新（fix(console): surface request id on login failure and refresh identity widget，2026-11-19）
+根因：桥失败体字段是 rid（{code,rid,message}），前端只读 request_id → rid=null → RequestIdCopy 走 fallback 无钮=QA 判「未上屏无复制钮」。修法：LoginPage 加 ridOf(body)=rid??request_id??null，loadCaptcha/失败面/whoami 未建立三链全换；无 rid 时保留原兜底句。
+身份件：登录成功（whoami 200）后 LoginPage window.dispatchEvent(Event(auth5:session))；App.tsx Auth5Session useEffect 重构 refresh 函数并 addEventListener(auth5:session)，cleanup 移除——登录后侧栏即时显示 display/角色/租户(缺—)+退出钮。禁 token 入 localStorage（仍仅 sessionStorage 轻标记）。
+测试：LoginPage.test 8/8（用例4 桥形态 body {code,rid:4958432cabcd} 断言 rid 串上屏+req-copy 钮存在；用例2 成功链断 auth5:session listener 调用≥1）；全量 vitest 120 files/1180 passed 0 fail；src/shell 33 passed。
+本单按 L0 令未单独构建（合批后统一 build+D 重章+R19）。

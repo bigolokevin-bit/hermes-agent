@@ -1582,35 +1582,43 @@ function Auth5Session(): ReactNode {
   >({ k: "loading" });
   useEffect(() => {
     let alive = true;
-    fetch("/auth/whoami", { credentials: "same-origin" })
-      .then(async (res) => {
-        if (!alive) return;
-        if (res.status === 401) {
-          setWho({ k: "anon" });
-          return;
-        }
-        const body = (await res.json().catch(() => null)) as Record<string, unknown> | null;
-        if (res.ok && body) {
-          const disp =
-            typeof body.display === "string" && body.display.trim()
-              ? body.display.trim()
-              : "未命名账号";
-          const role =
-            typeof body.granted === "string" && body.granted.trim()
-              ? body.granted.trim()
-              : "—";
-          const tid = typeof body.tenant_id === "string" ? body.tenant_id.trim() : "";
-          const tenant = tid && !/^[a-z]+_[0-9A-Za-z]+$/.test(tid) ? tid : "—";
-          setWho({ k: "ok", display: disp, role, tenant });
-        } else {
-          setWho({ k: "anon" });
-        }
-      })
-      .catch(() => {
-        if (alive) setWho({ k: "anon" });
-      });
+    const refresh = () => {
+      setWho({ k: "loading" });
+      fetch("/auth/whoami", { credentials: "same-origin" })
+        .then(async (res) => {
+          if (!alive) return;
+          if (res.status === 401) {
+            setWho({ k: "anon" });
+            return;
+          }
+          const body = (await res.json().catch(() => null)) as Record<string, unknown> | null;
+          if (res.ok && body) {
+            const disp =
+              typeof body.display === "string" && body.display.trim()
+                ? body.display.trim()
+                : "未命名账号";
+            const role =
+              typeof body.granted === "string" && body.granted.trim()
+                ? body.granted.trim()
+                : "—";
+            const tid = typeof body.tenant_id === "string" ? body.tenant_id.trim() : "";
+            const tenant = tid && !/^[a-z]+_[0-9A-Za-z]+$/.test(tid) ? tid : "—";
+            setWho({ k: "ok", display: disp, role, tenant });
+          } else {
+            setWho({ k: "anon" });
+          }
+        })
+        .catch(() => {
+          if (alive) setWho({ k: "anon" });
+        });
+    };
+    // R18: re-read the identity when a login (or logout) lands, so the
+    // sidebar stops showing 「未登录」right after a successful sign-in.
+    refresh();
+    window.addEventListener("auth5:session", refresh);
     return () => {
       alive = false;
+      window.removeEventListener("auth5:session", refresh);
     };
   }, []);
   if (who.k === "loading") {
