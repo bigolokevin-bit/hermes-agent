@@ -906,3 +906,39 @@ describe("R39 — the ?state= repro legs paint panels and ask for nothing", () =
     }
   });
 });
+
+describe("R40 — per-event status and duration", () => {
+  it("每条事件给出状态人话与相对上一条的耗时", async () => {
+    const events = {
+      items: [
+        { runId: RUN_A.runId, seq: 1, eventType: "started", occurredAt: "2026-11-20T02:00:00Z", payload: {} },
+        { runId: RUN_A.runId, seq: 2, eventType: "tool_call", occurredAt: "2026-11-20T02:00:40Z", payload: {} },
+        { runId: RUN_A.runId, seq: 3, eventType: "completed", occurredAt: "2026-11-20T02:02:04Z", payload: {} },
+        { runId: RUN_A.runId, seq: 4, eventType: "quantum.recalibration", occurredAt: "2026-11-20T02:02:10Z", payload: {} },
+      ],
+      hasMore: false,
+    };
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(detailOk({ events }));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 1, "row ready");
+    await act(async () => {
+      (document.querySelector("[data-testid='run5-row-0-open']") as HTMLElement | null)?.click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='run5-detail']") !== null, "detail ready");
+    await waitFor(() => document.querySelector("[data-testid='run5-status-4']") !== null, "timeline ready");
+
+    const cell = (id: string): HTMLElement | null => document.querySelector("[data-testid='" + id + "']");
+    expect(cell("run5-status-1")?.textContent).toBe("已开始");
+    expect(cell("run5-status-2")?.textContent).toBe("调用中");
+    expect(cell("run5-status-3")?.textContent).toBe("已完成");
+    expect(cell("run5-status-4")?.textContent).toBe("待核实");
+    expect(cell("run5-status-4")?.getAttribute("title") ?? "").toContain("不在这份对照表");
+
+    expect(cell("run5-duration-1")?.textContent).toBe("—");
+    expect(cell("run5-duration-1")?.getAttribute("title") ?? "").toContain("第一条事件");
+    expect(cell("run5-duration-2")?.textContent).toBe("40s");
+    expect(cell("run5-duration-3")?.textContent).toBe("1m 24s");
+    expect(cell("run5-duration-4")?.textContent).toBe("6s");
+  });
+});
