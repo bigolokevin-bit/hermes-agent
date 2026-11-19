@@ -4,7 +4,7 @@
  * Live surface: GET /agent-api/api/audit?from=&to=&limit=50 (bounded 7-day
  * window — the route refuses an unfiltered scan). Each row is one audit event:
  * 引用来源 (source system + actor), 目标对象 (resource type + masked id),
- * 时间 (Beijing, to the minute) and a real link back to /audit?id=<eventId>.
+ * 时间 (Beijing, to the minute) and a real link back to /audit?detail=<eventId>.
  * A row whose event id is missing reads 「待核实」 and its link block says
  * 「原文不可达」 with the reason; no control is ever rendered that goes nowhere.
  *
@@ -24,10 +24,14 @@ import { hasConsoleSession } from '@/modules/knowledge/session';
 import {
   WINDOW_DAYS,
   citationsUrl,
+  employeeNames,
   readCitations,
   type CitationRow,
   type CitationsPayload,
 } from './evidence';
+
+/** Directory names only: the ids stay masked, the names make 「姓名 · 短码」 possible. */
+const EMPLOYEES_URL = '/agent-api/api/employees?limit=100';
 
 type Phase = 'loading' | 'ready' | 'empty' | 'error' | 'denied' | 'login';
 
@@ -103,7 +107,12 @@ function CitationItem({ row }: { row: CitationRow }) {
       <div className="flex min-w-0 flex-col gap-2 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0 space-y-1">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <Badge tone="secondary">{row.sourceLabel}</Badge>
+            <span data-testid={`ev5-source-${row.id}`}>
+              <Badge tone="secondary">来源 · {row.sourceKind}</Badge>
+            </span>
+            <span className="text-xs" style={{ color: 'var(--fg-3)' }}>
+              {row.sourceLabel}
+            </span>
             {row.unverified ? (
               <span
                 className="rounded-full border px-2 py-0.5 text-[11px]"
@@ -165,7 +174,12 @@ export function EvidenceModulePage() {
 
   const load = useCallback(async () => {
     const body = await fetchJSON<unknown>(citationsUrl(new Date()));
-    return readCitations(body);
+    // Side read for display names: a failure never blocks the citations, it
+    // only means the rows fall back to 「员工 · 短码」.
+    const names = await fetchJSON<unknown>(EMPLOYEES_URL)
+      .then((payload) => employeeNames(payload))
+      .catch(() => new Map<string, string>());
+    return readCitations(body, names);
   }, []);
 
   useEffect(() => {
@@ -235,6 +249,7 @@ export function EvidenceModulePage() {
           <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 text-sm" data-testid="ev5-summary">
             <span>共 {rows.length} 条记录（最近 {WINDOW_DAYS} 天）</span>
             <span style={{ color: 'var(--fg-2)' }}>待核实 {counts.unverified}</span>
+            <span style={{ color: 'var(--fg-2)' }}>可回原文 {rows.length - counts.unreachable}</span>
             <span style={{ color: 'var(--fg-2)' }}>原文不可达 {counts.unreachable}</span>
             <span style={{ color: 'var(--fg-3)' }} title="服务没有在这份回答里给出读取时刻，本页不用浏览器时间顶替">
               读取于 {fmtStamp(payload?.asOf ?? null)}

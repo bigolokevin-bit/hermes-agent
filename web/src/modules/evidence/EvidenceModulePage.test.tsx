@@ -89,9 +89,11 @@ describe('the real audit surface', () => {
     expect(row?.textContent).toContain('目标对象');
     expect(row?.textContent).toContain('2026-11-18 02:18');
     expect(q(`ev5-open-${EVENT.eventId}`)?.getAttribute('href')).toBe(
-      `/audit?id=${encodeURIComponent(EVENT.eventId)}`,
+      `/audit?detail=${encodeURIComponent(EVENT.eventId)}`,
     );
+    expect(q(`ev5-source-${EVENT.eventId}`)?.textContent).toContain('来源 · 审计');
     expect(q('ev5-summary')?.textContent).toContain('共 1 条记录');
+    expect(q('ev5-summary')?.textContent).toContain('可回原文 1');
   });
 
   it('never renders a bare employee id as text, only the code', async () => {
@@ -101,6 +103,25 @@ describe('the real audit surface', () => {
     expect(q(`ev5-actor-${EVENT.eventId}`)?.getAttribute('title')).toBe(
       'emp_86A81CE8FF6F42E187BCF2B540',
     );
+  });
+
+  it('resolves the target person to 「姓名 · 8 位短码」 from the directory side read', async () => {
+    api.fetchJSON.mockImplementation((url: string) =>
+      String(url).includes('/employees')
+        ? Promise.resolve({ items: [{ employeeId: 'emp_86A81CE8FF6F42E187BCF2B540', name: '小鲤' }] })
+        : Promise.resolve({ events: [{ ...EVENT, actor: { type: 'employee', id: 'emp_86A81CE8FF6F42E187BCF2B540' }, resource: { type: 'employee', id: 'emp_86A81CE8FF6F42E187BCF2B540' } }] }),
+    );
+    await render();
+    const row = q(`ev5-row-${EVENT.eventId}`);
+    expect(row?.textContent).toContain('小鲤 · 86A81CE8');
+    expect(q(`ev5-target-${EVENT.eventId}`)?.textContent).toContain('小鲤 · 86A81CE8');
+    expect(row?.textContent).not.toContain('emp_86A81CE8FF6F42E187BCF2B540');
+  });
+
+  it('a person-shaped target without an id reads 未指派, never a made-up code', async () => {
+    api.fetchJSON.mockResolvedValue({ events: [{ ...EVENT, resource: { type: 'employee' } }] });
+    await render();
+    expect(q(`ev5-target-${EVENT.eventId}`)?.textContent).toContain('未指派');
   });
 
   it('marks a row 待核实 and says why when an identifier is missing', async () => {
