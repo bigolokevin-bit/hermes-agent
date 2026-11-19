@@ -1,7 +1,7 @@
 {
   "script": "lint-reuse",
   "root": "web/src/modules",
-  "scanned": 124,
+  "scanned": 135,
   "reuseMarkers": 31,
   "chatHostFiles": [
     {
@@ -85,6 +85,6 @@
   "violations": [],
   "count": 0,
   "ok": true,
-  "headHash": "743acf8f",
+  "headHash": "b4bbb943",
   "exitCode": 0
 }

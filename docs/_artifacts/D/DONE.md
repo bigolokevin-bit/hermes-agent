@@ -656,3 +656,21 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - CE 裁定（同步 QA R11 登录态同代次 CE=0）：权威=**登录态捕获**；shots 匿名观察到的 CE 仅作旁证，不得参与 ok。现存 743acf8f 代次 shots-summary 仍为旧字段名（放行后重跑自然换新名）。
 - 验证：六脚本 node --check 全 OK；`--out` 冒烟 lint-fake/assert-ia(html/react) 三份 /tmp 件单文档可解析、exit 全 0、无 .tmp 残留。冒烟件 head=9c4590c8（fork 又前进）——**仅 /tmp 冒烟，九件账本未动**，最终盖章等 L0 放行令一次性执行。
 - 纪律：禁改 web/src（本轮改动全在 web/scripts 腿脚本与 tonight 腿脚本）；shots exitCode 已按 13:1x 令对齐（9ae0e83d）。
+
+
+## 门禁三十轮·放行令全量重章 @ b4bbb943（2026-11-19 13:2x，L0 ≤14:15 放行令兑现）
+
+- 基准现查：fork HEAD=远端 tip=**b4bbb943**，开工 porcelain=0（L0 亲核口径）；entry `assets/index-H_66gqEp.js` 152304B sha256 `b71dfbe1bd1234c8c80c37c0aa199ce0894ad08266f184667fe7cd4cb909d6cf`，开工+拍后双 curl served==磁盘==卡面；9122 pid 99197 proxy-live（15 路由全 200 含 /models /channels 由 L0 核）。他人 web/src 并发脏（App.tsx/console.tsx）零 add。
+- 九件全章 headHash=**b4bbb943**，单文件单 JSON+exitCode，tmp+rename 原子写（二十九轮固化后首跑零拼接）：
+  1. assert-ia-react ok exit=0 counts{routes:51,tabs:22,chatHosts:1,modules:8}（--out 原子）
+  2. assert-ia-html ok exit=0（tabsAll=23）
+  3. lint-fake ok exit=0 violations=0（--out+python 注入章 tmp+os.replace）
+  4. lint-reuse ok exit=0 violations=0 exempted=1（chat→T40 台账仍有效）
+  5. crawl-anon ok exit=0 probed75 DL0 CE0 PE0 routesCE=41 env 旁证 denied=29 ceAuthority=login-state
+  6. crawl-auth ok exit=0 DL0 CE0 PE0 routesCE=20 denied=16（CE 权威=登录态；同代次 CE 观察≈0 见 shots）
+  7. shots-summary ok=true exit=0 produced/expected=102/102 failures=[] **consoleErrorsObservedByShots=0** ceAuthority=login-state entry/sha/bytes 三键=卡面 medianMainChars=145.0 拍窗 13:22:21-13:23:16；runExit=0（新 ok 公式 failures==0&&produced==expected，exitCode 同源）
+  8. shots-anon-summary auxiliary ok=true exit=0 19/19 failures=[]（门壳旁证腿）
+  9. state-quad ok=true exit=0 20/20@9122（脚本自章 b4bbb943）
+- vitest exit=0 原文两行：`Test Files  117 passed (117)` / `Tests  1110 passed (1110)`（=卡面 117/1110）。
+- redirects=24 vs 门定值 23 仍 notes 归因（门值更新归 L0/A）。
+- 收口：commit `chore(gates): full gate ledger stamped at b4bbb943 (entry H_66gqEp)`，git add -A docs/_artifacts/tonight + DONE，push lane/hermes-console，ls-remote 双证，本车道 porcelain 归零。

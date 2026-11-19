@@ -68,8 +68,8 @@ Not implemented: Window's open() method
 Not implemented: Window's open() method
 Not implemented: Window's open() method
 
- Test Files  113 passed (113)
-      Tests  1013 passed (1013)
-   Start at  13:02:06
-   Duration  6.14s (transform 32.04s, setup 0ms, import 44.96s, tests 14.10s, environment 26.61s)
+ Test Files  117 passed (117)
+      Tests  1110 passed (1110)
+   Start at  13:21:04
+   Duration  6.86s (transform 40.49s, setup 0ms, import 54.10s, tests 16.05s, environment 27.81s)
 

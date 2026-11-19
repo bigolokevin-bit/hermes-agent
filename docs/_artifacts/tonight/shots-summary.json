@@ -9,12 +9,12 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 766,
+    "textLen": 714,
     "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 — — 4 项检查的数据源尚未接入，可上岗",
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 28,
+  "distinctMainHeads": 27,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -87,7 +87,7 @@
     {
       "route": "#/approvals?tab=pending&view=release",
       "viewport": "375",
-      "chars": 85,
+      "chars": 145,
       "hasMainEl": true
     },
     {
@@ -117,13 +117,13 @@
     {
       "route": "#/audit",
       "viewport": "1440",
-      "chars": 673,
+      "chars": 664,
       "hasMainEl": true
     },
     {
       "route": "#/audit",
       "viewport": "375",
-      "chars": 673,
+      "chars": 664,
       "hasMainEl": true
     },
     {
@@ -141,19 +141,19 @@
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "1440",
-      "chars": 304,
+      "chars": 322,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "375",
-      "chars": 304,
+      "chars": 124,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=models",
       "viewport": "1440",
-      "chars": 104,
+      "chars": 391,
       "hasMainEl": true
     },
     {
@@ -207,58 +207,58 @@
     {
       "route": "#/employees/:employeeId",
       "viewport": "375",
-      "chars": 39,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=config",
-      "viewport": "1440",
-      "chars": 39,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=config",
-      "viewport": "375",
-      "chars": 39,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=evidence",
-      "viewport": "1440",
-      "chars": 39,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=evidence",
-      "viewport": "375",
-      "chars": 39,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=runs",
-      "viewport": "1440",
-      "chars": 39,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=runs",
-      "viewport": "375",
-      "chars": 39,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=tasks",
-      "viewport": "1440",
-      "chars": 39,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=tasks",
-      "viewport": "375",
       "chars": 51,
       "hasMainEl": true
     },
     {
+      "route": "#/employees/:employeeId?zone=config",
+      "viewport": "1440",
+      "chars": 39,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=config",
+      "viewport": "375",
+      "chars": 39,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=evidence",
+      "viewport": "1440",
+      "chars": 39,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=evidence",
+      "viewport": "375",
+      "chars": 39,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=runs",
+      "viewport": "1440",
+      "chars": 39,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=runs",
+      "viewport": "375",
+      "chars": 39,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=tasks",
+      "viewport": "1440",
+      "chars": 39,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=tasks",
+      "viewport": "375",
+      "chars": 39,
+      "hasMainEl": true
+    },
+    {
       "route": "#/identity",
       "viewport": "1440",
       "chars": 129,
@@ -465,13 +465,13 @@
     {
       "route": "#/overview",
       "viewport": "1440",
-      "chars": 1011,
+      "chars": 1012,
       "hasMainEl": true
     },
     {
       "route": "#/overview",
       "viewport": "375",
-      "chars": 1011,
+      "chars": 1012,
       "hasMainEl": true
     },
     {
@@ -525,49 +525,49 @@
     {
       "route": "#/system?tab=events",
       "viewport": "1440",
-      "chars": 673,
+      "chars": 664,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events",
       "viewport": "375",
-      "chars": 673,
+      "chars": 664,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "1440",
-      "chars": 673,
+      "chars": 664,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "375",
-      "chars": 673,
+      "chars": 664,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=retention",
       "viewport": "1440",
-      "chars": 673,
+      "chars": 664,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=retention",
       "viewport": "375",
-      "chars": 673,
+      "chars": 664,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=security",
       "viewport": "1440",
-      "chars": 673,
+      "chars": 664,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=security",
       "viewport": "375",
-      "chars": 673,
+      "chars": 664,
       "hasMainEl": true
     },
     {
@@ -585,37 +585,37 @@
     {
       "route": "#/work",
       "viewport": "1440",
-      "chars": 1769,
+      "chars": 1782,
       "hasMainEl": true
     },
     {
       "route": "#/work",
       "viewport": "375",
-      "chars": 1769,
+      "chars": 1782,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=board&view=cron",
       "viewport": "1440",
-      "chars": 1769,
+      "chars": 1782,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=board&view=cron",
       "viewport": "375",
-      "chars": 1639,
+      "chars": 1782,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=cron",
       "viewport": "1440",
-      "chars": 1769,
+      "chars": 1782,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=cron",
       "viewport": "375",
-      "chars": 1769,
+      "chars": 1782,
       "hasMainEl": true
     },
     {
@@ -631,11 +631,10 @@
       "hasMainEl": true
     }
   ],
-  "routesWithConsoleErrors": 1,
-  "consoleErrorRoutes": [
-    "#/work?tab=board&view=cron"
-  ],
-  "routesWithEnvOnlyConsoleErrors": 19,
+  "consoleErrorsObservedByShots": 0,
+  "consoleErrorRoutesObservedByShots": [],
+  "ceAuthority": "login-state",
+  "routesWithEnvOnlyConsoleErrors": 20,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
   "overflowing": [],
   "driver": {
@@ -643,16 +642,17 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
+  "headHash": "b4bbb943",
+  "entry": "assets/index-H_66gqEp.js",
+  "entrySha256": "b71dfbe1bd1234c8c80c37c0aa199ce0894ad08266f184667fe7cd4cb909d6cf",
+  "entryBytes": 152304,
   "medianMainChars": 145.0,
-  "headHash": "743acf8f",
-  "entry": "assets/index-CjruA64U.js",
-  "entrySha256": "6526172a2105c013142bad26155bd8ab1a7b3ac5cc5cd1aab421de271c6657db",
-  "entryBytes": 151475,
-  "shotWindow": "13:03:37-13:04:32 local",
-  "anonEvidence": "crawl-anon ok=true exit=0 probed=75 DL=0 CE=0 PE=0 routesCE=40(env=401x40); shots-anon auxiliary leg: see shots-anon-summary.json produced/expected",
-  "ceCaliber": "CE authoritative=crawl-auth routesCE=20 env-attributed {\"auth-required-401\": 20} denied404=11; crawl-anon routesCE=40 env-attributed {\"auth-required-401\": 40} denied=24; ok formula = deadLinks==0 && contentEmpty==0 (both legs DL=0 CE=0 PE=0)",
-  "servedEntryBefore": "assets/index-CjruA64U.js",
-  "servedEntryAfter": "assets/index-CjruA64U.js",
-  "env": "9122 proxy-live (anon 401 / auth 200+404-missing); CE env-attributed, not product fail",
-  "exitCode": 0
+  "shotWindow": "13:22:21-13:23:16 local",
+  "servedEntryBefore": "assets/index-H_66gqEp.js",
+  "servedEntryAfter": "assets/index-H_66gqEp.js",
+  "env": "9122 proxy-live (anon 401 / auth 200); CE 权威=登录态, 观察字段仅旁证",
+  "ceCaliber": "ceAuthority=login-state; crawl-auth routesCE=20 denied=16; crawl-anon routesCE=41 denied=29; ok 不含 CE 项（L0 二十九轮裁定落码）",
+  "anonEvidence": "crawl-anon ok=True exit=0 probed=75 DL=0 CE=0 PE=0 routesCE=41(env 旁证); shots-anon 辅助腿见 shots-anon-summary.json",
+  "exitCode": 0,
+  "runExitCode": 0
 }
