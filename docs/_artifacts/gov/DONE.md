@@ -865,3 +865,80 @@ built /private/tmp/r17-build/index.html
 - 未跑独立观察者；截图为本地视觉自检。
 - 未改 `App.tsx` / `shell/**` / `pages/**` / manifest / scripts / package / lock；未 install。
 - `ten4` 真实空态仅用于「两个来源都返回但都没有可用总数」；真 0 不再被当成空态。
+
+## 知识空间 /knowledge 四 tab 诚实收口（2026-11-19 16:2x）
+
+### 基线
+
+- `git rev-parse --show-toplevel` = `/Users/kevin_studio/Projects/forks/console-gov`
+- fetch + `git reset --hard origin/lane/hermes-console` = `5bdb0553`（gate ledger，web/src 与 `e3efe15a` 同代）；porcelain 0。
+- 写域仅 `web/src/modules/knowledge/**`；未改 App/shell/pages/manifest/scripts/package/lock，未 install。
+
+### 端点真实码（带 `v4-auth-state.json` 的 access_token_cookie，仅服务端读取，不回显）
+
+```text
+GET /api/knowledge                 404 {"code":"console.unknown_route","message":"unknown console API route"}
+GET /api/knowledge/spaces          404 {"code":"console.unknown_route","message":"unknown console API route"}
+GET /api/knowledge/documents       404 {"code":"console.unknown_route","message":"unknown console API route"}
+GET /api/documents                 404 {"code":"console.unknown_route","message":"unknown console API route"}
+GET /api/documents/list            404 {"code":"console.unknown_route","message":"unknown console API route"}
+GET /api/retrieval                 404 {"code":"console.unknown_route","message":"unknown console API route"}
+GET /api/retrieval/search          404 {"code":"console.unknown_route","message":"unknown console API route"}
+GET /api/knowledge/retrieval       404 {"code":"console.unknown_route","message":"unknown console API route"}
+GET /agent-api/api/knowledge       404 static asset fallback
+GET /agent-api/api/documents       404 static asset fallback
+GET /agent-api/api/retrieval       404 static asset fallback
+```
+
+BFF 源 `apps/console/server.py` 无 knowledge/document/retrieval 路由。页面因此对 spaces / ingest / retrieval 显示「未接入」+ 人话原因 + GAP-03 只在 `title` + `/approvals` 申请入口；不展示样例、不写 0。证据与引用走既有 `/agent-api/api/run-events?kind=citation&limit=50`，本页不回落 fixture；无登录态未取得真实 200。
+
+### 实现
+
+| tab | 数据源 | 当前呈现 |
+|---|---|---|
+| 知识空间 spaces | `/agent-api/api/knowledge/spaces` | 未接入（GAP-03 title）；有数据时 名称/类型/规模/更新时间 北京时间到分/状态，缺失 `—`+原因 |
+| 数据接入 ingest | `/agent-api/api/documents?limit=50` | 未接入（同上）；有数据时同一列口径 |
+| 检索 retrieval | `/agent-api/api/retrieval` | 未接入（同上）；不展示样例命中 |
+| 证据与引用 evidence | `/agent-api/api/run-events?kind=citation&limit=50` | 标题/类型/员工「姓名 · 8 位短码」或未指派/北京时间；站内原文可打开，站外或缺失显示「原文不可达」+原因 |
+
+- 四态：加载骨架 / 正常 / 空（明确“接口已响应但列表为空”，不推断 0）/ 错（人话 + 可复制请求编号 + 重试）；401 登录、403 无权、404 未接入。
+- 每个 tab 显示「来源 + 数据截至」；上游无 asOf 显示「时间未知」+原因，不用浏览器时间冒充。GAP 编号只进 `title`；页面无裸 API 路径/字段名/HTTP 码。
+- testid `knw4-*`；1440/1280/375 body 与页面 scrollWidth 均等于视口；375 表格改为 data-label 堆叠，无横向滚动。
+
+### 原始 stdout
+
+```text
+$ ./node_modules/.bin/tsc -b . --noEmit
+TSC_EXIT=0
+
+$ npx vitest run src/modules/knowledge
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+
+$ npx vitest run
+ Test Files  119 passed (119)
+      Tests  1178 passed (1178)
+
+$ PATH="/opt/homebrew/bin:$PATH" node scripts/build/web.mjs --source . --out /tmp/knowledge-build --icons .
+BUILD_EXIT=0
+built /private/tmp/knowledge-build/index.html
+```
+
+### DOM 读数（Chrome CDP，临时 harness 已删除）
+
+```text
+spaces 1440x900 vw=1440 bodySW=1440 bodyCW=1440 pageSW=1440 pageCW=1440 rows=2 thead=table-header-group
+spaces 1280x800 vw=1280 bodySW=1280 bodyCW=1280 pageSW=1280 pageCW=1280 rows=2 thead=table-header-group
+spaces 375x812  vw=375  bodySW=375  bodyCW=375  pageSW=375  pageCW=375  rows=2 thead=none
+evidence 1440x900 vw=1440 bodySW=1440 pageSW=1440 citations=2 open=1 unreachable=1
+evidence 375x812  vw=375  bodySW=375  pageSW=375  citations=2 open=1 unreachable=1
+```
+
+- 截图：`docs/_artifacts/gov/shots/knw4-1440.png`、`knw4-1280.png`、`knw4-375.png`、`knw4-evidence-1440.png`、`knw4-evidence-375.png`（fixture stub，仅证明布局与四态渲染，不代表线上读数）。
+- `.knw4-page .arc-border { display:none }` 隐藏共享按钮装饰弧边，消除 pageSW +2px。
+
+### 需壳层注册的路由/槽位清单（App.tsx 非本 lane 写域）
+
+- `#/knowledge?tab=sources`：当前 App 的 `/knowledge` live map 只有 `spaces` 与 `evidence`，没有 `sources`；需把 `sources` 指向 `KnowledgeConsolePage`（本页），否则该入口仍落到占位/旧节点。
+- `#/knowledge?tab=retrieval`：shell 别名把 `retrieval` 指到 evidence；若希望深链直接落在本页「检索」tab，需要把别名/路由节点指向 `KnowledgeConsolePage` 并保留 `tab=retrieval`。
+- `web/src/modules/evidence/**` 仍是独立页且 404/网络失败时回落 `EVIDENCE_FIXTURE`；不在本 lane 写域，本轮未改，需该模块 owner 按同一诚实口径处理。
