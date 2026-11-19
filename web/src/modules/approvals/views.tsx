@@ -55,7 +55,7 @@ export function ApprovalRowCard({
   return (
     <Card
       className={`border-border bg-card ${selected ? "ring-1 ring-primary/60" : ""}`}
-      data-testid={`approval-row-${row.key}`}
+      data-testid={`apr4-row-${row.key}`}
     >
       <CardContent className="flex min-w-0 flex-col gap-2 px-4 py-3">
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
@@ -89,7 +89,7 @@ export function ApprovalRowCard({
         ) : null}
 
         <DetailsDisclosure
-          testId={`approval-row-details-${row.key}`}
+          testId={`apr4-row-details-${row.key}`}
           lines={[
             row.rawId ? `单据标识：${row.rawId}` : "",
             `状态原值：${row.status.raw ?? "未提供"}`,
@@ -104,7 +104,7 @@ export function ApprovalRowCard({
 export function ApprovalDetailBody({
   detail,
   actions,
-  testId = "approval-detail",
+  testId = "apr4-detail",
 }: {
   detail: ApprovalDetail;
   actions?: ReactNode;
