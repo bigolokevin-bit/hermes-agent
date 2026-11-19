@@ -51,31 +51,50 @@ const roles = {
     {
       role_id: "role_12345678",
       role_name: "内容运营",
-      scope: "tenant",
-      member_count: 3,
+      source: "builtin",
+      member_count: 2,
+      permissions: ["knowledge.read", "audit.read"],
+      members: [
+        { user_id: "u_1234567890abcdef", realname: "陈可" },
+        { user_id: "" },
+      ],
       updated_at: "2026-11-19T06:30:00Z",
     },
   ],
 };
 
+async function clickRole() {
+  const button = container.querySelector('[data-testid="ac3-expand"]') as HTMLElement | null;
+  expect(button).toBeTruthy();
+  await act(async () => {
+    button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+}
+
 describe("AccessModulePage roles", () => {
-  it("renders role name, scope, member count and Beijing updated time", async () => {
+  it("renders role name, members, human permissions, source and Beijing updated time", async () => {
     fetchJSON.mockImplementation((url: string) =>
       Promise.resolve(url.includes("/role") ? roles : people),
     );
     await render();
-    const table = container.querySelector('[data-testid="role5-table"]');
+    const table = container.querySelector('[data-testid="ac3-table"]');
     expect(table).toBeTruthy();
-    expect(table?.textContent).toContain("角色名");
-    expect(table?.textContent).toContain("范围");
-    expect(table?.textContent).toContain("成员数");
-    expect(table?.textContent).toContain("更新时间");
+    for (const header of ["角色名", "成员数", "关键权限", "来源", "更新时间"]) {
+      expect(table?.textContent).toContain(header);
+    }
     expect(table?.textContent).toContain("内容运营");
-    expect(table?.textContent).toContain("全租户");
-    expect(table?.textContent).toContain("3");
+    expect(table?.textContent).toContain("2");
+    expect(table?.textContent).toContain("查看知识");
+    expect(table?.textContent).toContain("查看审计");
+    expect(table?.textContent).toContain("内置");
     expect(table?.textContent).toContain("2026-11-19 14:30");
+    expect(container.textContent).not.toContain("knowledge.read");
     expect(container.textContent).not.toContain("role_12345678");
     expect(container.textContent).not.toContain("u_1234567890abcdef");
+    await clickRole();
+    expect(container.querySelectorAll('[data-testid="ac3-member-row"]')).toHaveLength(2);
+    expect(container.textContent).toContain("陈可");
+    expect(container.textContent).toContain("未指派");
   });
 
   it("uses — with a visible reason for fields the upstream omits", async () => {
@@ -83,12 +102,13 @@ describe("AccessModulePage roles", () => {
       Promise.resolve(url.includes("/role") ? { items: [{ role_id: "role_missing" }] } : people),
     );
     await render();
-    const row = container.querySelector('[data-testid="role5-row"]');
+    const row = container.querySelector('[data-testid="ac3-row"]');
     expect(row?.textContent).toContain("待核实");
     expect(row?.textContent).toContain("上游未提供角色名");
     expect(row?.textContent).toContain("—");
-    expect(row?.textContent).toContain("上游未提供数据范围");
     expect(row?.textContent).toContain("上游未提供成员数");
+    expect(row?.textContent).toContain("上游未提供关键权限");
+    expect(row?.textContent).toContain("上游未提供来源");
     expect(row?.textContent).toContain("上游未提供更新时间");
   });
 
@@ -97,11 +117,27 @@ describe("AccessModulePage roles", () => {
       Promise.reject(new ApiError("missing", { status: 404, body: "{}", url })),
     );
     await render();
-    const gap = container.querySelector('[data-testid="role5-gap"]');
+    const gap = container.querySelector('[data-testid="ac3-gap"]');
     expect(gap?.textContent).toContain("未接入");
     expect(gap?.getAttribute("title")).toContain("GAP-ROL5-01");
     expect(container.textContent).not.toContain("GAP-");
     expect(container.querySelector('a[href="/approvals"]')?.textContent).toContain("提交开通申请");
+    expect(container.querySelector('[data-testid="ac3-fixture-note"]')?.textContent).toContain("示例布局");
+    expect(container.querySelector('[data-testid="ac3-page"]')?.getAttribute("data-fixture")).toBe("1");
+    expect(container.querySelectorAll('[data-testid="ac3-row"]').length).toBeGreaterThan(0);
+  });
+
+  it("uses the same neutral body for 403 and 404", async () => {
+    fetchJSON.mockImplementation((url: string) =>
+      Promise.reject(new ApiError("forbidden", { status: 403, body: "{}", url, requestId: "req-403" })),
+    );
+    await render();
+    const gap = container.querySelector('[data-testid="ac3-gap"]');
+    expect(gap?.textContent).toContain("未接入");
+    expect(gap?.textContent).toContain("角色与权限待核实");
+    expect(gap?.getAttribute("title")).toBe("GAP-ROL5-01");
+    expect(container.querySelector('[data-testid="ac3-fixture-note"]')).toBeNull();
+    expect(container.querySelectorAll('[data-testid="ac3-row"]')).toHaveLength(0);
   });
 
   it("distinguishes 401 with a request id and retry", async () => {
@@ -120,6 +156,7 @@ describe("AccessModulePage roles", () => {
     );
     await render();
     expect(container.textContent).toContain("req-acc");
+    expect(container.querySelector('[data-testid="ac3-request-id"]')).toBeTruthy();
     expect(container.textContent).toContain("重试");
     expect(container.textContent).not.toContain("HTTP");
   });
@@ -127,7 +164,7 @@ describe("AccessModulePage roles", () => {
   it("marks forced states as fixtures and does not fetch", async () => {
     await render("/access?state=error");
     expect(fetchJSON).not.toHaveBeenCalled();
-    expect(container.querySelector('[data-testid="acc4-page"]')?.getAttribute("data-fixture")).toBe("1");
+    expect(container.querySelector('[data-testid="ac3-page"]')?.getAttribute("data-fixture")).toBe("1");
     expect(container.querySelector('.acc4-error')).toBeTruthy();
   });
 

@@ -1131,3 +1131,44 @@ $ cd web && npx vitest run
 
 ### 仍需壳层注册
 - 本修复用模块 manifest 的加载期规范化解决冷深链；长期正解仍是 App live map 增 `sources` 节点、把 evidence 节点指向 `KnowledgeConsolePage`，并让 routes 的 retrieval 别名保留 `panel=retrieval`。App/shell 非本 lane 写域，未改。
+
+## R22 T22 访问控制真数据面（2026-11-19）
+
+### 端点真实度（BFF 127.0.0.1:8092，带登录 cookie；未打印 token）
+```text
+GET /api/v1/role/list?page=1&limit=200  404 {"code":"console.unknown_route"}
+GET /api/v1/roles?page=1&limit=200      404 {"code":"console.unknown_route"}
+GET /api/roles                          404 {"code":"console.unknown_route"}
+GET /api/roles/summary                  404 {"code":"console.unknown_route"}
+GET /api/grants                         404 {"code":"console.unknown_route"}
+GET /api/permissions                    404 {"code":"console.unknown_route"}
+```
+- 角色真实行数 **0**（端点未接入）；页面默认显示「未接入」+ 人话原因 + `ac3-gap`（`title=GAP-ROL5-01`）+ `/approvals` 申请入口，不把 0 当权限结论。
+- 无端点时额外渲染 `data-fixture="1"` 的**布局示例**（`ac3-fixture-note`：仅展示字段结构，不代表真实角色）；示例 4 行、3 个成员展开；有真实行时绝不使用示例。
+
+### 页面字段与交互
+- 角色矩阵列：角色名 / 成员数 / 关键权限（人话，如「查看知识、查看审计」）/ 来源（内置或自定义）/ 更新时间（北京时间到分）；缺失 `—` + 原因；裸 `role_*` / `u_*` / 权限 key 只在 `title`。
+- 点角色展开成员：姓名 + 8 位短码，缺 id 显「未指派」；展开面板 `ac3-member-panel`、成员行 `ac3-member-row`。
+- 只读：无新建/编辑/删除/授权按钮；403 与 404 同一「未接入」体（403 不展示 fixture）；error 有 `ac3-request-id` + 复制 + 重试。
+- testid：`ac3-page`、`ac3-table`、`ac3-row`、`ac3-name`、`ac3-members`、`ac3-perms`、`ac3-source`、`ac3-updated`、`ac3-expand`、`ac3-member-panel`、`ac3-member-row`、`ac3-gap`、`ac3-fixture-note`、`ac3-tab-roles|members|admins`。
+
+### DOM 读数（真实 App `/identity?tab=roles`）
+```text
+1440 page=ac3-page fixture=1 table=1 rows=4 headers=角色名/成员数/关键权限/来源/更新时间 body=1440/1440 page=1144/1144
+1280 page=ac3-page fixture=1 table=1 rows=4 headers=角色名/成员数/关键权限/来源/更新时间 body=1280/1280 page=984/984
+375  page=ac3-page fixture=1 table=1 rows=4 headers=角色名/成员数/关键权限/来源/更新时间 body=375/375 page=353/353
+1440 expand members=3 panel=1 text=林一舟90ABCDEF 陈可34567890 未指派00000000
+```
+- 375 走既有 ≤560px 堆叠表，四列均可见，无页面横溢；1440/1280 均 body 等于视口。
+
+### 原始 stdout
+```text
+$ cd web && npx vitest run src/modules/access
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+
+$ cd web && npx vitest run
+ Test Files  122 passed (122)
+      Tests  1221 passed (1221)
+```
+- `tsc -b . --noEmit` 仍被基线既有 `src/App.tsx` 的 `useSearchParams` 与 `LoginPage.test.tsx` TS2739 阻断（非本写域）；本模块无新增类型错误。

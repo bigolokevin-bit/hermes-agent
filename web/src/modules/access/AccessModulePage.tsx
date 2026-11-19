@@ -10,6 +10,7 @@ import {
   GAP02_ROLES,
   PEOPLE_ENDPOINTS,
   ROLE_ENDPOINTS,
+  ROLE_FIXTURE,
   ROLE_GAP,
   adminsOf,
   loadList,
@@ -93,7 +94,7 @@ function GroupState({
     return (
       <div className="acc4-error" role="alert">
         <b>{resource.message}</b>
-        <span className="acc4-req">请求编号 {resource.requestId ?? "未提供"}</span>
+        <RequestId id={resource.requestId ?? null} />
         <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
           重试
         </Button>
@@ -103,33 +104,167 @@ function GroupState({
   return <>{children(resource.data)}</>;
 }
 
-function RoleRow({ row }: { row: Rec }) {
+function RoleRow({
+  row,
+  open,
+  onToggle,
+}: {
+  row: Rec;
+  open: boolean;
+  onToggle: () => void;
+}) {
   const view = roleView(row);
+  const shown = view.permissions.slice(0, 3).join("、");
+  const more = view.permissions.length > 3 ? ` 等 ${view.permissions.length} 项` : "";
   return (
-    <tr data-testid="role5-row" title={view.rawId || undefined}>
-      <td data-label="角色名" data-testid="role5-name">
-        {view.name}
-        {view.nameReason ? <span className="acc4-meta">{view.nameReason}</span> : null}
-      </td>
-      <td data-label="范围" data-testid="role5-scope" title={view.scopeRaw || undefined}>
-        {view.scope}
-        {view.scopeReason ? <span className="acc4-meta">{view.scopeReason}</span> : null}
-      </td>
-      <td data-label="成员数" data-testid="role5-members">
-        {view.memberCount ?? "—"}
-        {view.memberReason ? <span className="acc4-meta">{view.memberReason}</span> : null}
-      </td>
-      <td data-label="更新时间" data-testid="role5-updated">
-        {view.updatedAt ?? "—"}
-        {view.updatedReason ? <span className="acc4-meta">{view.updatedReason}</span> : null}
-      </td>
-    </tr>
+    <>
+      <tr
+        data-testid="ac3-row"
+        title={view.rawId || undefined}
+        className={open ? "is-open" : undefined}
+        onClick={onToggle}
+      >
+        <td data-label="角色名" data-testid="ac3-name">
+          <button
+            type="button"
+            className="role5-expand"
+            data-testid="ac3-expand"
+            aria-expanded={open}
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggle();
+            }}
+          >
+            <span aria-hidden>{open ? "−" : "+"}</span>
+            {view.name}
+          </button>
+          {view.nameReason ? <span className="acc4-meta">{view.nameReason}</span> : null}
+        </td>
+        <td data-label="成员数" data-testid="ac3-members">
+          {view.memberCount ?? "—"}
+          {view.memberReason ? <span className="acc4-meta">{view.memberReason}</span> : null}
+        </td>
+        <td
+          data-label="关键权限"
+          data-testid="ac3-perms"
+          title={view.permissionsRaw.length ? view.permissionsRaw.join(" ") : undefined}
+        >
+          {view.permissions.length ? `${shown}${more}` : "—"}
+          {view.permissionsReason ? <span className="acc4-meta">{view.permissionsReason}</span> : null}
+        </td>
+        <td data-label="来源" data-testid="ac3-source" title={view.sourceRaw || undefined}>
+          {view.source}
+          {view.sourceReason ? <span className="acc4-meta">{view.sourceReason}</span> : null}
+        </td>
+        <td data-label="更新时间" data-testid="ac3-updated">
+          {view.updatedAt ?? "—"}
+          {view.updatedReason ? <span className="acc4-meta">{view.updatedReason}</span> : null}
+        </td>
+      </tr>
+      {open ? (
+        <tr data-testid="ac3-member-panel">
+          <td colSpan={5}>
+            {view.members.length ? (
+              <ul className="role5-members">
+                {view.members.map((member, index) => (
+                  <li key={member.rawId || `${member.name}-${index}`} data-testid="ac3-member-row">
+                    <span>{member.name}</span>
+                    <Badge tone="outline">{member.code}</Badge>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <span className="acc4-meta">{view.membersReason ?? "上游未提供成员明细"}</span>
+            )}
+          </td>
+        </tr>
+      ) : null}
+    </>
+  );
+}
+
+function RoleTable({
+  rows,
+  expanded,
+  onToggle,
+}: {
+  rows: Rec[];
+  expanded: string | null;
+  onToggle: (id: string) => void;
+}) {
+  return (
+    <div className="role5-scroll">
+      <table className="role5-table" data-testid="ac3-table">
+        <thead>
+          <tr>
+            <th>角色名</th>
+            <th>成员数</th>
+            <th>关键权限</th>
+            <th>来源</th>
+            <th>更新时间</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, index) => {
+            const id = rawId(row) || `role-${index}`;
+            return (
+              <RoleRow
+                key={id}
+                row={row}
+                open={expanded === id}
+                onToggle={() => onToggle(id)}
+              />
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function AccessGap() {
+  return (
+    <div className="acc4-gap" data-testid="ac3-gap" title={ROLE_GAP}>
+      <b>未接入</b>
+      <span>{GAP02_ROLES}</span>
+      <Link className="acc4-link" to="/approvals">
+        去审批中心提交开通申请
+        <ArrowRight className="h-3.5 w-3.5" />
+      </Link>
+    </div>
+  );
+}
+
+function RequestId({ id }: { id: string | null }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <span className="acc4-req" data-testid="ac3-request-id">
+      请求编号 {id ?? "未提供"}
+      {id ? (
+        <button
+          type="button"
+          className="acc4-copy"
+          aria-label="复制请求编号"
+          onClick={() => {
+            void navigator.clipboard?.writeText(id).then(
+              () => {
+                setCopied(true);
+                window.setTimeout(() => setCopied(false), 1800);
+              },
+              () => setCopied(false),
+            );
+          }}
+        >
+          {copied ? "已复制" : "复制"}
+        </button>
+      ) : null}
+    </span>
   );
 }
 
 function PersonRow({ row, admin }: { row: Rec; admin?: boolean }) {
   return (
-    <li className="acc4-row" data-testid="acc4-person-row">
+    <li className="acc4-row" data-testid="ac3-person-row">
       <span className="acc4-name" title={rawId(row) || undefined}>{personName(row)}</span>
       <Badge tone="outline">{shortCode(row)}</Badge>
       <span className="acc4-meta">
@@ -145,6 +280,7 @@ export default function AccessModulePage() {
   const [view, setView] = useState<View>(sp.get("view") === "members" ? "members" : sp.get("view") === "admins" ? "admins" : "roles");
   const [people, setPeople] = useState<Resource<Rec[]>>({ phase: "loading" });
   const [roles, setRoles] = useState<Resource<Rec[]>>({ phase: "loading" });
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   const reload = useCallback(() => {
     setPeople({ phase: "loading" });
@@ -170,7 +306,7 @@ export default function AccessModulePage() {
 
   if (FORCED.has(forced)) {
     return (
-      <div className="acc4-page" data-testid="acc4-page" data-fixture="1">
+      <div className="acc4-page" data-testid="ac3-page" data-fixture="1">
         <header className="acc4-head">
           <ShieldCheck className="h-5 w-5" />
           <h1>访问控制</h1>
@@ -184,8 +320,13 @@ export default function AccessModulePage() {
     );
   }
 
+  const rolePreview = roles.phase === "unavailable";
   return (
-    <div className="acc4-page" data-testid="acc4-page">
+    <div
+      className="acc4-page"
+      data-testid="ac3-page"
+      data-fixture={rolePreview ? "1" : undefined}
+    >
       <header className="acc4-head">
         <div className="acc4-title">
           <ShieldCheck className="h-5 w-5" aria-hidden />
@@ -199,9 +340,9 @@ export default function AccessModulePage() {
 
       <div className="acc4-seg" role="tablist" aria-label="访问控制分组">
         {([
-          ["roles", "角色", "acc4-tab-roles"],
-          ["members", "成员", "acc4-tab-members"],
-          ["admins", "管理员", "acc4-tab-admins"],
+          ["roles", "角色", "ac3-tab-roles"],
+          ["members", "成员", "ac3-tab-members"],
+          ["admins", "管理员", "ac3-tab-admins"],
         ] as const).map(([id, label, testid]) => (
           <button
             key={id}
@@ -220,27 +361,33 @@ export default function AccessModulePage() {
       <Card>
         <CardContent className="acc4-body">
           {view === "roles" ? (
-            <GroupState resource={roles} gap={GAP02_ROLES} onRetry={reload}>
-              {(rows) => (
-                <div className="role5-scroll">
-                  <table className="role5-table" data-testid="role5-table">
-                    <thead>
-                      <tr>
-                        <th>角色名</th>
-                        <th>范围</th>
-                        <th>成员数</th>
-                        <th>更新时间</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows.map((row, i) => (
-                        <RoleRow key={rawId(row) || `role-${i}`} row={row} />
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </GroupState>
+            roles.phase === "unavailable" || roles.phase === "denied" ? (
+              <>
+                <AccessGap />
+                {rolePreview ? (
+                  <>
+                    <p className="acc4-meta" data-testid="ac3-fixture-note">
+                      示例布局：角色接口未接入，以下内容仅用于展示字段结构，不代表真实角色。
+                    </p>
+                    <RoleTable
+                      rows={ROLE_FIXTURE}
+                      expanded={expanded}
+                      onToggle={(id) => setExpanded((prev) => (prev === id ? null : id))}
+                    />
+                  </>
+                ) : null}
+              </>
+            ) : (
+              <GroupState resource={roles} gap={GAP02_ROLES} onRetry={reload}>
+                {(rows) => (
+                  <RoleTable
+                    rows={rows}
+                    expanded={expanded}
+                    onToggle={(id) => setExpanded((prev) => (prev === id ? null : id))}
+                  />
+                )}
+              </GroupState>
+            )
           ) : view === "members" ? (
             <GroupState resource={people} gap={GAP02_PEOPLE} onRetry={reload}>
               {(rows) => (
