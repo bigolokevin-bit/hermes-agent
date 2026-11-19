@@ -870,3 +870,10 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 代次现查四向互证：HEAD=远端 tip=23a8a7e0（merge aud runs detail history b8c7e880）；entry assets/index-DM1VZwgg.js 158301B sha256 048e37b58b7e62f18003a79f420f784c200a22202be2a0642b7db9cc800129d5，磁盘==9122==8183，拍后 served 未漂。R24 原 33596dc4 判据作废。
 - 九件全 exit=0 单文件单 JSON+exitCode，全盖 23a8a7e0：assert-ia-html/react ok {51,22,tabsAll23,1,8}；lint-fake ok violations=[]；lint-reuse ok violations=[] exempted=1（chat→T40）；crawl-anon ok DL0/CE0/PE0 routesCE=51（匿名 401 归因 env=auth-required-401）；crawl-auth ok DL0/CE0/PE0 routesCE=23（--auth-state= 19:1x state）；state-quad 20/20；shots main（auth）102/102 failures=[] ceAuthority=login-state consoleErrorsObservedByShots=0 三键全值；shots-anon auxiliary=true 102/102。
 - 坑（本轮实踩）：shots.mjs L72 只解析 `--auth-state=<path>`（startsWith+slice(13)），空格形 `--auth-state path` 被静默当 anon——首拍 mode=anon 后以 = 形重拍为准；crawl-routes.mjs 的 flagOf 则两形都吃。--index 一律 .md（五十五轮教训沿用，本轮 anon 隔离目录法复用）。
+
+## 五十七轮 · 账本重章 de23c92e（entry CWsTID0T）+ R26 approvals 收口复用（2026-11-19 20:0x-20:3x）
+
+- 代次三向互证：HEAD=远端 tip=de23c92e（merge lane/console-appr R24 fixes and page depth）；entry assets/index-CWsTID0T.js 158481B sha256 1f6b4ae9…85af 磁盘==9122==8183；20 路由全 200（卡面）。
+- 九件重章 headHash=de23c92e 全 exit=0 单文件单 JSON：assert-ia-html/react ok {51,22,1,8}（脚本自盖章）；lint-fake ok violations=[]；lint-reuse ok violations=0 exempted=1（python raw_decode 注入盖章+stdout 抄件，回读全过）；crawl-anon ok DL0/CE0/PE0 routesCE=51（匿名 401 环境归因）；crawl-auth ok DL0/CE0/PE0 routesCE=23（--auth-state= 等号形，fresh token）；state-quad 20/20——**脚本输出改为纯文本行**（sampled/passed/head=），本轮起 python 解析文本重建 JSON（raw 全文入 state-quad.json，注 source）；shots main/anon 见下节注入。
+- R26 BFF approvals 收口（已先行完成，本卡引用）：status=all/缺省= BFF 逐状态扇出聚合 all=8=expired3+consumed5；别名 recipient←approvers/requestId←approvalId（setdefault 原键保留）；344 passed（新 3 测+conftest 桩分支）；bff main=87ca746（rebase 至 11aa51e 上连推 f184c63+87ca746）；8092 受管重启 83970→11821（Label 实名 cn.seakoi.console-bff，卡面 sekoi 笔误；ppid=1，lstart 19:59:58）。
+- 环境：auth-state 19:1x 版（24h 窗）；9122 pid 64868、caddy 8183 28034 全程未动；禁改 web/src 遵守（本轮 fork 仅 docs/_artifacts 写域）。
