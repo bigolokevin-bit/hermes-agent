@@ -291,8 +291,9 @@ describe("EmployeeDetailModulePage — approvals / runs / audit", () => {
     );
     await renderAt(page, at("runs"));
     const card = container.querySelector('[data-testid="ed5-runs"]');
-    // R48: 每行真深链（run id 上 href，屏上仍是短码）。
-    expect(card?.querySelector("a")?.getAttribute("href")).toBe("/runs/run_X1Y2Z3");
+    // R48: 每行真深链。R48b: href 走 /runs 页支持的 run 查询参数
+    // （/runs/<id> 无路由=死链；活体实证 /runs?run=<id> 渲出该运行的 run5-detail）。
+    expect(card?.querySelector("a")?.getAttribute("href")).toBe("/runs?run=run_X1Y2Z3");
     expect(card?.textContent).toContain("$2.50");
     expect(card?.textContent).toContain("2026-11-19 00:30");
     expect(card?.textContent).toContain("已完成");
@@ -312,7 +313,7 @@ describe("EmployeeDetailModulePage — approvals / runs / audit", () => {
     );
     await renderAt(page, at("runs"));
     const card = container.querySelector('[data-testid="ed5-runs"]');
-    expect(card?.querySelector("a")?.getAttribute("href")).toBe("/runs/rn_01M7D7421P5PA27TEXMT9YVDZ8");
+    expect(card?.querySelector("a")?.getAttribute("href")).toBe("/runs?run=rn_01M7D7421P5PA27TEXMT9YVDZ8");
     const text = card?.textContent ?? "";
     expect(text).toContain("12 分钟");
     // 真 0 与缺失可区分：$0.00 有金额，null 走「—」。

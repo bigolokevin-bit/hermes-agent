@@ -1193,7 +1193,7 @@ function RunsZone({ resource, onRetry }: { resource: Resource<RunRow[]>; onRetry
           {resource.data.map((row, i) => (
             <li key={`${row.ref ?? "run"}-${i}`} data-testid="ed5-zone-runs-row">
               <Link
-                to={row.ref ? `/runs/${encodeURIComponent(row.ref)}` : "/runs"}
+                to={row.ref ? `/runs?run=${encodeURIComponent(row.ref)}` : "/runs"}
                 data-testid={`ed7-runs-link-${i}`}
                 title={row.ref ?? undefined}
                 className="grid grid-cols-1 gap-1 px-4 py-3 hover:bg-white/5 md:grid-cols-[minmax(0,0.9fr)_minmax(0,0.7fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.6fr)_minmax(0,0.6fr)] md:items-center md:gap-2"

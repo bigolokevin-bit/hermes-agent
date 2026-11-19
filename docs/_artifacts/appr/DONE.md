@@ -759,3 +759,11 @@ BFF/数据面现查：GET /agent-api/api/employees/<id>（server.py EMPLOYEES_DE
 坑：href= /runs/<id> 深链落地页 = /runs/:runId 路由不在本树 App（只读核过，仅 path="/runs" 列表；写域外禁碰 App）——href 带真 id 满足工单判据，点后进兜底面属壳层待接线项，DONE 记账；测试 mock 变量名=fetchJSON（本文件无 mockFetch）。
 
 验证：定向 employee-detail 33 passed（+1 R48 用例、1 处既有断言按工单同步）exit0；assert-ia 两模式 exit0（51/22/1/8）；tsc 本域零红；全量 **131 files/1410 passed**（基线 1409+1）。9122 代次禁重建：运行区活体行读数待并入后代次，本轮 jsdom+API 双实测为权威。
+
+## R48b 运行区死链修正（2026-11-20，lane/console-appr，≤25min）
+
+L0 判 /runs/<id> 无路由=死链（routes.ts 只有 /runs）。禁碰 shell/App，改法=ed7-runs-link href 改 `/runs?run=<完整id>`（EmployeeDetailModulePage.tsx:1196）。
+
+活体实证（ego 只读，9122==02a7385c）：无参 /runs → 「本页 13 次…」且 run5-detail=false；带 ?run=rn_01M7D7421P5PA27TEXMT9YVDZ8 → **run5-detail=true 且卡文=「运行 · VDZ8运行中 · 开始 2026-11-14 22:24 · 耗时 128 小时 33 分钟」**（VDZ8=该 id 尾码=确为参数对应运行）→ 参数生效，无需退 span。testid 不变；两处用例断言同步（=/runs?run=run_X1Y2Z3 与 =/runs?run=rn_01M7…）；屏上无裸 id 断言保持（href 属性不计 textContent）。
+
+验证：定向 employee-detail 33 passed；全量 131 files/1410 passed；assert-ia 两模式 exit0 51/22/1/8（未动壳层）。commit fix(console): employee runs rows link to supported run param。
