@@ -213,7 +213,7 @@ describe("the ledger list", () => {
     expect(text()).toContain("已显示 2 条审计事件");
     expect(text()).toContain("下面还有更多");
     await act(async () => {
-      (Array.from(document.querySelectorAll("button")).find((b) => (b.textContent ?? "").includes("加载更多")) as HTMLButtonElement).click();
+      (document.querySelector("[data-testid='aud01-load-more']") as HTMLButtonElement).click();
     });
     await waitFor(() => urls().some((u) => u.includes("cursor=cur_page2")), "second page asked");
     expect(urls().some((u) => /^\/agent-api\/api\/audit\?limit=50&from=.*&to=.*&cursor=cur_page2$/.test(u))).toBe(true);

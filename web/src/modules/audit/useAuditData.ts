@@ -94,7 +94,12 @@ function forcedCopy(kind: "error" | "denied", forced: ForcedState): FailureCopy 
  * `asked` is part of `run`'s identity, so the caller must pass a stable object
  * (the page memoises it): a re-render with the same filters asks nothing new.
  */
-export function useAuditList(forced: ForcedState, asked: ListFilters, enabled: boolean = true): ListApi {
+export function useAuditList(
+  forced: ForcedState,
+  asked: ListFilters,
+  enabled: boolean = true,
+  startCursor: string | null = null,
+): ListApi {
   const [state, setState] = useState<ListState>(INITIAL);
   const seq = useRef(0);
   const nextRef = useRef<string | null>(null);
@@ -161,13 +166,13 @@ export function useAuditList(forced: ForcedState, asked: ListFilters, enabled: b
     }
     // A new filter set is a new question: drop the old rows before asking.
     setState((prev) => (prev.rows.length === 0 && prev.phase === "loading" && !prev.forced ? prev : { ...INITIAL }));
-    run(null, false);
-  }, [forced, run, enabled]);
+    run(startCursor, false);
+  }, [forced, run, enabled, startCursor]);
 
   const reload = useCallback(() => {
     setState((prev) => ({ ...prev, phase: "loading", rows: [], forced: false }));
-    run(null, false);
-  }, [run]);
+    run(startCursor, false);
+  }, [run, startCursor]);
 
   const loadMore = useCallback(() => {
     const cursor = nextRef.current;

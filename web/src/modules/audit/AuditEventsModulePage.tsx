@@ -237,7 +237,10 @@ function AuditEventsSurface(): ReactNode {
   // No `?state=` leg on this pane: a list or detail state is only what the
   // service answered. A missing route degrades through readFailure() to an
   // honest sentence plus the request id, never to sample rows.
-  const list = useAuditList(null, filters, !customInvalid);
+  const cursors = params.getAll("cursor");
+  const startCursor = cursors.length ? cursors[cursors.length - 1]! : null;
+  const pageNo = cursors.length + 1;
+  const list = useAuditList(null, filters, !customInvalid, startCursor);
   const detail = useAuditDetail(selected, null);
   const [unaddressable, setUnaddressable] = useState(false);
   // One row at a time owns the technical fold: the panel id stays unique and
@@ -279,6 +282,7 @@ function AuditEventsSurface(): ReactNode {
   const setWindow = useCallback(
     (next: FilterWindowKey) => {
       const draft = new URLSearchParams(params);
+      draft.delete("cursor");
       draft.set("window", next);
       if (next !== "custom") {
         draft.delete("from");
@@ -292,6 +296,7 @@ function AuditEventsSurface(): ReactNode {
   const setCustomFrom = useCallback(
     (next: string) => {
       const draft = new URLSearchParams(params);
+      draft.delete("cursor");
       draft.set("window", "custom");
       const iso = parseBeijingInput(next);
       if (iso) draft.set("from", iso);
@@ -304,6 +309,7 @@ function AuditEventsSurface(): ReactNode {
   const setCustomTo = useCallback(
     (next: string) => {
       const draft = new URLSearchParams(params);
+      draft.delete("cursor");
       draft.set("window", "custom");
       const iso = parseBeijingInput(next);
       if (iso) draft.set("to", iso);
@@ -312,6 +318,22 @@ function AuditEventsSurface(): ReactNode {
     },
     [locationState, params, setParams],
   );
+
+  const goNext = useCallback(() => {
+    if (!list.next) return;
+    const draft = new URLSearchParams(params);
+    draft.append("cursor", list.next);
+    setParams(draft, { replace: true });
+  }, [list.next, params, setParams]);
+
+  const goPrev = useCallback(() => {
+    const stack = params.getAll("cursor");
+    if (!stack.length) return;
+    const draft = new URLSearchParams(params);
+    draft.delete("cursor");
+    for (const value of stack.slice(0, -1)) draft.append("cursor", value);
+    setParams(draft, { replace: true });
+  }, [params, setParams]);
 
   const windowLabel = WINDOW_FILTER_CHOICES.find((item) => item.value === windowChoice)?.label ?? "最近 7 天";
 
@@ -617,20 +639,36 @@ function AuditEventsSurface(): ReactNode {
                 <InlineFailure failure={list.pageFailure} action="后续记录没有加载成功" onRetry={list.loadMore} testId="aud01-page-failure" />
               ) : null}
 
-              {list.next ? (
-                <div>
+              <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="aud2-pagination">
+                <span className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud2-page">
+                  第 {pageNo} 页 · 已加载 {list.rows.length} 条
+                </span>
+                <span
+                  className="min-w-0 break-words text-xs text-muted-foreground"
+                  data-testid="aud2-total"
+                  title="服务没有给出总数；游标分页不能自算总数，本页只数已加载的行"
+                >
+                  总数不可用
+                </span>
+                <span className="contents" data-testid="aud2-prev">
+                  <Button size="sm" outlined disabled={pageNo === 1} onClick={goPrev}>
+                    上一页
+                  </Button>
+                </span>
+                <span className="contents" data-testid="aud2-next">
                   <Button
                     size="sm"
                     outlined
-                    disabled={list.loadingMore}
-                    onClick={list.loadMore}
+                    disabled={!list.next}
+                    onClick={goNext}
                     data-testid="aud01-load-more"
-                    prefix={list.loadingMore ? <Spinner className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                    prefix={<RefreshCw className="h-3.5 w-3.5" />}
                   >
-                    加载更多
+                    下一页
                   </Button>
-                </div>
-              ) : list.rows.length > 0 ? (
+                </span>
+              </div>
+              {!list.next && list.rows.length > 0 ? (
                 <p className="text-xs text-muted-foreground">这一页就这些了。</p>
               ) : null}
 

@@ -2843,3 +2843,15 @@ Untested: the four-state body lengths are jsdom readings, not browser pixels; th
 - 门禁：vitest src/modules/audit exit 0（10 files / 164 tests，基线 161，+3 详情用例）；tsc -b 共 50 条既有地板、modules/audit 0；eslint exit 0（0 errors / 4 既有 warning）。
 - 活体：/audit?window=7d 在 1440/1280/375 均 sw==cw（50 行，textLen 5498）；详情抽屉文本含「精确到秒」与「证据不可用」各 1 处（该事件无原始载荷，走诚实分支）；testid 是属性，不在 innerText，故以用例为准。
 - 未测：没有带回原始载荷的真实事件，脱敏分支仅用例证；未做逐元素像素比对；9122 未重建、未并 main。
+## Audit pagination + time range (2026-11-20, base f0419b0b)
+
+- Base f0419b0b (= gate ledger @ 02a7385c); toplevel verified; tree clean at start.
+- URL owns the page path: repeated `cursor` params form a stack (params.getAll("cursor")), page = stack length + 1. Next appends list.next; prev pops the stack; changing the window or a custom bound clears the stack (back to page 1). Refresh/share reproduces the same page and filters.
+- The R34 time windows stay as they were (?window=24h|7d|30d|custom plus ?from=/?to=), untouched by this round.
+- Honest total: the service answer is {events, nextCursor} with no total field, so aud2-total reads 总数不可用 with the title 服务没有给出总数；游标分页不能自算总数，本页只数已加载的行, and aud2-page reads 第 N 页 · 已加载 M 条. No computed total anywhere.
+- New test ids: aud2-pagination / aud2-page / aud2-total / aud2-prev / aud2-next. aud01-load-more is kept (label now 下一页) together with every aud01-* id and agent-v2-page-audit.
+- Boundaries: aud2-prev is disabled on page 1; aud2-next is disabled when the service sent no next cursor and the 这一页就这些了。 line shows instead; an empty answer still renders EmptyPanel.
+- Behaviour unchanged: the four states come from the service answer (no ?state= leg here), error keeps a copyable request id plus retry, 403≡404 share one body, zero write entries, rows still link to the detail and the actor stays in human words.
+- Gates: vitest src/modules/audit exit 0 (10 files / 161 tests); tsc -b reports 50 errors (the standing floor, none in this module); eslint src/modules/audit exit 0 (0 errors / 4 pre-existing warnings).
+- Live: /audit?window=7d at 1440/1280/375 is sw==cw (1440/1440, 1280/1280, 375/375), 50 rows, textLen 5521, export button enabled. The 7d window returns no nextCursor, so there is no live second page to click; the pagination behaviour is proven by the module tests (two-page mock: page 1 next writes cursor=cur_page2, the second fetch carries it, aud2-page reads 第 2 页, aud2-total reads 总数不可用, prev pops back to page 1).
+- Untested: a live second page (the service had no next cursor); no per-element pixel diff; 9122 not rebuilt, main not merged.
