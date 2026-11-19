@@ -128,7 +128,7 @@ describe("LoginPage (auth5 / R18)", () => {
       value: { ...original, assign },
     });
     try {
-      mount(() => jsonResponse(200, CAPTCHA_A));
+      mount(async () => jsonResponse(200, CAPTCHA_A));
       await flush();
       const btn = container.querySelector<HTMLButtonElement>('[data-testid="auth5-feishu"]');
       expect(btn).toBeTruthy();
@@ -146,7 +146,7 @@ describe("LoginPage (auth5 / R18)", () => {
   });
 
   it("renders an honest feishu callback failure with a copyable request id", async () => {
-    mountAt("/login?error=auth.feishu_denied&rid=fs-77", () => jsonResponse(200, CAPTCHA_A));
+    mountAt("/login?error=auth.feishu_denied&rid=fs-77", async () => jsonResponse(200, CAPTCHA_A));
     await flush();
     const card = container.querySelector('[data-testid="auth5-feishu-error"]');
     expect(card?.textContent).toContain("飞书那边没有完成授权");

@@ -130,7 +130,7 @@ describe("TasksBoardModulePage", () => {
 
   it("lists up to three events when the detail answer carries them (R32)", async () => {
     const withEvents = {
-      ...resolveDetail(),
+      ...(resolveDetail() as Record<string, unknown>),
       events: [
         { eventId: "evt_1", kind: "created", note: "任务建立", at: "2026-11-17T02:00:00Z" },
         { eventId: "evt_2", kind: "assigned", note: "指派给员工", at: "2026-11-17T03:00:00Z" },
