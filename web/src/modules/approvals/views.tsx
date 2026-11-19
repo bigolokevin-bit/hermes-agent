@@ -13,7 +13,7 @@ import { Badge } from "@nous-research/ui/ui/components/badge";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 
 import { themedBody } from "@/lib/utils";
-import { money, type ApprovalDetail, type ApprovalRow } from "./model";
+import { humanizeHandles, money, type ApprovalDetail, type ApprovalRow } from "./model";
 import { DetailsDisclosure } from "./states";
 
 /** A label/value pair that never overflows its column at 375px. */
@@ -109,7 +109,7 @@ export function ApprovalRowCard({
         </dl>
 
         {row.reason ? (
-          <p className="min-w-0 break-words text-xs text-muted-foreground">事由：{row.reason}</p>
+          <p className="min-w-0 break-words text-xs text-muted-foreground" title={row.reason}>事由：{humanizeHandles(row.reason)}</p>
         ) : null}
 
         <div onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
@@ -256,7 +256,7 @@ export function ApprovalDetailBody({
       </dl>
 
       {detail.reason ? (
-        <p className="min-w-0 break-words text-xs text-muted-foreground">事由：{detail.reason}</p>
+        <p className="min-w-0 break-words text-xs text-muted-foreground" title={detail.reason ?? undefined}>事由：{humanizeHandles(detail.reason)}</p>
       ) : null}
 
       {/* R28 item 2: the approver slot is always present; empty means a

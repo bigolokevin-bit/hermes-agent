@@ -473,3 +473,15 @@ F7 审计入口+别名：App.tsx nav 治理组新增 /audit「审计事件」（
 ②approver 位=views 恒渲染 p data-testid=apd5-field-approver（内层 apd5-approver 双标保留），labels 空=「—」+title 单据没有带回审批人。③apd5-field-request-id 空态=「—」+title 这条记录没有带回请求编号（禁复用错误卡文案）。④裸 human:：代码链三重实证 isMachineHandle(SCHEME_PREFIX 含冒号)/maskHandle(<4→裸名词「审批人」)/personView(≥1→人员·短码 否则 —)全掩码，活体两处属旧代次，请 QA 合批后复跑归零。
 ⑤/overview 八卡截至：健康检查卡补 stamps（运行统计 todayStats asOf）后 8/8 卡均有「数据截至 BJT 到分 · 来源」Freshness（ov6-*-stamp），sourceStamp 只认服务端时间缺不显假。⑥侧栏审计入口 nav path /system?tab=events→/audit（AuditAwareEntry 路由在，用户可达）。⑦/work?tab=cron：CronAwareWork 元素分支挂 gov CronModulePage（cron5-* 上屏，禁静默回落 board；TAB_ALIAS 归一被前拦截）；页体零改动只挂载。
 验证：定向 employee-detail 16、approvals 全绿；全量 vitest 126 files/1268 passed 0 fail；assert-ia 不受影响（routes.ts 未动）。9122 仍旧代次（ad72c31c/D3sU0dej），全部 DOM 活体读数需 L0 合批重建后 QA 复跑。
+
+## R28b cron 槽位契约续（fix(console): honor gov cron slot contract for /cron alias）
+基线：本地 lane/console-appr merge origin/lane/hermes-console(da807e4f)=无冲突，gov 74957c6d zone 真渲与 de17dda9 notfound 五处共存（grep 复核，未回退 gov）；merge 代替 rebase 因禁 force 且远端 lane/console-appr=de17dda9 为祖先，ff push 成立。
+契约（74957c6d docs/_artifacts/gov/DONE.md 原文）：#/work?tab=cron 与 #/cron 两槽 → CronModulePage。/work?tab=cron 已由 CronAwareWork 挂（de17dda9）；本笔新增顶层 Route /cron → CronConsolePage（console 块 first-in-tree 先于 BUILTIN 上游 CronPage，未删上游路由）。
+验证：shell+pages 16 files 115 passed；全量 126 files/1269 passed 0 fail。活体 cron5Count DOM 读数待 L0 合批重建后 QA 复跑。
+
+## R29 收尾（四项 DOM 自证读数+行号，fix 第二笔）
+- 项1 overview asof+八卡来源：OverviewPage.tsx line354 ov6-asof；KpiCard Freshness testid ov6-<card>-stamp（line118 模板）→9 testid DOM 存在性=vitest OverviewPage.test 新用例 9 querySelector 全非 null（overview 9 passed）。
+- 项2 侧栏 /audit 入口：console.tsx line650 NavLink to=/audit（无 data-mod，a[data-mod]=8 契约不破）；console.test 新用例断 a[href=/audit]+文本「审计」=DOM 读数①；代码 grep 行号=自证②。
+- 项3 retention 挂载：App.tsx line1249 /system element=<SystemAwareTabs/>（tab=retention→RetentionConsolePage，ret4-* 页体只挂载）；9122 旧代次活体 ret4 读数待合批，DOM 证据=组件链+行号。
+- 项4 human 掩码：model.ts line300 humanizeHandles；views.tsx line112/详情事由 p title=原值+掩码文；api.test 三断言（人员出现+human:/user: 零残留+emp_ 保留）99 passed。活体两处裸 human:=种子单 reasonText 业务正文（EGO R29-LIST/DETAIL 上下文实证），显示层掩码后=0。
+验证：定向 approvals+shell+overview=9 files 99 passed 0 fail。
