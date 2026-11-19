@@ -415,3 +415,9 @@ BFF 实测形态（ego 登录态 GET /agent-api/api/approvals?status=consumed&li
 汇总条五项落地：员工 3 · 在岗 2 · 有风险「—」（title：风险数据源尚未接入，不做猜测）· 技能引用 0（与明细 cells 同口径）· 今日运行「—」（title：运行统计源未接入）+ 三态计数 + 读取于 asOf。
 403≡404 同体：两路都进 denied 静态句「可能是这页不存在，也可能是账号还没有查看权限」，不回显路径 ✓；fixture 回落仅端点不可用且 data-fixture=1+人话注记（无 GAP 编号上屏）✓；testid 家族 matrix-→mtx5- 全替换（page 17+test 5 处，零残留）。
 测试：定向 src/modules/matrix 5 passed；全量 122 files/1222 passed 0 fail。屏幕 DOM 复跑待 L0 合批构建。
+
+## ov6 值班台/总览八卡真数据聚合（feat(console): overview duty cards real-data aggregation）
+8 卡对位（ego 登录态经 9122 BFF 实测原始读数）：1) 可上岗/在岗 ov6-kpi-employees ← employee-stats 200 {total:3, byLifecycle{draft:1,active:2}}=真数据；2) 今日运行 ov6-kpi-runs ← run-stats?from=2026-11-19&to=2026-11-20 200 totals.runs=0（真 0，非缺失）；3) 待审批 ov6-kpi-pending ← approval-stats 200 {pending:0,dueSoon:0}（真 0）；4) 今日成本 ov6-kpi-cost ← budget-usage?periodKind=day 200 {items:[],missingEmployeeIds:全部3人}→显「—」+脚注「账本未覆盖全部员工（3 人缺账本）」，真 0 与缺失可区分（usd 与 null 分支）；5) 健康检查 ov6-kpi-health（本笔新增）=六源 states 聚合（员工统计/运行统计/今日运行/审批统计/成本账本/风险矩阵），独立探针未接入 noteTitle=GAP-OV6-HEALTH 编号进 title；6) 趋势 ov6-trend ← run-stats 14d 200 buckets n=2 真数据；7) 最近活动 ov6-activity ← 运行记录窗真数据；8) 阻塞与待办 ov6-blockers ← tasks?status=blocked 200 n=1 + approvals 真数据，部分源失败显「有阻塞源未接入，下面是已读到的部分」。
+口径：汇总与明细同 payload（buildKpis/duty aggregate 单源）；每源 stamps 只认服务端采集时间键（sourceStamp），无 stamp 给原因不冒充；金额 ledger USD；错误态人话+RequestIdCopy 可复制编号+重试；403≡404 同体（Freshness/issue 文案不区分不回显路径）；宽卡网格既有 overflow 保 375 无横溢。
+testid：家族 ov5-→ov6- 全量升级（page 32+test 19 处，CSS class 保持 ov5- 为样式钩子）；fixture/forced ?state= 代次既有。
+测试：定向 src/modules/overview 8 passed；全量 vitest 122 files/1222 passed 0 fail。屏幕 DOM 复跑待 L0 合批 build 代次。

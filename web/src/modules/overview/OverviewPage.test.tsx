@@ -61,9 +61,9 @@ function dataFixture(): DutyData {
 
 describe('OverviewPage forced states', () => {
   it.each([
-    ['loading', 'ov5-loading'],
-    ['empty', 'ov5-empty'],
-    ['error', 'ov5-error'],
+    ['loading', 'ov6-loading'],
+    ['empty', 'ov6-empty'],
+    ['error', 'ov6-error'],
   ])('renders ?state=%s without fetching', async (state, testid) => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
@@ -84,16 +84,16 @@ describe('OverviewView', () => {
       />,
     );
     const text = container.textContent ?? '';
-    expect(container.querySelector('[data-testid="ov5-kpi-employees"]')?.textContent).toContain('2');
+    expect(container.querySelector('[data-testid="ov6-kpi-employees"]')?.textContent).toContain('2');
     expect(text).toContain('在岗 1');
     expect(text).toContain('有风险 1');
     expect(text).toContain('今日运行');
     expect(text).toContain('失败率 20%');
     expect(text).toContain('待审批');
     expect(text).toContain('$1.50');
-    expect(container.querySelector('[data-testid="ov5-trend"]')?.textContent).toContain('近 14 天运行趋势');
-    expect(container.querySelectorAll('[data-testid="ov5-activity-row"]').length).toBe(1);
-    expect(container.querySelector('[data-testid="ov5-blockers"]')?.textContent).toContain('运行');
+    expect(container.querySelector('[data-testid="ov6-trend"]')?.textContent).toContain('近 14 天运行趋势');
+    expect(container.querySelectorAll('[data-testid="ov6-activity-row"]').length).toBe(1);
+    expect(container.querySelector('[data-testid="ov6-blockers"]')?.textContent).toContain('运行');
     expect(text).not.toContain('$0.00');
     expect(text).not.toContain('GAP-');
     expect(text).toContain('数据截至 2026-11-19 12:20 · 来源 员工统计');
@@ -113,14 +113,14 @@ describe('OverviewView', () => {
         onRetry={() => {}}
       />,
     );
-    const cost = container.querySelector('[data-testid="ov5-kpi-cost"]')?.textContent ?? '';
+    const cost = container.querySelector('[data-testid="ov6-kpi-cost"]')?.textContent ?? '';
     expect(cost).toContain('—');
     expect(cost).not.toContain('$1.50');
-    const employeeCard = container.querySelector('[data-testid="ov5-kpi-employees"]');
+    const employeeCard = container.querySelector('[data-testid="ov6-kpi-employees"]');
     expect(employeeCard?.textContent).not.toContain('GAP-');
     expect(employeeCard?.querySelector('.ov5-note')?.getAttribute('title')).toContain('GAP-OV5-RISK');
     expect(employeeCard?.querySelector('.ov5-kpi-issue')?.textContent).toContain('风险矩阵未接入');
-    expect(employeeCard?.querySelector('[data-testid="ov5-kpi-employees-issue-retry"]')).toBeTruthy();
+    expect(employeeCard?.querySelector('[data-testid="ov6-kpi-employees-issue-retry"]')).toBeTruthy();
   });
 
   it('never substitutes a client clock when the source has no collection time', async () => {
@@ -129,7 +129,7 @@ describe('OverviewView', () => {
     await render(
       <OverviewView data={data} matrix={{ k: 'ready', data: { items: [] } }} loading={false} onRetry={() => {}} />,
     );
-    const cost = container.querySelector('[data-testid="ov5-kpi-cost"]')?.textContent ?? '';
+    const cost = container.querySelector('[data-testid="ov6-kpi-cost"]')?.textContent ?? '';
     expect(cost).toContain('数据截至 时间未知 · 来源 成本账本');
     expect(cost).toContain('原因：上游响应没有带采集时间');
     expect(container.textContent ?? '').not.toContain('读取于');
@@ -143,25 +143,25 @@ describe('OverviewView', () => {
     await render(
       <OverviewView data={data} matrix={{ k: 'ready', data: { items: [] } }} loading={false} onRetry={() => {}} />,
     );
-    const runs = container.querySelector('[data-testid="ov5-kpi-runs"]');
+    const runs = container.querySelector('[data-testid="ov6-kpi-runs"]');
     expect(runs?.textContent).toContain('运行统计未接入');
     expect(runs?.textContent).toContain('req-run-9');
-    expect(runs?.querySelector('[data-testid="ov5-kpi-runs-issue-retry"]')).toBeTruthy();
-    expect(container.querySelector('[data-testid="ov5-activity-retry"]')).toBeTruthy();
-    expect(container.querySelector('[data-testid="ov5-blockers-retry"]')).toBeTruthy();
+    expect(runs?.querySelector('[data-testid="ov6-kpi-runs-issue-retry"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="ov6-activity-retry"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="ov6-blockers-retry"]')).toBeTruthy();
   });
 
   it('renders a whole-page error when every core source fails', async () => {
     const data = dataFixture();
     for (const key of ['employees', 'stats', 'todayStats', 'approvalStats', 'budgetDay'] as const) {
       (data as unknown as Record<string, unknown>)[key] = {
-        k: 'error', status: 503, message: '不可用', requestId: 'req-ov5-1',
+        k: 'error', status: 503, message: '不可用', requestId: 'req-ov6-1',
       };
     }
     await render(
       <OverviewView data={data} matrix={{ k: 'loading' }} loading={false} onRetry={() => {}} />,
     );
-    expect(container.querySelector('[data-testid="ov5-error"]')?.textContent).toContain('req-ov5-1');
+    expect(container.querySelector('[data-testid="ov6-error"]')?.textContent).toContain('req-ov6-1');
     expect(container.textContent).toContain('没有编造任何数字');
   });
 });
