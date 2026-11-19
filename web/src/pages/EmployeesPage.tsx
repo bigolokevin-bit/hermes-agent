@@ -533,6 +533,9 @@ function EmployeeRow({ row }: { row: Rec }) {
         {beijing(
           row.last_seen ?? row.last_active ?? row.last_active_at ?? row.updated_at ?? row.last_run_at ?? row.created_at,
         )}
+        {/* R13 item 3: task/run references jump for real — plain words on
+            screen, raw ids in title only. No fields, no links (no dead ends). */}
+        {deepLinks(row)}
       </Cell>
     </>
   );
@@ -542,6 +545,35 @@ function EmployeeRow({ row }: { row: Rec }) {
       {cells}
     </li>
   );
+}
+
+/** R13 item 3: real deep links for task/run references carried on a row. */
+function deepLinks(row: Rec) {
+  const taskRef = pickStr(row, ["task_id", "taskId", "last_task", "last_task_id"]);
+  const runRef = pickStr(row, ["run_id", "runId", "last_run", "last_run_id"]);
+  const links = (
+    <>
+      {taskRef && /^(tk|task)[_-]/i.test(taskRef) ? (
+        <Link
+          to="/work?tab=board"
+          title={taskRef}
+          className="mr-2 text-xs underline underline-offset-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-current"
+        >
+          最近任务
+        </Link>
+      ) : null}
+      {runRef && /^run[_-]/i.test(runRef) ? (
+        <Link
+          to="/runs"
+          title={runRef}
+          className="text-xs underline underline-offset-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-current"
+        >
+          最近运行
+        </Link>
+      ) : null}
+    </>
+  );
+  return taskRef || runRef ? <div className="mt-1">{links}</div> : null;
 }
 
 /** 单元格：窄屏带行内标签，sm+ 只剩值（表头承担标签）。 */

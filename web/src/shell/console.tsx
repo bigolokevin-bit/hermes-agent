@@ -36,7 +36,7 @@
  */
 
 import { Suspense, useEffect, useMemo, type ReactNode } from "react";
-import { NavLink, useLocation, useParams, useSearchParams } from "react-router";
+import { Link, NavLink, useLocation, useParams, useSearchParams } from "react-router";
 import {
   CONSOLE_MODULES,
   CONSOLE_TABS,
@@ -268,6 +268,14 @@ function PlannedBlock({ entry }: { entry: ConsoleRoute }) {
       <span className="font-mono text-xs" style={{ color: "var(--fg-3)" }}>
         数据来源：{source}
       </span>
+      {/* R13 item 2: a real exit so the honest placeholder is never a dead end. */}
+      <Link
+        to="/overview"
+        className="text-xs underline underline-offset-2"
+        style={{ color: "var(--fg-2)", cursor: "pointer" }}
+      >
+        返回值班台
+      </Link>
     </div>
   );
 }

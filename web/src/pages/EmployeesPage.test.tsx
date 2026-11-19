@@ -251,4 +251,36 @@ describe("EmployeesPage (R7.1 item 4/6 — real detail links and same-name codes
     expect(text).toContain("0166858D");
     expect(text).not.toContain("emp_");
   });
+
+  it("R13 深链：行带 task/run 引用时给出可聚焦的真链接，原值只进 title", async () => {
+    resolveEmployees([
+      {
+        employeeId: "emp_DL0001",
+        name: "深链员",
+        lifecycleState: "active",
+        task_id: "tk_DL9999",
+        run_id: "run_DL8888",
+      },
+      { employeeId: "emp_DL0002", name: "无链员", lifecycleState: "active" },
+    ]);
+    await render();
+    const taskLink = container.querySelector<HTMLAnchorElement>(
+      'a[href="/work?tab=board"]',
+    );
+    expect(taskLink).toBeTruthy();
+    expect(taskLink!.textContent).toContain("最近任务");
+    expect(taskLink!.getAttribute("title")).toBe("tk_DL9999");
+    const runLink = container.querySelector<HTMLAnchorElement>('a[href="/runs"]');
+    expect(runLink).toBeTruthy();
+    expect(runLink!.textContent).toContain("最近运行");
+    expect(runLink!.getAttribute("title")).toBe("run_DL8888");
+    // 无字段的行不出第二条链（只有深链员一行有）
+    expect(container.querySelectorAll('a[href="/work?tab=board"]')).toHaveLength(
+      1,
+    );
+    // 原值不在可见文本上屏
+    const body = container.textContent ?? "";
+    expect(body).not.toContain("tk_DL9999");
+    expect(body).not.toContain("run_DL8888");
+  });
 });
