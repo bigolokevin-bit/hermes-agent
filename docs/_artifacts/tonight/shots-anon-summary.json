@@ -14,7 +14,7 @@
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 24,
+  "distinctMainHeads": 26,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -105,7 +105,7 @@
     {
       "route": "#/approvals?tab=release",
       "viewport": "1440",
-      "chars": 166,
+      "chars": 163,
       "hasMainEl": true
     },
     {
@@ -165,19 +165,19 @@
     {
       "route": "#/capabilities?tab=tools",
       "viewport": "1440",
-      "chars": 170,
+      "chars": 190,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=tools",
       "viewport": "375",
-      "chars": 170,
+      "chars": 190,
       "hasMainEl": true
     },
     {
       "route": "#/employees",
       "viewport": "1440",
-      "chars": 186,
+      "chars": 183,
       "hasMainEl": true
     },
     {
@@ -573,13 +573,13 @@
     {
       "route": "#/system?tab=version",
       "viewport": "1440",
-      "chars": 414,
+      "chars": 425,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=version",
       "viewport": "375",
-      "chars": 414,
+      "chars": 425,
       "hasMainEl": true
     },
     {
@@ -631,9 +631,10 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 1,
+  "consoleErrorsObservedByShots": 2,
   "consoleErrorRoutesObservedByShots": [
-    "#/knowledge?tab=sources"
+    "#/approvals?tab=release",
+    "#/employees"
   ],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
@@ -644,12 +645,12 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "d0b50590",
+  "headHash": "53a3ef4c",
   "exitCode": 0,
-  "entry": "assets/index-CmkaMZfk.js",
-  "entrySha256": "0d744545ba6807145fd3e2e2f92a25198fe9ebc3f02c17dec2746d2cc57a6bbe",
-  "entryBytes": 163974,
-  "servedEntryBefore": "index-CmkaMZfk.js",
-  "servedEntryAfter": "index-CmkaMZfk.js",
+  "entry": "assets/index-BXJbyCwh.js",
+  "entrySha256": "bae3a970ec9fec7ea6ce48bbe9a1130dc41653adf04925303b5064125ef47508",
+  "entryBytes": 166648,
+  "servedEntryBefore": "index-BXJbyCwh.js",
+  "servedEntryAfter": "index-BXJbyCwh.js",
   "auxiliary": true
 }

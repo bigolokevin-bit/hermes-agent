@@ -2767,3 +2767,25 @@ and dropping `?state=` is the real read. `GAP-10` stays where it is still accura
   module legs mounted, since `shell/**` and `App.tsx` are outside this write domain.
 - `?state=loading` on a real mount cannot be distinguished from a slow real read by markup alone — both paint the
   same skeleton; the mark and the note are what tell them apart, which is why both are asserted on the root and panel.
+
+## R40 run timeline — steps, status and durations (2026-11-20, base 53543118)
+
+Order: deepen /runs/:runId timeline with per-event step name, human status, elapsed time and BJT minute (testids run5-*), keep the ToolIntent resultRef click-back (unreachable -> 原文不可达 + reason, absent -> 未记录) and the retry entry as an explanation only.
+
+### What changed (web/src/modules/runs/)
+- runs.ts: new eventStatus(ev) -> {text, reason} mapping started 已开始, in_progress/running 进行中, completed 已完成, failed 失败, denied 被拒, tool_intent 拟调用工具, tool_call 调用中, tool_result 已返回, message 消息, token 模型输出; anything else 待核实 with reason 服务给的事件类型不在这份对照表里，原值在标题里 (raw stays in the row title).
+- runs.ts: new eventElapsed(ev, prev) -> {text|null, reason}. Delta from the previous event's occurredAt; no previous event -> 「—」 with reason 这是第一条事件，前面没有可比较的时刻; unparseable -> 「—」 with reason 这一条或上一条没有可读的时刻; negative -> 「—」 with reason 这一条的时刻早于上一条，本页不写成负数. Formats: <1s one decimal (0.0s), <60s Ns, <3600 Mm Ss, else Hh Mm. Never a fake 0.
+- RunsModulePage.tsx Timeline: map now receives index and computes prev/st/dur; the step-name span still renders eventLabel(ev.eventType) (raw in title); new spans run5-status-<seq> and run5-duration-<seq> sit before the BJT time cell. resultRef anchor/原文不可达/未记录 and the disabled retry explanation are untouched.
+- Note: the extra run5-step-<seq> id was skipped because the planned anchor string is absent in this file; the step name itself is still on screen via eventLabel.
+
+### Live readings (base build, /tmp/serve-audh.cjs on 4210 -> 8092 with cookie)
+- GET /agent-api/api/run-events?runId=rn_01M7DGZA9SDAZKVV9M82G4F38G&limit=50 -> HTTP 200, 50 items.
+- /runs/?window=7d&run=rn_01M7DGZA9SDAZKVV9M82G4F38G at 1440/1280/375: sw==cw (1440/1440, 1280/1280, 375/375); timeline on screen reads "#1 消息 The 消息 — 2026-11-15 01:16", "#2 消息 P 消息 0.0s …", "#4 … 0.1s", "#5 … 0.2s" — status 消息 and elapsed 0.0s/0.1s/0.2s are really painted; detail header 事件 50 条（服务说还有更多）; counts 本页 13 次 · 失败 0 · 运行中 1.
+
+### Gates (from web/)
+- vitest run src/modules/runs -> exit 0, 2 files / 77 tests (was 76; new R40 case asserts 已开始/调用中/已完成/待核实 and durations — / 40s / 1m 24s / 6s).
+- npx tsc -b . --noEmit -> 50 error TS in total, 0 matching modules/runs; the one non-shared error is foreign: src/modules/employees/EmployeesModulePage.test.tsx(73,5) TS18047.
+- eslint src/modules/runs -> exit 0. vite build -> exit 0.
+
+### Untested / disclosed
+- Live event stream on this tenant is message/completed only, so tool-family statuses and the resultRef anchor/unreachable branches remain test-proven; no per-element pixel diff (only sw==cw + text); 9122 not rebuilt, main not merged.

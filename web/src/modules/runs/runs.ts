@@ -655,6 +655,50 @@ export function resultRefHref(ref: string | null): string | null {
   return /^(ev|evt)_[A-Za-z0-9]{6,}$/.test(ref) ? `/audit?detail=${encodeURIComponent(ref)}` : null;
 }
 
+/** R40: the human word for what this step was doing, never the service spelling. */
+export function eventStatus(ev: Pick<RunEvent, "eventType">): { text: string; reason: string } {
+  switch ((ev.eventType ?? "").trim().toLowerCase()) {
+    case "started": return { text: "已开始", reason: "" };
+    case "in_progress":
+    case "running": return { text: "进行中", reason: "" };
+    case "completed": return { text: "已完成", reason: "" };
+    case "failed": return { text: "失败", reason: "" };
+    case "denied": return { text: "被拒", reason: "" };
+    case "tool_intent": return { text: "拟调用工具", reason: "" };
+    case "tool_call": return { text: "调用中", reason: "" };
+    case "tool_result": return { text: "已返回", reason: "" };
+    case "message": return { text: "消息", reason: "" };
+    case "token": return { text: "模型输出", reason: "" };
+    default:
+      return { text: "待核实", reason: "服务给的事件类型不在这份对照表里，原值在标题里" };
+  }
+}
+
+/** R40: how long this step took against the one before it. No previous step, no number. */
+export function eventElapsed(
+  ev: Pick<RunEvent, "occurredAt">,
+  prev: Pick<RunEvent, "occurredAt"> | null,
+): { text: string | null; reason: string } {
+  if (!prev) return { text: null, reason: "这是第一条事件，前面没有可比较的时刻" };
+  const end = Date.parse(ev.occurredAt ?? "");
+  const start = Date.parse(prev.occurredAt ?? "");
+  if (!Number.isFinite(end) || !Number.isFinite(start)) {
+    return { text: null, reason: "这一条或上一条没有可读的时刻" };
+  }
+  const ms = end - start;
+  if (ms < 0) return { text: null, reason: "这一条的时刻早于上一条，本页不写成负数" };
+  if (ms < 1000) return { text: (ms / 1000).toFixed(1) + "s", reason: "" };
+  if (ms < 60_000) return { text: Math.round(ms / 1000) + "s", reason: "" };
+  if (ms < 3_600_000) {
+    const m = Math.floor(ms / 60_000);
+    const sec = Math.round((ms % 60_000) / 1000);
+    return { text: sec ? m + "m " + sec + "s" : m + "m", reason: "" };
+  }
+  const h = Math.floor(ms / 3_600_000);
+  const m = Math.round((ms % 3_600_000) / 60_000);
+  return { text: m ? h + "h " + m + "m" : h + "h", reason: "" };
+}
+
 export const NO_REQUEST_ID = "未提供";
 
 /** What the fallback chain did, as one collapsed technical line. */

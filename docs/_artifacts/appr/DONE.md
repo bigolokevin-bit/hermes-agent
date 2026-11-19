@@ -647,3 +647,27 @@ KPI 族：五卡 data-testid=ov6-kpi-<name> 统一在位+新增 data-duty-testid
 修法（modules/employees/**）：`const forcedRid = params.get("rid")` 与 `forced` 同源声明，effect 内改用 forcedRid、deps=[q,lifecycle,reload,forced,forcedRid]。?state=error&rid=X 上屏「请求编号：X」+req-copy 可复制钮+重试钮。
 
 测试：EmployeesModulePage.test 新用例 forced ?state=error&rid= 显示该 rid、可复制、显重试；且 rid 改 fs-88 即刷新（同源）。坑：MemoryRouter initialEntries 不随重渲染更新——render() 改为每次重建 root（与 R32 console.test 同坑，已在文件注释）。定向 employees 11 passed；assert-ia 两模式 exit 0（51/22/1/8）；全量 131 files/1347 passed。活体复测待含挂载修复的下代次。
+
+## R40 任务详情深链 + 详情字段真数据（2026-11-20，lane/console-appr）
+
+基线：fetch + reset --hard origin/lane/hermes-console = 53543118（ledger on d0b505907ddc，entry CmkaMZfk），toplevel ✓ porc=0。
+
+深链（要求①）：App.tsx 于 /tasks Navigate 后新增**一条**路由映射 `<Route path="/tasks/:taskId" element={<TasksBoardConsolePage />} />`（更具体路径自动优先；routes.ts/registry/manifest 零改动，assert-ia 两模式实跑仍 51/22/1/8 exit 0）。模块内 selected 改为 URL 派生：深链模式=pathname /tasks/<id>（decodeURIComponent），看板模式=?task= 参数；打开=openTask（看板 push ?task= 进历史→浏览器 back 关抽屉、再 back 回看板；深链内互跳走 /tasks/<id>）、关闭=closeTask（看板删 param 留历史，深链→/work?tab=board）。刷新/分享保态：同 URL 重挂直接重开详情（新用例实测 /work?tab=board&task=… 与 /tasks/tsk_open_1）。
+
+详情真数据（②字段现状+本轮补齐）：标题=ready 时真 `<Link href=/tasks/<id>>`（testid=tsk4-detail-link，完整 id 进 title）；负责人 actorLabel 姓名·8位短码/human→人员/未指派（既有）；优先级 priorityLabel（既有）；状态未知→「待核实」（statusLabel default 既有）；创建/更新/截止 BJT 到分 beijing()（既有）；成本只认 ledger：真 0 $0.00、缺失「—」+title 原因（既有）；**来源缺=「未接入」+title「后台没有回传这条任务的来源信息。」**（tasksBoard.sourceLabel「—」→「未接入」+字段带 title）；最近事件 ≤3 条或「无事件」+title（既有）。旧 note 文案「当前版本没有按任务的深链」已随深链上线改为诚实新句（不存在不诚实文案）。
+
+四态/错误（③④⑥）：?state= 在详情上**换内容面**——loading 骨架卡、error/empty/denied 直接 setDetail 对应卡不 fetch（tsk4-detail-error 人话句+RequestIdCopy 可复制 rid（rid=fs-9 实测）+重试钮 tsk4-detail-retry **始终显示**含 403/404）；denied 与 404 同体（detailError 既有锁，无 agent-api 路径回显）。零写入口：详情尾新增迁移钮 data-planned="true"+aria-disabled+title「状态迁移待写入车间接线后开放」（tsk4-detail-transition，disabled 实测）。
+
+坑：JSX 文本内「<编号>」被 Babel 当标签解析→文案改「/tasks/ 加任务编号」；forced 分支编辑时勿吞 `let alive = true`。
+
+验证：定向 tasks 2 files/21 passed（原 17+新 4：深链直开/URL+刷新保态/forced 三态内容切换/来源未接入）；tsc -p 本域零红；assert-ia 两模式 exit0 51/22/1/8；全量 **131 files/1372 passed**（≥基线 1347）。⑦三档横溢=jsdom 不可测，形态学沿用既有 dl sm:grid-cols-2 xl:grid-cols-3 + truncate + flex-wrap（如实报）。9122=d0b50590 代次禁重建：深链活体读数待下一代次，本轮 jsdom 挂载链实测为权威。
+
+## R40 唯一产品 FAIL 次 owner（appr 侧配证）（2026-11-20，lane/console-appr）
+
+背景：`/employees?state=error&rid=<码>` 活体不上屏可复制编号；主因=shell/fixtures 强制态丢 rid（gov 修），次因=模块 rid 只读 router params 快照，壳层覆盖后即被饿掉。本单只做模块侧保证（写域 employees/**+DONE；未动 App/shell）。
+
+修法（EmployeesModulePage.tsx）：①`forcedRid = params.get("rid") ?? params.get("requestId") ?? liveRid()`——liveRid() 从 window.location 实读（search 与 hash 两容器都扫），不依赖任何被覆盖前的路由快照；取不到仍走诚实 fallback 句，绝不编编号。②四态卡片锚点补齐：error/denied 的重试按钮带 data-testid（employees-error-retry/employees-denied-retry，与 rid 复制件同屏可指认）；error rid 行既有 RequestIdCopy（req-copy）不动，denied 403≡404 同体既有。
+
+新断言（EmployeesModulePage.test.tsx，R40 用例）：window URL=…&rid=live-42 而路由条目只带 state=error → 卡上屏 live-42、req-copy 存在、点击后 clipboard.writeText 收到的值=上屏值（回环一致）、req-copy-state=已复制、employees-error-retry 同卡、forced 下零 fetch。既有 R38/R39 用例（fs-77/fs-88 同源、同体、真实 500）全保留。
+
+验证：定向 employees 2 files/12 passed exit0；assert-ia 两模式 exit 0（51/22/1/8）；tsc 本域零红；全量 **131 files/1373 passed**（基线 1372+1）。9122 未重建（R39 取证代次）：活体复测待 gov shell 修笔与下代次合并后一并核。

@@ -1326,6 +1326,10 @@ export default function App() {
                           instead of showing the duty console. */}
                       <Route path="/duty" element={<Navigate to="/overview" replace />} />
                       <Route path="/tasks" element={<Navigate to="/work?tab=board" replace />} />
+                      {/* R40: /tasks/<taskId> deep link renders the task
+                          module itself; the detail drawer opens straight from
+                          the URL (more specific path wins over /tasks). */}
+                      <Route path="/tasks/:taskId" element={<TasksBoardConsolePage />} />
                       <Route path="/settings" element={<Navigate to="/system?tab=defaults" replace />} />
                       <Route
                         path="/events"

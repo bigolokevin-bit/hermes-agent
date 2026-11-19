@@ -382,6 +382,92 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(container.textContent).toContain("空间一");
   });
 
+  it("gives every citation row a human 来源、目标对象与可点原文，raw ids stay off screen", async () => {
+    fetchMock.mockImplementation((url: string) => {
+      if (url === CITATIONS) {
+        return Promise.resolve({
+          asOf: "2026-11-19T09:00:00Z",
+          citations: [
+            {
+              citationId: "cit_doc",
+              title: "员工手册 · 考勤篇",
+              documentName: "员工手册.pdf",
+              documentId: "emp_DOC20261119",
+              sourceType: "pdf",
+              href: "/documents/doc_attendance",
+              citedAt: "2026-11-19T07:20:00Z",
+              actor: { type: "employee", id: "emp_86A81CE8FF6F42E1", name: "陈嘉禾" },
+            },
+            {
+              citationId: "cit_chunk",
+              doc: "薪酬口径说明",
+              chunkId: "humn_CHUNK000000991",
+              targetType: "chunk",
+              createdBy: { type: "human", id: "human:1" },
+              createdAt: "2026-11-19T06:10:00Z",
+              url: "https://files.example.invalid/x.pdf",
+            },
+            { citationId: "cit_bare" },
+          ],
+        });
+      }
+      if (url === SESSIONS) return Promise.resolve({ items: [] });
+      return fail(404, "这个数据接口还没有接入。");
+    });
+
+    await render("/knowledge?tab=spaces&panel=evidence");
+    expect(attr("knw5-citations", "data-state")).toBe("ready");
+    expect(attr("knw5-citations", "data-len")).toBe("3");
+    expect(container.querySelectorAll('[data-testid="knw5-citations-list-row"]')).toHaveLength(3);
+
+    // 第一行：来源人话 + 目标对象 + 北京时间到分 + 可点回原文
+    await click("knw5-citations-list-drill");
+    const detail = byTestid("knw5-citations-list-detail")?.textContent ?? "";
+    const row1 = container.textContent ?? "";
+    expect(row1).toContain("指向：文档 · 20261119");
+    expect(detail).toContain("员工手册.pdf");
+    expect(detail).toContain("2026-11-19 15:20");
+    expect(attr("knw5-citations-list-detail-open", "href")).toBe("/documents/doc_attendance");
+    expect(attr("knw5-citations-list-detail-target", "title")).toBe("emp_DOC20261119");
+
+    // 第二行：片段对象；真人账号不带 id 片段；站外原文不可达要说明原因
+    await clickNth("knw5-citations-list-drill", 1);
+    const second = byTestid("knw5-citations-list-detail")?.textContent ?? "";
+    const screen = container.textContent ?? "";
+    expect(screen).toContain("知识片段");
+    expect(screen).toContain("真人账号");
+    expect(second).toContain("原文不可达");
+    expect(second).toContain("不是站内地址");
+    expect(byTestid("knw5-citations-list-detail-open")).toBeNull();
+
+    // 第三行：全缺就逐项说缺什么，不编一个对象出来
+    await clickNth("knw5-citations-list-drill", 2);
+    const third = byTestid("knw5-citations-list-detail")?.textContent ?? "";
+    expect(third).toContain("上游没有说明这段引用指向哪个对象");
+    expect(third).toContain("上游没有给出原文位置");
+    expect(third).toContain("上游记录没有给出标题或文档名");
+
+    // 裸标识、前缀与字段名一律不上屏
+    for (const banned of [
+      "emp_86A81CE8FF6F42E1",
+      "emp_DOC20261119",
+      "humn_CHUNK000000991",
+      "human:",
+      "HUMAN1",
+      "citationId",
+      "targetType",
+      "chunkId",
+      "/api/",
+    ]) {
+      expect(container.textContent ?? "", banned).not.toContain(banned);
+    }
+
+    // 空集：诚实「暂无引用」，不写 0 条也不放样例
+    expect(byTestid("knw5-session-cites-empty")?.textContent ?? "").toContain("暂无引用");
+    expect(screen).not.toContain("0 条引用");
+    expect(container.querySelectorAll('[data-testid="knw5-session-cites-list-row"]')).toHaveLength(0);
+  });
+
   it("reads citations from sessions when the citation read is not wired", async () => {
     fetchMock.mockImplementation((url: string) => {
       if (url === CITATIONS) return fail(404, "这个数据接口还没有接入。", "rid-cit");

@@ -9,7 +9,7 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 1276,
+    "textLen": 729,
     "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 刷新 可上岗 各项检查全部通过才计入 数据截至 —（北京",
     "hasMainEl": true,
     "ok": true
@@ -153,25 +153,25 @@
     {
       "route": "#/capabilities?tab=models",
       "viewport": "1440",
-      "chars": 391,
+      "chars": 104,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=models",
       "viewport": "375",
-      "chars": 391,
+      "chars": 375,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=tools",
       "viewport": "1440",
-      "chars": 170,
+      "chars": 214,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=tools",
       "viewport": "375",
-      "chars": 170,
+      "chars": 214,
       "hasMainEl": true
     },
     {
@@ -201,7 +201,7 @@
     {
       "route": "#/employees/:employeeId",
       "viewport": "1440",
-      "chars": 42,
+      "chars": 36,
       "hasMainEl": true
     },
     {
@@ -225,13 +225,13 @@
     {
       "route": "#/employees/:employeeId?zone=evidence",
       "viewport": "1440",
-      "chars": 51,
+      "chars": 42,
       "hasMainEl": true
     },
     {
       "route": "#/employees/:employeeId?zone=evidence",
       "viewport": "375",
-      "chars": 51,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -267,7 +267,7 @@
     {
       "route": "#/identity",
       "viewport": "375",
-      "chars": 377,
+      "chars": 375,
       "hasMainEl": true
     },
     {
@@ -369,25 +369,25 @@
     {
       "route": "#/knowledge?tab=citations",
       "viewport": "1440",
-      "chars": 426,
+      "chars": 448,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=citations",
       "viewport": "375",
-      "chars": 426,
+      "chars": 448,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=evidence",
       "viewport": "1440",
-      "chars": 426,
+      "chars": 448,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=evidence",
       "viewport": "375",
-      "chars": 426,
+      "chars": 448,
       "hasMainEl": true
     },
     {
@@ -399,7 +399,7 @@
     {
       "route": "#/knowledge?tab=ingest",
       "viewport": "375",
-      "chars": 276,
+      "chars": 747,
       "hasMainEl": true
     },
     {
@@ -465,13 +465,13 @@
     {
       "route": "#/overview",
       "viewport": "1440",
-      "chars": 727,
+      "chars": 729,
       "hasMainEl": true
     },
     {
       "route": "#/overview",
       "viewport": "375",
-      "chars": 1275,
+      "chars": 1276,
       "hasMainEl": true
     },
     {
@@ -573,13 +573,13 @@
     {
       "route": "#/system?tab=version",
       "viewport": "1440",
-      "chars": 415,
+      "chars": 426,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=version",
       "viewport": "375",
-      "chars": 415,
+      "chars": 426,
       "hasMainEl": true
     },
     {
@@ -631,12 +631,13 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 1,
+  "consoleErrorsObservedByShots": 2,
   "consoleErrorRoutesObservedByShots": [
-    "#/overview"
+    "#/employees/:employeeId",
+    "#/identity"
   ],
   "ceAuthority": "login-state",
-  "routesWithEnvOnlyConsoleErrors": 27,
+  "routesWithEnvOnlyConsoleErrors": 28,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
   "overflowing": [],
   "driver": {
@@ -644,11 +645,11 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "d0b50590",
+  "headHash": "53a3ef4c",
   "exitCode": 0,
-  "entry": "assets/index-CmkaMZfk.js",
-  "entrySha256": "0d744545ba6807145fd3e2e2f92a25198fe9ebc3f02c17dec2746d2cc57a6bbe",
-  "entryBytes": 163974,
-  "servedEntryBefore": "index-CmkaMZfk.js",
-  "servedEntryAfter": "index-CmkaMZfk.js"
+  "entry": "assets/index-BXJbyCwh.js",
+  "entrySha256": "bae3a970ec9fec7ea6ce48bbe9a1130dc41653adf04925303b5064125ef47508",
+  "entryBytes": 166648,
+  "servedEntryBefore": "index-BXJbyCwh.js",
+  "servedEntryAfter": "index-BXJbyCwh.js"
 }

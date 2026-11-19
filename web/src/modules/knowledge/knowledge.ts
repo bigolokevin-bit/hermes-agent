@@ -239,6 +239,10 @@ export interface CitationRow {
   /** 在原文中的位置（页/行/段），只在上游真给时出现。 */
   locator: string | null;
   locatorReason: string | null;
+  /** 目标对象：这段引用指的是哪个文档/片段/记录；原值只进 title。 */
+  target: string;
+  targetRaw: string | null;
+  targetReason: string | null;
   /** 这段引用是从哪儿产生的（哪一次提问、哪一次运行、哪一轮会话回答）。 */
   origin: string | null;
   originRaw: string | null;
@@ -571,20 +575,117 @@ function linkOf(row: Rec): { href: string | null; unreachable: string | null } {
   };
 }
 
+/** Who an upstream object says acted: a digital employee or a person, never a raw id. */
+function actorKindLabel(raw: string | null): string | null {
+  if (!raw) return null;
+  const lower = raw.toLowerCase();
+  if (["employee", "agent", "bot", "digital_employee", "worker"].includes(lower)) return "数字员工";
+  if (["human", "user", "person", "operator", "staff"].includes(lower)) return "真人账号";
+  if (["system", "scheduler", "beat", "cron"].includes(lower)) return "系统";
+  return "待核实";
+}
+
+/**
+ * A shortened handle for an actor. A leading copy of the kind word (`human:1`,
+ * `employee_…`) is stripped first, and a tail too short to identify anything is
+ * dropped: the page then says only the kind and keeps the raw value in `title`,
+ * instead of printing a fragment of the id that reads like the id itself.
+ */
+function actorCode(id: string | null, typeRaw: string | null): string | null {
+  if (!id) return null;
+  const compact = id.replace(/[^0-9A-Za-z]/g, "").toUpperCase();
+  const prefix = (typeRaw ?? "").replace(/[^0-9A-Za-z]/g, "").toUpperCase();
+  const stripped = prefix.length >= 3 && compact.startsWith(prefix) ? compact.slice(prefix.length) : compact;
+  const tail = stripped.slice(-8);
+  return tail.length >= 4 ? tail : null;
+}
+
+/**
+ * Attribution for a row. `emp_…`, `human:1`, `user_id` and friends never reach the
+ * screen: the kind is translated, the id is shortened, and the raw value rides in
+ * `employeeRaw` so the page can put it in a `title`.
+ */
 function employeeOf(row: Rec): {
   employee: string;
   employeeRaw: string | null;
   employeeReason: string | null;
 } {
-  const employeeId = pickString(row.employeeId, row.employee_id);
-  const employeeName = pickString(row.employeeName, row.employee_name);
-  const code = shortCode(employeeId);
+  const actor = isRecord(row.actor) ? row.actor : null;
+  const createdBy = isRecord(row.createdBy) ? row.createdBy : null;
+  const from = actor ?? createdBy;
+  const employeeId =
+    pickString(row.employeeId, row.employee_id) ??
+    (from ? pickString(from.id, from.userId, from.user_id, from.employeeId, from.employee_id) : null);
+  const employeeName =
+    pickString(row.employeeName, row.employee_name) ?? (from ? pickString(from.name, from.displayName) : null);
+  const typeRaw = pickString(row.employeeKind, row.employee_kind) ?? (from ? pickString(from.type, from.kind) : null);
+  const kind = actorKindLabel(typeRaw);
+  const code = actorCode(employeeId, typeRaw);
+  const prefix = kind === "真人账号" ? "真人账号" : kind === "系统" ? "系统" : kind ? kind : "员工";
   if (employeeName && code) {
     return { employee: `${employeeName} · ${code}`, employeeRaw: employeeId, employeeReason: null };
   }
-  if (employeeName) return { employee: employeeName, employeeRaw: null, employeeReason: null };
-  if (code) return { employee: `员工 · ${code}`, employeeRaw: employeeId, employeeReason: null };
+  if (employeeName) return { employee: employeeName, employeeRaw: employeeId, employeeReason: null };
+  if (code) return { employee: `${prefix} · ${code}`, employeeRaw: employeeId, employeeReason: null };
+  if (kind) return { employee: prefix, employeeRaw: employeeId, employeeReason: null };
   return { employee: "—", employeeRaw: null, employeeReason: "上游没有说明这段内容是谁留下的" };
+}
+
+/**
+ * 目标对象: what the citation actually points at — a document, a chunk, a record.
+ * The wording says which kind of object it is; the raw identifier stays off screen.
+ */
+function targetOf(row: Rec): {
+  target: string;
+  targetRaw: string | null;
+  targetReason: string | null;
+} {
+  const resource = isRecord(row.resource) ? row.resource : null;
+  const kindRaw = pickString(
+    row.targetType,
+    row.target_type,
+    row.entityType,
+    row.entity_type,
+    row.objectType,
+    row.object_type,
+    row.docType,
+    row.doc_type,
+    row.sourceType,
+    row.source_type,
+    resource?.type,
+  );
+  const idRaw = pickString(
+    row.targetId,
+    row.target_id,
+    row.documentId,
+    row.document_id,
+    row.docId,
+    row.doc_id,
+    row.chunkId,
+    row.chunk_id,
+    row.recordId,
+    row.record_id,
+    row.entityId,
+    row.entity_id,
+    row.objectId,
+    row.object_id,
+    resource?.id,
+  );
+  // A document name already belongs to the 来源 column; 目标对象 names the object
+  // it points at, so an explicit target label wins and anything else becomes a
+  // typed handle built from the identifier the read did return.
+  const name = pickString(row.targetName, row.target_name, resource?.name);
+  const lower = (kindRaw ?? "").toLowerCase();
+  let kindWord = "文档";
+  if (["chunk", "segment", "passage"].includes(lower)) kindWord = "知识片段";
+  else if (["record", "row", "entity"].includes(lower)) kindWord = "业务记录";
+  else if (["space", "kb", "knowledge"].includes(lower)) kindWord = "知识空间";
+  else if (["url", "web", "page"].includes(lower)) kindWord = "网页";
+  else if (!kindRaw && !idRaw && !name) {
+    return { target: "—", targetRaw: null, targetReason: "上游没有说明这段引用指向哪个对象" };
+  }
+  const label = name ?? (shortCode(idRaw) ? `${kindWord} · ${shortCode(idRaw)}` : kindWord);
+  return { target: label, targetRaw: idRaw ?? kindRaw ?? null, targetReason: null };
 }
 
 function summaryOf(row: Rec): { summary: string | null; summaryReason: string | null } {
@@ -683,6 +784,7 @@ export function citationOf(raw: unknown, session?: SessionSummary | null): Citat
   const source = sourceOf(row);
   const summary = summaryOf(row);
   const employee = employeeOf(row);
+  const target = targetOf(row);
   const locator = locatorOf(row);
   const quote = quoteOf(row);
   const origin = originOf(row, session ?? null);
@@ -706,6 +808,7 @@ export function citationOf(raw: unknown, session?: SessionSummary | null): Citat
     kindRaw,
     kindReason: kindRaw ? null : "上游记录没有给出类型",
     ...source,
+    ...target,
     ...summary,
     ...quote,
     ...locator,

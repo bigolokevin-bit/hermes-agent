@@ -66,12 +66,22 @@ function messageOf(error: unknown): string | null {
   return null;
 }
 
+/** The BFF's “price not wired” envelope is a 200 with a code, not a 404. */
+function notWired(payload: unknown): boolean {
+  return (
+    typeof payload === 'object' &&
+    payload !== null &&
+    (payload as { code?: unknown }).code === 'models.pricing_not_wired'
+  );
+}
+
 function sourceFrom<T>(
   result: PromiseSettledResult<unknown>,
   parse: (payload: unknown) => T,
   isEmpty: (value: T) => boolean,
 ): Source<T> {
   if (result.status === 'fulfilled') {
+    if (notWired(result.value)) return { phase: 'unavailable', data: null, requestId: null, message: null };
     const data = parse(result.value);
     return { phase: isEmpty(data) ? 'empty' : 'ready', data, requestId: null, message: null };
   }
