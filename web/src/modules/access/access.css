@@ -166,3 +166,47 @@
   .acc4-row { grid-template-columns: minmax(0, 1fr) auto; }
   .acc4-meta { grid-column: 1 / -1; white-space: normal; overflow-wrap: anywhere; }
 }
+
+/* Roles table (identity?tab=roles) — only the table scrolls on narrow screens. */
+.role5-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.role5-table {
+  width: 100%;
+  min-width: 680px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.role5-table th,
+.role5-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.role5-table th {
+  color: var(--color-muted-foreground);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.role5-table td {
+  color: var(--color-foreground);
+  overflow-wrap: anywhere;
+}
+
+.role5-table td .acc4-meta {
+  display: block;
+  margin-top: 4px;
+  color: var(--color-muted-foreground);
+  font-size: 11px;
+}
+
+.role5-table tr:last-child td {
+  border-bottom: 0;
+}
