@@ -1132,6 +1132,7 @@ $ cd web && npx vitest run
 ### 仍需壳层注册
 - 本修复用模块 manifest 的加载期规范化解决冷深链；长期正解仍是 App live map 增 `sources` 节点、把 evidence 节点指向 `KnowledgeConsolePage`，并让 routes 的 retrieval 别名保留 `panel=retrieval`。App/shell 非本 lane 写域，未改。
 
+ HEAD
 ## R22 T22 访问控制真数据面（2026-11-19）
 
 ### 端点真实度（BFF 127.0.0.1:8092，带登录 cookie；未打印 token）
@@ -1172,3 +1173,14 @@ $ cd web && npx vitest run
       Tests  1221 passed (1221)
 ```
 - `tsc -b . --noEmit` 仍被基线既有 `src/App.tsx` 的 `useSearchParams` 与 `LoginPage.test.tsx` TS2739 阻断（非本写域）；本模块无新增类型错误。
+
+## R24 knowledge 深链刷新保态（2026-11-19）
+
+- 根因：`modules/knowledge/manifest.ts` 的 boot 规范化只读 `tab`，在 URL 已是 `?tab=spaces&panel=ingest|retrieval|evidence` 时把 `panel` 覆写成 `spaces`；页面本身已以 `panel` 为内部 tab 唯一事实源。
+- 修复：规范化先读 `panel`，再回退读 `tab` 旧别名；`panel=ingest|sources → ingest`、`retrieval → retrieval`、`citations|evidence → evidence`、`spaces|scope → spaces`；不再覆盖有效 panel。
+- 真机 reload 读数（Vite 5446，Chrome CDP 9246，未登录故数据态为 error；选中态/面板/URL 为核验目标）：
+  - `?tab=spaces` → 前后均 `tab=spaces`、selected `knw4-tab-spaces`、panel `spaces`
+  - `?tab=ingest` → 前后均 `tab=spaces&panel=ingest`、selected `knw4-tab-ingest`、panel `ingest`
+  - `?tab=retrieval` → 前后均 `tab=spaces&panel=retrieval`、selected `knw4-tab-retrieval`、panel `retrieval`
+  - `?tab=citations|evidence` → 前后均 `tab=spaces&panel=evidence`、selected `knw4-tab-evidence`、panel `evidence`
+- 验证：`npx vitest run src/modules/knowledge` → 2 files / 15 passed；全量 `npx vitest run` → 123 files / 1223 passed；四态/GAP-03 title/zeroCount=0 未改。
