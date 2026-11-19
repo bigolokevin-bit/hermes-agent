@@ -138,10 +138,33 @@ describe("people directory ppl5", () => {
     expect(empty?.textContent).not.toContain("共 0 人");
   });
 
-  it("forced states marked as fixtures never fetch", async () => {
-    await render("/identity?tab=people&state=error");
-    expect(fetchJSON).not.toHaveBeenCalled();
+  it("falls back to the real employee ledger and labels its source honestly", async () => {
+    mockApi((url) =>
+      url.includes("/employees")
+        ? Promise.resolve({
+            items: [
+              { employeeId: "emp_217A91BA995044DFBB3E2E940B", name: "AgentOS 产品助理", lifecycleState: "active", updatedAt: "2026-11-17T05:52:48.030Z", department: null },
+            ],
+          })
+        : missing(url),
+    );
+    await render();
+    const list = container.querySelector('[data-testid="ppl5-list"]');
+    expect(list?.textContent).toContain("AgentOS 产品助理 · 3E2E940B");
+    expect(list?.textContent).toContain("在岗");
+    expect(list?.textContent).toContain("—");
+    expect(list?.textContent).toContain("上游未提供账号");
+    expect(list?.textContent).toContain("上游未提供部门");
+    expect(list?.textContent).toContain("上游未提供最后活跃时间（最后更新 2026-11-17 13:52）");
+    expect(container.querySelector('[data-testid="ppl5-source"]')?.textContent).toContain("数字员工台账");
+    expect(container.textContent).not.toContain("emp_217A91BA995044DFBB3E2E940B");
+    expect(container.textContent).not.toContain("示例员工");
+  });
+
+  it("live view is not marked as a fixture", async () => {
+    mockApi(() => Promise.resolve({ items: [] }));
+    await render();
     expect(container.querySelector('[data-testid="ppl5-page"]')?.hasAttribute("data-" + "fixture")).toBe(false);
-    expect(container.querySelector('[data-testid="ppl5-error"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="ppl5-empty"]')).toBeTruthy();
   });
 });
