@@ -942,3 +942,49 @@ evidence 375x812  vw=375  bodySW=375  pageSW=375  citations=2 open=1 unreachable
 - `#/knowledge?tab=sources`：当前 App 的 `/knowledge` live map 只有 `spaces` 与 `evidence`，没有 `sources`；需把 `sources` 指向 `KnowledgeConsolePage`（本页），否则该入口仍落到占位/旧节点。
 - `#/knowledge?tab=retrieval`：shell 别名把 `retrieval` 指到 evidence；若希望深链直接落在本页「检索」tab，需要把别名/路由节点指向 `KnowledgeConsolePage` 并保留 `tab=retrieval`。
 - `web/src/modules/evidence/**` 仍是独立页且 404/网络失败时回落 `EVIDENCE_FIXTURE`；不在本 lane 写域，本轮未改，需该模块 owner 按同一诚实口径处理。
+
+## R19 尾项 d — knowledge `?tab=` 映射与逐 tab 下钻（2026-11-19 17:3x）
+
+- 代码 commit：`d397c981 fix(console): knowledge tab param mapping and per-tab drilldown (R19 tail d)`（3 files，+77/−9）。
+- 本页内映射：`?tab=sources|ingest → 数据接入`、`retrieval → 检索`、`citations|evidence → 证据与引用`、`spaces|scope → 知识空间`；tab 点击写入 `panel=` 并保留面板，刷新/后退可恢复；`knw4-panel` 暴露 `data-tab` / `data-len`。
+
+### 四 tab DOM 下钻（临时 harness + fixture stub，非线上读数）
+
+```text
+1440 sources   tab=knw4-tab-ingest    panel=ingest    len=2 rows=2 citations=0 body=1440/1440 page=1440/1440
+1440 retrieval tab=knw4-tab-retrieval panel=retrieval len=2 rows=2 citations=0 body=1440/1440 page=1440/1440
+1440 citations tab=knw4-tab-evidence  panel=evidence  len=2 rows=0 citations=2 body=1440/1440 page=1440/1440
+1440 evidence  tab=knw4-tab-evidence  panel=evidence  len=2 rows=0 citations=2 body=1440/1440 page=1440/1440
+375  sources   tab=knw4-tab-ingest    panel=ingest    len=2 rows=2 citations=0 body=375/375 page=375/375
+375  retrieval tab=knw4-tab-retrieval panel=retrieval len=2 rows=2 citations=0 body=375/375 page=375/375
+375  citations tab=knw4-tab-evidence  panel=evidence  len=2 rows=0 citations=2 body=375/375 page=375/375
+375  evidence  tab=knw4-tab-evidence  panel=evidence  len=2 rows=0 citations=2 body=375/375 page=375/375
+```
+
+- 证据 tab：站内原文 `knw4-citation-open=1`，站外地址显示 `knw4-citation-unreachable=1` + 原因。
+- 404/未接入仍为 `knw4-gap`，`title=GAP-03`，可见文案只写「未接入」；zeroCount=0，不补 0；四态（loading/ready/empty/error）未破。
+
+### 原始 stdout
+
+```text
+$ ./node_modules/.bin/tsc -b . --noEmit
+TSC_EXIT=0
+
+$ npx vitest run src/modules/knowledge
+ Test Files  1 passed (1)
+      Tests  10 passed (10)
+
+$ npx vitest run
+ Test Files  120 passed (120)
+      Tests  1189 passed (1189)
+
+$ PATH="/opt/homebrew/bin:$PATH" node scripts/build/web.mjs --source . --out /tmp/knowledge-r19 --icons .
+BUILD_EXIT=0
+built /private/tmp/knowledge-r19/index.html
+```
+
+### 仍需壳层注册（App.tsx 非本 lane 写域，未改）
+
+- 直接深链 `#/knowledge?tab=sources`：App 的 live map 无 `sources` 节点 → 当前落 `PlannedBlock`，**本页代码不会挂载**；需把 `sources` 指向 `KnowledgeConsolePage`。
+- 直接深链 `?tab=retrieval|citations|evidence`：shell 解析到 `evidence`，App 挂的是 `web/src/modules/evidence/EvidenceModulePage`（仍是另一模块，且 404 回落 fixture），**不会挂本页**；需把该节点也指向 `KnowledgeConsolePage`。
+- 因此本 commit 只完成了 knowledge 模块内映射与下钻；四值深链的端到端验收需 L0/R5 改 App live map 后才能通过。写域限制导致这一项不能在 knowledge 模块内单独闭合。
