@@ -30,13 +30,6 @@ import {
 import { forcedStateOf, useToolsData } from "./useToolsData";
 import "./tools.css";
 
-function Dashed({ reason }: { reason: string }): ReactNode {
-  return (
-    <span className="min-w-0 break-words text-muted-foreground" title={reason}>
-      —
-    </span>
-  );
-}
 
 function RequestId({ failure }: { failure: FailureCopy | null }): ReactNode {
   const [copied, setCopied] = useState<"idle" | "done" | "failed">("idle");
@@ -67,6 +60,11 @@ function RequestId({ failure }: { failure: FailureCopy | null }): ReactNode {
   );
 }
 
+function kindLabel(row: ToolRow): string {
+  if (row.source === "mcp") return row.type.startsWith("MCP") ? row.type : `MCP · ${row.type}`;
+  return `内置 · ${row.type}`;
+}
+
 function Row({ row }: { row: ToolRow }): ReactNode {
   const dimmed = row.status !== "enabled";
   return (
@@ -79,23 +77,36 @@ function Row({ row }: { row: ToolRow }): ReactNode {
     >
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <p className="min-w-0 break-words text-sm" data-testid="tol5-name">{row.name}</p>
-        <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="tol5-type">{row.type}</p>
+        <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="tol5-type">{kindLabel(row)}</p>
         <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="tol5-last">
-          最近调用：{row.lastUsed ?? <Dashed reason={row.lastUsedReason ?? "接口没有提供最近调用时间。"} />}
+          最近调用：{row.lastUsed ?? "无调用记录"}
           {row.lastUsed === null ? <span className="ml-1">{row.lastUsedReason}</span> : null}
         </p>
+        {row.failure || row.failureReason ? (
+          <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="tol5-failure">
+            失败原因：{row.failure ?? "—"}
+            {row.failureReason ? <span className="ml-1">{row.failureReason}</span> : null}
+          </p>
+        ) : null}
       </div>
       <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-3 gap-y-1">
         <span className="min-w-0 text-xs text-muted-foreground" data-testid="tol5-credential">
           凭据：{CREDENTIAL_LABEL[row.credential]}
           {row.credentialReason ? <span className="ml-1">{row.credentialReason}</span> : null}
         </span>
-        <Badge
-          tone={row.status === "enabled" ? "success" : row.status === "disabled" ? "destructive" : "secondary"}
-          title={row.statusReason ?? undefined}
-        >
-          <span data-testid="tol5-status">{STATUS_LABEL[row.status]}</span>
-        </Badge>
+        <span className="flex min-w-0 flex-col items-end gap-0.5">
+          <Badge
+            tone={row.status === "enabled" ? "success" : row.status === "disabled" ? "destructive" : "secondary"}
+            title={row.statusReason ?? undefined}
+          >
+            <span data-testid="tol5-status">{STATUS_LABEL[row.status]}</span>
+          </Badge>
+          {row.statusReason ? (
+            <span className="min-w-0 break-words text-[11px] text-muted-foreground" data-testid="tol5-status-reason">
+              {row.statusReason}
+            </span>
+          ) : null}
+        </span>
       </div>
     </div>
   );
@@ -120,18 +131,18 @@ function FailurePanel({
       className={denied ? "border-border bg-card" : "border-destructive/40 bg-destructive/5"}
       data-testid={denied ? "tol5-denied" : login ? "tol5-login" : "tol5-error"}
       data-fixture={fixture}
-      title={failure?.technical ?? undefined}
+      title={denied ? GAP : failure?.technical ?? undefined}
     >
       <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-6">
         <div className="flex min-w-0 items-center gap-2 text-sm">
           {denied ? <ShieldAlert className="h-4 w-4 shrink-0" aria-hidden /> : <TriangleAlert className="h-4 w-4 shrink-0" aria-hidden />}
           <span className="min-w-0 break-words">
-            {denied ? "暂时看不到工具与 MCP 清单" : login ? "需要重新登录" : "工具与 MCP 清单没能加载出来"}
+            {denied ? "工具与 MCP 读口未接入" : login ? "需要重新登录" : "工具与 MCP 清单没能加载出来"}
           </span>
         </div>
         <p className="max-w-prose break-words text-xs text-muted-foreground">
           {denied
-            ? "这块内容要么尚未对你开放，要么当前环境还没有提供它；这里不显示猜测的行，也不把没读到的东西写成零。"
+            ? failure?.sentence ?? "这块内容要么尚未接入本控制台，要么当前账号无权查看；这里不显示猜测的行，也不展示样例。"
             : login
               ? "登录状态已经失效，请刷新页面重新登录后再看这份清单。"
               : failure?.sentence ?? "读取工具与 MCP 清单时出了问题，请稍后重试。"}

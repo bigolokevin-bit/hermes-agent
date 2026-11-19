@@ -126,7 +126,6 @@ export function SecurityModulePage(): ReactNode {
     loading: () => ({ phase: "loading" }),
     empty: () => ({ phase: "empty" }),
     error: () => ({ phase: "error", message: "这条腿是用 ?state=error 复现的，服务此刻没有回答过。", requestId: "sec5-repro-rid" }),
-    denied: () => ({ phase: "gap", requestId: null }),
     ready: () => null,
   });
 
