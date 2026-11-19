@@ -72,6 +72,7 @@ import {
   errorInfo,
   eventLabel,
   failureSummary,
+  isToolEvent,
   requestRetryRun,
   resultRef,
   runCode,
@@ -296,8 +297,12 @@ function Timeline({
               >
                 <span className="shrink-0 text-xs text-muted-foreground">#{ev.seq}</span>
                 <span className="min-w-0 flex-1 break-words">{eventLabel(ev.eventType)}</span>
-                {ev.eventType === "tool_result" ? (
-                  <span className="min-w-0 break-words text-xs text-muted-foreground" title={ref ?? "服务没有带回结果引用"}>
+                {isToolEvent(ev.eventType) ? (
+                  <span
+                    className="min-w-0 break-words text-xs text-muted-foreground"
+                    data-tool-event={ev.eventType}
+                    title={ref ?? "服务没有带回结果引用"}
+                  >
                     {`结果引用：${ref ? shortId(ref) : "未记录"}`}
                   </span>
                 ) : null}

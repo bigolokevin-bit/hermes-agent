@@ -167,6 +167,51 @@ function RowCells({ row, index }: { row: DelegationRow; index: number }): ReactN
         {source.text}
       </span>
       <div className="col-span-2 min-w-0 sm:col-span-7">
+        <details className="min-w-0" data-testid={`${base}-more`}>
+          <summary className="cursor-pointer select-none text-[11px] text-muted-foreground underline underline-offset-2">
+            展开明细
+          </summary>
+          <dl className="mt-1 grid min-w-0 grid-cols-1 gap-x-4 gap-y-1 text-xs sm:grid-cols-2">
+            <DetailLine label="范围" testId={`${base}-detail-scope`} title={scope.reason || undefined}>
+              {scope.text ? (
+                <>
+                  {scope.text}
+                  {scope.detail ? <span className="text-muted-foreground"> · {scope.detail}</span> : null}
+                </>
+              ) : (
+                <Dashed reason={scope.reason} />
+              )}
+            </DetailLine>
+            <DetailLine label="动作" testId={`${base}-detail-action`} title={action.raw ?? undefined}>
+              {action.text}
+            </DetailLine>
+            <DetailLine label="状态" testId={`${base}-detail-status`} title={status.raw ?? undefined}>
+              {status.text}
+            </DetailLine>
+            <DetailLine label="生效（北京时间）" testId={`${base}-detail-effective`} title={effective.reason || undefined}>
+              {effective.text ? `起 ${effective.text}` : <Dashed reason={effective.reason} />}
+            </DetailLine>
+            <DetailLine label="到期（北京时间）" testId={`${base}-detail-expiry`} title={validity.reason || undefined}>
+              {validity.text ? (
+                <>
+                  {`至 ${validity.text}`}
+                  {validity.note ? <span className="text-muted-foreground"> · {validity.note}</span> : null}
+                </>
+              ) : (
+                <Dashed reason={validity.reason} />
+              )}
+            </DetailLine>
+            <DetailLine label="来源" testId={`${base}-detail-source`} title={source.raw ?? undefined}>
+              {source.text}
+            </DetailLine>
+            <DetailLine label="提出时间（北京时间）" testId={`${base}-detail-created`} title={created.reason || undefined}>
+              {created.text ?? <Dashed reason={created.reason} />}
+            </DetailLine>
+            <DetailLine label="委托编号" testId={`${base}-detail-code`} title={row.delegationId}>
+              {shortCode(row.delegationId) || <Dashed reason="服务没有给出这条委托的编号" />}
+            </DetailLine>
+          </dl>
+        </details>
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
           <TechnicalDisclosure lines={technical} testId={`${base}-tech`} />
           <span
@@ -182,6 +227,25 @@ function RowCells({ row, index }: { row: DelegationRow; index: number }): ReactN
         </div>
       </div>
     </li>
+  );
+}
+
+function DetailLine({
+  label,
+  testId,
+  title,
+  children,
+}: {
+  label: string;
+  testId: string;
+  title?: string;
+  children: ReactNode;
+}): ReactNode {
+  return (
+    <div className="flex min-w-0 flex-wrap items-baseline gap-x-2" data-testid={testId} title={title}>
+      <dt className="shrink-0 text-[11px] text-muted-foreground">{label}</dt>
+      <dd className="m-0 min-w-0 break-words">{children}</dd>
+    </div>
   );
 }
 
