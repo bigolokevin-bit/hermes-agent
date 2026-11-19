@@ -421,3 +421,30 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* sys6 source matrix */
+.sys6-head { display: flex; min-width: 0; }
+.sys6-toggle {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  width: 100%; padding: 0; border: 0; background: transparent; cursor: pointer;
+  font-size: 13px; font-weight: 500; color: var(--color-foreground); text-align: left;
+}
+.sys6-count { color: var(--color-muted-foreground); font-size: 11px; font-weight: 400; }
+.sys6-action { margin-left: auto; color: var(--color-muted-foreground); font-size: 11px; text-decoration: underline; }
+.sys6-note, .sys6-foot { margin: 0; color: var(--color-muted-foreground); font-size: 11px; line-height: 1.5; }
+.sys6-scroll { max-width: 100%; overflow-x: auto; }
+.sys6-table { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 12px; }
+.sys6-table th, .sys6-table td {
+  padding: 8px 10px; border-bottom: 1px solid var(--color-border);
+  text-align: left; vertical-align: top; overflow-wrap: anywhere;
+}
+.sys6-table th { color: var(--color-muted-foreground); font-size: 11px; font-weight: 500; white-space: nowrap; }
+.sys6-table tr:last-child td { border-bottom: 0; }
+.sys6-status { display: inline-block; font-weight: 500; }
+.sys6-reason { display: block; margin-top: 3px; color: var(--color-muted-foreground); font-size: 11px; }
+.sys6-rid { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; margin-top: 4px; color: var(--color-muted-foreground); font-size: 11px; }
+.sys6-rid button { text-decoration: underline; font-size: 11px; color: var(--color-primary); }
+.sys6-apply { display: inline-block; margin-top: 4px; font-size: 11px; color: var(--color-primary); text-decoration: underline; }
+@media (max-width: 720px) {
+  .sys6-table { min-width: 760px; }
+}

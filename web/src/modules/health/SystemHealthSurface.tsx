@@ -10,6 +10,7 @@ import {
   type SystemHealthRow,
   type Sys3State,
 } from "./systemHealth";
+import { failureRead, publishSourceRead, topLevelIsoAsOf } from "./sourceReads";
 
 type Preview = "loading" | "empty" | "error" | null;
 type CountKey = "normal" | "degraded" | "unreachable" | "unknown";
@@ -115,22 +116,64 @@ export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Pre
   }, [openKey]);
 
   useEffect(() => {
-    if (preview !== null) return;
+    if (preview !== null) {
+      publishSourceRead("health", {
+        status: "skipped",
+        statusReason: "预览态不发起请求。",
+        durationMs: null,
+        durationReason: "预览态没有发起请求，没有本次耗时。",
+        asOf: null,
+        asOfReason: "预览态没有发起请求，采集时刻未知。",
+        requestId: null,
+      });
+      return;
+    }
     let live = true;
     setState({ k: "loading" });
+    publishSourceRead("health", {
+      status: "loading",
+      statusReason: null,
+      durationMs: null,
+      durationReason: "读取尚未结束，耗时未记录。",
+      asOf: null,
+      asOfReason: "读取尚未结束，采集时刻未知。",
+      requestId: null,
+    });
+    const started = performance.now();
     void fetchJSON<unknown>(SYS3_PATH)
       .then((payload) => {
+        const durationMs = Math.round(performance.now() - started);
         if (!live) return;
         const read = readSystemHealth(payload);
         if (read === null) {
           setState({ k: "error", message: "健康接口返回的内容无法解析为服务清单。", requestId: null });
+          publishSourceRead("health", {
+            status: "failed",
+            statusReason: "健康接口返回的内容无法解析为服务清单。",
+            durationMs,
+            durationReason: null,
+            asOf: null,
+            asOfReason: "响应无法解析，读不到顶层 asOf。",
+            requestId: null,
+          });
           return;
         }
+        publishSourceRead("health", {
+          status: read.overall === "降级" ? "degraded" : "ok",
+          statusReason: read.overallReason,
+          durationMs,
+          durationReason: null,
+          ...topLevelIsoAsOf(payload),
+          requestId: null,
+        });
         setState(read.rows.length === 0 ? { k: "empty", read } : { k: "ready", read });
       })
       .catch((error: unknown) => {
+        const durationMs = Math.round(performance.now() - started);
         if (!live) return;
         const info = sys3Failure(error);
+        const read = failureRead(error);
+        publishSourceRead("health", { ...read, durationMs, durationReason: null });
         if (info.status === 401) setState({ k: "login", message: info.text });
         else if (info.status === 403 || info.status === 404) setState({ k: "gap", message: info.text, requestId: info.requestId });
         else setState({ k: "error", message: info.text, requestId: info.requestId });

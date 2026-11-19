@@ -6,6 +6,14 @@ import { ApiError } from "@/lib/api-error";
 import { currentFixtureState, fixtureView, type FixtureState } from "../../shell/fixtures";
 import { PILOT_ROW, PROBE_DEFINITIONS, probeResult, summarize, type ProbeRow, type ProbeStatus } from "./health";
 import { SystemHealthSurface } from "./SystemHealthSurface";
+import { SourceMatrix } from "./SourceMatrix";
+import {
+  failureRead,
+  markSourcesLoading,
+  markSourcesSkipped,
+  publishSourceRead,
+  topLevelIsoAsOf,
+} from "./sourceReads";
 import "./health.css";
 
 type State = { k: "loading" } | { k: "empty" } | { k: "error"; requestId: string } | { k: "ready"; rows: ProbeRow[] };
@@ -101,11 +109,49 @@ export function HealthPage() {
 
   useEffect(() => {
     let alive = true;
+    const probeIds = PROBE_DEFINITIONS.map((probe) => probe.id);
     const forcedState = fixtureState(forced);
-    if (forcedState) return () => { alive = false; };
+    if (forcedState) {
+      markSourcesSkipped(probeIds, "预览态不发起请求。");
+      return () => { alive = false; };
+    }
+    markSourcesLoading(probeIds);
     const run = async () => {
-      const settled = await Promise.allSettled(PROBE_DEFINITIONS.map((probe) => fetchJSON<unknown>(probe.path)));
+      const durations: Array<number | null> = [];
+      const timed = PROBE_DEFINITIONS.map(async (probe, index) => {
+        const started = performance.now();
+        try {
+          const value = await fetchJSON<unknown>(probe.path);
+          durations[index] = Math.round(performance.now() - started);
+          return value;
+        } catch (error) {
+          durations[index] = Math.round(performance.now() - started);
+          throw error;
+        }
+      });
+      const settled = await Promise.allSettled(timed);
       if (!alive) return;
+      PROBE_DEFINITIONS.forEach((probe, index) => {
+        const result = settled[index];
+        const durationMs = durations[index] ?? null;
+        if (result.status === "fulfilled") {
+          publishSourceRead(probe.id, {
+            status: "ok",
+            statusReason: null,
+            durationMs,
+            durationReason: durationMs === null ? "没有记录到本次耗时。" : null,
+            ...topLevelIsoAsOf(result.value),
+            requestId: null,
+          });
+        } else {
+          const read = failureRead(result.reason);
+          publishSourceRead(probe.id, {
+            ...read,
+            durationMs,
+            durationReason: durationMs === null ? read.durationReason : null,
+          });
+        }
+      });
       const returnedAt = Date.now();
       const rows = PROBE_DEFINITIONS.map((probe, index) => probeResult(probe.id, settled[index] as PromiseSettledResult<unknown>, returnedAt));
       if (settled.every((result) => result.status === "rejected" && result.reason instanceof ApiError && result.reason.status === 0)) setState({ k: "error", requestId: readRequestId(settled) });
@@ -185,6 +231,7 @@ export function HealthPage() {
           <p className="hlt5-foot" data-testid="hlt5-foot">字段缺失显示「—」，原因在悬停说明里；不用浏览器时间补齐，也不把未知当成功。</p>
         </CardContent></Card>
       )}
+      <SourceMatrix />
     </section>
   );
 }

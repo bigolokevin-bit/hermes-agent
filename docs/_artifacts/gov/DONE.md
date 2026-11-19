@@ -1800,3 +1800,16 @@ built /private/tmp/health-r38/index.html
 - 验证：`npx vitest run src/modules/health` → **2 files / 17 tests passed**（新增 1 条：同响应计数+本地筛选+零额外请求+清空）。全量 `npx vitest run` → **134 files / 1469 passed**，另有 2 个基线 employee-detail unhandled（非本域）。`tsc -b . --noEmit` → 6 行全为基线 employee-detail/employees，本域 0。`node scripts/build/web.mjs --source . --out /tmp/sys5-build --icons .` → exit 1，仅被同一基线类型错误挡住（employee-detail `api` 未定义、employees TS18047），无本域错误；未重建 9122。
 - DOM（临时 harness，已删；Vite 5460 / Chrome 9260）：1440/1280/375 `vw=bodySW=bodyCW`，`sys3-page` 1440/1280/375，行 4；计数 `正常1/降级1/不可达1/待核实1`；点「正常」后仅 1 行 `控制台服务(BFF)`、`aria-pressed=true`、body 宽不变；375 仅表格卡内滚动（680/343），页面不横溢。截图 `docs/_artifacts/gov/shots/sys5-{1440,1280,375}.png`。
 - 边界：只改 `web/src/modules/health/**` 与 DONE/截图；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；sys3/sys4/ver5/cap4-7/skl4/tl3 未破；无独立观察者（截图复核未回，未阻塞）。
+
+## R52 /system 本页数据来源矩阵（2026-11-20）
+
+- 基线：显式 refspec fetch 后 `git merge --no-ff origin/lane/hermes-console` 报 Already up to date；从已推 `58c055f4` 继续，未 reset。
+- 数据来源：矩阵只复用本页四笔既有读取——`/agent-api/api/health`（系统健康清单）与 `__health-probe__` / `hermes-summary` / `/api/skills` 三个探针；**不新增任何请求**。实测展开前后 fetch 调用数恒为 4。
+- 实现：新增 `web/src/modules/health/sourceReads.ts`（模块级快照 + `useSyncExternalStore`，读口读取时发布状态/耗时/顶层 asOf/请求号；展开状态也在模块级，切 tab 卸载再挂载不丢）与 `SourceMatrix.tsx`，挂在 HealthPage 底部，默认收起。
+  - 每行：口径名 / 实际请求路径 / 本次状态（成功·降级·失败·读口未接入·读取中·预览未读取）/ 响应耗时（实测 ms，无则「—」+title）/ 采集时刻。
+  - 采集时刻**只取响应顶层 ISO `asOf`**；缺失、非 ISO、无法解析一律「—」并在 title 写原因，绝不用本机时钟；`/health` 顶层 `asOf` 与 `/api/skills` 顶层 `asOf` 正常显示为北京时间到分。
+  - 403/404 行状态「读口未接入」+ 人话原因 + `#/approvals` 去处；`GAP-SYS6-01` 只进该状态格 title；失败行显示可复制请求编号（短码在正文、完整值在 title），上游原始错误只进 title，不直接上屏。
+  - 展开不写 URL（实测 `location.search` 仍为 `?tab=health`），无独立请求；sys3/sys4/sys5 既有 testid 与行为未改。
+- 验证：`npx vitest run src/modules/health` → **3 files / 21 tests passed**（新增 4 条：四读口字段/路径/耗时/asOf、非 ISO 不用本机时钟、展开跨重挂载保留且不改 URL、预览零请求）。全量 `npx vitest run` → **135 files / 1473 passed**，另有 2 个基线 employee-detail unhandled（非本域）。`tsc -b . --noEmit` → 6 行全为基线 employee-detail/employees，本域 0。
+- DOM（临时 harness，已删；Vite 5462 / Chrome 9264）：1440/1280/375 `vw=bodySW=pageSW=视口`；展开前 table 不存在、展开后 4 行；耗时 1–4 ms；asOf `2026-11-19 23:17` / `—` / `—` / `2026-11-20 06:15`；汇总 `4 个读口 · 成功 2 · 失败 1 · 读口未接入 1`；375 仅矩阵卡内滚动（760/343），页面不横溢。截图 `docs/_artifacts/gov/shots/sys6-{1440,1280,375}.png`。
+- 边界：只改 `web/src/modules/health/**` 与 DONE/截图；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；无独立观察者。
