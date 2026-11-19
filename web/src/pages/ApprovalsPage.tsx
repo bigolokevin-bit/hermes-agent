@@ -30,10 +30,6 @@ type Tone = "default" | "destructive" | "outline" | "secondary" | "success" | "w
 
 const APPROVALS_PATH = "/agent-api/api/approvals";
 // R4 item 5: honest copy when no trace id came back (replaces 「未提供」).
-function reqLine(id: string | null | undefined): string {
-  return id ? `请求编号：${id}` : "请求编号未记录，可复制时间与操作路径反馈";
-}
-
 
 // ── Formatting ───────────────────────────────────────────────────────
 // One funnel for every user-facing value: no raw ISO string, `undefined`, `NaN`
@@ -623,7 +619,8 @@ export default function ApprovalsPage() {
 
           {pageFailure && (
             <p className="break-words text-xs text-destructive">
-              后续记录没有加载成功：{pageFailure.sentence}（{reqLine(pageFailure.requestId)}）
+              后续记录没有加载成功：{pageFailure.sentence}（
+              <RequestIdCopy requestId={pageFailure.requestId} fallback="请求编号未记录，可复制时间与操作路径反馈" />）
             </p>
           )}
 

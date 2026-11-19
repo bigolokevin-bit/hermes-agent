@@ -85,7 +85,7 @@ async function render(entry = "/work") {
 describe("TasksBoardModulePage", () => {
   it("renders five status columns with honest labels", async () => {
     fetchJSON.mockImplementation((url: string) =>
-      Promise.resolve(url.includes("/task-detail") ? resolveDetail() : url.includes("v1/matrix/employees") ? resolveDirectory() : resolveBoard(url)),
+      Promise.resolve(url.includes("/task-detail") ? resolveDetail() : url.includes("/api/matrix") ? resolveDirectory() : resolveBoard(url)),
     );
     await render();
     for (const label of ["待处理", "进行中", "阻塞", "已完成", "已取消"]) {
@@ -110,7 +110,7 @@ describe("TasksBoardModulePage", () => {
 
   it("opens task detail and shows the read-only fields", async () => {
     fetchJSON.mockImplementation((url: string) =>
-      Promise.resolve(url.includes("/task-detail") ? resolveDetail() : url.includes("v1/matrix/employees") ? resolveDirectory() : resolveBoard(url)),
+      Promise.resolve(url.includes("/task-detail") ? resolveDetail() : url.includes("/api/matrix") ? resolveDirectory() : resolveBoard(url)),
     );
     await render();
     const card = container.querySelector('[data-testid="tsk4-card-tsk_open_1"]');
@@ -127,7 +127,7 @@ describe("TasksBoardModulePage", () => {
 
   it("shows the five forced phases", async () => {
     fetchJSON.mockImplementation((url: string) =>
-      Promise.resolve(url.includes("/task-detail") ? resolveDetail() : url.includes("v1/matrix/employees") ? resolveDirectory() : resolveBoard(url)),
+      Promise.resolve(url.includes("/task-detail") ? resolveDetail() : url.includes("/api/matrix") ? resolveDirectory() : resolveBoard(url)),
     );
     await render("/work?state=empty");
     expect(container.querySelector('[data-testid="tsk4-empty"]')).toBeTruthy();

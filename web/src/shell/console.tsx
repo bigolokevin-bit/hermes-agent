@@ -216,8 +216,9 @@ function AuditorDeniedBlock() {
 function PlannedBlock({ entry }: { entry: ConsoleRoute }) {
   const source = registryPlanned(entry.tabId) ?? entry.dataSource;
   const gapNote = entry.planned
-    ? "数据源未落地（GAP 清单 §6/§12）——接入前保持本占位，不伪造数据。"
-    : "上游页面尚未接入本壳（复用映射 §3）——接入前保持本占位，不留空白死链。";
+    ? "数据源未落地——接入前保持本占位，不伪造数据。"
+    : "上游页面尚未接入本壳——接入前保持本占位，不留空白死链。";
+  const gapRef = entry.planned ? "GAP 清单 §6/§12" : "复用映射 §3";
   return (
     <div
       data-planned={`规划中：${source}`}
@@ -228,7 +229,7 @@ function PlannedBlock({ entry }: { entry: ConsoleRoute }) {
       style={{ ...shellStyle, cursor: "not-allowed" }}
     >
       <span className="text-base">{entry.label} · 规划中</span>
-      <span style={{ color: "var(--fg-2)" }}>{gapNote}</span>
+      <span style={{ color: "var(--fg-2)" }} title={gapRef}>{gapNote}</span>
       <span className="font-mono text-xs" style={{ color: "var(--fg-3)" }}>
         数据来源：{source}
       </span>
