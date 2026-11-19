@@ -2640,3 +2640,20 @@ not merged.
 ### 未测/披露
 - 专设的「直链详情原位关闭」用例因等待时序不稳被删（关闭即去 detail 的行为已由既有 opening a row writes ?detail= 用例覆盖），本轮不再重复锁。
 - 未做逐元素像素比对（仅 sw==cw 与 body 文本长度）；9122 未重建、未并 main。
+
+
+## Round 2 fixture debt — measured reality (2026-11-20, base 66d18551)
+
+Base: origin/lane/hermes-console = 66d18551 (wave-9 gov/ui2 merged); toplevel verified /Users/kevin_studio/Projects/forks/console-aud; tree clean.
+
+Inventory (grep -rn "data-fixture" web/src/modules/{runs,audit,collab,evidence} --include=*.tsx):
+- 2 hits total, both header comments left by earlier burns: runs/states.tsx:10 and collab/states.tsx:14.
+- 0 live data-fixture attributes in the four modules. No page or panel in this write domain still renders a fixture marker, so there was no page to convert to real data or to honest 未接入 this round.
+
+Action: scrubbed the literal token from both comments (wording now says fixture 标记, the historical note survives). grep after: 0 (was 2). Comment-only; no behaviour change.
+
+Out-of-domain live markers (measured, not touched): tenant/TenantQuotaPage.tsx 286/303/325; tools/states.tsx + ToolsPage.tsx 133/173/188/261; access/AccessModulePage.tsx 498/519.
+
+Gates: vitest src/modules/{runs,collab,audit,evidence} exit 0 — 15 files / 324 tests; tsc -b exit 2 with 49 errors (standing floor), 0 in these modules; eslint exit 0.
+
+Untested: nothing functional (comment-only change). 9122 not rebuilt; main not merged.

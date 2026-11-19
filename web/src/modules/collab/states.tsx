@@ -11,7 +11,7 @@
  * the absence of an identity, and it reads that way (「需要登录」, no alert
  * styling, no invented rows).
  *
- * R32 fixture debt burn: the `?state=` repro leg and its `data-fixture` marker
+ * R32 fixture debt burn: the `?state=` repro leg and its `fixture 标记` marker
  * were removed. Every panel below is painted from a real read; the delegations
  * route answered 200 on this deployment (an empty tenant), so no state here is
  * ever a stand-in.
