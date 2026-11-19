@@ -9,8 +9,8 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 729,
-    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 — / 2 可上岗 3 项检查的数据源尚未",
+    "textLen": 246,
+    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 今日运行 运行记录 今日成本 成本账本 发布 ",
     "hasMainEl": true,
     "ok": true
   },
@@ -309,13 +309,13 @@
     {
       "route": "#/identity?tab=departments",
       "viewport": "1440",
-      "chars": 154,
+      "chars": 140,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=departments",
       "viewport": "375",
-      "chars": 154,
+      "chars": 140,
       "hasMainEl": true
     },
     {
@@ -507,7 +507,7 @@
     {
       "route": "#/system",
       "viewport": "375",
-      "chars": 221,
+      "chars": 85,
       "hasMainEl": true
     },
     {
@@ -585,7 +585,7 @@
     {
       "route": "#/work",
       "viewport": "1440",
-      "chars": 145,
+      "chars": 1782,
       "hasMainEl": true
     },
     {
@@ -634,7 +634,7 @@
   "consoleErrorsObservedByShots": 0,
   "consoleErrorRoutesObservedByShots": [],
   "ceAuthority": "login-state",
-  "routesWithEnvOnlyConsoleErrors": 21,
+  "routesWithEnvOnlyConsoleErrors": 22,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
   "overflowing": [],
   "driver": {
@@ -642,16 +642,16 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "cd2806fc",
-  "entry": "assets/index-CGq0XFXV.js",
-  "entrySha256": "b45b11bd304b59411cba33a949b5544496d73d2bfae94cd23ef69a3a5076d4ea",
-  "entryBytes": 154699,
+  "headHash": "c4c6e750",
+  "entry": "assets/index-px6GtnGJ.js",
+  "entrySha256": "10bca6680e606ab31cf7a29cfc3956733af41a334db8db8d91400f852bcc98fb",
+  "entryBytes": 154744,
   "medianMainChars": 191.0,
-  "shotWindow": "14:48:30-14:49:18 local",
-  "servedEntryBefore": "assets/index-CGq0XFXV.js",
-  "servedEntryAfter": "assets/index-CGq0XFXV.js",
+  "shotWindow": "15:19:27-15:20:16 local",
+  "servedEntryBefore": "assets/index-px6GtnGJ.js",
+  "servedEntryAfter": "assets/index-px6GtnGJ.js",
   "env": "9122 proxy-live (anon 401 / auth 200); CE 权威=登录态, 观察字段仅旁证",
-  "ceCaliber": "ceAuthority=login-state; crawl-auth routesCE=22 denied=18; crawl-anon routesCE=43 denied=31; ok 不含 CE 项（L0 二十九轮裁定落码）",
+  "ceCaliber": "ceAuthority=login-state; crawl-auth routesCE=22 denied=18; crawl-anon routesCE=43 denied=30; ok 不含 CE 项（L0 二十九轮裁定落码）",
   "anonEvidence": "crawl-anon ok=True exit=0 probed=75 DL=0 CE=0 PE=0 routesCE=43(env 旁证); shots-anon 辅助腿见 shots-anon-summary.json",
   "exitCode": 0
 }

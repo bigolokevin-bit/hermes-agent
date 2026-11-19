@@ -754,3 +754,20 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 九件全章 headHash=cd2806fc，tmp+os.replace 原子、单文件单 JSON+exitCode：ia-react ok{51,22,1,8} / ia-html ok(tabsAll23) / lint-fake ok v0 / lint-reuse ok v0 e1 / crawl-anon ok（DL0 CE0 PE0 routesCE=43 denied=31 heads=35 median=159）/ crawl-auth ok（DL0 CE0 PE0 routesCE=22 denied=18 heads=26 median=188）/ shots ok 102/102 failures=[] obsCE=0 三键=卡面 distinctMainHeads=26 median=191.0 拍窗 14:48:30-14:49:18 / shots-anon auxiliary 19/19 / state-quad ok 20/20。
 - vitest exit=0：`Test Files  118 passed (118)` / `Tests  1148 passed (1148)`=卡面。redirects=24 notes 归因照旧。
 - 收口：commit 'chore(gates): full gate ledger stamped at cd2806fc (entry CGq0XFXV)'，push，ls-remote 双证，本车道 porcelain=0。禁改 web/src 全程遵守。
+
+## 门禁三十六轮 · V4 账本重章一次全量（代次 c4c6e750 / entry px6GtnGJ）— 2026-11-19 15:17-15:2x
+
+- 卡面核验（真卡）：`git cat-file -t c4c6e750`=commit；FETCH_HEAD=local HEAD=`c4c6e750`；porcelain=0；
+  entry `assets/index-px6GtnGJ.js` 154744B sha256 `10bca668…`==磁盘==served。上轮幻影注入（56315f18/Bl1m9Vv0/151032 回执）
+  已按三件套判据定案为假，未执行。
+- 九件一次性重章 headHash=`c4c6e750`（tmp+os.replace 原子写，单文件单 JSON+exitCode+headHash）：
+  - assert-ia-react ok exit=0 {routes:51,tabs:22,chatHosts:1,modules:8}；assert-ia-html ok exit=0（tabsAll 23）
+  - lint-fake ok exit=0 violations=0；lint-reuse ok exit=0 violations=0 exempted=1
+  - crawl-anon ok exit=0 deadLinks=0 contentEmpty=0 probeErrors=0，routesWithConsoleErrors=43（env=auth-required-401 归因，deniedEndpoints=30）
+  - crawl-auth ok exit=0 deadLinks=0 contentEmpty=0，routesWithConsoleErrors=22（deniedEndpoints=18）
+  - shots-summary ok=true produced/expected=102/102 failures=[] entry=px6GtnGJ sha8=10bca668 bytes=154744 拍窗 15:19:27-15:20:16，
+    CE 仅观测字段 consoleErrorsObservedByShots=0 + ceAuthority=login-state
+  - shots-anon-summary auxiliary=true ok 19/19 failures=[]
+  - state-quad 20/20（现跑覆盖后重注 ok/exitCode 并回读）
+- redirects=24 vs 门定值 23：按既定口径入 crawl notes 归因，不判红（门值更新归 L0/A）。
+- 环境注记：9122 served==磁盘全程未漂（拍前后双 curl 同值 px6GtnGJ）；禁改 web/src、禁启停 9122 均遵守。

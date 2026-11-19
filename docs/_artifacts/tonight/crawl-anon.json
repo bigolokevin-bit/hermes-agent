@@ -26,8 +26,8 @@
   "rootShell": {
     "url": "http://127.0.0.1:9122/",
     "hasMainEl": true,
-    "mainChars": 706,
-    "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 登录状"
+    "mainChars": 674,
+    "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 数据服"
   },
   "contentChecked": 51,
   "contentRows": [
@@ -348,10 +348,10 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 139,
+      "mainChars": 143,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 2,
+      "consoleErrors": 1,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
       "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 组织与部门 部门树 · 上下级关"
@@ -731,7 +731,6 @@
     "401 /agent-api/api/skills",
     "401 /agent-api/api/tasks",
     "401 /agent-api/api/v1/dept/list",
-    "401 /agent-api/api/v1/dept/tree",
     "401 /agent-api/api/v1/role/list",
     "401 /agent-api/api/v1/roles",
     "401 /agent-api/api/v1/user/all",
@@ -750,7 +749,7 @@
   "routesWithConsoleErrors": 43,
   "parseErrors": [],
   "ok": true,
-  "headHash": "cd2806fc",
+  "headHash": "c4c6e750",
   "exitCode": 0,
   "counts": {
     "probed": 75,

@@ -26,8 +26,8 @@
   "rootShell": {
     "url": "http://127.0.0.1:9122/",
     "hasMainEl": true,
-    "mainChars": 242,
-    "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 今日运"
+    "mainChars": 975,
+    "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 — /"
   },
   "contentChecked": 51,
   "contentRows": [
@@ -348,7 +348,7 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 149,
+      "mainChars": 136,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 2,
@@ -582,13 +582,13 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 600,
+      "mainChars": 657,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
       "consoleErrorEnv": null,
       "evalError": null,
-      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 正在读取审计事件（最近 24 小"
+      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 这个筛选条件里没有审计事件 时间"
     },
     {
       "route": "#/system?tab=events&view=anomaly",
@@ -695,7 +695,7 @@
       "headSample": "运营 · 控制台 任务与运行 任务 运行 控制台 · 运行 运行 按时间看运行记录。这一面只读："
     }
   ],
-  "distinctMainHeads": 26,
+  "distinctMainHeads": 25,
   "medianMainChars": 188,
   "contentEmpty": [],
   "contentEmptyCount": 0,
@@ -737,7 +737,7 @@
   "routesWithConsoleErrors": 22,
   "parseErrors": [],
   "ok": true,
-  "headHash": "cd2806fc",
+  "headHash": "c4c6e750",
   "exitCode": 0,
   "counts": {
     "probed": 75,
