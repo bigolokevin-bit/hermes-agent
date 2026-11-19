@@ -117,7 +117,9 @@ describe("ConsoleModulePage pane contract", () => {
   });
 
   it("TAB_ALIAS compat tabs resolve onto the canonical pane", () => {
-    renderAt(<ConsoleModulePage module="system" />, "/system?tab=security");
+    // R39 compat: system.security was removed (App mounts SecurityModulePage
+    // directly on ?tab=security); retention still aliases to events.
+    renderAt(<ConsoleModulePage module="system" />, "/system?tab=retention");
     expect(container.querySelector(".pane")?.getAttribute("data-tabname")).toBe(
       "审计事件",
     );

@@ -49,7 +49,9 @@ describe("console hash bridge arbitration (stage 2)", () => {
     expect(target("#/approvals?tab=mine")).toBe("/approvals?tab=pending&view=mine");
     expect(target("#/approvals?tab=policy")).toBe("/approvals");
     expect(target("#/work?tab=cron")).toBe("/work?tab=board&view=cron");
-    expect(target("#/system?tab=security")).toBe("/system?tab=events&view=anomaly");
+    // R39 compat: security is App-mounted (SecurityModulePage); the bridge
+    // keeps the URL as-is instead of rewriting it onto the events pane.
+    expect(target("#/system?tab=security")).toBe("/system?tab=security");
     expect(target("#/system?tab=retention")).toBe("/system?tab=events");
     expect(target("#/org")).toBe("/identity");
     expect(target("#/access")).toBe("/identity?tab=roles");

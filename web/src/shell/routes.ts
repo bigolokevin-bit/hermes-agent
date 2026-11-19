@@ -253,7 +253,7 @@ const COMPAT_TABS: readonly ConsoleRoute[] = [
   { hash: '#/approvals?tab=release', path: '/approvals', module: 'approvals', tabId: 'pending', kind: 'compat-tab', visible: false, label: '待处理', dataSource: '随目标', tab: 'release', to: '#/approvals?tab=pending&view=release' },
   { hash: '#/approvals?tab=policy', path: '/approvals', module: 'approvals', tabId: 'pending', kind: 'compat-tab', visible: false, label: '待处理', dataSource: '随目标', tab: 'policy', to: '#/approvals' },
   { hash: '#/work?tab=cron', path: '/work', module: 'work', tabId: 'board', kind: 'compat-tab', visible: false, label: '任务', dataSource: '随目标', tab: 'cron', to: '#/work?tab=board&view=cron' },
-  { hash: '#/system?tab=security', path: '/system', module: 'system', tabId: 'events', kind: 'compat-tab', visible: false, label: '审计事件', dataSource: '随目标', tab: 'security', to: '#/system?tab=events&view=anomaly' },
+  { hash: '#/system?tab=security', path: '/system', module: 'system', tabId: 'events', kind: 'compat-tab', visible: false, label: '安全设置', dataSource: 'App 直挂 SecurityModulePage（?tab=security 在壳层拦截，不判归审计事件）', tab: 'security', to: '#/system?tab=security' },
   { hash: '#/system?tab=retention', path: '/system', module: 'system', tabId: 'events', kind: 'compat-tab', visible: false, label: '审计事件', dataSource: '随目标', tab: 'retention', to: '#/system?tab=events' },
 ];
 
@@ -345,7 +345,7 @@ export const TAB_ALIAS: Readonly<Partial<Record<ConsoleModule, Readonly<Record<s
   identity: { tenant: 'people', admins: 'people', binding: 'people', checks: 'people' },
   approvals: { mine: 'pending', release: 'pending', policy: 'pending' },
   work: { cron: 'board' },
-  system: { security: 'events', retention: 'events' },
+  system: { retention: 'events' },
 };
 
 export const VIEW_ALIAS: Readonly<Record<string, string>> = {
@@ -353,7 +353,6 @@ export const VIEW_ALIAS: Readonly<Record<string, string>> = {
   'approvals.mine': 'mine',
   'approvals.release': 'release',
   'work.cron': 'cron',
-  'system.security': 'anomaly',
 };
 
 /* ------------------------------------------------------------------ *
