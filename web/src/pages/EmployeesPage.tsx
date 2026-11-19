@@ -176,7 +176,7 @@ export function displayName(
 }
 
 export function idOf(obj: Rec): string | null {
-  return pickStr(obj, ["id", "employee_id", "emp_id", "agent_id", "user_id", "key"]);
+  return pickStr(obj, ["employeeId", "id", "employee_id", "emp_id", "agent_id", "user_id", "key"]);
 }
 
 /**
@@ -185,7 +185,8 @@ export function idOf(obj: Rec): string | null {
  * 才是信封键 _key（非纯数字时）。
  */
 export function rowId(row: Rec): string | null {
-  const stable = pickStr(row, ["employee_id", "emp_id", "agent_id"]);
+  // R9-4: the live BFF returns camelCase employeeId — it must be first.
+  const stable = pickStr(row, ["employeeId", "employee_id", "emp_id", "agent_id"]);
   if (stable) return stable;
   const plain = idOf(row);
   if (plain && !/^-?\d+(\.\d+)?$/.test(plain)) return plain;

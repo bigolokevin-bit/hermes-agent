@@ -228,4 +228,27 @@ describe("EmployeesPage (R7.1 item 4/6 — real detail links and same-name codes
     const hrefs = links.map((a) => a.getAttribute("href") ?? "");
     expect(hrefs.join(" ")).not.toMatch(/\/employees\/\d+$/);
   });
+
+  it("R9-4/6: live /api/employees items[] rows expose employeeId links and 8-digit codes", async () => {
+    fetchJSON.mockImplementation((url: string) =>
+      url.includes("/api/employees")
+        ? Promise.resolve({
+            items: [
+              { employeeId: "emp_86A81CE8FF6F42E187BCF2B540", name: "AgentOS 产品助理", lifecycleState: "active" },
+              { employeeId: "emp_0166858D562149938FBDA22649", name: "AgentOS 产品助理", lifecycleState: "active" },
+            ],
+          })
+        : Promise.reject(new ApiError("找不到", { status: 404, body: "", url })),
+    );
+    await render();
+    const links = Array.from(
+      container.querySelectorAll<HTMLAnchorElement>('a[href^="/employees/"]'),
+    );
+    expect(links).toHaveLength(2);
+    expect(links[0]!.getAttribute("href")).toContain("emp_86A81CE8FF6F42E187BCF2B540");
+    const text = links.map((a) => a.textContent ?? "").join(" ");
+    expect(text).toContain("86A81CE8");
+    expect(text).toContain("0166858D");
+    expect(text).not.toContain("emp_");
+  });
 });
