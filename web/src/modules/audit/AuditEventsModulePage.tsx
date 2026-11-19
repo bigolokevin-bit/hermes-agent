@@ -41,14 +41,14 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { Spinner } from "@nous-research/ui/ui/components/spinner";
 
 import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel, TechnicalDisclosure, VerifyUnavailablePanel } from "./states";
-import { AuditEventDetailBody, AuditEventRowCard, VerifyResultBody } from "./views";
+import { AuditEventDetailBody, AuditEventRowCard, VerifyResultBody, AuditRowPreview, AuditTypeSummary } from "./views";
 import RetentionModulePage from "./RetentionModulePage";
 import { useAuditDetail, useAuditList, useAuditVerify } from "./useAuditData";
 import type { FailureCopy } from "./copy";
 import type { VerifyFailure } from "./copy";
 import { eventTypeChoices } from "./model";
 import type { ListFilters } from "./api";
-import { downloadCsv, exportName } from "./csv";
+import { downloadCsv, downloadText, exportName, filteredCsvText, filteredExportName } from "./csv";
 import {
   FILTER_WINDOW_CHOICES,
   beijingInputValue,
@@ -237,12 +237,17 @@ function AuditEventsSurface(): ReactNode {
   // No `?state=` leg on this pane: a list or detail state is only what the
   // service answered. A missing route degrades through readFailure() to an
   // honest sentence plus the request id, never to sample rows.
-  const list = useAuditList(null, filters, !customInvalid);
+  const cursors = params.getAll("cursor");
+  const startCursor = cursors.length ? cursors[cursors.length - 1]! : null;
+  const pageNo = cursors.length + 1;
+  const list = useAuditList(null, filters, !customInvalid, startCursor);
   const detail = useAuditDetail(selected, null);
   const [unaddressable, setUnaddressable] = useState(false);
   // One row at a time owns the technical fold: the panel id stays unique and
   // clicking 详情 really expands something every time (R19 tail b).
   const [openTech, setOpenTech] = useState<string | null>(null);
+  const [openPreview, setOpenPreview] = useState<string | null>(null);
+  const [typesOpen, setTypesOpen] = useState(false);
   // The window check is a read the person asks for; it never runs on load and
   // it is not driven by `?state=` (that repro belongs to the aud03 pane).
   const verify = useAuditVerify(null);
@@ -279,6 +284,7 @@ function AuditEventsSurface(): ReactNode {
   const setWindow = useCallback(
     (next: FilterWindowKey) => {
       const draft = new URLSearchParams(params);
+      draft.delete("cursor");
       draft.set("window", next);
       if (next !== "custom") {
         draft.delete("from");
@@ -292,6 +298,7 @@ function AuditEventsSurface(): ReactNode {
   const setCustomFrom = useCallback(
     (next: string) => {
       const draft = new URLSearchParams(params);
+      draft.delete("cursor");
       draft.set("window", "custom");
       const iso = parseBeijingInput(next);
       if (iso) draft.set("from", iso);
@@ -304,6 +311,7 @@ function AuditEventsSurface(): ReactNode {
   const setCustomTo = useCallback(
     (next: string) => {
       const draft = new URLSearchParams(params);
+      draft.delete("cursor");
       draft.set("window", "custom");
       const iso = parseBeijingInput(next);
       if (iso) draft.set("to", iso);
@@ -312,6 +320,36 @@ function AuditEventsSurface(): ReactNode {
     },
     [locationState, params, setParams],
   );
+
+  const goNext = useCallback(() => {
+    if (!list.next) return;
+    const draft = new URLSearchParams(params);
+    draft.append("cursor", list.next);
+    setParams(draft, { replace: true });
+  }, [list.next, params, setParams]);
+
+  const goPrev = useCallback(() => {
+    const stack = params.getAll("cursor");
+    if (!stack.length) return;
+    const draft = new URLSearchParams(params);
+    draft.delete("cursor");
+    for (const value of stack.slice(0, -1)) draft.append("cursor", value);
+    setParams(draft, { replace: true });
+  }, [params, setParams]);
+
+  const typeGroups = (() => {
+    if (list.phase !== "ready" || list.rows.length === 0) return [];
+    const counted = new Map<string, { key: string; label: string; count: number }>();
+    for (const row of list.rows) {
+      const key = row.action.raw ?? row.action.label;
+      const found = counted.get(key);
+      if (found) found.count += 1;
+      else counted.set(key, { key, label: row.action.label, count: 1 });
+    }
+    return [...counted.values()].sort((a, b) => b.count - a.count).slice(0, 8);
+  })();
+
+  const canExport = list.phase === "ready" && list.rows.length > 0;
 
   const windowLabel = WINDOW_FILTER_CHOICES.find((item) => item.value === windowChoice)?.label ?? "最近 7 天";
 
@@ -437,6 +475,24 @@ function AuditEventsSurface(): ReactNode {
           ) : null}
         </div>
       </div>
+
+      <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="aud5-export-bar">
+        <Button
+          size="sm"
+          outlined
+          onClick={() => downloadText(filteredCsvText(list.rows), filteredExportName(windowChoice, "all", "all"))}
+          disabled={!canExport}
+          aria-disabled={!canExport}
+          title={canExport ? "导出当前筛选为 CSV（北京时间）" : "当前筛选无事件可导出"}
+          data-testid="aud5-export"
+          prefix={<Download className="h-3.5 w-3.5" />}
+        >
+          导出当前筛选 CSV
+        </Button>
+        <span className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud5-export-count">将导出 {list.rows.length} 条</span>
+      </div>
+
+      <AuditTypeSummary open={typesOpen} onToggle={() => setTypesOpen((value) => !value)} groups={typeGroups} total={list.rows.length} />
 
       <AuditFilterBar
         windowChoice={windowChoice}
@@ -596,15 +652,31 @@ function AuditEventsSurface(): ReactNode {
           {!customInvalid && list.phase === "ready" ? (
             <>
               {list.rows.map((row) => (
-                <AuditEventRowCard
+                <div
+                  className="flex min-w-0 flex-col gap-1"
                   key={row.key}
-                  row={row}
-                  selected={row.rawId !== null && row.rawId === selected}
-                  onOpen={() => openRow(row.rawId)}
-                  techOpen={openTech === row.key}
-                  onToggleTech={() => setOpenTech((current) => (current === row.key ? null : row.key))}
-                  testId={`aud01-row-${row.key}`}
-                />
+                  onKeyDown={(event) => { if (event.key === "Escape") setOpenPreview(null); }}
+                >
+                  <button
+                    type="button"
+                    className="w-full rounded-md px-2 py-1 text-left text-xs text-muted-foreground hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                    aria-expanded={openPreview === row.key}
+                    aria-controls={"aud6-preview-" + row.key}
+                    data-testid={"aud6-toggle-" + row.key}
+                    onClick={() => setOpenPreview((current) => (current === row.key ? null : row.key))}
+                  >
+                    {openPreview === row.key ? "收起预览" : "预览这一条"}
+                  </button>
+                  <AuditEventRowCard
+                    row={row}
+                    selected={row.rawId !== null && row.rawId === selected}
+                    onOpen={() => openRow(row.rawId)}
+                    techOpen={openTech === row.key}
+                    onToggleTech={() => setOpenTech((current) => (current === row.key ? null : row.key))}
+                    testId={`aud01-row-${row.key}`}
+                  />
+                  {openPreview === row.key ? <AuditRowPreview row={row} testId={"aud6-preview-" + row.key} /> : null}
+                </div>
               ))}
 
               {list.unreadable > 0 ? (
@@ -617,20 +689,36 @@ function AuditEventsSurface(): ReactNode {
                 <InlineFailure failure={list.pageFailure} action="后续记录没有加载成功" onRetry={list.loadMore} testId="aud01-page-failure" />
               ) : null}
 
-              {list.next ? (
-                <div>
+              <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="aud2-pagination">
+                <span className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud2-page">
+                  第 {pageNo} 页 · 已加载 {list.rows.length} 条
+                </span>
+                <span
+                  className="min-w-0 break-words text-xs text-muted-foreground"
+                  data-testid="aud2-total"
+                  title="服务没有给出总数；游标分页不能自算总数，本页只数已加载的行"
+                >
+                  总数不可用
+                </span>
+                <span className="contents" data-testid="aud2-prev">
+                  <Button size="sm" outlined disabled={pageNo === 1} onClick={goPrev}>
+                    上一页
+                  </Button>
+                </span>
+                <span className="contents" data-testid="aud2-next">
                   <Button
                     size="sm"
                     outlined
-                    disabled={list.loadingMore}
-                    onClick={list.loadMore}
+                    disabled={!list.next}
+                    onClick={goNext}
                     data-testid="aud01-load-more"
-                    prefix={list.loadingMore ? <Spinner className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                    prefix={<RefreshCw className="h-3.5 w-3.5" />}
                   >
-                    加载更多
+                    下一页
                   </Button>
-                </div>
-              ) : list.rows.length > 0 ? (
+                </span>
+              </div>
+              {!list.next && list.rows.length > 0 ? (
                 <p className="text-xs text-muted-foreground">这一页就这些了。</p>
               ) : null}
 

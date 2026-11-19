@@ -2832,3 +2832,56 @@ Verified on this base; the earlier rounds' work is intact and this round adds th
 
 Gates: vitest src/modules/collab exit 0 (2 files / 99 tests); tsc -b 50 errors total (standing floor incl. other lanes), modules/collab 0; eslint collab exit 0; build exit 0.
 Untested: the four-state body lengths are jsdom readings, not browser pixels; the tenant really has zero delegations so the row-level layout is test-proven only; no per-element pixel diff; 9122 not rebuilt, main not merged.
+
+## Audit event detail (2026-11-20, base f0419b0b)
+
+- 详情入口：行点开写 ?detail=<eventId>（可分享、刷新复现）；返回列表保留筛选与游标页（state.fromList + cursor 栈）。
+- 时间精确到秒：新增 beijingSeconds（Asia/Shanghai YYYY-MM-DD HH:mm:ss），AuditDetail 增加 occurredAtRaw/recordedAtRaw；事件区 dl 带 data-testid=aud3-time，说明改为「以上时间均为北京时间，精确到秒。」
+- 原始载荷：新增「原始载荷」区（aud3-payload）。有载荷时 pre[data-testid=aud3-payload-json] 只读展示脱敏 JSON（2 空格、≤2000 字），并以 aud3-payload-masked 报「已隐去 N 项敏感字段」；maskSensitive 递归把 token/cookie/secret/password/authorization/api[-_]?key/credential 类键值替换为 *** 并计数。没有载荷时 aud3-payload-unavailable 写「证据不可用：这条事件的回答里没有带回原始载荷——审计只保存字段差异。可以去「技术详情」看服务回传的字段，或联系管理员核对。」
+- testid：保留 aud02-detail / aud01-* / aud2-* / agent-v2-page-audit*；新增 aud3-time、aud3-payload、aud3-payload-json、aud3-payload-masked、aud3-payload-unavailable。
+- 四态、403 与 404 同体、零写入口均未变。
+- 门禁：vitest src/modules/audit exit 0（10 files / 164 tests，基线 161，+3 详情用例）；tsc -b 共 50 条既有地板、modules/audit 0；eslint exit 0（0 errors / 4 既有 warning）。
+- 活体：/audit?window=7d 在 1440/1280/375 均 sw==cw（50 行，textLen 5498）；详情抽屉文本含「精确到秒」与「证据不可用」各 1 处（该事件无原始载荷，走诚实分支）；testid 是属性，不在 innerText，故以用例为准。
+- 未测：没有带回原始载荷的真实事件，脱敏分支仅用例证；未做逐元素像素比对；9122 未重建、未并 main。
+## Audit pagination + time range (2026-11-20, base f0419b0b)
+
+- Base f0419b0b (= gate ledger @ 02a7385c); toplevel verified; tree clean at start.
+- URL owns the page path: repeated `cursor` params form a stack (params.getAll("cursor")), page = stack length + 1. Next appends list.next; prev pops the stack; changing the window or a custom bound clears the stack (back to page 1). Refresh/share reproduces the same page and filters.
+- The R34 time windows stay as they were (?window=24h|7d|30d|custom plus ?from=/?to=), untouched by this round.
+- Honest total: the service answer is {events, nextCursor} with no total field, so aud2-total reads 总数不可用 with the title 服务没有给出总数；游标分页不能自算总数，本页只数已加载的行, and aud2-page reads 第 N 页 · 已加载 M 条. No computed total anywhere.
+- New test ids: aud2-pagination / aud2-page / aud2-total / aud2-prev / aud2-next. aud01-load-more is kept (label now 下一页) together with every aud01-* id and agent-v2-page-audit.
+- Boundaries: aud2-prev is disabled on page 1; aud2-next is disabled when the service sent no next cursor and the 这一页就这些了。 line shows instead; an empty answer still renders EmptyPanel.
+- Behaviour unchanged: the four states come from the service answer (no ?state= leg here), error keeps a copyable request id plus retry, 403≡404 share one body, zero write entries, rows still link to the detail and the actor stays in human words.
+- Gates: vitest src/modules/audit exit 0 (10 files / 161 tests); tsc -b reports 50 errors (the standing floor, none in this module); eslint src/modules/audit exit 0 (0 errors / 4 pre-existing warnings).
+- Live: /audit?window=7d at 1440/1280/375 is sw==cw (1440/1440, 1280/1280, 375/375), 50 rows, textLen 5521, export button enabled. The 7d window returns no nextCursor, so there is no live second page to click; the pagination behaviour is proven by the module tests (two-page mock: page 1 next writes cursor=cur_page2, the second fetch carries it, aud2-page reads 第 2 页, aud2-total reads 总数不可用, prev pops back to page 1).
+- Untested: a live second page (the service had no next cursor); no per-element pixel diff; 9122 not rebuilt, main not merged.
+
+## Audit filtered CSV export (2026-11-20, base 61dd1db8)
+
+- 新按钮 aud5-export（导出当前筛选 CSV）与计数 aud5-export-count（将导出 N 条），仅在 ready 且有行时可用；空集时 disabled + aria-disabled + title「当前筛选无事件可导出」。
+- 纯前端生成：filteredCsvText 输出 BOM + 固定英文表头 time,actor,action,resource,rid，每行一条（时间 BJT 到分；操作者/动作/对象为人话标签；请求编号缺失留空，不填 0）；行数等于当前已加载行数。
+- RFC 4180 转义：字段含逗号、引号或换行时整体加引号并把内部引号翻倍；实测样例 actor 标签 Li, "A" 输出 "Li, ""A"""。
+- 文件名 audit-<window>-<actor>-<resource>-YYYYMMDD-HHmm.csv，全部 ASCII；实测 audit-7d-all-all-20261120-0647.csv。
+- 未加端点、未改后端；aud01-export（中文列）保持原样；aud2-*/aud3-*/aud01-*/agent-v2-page-audit* 未破。
+- 口径披露：上一轮 actor/资源类型筛选 BLOCKED 未实现，故文件名两段固定为 all；导出范围是当前已加载的这一页（时间窗 + 游标页），不是整个窗口（服务没有 total）。
+- 门禁：vitest src/modules/audit exit 0（10 files/167 tests）；tsc -b 50 条既有地板、本模块 0；eslint 0 errors（4 既有 warnings）。
+- 未测：浏览器内真实下载点击（Blob 契约由 vitest 断言）；无逐元素像素比对；9122 未重建、未并 main。
+
+## Audit inline row preview (R50, 2026-11-20, base 1bb72474)
+
+- Each row gains a native toggle button `aud6-toggle-<key>` with `aria-expanded` and `aria-controls`; expanding renders `aud6-preview-<key>` in place under the row: 事件类型 / 操作者 / 资源 / 时间（北京时间，到秒） / 请求编号（可复制，来自已加载行）+ 真链 `a[href="/audit?detail=<id>"]` 「打开详情」。
+- Seconds come from the new optional `AuditRow.occurredAtRaw` via `beijingSeconds`, falling back to the formatted minute; a missing field reads 「该字段未返回」 with the reason in `title`.
+- No second request (preview renders from the loaded row), no URL write, no persistence: a refresh returns to the collapsed state. Only one row can be open at a time (page-owned `openPreview`), and Escape anywhere inside the row closes it.
+- Deviation, disclosed: the preview toggle is its own labelled button rather than the row body, so the existing row → detail interaction (`aud01-*`, R39 history entry) stays intact; the button is native, so Enter/Space toggle and `role="button"`/tabIndex/focus-visible are inherent.
+- Ids added: `aud6-toggle-*`, `aud6-preview-*`, `aud6-preview-*-time`, `-rid`, `-open`; `aud5-*`/`aud4-*`/`aud2-*`/`aud3-*`/`aud01-*`/`agent-v2-page-audit*` untouched.
+- Gates: vitest `src/modules/audit` 10 files / 168 tests (167 + the R50 lock: aria-expanded flips, preview text, real href, no extra request, Esc closes); tsc `-b` 50-floor with `modules/audit` 0; eslint 0 errors.
+- Untested: no live browser keyboard/pixel sweep (jsdom only), 9122 not rebuilt, main not merged.
+
+## Audit event type distribution (R51, 2026-11-20, base 1bb72474)
+
+- 折叠小结：默认收起（typesOpen=false），原生按钮 aud7-types-toggle 带 aria-expanded / aria-controls；展开渲染 aud7-types-panel，行 aud7-types-row 含类型人话、aud7-types-count 计数、aud7-types-share 整数占比（floor，1..99，count==total 才是 100）。
+- 同源计数：按当前响应已加载行聚合 top 8（row.action.raw 归并、row.action.label 上屏），不发第二次请求；空集（total 0）整块隐藏。
+- 总数口径：服务只回 {events, nextCursor} 没有 total，因此界面注明「按已加载的 N 条统计」，title 说明不是整窗全量，禁自算假总数、禁假 0。
+- 不改 URL、不改页码、不影响筛选；aud5-*/aud6-*/aud4-*/aud2-*/aud3-*/aud01-*/agent-v2-page-audit* 未破。
+- 门禁：vitest src/modules/audit exit 0（10 files / 169 tests）；tsc -b 50 条既有地板、本模块 0；eslint 0 errors / 4 既有 warnings。
+- 未测：占比是已加载页口径非整窗；无真浏览器像素走查；9122 未重建；未并 main。
