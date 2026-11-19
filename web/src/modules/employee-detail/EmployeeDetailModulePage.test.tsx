@@ -86,6 +86,70 @@ const at = (zone?: string) =>
 
 const page = <EmployeeDetailModulePage employeeId={EMP} />;
 
+describe("EmployeeDetailModulePage — identity card (R45)", () => {
+  const qid = (t: string) => container.querySelector(`[data-testid="${t}"]`);
+
+  it("ed1-identity renders name/code/role/state/reports/created from the real detail body", async () => {
+    mockApi((url) =>
+      url.includes(`/api/employees/${encodeURIComponent(EMP)}`)
+        ? Promise.resolve({
+            id: EMP,
+            name: "AgentOS 产品助理",
+            title: "产品助理（数字员工 · Pilot）",
+            lifecycleState: "active",
+            ownerUserId: "1",
+            createdAt: "2026-11-13T22:15:30Z",
+            department: null,
+            duty: null,
+            asOf: "2026-11-20T07:00:00Z",
+          })
+        : silent502(url),
+    );
+    await renderAt(page, at());
+    expect(qid("ed1-identity")).toBeTruthy();
+    expect(qid("ed1-identity-name")?.textContent).toBe("AgentOS 产品助理");
+    expect(qid("ed1-identity-code")?.textContent).toBe("A3F1B2C4");
+    expect(qid("ed1-identity-code")?.getAttribute("title")).toBe(EMP);
+    expect(qid("ed1-identity-role")?.textContent).toBe("产品助理（数字员工 · Pilot）");
+    expect(qid("ed1-identity-state")?.textContent).toBe("在岗");
+    expect(qid("ed1-identity-reports")?.textContent).toBe("—");
+    expect(qid("ed1-identity-reports")?.getAttribute("title")).toContain("后台没有回传这位员工的汇报对象");
+    expect(qid("ed1-identity-created")?.textContent).toBe("2026-11-14 06:15");
+    expect(qid("ed1-identity")?.textContent).not.toContain("emp_");
+  });
+
+  it("an answered reports-to becomes a real /employees link with the masked label", async () => {
+    const MGR = "emp_BEEF000011112222333344AA";
+    mockApi((url) =>
+      url.includes(`/api/employees/${encodeURIComponent(EMP)}`)
+        ? Promise.resolve({ id: EMP, name: "小鲤", reportsTo: `employee:${MGR}`, reportsToName: "主管", lifecycleState: "active" })
+        : silent502(url),
+    );
+    await renderAt(page, at());
+    const link = qid("ed1-identity-reports")?.querySelector("a") as HTMLAnchorElement | null;
+    expect(link).toBeTruthy();
+    expect(link?.getAttribute("href")).toBe(`/employees/${MGR}`);
+    expect(link?.textContent).toBe("主管 · BEEF0000");
+    expect(link?.getAttribute("title")).toBe(`employee:${MGR}`);
+  });
+
+  it("unknown lifecycle reads 待核实 and every missing field dashes with a stated reason", async () => {
+    mockApi((url) =>
+      url.includes(`/api/employees/${encodeURIComponent(EMP)}`)
+        ? Promise.resolve({ id: EMP, lifecycleState: "weird_state" })
+        : silent502(url),
+    );
+    await renderAt(page, at());
+    expect(qid("ed1-identity-state")?.textContent).toBe("待核实");
+    expect(qid("ed1-identity-state")?.getAttribute("title")).toBe("weird_state");
+    for (const id of ["name", "role", "reports", "created"]) {
+      expect(qid(`ed1-identity-${id}`)?.textContent).toBe("—");
+      expect(qid(`ed1-identity-${id}`)?.getAttribute("title")).toContain("后台没有回传");
+    }
+    expect(container.textContent).not.toMatch(/\?\? 0|undefined|null/);
+  });
+});
+
 describe("EmployeeDetailModulePage — overview", () => {
   it("loading: skeleton, no engineering text", async () => {
     mockApi(() => new Promise(() => {}));

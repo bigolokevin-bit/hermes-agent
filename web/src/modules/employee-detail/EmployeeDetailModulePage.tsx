@@ -828,6 +828,70 @@ function useOverview(empId: string, nonce: number): OverviewState {
   return state;
 }
 
+function IdentityField({ id, label, children, title }: { id: string; label: string; children: React.ReactNode; title?: string | null }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs text-white/45">{label}</dt>
+      <dd className="min-w-0 truncate text-sm" data-testid={`ed1-identity-${id}`} title={title ?? undefined}>
+        {children}
+      </dd>
+    </div>
+  );
+}
+
+/**
+ * R45 · the identity card on the default zone. Every field comes from the
+ * same detail body the overview already trusts; anything the backend did
+ * not answer renders "—" with the reason in the title — never a 0, never a
+ * placeholder.
+ */
+function IdentityCard({ d, empId }: { d: Rec; empId: string }) {
+  const name = pickString(d.name);
+  const role = pickString(d.title, d.role, d.position);
+  const stateRaw = lifecycleLabel(pickString(d.lifecycleState, d.lifecycle));
+  const stateLabel = stateRaw === "状态未知" ? "待核实" : stateRaw;
+  const reportsTo = pickString(d.reportsTo, d.reports_to, d.managerEmployeeId, d.manager);
+  const reportsName = pickString(d.reportsToName, d.managerName);
+  const created = pickString(d.createdAt, d.created_at);
+  const reportsValue = reportsTo ? (
+    <Link
+      className="underline underline-offset-2"
+      to={`/employees/${encodeURIComponent(reportsTo.replace(/^employee:/i, ""))}`}
+      title={reportsTo}
+    >
+      {reportsName ? `${reportsName} · ${shortCode(reportsTo.replace(/^employee:/i, ""))}` : shortCode(reportsTo.replace(/^employee:/i, ""))}
+    </Link>
+  ) : (
+    <span>—</span>
+  );
+  return (
+    <Card className="min-w-0" data-testid="ed1-identity">
+      <CardContent className="p-0">
+        <dl className="grid gap-x-6 gap-y-3 px-4 py-3 sm:grid-cols-2 xl:grid-cols-3">
+          <IdentityField id="name" label="姓名" title={name ? undefined : "后台没有回传这位员工的姓名。"}>
+            {name ?? "—"}
+          </IdentityField>
+          <IdentityField id="code" label="工号" title={empId}>
+            {shortCode(empId)}
+          </IdentityField>
+          <IdentityField id="role" label="角色" title={role ? undefined : "后台没有回传这位员工的角色。"}>
+            {role ?? "—"}
+          </IdentityField>
+          <IdentityField id="state" label="在职态" title={pickString(d.lifecycleState, d.lifecycle) ?? "后台没有回传在职状态。"}>
+            {stateLabel}
+          </IdentityField>
+          <IdentityField id="reports" label="汇报对象" title={reportsTo ? undefined : "后台没有回传这位员工的汇报对象。"}>
+            {reportsValue}
+          </IdentityField>
+          <IdentityField id="created" label="创建时间" title={created ? "北京时间，精确到分" : "后台没有回传创建时间。"}>
+            {created ? beijing(created) : "—"}
+          </IdentityField>
+        </dl>
+      </CardContent>
+    </Card>
+  );
+}
+
 function OverviewZone({ state, onRetry, empId }: { state: OverviewState; onRetry: () => void; empId: string }) {
   if (state.phase === "loading") return <ZoneLoading testid="ed5-overview-loading" />;
   if (state.phase === "empty") {
@@ -882,20 +946,23 @@ function OverviewZone({ state, onRetry, empId }: { state: OverviewState; onRetry
     { label: "月度预算", value: money(pickNumber(d.monthlyBudgetUsd, budget?.monthlyCostUsd)) },
   ];
   return (
-    <Card data-testid="ed5-overview">
-      <CardContent className="p-0">
-        <dl className="divide-y divide-white/5">
-          {rows.map((r) => (
-            <div key={r.label} className="grid grid-cols-1 gap-1 px-4 py-3 sm:grid-cols-[8rem_minmax(0,1fr)] sm:items-center">
-              <dt className="text-xs text-white/45">{r.label}</dt>
-              <dd className="min-w-0 truncate text-sm" title={r.raw ?? undefined}>
-                {r.value}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </CardContent>
-    </Card>
+    <div className="min-w-0 space-y-4" data-testid="ed5-overview-wrap">
+      <IdentityCard d={d} empId={empId} />
+      <Card data-testid="ed5-overview">
+        <CardContent className="p-0">
+          <dl className="divide-y divide-white/5">
+            {rows.map((r) => (
+              <div key={r.label} className="grid grid-cols-1 gap-1 px-4 py-3 sm:grid-cols-[8rem_minmax(0,1fr)] sm:items-center">
+                <dt className="text-xs text-white/45">{r.label}</dt>
+                <dd className="min-w-0 truncate text-sm" title={r.raw ?? undefined}>
+                  {r.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 

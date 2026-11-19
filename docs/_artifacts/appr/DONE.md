@@ -702,3 +702,13 @@ BFF 关键读数（9122==01175128 活体，只读）：工单点名 URL `GET /ap
 测试：既有 3 用例入口由 at("tasks")（旧借 approvals 映射）改为 at("approvals")（语义=审批区本尊，断言文本零改动）；新增 R43 describe 4 用例：①真查询带 assignee=employee%3A<EMP>+limit=20、行 href=/tasks/tk_0762C4D5、待处理/待核实/高优先级、BJT 10:00/09:30、无标题行=「任务 · 1B4EA3C9」（用 tasksBoard.short8 全站口径——坑：模块自研 shortCode 会把 tk_ 计进短码=TK1B4EA3，已换 short8）②空集诚实句+不放宽筛选+面板卡不渲 ③error=人话+请求编号：req-tsk-43 冒号形制+req-copy+重试同卡（坑：querySelector("button") 先命中复制钮，断言改 some(含「重试」)；**同一 it 内二次 mockApi+renderAt 不会重发请求（useResourceList deps=[url,nonce] 未变）=403≡404 必须拆独立 it（root 重建习语）**）。定向 employee-detail 26 passed exit0；assert-ia 两模式 exit0（51/22/1/8 未动）；tsc 本域零红；全量 **131 files/1399 passed**（≥基线 1387）。
 
 三档横溢：jsdom 不可测，形态学=行网格 grid-cols-1 md:grid-cols-[1.8fr_.8fr_.8fr_1fr]+min-w-0 truncate+列头 md:grid（与 chat 区同构已验），如实报。9122 取证代次禁重建：活体行读数待并入后代次。
+
+## R45 员工详情身份卡区（2026-11-20，lane/console-appr）
+
+基线：显式 refspec fetch + reset --hard origin/lane/hermes-console = **f0419b0b**（ledger stamped at 02a7385c，entry DmuaaNyX），toplevel ✓ porc=0。禁面零触碰（App/shell/routes/registry/package·lock/web-scripts/ops 未动）。
+
+BFF/数据面现查：GET /agent-api/api/employees/<id>（server.py EMPLOYEES_DETAIL_PREFIX 片段路由）活体 200 keys=[id,tenantId,name,title,lifecycleState,currentVersionNo,ownerUserId,createdAt,updatedAt,revision,department,duty,asOf]——**响应没有 reportsTo 类字段**（汇报对象按缺值处置，禁编造）。模块 overview 腿 useOverview 本就走该端点（真数据既有），四态/可复制 rid（RequestIdCopy「请求编号：」冒号形制+req-copy）/重试/403≡404 既有分支既有测试锁。
+
+实现（EmployeeDetailModulePage.tsx，写域内）：OverviewZone ready 返回新增 **IdentityCard**（testid=ed1-identity，包在 ed5-overview-wrap 内、原 ed5-overview 六行 dl 原样保留=ed5-*/apr5-* 零破坏）。六字段：ed1-identity-name（缺「—」+title「后台没有回传这位员工的姓名。」）/ code（shortCode(empId) 8 位大写码、title=完整 id，屏上无裸 emp_）/ role（title|role|position 多键回落，缺「—」+title）/ state（lifecycleLabel 外层映射：未知→「待核实」，title=原始值；原 lifecycleLabel 未动）/ reports（reportsTo|reports_to|managerEmployeeId|manager 多键；有值=真 a[href^=/employees/] 可聚焦，label=「姓名 · 短码」，title=原值；无值=「—」+title「后台没有回传这位员工的汇报对象。」）/ created（createdAt|created_at→beijing() BJT 到分，缺「—」+title）。无 `?? 0`/无占位假值。⑦三档横溢=jsdom 不可测，形态学报（dl sm:grid-cols-2 xl:grid-cols-3+truncate+min-w-0）。9122=02a7385c 代次禁重建：页面活体卡读数待并入后代次（本轮只读探了 API 面）。
+
+测试（EmployeeDetailModulePage.test.tsx，R45 describe 3 用例）：真 body 六字段读数（name/code=A3F1B2C4/role/在岗/created=2026-11-14 06:15/reports=—+title）；reportsTo=employee:emp_BEEF…+reportsToName → a[href=/employees/emp_BEEF0000…] text=主管 · BEEF0000 title=原值；weird_state→待核实+四缺字段「—」+title 含「后台没有回传」+屏无 ??0/undefined/null。定向 employee-detail **29 passed**（26 既有+3 新）exit0；assert-ia 两模式 exit0（51/22/1/8）；tsc 本域零红；全量 **131 files/1403 passed**（≥基线 1401，如实报）。
