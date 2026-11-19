@@ -284,6 +284,8 @@ export interface LedgerRow {
   costUsd: number | null;
   /** Budget cap for the period, when the ledger ever carries one. */
   limitUsd: number | null;
+  /** Run/session count on the row when the ledger carries one; null otherwise. */
+  runs: number | null;
   updatedAt: string | null;
 }
 
@@ -303,6 +305,7 @@ export function readLedger(payload: unknown): ParsedLedger {
     tokensUsed: numberOrNull(raw.tokensUsed),
     costUsd: numberOrNull(raw.costUsd),
     limitUsd: numberOrNull(raw.limitUsd) ?? numberOrNull(raw.limit) ?? numberOrNull(raw.capUsd),
+    runs: numberOrNull(raw.runs) ?? numberOrNull(raw.sessions) ?? numberOrNull(raw.runCount) ?? numberOrNull(raw.run_count),
     updatedAt: text(raw.updatedAt),
   }));
   const missing = Array.isArray(payload.missingEmployeeIds)
@@ -500,6 +503,8 @@ export interface EmployeeSpend {
   employeeId: string | null;
   name: string | null;
   costUsd: number | null;
+  /** Sum of the rows that carry a run count; null when none do. */
+  runs: number | null;
   ledgerRows: number;
   asOf: string | null;
 }
@@ -515,10 +520,12 @@ export function aggregateByEmployee(rows: LedgerRow[], names: Record<string, str
       employeeId: row.employeeId,
       name: row.employeeId ? names[row.employeeId] ?? null : null,
       costUsd: null,
+      runs: null,
       ledgerRows: 0,
       asOf: null,
     };
     entry.ledgerRows += 1;
+    if (row.runs !== null) entry.runs = (entry.runs ?? 0) + row.runs;
     if (row.costUsd !== null) entry.costUsd = (entry.costUsd ?? 0) + row.costUsd;
     if (row.updatedAt && (entry.asOf === null || row.updatedAt > entry.asOf)) entry.asOf = row.updatedAt;
     byId.set(key, entry);
@@ -572,6 +579,8 @@ export function shareOf(value: number | null, total: number | null): number | nu
 
 export interface ModelCostRow {
   model: string;
+  /** Stable key for test ids when the label is not ASCII (employee names). */
+  key?: string;
   /** Session count as upstream reports it; null when the answer has none. */
   runs: number | null;
   /** Ledger actual only. An estimate is never promoted into this field. */

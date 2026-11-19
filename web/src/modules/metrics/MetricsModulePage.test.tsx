@@ -880,3 +880,118 @@ describe('MetricsModulePage — met7 cost share by model', () => {
     expect(text()).not.toContain('共 0');
   });
 });
+
+
+const SHARE_MODEL_USAGE = {
+  by_model: [{ model: 'zeta', sessions: 4, actual_cost_usd: 3 }],
+  asOf: '2026-11-19T20:12:00.000Z',
+};
+
+function employeeShareRouter(ledger: unknown) {
+  return (url: string): Promise<unknown> => {
+    if (url.includes('run-activity')) return Promise.resolve(activityBody());
+    if (url.includes('run-stats')) return Promise.resolve(statsFor(url));
+    if (url.includes('/api/employees')) return Promise.resolve(EMPLOYEE_BODY);
+    if (url.includes('models/pricing')) return Promise.reject(new ApiError('missing', { status: 404, body: '', url }));
+    if (url.includes('hermes-usage')) return Promise.resolve(SHARE_MODEL_USAGE);
+    if (url.includes('budget-usage')) return Promise.resolve(ledger);
+    return Promise.resolve({});
+  };
+}
+
+async function mountEmployeeShare(ledger: unknown, entry = '/metrics?groupBy=employee'): Promise<void> {
+  api.fetchJsonStrict.mockReset();
+  api.fetchJsonStrict.mockImplementation(employeeShareRouter(ledger));
+  await render(
+    entry,
+    <>
+      <MetricsModulePage />
+      <LocationProbe />
+    </>,
+  );
+  await waitFor(settled, 'state settled');
+}
+
+const TWO_EMPLOYEE_LEDGER = {
+  items: [
+    { employeeId: 'emp_aaaabbbbcccc', costUsd: 3, runs: 7, updatedAt: '2026-11-19T03:20:00.000Z' },
+    { employeeId: 'emp_ddddeeeeffff', costUsd: 1, runs: 3, updatedAt: '2026-11-19T02:10:00.000Z' },
+  ],
+  missingEmployeeIds: [],
+};
+
+describe('MetricsModulePage — met8 cost share by employee', () => {
+  it('reads the employee ledger for ?groupBy=employee and names people, not ids', async () => {
+    await mountEmployeeShare(TWO_EMPLOYEE_LEDGER);
+
+    expect(document.querySelector('[data-testid="met7-table"]')).toBeNull();
+    expect(document.querySelector('[data-testid="met8-table"]')).not.toBeNull();
+    expect(document.querySelector('[data-testid="met8-row-aaaabbbb"]')).not.toBeNull();
+    expect(document.querySelector('[data-testid="met8-row-ddddeeee"]')).not.toBeNull();
+    expect(document.querySelector('[data-testid="met8-cost-aaaabbbb"]')?.textContent).toBe('$3.00');
+    expect(document.querySelector('[data-testid="met8-cost-ddddeeee"]')?.textContent).toBe('$1.00');
+    expect(document.querySelector('[data-testid="met8-runs-aaaabbbb"]')?.textContent).toBe('7');
+    expect(document.querySelector('[data-testid="met8-share-aaaabbbb"]')?.textContent).toBe('75.0%');
+    expect(document.querySelector('[data-testid="met8-share-ddddeeee"]')?.textContent).toBe('25.0%');
+    expect(text()).toContain('小鲤');
+    expect(text()).toContain('小满');
+    expect(text()).not.toContain('emp_aaaabbbbcccc');
+    expect(document.querySelector('[data-testid="met8-source"]')?.textContent).toContain('$4.00');
+  });
+
+  it('switches view once, keeps the address and refetches the new source exactly once', async () => {
+    api.fetchJsonStrict.mockReset();
+    api.fetchJsonStrict.mockImplementation(employeeShareRouter(TWO_EMPLOYEE_LEDGER));
+    await render(
+      '/metrics',
+      <>
+        <MetricsModulePage />
+        <LocationProbe />
+      </>,
+    );
+    await waitFor(settled, 'state settled');
+    expect(document.querySelector('[data-testid="met7-table"]')).not.toBeNull();
+
+    const before = urls();
+    const budgetBefore = before.filter((url) => url.includes('budget-usage')).length;
+    const usageBefore = before.filter((url) => url.includes('hermes-usage')).length;
+
+    await act(async () => {
+      (document.querySelector('[data-testid="met8-view-employee"]') as HTMLButtonElement).click();
+    });
+    await waitFor(() => document.querySelector('[data-testid="met8-table"]') !== null, 'employee table');
+
+    const after = urls();
+    expect(after.filter((url) => url.includes('budget-usage')).length - budgetBefore).toBe(1);
+    expect(after.filter((url) => url.includes('hermes-usage')).length).toBe(usageBefore);
+    expect(document.querySelector('[data-testid="met7-loc"]')?.textContent).toContain('groupBy=employee');
+    expect(document.querySelector('[data-testid="met7-table"]')).toBeNull();
+  });
+
+  it('falls back to the 8-character code when the directory has no name', async () => {
+    await mountEmployeeShare({
+      items: [{ employeeId: 'emp_9f3a1b2c4d5e6f70', costUsd: 2, updatedAt: '2026-11-19T03:20:00.000Z' }],
+      missingEmployeeIds: [],
+    });
+
+    expect(text()).toContain('员工 · 9F3A1B2C');
+    expect(text()).not.toContain('emp_9f3a1b2c4d5e6f70');
+    expect(document.querySelector('[data-testid="met8-runs-9f3a1b2c"]')?.textContent).toBe('—');
+    expect(document.querySelector('[data-testid="met8-share-9f3a1b2c"]')?.textContent).toBe('100.0%');
+  });
+
+  it('keeps a zero charge apart from a missing one in the employee view too', async () => {
+    await mountEmployeeShare({
+      items: [
+        { employeeId: 'emp_aaaabbbbcccc', costUsd: 0, updatedAt: '2026-11-19T03:20:00.000Z' },
+        { employeeId: 'emp_ddddeeeeffff', updatedAt: '2026-11-19T02:10:00.000Z' },
+      ],
+      missingEmployeeIds: [],
+    });
+
+    expect(document.querySelector('[data-testid="met8-cost-aaaabbbb"]')?.textContent).toBe('$0.00');
+    expect(document.querySelector('[data-testid="met8-cost-ddddeeee"]')?.textContent).toBe('—');
+    expect(document.querySelector('[data-testid="met8-share-aaaabbbb"]')?.textContent).toBe('—');
+    expect(text()).not.toContain('0.0%');
+  });
+});

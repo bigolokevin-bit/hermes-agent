@@ -51,6 +51,7 @@ import {
   parseSortDir,
   parseSortKey,
   shareOfCosts,
+  shortCode,
   sortModelCost,
   toCsv,
   usageTone,
@@ -134,7 +135,7 @@ type CmpState = { kind: 'loading' } | UsageBlock<CmpRow[]>;
 
 type ShareState =
   | { kind: 'loading' }
-  | UsageBlock<{ rows: ModelCostRow[]; asOf: string | null; days: number }>;
+  | UsageBlock<{ rows: ModelCostRow[]; asOf: string | null; days: number; source: 'model' | 'employee' }>;
 
 type BudgetState =
   | { kind: 'loading' }
@@ -263,6 +264,7 @@ export function MetricsModulePage() {
   const [params, setParams] = useSearchParams();
   const forced = readForced(params);
   const usageWindow = usageWindowOf(params.get('window'));
+  const groupBy: 'model' | 'employee' = params.get('groupBy') === 'employee' ? 'employee' : 'model';
   const sortKey = parseSortKey(params.get('sort'));
   const sortDir = parseSortDir(params.get('dir'), sortKey);
   const activeWindow = windowOf(params.get('w'));
@@ -625,6 +627,7 @@ export function MetricsModulePage() {
         tokensUsed: null,
         costUsd: row.costUsd,
         limitUsd: row.employeeId ? limits.get(row.employeeId) ?? null : null,
+        runs: null,
         updatedAt: row.asOf,
       }));
       if (!signal.live) return;
@@ -744,17 +747,51 @@ export function MetricsModulePage() {
     };
   }, [attempt, forced, loadCmp]);
 
-  const loadShare = useCallback(async (signal: { live: boolean }, windowId: UsageWindowId) => {
+  const loadShare = useCallback(async (signal: { live: boolean }, windowId: UsageWindowId, view: 'model' | 'employee') => {
     setShare({ kind: 'loading' });
-    const days = Math.max(1, Math.round(usageWindowOf(windowId).hours / 24));
+    const preset = usageWindowOf(windowId);
+    const days = Math.max(1, Math.round(preset.hours / 24));
     try {
-      const parsed = readModelCost(await fetchJsonStrict(`/agent-api/api/hermes-usage?days=${days}`));
-      if (!signal.live) return;
-      if (parsed.kind === 'invalid') {
-        setShare({ kind: 'unavailable', reason: parsed.reason, gap: USAGE_GAP, requestId: null });
+      if (view === 'model') {
+        const parsed = readModelCost(await fetchJsonStrict(`/agent-api/api/hermes-usage?days=${days}`));
+        if (!signal.live) return;
+        if (parsed.kind === 'invalid') {
+          setShare({ kind: 'unavailable', reason: parsed.reason, gap: USAGE_GAP, requestId: null });
+          return;
+        }
+        setShare({ kind: 'ready', value: { rows: parsed.rows, asOf: parsed.asOf, days, source: 'model' } });
         return;
       }
-      setShare({ kind: 'ready', value: { rows: parsed.rows, asOf: parsed.asOf, days } });
+      const directory = employeeIdsOf(await fetchJsonStrict('/agent-api/api/employees?limit=200'));
+      const now = new Date();
+      const dayKeys: string[] = [];
+      for (let back = days - 1; back >= 0; back -= 1) {
+        dayKeys.push(beijingDayKey(new Date(now.getTime() - back * 86_400_000)));
+      }
+      const bodies = await Promise.all(
+        dayKeys.flatMap((day) =>
+          chunkIds(directory.ids).map((ids) =>
+            fetchJsonStrict(
+              `/agent-api/api/budget-usage?employeeId=${ids.map(encodeURIComponent).join(',')}` +
+                `&periodKind=day&period=${encodeURIComponent(day)}`,
+            ),
+          ),
+        ),
+      );
+      const rows: LedgerRow[] = [];
+      for (const body of bodies) {
+        const parsed = readLedger(body);
+        if (parsed.kind === 'invalid') throw new ApiError(parsed.reason, { status: 200, body: '', url: 'budget-usage' });
+        rows.push(...parsed.rows);
+      }
+      const mapped: ModelCostRow[] = aggregateByEmployee(rows, directory.names).map((row) => ({
+        model: row.name ?? (row.employeeId ? `员工 · ${shortCode(row.employeeId)}` : '未署名员工'),
+        key: row.employeeId ? shortCode(row.employeeId) : undefined,
+        runs: row.runs,
+        costUsd: row.costUsd,
+      }));
+      if (!signal.live) return;
+      setShare({ kind: 'ready', value: { rows: mapped, asOf: ledgerAsOf(rows), days, source: 'employee' } });
     } catch (error) {
       if (!signal.live) return;
       setShare({ kind: 'unavailable', ...blockFailure(error) });
@@ -764,11 +801,11 @@ export function MetricsModulePage() {
   useEffect(() => {
     if (forced) return;
     const signal = { live: true };
-    void loadShare(signal, usageWindow.id);
+    void loadShare(signal, usageWindow.id, groupBy);
     return () => {
       signal.live = false;
     };
-  }, [attempt, forced, loadShare, usageWindow.id]);
+  }, [attempt, forced, groupBy, loadShare, usageWindow.id]);
 
   const view: PageState = forced
     ? forced === 'loading'
@@ -917,7 +954,7 @@ export function MetricsModulePage() {
     ? forced === 'loading'
       ? { kind: 'loading' }
       : forced === 'empty'
-        ? { kind: 'ready', value: { rows: [], asOf: null, days: Math.max(1, Math.round(usageWindow.hours / 24)) } }
+        ? { kind: 'ready', value: { rows: [], asOf: null, days: Math.max(1, Math.round(usageWindow.hours / 24)), source: groupBy } }
         : {
             kind: 'unavailable',
             reason:
@@ -934,13 +971,25 @@ export function MetricsModulePage() {
       ? (() => {
           const sorted = sortModelCost(shareView.value.rows, sortKey, sortDir);
           const shares = shareOfCosts(sorted.map((row) => row.costUsd));
-          return sorted.map((row, index) => ({ ...row, sharePct: shares[index], slug: row.model.replace(/[^0-9a-zA-Z]+/g, '-').toLowerCase() || `row-${index}` }));
+          return sorted.map((row, index) => {
+            const raw = row.key ?? row.model;
+            const slug = raw.replace(/[^0-9a-zA-Z]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || `row-${index}`;
+            return { ...row, sharePct: shares[index], slug };
+          });
         })()
       : [];
+  const sharePrefix = groupBy === 'employee' ? 'met8' : 'met7';
   const shareTotal = shareView.kind === 'ready' ? shareView.value.rows.reduce<number | null>((sum, row) => {
     if (row.costUsd === null) return sum;
     return (sum ?? 0) + row.costUsd;
   }, null) : null;
+
+  const chooseGroupBy = (next: 'model' | 'employee') => {
+    const query = new URLSearchParams(params);
+    if (next === 'employee') query.set('groupBy', 'employee');
+    else query.delete('groupBy');
+    setParams(query, { replace: true });
+  };
 
   const chooseSort = (next: ModelCostSort) => {
     const query = new URLSearchParams(params);
@@ -1697,31 +1746,53 @@ export function MetricsModulePage() {
           <div className="met7-share" data-testid="met7-share">
             <div className="met6-cat-head">
               <div>
-                <h3>按模型的成本分摊</h3>
-                <p className="met6-rowsub">只认账本实扣；上游没给出金额的模型显示「—」，不按 0 计，也不拿估算金额顶替。</p>
+                <h3>成本分摊</h3>
+                <p className="met6-rowsub">只认账本实扣；上游没给出金额的行显示「—」，不按 0 计，也不拿估算金额顶替。</p>
               </div>
             </div>
+            <div className="met7-view" role="group" aria-label="分摊视图">
+              <Button
+                size="sm"
+                outlined={groupBy !== 'model'}
+                aria-pressed={groupBy === 'model'}
+                onClick={() => chooseGroupBy('model')}
+                data-testid="met8-view-model"
+              >
+                按模型
+              </Button>
+              <Button
+                size="sm"
+                outlined={groupBy !== 'employee'}
+                aria-pressed={groupBy === 'employee'}
+                onClick={() => chooseGroupBy('employee')}
+                data-testid="met8-view-employee"
+              >
+                按员工
+              </Button>
+            </div>
             {shareView.kind === 'loading' ? (
-              <Card data-testid="met7-loading">
+              <Card data-testid={`${sharePrefix}-loading`}>
                 <CardContent className="p-4"><div className="met5-skeleton h-24 w-full" /></CardContent>
               </Card>
             ) : null}
             {shareView.kind === 'unavailable' ? (
-              <Card data-testid="met7-error">
+              <Card data-testid={`${sharePrefix}-error`}>
                 <CardContent className="space-y-2 p-4">
-                  <p className="font-medium">这份按模型的分摊暂时读不到</p>
+                  <p className="font-medium">这份成本分摊暂时读不到</p>
                   <p className="text-sm text-muted-foreground" title={shareView.gap ?? undefined}>{shareView.reason}</p>
                   <RequestId id={shareView.requestId} />
-                  <Button size="sm" outlined onClick={() => setAttempt((value) => value + 1)} data-testid="met7-retry">重试</Button>
+                  <Button size="sm" outlined onClick={() => setAttempt((value) => value + 1)} data-testid={`${sharePrefix}-retry`}>重试</Button>
                 </CardContent>
               </Card>
             ) : null}
             {shareView.kind === 'ready' && shareRows.length === 0 ? (
-              <Card data-testid="met7-empty">
+              <Card data-testid={`${sharePrefix}-empty`}>
                 <CardContent className="space-y-2 p-4">
-                  <p className="font-medium">这个窗口没有按模型的实扣记录</p>
+                  <p className="font-medium">
+                    {groupBy === 'employee' ? '这个窗口没有按员工的实扣记录' : '这个窗口没有按模型的实扣记录'}
+                  </p>
                   <p className="text-sm text-muted-foreground">
-                    上游没有返回任何模型的用量，因此不画空表、不报 0 条，也不把「没有记录」当成「花费 0」。
+                    上游没有返回任何{groupBy === 'employee' ? '员工的账本行' : '模型的用量'}，因此不画空表、不报 0 条，也不把「没有记录」当成「花费 0」。
                   </p>
                 </CardContent>
               </Card>
@@ -1729,21 +1800,27 @@ export function MetricsModulePage() {
             {shareView.kind === 'ready' && shareRows.length > 0 ? (
               <>
                 <div className="met6-table-scroll">
-                  <table className="met6-table" data-testid="met7-table">
+                  <table className="met6-table" data-testid={`${sharePrefix}-table`}>
                     <thead>
                       <tr>
                         <th scope="col" aria-sort={sortKey === 'model' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
-                          <button type="button" className="met7-sort" onClick={() => chooseSort('model')} data-testid="met7-sort-model">
-                            模型{sortKey === 'model' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
+                          <button
+                            type="button"
+                            className="met7-sort"
+                            onClick={() => chooseSort('model')}
+                            data-testid={`${sharePrefix}-sort-${groupBy === 'employee' ? 'name' : 'model'}`}
+                          >
+                            {groupBy === 'employee' ? '员工' : '模型'}
+                            {sortKey === 'model' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
                           </button>
                         </th>
                         <th scope="col" aria-sort={sortKey === 'runs' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
-                          <button type="button" className="met7-sort" onClick={() => chooseSort('runs')} data-testid="met7-sort-runs">
+                          <button type="button" className="met7-sort" onClick={() => chooseSort('runs')} data-testid={`${sharePrefix}-sort-runs`}>
                             运行数{sortKey === 'runs' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
                           </button>
                         </th>
                         <th scope="col" aria-sort={sortKey === 'cost' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
-                          <button type="button" className="met7-sort" onClick={() => chooseSort('cost')} data-testid="met7-sort-cost">
+                          <button type="button" className="met7-sort" onClick={() => chooseSort('cost')} data-testid={`${sharePrefix}-sort-cost`}>
                             成本{sortKey === 'cost' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
                           </button>
                         </th>
@@ -1752,25 +1829,25 @@ export function MetricsModulePage() {
                     </thead>
                     <tbody>
                       {shareRows.map((row) => (
-                        <tr key={row.model} data-testid={`met7-row-${row.slug}`}>
+                        <tr key={`${row.model}-${row.slug}`} data-testid={`${sharePrefix}-row-${row.slug}`}>
                           <td className="met7-model" title={row.model}>{row.model}</td>
                           <td
                             className="met6-num"
-                            data-testid={`met7-runs-${row.slug}`}
-                            title={row.runs === null ? '上游没有返回这个模型的运行计数' : '上游的会话计数'}
+                            data-testid={`${sharePrefix}-runs-${row.slug}`}
+                            title={row.runs === null ? '上游没有返回这一行的运行计数' : '上游的运行/会话计数'}
                           >
                             {formatCount(row.runs)}
                           </td>
                           <td
                             className="met6-num"
-                            data-testid={`met7-cost-${row.slug}`}
-                            title={row.costUsd === null ? '这个模型没有账本实扣行；不按 0 计' : '账本实扣 USD'}
+                            data-testid={`${sharePrefix}-cost-${row.slug}`}
+                            title={row.costUsd === null ? '这一行没有账本实扣；不按 0 计' : '账本实扣 USD'}
                           >
                             {formatUsd(row.costUsd)}
                           </td>
                           <td
                             className="met6-num"
-                            data-testid={`met7-share-${row.slug}`}
+                            data-testid={`${sharePrefix}-share-${row.slug}`}
                             title={row.sharePct === null ? '可读到的实扣金额为 0 或缺失，无法分摊' : '按可读到的实扣金额归一'}
                           >
                             {row.sharePct === null ? '—' : `${row.sharePct.toFixed(1)}%`}
@@ -1780,11 +1857,12 @@ export function MetricsModulePage() {
                     </tbody>
                   </table>
                 </div>
-                <p className="met6-source" data-testid="met7-source">
-                  来源：模型用量 · 截至 {shareView.value.asOf ? formatBeijing(shareView.value.asOf) : '—'} · 窗口{' '}
-                  {shareView.value.days} 天 · 可读实扣合计 <span className="font-mono">{formatUsd(shareTotal)}</span>
+                <p className="met6-source" data-testid={`${sharePrefix}-source`}>
+                  来源：{groupBy === 'employee' ? '员工账本' : '模型用量'} · 截至{' '}
+                  {shareView.value.asOf ? formatBeijing(shareView.value.asOf) : '—'} · 窗口 {shareView.value.days} 天 · 可读实扣合计{' '}
+                  <span className="font-mono">{formatUsd(shareTotal)}</span>
                 </p>
-                <p className="met6-hint" data-testid="met7-hint">
+                <p className="met6-hint" data-testid={`${sharePrefix}-hint`}>
                   占比按可读到的实扣金额归一，合计 100%；缺金额的行不参与分摊，显示「—」。排序写在地址里，刷新与前进后退都保留。
                 </p>
               </>
