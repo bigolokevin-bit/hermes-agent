@@ -746,3 +746,11 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - vitest exit=0 原文：`Test Files  118 passed (118)` / `Tests  1141 passed (1141)`。
 - redirects=24 vs 门定值 23 notes 归因照旧（门值更新归 L0/A）。L0 声明此后主分支冻结至 R14 判词落地。
 - 收口：commit `chore(gates): full gate ledger stamped at 07027950 (entry 7AT3YJpH)`，push lane/hermes-console，ls-remote 双证，本车道 porcelain 归零。
+
+
+## 门禁三十五轮·代次重章 @ cd2806fc（2026-11-19 14:4x，L0 放行令 ≤15:00 达成）
+
+- 基准：HEAD=远端 tip=**cd2806fc**（gov d277839e + aud b3c54a05 + R5 b2bb7ae0/cd2806fc 合入），porcelain=0；entry `assets/index-CGq0XFXV.js` 154699B sha256 `b45b11bd…5076d4ea` 开工+拍后双 curl served==磁盘==卡面；9122 pid 99197 root 200、18 路由 200。R5 自报 BNdfCaLs 盘上不存在，账本按 CGq0XFXV（卡面明令）。
+- 九件全章 headHash=cd2806fc，tmp+os.replace 原子、单文件单 JSON+exitCode：ia-react ok{51,22,1,8} / ia-html ok(tabsAll23) / lint-fake ok v0 / lint-reuse ok v0 e1 / crawl-anon ok（DL0 CE0 PE0 routesCE=43 denied=31 heads=35 median=159）/ crawl-auth ok（DL0 CE0 PE0 routesCE=22 denied=18 heads=26 median=188）/ shots ok 102/102 failures=[] obsCE=0 三键=卡面 distinctMainHeads=26 median=191.0 拍窗 14:48:30-14:49:18 / shots-anon auxiliary 19/19 / state-quad ok 20/20。
+- vitest exit=0：`Test Files  118 passed (118)` / `Tests  1148 passed (1148)`=卡面。redirects=24 notes 归因照旧。
+- 收口：commit 'chore(gates): full gate ledger stamped at cd2806fc (entry CGq0XFXV)'，push，ls-remote 双证，本车道 porcelain=0。禁改 web/src 全程遵守。

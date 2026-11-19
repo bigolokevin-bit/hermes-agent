@@ -7,25 +7,25 @@
 
 | route (hash) | label | vp | HTTP | main chars | main>0 | empty? | error? | overflow px | differsFromRoot | png bytes | console err |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `#/approvals` | 待处理 | 1440 | 200 | 166 | yes | - | yes | 0 | yes | 79234 | 1 |
-| `#/approvals?tab=history` | 历史决策 | 1440 | 200 | 212 | yes | - | yes | 0 | yes | 92072 | 1 |
-| `#/approvals?tab=mine` | 待处理 | 1440 | 200 | 166 | yes | - | yes | 0 | yes | 79216 | 1 |
-| `#/approvals?tab=pending&view=mine` | 待处理 | 1440 | 200 | 166 | yes | - | yes | 0 | yes | 78815 | 1 |
-| `#/approvals?tab=pending&view=release` | 待处理 | 1440 | 200 | 166 | yes | - | yes | 0 | yes | 79449 | 1 |
-| `#/approvals?tab=policy` | 待处理 | 1440 | 200 | 166 | yes | - | yes | 0 | yes | 78898 | 1 |
-| `#/approvals?tab=release` | 待处理 | 1440 | 200 | 166 | yes | - | yes | 0 | yes | 78727 | 1 |
-| `#/employees` | 列表 | 1440 | 200 | 127 | yes | - | - | 0 | yes | 69808 | 2 |
-| `#/employees?tab=matrix` | 能力与权限 | 1440 | 200 | 226 | yes | - | - | 0 | yes | 89559 | 1 |
-| `#/overview` | 值班台 | 1440 | 200 | 732 | yes | yes | yes | 0 | no | 134370 | 11 |
-| `#/overview?tab=usage` | 用量与成本 | 1440 | 200 | 152 | yes | - | - | 0 | yes | 73823 | 1 |
-| `#/system` | 系统健康 | 1440 | 200 | 267 | yes | yes | yes | 0 | yes | 92304 | 3 |
-| `#/system?tab=defaults` | 默认设置 | 1440 | 200 | 121 | yes | - | yes | 0 | yes | 69303 | 1 |
-| `#/system?tab=events` | 审计事件 | 1440 | 200 | 676 | yes | yes | yes | 0 | yes | 94986 | 1 |
-| `#/system?tab=events&view=anomaly` | 审计事件 | 1440 | 200 | 676 | yes | yes | yes | 0 | yes | 94673 | 1 |
-| `#/system?tab=retention` | 审计事件 | 1440 | 200 | 676 | yes | yes | yes | 0 | yes | 94849 | 1 |
-| `#/system?tab=security` | 审计事件 | 1440 | 200 | 676 | yes | yes | yes | 0 | yes | 95123 | 1 |
-| `#/system?tab=version` | 版本 | 1440 | 200 | 406 | yes | - | - | 0 | yes | 119021 | 1 |
-| `#/work?tab=runs` | 运行 | 1440 | 200 | 265 | yes | - | yes | 0 | yes | 87584 | 1 |
+| `#/approvals` | 待处理 | 1440 | 200 | 166 | yes | - | yes | 0 | yes | 79303 | 1 |
+| `#/approvals?tab=history` | 历史决策 | 1440 | 200 | 212 | yes | - | yes | 0 | yes | 92216 | 1 |
+| `#/approvals?tab=mine` | 待处理 | 1440 | 200 | 166 | yes | - | yes | 0 | yes | 79112 | 1 |
+| `#/approvals?tab=pending&view=mine` | 待处理 | 1440 | 200 | 166 | yes | - | yes | 0 | yes | 78959 | 1 |
+| `#/approvals?tab=pending&view=release` | 待处理 | 1440 | 200 | 166 | yes | - | yes | 0 | yes | 79131 | 1 |
+| `#/approvals?tab=policy` | 待处理 | 1440 | 200 | 166 | yes | - | yes | 0 | yes | 79056 | 1 |
+| `#/approvals?tab=release` | 待处理 | 1440 | 200 | 166 | yes | - | yes | 0 | yes | 78949 | 1 |
+| `#/employees` | 列表 | 1440 | 200 | 127 | yes | - | - | 0 | yes | 69689 | 2 |
+| `#/employees?tab=matrix` | 能力与权限 | 1440 | 200 | 226 | yes | - | - | 0 | yes | 90072 | 1 |
+| `#/overview` | 值班台 | 1440 | 200 | 732 | yes | yes | yes | 0 | no | 134299 | 11 |
+| `#/overview?tab=usage` | 用量与成本 | 1440 | 200 | 152 | yes | - | - | 0 | yes | 73599 | 1 |
+| `#/system` | 系统健康 | 1440 | 200 | 267 | yes | yes | yes | 0 | yes | 92385 | 3 |
+| `#/system?tab=defaults` | 默认设置 | 1440 | 200 | 121 | yes | - | yes | 0 | yes | 69445 | 1 |
+| `#/system?tab=events` | 审计事件 | 1440 | 200 | 676 | yes | yes | yes | 0 | yes | 95133 | 1 |
+| `#/system?tab=events&view=anomaly` | 审计事件 | 1440 | 200 | 676 | yes | yes | yes | 0 | yes | 94911 | 1 |
+| `#/system?tab=retention` | 审计事件 | 1440 | 200 | 676 | yes | yes | yes | 0 | yes | 94878 | 1 |
+| `#/system?tab=security` | 审计事件 | 1440 | 200 | 676 | yes | yes | yes | 0 | yes | 94760 | 1 |
+| `#/system?tab=version` | 版本 | 1440 | 200 | 406 | yes | - | - | 0 | yes | 118473 | 1 |
+| `#/work?tab=runs` | 运行 | 1440 | 200 | 265 | yes | - | yes | 0 | yes | 87629 | 1 |
 
 - routes with empty main (any viewport): none
 - routes with no <main> element at all: none

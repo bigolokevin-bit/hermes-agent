@@ -9,25 +9,25 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 1012,
+    "textLen": 729,
     "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 — / 2 可上岗 3 项检查的数据源尚未",
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 27,
+  "distinctMainHeads": 26,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
     {
       "route": "#/access",
       "viewport": "1440",
-      "chars": 202,
+      "chars": 194,
       "hasMainEl": true
     },
     {
       "route": "#/access",
       "viewport": "375",
-      "chars": 202,
+      "chars": 194,
       "hasMainEl": true
     },
     {
@@ -153,7 +153,7 @@
     {
       "route": "#/capabilities?tab=models",
       "viewport": "1440",
-      "chars": 391,
+      "chars": 104,
       "hasMainEl": true
     },
     {
@@ -231,7 +231,7 @@
     {
       "route": "#/employees/:employeeId?zone=evidence",
       "viewport": "375",
-      "chars": 51,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -333,13 +333,13 @@
     {
       "route": "#/identity?tab=roles",
       "viewport": "1440",
-      "chars": 202,
+      "chars": 194,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=roles",
       "viewport": "375",
-      "chars": 202,
+      "chars": 194,
       "hasMainEl": true
     },
     {
@@ -585,7 +585,7 @@
     {
       "route": "#/work",
       "viewport": "1440",
-      "chars": 1782,
+      "chars": 145,
       "hasMainEl": true
     },
     {
@@ -634,7 +634,7 @@
   "consoleErrorsObservedByShots": 0,
   "consoleErrorRoutesObservedByShots": [],
   "ceAuthority": "login-state",
-  "routesWithEnvOnlyConsoleErrors": 22,
+  "routesWithEnvOnlyConsoleErrors": 21,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
   "overflowing": [],
   "driver": {
@@ -642,14 +642,14 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "07027950",
-  "entry": "assets/index-7AT3YJpH.js",
-  "entrySha256": "4f4d505e45bed3bc9f7408429356fd90cba6726288be0d4d3ed119fe6aa4b9bf",
-  "entryBytes": 154237,
-  "medianMainChars": 194.0,
-  "shotWindow": "14:22:53-14:23:49 local",
-  "servedEntryBefore": "assets/index-7AT3YJpH.js",
-  "servedEntryAfter": "assets/index-7AT3YJpH.js",
+  "headHash": "cd2806fc",
+  "entry": "assets/index-CGq0XFXV.js",
+  "entrySha256": "b45b11bd304b59411cba33a949b5544496d73d2bfae94cd23ef69a3a5076d4ea",
+  "entryBytes": 154699,
+  "medianMainChars": 191.0,
+  "shotWindow": "14:48:30-14:49:18 local",
+  "servedEntryBefore": "assets/index-CGq0XFXV.js",
+  "servedEntryAfter": "assets/index-CGq0XFXV.js",
   "env": "9122 proxy-live (anon 401 / auth 200); CE 权威=登录态, 观察字段仅旁证",
   "ceCaliber": "ceAuthority=login-state; crawl-auth routesCE=22 denied=18; crawl-anon routesCE=43 denied=31; ok 不含 CE 项（L0 二十九轮裁定落码）",
   "anonEvidence": "crawl-anon ok=True exit=0 probed=75 DL=0 CE=0 PE=0 routesCE=43(env 旁证); shots-anon 辅助腿见 shots-anon-summary.json",
