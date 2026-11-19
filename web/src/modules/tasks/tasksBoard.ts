@@ -28,7 +28,16 @@ export interface TaskRow {
   cost?: number;
 }
 
+export interface TaskEvent {
+  eventId?: string;
+  kind?: string;
+  note?: string;
+  at?: string;
+}
+
 export interface TaskDetail extends TaskRow {
+  /** R32: real answers may carry events; missing means "no events", never invented. */
+  events?: TaskEvent[];
   description?: string;
   statusReason?: string;
   createdBy?: Actor | null;
@@ -111,6 +120,18 @@ export function normalizeDetail(v: unknown): TaskDetail | null {
       }
     : null;
   return {
+    events: Array.isArray(v.events)
+      ? (v.events as unknown[]).map((raw) => {
+          const ev = (raw ?? {}) as Record<string, unknown>;
+          return {
+            eventId: str(ev.eventId ?? ev.id),
+            kind: str(ev.kind ?? ev.type ?? ev.action),
+            note: str(ev.note ?? ev.message ?? ev.summary),
+            at: str(ev.at ?? ev.createdAt ?? ev.created_at ?? ev.occurredAt),
+          };
+        })
+      : undefined,
+
     ...base,
     description: str(v.description),
     statusReason: str(v.statusReason),

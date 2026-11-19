@@ -123,6 +123,42 @@ describe("TasksBoardModulePage", () => {
     expect(container.textContent).toContain("把本周数据整理成一页");
     expect(container.textContent).toContain("人工创建");
     expect(container.textContent).toContain("人员");
+    // R32: no events key in the answer -> honest 无事件; drawer states it has no deep link.
+    expect(container.textContent).toContain("无事件");
+    expect(container.querySelector('[data-testid="tsk4-detail-note"]')).toBeTruthy();
+  });
+
+  it("lists up to three events when the detail answer carries them (R32)", async () => {
+    const withEvents = {
+      ...resolveDetail(),
+      events: [
+        { eventId: "evt_1", kind: "created", note: "任务建立", at: "2026-11-17T02:00:00Z" },
+        { eventId: "evt_2", kind: "assigned", note: "指派给员工", at: "2026-11-17T03:00:00Z" },
+        { eventId: "evt_3", kind: "progress", note: "第三条", at: "2026-11-17T04:00:00Z" },
+        { eventId: "evt_4", kind: "progress", note: "第四条不应出现", at: "2026-11-17T05:00:00Z" },
+      ],
+    };
+    vi.mocked(fetchJSON).mockImplementation((url: unknown) =>
+      Promise.resolve(
+        String(url).includes("/task-detail")
+          ? withEvents
+          : String(url).includes("/api/matrix")
+            ? resolveDirectory()
+            : resolveBoard(String(url)),
+      ),
+    );
+    await render();
+    const card = container.querySelector('[data-testid="tsk4-card-tsk_open_1"]');
+    expect(card).toBeTruthy();
+    await act(async () => {
+      (card as HTMLElement).click();
+    });
+    await act(async () => {});
+    expect(container.textContent).toContain("任务建立");
+    expect(container.textContent).toContain("指派给员工");
+    expect(container.textContent).toContain("第三条");
+    expect(container.textContent).not.toContain("第四条");
+    expect(container.textContent).toContain("2026-11-17 10:00");
   });
 
   it("shows the five forced phases", async () => {
