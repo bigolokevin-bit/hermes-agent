@@ -11,6 +11,7 @@
  * 摘要) live in `title` attributes, never on screen.
  */
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Link, useSearchParams } from "react-router";
 import { ArrowRight, BookOpen, Copy, RefreshCw, Search } from "lucide-react";
 import { Badge } from "@nous-research/ui/ui/components/badge";
@@ -27,6 +28,8 @@ import {
   KNOWLEDGE_GAP,
   RECORDS_URL,
   SESSIONS_URL,
+  DOC_DETAIL_UNWIRED_HEAD,
+  DOC_DETAIL_UNWIRED_HUMAN,
   DOCUMENTS_UNWIRED_HEAD,
   DOCUMENTS_UNWIRED_HUMAN,
   SEARCH_UNWIRED_HEAD,
@@ -47,9 +50,11 @@ import {
   INGEST_STATUS_UNWIRED_HEAD,
   INGEST_STATUS_UNWIRED_HUMAN,
   INGEST_STATUS_URL,
+  documentDetailUrl,
   documentsUrl,
   initialTab,
   readCitations,
+  readDocDetail,
   readRecords,
   readRows,
   readSearch,
@@ -60,6 +65,7 @@ import {
   searchUrl,
   sessionCitations,
   type CitationRow,
+  type DocDetailRow,
   type DocRow,
   type IngestTaskRow,
   type KnowledgeRow,
@@ -667,6 +673,207 @@ function SpacesSurface({ nonce, spaceLink }: { nonce: string; spaceLink: (id: st
 }
 
 /**
+ * The in-place document drawer. It opens over the list instead of navigating, so the
+ * row keeps its place, the browser history stays clean and the address carries only
+ * `?doc=<id>` — refresh and back reproduce it. Nothing is rendered as body text or an
+ * excerpt unless a port actually returned it: the fields that come from the loaded list
+ * say so, and 来源与读取状态 wait on the per-document read.
+ */
+function DocPreviewDrawer({
+  nonce,
+  docId,
+  row,
+  onClose,
+}: {
+  nonce: string;
+  docId: string;
+  row: DocRow | null;
+  onClose: () => void;
+}): ReactNode {
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const closeRef = useRef<HTMLButtonElement | null>(null);
+  const surface = useSurface<DocDetailRow>(
+    () => fetchJsonStrict(documentDetailUrl(docId)).then(readDocDetail),
+    `doc-detail|${nonce}|${docId}`,
+  );
+  const detail = surface.state.kind === "ready" ? surface.state.value.rows[0] ?? null : null;
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const nodes = panelRef.current?.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input, [tabindex]:not([tabindex="-1"])',
+      );
+      if (!nodes || nodes.length === 0) return;
+      const first = nodes[0];
+      const last = nodes[nodes.length - 1];
+      const active = document.activeElement;
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  useEffect(() => {
+    closeRef.current?.focus();
+  }, []);
+
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <div className="kn7-preview-scrim" data-testid="kn7-preview-backdrop" onClick={onClose}>
+      <div
+        ref={panelRef}
+        className="kn7-preview"
+        data-testid="kn7-preview-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="kn7-preview-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="kn7-preview-head">
+          <h2 id="kn7-preview-title" data-testid="kn7-preview-title">
+            {row?.name ?? "这份文档"}
+          </h2>
+          <button
+            ref={closeRef}
+            type="button"
+            className="knw5-drill"
+            data-testid="kn7-preview-close"
+            onClick={onClose}
+          >
+            关闭（Esc）
+          </button>
+        </div>
+
+        <dl className="knw5-ref-detail" data-testid="kn3-docs-detail" title={row?.id || undefined}>
+          <div>
+            <dt>文档名</dt>
+            <dd
+              data-testid="kn7-preview-field-name"
+              title={row?.nameHint ?? (row ? undefined : "这条不在当前已加载的列表里")}
+            >
+              <span data-testid="kn3-docs-detail-name">{row?.name ?? "—"}</span>
+            </dd>
+          </div>
+          <div>
+            <dt>原文位置</dt>
+            <dd>
+              {row?.href ? (
+                <Link className="knw5-link" data-testid="kn3-docs-detail-open" to={row.href}>
+                  打开原文
+                </Link>
+              ) : (
+                <span data-testid="kn3-docs-detail-unreachable">
+                  原文不可达 · {row?.unreachable ?? "这条不在当前已加载的列表里，位置只能等详情口接上。"}
+                </span>
+              )}
+            </dd>
+          </div>
+          <div>
+            <dt>类型</dt>
+            <dd data-testid="kn7-preview-field-type" title={row ? (row.typeHint ?? (row.typeRaw ?? undefined)) : "这条不在当前已加载的列表里"}>
+              {row?.type ?? "—"}
+            </dd>
+          </div>
+          <div>
+            <dt>大小</dt>
+            <dd data-testid="kn7-preview-field-size" title={row ? (row.sizeHint ?? undefined) : "这条不在当前已加载的列表里"}>
+              {row?.size ?? "—"}
+            </dd>
+          </div>
+          <div>
+            <dt>更新时间</dt>
+            <dd data-testid="kn7-preview-field-updated" title={row ? (row.atHint ?? undefined) : "这条不在当前已加载的列表里"}>
+              {row?.at ?? "—"}
+            </dd>
+          </div>
+        </dl>
+
+        <dl className="kn7-preview-fields" data-testid="kn7-preview-fields">
+          <div>
+            <dt>来源</dt>
+            <dd data-testid="kn7-preview-field-source" title={detail?.sourceReason ?? undefined}>
+              {detail?.source ?? "—"}
+              {detail === null ? (
+                <span className="knw5-sub" data-testid="kn7-preview-field-pending">
+                  {surface.state.kind === "loading"
+                    ? "正在读这份文档的来源。"
+                    : surface.state.kind === "unwired"
+                      ? "详情读口没接上，来源读不到。"
+                      : "这次没读到来源。"}
+                </span>
+              ) : null}
+            </dd>
+          </div>
+          <div>
+            <dt>读取状态</dt>
+            <dd data-testid="kn7-preview-field-status" title={detail?.statusReason ?? undefined}>
+              {detail?.status ?? "—"}
+            </dd>
+          </div>
+        </dl>
+
+        {surface.state.kind === "loading" ? <Skeleton testid="kn7-preview-loading" /> : null}
+
+        {surface.state.kind === "unwired" ? (
+          <div className="knw5-unwired" data-testid="kn7-preview-unwired" role="status" title={KNOWLEDGE_GAP}>
+            <b>{DOC_DETAIL_UNWIRED_HEAD}</b>
+            <span className="knw5-wrap">{DOC_DETAIL_UNWIRED_HUMAN}</span>
+            <RequestId id={surface.state.requestId} testid="kn7-preview-request-id" />
+            <span className="knw5-actions">
+              <Button size="sm" outlined onClick={surface.retry} data-testid="kn7-preview-retry">
+                重试
+              </Button>
+              <ApplyLink testid="kn7-preview-apply" />
+            </span>
+          </div>
+        ) : null}
+
+        {surface.state.kind === "login" ? (
+          <div className="knw5-empty" data-testid="kn7-preview-login" role="status">
+            <b>需要登录</b>
+            <span className="knw5-wrap">登录状态已经失效，重新登录后再打开这份文档的详情。</span>
+            <Button size="sm" outlined onClick={surface.retry} data-testid="kn7-preview-retry">
+              重试
+            </Button>
+          </div>
+        ) : null}
+
+        {surface.state.kind === "error" ? (
+          <div className="knw5-error" data-testid="kn7-preview-error" role="alert">
+            <b>这次没能读到这份文档的详情</b>
+            <span className="knw5-wrap">{surface.state.message}</span>
+            <RequestId id={surface.state.requestId} testid="kn7-preview-request-id" />
+            <Button size="sm" outlined onClick={surface.retry} data-testid="kn7-preview-retry">
+              重试
+            </Button>
+          </div>
+        ) : null}
+
+        {detail?.excerpt ? (
+          <p className="knw5-sub" data-testid="kn7-preview-excerpt" title={detail.excerpt}>
+            上游给出的摘录：{detail.excerpt}
+          </p>
+        ) : null}
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+/**
  * The document list of one space. Every row is a real focusable anchor: it opens that
  * row's own detail, which either links to the original or says why it cannot be opened.
  * The name box filters only what this read already returned, and says so on screen.
@@ -737,12 +944,14 @@ function SpaceDetailSurface({
   openDoc,
   docLink,
   backLink,
+  onCloseDoc,
 }: {
   nonce: string;
   spaceId: string;
   openDoc: string;
   docLink: (key: string) => string;
   backLink: string;
+  onCloseDoc: () => void;
 }): ReactNode {
   const [filter, setFilter] = useState("");
   const surface = useSurface<DocRow>(
@@ -804,46 +1013,11 @@ function SpaceDetailSurface({
             </p>
           )
         }
-        render={(value) => (
-          <>
-            <DocTable rows={value.rows} docLink={docLink} openKey={openDoc} />
-            {openRow ? (
-              <dl className="knw5-ref-detail" data-testid="kn3-docs-detail" title={openRow.id || undefined}>
-                <div>
-                  <dt>文档</dt>
-                  <dd data-testid="kn3-docs-detail-name" title={openRow.nameHint ?? undefined}>
-                    {openRow.name}
-                  </dd>
-                </div>
-                <div>
-                  <dt>原文位置</dt>
-                  <dd>
-                    {openRow.href ? (
-                      <Link className="knw5-link" data-testid="kn3-docs-detail-open" to={openRow.href}>
-                        打开原文
-                      </Link>
-                    ) : (
-                      <span data-testid="kn3-docs-detail-unreachable">原文不可达 · {openRow.unreachable}</span>
-                    )}
-                  </dd>
-                </div>
-                <div>
-                  <dt>类型</dt>
-                  <dd title={openRow.typeHint ?? (openRow.typeRaw ?? undefined)}>{openRow.type}</dd>
-                </div>
-                <div>
-                  <dt>大小</dt>
-                  <dd title={openRow.sizeHint ?? undefined}>{openRow.size}</dd>
-                </div>
-                <div>
-                  <dt>更新</dt>
-                  <dd title={openRow.atHint ?? undefined}>{openRow.at}</dd>
-                </div>
-              </dl>
-            ) : null}
-          </>
-        )}
+        render={(value) => <DocTable rows={value.rows} docLink={docLink} openKey={openDoc} />}
       />
+      {openDoc !== "" ? (
+        <DocPreviewDrawer nonce={nonce} docId={openDoc} row={openRow} onClose={onCloseDoc} />
+      ) : null}
     </>
   );
 }
@@ -1375,7 +1549,14 @@ export default function KnowledgeModulePage() {
     setSp(next);
   };
 
-  /** In-page addresses: the space detail is a query state, not a new route. */
+  /** The row the drawer was opened from, so closing puts focus back on it. */
+function containerQuery(key: string): HTMLElement | null {
+  if (typeof document === "undefined") return null;
+  const anchors = Array.from(document.querySelectorAll<HTMLElement>('a[data-testid="kn3-docs-name"]'));
+  return anchors.find((node) => (node.getAttribute("href") ?? "").includes(`doc=${key}`)) ?? null;
+}
+
+/** In-page addresses: the space detail is a query state, not a new route. */
   const keepBase = () => {
     const next = new URLSearchParams(sp);
     if (!next.get("tab")) next.set("tab", "spaces");
@@ -1388,11 +1569,12 @@ export default function KnowledgeModulePage() {
     next.delete("doc");
     return `/knowledge?${next.toString()}`;
   };
+  // Opening a row writes ?doc=<id>; the row that is already open links to itself and
+  // the drawer's own close clears the parameter, so re-clicking never double-toggles.
   const docLink = (key: string) => {
     const next = keepBase();
     next.set("space", spaceId);
-    if (openDoc === key) next.delete("doc");
-    else next.set("doc", key);
+    next.set("doc", key);
     return `/knowledge?${next.toString()}`;
   };
   /** The top keyword box keeps its own opened row, so it never moves the
@@ -1416,6 +1598,16 @@ export default function KnowledgeModulePage() {
     next.delete("q");
     next.delete("sdoc");
     setSp(next);
+  };
+
+  const closeDocDrawer = () => {
+    const key = openDoc;
+    const next = new URLSearchParams(sp);
+    next.delete("doc");
+    setSp(next);
+    // Rows stay mounted while the drawer closes, so focus can go back in this tick.
+    const anchor = containerQuery(key);
+    anchor?.focus();
   };
 
   const backLink = (() => {
@@ -1515,6 +1707,7 @@ export default function KnowledgeModulePage() {
                     openDoc={openDoc}
                     docLink={docLink}
                     backLink={backLink}
+                    onCloseDoc={closeDocDrawer}
                   />
                 )
               ) : null}

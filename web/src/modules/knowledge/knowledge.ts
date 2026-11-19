@@ -76,6 +76,14 @@ export const SEARCH_UNWIRED_HEAD = "检索未接入";
 export const SEARCH_UNWIRED_HUMAN =
   "知识库的检索接口尚未接入本控制台，或当前账号没有查看它的权限。现在这里搜不出结果：接口没通时不编命中、不给命中数、不放样例。要读已被引用的内容，可看「证据与引用」里会话留下的引用；要开通这枚读口，去审批中心提交申请。";
 
+/**
+ * The document drawer's own honest body: the list read may have given this row, but
+ * its source and read state come from a detail port that is not wired.
+ */
+export const DOC_DETAIL_UNWIRED_HEAD = "文档详情未接入";
+export const DOC_DETAIL_UNWIRED_HUMAN =
+  "单份文档的详情接口尚未接入本控制台，或当前账号没有查看它的权限。这里只列出读口真正给过的字段：文档名、类型、大小与更新时间来自已经加载的文档列表，来源与读取状态要等详情口接上才会出现。抽屉不编正文、不编摘要，也不猜读取状态。";
+
 export const DOCUMENTS_UNWIRED_HEAD = "文档登记读口未接入";
 export const DOCUMENTS_UNWIRED_HUMAN =
   "文档登记接口尚未接入本控制台，或当前账号没有查看它的权限。接入或开通后，这里会列出真实登记的文档与其数量、更新时间和状态；在此之前不展示样例，也不写「0 篇」。";
@@ -111,6 +119,21 @@ export const DOCUMENTS_URL = "/agent-api/api/documents?limit=50";
  * so `spaceId` is the natural filter once it is wired but is NOT proven server-side.
  * That is also why the 名称 filter on this surface is local and says so.
  */
+/**
+ * One document's own detail. Probed 2026-11-20 with the login cookie:
+ * `/api/documents/<id>`, `/api/knowledge/documents/<id>`,
+ * `/api/knowledge/spaces/<id>/documents`, `/api/knowledge/spaces/<id>/documents/<docId>`,
+ * `/api/documents/<id>/preview` and `/api/knowledge/documents/<id>/content` all answer
+ * `404 console.unknown_route` (rids a926411cc2, 54d70ddf12, a6df8e6e82, 4a0c167129,
+ * edc16abbff, 8bd14272a5); the only route the BFF names for documents is the list read
+ * `/api/documents` (`documents.read_not_wired`). So the drawer's 来源与读取状态 has no
+ * port to read today, and says 「文档详情未接入」 instead of inventing body text, an
+ * excerpt or a read state.
+ */
+export function documentDetailUrl(documentId: string): string {
+  return `/agent-api/api/documents/${encodeURIComponent(documentId)}`;
+}
+
 export function documentsUrl(spaceId: string): string {
   const params = new URLSearchParams();
   params.set("limit", "50");
@@ -1517,4 +1540,53 @@ export function initialTab(value: string | null, panel: string | null = null): K
   if (tab === "retrieval" || tab === "search") return "retrieval";
   if (tab === "evidence" || tab === "citations") return "evidence";
   return "spaces";
+}
+
+/**
+ * What a detail port would answer: where the document is actually read from, and the
+ * status of that read. Both are absent until a port exists, and the page says so.
+ */
+export interface DocDetailRow {
+  source: string;
+  sourceRaw: string | null;
+  sourceReason: string | null;
+  status: string;
+  statusRaw: string | null;
+  statusReason: string | null;
+  excerpt: string | null;
+  excerptReason: string | null;
+  at: string;
+  atRaw: string | null;
+  atReason: string | null;
+}
+
+function detailOf(body: unknown): SurfaceValue<DocDetailRow> {
+  const envelope = stampOf(body);
+  const rows = rowsOf(body);
+  const row: Rec = rows !== null && rows.length > 0 ? rows[0] : isRecord(body) ? body : {};
+  const source = sourceOf(row);
+  const statusRaw = pickString(row.status, row.state, row.readStatus, row.read_status, row.indexStatus, row.index_status);
+  const moment = momentOf(row);
+  const at = beijing(moment.atRaw);
+  const excerpt = summaryOf(row);
+  return {
+    rows: [{
+      ...source,
+      status: statusRaw ? ingestStatusLabel(statusRaw) : "—",
+      statusRaw,
+      statusReason: statusRaw ? null : "上游没有给出读取状态",
+      excerpt: excerpt.summary,
+      excerptReason: excerpt.summary ? null : "上游没有给出可展示的摘录",
+      at: at ?? "—",
+      atRaw: moment.atRaw,
+      atReason: at ? null : moment.atRaw ? "上游给的时间读不出是哪一刻" : "上游没有给出时间",
+    }],
+    ...envelope,
+    scanned: null,
+  };
+}
+
+/** One document's detail, from the per-document read. */
+export function readDocDetail(body: unknown): SurfaceValue<DocDetailRow> {
+  return detailOf(body);
 }

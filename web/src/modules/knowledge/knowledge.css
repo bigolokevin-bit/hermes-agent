@@ -606,3 +606,109 @@
     flex: 1 1 100%;
   }
 }
+
+/* R49 — the in-place document drawer. It never changes the route, so it is an
+   overlay portalled to the document: fixed to the viewport, capped by the viewport
+   width, and never allowed to add a horizontal scrollbar at 1440 / 1280 / 375.
+   z-index sits above the shell chrome (measured: the mobile header is z=40 and the
+   sidebar z=50), otherwise part of the backdrop is unclickable and clicking there
+   would not dismiss the drawer. */
+.kn7-preview-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  max-width: 100vw;
+  overflow: hidden;
+  padding: 16px 12px;
+  background: color-mix(in srgb, var(--color-foreground) 45%, transparent);
+}
+
+.kn7-preview {
+  display: flex;
+  box-sizing: border-box;
+  min-width: 0;
+  width: min(560px, 100%);
+  max-height: calc(100vh - 32px);
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 14px 16px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-card);
+  color: var(--color-card-foreground);
+}
+
+.kn7-preview-head {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.kn7-preview-head h2 {
+  min-width: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.kn7-preview-fields {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 18px;
+  margin: 0;
+  padding: 10px 0 0;
+  border-top: 1px dashed var(--color-border);
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+.kn7-preview-fields > div,
+.kn7-preview .knw5-ref-detail > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.kn7-preview-fields dt {
+  color: var(--color-muted-foreground);
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+}
+
+.kn7-preview-fields dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.kn7-preview .knw5-ref-detail {
+  margin: 0;
+  padding: 0;
+  border-top: 0;
+}
+
+@media (max-width: 560px) {
+  .kn7-preview-scrim {
+    padding: 8px;
+  }
+
+  .kn7-preview {
+    width: 100%;
+    max-height: calc(100vh - 16px);
+    padding: 12px 12px 14px;
+  }
+
+  .kn7-preview-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -20,6 +20,7 @@ const INGEST_STATUS = "/agent-api/api/knowledge/ingest-status?limit=20";
 const docsUrlFor = (id: string) => `/agent-api/api/documents?limit=50&spaceId=${id}`;
 const DOCS_SPACE = docsUrlFor("sp_hr");
 const DOCUMENTS_PLAIN = "/agent-api/api/documents?limit=50";
+const DOCUMENTS_DETAIL_MANUAL = "/agent-api/api/documents/d_manual";
 const SEARCH_NO_QUERY = "/agent-api/api/knowledge/search?limit=12";
 const SEARCH_STAFF = "/agent-api/api/knowledge/search?q=%E5%91%98%E5%B7%A5&limit=12";
 const CITATIONS = "/agent-api/api/knowledge/citations?limit=20";
@@ -53,6 +54,15 @@ function fail(status: number, message: string, requestId?: string): Promise<neve
   return Promise.reject(new ApiError(message, { status, body: "", url: "/agent-api/api/test", requestId }));
 }
 
+/** The drawer is an overlay portalled to the document, not a node inside the pane. */
+function byDocTestid(testid: string): Element | null {
+  return document.querySelector(`[data-testid="${testid}"]`);
+}
+
+function docText(testid: string): string {
+  return (byDocTestid(testid)?.textContent ?? "").replace(/\s+/g, " ");
+}
+
 function byTestid(testid: string): Element | null {
   return container.querySelector(`[data-testid="${testid}"]`);
 }
@@ -77,7 +87,7 @@ async function render(path = "/knowledge") {
 }
 
 async function click(testid: string) {
-  const node = byTestid(testid) as HTMLElement | null;
+  const node = (byTestid(testid) ?? document.querySelector(`[data-testid="${testid}"]`)) as HTMLElement | null;
   expect(node, testid).toBeTruthy();
   await act(async () => {
     node?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -105,7 +115,7 @@ async function submitForm(testid: string) {
 }
 
 async function clickNth(testid: string, index: number) {
-  const nodes = container.querySelectorAll(`[data-testid="${testid}"]`);
+  const nodes = document.querySelectorAll(`[data-testid="${testid}"]`);
   expect(nodes.length > index, `${testid}[${index}]`).toBe(true);
   await act(async () => {
     nodes[index].dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -168,6 +178,123 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(screen).not.toContain("403");
     expect(screen).not.toContain("404");
     expect(screen).not.toContain("0 个空间");
+  });
+
+  it("opens the document drawer in place: focusable, closable by Esc and backdrop, focus back to the row", async () => {
+    const LIST = {
+      asOf: "2026-11-19T08:00:00Z",
+      documents: [
+        { documentId: "d_manual", fileName: "员工手册.pdf", mimeType: "application/pdf", sizeBytes: 2516582, updatedAt: "2026-11-19T07:10:00Z", url: "/documents/d_manual" },
+        { documentId: "d_bare" },
+      ],
+    };
+    fetchMock.mockImplementation((url: string) => {
+      if (url === docsUrlFor("sp_hr")) return Promise.resolve(LIST);
+      if (url === DOCUMENTS_DETAIL_MANUAL) return fail(404, "这个数据接口还没有接入。", "rid-detail-gone");
+      return fail(404, "这个数据接口还没有接入。", "rid-x");
+    });
+
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    expect(byDocTestid("kn7-preview-panel")).toBeNull();
+    expect(attr("kn3-docs", "data-len")).toBe("2");
+
+    await click("kn3-docs-name");
+    const panel = byDocTestid("kn7-preview-panel");
+    expect(panel).toBeTruthy();
+    expect(panel?.getAttribute("role")).toBe("dialog");
+    expect(panel?.getAttribute("aria-modal")).toBe("true");
+    expect(panel?.getAttribute("aria-labelledby")).toBe("kn7-preview-title");
+    expect((byDocTestid("loc")?.textContent ?? "")).toContain("doc=d_manual");
+    // 抽屉不跳页：还在同一个地址族里，列表仍在下面
+    expect(container.querySelectorAll('[data-testid="kn3-docs-row"]')).toHaveLength(2);
+    // 列表给过的字段照常显示；详情口的两个字段老实说读不到
+    expect(byDocTestid("kn7-preview-field-type")?.textContent).toBe("PDF");
+    expect(byDocTestid("kn7-preview-field-size")?.textContent).toBe("2.4 MB");
+    expect(byDocTestid("kn7-preview-field-updated")?.textContent).toContain("2026-11-19 15:10");
+    expect(byDocTestid("kn7-preview-field-source")?.textContent ?? "").toContain("—");
+    expect(byDocTestid("kn7-preview-field-pending")?.textContent ?? "").toContain("详情读口没接上");
+    expect(byDocTestid("kn7-preview-field-status")?.textContent).toBe("—");
+    // 不编正文/摘要
+    expect(byDocTestid("kn7-preview-excerpt")).toBeNull();
+    // 详情口未接入：一份正文 + GAP 只在 title + 可复制 rid + 重试 + 去处
+    const unwired = byDocTestid("kn7-preview-unwired");
+    expect(unwired?.querySelector("b")?.textContent).toBe("文档详情未接入");
+    expect(unwired?.getAttribute("title")).toBe("GAP-03");
+    expect(document.body.textContent ?? "").toContain("请求编号：rid-detail-gone");
+    expect(byDocTestid("kn7-preview-retry")).toBeTruthy();
+    expect(byDocTestid("kn7-preview-apply")).toBeTruthy();
+
+    // Esc 关闭并把焦点还给原来那一行
+    const firstAnchor = container.querySelector('a[data-testid="kn3-docs-name"]') as HTMLAnchorElement;
+    firstAnchor.focus();
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    await act(async () => {});
+    expect(byDocTestid("kn7-preview-panel")).toBeNull();
+    expect((byDocTestid("loc")?.textContent ?? "")).not.toContain("doc=");
+    expect(container.contains(document.activeElement)).toBe(true);
+    expect((document.activeElement as Element)?.getAttribute("data-testid")).toBe("kn3-docs-name");
+
+    // 点遮罩（覆盖层自身，不是面板）也关闭
+    await click("kn3-docs-name");
+    expect(byDocTestid("kn7-preview-panel")).toBeTruthy();
+    const scrimNode = byDocTestid("kn7-preview-backdrop") as HTMLElement;
+    expect(scrimNode).toBeTruthy();
+    expect(scrimNode.contains(byDocTestid("kn7-preview-panel"))).toBe(true);
+    await act(async () => {
+      scrimNode.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => {});
+    expect(byDocTestid("kn7-preview-panel")).toBeNull();
+    expect((byTestid("loc")?.textContent ?? "")).not.toContain("doc=");
+
+    // 刷新复现：?doc= 直接把抽屉开回来
+    fetchMock.mockImplementation((url: string) => {
+      if (url === docsUrlFor("sp_hr")) return Promise.resolve(LIST);
+      if (url === DOCUMENTS_DETAIL_MANUAL) return Promise.resolve({ sourceName: "员工手册原件.pdf", status: "indexed" });
+      return fail(404, "这个数据接口还没有接入。", "rid-x");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr&doc=d_manual");
+    expect(byDocTestid("kn7-preview-panel")).toBeTruthy();
+    expect(byDocTestid("kn7-preview-field-source")?.textContent).toContain("员工手册原件.pdf");
+    expect(byDocTestid("kn7-preview-field-status")?.textContent).toBe("已完成");
+    expect(byDocTestid("kn7-preview-field-pending")).toBeNull();
+
+    // 抽屉里的详情口出错：换内容而不是换徽标
+    fetchMock.mockImplementation((url: string) => {
+      if (url === docsUrlFor("sp_hr")) return Promise.resolve(LIST);
+      if (url === DOCUMENTS_DETAIL_MANUAL) return fail(500, "数据服务暂时没有响应，请稍后重试。", "rid-detail-busy");
+      return fail(404, "这个数据接口还没有接入。", "rid-x");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr&doc=d_manual");
+    expect(byDocTestid("kn7-preview-error")).toBeTruthy();
+    expect(byDocTestid("kn7-preview-unwired")).toBeNull();
+    expect(document.body.textContent ?? "").toContain("请求编号：rid-detail-busy");
+
+    // 403 与 404 同体
+    const bodyOf = (node: Element | null) =>
+      Array.from(node?.querySelectorAll("b, .knw5-wrap") ?? [])
+        .map((part) => part.textContent ?? "")
+        .join(" ")
+        .replace(/\s+/g, " ");
+    fetchMock.mockImplementation((url: string) => {
+      if (url === docsUrlFor("sp_hr")) return Promise.resolve(LIST);
+      if (url === DOCUMENTS_DETAIL_MANUAL) return fail(403, "没有查看这项数据的权限。", "rid-detail-denied");
+      return fail(404, "这个数据接口还没有接入。", "rid-x");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr&doc=d_manual");
+    expect(bodyOf(byDocTestid("kn7-preview-unwired"))).toBe(bodyOf(unwired));
+    expect(document.body.textContent ?? "").toContain("请求编号：rid-detail-denied");
+
+    // 抽屉里没有任何写入控件，原始标识不上屏；它是覆盖层，不在面板节点里
+    const drawerText = (byDocTestid("kn7-preview-panel")?.textContent ?? "").replace(/\s+/g, " ");
+    expect(container.contains(byDocTestid("kn7-preview-panel") as Node)).toBe(false);
+    expect(byDocTestid("kn7-preview-panel")?.querySelectorAll('form, textarea, select, input').length).toBe(0);
+    expect(drawerText).not.toContain("d_manual");
+    expect(drawerText).not.toContain("sizeBytes");
+    expect(drawerText).not.toContain("/api/");
+    expect(byDocTestid("kn7-preview-fields")?.getAttribute("data-testid")).toBe("kn7-preview-fields");
   });
 
   it("renders one row per space: 名称 / 文档数 / 最近同步 / 状态人话", async () => {
@@ -534,17 +661,20 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect((anchors[0] as HTMLAnchorElement).getAttribute("href")).toContain("doc=doc_manual");
     expect(anchors[0].getAttribute("tabindex")).toBeNull();
 
-    // 行展开：站内可打开；站外要写原因
+    // 行就地开抽屉：抽屉是 document 上的覆盖层，面板节点里没有它
     await click("kn3-docs-name");
-    expect(byTestid("kn3-docs-detail")).toBeTruthy();
-    expect(attr("kn3-docs-detail-open", "href")).toBe("/documents/doc_manual");
-    expect(byTestid("kn3-docs-detail-open")).toBeTruthy();
-    await click("kn3-docs-name");
-    expect(byTestid("kn3-docs-detail")).toBeNull();
+    expect(byDocTestid("kn3-docs-detail")).toBeTruthy();
+    expect(byDocTestid("kn7-preview-panel")).toBeTruthy();
+    expect(byDocTestid("kn7-preview-field-name")?.textContent ?? "").toContain("员工手册.pdf");
+    expect(document.querySelector('[data-testid="kn3-docs-detail-open"]')?.getAttribute("href")).toBe("/documents/doc_manual");
+    await click("kn7-preview-close");
+    expect(byDocTestid("kn3-docs-detail")).toBeNull();
+    expect((byTestid("loc")?.textContent ?? "")).not.toContain("doc=doc_manual");
 
     await clickNth("kn3-docs-name", 1);
-    expect(byTestid("kn3-docs-detail-unreachable")).toBeTruthy();
-    expect(byTestid("kn3-docs-detail-unreachable")?.textContent ?? "").toContain("上游没有给出原文位置");
+    expect(byDocTestid("kn3-docs-detail-unreachable")).toBeTruthy();
+    expect(docText("kn3-docs-detail-unreachable")).toContain("上游没有给出原文位置");
+    await click("kn7-preview-close");
 
     // 本地筛选必须自己说明是本地筛选
     const note = byTestid("kn3-docs-filter-note")?.textContent ?? "";
