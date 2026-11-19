@@ -48,7 +48,7 @@ import type { FailureCopy } from "./copy";
 import type { VerifyFailure } from "./copy";
 import { eventTypeChoices } from "./model";
 import type { ListFilters } from "./api";
-import { downloadCsv, exportName } from "./csv";
+import { downloadCsv, downloadText, exportName, filteredCsvText, filteredExportName } from "./csv";
 import {
   FILTER_WINDOW_CHOICES,
   beijingInputValue,
@@ -335,6 +335,8 @@ function AuditEventsSurface(): ReactNode {
     setParams(draft, { replace: true });
   }, [params, setParams]);
 
+  const canExport = list.phase === "ready" && list.rows.length > 0;
+
   const windowLabel = WINDOW_FILTER_CHOICES.find((item) => item.value === windowChoice)?.label ?? "最近 7 天";
 
   const exportOff = customInvalid || list.phase !== "ready" || list.rows.length === 0;
@@ -458,6 +460,22 @@ function AuditEventsSurface(): ReactNode {
             </Button>
           ) : null}
         </div>
+      </div>
+
+      <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="aud5-export-bar">
+        <Button
+          size="sm"
+          outlined
+          onClick={() => downloadText(filteredCsvText(list.rows), filteredExportName(windowChoice, "all", "all"))}
+          disabled={!canExport}
+          aria-disabled={!canExport}
+          title={canExport ? "导出当前筛选为 CSV（北京时间）" : "当前筛选无事件可导出"}
+          data-testid="aud5-export"
+          prefix={<Download className="h-3.5 w-3.5" />}
+        >
+          导出当前筛选 CSV
+        </Button>
+        <span className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud5-export-count">将导出 {list.rows.length} 条</span>
       </div>
 
       <AuditFilterBar

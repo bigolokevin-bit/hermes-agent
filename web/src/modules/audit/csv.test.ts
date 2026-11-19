@@ -78,3 +78,26 @@ describe("the audit CSV (R34)", () => {
     }
   });
 });
+describe("the filtered export (R43)", () => {
+  it("writes the five English keys and one line per row", () => {
+    const rows = [row({ requestId: "req-1" }), row({ occurredAt: null, requestId: null })];
+    const text = filteredCsvText(rows);
+    const lines = text.replace(/^\uFEFF/, "").trimEnd().split("\r\n");
+    expect(lines[0]).toBe("time,actor,action,resource,rid");
+    expect(lines.length).toBe(rows.length + 1);
+  });
+
+  it("quotes a field with a comma and a quote, RFC 4180 style", () => {
+    const base = row({});
+    const text = filteredCsvText([{ ...base, actor: { ...base.actor, label: 'Li, "A"' } }]);
+    expect(text).toContain('"Li, ""A"""');
+  });
+
+  it("names the file after the window and the Beijing minute, ASCII only", () => {
+    const name = filteredExportName("7d", "all", "all", new Date("2026-11-19T22:47:00Z"));
+    expect(name).toBe("audit-7d-all-all-20261120-0647.csv");
+    expect(name).toMatch(/^[A-Za-z0-9._-]+$/);
+  });
+});
+
+import { filteredCsvText, filteredExportName } from "./csv";
