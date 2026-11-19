@@ -14,7 +14,7 @@
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 25,
+  "distinctMainHeads": 28,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -39,7 +39,7 @@
     {
       "route": "#/approvals",
       "viewport": "375",
-      "chars": 166,
+      "chars": 163,
       "hasMainEl": true
     },
     {
@@ -117,13 +117,13 @@
     {
       "route": "#/audit",
       "viewport": "1440",
-      "chars": 518,
+      "chars": 494,
       "hasMainEl": true
     },
     {
       "route": "#/audit",
       "viewport": "375",
-      "chars": 518,
+      "chars": 494,
       "hasMainEl": true
     },
     {
@@ -255,7 +255,7 @@
     {
       "route": "#/employees/:employeeId?zone=tasks",
       "viewport": "375",
-      "chars": 42,
+      "chars": 51,
       "hasMainEl": true
     },
     {
@@ -357,13 +357,13 @@
     {
       "route": "#/knowledge",
       "viewport": "1440",
-      "chars": 294,
+      "chars": 239,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge",
       "viewport": "375",
-      "chars": 294,
+      "chars": 239,
       "hasMainEl": true
     },
     {
@@ -393,13 +393,13 @@
     {
       "route": "#/knowledge?tab=ingest",
       "viewport": "1440",
-      "chars": 88,
+      "chars": 101,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=ingest",
       "viewport": "375",
-      "chars": 88,
+      "chars": 101,
       "hasMainEl": true
     },
     {
@@ -417,25 +417,25 @@
     {
       "route": "#/knowledge?tab=scope",
       "viewport": "1440",
-      "chars": 294,
+      "chars": 239,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=scope",
       "viewport": "375",
-      "chars": 294,
+      "chars": 239,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=sources",
       "viewport": "1440",
-      "chars": 88,
+      "chars": 101,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=sources",
       "viewport": "375",
-      "chars": 88,
+      "chars": 101,
       "hasMainEl": true
     },
     {
@@ -525,61 +525,61 @@
     {
       "route": "#/system?tab=events",
       "viewport": "1440",
-      "chars": 518,
+      "chars": 494,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events",
       "viewport": "375",
-      "chars": 518,
+      "chars": 494,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "1440",
-      "chars": 518,
+      "chars": 494,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "375",
-      "chars": 518,
+      "chars": 494,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=retention",
       "viewport": "1440",
-      "chars": 518,
+      "chars": 494,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=retention",
       "viewport": "375",
-      "chars": 518,
+      "chars": 494,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=security",
       "viewport": "1440",
-      "chars": 518,
+      "chars": 487,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=security",
       "viewport": "375",
-      "chars": 518,
+      "chars": 494,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=version",
       "viewport": "1440",
-      "chars": 406,
+      "chars": 414,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=version",
       "viewport": "375",
-      "chars": 406,
+      "chars": 414,
       "hasMainEl": true
     },
     {
@@ -633,8 +633,8 @@
   ],
   "consoleErrorsObservedByShots": 2,
   "consoleErrorRoutesObservedByShots": [
-    "#/employees/:employeeId",
-    "#/system?tab=retention"
+    "#/approvals",
+    "#/system?tab=security"
   ],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
@@ -645,12 +645,12 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "1fff2e58",
+  "headHash": "3bff4208",
   "exitCode": 0,
-  "entry": "assets/index-CG7jx7Y5.js",
-  "entrySha256": "997955878965aea8a1ec4e7fef5bd2a53200344fc5a81409b91c1e53382f371a",
-  "entryBytes": 160611,
-  "servedEntryBefore": "index-CG7jx7Y5.js",
-  "servedEntryAfter": "index-CG7jx7Y5.js",
+  "entry": "assets/index-VF7rRXCI.js",
+  "entrySha256": "53efa9bf085de932ace6e1646bb7c587ea7fc4a8cb446a79628ce89739ee607f",
+  "entryBytes": 160695,
+  "servedEntryBefore": "index-VF7rRXCI.js",
+  "servedEntryAfter": "index-VF7rRXCI.js",
   "auxiliary": true
 }

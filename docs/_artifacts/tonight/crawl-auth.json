@@ -26,8 +26,8 @@
   "rootShell": {
     "url": "http://127.0.0.1:9122/",
     "hasMainEl": true,
-    "mainChars": 544,
-    "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 今日运"
+    "mainChars": 1006,
+    "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 — /"
   },
   "contentChecked": 51,
   "contentRows": [
@@ -283,11 +283,11 @@
       "source": "DETAIL_ZONES_EXTRA",
       "kind": "detail-zone",
       "verdict": "content-ok",
-      "mainChars": 49,
+      "mainChars": 110,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 0,
-      "consoleErrorEnv": null,
+      "consoleErrors": 1,
+      "consoleErrorEnv": "auth-required-401",
       "evalError": null,
       "headSample": "工作台 配置 任务 运行 证据 员工 · EMPLOYEE — 概览 能力与权限 审批 运行 审"
     },
@@ -400,13 +400,13 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 343,
+      "mainChars": 345,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 1,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 知识空间 空间、文档与检索 · 只读"
+      "headSample": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 知识空间 空间、文档、检索与引用 ·"
     },
     {
       "route": "#/knowledge?tab=citations",
@@ -439,7 +439,7 @@
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 88,
+      "mainChars": 101,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
@@ -465,20 +465,20 @@
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 343,
+      "mainChars": 345,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 1,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 知识空间 空间、文档与检索 · 只读"
+      "headSample": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 知识空间 空间、文档、检索与引用 ·"
     },
     {
       "route": "#/knowledge?tab=sources",
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 88,
+      "mainChars": 101,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
@@ -517,7 +517,7 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 968,
+      "mainChars": 1006,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
@@ -634,7 +634,7 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 378,
+      "mainChars": 401,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 1,
@@ -686,7 +686,7 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 1279,
+      "mainChars": 1281,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
@@ -701,7 +701,7 @@
   "contentEmptyCount": 0,
   "mode": "auth-attributed",
   "envAttribution": {
-    "auth-required-401": 21
+    "auth-required-401": 22
   },
   "probeErrors": [],
   "deniedEndpoints": [
@@ -732,10 +732,10 @@
     "redirects=24 vs 门定值 23（routes.ts 并发新增形态，归因非判红；门值更新归 L0/A）"
   ],
   "routesRenderedWithoutMainEl": 0,
-  "routesWithConsoleErrors": 21,
+  "routesWithConsoleErrors": 22,
   "parseErrors": [],
   "ok": true,
-  "headHash": "1fff2e58",
+  "headHash": "3bff4208",
   "exitCode": 0,
   "counts": {
     "probed": 75,

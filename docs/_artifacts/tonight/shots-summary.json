@@ -9,12 +9,12 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 491,
+    "textLen": 490,
     "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 今日运行 运行记录 今日成本 成本账本 发布 ",
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 28,
+  "distinctMainHeads": 27,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -147,7 +147,7 @@
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "375",
-      "chars": 1034,
+      "chars": 128,
       "hasMainEl": true
     },
     {
@@ -207,43 +207,43 @@
     {
       "route": "#/employees/:employeeId",
       "viewport": "375",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=config",
+      "viewport": "1440",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=config",
+      "viewport": "375",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=evidence",
+      "viewport": "1440",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=evidence",
+      "viewport": "375",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=runs",
+      "viewport": "1440",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=runs",
+      "viewport": "375",
       "chars": 51,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=config",
-      "viewport": "1440",
-      "chars": 42,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=config",
-      "viewport": "375",
-      "chars": 42,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=evidence",
-      "viewport": "1440",
-      "chars": 42,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=evidence",
-      "viewport": "375",
-      "chars": 36,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=runs",
-      "viewport": "1440",
-      "chars": 42,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=runs",
-      "viewport": "375",
-      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -267,7 +267,7 @@
     {
       "route": "#/identity",
       "viewport": "375",
-      "chars": 75,
+      "chars": 157,
       "hasMainEl": true
     },
     {
@@ -357,13 +357,13 @@
     {
       "route": "#/knowledge",
       "viewport": "1440",
-      "chars": 347,
+      "chars": 349,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge",
       "viewport": "375",
-      "chars": 347,
+      "chars": 349,
       "hasMainEl": true
     },
     {
@@ -393,13 +393,13 @@
     {
       "route": "#/knowledge?tab=ingest",
       "viewport": "1440",
-      "chars": 88,
+      "chars": 101,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=ingest",
       "viewport": "375",
-      "chars": 88,
+      "chars": 101,
       "hasMainEl": true
     },
     {
@@ -417,25 +417,25 @@
     {
       "route": "#/knowledge?tab=scope",
       "viewport": "1440",
-      "chars": 347,
+      "chars": 349,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=scope",
       "viewport": "375",
-      "chars": 347,
+      "chars": 349,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=sources",
       "viewport": "1440",
-      "chars": 88,
+      "chars": 101,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=sources",
       "viewport": "375",
-      "chars": 88,
+      "chars": 101,
       "hasMainEl": true
     },
     {
@@ -465,13 +465,13 @@
     {
       "route": "#/overview",
       "viewport": "1440",
-      "chars": 1005,
+      "chars": 1042,
       "hasMainEl": true
     },
     {
       "route": "#/overview",
       "viewport": "375",
-      "chars": 1005,
+      "chars": 1042,
       "hasMainEl": true
     },
     {
@@ -573,13 +573,13 @@
     {
       "route": "#/system?tab=version",
       "viewport": "1440",
-      "chars": 391,
+      "chars": 415,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=version",
       "viewport": "375",
-      "chars": 391,
+      "chars": 415,
       "hasMainEl": true
     },
     {
@@ -621,36 +621,35 @@
     {
       "route": "#/work?tab=runs",
       "viewport": "1440",
-      "chars": 1284,
+      "chars": 1286,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=runs",
       "viewport": "375",
-      "chars": 1256,
+      "chars": 1258,
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 1,
+  "consoleErrorsObservedByShots": 2,
   "consoleErrorRoutesObservedByShots": [
-    "#/employees/:employeeId?zone=evidence"
+    "#/approvals?tab=pending&view=release",
+    "#/system?tab=version"
   ],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 22,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
-  "overflowing": [
-    "#/employees/:employeeId?zone=evidence"
-  ],
+  "overflowing": [],
   "driver": {
     "playwrightFrom": "/Users/kevin_studio/Projects/seakoi-console-web/package.json",
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "1fff2e58",
+  "headHash": "3bff4208",
   "exitCode": 0,
-  "entry": "assets/index-CG7jx7Y5.js",
-  "entrySha256": "997955878965aea8a1ec4e7fef5bd2a53200344fc5a81409b91c1e53382f371a",
-  "entryBytes": 160611,
-  "servedEntryBefore": "index-CG7jx7Y5.js",
-  "servedEntryAfter": "index-CG7jx7Y5.js"
+  "entry": "assets/index-VF7rRXCI.js",
+  "entrySha256": "53efa9bf085de932ace6e1646bb7c587ea7fc4a8cb446a79628ce89739ee607f",
+  "entryBytes": 160695,
+  "servedEntryBefore": "index-VF7rRXCI.js",
+  "servedEntryAfter": "index-VF7rRXCI.js"
 }
