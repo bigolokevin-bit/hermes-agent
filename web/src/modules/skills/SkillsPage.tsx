@@ -17,6 +17,7 @@ import { currentFixtureRid, currentFixtureState, fixtureView, type FixtureState 
 import { SKILLS_GAP, formatBeijingTime, readSkills, type SkillRow } from "./skills";
 import { CapabilityCounts, publishCapabilityCount } from "../capabilities/counts";
 import { CapabilitySearch } from "../capabilities/search";
+import { CapabilityExport } from "../capabilities/csvExport";
 import "./skills.css";
 
 type State =
@@ -176,6 +177,15 @@ export function SkillsPage() {
           <p className="skl4-sub">已登记的技能、共享范围与版本状态。只读。</p>
         </div>
         <div className="skl4-actions">
+          <CapabilityExport
+            tab="skills"
+            rows={visibleRows.map((row) => ({
+              name: row.name === "—" ? null : row.name,
+              type: row.source,
+              enabled: row.status,
+              updated_at: row.updatedAt,
+            }))}
+          />
           <Button
             size="sm"
             outlined

@@ -188,6 +188,8 @@ describe("SkillsPage", () => {
     expect(text()).not.toContain("质检");
     expect(container.querySelector("[data-testid='cap5-scope-note']")?.textContent).toContain("仅在当前已加载 2 项内搜索");
     expect(container.querySelector("[data-testid='cap4-count-skills']")?.textContent).toContain("1");
+    expect(container.querySelector("[data-testid='cap6-export-count']")?.textContent).toContain("1 条");
+    expect(container.querySelector<HTMLButtonElement>("[data-testid='cap6-export']")?.disabled).toBe(false);
   });
 
   it("shows a no-match state with a clear exit", async () => {

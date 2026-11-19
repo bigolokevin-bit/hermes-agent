@@ -1732,3 +1732,11 @@ built /private/tmp/health-r38/index.html
 - 验证：`npx vitest run src/modules/tools src/modules/skills` → **3 files / 38 tests passed**（tools 25 / skills 13）；全量 `npx vitest run` → **131 files / 1408 passed**；`tsc -b . --noEmit` → 仅基线 `employees/EmployeesModulePage.test.tsx(73,5) TS18047`，本域 0。
 - DOM（临时 harness，已删；Vite 5456 / Chrome 9258）：1440/1280/375 所有用例 `vw=bodySW=bodyCW`、page 宽等于视口。技能 `?q=资料`：1 行、计数 `技能1有源`、范围注 `仅在当前已加载 2 项内搜索`；`q=zzz`：0 行、`技能0有源（空）`、`没有匹配项`+清空。工具 `?q=网页`：2 行、`工具2有源`、范围注 4 项；`q=zzz`：0 行、`工具0有源（空）`、无匹配+清空。搜索全程请求数不增。
 - 边界：只改 `web/src/modules/{capabilities,skills,tools}/**` 与 DONE；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并入 main、未重建 9122；无独立观察者。
+
+## R46 /capabilities 清单 CSV 导出（2026-11-20）
+
+- 基线：`f664a67c`（cap5 搜索）之上，merge 与 `origin/lane/hermes-console` 已同步；未 reset。
+- 实现：纯前端导出，无新后端端点。`web/src/modules/capabilities/csv.ts` 固定表头 `name,type,enabled,updated_at`，字段按 RFC4180 转义（逗号/引号/换行，引号翻倍），缺值留空；文件名按北京时间 `capabilities-<tab>-YYYYMMDD-HHmm.csv`。`csvExport.tsx` 提供 `cap6-export` 按钮与 `cap6-export-count`，Blob + `a.download`，空集禁用并在 title 写「当前视图无可导出数据」。技能/工具页均导出**当前 tab + 当前搜索词**的可见行，不触发额外请求、不触发行点击或 tab 切换。
+- 验证：`npx vitest run src/modules/capabilities src/modules/skills src/modules/tools` → **4 files / 40 tests passed**（含 RFC4180、文件名、空集禁用、q 过滤后条数）；全量 **132 files / 1410 passed**；`tsc -b . --noEmit` 仅基线 employees `TS18047`，本域 0。
+- DOM（临时 harness，已删；Vite 5457 / Chrome 9259）：1440/1280/375 全部 `vw=bodySW=bodyCW=pageSW=pageCW`；技能 `?q=资料` 1 行/`1 条`/按钮可用，`q=不存在` 0 行/`0 条`/按钮禁用且 title 正确；工具 `?q=网页` 2 行/`2 条`/按钮可用。
+- 边界：只改 `web/src/modules/{capabilities,skills,tools}/**` 与 DONE；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；无独立观察者。

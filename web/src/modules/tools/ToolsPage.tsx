@@ -30,6 +30,7 @@ import {
 import { forcedStateOf, useToolsData } from "./useToolsData";
 import { CapabilityCounts, publishCapabilityCount } from "../capabilities/counts";
 import { CapabilitySearch } from "../capabilities/search";
+import { CapabilityExport } from "../capabilities/csvExport";
 import "./tools.css";
 
 
@@ -340,6 +341,15 @@ export function ToolsPage(): ReactNode {
           </p>
         </div>
         <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <CapabilityExport
+            tab="tools"
+            rows={visibleRows.map((row) => ({
+              name: row.name,
+              type: row.type,
+              enabled: row.status,
+              updated_at: row.updatedAt,
+            }))}
+          />
           <Button
             size="sm"
             outlined

@@ -123,3 +123,16 @@
     flex-basis: 100%;
   }
 }
+
+.cap6-export-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.cap6-export-count {
+  color: var(--color-muted-foreground);
+  font-size: 0.6875rem;
+  white-space: nowrap;
+}
