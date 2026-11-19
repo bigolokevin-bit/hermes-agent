@@ -457,7 +457,8 @@ describe("the filters change the request (aud01)", () => {
     const node = document.querySelector<HTMLSelectElement>("[data-testid='aud01-filter-operator']")!;
     expect(node.disabled).toBe(true);
     expect(text()).toContain("未接入");
-    expect(text()).toContain("GAP-06");
+    expect(text()).not.toContain("GAP-06");
+    expect(document.querySelector("[title*='GAP-06']")).not.toBeNull();
   });
 });
 

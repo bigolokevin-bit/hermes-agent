@@ -121,7 +121,7 @@ export function AuditFilterBar({
           <option>操作者</option>
         </select>
         <Badge tone="secondary" title="GAP-06：操作者筛选未接入">
-          未接入 · GAP-06
+          未接入
         </Badge>
       </span>
     </div>
