@@ -498,9 +498,9 @@ const PLATFORM_KINDS: Record<string, string> = {
 
 /** The three words the page promises, plus the honest fourth. */
 export const PLATFORM_STATUS_LABEL: Record<RowStatus, string> = {
-  available: "已连接",
-  unavailable: "未连接",
-  disabled: "未配置",
+  available: "正常",
+  unavailable: "未接入",
+  disabled: "停用",
   unknown: "待核实",
 };
 
