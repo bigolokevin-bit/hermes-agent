@@ -60,7 +60,15 @@ export function CopyValue({
       </span>
     );
   }
-  const shown = /^[0-9a-f]{32}$/i.test(value) ? value.slice(0, 8) : value;
+  // R31: a request number is quoted in full only in `title`; the line itself
+  // shows a short form. A bare 32-hex digest shows its first 8 characters, and
+  // a scheme handle (ap_…, ev_…, rn_…) shows the same 8-character tail every
+  // other surface uses, so no long identifier is printed verbatim.
+  const shown = /^[0-9a-f]{32}$/i.test(value)
+    ? value.slice(0, 8)
+    : /^[a-z][a-z0-9]{1,11}_[0-9A-Za-z]{9,}$/i.test(value)
+      ? `${value.slice(0, value.indexOf("_") + 1)}…${value.slice(-8)}`
+      : value;
   return (
     <span className="flex min-w-0 flex-wrap items-center gap-1.5" data-testid={testId}>
       <span className={`min-w-0 break-all font-mono text-xs ${themedBody}`} title={value}>{shown}</span>

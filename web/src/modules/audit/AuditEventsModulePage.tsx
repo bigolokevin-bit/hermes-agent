@@ -152,8 +152,10 @@ export function AuditEventsModulePage(): ReactNode {
 
 function AuditEventsSurface(): ReactNode {
   const [params, setParams] = useSearchParams();
-  // The URL owns the selected record, so a shared link opens the same event.
-  const selected = params.get("id");
+  // R31: the URL owns the selected record, so a shared or refreshed link opens
+  // the same event. `?detail=<eventId>` is the documented spelling; `?id=` is
+  // still read because links handed out before this change must keep working.
+  const selected = params.get("detail") ?? params.get("id");
 
   const [windowChoice, setWindowChoice] = useState<WindowKey>(DEFAULT_WINDOW_FILTER);
   const [eventType, setEventType] = useState("");
@@ -183,8 +185,9 @@ function AuditEventsSurface(): ReactNode {
     (rawId: string | null) => {
       setUnaddressable(rawId === null);
       const draft = new URLSearchParams(params);
-      if (rawId === null) draft.delete("id");
-      else draft.set("id", rawId);
+      draft.delete("id");
+      if (rawId === null) draft.delete("detail");
+      else draft.set("detail", rawId);
       setParams(draft, { replace: true });
     },
     [params, setParams],
@@ -194,6 +197,7 @@ function AuditEventsSurface(): ReactNode {
     setUnaddressable(false);
     const draft = new URLSearchParams(params);
     draft.delete("id");
+    draft.delete("detail");
     setParams(draft, { replace: true });
   }, [params, setParams]);
 

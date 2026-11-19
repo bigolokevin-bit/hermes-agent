@@ -5,7 +5,7 @@
 
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api-error";
@@ -46,6 +46,13 @@ const text = (): string => document.body.textContent ?? "";
 const html = (): string => document.body.innerHTML;
 const urls = (): string[] => api.fetchJSON.mock.calls.map((call) => String(call[0]));
 const skeleton = (): boolean => document.querySelector(".animate-pulse") !== null;
+
+/** Reads the address the pane itself wrote, so the deep link can be judged. */
+function LocationProbe(): ReactNode {
+  const loc = useLocation();
+  return <span data-testid="probe-location">{`${loc.pathname}${loc.search}`}</span>;
+}
+const locationText = (): string => document.querySelector("[data-testid='probe-location']")?.textContent ?? "";
 
 /** Two answers: the page, then one record. Every URL the pane asks is recorded. */
 function answer(page: unknown, detail?: unknown): void {
@@ -147,7 +154,7 @@ describe("the ledger list", () => {
     expect(titled).toContain("user:2f3a4b5c6d7e8f90");
   });
 
-  it("names known actions in Chinese and keeps an unknown one verbatim", async () => {
+  it("names known actions in Chinese and calls an unmapped one 其他事件, its code only in title", async () => {
     await mount(async () => ({
       items: [
         { id: "e1", action: "employee_version_created", outcome: "success" },
@@ -155,7 +162,13 @@ describe("the ledger list", () => {
       ],
     }));
     expect(text()).toContain("发布数字员工新版本");
-    expect(text()).toContain("quantum.recalibration");
+    expect(text()).toContain("其他事件");
+    // the machine spelling never reaches the surface; it lives in the row title
+    expect(text()).not.toContain("quantum.recalibration");
+    const titled = Array.from(document.querySelectorAll("[title]"))
+      .map((node) => node.getAttribute("title") ?? "")
+      .join(" ");
+    expect(titled).toContain("quantum.recalibration");
   });
 
   it("has only the three outcome words, and a failure adds the reason in words", async () => {
@@ -190,6 +203,44 @@ describe("the ledger list", () => {
 });
 
 describe("the event detail", () => {
+  it("the documented ?detail= spelling opens the same record on a cold load", async () => {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url: string) =>
+      url.startsWith("/agent-api/api/audit-detail") ? DETAIL : EVENTS,
+    );
+    await render("/audit?detail=evt_D6FC9A2B4E6F8012", <AuditEventsModulePage />);
+    await waitFor(() => text().includes("结果与原因"), "detail painted from ?detail=");
+    expect(urls()).toContain("/agent-api/api/audit-detail?id=evt_D6FC9A2B4E6F8012");
+  });
+
+  it("opening a row writes ?detail= and clearing it drops both spellings", async () => {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url: string) =>
+      url.startsWith("/agent-api/api/audit-detail") ? DETAIL : EVENTS,
+    );
+    await render(
+      "/audit?window=7d",
+      <>
+        <AuditEventsModulePage />
+        <LocationProbe />
+      </>,
+    );
+    await waitFor(() => !skeleton(), "first page settled");
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud01-row-evt_7c1f2a3b4d5e6f70'] button")?.click();
+    });
+    await waitFor(() => locationText().includes("detail="), "detail written to the address");
+    expect(locationText()).toContain("detail=evt_7c1f2a3b4d5e6f70");
+    expect(locationText()).not.toContain("id=");
+    // the window the person was reading survives the round trip
+    expect(locationText()).toContain("window=7d");
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud02-detail-close']")?.click();
+    });
+    expect(locationText()).not.toContain("detail=");
+    expect(locationText()).not.toContain("id=");
+  });
+
   it("opens on click against the real route", async () => {
     await mount();
     await act(async () => {
@@ -523,8 +574,13 @@ describe("the filters change the request (aud01)", () => {
     expect(text()).toContain("2026-11-18 02:18");
     expect(text()).toContain("系统");
     expect(text()).toContain("失败（被拒）");
-    // the unknown live code passes through verbatim, exactly as the service spells it
-    expect(text()).toContain("dispatch.event");
+    // an unmapped live code reads 其他事件 on the surface; its spelling stays in title
+    expect(text()).toContain("其他事件");
+    expect(text()).not.toContain("dispatch.event");
+    const titled = Array.from(document.querySelectorAll("[title]"))
+      .map((node) => node.getAttribute("title") ?? "")
+      .join(" ");
+    expect(titled).toContain("dispatch.event");
     // no wire token on the surface
     expect(text()).not.toMatch(/t_seakoi_pilot|employee\.invalid_initial_version|creation_attempt|"system"|schemaVersion/);
     // a bare numeric human id never becomes a bare handle either

@@ -114,7 +114,7 @@ export function AuditEventRowCard({
           <button
             type="button"
             onClick={onOpen}
-            title={row.rawId ?? undefined}
+            title={[row.action.raw, row.rawId].filter(Boolean).join(" · ") || undefined}
             className="min-w-0 flex-1 break-words text-left text-sm hover:underline"
             data-testid={`aud01-cell-${row.key}-type`}
           >
@@ -199,7 +199,10 @@ export function AuditEventDetailBody({
   return (
     <div className="flex min-w-0 flex-col gap-3" data-testid={testId}>
       <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-        <h2 className={`min-w-0 flex-1 break-words text-sm ${themedBody}`} title={detail.rawId ?? undefined}>
+        <h2
+          className={`min-w-0 flex-1 break-words text-sm ${themedBody}`}
+          title={[detail.action.raw, detail.rawId].filter(Boolean).join(" · ") || undefined}
+        >
           {detail.action.label}
         </h2>
         <Badge tone={detail.outcome.tone} title={detail.outcome.raw ?? undefined}>

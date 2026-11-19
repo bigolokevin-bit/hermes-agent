@@ -30,7 +30,8 @@ import { forcedStateOf, useAuditDetail } from "./useAuditData";
 export function AuditDetailModulePage(): ReactNode {
   const [params] = useSearchParams();
   const forced = forcedStateOf(params.get("state"));
-  const id = params.get("id");
+  // R31: the documented spelling is `?detail=`; `?id=` stays readable for old links.
+  const id = params.get("detail") ?? params.get("id");
   const detail = useAuditDetail(id, forced);
 
   const statusLine = (() => {
