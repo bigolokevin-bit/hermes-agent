@@ -9,12 +9,12 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 797,
-    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 — — 4 项检查的数据源尚未接入，可上岗",
+    "textLen": 246,
+    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 今日运行 运行记录 今日成本 成本账本 发布 ",
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 26,
+  "distinctMainHeads": 28,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -153,13 +153,13 @@
     {
       "route": "#/capabilities?tab=models",
       "viewport": "1440",
-      "chars": 148,
+      "chars": 104,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=models",
       "viewport": "375",
-      "chars": 148,
+      "chars": 391,
       "hasMainEl": true
     },
     {
@@ -177,25 +177,25 @@
     {
       "route": "#/employees",
       "viewport": "1440",
-      "chars": 191,
+      "chars": 224,
       "hasMainEl": true
     },
     {
       "route": "#/employees",
       "viewport": "375",
-      "chars": 231,
+      "chars": 264,
       "hasMainEl": true
     },
     {
       "route": "#/employees?tab=matrix",
       "viewport": "1440",
-      "chars": 211,
+      "chars": 215,
       "hasMainEl": true
     },
     {
       "route": "#/employees?tab=matrix",
       "viewport": "375",
-      "chars": 211,
+      "chars": 215,
       "hasMainEl": true
     },
     {
@@ -231,13 +231,13 @@
     {
       "route": "#/employees/:employeeId?zone=evidence",
       "viewport": "375",
-      "chars": 39,
+      "chars": 51,
       "hasMainEl": true
     },
     {
       "route": "#/employees/:employeeId?zone=runs",
       "viewport": "1440",
-      "chars": 39,
+      "chars": 179,
       "hasMainEl": true
     },
     {
@@ -369,25 +369,25 @@
     {
       "route": "#/knowledge?tab=citations",
       "viewport": "1440",
-      "chars": 209,
+      "chars": 194,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=citations",
       "viewport": "375",
-      "chars": 209,
+      "chars": 194,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=evidence",
       "viewport": "1440",
-      "chars": 209,
+      "chars": 194,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=evidence",
       "viewport": "375",
-      "chars": 209,
+      "chars": 194,
       "hasMainEl": true
     },
     {
@@ -405,13 +405,13 @@
     {
       "route": "#/knowledge?tab=retrieval",
       "viewport": "1440",
-      "chars": 209,
+      "chars": 194,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=retrieval",
       "viewport": "375",
-      "chars": 209,
+      "chars": 194,
       "hasMainEl": true
     },
     {
@@ -477,37 +477,37 @@
     {
       "route": "#/overview?tab=usage",
       "viewport": "1440",
-      "chars": 243,
+      "chars": 369,
       "hasMainEl": true
     },
     {
       "route": "#/overview?tab=usage",
       "viewport": "375",
-      "chars": 243,
+      "chars": 369,
       "hasMainEl": true
     },
     {
       "route": "#/sessions",
       "viewport": "1440",
-      "chars": 295,
+      "chars": 106,
       "hasMainEl": true
     },
     {
       "route": "#/sessions",
       "viewport": "375",
-      "chars": 295,
+      "chars": 106,
       "hasMainEl": true
     },
     {
       "route": "#/system",
       "viewport": "1440",
-      "chars": 221,
+      "chars": 229,
       "hasMainEl": true
     },
     {
       "route": "#/system",
       "viewport": "375",
-      "chars": 221,
+      "chars": 229,
       "hasMainEl": true
     },
     {
@@ -591,7 +591,7 @@
     {
       "route": "#/work",
       "viewport": "375",
-      "chars": 226,
+      "chars": 1639,
       "hasMainEl": true
     },
     {
@@ -603,7 +603,7 @@
     {
       "route": "#/work?tab=board&view=cron",
       "viewport": "375",
-      "chars": 1639,
+      "chars": 226,
       "hasMainEl": true
     },
     {
@@ -631,14 +631,11 @@
       "hasMainEl": true
     }
   ],
-  "routesWithConsoleErrors": 4,
+  "routesWithConsoleErrors": 1,
   "consoleErrorRoutes": [
-    "#/knowledge?tab=citations",
-    "#/knowledge?tab=evidence",
-    "#/knowledge?tab=retrieval",
-    "#/work"
+    "#/work?tab=board&view=cron"
   ],
-  "routesWithEnvOnlyConsoleErrors": 22,
+  "routesWithEnvOnlyConsoleErrors": 23,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
   "overflowing": [],
   "driver": {
@@ -646,15 +643,15 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "4bfb31ef",
-  "entry": "assets/index-CnQ2kP3Z.js",
-  "entrySha256": "a247b408ae78d345061076c9a5afa95403c1bb0455285302ac37e6e81eaca4bd",
-  "entryBytes": 150452,
-  "medianMainChars": 145.0,
+  "headHash": "780cc513",
+  "entry": "assets/index-CCPfuglc.js",
+  "entrySha256": "801565e3f3a86d95b8bf1acd59e6c0be8b4b3ab734f43c0d2e666dee55a1dffe",
+  "entryBytes": 150566,
+  "medianMainChars": 138.5,
   "screenshotMode": "playwright",
-  "servedEntryBefore": "index-CnQ2kP3Z.js",
-  "servedEntryAfter": "index-CnQ2kP3Z.js",
-  "shotWindow": "11:15:19-11:16:09 new-mtime all 102 (auth state, CnQ2kP3Z gen)",
+  "servedEntryBefore": "index-CCPfuglc.js",
+  "servedEntryAfter": "index-CCPfuglc.js",
+  "shotWindow": "Nov 19 12:15-12:16 new-mtime all 102 (auth state, CCPfuglc gen)",
   "env": "auth-state cookie injected; gated flag skipped in auth mode; proxy pid 99197",
   "anonEvidence": {
     "dir": "docs/_artifacts/tonight/shots-anon",
@@ -674,6 +671,6 @@
     "note": "401-gated shell evidence, NOT page content",
     "summary": "shots-anon-summary.json"
   },
-  "productCE": "consoleErrorRoutes = knowledge citations/evidence/retrieval (same three as round-23, still present at 4bfb31ef) + #/work (new). Card ok formula excludes consoleErrors; referred to L0 for triage, not masked.",
+  "ceCaliber": "R10 watchdog 裁定：CE 权威=登录态捕获（crawl-auth + QA live）。匿名态 consoleErrorRoutes 仅作 env 旁证不计 productCE。auth crawl 本代 routesCE=22 全部 envAttribution=auth-required-401（env），product CE(auth crawl)=0。shots auth 本跑 consoleErrorRoutes=1 (#/work?tab=board&view=cron, ENV_NOISE 外) 如实保留不造假。",
   "exitCode": 0
 }
