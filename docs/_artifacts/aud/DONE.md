@@ -2245,3 +2245,37 @@ The evidence pane gates on `window.__HERMES_SESSION_TOKEN__`; with a token injec
 - The 9122 dev server was not rebuilt (order), so QA must use a fresh build to see this.
 - `?state=` repro is gone only for the three pages above — collab, `aud03`, `ret4` and the standalone `/audit/detail` page still carry labelled repro legs.
 - The evidence pane's live read depends on a session token in `window`; a browser without one sees 「需要登录」 by design.
+
+## R29 tail — runs timeline resultRef + retry honesty (2026-11-20, base 1fff2e58)
+
+### 1) Timeline ToolIntent resultRef (write scope: modules/runs)
+- Implementation already in place from the earlier depth pass: `runs.ts` `TOOL_EVENTS`/`isToolEvent`/`resultRef` read `payload.resultRef|result_ref` for the tool family only; `RunsModulePage.tsx` renders `结果引用：<shortId>` with the raw handle in `title`.
+- This pass adds the machine-readable points QA needs: `data-testid="run5-result-ref-<seq>"` and `data-result-ref="present|absent"`; the absence line reads 「未记录」 and its `title` says 「这次工具事件没有带回结果引用：服务的回答里没有 resultRef，本页不替它编一个」.
+- Live truth: probed `/api/run-events` for four runs (`rn_01M7822XN781D2S9JASH5TX1XZ` 5 events, `rn_01M7DGZA9SDAZKVV9M82G4F38G` 75, `rn_01M7DNVZ091NKD92SCRVFGK5F4` 54, a running run 0) — every event is `message` or `completed`, **zero tool events**, so on live data the cell count is 0. Nothing is invented to fill it. The 「未记录」 branch is pinned by the timeline test (seq 4 carries no resultRef → `data-result-ref=absent`).
+
+### 2) 「重试 = 新 Run」
+- Measured on the served console (cookie, 127.0.0.1:8092):
+  - `POST /api/run-retry` → **HTTP 405** `{"code":"console.read_only","message":"first console is read-only; only GET/HEAD allowed"}`
+  - `GET  /api/run-retry` → **HTTP 404** `{"code":"console.unknown_route"}`
+- So the write channel is closed at the console, not merely unimplemented in the page. The entry now renders a **disabled** control: `<button data-testid="run5-retry-new" data-planned="true" aria-disabled="true" data-endpoint-http="405">` written 「重试 · 新建一次运行（当前环境只读，写入口未开放）」, with the measurement in `title`; there is no click handler, no POST, the old id is never reused and nothing claims success. `requestRetryRun()` stays in `runs.ts`, its doc updated with the measurement, for the generation that opens the channel.
+- Live at 1440/1280/375: `retryTag=BUTTON`, `retryDisabled=true`, `title` carries 405.
+
+### 3) Row anchors
+- `RunsModulePage.tsx:245-256` renders one react-router `<Link>` per row (`run5-row-<n>-open`, `data-run-id`); the href comes from `hrefOf` (`:421-425`) as `/runs/?<current filters>&run=<id>`.
+- Live readings, three widths: **13 rows, `a[href*="/runs/"]` = 13, focusable = 13**, sample `/runs/?window=7d&run=rn_01M7D7421P5PA27TEXMT9YVDZ8`; pasting it back opens the record (detail 1, textLen 1397 → 3024).
+- The two literal forms QA asked for are measured unusable on this shell: `/runs/<id>` → `/overview` (no `/runs/:runId` route registered), `/runs?window=7d#/runs/<id>` → `/overview?window=7d` (the shell owns the hash). The query form keeps the `/runs/` path segment so `a[href*="/runs/"]` counts it, and it reloads into the same record.
+- Cross-lane finding (not this write scope): `/overview` renders three anchors in the broken path form `/runs/rn_…`; they land on `/overview`. Handled by the overview lane, recorded here because QA's anchor sweep may pick them up.
+
+### 4) States, 403≡404, widths
+- Four states with copyable request id (`RequestIdLine` → 「复制 / 已复制 / 复制失败，请手动选择」); 403 and 404 draw one `run5-denied` body (tests assert byte-identical `outerHTML` for both the list and the detail pane).
+- Width sweep 1440×900 / 1280×800 / 375×812: `scrollWidth == clientWidth` (1440/1440, 1280/1280, 375/375), 13 rows and 13 anchors at each width; screenshots `/tmp/r29w-shots/runs-{1440,1280,375}.png` (build+proxy harness, not committed).
+
+### Gates (from `web/`)
+- `./node_modules/.bin/vitest run src/modules/runs` → exit 0, 2 files / **65 tests**.
+- `npx tsc -b . --noEmit` → exit 2, **53** errors, all the standing floor (49 `../apps/shared/**`, 2 `src/modules/approvals/api.test.ts`, 2 `src/pages/LoginPage.test.tsx`); `modules/runs` **0**.
+- `./node_modules/.bin/eslint src/modules/runs` → exit 0.
+
+### Untested
+- No live tool-intent event exists in this tenant, so the `resultRef` present/absent rendering is proven by tests, not by a live row.
+- No writable console exists here, so a successful retry (new id returned, page navigating to it) cannot be demonstrated; only the disabled contract with the measured 405/404 is proven.
+- The dev SPA on 9122 was not rebuilt in this window (per order), so QA must probe a fresh build.

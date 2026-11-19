@@ -257,7 +257,7 @@ function ListRows({
           })}
         </ul>
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-2 text-xs text-muted-foreground" data-testid="run5-foot">
-          <span>只读列表 · 行尾「查看」是真链接，可复制或新开标签 · 不发起、不取消；重试的写入口本代次未接通</span>
+          <span>只读列表 · 行尾「查看」是真链接，可复制或新开标签 · 不发起、不取消；重试入口在只读环境下为禁用态</span>
         </div>
       </CardContent>
     </Card>
@@ -304,7 +304,10 @@ function Timeline({
                   <span
                     className="min-w-0 break-words text-xs text-muted-foreground"
                     data-tool-event={ev.eventType}
-                    title={ref ?? "服务没有带回结果引用"}
+                    data-testid={`run5-result-ref-${ev.seq}`}
+                    data-result-ref={ref ? "present" : "absent"}
+                    /* the raw handle stays in the title; the line shows a short code */
+                    title={ref ?? "这次工具事件没有带回结果引用：服务的回答里没有 resultRef，本页不替它编一个"}
                   >
                     {`结果引用：${ref ? shortId(ref) : "未记录"}`}
                   </span>
@@ -322,9 +325,13 @@ function Timeline({
   );
 }
 
-// R28: the retry write channel is not connected in this generation, so the
-// entry renders as a sentence (data-planned + aria-disabled) and no AttemptAsk
-// state exists to report a request that is never sent.
+// Retry = a NEW run. Measured on this deployment (2026-11-20):
+//   POST /api/run-retry  -> HTTP 405 {"code":"console.read_only",
+//                           "message":"first console is read-only; only GET/HEAD allowed"}
+//   GET  /api/run-retry  -> HTTP 404 {"code":"console.unknown_route"}
+// so the write channel is closed at the console, not merely unimplemented in
+// the page. The entry therefore renders DISABLED with the measured reason in
+// its title: no click, no optimistic success, no reusing the old id.
 
 function DetailField({ label, children }: { label: string; children: ReactNode }): ReactNode {
   return (
@@ -625,17 +632,21 @@ export function RunsModulePage() {
             <Timeline outcome={detail} onRetryEvents={reloadDetail} />
 
             <div className="min-w-0 space-y-2 border-t border-border pt-3">
-              <p
-                className="min-w-0 break-words text-sm font-medium text-muted-foreground"
+              <button
+                type="button"
+                disabled
+                aria-disabled="true"
                 data-testid="run5-retry-new"
                 data-planned="true"
-                aria-disabled="true"
-                title="本代次这一面是只读的：重试的写入口还没有接通，这里只说明语义，点它不会发起任何请求"
+                data-endpoint-http="405"
+                className="min-w-0 cursor-not-allowed rounded-md border border-border px-2.5 py-1 text-left text-xs text-muted-foreground opacity-60"
+                title="这个环境的控制台只读：实测写请求一律被拒（POST /api/run-retry → HTTP 405 console.read_only），读路径上也没有这条路由（GET → 404 console.unknown_route）。所以这里只说明语义，点它不会发起任何请求。"
               >
-                重试 · 新建一次运行（写入口未接通，本页只渲文案）
-              </p>
+                重试 · 新建一次运行（当前环境只读，写入口未开放）
+              </button>
               <p className="max-w-prose min-w-0 break-words text-xs text-muted-foreground">
-                重试的语义是新建一次运行并生成新编号，原运行不会被改写、复用或取消。本代次没有接通这个写入口，所以这里只说明语义、不提供可点的动作。
+                重试的语义是新建一次运行并生成新编号，新编号会出现在详情页顶部的运行编号里；原运行不会被改写、复用或取消。实测本环境的控制台只接受 GET/HEAD（POST 一律 405），
+                端点 /api/run-retry 也没有读路由，所以这个入口以禁用态出现，不假装成功、也不复用旧编号。
               </p>
             </div>
 
