@@ -804,3 +804,11 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
   crawl-anon DL0/CE0/PE0 routesCE=51（env 归因）、crawl-auth DL0/CE0/PE0 routesCE=21、
   shots 102/102 failures=[] 三键齐 ceAuthority=login-state obsCE=0、anon 19/19 auxiliary、state-quad 20/20。
 - vitest 120 files/1177 passed == 卡面。
+
+## 四十一轮 · 九件重章 @ e0588146（entry D_7SSC81，≤17:10 卡）— 2026-11-19 16:4x
+
+- 三件套现查全对：e0588146=local=FETCH_HEAD、porcelain=0、entry D_7SSC81 155631B sha 0475ef31…==磁盘==served（拍窗 16:45:27-16:46:20 前后同值）、pid 61816。车道自报 DqaRvAR4/43b6dff6 不可复现未引用。
+- 九件 tmp+os.replace 全章 head=e0588146 ok exit=0：ia-react/html{51,22,1,8}、lint-fake v0、lint-reuse v0 e1、
+  crawl-anon DL0/CE0/PE0 routesCE=51（env 归因）、crawl-auth DL0/CE0/PE0 routesCE=21、
+  shots 102/102 failures=[] 三键齐 ceAuthority=login-state obsCE=0、anon 19/19 auxiliary、state-quad 20/20。
+- vitest 120 files/1180 passed（原文入 tonight/vitest.txt；卡未给本期数字，无矛盾）。

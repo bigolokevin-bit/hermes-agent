@@ -26,8 +26,8 @@
   "rootShell": {
     "url": "http://127.0.0.1:9122/",
     "hasMainEl": true,
-    "mainChars": 481,
-    "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 今日运"
+    "mainChars": 975,
+    "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 — /"
   },
   "contentChecked": 51,
   "contentRows": [
@@ -244,13 +244,13 @@
       "source": "DETAIL_ZONES_EXTRA",
       "kind": "detail-zone",
       "verdict": "content-ok",
-      "mainChars": 177,
+      "mainChars": 49,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 1,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "工作台 配置 任务 运行 证据 QA2 契约验证 1794894768 · EMPLOYEE Q"
+      "headSample": "工作台 配置 任务 运行 证据 员工 · EMPLOYEE — 概览 能力与权限 审批 运行 审"
     },
     {
       "route": "#/employees/:employeeId?zone=evidence",
@@ -348,11 +348,11 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 136,
+      "mainChars": 64,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 2,
-      "consoleErrorEnv": "auth-required-401",
+      "consoleErrors": 0,
+      "consoleErrorEnv": null,
       "evalError": null,
       "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 组织与部门 部门树 · 上下级关"
     },
@@ -374,11 +374,11 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 136,
+      "mainChars": 192,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 0,
-      "consoleErrorEnv": null,
+      "consoleErrors": 4,
+      "consoleErrorEnv": "auth-required-401",
       "evalError": null,
       "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 访问控制 角色、成员与管理员 ·"
     },
@@ -517,7 +517,7 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 974,
+      "mainChars": 975,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
@@ -660,7 +660,7 @@
       "source": "VIEW_DEEP_LINKS",
       "kind": "view",
       "verdict": "content-ok",
-      "mainChars": 1677,
+      "mainChars": 142,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
@@ -686,7 +686,7 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 1000,
+      "mainChars": 1001,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
@@ -695,7 +695,7 @@
       "headSample": "运营 · 控制台 任务与运行 任务 运行 控制台 · 运行 运行 按时间看运行记录。这一面只读："
     }
   ],
-  "distinctMainHeads": 26,
+  "distinctMainHeads": 27,
   "medianMainChars": 185,
   "contentEmpty": [],
   "contentEmptyCount": 0,
@@ -717,8 +717,6 @@
     "404 /agent-api/api/models",
     "404 /agent-api/api/models/pricing",
     "404 /agent-api/api/sessions",
-    "404 /agent-api/api/v1/dept/list",
-    "404 /agent-api/api/v1/dept/tree",
     "404 /agent-api/api/v1/role/list",
     "404 /agent-api/api/v1/roles",
     "404 /agent-api/api/v1/user/all",
@@ -737,7 +735,7 @@
   "routesWithConsoleErrors": 21,
   "parseErrors": [],
   "ok": true,
-  "headHash": "10a62b2b",
+  "headHash": "e0588146",
   "exitCode": 0,
   "counts": {
     "probed": 75,

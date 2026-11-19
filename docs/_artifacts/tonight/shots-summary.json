@@ -9,8 +9,8 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 493,
-    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 今日运行 运行记录 今日成本 成本账本 发布 ",
+    "textLen": 1012,
+    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 — / 2 可上岗 3 项检查的数据源尚未",
     "hasMainEl": true,
     "ok": true
   },
@@ -27,7 +27,7 @@
     {
       "route": "#/access",
       "viewport": "375",
-      "chars": 194,
+      "chars": 138,
       "hasMainEl": true
     },
     {
@@ -147,7 +147,7 @@
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "375",
-      "chars": 326,
+      "chars": 128,
       "hasMainEl": true
     },
     {
@@ -159,7 +159,7 @@
     {
       "route": "#/capabilities?tab=models",
       "viewport": "375",
-      "chars": 104,
+      "chars": 391,
       "hasMainEl": true
     },
     {
@@ -465,13 +465,13 @@
     {
       "route": "#/overview",
       "viewport": "1440",
-      "chars": 1011,
+      "chars": 1012,
       "hasMainEl": true
     },
     {
       "route": "#/overview",
       "viewport": "375",
-      "chars": 1011,
+      "chars": 1012,
       "hasMainEl": true
     },
     {
@@ -585,7 +585,7 @@
     {
       "route": "#/work",
       "viewport": "1440",
-      "chars": 145,
+      "chars": 1782,
       "hasMainEl": true
     },
     {
@@ -621,13 +621,13 @@
     {
       "route": "#/work?tab=runs",
       "viewport": "1440",
-      "chars": 1005,
+      "chars": 1006,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=runs",
       "viewport": "375",
-      "chars": 981,
+      "chars": 982,
       "hasMainEl": true
     }
   ],
@@ -642,16 +642,16 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "10a62b2b",
-  "entry": "assets/index-BuOnpJ_A.js",
-  "entrySha256": "3707cce6a16619ffd7e6053d6589e124f2772997e09a25145af41182b30595dd",
-  "entryBytes": 148063,
+  "headHash": "e0588146",
+  "entry": "assets/index-D_7SSC81.js",
+  "entrySha256": "0475ef31b7abf4765c82403645f0e3f103942c54d98f814fe86b24df1fecddb1",
+  "entryBytes": 155631,
   "medianMainChars": 191.0,
-  "shotWindow": "16:30:58-16:31:46 local",
-  "servedEntryBefore": "assets/index-BuOnpJ_A.js",
-  "servedEntryAfter": "assets/index-BuOnpJ_A.js",
+  "shotWindow": "16:45:27-16:46:20 local",
+  "servedEntryBefore": "assets/index-D_7SSC81.js",
+  "servedEntryAfter": "assets/index-D_7SSC81.js",
   "env": "9122 proxy-live (anon 401 / auth 200); CE 权威=登录态, 观察字段仅旁证",
-  "ceCaliber": "ceAuthority=login-state; crawl-auth routesCE=21 denied=18; crawl-anon routesCE=51 denied=31; ok 不含 CE 项（L0 二十九轮裁定落码）",
+  "ceCaliber": "ceAuthority=login-state; crawl-auth routesCE=21 denied=16; crawl-anon routesCE=51 denied=31; ok 不含 CE 项（L0 二十九轮裁定落码）",
   "anonEvidence": "crawl-anon ok=True exit=0 probed=75 DL=0 CE=0 PE=0 routesCE=51(env 旁证); shots-anon 辅助腿见 shots-anon-summary.json",
   "exitCode": 0
 }
