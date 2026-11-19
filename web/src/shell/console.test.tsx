@@ -123,6 +123,24 @@ describe("ConsoleModulePage pane contract", () => {
     );
   });
 
+  it("R32 item 2: /employees carries emp-l-page", () => {
+    renderAt(<ConsoleModulePage module="employees" live={{ list: <div data-testid="live-list" /> }} />, "/employees");
+    expect(container.querySelector('[data-testid="emp-l-page"]')).toBeTruthy();
+  });
+
+  it("R32 item 2: /employees?tab=matrix carries mtx5-page", () => {
+    renderAt(
+      <ConsoleModulePage module="employees" live={{ matrix: <div data-testid="live-matrix" /> }} />,
+      "/employees?tab=matrix",
+    );
+    expect(container.querySelector('[data-testid="mtx5-page"]')).toBeTruthy();
+  });
+
+  it("R32 item 2: /approvals carries apr5-page", () => {
+    renderAt(<ConsoleModulePage module="approvals" live={{ pending: <div data-testid="apr-live" /> }} />, "/approvals");
+    expect(container.querySelector('[data-testid="apr5-page"]')).toBeTruthy();
+  });
+
   // R5 item 2: /matrix must land on the real matrix page, never a planned
   // placeholder or /system. The live slot is the whole contract.
   it("R5-2 /employees?tab=matrix renders the live matrix module page", () => {
