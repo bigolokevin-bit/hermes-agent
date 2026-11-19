@@ -16,6 +16,7 @@ import { ApiError } from '@/lib/api-error';
 import { fetchJsonStrict } from '@/modules/models/fetchJson';
 
 import {
+  METRICS_GAP,
   WEEKDAY_LABELS,
   WINDOWS,
   buildHeatGrid,
@@ -32,7 +33,7 @@ import './metrics.css';
 type PageState =
   | { kind: 'loading' }
   | { kind: 'empty'; activity: Activity; loadedAt: string; weeks: number }
-  | { kind: 'error'; message: string; requestId: string | null }
+  | { kind: 'error'; message: string; requestId: string | null; gap: string | null }
   | { kind: 'ready'; activity: Activity; loadedAt: string; weeks: number };
 
 type Forced = 'loading' | 'empty' | 'error';
@@ -111,7 +112,7 @@ export function MetricsModulePage() {
       if (!signal.live) return;
       const parsed = readActivity(payload);
       if (parsed.kind === 'invalid') {
-        setState({ kind: 'error', message: parsed.reason, requestId: null });
+        setState({ kind: 'error', message: parsed.reason, requestId: null, gap: null });
         return;
       }
       const loadedAt = new Date().toISOString();
@@ -122,7 +123,8 @@ export function MetricsModulePage() {
       setState({ kind: 'ready', activity: parsed.activity, loadedAt, weeks });
     } catch (error) {
       if (!signal.live) return;
-      setState({ kind: 'error', message: messageFor(error), requestId: requestIdOf(error) });
+      const gap = error instanceof ApiError && error.status === 404 ? METRICS_GAP : null;
+      setState({ kind: 'error', message: messageFor(error), requestId: requestIdOf(error), gap });
     }
   }, [weeks]);
 
@@ -140,7 +142,7 @@ export function MetricsModulePage() {
       ? { kind: 'loading' }
       : forced === 'empty'
         ? { kind: 'empty', activity: EMPTY_ACTIVITY, loadedAt: new Date().toISOString(), weeks }
-        : { kind: 'error', message: '预览状态：这次没能读取运行活动，请稍后重试。', requestId: null }
+        : { kind: 'error', message: '预览状态：这次没能读取运行活动，请稍后重试。', requestId: null, gap: null }
     : state;
 
   const grid = view.kind === 'ready' ? buildHeatGrid(view.activity) : null;
@@ -208,7 +210,7 @@ export function MetricsModulePage() {
         <Card data-testid="met5-error">
           <CardContent className="space-y-2 p-6">
             <p className="font-medium">这次没能读取运行活动</p>
-            <p className="text-sm text-muted-foreground">{view.message}</p>
+            <p className="text-sm text-muted-foreground" title={view.gap ?? undefined}>{view.message}</p>
             <RequestId id={view.requestId} />
             <Button size="sm" outlined onClick={() => setAttempt((value) => value + 1)} data-testid="met5-retry">
               重试

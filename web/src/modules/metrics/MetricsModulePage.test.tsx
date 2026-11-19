@@ -86,6 +86,7 @@ describe('MetricsModulePage', () => {
     await mount(() => Promise.resolve(activityBody()));
     expect(urls()).toEqual(['/agent-api/api/run-activity?weeks=1&tz=Asia/Shanghai']);
     expect(document.querySelectorAll('[data-testid^="met5-cell-"]')).toHaveLength(168);
+    expect(document.querySelector('[data-testid="met5-page"]')?.getAttribute('data-fixture')).toBeNull();
     expect(text()).toContain('运行分析');
     expect(text()).toContain('来源：运行活动热力');
     expect(text()).toContain('窗口总运行');
@@ -130,6 +131,8 @@ describe('MetricsModulePage', () => {
   it('states that the activity endpoint is not connected instead of drawing an empty 0 grid', async () => {
     await mount((url) => Promise.reject(new ApiError('missing', { status: 404, body: '', url })));
     expect(text()).toContain('这项数据还没有接入');
+    expect(document.querySelector('[data-testid="met5-error"] p[title]')?.getAttribute('title')).toContain('GAP-MET5-01');
+    expect(text()).not.toContain('GAP-');
     expect(text()).not.toContain('404');
     expect(document.querySelector('[data-testid="met5-empty"]')).toBeNull();
     expect(document.querySelector('[data-testid="met5-error"]')).toBeTruthy();
