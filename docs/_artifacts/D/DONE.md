@@ -971,3 +971,12 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - shots main(auth) 102/102 failures=[] ceAuthority=login-state consoleErrorsObservedByShots=2 仅观测（#/employees/:employeeId?zone=runs、#/knowledge?tab=evidence，routesWithEnvOnly=26，不入 ok）三键=qXDDXt1v/5e6c8221…9c954/161271B servedEntry Before=After 拍后 curl 复证未漂；shots-anon auxiliary=true 102/102 mode=anon obs=2（#/employees、#/identity?tab=people&view=admins）envOnly=51 匿名实锤 textLen=732（/tmp/shots-anon77b 隔离，同名覆盖 mv 回 pngs=102）。
 - 新坑注记：main 脚本完成时刻会覆盖此前注入的六键（注入 obs=0 系中间态误读），正确序=等两批 shell completed 后再注入六键；本轮已按终态重注入并回读验证。
 - 上一代 17c36d25 账本作废不重做（卡注）。环境：9122 v4_proxy pid 31520、caddy 28034、8092 pid 10844 未动；web/src 未碰；他人脏零沾染；已推送笔禁 amend/rebase 一次成型。
+
+## 八十二轮·一波一盖九件重章 @ 33fc7029（2026-11-20 00:5x）
+
+- 代次：33fc7029（=远端=ws，merge(lane/console-ui2): e6a2861e）；entry assets/index-C9I6RDGq.js / 161271B / sha256 184dc885…3fec6；盘==9122==8183，porc=0。
+- 九件全 exit=0 单JSON 盖 33fc7029：ia-html/react ok{51,22,1,8}｜lint-fake v=[]｜lint-reuse v=0 exempt=1(chat→T40)｜crawl-anon DL0/CE0/PE0 routesCE51(401归因)｜crawl-auth DL0/CE0/PE0 routesCE27｜state-quad 20/20（文本重建注 source）。
+- shots main(auth) 102/102 failures=[] ceAuth=login-state obs=1 仅观测(#/overview，envOnly27 不入 ok)；三键+exitCode+servedEntry Before=After=C9I6RDGq，拍后复证未漂。
+- shots-anon auxiliary=true 102/102 mode=anon obs=1 仅观测(#/knowledge?tab=scope，envOnly51)；匿名实锤 textLen=732；png 同名覆盖回 tonight/shots=102。
+- 纪律执行注：两批 completed 后才注入六键（79 轮新坑正例）；mktemp 目录名=shell PID（shots-anon80.74255）；上一代 9c7789f6 作废未重做。
+- 环境：9122 v4_proxy 受管未动、caddy 28034 未动、8092 pid 10844 未动；web/src 未碰；他人脏零沾染。

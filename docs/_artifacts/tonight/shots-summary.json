@@ -9,12 +9,12 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 491,
+    "textLen": 490,
     "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 今日运行 运行记录 今日成本 成本账本 发布 ",
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 25,
+  "distinctMainHeads": 26,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -153,7 +153,7 @@
     {
       "route": "#/capabilities?tab=models",
       "viewport": "1440",
-      "chars": 104,
+      "chars": 391,
       "hasMainEl": true
     },
     {
@@ -219,7 +219,7 @@
     {
       "route": "#/employees/:employeeId?zone=config",
       "viewport": "375",
-      "chars": 42,
+      "chars": 51,
       "hasMainEl": true
     },
     {
@@ -381,7 +381,7 @@
     {
       "route": "#/knowledge?tab=evidence",
       "viewport": "1440",
-      "chars": 424,
+      "chars": 426,
       "hasMainEl": true
     },
     {
@@ -465,13 +465,13 @@
     {
       "route": "#/overview",
       "viewport": "1440",
-      "chars": 1043,
+      "chars": 1042,
       "hasMainEl": true
     },
     {
       "route": "#/overview",
       "viewport": "375",
-      "chars": 1043,
+      "chars": 1041,
       "hasMainEl": true
     },
     {
@@ -585,7 +585,7 @@
     {
       "route": "#/work",
       "viewport": "1440",
-      "chars": 205,
+      "chars": 1921,
       "hasMainEl": true
     },
     {
@@ -631,13 +631,12 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 2,
+  "consoleErrorsObservedByShots": 1,
   "consoleErrorRoutesObservedByShots": [
-    "#/employees/:employeeId?zone=runs",
-    "#/knowledge?tab=evidence"
+    "#/overview"
   ],
   "ceAuthority": "login-state",
-  "routesWithEnvOnlyConsoleErrors": 26,
+  "routesWithEnvOnlyConsoleErrors": 27,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
   "overflowing": [],
   "driver": {
@@ -645,11 +644,11 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "9c7789f6",
+  "headHash": "33fc7029",
   "exitCode": 0,
-  "entry": "assets/index-qXDDXt1v.js",
-  "entrySha256": "5e6c8221fcf9c8f7ef67bd8dc6b5f2fd70853d1d98d86ced8f597e7c7df9c954",
+  "entry": "assets/index-C9I6RDGq.js",
+  "entrySha256": "184dc885ce19566c4e6b594ff21fba0fa2803eaa27d18cdb1ac2d91c0c13fec6",
   "entryBytes": 161271,
-  "servedEntryBefore": "index-qXDDXt1v.js",
-  "servedEntryAfter": "index-qXDDXt1v.js"
+  "servedEntryBefore": "index-C9I6RDGq.js",
+  "servedEntryAfter": "index-C9I6RDGq.js"
 }

@@ -177,7 +177,7 @@
     {
       "route": "#/employees",
       "viewport": "1440",
-      "chars": 120,
+      "chars": 124,
       "hasMainEl": true
     },
     {
@@ -231,7 +231,7 @@
     {
       "route": "#/employees/:employeeId?zone=evidence",
       "viewport": "375",
-      "chars": 42,
+      "chars": 51,
       "hasMainEl": true
     },
     {
@@ -327,7 +327,7 @@
     {
       "route": "#/identity?tab=people&view=admins",
       "viewport": "375",
-      "chars": 161,
+      "chars": 163,
       "hasMainEl": true
     },
     {
@@ -423,7 +423,7 @@
     {
       "route": "#/knowledge?tab=scope",
       "viewport": "375",
-      "chars": 239,
+      "chars": 237,
       "hasMainEl": true
     },
     {
@@ -631,10 +631,9 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 2,
+  "consoleErrorsObservedByShots": 1,
   "consoleErrorRoutesObservedByShots": [
-    "#/employees",
-    "#/identity?tab=people&view=admins"
+    "#/knowledge?tab=scope"
   ],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
@@ -645,12 +644,12 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "9c7789f6",
+  "headHash": "33fc7029",
   "exitCode": 0,
-  "entry": "assets/index-qXDDXt1v.js",
-  "entrySha256": "5e6c8221fcf9c8f7ef67bd8dc6b5f2fd70853d1d98d86ced8f597e7c7df9c954",
+  "entry": "assets/index-C9I6RDGq.js",
+  "entrySha256": "184dc885ce19566c4e6b594ff21fba0fa2803eaa27d18cdb1ac2d91c0c13fec6",
   "entryBytes": 161271,
-  "servedEntryBefore": "index-qXDDXt1v.js",
-  "servedEntryAfter": "index-qXDDXt1v.js",
+  "servedEntryBefore": "index-C9I6RDGq.js",
+  "servedEntryAfter": "index-C9I6RDGq.js",
   "auxiliary": true
 }
