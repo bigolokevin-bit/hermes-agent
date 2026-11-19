@@ -403,3 +403,8 @@ BFF 实测形态（ego 登录态 GET /agent-api/api/approvals?status=consumed&li
 修复：①personView 支持对象 handle 解包（requestedBy={type:user,id:1}→「成员 · 1」，approvers userId human:1→「人员 · 1」；有 name 用「姓名 · 短码」），clean>=1 放宽（单人 id=1 不再误显「—」）；②缺值 fallback「未指派」→「—」+原因（工单口径：未指派=真未指派语义保留，缺值=—）；③详情操作指纹 actionHash 键补 argsDigest（真数据接上，短码+title 全值+可复制钮）；④行卡/详情 申请人/执行员工 缺值句统一「服务未提供申请人信息。」「服务未提供执行员工。」（title 原因，无假 0）。
 八字段现状（详情面板 apd5-*）：类型✓(changeKind 人话) 申请人✓(对象解包) 审批人✓(apd5-approver 顿号分隔姓名·短码) 结论✓(verdict 通过/驳回/要求修改) decidedAt✓(北京到分) 操作指纹✓(argsDigest) recipient/dataScope=该代次 BFF 无键→「—」+原因诚实 请求编号✓(可复制)。零写入口/403≡404 同体/apr5-* 家族维持。
 测试：api.test 新 describe 2 用例（对象 handle/无 handle「—」不名未指派/argsDigest→actionHash）；定向 approvals 3 files 52 passed；全量 122 files/1222 passed 0 fail。屏幕 DOM 复跑待 L0 合批构建代次。
+
+## tasks 看板真数据深度（feat(console): tasks board real-data depth）
+五列登录态实测（9122 BFF 带 cookie，GET /agent-api/api/tasks?status=<v>&limit=50）：open=200:17行(rid 5c5dba) | in_progress=200:1(bc706d) | blocked=200:1(af24cc) | done=200:0(69847f) | cancelled=200:1(0089e3)；不带 status 的 ALL 口径=400:0(43d8f4)——lane D 的 status=all 修复未到，看板走五路显式 status 不受影响，如实记录。
+判据对照：五态列 ✓（BOARD_STATUSES 真传参）；负责人「姓名 · 8位短码」/「未指派」✓（rowId/actorLabel，裸 emp_/human: 零上屏）；更新时间北京到分 ✓；成本 USD $x.xx ✓、真 0 显 $0.00、缺值本笔补原因=卡片行与详情成本改为非有限数时「—」+title「后台没有回传这条任务的成本。」（数据层不动）；状态未知「待核实」✓；状态迁移无死控件、创建入口=真 POST+csrf gate（CSRF 单已接）不假成功 ✓；四态齐+错误态可复制请求编号+重试 ✓；403≡404 同体不回显路径 ✓；testid tsk4-* 全家族不破 ✓；1440/1280/375 响应式（xl:grid-cols-5 md:grid-cols-2 min-w-0）✓。
+验证：定向 src/modules/tasks 2 files 14 passed；全量 122 files/1222 passed 0 fail。屏幕 DOM 复跑待 L0 合批构建代次。
