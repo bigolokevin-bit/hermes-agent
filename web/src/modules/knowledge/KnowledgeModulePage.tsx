@@ -29,6 +29,8 @@ import {
   SESSIONS_URL,
   DOCUMENTS_UNWIRED_HEAD,
   DOCUMENTS_UNWIRED_HUMAN,
+  SEARCH_UNWIRED_HEAD,
+  SEARCH_UNWIRED_HUMAN,
   SPACES_UNWIRED_HEAD,
   SPACES_UNWIRED_HUMAN,
   TASKS_UNWIRED_HEAD,
@@ -815,11 +817,21 @@ function SearchSurface({ nonce, query, onSearch }: SearchSurfaceProps): ReactNod
         source="search"
         state={surface.state}
         onRetry={surface.retry}
+        unwiredHead={SEARCH_UNWIRED_HEAD}
+        unwiredHuman={SEARCH_UNWIRED_HUMAN}
         empty={() => (
           <p>
             {query.trim() === ""
-              ? "接口已响应，但没有给出结果；这不等于知识库是空的。"
-              : `关键词「${query.trim()}」没有命中；接口已响应，不展示样例结果。`}
+              ? "没有匹配结果。接口已响应，这份回答里没有条目；这不等于知识库是空的，也不给命中数。"
+              : `没有匹配结果：关键词「${query.trim()}」这份回答里没有条目。接口已响应，不展示样例，也不给命中数。`}
+            <Link
+              className="knw5-link"
+              to="/knowledge?tab=spaces&panel=evidence"
+              data-testid="knw5-search-empty-citations"
+            >
+              先看会话里留下的引用
+              <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+            </Link>
           </p>
         )}
         render={(value) => <RefList rows={value.rows} testid="knw5-search-results" />}
