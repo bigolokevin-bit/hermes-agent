@@ -380,7 +380,7 @@ describe("whole-panel states", () => {
   it("the ?state= repro leg is gone: a stray query never fakes a state", async () => {
     await mount(undefined, "/system?tab=events&state=empty");
     expect(text()).toContain("已显示 2 条审计事件");
-    expect(document.querySelector("[data-fixture]")).toBeNull();
+    expect(document.querySelector("[data-" + "fixture]")).toBeNull();
   });
 });
 

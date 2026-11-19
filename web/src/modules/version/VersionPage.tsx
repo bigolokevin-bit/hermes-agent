@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Badge, Card, CardContent } from "@nous-research/ui";
 import { ApiError } from "@/lib/api-error";
 import { fetchJsonStrict } from "../models/fetchJson";
-import { fmtStamp, fmtUnitPrice, readPrices, type ModelPriceRow } from "../models/models";
+import { MODELS_GAP, fmtStamp, fmtUnitPrice, readPrices, type ModelPriceRow } from "../models/models";
 import { currentFixtureState, fixtureView } from "../../shell/fixtures";
 import { readBuildRows, readDependencyRows, type BuildEnv, type BuildRow, type DependencyRow } from "./version";
 
@@ -11,7 +11,30 @@ type PriceState =
   | { k: "loading" }
   | { k: "ready"; rows: ModelPriceRow[]; asOf: string | null }
   | { k: "empty" }
-  | { k: "error"; message: string; requestId: string | null };
+  | { k: "error"; message: string; requestId: string | null; status: number };
+
+function CopyRequestId({ id }: { id: string | null }) {
+  const [copied, setCopied] = useState(false);
+  if (!id) {
+    return <p className="text-xs text-white/45" data-testid="ver4-prices-request-id">请求编号：未提供</p>;
+  }
+  return (
+    <p className="flex min-w-0 flex-wrap items-center gap-1 text-xs text-white/45" data-testid="ver4-prices-request-id">
+      <span>请求编号：</span>
+      <code className="min-w-0 break-all" title={id}>{id}</code>
+      <button
+        type="button"
+        className="underline underline-offset-2"
+        aria-label="复制请求编号"
+        onClick={() => {
+          void navigator.clipboard?.writeText(id).then(() => setCopied(true), () => setCopied(false));
+        }}
+      >
+        {copied ? "已复制" : "复制"}
+      </button>
+    </p>
+  );
+}
 
 function StateBadge({ unknown }: { unknown: boolean }) {
   return <Badge tone={unknown ? "outline" : "success"}>{unknown ? "未知" : "已提供"}</Badge>;
@@ -46,6 +69,7 @@ export function VersionPage() {
     : { k: "ready", build, dependencies };
   const view = preview ?? liveState;
   const [prices, setPrices] = useState<PriceState>({ k: "loading" });
+  const [priceReload, setPriceReload] = useState(0);
 
   useEffect(() => {
     if (forced) return;
@@ -61,14 +85,18 @@ export function VersionPage() {
         const apiError = error instanceof ApiError ? error : null;
         setPrices({
           k: "error",
-          message: apiError?.message ?? "单价表暂时读不出来，请稍后重试。",
+          message:
+            apiError?.status === 403 || apiError?.status === 404
+              ? "单价表未接入，或当前账号无权读取；这里不显示猜测的单价。"
+              : apiError?.message ?? "单价表暂时读不出来，请稍后重试。",
           requestId: apiError?.requestId ?? null,
+          status: apiError?.status ?? 0,
         });
       });
     return () => {
       live = false;
     };
-  }, [forced]);
+  }, [forced, priceReload]);
 
   return (
     <section className="space-y-4" data-testid="ver4-page" data-fixture={forced ?? undefined}>
@@ -126,11 +154,17 @@ export function VersionPage() {
           {prices.k === "loading" ? (
             <p className="text-sm text-white/55" aria-busy="true">正在读取单价…</p>
           ) : prices.k === "error" ? (
-            <div className="space-y-1 text-sm" data-testid="ver4-prices-error" role="status">
+            <div className="space-y-2 text-sm" data-testid="ver4-prices-error" role="alert" title={prices.status === 403 || prices.status === 404 ? MODELS_GAP : undefined}>
               <p className="text-white/80">{prices.message}</p>
-              <p className="text-xs text-white/45">
-                请求编号：{prices.requestId ?? "未提供"}
-              </p>
+              <CopyRequestId id={prices.requestId} />
+              <button
+                type="button"
+                className="rounded-md border border-white/15 px-2.5 py-1 text-xs text-white/70"
+                data-testid="ver4-prices-retry"
+                onClick={() => setPriceReload((n) => n + 1)}
+              >
+                重试
+              </button>
             </div>
           ) : prices.k === "empty" ? (
             <p className="text-sm text-white/55" data-testid="ver4-prices-empty">还没有单价记录；不显示 0 元。</p>

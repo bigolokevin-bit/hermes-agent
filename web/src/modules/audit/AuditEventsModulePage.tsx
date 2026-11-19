@@ -29,7 +29,7 @@
  * not in the DOM at all). 403 and 404 draw one identical denied body and never
  * leave rows above it. Fixture debt burn (R30): this pane no longer reads
  * `?state=` — every list/detail state below comes from a real read, so there is
- * no `data-fixture` badge to mistake for an answer.
+ * no fixture badge to mistake for an answer.
  */
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router";

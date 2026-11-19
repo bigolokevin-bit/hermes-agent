@@ -109,4 +109,28 @@ describe("VersionPage", () => {
     await render();
     expect(container.querySelector('[data-testid="ver4-empty"]')?.textContent).toContain("这项信息未提供");
   });
+  it("uses one neutral price body for 403 and 404 with a copyable request id", async () => {
+    const bodies: string[] = [];
+    for (const status of [403, 404]) {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(JSON.stringify({ code: "console.forbidden" }), {
+            status,
+            headers: { "content-type": "application/json", "x-console-request-id": "req-ver-1" },
+          }),
+        ),
+      );
+      await render();
+      const block = container.querySelector('[data-testid="ver4-prices-error"]');
+      bodies.push(block?.textContent ?? "");
+      expect(block?.textContent).toContain("单价表未接入");
+      expect(block?.textContent).toContain("req-ver-1");
+      expect(block?.getAttribute("title")).toBe("GAP-07");
+      expect(block?.textContent).not.toContain("/api/");
+      expect(block?.querySelector('[data-testid="ver4-prices-retry"]')).toBeTruthy();
+    }
+    expect(bodies[0]).toBe(bodies[1]);
+  });
+
 });
