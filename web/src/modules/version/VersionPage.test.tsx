@@ -21,18 +21,23 @@ beforeEach(() => {
   vi.stubEnv("VITE_BUILD_COMMIT", "");
   vi.stubEnv("VITE_BUILD_TIME", "");
   window.history.replaceState({}, "", "/");
-  vi.stubGlobal(
-    "fetch",
-    vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ prices: [] }), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      }),
-    ),
-  );
+  stubFetch(() => json({ prices: [] }));
 });
 afterEach(() => { act(() => root.unmount()); container.remove(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 async function render() { await act(async () => { root.render(<VersionPage />); }); await act(async () => {}); }
+
+function json(body: unknown, status = 200, headers: Record<string, string> = {}): Response {
+  return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", ...headers } });
+}
+
+function stubFetch(handler: (url: string) => Response): void {
+  vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+    if (url.includes("/agent-api/api/version")) return Promise.resolve(json({ components: [] }));
+    if (url.includes("/agent-api/api/health")) return Promise.resolve(json({ ok: true, asOf: "2026-11-19T16:00:00Z", sources: [] }));
+    return Promise.resolve(handler(url));
+  }));
+}
 
 describe("VersionPage", () => {
   it("shows unknown with an explanation when build metadata is not injected", async () => {
@@ -77,27 +82,19 @@ describe("VersionPage", () => {
   });
 
   it("renders the price table with USD and asOf, separately from spend", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            prices: [
-              {
-                modelId: "m1",
-                label: "DeepSeek V3",
-                provider: "deepseek",
-                inputPerMillion: 0.14,
-                outputPerMillion: 0.28,
-                currency: "USD",
-                asOf: "2026-11-19T02:00:00Z",
-              },
-            ],
-          }),
-          { status: 200, headers: { "content-type": "application/json" } },
-        ),
-      ),
-    );
+    stubFetch(() => json({
+      prices: [
+        {
+          modelId: "m1",
+          label: "DeepSeek V3",
+          provider: "deepseek",
+          inputPerMillion: 0.14,
+          outputPerMillion: 0.28,
+          currency: "USD",
+          asOf: "2026-11-19T02:00:00Z",
+        },
+      ],
+    }));
     await render();
     expect(container.querySelector('[data-testid="ver4-price-table"]')?.textContent).toContain("DeepSeek V3");
     expect(container.textContent).toContain("$0.14 / 百万 token");
@@ -107,15 +104,10 @@ describe("VersionPage", () => {
   });
 
   it("turns a non-JSON page into a human message, never a parser error", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response("<!doctype html><html><body>SPA</body></html>", {
-          status: 200,
-          headers: { "content-type": "text/html" },
-        }),
-      ),
-    );
+    stubFetch(() => new Response("<!doctype html><html><body>SPA</body></html>", {
+      status: 200,
+      headers: { "content-type": "text/html" },
+    }));
     await render();
     const block = container.querySelector('[data-testid="ver4-prices-error"]')?.textContent ?? "";
     expect(block).toContain("页面，不是数据");
@@ -132,15 +124,7 @@ describe("VersionPage", () => {
   it("uses one neutral price body for 403 and 404 with a copyable request id", async () => {
     const bodies: string[] = [];
     for (const status of [403, 404]) {
-      vi.stubGlobal(
-        "fetch",
-        vi.fn().mockResolvedValue(
-          new Response(JSON.stringify({ code: "console.forbidden" }), {
-            status,
-            headers: { "content-type": "application/json", "x-console-request-id": "req-ver-1" },
-          }),
-        ),
-      );
+      stubFetch(() => json({ code: "console.forbidden" }, status, { "x-console-request-id": "req-ver-1" }));
       await render();
       const block = container.querySelector('[data-testid="ver4-prices-error"]');
       bodies.push(block?.textContent ?? "");

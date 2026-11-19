@@ -5,6 +5,7 @@ import { fetchJsonStrict } from "../models/fetchJson";
 import { MODELS_GAP, fmtStamp, fmtUnitPrice, readPrices, type ModelPriceRow } from "../models/models";
 import { currentFixtureState, fixtureView } from "../../shell/fixtures";
 import { readBuildRows, readDependencyRows, type BuildEnv, type BuildRow, type DependencyRow } from "./version";
+import { VersionHealthSurface } from "./VersionHealthSurface";
 
 type State = { k: "loading" } | { k: "empty" } | { k: "error"; requestId: string | null } | { k: "ready"; build: BuildRow[]; dependencies: DependencyRow[] };
 type PriceState =
@@ -135,6 +136,8 @@ export function VersionPage() {
           下载诊断包（计划中）
         </button>
       </header>
+
+      <VersionHealthSurface preview={forced && forced !== "ready" ? forced : null} />
 
       {view.k === "loading" ? (
         <Card><CardContent className="space-y-3 p-4" data-testid="ver4-loading" aria-busy="true">

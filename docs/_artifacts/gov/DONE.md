@@ -1751,3 +1751,17 @@ built /private/tmp/health-r38/index.html
 - DOM（临时 harness，已删；Vite 5458 / Chrome 9260）：1440/1280/375 技能页与工具页 `vw=bodySW=bodyCW=1440/1280/375`，`pageSW=pageCW`（技能 1408/1248/343，工具页同视口）；展开后详情数均 1，文本含口径名/来源/启用态/最近更新/读口路径/采集时刻，缺失项显示「该字段未返回」。
 - 截图：`docs/_artifacts/gov/shots/cap7-skills-{1440,1280,375}.png`、`cap7-tools-{1440,1280,375}.png`。
 - 边界：只改 `web/src/modules/{capabilities,skills,tools}/**` 与 DONE/截图；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；无独立观察者。
+
+## R48 版本与健康真数据面（2026-11-20）
+
+- 基线：显式 refspec fetch 后已与 `origin/lane/hermes-console` 同步（=6a02ed58，wave-16），`git merge --no-ff` 报 Already up to date；保留已推 `1d321200`。toplevel 校验通过。
+- 端点实测（9122，登录 cookie 只读、不打印）：`/agent-api/api/version` → **404** `console.unknown_route`（无版本读口）；`/agent-api/api/health` → **200** `console.health.sources.v1`，`ok:true`、`asOf:2026-11-19T23:17:09Z`、3 个 sources。同源 `/api/version`、`/api/health` 均为 **200 text/html**（SPA 外壳，非 JSON）。
+- 实现：新增 `web/src/modules/version/{versionHealth.ts,VersionHealthSurface.tsx}`，并在 `VersionPage` 头部下方挂载，现有 `ver4-*` 构建/依赖/单价区不动。
+  - 版本表列 = 组件名 / 版本 / 构建时刻（BJT 到分）/ 状态人话（正常·降级·待核实）。缺值「—」，原因只进该单元格 title；禁 `?? 0`、禁编造版本号；状态映射 ok/healthy→正常，degraded/warn/partial/down→降级，其余→待核实。
+  - 403/404 同一「版本读口未接入」体，`GAP-VER5-01` 只在 title；401 登录失效；5xx/网络人话 + 可复制 `ver5-request-id` + `ver5-retry`；`ver5-apply` 去 `/approvals`。零写入口。
+  - 整体健康行独立读 `/agent-api/api/health`：正常/降级/待核实 + 采集时刻 BJT + 来源项数；健康失败只降级该行（「不影响上方版本表」），不阻塞版本表，`GAP-VER5-02` 只进 title。
+  - 四态：`ver5-loading` / `ver5-empty` / `ver5-error`（或 gap）/ `ver5-table`；`?state=loading|empty|error` 由现有全局预览接管，不额外请求。
+- 验证：`npx vitest run src/modules/version` → **2 files / 12 tests passed**（新增 `VersionHealthSurface.test.tsx` 5 条：404 gap+health、403≡404、真实行与缺字段原因、健康失败不阻塞、空/错误预览零请求）。全量 `npx vitest run` → **133 files / 1460 passed**，另有 2 个 unhandled rejection 来自基线 `modules/employee-detail` 的 `api is not defined`（非本域）。`tsc -b . --noEmit` → 6 行全为基线 employee-detail/employees，本域 0。
+- DOM（临时 harness，已删；Vite 5459 / Chrome 9261）：1440/1280/375 `vw=bodySW=bodyCW=1440/1280/375`，`ver5-page` 宽 1406/1246/341，版本行 2，健康 `正常`，首行 `控制台 / 4.2.1 / 2026-11-20 00:05 / 正常`；版本表 560px 仅在卡内横向滚动，页面不横溢。截图 `docs/_artifacts/gov/shots/ver5-{1440,1280,375}.png`。
+- **需壳层注册（本 lane 不可改）**：`/capabilities?tab=version` 目前不在 `CONSOLE_TABS`，未知 tab 回落到技能页；`App.tsx` `/capabilities` live map 也无 `version` 节点。要按目标路由上屏，需壳层：①`routes.ts` 增 capabilities 的 version tab（hash `#/capabilities?tab=version`，并相应迁出/保留 system version 以维持 22 tab 口径）；②`App.tsx` `/capabilities` live map 挂 `version: <VersionConsolePage />`（或本 surface）。当前同一 surface 已在既有真路由 `/system?tab=version` 挂载可用。
+- 边界：只改 `web/src/modules/version/**` 与 DONE/截图；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；无独立观察者。
