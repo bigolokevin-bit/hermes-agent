@@ -109,3 +109,26 @@
 - RFC4180 转义沿用 `csvCell`（引号/逗号/换行 → 双引号包裹、`""` 转义，`\r\n` 分行）。
 - 验证：定向 `vitest run src/modules/metrics` 66 passed；全量 132 files / 1470 passed（另 2 条既有 employee-detail unhandled rejection）；`tsc -b . --noEmit` 全仓 55 条既存基线、`modules/metrics` 0；build `vite build --outDir /tmp/build-metF` → entry `assets/index-D0ClJCu1.js` sha256 `9e29e33ff78075ad47a7e4fbd6851df3203970ae5186d0767dee11c421392532`（entry 内 `metF-export-asof-note` 0），chunk `assets/MetricsModulePage-tmH1B3OY.js` 命中 1。
 - 未测项：真实 BFF 是否在每类读口都给顶层 `asOf` 未联调（缺则如设计留空）；员工源 `as_of` 取账本行最大 `updatedAt`（上游值，非本机时钟），与「顶层 ISO」口径的差异已在此记录。
+
+## 部分读口失败的局部可用（metH，2026-11-20）
+
+### 做了什么
+- `loadUsage` 拆成「一次读一个块」：`readBlock`（单次读 + 单块失败态）→ `ledgerSnapshot`（员工目录 + 账本，按日/月）→ `fetchUsageBlock(kind, window)`（stats / prevRuns / day / month / pricing 五块各走自己的读链）→ `loadUsage` 顺序取五块。取数顺序与请求数与改造前一致。
+- 单卡重试 `retryUsageBlock(kind)`：只调 `fetchUsageBlock` 该块一次，成功后原位替换该块，**不动** `loadedAt`（其余卡的「读取于」不跟着变，避免让没重读的卡看起来刚读过）。`retryingBlock` 提供 `aria-busy` 与禁用。
+- 热力卡 `retryHeat()` 只重发 `run-activity`；页面「刷新」仍是全量重读。
+- 全失败（stats/day/pricing 三块都不可用）才渲染整段错误卡，外层加 `metH-page-error`，保留 `met6-denied|met6-error`、`metD-card-rid`、`met6-retry`。
+- 切窗/切视角：`loadUsage` 先把 `usage` 置回 `loading`，新批次的失败判定不会沿用旧批。
+
+### testid
+`metH-card-error-runs|cost|month|trend|price|heat`、`metH-card-retry-runs|cost|month|trend|price|heat`、`metH-page-error`、`metH-gap-rid-month`。met5/6/7/8/9/A/B/C/D/F/G 全族保持不变。
+
+### 实测（jsdom）
+- 单源失败：pricing 404（rid `req-metH-price`）→ 运行数 `0`、实扣 `$0.00`、账本明细表仍在；只有单价卡出现 `metH-card-error-price`（含「这项数据当前读不到」与 rid），无 `metH-page-error`。
+- 单卡重试：点 `metH-card-retry-price` 后 `models/pricing` 请求 +1，`run-stats` / `run-activity` / `/api/employees` / `budget-usage` 请求数**全部不变**；单价表恢复、错误块消失，运行数与实扣数字未变。
+- 全失败：500 全部读口 → `metH-page-error` 含 `req-metH-all`、`met6-retry` 存在；热力卡独立给出自己的错误与重试。
+- 热力单卡重试：run-activity 超时（rid `req-metH-heat`）→ 页面其余数字照常；点 `metH-card-retry-heat` 后 `run-activity` +1，`run-stats` 与 `/api/employees` 不变，热力恢复。
+- 定向 66 → 70 passed；全量 132 files / 1474 passed；tsc `modules/metrics` 0 条（全仓 55 条既存基线）；build entry `assets/index-CPs_U03b.js` sha256 `b7bbf53cbc702129743372ffef4c923801648cae8c5ee13021149f8d184b155e`，entry 内 `metH-card-error` 0，chunk `MetricsModulePage-w_6EPcss.js` 11 次。
+
+### 未测项
+- 真浏览器下逐个读口真实失败（网断、502）未演练；未测「重试期间用户切窗」的竞态（`retryUsageBlock` 用当前 `usageWindow.id`，切窗会触发全量重读覆盖）。
+- 单卡重试不写 `sources` 的批次号之外逻辑：失败重试会更新该读口的新鲜度行（`loadJson` 同一 epoch），其余行不变——已在代码路径上确认，未单独加断言。

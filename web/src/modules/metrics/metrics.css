@@ -708,3 +708,25 @@
   outline: 2px solid var(--color-ring);
   outline-offset: -2px;
 }
+
+/* Partial failure: a card that could not read keeps its own retry, and the
+   cards that did read keep their numbers. */
+.metH-card-error {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.metH-card-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+@media (max-width: 375px) {
+  .metH-card-acts > * {
+    min-width: 0;
+  }
+}

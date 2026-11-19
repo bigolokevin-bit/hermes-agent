@@ -1623,3 +1623,116 @@ describe('metG — table accessibility and sort semantics', () => {
     expect(document.activeElement).toBe(rows[0]);
   });
 });
+
+describe('metH — partial failure isolation', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+  const count = (list: string[], part: string): number => list.filter((url) => url.includes(part)).length;
+  const pricingDown = (requestId = 'req-metH-price') => () =>
+    Promise.reject(new ApiError('missing', { status: 404, body: '', url: '/api/models/pricing', requestId }));
+  const PRICING_OK = {
+    models: [{ modelId: 'mdl_metH', label: 'zeta', inputPerMillion: 1, outputPerMillion: 2, currency: 'USD' }],
+    asOf: '2026-11-19T20:12:00.000Z',
+  };
+
+  it('keeps the cards that did read when one source fails, and offers only that card a retry', async () => {
+    await mount(usageRouter({ pricing: pricingDown() }));
+
+    // The sources that answered keep their numbers — no blank page, no cleared table.
+    expect(q('met6-runs-value')?.textContent).toBe('0');
+    expect(q('met6-cost-value')?.textContent).toBe('$0.00');
+    expect(q('met5-count')).not.toBeNull();
+    expect(q('met6-cost-rows')).not.toBeNull();
+
+    // Only the pricing card carries the failure, with its copyable id and a retry.
+    const err = q('metH-card-error-price');
+    expect(err).not.toBeNull();
+    expect(err?.textContent).toContain('这项数据当前读不到');
+    expect(err?.textContent).toContain('req-metH-price');
+    expect(q('metH-card-retry-price')).not.toBeNull();
+    expect(q('metH-card-error-runs')).toBeNull();
+    expect(q('metH-card-error-cost')).toBeNull();
+    expect(q('metH-page-error')).toBeNull();
+  });
+
+  it('re-reads only that card on retry, recovers it, and leaves the other numbers alone', async () => {
+    let down = true;
+    await mount(
+      usageRouter({ pricing: () => (down ? pricingDown()() : Promise.resolve(PRICING_OK)) }),
+    );
+
+    const before = urls();
+    const statsBefore = count(before, 'run-stats');
+    const activityBefore = count(before, 'run-activity');
+    const employeesBefore = count(before, '/api/employees');
+    const ledgerBefore = count(before, 'budget-usage');
+    const priceBefore = count(before, 'models/pricing');
+    expect(priceBefore).toBeGreaterThan(0);
+
+    down = false;
+    await act(async () => {
+      (q('metH-card-retry-price') as HTMLButtonElement).click();
+    });
+    await waitFor(() => q('met6-price-rows') !== null, 'price card recovered');
+
+    const after = urls();
+    // Exactly one new read, and only for the failed source.
+    expect(count(after, 'models/pricing')).toBe(priceBefore + 1);
+    expect(count(after, 'run-stats')).toBe(statsBefore);
+    expect(count(after, 'run-activity')).toBe(activityBefore);
+    expect(count(after, '/api/employees')).toBe(employeesBefore);
+    expect(count(after, 'budget-usage')).toBe(ledgerBefore);
+
+    expect(q('metH-card-error-price')).toBeNull();
+    expect(q('met6-runs-value')?.textContent).toBe('0');
+    expect(q('met6-cost-value')?.textContent).toBe('$0.00');
+  });
+
+  it('turns the section into one error only when every source fails, and keeps the id and the way back', async () => {
+    const down = (url: string): Promise<unknown> =>
+      Promise.reject(new ApiError('boom', { status: 500, body: '', url, requestId: 'req-metH-all' }));
+    await mount(down);
+
+    expect(q('metH-page-error')).not.toBeNull();
+    expect(q('metH-page-error')?.textContent).toContain('req-metH-all');
+    expect(q('met6-retry')).not.toBeNull();
+    // The heat card stands apart: it failed too, but it has its own retry.
+    expect(q('metH-card-error-heat')).not.toBeNull();
+    expect(q('metH-card-retry-heat')).not.toBeNull();
+  });
+
+  it('retries only the heat card after a run-activity timeout', async () => {
+    const router = usageRouter();
+    let activityDown = true;
+    const handler = (url: string): Promise<unknown> => {
+      if (url.includes('run-activity')) {
+        return activityDown
+          ? Promise.reject(new ApiError('timeout', { status: 0, body: '', url, requestId: 'req-metH-heat' }))
+          : Promise.resolve(activityBody());
+      }
+      return router(url);
+    };
+    await mount(handler);
+
+    expect(q('metH-card-error-heat')).not.toBeNull();
+    expect(q('metH-card-error-heat')?.textContent).toContain('req-metH-heat');
+    // The rest of the page read fine, so it still shows its numbers.
+    expect(q('met6-runs-value')?.textContent).toBe('0');
+
+    const before = urls();
+    const activityBefore = count(before, 'run-activity');
+    const statsBefore = count(before, 'run-stats');
+    const employeesBefore = count(before, '/api/employees');
+
+    activityDown = false;
+    await act(async () => {
+      (q('metH-card-retry-heat') as HTMLButtonElement).click();
+    });
+    await waitFor(() => q('met5-count') !== null, 'heat card recovered');
+
+    const after = urls();
+    expect(count(after, 'run-activity')).toBe(activityBefore + 1);
+    expect(count(after, 'run-stats')).toBe(statsBefore);
+    expect(count(after, '/api/employees')).toBe(employeesBefore);
+    expect(q('metH-card-error-heat')).toBeNull();
+  });
+});

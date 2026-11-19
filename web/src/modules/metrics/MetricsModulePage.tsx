@@ -106,6 +106,9 @@ type UsageBlock<T> =
   | { kind: 'ready'; value: T }
   | { kind: 'unavailable'; reason: string; gap: string | null; requestId: string | null };
 
+/** The five reads behind the usage cards; each one can be retried alone. */
+type UsageBlockKind = 'stats' | 'prevRuns' | 'day' | 'month' | 'pricing';
+
 interface LedgerSnapshot {
   total: number | null;
   asOf: string | null;
@@ -293,6 +296,23 @@ function SourceRidButton({ id, label, testId }: { id: string; label: string; tes
   );
 }
 
+/** A card-level retry: it re-reads that card's own source and nothing else. */
+function CardRetryButton({ busy, onClick, testId }: { busy: boolean; onClick: () => void; testId: string }): ReactNode {
+  return (
+    <Button
+      size="sm"
+      outlined
+      disabled={busy}
+      aria-busy={busy || undefined}
+      onClick={onClick}
+      data-testid={testId}
+      className="metH-retry"
+    >
+      {busy ? '正在重试…' : '重试这一项'}
+    </Button>
+  );
+}
+
 function cellTone(cell: HeatCell): string {
   if (!cell.present) return 'is-missing';
   if (cell.count === 0) return 'is-zero';
@@ -321,6 +341,7 @@ export function MetricsModulePage() {
   const [share, setShare] = useState<ShareState>({ kind: 'loading' });
   const [heatAt, setHeatAt] = useState<string>(new Date().toISOString());
   const [attempt, setAttempt] = useState(0);
+  const [retryingBlock, setRetryingBlock] = useState<UsageBlockKind | null>(null);
   const [selected, setSelected] = useState<{ dow: number; hour: number } | null>(null);
   const [sources, setSources] = useState<Record<string, SourceStamp>>({});
   const [sourcesOpen, setSourcesOpen] = useState(false);
@@ -389,15 +410,16 @@ export function MetricsModulePage() {
     };
   }, [attempt, forced, load]);
 
-  const loadUsage = useCallback(async (signal: { live: boolean }, windowId: UsageWindowId) => {
-    setUsage({ kind: 'loading' });
-    const preset = usageWindowOf(windowId);
-    const now = new Date();
-    const range = windowRange(now, windowId);
-    const today = beijingDayKey(now);
-    const monthKey = today.slice(0, 7);
+  // The heat card retries only its own read; the cards below keep their numbers.
+  const retryHeat = useCallback(() => {
+    void load({ live: true });
+  }, [load]);
 
-    const readBlock = async <T,>(
+  // One block of the usage card set. Each read settles on its own, so a source
+  // that fails leaves only its own card without numbers while the others keep
+  // theirs — the page never turns a single failure into a blank section.
+  const readBlock = useCallback(
+    async <T,>(
       run: () => Promise<unknown>,
       parse: (body: unknown) => { ok: true; value: T } | { ok: false; reason: string },
     ): Promise<UsageBlock<T>> => {
@@ -409,38 +431,12 @@ export function MetricsModulePage() {
       } catch (error) {
         return { kind: 'unavailable', ...blockFailure(error) };
       }
-    };
+    },
+    [],
+  );
 
-    const stats = await readBlock(
-      () =>
-        loadJson(
-          `/agent-api/api/run-stats?from=${encodeURIComponent(range.from)}` +
-            `&to=${encodeURIComponent(range.to)}&bucket=${preset.bucket}`,
-        ),
-      (body) => {
-        const parsed = readRunStats(body);
-        return parsed.kind === 'ok'
-          ? { ok: true, value: { stats: parsed.stats, from: range.from, to: range.to } }
-          : { ok: false, reason: parsed.reason };
-      },
-    );
-
-    const prev = previousRange(now, windowId);
-    const prevRuns = await readBlock(
-      () =>
-        loadJson(
-          `/agent-api/api/run-stats?from=${encodeURIComponent(prev.from)}` +
-            `&to=${encodeURIComponent(prev.to)}&bucket=${preset.bucket}`,
-        ),
-      (body) => {
-        const parsed = readRunStats(body);
-        return parsed.kind === 'ok'
-          ? { ok: true, value: parsed.stats.totals.runs }
-          : { ok: false, reason: parsed.reason };
-      },
-    );
-
-    const ledgerSnapshot = async (periodKind: 'day' | 'month', period: string): Promise<LedgerSnapshot> => {
+  const ledgerSnapshot = useCallback(
+    async (periodKind: 'day' | 'month', period: string): Promise<LedgerSnapshot> => {
       const directory = employeeIdsOf(await loadJson('/agent-api/api/employees?limit=200'));
       if (directory.ids.length === 0) {
         return {
@@ -476,39 +472,127 @@ export function MetricsModulePage() {
         truncated: directory.truncated,
         names: directory.names,
       };
-    };
+    },
+    [loadJson],
+  );
 
-    const day = await readBlock(
-      () => ledgerSnapshot('day', today),
-      (body) => ({ ok: true, value: body as LedgerSnapshot }),
-    );
-    const month = await readBlock(
-      () => ledgerSnapshot('month', monthKey),
-      (body) => ({ ok: true, value: body as LedgerSnapshot }),
-    );
+  // One block, one read chain. Retrying a card calls this with that kind alone,
+  // so a retry cannot re-request the other cards' sources.
+  const fetchUsageBlock = useCallback(
+    async (kind: UsageBlockKind, windowId: UsageWindowId): Promise<UsageBlock<unknown>> => {
+      const preset = usageWindowOf(windowId);
+      const now = new Date();
+      const range = windowRange(now, windowId);
+      const today = beijingDayKey(now);
+      const monthKey = today.slice(0, 7);
+      const prev = previousRange(now, windowId);
+      switch (kind) {
+        case 'stats':
+          return readBlock(
+            () =>
+              loadJson(
+                `/agent-api/api/run-stats?from=${encodeURIComponent(range.from)}` +
+                  `&to=${encodeURIComponent(range.to)}&bucket=${preset.bucket}`,
+              ),
+            (body) => {
+              const parsed = readRunStats(body);
+              return parsed.kind === 'ok'
+                ? { ok: true, value: { stats: parsed.stats, from: range.from, to: range.to } }
+                : { ok: false, reason: parsed.reason };
+            },
+          );
+        case 'prevRuns':
+          return readBlock(
+            () =>
+              loadJson(
+                `/agent-api/api/run-stats?from=${encodeURIComponent(prev.from)}` +
+                  `&to=${encodeURIComponent(prev.to)}&bucket=${preset.bucket}`,
+              ),
+            (body) => {
+              const parsed = readRunStats(body);
+              return parsed.kind === 'ok'
+                ? { ok: true, value: parsed.stats.totals.runs }
+                : { ok: false, reason: parsed.reason };
+            },
+          );
+        case 'day':
+          return readBlock(
+            () => ledgerSnapshot('day', today),
+            (body) => ({ ok: true, value: body as LedgerSnapshot }),
+          );
+        case 'month':
+          return readBlock(
+            () => ledgerSnapshot('month', monthKey),
+            (body) => ({ ok: true, value: body as LedgerSnapshot }),
+          );
+        case 'pricing':
+          return readBlock(
+            () => loadJson('/agent-api/api/models/pricing'),
+            (body) => {
+              const parsed = readPricing(body);
+              return parsed.kind === 'ok'
+                ? { ok: true, value: { rows: parsed.rows, asOf: parsed.asOf } }
+                : { ok: false, reason: parsed.reason };
+            },
+          );
+      }
+    },
+    [ledgerSnapshot, loadJson, readBlock],
+  );
 
-    const pricing = await readBlock(
-      () => loadJson('/agent-api/api/models/pricing'),
-      (body) => {
-        const parsed = readPricing(body);
-        return parsed.kind === 'ok'
-          ? { ok: true, value: { rows: parsed.rows, asOf: parsed.asOf } }
-          : { ok: false, reason: parsed.reason };
-      },
-    );
+  const loadUsage = useCallback(
+    async (signal: { live: boolean }, windowId: UsageWindowId) => {
+      setUsage({ kind: 'loading' });
+      const stats = (await fetchUsageBlock('stats', windowId)) as UsageBlock<TrendSnapshot>;
+      const prevRuns = (await fetchUsageBlock('prevRuns', windowId)) as UsageBlock<number | null>;
+      const day = (await fetchUsageBlock('day', windowId)) as UsageBlock<LedgerSnapshot>;
+      const month = (await fetchUsageBlock('month', windowId)) as UsageBlock<LedgerSnapshot>;
+      const pricing = (await fetchUsageBlock('pricing', windowId)) as UsageBlock<{
+        rows: PriceRow[];
+        asOf: string | null;
+      }>;
+      if (!signal.live) return;
+      setUsage({
+        kind: 'ready',
+        window: windowId,
+        stats,
+        day,
+        month,
+        pricing,
+        prevRuns,
+        loadedAt: new Date().toISOString(),
+      });
+    },
+    [fetchUsageBlock],
+  );
 
-    if (!signal.live) return;
-    setUsage({
-      kind: 'ready',
-      window: windowId,
-      stats,
-      day,
-      month,
-      pricing,
-      prevRuns,
-      loadedAt: new Date().toISOString(),
-    });
-  }, [loadJson]);
+  // A card retry replaces exactly one block in place; everything already on the
+  // screen stays there, including the numbers of the blocks that did read.
+  const retryUsageBlock = useCallback(
+    async (kind: UsageBlockKind) => {
+      setRetryingBlock(kind);
+      const block = await fetchUsageBlock(kind, usageWindow.id);
+      // The other cards keep their own read time: replacing one block must not
+      // make the rest look freshly read.
+      setUsage((prev) => {
+        if (prev.kind !== 'ready') return prev;
+        switch (kind) {
+          case 'stats':
+            return { ...prev, stats: block as UsageBlock<TrendSnapshot> };
+          case 'prevRuns':
+            return { ...prev, prevRuns: block as UsageBlock<number | null> };
+          case 'day':
+            return { ...prev, day: block as UsageBlock<LedgerSnapshot> };
+          case 'month':
+            return { ...prev, month: block as UsageBlock<LedgerSnapshot> };
+          case 'pricing':
+            return { ...prev, pricing: block as UsageBlock<{ rows: PriceRow[]; asOf: string | null }> };
+        }
+      });
+      setRetryingBlock(null);
+    },
+    [fetchUsageBlock, usageWindow.id],
+  );
 
   useEffect(() => {
     if (forced) return;
@@ -1245,6 +1329,7 @@ export function MetricsModulePage() {
           </div>
 
           {usageDown ? (
+            <div data-testid="metH-page-error">
             <Card data-testid={usageDenied ? 'met6-denied' : 'met6-error'}>
               <CardContent className="space-y-2 p-6">
                 <p className="font-medium">{usageDenied ? '这几项数据暂时读不到' : '这次没能读取用量与成本'}</p>
@@ -1265,6 +1350,7 @@ export function MetricsModulePage() {
                 </Button>
               </CardContent>
             </Card>
+            </div>
           ) : null}
 
           {usageQuiet ? (
@@ -1317,10 +1403,17 @@ export function MetricsModulePage() {
                   来源：运行统计 · 读取于 {usageReady ? formatBeijing(usageReady.loadedAt) : '—'}
                 </p>
                 {usageReady && usageReady.stats.kind === 'unavailable' ? (
-                  <p className="met6-gap" data-testid="met6-runs-gap" title={usageReady.stats.gap ?? undefined}>
-                    {usageReady.stats.reason}
-                  
-                    <GapRid id={usageReady.stats.requestId} testId="metD-gap-rid-runs" /></p>
+                  <div className="metH-card-error" data-testid="metH-card-error-runs">
+                    <p className="met6-gap" data-testid="met6-runs-gap" title={usageReady.stats.gap ?? undefined}>
+                      {usageReady.stats.reason}
+                      <GapRid id={usageReady.stats.requestId} testId="metD-gap-rid-runs" />
+                    </p>
+                    <CardRetryButton
+                      busy={retryingBlock === 'stats'}
+                      onClick={() => void retryUsageBlock('stats')}
+                      testId="metH-card-retry-runs"
+                    />
+                  </div>
                 ) : null}
               </CardContent>
             </Card>
@@ -1355,10 +1448,30 @@ export function MetricsModulePage() {
                     : ''}
                 </p>
                 {usageReady && usageReady.day.kind === 'unavailable' ? (
-                  <p className="met6-gap" data-testid="met6-cost-gap" title={usageReady.day.gap ?? undefined}>
-                    {usageReady.day.reason}
-                  
-                    <GapRid id={usageReady.day.requestId} testId="metD-gap-rid-cost" /></p>
+                  <div className="metH-card-error" data-testid="metH-card-error-cost">
+                    <p className="met6-gap" data-testid="met6-cost-gap" title={usageReady.day.gap ?? undefined}>
+                      {usageReady.day.reason}
+                      <GapRid id={usageReady.day.requestId} testId="metD-gap-rid-cost" />
+                    </p>
+                    <CardRetryButton
+                      busy={retryingBlock === 'day'}
+                      onClick={() => void retryUsageBlock('day')}
+                      testId="metH-card-retry-cost"
+                    />
+                  </div>
+                ) : null}
+                {usageReady && usageReady.month.kind === 'unavailable' ? (
+                  <div className="metH-card-error" data-testid="metH-card-error-month">
+                    <p className="met6-gap">
+                      本月累计这次没有读出来，显示「—」。
+                      <GapRid id={usageReady.month.requestId} testId="metH-gap-rid-month" />
+                    </p>
+                    <CardRetryButton
+                      busy={retryingBlock === 'month'}
+                      onClick={() => void retryUsageBlock('month')}
+                      testId="metH-card-retry-month"
+                    />
+                  </div>
                 ) : null}
                 {usageReady && usageReady.day.kind === 'ready' && usageReady.day.value.total === null ? (
                   <p className="met6-gap" data-testid="met6-cost-gap">
@@ -1430,10 +1543,17 @@ export function MetricsModulePage() {
                   {usageReady ? formatBeijing(usageReady.loadedAt) : '—'}
                 </p>
                 {usageReady && usageReady.stats.kind === 'unavailable' ? (
-                  <p className="met6-gap" data-testid="met6-trend-gap" title={usageReady.stats.gap ?? undefined}>
-                    {usageReady.stats.reason}
-                  
-                    <GapRid id={usageReady.stats.requestId} testId="metD-gap-rid-trend" /></p>
+                  <div className="metH-card-error" data-testid="metH-card-error-trend">
+                    <p className="met6-gap" data-testid="met6-trend-gap" title={usageReady.stats.gap ?? undefined}>
+                      {usageReady.stats.reason}
+                      <GapRid id={usageReady.stats.requestId} testId="metD-gap-rid-trend" />
+                    </p>
+                    <CardRetryButton
+                      busy={retryingBlock === 'stats'}
+                      onClick={() => void retryUsageBlock('stats')}
+                      testId="metH-card-retry-trend"
+                    />
+                  </div>
                 ) : null}
               </CardContent>
             </Card>
@@ -1464,10 +1584,17 @@ export function MetricsModulePage() {
                     : '—'}
                 </p>
                 {usageReady && usageReady.pricing.kind === 'unavailable' ? (
-                  <p className="met6-gap" data-testid="met6-price-gap" title={usageReady.pricing.gap ?? undefined}>
-                    {usageReady.pricing.reason}
-                  
-                    <GapRid id={usageReady.pricing.requestId} testId="metD-gap-rid-price" /></p>
+                  <div className="metH-card-error" data-testid="metH-card-error-price">
+                    <p className="met6-gap" data-testid="met6-price-gap" title={usageReady.pricing.gap ?? undefined}>
+                      {usageReady.pricing.reason}
+                      <GapRid id={usageReady.pricing.requestId} testId="metD-gap-rid-price" />
+                    </p>
+                    <CardRetryButton
+                      busy={retryingBlock === 'pricing'}
+                      onClick={() => void retryUsageBlock('pricing')}
+                      testId="metH-card-retry-price"
+                    />
+                  </div>
                 ) : null}
               </CardContent>
             </Card>
@@ -2094,11 +2221,16 @@ export function MetricsModulePage() {
         <Card data-testid="met5-error">
           <CardContent className="space-y-2 p-6">
             <p className="font-medium">这次没能读取运行活动</p>
-            <p className="text-sm text-muted-foreground" title={view.gap ?? undefined}>{view.message}</p>
-            <RequestId id={view.requestId} />
-            <Button size="sm" outlined onClick={() => setAttempt((value) => value + 1)} data-testid="met5-retry">
-              重试
-            </Button>
+            <div data-testid="metH-card-error-heat">
+              <p className="text-sm text-muted-foreground" title={view.gap ?? undefined}>{view.message}</p>
+              <RequestId id={view.requestId} />
+            </div>
+            <div className="metH-card-acts">
+              <CardRetryButton busy={false} onClick={retryHeat} testId="metH-card-retry-heat" />
+              <Button size="sm" outlined onClick={() => setAttempt((value) => value + 1)} data-testid="met5-retry">
+                全部重试
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : null}
