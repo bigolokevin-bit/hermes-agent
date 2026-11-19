@@ -4,7 +4,7 @@
 // no raw field names or HTTP codes reach the page.
 import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { MemoryRouter } from 'react-router';
+import { MemoryRouter, useLocation } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiError } from '@/lib/api-error';
@@ -768,5 +768,115 @@ describe('MetricsModulePage — budget variance & window', () => {
     );
     const dayCalls = urls().filter((url) => url.includes('budget-usage') && url.includes('periodKind=day'));
     expect(dayCalls.length).toBeGreaterThanOrEqual(8);
+  });
+});
+
+
+function LocationProbe(): ReactNode {
+  const location = useLocation();
+  return <p data-testid="met7-loc">{location.search}</p>;
+}
+
+function shareRouter(usage: unknown) {
+  return (url: string): Promise<unknown> => {
+    if (url.includes('run-activity')) return Promise.resolve(activityBody());
+    if (url.includes('run-stats')) return Promise.resolve(statsFor(url));
+    if (url.includes('/api/employees')) return Promise.resolve(EMPLOYEE_BODY);
+    if (url.includes('models/pricing')) return Promise.reject(new ApiError('missing', { status: 404, body: '', url }));
+    if (url.includes('hermes-usage')) return Promise.resolve(usage);
+    if (url.includes('periodKind=month')) return Promise.resolve(LEDGER_MONTH);
+    if (url.includes('periodKind=day')) return Promise.resolve(LEDGER_DAY);
+    return Promise.resolve({});
+  };
+}
+
+async function mountShare(usage: unknown, entry = '/metrics'): Promise<void> {
+  api.fetchJsonStrict.mockReset();
+  api.fetchJsonStrict.mockImplementation(shareRouter(usage));
+  await render(
+    entry,
+    <>
+      <MetricsModulePage />
+      <LocationProbe />
+    </>,
+  );
+  await waitFor(settled, 'state settled');
+}
+
+const SHARE_USAGE = {
+  by_model: [
+    { model: 'zeta', sessions: 4, actual_cost_usd: 3 },
+    { model: 'alpha', sessions: 9, actual_cost_usd: 1 },
+    { model: 'mid' },
+  ],
+  asOf: '2026-11-19T20:12:00.000Z',
+};
+
+const shareRows = (): (string | null)[] =>
+  [...document.querySelectorAll('[data-testid^="met7-row-"]')].map((node) => node.getAttribute('data-testid'));
+
+describe('MetricsModulePage — met7 cost share by model', () => {
+  it('sorts by cost descending by default and its shares add up to 100%', async () => {
+    await mountShare(SHARE_USAGE);
+
+    expect(shareRows()).toEqual(['met7-row-zeta', 'met7-row-alpha', 'met7-row-mid']);
+    expect(document.querySelector('[data-testid="met7-cost-zeta"]')?.textContent).toBe('$3.00');
+    expect(document.querySelector('[data-testid="met7-cost-alpha"]')?.textContent).toBe('$1.00');
+    expect(document.querySelector('[data-testid="met7-share-zeta"]')?.textContent).toBe('75.0%');
+    expect(document.querySelector('[data-testid="met7-share-alpha"]')?.textContent).toBe('25.0%');
+    // A model the answer carries no money for is «—», never 0 and never 0%.
+    expect(document.querySelector('[data-testid="met7-cost-mid"]')?.textContent).toBe('—');
+    expect(document.querySelector('[data-testid="met7-share-mid"]')?.textContent).toBe('—');
+    expect(document.querySelector('[data-testid="met7-runs-mid"]')?.textContent).toBe('—');
+    expect(document.querySelector('[data-testid="met7-runs-zeta"]')?.textContent).toBe('4');
+    expect(document.querySelector('[data-testid="met7-source"]')?.textContent).toContain('$4.00');
+  });
+
+  it('keeps a real zero charge apart from a missing one', async () => {
+    await mountShare({ by_model: [{ model: 'free', cost_usd: 0 }, { model: 'unknown' }] });
+
+    expect(document.querySelector('[data-testid="met7-cost-free"]')?.textContent).toBe('$0.00');
+    expect(document.querySelector('[data-testid="met7-cost-unknown"]')?.textContent).toBe('—');
+    // No positive total means no share at all — not a silent 0%.
+    expect(document.querySelector('[data-testid="met7-share-free"]')?.textContent).toBe('—');
+    expect(text()).not.toContain('0.0%');
+  });
+
+  it('never promotes an estimate into a charge', async () => {
+    await mountShare({ by_model: [{ model: 'est', estimated_cost_usd: 9.5, estimated_cost: 9.5 }] });
+
+    expect(document.querySelector('[data-testid="met7-cost-est"]')?.textContent).toBe('—');
+    expect(text()).not.toContain('$9.50');
+  });
+
+  it('sorts by model on demand and writes the order into the address', async () => {
+    await mountShare(SHARE_USAGE);
+
+    await act(async () => {
+      (document.querySelector('[data-testid="met7-sort-model"]') as HTMLButtonElement).click();
+    });
+    await waitFor(
+      () => document.querySelector('[data-testid="met7-loc"]')?.textContent === '?sort=model&dir=asc',
+      'sort in address',
+    );
+    expect(shareRows()).toEqual(['met7-row-alpha', 'met7-row-mid', 'met7-row-zeta']);
+
+    await act(async () => {
+      (document.querySelector('[data-testid="met7-sort-cost"]') as HTMLButtonElement).click();
+    });
+    await waitFor(
+      () => document.querySelector('[data-testid="met7-loc"]')?.textContent === '',
+      'default order leaves no sort keys in the address',
+    );
+    expect(shareRows()).toEqual(['met7-row-zeta', 'met7-row-alpha', 'met7-row-mid']);
+  });
+
+  it('shows an honest empty state when no model rows come back', async () => {
+    await mountShare({ by_model: [] });
+
+    expect(document.querySelector('[data-testid="met7-empty"]')).not.toBeNull();
+    expect(document.querySelector('[data-testid="met7-table"]')).toBeNull();
+    expect(text()).toContain('这个窗口没有按模型的实扣记录');
+    expect(text()).not.toContain('共 0');
   });
 });

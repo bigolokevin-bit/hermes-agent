@@ -568,6 +568,101 @@ export function shareOf(value: number | null, total: number | null): number | nu
   return Math.round((value / total) * 1000) / 10;
 }
 
+// ---- MET7: cost share by model ---------------------------------------------
+
+export interface ModelCostRow {
+  model: string;
+  /** Session count as upstream reports it; null when the answer has none. */
+  runs: number | null;
+  /** Ledger actual only. An estimate is never promoted into this field. */
+  costUsd: number | null;
+}
+
+export type ModelCostSort = 'cost' | 'runs' | 'model';
+export type SortDir = 'asc' | 'desc';
+
+export type ParsedModelCost =
+  | { kind: 'ok'; rows: ModelCostRow[]; asOf: string | null }
+  | { kind: 'invalid'; reason: string };
+
+/** Money keys that count as an actual charge. `estimated_cost*` is
+ *  deliberately absent: an estimate is not a ledger row. */
+const MODEL_COST_MONEY_KEYS = ['actual_cost_usd', 'actualCostUsd', 'cost_usd', 'costUsd'] as const;
+
+export function readModelCost(payload: unknown): ParsedModelCost {
+  if (!isRecord(payload)) return { kind: 'invalid', reason: '返回内容里没有按模型的用量。' };
+  const asOf =
+    text(payload.asOf) ?? text(payload.as_of) ?? text(payload.generated_at) ?? text(payload.generatedAt);
+  const costBlock = isRecord(payload.cost) ? payload.cost : null;
+  const rowsRaw = Array.isArray(payload.by_model)
+    ? payload.by_model
+    : costBlock && Array.isArray(costBlock.by_model)
+      ? costBlock.by_model
+      : null;
+  if (rowsRaw === null) return { kind: 'ok', rows: [], asOf };
+  const rows: ModelCostRow[] = [];
+  for (const raw of rowsRaw) {
+    if (!isRecord(raw)) continue;
+    const model = text(raw.model) ?? text(raw.modelId) ?? text(raw.name);
+    if (!model) continue;
+    let costUsd: number | null = null;
+    for (const key of MODEL_COST_MONEY_KEYS) {
+      const value = numberOrNull(raw[key]);
+      if (value !== null) {
+        costUsd = value;
+        break;
+      }
+    }
+    rows.push({ model, runs: numberOrNull(raw.sessions) ?? numberOrNull(raw.runs), costUsd });
+  }
+  return { kind: 'ok', rows, asOf };
+}
+
+/** Percent shares in tenths of a point; the readable rows always add up to
+ *  exactly 100.0%. A row without a charge keeps null («—»), and a zero total
+ *  yields no shares at all rather than a silent 0%. */
+export function shareOfCosts(costs: (number | null)[]): (number | null)[] {
+  const readable = costs.filter((value): value is number => value !== null && Number.isFinite(value) && value >= 0);
+  const total = readable.reduce((sum, value) => sum + value, 0);
+  if (readable.length === 0 || total <= 0) return costs.map(() => null);
+  const raw = costs.map((value) =>
+    value === null || !Number.isFinite(value) || value <= 0 ? 0 : (value / total) * 1000,
+  );
+  const tenths = raw.map((value) => Math.floor(value + 1e-9));
+  const left = 1000 - tenths.reduce((sum, value) => sum + value, 0);
+  const order = raw
+    .map((value, index) => ({ index, rest: value - Math.floor(value + 1e-9) }))
+    .filter((item) => costs[item.index] !== null)
+    .sort((a, b) => b.rest - a.rest || a.index - b.index);
+  for (let i = 0; i < order.length && i < left; i += 1) tenths[order[i].index] += 1;
+  return costs.map((value, index) => (value === null ? null : tenths[index] / 10));
+}
+
+/** Sort rows for the share table. Rows without a value stay at the bottom in
+ *  both directions — an unreadable number is not the smallest number. */
+export function sortModelCost(rows: ModelCostRow[], key: ModelCostSort, dir: SortDir): ModelCostRow[] {
+  const sign = dir === 'asc' ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    if (key === 'model') return a.model.localeCompare(b.model) * sign;
+    const left = key === 'cost' ? a.costUsd : a.runs;
+    const right = key === 'cost' ? b.costUsd : b.runs;
+    if (left === null && right === null) return a.model.localeCompare(b.model);
+    if (left === null) return 1;
+    if (right === null) return -1;
+    if (left === right) return a.model.localeCompare(b.model) * sign;
+    return (left - right) * sign;
+  });
+}
+
+export function parseSortKey(raw: string | null): ModelCostSort {
+  return raw === 'runs' || raw === 'model' ? raw : 'cost';
+}
+
+export function parseSortDir(raw: string | null, key: ModelCostSort): SortDir {
+  if (raw === 'asc' || raw === 'desc') return raw;
+  return key === 'model' ? 'asc' : 'desc';
+}
+
 // ---- MET6: period-over-period delta and CSV export --------------------------
 
 /** Equal-length window immediately before [now-span, now). */

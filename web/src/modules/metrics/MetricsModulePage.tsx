@@ -43,10 +43,15 @@ import {
   ledgerTotal,
   readActivity,
   readLedger,
+  readModelCost,
   readModelUsage,
   readPricing,
   readRunStats,
   previousRange,
+  parseSortDir,
+  parseSortKey,
+  shareOfCosts,
+  sortModelCost,
   toCsv,
   usageTone,
   shareOf,
@@ -59,9 +64,12 @@ import {
   type HeatCell,
   type LedgerRow,
   type BudgetLine,
+  type ModelCostRow,
+  type ModelCostSort,
   type PriceRow,
   type StatHeatGrid,
   type RunStats,
+  type SortDir,
   type UsageWindowId,
 } from './metrics';
 import './metrics.css';
@@ -123,6 +131,10 @@ interface CmpRow {
 }
 
 type CmpState = { kind: 'loading' } | UsageBlock<CmpRow[]>;
+
+type ShareState =
+  | { kind: 'loading' }
+  | UsageBlock<{ rows: ModelCostRow[]; asOf: string | null; days: number }>;
 
 type BudgetState =
   | { kind: 'loading' }
@@ -251,6 +263,8 @@ export function MetricsModulePage() {
   const [params, setParams] = useSearchParams();
   const forced = readForced(params);
   const usageWindow = usageWindowOf(params.get('window'));
+  const sortKey = parseSortKey(params.get('sort'));
+  const sortDir = parseSortDir(params.get('dir'), sortKey);
   const activeWindow = windowOf(params.get('w'));
   const weeks = activeWindow.weeks;
   const [state, setState] = useState<PageState>({ kind: 'loading' });
@@ -259,6 +273,7 @@ export function MetricsModulePage() {
   const [heat, setHeat] = useState<HeatState>({ kind: 'loading' });
   const [budget, setBudget] = useState<BudgetState>({ kind: 'loading' });
   const [cmp, setCmp] = useState<CmpState>({ kind: 'loading' });
+  const [share, setShare] = useState<ShareState>({ kind: 'loading' });
   const [heatAt, setHeatAt] = useState<string>(new Date().toISOString());
   const [attempt, setAttempt] = useState(0);
   const [selected, setSelected] = useState<{ dow: number; hour: number } | null>(null);
@@ -729,6 +744,32 @@ export function MetricsModulePage() {
     };
   }, [attempt, forced, loadCmp]);
 
+  const loadShare = useCallback(async (signal: { live: boolean }, windowId: UsageWindowId) => {
+    setShare({ kind: 'loading' });
+    const days = Math.max(1, Math.round(usageWindowOf(windowId).hours / 24));
+    try {
+      const parsed = readModelCost(await fetchJsonStrict(`/agent-api/api/hermes-usage?days=${days}`));
+      if (!signal.live) return;
+      if (parsed.kind === 'invalid') {
+        setShare({ kind: 'unavailable', reason: parsed.reason, gap: USAGE_GAP, requestId: null });
+        return;
+      }
+      setShare({ kind: 'ready', value: { rows: parsed.rows, asOf: parsed.asOf, days } });
+    } catch (error) {
+      if (!signal.live) return;
+      setShare({ kind: 'unavailable', ...blockFailure(error) });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (forced) return;
+    const signal = { live: true };
+    void loadShare(signal, usageWindow.id);
+    return () => {
+      signal.live = false;
+    };
+  }, [attempt, forced, loadShare, usageWindow.id]);
+
   const view: PageState = forced
     ? forced === 'loading'
       ? { kind: 'loading' }
@@ -871,6 +912,45 @@ export function MetricsModulePage() {
             requestId: null,
           }
     : breakdown;
+
+  const shareView: ShareState = forced
+    ? forced === 'loading'
+      ? { kind: 'loading' }
+      : forced === 'empty'
+        ? { kind: 'ready', value: { rows: [], asOf: null, days: Math.max(1, Math.round(usageWindow.hours / 24)) } }
+        : {
+            kind: 'unavailable',
+            reason:
+              forced === 'denied'
+                ? '这项数据当前读不到：可能还没有接入，也可能当前账号没有查看权限。'
+                : '这次没能读取这项数据，请稍后重试。',
+            gap: forced === 'denied' ? USAGE_GAP : null,
+            requestId: null,
+          }
+    : share;
+
+  const shareRows =
+    shareView.kind === 'ready'
+      ? (() => {
+          const sorted = sortModelCost(shareView.value.rows, sortKey, sortDir);
+          const shares = shareOfCosts(sorted.map((row) => row.costUsd));
+          return sorted.map((row, index) => ({ ...row, sharePct: shares[index], slug: row.model.replace(/[^0-9a-zA-Z]+/g, '-').toLowerCase() || `row-${index}` }));
+        })()
+      : [];
+  const shareTotal = shareView.kind === 'ready' ? shareView.value.rows.reduce<number | null>((sum, row) => {
+    if (row.costUsd === null) return sum;
+    return (sum ?? 0) + row.costUsd;
+  }, null) : null;
+
+  const chooseSort = (next: ModelCostSort) => {
+    const query = new URLSearchParams(params);
+    const nextDir: SortDir = next === sortKey ? (sortDir === 'desc' ? 'asc' : 'desc') : next === 'model' ? 'asc' : 'desc';
+    if (next === 'cost' && nextDir === 'desc') query.delete('sort');
+    else query.set('sort', next);
+    if (next === 'cost' && nextDir === 'desc') query.delete('dir');
+    else query.set('dir', nextDir);
+    setParams(query, { replace: true });
+  };
 
   const currentRuns =
     usageReady && usageReady.stats.kind === 'ready' ? usageReady.stats.value.stats.totals.runs : null;
@@ -1610,6 +1690,103 @@ export function MetricsModulePage() {
                   </table>
                 </div>
                 <p className="met6-hint">成本只认账本实扣；没有实扣行显示「—」，真实 0 显示零额；差值只做对比，不是花费预测。</p>
+              </>
+            ) : null}
+          </div>
+
+          <div className="met7-share" data-testid="met7-share">
+            <div className="met6-cat-head">
+              <div>
+                <h3>按模型的成本分摊</h3>
+                <p className="met6-rowsub">只认账本实扣；上游没给出金额的模型显示「—」，不按 0 计，也不拿估算金额顶替。</p>
+              </div>
+            </div>
+            {shareView.kind === 'loading' ? (
+              <Card data-testid="met7-loading">
+                <CardContent className="p-4"><div className="met5-skeleton h-24 w-full" /></CardContent>
+              </Card>
+            ) : null}
+            {shareView.kind === 'unavailable' ? (
+              <Card data-testid="met7-error">
+                <CardContent className="space-y-2 p-4">
+                  <p className="font-medium">这份按模型的分摊暂时读不到</p>
+                  <p className="text-sm text-muted-foreground" title={shareView.gap ?? undefined}>{shareView.reason}</p>
+                  <RequestId id={shareView.requestId} />
+                  <Button size="sm" outlined onClick={() => setAttempt((value) => value + 1)} data-testid="met7-retry">重试</Button>
+                </CardContent>
+              </Card>
+            ) : null}
+            {shareView.kind === 'ready' && shareRows.length === 0 ? (
+              <Card data-testid="met7-empty">
+                <CardContent className="space-y-2 p-4">
+                  <p className="font-medium">这个窗口没有按模型的实扣记录</p>
+                  <p className="text-sm text-muted-foreground">
+                    上游没有返回任何模型的用量，因此不画空表、不报 0 条，也不把「没有记录」当成「花费 0」。
+                  </p>
+                </CardContent>
+              </Card>
+            ) : null}
+            {shareView.kind === 'ready' && shareRows.length > 0 ? (
+              <>
+                <div className="met6-table-scroll">
+                  <table className="met6-table" data-testid="met7-table">
+                    <thead>
+                      <tr>
+                        <th scope="col" aria-sort={sortKey === 'model' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                          <button type="button" className="met7-sort" onClick={() => chooseSort('model')} data-testid="met7-sort-model">
+                            模型{sortKey === 'model' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
+                          </button>
+                        </th>
+                        <th scope="col" aria-sort={sortKey === 'runs' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                          <button type="button" className="met7-sort" onClick={() => chooseSort('runs')} data-testid="met7-sort-runs">
+                            运行数{sortKey === 'runs' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
+                          </button>
+                        </th>
+                        <th scope="col" aria-sort={sortKey === 'cost' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                          <button type="button" className="met7-sort" onClick={() => chooseSort('cost')} data-testid="met7-sort-cost">
+                            成本{sortKey === 'cost' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
+                          </button>
+                        </th>
+                        <th scope="col">占比</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {shareRows.map((row) => (
+                        <tr key={row.model} data-testid={`met7-row-${row.slug}`}>
+                          <td className="met7-model" title={row.model}>{row.model}</td>
+                          <td
+                            className="met6-num"
+                            data-testid={`met7-runs-${row.slug}`}
+                            title={row.runs === null ? '上游没有返回这个模型的运行计数' : '上游的会话计数'}
+                          >
+                            {formatCount(row.runs)}
+                          </td>
+                          <td
+                            className="met6-num"
+                            data-testid={`met7-cost-${row.slug}`}
+                            title={row.costUsd === null ? '这个模型没有账本实扣行；不按 0 计' : '账本实扣 USD'}
+                          >
+                            {formatUsd(row.costUsd)}
+                          </td>
+                          <td
+                            className="met6-num"
+                            data-testid={`met7-share-${row.slug}`}
+                            title={row.sharePct === null ? '可读到的实扣金额为 0 或缺失，无法分摊' : '按可读到的实扣金额归一'}
+                          >
+                            {row.sharePct === null ? '—' : `${row.sharePct.toFixed(1)}%`}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="met6-source" data-testid="met7-source">
+                  来源：模型用量 · 截至 {shareView.value.asOf ? formatBeijing(shareView.value.asOf) : '—'} · 窗口{' '}
+                  {shareView.value.days} 天 · 可读实扣合计 <span className="font-mono">{formatUsd(shareTotal)}</span>
+                </p>
+                <p className="met6-hint" data-testid="met7-hint">
+                  占比按可读到的实扣金额归一，合计 100%；缺金额的行不参与分摊，显示「—」。排序写在地址里，刷新与前进后退都保留。
+                </p>
               </>
             ) : null}
           </div>
