@@ -27,6 +27,7 @@ import { Spinner } from "@nous-research/ui/ui/components/spinner";
 
 import { STATUS_FILTERS, isKnownStatus } from "./model";
 import { QueueSummaryBar } from "./QueueSummaryBar";
+import { BackToList, restoreListScroll, saveListScroll } from "./BackToList";
 import { QueueCsvExport } from "./QueueCsvExport";
 import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel } from "./states";
 import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
@@ -86,6 +87,8 @@ export function ApprovalsHistoryModulePage(): ReactNode {
 
   const openRow = useCallback(
     (row: { rawId: string | null }) => {
+      // R55: remember where the list was, so 返回列表 can put us back there.
+      saveListScroll("approvals-history-scroll");
       setUnaddressable(row.rawId === null);
       setSelected(row.rawId);
       // R17 apd5 item 1: the selection lives in the URL too, so a refresh or
@@ -97,6 +100,15 @@ export function ApprovalsHistoryModulePage(): ReactNode {
     },
     [params, setParams],
   );
+
+  const backToList = useCallback(() => {
+    setSelected(null);
+    setUnaddressable(false);
+    const draft = new URLSearchParams(params);
+    draft.delete("id");
+    setParams(draft, { replace: true });
+    restoreListScroll("approvals-history-scroll");
+  }, [params, setParams]);
 
   const summary = useMemo(() => {
     if (status === null) return ALL_RAW;
@@ -332,6 +344,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
         </section>
 
         <aside className="flex min-w-0 flex-col gap-3 lg:sticky lg:top-4 lg:self-start" aria-label="记录详情">
+          {selected ? <BackToList onBack={backToList} /> : null}
           {drawer}
         </aside>
       </div>

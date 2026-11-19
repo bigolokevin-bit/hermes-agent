@@ -628,6 +628,88 @@ describe("R54 CSV export", () => {
   });
 });
 
+describe("R55 detail <-> list state preservation", () => {
+  const DETAIL_SAMPLE = {
+    approvalId: "ap_p",
+    status: "pending",
+    requestedBy: { type: "human", id: "human:9" },
+    action: "publish.release",
+    createdAt: "2026-11-19T01:00:00Z",
+    approvers: [{ userId: "human:9" }],
+    decisions: [],
+  };
+
+  it("opens from a row, returns via apd7-back with the filter URL and scroll restored", async () => {
+    Object.defineProperty(window, "scrollY", { configurable: true, value: 123 });
+    const scrolled: number[][] = [];
+    const realScrollTo = window.scrollTo;
+    window.scrollTo = ((x: number, y: number) => {
+      scrolled.push([x, y]);
+    }) as typeof window.scrollTo;
+    await mount(async (url: string) => {
+      if (url.includes("/api/approval?id=")) return DETAIL_SAMPLE;
+      const match = /[?&]status=([^&]*)/.exec(url);
+      const state = match ? decodeURIComponent(match[1]) : null;
+      return { items: state === null ? [] : ((ROWS_BY_STATE[state] ?? []) as unknown[]) };
+    }, "/approvals?tab=history&status=pending");
+    const card = document.querySelector("[data-testid='apr5-row-ap_p']") as HTMLElement;
+    await act(async () => {
+      card.click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='apr5-detail']") !== null, "detail opened");
+    expect(window.sessionStorage.getItem("approvals-history-scroll")).toBe("123");
+    const back = document.querySelector("[data-testid='apd7-back']") as HTMLButtonElement;
+    expect(back).toBeTruthy();
+    await act(async () => {
+      back.click();
+    });
+    expect(document.querySelector("[data-testid='apr5-detail']")).toBeNull();
+    // 筛选复原读数：pending 快捷键仍是按下态，列表仍是该筛选下的一行。
+    expect(document.querySelector("[data-testid='apv5-filter-status-pending']")?.getAttribute("aria-pressed")).toBe("true");
+    expect(document.querySelector("[data-testid='apr5-row-ap_p']")).toBeTruthy();
+    expect(scrolled).toEqual([[0, 123]]);
+    window.scrollTo = realScrollTo;
+  });
+
+  it("a pasted ?id= URL opens that detail straight away, with the real back exit", async () => {
+    await mount(async (url: string) => {
+      if (url.includes("/api/approval?id=")) return DETAIL_SAMPLE;
+      if (/[?&]status=/.test(url)) return { items: [] };
+      return { items: [] };
+    }, "/approvals?tab=history&id=ap_p");
+    await waitFor(() => document.querySelector("[data-testid='apr5-detail']") !== null, "pasted url opened the detail");
+    expect(document.querySelector("[data-testid='apd7-back']")).toBeTruthy();
+  });
+
+  it("loaded pages survive the round trip: no extra list fetch after 返回", async () => {
+    await mount(async (url: string) => {
+      if (url.includes("/api/approval?id=")) return DETAIL_SAMPLE;
+      if (/[?&]cursor=/.test(url)) return { items: [{ approvalId: "ap_a", title: "第二页", status: "approved", decidedAt: "2026-11-17T02:00:00Z" }] };
+      return { items: [{ approvalId: "ap_p", title: "等待你点头的发布", status: "pending" }], nextCursor: "c1" };
+    });
+    await waitFor(() => document.querySelector("[data-testid='apr5-row-ap_p']") !== null, "page one");
+    const more = Array.from(document.querySelectorAll("button")).find((b) => (b.textContent ?? "").includes("加载更多")) as HTMLButtonElement;
+    await act(async () => {
+      more.click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='apr5-row-ap_a']") !== null, "page two");
+    const listCallsBefore = api.fetchJSON.mock.calls.filter((c) => String(c[0]).includes("/api/approvals")).length;
+    const card = document.querySelector("[data-testid='apr5-row-ap_p']") as HTMLElement;
+    await act(async () => {
+      card.click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='apr5-detail']") !== null, "detail opened");
+    const back = document.querySelector("[data-testid='apd7-back']") as HTMLButtonElement;
+    await act(async () => {
+      back.click();
+    });
+    expect(document.querySelector("[data-testid='apr5-row-ap_p']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='apr5-row-ap_a']")).toBeTruthy();
+    const listCallsAfter = api.fetchJSON.mock.calls.filter((c) => String(c[0]).includes("/api/approvals")).length;
+    expect(listCallsAfter).toBe(listCallsBefore);
+  });
+});
+
 describe("R50 queue summary bar", () => {
   it("counts the same result set, and single-status scopes stay — not fake zeros", async () => {
     await mount(); // status 未传 → BFF 聚合全状态，每态一行（8 行）

@@ -823,3 +823,26 @@ L0 判 /runs/<id> 无路由=死链（routes.ts 只有 /runs）。禁碰 shell/Ap
 实现：新文件 modules/approvals/QueueCsvExport.tsx=纯前端导出，**零新后端端点**（测试实证=点击导出后 fetchJSON 调用计数不变）。①表头固定 `id,title,status,risk,updated_at`；行值全部取**屏上同一渲染口径**：id=row.rawId（缺空）、status=row.status.label（未知态=屏上「状态未识别/待核实」同源）、risk=row.risk.label（读口丢参的只读态照屏上值写，缺=「未标注风险」空串处理）、updated_at=row.clock（屏上同一 BJT 到分值；缺=空，禁补 0）。②RFC4180 转义实测：含逗号/引号标题→`「"预算, 含""引号"""」` 形态断言。③文件名 approvals-<tab>-<status|all>-YYYYMMDD-HHmm.csv，时间=**导出时刻北京时间**（+480min 纯格式化；两用例锁含跨日 16:05Z→次日 0005；屏上数据时间不受本机时钟影响——本机时钟仅命名文件名）。④Blob+a.download（URL.createObjectURL guard+revoke）。⑤同源计数锁=apv7-export-count「共 N 行」与列表 rows 同一变量；blob 断言 filter 非空后 9 段=header+8 行=屏上 8 行（pending tab=共 1 行同锁）。⑥空集=按钮 disabled+title「当前筛选下没有可导出的行」；输出带 \uFEFF BOM+\r\n（Excel 兼容，尾 CRLF split 空段坑已记测试断言 filter 处理）。⑦挂载=pending 与 history 两 tab 通用（QueueSummaryBar 之下/读数行后）。
 
 apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/employees 零破（定向 approvals 3 files/64 passed 全绿为证）。横溢=flex-wrap 形态学报（jsdom 不测三档）。9122==6a02ed58 禁重建：活体下载待下代次。验证：定向 64 passed；assert-ia 两模式 exit0 51/22/1/8；tsc 本域零红；全量 **132 files/1464 passed**（基线 1461+3）。
+
+## R55 审批详情与队列双向保态（apd7-back）— 2026-11-20
+
+工单：/approvals 列表→详情→返回，状态筛选/页码/滚动位置复原；详情给真「返回列表」出口；同一 URL 可分享直达；apv5/apv6/apv7/apr5 零破；testid apd7-* 新增。
+
+实现（写域内最小增量，不改路由与注册表）：
+- 新 `web/src/modules/approvals/BackToList.tsx`：`apd7-back` 按钮（「返回列表」，title 说明复原口径）+ `saveListScroll/restoreListScroll`（sessionStorage 键 `approvals-history-scroll|approvals-pending-scroll`，`window.scrollY/scrollTo`，try/catch 静默）。
+- 两页（History/Pending ModulePage）：`openRow` 首行存滚动；`backToList` = setSelected(null)+setUnaddressable(false)+URL 仅删 `id`（保留 tab/status/其余参数，replace）+还原滚动；aside 详情区顶部在 `selected` 时渲染 `<BackToList>`。列表与 aside 并排、列表组件不 remount ⇒ 筛选、已加载分页游标（useApprovalsList nextRef 内存链）、时间窗原样保留。
+- 粘 URL 直达：`selected=useState(()=>params.get("id"))` 既有（R17），本轮用例锁死。
+- 取不到的诚实态：沿用 DeniedPanel/shapeFailure 既有同体句+可复制 rid（工单例句「该审批不存在或已过期」视为语义描述；不另改文案=不破 403≡404 同体既有断言）。
+
+测试读数（定向 approvals 3 files/68 passed exit0）：
+- case1 open→back：scrollY=123 存→back 后 `scrollTo` 收到 [0,123]、sessionStorage=123、`apv5-filter-status-pending` aria-pressed 仍 true、`apr5-row-ap_p` 在、`apr5-detail`=null。
+- case2 粘 `/approvals?tab=history&id=ap_p`：直达渲 `apr5-detail`+`apd7-back`。
+- case3 页码：加载更多入页2→开详情→返回→两行卡仍在且 `/api/approvals` 列表请求计数不变（零重取）。
+- pending：队列点开→sessionStorage=66→`apd7-back`→回到 `apr5-detail-empty`。
+- 全量 132 files/1468 passed（基线 1464+4）；assert-ia 两模式 exit0（51/22/1/8）。
+
+坑（本单内修）：case1 初版 FAIL=自定义 handler 把 `ROWS_BY_STATE[state]`（本已是数组）再包 `[...]` →行解析失败无卡；改 `(ROWS_BY_STATE[state] ?? []) as unknown[]`。
+
+挂账（非本单引入、本单写域外）：全量尾行带 `Errors 2`——`EmployeeDetailModulePage.tsx:1003/1028` 的 `api?.requestId` 是 71870656（R47 跨区一致性）在 useOverview 作用域引入的 ReferenceError（该 catch 形参名是 `err`，无 `api` 变量；tsc 因 ambient 未拦）。处置=403/404 分支应写 `err instanceof ApiError ? (err.requestId ?? null) : null`（1028 处可用 `r.requestId`）。employee-detail 不在 R55 写域，留待独立小单，勿并入本笔。
+
+未测项：9122（==6a02ed58 代次，禁重建）活体滚动/返回读数待并入后代次；三档横溢=aside 既有 flex+min-w-0 形态学报（jsdom 不可测）。
