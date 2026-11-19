@@ -13,11 +13,30 @@ import { Badge } from "@nous-research/ui/ui/components/badge";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 
 import { themedBody, themedChrome } from "@/lib/utils";
-import type { AuditDetail, AuditRow, VerifyResult } from "./model";
+import type { AuditChange, AuditDetail, AuditRow, VerifyResult } from "./model";
 import { CopyValue, TechnicalDisclosure } from "./states";
 
 const MISSING_TIME = "服务未提供该时间";
 const MISSING_VALUE = "服务未提供该信息";
+/** A change side that exists but is engineering text: pointed at the fold, not printed. */
+const FOLDED_VALUE = "见「技术详情」";
+const FOLDED_REASON = "变更内容是机器格式（字段名或原始 JSON），不放在人话层，已收进「技术详情」";
+
+/**
+ * One side of a change. Exactly three honest outcomes: a readable value, a
+ * pointer to 「技术详情」 when the service's value was engineering text, and
+ * 「—」 with the reason when nothing was sent. Never a field-name list.
+ */
+function changeSide(change: AuditChange, which: "before" | "after"): { value: string; reason?: string } {
+  const text = change[which]?.trim();
+  if (text) return { value: text };
+  if (change.folded[which]) return { value: FOLDED_VALUE, reason: FOLDED_REASON };
+  if (text === "") return { value: "（空值）" };
+  return {
+    value: "—",
+    reason: which === "before" ? "服务未提供变更前的值" : "服务未提供变更后的值",
+  };
+}
 
 /** A label/value pair that never overflows its column at 375px. */
 function Field({
@@ -138,6 +157,8 @@ export function AuditEventDetailBody({
   testId?: string;
 }): ReactNode {
   const lines = detail.technical.filter((line) => line);
+  const before = changeSide(detail.change, "before");
+  const after = changeSide(detail.change, "after");
   return (
     <div className="flex min-w-0 flex-col gap-3" data-testid={testId}>
       <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
@@ -198,8 +219,8 @@ export function AuditEventDetailBody({
       {detail.change.present ? (
         <Section title="变更">
           <dl className="flex min-w-0 flex-wrap gap-x-5 gap-y-1 text-xs">
-            <Field label="变更前" value={detail.change.before?.trim() || "—"} reason={detail.change.before ? undefined : "服务未提供变更前的值"} />
-            <Field label="变更后" value={detail.change.after?.trim() || "—"} reason={detail.change.after ? undefined : "服务未提供变更后的值"} />
+            <Field label="变更前" value={before.value} reason={before.reason} />
+            <Field label="变更后" value={after.value} reason={after.reason} />
           </dl>
         </Section>
       ) : null}

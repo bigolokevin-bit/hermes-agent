@@ -626,10 +626,43 @@ export function auditPageFrom(payload: unknown): AuditPage | null {
 export interface AuditChange {
   /** Only true when the answer carried a before/after value to compare. */
   present: boolean;
+  /** Human-readable sides only. A machine-shaped value is `null` here and
+   *  lives in `technical` instead — the human layer never shows field names. */
   before: string | null;
   after: string | null;
+  /** True when that side exists but was folded away as engineering text. */
+  folded: { before: boolean; after: boolean };
   /** Field names the change touched — technical, disclosure-only. */
   technical: string[];
+}
+
+/**
+ * A value spoken to a person, plus whether it is really engineering text.
+ *
+ * `machine` is true for anything that is a wire shape rather than a sentence:
+ * a JSON blob, a bare list of field names, an id/handle. Those belong in
+ * 「技术详情」, never on the human layer (T33 closeout, criterion 2).
+ */
+function humanValue(value: unknown): { text: string; machine: boolean } | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value === "string") {
+    const text = value.trim();
+    if (!text) return { text: "", machine: false };
+    if (/^[{[]/.test(text)) return { text, machine: true };
+    if (isMachineHandle(text)) return { text, machine: true };
+    return { text, machine: false };
+  }
+  if (typeof value === "number" || typeof value === "boolean") return { text: String(value), machine: false };
+  const rec = asRecord(value);
+  if (rec) {
+    const named = pickText(rec, ["value", "display", "label", "text", "name"]);
+    if (named && !isMachineHandle(named)) return { text: named, machine: false };
+    const keys = Object.keys(rec);
+    // No displayable value: only field names remain, which is engineering text.
+    return { text: keys.length ? `{${keys.join("、")}}` : "", machine: true };
+  }
+  if (Array.isArray(value)) return { text: value.length ? `共 ${value.length} 项` : "", machine: false };
+  return null;
 }
 
 function stringifyValue(value: unknown): string | null {
@@ -653,9 +686,15 @@ function changeOf(rec: Record<string, unknown>): AuditChange {
   const beforeRaw = pick(source, ["before", "previous", "oldValue", "old_value", "from", "previousValue", "previous_value"]);
   const afterRaw = pick(source, ["after", "newValue", "new_value", "to", "current", "currentValue", "current_value"]);
   const fields = asArray(source, ["fields", "changes"]);
-  const before = beforeRaw === null ? null : stringifyValue(beforeRaw);
-  const after = afterRaw === null ? null : stringifyValue(afterRaw);
+  const beforeValue = beforeRaw === null ? null : humanValue(beforeRaw);
+  const afterValue = afterRaw === null ? null : humanValue(afterRaw);
+  // A machine-shaped side is folded into 「技术详情」 instead of being printed.
+  const folded = { before: beforeValue?.machine === true, after: afterValue?.machine === true };
+  const before = beforeValue && !beforeValue.machine ? beforeValue.text : null;
+  const after = afterValue && !afterValue.machine ? afterValue.text : null;
   const technical: string[] = [];
+  if (beforeValue?.machine) technical.push(`变更前原值：${beforeValue.text}`);
+  if (afterValue?.machine) technical.push(`变更后原值：${afterValue.text}`);
   if (nested) {
     for (const item of fields) {
       const one = asRecord(item);
@@ -667,7 +706,13 @@ function changeOf(rec: Record<string, unknown>): AuditChange {
       technical.push(`${name}：${oldText ?? ""} → ${newText ?? ""}`);
     }
   }
-  return { present: before !== null || after !== null || technical.length > 0, before, after, technical };
+  return {
+    present: before !== null || after !== null || folded.before || folded.after || technical.length > 0,
+    before,
+    after,
+    folded,
+    technical,
+  };
 }
 
 function asArray(rec: Record<string, unknown>, keys: readonly string[]): unknown[] {

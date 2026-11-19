@@ -50,21 +50,6 @@ describe("audit endpoints", () => {
     expect(listUrl(null, { eventType: "", from: "", to: "" })).toBe(`/agent-api/api/audit?limit=${PAGE_LIMIT}`);
   });
 
-  it("the two live filters change the list URL — that is what makes them filters", () => {
-    expect(listUrl(null, { eventType: "approval_approved", from: null, to: null })).toBe(
-      `/agent-api/api/audit?limit=${PAGE_LIMIT}&event_type=approval_approved`,
-    );
-    expect(listUrl(null, { eventType: null, from: "2026-11-12T02:00:00.000Z", to: "2026-11-19T02:00:00.000Z" })).toBe(
-      `/agent-api/api/audit?limit=${PAGE_LIMIT}&from=2026-11-12T02%3A00%3A00.000Z&to=2026-11-19T02%3A00%3A00.000Z`,
-    );
-    // both together, and the cursor stays last
-    expect(listUrl("c1", { eventType: "run_failed", from: "2026-11-18T00:00:00.000Z", to: "2026-11-19T00:00:00.000Z" })).toBe(
-      `/agent-api/api/audit?limit=${PAGE_LIMIT}&event_type=run_failed&from=2026-11-18T00%3A00%3A00.000Z&to=2026-11-19T00%3A00%3A00.000Z&cursor=c1`,
-    );
-    // an unchosen filter is dropped, never sent empty
-    expect(listUrl(null, { eventType: "", from: "", to: "" })).toBe(`/agent-api/api/audit?limit=${PAGE_LIMIT}`);
-  });
-
   it("sends the window as two encoded instants", () => {
     const bounds = windowBounds("7d", new Date("2026-11-19T02:00:00Z"));
     expect(bounds.from).toBe("2026-11-12T02:00:00.000Z");
@@ -268,26 +253,6 @@ describe("read model", () => {
 
   it("does not read a record with neither an id nor an event type", () => {
     expect(auditDetailFrom({ note: "只有备注" })).toBeNull();
-  });
-
-  it("reads 请求编号 from either spelling and stays missing when there is none", () => {
-    const rows = auditPageFrom({
-      items: [
-        { id: "r1", action: "task_created", requestId: "req-9" },
-        { id: "r2", action: "task_created", correlation_id: "corr-7" },
-        { id: "r3", action: "task_created" },
-      ],
-    })!.rows;
-    expect(rows[0]!.requestId).toBe("req-9");
-    expect(rows[1]!.requestId).toBe("corr-7");
-    expect(rows[2]!.requestId).toBeNull();
-    expect(auditDetailFrom({ id: "e1", action: "task_created", request_id: "req-12" })!.requestId).toBe("req-12");
-    expect(auditDetailFrom({ id: "e1", action: "task_created" })!.requestId).toBeNull();
-  });
-
-  it("an event with neither a name nor an id is 未指派, never a bare handle", () => {
-    expect(actorView({}).label).toBe("未指派");
-    expect(actorView({ actorDisplayName: "", actorId: "" }).label).toBe("未指派");
   });
 
   it("reads 请求编号 from either spelling and stays missing when there is none", () => {
