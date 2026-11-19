@@ -815,3 +815,11 @@ L0 判 /runs/<id> 无路由=死链（routes.ts 只有 /runs）。禁碰 shell/Ap
 增量（EmployeesModulePage.tsx）：①header 计数 span→emp-list-count+title「计数与列表同源：同一份服务端返回的行数」。②筛选卡后 emp-list-scope-note（服务端真参数说明，禁本地假过滤语义）。③空集卡 data-emp-list-empty 别名+emp-list-empty-text（「没有匹配的员工」文案既有）；清空出口 employees-clear 既有。④ul data-emp-list-rows。emp-l-*/employees-* 现名零改动；其余各族 testid 零破（定向全绿为证）。
 
 测试：新用例断言 scope-note+title 三键事实、emp-list-count=2 同源、setter 输入后 /api/employees 恰 1 次带 keyword=（请求计数实测锁，无本地额外请求）、空集双锚+清空回空。定向 employees 2 files/13 passed exit0；assert-ia 两模式 exit0 51/22/1/8；tsc 本域零红；全量 **132 files/1461 passed**（基线 1460+1）。三档横溢=形态学报（既有 flex-wrap+min-w-0 结构未改布局语义）；9122 活体页面读数待下代次。代次引用统一 6a02ed58。
+
+## R54 审批队列 CSV 导出 apv7-*（2026-11-20，lane/console-appr）
+
+基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @bfb38c5a，toplevel ✓ porc=0。
+
+实现：新文件 modules/approvals/QueueCsvExport.tsx=纯前端导出，**零新后端端点**（测试实证=点击导出后 fetchJSON 调用计数不变）。①表头固定 `id,title,status,risk,updated_at`；行值全部取**屏上同一渲染口径**：id=row.rawId（缺空）、status=row.status.label（未知态=屏上「状态未识别/待核实」同源）、risk=row.risk.label（读口丢参的只读态照屏上值写，缺=「未标注风险」空串处理）、updated_at=row.clock（屏上同一 BJT 到分值；缺=空，禁补 0）。②RFC4180 转义实测：含逗号/引号标题→`「"预算, 含""引号"""」` 形态断言。③文件名 approvals-<tab>-<status|all>-YYYYMMDD-HHmm.csv，时间=**导出时刻北京时间**（+480min 纯格式化；两用例锁含跨日 16:05Z→次日 0005；屏上数据时间不受本机时钟影响——本机时钟仅命名文件名）。④Blob+a.download（URL.createObjectURL guard+revoke）。⑤同源计数锁=apv7-export-count「共 N 行」与列表 rows 同一变量；blob 断言 filter 非空后 9 段=header+8 行=屏上 8 行（pending tab=共 1 行同锁）。⑥空集=按钮 disabled+title「当前筛选下没有可导出的行」；输出带 \uFEFF BOM+\r\n（Excel 兼容，尾 CRLF split 空段坑已记测试断言 filter 处理）。⑦挂载=pending 与 history 两 tab 通用（QueueSummaryBar 之下/读数行后）。
+
+apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/employees 零破（定向 approvals 3 files/64 passed 全绿为证）。横溢=flex-wrap 形态学报（jsdom 不测三档）。9122==6a02ed58 禁重建：活体下载待下代次。验证：定向 64 passed；assert-ia 两模式 exit0 51/22/1/8；tsc 本域零红；全量 **132 files/1464 passed**（基线 1461+3）。

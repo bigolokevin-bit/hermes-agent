@@ -27,6 +27,7 @@ import { Spinner } from "@nous-research/ui/ui/components/spinner";
 
 import { STATUS_FILTERS, isKnownStatus } from "./model";
 import { QueueSummaryBar } from "./QueueSummaryBar";
+import { QueueCsvExport } from "./QueueCsvExport";
 import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel } from "./states";
 import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
 import { ApprovalDetailBody, ApprovalRowCard } from "./views";
@@ -199,6 +200,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
       </div>
 
       <QueueSummaryBar phase={list.phase} rows={list.rows} scope="history" singleStatus={status} />
+      <QueueCsvExport rows={list.rows} tab="history" status={status} />
 
       <div className="flex min-w-0 flex-wrap gap-1.5" role="group" data-testid="apr5-filter" aria-label="按处理结果筛选">
         {CHOICES.map((choice) => {

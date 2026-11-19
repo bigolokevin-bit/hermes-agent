@@ -139,6 +139,14 @@ describe("pending queue states", () => {
     expect(text()).toContain("已显示 1 条申请，其中 1 条待处理");
   });
 
+  it("R54: the pending tab carries the same-source CSV control", async () => {
+    await mount(queue());
+    expect(document.querySelector('[data-testid="apv7-export-count"]')?.textContent).toContain("共 1 行");
+    const btn = document.querySelector('[data-testid="apv7-export"]') as HTMLButtonElement;
+    expect(btn.disabled).toBe(false);
+    expect(btn.getAttribute("title")).toContain("零新后端端点");
+  });
+
   it("R50: the queue summary keeps off-scope counts at — with a stated reason", async () => {
     await mount(queue());
     const pending = document.querySelector('[data-testid="apv6-summary-pending"]');

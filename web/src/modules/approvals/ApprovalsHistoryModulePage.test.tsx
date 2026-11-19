@@ -15,6 +15,8 @@ vi.mock("@/lib/api", () => ({ fetchJSON: api.fetchJSON }));
 
 import ApprovalsHistoryModulePage from "@/modules/approvals/ApprovalsHistoryModulePage";
 import { STATUS_FILTERS } from "@/modules/approvals/model";
+import { approvalsCsvName, buildApprovalsCsv, csvEscape } from "@/modules/approvals/QueueCsvExport";
+import { riskView, statusView, type ApprovalRow } from "@/modules/approvals/model";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -557,6 +559,72 @@ describe("history whole-panel states", () => {
     expect(document.querySelector("[data-testid='apd5-approver']")?.textContent).toBe("人员");
     expect(document.querySelector("[data-testid='apd5-approver']")?.getAttribute("title")).toContain("human:1");
     expect(detailText).not.toContain("human:");
+  });
+});
+
+describe("R54 CSV export", () => {
+  const mkRow = (over: Partial<ApprovalRow> & { title: string }): ApprovalRow =>
+    ({
+      key: over.rawId ?? "k",
+      rawId: over.rawId ?? "ap_X",
+      status: statusView("pending"),
+      requester: { name: "李思", handle: null },
+      worker: { name: "小鲤", handle: null },
+      submitted: "2026-11-19 09:20",
+      clock: "2026-11-19 09:20",
+      clockLabel: "处理期限",
+      amount: null,
+      reason: null,
+      risk: riskView(null),
+      ...over,
+    } as unknown as ApprovalRow);
+
+  it("escapes RFC4180 hazards, keeps missing times empty, and names the file in Beijing time", () => {
+    const csv = buildApprovalsCsv([
+      mkRow({ title: '预算, 含"引号"' }),
+      mkRow({ rawId: "ap_Y", title: "无时间", clock: null, risk: riskView("high") }),
+    ]);
+    const lines = csv.replace(/^\uFEFF/, "").split("\r\n");
+    expect(lines[0]).toBe("id,title,status,risk,updated_at");
+    expect(lines[1]).toContain('"预算, 含""引号"""');
+    expect(lines[1].endsWith(",2026-11-19 09:20")).toBe(true);
+    expect(lines[2].endsWith(",高风险,")).toBe(true); // risk 屏上值；updated_at 缺=空，不补 0
+    expect(csvEscape("plain")).toBe("plain");
+    expect(approvalsCsvName("history", "pending", new Date("2026-11-20T02:00:00Z"))).toBe(
+      "approvals-history-pending-20261120-1000.csv",
+    );
+    expect(approvalsCsvName("history", null, new Date("2026-11-20T16:05:00Z"))).toBe(
+      "approvals-history-all-20261121-0005.csv",
+    );
+  });
+
+  it("button mirrors the rendered rows; empty filters disable it with a reason", async () => {
+    await mount();
+    expect(document.querySelector('[data-testid="apv7-export-count"]')?.textContent).toContain("共 8 行");
+    const btn = document.querySelector('[data-testid="apv7-export"]') as HTMLButtonElement;
+    expect(btn.disabled).toBe(false);
+    // 导出点击=纯前端 Blob：拦 createObjectURL 核对内容，不发任何额外请求。
+    let text = "";
+    const before = api.fetchJSON.mock.calls.length;
+    const orig = URL.createObjectURL;
+    (URL as unknown as { createObjectURL: (b: Blob) => string }).createObjectURL = (b: Blob) => {
+      void b.text().then((t) => {
+        text = t;
+      });
+      return "blob:captured";
+    };
+    await act(async () => {
+      btn.click();
+    });
+    await waitFor(() => text !== "", "blob text");
+    expect(text.split("\r\n").filter((l) => l !== "").length).toBe(9); // header + 8 行=屏上同源
+    expect(api.fetchJSON.mock.calls.length).toBe(before);
+    (URL as unknown as { createObjectURL: unknown }).createObjectURL = orig;
+
+    await mount(async () => ({ items: [] }));
+    const btn2 = document.querySelector('[data-testid="apv7-export"]') as HTMLButtonElement;
+    expect(btn2.disabled).toBe(true);
+    expect(btn2.getAttribute("title")).toContain("没有可导出的行");
   });
 });
 
