@@ -13,6 +13,7 @@ vi.mock("@nous-research/ui", () => ({
 }));
 import { ApiError } from "@/lib/api-error";
 import { SkillsPage } from "./SkillsPage";
+import { resetCapabilityCounts } from "../capabilities/counts";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -23,6 +24,7 @@ beforeEach(() => {
   document.body.appendChild(container);
   root = createRoot(container);
   fetchJsonStrict.mockReset();
+  resetCapabilityCounts();
   window.history.replaceState({}, "", "/");
 });
 afterEach(() => { act(() => root.unmount()); container.remove(); });
@@ -64,6 +66,10 @@ describe("SkillsPage", () => {
     expect(text()).toContain("正常");
     expect(text()).toContain("2026-11-19 13:30");
     expect(text()).toContain("读取于 2026-11-19 14:00");
+    const skillsCount = container.querySelector('[data-testid="cap4-count-skills"]')!;
+    expect(skillsCount.textContent).toContain("2");
+    expect(skillsCount.textContent).toContain("有源");
+    expect(container.querySelector('[data-testid="cap4-count-tools"]')?.textContent).toContain("未取数");
   });
 
   it("explains a missing name without inventing one", async () => {

@@ -1711,3 +1711,13 @@ built /private/tmp/health-r38/index.html
 - 验证：`npx vitest run src/modules/tools` → **2 files / 23 tests passed**；全量 `npx vitest run` → **131 files / 1404 passed**；`tsc -b . --noEmit` → 仅基线 `employees/EmployeesModulePage.test.tsx(73,5) TS18047`，本域 0。DOM（临时 harness，已删；Vite 5454 / Chrome 9256）：1440/1280/375 `vw=bodySW=bodyCW=pageSW=pageCW`，行 3，状态 正常，最近更新 `—` + 原因，`data-fixture` 为 null；四态 testid 与文案逐态不同（loading/empty/error/denied）。
 - 截图：`docs/_artifacts/gov/shots/tl3-{1440,1280,375}.png`。
 - 边界：只改 `web/src/modules/tools/**` 与 DONE/截图；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并入 main、未重建 9122；无独立观察者。
+
+## R44 /capabilities 顶部计数与来源状态（2026-11-20）
+
+- 基线：merge `bc94be67`（`origin/lane/hermes-console` f0419b0b），保留已推 `bd5fc469`/`fb8722c2`；未 reset。
+- 实现：新增 `web/src/modules/capabilities/{counts.tsx,counts.css}`。计数条在技能页与工具页顶部（`cap4-count-strip`），skills/tools 各一项，值来自各自列表请求的同一结果（同一 `rows` 长度），不另发请求；模块级快照经 `useSyncExternalStore` 跨 tab 保留，未访问项显示 `—`/未取数，不闪 0。
+- 状态：`有源` / `有源（空）` / `无源` / `加载中` / `未取数`。403/404 计数 `—` + 无源，GAP-SKL4-01 / GAP-04 只在 title；错误/部分来源时计数 `—` 并写原因；真实 0 行显示 0 + 有源（空）。
+- testid：`cap4-count-strip`、`cap4-count-skills|tools`、`cap4-count-skills|tools-state`；保留 `skl4-*` / `tl3-*` / `tol5-*`。
+- 验证：`npx vitest run src/modules/skills src/modules/tools` → **3 files / 34 tests passed**；全量 `npx vitest run` → **131 files / 1404 passed**；`tsc -b . --noEmit` → 仅基线 `employees/EmployeesModulePage.test.tsx(73,5) TS18047`，本域 0。
+- DOM（临时 harness，已删；Vite 5455 / Chrome 9257）：技能页 1440/1280/375 `vw=bodySW=bodyCW`，page 1408/1248/343，技能 `2 有源`、工具 `— 未取数`；切工具页后工具 `4 有源`，技能仍 `2 有源`（缓存不闪错值）。截图 `docs/_artifacts/gov/shots/cap4-counts-{1440,1280,375}.png`。
+- 边界：只改 `web/src/modules/{capabilities,skills,tools}/**` 与 DONE/截图；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并入 main、未重建 9122；无独立观察者。

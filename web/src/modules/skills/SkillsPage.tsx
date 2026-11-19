@@ -14,6 +14,7 @@ import { ApiError } from "@/lib/api-error";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import { currentFixtureRid, currentFixtureState, fixtureView, type FixtureState } from "../../shell/fixtures";
 import { SKILLS_GAP, formatBeijingTime, readSkills, type SkillRow } from "./skills";
+import { CapabilityCounts, publishCapabilityCount } from "../capabilities/counts";
 import "./skills.css";
 
 type State =
@@ -113,6 +114,12 @@ export function SkillsPage() {
       const body = await fetchJsonStrict("/agent-api/api/skills");
       if (!signal.live) return;
       const { rows, asOf } = readSkills(body);
+      publishCapabilityCount("skills", {
+        value: rows.length,
+        source: rows.length ? "ready" : "empty",
+        reason: null,
+        gap: null,
+      });
       setState(rows.length ? { k: "ready", rows, asOf } : { k: "empty" });
     } catch (error) {
       if (!signal.live) return;
@@ -139,6 +146,7 @@ export function SkillsPage() {
 
   return (
     <section className="skl4-page" data-testid="skl4-page" data-fixture={fixture ?? undefined}>
+      <CapabilityCounts />
       <header className="skl4-head">
         <div className="min-w-0">
           <h1>技能</h1>

@@ -8,7 +8,7 @@
  * never 0. Credentials are only ever 已配置 / 未配置 / 未知 — no token value is
  * read or printed. Disabled and unknown rows stay visible but dimmed.
  */
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
 import { Check, Copy, Inbox, RefreshCw, ShieldAlert, TriangleAlert } from "lucide-react";
 
@@ -28,6 +28,7 @@ import {
   type ToolRow,
 } from "./tools";
 import { forcedStateOf, useToolsData } from "./useToolsData";
+import { CapabilityCounts, publishCapabilityCount } from "../capabilities/counts";
 import "./tools.css";
 
 
@@ -179,6 +180,37 @@ export function ToolsPage(): ReactNode {
   const unknown = rows.filter((row) => row.status === "unknown").length;
   const toolRows = rows.filter((row) => row.source === "toolset");
   const mcpRows = rows.filter((row) => row.source === "mcp");
+  useEffect(() => {
+    if (forced !== null || phase === "loading") return;
+    if (phase === "ready") {
+      if (tools.issues.length > 0) {
+        publishCapabilityCount("tools", {
+          value: null,
+          source: "missing",
+          reason: `${tools.issues.length} 个来源未接入，无法给出完整计数。`,
+          gap: null,
+        });
+        return;
+      }
+      publishCapabilityCount("tools", {
+        value: rows.length,
+        source: rows.length ? "ready" : "empty",
+        reason: null,
+        gap: null,
+      });
+      return;
+    }
+    if (phase === "empty") {
+      publishCapabilityCount("tools", { value: 0, source: "empty", reason: null, gap: null });
+      return;
+    }
+    publishCapabilityCount("tools", {
+      value: null,
+      source: "missing",
+      reason: tools.failure?.sentence ?? "工具读口这次没有返回可用的计数。",
+      gap: phase === "denied" ? GAP : null,
+    });
+  }, [forced, phase, rows.length, tools.failure?.sentence, tools.issues.length]);
   const retry = () => {
     if (forced !== null) {
       const next = new URLSearchParams(params);
@@ -267,6 +299,7 @@ export function ToolsPage(): ReactNode {
 
   return (
     <section className="flex min-w-0 w-full max-w-full flex-col" data-testid="tl3-page">
+    <CapabilityCounts />
     <div
       className="tol5-page flex min-w-0 w-full max-w-full flex-col gap-3"
       data-testid="tol5-page"

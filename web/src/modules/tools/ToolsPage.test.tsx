@@ -13,6 +13,7 @@ const api = vi.hoisted(() => ({ fetchJsonStrict: vi.fn() }));
 vi.mock("@/modules/models/fetchJson", () => ({ fetchJsonStrict: api.fetchJsonStrict }));
 
 import { ToolsPage } from "./ToolsPage";
+import { resetCapabilityCounts } from "../capabilities/counts";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -77,7 +78,10 @@ const failed = (status: number, url: string, requestId?: string) => (called?: st
   return Promise.reject(new ApiError("failed", { status, body: "{}", url, requestId }));
 };
 
-beforeEach(() => api.fetchJsonStrict.mockReset());
+beforeEach(() => {
+  api.fetchJsonStrict.mockReset();
+  resetCapabilityCounts();
+});
 afterEach(() => {
   act(() => root?.unmount());
   root = null;
@@ -98,6 +102,9 @@ describe("real reads", () => {
 
     expect(document.querySelector("[data-testid='tol5-page']")).toBeTruthy();
     expect(document.querySelector("[data-testid='tl3-page']")).toBeTruthy();
+    await waitFor(() => document.querySelector("[data-testid='cap4-count-tools']")?.textContent?.includes("6") ?? false, "tools count");
+    expect(document.querySelector("[data-testid='cap4-count-tools']")?.textContent).toContain("有源");
+    expect(document.querySelector("[data-testid='cap4-count-skills']")?.textContent).toContain("未取数");
     expect(document.querySelectorAll("[data-testid^='tl3-row-']")).toHaveLength(6);
     const planned = document.querySelector<HTMLButtonElement>("[data-testid='tl3-planned-create']")!;
     expect(planned.disabled).toBe(true);
@@ -174,6 +181,10 @@ describe("failures and gaps", () => {
     expect(document.querySelector("[data-testid='tl3-apply']")).toBeTruthy();
     expect(document.querySelector("[data-testid='tl3-request-id']")).toBeTruthy();
     expect(document.querySelector("[data-testid='tl3-retry']")).toBeTruthy();
+    const count = document.querySelector("[data-testid='cap4-count-tools']")!;
+    expect(count.textContent).toContain("—");
+    expect(count.textContent).toContain("无源");
+    expect(count.getAttribute("title")).toContain("GAP-04");
     expect(text()).not.toMatch(/\/api\/|403|GAP-04/);
   });
 
