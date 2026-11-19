@@ -298,17 +298,24 @@ function readRuns(body: unknown): RunRow[] {
   }));
 }
 
-type AuditRow = { at: string | null; actor: string | null; action: string | null; detail: string | null };
+type AuditRow = { at: string | null; actor: string | null; actorType: string | null; action: string | null; detail: string | null; outcome: string | null; requestId: string | null };
 
 function readAudit(body: unknown): AuditRow[] {
-  return itemsOf(body).map((item) => ({
-    at: pickString(item.createdAt, item.created_at, item.time, item.timestamp, item.occurredAt),
-    actor: isRecord(item.actor)
-      ? pickString((item.actor as Rec).name, (item.actor as Rec).id)
-      : pickString(item.actor, item.actorId, item.userId, item.operator),
-    action: pickString(item.action, item.actionType, item.event, item.kind),
-    detail: pickString(item.detail, item.summary, item.message),
-  }));
+  return itemsOf(body).map((item) => {
+    const actorRec = isRecord(item.actor) ? (item.actor as Rec) : null;
+    return {
+      at: pickString(item.createdAt, item.created_at, item.time, item.timestamp, item.occurredAt),
+      actor: actorRec
+        ? pickString(actorRec.name, actorRec.id)
+        : pickString(item.actor, item.actorId, item.userId, item.operator),
+      actorType: actorRec ? pickString(actorRec.type) : null,
+      action: pickString(item.action, item.actionType, item.event, item.kind),
+      detail: pickString(item.detail, item.summary, item.message),
+      // R32: the real event answer carries outcome, not a prose detail.
+      outcome: pickString(item.outcome, item.result),
+      requestId: pickString(item.requestId, item.request_id),
+    };
+  });
 }
 
 /* ------------------------------------------------------------------ *
@@ -429,7 +436,7 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
   const capability = useResourceList(zone === "capability" ? `/agent-api/api/matrix?employee=${enc}` : "", reload.capability, readMatrix);
   const approvals = useResourceList(zone === "approvals" ? `/agent-api/api/approvals?employeeId=${enc}` : "", reload.approvals, readApprovals);
   const runs = useResourceList(zone === "runs" ? `/agent-api/api/runs?employeeId=${enc}` : "", reload.runs, readRuns);
-  const audit = useResourceList(zone === "audit" ? `/agent-api/api/audit?actorId=${enc}&limit=50` : "", reload.audit, readAudit);
+  const audit = useResourceList(zone === "audit" ? `/agent-api/api/audit?resourceId=${enc}&limit=50` : "", reload.audit, readAudit);
 
   const name = overview.phase === "ready" ? pickString(overview.data.name) : null;
   const titleJob = overview.phase === "ready" ? pickString(overview.data.title, overview.data.role, overview.data.position) : null;
@@ -849,9 +856,9 @@ function RunsZone({ resource, onRetry }: { resource: Resource<RunRow[]>; onRetry
           <span>花费</span>
           <span>用量</span>
         </div>
-        <ul className="divide-y divide-white/5">
+        <ul className="divide-y divide-white/5" data-testid="ed5-zone-runs-list">
           {resource.data.map((row, i) => (
-            <li key={`${row.ref ?? "run"}-${i}`}>
+            <li key={`${row.ref ?? "run"}-${i}`} data-testid="ed5-zone-runs-row">
               <Link
                 to="/runs"
                 title={row.ref ?? undefined}
@@ -910,26 +917,32 @@ function AuditZone({ resource, onRetry }: { resource: Resource<AuditRow[]>; onRe
   return (
     <Card data-testid="ed5-audit">
       <CardContent className="p-0">
-        <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.7fr)_minmax(0,1.2fr)] gap-2 border-b border-white/10 px-4 py-2 text-xs text-white/45 md:grid">
+        <div className="hidden grid-cols-[minmax(0,0.9fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,0.6fr)_minmax(0,0.7fr)_minmax(0,1fr)] gap-2 border-b border-white/10 px-4 py-2 text-xs text-white/45 md:grid">
           <span>时间</span>
           <span>操作人</span>
           <span>动作</span>
           <span>说明</span>
         </div>
-        <ul className="divide-y divide-white/5">
+        <ul className="divide-y divide-white/5" data-testid="ed5-zone-audit-list">
           {resource.data.map((row, i) => (
-            <li key={`${row.at ?? "at"}-${i}`} className="grid grid-cols-1 gap-1 px-4 py-3 md:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.7fr)_minmax(0,1.2fr)] md:items-center md:gap-2">
+            <li key={`${row.at ?? "at"}-${i}`} data-testid="ed5-zone-audit-row" className="grid grid-cols-1 gap-1 px-4 py-3 md:grid-cols-[minmax(0,0.9fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,0.6fr)_minmax(0,0.7fr)_minmax(0,1fr)] md:items-center md:gap-2">
               <span className="font-mono text-xs text-white/60">
                 <ClipboardCheck className="mr-2 inline h-4 w-4 text-white/35" />
                 {beijing(row.at)}
               </span>
               <span className="min-w-0 truncate text-xs" title={row.actor ?? undefined}>
-                {actorLabel(row.actor)}
+                {row.actorType === "system" ? "系统操作" : actorLabel(row.actor)}
               </span>
               <span className="text-sm" title={row.action ?? undefined}>
                 {actionLabel(row.action)}
               </span>
+              <span className="text-xs text-white/60" title={row.outcome ?? undefined}>
+                {row.outcome === "success" ? "成功" : row.outcome === "failure" ? "失败" : row.outcome === "denied" ? "拒绝" : row.outcome ? "待核实" : "—"}
+              </span>
               <span className="min-w-0 truncate text-xs text-white/55">{dash(row.detail)}</span>
+              <span className="min-w-0 text-xs">
+                <RequestIdCopy requestId={row.requestId} fallback="这条记录未携带编号" />
+              </span>
             </li>
           ))}
         </ul>

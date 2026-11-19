@@ -102,6 +102,9 @@ function TaskDetailCard({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="truncate text-base font-semibold" title={title}>{title}</h2>
+            <p className="text-xs text-muted-foreground" title="当前壳层未提供按任务的深链路由（/tasks/<id>），刷新后抽屉会关闭。" data-testid="tsk4-detail-note">
+              详情以页内抽屉展示；当前版本没有按任务的深链，刷新页面会回到看板。
+            </p>
             {state.k === "ready" ? (
               <p className="mt-0.5 text-xs text-muted-foreground">
                 {statusLabel(state.data.status)} · 更新 {beijing(state.data.updatedAt)}
@@ -159,6 +162,22 @@ function TaskDetailCard({
                 <DetailField label="状态原因">{state.data.statusReason ?? "—"}</DetailField>
               </div>
             ) : null}
+            <div className="sm:col-span-2 xl:col-span-3">
+              <DetailField label="最近事件">
+                {state.data.events && state.data.events.length > 0 ? (
+                  <ul className="flex flex-col gap-1 text-xs text-muted-foreground">
+                    {state.data.events.slice(0, 3).map((ev, i) => (
+                      <li key={ev.eventId ?? `ev-${i}`} title={ev.eventId ?? undefined}>
+                        {beijing(ev.at)} · {ev.kind ?? "事件"}
+                        {ev.note ? ` · ${ev.note}` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <span title="后台没有回传这条任务的事件记录。">无事件</span>
+                )}
+              </DetailField>
+            </div>
           </dl>
         )}
       </CardContent>
