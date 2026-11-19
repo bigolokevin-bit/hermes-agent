@@ -552,39 +552,58 @@ function TaskTable({ rows }: { rows: IngestTaskRow[] }): ReactNode {
       <table className="knw5-table" data-testid="knw5-ingest-tasks-table">
         <thead>
           <tr>
-            <th scope="col">数据源</th>
+            <th scope="col">名称</th>
+            <th scope="col">类型</th>
+            <th scope="col">最近一次</th>
             <th scope="col">状态</th>
-            <th scope="col">进度与数量</th>
-            <th scope="col">时间</th>
+            <th scope="col">条目数</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row, index) => (
             <tr key={row.id || `task-${index}`} data-testid="knw5-ingest-tasks-row" title={row.id || undefined}>
-              <td data-label="数据源">
+              <td data-label="名称">
                 <span className="knw5-name">{row.name}</span>
                 <Reason>{row.nameReason}</Reason>
-                <span className="knw5-sub" title={row.kindRaw ?? undefined}>
-                  {row.kind}
-                </span>
+              </td>
+              <td data-label="类型">
+                <span title={row.kindRaw ?? undefined}>{row.kind}</span>
                 <Reason>{row.kindReason}</Reason>
+              </td>
+              <td data-label="最近一次">
+                <span data-testid="knw5-ingest-tasks-time">
+                  {row.timeLabel ? `${row.timeLabel}：${row.at}` : row.at}
+                </span>
+                <Reason>{row.atReason}</Reason>
               </td>
               <td data-label="状态">
                 <Badge
-                  tone={row.status === "成功" ? "success" : row.status === "失败" ? "destructive" : "outline"}
+                  tone={
+                    row.status === "已完成"
+                      ? "success"
+                      : row.status === "失败" || row.status === "部分完成"
+                        ? "destructive"
+                        : "outline"
+                  }
                 >
                   {row.status}
                 </Badge>
                 <Reason>{row.statusReason}</Reason>
+                {row.failure ? (
+                  <span className="knw5-sub" data-testid="knw5-ingest-tasks-failure" title={row.failureRaw ?? undefined}>
+                    {row.failure}
+                  </span>
+                ) : null}
+                {row.failure === null && row.failureRaw ? (
+                  <span className="knw5-sub" data-testid="knw5-ingest-tasks-failure" title={row.failureRaw}>
+                    上游记的原因偏技术，这里不原样上屏；悬停可看原文。
+                  </span>
+                ) : null}
               </td>
-              <td data-label="进度与数量">
-                <span>{row.progress}</span>
-                {row.issue ? <span className="knw5-sub">{row.issue}</span> : null}
-                <Reason>{row.progressReason}</Reason>
-              </td>
-              <td data-label="时间">
-                <span>{row.timeLabel ? `${row.timeLabel}：${row.at}` : row.at}</span>
-                <Reason>{row.atReason}</Reason>
+              <td data-label="条目数">
+                <span data-testid="knw5-ingest-tasks-count">{row.count}</span>
+                {row.extra ? <span className="knw5-sub">{row.extra}</span> : null}
+                <Reason>{row.countReason}</Reason>
               </td>
             </tr>
           ))}
@@ -605,7 +624,7 @@ function IngestTasksSurface({ nonce }: { nonce: string }): ReactNode {
       source="tasks"
       state={surface.state}
       onRetry={surface.retry}
-      empty={() => <p>接口已响应，但没有给出接入任务；这不等于没有数据源在接入，也不显示 0 个任务。</p>}
+      empty={() => <p>接口已响应，但没有给出接入中的数据源；这不等于一个源都没有，也不显示 0 个。</p>}
       render={(value) => <TaskTable rows={value.rows} />}
     />
   );
