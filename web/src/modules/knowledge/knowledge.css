@@ -165,3 +165,171 @@
   .knw4-seg button { flex: 1 1 0; }
   .knw4-kpis { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* R17 knowledge tabs: real-data tables and citation rows */
+
+.knw4-page { overflow-x: clip; }
+
+.knw4-preview,
+.knw4-source {
+  margin: 0;
+  color: var(--color-muted-foreground);
+  font-size: 0.7rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.knw4-reason {
+  display: block;
+  margin-top: 2px;
+  color: var(--color-muted-foreground);
+  font-size: 0.66rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.knw4-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.knw4-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+  font-size: 0.76rem;
+}
+
+.knw4-table th,
+.knw4-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.knw4-table th {
+  color: var(--color-muted-foreground);
+  font-size: 0.66rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.knw4-table td { overflow-wrap: anywhere; }
+.knw4-table tr:last-child td { border-bottom: 0; }
+
+.knw4-citations {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.knw4-citation {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.knw4-citation:last-child { border-bottom: 0; }
+.knw4-citation-main { display: flex; min-width: 0; flex-direction: column; gap: 5px; }
+
+.knw4-citation-title,
+.knw4-citation-meta {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  overflow-wrap: anywhere;
+}
+
+.knw4-citation-meta {
+  color: var(--color-muted-foreground);
+  font-size: 0.68rem;
+}
+
+.knw4-unreachable {
+  display: flex;
+  max-width: 34ch;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--color-muted-foreground);
+  font-size: 0.68rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.knw4-unreachable b { color: var(--color-foreground); font-weight: 500; }
+
+.knw4-req {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-muted-foreground);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.66rem;
+  overflow-wrap: anywhere;
+}
+
+.knw4-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--color-foreground);
+  cursor: pointer;
+  font-size: 0.66rem;
+  padding: 2px 6px;
+}
+
+@media (max-width: 720px) {
+  .knw4-seg {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .knw4-seg button { width: 100%; }
+
+  .knw4-citation { flex-direction: column; }
+
+  .knw4-scroll { overflow-x: visible; }
+  .knw4-table { min-width: 0; }
+  .knw4-table thead { display: none; }
+  .knw4-table,
+  .knw4-table tbody,
+  .knw4-table tr,
+  .knw4-table td { display: block; width: 100%; }
+  .knw4-table tr {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .knw4-table td {
+    display: grid;
+    grid-template-columns: 84px minmax(0, 1fr);
+    gap: 8px;
+    padding: 3px 0;
+    border-bottom: 0;
+  }
+  .knw4-table td::before {
+    content: attr(data-label);
+    color: var(--color-muted-foreground);
+    font-size: 0.66rem;
+  }
+  .knw4-table td > .knw4-reason { grid-column: 2; }
+}
+
+/* Shared Button's decorative arc border can extend 2px past the page box;
+   hide it here so page scrollWidth matches the viewport. */
+.knw4-page .arc-border {
+  display: none;
+}
