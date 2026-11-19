@@ -4,7 +4,7 @@
 // no raw field names or HTTP codes reach the page.
 import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { MemoryRouter } from 'react-router';
+import { MemoryRouter, useLocation } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiError } from '@/lib/api-error';
@@ -768,5 +768,449 @@ describe('MetricsModulePage — budget variance & window', () => {
     );
     const dayCalls = urls().filter((url) => url.includes('budget-usage') && url.includes('periodKind=day'));
     expect(dayCalls.length).toBeGreaterThanOrEqual(8);
+  });
+});
+
+
+function LocationProbe(): ReactNode {
+  const location = useLocation();
+  return <p data-testid="met7-loc">{location.search}</p>;
+}
+
+function shareRouter(usage: unknown) {
+  return (url: string): Promise<unknown> => {
+    if (url.includes('run-activity')) return Promise.resolve(activityBody());
+    if (url.includes('run-stats')) return Promise.resolve(statsFor(url));
+    if (url.includes('/api/employees')) return Promise.resolve(EMPLOYEE_BODY);
+    if (url.includes('models/pricing')) return Promise.reject(new ApiError('missing', { status: 404, body: '', url }));
+    if (url.includes('hermes-usage')) return Promise.resolve(usage);
+    if (url.includes('periodKind=month')) return Promise.resolve(LEDGER_MONTH);
+    if (url.includes('periodKind=day')) return Promise.resolve(LEDGER_DAY);
+    return Promise.resolve({});
+  };
+}
+
+async function mountShare(usage: unknown, entry = '/metrics'): Promise<void> {
+  api.fetchJsonStrict.mockReset();
+  api.fetchJsonStrict.mockImplementation(shareRouter(usage));
+  await render(
+    entry,
+    <>
+      <MetricsModulePage />
+      <LocationProbe />
+    </>,
+  );
+  await waitFor(settled, 'state settled');
+}
+
+const SHARE_USAGE = {
+  by_model: [
+    { model: 'zeta', sessions: 4, actual_cost_usd: 3 },
+    { model: 'alpha', sessions: 9, actual_cost_usd: 1 },
+    { model: 'mid' },
+  ],
+  asOf: '2026-11-19T20:12:00.000Z',
+};
+
+const shareRows = (): (string | null)[] =>
+  [...document.querySelectorAll('[data-testid^="met7-row-"]')].map((node) => node.getAttribute('data-testid'));
+
+describe('MetricsModulePage — met7 cost share by model', () => {
+  it('sorts by cost descending by default and its shares add up to 100%', async () => {
+    await mountShare(SHARE_USAGE);
+
+    expect(shareRows()).toEqual(['met7-row-zeta', 'met7-row-alpha', 'met7-row-mid']);
+    expect(document.querySelector('[data-testid="met7-cost-zeta"]')?.textContent).toBe('$3.00');
+    expect(document.querySelector('[data-testid="met7-cost-alpha"]')?.textContent).toBe('$1.00');
+    expect(document.querySelector('[data-testid="met7-share-zeta"]')?.textContent).toBe('75.0%');
+    expect(document.querySelector('[data-testid="met7-share-alpha"]')?.textContent).toBe('25.0%');
+    // A model the answer carries no money for is «—», never 0 and never 0%.
+    expect(document.querySelector('[data-testid="met7-cost-mid"]')?.textContent).toBe('—');
+    expect(document.querySelector('[data-testid="met7-share-mid"]')?.textContent).toBe('—');
+    expect(document.querySelector('[data-testid="met7-runs-mid"]')?.textContent).toBe('—');
+    expect(document.querySelector('[data-testid="met7-runs-zeta"]')?.textContent).toBe('4');
+    expect(document.querySelector('[data-testid="met7-source"]')?.textContent).toContain('$4.00');
+  });
+
+  it('keeps a real zero charge apart from a missing one', async () => {
+    await mountShare({ by_model: [{ model: 'free', cost_usd: 0 }, { model: 'unknown' }] });
+
+    expect(document.querySelector('[data-testid="met7-cost-free"]')?.textContent).toBe('$0.00');
+    expect(document.querySelector('[data-testid="met7-cost-unknown"]')?.textContent).toBe('—');
+    // No positive total means no share at all — not a silent 0%.
+    expect(document.querySelector('[data-testid="met7-share-free"]')?.textContent).toBe('—');
+    expect(text()).not.toContain('0.0%');
+  });
+
+  it('never promotes an estimate into a charge', async () => {
+    await mountShare({ by_model: [{ model: 'est', estimated_cost_usd: 9.5, estimated_cost: 9.5 }] });
+
+    expect(document.querySelector('[data-testid="met7-cost-est"]')?.textContent).toBe('—');
+    expect(text()).not.toContain('$9.50');
+  });
+
+  it('sorts by model on demand and writes the order into the address', async () => {
+    await mountShare(SHARE_USAGE);
+
+    await act(async () => {
+      (document.querySelector('[data-testid="met7-sort-model"]') as HTMLButtonElement).click();
+    });
+    await waitFor(
+      () => document.querySelector('[data-testid="met7-loc"]')?.textContent === '?sort=model&dir=asc',
+      'sort in address',
+    );
+    expect(shareRows()).toEqual(['met7-row-alpha', 'met7-row-mid', 'met7-row-zeta']);
+
+    await act(async () => {
+      (document.querySelector('[data-testid="met7-sort-cost"]') as HTMLButtonElement).click();
+    });
+    await waitFor(
+      () => document.querySelector('[data-testid="met7-loc"]')?.textContent === '',
+      'default order leaves no sort keys in the address',
+    );
+    expect(shareRows()).toEqual(['met7-row-zeta', 'met7-row-alpha', 'met7-row-mid']);
+  });
+
+  it('shows an honest empty state when no model rows come back', async () => {
+    await mountShare({ by_model: [] });
+
+    expect(document.querySelector('[data-testid="met7-empty"]')).not.toBeNull();
+    expect(document.querySelector('[data-testid="met7-table"]')).toBeNull();
+    expect(text()).toContain('这个窗口没有按模型的实扣记录');
+    expect(text()).not.toContain('共 0');
+  });
+});
+
+
+const SHARE_MODEL_USAGE = {
+  by_model: [{ model: 'zeta', sessions: 4, actual_cost_usd: 3 }],
+  asOf: '2026-11-19T20:12:00.000Z',
+};
+
+function employeeShareRouter(ledger: unknown) {
+  return (url: string): Promise<unknown> => {
+    if (url.includes('run-activity')) return Promise.resolve(activityBody());
+    if (url.includes('run-stats')) return Promise.resolve(statsFor(url));
+    if (url.includes('/api/employees')) return Promise.resolve(EMPLOYEE_BODY);
+    if (url.includes('models/pricing')) return Promise.reject(new ApiError('missing', { status: 404, body: '', url }));
+    if (url.includes('hermes-usage')) return Promise.resolve(SHARE_MODEL_USAGE);
+    if (url.includes('budget-usage')) return Promise.resolve(ledger);
+    return Promise.resolve({});
+  };
+}
+
+async function mountEmployeeShare(ledger: unknown, entry = '/metrics?groupBy=employee'): Promise<void> {
+  api.fetchJsonStrict.mockReset();
+  api.fetchJsonStrict.mockImplementation(employeeShareRouter(ledger));
+  await render(
+    entry,
+    <>
+      <MetricsModulePage />
+      <LocationProbe />
+    </>,
+  );
+  await waitFor(settled, 'state settled');
+}
+
+const TWO_EMPLOYEE_LEDGER = {
+  items: [
+    { employeeId: 'emp_aaaabbbbcccc', costUsd: 3, runs: 7, updatedAt: '2026-11-19T03:20:00.000Z' },
+    { employeeId: 'emp_ddddeeeeffff', costUsd: 1, runs: 3, updatedAt: '2026-11-19T02:10:00.000Z' },
+  ],
+  missingEmployeeIds: [],
+};
+
+describe('MetricsModulePage — met8 cost share by employee', () => {
+  it('reads the employee ledger for ?groupBy=employee and names people, not ids', async () => {
+    await mountEmployeeShare(TWO_EMPLOYEE_LEDGER);
+
+    expect(document.querySelector('[data-testid="met7-table"]')).toBeNull();
+    expect(document.querySelector('[data-testid="met8-table"]')).not.toBeNull();
+    expect(document.querySelector('[data-testid="met8-row-aaaabbbb"]')).not.toBeNull();
+    expect(document.querySelector('[data-testid="met8-row-ddddeeee"]')).not.toBeNull();
+    expect(document.querySelector('[data-testid="met8-cost-aaaabbbb"]')?.textContent).toBe('$3.00');
+    expect(document.querySelector('[data-testid="met8-cost-ddddeeee"]')?.textContent).toBe('$1.00');
+    expect(document.querySelector('[data-testid="met8-runs-aaaabbbb"]')?.textContent).toBe('7');
+    expect(document.querySelector('[data-testid="met8-share-aaaabbbb"]')?.textContent).toBe('75.0%');
+    expect(document.querySelector('[data-testid="met8-share-ddddeeee"]')?.textContent).toBe('25.0%');
+    expect(text()).toContain('小鲤');
+    expect(text()).toContain('小满');
+    expect(text()).not.toContain('emp_aaaabbbbcccc');
+    expect(document.querySelector('[data-testid="met8-source"]')?.textContent).toContain('$4.00');
+  });
+
+  it('switches view once, keeps the address and refetches the new source exactly once', async () => {
+    api.fetchJsonStrict.mockReset();
+    api.fetchJsonStrict.mockImplementation(employeeShareRouter(TWO_EMPLOYEE_LEDGER));
+    await render(
+      '/metrics',
+      <>
+        <MetricsModulePage />
+        <LocationProbe />
+      </>,
+    );
+    await waitFor(settled, 'state settled');
+    expect(document.querySelector('[data-testid="met7-table"]')).not.toBeNull();
+
+    const before = urls();
+    const budgetBefore = before.filter((url) => url.includes('budget-usage')).length;
+    const usageBefore = before.filter((url) => url.includes('hermes-usage')).length;
+
+    await act(async () => {
+      (document.querySelector('[data-testid="met8-view-employee"]') as HTMLButtonElement).click();
+    });
+    await waitFor(() => document.querySelector('[data-testid="met8-table"]') !== null, 'employee table');
+
+    const after = urls();
+    expect(after.filter((url) => url.includes('budget-usage')).length - budgetBefore).toBe(1);
+    expect(after.filter((url) => url.includes('hermes-usage')).length).toBe(usageBefore);
+    expect(document.querySelector('[data-testid="met7-loc"]')?.textContent).toContain('groupBy=employee');
+    expect(document.querySelector('[data-testid="met7-table"]')).toBeNull();
+  });
+
+  it('falls back to the 8-character code when the directory has no name', async () => {
+    await mountEmployeeShare({
+      items: [{ employeeId: 'emp_9f3a1b2c4d5e6f70', costUsd: 2, updatedAt: '2026-11-19T03:20:00.000Z' }],
+      missingEmployeeIds: [],
+    });
+
+    expect(text()).toContain('员工 · 9F3A1B2C');
+    expect(text()).not.toContain('emp_9f3a1b2c4d5e6f70');
+    expect(document.querySelector('[data-testid="met8-runs-9f3a1b2c"]')?.textContent).toBe('—');
+    expect(document.querySelector('[data-testid="met8-share-9f3a1b2c"]')?.textContent).toBe('100.0%');
+  });
+
+  it('keeps a zero charge apart from a missing one in the employee view too', async () => {
+    await mountEmployeeShare({
+      items: [
+        { employeeId: 'emp_aaaabbbbcccc', costUsd: 0, updatedAt: '2026-11-19T03:20:00.000Z' },
+        { employeeId: 'emp_ddddeeeeffff', updatedAt: '2026-11-19T02:10:00.000Z' },
+      ],
+      missingEmployeeIds: [],
+    });
+
+    expect(document.querySelector('[data-testid="met8-cost-aaaabbbb"]')?.textContent).toBe('$0.00');
+    expect(document.querySelector('[data-testid="met8-cost-ddddeeee"]')?.textContent).toBe('—');
+    expect(document.querySelector('[data-testid="met8-share-aaaabbbb"]')?.textContent).toBe('—');
+    expect(text()).not.toContain('0.0%');
+  });
+});
+
+describe('met9 — cost rows drill into the runs list', () => {
+  it('sends an employee row to /runs with the accepted employee filter and the same window', async () => {
+    await mountEmployeeShare(TWO_EMPLOYEE_LEDGER, '/metrics?groupBy=employee&window=7d');
+
+    const link = document.querySelector('[data-testid="met9-link-aaaabbbb"]') as HTMLAnchorElement;
+    expect(link).not.toBeNull();
+    // A real anchor: middle-click and copy-link both work.
+    expect(link.tagName).toBe('A');
+    expect(link.getAttribute('href')).toBe('/runs/?employee=emp_aaaabbbbcccc&window=7d');
+    expect(link.textContent).toBe('查看运行');
+    expect(link.getAttribute('aria-label')).toContain('小鲤');
+    // The raw id rides in the href only; the page never prints it.
+    expect(text()).not.toContain('emp_aaaabbbbcccc');
+    expect(document.querySelector('[data-testid="met9-note"]')?.textContent).toContain('按这位员工筛选');
+  });
+
+  it('never paints a model filter the runs page cannot honour', async () => {
+    await mountShare(SHARE_USAGE, '/metrics?window=30d');
+
+    const link = document.querySelector('[data-testid="met9-link-zeta"]') as HTMLAnchorElement;
+    expect(link.getAttribute('href')).toBe('/runs/?window=30d');
+    expect(link.getAttribute('href')).not.toContain('model=');
+    expect(link.getAttribute('title')).toContain('运行页暂不支持按模型筛选');
+    const note = document.querySelector('[data-testid="met9-note"]');
+    expect(note?.textContent).toContain('运行页暂不支持按模型筛选');
+    expect(note?.textContent).toContain('不假装过滤');
+  });
+});
+
+// ---- metA: export the current cost view -------------------------------------
+
+describe('metA — export the current cost view', () => {
+  function captureDownload(): {
+    captured: { blob: Blob | null; name: string | null };
+    click: ReturnType<typeof vi.spyOn>;
+  } {
+    const captured: { blob: Blob | null; name: string | null } = { blob: null, name: null };
+    Object.assign(URL, {
+      createObjectURL: vi.fn((blob: Blob) => {
+        captured.blob = blob;
+        return 'blob:metA';
+      }),
+      revokeObjectURL: vi.fn(),
+    });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
+      captured.name = this.download;
+    });
+    return { captured, click };
+  }
+
+  
+
+  it('exports exactly the rows on screen under the fixed key header', async () => {
+    const { captured, click } = captureDownload();
+    await mountEmployeeShare(TWO_EMPLOYEE_LEDGER);
+    expect(document.querySelector('[data-testid="metA-export-count"]')?.textContent).toBe('可导出 2 行');
+
+    await act(async () => {
+      (document.querySelector('[data-testid="metA-export"]') as HTMLButtonElement).click();
+    });
+
+    expect(click).toHaveBeenCalledTimes(1);
+    expect(captured.name).toMatch(/^metrics-24h-employee-\d{8}-\d{4}\.csv$/);
+    const lines = (await (captured.blob as Blob).text()).replace(/^\uFEFF/, '').split('\r\n');
+    expect(lines[0]).toBe('group,runs,cost_usd,share_pct');
+    const onScreen = document.querySelectorAll('[data-testid^="met8-row-"]').length;
+    expect(onScreen).toBe(2);
+    expect(lines).toHaveLength(onScreen + 1);
+    expect(lines[1].split(',')).toEqual(['小鲤', '7', '3.00', '75.0']);
+    expect(lines[2].split(',')).toEqual(['小满', '3', '1.00', '25.0']);
+    click.mockRestore();
+  });
+
+  it('keeps a real zero at 0.00 and a missing value empty', async () => {
+    const { captured, click } = captureDownload();
+    await mountEmployeeShare({
+      items: [
+        { employeeId: 'emp_aaaabbbbcccc', costUsd: 0, runs: 2, updatedAt: '2026-11-19T03:20:00.000Z' },
+        { employeeId: 'emp_ddddeeeeffff', updatedAt: '2026-11-19T02:10:00.000Z' },
+      ],
+      missingEmployeeIds: [],
+    });
+
+    await act(async () => {
+      (document.querySelector('[data-testid="metA-export"]') as HTMLButtonElement).click();
+    });
+
+    const lines = (await (captured.blob as Blob).text()).replace(/^\uFEFF/, '').split('\r\n');
+    expect(lines[1].split(',')).toEqual(['小鲤', '2', '0.00', '']);
+    expect(lines[2].split(',')).toEqual(['小满', '', '', '']);
+    click.mockRestore();
+  });
+
+  it('escapes commas and quotes the RFC 4180 way', async () => {
+    const { captured, click } = captureDownload();
+    await mountShare({ by_model: [{ model: 'a,"b"', sessions: 1, actual_cost_usd: 2 }], asOf: null });
+
+    await act(async () => {
+      (document.querySelector('[data-testid="metA-export"]') as HTMLButtonElement).click();
+    });
+
+    const lines = (await (captured.blob as Blob).text()).replace(/^\uFEFF/, '').split('\r\n');
+    expect(lines[1]).toBe('"a,""b""",1,2.00,100.0');
+    expect(captured.name).toMatch(/^metrics-24h-model-\d{8}-\d{4}\.csv$/);
+    click.mockRestore();
+  });
+
+  it('disables the button and says so when the view has nothing to export', async () => {
+    await mountShare({ by_model: [] });
+
+    const button = document.querySelector('[data-testid="metA-export"]') as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(button.getAttribute('title')).toBe('当前视图无可导出数据');
+    expect(document.querySelector('[data-testid="metA-export-count"]')?.textContent).toBe('可导出 0 行');
+  });
+
+  it('labels the two export buttons by scope and explains which one is the aggregate', async () => {
+    await mountShare(SHARE_USAGE);
+
+    const detail = document.querySelector('[data-testid="met6-export"]') as HTMLButtonElement;
+    const share = document.querySelector('[data-testid="metA-export"]') as HTMLButtonElement;
+    expect(detail).toBeTruthy();
+    expect(share).toBeTruthy();
+    expect(detail.textContent?.trim()).toBe('导出明细 CSV');
+    expect(share.textContent?.trim()).toBe('导出分摊 CSV');
+    expect(detail.textContent).not.toBe(share.textContent);
+    expect(detail.getAttribute('title')).toContain('账本逐行');
+    expect(share.getAttribute('title')).toContain('聚合行');
+    const note = document.querySelector('[data-testid="metA-scope-note"]');
+    expect(note?.textContent).toContain('聚合行');
+    expect(note?.textContent).toContain('导出明细 CSV');
+  });
+});
+
+// metB — the source & freshness block. It must never invent a collection time:
+// only a top-level ISO `asOf` from the payload counts, everything else is 「—」.
+const metBSource = (): HTMLElement | null => document.querySelector('[data-testid="metB-source-toggle"]');
+const metBCell = (key: string): HTMLElement | null => document.querySelector(`[data-testid="metB-source-asof-${key}"]`);
+
+function sourceRouter(runStats: unknown | ((url: string) => unknown), pricing?: () => Promise<unknown>) {
+  return (url: string): Promise<unknown> => {
+    if (url.includes('run-activity')) return Promise.resolve(activityBody());
+    if (url.includes('run-stats')) {
+      return Promise.resolve(typeof runStats === 'function' ? (runStats as (u: string) => unknown)(url) : runStats);
+    }
+    if (url.includes('/api/employees')) return Promise.resolve(EMPLOYEE_BODY);
+    if (url.includes('models/pricing')) {
+      return pricing ? pricing() : Promise.reject(new ApiError('missing', { status: 404, body: '', url }));
+    }
+    if (url.includes('periodKind=month')) return Promise.resolve(LEDGER_MONTH);
+    if (url.includes('periodKind=day')) return Promise.resolve(LEDGER_DAY);
+    return Promise.resolve({});
+  };
+}
+
+async function openSources(): Promise<void> {
+  const toggle = metBSource();
+  expect(toggle).toBeTruthy();
+  await act(async () => {
+    toggle?.click();
+  });
+}
+
+describe('metB — source freshness', () => {
+  it('stays collapsed by default and keeps raw paths off the page until opened', async () => {
+    await mount(usageRouter());
+
+    expect(metBSource()?.getAttribute('aria-expanded')).toBe('false');
+    expect(document.querySelector('[data-testid="metB-source-table"]')).toBeNull();
+    expect(text()).not.toContain('/api');
+  });
+
+  it('shows no toggle at all before the page has read anything', async () => {
+    await mount(usageRouter(), '/metrics?state=empty');
+
+    expect(metBSource()).toBeNull();
+    expect(document.querySelector('[data-testid="metB-source-empty"]')?.textContent).toContain('还没有读取记录');
+  });
+
+  it('shows the upstream collection time, and 「—」 when the payload carries none', async () => {
+    await mount(sourceRouter({ ...STATS_24H, asOf: '2026-11-19T20:12:00.000Z', asOfSource: 'bff' }));
+    await openSources();
+
+    expect(document.querySelector('[data-testid="metB-source-table"]')).toBeTruthy();
+    // 20:12Z is 04:12 the next day in Beijing.
+    expect(metBCell('run-stats')?.textContent).toBe('2026-11-20 04:12');
+    expect(metBCell('run-stats')?.getAttribute('title')).toBe('采集时刻来自 bff');
+    // run-activity returns no asOf: must stay blank, never the local clock.
+    expect(metBCell('run-activity')?.textContent).toBe('—');
+    expect(metBCell('run-activity')?.getAttribute('title')).toBe('上游未返回采集时刻');
+    expect(document.querySelector('[data-testid="metB-source-state-run-stats"]')?.textContent).toBe('正常');
+  });
+
+  it('treats a non-ISO asOf as missing instead of formatting it', async () => {
+    await mount(sourceRouter({ ...STATS_24H, asOf: 'yesterday' }));
+    await openSources();
+
+    expect(metBCell('run-stats')?.textContent).toBe('—');
+    expect(metBCell('run-stats')?.getAttribute('title')).toBe('上游未返回采集时刻');
+    expect(metBCell('run-stats')?.textContent).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+  });
+
+  it('marks a degraded source as unreadable and keeps the rest of the page working', async () => {
+    await mount(
+      sourceRouter({ ...STATS_24H, asOf: '2026-11-19T20:12:00.000Z' }, () =>
+        Promise.reject(new ApiError('boom', { status: 500, body: '', url: '/api/models/pricing', requestId: 'req-metB-1' })),
+      ),
+    );
+    await openSources();
+
+    const state = document.querySelector('[data-testid="metB-source-state-pricing"]');
+    expect(state?.textContent).toBe('读不到');
+    expect(state?.getAttribute('title')).toContain('请求编号 req-metB-1');
+    expect(document.querySelector('[data-testid="met6-runs-value"]')).toBeTruthy();
   });
 });
