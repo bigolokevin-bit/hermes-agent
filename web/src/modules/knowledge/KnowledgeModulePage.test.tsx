@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api-error";
@@ -12,6 +12,11 @@ vi.mock("@/modules/models/fetchJson", () => ({
 }));
 
 import KnowledgeModulePage from "./KnowledgeModulePage";
+
+function LocationProbe() {
+  const loc = useLocation();
+  return <div data-testid="loc">{loc.search}</div>;
+}
 
 let container: HTMLDivElement;
 let root: Root;
@@ -40,6 +45,7 @@ async function render(path = "/knowledge") {
     root.render(
       <MemoryRouter initialEntries={[path]}>
         <KnowledgeModulePage />
+        <LocationProbe />
       </MemoryRouter>,
     );
   });
@@ -112,6 +118,42 @@ describe("KnowledgeModulePage", () => {
     expect(fetchMock).toHaveBeenLastCalledWith("/agent-api/api/documents?limit=50");
     expect(container.querySelector('[data-testid="knw4-gap"]')).toBeTruthy();
     expect(container.textContent).toContain("未接入");
+  });
+
+  it("maps all four shell tab values to the matching knw4 panel", async () => {
+    fetchMock.mockResolvedValue({ items: [] });
+    const cases = [
+      ["/knowledge?tab=sources", "ingest", "/agent-api/api/documents?limit=50"],
+      ["/knowledge?tab=retrieval", "retrieval", "/agent-api/api/retrieval"],
+      ["/knowledge?tab=citations", "evidence", "/agent-api/api/run-events?kind=citation&limit=50"],
+      ["/knowledge?tab=evidence", "evidence", "/agent-api/api/run-events?kind=citation&limit=50"],
+    ] as const;
+    for (const [path, panel, url] of cases) {
+      await render(path);
+      const selected = container.querySelector('[role="tab"][aria-selected="true"]');
+      expect(selected?.getAttribute("data-testid")).toBe(`knw4-tab-${panel}`);
+      expect(container.querySelector('[data-testid="knw4-panel"]')?.getAttribute("data-tab")).toBe(panel);
+      expect(fetchMock).toHaveBeenLastCalledWith(url);
+    }
+  });
+
+  it("keeps the selected panel in the URL and restores it on re-render", async () => {
+    fetchMock.mockImplementation((url: string) =>
+      url.includes("knowledge/spaces")
+        ? Promise.resolve({ items: [{ spaceId: "s1", name: "空间一" }] })
+        : Promise.resolve({ items: [{ documentId: "d1", title: "文档一" }] }),
+    );
+    await render("/knowledge?tab=spaces");
+    await click("knw4-tab-ingest");
+    const loc = container.querySelector('[data-testid="loc"]')?.textContent ?? "";
+    expect(loc).toContain("panel=ingest");
+    expect(loc).toContain("tab=spaces");
+    expect(container.querySelector('[role="tab"][aria-selected="true"]')?.getAttribute("data-testid")).toBe(
+      "knw4-tab-ingest",
+    );
+    await render(`/knowledge${loc}`);
+    expect(container.querySelector('[data-testid="knw4-panel"]')?.getAttribute("data-tab")).toBe("ingest");
+    expect(fetchMock).toHaveBeenLastCalledWith("/agent-api/api/documents?limit=50");
   });
 
   it("renders real citations with an open link and an honest unreachable reason", async () => {

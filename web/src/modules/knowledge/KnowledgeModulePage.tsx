@@ -151,14 +151,29 @@ function CitationList({ rows }: { rows: CitationRow[] }) {
 }
 
 export default function KnowledgeModulePage() {
-  const [sp] = useSearchParams();
+  const [sp, setSp] = useSearchParams();
   const forcedRaw = (sp.get("state") ?? "").toLowerCase();
   const forced = isForcedState(forcedRaw) ? forcedRaw : null;
-  const [tab, setTab] = useState<KnowledgeTab>(() => initialTab(sp.get("tab")));
+  const requestedTab = initialTab(sp.get("tab"), sp.get("panel"));
+  const [tab, setTab] = useState<KnowledgeTab>(requestedTab);
   const [phase, setPhase] = useState<KnowledgePhase>("loading");
   const [payload, setPayload] = useState(() => readKnowledge("spaces", null));
   const [error, setError] = useState<ErrorView | null>(null);
   const [nonce, setNonce] = useState(0);
+
+  useEffect(() => {
+    setTab(requestedTab);
+  }, [requestedTab]);
+
+  const selectTab = (key: KnowledgeTab) => {
+    setTab(key);
+    const next = new URLSearchParams(sp);
+    // Keep `tab` on a shell-known value so the module stays mounted; `panel`
+    // carries the knw4 panel, which is what refresh/back must restore.
+    if (!next.get("tab")) next.set("tab", "spaces");
+    next.set("panel", key);
+    setSp(next);
+  };
 
   useEffect(() => {
     if (forced) return;
@@ -217,7 +232,7 @@ export default function KnowledgeModulePage() {
             role="tab"
             aria-selected={tab === key}
             data-testid={`knw4-tab-${key}`}
-            onClick={() => setTab(key)}
+            onClick={() => selectTab(key)}
           >
             {TAB_LABEL[key]}
           </button>
@@ -232,7 +247,12 @@ export default function KnowledgeModulePage() {
       </p>
 
       <Card>
-        <CardContent className="knw4-body">
+        <CardContent
+          className="knw4-body"
+          data-testid="knw4-panel"
+          data-tab={tab}
+          data-len={tab === "evidence" ? payload.citations.length : payload.rows.length}
+        >
           {forced === "loading" ? (
             <Skeleton testid="knw4-loading" />
           ) : forced === "empty" ? (

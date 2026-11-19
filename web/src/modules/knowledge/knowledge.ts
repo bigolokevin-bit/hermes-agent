@@ -318,9 +318,15 @@ export function isForcedState(value: string): value is "loading" | "empty" | "er
   return value === "loading" || value === "empty" || value === "error" || value === "denied";
 }
 
-export function initialTab(value: string | null): KnowledgeTab {
-  if (value === "ingest" || value === "sources") return "ingest";
-  if (value === "retrieval") return "retrieval";
-  if (value === "evidence" || value === "citations") return "evidence";
+export function initialTab(value: string | null, panel: string | null = null): KnowledgeTab {
+  const internal = (panel ?? "").toLowerCase();
+  if (internal === "ingest" || internal === "sources") return "ingest";
+  if (internal === "retrieval") return "retrieval";
+  if (internal === "evidence" || internal === "citations") return "evidence";
+  if (internal === "spaces" || internal === "scope") return "spaces";
+  const tab = (value ?? "").toLowerCase();
+  if (tab === "ingest" || tab === "sources") return "ingest";
+  if (tab === "retrieval") return "retrieval";
+  if (tab === "evidence" || tab === "citations") return "evidence";
   return "spaces";
 }
