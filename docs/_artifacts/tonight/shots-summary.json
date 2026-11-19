@@ -14,7 +14,7 @@
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 27,
+  "distinctMainHeads": 26,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -117,13 +117,13 @@
     {
       "route": "#/audit",
       "viewport": "1440",
-      "chars": 7776,
+      "chars": 7882,
       "hasMainEl": true
     },
     {
       "route": "#/audit",
       "viewport": "375",
-      "chars": 7776,
+      "chars": 7882,
       "hasMainEl": true
     },
     {
@@ -153,7 +153,7 @@
     {
       "route": "#/capabilities?tab=models",
       "viewport": "1440",
-      "chars": 391,
+      "chars": 104,
       "hasMainEl": true
     },
     {
@@ -219,7 +219,7 @@
     {
       "route": "#/employees/:employeeId?zone=config",
       "viewport": "375",
-      "chars": 51,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -525,49 +525,49 @@
     {
       "route": "#/system?tab=events",
       "viewport": "1440",
-      "chars": 7776,
+      "chars": 7882,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events",
       "viewport": "375",
-      "chars": 7776,
+      "chars": 7882,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "1440",
-      "chars": 7776,
+      "chars": 7882,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "375",
-      "chars": 7776,
+      "chars": 7882,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=retention",
       "viewport": "1440",
-      "chars": 7776,
+      "chars": 7882,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=retention",
       "viewport": "375",
-      "chars": 7776,
+      "chars": 7882,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=security",
       "viewport": "1440",
-      "chars": 7776,
+      "chars": 7882,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=security",
       "viewport": "375",
-      "chars": 7776,
+      "chars": 7882,
       "hasMainEl": true
     },
     {
@@ -597,7 +597,7 @@
     {
       "route": "#/work?tab=board&view=cron",
       "viewport": "1440",
-      "chars": 1782,
+      "chars": 145,
       "hasMainEl": true
     },
     {
@@ -609,7 +609,7 @@
     {
       "route": "#/work?tab=cron",
       "viewport": "1440",
-      "chars": 145,
+      "chars": 1782,
       "hasMainEl": true
     },
     {
@@ -634,7 +634,7 @@
   "consoleErrorsObservedByShots": 0,
   "consoleErrorRoutesObservedByShots": [],
   "ceAuthority": "login-state",
-  "routesWithEnvOnlyConsoleErrors": 24,
+  "routesWithEnvOnlyConsoleErrors": 23,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
   "overflowing": [],
   "driver": {
@@ -642,16 +642,16 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "c9266b55",
-  "entry": "assets/index-C4DIeOJD.js",
-  "entrySha256": "65cb3caa0b8294425e0da3f9af0fdd35ecd9c705fc53fe7eb28688db0eb0baeb",
-  "entryBytes": 155732,
-  "medianMainChars": 191.0,
-  "shotWindow": "17:13:47-17:14:39 local",
-  "servedEntryBefore": "assets/index-C4DIeOJD.js",
-  "servedEntryAfter": "assets/index-C4DIeOJD.js",
+  "headHash": "6ed07356",
+  "entry": "assets/index-DsyX4ZaS.js",
+  "entrySha256": "3d3805796d78f080efbd4a77248d0c787e8127aa7c93ce80a016894929e5201e",
+  "entryBytes": 155746,
+  "medianMainChars": 189.0,
+  "shotWindow": "17:48:33-17:49:26 local",
+  "servedEntryBefore": "assets/index-DsyX4ZaS.js",
+  "servedEntryAfter": "assets/index-DsyX4ZaS.js",
   "env": "9122 proxy-live (anon 401 / auth 200); CE 权威=登录态, 观察字段仅旁证",
-  "ceCaliber": "ceAuthority=login-state; crawl-auth routesCE=23 denied=19; crawl-anon routesCE=51 denied=32; ok 不含 CE 项（L0 二十九轮裁定落码）",
+  "ceCaliber": "ceAuthority=login-state; crawl-auth routesCE=24 denied=19; crawl-anon routesCE=51 denied=32; ok 不含 CE 项（L0 二十九轮裁定落码）",
   "anonEvidence": "crawl-anon ok=True exit=0 probed=75 DL=0 CE=0 PE=0 routesCE=51(env 旁证); shots-anon 辅助腿见 shots-anon-summary.json",
   "exitCode": 0
 }
