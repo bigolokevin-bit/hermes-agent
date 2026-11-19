@@ -13,13 +13,18 @@ import {
   KNOWLEDGE_GAP,
   TAB_LABEL,
   TAB_SOURCE,
+  beijing,
+  citationsFromDetail,
   initialTab,
   isForcedState,
   readKnowledge,
+  readSessions,
   type CitationRow,
+  type KnowledgePayload,
   type KnowledgePhase,
   type KnowledgeRow,
   type KnowledgeTab,
+  type RetrievalRow,
 } from "./knowledge";
 import "./knowledge.css";
 
@@ -30,9 +35,28 @@ const TAB_ORDER: KnowledgeTab[] = ["spaces", "ingest", "retrieval", "evidence"];
 const EMPTY_TEXT: Record<KnowledgeTab, string> = {
   spaces: "当前没有读到知识空间。接口已响应，但列表为空；这不等于「没有空间」。",
   ingest: "当前没有读到文档登记。接口已响应，但列表为空；不显示 0 篇。",
-  retrieval: "当前没有读到检索结果。接口已响应，但结果为空；不展示样例命中。",
-  evidence: "当前没有读懂引用记录。接口已响应，但列表为空；不展示样例。",
+  retrieval: "接口已响应，检索审计为空；不显示 0 次命中，也不展示样例。",
+  evidence: "当前没有读到会话引用记录；不展示样例。",
 };
+
+const SESSION_SCAN_LIMIT = 10;
+
+function sessionsPayload(sessions: Awaited<ReturnType<typeof readSessions>>, citations: CitationRow[]): KnowledgePayload {
+  const times = [
+    ...citations.map((row) => row.atRaw).filter((value): value is string => Boolean(value)),
+    ...sessions.map((row) => row.updatedAt).filter((value): value is string => Boolean(value)),
+  ].sort();
+  const latest = times.length > 0 ? times[times.length - 1] : null;
+  const stamp = latest ? beijing(latest) : null;
+  return {
+    rows: [],
+    citations,
+    retrieval: [],
+    stamp,
+    stampReason: stamp ? null : "接口已响应，但没有可用的采集时间；数据截至时间未知。",
+    scannedSessions: sessions.length,
+  };
+}
 
 function RequestId({ id, testid = "knw4-request-id" }: { id: string | null; testid?: string }) {
   const [copied, setCopied] = useState(false);
@@ -127,10 +151,12 @@ function CitationList({ rows }: { rows: CitationRow[] }) {
             <div className="knw4-citation-title">
               <Badge tone="outline">{row.kind}</Badge>
               <span title={row.id || undefined}>{row.title}</span>
+              <Reason>{row.titleReason}</Reason>
             </div>
             <div className="knw4-citation-meta">
               <span title={row.employeeRaw || undefined}>{row.employee}</span>
               <span>{row.at}</span>
+              <Reason>{row.atReason}</Reason>
             </div>
           </div>
           {row.href ? (
@@ -147,6 +173,46 @@ function CitationList({ rows }: { rows: CitationRow[] }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+function RetrievalTable({ rows }: { rows: RetrievalRow[] }) {
+  return (
+    <div className="knw4-scroll">
+      <table className="knw4-table" data-testid="knw4-retrieval-table">
+        <thead>
+          <tr>
+            <th>执行者</th>
+            <th>判定</th>
+            <th>结果</th>
+            <th>检索对象</th>
+            <th>时间</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, index) => (
+            <tr key={row.id || `retrieval-${index}`} data-testid="knw4-retrieval-row" title={row.id || undefined}>
+              <td data-label="执行者" title={row.actorRaw || undefined}>{row.actor}</td>
+              <td data-label="判定" title={row.decisionRaw || undefined}>{row.decision}</td>
+              <td data-label="结果" title={row.outcomeRaw || undefined}>{row.outcome}</td>
+              <td data-label="检索对象" title={row.targetRaw || undefined}>
+                {row.href ? (
+                  <Link className="knw4-link" to={row.href} data-testid="knw4-retrieval-open">
+                    {row.target}
+                  </Link>
+                ) : (
+                  row.target
+                )}
+              </td>
+              <td data-label="时间">
+                <span>{row.at}</span>
+                <Reason>{row.atReason}</Reason>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -176,12 +242,37 @@ export default function KnowledgeModulePage() {
     let live = true;
     setPhase("loading");
     setError(null);
-    fetchJsonStrict(ENDPOINTS[tab].url)
-      .then((body) => {
+    const load = async (): Promise<KnowledgePayload> => {
+      if (tab !== "evidence") {
+        return readKnowledge(tab, await fetchJsonStrict(ENDPOINTS[tab].url));
+      }
+      const sessions = readSessions(await fetchJsonStrict(ENDPOINTS.evidence.url));
+      const targets = sessions.filter((row) => row.messageCount > 0).slice(0, SESSION_SCAN_LIMIT);
+      const settled = await Promise.allSettled(
+        targets.map((row) =>
+          fetchJsonStrict(`/agent-api/api/console-sessions/${encodeURIComponent(row.sessionId)}`),
+        ),
+      );
+      const details = settled
+        .filter((item): item is PromiseFulfilledResult<unknown> => item.status === "fulfilled")
+        .map((item) => item.value);
+      if (targets.length > 0 && details.length === 0) {
+        const first = settled.find((item): item is PromiseRejectedResult => item.status === "rejected");
+        throw first?.reason;
+      }
+      const citations = details.flatMap((body, index) => citationsFromDetail(body, targets[index]));
+      return sessionsPayload(sessions, citations);
+    };
+    load()
+      .then((next) => {
         if (!live) return;
-        const next = readKnowledge(tab, body);
         setPayload(next);
-        const count = tab === "evidence" ? next.citations.length : next.rows.length;
+        const count =
+          tab === "evidence"
+            ? next.citations.length
+            : tab === "retrieval"
+              ? next.retrieval.length
+              : next.rows.length;
         setPhase(count === 0 ? "empty" : "ready");
       })
       .catch((cause: unknown) => {
@@ -247,7 +338,13 @@ export default function KnowledgeModulePage() {
           className="knw4-body"
           data-testid="knw4-panel"
           data-tab={tab}
-          data-len={tab === "evidence" ? payload.citations.length : payload.rows.length}
+          data-len={
+            tab === "evidence"
+              ? payload.citations.length
+              : tab === "retrieval"
+                ? payload.retrieval.length
+                : payload.rows.length
+          }
         >
           {forced === "loading" ? (
             <Skeleton testid="knw4-loading" />
@@ -303,7 +400,11 @@ export default function KnowledgeModulePage() {
             </div>
           ) : phase === "empty" ? (
             <div className="knw4-empty" data-testid="knw4-empty">
-              <p>{EMPTY_TEXT[tab]}</p>
+              <p>
+                {tab === "evidence" && payload.scannedSessions !== null && payload.scannedSessions > 0
+                  ? `已读取最近 ${payload.scannedSessions} 个会话，没有引用记录；不展示样例。`
+                  : EMPTY_TEXT[tab]}
+              </p>
               {tab === "spaces" ? (
                 <Link className="knw4-link" to="/knowledge?tab=ingest">
                   查看数据接入
@@ -313,6 +414,8 @@ export default function KnowledgeModulePage() {
             </div>
           ) : tab === "evidence" ? (
             <CitationList rows={payload.citations} />
+          ) : tab === "retrieval" ? (
+            <RetrievalTable rows={payload.retrieval} />
           ) : (
             <RowTable rows={payload.rows} testid="knw4-table" />
           )}

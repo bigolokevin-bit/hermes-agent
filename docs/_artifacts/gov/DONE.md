@@ -1033,3 +1033,64 @@ TSC_EXIT=0
 - `#/knowledge?tab=sources` 的端到端深链仍需 App live map 增加 `sources` 节点；否则 shell 仍落 `PlannedBlock`，模块不会被挂载。
 - `?tab=retrieval|citations|evidence` 的端到端深链仍需 App 将 `evidence` 节点指向 `KnowledgeConsolePage`；当前仍挂 `EvidenceModulePage`。
 - 本次提交保证的是「模块一旦挂载，四值与 URL 一一对应且刷新/回退/同实例切换保态」；端到端壳层映射无法在 `web/src/modules/knowledge/**` 内单独闭合。
+
+## R21 页深 P1：knowledge citations / retrieval 真数据面（2026-11-19）
+
+### 基线
+- `origin/lane/hermes-console` = `3ca5338f`；写域仅 `web/src/modules/knowledge/**` + `docs/_artifacts/gov/**`。
+
+### 端点真实度（BFF 127.0.0.1:8092，带登录 cookie；未打印 token）
+```text
+GET /api/knowledge/spaces                 404 {"code":"console.unknown_route"}
+GET /api/knowledge/retrieval              404 {"code":"console.unknown_route"}
+GET /api/documents?limit=50               404 {"code":"console.unknown_route"}
+GET /api/retrieval                        404 {"code":"console.unknown_route"}
+GET /api/run-events?kind=citation&limit=50 400 console.missing_param（runId 必填）
+GET /api/sessions?limit=20                200 {"items":[]}
+GET /api/audit?action=kb.read&limit=50    200 {"events":[]}
+```
+- BFF 源 `apps/console/server.py` 无 knowledge/document/retrieval 路由；spaces / ingest 维持「未接入」+ GAP-03 仅 title + `/approvals` 申请入口，不展示样例、不写 0。
+- citations 改读**真实会话引用**：`/api/sessions?limit=20` → 对 `messageCount>0` 的最近 10 个会话取 `/api/console-sessions/<id>`，只收 assistant 消息的 `citations`；当前 0 会话，页面显真实空态「已读取最近 0 个会话…」而不是样例。
+- retrieval 改读**真实检索审计**：`/api/audit?action=kb.read&limit=50`；当前 200 空事件，页面显真实空态「检索审计为空…」；有记录时显示执行者 / 判定 / 结果 / 检索对象 / 北京时间，`run_id` 为 run 时给 `/runs/<id>` 真链。
+- 未使用 `/api/run-events?kind=...`（该路径实测 400，不能当引用源）；未回落任何 fixture。
+
+### 四 tab URL 映射与 DOM 读数
+| `?tab=` | 选中 testid | `knw4-panel` | len |
+|---|---|---|---|
+| sources | `knw4-tab-ingest` | ingest | 0（documents 404 空态） |
+| retrieval | `knw4-tab-retrieval` | retrieval | 1（stub 审计 1 行） |
+| citations | `knw4-tab-evidence` | evidence | 2（stub 会话引用 2 行） |
+| evidence | `knw4-tab-evidence` | evidence | 2 |
+
+```text
+1440 sources   tab=knw4-tab-ingest    panel=ingest    len=0 body=1440/1440 page=1440/1440
+1440 retrieval tab=knw4-tab-retrieval panel=retrieval len=1 body=1440/1440 page=1440/1440
+1440 citations tab=knw4-tab-evidence  panel=evidence  len=2 body=1440/1440 page=1440/1440
+1440 evidence  tab=knw4-tab-evidence  panel=evidence  len=2 body=1440/1440 page=1440/1440
+375  sources   tab=knw4-tab-ingest    panel=ingest    len=0 body=375/375 page=375/375
+375  retrieval tab=knw4-tab-retrieval panel=retrieval len=1 body=375/375 page=375/375
+375  citations tab=knw4-tab-evidence  panel=evidence  len=2 body=375/375 page=375/375
+375  evidence  tab=knw4-tab-evidence  panel=evidence  len=2 body=375/375 page=375/375
+```
+- 刷新/回退由 `?tab=` / `?panel=` 唯一事实源保证；同挂载实例导航回归测试通过。
+- 404 仍 `knw4-gap`（`title=GAP-03`，可见只有「未接入」）；zeroCount=0；四态未破。
+
+### 原始 stdout
+```text
+$ npx vitest run src/modules/knowledge
+ Test Files  1 passed (1)
+      Tests  12 passed (12)
+
+$ npx vitest run
+ Test Files  121 passed (121)
+      Tests  1201 passed (1201)
+
+$ PATH="/opt/homebrew/bin:$PATH" node scripts/build/web.mjs --source . --out /tmp/knw4-r21 --icons .
+BUILD_FAILED: src/pages/LoginPage.test.tsx(131,9): error TS2739: Type 'Response' is missing ... Promise<Response>
+（基线既有问题，属他人写域 src/pages；本 lane 未改）
+```
+
+### 仍需壳层注册（App.tsx 非本 lane 写域）
+- `?tab=sources`：App live map 无 `sources` 节点，当前落 `PlannedBlock`，需把 `sources` 指向 `KnowledgeConsolePage`。
+- `?tab=retrieval|citations|evidence`：shell 解析到 `evidence`，App 当前挂 `web/src/modules/evidence/EvidenceModulePage`（另一模块，且 404 回落 fixture）；需把该节点也指向 `KnowledgeConsolePage`。
+- 本 commit 保证模块挂载后的四值映射与真数据面；端到端深链需 R5/L0 改 App live map。
