@@ -1966,3 +1966,79 @@ never a 0 dressed up as a count of something else.
   DELEGATION v1.0 record names neither, so both may legitimately read
   「未记录」 against a real row.
 
+
+## TASK retention read-only surface (2026-11-19, base 703aff57 = gate ledger @ d6d9bb07)
+
+### What was asked
+`/system?tab=retention` as a read-only real-data surface: per area (审计事件 / 运行记录 /
+会话日志 / 上传物) retention days, last clean-up and next run in Beijing time to the
+minute, current occupancy and threshold; a source that cannot be read reads 「未接入」 with
+its reason (gap id only in `title`), never a fabricated 0; the write-shaped actions
+(立即清理 / 修改策略) must be `data-planned` + `aria-disabled` + a `title` reason and never
+report a success; four states with a copyable request id and a retry, 403 ≡ 404, no
+horizontal overflow at 1440/1280/375, testids `ret4-*`.
+
+### Probes (2026-11-19, session cookie via 127.0.0.1:8092; value never printed)
+| route | HTTP | code |
+|---|---|---|
+| `/api/retention` | 404 | `console.unknown_route` |
+| `/api/retention-policy` | 404 | `console.unknown_route` |
+| `/api/data-retention` | 404 | `console.unknown_route` |
+| `/api/storage` | 404 | `console.unknown_route` |
+| `/api/storage-usage` | 404 | `console.unknown_route` |
+| `/api/audit-retention` | 404 | `console.unknown_route` |
+| `/api/cleanup` | 404 | `console.unknown_route` |
+| `/api/maintenance` | 404 | `console.unknown_route` |
+
+`apps/console/BFF-ROUTE-MATRIX.md` has no retention / clean-up row at all, so this
+deployment genuinely has no source. The page therefore paints the 未接入 surface (four
+areas listed, every field `—` with its reason) instead of inventing a policy, and the
+same code keeps working the day a 200 appears.
+
+### Code (write scope only: `web/src/modules/audit/**`)
+- `retention.ts` (new): `RETENTION_PATH`, `GAP-13`, the four canonical `SECTIONS`, a
+  defensive `readRetention` (area aliases folded, missing area listed as 未接入, absent
+  field stays `null`), `unwiredSections`, `codeOf` + `probeOf` (a 404
+  `console.unknown_route` is 未接入; every other 403/404 is the one denial body; anything
+  else is a failure), `failureSentence` (no HTTP code in the sentence), `beijingMinute`,
+  `formatBytes`, `occupancyShare` (floor + cap 99 — 99.6% never prints 100%), and
+  `PLANNED_ACTIONS` with their reasons.
+- `RetentionModulePage.tsx` (new): phases `loading | ready | unwired | error | denied`;
+  four section cards with 保留天数 / 最近清理 / 下次执行 / 当前占用 / 阈值 / 占用比例
+  (each `—` carrying `data-missing` and a `title` reason); the 未接入 banner; one denied
+  body for 403 and 404 with `RequestIdLine`; an error card with sentence + copyable id +
+  retry + 技术详情; the two planned buttons `disabled` + `aria-disabled="true"` +
+  `data-planned="true"` + reason in `title`; `ret4-tech-details` carries the probed route
+  and the gap id. `?state=` legs paint without a request and mark the root
+  `data-fixture`.
+- Tests: `retention.test.ts` (13 pure cases) + `RetentionModulePage.test.tsx` (9 render
+  cases) — 22 new.
+
+### Gates
+- `./node_modules/.bin/vitest run src/modules/audit` → exit 0, **8 files / 136 tests**
+  (was 114; +22).
+- `npx tsc -b . --noEmit` → exit 2 with **53** `error TS`, `modules/audit` **0** (the
+  floor is the standing 49 in `../apps/shared/**` + 2 in `src/modules/approvals/api.test.ts`
+  + 2 in `src/pages/LoginPage.test.tsx`).
+- `./node_modules/.bin/eslint src/modules/audit` → exit 0, **0 errors / 5 warnings**
+  (all pre-existing `react-hooks/set-state-in-effect`).
+- Build to /tmp only: `npx vite build --outDir /tmp/ret4-build` → exit 0; entry
+  `assets/index-47QDOzMv.js` with **0** hits of `ret4-page`; the marker lives in the lazy
+  chunk `assets/RetentionModulePage-CYc_Spzh.js`.
+
+### Mount contract (for the shell lane — out of this write scope)
+The page is a zero-prop module: named and default export `RetentionModulePage`, reads
+`?state=`, testids `ret4-*`. It needs a real `/system?tab=retention` slot: today
+`web/src/shell/routes.ts:247` maps `#/system?tab=retention` onto the audit events tab
+(`tabId: 'events'`, `to: '#/system?tab=events'`), so the URL never reaches this page in
+the served build. `App.tsx` / `shell/**` are outside this task's write scope.
+
+### Untested / honest limits
+- No real 2xx retention payload exists anywhere (BFF and upstream both probed 404), so the
+  read path is proven against hand-shaped answers only.
+- No 1440/1280/375 pixel measurement: the pane is not mounted (shell change above) and the
+  dev SPA on 9122 serves a dist older than this change. Layout is `min-w-0` +
+  `break-words` + `flex-wrap` + a `grid` that is 1 column until `xl`, with a test pinning
+  the four sections and their fields.
+- The two write actions are declared, not wired; there is no clean-up execution surface to
+  call, and the page never claims otherwise.
