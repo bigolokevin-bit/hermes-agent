@@ -8,8 +8,8 @@
  * again. A 403 and a 404 for one run draw the same denied body the list
  * uses: one body, no path echo, no invented rows.
  *
- * The `?state=` repro leg never opens a detail and asks nothing: the URL
- * alone decides the list state.
+ * Fixture debt burn (R30): the `?state=` repro leg is gone from this page,
+ * so a detail always reflects a real read of the run and its events.
  */
 import { useEffect, useState } from "react";
 
@@ -21,7 +21,6 @@ import {
   type RunDetail,
   type RunEvent,
 } from "./runs";
-import type { ForcedState } from "./useRunsData";
 
 export type DetailOutcome =
   | { k: "idle" }
@@ -37,15 +36,11 @@ export type DetailOutcome =
 
 export const DETAIL_IDLE: DetailOutcome = { k: "idle" };
 
-export function useRunDetail(
-  forced: ForcedState | null,
-  runId: string | null,
-  tick: number,
-): DetailOutcome {
+export function useRunDetail(runId: string | null, tick: number): DetailOutcome {
   const [read, setRead] = useState<{ key: string; settled: DetailOutcome } | null>(null);
 
   useEffect(() => {
-    if (runId === null || forced !== null) return;
+    if (runId === null) return;
     let alive = true;
     const key = `${runId}|${tick}`;
     void Promise.allSettled([loadRunDetail(runId), loadRunEvents(runId)]).then(([runRes, evRes]) => {
@@ -71,9 +66,9 @@ export function useRunDetail(
     return () => {
       alive = false;
     };
-  }, [runId, tick, forced]);
+  }, [runId, tick]);
 
-  if (runId === null || forced !== null) return DETAIL_IDLE;
+  if (runId === null) return DETAIL_IDLE;
   const key = `${runId}|${tick}`;
   if (read !== null && read.key === key) return read.settled;
   return { k: "loading" };

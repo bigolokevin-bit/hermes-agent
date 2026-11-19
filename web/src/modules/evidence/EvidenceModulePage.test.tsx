@@ -191,21 +191,3 @@ describe('the four states', () => {
     expect(api.fetchJSON).not.toHaveBeenCalled();
   });
 });
-
-describe('?state= reproduction legs', () => {
-  it('paints repro rows with data-fixture and issues no request', async () => {
-    await render('/knowledge?tab=evidence&state=ready');
-    expect(q('ev5-page')?.getAttribute('data-fixture')).toBe('1');
-    expect(q('ev5-fixture-note')?.textContent).toContain('复现态');
-    expect(q('ev5-row-repro-1')).toBeTruthy();
-    expect(q('ev5-row-repro-2')?.textContent).toContain('原文不可达');
-    expect(api.fetchJSON).not.toHaveBeenCalled();
-  });
-
-  it('paints the other forced states without touching the network', async () => {
-    await render('/knowledge?tab=evidence&state=denied&rid=rid-forced');
-    expect(q('ev5-denied')).toBeTruthy();
-    expect(q('ev5-denied-request-id')?.textContent).toContain('rid-forced');
-    expect(api.fetchJSON).not.toHaveBeenCalled();
-  });
-});

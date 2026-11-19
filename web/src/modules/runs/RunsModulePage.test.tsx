@@ -3,7 +3,7 @@
 // with their eyes: the real BFF routes are the ones asked (the `/api/`
 // segment included), rows only ever come from an answer, 403 and 404 draw one
 // identical body with no row above it, the filters change what is asked, and
-// a `?state=` repro asks for nothing at all.
+// every state comes from a real read (R30 removed the `?state=` repro leg).
 
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -228,13 +228,16 @@ describe("the four states", () => {
     expect(await once(404)).toBe(forbidden);
   });
 
-  it("the denied body carries the gap number instead of a guess", async () => {
+  it("the denied body names no gap, because the read route really answers", async () => {
     api.fetchJSON.mockImplementation(async (url: string) => {
       throw new ApiError("no", { status: 403, body: "{}", url, requestId: "r" });
     });
     await render("/runs");
     await waitFor(() => document.querySelector("[data-testid='run5-denied']") !== null, "denied");
-    expect(text()).toContain("GAP-09");
+    // R30: this page reads a live route, so a denial is a permission answer and
+    // must not blame a data-source gap that no longer exists.
+    expect(text()).not.toContain("GAP-09");
+    expect(text()).toContain("请联系工作区管理员开通");
   });
 
   it("unreadable rows are counted, not painted, and never fake zeros", async () => {
@@ -284,33 +287,6 @@ describe("the controls change what is asked", () => {
       select.dispatchEvent(new Event("change", { bubbles: true }));
     });
     await waitFor(() => urls().some((u) => u.includes("status=failed")), "status ask");
-  });
-});
-
-describe("the ?state= repro legs", () => {
-  for (const state of ["loading", "empty", "error", "denied"] as const) {
-    it(`?state=${state} carries data-fixture + the note and asks nothing`, async () => {
-      api.fetchJSON.mockImplementation(async () => {
-        throw new Error("forced leg must not ask");
-      });
-      await render(`/runs?state=${state}`);
-      expect(document.querySelector(`[data-fixture='${state}']`)).toBeTruthy();
-      expect(document.querySelector("[data-testid='run5-forced-note']")?.textContent).toContain(`?state=${state}`);
-      expect(document.querySelector("[data-testid='run5-forced-note']")?.textContent).toContain("GAP-09");
-      expect(document.querySelector("[data-testid='run5-page']")?.getAttribute("data-fixture")).toBe(state);
-      expect(api.fetchJSON).not.toHaveBeenCalled();
-      const panel = document.querySelector(`[data-testid='run5-${state}']`);
-      expect(panel).toBeTruthy();
-      expect(panel?.getAttribute("data-fixture")).toBe(state);
-      expect((document.querySelector("[data-testid='run5-refresh']") as HTMLButtonElement).disabled).toBe(true);
-    });
-  }
-
-  it("?state=ready is not a repro — the real read runs", async () => {
-    api.fetchJSON.mockImplementation(okList([RUN_A]));
-    await render("/runs?state=ready");
-    await waitFor(() => rowNodes() === 1, "real ask");
-    expect(document.querySelector("[data-testid='run5-page']")?.hasAttribute("data-fixture")).toBe(false);
   });
 });
 
@@ -542,15 +518,6 @@ describe("the detail pane", () => {
     expect(document.querySelector("[data-testid='run5-upstream']")).toBeNull();
   });
 
-  it("a repro leg ignores ?run= and asks for nothing, employee names included", async () => {
-    api.fetchJSON.mockImplementation(async () => {
-      throw new Error("forced leg must not ask");
-    });
-    await render(`/runs?state=empty&run=${encodeURIComponent(DETAIL.runId)}`);
-    expect(api.fetchJSON).not.toHaveBeenCalled();
-    expect(document.querySelector("[data-testid='run5-detail']")).toBeNull();
-    expect(document.querySelector("[data-testid='run5-detail-loading']")).toBeNull();
-  });
 });
 
 describe("real-data depth: people, status words and the deep link", () => {

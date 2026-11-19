@@ -7,9 +7,9 @@
  * but the pane receives a request id and nothing else, so it cannot repeat
  * what the two differ on — no code word, no route, no row above it.
  *
- * `data-fixture` marks a state the shell forced from `?state=`, so a reviewer
- * can tell a repro apart from an answer the service really gave. It always
- * travels with the GAP number it belongs to, and a forced leg asks nothing.
+ * Fixture debt burn (R30): the `?state=` repro leg and its `data-fixture`
+ * marker are gone — every panel below is painted from a real read of
+ * `/agent-api/api/runs`, and a failed read is said as a failure, never faked.
  */
 import { useState, type ReactNode } from "react";
 import { Check, ChevronDown, ChevronUp, Copy, Inbox, RefreshCw, ShieldAlert, TriangleAlert } from "lucide-react";
@@ -20,29 +20,7 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { themedBody } from "@/lib/utils";
 import { copyTextToClipboard } from "@/lib/clipboard";
 
-import { GAP, NO_REQUEST_ID } from "./runs";
-
-export interface Marked {
-  /** Set to the state name when the pane shows the `?state=` repro. */
-  fixture?: string;
-}
-
-function fixtureAttr(fixture: string | undefined): { "data-fixture"?: string } {
-  return fixture ? { "data-fixture": fixture } : {};
-}
-
-/**
- * What a repro panel says, so nobody reads it as a service answer. It names
- * the gap instead of pretending any route was reached.
- */
-export function ReproNote({ state }: { state: string }): ReactNode {
-  return (
-    <p className="min-w-0 break-words text-xs text-warning" data-testid="run5-forced-note">
-      {`这是用 ?state=${state} 复现出来的状态，不是服务此刻的回答；这一页没有向服务要过任何东西。` +
-        `运行列表的这条数据源尚未在本控制台核实到 2xx（${GAP}）。`}
-    </p>
-  );
-}
+import { NO_REQUEST_ID } from "./runs";
 
 /**
  * A value that can be quoted to support: shown in full, copyable, and allowed
@@ -135,9 +113,9 @@ export function TechnicalDisclosure({
   );
 }
 
-export function LoadingPanel({ fixture }: Marked): ReactNode {
+export function LoadingPanel(): ReactNode {
   return (
-    <div className="flex min-w-0 flex-col gap-2" data-testid="run5-loading" aria-busy="true" {...fixtureAttr(fixture)}>
+    <div className="flex min-w-0 flex-col gap-2" data-testid="run5-loading" aria-busy="true">
       {[0, 1, 2, 3].map((row) => (
         <div key={row} className="animate-pulse rounded-md border border-border bg-card px-4 py-4" aria-hidden="true">
           <div className="h-3 w-1/3 rounded-sm bg-muted" />
@@ -153,9 +131,9 @@ export function LoadingPanel({ fixture }: Marked): ReactNode {
  * from a failure: the panel says so, gives the reason, and names the next
  * step instead of leaving a blank area.
  */
-export function EmptyPanel({ onRetry, fixture }: Marked & { onRetry: () => void }): ReactNode {
+export function EmptyPanel({ onRetry }: { onRetry: () => void }): ReactNode {
   return (
-    <Card className="border-border bg-card" data-testid="run5-empty" {...fixtureAttr(fixture)}>
+    <Card className="border-border bg-card" data-testid="run5-empty">
       <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
         <Inbox className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
         <p className={`min-w-0 break-words text-sm ${themedBody}`}>服务回答了，这个时间窗口里确实没有运行</p>
@@ -174,10 +152,9 @@ export function EmptyPanel({ onRetry, fixture }: Marked & { onRetry: () => void 
 export function ErrorPanel({
   failure,
   onRetry,
-  fixture,
   testId = "run5-error",
   title = "运行记录没能加载出来",
-}: Marked & {
+}: {
   failure: { sentence: string; requestId: string | null; technical: string | null };
   onRetry: () => void;
   testId?: string;
@@ -188,7 +165,6 @@ export function ErrorPanel({
       role="alert"
       className="border-destructive/40 bg-destructive/5"
       data-testid={testId}
-      {...fixtureAttr(fixture)}
     >
       <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-6">
         <div className="flex min-w-0 items-center gap-2 text-sm text-destructive">
@@ -213,16 +189,14 @@ export function ErrorPanel({
  */
 export function DeniedPanel({
   requestId,
-  fixture,
   testId = "run5-denied",
-}: Marked & { requestId: string | null; testId?: string }): ReactNode {
+}: { requestId: string | null; testId?: string }): ReactNode {
   return (
     <Card
       role="alert"
       aria-label="运行记录不可见"
       className="border-border bg-card"
       data-testid={testId}
-      {...fixtureAttr(fixture)}
     >
       <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
         <ShieldAlert className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
@@ -230,9 +204,6 @@ export function DeniedPanel({
         <p className="max-w-prose break-words text-xs text-muted-foreground">
           这块内容要么尚未对你开放，要么当前环境还没有提供它。这里不会显示任何猜测的运行，
           也不会把没读到的东西写成零个。需要看到这份记录时，请联系工作区管理员开通。
-        </p>
-        <p className="max-w-prose break-words text-xs text-muted-foreground">
-          {`这份运行清单的数据源尚未在本控制台核实到真实回答（${GAP}），核实后这里自动显示真实内容。`}
         </p>
         <RequestIdLine requestId={requestId} testId={`${testId}-request-id`} />
       </CardContent>

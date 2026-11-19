@@ -15,21 +15,15 @@
  * computed when the read runs, so deep links (`?window=30d`) are honoured
  * per ask, not painted from a stale moment.
  *
- * The `?state=` repro leg returns before any fetch runs: it issues zero
- * network requests, and the controls that would ask are disabled.
+ * Fixture debt burn (R30): the `?state=` repro leg was removed from this
+ * page. It used to paint a state from the URL without asking the service,
+ * which a reviewer could mistake for an answer; every state below now comes
+ * from a real read of `/agent-api/api/runs`, and a missing route degrades to
+ * the honest error/denied panels instead of sample rows.
  */
 import { useCallback, useEffect, useState } from "react";
 
 import { loadRuns, sinceIso, type ListState, type SinceKey } from "./runs";
-
-export type ForcedState = "loading" | "empty" | "error" | "denied";
-
-const FORCED: readonly string[] = ["loading", "empty", "error", "denied"];
-
-/** `?state=` is the shell's QA handle; `ready` is deliberately not reproducible. */
-export function forcedStateOf(raw: string | null): ForcedState | null {
-  return raw !== null && FORCED.includes(raw) ? (raw as ForcedState) : null;
-}
 
 export const PENDING_LIST: ListState = {
   phase: "loading",
@@ -40,18 +34,6 @@ export const PENDING_LIST: ListState = {
   failure: null,
 };
 
-/** The settled state minus the parts a forced leg cannot honestly claim. */
-function forcedResult(state: ForcedState): ListState {
-  if (state === "loading") return PENDING_LIST;
-  if (state === "empty") return { ...PENDING_LIST, phase: "empty" };
-  const failure = {
-    sentence: "这条腿是用 ?state= 复现的，服务此刻没有回答过。",
-    requestId: null,
-    technical: null,
-  };
-  return { ...PENDING_LIST, phase: state as ListState["phase"], failure };
-}
-
 export interface ListFilters {
   status: string | null;
   /** Sent to the BFF under the accepted `employeeId` name; null when no employee is addressed. */
@@ -60,12 +42,10 @@ export interface ListFilters {
 }
 
 export interface RunsListData extends ListState {
-  /** True when the phase came from `?state=` instead of from the service. */
-  forced: boolean;
   reload: () => void;
 }
 
-export function useRunsData(forced: ForcedState | null, filters: ListFilters): RunsListData {
+export function useRunsData(filters: ListFilters): RunsListData {
   const [attempt, setAttempt] = useState(0);
   const [read, setRead] = useState<{ key: string; settled: ListState } | null>(null);
 
@@ -73,7 +53,6 @@ export function useRunsData(forced: ForcedState | null, filters: ListFilters): R
   const key = `${attempt}|${filters.status ?? ""}|${filters.employeeId ?? ""}|${filters.sinceKey}`;
 
   useEffect(() => {
-    if (forced !== null) return;
     let alive = true;
     const askedKey = key;
     void loadRuns({
@@ -90,12 +69,8 @@ export function useRunsData(forced: ForcedState | null, filters: ListFilters): R
     // ask, and `loadRuns` itself never throws (it folds every outcome into a
     // ListState), so this effect has nothing else to chase.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, forced]);
-
-  if (forced !== null) {
-    return { ...forcedResult(forced), forced: true, reload };
-  }
+  }, [key]);
 
   const current = read !== null && read.key === key ? read.settled : PENDING_LIST;
-  return { ...current, forced: false, reload };
+  return { ...current, reload };
 }

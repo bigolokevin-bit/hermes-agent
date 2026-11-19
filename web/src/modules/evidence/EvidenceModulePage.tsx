@@ -7,9 +7,13 @@
  * 时间 (Beijing, to the minute) and a real link back to /audit?id=<eventId>.
  * A row whose event id is missing reads 「待核实」 and its link block says
  * 「原文不可达」 with the reason; no control is ever rendered that goes nowhere.
+ *
+ * Fixture debt burn (R30): the `?state=` repro leg and its sample rows were
+ * removed. This pane only paints what the audit route answered; a missing or
+ * unreadable route degrades to the honest four states, never to sample data.
  */
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link } from 'react-router';
 import { Inbox, RefreshCw, ShieldAlert, TriangleAlert } from 'lucide-react';
 import { Badge, Button, Card, CardContent } from '@nous-research/ui';
 
@@ -18,7 +22,6 @@ import { ApiError } from '@/lib/api-error';
 import { hasConsoleSession } from '@/modules/knowledge/session';
 
 import {
-  REPRO_ROWS,
   WINDOW_DAYS,
   citationsUrl,
   readCitations,
@@ -27,8 +30,6 @@ import {
 } from './evidence';
 
 type Phase = 'loading' | 'ready' | 'empty' | 'error' | 'denied' | 'login';
-
-const FORCED = new Set<Phase>(['loading', 'ready', 'empty', 'error', 'denied']);
 
 export function fmtStamp(iso: string | null): string {
   if (!iso) return '—';
@@ -157,11 +158,6 @@ function CitationItem({ row }: { row: CitationRow }) {
 }
 
 export function EvidenceModulePage() {
-  const [params, setParams] = useSearchParams();
-  const forcedRaw = params.get('state');
-  const forced = forcedRaw && FORCED.has(forcedRaw as Phase) ? (forcedRaw as Phase) : null;
-  const forcedRid = params.get('rid');
-
   const [phase, setPhase] = useState<Phase>('loading');
   const [payload, setPayload] = useState<CitationsPayload | null>(null);
   const [requestId, setRequestId] = useState<string | null>(null);
@@ -173,12 +169,6 @@ export function EvidenceModulePage() {
   }, []);
 
   useEffect(() => {
-    if (forced) {
-      setPayload(forced === 'ready' ? { items: REPRO_ROWS, asOf: null, origin: 'repro' } : null);
-      setRequestId(forcedRid ?? null);
-      setPhase(forced);
-      return;
-    }
     if (!hasConsoleSession()) {
       setPayload(null);
       setRequestId(null);
@@ -210,18 +200,11 @@ export function EvidenceModulePage() {
     return () => {
       live = false;
     };
-  }, [forced, forcedRid, load, token]);
+  }, [load, token]);
 
-  const retry = () => {
-    const next = new URLSearchParams(params);
-    next.delete('state');
-    next.delete('rid');
-    setParams(next, { replace: true });
-    setToken((n) => n + 1);
-  };
+  const retry = () => setToken((n) => n + 1);
 
   const rows = useMemo(() => payload?.items ?? [], [payload]);
-  const repro = payload?.origin === 'repro';
   const counts = useMemo(() => {
     let unverified = 0;
     let unreachable = 0;
@@ -233,7 +216,7 @@ export function EvidenceModulePage() {
   }, [rows]);
 
   return (
-    <section className="min-w-0 space-y-4" data-testid="ev5-page" data-fixture={repro ? '1' : undefined}>
+    <section className="min-w-0 space-y-4" data-testid="ev5-page">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <h1 className="font-mondwest text-xl">证据与引用</h1>
@@ -246,19 +229,6 @@ export function EvidenceModulePage() {
           重新读取
         </Button>
       </header>
-
-      {repro ? (
-        <div
-          className="flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-sm"
-          style={{ borderColor: 'var(--warning)', background: 'var(--warning-soft)' }}
-          data-testid="ev5-fixture-note"
-        >
-          <Badge tone="warning">复现态</Badge>
-          <span title={`数据源缺口 GAP-1：?state= 复现腿不读真实数据（本次没有发出请求）`}>
-            这是用 ?state= 复现出来的行样式，不是本次读到的记录。
-          </span>
-        </div>
-      ) : null}
 
       {phase === 'ready' ? (
         <>
