@@ -766,6 +766,18 @@ export function csvFileName(view: 'employee' | 'model', window: UsageWindowId, n
   return `metrics-${view}-${window}-${stamp}.csv`;
 }
 
+/**
+ * A raw ISO-8601 stamp and nothing else. Exported files carry the collection
+ * time only when the upstream answered with one; a missing or free-form value
+ * stays an empty cell — the local clock is never a stand-in.
+ */
+export function isoOrNull(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const raw = value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/.test(raw)) return null;
+  return Number.isNaN(Date.parse(raw)) ? null : raw;
+}
+
 // ---- MET-A: export the current cost-share view ------------------------------
 
 export type ShareCsvRow = {
@@ -774,10 +786,14 @@ export type ShareCsvRow = {
   runs: number | null;
   costUsd: number | null;
   sharePct: number | null;
+  /** Raw upstream collection time; null when the answer carried none. */
+  asOf?: string | null;
+  /** The statistics window this row was aggregated over (`24h` / `7d` / `30d`). */
+  window?: string | null;
 };
 
-/** Fixed English keys, one per data column on screen. */
-export const SHARE_CSV_HEADER = ['group', 'runs', 'cost_usd', 'share_pct'];
+/** Fixed English keys, one per data column on screen, plus provenance. */
+export const SHARE_CSV_HEADER = ['group', 'runs', 'cost_usd', 'share_pct', 'as_of', 'window'];
 
 /** Missing stays an empty cell, a real zero stays `0.00`, shares keep one decimal. */
 export function shareCsvRows(rows: ShareCsvRow[]): (string | number | null)[][] {
@@ -786,6 +802,8 @@ export function shareCsvRows(rows: ShareCsvRow[]): (string | number | null)[][] 
     row.runs,
     row.costUsd === null ? null : row.costUsd.toFixed(2),
     row.sharePct === null ? null : row.sharePct.toFixed(1),
+    isoOrNull(row.asOf),
+    row.window ?? null,
   ]);
 }
 

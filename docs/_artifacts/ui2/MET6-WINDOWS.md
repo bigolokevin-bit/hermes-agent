@@ -95,3 +95,17 @@
 - 排序切换仍只写 `?sort/?dir`，**纯客户端重排，不发任何新请求**（测试实测：点击前后 `urls().length` 相等，值 0）。
 - 验证：定向 vitest 62 passed（+4）；全量 132 files / 1466 passed（另 2 条上游 employee-detail 的 unhandled rejection 为既存噪声）；tsc `modules/metrics` 0 条；build EXIT 0。
 - 未测项：真浏览器 375/1280 的焦点环视觉与 Tab 序未人工走查，仅 jsdom 断言 `tabIndex` 与 `activeElement`。
+
+## 导出文件的口径列（metF，2026-11-20）
+
+两份导出都把口径写进文件末尾，屏上版式与文件名不变：
+
+- 分摊导出（metA，`shareCsv`）：表头 `group,runs,cost_usd,share_pct,as_of,window`；`as_of` = 当前分摊批次的采集时刻原值 ISO（模型源取 `hermes-usage` 顶层 `asOf`，员工源取账本行的 `updatedAt` 最大值），`window` = `24h|7d|30d`。
+- 明细导出（met6，页面 `exportCsv`）：在原 8 列之后追加 `as_of` 与 `window`；`as_of` 取明细批次 `asOf`，整批同值。
+- `as_of` 只接受 ISO-8601（新 `isoOrNull`：正则 + `Date.parse`），其它一律留空——不填本机时钟、不填自由文本；表头仍在，缺失不是 0。
+- 文件名形状未变：`metrics-<view>-<window>-YYYYMMDD-HHmm.csv`（明细）/ `metrics-<window>-<group>-YYYYMMDD-HHmm.csv`（分摊）。
+- 行数与屏上同源：分摊 = `metA-export-count` 的「可导出 N 行」= 表体行数；明细 = `met6-cat-source` 的「N 行」= 表体行数；测试取两侧实数比对。
+- 屏上说明：`metF-export-asof-note`（「两份导出末尾都带「采集时刻」与「时间窗」两列…」），不出现字段名原文。
+- RFC4180 转义沿用 `csvCell`（引号/逗号/换行 → 双引号包裹、`""` 转义，`\r\n` 分行）。
+- 验证：定向 `vitest run src/modules/metrics` 66 passed；全量 132 files / 1470 passed（另 2 条既有 employee-detail unhandled rejection）；`tsc -b . --noEmit` 全仓 55 条既存基线、`modules/metrics` 0；build `vite build --outDir /tmp/build-metF` → entry `assets/index-D0ClJCu1.js` sha256 `9e29e33ff78075ad47a7e4fbd6851df3203970ae5186d0767dee11c421392532`（entry 内 `metF-export-asof-note` 0），chunk `assets/MetricsModulePage-tmH1B3OY.js` 命中 1。
+- 未测项：真实 BFF 是否在每类读口都给顶层 `asOf` 未联调（缺则如设计留空）；员工源 `as_of` 取账本行最大 `updatedAt`（上游值，非本机时钟），与「顶层 ISO」口径的差异已在此记录。

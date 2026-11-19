@@ -39,6 +39,7 @@ import {
   formatUnitPrice,
   formatUsd,
   heatFromStats,
+  isoOrNull,
   ledgerAsOf,
   ledgerTotal,
   readActivity,
@@ -1115,8 +1116,9 @@ export function MetricsModulePage() {
     if (breakdownView.kind !== 'ready' || breakdownView.lines.length === 0) return;
     const header =
       viewMode === 'model'
-        ? ['模型', '支出USD', '次数', '占比%', '读取于', '窗口', '窗口开始', '窗口结束']
-        : ['员工', '支出USD', '次数', '占比%', '账本截至', '窗口', '窗口开始', '窗口结束'];
+        ? ['模型', '支出USD', '次数', '占比%', '读取于', '窗口', '窗口开始', '窗口结束', 'as_of', 'window']
+        : ['员工', '支出USD', '次数', '占比%', '账本截至', '窗口', '窗口开始', '窗口结束', 'as_of', 'window'];
+    const batchAsOf = isoOrNull(breakdownView.asOf);
     const rows = breakdownView.lines.map((line) => [
       line.label,
       line.costUsd === null ? null : line.costUsd.toFixed(2),
@@ -1126,6 +1128,8 @@ export function MetricsModulePage() {
       usageWindow.label,
       usageReady && usageReady.stats.kind === 'ready' ? formatBeijing(usageReady.stats.value.from) : null,
       usageReady && usageReady.stats.kind === 'ready' ? formatBeijing(usageReady.stats.value.to) : null,
+      batchAsOf,
+      usageWindow.id,
     ]);
     const blob = new Blob([`\uFEFF${toCsv(header, rows)}`], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -1148,6 +1152,8 @@ export function MetricsModulePage() {
             runs: row.runs,
             costUsd: row.costUsd,
             sharePct: row.sharePct,
+            asOf: isoOrNull(shareView.value.asOf),
+            window: usageWindow.id,
           })),
         )}`,
       ],
@@ -1886,6 +1892,7 @@ export function MetricsModulePage() {
               <div>
                 <h3>成本分摊</h3>
                 <p className="met6-rowsub" data-testid="metA-scope-note">这里是聚合行；逐行明细用上方的「导出明细 CSV」。</p>
+                <p className="met6-rowsub" data-testid="metF-export-asof-note">两份导出末尾都带「采集时刻」与「时间窗」两列：采集时刻只取上游返回的值，上游没给就留空，不拿本机时间顶替；时间窗标出这份数据统计的是哪一段。行数与屏上一致。</p>
                 <p className="met6-rowsub">只认账本实扣；上游没给出金额的行显示「—」，不按 0 计，也不拿估算金额顶替。</p>
               </div>
             </div>

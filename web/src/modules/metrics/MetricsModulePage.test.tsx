@@ -539,7 +539,7 @@ describe('MetricsModulePage — export and delta', () => {
     expect(captured.name).toMatch(/^metrics-employee-24h-\d{8}-\d{4}\.csv$/);
     const text = await (captured.blob as Blob).text();
     const lines = text.replace(/^\uFEFF/, '').split('\r\n');
-    expect(lines[0]).toBe('员工,支出USD,次数,占比%,账本截至,窗口,窗口开始,窗口结束');
+    expect(lines[0]).toBe('员工,支出USD,次数,占比%,账本截至,窗口,窗口开始,窗口结束,as_of,window');
     // Two ledger rows on screen → header + two data rows.
     expect(lines).toHaveLength(3);
     expect(lines[1]).toContain('小鲤 · AAAABBBB');
@@ -547,6 +547,9 @@ describe('MetricsModulePage — export and delta', () => {
     expect(lines[1]).toContain('75');
     // The ledger has no run counts: an empty cell, never 0.
     expect(lines[1].split(',')[2]).toBe('');
+    // Provenance rides at the end: the upstream batch stamp and the window id.
+    expect(lines[1].split(',').at(-2)).toBe('2026-11-19T03:20:00.000Z');
+    expect(lines[1].split(',').at(-1)).toBe('24h');
     click.mockRestore();
   });
 
@@ -1063,12 +1066,12 @@ describe('metA — export the current cost view', () => {
     expect(click).toHaveBeenCalledTimes(1);
     expect(captured.name).toMatch(/^metrics-24h-employee-\d{8}-\d{4}\.csv$/);
     const lines = (await (captured.blob as Blob).text()).replace(/^\uFEFF/, '').split('\r\n');
-    expect(lines[0]).toBe('group,runs,cost_usd,share_pct');
+    expect(lines[0]).toBe('group,runs,cost_usd,share_pct,as_of,window');
     const onScreen = document.querySelectorAll('[data-testid^="met8-row-"]').length;
     expect(onScreen).toBe(2);
     expect(lines).toHaveLength(onScreen + 1);
-    expect(lines[1].split(',')).toEqual(['小鲤', '7', '3.00', '75.0']);
-    expect(lines[2].split(',')).toEqual(['小满', '3', '1.00', '25.0']);
+    expect(lines[1].split(',')).toEqual(['小鲤', '7', '3.00', '75.0', '2026-11-19T03:20:00.000Z', '24h']);
+    expect(lines[2].split(',')).toEqual(['小满', '3', '1.00', '25.0', '2026-11-19T03:20:00.000Z', '24h']);
     click.mockRestore();
   });
 
@@ -1087,8 +1090,8 @@ describe('metA — export the current cost view', () => {
     });
 
     const lines = (await (captured.blob as Blob).text()).replace(/^\uFEFF/, '').split('\r\n');
-    expect(lines[1].split(',')).toEqual(['小鲤', '2', '0.00', '']);
-    expect(lines[2].split(',')).toEqual(['小满', '', '', '']);
+    expect(lines[1].split(',')).toEqual(['小鲤', '2', '0.00', '', '2026-11-19T03:20:00.000Z', '24h']);
+    expect(lines[2].split(',')).toEqual(['小满', '', '', '', '2026-11-19T03:20:00.000Z', '24h']);
     click.mockRestore();
   });
 
@@ -1101,7 +1104,7 @@ describe('metA — export the current cost view', () => {
     });
 
     const lines = (await (captured.blob as Blob).text()).replace(/^\uFEFF/, '').split('\r\n');
-    expect(lines[1]).toBe('"a,""b""",1,2.00,100.0');
+    expect(lines[1]).toBe('"a,""b""",1,2.00,100.0,,24h');
     expect(captured.name).toMatch(/^metrics-24h-model-\d{8}-\d{4}\.csv$/);
     click.mockRestore();
   });
@@ -1130,6 +1133,91 @@ describe('metA — export the current cost view', () => {
     const note = document.querySelector('[data-testid="metA-scope-note"]');
     expect(note?.textContent).toContain('聚合行');
     expect(note?.textContent).toContain('导出明细 CSV');
+  });
+});
+
+// ---- metF: provenance columns in both exports -------------------------------
+describe('metF — exported files carry as_of and window', () => {
+  function captureDownload(): { captured: { blob: Blob | null; name: string | null } } {
+    const captured: { blob: Blob | null; name: string | null } = { blob: null, name: null };
+    Object.assign(URL, {
+      createObjectURL: vi.fn((blob: Blob) => {
+        captured.blob = blob;
+        return 'blob:metF';
+      }),
+      revokeObjectURL: vi.fn(),
+    });
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      captured.name = this.download;
+    });
+    return { captured };
+  }
+
+  const csvLines = async (blob: Blob | null): Promise<string[]> =>
+    (await (blob as Blob).text()).replace(/^\uFEFF/, '').split('\r\n');
+
+  it('stamps the aggregate export with the upstream collection time and the window id', async () => {
+    const { captured } = captureDownload();
+    await mountShare(SHARE_USAGE);
+    const onScreen = document.querySelectorAll('[data-testid^="met7-row-"]').length;
+    expect(document.querySelector('[data-testid="metA-export-count"]')?.textContent).toBe(`可导出 ${onScreen} 行`);
+
+    await act(async () => {
+      (document.querySelector('[data-testid="metA-export"]') as HTMLButtonElement).click();
+    });
+
+    const lines = await csvLines(captured.blob);
+    expect(lines[0]).toBe('group,runs,cost_usd,share_pct,as_of,window');
+    expect(lines).toHaveLength(onScreen + 1);
+    const cells = lines[1].split(',');
+    expect(cells.at(-2)).toBe('2026-11-19T20:12:00.000Z');
+    expect(cells.at(-1)).toBe('24h');
+    expect(captured.name).toMatch(/^metrics-24h-model-\d{8}-\d{4}\.csv$/);
+  });
+
+  it('leaves as_of empty when the answer carried none, and never stamps the local clock', async () => {
+    const { captured } = captureDownload();
+    await mountShare({ by_model: [{ model: 'zeta', sessions: 1, actual_cost_usd: 1 }], asOf: null });
+
+    await act(async () => {
+      (document.querySelector('[data-testid="metA-export"]') as HTMLButtonElement).click();
+    });
+
+    const lines = await csvLines(captured.blob);
+    expect(lines[0]).toBe('group,runs,cost_usd,share_pct,as_of,window');
+    const cells = lines[1].split(',');
+    expect(cells.at(-2)).toBe('');
+    expect(cells.at(-1)).toBe('24h');
+    // An empty cell, not today's date dressed up as a collection time.
+    expect(lines[1]).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+  });
+
+  it('stamps the detail export with the batch as_of and window, matching the rows on screen', async () => {
+    const { captured } = captureDownload();
+    await mount(usageRouter());
+    const onScreen = document.querySelectorAll('[data-testid^="met6-row-"]').length;
+    expect(onScreen).toBeGreaterThan(0);
+
+    await act(async () => {
+      (document.querySelector('[data-testid="met6-export"]') as HTMLButtonElement).click();
+    });
+
+    const lines = await csvLines(captured.blob);
+    expect(lines[0].split(',').at(-2)).toBe('as_of');
+    expect(lines[0].split(',').at(-1)).toBe('window');
+    expect(lines).toHaveLength(onScreen + 1);
+    const cells = lines[1].split(',');
+    expect(cells.at(-2)).toBe('2026-11-19T03:20:00.000Z');
+    expect(cells.at(-1)).toBe('24h');
+    expect(document.querySelector('[data-testid="met6-cat-source"]')?.textContent).toContain(`${onScreen} 行`);
+  });
+
+  it('explains the provenance columns beside the aggregate view', async () => {
+    await mountShare(SHARE_USAGE);
+    const note = document.querySelector('[data-testid="metF-export-asof-note"]');
+    expect(note?.textContent).toContain('采集时刻');
+    expect(note?.textContent).toContain('时间窗');
+    expect(note?.textContent).toContain('留空');
   });
 });
 
