@@ -15,6 +15,7 @@
  */
 import { fetchJSON } from "@/lib/api";
 import { ApiError } from "@/lib/api-error";
+import { csrfFailureCopy, csrfWriteHeaders } from "@/lib/csrf";
 
 import { approvalDetailFrom, approvalsPageFrom, type ApprovalDetail, type ApprovalPage } from "./model";
 
@@ -71,6 +72,12 @@ export async function fetchDetail(id: string): Promise<ApprovalDetail | null> {
  * an empty comment is omitted rather than sent as "".
  */
 export async function postDecision(id: string, verdict: Verdict, comment?: string): Promise<unknown> {
+  // CSRF double-submit: the session cookie echoes into X-Console-CSRF. No
+  // cookie means no honest write — we stop here rather than eat a 403.
+  const csrf = csrfWriteHeaders();
+  if (!csrf) {
+    throw new CsrfMissingError();
+  }
   const body: Record<string, unknown> = { verdict };
   const note = comment?.trim();
   if (note) body.comment = note;
@@ -79,21 +86,39 @@ export async function postDecision(id: string, verdict: Verdict, comment?: strin
     headers: {
       "Content-Type": "application/json",
       "X-Console-Write": "1",
+      ...csrf,
     },
     body: JSON.stringify(body),
   });
+}
+
+/** Raised before the network when the session cookie is absent. */
+export class CsrfMissingError extends Error {
+  constructor() {
+    super("需要登录后才能提交。当前没有可用的写入会话，请先登录。");
+    this.name = "CsrfMissingError";
+  }
 }
 
 /** Status + trace id of a failure, for the panels that have to speak to a person. */
 export interface FailureInfo {
   status: number;
   requestId: string | null;
+  /** Plain-Chinese override for CSRF-style 403s; panels show it verbatim. */
+  sentence?: string;
   /** Raw multi-line detail — for the 「详情」 disclosure only, never on the surface. */
   technical: string | null;
 }
 
 export function failureInfo(err: unknown): FailureInfo {
+  if (err instanceof CsrfMissingError) {
+    return { status: -1, requestId: null, technical: null, sentence: err.message };
+  }
   if (err instanceof ApiError) {
+    const csrfCopy = csrfFailureCopy(err.status, err.body, err.requestId);
+    if (csrfCopy) {
+      return { status: err.status, requestId: csrfCopy.requestId, technical: err.details, sentence: csrfCopy.sentence };
+    }
     return { status: err.status, requestId: err.requestId ?? null, technical: err.details };
   }
   return { status: -1, requestId: null, technical: err instanceof Error ? err.message : String(err) };
