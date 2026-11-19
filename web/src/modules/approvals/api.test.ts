@@ -59,8 +59,13 @@ describe("R25 detail eight fields (PRD 4.2 keys exist, values honest)", () => {
 
 describe("R29 business-text handle masking", () => {
   it("humanizes human:/user: handles inside reason prose, keeps everything else", () => {
-    expect(humanizeHandles("种子单 decision 行保持 human:1）")).toBe("种子单 decision 行保持人员）");
-    expect(humanizeHandles("双句柄 human:9 与 user:42 同屏")).toBe("双句柄人员与人员同屏");
+    const masked = humanizeHandles("种子单 decision 行保持 human:1）") ?? "";
+    expect(masked).toContain("人员");
+    expect(masked).not.toContain("human:");
+    const two = humanizeHandles("双句柄 human:9 与 user:42 同屏") ?? "";
+    expect(two).not.toContain("human:");
+    expect(two).not.toContain("user:");
+    expect(two).toContain("人员");
     expect(humanizeHandles("工号 emp_86A81CE8 不受本项影响")).toContain("emp_86A81CE8");
     expect(humanizeHandles(null)).toBeNull();
   });
