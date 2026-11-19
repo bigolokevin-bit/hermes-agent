@@ -50,7 +50,7 @@ const skeleton = (): boolean => document.querySelector(".animate-pulse") !== nul
 /** Two answers: the page, then one record. Every URL the pane asks is recorded. */
 function answer(page: unknown, detail?: unknown): void {
   api.fetchJSON.mockImplementation(async (url: string) => {
-    if (url.startsWith("/agent-api/api/audit/detail")) return detail ?? { audit: {} };
+    if (url.startsWith("/agent-api/api/audit-detail")) return detail ?? { audit: {} };
     return page;
   });
 }
@@ -195,8 +195,8 @@ describe("the event detail", () => {
     await act(async () => {
       document.querySelector<HTMLButtonElement>("[data-testid='aud01-row-evt_7c1f2a3b4d5e6f70'] button")?.click();
     });
-    await waitFor(() => urls().some((u) => u.startsWith("/agent-api/api/audit/detail")), "detail asked");
-    expect(urls()).toContain("/agent-api/api/audit/detail?id=evt_7c1f2a3b4d5e6f70");
+    await waitFor(() => urls().some((u) => u.startsWith("/agent-api/api/audit-detail")), "detail asked");
+    expect(urls()).toContain("/agent-api/api/audit-detail?id=evt_7c1f2a3b4d5e6f70");
   });
 
   it("a row without an identifier says the detail cannot open, and asks nothing", async () => {
@@ -206,7 +206,7 @@ describe("the event detail", () => {
     });
     await waitFor(() => text().includes("详情没有打开"), "unaddressable row");
     expect(text()).toContain("这条记录没有给出可打开的事件标识");
-    expect(urls().some((u) => u.startsWith("/agent-api/api/audit/detail"))).toBe(false);
+    expect(urls().some((u) => u.startsWith("/agent-api/api/audit-detail"))).toBe(false);
   });
 
   const DETAIL = {
@@ -232,7 +232,7 @@ describe("the event detail", () => {
   async function openDetail(): Promise<void> {
     api.fetchJSON.mockReset();
     api.fetchJSON.mockImplementation(async (url: string) =>
-      url.startsWith("/agent-api/api/audit/detail") ? DETAIL : EVENTS,
+      url.startsWith("/agent-api/api/audit-detail") ? DETAIL : EVENTS,
     );
     await render("/system?tab=events&id=evt_D6FC9A2B4E6F8012", <AuditEventsModulePage />);
     await waitFor(() => text().includes("结果与原因"), "detail painted");
@@ -278,7 +278,7 @@ describe("the event detail", () => {
   it("a record without a change does not invent a 变更 section", async () => {
     api.fetchJSON.mockReset();
     api.fetchJSON.mockImplementation(async (url: string) =>
-      url.startsWith("/agent-api/api/audit/detail") ? { id: "evt_9988776655443322", action: "task_created", outcome: "success" } : EVENTS,
+      url.startsWith("/agent-api/api/audit-detail") ? { id: "evt_9988776655443322", action: "task_created", outcome: "success" } : EVENTS,
     );
     await render("/system?tab=events&id=evt_9988776655443322", <AuditEventsModulePage />);
     await waitFor(() => text().includes("结果与原因"), "bare detail painted");
@@ -290,7 +290,7 @@ describe("the event detail", () => {
     const once = async (status: number): Promise<string> => {
       api.fetchJSON.mockReset();
       api.fetchJSON.mockImplementation(async (url: string) => {
-        if (url.startsWith("/agent-api/api/audit/detail")) {
+        if (url.startsWith("/agent-api/api/audit-detail")) {
           throw new ApiError("denied", { status, body: '{"code":"console.forbidden"}', url, requestId: "dt-deny" });
         }
         return EVENTS;
@@ -324,7 +324,7 @@ describe("whole-panel states", () => {
 
   it("empty names the reason and the next step", async () => {
     await mount(async () => ({ items: [] }));
-    expect(text()).toContain("按现在的筛选条件，这个窗口里没有审计事件");
+    expect(text()).toContain("按现在的筛选条件，这个时间窗里没有审计事件");
     expect(text()).toContain("把时间窗放宽一格");
     expect(text()).toContain("刷新");
   });
@@ -410,25 +410,42 @@ describe("whole-panel states", () => {
 });
 
 describe("the filters change the request (aud01)", () => {
-  it("carries event_type on the wire when a type is chosen", async () => {
+  it("carries action=<the live dotted code> when a type is chosen", async () => {
     await mount();
     const before = urls().length;
-    await choose("aud01-filter-type", "approval_approved");
+    await choose("aud01-filter-type", "task.created");
     await waitFor(() => urls().length > before, "filtered read asked");
     const asked = urls().slice(before).join(" ");
-    expect(asked).toContain("event_type=approval_approved");
+    // the wire name the service ACTS on (probed 2026-11-19: `event_type` is
+    // accepted and ignored; `action` exact-matches the dotted code)
+    expect(asked).toContain("action=task.created");
+    expect(asked).not.toContain("event_type");
     // and the surface says the same thing it asked for
     expect(document.querySelector("[data-testid='aud01-filters']")).toBeTruthy();
   });
 
+  it("the dropdown only offers codes the live service was seen using", async () => {
+    await mount();
+    const options = Array.from(document.querySelectorAll("[data-testid='aud01-filter-type'] option")).map((o) => o.getAttribute("value"));
+    expect(options[0]).toBe(""); // 全部事件类型
+    const sent = options.slice(1).filter(Boolean);
+    expect(sent.length).toBeGreaterThan(0);
+    // underscore spellings return ZERO rows on the live `action` match — a
+    // choice like that would be a filter that pretends
+    for (const value of sent) {
+      expect(value).toMatch(/^[a-z][a-z0-9_]*\.[a-z0-9_.]+$/);
+      expect(value).not.toMatch(/approval_approved|task_created/);
+    }
+  });
+
   it("dropping the type filter again stops sending the parameter", async () => {
     await mount();
-    await choose("aud01-filter-type", "approval_approved");
-    await waitFor(() => urls().some((u) => u.includes("event_type=")), "filtered once");
+    await choose("aud01-filter-type", "task.created");
+    await waitFor(() => urls().some((u) => u.includes("action=task.created")), "filtered once");
     const before = urls().length;
     await choose("aud01-filter-type", "");
     await waitFor(() => urls().length > before, "unfiltered read asked");
-    expect(lastUrl()).not.toContain("event_type=");
+    expect(lastUrl()).not.toContain("action=");
   });
 
   it("a wider time window means a wider pair of instants on the wire", async () => {
@@ -436,20 +453,31 @@ describe("the filters change the request (aud01)", () => {
     const narrow = lastUrl();
     expect(narrow).toMatch(/from=&|from=\d{4}/);
     const before = urls().length;
-    await choose("aud01-filter-window", "7d");
+    await choose("aud01-filter-window", "30d");
     await waitFor(() => urls().length > before, "wider window asked");
     const wide = lastUrl();
     expect(wide).toMatch(/from=/);
-    expect(spanOf(wide) / spanOf(narrow)).toBeCloseTo(7, 1);
+    // default is the 7-day window; 30 天 is ~30/7 times as wide
+    expect(spanOf(wide) / spanOf(narrow)).toBeCloseTo(30 / 7, 1);
   });
 
-  it("不限时间 drops both bounds instead of inventing them", async () => {
-    await mount();
-    const before = urls().length;
-    await choose("aud01-filter-window", "all");
-    await waitFor(() => urls().length > before, "unbounded window asked");
-    expect(lastUrl()).not.toContain("from=");
-    expect(lastUrl()).not.toContain("to=");
+  it("every window keeps a bounded pair on the wire — the service 400s a filter-free scan", async () => {
+    // require_any was probed live: `?limit=50` alone answers HTTP 400
+    // console.missing_filter, so the page never asks for an unbounded scan
+    // and there is no 不限时间 option to pick.
+    const SPANS: Record<string, number> = { "24h": 86_400_000, "7d": 604_800_000, "30d": 2_592_000_000 };
+    await mount(); // the default IS 7d — it already carries a bounded pair
+    expect(spanOf(lastUrl())).toBe(SPANS["7d"]);
+    for (const key of ["24h", "30d"]) {
+      const before = urls().length;
+      await choose("aud01-filter-window", key);
+      await waitFor(() => urls().length > before && spanOf(lastUrl()) === SPANS[key], `bounded ${key}`);
+      expect(lastUrl()).toMatch(/from=\d{4}-\d{2}-\d{2}T/);
+      expect(lastUrl()).toMatch(/&to=\d{4}-\d{2}-\d{2}T/);
+    }
+    const options = Array.from(document.querySelectorAll("[data-testid='aud01-filter-window'] option"));
+    expect(options.map((o) => o.getAttribute("value"))).toEqual(["24h", "7d", "30d"]);
+    expect(text()).not.toContain("不限时间");
   });
 
   it("the operator filter is disabled-by-design with its GAP number, not a dead control", async () => {
@@ -458,7 +486,52 @@ describe("the filters change the request (aud01)", () => {
     expect(node.disabled).toBe(true);
     expect(text()).toContain("未接入");
     expect(text()).not.toContain("GAP-06");
-    expect(document.querySelector("[title*='GAP-06']")).not.toBeNull();
+    // the GAP number rides the title only — and the title states the REAL
+    // reason since the probe: actorId exists, the named-operator picker does not
+    const titled = document.querySelector("[title*='GAP-06']")!;
+    expect(titled.getAttribute("title")).toContain("actorId");
+  });
+
+  it("a live-sampled record reads in human words, codes and handles stay hidden", async () => {
+    // the exact shape / payload from the 2026-11-19 session probe
+    await mount(async () => ({
+      events: [
+        {
+          eventId: "ev_2BAA7DD7F3BC4767AF39764D91",
+          tenantId: "t_seakoi_pilot",
+          occurredAt: "2026-11-17T18:18:10.723Z",
+          recordedAt: "2026-11-17T18:18:10.723Z",
+          sourceSystem: "employee",
+          actor: { type: "system", id: "employee-api" },
+          action: "employee.create.denied",
+          resource: { type: "creation_attempt", id: "l6-shape2-H-021810", ownerRef: "1" },
+          outcome: "denied",
+          responsibleHumanId: "1",
+          decision: "deny",
+          correlationId: "l6-shape2-H-021810",
+          error: { code: "employee.invalid_initial_version", messageRedacted: "denied by domain validation" },
+        },
+        {
+          eventId: "ev_DISPATCH0001",
+          occurredAt: "2026-11-17T18:18:11Z",
+          action: "dispatch.event",
+          resource: { type: "channel_event", id: "evt_9f8e7d6c5b4a3f21" },
+          outcome: "success",
+          actor: { type: "human", id: "1" },
+        },
+      ],
+    }));
+    expect(text()).toContain("驳回新建数字员工");
+    expect(text()).toContain("建号申请 · 021810");
+    expect(text()).toContain("2026-11-18 02:18");
+    expect(text()).toContain("系统");
+    expect(text()).toContain("失败（被拒）");
+    // the unknown live code passes through verbatim, exactly as the service spells it
+    expect(text()).toContain("dispatch.event");
+    // no wire token on the surface
+    expect(text()).not.toMatch(/t_seakoi_pilot|employee\.invalid_initial_version|creation_attempt|"system"|schemaVersion/);
+    // a bare numeric human id never becomes a bare handle either
+    expect(text()).toContain("成员");
   });
 });
 

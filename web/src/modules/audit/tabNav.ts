@@ -60,7 +60,7 @@ const manifest: ModuleManifest = {
       // navigable, never a dead link; `#/audit` redirects here.
       route: "#/system?tab=events",
       kind: "planned",
-      dataSource: "/api/audit /api/audit/detail?id= /api/audit/verify?from=&to=",
+      dataSource: "/api/audit /api/audit-detail?id= /api/audit-verify?from=&to=",
     },
   ],
 };

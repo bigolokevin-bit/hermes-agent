@@ -1221,3 +1221,169 @@ reads `?state=loading|empty|error|denied` for QA legs.
   fixtures only — never observed against a live 2xx payload with rows.
 - Pixel-level overflow on the real page (unreachable, §5); only the shell fallback was shot.
 - `?limit=` beyond 5 and cursor behaviour against the live route.
+
+---
+
+## TASK audit closeout (2026-11-19, base c4c6e750)
+
+派单口径：写域 `web/src/modules/audit/**` + 本段；五个收口项（筛选真生效 / 详情人话层 / 校验未启用腿 /
+列表列口径 / 四态+零横溢），外加真浏览器截图。Cookie 只经 `$(cat /tmp/.cookie_val)` 注入头，未打印过值。
+
+## X1. 会话实测：每个参数一条（curl 原文 + HTTP + 条数）
+
+服务端：`http://127.0.0.1:9122`（v4_proxy：静态 `forks/hermes-agent/hermes_cli/web_dist` + `/agent-api/*` 反代 BFF 8092）。
+列表返回体顶层键是 `{events, nextCursor}`（条数= len(events)）。
+
+| # | 请求（引号内为 curl 实际 URL） | HTTP | items | 结论 |
+|---|---|---|---|---|
+| 1 | `…/agent-api/api/audit?limit=5` | **400** | — | `console.missing_filter`：`at least one of ['runId','taskId','actorId','resourceId','action','from','to'] is required (no unfiltered table scan)` → **require_any 七参数首次采到真名** |
+| 2 | `…/audit?limit=5&from=2026-10-01T00:00:00Z&to=2026-11-20T00:00:00Z` | 200 | 5 | from/to 生效（下面全部用带窗问法） |
+| 3 | `…&limit=50&event_type=task.created`（本模块旧拼法） | 200 | 50（8 种 action 混合） | **`event_type` 被接受但被忽略**——返回和不分筛选一样的混合台账 |
+| 4 | `…&limit=50&action=task.created` | 200 | 14（全部 task.created） | `action` 才是真参数，且**精确匹配** |
+| 5 | `…&limit=50&action=task_created`（下划线拼法） | 200 | **0** | 下划线原码在真服务端筛出零行 → 旧下拉选项是个假筛选器 |
+| 6 | `…&limit=50&action=budget.ledger_entry_applied` | 200 | 50（全部同码） | 同上，再证精确匹配 |
+| 7 | `…&limit=2`（带窗） | 200 | 2 | `limit` 生效 |
+| 8 | `…&from=2026-11-17T18:00:00Z&to=2026-11-17T19:00:00Z&limit=50` | 200 | 13（occurredAt 全在窗内） | 窄窗收窄，`from/to` 真的改结果 |
+| 9 | 只带 `from=2026-11-17T18:00:00Z` 不带 `to` | 200 | 13 | 单边也被接受 |
+| 10 | 先取页1 的 `nextCursor`，再 `…&limit=5&cursor=<token>` | 200 | 5（与页1 零重叠） | `cursor` 分页真实可用 |
+| 11 | `…&limit=50&actorId=employee-api` | 200 | 50（actor.id 全等于 employee-api） | **`actorId` 存在且生效**（GAP-06 的「没有参数」说法自此不成立，见 X2） |
+| 12 | `…&limit=50&action=does.not.exist` | 200 | 0 | 未知码诚实空，不 400 |
+| 13 | `/agent-api/api/audit/detail?id=ev_2BAA…` 与变体 `/event?id=` `/audit/<id>` `/get?id=` `/detail/<id>` | **404** | — | 全部 `console.unknown_route`——旧的 detail 拼法**根本不存在** |
+| 14 | `/agent-api/api/audit-detail?id=ev_2BAA7DD7F3BC4767AF39764D91` | **200** | 1 | 真详情路由（裸事件对象，无包裹层）；`id=ev_DOESNOTEXIST…` → **404** `audit.event_not_found`；缺 id → 400 `console.missing_param` |
+| 15 | `/agent-api/api/audit/verify?from&to` | **404** | — | `console.unknown_route`——旧校验拼法不存在 |
+| 16 | `/agent-api/api/audit-verify?from=2026-11-10T00:00:00Z&to=2026-11-20T00:00:00Z` | **200** | — | 真校验路由，体 `{"ok":true,"complete":true,"scanned":43,"anchorCheckpointId":"cp_t_seakoi_pilot_2026111300","chainHeadHash":"ah_031a89f9…"}`（无 total/broken 键） |
+| 17 | 不带 cookie 的 #2 | **401** | — | `console.unauthenticated`（门在路由前，与会话失效腿口径一致） |
+| 18 | 默认 24h 窗（`from=now-24h&to=now`） | 200 | **0** | 本环境最近 24 小时没有任何审计事件；7d 窗 → 200 / 50 条 |
+
+真负载一条完整样例（#14 原样，测试 `live-sampled answer shapes` 直接钉它）：
+`eventId / schemaVersion / tenantId(t_seakoi_pilot) / occurredAt / recordedAt / sourceSystem /
+actor{type,id} / action(点分) / resource{type,id,ownerRef} / outcome / responsibleHumanId / decision /
+correlationId / error{code,messageRedacted}`。action 采样分布（11-01..11-20，100 条）：
+`budget.ledger_entry_applied 27, employee.create.denied 22, task.created 14, dispatch.event 8,
+approval.expired/consumed/decided 各 4, budget.ledger_ensured 3, grant.created 3, workstation.bound 2,
+employee.version.created 2, employee.lifecycle.transitioned/denied 各 2, employee.created 1,
+budget.soft_alert_sent 1, workstation.bind_conflict 1`（共 16 码）。
+
+## X2. 控件去留（每一项为什么）
+
+| 控件 | 处置 | 依据 |
+|---|---|---|
+| 时间窗 `aud01-filter-window` | **保留**，选项只剩 24h/7d/30d | `from/to` 实测生效（#2/#8/#9）；**删掉「不限时间」**——require_any（#1）证明服务拒绝零筛选扫描，400 的选项就是假控件 |
+| 事件类型 `aud01-filter-type` | **保留但改线**：线上参数 `event_type`→`action`，下拉选项换成 16 个**实采点分码**（`LIVE_ACTION_CODES`） | #3：`event_type` 被忽略＝假筛选；#4/#5/#6：`action` 精确匹配，本模块词表的下划线原码会筛出 0 行 |
+| 操作者 `aud01-filter-operator` | **维持禁用+「未接入」**，GAP-06 只进 `title`；title 说法按实测修正 | #11 证明 `actorId` 存在且生效——旧说法「没有参数」已不成立。真话是：参数只吃机器句柄（`employee-api`），本环境没有可展示真名的操作者目录；裸句柄输入框会把工程语言放上人话层（判据 2/4），所以仍不做控件 |
+| 刷新 / 加载更多 | 保留 | `limit`、`cursor` 实测生效（#7/#10） |
+| 详情读 `…/audit/detail?id=` | **改为 `…/audit-detail?id=`** | #13/#14 |
+| 校验读 `…/audit/verify` | **改为 `…/audit-verify`** | #15/#16 |
+
+## X3. 详情面（人话层 / 「—」 / 403≡404）
+
+- 人话层零工程词：既有断言继续钉住（无 `event_type/tenantId/sourceSystem/policy.denied/HTTP/ISO`），本轮把
+  真负载里会露网的英文枚举收进词表：`employee.create.denied`→「驳回新建数字员工」、`approval.decided`→「给出审批结论」、
+  `grant.created`→「授予权限」；资源名词补 `creation_attempt/ channel_event/ workstation/ grant` 四格；
+  `t_seakoi_pilot` 这类租户短码按句柄掩码成「工作区 · pilot」（whole 值只进 title/技术详情）。
+  `dispatch.event` 语义自名字定不下来，**继续按原样上屏**（判据 4「不认识的绝不机翻」）。
+- 缺值：全部「—」+ `title`/短句原因，无 `?? 0`；`error.messageRedacted` 是人写的句子才上屏，堆栈被
+  `humanSentence` 挡回技术侧（既有断言）。
+- **403≡404 同体**：`DeniedPanel` 单一具身；列表腿整页 `document.body.innerHTML` `toBe` 相等、
+  详情腿本轮起同时比 `aud02-detail-denied` outerHTML **和整页 innerHTML**、校验腿比 `aud03-unavailable`
+  outerHTML，三者都再断不回显路径/状态码（`not.toMatch(/\/agent-api|api\/audit|console\.forbidden|\b40[34]\b/)`）。
+  真路由侧：#14 的 404 体（`audit.event_not_found`）与任何 403 都落同一面板。
+
+## X4. 校验「本环境未启用」腿
+
+- 文案（`states.tsx` VerifyUnavailablePanel + `copy.ts`）：**「本环境未启用」** + 原因句（403/404「这套环境没有提供完整性校验，或者它还没有对你开放」；
+  405/501「尚未开通，需管理员启用」；连不上/5xx 各一句）+ 下一步（「让工作区管理员在审计服务里开通时间窗完整性校验，开通后回到这一页重新运行」）+ 可复制请求编号 + 「再运行一次」；
+  永不写「已通过」（测试逐字断言 `not.toContain("没有发现断点")` on that leg）。401 走 error 腿说「重新登录」，不冒充未启用。
+- 分母：`已核对 X / Y`；真回答（#16）只给 `scanned` 不给 total → 该格 `43` + `title`「服务未说明这个窗口里一共有多少条」，
+  `对不上的` 格「—」+ 原因；本轮新增测试用 **实采 verify 体** 钉住这三格。
+
+## X5. 列表列口径（判据 4）与四态/横溢（判据 5）
+
+- 列：时间=北京到分并写明（#14 样例 `2026-11-17T18:18Z` → 「2026-11-18 02:18」，测试钉死）；
+  操作者=「姓名 · 8 位短码」/「员工 · 短码」/「成员」/「系统」/「未指派」，裸句柄只进 title；
+  类型=认识的说中文、不认识的原样（新增 live 形状页面测试两种都钉）；结果+原因带一句人话。
+- 四态：三面 loading 骨架 / empty 原因+下一步 / error 人话+可复制编号+重试 / denied 同体，齐；
+  `aud01-*` 与 `agent-v2-page-audit*` 未动，本轮未新增页级 id（新断言全部复用既有前缀）。
+- 假定：**默认时间窗 24h → 7d**。#18 证明本环境 24 小时内零事件，24h 默认＝每次进页面都落在空态；
+  require_any 又强制必须带窗，于是取覆盖真数据的最小窗。改回一行的事，`window.ts` 注释与本段互为证据。
+
+## X6. 截图与 probe 判读（真像素，非声称）
+
+产物：`docs/_artifacts/aud/shots/audit-1440.png`、`audit-1280.png`、`audit-375.png`、`audit-probe.json`
+（harness：`/tmp/cdp-shot-aud.mjs`，= 既有 `/tmp/cdp-shot.mjs` 同款流程、前缀换 aud01-、端口 9334；
+既有 collab 的 `probe.json` 未覆盖）。
+
+`audit-probe.json` 三档实测记录：url `/system?tab=events`（`/audit` 客户端重定向落点），
+页根 `agent-v2-page-audit` **在**，`aud01-*` 非零（status/refresh/filters/filter-window/filter-type/filter-operator/empty），
+`sw==cw`（1440/1440、1280/1280、375/375）→ **部署态页面无横溢**。
+
+**如实判读**：这不是 shell fallback，是真审计页——但它是**收口前的构建**：9122 静态根是
+`forks/hermes-agent/hermes_cli/web_dist`（15:16 构建，chunk 里 `event_type`×2、无 audit-detail/audit-verify 标记），
+截图文案仍是旧空态句「这个筛选条件里没有审计事件」、下拉里仍有「不限时间」与旧词表。
+收口后的界面像素**未截**：重建/替换该 dist 属他树运维写域，本车道不碰；收口后行为以三面模块渲染测试为证（X7）。
+detail/verify 两个独立页未挂进壳（只有列表页 `/system?tab=events` 挂载 + 抽屉式详情），按派单以模块测试覆盖。
+
+## X7. 门禁（精确退出码 + 尾巴，跑于收口后 HEAD）
+
+```
+$ cd web && npx vitest run src/modules/audit --reporter=dot
+VITEST_EXIT=0     Test Files  5 passed (5)   Tests  102 passed (102)   Duration 1.35s
+$ cd web && npx tsc -b . --noEmit
+TSC_EXIT=2        49 error TS 行：全部在 ../apps/shared/**（Cannot find module 'vitest' 等基线同款）；
+                  非 shared 行 0；modules/audit 行 0 —— 与派单口径「exit 2 允许、审计 0 贡献」一致
+$ cd web && npx eslint src/modules/audit
+ESLINT_EXIT=0     ✖ 3 problems (0 errors, 3 warnings)  ← useAuditData.ts 既有 set-state-in-effect×3，非本轮新增
+```
+
+本轮文件改动全在写域：`api.ts / model.ts / window.ts / AuditEventsModulePage.tsx / tabNav.ts`、
+三份页面测试 + `api.test.ts` + `manifest.test.ts`、本段与 shots。**未引用 `docs/_artifacts/tonight/**` 任何数值。**
+
+## X8. not verified（照实留）
+
+1. 收口后构建的 1440/1280/375 像素：需 R5/运维重建 `web_dist` 后复拍；本轮只有收口前的真像素 + jsdom 断言。
+2. require_any 七参数只逐一新验了 `action/from/to/limit(非七之一)/cursor(非七之一)/actorId`；`runId/taskId/resourceId` 未单独探。
+3. 16 个 action 码是本环境 11-01..11-20 百条采样，非全枚举；词表外新码按原样上屏（行为正确），但下拉不含它们。
+4. `budget/workstation/grant` 系列的中文标签是词元的直译（`记入预算台账`/`绑定工作台`/`授予权限`），待业主口径确认；`dispatch.event` 刻意不译。
+5. `error.messageRedacted` 若是英文句子（样例即英文）原样上屏「原因：」——服务自己写的话不翻译，口径待产品定。
+6. 真 403 腿：本会话权限下 detail/list 只出 200/400/401/404，403≡404 同体是测试级 mock 断言 + 同组件代码路径，未现网双态实测。
+7. verify 真回答无 total/broken 键——「分母」在真环境退化为「—+原因」，若上游补 total 会自动升格为 `X / Y`。
+8. `pnpm-lock`/依赖：未动、未装。
+
+## 需壳层注册的路由/槽位清单（交 R5，2026-11-19）
+
+判据总述：以下页面**已交付、未挂载**——模块与其测试在库内，vite 构建也能切出 chunk
+（本轮实测：`vite build` → `assets/CollabDelegationsModulePage-C9MmsxBf.js`、
+`assets/AuditEventsModulePage-Ip3muf9p.js`，EXIT=0），但路由未注册的就是运行时不可达。
+本车道未改 `App.tsx`/`shell/**`，接线归 R5。
+
+### 1) collab 协作委托页 —— 未挂载，需注册
+
+- 模块文件：`web/src/modules/collab/CollabDelegationsModulePage.tsx`
+- 导出：具名 `CollabDelegationsModulePage`，零 props；挂载建议照 audit 的写法
+  `lazy(() => import("@/modules/collab/CollabDelegationsModulePage"))`
+- 期望路由：`/collaboration`（兼容别名 `/collab`）
+- 壳层改动点：`web/src/App.tsx:350` 现条目
+  `{ path: "/collaboration", label: "协作", icon: Handshake, group: "operations", placeholder: true }`
+  —— 去掉 `placeholder: true` 并在路由表注册该组件。事实依据：`App.tsx:1468` `if (item.placeholder)`
+  分支使 placeholder **不注册路由**；未匹配路径落 `<Navigate to="/overview" replace />`
+  （`App.tsx:233/243`），所以 `/collab` 与 `/collaboration` 现在都被改写回 `/overview`——
+  早前 collab 截图的 probe.json 记录的正是这个 fallback 落点（url `/overview`、`col4-*` ids 为 0）。
+- QA 复现腿：`?state=loading|empty|error|denied`（forced 腿零请求，面板带 `data-fixture`；
+  模块文档注 `CollabDelegationsModulePage.tsx:25-26`、页根 `data-fixture={forced}` 行 223）
+- testid 前缀：`col4-`（页面根 `col4-page`、行 `col4-row-<N>`、空态 `col4-empty`、错误 `col4-error`、
+  拒绝 `col4-denied`、请求编号在面板内为 `col4-error-request-id` / `col4-denied-request-id`——
+  派单草稿里的「`col4-request-id`」一词在库内不存在，按真实名登记）
+- 数据口：`GET /agent-api/api/delegations?limit=50` —— 本轮带会话 cookie 实测 **200**，
+  体 `{"items":[],"asOf":"2026-11-19T07:31:22.802Z"}`（本租户真实 0 条，非路由缺失）
+- 现状如实记：模块与其测试已在库内、dist 里也有 chunk，但**运行时不可达**（chunk 孤儿），
+  入口一律被改写到 `/overview`；接线归 R5，本车道不改 App.tsx/shell。
+
+### 2) 审计三面 —— 供 R5 对照，不要改动
+
+- 列表：**已挂载**于 `/audit`（`App.tsx:102` 懒加载 `AuditEventsModulePage`，
+  `App.tsx:1289` `/audit` → `Navigate /system?tab=events` 兼容重定向）；页级 testid
+  `agent-v2-page-audit`，元素前缀 `aud01-*`（详情抽屉的 `aud02-*` 也在这同一挂载页内出现）。
+- 详情/校验：模块内 `AuditDetailModulePage`、`AuditVerifyModulePage`（页级
+  `agent-v2-page-audit-detail` / `agent-v2-page-audit-verify`，前缀 `aud02-*` / `aud03-*`）；
+  壳层**未注册** `/audit/detail`、`/audit/verify` 路径（本轮 grep `App.tsx` 无此两条 Route）。
+  若需独立入口，请按本节同格式登记槽位再注册——**本次不自行注册**。

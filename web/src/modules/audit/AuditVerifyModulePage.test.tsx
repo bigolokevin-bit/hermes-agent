@@ -84,10 +84,12 @@ describe("the check only runs when it is asked for", () => {
     expect(text()).not.toContain("没有发现断点");
   });
 
-  it("sends the chosen window as two instants on the real route", async () => {
+  it("sends the chosen window as two instants on the probed real route", async () => {
     api.fetchJSON.mockImplementation(async () => ({ ok: true, scanned: 12, total: 12, broken: 0 }));
     await runWindow();
-    expect(urls()[0]).toMatch(/^\/agent-api\/api\/audit\/verify\?from=\d{4}-\d{2}-\d{2}T.*&to=\d{4}-\d{2}-\d{2}T/);
+    // live-probed 2026-11-19: `/api/audit/verify` answers 404 unknown_route;
+    // the route the console actually serves is `/api/audit-verify`
+    expect(urls()[0]).toMatch(/^\/agent-api\/api\/audit-verify\?from=\d{4}-\d{2}-\d{2}T.*&to=\d{4}-\d{2}-\d{2}T/);
     expect(document.querySelector("[data-testid='agent-v2-page-audit-verify']")).toBeTruthy();
   });
 
@@ -144,6 +146,34 @@ describe("what the answer can say", () => {
     expect(text()).not.toContain("没有发现断点");
   });
 
+  it("the live {ok, complete, scanned} answer reads intact without a fabricated denominator", async () => {
+    // verbatim shape sampled off the running service 2026-11-19
+    api.fetchJSON.mockImplementation(async () => ({
+      ok: true,
+      complete: true,
+      scanned: 43,
+      anchorCheckpointId: "cp_t_seakoi_pilot_2026111300",
+      chainHeadHash: "ah_031a89f92e532758fbb4c60529fd5081",
+    }));
+    await runWindow();
+    expect(text()).toContain("没有发现断点");
+    expect(text()).toContain("43");
+    // the answer says nothing about a total or a broken count: 「—」 + reason
+    expect(text()).toContain("—");
+    const titled = Array.from(document.querySelectorAll("[title]")).map((n) => n.getAttribute("title") ?? "").join(" ");
+    expect(titled).toContain("服务未说明这个窗口里一共有多少条");
+    expect(titled).toContain("服务没有给出对不上的条数");
+    // the window falls back to what was asked, shown as Beijing wall clock
+    expect(text()).toContain("校验窗口（北京时间）：2026");
+    // chain internals never reach the surface
+    expect(text()).not.toMatch(/chainHeadHash|anchorCheckpointId|ah_031a89f9|cp_t_seakoi/);
+    const toggle = document.querySelector<HTMLButtonElement>("[data-testid='aud03-result-details'] button")!;
+    await act(async () => {
+      toggle.click();
+    });
+    expect(text()).toContain("chainHeadHash：ah_031a89f92e532758fbb4c60529fd5081");
+  });
+
   it("a count the service did not send stays 「—」 with the reason in its title", async () => {
     api.fetchJSON.mockImplementation(async () => ({ ok: true, scanned: 40 }));
     await runWindow();
@@ -180,7 +210,7 @@ describe("a check that cannot run", () => {
       throw new ApiError("nope", {
         status,
         body: '{"code":"console.unavailable"}',
-        url: "/agent-api/api/audit/verify",
+        url: "/agent-api/api/audit-verify",
         requestId,
       });
     });

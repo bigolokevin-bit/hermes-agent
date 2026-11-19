@@ -94,7 +94,10 @@ function pickRecord(rec: Record<string, unknown>, keys: readonly string[]): Reco
 
 // ── Identity ─────────────────────────────────────────────────────────
 
-const SCHEME_PREFIX = /^(?:emp|employee|agent|human|user|member|staff|svc|service|run|task|approval|policy|tenant|corr|session)[_:=@/#-]/i;
+// `t_` is the tenant short form this deployment actually sends (`t_seakoi_pilot`,
+// live-probed 2026-11-19); it must read as a handle so the workspace id is
+// masked on the surface. It sits last so the longer words win first.
+const SCHEME_PREFIX = /^(?:emp|employee|agent|human|user|member|staff|svc|service|run|task|approval|policy|tenant|corr|session|t)[_:=@/#-]/i;
 const UUID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const LONG_HEX = /^[0-9a-f]{16,}$/i;
 
@@ -241,6 +244,13 @@ export function maskedDigest(value: string | null, size = 10): { label: string; 
  * Anything else is shown verbatim — an unknown code is never machine-translated
  * into a claim we did not get. Provenance and the unverified enum are recorded
  * in docs/_artifacts/appr/DONE.md (§T33-2, §T33-7).
+ *
+ * The block marked LIVE (2026-11-19) was added from codes SAMPLED VERBATIM off
+ * the running service (docs/_artifacts/aud/DONE.md closeout table); their
+ * labels are mechanical translations of the service's own word parts plus the
+ * outcome/decision fields that came with them — not invented semantics.
+ * `dispatch.event` is deliberately NOT labelled: the name alone does not say
+ * what was dispatched, so it stays verbatim.
  */
 const ACTION_LABEL: Record<string, string> = {
   // approvals
@@ -319,7 +329,41 @@ const ACTION_LABEL: Record<string, string> = {
   api_key_rotated: "轮换接口密钥",
   // integrity chain
   chain_verified: "核对完整性链",
+  // ── LIVE additions, 2026-11-19. Each label is a direct composition of words
+  // this table already approved (task/employee/approval/grant verbs); codes
+  // whose subject token was not already named are left UNLABELLED and render
+  // verbatim, never machine-translated into a claim (§T33-2 law 3).
+  approval_decided: "给出审批结论",
+  grant_created: "授予权限",
+  employee_create_denied: "驳回新建数字员工",
 };
+
+/**
+ * The `action` codes sampled verbatim off the running BFF (2026-11-19 session
+ * probe — HTTP 200, distinct `action` values in docs/_artifacts/aud/DONE.md).
+ * The filter dropdown offers these EXACT spellings because the service matches
+ * `action` literally: the dotted `task.created` answers, the underscore
+ * `task_created` (this file's own normalize key) answers ZERO, so the wire
+ * must carry the dotted form.
+ */
+export const LIVE_ACTION_CODES: readonly string[] = [
+  "employee.create.denied",
+  "employee.created",
+  "employee.version.created",
+  "employee.lifecycle.transitioned",
+  "employee.lifecycle.denied",
+  "approval.decided",
+  "approval.consumed",
+  "approval.expired",
+  "task.created",
+  "grant.created",
+  "dispatch.event",
+  "workstation.bound",
+  "workstation.bind_conflict",
+  "budget.ledger_entry_applied",
+  "budget.ledger_ensured",
+  "budget.soft_alert_sent",
+];
 
 /**
  * Wire spellings of one code fold onto one key: `ApprovalRejected`,
@@ -353,14 +397,18 @@ export function actionView(raw: string | null): ActionView {
 }
 
 /**
- * The 事件类型 filter's options: only the codes this vocabulary actually names,
- * sent to the service verbatim. An unmapped code is never offered as a choice —
- * the filter cannot ask for a word we have not seen the service use.
+ * The 事件类型 filter's options: the live `action` codes the service was
+ * probed to use (2026-11-19), sent VERBATIM so the exact-match `action`
+ * parameter actually answers. A code we know in words gets its Chinese label;
+ * one we do not is offered under its own spelling rather than a claim. Codes
+ * from the internal vocabulary that were never seen on the wire are NOT
+ * offered — a choice that would filter to zero rows is a control that
+ * pretends.
  */
 export function eventTypeChoices(): { value: string; label: string }[] {
-  return Object.entries(ACTION_LABEL)
-    .map(([value, label]) => ({ value, label }))
-    .sort((a, b) => a.label.localeCompare(b.label, "zh-CN"));
+  return LIVE_ACTION_CODES.map((value) => ({ value, label: actionView(value).label })).sort((a, b) =>
+    a.label.localeCompare(b.label, "zh-CN"),
+  );
 }
 
 // ── Outcome vocabulary ───────────────────────────────────────────────
@@ -516,6 +564,12 @@ const RESOURCE_NOUN: Record<string, string> = {
   channel: "接入渠道",
   webhook: "回调地址",
   api_key: "接口密钥",
+  // ── Resource types sampled live 2026-11-19 (docs/_artifacts/aud/DONE.md);
+  // without these the 对象 column / 资源 section would echo the English token.
+  creation_attempt: "建号申请",
+  channel_event: "渠道事件",
+  workstation: "工位",
+  grant: "授权",
 };
 
 function resourceNoun(type: string): string {

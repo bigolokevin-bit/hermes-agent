@@ -2,7 +2,7 @@
  * 审计事件详情 (screen 2 of the audit surface, `aud02-*`).
  *
  * One real read:
- *   `GET /agent-api/api/audit/detail?id=<eventId>`
+ *   `GET /agent-api/api/audit-detail?id=<eventId>`
  *
  * The record opens from the URL, so a shared link shows the same event. The
  * human layer says who did what, when (Beijing wall clock to the minute), to

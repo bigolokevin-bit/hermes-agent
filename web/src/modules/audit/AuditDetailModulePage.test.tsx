@@ -85,9 +85,9 @@ afterEach(() => {
 });
 
 describe("the read is the real route", () => {
-  it("asks /api/audit/detail with the id from the URL", async () => {
+  it("asks the probed /api/audit-detail route with the id from the URL", async () => {
     await openDetail();
-    expect(urls()[0]).toBe("/agent-api/api/audit/detail?id=evt_D6FC9A2B4E6F8012");
+    expect(urls()[0]).toBe("/agent-api/api/audit-detail?id=evt_D6FC9A2B4E6F8012");
     expect(document.querySelector("[data-testid='agent-v2-page-audit-detail']")).toBeTruthy();
   });
 
@@ -188,7 +188,7 @@ describe("the four states", () => {
   it("error is human words, a copyable request id and a retry", async () => {
     api.fetchJSON.mockReset();
     api.fetchJSON.mockImplementation(async () => {
-      throw new ApiError("gateway", { status: 500, body: "", url: "/agent-api/api/audit/detail", requestId: "dt-err" });
+      throw new ApiError("gateway", { status: 500, body: "", url: "/agent-api/api/audit-detail", requestId: "dt-err" });
     });
     await render("/audit/detail?id=evt_D6FC9A2B4E6F8012");
     await waitFor(() => document.querySelector("[data-testid='aud02-detail-error']") !== null, "error painted");
@@ -205,20 +205,29 @@ describe("the four states", () => {
   });
 
   it("403 and 404 draw one byte-identical body, and no record above it", async () => {
-    const once = async (status: number): Promise<string> => {
+    const once = async (status: number): Promise<{ panel: string; page: string }> => {
       api.fetchJSON.mockReset();
       api.fetchJSON.mockImplementation(async () => {
         throw new ApiError("denied", { status, body: '{"code":"console.forbidden"}', url: "/x", requestId: "dt-deny" });
       });
       await render("/audit/detail?id=evt_D6FC9A2B4E6F8012");
       await waitFor(() => document.querySelector("[data-testid='aud02-detail-denied']") !== null, `denied ${status}`);
-      return document.querySelector("[data-testid='aud02-detail-denied']")?.outerHTML ?? "";
+      return {
+        panel: document.querySelector("[data-testid='aud02-detail-denied']")?.outerHTML ?? "",
+        // the WHOLE page too: same sentence, same code+request-id envelope,
+        // no path echo, and nothing (no rows, no field names) drawn first
+        page: document.body.innerHTML,
+      };
     };
     const forbidden = await once(403);
-    expect(forbidden).toContain("暂时无法查看审计事件");
-    expect(forbidden).toContain("请求编号：");
-    expect(forbidden).toContain("dt-deny");
-    expect(await once(404)).toBe(forbidden);
+    expect(forbidden.panel).toContain("暂时无法查看审计事件");
+    expect(forbidden.panel).toContain("请求编号：");
+    expect(forbidden.panel).toContain("dt-deny");
+    expect(forbidden.panel).not.toMatch(/\/agent-api|api\/audit|console\.forbidden|\b40[34]\b/);
+    expect(forbidden.page).not.toMatch(/\/agent-api|api\/audit|console\.forbidden|\b40[34]\b/);
+    const missing = await once(404);
+    expect(missing.panel).toBe(forbidden.panel);
+    expect(missing.page).toBe(forbidden.page);
   });
 
   it("an answer that is not a record is an error, not a blank detail", async () => {

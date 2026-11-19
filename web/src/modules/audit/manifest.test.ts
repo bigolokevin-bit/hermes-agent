@@ -25,7 +25,9 @@ describe("audit manifest", () => {
   });
 
   it("declares the three endpoints it actually calls", () => {
-    expect(auditManifest.tabs[0]!.dataSource).toBe("/api/audit /api/audit/detail?id= /api/audit/verify?from=&to=");
+    // live-probed spellings 2026-11-19 (docs/_artifacts/aud/DONE.md closeout):
+    // `/api/audit/detail` and `/api/audit/verify` are 404 console.unknown_route.
+    expect(auditManifest.tabs[0]!.dataSource).toBe("/api/audit /api/audit-detail?id= /api/audit-verify?from=&to=");
   });
 
   it("is data only and stays 'planned' — the pane mount is the wiring lane's", () => {

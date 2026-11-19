@@ -15,6 +15,8 @@ import {
   auditDetailFrom,
   auditPageFrom,
   beijing,
+  eventTypeChoices,
+  LIVE_ACTION_CODES,
   maskedDigest,
   maskedRef,
   outcomeView,
@@ -24,11 +26,11 @@ import {
 import { windowBounds } from "./window";
 
 describe("audit endpoints", () => {
-  it("keeps the /api/ segment on all three routes", () => {
+  it("keeps the /api/ segment on all three routes — the live 2026-11-19 spellings", () => {
     expect(LIST_PATH).toBe("/agent-api/api/audit");
-    expect(VERIFY_PATH).toBe("/agent-api/api/audit/verify");
+    expect(VERIFY_PATH).toBe("/agent-api/api/audit-verify");
     expect(listUrl()).toBe(`/agent-api/api/audit?limit=${PAGE_LIMIT}`);
-    expect(detailUrl("evt_9F3A")).toBe("/agent-api/api/audit/detail?id=evt_9F3A");
+    expect(detailUrl("evt_9F3A")).toBe("/agent-api/api/audit-detail?id=evt_9F3A");
   });
 
   it("carries the cursor, encoded, to the next page", () => {
@@ -36,32 +38,53 @@ describe("audit endpoints", () => {
   });
 
   it("the two live filters change the list URL — that is what makes them filters", () => {
-    expect(listUrl(null, { eventType: "approval_approved", from: null, to: null })).toBe(
-      `/agent-api/api/audit?limit=${PAGE_LIMIT}&event_type=approval_approved`,
+    // The wire name is `action` (probed 2026-11-19: `event_type` is accepted
+    // but ignored; `action` exact-matches the dotted code and returns its rows).
+    expect(listUrl(null, { action: "task.created", from: null, to: null })).toBe(
+      `/agent-api/api/audit?limit=${PAGE_LIMIT}&action=task.created`,
     );
-    expect(listUrl(null, { eventType: null, from: "2026-11-12T02:00:00.000Z", to: "2026-11-19T02:00:00.000Z" })).toBe(
+    expect(listUrl(null, { action: null, from: "2026-11-12T02:00:00.000Z", to: "2026-11-19T02:00:00.000Z" })).toBe(
       `/agent-api/api/audit?limit=${PAGE_LIMIT}&from=2026-11-12T02%3A00%3A00.000Z&to=2026-11-19T02%3A00%3A00.000Z`,
     );
     // both together, and the cursor stays last
-    expect(listUrl("c1", { eventType: "run_failed", from: "2026-11-18T00:00:00.000Z", to: "2026-11-19T00:00:00.000Z" })).toBe(
-      `/agent-api/api/audit?limit=${PAGE_LIMIT}&event_type=run_failed&from=2026-11-18T00%3A00%3A00.000Z&to=2026-11-19T00%3A00%3A00.000Z&cursor=c1`,
+    expect(listUrl("c1", { action: "employee.create.denied", from: "2026-11-18T00:00:00.000Z", to: "2026-11-19T00:00:00.000Z" })).toBe(
+      `/agent-api/api/audit?limit=${PAGE_LIMIT}&action=employee.create.denied&from=2026-11-18T00%3A00%3A00.000Z&to=2026-11-19T00%3A00%3A00.000Z&cursor=c1`,
     );
     // an unchosen filter is dropped, never sent empty
-    expect(listUrl(null, { eventType: "", from: "", to: "" })).toBe(`/agent-api/api/audit?limit=${PAGE_LIMIT}`);
+    expect(listUrl(null, { action: "", from: "", to: "" })).toBe(`/agent-api/api/audit?limit=${PAGE_LIMIT}`);
+  });
+
+  it("the 事件类型 choices are the live codes only, never an underscore guess", () => {
+    // `action` matches literally: an underscore spelling returns ZERO rows on
+    // the live service, so a dropdown that offered one would be a filter that
+    // pretends. Every offered value must be a code the service was seen using.
+    const choices = eventTypeChoices();
+    expect(choices.length).toBeGreaterThan(0);
+    for (const choice of choices) expect(LIVE_ACTION_CODES).toContain(choice.value);
+    expect(choices.some((c) => c.value === "task.created")).toBe(true);
+    expect(choices.some((c) => c.value === "task_created")).toBe(false);
+    expect(choices.some((c) => c.value === "approval_approved")).toBe(false);
+    // known codes get the Chinese word; an unknown live code is offered verbatim
+    expect(choices.find((c) => c.value === "employee.create.denied")?.label).toBe("驳回新建数字员工");
+    expect(choices.find((c) => c.value === "dispatch.event")?.label).toBe("dispatch.event");
+    // a chosen label is what the wire must carry
+    for (const choice of choices) {
+      expect(listUrl(null, { action: choice.value, from: null, to: null })).toContain(`&action=${encodeURIComponent(choice.value)}`);
+    }
   });
 
   it("sends the window as two encoded instants", () => {
     const bounds = windowBounds("7d", new Date("2026-11-19T02:00:00Z"));
     expect(bounds.from).toBe("2026-11-12T02:00:00.000Z");
     expect(verifyUrl(bounds.from, bounds.to)).toBe(
-      "/agent-api/api/audit/verify?from=2026-11-12T02%3A00%3A00.000Z&to=2026-11-19T02%3A00%3A00.000Z",
+      "/agent-api/api/audit-verify?from=2026-11-12T02%3A00%3A00.000Z&to=2026-11-19T02%3A00%3A00.000Z",
     );
   });
 
   it("drops a bound it was not given instead of inventing one", () => {
-    expect(verifyUrl(null, null)).toBe("/agent-api/api/audit/verify");
+    expect(verifyUrl(null, null)).toBe("/agent-api/api/audit-verify");
     expect(verifyUrl("2026-11-12T02:00:00.000Z", null)).toBe(
-      "/agent-api/api/audit/verify?from=2026-11-12T02%3A00%3A00.000Z",
+      "/agent-api/api/audit-verify?from=2026-11-12T02%3A00%3A00.000Z",
     );
   });
 
@@ -369,5 +392,95 @@ describe("failure copy keeps the trace id and hides the wire", () => {
     const copy = verifyFailure(new Error("x"), { status: 401, requestId: null, technical: null });
     expect(copy.unavailable).toBe(false);
     expect(copy.sentence).toContain("重新登录");
+  });
+});
+
+// ── The LIVE shapes, sampled verbatim off the running service (2026-11-19
+// session probe, docs/_artifacts/aud/DONE.md closeout table). These pin the
+// read model to what the service really answers, not to invented spellings.
+
+describe("live-sampled answer shapes", () => {
+  const LIVE_EVENT = {
+    eventId: "ev_2BAA7DD7F3BC4767AF39764D91",
+    schemaVersion: 1,
+    tenantId: "t_seakoi_pilot",
+    occurredAt: "2026-11-17T18:18:10.723Z",
+    recordedAt: "2026-11-17T18:18:10.723Z",
+    sourceSystem: "employee",
+    actor: { type: "system", id: "employee-api" },
+    action: "employee.create.denied",
+    resource: { type: "creation_attempt", id: "l6-shape2-H-021810", ownerRef: "1" },
+    outcome: "denied",
+    responsibleHumanId: "1",
+    decision: "deny",
+    correlationId: "l6-shape2-H-021810",
+    error: {
+      code: "employee.invalid_initial_version",
+      messageRedacted: "denied by domain validation; raw message not stored in audit",
+    },
+  };
+
+  it("reads the {events, nextCursor} page the list route actually sends", () => {
+    const page = auditPageFrom({ events: [LIVE_EVENT], nextCursor: "eyJldmVudElkIjoi…ZCJ9" })!;
+    expect(page.rows).toHaveLength(1);
+    expect(page.next).toBe("eyJldmVudElkIjoi…ZCJ9");
+    const row = page.rows[0]!;
+    // a sampled code we now name reads in Chinese; the raw stays technical
+    expect(row.action.label).toBe("驳回新建数字员工");
+    expect(row.outcome.label).toBe("失败（被拒）");
+    // actor {type:system, id:employee-api}: the bare role, no handle on the label
+    expect(row.actor.label).toBe("系统");
+    expect(row.actor.raw).toBe("employee-api");
+    // resource creation_attempt · 021810, the id masked to its short tail
+    expect(row.resource.label).toBe("建号申请 · 021810");
+    expect(row.occurredAt).toBe("2026-11-18 02:18");
+    // no requestId key on the wire; correlationId is the quotable number
+    expect(row.requestId).toBe("l6-shape2-H-021810");
+    expect(row.reason).toBe("denied by domain validation; raw message not stored in audit");
+  });
+
+  it("an unknown live code still renders verbatim, not machine-translated", () => {
+    const page = auditPageFrom({ events: [{ ...LIVE_EVENT, action: "dispatch.event" }] })!;
+    expect(page.rows[0]!.action.label).toBe("dispatch.event");
+    expect(page.rows[0]!.action.known).toBe(false);
+  });
+
+  it("reads the bare detail object audit-detail answers, with the tenant masked", () => {
+    const detail = auditDetailFrom(LIVE_EVENT)!;
+    expect(detail.rawId).toBe("ev_2BAA7DD7F3BC4767AF39764D91");
+    expect(detail.action.label).toBe("驳回新建数字员工");
+    expect(detail.actor.label).toBe("系统");
+    expect(detail.resource.label).toBe("建号申请 · 021810");
+    expect(detail.tenant.label).toBe("工作区 · pilot");
+    expect(detail.tenant.raw).toBe("t_seakoi_pilot");
+    // the human label carries no engineering token…
+    expect(`${detail.actor.label} ${detail.resource.label} ${detail.tenant.label}`).not.toMatch(/t_seakoi|employee-api|creation_attempt|l6-shape/);
+    // …and the technical lines keep the whole values for the disclosure
+    expect(detail.technical.join(" ")).toContain("租户标识：t_seakoi_pilot");
+    expect(detail.technical.join(" ")).toContain("来源系统：employee");
+    expect(detail.technical.join(" ")).toContain("失败代码：employee.invalid_initial_version");
+    expect(detail.integrity.present).toBe(false); // the answer carries no hashes
+    expect(detail.code).toBe("employee.invalid_initial_version");
+  });
+
+  it("reads the {ok, complete, scanned} verify answer the route actually sends", () => {
+    const v = verifyResultFrom({
+      ok: true,
+      complete: true,
+      scanned: 43,
+      anchorCheckpointId: "cp_t_seakoi_pilot_2026111300",
+      chainHeadHash: "ah_031a89f92e532758fbb4c60529fd5081",
+    })!;
+    expect(v.stated).toBe(true);
+    expect(v.verdict).toBe("intact");
+    expect(v.scanned).toBe(43);
+    // the answer says nothing about a total or a broken count: they STAY missing
+    expect(v.total).toBeNull();
+    expect(v.broken).toBeNull();
+    expect(v.denominator).toBeNull();
+    expect(v.windowFrom).toBeNull();
+    // the chain head and anchor are engineering values: disclosure-only
+    expect(v.technical.join(" ")).toContain("chainHeadHash：ah_031a89f92e532758fbb4c60529fd5081");
+    expect(v.technical.join(" ")).toContain("anchorCheckpointId：cp_t_seakoi_pilot_2026111300");
   });
 });
