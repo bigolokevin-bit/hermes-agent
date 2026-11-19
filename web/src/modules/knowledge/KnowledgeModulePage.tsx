@@ -27,8 +27,12 @@ import {
   KNOWLEDGE_GAP,
   RECORDS_URL,
   SESSIONS_URL,
+  DOCUMENTS_UNWIRED_HEAD,
+  DOCUMENTS_UNWIRED_HUMAN,
   SPACES_UNWIRED_HEAD,
   SPACES_UNWIRED_HUMAN,
+  TASKS_UNWIRED_HEAD,
+  TASKS_UNWIRED_HUMAN,
   SPACES_URL,
   SURFACE_SOURCE,
   TAB_LABEL,
@@ -623,6 +627,8 @@ function IngestSurface({ nonce }: { nonce: string }): ReactNode {
       source="documents"
       state={surface.state}
       onRetry={surface.retry}
+      unwiredHead={DOCUMENTS_UNWIRED_HEAD}
+      unwiredHuman={DOCUMENTS_UNWIRED_HUMAN}
       empty={() => <p>当前没有读到文档登记。接口已响应，但列表为空；不显示 0 篇。</p>}
       render={(value) => <RowTable rows={value.rows} testid="knw5-ingest-table" />}
     />
@@ -636,9 +642,9 @@ function TaskTable({ rows }: { rows: IngestTaskRow[] }): ReactNode {
       <table className="knw5-table" data-testid="knw5-ingest-tasks-table">
         <thead>
           <tr>
-            <th scope="col">名称</th>
+            <th scope="col">来源名称</th>
             <th scope="col">类型</th>
-            <th scope="col">最近一次</th>
+            <th scope="col">最近同步</th>
             <th scope="col">状态</th>
             <th scope="col">条目数</th>
           </tr>
@@ -646,7 +652,7 @@ function TaskTable({ rows }: { rows: IngestTaskRow[] }): ReactNode {
         <tbody>
           {rows.map((row, index) => (
             <tr key={row.id || `task-${index}`} data-testid="knw5-ingest-tasks-row" title={row.id || undefined}>
-              <td data-label="名称">
+              <td data-label="来源名称">
                 <span className="knw5-name">{row.name}</span>
                 <Reason>{row.nameReason}</Reason>
               </td>
@@ -654,7 +660,7 @@ function TaskTable({ rows }: { rows: IngestTaskRow[] }): ReactNode {
                 <span title={row.kindRaw ?? undefined}>{row.kind}</span>
                 <Reason>{row.kindReason}</Reason>
               </td>
-              <td data-label="最近一次">
+              <td data-label="最近同步">
                 <span data-testid="knw5-ingest-tasks-time">
                   {row.timeLabel ? `${row.timeLabel}：${row.at}` : row.at}
                 </span>
@@ -708,6 +714,8 @@ function IngestTasksSurface({ nonce }: { nonce: string }): ReactNode {
       source="tasks"
       state={surface.state}
       onRetry={surface.retry}
+      unwiredHead={TASKS_UNWIRED_HEAD}
+      unwiredHuman={TASKS_UNWIRED_HUMAN}
       empty={() => <p>接口已响应，但没有给出接入中的数据源；这不等于一个源都没有，也不显示 0 个。</p>}
       render={(value) => <TaskTable rows={value.rows} />}
     />

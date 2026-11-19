@@ -43,6 +43,19 @@ export const SPACES_UNWIRED_HEAD = "知识空间读口未接入";
 export const SPACES_UNWIRED_HUMAN =
   "知识空间的列表接口尚未接入本控制台，或当前账号没有查看它的权限。接入或开通后，这里会自动列出真实空间、各自的文档数与最近同步时间；在此之前不展示样例，也不写「0 个」。";
 
+/**
+ * The ingest tab reads two things, and the BFF answers them with two different
+ * fail-closed codes — so each body names the read that is actually missing.
+ * A 403 and a 404 for the same read still draw the same words.
+ */
+export const TASKS_UNWIRED_HEAD = "数据源接入读口未接入";
+export const TASKS_UNWIRED_HUMAN =
+  "数据源的接入状态接口尚未接入本控制台，或当前账号没有查看它的权限。接入或开通后，这里会按源逐行列出最近同步、同步状态与条目数；在此之前不展示样例，也不写「0 个源」。";
+
+export const DOCUMENTS_UNWIRED_HEAD = "文档登记读口未接入";
+export const DOCUMENTS_UNWIRED_HUMAN =
+  "文档登记接口尚未接入本控制台，或当前账号没有查看它的权限。接入或开通后，这里会列出真实登记的文档与其数量、更新时间和状态；在此之前不展示样例，也不写「0 篇」。";
+
 export type KnowledgeTab = "spaces" | "ingest" | "retrieval" | "evidence";
 
 export const TAB_LABEL: Record<KnowledgeTab, string> = {
@@ -867,7 +880,7 @@ function taskOf(row: Rec): IngestTaskRow {
   );
   const failed = pickNumber(row.failed, row.failedCount, row.failed_count, row.errorCount, row.error_count);
   const bytes = pickNumber(row.sizeBytes, row.size_bytes, row.storageBytes, row.storage_bytes, row.bytes);
-  const moment = momentOf(row);
+  const moment = syncMomentOf(row);
   const at = beijing(moment.atRaw);
   // 条目数只认真正表示“多少条”的字段；真给了 0 就写 0，没给就写「—」并说明缺什么。
   let count: string;
@@ -956,8 +969,11 @@ function spaceStatusLabel(raw: string | null): string {
   return "待核实";
 }
 
-/** The moment a space last moved, preferring a real sync stamp over a row update. */
-function spaceMomentOf(row: Rec): { atRaw: string | null; timeLabel: string | null } {
+/**
+ * The moment a row last moved, preferring a real sync/index stamp over a plain row
+ * update, and naming which one it was — a row update is never shown as a sync.
+ */
+function syncMomentOf(row: Rec): { atRaw: string | null; timeLabel: string | null } {
   const sync = pickString(
     row.lastSyncAt,
     row.last_sync_at,
@@ -993,7 +1009,7 @@ function spaceOf(row: Rec): SpaceRow {
   const statusRaw = pickString(row.status, row.state, row.indexStatus, row.index_status, row.syncStatus, row.sync_status);
   const status = spaceStatusLabel(statusRaw);
   const failure = failureOf(row, status);
-  const moment = spaceMomentOf(row);
+  const moment = syncMomentOf(row);
   const at = beijing(moment.atRaw);
   const extras: string[] = [];
   if (docs === null && chunks !== null) extras.push(`分块 ${chunks.toLocaleString("zh-CN")} 段`);
