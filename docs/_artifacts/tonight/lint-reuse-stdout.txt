@@ -1,0 +1,91 @@
+violations=0
+exempted=1
+  exempted chat / 对话 ChatPage (pending T40): 复用已落地（web/src/modules/chat/ChatModulePage.tsx:59 lazy import @/pages/ChatPage），缺的是 reuse 声明本身；chat/ 目录没有 manifest.ts，只能靠标记声明，补声明属 web/src 写域，非 D 车道可改。落地（补上声明）后从本清单删除。
+{
+  "script": "lint-reuse",
+  "root": "web/src/modules",
+  "scanned": 139,
+  "reuseMarkers": 31,
+  "chatHostFiles": [
+    {
+      "file": "web/src/modules/chat/ChatModulePage.tsx",
+      "via": "<ChatHost> mount"
+    }
+  ],
+  "modulesWithManifest": [
+    "approvals",
+    "capabilities",
+    "employees",
+    "identity",
+    "knowledge",
+    "overview",
+    "system",
+    "work"
+  ],
+  "reuseKindModules": [
+    "approvals",
+    "capabilities",
+    "employees",
+    "identity",
+    "knowledge",
+    "overview",
+    "system",
+    "work"
+  ],
+  "exemptionFile": "present",
+  "exemptionCount": 1,
+  "exempted": [
+    {
+      "surface": "对话 ChatPage",
+      "module": "chat",
+      "pending": "T40",
+      "reason": "复用已落地（web/src/modules/chat/ChatModulePage.tsx:59 lazy import @/pages/ChatPage），缺的是 reuse 声明本身；chat/ 目录没有 manifest.ts，只能靠标记声明，补声明属 web/src 写域，非 D 车道可改。落地（补上声明）后从本清单删除。",
+      "evidence": "web/src/modules/chat/ChatModulePage.tsx:59；App.tsx:121 + App.tsx:245-262 renderConsoleChatHost 单宿主；T02-ENDPOINT-RECONCILIATION.md L33 记 G8=T40 chat 宿主"
+    }
+  ],
+  "surfaces": [
+    {
+      "surface": "对话 ChatPage",
+      "owner": "chat",
+      "declaredWhere": "web/src/modules/chat/（该目录无 manifest.ts，只能靠 reuse: 标记声明）",
+      "declared": false,
+      "codeMentions": 3,
+      "via": null
+    },
+    {
+      "surface": "运行详情 RunDetailPage",
+      "owner": "work",
+      "declaredWhere": "web/src/modules/work/manifest.ts（row 6 runs tab）",
+      "declared": true,
+      "codeMentions": 3,
+      "via": "marker web/src/modules/work/manifest.ts:32"
+    },
+    {
+      "surface": "任务看板 TasksListPage",
+      "owner": "work",
+      "declaredWhere": "web/src/modules/work/manifest.ts（row 5 board tab）",
+      "declared": true,
+      "codeMentions": 3,
+      "via": "marker web/src/modules/work/manifest.ts:21"
+    },
+    {
+      "surface": "schema 表单 AutoField",
+      "owner": "system",
+      "declaredWhere": "web/src/modules/system/manifest.ts",
+      "declared": true,
+      "codeMentions": 0,
+      "via": "manifest kind:'reuse' (system)"
+    },
+    {
+      "surface": "能力矩阵 /v1/matrix/employees 数据口",
+      "owner": "employees",
+      "declaredWhere": "web/src/modules/employees/manifest.ts（matrix tab）",
+      "declared": true,
+      "codeMentions": 1,
+      "via": "marker web/src/modules/employee-detail/EmployeeDetailModulePage.test.tsx:144"
+    }
+  ],
+  "violations": [],
+  "count": 0,
+  "ok": true
+}

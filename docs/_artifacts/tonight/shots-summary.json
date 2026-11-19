@@ -9,7 +9,7 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 246,
+    "textLen": 494,
     "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 今日运行 运行记录 今日成本 成本账本 发布 ",
     "hasMainEl": true,
     "ok": true
@@ -21,7 +21,7 @@
     {
       "route": "#/access",
       "viewport": "1440",
-      "chars": 138,
+      "chars": 194,
       "hasMainEl": true
     },
     {
@@ -147,13 +147,13 @@
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "375",
-      "chars": 326,
+      "chars": 128,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=models",
       "viewport": "1440",
-      "chars": 104,
+      "chars": 391,
       "hasMainEl": true
     },
     {
@@ -591,17 +591,17 @@
     {
       "route": "#/work",
       "viewport": "375",
-      "chars": 1782,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/work?tab=board&view=cron",
-      "viewport": "1440",
       "chars": 145,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=board&view=cron",
+      "viewport": "1440",
+      "chars": 1782,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/work?tab=board&view=cron",
       "viewport": "375",
       "chars": 1782,
       "hasMainEl": true
@@ -621,13 +621,13 @@
     {
       "route": "#/work?tab=runs",
       "viewport": "1440",
-      "chars": 1006,
+      "chars": 1336,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=runs",
       "viewport": "375",
-      "chars": 982,
+      "chars": 1308,
       "hasMainEl": true
     }
   ],
@@ -642,11 +642,11 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "b642c64d",
+  "headHash": "084cd645",
   "exitCode": 0,
-  "entry": "assets/index-DW4fkEEp.js",
-  "entrySha256": "bd6ca30c1e88e2f778e514b5b4301d366dd180b9afcf9b67204f946d03f699bd",
+  "entry": "index-C_LYrwy0.js",
+  "entrySha256": "d70fe09d8f467344680ca88f5e4c4f0e155f892355ac3761e17cb948abf99bf0",
   "entryBytes": 157324,
-  "servedEntryBefore": "assets/index-DW4fkEEp.js",
-  "servedEntryAfter": "assets/index-DW4fkEEp.js"
+  "servedEntryBefore": "index-C_LYrwy0.js",
+  "servedEntryAfter": "index-C_LYrwy0.js"
 }

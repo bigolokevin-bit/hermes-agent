@@ -283,10 +283,10 @@
       "source": "DETAIL_ZONES_EXTRA",
       "kind": "detail-zone",
       "verdict": "content-ok",
-      "mainChars": 133,
+      "mainChars": 49,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 3,
+      "consoleErrors": 1,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
       "headSample": "工作台 配置 任务 运行 证据 员工 · EMPLOYEE — 概览 能力与权限 审批 运行 审"
@@ -689,7 +689,7 @@
       "mainChars": 257,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 2,
+      "consoleErrors": 3,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
       "headSample": "运营 · 控制台 任务与运行 任务 运行 控制台 · 运行 运行 按时间看运行记录。这一面只读："
@@ -751,7 +751,7 @@
   "routesWithConsoleErrors": 51,
   "parseErrors": [],
   "ok": true,
-  "headHash": "b642c64d",
+  "headHash": "084cd645",
   "exitCode": 0,
   "counts": {
     "probed": 75,

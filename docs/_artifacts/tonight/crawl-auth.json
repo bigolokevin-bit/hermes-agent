@@ -244,13 +244,13 @@
       "source": "DETAIL_ZONES_EXTRA",
       "kind": "detail-zone",
       "verdict": "content-ok",
-      "mainChars": 49,
+      "mainChars": 177,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 0,
-      "consoleErrorEnv": null,
+      "consoleErrors": 1,
+      "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "工作台 配置 任务 运行 证据 员工 · EMPLOYEE — 概览 能力与权限 审批 运行 审"
+      "headSample": "工作台 配置 任务 运行 证据 QA2 契约验证 1794894768 · EMPLOYEE Q"
     },
     {
       "route": "#/employees/:employeeId?zone=evidence",
@@ -686,7 +686,7 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 1001,
+      "mainChars": 1331,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
@@ -695,13 +695,13 @@
       "headSample": "运营 · 控制台 任务与运行 任务 运行 控制台 · 运行 运行 按时间看运行记录。这一面只读："
     }
   ],
-  "distinctMainHeads": 27,
+  "distinctMainHeads": 26,
   "medianMainChars": 185,
   "contentEmpty": [],
   "contentEmptyCount": 0,
   "mode": "auth-attributed",
   "envAttribution": {
-    "auth-required-401": 22
+    "auth-required-401": 23
   },
   "probeErrors": [],
   "deniedEndpoints": [
@@ -734,10 +734,10 @@
     "redirects=24 vs 门定值 23（routes.ts 并发新增形态，归因非判红；门值更新归 L0/A）"
   ],
   "routesRenderedWithoutMainEl": 0,
-  "routesWithConsoleErrors": 22,
+  "routesWithConsoleErrors": 23,
   "parseErrors": [],
   "ok": true,
-  "headHash": "b642c64d",
+  "headHash": "084cd645",
   "exitCode": 0,
   "counts": {
     "probed": 75,

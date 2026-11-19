@@ -852,3 +852,9 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 52 轮遗留收尾：shots-anon 改跑法为 TMP 目录生成后整体搬入 tonight（清掉旧代次混入），104 M/?? 全部收编白名单。
 - BFF 8092 活体：pid 70001 lstart 18:47:23（8426f4b push 之后）server.py console_csrf=4 处 == main==工作树 porcelain 0，**8426f4b 已加载，无需重启**；回退一行（如需）：git -C bff-v4-serve revert --no-edit 8426f4b && launchctl kickstart -k gui/$(id -u)/cn.seakoi.console-bff。
 - 同窗 967（feishu start 501）收口另报：503 fail-closed+rid、302 腿 Content-Length:0、HMAC canonical/X-Signature 对齐 Bisheng，l7-ops lane/L7-t15=92f42f56；start9122/start8183 实测 302（APP_ID/SECRET 从 ~/.seakoi/feishu.env 0600 注入，plist 改 sh -c source，改后需 bootout+bootstrap——kickstart 不重读 plist）；真 code 联调 BLOCKED：Bisheng sso_sync.gateway_hmac_secret len=0（19301 fail-closed 实测），需 L0/用户拍板配置。
+
+## 五十四轮·账本重章 084cd645（entry C_LYrwy0）+ R22 同源写门修（2026-11-19 19:1x）
+
+- 代次：HEAD=084cd645（merge aud runs depth）=远端 tip；entry assets/index-C_LYrwy0.js 157324B sha256 d70fe09d…9bf0，磁盘==served 9122==served 8183（root 200）。
+- 九件全 exit=0 重章 084cd645（单文件单 JSON+exitCode+tmp/os.replace）：assert-ia-html/react ok {51,22,(23),1,8}；lint-fake ok violations=[]；lint-reuse ok violations=0 exempted=1；crawl-anon ok DL0/CE0/PE0 routesCE=51（匿名 401 环境归因）；crawl-auth ok DL0/CE0/PE0 routesCE=23（fresh opsadmin RSA token 重写 v4-auth-state 19:1x）；state-quad 20/20 ok=true；shots 102/102 failures=[] ceAuthority=login-state obs=0 三键全值；shots-anon auxiliary 102/102。
+- R22 腿③（l7 侧写域）：BFF cn.seakoi.console-bff plist 注入 CONSOLE_ALLOWED_ORIGINS="http://127.0.0.1:9122,http://localhost:9122,http://100.117.184.117:8183,http://100.117.184.117:8182"（旧值=空；plist 备份 .bak-191133；bootout+bootstrap 重启 70001→83970，kickstart 不重读 plist 已验证）。自测：认证 GET 下发 console_csrf（32ch，非 HttpOnly）；同源写 POST /api/employee-chat via 9122 与 via 8183 均 400 request.invalid_body（不再 403；门序 Origin→token→X-Console-Write→body 逐门推进）。回退：还原 plist 备份 + bootout/bootstrap。
