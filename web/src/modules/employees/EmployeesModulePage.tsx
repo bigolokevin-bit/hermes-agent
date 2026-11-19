@@ -262,7 +262,11 @@ export function EmployeesModulePage() {
         <div className="flex items-center gap-2">
           <Users className="h-5 w-5 text-white/70" />
           <h1 className="font-mondwest text-xl">数字员工</h1>
-          {state.phase === "ready" ? <span className="text-sm text-white/50">{state.items.length}</span> : null}
+          {state.phase === "ready" ? (
+            <span className="text-sm text-white/50" data-testid="emp-list-count" title="计数与列表同源：同一份服务端返回的行数">
+              {state.items.length}
+            </span>
+          ) : null}
         </div>
         <Button size="sm" outlined onClick={retry} data-testid="employees-refresh">
           <RefreshCw className="mr-2 h-4 w-4" />
@@ -341,6 +345,13 @@ export function EmployeesModulePage() {
         </CardContent>
       </Card>
 
+      {/* R53: the read port filters for real on keyword/lifecycleState
+          (measured: bare 200/3, keyword=QA2 200/1, lifecycleState=active
+          200/2; q/query/name are NOT whitelisted — all answer 200/3). */}
+      <p className="text-xs text-white/45" data-testid="emp-list-scope-note" title="白名单参数 keyword、lifecycleState 由服务端过滤；q/query/name 不被该读口接受（实测均返回全量），因此不存在本地过滤口径，也不会为搜索补发额外请求。">
+        关键字与在职态筛选走服务端真参数（命中数与本页计数同源）；不是「仅在当前已加载 N 人内搜索」的本地过滤。
+      </p>
+
       {state.phase === "loading" ? (
         <Card data-testid="employees-loading">
           <CardContent className="space-y-2 p-4">
@@ -388,10 +399,10 @@ export function EmployeesModulePage() {
       ) : null}
 
       {state.phase === "empty" ? (
-        <Card data-testid="employees-empty">
+        <Card data-testid="employees-empty" data-emp-list-empty="true">
           <CardContent className="flex flex-col items-center gap-3 p-8 text-center">
             <Inbox className="h-6 w-6 text-white/40" />
-            <p className="text-sm">{filtered ? "没有匹配的员工" : "还没有数字员工"}</p>
+            <p className="text-sm" data-testid="emp-list-empty-text">{filtered ? "没有匹配的员工" : "还没有数字员工"}</p>
             <p className="text-xs text-white/50">
               {filtered ? "换个关键词或放宽筛选条件后再试。" : "员工创建后会出现在这里。"}
             </p>
@@ -424,7 +435,7 @@ export function EmployeesModulePage() {
               <span>知识</span>
               <span>月度预算</span>
             </div>
-            <ul className="divide-y divide-white/5" data-testid="emp-l-list">
+            <ul className="divide-y divide-white/5" data-testid="emp-l-list" data-emp-list-rows="true">
               {state.items.map((row) => (
                 <li key={row.employeeId} data-testid={`employees-row-${row.employeeId}`}>
                   <span data-testid={`emp-l-row-${row.employeeId}`} className="contents">

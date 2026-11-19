@@ -805,3 +805,13 @@ L0 判 /runs/<id> 无路由=死链（routes.ts 只有 /runs）。禁碰 shell/Ap
 实现（EmployeeDetailModulePage.tsx）：①ZoneId/mapShellZone 加 "sessions"（chat 区 ed5-zone-chat-* 全不动=零破坏）；reload 加 sessions。②sessions leg=`/agent-api/api/console-sessions?employeeId=${enc}&limit=20` 条件挂载（zone 进入才取数）；复用 readSessions 并扩展 channel 多键（channel|source|platform|channelType）。③channelLabel 人话=飞书/企业微信/网页/控制台/接口；缺「—」+title「上游没有回传该会话的渠道信息。」；未知「待核实」+title 原值禁猜。④SessionsZone 四态内容面（ed9-sessions-loading/denied(403≡404 同体+可复制 rid+重试 Zone* 既有)/error/empty）+ready 四列表=会话短码（禁裸 cs_ 全值，完整 ref 进 title）｜渠道｜消息数（缺「—」+title）｜最近活动 beijing BJT 到分；行真 a[href]=/chat（App.tsx:299 全站唯一对话承载=既有可达落点，chatHosts=1 语义不破）；空集「该员工暂无可查会话。」；尾注只读+指路。⑤修 shortCode 剥前缀缺陷：补 cs|session（否则 cs_AAAA1111… 显示 CSAAAA11）。⑥三档横溢=形态学报（grid 全 minmax(0)+truncate+flex-wrap）；jsdom 不测三档。
 
 测试：新 describe 2 用例（恰 1 fetch 带 employeeId+limit=20、四列读数、href=/chat、缺值—+title、无裸 cs_、无 data-chat-host；空集双句）。定向 employee-detail 38 passed exit0；tsc 本域零红；assert-ia 两模式 exit0 51/22/1/8；全量 **132 files/1460 passed**（基线 1458+2）。ed1/ed5/ed7/ed8/edz/edx/apd6/apv5/apv6/apr5 零破（既有用例全绿为证）。9122 禁重建：活体页面读数待并入后代次；API 面四组实证已贴。回执代次引用统一 6a02ed58。
+
+## R53 /employees 列表搜索与筛选（2026-11-20，lane/console-appr）
+
+基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @31e4292b（代码代次 6a02ed58），toplevel ✓ porc=0。冲突预警处理：modules/employees/EmployeesModulePage.tsx 已有 6e7f16ac 系「服务端 keyword/lifecycleState 真过滤+URL ?q=&lifecycle=」完整交付（测试 8 用例+真 href+空集出口）⇒本单=最小增量补 emp-list-* 锚点与语义注脚，不推翻重写、不新建本地过滤。
+
+活体实测（ego 六组，9122==6a02ed58 仅访问）：/api/employees?limit=50 bare→200 n=3；q=QA2→200 n=3、query=QA2→200 n=3、name=QA2→200 n=3（三键均非白名单=丢参返全量）；keyword=QA2→200 n=1（真过滤）；lifecycleState=active→200 n=2（真过滤）。⇒工单「不吃则本地过滤+仅已加载 N 人内搜索」分支不触发：现实现本就走白名单键服务端过滤，零额外请求；scope note 写明真实语义并把三键实测均返全量的事实嵌进 title。
+
+增量（EmployeesModulePage.tsx）：①header 计数 span→emp-list-count+title「计数与列表同源：同一份服务端返回的行数」。②筛选卡后 emp-list-scope-note（服务端真参数说明，禁本地假过滤语义）。③空集卡 data-emp-list-empty 别名+emp-list-empty-text（「没有匹配的员工」文案既有）；清空出口 employees-clear 既有。④ul data-emp-list-rows。emp-l-*/employees-* 现名零改动；其余各族 testid 零破（定向全绿为证）。
+
+测试：新用例断言 scope-note+title 三键事实、emp-list-count=2 同源、setter 输入后 /api/employees 恰 1 次带 keyword=（请求计数实测锁，无本地额外请求）、空集双锚+清空回空。定向 employees 2 files/13 passed exit0；assert-ia 两模式 exit0 51/22/1/8；tsc 本域零红；全量 **132 files/1461 passed**（基线 1460+1）。三档横溢=形态学报（既有 flex-wrap+min-w-0 结构未改布局语义）；9122 活体页面读数待下代次。代次引用统一 6a02ed58。
