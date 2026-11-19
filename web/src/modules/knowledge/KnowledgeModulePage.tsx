@@ -27,6 +27,8 @@ import {
   KNOWLEDGE_GAP,
   RECORDS_URL,
   SESSIONS_URL,
+  SPACES_UNWIRED_HEAD,
+  SPACES_UNWIRED_HUMAN,
   SPACES_URL,
   SURFACE_SOURCE,
   TAB_LABEL,
@@ -40,6 +42,7 @@ import {
   readRows,
   readSearch,
   readSessions,
+  readSpaces,
   readTasks,
   searchUrl,
   sessionCitations,
@@ -49,6 +52,7 @@ import {
   type KnowledgeTab,
   type RetrievalRow,
   type SessionSummary,
+  type SpaceRow,
   type SurfaceKey,
   type SurfaceValue,
 } from "./knowledge";
@@ -188,10 +192,22 @@ interface SurfaceProps<T> {
   onRetry: () => void;
   empty: (value: SurfaceValue<T>) => ReactNode;
   render: (value: SurfaceValue<T>) => ReactNode;
+  /** 未接入正文的说法；每个面点名自己的读口，403 与 404 仍共用同一份。 */
+  unwiredHead?: string;
+  unwiredHuman?: string;
 }
 
 /** The four states, once, for every surface on the page. */
-function Surface<T>({ testid, source, state, onRetry, empty, render }: SurfaceProps<T>): ReactNode {
+function Surface<T>({
+  testid,
+  source,
+  state,
+  onRetry,
+  empty,
+  render,
+  unwiredHead = "未接入",
+  unwiredHuman = UNWIRED_HUMAN,
+}: SurfaceProps<T>): ReactNode {
   const value = state.kind === "ready" ? state.value : null;
   const stamp = value?.stamp ?? null;
   // A read that DID give a collection time says nothing else about time: the reason
@@ -222,8 +238,8 @@ function Surface<T>({ testid, source, state, onRetry, empty, render }: SurfacePr
 
       {state.kind === "unwired" ? (
         <div className="knw5-unwired" data-testid={`${testid}-unwired`} role="status" title={KNOWLEDGE_GAP}>
-          <b>未接入</b>
-          <span className="knw5-wrap">{UNWIRED_HUMAN}</span>
+          <b>{unwiredHead}</b>
+          <span className="knw5-wrap">{unwiredHuman}</span>
           <RequestId id={state.requestId} testid={`${testid}-request-id`} />
           <span className="knw5-actions">
             <Button size="sm" outlined onClick={onRetry} data-testid={`${testid}-retry`}>
@@ -511,9 +527,75 @@ function RecordsTable({ rows }: { rows: RetrievalRow[] }): ReactNode {
   );
 }
 
+/** 一行一个知识空间：名称 / 文档数 / 最近同步 / 状态。 */
+function SpaceTable({ rows }: { rows: SpaceRow[] }): ReactNode {
+  return (
+    <div className="knw5-scroll">
+      <table className="knw5-table" data-testid="knw5-spaces-table">
+        <thead>
+          <tr>
+            <th scope="col">空间名称</th>
+            <th scope="col">文档数</th>
+            <th scope="col">最近同步</th>
+            <th scope="col">状态</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, index) => (
+            <tr key={row.id || `space-${index}`} data-testid="knw5-spaces-row" title={row.id || undefined}>
+              <td data-label="空间名称">
+                <span className="knw5-name">{row.name}</span>
+                <Reason>{row.nameReason}</Reason>
+                {row.kind ? (
+                  <span className="knw5-sub" title={row.kindRaw ?? undefined}>
+                    {row.kind}
+                  </span>
+                ) : null}
+              </td>
+              <td data-label="文档数">
+                <span data-testid="knw5-spaces-docs">{row.docs}</span>
+                {row.docsExtra ? <span className="knw5-sub">{row.docsExtra}</span> : null}
+                <Reason>{row.docsReason}</Reason>
+              </td>
+              <td data-label="最近同步">
+                <span data-testid="knw5-spaces-time">{row.timeLabel ? `${row.timeLabel}：${row.at}` : row.at}</span>
+                <Reason>{row.atReason}</Reason>
+              </td>
+              <td data-label="状态">
+                <Badge
+                  tone={
+                    row.status === "已同步" || row.status === "可用"
+                      ? "success"
+                      : row.status === "失败" || row.status === "部分可用"
+                        ? "destructive"
+                        : "outline"
+                  }
+                >
+                  {row.status}
+                </Badge>
+                <Reason>{row.statusReason}</Reason>
+                {row.failure ? (
+                  <span className="knw5-sub" data-testid="knw5-spaces-failure" title={row.failureRaw ?? undefined}>
+                    {row.failure}
+                  </span>
+                ) : null}
+                {row.failure === null && row.failureRaw ? (
+                  <span className="knw5-sub" data-testid="knw5-spaces-failure" title={row.failureRaw}>
+                    上游记的原因偏技术，这里不原样上屏；悬停可看原文。
+                  </span>
+                ) : null}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function SpacesSurface({ nonce }: { nonce: string }): ReactNode {
-  const surface = useSurface<KnowledgeRow>(
-    () => fetchJsonStrict(SPACES_URL).then((body) => readRows(body, "spaces")),
+  const surface = useSurface<SpaceRow>(
+    () => fetchJsonStrict(SPACES_URL).then(readSpaces),
     `spaces|${nonce}`,
   );
   return (
@@ -522,8 +604,10 @@ function SpacesSurface({ nonce }: { nonce: string }): ReactNode {
       source="spaces"
       state={surface.state}
       onRetry={surface.retry}
-      empty={() => <p>当前没有读到知识空间。接口已响应，但列表为空；这不等于「没有空间」。</p>}
-      render={(value) => <RowTable rows={value.rows} testid="knw5-spaces-table" />}
+      unwiredHead={SPACES_UNWIRED_HEAD}
+      unwiredHuman={SPACES_UNWIRED_HUMAN}
+      empty={() => <p>当前没有读到知识空间。接口已响应，但列表为空；这不等于「没有空间」，也不写 0 个。</p>}
+      render={(value) => <SpaceTable rows={value.rows} />}
     />
   );
 }

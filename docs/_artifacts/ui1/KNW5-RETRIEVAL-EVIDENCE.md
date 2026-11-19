@@ -299,3 +299,102 @@ $ npx vite build --outDir /private/tmp/knw7-dist --emptyOutDir
 
 边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App / shell / routes / registry /
 package / lock / web/scripts / ops；未触碰 9122；无 force、无 amend、无 `--no-verify`、无 `git add -A`。
+
+---
+
+# KNW5 追加：知识空间面按空间成行（2026-11-20 BJT）
+
+基线：porcelain 为空且 `git merge-base --is-ancestor HEAD 9fedd46f` 为真 → `git reset --hard 9fedd46f`
+（快进保留历史，上一轮 `61ebae8d` 已在目标内；来路未改动 `modules/knowledge`）。
+IA 计数复核（`node scripts/assert-ia.mjs --source=react`，只读运行）：**routes=51 / tabs=22 /
+chatHosts=1 / modules=8 / badCode=[]，ok=true，headHash=9fedd46f** — 本轮未改 manifest 数量。
+
+## 一、探针（cookie 只在 curl 命令内拼 Header，值零回显；9122 只读、未重启、未重建）
+
+```text
+404  knowledge.not_wired     /agent-api/api/knowledge/spaces                 rid 83f906415a9a  rows=0
+404  knowledge.not_wired     /agent-api/api/knowledge/spaces?limit=20        rid 9297aecac6e6  rows=0
+404  knowledge.not_wired     /agent-api/api/knowledge/spaces?limit=1         rid 9104d1f2ac6f  rows=0
+404  knowledge.not_wired     /agent-api/api/knowledge/sources?limit=20       rid afd9b4e832a6  rows=0
+404  knowledge.not_wired     /agent-api/api/knowledge/citations?limit=20     rid bceb6c8fab8b  rows=0
+404  console.unknown_route   /agent-api/api/knowledge/search?limit=12        rid b54645011f0c  rows=0
+404  console.unknown_route   /agent-api/api/knowledge                        rid 1cbe411ed742  rows=0
+404  console.unknown_route   /agent-api/api/documents?limit=50               rid 36deda494d60  rows=0
+```
+
+空间读口三条查询形态都是 BFF 点名的 fail-closed 404（`knowledge.not_wired`，带 rid），
+所以线上按第 3 条分支呈现：一份「知识空间读口未接入」正文 + 人话原因 + GAP-03 只进 `title`
++ 可复制请求编号 + 重试 + 申请入口；不编空间、不写「0 个」。页面读口同时改为
+`/api/knowledge/spaces?limit=20`（与其它列表面一致，显式限量）。
+
+## 二、一行一个空间（wired 模式真实 DOM 文本，375）
+
+```text
+列头：空间名称 / 文档数 / 最近同步 / 状态        data-state=ready data-len=5  sw=375 vw=375
+row1 空间名称=人事制度知识空间（含 2026 修订版与历史归档）团队空间 | 文档数=1,284 篇
+     最近同步=最近同步：2026-11-19 14:00 | 状态=已同步
+row2 空间名称=财务口径 个人空间 | 文档数=0 篇 | 最近同步=最近更新：2026-11-19 04:30 | 状态=可用
+row3 空间名称=全租户公共层 租户空间 | 文档数=— 分块 320 段 上游没有给出这个空间有多少文档
+     最近同步=— 上游没有给出时间 | 状态=同步中
+row4 空间名称=工单镜像空间 | 文档数=77 篇 | 最近同步=— 上游没有给出时间
+     状态=失败 上游记的原因偏技术，这里不原样上屏；悬停可看原文。（title=ECONNREFUSED …）
+row5 空间名称=— 上游没有给出这个空间叫什么 | 文档数=— 上游没有给出这个空间有多少文档
+     最近同步=— 上游没有给出时间 | 状态=待核实 上游没有给出空间状态
+```
+
+口径：
+
+- **文档数**只认真正表示“多少篇”的字段；上游真给 0 就写「0 篇」，没给就「—」+原因，
+  只有分块或大小时另起副行（「分块 N 段」「约 X MB」），不冒充文档数。
+- **最近同步**写清它是哪一刻：真给同步/索引时间才写「最近同步」，否则据实写
+  「最近处理 / 最近更新 / 登记时间」；一律北京时区到分。
+- **状态**只出 已同步 / 同步中 / 待同步 / 失败 / 可用 / 部分可用 / 已停用；
+  认不出来或没给一律「待核实」+原因，不猜一个好听词。
+- 失败带原因：人话原样上屏；技术性原文（连接被拒、IP:端口、重试字样）不进屏面，
+  改说可操作说明，原文留在 `title`。
+- `spaceId`、`documentCount`、英文状态词、`chunkCount` 等原始值一律不上屏，只在 `title`。
+
+## 三、门禁复核（Chromium 无头，harness 在 /tmp 已删；today / wired / empty / denied）
+
+```text
+四 tab（含 compat 写法）5/5 命中：?tab=spaces / ?tab=scope / ingest / retrieval / citations→evidence
+模块内 tab 选中态：knw5-tab-spaces=true 其余 false；刷新后仍 knw5-tab-spaces；后退回到 knw5-tab-ingest
+today  ：state=unwired len=0，head=知识空间读口未接入，title=GAP-03，rid 可复制、重试、申请入口都在
+denied ：403 的 head + 原因与 404 逐字一致（只有请求编号不同），title 同为 GAP-03
+empty  ：200 空列表 → state=ready len=0，正文「接口已响应，但列表为空；这不等于「没有空间」，也不写 0 个」
+写入口：spaces/ingest/citations 面 writeEntries=0；检索面的输入框是读侧关键词（不属于写入）
+[data-fixture] 节点：四种模式 × 1440/1280/375 全为 0
+溢出：docSW==vw==bodySW（1440/1280/375），页容器 SW==CW，OVERFLOW 元素 0
+屏面泄漏：GAP-03 / 403 / 404 / 500 / 503 / 路由 / unknown_route / not_wired /
+         spaceId / documentCount / chunkCount / syncStatus / lastError / ECONNREFUSED /
+         indexed / indexing / 0 个空间  —— 全部 false
+页面报错：none
+```
+
+## 四、验证尾行（本轮）
+
+```text
+$ npx vitest run src/modules/knowledge
+ Test Files  2 passed (2)
+      Tests  28 passed (28)
+
+$ npx vitest run
+ Test Files  127 passed (127)
+      Tests  1303 passed (1303)
+
+$ npx eslint src/modules/knowledge
+（无输出，exit 0）
+
+$ npx tsc -b . --noEmit | grep modules/knowledge
+（无输出，本模块 0 错）
+
+$ npx vite build --outDir /private/tmp/knw8-dist --emptyOutDir
+✓ built in 3.77s
+```
+
+`pnpm build` 的全项目 typecheck 仍停在两处非本域文件（`src/pages/LoginPage.test.tsx:131,149`、
+`src/modules/approvals/api.test.ts:118,119`），按指示未追、未改。
+
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+manifest 数量 / package / lock / web/scripts / ops；未重启或重建 9122；无 force、无 amend、
+无 `--no-verify`、无 `git add -A`。
