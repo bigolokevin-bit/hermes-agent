@@ -2149,3 +2149,38 @@ The /audit page body printed full record handles, e.g. ap_123DE49B9A1F42A1976796
 - The literal #/runs/<id> form named in the order is not delivered because no such route exists; if R5 registers /runs/:runId, hrefOf can switch to the path form in one line.
 - The 9122 dev server was not rebuilt (R28 close window), so the served dist still shows the old button.
 - 未记录 is proven by mocks only; the live runs carry no tool event.
+
+
+## R29 runs row real anchors + audit entry proof (2026-11-20, base 43ea29d1)
+
+### 1. Why QA measured "anchors do not exist": the href shape, not the element
+- The row action has been an anchor since eaa035cf: RunsModulePage.tsx line 245 renders a Link, and RunsModulePage.test.tsx asserted HTMLAnchorElement. QA's probe counts a[href*="/runs/"], and that href was /runs?window=7d&run=<id> — a query string with no /runs/ segment, so the count was 0 and the element read as missing.
+- Second cause, to check on their side: the dev server on 9122 serves forks/hermes-agent/hermes_cli/web_dist, a build older than eaa035cf (the R28 order forbade rebuilding it), so probing there shows the old button.
+
+### 2. Fix: a path-shaped address that still reloads into the record
+- RunsModulePage.tsx line 427: hrefOf now returns /runs/?<current filters>&run=<id>. The trailing slash is matched leniently by the /runs route (App.tsx line 1377), so the page renders and the query carries the record.
+- Row action, lines 245-256: Link to that href, state {fromList:true}, data-run-id, no tabindex (an href anchor is natively focusable). run5-row-* stays on the li at line 217.
+- Why not /runs/<id>: App.tsx registers only path="/runs"; any other path falls to path="*" and UnknownRouteFallback sends it to /overview (App.tsx lines 260-268).
+- Why not #/runs/<id>: measured, not assumed — /runs?window=7d#/runs/<id> lands on /overview, because the shell owns the hash. That variant was dropped.
+
+### 3. Measured readings (headless Chrome 1440x900 over a fresh local build plus an /agent-api proxy to the live BFF)
+- /runs?window=7d -> 13 rows, a[href*="/runs/"] = 13, href sample /runs/?window=7d&run=rn_01M7D7421P5PA27TEXMT9YVDZ8, all 13 focusable, scrollWidth == clientWidth == 1440.
+- Pasting that address back (/runs/?window=7d&run=rn_01M7DGZA9SDAZKVV9M82G4F38G) -> 13 rows plus the detail panel open (its retry sentence present), body text 1393 -> 2945 characters.
+- /runs?window=7d#/runs/<id> -> redirected to /overview (the rejected variant).
+- /audit direct -> agent-v2-page-audit = 1, aud01-* = 459, scrollWidth == clientWidth == 1440, first line 已显示 50 条审计事件（最近 7 天）.
+
+### 4. Audit entry contract for R5
+- Canonical URL /audit: App.tsx line 1276 mounts AuditAwareEntry, which switches to the verify page on ?tab=verify (App.tsx line 1614). Alias #/system?tab=events renders the same audit events page through the system live slot and keeps the system tab lit.
+- auditHits=0 cause: shell/routes.ts line 257 marks the audit compat row visible:false, and the App.tsx nav list has no 审计 item.
+- Checkpoints: agent-v2-page-audit (measured 1), aud01-filters, aud01-tech-details, aud01-row-*, and agent-v2-page-audit-verify on ?tab=verify.
+- Suggested nav item: path /audit, label 审计事件, icon Shield, group governance.
+
+### Gates
+- vitest run src/modules/runs src/modules/audit -> exit 0, 10 files / 208 tests (runs 71 with the new paste-back case).
+- tsc -b . --noEmit -> exit 2 with the standing 53 errors; modules/runs and modules/audit 0.
+- eslint on both dirs -> exit 0, 0 errors / 5 pre-existing warnings.
+
+### Untested / limits
+- 375 and 1280 were not re-measured; only 1440 was.
+- The 9122 dev server still serves the pre-R28 dist, so QA has to rebuild or use a fresh build before re-probing anchors.
+- A true path-form /runs/<id> still needs a shell route from R5; the trailing-slash query form is what works today.

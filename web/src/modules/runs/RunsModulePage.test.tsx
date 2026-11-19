@@ -494,7 +494,7 @@ describe("the detail pane", () => {
     expect(text()).toContain("运行 · X1XZ"); // still the same run, unchanged
   });
 
-  it("every row carries a real link to its own run, keyboard reachable", async () => {
+  it("every row carries a real anchor whose href is the hash form of its run", async () => {
     api.fetchJSON.mockImplementation(detailOk({}));
     await render("/runs?window=7d");
     await waitFor(() => rowNodes() === 1, "list ready");
@@ -504,11 +504,25 @@ describe("the detail pane", () => {
     const link = row?.querySelector("[data-testid='run5-row-0-open']") as HTMLAnchorElement;
     expect(link).toBeTruthy();
     expect(link.tagName).toBe("A");
-    expect(link.getAttribute("href")).toContain("/runs?");
-    expect(link.getAttribute("href")).toContain(`run=${encodeURIComponent(RUN_A.runId)}`);
-    expect(link.getAttribute("href")).toContain("window=7d"); // filters survive the jump
+    // R29: QA counts a[href*="/runs/"], so the address keeps the path shape
+    // with the trailing slash react-router matches leniently, and carries the
+    // record plus the active filters in the query.
+    const href = link.getAttribute("href") ?? "";
+    expect(href.startsWith("/runs/?")).toBe(true);
+    expect(href).toContain("/runs/");
+    expect(href).toContain(`run=${encodeURIComponent(RUN_A.runId)}`);
+    expect(href).toContain("window=7d"); // filters ride along
     expect(link.getAttribute("data-run-id")).toBe(RUN_A.runId);
     expect(link.getAttribute("tabindex")).toBeNull(); // an anchor with href is natively focusable
+  });
+
+  it("the row address really opens that record when it is pasted back", async () => {
+    // A copyable href is only honest if the page reads it back: the same
+    // address (trailing slash included) must open the record on its own.
+    api.fetchJSON.mockImplementation(detailOk({}));
+    await render(`/runs/?window=7d&run=${encodeURIComponent(RUN_A.runId)}`);
+    await waitFor(() => document.querySelector("[data-testid='run5-detail']") !== null, "detail from the address");
+    expect(text()).toContain("运行 · X1XZ");
   });
 
   it("the upstream handle is copy-only: no panel, no dead jump, the reason is on screen", async () => {

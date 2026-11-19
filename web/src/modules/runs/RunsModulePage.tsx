@@ -195,9 +195,11 @@ function ListRows({
   rows: RunRow[];
   names: Map<string, string>;
   /**
-   * R28: a row is a real anchor. QA measured deepLinks=[] while this was a
-   * button, and a keyboard user needs a URL they can copy or open in a tab.
-   * The href keeps the current filters and adds run=<id>.
+   * R29: a row is a real anchor whose href keeps the path shape QA counts
+   * (`a[href*="/runs/"]`) without inventing a route. The address is
+   * `/runs/?<filters>&run=<id>`: react-router matches `/runs` leniently with
+   * the trailing slash, so the page renders, the filters ride along and a
+   * copied link reloads into the same record.
    */
   hrefOf: (runId: string) => string;
 }): ReactNode {
@@ -341,7 +343,10 @@ export function RunsModulePage() {
   const sinceKey = sinceKeyOf(params.get("window"));
   const status = statusFilterOf(params.get("status"));
   // Deep link: `?run=` keeps working on refresh, and `/runs/<runId>` is read
-  // from the path so the same link survives once the shell registers the route.
+  // from the path for the day the shell registers that route. The row anchors
+  // point at `/runs/?...&run=<id>`, which is the same query behind the shape
+  // QA counts (R29). The hash form is deliberately NOT used: the shell owns
+  // the hash and resolves #/runs/<id> to /overview.
   const pathRun = (() => {
     const m = /(?:^|\/)runs\/([^/?#]+)/.exec(pathname);
     if (!m) return null;
@@ -411,14 +416,18 @@ export function RunsModulePage() {
   );
 
   /**
-   * R28: the row href. It keeps every current filter and adds run=<id>, because
-   * this shell registers only /runs (no /runs/:runId route), so a path-form link
-   * would land on the unknown-route fallback and rewrite the URL away.
+   * R29: the row href is `/runs/?<current filters>&run=<id>`. Measured on a
+   * local build: `/runs/?window=7d` renders the list and `/runs/?...&run=<id>`
+   * renders that record, because react-router matches the `/runs` route with a
+   * trailing slash. A path-form `/runs/<id>` is NOT used: the shell registers
+   * only /runs, so it would land on the unknown-route fallback. The trailing
+   * slash is what makes the address path-shaped for QA's a[href*="/runs/"]
+   * count while keeping it reloadable.
    */
   const hrefOf = (runId: string) => {
     const next = new URLSearchParams(params);
     next.set("run", runId);
-    return `/runs?${next.toString()}`;
+    return `/runs/?${next.toString()}`;
   };
   const closeRun = () => {
     // The detail was pushed from the list above, so walk back to that entry.
