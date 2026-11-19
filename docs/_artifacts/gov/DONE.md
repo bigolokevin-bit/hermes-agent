@@ -360,3 +360,27 @@ built /Users/kevin_studio/Projects/forks/console-gov/hermes_cli/web_dist/index.h
 ### 观察者复核修正（MET5）
 
 首轮截图复核 FAIL：热力格与图例无色块；375 右半日不可见且无滑动提示，滚动边界有半格残影。根因是 `metrics.css` 使用了本主题不存在的 `hsl(var(--primary/--muted/...))` 令牌。已改为 `color-mix(var(--midground-base))` 与 `var(--color-*)`；375 增加「左右滑动热力图，查看 12–23 点」提示与右缘渐隐。复测：168 格全部渲染（167 有底色，1 格斜纹缺失），1440/1280/375 body 均等于视口，375 仅热力容器内滚动（620/307）。截图已覆盖更新。
+
+### R11 自查：模块被挂载后的单价与解析错误（2026-11-19）
+
+- 修复提交：`87e92c36 fix(console): surface human model read errors (R11)`。
+- 原因：R11 实测的 `/models` 仍指向旧 `@/pages/ModelsPage`；模块本身未被该路由挂载。
+- 挂载契约：`ModelsModulePage` 为**具名导出**，无 props；不读 `tab` 参数，只读 `?state=loading|empty|error|denied` 预览；testid 前缀 `mdl4-*`；三块数据各读 `/agent-api/api/models`、`/agent-api/api/models/pricing`、`/agent-api/api/hermes-usage?days=30`。
+- 非 JSON 兜底改为直接上屏 `ApiError` 的人话（HTML 页面 →「这个接口还没有接入数据服务…」），并保留请求编号；不再只显示泛化错误，也绝不出现 `Unexpected token`。
+
+临时 Vite harness（`/models` MemoryRouter + fetch 200 stub，已删除）DOM 读数：
+
+```text
+200 JSON 场景：
+单价 词族 = 6
+单价（价目表） / 实际扣费（账本） / $0.14 / 百万 token / $12.48 均命中
+Unexpected token = 0
+
+HTML 兜底场景（price 端点返回 text/html + x-console-request-id）：
+单价 词族 = 7
+「单价表读取失败」「这个接口还没有接入数据服务」命中
+请求编号 req-html-dom-1 命中
+Unexpected token = 0
+```
+
+全量：`114 files / 1021 passed`；`tsc` 0；`pnpm --filter web build` EXIT 0。
