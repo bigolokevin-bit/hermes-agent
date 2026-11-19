@@ -3,6 +3,8 @@ import { Link, useSearchParams } from "react-router";
 import { Inbox, RefreshCw, Search, ShieldAlert, TriangleAlert, Users } from "lucide-react";
 import { Badge, Button, Card, CardContent } from "@nous-research/ui";
 
+import { RequestIdCopy } from "@/components/RequestIdCopy";
+
 import { fetchJSON } from "@/lib/api";
 import { API_UNREACHABLE_MESSAGE, ApiError, humanizeStatus } from "@/lib/api-error";
 
@@ -19,6 +21,7 @@ type EmployeeRow = {
   lifecycleState?: string | null;
   ownerUserId?: string | null;
   updatedAt?: string | null;
+  department?: string | null;
   enrichment?: {
     currentVersionNo?: number | null;
     knowledgeCount?: number | null;
@@ -66,6 +69,7 @@ function readRows(body: unknown): EmployeeRow[] {
       lifecycleState: pickString(raw.lifecycleState),
       ownerUserId: pickString(raw.ownerUserId),
       updatedAt: pickString(raw.updatedAt),
+      department: pickString(raw.department),
       enrichment: enrichment
         ? {
             currentVersionNo: pickNumber(enrichment.currentVersionNo),
@@ -104,7 +108,8 @@ function lifecycleLabel(value?: string | null): string {
     case "archived":
       return "已归档";
     default:
-      return "未知";
+      // 未识别的状态不猜：与其余面一致的「待核实」。
+      return "待核实";
   }
 }
 
@@ -128,6 +133,16 @@ function money(value?: number | null): string {
 
 
 
+/** 最近活跃口径：上游只有 updatedAt，按北京时间切到分；缺值不假造。 */
+function beijingMinute(value?: string | null): string | null {
+  if (!value) return null;
+  const ms = Date.parse(value);
+  if (!Number.isFinite(ms)) return null;
+  const d = new Date(ms + 480 * 60_000);
+  const pad = (n: number) => (n < 10 ? `0${n}` : String(n));
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+}
+
 function errorState(err: unknown): State {
   const api = err instanceof ApiError ? err : null;
   const status = api?.status ?? 0;
@@ -142,11 +157,14 @@ function errorState(err: unknown): State {
 }
 
 export function EmployeesModulePage() {
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const forced = params.get("state");
-  const [keyword, setKeyword] = useState("");
-  const [debounced, setDebounced] = useState("");
-  const [lifecycle, setLifecycle] = useState("");
+  // URL is the single source of truth (?q=&lifecycle=): a refresh or a back
+  // step reopens exactly the same answer.
+  const q = params.get("q") ?? "";
+  const lifecycle = params.get("lifecycle") ?? "";
+  const [keyword, setKeyword] = useState(q);
+  const [debounced, setDebounced] = useState(q);
   const [reload, setReload] = useState(0);
   const [state, setState] = useState<State>({ phase: "loading", items: [], status: 0 });
 
@@ -154,6 +172,25 @@ export function EmployeesModulePage() {
     const timer = window.setTimeout(() => setDebounced(keyword.trim()), 300);
     return () => window.clearTimeout(timer);
   }, [keyword]);
+
+  // Keep the local inputs aligned with the URL (back/forward, shared links).
+  useEffect(() => {
+    setKeyword(q);
+    setDebounced(q);
+  }, [q]);
+
+  const patchParams = (next: Record<string, string | null>) => {
+    const draft = new URLSearchParams(params);
+    for (const [k, v] of Object.entries(next)) {
+      if (v === null || v === "") draft.delete(k);
+      else draft.set(k, v);
+    }
+    setParams(draft, { replace: true });
+  };
+
+  useEffect(() => {
+    if (debounced !== q) patchParams({ q: debounced || null });
+  }, [debounced]);
 
   useEffect(() => {
     if (forced === "loading" || forced === "empty" || forced === "error" || forced === "denied") {
@@ -171,7 +208,7 @@ export function EmployeesModulePage() {
     const query = new URLSearchParams();
     query.set("limit", String(PAGE_SIZE));
     query.set("expand", "version,knowledge");
-    if (debounced) query.set("keyword", debounced);
+    if (q) query.set("keyword", q);
     if (lifecycle) query.set("lifecycleState", lifecycle);
     fetchJSON<unknown>(`/agent-api/api/employees?${query.toString()}`)
       .then((body) => {
@@ -185,7 +222,7 @@ export function EmployeesModulePage() {
     return () => {
       cancelled = true;
     };
-  }, [debounced, lifecycle, reload, forced, params]);
+  }, [q, lifecycle, reload, forced]);
 
   const counts = useMemo(() => {
     let active = 0;
@@ -199,7 +236,7 @@ export function EmployeesModulePage() {
     return { active, limited, paused };
   }, [state.items]);
 
-  const filtered = Boolean(keyword.trim() || lifecycle);
+  const filtered = Boolean(q || lifecycle);
   const retry = () => setReload((n) => n + 1);
 
   return (
@@ -245,6 +282,7 @@ export function EmployeesModulePage() {
 
       <Card>
         <CardContent className="flex flex-wrap items-center gap-2 p-3">
+          <span data-testid="emp-l-search" className="contents">
           <label className="relative min-w-0 flex-1 sm:max-w-xs">
             <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-white/40" />
             <input
@@ -255,9 +293,11 @@ export function EmployeesModulePage() {
               data-testid="employees-search"
             />
           </label>
+          </span>
+          <span data-testid="emp-l-filter-lifecycle" className="contents">
           <select
             value={lifecycle}
-            onChange={(e) => setLifecycle(e.target.value)}
+            onChange={(e) => patchParams({ lifecycle: e.target.value || null })}
             className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm"
             data-testid="employees-lifecycle"
           >
@@ -266,6 +306,7 @@ export function EmployeesModulePage() {
             <option value="paused">暂停</option>
             <option value="suspended">停用</option>
           </select>
+          </span>
           {filtered ? (
             <Button
               size="sm"
@@ -273,7 +314,7 @@ export function EmployeesModulePage() {
               onClick={() => {
                 setKeyword("");
                 setDebounced("");
-                setLifecycle("");
+                patchParams({ q: null, lifecycle: null });
               }}
               data-testid="employees-clear"
             >
@@ -316,7 +357,10 @@ export function EmployeesModulePage() {
             <p className="text-sm">员工列表没能加载出来</p>
             <p className="text-xs text-white/55">{state.message || humanizeStatus(state.status)}</p>
             <p className="font-mono text-xs text-white/45">
-              {state.requestId ? `请求编号：${state.requestId}` : "本次请求未记录编号，可复制时间与操作路径反馈"}
+              <RequestIdCopy
+                requestId={state.requestId}
+                fallback="本次请求未记录编号，可复制时间与操作路径反馈"
+              />
             </p>
             <Button size="sm" outlined onClick={retry}>
               <RefreshCw className="mr-2 h-4 w-4" />
@@ -341,7 +385,7 @@ export function EmployeesModulePage() {
                 onClick={() => {
                   setKeyword("");
                   setDebounced("");
-                  setLifecycle("");
+                  patchParams({ q: null, lifecycle: null });
                 }}
               >
                 清除筛选
@@ -354,19 +398,23 @@ export function EmployeesModulePage() {
       {state.phase === "ready" ? (
         <Card data-testid="employees-table">
           <CardContent className="p-0">
-            <div className="hidden grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.7fr)_minmax(0,0.8fr)] gap-2 border-b border-white/10 px-4 py-2 text-xs text-white/45 md:grid">
+            <div className="hidden grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)_minmax(0,0.7fr)_minmax(0,0.7fr)_minmax(0,1fr)_minmax(0,0.6fr)_minmax(0,0.8fr)] gap-2 border-b border-white/10 px-4 py-2 text-xs text-white/45 md:grid">
               <span>员工</span>
               <span>短码</span>
               <span>状态</span>
+              <span>部门</span>
+              <span title="口径：上游只返回记录更新时间 updatedAt，按北京时间切到分">最近活跃</span>
               <span>知识</span>
               <span>月度预算</span>
             </div>
-            <ul className="divide-y divide-white/5">
+            <ul className="divide-y divide-white/5" data-testid="emp-l-list">
               {state.items.map((row) => (
                 <li key={row.employeeId} data-testid={`employees-row-${row.employeeId}`}>
+                  <span data-testid={`emp-l-row-${row.employeeId}`} className="contents">
                   <Link
                     to={`/employees/${encodeURIComponent(row.employeeId)}`}
-                    className="grid grid-cols-1 gap-1 px-4 py-3 hover:bg-white/5 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.7fr)_minmax(0,0.8fr)] md:items-center md:gap-2"
+                    data-testid={`emp-l-name-link-${row.employeeId}`}
+                    className="grid grid-cols-1 gap-1 px-4 py-3 hover:bg-white/5 md:grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)_minmax(0,0.7fr)_minmax(0,0.7fr)_minmax(0,1fr)_minmax(0,0.6fr)_minmax(0,0.8fr)] md:items-center md:gap-2"
                   >
                     <span className="min-w-0">
                       <span className="block truncate text-sm">{displayName(row)}</span>
@@ -382,6 +430,20 @@ export function EmployeesModulePage() {
                     <span>
                       <Badge tone={lifecycleTone(row.lifecycleState)}>{lifecycleLabel(row.lifecycleState)}</Badge>
                     </span>
+                    <span
+                      className="min-w-0 truncate text-xs text-white/55"
+                      data-label="部门"
+                      title={row.department ? undefined : "上游响应没有带部门信息"}
+                    >
+                      {row.department ?? "—"}
+                    </span>
+                    <span
+                      className="min-w-0 truncate font-mono text-xs text-white/55"
+                      data-label="最近活跃"
+                      title="口径：记录更新时间 updatedAt（北京时间）"
+                    >
+                      {beijingMinute(row.updatedAt) ?? "—"}
+                    </span>
                     <span className="text-xs text-white/55" data-label="知识">
                       {row.enrichment?.knowledgeCount ?? "—"}
                     </span>
@@ -389,6 +451,7 @@ export function EmployeesModulePage() {
                       {money(row.enrichment?.effectiveBudget?.monthlyCostUsd)}
                     </span>
                   </Link>
+                  </span>
                 </li>
               ))}
             </ul>

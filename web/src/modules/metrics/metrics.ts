@@ -624,6 +624,8 @@ export function csvFileName(view: 'employee' | 'model', window: UsageWindowId, n
 
 // ---- MET6: budget vs actual -------------------------------------------------
 
+export type BudgetStatus = 'ok' | 'warn' | 'over';
+
 export interface BudgetLine {
   key: string;
   subject: string;
@@ -631,10 +633,16 @@ export interface BudgetLine {
   used: number | null;
   remaining: number | null;
   usagePct: number | null;
+  /** Which side of the cap the ledger landed on; null when there is no cap. */
+  variance: 'surplus' | 'deficit' | 'even' | null;
+  status: BudgetStatus | null;
   asOf: string | null;
   /** Why a cell is «—»; shown only as a title. */
   gap: string | null;
 }
+
+/** Thresholds, one place: ≥100% over, ≥80% close, below that normal. */
+export const BUDGET_THRESHOLDS = '使用率 ≥100% 记「超支」，≥80% 记「接近」，其余记「正常」；按账本实扣÷账本上限计算。';
 
 /**
  * Budget vs actual for one ledger row. The used amount is the ledger's own
@@ -647,6 +655,9 @@ export function budgetLines(rows: LedgerRow[], names: Record<string, string>): B
     const used = row.costUsd;
     const remaining = budget !== null && used !== null ? budget - used : null;
     const usagePct = budget !== null && budget > 0 && used !== null ? Math.round((used / budget) * 1000) / 10 : null;
+    const status = budget === null ? null : usageTone(usagePct);
+    const variance =
+      remaining === null ? null : remaining > 0 ? 'surplus' : remaining < 0 ? 'deficit' : 'even';
     return {
       key: `budget-${row.employeeId ?? index}-${index}`,
       subject: employeeLabel(row.employeeId ? names[row.employeeId] ?? null : null, row.employeeId),
@@ -654,8 +665,10 @@ export function budgetLines(rows: LedgerRow[], names: Record<string, string>): B
       used,
       remaining,
       usagePct,
+      variance,
+      status,
       asOf: row.updatedAt,
-      gap: budget === null ? '账本没有给出预算上限，所以预算、剩余与使用率无法计算' : null,
+      gap: budget === null ? '账本没有给出预算上限，所以预算、剩余、使用率与超支结余都无法计算' : null,
     };
   });
 }

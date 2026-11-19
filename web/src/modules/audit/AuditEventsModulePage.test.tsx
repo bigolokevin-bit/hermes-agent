@@ -5,7 +5,7 @@
 
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { MemoryRouter, useLocation } from "react-router";
+import { MemoryRouter, useLocation, useNavigate } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api-error";
@@ -54,6 +54,16 @@ function LocationProbe(): ReactNode {
 }
 const locationText = (): string => document.querySelector("[data-testid='probe-location']")?.textContent ?? "";
 
+/** R39: a Back button, so a test can walk the history the way a person does. */
+function BackProbe(): ReactNode {
+  const navigate = useNavigate();
+  return (
+    <button type="button" data-testid="probe-back" onClick={() => navigate(-1)}>
+      back
+    </button>
+  );
+}
+
 /** Two answers: the page, then one record. Every URL the pane asks is recorded. */
 function answer(page: unknown, detail?: unknown): void {
   api.fetchJSON.mockImplementation(async (url: string) => {
@@ -61,6 +71,9 @@ function answer(page: unknown, detail?: unknown): void {
     return page;
   });
 }
+
+// R39: the detail read is mocked with an empty-but-valid detail body.
+const DETAIL = { audit: {} };
 
 const EVENTS = {
   items: [
@@ -933,5 +946,76 @@ describe("R38 — one real verify run paints the aud01-verify family", () => {
       expect(document.querySelector("[data-testid='" + id + "']"), id).not.toBeNull();
     }
     expect(document.querySelector("[data-testid='aud01-verify-result']")!.textContent ?? "").toContain("已核对");
+  });
+});
+
+describe("R39 — a record is a history entry and the verify panel never echoes a route code", () => {
+  it("open and back, three times over, always lands on the list with the filters kept", async () => {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url: string) =>
+      url.startsWith("/agent-api/api/audit-detail") ? DETAIL : EVENTS,
+    );
+    await render(
+      "/audit?window=7d",
+      <>
+        <AuditEventsModulePage />
+        <LocationProbe />
+        <BackProbe />
+      </>,
+    );
+    await waitFor(() => !skeleton(), "first page settled");
+    for (let cycle = 1; cycle <= 3; cycle += 1) {
+      await act(async () => {
+        document
+          .querySelector<HTMLButtonElement>("[data-testid='aud01-row-evt_7c1f2a3b4d5e6f70'] button")
+          ?.click();
+      });
+      await waitFor(() => locationText().includes("detail="), "cycle " + cycle + ": detail in the address");
+      await act(async () => {
+        document.querySelector<HTMLButtonElement>("[data-testid='probe-back']")?.click();
+      });
+      await waitFor(() => !locationText().includes("detail="), "cycle " + cycle + ": back on the list");
+      expect(locationText()).toContain("window=7d");
+      expect(document.querySelector("[data-testid='aud01-row-evt_7c1f2a3b4d5e6f70']")).not.toBeNull();
+    }
+  });
+
+
+  it("an environment without the verify route says 本环境未启用 and never prints the route code", async () => {
+    const verifyGone = async (url: string): Promise<unknown> => {
+      if (String(url).startsWith("/agent-api/api/audit-verify")) {
+        throw new ApiError("unknown route", {
+          status: 404,
+          body: '{"code":"console.unknown_route"}',
+          url: String(url),
+          requestId: "rid-verify-r39",
+        });
+      }
+      return EVENTS;
+    };
+
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url: string) => {
+      if (url.startsWith("/agent-api/api/audit-verify")) {
+        throw new ApiError("unknown_route", {
+          status: 404,
+          body: JSON.stringify({ code: "console.unknown_route", message: "unknown console API route" }),
+          url,
+        });
+      }
+      return EVENTS;
+    });
+    await mount(verifyGone);
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud01-verify']")?.click();
+    });
+    await waitFor(
+      () => document.querySelector("[data-testid='aud01-verify-not-enabled']") !== null,
+      "not-enabled panel",
+    );
+    const panel = document.querySelector("[data-testid='aud01-verify-not-enabled']")!;
+    expect(panel.textContent).toContain("本环境未启用");
+    expect(panel.textContent).not.toContain("unknown_route");
+    expect(panel.textContent).not.toContain("console.unknown");
   });
 });

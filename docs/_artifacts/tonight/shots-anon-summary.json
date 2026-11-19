@@ -213,13 +213,13 @@
     {
       "route": "#/employees/:employeeId?zone=config",
       "viewport": "1440",
-      "chars": 42,
+      "chars": 51,
       "hasMainEl": true
     },
     {
       "route": "#/employees/:employeeId?zone=config",
       "viewport": "375",
-      "chars": 51,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -243,7 +243,7 @@
     {
       "route": "#/employees/:employeeId?zone=runs",
       "viewport": "375",
-      "chars": 42,
+      "chars": 51,
       "hasMainEl": true
     },
     {
@@ -255,7 +255,7 @@
     {
       "route": "#/employees/:employeeId?zone=tasks",
       "viewport": "375",
-      "chars": 51,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -519,7 +519,7 @@
     {
       "route": "#/system?tab=defaults",
       "viewport": "375",
-      "chars": 118,
+      "chars": 121,
       "hasMainEl": true
     },
     {
@@ -549,7 +549,7 @@
     {
       "route": "#/system?tab=retention",
       "viewport": "1440",
-      "chars": 379,
+      "chars": 371,
       "hasMainEl": true
     },
     {
@@ -633,8 +633,8 @@
   ],
   "consoleErrorsObservedByShots": 2,
   "consoleErrorRoutesObservedByShots": [
-    "#/audit",
-    "#/system?tab=defaults"
+    "#/overview?tab=usage",
+    "#/system?tab=retention"
   ],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
@@ -645,12 +645,12 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "6c9db598",
+  "headHash": "a1a26ccf",
   "exitCode": 0,
-  "entry": "assets/index-yycnIwR9.js",
-  "entrySha256": "eb925c5c8ae782e556403c0ffbd20d1cd1804811d65ddecacd2988a96c22aabb",
+  "entry": "assets/index-y91x2LYj.js",
+  "entrySha256": "0d6ead0a1172a136038c0378694e84cdac82b3e7f704a5bdb8d78608849ba54b",
   "entryBytes": 163770,
-  "servedEntryBefore": "index-yycnIwR9.js",
-  "servedEntryAfter": "index-yycnIwR9.js",
+  "servedEntryBefore": "index-y91x2LYj.js",
+  "servedEntryAfter": "index-y91x2LYj.js",
   "auxiliary": true
 }

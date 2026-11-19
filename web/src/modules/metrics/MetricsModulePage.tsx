@@ -21,6 +21,7 @@ import {
   WEEKDAY_LABELS,
   WINDOWS,
   WINDOW_PRESETS,
+  BUDGET_THRESHOLDS,
   budgetLines,
   beijingDayKey,
   buildHeatGrid,
@@ -57,6 +58,7 @@ import {
   type Activity,
   type HeatCell,
   type LedgerRow,
+  type BudgetLine,
   type PriceRow,
   type StatHeatGrid,
   type RunStats,
@@ -109,6 +111,10 @@ interface BreakdownLine {
   share: number | null;
   asOf: string | null;
 }
+
+type BudgetState =
+  | { kind: 'loading' }
+  | UsageBlock<{ lines: BudgetLine[]; asOf: string | null; total: number | null; windowLabel: string }>;
 
 type HeatState = { kind: 'loading' } | UsageBlock<StatHeatGrid>;
 
@@ -239,6 +245,7 @@ export function MetricsModulePage() {
   const [usage, setUsage] = useState<UsageState>({ kind: 'loading' });
   const [breakdown, setBreakdown] = useState<BreakdownState>({ kind: 'loading' });
   const [heat, setHeat] = useState<HeatState>({ kind: 'loading' });
+  const [budget, setBudget] = useState<BudgetState>({ kind: 'loading' });
   const [heatAt, setHeatAt] = useState<string>(new Date().toISOString());
   const [attempt, setAttempt] = useState(0);
   const [selected, setSelected] = useState<{ dow: number; hour: number } | null>(null);
@@ -552,6 +559,71 @@ export function MetricsModulePage() {
     };
   }, [attempt, forced, loadHeat]);
 
+  const loadBudget = useCallback(async (signal: { live: boolean }, windowId: UsageWindowId) => {
+    setBudget({ kind: 'loading' });
+    const preset = usageWindowOf(windowId);
+    const days = Math.max(1, Math.round(preset.hours / 24));
+    const now = new Date();
+    const dayKeys: string[] = [];
+    for (let back = days - 1; back >= 0; back -= 1) {
+      dayKeys.push(beijingDayKey(new Date(now.getTime() - back * 86_400_000)));
+    }
+    try {
+      const directory = employeeIdsOf(await fetchJsonStrict('/agent-api/api/employees?limit=200'));
+      const bodies = await Promise.all(
+        dayKeys.flatMap((day) =>
+          chunkIds(directory.ids).map((ids) =>
+            fetchJsonStrict(
+              `/agent-api/api/budget-usage?employeeId=${ids.map(encodeURIComponent).join(',')}` +
+                `&periodKind=day&period=${encodeURIComponent(day)}`,
+            ),
+          ),
+        ),
+      );
+      const rows: LedgerRow[] = [];
+      for (const body of bodies) {
+        const parsed = readLedger(body);
+        if (parsed.kind === 'invalid') throw new ApiError(parsed.reason, { status: 200, body: '', url: 'budget-usage' });
+        rows.push(...parsed.rows);
+      }
+      const limits = new Map<string, number>();
+      for (const row of rows) {
+        if (!row.employeeId || row.limitUsd === null) continue;
+        limits.set(row.employeeId, Math.max(limits.get(row.employeeId) ?? 0, row.limitUsd));
+      }
+      const synthetic: LedgerRow[] = aggregateByEmployee(rows, directory.names).map((row) => ({
+        employeeId: row.employeeId,
+        period: preset.id,
+        tokensUsed: null,
+        costUsd: row.costUsd,
+        limitUsd: row.employeeId ? limits.get(row.employeeId) ?? null : null,
+        updatedAt: row.asOf,
+      }));
+      if (!signal.live) return;
+      setBudget({
+        kind: 'ready',
+        value: {
+          lines: budgetLines(synthetic, directory.names),
+          asOf: ledgerAsOf(rows),
+          total: ledgerTotal(rows),
+          windowLabel: preset.label,
+        },
+      });
+    } catch (error) {
+      if (!signal.live) return;
+      setBudget({ kind: 'unavailable', ...blockFailure(error) });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (forced) return;
+    const signal = { live: true };
+    void loadBudget(signal, usageWindow.id);
+    return () => {
+      signal.live = false;
+    };
+  }, [attempt, forced, loadBudget, usageWindow.id]);
+
   const view: PageState = forced
     ? forced === 'loading'
       ? { kind: 'loading' }
@@ -631,7 +703,21 @@ export function MetricsModulePage() {
       : null;
   const sparkPeak = spark && spark.max !== null && spark.max > 0 ? spark.max : 1;
   const monthSnapshot = usageReady && usageReady.month.kind === 'ready' ? usageReady.month.value : null;
-  const budgetRows = monthSnapshot ? budgetLines(monthSnapshot.rows, monthSnapshot.names) : [];
+  const budgetView: BudgetState = forced
+    ? forced === 'loading'
+      ? { kind: 'loading' }
+      : forced === 'empty'
+        ? { kind: 'ready', value: { lines: [], asOf: null, total: null, windowLabel: usageWindow.label } }
+        : {
+            kind: 'unavailable',
+            reason:
+              forced === 'denied'
+                ? '这项数据当前读不到：可能还没有接入，也可能当前账号没有查看权限。'
+                : '这次没能读取这项数据，请稍后重试。',
+            gap: forced === 'denied' ? USAGE_GAP : null,
+            requestId: null,
+          }
+    : budget;
 
   const heatView: HeatState = forced
     ? forced === 'loading'
@@ -1116,8 +1202,48 @@ export function MetricsModulePage() {
           <div className="met6-budget" data-testid="met6-budget">
             <div className="met6-cat-head">
               <h3>预算执行 vs 实扣</h3>
+              <span className="met6-hint">{usageWindow.label}</span>
             </div>
-            {budgetRows.length > 0 ? (
+
+            {budgetView.kind === 'loading' ? (
+              <Card data-testid="met6-budget-loading">
+                <CardContent className="p-4">
+                  <div className="met5-skeleton h-24 w-full" />
+                </CardContent>
+              </Card>
+            ) : null}
+
+            {budgetView.kind === 'unavailable' ? (
+              <Card data-testid="met6-budget-unavailable">
+                <CardContent className="space-y-2 p-4">
+                  <p className="font-medium">这份预算执行暂时读不到</p>
+                  <p className="text-sm text-muted-foreground" title={budgetView.gap ?? undefined}>
+                    {budgetView.reason}
+                  </p>
+                  <RequestId id={budgetView.requestId} />
+                  <Button size="sm" outlined onClick={() => setAttempt((value) => value + 1)} data-testid="met6-budget-retry">
+                    重试
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : null}
+
+            {budgetView.kind === 'ready' && budgetView.value.lines.length === 0 ? (
+              <Card data-testid="met6-budget-empty">
+                <CardContent className="space-y-2 p-4">
+                  <p className="font-medium">预算读口未接入</p>
+                  <p className="text-sm text-muted-foreground" title={USAGE_GAP}>
+                    账本在这个窗口没有返回任何预算行，所以这块不画表、不补 0，也不放样例数据。
+                  </p>
+                  <RequestId id={null} />
+                  <Button size="sm" outlined onClick={() => setAttempt((value) => value + 1)} data-testid="met6-budget-retry">
+                    重试
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : null}
+
+            {budgetView.kind === 'ready' && budgetView.value.lines.length > 0 ? (
               <>
                 <div className="met6-table-scroll">
                   <table className="met6-table" data-testid="met6-budget-table">
@@ -1128,10 +1254,12 @@ export function MetricsModulePage() {
                         <th scope="col">已用</th>
                         <th scope="col">剩余</th>
                         <th scope="col">使用率</th>
+                        <th scope="col">超支/结余</th>
+                        <th scope="col">状态</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {budgetRows.map((line, index) => (
+                      {budgetView.value.lines.map((line, index) => (
                         <tr key={line.key} data-testid={`met6-budget-row-${index}`}>
                           <td>
                             <span className="met6-rowname">{line.subject}</span>
@@ -1146,9 +1274,31 @@ export function MetricsModulePage() {
                           </td>
                           <td
                             className={`met6-num met6-budget-pct is-${usageTone(line.usagePct) ?? 'none'}`}
-                            title={line.gap ?? '按账本上限与实际扣费计算'}
+                            title={line.gap ?? BUDGET_THRESHOLDS}
                           >
                             {line.usagePct === null ? '—' : `${line.usagePct}%`}
+                          </td>
+                          <td
+                            className={`met6-num met6-budget-variance is-${line.variance ?? 'none'}`}
+                            data-testid={`met6-budget-variance-${index}`}
+                            title={line.gap ?? BUDGET_THRESHOLDS}
+                          >
+                            {line.variance === null
+                              ? '—'
+                              : line.variance === 'surplus'
+                                ? `结余 ${formatUsd(line.remaining)}`
+                                : line.variance === 'deficit'
+                                  ? `超支 ${formatUsd(line.remaining === null ? null : Math.abs(line.remaining))}`
+                                  : '刚好用完'}
+                          </td>
+                          <td data-testid={`met6-budget-status-${index}`}>
+                            {line.status === null ? (
+                              <span title={line.gap ?? undefined}>—</span>
+                            ) : (
+                              <span className={`met6-budget-badge is-${line.status}`} title={BUDGET_THRESHOLDS}>
+                                {line.status === 'over' ? '超支' : line.status === 'warn' ? '接近' : '正常'}
+                              </span>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -1156,35 +1306,18 @@ export function MetricsModulePage() {
                   </table>
                 </div>
                 <p className="met6-source" data-testid="met6-budget-source">
-                  来源：平台扣费账本（本月行） · 截至{' '}
-                  {monthSnapshot?.asOf ? formatBeijing(monthSnapshot.asOf) : '—'}
+                  来源：平台扣费账本（{budgetView.value.windowLabel}） · 截至{' '}
+                  {budgetView.value.asOf ? formatBeijing(budgetView.value.asOf) : '—'}
                   {' · 合计 '}
                   <span className="font-mono" data-testid="met6-budget-total">
-                    {formatUsd(usageReady && usageReady.month.kind === 'ready' ? usageReady.month.value.total : null)}
+                    {formatUsd(budgetView.value.total)}
                   </span>
                 </p>
                 <p className="met6-hint">
-                  已用只认账本实扣；账本没有给出预算上限时，预算、剩余与使用率显示「—」，不按 0 记，也不拿单价乘数量。
+                  已用只认账本实扣；阈值：{BUDGET_THRESHOLDS}账本没有给出预算上限时，预算、剩余、使用率与超支结余都显示「—」，不按 0 记。
                 </p>
               </>
-            ) : (
-              <Card data-testid="met6-budget-empty">
-                <CardContent className="space-y-2 p-4">
-                  <p className="font-medium">预算读口未接入</p>
-                  <p className="text-sm text-muted-foreground" title={USAGE_GAP}>
-                    账本在这个租户还没有返回任何预算行，所以这块不画表、不补 0，也不放样例数据。
-                  </p>
-                  <RequestId
-                    id={
-                      usageReady && usageReady.month.kind === 'unavailable' ? usageReady.month.requestId : null
-                    }
-                  />
-                  <Button size="sm" outlined onClick={() => setAttempt((value) => value + 1)} data-testid="met6-budget-retry">
-                    重试
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
+            ) : null}
           </div>
 
           <div className="met6-heat" data-testid="met6-heat">

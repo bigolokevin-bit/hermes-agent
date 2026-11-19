@@ -26,7 +26,7 @@
   "rootShell": {
     "url": "http://127.0.0.1:9122/",
     "hasMainEl": true,
-    "mainChars": 1229,
+    "mainChars": 701,
     "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 刷新 可上岗 各项"
   },
   "contentChecked": 51,
@@ -231,11 +231,11 @@
       "source": "DETAIL_TAB",
       "kind": "detail-zone",
       "verdict": "content-ok",
-      "mainChars": 110,
+      "mainChars": 49,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 1,
-      "consoleErrorEnv": "auth-required-401",
+      "consoleErrors": 0,
+      "consoleErrorEnv": null,
       "evalError": null,
       "headSample": "工作台 配置 任务 运行 证据 员工 · EMPLOYEE — 概览 能力与权限 审批 运行 审"
     },
@@ -283,7 +283,7 @@
       "source": "DETAIL_ZONES_EXTRA",
       "kind": "detail-zone",
       "verdict": "content-ok",
-      "mainChars": 49,
+      "mainChars": 110,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 1,
@@ -296,52 +296,52 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 153,
+      "mainChars": 391,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 2,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册真人名录 · 姓名"
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册人员名录 · 姓名"
     },
     {
       "route": "#/identity?tab=admins",
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 153,
+      "mainChars": 391,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 2,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册真人名录 · 姓名"
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册人员名录 · 姓名"
     },
     {
       "route": "#/identity?tab=binding",
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 153,
+      "mainChars": 391,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 2,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册真人名录 · 姓名"
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册人员名录 · 姓名"
     },
     {
       "route": "#/identity?tab=checks",
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 153,
+      "mainChars": 391,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 2,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册真人名录 · 姓名"
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册人员名录 · 姓名"
     },
     {
       "route": "#/identity?tab=departments",
@@ -361,13 +361,13 @@
       "source": "VIEW_DEEP_LINKS",
       "kind": "view",
       "verdict": "content-ok",
-      "mainChars": 153,
+      "mainChars": 391,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 2,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册真人名录 · 姓名"
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册人员名录 · 姓名"
     },
     {
       "route": "#/identity?tab=roles",
@@ -387,13 +387,13 @@
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 153,
+      "mainChars": 391,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 2,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册真人名录 · 姓名"
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册人员名录 · 姓名"
     },
     {
       "route": "#/knowledge",
@@ -504,20 +504,20 @@
       "source": "COMPAT_MODULES",
       "kind": "compat-module",
       "verdict": "content-ok",
-      "mainChars": 153,
+      "mainChars": 391,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 2,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册真人名录 · 姓名"
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 人员目录 在册人员名录 · 姓名"
     },
     {
       "route": "#/overview",
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 1229,
+      "mainChars": 1228,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
@@ -686,7 +686,7 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 1281,
+      "mainChars": 1280,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
@@ -696,12 +696,12 @@
     }
   ],
   "distinctMainHeads": 31,
-  "medianMainChars": 202,
+  "medianMainChars": 371,
   "contentEmpty": [],
   "contentEmptyCount": 0,
   "mode": "auth-attributed",
   "envAttribution": {
-    "auth-required-401": 27
+    "auth-required-401": 26
   },
   "probeErrors": [],
   "deniedEndpoints": [
@@ -736,10 +736,10 @@
     "redirects=24 vs 门定值 23（routes.ts 并发新增形态，归因非判红；门值更新归 L0/A）"
   ],
   "routesRenderedWithoutMainEl": 0,
-  "routesWithConsoleErrors": 27,
+  "routesWithConsoleErrors": 26,
   "parseErrors": [],
   "ok": true,
-  "headHash": "6c9db598",
+  "headHash": "a1a26ccf",
   "exitCode": 0,
   "counts": {
     "probed": 75,

@@ -3,7 +3,7 @@
 - base: `http://127.0.0.1:9122`  |  nav form: `#/<route>` (hash, per brief)  |  viewports: 1440x900, 375x812
 - routes enumerated from `web/src/shell/routes.ts` appendix A: **51**  |  routes driven this run: 51  |  expected shots: 102  |  produced: **102**
 - driver: playwright loaded from `/Users/kevin_studio/Projects/seakoi-console-web/package.json` (sibling checkout, not installed here); chromium `/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing`
-- root shell baseline: ok=true, <main> text = 729 chars, hasMainEl=true — on this build the root path renders an EMPTY <main>, so the binding criterion is per-route `main>0`; `differsFromRoot` is kept as secondary info only
+- root shell baseline: ok=true, <main> text = 1275 chars, hasMainEl=true — on this build the root path renders an EMPTY <main>, so the binding criterion is per-route `main>0`; `differsFromRoot` is kept as secondary info only
 
 | route (hash) | label | vp | HTTP | main chars | main>0 | empty? | error? | overflow px | differsFromRoot | png bytes | console err |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -27,71 +27,71 @@
 | `#/audit` | 审计事件 | 375 | 200 | 6061 | yes | yes | yes | 0 | yes | 78479 | 0 |
 | `#/capabilities` | 技能 | 1440 | 200 | 110 | yes | - | - | 0 | yes | 62673 | 0 |
 | `#/capabilities` | 技能 | 375 | 200 | 110 | yes | - | - | 0 | yes | 31176 | 0 |
-| `#/capabilities?tab=channels` | 平台接入 | 1440 | 200 | 128 | yes | yes | - | 0 | yes | 65654 | 0 |
-| `#/capabilities?tab=channels` | 平台接入 | 375 | 200 | 128 | yes | yes | - | 0 | yes | 33225 | 0 |
+| `#/capabilities?tab=channels` | 平台接入 | 1440 | 200 | 1034 | yes | yes | - | 0 | yes | 169755 | 4 |
+| `#/capabilities?tab=channels` | 平台接入 | 375 | 200 | 1034 | yes | yes | - | 0 | yes | 86577 | 4 |
 | `#/capabilities?tab=models` | 模型与单价 | 1440 | 200 | 391 | yes | yes | - | 0 | yes | 118391 | 2 |
-| `#/capabilities?tab=models` | 模型与单价 | 375 | 200 | 391 | yes | yes | - | 0 | yes | 70897 | 2 |
+| `#/capabilities?tab=models` | 模型与单价 | 375 | 200 | 104 | yes | - | - | 0 | yes | 30439 | 0 |
 | `#/capabilities?tab=tools` | 工具与 MCP | 1440 | 200 | 170 | yes | - | - | 0 | yes | 72589 | 0 |
 | `#/capabilities?tab=tools` | 工具与 MCP | 375 | 200 | 170 | yes | - | - | 0 | yes | 39524 | 0 |
-| `#/employees` | 列表 | 1440 | 200 | 278 | yes | - | - | 0 | yes | 54497 | 5 |
+| `#/employees` | 列表 | 1440 | 200 | 224 | yes | - | - | 0 | yes | 77001 | 0 |
 | `#/employees` | 列表 | 375 | 200 | 264 | yes | - | - | 0 | yes | 50809 | 0 |
 | `#/employees?tab=matrix` | 能力与权限 | 1440 | 200 | 191 | yes | yes | - | 0 | yes | 78086 | 0 |
 | `#/employees?tab=matrix` | 能力与权限 | 375 | 200 | 191 | yes | yes | - | 0 | yes | 44625 | 0 |
-| `#/employees/:employeeId` | 详情 | 1440 | 200 | 42 | yes | - | - | 0 | yes | 59459 | 1 |
-| `#/employees/:employeeId` | 详情 | 375 | 200 | 42 | yes | - | - | 0 | yes | 26035 | 1 |
-| `#/employees/:employeeId?zone=config` | 详情 | 1440 | 200 | 42 | yes | - | - | 0 | yes | 59945 | 1 |
+| `#/employees/:employeeId` | 详情 | 1440 | 200 | 42 | yes | - | - | 0 | yes | 58928 | 1 |
+| `#/employees/:employeeId` | 详情 | 375 | 200 | 42 | yes | - | - | 0 | yes | 13281 | 0 |
+| `#/employees/:employeeId?zone=config` | 详情 | 1440 | 200 | 42 | yes | - | - | 0 | yes | 60193 | 1 |
 | `#/employees/:employeeId?zone=config` | 详情 | 375 | 200 | 42 | yes | - | - | 0 | yes | 13662 | 0 |
-| `#/employees/:employeeId?zone=evidence` | 详情 | 1440 | 200 | 42 | yes | - | - | 0 | yes | 60109 | 1 |
-| `#/employees/:employeeId?zone=evidence` | 详情 | 375 | 200 | 42 | yes | - | - | 0 | yes | 13451 | 0 |
-| `#/employees/:employeeId?zone=runs` | 详情 | 1440 | 200 | 42 | yes | - | - | 0 | yes | 59787 | 1 |
-| `#/employees/:employeeId?zone=runs` | 详情 | 375 | 200 | 51 | yes | - | - | 0 | yes | 16090 | 1 |
-| `#/employees/:employeeId?zone=tasks` | 详情 | 1440 | 200 | 42 | yes | - | - | 0 | yes | 46830 | 1 |
+| `#/employees/:employeeId?zone=evidence` | 详情 | 1440 | 200 | 42 | yes | - | - | 0 | yes | 50596 | 0 |
+| `#/employees/:employeeId?zone=evidence` | 详情 | 375 | 200 | 42 | yes | - | - | 0 | yes | 25642 | 1 |
+| `#/employees/:employeeId?zone=runs` | 详情 | 1440 | 200 | 42 | yes | - | - | 0 | yes | 46622 | 1 |
+| `#/employees/:employeeId?zone=runs` | 详情 | 375 | 200 | 42 | yes | - | - | 0 | yes | 26379 | 1 |
+| `#/employees/:employeeId?zone=tasks` | 详情 | 1440 | 200 | 42 | yes | - | - | 0 | yes | 59705 | 1 |
 | `#/employees/:employeeId?zone=tasks` | 详情 | 375 | 200 | 42 | yes | - | - | 0 | yes | 13466 | 1 |
-| `#/identity` | 人员目录 | 1440 | 200 | 157 | yes | yes | - | 0 | yes | 69867 | 2 |
-| `#/identity` | 人员目录 | 375 | 200 | 157 | yes | yes | - | 0 | yes | 36622 | 2 |
-| `#/identity?tab=admins` | 人员目录 | 1440 | 200 | 157 | yes | yes | - | 0 | yes | 69867 | 2 |
-| `#/identity?tab=admins` | 人员目录 | 375 | 200 | 157 | yes | yes | - | 0 | yes | 36624 | 2 |
-| `#/identity?tab=binding` | 人员目录 | 1440 | 200 | 157 | yes | yes | - | 0 | yes | 69867 | 2 |
-| `#/identity?tab=binding` | 人员目录 | 375 | 200 | 157 | yes | yes | - | 0 | yes | 36624 | 2 |
-| `#/identity?tab=checks` | 人员目录 | 1440 | 200 | 157 | yes | yes | - | 0 | yes | 69867 | 2 |
-| `#/identity?tab=checks` | 人员目录 | 375 | 200 | 157 | yes | yes | - | 0 | yes | 36624 | 2 |
+| `#/identity` | 人员目录 | 1440 | 200 | 394 | yes | yes | - | 0 | yes | 93267 | 2 |
+| `#/identity` | 人员目录 | 375 | 200 | 377 | yes | yes | - | 0 | yes | 61472 | 2 |
+| `#/identity?tab=admins` | 人员目录 | 1440 | 200 | 394 | yes | yes | - | 0 | yes | 93267 | 2 |
+| `#/identity?tab=admins` | 人员目录 | 375 | 200 | 377 | yes | yes | - | 0 | yes | 61472 | 2 |
+| `#/identity?tab=binding` | 人员目录 | 1440 | 200 | 394 | yes | yes | - | 0 | yes | 93267 | 2 |
+| `#/identity?tab=binding` | 人员目录 | 375 | 200 | 377 | yes | yes | - | 0 | yes | 61472 | 2 |
+| `#/identity?tab=checks` | 人员目录 | 1440 | 200 | 394 | yes | yes | - | 0 | yes | 93267 | 2 |
+| `#/identity?tab=checks` | 人员目录 | 375 | 200 | 377 | yes | yes | - | 0 | yes | 61472 | 2 |
 | `#/identity?tab=departments` | 组织与部门 | 1440 | 200 | 140 | yes | yes | - | 0 | yes | 69110 | 2 |
 | `#/identity?tab=departments` | 组织与部门 | 375 | 200 | 140 | yes | yes | - | 0 | yes | 37436 | 2 |
-| `#/identity?tab=people&view=admins` | 人员目录 | 1440 | 200 | 157 | yes | yes | - | 0 | yes | 69867 | 2 |
-| `#/identity?tab=people&view=admins` | 人员目录 | 375 | 200 | 157 | yes | yes | - | 0 | yes | 36624 | 2 |
+| `#/identity?tab=people&view=admins` | 人员目录 | 1440 | 200 | 394 | yes | yes | - | 0 | yes | 93267 | 2 |
+| `#/identity?tab=people&view=admins` | 人员目录 | 375 | 200 | 377 | yes | yes | - | 0 | yes | 61472 | 2 |
 | `#/identity?tab=roles` | 角色与权限 | 1440 | 200 | 194 | yes | yes | - | 0 | yes | 75601 | 4 |
 | `#/identity?tab=roles` | 角色与权限 | 375 | 200 | 194 | yes | yes | - | 0 | yes | 43061 | 4 |
-| `#/identity?tab=tenant` | 人员目录 | 1440 | 200 | 157 | yes | yes | - | 0 | yes | 69867 | 2 |
-| `#/identity?tab=tenant` | 人员目录 | 375 | 200 | 157 | yes | yes | - | 0 | yes | 36624 | 2 |
-| `#/knowledge` | 知识空间 | 1440 | 200 | 357 | yes | yes | - | 0 | yes | 103918 | 1 |
-| `#/knowledge` | 知识空间 | 375 | 200 | 357 | yes | yes | - | 0 | yes | 70395 | 1 |
-| `#/knowledge?tab=citations` | 证据与引用 | 1440 | 200 | 426 | yes | yes | - | 0 | yes | 117315 | 1 |
-| `#/knowledge?tab=citations` | 证据与引用 | 375 | 200 | 426 | yes | yes | - | 0 | yes | 82215 | 1 |
-| `#/knowledge?tab=evidence` | 证据与引用 | 1440 | 200 | 426 | yes | yes | - | 0 | yes | 117265 | 1 |
-| `#/knowledge?tab=evidence` | 证据与引用 | 375 | 200 | 426 | yes | yes | - | 0 | yes | 82264 | 1 |
-| `#/knowledge?tab=ingest` | 数据源 | 1440 | 200 | 550 | yes | yes | - | 0 | yes | 138704 | 2 |
-| `#/knowledge?tab=ingest` | 数据源 | 375 | 200 | 550 | yes | yes | - | 0 | yes | 92835 | 2 |
-| `#/knowledge?tab=retrieval` | 证据与引用 | 1440 | 200 | 469 | yes | yes | - | 0 | yes | 127462 | 1 |
-| `#/knowledge?tab=retrieval` | 证据与引用 | 375 | 200 | 469 | yes | yes | - | 0 | yes | 89913 | 1 |
-| `#/knowledge?tab=scope` | 知识空间 | 1440 | 200 | 357 | yes | yes | - | 0 | yes | 104094 | 1 |
-| `#/knowledge?tab=scope` | 知识空间 | 375 | 200 | 357 | yes | yes | - | 0 | yes | 70207 | 1 |
-| `#/knowledge?tab=sources` | 数据源 | 1440 | 200 | 550 | yes | yes | - | 0 | yes | 138789 | 2 |
-| `#/knowledge?tab=sources` | 数据源 | 375 | 200 | 550 | yes | yes | - | 0 | yes | 92365 | 2 |
+| `#/identity?tab=tenant` | 人员目录 | 1440 | 200 | 394 | yes | yes | - | 0 | yes | 93267 | 2 |
+| `#/identity?tab=tenant` | 人员目录 | 375 | 200 | 377 | yes | yes | - | 0 | yes | 61472 | 2 |
+| `#/knowledge` | 知识空间 | 1440 | 200 | 357 | yes | yes | - | 0 | yes | 104100 | 1 |
+| `#/knowledge` | 知识空间 | 375 | 200 | 357 | yes | yes | - | 0 | yes | 70261 | 1 |
+| `#/knowledge?tab=citations` | 证据与引用 | 1440 | 200 | 426 | yes | yes | - | 0 | yes | 117535 | 1 |
+| `#/knowledge?tab=citations` | 证据与引用 | 375 | 200 | 426 | yes | yes | - | 0 | yes | 82160 | 1 |
+| `#/knowledge?tab=evidence` | 证据与引用 | 1440 | 200 | 426 | yes | yes | - | 0 | yes | 117372 | 1 |
+| `#/knowledge?tab=evidence` | 证据与引用 | 375 | 200 | 426 | yes | yes | - | 0 | yes | 82275 | 1 |
+| `#/knowledge?tab=ingest` | 数据源 | 1440 | 200 | 550 | yes | yes | - | 0 | yes | 138471 | 2 |
+| `#/knowledge?tab=ingest` | 数据源 | 375 | 200 | 550 | yes | yes | - | 0 | yes | 92932 | 2 |
+| `#/knowledge?tab=retrieval` | 证据与引用 | 1440 | 200 | 469 | yes | yes | - | 0 | yes | 127759 | 1 |
+| `#/knowledge?tab=retrieval` | 证据与引用 | 375 | 200 | 469 | yes | yes | - | 0 | yes | 89857 | 1 |
+| `#/knowledge?tab=scope` | 知识空间 | 1440 | 200 | 357 | yes | yes | - | 0 | yes | 104148 | 1 |
+| `#/knowledge?tab=scope` | 知识空间 | 375 | 200 | 357 | yes | yes | - | 0 | yes | 70475 | 1 |
+| `#/knowledge?tab=sources` | 数据源 | 1440 | 200 | 550 | yes | yes | - | 0 | yes | 138906 | 2 |
+| `#/knowledge?tab=sources` | 数据源 | 375 | 200 | 550 | yes | yes | - | 0 | yes | 92681 | 2 |
 | `#/metrics` | 用量与成本 | 1440 | 200 | 818 | yes | - | - | 0 | yes | 97892 | 0 |
 | `#/metrics` | 用量与成本 | 375 | 200 | 818 | yes | - | - | 0 | yes | 59672 | 0 |
-| `#/org` | 人员目录 | 1440 | 200 | 157 | yes | yes | - | 0 | yes | 69867 | 2 |
-| `#/org` | 人员目录 | 375 | 200 | 157 | yes | yes | - | 0 | yes | 36624 | 2 |
-| `#/overview` | 值班台 | 1440 | 200 | 729 | yes | yes | - | 0 | no | 145950 | 0 |
-| `#/overview` | 值班台 | 375 | 200 | 1276 | yes | yes | yes | 0 | no | 66052 | 0 |
+| `#/org` | 人员目录 | 1440 | 200 | 394 | yes | yes | - | 0 | yes | 93267 | 2 |
+| `#/org` | 人员目录 | 375 | 200 | 377 | yes | yes | - | 0 | yes | 61472 | 2 |
+| `#/overview` | 值班台 | 1440 | 200 | 1275 | yes | yes | yes | 0 | no | 154652 | 0 |
+| `#/overview` | 值班台 | 375 | 200 | 728 | yes | yes | - | 0 | no | 43805 | 0 |
 | `#/overview?tab=usage` | 用量与成本 | 1440 | 200 | 369 | yes | - | - | 0 | yes | 99041 | 0 |
 | `#/overview?tab=usage` | 用量与成本 | 375 | 200 | 369 | yes | - | - | 0 | yes | 37345 | 0 |
-| `#/sessions` | 列表 | 1440 | 200 | 104 | yes | - | - | 0 | yes | 56921 | 5 |
+| `#/sessions` | 列表 | 1440 | 200 | 106 | yes | - | - | 0 | yes | 50500 | 0 |
 | `#/sessions` | 列表 | 375 | 200 | 106 | yes | - | - | 0 | yes | 20050 | 0 |
-| `#/system` | 系统健康 | 1440 | 200 | 251 | yes | yes | yes | 0 | yes | 81991 | 1 |
-| `#/system` | 系统健康 | 375 | 200 | 251 | yes | yes | yes | 0 | yes | 47675 | 1 |
+| `#/system` | 系统健康 | 1440 | 200 | 251 | yes | yes | yes | 0 | yes | 81993 | 1 |
+| `#/system` | 系统健康 | 375 | 200 | 251 | yes | yes | yes | 0 | yes | 47774 | 1 |
 | `#/system?tab=defaults` | 默认设置 | 1440 | 200 | 236 | yes | yes | - | 0 | yes | 92256 | 1 |
-| `#/system?tab=defaults` | 默认设置 | 375 | 200 | 236 | yes | yes | - | 0 | yes | 57258 | 1 |
-| `#/system?tab=events` | 审计事件 | 1440 | 200 | 6061 | yes | yes | yes | 0 | yes | 159462 | 0 |
+| `#/system?tab=defaults` | 默认设置 | 375 | 200 | 236 | yes | yes | - | 0 | yes | 57258 | 2 |
+| `#/system?tab=events` | 审计事件 | 1440 | 200 | 6005 | yes | yes | yes | 0 | yes | 57832 | 4 |
 | `#/system?tab=events` | 审计事件 | 375 | 200 | 6061 | yes | yes | yes | 0 | yes | 78479 | 0 |
 | `#/system?tab=events&view=anomaly` | 审计事件 | 1440 | 200 | 6061 | yes | yes | yes | 0 | yes | 159462 | 0 |
 | `#/system?tab=events&view=anomaly` | 审计事件 | 375 | 200 | 6061 | yes | yes | yes | 0 | yes | 78479 | 0 |
@@ -99,16 +99,16 @@
 | `#/system?tab=retention` | 审计事件 | 375 | 200 | 6061 | yes | yes | yes | 0 | yes | 78479 | 0 |
 | `#/system?tab=security` | 审计事件 | 1440 | 200 | 6061 | yes | yes | yes | 0 | yes | 159462 | 0 |
 | `#/system?tab=security` | 审计事件 | 375 | 200 | 6061 | yes | yes | yes | 0 | yes | 78479 | 0 |
-| `#/system?tab=version` | 版本 | 1440 | 200 | 415 | yes | yes | - | 0 | yes | 114651 | 1 |
-| `#/system?tab=version` | 版本 | 375 | 200 | 406 | yes | yes | - | 0 | yes | 40916 | 7 |
-| `#/work` | 任务 | 1440 | 200 | 1921 | yes | yes | - | 0 | yes | 130978 | 0 |
-| `#/work` | 任务 | 375 | 200 | 205 | yes | yes | - | 0 | yes | 46473 | 0 |
+| `#/system?tab=version` | 版本 | 1440 | 200 | 415 | yes | yes | - | 0 | yes | 115450 | 1 |
+| `#/system?tab=version` | 版本 | 375 | 200 | 415 | yes | yes | - | 0 | yes | 49984 | 1 |
+| `#/work` | 任务 | 1440 | 200 | 1921 | yes | yes | - | 0 | yes | 130978 | 4 |
+| `#/work` | 任务 | 375 | 200 | 205 | yes | yes | - | 0 | yes | 46504 | 0 |
 | `#/work?tab=board&view=cron` | 任务 | 1440 | 200 | 1921 | yes | yes | - | 0 | yes | 130978 | 0 |
 | `#/work?tab=board&view=cron` | 任务 | 375 | 200 | 1921 | yes | yes | - | 0 | yes | 63693 | 0 |
 | `#/work?tab=cron` | 任务 | 1440 | 200 | 1921 | yes | yes | - | 0 | yes | 130978 | 0 |
 | `#/work?tab=cron` | 任务 | 375 | 200 | 1921 | yes | yes | - | 0 | yes | 63693 | 0 |
-| `#/work?tab=runs` | 运行 | 1440 | 200 | 1286 | yes | - | yes | 0 | yes | 229926 | 0 |
-| `#/work?tab=runs` | 运行 | 375 | 200 | 1258 | yes | - | yes | 0 | yes | 73628 | 0 |
+| `#/work?tab=runs` | 运行 | 1440 | 200 | 1285 | yes | - | yes | 0 | yes | 229654 | 0 |
+| `#/work?tab=runs` | 运行 | 375 | 200 | 1257 | yes | - | yes | 0 | yes | 73351 | 0 |
 
 - routes with empty main (any viewport): none
 - routes with no <main> element at all: none
