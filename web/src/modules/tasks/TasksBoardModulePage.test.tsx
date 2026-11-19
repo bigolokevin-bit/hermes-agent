@@ -212,4 +212,56 @@ describe("TasksBoardModulePage", () => {
     expect(container.querySelector('[data-testid="tsk4-empty"]')).toBeTruthy();
     expect(container.textContent).not.toContain("数字不作零处理");
   });
+
+  const FILTER_ROWS = {
+    items: [
+      { taskId: "tk_F1", title: "筛选任务一", assignee: { type: "employee", id: "emp_1a2b3c4d" }, priority: "high", status: "open", updatedAt: "2026-11-18T02:00:00Z", cost: 3.5 },
+    ],
+    nextCursor: "cursor-2",
+  };
+
+  it("P2: a shared status filter sends exactly one real query and pages with the server cursor", async () => {
+    const urls: string[] = [];
+    fetchJSON.mockImplementation(async (url: string) => {
+      urls.push(url);
+      if (url.includes("/api/matrix")) return resolveDirectory();
+      if (url.includes("/api/tasks")) return FILTER_ROWS;
+      return resolveDetail();
+    });
+    await render("/work?tab=board&status=open");
+    await act(async () => {});
+    const taskCalls = urls.filter((u) => u.includes("/api/tasks"));
+    expect(taskCalls).toHaveLength(1);
+    expect(taskCalls[0]).toContain("status=open");
+    expect(container.querySelector('[data-testid="tsk4-filter-row-tk_F1"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="tsk4-columns"]')).toBeNull();
+    expect(container.textContent).toContain("第 1 页 · 本页最多 50 条");
+    expect(container.textContent).toContain("筛选任务一");
+    expect(container.textContent).toContain("小鲤 · 1A2B3C4D");
+    expect(container.textContent).not.toContain("emp_1a2b3c4d");
+    const prio = container.querySelector('[data-testid="tsk4-filter-priority"]') as HTMLSelectElement;
+    expect(prio.disabled).toBe(true);
+    const next = container.querySelector('[data-testid="tsk4-page-next"]') as HTMLButtonElement;
+    expect(next.disabled).toBe(false);
+    urls.length = 0;
+    await act(async () => {
+      next.click();
+    });
+    await act(async () => {});
+    expect(urls.find((u) => u.includes("/api/tasks"))).toContain("cursor=cursor-2");
+    expect(container.textContent).toContain("第 2 页");
+  });
+
+  it("P2: an empty filter answer is stated as a real answer, not a failure", async () => {
+    fetchJSON.mockImplementation(async (url: string) => {
+      if (url.includes("/api/matrix")) return resolveDirectory();
+      if (url.includes("/api/tasks")) return { items: [], nextCursor: null };
+      return resolveDetail();
+    });
+    await render("/work?tab=board&assignee=employee%3Aemp_1a2b3c4d");
+    await act(async () => {});
+    expect(container.querySelector('[data-testid="tsk4-filter-empty"]')).toBeTruthy();
+    expect(container.textContent).toContain("这是服务端的真实回答");
+  });
 });
+

@@ -7,6 +7,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
+import { RequestIdCopy } from "@/components/RequestIdCopy";
 import { AlertTriangle, Inbox, RefreshCw, ShieldAlert, X } from "lucide-react";
 
 import { Badge } from "@nous-research/ui/ui/components/badge";
@@ -20,12 +21,16 @@ import {
   EMPTY_BOARD,
   loadBoard,
   loadDetail,
+  loadFiltered,
+  loadNamesOnly,
   money,
   priorityLabel,
+  short8,
   shortRef,
   sourceLabel,
   statusLabel,
   type BoardState,
+  type FilterResult,
   type TaskDetail,
   type TaskRow,
 } from "./tasksBoard";
@@ -186,7 +191,7 @@ function TaskDetailCard({
 }
 
 export function TasksBoardModulePage() {
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const forced = params.get("state");
   const forceRid = params.get("rid");
   const [board, setBoard] = useState<BoardState>(EMPTY_BOARD);
@@ -194,6 +199,77 @@ export function TasksBoardModulePage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [detail, setDetail] = useState<DetailState>({ k: "idle" });
   const [createOpen, setCreateOpen] = useState(false);
+  // P2: real filter + cursor paging leg. The URL carries the filter state so
+  // a refreshed or shared page reopens exactly the same answer.
+  const fStatus = params.get("status");
+  const fAssignee = params.get("assignee");
+  const fCursor = params.get("cursor");
+  const filterActive = Boolean(fStatus) || Boolean(fAssignee);
+  const [filtered, setFiltered] = useState<FilterResult | null>(null);
+  const [cursorStack, setCursorStack] = useState<string[]>([]);
+
+  const patchParams = useCallback((next: Record<string, string | null>) => {
+    const draft = new URLSearchParams(params);
+    for (const [k, v] of Object.entries(next)) {
+      if (v === null) draft.delete(k);
+      else draft.set(k, v);
+    }
+    setParams(draft, { replace: true });
+  }, [params, setParams]);
+
+  const applyFilter = useCallback((next: { status?: string | null; assignee?: string | null }) => {
+    patchParams({
+      status: next.status === undefined ? fStatus : next.status,
+      assignee: next.assignee === undefined ? fAssignee : next.assignee,
+      cursor: null,
+    });
+    setCursorStack([]);
+    setFiltered(null);
+  }, [fStatus, fAssignee, patchParams]);
+
+  const clearFilter = useCallback(() => {
+    patchParams({ status: null, assignee: null, cursor: null });
+    setCursorStack([]);
+    setFiltered(null);
+  }, [patchParams]);
+
+  const nextPage = useCallback(() => {
+    if (filtered?.phase !== "ready" || !filtered.nextCursor) return;
+    setCursorStack((stack) => [...stack, fCursor ?? ""]);
+    patchParams({ cursor: filtered.nextCursor });
+    setFiltered(null);
+  }, [filtered, fCursor, patchParams]);
+
+  const prevPage = useCallback(() => {
+    setCursorStack((stack) => {
+      if (stack.length === 0) return stack;
+      const prev = stack[stack.length - 1];
+      patchParams({ cursor: prev === "" ? null : prev });
+      setFiltered(null);
+      return stack.slice(0, -1);
+    });
+  }, [patchParams]);
+
+  useEffect(() => {
+    if (!filterActive) {
+      setFiltered(null);
+      return;
+    }
+    let alive = true;
+    void loadFiltered({ status: fStatus, assignee: fAssignee, cursor: fCursor }).then((res) => {
+      if (alive) setFiltered(res);
+    });
+    return () => { alive = false; };
+  }, [filterActive, fStatus, fAssignee, fCursor, tick]);
+
+  const assigneeOptions = useMemo(
+    () =>
+      Object.entries(board.nameMap).map(([id, name]) => ({
+        value: `employee:${id}`,
+        label: `${name} · ${short8(id)}`,
+      })),
+    [board.nameMap],
+  );
 
   const afterCreate = useCallback((taskId: string) => {
     // Refresh the board and open the new task's detail through the real link.
@@ -234,11 +310,14 @@ export function TasksBoardModulePage() {
       return () => { alive = false; };
     }
     setBoard((prev) => ({ ...prev, phase: "loading" }));
-    void loadBoard().then((next) => {
+    // P2: the filter view replaces the columns, so only the directory leg
+    // runs — one real /api/tasks query comes from loadFiltered below.
+    const loader = filterActive ? loadNamesOnly : loadBoard;
+    void loader().then((next) => {
       if (alive) setBoard(next);
     });
     return () => { alive = false; };
-  }, [forced, forceRid, tick]);
+  }, [forced, forceRid, tick, filterActive]);
 
   useEffect(() => {
     if (!selected) {
@@ -319,6 +398,154 @@ export function TasksBoardModulePage() {
         />
       ) : null}
 
+      {/* P2: filters are real BFF parameters; the list renders what comes
+        * back. Priority is refused until the server accepts it — no fake
+        * client-side filtering. */}
+      <div className="flex flex-wrap items-center gap-2 text-xs" role="group" aria-label="任务筛选" data-testid="tsk4-filter">
+        <select
+          aria-label="按状态筛选"
+          data-testid="tsk4-filter-status"
+          className="min-w-0 rounded-sm border border-white/15 bg-transparent px-2 py-1 text-xs"
+          value={fStatus ?? ""}
+          onChange={(e) => applyFilter({ status: e.target.value === "" ? null : e.target.value })}
+        >
+          <option value="">状态：按看板列展示</option>
+          <option value="all">全部（单查询聚合）</option>
+          {BOARD_STATUSES.map((st) => (
+            <option key={st} value={st}>{statusLabel(st)}</option>
+          ))}
+        </select>
+        <select
+          aria-label="按负责人筛选"
+          data-testid="tsk4-filter-assignee"
+          className="min-w-0 rounded-sm border border-white/15 bg-transparent px-2 py-1 text-xs"
+          value={fAssignee ?? ""}
+          onChange={(e) => applyFilter({ assignee: e.target.value === "" ? null : e.target.value })}
+        >
+          <option value="">负责人：不限</option>
+          {assigneeOptions.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+        <select
+          aria-label="按优先级筛选"
+          data-testid="tsk4-filter-priority"
+          className="min-w-0 rounded-sm border border-white/15 bg-transparent px-2 py-1 text-xs opacity-60"
+          disabled
+          title="服务端优先级筛选尚未开放：带上它后台会返回未过滤的全量，为避免假过滤此处暂不可用"
+        >
+          <option value="">优先级：暂不可筛</option>
+        </select>
+        <Button
+          size="sm"
+          outlined
+          data-testid="tsk4-filter-clear"
+          disabled={!filterActive}
+          onClick={clearFilter}
+        >
+          清空筛选
+        </Button>
+      </div>
+
+      {filterActive ? (
+        <section className="min-w-0 space-y-3" data-testid="tsk4-filter-view">
+          {!filtered ? (
+            <BoardSkeleton />
+          ) : filtered.phase !== "ready" ? (
+            <Card data-testid={`tsk4-filter-${filtered.phase}`}>
+              <CardContent className="flex min-w-0 items-start gap-3 p-4">
+                {filtered.phase === "denied" ? (
+                  <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
+                ) : (
+                  <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
+                )}
+                <div className="min-w-0">
+                  <p className="text-sm">
+                    {filtered.phase === "denied" ? "暂时看不到符合条件的任务" : "任务筛选没能加载出来"}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">{filtered.message || "后台没有给出原因。"}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    <RequestIdCopy requestId={filtered.requestId} fallback="本次请求未记录编号，可复制时间与操作路径反馈" />
+                  </p>
+                  <Button size="sm" outlined className="mt-2" data-testid="tsk4-filter-retry" onClick={() => setTick((n) => n + 1)}>
+                    重试
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : filtered.rows.length === 0 ? (
+            <Card data-testid="tsk4-filter-empty">
+              <CardContent className="flex min-w-0 items-start gap-3 p-4">
+                <Inbox className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+                <div className="min-w-0">
+                  <p className="text-sm">没有符合条件的任务。</p>
+                  <p className="mt-1 text-xs text-muted-foreground">这是服务端的真实回答：当前筛选组合下没有任务；不是加载失败。</p>
+                  <Button size="sm" outlined className="mt-2" onClick={clearFilter}>清空筛选</Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card data-testid="tsk4-filter-list">
+              <CardContent className="p-0">
+                <div className="hidden grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,0.7fr)_minmax(0,0.9fr)_minmax(0,1.1fr)_minmax(0,0.8fr)] gap-2 border-b border-border px-4 py-2 text-xs uppercase tracking-wide text-muted-foreground sm:grid">
+                  <span>任务</span>
+                  <span>负责人</span>
+                  <span>优先级</span>
+                  <span>状态</span>
+                  <span>更新</span>
+                  <span>花费</span>
+                </div>
+                <ul className="divide-y divide-border">
+                  {filtered.rows.map((row) => (
+                    <li
+                      key={row.taskId}
+                      data-testid={`tsk4-filter-row-${row.taskId}`}
+                      className="grid grid-cols-1 gap-1 px-4 py-3 text-sm sm:grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,0.7fr)_minmax(0,0.9fr)_minmax(0,1.1fr)_minmax(0,0.8fr)] sm:items-center sm:gap-2"
+                    >
+                      <button
+                        type="button"
+                        className="min-w-0 truncate text-left hover:underline focus-visible:underline"
+                        onClick={() => setSelected(row.taskId)}
+                      >
+                        {row.title}
+                      </button>
+                      <span className="min-w-0 truncate text-xs text-muted-foreground">{actorLabel(row.assignee, board.nameMap)}</span>
+                      <span className="text-xs">{priorityLabel(row.priority).text}</span>
+                      <span className="text-xs" title={row.status ?? undefined}>{statusLabel(row.status)}</span>
+                      <span className="font-mono text-xs text-muted-foreground">{beijing(row.updatedAt)}</span>
+                      <span className="text-xs">{money(row.cost)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
+          <div className="flex flex-wrap items-center gap-2 text-xs" data-testid="tsk4-page">
+            <Button
+              size="sm"
+              outlined
+              data-testid="tsk4-page-prev"
+              disabled={cursorStack.length === 0}
+              title={cursorStack.length === 0 ? "回放从当前页开始，上一页需要重新筛选进入" : undefined}
+              onClick={prevPage}
+            >
+              上一页
+            </Button>
+            <span data-testid="tsk4-page-info">第 {cursorStack.length + 1} 页 · 本页最多 50 条{filtered?.phase === "ready" && filtered.nextCursor ? "" : " · 已到最后一页"}</span>
+            <Button
+              size="sm"
+              outlined
+              data-testid="tsk4-page-next"
+              disabled={filtered?.phase !== "ready" || !filtered.nextCursor}
+              onClick={nextPage}
+            >
+              下一页
+            </Button>
+          </div>
+        </section>
+      ) : null}
+
+      {!filterActive ? (
       <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm" data-testid="tsk4-summary">
         <span data-testid="status">
           待处理 <b>{countsUnknown ? "—" : counts.open}</b> · 阻塞 <b>{countsUnknown ? "—" : counts.blocked}</b>
@@ -331,9 +558,12 @@ export function TasksBoardModulePage() {
         <span data-testid="next-action">下一步：处理阻塞任务</span>
         <span data-testid="owner">负责人：任务指派对象</span>
       </div>
+      ) : null}
+      {!filterActive ? (
       <p className="text-xs text-muted-foreground">
         仅显示本页已加载的任务，不是全量统计；新建走任务服务真接口，状态迁移待写入车间接线后开放。
       </p>
+      ) : null}
 
       <TaskDetailCard
         state={detail}
@@ -342,9 +572,9 @@ export function TasksBoardModulePage() {
         onRetry={() => setTick((n) => n + 1)}
       />
 
-      {board.phase === "loading" ? <BoardSkeleton /> : null}
+      {!filterActive && board.phase === "loading" ? <BoardSkeleton /> : null}
 
-      {board.phase === "empty" ? (
+      {!filterActive && board.phase === "empty" ? (
         <Card data-testid="tsk4-empty">
           <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
             <Inbox className="h-8 w-8 text-muted-foreground" />
@@ -354,7 +584,7 @@ export function TasksBoardModulePage() {
         </Card>
       ) : null}
 
-      {board.phase === "error" || board.phase === "denied" ? (
+      {!filterActive && (board.phase === "error" || board.phase === "denied") ? (
         <Card data-testid={`tsk4-${board.phase}`}>
           <CardContent className="flex flex-col items-start gap-3 p-5">
             {board.phase === "denied" ? (
@@ -395,7 +625,7 @@ export function TasksBoardModulePage() {
         </Card>
       ) : null}
 
-      {board.phase === "ready" ? (
+      {!filterActive && board.phase === "ready" ? (
         <div className="grid min-w-0 gap-3 md:grid-cols-2 xl:grid-cols-5" data-testid="tsk4-columns">
           {BOARD_STATUSES.map((status) => {
             const rows = grouped.get(status) ?? [];

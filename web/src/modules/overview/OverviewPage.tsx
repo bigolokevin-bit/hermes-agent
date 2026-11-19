@@ -45,6 +45,30 @@ function Source({ children }: { children: ReactNode }) {
   return <span className="ov5-source">{children}</span>;
 }
 
+/** R31: the as-of line renders in EVERY state — the real minute stamp in
+ * 北京时间 YYYY-MM-DD HH:mm, or "—" with the honest reason in title.
+ * Never an invented time, never absent from the DOM. */
+function AsofLine({ states }: { states: Array<Loadable<unknown> | null> }) {
+  const stamps = states.map((st) => sourceStamp(st));
+  const shown = stamps
+    .map((x) => x.shown)
+    .filter((x): x is string => Boolean(x) && x !== '—')
+    .sort();
+  if (shown.length > 0) {
+    return (
+      <p className="ov5-sub" data-testid="ov6-asof" title="取各来源响应自带的采集时间，最早的一个上屏">
+        {`采集时刻 北京时间 ${shown[0]} · 每卡来源见卡内标注`}
+      </p>
+    );
+  }
+  const reason = stamps.find((x) => x.reason)?.reason ?? '所有来源都没有返回采集时间';
+  return (
+    <p className="ov5-sub" data-testid="ov6-asof" title={`取不到采集时间：${reason}`}>
+      采集时刻 —
+    </p>
+  );
+}
+
 function Freshness({ items, testid }: { items: StampSource[]; testid?: string }) {
   return (
     <div className="ov5-stamps" data-testid={testid}>
@@ -91,7 +115,7 @@ function KpiCard({
   children?: ReactNode;
 }) {
   return (
-    <Card className="ov5-kpi" data-testid={testid}>
+    <Card className="ov5-kpi" data-testid={testid} data-duty-testid={testid.replace('ov6-', 'duty-')}>
       <CardContent className="ov5-kpi-bd">
         <div className="ov5-kpi-hd">
           <span>{title}</span>
@@ -126,7 +150,7 @@ function Trend({ stats, onRetry }: { stats: Loadable<RunStatsBody>; onRetry: () 
   const points = stats.k === 'ready' ? trendPoints(stats.data) : [];
   const max = Math.max(1, ...points.map((p) => p.runs ?? 0));
   return (
-    <Card className="ov5-block" data-testid="ov6-trend">
+    <Card className="ov5-block" data-testid="ov6-trend" data-duty-testid="duty-trend">
       <CardContent className="ov5-block-bd">
         <div className="ov5-block-hd">
           <h2>近 14 天运行趋势</h2>
@@ -179,7 +203,7 @@ function Trend({ stats, onRetry }: { stats: Loadable<RunStatsBody>; onRetry: () 
 function RecentActivity({ data, onRetry }: { data: DutyData; onRetry: () => void }) {
   const runs = data.recentRuns;
   return (
-    <Card className="ov5-block" data-testid="ov6-activity">
+    <Card className="ov5-block" data-testid="ov6-activity" data-duty-testid="duty-activity">
       <CardContent className="ov5-block-bd">
         <div className="ov5-block-hd">
           <h2>最近活动</h2>
@@ -232,7 +256,7 @@ function Blockers({ data, onRetry }: { data: DutyData; onRetry: () => void }) {
   const unavailable = blockSources.some(({ state }) => state.k === 'error');
   const firstBlockError = blockSources.map(({ state }) => state).find((state) => state.k === 'error');
   return (
-    <Card className="ov5-block" data-testid="ov6-blockers">
+    <Card className="ov5-block" data-testid="ov6-blockers" data-duty-testid="duty-blockers">
       <CardContent className="ov5-block-bd">
         <div className="ov5-block-hd">
           <h2>阻塞队列</h2>
@@ -314,6 +338,7 @@ export function OverviewView({
         <Card className="ov5-empty-card" data-testid="ov6-empty"><CardContent>
           <h1>还没有可汇总的数据</h1>
           <p>员工、运行与审批都为空时，总览没有数字可展示。</p>
+          <AsofLine states={coreStates} />
           <Link to="/employees">先看数字员工<ArrowRight className="h-3.5 w-3.5" /></Link>
         </CardContent></Card>
       </section>
@@ -330,6 +355,7 @@ export function OverviewView({
               <b>总览没能读出来</b>
             </div>
             <p>这次聚合的所有来源都没有返回数据，页面没有编造任何数字。</p>
+            <AsofLine states={coreStates} />
             <RequestId id={firstError?.requestId ?? null} />
             <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />} data-testid="ov6-retry">重试</Button>
           </CardContent>
@@ -351,14 +377,7 @@ export function OverviewView({
         </Button>
       </header>
 
-      <p className="ov5-sub" data-testid="ov6-asof">
-        {(() => {
-          const shown = [data.stats, data.todayStats, data.employees, data.approvalStats, data.budgetDay]
-            .map((state) => sourceStamp(state).shown)
-            .filter((x): x is string => Boolean(x) && x !== '时间未知');
-          return shown.length > 0 ? `数据截至 ${shown.sort()[0]}（北京时间）· 每卡来源见卡内标注` : '数据截至 —';
-        })()}
-      </p>
+      <AsofLine states={[data.stats, data.todayStats, data.employees, data.approvalStats, data.budgetDay]} />
 
       {anyLoading ? <div className="ov5-skeleton" aria-busy="true" aria-label="总览加载中" data-testid="ov6-loading"><span /><span /><span /></div> : null}
 
@@ -445,6 +464,7 @@ export function OverviewPage() {
         <Card className="ov5-empty-card" data-testid="ov6-empty"><CardContent>
           <h1>还没有可汇总的数据</h1>
           <p>员工、运行与审批都为空时，总览没有数字可展示。</p>
+          <AsofLine states={[]} />
           <Link to="/employees">先看数字员工<ArrowRight className="h-3.5 w-3.5" /></Link>
         </CardContent></Card>
       </section>
@@ -456,6 +476,7 @@ export function OverviewPage() {
         <Card className="ov5-error-card" data-testid="ov6-error" role="alert"><CardContent>
           <div className="ov5-inline-error"><AlertTriangle className="h-5 w-5" /><b>总览没能读出来</b></div>
           <p>这次聚合的所有来源都没有返回数据，页面没有编造任何数字。</p>
+            <AsofLine states={[]} />
           <RequestId id={null} />
           <Button size="sm" outlined onClick={clearForced} data-testid="ov6-retry">重试</Button>
         </CardContent></Card>

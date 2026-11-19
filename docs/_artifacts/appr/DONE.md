@@ -511,3 +511,18 @@ testid：ed5-zone-runs-list/ed5-zone-runs-row、ed5-zone-audit-list/ed5-zone-aud
 最近事件：normalizeDetail 新增 events 解包（eventId/kind/note/at 多键兼容）；真样本 detail 无 events 键→渲「无事件」+title 原因，禁造事件；有则列前 3 条（vitest 4 事件样本断言第三条在、第四条不出现、at=2026-11-17 10:00）。
 创建后直开详情=复用 setTick+onCreated→setSelected 既有链✓；失败面既有 RequestIdCopy+重试✓；迁移按钮本树 tasks 无（grep 零）✓。testid：tsk4-detail-*（状态卡）+tsk4-detail-note 新增。
 验证：定向 tasks 2 files 15 passed；全量 126 files/1274 passed 0 fail。屏幕活体待 L0 合批。
+
+## P2 任务看板筛选与分页真生效（feat(console): task board filters and paging real data）
+筛选真传 BFF（ego 登录态 9122 活体，每筛选请求码+行数）：status=open → 200 n=17；status=all → 200 n=20（BFF 五态扇出聚合）；不带 filter → 200 n=5（D 件聚合生效，不再 400）；assignee=employee:emp_86A81CE8… → 200 n=10 真过滤（裸 emp_… 格式 → 400 invalid_query「assignee must be 'employee:<id>' or 'human:<user>'」，option 值因此一律 employee:<id> 前缀）；priority=high → 200 n=17 与不带完全一致=**BFF 忽略 priority 参数**→优先级下拉渲染为 disabled+title 原因（「服务端优先级筛选尚未开放」），禁假过滤。
+分页/游标真生效：limit=2 → 200 n=2 + nextCursor(base64)；cursor=nextCursor → 200 page2 n=2 新行（tk_0762C4D…/tk_1B4EA3C…）+新 nextCursor。筛选视图=单条真查询 loadFiltered（status/assignee/cursor 直传白名单参数）；五列看板在筛选态不发五路并发（loadNamesOnly 只取目录腿保姓名短码标签）；翻页写 URL cursor，上一页用内存栈回退，栈空 disabled+title 诚实「回放从当前页开始」；无假翻页。
+URL 可回放：筛选+分页组合全量落 ?status=&assignee=&cursor=（setParams replace），刷新/分享回同一答案；filterActive 由 URL 派生，非组件态。
+空 vs 失败区分：rows=0 → tsk4-filter-empty「没有符合条件的任务。」「这是服务端的真实回答…不是加载失败。」+清空钮；error/denied → 人话标题+message+RequestIdCopy 可复制 rid+tsk4-filter-retry 重试；403/404 → denied 同体既有口径。
+testid：沿用 tsk4-*；新增 tsk4-filter（组）/tsk4-filter-status/-assignee/-priority/-clear/-retry/-view/-empty/-list/-row-<id>/tsk4-page/-prev/-info/-next。三档无横溢：筛选行 grid 375 单列堆叠、sm 起六列定宽 minmax(0,…)。
+验证：定向 tasks 2 files 17 passed（新增：共享筛选=恰 1 条 /api/tasks 真查询+游标翻页写 URL；空结果=真实回答非失败；priority disabled）；全量 126 files/1276 passed 0 fail。屏幕活体待 L0 合批。
+
+## R31 总览采集时刻与 KPI 标记族收口（fix(console): overview asOf and KPI stamp family (R31)）
+DOM 自证（vitest OverviewView R29 用例，夹具 asOf 2026-11-19T04:20Z→北京 12:20）：ov6-asof 文本=「采集时刻 北京时间 2026-11-19 12:20 · 每卡来源见卡内标注」（正则断言 北京时间 YYYY-MM-DD HH:mm）；取不到=「采集时刻 —」+title 原因（sourceStamp.reason 人话），禁编时。
+八卡 stamp：ov6-kpi-employees-stamp/-runs-stamp/-pending-stamp/-cost-stamp/-health-stamp + ov6-trend-stamp/ov6-activity-stamp/ov6-blockers-stamp（R29 用例 9 testid 全在位，每 stamp 走 Freshness=「数据截至 <分> · 来源 <人话>」+未知原因）。
+关键修复=此前 ov6-asof 只在主返回渲染，总览全失败/全空两早退分支 DOM 无 ov6-asof（R31 探针 asofTxt=null 根因）；AsofLine 组件三分支常驻（forced ?state= 复现分支带空来源=「—」+title，非编时）。
+KPI 族：五卡 data-testid=ov6-kpi-<name> 统一在位+新增 data-duty-testid=duty-kpi-* 别名 5 处、ov6-trend/activity/blockers 卡 duty-* 别名 3 处（QA 旧选择器零回归）；数值口径未动（真 0 与「—」区分、dashed/money 机制原样，成本卡真 0→$0.00 既有断言保持）；错误/空态人话+可复制 rid+重试未逆。
+验证：定向 overview 1 file 9 passed exit0（新增 asof 正则+duty-kpi 计数断言）。
