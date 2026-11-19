@@ -129,4 +129,42 @@ describe("MatrixModulePage (R7.1 item 2 — live endpoint, no fixture fallback)"
     expect(container.querySelector('[data-testid="auth-reload-exit"]')).not.toBeNull();
     expect(container.querySelector("[data-fixture='1']")).toBeNull();
   });
+
+  it("copies the request id with a click and reports the result (R9 item 1)", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    fetchJSON.mockRejectedValue(expired("req-copy-9"));
+    await renderPage();
+    const btn = container.querySelector<HTMLButtonElement>(
+      '[data-testid="req-copy"]',
+    );
+    if (!btn) throw new Error("req-copy button is missing");
+    expect(btn.textContent).toContain("复制");
+    await act(async () => {
+      btn.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(writeText).toHaveBeenCalledWith("req-copy-9");
+    const state = container.querySelector('[data-testid="req-copy-state"]');
+    expect(state?.textContent).toContain("已复制");
+  });
+
+  it("says so when copying fails (R9 item 1)", async () => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: vi.fn().mockRejectedValue(new Error("denied")) },
+    });
+    fetchJSON.mockRejectedValue(missing("req-fail-1"));
+    await renderPage();
+    const btn = container.querySelector<HTMLButtonElement>(
+      '[data-testid="req-copy"]',
+    );
+    if (!btn) throw new Error("req-copy button is missing");
+    await act(async () => {
+      btn.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(container.textContent).toContain("复制失败，请手动选择");
+  });
 });

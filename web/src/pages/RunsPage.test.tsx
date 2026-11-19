@@ -71,7 +71,7 @@ describe("RunsPage denied state", () => {
     expect(text()).toContain("暂时无法查看运行记录");
     expect(text()).toContain("请求编号：req-7f2a");
     expect(document.querySelectorAll("dl")).toHaveLength(0);
-    expect(labels()).toEqual([]); // no refresh beside a panel that cannot load
+    expect(labels().filter((l) => l !== "复制")).toEqual([]); // only the copy control, no refresh beside a panel that cannot load
   });
 
   it("does not distinguish 404 from 403", async () => {

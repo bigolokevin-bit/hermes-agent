@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
+
+import { RequestIdCopy } from "@/components/RequestIdCopy";
 import { Inbox, LayoutGrid, RefreshCw, ShieldAlert, TriangleAlert, Users } from "lucide-react";
 import { Badge, Button, Card, CardContent } from "@nous-research/ui";
 
@@ -241,7 +243,7 @@ export function MatrixModulePage() {
               <p className="text-sm text-white/80">你看不到这份矩阵</p>
               <p className="max-w-md text-xs text-white/50">可能是这页不存在，也可能是你的账号还没有查看权限。</p>
               <p className="text-xs text-white/40">
-                {errorNote?.requestId ? `请求编号：${errorNote.requestId}` : "本次请求未记录编号，可复制时间与操作路径反馈"}
+                <RequestIdCopy requestId={errorNote?.requestId} fallback="本次请求未记录编号，可复制时间与操作路径反馈" />
               </p>
               <Button size="sm" outlined onClick={retry} data-testid="matrix-denied-retry">
                 刷新试试
@@ -261,7 +263,7 @@ export function MatrixModulePage() {
                   : "刚才的读取没有改动任何东西，可以重试一次。"}
               </p>
               <p className="text-xs text-white/40">
-                {errorNote?.requestId ? `请求编号：${errorNote.requestId}` : "本次请求未记录编号，可复制时间与操作路径反馈"}
+                <RequestIdCopy requestId={errorNote?.requestId} fallback="本次请求未记录编号，可复制时间与操作路径反馈" />
               </p>
               <Button size="sm" outlined onClick={retry} data-testid="matrix-error-retry">
                 重试

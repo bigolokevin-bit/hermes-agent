@@ -20,6 +20,7 @@ import { Badge } from "@nous-research/ui/ui/components/badge";
 import { Button } from "@nous-research/ui/ui/components/button";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { Spinner } from "@nous-research/ui/ui/components/spinner";
+import { RequestIdCopy } from "@/components/RequestIdCopy";
 import { fetchJSON } from "@/lib/api";
 import { ApiError, errorMessage } from "@/lib/api-error";
 import { cn, themedBody } from "@/lib/utils";
@@ -360,7 +361,9 @@ function DeniedPanel({ failure }: { failure: Failure | null }) {
           这块内容要么尚未对你开放，要么当前环境还没有提供它。这里不会显示任何猜测的内容。
           需要处理审批时，请联系工作区管理员为你开通。
         </p>
-        <p className="text-xs text-muted-foreground">{reqLine(failure?.requestId)}</p>
+        <p className="text-xs text-muted-foreground">
+          <RequestIdCopy requestId={failure?.requestId} fallback="请求编号未记录，可复制时间与操作路径反馈" />
+        </p>
       </CardContent>
     </Card>
   );
@@ -379,7 +382,9 @@ function ErrorPanel({ failure, onRetry }: { failure: Failure; onRetry: () => voi
           审批申请没能加载出来
         </div>
         <p className="text-xs text-muted-foreground">{failure.sentence}</p>
-        <p className="text-xs text-muted-foreground">{reqLine(failure.requestId)}</p>
+        <p className="text-xs text-muted-foreground">
+          <RequestIdCopy requestId={failure.requestId} fallback="请求编号未记录，可复制时间与操作路径反馈" />
+        </p>
         <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
           重试
         </Button>

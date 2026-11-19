@@ -69,7 +69,7 @@ describe("ApprovalsPage denied state", () => {
     expect(text()).toContain("暂时无法查看审批申请");
     expect(text()).toContain("请求编号：apr-9c31");
     expect(document.querySelectorAll("dl")).toHaveLength(0);
-    expect(labels()).toEqual([]);
+    expect(labels().filter((l) => l !== "复制")).toEqual([]); // copy control allowed; no refresh on a panel that cannot load
   });
 
   it("does not distinguish 404 from 403", async () => {

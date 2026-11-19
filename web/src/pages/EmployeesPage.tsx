@@ -11,6 +11,7 @@ import { Badge } from "@nous-research/ui/ui/components/badge";
 import { Button } from "@nous-research/ui/ui/components/button";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 
+import { RequestIdCopy } from "@/components/RequestIdCopy";
 import { fetchJSON } from "@/lib/api";
 import { ApiError } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
@@ -73,10 +74,7 @@ export function money(value: unknown): string {
   return USD.format(n);
 }
 
-// R4 item 5: honest copy when no trace id came back (replaces 「未提供」).
-function reqLine(id: string | null | undefined): string {
-  return id ? `请求编号：${id}` : "请求编号未记录，可复制时间与操作路径反馈";
-}
+
 
 /** 计数：缺失 → 「—」；真实 0 → 「0」。 */
 export function countDash(value: unknown): string {
@@ -632,7 +630,9 @@ export function ErrorStateBlock({
             {title}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">{body}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{reqLine(requestId)}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            <RequestIdCopy requestId={requestId} fallback="请求编号未记录，可复制时间与操作路径反馈" />
+          </p>
           <div className="mt-2 flex flex-wrap gap-2">
             <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
               重试
