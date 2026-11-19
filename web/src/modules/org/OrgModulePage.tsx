@@ -1,16 +1,15 @@
 /**
- * T21 · 组织与部门 module page — stage-2 delivery for lane B.
+ * T21 / org5 · 组织与部门 module page.
  *
- * Data source: 毕升 getDepartmentApi，经 BFF 别名 `/agent-api/api/v1/dept/*`。
- * The exact route is unverified (GAP-02, ROUTE_TABLE row 149): the page tries
- * the known candidates for real; when none answers it shows an honest
- * 「待核实（GAP-02）」state plus the 申请入口 note — never a fabricated tree,
- * never a fake 0 headcount.
+ * Data source: 毕升 getDepartmentApi via BFF aliases under
+ * `/agent-api/api/v1/dept/*`. The route is still unverified (GAP-02): the page
+ * tries the known candidates for real and, when none answers, shows an honest
+ * 「未接入」 state plus an application link. It never fabricates a tree, a
+ * headcount, a zero or a sample row.
  *
  * Display contract: flat rows (dept_id/parent_id) and nested payloads
- * (children[]) both build the same tree; raw ids live in `title` only;
- * missing values read 「待核实」. Wiring waits for a lane A bridge probe
- * (recorded in docs/_artifacts/employees/DONE.md), same as T20.
+ * (children[]) build the same tree; raw ids live in `title` only; missing
+ * values read 「—」 with a reason; owners read 「姓名 · 8位短码」 or 「未指派」.
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
@@ -22,10 +21,12 @@ import {
   ShieldAlert,
   TriangleAlert,
 } from "lucide-react";
-import { Badge, Button, Card, CardContent } from "@nous-research/ui";
+import { Button, Card, CardContent } from "@nous-research/ui";
 
 import { fetchJSON } from "@/lib/api";
-import { API_UNREACHABLE_MESSAGE, ApiError, humanizeStatus } from "@/lib/api-error";
+import { API_UNREACHABLE_MESSAGE, ApiError } from "@/lib/api-error";
+
+import "./org.css";
 
 /* ------------------------------------------------------------------ *
  * types & readers
@@ -37,12 +38,13 @@ type Resource<T> =
   | { phase: "loading" }
   | { phase: "empty" }
   | { phase: "ready"; data: T }
-  | { phase: "denied"; message: string }
+  | { phase: "unavailable"; reason: string; forbidden: boolean; requestId: string | null }
   | { phase: "error"; message: string; requestId: string | null };
 
-const DENIED_FORBIDDEN = "你没有查看这块数据的权限。";
-const GAP02_MESSAGE =
-  "组织架构待核实（上游部门数据接口尚未接入本控制台）。接入后这里会自动显示真实部门树。";
+const GAP02 = "GAP-02";
+const MISSING_REASON =
+  "上游部门接口还没有接入本控制台。接入后这里会自动显示真实部门树，不显示样例或 0。";
+const FORBIDDEN_REASON = "当前账号没有查看部门数据的权限。可以提交开通申请后重试。";
 
 function isRecord(value: unknown): value is Rec {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -52,6 +54,17 @@ function pickString(...values: unknown[]): string | null {
   for (const value of values) {
     if (typeof value === "string" && value.trim()) return value.trim();
     if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  }
+  return null;
+}
+
+function pickNumber(...values: unknown[]): number | null {
+  for (const value of values) {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string" && value.trim()) {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) return parsed;
+    }
   }
   return null;
 }
@@ -66,6 +79,31 @@ function itemsOf(body: unknown): Rec[] {
   return [];
 }
 
+const BEIJING = new Intl.DateTimeFormat("sv-SE", {
+  timeZone: "Asia/Shanghai",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+function beijing(value: unknown): string | null {
+  const raw = pickString(value);
+  if (!raw) return null;
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return null;
+  return BEIJING.format(date);
+}
+
+function shortCode(value: string | null): string | null {
+  if (!value) return null;
+  const alnum = value.replace(/[^0-9a-zA-Z]/g, "").toUpperCase();
+  if (!alnum) return null;
+  return alnum.length <= 8 ? alnum : alnum.slice(-8);
+}
+
 /* ------------------------------------------------------------------ *
  * tree building (flat parent_id rows or nested children[] payloads)
  * ------------------------------------------------------------------ */
@@ -73,32 +111,97 @@ function itemsOf(body: unknown): Rec[] {
 type Dept = {
   key: string;
   parent: string;
-  name: string | null;
-  count: number | null;
   rawId: string;
+  name: string | null;
+  nameReason: string | null;
+  parentName: string | null;
+  parentReason: string | null;
+  count: number | null;
+  countReason: string | null;
+  ownerName: string | null;
+  ownerCode: string | null;
+  ownerReason: string | null;
+  updatedAt: string | null;
+  updatedReason: string | null;
 };
 
 function collect(rows: Rec[], parentId: string, out: Dept[]): void {
-  rows.forEach((row, index) => {
-    const rawId = pickString(row.dept_id, row.id, row.deptId) ?? `row-${out.length}`;
-    const name = pickString(row.dept_name, row.name, row.title);
-    const countValue = row.user_count ?? row.headcount ?? row.member_count;
-    const count = typeof countValue === "number" && Number.isFinite(countValue) ? countValue : null;
-    // an explicit parent field wins; otherwise inherit the nesting parent
-    const explicit = pickString(row.parent_id, row.parentId);
+  rows.forEach((row) => {
+    const owner = isRecord(row.owner) ? row.owner : null;
+    const rawId = pickString(row.dept_id, row.deptId, row.id) ?? `row-${out.length}`;
+    const name = pickString(row.dept_name, row.deptName, row.name, row.title);
+    const explicitParent = pickString(row.parent_id, row.parentId);
+    const ownerName = pickString(
+      row.owner_name,
+      row.ownerName,
+      row.leader_name,
+      row.leaderName,
+      row.manager_name,
+      row.managerName,
+      owner?.name,
+      owner?.realname,
+    );
+    const ownerId = pickString(
+      row.owner_id,
+      row.ownerId,
+      row.leader_id,
+      row.leaderId,
+      row.manager_id,
+      row.managerId,
+      row.emp_id,
+      row.employee_id,
+      owner?.employeeId,
+      owner?.emp_id,
+      owner?.id,
+    );
+    const ownerCode = shortCode(ownerId);
+    const updatedRaw = row.updated_at ?? row.updatedAt ?? row.modified_at ?? row.modifiedAt;
+    const updatedAt = beijing(updatedRaw);
+    const count = pickNumber(row.user_count, row.userCount, row.headcount, row.member_count, row.memberCount);
+
     out.push({
       key: rawId,
-      parent: explicit ?? (parentId || ""),
-      name,
-      count,
+      parent: explicitParent ?? (parentId || ""),
       rawId,
+      name,
+      nameReason: name ? null : "上游未提供部门名",
+      parentName: pickString(row.parent_name, row.parentName),
+      parentReason: null,
+      count,
+      countReason: count === null ? "上游未返回人数" : null,
+      ownerName,
+      ownerCode,
+      ownerReason: !ownerName && !ownerCode ? "上游未指定负责人" : null,
+      updatedAt,
+      updatedReason: updatedAt
+        ? null
+        : updatedRaw
+          ? "更新时间无法解析"
+          : "上游未返回更新时间",
     });
+
     if (Array.isArray(row.children)) collect(row.children.filter(isRecord), rawId, out);
-    void index;
   });
 }
 
 type TreeNode = Dept & { children: TreeNode[] };
+
+function withParentNames(depts: Dept[]): Dept[] {
+  const names = new Map<string, string | null>();
+  for (const dept of depts) names.set(dept.key, dept.name);
+  return depts.map((dept) => {
+    if (dept.parentName) return dept;
+    if (!dept.parent || dept.parent === "0" || dept.parent === "-1") {
+      return { ...dept, parentName: null, parentReason: "顶级部门" };
+    }
+    const resolved = names.get(dept.parent) ?? null;
+    return {
+      ...dept,
+      parentName: resolved,
+      parentReason: resolved ? null : "上级部门未在返回中",
+    };
+  });
+}
 
 function buildTree(depts: Dept[]): TreeNode[] {
   const byKey = new Map<string, TreeNode>();
@@ -107,26 +210,32 @@ function buildTree(depts: Dept[]): TreeNode[] {
   }
   const roots: TreeNode[] = [];
   for (const node of byKey.values()) {
-    const parent = node.parent && node.parent !== "0" && node.parent !== "-1" ? byKey.get(node.parent) : undefined;
+    const parent =
+      node.parent && node.parent !== "0" && node.parent !== "-1" ? byKey.get(node.parent) : undefined;
     if (parent && parent !== node) parent.children.push(node);
     else roots.push(node);
   }
-  // deterministic order: keep source order within each level (Map keeps it)
   return roots;
 }
 
 /* ------------------------------------------------------------------ *
- * fetch — real endpoints, honest GAP-02 when none answers
+ * fetch — real endpoints, honest 未接入 when none answers
  * ------------------------------------------------------------------ */
 
-const ORG_ENDPOINTS = [
-  "/agent-api/api/v1/dept/list",
-  "/agent-api/api/v1/dept/tree",
-];
+const ORG_ENDPOINTS = ["/agent-api/api/v1/dept/list", "/agent-api/api/v1/dept/tree"];
+
+function errorMessage(status: number | null | undefined): string {
+  if (status === 0) return "当前网络不可达，请检查网络后重试。";
+  if (status === 401) return "需要登录：登录状态已经失效，请重新登录后重试。";
+  if (status === 429) return "请求太频繁，请稍后重试。";
+  if (status && status >= 500) return API_UNREACHABLE_MESSAGE;
+  return "本次数据读取失败，请重试。";
+}
 
 async function loadOrg(): Promise<Resource<Dept[]>> {
-  let saw403 = false;
+  let sawForbidden: ApiError | null = null;
   let firstError: ApiError | null = null;
+
   for (const url of ORG_ENDPOINTS) {
     try {
       const body = await fetchJSON<unknown>(url);
@@ -134,27 +243,42 @@ async function loadOrg(): Promise<Resource<Dept[]>> {
       if (rows.length === 0) return { phase: "empty" };
       const depts: Dept[] = [];
       collect(rows, "", depts);
-      return { phase: "ready", data: depts };
+      return { phase: "ready", data: withParentNames(depts) };
     } catch (err: unknown) {
       const api = err instanceof ApiError ? err : null;
-      if (api?.status === 403) saw403 = true;
-      else if (api && api.status !== 404 && !firstError) firstError = api;
+      if (api?.status === 403) {
+        sawForbidden = api;
+        continue;
+      }
+      if (api?.status === 401) {
+        return { phase: "error", message: errorMessage(401), requestId: api.requestId ?? null };
+      }
+      if (api && api.status !== 404 && !firstError) firstError = api;
     }
   }
-  if (saw403) return { phase: "denied", message: DENIED_FORBIDDEN };
+
   if (firstError) {
-    const message =
-      firstError.status && firstError.status >= 500
-        ? API_UNREACHABLE_MESSAGE
-        : firstError.message || humanizeStatus(firstError.status);
-    return { phase: "error", message, requestId: firstError.requestId ?? null };
+    return {
+      phase: "error",
+      message: errorMessage(firstError.status),
+      requestId: firstError.requestId ?? null,
+    };
   }
-  return { phase: "denied", message: GAP02_MESSAGE };
+  if (sawForbidden) {
+    return {
+      phase: "unavailable",
+      reason: FORBIDDEN_REASON,
+      forbidden: true,
+      requestId: sawForbidden.requestId ?? null,
+    };
+  }
+  return { phase: "unavailable", reason: MISSING_REASON, forbidden: false, requestId: null };
 }
 
-function useOrg(nonce: number): Resource<Dept[]> {
+function useOrg(nonce: number, enabled: boolean): Resource<Dept[]> {
   const [resource, setResource] = useState<Resource<Dept[]>>({ phase: "loading" });
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
     setResource({ phase: "loading" });
     loadOrg()
@@ -162,24 +286,55 @@ function useOrg(nonce: number): Resource<Dept[]> {
         if (!cancelled) setResource(r);
       })
       .catch(() => {
-        if (!cancelled) setResource({ phase: "error", message: API_UNREACHABLE_MESSAGE, requestId: null });
+        if (!cancelled)
+          setResource({ phase: "error", message: API_UNREACHABLE_MESSAGE, requestId: null });
       });
     return () => {
       cancelled = true;
     };
-  }, [nonce]);
+  }, [nonce, enabled]);
   return resource;
 }
 
 /* ------------------------------------------------------------------ *
- * state shell (same idiom as T20)
+ * state shell / request id
  * ------------------------------------------------------------------ */
+
+function RequestId({ id, testid = "org5-request-id" }: { id: string | null; testid?: string }) {
+  const [copied, setCopied] = useState(false);
+  if (!id) {
+    return (
+      <span className="org5-req" data-testid={testid}>
+        本次请求未记录编号
+      </span>
+    );
+  }
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(id);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setCopied(false);
+    }
+  };
+  return (
+    <span className="org5-req" data-testid={testid}>
+      请求编号：<code>{id}</code>
+      <button type="button" className="org5-copy" data-testid="org5-copy-req" onClick={copy}>
+        {copied ? "已复制" : "复制"}
+      </button>
+    </span>
+  );
+}
 
 function StateShell({
   testid,
   icon,
   title,
   body,
+  reason,
+  gapTitle,
   onRetry,
   extra,
 }: {
@@ -187,16 +342,23 @@ function StateShell({
   icon: ReactNode;
   title: string;
   body?: string;
+  reason?: string | null;
+  gapTitle?: string;
   onRetry?: () => void;
   extra?: ReactNode;
 }) {
   return (
-    <section data-testid={testid} className="flex flex-col items-start gap-3 p-4">
-      <div className="flex items-center gap-2 text-sm text-white/80">
+    <section
+      data-testid={testid}
+      className="org5-state"
+      title={gapTitle}
+    >
+      <div className="org5-state-title">
         {icon}
         <span>{title}</span>
       </div>
-      {body ? <p className="text-xs leading-relaxed text-white/40">{body}</p> : null}
+      {body ? <p className="org5-state-body">{body}</p> : null}
+      {reason ? <p className="org5-state-body">{reason}</p> : null}
       {extra}
       {onRetry ? (
         <Button size="sm" outlined onClick={onRetry}>
@@ -212,7 +374,14 @@ function StateShell({
  * tree rows
  * ------------------------------------------------------------------ */
 
-const MAX_DEPTH = 12; // cycle guard: a department org will never nest this deep
+const MAX_DEPTH = 12;
+
+function ownerText(dept: Dept): string {
+  if (dept.ownerName && dept.ownerCode) return `${dept.ownerName} · ${dept.ownerCode}`;
+  if (dept.ownerName) return dept.ownerName;
+  if (dept.ownerCode) return `员工 · ${dept.ownerCode}`;
+  return "未指派";
+}
 
 function DeptRow({
   node,
@@ -227,42 +396,69 @@ function DeptRow({
 }) {
   const hasChildren = node.children.length > 0 && depth < MAX_DEPTH;
   const isCollapsed = collapsed.has(node.key);
+  const indent = 8 + Math.min(depth, 4) * 14;
+
   return (
     <>
       <li
-        data-testid="org4-node"
-        className="flex items-center gap-2 py-2 pr-4"
-        style={{ paddingLeft: 8 + depth * 16 }}
+        data-testid="org5-node"
+        className="org5-node"
         title={node.rawId ? `记录号 ${node.rawId}` : undefined}
       >
-        {hasChildren ? (
-          <button
-            type="button"
-            aria-expanded={!isCollapsed}
-            aria-label={isCollapsed ? "展开" : "收起"}
-            onClick={() => onToggle(node.key)}
-            className="shrink-0 text-white/40 hover:text-white/70"
-          >
-            {isCollapsed ? (
-              <ChevronRight className="h-3.5 w-3.5" aria-hidden />
-            ) : (
-              <ChevronDown className="h-3.5 w-3.5" aria-hidden />
-            )}
-          </button>
-        ) : (
-          <span className="h-3.5 w-3.5 shrink-0" aria-hidden />
-        )}
-        <Building2 className="h-3.5 w-3.5 shrink-0 text-white/25" aria-hidden />
-        <span className="min-w-0 flex-1 truncate text-sm text-white/85">{node.name ?? "待核实"}</span>
-        {node.count === null ? (
-          <Badge tone={undefined}>人数待核实</Badge>
-        ) : (
-          <span className="shrink-0 text-xs text-white/50">共 {node.count} 人</span>
-        )}
+        <div className="org5-namecell" style={{ paddingLeft: indent }}>
+          {hasChildren ? (
+            <button
+              type="button"
+              className="org5-toggle"
+              aria-expanded={!isCollapsed}
+              aria-label={isCollapsed ? "展开" : "收起"}
+              onClick={() => onToggle(node.key)}
+            >
+              {isCollapsed ? (
+                <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+              )}
+            </button>
+          ) : (
+            <span className="org5-toggle-spacer" aria-hidden />
+          )}
+          <Building2 className="org5-dept-icon" aria-hidden />
+          <span className="org5-name" data-testid="org5-name">
+            {node.name ?? "待核实"}
+            {node.nameReason ? <span className="org5-reason">{node.nameReason}</span> : null}
+          </span>
+        </div>
+
+        <div className="org5-cell" data-label="上级部门" data-testid="org5-parent">
+          {node.parentName ?? "—"}
+          {node.parentReason ? <span className="org5-reason">{node.parentReason}</span> : null}
+        </div>
+
+        <div className="org5-cell" data-label="人数" data-testid="org5-count">
+          {node.count === null ? "—" : `${node.count} 人`}
+          {node.countReason ? <span className="org5-reason">{node.countReason}</span> : null}
+        </div>
+
+        <div className="org5-cell" data-label="负责人" data-testid="org5-owner">
+          {ownerText(node)}
+          {node.ownerReason ? <span className="org5-reason">{node.ownerReason}</span> : null}
+        </div>
+
+        <div className="org5-cell" data-label="更新时间" data-testid="org5-updated">
+          {node.updatedAt ?? "—"}
+          {node.updatedReason ? <span className="org5-reason">{node.updatedReason}</span> : null}
+        </div>
       </li>
       {hasChildren && !isCollapsed
         ? node.children.map((child) => (
-            <DeptRow key={child.key} node={child} depth={depth + 1} collapsed={collapsed} onToggle={onToggle} />
+            <DeptRow
+              key={child.key}
+              node={child}
+              depth={depth + 1}
+              collapsed={collapsed}
+              onToggle={onToggle}
+            />
           ))
         : null}
     </>
@@ -270,13 +466,65 @@ function DeptRow({
 }
 
 /* ------------------------------------------------------------------ *
+ * fixture preview (four states, clearly labelled, never passed as live)
+ * ------------------------------------------------------------------ */
+
+const FIXTURE_DEPTS: Dept[] = [
+  {
+    key: "fixture-root",
+    parent: "",
+    rawId: "fixture-root",
+    name: "示例部门（预览）",
+    nameReason: null,
+    parentName: null,
+    parentReason: "顶级部门",
+    count: 6,
+    countReason: null,
+    ownerName: "示例负责人",
+    ownerCode: "ABCD1234",
+    ownerReason: null,
+    updatedAt: "2026-11-19 13:20",
+    updatedReason: null,
+  },
+  {
+    key: "fixture-child",
+    parent: "fixture-root",
+    rawId: "fixture-child",
+    name: "示例子部门",
+    nameReason: null,
+    parentName: "示例部门（预览）",
+    parentReason: null,
+    count: null,
+    countReason: "上游未返回人数",
+    ownerName: null,
+    ownerCode: null,
+    ownerReason: "上游未指定负责人",
+    updatedAt: null,
+    updatedReason: "上游未返回更新时间",
+  },
+];
+
+/* ------------------------------------------------------------------ *
  * the page
  * ------------------------------------------------------------------ */
+
+type Forced = "loading" | "empty" | "error" | "denied" | "ready";
+
+function forcedState(): Forced | null {
+  if (typeof window === "undefined") return null;
+  const value = new URLSearchParams(window.location.search).get("state");
+  if (value === "loading" || value === "empty" || value === "error" || value === "denied" || value === "ready") {
+    return value;
+  }
+  return null;
+}
 
 export default function OrgModulePage() {
   const [reload, setReload] = useState(0);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  const org = useOrg(reload);
+  const forced = forcedState();
+  const org = useOrg(reload, forced === null);
+  const refresh = () => setReload((n) => n + 1);
 
   const roots = useMemo<TreeNode[]>(() => {
     if (org.phase !== "ready") return [];
@@ -293,82 +541,161 @@ export default function OrgModulePage() {
       return next;
     });
 
-  return (
-    <section className="flex flex-col gap-4" data-testid="org4-page">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="font-mondwest text-xl text-white/90">组织与部门</h1>
-          <p className="mt-1 text-xs text-white/40">
-            部门树 · 上下级关系与人数
-            {org.phase === "ready" ? ` · 共 ${total} 个部门` : ""}
+  const shell = (children: ReactNode) => (
+    <section className="org5-page" data-testid="org5-page" data-fixture={forced ? "1" : undefined}>
+      <header className="org5-head-row">
+        <div className="org5-heading">
+          <h1 className="org5-h1">组织与部门</h1>
+          <p className="org5-sub">
+            部门树 · 上下级关系、人数、负责人与更新时间
+            {org.phase === "ready" && !forced ? ` · 共 ${total} 个部门` : ""}
           </p>
+          {forced ? (
+            <p className="org5-preview" data-testid="org5-preview-note">
+              预览状态：这是界面自检用的样例，不是线上部门数据。
+            </p>
+          ) : null}
         </div>
-        <Button size="sm" outlined onClick={() => setReload((n) => n + 1)}>
+        <Button size="sm" outlined onClick={refresh} data-testid="org5-refresh">
           <RefreshCw className="h-3.5 w-3.5" aria-hidden />
           刷新
         </Button>
       </header>
-
-      {org.phase === "loading" ? (
-        <section
-          data-testid="org4-loading"
-          className="flex flex-col gap-2 rounded-lg border border-white/5 bg-white/[0.02] p-4"
-          aria-label="正在加载组织架构"
-        >
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="h-8 animate-pulse rounded bg-white/5" />
-          ))}
-        </section>
-      ) : null}
-
-      {org.phase === "denied" ? (
-        <StateShell
-          testid="org4-denied"
-          icon={<ShieldAlert className="h-4 w-4 text-amber-300/80" aria-hidden />}
-          title={org.message === DENIED_FORBIDDEN ? "暂时看不到组织架构" : "数据源待核实"}
-          body={org.message}
-          onRetry={() => setReload((n) => n + 1)}
-          extra={
-            org.message === GAP02_MESSAGE ? (
-              <p data-testid="org4-apply" className="text-xs leading-relaxed text-white/55">
-                申请接入：请提交平台工单，说明用于控制台「组织与部门」页，申请接入部门数据接口。
-              </p>
-            ) : undefined
-          }
-        />
-      ) : null}
-
-      {org.phase === "error" ? (
-        <StateShell
-          testid="org4-error"
-          icon={<TriangleAlert className="h-4 w-4 text-rose-300/80" aria-hidden />}
-          title="没能加载出组织架构"
-          body={`${org.message}${org.requestId ? `（请求编号：${org.requestId}）` : "（本次请求未记录编号，可复制时间与操作路径反馈）"}`}
-          onRetry={() => setReload((n) => n + 1)}
-        />
-      ) : null}
-
-      {org.phase === "empty" ? (
-        <StateShell
-          testid="org4-empty"
-          icon={<Inbox className="h-4 w-4 text-white/30" aria-hidden />}
-          title="部门树暂时是空的"
-          body="后台还没有建立任何部门。建档完成后这里会自动长出树形结构。"
-          onRetry={() => setReload((n) => n + 1)}
-        />
-      ) : null}
-
-      {org.phase === "ready" ? (
-        <Card className="border-white/5 bg-white/[0.02]">
-          <CardContent className="p-0" data-testid="org4-list">
-            <ul className="divide-y divide-white/5">
-              {roots.map((node) => (
-                <DeptRow key={node.key} node={node} depth={0} collapsed={collapsed} onToggle={toggle} />
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      ) : null}
+      {children}
     </section>
   );
+
+  const tree = (rows: TreeNode[]) => (
+    <Card className="org5-card">
+      <CardContent className="org5-card-content" data-testid="org5-list">
+        <div className="org5-table-head" aria-hidden>
+          <span>部门名</span>
+          <span>上级部门</span>
+          <span>人数</span>
+          <span>负责人</span>
+          <span>更新时间</span>
+        </div>
+        <ul className="org5-tree">
+          {rows.map((node) => (
+            <DeptRow key={node.key} node={node} depth={0} collapsed={collapsed} onToggle={toggle} />
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+
+  if (forced === "loading") {
+    return shell(
+      <section className="org5-skeleton" data-testid="org5-loading" aria-label="正在加载组织架构">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="org5-skeleton-row" />
+        ))}
+      </section>,
+    );
+  }
+
+  if (forced === "empty") {
+    return shell(
+      <StateShell
+        testid="org5-empty"
+        icon={<Inbox className="h-4 w-4 text-white/30" aria-hidden />}
+        title="部门树暂时是空的"
+        body="后台还没有建立任何部门。建档完成后这里会自动长出树形结构，不显示 0 个部门。"
+      />,
+    );
+  }
+
+  if (forced === "error") {
+    return shell(
+      <StateShell
+        testid="org5-error"
+        icon={<TriangleAlert className="h-4 w-4 text-rose-300/80" aria-hidden />}
+        title="没能加载出组织架构"
+        body="本次数据读取失败，请重试。"
+        extra={<RequestId id={null} />}
+        onRetry={() => {
+          const url = new URL(window.location.href);
+          url.searchParams.delete("state");
+          window.location.assign(url.toString());
+        }}
+      />,
+    );
+  }
+
+  if (forced === "denied") {
+    return shell(
+      <StateShell
+        testid="org5-denied"
+        icon={<ShieldAlert className="h-4 w-4 text-amber-300/80" aria-hidden />}
+        title="组织架构未接入"
+        reason={MISSING_REASON}
+        gapTitle={GAP02}
+        extra={
+          <a className="org5-apply" data-testid="org5-apply" href="#/approvals">
+            去审批中心提交开通申请
+          </a>
+        }
+      />,
+    );
+  }
+
+  if (forced === "ready") {
+    return shell(tree(buildTree(FIXTURE_DEPTS)));
+  }
+
+  if (org.phase === "loading") {
+    return shell(
+      <section className="org5-skeleton" data-testid="org5-loading" aria-label="正在加载组织架构">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="org5-skeleton-row" />
+        ))}
+      </section>,
+    );
+  }
+
+  if (org.phase === "unavailable") {
+    return shell(
+      <StateShell
+        testid="org5-denied"
+        icon={<ShieldAlert className="h-4 w-4 text-amber-300/80" aria-hidden />}
+        title="组织架构未接入"
+        reason={org.reason}
+        gapTitle={GAP02}
+        extra={
+          <>
+            <a className="org5-apply" data-testid="org5-apply" href="#/approvals">
+              去审批中心提交开通申请
+            </a>
+            <RequestId id={org.requestId} />
+          </>
+        }
+      />,
+    );
+  }
+
+  if (org.phase === "error") {
+    return shell(
+      <StateShell
+        testid="org5-error"
+        icon={<TriangleAlert className="h-4 w-4 text-rose-300/80" aria-hidden />}
+        title="没能加载出组织架构"
+        body={org.message}
+        extra={<RequestId id={org.requestId} />}
+        onRetry={refresh}
+      />,
+    );
+  }
+
+  if (org.phase === "empty") {
+    return shell(
+      <StateShell
+        testid="org5-empty"
+        icon={<Inbox className="h-4 w-4 text-white/30" aria-hidden />}
+        title="部门树暂时是空的"
+        body="后台还没有建立任何部门。建档完成后这里会自动长出树形结构，不显示 0 个部门。"
+      />,
+    );
+  }
+
+  return shell(tree(roots));
 }
