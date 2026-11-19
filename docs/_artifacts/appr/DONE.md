@@ -364,3 +364,11 @@ testid：auth5-page/form/loading/user/password/captcha-input/captcha-image/error
 whoami 登录前/后读数声明：lane D 的 /auth 桥本车道未联调（桥未上线或不可依赖），登录前=未登录+去登录、登录后=display+退出登录 两条出口由 LoginPage.test 5 用例（mock fetch，含 POST 契约 body 断言与 captcha_invalid 自动刷新）与 Auth5Session 代码锚点交付；真桥联调待 D 回执后 QA 复跑。
 残留如实报：modules/matrix/MatrixModulePage.tsx 的「刷新重新登录」出口 1 处属禁碰写域，转报 L0/aud。
 测试原始读数：LoginPage.test 5 passed；定向 pages+shell 14 files 105 passed；全量 vitest 1161 passed EXIT=0；assert-ia 两模式 exit 0/0（51/22/1/8）。
+
+## A.3 壳层收口（feat(console): console-only sidebar and parked-zone entry list，2026-11-19）
+基线：reset --hard origin/lane/hermes-console=5bdb0553（e3efe15a gates 后裔）；前单 task-create honest gate 作废，wip 留档=origin refs/heads/wip/task-create-gate。
+三处渲染断（App.tsx，非 CSS 隐藏）：NAV_GROUP_ORDER.map 循环体删除；NAV_GROUP_FALLBACK 消费点随循环体移除；SidebarSystemActions 元素摘除（Auth5Session 登录态挂件保留）。三定义 export 化防 lint 死码红，路由与插件 tab 机制零删。
+证据 grep：NAV_GROUP_ORDER 渲染消费=0（仅定义 export+注释）、SidebarSystemActions 渲染=0（仅定义）、console 侧栏唯一入口=ConsoleNav。
+暂存区：web/src/shell/ParkedPage.tsx——8 项 files/logs/cron/plugins/pairing/webhooks/env/docs，每项 名称+原路径+保留理由（照抄 A.3）+负责车道+最近复核 2026-11-19；整卡 Link to=原路径（SPA 内跳不硬刷）；横幅 parked-banner；testid parked-page + parked-item-* ×8。挂载=/system 元素级 ParkedAwareSystem（useSearchParams tab=parked 分支），routes.ts/registry/侧栏零写入，不算 IA 视图。车道列 A.3 无原文，假定统一「L0 集成（上游 Hermes 页）」待 PRD 勘误。
+验证原始读数：vitest src/shell 4 files 33 passed（含 ParkedPage.test 4 用例：8 testid+hrefs 全对+tab=parked 渲染+普通 /system 不受影响）；全量 120 files 1177 passed；assert-ia HTML exit0 + --source=react exit0（51/22/1/8 不变量保持）；tsc --noEmit web 单包 exit0。
+deadLinks：本车道未起 9123 preview（时间盒），待 L0 合并构建后 crawl-routes 复跑；8 个 Link 目标均为现存上游静态路由（未删除），预期 0 死链。

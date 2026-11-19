@@ -207,6 +207,7 @@ import {
   ConsoleNav,
   ConsoleRunsAdapter,
 } from "@/shell/console";
+import { ParkedAwareSystem } from "@/shell/ParkedPage";
 import { runsModulePageAvailable, useConsoleHashBridge } from "@/shell/bridge";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
@@ -254,7 +255,7 @@ function UnknownRouteFallback({ pluginsLoading }: { pluginsLoading: boolean }) {
 
 type NavGroupKey = "operations" | "governance" | "runtime" | "system";
 
-const NAV_GROUP_ORDER: NavGroupKey[] = [
+export const NAV_GROUP_ORDER: NavGroupKey[] = [
   "operations",
   "governance",
   "runtime",
@@ -262,7 +263,7 @@ const NAV_GROUP_ORDER: NavGroupKey[] = [
 ];
 
 /** English literals are the fallback when a locale has not translated a group. */
-const NAV_GROUP_FALLBACK: Record<NavGroupKey, string> = {
+export const NAV_GROUP_FALLBACK: Record<NavGroupKey, string> = {
   operations: "运营",
   governance: "治理",
   runtime: "运行",
@@ -1025,45 +1026,12 @@ export default function App() {
                   cron, …), and the plugin tab mechanism must not move. */}
               <ConsoleNav onNavigate={closeMobile} />
 
-              {NAV_GROUP_ORDER.map((group) => {
-                const items = sidebarNav.coreItems.filter(
-                  (item) => item.group === group,
-                );
-                if (items.length === 0) return null;
-                const heading =
-                  t.app.navGroups?.[group] ?? NAV_GROUP_FALLBACK[group];
-                return (
-                  <div
-                    className="flex flex-col pb-2"
-                    key={group}
-                    role="group"
-                    aria-labelledby={`hermes-sidebar-${group}-heading`}
-                  >
-                    <span
-                      className={cn(
-                        "px-5 pt-2.5 pb-1",
-                        "font-sans text-display text-xs tracking-[0.12em] text-text-tertiary",
-                        isDesktopCollapsed && "lg:hidden",
-                      )}
-                      id={`hermes-sidebar-${group}-heading`}
-                    >
-                      {heading}
-                    </span>
-                    <ul className="flex flex-col">
-                      {items.map((item) => (
-                        <SidebarNavLink
-                          closeMobile={closeMobile}
-                          collapsed={isDesktopCollapsed}
-                          item={item}
-                          key={item.path}
-                          t={t}
-                          tooltipWarmRef={tooltipWarmRef}
-                        />
-                      ))}
-                    </ul>
-                  </div>
-                );
-              })}
+              {/* PRD A.3 shell consolidation: the upstream NAV_GROUP_ORDER
+                * loop (with NAV_GROUP_FALLBACK group titles) is no longer
+                * emitted — absorbed surfaces live under the 8 console modules
+                * and parked ones are reachable via /system?tab=parked only.
+                * The plugin nav below stays: plugin tab mechanism must not
+                * move. */}
 
               {sidebarNav.pluginItems.length > 0 && (
                 <div
@@ -1098,14 +1066,10 @@ export default function App() {
               )}
             </nav>
 
+            {/* PRD A.3: SidebarSystemActions (Restart Gateway 等上游系统动作)
+              * is no longer rendered; the sign-in widget stays. */}
             <div className="shrink-0">
               <Auth5Session />
-              <SidebarSystemActions
-                collapsed={isDesktopCollapsed}
-                onNavigate={closeMobile}
-                status={sidebarStatus}
-                tooltipWarmRef={tooltipWarmRef}
-              />
             </div>
 
             <div
@@ -1276,14 +1240,18 @@ export default function App() {
                         <Route
                           path="/system"
                           element={
-                            <ConsoleModulePage
-                              module="system"
-                              live={{
-                                health: <HealthConsolePage />,
-                                defaults: <SettingsConsolePage />,
-                                version: <VersionConsolePage />,
-                                events: <AuditEventsConsolePage />,
-                              }}
+                            <ParkedAwareSystem
+                              system={
+                                <ConsoleModulePage
+                                  module="system"
+                                  live={{
+                                    health: <HealthConsolePage />,
+                                    defaults: <SettingsConsolePage />,
+                                    version: <VersionConsolePage />,
+                                    events: <AuditEventsConsolePage />,
+                                  }}
+                                />
+                              }
                             />
                           }
                         />
@@ -1702,7 +1670,7 @@ function Auth5Session(): ReactNode {
   );
 }
 
-function SidebarSystemActions({
+export function SidebarSystemActions({
   collapsed,
   onNavigate,
   status,
