@@ -21,13 +21,13 @@
     {
       "route": "#/access",
       "viewport": "1440",
-      "chars": 211,
+      "chars": 213,
       "hasMainEl": true
     },
     {
       "route": "#/access",
       "viewport": "375",
-      "chars": 211,
+      "chars": 213,
       "hasMainEl": true
     },
     {
@@ -207,7 +207,7 @@
     {
       "route": "#/employees/:employeeId",
       "viewport": "375",
-      "chars": 51,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -219,7 +219,7 @@
     {
       "route": "#/employees/:employeeId?zone=config",
       "viewport": "375",
-      "chars": 42,
+      "chars": 143,
       "hasMainEl": true
     },
     {
@@ -333,13 +333,13 @@
     {
       "route": "#/identity?tab=roles",
       "viewport": "1440",
-      "chars": 211,
+      "chars": 213,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=roles",
       "viewport": "375",
-      "chars": 211,
+      "chars": 213,
       "hasMainEl": true
     },
     {
@@ -643,11 +643,11 @@
   },
   "ok": true,
   "auxiliary": true,
-  "headHash": "23a8a7e0",
+  "headHash": "de23c92e",
   "exitCode": 0,
-  "entry": "assets/index-DM1VZwgg.js",
-  "entrySha256": "048e37b58b7e62f18003a79f420f784c200a22202be2a0642b7db9cc800129d5",
-  "entryBytes": 158301,
-  "servedEntryBefore": "assets/index-DM1VZwgg.js",
-  "servedEntryAfter": "assets/index-DM1VZwgg.js"
+  "entry": "assets/index-CWsTID0T.js",
+  "entrySha256": "1f6b4ae9716f0c40950ff13c4eca5405ade89a3fe3a18de960fd45b9db4185af",
+  "entryBytes": 158481,
+  "servedEntryBefore": "index-CWsTID0T.js",
+  "servedEntryAfter": "index-CWsTID0T.js"
 }

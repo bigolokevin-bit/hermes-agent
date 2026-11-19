@@ -9,8 +9,8 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 494,
-    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 今日运行 运行记录 今日成本 成本账本 发布 ",
+    "textLen": 1011,
+    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 — / 2 可上岗 3 项检查的数据源尚未",
     "hasMainEl": true,
     "ok": true
   },
@@ -21,13 +21,13 @@
     {
       "route": "#/access",
       "viewport": "1440",
-      "chars": 194,
+      "chars": 436,
       "hasMainEl": true
     },
     {
       "route": "#/access",
       "viewport": "375",
-      "chars": 194,
+      "chars": 410,
       "hasMainEl": true
     },
     {
@@ -45,13 +45,13 @@
     {
       "route": "#/approvals?tab=history",
       "viewport": "1440",
-      "chars": 187,
+      "chars": 1396,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=history",
       "viewport": "375",
-      "chars": 187,
+      "chars": 1396,
       "hasMainEl": true
     },
     {
@@ -141,19 +141,19 @@
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "1440",
-      "chars": 326,
+      "chars": 1034,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "375",
-      "chars": 326,
+      "chars": 128,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=models",
       "viewport": "1440",
-      "chars": 104,
+      "chars": 391,
       "hasMainEl": true
     },
     {
@@ -219,22 +219,22 @@
     {
       "route": "#/employees/:employeeId?zone=config",
       "viewport": "375",
-      "chars": 42,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=evidence",
-      "viewport": "1440",
-      "chars": 42,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=evidence",
-      "viewport": "375",
       "chars": 51,
       "hasMainEl": true
     },
     {
+      "route": "#/employees/:employeeId?zone=evidence",
+      "viewport": "1440",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=evidence",
+      "viewport": "375",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
       "route": "#/employees/:employeeId?zone=runs",
       "viewport": "1440",
       "chars": 42,
@@ -333,13 +333,13 @@
     {
       "route": "#/identity?tab=roles",
       "viewport": "1440",
-      "chars": 194,
+      "chars": 436,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=roles",
       "viewport": "375",
-      "chars": 194,
+      "chars": 410,
       "hasMainEl": true
     },
     {
@@ -465,13 +465,13 @@
     {
       "route": "#/overview",
       "viewport": "1440",
-      "chars": 1012,
+      "chars": 1011,
       "hasMainEl": true
     },
     {
       "route": "#/overview",
       "viewport": "375",
-      "chars": 1012,
+      "chars": 1011,
       "hasMainEl": true
     },
     {
@@ -597,25 +597,25 @@
     {
       "route": "#/work?tab=board&view=cron",
       "viewport": "1440",
+      "chars": 1782,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/work?tab=board&view=cron",
+      "viewport": "375",
+      "chars": 1782,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/work?tab=cron",
+      "viewport": "1440",
+      "chars": 1782,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/work?tab=cron",
+      "viewport": "375",
       "chars": 145,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/work?tab=board&view=cron",
-      "viewport": "375",
-      "chars": 1782,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/work?tab=cron",
-      "viewport": "1440",
-      "chars": 1782,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/work?tab=cron",
-      "viewport": "375",
-      "chars": 1782,
       "hasMainEl": true
     },
     {
@@ -634,7 +634,7 @@
   "consoleErrorsObservedByShots": 0,
   "consoleErrorRoutesObservedByShots": [],
   "ceAuthority": "login-state",
-  "routesWithEnvOnlyConsoleErrors": 22,
+  "routesWithEnvOnlyConsoleErrors": 23,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
   "overflowing": [],
   "driver": {
@@ -642,11 +642,11 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "23a8a7e0",
+  "headHash": "de23c92e",
   "exitCode": 0,
-  "entry": "assets/index-DM1VZwgg.js",
-  "entrySha256": "048e37b58b7e62f18003a79f420f784c200a22202be2a0642b7db9cc800129d5",
-  "entryBytes": 158301,
-  "servedEntryBefore": "assets/index-DM1VZwgg.js",
-  "servedEntryAfter": "assets/index-DM1VZwgg.js"
+  "entry": "assets/index-CWsTID0T.js",
+  "entrySha256": "1f6b4ae9716f0c40950ff13c4eca5405ade89a3fe3a18de960fd45b9db4185af",
+  "entryBytes": 158481,
+  "servedEntryBefore": "index-CWsTID0T.js",
+  "servedEntryAfter": "index-CWsTID0T.js"
 }
