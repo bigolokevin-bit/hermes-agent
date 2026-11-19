@@ -24,7 +24,7 @@ export interface UsageRead {
 export type RowState =
   | { kind: 'loading' }
   | { kind: 'ready'; usage: UsageRead }
-  | { kind: 'error'; message: string; requestId: string | null };
+  | { kind: 'error'; message: string; requestId: string | null; status: number };
 
 function record(value: unknown): Record<string, unknown> | null {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
