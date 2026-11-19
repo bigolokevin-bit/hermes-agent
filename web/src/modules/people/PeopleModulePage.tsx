@@ -1,30 +1,20 @@
 /**
- * T20 · 人员目录 module page — stage-2 delivery for lane B.
+ * 人员目录 — `/identity?tab=people` 只读面 (ppl5-*).
  *
- * Data source: 毕升用户接口，经 BFF 别名 `/agent-api/api/v1/user/*`。
- * The exact list route is unverified (GAP-02): the page tries the known
- * candidates for real, and when none answers it shows an honest
- * 「待核实（GAP-02）」state — never fabricated rows, never a fake 0 count.
- *
- * Display contract (zero engineering language): raw user ids never reach
- * visible text — they live in `title` attributes only. Missing fields show
- * 「待核实」or 「—」; status codes become words; times are 北京时间到分.
- *
- * Wiring note: `shell/bridge.ts` currently probes no people candidate, so
- * this page ships ready-to-mount and the mount itself waits for a lane A
- * edit (recorded in docs/_artifacts/employees/DONE.md). The manifest stays
- * `kind: 'planned'` for the same registry-snapshot reason as T18.
+ * The BFF exposes no user-center list route: candidates answer 404
+ * console.unknown_route. The page therefore renders one neutral 未接入 body
+ * for 403 and 404, with GAP-02 only in `title`; it never fabricates a row or a
+ * 0. A real answer is read defensively: missing fields are `—` with a reason,
+ * status words never expose codes, and raw ids stay in `title`.
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Link, useSearchParams } from "react-router";
 import { Inbox, RefreshCw, ShieldAlert, TriangleAlert, Users } from "lucide-react";
 import { Badge, Button, Card, CardContent } from "@nous-research/ui";
 
 import { fetchJSON } from "@/lib/api";
+import "./people.css";
 import { API_UNREACHABLE_MESSAGE, ApiError, humanizeStatus } from "@/lib/api-error";
-
-/* ------------------------------------------------------------------ *
- * types & small readers
- * ------------------------------------------------------------------ */
 
 type Rec = Record<string, unknown>;
 
@@ -32,12 +22,22 @@ type Resource<T> =
   | { phase: "loading" }
   | { phase: "empty" }
   | { phase: "ready"; data: T }
+  | { phase: "unavailable"; message: string }
   | { phase: "denied"; message: string }
   | { phase: "error"; message: string; requestId: string | null };
 
-const DENIED_FORBIDDEN = "你没有查看这块数据的权限。";
-const GAP02_MESSAGE =
-  "人员目录待核实（上游用户中心接口尚未接入本控制台）。接入后这里会自动显示真实名单。";
+export const PEOPLE_GAP = "GAP-02";
+export const PEOPLE_GAP_MESSAGE =
+  "人员目录未接入：上游用户中心接口尚未对控制台开放。接入后这里显示真实名单；现在不展示样例，也不把缺失值写成 0。";
+
+export const PEOPLE_ENDPOINTS = [
+  "/agent-api/api/v1/user/list",
+  "/agent-api/api/v1/user/all",
+];
+
+const FIXTURE_ROWS: Rec[] = [
+  { user_id: "u_fixture_12345678", realname: "示例员工", user_name: "example", dept_name: "示例部门", status: 1, last_login: "2026-11-19T06:30:00Z" },
+];
 
 function isRecord(value: unknown): value is Rec {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -46,6 +46,7 @@ function isRecord(value: unknown): value is Rec {
 function pickString(...values: unknown[]): string | null {
   for (const value of values) {
     if (typeof value === "string" && value.trim()) return value.trim();
+    if (typeof value === "number" && Number.isFinite(value)) return String(value);
   }
   return null;
 }
@@ -59,10 +60,6 @@ function itemsOf(body: unknown): Rec[] {
   }
   return [];
 }
-
-/* ------------------------------------------------------------------ *
- * formatting (北京时间到分, words not codes)
- * ------------------------------------------------------------------ */
 
 /** ISO time or epoch seconds → 北京时间到分 (YYYY-MM-DD HH:mm, UTC+8). */
 function beijing(value: unknown): string | null {
@@ -78,8 +75,19 @@ function beijing(value: unknown): string | null {
   return `${t.getUTCFullYear()}-${p(t.getUTCMonth() + 1)}-${p(t.getUTCDate())} ${p(t.getUTCHours())}:${p(t.getUTCMinutes())}`;
 }
 
+function rawId(row: Rec): string {
+  const id = row.user_id ?? row.userId ?? row.id;
+  return typeof id === "string" && id.trim() ? id.trim() : typeof id === "number" ? String(id) : "";
+}
+
+/** Last 8 alphanumerics; missing id is 未指派, never a fabricated code. */
+function shortCode(row: Rec): string {
+  const id = rawId(row).replace(/^[^:]*:/, "").replace(/[^0-9A-Za-z]/g, "");
+  return id ? id.slice(-8).toUpperCase() : "未指派";
+}
+
 function statusLabel(row: Rec): { text: string; tone: "success" | "warning" | "destructive" | undefined } {
-  const s = row.status ?? row.state ?? row.is_active;
+  const s = row.status ?? row.state ?? row.is_active ?? row.enabled;
   if (typeof s === "number") {
     if (s === 1) return { text: "已启用", tone: "success" };
     if (s === 0) return { text: "已停用", tone: "destructive" };
@@ -87,6 +95,7 @@ function statusLabel(row: Rec): { text: string; tone: "success" | "warning" | "d
     if (s === 3) return { text: "待审核", tone: "warning" };
     return { text: "待核实", tone: undefined };
   }
+  if (typeof s === "boolean") return { text: s ? "已启用" : "已停用", tone: s ? "success" : "destructive" };
   const word = (typeof s === "string" ? s : "").toLowerCase();
   if (word === "active" || word === "enabled" || word === "true") return { text: "已启用", tone: "success" };
   if (word === "disabled" || word === "inactive" || word === "false") return { text: "已停用", tone: "destructive" };
@@ -94,50 +103,38 @@ function statusLabel(row: Rec): { text: string; tone: "success" | "warning" | "d
   return { text: "待核实", tone: undefined };
 }
 
-/** Raw id → title attribute only (numeric ids are not engineering tokens,
- * but the display contract keeps every identifier off the visible face). */
-function rawId(row: Rec): string {
-  const id = row.user_id ?? row.id ?? row.userId;
-  if (typeof id === "number" && Number.isFinite(id)) return String(id);
-  if (typeof id === "string" && id.trim()) return id.trim();
-  return "";
-}
-
-type PersonRow = {
+interface PersonRow {
   key: string;
   name: string;
+  code: string;
   account: string | null;
   dept: string | null;
   status: { text: string; tone: "success" | "warning" | "destructive" | undefined };
   lastActive: string | null;
+  lastActiveReason: string | null;
   rawId: string;
-};
+}
 
 function readPerson(row: Rec, index: number): PersonRow {
   const account = pickString(row.user_name, row.username, row.account);
-  const name = pickString(row.realname, row.name, row.nick_name) ?? account;
+  const name = pickString(row.realname, row.name, row.nick_name) ?? account ?? "待核实";
+  const lastRaw = row.last_login ?? row.lastLogin ?? row.last_active ?? row.lastActive ?? row.update_time ?? row.updatedAt;
+  const lastActive = beijing(lastRaw);
   return {
     key: rawId(row) || `row-${index}`,
-    name: name ?? "待核实",
+    name,
+    code: shortCode(row),
     account,
-    dept: pickString(row.dept_name, row.department, row.dept),
+    dept: pickString(row.dept_name, row.deptName, row.department, row.dept),
     status: statusLabel(row),
-    lastActive: beijing(row.last_login ?? row.last_active ?? row.update_time),
+    lastActive,
+    lastActiveReason: lastActive ? null : lastRaw ? "最后活跃时间无法解析" : "上游未提供最后活跃时间",
     rawId: rawId(row),
   };
 }
 
-/* ------------------------------------------------------------------ *
- * fetch — real endpoints, honest GAP-02 when none answers
- * ------------------------------------------------------------------ */
-
-const PEOPLE_ENDPOINTS = [
-  "/agent-api/api/v1/user/list",
-  "/agent-api/api/v1/user/all",
-];
-
 async function loadPeople(): Promise<Resource<Rec[]>> {
-  let missing403 = false;
+  let unavailable = false;
   let firstError: ApiError | null = null;
   for (const url of PEOPLE_ENDPOINTS) {
     try {
@@ -145,66 +142,94 @@ async function loadPeople(): Promise<Resource<Rec[]>> {
       return { phase: "ready", data: itemsOf(body) };
     } catch (err: unknown) {
       const api = err instanceof ApiError ? err : null;
-      if (api?.status === 403) missing403 = true;
+      if (api && (api.status === 403 || api.status === 404)) unavailable = true;
       else if (api && api.status !== 404 && !firstError) firstError = api;
     }
   }
-  if (missing403) return { phase: "denied", message: DENIED_FORBIDDEN };
+  if (unavailable) return { phase: "unavailable", message: PEOPLE_GAP_MESSAGE };
   if (firstError) {
-    const message =
-      firstError.status && firstError.status >= 500
-        ? API_UNREACHABLE_MESSAGE
-        : firstError.message || humanizeStatus(firstError.status);
-    return { phase: "error", message, requestId: firstError.requestId ?? null };
+    return {
+      phase: "error",
+      message:
+        firstError.status && firstError.status >= 500
+          ? API_UNREACHABLE_MESSAGE
+          : firstError.message || humanizeStatus(firstError.status),
+      requestId: firstError.requestId ?? null,
+    };
   }
-  return { phase: "denied", message: GAP02_MESSAGE };
+  return { phase: "unavailable", message: PEOPLE_GAP_MESSAGE };
 }
 
-function usePeople(nonce: number): Resource<Rec[]> {
+function usePeople(nonce: number, enabled: boolean): Resource<Rec[]> {
   const [resource, setResource] = useState<Resource<Rec[]>>({ phase: "loading" });
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
     setResource({ phase: "loading" });
-    loadPeople()
-      .then((r) => {
-        if (!cancelled) setResource(r);
-      })
-      .catch(() => {
-        if (!cancelled) setResource({ phase: "error", message: API_UNREACHABLE_MESSAGE, requestId: null });
-      });
+    void loadPeople().then((r) => {
+      if (!cancelled) setResource(r);
+    });
     return () => {
       cancelled = true;
     };
-  }, [nonce]);
+  }, [enabled, nonce]);
   return resource;
 }
 
-/* ------------------------------------------------------------------ *
- * state blocks
- * ------------------------------------------------------------------ */
+function RequestId({ id }: { id: string | null }): ReactNode {
+  const [copied, setCopied] = useState(false);
+  return (
+    <span className="ppl5-req" data-testid="ppl5-request-id">
+      请求编号 {id ?? "未提供"}
+      {id ? (
+        <button
+          type="button"
+          aria-label="复制请求编号"
+          data-testid="ppl5-request-id-copy"
+          onClick={() => {
+            void navigator.clipboard?.writeText(id).then(
+              () => {
+                setCopied(true);
+                window.setTimeout(() => setCopied(false), 1800);
+              },
+              () => setCopied(false),
+            );
+          }}
+        >
+          {copied ? "已复制" : "复制"}
+        </button>
+      ) : null}
+    </span>
+  );
+}
 
 function StateShell({
   testid,
   icon,
   title,
   body,
+  gapTitle,
   onRetry,
+  children,
 }: {
   testid: string;
   icon: ReactNode;
   title: string;
   body?: string;
+  gapTitle?: string;
   onRetry?: () => void;
+  children?: ReactNode;
 }) {
   return (
-    <section data-testid={testid} className="flex flex-col items-start gap-3 p-4">
-      <div className="flex items-center gap-2 text-sm text-white/80">
+    <section data-testid={testid} className="ppl5-state" title={gapTitle}>
+      <div className="ppl5-state-head">
         {icon}
         <span>{title}</span>
       </div>
-      {body ? <p className="text-xs leading-relaxed text-white/40">{body}</p> : null}
+      {body ? <p className="ppl5-state-body">{body}</p> : null}
+      {children}
       {onRetry ? (
-        <Button size="sm" outlined onClick={onRetry}>
+        <Button size="sm" outlined onClick={onRetry} data-testid="ppl5-retry">
           <RefreshCw className="h-3.5 w-3.5" aria-hidden />
           重试
         </Button>
@@ -213,14 +238,27 @@ function StateShell({
   );
 }
 
-/* ------------------------------------------------------------------ *
- * the page
- * ------------------------------------------------------------------ */
+const FORCED = new Set(["loading", "empty", "error", "denied", "ready"]);
 
 export default function PeopleModulePage() {
+  const [params] = useSearchParams();
+  const forced = (params.get("state") ?? "").toLowerCase();
   const [reload, setReload] = useState(0);
   const [query, setQuery] = useState("");
-  const people = usePeople(reload);
+  const fixture = FORCED.has(forced);
+  const live = usePeople(reload, !fixture);
+  const people: Resource<Rec[]> =
+    forced === "loading"
+      ? { phase: "loading" }
+      : forced === "empty"
+        ? { phase: "empty" }
+        : forced === "error"
+          ? { phase: "error", message: "这条腿是用 ?state=error 复现的，服务此刻没有回答过。", requestId: "req-ppl5-repro" }
+          : forced === "denied"
+            ? { phase: "unavailable", message: PEOPLE_GAP_MESSAGE }
+            : forced === "ready"
+              ? { phase: "ready", data: FIXTURE_ROWS }
+              : live;
 
   const rows = useMemo<PersonRow[]>(() => {
     if (people.phase !== "ready") return [];
@@ -231,14 +269,15 @@ export default function PeopleModulePage() {
         (r) =>
           q === "" ||
           r.name.toLowerCase().includes(q) ||
+          r.code.toLowerCase().includes(q) ||
           (r.account ?? "").toLowerCase().includes(q) ||
           (r.dept ?? "").toLowerCase().includes(q),
       );
   }, [people, query]);
 
   return (
-    <section className="flex flex-col gap-4" data-testid="ppl4-page">
-      <header className="flex flex-wrap items-end justify-between gap-3">
+    <section className="ppl5-page flex min-w-0 flex-col gap-4" data-testid="ppl5-page" data-fixture={fixture ? forced : undefined}>
+      <header className="ppl5-head">
         <div className="min-w-0">
           <h1 className="font-mondwest text-xl text-white/90">人员目录</h1>
           <p className="mt-1 text-xs text-white/40">
@@ -246,15 +285,15 @@ export default function PeopleModulePage() {
             {people.phase === "ready" ? ` · 共 ${people.data.length} 人` : ""}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="ppl5-actions">
           <input
-            data-testid="ppl4-search"
+            data-testid="ppl5-search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="搜索姓名、账号或部门"
-            className="h-8 w-44 rounded-md border border-white/10 bg-white/5 px-3 text-xs text-white/80 outline-none placeholder:text-white/25"
+            placeholder="搜索姓名、短码、账号或部门"
+            className="h-8 min-w-0 flex-1 rounded-md border border-white/10 bg-white/5 px-3 text-xs text-white/80 outline-none placeholder:text-white/25 sm:w-44 sm:flex-none"
           />
-          <Button size="sm" outlined onClick={() => setReload((n) => n + 1)}>
+          <Button size="sm" outlined onClick={() => setReload((n) => n + 1)} data-testid="ppl5-refresh">
             <RefreshCw className="h-3.5 w-3.5" aria-hidden />
             刷新
           </Button>
@@ -262,43 +301,46 @@ export default function PeopleModulePage() {
       </header>
 
       {people.phase === "loading" ? (
-        <section
-          data-testid="ppl4-loading"
-          className="flex flex-col gap-2 rounded-lg border border-white/5 bg-white/[0.02] p-4"
-          aria-label="正在加载人员目录"
-        >
+        <section data-testid="ppl5-loading" className="flex flex-col gap-2 rounded-lg border border-white/5 bg-white/[0.02] p-4" aria-label="正在加载人员目录">
           {[0, 1, 2, 3].map((i) => (
             <div key={i} className="h-9 animate-pulse rounded bg-white/5" />
           ))}
         </section>
       ) : null}
 
-      {people.phase === "denied" ? (
+      {people.phase === "unavailable" || people.phase === "denied" ? (
         <StateShell
-          testid="ppl4-denied"
+          testid="ppl5-unwired"
           icon={<ShieldAlert className="h-4 w-4 text-amber-300/80" aria-hidden />}
-          title={people.message === DENIED_FORBIDDEN ? "暂时看不到人员目录" : "数据源待核实"}
+          title="人员目录未接入"
           body={people.message}
+          gapTitle={PEOPLE_GAP}
           onRetry={() => setReload((n) => n + 1)}
-        />
+        >
+          <Link to="/approvals" data-testid="ppl5-apply" className="text-xs underline underline-offset-4">
+            去审批中心提交开通申请
+          </Link>
+        </StateShell>
       ) : null}
 
       {people.phase === "error" ? (
         <StateShell
-          testid="ppl4-error"
+          testid="ppl5-error"
           icon={<TriangleAlert className="h-4 w-4 text-rose-300/80" aria-hidden />}
           title="没能加载出人员目录"
-          body={`${people.message}${people.requestId ? `（请求编号：${people.requestId}）` : "（本次请求未记录编号，可复制时间与操作路径反馈）"}`}
+          body={people.message}
           onRetry={() => setReload((n) => n + 1)}
-        />
+        >
+          <RequestId id={people.requestId} />
+        </StateShell>
       ) : null}
 
       {people.phase === "empty" ? (
         <StateShell
-          testid="ppl4-empty"
+          testid="ppl5-empty"
           icon={<Inbox className="h-4 w-4 text-white/30" aria-hidden />}
           title="目录暂时是空的"
-          body="后台还没有登记在册人员。接入完成后这里会自动出现名单。"
+          body="后台还没有登记在册人员；不显示 0 人，也不展示样例。接入完成后这里会自动出现名单。"
           onRetry={() => setReload((n) => n + 1)}
         />
       ) : null}
@@ -306,52 +348,46 @@ export default function PeopleModulePage() {
       {people.phase === "ready" ? (
         people.data.length === 0 ? (
           <StateShell
-            testid="ppl4-empty"
+            testid="ppl5-empty"
             icon={<Inbox className="h-4 w-4 text-white/30" aria-hidden />}
             title="目录暂时是空的"
-            body="后台还没有登记在册人员。接入完成后这里会自动出现名单。"
+            body="后台还没有登记在册人员；不显示 0 人，也不展示样例。"
             onRetry={() => setReload((n) => n + 1)}
           />
         ) : rows.length === 0 ? (
           <StateShell
-            testid="ppl4-nomatch"
+            testid="ppl5-nomatch"
             icon={<Inbox className="h-4 w-4 text-white/30" aria-hidden />}
             title={`没有匹配「${query.trim()}」的人员`}
             body="换个关键词试试；清空搜索可看全部名单。"
           />
         ) : (
           <Card className="border-white/5 bg-white/[0.02]">
-            <CardContent className="p-0" data-testid="ppl4-list">
-              <div className="hidden md:grid md:grid-cols-[1.4fr_1.2fr_1fr_0.8fr_1.2fr] gap-2 border-b border-white/5 px-4 py-2 text-xs text-white/40">
-                <span>姓名</span>
-                <span>账号</span>
-                <span>部门</span>
-                <span>状态</span>
-                <span>最后活跃</span>
+            <CardContent className="p-0" data-testid="ppl5-list">
+              <div className="ppl5-grid ppl5-thead">
+                <span>姓名</span><span>账号</span><span>部门</span><span>状态</span><span>最后活跃</span>
               </div>
               <ul className="divide-y divide-white/5">
                 {rows.map((r) => (
-                  <li
-                    key={r.key}
-                    className="grid grid-cols-1 gap-1 px-4 py-2 md:grid-cols-[1.4fr_1.2fr_1fr_0.8fr_1.2fr] md:gap-2 md:items-center"
-                    data-testid="ppl4-row"
-                    title={r.rawId ? `记录号 ${r.rawId}` : undefined}
-                  >
-                    <span className="flex items-center gap-2 text-sm text-white/85 min-w-0">
+                  <li key={r.key} className="ppl5-grid ppl5-row" data-testid="ppl5-row" title={r.rawId ? `记录号 ${r.rawId}` : undefined}>
+                    <span className="flex min-w-0 items-center gap-2 text-sm text-white/85">
                       <Users className="h-3.5 w-3.5 shrink-0 text-white/25" aria-hidden />
-                      <span className="truncate">{r.name}</span>
+                      <span className="min-w-0 break-words" data-label="姓名" data-testid="ppl5-name">
+                        {r.name}{r.code !== "未指派" ? ` · ${r.code}` : ""}
+                      </span>
                     </span>
-                    <span className="text-xs text-white/55 md:text-sm md:text-white/60 font-mono">
-                      {r.account ?? "待核实"}
+                    <span className="min-w-0 break-all text-xs text-white/55 md:text-sm md:text-white/60" data-label="账号" data-testid="ppl5-account">
+                      {r.account ?? "—"}
+                      {r.account ? null : <span className="ppl5-reason">上游未提供账号</span>}
                     </span>
-                    <span className="text-xs text-white/55 md:text-sm md:text-white/60">
-                      {r.dept ?? "待核实"}
+                    <span className="min-w-0 break-words text-xs text-white/55 md:text-sm md:text-white/60" data-label="部门" data-testid="ppl5-dept">
+                      {r.dept ?? "—"}
+                      {r.dept ? null : <span className="ppl5-reason">上游未提供部门</span>}
                     </span>
-                    <span>
-                      <Badge tone={r.status.tone}>{r.status.text}</Badge>
-                    </span>
-                    <span className="text-xs text-white/55 md:text-sm md:text-white/60" data-testid="ppl4-last-active">
-                      {r.lastActive ?? "待核实"}
+                    <span data-label="状态" data-testid="ppl5-status"><Badge tone={r.status.tone}>{r.status.text}</Badge></span>
+                    <span className="min-w-0 break-words text-xs text-white/55 md:text-sm md:text-white/60" data-label="最后活跃" data-testid="ppl5-last-active">
+                      {r.lastActive ?? "—"}
+                      {r.lastActiveReason ? <span className="ppl5-reason">{r.lastActiveReason}</span> : null}
                     </span>
                   </li>
                 ))}

@@ -1295,3 +1295,27 @@ $ cd web && npx vitest run src/modules/audit/RetentionModulePage.test.tsx
       Tests  9 passed (9)
 ```
 - Route count at `/work?tab=cron` and `/system?tab=retention` remains 0 until R5 mounts the exports above; this lane cannot edit shell/App/routes.
+
+## R27 人员目录 real-data surface (ppl5, 2026-11-19)
+
+Base `4dd7966f` (gate ledger `68ec59a4`). Write domain `web/src/modules/people/**` + `docs/_artifacts/gov/**`.
+
+### Endpoint truth
+- `GET /api/v1/user/list` and `/api/v1/user/all` both **404 `console.unknown_route`**. True rows **0**.
+- The page renders one neutral `ppl5-unwired` body for 403 and 404: 「人员目录未接入」 + reason + `/approvals`; `title=GAP-02` only. No sample rows or fake 0.
+- Columns: 姓名 · 8位短码 / 账号 / 部门 / 状态 / 最后活跃（BJT `YYYY-MM-DD HH:mm`）. Missing account/department/last-active → `—` + visible reason; unknown status → 「待核实」; raw ids only in `title`.
+- Four states: `ppl5-loading`, `ppl5-empty`, `ppl5-error` (copyable request id + retry), `ppl5-unwired`. Forced `?state=loading|empty|error|denied|ready` skips fetch and sets `data-fixture`.
+
+### DOM
+- 1440 body 1440/1440, page 1144/1146, rows 1; 1280 body 1280/1280, page 984/986; 375 body 375/375, page 353/353. No page horizontal overflow.
+
+### Raw stdout
+```text
+$ cd web && npx vitest run src/modules/people
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+$ cd web && npx vitest run
+ Test Files  126 passed (126)
+      Tests  1258 passed (1258)
+```
+- Build to `/tmp/ppl5-build` blocked by baseline `src/pages/LoginPage.test.tsx` TS2739, outside this write domain.
