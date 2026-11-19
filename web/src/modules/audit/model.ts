@@ -846,6 +846,11 @@ export interface AuditDetail {
   /** The event's own time and the time the ledger recorded it. */
   occurredAt: string | null;
   recordedAt: string | null;
+  /** The raw instants the service sent, kept so the page can show seconds. */
+  occurredAtRaw: string | null;
+  recordedAtRaw: string | null;
+  /** The service's own payload when it sent one; null when it only sent differences. */
+  rawPayload: unknown;
   sourceSystem: string | null;
   /** 请求编号 shown on the human layer (copyable); null renders 「未提供」 + reason. */
   requestId: string | null;
@@ -913,6 +918,9 @@ export function auditDetailFrom(payload: unknown): AuditDetail | null {
     resource,
     occurredAt: beijing(pick(body, OCCURRED_KEYS)),
     recordedAt: beijing(pick(body, RECORDED_KEYS)),
+    occurredAtRaw: typeof pick(body, OCCURRED_KEYS) === "string" ? (pick(body, OCCURRED_KEYS) as string) : null,
+    recordedAtRaw: typeof pick(body, RECORDED_KEYS) === "string" ? (pick(body, RECORDED_KEYS) as string) : null,
+    rawPayload: body.payload ?? body.raw ?? body.event ?? null,
     sourceSystem,
     requestId,
     correlation,
@@ -1008,4 +1016,52 @@ export function verifyResultFrom(payload: unknown): VerifyResult | null {
     message: humanSentence(pickText(body, V_MESSAGE_KEYS)),
     technical,
   };
+}
+
+/** Beijing wall clock with seconds; null when the value is not a readable instant. */
+export function beijingSeconds(value: unknown): string | null {
+  if (value === null || value === undefined || value === "") return null;
+  const ms = typeof value === "number" ? value : Date.parse(String(value));
+  if (!Number.isFinite(ms)) return null;
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Shanghai",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(new Date(ms));
+    const get = (kind: string): string => parts.find((part) => part.type === kind)?.value ?? "";
+    const stamp = get("year") + "-" + get("month") + "-" + get("day") + " " + get("hour") + ":" + get("minute") + ":" + get("second");
+    return stamp.includes("NaN") || get("year") === "" ? null : stamp;
+  } catch {
+    return null;
+  }
+}
+
+const SENSITIVE_KEY = /token|cookie|secret|password|authorization|api[-_]?key|credential/i;
+
+/** Copy of a payload with credential-shaped keys replaced by stars, plus how many were hit. */
+export function maskSensitive(input: unknown): { value: unknown; masked: number } {
+  let masked = 0;
+  const walk = (node: unknown): unknown => {
+    if (Array.isArray(node)) return node.map(walk);
+    if (node && typeof node === "object") {
+      const out: Record<string, unknown> = {};
+      for (const [key, val] of Object.entries(node as Record<string, unknown>)) {
+        if (SENSITIVE_KEY.test(key)) {
+          out[key] = "***";
+          masked += 1;
+        } else {
+          out[key] = walk(val);
+        }
+      }
+      return out;
+    }
+    return node;
+  };
+  return { value: walk(input), masked };
 }

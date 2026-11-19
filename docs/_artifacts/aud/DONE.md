@@ -2832,3 +2832,14 @@ Verified on this base; the earlier rounds' work is intact and this round adds th
 
 Gates: vitest src/modules/collab exit 0 (2 files / 99 tests); tsc -b 50 errors total (standing floor incl. other lanes), modules/collab 0; eslint collab exit 0; build exit 0.
 Untested: the four-state body lengths are jsdom readings, not browser pixels; the tenant really has zero delegations so the row-level layout is test-proven only; no per-element pixel diff; 9122 not rebuilt, main not merged.
+
+## Audit event detail (2026-11-20, base f0419b0b)
+
+- 详情入口：行点开写 ?detail=<eventId>（可分享、刷新复现）；返回列表保留筛选与游标页（state.fromList + cursor 栈）。
+- 时间精确到秒：新增 beijingSeconds（Asia/Shanghai YYYY-MM-DD HH:mm:ss），AuditDetail 增加 occurredAtRaw/recordedAtRaw；事件区 dl 带 data-testid=aud3-time，说明改为「以上时间均为北京时间，精确到秒。」
+- 原始载荷：新增「原始载荷」区（aud3-payload）。有载荷时 pre[data-testid=aud3-payload-json] 只读展示脱敏 JSON（2 空格、≤2000 字），并以 aud3-payload-masked 报「已隐去 N 项敏感字段」；maskSensitive 递归把 token/cookie/secret/password/authorization/api[-_]?key/credential 类键值替换为 *** 并计数。没有载荷时 aud3-payload-unavailable 写「证据不可用：这条事件的回答里没有带回原始载荷——审计只保存字段差异。可以去「技术详情」看服务回传的字段，或联系管理员核对。」
+- testid：保留 aud02-detail / aud01-* / aud2-* / agent-v2-page-audit*；新增 aud3-time、aud3-payload、aud3-payload-json、aud3-payload-masked、aud3-payload-unavailable。
+- 四态、403 与 404 同体、零写入口均未变。
+- 门禁：vitest src/modules/audit exit 0（10 files / 164 tests，基线 161，+3 详情用例）；tsc -b 共 50 条既有地板、modules/audit 0；eslint exit 0（0 errors / 4 既有 warning）。
+- 活体：/audit?window=7d 在 1440/1280/375 均 sw==cw（50 行，textLen 5498）；详情抽屉文本含「精确到秒」与「证据不可用」各 1 处（该事件无原始载荷，走诚实分支）；testid 是属性，不在 innerText，故以用例为准。
+- 未测：没有带回原始载荷的真实事件，脱敏分支仅用例证；未做逐元素像素比对；9122 未重建、未并 main。

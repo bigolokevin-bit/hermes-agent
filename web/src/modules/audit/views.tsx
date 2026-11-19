@@ -15,6 +15,7 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 
 import { themedBody, themedChrome } from "@/lib/utils";
 import type { AuditChange, AuditDetail, AuditRow, VerifyResult } from "./model";
+import { beijingSeconds, maskSensitive } from "./model";
 import { CopyValue, TechnicalDisclosure } from "./states";
 
 const MISSING_TIME = "服务未提供该时间";
@@ -211,16 +212,16 @@ export function AuditEventDetailBody({
       </div>
 
       <Section title="事件">
-        <dl className="flex min-w-0 flex-wrap gap-x-5 gap-y-1 text-xs">
+        <dl className="flex min-w-0 flex-wrap gap-x-5 gap-y-1 text-xs" data-testid="aud3-time">
           <Field
             label="发生时间"
-            value={detail.occurredAt ?? "—"}
-            reason={detail.occurredAt ? undefined : MISSING_TIME}
+            value={beijingSeconds(detail.occurredAtRaw) ?? detail.occurredAt ?? "—"}
+            reason={beijingSeconds(detail.occurredAtRaw) || detail.occurredAt ? undefined : MISSING_TIME}
           />
           <Field
             label="记账时间"
-            value={detail.recordedAt ?? "—"}
-            reason={detail.recordedAt ? undefined : MISSING_TIME}
+            value={beijingSeconds(detail.recordedAtRaw) ?? detail.recordedAt ?? "—"}
+            reason={beijingSeconds(detail.recordedAtRaw) || detail.recordedAt ? undefined : MISSING_TIME}
           />
         </dl>
         <div className="flex min-w-0 flex-col gap-1 text-xs" data-testid={`${testId}-request-id`}>
@@ -232,7 +233,7 @@ export function AuditEventDetailBody({
             testId={`${testId}-request-value`}
           />
         </div>
-        <p className="min-w-0 break-words text-xs text-muted-foreground">以上时间均为北京时间，精确到分。</p>
+        <p className="min-w-0 break-words text-xs text-muted-foreground">以上时间均为北京时间，精确到秒。</p>
       </Section>
 
       <Section title="操作者">
@@ -283,6 +284,27 @@ export function AuditEventDetailBody({
           </dl>
         ) : (
           <p className="min-w-0 break-words text-xs text-muted-foreground">这条记录没有带上完整性摘要，无法在这里判断它是否接得上前一条。</p>
+        )}
+      </Section>
+
+      <Section title="原始载荷">
+        {detail.rawPayload === null || detail.rawPayload === undefined ? (
+          <p className="min-w-0 break-words text-xs text-warning" data-testid="aud3-payload-unavailable">
+            证据不可用：这条事件的回答里没有带回原始载荷——审计只保存字段差异。可以去「技术详情」看服务回传的字段，或联系管理员核对。
+          </p>
+        ) : (
+          (() => {
+            const masked = maskSensitive(detail.rawPayload);
+            const text = JSON.stringify(masked.value, null, 2).slice(0, 2000);
+            return (
+              <div className="flex min-w-0 flex-col gap-2" data-testid="aud3-payload">
+                <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-md border border-border bg-muted/30 p-2 text-xs" data-testid="aud3-payload-json">{text}</pre>
+                <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud3-payload-masked">
+                  {"已隐去 " + masked.masked + " 项敏感字段"}
+                </p>
+              </div>
+            );
+          })()
         )}
       </Section>
 
