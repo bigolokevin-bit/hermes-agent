@@ -266,7 +266,7 @@ function TodayRunsCard({ stats, runs, onRetry }: { stats: Loadable<RunStatsBody>
   return (
     <HCard
       title="今日运行"
-      testid="duty-today-runs" stamp={stampOf(asOfOf(stats.data), "运行窗口统计", [stats, runs])}
+      testid="duty-today-runs" stamp={stampOf(stats.k === "ready" ? asOfOf(stats.data) : null, "运行窗口统计", [stats, runs])}
       action={
         <Link className="duty-link" to="/runs">
           运行记录
@@ -325,7 +325,7 @@ function CostCard({
   );
   const state = day.k === "error" ? day : month.k === "error" ? month : day;
   return (
-    <HCard title="今日成本" meta="成本账本" testid="duty-today-cost" stamp={stampOf(asOfOf(day.data), "当日成本账本", [day, month])}>
+    <HCard title="今日成本" meta="成本账本" testid="duty-today-cost" stamp={stampOf(day.k === "ready" ? asOfOf(day.data) : null, "当日成本账本", [day, month])}>
       <StateLine state={state} onRetry={onRetry}>
         <p className="duty-num" data-testid="ov6-kpi-cost" data-duty-testid="duty-kpi-cost">
           {usd(cost.dayUsd)}
@@ -366,7 +366,7 @@ function TrendCard({ stats, onRetry }: { stats: Loadable<RunStatsBody>; onRetry:
   const peak = bucketPeak(buckets);
   const max = Math.max(1, ...buckets.map((b) => b.runs));
   return (
-    <HCard title="近 14 天运行" meta="每日启动" testid="duty-trend" stamp={stampOf(asOfOf(stats.data), "近 14 天运行统计", [stats])}>
+    <HCard title="近 14 天运行" meta="每日启动" testid="duty-trend" stamp={stampOf(stats.k === "ready" ? asOfOf(stats.data) : null, "近 14 天运行统计", [stats])}>
       <StateLine state={stats} onRetry={onRetry}>
         <p className="duty-num">
           {totals ? totals.runs : "—"}
@@ -413,7 +413,7 @@ function ActivityCard({ activity, onRetry }: { activity: Loadable<ActivityBody>;
     beijingHour(),
   );
   return (
-    <HCard title="24 小时活跃" meta="每格 1 小时" testid="duty-activity" stamp={stampOf(asOfOf(activity.data), "24 小时活跃统计", [activity])}>
+    <HCard title="24 小时活跃" meta="每格 1 小时" testid="duty-activity" stamp={stampOf(activity.k === "ready" ? asOfOf(activity.data) : null, "24 小时活跃统计", [activity])}>
       <StateLine state={activity} onRetry={onRetry}>
         <p className="duty-num">
           {view.peakHour === null ? "—" : `${String(view.peakHour).padStart(2, "0")}:00`}
@@ -546,7 +546,7 @@ function PendingCard({
   return (
     <HCard
       title="待我处理"
-      testid="duty-pending" stamp={stampOf(asOfOf(stats.data), "审批统计", [stats, approvals])}
+      testid="duty-pending" stamp={stampOf(stats.k === "ready" ? asOfOf(stats.data) : null, "审批统计", [stats, approvals])}
       action={
         <Link className="duty-link" to="/approvals">
           查看全部

@@ -567,3 +567,14 @@ KPI 族：五卡 data-testid=ov6-kpi-<name> 统一在位+新增 data-duty-testid
 - web/src/modules/approvals/api.test.ts:136-137 TS18047：detail 加可选链断言（detail?.actionHash / detail?.kind.label），值与语义不变。
 - web/src/pages/LoginPage.test.tsx:131,149 TS2739：两处同步 `() => jsonResponse(...)` 改 `async`（与文件既有 20+ 处习语一致）。
 - 定向 2 files 32 passed；全量见回执。诚实挂账：tsc -b 仍 exit 2——余红不在本单写域（apps/shared 缺 vitest 类型环境红 40+、approvals 产品码 Marked TS2322×14、duty DutyPage TS2339×5、employee-detail TS2322×1、security TS2353×1、tasks 测试 TS2698×1），归因=本 lane R32/R35 自引入与别车道，待后续单处置。
+
+## R37 写域内 tsc 红清除（2026-11-20 02:0x，lane/console-appr，merge 基线姿势）
+
+基线：`git fetch origin` + `git merge origin/lane/hermes-console`（7e7b92cd，不 rebase 不 force）。
+每处文件:行 → 修法（只动类型，禁 skip/ts-ignore/tsconfig/行为改动）：
+- web/src/modules/approvals/states.tsx:25 — `Marked = Record<string, never>` → `Record<never, never>`（具名 props 交叉后被 never 索引签名吞掉，消 ApprovalsHistory/PendingModulePage 共 12 处 TS2322；行为零变化）。
+- web/src/modules/duty/DutyPage.tsx:269/328/369/416/549 — `stampOf(asOfOf(X.data))` → `X.k === "ready" ? asOfOf(X.data) : null`（消 5 处 TS2339；非 ready 腿本无可用时间，渲染不变）。
+- web/src/modules/employee-detail/EmployeeDetailModulePage.tsx:523 — `<Badge tone={...neutral/info}>` → `<Badge>`（两值都不在 Tone 联合，运行时本就落基础样式；消 1 处 TS2322）。
+- web/src/modules/tasks/TasksBoardModulePage.test.tsx:133 — `...resolveDetail(),` → `...(resolveDetail() as Record<string, unknown>)`（unknown 不可 spread，TS2698 清零试）。
+
+验收：`tsc -b . --noEmit` EXIT=2，写域四域 grep 命中=0；剩余 src 红仅 1 行=src/modules/security/SecurityModulePage.tsx（写域外，挂账 R36 清单）+ apps/shared TS2307 环境噪声（写域外）。定向 vitest（approvals/duty/employee-detail/tasks）9 files/145 passed exit0；全量 129 files/1319 passed（≥基线 127/1306，merge 带入他人用例）。

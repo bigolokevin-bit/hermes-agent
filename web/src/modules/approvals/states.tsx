@@ -22,7 +22,9 @@ import { type FailureCopy } from "./copy";
 
 // R29 fixture-debt burn: the `?state=` repro is marked by the on-screen
 // apr5-forced-note text; panels no longer carry a fixture attribute.
-type Marked = Record<string, never>;
+// Record<never, never> 保留「无额外 props」标记意图，又不会像
+// Record<string, never> 那样与任何具名 prop 的交叉类型冲突。
+type Marked = Record<never, never>;
 
 /**
  * The request-id line, with a copy control that writes the SAME string that is
