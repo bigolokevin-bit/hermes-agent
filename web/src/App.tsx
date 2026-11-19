@@ -1274,6 +1274,10 @@ export default function App() {
                           `?tab=events` needs no special case: the module reads
                           only the params it owns and ignores the rest. */}
                       <Route path="/audit" element={<AuditAwareEntry />} />
+                      {/* R28 gov slot contract: the top-level '/cron' alias
+                        lands on the gov cron module page (cron5-*), never the
+                        upstream shell. */}
+                      <Route path="/cron" element={<CronConsolePage />} />
                       <Route
                         path="/channels"
                         element={<Navigate to="/capabilities?tab=channels" replace />}
