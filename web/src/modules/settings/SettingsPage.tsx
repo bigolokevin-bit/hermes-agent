@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { Copy, RefreshCw } from "lucide-react";
 import { Badge, Button, Card, CardContent } from "@nous-research/ui";
 import { fetchJSON } from "@/lib/api";
 import { ApiError } from "@/lib/api-error";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import { currentFixtureState, fixtureView, type FixtureState } from "../../shell/fixtures";
 import { readSettings, statusLabel, type SettingState } from "./settings";
+import "./settings.css";
 
 type Content = ReturnType<typeof readSettings>;
 type State = { k: "loading" } | { k: "empty" } | { k: "error"; requestId: string } | { k: "ready"; content: Content; degraded: boolean };
@@ -14,6 +16,43 @@ function forcedState(value: FixtureState | null): State | null {
   if (value === "empty") return { k: "empty" };
   if (value === "error") return { k: "error", requestId: "示例请求号" };
   return null;
+}
+
+
+function RequestId({ id }: { id: string }) {
+  const [copied, setCopied] = useState<"idle" | "done" | "failed">("idle");
+  return (
+    <p className="flex min-w-0 flex-wrap items-center justify-center gap-1 text-xs text-white/40" data-testid="set4-request-id">
+      <span>请求号：</span>
+      <code className="min-w-0 break-all" title={id}>{id}</code>
+      <button
+        type="button"
+        aria-label="复制请求编号"
+        className="inline-flex items-center gap-1 underline underline-offset-2"
+        onClick={() => { void copyTextToClipboard(id).then((ok) => setCopied(ok ? "done" : "failed")); }}
+      >
+        <Copy className="size-3" aria-hidden="true" />
+        {copied === "done" ? "已复制" : copied === "failed" ? "复制失败，请手动选择" : "复制"}
+      </button>
+    </p>
+  );
+}
+
+function leavePreview(): void {
+  if (typeof window === "undefined") return;
+  const search = new URLSearchParams(window.location.search);
+  search.delete("state");
+  const hash = window.location.hash;
+  const mark = hash.indexOf("?");
+  let nextHash = hash;
+  if (mark >= 0) {
+    const params = new URLSearchParams(hash.slice(mark + 1));
+    params.delete("state");
+    const qs = params.toString();
+    nextHash = hash.slice(0, mark) + (qs ? `?${qs}` : "");
+  }
+  window.history.replaceState({}, "", `${window.location.pathname}${search.toString() ? `?${search}` : ""}${nextHash}`);
+  window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
 function requestId(error: unknown): string {
@@ -66,11 +105,14 @@ export function SettingsPage() {
   }, [forced, attempt]);
 
   const view = preview ?? state;
-  const retry = () => setAttempt((value) => value + 1);
+  const retry = () => {
+    if (forced) leavePreview();
+    setAttempt((value) => value + 1);
+  };
   const content = view.k === "ready" ? view.content : null;
 
   return (
-    <section className="space-y-4" data-testid="set4-page">
+    <section className="set4-page space-y-4" data-testid="set4-page">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="font-mondwest text-xl">默认设置</h1>
@@ -93,8 +135,8 @@ export function SettingsPage() {
       ) : view.k === "error" ? (
         <Card><CardContent className="flex flex-col items-center gap-3 py-10 text-center" data-testid="set4-error" role="alert">
           <p className="text-sm text-white/80">默认设置暂时无法读取</p>
-          <p className="text-xs text-white/40">请求号：{view.requestId}</p>
-          <Button size="sm" outlined onClick={retry}>重试</Button>
+          <RequestId id={view.requestId} />
+          <Button size="sm" outlined onClick={retry} data-testid="set4-retry">重试</Button>
         </CardContent></Card>
       ) : (
         <div className="space-y-4" data-testid="set4-content">

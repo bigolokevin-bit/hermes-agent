@@ -230,7 +230,7 @@ function QuotaCard({ employee, runs }: { employee: RowState; runs: RowState }): 
 }
 
 export function TenantQuotaPage() {
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const forced = readForced(params);
   const [state, setState] = useState<State>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
@@ -279,7 +279,14 @@ export function TenantQuotaPage() {
     };
   }, [attempt, forced, load]);
 
-  const refresh = useCallback(() => setAttempt((n) => n + 1), []);
+  const refresh = useCallback(() => {
+    if (forced) {
+      const next = new URLSearchParams(params);
+      next.delete('state');
+      setParams(next);
+    }
+    setAttempt((n) => n + 1);
+  }, [forced, params, setParams]);
 
   if (forced === 'loading') {
     return (

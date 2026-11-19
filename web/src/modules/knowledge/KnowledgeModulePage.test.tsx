@@ -645,14 +645,20 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(urlsCalled()).toContain(RECORDS);
   });
 
-  it("carries no data-fixture anywhere, and still reads with a state in the URL", async () => {
-    fetchMock.mockResolvedValue({ items: [{ spaceId: "s1", name: "空间一" }] });
+  it("?state=error switches the content surface without calling the service", async () => {
     await render("/knowledge?state=error");
-    expect(container.querySelector("[data-fixture]")).toBeNull();
+    expect(attr("knw5-page", "data-fixture")).toBe("1");
+    expect(container.querySelector('[data-testid="knw5-forced-error"]')).toBeTruthy();
+    expect(container.textContent).toContain("预览错误");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("?state=ready is live data, not a fixture", async () => {
+    fetchMock.mockResolvedValue({ items: [{ spaceId: "s1", name: "空间一" }] });
+    await render("/knowledge?state=ready");
     expect(attr("knw5-page", "data-fixture")).toBeNull();
     expect(fetchMock).toHaveBeenCalledWith(SPACES);
     expect(container.textContent).toContain("空间一");
-    expect(container.textContent).not.toContain("预览");
   });
 
   it("shows a login state for an expired session without inventing data", async () => {

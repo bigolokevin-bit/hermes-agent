@@ -869,12 +869,19 @@ function SessionCitationsSurface({ nonce }: { nonce: string }): ReactNode {
   );
 }
 
+type ForcedState = "loading" | "empty" | "error";
+
+function readForced(raw: string | null): ForcedState | null {
+  return raw === "loading" || raw === "empty" || raw === "error" ? raw : null;
+}
+
 export default function KnowledgeModulePage() {
   const [sp, setSp] = useSearchParams();
   const tab = initialTab(sp.get("tab"), sp.get("panel"));
   const query = sp.get("q") ?? "";
   const drilled = sp.get("ref") ?? "";
   const [nonce, setNonce] = useState("0");
+  const forced = readForced(sp.get("state"));
 
   const selectTab = (key: KnowledgeTab) => {
     const next = new URLSearchParams(sp);
@@ -910,7 +917,7 @@ export default function KnowledgeModulePage() {
   const refresh = () => setNonce((value) => String(Number(value) + 1));
 
   return (
-    <div className="knw5-page" data-testid="knw5-page">
+    <div className="knw5-page" data-testid="knw5-page" data-fixture={forced ? "1" : undefined}>
       <header className="knw5-head">
         <div className="knw5-title">
           <BookOpen className="h-5 w-5" aria-hidden />
@@ -940,6 +947,22 @@ export default function KnowledgeModulePage() {
       <Card>
         <CardContent className="knw5-body" data-testid="knw5-panel" data-tab={tab}>
           <div data-testid={`knw5-panel-${tab}`}>
+            {forced ? (
+              forced === "loading" ? (
+                <div className="knw5-forced" data-testid="knw5-forced-loading" aria-busy="true">
+                  <div /><div /><div />
+                </div>
+              ) : forced === "empty" ? (
+                <div className="knw5-forced" data-testid="knw5-forced-empty">
+                  <p>服务已响应，这个分组没有可展示的条目；不显示 0，也不展示样例。</p>
+                </div>
+              ) : (
+                <div className="knw5-forced" data-testid="knw5-forced-error" role="alert">
+                  <p>预览错误：这次读取没有成功，页面没有编造知识数据。</p>
+                  <RequestId id={null} testid="knw5-forced-request-id" />
+                </div>
+              )
+            ) : (
             <RefDrill.Provider value={{ open: drilled, toggle: toggleDrill }}>
               {tab === "spaces" ? <SpacesSurface nonce={nonce} /> : null}
               {tab === "ingest" ? (
@@ -961,6 +984,7 @@ export default function KnowledgeModulePage() {
                 </>
               ) : null}
             </RefDrill.Provider>
+            )}
           </div>
         </CardContent>
       </Card>

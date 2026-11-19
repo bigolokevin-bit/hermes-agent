@@ -477,13 +477,37 @@ function DeptRow({
 
 type Forced = "loading" | "empty" | "error" | "denied";
 
+function readState(value: string): string | null {
+  const mark = value.indexOf("?");
+  if (mark < 0) return null;
+  try {
+    return new URLSearchParams(value.slice(mark + 1)).get("state");
+  } catch {
+    return null;
+  }
+}
+
 function forcedState(): Forced | null {
   if (typeof window === "undefined") return null;
-  const value = new URLSearchParams(window.location.search).get("state");
-  if (value === "loading" || value === "empty" || value === "error" || value === "denied") {
-    return value;
+  const value = readState(window.location.hash) ?? new URLSearchParams(window.location.search).get("state");
+  return value === "loading" || value === "empty" || value === "error" || value === "denied" ? value : null;
+}
+
+function leavePreview(): void {
+  if (typeof window === "undefined") return;
+  const search = new URLSearchParams(window.location.search);
+  search.delete("state");
+  const hash = window.location.hash;
+  const mark = hash.indexOf("?");
+  let nextHash = hash;
+  if (mark >= 0) {
+    const params = new URLSearchParams(hash.slice(mark + 1));
+    params.delete("state");
+    const qs = params.toString();
+    nextHash = hash.slice(0, mark) + (qs ? `?${qs}` : "");
   }
-  return null;
+  window.history.replaceState({}, "", `${window.location.pathname}${search.toString() ? `?${search}` : ""}${nextHash}`);
+  window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
 export default function OrgModulePage() {
@@ -491,7 +515,10 @@ export default function OrgModulePage() {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const forced = forcedState();
   const org = useOrg(reload, forced === null);
-  const refresh = () => setReload((n) => n + 1);
+  const refresh = () => {
+    if (forced) leavePreview();
+    setReload((n) => n + 1);
+  };
 
   const roots = useMemo<TreeNode[]>(() => {
     if (org.phase !== "ready") return [];

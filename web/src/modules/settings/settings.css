@@ -1,0 +1,7 @@
+.set4-page {
+  max-width: 100%;
+  overflow-x: clip;
+}
+.set4-page .arc-border {
+  display: none;
+}
