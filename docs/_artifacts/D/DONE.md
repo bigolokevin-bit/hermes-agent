@@ -1026,3 +1026,10 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 九件全 exit=0 盖 a1a26ccf：ia-html/react ok{51,22,1,8}｜lint-fake v=[]｜lint-reuse v=0 exempt=1 chat→T40（stdout 抄件）｜crawl-anon DL0/CE0/PE0 routesCE51(401归因)｜crawl-auth routesCE26（27→26 续降）｜state-quad 20/20 文本重建注 source。
 - shots main(auth) 102/102 failures=[] oversize=[] ceAuth=login-state obs=3 仅观测（#/system?tab=defaults、#/system?tab=events、#/work，不入 ok）distinctMainHeads=25 rootBaseline textLen=1275 真数据；三键全值+拍后 curl 复证未漂。shots-anon auxiliary=true 102/102 mode=anon obs=2（#/overview?tab=usage、#/system?tab=retention）envOnly=51。anon png 同名覆盖 pngs=102。
 - 环境：9122 v4_proxy 受管未动、caddy 8183 28034、8092 pid 5950；web/src 未碰；他人脏零沾染；auth-state 昨夜 23:5x 版窗内。
+
+## 八十九轮·波终代次九件重章 @ 466e2d2b（2026-11-20 04:0x，一波一盖）
+
+- 代次：wave-9 二次并窗 466e2d2b『merge(lane/console-aud): fixture debt burn round 2』，entry index-DBjC1SjB.js 163911B sha 6e025535458adcc8…0c1d78；三向互证过（盘==9122==8183），21/21 路由 200；上一代 a1a26ccf 作废不重做。
+- 九件全 exit=0 盖 466e2d2b：ia-html/react ok{51,22,1,8}｜lint-fake v=[]｜lint-reuse v=0 exempt=1 chat→T40（stdout 抄件）｜crawl-anon DL0/CE0/PE0 routesCE51(401归因)｜crawl-auth routesCE27（88轮26→27 波动，环境项）｜state-quad 20/20 文本重建注 source。
+- shots main(auth) 102/102 failures=[] oversize=[] ceAuth=login-state obs=4 仅观测（#/employees/:employeeId、#/identity?tab=binding、#/system?tab=events&view=anomaly、#/system?tab=version，不入 ok）distinctMainHeads=27 rootBaseline textLen=1275 真数据；三键全值+拍后 curl 复证未漂。shots-anon auxiliary=true 102/102 mode=anon obs=3（zone=tasks、#/system、events&view=anomaly）envOnly=51。anon png 同名覆盖 pngs=102。
+- 环境：9122 v4_proxy 受管未动、caddy 8183 28034、8092 pid 5950；web/src 未碰；他人脏零沾染；auth-state 昨夜 23:5x 版窗内。
