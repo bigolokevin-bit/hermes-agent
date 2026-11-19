@@ -28,10 +28,6 @@ function tone(state: SettingState): "success" | "outline" | "warning" {
   return "warning";
 }
 
-function UnknownBanner() {
-  return <div className="rounded-md border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-sm text-amber-100" data-testid="set4-unknown-banner">写入开关状态未知（本次未能读取）——在确认前按只读处理。</div>;
-}
-
 export function SettingsPage() {
   const [state, setState] = useState<State>({ k: "loading" });
   const [attempt, setAttempt] = useState(0);
@@ -85,8 +81,6 @@ export function SettingsPage() {
         </Button>
       </header>
 
-      <UnknownBanner />
-
       {view.k === "loading" ? (
         <Card><CardContent className="space-y-3 p-4" data-testid="set4-loading" aria-busy="true">
           <p className="text-sm text-white/55">正在读取默认设置…</p>
@@ -104,7 +98,7 @@ export function SettingsPage() {
         </CardContent></Card>
       ) : (
         <div className="space-y-4" data-testid="set4-content">
-          {view.degraded ? <p className="text-xs text-white/45" data-testid="set4-degraded">配置自检口（CR-M2-02）尚未接入，未落地项显示未启用；读取到的值按三态显示。</p> : null}
+          {view.degraded ? <p className="text-xs text-white/45" data-testid="set4-degraded">配置自检尚未接入，未落地项按未启用显示；读取到的值保留三态。</p> : null}
           <Card><CardContent className="space-y-3 p-4" data-testid="set4-switches">
             <h2 className="text-sm font-medium text-white/85">写入开关</h2>
             {content?.switches.map((item) => (
@@ -123,8 +117,8 @@ export function SettingsPage() {
                 <Badge tone={tone(item.state)}>{statusLabel(item.state)}</Badge>
               </div>
             )) : (
-              <div className="flex min-w-0 flex-wrap items-start justify-between gap-3 border-t border-white/10 pt-3" title="上游自检：CR-M2-02">
-                <div className="min-w-0 flex-1"><p className="text-sm text-white/80">上游连通自检</p><p className="mt-1 text-xs text-white/45">配置自检口（CR-M2-02）尚未接入，读取不到当前值</p></div>
+              <div className="flex min-w-0 flex-wrap items-start justify-between gap-3 border-t border-white/10 pt-3" title="上游自检">
+                <div className="min-w-0 flex-1"><p className="text-sm text-white/80">上游连通自检</p><p className="mt-1 text-xs text-white/45">配置自检尚未接入，读取不到当前值</p></div>
                 <Badge tone="outline">未启用</Badge>
               </div>
             )}

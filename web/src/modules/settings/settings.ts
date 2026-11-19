@@ -15,7 +15,7 @@ function stateOf(value: unknown): SettingState {
 export function readSettings(payload: unknown, unavailable = false): { switches: SwitchItem[]; upstreams: UpstreamItem[] } {
   const root = record(payload);
   const rawSwitches = record(root.writeSwitches);
-  const reason = "配置自检口（CR-M2-02）尚未接入，读取不到当前值";
+  const reason = "配置自检尚未接入，读取不到当前值";
   const switches: SwitchItem[] = ([
     ["approval", "审批流变更提交"],
     ["chat", "会话发送"],
