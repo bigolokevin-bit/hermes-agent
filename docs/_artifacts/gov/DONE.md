@@ -1326,3 +1326,9 @@ $ cd web && npx vitest run
 - Data truth unchanged: `/api/v1/user/list|all` and role endpoints 404 `console.unknown_route` → admin rows 0, `adm5-gap` (title `GAP-ADM5-01`) + `/approvals`; high-risk audit `grant.created` 200 (6 events), other delete/grant/credential actions 200 empty; all failures keep copyable request id + retry, 403≡404 one body.
 - Table columns: 账号「姓名 · 8 位短码」/角色/最近登录/最近高危操作/状态; high-risk rows carry time/category/action/object/actor/copyable request id; missing values `—` with reason; no write controls.
 - Verification: `npx vitest run src/modules/access` → **13/13**; full `npx vitest run` → **126 files / 1263 passed** (before the final export test; access 13 now). No App/shell/routes/registry/manifest/package changes.
+
+## R26 health page raw handle closeout (2026-11-19, base a895af23)
+
+- `/system?tab=health` (`HealthPage`) no longer prints a full request id on screen: `RowRequestId` renders only the first 8 characters (shorter ids unchanged), with the full id in the `title`; the copy button copies the full value and is labelled 「复制完整请求编号」.
+- Probe timestamps remain `YYYY-MM-DD HH:mm` via `formatBeijingTime` (Asia/Shanghai); raw HTTP status / GAP values stay in row `title` only. Four states, counts and retry unchanged.
+- Verification: `npx vitest run src/modules/health` → **6/6**; full `npx vitest run` → **126 files / 1264 passed**; no App/shell/routes/registry/manifest/package changes.

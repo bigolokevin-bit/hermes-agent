@@ -78,17 +78,20 @@ describe("HealthPage", () => {
     expect(container.textContent).not.toContain("404");
   });
 
-  it("writes an explicit unknown time and a copyable request id on a failed probe", async () => {
+  it("writes an explicit unknown time and shows only the short request id, full id in title", async () => {
+    const full = "0123456789abcdef0123456789abcdef";
     fetchJSON.mockImplementation((url: string) => url.includes("hermes-summary")
-      ? Promise.reject(new ApiError("offline", { status: 0, body: "", url, requestId: "req-runtime-offline" }))
+      ? Promise.reject(new ApiError("offline", { status: 0, body: "", url, requestId: full }))
       : Promise.resolve({}));
     await render();
     const row = container.querySelector('[data-testid="hlt4-row-runtime"]');
     expect(row?.textContent).toContain("控制台不可达");
     expect(row?.textContent).toContain("采集时刻：时间未知（本次没有收到可记录的时间）");
     expect(row?.textContent).not.toContain("—（未采集）");
-    expect(row?.textContent).toContain("请求编号：req-runtime-offline");
-    expect(row?.querySelector("button")?.textContent).toContain("复制");
+    expect(row?.textContent).toContain("请求编号：01234567");
+    expect(row?.textContent).not.toContain(full);
+    expect(row?.querySelector('[data-testid="hlt4-reqid-short"]')?.getAttribute("title")).toBe(full);
+    expect(row?.querySelector("button")?.getAttribute("aria-label")).toContain("复制完整请求编号");
   });
 
   it("shows a whole-page error and retries when every live probe has no response", async () => {

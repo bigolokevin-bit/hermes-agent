@@ -35,10 +35,16 @@ function RowRequestId({ id }: { id: string }) {
       () => setCopied(false),
     );
   };
+  const short = id.length > 8 ? id.slice(0, 8) : id;
   return (
     <span className="flex flex-wrap items-center gap-2 text-xs text-white/55">
-      <span>请求编号：{id}</span>
-      <button type="button" className="underline underline-offset-2 hover:text-white/80" onClick={copy}>
+      <span title={id} data-testid="hlt4-reqid-short">请求编号：{short}</span>
+      <button
+        type="button"
+        aria-label="复制完整请求编号"
+        className="underline underline-offset-2 hover:text-white/80"
+        onClick={copy}
+      >
         {copied ? "已复制" : "复制"}
       </button>
     </span>
