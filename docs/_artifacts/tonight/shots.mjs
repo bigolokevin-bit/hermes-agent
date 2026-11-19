@@ -274,7 +274,21 @@ for (const row of target) {
       await page.waitForTimeout(400);
       const h = row.hash.startsWith('#') ? row.hash : `#${row.hash}`;
       await page.evaluate((hh) => { location.hash = hh; }, h);
-      await page.waitForTimeout(400);
+      // L0 十六轮：400ms 固定等待改「main 文本稳定且非空」轮询（与 crawl-routes
+      // settle 同思路）。修复 gated 标志后不再被 reload 壳的「⠋Loading…」意外
+      // 垫过非空检查——lazy 模块 chunk 在慢盘/并发下 >400ms，直取会截到空 main。
+      {
+        let prev = -1;
+        const t0 = Date.now();
+        while (Date.now() - t0 < 4000) {
+          await page.waitForTimeout(150);
+          const cur = await page
+            .evaluate(() => (document.querySelector('main')?.innerText || '').trim().length)
+            .catch(() => 0);
+          if (cur > 0 && cur === prev) break;
+          prev = cur;
+        }
+      }
     } catch (e) {
       navError = String(e.message ?? e).slice(0, 160);
       failures.push({ hash: row.hash, viewport: vp.name, error: navError });

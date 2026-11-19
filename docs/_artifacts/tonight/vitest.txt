@@ -4,57 +4,9 @@ Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
 
  RUN  v4.1.12 /Users/kevin_studio/Projects/forks/hermes-agent/web
 
-stderr | src/shell/console.test.tsx > ConsoleEmployeeDetailPage (hidden 23rd pane) > bare detail: the probe's module page serves the hidetab pane (T18 landed; fallback shadowed)
-A suspended resource finished loading inside a test, but the event was not wrapped in act(...).
-
-When testing, code that resolves suspended data should be wrapped into act(...):
-
-act(() => {
-  /* finish loading suspended data */
-});
-/* assert on the output */
-
-This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
-A suspended resource finished loading inside a test, but the event was not wrapped in act(...).
-
-When testing, code that resolves suspended data should be wrapped into act(...):
-
-act(() => {
-  /* finish loading suspended data */
-});
-/* assert on the output */
-
-This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
-
- ❯ src/shell/console.test.tsx (8 tests | 1 failed) 62ms
-     × bare detail: the probe's module page serves the hidetab pane (T18 landed; fallback shadowed) 8ms
 Not implemented: Window's open() method
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
 Not implemented: Window's open() method
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
 Not implemented: Window's open() method
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
-Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
 Not implemented: Window's open() method
 Not implemented: Window's open() method
 Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
@@ -91,31 +43,33 @@ Not implemented: HTMLCanvasElement's getContext() method: without installing the
 Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
 Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
 Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
 
-⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
-
- FAIL  src/shell/console.test.tsx > ConsoleEmployeeDetailPage (hidden 23rd pane) > bare detail: the probe's module page serves the hidetab pane (T18 landed; fallback shadowed)
-AssertionError: expected null to be truthy
-
-- Expected:
-true
-
-+ Received:
-null
-
- ❯ src/shell/console.test.tsx:159:7
-    157|     expect(
-    158|       container.querySelector('[data-testid="probe-detail-page"]'),
-    159|     ).toBeTruthy();
-       |       ^
-    160|     expect(container.querySelector('[data-testid="existing-detail"]'))…
-    161|     expect(container.querySelectorAll('[role="tab"][data-zone]').lengt…
-
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
-
-
- Test Files  1 failed | 96 passed (97)
-      Tests  1 failed | 727 passed (728)
-   Start at  01:20:18
-   Duration  4.57s (transform 29.37s, setup 0ms, import 33.75s, tests 11.42s, environment 18.28s)
+ Test Files  97 passed (97)
+      Tests  735 passed (735)
+   Start at  09:34:42
+   Duration  5.01s (transform 29.14s, setup 0ms, import 34.33s, tests 11.54s, environment 23.76s)
 
