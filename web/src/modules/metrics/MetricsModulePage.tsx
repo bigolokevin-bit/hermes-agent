@@ -303,6 +303,7 @@ export function MetricsModulePage() {
                   </div>
                 </div>
               </div>
+              <p className="met5-scrollhint">左右滑动热力图，查看 12–23 点</p>
               <div className="met5-selected" data-testid="met5-selected" aria-live="polite">
                 {selectedCell ? (
                   <>
@@ -317,7 +318,7 @@ export function MetricsModulePage() {
                 )}
               </div>
               <p className="met5-note">
-                颜色按本窗口内出现过的最大值分档；没出现的格子保持空白，不进入总数，也不参与峰值比较。
+                颜色按本窗口内出现过的最大值分档；没出现的格子用斜纹标为「—」，不进入总数，也不参与峰值比较。
               </p>
             </CardContent>
           </Card>

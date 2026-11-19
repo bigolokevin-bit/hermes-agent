@@ -23,17 +23,17 @@
 .met5-head p {
   margin-top: 4px;
   max-width: 64ch;
-  color: hsl(var(--muted-foreground));
+  color: var(--color-muted-foreground);
   font-size: 13px;
 }
 
 .met5-preview {
-  border: 1px solid hsl(var(--border));
+  border: 1px solid var(--color-border);
   border-radius: var(--radius);
-  background: hsl(var(--muted) / 0.5);
+  background: color-mix(in srgb, var(--color-muted) 50%, transparent);
   padding: 8px 12px;
   font-size: 12px;
-  color: hsl(var(--muted-foreground));
+  color: var(--color-muted-foreground);
 }
 
 .met5-window {
@@ -45,12 +45,12 @@
 .met5-note {
   font-size: 12px;
   line-height: 1.5;
-  color: hsl(var(--muted-foreground));
+  color: var(--color-muted-foreground);
 }
 
 .met5-source {
   font-size: 12px;
-  color: hsl(var(--muted-foreground));
+  color: var(--color-muted-foreground);
 }
 
 .met5-summary {
@@ -65,7 +65,7 @@
 
 .met5-label {
   font-size: 12px;
-  color: hsl(var(--muted-foreground));
+  color: var(--color-muted-foreground);
 }
 
 .met5-value {
@@ -83,7 +83,7 @@
 .met5-hint {
   margin-top: 4px;
   font-size: 11px;
-  color: hsl(var(--muted-foreground));
+  color: var(--color-muted-foreground);
 }
 
 .met5-legend {
@@ -92,20 +92,26 @@
   flex-wrap: wrap;
   gap: 6px;
   font-size: 11px;
-  color: hsl(var(--muted-foreground));
+  color: var(--color-muted-foreground);
 }
 
 .met5-swatch {
   width: 14px;
   height: 14px;
   border-radius: 3px;
-  border: 1px solid hsl(var(--border));
+  border: 1px solid var(--color-border);
 }
 
 .met5-scroll {
   max-width: 100%;
   overflow-x: auto;
   padding-bottom: 4px;
+}
+
+.met5-scrollhint {
+  display: none;
+  font-size: 11px;
+  color: var(--color-muted-foreground);
 }
 
 .met5-gridwrap {
@@ -131,14 +137,14 @@
   text-align: center;
   font-size: 10px;
   line-height: 1;
-  color: hsl(var(--muted-foreground));
+  color: var(--color-muted-foreground);
   font-variant-numeric: tabular-nums;
 }
 
 .met5-day {
   width: 44px;
   font-size: 11px;
-  color: hsl(var(--muted-foreground));
+  color: var(--color-muted-foreground);
   white-space: nowrap;
 }
 
@@ -162,24 +168,24 @@
 }
 
 .met5-cell:focus-visible {
-  outline: 2px solid hsl(var(--ring));
+  outline: 2px solid var(--color-ring);
   outline-offset: 1px;
 }
 
-.met5-cell.is-l1 { background: hsl(var(--primary) / 0.18); }
-.met5-cell.is-l2 { background: hsl(var(--primary) / 0.34); }
-.met5-cell.is-l3 { background: hsl(var(--primary) / 0.52); }
-.met5-cell.is-l4 { background: hsl(var(--primary) / 0.74); }
+.met5-cell.is-l1 { background: color-mix(in srgb, var(--midground-base) 18%, transparent); }
+.met5-cell.is-l2 { background: color-mix(in srgb, var(--midground-base) 34%, transparent); }
+.met5-cell.is-l3 { background: color-mix(in srgb, var(--midground-base) 52%, transparent); }
+.met5-cell.is-l4 { background: color-mix(in srgb, var(--midground-base) 74%, transparent); }
 
-.met5-swatch.is-l1 { background: hsl(var(--primary) / 0.18); }
-.met5-swatch.is-l2 { background: hsl(var(--primary) / 0.34); }
-.met5-swatch.is-l3 { background: hsl(var(--primary) / 0.52); }
-.met5-swatch.is-l4 { background: hsl(var(--primary) / 0.74); }
+.met5-swatch.is-l1 { background: color-mix(in srgb, var(--midground-base) 18%, transparent); }
+.met5-swatch.is-l2 { background: color-mix(in srgb, var(--midground-base) 34%, transparent); }
+.met5-swatch.is-l3 { background: color-mix(in srgb, var(--midground-base) 52%, transparent); }
+.met5-swatch.is-l4 { background: color-mix(in srgb, var(--midground-base) 74%, transparent); }
 
 .met5-cell.is-zero,
 .met5-swatch.is-zero {
-  background: hsl(var(--muted));
-  border-color: hsl(var(--border));
+  background: var(--color-muted);
+  border-color: var(--color-border);
 }
 
 .met5-cell.is-missing,
@@ -187,10 +193,10 @@
   background:
     repeating-linear-gradient(
       135deg,
-      hsl(var(--muted-foreground) / 0.12) 0 3px,
+      color-mix(in srgb, var(--color-muted-foreground) 12%, transparent) 0 3px,
       transparent 3px 6px
     );
-  border-color: hsl(var(--border));
+  border-color: var(--color-border);
 }
 
 .met5-selected {
@@ -204,7 +210,7 @@
 
 .met5-skeleton {
   border-radius: 4px;
-  background: hsl(var(--muted));
+  background: var(--color-muted);
   animation: met5-pulse 1.4s ease-in-out infinite;
 }
 
@@ -225,5 +231,13 @@
 
   .met5-window {
     width: 100%;
+  }
+
+  .met5-scroll {
+    mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 18px), transparent 100%);
+  }
+
+  .met5-scrollhint {
+    display: block;
   }
 }
