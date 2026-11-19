@@ -1,0 +1,147 @@
+.skl4-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.skl4-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.skl4-head h1 {
+  font-family: var(--font-mondwest, inherit);
+  font-size: 1.25rem;
+  line-height: 1.4;
+}
+
+.skl4-sub,
+.skl4-note {
+  color: var(--color-muted-foreground);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
+.skl4-preview {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-warning, #f59e0b) 10%, transparent);
+  padding: 8px 12px;
+  color: var(--color-foreground);
+  font-size: 0.8125rem;
+}
+
+.skl4-source {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+}
+
+.skl4-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.skl4-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.skl4-table th {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-muted-foreground);
+  font-weight: 500;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.skl4-table td {
+  padding: 11px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+  color: var(--color-foreground);
+  vertical-align: top;
+}
+
+.skl4-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.skl4-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.skl4-reason {
+  color: var(--color-muted-foreground);
+  font-size: 0.6875rem;
+  line-height: 1.5;
+}
+
+.skl4-missing {
+  color: var(--color-muted-foreground);
+}
+
+.skl4-skeleton {
+  height: 44px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-muted) 70%, transparent);
+  animation: skl4-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes skl4-pulse {
+  50% { opacity: 0.55; }
+}
+
+.skl4-error-title,
+.skl4-empty-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.skl4-reqid {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+}
+
+.skl4-reqid code {
+  overflow-wrap: anywhere;
+}
+
+.skl4-reqid button {
+  border: 0;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.skl4-foot {
+  padding: 10px 16px 14px;
+  border-top: 1px solid var(--color-border);
+}
+
+@media (max-width: 720px) {
+  .skl4-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .skl4-head button {
+    width: 100%;
+  }
+}
