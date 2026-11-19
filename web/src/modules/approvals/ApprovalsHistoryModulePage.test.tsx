@@ -445,6 +445,77 @@ describe("history whole-panel states", () => {
     expect(document.querySelector("[data-testid='apd5-field-change-kind']")?.textContent).toContain("对外发送消息");
   });
 
+  it("R46: apd6 shows submit, recorded nodes in service order, outstanding approvers and honest gaps", async () => {
+    const sample = {
+      approvalId: "ap_trail_1",
+      title: "批量导出",
+      status: "pending",
+      type: "data_export",
+      requestedBy: { type: "user", id: "human:7", name: "张三" },
+      createdAt: "2026-11-18T02:30:00Z",
+      approvers: [
+        { userId: "employee:emp_217A91BA995044DFBB3E2E940B", name: "小鲤" },
+        { userId: "human:7", name: "张三" },
+      ],
+      requiredApprovals: 2,
+      decisions: [{ verdict: "approve", by: "human:7", name: "张三", decidedAt: "2026-11-18T03:00:00Z" }],
+      requestId: "req-trail",
+    };
+    await mount(async (url) => {
+      if (url.includes("/api/approval?id=")) return sample;
+      return { items: [sample] };
+    });
+    const card = document.querySelector("[data-testid^='apr5-row-']") as HTMLElement;
+    await act(async () => {
+      card.click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='apd6-trail']") !== null, "trail mounted");
+    const trail = document.querySelector("[data-testid='apd6-trail']");
+    expect(trail?.textContent).toContain("提交 · 张三 · 2026-11-18 10:30");
+    expect(document.querySelector("[data-testid='apd6-step-node-0']")?.textContent).toContain(
+      "节点 1 · 张三 · 通过 · 2026-11-18 11:00 · 意见：未填",
+    );
+    expect(document.querySelector("[data-testid='apd6-step-node-1']")).toBeNull();
+    const pending = document.querySelector("[data-testid='apd6-step-pending-0']");
+    expect(pending?.textContent).toContain("小鲤");
+    expect(pending?.textContent).toContain("待办");
+    expect(pending?.textContent).toContain("该段无记录");
+    expect(document.querySelector("[data-testid='apd6-step-final']")?.textContent).toContain("终态 ·");
+    expect(document.querySelector("[data-testid='apd6-step-links']")?.textContent).toContain("该段无记录");
+    // the trail never shows a bare handle or invents an order
+    expect(trail?.textContent).not.toContain("human:");
+    expect(trail?.textContent).not.toContain("emp_");
+  });
+
+  it("R46: when the ticket carries run/task ids the trail links them for real", async () => {
+    const sample = {
+      approvalId: "ap_trail_2",
+      title: "清理过期文件",
+      status: "approved",
+      type: "cleanup",
+      requestedBy: { type: "user", id: "human:1", name: "李四" },
+      createdAt: "2026-11-17T01:00:00Z",
+      approvers: [{ userId: "human:1", name: "李四" }],
+      decisions: [{ verdict: "approve", by: "human:1", name: "李四", decidedAt: "2026-11-17T02:00:00Z", comment: "可以" }],
+      runId: "run_217A91BA995044DF",
+      taskId: "tk_217A91BA995044DF",
+    };
+    await mount(async (url) => {
+      if (url.includes("/api/approval?id=")) return sample;
+      return { items: [sample] };
+    });
+    const card = document.querySelector("[data-testid^='apr5-row-']") as HTMLElement;
+    await act(async () => {
+      card.click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='apd6-trail']") !== null, "trail mounted");
+    const run = document.querySelector("[data-testid='apd6-link-run']") as HTMLAnchorElement | null;
+    expect(run?.getAttribute("href")).toBe("/runs/run_217A91BA995044DF");
+    const task = document.querySelector("[data-testid='apd6-link-task']") as HTMLAnchorElement | null;
+    expect(task?.getAttribute("href")).toBe("/tasks/tk_217A91BA995044DF");
+    expect(document.querySelector("[data-testid='apd6-step-node-0']")?.textContent).toContain("意见：可以");
+  });
+
   it("R31 obs: the approver field renders once and bare human:1 reads 人员 with the handle in the title", async () => {
     const sample = {
       approvalId: "ap_123DE49B9A1F42A197679681F1",

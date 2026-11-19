@@ -720,3 +720,15 @@ BFF/数据面现查：GET /agent-api/api/employees/<id>（server.py EMPLOYEES_DE
 实现（ApprovalsHistoryModulePage.tsx）：①新组 data-testid=apv5-filter（role=group）=四快捷钮 apv5-filter-status-{all,pending,approved,rejected}（人话「全部/待办/已批/已拒」），sends 真 status 值走既有 choose→URL ?status=→useApprovalsList 恰一次重取（新用例实测 fresh filter api/approvals =1 条带 status=rejected）；active 态与八态组同源（?status=pending 重放时 apv5 快捷钮与 apr5-filter-pending 同时 aria-pressed=true）。②apv5-count=ready 期 {list.rows.length}，与「已显示 N 条」同变量同元素树=计数与列表同源（pending 重放=1 且读数行 1 条实测一致）。③风险档 apv5-filter-risk 与时间窗 apv5-filter-window=**控件在屏但 disabled+title 人话带活体读数**：BFF passthrough=(status,limit,cursor)，risk/window/since 实测被丢（status=all 下 8 条同集合，带参不带一致）——前端假过滤被工单禁→按 P2 priority 先例诚实禁用，DONE/回执上报。④空集文案按工单=「该条件下无审批：「X」结果下没有记录」（既有两用例断言同步），清筛选去处（换结果/全部+exits-back/exits-contact 真出口）既有保留。⑤apr5-* 现名族零改动；URL 刷新/复制链接复现=既有 replace 机制+新组共用；四态/403≡404/可复制 rid+重试=既有形态未破坏。⑥三档横溢=jsdom 不可测，形态学报（新组复用 flex-wrap gap-1.5 容器）。
 
 验证：定向 approvals 3 files/57 passed exit0；assert-ia 两模式 exit0（51/22/1/8，未动壳层）；全量 **131 files/1401 passed**（≥基线 1399）。9122==02a7385c 取证代次禁重建：活体 DOM 读数待并入后代次，本轮 jsdom+ego 参数探测双交付。
+
+## R46 审批详情「决策链路与证据」（2026-11-20，lane/console-appr）
+
+基线：**按单 merge（禁 reset）** origin/lane/hermes-console=f0419b0b 系 Already up to date（tip e1ea2504 已含），toplevel ✓ porc=0。
+
+落点：`/approvals/:id` 无独立路由→按工单预案用既有点开详情形态（?id= URL 保态既有：selected 初值 params.get("id")，分享/刷新可复现）；ApprovalDetailBody 尾部（apd5-replay 之后、技术折叠之前）新增 **DecisionTrail（views.tsx，apd6-* 族）**，pending/history 两页共用同一组件。
+
+链路形态：`apd6-trail`（ol，标题注明「节点顺序即服务返回顺序」，禁前端重排）→ `apd6-step-submitted`（提交·申请人·submitted BJT 到分；缺=该段无记录+title）→ `apd6-step-node-<i>`（节点 N·审批人（actor 人话，title=whoRaw）·verdict 人话（既有口径 approve=「通过」）·时间缺=该段无记录+title·意见原文缺=「未填」）；decisions 空=单行 `apd6-step-nodes-none`「该段无记录」；未行动审批人= `apd6-step-pending-<i>`「X·待办·该段无记录（该审批人还没有给出决定）」（labels 与 decisions.who 字符串差集）；终态= `apd6-step-final`（status.label+decided，title=status.raw）。关联段 `apd6-step-links`：run/task **有值才渲真 a[href]**（`apd6-link-run`→/runs/<id>、`apd6-link-task`→/tasks/<id> R40 已挂深链；model.ts ApprovalDetail 新增 runId/taskId 多键解析）；无值=该段无记录+title；证据段=恒「该段无记录」+title 活体实证——**ego 只读探测（9122==02a7385c 系）：GET /api/approvals?status=all&limit=8→200 行 keys 无 runId/taskId/evidenceId（runLinks=0/8）；GET /agent-api/api/approval?id=ap_123…→404 console.unknown_route=详情读口本代次未开放**，jsdom 为链路行为权威，页面活体读数待 BFF 开放详情读口与并入后代次。
+
+不破与门禁：apd5-*/apr5-*/apv5-*/ed* 零改动（既有 57 用例全绿）；四态/可复制 rid/403≡404/零写入口=宿主页与 detail 既有分支既有锁；三档横溢=jsdom 不可测，形态学沿用既有 flex-col break-words（如实报）。新测试 2 用例：①链路顺序/pending 段/缺段人话/无裸 human:emp_②runId/taskId 真 href+意见原文。
+
+验证：定向 approvals 3 files/59 passed exit0；tsc 本域零红；assert-ia 两模式 exit0 51/22/1/8；全量 **131 files/1406 passed**（基线 1404+2）。
