@@ -143,3 +143,67 @@ describe("SystemHealthSurface", () => {
     expect(api.fetchJSON).not.toHaveBeenCalled();
   });
 });
+
+describe("SystemHealthSurface row detail", () => {
+  const DETAIL = {
+    ok: true,
+    asOf: "2026-11-19T15:17:09Z",
+    sources: [
+      {
+        id: "console",
+        name: "控制台服务(BFF)",
+        state: "ok",
+        version: "4.2.1",
+        latencyMs: 12,
+        lastError: "token=abc123 cookie=sess456 api_key=sk-secret99 request failed",
+      },
+      { id: "runtime", name: "Hermes 运行时", state: "degraded", latencyMs: 47 },
+    ],
+  };
+
+  it("opens one row detail with read path, basis, check time, latency and a redacted error summary", async () => {
+    api.fetchJSON.mockResolvedValue(DETAIL);
+    await render();
+    await waitFor(() => !!container.querySelector("[data-testid='sys3-table']"), "table");
+    const before = window.location.search;
+    const first = container.querySelector<HTMLElement>("[data-testid='sys3-row-console']")!;
+    await act(async () => first.click());
+    const detail = container.querySelector("[data-testid='sys4-detail-console']")!;
+    expect(detail.textContent).toContain("控制台服务(BFF)");
+    expect(detail.querySelector("[data-testid='sys4-endpoint']")?.textContent).toBe("/agent-api/api/health");
+    expect(detail.querySelector("[data-testid='sys4-basis']")?.textContent).toContain("健康接口报告该服务为正常");
+    expect(detail.querySelector("[data-testid='sys4-checked']")?.textContent).toBe("2026-11-19 23:17");
+    expect(detail.querySelector("[data-testid='sys4-latency']")?.textContent).toBe("12 ms");
+    const error = detail.querySelector("[data-testid='sys4-error']")!;
+    expect(error.textContent).toContain("***");
+    expect(error.textContent).toContain("已脱敏 3 处");
+    expect(error.textContent).not.toContain("abc123");
+    expect(error.textContent).not.toContain("sess456");
+    expect(error.textContent).not.toContain("sk-secret99");
+    expect(window.location.search).toBe(before);
+
+    const second = container.querySelector<HTMLElement>("[data-testid='sys3-row-runtime']")!;
+    await act(async () => second.click());
+    expect(container.querySelectorAll("[data-testid^='sys4-detail-row-']")).toHaveLength(1);
+    expect(container.querySelector("[data-testid='sys4-detail-runtime']")).toBeTruthy();
+    expect(container.querySelector("[data-testid='sys4-detail-console']")).toBeNull();
+    expect(container.querySelector("[data-testid='sys4-detail-runtime'] [data-testid='sys4-error']")?.textContent).toContain("该字段未返回");
+    expect(container.querySelector("[data-testid='sys4-detail-runtime'] [data-testid='sys4-error']")?.getAttribute("title")).toContain("没有给出最近一次错误摘要");
+  });
+
+  it("opens with Enter, closes with Escape and leaves the URL untouched", async () => {
+    api.fetchJSON.mockResolvedValue(DETAIL);
+    await render();
+    await waitFor(() => !!container.querySelector("[data-testid='sys3-table']"), "table");
+    const first = container.querySelector<HTMLElement>("[data-testid='sys3-row-console']")!;
+    await act(async () => {
+      first.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+    expect(container.querySelector("[data-testid='sys4-detail-console']")).toBeTruthy();
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    expect(container.querySelector("[data-testid='sys4-detail-console']")).toBeNull();
+    expect(window.location.search).toBe("");
+  });
+});

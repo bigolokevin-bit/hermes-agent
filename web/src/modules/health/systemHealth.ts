@@ -18,6 +18,12 @@ export interface SystemHealthRow {
   checkedReason: string | null;
   latency: string | null;
   latencyReason: string | null;
+  endpoint: string | null;
+  basis: string[];
+  lastError: string | null;
+  lastErrorReason: string | null;
+  lastErrorRedactions: number;
+  lastErrorTruncated: boolean;
 }
 
 export interface SystemHealthRead {
@@ -68,6 +74,40 @@ export function beijingMinute(value: string | null): string | null {
   }).format(at);
 }
 
+function redactError(value: string): { text: string; count: number; truncated: boolean } {
+  let count = 0;
+  let text = value.replace(/\bAuthorization\s*:\s*Bearer\s+[^\s,;]+/gi, () => {
+    count += 1;
+    return "Authorization: Bearer ***";
+  });
+  text = text.replace(/(token|cookie|secret|password|passwd|api[_-]?key|access[_-]?key|private[_-]?key)\s*[:=]\s*["']?([^\s,;，；"']+)/gi, (_match, label: string) => {
+    count += 1;
+    return `${label}: ***`;
+  });
+  text = text.replace(/\b(sk-[A-Za-z0-9_-]{6,}|ghp_[A-Za-z0-9]{6,}|eyJ[A-Za-z0-9._-]{10,})\b/g, () => {
+    count += 1;
+    return "***";
+  });
+  const truncated = text.length > 200;
+  return { text: truncated ? `${text.slice(0, 200)}…` : text, count, truncated };
+}
+
+function errorOf(row: Rec): { text: string | null; reason: string | null; redactions: number; truncated: boolean } {
+  const raw = row.lastError ?? row.last_error ?? row.error ?? row.errorSummary ?? row.error_summary ?? row.lastFailure ?? row.last_failure ?? row.lastErrorMessage ?? row.last_error_message;
+  if (typeof raw === "string" && raw.trim()) {
+    const redacted = redactError(raw.trim());
+    return { text: redacted.text, reason: null, redactions: redacted.count, truncated: redacted.truncated };
+  }
+  if (isRecord(raw)) {
+    const message = pickString(raw, ["message", "summary", "detail", "error"]);
+    if (message) {
+      const redacted = redactError(message);
+      return { text: redacted.text, reason: null, redactions: redacted.count, truncated: redacted.truncated };
+    }
+  }
+  return { text: null, reason: "健康接口没有给出最近一次错误摘要。", redactions: 0, truncated: false };
+}
+
 function stateOf(raw: string | null): Sys3State {
   if (!raw) return "待核实";
   const value = raw.toLowerCase();
@@ -85,7 +125,7 @@ export function readSystemHealth(body: unknown): SystemHealthRead | null {
     ? asOf ? null : "健康接口给出的顶层采集时刻无法解析。"
     : "健康接口没有给出顶层采集时刻。";
   const sources = body.sources;
-  const rows = sources.map((entry, index) => {
+  const rows: SystemHealthRow[] = sources.map((entry, index) => {
     const row = isRecord(entry) ? entry : {};
     const name = pickString(row, ["name", "label", "id"]);
     const rawState = pickString(row, ["state", "status", "health", "result"]);
@@ -93,6 +133,8 @@ export function readSystemHealth(body: unknown): SystemHealthRead | null {
     const version = pickString(row, ["version", "build", "buildId", "build_id", "revision", "commit"]);
     const latencyMs = pickNumber(row, ["latencyMs", "latency_ms", "durationMs", "duration_ms", "responseTimeMs", "response_time_ms", "elapsedMs", "elapsed_ms"]);
     const key = (pickString(row, ["id"]) ?? name ?? `source-${index}`).replace(/[^a-zA-Z0-9_-]+/g, "-");
+    const endpoint = pickString(row, ["path", "endpoint", "readPath", "read_path", "url"]) ?? SYS3_PATH;
+    const error = errorOf(row);
     return {
       key,
       name,
@@ -108,15 +150,36 @@ export function readSystemHealth(body: unknown): SystemHealthRead | null {
       checkedReason: asOfReason,
       latency: latencyMs === null ? null : `${Math.round(latencyMs)} ms`,
       latencyReason: latencyMs === null ? "健康接口没有给出响应耗时。" : null,
+      endpoint,
+      basis: [],
+      lastError: error.text,
+      lastErrorReason: error.reason,
+      lastErrorRedactions: error.redactions,
+      lastErrorTruncated: error.truncated,
     };
   });
   const ok = typeof body.ok === "boolean" ? body.ok : null;
+  const overall: Sys3State = ok === true ? "正常" : ok === false ? "降级" : "待核实";
+  const overallReason = ok === null ? "健康接口没有给出整体状态。" : null;
+  for (const row of rows) {
+    row.basis = [
+      row.state === "正常"
+        ? "健康接口报告该服务为正常；没有降级或不可达标记。"
+        : row.state === "降级"
+          ? "健康接口把该服务标记为降级；本页按上游信号如实展示。"
+          : row.state === "不可达"
+            ? "健康接口把该服务标记为不可达；本页不把它当作正常。"
+            : "健康接口没有给出可判定的状态；本页按待核实处理。",
+      `整体健康：${overall}${overallReason ? `（${overallReason}）` : ""}。`,
+      "判定只依据这次健康接口响应，没有用本机时钟或本地推断补齐。",
+    ];
+  }
   return {
     rows,
     asOf,
     asOfReason,
-    overall: ok === true ? "正常" : ok === false ? "降级" : "待核实",
-    overallReason: ok === null ? "健康接口没有给出整体状态。" : null,
+    overall,
+    overallReason,
     sources: rows.length,
   };
 }

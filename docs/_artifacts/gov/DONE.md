@@ -1777,3 +1777,16 @@ built /private/tmp/health-r38/index.html
 - 验证：`npx vitest run src/modules/health` → **2 files / 14 tests passed**（新增 `SystemHealthSurface.test.tsx` 6 条：状态/顶层时刻/缺字段、403≡404、500 rid+重试、空清单、无本机时钟、预览零请求与 planned 控件）。全量 `npx vitest run` → **134 files / 1466 passed**，另有 2 个基线 employee-detail unhandled（非本域）。`tsc -b . --noEmit` → 6 行全为基线 employee-detail/employees，本域 0。
 - DOM（临时 harness，已删；Vite 5460 / Chrome 9262）：1440/1280/375 `vw=bodySW=bodyCW=1440/1280/375`，`sys3-page` 宽 1406/1246/341，行 3，整体 `正常`，首行 `控制台服务(BFF) / 正常 / 4.2.1 / 2026-11-19 23:17 / 12 ms`；375 仅表格在卡内滚动（680/311），页面不横溢。截图 `docs/_artifacts/gov/shots/sys3-{1440,1280,375}.png`。
 - 边界：只改 `web/src/modules/health/**` 与 DONE/截图；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；`hlt5-*` 与 `ver5-*` 未破；无独立观察者。
+
+## R50 /system 系统健康行详情（2026-11-20）
+
+- 基线：显式 refspec fetch 后与 `origin/lane/hermes-console` 同步（tip 5d91f22d，代码代次 6a02ed58），`git merge --no-ff` 报 Already up to date；保留已推 `76ccc9ca`，未 reset。
+- 端点：继续读 `/agent-api/api/health`（9122 实测 **200** `console.health.sources.v1`，顶层 `asOf:2026-11-19T23:17:09Z`，3 sources）；无新增后端端点。
+- 实现：`SystemHealthSurface` 行可点/可键盘展开，行下详情 `sys4-detail-*`：
+  - 服务名、口径（读口路径，默认 `/agent-api/api/health`）、状态依据（3 条人话：服务判定、整体健康、只依据本次响应）、最近检查时刻（只取 payload 顶层 `asOf`，缺失 `该字段未返回`+title，禁本机时钟）、响应耗时（缺失 `该字段未返回`+title）、最近一次错误摘要。
+  - 错误摘要强制脱敏：`Authorization: Bearer …`、`token/cookie/secret/password/api_key/access_key/private_key` 赋值、`sk-*`/`ghp_*`/JWT 一律打码为 `***`，显示「已脱敏 N 处」；超 200 字截断标「摘要已截断」；不保留/不渲染整段原文，raw 不进 title。
+  - 行 `tabIndex=0`、Enter/Space 展开、Esc 收起；同时只允许一行；展开不改 tab/URL（实测 `location.search` 为空）。无「重试该服务检查」写入口，详情明写只读；既有 planned 编辑按钮保持 data-planned + aria-disabled + title。
+  - 四态/gap/403≡404 沿用 sys3 不退化；`sys4-*` 新增，`sys3-*`/`ver5-*`/`cap4-7`/`skl4`/`tl3` 未改。
+- 验证：`npx vitest run src/modules/health` → **2 files / 16 tests passed**（新增 2 条：单开/字段/脱敏计数、Enter 开 Esc 关且 URL 不变）。全量 `npx vitest run` → **134 files / 1468 passed**，另有 2 个基线 employee-detail unhandled（非本域）。`tsc -b . --noEmit` → 6 行全为基线 employee-detail/employees，本域 0。
+- DOM（临时 harness，已删；Vite 5461 / Chrome 9263）：1440/1280/375 `vw=bodySW=bodyCW`，`sys3-page` 1406/1246/341，行 3、展开详情 1；详情显示 `/agent-api/api/health`、3 条状态依据、`2026-11-19 23:17`、`12 ms`、`token: *** cookie: *** api_key: ***`+「已脱敏 3 处」；375 仅表格内滚动（680/311），页面不横溢。截图 `docs/_artifacts/gov/shots/sys4-{1440,1280,375}.png`。
+- 边界：只改 `web/src/modules/health/**` 与 DONE/截图；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；无独立观察者。

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Badge, Button, Card, CardContent } from "@nous-research/ui";
 import { fetchJSON } from "@/lib/api";
 import {
@@ -7,6 +7,7 @@ import {
   readSystemHealth,
   sys3Failure,
   type SystemHealthRead,
+  type SystemHealthRow,
   type Sys3State,
 } from "./systemHealth";
 
@@ -37,6 +38,46 @@ function RequestId({ id }: { id: string | null }) {
   );
 }
 
+function RowDetail({ row }: { row: SystemHealthRow }) {
+  return (
+    <div className="sys4-detail" data-testid={`sys4-detail-${row.key}`}>
+      <dl className="sys4-grid">
+        <div className="sys4-field">
+          <dt>服务名</dt>
+          <dd data-testid="sys4-service">{row.name ?? "该字段未返回"}</dd>
+        </div>
+        <div className="sys4-field">
+          <dt>口径（读口路径）</dt>
+          <dd data-testid="sys4-endpoint" title={row.endpoint ?? undefined}>{row.endpoint ?? "该字段未返回"}</dd>
+        </div>
+        <div className="sys4-field sys4-wide">
+          <dt>状态依据</dt>
+          <dd data-testid="sys4-basis">
+            <ul>{row.basis.map((line) => <li key={line}>{line}</li>)}</ul>
+          </dd>
+        </div>
+        <div className="sys4-field">
+          <dt>最近检查时刻</dt>
+          <dd data-testid="sys4-checked" title={row.checkedReason ?? undefined}>{row.checkedAt ?? "该字段未返回"}</dd>
+        </div>
+        <div className="sys4-field">
+          <dt>响应耗时</dt>
+          <dd data-testid="sys4-latency" title={row.latencyReason ?? undefined}>{row.latency ?? "该字段未返回"}</dd>
+        </div>
+        <div className="sys4-field sys4-wide">
+          <dt>最近一次错误摘要</dt>
+          <dd data-testid="sys4-error" title={row.lastErrorReason ?? undefined}>
+            {row.lastError ?? "该字段未返回"}
+            {row.lastErrorRedactions > 0 ? <span className="sys4-redacted" data-testid="sys4-redacted">已脱敏 {row.lastErrorRedactions} 处</span> : null}
+            {row.lastErrorTruncated ? <span className="sys4-redacted">摘要已截断</span> : null}
+          </dd>
+        </div>
+      </dl>
+      <p className="sys4-note">这里没有「重试该服务检查」写入口；详情只读，缺失字段不补值。</p>
+    </div>
+  );
+}
+
 function tone(state: Sys3State): "success" | "warning" | "destructive" | "outline" {
   if (state === "正常") return "success";
   if (state === "降级") return "warning";
@@ -52,6 +93,16 @@ export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Pre
     return { k: "loading" };
   });
   const [reload, setReload] = useState(0);
+  const [openKey, setOpenKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!openKey) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpenKey(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [openKey]);
 
   useEffect(() => {
     if (preview !== null) return;
@@ -142,6 +193,7 @@ export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Pre
               {state.read.overallReason ? <span className="sys3-reason">{state.read.overallReason}</span> : null}
               {state.read.asOfReason ? <span className="sys3-reason">{state.read.asOfReason}</span> : null}
             </div>
+            <p className="sys4-hint">点行或按 Enter 展开详情，Esc 收起；同时只展开一行。</p>
             <div className="sys3-scroll">
               <table className="sys3-table" data-testid="sys3-table">
                 <thead>
@@ -151,15 +203,36 @@ export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Pre
                 </thead>
                 <tbody>
                   {state.read.rows.map((row) => (
-                    <tr key={row.key} data-testid={`sys3-row-${row.key}`}>
-                      <td data-testid="sys3-name" title={row.nameReason ?? undefined}>{row.name ?? "—"}</td>
-                      <td data-testid="sys3-state" title={row.stateReason ?? row.stateRaw ?? undefined}>
-                        <Badge tone={tone(row.state)}>{row.state}</Badge>
-                      </td>
-                      <td data-testid="sys3-version" title={row.versionReason ?? undefined}>{row.version ?? "—"}</td>
-                      <td data-testid="sys3-checked" title={row.checkedReason ?? undefined}>{row.checkedAt ?? "—"}</td>
-                      <td data-testid="sys3-latency" title={row.latencyReason ?? undefined}>{row.latency ?? "—"}</td>
-                    </tr>
+                    <Fragment key={row.key}>
+                      <tr
+                        data-testid={`sys3-row-${row.key}`}
+                        data-open={openKey === row.key ? "1" : undefined}
+                        tabIndex={0}
+                        aria-expanded={openKey === row.key}
+                        aria-controls={`sys4-detail-row-${row.key}`}
+                        className="sys3-row"
+                        onClick={() => setOpenKey((current) => (current === row.key ? null : row.key))}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            setOpenKey((current) => (current === row.key ? null : row.key));
+                          }
+                        }}
+                      >
+                        <td data-testid="sys3-name" title={row.nameReason ?? undefined}>{row.name ?? "—"}</td>
+                        <td data-testid="sys3-state" title={row.stateReason ?? row.stateRaw ?? undefined}>
+                          <Badge tone={tone(row.state)}>{row.state}</Badge>
+                        </td>
+                        <td data-testid="sys3-version" title={row.versionReason ?? undefined}>{row.version ?? "—"}</td>
+                        <td data-testid="sys3-checked" title={row.checkedReason ?? undefined}>{row.checkedAt ?? "—"}</td>
+                        <td data-testid="sys3-latency" title={row.latencyReason ?? undefined}>{row.latency ?? "—"}</td>
+                      </tr>
+                      {openKey === row.key ? (
+                        <tr data-testid={`sys4-detail-row-${row.key}`} id={`sys4-detail-row-${row.key}`}>
+                          <td colSpan={5}><RowDetail row={row} /></td>
+                        </tr>
+                      ) : null}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
