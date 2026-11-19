@@ -343,7 +343,8 @@ export function money(value: number | undefined | null): string {
 }
 
 export function sourceLabel(source: TaskDetail["source"]): string {
-  if (!source) return "—";
+  // 缺来源写「未接入」并给原因（详情字段带 title），不是沉默的破折号。
+  if (!source) return "未接入";
   if (source.kind === "manual") return "人工创建";
   const channel = source.channel === "feishu" ? "飞书" : source.channel;
   return channel ? `渠道 · ${channel}` : "渠道";

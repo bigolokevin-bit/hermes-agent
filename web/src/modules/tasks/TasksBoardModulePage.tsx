@@ -6,7 +6,7 @@
  * did not confirm. Missing values render "—"; unknown states stay unknown.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 import { RequestIdCopy } from "@/components/RequestIdCopy";
 import { AlertTriangle, Inbox, RefreshCw, ShieldAlert, X } from "lucide-react";
 
@@ -106,9 +106,20 @@ function TaskDetailCard({
       <CardContent className="space-y-4 p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h2 className="truncate text-base font-semibold" title={title}>{title}</h2>
-            <p className="text-xs text-muted-foreground" title="当前壳层未提供按任务的深链路由（/tasks/<id>），刷新后抽屉会关闭。" data-testid="tsk4-detail-note">
-              详情以页内抽屉展示；当前版本没有按任务的深链，刷新页面会回到看板。
+            {state.k === "ready" ? (
+              <Link
+                to={`/tasks/${encodeURIComponent(state.data.taskId)}`}
+                className="truncate text-base font-semibold hover:underline"
+                title={state.data.taskId}
+                data-testid="tsk4-detail-link"
+              >
+                {title}
+              </Link>
+            ) : (
+              <h2 className="truncate text-base font-semibold" title={title}>{title}</h2>
+            )}
+            <p className="text-xs text-muted-foreground" title="深链 /tasks/<任务编号> 可直开；分享与刷新都保持同一屏。" data-testid="tsk4-detail-note">
+              详情支持按任务深链（/tasks/ 加任务编号）；页面里显示的是短码，完整编号在标题悬停。
             </p>
             {state.k === "ready" ? (
               <p className="mt-0.5 text-xs text-muted-foreground">
@@ -129,12 +140,12 @@ function TaskDetailCard({
         ) : state.k === "error" ? (
           <div className="space-y-2" role="alert">
             <p className="text-sm">{state.message}</p>
-            <p className="break-words text-xs text-muted-foreground">{requestIdText(state.requestId)}</p>
-            {state.status !== 403 && state.status !== 404 ? (
-              <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
-                重试
-              </Button>
-            ) : null}
+            <p className="break-words text-xs text-muted-foreground">
+              <RequestIdCopy requestId={state.requestId} fallback="本次请求未记录编号，可复制时间与操作路径反馈" />
+            </p>
+            <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />} data-testid="tsk4-detail-retry">
+              重试
+            </Button>
           </div>
         ) : (
           <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -146,7 +157,9 @@ function TaskDetailCard({
                 ? money(state.data.cost)
                 : <span title="后台没有回传这条任务的成本。">—</span>}
             </DetailField>
-            <DetailField label="来源">{sourceLabel(state.data.source)}</DetailField>
+            <DetailField label="来源">
+              <span title={state.data.source ? undefined : "后台没有回传这条任务的来源信息。"}>{sourceLabel(state.data.source)}</span>
+            </DetailField>
             <DetailField label="创建人">{actorLabel(state.data.createdBy, nameMap)}</DetailField>
             <DetailField label="创建时间">{beijing(state.data.createdAt)}</DetailField>
             <DetailField label="任务编号">
@@ -185,6 +198,22 @@ function TaskDetailCard({
             </div>
           </dl>
         )}
+        {state.k === "ready" ? (
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <Button
+              size="sm"
+              outlined
+              disabled
+              data-planned="true"
+              aria-disabled="true"
+              title="状态迁移待写入车间接线后开放，这里不提供写入口。"
+              data-testid="tsk4-detail-transition"
+            >
+              迁移
+            </Button>
+            <span className="text-xs text-muted-foreground">状态迁移待写入车间接线后开放。</span>
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );
@@ -196,7 +225,16 @@ export function TasksBoardModulePage() {
   const forceRid = params.get("rid");
   const [board, setBoard] = useState<BoardState>(EMPTY_BOARD);
   const [tick, setTick] = useState(0);
-  const [selected, setSelected] = useState<string | null>(null);
+  // R40 deep link: /tasks/<taskId> opens the drawer straight from the URL;
+  // on the board the same drawer lives in ?task=, so refresh keeps state and
+  // browser back closes (or reopens) it instead of losing it.
+  const location = useLocation();
+  const navigate = useNavigate();
+  const deepTaskId = (() => {
+    const m = location.pathname.match(/^\/tasks\/([^/]+)$/);
+    return m ? decodeURIComponent(m[1]) : null;
+  })();
+  const selected = deepTaskId ?? params.get("task");
   const [detail, setDetail] = useState<DetailState>({ k: "idle" });
   const [createOpen, setCreateOpen] = useState(false);
   // P2: real filter + cursor paging leg. The URL carries the filter state so
@@ -271,11 +309,34 @@ export function TasksBoardModulePage() {
     [board.nameMap],
   );
 
+  const openTask = useCallback(
+    (taskId: string) => {
+      if (deepTaskId) {
+        navigate(`/tasks/${encodeURIComponent(taskId)}`);
+        return;
+      }
+      const draft = new URLSearchParams(params);
+      draft.set("task", taskId);
+      setParams(draft);
+    },
+    [deepTaskId, navigate, params, setParams],
+  );
+
+  const closeTask = useCallback(() => {
+    if (deepTaskId) {
+      navigate("/work?tab=board");
+      return;
+    }
+    const draft = new URLSearchParams(params);
+    draft.delete("task");
+    setParams(draft);
+  }, [deepTaskId, navigate, params, setParams]);
+
   const afterCreate = useCallback((taskId: string) => {
     // Refresh the board and open the new task's detail through the real link.
-    setSelected(taskId);
+    openTask(taskId);
     setTick((n) => n + 1);
-  }, []);
+  }, [openTask]);
 
   useEffect(() => {
     let alive = true;
@@ -325,6 +386,26 @@ export function TasksBoardModulePage() {
       return () => {};
     }
     let alive = true;
+    // R40: ?state= swaps the detail content itself, not just the corner tag.
+    if (forced === "loading") {
+      setDetail({ k: "loading", id: selected });
+      return () => { alive = false; };
+    }
+    if (forced === "error" || forced === "empty" || forced === "denied") {
+      setDetail({
+        k: "error",
+        id: selected,
+        status: forced === "denied" ? 403 : forced === "empty" ? 404 : 502,
+        message:
+          forced === "denied"
+            ? "没有查看这条任务的权限，或该数据源尚未接入。"
+            : forced === "empty"
+              ? "这条任务没有可展示的内容：后台返回为空，不是加载失败。"
+              : "任务详情没能加载出来：接口暂时不可达。",
+        requestId: forceRid ?? "preview-request",
+      });
+      return () => { alive = false; };
+    }
     setDetail({ k: "loading", id: selected });
     void loadDetail(selected)
       .then((data) => alive && setDetail({ k: "ready", id: selected, data }))
@@ -334,7 +415,7 @@ export function TasksBoardModulePage() {
         setDetail({ k: "error", id: selected, ...info });
       });
     return () => { alive = false; };
-  }, [selected, tick]);
+  }, [selected, tick, forced, forceRid]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, TaskRow[]>();
@@ -505,7 +586,7 @@ export function TasksBoardModulePage() {
                       <button
                         type="button"
                         className="min-w-0 truncate text-left hover:underline focus-visible:underline"
-                        onClick={() => setSelected(row.taskId)}
+                        onClick={() => openTask(row.taskId)}
                       >
                         {row.title}
                       </button>
@@ -568,7 +649,7 @@ export function TasksBoardModulePage() {
       <TaskDetailCard
         state={detail}
         nameMap={board.nameMap}
-        onClose={() => setSelected(null)}
+        onClose={closeTask}
         onRetry={() => setTick((n) => n + 1)}
       />
 
@@ -654,11 +735,11 @@ export function TasksBoardModulePage() {
                         tabIndex={0}
                         aria-label={`查看任务 ${row.title}`}
                         className="cursor-pointer transition-colors hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-                        onClick={() => setSelected(row.taskId)}
+                        onClick={() => openTask(row.taskId)}
                         onKeyDown={(event) => {
                           if (event.key === "Enter" || event.key === " ") {
                             event.preventDefault();
-                            setSelected(row.taskId);
+                            openTask(row.taskId);
                           }
                         }}
                       >
