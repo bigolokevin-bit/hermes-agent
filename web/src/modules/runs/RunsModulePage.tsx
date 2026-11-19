@@ -1,281 +1,333 @@
 /**
- * Lane work · T15 runs list + read-only detail. Source: /api/runs,
- * /api/run-detail, /api/run-events. No retry/cancel write is exposed.
+ * Lane work · T15 (PRD v4.1) — runs list + read-only detail on the upstream
+ * shell.
+ *
+ * Read-only. What is on the screen is what the answers carried, and nothing
+ * else:
+ *   loading  a skeleton, not a list of zero
+ *   ready    the runs the service sent — short codes, Chinese status,
+ *            Beijing wall clock to the minute, USD or 「—」 with the reason,
+ *            and a failure-reason summary
+ *   empty    the service answered and the window really was empty — reason
+ *            plus next step, and zeros that are earned
+ *   error    human words + a copyable 请求编号 (「未提供」 when there was
+ *            none) + 重试
+ *   denied   403 and 404 draw ONE identical body: no code word, no route,
+ *            no data rows above it
+ *
+ * The filters are URL-owned (`?window=` / `?status=`): the link takes effect
+ * because the read is asked again with that filter — not repainted client-
+ * side from the previous answer. A `?state=` repro leg draws its state from
+ * the URL, carries `data-fixture` + the GAP number, and issues zero requests
+ * (list, detail and the employee-name side-read alike — the URL alone
+ * decides what a repro shows).
+ *
+ * The detail pane (deep link `?run=`) is read-only too: the event timeline
+ * with 结果引用 (「未记录」 when the answer carried none), the cost badge in
+ * three honest states (已计价 / 未知 / 未记录 — an unknown cost never
+ * renders a figure, a true zero renders $0.00), and 重试 that means a NEW
+ * run: a fresh id upstream, then this page navigates to it. The current
+ * runId is never reused or rewritten.
+ *
+ * Engineering language (HTTP codes, field names, ISO instants, raw ids)
+ * reaches the screen only through `title` attributes and the collapsed
+ * 「技术详情」. The run id reads 「运行 · 后4位」 with a copy affordance;
+ * the full value lives in the title and the clipboard, not on the surface.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
-import { Activity, AlertTriangle, Inbox, RefreshCw, ShieldAlert, X } from "lucide-react";
+import { Check, Copy, RefreshCw, X } from "lucide-react";
 
 import { Badge } from "@nous-research/ui/ui/components/badge";
 import { Button } from "@nous-research/ui/ui/components/button";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
+import { Spinner } from "@nous-research/ui/ui/components/spinner";
+
 import { fetchJSON } from "@/lib/api";
+import { themedBody } from "@/lib/utils";
+import { copyTextToClipboard } from "@/lib/clipboard";
 
 import {
-  beijing,
-  duration,
+  DeniedPanel,
+  EmptyPanel,
+  ErrorPanel,
+  LoadingPanel,
+  ReproNote,
+  RequestIdLine,
+  TechnicalDisclosure,
+} from "./states";
+import {
+  GAP,
+  PAGE_LIMIT,
+  SINCE_OPTIONS,
+  STATUS_KEYS,
+  askedLine,
+  beijingMinute,
   costBadgeLabel,
   costReason,
   costState,
   costText,
+  elapsedMinute,
+  employeeLabel,
   errorInfo,
   eventLabel,
-  loadRunDetail,
-  loadRunEvents,
-  loadRuns,
-  reasonLabel,
+  failureSummary,
+  requestRetryRun,
   resultRef,
+  runCode,
   shortId,
-  taskLabel,
+  sinceKeyOf,
+  statusFilterOf,
   statusLabel,
   statusTone,
+  taskLabel,
   usd,
-  type ListState,
-  type RunDetail,
-  type RunEvent,
+  type ErrorInfo,
   type RunRow,
-} from "./runsPage";
+} from "./runs";
+import { forcedStateOf, useRunsData } from "./useRunsData";
+import { useRunDetail, type DetailOutcome } from "./useRunDetail";
 
-const SINCE_OPTIONS = [
-  { value: "24h", label: "近 24 小时", hours: 24 },
-  { value: "7d", label: "近 7 天", hours: 24 * 7 },
-  { value: "30d", label: "近 30 天", hours: 24 * 30 },
-] as const;
-
-type SinceKey = (typeof SINCE_OPTIONS)[number]["value"];
-
-type DetailState =
-  | { k: "idle" }
-  | { k: "loading"; id: string }
-  | { k: "ready"; id: string; run: RunDetail; events: RunEvent[]; eventsError: string | null }
-  | { k: "error"; id: string; status: number; message: string; requestId: string | null };
-
-type EmployeeMap = Map<string, string>;
+/** 「—」 with the reason in its title: a gap reads as a gap, never as a zero. */
+function Dashed({ reason }: { reason: string }): ReactNode {
+  return (
+    <span className="min-w-0 break-words text-muted-foreground" title={reason}>
+      —
+    </span>
+  );
+}
 
 /**
- * QA V4-R4 条目2: every error panel needs a real way out. The shell and the
- * footer carry no contact affordance today (grep: 0 mailto / 联系入口 in
- * src/shell), so this is the documented mailto default — not a dead `href="#"`.
- * Replace with the ops-team address once one exists.
+ * The list cell for a run: 「运行 · 后4位」 on the surface, full id in the
+ * title and on the clipboard only — the RUNS-01 audit counted a bare full
+ * id (and the missing copy entry) as defects.
  */
-const CONTACT_ADMIN_HREF = "mailto:workspace-admin@hermes.local?subject=Hermes%20%E6%8E%A7%E5%88%B6%E5%8F%B0%E9%97%AE%E9%A2%98%E5%8F%8D%E9%A6%88";
-
-/** QA V4-R4 条目5: a missing request id says what the person can do instead. */
-function requestIdText(id: string | null): string {
-  return id ? `请求编号 ${id}` : "本次请求未记录编号，可复制时间与操作路径反馈";
-}
-
-function sinceIso(key: SinceKey): string {
-  const hours = SINCE_OPTIONS.find((x) => x.value === key)?.hours ?? 24;
-  return new Date(Date.now() - hours * 3600_000).toISOString();
-}
-
-function rowLabel(row: RunRow, employees: EmployeeMap): string {
-  const name = row.employeeId ? employees.get(row.employeeId) : undefined;
-  if (name) return name;
-  if (!row.employeeId) return "—";
-  const tail = row.employeeId.replace(/^[^:]*:/, "").replace(/[^0-9A-Za-z]/g, "").slice(-4).toUpperCase();
-  return tail ? `员工 · ${tail}` : "员工";
-}
-
-function Skeleton() {
+function RunCodeCell({ row, testId }: { row: RunRow; testId: string }): ReactNode {
+  const [copied, setCopied] = useState<"idle" | "done" | "failed">("idle");
   return (
-    <Card data-testid="runs-loading" aria-busy="true">
-      <CardContent className="space-y-3 p-4">
-        {[0, 1, 2, 3, 4].map((i) => (
-          <div key={i} className="h-10 animate-pulse rounded bg-muted" />
-        ))}
+    <span className="flex min-w-0 flex-wrap items-center gap-1.5" data-testid={testId} title={row.runId}>
+      <span className="min-w-0 break-words">{runCode(row.runId)}</span>
+      <button
+        type="button"
+        aria-label="复制运行编号"
+        title="复制完整编号（供支持人员核对）"
+        className="inline-flex shrink-0 items-center text-xs text-muted-foreground underline underline-offset-2"
+        onClick={() => {
+          void copyTextToClipboard(row.runId).then((ok) => {
+            setCopied(ok ? "done" : "failed");
+            if (ok) window.setTimeout(() => setCopied("idle"), 2500);
+          });
+        }}
+      >
+        {copied === "done" ? (
+          <Check className="h-3 w-3" aria-hidden="true" />
+        ) : copied === "failed" ? (
+          <span>复制失败，请手动选择</span>
+        ) : (
+          <Copy className="h-3 w-3" aria-hidden="true" />
+        )}
+      </button>
+    </span>
+  );
+}
+
+function CostCell({ row, testId }: { row: RunRow; testId: string }): ReactNode {
+  const state = costState(row);
+  const tone = state === "known" ? "success" : state === "unknown" ? "warning" : "secondary";
+  return (
+    <span className="flex min-w-0 flex-col items-start gap-0.5" data-testid={testId} title={costReason(row)}>
+      <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+        <span className="min-w-0 break-words">{costText(row)}</span>
+        <Badge tone={tone}>{costBadgeLabel(row)}</Badge>
+      </span>
+      {state !== "known" ? (
+        <span className="min-w-0 break-words text-[11px] leading-tight text-muted-foreground">{costReason(row)}</span>
+      ) : null}
+    </span>
+  );
+}
+
+const GRID =
+  "grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,1.1fr)_minmax(0,0.8fr)_minmax(0,1.2fr)_minmax(0,1fr)_auto]";
+
+function ListRows({ rows, onOpen }: { rows: RunRow[]; onOpen: (runId: string) => void }): ReactNode {
+  return (
+    <Card className="min-w-0 border-border bg-card" data-testid="run5-table">
+      <CardContent className="p-0">
+        <div className={`hidden ${GRID} border-b border-border px-4 py-2 text-xs uppercase tracking-wide text-muted-foreground sm:grid`}>
+          <span>运行</span><span>状态</span><span>开始</span><span>耗时</span><span>成本（美元）</span><span>失败原因</span><span aria-hidden="true"></span>
+        </div>
+        <ul className="divide-y divide-border">
+          {rows.map((row, index) => {
+            const start = beijingMinute(row.startedAt);
+            const elapsed = elapsedMinute(row.startedAt, row.endedAt);
+            const reason = failureSummary(row);
+            const base = `run5-row-${index}`;
+            return (
+              <li key={row.runId} className={GRID} data-testid={base} data-status={row.status ?? "unknown"}>
+                <RunCodeCell row={row} testId={`${base}-code`} />
+                <span className="min-w-0 self-center">
+                  <Badge tone={statusTone(row.status)} data-testid={`${base}-status`}>{statusLabel(row.status)}</Badge>
+                </span>
+                <span className="min-w-0 self-center break-words" data-testid={`${base}-start`} title={row.startedAt ?? undefined}>
+                  {start.text ?? <Dashed reason={start.reason} />}
+                </span>
+                <span className="min-w-0 self-center break-words" data-testid={`${base}-elapsed`} title={elapsed.reason || undefined}>
+                  {elapsed.text ?? <Dashed reason={elapsed.reason} />}
+                </span>
+                <CostCell row={row} testId={`${base}-cost`} />
+                <span className="min-w-0 self-center break-words" data-testid={`${base}-reason`} title={reason.reason || undefined}>
+                  {reason.text}
+                </span>
+                <button
+                  type="button"
+                  className="self-center justify-self-end rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted/40 focus-visible:outline-none"
+                  data-testid={`${base}-open`}
+                  aria-label={`查看 ${runCode(row.runId)} 的详情与事件`}
+                  onClick={() => onOpen(row.runId)}
+                >
+                  查看
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-2 text-xs text-muted-foreground" data-testid="run5-foot">
+          <span>只读列表 · 点一行看详情与事件 · 不发起、不取消，重试只会新建一次运行</span>
+        </div>
       </CardContent>
     </Card>
   );
 }
 
-function ErrorCard({
-  state,
-  onRetry,
-  testid,
+function Timeline({
+  outcome,
+  onRetryEvents,
 }: {
-  state: { status: number; message: string; requestId: string | null };
-  onRetry: () => void;
-  testid: string;
-}) {
-  const denied = state.status === 403 || state.status === 404;
+  outcome: Extract<DetailOutcome, { k: "ready" }>;
+  onRetryEvents: () => void;
+}): ReactNode {
+  const { events, hasMore, eventsFailure } = outcome;
   return (
-    <Card data-testid={testid}>
-      <CardContent className="flex flex-col items-start gap-3 p-5">
-        {denied ? <ShieldAlert className="h-5 w-5 text-amber-400" /> : <AlertTriangle className="h-5 w-5 text-rose-400" />}
-        <div className="min-w-0">
-          <h2 className="text-base font-semibold">{denied ? "运行记录暂不可见" : "运行记录没能加载出来"}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{state.message}</p>
-          <p className="mt-2 break-all text-xs text-muted-foreground">{requestIdText(state.requestId)}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {!denied ? (
-            <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-4 w-4" />}>
-              重试
-            </Button>
-          ) : null}
-          {/* QA V4-R4 条目2: 真出口 — 壳内路由可达，不是装饰。 */}
-          <Link
-            to="/overview"
-            data-testid={`${testid}-back`}
-            className="inline-flex h-8 items-center rounded-md border border-border px-3 text-sm hover:bg-muted/40"
-          >
-            返回控制台
-          </Link>
-          <a
-            href={CONTACT_ADMIN_HREF}
-            data-testid={`${testid}-contact`}
-            className="inline-flex h-8 items-center rounded-md border border-border px-3 text-sm hover:bg-muted/40"
-          >
-            联系管理员
-          </a>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function Detail({ state, onClose, onRetry }: { state: DetailState; onClose: () => void; onRetry: () => void }) {
-  if (state.k === "idle") return null;
-  return (
-    <Card data-testid={`run-detail-${state.k}`}>
-      <CardContent className="space-y-4 p-4">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div className="min-w-0">
-            <h2 className="text-base font-semibold">
-              {state.k === "ready" ? `运行 ${shortId(state.run.runId)}` : "运行详情"}
-            </h2>
-            {state.k === "ready" ? (
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                {statusLabel(state.run.status)} · 开始 {beijing(state.run.startedAt)} · 耗时 {duration(state.run.startedAt, state.run.endedAt)}
-              </p>
-            ) : null}
-          </div>
-          <Button size="sm" outlined onClick={onClose} prefix={<X className="h-3.5 w-3.5" />}>
-            关闭
+    <div className="min-w-0 space-y-2">
+      <h3 className="text-sm font-semibold">事件时间线</h3>
+      {eventsFailure ? (
+        <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs">
+          <span className="min-w-0 break-words text-muted-foreground">
+            事件流这次没读到：{eventsFailure.sentence}
+          </span>
+          <Button size="sm" outlined onClick={onRetryEvents} data-testid="run5-events-retry"
+            prefix={<RefreshCw className="h-3.5 w-3.5" />}>
+            重新读取事件
           </Button>
         </div>
-
-        {state.k === "loading" ? (
-          <div className="h-16 animate-pulse rounded bg-muted" aria-busy="true" />
-        ) : state.k === "error" ? (
-          <div className="space-y-2" role="alert">
-            <p className="text-sm">{state.message}</p>
-            <p className="break-all text-xs text-muted-foreground">{requestIdText(state.requestId)}</p>
-            {state.status !== 403 && state.status !== 404 ? (
-              <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />}>重试</Button>
-            ) : null}
-          </div>
-        ) : (
-          <>
-            <div className="grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
-              <div><span className="block text-[11px] uppercase tracking-wide text-muted-foreground">状态</span><Badge tone={statusTone(state.run.status)}>{statusLabel(state.run.status)}</Badge></div>
-              <div>
-                <span className="block text-[11px] uppercase tracking-wide text-muted-foreground">成本</span>
-                <span>{costText(state.run)}</span>{" "}
-                <Badge tone={costState(state.run) === "known" ? "success" : costState(state.run) === "unknown" ? "warning" : "outline"}>{costBadgeLabel(state.run)}</Badge>
-                <span className="mt-1 block text-[11px] text-muted-foreground">{costReason(state.run)}</span>
-              </div>
-              <div><span className="block text-[11px] uppercase tracking-wide text-muted-foreground">预算上限</span><span>{usd(state.run.budgetCapUsd)}</span></div>
-              <div><span className="block text-[11px] uppercase tracking-wide text-muted-foreground">尝试</span><span>{state.run.attemptNo ?? "—"}</span></div>
-              <div><span className="block text-[11px] uppercase tracking-wide text-muted-foreground">结束</span><span>{beijing(state.run.endedAt)}</span></div>
-              <div><span className="block text-[11px] uppercase tracking-wide text-muted-foreground">失败原因</span><span>{reasonLabel(state.run.reasonCode)}</span></div>
-              <div><span className="block text-[11px] uppercase tracking-wide text-muted-foreground">任务</span><span title={state.run.taskId}>{taskLabel(state.run.taskId)}</span></div>
-              <div><span className="block text-[11px] uppercase tracking-wide text-muted-foreground">事件</span><span>{state.events.length} 条{state.eventsError ? "（部分读取失败）" : ""}</span></div>
-              <div className="sm:col-span-2">
-                <span className="block text-[11px] uppercase tracking-wide text-muted-foreground">上游运行</span>
-                {state.run.upstreamRunId ? (
-                  <Link
-                    className="text-sm underline decoration-dotted underline-offset-2"
-                    to={`/runs?upstream=${encodeURIComponent(state.run.upstreamRunId)}`}
-                    title={state.run.upstreamRunId}
-                  >
-                    上游运行 {shortId(state.run.upstreamRunId)}
-                  </Link>
-                ) : (
-                  <span>—</span>
-                )}
-              </div>
-            </div>
-            {state.eventsError ? <p className="text-xs text-muted-foreground">{state.eventsError}</p> : null}
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold">事件时间线</h3>
-              {state.events.length === 0 ? (
-                <p className="text-sm text-muted-foreground">这条运行还没有读到事件。</p>
-              ) : (
-                <ol className="space-y-2" data-testid="run-events">
-                  {state.events.map((ev) => (
-                    <li key={ev.seq} className="flex min-w-0 flex-wrap items-baseline gap-2 border-b border-border pb-2 text-sm last:border-0">
-                      <span className="font-mono text-xs text-muted-foreground">#{ev.seq}</span>
-                      <span className="min-w-0 flex-1">
-                        {eventLabel(ev.eventType)}
-                        {ev.eventType === "tool_result" ? (
-                          <span className="ml-2 text-xs text-muted-foreground" title={resultRef(ev) ?? undefined}>
-                            结果引用：{resultRef(ev) ? shortId(resultRef(ev) as string) : "未记录"}
-                          </span>
-                        ) : null}
-                      </span>
-                      <span className="text-xs text-muted-foreground">{beijing(ev.occurredAt)}</span>
-                    </li>
-                  ))}
-                </ol>
-              )}
-              <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
-                <Button size="sm" outlined disabled data-testid="run-retry-planned" title="写入接口未开放">
-                  重试（新建运行）
-                </Button>
-                <span className="text-xs text-muted-foreground">
-                  重试会新建一次运行并生成新编号，不会复用本条 runId；写入接口尚未开放，本页不发送请求。
+      ) : events.length === 0 ? (
+        <p className="min-w-0 break-words text-sm text-muted-foreground">这条运行的事件流还没有读到内容。</p>
+      ) : (
+        <ol className="min-w-0 space-y-2" data-testid="run5-timeline">
+          {events.map((ev) => {
+            const at = beijingMinute(ev.occurredAt);
+            const ref = resultRef(ev);
+            return (
+              <li
+                key={ev.seq}
+                className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5 border-b border-border pb-2 text-sm last:border-0"
+                data-testid={`run5-event-${ev.seq}`}
+              >
+                <span className="shrink-0 text-xs text-muted-foreground">#{ev.seq}</span>
+                <span className="min-w-0 flex-1 break-words">{eventLabel(ev.eventType)}</span>
+                {ev.eventType === "tool_result" ? (
+                  <span className="min-w-0 break-words text-xs text-muted-foreground" title={ref ?? "服务没有带回结果引用"}>
+                    {`结果引用：${ref ? shortId(ref) : "未记录"}`}
+                  </span>
+                ) : null}
+                <span className="shrink-0 text-xs text-muted-foreground" title={ev.occurredAt ?? undefined}>
+                  {at.text ?? <Dashed reason={at.reason} />}
                 </span>
-              </div>
-            </div>
-          </>
-        )}
-      </CardContent>
-    </Card>
+              </li>
+            );
+          })}
+          {hasMore ? <li className="min-w-0 break-words text-xs text-muted-foreground">服务说这一条之外还有更多事件，这次没有读到。</li> : null}
+        </ol>
+      )}
+    </div>
+  );
+}
+
+type AttemptAsk =
+  | { key: string; k: "sending" }
+  | { key: string; k: "failed"; failure: ErrorInfo }
+  | { key: string; k: "done"; newId: string };
+
+function AttemptLine({ ask, runId }: { ask: AttemptAsk | null; runId: string | null }): ReactNode {
+  if (!ask || ask.key !== runId) return null;
+  if (ask.k === "sending") {
+    return (
+      <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="run5-retry-result">
+        <Spinner className="mr-1 inline h-3 w-3" />
+        正在请求新建一次运行…
+      </p>
+    );
+  }
+  if (ask.k === "done") {
+    return (
+      <p className="min-w-0 break-words text-xs text-success" data-testid="run5-retry-result" title={ask.newId}>
+        {`已新建 ${runCode(ask.newId)} 并切换到这条新运行；原运行不受影响。`}
+      </p>
+    );
+  }
+  return (
+    <div className="min-w-0 space-y-1" data-testid="run5-retry-result">
+      <p className="min-w-0 break-words text-xs text-muted-foreground">
+        {ask.k === "failed" && (ask.failure.status === 403 || ask.failure.status === 404)
+          ? `新建运行的写入还没有在本控制台接通（${GAP}），本页没有替你发起任何新运行。`
+          : ask.failure.sentence}
+      </p>
+      <RequestIdLine requestId={ask.failure.requestId} testId="run5-retry-request-id" />
+    </div>
+  );
+}
+
+function DetailField({ label, children }: { label: string; children: ReactNode }): ReactNode {
+  return (
+    <div className="min-w-0">
+      <span className="block text-[11px] tracking-wide text-muted-foreground">{label}</span>
+      <span className="min-w-0 break-words">{children}</span>
+    </div>
   );
 }
 
 export function RunsModulePage() {
-  const [sp, setSp] = useSearchParams();
-  const runParam = sp.get("run");
-  const upstream = sp.get("upstream");
-  const [since, setSince] = useState<SinceKey>("7d");
-  const [status, setStatus] = useState("");
-  const [list, setList] = useState<ListState>({ phase: "loading", rows: [], cursor: null, status: 0, message: "", requestId: null });
-  const [tick, setTick] = useState(0);
-  const [employees, setEmployees] = useState<EmployeeMap>(new Map());
-  const [selected, setSelected] = useState<string | null>(null);
-  const [detail, setDetail] = useState<DetailState>({ k: "idle" });
+  const [params, setParams] = useSearchParams();
+  const forced = forcedStateOf(params.get("state"));
+  const sinceKey = sinceKeyOf(params.get("window"));
+  const status = statusFilterOf(params.get("status"));
+  const selected = forced === null ? params.get("run") : null;
+  const upstream = forced === null ? params.get("upstream") : null;
 
+  const data = useRunsData(forced, { status, sinceKey });
+  const { phase, rows, cursor, answeredBy, unreadable, failure, forced: isForced } = data;
+
+  const [readTick, setReadTick] = useState(0);
+  const detail = useRunDetail(forced, selected, readTick);
+  const [attemptAsk, setAttemptAsk] = useState<AttemptAsk | null>(null);
+
+  const [names, setNames] = useState<Map<string, string>>(new Map());
+  // Employee names only decorate the detail line, and a masked code is the
+  // honest fallback. The ask is gated on the detail actually being open:
+  // a `?state=` repro never opens one and requests nothing; the list leg
+  // asks only its own routes.
+  const namesGated = selected !== null && forced === null;
   useEffect(() => {
-    if (runParam) setSelected(runParam);
-  }, [runParam]);
-
-  useEffect(() => {
-    if (upstream) setSelected(null);
-  }, [upstream]);
-
-  const openRun = useCallback((id: string) => {
-    setSelected(id);
-    setSp({ run: id }, { replace: true });
-  }, [setSp]);
-
-  const closeRun = useCallback(() => {
-    setSelected(null);
-    setSp({}, { replace: true });
-  }, [setSp]);
-
-  useEffect(() => {
+    if (!namesGated) return;
     let alive = true;
     fetchJSON<unknown>("/agent-api/api/employees?limit=100")
       .then((body) => {
         if (!alive) return;
-        const map: EmployeeMap = new Map();
         const items = body && typeof body === "object" && Array.isArray((body as { items?: unknown[] }).items)
           ? (body as { items: unknown[] }).items
           : [];
+        const map = new Map<string, string>();
         for (const item of items) {
           if (!item || typeof item !== "object") continue;
           const r = item as Record<string, unknown>;
@@ -283,188 +335,334 @@ export function RunsModulePage() {
           const name = typeof r.name === "string" ? r.name : typeof r.displayName === "string" ? r.displayName : "";
           if (id && name) map.set(id, name);
         }
-        setEmployees(map);
+        setNames(map);
       })
-      .catch(() => {});
-    return () => { alive = false; };
-  }, []);
-
-  useEffect(() => {
-    let alive = true;
-    setList({ phase: "loading", rows: [], cursor: null, status: 0, message: "", requestId: null });
-    void loadRuns({ status: status || undefined, since: sinceIso(since) }).then((next) => {
-      if (alive) setList(next);
-    });
-    return () => { alive = false; };
-  }, [status, since, tick]);
-
-  useEffect(() => {
-    if (!selected) {
-      setDetail({ k: "idle" });
-      return () => {};
-    }
-    let alive = true;
-    setDetail({ k: "loading", id: selected });
-    void Promise.allSettled([loadRunDetail(selected), loadRunEvents(selected)]).then(([runRes, evRes]) => {
-      if (!alive) return;
-      if (runRes.status === "rejected") {
-        const info = errorInfo(runRes.reason);
-        setDetail({ k: "error", id: selected, ...info });
-        return;
-      }
-      const events = evRes.status === "fulfilled" ? evRes.value.items : [];
-      setDetail({
-        k: "ready",
-        id: selected,
-        run: runRes.value,
-        events,
-        eventsError: evRes.status === "rejected" ? errorInfo(evRes.reason).message : null,
+      .catch(() => {
+        /* masked code is the honest fallback; no toast, no fake name */
       });
-    });
-    return () => { alive = false; };
-  }, [selected, tick]);
+    return () => {
+      alive = false;
+    };
+  }, [namesGated]);
 
-  const counts = useMemo(() => {
-    const failed = list.rows.filter((r) => r.status === "failed").length;
-    const running = list.rows.filter((r) => r.status === "running").length;
-    return { failed, running };
-  }, [list.rows]);
+  const forcedTitle = isForced ? "复现腿不发起真实请求，去掉 ?state= 即为真实读取" : undefined;
 
-  // QA V4-R4 条目1: 没有成功取到数就没有「0」。只有请求成功且确认为空才允许硬零。
-  const countsUnknown = list.phase === "loading" || list.phase === "error" || list.phase === "denied";
-  const countsUnreadable = list.phase === "error" || list.phase === "denied";
+  const setParam = useCallback(
+    (key: string, value: string | null) => {
+      const next = new URLSearchParams(params);
+      if (value === null || value === "") next.delete(key);
+      else next.set(key, value);
+      setParams(next, { replace: true });
+    },
+    [params, setParams],
+  );
 
-  const retry = useCallback(() => setTick((n) => n + 1), []);
+  // One URL write per action: two consecutive setParams calls would each
+  // rebuild from the same stale `params`, and the second would drop the
+  // first. `run` opens the detail; `upstream` is a different lens.
+  const setParamsBoth = (entries: Array<[string, string | null]>) => {
+    const next = new URLSearchParams(params);
+    for (const [key, value] of entries) {
+      if (value === null || value === "") next.delete(key);
+      else next.set(key, value);
+    }
+    setParams(next, { replace: true });
+  };
+
+  const openRun = (runId: string) => {
+    setAttemptAsk(null);
+    setParamsBoth([["run", runId], ["upstream", null]]);
+  };
+  const closeRun = () => {
+    setAttemptAsk(null);
+    setParamsBoth([["run", null]]);
+  };
+  const reloadList = () => {
+    data.reload();
+  };
+  const reloadDetail = () => setReadTick((n) => n + 1);
+
+  const retryAsNewRun = useCallback(() => {
+    if (selected === null) return;
+    setAttemptAsk({ key: selected, k: "sending" });
+    requestRetryRun(selected)
+      .then((newId) => {
+        setAttemptAsk({ key: newId, k: "done", newId });
+        setReadTick((n) => n + 1);
+        setParam("run", newId);
+      })
+      .catch((err: unknown) => {
+        setAttemptAsk({ key: selected, k: "failed", failure: errorInfo(err) });
+      });
+  }, [selected, setParam]);
+
+  const failedCount = rows.filter((row) => row.status === "failed").length;
+  const runningCount = rows.filter((row) => row.status === "running").length;
+  const countsKnown = phase === "ready" || phase === "empty";
+
+  const technical = [
+    answeredBy ? `由这条读取回答：${answeredBy}` : null,
+    !answeredBy && failure?.technical ? failure.technical : null,
+    askedLine(),
+  ].filter((line): line is string => line !== null);
+
+  const statusLine =
+    phase === "loading"
+      ? "正在读取运行记录…"
+      : phase === "denied"
+        ? "这一面当前看不到运行记录"
+        : phase === "error"
+          ? "这次读取没有成功"
+          : phase === "empty"
+            ? "读取成功，这个窗口没有运行"
+            : "读取成功";
 
   return (
-    <div className="min-w-0 space-y-4" data-testid="runs-page">
-      <header className="flex flex-wrap items-start justify-between gap-3">
+    <div
+      className="flex min-w-0 w-full max-w-full flex-col gap-3"
+      data-testid="run5-page"
+      data-page="runs"
+      data-fixture={forced ?? undefined}
+    >
+      <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-2">
         <div className="min-w-0">
-          {/* QA V4-R4 条目3: 面包屑 — 模块内没有既有惯例，按壳内分组（运营）与控制台入口内联。 */}
-          <nav aria-label="面包屑" className="text-xs text-muted-foreground" data-testid="runs-breadcrumb">
-            <Link to="/overview" className="underline decoration-dotted underline-offset-2 hover:text-foreground">运营</Link>
-            <span aria-hidden="true"> · </span>
+          <nav aria-label="面包屑" className="min-w-0 break-words text-xs text-muted-foreground" data-testid="run5-breadcrumb">
             <Link to="/overview" className="underline decoration-dotted underline-offset-2 hover:text-foreground">控制台</Link>
             <span aria-hidden="true"> · </span>
             <span aria-current="page">运行</span>
           </nav>
-          <h1 className="mt-1 flex items-center gap-2 font-mondwest text-2xl font-semibold"><Activity className="h-5 w-5" />运行</h1>
-          <p className="mt-1 text-sm text-muted-foreground">按时间看运行；失败原因只在详情里给，不用颜色代替事实。</p>
+          <h1 className={`mt-1 min-w-0 break-words text-xl ${themedBody}`}>运行</h1>
+          <p className="mt-1 min-w-0 break-words text-xs text-muted-foreground">
+            按时间看运行记录。这一面只读：不取消运行；重试的含义是新建一次运行。
+          </p>
         </div>
-        <Button
-          size="sm"
-          outlined
-          onClick={retry}
-          disabled={list.phase === "loading"}
-          prefix={<RefreshCw className={"h-4 w-4" + (list.phase === "loading" ? " animate-spin" : "")} />}
-        >
-          刷新
-        </Button>
-      </header>
-
-      <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm" data-testid="runs-summary">
-        <span data-testid="status">
-          本页 {countsUnknown ? "—" : list.rows.length} 次 · 失败 {countsUnknown ? "—" : counts.failed} · 运行中 {countsUnknown ? "—" : counts.running}
-        </span>
-        {countsUnreadable ? (
-          <span data-testid="runs-summary-caveat" className="text-xs text-muted-foreground">
-            {list.phase === "denied" ? "暂时读不到运行数据（没有查看权限）" : "暂时读不到运行数据（接口不可达）"}，数字不作零处理
-          </span>
-        ) : null}
-        <span data-testid="next-action">下一步：点一行看失败原因</span>
-        <span data-testid="owner">负责人：运行所属员工</span>
+        <div className="flex min-w-0 flex-wrap items-end gap-2" role="group" aria-label="运行筛选" data-testid="run5-filters">
+          <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="run5-filter-window">
+            <span className="text-muted-foreground">时间范围</span>
+            <select
+              id="run5-filter-window"
+              data-testid="run5-filter-window"
+              className="h-8 min-w-0 max-w-40 rounded-md border border-border bg-transparent px-2 text-sm"
+              value={sinceKey}
+              disabled={isForced}
+              title={isForced ? forcedTitle : "换时间范围会重新向服务要一次数据"}
+              onChange={(event) => setParam("window", event.target.value)}
+            >
+              {SINCE_OPTIONS.map((option) => (
+                <option key={option.key} value={option.key}>{option.label}</option>
+              ))}
+            </select>
+          </label>
+          <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="run5-filter-status">
+            <span className="text-muted-foreground">状态</span>
+            <select
+              id="run5-filter-status"
+              data-testid="run5-filter-status"
+              className="h-8 min-w-0 max-w-40 rounded-md border border-border bg-transparent px-2 text-sm"
+              value={status ?? ""}
+              disabled={isForced}
+              title={isForced ? forcedTitle : "换状态会重新向服务要一次数据"}
+              onChange={(event) => setParam("status", event.target.value || null)}
+            >
+              <option value="">全部状态</option>
+              {STATUS_KEYS.map((key) => (
+                <option key={key} value={key}>{statusLabel(key)}</option>
+              ))}
+            </select>
+          </label>
+          <Button
+            size="sm"
+            outlined
+            onClick={reloadList}
+            disabled={phase === "loading" || isForced}
+            title={forcedTitle}
+            data-testid="run5-refresh"
+            prefix={phase === "loading" ? <Spinner className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" />}
+          >
+            重新读取
+          </Button>
+        </div>
       </div>
 
-      <Card>
-        <CardContent className="flex flex-wrap items-center gap-2 p-3">
-          <label className="flex items-center gap-2 text-sm">
-            状态
-            <select className="h-8 rounded-md border border-border bg-transparent px-2 text-sm" value={status} onChange={(e) => setStatus(e.target.value)}>
-              <option value="">全部状态</option>
-              <option value="running">运行中</option>
-              <option value="completed">成功</option>
-              <option value="failed">失败</option>
-              <option value="cancelled">已取消</option>
-              <option value="interrupted">已中断</option>
-            </select>
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            时间
-            <select className="h-8 rounded-md border border-border bg-transparent px-2 text-sm" value={since} onChange={(e) => setSince(e.target.value as SinceKey)}>
-              {SINCE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
-          </label>
-          <span className="text-xs text-muted-foreground">仅本页已加载，不是全量统计</span>
-        </CardContent>
-      </Card>
+      {forced !== null ? <ReproNote state={forced} /> : null}
+
+      <p className="min-w-0 break-words text-xs text-muted-foreground" aria-live="polite" data-testid="run5-status">
+        {statusLine}
+      </p>
+
+      <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="run5-counts">
+        {countsKnown
+          ? `本页 ${rows.length} 次 · 失败 ${failedCount} · 运行中 ${runningCount}（仅本页已加载，最多 ${PAGE_LIMIT} 条，不是全量统计）`
+          : "本页 — 次 · 失败 — · 运行中 —（暂时读不到运行数据，数字不作零处理）"}
+        {phase === "ready" && cursor ? "；服务说这一页之外还有更多" : ""}
+        {unreadable > 0 && countsKnown
+          ? `；另有 ${unreadable} 条回的内容没有可读的运行编号，没有算在上面`
+          : ""}
+      </p>
 
       {upstream ? (
-        <Card data-testid="upstream-panel">
-          <CardContent className="flex flex-col items-start gap-2 p-4">
-            <h2 className="text-base font-semibold">上游运行</h2>
-            <p className="break-all font-mono text-xs text-muted-foreground" data-testid="upstream-run-id">{upstream}</p>
-            <p className="text-sm text-muted-foreground">
-              这是 Hermes 运行时的上游编号。控制台没有上游详情页，编号可用于运行时排查；本页不会伪造上游数据。
+        <Card className="min-w-0 border-border bg-card" data-testid="run5-upstream">
+          <CardContent className="flex min-w-0 flex-col items-start gap-2 p-4">
+            <h2 className="min-w-0 break-words text-base font-semibold">上游运行</h2>
+            <RunCodeCell row={{ runId: upstream }} testId="run5-upstream-code" />
+            <p className="max-w-prose break-words text-xs text-muted-foreground">
+              这是 Hermes 运行时侧的上游编号。控制台没有上游详情页，这个编号可供运行时排查；
+              本页不会伪造上游数据。
             </p>
             <Link className="text-sm underline decoration-dotted underline-offset-2" to="/runs">返回运行列表</Link>
           </CardContent>
         </Card>
       ) : null}
 
-      <Detail state={detail} onClose={closeRun} onRetry={retry} />
-
-      {list.phase === "loading" ? <Skeleton /> : null}
-      {list.phase === "empty" ? (
-        <Card data-testid="runs-empty">
-          <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
-            <Inbox className="h-8 w-8 text-muted-foreground" />
-            <h2 className="text-lg font-semibold">这个窗口没有运行</h2>
-            <p className="text-sm text-muted-foreground">换一个时间范围，或等待新的运行产生。</p>
+      {detail.k === "loading" ? (
+        <Card data-testid="run5-detail-loading" aria-busy="true">
+          <CardContent className="space-y-3 p-4">
+            <div className="h-4 w-1/3 animate-pulse rounded bg-muted" />
+            <div className="h-16 animate-pulse rounded bg-muted" />
           </CardContent>
         </Card>
       ) : null}
-      {list.phase === "error" || list.phase === "denied" ? (
-        <ErrorCard state={list} onRetry={retry} testid={`runs-${list.phase}`} />
+
+      {detail.k === "error" ? (
+        detail.denied ? (
+          <DeniedPanel requestId={detail.failure.requestId} testId="run5-detail-denied" />
+        ) : (
+          <ErrorPanel
+            failure={detail.failure}
+            onRetry={reloadDetail}
+            testId="run5-detail-error"
+            title="这条运行没能加载出来"
+          />
+        )
       ) : null}
 
-      {list.phase === "ready" ? (
-        <Card data-testid="runs-table">
-          <CardContent className="p-0">
-            <div className="hidden grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.7fr)_minmax(0,0.8fr)] gap-3 border-b border-border px-4 py-2 text-xs uppercase tracking-wide text-muted-foreground sm:grid">
-              <span>运行</span><span>员工</span><span>任务</span><span>开始</span><span>耗时</span><span>成本</span><span>状态</span>
+      {detail.k === "ready" ? (
+        <Card className="min-w-0 border-border bg-card" data-testid="run5-detail">
+          <CardContent className="min-w-0 space-y-4 p-4">
+            <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
+              <div className="min-w-0">
+                <h2 className="min-w-0 break-words text-base font-semibold" title={detail.run.runId}>
+                  {runCode(detail.run.runId)}
+                </h2>
+                <p className="mt-0.5 min-w-0 break-words text-xs text-muted-foreground">
+                  {`${statusLabel(detail.run.status)} · 开始 ${beijingMinute(detail.run.startedAt).text ?? "—"} · 耗时 ${elapsedMinute(detail.run.startedAt, detail.run.endedAt).text ?? "—"}`}
+                </p>
+              </div>
+              <Button size="sm" outlined onClick={closeRun} prefix={<X className="h-3.5 w-3.5" />} data-testid="run5-detail-close">
+                关闭
+              </Button>
             </div>
-            <ul className="divide-y divide-border">
-              {list.rows.map((row) => (
-                <li key={row.runId}>
-                  <button
-                    type="button"
-                    className="grid w-full min-w-0 grid-cols-1 gap-x-3 gap-y-1 px-4 py-3 text-left text-sm hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:outline-none sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.7fr)_minmax(0,0.8fr)]"
-                    data-testid={`run-row-${row.runId}`}
-                    onClick={() => openRun(row.runId)}
-                  >
-                    <span className="font-mono text-xs" title={row.runId}>{shortId(row.runId)}</span>
-                    <span className="min-w-0 truncate">{rowLabel(row, employees)}</span>
-                    <span className="min-w-0 truncate" title={row.taskId}>{taskLabel(row.taskId)}</span>
-                    <span>{beijing(row.startedAt)}</span>
-                    <span>{duration(row.startedAt, row.endedAt)}</span>
-                    <span className="flex min-w-0 flex-col items-start gap-0.5" title={costReason(row)}>
-                      <span>{costText(row)}</span>
-                      <Badge tone={costState(row) === "known" ? "success" : costState(row) === "unknown" ? "warning" : "outline"}>{costBadgeLabel(row)}</Badge>
-                      {costState(row) !== "known" ? (
-                        <span className="text-[10px] leading-tight text-muted-foreground">{costReason(row)}</span>
-                      ) : null}
-                    </span>
-                    <span><Badge tone={statusTone(row.status)}>{statusLabel(row.status)}</Badge></span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-2 text-xs text-muted-foreground">
-              <span>只读列表 · 点一行看详情与事件</span>
-              <span>{list.cursor ? "还有更多，本页只展示前 30 条" : "已到本页末尾"}</span>
+
+            <div className="grid min-w-0 gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
+              <DetailField label="状态">
+                <Badge tone={statusTone(detail.run.status)} data-testid="run5-detail-status">{statusLabel(detail.run.status)}</Badge>
+              </DetailField>
+              <DetailField label="成本">
+                <CostCell row={detail.run} testId="run5-detail-cost" />
+              </DetailField>
+              <DetailField label="预算上限">
+                {detail.run.budgetCapUsd === null || detail.run.budgetCapUsd === undefined ? (
+                  <Dashed reason="服务没有给出预算上限" />
+                ) : (
+                  usd(detail.run.budgetCapUsd)
+                )}
+              </DetailField>
+              <DetailField label="第几次尝试">
+                {detail.run.attemptNo === undefined ? <Dashed reason="服务没有给出尝试次数" /> : `第 ${detail.run.attemptNo} 次`}
+              </DetailField>
+              <DetailField label="结束">
+                {beijingMinute(detail.run.endedAt).text ?? (
+                  <Dashed reason="还没有结束时间：这条运行可能仍在进行，或服务未记录结束" />
+                )}
+              </DetailField>
+              <DetailField label="失败原因">
+                <span title={failureSummary(detail.run).reason || undefined}>
+                  {failureSummary(detail.run).text}
+                </span>
+              </DetailField>
+              <DetailField label="任务">
+                <span title={detail.run.taskId ?? undefined}>{taskLabel(detail.run.taskId)}</span>
+              </DetailField>
+              <DetailField label="员工">
+                <span title={detail.run.employeeId ?? undefined}>
+                  {employeeLabel(detail.run.employeeId, names)}
+                </span>
+              </DetailField>
+              <DetailField label="事件">
+                {detail.eventsFailure
+                  ? "这次没有读到"
+                  : `${detail.events.length} 条${detail.hasMore ? "（服务说还有更多）" : ""}`}
+              </DetailField>
+              <div className="min-w-0 sm:col-span-2">
+                <DetailField label="上游运行">
+                  {detail.run.upstreamRunId ? (
+                    <button
+                      type="button"
+                      className="min-w-0 break-words text-sm underline decoration-dotted underline-offset-2"
+                      data-testid="run5-detail-upstream"
+                      title={detail.run.upstreamRunId}
+                      onClick={() => setParam("upstream", detail.run.upstreamRunId ?? null)}
+                    >
+                      {`上游 ${runCode(detail.run.upstreamRunId)}`}
+                    </button>
+                  ) : (
+                    <Dashed reason="这条运行没有带上游编号" />
+                  )}
+                </DetailField>
+              </div>
             </div>
+
+            <Timeline outcome={detail} onRetryEvents={reloadDetail} />
+
+            <div className="min-w-0 space-y-2 border-t border-border pt-3">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  outlined
+                  onClick={retryAsNewRun}
+                  disabled={isForced || attemptAsk?.k === "sending"}
+                  data-testid="run5-retry-new"
+                >
+                  重试 · 新建一次运行
+                </Button>
+              </div>
+              <p className="max-w-prose min-w-0 break-words text-xs text-muted-foreground">
+                重试会新建一次运行并生成新编号，本页随后切换到这条新编号；当前运行不会被改写、复用或取消。
+              </p>
+              <AttemptLine ask={attemptAsk} runId={selected} />
+            </div>
+
+            <TechnicalDisclosure
+              lines={[
+                `运行编号原值：${detail.run.runId}`,
+                detail.run.upstreamRunId ? `上游编号原值：${detail.run.upstreamRunId}` : null,
+                detail.run.taskId ? `任务编号原值：${detail.run.taskId}` : null,
+                detail.run.reasonCode ? `原因代码原值：${detail.run.reasonCode}` : null,
+              ].filter((line): line is string => line !== null)}
+              testId="run5-detail-details"
+            />
           </CardContent>
         </Card>
+      ) : null}
+
+      {phase === "loading" ? <LoadingPanel fixture={forced === "loading" ? "loading" : undefined} /> : null}
+      {phase === "empty" ? (
+        <EmptyPanel onRetry={reloadList} fixture={forced === "empty" ? "empty" : undefined} />
+      ) : null}
+      {phase === "error" ? (
+        <ErrorPanel
+          failure={failure ?? { sentence: "读取运行记录时出了问题，请稍后重试。", requestId: null, technical: null }}
+          onRetry={reloadList}
+          fixture={forced === "error" ? "error" : undefined}
+        />
+      ) : null}
+      {phase === "denied" ? (
+        <DeniedPanel requestId={failure?.requestId ?? null} fixture={forced === "denied" ? "denied" : undefined} />
+      ) : null}
+      {phase === "ready" ? <ListRows rows={rows} onOpen={openRun} /> : null}
+
+      {phase === "ready" && rows.length > 0 ? (
+        <TechnicalDisclosure lines={technical} testId="run5-list-details" />
       ) : null}
     </div>
   );

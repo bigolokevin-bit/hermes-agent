@@ -80,7 +80,7 @@ function missing(requestId: string | null): ApiError {
   return new ApiError("这块数据还没接入（后台尚未提供该数据源）。", {
     status: 404,
     body: '{"detail":"Not Found"}',
-    url: "/agent-api/api/v1/matrix/employees",
+    url: "/agent-api/api/matrix",
     ...(requestId ? { requestId } : {}),
   });
 }
@@ -91,7 +91,7 @@ function expired(requestId: string): ApiError {
     {
       status: 401,
       body: '{"error":"unauthenticated"}',
-      url: "/agent-api/api/v1/matrix/employees",
+      url: "/agent-api/api/matrix",
       requestId,
     },
   );
@@ -101,7 +101,7 @@ describe("MatrixModulePage (R7.1 item 2 — live endpoint, no fixture fallback)"
   it("fetches the live matrix endpoint", async () => {
     fetchJSON.mockResolvedValue({ employees: [], capabilities: [] });
     await renderPage();
-    expect(fetchJSON).toHaveBeenCalledWith("/agent-api/api/v1/matrix/employees");
+    expect(fetchJSON).toHaveBeenCalledWith("/agent-api/api/matrix");
   });
 
   it("a 404 stays an honest not-connected state: no fixture table, request id shown", async () => {

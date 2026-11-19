@@ -175,7 +175,7 @@ export async function loadBoard(): Promise<BoardState> {
           fetchJSON<unknown>(`/agent-api/api/tasks?status=${status}&limit=50`),
         ),
       ),
-      fetchJSON<unknown>("/agent-api/api/v1/matrix/employees").catch(() => null),
+      fetchJSON<unknown>("/agent-api/api/matrix").catch(() => null),
     ]);
     const seen = new Set<string>();
     const rows: TaskRow[] = [];

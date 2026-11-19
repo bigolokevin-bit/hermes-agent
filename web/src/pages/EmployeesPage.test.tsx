@@ -198,7 +198,7 @@ describe("EmployeesPage", () => {
 describe("EmployeesPage (R7.1 item 4/6 — real detail links and same-name codes)", () => {
   it("live /v1/matrix/employees envelope rows link by real agent id, not row numbers", async () => {
     fetchJSON.mockImplementation((url: string) =>
-      url.includes("/api/v1/matrix/employees")
+      url.includes("/api/matrix")
         ? Promise.resolve({
             "1": {
               name: "AgentOS 产品助理",
