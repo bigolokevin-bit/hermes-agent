@@ -18,7 +18,7 @@ const app = readFileSync(resolve(__dirname, "../../App.tsx"), "utf8");
 
 describe("the /audit compat route", () => {
   it("mounts the audit page directly instead of rewriting the URL", () => {
-    expect(app).toMatch(/<Route path="\/audit" element=\{<AuditEventsConsolePage \/>\} \/>/);
+    expect(app).toMatch(/<Route path="\/audit" element=\{<(?:AuditEventsConsolePage|AuditAwareEntry) \/>\} \/>/);
     expect(app).not.toContain('element={<Navigate to="/system?tab=events" replace />}');
   });
 

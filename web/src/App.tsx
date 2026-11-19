@@ -104,6 +104,14 @@ const AuditEventsConsolePage = lazy(() =>
     default: m.AuditEventsModulePage,
   })),
 );
+
+/* R16: the verify view is its own module page body (lane aud); the shell
+ * wires it to /audit?tab=verify without touching routes.ts or the body. */
+const AuditVerifyConsolePage = lazy(() =>
+  import("@/modules/audit/AuditVerifyModulePage").then((m) => ({
+    default: m.AuditVerifyModulePage,
+  })),
+);
 const RunsConsolePage = lazy(() => import("@/modules/runs/RunsModulePage"));
 // L0 IA freeze: settings/version are system sub-tabs, not top-level modules.
 // Their pages render through the /system live slots below (?tab=defaults|version).
@@ -1271,7 +1279,7 @@ export default function App() {
                           techDetails:false on a page that never rendered.
                           `?tab=events` needs no special case: the module reads
                           only the params it owns and ignores the rest. */}
-                      <Route path="/audit" element={<AuditEventsConsolePage />} />
+                      <Route path="/audit" element={<AuditAwareEntry />} />
                       <Route
                         path="/channels"
                         element={<Navigate to="/capabilities?tab=channels" replace />}
@@ -1579,6 +1587,14 @@ function SidebarNavLink({
 /* R17 auth5: sidebar session chip wired to the same-origin /auth bridge
  * (lane D). Anonymous visitors get a real way into /login; signed-in users
  * see who they are and can sign out. Tokens and raw ids never reach screen. */
+
+export function AuditAwareEntry(): ReactNode {
+  const [sp] = useSearchParams();
+  if (sp.get("tab") === "verify") {
+    return <AuditVerifyConsolePage />;
+  }
+  return <AuditEventsConsolePage />;
+}
 
 export function SidebarSystemActions({
   collapsed,
