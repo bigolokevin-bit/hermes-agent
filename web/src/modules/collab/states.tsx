@@ -38,7 +38,7 @@ function fixtureAttr(fixture: string | undefined): { "data-fixture"?: string } {
 /** What a repro panel says, so nobody reads it as a service answer. */
 export function ReproNote({ state }: { state: string }): ReactNode {
   return (
-    <p className="min-w-0 break-words text-xs text-warning" data-testid="col4-forced-note">
+    <p className="min-w-0 break-words text-xs text-warning" data-testid="col5-forced-note">
       {`这是用 ?state=${state} 复现出来的状态，不是服务此刻的回答；这一页没有向服务要过任何东西。` +
         `协作委托清单的这条数据源尚未在本控制台核实到 2xx（${GAP}）。`}
     </p>
@@ -138,7 +138,7 @@ export function TechnicalDisclosure({
 
 export function LoadingPanel({ fixture }: Marked): ReactNode {
   return (
-    <div className="flex min-w-0 flex-col gap-2" data-testid="col4-loading" aria-busy="true" {...fixtureAttr(fixture)}>
+    <div className="flex min-w-0 flex-col gap-2" data-testid="col5-loading" aria-busy="true" {...fixtureAttr(fixture)}>
       {[0, 1, 2].map((row) => (
         <div key={row} className="animate-pulse rounded-md border border-border bg-card px-4 py-4" aria-hidden="true">
           <div className="h-3 w-1/3 rounded-sm bg-muted" />
@@ -160,7 +160,7 @@ export function EmptyPanel({
   filtered,
 }: Marked & { onRetry: () => void; filtered: boolean }): ReactNode {
   return (
-    <Card className="border-border bg-card" data-testid="col4-empty" {...fixtureAttr(fixture)}>
+    <Card className="border-border bg-card" data-testid="col5-empty" {...fixtureAttr(fixture)}>
       <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
         <Inbox className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
         <p className={`min-w-0 break-words text-sm ${themedBody}`}>
@@ -181,7 +181,7 @@ export function EmptyPanel({
           disabled={Boolean(fixture)}
           title={fixture ? "复现腿不发起真实请求，去掉 ?state= 即为真实读取" : "重新向服务要一次委托清单"}
           prefix={<RefreshCw className="h-3.5 w-3.5" />}
-          data-testid="col4-empty-retry"
+          data-testid="col5-empty-retry"
         >
           重新读取
         </Button>
@@ -194,7 +194,7 @@ export function ErrorPanel({
   failure,
   onRetry,
   fixture,
-  testId = "col4-error",
+  testId = "col5-error",
   title = "协作委托清单没能加载出来",
 }: Marked & {
   failure: { sentence: string; requestId: string | null; technical: string | null };
@@ -236,7 +236,7 @@ export function ErrorPanel({
 export function DeniedPanel({
   requestId,
   fixture,
-  testId = "col4-denied",
+  testId = "col5-denied",
 }: Marked & { requestId: string | null; testId?: string }): ReactNode {
   return (
     <Card role="alert" aria-label="协作委托不可见" className="border-border bg-card" data-testid={testId} {...fixtureAttr(fixture)}>
@@ -271,7 +271,7 @@ export function LoginPanel({
   onRetry: () => void;
 }): ReactNode {
   return (
-    <Card aria-label="需要登录" className="border-border bg-card" data-testid="col4-login">
+    <Card aria-label="需要登录" className="border-border bg-card" data-testid="col5-login">
       <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
         <LogIn className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
         <p className={`min-w-0 break-words text-sm ${themedBody}`}>需要登录</p>
@@ -279,8 +279,8 @@ export function LoginPanel({
         <p className="max-w-prose break-words text-xs text-muted-foreground">
           登录后回到本页重新读取，就能看到本租户的真实委托；在此之前这一页不显示任何示例委托。
         </p>
-        <RequestIdLine requestId={requestId} testId="col4-login-request-id" />
-        <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />} data-testid="col4-login-retry">
+        <RequestIdLine requestId={requestId} testId="col5-login-request-id" />
+        <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />} data-testid="col5-login-retry">
           已登录，重新读取
         </Button>
       </CardContent>

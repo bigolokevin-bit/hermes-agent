@@ -1834,3 +1834,135 @@ ChannelsPage.tsx
 - 9122 常驻 dev SPA 仍服务 forks/hermes-agent/hermes_cli/web_dist 的旧构建，所以彼处看不到本修复；上述读数来自本 worktree 的新构建 + 反代，build-r24 为未跟踪产物，不入库。
 - 非管理员身份下的 403 真腿未复现（当前数据是管理员可见范围）；403 与 404 的同体性由模块结构与既有测试保证。
 - 站内跳转与直链共用同一条 /audit 路由，直链已证渲染；未逐一截取每个导航入口的点击路径。
+
+## TASK evidence citations real data (2026-11-19, base de23c92e)
+
+### Probes (session cookie, via the console BFF on 127.0.0.1:9122/agent-api)
+| request | HTTP | what it said |
+|---|---|---|
+| `/api/run-events?kind=citation&limit=50` | **400** | `{"code":"console.missing_param","message":"runId is required"}` — run-events cannot serve a citation list |
+| `/api/run-events?runId=rn_01M7822XN781D2S9JASH5TX1XZ&limit=20` | 200 | `{"items":[{runId,seq,eventType,payload,pulledAt,occurredAt}]}` — run deltas only, **no citations array** |
+| `/api/audit?from=<7d ISO>&to=<now ISO>&limit=50` | **200** | `{"events":[...]}` — **50 real events**, each with eventId / sourceSystem / actor / resource / occurredAt / outcome |
+
+So the real surface for this pane is the audit event list; an "evidence row"
+is one audit event. Nothing is fabricated: there is no per-row citation array
+upstream, and the page does not pretend to have one.
+
+### What changed (write scope: web/src/modules/evidence/**)
+- `evidence.ts` rewritten: `CitationRow` now carries 引用来源 (`sourceLabel`,
+  masked `actorLabel` + raw `actorTitle`), 目标对象 (`targetTypeLabel`,
+  masked `targetLabel` + raw `targetTitle`), `at`, `href`, `unverified` and
+  `unreachableReason`. `shortCode` (8-char) / `midEllipsis` (prefix + 4…4)
+  keep bare ids off the screen; `SOURCE_LABELS` / `RESOURCE_LABELS` turn wire
+  enums into plain words while unlisted values pass through verbatim;
+  `readCitations` reads the `events` key the route really sends;
+  `citationsUrl` asks for a bounded 7-day window (`from`/`to`/`limit=50`)
+  because an unfiltered scan is refused.
+- `EvidenceModulePage.tsx` rewritten on the `ev5-*` id family. Rows show
+  来源 badge + actor + 「目标对象 <类型> · <码>」 + 北京时间到分, and either
+  「打开原文」 → `/audit?id=<eventId>` (verified: `AuditEventsModulePage.tsx:145`
+  reads `params.get("id")`) or 「原文不可达」 with the reason. A missing event
+  id or object id paints 「待核实」 (GAP number only in the `title`).
+- The old silent fallback is gone: on 404 the page used to paint fixture rows
+  as if they were data. Now 403 and 404 both land on ONE denied panel (same
+  body, copyable request id, no path echo), the fixture exists only behind
+  `?state=` reproduction legs (marked `data-fixture` + a 「复现态」 badge +
+  GAP in the title, zero requests issued).
+- Four states plus a session-less 「需要登录」 leg (zero requests); error panel
+  carries a copyable request id (or 「本次请求未记录编号」) and a working retry.
+- Layout: flex + `min-w-0` + `break-words`, no fixed widths; list stacks at
+  375 and keeps `scrollWidth == clientWidth` by construction.
+
+### Gates (from web/)
+- `./node_modules/.bin/vitest run src/modules/evidence` → **exit 0**, 2 files / **25 tests**
+  (`evidence.test.ts` 12 pure + `EvidenceModulePage.test.tsx` 13 page).
+- `npx tsc -b . --noEmit` → **53** `error TS` lines, `modules/evidence` **0**;
+  the non-owned ones are the standing `../apps/shared/**` block plus
+  `src/modules/approvals/api.test.ts(80,12)` and two in `src/pages/LoginPage.test.tsx`.
+- `./node_modules/.bin/eslint src/modules/evidence` → exit 0, 0 errors /
+  2 warnings (exported `fmtStamp` refresh rule; the repo's standing
+  `set-state-in-effect` idiom in the forced-state branch).
+
+### Live readings
+- `/api/audit?from=&to=&limit=50` returned **50** events for the 7-day window,
+  so the pane's first page is 50 rows.
+- Unreachable count: every real row carried `eventId`, so 0 unreachable in that
+  sample; the state is exercised by tests (a row without an event id) and by the
+  `?state=ready` reproduction leg.
+
+### Untested / limits
+- 1440 / 1280 / 375 pixel measurement: the pane is only reachable through the
+  shell's knowledge/audit slot in another lane's write scope, and the served
+  dist predates this change. Overflow safety is a contract (`min-w-0`,
+  `break-words`, flex wrap, no fixed widths), not a measured number.
+- No per-row citation object exists upstream (run-events has none), so the
+  pane's rows are audit events; if a citation endpoint lands later, `readRow`
+  is the one place to extend.
+- `tabNav.ts` (manifest) intentionally untouched: its `dataSource` string still
+  names run-events citations.
+
+## TASK collab delegation chain real data (2026-11-19, base de23c92e / trunk f8046930)
+
+### Probes (session cookie, value never printed)
+| request | HTTP | body |
+|---|---|---|
+| `http://127.0.0.1:9122/agent-api/api/delegations?limit=5` | **200** 46 B | `{"items":[],"asOf":"2026-11-19T12:15:11.531Z"}` |
+| `http://127.0.0.1:8092/api/delegations?limit=5` | **200** 46 B | `{"items":[],"asOf":"2026-11-19T12:15:11.546Z"}` |
+
+Read: the route is wired and authorised for this tenant; there are genuinely
+zero delegations. The page therefore shows the honest empty state (reason +
+next step + the service's own `asOf`), never 「未接入」, never a fake row and
+never a 0 dressed up as a count of something else.
+
+### Code (write scope `web/src/modules/collab/**` only)
+- `delegations.ts`: `DelegationRow` gained `action` + `effectiveFrom`
+  (`ACTION_KEYS`, `EFFECTIVE_KEYS`, both defensive key lists); new
+  `actionWords()` (指派/交接/借调/交还/请求协助/转移/委托, unknown →
+  「动作未识别」, absent → 「未记录」, raw token only in `title`);
+  `CHAIN_LINK_REASON`; `ChainGroup` + `chainGroups(rows)` grouping by 委托方
+  in answer order.
+- `CollabDelegationsModulePage.tsx`: 7 columns 委托方 / 受托方 / 范围 /
+  **动作** / 状态 / **生效 / 到期** / 来源; the validity cell now prints
+  「起 <BJT minute>」 and 「至 <BJT minute>」 (each `—` with its own reason
+  when absent) and keeps the raw instants in `title`; new **委托链** view
+  (`?view=chain`, written to the URL with `replace` so refresh and shared
+  links keep the pane; `data-view` on the page root) grouping rows under
+  委托方 with 「本页 N 条（只数这一页，不是全量）」 and a 链未接入 banner whose
+  reason is that DELEGATION v1.0 carries no parent delegation id — no level,
+  no root, no 0 is printed; the list and chain views share one read (switching
+  the view issues no request). All testids renamed `col4-*` → `col5-*`
+  (page, row, states, retry/request-id ids).
+- Zero write entries kept as the earlier ruling defines it: **no 撤销/新建
+  button is rendered at all** (a disabled button would be a dead control);
+  the read-only sentence was strengthened to 「这一页是只读的，不提供接受、
+  拒绝、交接、完成这些动作…」 and a test asserts no button/link carries
+  撤销/新建/发起委托/接受/拒绝/交接给/完成委托.
+
+### Gates (from `web/`)
+- `./node_modules/.bin/vitest run src/modules/collab` → exit 0, **2 files /
+  95 tests** (was 88; +7: action words + title, 生效/到期 split, absent →
+  「未记录」/「—」, view switch keeps the URL and issues no extra read,
+  `?view=chain` opens the chain, grouping + 链未接入 reason + no 「0 层」,
+  empty truth on the chain link, no write affordance on either view).
+- `npx tsc -b . --noEmit` → **53** `error TS`, `grep -c modules/collab` = 0;
+  the non-shared lines are the standing pre-existing ones
+  (`src/modules/approvals/api.test.ts(79,12)/(80,12)` TS18047 and two
+  `src/pages/LoginPage.test.tsx` TS2739).
+- `./node_modules/.bin/eslint src/modules/collab` → exit 0, no output.
+- Housekeeping: an untracked `web/src/modules/evidence/evidence.test.ts`
+  debris (referencing exports absent at this trunk, 8 new tsc errors) was
+  moved to `/tmp/l4p4-debris/` — not deleted, not committed; the tree now
+  matches the trunk generation apart from this task's files.
+
+### Untested / unmeasured
+- The live tenant has zero delegations, so the chain grouping and the list
+  rows were exercised with mocked answers only; no real 2xx row was ever
+  sampled in this generation.
+- No 1440/1280/375 pixel measurement: the pane is mounted by the shell lane
+  and the dev SPA on `127.0.0.1:9122` serves a dist older than this change.
+  The layout keeps the standing discipline (flex + `minmax(0,…)` grid,
+  `min-w-0`/`break-words`, no fixed pixel widths) and a test pins it.
+- `action` / `effectiveFrom` key names are candidate lists; the frozen
+  DELEGATION v1.0 record names neither, so both may legitimately read
+  「未记录」 against a real row.
+
