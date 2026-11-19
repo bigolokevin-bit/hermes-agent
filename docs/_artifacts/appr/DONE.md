@@ -467,3 +467,9 @@ F7 审计入口+别名：App.tsx nav 治理组新增 /audit「审计事件」（
 ③三档复扫：ego iframe 脚本两轮不可靠（读 0/静默），降级结构证据=T42/ov6 轮 375=375 实测在案、本单未动布局代码、App.tsx 主容器 overflow-x-hidden 兜底、shell+pages 115 passed。
 ④工程语言复扫（9122 旧代次活体 innerText）：shell/pages 零命中；2 处转报=（a）/system 32hex d43285e6f65d40bb84f7249aca385a6f 上屏属 modules/health 页体（禁碰域，转 aud/gov/L0）；（b）/audit（→/system?tab=events）ap_123DE49B9A1F42A197679681F1 全量句柄上屏属 modules/audit 页体（禁碰域转报）。
 验证：assert-ia 两模式 exit0（51/22/1/8 未破）；定向 shell+pages 16 files 115 passed；全量 122 files/1224 passed 0 fail。
+
+## R28 可信度拦车（fix(console): R28 credibility blockers）
+①不存在员工虚构缺陷：useOverview 加 notfound 相——detail 200 但 body 不是该 id（gotKey!==empId）→ed5-overview-notfound 整页；detail 404/401 回落 matrix 时行身份强校验（rowKey 不符同样 notfound），禁借真名/借预算；整页=「员工不存在或无权查看。」+RequestIdCopy 可复制编号+返回员工列表真 Link。单测 3 用例锁（404 借他人行→notfound 无「别的人」无 .00；200 借他人 body→notfound；真人 404 回落自己行→ready）：employee-detail 定向 16 passed。
+②approver 位=views 恒渲染 p data-testid=apd5-field-approver（内层 apd5-approver 双标保留），labels 空=「—」+title 单据没有带回审批人。③apd5-field-request-id 空态=「—」+title 这条记录没有带回请求编号（禁复用错误卡文案）。④裸 human:：代码链三重实证 isMachineHandle(SCHEME_PREFIX 含冒号)/maskHandle(<4→裸名词「审批人」)/personView(≥1→人员·短码 否则 —)全掩码，活体两处属旧代次，请 QA 合批后复跑归零。
+⑤/overview 八卡截至：健康检查卡补 stamps（运行统计 todayStats asOf）后 8/8 卡均有「数据截至 BJT 到分 · 来源」Freshness（ov6-*-stamp），sourceStamp 只认服务端时间缺不显假。⑥侧栏审计入口 nav path /system?tab=events→/audit（AuditAwareEntry 路由在，用户可达）。⑦/work?tab=cron：CronAwareWork 元素分支挂 gov CronModulePage（cron5-* 上屏，禁静默回落 board；TAB_ALIAS 归一被前拦截）；页体零改动只挂载。
+验证：定向 employee-detail 16、approvals 全绿；全量 vitest 126 files/1268 passed 0 fail；assert-ia 不受影响（routes.ts 未动）。9122 仍旧代次（ad72c31c/D3sU0dej），全部 DOM 活体读数需 L0 合批重建后 QA 复跑。

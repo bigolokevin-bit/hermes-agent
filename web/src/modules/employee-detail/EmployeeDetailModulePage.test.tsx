@@ -263,3 +263,57 @@ describe("EmployeeDetailModulePage — tabs", () => {
   });
 
 });
+
+describe("EmployeeDetailModulePage — R28 not-found honesty", () => {
+  const GHOST = "emp_000000000000000000000000";
+  const ghostPage = <EmployeeDetailModulePage employeeId={GHOST} />;
+
+  it("404 for an unknown id falls back to matrix, and a borrowed row is refused with an honest not-found card", async () => {
+    mockApi((url) => {
+      if (url.includes("/api/employees/")) {
+        return Promise.reject(new ApiError("gone", { status: 404, body: "", url, requestId: "nf-rid-1" }));
+      }
+      if (url.includes("/api/matrix")) {
+        return Promise.resolve({ items: [{ employeeId: "emp_OTHER9999AA", name: "别的人", lifecycle: "active", monthlyCostUsd: 10 }] });
+      }
+      return Promise.resolve({ items: [] });
+    });
+    await renderAt(ghostPage, `/employees/${GHOST}`);
+    const card = container.querySelector('[data-testid="ed5-overview-notfound"]');
+    expect(card).toBeTruthy();
+    expect(card?.textContent).toContain("员工不存在或无权查看");
+    expect(card?.textContent).toContain("nf-rid-1");
+    expect(container.textContent).not.toContain("别的人");
+    expect(container.textContent).not.toContain("$10.00");
+  });
+
+  it("a 200 detail body that is NOT this employee is refused, never rendered", async () => {
+    mockApi((url) => {
+      if (url.includes("/api/employees/")) {
+        return Promise.resolve({ employeeId: "emp_OTHER9999AA", name: "别的人", lifecycleState: "active", monthlyBudgetUsd: 10 });
+      }
+      return Promise.resolve({ items: [] });
+    });
+    await renderAt(ghostPage, `/employees/${GHOST}`);
+    const card = container.querySelector('[data-testid="ed5-overview-notfound"]');
+    expect(card).toBeTruthy();
+    expect(container.textContent).not.toContain("别的人");
+    expect(container.textContent).not.toContain("$10.00");
+  });
+
+  it("a real employee whose detail route 404s still falls back to its own matrix row", async () => {
+    mockApi((url) => {
+      if (url.includes("/api/employees/")) {
+        return Promise.reject(new ApiError("route missing", { status: 404, body: "", url, requestId: "fb-rid-2" }));
+      }
+      if (url.includes("/api/matrix")) {
+        return Promise.resolve({ items: [{ employeeId: EMP, name: "小鲤", lifecycle: "active" }] });
+      }
+      return Promise.resolve({ items: [] });
+    });
+    await renderAt(page, at());
+    expect(container.querySelector('[data-testid="ed5-overview"]')).toBeTruthy();
+    expect(container.textContent).toContain("小鲤");
+    expect(container.textContent).not.toContain("员工不存在");
+  });
+});
