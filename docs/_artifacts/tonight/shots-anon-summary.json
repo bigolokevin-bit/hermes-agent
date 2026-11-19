@@ -14,7 +14,7 @@
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 26,
+  "distinctMainHeads": 25,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -231,7 +231,7 @@
     {
       "route": "#/employees/:employeeId?zone=evidence",
       "viewport": "375",
-      "chars": 51,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -255,7 +255,7 @@
     {
       "route": "#/employees/:employeeId?zone=tasks",
       "viewport": "375",
-      "chars": 51,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -465,7 +465,7 @@
     {
       "route": "#/overview",
       "viewport": "1440",
-      "chars": 732,
+      "chars": 716,
       "hasMainEl": true
     },
     {
@@ -631,8 +631,10 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 0,
-  "consoleErrorRoutesObservedByShots": [],
+  "consoleErrorsObservedByShots": 1,
+  "consoleErrorRoutesObservedByShots": [
+    "#/overview"
+  ],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
@@ -643,11 +645,11 @@
   },
   "ok": true,
   "auxiliary": true,
-  "headHash": "a37fe73e",
+  "headHash": "ea077983",
   "exitCode": 0,
-  "entry": "assets/index-B-vUz5d4.js",
-  "entrySha256": "bed884eaa072a42631c9d3ad1432f52804078cd68f450345f516b38f98aa7ce7",
+  "entry": "assets/index-BaWk2O1s.js",
+  "entrySha256": "c94c1bae31641a81d8a24cbbc2b8c781d64b856ea411ecd2ff085a85456741b8",
   "entryBytes": 158940,
-  "servedEntryBefore": "index-B-vUz5d4.js",
-  "servedEntryAfter": "index-B-vUz5d4.js"
+  "servedEntryBefore": "index-BaWk2O1s.js",
+  "servedEntryAfter": "index-BaWk2O1s.js"
 }

@@ -914,3 +914,10 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 九腿全 exit=0 盖 a37fe73e：ia-html/react ok {51,22,1,8}（tabsAll23 html）；lint-fake ok v=[]；lint-reuse ok v=0 exempt=1 chat→T40；crawl-anon DL0/CE0/PE0 routesCE=51（匿名401归因）；crawl-auth DL0/CE0/PE0 routesCE=22（趋势 23→22→21→22，auth-state 窗内环境项，非红）；state-quad 20/20（文本输出重建 JSON，注 source）。
 - shots main(auth)：102/102 failures=[] obs=0 ceAuth=login-state，三键全值，拍后 served 未漂；shots-anon auxiliary=true 102/102 mode=anon（隔离目录法）。仓库留一套 png+两份 summary（同名覆盖口径同 58/61 轮）。
 - 环境：9122 pid 64868、caddy 8183 pid 28034、8092 pid 24491 未动；web/src 未碰；他人脏零沾染。
+
+## 六十三轮·九件账本重章 @ ea077983（2026-11-19 21:2-21:3x）
+
+- 代次四向互证：HEAD=远端=ea077983（merge lane/console-gov R26 fixes）、磁盘 index-BaWk2O1s.js 158940B mtime 21:18:38 sha c94c1bae…41b8==卡面全值、9122/8183 served 同 entry、porcelain=0（滤他人脏）。
+- 九件全 exit=0 单文件单 JSON+exitCode+tmp/os.replace：assert-ia-html/react ok {51,22,1,8}（脚本自盖章）；lint-fake ok violations=[]；lint-reuse ok violations=[] exempted=1（chat→T40）；crawl-anon ok DL0/CE0/PE0 routesCE=51（匿名 401 归因）；crawl-auth ok routesCE=22（持平 62 轮）；state-quad 20/20 文本输出重建 JSON（绝对路径法，注 source）。
+- shots main(auth) 102/102 failures=[] oversize=[] consoleErrorsObservedByShots=0 ceAuthority=login-state，拍后 served 仍 BaWk2O1s；summary 三键全值。shots-anon auxiliary=true 102/102 mode=anon（mktemp 隔离目录法，同名覆盖口径不变：仓库留一套 png+两份 summary）。
+- 环境：9122 pid 64868、caddy 8183 pid 28034、8092 pid 43857 未动；web/src 未碰。上一代 a37fe73e 按卡作废不重做。

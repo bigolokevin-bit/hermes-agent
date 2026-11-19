@@ -141,13 +141,13 @@
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "1440",
-      "chars": 128,
+      "chars": 1034,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "375",
-      "chars": 1034,
+      "chars": 128,
       "hasMainEl": true
     },
     {
@@ -207,7 +207,7 @@
     {
       "route": "#/employees/:employeeId",
       "viewport": "375",
-      "chars": 51,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -231,7 +231,7 @@
     {
       "route": "#/employees/:employeeId?zone=evidence",
       "viewport": "375",
-      "chars": 51,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -243,7 +243,7 @@
     {
       "route": "#/employees/:employeeId?zone=runs",
       "viewport": "375",
-      "chars": 42,
+      "chars": 51,
       "hasMainEl": true
     },
     {
@@ -597,13 +597,13 @@
     {
       "route": "#/work?tab=board&view=cron",
       "viewport": "1440",
-      "chars": 145,
+      "chars": 1782,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=board&view=cron",
       "viewport": "375",
-      "chars": 1782,
+      "chars": 145,
       "hasMainEl": true
     },
     {
@@ -642,11 +642,11 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "a37fe73e",
+  "headHash": "ea077983",
   "exitCode": 0,
-  "entry": "assets/index-B-vUz5d4.js",
-  "entrySha256": "bed884eaa072a42631c9d3ad1432f52804078cd68f450345f516b38f98aa7ce7",
+  "entry": "assets/index-BaWk2O1s.js",
+  "entrySha256": "c94c1bae31641a81d8a24cbbc2b8c781d64b856ea411ecd2ff085a85456741b8",
   "entryBytes": 158940,
-  "servedEntryBefore": "index-B-vUz5d4.js",
-  "servedEntryAfter": "index-B-vUz5d4.js"
+  "servedEntryBefore": "index-BaWk2O1s.js",
+  "servedEntryAfter": "index-BaWk2O1s.js"
 }
