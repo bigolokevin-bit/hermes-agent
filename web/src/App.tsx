@@ -98,6 +98,14 @@ const MatrixConsolePage = lazy(() =>
 );
 const TasksBoardConsolePage = lazy(() => import("@/modules/tasks/TasksBoardModulePage"));
 const RunsConsolePage = lazy(() => import("@/modules/runs/RunsModulePage"));
+// L0 IA freeze: settings/version are system sub-tabs, not top-level modules.
+// Their pages render through the /system live slots below (?tab=defaults|version).
+const SettingsConsolePage = lazy(() =>
+  import("@/modules/settings/SettingsPage").then((m) => ({ default: m.SettingsPage })),
+);
+const VersionConsolePage = lazy(() =>
+  import("@/modules/version/VersionPage").then((m) => ({ default: m.VersionPage })),
+);
 // Wave-2 module pages (lanes T05/T11/T18-21/T25-30) — same live-map policy.
 const UsageConsolePage = lazy(() => import("@/modules/duty/UsagePage"));
 const PeopleConsolePage = lazy(() => import("@/modules/people/PeopleModulePage"));
@@ -1208,7 +1216,11 @@ export default function App() {
                           element={
                             <ConsoleModulePage
                               module="system"
-                              live={{ health: <HealthConsolePage /> }}
+                              live={{
+                                health: <HealthConsolePage />,
+                                defaults: <SettingsConsolePage />,
+                                version: <VersionConsolePage />,
+                              }}
                             />
                           }
                         />
