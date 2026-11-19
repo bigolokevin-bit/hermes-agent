@@ -480,6 +480,28 @@ describe("the filters change the request (aud01)", () => {
     expect(text()).not.toContain("不限时间");
   });
 
+  it("never puts an ignored spelling on the wire — only the parameters the service acts on", async () => {
+    // Probed live 2026-11-19 against the session-authenticated BFF: `?type=`,
+    // `?since=` and `?actor=` each answer HTTP 400 console.missing_filter on
+    // their own, i.e. the route does not apply them. A control wired to any of
+    // those names would be theatre, so no request this page makes may carry one.
+    await mount();
+    let asked = urls().length;
+    await choose("aud01-filter-type", "task.created");
+    await waitFor(() => urls().length > asked, "the type choice asks again");
+    asked = urls().length;
+    await choose("aud01-filter-window", "30d");
+    await waitFor(() => urls().length > asked, "the window choice asks again");
+
+    const all = urls();
+    expect(all.length).toBeGreaterThanOrEqual(3);
+    for (const url of all) {
+      expect(url).toMatch(/[?&]from=\d{4}-\d{2}-\d{2}T/);
+      expect(url).toMatch(/[?&]to=\d{4}-\d{2}-\d{2}T/);
+      expect(url).not.toMatch(/[?&](type|since|actor|event_type)=/);
+    }
+  });
+
   it("the operator filter is disabled-by-design with its GAP number, not a dead control", async () => {
     await mount();
     const node = document.querySelector<HTMLSelectElement>("[data-testid='aud01-filter-operator']")!;

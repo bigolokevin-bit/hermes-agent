@@ -1387,3 +1387,100 @@ ESLINT_EXIT=0     ✖ 3 problems (0 errors, 3 warnings)  ← useAuditData.ts 既
   `agent-v2-page-audit-detail` / `agent-v2-page-audit-verify`，前缀 `aud02-*` / `aud03-*`）；
   壳层**未注册** `/audit/detail`、`/audit/verify` 路径（本轮 grep `App.tsx` 无此两条 Route）。
   若需独立入口，请按本节同格式登记槽位再注册——**本次不自行注册**。
+
+## TASK audit filter contract re-probe (2026-11-19, base e3efe15a → HEAD 5bdb0553)
+
+派单要求先探 BFF 实参再谈前端对齐。以下是**本轮带登录态实测**的原始读数，
+以及据此得出的「哪些参数真生效 / 哪些根本没有被服务读取」。
+
+### 1) 探针环境
+
+- 服务：本机控制台 BFF `http://127.0.0.1:8092`（`L4ConsoleBFF`）。
+- 身份：会话 cookie `access_token_cookie` 取自 `~/.local/state/sekoi-ops/v4-auth-state.json`，
+  长度 252，**值未打印**；curl 以 `Cookie: access_token_cookie=<value>` 发送。
+- 命令形状 `curl -s -o body -w '%{http_code}' -H "Cookie: access_token_cookie=$TOK" "…"`。
+
+### 2) 原始读数（逐个参数）
+
+| 请求 | HTTP | 响应体（原文/摘要） |
+|---|---|---|
+| `/api/audit?limit=5` | **400** | `{"code":"console.missing_filter","message":"at least one of ['runId','taskId','actorId','resourceId','action','from','to'] is required (no unfiltered table scan)"}` |
+| `/api/audit?limit=5&type=task.created` | **400** | 同上 missing_filter（`type` 未被读取） |
+| `/api/audit?limit=5&since=2026-11-12T00:00:00.000Z` | **400** | 同上（`since` 未被读取） |
+| `/api/audit?limit=5&actor=emp_test` | **400** | 同上（`actor` 未被读取） |
+| `/api/audit`（无参数） | **400** | 同上 |
+| `/api/audit?limit=5&action=task.created` | **200** | `{"events":[…]}` |
+| `/api/audit?limit=5&from=<7d 前>&to=<now>` | **200** | `{"events":[…]}` |
+
+行数（`limit=50`、7 天窗）：
+
+| 查询 | 行数 |
+|---|---|
+| 仅时间窗 | 50（触顶） |
+| `action=task.created` | 14 |
+| `action=approval.decided` | 6 |
+| `action=no.such.action` | 0 |
+| `action=task.created&type=zzz` | 14（塞入垃圾 `type` 不改变任何东西） |
+| `actorId=emp_nope` | 0 |
+
+行数组的键是 **`events`**（不是 `items`）；`model.ts:475` 的 `LIST_KEYS`
+已把 `events` 纳入候选，故页面照常解析。
+
+### 3) 结论（决定了前端该暴露什么）
+
+1. **`type` / `since` / `actor` 三个拼写不被服务读取**：单独发送一律回 400
+   `console.missing_filter`，与「什么都没带」**逐字同体**；与合法参数混发也不改变结果
+   （`action=task.created&type=zzz` 仍 14 条）。→ 前端不得把它们当筛选发出去。
+2. 真生效的是 `action`（精确匹配）、`from` / `to`、`limit`、`cursor`，以及
+   `runId / taskId / actorId / resourceId`（400 体自己列出的七项）。
+3. `?limit=5` 单独发 = 400：**服务拒绝无筛选的全表扫描**。
+
+### 4) 前端与本轮改动（页面体在 `cb014cf5` 时已对齐，本轮补证据与回归锁）
+
+- `api.ts` 的 `listUrl()` 只拼 `limit → action → from → to → cursor`，
+  `ListFilters` 只有 `{ action, from, to }`；`event_type` 已不在线路上。
+- 本轮新增两条**回归锁**（防以后有人「顺手」把 `type/since/actor` 加回来）：
+  - `api.test.ts` → `sends only the parameters the service acts on — the ignored spellings never ride along`：
+    解析 `listUrl(...)`，断言查询键集合**恰好**为 `action/cursor/from/limit/to`，
+    且 `type/since/actor/event_type/actorId` 一个都不在。
+  - `AuditEventsModulePage.test.tsx` → `never puts an ignored spelling on the wire — only the parameters the service acts on`：
+    真实驱动「选类型 → 换窗口」，断言每次都**真发新请求**，且**所有**请求 URL 都带成对的
+    `from=`/`to=`，同时无任何 `[?&](type|since|actor|event_type)=`。
+- 服务端 400 的人话腿本来就有：非法/缺失筛选落错误态（人话 + 可复制请求编号 + 重试），
+  不会把 400 画成空列表。
+
+### 5) 与派单第 2 条的**偏差，如实记**
+
+派单写「清空筛选回到无参请求」。**这条在本环境做不到，也不该做**：
+无参请求会被服务以 400 `console.missing_filter` 拒绝（见上表第 5 行）。
+页面因此把「清空」定义为**清掉用户可选的筛选**——事件类型回到「全部事件类型」，
+而**有界时间窗始终随行**（默认最近 7 天，可选 24 小时/7 天/30 天），
+永远不会发一次无参扫描。这一行为由
+`every window keeps a bounded pair on the wire — the service 400s a filter-free scan`
+与本轮新增用例双重锁定。
+
+### 6) 其余三条判据的现状（本轮复核，未改动）
+
+- 详情技术字段：`TechnicalDisclosure`（`aud02-*-details`）默认折叠，
+  机器形状的变更值在人话层只显示「见「技术详情」」，原值进折叠层。
+- verify 未启用：`isVerifyUnavailable()` 覆盖 403/404/405/501/unreachable/5xx，
+  渲染 `aud03-unavailable`「本环境未启用」+ 原因 + 去处；200 时按真实
+  `{ok,complete,scanned,…}` 出结论，从不假绿。
+- 403≡404：详情同一 `DeniedPanel`（`aud02-detail-denied`），同 code + 同 rid 结构，
+  不回显路径；测试用 `innerHTML` 逐字相等断言。
+
+### 7) 门禁（本轮实测，`web/` 下）
+
+```
+npx vitest run src/modules/audit    → exit 0，Test Files 5 passed / Tests 104 passed
+npx tsc -b . --noEmit               → exit 2，49 条 error TS 全在 ../apps/shared/**，非 shared 0 条
+npx eslint src/modules/audit        → exit 0，0 errors / 3 warnings（useAuditData 既有 set-state-in-effect）
+```
+
+### 8) not verified（照实留）
+
+- 未做真浏览器 1440/375 像素量测（本环境无 playwright/puppeteer 且禁 install；
+  页面需鉴权 + 真实 BFF）。横溢仍以既有 CSS 契约断言为准。
+- `runId / taskId / resourceId` 三个参数未单独探（本轮只探派单点名的 type/since/actor）。
+- 服务端「采样到的动作码」是有限集合，下拉只暴露采样到的码；
+  新动作出现前不会出现在筛选里（这是诚实而非缺陷）。

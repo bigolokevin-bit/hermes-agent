@@ -54,6 +54,22 @@ describe("audit endpoints", () => {
     expect(listUrl(null, { action: "", from: "", to: "" })).toBe(`/agent-api/api/audit?limit=${PAGE_LIMIT}`);
   });
 
+  it("sends only the parameters the service acts on — the ignored spellings never ride along", () => {
+    // Probed live 2026-11-19 (session-authenticated console BFF): `?type=`,
+    // `?since=` and `?actor=` each answer HTTP 400 console.missing_filter on
+    // their own — they are not applied by the route, so offering them would be
+    // a control that pretends. The route names its honoured set in the 400
+    // body: runId taskId actorId resourceId action from to.
+    const url = new URL(
+      listUrl("c1", { action: "task.created", from: "2026-11-18T00:00:00.000Z", to: "2026-11-19T00:00:00.000Z" }),
+      "http://console.local",
+    );
+    expect([...url.searchParams.keys()].sort()).toEqual(["action", "cursor", "from", "limit", "to"]);
+    for (const ignored of ["type", "since", "actor", "event_type", "actorId"]) {
+      expect(url.searchParams.has(ignored)).toBe(false);
+    }
+  });
+
   it("the 事件类型 choices are the live codes only, never an underscore guess", () => {
     // `action` matches literally: an underscore spelling returns ZERO rows on
     // the live service, so a dropdown that offered one would be a filter that
