@@ -59,6 +59,9 @@ export const FIXTURE_STATES: readonly FixtureState[] = ['loading', 'empty', 'err
 /** URL query key carrying the fixture override. */
 export const FIXTURE_QUERY_KEY = 'state';
 
+/** URL query key carrying the trace/request id that must survive forcing. */
+export const FIXTURE_RID_KEY = 'rid';
+
 /** PRD Section 4 state labels (skeleton tabnames) — badge text. */
 export const FIXTURE_LABELS: Readonly<Record<FixtureState, string>> = {
   loading: '加载中',
@@ -87,7 +90,7 @@ function isFixtureState(value: string): value is FixtureState {
  * first '?' up to the next '#' (so a trailing '#/…' or a leading '#/'
  * hash prefix is handled symmetrically).
  */
-function readStateParam(piece: string): string | null {
+function readQueryParam(piece: string, key: string): string | null {
   const raw = piece.trim();
   if (raw === '') return null;
   const queryAt = raw.indexOf('?');
@@ -96,11 +99,30 @@ function readStateParam(piece: string): string | null {
   if (tailHash !== -1) query = query.slice(0, tailHash);
   let value: string | null;
   try {
-    value = new URLSearchParams(query).get(FIXTURE_QUERY_KEY);
+    value = new URLSearchParams(query).get(key);
   } catch {
     return null;
   }
   return value === null || value === '' ? null : value;
+}
+
+function readStateParam(piece: string): string | null {
+  return readQueryParam(piece, FIXTURE_QUERY_KEY);
+}
+
+/**
+ * Parse the request/trace id from the same two URL forms as the fixture
+ * state. Forced states replace the pane body, so the id must be read here
+ * too; otherwise `?state=error&rid=…` loses the only handle support needs.
+ */
+export function parseFixtureRid(search: string, hash: string): string | null {
+  return readQueryParam(hash, FIXTURE_RID_KEY) ?? readQueryParam(search, FIXTURE_RID_KEY);
+}
+
+/** Live read of the request id (search + hash). SSR-safe. */
+export function currentFixtureRid(): string | null {
+  if (typeof window === 'undefined') return null;
+  return parseFixtureRid(window.location.search, window.location.hash);
 }
 
 /**

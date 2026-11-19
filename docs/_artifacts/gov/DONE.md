@@ -1651,3 +1651,14 @@ built /private/tmp/health-r38/index.html
 - 截图：`docs/_artifacts/gov/shots/tol5-1440.png`、`tol5-1280.png`、`tol5-375.png`。
 - 验证：`npx vitest run src/modules/tools` → **2 files / 23 tests passed**；全量 → **131 files / 1371 tests passed**；`tsc -b . --noEmit` 仅基线 `src/modules/employees/EmployeesModulePage.test.tsx(73,5): TS18047`，本域 0；build 到 `/tmp/tools-build` 被同一基线错误阻断。
 - 边界：仅改 `web/src/modules/tools/**` + `docs/_artifacts/gov/**`；未改 App/shell/routes/registry/package·lock/scripts/ops；未 install；未并 main、未重建 9122；未跑独立观察者。真实 token/密钥/二维码未读取、未渲染。
+
+## R40 强制态 rid 保留（shell 侧，2026-11-20）
+
+- 根因：`ConsolePane` 在 `?state=` 强制态直接渲染 shell `StateBlock`，不再挂载模块页；shell 只解析 `state`，未把 `rid` 读入状态块，且 tab 链接会丢掉全部 search 参数。
+- 修复：
+  - `web/src/shell/fixtures.ts`：新增 `FIXTURE_RID_KEY`、通用 `readQueryParam`、`parseFixtureRid`（hash 优先）、`currentFixtureRid`。
+  - `web/src/shell/console.tsx`：`usePaneRid`；`StateRid` 显示「请求编号：<rid>」并提供复制按钮（无 rid 才回退到无编号说明）；`StateBlock`/`ConsolePane`/模块页/员工详情页透传 rid；`ConsoleTabStrip` 与详情 zone 链接保留除 `tab|view|zone` 外的全部 search 参数。
+- 单测：`npx vitest run src/shell` → **5 files / 43 passed**；新增 rid 解析、强制态 rid 屏显+复制、tab 切换保 rid 三个用例。
+- 类型：`tsc -b . --noEmit` 仅基线 `src/modules/employees/EmployeesModulePage.test.tsx(73,5): TS18047 'root' possibly null`，本域 0 错。
+- assert-ia：`--source=html` 与 `--source=react` 均 exit 0，counts 51/22/1/8，无新增 Tab。
+- 活体：9122 当前代次 d0b50590 不含此修复；源码+单测自证，活体待下代次。未重建 9122、未并 main。

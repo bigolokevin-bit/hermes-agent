@@ -35,7 +35,7 @@
  * import is the lane-A workbench placeholder.
  */
 
-import { Suspense, useEffect, useMemo, type ReactNode } from "react";
+import { Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, NavLink, useLocation, useParams, useSearchParams } from "react-router";
 import {
   CONSOLE_MODULES,
@@ -57,10 +57,12 @@ import {
 import {
   FixtureBadge,
   applyFixtureAttribute,
+  parseFixtureRid,
   parseFixtureState,
   useFixtureState,
 } from "./fixtures";
 import EmployeeDetailWorkbench from "../modules/employee-detail/EmployeeDetailWorkbench";
+import { copyTextToClipboard } from "@/lib/clipboard";
 
 /* ------------------------------------------------------------------ *
  * Fixture-mechanism integration (T03-CONTRACT.md, lines 1-2)
@@ -105,6 +107,12 @@ function usePaneForced(): PaneForced | null {
   return override !== null && override !== "ready" && isPaneForced(override)
     ? override
     : null;
+}
+
+function usePaneRid(): string | null {
+  const [sp] = useSearchParams();
+  const { search } = useLocation();
+  return (sp.get("rid") ?? "").trim() || parseFixtureRid(search, window.location.hash);
 }
 
 /* ------------------------------------------------------------------ *
@@ -166,7 +174,37 @@ function StateActions({ retry }: { retry: boolean }) {
   );
 }
 
-function StateBlock({ state }: { state: PaneForced }) {
+function StateRid({ rid }: { rid: string | null }) {
+  const [copied, setCopied] = useState(false);
+  if (rid === null) {
+    return (
+      <span data-testid="state-rid-fallback" className="text-xs" style={{ color: "var(--fg-3)" }}>
+        {NO_TRACE_COPY}
+      </span>
+    );
+  }
+  return (
+    <span className="flex flex-wrap items-center justify-center gap-1.5 text-xs" data-testid="state-rid-line">
+      <span style={{ color: "var(--fg-3)" }}>请求编号：</span>
+      <code data-testid="state-rid" className="font-mono" style={{ color: "var(--fg)" }}>
+        {rid}
+      </code>
+      <button
+        type="button"
+        data-testid="state-rid-copy"
+        onClick={() => {
+          void copyTextToClipboard(rid).then(setCopied);
+        }}
+        className="rounded-sm px-1.5 py-0.5 text-[11px]"
+        style={{ background: "var(--panel)", border: "1px solid var(--line)", color: "var(--fg-2)" }}
+      >
+        {copied ? "已复制" : "复制"}
+      </button>
+    </span>
+  );
+}
+
+function StateBlock({ state, rid }: { state: PaneForced; rid?: string | null }) {
   const frame = {
     className: "flex min-h-[12rem] flex-col items-center justify-center gap-2 p-5 text-sm",
     style: shellStyle,
@@ -197,9 +235,7 @@ function StateBlock({ state }: { state: PaneForced }) {
     return (
       <div role="status" aria-live="polite" {...frame}>
         <span style={{ color: "var(--bad)" }}>加载失败</span>
-        <span className="text-xs" style={{ color: "var(--fg-3)" }}>
-          {NO_TRACE_COPY}
-        </span>
+        <StateRid rid={rid ?? null} />
         <span className="text-xs" style={{ color: "var(--fg-3)" }}>
           强制态：?state=error
         </span>
@@ -211,9 +247,7 @@ function StateBlock({ state }: { state: PaneForced }) {
     <div role="status" aria-live="polite" {...frame}>
       <span className="font-mono text-lg">403</span>
       <span>无权限或未开放（403 与 404 同一整页文案）</span>
-      <span className="text-xs" style={{ color: "var(--fg-3)" }}>
-        {NO_TRACE_COPY}
-      </span>
+      <StateRid rid={rid ?? null} />
       <span className="text-xs" style={{ color: "var(--fg-3)" }}>
         强制态：?state=denied
       </span>
@@ -293,10 +327,11 @@ interface ConsolePaneProps {
   entry: ConsoleRoute;
   liveNode?: ReactNode;
   forced: PaneForced | null;
+  rid: string | null;
   roView: boolean;
 }
 
-function ConsolePane({ entry, liveNode, forced, roView }: ConsolePaneProps) {
+function ConsolePane({ entry, liveNode, forced, rid, roView }: ConsolePaneProps) {
   const denied = auditorDenied(entry, roView);
   const stateAttr =
     forced ?? (denied ? "denied" : liveNode !== undefined ? "ready" : "empty");
@@ -309,7 +344,7 @@ function ConsolePane({ entry, liveNode, forced, roView }: ConsolePaneProps) {
       data-state={stateAttr}
     >
       {forced !== null ? (
-        <StateBlock state={forced} />
+        <StateBlock state={forced} rid={rid} />
       ) : denied ? (
         <AuditorDeniedBlock />
       ) : liveNode !== undefined ? (
@@ -364,6 +399,14 @@ function ConsoleTabStrip({
     () => CONSOLE_TABS.filter((t) => t.module === module),
     [module],
   );
+  const [sp] = useSearchParams();
+  const preserve = useMemo(() => {
+    const keep: Record<string, string> = {};
+    for (const [key, value] of sp.entries()) {
+      if (key !== "tab" && key !== "view" && key !== "zone") keep[key] = value;
+    }
+    return keep;
+  }, [sp]);
   return (
     <div
       role="tablist"
@@ -374,7 +417,7 @@ function ConsoleTabStrip({
       {tabs.map((tab) => {
         const to = {
           pathname: pathFor(tab),
-          search: searchFor(tab.tab ?? "", "", "", {}),
+          search: searchFor(tab.tab ?? "", "", "", preserve),
         };
         const active = tab.tabId === activeTabId;
         return (
@@ -424,6 +467,7 @@ export function ConsoleModulePage({ module, live }: ConsoleModulePageProps) {
   const active = tabs.find((t) => t.tabId === resolved.tab) ?? tabs[0];
   const meta = CONSOLE_MODULES.find((m) => m.module === module);
   const forced = usePaneForced();
+  const rid = usePaneRid();
   const roView = sp.get("roview") === "1";
 
   if (active === undefined || meta === undefined) return null;
@@ -458,6 +502,7 @@ export function ConsoleModulePage({ module, live }: ConsoleModulePageProps) {
         entry={active}
         liveNode={live?.[active.tabId]}
         forced={forced}
+        rid={rid}
         roView={roView}
       />
     </ConsoleModulesFrame>
@@ -505,12 +550,21 @@ export function ConsoleEmployeeDetailPage({
   const zoneQuery = sp.get("zone") ?? "";
   const normalized = zone !== undefined ? zone : normalizeZone(zoneQuery);
   const forced = usePaneForced();
+  const rid = usePaneRid();
 
   // Bare /employees/:employeeId keeps the live surface (probe or existing
   // page) — stage-2 brief 5 fallback. The lane-A workbench (chat host +
   // rail) serves the EXPLICIT workbench forms (?zone=workbench plus the
   // ZONE_ALIAS overview/chat spellings).
   const showWorkbench = zone === undefined && normalized === "workbench";
+
+  const preserveDetail = useMemo(() => {
+    const keep: Record<string, string> = {};
+    for (const [key, value] of sp.entries()) {
+      if (key !== "zone") keep[key] = value;
+    }
+    return keep;
+  }, [sp]);
 
   const detailContent: ReactNode = DetailModulePage ? (
     <Suspense fallback={<StateBlock state="loading" />}>
@@ -527,7 +581,7 @@ export function ConsoleEmployeeDetailPage({
 
   const zoneHref = (z: DetailZone): { pathname: string; search: string } => ({
     pathname: `/employees/${encodeURIComponent(employeeId || "_")}`,
-    search: `?zone=${z}`,
+    search: searchFor("", "", z, preserveDetail),
   });
 
   return (
@@ -567,7 +621,7 @@ export function ConsoleEmployeeDetailPage({
         data-src={DETAIL_TAB.dataSource}
         data-state={forced ?? "ready"}
       >
-        {forced !== null ? <StateBlock state={forced} /> : detailContent}
+        {forced !== null ? <StateBlock state={forced} rid={rid} /> : detailContent}
       </div>
     </ConsoleModulesFrame>
   );
