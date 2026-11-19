@@ -446,3 +446,11 @@ gap 台账（报 L0 转 D）：BFF 缺 GET /api/employees/{id} 详情路由（40
 修复四处：itemsOf 兼容 audit {events:[...]} 信封（原只认 items→审计永远假空）；readAudit actor 对象解包（{type,id}→name/id，emp_ 句柄仍走 actorLabel 8 位掩码，系统 actor employee-api 原词合规）；runs 区 URL employee=→employeeId=（BFF runs 必 400 missing_filter）；audit 区 URL employee=→actorId=（BFF audit 白名单无 employee 键 400）。
 gap 台账（报 L0 转 D）：BFF 缺 GET /api/employees/{id} 详情路由（404）——概览 matrix 回落合规，非屏面缺口。
 验证：定向 employee-detail 13 passed；全量 122 files/1223 passed 0 fail。屏幕 DOM 复跑待 L0 合批重建代次。
+
+## R26 blockers（fix(console): R26 blockers — detail panel, bare human, ov6 testids, audit nav）
+F1 审批详情 0/8：真根因=行卡不可点——ApprovalRowCard 的 Card 加 role=button+tabIndex+onClick=onOpen+onKeyDown(Enter/Space)（Card 原语 spread rest 已证 card.tsx {...props}），标题钮 stopPropagation 防双触；vitest 新用例点 apr5-row 整卡→详情容器（History 显式 testId=apr5-detail）出现+8 个 apd5-field-*/apd5-approver testid 全在+文本无裸 human:/emp_+change-kind=对外发送消息。QA 活体恒 apr5-detail-empty 的代次差异待合批重建后复跑。
+F2 裸 human::isMachineHandle 补 colon 句柄判定（line112 SCHEME_PREFIX 含 human:），approverLabels 对象项 name 走机器句柄时 maskHandle 兜底；全 approvals grep human: 上屏字符串=0（仅 title/注释）。
+F4 任务板裸 0：空列 Badge{rows.length} 0→「—」+title 口径（真 0 计数仍显 0 的 summary 行保留既有 caveat）。
+F6 值班台 testid 契约：DutyPage 双标=HCard data-testid duty-→ov6- 动态+data-duty-testid 保旧名；gate/ready-value/health/page 独立行同样双标；grep data-testid="duty 残留=0；header 新增 ov6-asof「采集于 {beijing(asOf)}」（todayStats/stats body.asOf，缺不显假）。dutyPage.test 一处选择器同步 data-duty-testid。duty 页体此行改动为工单 F6 点名授权。
+F7 审计入口+别名：App.tsx nav 治理组新增 /audit「审计事件」（ShieldCheck，页体属 aud）；?tab=cron|admins|retention 归一已由 shell/routes.ts TAB_ALIAS line334-338（work.cron→board/identity.admins→people/system.retention→events）+ConsoleModulePage resolveTab 链满足，未新增代码。
+验证：定向 approvals+tasks+duty+overview=9 files 125 passed；全量 vitest 122 files/1224 passed 0 fail。屏幕活体读数待 L0 合批重建（本单未 build）。

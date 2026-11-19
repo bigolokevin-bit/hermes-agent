@@ -82,7 +82,7 @@ describe("DutyPage", () => {
       expect(text).toContain(title);
     }
     expect(container.querySelectorAll('[data-card="duty"]')).toHaveLength(8);
-    expect(container.querySelector('[data-testid="duty-ready-value"]')?.textContent).toContain("—");
+    expect(container.querySelector('[data-duty-testid="duty-ready-value"]')?.textContent).toContain("—");
     expect(text).toContain("待核实");
     expect(text).not.toContain("HTTP");
   });

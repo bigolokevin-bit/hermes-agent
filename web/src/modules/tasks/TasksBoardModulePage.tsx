@@ -384,7 +384,11 @@ export function TasksBoardModulePage() {
               <section key={status} className="min-w-0 space-y-2" data-testid={`tsk4-col-${status}`}>
                 <div className="flex items-center justify-between gap-2">
                   <h2 className="text-sm font-semibold">{COLUMN_LABEL[status]}</h2>
-                  <Badge>{rows.length}</Badge>
+                  {rows.length === 0 ? (
+                    <Badge title="这一列当前是空的；空列不计数为 0">—</Badge>
+                  ) : (
+                    <Badge>{rows.length}</Badge>
+                  )}
                 </div>
                 {rows.length === 0 ? (
                   <p className="rounded-lg border border-border p-3 text-xs text-muted-foreground">

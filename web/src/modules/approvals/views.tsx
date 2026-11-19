@@ -58,12 +58,26 @@ export function ApprovalRowCard({
     <Card
       className={`border-border bg-card ${selected ? "ring-1 ring-primary/60" : ""}`}
       data-testid={`apr5-row-${row.key}`}
+      // R26 F1: the whole row is the affordance — clicking anywhere (or
+      // pressing Enter/Space on it) selects the ticket and opens its detail.
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpen();
+        }
+      }}
     >
       <CardContent className="flex min-w-0 flex-col gap-2 px-4 py-3">
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
           <button
             type="button"
-            onClick={onOpen}
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpen();
+            }}
             title={row.rawId ?? undefined}
             className="min-w-0 flex-1 break-words text-left text-sm hover:underline"
           >
@@ -98,6 +112,7 @@ export function ApprovalRowCard({
           <p className="min-w-0 break-words text-xs text-muted-foreground">事由：{row.reason}</p>
         ) : null}
 
+        <div onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
         <DetailsDisclosure
           testId={`apr5-row-details-${row.key}`}
           lines={[
@@ -105,6 +120,7 @@ export function ApprovalRowCard({
             `状态原值：${row.status.raw ?? "未提供"}`,
           ]}
         />
+        </div>
       </CardContent>
     </Card>
   );
