@@ -642,3 +642,17 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - anon 负例辅助腿：19/19 门壳图（六条点名路由 @1440），auxiliary=true ok=true(failures==0&&produced==expected) runExitCode=1，不作主账 ok 依据。
 - state-quad @9122 显式传参：20/20 passed，ok=true exit=0。
 - 代次注：本轮九件全章 743acf8f；上轮 780cc513 账本作废于本代次覆盖。收口单 commit 'chore(gates): full gate ledger stamped at 743acf8f (entry CjruA64U)'，他人 web/src 脏（tasks lane 2 件）绝不 add，porcelain 本车道归零。
+
+
+## 门禁二十九轮·原子写固化与 CE 口径落码（2026-11-19 13:3x，L0 明令**不重盖章**，等 ≤14:15 放行令）
+
+- 背景：L0 现查 crawl-auth 24864B / crawl-anon 25779B 均单文档可解析、head=743acf8f、counts 全绿；13:09 读到的拼接=追加写中间态。本轮只固化写出方式与 CE 口径，不动九件产物代次。
+- 原子写（tmp+renameSync，禁 append/禁二次 open('a')，脚本注释均注明）：
+  - `web/scripts/crawl-routes.mjs`：新增 `--out=<path>` 原子落账本（缺省仍 stdout）；`out.ceAuthority='login-state'`。
+  - `web/scripts/assert-ia.mjs` / `web/scripts/lint-fake-success.mjs`：`--out=<path>` 拦截唯一账本 console.log 载荷 tmp+rename。
+  - `web/scripts/lint-reuse.mjs`：自产 ARTIFACT 两处写改 atomicWrite。
+  - `docs/_artifacts/tonight/shots.mjs`：SUMMARY/INDEX 改 atomicWrite（png 单发截断写维持）；**CE 字段改名** `consoleErrorsObservedByShots`/`consoleErrorRoutesObservedByShots` + `ceAuthority:'login-state'`；**ok 固定 = failures==0 && produced==expected**（CE/emptyMain/missingMainEl 不再入式），exitCode 与 ok 同源。
+  - `docs/_artifacts/tonight/state-quad.mjs`：state-quad.json 改 tmp+rename。
+- CE 裁定（同步 QA R11 登录态同代次 CE=0）：权威=**登录态捕获**；shots 匿名观察到的 CE 仅作旁证，不得参与 ok。现存 743acf8f 代次 shots-summary 仍为旧字段名（放行后重跑自然换新名）。
+- 验证：六脚本 node --check 全 OK；`--out` 冒烟 lint-fake/assert-ia(html/react) 三份 /tmp 件单文档可解析、exit 全 0、无 .tmp 残留。冒烟件 head=9c4590c8（fork 又前进）——**仅 /tmp 冒烟，九件账本未动**，最终盖章等 L0 放行令一次性执行。
+- 纪律：禁改 web/src（本轮改动全在 web/scripts 腿脚本与 tonight 腿脚本）；shots exitCode 已按 13:1x 令对齐（9ae0e83d）。

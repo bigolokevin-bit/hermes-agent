@@ -12,9 +12,18 @@
 //
 // Exit 0 only when violations === 0.
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+// L0 二十九轮（2026-11-19）：--out=<path> 原子替换账本载荷（tmp+rename，禁 append）；缺省 stdout。
+const OUT_FILE = (process.argv.find((a) => a.startsWith('--out=')) || '').slice(6) || null;
+if (OUT_FILE) {
+  console.log = (s) => {
+    const tmp = `${OUT_FILE}.tmp.${process.pid}`;
+    writeFileSync(tmp, `${s}\n`);
+    renameSync(tmp, OUT_FILE);
+  };
+}
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const HTML_PATH = path.join(ROOT, 'docs', 'console-v4-skeleton.html');

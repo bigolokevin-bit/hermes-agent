@@ -53,6 +53,12 @@ for (const route of ROUTES) {
 await browser.close();
 const headHash = execSync('git rev-parse --short=8 HEAD', { encoding: 'utf8' }).trim();
 const out = { base: BASE, method: 'playwright hash-form /#/<route>?state=<s>; hook=[data-fixture]+[data-testid=shell-fixture-badge] (web/src/shell/fixtures.ts)', headHash, sampled: rows.length, passed, rows };
-fs.writeFileSync('docs/_artifacts/tonight/state-quad.json', JSON.stringify(out, null, 2) + '\n');
+// L0 二十九轮：tmp+rename 原子替换，禁 append/中间态可读。
+{
+  const payload = JSON.stringify(out, null, 2) + '\n';
+  const tmp = 'docs/_artifacts/tonight/state-quad.json.tmp.' + process.pid;
+  fs.writeFileSync(tmp, payload);
+  fs.renameSync(tmp, 'docs/_artifacts/tonight/state-quad.json');
+}
 console.log(`state-quad: sampled=${rows.length} passed=${passed} base=${BASE} head=${headHash}`);
 process.exit(passed === rows.length ? 0 : 1);

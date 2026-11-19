@@ -34,7 +34,15 @@
 //   produced but listed in `oversize` (excluded from the commit by the runner).
 
 import { createRequire } from 'node:module';
-import { readFileSync, mkdirSync, writeFileSync, statSync } from 'node:fs';
+import { readFileSync, mkdirSync, writeFileSync, statSync, renameSync } from 'node:fs';
+// L0 二十九轮（2026-11-19）：账本类产物（summary/index JSON/MD）一律先写临时文件再
+// renameSync 原子替换——禁 append、禁二次 open('a')，防外部读到拼接中间态（13:09 事故）。
+// png 字节流为单发 writeFileSync 截断写，无拼接风险，维持原样。
+const atomicWrite = (file, text) => {
+  const tmp = `${file}.tmp.${process.pid}`;
+  writeFileSync(tmp, text);
+  renameSync(tmp, file);
+};
 import path from 'node:path';
 
 const REPO = '/Users/kevin_studio/Projects/forks/hermes-agent';
@@ -408,7 +416,7 @@ md.push(oversize.length ? oversize.map((o) => `- \`${o.file}\` (${o.bytes} bytes
 md.push('');
 md.push('## failures');
 md.push(failures.length ? failures.map((f) => `- ${f.hash} @ ${f.viewport}: ${f.error}`).join('\n') : '- none');
-writeFileSync(INDEX_FILE, `${md.join('\n')}\n`);
+atomicWrite(INDEX_FILE, `${md.join('\n')}\n`);
 
 const consoleErrRoutes = [...new Set(index.filter((r) => r.consoleErrorsProduct > 0).map((r) => r.hash))];
 // 归因透明：环境噪声（401/404）单列，不计入 ok，但保留可审计计数。
@@ -434,19 +442,19 @@ const summary = {
     chars: r.mainTextLen,
     hasMainEl: r.hasMainEl,
   })),
-  routesWithConsoleErrors: consoleErrRoutes.length,
-  consoleErrorRoutes: consoleErrRoutes,
+  // L0 二十九轮裁定：CE 权威=登录态捕获（QA R11 同代次 CE=0）。
+  // 本字段仅为 shots 观察旁证，改名 Observed 后缀，不得参与 ok。
+  consoleErrorsObservedByShots: consoleErrRoutes.length,
+  consoleErrorRoutesObservedByShots: consoleErrRoutes,
+  ceAuthority: 'login-state',
   routesWithEnvOnlyConsoleErrors: envOnlyErrRoutes.length,
   envAttribution: '401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径',
   overflowing: [...new Set(index.filter((r) => r.overflowPx > 1).map((r) => r.hash))],
   driver: { playwrightFrom: PW_HOST, chromium: CHROMIUM },
-  ok:
-    failures.length === 0
-    && pngCount === target.length * 2
-    && emptyMain.length === 0
-    && missingMainEl.length === 0
-    && consoleErrRoutes.length === 0,
+  // L0 二十九轮：ok 固定 = failures==0 && produced==expected（emptyMain/missingMainEl/CE 均不再入式；
+  // exitCode 与 ok 同源）。CE 口径见 ceAuthority=login-state。
+  ok: failures.length === 0 && pngCount === target.length * VIEWPORTS.length,
 };
-writeFileSync(SUMMARY_FILE, `${JSON.stringify(summary, null, 2)}\n`);
+atomicWrite(SUMMARY_FILE, `${JSON.stringify(summary, null, 2)}\n`);
 console.log(JSON.stringify(summary, null, 2));
 process.exit(summary.ok ? 0 : 1);

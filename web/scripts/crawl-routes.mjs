@@ -32,7 +32,7 @@
 //        [--timeout 8000] [--concurrency 6] [--render-concurrency 3]
 //        [--no-render] [--nav-timeout 30000] [--settle-cap 4000]
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { createHash } from 'node:crypto';
@@ -81,6 +81,9 @@ const NO_RENDER = argv.includes('--no-render');
 // 被豁免的其余硬门（行数/重定向数/contentVerified/parseErrors）写入 notes 归因。
 // 非 flag 模式维持严格公式不变。
 const STATIC_NO_PROXY = argv.includes('--static-no-proxy');
+// L0 二十九轮：--out=<path> 时账本以 tmp+rename 原子写出（禁 append/中间态可读）；
+// 缺省仍走 stdout 供 shell 重定向（截断写，非拼接风险）。
+const OUT_FILE = flagOf('out', null);
 
 // --- scanner helpers (routes.ts is data; comments stripped first, an apostrophe
 //     inside a comment otherwise desynchronises the quote tracker and silently
@@ -687,5 +690,13 @@ out.counts = {
   probeErrors: probeErrRows.length,
   verdicts,
 };
-console.log(JSON.stringify(out, null, 2));
+out.ceAuthority = 'login-state'; // L0 二十九轮裁定：CE 权威=登录态捕获；consoleErrors 仅旁证不入 ok
+const payload = `${JSON.stringify(out, null, 2)}\n`;
+if (OUT_FILE) {
+  const tmp = `${OUT_FILE}.tmp.${process.pid}`;
+  writeFileSync(tmp, payload);
+  renameSync(tmp, OUT_FILE);
+} else {
+  console.log(payload.trimEnd());
+}
 process.exit(out.exitCode);

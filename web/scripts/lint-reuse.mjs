@@ -41,9 +41,15 @@
 // Exit 1 when violations > 0. Exit 1 with `MISSING <path>` when the scan root
 // does not exist.
 
-import { readFileSync, readdirSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync, mkdirSync, writeFileSync, renameSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+// L0 二十九轮（2026-11-19）：账本写出= tmp+rename 原子替换（禁 append/中间态可读）。
+const atomicWrite = (file, text) => {
+  const tmp = `${file}.tmp.${process.pid}`;
+  writeFileSync(tmp, text);
+  renameSync(tmp, file);
+};
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'); // web/
 const REPO = path.resolve(ROOT, '..');
@@ -73,7 +79,7 @@ if (!existsSync(MODULES_DIR)) {
     missing: [REL(MODULES_DIR)],
   };
   mkdirSync(path.dirname(ARTIFACT), { recursive: true });
-  writeFileSync(ARTIFACT, `${JSON.stringify(payload, null, 2)}\n`);
+  atomicWrite(ARTIFACT, `${JSON.stringify(payload, null, 2)}\n`);
   process.exit(1);
 }
 
@@ -352,6 +358,6 @@ const summary = {
 console.log(JSON.stringify(summary, null, 2));
 
 mkdirSync(path.dirname(ARTIFACT), { recursive: true });
-writeFileSync(ARTIFACT, `${JSON.stringify(summary, null, 2)}\n`);
+atomicWrite(ARTIFACT, `${JSON.stringify(summary, null, 2)}\n`);
 
 process.exit(violations.length > 0 ? 1 : 0);

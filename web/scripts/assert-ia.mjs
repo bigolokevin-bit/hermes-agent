@@ -25,9 +25,19 @@
 // behaviour below unchanged.
 // -----------------------------------------------------------------------------
 
-import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync, writeFileSync, renameSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+// L0 二十九轮（2026-11-19）：--out=<path> 时以 tmp+rename 原子替换本脚本唯一一份账本
+// console.log 载荷（禁 append，防 13:09 类拼接中间态被读到）；缺省维持 stdout 供重定向。
+const OUT_FILE = (process.argv.find((a) => a.startsWith('--out=')) || '').slice(6) || null;
+if (OUT_FILE) {
+  console.log = (s) => {
+    const tmp = `${OUT_FILE}.tmp.${process.pid}`;
+    writeFileSync(tmp, `${s}\n`);
+    renameSync(tmp, OUT_FILE);
+  };
+}
 import { execSync } from 'node:child_process';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
