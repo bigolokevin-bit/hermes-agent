@@ -864,3 +864,9 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 代次：HEAD=33596dc4=远端 tip；entry assets/index-CifqHAU7.js 158301B sha256 056adfc2…f6b6，磁盘==served 9122（root/entry 实测）==8183（200）。
 - 九件全 exit=0 盖 33596dc4：ia-html/react ok {51,22,(23),1,8}；lint-fake ok；lint-reuse v0/exempt1；crawl-anon DL0/CE0/PE0 routesCE=51（匿名 401 归因）；crawl-auth DL0/CE0/PE0 routesCE=22（19:1x RSA state 续用，较 54 轮 23 再降）；state-quad 20/20；shots 102/102 failures=[] 三键全值 ceAuth=login-state obs=0；shots-anon auxiliary 102/102。
 - 修正：54 轮误将 md 内容写入 *.json 后缀——git rm shots-index.json / shots-anon-index.json，恢复脚本默认 .md 落点（本两轮 index 均以 .md 重产）；后续 shots 腿 --index 一律传 .md。
+
+## 五十六轮·账本重章 23a8a7e0（entry DM1VZwgg，2026-11-19 20:0x）
+
+- 代次现查四向互证：HEAD=远端 tip=23a8a7e0（merge aud runs detail history b8c7e880）；entry assets/index-DM1VZwgg.js 158301B sha256 048e37b58b7e62f18003a79f420f784c200a22202be2a0642b7db9cc800129d5，磁盘==9122==8183，拍后 served 未漂。R24 原 33596dc4 判据作废。
+- 九件全 exit=0 单文件单 JSON+exitCode，全盖 23a8a7e0：assert-ia-html/react ok {51,22,tabsAll23,1,8}；lint-fake ok violations=[]；lint-reuse ok violations=[] exempted=1（chat→T40）；crawl-anon ok DL0/CE0/PE0 routesCE=51（匿名 401 归因 env=auth-required-401）；crawl-auth ok DL0/CE0/PE0 routesCE=23（--auth-state= 19:1x state）；state-quad 20/20；shots main（auth）102/102 failures=[] ceAuthority=login-state consoleErrorsObservedByShots=0 三键全值；shots-anon auxiliary=true 102/102。
+- 坑（本轮实踩）：shots.mjs L72 只解析 `--auth-state=<path>`（startsWith+slice(13)），空格形 `--auth-state path` 被静默当 anon——首拍 mode=anon 后以 = 形重拍为准；crawl-routes.mjs 的 flagOf 则两形都吃。--index 一律 .md（五十五轮教训沿用，本轮 anon 隔离目录法复用）。
