@@ -1,5 +1,10 @@
 # 波 3 治理组 — T20 / T21 / T23 / T24
 
+> 账本单一落点纪律（2026-11-19）：
+> 1. 任何提交都不得包含 `docs/_artifacts/tonight/**` 的**修改**；`git commit` 前先 `git reset -q HEAD -- docs/_artifacts/tonight`。
+> 2. 合入主树导致该目录复活旧账时，一律 `git checkout origin/lane/hermes-console -- docs/_artifacts/tonight` 覆盖后再提交。
+> 3. 本 lane 的页面证据只写 `docs/_artifacts/gov/**`；权威账本只在 `forks/hermes-agent` 主树。
+
 Worktree: `/Users/kevin_studio/Projects/forks/console-gov` · branch `lane/console-gov` · base `c28ebc16`.
 Write domain: `web/src/modules/{people,org,settings,version}/**`, `docs/_artifacts/gov/**`.
 No App/routes/shell/registry/manifest/package.json/lockfile changes.
@@ -220,3 +225,83 @@ $ ./node_modules/.bin/tsc -b . --noEmit
 - `docs/_artifacts/tonight/` 的模块树副本已整块删除（`b022006c`）。
 - 本文件此前指向该副本的 1 处已改为：权威账本只在主树 `/Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/`，模块树不生成任何 tonight 账本。
 - 其他 lane 的 DONE 仍含 31 处历史路径引用（`docs/_artifacts/D/DONE.md` 等），不在本 lane 写域，未改；阅读时一律以主树权威账本为准。
+
+## P5 总览聚合（/overview）— 页面模块交付
+
+- 新增 `web/src/modules/overview/{OverviewPage.tsx,overview.ts,overview.css,OverviewPage.test.tsx}`，只读复用 `modules/duty` 的 `useDutyData`、`aggregate`、`format`、`api`，未改 duty 任何文件。
+- KPI 四张：员工（总数/在岗/有风险）、今日运行（次数/失败/失败率）、待审批、今日成本；每张标数据源与「读取于 北京时间到分」。
+- 风险数来自 `/agent-api/api/matrix` 的 `risk` 字段；接口缺失或未返回行时显「—」+ `GAP-OV5-RISK`，不写 0。
+- 今日成本来自 `budget-usage` 日账本；账本未覆盖全部员工时显「—」+ `GAP-OV5-COST`，不用单价×次数推算。
+- 趋势 = `run-stats` 近 14 天 buckets；最近活动 = 近 7 天运行；阻塞队列 = 失败运行 / 阻塞任务 / 待审批，均带真实 route。
+- 四态：`?state=loading|empty|error|ready` 可预览；真实全空 → 空态；核心源全错 → 整页错误 + 可复制请求编号 + 重试；单卡失败只降级该卡。
+- testid 前缀 `ov5-*`；CSS 在 1100px/560px 断点降列，375 单列。
+
+### 自测
+
+```text
+$ cd web && npx vitest run src/modules/overview
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+
+$ ./node_modules/.bin/tsc -b . --noEmit
+# EXIT: 0
+```
+
+### 边界（必须披露）
+
+- 本 lane 未改 `App.tsx` / `shell/**` / manifest / package：`/overview` 当前仍由 App 的 `live={{ duty: <DutyConsolePage /> }}` 挂旧值班台；本页是 ready-to-mount 的 `OverviewPage`，需集成侧把 `/overview` 的 live 节点切到本页后才会上屏。
+- 因此本轮未对真实 `/overview` 做浏览器截图；1440/1280/375 仅按 CSS 断点与测试覆盖，未像素复验。
+
+## R10 ⑦ 单价 / 版本真修（2026-11-19）
+
+- 同步主干：`git merge --no-ff origin/lane/hermes-console` → `3cef4626`（主树 5e28aa04）；`docs/_artifacts/tonight` 与主树同代次，porcelain 0。
+- 取数层新增 `web/src/modules/models/fetchJson.ts` 的 `fetchJsonStrict`：content-type 非 JSON 或 body 以 `<` 开头 → 抛 `ApiError("这个接口还没有接入数据服务；当前返回的是页面，不是数据。")`；JSON.parse 失败 → `ApiError("这个接口返回的内容无法解析为数据…")`；不把原始 `Unexpected token '<'` 或 HTML 上屏，保留 request id。
+- `ModelsModulePage` 三个端点改用 `fetchJsonStrict`；`VersionPage` 新增「模型单价」卡，读同一价格端点，列模型/提供方/输入/输出/价格生效，来源 + 读取于北京时间到分；未知 `—`。
+- 单价与账本仍分区：价格卡只放标价；账本卡只放 `cost.cost_usd` 实扣、`cost_status`、行数；页面脚注禁止单价×用量。
+
+### 原始 stdout
+
+```text
+$ cd web && npx vitest run
+ Test Files  112 passed (112)
+      Tests  972 passed (972)
+
+$ ./node_modules/.bin/tsc -b . --noEmit
+# EXIT: 0
+
+$ cd /Users/kevin_studio/Projects/forks/console-gov && pnpm --filter web build
+built /Users/kevin_studio/Projects/forks/console-gov/hermes_cli/web_dist/index.html
+# EXIT: 0
+```
+
+### DOM 读数（Chrome CDP，1440×900）
+
+真实 401（本机 5427 + `/agent-api` 代理 8182）：
+
+```text
+/system?tab=version
+模型单价
+来源：模型价格表
+需要登录：这个页面的登录状态已经失效。重新登录后就能继续查看。
+请求编号：e86c1471f64141fdaa4f150f5ebafb4d
+单价是价目表标价；实际扣费在「模型与单价」页的账本卡，不用单价乘次数推算。
+```
+
+200 形态（临时 fetch stub，仅用于读 DOM，不提交）：
+
+```text
+/models
+单价（价目表） · 来源：模型价格表 · 读取于 2026-11-19 10:00
+DeepSeek V3  deepseek  $0.14 / 百万 token  $0.28 / 百万 token  2026-11-19 10:00
+实际扣费（账本） · 来源：平台扣费账本 · 截至 2026-11-19 10:00
+账本合计 $12.48 · 计价状态 账本实测 · 账本行数 42
+
+/system?tab=version
+模型单价 · 来源：模型价格表 · 读取于 2026-11-19 10:00
+DeepSeek V3  deepseek  $0.14 / 百万 token  $0.28 / 百万 token  2026-11-19 10:00
+```
+
+### 边界
+
+- 真实 200 未取得（本机无登录态，`/agent-api` 返回 401）；DOM 200 段来自临时 fixture stub，仅证明渲染与分区，不冒充线上数据。
+- 未改 App/shell/manifest/package；`/models` 与 `/system?tab=version` 的 live 节点由现有 shell 提供。

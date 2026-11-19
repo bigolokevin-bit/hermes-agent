@@ -1,8 +1,17 @@
+import { useEffect, useState } from "react";
 import { Badge, Card, CardContent } from "@nous-research/ui";
+import { ApiError } from "@/lib/api-error";
+import { fetchJsonStrict } from "../models/fetchJson";
+import { fmtStamp, fmtUnitPrice, readPrices, type ModelPriceRow } from "../models/models";
 import { currentFixtureState, fixtureView } from "../../shell/fixtures";
 import { readBuildRows, readDependencyRows, type BuildEnv, type BuildRow, type DependencyRow } from "./version";
 
 type State = { k: "loading" } | { k: "empty" } | { k: "error"; requestId: string } | { k: "ready"; build: BuildRow[]; dependencies: DependencyRow[] };
+type PriceState =
+  | { k: "loading" }
+  | { k: "ready"; rows: ModelPriceRow[]; asOf: string | null }
+  | { k: "empty" }
+  | { k: "error"; message: string; requestId: string | null };
 
 function StateBadge({ unknown }: { unknown: boolean }) {
   return <Badge tone={unknown ? "outline" : "success"}>{unknown ? "未知" : "已提供"}</Badge>;
@@ -36,6 +45,30 @@ export function VersionPage() {
     ? { k: "empty" }
     : { k: "ready", build, dependencies };
   const view = preview ?? liveState;
+  const [prices, setPrices] = useState<PriceState>({ k: "loading" });
+
+  useEffect(() => {
+    if (forced) return;
+    let live = true;
+    fetchJsonStrict("/agent-api/api/models/pricing")
+      .then((payload) => {
+        if (!live) return;
+        const parsed = readPrices(payload);
+        setPrices(parsed.rows.length === 0 ? { k: "empty" } : { k: "ready", rows: parsed.rows, asOf: parsed.asOf });
+      })
+      .catch((error: unknown) => {
+        if (!live) return;
+        const apiError = error instanceof ApiError ? error : null;
+        setPrices({
+          k: "error",
+          message: apiError?.message ?? "单价表暂时读不出来，请稍后重试。",
+          requestId: apiError?.requestId ?? null,
+        });
+      });
+    return () => {
+      live = false;
+    };
+  }, [forced]);
 
   return (
     <section className="space-y-4" data-testid="ver4-page" data-fixture={forced ?? undefined}>
@@ -81,6 +114,55 @@ export function VersionPage() {
           </CardContent></Card>
         </div>
       )}
+
+      <Card data-testid="ver4-prices">
+        <CardContent className="space-y-3 p-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-sm font-medium text-white/85">模型单价</h2>
+            <span className="text-xs text-white/45">
+              来源：模型价格表{prices.k === "ready" ? ` · 读取于 ${fmtStamp(prices.asOf)}` : ""}
+            </span>
+          </div>
+          {prices.k === "loading" ? (
+            <p className="text-sm text-white/55" aria-busy="true">正在读取单价…</p>
+          ) : prices.k === "error" ? (
+            <div className="space-y-1 text-sm" data-testid="ver4-prices-error" role="status">
+              <p className="text-white/80">{prices.message}</p>
+              <p className="text-xs text-white/45">
+                请求编号：{prices.requestId ?? "未提供"}
+              </p>
+            </div>
+          ) : prices.k === "empty" ? (
+            <p className="text-sm text-white/55" data-testid="ver4-prices-empty">还没有单价记录；不显示 0 元。</p>
+          ) : (
+            <div className="min-w-0 overflow-x-auto">
+              <table className="w-full min-w-[560px] text-left text-sm" data-testid="ver4-price-table">
+                <thead className="text-xs text-white/45">
+                  <tr>
+                    <th className="py-2 pr-3 font-normal">模型</th>
+                    <th className="py-2 pr-3 font-normal">提供方</th>
+                    <th className="py-2 pr-3 font-normal">输入</th>
+                    <th className="py-2 pr-3 font-normal">输出</th>
+                    <th className="py-2 font-normal">价格生效</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/10">
+                  {prices.rows.map((row) => (
+                    <tr key={row.modelId} data-testid={`ver4-price-${row.modelId}`} title={row.modelId}>
+                      <td className="py-2 pr-3">{row.label || row.modelId}</td>
+                      <td className="py-2 pr-3">{row.provider ?? "—"}</td>
+                      <td className="py-2 pr-3">{fmtUnitPrice(row.inputPerMillion, row.currency)}</td>
+                      <td className="py-2 pr-3">{fmtUnitPrice(row.outputPerMillion, row.currency)}</td>
+                      <td className="py-2">{fmtStamp(row.asOf)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <p className="text-xs text-white/40">单价是价目表标价；实际扣费在「模型与单价」页的账本卡，不用单价乘次数推算。</p>
+        </CardContent>
+      </Card>
     </section>
   );
 }

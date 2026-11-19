@@ -10,9 +10,9 @@ import { Copy, RefreshCw } from 'lucide-react';
 import { Button } from '@nous-research/ui/ui/components/button';
 import { Card, CardContent } from '@nous-research/ui/ui/components/card';
 
-import { fetchJSON } from '@/lib/api';
 import { copyTextToClipboard } from '@/lib/clipboard';
 import { ApiError } from '@/lib/api-error';
+import { fetchJsonStrict } from './fetchJson';
 
 import {
   MODELS_GAP,
@@ -166,9 +166,9 @@ export function ModelsModulePage() {
     setLoaded(null);
     const load = async () => {
       const [catalogResult, pricesResult, usageResult] = await Promise.allSettled([
-        fetchJSON<unknown>('/agent-api/api/models'),
-        fetchJSON<unknown>('/agent-api/api/models/pricing'),
-        fetchJSON<unknown>('/agent-api/api/hermes-usage?days=30'),
+        fetchJsonStrict('/agent-api/api/models'),
+        fetchJsonStrict('/agent-api/api/models/pricing'),
+        fetchJsonStrict('/agent-api/api/hermes-usage?days=30'),
       ]);
       if (!live) return;
       const next: Loaded = {
