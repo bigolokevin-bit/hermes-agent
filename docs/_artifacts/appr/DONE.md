@@ -378,3 +378,8 @@ deadLinks：本车道未起 9123 preview（时间盒），待 L0 合并构建后
 身份件：登录成功（whoami 200）后 LoginPage window.dispatchEvent(Event(auth5:session))；App.tsx Auth5Session useEffect 重构 refresh 函数并 addEventListener(auth5:session)，cleanup 移除——登录后侧栏即时显示 display/角色/租户(缺—)+退出钮。禁 token 入 localStorage（仍仅 sessionStorage 轻标记）。
 测试：LoginPage.test 8/8（用例4 桥形态 body {code,rid:4958432cabcd} 断言 rid 串上屏+req-copy 钮存在；用例2 成功链断 auth5:session listener 调用≥1）；全量 vitest 120 files/1180 passed 0 fail；src/shell 33 passed。
 本单按 L0 令未单独构建（合批后统一 build+D 重章+R19）。
+
+## R19 尾项 a：退出登录清身份件（fix(console): clear identity widget on logout）
+根因：logout finally 仅 removeItem+navigate，Auth5Session 同页不卸载则本地 who 态残留 opsadmin/角色/租户（服务端会话已废 401 双证，纯客户端显示残留）。
+修法：Auth5Session 整函数从 App.tsx 抽至 web/src/shell/Auth5Session.tsx（export），logout finally navigate 前 setWho({k:anon})；App.tsx 改 import；新增 web/src/shell/Auth5Session.test.tsx 锁 logout→widget 匿名（whoami200 opsadmin 上屏→点退出→无 opsadmin/角色、显示未登录+去登录钮、sessionStorage 清）。
+读数：定向 Auth5Session.test 1 passed；src/shell 全过；全量 vitest Test Files 121 passed / Tests 1188 passed 0 fail；tsc web 单包 exit 0。基线 b65673c8（章 c9266b55，entry C4DIeOJD）。按 L0 节拍本单未单独构建——需 L0 合批 build+D 重章后上屏复验。
