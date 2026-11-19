@@ -598,7 +598,7 @@ describe("R19 tail b — the 详情 cell expands, the window check exists", () =
     await act(async () => {
       cell!.click();
     });
-    const panel = document.querySelector("[data-testid='aud01-tech-details']");
+    const panel = document.querySelector("[data-testid='aud01-row-tech-details']");
     expect(panel).not.toBeNull();
     expect(panel!.textContent).toContain("事件标识");
     expect(panel!.textContent).toContain("evt_7c1f2a3b4d5e6f70");
@@ -613,7 +613,7 @@ describe("R19 tail b — the 详情 cell expands, the window check exists", () =
     await act(async () => {
       other!.click();
     });
-    expect(document.querySelectorAll("[data-testid='aud01-tech-details']")).toHaveLength(1);
+    expect(document.querySelectorAll("[data-testid='aud01-row-tech-details']")).toHaveLength(1);
   });
 
   it("the window check is present and clickable, and a missing route reads 本环境未启用 with a reason", async () => {
@@ -683,5 +683,74 @@ describe("R19 tail b — the window check never calls an empty scan a pass", () 
     expect(said).toContain("这一段没有核对到记录");
     expect(said).toContain("这不等于「完整」");
     expect(said).not.toContain("没有发现断点");
+  });
+});
+
+/**
+ * R21 b — the page a reviewer reaches at /audit must be this page, and its
+ * page-level 技术详情 must really open. Lengths are measured so "expanded" is a
+ * number rather than a claim.
+ */
+describe("R21 b — the page-level 技术详情 opens and survives the compat entry", () => {
+  it("the page-level fold grows the DOM and reports its state in a data attribute", async () => {
+    await mount();
+    const trigger = document.querySelector<HTMLButtonElement>("[data-testid='aud01-tech-details'] button");
+    expect(trigger).not.toBeNull();
+    expect(trigger!.getAttribute("data-expanded")).toBe("false");
+
+    const before = (document.body.textContent ?? "").length;
+    await act(async () => {
+      trigger!.click();
+    });
+    const after = (document.body.textContent ?? "").length;
+    expect(after - before).toBeGreaterThan(0);
+    expect(trigger!.getAttribute("data-expanded")).toBe("true");
+    console.log("R21-PAGE-FOLD before=" + before + " after=" + after + " diff=" + (after - before));
+  });
+
+  it("also renders when the entry carries ?tab=events", async () => {
+    await mount(undefined, "/audit?tab=events");
+    expect(document.querySelector("[data-testid='agent-v2-page-audit']")).not.toBeNull();
+    expect(document.querySelector("[data-testid='aud01-tech-details']")).not.toBeNull();
+    await waitFor(() => text().includes("已显示 2 条"), "rows on the tab entry");
+  });
+
+  it("the row-level fold keeps its own state attribute, so an outside probe can read it", async () => {
+    await mount();
+    const cell = document.querySelector<HTMLButtonElement>(
+      "[data-testid='aud01-cell-evt_7c1f2a3b4d5e6f70-details']",
+    )!;
+    expect(cell.getAttribute("data-expanded")).toBe("false");
+    await act(async () => {
+      cell.click();
+    });
+    expect(cell.getAttribute("data-expanded")).toBe("true");
+    expect(document.querySelector("[data-testid='aud01-row-tech-details']")).not.toBeNull();
+  });
+});
+
+describe("R21 b — a refused window check stays human", () => {
+  it("a 400 from the verify route reads as a sentence, never as counts", async () => {
+    await mount(async (url: string) => {
+      if (String(url).startsWith("/agent-api/api/audit-verify")) {
+        throw new ApiError("missing filter", {
+          status: 400,
+          body: '{"code":"request.missing_filter"}',
+          url: String(url),
+          requestId: "rid-verify-400",
+        });
+      }
+      return EVENTS;
+    });
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud01-verify']")!.click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='aud01-verify-error']") !== null, "verify error panel");
+    const panel = document.querySelector("[data-testid='aud01-verify-error']")!;
+    const said = panel.textContent ?? "";
+    expect(said).toContain("缺一个服务端要求的筛选条件");
+    expect(said).toContain("rid-verify-400");
+    expect(said).not.toContain("没有发现断点");
+    expect(said).not.toContain("request.missing_filter");
   });
 });

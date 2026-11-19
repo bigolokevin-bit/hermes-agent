@@ -156,6 +156,7 @@ export function AuditEventRowCard({
           type="button"
           onClick={onToggleTech}
           aria-expanded={techOpen}
+          data-expanded={techOpen ? "true" : "false"}
           className="flex w-full min-w-0 items-center gap-1 text-left text-xs text-muted-foreground underline underline-offset-2"
           data-testid={`${cells}-details`}
         >
@@ -169,7 +170,7 @@ export function AuditEventRowCard({
         {techOpen ? (
           <div
             className="min-w-0 rounded-sm border border-border bg-muted/40 px-2 py-1.5"
-            data-testid="aud01-tech-details"
+            data-testid="aud01-row-tech-details"
           >
             <ul className="flex min-w-0 flex-col gap-0.5 break-words font-mono text-xs text-muted-foreground">
               {techLines.map((line) => (

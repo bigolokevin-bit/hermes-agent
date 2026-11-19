@@ -117,6 +117,7 @@ export function TechnicalDisclosure({
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
+        data-expanded={open ? "true" : "false"}
         className="inline-flex items-center gap-1 text-muted-foreground underline underline-offset-2"
       >
         {open ? <ChevronUp className="h-3 w-3" aria-hidden="true" /> : <ChevronDown className="h-3 w-3" aria-hidden="true" />}

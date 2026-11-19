@@ -426,7 +426,7 @@ export function AuditEventsModulePage(): ReactNode {
 
               {/* The technical lines of a page as a whole: what was asked, what came back. */}
               <TechnicalDisclosure
-                testId="aud01-list-details"
+                testId="aud01-tech-details"
                 label="技术详情"
                 lines={[
                   `本页读取条数：${list.rows.length + list.unreadable}`,
