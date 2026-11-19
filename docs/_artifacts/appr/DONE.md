@@ -403,3 +403,21 @@ BFF 实测形态（ego 登录态 GET /agent-api/api/approvals?status=consumed&li
 修复：①personView 支持对象 handle 解包（requestedBy={type:user,id:1}→「成员 · 1」，approvers userId human:1→「人员 · 1」；有 name 用「姓名 · 短码」），clean>=1 放宽（单人 id=1 不再误显「—」）；②缺值 fallback「未指派」→「—」+原因（工单口径：未指派=真未指派语义保留，缺值=—）；③详情操作指纹 actionHash 键补 argsDigest（真数据接上，短码+title 全值+可复制钮）；④行卡/详情 申请人/执行员工 缺值句统一「服务未提供申请人信息。」「服务未提供执行员工。」（title 原因，无假 0）。
 八字段现状（详情面板 apd5-*）：类型✓(changeKind 人话) 申请人✓(对象解包) 审批人✓(apd5-approver 顿号分隔姓名·短码) 结论✓(verdict 通过/驳回/要求修改) decidedAt✓(北京到分) 操作指纹✓(argsDigest) recipient/dataScope=该代次 BFF 无键→「—」+原因诚实 请求编号✓(可复制)。零写入口/403≡404 同体/apr5-* 家族维持。
 测试：api.test 新 describe 2 用例（对象 handle/无 handle「—」不名未指派/argsDigest→actionHash）；定向 approvals 3 files 52 passed；全量 122 files/1222 passed 0 fail。屏幕 DOM 复跑待 L0 合批构建代次。
+
+## tasks 看板真数据深度（feat(console): tasks board real-data depth）
+五列登录态实测（9122 BFF 带 cookie，GET /agent-api/api/tasks?status=<v>&limit=50）：open=200:17行(rid 5c5dba) | in_progress=200:1(bc706d) | blocked=200:1(af24cc) | done=200:0(69847f) | cancelled=200:1(0089e3)；不带 status 的 ALL 口径=400:0(43d8f4)——lane D 的 status=all 修复未到，看板走五路显式 status 不受影响，如实记录。
+判据对照：五态列 ✓（BOARD_STATUSES 真传参）；负责人「姓名 · 8位短码」/「未指派」✓（rowId/actorLabel，裸 emp_/human: 零上屏）；更新时间北京到分 ✓；成本 USD $x.xx ✓、真 0 显 $0.00、缺值本笔补原因=卡片行与详情成本改为非有限数时「—」+title「后台没有回传这条任务的成本。」（数据层不动）；状态未知「待核实」✓；状态迁移无死控件、创建入口=真 POST+csrf gate（CSRF 单已接）不假成功 ✓；四态齐+错误态可复制请求编号+重试 ✓；403≡404 同体不回显路径 ✓；testid tsk4-* 全家族不破 ✓；1440/1280/375 响应式（xl:grid-cols-5 md:grid-cols-2 min-w-0）✓。
+验证：定向 src/modules/tasks 2 files 14 passed；全量 122 files/1222 passed 0 fail。屏幕 DOM 复跑待 L0 合批构建代次。
+
+## matrix 能力与权限矩阵真数据双视角（feat(console): capability matrix real-data dual view）
+真数据实测（ego 登录态 GET /agent-api/api/matrix）：http=200 rows=3 asOf=2026-11-19T12:06:28Z；三行=QA2契约验证(draft)·emp_217A91BA、AgentOS产品助理(active)·emp_86A81CE8、AgentOS产品助理(active)·emp_0166858D——同名两行由行头「姓名 · 8位短码」消歧（短码=前8位大写，裸 emp_ 零上屏、raw 进 title）；skillRefs 全空⇒技能引用=0、单元格三态计数 0/0/0 为真实口径（禁假 0/禁空白：三态渲染器 CellPill ●已授权/○未授权/?待核实+title 原因在位）。
+双视角：员工视角/角色视角 tab（mtx5-view-people/mtx5-view-resource）+?view= URL 保态；宽表 mtx5-scroll 仅表内横向滚动，页面无横溢。
+汇总条五项落地：员工 3 · 在岗 2 · 有风险「—」（title：风险数据源尚未接入，不做猜测）· 技能引用 0（与明细 cells 同口径）· 今日运行「—」（title：运行统计源未接入）+ 三态计数 + 读取于 asOf。
+403≡404 同体：两路都进 denied 静态句「可能是这页不存在，也可能是账号还没有查看权限」，不回显路径 ✓；fixture 回落仅端点不可用且 data-fixture=1+人话注记（无 GAP 编号上屏）✓；testid 家族 matrix-→mtx5- 全替换（page 17+test 5 处，零残留）。
+测试：定向 src/modules/matrix 5 passed；全量 122 files/1222 passed 0 fail。屏幕 DOM 复跑待 L0 合批构建。
+
+## ov6 值班台/总览八卡真数据聚合（feat(console): overview duty cards real-data aggregation）
+8 卡对位（ego 登录态经 9122 BFF 实测原始读数）：1) 可上岗/在岗 ov6-kpi-employees ← employee-stats 200 {total:3, byLifecycle{draft:1,active:2}}=真数据；2) 今日运行 ov6-kpi-runs ← run-stats?from=2026-11-19&to=2026-11-20 200 totals.runs=0（真 0，非缺失）；3) 待审批 ov6-kpi-pending ← approval-stats 200 {pending:0,dueSoon:0}（真 0）；4) 今日成本 ov6-kpi-cost ← budget-usage?periodKind=day 200 {items:[],missingEmployeeIds:全部3人}→显「—」+脚注「账本未覆盖全部员工（3 人缺账本）」，真 0 与缺失可区分（usd 与 null 分支）；5) 健康检查 ov6-kpi-health（本笔新增）=六源 states 聚合（员工统计/运行统计/今日运行/审批统计/成本账本/风险矩阵），独立探针未接入 noteTitle=GAP-OV6-HEALTH 编号进 title；6) 趋势 ov6-trend ← run-stats 14d 200 buckets n=2 真数据；7) 最近活动 ov6-activity ← 运行记录窗真数据；8) 阻塞与待办 ov6-blockers ← tasks?status=blocked 200 n=1 + approvals 真数据，部分源失败显「有阻塞源未接入，下面是已读到的部分」。
+口径：汇总与明细同 payload（buildKpis/duty aggregate 单源）；每源 stamps 只认服务端采集时间键（sourceStamp），无 stamp 给原因不冒充；金额 ledger USD；错误态人话+RequestIdCopy 可复制编号+重试；403≡404 同体（Freshness/issue 文案不区分不回显路径）；宽卡网格既有 overflow 保 375 无横溢。
+testid：家族 ov5-→ov6- 全量升级（page 32+test 19 处，CSS class 保持 ov5- 为样式钩子）；fixture/forced ?state= 代次既有。
+测试：定向 src/modules/overview 8 passed；全量 vitest 122 files/1222 passed 0 fail。屏幕 DOM 复跑待 L0 合批 build 代次。

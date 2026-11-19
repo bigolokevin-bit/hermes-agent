@@ -133,7 +133,11 @@ function TaskDetailCard({
             <DetailField label="优先级">{priorityLabel(state.data.priority).text}</DetailField>
             <DetailField label="负责人">{actorLabel(state.data.assignee, nameMap)}</DetailField>
             <DetailField label="截止时间">{beijing(state.data.dueAt)}</DetailField>
-            <DetailField label="成本">{money(state.data.cost)}</DetailField>
+            <DetailField label="成本">
+              {typeof state.data.cost === "number" && Number.isFinite(state.data.cost)
+                ? money(state.data.cost)
+                : <span title="后台没有回传这条任务的成本。">—</span>}
+            </DetailField>
             <DetailField label="来源">{sourceLabel(state.data.source)}</DetailField>
             <DetailField label="创建人">{actorLabel(state.data.createdBy, nameMap)}</DetailField>
             <DetailField label="创建时间">{beijing(state.data.createdAt)}</DetailField>
@@ -412,7 +416,7 @@ export function TasksBoardModulePage() {
                           </div>
                           <p className="text-xs text-muted-foreground">截止 {beijing(row.dueAt)}</p>
                           <p className="text-xs text-muted-foreground">
-                            更新 {beijing(row.updatedAt)} · 成本 {money(row.cost)}
+                            更新 {beijing(row.updatedAt)} · 成本 {typeof row.cost === "number" && Number.isFinite(row.cost) ? money(row.cost) : <span title="后台没有回传这条任务的成本。">—</span>}
                           </p>
                           <p className="line-clamp-2 text-xs text-muted-foreground">{row.progressNote ?? "—"}</p>
                           <p className="text-xs text-muted-foreground">{actorLabel(row.assignee, board.nameMap)}</p>

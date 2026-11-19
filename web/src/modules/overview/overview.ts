@@ -13,6 +13,7 @@ export const OVERVIEW_GAP = {
   trend: 'GAP-OV5-TREND',
   activity: 'GAP-OV5-ACTIVITY',
   blockers: 'GAP-OV5-BLOCKERS',
+  health: 'GAP-OV6-HEALTH',
 } as const;
 
 const STAMP_KEYS = [

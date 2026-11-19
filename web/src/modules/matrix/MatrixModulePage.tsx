@@ -154,7 +154,7 @@ export function MatrixModulePage() {
   }, [data.rows]);
 
   return (
-    <section className="space-y-4" data-testid="matrix-module" data-fixture={origin === "fixture" ? "1" : undefined}>
+    <section className="space-y-4" data-testid="mtx5-module" data-fixture={origin === "fixture" ? "1" : undefined}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="font-mondwest text-xl">能力与权限矩阵</h1>
@@ -162,7 +162,7 @@ export function MatrixModulePage() {
         </div>
         <div className="flex items-center gap-2">
           {origin === "fixture" ? <Badge tone="warning">示例数据</Badge> : null}
-          <Button size="sm" outlined onClick={retry} data-testid="matrix-refresh">
+          <Button size="sm" outlined onClick={retry} data-testid="mtx5-refresh">
             <RefreshCw className="mr-1 size-3.5" aria-hidden="true" />
             重新读取
           </Button>
@@ -181,7 +181,7 @@ export function MatrixModulePage() {
                 className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs ${
                   view === "people" ? "bg-white/10 text-white" : "text-white/55 hover:text-white/80"
                 }`}
-                data-testid="matrix-view-people"
+                data-testid="mtx5-view-people"
               >
                 <Users className="size-3.5" aria-hidden="true" />
                 按员工
@@ -194,28 +194,38 @@ export function MatrixModulePage() {
                 className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs ${
                   view === "resource" ? "bg-white/10 text-white" : "text-white/55 hover:text-white/80"
                 }`}
-                data-testid="matrix-view-resource"
+                data-testid="mtx5-view-resource"
               >
                 <LayoutGrid className="size-3.5" aria-hidden="true" />
                 按能力
               </button>
             </div>
             {phase === "ready" ? (
-              <p className="text-xs text-white/45" data-testid="matrix-summary">
-                已授权 {counts.granted} · 未授权 {counts.denied} · 待核实 {counts.unknown}
-                <span className="ml-2">读取于 {fmtStamp(payload?.asOf ?? null)}</span>
+              <p className="flex min-w-0 flex-wrap gap-x-2 text-xs text-white/45" data-testid="mtx5-summary">
+                <span>员工 {payload?.employees.length ?? 0}</span>
+                <span aria-hidden>·</span>
+                <span>在岗 {payload ? payload.employees.filter((e) => e.lifecycle === "active").length : 0}</span>
+                <span aria-hidden>·</span>
+                <span title="风险数据源尚未接入，这里不做猜测。">有风险 —</span>
+                <span aria-hidden>·</span>
+                <span>技能引用 {counts.granted + counts.denied + counts.unknown}</span>
+                <span aria-hidden>·</span>
+                <span title="运行统计源尚未接入，接入后此栏自动显示真数。">今日运行 —</span>
+                <span aria-hidden>·</span>
+                <span>已授权 {counts.granted} / 未授权 {counts.denied} / 待核实 {counts.unknown}</span>
+                <span>读取于 {fmtStamp(payload?.asOf ?? null)}</span>
               </p>
             ) : null}
           </div>
 
           {origin === "fixture" && phase === "ready" ? (
-            <p className="rounded-lg border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-xs text-amber-200" data-testid="matrix-fixture-note">
+            <p className="rounded-lg border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-xs text-amber-200" data-testid="mtx5-fixture-note">
               真实矩阵接口还没接上，这张表用示例数据确认版面；接上后同一张表直接显示真实授权，「待核实」表示后端没有给出这一格。
             </p>
           ) : null}
 
           {phase === "loading" ? (
-            <div className="space-y-2 py-6" data-testid="matrix-loading" aria-busy="true">
+            <div className="space-y-2 py-6" data-testid="mtx5-loading" aria-busy="true">
               <div className="h-4 w-40 animate-pulse rounded bg-white/10" />
               <div className="h-9 w-full rounded bg-white/5" />
               <div className="h-9 w-full rounded bg-white/5" />
@@ -225,7 +235,7 @@ export function MatrixModulePage() {
           ) : null}
 
           {phase === "empty" ? (
-            <div className="flex flex-col items-center gap-2 py-10 text-center" data-testid="matrix-empty">
+            <div className="flex flex-col items-center gap-2 py-10 text-center" data-testid="mtx5-empty">
               <Inbox className="size-8 text-white/35" aria-hidden="true" />
               <p className="text-sm text-white/80">还没有可展示的矩阵</p>
               <p className="max-w-md text-xs text-white/50">
@@ -238,21 +248,21 @@ export function MatrixModulePage() {
           ) : null}
 
           {phase === "denied" ? (
-            <div className="flex flex-col items-center gap-2 py-10 text-center" data-testid="matrix-denied">
+            <div className="flex flex-col items-center gap-2 py-10 text-center" data-testid="mtx5-denied">
               <ShieldAlert className="size-8 text-amber-300/80" aria-hidden="true" />
               <p className="text-sm text-white/80">你看不到这份矩阵</p>
               <p className="max-w-md text-xs text-white/50">可能是这页不存在，也可能是你的账号还没有查看权限。</p>
               <p className="text-xs text-white/40">
                 <RequestIdCopy requestId={errorNote?.requestId} fallback="本次请求未记录编号，可复制时间与操作路径反馈" />
               </p>
-              <Button size="sm" outlined onClick={retry} data-testid="matrix-denied-retry">
+              <Button size="sm" outlined onClick={retry} data-testid="mtx5-denied-retry">
                 刷新试试
               </Button>
             </div>
           ) : null}
 
           {phase === "error" ? (
-            <div className="flex flex-col items-center gap-2 py-10 text-center" data-testid="matrix-error">
+            <div className="flex flex-col items-center gap-2 py-10 text-center" data-testid="mtx5-error">
               <TriangleAlert className="size-8 text-rose-300/80" aria-hidden="true" />
               <p className="text-sm text-white/80">
                 {errorNote?.detail?.startsWith("需要登录") ? "需要登录" : "这份矩阵没能读出来"}
@@ -265,7 +275,7 @@ export function MatrixModulePage() {
               <p className="text-xs text-white/40">
                 <RequestIdCopy requestId={errorNote?.requestId} fallback="本次请求未记录编号，可复制时间与操作路径反馈" />
               </p>
-              <Button size="sm" outlined onClick={retry} data-testid="matrix-error-retry">
+              <Button size="sm" outlined onClick={retry} data-testid="mtx5-error-retry">
                 重试
               </Button>
               {errorNote?.detail?.startsWith("需要登录") ? (
@@ -282,7 +292,7 @@ export function MatrixModulePage() {
           ) : null}
 
           {phase === "ready" ? (
-            <div className="overflow-x-auto" data-testid="matrix-scroll">
+            <div className="overflow-x-auto" data-testid="mtx5-scroll">
               <div className="min-w-[720px]">
                 <div
                   className="grid items-center gap-2 border-b border-white/10 pb-2 text-[11px] uppercase tracking-wide text-white/40"
@@ -290,19 +300,19 @@ export function MatrixModulePage() {
                 >
                   <span>{view === "people" ? "员工" : "能力"}</span>
                   {data.columns.map((column) => (
-                    <span key={column.key} className="truncate" title={column.rawTitle ?? undefined} data-testid={`matrix-col-${column.key}`}>
+                    <span key={column.key} className="truncate" title={column.rawTitle ?? undefined} data-testid={`mtx5-col-${column.key}`}>
                       {column.label}
                       {column.meta ? <span className="ml-1 normal-case text-white/30">{column.meta}</span> : null}
                     </span>
                   ))}
                 </div>
-                <ul className="divide-y divide-white/5" data-testid="matrix-table">
+                <ul className="divide-y divide-white/5" data-testid="mtx5-table">
                   {data.rows.map((row) => (
                     <li
                       key={row.key}
                       className="grid items-center gap-2 py-2"
                       style={{ gridTemplateColumns: `minmax(180px, 1.4fr) repeat(${data.columns.length}, minmax(96px, 1fr))` }}
-                      data-testid={`matrix-row-${row.key}`}
+                      data-testid={`mtx5-row-${row.key}`}
                     >
                       <span className="min-w-0">
                         <span className="block truncate text-sm text-white/85" title={row.rawTitle ?? undefined}>
@@ -311,7 +321,7 @@ export function MatrixModulePage() {
                         <span className="block truncate text-xs text-white/40">{row.meta || "—"}</span>
                       </span>
                       {row.cells.map((cell) => (
-                        <span key={cell.key} className="justify-self-start" data-testid={`matrix-cell-${row.key}-${cell.key}`}>
+                        <span key={cell.key} className="justify-self-start" data-testid={`mtx5-cell-${row.key}-${cell.key}`}>
                           <CellPill state={cell.state} />
                         </span>
                       ))}

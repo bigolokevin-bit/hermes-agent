@@ -33,7 +33,7 @@ function RequestId({ id }: { id: string | null }) {
     <span className="ov5-req">
       请求编号 {text}
       {id ? (
-        <button type="button" onClick={copy} data-testid="ov5-copy-req">
+        <button type="button" onClick={copy} data-testid="ov6-copy-req">
           {copied ? '已复制' : '复制'}
         </button>
       ) : null}
@@ -126,20 +126,20 @@ function Trend({ stats, onRetry }: { stats: Loadable<RunStatsBody>; onRetry: () 
   const points = stats.k === 'ready' ? trendPoints(stats.data) : [];
   const max = Math.max(1, ...points.map((p) => p.runs ?? 0));
   return (
-    <Card className="ov5-block" data-testid="ov5-trend">
+    <Card className="ov5-block" data-testid="ov6-trend">
       <CardContent className="ov5-block-bd">
         <div className="ov5-block-hd">
           <h2>近 14 天运行趋势</h2>
           <Source>运行统计</Source>
         </div>
-        <Freshness items={[{ source: '运行统计', state: stats }]} testid="ov5-trend-stamp" />
+        <Freshness items={[{ source: '运行统计', state: stats }]} testid="ov6-trend-stamp" />
         {stats.k === 'loading' ? (
           <div className="ov5-skeleton" aria-busy="true" aria-label="趋势加载中"><span /><span /><span /></div>
         ) : stats.k === 'error' ? (
           <div className="ov5-inline-error" role="alert">
             <span>趋势数据没有读出来。</span>
             <RequestId id={stats.requestId} />
-            <Button size="sm" outlined onClick={onRetry} data-testid="ov5-trend-retry">重试</Button>
+            <Button size="sm" outlined onClick={onRetry} data-testid="ov6-trend-retry">重试</Button>
           </div>
         ) : points.length === 0 ? (
           <div className="ov5-empty-line">
@@ -179,20 +179,20 @@ function Trend({ stats, onRetry }: { stats: Loadable<RunStatsBody>; onRetry: () 
 function RecentActivity({ data, onRetry }: { data: DutyData; onRetry: () => void }) {
   const runs = data.recentRuns;
   return (
-    <Card className="ov5-block" data-testid="ov5-activity">
+    <Card className="ov5-block" data-testid="ov6-activity">
       <CardContent className="ov5-block-bd">
         <div className="ov5-block-hd">
           <h2>最近活动</h2>
           <Link to="/runs">全部运行<ArrowRight className="h-3.5 w-3.5" /></Link>
         </div>
-        <Freshness items={[{ source: '运行记录', state: runs }]} testid="ov5-activity-stamp" />
+        <Freshness items={[{ source: '运行记录', state: runs }]} testid="ov6-activity-stamp" />
         {runs.k === 'loading' ? (
           <div className="ov5-skeleton" aria-busy="true" aria-label="最近活动加载中"><span /><span /><span /></div>
         ) : runs.k === 'error' ? (
           <div className="ov5-inline-error" role="alert">
             <span>最近活动没有读出来。</span>
             <RequestId id={runs.requestId} />
-            <Button size="sm" outlined onClick={onRetry} data-testid="ov5-activity-retry">重试</Button>
+            <Button size="sm" outlined onClick={onRetry} data-testid="ov6-activity-retry">重试</Button>
           </div>
         ) : runs.data.length === 0 ? (
           <div className="ov5-empty-line">
@@ -202,7 +202,7 @@ function RecentActivity({ data, onRetry }: { data: DutyData; onRetry: () => void
         ) : (
           <ul className="ov5-rows">
             {runs.data.slice(0, 3).map((run) => (
-              <li key={run.runId} data-testid="ov5-activity-row">
+              <li key={run.runId} data-testid="ov6-activity-row">
                 <Link to={`/runs/${encodeURIComponent(run.runId)}`} title={run.runId}>
                   {run.employeeId ? employeeLabel(undefined, run.employeeId) : `运行 ${shortId(run.runId)}`}
                 </Link>
@@ -232,18 +232,18 @@ function Blockers({ data, onRetry }: { data: DutyData; onRetry: () => void }) {
   const unavailable = blockSources.some(({ state }) => state.k === 'error');
   const firstBlockError = blockSources.map(({ state }) => state).find((state) => state.k === 'error');
   return (
-    <Card className="ov5-block" data-testid="ov5-blockers">
+    <Card className="ov5-block" data-testid="ov6-blockers">
       <CardContent className="ov5-block-bd">
         <div className="ov5-block-hd">
           <h2>阻塞队列</h2>
           <Source>失败运行 / 阻塞任务 / 待审批</Source>
         </div>
-        <Freshness items={blockSources} testid="ov5-blockers-stamp" />
+        <Freshness items={blockSources} testid="ov6-blockers-stamp" />
         {unavailable ? (
           <div className="ov5-inline-error" role="alert">
             <span>有阻塞源未接入，下面是已读到的部分，不代表全部。</span>
             <RequestId id={firstBlockError?.k === 'error' ? firstBlockError.requestId : null} />
-            <Button size="sm" outlined onClick={onRetry} data-testid="ov5-blockers-retry">重试</Button>
+            <Button size="sm" outlined onClick={onRetry} data-testid="ov6-blockers-retry">重试</Button>
           </div>
         ) : null}
         {rows.length === 0 ? (
@@ -294,6 +294,14 @@ export function OverviewView({
     totalEmployeesFallback: employees,
     matrix,
   });
+  const healthSources = [
+    { label: '员工统计', state: data.employees },
+    { label: '运行统计', state: data.stats },
+    { label: '今日运行', state: data.todayStats },
+    { label: '审批统计', state: data.approvalStats },
+    { label: '成本账本', state: data.budgetDay },
+    { label: '风险矩阵', state: matrix },
+  ];
   const coreStates = [data.employees, data.stats, data.todayStats, data.approvalStats, data.budgetDay];
   const allError = coreStates.every((state) => state.k === 'error');
   const anyLoading = coreStates.some((state) => state.k === 'loading');
@@ -302,8 +310,8 @@ export function OverviewView({
   const allReady = coreStates.every((state) => state.k === 'ready');
   if (allReady && kpis.total === 0 && kpis.runs === 0 && kpis.pending === 0) {
     return (
-      <section className="ov5-page" data-testid="ov5-page">
-        <Card className="ov5-empty-card" data-testid="ov5-empty"><CardContent>
+      <section className="ov5-page" data-testid="ov6-page">
+        <Card className="ov5-empty-card" data-testid="ov6-empty"><CardContent>
           <h1>还没有可汇总的数据</h1>
           <p>员工、运行与审批都为空时，总览没有数字可展示。</p>
           <Link to="/employees">先看数字员工<ArrowRight className="h-3.5 w-3.5" /></Link>
@@ -314,8 +322,8 @@ export function OverviewView({
 
   if (allError) {
     return (
-      <section className="ov5-page" data-testid="ov5-page">
-        <Card className="ov5-error-card" data-testid="ov5-error" role="alert">
+      <section className="ov5-page" data-testid="ov6-page">
+        <Card className="ov5-error-card" data-testid="ov6-error" role="alert">
           <CardContent>
             <div className="ov5-inline-error">
               <AlertTriangle className="h-5 w-5" />
@@ -323,7 +331,7 @@ export function OverviewView({
             </div>
             <p>这次聚合的所有来源都没有返回数据，页面没有编造任何数字。</p>
             <RequestId id={firstError?.requestId ?? null} />
-            <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />} data-testid="ov5-retry">重试</Button>
+            <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />} data-testid="ov6-retry">重试</Button>
           </CardContent>
         </Card>
       </section>
@@ -331,31 +339,32 @@ export function OverviewView({
   }
 
   return (
-    <section className="ov5-page" data-testid="ov5-page">
+    <section className="ov5-page" data-testid="ov6-page">
       <header className="ov5-head">
         <div>
           <p className="ov5-eyebrow">运营 · 控制台</p>
           <h1>运营总览</h1>
           <p className="ov5-sub">员工、运行、审批与成本各读各的；缺失值显示「—」，不补零。</p>
         </div>
-        <Button size="sm" outlined onClick={onRetry} disabled={loading || anyLoading} aria-busy={loading || anyLoading} data-testid="ov5-refresh" prefix={<RefreshCw className={`h-3.5 w-3.5 ${loading || anyLoading ? 'ov5-spin' : ''}`} />}>
+        <Button size="sm" outlined onClick={onRetry} disabled={loading || anyLoading} aria-busy={loading || anyLoading} data-testid="ov6-refresh" prefix={<RefreshCw className={`h-3.5 w-3.5 ${loading || anyLoading ? 'ov5-spin' : ''}`} />}>
           刷新
         </Button>
       </header>
 
-      {anyLoading ? <div className="ov5-skeleton" aria-busy="true" aria-label="总览加载中" data-testid="ov5-loading"><span /><span /><span /></div> : null}
+      {anyLoading ? <div className="ov5-skeleton" aria-busy="true" aria-label="总览加载中" data-testid="ov6-loading"><span /><span /><span /></div> : null}
 
       <div className="ov5-kpis">
-        <KpiCard title="员工" value={dashed(kpis.total)} foot={<>在岗 <b>{dashed(kpis.active)}</b> · 有风险 <b>{dashed(kpis.atRisk)}</b></>} source="员工统计 / 风险矩阵" stamps={[{ source: '员工统计', state: data.stats }, { source: '风险矩阵', state: matrix }]} testid="ov5-kpi-employees" issues={[{ label: '员工统计', state: data.employees }, ...(matrix.k === 'error' ? [{ label: '风险矩阵', state: matrix, gap: OVERVIEW_GAP.risk }] : [])]} onRetry={onRetry} note={kpis.atRisk === null ? '风险口径未接入' : null} noteTitle={kpis.atRisk === null ? OVERVIEW_GAP.risk : undefined}>
+        <KpiCard title="员工" value={dashed(kpis.total)} foot={<>在岗 <b>{dashed(kpis.active)}</b> · 有风险 <b>{dashed(kpis.atRisk)}</b></>} source="员工统计 / 风险矩阵" stamps={[{ source: '员工统计', state: data.stats }, { source: '风险矩阵', state: matrix }]} testid="ov6-kpi-employees" issues={[{ label: '员工统计', state: data.employees }, ...(matrix.k === 'error' ? [{ label: '风险矩阵', state: matrix, gap: OVERVIEW_GAP.risk }] : [])]} onRetry={onRetry} note={kpis.atRisk === null ? '风险口径未接入' : null} noteTitle={kpis.atRisk === null ? OVERVIEW_GAP.risk : undefined}>
           <Users className="ov5-watermark" aria-hidden />
         </KpiCard>
-        <KpiCard title="今日运行" value={dashed(kpis.runs)} foot={<>失败 <b>{dashed(kpis.failed)}</b> · 失败率 <b>{kpis.failureRate === null ? '—' : `${kpis.failureRate}%`}</b></>} source="运行统计（今日）" stamps={[{ source: '运行统计', state: data.todayStats }]} testid="ov5-kpi-runs" issues={[{ label: '运行统计', state: data.todayStats, gap: OVERVIEW_GAP.runs }]} onRetry={onRetry} note={kpis.runs === 0 && kpis.failureRate === null ? '今天还没有运行，失败率不计算' : null} noteTitle={kpis.runs === 0 && kpis.failureRate === null ? OVERVIEW_GAP.runs : undefined}>
+        <KpiCard title="今日运行" value={dashed(kpis.runs)} foot={<>失败 <b>{dashed(kpis.failed)}</b> · 失败率 <b>{kpis.failureRate === null ? '—' : `${kpis.failureRate}%`}</b></>} source="运行统计（今日）" stamps={[{ source: '运行统计', state: data.todayStats }]} testid="ov6-kpi-runs" issues={[{ label: '运行统计', state: data.todayStats, gap: OVERVIEW_GAP.runs }]} onRetry={onRetry} note={kpis.runs === 0 && kpis.failureRate === null ? '今天还没有运行，失败率不计算' : null} noteTitle={kpis.runs === 0 && kpis.failureRate === null ? OVERVIEW_GAP.runs : undefined}>
           <Gauge className="ov5-watermark" aria-hidden />
         </KpiCard>
-        <KpiCard title="待审批" value={dashed(kpis.pending)} foot={<Link to="/approvals">去审批中心<ArrowRight className="h-3.5 w-3.5" /></Link>} source="审批统计" stamps={[{ source: '审批统计', state: data.approvalStats }]} testid="ov5-kpi-pending" issues={[{ label: '审批统计', state: data.approvalStats, gap: OVERVIEW_GAP.approvals }]} onRetry={onRetry}>
+        <KpiCard title="待审批" value={dashed(kpis.pending)} foot={<Link to="/approvals">去审批中心<ArrowRight className="h-3.5 w-3.5" /></Link>} source="审批统计" stamps={[{ source: '审批统计', state: data.approvalStats }]} testid="ov6-kpi-pending" issues={[{ label: '审批统计', state: data.approvalStats, gap: OVERVIEW_GAP.approvals }]} onRetry={onRetry}>
           <ShieldAlert className="ov5-watermark" aria-hidden />
         </KpiCard>
-        <KpiCard title="今日成本" value={kpis.costUsd === null ? '—' : usd(kpis.costUsd)} foot={kpis.costPartial ? <>账本未覆盖全部员工{kpis.costMissing > 0 ? `（${kpis.costMissing} 人缺账本）` : ''}</> : <>美元 · 账本实扣</>} source="成本账本（日）" stamps={[{ source: '成本账本', state: data.budgetDay }]} testid="ov5-kpi-cost" issues={[{ label: '成本账本', state: data.budgetDay, gap: OVERVIEW_GAP.cost }]} onRetry={onRetry} note={kpis.costUsd === null ? '成本口径未齐' : null} noteTitle={kpis.costUsd === null ? OVERVIEW_GAP.cost : undefined} />
+        <KpiCard title="今日成本" value={kpis.costUsd === null ? '—' : usd(kpis.costUsd)} foot={kpis.costPartial ? <>账本未覆盖全部员工{kpis.costMissing > 0 ? `（${kpis.costMissing} 人缺账本）` : ''}</> : <>美元 · 账本实扣</>} source="成本账本（日）" stamps={[{ source: '成本账本', state: data.budgetDay }]} testid="ov6-kpi-cost" issues={[{ label: '成本账本', state: data.budgetDay, gap: OVERVIEW_GAP.cost }]} onRetry={onRetry} note={kpis.costUsd === null ? '成本口径未齐' : null} noteTitle={kpis.costUsd === null ? OVERVIEW_GAP.cost : undefined} />
+        <KpiCard title="健康检查" value={`${healthSources.filter((s) => s.state.k === 'ready').length}/${healthSources.length} 来源正常`} foot={<span>{healthSources.every((s) => s.state.k === 'ready') ? '全部来源已读到' : healthSources.filter((s) => s.state.k !== 'ready').map((s) => `${s.label}未就绪`).join(' · ')}</span>} source="本页数据源实时聚合" stamps={[]} testid="ov6-kpi-health" issues={[]} onRetry={onRetry} note="独立健康探针未接入" noteTitle={OVERVIEW_GAP.health} />
       </div>
 
       <div className="ov5-grid">
@@ -416,15 +425,15 @@ export function OverviewPage() {
 
   if (forced === 'loading') {
     return (
-      <section className="ov5-page" data-testid="ov5-page" data-fixture="1">
-        <div className="ov5-skeleton" aria-busy="true" aria-label="总览加载中" data-testid="ov5-loading"><span /><span /><span /></div>
+      <section className="ov5-page" data-testid="ov6-page" data-fixture="1">
+        <div className="ov5-skeleton" aria-busy="true" aria-label="总览加载中" data-testid="ov6-loading"><span /><span /><span /></div>
       </section>
     );
   }
   if (forced === 'empty') {
     return (
-      <section className="ov5-page" data-testid="ov5-page" data-fixture="1">
-        <Card className="ov5-empty-card" data-testid="ov5-empty"><CardContent>
+      <section className="ov5-page" data-testid="ov6-page" data-fixture="1">
+        <Card className="ov5-empty-card" data-testid="ov6-empty"><CardContent>
           <h1>还没有可汇总的数据</h1>
           <p>员工、运行与审批都为空时，总览没有数字可展示。</p>
           <Link to="/employees">先看数字员工<ArrowRight className="h-3.5 w-3.5" /></Link>
@@ -434,12 +443,12 @@ export function OverviewPage() {
   }
   if (forced === 'error') {
     return (
-      <section className="ov5-page" data-testid="ov5-page" data-fixture="1">
-        <Card className="ov5-error-card" data-testid="ov5-error" role="alert"><CardContent>
+      <section className="ov5-page" data-testid="ov6-page" data-fixture="1">
+        <Card className="ov5-error-card" data-testid="ov6-error" role="alert"><CardContent>
           <div className="ov5-inline-error"><AlertTriangle className="h-5 w-5" /><b>总览没能读出来</b></div>
           <p>这次聚合的所有来源都没有返回数据，页面没有编造任何数字。</p>
           <RequestId id={null} />
-          <Button size="sm" outlined onClick={clearForced} data-testid="ov5-retry">重试</Button>
+          <Button size="sm" outlined onClick={clearForced} data-testid="ov6-retry">重试</Button>
         </CardContent></Card>
       </section>
     );
