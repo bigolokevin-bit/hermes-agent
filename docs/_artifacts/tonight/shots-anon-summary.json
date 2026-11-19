@@ -142,5 +142,8 @@
     "playwrightFrom": "/Users/kevin_studio/Projects/seakoi-console-web/package.json",
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
-  "ok": false
+  "ok": false,
+  "headHash": "4bfb31ef",
+  "runExitCode": 1,
+  "note": "401-gated shell evidence leg; ok=false expected (distinct shells not the point); 19/19 produced, failures=[]"
 }

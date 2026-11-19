@@ -9,7 +9,7 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 796,
+    "textLen": 797,
     "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 — — 4 项检查的数据源尚未接入，可上岗",
     "hasMainEl": true,
     "ok": true
@@ -165,13 +165,13 @@
     {
       "route": "#/capabilities?tab=tools",
       "viewport": "1440",
-      "chars": 242,
+      "chars": 296,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=tools",
       "viewport": "375",
-      "chars": 242,
+      "chars": 296,
       "hasMainEl": true
     },
     {
@@ -465,13 +465,13 @@
     {
       "route": "#/overview",
       "viewport": "1440",
-      "chars": 1011,
+      "chars": 1012,
       "hasMainEl": true
     },
     {
       "route": "#/overview",
       "viewport": "375",
-      "chars": 1011,
+      "chars": 1012,
       "hasMainEl": true
     },
     {
@@ -591,7 +591,7 @@
     {
       "route": "#/work",
       "viewport": "375",
-      "chars": 1639,
+      "chars": 226,
       "hasMainEl": true
     },
     {
@@ -631,11 +631,12 @@
       "hasMainEl": true
     }
   ],
-  "routesWithConsoleErrors": 3,
+  "routesWithConsoleErrors": 4,
   "consoleErrorRoutes": [
     "#/knowledge?tab=citations",
     "#/knowledge?tab=evidence",
-    "#/knowledge?tab=retrieval"
+    "#/knowledge?tab=retrieval",
+    "#/work"
   ],
   "routesWithEnvOnlyConsoleErrors": 22,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
@@ -645,15 +646,15 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "fd1e43f2",
-  "entry": "assets/index-Dee5mIsg.js",
-  "entrySha256": "8bcd6a6bb513eae5005bc4ac925b69f1d6e701f755e037352c17ff4d4233f355",
-  "entryBytes": 150019,
+  "headHash": "4bfb31ef",
+  "entry": "assets/index-CnQ2kP3Z.js",
+  "entrySha256": "a247b408ae78d345061076c9a5afa95403c1bb0455285302ac37e6e81eaca4bd",
+  "entryBytes": 150452,
   "medianMainChars": 145.0,
   "screenshotMode": "playwright",
-  "servedEntryBefore": "index-Dee5mIsg.js",
-  "servedEntryAfter": "index-Dee5mIsg.js",
-  "shotWindow": "11:05-11:07 new-mtime all 102 (auth state, Dee5mIsg gen)",
+  "servedEntryBefore": "index-CnQ2kP3Z.js",
+  "servedEntryAfter": "index-CnQ2kP3Z.js",
+  "shotWindow": "11:15:19-11:16:09 new-mtime all 102 (auth state, CnQ2kP3Z gen)",
   "env": "auth-state cookie injected; gated flag skipped in auth mode; proxy pid 99197",
   "anonEvidence": {
     "dir": "docs/_artifacts/tonight/shots-anon",
@@ -665,7 +666,7 @@
       "#/work?tab=runs",
       "#/employees?tab=matrix",
       "#/system",
-      "(+tab 变体超集=19@1440)"
+      "(+tab variants superset)"
     ],
     "viewports": [
       1440
@@ -673,6 +674,6 @@
     "note": "401-gated shell evidence, NOT page content",
     "summary": "shots-anon-summary.json"
   },
-  "productCE": "knowledge citations/evidence/retrieval 三条产品面 console error 与二十三轮同位，R7.1(fd1e43f2) 后仍现，交 L0 裁",
+  "productCE": "consoleErrorRoutes = knowledge citations/evidence/retrieval (same three as round-23, still present at 4bfb31ef) + #/work (new). Card ok formula excludes consoleErrors; referred to L0 for triage, not masked.",
   "exitCode": 0
 }

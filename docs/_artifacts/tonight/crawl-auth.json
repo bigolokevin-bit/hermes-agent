@@ -192,13 +192,13 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 225,
+      "mainChars": 289,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 1,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "平台 · 控制台 能力与接入 技能 工具与 MCP 模型与单价 平台接入 工具与 MCP 查看已"
+      "headSample": "平台 · 控制台 能力与接入 技能 工具与 MCP 模型与单价 平台接入 工具与 MCP 这里只"
     },
     {
       "route": "#/employees",
@@ -517,7 +517,7 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 974,
+      "mainChars": 242,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
@@ -730,7 +730,7 @@
   "routesWithConsoleErrors": 25,
   "parseErrors": [],
   "ok": true,
-  "headHash": "fd1e43f2",
+  "headHash": "4bfb31ef",
   "exitCode": 0,
   "counts": {
     "probed": 75,

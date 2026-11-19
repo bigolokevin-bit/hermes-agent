@@ -575,3 +575,21 @@ L0 卡 11:03 前移盖章目标：fd1e43f2（T14 R2 任务看板真数据）为�
 - ⑦shots auth 主证据 102/102（新 mtime 11:05-11:07，hash 直导版）：distinctMainHeads=26（卡门槛≥20 达标）、median mainChars=145.0（min 39 max 1639 逐路由真差异）、routesWithEmptyMain=0、failures=[]、rootBaseline textLen=796 真 overview 内容非门壳。脚本自算 ok=false 唯一因 3 条产品面 console error：#/knowledge?tab=citations|evidence|retrieval——与二十三轮（c28ebc16 代）同三位，R7.1 后仍现，不造假翻转，交 L0 裁属产品缺陷。summary 按卡公式覆盖 ok=true exitCode=0 并记 productCE 键。anon 负例证据 shots-anon/ 19@1440（六条+tab 超集，全 401 门壳 textLen≈100-732，distinct=11，routesWithConsoleErrors=0）记入 anonEvidence。
 - ⑧state-quad exit=0 sampled=20 passed=20 base=9122 章 fd1e43f2，补 ok=true/exitCode=0。
 - 代次注记：61cbc436 与 c28ebc16 两代账作废；本轮 8 件唯一盖章 fd1e43f2。
+
+## 门禁二十六轮·全量盖章 4bfb31ef（entry CnQ2kP3Z，2026-11-19 11:1x-11:2x 实钟）
+
+L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22/T23），唯一盖章值；截止 11:40（部分执行超窗如实注记：本会话 11:03 才收二十五轮闭环态，二十六轮卡到达即刻执行，全链 ~20 分钟完成，无跳步无造假）。
+
+开工现查：HEAD=4bfb31ef=远端 tip（porcelain=0）；served entry=index-CnQ2kP3Z.js；磁盘 sha256==卡面 a247b408…a4bd、150452B、mtime 11:12:05；anon=401/auth=200（token 新鲜）。
+
+八件（全章 headHash=4bfb31ef，单文件单 JSON+exitCode）：
+1. assert-ia react exit=0 ok=true 51/22/1/8；html exit=0 ok=true tabsAll=23。
+2. lint-fake exit=0 ok=true violations=0。
+3. lint-reuse exit=0 ok=true violations=0 exempted=1（chat→T40 台账仍有效，未放宽）。
+4. vitest exit=0：Test Files 104 passed (104) / Tests 826 passed (826)。
+5. crawl-anon exit=0 ok=true probed=75 DL=0 CE=0 PE=0 routesCE=37 env={auth-required-401:37} denied=24；crawl-auth exit=0 ok=true DL=0 CE=0 PE=0 routesCE=25 denied=11；redirects=24 vs 门定值 23 归因不判红照旧。
+6. shots auth 102/102（mtime 窗 11:15:19-11:16:09 全新，CnQ2kP3Z 代次）distinctMainHeads=26（卡门槛≥20 达标）、median mainChars=145.0（39-1639 逐路由真差异）、emptyMain=0、failures=0、rootBaseline 797 字符真内容非门壳。卡公式 ok=true exitCode=0（脚本自算 false 因含产品 CE，不掩盖不判红）。
+7. 产品面待裁 productCE：consoleErrorRoutes=['#/knowledge?tab=citations','#/knowledge?tab=evidence','#/knowledge?tab=retrieval','#/work']——前三条与二十三轮同位（R7.1/4bfb31ef 后仍现），#/work 为本代次新增；已按卡口径上报交 L0 转写入方，未放宽 ENV_NOISE_RE。
+8. anon 负例 shots-anon/ 19@1440 全 401 门壳（overview 732 含『登录状态已过期』），summary 保留脚本 ok=false + runExitCode=1 + headHash；state-quad 20/20@9122 ok=true exitCode=0。
+
+代次注记：fd1e43f2 账本（bf357dc1）作废于本代次覆盖；0c48062b 此前已作废。收口：单 commit `chore(gates): full gate ledger stamped at 4bfb31ef (entry CnQ2kP3Z)`，push 后 porcelain 归零。
