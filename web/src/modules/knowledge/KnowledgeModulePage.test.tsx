@@ -30,9 +30,14 @@ function LocationProbe() {
 function JumpProbe() {
   const navigate = useNavigate();
   return (
-    <button data-testid="jump-search" onClick={() => navigate("/knowledge?tab=retrieval")}>
-      jump
-    </button>
+    <>
+      <button data-testid="jump-search" onClick={() => navigate("/knowledge?tab=retrieval")}>
+        jump
+      </button>
+      <button data-testid="go-back" onClick={() => navigate(-1)}>
+        back
+      </button>
+    </>
   );
 }
 
@@ -91,6 +96,15 @@ async function submitForm(testid: string) {
   expect(form, testid).toBeTruthy();
   await act(async () => {
     form?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  });
+  await act(async () => {});
+}
+
+async function clickNth(testid: string, index: number) {
+  const nodes = container.querySelectorAll(`[data-testid="${testid}"]`);
+  expect(nodes.length > index, `${testid}[${index}]`).toBe(true);
+  await act(async () => {
+    nodes[index].dispatchEvent(new MouseEvent("click", { bubbles: true }));
   });
   await act(async () => {});
 }
@@ -565,6 +579,120 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(container.textContent).toContain("需要登录");
     expect(byTestid("knw5-spaces-unwired")).toBeNull();
     expect(byTestid("knw5-spaces-table")).toBeNull();
+  });
+
+  it("drills a citation open to its 原文与摘要 and keeps that choice in the URL", async () => {
+    const LONG_SUMMARY =
+      "这一段的完整摘要：第三季度的毛利口径按区域拆分，退货冲销计入当月，华东口径自 11 月起与集团一致，因此同比数据需要按新口径重算后才能对比。";
+    fetchMock.mockImplementation((url: string) => {
+      if (url === CITATIONS) {
+        return Promise.resolve({
+          asOf: "2026-11-19T07:31:00Z",
+          citations: [
+            {
+              citationId: "cit_long",
+              title: "季度经营复盘报告",
+              documentName: "季度经营复盘.docx",
+              sourceType: "docx",
+              href: "/runs/run_9",
+              createdAt: "2026-11-19T05:00:00Z",
+              summary: LONG_SUMMARY,
+              employeeName: "陈嘉禾",
+              employeeId: "emp_A1B2C3D4E5F60718",
+            },
+            {
+              citationId: "cit_ext",
+              title: "外部镜像：薪酬口径说明",
+              url: "https://files.example.invalid/comp.pdf",
+              createdAt: "2026-11-19T04:00:00Z",
+            },
+          ],
+        });
+      }
+      if (url === SESSIONS) {
+        return Promise.resolve({ items: [{ session_id: "cs_1", employee_id: "u_1", message_count: 1, updated_at: "2026-11-19T06:00:00Z" }] });
+      }
+      if (url === "/agent-api/api/console-sessions/cs_1") {
+        return Promise.resolve({
+          messages: [{ role: "assistant", createdAt: "2026-11-19T06:00:00Z", citations: [{ id: "cit_s1", title: "会话里的引用", href: "/documents/d1" }] }],
+        });
+      }
+      return fail(404, "这个数据接口还没有接入。");
+    });
+
+    await render("/knowledge?tab=spaces&panel=evidence");
+    expect(attr("knw5-citations", "data-len")).toBe("2");
+    expect(byTestid("knw5-citations-list-detail")).toBeNull();
+
+    await click("knw5-citations-list-drill");
+    const detail = byTestid("knw5-citations-list-detail");
+    expect(detail).toBeTruthy();
+    expect(detail?.textContent ?? "").toContain(LONG_SUMMARY);
+    expect(detail?.textContent ?? "").toContain("原文位置");
+    expect(attr("knw5-citations-list-detail-open", "href")).toBe("/runs/run_9");
+    expect(attr("knw5-citations-list-detail", "title")).toBe("cit_long");
+    expect(attr("knw5-citations-list-row", "data-open")).toBe("1");
+    expect((byTestid("loc")?.textContent ?? "")).toContain("ref=cit_long");
+
+    // 刷新：还开在同一行。
+    await render("/knowledge?tab=spaces&panel=evidence&ref=cit_long");
+    expect(byTestid("knw5-citations-list-detail")).toBeTruthy();
+    expect(attr("knw5-citations-list-detail-summary", "data-testid")).toBe("knw5-citations-list-detail-summary");
+
+    // 第二行：原文不可达要把原因写清楚。
+    await clickNth("knw5-citations-list-drill", 1);
+    const second = byTestid("knw5-citations-list-detail");
+    expect(second?.textContent ?? "").toContain("原文不可达");
+    expect(second?.textContent ?? "").toContain("不是站内地址");
+    expect(byTestid("knw5-citations-list-detail-open")).toBeNull();
+
+    // 收回；换面板不带着上一面板的展开行跑。
+    await clickNth("knw5-citations-list-drill", 1);
+    expect(byTestid("knw5-citations-list-detail")).toBeNull();
+    expect((byTestid("loc")?.textContent ?? "")).not.toContain("ref=");
+
+    await click("knw5-citations-list-drill");
+    expect(byTestid("knw5-citations-list-detail")).toBeTruthy();
+    await click("knw5-tab-spaces");
+    expect((byTestid("loc")?.textContent ?? "")).not.toContain("ref=");
+    expect(byTestid("knw5-citations-list-detail")).toBeNull();
+
+    // 会话引用同一套下钻。
+    await click("knw5-tab-evidence");
+    expect(attr("knw5-session-cites", "data-len")).toBe("1");
+    await click("knw5-session-cites-list-drill");
+    expect(attr("knw5-session-cites-list-detail-open", "href")).toBe("/documents/d1");
+  });
+
+  it("selects all four tabs and restores the chosen one on refresh and on back", async () => {
+    fetchMock.mockResolvedValue({ items: [], results: [], events: [], sessions: [] });
+    await render();
+    for (const key of ["spaces", "ingest", "retrieval", "evidence"]) {
+      await click(`knw5-tab-${key}`);
+      expect(attr("knw5-panel", "data-tab")).toBe(key);
+      expect(byTestid(`knw5-panel-${key}`)).toBeTruthy();
+      const selected = container.querySelector('[role="tab"][aria-selected="true"]');
+      expect(selected?.getAttribute("data-testid")).toBe(`knw5-tab-${key}`);
+    }
+    const lastSearch = byTestid("loc")?.textContent ?? "";
+
+    await click("knw5-tab-spaces");
+    await click("knw5-tab-ingest");
+    await click("go-back");
+    expect(attr("knw5-panel", "data-tab")).toBe("spaces");
+
+    await click("knw5-tab-retrieval");
+    await click("knw5-tab-evidence");
+    await click("go-back");
+    expect(attr("knw5-panel", "data-tab")).toBe("retrieval");
+    const restored = byTestid("loc")?.textContent ?? "";
+    await render(`/knowledge${restored}`);
+    expect(attr("knw5-panel", "data-tab")).toBe("retrieval");
+
+    // 深链带关键词也能恢复。
+    await render(`/knowledge${lastSearch}&q=%E5%91%98%E5%B7%A5`);
+    expect(attr("knw5-panel", "data-tab")).toBe("evidence");
+    expect((byTestid("knw5-search-input") as HTMLInputElement | null)?.value ?? "").toBe("");
   });
 
   it("uses no engineering copy anywhere on the page", async () => {

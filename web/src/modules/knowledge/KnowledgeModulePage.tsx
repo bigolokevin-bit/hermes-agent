@@ -10,7 +10,7 @@
  * draw the same body on purpose. Technical values (raw ids, the GAP number, the full
  * 摘要) live in `title` attributes, never on screen.
  */
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
 import { ArrowRight, BookOpen, Copy, RefreshCw, Search } from "lucide-react";
 import { Badge } from "@nous-research/ui/ui/components/badge";
@@ -55,6 +55,18 @@ import {
 import "./knowledge.css";
 
 const SESSION_SCAN_LIMIT = 10;
+
+/**
+ * Which citation row is drilled open. The URL carries it (`ref=`), exactly like the
+ * panel does, so refresh, back/forward and a pasted link all reopen the same row —
+ * and nothing about the open row lives in a second copy of state.
+ */
+interface DrillState {
+  open: string;
+  toggle: (key: string) => void;
+}
+
+const RefDrill = createContext<DrillState>({ open: "", toggle: () => {} });
 
 type Surf<T> =
   | { kind: "loading" }
@@ -300,46 +312,112 @@ function RowTable({ rows, testid }: { rows: KnowledgeRow[]; testid: string }): R
   );
 }
 
-/** Search hits and citations share one list: title, 摘要, 来源, 时间, 原文. */
+/** Search hits and citations share one list, and one drilldown per row. */
 function RefList({ rows, testid }: { rows: CitationRow[]; testid: string }): ReactNode {
+  const drill = useContext(RefDrill);
   return (
     <ul className="knw5-refs" data-testid={testid}>
-      {rows.map((row, index) => (
-        <li key={row.id || `ref-${index}`} className="knw5-ref" data-testid={`${testid}-row`}>
-          <div className="knw5-ref-main">
-            <div className="knw5-ref-title">
-              <Badge tone="outline">{row.kind}</Badge>
-              <span title={row.id || undefined}>{row.title}</span>
-              <Reason>{row.titleReason}</Reason>
+      {rows.map((row, index) => {
+        const key = row.id !== "" ? row.id : `${testid}-${index}`;
+        const isOpen = drill.open !== "" && drill.open === key;
+        return (
+          <li
+            key={key}
+            className="knw5-ref"
+            data-testid={`${testid}-row`}
+            data-open={isOpen ? "1" : "0"}
+          >
+            <div className="knw5-ref-main">
+              <div className="knw5-ref-title">
+                <Badge tone="outline">{row.kind}</Badge>
+                <span title={row.id || undefined}>{row.title}</span>
+                <Reason>{row.titleReason}</Reason>
+              </div>
+              <p className="knw5-ref-summary" data-testid={`${testid}-summary`} title={row.summary ?? undefined}>
+                {row.summary ?? "—"}
+                <Reason>{row.summaryReason}</Reason>
+              </p>
+              <div className="knw5-ref-meta">
+                <span data-testid={`${testid}-source-name`} title={row.sourceRaw ?? undefined}>
+                  来源：{row.source}
+                </span>
+                <Reason>{row.sourceReason}</Reason>
+                <span title={row.employeeRaw ?? undefined}>留下：{row.employee}</span>
+                <Reason>{row.employeeReason}</Reason>
+                <span>时间：{row.at}</span>
+                <Reason>{row.atReason}</Reason>
+              </div>
             </div>
-            <p className="knw5-ref-summary" data-testid={`${testid}-summary`} title={row.summary ?? undefined}>
-              {row.summary ?? "—"}
-              <Reason>{row.summaryReason}</Reason>
-            </p>
-            <div className="knw5-ref-meta">
-              <span data-testid={`${testid}-source-name`} title={row.sourceRaw ?? undefined}>
-                来源：{row.source}
-              </span>
-              <Reason>{row.sourceReason}</Reason>
-              <span title={row.employeeRaw ?? undefined}>留下：{row.employee}</span>
-              <Reason>{row.employeeReason}</Reason>
-              <span>时间：{row.at}</span>
-              <Reason>{row.atReason}</Reason>
+            <div className="knw5-ref-side">
+              <button
+                type="button"
+                className="knw5-drill"
+                aria-expanded={isOpen}
+                data-testid={`${testid}-drill`}
+                onClick={() => drill.toggle(key)}
+              >
+                {isOpen ? "收起原文" : "看原文与摘要"}
+              </button>
+              {row.href ? (
+                <Link className="knw5-link" to={row.href} data-testid={`${testid}-open`}>
+                  打开原文
+                  <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                </Link>
+              ) : (
+                <span className="knw5-unreachable" data-testid={`${testid}-unreachable`}>
+                  <b>原文不可达</b>
+                  <span>{row.unreachable}</span>
+                </span>
+              )}
             </div>
-          </div>
-          {row.href ? (
-            <Link className="knw5-link" to={row.href} data-testid={`${testid}-open`}>
-              打开原文
-              <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-            </Link>
-          ) : (
-            <span className="knw5-unreachable" data-testid={`${testid}-unreachable`}>
-              <b>原文不可达</b>
-              <span>{row.unreachable}</span>
-            </span>
-          )}
-        </li>
-      ))}
+            {isOpen ? (
+              <dl className="knw5-ref-detail" data-testid={`${testid}-detail`} title={row.id || undefined}>
+                <div>
+                  <dt>原文位置</dt>
+                  <dd>
+                    {row.href ? (
+                      <Link className="knw5-link" to={row.href} data-testid={`${testid}-detail-open`}>
+                        打开原文
+                        <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                      </Link>
+                    ) : (
+                      <span data-testid={`${testid}-detail-unreachable`}>原文不可达 · {row.unreachable}</span>
+                    )}
+                  </dd>
+                </div>
+                <div>
+                  <dt>来源</dt>
+                  <dd title={row.sourceRaw ?? undefined}>
+                    {row.source}
+                    <Reason>{row.sourceReason}</Reason>
+                  </dd>
+                </div>
+                <div>
+                  <dt>摘要</dt>
+                  <dd data-testid={`${testid}-detail-summary`}>
+                    {row.summary ?? "—"}
+                    <Reason>{row.summaryReason}</Reason>
+                  </dd>
+                </div>
+                <div>
+                  <dt>留下这段引用</dt>
+                  <dd title={row.employeeRaw ?? undefined}>
+                    {row.employee}
+                    <Reason>{row.employeeReason}</Reason>
+                  </dd>
+                </div>
+                <div>
+                  <dt>时间</dt>
+                  <dd>
+                    {row.at}
+                    <Reason>{row.atReason}</Reason>
+                  </dd>
+                </div>
+              </dl>
+            ) : null}
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -641,6 +719,7 @@ export default function KnowledgeModulePage() {
   const [sp, setSp] = useSearchParams();
   const tab = initialTab(sp.get("tab"), sp.get("panel"));
   const query = sp.get("q") ?? "";
+  const drilled = sp.get("ref") ?? "";
   const [nonce, setNonce] = useState("0");
 
   const selectTab = (key: KnowledgeTab) => {
@@ -649,6 +728,18 @@ export default function KnowledgeModulePage() {
     // the internal panel, which is what refresh and back/forward must restore.
     if (!next.get("tab")) next.set("tab", "spaces");
     next.set("panel", key);
+    // A drill belongs to the list it came from; carrying it across panels would open
+    // nothing and read like a stuck row.
+    next.delete("ref");
+    setSp(next);
+  };
+
+  const toggleDrill = (key: string) => {
+    const next = new URLSearchParams(sp);
+    if (drilled === key) next.delete("ref");
+    else next.set("ref", key);
+    if (!next.get("tab")) next.set("tab", "spaces");
+    next.set("panel", tab);
     setSp(next);
   };
 
@@ -695,25 +786,27 @@ export default function KnowledgeModulePage() {
       <Card>
         <CardContent className="knw5-body" data-testid="knw5-panel" data-tab={tab}>
           <div data-testid={`knw5-panel-${tab}`}>
-            {tab === "spaces" ? <SpacesSurface nonce={nonce} /> : null}
-            {tab === "ingest" ? (
-              <>
-                <IngestTasksSurface nonce={nonce} />
-                <IngestSurface nonce={nonce} />
-              </>
-            ) : null}
-            {tab === "retrieval" ? (
-              <>
-                <SearchSurface nonce={nonce} query={query} onSearch={commitQuery} />
-                <RecordsSurface nonce={nonce} />
-              </>
-            ) : null}
-            {tab === "evidence" ? (
-              <>
-                <CitationsSurface nonce={nonce} />
-                <SessionCitationsSurface nonce={nonce} />
-              </>
-            ) : null}
+            <RefDrill.Provider value={{ open: drilled, toggle: toggleDrill }}>
+              {tab === "spaces" ? <SpacesSurface nonce={nonce} /> : null}
+              {tab === "ingest" ? (
+                <>
+                  <IngestTasksSurface nonce={nonce} />
+                  <IngestSurface nonce={nonce} />
+                </>
+              ) : null}
+              {tab === "retrieval" ? (
+                <>
+                  <SearchSurface nonce={nonce} query={query} onSearch={commitQuery} />
+                  <RecordsSurface nonce={nonce} />
+                </>
+              ) : null}
+              {tab === "evidence" ? (
+                <>
+                  <CitationsSurface nonce={nonce} />
+                  <SessionCitationsSurface nonce={nonce} />
+                </>
+              ) : null}
+            </RefDrill.Provider>
           </div>
         </CardContent>
       </Card>
