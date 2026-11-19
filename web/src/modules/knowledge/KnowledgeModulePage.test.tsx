@@ -133,6 +133,8 @@ describe("KnowledgeModulePage", () => {
   it("maps all four shell tab values to the matching knw4 panel", async () => {
     fetchMock.mockResolvedValue({ items: [] });
     const cases = [
+      ["/knowledge?tab=spaces", "spaces", "/agent-api/api/knowledge/spaces"],
+      ["/knowledge?tab=ingest", "ingest", "/agent-api/api/documents?limit=50"],
       ["/knowledge?tab=sources", "ingest", "/agent-api/api/documents?limit=50"],
       ["/knowledge?tab=retrieval", "retrieval", "/agent-api/api/audit?action=kb.read&limit=50"],
       ["/knowledge?tab=citations", "evidence", "/agent-api/api/sessions?limit=20"],
@@ -140,9 +142,13 @@ describe("KnowledgeModulePage", () => {
     ] as const;
     for (const [path, panel, url] of cases) {
       await render(path);
+      for (const key of ["spaces", "ingest", "retrieval", "evidence"]) {
+        expect(container.querySelector(`[data-testid="knw4-tab-${key}"]`)).toBeTruthy();
+      }
       const selected = container.querySelector('[role="tab"][aria-selected="true"]');
       expect(selected?.getAttribute("data-testid")).toBe(`knw4-tab-${panel}`);
       expect(container.querySelector('[data-testid="knw4-panel"]')?.getAttribute("data-tab")).toBe(panel);
+      expect(container.querySelector(`[data-testid="knw4-panel-${panel}"]`)).toBeTruthy();
       expect(fetchMock).toHaveBeenLastCalledWith(url);
     }
   });
