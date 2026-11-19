@@ -571,3 +571,38 @@ describe("the delegation chain view", () => {
     expect(document.querySelector("[data-testid='col5-write-note']")?.textContent).toContain("只读");
   });
 });
+
+describe("each delegation opens its own human detail", () => {
+  it("keeps the fold closed until asked, then shows scope, words and both Beijing instants", async () => {
+    api.fetchJSON.mockImplementation(okList([DELEG_A]));
+    await render("/collab");
+    await waitFor(() => rowNodes() === 1, "one row");
+    const more = document.querySelector("[data-testid='col5-row-0-more']");
+    expect(more).not.toBeNull();
+    expect(more?.hasAttribute("open")).toBe(false);
+    // The block belongs to the row it was opened for, and it repeats no machine token.
+    const val = (field: string): string | null =>
+      document.querySelector(`[data-testid='col5-row-0-detail-${field}'] dd`)?.textContent ?? null;
+    const title = (field: string): string | null =>
+      document.querySelector(`[data-testid='col5-row-0-detail-${field}']`)?.getAttribute("title") ?? null;
+    expect(val("scope")).toContain("整理本周巡检记录并点名缺项");
+    expect(val("action")).toBe("交接");
+    expect(title("action")).toBe("handoff");
+    expect(val("status")).toBe("已接受");
+    expect(val("effective")).toBe("起 2026-11-01 08:00");
+    expect(val("expiry")).toContain("至 2999-01-01 08:00");
+    expect(val("code")).toBe("34DEF567");
+    expect(title("code")).toBe(DELEG_A.delegationId);
+  });
+
+  it("keeps a missing field as — with its reason, never as a zero or a guess", async () => {
+    api.fetchJSON.mockImplementation(okList([DELEG_B]));
+    await render("/collab");
+    await waitFor(() => rowNodes() === 1, "one row");
+    for (const field of ["scope", "effective", "expiry"] as const) {
+      const cell = document.querySelector(`[data-testid='col5-row-0-detail-${field}']`);
+      expect(cell?.querySelector("dd")?.textContent).toBe("—");
+      expect((cell?.getAttribute("title") ?? "").length).toBeGreaterThan(0);
+    }
+  });
+});

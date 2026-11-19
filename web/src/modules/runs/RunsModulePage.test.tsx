@@ -331,6 +331,7 @@ const EVENTS = {
     { runId: DETAIL.runId, seq: 3, eventType: "tool_result", occurredAt: "2026-11-18T02:01:40Z", payload: { resultRef: "rn-step-9" } },
     { runId: DETAIL.runId, seq: 4, eventType: "tool_result", occurredAt: "2026-11-18T02:01:45Z", payload: {} },
     { runId: DETAIL.runId, seq: 5, eventType: "completed", occurredAt: "2026-11-18T02:11:48Z", payload: {} },
+    { runId: DETAIL.runId, seq: 6, eventType: "tool_intent", occurredAt: "2026-11-18T02:11:50Z", payload: { resultRef: "ev-intent-7" } },
   ],
   hasMore: false,
 };
@@ -374,7 +375,11 @@ describe("the detail pane", () => {
     expect(text()).toContain("工具调用");
     expect(text()).toContain("结果引用：rn-step-9");
     expect(text()).toContain("结果引用：未记录");
-    expect(document.querySelectorAll("[data-testid^='run5-event-']")).toHaveLength(5);
+    // A tool intent carries the same reference shape; the row says which kind it was.
+    expect(text()).toContain("工具意图");
+    expect(text()).toContain("结果引用：ev-intent-7");
+    expect(document.querySelector("[data-tool-event='tool_intent']")).not.toBeNull();
+    expect(document.querySelectorAll("[data-testid^='run5-event-']")).toHaveLength(6);
     expect(text()).toContain("陈可");
     expect(text()).not.toContain("emp_9f3a4b7c");
     // three-state cost badge on the detail

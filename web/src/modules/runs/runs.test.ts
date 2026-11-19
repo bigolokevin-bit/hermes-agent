@@ -21,6 +21,9 @@ import {
   elapsedMinute,
   employeeCode,
   employeeLabel,
+  eventLabel,
+  isToolEvent,
+  resultRef,
   statusLabel,
   errorInfo,
   failureSummary,
@@ -312,5 +315,28 @@ describe("the words a person reads for a status and an owner", () => {
     expect(employeeLabel("emp_9F42AAE299D541FBBB6ECE3671", names)).toBe("员工 · 9F42AAE2");
     expect(employeeLabel(undefined, names)).toBe("未指派");
     expect(employeeLabel("", names)).toBe("未指派");
+  });
+});
+
+describe("the tool family carries the result reference", () => {
+  it("labels a tool intent and keeps an unlisted type in the fallback word", () => {
+    expect(eventLabel("tool_intent")).toBe("工具意图");
+    expect(eventLabel("tool_result")).toBe("工具结果");
+    expect(eventLabel("mystery")).toBe("其他事件");
+  });
+
+  it("treats tool_intent, tool_call and tool_result alike, case-insensitively", () => {
+    expect(isToolEvent("tool_intent")).toBe(true);
+    expect(isToolEvent("TOOL_CALL")).toBe(true);
+    expect(isToolEvent("tool_result")).toBe(true);
+    expect(isToolEvent("message")).toBe(false);
+    expect(isToolEvent(undefined)).toBe(false);
+  });
+
+  it("reads resultRef off an intent, and never off a plain message", () => {
+    expect(resultRef({ eventType: "tool_intent", payload: { resultRef: " ev_42 " } })).toBe("ev_42");
+    expect(resultRef({ eventType: "tool_result", payload: { result_ref: "ev_43" } })).toBe("ev_43");
+    expect(resultRef({ eventType: "tool_intent", payload: {} })).toBeNull();
+    expect(resultRef({ eventType: "message", payload: { resultRef: "ev_44" } })).toBeNull();
   });
 });

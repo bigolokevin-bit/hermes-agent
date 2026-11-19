@@ -2042,3 +2042,38 @@ the served build. `App.tsx` / `shell/**` are outside this task's write scope.
   the four sections and their fields.
 - The two write actions are declared, not wired; there is no clean-up execution surface to
   call, and the page never claims otherwise.
+
+## TASK collab detail + run timeline depth (2026-11-19, base 68ec59a4 = gate ledger @ 4dd7966f)
+
+### Live probes (cookie from /tmp/.cookie_val, value never printed; 127.0.0.1:8092)
+| request | HTTP | shape |
+|---|---|---|
+| `GET /api/run-events?runId=rn_01M7822XN781D2S9JASH5TX1XZ&limit=50` | 200 | 5 events: 4 × `message`, 1 × `completed`; no `tool_intent`/`tool_result`, no `resultRef` |
+| `GET /api/run-events?runId=rn_01M7D7421P5PA27TEXMT9YVDZ8&limit=50` | 200 | 0 events (running, upstream has not written any) |
+| `GET /api/run-events?runId=rn_01M7DGZA9SDAZKVV9M82G4F38G&limit=80` | 200 | 75 events: 74 × `message`, 1 × `completed`; no tool family |
+| `GET /api/run-events?runId=rn_01M7DNVZ091NKD92SCRVFGK5F4&limit=80` | 200 | 54 events: 53 × `message`, 1 × `completed`; no tool family |
+| `GET /api/runs?since=2026-11-12T00:00:00.000Z&limit=50` | 200 | 14 rows; richest `lastEventSeq` 75 |
+
+Interpretation: the live event stream only carries `message` and `completed` today, and no payload anywhere has a result reference. The ToolIntent path therefore cannot be exercised with a real answer — it is implemented structurally and proven with fixtures only (disclosed below). This does not change the honesty rule: a tool event without a reference reads 「未记录」, never a fabricated one.
+
+### Code changes (write scope only: `web/src/modules/collab/**`, `web/src/modules/runs/**`, `docs/_artifacts/aud/**`)
+1. **collab list — per-row human detail** (`CollabDelegationsModulePage.tsx`): each row's footer now carries a `<details data-testid="col5-row-<i>-more">` fold (closed by default, `<summary>展开明细</summary>`) with a definition list of eight labelled fields: 范围 / 动作 / 状态 / 生效（北京时间） / 到期（北京时间） / 来源 / 提出时间（北京时间） / 委托编号. Values reuse the same helpers as the columns (`scopeCell`, `actionWords`, `statusWords`, `beijingMinute`, `validityCell`, `sourceWords`, `shortCode`), so words stay human and raw tokens stay in `title`. A missing value renders 「—」 with the helper's own reason as the `title` — never `0`, never a guessed date. New testids: `col5-row-<i>-more`, `-detail-scope`, `-detail-action`, `-detail-status`, `-detail-effective`, `-detail-expiry`, `-detail-source`, `-detail-created`, `-detail-code`. Every pre-existing `col5-*` id is untouched; `?view=chain` still owns the URL and issues no extra request.
+2. **runs timeline — ToolIntent result reference** (`runs.ts`): `eventLabel` gained `tool_intent` → 「工具意图」; new exported `isToolEvent(raw)` matches `tool_intent` / `tool_call` / `tool_result` case-insensitively; `resultRef(ev)` now reads `payload.resultRef ?? payload.result_ref` off that whole family (previously only `tool_result`), returning a trimmed string or null. `RunsModulePage.tsx` timeline now uses `isToolEvent(ev.eventType)` and tags the reference line with `data-tool-event="<type>"` for external probes.
+3. **retry = new run (verified, unchanged)**: `requestRetryRun` POSTs `/agent-api/api/run-retry` with the current id, requires the answer to carry a new id (throws a shape error otherwise), and only then `setParam("run", newId)` — the original run is never rewritten; tests 「retry means a NEW run」 and the page-level 「已新建 运行 · A2B3」 remain green.
+
+### Tests added
+- `collab/CollabDelegationsModulePage.test.tsx` +2: the fold exists per row and is closed by default, and opening it exposes the eight fields (scope text, 动作 交接 with raw `handoff` in title, 状态 已接受, `起 2026-11-01 08:00`, `至 2999-01-01 08:00`, short code `34DEF567` with the full id in title); the second row's missing scope/effective/expiry each read 「—」 with a non-empty reason in the title.
+- `runs/runs.test.ts` +3: `eventLabel('tool_intent')` = 工具意图 and an unlisted type still falls back to 其他事件; `isToolEvent` accepts the three spellings case-insensitively and rejects `message`/undefined; `resultRef` trims an intent's reference, accepts `result_ref`, and returns null for an empty payload or a plain `message`.
+- `runs/RunsModulePage.test.tsx`: the detail fixture gained a `tool_intent` event (seq 6) with `payload.resultRef`; the timeline test now also asserts 「工具意图」, `结果引用：ev-intent-7`, the `data-tool-event='tool_intent'` node, and six event rows.
+
+### Gates (from `web/`)
+- `./node_modules/.bin/vitest run src/modules/collab src/modules/runs` → **exit 0, 4 files / 167 tests** (was 162: collab 95 + runs 67).
+- `npx tsc -b . --noEmit` → exit 2 with the standing **53** errors (49 `../apps/shared/**`, 2 `src/modules/approvals/api.test.ts`, 2 `src/pages/LoginPage.test.tsx`); grep for `modules/collab|modules/runs` = **0**.
+- `./node_modules/.bin/eslint src/modules/collab src/modules/runs` → exit 0.
+- `npx vite build --outDir /tmp/dep5-build` → exit 0; entry **`assets/index-CVfj5JBR.js`** sha256 **`f6d2d646e9081523865bf8ee4db268dfb826ac89fb678ec50acd61befc969432`**; entry carries 0 hits of both markers; markers land in lazy chunks `assets/CollabDelegationsModulePage-B2GtEIyx.js` (`col5-row-`) and `assets/RunsModulePage-BO1TQIyQ.js` (`run5-timeline`).
+
+### Untested / honest limits
+1. **No live ToolIntent event exists** in this deployment (four runs, 134 events, all `message`/`completed`; zero `resultRef` anywhere), so the intent timeline row is proven by fixtures + unit tests only.
+2. The tenant's delegation answer is still `{"items":[]}` — the expanded detail is proven with fixtures; no real row has ever rendered.
+3. Neither `/collab` nor `/runs` is mounted by a shell lane in this worktree, and the served dev SPA predates this change, so no 1440/1280/375 pixel measurement was produced; layout rests on `min-w-0` + `break-words` + grid columns and the jsdom assertions.
+4. `run-retry` remains unproven against a real 200 (identity gate answers 401 before routing), so the new-id contract is enforced in code and tests, not measured live.

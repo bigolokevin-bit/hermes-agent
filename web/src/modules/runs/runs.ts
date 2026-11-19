@@ -557,6 +557,7 @@ export async function requestRetryRun(runId: string): Promise<string> {
 export function eventLabel(raw?: string): string {
   switch (raw) {
     case "token": return "模型输出";
+    case "tool_intent": return "工具意图";
     case "tool_call": return "工具调用";
     case "tool_result": return "工具结果";
     case "approval_requested": return "发起审批";
@@ -569,9 +570,21 @@ export function eventLabel(raw?: string): string {
   }
 }
 
+/**
+ * The tool family carries the result reference. The intent event holds it once
+ * the tool has answered, and a result event may repeat it; a plain message
+ * event never carries one. Matching is case-insensitive because the wire
+ * spelling is not guaranteed.
+ */
+const TOOL_EVENTS = new Set(["tool_intent", "tool_call", "tool_result"]);
+
+export function isToolEvent(raw?: string): boolean {
+  return TOOL_EVENTS.has((raw ?? "").trim().toLowerCase());
+}
+
 /** resultRef is stored on the tool intent; the event API does not always echo it. */
 export function resultRef(ev: Pick<RunEvent, "eventType" | "payload">): string | null {
-  if (ev.eventType !== "tool_result") return null;
+  if (!isToolEvent(ev.eventType)) return null;
   const raw = ev.payload?.resultRef ?? ev.payload?.result_ref;
   return typeof raw === "string" && raw.trim() ? raw.trim() : null;
 }
