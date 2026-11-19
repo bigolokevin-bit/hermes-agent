@@ -17,16 +17,30 @@ import { fetchJsonStrict } from '@/modules/models/fetchJson';
 
 import {
   METRICS_GAP,
+  USAGE_GAP,
   WEEKDAY_LABELS,
   WINDOWS,
+  beijingDayKey,
+  beijingDayStartIso,
   buildHeatGrid,
   cellRangeLabel,
+  chunkIds,
   formatBeijing,
+  formatCount,
+  formatRate,
+  formatUsd,
+  ledgerAsOf,
+  ledgerTotal,
   readActivity,
+  readLedger,
+  readRunStats,
+  sparkSlots,
   windowOf,
   windowRangeLabel,
   type Activity,
   type HeatCell,
+  type LedgerRow,
+  type RunStats,
 } from './metrics';
 import './metrics.css';
 
@@ -36,13 +50,80 @@ type PageState =
   | { kind: 'error'; message: string; requestId: string | null; gap: string | null }
   | { kind: 'ready'; activity: Activity; loadedAt: string; weeks: number };
 
-type Forced = 'loading' | 'empty' | 'error';
+type Forced = 'loading' | 'empty' | 'error' | 'denied';
 
 const EMPTY_ACTIVITY: Activity = { cells: [], max: null, from: null, to: null, tz: 'Asia/Shanghai' };
 
 function readForced(params: URLSearchParams): Forced | null {
   const raw = params.get('state');
-  return raw === 'loading' || raw === 'empty' || raw === 'error' ? raw : null;
+  return raw === 'loading' || raw === 'empty' || raw === 'error' || raw === 'denied' ? raw : null;
+}
+
+/** One read-only source, already settled: what it returned or why it did not. */
+type UsageBlock<T> =
+  | { kind: 'ready'; value: T }
+  | { kind: 'unavailable'; reason: string; gap: string | null; requestId: string | null };
+
+interface LedgerSnapshot {
+  total: number | null;
+  asOf: string | null;
+  rows: number;
+  missing: number;
+  truncated: boolean;
+}
+
+interface TrendSnapshot {
+  stats: RunStats;
+  from: string;
+  to: string;
+}
+
+type UsageState =
+  | { kind: 'loading' }
+  | {
+      kind: 'ready';
+      runs: UsageBlock<RunStats>;
+      trend: UsageBlock<TrendSnapshot>;
+      day: UsageBlock<LedgerSnapshot>;
+      month: UsageBlock<LedgerSnapshot>;
+      loadedAt: string;
+    };
+
+/** 403 and 404 share one sentence: the page never says whether a source
+ *  exists, only that this account cannot read it right now. */
+function blockFailure(error: unknown): { reason: string; gap: string | null; requestId: string | null } {
+  const status = error instanceof ApiError ? error.status : null;
+  const requestId = error instanceof ApiError ? (error.requestId ?? null) : null;
+  if (status === 403 || status === 404) {
+    return {
+      reason: '这项数据当前读不到：可能还没有接入，也可能当前账号没有查看权限。',
+      gap: USAGE_GAP,
+      requestId,
+    };
+  }
+  if (status === 401) {
+    return { reason: '登录状态已经失效，重新登录后再看。', gap: null, requestId };
+  }
+  if (status === 0) {
+    return { reason: '控制台暂时没有回应，请稍后重试。', gap: null, requestId };
+  }
+  return { reason: '这次没能读取这项数据，请稍后重试。', gap: null, requestId };
+}
+
+function employeeIdsOf(payload: unknown): { ids: string[]; truncated: boolean } {
+  if (typeof payload !== 'object' || payload === null) return { ids: [], truncated: false };
+  const record = payload as { items?: unknown; nextCursor?: unknown };
+  const ids = Array.isArray(record.items)
+    ? record.items
+        .map((item) =>
+          typeof item === 'object' && item !== null && typeof (item as { employeeId?: unknown }).employeeId === 'string'
+            ? (item as { employeeId: string }).employeeId
+            : null,
+        )
+        .filter((id): id is string => id !== null)
+    : [];
+  const truncated = typeof record.nextCursor === 'string' && record.nextCursor.trim().length > 0;
+  return { ids, truncated };
 }
 
 function requestIdOf(error: unknown): string | null {
@@ -102,6 +183,7 @@ export function MetricsModulePage() {
   const activeWindow = windowOf(params.get('w'));
   const weeks = activeWindow.weeks;
   const [state, setState] = useState<PageState>({ kind: 'loading' });
+  const [usage, setUsage] = useState<UsageState>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [selected, setSelected] = useState<{ dow: number; hour: number } | null>(null);
 
@@ -137,6 +219,105 @@ export function MetricsModulePage() {
     };
   }, [attempt, forced, load]);
 
+  const loadUsage = useCallback(async (signal: { live: boolean }) => {
+    setUsage({ kind: 'loading' });
+    const now = new Date();
+    const today = beijingDayKey(now);
+    const dayFrom = beijingDayStartIso(today);
+    const nowIso = now.toISOString();
+    const from24h = new Date(now.getTime() - 86_400_000).toISOString();
+    const monthKey = today.slice(0, 7);
+
+    const readBlock = async <T,>(
+      run: () => Promise<unknown>,
+      parse: (body: unknown) => { ok: true; value: T } | { ok: false; reason: string },
+    ): Promise<UsageBlock<T>> => {
+      try {
+        const body = await run();
+        const parsed = parse(body);
+        if (!parsed.ok) return { kind: 'unavailable', reason: parsed.reason, gap: null, requestId: null };
+        return { kind: 'ready', value: parsed.value };
+      } catch (error) {
+        return { kind: 'unavailable', ...blockFailure(error) };
+      }
+    };
+
+    const runs = await readBlock(
+      () =>
+        fetchJsonStrict(
+          `/agent-api/api/run-stats?from=${encodeURIComponent(dayFrom)}&to=${encodeURIComponent(nowIso)}&bucket=day`,
+        ),
+      (body) => {
+        const parsed = readRunStats(body);
+        return parsed.kind === 'ok' ? { ok: true, value: parsed.stats } : { ok: false, reason: parsed.reason };
+      },
+    );
+
+    const trend = await readBlock(
+      () =>
+        fetchJsonStrict(
+          `/agent-api/api/run-stats?from=${encodeURIComponent(from24h)}&to=${encodeURIComponent(nowIso)}&bucket=hour`,
+        ),
+      (body) => {
+        const parsed = readRunStats(body);
+        return parsed.kind === 'ok'
+          ? { ok: true, value: { stats: parsed.stats, from: from24h, to: nowIso } }
+          : { ok: false, reason: parsed.reason };
+      },
+    );
+
+    const ledgerSnapshot = async (periodKind: 'day' | 'month', period: string): Promise<LedgerSnapshot> => {
+      const directory = employeeIdsOf(await fetchJsonStrict('/agent-api/api/employees?limit=200'));
+      if (directory.ids.length === 0) {
+        return { total: null, asOf: null, rows: 0, missing: 0, truncated: directory.truncated };
+      }
+      const bodies = await Promise.all(
+        chunkIds(directory.ids).map((ids) =>
+          fetchJsonStrict(
+            `/agent-api/api/budget-usage?employeeId=${ids.map(encodeURIComponent).join(',')}` +
+              `&periodKind=${periodKind}&period=${encodeURIComponent(period)}`,
+          ),
+        ),
+      );
+      const rows: LedgerRow[] = [];
+      let missing = 0;
+      for (const body of bodies) {
+        const parsed = readLedger(body);
+        if (parsed.kind === 'invalid') throw new ApiError(parsed.reason, { status: 200, body: '', url: 'budget-usage' });
+        rows.push(...parsed.rows);
+        missing += parsed.missing.length;
+      }
+      return {
+        total: ledgerTotal(rows),
+        asOf: ledgerAsOf(rows),
+        rows: rows.length,
+        missing,
+        truncated: directory.truncated,
+      };
+    };
+
+    const day = await readBlock(
+      () => ledgerSnapshot('day', today),
+      (body) => ({ ok: true, value: body as LedgerSnapshot }),
+    );
+    const month = await readBlock(
+      () => ledgerSnapshot('month', monthKey),
+      (body) => ({ ok: true, value: body as LedgerSnapshot }),
+    );
+
+    if (!signal.live) return;
+    setUsage({ kind: 'ready', runs, trend, day, month, loadedAt: new Date().toISOString() });
+  }, []);
+
+  useEffect(() => {
+    if (forced) return;
+    const signal = { live: true };
+    void loadUsage(signal);
+    return () => {
+      signal.live = false;
+    };
+  }, [attempt, forced, loadUsage]);
+
   const view: PageState = forced
     ? forced === 'loading'
       ? { kind: 'loading' }
@@ -148,6 +329,87 @@ export function MetricsModulePage() {
   const grid = view.kind === 'ready' ? buildHeatGrid(view.activity) : null;
   const selectedCell = selected && grid ? grid.rows[selected.dow - 1]?.cells[selected.hour] ?? null : null;
 
+  const usageView: UsageState = forced
+    ? forced === 'loading'
+      ? { kind: 'loading' }
+      : {
+          kind: 'ready',
+          runs:
+            forced === 'empty'
+              ? {
+                  kind: 'ready',
+                  value: {
+                    from: null,
+                    to: null,
+                    buckets: [],
+                    totals: { runs: 0, succeeded: 0, failed: 0, running: 0, sampleCount: 0, successRate: null },
+                  },
+                }
+              : {
+                  kind: 'unavailable',
+                  reason:
+                    forced === 'denied'
+                      ? '这项数据当前读不到：可能还没有接入，也可能当前账号没有查看权限。'
+                      : '这次没能读取这项数据，请稍后重试。',
+                  gap: forced === 'denied' ? USAGE_GAP : null,
+                  requestId: null,
+                },
+          trend:
+            forced === 'empty'
+              ? {
+                  kind: 'ready',
+                  value: {
+                    stats: { from: null, to: null, buckets: [], totals: { runs: 0, succeeded: 0, failed: 0, running: 0, sampleCount: 0, successRate: null } },
+                    from: new Date().toISOString(),
+                    to: new Date().toISOString(),
+                  },
+                }
+              : {
+                  kind: 'unavailable',
+                  reason:
+                    forced === 'denied'
+                      ? '这项数据当前读不到：可能还没有接入，也可能当前账号没有查看权限。'
+                      : '这次没能读取这项数据，请稍后重试。',
+                  gap: forced === 'denied' ? USAGE_GAP : null,
+                  requestId: null,
+                },
+          day:
+            forced === 'empty'
+              ? { kind: 'ready', value: { total: null, asOf: null, rows: 0, missing: 0, truncated: false } }
+              : {
+                  kind: 'unavailable',
+                  reason:
+                    forced === 'denied'
+                      ? '这项数据当前读不到：可能还没有接入，也可能当前账号没有查看权限。'
+                      : '这次没能读取这项数据，请稍后重试。',
+                  gap: forced === 'denied' ? USAGE_GAP : null,
+                  requestId: null,
+                },
+          month: { kind: 'ready', value: { total: null, asOf: null, rows: 0, missing: 0, truncated: false } },
+          loadedAt: new Date().toISOString(),
+        }
+    : usage;
+
+  const usageReady = usageView.kind === 'ready' ? usageView : null;
+  const usageBlocks = usageReady ? [usageReady.runs, usageReady.trend, usageReady.day] : [];
+  const usageDown = usageReady !== null && usageBlocks.every((block) => block.kind === 'unavailable');
+  const usageDenied =
+    usageDown && usageBlocks.every((block) => block.kind === 'unavailable' && block.gap === USAGE_GAP);
+  const usageQuiet =
+    usageReady !== null &&
+    !usageDown &&
+    usageReady.runs.kind === 'ready' &&
+    usageReady.runs.value.totals.runs === 0 &&
+    usageReady.trend.kind === 'ready' &&
+    usageReady.trend.value.stats.buckets.length === 0 &&
+    usageReady.day.kind === 'ready' &&
+    usageReady.day.value.rows === 0;
+  const spark =
+    usageReady && usageReady.trend.kind === 'ready'
+      ? sparkSlots(usageReady.trend.value.stats, usageReady.trend.value.from, usageReady.trend.value.to)
+      : null;
+  const sparkPeak = spark && spark.max !== null && spark.max > 0 ? spark.max : 1;
+
   const chooseWindow = (nextWeeks: number) => {
     setSelected(null);
     const next = new URLSearchParams(params);
@@ -156,7 +418,7 @@ export function MetricsModulePage() {
   };
 
   return (
-    <main className="met5-page" data-testid="met5-page" data-fixture={forced ? '1' : undefined}>
+    <main className="met5-page" data-testid="met5-page">
       <div className="met5-head">
         <div>
           <h1>运行分析</h1>
@@ -173,6 +435,176 @@ export function MetricsModulePage() {
           刷新
         </Button>
       </div>
+
+      {usageView.kind === 'loading' ? (
+        <Card data-testid="met6-loading">
+          <CardContent className="space-y-2 p-6">
+            <div className="met5-skeleton h-5 w-36" />
+            <div className="met5-skeleton h-4 w-64" />
+            <div className="met5-skeleton h-28 w-full" />
+          </CardContent>
+        </Card>
+      ) : (
+        <section className="met6" data-testid="met6-section">
+          <div className="met6-head">
+            <h2>用量与成本</h2>
+            <p>
+              运行数和金额分属两本账：运行统计给次数与成功率，平台扣费账本给实际扣掉的钱。金额只读账本，不由运行数或单价换算。
+            </p>
+          </div>
+
+          {usageDown ? (
+            <Card data-testid={usageDenied ? 'met6-denied' : 'met6-error'}>
+              <CardContent className="space-y-2 p-6">
+                <p className="font-medium">{usageDenied ? '这几项数据暂时读不到' : '这次没能读取用量与成本'}</p>
+                <p className="text-sm text-muted-foreground">
+                  {usageDenied
+                    ? '可能是这些数据还没有接入，也可能是当前账号没有查看权限。两种情况给同一句话，页面不回答「到底有没有」。'
+                    : '读取的时候没有成功，页面没有用旧内容顶上，也没有按 0 补。'}
+                </p>
+                <RequestId
+                  id={
+                    usageBlocks
+                      .map((block) => (block.kind === 'unavailable' ? block.requestId : null))
+                      .find((id): id is string => typeof id === 'string' && id.length > 0) ?? null
+                  }
+                />
+                <Button size="sm" outlined onClick={() => setAttempt((value) => value + 1)} data-testid="met6-retry">
+                  重试
+                </Button>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {usageQuiet ? (
+            <Card data-testid="met6-empty">
+              <CardContent className="space-y-2 p-6">
+                <p className="font-medium">今天还没有用量记录</p>
+                <p className="text-sm text-muted-foreground">
+                  运行统计没有返回今天的运行，账本也没有今天的实扣行，因此这里既没有次数也没有金额——不补 0，也不拿别的时段顶替。
+                </p>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          <div className="met6-grid">
+            <Card className="met6-card" data-testid="met6-runs">
+              <CardContent className="space-y-1 p-4">
+                <p className="met6-label">今日运行</p>
+                <p className="met6-value" data-testid="met6-runs-value">
+                  {usageReady && usageReady.runs.kind === 'ready' ? formatCount(usageReady.runs.value.totals.runs) : '—'}
+                </p>
+                <p className="met6-sub">
+                  成功率{' '}
+                  <span data-testid="met6-rate-value">
+                    {usageReady && usageReady.runs.kind === 'ready'
+                      ? formatRate(usageReady.runs.value.totals.successRate)
+                      : '—'}
+                  </span>
+                </p>
+                <p className="met6-hint">今天 00:00 起（北京时间）；没有可统计样本时成功率显示「—」。</p>
+                <p className="met6-source" data-testid="met6-runs-source">
+                  来源：运行统计 · 读取于 {usageReady ? formatBeijing(usageReady.loadedAt) : '—'}
+                </p>
+                {usageReady && usageReady.runs.kind === 'unavailable' ? (
+                  <p className="met6-gap" data-testid="met6-runs-gap" title={usageReady.runs.gap ?? undefined}>
+                    {usageReady.runs.reason}
+                  </p>
+                ) : null}
+              </CardContent>
+            </Card>
+
+            <Card className="met6-card" data-testid="met6-cost">
+              <CardContent className="space-y-1 p-4">
+                <p className="met6-label">今日成本</p>
+                <p className="met6-value" data-testid="met6-cost-value">
+                  {usageReady && usageReady.day.kind === 'ready' ? formatUsd(usageReady.day.value.total) : '—'}
+                </p>
+                <p className="met6-sub">
+                  本月累计{' '}
+                  <span className="font-mono" data-testid="met6-cost-month">
+                    {usageReady && usageReady.month.kind === 'ready' ? formatUsd(usageReady.month.value.total) : '—'}
+                  </span>
+                </p>
+                <p className="met6-hint">
+                  {usageReady && usageReady.day.kind === 'ready' && usageReady.day.value.rows > 0
+                    ? `账本实扣，按 ${usageReady.day.value.rows} 条员工日账合计`
+                    : '账本实扣；没有实扣行时显示「—」，不按 0 记。'}
+                </p>
+                <p className="met6-source" data-testid="met6-cost-source">
+                  来源：平台扣费账本 · 截至{' '}
+                  {usageReady && usageReady.day.kind === 'ready' && usageReady.day.value.asOf
+                    ? formatBeijing(usageReady.day.value.asOf)
+                    : '—'}
+                  {usageReady && usageReady.day.kind === 'ready' && usageReady.day.value.truncated
+                    ? ' · 只统计了前 200 名员工的账本'
+                    : ''}
+                </p>
+                {usageReady && usageReady.day.kind === 'unavailable' ? (
+                  <p className="met6-gap" data-testid="met6-cost-gap" title={usageReady.day.gap ?? undefined}>
+                    {usageReady.day.reason}
+                  </p>
+                ) : null}
+                {usageReady && usageReady.day.kind === 'ready' && usageReady.day.value.total === null ? (
+                  <p className="met6-gap" data-testid="met6-cost-gap">
+                    {usageReady.day.value.rows > 0
+                      ? '账本行没有给出金额，所以显示「—」。'
+                      : '今天还没有账本实扣记录，所以显示「—」。'}
+                  </p>
+                ) : null}
+              </CardContent>
+            </Card>
+
+            <Card className="met6-card" data-testid="met6-trend">
+              <CardContent className="space-y-1 p-4">
+                <p className="met6-label">最近 24 小时</p>
+                {spark && spark.observed > 0 ? (
+                  <svg
+                    className="met6-spark"
+                    viewBox="0 0 240 48"
+                    preserveAspectRatio="none"
+                    role="img"
+                    aria-label={`最近 24 小时每小时运行数，共 ${spark.observed} 个时段有记录`}
+                    data-testid="met6-sparkline"
+                  >
+                    {spark.slots.map((slot) => {
+                      if (slot.runs === null) return null;
+                      const height = Math.max(2, Math.round(((slot.runs ?? 0) / sparkPeak) * 44));
+                      return (
+                        <rect
+                          key={slot.hour}
+                          x={slot.hour * 10 + 1}
+                          y={48 - height}
+                          width={8}
+                          height={height}
+                          rx={1.5}
+                        />
+                      );
+                    })}
+                  </svg>
+                ) : (
+                  <p className="met6-value met6-value-small" data-testid="met6-trend-value">
+                    {usageReady && usageReady.trend.kind === 'ready' ? '没有运行' : '—'}
+                  </p>
+                )}
+                <p className="met6-hint">
+                  {spark && spark.observed > 0
+                    ? `每小时一根柱，共 ${spark.observed} 个时段有记录；空档表示那个小时接口没有返回运行，不按 0 画。`
+                    : '最近 24 小时没有运行记录，所以没有趋势可画。'}
+                </p>
+                <p className="met6-source" data-testid="met6-trend-source">
+                  来源：运行统计（每小时） · 读取于 {usageReady ? formatBeijing(usageReady.loadedAt) : '—'}
+                </p>
+                {usageReady && usageReady.trend.kind === 'unavailable' ? (
+                  <p className="met6-gap" data-testid="met6-trend-gap" title={usageReady.trend.gap ?? undefined}>
+                    {usageReady.trend.reason}
+                  </p>
+                ) : null}
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+      )}
 
       {forced ? (
         <p className="met5-preview" data-testid="met5-preview-note">

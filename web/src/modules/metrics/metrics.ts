@@ -205,3 +205,204 @@ export function windowRangeLabel(activity: Activity): string {
   if (!activity.from || !activity.to) return '—';
   return `${formatBeijing(activity.from)} — ${formatBeijing(activity.to)}`;
 }
+
+// ---- MET6: usage & cost -----------------------------------------------------
+//
+// Two read-only sources, kept apart on purpose:
+//   runs  → /api/run-stats  (runtime run ledger: counts and outcome rates)
+//   cost  → /api/budget-usage (policy budget ledger: the money that was
+//           actually charged per employee/period)
+// Money is never derived from run counts, tokens, prices or another window.
+// A ledger row that says 0 is a real `$0.00`; a period with no row is «—»,
+// never `$0.00` and never a filled-in zero.
+
+export const USAGE_GAP = 'GAP-MET6-01';
+
+/** Employee ids per budget-usage read; keeps the query string well under
+ *  proxy limits when a tenant has many employees. */
+export const LEDGER_CHUNK = 50;
+
+export interface RunTotals {
+  runs: number | null;
+  succeeded: number | null;
+  failed: number | null;
+  running: number | null;
+  sampleCount: number | null;
+  successRate: number | null;
+}
+
+export interface RunBucket {
+  bucketStart: string | null;
+  runs: number | null;
+}
+
+export interface RunStats {
+  from: string | null;
+  to: string | null;
+  buckets: RunBucket[];
+  totals: RunTotals;
+}
+
+export type ParsedRunStats = { kind: 'ok'; stats: RunStats } | { kind: 'invalid'; reason: string };
+
+function totalsOf(raw: Record<string, unknown>): RunTotals {
+  return {
+    runs: numberOrNull(raw.runs),
+    succeeded: numberOrNull(raw.succeeded),
+    failed: numberOrNull(raw.failed),
+    running: numberOrNull(raw.running),
+    sampleCount: numberOrNull(raw.sampleCount),
+    successRate: numberOrNull(raw.successRate),
+  };
+}
+
+/** Read the run-stats body. Absent numbers stay null; nothing is filled in. */
+export function readRunStats(payload: unknown): ParsedRunStats {
+  if (!isRecord(payload) || !isRecord(payload.totals)) {
+    return { kind: 'invalid', reason: '返回内容里没有运行统计。' };
+  }
+  const buckets: RunBucket[] = Array.isArray(payload.buckets)
+    ? payload.buckets
+        .filter(isRecord)
+        .map((raw) => ({ bucketStart: text(raw.bucketStart), runs: numberOrNull(raw.runs) }))
+    : [];
+  return {
+    kind: 'ok',
+    stats: {
+      from: text(payload.from),
+      to: text(payload.to),
+      buckets,
+      totals: totalsOf(payload.totals),
+    },
+  };
+}
+
+export interface LedgerRow {
+  employeeId: string | null;
+  period: string | null;
+  tokensUsed: number | null;
+  costUsd: number | null;
+  updatedAt: string | null;
+}
+
+export type ParsedLedger =
+  | { kind: 'ok'; rows: LedgerRow[]; missing: string[] }
+  | { kind: 'invalid'; reason: string };
+
+/** Read a budget-ledger query body. `items` absent is a malformed body, not
+ *  "no cost": an empty `items` array is the honest zero-row answer. */
+export function readLedger(payload: unknown): ParsedLedger {
+  if (!isRecord(payload) || !Array.isArray(payload.items)) {
+    return { kind: 'invalid', reason: '返回内容里没有账本行。' };
+  }
+  const rows: LedgerRow[] = payload.items.filter(isRecord).map((raw) => ({
+    employeeId: text(raw.employeeId),
+    period: text(raw.period),
+    tokensUsed: numberOrNull(raw.tokensUsed),
+    costUsd: numberOrNull(raw.costUsd),
+    updatedAt: text(raw.updatedAt),
+  }));
+  const missing = Array.isArray(payload.missingEmployeeIds)
+    ? payload.missingEmployeeIds.filter((id): id is string => typeof id === 'string')
+    : [];
+  return { kind: 'ok', rows, missing };
+}
+
+/** Sum of the ledger rows that carry a number. No rows → null (not 0). */
+export function ledgerTotal(rows: LedgerRow[]): number | null {
+  let sum = 0;
+  let priced = 0;
+  for (const row of rows) {
+    if (row.costUsd === null) continue;
+    sum += row.costUsd;
+    priced += 1;
+  }
+  return priced > 0 ? sum : null;
+}
+
+/** Latest ledger write time across rows — the honest "as of" for the money. */
+export function ledgerAsOf(rows: LedgerRow[]): string | null {
+  let latest: string | null = null;
+  for (const row of rows) {
+    if (!row.updatedAt) continue;
+    if (latest === null || row.updatedAt > latest) latest = row.updatedAt;
+  }
+  return latest;
+}
+
+/** USD with cents. A missing value is «—», never $0.00. */
+export function formatUsd(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) return '—';
+  return `$${value.toFixed(2)}`;
+}
+
+export function formatCount(value: number | null): string {
+  return value === null || !Number.isFinite(value) ? '—' : String(value);
+}
+
+/** 0.9967 → 99.7%; null → «—». Only formats a rate the server computed. */
+export function formatRate(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) return '—';
+  const pct = Math.round(value * 1000) / 10;
+  return `${pct}%`;
+}
+
+/** Beijing calendar day key, `YYYY-MM-DD`. */
+export function beijingDayKey(date: Date): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? '';
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
+
+/** Beijing 00:00 for a day key, as an ISO instant (UTC offset +08:00). */
+export function beijingDayStartIso(key: string): string {
+  return new Date(`${key}T00:00:00+08:00`).toISOString();
+}
+
+export function chunkIds(ids: string[], size = LEDGER_CHUNK): string[][] {
+  const step = Math.max(1, Math.floor(size));
+  const chunks: string[][] = [];
+  for (let index = 0; index < ids.length; index += step) chunks.push(ids.slice(index, index + step));
+  return chunks;
+}
+
+export interface SparkSlot {
+  hour: number;
+  runs: number | null;
+}
+
+export interface SparkGrid {
+  slots: SparkSlot[];
+  max: number | null;
+  observed: number;
+}
+
+/**
+ * Place returned hourly buckets onto the 24-slot window that starts at `from`.
+ * Hours the endpoint did not return stay null — they are drawn as empty slots,
+ * never as zero-height bars that would claim "this hour ran 0 times".
+ */
+export function sparkSlots(stats: RunStats, from: string, to: string): SparkGrid {
+  const start = new Date(from).getTime();
+  const end = new Date(to).getTime();
+  const span = Number.isFinite(start) && Number.isFinite(end) ? Math.max(1, end - start) : 86_400_000;
+  const slots: SparkSlot[] = Array.from({ length: 24 }, (_, hour) => ({ hour, runs: null }));
+  let max: number | null = null;
+  let observed = 0;
+  for (const bucket of stats.buckets) {
+    if (!bucket.bucketStart || bucket.runs === null) continue;
+    const at = new Date(bucket.bucketStart).getTime();
+    if (!Number.isFinite(at) || !Number.isFinite(start)) continue;
+    const slot = Math.floor(((at - start) / span) * 24);
+    if (slot < 0 || slot > 23) continue;
+    slots[slot] = { hour: slot, runs: bucket.runs };
+    observed += 1;
+    max = max === null || bucket.runs > max ? bucket.runs : max;
+  }
+  return { slots, max, observed };
+}

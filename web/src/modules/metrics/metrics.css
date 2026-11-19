@@ -241,3 +241,100 @@
     display: block;
   }
 }
+/* ---- met6: usage & cost -------------------------------------------------- */
+.met6 {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.met6-head h2 {
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.met6-head p {
+  margin-top: 4px;
+  max-width: 68ch;
+  color: var(--color-muted-foreground);
+  font-size: 12.5px;
+}
+
+.met6-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  min-width: 0;
+}
+
+.met6-card {
+  min-width: 0;
+}
+
+.met6-label {
+  color: var(--color-muted-foreground);
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+}
+
+.met6-value {
+  font-size: 26px;
+  font-weight: 650;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.met6-value-small {
+  font-size: 16px;
+}
+
+.met6-sub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  align-items: baseline;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.met6-hint,
+.met6-source {
+  color: var(--color-muted-foreground);
+  font-size: 11.5px;
+  overflow-wrap: anywhere;
+}
+
+.met6-source {
+  padding-top: 2px;
+  border-top: 1px solid var(--color-border);
+}
+
+.met6-gap {
+  color: var(--color-muted-foreground);
+  font-size: 11.5px;
+  overflow-wrap: anywhere;
+}
+
+.met6-spark {
+  display: block;
+  width: 100%;
+  height: 48px;
+  min-width: 0;
+}
+
+.met6-spark rect {
+  fill: color-mix(in srgb, var(--midground-base) 62%, transparent);
+}
+
+@media (max-width: 900px) {
+  .met6-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .met6-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
