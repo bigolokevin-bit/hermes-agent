@@ -13,7 +13,7 @@ vi.mock("@/modules/models/fetchJson", () => ({
 
 import KnowledgeModulePage from "./KnowledgeModulePage";
 
-const SPACES = "/agent-api/api/knowledge/spaces";
+const SPACES = "/agent-api/api/knowledge/spaces?limit=20";
 const DOCUMENTS = "/agent-api/api/documents?limit=50";
 const TASKS = "/agent-api/api/knowledge/sources?limit=20";
 const SEARCH_NO_QUERY = "/agent-api/api/knowledge/search?limit=12";
@@ -126,70 +126,115 @@ afterEach(() => {
 });
 
 describe("KnowledgeModulePage — real-data surfaces", () => {
-  it("draws one 未接入 body for a 404 and a 403 alike, with the GAP only in the title", async () => {
-    fetchMock.mockImplementation((url: string) =>
-      url === SPACES ? fail(404, "这个数据接口还没有接入。", "rid-notfound") : fail(403, "没有查看这项数据的权限。", "rid-denied"),
-    );
-
-    await render();
-    const notFound = byTestid("knw5-spaces-unwired");
-    expect(notFound).toBeTruthy();
-    expect(notFound?.getAttribute("title")).toBe("GAP-03");
-    // The request id is the only thing a 403 and a 404 may differ in; the body is one.
+  it("draws one body for a 404 and a 403 alike, naming the read that is missing", async () => {
     const bodyOf = (node: Element | null) =>
       Array.from(node?.querySelectorAll("b, .knw5-wrap") ?? [])
         .map((part) => part.textContent ?? "")
         .join(" ")
         .replace(/\s+/g, " ");
+
+    // 同一个读口，404 与 403 必须逐字同体（只有请求编号可以不同）。
+    fetchMock.mockImplementation(() => fail(404, "这个数据接口还没有接入。", "rid-notfound"));
+    await render();
+    const notFound = byTestid("knw5-spaces-unwired");
+    expect(notFound).toBeTruthy();
+    expect(notFound?.getAttribute("title")).toBe("GAP-03");
     const notFoundText = bodyOf(notFound);
-    expect(notFoundText).toContain("未接入");
+    expect(notFoundText).toContain("知识空间读口未接入");
+    expect(notFoundText).toContain("也不写「0 个」");
     expect(container.textContent).toContain("请求编号：rid-notfound");
+    expect(byTestid("knw5-spaces-table")).toBeNull();
     expect(container.querySelector('a[href="/approvals"]')).toBeTruthy();
 
-    await click("knw5-tab-ingest");
-    const denied = byTestid("knw5-ingest-unwired");
-    expect(denied).toBeTruthy();
+    fetchMock.mockImplementation(() => fail(403, "没有查看这项数据的权限。", "rid-denied"));
+    await render();
+    const denied = byTestid("knw5-spaces-unwired");
     expect(bodyOf(denied)).toBe(notFoundText);
     expect(denied?.getAttribute("title")).toBe("GAP-03");
     expect(container.textContent).toContain("请求编号：rid-denied");
-    const screenText = container.textContent ?? "";
-    expect(screenText).not.toContain("GAP-03");
-    expect(screenText).not.toContain("403");
-    expect(screenText).not.toContain("404");
+
+    // 换面板后仍是一份诚实正文，并点名该面自己的读口。
+    await click("knw5-tab-ingest");
+    const ingest = byTestid("knw5-ingest-unwired");
+    expect(ingest).toBeTruthy();
+    expect(bodyOf(ingest)).toContain("未接入");
+    const screen = container.textContent ?? "";
+    expect(screen).not.toContain("GAP-03");
+    expect(screen).not.toContain("403");
+    expect(screen).not.toContain("404");
+    expect(screen).not.toContain("0 个空间");
   });
 
-  it("renders real spaces with type, scale, Beijing time and a reason for every gap", async () => {
+  it("renders one row per space: 名称 / 文档数 / 最近同步 / 状态人话", async () => {
     fetchMock.mockResolvedValue({
+      asOf: "2026-11-19T06:05:00Z",
       items: [
         {
           spaceId: "space_123456789",
           name: "产品知识",
           type: "team",
-          docCount: 12,
-          updatedAt: "2026-11-19T06:00:00Z",
-          status: "active",
+          documentCount: 128,
+          lastSyncAt: "2026-11-19T06:00:00Z",
+          status: "indexed",
         },
-        { spaceId: "space_missing", name: null },
+        { spaceId: "space_zero", name: "归档空间", scope: "personal", docCount: 0, updatedAt: "2026-11-18T20:30:00Z", state: "active" },
+        { spaceId: "space_syncing", name: "同步中的空间", type: "tenant", syncStatus: "indexing", chunkCount: 320 },
+        { spaceId: "space_failed", name: "坏掉的空間", status: "failed", lastError: "上游索引服务返回 503" },
+        { spaceId: "space_thin" },
       ],
-      asOf: "2026-11-19T06:05:00Z",
     });
     await render();
     expect(fetchMock).toHaveBeenCalledWith(SPACES);
     expect(attr("knw5-spaces", "data-state")).toBe("ready");
-    expect(attr("knw5-spaces", "data-len")).toBe("2");
-    expect(container.querySelectorAll('[data-testid="knw5-spaces-table-row"]')).toHaveLength(2);
+    expect(attr("knw5-spaces", "data-len")).toBe("5");
+    expect(container.querySelectorAll('[data-testid="knw5-spaces-row"]')).toHaveLength(5);
     const text = container.textContent ?? "";
+    for (const head of ["空间名称", "文档数", "最近同步", "状态"]) expect(text).toContain(head);
     expect(text).toContain("产品知识");
     expect(text).toContain("团队空间");
-    expect(text).toContain("12 条");
-    expect(text).toContain("2026-11-19 14:05");
-    expect(text).toContain("2026-11-19 14:00");
+    expect(text).toContain("128 篇");
+    expect(text).toContain("最近同步：2026-11-19 14:00");
+    expect(text).toContain("已同步");
+    expect(text).toContain("数据截至 2026-11-19 14:05");
+    // 真 0 与「没给」是两回事；时间列说清它是哪一刻。
+    expect(text).toContain("0 篇");
+    expect(text).toContain("个人空间");
+    expect(text).toContain("可用");
+    expect(text).toContain("最近更新：2026-11-19 04:30");
+    expect(text).toContain("同步中");
+    expect(text).toContain("上游没有给出这个空间有多少文档");
+    expect(text).toContain("分块 320 段");
+    expect(text).toContain("上游没有给出时间");
+    expect(text).toContain("租户空间");
+    // 状态认不出来就待核实，不猜。
     expect(text).toContain("待核实");
-    expect(text).toContain("上游未提供名称");
-    expect(text).toContain("上游未提供条数或大小");
-    expect(text).toContain("上游未提供更新时间");
-    expect(text).not.toContain("space_123456789");
-    expect(attr("knw5-spaces-table-row", "title")).toBe("space_123456789");
+    expect(text).toContain("上游没有给出空间状态");
+    // 缺名字的那一行也不放样例。
+    expect(text).toContain("上游没有给出这个空间叫什么");
+    // 原始值与英文状态词不上屏。
+    for (const raw of ["space_123456789", "space_zero", "space_thin", "indexed", "indexing", "tenant"]) {
+      expect(text, raw).not.toContain(raw);
+    }
+    expect(text).not.toContain("documents");
+    expect(text).not.toContain("chunkCount");
+    expect(attr("knw5-spaces-row", "title")).toBe("space_123456789");
+  });
+
+  it("keeps the 失败 reason human on screen and technical text only in the title", async () => {
+    fetchMock.mockResolvedValue({
+      items: [
+        { spaceId: "sp_a", name: "薪酬口径", status: "failed", lastError: "凭据已过期，请重新授权后重试", documentCount: 12 },
+        { spaceId: "sp_b", name: "工单镜像", status: "failed", lastError: "ECONNREFUSED 10.0.0.8:8443 after 3 retries" },
+      ],
+    });
+    await render();
+    const text = container.textContent ?? "";
+    expect(text).toContain("凭据已过期，请重新授权后重试");
+    expect(text).not.toContain("ECONNREFUSED");
+    const hidden = container.querySelector('[data-testid="knw5-spaces-failure"][title*="ECONNREFUSED"]');
+    expect(hidden).toBeTruthy();
+    expect(hidden?.textContent ?? "").toContain("悬停可看原文");
+    expect(text).toContain("12 篇");
   });
 
   it("keeps a true empty answer empty instead of a zero count", async () => {
@@ -200,6 +245,7 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(attr("knw5-spaces", "data-len")).toBe("0");
     const text = container.textContent ?? "";
     expect(text).toContain("接口已响应，但列表为空");
+    expect(text).toContain("也不写 0 个");
     expect(text).not.toContain("0 个空间");
     expect(text).not.toContain("共 0");
     // 这一份回答没带采集时间：时间那行要如实说未知并给原因。
@@ -315,7 +361,7 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     await act(async () => {});
     expect(attr("knw5-spaces", "data-state")).toBe("ready");
     expect(container.textContent).toContain("空间一");
-    expect(container.textContent).toContain("0 条");
+    expect(container.textContent).toContain("0 篇");
   });
 
   it("keeps a copyable request id and retries a failure without HTTP copy", async () => {

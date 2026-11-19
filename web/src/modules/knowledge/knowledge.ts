@@ -35,6 +35,14 @@ export const KNOWLEDGE_GAP = "GAP-03";
 export const UNWIRED_HUMAN =
   "知识服务的读取口现在没有给出数据：接口尚未接入本控制台，或当前账号没有查看它的权限。接入或开通后，这里会自动显示真实数据；在此之前不展示样例，也不把缺失值写成 0。";
 
+/**
+ * The spaces surface names its own read, so a reviewer can tell which read is
+ * missing. A 403 and a 404 still draw this same pair — only the request id differs.
+ */
+export const SPACES_UNWIRED_HEAD = "知识空间读口未接入";
+export const SPACES_UNWIRED_HUMAN =
+  "知识空间的列表接口尚未接入本控制台，或当前账号没有查看它的权限。接入或开通后，这里会自动列出真实空间、各自的文档数与最近同步时间；在此之前不展示样例，也不写「0 个」。";
+
 export type KnowledgeTab = "spaces" | "ingest" | "retrieval" | "evidence";
 
 export const TAB_LABEL: Record<KnowledgeTab, string> = {
@@ -47,7 +55,7 @@ export const TAB_LABEL: Record<KnowledgeTab, string> = {
 export const TAB_ORDER: KnowledgeTab[] = ["spaces", "ingest", "retrieval", "evidence"];
 
 /** Read URLs — one per surface, so every body can say where it came from. */
-export const SPACES_URL = "/agent-api/api/knowledge/spaces";
+export const SPACES_URL = "/agent-api/api/knowledge/spaces?limit=20";
 export const DOCUMENTS_URL = "/agent-api/api/documents?limit=50";
 export const RECORDS_URL = "/agent-api/api/audit?action=kb.read&limit=50";
 /**
@@ -157,7 +165,31 @@ export interface IngestTaskRow {
 }
 
 /**
- * One reference to a document: a search hit or a citation. Both are drawn by the same
+ * 一个知识空间：名称 / 文档数 / 最近同步 / 状态。文档数只认真正表示“多少篇”的字段，
+ * 真 0 就是 0，没给就写「—」并说明缺什么；状态认不出来就「待核实」。
+ */
+export interface SpaceRow {
+  id: string;
+  name: string;
+  nameReason: string | null;
+  /** 上游给了才作为副行显示；缺字段不占位、不编「其他类型」。 */
+  kind: string | null;
+  kindRaw: string | null;
+  docs: string;
+  docsReason: string | null;
+  docsExtra: string | null;
+  timeLabel: string | null;
+  at: string;
+  atRaw: string | null;
+  atReason: string | null;
+  status: string;
+  statusRaw: string | null;
+  statusReason: string | null;
+  failure: string | null;
+  failureRaw: string | null;
+}
+
+/** One reference to a document: a search hit or a citation. Both are drawn by the same
  * list, because both answer the same four questions — which document, from where, when,
  * and whether the original can be opened.
  */
@@ -750,7 +782,7 @@ function sourceKindLabel(raw: string | null): string {
  * 屏面改说这一条读不得的原因，不替上游编一句好话。
  */
 function failureOf(row: Rec, status: string): { failure: string | null; failureRaw: string | null } {
-  if (status !== "失败" && status !== "部分完成") return { failure: null, failureRaw: null };
+  if (!["失败", "部分完成", "部分可用"].includes(status)) return { failure: null, failureRaw: null };
   const raw = pickString(
     row.failureReason,
     row.failure_reason,
@@ -900,6 +932,105 @@ export function readTasks(body: unknown): SurfaceValue<IngestTaskRow> {
     mapped.map((row) => row.atRaw),
     envelope,
     "上游响应没有带采集时间，任务也没有给出可用时间，数据截至时间未知。",
+  );
+  return { rows: mapped, ...newest, scanned: null };
+}
+
+/** 空间状态的人话；认不出来或没给都落到「待核实」，不猜一个好听的。 */
+function spaceStatusLabel(raw: string | null): string {
+  if (!raw) return "待核实";
+  const lower = raw.toLowerCase().replace(/[-\s]/g, "_");
+  if (["indexed", "indexing_done", "synced", "synchronized", "completed", "up_to_date"].includes(lower)) {
+    return "已同步";
+  }
+  if (["indexing", "syncing", "processing", "running", "in_progress", "updating"].includes(lower)) {
+    return "同步中";
+  }
+  if (["queued", "pending", "scheduled", "waiting", "never_synced", "not_synced"].includes(lower)) {
+    return "待同步";
+  }
+  if (["failed", "error", "broken"].includes(lower)) return "失败";
+  if (["disabled", "paused", "offline", "archived"].includes(lower)) return "已停用";
+  if (["active", "enabled", "ready", "normal", "available", "ok"].includes(lower)) return "可用";
+  if (["degraded", "partial", "warning"].includes(lower)) return "部分可用";
+  return "待核实";
+}
+
+/** The moment a space last moved, preferring a real sync stamp over a row update. */
+function spaceMomentOf(row: Rec): { atRaw: string | null; timeLabel: string | null } {
+  const sync = pickString(
+    row.lastSyncAt,
+    row.last_sync_at,
+    row.syncedAt,
+    row.synced_at,
+    row.lastIndexedAt,
+    row.last_indexed_at,
+    row.indexedAt,
+    row.indexed_at,
+  );
+  if (sync) return { atRaw: sync, timeLabel: "最近同步" };
+  return momentOf(row);
+}
+
+function spaceOf(row: Rec): SpaceRow {
+  const id = pickString(row.spaceId, row.space_id, row.knowledgeId, row.knowledge_id, row.id) ?? "";
+  const name = pickString(row.name, row.spaceName, row.space_name, row.title, row.displayName, row.display_name);
+  const kindRaw = pickString(row.scope, row.kind, row.type, row.spaceType, row.space_type, row.visibility);
+  const docs = pickNumber(
+    row.documentCount,
+    row.document_count,
+    row.docCount,
+    row.doc_count,
+    row.documents,
+    row.totalDocuments,
+    row.total_documents,
+    row.itemCount,
+    row.item_count,
+    row.total,
+  );
+  const chunks = pickNumber(row.chunkCount, row.chunk_count, row.chunks);
+  const bytes = pickNumber(row.sizeBytes, row.size_bytes, row.storageBytes, row.storage_bytes, row.bytes);
+  const statusRaw = pickString(row.status, row.state, row.indexStatus, row.index_status, row.syncStatus, row.sync_status);
+  const status = spaceStatusLabel(statusRaw);
+  const failure = failureOf(row, status);
+  const moment = spaceMomentOf(row);
+  const at = beijing(moment.atRaw);
+  const extras: string[] = [];
+  if (docs === null && chunks !== null) extras.push(`分块 ${chunks.toLocaleString("zh-CN")} 段`);
+  if (docs === null && bytes !== null) {
+    const size = formatBytes(bytes);
+    if (size !== null) extras.push(`约 ${size}`);
+  }
+  return {
+    id,
+    name: name ?? "—",
+    nameReason: name ? null : "上游没有给出这个空间叫什么",
+    kind: kindRaw ? kindLabel(kindRaw, "spaces") : null,
+    kindRaw,
+    docs: docs === null ? "—" : `${docs.toLocaleString("zh-CN")} 篇`,
+    docsReason: docs === null ? "上游没有给出这个空间有多少文档" : null,
+    docsExtra: extras.length > 0 ? extras.join(" · ") : null,
+    timeLabel: moment.timeLabel,
+    at: at ?? "—",
+    atRaw: moment.atRaw,
+    atReason: at ? null : moment.atRaw ? "上游给的时间读不出是哪一刻" : "上游没有给出时间",
+    status,
+    statusRaw,
+    statusReason: statusRaw ? null : "上游没有给出空间状态",
+    ...failure,
+  };
+}
+
+/** Spaces from the designated knowledge-space read. */
+export function readSpaces(body: unknown): SurfaceValue<SpaceRow> {
+  const envelope = stampOf(body);
+  const rows = rowsOf(body);
+  if (rows === null) return { rows: [], ...envelope, scanned: null };
+  const mapped = rows.map(spaceOf);
+  const newest = newestOf(
+    mapped.map((row) => row.atRaw),
+    envelope,
+    "上游响应没有带采集时间，空间也没有给出可用时间，数据截至时间未知。",
   );
   return { rows: mapped, ...newest, scanned: null };
 }
