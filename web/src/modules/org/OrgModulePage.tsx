@@ -43,7 +43,7 @@ type Resource<T> =
 
 const GAP02 = "GAP-02";
 const MISSING_REASON =
-  "上游部门接口还没有接入本控制台。接入后这里会自动显示真实部门树，不显示样例或 0。";
+  "上游部门接口还没有接入本控制台，或当前账号无权查看。接入后这里会自动显示真实部门树，不显示样例或 0。";
 function isRecord(value: unknown): value is Rec {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -169,7 +169,12 @@ function collect(rows: Rec[], parentId: string, out: Dept[]): void {
       countReason: count === null ? "上游未返回人数" : null,
       ownerName,
       ownerCode,
-      ownerReason: !ownerName && !ownerCode ? "上游未指定负责人" : null,
+      ownerReason:
+        !ownerName && !ownerCode
+          ? "上游未指定负责人"
+          : ownerName && !ownerCode
+            ? "上游未提供负责人短码"
+            : null,
       updatedAt,
       updatedReason: updatedAt
         ? null
@@ -220,7 +225,11 @@ function buildTree(depts: Dept[]): TreeNode[] {
  * fetch — real endpoints, honest 未接入 when none answers
  * ------------------------------------------------------------------ */
 
-const ORG_ENDPOINTS = ["/agent-api/api/v1/dept/list", "/agent-api/api/v1/dept/tree"];
+const ORG_ENDPOINTS = [
+  "/agent-api/api/v1/departments",
+  "/agent-api/api/v1/dept/list",
+  "/agent-api/api/v1/dept/tree",
+];
 
 function errorMessage(status: number | null | undefined): string {
   if (status === 0) return "当前网络不可达，请检查网络后重试。";
@@ -375,7 +384,7 @@ const MAX_DEPTH = 12;
 
 function ownerText(dept: Dept): string {
   if (dept.ownerName && dept.ownerCode) return `${dept.ownerName} · ${dept.ownerCode}`;
-  if (dept.ownerName) return dept.ownerName;
+  if (dept.ownerName) return `${dept.ownerName} · —`;
   if (dept.ownerCode) return `员工 · ${dept.ownerCode}`;
   return "未指派";
 }
@@ -580,7 +589,7 @@ export default function OrgModulePage() {
       <StateShell
         testid="org5-denied"
         icon={<ShieldAlert className="h-4 w-4 text-amber-300/80" aria-hidden />}
-        title="组织架构未接入"
+        title="组织与部门未接入"
         reason={MISSING_REASON}
         gapTitle={GAP02}
         extra={
@@ -607,7 +616,7 @@ export default function OrgModulePage() {
       <StateShell
         testid="org5-denied"
         icon={<ShieldAlert className="h-4 w-4 text-amber-300/80" aria-hidden />}
-        title="组织架构未接入"
+        title="组织与部门未接入"
         reason={org.reason}
         gapTitle={GAP02}
         extra={

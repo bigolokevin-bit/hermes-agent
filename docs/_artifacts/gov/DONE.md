@@ -1569,3 +1569,18 @@ built /private/tmp/health-r38/index.html
 - 只改 `web/src/modules/health/**` + 本证据；无 App/shell/routes/registry/manifest/package/lock/scripts/ops 改动。
 - 未取得真实浏览器登录态的 `hermes-summary` 元数据；缺字段按「—」+原因，不补零、不冒充采集时间。
 - 无独立观察者；页面已在 App `/system` live map 中注册（`health: <HealthConsolePage />`）。
+
+## R39 — /identity?tab=departments 组织与部门真数据面
+
+- 基线：`origin/lane/hermes-console` gate ledger `fa2c3bf7`（stamped at `466e2d2b`）；本地 lane 合入 merge `e9b1f22c`，未 rebase/force。
+- 端点实测（9122，`access_token_cookie` 从本机 auth-state 读取，未打印值）：
+  - `GET /agent-api/api/v1/departments` → **404** `console.unknown_route`
+  - `GET /agent-api/api/v1/user/list?page=1&page_size=20` → **404** `console.unknown_route`
+  - `GET /agent-api/api/v1/dept/list` → **404**；`/api/v1/dept/tree` → **404**
+  - 旁证：`GET /agent-api/api/employees?limit=20` → **200**，3 条数字员工，`department` 全为 `null`，因此不能据此编造部门树。
+- 实现：`web/src/modules/org/OrgModulePage.tsx` 候选端点首位改为 `/agent-api/api/v1/departments`，保留 `/dept/list`、`/dept/tree` 回退；403/404 同一「组织与部门未接入」体，GAP-02 仅 `title`，提供 `#/approvals` 申请去处；负责人名称存在但短码缺失时显示「姓名 · —」并给出“上游未提供负责人短码”，短码只接受 8 位字母数字；真实 0 才显示 `0 人`，缺失仍 `—` + 原因；无写入口、无 `data-fixture`、无样例/假 0。
+- 四态：加载骨架 / 空（真实 200 空列表才出现）/ 错（人话 + 可复制请求编号 + 重试）/ 未接入；403 与 404 同体；401 保留登录提示。
+- 验证：`npx vitest run src/modules/org` → **13/13 passed**；全量 `npx vitest run` → **131 files / 1346 passed**；`tsc -b . --noEmit` → exit 0。
+- DOM（临时 harness，404 真实形态；已删除）：1440/1280/375 `bodySW=bodyCW=pageSW=pageCW=1440/1280/375`，`org5-denied` 存在、`title=GAP-02`、申请链接可见；真实接口无数据故树层数 0；单测覆盖 3 层树的默认展开/折叠。
+- 测试 id：`org5-*` 唯一 token **37 个**（page/loading/empty/error/denied/apply/list/node/name/parent/count/owner/updated/request-id/copy/refresh 等）。
+- 边界：未改 App.tsx / shell / routes / registry / manifest / package·lock / scripts / ops；未跑 build，未重建 9122；无独立观察者。真实部门数据仍待上游接口接入（GAP-02）。
