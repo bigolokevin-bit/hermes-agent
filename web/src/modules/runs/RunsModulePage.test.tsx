@@ -144,7 +144,12 @@ describe("the read asks the real routes", () => {
 describe("the four states", () => {
   it("loading is a skeleton, not a list of zero", async () => {
     let resolveList: (v: unknown) => void = () => {};
-    api.fetchJSON.mockImplementation(() => new Promise((r) => { resolveList = r; }));
+    api.fetchJSON.mockImplementation((url: string) => {
+      if (String(url).includes("/api/runs") || String(url).includes("/api/run-stats")) {
+        return new Promise((r) => { resolveList = r; });
+      }
+      return Promise.resolve({ items: [] });
+    });
     await render("/runs");
     expect(document.querySelector("[data-testid='run5-loading']")).toBeTruthy();
     expect(document.querySelector('[aria-busy="true"]')).toBeTruthy();
@@ -282,7 +287,7 @@ describe("the ?state= repro legs", () => {
       expect(document.querySelector("[data-testid='run5-forced-note']")?.textContent).toContain("GAP-09");
       expect(document.querySelector("[data-testid='run5-page']")?.getAttribute("data-fixture")).toBe(state);
       expect(api.fetchJSON).not.toHaveBeenCalled();
-      const panel = document.querySelector(`[data-testid='run5-${state === "loading" ? "loading" : state}']`);
+      const panel = document.querySelector(`[data-testid='run5-${state}']`);
       expect(panel).toBeTruthy();
       expect(panel?.getAttribute("data-fixture")).toBe(state);
       expect((document.querySelector("[data-testid='run5-refresh']") as HTMLButtonElement).disabled).toBe(true);
@@ -294,5 +299,210 @@ describe("the ?state= repro legs", () => {
     await render("/runs?state=ready");
     await waitFor(() => rowNodes() === 1, "real ask");
     expect(document.querySelector("[data-testid='run5-page']")?.hasAttribute("data-fixture")).toBe(false);
+  });
+});
+
+/* ── the detail pane (T15 v4.1, page 2) ───────────────────────────── */
+
+const DETAIL = {
+  ...RUN_A,
+  employeeId: "emp_9f3a4b7c",
+  attemptNo: 1,
+  budgetCapUsd: 5,
+  upstreamRunId: "run_upstream_9f3a",
+};
+
+const EVENTS = {
+  items: [
+    { runId: DETAIL.runId, seq: 1, eventType: "started", occurredAt: "2026-11-18T02:00:00Z", payload: {} },
+    { runId: DETAIL.runId, seq: 2, eventType: "tool_call", occurredAt: "2026-11-18T02:00:30Z", payload: {} },
+    { runId: DETAIL.runId, seq: 3, eventType: "tool_result", occurredAt: "2026-11-18T02:01:40Z", payload: { resultRef: "rn-step-9" } },
+    { runId: DETAIL.runId, seq: 4, eventType: "tool_result", occurredAt: "2026-11-18T02:01:45Z", payload: {} },
+    { runId: DETAIL.runId, seq: 5, eventType: "completed", occurredAt: "2026-11-18T02:11:48Z", payload: {} },
+  ],
+  hasMore: false,
+};
+
+/** A handler that answers list/detail/events/employees for one known run. */
+const detailOk = (opts: {
+  detail?: unknown;
+  detailError?: (url: string) => never;
+  events?: unknown;
+  eventsError?: (url: string) => unknown;
+  retry?: (url: string, init?: { method?: string; body?: string }) => Promise<unknown>;
+}) => async (url: string, init?: { method?: string; body?: string }): Promise<unknown> => {
+  if (url.includes("/api/run-detail")) {
+    if (opts.detailError) return opts.detailError(url);
+    const id = new URLSearchParams(url.split("?")[1] ?? "").get("id") ?? DETAIL.runId;
+    return { ...(opts.detail as object ?? DETAIL), runId: id };
+  }
+  if (url.includes("/api/run-events")) {
+    if (opts.eventsError) return opts.eventsError(url);
+    return opts.events ?? EVENTS;
+  }
+  if (url.includes("/api/run-retry")) {
+    if (!opts.retry) throw new ApiError("missing", { status: 404, body: "{}", url, requestId: "rid-w" });
+    return opts.retry(url, init);
+  }
+  if (url.includes("/api/employees")) return { items: [{ employeeId: "emp_9f3a4b7c", name: "陈可" }] };
+  return { items: [RUN_A] };
+};
+
+describe("the detail pane", () => {
+  it("opens from a row and reads the timeline with honest result refs", async () => {
+    api.fetchJSON.mockImplementation(detailOk({}));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 1, "list ready");
+    await act(async () => {
+      (document.querySelector("[data-testid='run5-row-0-open']") as HTMLButtonElement).click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='run5-detail']") !== null, "detail ready");
+    expect(text()).toContain("运行 · X1XZ");
+    expect(text()).not.toContain(DETAIL.runId); // the full id stays off the surface
+    expect(text()).toContain("工具调用");
+    expect(text()).toContain("结果引用：rn-step-9");
+    expect(text()).toContain("结果引用：未记录");
+    expect(document.querySelectorAll("[data-testid^='run5-event-']")).toHaveLength(5);
+    expect(text()).toContain("陈可");
+    expect(text()).not.toContain("emp_9f3a4b7c");
+    // three-state cost badge on the detail
+    expect(document.querySelector("[data-testid='run5-detail-cost']")?.textContent).toContain("$0.42");
+    expect(document.querySelector("[data-testid='run5-detail-cost']")?.textContent).toContain("已计价");
+  });
+
+  it("the deep link opens the same pane and 关闭 clears it", async () => {
+    api.fetchJSON.mockImplementation(detailOk({}));
+    await render(`/runs?run=${encodeURIComponent(DETAIL.runId)}`);
+    await waitFor(() => document.querySelector("[data-testid='run5-detail']") !== null, "deep detail");
+    await act(async () => {
+      (document.querySelector("[data-testid='run5-detail-close']") as HTMLButtonElement).click();
+    });
+    expect(document.querySelector("[data-testid='run5-detail']")).toBeNull();
+  });
+
+  it("an unknown cost in the detail never renders the figure it was told", async () => {
+    api.fetchJSON.mockImplementation(
+      detailOk({ detail: { ...DETAIL, costStatus: "unknown" } }),
+    );
+    await render(`/runs?run=${encodeURIComponent(DETAIL.runId)}`);
+    await waitFor(() => document.querySelector("[data-testid='run5-detail']") !== null, "detail");
+    const cost = document.querySelector("[data-testid='run5-detail-cost']");
+    expect(cost?.textContent).toContain("—");
+    expect(cost?.textContent).toContain("未知");
+    expect(cost?.textContent).not.toMatch(/0\.42|\$0/);
+  });
+
+  it("a 403 and a 404 for one run draw one identical denied body", async () => {
+    const once = async (status: number): Promise<string> => {
+      api.fetchJSON.mockImplementation(
+        detailOk({
+          detailError: (url): never => {
+            throw new ApiError("no", { status, body: "{}", url, requestId: "rid-d" });
+          },
+        }),
+      );
+      await render(`/runs?run=${encodeURIComponent(DETAIL.runId)}`);
+      await waitFor(() => document.querySelector("[data-testid='run5-detail-denied']") !== null, "detail denied");
+      return html();
+    };
+    const forbidden = await once(403);
+    expect(text()).toContain("现在看不到运行记录");
+    expect(forbidden).not.toMatch(/agent-api|console\.\w+|\b40[34]\b|HTTP/);
+    expect(await once(404)).toBe(forbidden);
+  });
+
+  it("a detail failure speaks human words, quotes the request id, and re-asks on retry", async () => {
+    api.fetchJSON.mockImplementation(
+      detailOk({
+        detailError: (url): never => {
+          throw new ApiError("auth", { status: 401, body: "{}", url, requestId: "rid-401a" });
+        },
+      }),
+    );
+    await render(`/runs?run=${encodeURIComponent(DETAIL.runId)}`);
+    await waitFor(() => document.querySelector("[data-testid='run5-detail-error']") !== null, "detail error");
+    expect(text()).toContain("重新登录");
+    expect(text()).toContain("rid-401a");
+    const before = urls().filter((u) => u.includes("/api/run-detail")).length;
+    await act(async () => {
+      (document.querySelector("[data-testid='run5-detail-error-retry']") as HTMLButtonElement).click();
+    });
+    await waitFor(() => urls().filter((u) => u.includes("/api/run-detail")).length > before, "detail re-ask");
+  });
+
+  it("an event-stream failure keeps the run body and says what failed", async () => {
+    let eventsAsks = 0;
+    api.fetchJSON.mockImplementation(
+      detailOk({
+        eventsError: (url: string) => {
+          eventsAsks += 1;
+          if (eventsAsks === 1) {
+            throw new ApiError("ev", { status: 500, body: "{}", url, requestId: "rid-ev" });
+          }
+          return EVENTS;
+        },
+      }),
+    );
+    await render(`/runs?run=${encodeURIComponent(DETAIL.runId)}`);
+    await waitFor(() => document.querySelector("[data-testid='run5-detail']") !== null, "detail with bad events");
+    expect(text()).toContain("事件流这次没读到");
+    expect(text()).toContain("这次没有读到");
+    await act(async () => {
+      (document.querySelector("[data-testid='run5-events-retry']") as HTMLButtonElement).click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='run5-timeline']") !== null, "events after retry");
+  });
+
+  it("retry creates a NEW run and the page navigates to that new id", async () => {
+    const NEW_ID = "rn_01NEW9F3A4B7C8D9E0F1A2B3";
+    api.fetchJSON.mockImplementation(detailOk({ retry: async () => ({ runId: NEW_ID }) }));
+    await render(`/runs?run=${encodeURIComponent(DETAIL.runId)}`);
+    await waitFor(() => document.querySelector("[data-testid='run5-detail']") !== null, "detail");
+    await act(async () => {
+      (document.querySelector("[data-testid='run5-retry-new']") as HTMLButtonElement).click();
+    });
+    await waitFor(() => text().includes("已新建"), "retry done line");
+    expect(document.querySelector("[data-testid='run5-retry-result']")?.textContent).toContain("运行 · A2B3");
+    expect(urls().some((u) => u.includes("/api/run-retry"))).toBe(true);
+    expect(urls().some((u) => u.includes(`id=${encodeURIComponent(NEW_ID)}`))).toBe(true);
+    expect(text()).not.toContain(DETAIL.runId); // the old id is not echoed back
+  });
+
+  it("a write that is not there is said honestly, with no fake navigation", async () => {
+    api.fetchJSON.mockImplementation(detailOk({})); // retry default: 404
+    await render(`/runs?run=${encodeURIComponent(DETAIL.runId)}`);
+    await waitFor(() => document.querySelector("[data-testid='run5-detail']") !== null, "detail");
+    await act(async () => {
+      (document.querySelector("[data-testid='run5-retry-new']") as HTMLButtonElement).click();
+    });
+    await waitFor(() => text().includes("还没有在本控制台接通"), "honest write gap");
+    expect(text()).toContain("GAP-09");
+    expect(text()).toContain("rid-w");
+    expect(document.querySelector("[data-testid='run5-detail']")).toBeTruthy();
+    expect(text()).toContain("运行 · X1XZ"); // still the same run, unchanged
+  });
+
+  it("the upstream handle opens with a short code, the raw value stays in the title", async () => {
+    api.fetchJSON.mockImplementation(detailOk({}));
+    await render(`/runs?run=${encodeURIComponent(DETAIL.runId)}`);
+    await waitFor(() => document.querySelector("[data-testid='run5-detail']") !== null, "detail");
+    await act(async () => {
+      (document.querySelector("[data-testid='run5-detail-upstream']") as HTMLButtonElement).click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='run5-upstream']") !== null, "upstream panel");
+    expect(text()).toContain("9F3A");
+    expect(text()).not.toContain("run_upstream_9f3a"); // raw only in title/clipboard
+    const upstreamEl = document.querySelector("[data-testid='run5-upstream-code']");
+    expect(upstreamEl?.getAttribute("title")).toBe("run_upstream_9f3a");
+  });
+
+  it("a repro leg ignores ?run= and asks for nothing, employee names included", async () => {
+    api.fetchJSON.mockImplementation(async () => {
+      throw new Error("forced leg must not ask");
+    });
+    await render(`/runs?state=empty&run=${encodeURIComponent(DETAIL.runId)}`);
+    expect(api.fetchJSON).not.toHaveBeenCalled();
+    expect(document.querySelector("[data-testid='run5-detail']")).toBeNull();
+    expect(document.querySelector("[data-testid='run5-detail-loading']")).toBeNull();
   });
 });

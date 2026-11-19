@@ -21,12 +21,15 @@ import {
   elapsedMinute,
   errorInfo,
   failureSummary,
+  loadRunDetail,
+  loadRunEvents,
   loadRuns,
+  normalizeEvent,
+  requestRetryRun,
   runCode,
   sinceKeyOf,
   statusFilterOf,
 } from "./runs";
-
 afterEach(() => {
   api.fetchJSON.mockReset();
 });
@@ -62,20 +65,33 @@ describe("the read asks the real routes", () => {
     expect(String(api.fetchJSON.mock.calls[1]?.[0])).not.toContain("status=");
   });
 
-  it("tries the fallback only after the first route answered 404", async () => {
+  it("tries the fallback only after the first route answered 404, with the stats route's own names", async () => {
     api.fetchJSON.mockImplementation(async (url: string) => {
       if (url.includes("/api/runs")) {
         throw new ApiError("gone", { status: 404, body: '{"code":"console.not_found"}', url, requestId: "rid-404" });
       }
       return { items: [RUN] };
     });
-    const state = await loadRuns({ since: "2026-11-12T00:00:00Z" });
+    const state = await loadRuns({ since: "2026-11-12T00:00:00Z", status: "failed" });
     expect(state.phase).toBe("ready");
     expect(state.answeredBy).toBe(LIST_ROUTES[1]);
-    expect(api.fetchJSON.mock.calls.map((c) => String(c[0]))).toEqual([
-      expect.stringContaining("/agent-api/api/runs?"),
-      expect.stringContaining("/agent-api/api/run-stats?"),
-    ]);
+    const asked = api.fetchJSON.mock.calls.map((c) => String(c[0]));
+    expect(asked[0]).toContain("/agent-api/api/runs?");
+    expect(asked[1]).toContain("/agent-api/api/run-stats?");
+    // the stats route reads from/to — not since/status (RUNS-01 audit: 400)
+    expect(asked[1]).toContain("from=2026-11-12");
+    expect(asked[1]).not.toContain("since=");
+    expect(asked[1]).not.toContain("status=");
+  });
+
+  it("a stats-shaped fallback answer (totals, not rows) never paints rows", async () => {
+    api.fetchJSON.mockImplementation(async (url: string) => {
+      if (url.includes("/api/runs")) throw new ApiError("gone", { status: 404, body: "{}", url, requestId: "r" });
+      return { totals: { runs: 14, succeeded: 13, failed: 0, running: 1, costUsd: 0.13 } };
+    });
+    const state = await loadRuns({ since: "2026-11-12T00:00:00Z" });
+    expect(state.phase).toBe("error");
+    expect(state.rows).toEqual([]);
   });
 
   it("does not retry elsewhere on a 401 — that is a real answer", async () => {
@@ -181,5 +197,52 @@ describe("the sentence layer", () => {
     expect(sinceKeyOf("bogus")).toBe("7d");
     expect(statusFilterOf("failed")).toBe("failed");
     expect(statusFilterOf("open")).toBeNull();
+  });
+});
+
+/* ── detail leg (T15 v4.1 page 2) ─────────────────────────────────── */
+
+describe("the detail reads", () => {
+  it("asks run-detail and run-events with the /api/ segment kept", async () => {
+    api.fetchJSON.mockImplementation(async (url: string) => {
+      if (url.includes("/api/run-detail")) return RUN;
+      if (url.includes("/api/run-events")) return { items: [{ seq: 1, eventType: "started" }], hasMore: false };
+      return { items: [] };
+    });
+    const detail = await loadRunDetail(RUN.runId);
+    const events = await loadRunEvents(RUN.runId);
+    expect(detail.runId).toBe(RUN.runId);
+    expect(events.items).toHaveLength(1);
+    const asked = api.fetchJSON.mock.calls.map((c) => String(c[0]));
+    expect(asked[0]).toContain("/agent-api/api/run-detail?id=rn_");
+    expect(asked[1]).toContain("/agent-api/api/run-events?runId=rn_");
+  });
+
+  it("a run-detail answer with no readable id is a failure, not an empty detail", async () => {
+    api.fetchJSON.mockResolvedValue({ totals: 3 });
+    await expect(loadRunDetail(RUN.runId)).rejects.toBeInstanceOf(ApiError);
+  });
+
+  it("events without a seq are counted out, not painted", () => {
+    expect(normalizeEvent({ seq: 2 })).toBeTruthy();
+    expect(normalizeEvent({ eventType: "token" })).toBeNull();
+  });
+});
+
+describe("retry means a NEW run", () => {
+  it("returns the new id the write answered with — the current id is never echoed back", async () => {
+    api.fetchJSON.mockImplementation(async (url: string, init?: { method?: string }) => {
+      expect(String(url)).toContain("/agent-api/api/run-retry");
+      expect(init?.method).toBe("POST");
+      return { runId: "rn_01NEWRETRY00000000A2B3" };
+    });
+    const newId = await requestRetryRun(RUN.runId);
+    expect(newId).toBe("rn_01NEWRETRY00000000A2B3");
+    expect(newId).not.toBe(RUN.runId);
+  });
+
+  it("an answer without a new id throws instead of pretending a run was made", async () => {
+    api.fetchJSON.mockResolvedValue({ ok: true });
+    await expect(requestRetryRun(RUN.runId)).rejects.toBeInstanceOf(ApiError);
   });
 });

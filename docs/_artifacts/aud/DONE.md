@@ -442,3 +442,98 @@ GET /api/connectors?limit=50            -> 401
 2. 真身份（2xx 真负载）下的 `ds4-*` 行为：本机没有可过 `identity-check` 的身份头，未验。
 3. `ds4-request` 缺席的判定依据是当前模块无申请入口；若后续接入带申请入口的真实渠道面，需另补 id 与断言。
 4. 页面接线（shell 路由）仍归接线车道；本轮只动 `web/src/modules/channels/` 两文件 + 本段。
+
+---
+
+# TASK T15（PRD v4.1）— 运行列表 + 运行详情（2026-11-19，基线 `780cc513`，每页一 commit）
+
+派单口径：写域 `web/src/modules/runs/**` + 本段；`run5-*` testid；`?state=` 复现腿带 `data-fixture`+GAP 且零请求；
+真端点、真状态码、零编造行。旧的 `runsPage.ts` 与上一轮 T15 页面整体按 v4.1 重写。
+
+## T15.1 本轮文件（全在写域内）
+
+- 新增 `web/src/modules/runs/runs.ts`（数据/口径层）、`states.tsx`（四态面板）、`useRunsData.ts`（列表读取）、
+  `useRunDetail.ts`（详情读取）、`runs.test.ts`（数据层 21 例）。
+- 重写 `RunsModulePage.tsx`、`RunsModulePage.test.tsx`（页面 30 例）；删除 `runsPage.ts`。
+
+## T15.2 端点实探状态码（本机 BFF `127.0.0.1:8092`，`L4ConsoleBFF/0.1`，无身份头，`curl` 实测 2026-11-19）
+
+```
+GET  /api/runs?since=2026-10-20T04:36:37Z&limit=30          -> 401  rid a91c9379dde14714b039d547281bc8a8
+GET  /api/run-stats?from=2026-10-20T04:36:37Z&to=…           -> 401  rid 47b62c4c5eea41fd811de46157a2866f
+GET  /api/run-detail?id=rn_probe                              -> 401  rid c10419aa712f4402becd7e496c5d0da7
+GET  /api/run-events?runId=rn_probe&limit=50                  -> 401  rid a564a250daa648fd8a5f829a33afac41
+POST /api/run-retry {"runId":"rn_probe"}                      -> 401  rid c9f13bbda1aa4a26afc36cfd53d0958f
+（每一次都给新 X-Console-Request-Id；X-Console-Reason: identity-check-failed；
+ body {"code":"console.unauthenticated","message":"identity check failed"}）
+```
+
+门在路由之前（见本文件 §6）：外部无法分辨路由是否注册。前端把 401 走「登录状态已过期，重新登录后再刷新就能看到」
+人话腿 + 可复制请求编号 + 重试，**没有编造任何行、总数或成本**。详情写腿失败时上屏
+「新建运行的写入还没有在本控制台接通（GAP-09），本页没有替你发起任何新运行」并带编号，不发生假跳转。
+
+- 列表主路由 `/api/runs`（参数 `since/limit/status`，与 duty 模块 `fetchRuns` 同源拼法）；
+  回落 `/api/run-stats` **只在 404 时发生**，且按其真实参数名 `from/to` 发问（RUNS-01 审计实测 `since`/`window` 会 400），
+  回答必须真的是 `items[]` 列表形状才上屏，汇总桶一律读作「这份回答不是运行列表」。
+- `GAP-09` 为本车道新取号：落笔前 grep `web/src/**` 与 `docs/_artifacts/**`，GAP-01…GAP-08 已被占，09 空闲。
+
+## T15.3 四态的触发方法（可复跑口径）
+
+| 状态 | 真实触发 | `?state=` 复现 |
+|---|---|---|
+| 加载中 | 请求在途（骨架，非「0 条」） | `?state=loading` |
+| 空态 | 2xx 且 `items:[]` →「读取成功，窗口没有运行」+ 下一步 + **挣得的 0** | `?state=empty` |
+| 错误 | 400/401/429/5xx/0 → 人话 + 可复制请求编号（缺→「未提供」）+ 重试；400 专句「这次筛选没有被接受」 | `?state=error` |
+| 不可见 | 403，或两条列表路由都 404 → 同一份正文（只带编号），无路径、无代码词、上方无任何行 | `?state=denied` |
+
+详情腿：`?run=<完整 id>` 深链或行内「查看」；403/404 走与列表同一 `DeniedPanel`（testid `run5-detail-denied`）；
+事件流单独失败时保留运行本体，写明「事件流这次没读到」+ 重新读取事件。
+
+## T15.4 `data-fixture` 值
+
+- 腿值：`loading` / `empty` / `error` / `denied`，同时打在页根 `run5-page` 与对应面板上；
+  复现腿页上打「这是用 ?state=… 复现出来的状态…（GAP-09）」，**零请求**（列表、详情、员工名侧读都被 URL 门挡住，
+  测试用「任何 fetch 即抛错」的 mock 钉死），刷新与筛选禁用。
+- `?state=ready` 不算复现：走真实读取且页根无 `data-fixture`（测试钉住）。
+
+## T15.5 门禁（精确退出码）
+
+```
+$ cd web && npx tsc -b . --noEmit
+TSC_EXIT=2        49 error TS 行：全部在 ../apps/shared/**（基线同款）；
+                  grep -v '^\.\./apps/shared' 后 error TS 行数 = 0；src/modules/runs = 0
+$ cd web && npx vitest run src/modules/runs
+VITEST_EXIT=0     Test Files 2 passed (2)   Tests 51 passed (51)   Duration 952ms
+                  ← runs.test.ts 21 例（列表路由/回落参数/形状门/口径/详情层/重试）
+                    + RunsModulePage.test.tsx 30 例（四态、复现腿零请求、403≡404 逐字节、
+                      深链筛选真改请求、详情时间线/成本三态/重试新建并切换/上游短码/未提供编号）
+$ cd web && npx eslint src/modules/runs
+ESLINT_EXIT=0     无输出（0 problems；上一版残留的 4 条 set-state-in-effect 告警随重写清零）
+```
+
+未跑 vite build，不声称任何 entry sha（派单禁令）。
+
+## T15.6 与上一轮 T15/QA 口径的**偏离**（需要 L0 知晓）
+
+1. testid 全族换代为 `run5-*`（本单硬性）；旧 `runs-*`/`run-row-*`/`run-retry-planned` 不复存在。
+2. 请求编号缺席话术由 QA V4-R4 的「本次请求未记录编号，可复制时间与操作路径反馈」改为 v4.1 指定的「未提供」
+   （缺席原因保留在 `title`）。
+3. 旧错误/不可见卡上的「返回控制台 / 联系管理员」出口链接撤除：v4.1 把错误体钉为「人话+可复制编号+重试」，
+   不可见体必须 403≡404 逐字节同文，带链接会把两条真回答的差异面带上来。
+4. 列表列按本单钉死为 运行/状态/开始/耗时/成本（美元）/失败原因 + 行内「查看」；
+   员工/任务列撤下（员工名只出现在详情，读不到时掩码为「员工 · 后4位」，裸 `emp_` 测试断言不上屏）。
+5. 重试从「disabled 占位」变为真实语义腿：POST `/api/run-retry` → 回答里必须带**新 id** 才切换导航；
+   写不接通就上屏 GAP 话术——按钮不再是死控件，也不假装成功。
+6. run-stats 回落腿的问法修正（`from/to`）随详情 commit 落地（列表 commit 之后的复核中改掉）。
+
+## T15.7 未验项（照实留）
+
+1. 1440/1280/375 像素级横溢：本车道禁装依赖、无浏览器夹具，未实测；结构面全量沿用
+   `min-w-0`/`minmax(0,…)`/`break-words`/flex-wrap 纪律（375 下列表 2 列堆叠、编号 32 位十六进制走 break-all）。
+2. 真身份 2xx 下的字段名未经采样：`costStatus` 枚举、事件 `payload.resultRef` 拼法、run-retry 回答形状
+   都只有候选表；真数据到达需回填。
+3. `/api/run-retry` 的路径名没有仓内路由表证据（RUNS-01 材料只证读写语义）；门在路由前，401 分不出注册与否。
+4. `status=` 枚举值是否被 BFF 接受（RUNS-01 曾见 `status=open` 422 未走统一信封）未验；400 腿话术已就位。
+5. 403≡404 同体的真实身份验证（现网 `console.forbidden` vs `console.unknown_route`）未做，只有测试内逐字节断言。
+6. 接线：页已由上游壳挂好（`App.tsx` `ConsoleRunsAdapter` → `/runs`，`/work?tab=runs` 同组件）；本车道未动壳。
+7. `pnpm-lock.yaml` 未验证——未跑 install，未改锁。

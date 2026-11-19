@@ -18,11 +18,13 @@
  *                       (`web/src/modules/duty/api.ts` → `fetchRuns`,
  *                       params `since` / `limit` / `status`) — probe: 401
  *   /api/run-stats      the declared fallback; duty reads it as a STATS
- *                       route (`fetchRunStats`, buckets, not rows) — probe:
- *                       401. A 2xx here counts as a list ONLY if `items`
- *                       really is an array of run-shaped records; buckets
- *                       or any other shape read as 「这份回答不是列表」,
- *                       never as invented rows.
+ *                       route (`fetchRunStats(from, to, bucket)` — it
+ *                       answered 400 to a window/`since` parameter in the
+ *                       RUNS-01 audit, so the ask uses its real names
+ *                       `from`/`to`) — probe: 401. A 2xx here counts as a
+ *                       list ONLY if `items` really is an array of run-
+ *                       shaped records; buckets or totals read as 「这份回
+ *                       答不是运行列表」, never as invented rows.
  *
  * The `/api/` segment is part of every URL: the dev proxy forwards
  * `/agent-api/api/…` and nothing else, so dropping the segment would
@@ -190,9 +192,17 @@ type RouteAnswer =
   | { k: "failed"; error: ErrorInfo };
 
 async function askListRoute(path: string, q: ListQuery): Promise<RouteAnswer> {
-  const params = new URLSearchParams({ since: q.since, limit: String(PAGE_LIMIT) });
-  if (q.status) params.set("status", q.status);
-  if (q.cursor) params.set("cursor", q.cursor);
+  // `/api/runs` is documented with since/limit/status (the duty read uses
+  // the same names). `/api/run-stats` is the stats route — it answered 400
+  // to a window parameter in the RUNS-01 audit, and its accepted names are
+  // from/to, so the fallback asks with THOSE and nothing else.
+  const params = path.includes("run-stats")
+    ? new URLSearchParams({ from: q.since, to: new Date().toISOString() })
+    : new URLSearchParams({ since: q.since, limit: String(PAGE_LIMIT) });
+  if (!path.includes("run-stats")) {
+    if (q.status) params.set("status", q.status);
+    if (q.cursor) params.set("cursor", q.cursor);
+  }
   const url = `${path}?${params.toString()}`;
   let body: unknown;
   try {
@@ -434,6 +444,109 @@ export function employeeLabel(id: string | null | undefined, names: Map<string, 
   if (named) return named;
   const tail = id.replace(/^[^:]*:/, "").replace(/[^0-9A-Za-z]/g, "").slice(-4).toUpperCase();
   return tail ? `员工 · ${tail}` : "员工";
+}
+
+/* ── detail leg: the one run, its events, and a retry that means a NEW run ── */
+
+export interface RunEvent {
+  seq: number;
+  eventType?: string;
+  occurredAt?: string;
+  payload?: Record<string, unknown>;
+}
+
+export interface RunDetail extends RunRow {
+  upstreamRunId?: string;
+  channelEventId?: string;
+  previousRunId?: string;
+  policySnapshotRef?: string;
+  lastEventSeq?: number;
+}
+
+export function normalizeDetail(v: unknown): RunDetail | null {
+  const base = normalizeRun(v);
+  if (!base || !rec(v)) return null;
+  return {
+    ...base,
+    upstreamRunId: str(v.upstreamRunId),
+    channelEventId: str(v.channelEventId),
+    previousRunId: str(v.previousRunId),
+    policySnapshotRef: str(v.policySnapshotRef),
+    lastEventSeq: n(v.lastEventSeq) ?? undefined,
+  };
+}
+
+export function normalizeEvent(v: unknown): RunEvent | null {
+  if (!rec(v)) return null;
+  const seq = n(v.seq);
+  if (seq === null) return null;
+  return {
+    seq,
+    eventType: str(v.eventType),
+    occurredAt: str(v.occurredAt),
+    payload: rec(v.payload) ? v.payload : undefined,
+  };
+}
+
+export async function loadRunDetail(runId: string): Promise<RunDetail> {
+  const body = await fetchJSON<unknown>(`/agent-api/api/run-detail?id=${encodeURIComponent(runId)}`);
+  const detail = normalizeDetail(body);
+  if (!detail) throw new ApiError("shape", { status: 502, body: "", url: "/agent-api/api/run-detail" });
+  return detail;
+}
+
+export async function loadRunEvents(runId: string): Promise<{ items: RunEvent[]; hasMore: boolean }> {
+  const body = await fetchJSON<unknown>(`/agent-api/api/run-events?runId=${encodeURIComponent(runId)}&limit=50`);
+  if (!rec(body) || !Array.isArray(body.items)) {
+    throw new ApiError("shape", { status: 502, body: "", url: "/agent-api/api/run-events" });
+  }
+  return {
+    items: body.items.map(normalizeEvent).filter((e): e is RunEvent => e !== null),
+    hasMore: body.hasMore === true,
+  };
+}
+
+/**
+ * Retry means a NEW run: a fresh id is created upstream and this page
+ * navigates to it — the current runId is never reused or rewritten.
+ * The write route is the task-named contract name; the BFF gates every path
+ * behind identity (see DONE §6), so nothing about it is proven from here.
+ * The answer must carry the new id — without one there is nothing honest to
+ * navigate to, and this throws instead of pretending.
+ */
+export async function requestRetryRun(runId: string): Promise<string> {
+  const body = await fetchJSON<unknown>("/agent-api/api/run-retry", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ runId }),
+  });
+  const newId = rec(body) ? str(body.runId) ?? str(body.id) : null;
+  if (!newId) {
+    throw new ApiError("shape", { status: 502, body: "", url: "/agent-api/api/run-retry" });
+  }
+  return newId;
+}
+
+export function eventLabel(raw?: string): string {
+  switch (raw) {
+    case "token": return "模型输出";
+    case "tool_call": return "工具调用";
+    case "tool_result": return "工具结果";
+    case "approval_requested": return "发起审批";
+    case "message": return "消息";
+    case "started": return "开始";
+    case "completed": return "完成";
+    case "failed": return "失败";
+    case "in_progress": return "进行中";
+    default: return "其他事件";
+  }
+}
+
+/** resultRef is stored on the tool intent; the event API does not always echo it. */
+export function resultRef(ev: Pick<RunEvent, "eventType" | "payload">): string | null {
+  if (ev.eventType !== "tool_result") return null;
+  const raw = ev.payload?.resultRef ?? ev.payload?.result_ref;
+  return typeof raw === "string" && raw.trim() ? raw.trim() : null;
 }
 
 /** The 请求编号's own honest word when the answer carried none. */

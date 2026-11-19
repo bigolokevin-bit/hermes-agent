@@ -175,23 +175,30 @@ export function ErrorPanel({
   failure,
   onRetry,
   fixture,
-}: Marked & { failure: { sentence: string; requestId: string | null; technical: string | null }; onRetry: () => void }): ReactNode {
+  testId = "run5-error",
+  title = "运行记录没能加载出来",
+}: Marked & {
+  failure: { sentence: string; requestId: string | null; technical: string | null };
+  onRetry: () => void;
+  testId?: string;
+  title?: string;
+}): ReactNode {
   return (
     <Card
       role="alert"
       className="border-destructive/40 bg-destructive/5"
-      data-testid="run5-error"
+      data-testid={testId}
       {...fixtureAttr(fixture)}
     >
       <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-6">
         <div className="flex min-w-0 items-center gap-2 text-sm text-destructive">
           <TriangleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />
-          <span className="min-w-0 break-words">运行记录没能加载出来</span>
+          <span className="min-w-0 break-words">{title}</span>
         </div>
         <p className="max-w-prose break-words text-xs text-muted-foreground">{failure.sentence}</p>
-        <RequestIdLine requestId={failure.requestId} testId="run5-error-request-id" />
-        {failure.technical ? <TechnicalDisclosure lines={[failure.technical]} testId="run5-error-details" /> : null}
-        <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />} data-testid="run5-error-retry">
+        <RequestIdLine requestId={failure.requestId} testId={`${testId}-request-id`} />
+        {failure.technical ? <TechnicalDisclosure lines={[failure.technical]} testId={`${testId}-details`} /> : null}
+        <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />} data-testid={`${testId}-retry`}>
           重试
         </Button>
       </CardContent>
@@ -204,13 +211,17 @@ export function ErrorPanel({
  * the request id only, so it cannot repeat anything the two answers differ
  * on. No row and no count table is ever painted above it.
  */
-export function DeniedPanel({ requestId, fixture }: Marked & { requestId: string | null }): ReactNode {
+export function DeniedPanel({
+  requestId,
+  fixture,
+  testId = "run5-denied",
+}: Marked & { requestId: string | null; testId?: string }): ReactNode {
   return (
     <Card
       role="alert"
       aria-label="运行记录不可见"
       className="border-border bg-card"
-      data-testid="run5-denied"
+      data-testid={testId}
       {...fixtureAttr(fixture)}
     >
       <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
@@ -223,7 +234,7 @@ export function DeniedPanel({ requestId, fixture }: Marked & { requestId: string
         <p className="max-w-prose break-words text-xs text-muted-foreground">
           {`这份运行清单的数据源尚未在本控制台核实到真实回答（${GAP}），核实后这里自动显示真实内容。`}
         </p>
-        <RequestIdLine requestId={requestId} testId="run5-denied-request-id" />
+        <RequestIdLine requestId={requestId} testId={`${testId}-request-id`} />
       </CardContent>
     </Card>
   );
