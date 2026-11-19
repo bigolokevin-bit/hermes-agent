@@ -1184,3 +1184,27 @@ $ cd web && npx vitest run
   - `?tab=retrieval` → 前后均 `tab=spaces&panel=retrieval`、selected `knw4-tab-retrieval`、panel `retrieval`
   - `?tab=citations|evidence` → 前后均 `tab=spaces&panel=evidence`、selected `knw4-tab-evidence`、panel `evidence`
 - 验证：`npx vitest run src/modules/knowledge` → 2 files / 15 passed；全量 `npx vitest run` → 123 files / 1223 passed；四态/GAP-03 title/zeroCount=0 未改。
+
+## R25 管理员与高危操作只读面（2026-11-19）
+
+### 端点真实度（BFF 127.0.0.1:8092，带登录 cookie；未打印 token）
+```text
+GET /api/v1/user/list          404 {"code":"console.unknown_route"}
+GET /api/v1/user/all           404 {"code":"console.unknown_route"}
+GET /api/v1/role/list          404 {"code":"console.unknown_route"}
+GET /api/audit?action=grant.created&limit=20   200 {"events":[6 条]}
+GET /api/audit?action=employee.deleted&limit=20 200 {"events":[]}
+GET /api/audit?action=grant.revoked&limit=20    200 {"events":[]}
+GET /api/audit?action=credential.updated&limit=20 200 {"events":[]}
+```
+- 管理员名单真实行数 **0**：人员/角色读口未接入；页面显示 `adm5-gap`（`title=GAP-ADM5-01`）+ 人话原因 + `/approvals` 申请入口，不展示样例。
+- 高危操作真实行数 **6**（`grant.created` 6 条，其余动作 0 条）；逐条显示北京时间、类别、操作、对象、操作者与可复制请求编号；空动作不补 0。
+
+### 页面与验证
+- `/identity?tab=roles&view=admins` 可经既有 identity roles 页进入管理员视图；页面也接受 `?tab=admins` / `?view=admins`（本模块内）。shell 尚无独立 `admins` tab，`/identity?tab=admins` 直链仍由壳层回落到 people，需 L0/R5 注册；不改 App/shell。
+- 管理员表列：账号「姓名 · 8 位短码」或「未指派」/角色/最近登录/最近高危操作/状态；缺失一律 `—` + 原因，原始 id 只进 `title`。
+- 高危表列：时间/类别/操作/对象/操作者/请求编号；`adm5-risk-copy` 复制完整编号；403 与 404 管理员名单同体，GAP 只进 `title`。
+- 只读：无新建/编辑/删除/授权按钮；复制与刷新除外。
+- 真机 DOM（Vite 5447 / Chrome 9247，未登录数据态按 gap/error 呈现）：1440 `body 1440/1440 page 1144/1144`；1280 `1280/1280 984/984`；375 `375/375 353/353`，`adm5-gap` 与 `adm5-risk-panel` 均存在，页面无横溢。
+- 定向 `npx vitest run src/modules/access` → **12 passed**；全量 `npx vitest run` → **123 files / 1254 passed**。
+- `tsc -b . --noEmit` 仍被基线既有 `src/modules/approvals/api.test.ts`、`src/pages/LoginPage.test.tsx` 类型错误阻断（非本写域）；本模块无新增类型错误。
