@@ -10,8 +10,8 @@ import { useCallback, useEffect, useState } from "react";
 
 import {
   failureInfo,
+  fetchInventory,
   fetchServers,
-  fetchToolsets,
   readFailure,
   type FailureCopy,
   type ToolRow,
@@ -75,7 +75,7 @@ function firstFailure(results: PromiseSettledResult<ToolRow[]>[]): unknown | nul
 }
 
 function classify(results: PromiseSettledResult<ToolRow[]>[]): Settled {
-  const toolset = results[0];
+  const inventory = results[0];
   const server = results[1];
   const succeeded = results.filter((r): r is PromiseFulfilledResult<ToolRow[]> => r.status === "fulfilled");
   const failure = firstFailure(results);
@@ -105,8 +105,8 @@ function classify(results: PromiseSettledResult<ToolRow[]>[]): Settled {
 
   const rows = succeeded.flatMap((r) => r.value);
   const issues: SectionIssue[] = [];
-  if (toolset.status === "rejected") {
-    issues.push({ label: "工具目录", failure: readFailure(toolset.reason, failureInfo(toolset.reason)) });
+  if (inventory.status === "rejected") {
+    issues.push({ label: "工具目录", failure: readFailure(inventory.reason, failureInfo(inventory.reason)) });
   }
   if (server.status === "rejected") {
     issues.push({ label: "MCP 连接", failure: readFailure(server.reason, failureInfo(server.reason)) });
@@ -128,7 +128,7 @@ export function useToolsData(forced: ForcedState | null): ToolsState {
     let alive = true;
     const asked = attempt;
     void (async () => {
-      const results = await Promise.allSettled([fetchToolsets(), fetchServers()]);
+      const results = await Promise.allSettled([fetchInventory(), fetchServers()]);
       if (alive) setRead({ attempt: asked, settled: classify(results) });
     })();
     return () => {

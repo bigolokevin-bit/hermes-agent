@@ -13,6 +13,7 @@ const api = vi.hoisted(() => ({ fetchJsonStrict: vi.fn() }));
 vi.mock("@/modules/models/fetchJson", () => ({ fetchJsonStrict: api.fetchJsonStrict }));
 
 import { ToolsPage } from "./ToolsPage";
+import { resetCapabilityCounts } from "../capabilities/counts";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -77,7 +78,10 @@ const failed = (status: number, url: string, requestId?: string) => (called?: st
   return Promise.reject(new ApiError("failed", { status, body: "{}", url, requestId }));
 };
 
-beforeEach(() => api.fetchJsonStrict.mockReset());
+beforeEach(() => {
+  api.fetchJsonStrict.mockReset();
+  resetCapabilityCounts();
+});
 afterEach(() => {
   act(() => root?.unmount());
   root = null;
@@ -89,12 +93,24 @@ describe("real reads", () => {
     await mount();
     expect(urls().sort()).toEqual([
       "/agent-api/api/mcp/servers",
+      "/agent-api/api/tools",
       "/agent-api/api/tools/toolsets",
       "/api/mcp/servers",
+      "/api/tools",
       "/api/tools/toolsets",
     ]);
 
     expect(document.querySelector("[data-testid='tol5-page']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='tl3-page']")).toBeTruthy();
+    await waitFor(() => document.querySelector("[data-testid='cap4-count-tools']")?.textContent?.includes("6") ?? false, "tools count");
+    expect(document.querySelector("[data-testid='cap4-count-tools']")?.textContent).toContain("有源");
+    expect(document.querySelector("[data-testid='cap4-count-skills']")?.textContent).toContain("未取数");
+    expect(document.querySelectorAll("[data-testid^='tl3-row-']")).toHaveLength(6);
+    const planned = document.querySelector<HTMLButtonElement>("[data-testid='tl3-planned-create']")!;
+    expect(planned.disabled).toBe(true);
+    expect(planned.getAttribute("data-planned")).toBe("true");
+    expect(planned.getAttribute("aria-disabled")).toBe("true");
+    expect(planned.getAttribute("title")).toContain("还没有工具写入口");
   });
 
   it("renders toolset and MCP rows with type, enabled state, credential state and last-call gap", async () => {
@@ -105,7 +121,12 @@ describe("real reads", () => {
     expect(text()).toContain("MCP · HTTP 服务");
     expect(text()).toContain("MCP · 本地进程");
     const web = rows()[0]!;
-    expect(web.querySelector("[data-testid='tol5-status']")?.textContent).toBe("启用");
+    expect(web.querySelector("[data-testid='tol5-status']")?.textContent).toBe("正常");
+    expect(web.querySelector("[data-testid='tl3-name']")?.textContent).toContain("网页搜索");
+    expect(web.querySelector("[data-testid='tl3-type']")?.textContent).toContain("内置");
+    expect(web.querySelector("[data-testid='tl3-status']")?.textContent).toBe("正常");
+    expect(web.querySelector("[data-testid='tl3-updated']")?.textContent).toContain("最近更新：—");
+    expect(web.querySelector("[data-testid='tl3-updated']")?.textContent).toContain("没有提供最近更新时间");
     expect(web.querySelector("[data-testid='tol5-credential']")?.textContent).toContain("已配置");
     expect(web.querySelector("[data-testid='tol5-last']")?.textContent).toContain("最近调用：—");
     expect(web.querySelector("[data-testid='tol5-last']")?.textContent).toContain("不表示从未调用");
@@ -155,8 +176,15 @@ describe("failures and gaps", () => {
     await mount(failed(403, "/api/tools/toolsets", "req-deny"));
     expect(document.querySelector("[data-testid='tol5-denied']")).toBeTruthy();
     expect(rows()).toHaveLength(0);
-    expect(text()).toContain("工具与 MCP 读口未接入");
+    expect(text()).toContain("工具读口未接入");
     expect(text()).toContain("请求编号：req-deny");
+    expect(document.querySelector("[data-testid='tl3-apply']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='tl3-request-id']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='tl3-retry']")).toBeTruthy();
+    const count = document.querySelector("[data-testid='cap4-count-tools']")!;
+    expect(count.textContent).toContain("—");
+    expect(count.textContent).toContain("无源");
+    expect(count.getAttribute("title")).toContain("GAP-04");
     expect(text()).not.toMatch(/\/api\/|403|GAP-04/);
   });
 
@@ -165,7 +193,7 @@ describe("failures and gaps", () => {
     expect(document.querySelector("[data-testid='tol5-denied']")).toBeTruthy();
     expect(document.querySelector("[data-testid='tol5-fixture-note']")).toBeNull();
     expect(rows()).toHaveLength(0);
-    expect(text()).toContain("工具与 MCP 读口未接入");
+    expect(text()).toContain("工具读口未接入");
     expect(text()).toContain("请求编号：req-deny");
     expect(text()).not.toMatch(/\/api\/|403|404|GAP-04|字段示例/);
     expect(document.querySelector("[data-testid='tol5-denied']")?.getAttribute("title")).toBe("GAP-04");
@@ -178,7 +206,7 @@ describe("failures and gaps", () => {
       return Promise.reject(new ApiError("不是数据", { status, body: "<!doctype html>", url }));
     });
     expect(document.querySelector("[data-testid='tol5-denied']")).toBeTruthy();
-    expect(text()).toContain("工具与 MCP 读口未接入");
+    expect(text()).toContain("工具读口未接入");
     expect(text()).not.toMatch(/Unexpected token|<!doctype|HTTP|\/api\//i);
   });
 
@@ -229,5 +257,30 @@ describe("four states and repro legs", () => {
     await mount(answer, "/capabilities?tab=tools&state=ready");
     expect(api.fetchJsonStrict).toHaveBeenCalled();
     expect(document.querySelector("[data-testid='tol5-page']")?.hasAttribute("data-fixture")).toBe(false);
+  });
+});
+
+describe("local name search", () => {
+  it("filters the loaded rows by ?q= and reports the loaded-scope note without refetching", async () => {
+    await mount(answer, "/capabilities?tab=tools&q=%E7%BD%91%E9%A1%B5");
+    expect(rows().map((row) => row.textContent)).toHaveLength(2);
+    expect(text()).toContain("网页搜索");
+    expect(text()).toContain("网页内容提取");
+    expect(text()).not.toContain("创建看板");
+    expect(text()).toContain("仅在当前已加载 6 项内搜索");
+    expect(document.querySelector("[data-testid='cap6-export-count']")?.textContent).toContain("2 条");
+    expect(document.querySelector<HTMLButtonElement>("[data-testid='cap6-export']")?.disabled).toBe(false);
+    expect(urls()).toHaveLength(6);
+  });
+
+  it("shows a no-match state with a clear button, then restores every row", async () => {
+    await mount(answer, "/capabilities?tab=tools&q=zzz");
+    const noMatch = document.querySelector("[data-testid='tl3-no-match']");
+    expect(noMatch?.textContent).toContain("没有匹配项");
+    const clear = document.querySelector<HTMLButtonElement>("[data-testid='tl3-clear']");
+    expect(clear).toBeTruthy();
+    await act(async () => clear?.click());
+    await waitFor(() => rows().length === 6, "rows restored");
+    expect(urls()).toHaveLength(6);
   });
 });

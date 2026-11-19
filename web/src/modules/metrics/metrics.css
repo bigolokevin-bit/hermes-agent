@@ -522,3 +522,130 @@
 .met6-budget-variance.is-surplus {
   color: #36bc84;
 }
+
+/* MET7 — cost share by model */
+.met7-sort {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.met7-sort:hover {
+  text-decoration: underline;
+}
+
+.met7-sort:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.met7-model {
+  overflow-wrap: anywhere;
+}
+
+/* MET9 — cost rows drill into the runs list */
+.met9-link {
+  color: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}
+
+.met9-link:hover {
+  text-decoration-style: solid;
+}
+
+.met9-link:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* MET-A — export the current cost view */
+.metA-count {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.metA-count:empty {
+  display: none;
+}
+
+/* MET-B — data sources and freshness (compact row, table only when expanded) */
+.metB {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.metB-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.metB-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.metB-table {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  font-size: 12px;
+}
+
+.metB-row {
+  display: grid;
+  grid-template-columns: minmax(96px, 1.2fr) minmax(140px, 1.4fr) minmax(112px, 1fr) minmax(96px, 0.9fr);
+  gap: 8px;
+  padding: 6px 10px;
+  align-items: baseline;
+  border-top: 1px solid var(--color-border);
+}
+
+.metB-row:first-child {
+  border-top: 0;
+}
+
+.metB-row-head {
+  color: var(--color-muted-foreground);
+  background: var(--color-muted);
+}
+
+.metB-name {
+  font-weight: 500;
+}
+
+.metB-path {
+  color: var(--color-muted-foreground);
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 700px) {
+  .metB-row {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .metB-row-head {
+    display: none;
+  }
+
+  .metB-name {
+    font-weight: 600;
+  }
+}

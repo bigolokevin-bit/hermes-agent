@@ -702,3 +702,68 @@ BFF 关键读数（9122==01175128 活体，只读）：工单点名 URL `GET /ap
 测试：既有 3 用例入口由 at("tasks")（旧借 approvals 映射）改为 at("approvals")（语义=审批区本尊，断言文本零改动）；新增 R43 describe 4 用例：①真查询带 assignee=employee%3A<EMP>+limit=20、行 href=/tasks/tk_0762C4D5、待处理/待核实/高优先级、BJT 10:00/09:30、无标题行=「任务 · 1B4EA3C9」（用 tasksBoard.short8 全站口径——坑：模块自研 shortCode 会把 tk_ 计进短码=TK1B4EA3，已换 short8）②空集诚实句+不放宽筛选+面板卡不渲 ③error=人话+请求编号：req-tsk-43 冒号形制+req-copy+重试同卡（坑：querySelector("button") 先命中复制钮，断言改 some(含「重试」)；**同一 it 内二次 mockApi+renderAt 不会重发请求（useResourceList deps=[url,nonce] 未变）=403≡404 必须拆独立 it（root 重建习语）**）。定向 employee-detail 26 passed exit0；assert-ia 两模式 exit0（51/22/1/8 未动）；tsc 本域零红；全量 **131 files/1399 passed**（≥基线 1387）。
 
 三档横溢：jsdom 不可测，形态学=行网格 grid-cols-1 md:grid-cols-[1.8fr_.8fr_.8fr_1fr]+min-w-0 truncate+列头 md:grid（与 chat 区同构已验），如实报。9122 取证代次禁重建：活体行读数待并入后代次。
+
+## R45 员工详情身份卡区（2026-11-20，lane/console-appr）
+
+基线：显式 refspec fetch + reset --hard origin/lane/hermes-console = **f0419b0b**（ledger stamped at 02a7385c，entry DmuaaNyX），toplevel ✓ porc=0。禁面零触碰（App/shell/routes/registry/package·lock/web-scripts/ops 未动）。
+
+BFF/数据面现查：GET /agent-api/api/employees/<id>（server.py EMPLOYEES_DETAIL_PREFIX 片段路由）活体 200 keys=[id,tenantId,name,title,lifecycleState,currentVersionNo,ownerUserId,createdAt,updatedAt,revision,department,duty,asOf]——**响应没有 reportsTo 类字段**（汇报对象按缺值处置，禁编造）。模块 overview 腿 useOverview 本就走该端点（真数据既有），四态/可复制 rid（RequestIdCopy「请求编号：」冒号形制+req-copy）/重试/403≡404 既有分支既有测试锁。
+
+实现（EmployeeDetailModulePage.tsx，写域内）：OverviewZone ready 返回新增 **IdentityCard**（testid=ed1-identity，包在 ed5-overview-wrap 内、原 ed5-overview 六行 dl 原样保留=ed5-*/apr5-* 零破坏）。六字段：ed1-identity-name（缺「—」+title「后台没有回传这位员工的姓名。」）/ code（shortCode(empId) 8 位大写码、title=完整 id，屏上无裸 emp_）/ role（title|role|position 多键回落，缺「—」+title）/ state（lifecycleLabel 外层映射：未知→「待核实」，title=原始值；原 lifecycleLabel 未动）/ reports（reportsTo|reports_to|managerEmployeeId|manager 多键；有值=真 a[href^=/employees/] 可聚焦，label=「姓名 · 短码」，title=原值；无值=「—」+title「后台没有回传这位员工的汇报对象。」）/ created（createdAt|created_at→beijing() BJT 到分，缺「—」+title）。无 `?? 0`/无占位假值。⑦三档横溢=jsdom 不可测，形态学报（dl sm:grid-cols-2 xl:grid-cols-3+truncate+min-w-0）。9122=02a7385c 代次禁重建：页面活体卡读数待并入后代次（本轮只读探了 API 面）。
+
+测试（EmployeeDetailModulePage.test.tsx，R45 describe 3 用例）：真 body 六字段读数（name/code=A3F1B2C4/role/在岗/created=2026-11-14 06:15/reports=—+title）；reportsTo=employee:emp_BEEF…+reportsToName → a[href=/employees/emp_BEEF0000…] text=主管 · BEEF0000 title=原值；weird_state→待核实+四缺字段「—」+title 含「后台没有回传」+屏无 ??0/undefined/null。定向 employee-detail **29 passed**（26 既有+3 新）exit0；assert-ia 两模式 exit0（51/22/1/8）；tsc 本域零红；全量 **131 files/1403 passed**（≥基线 1401，如实报）。
+
+## R44 审批队列筛选与 URL 可分享（2026-11-20，lane/console-appr）
+
+基线：显式 refspec fetch + reset --hard origin/lane/hermes-console = f0419b0b（ledger stamped at 02a7385c，entry DmuaaNyX），toplevel ✓ porc=0。写域=modules/approvals/**（落点=history 页：只读+已有筛选=工单「深度增强不加新页」的既有面；pending 页写区是先前已验收功能，未动）。
+
+实现（ApprovalsHistoryModulePage.tsx）：①新组 data-testid=apv5-filter（role=group）=四快捷钮 apv5-filter-status-{all,pending,approved,rejected}（人话「全部/待办/已批/已拒」），sends 真 status 值走既有 choose→URL ?status=→useApprovalsList 恰一次重取（新用例实测 fresh filter api/approvals =1 条带 status=rejected）；active 态与八态组同源（?status=pending 重放时 apv5 快捷钮与 apr5-filter-pending 同时 aria-pressed=true）。②apv5-count=ready 期 {list.rows.length}，与「已显示 N 条」同变量同元素树=计数与列表同源（pending 重放=1 且读数行 1 条实测一致）。③风险档 apv5-filter-risk 与时间窗 apv5-filter-window=**控件在屏但 disabled+title 人话带活体读数**：BFF passthrough=(status,limit,cursor)，risk/window/since 实测被丢（status=all 下 8 条同集合，带参不带一致）——前端假过滤被工单禁→按 P2 priority 先例诚实禁用，DONE/回执上报。④空集文案按工单=「该条件下无审批：「X」结果下没有记录」（既有两用例断言同步），清筛选去处（换结果/全部+exits-back/exits-contact 真出口）既有保留。⑤apr5-* 现名族零改动；URL 刷新/复制链接复现=既有 replace 机制+新组共用；四态/403≡404/可复制 rid+重试=既有形态未破坏。⑥三档横溢=jsdom 不可测，形态学报（新组复用 flex-wrap gap-1.5 容器）。
+
+验证：定向 approvals 3 files/57 passed exit0；assert-ia 两模式 exit0（51/22/1/8，未动壳层）；全量 **131 files/1401 passed**（≥基线 1399）。9122==02a7385c 取证代次禁重建：活体 DOM 读数待并入后代次，本轮 jsdom+ego 参数探测双交付。
+
+## R46 审批详情「决策链路与证据」（2026-11-20，lane/console-appr）
+
+基线：**按单 merge（禁 reset）** origin/lane/hermes-console=f0419b0b 系 Already up to date（tip e1ea2504 已含），toplevel ✓ porc=0。
+
+落点：`/approvals/:id` 无独立路由→按工单预案用既有点开详情形态（?id= URL 保态既有：selected 初值 params.get("id")，分享/刷新可复现）；ApprovalDetailBody 尾部（apd5-replay 之后、技术折叠之前）新增 **DecisionTrail（views.tsx，apd6-* 族）**，pending/history 两页共用同一组件。
+
+链路形态：`apd6-trail`（ol，标题注明「节点顺序即服务返回顺序」，禁前端重排）→ `apd6-step-submitted`（提交·申请人·submitted BJT 到分；缺=该段无记录+title）→ `apd6-step-node-<i>`（节点 N·审批人（actor 人话，title=whoRaw）·verdict 人话（既有口径 approve=「通过」）·时间缺=该段无记录+title·意见原文缺=「未填」）；decisions 空=单行 `apd6-step-nodes-none`「该段无记录」；未行动审批人= `apd6-step-pending-<i>`「X·待办·该段无记录（该审批人还没有给出决定）」（labels 与 decisions.who 字符串差集）；终态= `apd6-step-final`（status.label+decided，title=status.raw）。关联段 `apd6-step-links`：run/task **有值才渲真 a[href]**（`apd6-link-run`→/runs/<id>、`apd6-link-task`→/tasks/<id> R40 已挂深链；model.ts ApprovalDetail 新增 runId/taskId 多键解析）；无值=该段无记录+title；证据段=恒「该段无记录」+title 活体实证——**ego 只读探测（9122==02a7385c 系）：GET /api/approvals?status=all&limit=8→200 行 keys 无 runId/taskId/evidenceId（runLinks=0/8）；GET /agent-api/api/approval?id=ap_123…→404 console.unknown_route=详情读口本代次未开放**，jsdom 为链路行为权威，页面活体读数待 BFF 开放详情读口与并入后代次。
+
+不破与门禁：apd5-*/apr5-*/apv5-*/ed* 零改动（既有 57 用例全绿）；四态/可复制 rid/403≡404/零写入口=宿主页与 detail 既有分支既有锁；三档横溢=jsdom 不可测，形态学沿用既有 flex-col break-words（如实报）。新测试 2 用例：①链路顺序/pending 段/缺段人话/无裸 human:emp_②runId/taskId 真 href+意见原文。
+
+验证：定向 approvals 3 files/59 passed exit0；tsc 本域零红；assert-ia 两模式 exit0 51/22/1/8；全量 **131 files/1406 passed**（基线 1404+2）。
+
+## R47 员工详情跨区一致性（2026-11-20，lane/console-appr）
+
+基线：显式 refspec fetch + merge origin/lane/hermes-console（f0419b0b 系=Already up to date @84ccdb26），禁 reset 遵守——已推笔全保，toplevel ✓。
+
+改动（modules/employee-detail/EmployeeDetailModulePage.tsx，approvals 侧零改动）：
+① **返回保参**：header 加 `edx-back` 返回钮=真 `navigate(-1)`（useNavigate），title 注明「返回上一页（保留列表筛选条件）」；实测证据=测试栈 ["/employees?q=%E5%B0%8F%E9%B2%A4&lifecycle=active", /employees/<id>] 点返回后 location.search 原样=`?q=%E5%B0%8F%E9%B2%A4&lifecycle=active`（SearchProbe 写 DOM dataset）。直开无历史栈时页内 notfound/Link 出口兜底。
+② **denied 相 rid 统一**：Resource/OverviewState denied 形态加 `requestId: string|null`；toResourceError 403/404 与 useOverview setState denied 两处捕获 `api?.requestId ?? null`；ZoneDenied 组件加 RequestIdCopy 行（同一复制组件 req-copy/req-copy-state 可见反馈，fallback=「本次请求没有带回编号；可复制时间与页面路径反馈。」），七个区（tasks/chat/capability/approvals/runs/audit/overview）全部传参；实测=403 requestId=req-d-1 上屏+复制回环 clipboard 值一致+「已复制」。
+③ approvals 侧判定：states.tsx 自制复制件已含可见反馈（apr5-copy-state 已复制/复制失败）与「请求编号：」同形制；apr5-request-id/-missing 三处测试引用不可破→**不动文件，行为口径等价**（本轮 approvals 59 passed 零影响）。
+④ 缺读口区（capability/audit）：GAP 编号仅 title+「尚未接入」句既有，未造假；③三档横溢=形态学报（header flex-wrap gap+truncate 既有，jsdom 不可测）。
+⑤ testid：ed1-identity-*/ed5-zone-tasks-*/apd6-*/apr5-*/apv5-* 零改动；新增=edx-back + ZoneDenied 内既有 req-copy 家族。
+
+坑（记档）：该测试文件 react-router import 原为 MemoryRouter,Route,Routes——先 sed 读现场再加 useLocation；forbidden() 助手不带 requestId，用例内直接 new ApiError(status 403, requestId)；renderAt key={entry} 单入口测不了回退，需双 entries 栈 helper。
+
+验证：定向 employee-detail 3 files/32 passed（+3 R47 用例）、approvals 3 files/59 passed 零影响；assert-ia 两模式 exit 0（51/22/1/8，未动壳层）；tsc 本域零红；全量 **131 files/1409 passed**（基线 1406+3）。9122=02a7385c 禁重建：活体回退保参读数待并入后代次，本轮 jsdom 栈实测为行为权威。
+
+## R48 员工详情运行区（2026-11-20，lane/console-appr）
+
+基线：显式 refspec fetch + merge origin/lane/hermes-console（Already up to date @71870656），未 reset，已推笔全保；toplevel ✓。
+
+参数实测（ego 只读，9122=02a7385c 代次）：/agent-api/api/runs 白名单=(employeeId,status,since,limit,cursor)（server.py 现查）；`?employeeId=emp_86A8…`→200 n=13；换 `?employeeId=emp_217A…`→200 n=0（**真按员工过滤实证**，筛前筛后差集）；`?employee=`→400、无员工参→400（只吃 employeeId，禁假筛选无语义空转）。区腿沿用既有 `employeeId=${enc}`（本单前已正确），无越域。
+
+实现（EmployeeDetailModulePage.tsx）：①每行真深链 `a[href=/runs/<runId>]`（encodeURIComponent；无 ref 才退 /runs）——既有 runs 用例 href 断言同步 /runs/run_X1Y2Z3。②新「耗时」列=runDuration(startedAt,endedAt)：双真才算「12 分钟/x 小时 y 分」，缺 endedAt=「—」+title「运行还没有结束（或未回传结束时间）」，不估不编；readRuns/RunRow 加 endedAt 多键（endedAt/ended_at/finishedAt/completedAt，活体 row0 实证 endedAt:null）。③短码：shortCode 剥前缀字符类补 `rn_`（活体真 id 形态=rn_01M7…，原 regex 只认 run_ 会把 rn 计进码）；屏上「运行 · 01M7D742」+title 全 id，无裸 rn_/run_。④runStatusLabel 未知态「状态未知」→「待核实」（旧文案无测试引用，实测 teleporting→待核实且原值不上屏）。⑤空集文案按工单=「该员工暂无运行记录。」+「按 employeeId 筛选的真实结果…没有拿别人的运行凑数」。⑥成本列既有 money() 天然区分真 0=$0.00 / 缺失=「—」（活体行有 costStatus:unknown 无 costUsd=真实缺失路径）。⑦testid：新增 ed7-runs-link-<i>/ed7-runs-code-<i>/ed7-runs-duration-<i>/ed7-runs-cost-<i>；ed5-*/ed1-*/edx-*/apd6-*/apv5-*/apr5-* 零改动（既有 ed5-zone-runs-* 名全保留）。⑧四态/denied rid 可复制/重试/403≡404=R47 统一件既有；③三档横溢=形态学报（6 列全 minmax(0)+truncate，手机档 grid-cols-1 堆叠，同 tasks 已验形态）。
+
+坑：href= /runs/<id> 深链落地页 = /runs/:runId 路由不在本树 App（只读核过，仅 path="/runs" 列表；写域外禁碰 App）——href 带真 id 满足工单判据，点后进兜底面属壳层待接线项，DONE 记账；测试 mock 变量名=fetchJSON（本文件无 mockFetch）。
+
+验证：定向 employee-detail 33 passed（+1 R48 用例、1 处既有断言按工单同步）exit0；assert-ia 两模式 exit0（51/22/1/8）；tsc 本域零红；全量 **131 files/1410 passed**（基线 1409+1）。9122 代次禁重建：运行区活体行读数待并入后代次，本轮 jsdom+API 双实测为权威。
+
+## R48b 运行区死链修正（2026-11-20，lane/console-appr，≤25min）
+
+L0 判 /runs/<id> 无路由=死链（routes.ts 只有 /runs）。禁碰 shell/App，改法=ed7-runs-link href 改 `/runs?run=<完整id>`（EmployeeDetailModulePage.tsx:1196）。
+
+活体实证（ego 只读，9122==02a7385c）：无参 /runs → 「本页 13 次…」且 run5-detail=false；带 ?run=rn_01M7D7421P5PA27TEXMT9YVDZ8 → **run5-detail=true 且卡文=「运行 · VDZ8运行中 · 开始 2026-11-14 22:24 · 耗时 128 小时 33 分钟」**（VDZ8=该 id 尾码=确为参数对应运行）→ 参数生效，无需退 span。testid 不变；两处用例断言同步（=/runs?run=run_X1Y2Z3 与 =/runs?run=rn_01M7…）；屏上无裸 id 断言保持（href 属性不计 textContent）。
+
+验证：定向 employee-detail 33 passed；全量 131 files/1410 passed；assert-ia 两模式 exit0 51/22/1/8（未动壳层）。commit fix(console): employee runs rows link to supported run param。
