@@ -1183,6 +1183,143 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(container.textContent).toContain("0 篇");
   });
 
+  it("marks the matched span, counts hits from the same array, and moves focus by keyboard", async () => {
+    const SPACE_LIST = {
+      asOf: "2026-11-19T07:00:00Z",
+      items: [
+        { spaceId: "sp_hr", name: "人事制度空间", scope: "team", sourceName: "SharePoint · 集团人事库", docCount: 12, status: "synced" },
+        { spaceId: "sp_fin", name: "财务口径空间", scope: "tenant", provider: "s3", docCount: 0, status: "ready" },
+        { spaceId: "sp_ops", name: "运维手册空间", sourceName: "mirror.example.com", docCount: 7, status: "syncing" },
+      ],
+    };
+    fetchMock.mockImplementation((url: string) => (url === SPACES ? Promise.resolve(SPACE_LIST) : Promise.resolve({ items: [] })));
+
+
+    await render("/knowledge?tab=spaces");
+    // 没关键词：不高亮，计数说“全部列出”
+    expect(container.querySelectorAll('[data-testid="kn9-mark-space"]')).toHaveLength(0);
+    expect(byTestid("kn9-count")?.textContent ?? "").toContain("当前已加载 3 项，全部列出");
+
+    // 键入只筛不取数，并只包住宿命的那一段
+    await type("kn8-global-input", "空间");
+    const marks = container.querySelectorAll('[data-testid="kn9-mark-space"]');
+    expect(marks).toHaveLength(3);
+    expect(marks[0]?.textContent).toBe("空间");
+    const rows = container.querySelectorAll('[data-testid="knw5-spaces-row"]');
+    expect(rows).toHaveLength(3);
+    // 文本语义没被改：单元格文字仍是原值
+    const link0 = rows[0]?.querySelector('[data-testid="knw5-space-link"]');
+    expect((link0?.textContent ?? "").replace(/\s+/g, "")).toBe("人事制度空间");
+    const count = byTestid("kn9-count")?.textContent ?? "";
+    expect(count).toContain("当前已加载 3 项内命中 3 项");
+    expect(count).toContain("同一份筛选结果");
+    // 命中数与列表同源
+    expect(count).toContain(`${(byTestid("knw5-spaces")?.getAttribute("data-len") ?? "")}`);
+
+    await type("kn8-global-input", "财务");
+    expect(container.querySelectorAll('[data-testid="kn9-mark-space"]')).toHaveLength(1);
+    expect(byTestid("kn9-count")?.textContent ?? "").toContain("当前已加载 3 项内命中 1 项");
+
+    // 键盘：↓ 从输入框进入第一行，再 ↓ 移动，↑ 回来，Esc 交还焦点
+    const input = byTestid("kn8-global-input") as HTMLInputElement;
+    const anchors = [...container.querySelectorAll('a[data-testid="knw5-space-link"]')] as HTMLAnchorElement[];
+    expect(anchors).toHaveLength(1);
+    // 未开始 roving 之前，每个链接都可 tab（tabindex 0 = 随 DOM 顺序）
+    expect(anchors.map((a) => a.getAttribute("tabindex"))).toEqual(["0"]);
+    input.focus();
+    await act(async () => {
+      input.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+    });
+    await act(async () => {});
+    expect(document.activeElement).toBe(anchors[0]);
+
+    // 三行都在时验证移动与回收
+    await type("kn8-global-input", "");
+    const all = [...container.querySelectorAll('a[data-testid="knw5-space-link"]')] as HTMLAnchorElement[];
+    expect(all).toHaveLength(3);
+    const list = byTestid("kn9-space-list") as HTMLElement;
+    all[0].focus();
+    await act(async () => {
+      list.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+    });
+    await act(async () => {});
+    expect(document.activeElement).toBe(all[1]);
+    expect(byTestid("kn9-space-list")?.getAttribute("data-active-row")).toBe("1");
+    // roving 开始后：只有当前行可 tab，其余退出 tab 序列
+    expect(all.map((a) => a.getAttribute("tabindex"))).toEqual(["-1", "0", "-1"]);
+    await act(async () => {
+      list.dispatchEvent(new KeyboardEvent("keydown", { key: "End", bubbles: true }));
+    });
+    await act(async () => {});
+    expect(document.activeElement).toBe(all[2]);
+    await act(async () => {
+      list.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }));
+    });
+    await act(async () => {});
+    expect(document.activeElement).toBe(all[1]);
+    await act(async () => {
+      list.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    await act(async () => {});
+    expect(document.activeElement).toBe(byTestid("kn8-global-input"));
+    expect(all.map((a) => a.getAttribute("tabindex"))).toEqual(["0", "0", "0"]);
+
+    // 读口不通时不报条数：计数元素直接不出现，免得「已加载 0 项」看着像假 0
+    fetchMock.mockImplementation((url: string) =>
+      url === SPACES ? Promise.resolve(SPACE_LIST) : fail(404, "这个数据接口还没有接入。", "rid-count-check"),
+    );
+    await render("/knowledge?tab=spaces");
+    expect(byTestid("kn9-count")).toBeTruthy();
+    expect(byTestid("kn9-count-docs")).toBeNull();
+
+    fetchMock.mockImplementation(() => fail(404, "这个数据接口还没有接入。", "rid-count-none"));
+    await render("/knowledge?tab=spaces");
+    expect(byTestid("kn9-count")).toBeNull();
+    expect(container.textContent ?? "").not.toContain("已加载 0 项");
+
+    // 行落点仍是真 a[href]，Enter 走的就是它
+    expect((all[1] as HTMLAnchorElement).getAttribute("href")).toContain("space=sp_fin");
+
+    // 文档名那条腿同样高亮 + 计数
+    fetchMock.mockImplementation((url: string) => {
+      if (url === DOCUMENTS_PLAIN) {
+        return Promise.resolve({
+          documents: [
+            { documentId: "d1", fileName: "员工手册.pdf", mimeType: "pdf", sizeBytes: 2048, updatedAt: "2026-11-19T07:00:00Z", url: "/documents/d1" },
+            { documentId: "d2", fileName: "员工考勤补充说明", sizeBytes: 1024, updatedAt: "2026-11-19T06:00:00Z" },
+          ],
+        });
+      }
+      return Promise.resolve({ items: [] });
+    });
+    await render("/knowledge?tab=spaces");
+    await type("kn6-search-input", "员工");
+    const docMarks = container.querySelectorAll('[data-testid="kn9-mark-doc"]');
+    expect(docMarks).toHaveLength(2);
+    expect(docMarks[0]?.textContent).toBe("员工");
+    expect(byTestid("kn9-count-docs")?.textContent ?? "").toContain("当前已加载 2 项内命中 2 项");
+    const docList = byTestid("kn9-doc-list") as HTMLElement;
+    const docLinks = [...container.querySelectorAll('a[data-testid="kn6-search-name"]')] as HTMLAnchorElement[];
+    expect(docLinks).toHaveLength(2);
+    docLinks[0].focus();
+    await act(async () => {
+      docList.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+    });
+    await act(async () => {});
+    expect(document.activeElement).toBe(docLinks[1]);
+    expect((docLinks[1] as HTMLAnchorElement).getAttribute("href")).toContain("sdoc=d2");
+    await act(async () => {
+      docList.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    await act(async () => {});
+    expect(document.activeElement).toBe(byTestid("kn6-search-input"));
+
+    // 空结果文案与出口没有退化
+    await type("kn6-search-input", "查无此名");
+    expect(byTestid("kn6-search-empty")?.textContent ?? "").toContain("没有匹配的文档");
+    expect(byTestid("kn6-search-empty-clear")).toBeTruthy();
+  });
+
   it("keeps a copyable request id and retries a failure without HTTP copy", async () => {
     fetchMock.mockImplementation((url: string) =>
       url === SPACES ? fail(500, "数据服务暂时没有响应，请稍后重试。", "req-knw5-7") : Promise.resolve({ items: [] }),

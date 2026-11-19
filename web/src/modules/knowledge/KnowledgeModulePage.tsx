@@ -561,7 +561,124 @@ function RecordsTable({ rows }: { rows: RetrievalRow[] }): ReactNode {
 }
 
 /** 一行一个知识空间：名称 / 来源 / 文档数 / 最近同步 / 状态。 */
-function SpaceTable({ rows, spaceLink }: { rows: SpaceRow[]; spaceLink: (id: string) => string }): ReactNode {
+/**
+ * Wraps the matched characters without rewriting the cell: the text a screen reader
+ * or a copy-paste gets is still exactly what the read returned, only the matched span
+ * is marked. No keyword means no marks at all.
+ */
+function Highlight({ text, needle, testid }: { text: string; needle: string; testid: string }): ReactNode {
+  const term = needle.trim();
+  if (term === "") return <>{text}</>;
+  const lower = text.toLowerCase();
+  const want = term.toLowerCase();
+  const parts: ReactNode[] = [];
+  let cursor = 0;
+  let hits = 0;
+  for (let index = lower.indexOf(want, cursor); index !== -1; index = lower.indexOf(want, cursor)) {
+    if (index > cursor) parts.push(text.slice(cursor, index));
+    parts.push(
+      <mark key={`${testid}-${hits}`} data-testid={testid}>
+        {text.slice(index, index + want.length)}
+      </mark>,
+    );
+    cursor = index + want.length;
+    hits += 1;
+  }
+  if (cursor < text.length) parts.push(text.slice(cursor));
+  return <>{parts}</>;
+}
+
+/**
+ * 命中计数与列表同源：两边的数字都取自同一个筛选后的数组，不是第二次统计。
+ * 本地模式明写“当前已加载 N 项内命中”。
+ */
+function HitCount({ testid, loaded, shown, active }: { testid: string; loaded: number; shown: number; active: boolean }): ReactNode {
+  return (
+    <p className="knw5-sub" data-testid={testid}>
+      {active ? `当前已加载 ${loaded} 项内命中 ${shown} 项` : `当前已加载 ${loaded} 项，全部列出（还没输入关键词）`}
+      ：命中的行与这个数取自同一份筛选结果。
+    </p>
+  );
+}
+
+/**
+ * Roving focus over the row links: ↑/↓ move between rows, Home/End jump to the ends,
+ * Esc hands focus back to the search box. Until the first arrow press every link keeps
+ * its natural tab order, so plain Tab still reaches all of them — roving only starts
+ * once it is asked for. Rows are looked up by the list's own marker and the ids on the
+ * links, never through a ref touched during render.
+ */
+function useRovingRows(marker: string, linkSelector: string) {
+  const [active, setActive] = useState(-1);
+
+  const nodes = (): HTMLElement[] => {
+    if (typeof document === "undefined") return [];
+    const scope = document.querySelector(`[data-roving="${marker}"]`);
+    if (scope === null) return [];
+    return Array.from(scope.querySelectorAll<HTMLElement>(linkSelector));
+  };
+
+  const moveTo = (index: number) => {
+    const list = nodes();
+    if (list.length === 0) return;
+    const next = Math.max(0, Math.min(index, list.length - 1));
+    setActive(next);
+    list[next]?.focus();
+  };
+
+  const onInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== "ArrowDown") return;
+    event.preventDefault();
+    moveTo(active < 0 ? 0 : active + 1);
+  };
+
+  const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const list = nodes();
+    if (list.length === 0) return;
+    const here = list.indexOf(document.activeElement as HTMLElement);
+    const base = here >= 0 ? here : active;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      moveTo(base + 1);
+      return;
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      moveTo(base - 1);
+      return;
+    }
+    if (event.key === "Home") {
+      event.preventDefault();
+      moveTo(0);
+      return;
+    }
+    if (event.key === "End") {
+      event.preventDefault();
+      moveTo(list.length - 1);
+      return;
+    }
+    if (event.key === "Escape") {
+      setActive(-1);
+      document.querySelector<HTMLInputElement>(`#${marker}-input`)?.focus();
+    }
+  };
+
+  const tabIndexFor = (index: number) => (active === -1 ? 0 : index === active ? 0 : -1);
+
+  return { active, setActive, onKeyDown, onInputKeyDown, tabIndexFor };
+}
+
+function SpaceTable({
+  rows,
+  spaceLink,
+  needle,
+  tabIndexFor,
+}: {
+  rows: SpaceRow[];
+  spaceLink: (id: string) => string;
+  needle: string;
+  tabIndexFor: (index: number) => number;
+}): ReactNode {
   return (
     <div className="knw5-scroll">
       <table className="knw5-table" data-testid="knw5-spaces-table">
@@ -576,21 +693,22 @@ function SpaceTable({ rows, spaceLink }: { rows: SpaceRow[]; spaceLink: (id: str
         </thead>
         <tbody>
           {rows.map((row, index) => (
-            <tr key={row.id || `space-${index}`} data-testid="knw5-spaces-row" title={row.id || undefined}>
+            <tr key={row.id || `space-${index}`} data-testid="knw5-spaces-row" data-active={index} title={row.id || undefined}>
               <td data-label="空间名称">
                 {row.id ? (
                   <Link
                     className="knw5-name knw5-rowlink"
                     data-testid="knw5-space-link"
                     to={spaceLink(row.id)}
+                    tabIndex={tabIndexFor(index)}
                     title="看这个空间里的文档"
                   >
-                    {row.name}
+                    <Highlight text={row.name} needle={needle} testid="kn9-mark-space" />
                   </Link>
                 ) : (
                   <>
                     <span className="knw5-name" data-testid="knw5-space-name">
-                      {row.name}
+                      <Highlight text={row.name} needle={needle} testid="kn9-mark-space" />
                     </span>
                     <span className="knw5-sub" title="上游没有给出这个空间的标识">
                       — 点不进文档列表
@@ -689,6 +807,7 @@ function SpacesSurface({
   const loaded = surface.state.kind === "ready" ? surface.state.value.rows : [];
   const needle = text.trim().toLowerCase();
   const shown = needle === "" ? loaded : loaded.filter((row) => row.name.toLowerCase().includes(needle) || row.source.toLowerCase().includes(needle));
+  const roving = useRovingRows("kn8", 'a[data-testid="knw5-space-link"]');
   const clear = () => {
     setDraft({ from: keyword, text: "" });
     onClearKeyword();
@@ -707,12 +826,15 @@ function SpacesSurface({
         <label className="knw5-field">
           <span className="knw5-sr-only">跨空间搜索</span>
           <input
+            id="kn8-input"
             className="knw5-input"
             type="search"
             value={text}
             onChange={(event) => setDraft({ from: keyword, text: event.target.value })}
+            onKeyDown={roving.onInputKeyDown}
             placeholder="按空间名或来源搜索"
             data-testid="kn8-global-input"
+            aria-describedby="kn9-count"
           />
         </label>
         <Button size="sm" type="submit" prefix={<Search className="h-3.5 w-3.5" aria-hidden />} data-testid="kn8-global-submit">
@@ -730,6 +852,17 @@ function SpacesSurface({
         {surface.state.kind === "ready" && needle !== "" ? `命中 ${shown.length} 个。` : null}
       </p>
 
+      {surface.state.kind === "ready" ? (
+        <HitCount testid="kn9-count" loaded={loaded.length} shown={shown.length} active={needle !== ""} />
+      ) : null}
+
+      <div
+        className="kn9-list"
+        data-roving="kn8"
+        data-testid="kn9-space-list"
+        data-active-row={roving.active}
+        onKeyDown={roving.onKeyDown}
+      >
       <Surface
         testid="knw5-spaces"
         source="spaces"
@@ -750,8 +883,9 @@ function SpacesSurface({
             </p>
           )
         }
-        render={(value) => <SpaceTable rows={value.rows} spaceLink={spaceLink} />}
+        render={(value) => <SpaceTable rows={value.rows} spaceLink={spaceLink} needle={text} tabIndexFor={roving.tabIndexFor} />}
       />
+      </div>
     </>
   );
 }
@@ -966,10 +1100,12 @@ function DocTable({
   rows,
   docLink,
   openKey,
+  needle,
 }: {
   rows: DocRow[];
   docLink: (key: string) => string;
   openKey: string;
+  needle: string;
 }): ReactNode {
   return (
     <div className="kn3-docs-wrap">
@@ -995,7 +1131,7 @@ function DocTable({
               >
                 <td data-label="文档名">
                   <Link className="kn3-docs-name" data-testid="kn3-docs-name" to={docLink(key)} title={row.nameHint ?? undefined}>
-                    {row.name}
+                    <Highlight text={row.name} needle={needle} testid="kn9-mark-doc" />
                   </Link>
                 </td>
                 <td data-label="类型">
@@ -1097,7 +1233,7 @@ function SpaceDetailSurface({
             </p>
           )
         }
-        render={(value) => <DocTable rows={value.rows} docLink={docLink} openKey={openDoc} />}
+        render={(value) => <DocTable rows={value.rows} docLink={docLink} openKey={openDoc} needle={filter} />}
       />
       {openDoc !== "" ? (
         <DocPreviewDrawer nonce={nonce} docId={openDoc} row={openRow} onClose={onCloseDoc} />
@@ -1118,10 +1254,14 @@ function SearchDocTable({
   rows,
   docLink,
   openKey,
+  needle,
+  tabIndexFor,
 }: {
   rows: DocRow[];
   docLink: (key: string) => string;
   openKey: string;
+  needle: string;
+  tabIndexFor: (index: number) => number;
 }): ReactNode {
   return (
     <div className="k3-docs-wrap">
@@ -1139,10 +1279,22 @@ function SearchDocTable({
           {rows.map((row, index) => {
             const key = row.id !== "" ? row.id : `row-${index}`;
             return (
-              <tr key={key} data-testid="kn6-search-row" data-open={openKey === key ? "1" : "0"} title={row.id || undefined}>
+              <tr
+                key={key}
+                data-testid="kn6-search-row"
+                data-open={openKey === key ? "1" : "0"}
+                data-active-row={index}
+                title={row.id || undefined}
+              >
                 <td data-label="文档名">
-                  <Link className="kn3-docs-name" data-testid="kn6-search-name" to={docLink(key)} title={row.nameHint ?? undefined}>
-                    {row.name}
+                  <Link
+                    className="kn3-docs-name"
+                    data-testid="kn6-search-name"
+                    to={docLink(key)}
+                    tabIndex={tabIndexFor(index)}
+                    title={row.nameHint ?? undefined}
+                  >
+                    <Highlight text={row.name} needle={needle} testid="kn9-mark-doc" />
                   </Link>
                 </td>
                 <td data-label="所属空间">
@@ -1201,6 +1353,7 @@ function DocumentNameSearch({
   const needle = text.trim().toLowerCase();
   const shown = needle === "" ? loaded : loaded.filter((row) => row.name.toLowerCase().includes(needle));
   const openRow = shown.find((row, index) => (row.id !== "" ? row.id : `row-${index}`) === openKey) ?? null;
+  const roving = useRovingRows("kn6", 'a[data-testid="kn6-search-name"]');
   // Clearing resets the box itself too: a keyword typed but never submitted lives
   // only here, so a button that only touched the URL would look dead.
   const clear = () => {
@@ -1221,12 +1374,15 @@ function DocumentNameSearch({
         <label className="knw5-field">
           <span className="knw5-sr-only">按文档名搜索</span>
           <input
+            id="kn6-input"
             className="knw5-input"
             type="search"
             value={text}
             onChange={(event) => setDraft({ from: keyword, text: event.target.value })}
+            onKeyDown={roving.onInputKeyDown}
             placeholder="按文档名搜索"
             data-testid="kn6-search-input"
+            aria-describedby="kn9-count-docs"
           />
         </label>
         <Button size="sm" type="submit" prefix={<Search className="h-3.5 w-3.5" aria-hidden />} data-testid="kn6-search-submit">
@@ -1245,6 +1401,17 @@ function DocumentNameSearch({
           : docScopeNote(null)}
       </p>
 
+      {surface.state.kind === "ready" ? (
+        <HitCount testid="kn9-count-docs" loaded={loaded.length} shown={shown.length} active={needle !== ""} />
+      ) : null}
+
+      <div
+        className="kn9-list"
+        data-roving="kn6"
+        data-testid="kn9-doc-list"
+        data-active-row={roving.active}
+        onKeyDown={roving.onKeyDown}
+      >
       <Surface
         testid="kn6-search"
         source="doc-search"
@@ -1269,7 +1436,13 @@ function DocumentNameSearch({
         }
         render={(value) => (
           <>
-            <SearchDocTable rows={value.rows} docLink={sdocLink} openKey={openKey} />
+            <SearchDocTable
+              rows={value.rows}
+              docLink={sdocLink}
+              openKey={openKey}
+              needle={text}
+              tabIndexFor={roving.tabIndexFor}
+            />
             {openRow ? (
               <dl className="knw5-ref-detail" data-testid="kn6-search-detail" title={openRow.id || undefined}>
                 <div>
@@ -1309,6 +1482,7 @@ function DocumentNameSearch({
           </>
         )}
       />
+      </div>
     </section>
   );
 }

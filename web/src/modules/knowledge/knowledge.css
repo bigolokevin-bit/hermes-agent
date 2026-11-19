@@ -712,3 +712,29 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* R50 — search hit readability and keyboard focus.
+   <mark> only paints the matched span: the cell text stays the raw value the read
+   returned, so a copy or a screen reader is never handed a rewritten name. */
+.knw5-page mark {
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--color-primary) 26%, transparent);
+  color: inherit;
+}
+
+/* Every keyboard-reachable row link must show where it is, at any width. */
+.knw5-page a[data-testid$="-name"]:focus-visible,
+.knw5-page a[data-testid="knw5-space-link"]:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.kn9-list {
+  min-width: 0;
+}
+
+.knw5-page [data-testid="kn9-count"],
+.knw5-page [data-testid="kn9-count-docs"] {
+  color: var(--color-muted-foreground);
+}

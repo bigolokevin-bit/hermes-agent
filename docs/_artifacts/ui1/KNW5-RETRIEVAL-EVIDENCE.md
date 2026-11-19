@@ -1190,3 +1190,90 @@ $ npx vite build --outDir /tmp/knw17-dist --emptyOutDir
 边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
 package·lock / web-scripts / ops；禁 `git add -A`（按显式路径提交）；无 force / amend / `--no-verify`；
 非本域 `pnpm build` 阻塞未追。
+
+---
+
+# KNW5 追加 R50：搜索命中的可读性与键盘（testid `kn9-*`）（2026-11-20 BJT）
+
+安全闸：toplevel 相符、porcelain 空、显式 refspec fetch → tip 仍是 `5d91f22d`
+（代码代次 `6a02ed58`），`git merge` 回「Already up to date」，零冲突；按要求未用 reset --hard。
+未并 main、未重建 9122。
+
+## 一、高亮 `<mark>`：只包住宿命那一段，不改文本语义
+
+```text
+输入「空间」→ 4 个 kn9-mark-space，第一个 mark 文本 ==「空间」
+同一单元格整体文本仍是「人事制度空间」（读口给什么字，屏面就是什么字）
+无关键词 → mark 数量 0（不会把整行涂成命中）
+文档名同理：输入「员工」→ 2 个 kn9-mark-doc，mark 文本 ==「员工」
+样式只上底色（color-mix 主题色 26%）与圆角，文字颜色继承，不改行高与列宽
+```
+
+## 二、`kn9-count`：与列表同一份筛选结果，本地模式明写口径
+
+```text
+无关键词：当前已加载 4 项，全部列出（还没输入关键词）：命中的行与这个数取自同一份筛选结果。
+有关键词：当前已加载 4 项内命中 4 项……（`data-len` 同为 4，两处数字都来自同一个 shown 数组）
+文档腿：  kn9-count-docs「当前已加载 2 项内命中 2 项」，与 kn6-search 的 data-len=2 同源
+读口未通：两个计数元素直接不渲染（实测 counts=0），因此不会出现「已加载 0 项」这种
+           看着像假 0 的句子；`fakeZero` 扫描（0 项 / 0 个 / 0 条）false
+服务端模式：本环境没有任何读口吃 q（R47/R48 已逐条实测），所以这里只有本地口径；
+           接线后应改为贴 total 或回显 q，本轮把这句话写进代码注释与本页说明
+```
+
+## 三、键盘（真实按键实测，roving tabindex 方案，与 aria-activedescendant 二选一）
+
+```text
+起点：焦点在 kn8-global-input（输入框带 aria-describedby="kn9-count"）
+框内 ArrowDown → 焦点落到第一行链接 knw5-space-link，tabindex 变为 ["0","-1","-1","-1"]
+  :focus-visible == true（轮廓 2px 主题色 + outline-offset 2px 可见）
+列表内 ArrowDown → 第二行「财务口径空间」，:focus-visible == true
+Home / End → 首行 / 末行（vitest 覆盖）
+ArrowUp → 回上一行
+Escape → 焦点交还搜索框，tabindex 全部回到 ["0","0","0","0"]（自然 tab 顺序恢复）
+Enter → 走的就是该行真 a[href]：/knowledge?tab=spaces&panel=spaces&space=sp_fin
+        实测落地后面板换成该空间的文档列表（kn3-docs 在、空间列表已收起）
+文档腿：框内输入「员工」→ ArrowDown → 焦点到 kn6-search-name（href ?sdoc=d1，
+        :focus-visible == true），Escape 同样交还焦点
+未开始 roving 前所有行链接都可 Tab（tabindex 0），不会把行从 tab 序列里藏起来
+```
+
+## 四、没有退化的部分
+
+- 空结果仍是「没有匹配的文档」/「没有匹配的空间」+ 就地清空出口（实测文本与按钮都在）。
+- 四态与 403≡404：单测断言 403 正文与 404 正文逐字相等（spaces 与文档腿各自一条），
+  错误态仍是人话 + 可复制请求编号 + 重试；挂起出骨架；本轮只是加高亮/计数/键盘，
+  状态分支没动（today 模式实测 unwired head 仍为「文档登记读口未接入」「知识空间未接入」）。
+- 1440 / 1280 / 375：`documentElement.scrollWidth == innerWidth == body.scrollWidth`
+  （mark 与计数行都不加宽列），无 OVERFLOW 元素；`[data-fixture]` 三档实测 0；零写入口。
+- 家族零破：`kn8-*`（4）、`kn7-*`（详情位 11）、`kn6-*`、`kn3-*`、`knw5-*` 全部保留，
+  本轮新增 `kn9-space-list / kn9-doc-list / kn9-count / kn9-count-docs / kn9-mark-space / kn9-mark-doc`；
+  抽屉与详情位深链复测正常（`?space=sp_hr&doc=d1` 抽屉打开、`kn7-preview-field-status` 读数在）。
+
+## 五、验证尾行（本轮）
+
+```text
+$ npx vitest run src/modules/knowledge
+ Test Files  2 passed (2)
+      Tests  43 passed (43)
+
+$ npx vitest run
+ Test Files  132 passed (132)
+      Tests  1457 passed (1457)
+
+$ npx eslint src/modules/knowledge
+（无输出，exit 0）
+
+$ npx tsc -b . --noEmit | grep modules/knowledge
+（无输出，本模块 0 错）
+
+$ npx vite build --outDir /tmp/knw18-dist --emptyOutDir
+✓ built in 4.15s   （产物只落 /tmp）
+
+$ node scripts/assert-ia.mjs --source=react
+（只读复核：51 / 22 / 1 / 8，ok=true）
+```
+
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；按显式路径提交（无 `git add -A`）；无 force / amend / `--no-verify`；
+非本域 `pnpm build` 阻塞未追。
