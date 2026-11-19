@@ -796,3 +796,11 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - `/login` 真页补拍（BrowserRouter，不在 51 hash 表→102 口径不变）：shots-login/ 1440+375 两图 200、
   密码表单+验证码在位、正文非空，login-shot-summary.json ok=true（head/entry 三键齐）。
 - commit 单笔 chore(gates): full gate ledger stamped at e3efe15a (entry DTYih5Xl)。
+
+## 四十轮 · 九件重章 @ 10a62b2b（entry BuOnpJ_A，≤17:10 卡）— 2026-11-19 16:3x
+
+- 三件套现查全对：10a62b2b=local=FETCH_HEAD、porcelain=0、entry BuOnpJ_A 148063B sha 3707cce6…==磁盘==served（拍窗前后同值）、pid 61816。
+- 九件 tmp+os.replace 全章 head=10a62b2b ok exit=0：ia-react/html{51,22,1,8}、lint-fake v0、lint-reuse v0 e1、
+  crawl-anon DL0/CE0/PE0 routesCE=51（env 归因）、crawl-auth DL0/CE0/PE0 routesCE=21、
+  shots 102/102 failures=[] 三键齐 ceAuthority=login-state obsCE=0、anon 19/19 auxiliary、state-quad 20/20。
+- vitest 120 files/1177 passed == 卡面。

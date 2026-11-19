@@ -26,8 +26,8 @@
   "rootShell": {
     "url": "http://127.0.0.1:9122/",
     "hasMainEl": true,
-    "mainChars": 974,
-    "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 — /"
+    "mainChars": 481,
+    "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 今日运"
   },
   "contentChecked": 51,
   "contentRows": [
@@ -374,11 +374,11 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 192,
+      "mainChars": 136,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 4,
-      "consoleErrorEnv": "auth-required-401",
+      "consoleErrors": 0,
+      "consoleErrorEnv": null,
       "evalError": null,
       "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 访问控制 角色、成员与管理员 ·"
     },
@@ -686,7 +686,7 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 1001,
+      "mainChars": 1000,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
@@ -695,13 +695,13 @@
       "headSample": "运营 · 控制台 任务与运行 任务 运行 控制台 · 运行 运行 按时间看运行记录。这一面只读："
     }
   ],
-  "distinctMainHeads": 25,
-  "medianMainChars": 188,
+  "distinctMainHeads": 26,
+  "medianMainChars": 185,
   "contentEmpty": [],
   "contentEmptyCount": 0,
   "mode": "auth-attributed",
   "envAttribution": {
-    "auth-required-401": 22
+    "auth-required-401": 21
   },
   "probeErrors": [],
   "deniedEndpoints": [
@@ -734,10 +734,10 @@
     "redirects=24 vs 门定值 23（routes.ts 并发新增形态，归因非判红；门值更新归 L0/A）"
   ],
   "routesRenderedWithoutMainEl": 0,
-  "routesWithConsoleErrors": 22,
+  "routesWithConsoleErrors": 21,
   "parseErrors": [],
   "ok": true,
-  "headHash": "e3efe15a",
+  "headHash": "10a62b2b",
   "exitCode": 0,
   "counts": {
     "probed": 75,

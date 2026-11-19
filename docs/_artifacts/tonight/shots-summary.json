@@ -153,13 +153,13 @@
     {
       "route": "#/capabilities?tab=models",
       "viewport": "1440",
-      "chars": 104,
+      "chars": 391,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=models",
       "viewport": "375",
-      "chars": 391,
+      "chars": 104,
       "hasMainEl": true
     },
     {
@@ -621,13 +621,13 @@
     {
       "route": "#/work?tab=runs",
       "viewport": "1440",
-      "chars": 1006,
+      "chars": 1005,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=runs",
       "viewport": "375",
-      "chars": 982,
+      "chars": 981,
       "hasMainEl": true
     }
   ],
@@ -642,16 +642,16 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "e3efe15a",
-  "entry": "assets/index-DTYih5Xl.js",
-  "entrySha256": "54cc1852d34e9c351f0301cf23ac7dff916741a8978034c2b201a4cf56bb9b20",
-  "entryBytes": 158484,
+  "headHash": "10a62b2b",
+  "entry": "assets/index-BuOnpJ_A.js",
+  "entrySha256": "3707cce6a16619ffd7e6053d6589e124f2772997e09a25145af41182b30595dd",
+  "entryBytes": 148063,
   "medianMainChars": 191.0,
-  "shotWindow": "16:04:19-16:05:08 local",
-  "servedEntryBefore": "assets/index-DTYih5Xl.js",
-  "servedEntryAfter": "assets/index-DTYih5Xl.js",
+  "shotWindow": "16:30:58-16:31:46 local",
+  "servedEntryBefore": "assets/index-BuOnpJ_A.js",
+  "servedEntryAfter": "assets/index-BuOnpJ_A.js",
   "env": "9122 proxy-live (anon 401 / auth 200); CE 权威=登录态, 观察字段仅旁证",
-  "ceCaliber": "ceAuthority=login-state; crawl-auth routesCE=22 denied=18; crawl-anon routesCE=51 denied=31; ok 不含 CE 项（L0 二十九轮裁定落码）",
+  "ceCaliber": "ceAuthority=login-state; crawl-auth routesCE=21 denied=18; crawl-anon routesCE=51 denied=31; ok 不含 CE 项（L0 二十九轮裁定落码）",
   "anonEvidence": "crawl-anon ok=True exit=0 probed=75 DL=0 CE=0 PE=0 routesCE=51(env 旁证); shots-anon 辅助腿见 shots-anon-summary.json",
   "exitCode": 0
 }
