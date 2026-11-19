@@ -5,6 +5,7 @@ import { fetchJSON } from "@/lib/api";
 import { ApiError } from "@/lib/api-error";
 import { currentFixtureState, fixtureView, type FixtureState } from "../../shell/fixtures";
 import { PILOT_ROW, PROBE_DEFINITIONS, probeResult, summarize, type ProbeRow, type ProbeStatus } from "./health";
+import { SystemHealthSurface } from "./SystemHealthSurface";
 import "./health.css";
 
 type State = { k: "loading" } | { k: "empty" } | { k: "error"; requestId: string } | { k: "ready"; rows: ProbeRow[] };
@@ -135,6 +136,8 @@ export function HealthPage() {
           <RefreshCw className="mr-1 size-3.5" aria-hidden="true" />刷新
         </Button>
       </header>
+
+      <SystemHealthSurface preview={forced && forced !== "ready" ? forced : null} onRetry={retry} />
 
       <div className="hlt5-owner">
         <span>运维负责人</span><span>处理异常探针</span>

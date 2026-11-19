@@ -1765,3 +1765,15 @@ built /private/tmp/health-r38/index.html
 - DOM（临时 harness，已删；Vite 5459 / Chrome 9261）：1440/1280/375 `vw=bodySW=bodyCW=1440/1280/375`，`ver5-page` 宽 1406/1246/341，版本行 2，健康 `正常`，首行 `控制台 / 4.2.1 / 2026-11-20 00:05 / 正常`；版本表 560px 仅在卡内横向滚动，页面不横溢。截图 `docs/_artifacts/gov/shots/ver5-{1440,1280,375}.png`。
 - **需壳层注册（本 lane 不可改）**：`/capabilities?tab=version` 目前不在 `CONSOLE_TABS`，未知 tab 回落到技能页；`App.tsx` `/capabilities` live map 也无 `version` 节点。要按目标路由上屏，需壳层：①`routes.ts` 增 capabilities 的 version tab（hash `#/capabilities?tab=version`，并相应迁出/保留 system version 以维持 22 tab 口径）；②`App.tsx` `/capabilities` live map 挂 `version: <VersionConsolePage />`（或本 surface）。当前同一 surface 已在既有真路由 `/system?tab=version` 挂载可用。
 - 边界：只改 `web/src/modules/version/**` 与 DONE/截图；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；无独立观察者。
+
+## R49 /system 系统健康真数据面（2026-11-20）
+
+- 基线：显式 refspec fetch 后 `git merge --no-ff origin/lane/hermes-console`（tip 5d91f22d，代码代次 6a02ed58）→ merge `3a137624`，保留已推 `7780108f`；未 reset。
+- 端点实测（9122，登录 cookie 只读、不打印）：`/agent-api/api/health` → **200** `console.health.sources.v1`，`ok:true`、顶层 `asOf:2026-11-19T23:17:09Z`、3 个 sources（console/runtime/bisheng）；同源 `/api/health` → 200 text/html 外壳。`/agent-api/api/version` 仍 404（ver5 已诚实处理）。
+- 实现：新增 `web/src/modules/health/{systemHealth.ts,SystemHealthSurface.tsx}` 并挂在 `HealthPage` 头部下方，既有 `hlt5-*` 探针区保留不动。
+  - 服务表列 = 服务名 / 状态人话（正常·降级·不可达·待核实）/ 版本或构建标识 / 最近检查时刻 / 响应耗时。状态映射 ok/healthy→正常，degraded/warn/partial→降级，down/error/unreachable/failed→不可达，其余→待核实；版本缺失「—」+title，不编造版本号；检查时刻**只取 payload 顶层 asOf**，缺失/不可解析→「—」+title，绝不使用本机时钟；耗时缺失「—」+title。
+  - 404/403 同一「健康读口未接入」体，`GAP-SYS3-01` 只进 title；401 登录失效；5xx/网络人话 + 可复制 `sys3-request-id` + `sys3-retry`；`sys3-apply` 去 `/approvals`。零写入口，仅一个 `sys3-planned-edit`（data-planned + aria-disabled + title）。
+  - 四态：`sys3-loading` / `sys3-empty`（空清单不补服务行、不给绿色结论）/ `sys3-error`（或 gap）/ `sys3-table`；`?state=loading|empty|error` 由现有全局预览接管，不额外请求。
+- 验证：`npx vitest run src/modules/health` → **2 files / 14 tests passed**（新增 `SystemHealthSurface.test.tsx` 6 条：状态/顶层时刻/缺字段、403≡404、500 rid+重试、空清单、无本机时钟、预览零请求与 planned 控件）。全量 `npx vitest run` → **134 files / 1466 passed**，另有 2 个基线 employee-detail unhandled（非本域）。`tsc -b . --noEmit` → 6 行全为基线 employee-detail/employees，本域 0。
+- DOM（临时 harness，已删；Vite 5460 / Chrome 9262）：1440/1280/375 `vw=bodySW=bodyCW=1440/1280/375`，`sys3-page` 宽 1406/1246/341，行 3，整体 `正常`，首行 `控制台服务(BFF) / 正常 / 4.2.1 / 2026-11-19 23:17 / 12 ms`；375 仅表格在卡内滚动（680/311），页面不横溢。截图 `docs/_artifacts/gov/shots/sys3-{1440,1280,375}.png`。
+- 边界：只改 `web/src/modules/health/**` 与 DONE/截图；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；`hlt5-*` 与 `ver5-*` 未破；无独立观察者。

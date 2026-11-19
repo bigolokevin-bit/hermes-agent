@@ -1,0 +1,173 @@
+import { useEffect, useState } from "react";
+import { Badge, Button, Card, CardContent } from "@nous-research/ui";
+import { fetchJSON } from "@/lib/api";
+import {
+  SYS3_GAP,
+  SYS3_PATH,
+  readSystemHealth,
+  sys3Failure,
+  type SystemHealthRead,
+  type Sys3State,
+} from "./systemHealth";
+
+type Preview = "loading" | "empty" | "error" | null;
+type State =
+  | { k: "loading" }
+  | { k: "ready"; read: SystemHealthRead }
+  | { k: "empty"; read: SystemHealthRead }
+  | { k: "gap"; message: string; requestId: string | null }
+  | { k: "error"; message: string; requestId: string | null }
+  | { k: "login"; message: string };
+
+function RequestId({ id }: { id: string | null }) {
+  const [copied, setCopied] = useState(false);
+  if (!id) return <p className="sys3-req" data-testid="sys3-request-id">请求编号：未提供</p>;
+  return (
+    <p className="sys3-req" data-testid="sys3-request-id">
+      <span>请求编号：</span>
+      <code title={id}>{id}</code>
+      <button
+        type="button"
+        aria-label="复制请求编号"
+        onClick={() => { void navigator.clipboard?.writeText(id).then(() => setCopied(true), () => setCopied(false)); }}
+      >
+        {copied ? "已复制" : "复制"}
+      </button>
+    </p>
+  );
+}
+
+function tone(state: Sys3State): "success" | "warning" | "destructive" | "outline" {
+  if (state === "正常") return "success";
+  if (state === "降级") return "warning";
+  if (state === "不可达") return "destructive";
+  return "outline";
+}
+
+export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Preview; onRetry?: () => void }) {
+  const [state, setState] = useState<State>(() => {
+    if (preview === "loading") return { k: "loading" };
+    if (preview === "empty") return { k: "empty", read: { rows: [], asOf: null, asOfReason: "预览空态没有采集时刻。", overall: "待核实", overallReason: "预览空态没有整体状态。", sources: 0 } };
+    if (preview === "error") return { k: "error", message: "预览：健康清单读取失败。", requestId: null };
+    return { k: "loading" };
+  });
+  const [reload, setReload] = useState(0);
+
+  useEffect(() => {
+    if (preview !== null) return;
+    let live = true;
+    setState({ k: "loading" });
+    void fetchJSON<unknown>(SYS3_PATH)
+      .then((payload) => {
+        if (!live) return;
+        const read = readSystemHealth(payload);
+        if (read === null) {
+          setState({ k: "error", message: "健康接口返回的内容无法解析为服务清单。", requestId: null });
+          return;
+        }
+        setState(read.rows.length === 0 ? { k: "empty", read } : { k: "ready", read });
+      })
+      .catch((error: unknown) => {
+        if (!live) return;
+        const info = sys3Failure(error);
+        if (info.status === 401) setState({ k: "login", message: info.text });
+        else if (info.status === 403 || info.status === 404) setState({ k: "gap", message: info.text, requestId: info.requestId });
+        else setState({ k: "error", message: info.text, requestId: info.requestId });
+      });
+    return () => { live = false; };
+  }, [preview, reload]);
+
+  const retry = () => {
+    onRetry?.();
+    setReload((n) => n + 1);
+  };
+
+  return (
+    <Card data-testid="sys3-page">
+      <CardContent className="space-y-3 p-4" data-fixture={preview ?? undefined}>
+        <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0">
+            <h2 className="text-sm font-medium text-white/85">服务健康清单</h2>
+            <p className="mt-1 text-xs text-white/45">来源：健康读口 · 最近检查时刻只取接口顶层采集时间</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              className="sys3-planned"
+              data-testid="sys3-planned-edit"
+              data-planned="1"
+              aria-disabled="true"
+              title="控制台还没有探针写入口；接入后会提供编辑与启停管理。"
+              onClick={(event) => event.preventDefault()}
+            >
+              编辑探针（计划中）
+            </button>
+            <Button size="sm" outlined onClick={retry} disabled={state.k === "loading"} data-testid="sys3-refresh">刷新</Button>
+          </div>
+        </div>
+
+        {state.k === "loading" ? (
+          <div className="sys3-loading" data-testid="sys3-loading" aria-busy="true">
+            <p>正在读取服务健康清单…</p>
+            {[1, 2, 3].map((n) => <div key={n} className="sys3-skeleton" />)}
+          </div>
+        ) : state.k === "gap" ? (
+          <div className="sys3-gap" data-testid="sys3-gap" title={SYS3_GAP}>
+            <p className="sys3-gap-title">健康读口未接入</p>
+            <p className="sys3-gap-body">{state.message}</p>
+            <RequestId id={state.requestId} />
+            <a className="sys3-apply" href="#/approvals" data-testid="sys3-apply">提交开通申请</a>
+          </div>
+        ) : state.k === "login" ? (
+          <p className="sys3-gap" data-testid="sys3-login">{state.message}</p>
+        ) : state.k === "error" ? (
+          <div className="sys3-gap" data-testid="sys3-error" role="alert">
+            <p className="sys3-gap-title">健康清单暂时读不出来</p>
+            <p className="sys3-gap-body">{state.message}</p>
+            <RequestId id={state.requestId} />
+            <Button size="sm" outlined onClick={retry} data-testid="sys3-retry">重试</Button>
+          </div>
+        ) : state.k === "empty" ? (
+          <div className="sys3-gap" data-testid="sys3-empty">
+            <p className="sys3-gap-title">健康接口返回了空清单</p>
+            <p className="sys3-gap-body">这不等于所有服务正常；不补服务行，也不给绿色结论。</p>
+          </div>
+        ) : (
+          <>
+            <div className="sys3-summary" data-testid="sys3-summary">
+              <span>整体状态</span>
+              <Badge tone={tone(state.read.overall)} data-testid="sys3-overall">{state.read.overall}</Badge>
+              <span data-testid="sys3-sources">来源 {state.read.sources ?? "—"} 项</span>
+              <span data-testid="sys3-asof">{state.read.asOf ?? "—"}</span>
+              {state.read.overallReason ? <span className="sys3-reason">{state.read.overallReason}</span> : null}
+              {state.read.asOfReason ? <span className="sys3-reason">{state.read.asOfReason}</span> : null}
+            </div>
+            <div className="sys3-scroll">
+              <table className="sys3-table" data-testid="sys3-table">
+                <thead>
+                  <tr>
+                    <th>服务名</th><th>状态</th><th>版本或构建标识</th><th>最近检查时刻</th><th>响应耗时</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {state.read.rows.map((row) => (
+                    <tr key={row.key} data-testid={`sys3-row-${row.key}`}>
+                      <td data-testid="sys3-name" title={row.nameReason ?? undefined}>{row.name ?? "—"}</td>
+                      <td data-testid="sys3-state" title={row.stateReason ?? row.stateRaw ?? undefined}>
+                        <Badge tone={tone(row.state)}>{row.state}</Badge>
+                      </td>
+                      <td data-testid="sys3-version" title={row.versionReason ?? undefined}>{row.version ?? "—"}</td>
+                      <td data-testid="sys3-checked" title={row.checkedReason ?? undefined}>{row.checkedAt ?? "—"}</td>
+                      <td data-testid="sys3-latency" title={row.latencyReason ?? undefined}>{row.latency ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="sys3-foot">缺失值显示「—」，原因在悬停说明里；不用本机时钟补采集时刻，也不把未知当正常。</p>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
