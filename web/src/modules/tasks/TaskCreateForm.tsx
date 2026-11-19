@@ -19,6 +19,15 @@ import { employeeLabel, errorInfo, shortRef } from "./tasksBoard";
 
 const CREATE_URL = "/agent-api/api/tasks";
 
+/* R18 write-authorization gate: the BFF origin allowlist does not yet include
+ * this console's serving origin, so a real POST is rejected before it reaches
+ * the task service. Enable condition = the allowlist gains this origin (lane
+ * D / L0, tracked as GAP-07); flipping the flag below restores the real write
+ * path with no other code change. The form stays visible and editable. */
+const WRITE_ENABLED = false;
+const NOT_ENABLED_COPY = "创建未启用：等待写入授权（GAP-07）";
+const WRITE_UNAVAILABLE_COPY = "创建暂不可用：需管理员开放写入来源";
+
 type SubmitState =
   | { k: "idle" }
   | { k: "submitting" }
@@ -72,6 +81,11 @@ export function TaskCreateForm({
       return;
     }
     if (state.k === "submitting") return;
+    if (!WRITE_ENABLED) {
+      // Enter-key submits bypass the disabled button; keep them honest too.
+      setState({ k: "error", message: WRITE_UNAVAILABLE_COPY, requestId: null });
+      return;
+    }
     setState({ k: "submitting" });
     const body: Record<string, unknown> = {
       title: t,
@@ -103,7 +117,9 @@ export function TaskCreateForm({
         message:
           info.status === 401
             ? "需要登录：登录状态已失效，任务没有提交。重新登录后再试。"
-            : `任务没有创建成功：${info.message}`,
+            : info.status === 403
+              ? `${WRITE_UNAVAILABLE_COPY}。任务没有提交，重试暂时不会有变化。`
+              : `任务没有创建成功：${info.message}`,
         requestId: info.requestId,
       });
     }
@@ -231,17 +247,19 @@ export function TaskCreateForm({
             <Button
               size="sm"
               type="submit"
-              disabled={busy}
+              disabled={busy || !WRITE_ENABLED}
               data-testid="tsk4-create-submit"
             >
-              {busy ? "提交中…" : "建立任务"}
+              {busy ? "提交中…" : WRITE_ENABLED ? "建立任务" : NOT_ENABLED_COPY}
             </Button>
             <Button size="sm" outlined type="button" onClick={onClose} disabled={busy}>
               取消
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground">
-            提交走任务服务真接口；同一张表单在提交成功前重试不会产生重复任务。
+          <p className="text-xs text-muted-foreground" title={WRITE_ENABLED ? undefined : "写入来源白名单尚未包含当前访问来源，请求会被服务端拒绝；放行属安全边界变更（GAP-07）。"}>
+            {WRITE_ENABLED
+              ? "提交走任务服务真接口；同一张表单在提交成功前重试不会产生重复任务。"
+              : "写入授权放开后，这里会直接走任务服务真接口；当前不会发出创建请求。"}
           </p>
         </form>
       </CardContent>
