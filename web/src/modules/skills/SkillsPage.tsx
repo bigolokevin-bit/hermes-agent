@@ -1,18 +1,28 @@
+// Module: skills — read-only skill ledger (SKL4).
+//
+// One list read: /agent-api/api/skills. The ledger has name, version and
+// sharing scope. Source, runtime status and update time are not in the list
+// payload, so those cells are "—" with a reason; no value is invented and no
+// sample row is shown. A missing route is reported as 未接入 with the GAP id
+// only in a tooltip. No raw field name or HTTP status reaches the page.
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, RefreshCw, Sparkles } from "lucide-react";
+import { RefreshCw } from "lucide-react";
+
 import { Badge, Button, Card, CardContent } from "@nous-research/ui";
-import { fetchJSON } from "@/lib/api";
+import { fetchJsonStrict } from "@/modules/models/fetchJson";
 import { ApiError } from "@/lib/api-error";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import { currentFixtureState, fixtureView, type FixtureState } from "../../shell/fixtures";
-import { displayEnabled, formatBeijingTime, readDetail, readSkills, type SkillRow } from "./skills";
+import { SKILLS_GAP, formatBeijingTime, readSkills, type SkillRow } from "./skills";
+import "./skills.css";
 
 type State =
   | { k: "loading" }
   | { k: "empty" }
-  | { k: "error"; requestId: string | null }
-  | { k: "ready"; rows: SkillRow[] };
+  | { k: "error"; message: string; requestId: string | null; gap: string | null }
+  | { k: "ready"; rows: SkillRow[]; asOf: string | null };
 
-function requestId(error: unknown): string | null {
+function requestIdOf(error: unknown): string | null {
   if (error instanceof ApiError && error.requestId) return error.requestId;
   if (error !== null && typeof error === "object" && "requestId" in error && typeof error.requestId === "string" && error.requestId) {
     return error.requestId;
@@ -20,163 +30,165 @@ function requestId(error: unknown): string | null {
   return null;
 }
 
-/** QA V4-R4 条目5: 缺编号时给可执行的话术，不写「未提供」；编号也不发明。 */
-function requestIdNote(id: string | null): string {
-  return id ? `请求号：${id}` : "本次请求未记录编号，可复制时间与操作路径反馈";
+function messageFor(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.status === 401) return "需要登录：这个页面的登录状态已经失效，请重新登录后再看。";
+    if (error.status === 403) return "当前账号没有查看技能的权限。";
+    if (error.status === 404) return "技能数据还没有接入；请联系管理员开通后重试。";
+    if (error.status === 0) return "控制台暂时没有回应，请稍后重试。";
+    if (error.message) return error.message;
+  }
+  return "这次没能读取技能台账，请稍后重试。";
+}
+
+function RequestId({ id }: { id: string | null }) {
+  const [copied, setCopied] = useState<"idle" | "ok" | "failed">("idle");
+  const copy = async () => {
+    if (!id) return;
+    setCopied((await copyTextToClipboard(id)) ? "ok" : "failed");
+  };
+  return (
+    <p className="skl4-reqid" data-testid="skl4-request-id">
+      请求编号：<code title={id ?? undefined}>{id ?? "本次请求未记录编号"}</code>
+      {id ? (
+        <button type="button" onClick={() => void copy()} aria-label="复制请求编号">
+          {copied === "ok" ? "已复制" : copied === "failed" ? "复制失败" : "复制"}
+        </button>
+      ) : null}
+    </p>
+  );
 }
 
 function forcedState(state: FixtureState | null): State | null {
   if (state === "loading") return { k: "loading" };
   if (state === "empty") return { k: "empty" };
-  if (state === "error") return { k: "error", requestId: "示例请求号" };
+  if (state === "error") return { k: "error", message: "预览状态：这次没能读取技能台账，请稍后重试。", requestId: null, gap: null };
   return null;
+}
+
+function Cell({ value, reason }: { value: string | null; reason: string }) {
+  return (
+    <span className="skl4-cell">
+      <span className={value ? "" : "skl4-missing"}>{value ?? "—"}</span>
+      {!value ? <span className="skl4-reason">{reason}</span> : null}
+    </span>
+  );
 }
 
 export function SkillsPage() {
   const [state, setState] = useState<State>({ k: "loading" });
-  const [selected, setSelected] = useState<SkillRow | null>(null);
-  const [detail, setDetail] = useState<Record<string, unknown> | null>(null);
-  const [detailError, setDetailError] = useState<string | null>(null);
-  const [detailFailed, setDetailFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const fixture = currentFixtureState();
+  const forced = forcedState(fixture);
 
-  const load = useCallback(async (showLoading = true) => {
-    const forced = forcedState(fixture);
-    if (forced) { setState(forced); return; }
-    if (showLoading) setState({ k: "loading" });
+  const load = useCallback(async (signal: { live: boolean }) => {
+    setState({ k: "loading" });
     try {
-      const rows = readSkills(await fetchJSON<unknown>("/agent-api/api/skills"));
-      setState(rows.length ? { k: "ready", rows } : { k: "empty" });
+      const body = await fetchJsonStrict("/agent-api/api/skills");
+      if (!signal.live) return;
+      const { rows, asOf } = readSkills(body);
+      setState(rows.length ? { k: "ready", rows, asOf } : { k: "empty" });
     } catch (error) {
-      setState({ k: "error", requestId: requestId(error) });
+      if (!signal.live) return;
+      const gap = error instanceof ApiError && error.status === 404 ? SKILLS_GAP : null;
+      setState({ k: "error", message: messageFor(error), requestId: requestIdOf(error), gap });
     }
-  }, [fixture]);
+  }, []);
 
   useEffect(() => {
-    let alive = true;
-    const run = async () => {
-      const forced = forcedState(fixture);
-      if (forced) { setState(forced); return; }
-      try {
-        const rows = readSkills(await fetchJSON<unknown>("/agent-api/api/skills"));
-        if (alive) setState(rows.length ? { k: "ready", rows } : { k: "empty" });
-      } catch (error) {
-        if (alive) setState({ k: "error", requestId: requestId(error) });
-      }
+    if (forced) return;
+    const signal = { live: true };
+    void load(signal);
+    return () => {
+      signal.live = false;
     };
-    void run();
-    return () => { alive = false; };
-  }, [fixture]);
+  }, [attempt, forced, load]);
 
-  const openDetail = async (row: SkillRow) => {
-    setSelected(row);
-    setDetail(null);
-    setDetailError(null);
-    setDetailFailed(false);
-    try {
-      setDetail(readDetail(await fetchJSON<unknown>(`/agent-api/api/skills/${encodeURIComponent(row.id)}`)));
-    } catch (error) {
-      setDetailError(requestId(error));
-      setDetailFailed(true);
-    }
-  };
-
-  const retry = () => { void load(); };
-  const page = fixtureView<State | null>(fixture ?? "ready", {
+  const page = forced ?? fixtureView<State | null>(fixture ?? "ready", {
     loading: () => ({ k: "loading" }),
     empty: () => ({ k: "empty" }),
-    error: () => ({ k: "error", requestId: "示例请求号" }),
+    error: () => ({ k: "error", message: "预览状态：这次没能读取技能台账，请稍后重试。", requestId: null, gap: null }),
     ready: () => null,
-  });
-  const visibleState = page ?? state;
+  }) ?? state;
 
   return (
-    <section className="space-y-4" data-testid="skills-page" data-fixture={fixture ?? undefined}>
-      <header className="flex flex-wrap items-start justify-between gap-3">
+    <section className="skl4-page" data-testid="skl4-page" data-fixture={fixture ?? undefined}>
+      <header className="skl4-head">
         <div className="min-w-0">
-          <h1 className="font-mondwest text-xl">技能</h1>
-          <p className="mt-1 text-sm text-white/55">已登记的技能及其共享范围</p>
+          <h1>技能</h1>
+          <p className="skl4-sub">已登记的技能、共享范围与版本状态。只读。</p>
         </div>
-        <Button size="sm" outlined onClick={retry} disabled={visibleState.k === "loading"}>
+        <Button size="sm" outlined onClick={() => setAttempt((value) => value + 1)} disabled={page.k === "loading"} data-testid="skl4-refresh">
           <RefreshCw className="mr-1 size-3.5" aria-hidden="true" />重新读取
         </Button>
       </header>
 
-      {selected ? (
+      {fixture ? <p className="skl4-preview" data-testid="skl4-preview-note">预览状态：以下内容只用于验收布局，不是实时数据。</p> : null}
+
+      {page.k === "loading" ? (
+        <Card><CardContent className="space-y-3 p-4" data-testid="skl4-loading" aria-busy="true">
+          <p className="skl4-note">正在读取技能…</p>
+          {[1, 2, 3, 4].map((item) => <div key={item} className="skl4-skeleton" />)}
+        </CardContent></Card>
+      ) : null}
+
+      {page.k === "empty" ? (
+        <Card><CardContent className="space-y-2 p-8 text-center" data-testid="skl4-empty">
+          <p className="skl4-empty-title">还没有已登记的技能</p>
+          <p className="skl4-note">台账没有返回任何技能；这里不补样例行，也不显示 0 个技能。</p>
+        </CardContent></Card>
+      ) : null}
+
+      {page.k === "error" ? (
+        <Card><CardContent className="space-y-3 p-6" data-testid="skl4-error" role="alert">
+          <p className="skl4-error-title">技能列表暂时无法读取</p>
+          <p className="skl4-note" title={page.gap ?? undefined}>{page.message}</p>
+          <RequestId id={page.requestId} />
+          <Button size="sm" outlined onClick={() => setAttempt((value) => value + 1)} data-testid="skl4-retry">重试</Button>
+        </CardContent></Card>
+      ) : null}
+
+      {page.k === "ready" ? (
         <Card>
-          <CardContent className="space-y-4 p-4">
-            <Button size="sm" outlined onClick={() => { setSelected(null); setDetail(null); }}>
-              <ArrowLeft className="mr-1 size-3.5" aria-hidden="true" />返回列表
-            </Button>
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="min-w-0 break-words text-base text-white/90">{selected.name}</h2>
-              <Badge tone="outline">{selected.scope}</Badge>
-              <Badge tone={selected.enabled === "enabled" ? "success" : "outline"}>{displayEnabled(selected.enabled)}</Badge>
+          <CardContent className="p-0">
+            <p className="skl4-source" data-testid="skl4-source">来源：技能台账 · 读取于 {page.asOf ?? "—（未提供读取时刻）"}</p>
+            <div className="skl4-scroll">
+              <table className="skl4-table" data-testid="skl4-table">
+                <thead>
+                  <tr>
+                    <th scope="col">名称</th>
+                    <th scope="col">来源</th>
+                    <th scope="col">状态</th>
+                    <th scope="col">更新时间</th>
+                    <th scope="col">共享范围</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {page.rows.map((row) => (
+                    <tr key={row.id} data-testid={`skl4-row-${row.id}`} title={row.id}>
+                      <td>
+                        <span className="skl4-cell">
+                          <span className={row.name === "—" ? "skl4-missing" : ""}>{row.name}</span>
+                          {row.nameReason ? <span className="skl4-reason">{row.nameReason}</span> : null}
+                          {row.version ? <span className="skl4-reason">版本 {row.version}</span> : null}
+                        </span>
+                      </td>
+                      <td><Cell value={row.source} reason={row.sourceReason} /></td>
+                      <td><Cell value={row.status} reason={row.statusReason} /></td>
+                      <td><Cell value={row.updatedAt} reason={row.updatedAtReason} /></td>
+                      <td><Badge tone="outline">{row.scope}</Badge></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            {detailFailed ? (
-              <div role="alert" className="space-y-2 text-sm text-white/70">
-                <p>详情暂时无法读取。{requestIdNote(detailError)}</p>
-                <Button size="sm" outlined onClick={() => void openDetail(selected)}>重试</Button>
-              </div>
-            ) : detail ? (
-              <dl className="grid gap-3 sm:grid-cols-2">
-                {([
-                  ["简介", detail.description],
-                  ["创建时刻", formatBeijingTime(detail.createdAt) ?? "—（上游未提供创建时刻）"],
-                  ["最新版本", detail.version],
-                  ["状态", detail.status],
-                  ["状态变更时刻", formatBeijingTime(detail.statusChangedAt) ?? "—（上游未提供状态变更时刻）"],
-                ] as const).map(([label, value]) => (
-                  <div key={label} className="min-w-0 border-t border-white/10 pt-2">
-                    <dt className="text-xs text-white/45">{label}</dt>
-                    <dd className="mt-1 break-words text-sm text-white/80">{typeof value === "string" && value ? value : "—（上游未提供此信息）"}</dd>
-                  </div>
-                ))}
-              </dl>
-            ) : <p className="text-sm text-white/50">正在读取详情…</p>}
-            <p className="text-xs text-white/40" title={selected.id}>短码：{selected.id.slice(0, 8)}</p>
+            <p className="skl4-note skl4-foot">列表未提供的来源、状态与更新时间一律显示「—」，不从前端补造。</p>
           </CardContent>
         </Card>
-      ) : visibleState.k === "loading" ? (
-        <Card><CardContent className="space-y-3 p-4" data-testid="skills-loading" aria-busy="true">
-          <p className="text-sm text-white/55">正在读取技能…</p>
-          {[1, 2, 3].map((item) => <div key={item} className="h-12 animate-pulse rounded bg-white/5" />)}
-        </CardContent></Card>
-      ) : visibleState.k === "empty" ? (
-        <Card><CardContent className="flex flex-col items-center gap-2 py-12 text-center" data-testid="skills-empty">
-          <Sparkles className="size-7 text-white/35" aria-hidden="true" />
-          <p className="text-sm text-white/80">暂时没有已登记的技能</p>
-          <p className="max-w-md text-xs text-white/50">有技能加入后，会在这里显示名称、共享范围与版本状态。</p>
-        </CardContent></Card>
-      ) : visibleState.k === "error" ? (
-        <Card><CardContent className="flex flex-col items-center gap-3 py-10 text-center" data-testid="skills-error" role="alert">
-          <p className="text-sm text-white/80">技能列表暂时无法读取</p>
-          <p className="text-xs text-white/50">请稍后重试。</p>
-          <p className="text-xs text-white/40">{requestIdNote(visibleState.requestId)}</p>
-          <Button size="sm" outlined onClick={retry}>重试</Button>
-        </CardContent></Card>
-      ) : (
-        <Card><CardContent className="p-0" data-testid="skills-list">
-          {(visibleState as Extract<State, { k: "ready" }>).rows.map((row) => (
-            <button key={row.id} type="button" onClick={() => void openDetail(row)} className="flex w-full min-w-0 flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3 text-left last:border-b-0 hover:bg-white/5">
-              <span className="min-w-0 flex-1">
-                <span className="block break-words text-sm text-white/85">{row.name}</span>
-                {row.nameReason ? <span className="mt-1 block text-xs text-white/40">{row.nameReason}</span> : null}
-                {row.updatedAt ? <span className="mt-1 block text-xs text-white/40">更新于 {row.updatedAt}</span> : null}
-              </span>
-              <span className="flex max-w-full flex-wrap items-center gap-2">
-                <span className="flex flex-col items-start gap-0.5">
-                  <Badge tone="outline">{row.source}</Badge>
-                  <span className="text-[11px] text-white/40">{row.sourceReason}</span>
-                </span>
-                <Badge tone="outline">{row.scope}</Badge>
-                <Badge tone={row.enabled === "enabled" ? "success" : "outline"}>{displayEnabled(row.enabled)}</Badge>
-                {row.enabled === "unknown" ? <span className="basis-full text-right text-[11px] text-white/40">台账列表未提供启用态</span> : null}
-              </span>
-            </button>
-          ))}
-        </CardContent></Card>
-      )}
+      ) : null}
     </section>
   );
 }
+
+export const formatSkillTime = formatBeijingTime;
+export default SkillsPage;

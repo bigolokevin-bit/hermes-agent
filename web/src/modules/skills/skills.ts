@@ -1,12 +1,35 @@
+// Module: skills — read-only skill ledger (SKL4).
+//
+// The list endpoint is an active BFF read. Its ledger shape provides name,
+// version and sharing scope; it does not provide a source, a runtime status or
+// an update timestamp. Those cells stay "—" with a visible reason instead of
+// being inferred from another field or replaced by sample data.
+
+export const SKILLS_GAP = "GAP-SKL4-01";
+
 export type SkillRow = {
   id: string;
   name: string;
   nameReason: string | null;
-  source: string;
-  sourceReason: string | null;
-  scope: string;
-  enabled: "enabled" | "disabled" | "unknown";
+  source: string | null;
+  sourceReason: string;
+  status: string | null;
+  statusReason: string;
   updatedAt: string | null;
+  updatedAtReason: string;
+  scope: string;
+  version: string | null;
+};
+
+export type SkillsRead = {
+  rows: SkillRow[];
+  asOf: string | null;
+};
+
+const SCOPE_LABELS: Record<string, string> = {
+  "tenant-shared": "团队共享",
+  "employee-exclusive": "员工专属",
+  unused: "未被引用",
 };
 
 function record(value: unknown): Record<string, unknown> {
@@ -19,32 +42,56 @@ function text(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-export function readSkills(body: unknown): SkillRow[] {
-  const root = record(body);
-  const items = Array.isArray(body) ? body : Array.isArray(root.items) ? root.items : [];
-  return items.map((item, index) => {
-    const row = record(item);
-    const name = text(row.name);
-    const rawScope = text(row.scope);
-    const scopeMap: Record<string, string> = {
-      "tenant-shared": "团队共享",
-      "employee-exclusive": "员工专属",
-      unused: "未被引用",
-    };
-    return {
-      id: text(row.skillId) ?? `row-${index}`,
-      name: name ?? "—",
-      nameReason: name ? null : "上游未提供名称",
-      source: "—",
-      sourceReason: "台账未提供来源",
-      scope: rawScope ? scopeMap[rawScope] ?? rawScope : "—",
-      enabled: "unknown",
-      updatedAt: null,
-    };
-  });
+/** Beijing time to the minute, or null when the value is absent/invalid. */
+export function formatBeijingTime(value: unknown): string | null {
+  if (typeof value !== "string" || !value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
 }
 
-/** 语义化版本比较键；非法形态返回 null（与上游 skills.py _version_key 口径一致）。 */
+export function readSkills(body: unknown): SkillsRead {
+  const root = record(body);
+  const items = Array.isArray(body) ? body : Array.isArray(root.items) ? root.items : [];
+  const asOf = formatBeijingTime(root.asOf ?? root.as_of ?? root.generatedAt ?? root.generated_at ?? null);
+
+  const rows = items.map((item, index) => {
+    const row = record(item);
+    const name = text(row.name);
+    const source = text(row.source) ?? text(row.origin);
+    const status = text(row.status);
+    const updatedRaw = text(row.updatedAt) ?? text(row.updated_at) ?? text(row.modifiedAt) ?? null;
+    const updatedAt = formatBeijingTime(updatedRaw);
+    const rawScope = text(row.scope);
+    const version = text(row.version);
+
+    return {
+      id: text(row.skillId) ?? text(row.id) ?? `row-${index}`,
+      name: name ?? "—",
+      nameReason: name ? null : "台账未提供名称",
+      source,
+      sourceReason: source ? "" : "台账列表未提供来源",
+      status,
+      statusReason: status ? "" : "台账列表未提供状态",
+      updatedAt,
+      updatedAtReason: updatedAt ? "" : updatedRaw ? "更新时间无法识别" : "台账列表未提供更新时间",
+      scope: rawScope ? SCOPE_LABELS[rawScope] ?? rawScope : "—",
+      version,
+    };
+  });
+
+  return { rows, asOf };
+}
+
+/** Semver key for the detail versions; invalid forms fall back to row order. */
 function versionKey(version: string | null): [number, number, number] | null {
   const parts = (version ?? "").split(".");
   return parts.length === 3 && parts.every((part) => /^\d+$/.test(part))
@@ -60,8 +107,6 @@ export function readDetail(body: unknown): Record<string, unknown> {
   const root = record(body);
   const skill = record(root.skill);
   const versions = Array.isArray(root.versions) ? root.versions : [];
-  // 上游按 (created_at, version 文本) 升序返回；同毫秒时 version 文本序会误排
-  // （如 1.10.0 < 1.2.0），故「最新版本」按语义化版本取最大，非法形态回退末行。
   let latest = versions.length ? record(versions[versions.length - 1]) : {};
   let bestKey = versionKey(text(latest.version));
   for (const item of versions) {
@@ -80,30 +125,15 @@ export function readDetail(body: unknown): Record<string, unknown> {
   };
   return {
     description: text(skill.description),
-    createdAt: text(skill.createdAt),
+    createdAt: formatBeijingTime(skill.createdAt),
     version: text(latest.version),
     status: status ? statusLabels[status] ?? status : null,
-    statusChangedAt: text(latest.statusChangedAt),
+    statusChangedAt: formatBeijingTime(latest.statusChangedAt),
   };
 }
 
-export function displayEnabled(value: SkillRow["enabled"]): string {
+export function displayEnabled(value: "enabled" | "disabled" | "unknown"): string {
   if (value === "enabled") return "已启用";
   if (value === "disabled") return "未启用";
   return "—（台账列表未提供）";
-}
-
-export function formatBeijingTime(value: unknown): string | null {
-  if (typeof value !== "string" || !value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat("zh-CN", {
-    timeZone: "Asia/Shanghai",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(date);
 }
