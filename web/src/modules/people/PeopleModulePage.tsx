@@ -1,14 +1,15 @@
 /**
  * 人员目录 — `/identity?tab=people` 只读面 (ppl5-*).
  *
- * The BFF exposes no user-center list route: candidates answer 404
- * console.unknown_route. The page therefore renders one neutral 未接入 body
- * for 403 and 404, with GAP-02 only in `title`; it never fabricates a row or a
- * 0. A real answer is read defensively: missing fields are `—` with a reason,
- * status words never expose codes, and raw ids stay in `title`.
+ * The BFF exposes no user-center list route: those candidates answer 404
+ * console.unknown_route. The page falls back to the real digital-employee
+ * ledger at `/api/employees`, labels that source on screen, and renders one
+ * neutral 未接入 body for 403 and 404 when both are unavailable, with GAP-02
+ * only in `title`; it never fabricates a row or a 0. Missing fields are `—`
+ * with a reason, status words never expose codes, and raw ids stay in `title`.
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Link, useSearchParams } from "react-router";
+import { Link } from "react-router";
 import { Inbox, RefreshCw, ShieldAlert, TriangleAlert, Users } from "lucide-react";
 import { Badge, Button, Card, CardContent } from "@nous-research/ui";
 
@@ -33,10 +34,7 @@ export const PEOPLE_GAP_MESSAGE =
 export const PEOPLE_ENDPOINTS = [
   "/agent-api/api/v1/user/list",
   "/agent-api/api/v1/user/all",
-];
-
-const FIXTURE_ROWS: Rec[] = [
-  { user_id: "u_fixture_12345678", realname: "示例员工", user_name: "example", dept_name: "示例部门", status: 1, last_login: "2026-11-19T06:30:00Z" },
+  "/agent-api/api/employees?limit=20",
 ];
 
 function isRecord(value: unknown): value is Rec {
@@ -76,7 +74,7 @@ function beijing(value: unknown): string | null {
 }
 
 function rawId(row: Rec): string {
-  const id = row.user_id ?? row.userId ?? row.id;
+  const id = row.user_id ?? row.userId ?? row.employeeId ?? row.employee_id ?? row.id;
   return typeof id === "string" && id.trim() ? id.trim() : typeof id === "number" ? String(id) : "";
 }
 
@@ -87,7 +85,7 @@ function shortCode(row: Rec): string {
 }
 
 function statusLabel(row: Rec): { text: string; tone: "success" | "warning" | "destructive" | undefined } {
-  const s = row.status ?? row.state ?? row.is_active ?? row.enabled;
+  const s = row.lifecycleState ?? row.lifecycle_state ?? row.status ?? row.state ?? row.is_active ?? row.enabled;
   if (typeof s === "number") {
     if (s === 1) return { text: "已启用", tone: "success" };
     if (s === 0) return { text: "已停用", tone: "destructive" };
@@ -97,8 +95,12 @@ function statusLabel(row: Rec): { text: string; tone: "success" | "warning" | "d
   }
   if (typeof s === "boolean") return { text: s ? "已启用" : "已停用", tone: s ? "success" : "destructive" };
   const word = (typeof s === "string" ? s : "").toLowerCase();
-  if (word === "active" || word === "enabled" || word === "true") return { text: "已启用", tone: "success" };
+  if (word === "active" || word === "enabled" || word === "true") return { text: "在岗", tone: "success" };
   if (word === "disabled" || word === "inactive" || word === "false") return { text: "已停用", tone: "destructive" };
+  if (word === "draft") return { text: "草稿", tone: "warning" };
+  if (word === "paused") return { text: "暂停", tone: "warning" };
+  if (word === "offboarding") return { text: "离职中", tone: "warning" };
+  if (word === "archived") return { text: "已归档", tone: "destructive" };
   if (word === "pending") return { text: "待审核", tone: "warning" };
   return { text: "待核实", tone: undefined };
 }
@@ -118,8 +120,17 @@ interface PersonRow {
 function readPerson(row: Rec, index: number): PersonRow {
   const account = pickString(row.user_name, row.username, row.account);
   const name = pickString(row.realname, row.name, row.nick_name) ?? account ?? "待核实";
-  const lastRaw = row.last_login ?? row.lastLogin ?? row.last_active ?? row.lastActive ?? row.update_time ?? row.updatedAt;
+  const lastRaw = row.last_login ?? row.lastLogin ?? row.last_active ?? row.lastActive;
+  const updatedRaw = row.update_time ?? row.updatedAt ?? row.updated_at;
   const lastActive = beijing(lastRaw);
+  const updated = beijing(updatedRaw);
+  const lastActiveReason = lastActive
+    ? null
+    : lastRaw
+      ? "最后活跃时间无法解析"
+      : updated
+        ? `上游未提供最后活跃时间（最后更新 ${updated}）`
+        : "上游未提供最后活跃时间";
   return {
     key: rawId(row) || `row-${index}`,
     name,
@@ -128,7 +139,7 @@ function readPerson(row: Rec, index: number): PersonRow {
     dept: pickString(row.dept_name, row.deptName, row.department, row.dept),
     status: statusLabel(row),
     lastActive,
-    lastActiveReason: lastActive ? null : lastRaw ? "最后活跃时间无法解析" : "上游未提供最后活跃时间",
+    lastActiveReason,
     rawId: rawId(row),
   };
 }
@@ -238,27 +249,10 @@ function StateShell({
   );
 }
 
-const FORCED = new Set(["loading", "empty", "error", "denied", "ready"]);
-
 export default function PeopleModulePage() {
-  const [params] = useSearchParams();
-  const forced = (params.get("state") ?? "").toLowerCase();
   const [reload, setReload] = useState(0);
   const [query, setQuery] = useState("");
-  const fixture = FORCED.has(forced);
-  const live = usePeople(reload, !fixture);
-  const people: Resource<Rec[]> =
-    forced === "loading"
-      ? { phase: "loading" }
-      : forced === "empty"
-        ? { phase: "empty" }
-        : forced === "error"
-          ? { phase: "error", message: "这条腿是用 ?state=error 复现的，服务此刻没有回答过。", requestId: "req-ppl5-repro" }
-          : forced === "denied"
-            ? { phase: "unavailable", message: PEOPLE_GAP_MESSAGE }
-            : forced === "ready"
-              ? { phase: "ready", data: FIXTURE_ROWS }
-              : live;
+  const people = usePeople(reload, true);
 
   const rows = useMemo<PersonRow[]>(() => {
     if (people.phase !== "ready") return [];
@@ -281,9 +275,16 @@ export default function PeopleModulePage() {
         <div className="min-w-0">
           <h1 className="font-mondwest text-xl text-white/90">人员目录</h1>
           <p className="mt-1 text-xs text-white/40">
-            在册真人名录 · 姓名 / 账号 / 部门 / 状态 / 最后活跃
+            在册人员名录 · 姓名 / 账号 / 部门 / 状态 / 最后活跃
             {people.phase === "ready" ? ` · 共 ${people.data.length} 人` : ""}
           </p>
+          {people.phase === "ready" && people.data.length > 0 ? (
+            <p className="mt-1 text-xs text-white/40" data-testid="ppl5-source">
+              {people.data.some((row) => "employeeId" in row)
+                ? "来源：数字员工台账；真人用户中心接口尚未接入，这里不冒充真人名单。"
+                : "来源：用户中心人员台账。"}
+            </p>
+          ) : null}
         </div>
         <div className="ppl5-actions">
           <input

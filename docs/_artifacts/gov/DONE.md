@@ -1492,3 +1492,34 @@ Chosen pages: **org5** and **access** (the two pages that painted sample rows as
 ### Boundaries
 - No App/shell/routes/registry/manifest/package/lock/scripts/ops changes; no install; no `git add -A`.
 - No live 200 obtained; no independent observer.
+
+## R37 people directory real-data fallback (2026-11-20)
+
+Base: `6c9db598` (remote tip `965cec5d` gate ledger); lane merged with `origin/lane/hermes-console` via merge commit `40a53664` (no rebase/force).
+
+### Endpoint truth (BFF 8092, access_token_cookie, value never printed)
+- `GET /api/v1/user/list?page=1&page_size=20` → **404** `console.unknown_route`.
+- `GET /api/v1/user/all` → **404** `console.unknown_route`.
+- `GET /api/employees?limit=20` → **200**, **3 items**.
+
+### Page behavior
+- `/identity?tab=people` now tries user-center endpoints first, then falls back to `/agent-api/api/employees?limit=20`.
+- Real rows: name · last-8 code, account `—` + reason, department `—` + reason, lifecycle state human word, last active `—` + reason with the source's last-update time (never presented as activity).
+- Source line: 「来源：数字员工台账；真人用户中心接口尚未接入，这里不冒充真人名单。」 for employee rows; user-center rows label 用户中心人员台账.
+- Removed `FIXTURE_ROWS` and all forced `?state=` fixtures; no `data-fixture` remains. 403/404 still render one neutral 未接入 body with `GAP-02` only in `title`, apply link, and no sample.
+- Four states kept; 5xx error has copyable request id + retry; raw `emp_…` ids only in row `title`; BJT to minute.
+
+### Verification
+- `npx vitest run src/modules/people` → **1 file / 8 tests passed**.
+- `npx vitest run` → **129 files / 1331 tests passed**.
+- `./node_modules/.bin/tsc -b . --noEmit` → exit 0.
+- DOM (temporary harness with the live 3-row payload, deleted after; Vite 5446, Chrome CDP 9246):
+  - 1440: `vw=1440 bodySW=1440 bodyCW=1440 pageSW=1440 pageCW=1440 rows=3`
+  - 1280: `vw=1280 bodySW=1280 bodyCW=1280 pageSW=1280 pageCW=1280 rows=3`
+  - 375: `vw=375 bodySW=375 bodyCW=375 pageSW=375 pageCW=375 rows=3`
+  - `data-fixture=false`; source line present; 3 row names/codes/status visible.
+
+### Boundaries
+- Write domain only `web/src/modules/people/**` + this file. No App/shell/routes/registry/manifest/package/lock/scripts/ops changes.
+- No sample rows or fake 0; user-center真人目录 remains GAP-02 until its endpoint exists.
+- No build run (module-only); no independent observer.
