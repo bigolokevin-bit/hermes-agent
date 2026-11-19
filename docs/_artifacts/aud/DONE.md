@@ -1673,3 +1673,48 @@ npx eslint src/modules/runs      → exit 0
 - 真浏览器 1440/1280/375 像素横溢未量测（无 playwright、禁 install；页面需登录态）。布局用 `grid-cols-[minmax(0,…)]` + `break-words` + `min-w-0` 契约保证不横溢，新增的负责人列沿用同一写法。
 - `/runs/:runId` 的壳层路由未注册（写域外），本页只能识别路径段；未运行真实浏览器刷新验证。
 - 重试写入真腿未测成功路径（BFF 在 `run-retry` 上返回 401/404 时页面走 GAP-09 人话），只有 mock 级「新 id 不覆盖原记录」断言。
+
+## TASK R23 — runs detail as a history entry (2026-11-19, base 1b7d91a9)
+
+Symptom (QA): opening a run detail did not push a history entry, so the browser
+back button left the page ("blank") instead of returning to the list.
+
+Cause: `setParam` in `RunsModulePage.tsx` always called `setParams(next, { replace: true })`,
+so the detail replaced the list entry rather than being pushed on top of it.
+
+Change (write scope `web/src/modules/runs/**` only):
+
+1. `setParam(key, value, opts?: { push?: boolean })` — filters keep `replace: true`
+   (one page, no history entry per keystroke); the push branch writes
+   `{ replace: false, state: { fromList: true } }`.
+2. `openRun` pushes the detail entry (`{ push: true }`) and is a no-op when the
+   run is already selected.
+3. `closeRun` walks back (`navigate(-1)`) when the current entry carries
+   `fromList` (the detail was pushed from the list, so the browser restores the
+   list and its scroll position natively); a deep-linked detail has nothing
+   behind it, so it still rewrites the entry to the list instead of leaving the app.
+4. The replace branch carries `state: locationState ?? null`, so `retry = new run`
+   keeps the `fromList` marker and 关闭 still returns to the list.
+
+Tests (`__tests__` file `RunsModulePage.test.tsx`, +3 cases / 36 → 39):
+
+- `list → detail → back, three times over, always lands back on the list` —
+  a probe calls `navigate(-1)` (same traversal as the browser button); each cycle
+  asserts the detail opened (`?run=` present) and that back leaves the row list
+  on screen with `run=` gone. This case cannot pass on the old code (the entry
+  was replaced, so back had nowhere to go).
+- `a deep-linked detail closes in place` — entry `/runs?run=…`, 关闭 → `/runs`.
+- `closing a detail that was pushed walks back instead of stacking another entry`.
+
+Gates (from `web/`):
+
+- `npx vitest run src/modules/runs` → exit 0, 2 files / **67 tests** (was 64).
+- `npx eslint src/modules/runs` → exit 0.
+- `npx tsc -b . --noEmit` → exit 2, 51 errors: 49 in `../apps/shared/**` + 2 in
+  `src/pages/LoginPage.test.tsx` (both pre-existing); 0 in `src/modules/runs`.
+
+Untested: no real-browser session here (no playwright, page needs auth), so the
+native scroll restoration on back is reasoned from the same-document traversal
+the test exercises, not measured; the shell still registers only `/runs`
+(`App.tsx:1375`), so the path form `/runs/<runId>` is served by this page's own
+parser but has no dedicated route yet.
