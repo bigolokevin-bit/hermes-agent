@@ -40,7 +40,10 @@ describe("VersionPage", () => {
     expect(container.querySelector('[data-testid="ver4-build-rows"]')?.textContent).toContain("未知");
     expect(container.textContent).toContain("构建时没有写入这项信息；请让发布流程补齐构建标识");
     expect(container.textContent).not.toContain("0.0.0");
-    expect([...container.querySelectorAll("button, input, select, textarea")]).toHaveLength(0);
+    const controls = [...container.querySelectorAll("button, input, select, textarea")];
+    // The only control is the planned diagnostic export: disabled by contract.
+    expect(controls.every((el) => el.getAttribute("data-planned") === "1" && el.getAttribute("aria-disabled") === "true")).toBe(true);
+    expect(container.querySelector('[data-testid="ver4-planned-export"]')?.getAttribute("title")).toContain("还没有接上");
   });
 
   it("renders injected values and formats the build time in Beijing time", async () => {
@@ -54,6 +57,22 @@ describe("VersionPage", () => {
     expect(container.textContent).toContain("01234567");
     expect(container.textContent).toContain("2026-11-19 00:30");
     expect(container.querySelector('[data-testid="ver4-build-rows"] [title="0123456789abcdef"]')).toBeTruthy();
+  });
+
+  it("switches the whole error state from ?state= and retries into content", async () => {
+    window.history.replaceState({}, "", "/?state=error");
+    await render();
+    const error = container.querySelector('[data-testid="ver4-error"]');
+    expect(error).toBeTruthy();
+    expect(error?.textContent).toContain("这次没能读出构建与依赖信息");
+    expect(error?.textContent).toContain("未提供");
+    expect(container.querySelector('[data-testid="ver4-dep-react"]')).toBeNull();
+    await act(async () => {
+      (container.querySelector('[data-testid="ver4-error-retry"]') as HTMLButtonElement).click();
+    });
+    expect(container.querySelector('[data-testid="ver4-error"]')).toBeNull();
+    expect(container.querySelector('[data-testid="ver4-dep-react"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="ver4-dep-vite"]')).toBeTruthy();
   });
 
   it("renders the price table with USD and asOf, separately from spend", async () => {

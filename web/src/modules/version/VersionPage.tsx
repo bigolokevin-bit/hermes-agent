@@ -6,7 +6,7 @@ import { MODELS_GAP, fmtStamp, fmtUnitPrice, readPrices, type ModelPriceRow } fr
 import { currentFixtureState, fixtureView } from "../../shell/fixtures";
 import { readBuildRows, readDependencyRows, type BuildEnv, type BuildRow, type DependencyRow } from "./version";
 
-type State = { k: "loading" } | { k: "empty" } | { k: "error"; requestId: string } | { k: "ready"; build: BuildRow[]; dependencies: DependencyRow[] };
+type State = { k: "loading" } | { k: "empty" } | { k: "error"; requestId: string | null } | { k: "ready"; build: BuildRow[]; dependencies: DependencyRow[] };
 type PriceState =
   | { k: "loading" }
   | { k: "ready"; rows: ModelPriceRow[]; asOf: string | null }
@@ -55,10 +55,11 @@ function BuildRows({ rows }: { rows: BuildRow[] }) {
 }
 
 export function VersionPage() {
-  const forced = currentFixtureState();
+  const [retried, setRetried] = useState(false);
+  const forced = retried ? null : currentFixtureState();
   const preview = fixtureView<State | null>(forced ?? "ready", {
     loading: () => ({ k: "loading" }), empty: () => ({ k: "empty" }),
-    error: () => ({ k: "error", requestId: "—（本地信息，无请求号）" }), ready: () => null,
+    error: () => ({ k: "error", requestId: null }), ready: () => null,
   });
 
   const build = readBuildRows(import.meta.env as unknown as BuildEnv);
@@ -103,6 +104,17 @@ export function VersionPage() {
       <header>
         <h1 className="font-mondwest text-xl">版本</h1>
         <p className="mt-1 text-sm text-white/55">构建与依赖信息</p>
+        <button
+          type="button"
+          className="mt-3 rounded-md border border-white/15 px-2.5 py-1 text-xs text-white/45"
+          data-planned="1"
+          aria-disabled="true"
+          title="下载诊断包还没有接上：等打包与脱敏通道就绪后再开放"
+          data-testid="ver4-planned-export"
+          onClick={(event) => event.preventDefault()}
+        >
+          下载诊断包（计划中）
+        </button>
       </header>
 
       {view.k === "loading" ? (
@@ -116,9 +128,34 @@ export function VersionPage() {
           <p className="mt-2 text-xs text-white/50">当前构建没有注入版本信息。</p>
         </CardContent></Card>
       ) : view.k === "error" ? (
-        <Card><CardContent className="py-10 text-center" data-testid="ver4-error" role="status">
-          <p className="text-sm text-white/80">本地版本信息暂不可用</p>
-          <p className="mt-2 text-xs text-white/50">请求号：{view.requestId}</p>
+        <Card><CardContent className="space-y-3 py-10 text-center" data-testid="ver4-error" role="status">
+          <p className="text-sm text-white/80">这次没能读出构建与依赖信息</p>
+          <p className="text-xs text-white/50">
+            页面没有把旧内容顶上来充数，也没有编造版本号；重试只会再读一次本机构建信息。
+          </p>
+          <p className="flex min-w-0 flex-wrap items-center justify-center gap-1 text-xs text-white/45" data-testid="ver4-error-request-id">
+            <span>请求编号：</span>
+            {view.requestId ? <code className="min-w-0 break-all" title={view.requestId}>{view.requestId}</code> : <span>未提供</span>}
+            {view.requestId ? (
+              <button
+                type="button"
+                className="underline underline-offset-2"
+                aria-label="复制请求编号"
+                data-testid="ver4-error-copy"
+                onClick={() => { void navigator.clipboard?.writeText(view.requestId ?? ""); }}
+              >
+                复制
+              </button>
+            ) : null}
+          </p>
+          <button
+            type="button"
+            className="rounded-md border border-white/15 px-2.5 py-1 text-xs text-white/70"
+            data-testid="ver4-error-retry"
+            onClick={() => setRetried(true)}
+          >
+            重试
+          </button>
         </CardContent></Card>
       ) : (
         <div className="grid min-w-0 gap-4 lg:grid-cols-2" data-testid="ver4-content">
@@ -130,7 +167,7 @@ export function VersionPage() {
             <h2 className="text-sm font-medium text-white/85">依赖版本</h2>
             <dl className="divide-y divide-white/10">
               {view.dependencies.map((item) => (
-                <div key={item.name} className="flex min-w-0 flex-wrap items-start justify-between gap-3 py-3 first:pt-0 last:pb-0" title={item.name}>
+                <div key={item.name} className="flex min-w-0 flex-wrap items-start justify-between gap-3 py-3 first:pt-0 last:pb-0" title={item.name} data-testid={`ver4-dep-${item.name.replace(/[^a-z0-9]+/gi, '-')}`}>
                   <dt className="break-all text-sm text-white/70">{item.name}</dt>
                   <dd className="min-w-0 text-right">
                     {item.version ? <span className="break-all text-sm text-white/85">{item.version}</span> : <span className="inline-flex flex-wrap items-center justify-end gap-2"><StateBadge unknown /><span className="text-sm text-white/55">未知</span></span>}
