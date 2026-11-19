@@ -625,3 +625,17 @@ KPI 族：五卡 data-testid=ov6-kpi-<name> 统一在位+新增 data-duty-testid
 - ⑦三档无横溢：jsdom 不可测三档宽度，如实报形态学证据=七列 grid 全 minmax(0,·)+truncate、375 档单列堆叠 data-label（与 tasks P2 单已验同款布局），待活体复核。
 
 门禁：assert-ia 两模式 exit 0，routes 51/tabs 22/chatHosts 1/modules 8；定向 employees 2 files/10 passed；全量 131 files/1346 passed（≥基线）；tsc -p App.tsx/employees 零红。
+
+## R39 壳层 compat 对齐（security 语义双源清除，2026-11-20 04:0x，lane/console-appr）
+
+基线：fetch+merge origin/lane/hermes-console → tip=fa2c3bf7（ledger at 466e2d2b，entry DBjC1SjB），toplevel ✓ porc=0。写域=shell/**（App.tsx 未动一行）。
+
+三处改前→改后（唯一双源=compat 数据把 security 判归 events 旧槽，App.tsx:1605 直挂 SecurityConsolePage 才是现实）：
+1. routes.ts:256 compat-tab 行（行数保留=51 计数之一）：label「审计事件」→「安全设置」；dataSource「随目标」→「App 直挂 SecurityModulePage（?tab=security 在壳层拦截，不判归审计事件）」；to `#/system?tab=events&view=anomaly`→`#/system?tab=security`（identity，bridge 不再改写走）。
+2. TAB_ALIAS :348 `system: { security: 'events', retention: 'events' }` → `{ retention: 'events' }`（删 security 键；retention 不在点名范围不动）。
+3. VIEW_ALIAS :356 删 `'system.security': 'anomaly'`。
+连带：console.test「TAB_ALIAS compat」用例改用 retention 等价验证；bridge.test「normalizes tab-level compat」security 断言改为 identity（bridge 实测行为随 to 自动正确）。
+
+七条落点活体读数（9122=466e2d2b 代次裸路径=App Routes 语义；ego 探针）：/duty→/overview+ov6-page(值班台 pane)；/tasks→/work?tab=board+tsk4-board(任务 pane)；/settings→/system?tab=defaults(默认设置 pane)；/events→/system?tab=events(审计事件 pane)；/calendar→cal-page；/integrations→int-page；/forms→frm-page；/system?tab=security→pathname 保持+sec5-page=1（paneTab=- 即 App 拦截生效非 events）。注意发现：PRD `#/…` hash 形式走 bridge，unknown hash（如 #/tasks）按 PRD §7 回落 /overview=冻结设计，本单不动；七条落点判据以裸路径为准。
+
+门禁：assert-ia 两模式 exit 0，routes 51/tabs 22/chatHosts 1/modules 8；定向 shell 5 files/38 passed。
