@@ -182,3 +182,109 @@ describe("AccessModulePage roles", () => {
     expect(text).not.toContain("u_1001");
   });
 });
+describe("AccessModulePage admins and high-risk operations", () => {
+  it("reads administrators and renders real audit rows for high-risk operations", async () => {
+    const adminPeople = {
+      items: [
+        {
+          user_id: "u_abcdef1234567890",
+          realname: "林一舟",
+          is_admin: true,
+          roles: ["平台管理员"],
+          last_login_at: "2026-11-19T06:30:00Z",
+          last_high_risk_at: "2026-11-19T06:20:00Z",
+          status: "active",
+        },
+      ],
+    };
+    const edge = {
+      events: [
+        {
+          eventId: "ev_1234567890ABCDEF",
+          action: "grant.created",
+          occurredAt: "2026-11-19T06:20:00Z",
+          actor: { type: "human", id: "u_abcdef1234567890" },
+          resource: { type: "grant", id: "gr_1234567890ABCDEF" },
+          correlationId: "req-risk-12345678",
+        },
+      ],
+    };
+    fetchJSON.mockImplementation((url: string) => {
+      if (url.includes("/v1/user/")) return Promise.resolve(adminPeople);
+      if (url.includes("/role")) return Promise.resolve({ items: [] });
+      if (url.includes("action=grant.created")) return Promise.resolve(edge);
+      if (url.includes("/api/audit")) return Promise.resolve({ events: [] });
+      return Promise.resolve({ items: [] });
+    });
+    await render("/access?tab=admins");
+    expect(container.querySelector('[data-testid="ac3-tab-admins"]')?.getAttribute("aria-selected")).toBe("true");
+    const adminTable = container.querySelector('[data-testid="adm5-admin-table"]');
+    expect(adminTable?.textContent).toContain("林一舟 · 34567890");
+    expect(adminTable?.textContent).toContain("平台管理员");
+    expect(adminTable?.textContent).toContain("2026-11-19 14:30");
+    expect(adminTable?.textContent).toContain("正常");
+    const riskTable = container.querySelector('[data-testid="adm5-risk-table"]');
+    expect(riskTable?.textContent).toContain("授权变更");
+    expect(riskTable?.textContent).toContain("新建授权");
+    expect(riskTable?.textContent).toContain("grant · 90ABCDEF");
+    expect(riskTable?.textContent).toContain("2026-11-19 14:20");
+    expect(container.querySelector('[data-testid="adm5-risk-copy"]')).toBeTruthy();
+    expect(container.textContent).not.toContain("u_abcdef1234567890");
+    expect(container.textContent).not.toContain("gr_1234567890ABCDEF");
+  });
+
+  it("shows the same neutral 未接入 body for 403 and 404", async () => {
+    for (const status of [403, 404]) {
+      fetchJSON.mockImplementation((url: string) =>
+        Promise.reject(new ApiError("missing", { status, body: "{}", url })),
+      );
+      await act(async () => root.unmount());
+      root = createRoot(container);
+      await render("/access?view=admins");
+      const adminGap = container.querySelector('[data-testid="adm5-gap"]');
+      expect(adminGap?.textContent).toContain("未接入");
+      expect(adminGap?.getAttribute("title")).toBe("GAP-ADM5-01");
+      expect(adminGap?.textContent).toContain("管理员名单未接入");
+      expect(container.querySelector('[data-testid="adm5-risk-gap"]')?.getAttribute("title")).toBe("GAP-ADM5-02");
+      expect(container.textContent).not.toContain("GAP-");
+      expect(container.querySelectorAll('[data-testid="adm5-admin-row"]')).toHaveLength(0);
+      fetchJSON.mockReset();
+    }
+  });
+
+  it("keeps — with a reason for missing admin fields and has no write controls", async () => {
+    fetchJSON.mockImplementation((url: string) => {
+      if (url.includes("/v1/user/")) {
+        return Promise.resolve({ items: [{ user_id: "u_1234567890abcdef", realname: "陈可", is_admin: true }] });
+      }
+      if (url.includes("/role")) return Promise.resolve({ items: [] });
+      if (url.includes("/api/audit")) return Promise.resolve({ events: [] });
+      return Promise.resolve({ items: [] });
+    });
+    await render("/access?view=admins");
+    const row = container.querySelector('[data-testid="adm5-admin-row"]');
+    expect(row?.textContent).toContain("陈可 · 90ABCDEF");
+    expect(row?.textContent).toContain("—");
+    expect(row?.textContent).toContain("上游未提供角色");
+    expect(row?.textContent).toContain("上游未提供最近登录");
+    expect(row?.textContent).toContain("上游未提供最近高危操作");
+    expect(row?.textContent).toContain("上游未提供账号状态");
+    for (const button of container.querySelectorAll("button")) {
+      expect(button.textContent?.trim()).not.toMatch(/新建|创建|编辑|删除|授权|撤销|新增/);
+    }
+    expect(container.querySelectorAll("input, textarea, select")).toHaveLength(0);
+  });
+
+  it("shows a copyable request id and retry when every high-risk source fails", async () => {
+    fetchJSON.mockImplementation((url: string) => {
+      if (url.includes("/v1/user/")) return Promise.reject(new ApiError("missing", { status: 404, body: "{}", url }));
+      return Promise.reject(new ApiError("boom", { status: 500, body: "{}", url, requestId: "req-risk-5" }));
+    });
+    await render("/access?view=admins");
+    const error = container.querySelector('[data-testid="adm5-risk-error"]');
+    expect(error?.textContent).toContain("req-risk-5");
+    expect(error?.querySelector('[data-testid="adm5-risk-error-request-id"]')).toBeTruthy();
+    expect(error?.textContent).toContain("重试");
+    expect(container.textContent).not.toContain("HTTP");
+  });
+});
