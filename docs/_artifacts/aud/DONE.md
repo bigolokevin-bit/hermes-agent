@@ -1557,3 +1557,64 @@ npx eslint src/modules/audit       → exit 0，0 errors / 3 warnings（useAudit
 - 未做真浏览器像素/点击量测（无 playwright、禁 install、需鉴权）——上面两个 len 差是 jsdom 读数，
   不是浏览器渲染读数；未测 1440/375 下新面板的换行表现（沿用既有 `min-w-0 break-words` 契约）。
 - 服务在真实 200 里给 `scanned: 0`；没有窗口同时含事件与断点样本，`broken > 0` 的界面分支只有单元测试覆盖。
+
+## R21 拦车 b 前半（2026-11-19，base 3ca5338f）
+
+QA 症状：`/audit` 被改写落到 `/system?tab=events`；页级 `aud01-tech-details` 不存在
+（techDetails:false、detailsEls:0）；行级 `aud01-cell-<id>-details` 有 50 个 button 但外部探针崩。
+
+### 1) 路由：/audit 真渲染审计页，不改写
+
+- 根因：`web/src/App.tsx` 里 `/audit` 的 element 是
+  `<Navigate to="/system?tab=events" replace />`——地址栏被改写，模块体从未在该 URL 上渲染；
+  QA 的探针打在改写后的页面上，所以 techDetails/详情按钮都读不到。
+- 现在：`<Route path="/audit" element={<AuditEventsConsolePage />} />`，
+  模块直接挂在 `/audit`；带 `?tab=events` 时同样命中（页面只读它自己的参数，`tab` 被忽略）。
+- `/system?tab=events` 的既有 live 槽位未动，旧入口照常可用。
+- 证据：新增 `appRouting.test.ts`（源码契约：`/audit` 直挂模块、旧的 Navigate 元素不再存在、
+  懒加载指针仍在）+ 模块测试在 `/audit?tab=events` 入口下真渲染出
+  `agent-v2-page-audit` 与 `aud01-tech-details`。
+
+### 2) 页级 `aud01-tech-details`（读数）
+
+- 页脚的技术详情折叠由 `aud01-list-details` 更名为 **`aud01-tech-details`**，
+  按钮带 `aria-expanded` 与 `data-expanded="true|false"`，供外部探针直接读状态。
+- **DOM 读数**（jsdom，`document.body.textContent.length`）：`before=562 → after=639`，差 **+77**。
+  折叠内容固定四行（本页条数 / 筛选 / 时间窗 / 游标），永不空，所以一次点击必增量。
+
+### 3) 行级展开保持可点，并给出外部判据
+
+- 行内格 `aud01-cell-<id>-details` 仍是整格 button，展开面板 testid 为
+  **`aud01-row-tech-details`**（与页级 id 分离，避免同名冲突）；同一时刻只开一行，id 唯一。
+- 两个开关都带 `data-expanded`，外部探针不用点击也能判状态：
+  `[data-testid="aud01-cell-<id>-details"][data-expanded="false|true"]`。
+- **DOM 读数**：行级 `before=562 → after=684`，差 **+122**。
+
+### 4) 完整性校验仍打真路由，400 说人话
+
+- 按钮 `aud01-verify` 发 `GET /agent-api/api/audit-verify?from=…&to=…`（未改路径、未加 mock 分支）。
+- 新增用例：服务回 **400** 时落 `aud01-verify-error`，屏上是
+  「这次读取缺一个服务端要求的筛选条件，没能返回记录。请换个时间范围或筛选条件再试。」
+  + 可复制请求编号（`rid-verify-400`），**不出现任何条数、不出现「没有发现断点」、不出现 `request.missing_filter`**。
+- 未启用腿（403/404/405/501/不可达/5xx）仍是 `aud01-verify-not-enabled`；200 仍出真实条数（scanned=0 不当通过）。
+
+### 5) 未回退的三条
+
+- 四态、403≡404 同体、零写入口：模块测试全绿（含 denied 同一 body 与零写入口断言）。
+- 写域：`web/src/modules/audit/**` + `web/src/App.tsx` 仅审计路由一处 + `docs/_artifacts/aud/**`；
+  未碰其他 modules、shell 其他文件、package/lock。
+
+### 6) 门禁（`web/` 下，本轮实测）
+
+- `npx vitest run src/modules/audit` → **exit 0**，6 files / **113 tests**（原 107，+6）。
+- `npx tsc -b . --noEmit` → **exit 2**，51 条：49 条在 `../apps/shared/**`（既有），
+  另 2 条在 `src/pages/LoginPage.test.tsx`（**base 3ca5338f 既有**，本轮未改该文件，
+  最近改动是祖先 `b3af7b52`）；**`src/modules/audit` 与 `src/App.tsx` 0 条**。
+- `npx eslint src/modules/audit src/App.tsx` → **exit 0**，0 errors / 7 warnings（均为既有 set-state-in-effect）。
+
+### 7) not verified
+
+- 未做真浏览器探针（无 playwright、禁 install、需鉴权）。`/audit` 不改写与两个 testid 的存在，
+  由源码契约 + jsdom 渲染与长度读数证明；QA 侧需在重建 dist 后复探
+  （当前 9122 服务的 dist 仍是不含本轮改动的旧代次）。
+- 1440/375 下新面板的换行表现未做像素量测（沿用 min-w-0 break-words 契约）。

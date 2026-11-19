@@ -1265,10 +1265,13 @@ export default function App() {
                           171) instead of the bare upstream English shell.
                           First-in-tree wins, so these front the generic
                           builtin entries without touching the route map. */}
-                      <Route
-                        path="/audit"
-                        element={<Navigate to="/system?tab=events" replace />}
-                      />
+                      {/* R21 b: /audit mounts the audit page itself. The old
+                          <Navigate to="/system?tab=events"> left the URL rewritten
+                          and the page body unreachable, so QA measured
+                          techDetails:false on a page that never rendered.
+                          `?tab=events` needs no special case: the module reads
+                          only the params it owns and ignores the rest. */}
+                      <Route path="/audit" element={<AuditEventsConsolePage />} />
                       <Route
                         path="/channels"
                         element={<Navigate to="/capabilities?tab=channels" replace />}
