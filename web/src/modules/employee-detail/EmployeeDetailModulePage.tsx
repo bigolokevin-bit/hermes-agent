@@ -26,6 +26,7 @@ import { ClipboardCheck, Gauge, Inbox, RefreshCw, ShieldAlert, TriangleAlert, Wa
 import { Badge, Button, Card, CardContent } from "@nous-research/ui";
 
 import { RequestIdCopy } from "@/components/RequestIdCopy";
+import { priorityLabel, short8, statusLabel } from "@/modules/tasks/tasksBoard";
 import { fetchJSON } from "@/lib/api";
 import { API_UNREACHABLE_MESSAGE, ApiError, humanizeStatus } from "@/lib/api-error";
 
@@ -330,7 +331,7 @@ const ZONES = [
   { id: "audit", label: "审计" },
 ] as const;
 
-type ZoneId = (typeof ZONES)[number]["id"] | "chat";
+type ZoneId = (typeof ZONES)[number]["id"] | "chat" | "tasklist";
 
 function mapShellZone(raw: string): ZoneId {
   switch (raw) {
@@ -344,7 +345,9 @@ function mapShellZone(raw: string): ZoneId {
     case "config":
       return "capability";
     case "tasks":
-      return "approvals";
+      // R43: the tasks zone got its own real-data body; it no longer
+      // borrows the approvals view.
+      return "tasklist";
     case "runs":
       return "runs";
     case "evidence":
@@ -422,6 +425,31 @@ function ZoneError({ title, message, requestId, onRetry, testid }: { title: stri
  * chat zone (PRD 聊天区) — read-only session summary, never a host
  * ------------------------------------------------------------------ */
 
+type TaskZoneRow = {
+  taskId: string;
+  title: string | null;
+  status: string | null;
+  priority: string | null;
+  updatedAt: string | null;
+};
+
+/** Multi-key tolerant reader for /api/tasks rows (E-series envelope). */
+function readTasks(body: unknown): TaskZoneRow[] {
+  const rows: TaskZoneRow[] = [];
+  for (const item of itemsOf(body)) {
+    const taskId = pickString(item.taskId, item.task_id, item.id);
+    if (!taskId) continue;
+    rows.push({
+      taskId,
+      title: pickString(item.title),
+      status: pickString(item.status),
+      priority: pickString(item.priority),
+      updatedAt: pickString(item.updatedAt, item.updated_at),
+    });
+  }
+  return rows;
+}
+
 type ChatRow = {
   title: string | null;
   lastAt: string | null;
@@ -452,6 +480,85 @@ function chatStatusLabel(raw: string | null): string {
   if (s0 === "active" || s0 === "open") return "进行中";
   if (s0 === "archived" || s0 === "closed" || s0 === "ended") return "已结束";
   return "待核实";
+}
+
+function TasksZone({ resource, empId, onRetry }: { resource: Resource<TaskZoneRow[]>; empId: string; onRetry: () => void }) {
+  if (!empId) {
+    return (
+      <ZoneEmpty
+        testid="ed5-zone-tasks-empty"
+        title="缺少员工编号，无法确定任务归属。"
+        hint="本页只按该员工读取任务，不展示猜测内容。"
+      />
+    );
+  }
+  if (resource.phase === "loading") return <ZoneLoading testid="ed5-zone-tasks-loading" />;
+  if (resource.phase === "denied") {
+    return <ZoneDenied title="任务" message={resource.message} onRetry={onRetry} testid="ed5-zone-tasks-denied" />;
+  }
+  if (resource.phase === "error") {
+    return (
+      <ZoneError
+        title="任务"
+        message={resource.message}
+        requestId={resource.requestId}
+        onRetry={onRetry}
+        testid="ed5-zone-tasks-error"
+      />
+    );
+  }
+  if (resource.phase === "empty") {
+    return (
+      <Card data-testid="ed5-zone-tasks-empty">
+        <CardContent className="flex flex-col items-center gap-3 p-8 text-center">
+          <Inbox className="h-6 w-6 text-white/40" />
+          <p className="text-sm">该员工暂无任务。</p>
+          <p className="text-xs text-white/50">
+            这是服务端的真实回答：当前指派给该员工的任务为零；本页不放宽筛选来凑数。
+          </p>
+          <p className="text-xs text-white/50">口径=按负责人过滤（服务端执行）；其他负责人的任务请到任务看板查看。</p>
+        </CardContent>
+      </Card>
+    );
+  }
+  return (
+    <Card data-testid="ed5-zone-tasks">
+      <CardContent className="p-0">
+        <div className="hidden grid-cols-[minmax(0,1.8fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,1fr)] gap-2 border-b border-white/10 px-4 py-2 text-xs text-white/45 md:grid">
+          <span>标题</span>
+          <span>状态</span>
+          <span>优先级</span>
+          <span>更新时间</span>
+        </div>
+        <ul className="divide-y divide-white/5" data-testid="ed5-zone-tasks-list">
+          {resource.data.map((row) => (
+            <li
+              key={row.taskId}
+              data-testid={`ed5-zone-tasks-row-${row.taskId}`}
+              className="grid grid-cols-1 gap-1 px-4 py-3 md:grid-cols-[minmax(0,1.8fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,1fr)] md:items-center md:gap-2"
+            >
+              <Link
+                to={`/tasks/${encodeURIComponent(row.taskId)}`}
+                data-testid={`ed5-zone-tasks-name-${row.taskId}`}
+                className="min-w-0 truncate text-sm hover:underline focus-visible:underline"
+                title={row.taskId}
+              >
+                {row.title ?? `任务 · ${short8(row.taskId)}`}
+              </Link>
+              <span title={row.status ?? undefined}>
+                <Badge>{statusLabel(row.status ?? "")}</Badge>
+              </span>
+              <span className="text-xs text-white/55">{priorityLabel(row.priority ?? undefined).text}</span>
+              <span className="font-mono text-xs text-white/55">{beijing(row.updatedAt)}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="px-4 py-2 text-xs text-white/45">
+          只读 · 本页不提供建单与状态迁移；迁移在任务工作台。点击行标题打开任务详情深链。
+        </p>
+      </CardContent>
+    </Card>
+  );
 }
 
 function ChatZone({ resource, empId, onRetry }: { resource: Resource<ChatRow[]>; empId: string; onRetry: () => void }) {
@@ -547,7 +654,7 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
   const enc = encodeURIComponent(empId);
   const zone = mapShellZone(sp.get("zone") ?? "");
 
-  const [reload, setReload] = useState<Record<ZoneId, number>>({ overview: 0, capability: 0, approvals: 0, runs: 0, audit: 0, chat: 0 });
+  const [reload, setReload] = useState<Record<ZoneId, number>>({ overview: 0, capability: 0, approvals: 0, runs: 0, audit: 0, chat: 0, tasklist: 0 });
   const retry = (z: ZoneId) => setReload((prev) => ({ ...prev, [z]: prev[z] + 1 }));
 
   const overview = useOverview(empId, reload.overview);
@@ -555,6 +662,11 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
   const approvals = useResourceList(zone === "approvals" ? `/agent-api/api/approvals?employeeId=${enc}` : "", reload.approvals, readApprovals);
   const runs = useResourceList(zone === "runs" ? `/agent-api/api/runs?employeeId=${enc}` : "", reload.runs, readRuns);
   const audit = useResourceList(zone === "audit" ? `/agent-api/api/audit?resourceId=${enc}&limit=50` : "", reload.audit, readAudit);
+  const tasklist = useResourceList(
+    zone === "tasklist" && empId ? `/agent-api/api/tasks?assignee=${encodeURIComponent(`employee:${empId}`)}&limit=20` : "",
+    reload.tasklist,
+    readTasks,
+  );
   const chat = useResourceList(
     zone === "chat" && empId ? `/agent-api/api/console-sessions?employeeId=${enc}&limit=5` : "",
     reload.chat,
@@ -622,6 +734,7 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
       {zone === "runs" ? <RunsZone resource={runs} onRetry={() => retry("runs")} /> : null}
       {zone === "audit" ? <AuditZone resource={audit} onRetry={() => retry("audit")} /> : null}
       {zone === "chat" ? <ChatZone resource={chat} empId={empId} onRetry={() => retry("chat")} /> : null}
+      {zone === "tasklist" ? <TasksZone resource={tasklist} empId={empId} onRetry={() => retry("tasklist")} /> : null}
     </section>
   );
 }
