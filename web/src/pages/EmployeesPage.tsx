@@ -53,6 +53,15 @@ function toNum(v: unknown): number | null {
   return null;
 }
 
+// R5 item 7: one money format for the whole console — the same USD formatter
+// RunsPage/ApprovalsPage use ($1,234.56, two decimals, locale grouping).
+const USD = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
 /** 金额（美元）：缺失 → 「未计价」；真实 0 → $0.00。绝不把缺失当成 0。 */
 export function money(value: unknown): string {
   let raw = value;
@@ -61,10 +70,7 @@ export function money(value: unknown): string {
   }
   const n = toNum(raw);
   if (n === null) return "未计价";
-  return `$${n.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+  return USD.format(n);
 }
 
 // R4 item 5: honest copy when no trace id came back (replaces 「未提供」).
@@ -123,6 +129,15 @@ function last4(raw: string): string {
   return compact.slice(-4) || "————";
 }
 
+// R5 item 6: same-name employees need disambiguation — 「姓名 · 8位短码」
+// (first 8 alphanumeric chars of the id, uppercased; never a bare emp_ id).
+function short8(raw: string): string {
+  let tail = raw.includes(":") ? raw.slice(raw.lastIndexOf(":") + 1) : raw;
+  tail = tail.replace(/^[A-Za-z]{2,8}[_-]/, ""); // emp_ / agent_ / run_ 前缀
+  const compact = tail.replace(/[^0-9A-Za-z]/g, "").toUpperCase();
+  return compact.slice(0, 8) || "--------";
+}
+
 function kindLabel(raw: string): string {
   if (/^human:/i.test(raw) || /^user:/i.test(raw)) return "人员";
   if (/^team:/i.test(raw) || /^group:/i.test(raw)) return "团队";
@@ -145,14 +160,18 @@ export function refLabel(value: unknown): string | null {
   return looksLikeId(v) ? `${kindLabel(v)} · ${last4(v)}` : v;
 }
 
-/** 名字优先；无名字退到「员工 · 末4位」；都没有 → 「—」。原始 id 只进 title。 */
+/** 名字 → 「姓名 · 8位短码」；无名字退到「员工 · 8位短码」；都没有 → 「—」。原始 id 只进 title。 */
 export function displayName(
   name: string | null,
   id: string | null,
 ): { text: string; raw: string | null } {
-  if (name) return { text: name, raw: id };
-  const ref = refLabel(id ?? "");
-  if (ref) return { text: ref, raw: id };
+  if (name && id) return { text: `${name} · ${short8(id)}`, raw: id };
+  if (name) return { text: name, raw: null };
+  if (id) {
+    const ref = refLabel(id);
+    if (ref && looksLikeId(id)) return { text: `${kindLabel(id)} · ${short8(id)}`, raw: id };
+    if (ref) return { text: ref, raw: id };
+  }
   return { text: "—", raw: null };
 }
 
@@ -175,15 +194,43 @@ export const PRESENCE: Record<string, StatusHit> = {
   enabled: { label: "在岗", tone: "success" },
   idle: { label: "空闲", tone: "secondary" },
   paused: { label: "已暂停", tone: "warning" },
+  suspended: { label: "已停用", tone: "secondary" },
   offline: { label: "离线", tone: "secondary" },
   stopped: { label: "已停用", tone: "secondary" },
   disabled: { label: "已停用", tone: "secondary" },
   retired: { label: "已停用", tone: "secondary" },
+  onboarding: { label: "试用", tone: "warning" },
+  draft: { label: "试用", tone: "warning" },
+  offboarding: { label: "离职中", tone: "warning" },
   archived: { label: "已归档", tone: "secondary" },
   error: { label: "异常", tone: "destructive" },
   fault: { label: "异常", tone: "destructive" },
   failed: { label: "异常", tone: "destructive" },
 };
+
+// R5 item 5: the authoritative field is the API lifecycle (lifecycleState),
+// not a generic status blob. Unknown lifecycle values must read 「待核实」 —
+// never a guess, and not a bare dash either.
+export const LIFECYCLE: Record<string, StatusHit> = {
+  active: { label: "在岗", tone: "success" },
+  online: { label: "在岗", tone: "success" },
+  running: { label: "在岗", tone: "success" },
+  enabled: { label: "在岗", tone: "success" },
+  onboarding: { label: "试用", tone: "warning" },
+  draft: { label: "试用", tone: "warning" },
+  paused: { label: "已停用", tone: "secondary" },
+  suspended: { label: "已停用", tone: "secondary" },
+  disabled: { label: "已停用", tone: "secondary" },
+  stopped: { label: "已停用", tone: "secondary" },
+  retired: { label: "已停用", tone: "secondary" },
+  offboarding: { label: "离职中", tone: "warning" },
+  archived: { label: "已归档", tone: "secondary" },
+};
+
+/** lifecycle 真值优先，再退到旧 status/state 字段。 */
+export function lifecycleOf(row: Rec): unknown {
+  return row.lifecycleState ?? row.lifecycle_state ?? row.lifecycle ?? row.status ?? row.state ?? row.presence ?? row.presence_state;
+}
 
 export const WORK: Record<string, StatusHit> = {
   queued: { label: "待处理", tone: "secondary" },
@@ -216,9 +263,28 @@ export function statusHit(value: unknown, table: Record<string, StatusHit>): Sta
   return table[value.trim().toLowerCase()] ?? null;
 }
 
-export function StatusBadge({ value, table }: { value: unknown; table: Record<string, StatusHit> }) {
+export function StatusBadge({
+  value,
+  table,
+  unknownLabel,
+}: {
+  value: unknown;
+  table: Record<string, StatusHit>;
+  unknownLabel?: string;
+}) {
   const hit = statusHit(value, table);
-  if (!hit) return <span className="text-muted-foreground">—</span>;
+  if (!hit) {
+    const known = typeof value === "string" && value.trim();
+    if (unknownLabel && known) {
+      // R5 item 5: an unrecognised API value is 「待核实」, never a guess.
+      return (
+        <Badge tone="outline" title={value}>
+          {unknownLabel}
+        </Badge>
+      );
+    }
+    return <span className="text-muted-foreground">—</span>;
+  }
   return (
     <Badge tone={hit.tone} title={typeof value === "string" ? value : undefined}>
       {hit.label}
@@ -393,7 +459,7 @@ function EmployeesTable({ rows }: { rows: Rec[] }) {
             <span key={h}>{h}</span>
           ))}
         </div>
-        <ul className="divide-y divide-border">
+        <ul className="divide-y divide-border" data-testid="emp-l-list">
           {rows.map((row, i) => (
             <EmployeeRow key={idOf(row) ?? `row-${i}`} row={row} />
           ))}
@@ -406,42 +472,45 @@ function EmployeesTable({ rows }: { rows: Rec[] }) {
 function EmployeeRow({ row }: { row: Rec }) {
   const id = idOf(row);
   const dn = displayName(nameOf(row), id);
-  const station = pickStr(row, ["station", "seat", "workspace", "role", "position", "desk", "title"]);
-  const model = pickStr(row, ["model", "model_name"]);
-  const spend = money(row.spend ?? row.spent ?? row.cost ?? row.usage_cost ?? row.budget_spent);
-  const last = beijing(
-    row.last_seen ?? row.last_active ?? row.last_active_at ?? row.updated_at ?? row.last_run_at ?? row.created_at,
-  );
 
   const cells = (
     <>
       <Cell label="员工" strong>
-        <span className="block truncate" title={dn.raw ?? undefined}>
-          {dn.text}
-        </span>
+        {id ? (
+          // R5 item 4: the name itself is the real anchor to the detail page —
+          // keyboard-focusable, with a stable testid for the acceptance probe.
+          <Link
+            to={`/employees/${encodeURIComponent(id)}`}
+            data-testid="emp-l-name-link"
+            className="block truncate text-inherit underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-current"
+            title={dn.raw ?? undefined}
+          >
+            {dn.text}
+          </Link>
+        ) : (
+          <span className="block truncate" title={dn.raw ?? undefined}>
+            {dn.text}
+          </span>
+        )}
       </Cell>
       <Cell label="状态">
-        <StatusBadge value={row.status ?? row.state ?? row.presence ?? row.presence_state} table={PRESENCE} />
+        {/* R5 item 5: read the API lifecycle first; unknown values read 待核实. */}
+        <StatusBadge value={lifecycleOf(row)} table={LIFECYCLE} unknownLabel="待核实" />
       </Cell>
-      <Cell label="工位">{station ?? "—"}</Cell>
-      <Cell label="模型">{model ?? "—"}</Cell>
-      <Cell label="支出">{spend}</Cell>
-      <Cell label="最近活动">{last}</Cell>
+      <Cell label="工位">{pickStr(row, ["station", "seat", "workspace", "role", "position", "desk", "title"]) ?? "—"}</Cell>
+      <Cell label="模型">{pickStr(row, ["model", "model_name"]) ?? "—"}</Cell>
+      <Cell label="支出">{money(row.spend ?? row.spent ?? row.cost ?? row.usage_cost ?? row.budget_spent)}</Cell>
+      <Cell label="最近活动">
+        {beijing(
+          row.last_seen ?? row.last_active ?? row.last_active_at ?? row.updated_at ?? row.last_run_at ?? row.created_at,
+        )}
+      </Cell>
     </>
   );
 
-  // 拿不到 id 的行照常展示，但不给死链。
-  if (!id) {
-    return <li className={cn(COLS, "px-4 py-3 text-sm")}>{cells}</li>;
-  }
   return (
-    <li>
-      <Link
-        to={`/employees/${encodeURIComponent(id)}`}
-        className={cn(COLS, "px-4 py-3 text-sm transition-colors hover:bg-muted/20 focus-visible:bg-muted/20 focus-visible:outline-none")}
-      >
-        {cells}
-      </Link>
+    <li className={cn(COLS, "px-4 py-3 text-sm")} data-testid="emp-l-row">
+      {cells}
     </li>
   );
 }

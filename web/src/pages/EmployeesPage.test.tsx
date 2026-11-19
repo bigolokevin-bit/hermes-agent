@@ -125,4 +125,51 @@ describe("EmployeesPage", () => {
     expect(text).toContain("req-abc-123");
     expect(text).toContain("重试");
   });
+
+  // ── R5 八条回归 ──────────────────────────────────────────────────────
+
+  it("R5-3/4: 列表容器与行有稳定 testid，姓名是真链接可键盘聚焦", async () => {
+    resolveEmployees([
+      { id: "emp_9F3A1B2C3D4E", name: "小鲤", lifecycleState: "active" },
+      { id: "emp_77AA99BB00CC", name: "阿澜", lifecycleState: "onboarding" },
+    ]);
+    await render();
+    const list = container.querySelector('[data-testid="emp-l-list"]');
+    expect(list).toBeTruthy();
+    expect(list?.querySelectorAll('[data-testid="emp-l-row"]').length).toBe(2);
+    const link = container.querySelector<HTMLAnchorElement>('[data-testid="emp-l-name-link"]');
+    expect(link).toBeTruthy();
+    expect(link.getAttribute("href")).toBe("/employees/emp_9F3A1B2C3D4E");
+  });
+
+  it("R5-5: 状态按 API lifecycle 真值映射；未知值显示「待核实」不猜", async () => {
+    resolveEmployees([
+      { id: "emp_A1", name: "甲", lifecycleState: "offboarding" },
+      { id: "emp_B2", name: "乙", lifecycleState: "suspended" },
+      { id: "emp_C3", name: "丙", lifecycleState: "quantic" },
+    ]);
+    await render();
+    const text = container.textContent ?? "";
+    expect(text).toContain("离职中");
+    expect(text).toContain("已停用");
+    expect(text).toContain("待核实");
+  });
+
+  it("R5-6: 同名员工以「姓名 · 8位短码」消歧，屏幕上无裸 emp_", async () => {
+    resolveEmployees([
+      { id: "emp_9F3A1B2C3D4E", name: "小鲤", lifecycleState: "active" },
+      { id: "emp_Z8Y7X6W5V4U3", name: "小鲤", lifecycleState: "active" },
+    ]);
+    await render();
+    const links = [...container.querySelectorAll("a")].map((a) => a.textContent);
+    expect(links).toContain("小鲤 · 9F3A1B2C");
+    expect(links).toContain("小鲤 · Z8Y7X6W5");
+    expect(container.textContent).not.toMatch(/emp_/);
+  });
+
+  it("R5-7: 支出与运行/审批同口径（USD 千分位两位小数）", async () => {
+    resolveEmployees([{ id: "emp_D4", name: "丁", lifecycleState: "active", spend: 1234.5 }]);
+    await render();
+    expect(container.textContent).toContain("$1,234.50");
+  });
 });
