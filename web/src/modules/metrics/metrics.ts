@@ -284,6 +284,8 @@ export interface LedgerRow {
   costUsd: number | null;
   /** Budget cap for the period, when the ledger ever carries one. */
   limitUsd: number | null;
+  /** Run/session count on the row when the ledger carries one; null otherwise. */
+  runs: number | null;
   updatedAt: string | null;
 }
 
@@ -303,6 +305,7 @@ export function readLedger(payload: unknown): ParsedLedger {
     tokensUsed: numberOrNull(raw.tokensUsed),
     costUsd: numberOrNull(raw.costUsd),
     limitUsd: numberOrNull(raw.limitUsd) ?? numberOrNull(raw.limit) ?? numberOrNull(raw.capUsd),
+    runs: numberOrNull(raw.runs) ?? numberOrNull(raw.sessions) ?? numberOrNull(raw.runCount) ?? numberOrNull(raw.run_count),
     updatedAt: text(raw.updatedAt),
   }));
   const missing = Array.isArray(payload.missingEmployeeIds)
@@ -500,6 +503,8 @@ export interface EmployeeSpend {
   employeeId: string | null;
   name: string | null;
   costUsd: number | null;
+  /** Sum of the rows that carry a run count; null when none do. */
+  runs: number | null;
   ledgerRows: number;
   asOf: string | null;
 }
@@ -515,10 +520,12 @@ export function aggregateByEmployee(rows: LedgerRow[], names: Record<string, str
       employeeId: row.employeeId,
       name: row.employeeId ? names[row.employeeId] ?? null : null,
       costUsd: null,
+      runs: null,
       ledgerRows: 0,
       asOf: null,
     };
     entry.ledgerRows += 1;
+    if (row.runs !== null) entry.runs = (entry.runs ?? 0) + row.runs;
     if (row.costUsd !== null) entry.costUsd = (entry.costUsd ?? 0) + row.costUsd;
     if (row.updatedAt && (entry.asOf === null || row.updatedAt > entry.asOf)) entry.asOf = row.updatedAt;
     byId.set(key, entry);
@@ -566,6 +573,144 @@ export function readModelUsage(payload: unknown): ParsedModelUsage {
 export function shareOf(value: number | null, total: number | null): number | null {
   if (value === null || total === null || !Number.isFinite(value) || !Number.isFinite(total) || total <= 0) return null;
   return Math.round((value / total) * 1000) / 10;
+}
+
+// ---- MET7: cost share by model ---------------------------------------------
+
+export interface ModelCostRow {
+  model: string;
+  /** Stable key for test ids when the label is not ASCII (employee names). */
+  key?: string;
+  /**
+   * The upstream identifier this row stands for (employeeId today). It is never
+   * rendered: it only rides into a drill href, so the list keeps showing names
+   * and 8-character codes.
+   */
+  rawId?: string;
+  /** Session count as upstream reports it; null when the answer has none. */
+  runs: number | null;
+  /** Ledger actual only. An estimate is never promoted into this field. */
+  costUsd: number | null;
+}
+
+export type ModelCostSort = 'cost' | 'runs' | 'model';
+export type SortDir = 'asc' | 'desc';
+
+/** Where a cost row's runs drill points, and whether /runs can honour it. */
+export interface RunsDrill {
+  href: string;
+  /** True only when the runs page really narrows by this row's owner. */
+  filtered: boolean;
+  /** Honest sentence when the row filter cannot ride along; null when it does. */
+  note: string | null;
+}
+
+/**
+ * Measured contract (2026-11-20): `/runs` reads exactly
+ * `window|status|state|run|employee`, and the BFF list accepts exactly
+ * `employeeId|status|since`. A `model` key is neither read by the page nor
+ * accepted by the BFF, so a model row opens the same time window unfiltered
+ * instead of painting a filter that does nothing.
+ */
+export function runsDrill(row: ModelCostRow, source: 'model' | 'employee', windowId: string): RunsDrill {
+  const windowKey = /^(24h|7d|30d)$/.test(windowId) ? windowId : '7d';
+  if (source === 'employee' && row.rawId) {
+    return {
+      href: `/runs/?employee=${encodeURIComponent(row.rawId)}&window=${windowKey}`,
+      filtered: true,
+      note: null,
+    };
+  }
+  return {
+    href: `/runs/?window=${windowKey}`,
+    filtered: false,
+    note:
+      source === 'employee'
+        ? '这一行没有员工标识，运行页无法按人筛选；打开的是同一时间窗的全部运行。'
+        : '运行页暂不支持按模型筛选；打开的是同一时间窗的全部运行。',
+  };
+}
+
+export type ParsedModelCost =
+  | { kind: 'ok'; rows: ModelCostRow[]; asOf: string | null }
+  | { kind: 'invalid'; reason: string };
+
+/** Money keys that count as an actual charge. `estimated_cost*` is
+ *  deliberately absent: an estimate is not a ledger row. */
+const MODEL_COST_MONEY_KEYS = ['actual_cost_usd', 'actualCostUsd', 'cost_usd', 'costUsd'] as const;
+
+export function readModelCost(payload: unknown): ParsedModelCost {
+  if (!isRecord(payload)) return { kind: 'invalid', reason: '返回内容里没有按模型的用量。' };
+  const asOf =
+    text(payload.asOf) ?? text(payload.as_of) ?? text(payload.generated_at) ?? text(payload.generatedAt);
+  const costBlock = isRecord(payload.cost) ? payload.cost : null;
+  const rowsRaw = Array.isArray(payload.by_model)
+    ? payload.by_model
+    : costBlock && Array.isArray(costBlock.by_model)
+      ? costBlock.by_model
+      : null;
+  if (rowsRaw === null) return { kind: 'ok', rows: [], asOf };
+  const rows: ModelCostRow[] = [];
+  for (const raw of rowsRaw) {
+    if (!isRecord(raw)) continue;
+    const model = text(raw.model) ?? text(raw.modelId) ?? text(raw.name);
+    if (!model) continue;
+    let costUsd: number | null = null;
+    for (const key of MODEL_COST_MONEY_KEYS) {
+      const value = numberOrNull(raw[key]);
+      if (value !== null) {
+        costUsd = value;
+        break;
+      }
+    }
+    rows.push({ model, runs: numberOrNull(raw.sessions) ?? numberOrNull(raw.runs), costUsd });
+  }
+  return { kind: 'ok', rows, asOf };
+}
+
+/** Percent shares in tenths of a point; the readable rows always add up to
+ *  exactly 100.0%. A row without a charge keeps null («—»), and a zero total
+ *  yields no shares at all rather than a silent 0%. */
+export function shareOfCosts(costs: (number | null)[]): (number | null)[] {
+  const readable = costs.filter((value): value is number => value !== null && Number.isFinite(value) && value >= 0);
+  const total = readable.reduce((sum, value) => sum + value, 0);
+  if (readable.length === 0 || total <= 0) return costs.map(() => null);
+  const raw = costs.map((value) =>
+    value === null || !Number.isFinite(value) || value <= 0 ? 0 : (value / total) * 1000,
+  );
+  const tenths = raw.map((value) => Math.floor(value + 1e-9));
+  const left = 1000 - tenths.reduce((sum, value) => sum + value, 0);
+  const order = raw
+    .map((value, index) => ({ index, rest: value - Math.floor(value + 1e-9) }))
+    .filter((item) => costs[item.index] !== null)
+    .sort((a, b) => b.rest - a.rest || a.index - b.index);
+  for (let i = 0; i < order.length && i < left; i += 1) tenths[order[i].index] += 1;
+  return costs.map((value, index) => (value === null ? null : tenths[index] / 10));
+}
+
+/** Sort rows for the share table. Rows without a value stay at the bottom in
+ *  both directions — an unreadable number is not the smallest number. */
+export function sortModelCost(rows: ModelCostRow[], key: ModelCostSort, dir: SortDir): ModelCostRow[] {
+  const sign = dir === 'asc' ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    if (key === 'model') return a.model.localeCompare(b.model) * sign;
+    const left = key === 'cost' ? a.costUsd : a.runs;
+    const right = key === 'cost' ? b.costUsd : b.runs;
+    if (left === null && right === null) return a.model.localeCompare(b.model);
+    if (left === null) return 1;
+    if (right === null) return -1;
+    if (left === right) return a.model.localeCompare(b.model) * sign;
+    return (left - right) * sign;
+  });
+}
+
+export function parseSortKey(raw: string | null): ModelCostSort {
+  return raw === 'runs' || raw === 'model' ? raw : 'cost';
+}
+
+export function parseSortDir(raw: string | null, key: ModelCostSort): SortDir {
+  if (raw === 'asc' || raw === 'desc') return raw;
+  return key === 'model' ? 'asc' : 'desc';
 }
 
 // ---- MET6: period-over-period delta and CSV export --------------------------
@@ -619,6 +764,39 @@ export function toCsv(header: string[], rows: (string | number | null)[][]): str
 export function csvFileName(view: 'employee' | 'model', window: UsageWindowId, now: Date): string {
   const stamp = formatBeijing(now.toISOString(), now).replace(/[-:]/g, '').replace(' ', '-');
   return `metrics-${view}-${window}-${stamp}.csv`;
+}
+
+// ---- MET-A: export the current cost-share view ------------------------------
+
+export type ShareCsvRow = {
+  /** The row's model name or employee name — the on-screen first column. */
+  name: string;
+  runs: number | null;
+  costUsd: number | null;
+  sharePct: number | null;
+};
+
+/** Fixed English keys, one per data column on screen. */
+export const SHARE_CSV_HEADER = ['group', 'runs', 'cost_usd', 'share_pct'];
+
+/** Missing stays an empty cell, a real zero stays `0.00`, shares keep one decimal. */
+export function shareCsvRows(rows: ShareCsvRow[]): (string | number | null)[][] {
+  return rows.map((row) => [
+    row.name,
+    row.runs,
+    row.costUsd === null ? null : row.costUsd.toFixed(2),
+    row.sharePct === null ? null : row.sharePct.toFixed(1),
+  ]);
+}
+
+export function shareCsv(rows: ShareCsvRow[]): string {
+  return toCsv(SHARE_CSV_HEADER, shareCsvRows(rows));
+}
+
+/** `metrics-24h-model-20261120-0655.csv` in Beijing time. */
+export function shareCsvFileName(group: 'model' | 'employee', window: UsageWindowId, now: Date): string {
+  const stamp = formatBeijing(now.toISOString(), now).replace(/[-:]/g, '').replace(' ', '-');
+  return `metrics-${window}-${group}-${stamp}.csv`;
 }
 
 
@@ -740,4 +918,137 @@ export function heatFromStats(stats: RunStats): StatHeatGrid {
     total: flat.length > 0 ? flat.reduce((sum, cell) => sum + (cell.runs ?? 0), 0) : null,
     max,
   };
+}
+
+// ---------------------------------------------------------------------------
+// metB — data sources and freshness.
+//
+// Only an ISO-8601 `asOf` returned by the upstream may be shown as a
+// collection time. Anything else (missing, local clock, human text) renders as
+// "—"; the page never substitutes its own clock. No extra request is issued
+// for this block: stamps are recorded by the same calls the cards already make.
+// ---------------------------------------------------------------------------
+export type SourceKey =
+  | 'run-activity'
+  | 'run-stats'
+  | 'employees'
+  | 'budget-usage'
+  | 'pricing'
+  | 'hermes-usage';
+
+export type SourceDescriptor = { key: SourceKey; label: string; path: string };
+
+export const SOURCE_CATALOG: SourceDescriptor[] = [
+  { key: 'run-activity', label: '运行活动热力', path: '/api/run-activity' },
+  { key: 'run-stats', label: '运行统计', path: '/api/run-stats' },
+  { key: 'employees', label: '员工目录', path: '/api/employees' },
+  { key: 'budget-usage', label: '平台扣费账本', path: '/api/budget-usage' },
+  { key: 'pricing', label: '模型价目表', path: '/api/models/pricing' },
+  { key: 'hermes-usage', label: 'Hermes 用量', path: '/api/hermes-usage' },
+];
+
+export type SourceStamp = {
+  asOf: string | null;
+  asOfSource: string | null;
+  error: string | null;
+  gap: string | null;
+  requestId: string | null;
+};
+
+export const EMPTY_SOURCE_STAMP: SourceStamp = {
+  asOf: null,
+  asOfSource: null,
+  error: null,
+  gap: null,
+  requestId: null,
+};
+
+const ISO_STAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/;
+
+/** A stamp counts only when it is a full ISO-8601 instant with a zone. */
+export function isIsoStamp(value: unknown): value is string {
+  if (typeof value !== 'string' || !ISO_STAMP.test(value)) return false;
+  return !Number.isNaN(Date.parse(value));
+}
+
+/** Read the BFF envelope's top-level `asOf` / `asOfSource`, inventing nothing. */
+export function readSourceStamp(payload: unknown): { asOf: string | null; asOfSource: string | null } {
+  if (!isRecord(payload)) return { asOf: null, asOfSource: null };
+  return {
+    asOf: isIsoStamp(payload.asOf) ? payload.asOf : null,
+    asOfSource: text(payload.asOfSource),
+  };
+}
+
+export function sourceKeyOfPath(path: string): SourceKey | null {
+  if (path.includes('/api/run-activity')) return 'run-activity';
+  if (path.includes('/api/run-stats')) return 'run-stats';
+  if (path.includes('/api/employees')) return 'employees';
+  if (path.includes('/api/budget-usage')) return 'budget-usage';
+  if (path.includes('/api/models/pricing')) return 'pricing';
+  if (path.includes('/api/hermes-usage')) return 'hermes-usage';
+  return null;
+}
+
+/**
+ * Fold a response into the recorded stamp. A newer `asOf` wins; a response
+ * without one keeps whatever was recorded before. A successful read clears the
+ * failure state, so the block reflects the last attempt, not a stale error.
+ */
+export function mergeSourceStamp(
+  prev: SourceStamp | undefined,
+  next: { asOf: string | null; asOfSource: string | null },
+): SourceStamp {
+  const base = prev ?? EMPTY_SOURCE_STAMP;
+  let asOf = base.asOf;
+  let asOfSource = base.asOfSource;
+  if (next.asOf) {
+    const nextMs = Date.parse(next.asOf);
+    const baseMs = base.asOf ? Date.parse(base.asOf) : Number.NEGATIVE_INFINITY;
+    if (!Number.isFinite(baseMs) || nextMs >= baseMs) {
+      asOf = next.asOf;
+      asOfSource = next.asOfSource ?? base.asOfSource;
+    }
+  }
+  return { asOf, asOfSource, error: null, gap: null, requestId: null };
+}
+
+export type SourceRow = SourceDescriptor & {
+  asOf: string | null;
+  asOfSource: string | null;
+  state: 'ok' | 'missing' | 'error';
+  error: string | null;
+  gap: string | null;
+  requestId: string | null;
+};
+
+export function sourceRows(stamps: Record<string, SourceStamp>): SourceRow[] {
+  return SOURCE_CATALOG.map((descriptor) => {
+    const stamp = stamps[descriptor.key] ?? EMPTY_SOURCE_STAMP;
+    const state: SourceRow['state'] = stamp.error ? 'error' : stamp.asOf ? 'ok' : 'missing';
+    return {
+      ...descriptor,
+      asOf: stamp.asOf,
+      asOfSource: stamp.asOfSource,
+      state,
+      error: stamp.error,
+      gap: stamp.gap,
+      requestId: stamp.requestId,
+    };
+  });
+}
+
+/** The newest upstream collection time across the sources, for the summary line. */
+export function latestSourceAsOf(rows: SourceRow[]): string | null {
+  let best: string | null = null;
+  let bestMs = Number.NEGATIVE_INFINITY;
+  for (const row of rows) {
+    if (!row.asOf) continue;
+    const ms = Date.parse(row.asOf);
+    if (Number.isFinite(ms) && ms > bestMs) {
+      bestMs = ms;
+      best = row.asOf;
+    }
+  }
+  return best;
 }

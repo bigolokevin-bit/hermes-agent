@@ -3,6 +3,11 @@
   flex-direction: column;
   gap: 16px;
   min-width: 0;
+  overflow-x: clip;
+}
+
+.skl4-page .arc-border {
+  display: none;
 }
 
 .skl4-head {
@@ -11,6 +16,23 @@
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.skl4-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.skl4-apply {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  color: var(--color-primary);
+  font-size: 0.8125rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .skl4-head h1 {
@@ -141,7 +163,12 @@
     align-items: stretch;
   }
 
-  .skl4-head button {
+  .skl4-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .skl4-actions button {
     width: 100%;
   }
 }

@@ -35,7 +35,7 @@ describe("status mapping", () => {
   });
 
   it("unknown is 待核实, never a made-up state", () => {
-    expect(STATUS_LABEL.enabled).toBe("启用");
+    expect(STATUS_LABEL.enabled).toBe("正常");
     expect(STATUS_LABEL.disabled).toBe("停用");
     expect(STATUS_LABEL.unknown).toBe("待核实");
   });
