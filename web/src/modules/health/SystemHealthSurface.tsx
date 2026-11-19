@@ -12,6 +12,15 @@ import {
 } from "./systemHealth";
 
 type Preview = "loading" | "empty" | "error" | null;
+type CountKey = "normal" | "degraded" | "unreachable" | "unknown";
+
+const COUNT_BUCKETS: Array<{ key: CountKey; state: Sys3State; label: string }> = [
+  { key: "normal", state: "正常", label: "正常" },
+  { key: "degraded", state: "降级", label: "降级" },
+  { key: "unreachable", state: "不可达", label: "不可达" },
+  { key: "unknown", state: "待核实", label: "待核实" },
+];
+
 type State =
   | { k: "loading" }
   | { k: "ready"; read: SystemHealthRead }
@@ -94,6 +103,7 @@ export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Pre
   });
   const [reload, setReload] = useState(0);
   const [openKey, setOpenKey] = useState<string | null>(null);
+  const [filter, setFilter] = useState<Sys3State | null>(null);
 
   useEffect(() => {
     if (!openKey) return;
@@ -130,12 +140,73 @@ export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Pre
 
   const retry = () => {
     onRetry?.();
+    setFilter(null);
+    setOpenKey(null);
     setReload((n) => n + 1);
   };
+
+  const countReason =
+    state.k === "loading" ? "正在读取服务健康清单，计数尚未取数。"
+      : state.k === "gap" ? `读口未接入：${state.message}`
+        : state.k === "login" ? state.message
+          : state.k === "error" ? `读取失败：${state.message}`
+            : state.k === "empty" ? "健康接口返回了空清单，计数为 0；这不等于所有服务正常。"
+              : null;
+  const counts = COUNT_BUCKETS.map((bucket) => ({
+    ...bucket,
+    count: state.k === "ready" || state.k === "empty"
+      ? state.read.rows.filter((row) => row.state === bucket.state).length
+      : null,
+  }));
+  const filterable = state.k === "ready";
+  const visibleRows = state.k === "ready" && filter
+    ? state.read.rows.filter((row) => row.state === filter)
+    : state.k === "ready" ? state.read.rows : [];
 
   return (
     <Card data-testid="sys3-page">
       <CardContent className="space-y-3 p-4" data-fixture={preview ?? undefined}>
+        <div className="sys5-counts" data-testid="sys5-counts" aria-label="服务状态计数">
+          {counts.map((bucket) => {
+            const value = bucket.count === null ? "—" : String(bucket.count);
+            const title = bucket.count === null
+              ? countReason ?? "计数不可用。"
+              : filterable && filter === bucket.state
+                ? `取消「${bucket.label}」筛选，显示全部服务。`
+                : filterable
+                  ? `只看状态为「${bucket.label}」的服务；筛选只在本地生效，不改网址。`
+                  : countReason ?? undefined;
+            return filterable ? (
+              <button
+                key={bucket.key}
+                type="button"
+                className="sys5-count"
+                data-testid={`sys5-count-${bucket.key}`}
+                data-state={bucket.state}
+                aria-pressed={filter === bucket.state}
+                title={title}
+                onClick={() => {
+                  setOpenKey(null);
+                  setFilter((current) => (current === bucket.state ? null : bucket.state));
+                }}
+              >
+                <span className="sys5-count-label">{bucket.label}</span>
+                <b className="sys5-count-value">{value}</b>
+              </button>
+            ) : (
+              <span
+                key={bucket.key}
+                className="sys5-count is-muted"
+                data-testid={`sys5-count-${bucket.key}`}
+                data-state={bucket.state}
+                title={title}
+              >
+                <span className="sys5-count-label">{bucket.label}</span>
+                <b className="sys5-count-value">{value}</b>
+              </span>
+            );
+          })}
+        </div>
         <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
           <div className="min-w-0">
             <h2 className="text-sm font-medium text-white/85">服务健康清单</h2>
@@ -193,7 +264,22 @@ export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Pre
               {state.read.overallReason ? <span className="sys3-reason">{state.read.overallReason}</span> : null}
               {state.read.asOfReason ? <span className="sys3-reason">{state.read.asOfReason}</span> : null}
             </div>
+            <p className="sys5-filter-note" data-testid="sys5-filter-note">
+              {filter
+                ? `已筛：${filter} · ${visibleRows.length} 项。筛选只在本地生效，不改网址；刷新后回到全部服务。`
+                : "点上面的状态计数可只看该状态的服务；筛选只在本地生效，不改网址。"}
+              {filter ? (
+                <button type="button" data-testid="sys5-clear" onClick={() => { setFilter(null); setOpenKey(null); }}>
+                  清除筛选
+                </button>
+              ) : null}
+            </p>
             <p className="sys4-hint">点行或按 Enter 展开详情，Esc 收起；同时只展开一行。</p>
+            {visibleRows.length === 0 ? (
+              <p className="sys3-foot" data-testid="sys5-filter-empty">
+                当前筛选下没有服务；计数来自同一次健康响应，这里不补服务行。
+              </p>
+            ) : (
             <div className="sys3-scroll">
               <table className="sys3-table" data-testid="sys3-table">
                 <thead>
@@ -202,7 +288,7 @@ export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Pre
                   </tr>
                 </thead>
                 <tbody>
-                  {state.read.rows.map((row) => (
+                  {visibleRows.map((row) => (
                     <Fragment key={row.key}>
                       <tr
                         data-testid={`sys3-row-${row.key}`}
@@ -237,6 +323,7 @@ export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Pre
                 </tbody>
               </table>
             </div>
+            )}
             <p className="sys3-foot">缺失值显示「—」，原因在悬停说明里；不用本机时钟补采集时刻，也不把未知当正常。</p>
           </>
         )}

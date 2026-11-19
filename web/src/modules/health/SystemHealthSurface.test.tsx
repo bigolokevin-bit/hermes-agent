@@ -62,6 +62,10 @@ describe("SystemHealthSurface", () => {
     await render();
     await waitFor(() => !!container.querySelector("[data-testid='sys3-table']"), "table");
     expect(container.querySelectorAll("[data-testid^='sys3-row-']")).toHaveLength(3);
+    expect(container.querySelector("[data-testid='sys5-count-normal']")?.textContent).toContain("1");
+    expect(container.querySelector("[data-testid='sys5-count-degraded']")?.textContent).toContain("1");
+    expect(container.querySelector("[data-testid='sys5-count-unreachable']")?.textContent).toContain("1");
+    expect(container.querySelector("[data-testid='sys5-count-unknown']")?.textContent).toContain("0");
     expect(text()).toContain("正常");
     expect(text()).toContain("降级");
     expect(text()).toContain("不可达");
@@ -89,6 +93,11 @@ describe("SystemHealthSurface", () => {
       expect(gap.textContent).toContain(rid);
       expect(gap.textContent).not.toContain("403");
       expect(gap.textContent).not.toContain("404");
+      for (const key of ["normal", "degraded", "unreachable", "unknown"]) {
+        const count = container.querySelector(`[data-testid='sys5-count-${key}']`)!;
+        expect(count.textContent).toContain("—");
+        expect(count.getAttribute("title")).toContain("读口未接入");
+      }
       expect(container.querySelector("[data-testid='sys3-apply']")?.getAttribute("href")).toBe("#/approvals");
     }
     expect(bodies[0]).toBe(bodies[1]);
@@ -115,6 +124,41 @@ describe("SystemHealthSurface", () => {
     expect(text()).toContain("不补服务行");
     expect(container.querySelectorAll("[data-testid^='sys3-row-']")).toHaveLength(0);
     expect(container.querySelector("[data-testid='sys3-table']")).toBeNull();
+    for (const key of ["normal", "degraded", "unreachable", "unknown"]) {
+      const count = container.querySelector(`[data-testid='sys5-count-${key}']`)!;
+      expect(count.textContent).toContain("0");
+      expect(count.getAttribute("title")).toContain("空清单");
+    }
+  });
+
+  it("counts from the same response and filters the list locally without another request", async () => {
+    api.fetchJSON.mockResolvedValue(HEALTH);
+    await render();
+    await waitFor(() => !!container.querySelector("[data-testid='sys3-table']"), "table");
+    expect(api.fetchJSON).toHaveBeenCalledTimes(1);
+    const before = window.location.search;
+
+    const normal = container.querySelector<HTMLButtonElement>("[data-testid='sys5-count-normal']")!;
+    await act(async () => normal.click());
+    expect(normal.getAttribute("aria-pressed")).toBe("true");
+    expect(container.querySelectorAll("[data-testid^='sys3-row-']")).toHaveLength(1);
+    expect(container.querySelector("[data-testid='sys3-row-console']")).toBeTruthy();
+    expect(container.querySelector("[data-testid='sys3-row-runtime']")).toBeNull();
+    expect(container.querySelector("[data-testid='sys5-filter-note']")?.textContent).toContain("已筛：正常 · 1 项");
+    expect(window.location.search).toBe(before);
+    expect(api.fetchJSON).toHaveBeenCalledTimes(1);
+
+    await act(async () => normal.click());
+    expect(normal.getAttribute("aria-pressed")).toBe("false");
+    expect(container.querySelectorAll("[data-testid^='sys3-row-']")).toHaveLength(3);
+    expect(api.fetchJSON).toHaveBeenCalledTimes(1);
+
+    const unknown = container.querySelector<HTMLButtonElement>("[data-testid='sys5-count-unknown']")!;
+    await act(async () => unknown.click());
+    expect(container.querySelector("[data-testid='sys5-filter-empty']")?.textContent).toContain("不补服务行");
+    expect(container.querySelector("[data-testid='sys3-table']")).toBeNull();
+    await act(async () => (container.querySelector("[data-testid='sys5-clear']") as HTMLButtonElement).click());
+    expect(container.querySelectorAll("[data-testid^='sys3-row-']")).toHaveLength(3);
   });
 
   it("keeps the top-level asOf as the only check time and never uses the browser clock", async () => {

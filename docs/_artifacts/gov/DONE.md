@@ -1790,3 +1790,13 @@ built /private/tmp/health-r38/index.html
 - 验证：`npx vitest run src/modules/health` → **2 files / 16 tests passed**（新增 2 条：单开/字段/脱敏计数、Enter 开 Esc 关且 URL 不变）。全量 `npx vitest run` → **134 files / 1468 passed**，另有 2 个基线 employee-detail unhandled（非本域）。`tsc -b . --noEmit` → 6 行全为基线 employee-detail/employees，本域 0。
 - DOM（临时 harness，已删；Vite 5461 / Chrome 9263）：1440/1280/375 `vw=bodySW=bodyCW`，`sys3-page` 1406/1246/341，行 3、展开详情 1；详情显示 `/agent-api/api/health`、3 条状态依据、`2026-11-19 23:17`、`12 ms`、`token: *** cookie: *** api_key: ***`+「已脱敏 3 处」；375 仅表格内滚动（680/311），页面不横溢。截图 `docs/_artifacts/gov/shots/sys4-{1440,1280,375}.png`。
 - 边界：只改 `web/src/modules/health/**` 与 DONE/截图；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；无独立观察者。
+
+## R51 /system 健康状态计数条（2026-11-20）
+
+- 基线：显式 refspec fetch 后 `git merge --no-ff origin/lane/hermes-console` 报 Already up to date；HEAD `97c72f09`（保留已推 sys4），代码代次 6a02ed58 / 远端 tip 5d91f22d；未 reset。
+- 端点：`/agent-api/api/health` 9122 实测 **200** `console.health.sources.v1`，顶层 `asOf` + sources；本页未新增端点、未新增请求。
+- 实现：`SystemHealthSurface` 在 Card 顶部新增 `sys5-counts`，四桶 正常/降级/不可达/待核实（`sys5-count-normal|degraded|unreachable|unknown`）。计数**只由本次 `/api/health` 响应行现算**，ready 时 0 也照实显示 0；gap/loading/error/login 时每桶显示「—」，title 写明原因（读口未接入/正在读取/读取失败），不补 0。空清单给「健康接口返回了空清单，计数为 0；这不等于所有服务正常。」
+- 筛选：点桶为**本地筛选、不改 URL**（写明「筛选只在本地生效，不改网址；刷新后回到全部服务。」）；再点同桶或 `sys5-clear` 清除；`aria-pressed` 标记选中；筛选后无行显示 `sys5-filter-empty`「当前筛选下没有服务；计数来自同一次健康响应，这里不补服务行。」。筛选不触发新请求（单测断言 fetch 次数恒为 1）。行详情 sys4 与四态、403≡404 未改。
+- 验证：`npx vitest run src/modules/health` → **2 files / 17 tests passed**（新增 1 条：同响应计数+本地筛选+零额外请求+清空）。全量 `npx vitest run` → **134 files / 1469 passed**，另有 2 个基线 employee-detail unhandled（非本域）。`tsc -b . --noEmit` → 6 行全为基线 employee-detail/employees，本域 0。`node scripts/build/web.mjs --source . --out /tmp/sys5-build --icons .` → exit 1，仅被同一基线类型错误挡住（employee-detail `api` 未定义、employees TS18047），无本域错误；未重建 9122。
+- DOM（临时 harness，已删；Vite 5460 / Chrome 9260）：1440/1280/375 `vw=bodySW=bodyCW`，`sys3-page` 1440/1280/375，行 4；计数 `正常1/降级1/不可达1/待核实1`；点「正常」后仅 1 行 `控制台服务(BFF)`、`aria-pressed=true`、body 宽不变；375 仅表格卡内滚动（680/343），页面不横溢。截图 `docs/_artifacts/gov/shots/sys5-{1440,1280,375}.png`。
+- 边界：只改 `web/src/modules/health/**` 与 DONE/截图；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；sys3/sys4/ver5/cap4-7/skl4/tl3 未破；无独立观察者（截图复核未回，未阻塞）。
