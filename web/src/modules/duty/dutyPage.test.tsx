@@ -111,6 +111,29 @@ describe("DutyPage", () => {
     expect(container.querySelectorAll('[data-duty-testid^="duty-kpi-"]').length).toBeGreaterThanOrEqual(5);
   });
 
+  it("R41: ov6-asof takes the newest asOf among all sources", async () => {
+    fetchJSON.mockImplementation((url: string) => {
+      const body = ok(url) as Record<string, unknown>;
+      if (url.includes("/run-stats")) return Promise.resolve({ ...body, asOf: "2026-11-18T01:00:00Z" });
+      if (url.includes("/budget-usage")) return Promise.resolve({ ...body, asOf: "2026-11-20T05:20:00Z" });
+      if (url.includes("/approval-stats")) return Promise.resolve({ ...body, asOf: "2026-11-19T03:00:00Z" });
+      return Promise.resolve(body);
+    });
+    await render(<DutyPage />);
+    const asof = container.querySelector('[data-testid="ov6-asof"]');
+    expect(asof?.textContent).toContain("采集时刻 北京时间 2026-11-20 13:20");
+    expect(asof?.getAttribute("title")).toContain("最新的一个上屏");
+  });
+
+  it("R41: when every source lacks asOf the line falls back to the em-dash naming the sources", async () => {
+    fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
+    await render(<DutyPage />);
+    const asof = container.querySelector('[data-testid="ov6-asof"]');
+    expect(asof?.textContent).toContain("采集时刻 —（北京时间）");
+    expect(asof?.getAttribute("title")).toContain("未返回采集时间的来源：");
+    expect(asof?.getAttribute("title")).toContain("今日运行统计");
+  });
+
   it("shows a request id and retry on an error card", async () => {
     fetchJSON.mockImplementation((url: string) =>
       url.includes("/run-stats")

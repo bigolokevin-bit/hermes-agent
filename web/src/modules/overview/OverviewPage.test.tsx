@@ -101,6 +101,8 @@ describe('OverviewView', () => {
     expect(container.querySelector('[data-testid="ov6-asof"]')?.textContent).toMatch(
       /北京时间 \d{4}-\d{2}-\d{2} \d{2}:\d{2}|采集时刻 —/,
     );
+    // R41: among the fixture legs the newest stamp (approvalStats 04:24Z) wins.
+    expect(container.querySelector('[data-testid="ov6-asof"]')?.textContent).toContain("2026-11-19 12:24");
     expect(container.querySelectorAll('[data-duty-testid^="duty-kpi-"]')).toHaveLength(5);
   });
 

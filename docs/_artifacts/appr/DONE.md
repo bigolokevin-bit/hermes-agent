@@ -679,3 +679,14 @@ KPI 族：五卡 data-testid=ov6-kpi-<name> 统一在位+新增 data-duty-testid
 ①计数口径：列头徽标 `N 条（本页已加载）`（title=排序键），空列仍「—」不计数为 0；汇总条与「仅显示本页已加载」尾注语义不变。②组内排序：PRIORITY_RANK（high/urgent=0，normal=1，low=2，未知=3）同列降序，次键 updatedAt 新→旧；排序键写进徽标 title（用例实测 high_new 首位、low_new 先于 low_old）。③空列诚实：文案改「本列暂无任务」，带负责人筛选时追加「（当前正按负责人筛选，清空筛选或换一位负责人可见更多）」；testid=tsk4-emptycol-<status>（命名避开 ^tsk4-col- 前缀——该坑已记）。④筛选与列计数联动：视图语义拆开——status 筛选=单查询钻取面板（P2 形态，panelActive），**assignee 筛选保留五列**并把 assignee 原样传给五腿（loadBoard(assignee) 追加 `&assignee=employee:<id>` BFF 白名单参数），列头计数随筛选结果真实联动；URL ?status=&assignee=&cursor= 保态不变（刷新/back 沿用 R32/P2 机制）。⑤四态/错误：board error/denied 卡 rid 由纯文本换 RequestIdCopy（req-copy 可复制，缺号=fallback 人话句），重试按钮 denied 也保留（data-testid=tsk4-retry，权限可能变化非死控件）；既有 `请求编号 req-tasks` 断言同步为 `请求编号：`（RequestIdCopy 冒号形制——同 tasks detail R40 口径）。⑥三档横溢：徽标句变长仍在 flex items-center justify-between gap-2 内，列网格 min-w-0 不变；jsdom 不可测，形态学如实报。
 
 测试：定向 tasks 2 files/24 passed（+3 新用例：assignee 五腿联动+列计数+空列提示+面板不出现；列内排序键；denied 可复制 rid+重试非死控）。P2 空态用例入口补 status=open（面板语义只随 status）。全量 **131 files/1387 passed**（≥基线 1373）；assert-ia 两模式 exit 0（51/22/1/8）；tsc 本域零红。9122=53a3ef4c 代次禁重建（R41 取证中），活体列读数待并入后代次复测。
+
+## R41 唯一 FAIL 修复：ov6-asof 取最新源值（2026-11-20，lane/console-appr）
+
+基线：checkout lane/console-appr + fetch + reset --hard origin/lane/console-appr + merge origin/lane/hermes-console（b71c4535 代次 ledger 已含），toplevel ✓ porc=0。
+
+根因与修法（腿②）：
+- 实际挂载面 `modules/duty/DutyPage.tsx` 主返回 ov6-asof IIFE（原 708-725：todayStats 优先、stats 次之的 **?? 优先级语义**，非「最新」；其余源不参与）→ 改为五源聚合（今日运行统计/运行窗口统计/近14天统计/当日成本账本/审批统计，行号 708-746）：任一 ready 源带 asOf/generatedAt 即候选，取 Date.parse 最大值上屏「采集时刻 北京时间 X」；全缺=「采集时刻 —（北京时间）」+title 逐个列出未返回采集时间的来源名。零编时（不读客户端 fetch 时间）。
+- `modules/overview/OverviewPage.tsx` AsofLine（行 49-73）：原「sort 后取最早」→ 取最大；缺值文案统一「采集时刻 —（北京时间）」，title 保留人话原因。
+- 八卡 ov6-<card>-stamp 零改动（工单③）。
+
+自证读数：dutyPage.test 新 2 用例——部分源有 asOf（run-stats 11-18 / budget-usage 11-20T05:20Z / approval-stats 11-19）→ 上屏「采集时刻 北京时间 2026-11-20 13:20」（最大）+title 含「最新的一个上屏」；全缺 → 「采集时刻 —（北京时间）」+title 含「未返回采集时间的来源：今日运行统计…」。OverviewPage.test 既有夹具（approvalStats 04:24Z 最新）断言精确「2026-11-19 12:24」。定向 overview+duty 4 files/61 passed exit0；assert-ia 两模式 exit0 51/22/1/8；全量 131 files/1389 passed（基线 1387+2）。9122==b71c4535 取证代次未重建：活体 ov6-asof 读数待并入后代次。
