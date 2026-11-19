@@ -118,7 +118,7 @@ describe("the read asks the real routes", () => {
     });
     await render("/runs");
     await waitFor(() => rowNodes() === 1, "fallback row");
-    expect(urls()[1]).toContain("/agent-api/api/run-stats?");
+    expect(urls().some((u) => u.includes("/agent-api/api/run-stats?"))).toBe(true);
     expect(text()).toContain("运行 · X1XZ");
   });
 
@@ -482,18 +482,21 @@ describe("the detail pane", () => {
     expect(text()).toContain("运行 · X1XZ"); // still the same run, unchanged
   });
 
-  it("the upstream handle opens with a short code, the raw value stays in the title", async () => {
+  it("the upstream handle is copy-only: no panel, no dead jump, the reason is on screen", async () => {
+    // Probed live 2026-11-19: /api/runs ignores both `upstreamRunId=` and
+    // `upstream=` (14 rows either way), so a click here could only rewrite the
+    // URL. Copy stays; the jump is not offered and the page says why.
     api.fetchJSON.mockImplementation(detailOk({}));
     await render(`/runs?run=${encodeURIComponent(DETAIL.runId)}`);
     await waitFor(() => document.querySelector("[data-testid='run5-detail']") !== null, "detail");
-    await act(async () => {
-      (document.querySelector("[data-testid='run5-detail-upstream']") as HTMLButtonElement).click();
-    });
-    await waitFor(() => document.querySelector("[data-testid='run5-upstream']") !== null, "upstream panel");
+    const line = document.querySelector("[data-testid='run5-detail-upstream']");
+    expect(line).toBeTruthy();
+    expect(line?.tagName).not.toBe("BUTTON");
+    expect(line?.getAttribute("title")).toBe("run_upstream_9f3a");
     expect(text()).toContain("9F3A");
     expect(text()).not.toContain("run_upstream_9f3a"); // raw only in title/clipboard
-    const upstreamEl = document.querySelector("[data-testid='run5-upstream-code']");
-    expect(upstreamEl?.getAttribute("title")).toBe("run_upstream_9f3a");
+    expect(text()).toContain("没有按上游编号查询的入口");
+    expect(document.querySelector("[data-testid='run5-upstream']")).toBeNull();
   });
 
   it("a repro leg ignores ?run= and asks for nothing, employee names included", async () => {
@@ -504,5 +507,91 @@ describe("the detail pane", () => {
     expect(api.fetchJSON).not.toHaveBeenCalled();
     expect(document.querySelector("[data-testid='run5-detail']")).toBeNull();
     expect(document.querySelector("[data-testid='run5-detail-loading']")).toBeNull();
+  });
+});
+
+describe("real-data depth: people, status words and the deep link", () => {
+  const NAMED = {
+    runId: "rn_01M7822XN781D2S9JASH5TX1XZ",
+    status: "completed",
+    costStatus: "upstream",
+    costUsd: 0.009875,
+    employeeId: "emp_86A81CE8FF6F42E187BCF2B540",
+    startedAt: "2026-11-18T02:00:00Z",
+    endedAt: "2026-11-18T02:01:13Z",
+  };
+  const UNNAMED = {
+    runId: "rn_01M7822ABCDEF0123456789XYZ",
+    status: "quantum",
+    costStatus: "unknown",
+    employeeId: "emp_9F42AAE299D541FBBB6ECE3671",
+    startedAt: "2026-11-18T03:30:00Z",
+  };
+
+  it("the list names the owner as 姓名 · 8位短码, and never a bare handle", async () => {
+    api.fetchJSON.mockImplementation(async (url: string) => {
+      if (url.includes("/api/employees")) {
+        return { items: [{ employeeId: "emp_86A81CE8FF6F42E187BCF2B540", name: "小鲤" }] };
+      }
+      return { items: [NAMED] };
+    });
+    await render("/runs");
+    await waitFor(() => rowNodes() === 1, "one row");
+    await waitFor(
+      () => (document.querySelector("[data-testid='run5-row-0-employee']")?.textContent ?? "").includes("小鲤"),
+      "name decorates the list",
+    );
+    const cell = document.querySelector("[data-testid='run5-row-0-employee']");
+    expect(cell?.textContent).toBe("小鲤 · 86A81CE8");
+    expect(cell?.getAttribute("title")).toBe("emp_86A81CE8FF6F42E187BCF2B540");
+    expect(text()).not.toContain("emp_86A81CE8FF6F42E187BCF2B540");
+    expect(text()).not.toContain("emp_");
+  });
+
+  it("an owner the directory does not name keeps the 8-character code, not a bare id", async () => {
+    api.fetchJSON.mockImplementation(okList([UNNAMED]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 1, "one row");
+    const cell = document.querySelector("[data-testid='run5-row-0-employee']");
+    expect(cell?.textContent).toBe("员工 · 9F42AAE2");
+    expect(cell?.getAttribute("title")).toBe("emp_9F42AAE299D541FBBB6ECE3671");
+    expect(text()).not.toContain("emp_");
+  });
+
+  it("a run with no owner reads 未指派 with the reason, never a dash pretending to be data", async () => {
+    api.fetchJSON.mockImplementation(okList([{ runId: "rn_01M7822ABCDEF0123456789XYZ", status: "pending", startedAt: "2026-11-18T03:30:00Z" }]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 1, "one row");
+    const cell = document.querySelector("[data-testid='run5-row-0-employee']");
+    expect(cell?.textContent).toBe("未指派");
+    expect(cell?.getAttribute("title")).toContain("没有带回负责人");
+  });
+
+  it("an unlisted status reads 待核实, an absent one stays a dash", async () => {
+    api.fetchJSON.mockImplementation(okList([UNNAMED, { runId: "rn_01M7822ZZZZEF0123456789QQQ", startedAt: "2026-11-18T04:00:00Z" }]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 2, "two rows");
+    expect(document.querySelector("[data-testid='run5-row-0-status']")?.textContent).toBe("待核实");
+    expect(document.querySelector("[data-testid='run5-row-1-status']")?.textContent).toBe("—");
+  });
+
+  it("a settled ledger figure prints in USD; a running unknown prints a dash with the reason", async () => {
+    api.fetchJSON.mockImplementation(okList([NAMED, UNNAMED]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 2, "two rows");
+    const known = document.querySelector("[data-testid='run5-row-0-cost']");
+    expect(known?.textContent).toContain("$0.01"); // 0.009875 at 2dp
+    expect(known?.textContent).toContain("已计价");
+    const unknown = document.querySelector("[data-testid='run5-row-1-cost']");
+    expect(unknown?.textContent).toContain("—");
+    expect(unknown?.textContent).toContain("未知");
+    expect(unknown?.textContent).not.toContain("$0.00");
+  });
+
+  it("the detail also opens from the path /runs/<runId>, so the link survives a refresh", async () => {
+    api.fetchJSON.mockImplementation(detailOk({}));
+    await render(`/runs/${encodeURIComponent(DETAIL.runId)}`);
+    await waitFor(() => document.querySelector("[data-testid='run5-detail']") !== null, "detail from the path");
+    expect(text()).toContain("运行 · X1XZ");
   });
 });

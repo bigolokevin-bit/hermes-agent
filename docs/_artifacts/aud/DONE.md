@@ -1618,3 +1618,58 @@ QA 症状：`/audit` 被改写落到 `/system?tab=events`；页级 `aud01-tech-d
   由源码契约 + jsdom 渲染与长度读数证明；QA 侧需在重建 dist 后复探
   （当前 9122 服务的 dist 仍是不含本轮改动的旧代次）。
 - 1440/375 下新面板的换行表现未做像素量测（沿用 min-w-0 break-words 契约）。
+
+## TASK runs real-data depth (2026-11-19, base b642c64d)
+
+派单要求 `/runs` 每一面都站在真数据上。先探 BFF 再改页面，下面是原始读数与改动。
+
+### 1) 探针（带会话 cookie；`/tmp/.cookie_val`，值未打印）
+
+| 请求 | HTTP | 结果 |
+|---|---|---|
+| `/api/runs?limit=5` | **400** | `{"code":"request.missing_filter","message":"at least one of employeeId/status/since is required"}` |
+| `/api/runs?since=<7d>&limit=50` | **200** | **14 行**，`{"items":[…],"nextCursor":null}` |
+| `/api/runs?since=&employeeId=emp_nope&limit=50` | 200 | **0 行** ⇒ `employeeId` 真生效 |
+| `/api/runs?since=&status=bogus&limit=50` | 200 | **0 行** ⇒ `status` 真生效 |
+| `/api/runs?since=&upstreamRunId=run_nope&limit=50` | 200 | **14 行**（与不带同）⇒ **被忽略** |
+| `/api/runs?since=&upstream=run_nope&limit=50` | 200 | **14 行** ⇒ **被忽略** |
+| `/api/run-detail?id=<rn_…>` | 200 | 裸对象：runId/status/reasonCode/costUsd/**costStatus**/upstreamRunId/startedAt/endedAt/lastEventSeq… |
+| `/api/run-events?id=<rn_…>` | 400 | `console.missing_param`「runId is required」 |
+| `/api/run-events?runId=<rn_…>&limit=20` | 200 | `{"items":[{seq,eventType,payload{…},occurredAt}]}` |
+| `/api/employees?limit=100` | 200 | 3 行 `{employeeId,name,…}` |
+
+真数据三态样本（同一次 14 行里）：
+- `rn_01M7822XN781D2S9JASH5TX1XZ`：status `completed`，**costStatus `upstream`**，`costUsd 0.009875`，`upstreamRunId run_4b0c…`，`employeeId emp_9F42…`。
+- `rn_01M7D7421P5PA27TEXMT9YVDZ8`：status `running`，**costStatus `unknown` 且没有 `costUsd` 键**，`endedAt:null` —— 未知成本的真实形状。
+
+### 2) 本轮改动（全部在 `web/src/modules/runs/**`）
+
+1. **列表新增负责人列**（`run5-row-<n>-employee`）：`姓名 · 8位短码`；目录里没有名字时 `员工 · 8位短码`；没有 `employeeId` 时 `未指派`（`title` 写明「这条运行没有带回负责人；不代填、不猜」）。完整 id 只进 `title`。
+   - 为此把员工目录的旁读闸门从「详情打开时」放宽到「非 `?state=` 复现腿」——列表现在也能显示姓名；目录读取失败只会退回 8 位码，不影响运行数据，且复现腿仍零请求。
+2. **状态词**：六个已知状态保持中文；**表里没有的词读「待核实」**（原始值进 `title`），而**真的缺字段仍是「—」**——两者不再混为一谈。
+3. **成本三态**（本轮复核，行为已正确，未改逻辑）：`costStatus:upstream` + `0.009875` → `$0.01` + 「已计价」+「金额来自上游账本」；`costStatus:unknown` → 「—」+「未知」+「账本没有这条运行的计价记录，金额按未知处理」；无 `costStatus` → 「—」+「未记录」。真 0 仍显 `$0.00`。
+4. **上游编号的假入口已删**：探针证明 `/api/runs` 对 `upstreamRunId=` 与 `upstream=` 都不作反应，所以原来「点上游编号 → 面板」只是改 URL。现在 `run5-detail-upstream` 是**不可点的复制行**，屏上写明「控制台没有按上游编号查询的入口，所以这里只提供复制，不做会落空的跳转」；`?upstream=` 面板（`run5-upstream`）整块移除。
+5. **深链**：`?run=<id>` 刷新保态不变；新增从路径段 `/runs/<runId>` 读取（`useLocation().pathname` 正则，解码后去空白），所以壳层一旦注册 `/runs/:runId` 该链接就生效。
+   - **如实披露**：`App.tsx:1375` 目前只有 `path="/runs"`，`/runs/:runId` 的路由注册属壳层（本单写域禁碰 App.tsx），本页只做到「路径段能被识别」。
+6. **重试=新 Run**：保持原行为（POST `run-retry` 必须回新 id，然后导航到新 id，原记录不动）；403/404 时给 GAP-09 人话 + 请求编号，不假跳。
+7. **时间线**：`ToolIntent` 的 `resultRef` 缺失仍显「未记录」（原始 `payload` 值只在「技术详情」）。
+
+### 3) 门禁（`web/`，本轮实测）
+
+```
+npx vitest run src/modules/runs  → exit 0，Test Files 2 passed / Tests 64 passed（原 54，+10）
+npx tsc -b . --noEmit            → exit 2；49 条在 ../apps/shared/** + 2 条在 src/pages/LoginPage.test.tsx（均为既有），runs 模块 0
+npx eslint src/modules/runs      → exit 0
+```
+
+测试新增/改写（`RunsModulePage.test.tsx` +6、`runs.test.ts` +4）覆盖：姓名 · 8位短码、无名时 员工 · 码、无负责人 未指派、未知状态 待核实 / 缺字段 —、成本三态两种真实形状、`/runs/<id>` 路径深链、上游编号不可点且屏上有原因、列表旁读员工目录不再依赖详情。
+
+### 4) fixture 纪律
+
+模块内 `data-fixture` 只出现在 `?state=` 复现腿（`states.tsx` 的 `fixtureAttr` 与页根），**没有任何样例数据行**；能真取数的面一律真取。
+
+### 5) not verified
+
+- 真浏览器 1440/1280/375 像素横溢未量测（无 playwright、禁 install；页面需登录态）。布局用 `grid-cols-[minmax(0,…)]` + `break-words` + `min-w-0` 契约保证不横溢，新增的负责人列沿用同一写法。
+- `/runs/:runId` 的壳层路由未注册（写域外），本页只能识别路径段；未运行真实浏览器刷新验证。
+- 重试写入真腿未测成功路径（BFF 在 `run-retry` 上返回 401/404 时页面走 GAP-09 人话），只有 mock 级「新 id 不覆盖原记录」断言。
