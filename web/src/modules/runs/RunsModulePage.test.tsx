@@ -367,7 +367,7 @@ describe("the detail pane", () => {
     await render("/runs");
     await waitFor(() => rowNodes() === 1, "list ready");
     await act(async () => {
-      (document.querySelector("[data-testid='run5-row-0-open']") as HTMLButtonElement).click();
+      (document.querySelector("[data-testid='run5-row-0-open']") as HTMLElement).click();
     });
     await waitFor(() => document.querySelector("[data-testid='run5-detail']") !== null, "detail ready");
     expect(text()).toContain("运行 · X1XZ");
@@ -470,33 +470,45 @@ describe("the detail pane", () => {
     await waitFor(() => document.querySelector("[data-testid='run5-timeline']") !== null, "events after retry");
   });
 
-  it("retry creates a NEW run and the page navigates to that new id", async () => {
-    const NEW_ID = "rn_01NEW9F3A4B7C8D9E0F1A2B3";
-    api.fetchJSON.mockImplementation(detailOk({ retry: async () => ({ runId: NEW_ID }) }));
+  it("the retry entry is copy only: it is not a control and sends no write", async () => {
+    // R28: the write channel is not connected in this generation, so the entry
+    // is a sentence with data-planned + aria-disabled, not a button. A click on
+    // a non-control cannot start a run, and no POST may leave the page.
+    api.fetchJSON.mockImplementation(detailOk({ retry: async () => ({ runId: "rn_01NEW9F3A4B7C8D9E0F1A2B3" }) }));
     await render(`/runs?run=${encodeURIComponent(DETAIL.runId)}`);
     await waitFor(() => document.querySelector("[data-testid='run5-detail']") !== null, "detail");
+    const entry = document.querySelector("[data-testid='run5-retry-new']") as HTMLElement;
+    expect(entry).toBeTruthy();
+    expect(entry.tagName).not.toBe("BUTTON");
+    expect(entry.getAttribute("data-planned")).toBe("true");
+    expect(entry.getAttribute("aria-disabled")).toBe("true");
+    expect(entry.getAttribute("title")).toContain("写入口还没有接通");
+    expect(entry.textContent).toContain("写入口未接通");
+    expect(text()).toContain("重试的语义是新建一次运行并生成新编号");
     await act(async () => {
-      (document.querySelector("[data-testid='run5-retry-new']") as HTMLButtonElement).click();
+      entry.click();
     });
-    await waitFor(() => text().includes("已新建"), "retry done line");
-    expect(document.querySelector("[data-testid='run5-retry-result']")?.textContent).toContain("运行 · A2B3");
-    expect(urls().some((u) => u.includes("/api/run-retry"))).toBe(true);
-    expect(urls().some((u) => u.includes(`id=${encodeURIComponent(NEW_ID)}`))).toBe(true);
-    expect(text()).not.toContain(DETAIL.runId); // the old id is not echoed back
-  });
-
-  it("a write that is not there is said honestly, with no fake navigation", async () => {
-    api.fetchJSON.mockImplementation(detailOk({})); // retry default: 404
-    await render(`/runs?run=${encodeURIComponent(DETAIL.runId)}`);
-    await waitFor(() => document.querySelector("[data-testid='run5-detail']") !== null, "detail");
-    await act(async () => {
-      (document.querySelector("[data-testid='run5-retry-new']") as HTMLButtonElement).click();
-    });
-    await waitFor(() => text().includes("还没有在本控制台接通"), "honest write gap");
-    expect(text()).toContain("GAP-09");
-    expect(text()).toContain("rid-w");
+    expect(urls().some((u) => u.includes("/api/run-retry"))).toBe(false);
+    expect(text()).not.toContain("已新建");
     expect(document.querySelector("[data-testid='run5-detail']")).toBeTruthy();
     expect(text()).toContain("运行 · X1XZ"); // still the same run, unchanged
+  });
+
+  it("every row carries a real link to its own run, keyboard reachable", async () => {
+    api.fetchJSON.mockImplementation(detailOk({}));
+    await render("/runs?window=7d");
+    await waitFor(() => rowNodes() === 1, "list ready");
+    const row = document.querySelector("[data-testid='run5-row-0']");
+    expect(row).toBeTruthy();
+    expect(row?.getAttribute("data-status")).toBeTruthy();
+    const link = row?.querySelector("[data-testid='run5-row-0-open']") as HTMLAnchorElement;
+    expect(link).toBeTruthy();
+    expect(link.tagName).toBe("A");
+    expect(link.getAttribute("href")).toContain("/runs?");
+    expect(link.getAttribute("href")).toContain(`run=${encodeURIComponent(RUN_A.runId)}`);
+    expect(link.getAttribute("href")).toContain("window=7d"); // filters survive the jump
+    expect(link.getAttribute("data-run-id")).toBe(RUN_A.runId);
+    expect(link.getAttribute("tabindex")).toBeNull(); // an anchor with href is natively focusable
   });
 
   it("the upstream handle is copy-only: no panel, no dead jump, the reason is on screen", async () => {
@@ -630,7 +642,7 @@ describe("R23 — a detail is a real history entry", () => {
 
     for (let cycle = 1; cycle <= 3; cycle += 1) {
       await act(async () => {
-        (document.querySelector("[data-testid='run5-row-0-open']") as HTMLButtonElement).click();
+        (document.querySelector("[data-testid='run5-row-0-open']") as HTMLElement).click();
       });
       await waitFor(
         () => document.querySelector("[data-testid='run5-detail']") !== null,
@@ -680,7 +692,7 @@ describe("R23 — a detail is a real history entry", () => {
     );
     await waitFor(() => rowNodes() === 1, "list ready");
     await act(async () => {
-      (document.querySelector("[data-testid='run5-row-0-open']") as HTMLButtonElement).click();
+      (document.querySelector("[data-testid='run5-row-0-open']") as HTMLElement).click();
     });
     await waitFor(() => document.querySelector("[data-testid='run5-detail']") !== null, "detail open");
     await act(async () => {
