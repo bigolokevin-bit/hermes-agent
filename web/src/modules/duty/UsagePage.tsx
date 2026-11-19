@@ -1,186 +1,280 @@
 /**
  * T11 · 用量与成本（`#/overview?tab=usage`） — duty module, read-only.
  *
- * Data:
- *  - `/api/hermes-usage?days=30` → runtime.hermes.usage.v1: tokens / by_model /
- *    cost block. The cost block is the ledger projection (`source: cost_ledger`);
- *    its `cost_usd` is rendered verbatim, null/unknown → 「未计价」, never 0.00.
- *  - No client-side re-pricing and no summing of money.
+ * One real read, no mock layer:
+ *   `GET /agent-api/api/hermes-usage?days=<1|7|30>`
  *
- * Four states (loading / empty / error with request number + retry / denied
- * 403≡404) plus the shell's `?state=` preview override.
+ * What is on the screen is what the answer carried, and nothing else:
+ *   loading  a skeleton, not a card of zeros
+ *   ready    tokens the usage source sent; money ONLY from the ledger block
+ *   empty    the service answered for this window and had nothing, with a next step
+ *   error    human wording + a copyable 请求编号 (「未提供」 when there was none) + retry
+ *   denied   403 and 404 draw one identical body, with no row above it
+ *
+ * Money rules (enforced in `usage.ts`, pinned by tests):
+ *  - a cost number reaches the screen only when the cost ledger sent it;
+ *  - a true zero reads `$0.00`; a missing one reads 「—」 with its reason;
+ *  - 「含估算」/「未计价」/非账本来源 are never presented as spent money;
+ *  - nothing is re-priced, estimated or summed here, and no path uses `?? 0`.
+ *
+ * The 统计窗口 filter is real — picking 24h / 7d / 30d changes the `days`
+ * parameter of the next request (asserted in usage.test.ts and the page test).
+ * Raw ids, status tokens, ISO instants and HTTP codes live in `title` and the
+ * collapsed 「技术详情」 only. `?state=` repro legs fetch nothing and carry
+ * `data-fixture` plus the GAP number they belong to (GAP-07); every control
+ * on a repro leg is disabled with its reason, never a dead click.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
-import { Gauge, RefreshCw, ShieldAlert, TriangleAlert } from "lucide-react";
-import { Badge, Button, Card, CardContent } from "@nous-research/ui";
-import { fetchJSON } from "@/lib/api";
-import { ApiError, humanizeStatus } from "@/lib/api-error";
+import { Check, ChevronDown, ChevronUp, Copy, Gauge, Inbox, RefreshCw, ShieldAlert, TriangleAlert } from "lucide-react";
+import { Badge } from "@nous-research/ui/ui/components/badge";
+import { Button } from "@nous-research/ui/ui/components/button";
+import { Card, CardContent } from "@nous-research/ui/ui/components/card";
+import { copyTextToClipboard } from "@/lib/clipboard";
 
-type CostStatus = "upstream" | "estimated" | "mixed" | "unknown";
+import { useUsageData } from "./useUsageData";
+import {
+  DEFAULT_USAGE_WINDOW,
+  GAP,
+  USAGE_WINDOWS,
+  forcedStateOf,
+  requestIdLine,
+  windowLabel,
+  usageUrl,
+  type FailureCopy,
+  type MoneyCell,
+  type UsageWindowKey,
+} from "./usage";
 
-interface UsageModelRow {
-  model?: string | null;
-  input_tokens?: number | null;
-  output_tokens?: number | null;
-}
+/** 请求编号's own honest word when the answer carried none. */
+const NO_REQUEST_ID = "未提供";
 
-interface CostEmployeeRow {
-  employee_id?: string | null;
-  cost_usd?: number | null;
-  cost_status?: CostStatus | null;
-  rows?: number | null;
-}
+/** Why the header/panel buttons sleep on a repro leg. */
+const FORCED_TITLE = "复现腿不发起真实请求，去掉 ?state= 即为真实读取";
 
-interface HermesUsage {
-  period_days?: number;
-  tokens?: {
-    total_input?: number | null;
-    total_output?: number | null;
-    total_cache_read?: number | null;
-    total_reasoning?: number | null;
-  } | null;
-  by_model?: UsageModelRow[] | null;
-  cost?: {
-    source?: string | null;
-    cost_usd?: number | null;
-    cost_status?: CostStatus | null;
-    rows?: number | null;
-    per_employee?: CostEmployeeRow[] | null;
-  } | null;
-}
-
-type Phase = "loading" | "ready" | "empty" | "error" | "denied";
-
-interface State {
-  phase: Phase;
-  data: HermesUsage | null;
-  status: number;
-  message?: string;
-  requestId?: string;
-}
-
-const IDLE: State = { phase: "loading", data: null, status: 0 };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function num(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
-function parseUsage(body: unknown): HermesUsage {
-  if (!isRecord(body)) return {};
-  const tokens = isRecord(body.tokens) ? body.tokens : null;
-  const cost = isRecord(body.cost) ? body.cost : null;
-  const models = Array.isArray(body.by_model)
-    ? body.by_model.filter(isRecord).map((row) => ({
-        model: typeof row.model === "string" ? row.model : null,
-        input_tokens: num(row.input_tokens),
-        output_tokens: num(row.output_tokens),
-      }))
-    : null;
-  const perEmployee = cost && Array.isArray(cost.per_employee)
-    ? cost.per_employee.filter(isRecord).map((row) => ({
-        employee_id: typeof row.employee_id === "string" ? row.employee_id : null,
-        cost_usd: num(row.cost_usd),
-        cost_status: typeof row.cost_status === "string" ? (row.cost_status as CostStatus) : null,
-        rows: num(row.rows),
-      }))
-    : null;
-  return {
-    period_days: num(body.period_days) ?? undefined,
-    tokens: tokens
-      ? {
-          total_input: num(tokens.total_input),
-          total_output: num(tokens.total_output),
-          total_cache_read: num(tokens.total_cache_read),
-          total_reasoning: num(tokens.total_reasoning),
-        }
-      : null,
-    by_model: models,
-    cost: cost
-      ? {
-          source: typeof cost.source === "string" ? cost.source : null,
-          cost_usd: num(cost.cost_usd),
-          cost_status: typeof cost.cost_status === "string" ? (cost.cost_status as CostStatus) : null,
-          rows: num(cost.rows),
-          per_employee: perEmployee,
-        }
-      : null,
-  };
-}
-
-function shortCode(value?: string | null): string {
-  if (!value) return "—";
-  const raw = value.replace(/^employee:/, "").replace(/^emp_/, "");
-  const code = raw.replace(/[^0-9a-zA-Z]/g, "").slice(0, 8).toUpperCase();
-  return code ? `员工 · ${code}` : "—";
-}
-
-function fmtInt(value: number | null | undefined): string {
-  return typeof value === "number" && Number.isFinite(value) ? value.toLocaleString("en-US") : "—";
-}
-
-function money(value: number | null | undefined, status?: CostStatus | null): string {
-  if (status === "unknown" || value === null || value === undefined || !Number.isFinite(value)) {
-    return "未计价";
-  }
-  return `$${value.toFixed(2)}`;
-}
-
-const COST_STATUS_LABEL: Record<CostStatus, string> = {
-  upstream: "账本实测",
-  estimated: "含估算",
-  mixed: "含估算",
-  unknown: "未计价",
-};
-
-function Skeleton() {
+/** 「—」 with the reason in its `title`, so a gap reads as a gap. */
+function Dashed({ reason }: { reason: string }): ReactNode {
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4" data-testid="usage-skeleton">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <Card key={i}>
-          <CardContent className="h-24 animate-pulse p-4" />
+    <span className="min-w-0 break-words text-muted-foreground" title={reason}>
+      —
+    </span>
+  );
+}
+
+/** Token counts with separators; an absent count is 「—」 with a reason, never 0. */
+function tokenText(value: number | null): ReactNode {
+  if (value === null) return <Dashed reason="这个读数未随回答发送" />;
+  return value.toLocaleString("en-US");
+}
+
+/**
+ * One ledger amount. A real number (including a true 0) shows `$x.xx`;
+ * anything else shows 「—」, with the reason beside it on cards and in the
+ * cell's `title` inside tables.
+ */
+function MoneyText({ cell, testId, besideReason }: { cell: MoneyCell; testId: string; besideReason: boolean }): ReactNode {
+  if (cell.text === "—") {
+    return (
+      <span
+        className="min-w-0 break-words"
+        data-testid={testId}
+        title={[cell.reason, ...cell.technical].filter((line) => line).join("；") || undefined}
+      >
+        —
+        {besideReason && cell.reason ? (
+          <span className="ml-1 text-xs font-normal text-muted-foreground">{cell.reason}</span>
+        ) : null}
+      </span>
+    );
+  }
+  return (
+    <span className="min-w-0 break-words tabular-nums" data-testid={testId} title={cell.technical[0] ?? undefined}>
+      {cell.text}
+    </span>
+  );
+}
+
+function fixtureAttr(fixture: string | undefined): { "data-fixture"?: string } {
+  return fixture ? { "data-fixture": fixture } : {};
+}
+
+/** What a repro panel says so nobody reads it as a service answer. */
+function ReproNote({ state }: { state: string }): ReactNode {
+  return (
+    <p className="min-w-0 break-words text-xs text-warning" data-testid="usg4-forced-note">
+      {`这是用 ?state=${state} 复现出来的状态，不是服务此刻的回答；账本实扣数据尚未在本环境接通（${GAP}）。`}
+    </p>
+  );
+}
+
+function CopyValue({ value, reason, label, testId }: { value: string | null; reason: string; label: string; testId: string }): ReactNode {
+  const [copied, setCopied] = useState<"idle" | "done" | "failed">("idle");
+  if (!value) {
+    return (
+      <span className="min-w-0 break-words text-white/60" data-testid={`${testId}-absent`} title={reason}>
+        {NO_REQUEST_ID}
+      </span>
+    );
+  }
+  return (
+    <span className="flex min-w-0 flex-wrap items-center gap-1.5" data-testid={testId}>
+      <span className="min-w-0 break-all font-mono text-xs text-white/80">{value}</span>
+      <button
+        type="button"
+        aria-label={`复制${label}`}
+        title="复制"
+        className="inline-flex shrink-0 items-center gap-1 text-xs text-white/60 underline underline-offset-2"
+        onClick={() => {
+          void copyTextToClipboard(value).then((ok) => {
+            setCopied(ok ? "done" : "failed");
+            if (ok) window.setTimeout(() => setCopied("idle"), 2500);
+          });
+        }}
+      >
+        {copied === "done" ? <Check className="h-3 w-3" aria-hidden="true" /> : <Copy className="h-3 w-3" aria-hidden="true" />}
+        {copied === "done" ? "已复制" : copied === "failed" ? "复制失败，请手动选择" : "复制"}
+      </button>
+    </span>
+  );
+}
+
+function RequestIdLine({ requestId, testId }: { requestId: string | null; testId: string }): ReactNode {
+  return (
+    <p className="flex min-w-0 flex-wrap items-center gap-1 text-xs text-white/55" data-testid={testId}>
+      {requestId ? <span>请求编号：</span> : null}
+      <CopyValue value={requestId} reason={requestIdLine(null)} label="请求编号" testId={`${testId}-value`} />
+    </p>
+  );
+}
+
+/** The only place engineering values reach the screen: collapsed, and closed means absent from the DOM. */
+function TechnicalDisclosure({ lines, testId }: { lines: string[]; testId: string }): ReactNode {
+  const [open, setOpen] = useState(false);
+  const shown = lines.filter((line) => line);
+  if (!shown.length) return null;
+  return (
+    <div className="min-w-0 text-xs" data-testid={testId}>
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        className="inline-flex items-center gap-1 text-white/50 underline underline-offset-2"
+      >
+        {open ? <ChevronUp className="h-3 w-3" aria-hidden="true" /> : <ChevronDown className="h-3 w-3" aria-hidden="true" />}
+        技术详情
+      </button>
+      {open ? (
+        <ul className="mt-1 flex min-w-0 flex-col gap-0.5 break-words font-mono text-white/45">
+          {shown.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+function LoadingPanel({ fixture }: { fixture?: string }): ReactNode {
+  return (
+    <div className="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-4" data-testid="usg4-loading" aria-busy="true" {...fixtureAttr(fixture)}>
+      {Array.from({ length: 4 }).map((_, index) => (
+        <Card key={index}>
+          <CardContent className="h-24 animate-pulse p-4" aria-hidden="true" />
         </Card>
       ))}
     </div>
   );
 }
 
-function ErrorCard({
-  state,
-  title,
+function EmptyPanel({
   onRetry,
+  windowName,
+  fixture,
 }: {
-  state: State;
-  title: string;
   onRetry: () => void;
-}) {
-  const denied = state.phase === "denied";
-  const Icon = denied ? ShieldAlert : TriangleAlert;
+  windowName: string;
+  fixture?: string;
+}): ReactNode {
   return (
-    <Card data-testid="usage-error">
-      <CardContent className="flex flex-col gap-3 p-5">
-        <div className="flex items-center gap-2">
-          <Icon className="h-5 w-5 text-white/70" />
-          <h2 className="text-base font-medium">{title}</h2>
+    <Card data-testid="usg4-empty" {...fixtureAttr(fixture)}>
+      <CardContent className="flex min-w-0 flex-col items-start gap-2 p-6">
+        <div className="flex min-w-0 items-center gap-2">
+          <Inbox className="h-5 w-5 shrink-0 text-white/70" aria-hidden="true" />
+          <h2 className="min-w-0 break-words text-base font-medium">这个窗口里没有用量记录</h2>
         </div>
-        <p className="text-sm text-white/60">
-          {denied
-            ? "该数据源尚未开放，或你没有查看权限。请确认后台已接入用量服务，或联系管理员开通权限。"
-            : state.message || humanizeStatus(state.status)}
+        <p className="min-w-0 break-words text-sm text-white/60">
+          用量服务对「{windowName}」回了一份数据，里面没有用量读数，也没有账本条目。
+          这说明这段时间没有产生计费用的运行，不代表读取失败。
         </p>
-        <p className="font-mono text-xs text-white/45">
-          {state.requestId ? `请求编号：${state.requestId}` : "本次请求未记录编号，可复制时间与操作路径反馈"}
-        </p>
-        <div>
-          <Button size="sm" outlined onClick={onRetry} data-testid="usage-retry">
-            <RefreshCw className="mr-2 h-4 w-4" />
-            重试
-          </Button>
+        <p className="min-w-0 break-words text-xs text-white/45">下一步：换一个更长的统计窗口，或等运行产生用量后重新读取。</p>
+        <Button
+          size="sm"
+          outlined
+          onClick={onRetry}
+          disabled={fixture !== undefined}
+          title={fixture !== undefined ? FORCED_TITLE : undefined}
+          prefix={<RefreshCw className="h-3.5 w-3.5" />}
+          data-testid="usg4-empty-retry"
+        >
+          重新读取
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ErrorPanel({
+  failure,
+  onRetry,
+  fixture,
+}: {
+  failure: FailureCopy;
+  onRetry: () => void;
+  fixture?: string;
+}): ReactNode {
+  return (
+    <Card role="alert" title={failure.technical ?? undefined} data-testid="usg4-error" {...fixtureAttr(fixture)}>
+      <CardContent className="flex min-w-0 flex-col items-start gap-2 p-6">
+        <div className="flex min-w-0 items-center gap-2 text-sm text-white/85">
+          <TriangleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span className="min-w-0 break-words">用量与成本没能加载出来</span>
         </div>
+        <p className="min-w-0 break-words text-sm text-white/60">{failure.sentence}</p>
+        <RequestIdLine requestId={failure.requestId} testId="usg4-error-request-id" />
+        {failure.technical ? <TechnicalDisclosure lines={[failure.technical]} testId="usg4-error-details" /> : null}
+        <Button
+          size="sm"
+          outlined
+          onClick={onRetry}
+          disabled={fixture !== undefined}
+          title={fixture !== undefined ? FORCED_TITLE : undefined}
+          prefix={<RefreshCw className="h-3.5 w-3.5" />}
+          data-testid="usg4-retry"
+        >
+          重试
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * 403 and 404 both land here and read byte-for-byte the same: the pane takes
+ * the request id only, so it cannot repeat anything the two answers differ on.
+ * No data row is ever drawn above it.
+ */
+function DeniedPanel({ requestId, fixture }: { requestId: string | null; fixture?: string }): ReactNode {
+  return (
+    <Card role="alert" aria-label="用量与成本不可见" data-testid="usg4-denied" {...fixtureAttr(fixture)}>
+      <CardContent className="flex min-w-0 flex-col items-center gap-2 p-10 text-center">
+        <ShieldAlert className="h-6 w-6 text-white/70" aria-hidden="true" />
+        <p className="min-w-0 break-words text-sm">暂时看不到用量与成本</p>
+        <p className="max-w-prose break-words text-xs text-white/55">
+          这块内容要么尚未对你开放，要么当前环境还没有提供它。这里不会显示任何猜测的用量或金额，
+          也不会把没读到的东西写成零。需要看到这份数据时，请联系工作区管理员开通用量查看权限，
+          或确认后台已接入用量服务（{GAP}）；接通后本页自动显示真实数据。
+        </p>
+        <RequestIdLine requestId={requestId} testId="usg4-denied-request-id" />
       </CardContent>
     </Card>
   );
@@ -188,217 +282,235 @@ function ErrorCard({
 
 export function UsagePage() {
   const [params] = useSearchParams();
-  const forced = params.get("state");
-  const rid = params.get("rid");
-  const [state, setState] = useState<State>(IDLE);
-  const [reload, setReload] = useState(0);
+  const forced = forcedStateOf(params.get("state"));
+  const [windowKey, setWindowKey] = useState<UsageWindowKey>(DEFAULT_USAGE_WINDOW);
+  const { phase, read, failure, reload, forced: isForced } = useUsageData(forced, windowKey);
+  const fixture = forced ?? undefined;
 
-  useEffect(() => {
-    let cancelled = false;
-    setState((prev) => ({ ...prev, phase: "loading" }));
-    (async () => {
-      try {
-        const body = await fetchJSON<unknown>("/agent-api/api/hermes-usage?days=30");
-        if (cancelled) return;
-        const data = parseUsage(body);
-        const tokenValues = data.tokens
-          ? [
-              data.tokens.total_input,
-              data.tokens.total_output,
-              data.tokens.total_cache_read,
-              data.tokens.total_reasoning,
-            ]
-          : [];
-        const hasTokens = tokenValues.some((value) => typeof value === "number");
-        const hasModels = Array.isArray(data.by_model) && data.by_model.length > 0;
-        const hasCost = (data.cost?.rows ?? 0) > 0 || data.cost?.cost_usd !== null && data.cost?.cost_usd !== undefined;
-        setState({
-          phase: hasTokens || hasModels || hasCost ? "ready" : "empty",
-          data,
-          status: 200,
-        });
-      } catch (err) {
-        if (cancelled) return;
-        const api = err instanceof ApiError ? err : null;
-        const status = api?.status ?? 0;
-        const denied = status === 403 || status === 404;
-        setState({
-          phase: denied ? "denied" : "error",
-          data: null,
-          status,
-          message: api?.message ?? (status === 0 ? "用量服务暂时不可达，请检查网络后重试。" : humanizeStatus(status)),
-          requestId: api?.requestId ?? rid ?? undefined,
-        });
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [reload, rid]);
-
-  const retry = useCallback(() => setReload((n) => n + 1), []);
-  const data = state.data;
-  const tokens = data?.tokens ?? null;
-  const cost = data?.cost ?? null;
-  const models = useMemo(
-    () => (Array.isArray(data?.by_model) ? data.by_model : []),
-    [data?.by_model],
+  const header = (
+    <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+      <Gauge className="h-5 w-5 shrink-0 text-white/70" aria-hidden="true" />
+      <h1 className="min-w-0 break-words font-mondwest text-xl">用量与成本</h1>
+      <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="usg4-window">
+        <span className="text-white/50">统计窗口</span>
+        <select
+          id="usg4-window"
+          data-testid="usg4-window"
+          className="h-8 min-w-0 max-w-40 rounded-md border border-white/15 bg-transparent px-2 text-sm"
+          value={windowKey}
+          disabled={isForced}
+          title={isForced ? FORCED_TITLE : undefined}
+          onChange={(event) => setWindowKey(event.target.value as UsageWindowKey)}
+        >
+          {USAGE_WINDOWS.map((item) => (
+            <option key={item.key} value={item.key}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <Button
+        size="sm"
+        outlined
+        onClick={reload}
+        disabled={phase === "loading" || isForced}
+        title={isForced ? FORCED_TITLE : undefined}
+        prefix={<RefreshCw className="h-3.5 w-3.5" />}
+        data-testid="usg4-reload"
+      >
+        重新读取
+      </Button>
+    </div>
   );
 
-  const shown: Phase =
-    forced === "loading" || forced === "empty" || forced === "error" || forced === "denied"
-      ? forced
-      : state.phase;
+  const readyView = (): ReactNode => {
+    if (!read) return <LoadingPanel fixture={fixture} />;
+    const cost = read.cost;
 
-  if (shown === "loading") {
     return (
-      <div className="space-y-4 p-4 md:p-6" data-testid="usage-page">
-        <Skeleton />
-      </div>
-    );
-  }
+      <div className="min-w-0 space-y-4">
+        <p className="min-w-0 break-words text-xs text-white/50" data-testid="usg4-meta">
+          {`统计窗口：${windowLabel(windowKey)} · 金额只来自成本账本的实际扣费 · 数据截至 `}
+          {read.asOf ? (
+            <>
+              <span className="tabular-nums" title={read.asOf.raw}>{read.asOf.shown}</span>（北京时间）
+            </>
+          ) : (
+            <>
+              <Dashed reason="用量服务未提供数据截至时刻" />
+              <span className="text-white/40">（用量服务未提供数据截至时刻）</span>
+            </>
+          )}
+        </p>
 
-  if (shown === "error" || shown === "denied") {
-    return (
-      <div className="space-y-4 p-4 md:p-6" data-testid="usage-page">
-        <ErrorCard
-          state={{ ...state, phase: shown, requestId: state.requestId ?? rid ?? undefined }}
-          title={shown === "denied" ? "用量数据暂不可见" : "用量数据没能加载出来"}
-          onRetry={retry}
+        <div className="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <Card data-testid="usg4-token-input">
+            <CardContent className="min-w-0 p-4">
+              <p className="text-xs text-white/50">输入 Token</p>
+              <p className="mt-2 min-w-0 break-words text-2xl font-medium tabular-nums">{tokenText(read.tokens.input)}</p>
+            </CardContent>
+          </Card>
+          <Card data-testid="usg4-token-output">
+            <CardContent className="min-w-0 p-4">
+              <p className="text-xs text-white/50">输出 Token</p>
+              <p className="mt-2 min-w-0 break-words text-2xl font-medium tabular-nums">{tokenText(read.tokens.output)}</p>
+            </CardContent>
+          </Card>
+          <Card data-testid="usg4-token-cache">
+            <CardContent className="min-w-0 p-4">
+              <p className="text-xs text-white/50">缓存读取</p>
+              <p className="mt-2 min-w-0 break-words text-2xl font-medium tabular-nums">{tokenText(read.tokens.cacheRead)}</p>
+            </CardContent>
+          </Card>
+          <Card data-testid="usg4-cost">
+            <CardContent className="min-w-0 p-4">
+              <p className="text-xs text-white/50">成本（账本实扣 · USD）</p>
+              <p className="mt-2 min-w-0 break-words text-2xl font-medium">
+                {cost ? (
+                  <MoneyText cell={cost.cell} testId="usg4-cost-total" besideReason />
+                ) : (
+                  <span data-testid="usg4-cost-total">
+                    <Dashed reason="用量服务这次没有回成本账本块" />
+                  </span>
+                )}
+              </p>
+              <p className="mt-1 min-w-0 break-words text-xs text-white/45">
+                {cost ? (
+                  <>
+                    <span title={cost.source ?? undefined}>{cost.cell.statusLabel}</span>
+                    {cost.entries !== null ? ` · ${cost.entries} 条账目` : " · 账目条数未提供"}
+                  </>
+                ) : (
+                  "成本账本块未随这份回答提供"
+                )}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card data-testid="usg4-model-table">
+          <CardContent className="p-0">
+            <div className="border-b border-white/10 px-4 py-3">
+              <h2 className="min-w-0 break-words text-sm font-medium">按模型</h2>
+              <p className="mt-1 min-w-0 break-words text-xs text-white/45">
+                {read.models.length > 0
+                  ? "用量源上报的模型明细；缺失字段显示 —，不补零。"
+                  : "这个窗口没有可读的模型明细（用量源降级或未随回答发送）。"}
+              </p>
+            </div>
+            {read.models.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[460px] text-left text-sm">
+                  <thead>
+                    <tr className="text-xs text-white/45">
+                      <th className="px-4 py-2 font-normal">模型</th>
+                      <th className="px-4 py-2 font-normal">输入 Token</th>
+                      <th className="px-4 py-2 font-normal">输出 Token</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {read.models.map((row, index) => (
+                      <tr key={`${row.name}-${index}`} className="border-t border-white/10">
+                        <td className="max-w-[240px] break-words px-4 py-2">{row.name}</td>
+                        <td className="px-4 py-2 tabular-nums">{tokenText(row.input)}</td>
+                        <td className="px-4 py-2 tabular-nums">{tokenText(row.output)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+            {read.unreadableModels > 0 ? (
+              <p className="min-w-0 break-words px-4 py-2 text-xs text-white/45">
+                另有 {read.unreadableModels} 行明细读不出是哪个模型，没有列在这里。
+              </p>
+            ) : null}
+          </CardContent>
+        </Card>
+
+        <Card data-testid="usg4-ledger">
+          <CardContent className="p-0">
+            <div className="border-b border-white/10 px-4 py-3">
+              <h2 className="min-w-0 break-words text-sm font-medium">账本明细</h2>
+              <p className="mt-1 min-w-0 break-words text-xs text-white/45">
+                金额来自成本账本的实际扣费，按员工汇总；不反推、不估算、不在前端求和。缺金额的单元格显示 —，原因写在格子上。
+              </p>
+            </div>
+            {cost && cost.rows.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[520px] text-left text-sm">
+                  <thead>
+                    <tr className="text-xs text-white/45">
+                      <th className="px-4 py-2 font-normal">员工</th>
+                      <th className="px-4 py-2 font-normal">账目条数</th>
+                      <th className="px-4 py-2 font-normal">金额（USD）</th>
+                      <th className="px-4 py-2 font-normal">状态</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cost.rows.map((row, index) => (
+                      <tr key={`${row.rawId}-${index}`} className="border-t border-white/10">
+                        <td className="min-w-0 break-words px-4 py-2" title={row.rawId ?? undefined}>{row.code}</td>
+                        <td className="px-4 py-2 tabular-nums">{row.entries === null ? <Dashed reason="账目条数未随回答发送" /> : row.entries.toLocaleString("en-US")}</td>
+                        <td className="px-4 py-2 font-medium">
+                          <MoneyText cell={row.cell} testId={`usg4-ledger-money-${index}`} besideReason={false} />
+                        </td>
+                        <td className="px-4 py-2">
+                          <Badge tone={row.cell.statusLabel === "账本实测" ? undefined : "warning"}>{row.cell.statusLabel}</Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {cost.rows.some((row) => row.cell.text === "—") ? (
+                  <p className="min-w-0 break-words px-4 py-2 text-xs text-white/45">
+                    金额显示为 — 的行，账本没有给出可呈现的实扣数；把光标停在 — 上可以看到原因。
+                  </p>
+                ) : null}
+              </div>
+            ) : (
+              <p className="min-w-0 break-words px-4 py-4 text-sm text-white/55">
+                {cost && cost.unreadableRows > 0
+                  ? `账本回了 ${cost.unreadableRows} 条读不出归属的条目，这里一条也不画。`
+                  : cost
+                    ? "账本块这次没有回明细行；总额仍按上方口径呈现，缺失不写成 0.00。"
+                    : "用量服务这次没有回成本账本块，账本明细无法呈现；这里不补任何示例数字。"}
+              </p>
+            )}
+            {cost && cost.rows.length > 0 && cost.unreadableRows > 0 ? (
+              <p className="min-w-0 break-words px-4 py-2 text-xs text-white/45">
+                另有 {cost.unreadableRows} 条账目读不出是哪个员工的，没有列在这里。
+              </p>
+            ) : null}
+          </CardContent>
+        </Card>
+
+        <TechnicalDisclosure
+          testId="usg4-details"
+          lines={[
+            `请求窗口：${usageUrl(windowKey)}`,
+            read.windowDays !== null ? `回答窗口原值：period_days=${read.windowDays}` : "",
+            ...(cost?.cell.technical ?? []),
+            read.asOf ? `截至时刻原值：${read.asOf.raw}` : "",
+          ]}
         />
       </div>
     );
-  }
+  };
 
-  if (shown === "empty") {
-    return (
-      <div className="space-y-4 p-4 md:p-6" data-testid="usage-page">
-        <Card data-testid="usage-empty">
-          <CardContent className="p-6">
-            <h2 className="text-base font-medium">暂无用量记录</h2>
-            <p className="mt-2 text-sm text-white/60">
-              最近 30 天没有可读的用量或成本账目。用量源恢复后会在这里显示。
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const body = (): ReactNode => {
+    if (phase === "loading") return <LoadingPanel fixture={fixture} />;
+    if (phase === "denied") return <DeniedPanel requestId={failure?.requestId ?? null} fixture={fixture} />;
+    if (phase === "error" && failure) return <ErrorPanel failure={failure} onRetry={reload} fixture={fixture} />;
+    if (phase === "empty") return <EmptyPanel onRetry={reload} windowName={windowLabel(windowKey)} fixture={fixture} />;
+    return readyView();
+  };
 
   return (
-    <div className="space-y-4 p-4 md:p-6" data-testid="usage-page">
-      <div className="flex flex-wrap items-center gap-3">
-        <Gauge className="h-5 w-5 text-white/70" />
-        <h1 className="font-mondwest text-xl">用量与成本</h1>
-        <span className="text-xs text-white/50">最近 {data?.period_days ?? 30} 天 · 金额仅来自成本账本</span>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-white/50">输入 Token</p>
-            <p className="mt-2 text-2xl font-medium tabular-nums">{fmtInt(tokens?.total_input)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-white/50">输出 Token</p>
-            <p className="mt-2 text-2xl font-medium tabular-nums">{fmtInt(tokens?.total_output)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-white/50">缓存读取</p>
-            <p className="mt-2 text-2xl font-medium tabular-nums">{fmtInt(tokens?.total_cache_read)}</p>
-          </CardContent>
-        </Card>
-        <Card data-testid="usage-cost">
-          <CardContent className="p-4">
-            <p className="text-xs text-white/50">成本（账本）</p>
-            <p className="mt-2 text-2xl font-medium tabular-nums">
-              {money(cost?.cost_usd, cost?.cost_status)}
-            </p>
-            <p className="mt-1 text-xs text-white/45">
-              {cost?.cost_status ? COST_STATUS_LABEL[cost.cost_status] : "成本状态未提供"}
-              {typeof cost?.rows === "number" ? ` · ${cost.rows} 条账目` : ""}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card data-testid="usage-by-model">
-        <CardContent className="p-0">
-          <div className="border-b border-white/10 px-4 py-3">
-            <h2 className="text-sm font-medium">按模型</h2>
-            <p className="mt-1 text-xs text-white/45">
-              {models.length > 0 ? "用量源上报的模型明细；缺失字段显示 —" : "模型明细未提供（用量源降级或未接入）"}
-            </p>
-          </div>
-          {models.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[520px] text-left text-sm">
-                <thead>
-                  <tr className="text-xs text-white/45">
-                    <th className="px-4 py-2 font-normal">模型</th>
-                    <th className="px-4 py-2 font-normal">输入 Token</th>
-                    <th className="px-4 py-2 font-normal">输出 Token</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {models.map((row, index) => (
-                    <tr key={`${row.model ?? "unknown"}-${index}`} className="border-t border-white/8">
-                      <td className="px-4 py-2">{row.model ?? "—"}</td>
-                      <td className="px-4 py-2 tabular-nums">{fmtInt(row.input_tokens)}</td>
-                      <td className="px-4 py-2 tabular-nums">{fmtInt(row.output_tokens)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="px-4 py-4 text-sm text-white/55">—</p>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card data-testid="usage-cost-rows">
-        <CardContent className="p-0">
-          <div className="border-b border-white/10 px-4 py-3">
-            <h2 className="text-sm font-medium">账本明细</h2>
-            <p className="mt-1 text-xs text-white/45">金额来自成本账本，按员工汇总；不做前端改价或求和。</p>
-          </div>
-          {Array.isArray(cost?.per_employee) && cost.per_employee.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[520px] text-left text-sm">
-                <thead>
-                  <tr className="text-xs text-white/45">
-                    <th className="px-4 py-2 font-normal">员工</th>
-                    <th className="px-4 py-2 font-normal">账目</th>
-                    <th className="px-4 py-2 font-normal">金额</th>
-                    <th className="px-4 py-2 font-normal">状态</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {cost.per_employee.map((row, index) => (
-                    <tr key={`${row.employee_id ?? "unknown"}-${index}`} className="border-t border-white/8">
-                      <td className="px-4 py-2" title={row.employee_id ?? undefined}>{shortCode(row.employee_id)}</td>
-                      <td className="px-4 py-2 tabular-nums">{fmtInt(row.rows)}</td>
-                      <td className="px-4 py-2 tabular-nums">{money(row.cost_usd, row.cost_status)}</td>
-                      <td className="px-4 py-2">
-                        <Badge tone={row.cost_status === "unknown" || row.cost_status == null ? "warning" : undefined}>
-                          {row.cost_status ? COST_STATUS_LABEL[row.cost_status] : "未提供"}
-                        </Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="px-4 py-4 text-sm text-white/55">— 账本暂无明细，金额不显示 0.00。</p>
-          )}
-        </CardContent>
-      </Card>
+    <div className="min-w-0 space-y-4 p-4 md:p-6" data-testid="usg4-page" {...fixtureAttr(fixture)}>
+      {header}
+      {forced ? <ReproNote state={forced} /> : null}
+      {body()}
     </div>
   );
 }
