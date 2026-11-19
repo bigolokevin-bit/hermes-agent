@@ -490,3 +490,77 @@ export function formatUnitPrice(value: number | null, currency: string | null): 
   const symbol = currency === null || currency.toUpperCase() === 'USD' ? '$' : '';
   return `${symbol}${value.toFixed(2)} / 百万 token`;
 }
+
+// ---- MET6: breakdown views (by employee / by model) -------------------------
+
+export interface EmployeeSpend {
+  employeeId: string | null;
+  name: string | null;
+  costUsd: number | null;
+  ledgerRows: number;
+  asOf: string | null;
+}
+
+/** Fold ledger rows into one line per employee. A row without a number keeps
+ *  `costUsd: null` — the fold never substitutes zero. */
+export function aggregateByEmployee(rows: LedgerRow[], names: Record<string, string>): EmployeeSpend[] {
+  const byId = new Map<string, EmployeeSpend>();
+  for (const row of rows) {
+    const key = row.employeeId ?? '—';
+    const found = byId.get(key);
+    const entry: EmployeeSpend = found ?? {
+      employeeId: row.employeeId,
+      name: row.employeeId ? names[row.employeeId] ?? null : null,
+      costUsd: null,
+      ledgerRows: 0,
+      asOf: null,
+    };
+    entry.ledgerRows += 1;
+    if (row.costUsd !== null) entry.costUsd = (entry.costUsd ?? 0) + row.costUsd;
+    if (row.updatedAt && (entry.asOf === null || row.updatedAt > entry.asOf)) entry.asOf = row.updatedAt;
+    byId.set(key, entry);
+  }
+  return [...byId.values()].sort((a, b) => (b.costUsd ?? -1) - (a.costUsd ?? -1));
+}
+
+export interface ModelUsageLine {
+  model: string;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  apiCalls: number | null;
+  sessions: number | null;
+}
+
+export type ParsedModelUsage =
+  | { kind: 'ok'; lines: ModelUsageLine[]; costUsd: number | null; asOf: string | null }
+  | { kind: 'invalid'; reason: string };
+
+/** Read Hermes usage `by_model`. The upstream strips per-model money, so a
+ *  missing cost stays null and the view prints «—» with its reason. */
+export function readModelUsage(payload: unknown): ParsedModelUsage {
+  if (!isRecord(payload)) return { kind: 'invalid', reason: '返回内容里没有用量明细。' };
+  const asOf = text(payload.asOf) ?? text(payload.as_of) ?? text(payload.generatedAt);
+  const costBlock = isRecord(payload.cost) ? payload.cost : null;
+  const costUsd = costBlock ? numberOrNull(costBlock.cost_usd) : null;
+  if (!Array.isArray(payload.by_model)) return { kind: 'ok', lines: [], costUsd, asOf };
+  const lines: ModelUsageLine[] = [];
+  for (const raw of payload.by_model) {
+    if (!isRecord(raw)) continue;
+    const model = text(raw.model) ?? text(raw.modelId) ?? text(raw.name);
+    if (!model) continue;
+    lines.push({
+      model,
+      inputTokens: numberOrNull(raw.input_tokens) ?? numberOrNull(raw.inputTokens),
+      outputTokens: numberOrNull(raw.output_tokens) ?? numberOrNull(raw.outputTokens),
+      apiCalls: numberOrNull(raw.api_calls) ?? numberOrNull(raw.apiCalls),
+      sessions: numberOrNull(raw.sessions),
+    });
+  }
+  return { kind: 'ok', lines, costUsd, asOf };
+}
+
+/** Share of a total; null when the total is unknown or not positive. */
+export function shareOf(value: number | null, total: number | null): number | null {
+  if (value === null || total === null || !Number.isFinite(value) || !Number.isFinite(total) || total <= 0) return null;
+  return Math.round((value / total) * 1000) / 10;
+}

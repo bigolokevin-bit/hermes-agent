@@ -387,3 +387,127 @@ describe('MetricsModulePage — usage & cost (met6)', () => {
     expect(section).not.toContain('?? 0');
   });
 });
+
+// ---- met6: cost breakdown (by employee / by model) -------------------------
+
+const DAY_SPLIT = {
+  items: [
+    { employeeId: 'emp_aaaabbbbcccc', period: '2026-11-19', periodKind: 'day', costUsd: 0.3, updatedAt: '2026-11-19T03:20:00.000Z' },
+    { employeeId: 'emp_ddddeeeeffff', period: '2026-11-19', periodKind: 'day', costUsd: 0.1, updatedAt: '2026-11-19T02:00:00.000Z' },
+  ],
+  missingEmployeeIds: [],
+};
+
+const HERMES_USAGE = {
+  by_model: [
+    { model: 'qwen-plus', input_tokens: 1000, output_tokens: 200, sessions: 3, api_calls: 9 },
+    { model: 'deepseek-v4', input_tokens: 500, output_tokens: 50 },
+  ],
+  cost: { source: 'cost_ledger', cost_usd: null, cost_status: 'unknown', rows: 0, per_employee: [] },
+  asOf: '2026-11-19T20:12:00.000Z',
+};
+
+function breakdownRouter(
+  overrides: { ledger?: (url: string) => Promise<unknown>; usage?: () => Promise<unknown> } = {},
+) {
+  return (url: string): Promise<unknown> => {
+    if (overrides.usage && url.includes('hermes-usage')) return overrides.usage();
+    if (overrides.ledger && url.includes('budget-usage')) return overrides.ledger(url);
+    if (url.includes('run-activity')) return Promise.resolve(activityBody());
+    if (url.includes('run-stats')) return Promise.resolve(statsFor(url));
+    if (url.includes('/api/employees')) return Promise.resolve(EMPLOYEE_BODY);
+    if (url.includes('models/pricing')) return Promise.reject(new ApiError('missing', { status: 404, body: '', url }));
+    if (url.includes('hermes-usage')) return Promise.resolve(HERMES_USAGE);
+    if (url.includes('budget-usage')) return Promise.resolve(DAY_SPLIT);
+    return Promise.resolve({});
+  };
+}
+
+describe('MetricsModulePage — cost breakdown', () => {
+  it('lists employees from the ledger with spend, a — count and a share', async () => {
+    await mount(breakdownRouter());
+
+    const rows = document.querySelectorAll('[data-testid^="met6-row-"]');
+    expect(rows).toHaveLength(2);
+    expect(rows[0]?.textContent).toContain('小鲤 · AAAABBBB');
+    expect(rows[0]?.textContent).toContain('$0.30');
+    expect(rows[0]?.textContent).toContain('75%');
+    expect(rows[1]?.textContent).toContain('$0.10');
+    expect(rows[1]?.textContent).toContain('25%');
+    // The ledger does not carry run counts: — with its reason, never 0.
+    expect(rows[0]?.textContent).toContain('—');
+    expect(rows[0]?.textContent).toContain('不记运行次数');
+    expect(document.querySelector('[data-testid="met6-cat-total"]')?.textContent).toBe('$0.40');
+    expect(document.querySelector('[data-testid="met6-cat-source"]')?.textContent).toContain('平台扣费账本');
+    expect(document.querySelector('[data-testid="met6-cat-source"]')?.textContent).toContain('2026-11-19 11:20');
+  });
+
+  it('switches to the by-model view and keeps money at — when upstream omits it', async () => {
+    await mount(breakdownRouter());
+
+    await act(async () => {
+      (document.querySelector('[data-testid="met6-cat-model"]') as HTMLButtonElement).click();
+    });
+    await waitFor(
+      () => document.querySelector('[data-testid="met6-cat-source"]')?.textContent?.includes('Hermes 用量') === true,
+      'model view',
+    );
+
+    const rows = document.querySelectorAll('[data-testid^="met6-row-"]');
+    expect(rows).toHaveLength(2);
+    expect(rows[0]?.textContent).toContain('qwen-plus');
+    expect(rows[0]?.textContent).toContain('9');
+    expect(rows[1]?.textContent).toContain('上游没有给调用次数');
+    // Per-model money is stripped upstream: — for both rows and the total.
+    expect(document.querySelector('[data-testid="met6-cat-total"]')?.textContent).toBe('—');
+    expect(text()).toContain('金额不按模型拆分');
+  });
+
+  it('replays window and view from the URL without losing state', async () => {
+    await mount(breakdownRouter(), '/metrics?window=7d&view=model');
+
+    expect(urls().some((url) => url.includes('hermes-usage?days=7'))).toBe(true);
+    expect(
+      (document.querySelector('[data-testid="met6-window-7d"]') as HTMLButtonElement).getAttribute('aria-pressed'),
+    ).toBe('true');
+    expect(
+      (document.querySelector('[data-testid="met6-cat-model"]') as HTMLButtonElement).getAttribute('aria-pressed'),
+    ).toBe('true');
+    expect(document.querySelector('[data-testid="met6-cat-source"]')?.textContent).toContain('Hermes 用量');
+  });
+
+  it('gives 403 and 404 the same breakdown copy', async () => {
+    const run = async (status: number): Promise<string> => {
+      await mount(
+        breakdownRouter({
+          ledger: (url) => Promise.reject(new ApiError('denied', { status, body: '', url, requestId: 'req-same' })),
+        }),
+      );
+      return document.querySelector('[data-testid="met6-cat"]')?.textContent ?? '';
+    };
+
+    const fourOhFour = await run(404);
+    const fourOhThree = await run(403);
+    expect(fourOhFour).toBe(fourOhThree);
+    expect(fourOhFour).toContain('这份成本明细暂时读不到');
+    expect(fourOhFour).not.toContain('404');
+  });
+
+  it('shows a real zero share instead of inventing one', async () => {
+    await mount(
+      breakdownRouter({
+        ledger: () =>
+          Promise.resolve({
+            items: [
+              { employeeId: 'emp_aaaabbbbcccc', period: '2026-11-19', periodKind: 'day', costUsd: 0, updatedAt: '2026-11-19T03:20:00.000Z' },
+            ],
+            missingEmployeeIds: [],
+          }),
+      }),
+    );
+    const row = document.querySelector('[data-testid="met6-row-0"]');
+    expect(row?.textContent).toContain('$0.00');
+    // Share of a zero total is undefined, not 0%.
+    expect(row?.textContent).toContain('—');
+  });
+});
