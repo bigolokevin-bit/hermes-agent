@@ -40,6 +40,7 @@ type Source<T> = {
   phase: SourcePhase;
   data: T | null;
   requestId: string | null;
+  message: string | null;
 };
 
 type Loaded = {
@@ -60,6 +61,11 @@ function requestIdOf(error: unknown): string | null {
   return null;
 }
 
+function messageOf(error: unknown): string | null {
+  if (error instanceof ApiError) return error.message;
+  return null;
+}
+
 function sourceFrom<T>(
   result: PromiseSettledResult<unknown>,
   parse: (payload: unknown) => T,
@@ -67,14 +73,15 @@ function sourceFrom<T>(
 ): Source<T> {
   if (result.status === 'fulfilled') {
     const data = parse(result.value);
-    return { phase: isEmpty(data) ? 'empty' : 'ready', data, requestId: null };
+    return { phase: isEmpty(data) ? 'empty' : 'ready', data, requestId: null, message: null };
   }
   const error = result.reason;
   const status = error instanceof ApiError ? error.status : 0;
   const requestId = requestIdOf(error);
-  if (status === 404) return { phase: 'unavailable', data: null, requestId };
-  if (status === 401 || status === 403) return { phase: 'denied', data: null, requestId };
-  return { phase: 'error', data: null, requestId };
+  const message = messageOf(error);
+  if (status === 404) return { phase: 'unavailable', data: null, requestId, message };
+  if (status === 401 || status === 403) return { phase: 'denied', data: null, requestId, message };
+  return { phase: 'error', data: null, requestId, message };
 }
 
 function phaseOf(loaded: Loaded): PagePhase {
@@ -88,6 +95,13 @@ function phaseOf(loaded: Loaded): PagePhase {
 function sourceRequestId(sources: Source<unknown>[]): string | null {
   for (const source of sources) {
     if (source.requestId) return source.requestId;
+  }
+  return null;
+}
+
+function sourceMessage(sources: Source<unknown>[]): string | null {
+  for (const source of sources) {
+    if (source.message) return source.message;
   }
   return null;
 }
@@ -131,11 +145,13 @@ function Missing({ title, body, testId }: { title: string; body: string; testId:
 
 function Failure({
   title,
+  message,
   requestId,
   onRetry,
   testId,
 }: {
   title: string;
+  message: string | null;
   requestId: string | null;
   onRetry: () => void;
   testId: string;
@@ -143,7 +159,9 @@ function Failure({
   return (
     <div className="space-y-2 text-sm" data-testid={testId}>
       <p className="font-medium">{title}</p>
-      <p className="text-muted-foreground">服务暂时没有回答，稍后重试；这不影响已经读到的其他两块。</p>
+      <p className="text-muted-foreground">
+        {message ?? '服务暂时没有回答，稍后重试；这不影响已经读到的其他两块。'}
+      </p>
       <RequestId id={requestId} testId={`${testId}-rid`} />
       <Button size="sm" outlined onClick={onRetry} data-testid={`${testId}-retry`}>
         重试
@@ -201,6 +219,7 @@ export function ModelsModulePage() {
   const prices = loaded?.prices;
   const ledger = loaded?.ledger;
   const pageRequestId = loaded ? sourceRequestId([loaded.catalog, loaded.prices, loaded.ledger]) : null;
+  const pageMessage = loaded ? sourceMessage([loaded.catalog, loaded.prices, loaded.ledger]) : null;
 
   return (
     <section className="space-y-4" data-testid="mdl4-page" data-fixture={forced ?? undefined}>
@@ -265,7 +284,9 @@ export function ModelsModulePage() {
         <Card>
           <CardContent className="space-y-2 p-6 text-sm" data-testid="mdl4-error" role="alert">
             <p className="font-medium">这次没能读取模型与账本</p>
-            <p className="text-muted-foreground">服务暂时不可达或出错了，请稍后重试。</p>
+            <p className="text-muted-foreground">
+              {pageMessage ?? '服务暂时不可达或出错了，请稍后重试。'}
+            </p>
             <RequestId id={pageRequestId ?? params.get('rid')} testId="mdl4-error-rid" />
             <Button size="sm" outlined onClick={retry} data-testid="mdl4-error-retry">
               重试
@@ -325,6 +346,7 @@ export function ModelsModulePage() {
               ) : (
                 <Failure
                   title="模型目录读取失败"
+                  message={catalog?.message ?? null}
                   requestId={catalog?.requestId ?? null}
                   onRetry={retry}
                   testId="mdl4-catalog-error"
@@ -395,6 +417,7 @@ export function ModelsModulePage() {
               ) : (
                 <Failure
                   title="单价表读取失败"
+                  message={prices?.message ?? null}
                   requestId={prices?.requestId ?? null}
                   onRetry={retry}
                   testId="mdl4-prices-error"
@@ -449,6 +472,7 @@ export function ModelsModulePage() {
               ) : (
                 <Failure
                   title="扣费账本读取失败"
+                  message={ledger?.message ?? null}
                   requestId={ledger?.requestId ?? null}
                   onRetry={retry}
                   testId="mdl4-ledger-error"

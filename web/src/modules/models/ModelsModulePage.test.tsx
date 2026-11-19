@@ -147,6 +147,28 @@ describe('ModelsModulePage', () => {
     expect(text()).not.toContain('404');
   });
 
+  it('turns an HTML shell response into a human not-connected message, never a parser error', async () => {
+    await mount((url) => {
+      if (url.includes('/models/pricing')) {
+        return Promise.reject(
+          new ApiError('这个接口还没有接入数据服务；当前返回的是页面，不是数据。', {
+            status: 200,
+            body: '',
+            url,
+            requestId: 'req-html-1',
+          }),
+        );
+      }
+      if (url.includes('/models')) return Promise.resolve(CATALOG);
+      return Promise.resolve(USAGE);
+    });
+    expect(text()).toContain('单价表读取失败');
+    expect(text()).toContain('这个接口还没有接入数据服务');
+    expect(text()).toContain('req-html-1');
+    expect(text()).not.toContain('Unexpected token');
+    expect(text()).not.toContain('<!doctype');
+  });
+
   it('shows honest not-connected blocks instead of fixture data when all three endpoints are missing', async () => {
     await mount((url) => Promise.reject(new ApiError('missing', { status: 404, body: '', url })));
     expect(text()).toContain('模型目录未接入（GAP-07）');
