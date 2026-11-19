@@ -1074,6 +1074,7 @@ export function MetricsModulePage() {
         })()
       : [];
   const sharePrefix = groupBy === 'employee' ? 'met8' : 'met7';
+  const sortColumnLabel = sortKey === 'runs' ? '运行数' : sortKey === 'cost' ? '成本' : groupBy === 'employee' ? '员工' : '模型';
   const shareTotal = shareView.kind === 'ready' ? shareView.value.rows.reduce<number | null>((sum, row) => {
     if (row.costUsd === null) return sum;
     return (sum ?? 0) + row.costUsd;
@@ -1549,7 +1550,7 @@ export function MetricsModulePage() {
                         <th scope="col">{breakdownView.view === 'model' ? '模型' : '员工'}</th>
                         <th scope="col">支出</th>
                         <th scope="col">次数</th>
-                        <th scope="col">占比</th>
+                        <th scope="col" className="met6-num" data-testid="metG-a11y-th-share">占比</th>
                         <th scope="col">账本截至</th>
                       </tr>
                     </thead>
@@ -1952,6 +1953,7 @@ export function MetricsModulePage() {
               <>
                 <div className="met6-table-scroll">
                   <table className="met6-table" data-testid={`${sharePrefix}-table`}>
+                    <caption className="metG-caption" data-testid="metG-a11y-caption">{`成本分摊：${usageWindow.label} · ${groupBy === 'employee' ? '按员工' : '按模型'} · 按${sortColumnLabel}${sortDir === 'asc' ? '升序' : '降序'}排列`}</caption>
                     <thead>
                       <tr>
                         <th scope="col" aria-sort={sortKey === 'model' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
@@ -1965,12 +1967,12 @@ export function MetricsModulePage() {
                             {sortKey === 'model' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
                           </button>
                         </th>
-                        <th scope="col" aria-sort={sortKey === 'runs' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                        <th scope="col" className="met6-num" data-testid="metG-a11y-th-runs" aria-sort={sortKey === 'runs' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
                           <button type="button" className="met7-sort" onClick={() => chooseSort('runs')} data-testid={`${sharePrefix}-sort-runs`}>
                             运行数{sortKey === 'runs' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
                           </button>
                         </th>
-                        <th scope="col" aria-sort={sortKey === 'cost' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                        <th scope="col" className="met6-num" data-testid="metG-a11y-th-cost" aria-sort={sortKey === 'cost' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
                           <button type="button" className="met7-sort" onClick={() => chooseSort('cost')} data-testid={`${sharePrefix}-sort-cost`}>
                             成本{sortKey === 'cost' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
                           </button>
@@ -1981,7 +1983,13 @@ export function MetricsModulePage() {
                     </thead>
                     <tbody>
                       {shareRows.map((row) => (
-                        <tr key={`${row.model}-${row.slug}`} data-testid={`${sharePrefix}-row-${row.slug}`}>
+                        <tr
+                          key={`${row.model}-${row.slug}`}
+                          className="met7-row"
+                          tabIndex={0}
+                          aria-label={`${row.model}：${formatCount(row.runs)} 次运行，${formatUsd(row.costUsd)}，占比 ${row.sharePct === null ? '—' : `${row.sharePct.toFixed(1)}%`}`}
+                          data-testid={`${sharePrefix}-row-${row.slug}`}
+                        >
                           <td className="met7-model" title={row.model}>{row.model}</td>
                           <td
                             className="met6-num"

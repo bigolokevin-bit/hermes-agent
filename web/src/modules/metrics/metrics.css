@@ -689,3 +689,22 @@
   line-height: 1.4;
   color: var(--color-muted-foreground);
 }
+
+/* METG — table semantics: a caption that names window, grouping and order,
+   header cells that carry the sort state, and rows that take focus. */
+.metG-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.met7-row:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: -2px;
+}

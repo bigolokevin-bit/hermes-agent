@@ -85,3 +85,13 @@
 - 重试只重发一批：`met6-retry` 点击后各 loader 各跑一次；测试以「按 URL 形状（from/to 掩码）计数」比对重试批与首批完全一致，避免把时间戳差异误当成二次请求。
 - 窗口内真 0 仍是 `$0.00`，缺失仍是「—」；空态/错误态不补 0、不顶旧内容。
 - 验证：定向 58 passed（+4）；全量 132 files / 1462 passed（另有 2 条 unhandled rejection 来自上游 employee-detail 测试，与本页无关）；tsc `modules/metrics` 0 条；build entry `assets/index-CGjbb-h3.js` sha256 `9f488c4fed8255c9301ddef163d2894be4e8f518cc544826c23b3c29d0470805`，entry 内 metD=0、metB=0，chunk `MetricsModulePage-BhtPB8kO.js` metD-card-reason=1、metD-empty-window=1。
+
+## 表格可访问性与排序语义（metG，2026-11-20）
+
+- 两张成本表（按模型 `met7`、按员工 `met8`）共用同一渲染：`<caption data-testid="metG-a11y-caption">` 说明「成本分摊：<窗口> · 按模型/按员工 · 按<列><升降>排列」，视觉上 sr-only，不占版式。
+- 排序控件是真 `<button type="button">`（Enter/Space 可触发），`th` 用 `aria-sort=ascending|descending|none` 表达方向；占比列不参与排序，因此没有 `aria-sort` 属性（不是 `none`）。
+- 三个数值列（运行数/成本/占比）`th` 带 `scope="col"` 与既有 `.met6-num`（右对齐 + `tabular-nums`），testid `metG-a11y-th-runs|-cost|-share`。
+- 数据行 `tr` 可聚焦（`tabIndex=0`）并有 `met7-row:focus-visible` 焦点环；`aria-label` 复述该行的运行数、成本、占比。
+- 排序切换仍只写 `?sort/?dir`，**纯客户端重排，不发任何新请求**（测试实测：点击前后 `urls().length` 相等，值 0）。
+- 验证：定向 vitest 62 passed（+4）；全量 132 files / 1466 passed（另 2 条上游 employee-detail 的 unhandled rejection 为既存噪声）；tsc `modules/metrics` 0 条；build EXIT 0。
+- 未测项：真浏览器 375/1280 的焦点环视觉与 Tab 序未人工走查，仅 jsdom 断言 `tabIndex` 与 `activeElement`。

@@ -1452,3 +1452,86 @@ describe('metD — state consistency with the freshness block', () => {
     expect(tally(batch)).toEqual(tally(urls().slice(0, initial)));
   });
 });
+
+// metG — the cost tables have to say what they show and let the keyboard drive
+// the sort, without changing how any of it looks.
+describe('metG — table accessibility and sort semantics', () => {
+  it('names the table with window, grouping and order, and exposes the sort state on the header', async () => {
+    await mountShare(SHARE_USAGE);
+
+    const caption = document.querySelector('[data-testid="metG-a11y-caption"]');
+    expect(caption?.tagName).toBe('CAPTION');
+    const name = caption?.textContent ?? '';
+    expect(name).toContain('成本分摊');
+    expect(name).toContain('最近 24 小时');
+    expect(name).toContain('按模型');
+    expect(name).toContain('按成本');
+    expect(name).toContain('降序');
+
+    const costHead = document.querySelector('[data-testid="metG-a11y-th-cost"]');
+    expect(costHead?.tagName).toBe('TH');
+    expect(costHead?.getAttribute('scope')).toBe('col');
+    expect(costHead?.getAttribute('aria-sort')).toBe('descending');
+    expect(document.querySelector('[data-testid="metG-a11y-th-runs"]')?.getAttribute('aria-sort')).toBe('none');
+    expect(document.querySelector('[data-testid="metG-a11y-th-share"]')?.getAttribute('aria-sort')).toBeNull();
+    expect(costHead?.className).toContain('met6-num');
+    expect(document.querySelector('[data-testid="met7-cost-zeta"]')?.className).toContain('met6-num');
+
+    const sortCost = document.querySelector('[data-testid="met7-sort-cost"]') as HTMLButtonElement;
+    expect(sortCost.tagName).toBe('BUTTON');
+    expect(sortCost.getAttribute('type')).toBe('button');
+  });
+
+  it('flips aria-sort and the URL when the header is activated, without refetching', async () => {
+    await mountShare(SHARE_USAGE);
+    const before = urls().length;
+
+    await act(async () => {
+      (document.querySelector('[data-testid="met7-sort-cost"]') as HTMLButtonElement).click();
+    });
+    await waitFor(
+      () => document.querySelector('[data-testid="metG-a11y-th-cost"]')?.getAttribute('aria-sort') === 'ascending',
+      'aria-sort flipped',
+    );
+    expect(document.querySelector('[data-testid="met7-loc"]')?.textContent).toContain('sort=cost');
+    expect(document.querySelector('[data-testid="met7-loc"]')?.textContent).toContain('dir=asc');
+    // Sorting is client-side: flipping the order must not re-read any endpoint.
+    expect(urls().length).toBe(before);
+
+    await act(async () => {
+      (document.querySelector('[data-testid="met7-sort-runs"]') as HTMLButtonElement).click();
+    });
+    await waitFor(
+      () => document.querySelector('[data-testid="metG-a11y-th-runs"]')?.getAttribute('aria-sort') === 'descending',
+      'runs sort',
+    );
+    expect(document.querySelector('[data-testid="met7-loc"]')?.textContent).toContain('sort=runs');
+    expect(document.querySelector('[data-testid="met7-loc"]')?.textContent).toContain('dir=desc');
+    expect(document.querySelector('[data-testid="metG-a11y-th-cost"]')?.getAttribute('aria-sort')).toBe('none');
+  });
+
+  it('makes every cost row focusable in reading order and names it', async () => {
+    await mountShare(SHARE_USAGE);
+    const rows = [...document.querySelectorAll('[data-testid^="met7-row-"]')] as HTMLTableRowElement[];
+    expect(rows.length).toBeGreaterThan(0);
+    rows.forEach((row) => {
+      expect(row.tabIndex).toBe(0);
+      expect((row.getAttribute('aria-label') ?? '').length).toBeGreaterThan(0);
+    });
+    rows[0].focus();
+    expect(document.activeElement).toBe(rows[0]);
+  });
+
+  it('carries the same semantics on the by-employee table', async () => {
+    await mountEmployeeShare(TWO_EMPLOYEE_LEDGER);
+
+    const name = document.querySelector('[data-testid="metG-a11y-caption"]')?.textContent ?? '';
+    expect(name).toContain('按员工');
+    expect(document.querySelector('[data-testid="met8-sort-name"]')?.tagName).toBe('BUTTON');
+    expect(document.querySelector('[data-testid="metG-a11y-th-cost"]')?.getAttribute('aria-sort')).toBe('descending');
+    const rows = document.querySelectorAll('[data-testid^="met8-row-"]');
+    expect(rows.length).toBeGreaterThan(0);
+    (rows[0] as HTMLTableRowElement).focus();
+    expect(document.activeElement).toBe(rows[0]);
+  });
+});
