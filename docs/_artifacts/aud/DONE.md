@@ -2683,3 +2683,87 @@ The three routes named by the order do not exist on this BFF, so they are treate
 - Vocabulary split: platform-row badges use 正常/停用/未接入/待核实 (this order), while the aggregate sentence and the status filter still use 已接入 for channel/connection semantics. Both are visible on the same card; stated rather than silently mixed.
 - No data-fixture existed in this module to remove (already 0 before this round).
 - Untested: the three named endpoints carry no data, so no 200 payload could be verified; no per-element pixel diff (only sw==cw + text); 9122 not rebuilt, main not merged.
+
+
+## R39 FAIL — fixtureView wired into collab/runs content (2026-11-20, base 2cbba6b7)
+
+QA FAIL was: the four `?state=` repro states moved a badge, not the CONTENT surface. Fixed by
+restoring the removed forced-state plumbing in both modules and wiring it to the panels.
+
+### Plainly stated: this branch had none of it before this commit
+
+`git grep -n "data-fixture\|fixtureView\|forcedStateOf\|ReproNote" HEAD -- web/src/modules/collab web/src/modules/runs`
+returns nothing, and `git log -S"fixtureView" -- web/src/modules/collab web/src/modules/runs` is empty: R30 (runs) and
+R32 (collab) had burned the leg, and `fixtureView` was never called in these two modules at all. So the markup the FAIL
+described came from another lane or from the shell mirror — `web/src/shell/fixtures.ts` (`FixtureProvider`,
+`FixtureBadge`, `applyFixtureAttribute()` → `<html data-fixture>`, App.tsx:895) — which is outside this write domain and
+was not touched. This commit ships a marked, content-wired repro leg inside the two modules: `forcedStateOf` +
+`useDelegations(forced)` / `useRunsData(forced, …)` + `Marked`/`fixtureAttr`/`ReproNote` in each `states.tsx`,
+recovered from `4ad891c3^` (collab) and `2c7da9b6^` (runs), adapted to today's files (R36 timeline, R28/R29 anchors,
+R23 history and the retry-honesty work kept; only the forced-state plumbing came back).
+
+### Four-state readings (jsdom, from the new R39 tests; snippet = panel textContent first ~60 chars)
+
+COLLAB `/collab` — `asks` = fetchJSON calls issued by that leg:
+
+| URL | panel | snippet | panel chars | body chars | `[data-fixture]` | asks |
+|---|---|---|---|---|---|---|
+| `?state=loading` | col5-loading | (skeleton, `aria-hidden`, no words) | 0 | 266 | 2 | 0 |
+| `?state=empty` | col5-empty | 读取成功，这个租户目前没有委托记录这是读取成功后的空清单，不代表接口坏了。新的委托要由发起方在任务上指派受托员工后才会出 | 105 | 370 | 2 | 0 |
+| `?state=error` | col5-error | 协作委托清单没能加载出来这条腿是用 ?state= 复现的，服务此刻没有回答过。未提供重试 | 45 | 307 | 2 | 0 |
+| `?state=denied` | col5-denied | 现在看不到协作委托这块内容要么尚未对你开放，要么当前环境还没有提供它。这里不会显示任何猜测的委托，也不会把没读到的东西写 | 135 | 402 | 2 | 0 |
+| ready, 1 row | col5-table | 委托方受托方范围动作状态生效 / 到期来源陈可 · 9F3A4B7C李牧 · 5E6D7C8B整理本周巡检记录并点名缺项 | 317 | 509 | 0 | 1 |
+| ready, empty tenant | col5-empty | 读取成功，这个租户目前没有委托记录这是读取成功后的空清单，不代表接口坏了。新的委托要由发起方在任务上指派受托员工后才会出 | 105 | 297 | 0 | 1 |
+
+RUNS `/runs`:
+
+| URL | panel | snippet | panel chars | body chars | `[data-fixture]` | asks |
+|---|---|---|---|---|---|---|
+| `?state=loading` | run5-loading | (skeleton, `aria-hidden`, no words) | 0 | 214 | 2 | 0 |
+| `?state=empty` | run5-empty | 服务回答了，这个时间窗口里确实没有运行这是读取成功后的空清单，不代表接口坏了，也不代表运行丢了。下一步：把时间范围放宽一 | 82 | 301 | 2 | 0 |
+| `?state=error` | run5-error | 运行记录没能加载出来这条腿是用 ?state= 复现的，服务此刻没有回答过。未提供重试 | 43 | 253 | 2 | 0 |
+| `?state=denied` | run5-denied | 现在看不到运行记录这块内容要么尚未对你开放，要么当前环境还没有提供它。这里不会显示任何猜测的运行， 也不会把没读到的东西 | 90 | 305 | 2 | 0 |
+| ready, 1 row | run5-table | 运行状态开始耗时成本（美元）负责人失败原因运行 · X1XZ失败2026-11-18 10:0011 分钟$0.42已计 | 131 | 272 | 0 | 2 |
+| ready, empty window | run5-empty | 服务回答了，这个时间窗口里确实没有运行这是读取成功后的空清单，不代表接口坏了，也不代表运行丢了。下一步：把时间范围放宽一 | 82 | 228 | 0 | 2 |
+
+- The 2 marks on a forced leg are the root and the panel: `col5-page=error` + `col5-error=error` (same shape on run5).
+  Ready legs: `[data-fixture]` count 0 and no `data-fixture` attribute on the root — asserted, not inferred.
+- Error vs ready surfaces differ in words AND length: collab 45 vs 317 panel chars, 307 vs 509 body chars;
+  runs 43 vs 131 panel chars, 253 vs 272 body chars.
+- The loading leg carries no text by design (skeleton boxes), so the four-legs-are-distinct test compares panel
+  `outerHTML` and holds the three copy-bearing legs to distinct `textContent`; each leg renders exactly one panel.
+- 403≡404: real-read denied panel `outerHTML` for a mocked 403 equals that of a mocked 404 (byte-for-byte), and the
+  `?state=denied` panel equals that same body once the mark and the request-id line are stripped — one body, no path echo.
+- Zero asks on forced legs: `fetchJSON` is mocked to throw, so a single request would fail the test; `urls()` length 0
+  asserted on all four legs, and on runs also with `?run=` + `?employee=` present (detail and name side-read gated).
+
+### Ready legs still read real data
+
+collab: `GET /agent-api/api/delegations?limit=50` only, honest empty-tenant copy kept
+(「读取成功，这个租户目前没有委托记录」+ where a delegation is made); runs: `GET /agent-api/api/runs?…` with the
+run-stats fallback, the employees name side-read and the real row count (「本页 1 次」), detail + timeline + R23
+history + R36 timeline behaviour untouched.
+
+### Deliberate deviation from the recovered copy
+
+The pre-R30/R32 `ReproNote` said the data source 「尚未在本控制台核实到 2xx（GAP-09/GAP-10）」. That is false on
+today's deployment — both read routes answered — and a live test asserts `GAP-09` never appears on a real leg. The
+restored note therefore claims only what is true: this state came from `?state=`, this leg asked the service nothing,
+and dropping `?state=` is the real read. `GAP-10` stays where it is still accurate (the collab write-entry note).
+
+### Gates (exact exits, from `web/`, PATH=/opt/homebrew/bin)
+
+- `./node_modules/.bin/vitest run src/modules/collab src/modules/runs` → exit 0 — Test Files 4 passed, Tests 175 passed
+  (156 before this round; +19 new: 9 collab, 10 runs).
+- `npx tsc -b . --noEmit 2>&1 | grep -c "error TS"` → `49` (standing floor); `… | grep -E "modules/(collab|runs)"` →
+  no output (grep exit 1): these two modules contribute 0.
+- `./node_modules/.bin/eslint src/modules/collab src/modules/runs` → exit 0, no output.
+
+### Untested / not done
+
+- No live pixel sweep this round: readings are jsdom textContent + attribute counts. No browser driven at
+  1440/1280/375, no screenshot, 9122 not rebuilt, nothing pushed or committed (left for review).
+- The shell-wide `?state=` mirror (`<html data-fixture>` + FIXTURE badge) was not re-verified end-to-end with these
+  module legs mounted, since `shell/**` and `App.tsx` are outside this write domain.
+- `?state=loading` on a real mount cannot be distinguished from a slow real read by markup alone — both paint the
+  same skeleton; the mark and the note are what tell them apart, which is why both are asserted on the root and panel.

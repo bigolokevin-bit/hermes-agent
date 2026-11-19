@@ -11,10 +11,11 @@
  * the absence of an identity, and it reads that way (「需要登录」, no alert
  * styling, no invented rows).
  *
- * R32 fixture debt burn: the `?state=` repro leg and its `fixture 标记` marker
- * were removed. Every panel below is painted from a real read; the delegations
- * route answered 200 on this deployment (an empty tenant), so no state here is
- * ever a stand-in.
+ * R32 removed the `?state=` repro leg; R39 restores it, deliberately. A panel
+ * below is either painted from a real read or marked as a repro — never both:
+ * `data-fixture` carries the state name, sits on the root and on the panel, and
+ * travels with the on-screen note. A forced leg asks nothing, so the controls
+ * that would ask are disabled on it.
  */
 import { useState, type ReactNode } from "react";
 import { Check, ChevronDown, ChevronUp, Copy, Inbox, LogIn, RefreshCw, ShieldAlert, TriangleAlert } from "lucide-react";
@@ -26,6 +27,29 @@ import { themedBody } from "@/lib/utils";
 import { copyTextToClipboard } from "@/lib/clipboard";
 
 import { NO_REQUEST_ID } from "./delegations";
+
+export interface Marked {
+  /** Set to the state name when the pane shows the `?state=` repro. */
+  fixture?: string;
+}
+
+function fixtureAttr(fixture: string | undefined): { "data-fixture"?: string } {
+  return fixture ? { "data-fixture": fixture } : {};
+}
+
+/**
+ * What a repro panel says, so nobody reads it as a service answer. It names no
+ * route and no code — the surface stays in human words — and it points at the
+ * way out: drop `?state=` and the page reads for real.
+ */
+export function ReproNote({ state }: { state: string }): ReactNode {
+  return (
+    <p className="min-w-0 break-words text-xs text-warning" data-testid="col5-forced-note">
+      {`这是用 ?state=${state} 复现出来的状态，不是服务此刻的回答：这一条腿没有向服务要过任何东西。` +
+        `去掉地址里的 ?state= 就是真实读取。`}
+    </p>
+  );
+}
 
 /**
  * A value a person can quote to support: shown in full, copyable, allowed to
@@ -118,9 +142,9 @@ export function TechnicalDisclosure({
   );
 }
 
-export function LoadingPanel(): ReactNode {
+export function LoadingPanel({ fixture }: Marked): ReactNode {
   return (
-    <div className="flex min-w-0 flex-col gap-2" data-testid="col5-loading" aria-busy="true">
+    <div className="flex min-w-0 flex-col gap-2" data-testid="col5-loading" aria-busy="true" {...fixtureAttr(fixture)}>
       {[0, 1, 2].map((row) => (
         <div key={row} className="animate-pulse rounded-md border border-border bg-card px-4 py-4" aria-hidden="true">
           <div className="h-3 w-1/3 rounded-sm bg-muted" />
@@ -138,13 +162,14 @@ export function LoadingPanel(): ReactNode {
  */
 export function EmptyPanel({
   onRetry,
+  fixture,
   filtered,
-}: {
+}: Marked & {
   onRetry: () => void;
   filtered: boolean;
 }): ReactNode {
   return (
-    <Card className="border-border bg-card" data-testid="col5-empty">
+    <Card className="border-border bg-card" data-testid="col5-empty" {...fixtureAttr(fixture)}>
       <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
         <Inbox className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
         <p className={`min-w-0 break-words text-sm ${themedBody}`}>
@@ -162,7 +187,8 @@ export function EmptyPanel({
           size="sm"
           outlined
           onClick={onRetry}
-          title="重新向服务要一次委托清单"
+          disabled={Boolean(fixture)}
+          title={fixture ? "复现腿不发起真实请求，去掉 ?state= 即为真实读取" : "重新向服务要一次委托清单"}
           prefix={<RefreshCw className="h-3.5 w-3.5" />}
           data-testid="col5-empty-retry"
         >
@@ -176,16 +202,17 @@ export function EmptyPanel({
 export function ErrorPanel({
   failure,
   onRetry,
+  fixture,
   testId = "col5-error",
   title = "协作委托清单没能加载出来",
-}: {
+}: Marked & {
   failure: { sentence: string; requestId: string | null; technical: string | null };
   onRetry: () => void;
   testId?: string;
   title?: string;
 }): ReactNode {
   return (
-    <Card role="alert" className="border-destructive/40 bg-destructive/5" data-testid={testId}>
+    <Card role="alert" className="border-destructive/40 bg-destructive/5" data-testid={testId} {...fixtureAttr(fixture)}>
       <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-6">
         <div className="flex min-w-0 items-center gap-2 text-sm text-destructive">
           <TriangleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -198,7 +225,8 @@ export function ErrorPanel({
           size="sm"
           outlined
           onClick={onRetry}
-          title="再向服务要一次"
+          disabled={Boolean(fixture)}
+          title={fixture ? "复现腿不发起真实请求，去掉 ?state= 即为真实读取" : "再向服务要一次"}
           prefix={<RefreshCw className="h-3.5 w-3.5" />}
           data-testid={`${testId}-retry`}
         >
@@ -216,13 +244,14 @@ export function ErrorPanel({
  */
 export function DeniedPanel({
   requestId,
+  fixture,
   testId = "col5-denied",
-}: {
+}: Marked & {
   requestId: string | null;
   testId?: string;
 }): ReactNode {
   return (
-    <Card role="alert" aria-label="协作委托不可见" className="border-border bg-card" data-testid={testId}>
+    <Card role="alert" aria-label="协作委托不可见" className="border-border bg-card" data-testid={testId} {...fixtureAttr(fixture)}>
       <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
         <ShieldAlert className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
         <p className={`min-w-0 break-words text-sm ${themedBody}`}>现在看不到协作委托</p>

@@ -3,7 +3,8 @@
 // their eyes: the real route is the one asked, rows only ever come from an
 // answer, 401 reads as 需要登录 (never as a failure or a zero), 403 and 404
 // draw one identical body with nothing above it. R32 removed the `?state=`
-// repro leg: every panel here comes from the service's own answer.
+// repro leg; R39 restored it on purpose, so this file also holds the forced
+// legs to their bar: a marked panel painted from the URL, and zero requests.
 
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -557,6 +558,154 @@ describe("each delegation opens its own human detail", () => {
       const cell = document.querySelector(`[data-testid='col5-row-0-detail-${field}']`);
       expect(cell?.querySelector("dd")?.textContent).toBe("—");
       expect((cell?.getAttribute("title") ?? "").length).toBeGreaterThan(0);
+    }
+  });
+});
+
+/* ── R39 — the ?state= repro legs switch the CONTENT surface ─────────
+ *
+ * Restored after R32/R30 burned the leg, because QA has to be able to look at
+ * these four panels without breaking a service. The bar this block holds:
+ * the URL paints a different panel (not the same list with a badge on it),
+ * the mark sits on the forced legs only, and a forced leg asks nothing.
+ *
+ * Measured in this run, recorded rather than claimed (jsdom, one row on ready):
+ *   ready leg   [col5-table] panel 317 chars · body 509 chars · 0 marks
+ *   error leg   [col5-error] panel  45 chars · body 307 chars · 2 marks
+ *   (the empty/denied legs differ again: 105 and 135 panel chars)
+ * See docs/_artifacts/aud/DONE.md §R39 for the full four-state table.
+ */
+
+describe("R39 — the ?state= repro legs paint panels and ask for nothing", () => {
+  /** Any network attempt from a forced leg fails the test, loudly. */
+  const mustNotAsk = (): never => {
+    throw new Error("a repro leg must not reach the network");
+  };
+
+  const panelOf = (state: string): Element | null => document.querySelector(`[data-testid='col5-${state}']`);
+  const panelText = (state: string): string => panelOf(state)?.textContent ?? "";
+  const bodyLen = (): number => (document.body.textContent ?? "").length;
+  /** A panel reduced to its body: the mark and the request-id line come and go. */
+  const bare = (markup: string): string =>
+    markup
+      .replace(/ data-fixture="[^"]*"/g, "")
+      .replace(/<p\b[^>]*data-testid="col5-denied-request-id"[\s\S]*?<\/p>/g, "");
+
+  const STATES = ["loading", "empty", "error", "denied"] as const;
+
+  it.each(STATES)("?state=%s draws that panel, marked, with zero requests", async (state) => {
+    api.fetchJSON.mockImplementation(mustNotAsk);
+    await render(`/collab?state=${state}`);
+    await waitFor(() => panelOf(state) !== null, state);
+    expect(urls()).toHaveLength(0);
+    // The mark: the root and the panel, and nothing else on the page.
+    expect(document.querySelector("[data-testid='col5-page']")?.getAttribute("data-fixture")).toBe(state);
+    expect(panelOf(state)?.getAttribute("data-fixture")).toBe(state);
+    expect(document.querySelectorAll("[data-fixture]").length).toBe(2);
+    // The repro owns up to it on the surface.
+    const note = document.querySelector("[data-testid='col5-forced-note']")?.textContent ?? "";
+    expect(note).toContain(`?state=${state}`);
+    expect(note).toContain("没有向服务要过任何东西");
+    // It is a panel, not a painted list. The count line stays honest too: an
+    // empty answer counts zero, a leg that was never answered prints a dash.
+    expect(rowNodes()).toBe(0);
+    expect(document.querySelector("[data-testid='col5-table']")).toBeNull();
+    const counts = document.querySelector("[data-testid='col5-counts']")?.textContent ?? "";
+    expect(counts).toContain(state === "empty" ? "本页 0 条" : "本页 — 条");
+    // The control that would ask is disabled, with the reason on it.
+    const refresh = document.querySelector("[data-testid='col5-refresh']") as HTMLButtonElement | null;
+    expect(refresh?.disabled).toBe(true);
+    expect(refresh?.title).toContain("复现腿不发起真实请求");
+    // No path echo, no engineering language on any leg.
+    expect(text()).not.toMatch(/agent-api|\/api\/delegations|delegationId|dl_0|undefined|NaN/);
+  });
+
+  it("the four legs are four different panels, one at a time", async () => {
+    api.fetchJSON.mockImplementation(mustNotAsk);
+    const marks: string[] = [];
+    const bodies: string[] = [];
+    for (const state of STATES) {
+      await render(`/collab?state=${state}`);
+      await waitFor(() => panelOf(state) !== null, state);
+      for (const other of STATES) {
+        if (other !== state) expect(panelOf(other)).toBeNull();
+      }
+      // The content surface itself moves: different markup every leg. The
+      // loading skeleton carries no words, so it is measured by structure.
+      marks.push(panelOf(state)?.outerHTML ?? "");
+      // The three legs that owe a sentence really say different sentences.
+      if (state !== "loading") bodies.push(panelText(state));
+    }
+    expect(new Set(marks).size).toBe(STATES.length);
+    expect(new Set(bodies).size).toBe(bodies.length);
+    expect(bodies.every((line) => line.length > 0)).toBe(true);
+  });
+
+  it("the error leg shows the request-id slot and a retry, and is not the ready surface", async () => {
+    api.fetchJSON.mockImplementation(mustNotAsk);
+    await render("/collab?state=error");
+    await waitFor(() => panelOf("error") !== null, "error repro");
+    const errorPanel = panelText("error");
+    const errorBody = bodyLen();
+    expect(document.querySelector("[data-testid='col5-error-request-id']")).toBeTruthy();
+    const retry = document.querySelector("[data-testid='col5-error-retry']") as HTMLButtonElement | null;
+    expect(retry?.textContent).toContain("重试");
+    expect(retry?.disabled).toBe(true);
+
+    api.fetchJSON.mockImplementation(okList([DELEG_A]));
+    await render("/collab");
+    await waitFor(() => rowNodes() === 1, "ready rows");
+    const readyPanel = document.querySelector("[data-testid='col5-table']")?.textContent ?? "";
+    const readyBody = bodyLen();
+    expect(errorPanel).not.toBe(readyPanel);
+    expect(errorBody).not.toBe(readyBody);
+    expect([errorPanel.length, readyPanel.length, errorBody, readyBody].every((n) => n > 0)).toBe(true);
+  });
+
+  it("403 and 404 still draw one identical denied body, and the marked leg is that same body", async () => {
+    const deniedOnce = async (status: number): Promise<string> => {
+      api.fetchJSON.mockReset();
+      api.fetchJSON.mockImplementation(async (url: string) => {
+        throw new ApiError("no", { status, body: "{}", url, requestId: "col5-deny" });
+      });
+      await render("/collab");
+      await waitFor(() => panelOf("denied") !== null, "denied");
+      return panelOf("denied")?.outerHTML ?? "";
+    };
+    const forbidden = await deniedOnce(403);
+    expect(forbidden.length).toBeGreaterThan(0);
+    expect(await deniedOnce(404)).toBe(forbidden);
+
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(mustNotAsk);
+    await render("/collab?state=denied");
+    await waitFor(() => panelOf("denied") !== null, "denied repro");
+    expect(urls()).toHaveLength(0);
+    const repro = panelOf("denied")?.outerHTML ?? "";
+    expect(repro).toContain('data-fixture="denied"');
+    // Same panel, mark aside: the repro does not invent a different body.
+    expect(bare(repro)).toBe(bare(forbidden));
+  });
+
+  it("the ready leg carries no mark and keeps the real read", async () => {
+    api.fetchJSON.mockImplementation(okList([DELEG_A]));
+    await render("/collab");
+    await waitFor(() => rowNodes() === 1, "ready rows");
+    expect(document.querySelector("[data-fixture]")).toBeNull();
+    expect(document.querySelector("[data-testid='col5-forced-note']")).toBeNull();
+    expect(urls()[0]).toBe("/agent-api/api/delegations?limit=50");
+    expect(document.querySelector("[data-testid='col5-counts']")?.textContent).toContain("本页 1 条");
+  });
+
+  it("?state=ready and an unknown state are real reads, not repros", async () => {
+    for (const entry of ["/collab?state=ready", "/collab?state=whatever"]) {
+      api.fetchJSON.mockReset();
+      api.fetchJSON.mockImplementation(okList([DELEG_A]));
+      await render(entry);
+      await waitFor(() => rowNodes() === 1, `real read from ${entry}`);
+      expect(document.querySelector("[data-testid='col5-page']")?.hasAttribute("data-fixture")).toBe(false);
+      expect(document.querySelector("[data-fixture]")).toBeNull();
+      expect(urls().length).toBeGreaterThan(0);
     }
   });
 });

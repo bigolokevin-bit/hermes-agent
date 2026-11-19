@@ -17,11 +17,12 @@
  *
  * The filters are URL-owned (`?window=` / `?status=`): the link takes effect
  * because the read is asked again with that filter — not repainted client-
- * side from the previous answer. Fixture debt burn (R30): the `?state=`
- * repro leg is gone — every state comes from a real read, and a missing route
- * lands on the honest error/denied panels rather than on sample rows.
- * (list, detail and the employee-name side-read alike — the URL alone
- * decides what a repro shows).
+ * side from the previous answer. The `?state=` repro leg (R39, restored after
+ * R30 burned it) draws its panel from the URL, carries `data-fixture` plus the
+ * on-screen note, and asks nothing at all — list, detail and the employee-name
+ * side-read alike; the URL alone decides what a repro shows. Without `?state=`
+ * every state comes from a real read, and a missing route lands on the honest
+ * error/denied panels rather than on sample rows.
  *
  * The detail pane (deep link `?run=`) is read-only too: the event timeline
  * with 结果引用 (「未记录」 when the answer carried none), the cost badge in
@@ -53,6 +54,7 @@ import {
   EmptyPanel,
   ErrorPanel,
   LoadingPanel,
+  ReproNote,
   TechnicalDisclosure,
 } from "./states";
 import {
@@ -84,7 +86,7 @@ import {
   usd,
   type RunRow,
 } from "./runs";
-import { useRunsData } from "./useRunsData";
+import { forcedStateOf, useRunsData } from "./useRunsData";
 import { useRunDetail, type DetailOutcome } from "./useRunDetail";
 
 /** 「—」 with the reason in its title: a gap reads as a gap, never as a zero. */
@@ -396,6 +398,9 @@ export function RunsModulePage() {
   const navigate = useNavigate();
   const sinceKey = sinceKeyOf(params.get("window"));
   const status = statusFilterOf(params.get("status"));
+  // The QA handle. A forced leg paints its panel from the URL and asks the
+  // service nothing — not the list, not the detail, not the name side-read.
+  const forced = forcedStateOf(params.get("state"));
   // Deep link: `?run=` keeps working on refresh, and `/runs/<runId>` is read
   // from the path for the day the shell registers that route. The row anchors
   // point at `/runs/?...&run=<id>`, which is the same query behind the shape
@@ -407,13 +412,13 @@ export function RunsModulePage() {
     const decoded = (() => { try { return decodeURIComponent(m[1]); } catch { return m[1]; } })();
     return decoded.trim() || null;
   })();
-  const selected = params.get("run") ?? pathRun;
+  const selected = forced === null ? params.get("run") ?? pathRun : null;
   // Deep-link only: `?employee=` narrows the list through the accepted employeeId
   // parameter. No filter control exists for it, so no dead control is implied.
-  const employee = params.get("employee")?.trim() || null;
+  const employee = forced === null ? (params.get("employee")?.trim() || null) : null;
 
-  const data = useRunsData({ status, sinceKey, employeeId: employee });
-  const { phase, rows, cursor, answeredBy, unreadable, failure } = data;
+  const data = useRunsData(forced, { status, sinceKey, employeeId: employee });
+  const { phase, rows, cursor, answeredBy, unreadable, failure, forced: isForced } = data;
 
   const [readTick, setReadTick] = useState(0);
   const detail = useRunDetail(selected, readTick);
@@ -423,6 +428,7 @@ export function RunsModulePage() {
   // is a side-read for labels only: if it fails, the 8-character code stays as
   // the honest fallback and the run answer is untouched.
   useEffect(() => {
+    if (forced !== null) return;
     let alive = true;
     fetchJSON<unknown>("/agent-api/api/employees?limit=100")
       .then((body) => {
@@ -446,7 +452,9 @@ export function RunsModulePage() {
     return () => {
       alive = false;
     };
-  }, []);
+    // `forced` is read, not chased: a repro leg never asks, and the handle only
+    // changes when the URL does, which remounts the read anyway.
+  }, [forced]);
 
   // Filter changes replace the current entry: they are the same page, and a
   // history entry per keystroke would make the back button useless.
@@ -492,6 +500,8 @@ export function RunsModulePage() {
     data.reload();
   };
   const reloadDetail = () => setReadTick((n) => n + 1);
+  // On a repro leg every control that would ask says why it cannot.
+  const forcedTitle = isForced ? "复现腿不发起真实请求，去掉 ?state= 即为真实读取" : undefined;
 
   const failedCount = rows.filter((row) => row.status === "failed").length;
   const runningCount = rows.filter((row) => row.status === "running").length;
@@ -519,6 +529,7 @@ export function RunsModulePage() {
       className="flex min-w-0 w-full max-w-full flex-col gap-3"
       data-testid="run5-page"
       data-page="runs"
+      data-fixture={forced ?? undefined}
     >
       <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-2">
         <div className="min-w-0">
@@ -540,7 +551,7 @@ export function RunsModulePage() {
               data-testid="run5-filter-window"
               className="h-8 min-w-0 max-w-40 rounded-md border border-border bg-transparent px-2 text-sm"
               value={sinceKey}
-              title="换时间范围会重新向服务要一次数据"
+              title={isForced ? forcedTitle : "换时间范围会重新向服务要一次数据"}
               onChange={(event) => setParam("window", event.target.value)}
             >
               {SINCE_OPTIONS.map((option) => (
@@ -555,7 +566,7 @@ export function RunsModulePage() {
               data-testid="run5-filter-status"
               className="h-8 min-w-0 max-w-40 rounded-md border border-border bg-transparent px-2 text-sm"
               value={status ?? ""}
-              title="换状态会重新向服务要一次数据"
+              title={isForced ? forcedTitle : "换状态会重新向服务要一次数据"}
               onChange={(event) => setParam("status", event.target.value || null)}
             >
               <option value="">全部状态</option>
@@ -568,7 +579,8 @@ export function RunsModulePage() {
             size="sm"
             outlined
             onClick={reloadList}
-            disabled={phase === "loading"}
+            disabled={phase === "loading" || isForced}
+            title={forcedTitle ?? "重新向服务要一次运行记录"}
             data-testid="run5-refresh"
             prefix={phase === "loading" ? <Spinner className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" />}
           >
@@ -576,6 +588,8 @@ export function RunsModulePage() {
           </Button>
         </div>
       </div>
+
+      {forced !== null ? <ReproNote state={forced} /> : null}
 
       <p className="min-w-0 break-words text-xs text-muted-foreground" aria-live="polite" data-testid="run5-status">
         {statusLine}
@@ -711,18 +725,19 @@ export function RunsModulePage() {
         </Card>
       ) : null}
 
-      {phase === "loading" ? <LoadingPanel /> : null}
+      {phase === "loading" ? <LoadingPanel fixture={forced ?? undefined} /> : null}
       {phase === "empty" ? (
-        <EmptyPanel onRetry={reloadList} />
+        <EmptyPanel onRetry={reloadList} fixture={forced ?? undefined} />
       ) : null}
       {phase === "error" ? (
         <ErrorPanel
           failure={failure ?? { sentence: "读取运行记录时出了问题，请稍后重试。", requestId: null, technical: null }}
           onRetry={reloadList}
+          fixture={forced ?? undefined}
         />
       ) : null}
       {phase === "denied" ? (
-        <DeniedPanel requestId={failure?.requestId ?? null} />
+        <DeniedPanel requestId={failure?.requestId ?? null} fixture={forced ?? undefined} />
       ) : null}
       {phase === "ready" ? <ListRows rows={rows} names={names} hrefOf={hrefOf} /> : null}
 
