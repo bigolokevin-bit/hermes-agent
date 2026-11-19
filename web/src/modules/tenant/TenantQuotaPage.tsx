@@ -290,7 +290,7 @@ export function TenantQuotaPage() {
 
   if (forced === 'loading') {
     return (
-      <div className="ten4-page" data-testid="ten4-page" data-fixture="1">
+      <div className="ten4-page" data-testid="ten4-page">
         <header className="ten4-head">
           <div>
             <h1>租户与配额</h1>
@@ -307,7 +307,7 @@ export function TenantQuotaPage() {
 
   if (forced === 'error') {
     return (
-      <div className="ten4-page" data-testid="ten4-page" data-fixture="1">
+      <div className="ten4-page" data-testid="ten4-page">
         <header className="ten4-head">
           <div>
             <h1>租户与配额</h1>
@@ -329,7 +329,7 @@ export function TenantQuotaPage() {
 
   if (forced === 'empty') {
     return (
-      <div className="ten4-page" data-testid="ten4-page" data-fixture="1">
+      <div className="ten4-page" data-testid="ten4-page">
         <header className="ten4-head">
           <div>
             <h1>租户与配额</h1>

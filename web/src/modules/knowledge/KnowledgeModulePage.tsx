@@ -5,8 +5,8 @@
  * answered as 接入任务, document登记, the knowledge search read, the retrieval audit
  * records, the knowledge citation read, and the citations that recent console
  * sessions carry. Each makes ONE request and renders the answer it got. There is no
- * sample row, no invented count, and no `?state=` repro standing behind a
- * `data-fixture` badge: the four states come from the service, and a 403 and a 404
+ * sample row, no invented count, and no forced fixture badge: the four states
+ * come from the service, and a 403 and a 404
  * draw the same body on purpose. Technical values (raw ids, the GAP number, the full
  * 摘要) live in `title` attributes, never on screen.
  */
@@ -945,7 +945,7 @@ export default function KnowledgeModulePage() {
   const refresh = () => setNonce((value) => String(Number(value) + 1));
 
   return (
-    <div className="knw5-page" data-testid="knw5-page" data-fixture={forced ? "1" : undefined}>
+    <div className="knw5-page" data-testid="knw5-page" >
       <header className="knw5-head">
         <div className="knw5-title">
           <BookOpen className="h-5 w-5" aria-hidden />

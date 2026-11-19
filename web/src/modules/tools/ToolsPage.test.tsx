@@ -9,8 +9,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api-error";
 
-const api = vi.hoisted(() => ({ fetchJSON: vi.fn() }));
-vi.mock("@/lib/api", () => ({ fetchJSON: api.fetchJSON }));
+const api = vi.hoisted(() => ({ fetchJsonStrict: vi.fn() }));
+vi.mock("@/modules/models/fetchJson", () => ({ fetchJsonStrict: api.fetchJsonStrict }));
 
 import { ToolsPage } from "./ToolsPage";
 
@@ -41,7 +41,7 @@ async function render(entry: string): Promise<void> {
 
 const text = (): string => document.body.textContent ?? "";
 const rows = (): Element[] => [...document.querySelectorAll("[data-testid='tol5-row']")];
-const urls = (): string[] => api.fetchJSON.mock.calls.map((call) => String(call[0])).filter((url) => url !== "undefined");
+const urls = (): string[] => api.fetchJsonStrict.mock.calls.map((call) => String(call[0])).filter((url) => url !== "undefined");
 
 const TOOLSETS = [
   { name: "web", label: "Web Search & Scraping", enabled: true, configured: true, platform_label: "CLI", tools: ["web_search", "web_extract"] },
@@ -59,14 +59,15 @@ function answer(url?: string): Promise<unknown> {
   // Vitest's mock bookkeeping can invoke the implementation once without an
   // argument during teardown; that is not a page request.
   if (!url) return Promise.resolve({ servers: [] });
+  if (url.startsWith("/agent-api/")) return Promise.reject(new ApiError("missing", { status: 404, body: "{}", url }));
   if (url.includes("/api/tools/toolsets")) return Promise.resolve(TOOLSETS);
   if (url.includes("/api/mcp/servers")) return Promise.resolve(SERVERS);
   return Promise.reject(new ApiError("unknown", { status: 404, body: "{}", url }));
 }
 
 async function mount(handler = answer, entry = "/capabilities?tab=tools"): Promise<void> {
-  api.fetchJSON.mockReset();
-  api.fetchJSON.mockImplementation(handler);
+  api.fetchJsonStrict.mockReset();
+  api.fetchJsonStrict.mockImplementation(handler);
   await render(entry);
   await waitFor(() => !document.querySelector(".animate-pulse"), "settled");
 }
@@ -76,7 +77,7 @@ const failed = (status: number, url: string, requestId?: string) => (called?: st
   return Promise.reject(new ApiError("failed", { status, body: "{}", url, requestId }));
 };
 
-beforeEach(() => api.fetchJSON.mockReset());
+beforeEach(() => api.fetchJsonStrict.mockReset());
 afterEach(() => {
   act(() => root?.unmount());
   root = null;
@@ -84,9 +85,15 @@ afterEach(() => {
 });
 
 describe("real reads", () => {
-  it("asks both real routes through the authenticated fetch path", async () => {
+  it("asks the BFF routes first, then the same-origin fallback", async () => {
     await mount();
-    expect(urls()).toEqual(["/api/tools/toolsets", "/api/mcp/servers"]);
+    expect(urls().sort()).toEqual([
+      "/agent-api/api/mcp/servers",
+      "/agent-api/api/tools/toolsets",
+      "/api/mcp/servers",
+      "/api/tools/toolsets",
+    ]);
+
     expect(document.querySelector("[data-testid='tol5-page']")).toBeTruthy();
   });
 
@@ -100,10 +107,22 @@ describe("real reads", () => {
     const web = rows()[0]!;
     expect(web.querySelector("[data-testid='tol5-status']")?.textContent).toBe("启用");
     expect(web.querySelector("[data-testid='tol5-credential']")?.textContent).toContain("已配置");
-    expect(web.querySelector("[data-testid='tol5-last']")?.textContent).toContain("接口没有提供最近调用时间");
+    expect(web.querySelector("[data-testid='tol5-last']")?.textContent).toContain("最近调用：—");
+    expect(web.querySelector("[data-testid='tol5-last']")?.textContent).toContain("不表示从未调用");
     const kanban = rows()[2]!;
     expect(kanban.getAttribute("data-status")).toBe("disabled");
     expect(kanban.className).toContain("opacity-60");
+  });
+
+  it("renders an upstream last-call time as Beijing time to the minute", async () => {
+    await mount((url) =>
+      Promise.resolve(
+        (url ?? "").includes("/api/tools/toolsets")
+          ? [{ name: "web", label: "Web", enabled: true, configured: true, last_used_at: "2026-11-19T01:20:00Z", tools: ["web_search"] }]
+          : { servers: [] },
+      ),
+    );
+    expect(rows()[0]?.querySelector("[data-testid='tol5-last']")?.textContent).toContain("最近调用：2026-11-19 09:20");
   });
 
   it("keeps unknown states 待核实 instead of guessing 启用 or 停用", async () => {
@@ -152,6 +171,17 @@ describe("failures and gaps", () => {
     expect(document.querySelector("[data-testid='tol5-denied']")?.getAttribute("title")).toBe("GAP-04");
   });
 
+  it("treats a non-JSON SPA shell as not wired, never as a parser error", async () => {
+    await mount((url) => {
+      if (!url) return Promise.resolve({ servers: [] });
+      const status = url.startsWith("/agent-api/") ? 404 : 200;
+      return Promise.reject(new ApiError("不是数据", { status, body: "<!doctype html>", url }));
+    });
+    expect(document.querySelector("[data-testid='tol5-denied']")).toBeTruthy();
+    expect(text()).toContain("工具与 MCP 读口未接入");
+    expect(text()).not.toMatch(/Unexpected token|<!doctype|HTTP|\/api\//i);
+  });
+
   it("missing credentials never render secret-like config values", async () => {
     await mount((url) =>
       Promise.resolve(
@@ -191,13 +221,13 @@ describe("four states and repro legs", () => {
       await render(`/capabilities?tab=tools&state=${state}`);
       await waitFor(() => !document.querySelector(".animate-pulse") || state === "loading", `${state} painted`);
       expect(document.querySelector("[data-testid='tol5-page']")?.getAttribute("data-fixture")).toBe(state);
-      expect(api.fetchJSON).not.toHaveBeenCalled();
+      expect(api.fetchJsonStrict).not.toHaveBeenCalled();
     }
   });
 
   it("?state=ready is not reproducible and reads live", async () => {
     await mount(answer, "/capabilities?tab=tools&state=ready");
-    expect(api.fetchJSON).toHaveBeenCalled();
+    expect(api.fetchJsonStrict).toHaveBeenCalled();
     expect(document.querySelector("[data-testid='tol5-page']")?.hasAttribute("data-fixture")).toBe(false);
   });
 });

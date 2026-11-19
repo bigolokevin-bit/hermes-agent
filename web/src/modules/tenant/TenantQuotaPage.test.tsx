@@ -179,11 +179,10 @@ describe('TenantQuotaPage', () => {
     expect(runRow?.textContent).toContain('12');
   });
 
-  it('serves zero-fetch preview states with data-fixture', async () => {
+  it('serves zero-fetch preview states', async () => {
     await mount(() => Promise.resolve(EMPLOYEE_OK), '/tenant-quota?state=error');
     await waitFor(() => document.querySelector('[data-testid="ten4-error"]') !== null, 'forced error');
     expect(api.fetchJsonStrict).not.toHaveBeenCalled();
-    expect(document.querySelector('[data-testid="ten4-page"]')?.getAttribute('data-fixture')).toBe('1');
     expect(text()).toContain('预览状态');
   });
 
