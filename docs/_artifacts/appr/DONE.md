@@ -588,3 +588,15 @@ KPI 族：五卡 data-testid=ov6-kpi-<name> 统一在位+新增 data-duty-testid
 四态/零写入口=模块既有实现（gov 交付）：loading/empty/error（可复制 rid+重试）/gap（403≡404 同体「未接入」+原因，GAP 编号只进 title）；planned 按钮 data-planned+aria-disabled+title；本轮 SecurityModulePage.test 加 sec5-page DOM 唯一性锁（toHaveLength(1)，q 助手用 document 级查询的坑同修）。
 
 自证读数：①App.tsx 107/110/1605 + routes.ts 256/348/356（上列）②sec5-page 命中=1（新锁）；sec5 家族 40 个 testid（page/loading/empty/error/gap/retry/risk-* /mfa/keyring/session/secrets/planned-*/summary/refresh/copy/req…）③assert-ia html/react 两模式 exit 0，routes 51 / tabs 22 / tabsAll 23 / chatHosts 1 / modules 8 全不变 ④定向 security+audit+shell 16 files/195 passed exit 0；全量 129 files/1319 passed=基线绿。9122 停旧代次禁重建：活体 DOM 读数待下一代次复核，本轮以 jsdom 实测交付。
+
+## 员工列表深度（搜索/筛选真生效 + URL 保态，2026-11-20 03:1x，lane/console-appr）
+
+基线：fetch+merge origin/lane/hermes-console → tip=965cec5d（6c9db598 绿代次），porc=0。写域=web/src/modules/employees/**（App/shell/routes 零改动）。
+
+实现（EmployeesModulePage.tsx）：①URL 成唯一状态源——q/lifecycle 从 ?q=&lifecycle= 派生，搜索 300ms 防抖后写回 URL（replace），select 即写；刷新/回退/分享重开同屏（local↔URL 双向同步 effect）。②列改七列：员工｜短码｜状态｜部门（row.department 真字段，null→「—」+title「上游响应没有带部门信息」）｜最近活跃（updatedAt→北京时间到分，表头 title 注明口径；缺值「—」）｜知识｜月度预算；手机档堆叠 data-label，md 七列全 min-w-0 truncate，无横溢。③lifecycleLabel 未知态「未知」→「待核实」。④error rid 改 RequestIdCopy 可复制（req-copy），denied 403≡404 同体既有保持。⑤testid 族：旧名 employees-* 全部原样保留，新增 emp-l-list（ul）、emp-l-row-<id>（span.contents 包行）、emp-l-name-link-<id>（真 a[href=/employees/<id>] 可聚焦）、emp-l-search（label 外包 span.contents）、emp-l-filter-lifecycle（select 外包 span.contents）。
+
+活体 BFF 证据（9122=6c9db598，只读探测）：/api/employees?limit=3→200 n=3，row0 实字段含 department:null、updatedAt、enrichment{…}；lifecycleState=active→200 n=2（真过滤）；keyword=QA2→200 n=1；keyword=x→200 n=0（真实空，非报错）；BFF passthrough=(keyword,lifecycleState,limit,cursor,expand)（server.py:319-330，q 不在白名单=参数名以 keyword 上屏 URL 用 q 是前端层）。搜索命中口径=上游对姓名/岗位判定（前端不假过滤）。
+
+测试：新 EmployeesModulePage.test.tsx 6 用例（URL 重开=恰 1 条真查询带 keyword+lifecycleState、行族读数（href/掩码 217A91BA/待核实/部门—/13:52 BJT）、打字写 URL+再查、select 生效+重开保态、403≡404 同体不回显路径、500 人话+rid+重试）。坑记录：测试文件必须 vi.mock("@nous-research/ui") 替身（barrel 拉 .webp 资源 node 加载炸）且替身要透传 rest props（否则 Card data-testid 丢）；input 需 HTMLInputElement.prototype value setter 再 dispatch input（React 不认直改 .value）。
+
+验证：定向 employees 6 passed exit 0；tsc -p 本模块零红；assert-ia 两模式 exit 0（51/22/1/8）；全量 130 files/1336 passed（≥基线）。9122 禁重建：活体 DOM 读数待下代次，本轮 jsdom+真 BFF 参数探测双交付。
