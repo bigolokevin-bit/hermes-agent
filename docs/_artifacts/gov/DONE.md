@@ -1207,7 +1207,7 @@ GET /api/audit?action=credential.updated&limit=20 200 {"events":[]}
 - 高危表列：时间/类别/操作/对象/操作者/请求编号；`adm5-risk-copy` 复制完整编号；403 与 404 管理员名单同体，GAP 只进 `title`。
 - 只读：无新建/编辑/删除/授权按钮；复制与刷新除外。
 - 真机 DOM（Vite 5447 / Chrome 9247，未登录数据态按 gap/error 呈现）：1440 `body 1440/1440 page 1144/1144`；1280 `1280/1280 984/984`；375 `375/375 353/353`，`adm5-gap` 与 `adm5-risk-panel` 均存在，页面无横溢。
-- 定向 `npx vitest run src/modules/access` → **12 passed**；全量 `npx vitest run` → **123 files / 1254 passed**。
+- 定向 `npx vitest run src/modules/access` → **12 passed**；全量 `npx vitest run` → **124 files / 1236 passed**。
 - `tsc -b . --noEmit` 仍被基线既有 `src/modules/approvals/api.test.ts`、`src/pages/LoginPage.test.tsx` 类型错误阻断（非本写域）；本模块无新增类型错误。
 
  HEAD
