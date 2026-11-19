@@ -627,3 +627,11 @@ built /Users/kevin_studio/Projects/forks/console-gov/hermes_cli/web_dist/index.h
 
 - 无真实角色 200（无登录态）；401 只证明鉴权门存在，不能证明路由存在；BFF 源码无角色路由。
 - 角色范围/成员数/更新时间字段取决于未来上游契约；当前缺字段一律 `—` + 原因，不补 0。
+
+### ROL5 观察者复核修正
+
+- 首次复核 FAIL：1440/1280/375 页脚「权」与返回链「返」首字在 x=0 被裁切；375 第四列「更新时间」完全在屏外且没有滚动提示。
+- 修正 commit `da92c448 fix(console): roles edge padding and mobile table (role5)`：`.acc4-page` 增加 `4px 12px 32px` 内边距与 `overflow-x:hidden`；四个角色字段加 `data-label`；≤560px 角色表改为堆叠卡片（隐藏表头，表格/行/单元格 block，左侧 96px 标签位），不再依赖横向滚动。
+- 修正后 DOM：1440/1280 body 与 page 宽度精确等于视口，表格无横溢；375 body/page=375，表格容器 `scrollSW=349/scrollCW=349`、`overflowX=visible`，四字段堆叠可见。
+- 第二次观察者复核：**PASS 1440 / 1280 / 375**。页脚与返回链首字完整；375 四字段全部可见，`更新时间 2026-11-19 13:30` 在卡片内；无横向溢出。仅非阻塞的 2px 对齐差与 375 截图下方空白，无需改码。
+- 截图已覆盖：`docs/_artifacts/gov/shots/role5-1440.png`、`role5-1280.png`、`role5-375.png`。
