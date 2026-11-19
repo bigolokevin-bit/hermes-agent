@@ -259,3 +259,26 @@ describe("four states and repro legs", () => {
     expect(document.querySelector("[data-testid='tol5-page']")?.hasAttribute("data-fixture")).toBe(false);
   });
 });
+
+describe("local name search", () => {
+  it("filters the loaded rows by ?q= and reports the loaded-scope note without refetching", async () => {
+    await mount(answer, "/capabilities?tab=tools&q=%E7%BD%91%E9%A1%B5");
+    expect(rows().map((row) => row.textContent)).toHaveLength(2);
+    expect(text()).toContain("网页搜索");
+    expect(text()).toContain("网页内容提取");
+    expect(text()).not.toContain("创建看板");
+    expect(text()).toContain("仅在当前已加载 6 项内搜索");
+    expect(urls()).toHaveLength(6);
+  });
+
+  it("shows a no-match state with a clear button, then restores every row", async () => {
+    await mount(answer, "/capabilities?tab=tools&q=zzz");
+    const noMatch = document.querySelector("[data-testid='tl3-no-match']");
+    expect(noMatch?.textContent).toContain("没有匹配项");
+    const clear = document.querySelector<HTMLButtonElement>("[data-testid='tl3-clear']");
+    expect(clear).toBeTruthy();
+    await act(async () => clear?.click());
+    await waitFor(() => rows().length === 6, "rows restored");
+    expect(urls()).toHaveLength(6);
+  });
+});

@@ -1721,3 +1721,14 @@ built /private/tmp/health-r38/index.html
 - 验证：`npx vitest run src/modules/skills src/modules/tools` → **3 files / 34 tests passed**；全量 `npx vitest run` → **131 files / 1404 passed**；`tsc -b . --noEmit` → 仅基线 `employees/EmployeesModulePage.test.tsx(73,5) TS18047`，本域 0。
 - DOM（临时 harness，已删；Vite 5455 / Chrome 9257）：技能页 1440/1280/375 `vw=bodySW=bodyCW`，page 1408/1248/343，技能 `2 有源`、工具 `— 未取数`；切工具页后工具 `4 有源`，技能仍 `2 有源`（缓存不闪错值）。截图 `docs/_artifacts/gov/shots/cap4-counts-{1440,1280,375}.png`。
 - 边界：只改 `web/src/modules/{capabilities,skills,tools}/**` 与 DONE/截图；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并入 main、未重建 9122；无独立观察者。
+
+## R45 /capabilities skills/tools 名称搜索过滤（2026-11-20）
+
+- 基线：merge `bc94be67`（`origin/lane/hermes-console` f0419b0b，含 02a7385c）；未 reset，`8840bf29`（cap4 counts）保留。
+- 端点实测（9122，登录 cookie 只读、不打印）：`/agent-api/api/skills` → **200**（46 B，`items: []`）；加 `?q=zzz` / `?query=zzz` / `?name=zzz` 均为 **200** 且载荷不随参数变化，判定服务端不接受名称过滤。`/agent-api/api/tools` → **404**；`/agent-api/api/tools?q=zzz` → **404**；同源 `/api/tools/toolsets?q=zzz` → **200 text/html**（SPA 外壳，非 JSON）。
+- 实现：因后端不吃检索参数，采用**当前已加载行本地过滤**。新增 `web/src/modules/capabilities/search.tsx`（`cap5-search` 输入、`cap5-clear` 清空、`cap5-scope-note` 明写「仅在当前已加载 N 项内搜索」，不冒充服务端过滤）。检索词写 `?q=`，刷新/切 tab 可复现；过滤不触发额外请求。
+- 技能页：按技能名过滤 `skl4-table` 行；无匹配显示 `skl4-no-match`「没有匹配项」+ `skl4-clear`；计数条改用可见行数（`cap4` 同源口径，0 行显 0 + 有源（空），不回退成 `—`/假 0）。
+- 工具页：按工具名过滤 tools/MCP 行；无匹配显示 `tl3-no-match`（说明当前已加载项数）+ `tl3-clear`；计数条改用可见行数；分区计数随过滤结果收敛。
+- 验证：`npx vitest run src/modules/tools src/modules/skills` → **3 files / 38 tests passed**（tools 25 / skills 13）；全量 `npx vitest run` → **131 files / 1408 passed**；`tsc -b . --noEmit` → 仅基线 `employees/EmployeesModulePage.test.tsx(73,5) TS18047`，本域 0。
+- DOM（临时 harness，已删；Vite 5456 / Chrome 9258）：1440/1280/375 所有用例 `vw=bodySW=bodyCW`、page 宽等于视口。技能 `?q=资料`：1 行、计数 `技能1有源`、范围注 `仅在当前已加载 2 项内搜索`；`q=zzz`：0 行、`技能0有源（空）`、`没有匹配项`+清空。工具 `?q=网页`：2 行、`工具2有源`、范围注 4 项；`q=zzz`：0 行、`工具0有源（空）`、无匹配+清空。搜索全程请求数不增。
+- 边界：只改 `web/src/modules/{capabilities,skills,tools}/**` 与 DONE；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并入 main、未重建 9122；无独立观察者。

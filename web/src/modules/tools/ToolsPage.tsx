@@ -29,6 +29,7 @@ import {
 } from "./tools";
 import { forcedStateOf, useToolsData } from "./useToolsData";
 import { CapabilityCounts, publishCapabilityCount } from "../capabilities/counts";
+import { CapabilitySearch } from "../capabilities/search";
 import "./tools.css";
 
 
@@ -176,10 +177,19 @@ export function ToolsPage(): ReactNode {
   const forced = forcedStateOf(params.get("state"));
   const tools = useToolsData(forced);
   const { phase, rows } = tools;
-  const disabled = rows.filter((row) => row.status === "disabled").length;
-  const unknown = rows.filter((row) => row.status === "unknown").length;
-  const toolRows = rows.filter((row) => row.source === "toolset");
-  const mcpRows = rows.filter((row) => row.source === "mcp");
+  const q = (params.get("q") ?? "").trim();
+  const needle = q.toLowerCase();
+  const visibleRows = needle ? rows.filter((row) => row.name.toLowerCase().includes(needle)) : rows;
+  const disabled = visibleRows.filter((row) => row.status === "disabled").length;
+  const unknown = visibleRows.filter((row) => row.status === "unknown").length;
+  const toolRows = visibleRows.filter((row) => row.source === "toolset");
+  const mcpRows = visibleRows.filter((row) => row.source === "mcp");
+  const setQ = (next: string) => {
+    const search = new URLSearchParams(params);
+    if (next) search.set("q", next);
+    else search.delete("q");
+    setParams(search, { replace: true });
+  };
   useEffect(() => {
     if (forced !== null || phase === "loading") return;
     if (phase === "ready") {
@@ -193,8 +203,8 @@ export function ToolsPage(): ReactNode {
         return;
       }
       publishCapabilityCount("tools", {
-        value: rows.length,
-        source: rows.length ? "ready" : "empty",
+        value: visibleRows.length,
+        source: visibleRows.length ? "ready" : "empty",
         reason: null,
         gap: null,
       });
@@ -210,7 +220,7 @@ export function ToolsPage(): ReactNode {
       reason: tools.failure?.sentence ?? "工具读口这次没有返回可用的计数。",
       gap: phase === "denied" ? GAP : null,
     });
-  }, [forced, phase, rows.length, tools.failure?.sentence, tools.issues.length]);
+  }, [forced, phase, visibleRows.length, tools.failure?.sentence, tools.issues.length]);
   const retry = () => {
     if (forced !== null) {
       const next = new URLSearchParams(params);
@@ -248,6 +258,22 @@ export function ToolsPage(): ReactNode {
             </p>
             <Button size="sm" outlined onClick={retry} prefix={<RefreshCw className="h-3.5 w-3.5" />} data-testid="tol5-retry">
               重新读取
+            </Button>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (q && visibleRows.length === 0) {
+      return (
+        <Card className="border-border bg-card" data-testid="tl3-no-match">
+          <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-8 text-center">
+            <p className={`min-w-0 break-words text-sm ${themedBody}`}>没有匹配项</p>
+            <p className="max-w-prose break-words text-xs text-muted-foreground">
+              当前已加载的 {rows.length} 项里没有名称包含「{q}」的条目。
+            </p>
+            <Button size="sm" outlined onClick={() => setQ("")} data-testid="tl3-clear">
+              清空搜索
             </Button>
           </CardContent>
         </Card>
@@ -353,6 +379,10 @@ export function ToolsPage(): ReactNode {
                 ? "读取成功，清单是空的"
                 : "这次读取没有成功"}
       </p>
+
+      {phase === "ready" ? (
+        <CapabilitySearch value={q} total={rows.length} onChange={setQ} />
+      ) : null}
 
       {phase === "ready" ? (
         <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="tol5-counts">

@@ -7,6 +7,7 @@
 // only in a tooltip. No raw field name or HTTP status reaches the page.
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
+import { useSearchParams } from "react-router";
 
 import { Badge, Button, Card, CardContent } from "@nous-research/ui";
 import { fetchJsonStrict } from "@/modules/models/fetchJson";
@@ -15,6 +16,7 @@ import { copyTextToClipboard } from "@/lib/clipboard";
 import { currentFixtureRid, currentFixtureState, fixtureView, type FixtureState } from "../../shell/fixtures";
 import { SKILLS_GAP, formatBeijingTime, readSkills, type SkillRow } from "./skills";
 import { CapabilityCounts, publishCapabilityCount } from "../capabilities/counts";
+import { CapabilitySearch } from "../capabilities/search";
 import "./skills.css";
 
 type State =
@@ -99,6 +101,8 @@ function Cell({ value, reason }: { value: string | null; reason: string }) {
 }
 
 export function SkillsPage() {
+  const [sp, setSp] = useSearchParams();
+  const q = (sp.get("q") ?? "").trim();
   const [state, setState] = useState<State>({ k: "loading" });
   const [attempt, setAttempt] = useState(0);
   const fixture = currentFixtureState();
@@ -143,10 +147,29 @@ export function SkillsPage() {
     error: () => forcedState("error", currentFixtureRid()),
     ready: () => null,
   }) ?? state;
+  const visibleRows = page.k === "ready" && q
+    ? page.rows.filter((row) => row.name.toLocaleLowerCase().includes(q.toLocaleLowerCase()))
+    : page.k === "ready" ? page.rows : [];
+  const setQ = (next: string) => {
+    const params = new URLSearchParams(window.location.search);
+    if (next) params.set("q", next); else params.delete("q");
+    setSp(params, { replace: true });
+  };
+
+  useEffect(() => {
+    if (page.k !== "ready") return;
+    publishCapabilityCount("skills", {
+      value: visibleRows.length,
+      source: visibleRows.length ? "ready" : "empty",
+      reason: null,
+      gap: null,
+    });
+  }, [page.k, visibleRows.length]);
 
   return (
     <section className="skl4-page" data-testid="skl4-page" data-fixture={fixture ?? undefined}>
       <CapabilityCounts />
+      {page.k === "ready" ? <CapabilitySearch value={q} total={page.rows.length} onChange={setQ} /> : null}
       <header className="skl4-head">
         <div className="min-w-0">
           <h1>技能</h1>
@@ -202,6 +225,12 @@ export function SkillsPage() {
         <Card>
           <CardContent className="p-0">
             <p className="skl4-source" data-testid="skl4-source">来源：技能台账 · 读取于 {page.asOf ?? "—（未提供读取时刻）"}</p>
+            {q && visibleRows.length === 0 ? (
+              <div className="cap5-no-match" data-testid="skl4-no-match">
+                没有匹配项
+                <button type="button" className="cap5-clear" onClick={() => setQ("")} data-testid="skl4-clear">清空搜索</button>
+              </div>
+            ) : (
             <div className="skl4-scroll">
               <table className="skl4-table" data-testid="skl4-table">
                 <thead>
@@ -214,7 +243,7 @@ export function SkillsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {page.rows.map((row) => (
+                  {visibleRows.map((row) => (
                     <tr key={row.id} data-testid={`skl4-row-${row.id}`} title={row.id}>
                       <td>
                         <span className="skl4-cell">
@@ -232,6 +261,7 @@ export function SkillsPage() {
                 </tbody>
               </table>
             </div>
+            )}
             <p className="skl4-note skl4-foot">列表未提供的来源、启用态与最近更新一律显示「—」，不从前端补造；无法归类的状态显示「待核实」。</p>
           </CardContent>
         </Card>

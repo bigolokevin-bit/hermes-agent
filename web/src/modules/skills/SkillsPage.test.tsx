@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const fetchJsonStrict = vi.fn();
@@ -30,7 +31,8 @@ beforeEach(() => {
 afterEach(() => { act(() => root.unmount()); container.remove(); });
 
 async function render() {
-  await act(async () => { root.render(<SkillsPage />); });
+  const entry = window.location.pathname + window.location.search;
+  await act(async () => { root.render(<MemoryRouter initialEntries={[entry]}><SkillsPage /></MemoryRouter>); });
   await act(async () => {});
 }
 
@@ -133,7 +135,7 @@ describe("SkillsPage", () => {
 
   it("previews the error fixture without fetching and marks data-fixture", async () => {
     window.history.replaceState({}, "", "/?state=error&rid=abc12345");
-    await act(async () => { root.render(<SkillsPage />); });
+    await act(async () => { root.render(<MemoryRouter initialEntries={[window.location.pathname + window.location.search]}><SkillsPage /></MemoryRouter>); });
     await act(async () => {});
     expect(fetchJsonStrict).not.toHaveBeenCalled();
     expect(container.querySelector('[data-testid="skl4-page"]')?.getAttribute("data-fixture")).toBe("error");
@@ -146,7 +148,7 @@ describe("SkillsPage", () => {
   it("switches loading and empty preview content without fetching", async () => {
     for (const state of ["loading", "empty"] as const) {
       window.history.replaceState({}, "", `/?state=${state}`);
-      await act(async () => { root.render(<SkillsPage />); });
+      await act(async () => { root.render(<MemoryRouter initialEntries={[window.location.pathname + window.location.search]}><SkillsPage /></MemoryRouter>); });
       await act(async () => {});
       expect(fetchJsonStrict).not.toHaveBeenCalled();
       expect(container.querySelector(`[data-testid="skl4-${state}"]`)).toBeTruthy();
@@ -159,7 +161,7 @@ describe("SkillsPage", () => {
   it("leaves the error preview and retries the live read", async () => {
     window.history.replaceState({}, "", "/?state=error&rid=abc12345");
     fetchJsonStrict.mockResolvedValue({ items: [{ skillId: "s2", name: "恢复后的技能", status: "active" }] });
-    await act(async () => { root.render(<SkillsPage />); });
+    await act(async () => { root.render(<MemoryRouter initialEntries={[window.location.pathname + window.location.search]}><SkillsPage /></MemoryRouter>); });
     await act(async () => {});
     expect(fetchJsonStrict).not.toHaveBeenCalled();
     const retry = container.querySelector('[data-testid="skl4-retry"]') as HTMLButtonElement | null;
@@ -169,6 +171,31 @@ describe("SkillsPage", () => {
     expect(fetchJsonStrict).toHaveBeenCalledWith("/agent-api/api/skills");
     expect(text()).toContain("恢复后的技能");
     expect(container.querySelector('[data-testid="skl4-error"]')).toBeNull();
+  });
+
+  it("filters the loaded rows locally and writes the query into the URL", async () => {
+    window.history.replaceState({}, "", "/capabilities?tab=skills&q=资料");
+    fetchJsonStrict.mockResolvedValue({
+      asOf: "2026-11-19T06:00:00Z",
+      items: [
+        { skillId: "s1", name: "资料整理", scope: "tenant-shared" },
+        { skillId: "s2", name: "质检", scope: "unused" },
+      ],
+    });
+    await render();
+    expect(container.querySelectorAll("[data-testid^='skl4-row-']")).toHaveLength(1);
+    expect(text()).toContain("资料整理");
+    expect(text()).not.toContain("质检");
+    expect(container.querySelector("[data-testid='cap5-scope-note']")?.textContent).toContain("仅在当前已加载 2 项内搜索");
+    expect(container.querySelector("[data-testid='cap4-count-skills']")?.textContent).toContain("1");
+  });
+
+  it("shows a no-match state with a clear exit", async () => {
+    window.history.replaceState({}, "", "/capabilities?tab=skills&q=不存在");
+    fetchJsonStrict.mockResolvedValue({ items: [{ skillId: "s1", name: "资料整理" }] });
+    await render();
+    expect(text()).toContain("没有匹配项");
+    expect(container.querySelector("[data-testid='skl4-clear']")).toBeTruthy();
   });
 
   it("leaks no engineering names or raw ids into the page", async () => {
