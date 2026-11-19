@@ -558,3 +558,7 @@ KPI 族：五卡 data-testid=ov6-kpi-<name> 统一在位+新增 data-duty-testid
 实现（web/src/modules/employee-detail/EmployeeDetailModulePage.tsx）：mapShellZone 新增 chat（仅 ?zone=chat 深链可达，导航条保持五区不动）；ChatZone=useResourceList 只读摘要：会话标题/最后消息时间 beijing 到分/消息条数/状态人话（active|open→进行中，archived|closed|ended→已结束，未知→待核实，原值进 title）；四态齐（ed5-zone-chat-loading|error(可复制 rid+重试)|denied(403≡404 同体 DENIED_COPY，不回显路径)|empty=「该员工的对话记录尚未接入」+原因，GAP 引用只进悬停 title）；ready 行 ed5-zone-chat-row。**零新 chat host（断言 [data-chat-host]=null）、零写入口、无消息流**。testid 全在 ed5-zone-chat-* 家族。
 
 测试：4 新用例（真行渲染+五区不破、空态诚实句、error rid+重试、403≡404 同体不回显路径）。定向 employee-detail 22 passed；全量见回执（基线 50119b5e 上另车道已增用例，以本轮实跑为准）。9122 代次禁重建，活体行数据待含会话种子代次复测。
+
+## R34 追加两项（2026-11-20 01:5x，一笔 commit）
+① /duty 显式归一：注册于 shell/routes.ts 新 PATH_ALIASES 表（{"/duty":"/overview"}），App.tsx 既有 <Route path="/duty"><Navigate to="/overview" replace/></Route>（R32③）即其消费形态——**有意归一（值班台语义已并入 /overview 的 duty tab），不是未命中后的 SPA 兜底**。不进 REDIRECTS 数据行因附录 A 计数法锁 redirects=24/24（routes.ts 运行自检），前后台数不变：assert-ia html 与 --source=react 均 exit 0，routes=51 tabs=22（chatHosts=1 modules=8 未动）。侧栏值班台已指 /overview（console.tsx:273 to="/overview"，未改）。
+② asOf 时区文案：ov6-asof 取不到值时=「采集时刻 —（北京时间）」（真分支+forced 三分支同改）；八卡 ov6-<card>-stamp=「数据截至 —（北京时间） · 来源 …」；有值分支保持原「采集时刻 北京时间 X」形制。NC① 判据（文本含北京时间）现两分支均满足。验证：shell+duty 定向 8 files/88 passed。
