@@ -48,7 +48,7 @@ import type { FailureCopy } from "./copy";
 import type { VerifyFailure } from "./copy";
 import { eventTypeChoices } from "./model";
 import type { ListFilters } from "./api";
-import { downloadCsv, exportName } from "./export";
+import { downloadCsv, exportName } from "./csv";
 import {
   FILTER_WINDOW_CHOICES,
   beijingInputValue,
