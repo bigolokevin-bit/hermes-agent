@@ -41,7 +41,7 @@ function forcedStateOf(raw: string | null): ForcedState {
 }
 
 export function ApprovalsPendingModulePage(): ReactNode {
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const forced = forcedStateOf(params.get("state"));
 
   const [selected, setSelected] = useState<string | null>(() => params.get("id"));
@@ -58,13 +58,21 @@ export function ApprovalsPendingModulePage(): ReactNode {
 
   const pendingCount = useMemo(() => list.rows.filter((row) => row.status.pending).length, [list.rows]);
 
-  const openRow = useCallback((row: ApprovalRow) => {
-    setRefused(null);
-    setComment("");
-    setConfirming(null);
-    setUnaddressable(row.rawId === null);
-    setSelected(row.rawId);
-  }, []);
+  const openRow = useCallback(
+    (row: ApprovalRow) => {
+      setRefused(null);
+      setComment("");
+      setConfirming(null);
+      setUnaddressable(row.rawId === null);
+      setSelected(row.rawId);
+      // R17 apd5 item 1: selection lives in the URL, so refresh keeps it open.
+      const draft = new URLSearchParams(params);
+      if (row.rawId) draft.set("id", row.rawId);
+      else draft.delete("id");
+      setParams(draft, { replace: true });
+    },
+    [params, setParams],
+  );
 
   const send = useCallback(
     async (verdict: Verdict) => {

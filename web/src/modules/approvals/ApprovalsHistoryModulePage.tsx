@@ -56,7 +56,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
   const activeValue = status === null ? "all" : status;
 
   const list = useApprovalsList(status, forced);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(() => params.get("id"));
   const [unaddressable, setUnaddressable] = useState(false);
   const detail = useApprovalDetail(selected, forced);
 
@@ -73,10 +73,19 @@ export function ApprovalsHistoryModulePage(): ReactNode {
     [params, setParams],
   );
 
-  const openRow = useCallback((row: { rawId: string | null }) => {
-    setUnaddressable(row.rawId === null);
-    setSelected(row.rawId);
-  }, []);
+  const openRow = useCallback(
+    (row: { rawId: string | null }) => {
+      setUnaddressable(row.rawId === null);
+      setSelected(row.rawId);
+      // R17 apd5 item 1: the selection lives in the URL too, so a refresh or
+      // a shared link reopens the same detail.
+      const draft = new URLSearchParams(params);
+      if (row.rawId) draft.set("id", row.rawId);
+      else draft.delete("id");
+      setParams(draft, { replace: true });
+    },
+    [params, setParams],
+  );
 
   const summary = useMemo(() => {
     if (status === null) return ALL_RAW;

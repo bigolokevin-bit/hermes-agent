@@ -136,7 +136,8 @@ function personView(
       .filter(Boolean)
       .pop();
     const clean = (tail ?? "").replace(/[^0-9A-Za-z]/g, "");
-    if (clean.length >= 4) return { label: `${noun} · ${clean.slice(-4)}`, raw: handle };
+    // R15 apd5: eight-digit code, matching the people-directory standard.
+    if (clean.length >= 4) return { label: `${noun} · ${clean.slice(0, 8).toUpperCase()}`, raw: handle };
   }
   return { label: "未指派", raw: rawId };
 }
@@ -177,7 +178,8 @@ function maskHandle(handle: string, noun: string): string {
   if (!isMachineHandle(handle)) return handle;
   const tail = handle.split(/[:_/@#-]/).filter(Boolean).pop() ?? "";
   const clean = tail.replace(/[^0-9A-Za-z]/g, "");
-  return clean.length >= 4 ? `${noun} · ${clean.slice(-4)}` : noun;
+  // R15 apd5: eight-digit code so two people never collapse onto one tail.
+  return clean.length >= 4 ? `${noun} · ${clean.slice(0, 8).toUpperCase()}` : noun;
 }
 
 // ── Status vocabulary ────────────────────────────────────────────────
@@ -315,9 +317,10 @@ export function riskView(raw: string | null): { label: string; tone: Tone; raw: 
 }
 
 const VERDICT_LABEL: Record<string, string> = {
-  approve: "批准",
-  approved: "批准",
-  accept: "批准",
+  // R15 apd5: the PRD §4.2 verdict words are 通过 / 驳回 / 要求修改.
+  approve: "通过",
+  approved: "通过",
+  accept: "通过",
   reject: "驳回",
   rejected: "驳回",
   deny: "驳回",
@@ -458,6 +461,11 @@ export interface ApprovalDetail {
   decisions: DecisionEntry[];
   /** The ticket that replaced this one, when the service names it. */
   supersededBy: string | null;
+  /** R15 apd5 — PRD §4.2 frozen fields; absent values render 「—」 with a reason. */
+  actionHash: string | null;
+  recipient: Person;
+  dataScope: string | null;
+  requestId: string | null;
   /** Raw technical lines for the 「详情」 disclosure only. */
   technical: string[];
 }
@@ -500,6 +508,11 @@ export function approvalDetailFrom(payload: unknown): ApprovalDetail | null {
   if (digest) technical.push(`参数摘要：${digest}`);
   technical.push(`状态原值：${status.raw ?? "未提供"}`);
   if (rawId) technical.push(`单据标识：${rawId}`);
+  // R15 apd5: PRD §4.2 frozen fields, extracted honestly.
+  const actionHash = pickText(body, ["actionHash", "action_hash"]);
+  const requestId = pickText(body, ["requestId", "request_id", "consoleRequestId"]);
+  if (actionHash) technical.push(`操作指纹：${actionHash}`);
+  if (requestId) technical.push(`请求编号：${requestId}`);
   return {
     rawId,
     title: title ?? "未写明事由的申请",
@@ -517,6 +530,15 @@ export function approvalDetailFrom(payload: unknown): ApprovalDetail | null {
     reason: humanSentence(pickText(body, REASON_KEYS)),
     decisions: decisionEntries(body),
     supersededBy: pickText(body, ["supersededBy", "superseded_by", "replacedBy"]),
+    actionHash,
+    recipient: personView(
+      body,
+      ["recipientName", "receiverName", "targetName"],
+      ["recipient", "recipientId", "recipient_id", "receiver", "target", "to"],
+      "成员",
+    ),
+    dataScope: pickText(body, ["dataScope", "data_scope"]),
+    requestId,
     technical,
   };
 }

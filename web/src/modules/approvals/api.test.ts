@@ -191,7 +191,7 @@ describe("read model", () => {
     expect(detail.approvers.labels).toEqual(["郑涛"]);
     // `human:2` is one character short of anything worth masking, so it reads
     // as the bare role rather than as a handle or a made-up name.
-    expect(detail.decisions[0]).toMatchObject({ who: "审批人", verdict: "批准", at: "2026-11-18 11:00" });
+    expect(detail.decisions[0]).toMatchObject({ who: "审批人", verdict: "通过", at: "2026-11-18 11:00" });
     expect(detail.technical.join(" ")).toContain("th_0123456789abcdef");
     expect(JSON.stringify(detail).toLowerCase()).not.toContain("run_id");
   });
