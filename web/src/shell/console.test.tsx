@@ -19,6 +19,7 @@ import {
   ConsoleModulePage,
   ConsoleNav,
 } from "@/shell/console";
+import { CONSOLE_MODULES } from "@/shell/routes";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -164,6 +165,39 @@ describe("ConsoleModulePage pane contract", () => {
       document.body.appendChild(container);
       root = createRoot(container);
     }
+  });
+
+  // T42 item 2: the forced-state legs must be reproducible on ALL eight
+  // console tabs, and item 1's honest exits (retry + back, or back alone)
+  // must be present in every forced pane.
+  it("?state= is reproducible on all 8 console modules with honest exits", () => {
+    for (const { module } of CONSOLE_MODULES) {
+      renderAt(<ConsoleModulePage module={module} />, `/${module}?state=error`);
+      const pane = container.querySelector(".pane");
+      expect(pane?.getAttribute("data-state")).toBe("error");
+      expect(pane?.querySelector("[data-testid='state-retry']")).not.toBeNull();
+      expect(pane?.querySelector("[data-testid='state-back']")).not.toBeNull();
+      // no fabricated trace ids in forced legs — honest no-trace copy instead
+      expect(pane?.textContent).toContain("本次请求未记录编号");
+      act(() => root.unmount());
+      container = document.createElement("div");
+      document.body.appendChild(container);
+      root = createRoot(container);
+    }
+    // loading/empty legs carry the back exit but never a fake retry
+    renderAt(<ConsoleModulePage module="overview" />, "/overview?state=loading");
+    let pane = container.querySelector(".pane");
+    expect(pane?.getAttribute("data-state")).toBe("loading");
+    expect(pane?.querySelector("[data-testid='state-back']")).not.toBeNull();
+    expect(pane?.querySelector("[data-testid='state-retry']")).toBeNull();
+    act(() => root.unmount());
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+    renderAt(<ConsoleModulePage module="work" />, "/work?state=denied");
+    pane = container.querySelector(".pane");
+    expect(pane?.getAttribute("data-state")).toBe("denied");
+    expect(pane?.querySelector("[data-testid='state-retry']")).not.toBeNull();
   });
 });
 

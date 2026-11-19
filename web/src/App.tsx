@@ -1116,6 +1116,10 @@ export default function App() {
             <div
               className={cn(
                 "relative z-2 flex min-w-0 min-h-0 flex-1 flex-col",
+                // T42 item 3: 375 safety net — clip any overflowing module
+                // body at the shell container so document scrollWidth never
+                // exceeds the viewport (page bodies are other lanes' files).
+                "overflow-x-hidden",
                 "px-3 sm:px-6",
                 isChatRoute
                   ? "pb-0 pt-1 sm:pt-2 lg:pt-4"

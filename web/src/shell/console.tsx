@@ -136,6 +136,36 @@ const shellStyle = {
  * replaces it everywhere (真实 trace-id 由数据层透出时另行渲染). */
 const NO_TRACE_COPY = "本次请求未记录编号，可复制时间与操作路径反馈";
 
+/* T42 item 1: every forced-state block must offer a real exit — 重试 reloads
+ * the page, 返回 walks the history back. Native buttons keep the shell's
+ * zero-UI-import idiom (R7.1 discipline). */
+function StateActions({ retry }: { retry: boolean }) {
+  return (
+    <span className="mt-2 flex flex-wrap items-center justify-center gap-2">
+      {retry ? (
+        <button
+          type="button"
+          data-testid="state-retry"
+          onClick={() => window.location.reload()}
+          className="rounded-sm px-3 py-1 text-xs"
+          style={{ background: "var(--panel)", border: "1px solid var(--line)", color: "var(--fg)" }}
+        >
+          重试
+        </button>
+      ) : null}
+      <button
+        type="button"
+        data-testid="state-back"
+        onClick={() => window.history.back()}
+        className="rounded-sm px-3 py-1 text-xs"
+        style={{ background: "var(--panel)", border: "1px solid var(--line)", color: "var(--fg)" }}
+      >
+        返回
+      </button>
+    </span>
+  );
+}
+
 function StateBlock({ state }: { state: PaneForced }) {
   const frame = {
     className: "flex min-h-[12rem] flex-col items-center justify-center gap-2 p-5 text-sm",
@@ -148,6 +178,7 @@ function StateBlock({ state }: { state: PaneForced }) {
         <span className="text-xs" style={{ color: "var(--fg-3)" }}>
           强制态：?state=loading
         </span>
+        <StateActions retry={false} />
       </div>
     );
   }
@@ -158,6 +189,7 @@ function StateBlock({ state }: { state: PaneForced }) {
         <span className="text-xs" style={{ color: "var(--fg-3)" }}>
           强制态：?state=empty（不伪造样例数据）
         </span>
+        <StateActions retry={false} />
       </div>
     );
   }
@@ -171,6 +203,7 @@ function StateBlock({ state }: { state: PaneForced }) {
         <span className="text-xs" style={{ color: "var(--fg-3)" }}>
           强制态：?state=error
         </span>
+        <StateActions retry />
       </div>
     );
   }
@@ -184,6 +217,7 @@ function StateBlock({ state }: { state: PaneForced }) {
       <span className="text-xs" style={{ color: "var(--fg-3)" }}>
         强制态：?state=denied
       </span>
+      <StateActions retry />
     </div>
   );
 }
@@ -207,6 +241,7 @@ function AuditorDeniedBlock() {
       <span className="text-xs" style={{ color: "var(--fg-3)" }}>
         审计员（roView）不可进入 defaults/models 的写入面；退出视角请移除 ?roview=1。
       </span>
+      <StateActions retry={false} />
     </div>
   );
 }
