@@ -843,20 +843,20 @@ $ npx vitest run
  Test Files  118 passed (118)
       Tests  1160 passed (1160)
 
-$ PATH="/opt/homebrew/bin:$PATH" pnpm --filter web build
+$ PATH="/opt/homebrew/bin:$PATH" node scripts/build/web.mjs --source . --out /tmp/r17-build --icons .
 BUILD_EXIT=0
-built .../hermes_cli/web_dist/index.html
+built /private/tmp/r17-build/index.html
 ```
 
 ### DOM 读数（Chrome CDP，临时 harness 已删除）
 
 ```text
-1440x900 vw=1440 bodySW=1440 bodyCW=1440 pageSW=1442 pageCW=1440 asOf=yes gapVisible=false unit=yes
-1280x800 vw=1280 bodySW=1280 bodyCW=1280 pageSW=1282 pageCW=1280 asOf=yes gapVisible=false unit=yes
-375x812  vw=375  bodySW=375  bodyCW=375  pageSW=377  pageCW=375 asOf=yes gapVisible=false unit=yes
+1440x900 vw=1440 bodySW=1440 bodyCW=1440 pageSW=1440 pageCW=1440 asOf=yes visibleGap=false unit=yes titleGap=ten4-gap
+1280x800 vw=1280 bodySW=1280 bodyCW=1280 pageSW=1280 pageCW=1280 asOf=yes visibleGap=false unit=yes titleGap=ten4-gap
+375x812  vw=375  bodySW=375  bodyCW=375  pageSW=375  pageCW=375  asOf=yes visibleGap=false unit=yes titleGap=ten4-gap
 ```
 
-- body 三档均无横溢；pageSW 的 +2px 来自 `@nous-research/ui` 刷新按钮的装饰边框（body 不产生横向滚动），非内容溢出。
+- body 与页面三档 scrollWidth 均等于视口；`fix(console): clip tenant button decoration (ten4)`（`56bbca4a`）在该页隐藏 `@nous-research/ui` 刷新按钮的装饰弧边，消除了此前 pageSW +2px。
 - 截图：`docs/_artifacts/gov/shots/ov5-1440.png`、`ov5-1280.png`、`ov5-375.png`；`ten4-1440.png`、`ten4-1280.png`、`ten4-375.png`。
 
 ### 边界
