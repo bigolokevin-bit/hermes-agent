@@ -65,6 +65,7 @@ describe("SecurityModulePage", () => {
     answer();
     await render();
     expect(q("sec5-page")).toBeTruthy();
+    expect(document.querySelectorAll('[data-testid="sec5-page"]')).toHaveLength(1);
     expect(q("sec5-state-session")?.textContent).toBe("已配置");
     expect(q("sec5-state-concurrent")?.textContent).toBe("已配置");
     expect(q("sec5-state-twoFactor")?.textContent).toBe("已配置");
