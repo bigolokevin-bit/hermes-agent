@@ -1,5 +1,10 @@
 /**
- * 时间窗完整性校验 (screen 3 of the audit surface, `aud03-*`).
+ * 时间窗完整性校验 (screen 3 of the audit surface, `aud01-verify-*`).
+ *
+ * R35: the `?state=` repro leg is gone (nothing here paints without a real
+ * answer), the counts carry the `aud01-verify-*` ids, and the pane adds what the
+ * endpoint does not answer: an asOf row and a break-detail line that never
+ * invent ids.
  *
  * One real call, and only when a person asks for it:
  *   `GET /agent-api/api/audit-verify?from=<ISO>&to=<ISO>`
@@ -17,7 +22,6 @@
  * shows Beijing wall clock, labelled as such. `?state=` is the shell's QA repro
  */
 import { useCallback, useMemo, useState, type ReactNode } from "react";
-import { useSearchParams } from "react-router";
 import { Link2, RefreshCw, ShieldQuestion } from "lucide-react";
 
 import { Button } from "@nous-research/ui/ui/components/button";
@@ -28,16 +32,14 @@ import { beijing } from "./model";
 import { ErrorPanel, LoadingPanel, VerifyUnavailablePanel } from "./states";
 import { VerifyResultBody } from "./views";
 import { DEFAULT_WINDOW, WINDOW_CHOICES, windowBounds, type WindowKey } from "./window";
-import { forcedStateOf, useAuditVerify } from "./useAuditData";
+import { useAuditVerify } from "./useAuditData";
 
 export function AuditVerifyModulePage(): ReactNode {
-  const [params] = useSearchParams();
-  const forced = forcedStateOf(params.get("state"));
   const [choice, setChoice] = useState<WindowKey>(DEFAULT_WINDOW);
   /** The window the last run actually asked for; `null` until someone runs one. */
   const [askedKey, setAskedKey] = useState<WindowKey | null>(null);
 
-  const verify = useAuditVerify(forced);
+  const verify = useAuditVerify(null);
   const askVerify = verify.run;
 
   const run = useCallback(
@@ -60,15 +62,46 @@ export function AuditVerifyModulePage(): ReactNode {
 
   const body = (() => {
     if (verify.phase === "loading") {
-      return <LoadingPanel testId="aud03-loading" fixture={verify.forced ? "loading" : undefined} />;
+      return <LoadingPanel testId="aud01-verify-loading" />;
     }
     if (verify.phase === "ready" && verify.result) {
+      const result = verify.result;
+      const brokenText =
+        result.broken === 0
+          ? "未发现断点：服务的回答里对不上的条数为 0。"
+          : result.broken === null
+            ? "服务没有给出对不上的条数，本页不推断断点明细。"
+            : `服务报告 ${result.broken} 条对不上；这次回答没有带回逐条断点的事件编号与操作者，本页不自己编、也不提供会落空的链接。`;
       return (
-        <VerifyResultBody
-          result={verify.result}
-          askedFrom={askedLabel?.from ?? null}
-          askedTo={askedLabel?.to ?? null}
-        />
+        <div className="flex min-w-0 flex-col gap-3">
+          <VerifyResultBody
+            result={result}
+            askedFrom={askedLabel?.from ?? null}
+            askedTo={askedLabel?.to ?? null}
+            testId="aud01-verify-result"
+            ids={{
+              counts: "aud01-verify-counts",
+              window: "aud01-verify-window",
+              scanned: "aud01-verify-scanned",
+              broken: "aud01-verify-broken",
+            }}
+          />
+          <dl className="flex min-w-0 flex-wrap gap-x-5 gap-y-1 text-xs" data-testid="aud01-verify-detail">
+            <div className="flex min-w-0 flex-wrap items-baseline gap-x-1.5" data-testid="aud01-verify-asof">
+              <dt className="text-muted-foreground">读取时刻（北京时间）</dt>
+              <dd
+                className="min-w-0 break-words text-muted-foreground"
+                title="服务的回答里没有带回读取时刻，本页不拿浏览器时间顶替"
+              >
+                —
+              </dd>
+            </div>
+            <div className="flex min-w-0 flex-wrap items-baseline gap-x-1.5" data-testid="aud01-verify-break-list">
+              <dt className="text-muted-foreground">断点明细</dt>
+              <dd className="min-w-0 break-words">{brokenText}</dd>
+            </div>
+          </dl>
+        </div>
       );
     }
     if (verify.phase === "unavailable") {
@@ -82,7 +115,7 @@ export function AuditVerifyModulePage(): ReactNode {
         <VerifyUnavailablePanel
           failure={failure}
           onRetry={() => run(askedKey ?? choice)}
-          fixture={verify.forced ? "denied" : undefined}
+          testId="aud01-verify-unavailable"
         />
       );
     }
@@ -92,14 +125,13 @@ export function AuditVerifyModulePage(): ReactNode {
           failure={verify.failure ?? { sentence: "校验回答的形状不对，这里没能读出结论。", requestId: null, technical: null }}
           onRetry={() => run(askedKey ?? choice)}
           title="完整性校验没能给出结果"
-          testId="aud03-error"
-          fixture={verify.forced ? "error" : undefined}
+          testId="aud01-verify-error"
         />
       );
     }
     // The honest empty for this pane: nobody has asked, so nothing was checked.
     return (
-      <Card className="border-border bg-card" data-testid="aud03-idle">
+      <Card className="border-border bg-card" data-testid="aud01-verify-idle">
         <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
           <ShieldQuestion className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
           <p className="min-w-0 break-words text-sm">还没有运行校验</p>
@@ -115,7 +147,7 @@ export function AuditVerifyModulePage(): ReactNode {
   return (
     <div className="flex min-w-0 w-full max-w-full flex-col gap-3" data-testid="agent-v2-page-audit-verify" data-page="audit-verify">
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-        <p className="min-w-0 break-words text-xs text-muted-foreground" aria-live="polite" data-testid="aud03-status">
+        <p className="min-w-0 break-words text-xs text-muted-foreground" aria-live="polite" data-testid="aud01-verify-status">
           {verify.phase === "loading"
             ? "正在按所选时间窗核对审计链…"
             : verify.phase === "ready"
@@ -139,7 +171,7 @@ export function AuditVerifyModulePage(): ReactNode {
               invert={active}
               aria-pressed={active}
               onClick={() => run(item.value)}
-              data-testid={`aud03-window-${item.value}`}
+              data-testid={`aud01-verify-window-${item.value}`}
             >
               {item.label}
             </Button>
@@ -151,20 +183,15 @@ export function AuditVerifyModulePage(): ReactNode {
           onClick={() => run(choice)}
           disabled={verify.phase === "loading"}
           prefix={<RefreshCw className="h-3.5 w-3.5" />}
-          data-testid="aud03-run"
+          data-testid="aud01-verify-run"
         >
           重新运行
         </Button>
       </div>
 
-      {verify.forced ? (
-        <p className="min-w-0 break-words text-xs text-warning" data-testid="aud03-forced-note">
-          这是用 ?state= 复现出来的状态，不是服务此刻的回答。
-        </p>
-      ) : null}
 
       {askedLabel ? (
-        <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud03-window-label">
+        <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud01-verify-window-label">
           校验窗口（北京时间）：{askedLabel.from} 至 {askedLabel.to}
         </p>
       ) : null}

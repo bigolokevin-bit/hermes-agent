@@ -296,17 +296,34 @@ function countValue(value: number | null): string {
   return value === null ? "—" : `${value}`;
 }
 
+/** The ids the counts block carries; the standalone pane hands in its own family. */
+export interface VerifyCountIds {
+  counts: string;
+  window: string;
+  scanned: string;
+  broken: string;
+}
+
+const AUD03_IDS: VerifyCountIds = {
+  counts: "aud03-counts",
+  window: "aud03-window",
+  scanned: "aud03-scanned",
+  broken: "aud03-broken",
+};
+
 export function VerifyResultBody({
   result,
   askedFrom,
   askedTo,
   testId = "aud03-result",
+  ids = AUD03_IDS,
 }: {
   result: VerifyResult;
   /** The window the person asked for, already Beijing wall clock. */
   askedFrom: string | null;
   askedTo: string | null;
   testId?: string;
+  ids?: VerifyCountIds;
 }): ReactNode {
   const from = result.windowFrom ?? askedFrom;
   const to = result.windowTo ?? askedTo;
@@ -315,21 +332,25 @@ export function VerifyResultBody({
   const broken = countValue(result.broken);
   const counted = result.scanned;
   const nothingScanned = counted === 0;
+  const countsKnown = result.scanned !== null || result.total !== null || result.broken !== null;
   const headline = nothingScanned
     ? "这一段没有核对到记录"
     : result.verdict === "intact"
-      ? "没有发现断点"
+      ? countsKnown
+        ? "没有发现断点"
+        : "结论没有带上核对范围"
       : result.verdict === "broken"
-        ? "发现对不上的地方"
+        ? countsKnown
+          ? "发现对不上的地方"
+          : "结论没有带上核对范围"
         : "校验跑完了，但结论没说清楚";
   const tone = nothingScanned
     ? "secondary"
-    : result.verdict === "intact"
+    : countsKnown && result.verdict === "intact"
       ? "success"
-      : result.verdict === "broken"
+      : countsKnown && result.verdict === "broken"
         ? "destructive"
         : "secondary";
-  const countsKnown = result.scanned !== null || result.total !== null || result.broken !== null;
   return (
     <div className="flex min-w-0 flex-col gap-3" data-testid={testId}>
       <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
@@ -337,21 +358,21 @@ export function VerifyResultBody({
         <Badge tone={tone}>{headline}</Badge>
       </div>
 
-      <dl className="flex min-w-0 flex-wrap gap-x-5 gap-y-1 text-xs" data-testid="aud03-counts">
+      <dl className="flex min-w-0 flex-wrap gap-x-5 gap-y-1 text-xs" data-testid={ids.counts}>
         <Field
-          testId="aud03-window"
+          testId={ids.window}
           label="校验窗口（北京时间）"
           value={from && to ? `${from} 至 ${to}` : "服务未回窗口"}
           reason={from && to ? undefined : MISSING_VALUE}
         />
         <Field
-          testId="aud03-scanned"
+          testId={ids.scanned}
           label="已核对"
           value={result.total === null ? scanned : `${scanned} / ${total}`}
           reason={result.total === null ? "服务未说明这个窗口里一共有多少条" : "窗口内的总条数来自服务的回答"}
         />
         <Field
-          testId="aud03-broken"
+          testId={ids.broken}
           label="对不上的"
           value={broken}
           reason={result.broken === null ? "服务没有给出对不上的条数" : undefined}

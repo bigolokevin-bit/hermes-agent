@@ -71,6 +71,9 @@ import {
   failureSummary,
   isToolEvent,
   resultRef,
+  eventReason,
+  eventSummary,
+  resultRefHref,
   runCode,
   shortId,
   sinceKeyOf,
@@ -292,6 +295,9 @@ function Timeline({
           {events.map((ev) => {
             const at = beijingMinute(ev.occurredAt);
             const ref = resultRef(ev);
+            const sum = eventSummary(ev);
+            const fail = eventReason(ev);
+            const href = resultRefHref(ref);
             return (
               <li
                 key={ev.seq}
@@ -299,18 +305,60 @@ function Timeline({
                 data-testid={`run5-event-${ev.seq}`}
               >
                 <span className="shrink-0 text-xs text-muted-foreground">#{ev.seq}</span>
-                <span className="min-w-0 flex-1 break-words">{eventLabel(ev.eventType)}</span>
-                {isToolEvent(ev.eventType) ? (
+                <span
+                  className="min-w-0 flex-1 break-words"
+                  title={ev.eventType ?? undefined}
+                >
+                  {eventLabel(ev.eventType)}
+                </span>
+                <span
+                  className="min-w-0 basis-full break-words text-xs text-muted-foreground"
+                  data-testid={`run5-tl-summary-${ev.seq}`}
+                  title={sum.reason || undefined}
+                >
+                  {sum.text}
+                </span>
+                {fail ? (
                   <span
-                    className="min-w-0 break-words text-xs text-muted-foreground"
-                    data-tool-event={ev.eventType}
-                    data-testid={`run5-result-ref-${ev.seq}`}
-                    data-result-ref={ref ? "present" : "absent"}
-                    /* the raw handle stays in the title; the line shows a short code */
-                    title={ref ?? "这次工具事件没有带回结果引用：服务的回答里没有 resultRef，本页不替它编一个"}
+                    className="min-w-0 basis-full break-words text-xs text-destructive"
+                    data-testid={`run5-tl-reason-${ev.seq}`}
+                    title={fail.reason || undefined}
                   >
-                    {`结果引用：${ref ? shortId(ref) : "未记录"}`}
+                    {`失败原因：${fail.text}`}
                   </span>
+                ) : null}
+                {isToolEvent(ev.eventType) ? (
+                  ref && href ? (
+                    /* the raw handle stays in the title; the line shows a short code */
+                    <a
+                      className="min-w-0 break-words text-xs text-muted-foreground underline"
+                      href={href}
+                      data-tool-event={ev.eventType}
+                      data-testid={`run5-result-ref-${ev.seq}`}
+                      data-result-ref="present"
+                      title={ref}
+                    >
+                      {`结果引用：${shortId(ref)}`}
+                    </a>
+                  ) : (
+                    <span
+                      className="min-w-0 break-words text-xs text-muted-foreground"
+                      data-tool-event={ev.eventType}
+                      data-testid={`run5-result-ref-${ev.seq}`}
+                      data-result-ref={ref ? "present" : "absent"}
+                      title={ref ?? "这次工具事件没有带回结果引用：服务的回答里没有 resultRef，本页不替它编一个"}
+                    >
+                      {`结果引用：${ref ? shortId(ref) : "未记录"}`}
+                      {ref ? (
+                        <span
+                          className="ml-2 text-warning"
+                          data-testid={`run5-result-unreachable-${ev.seq}`}
+                        >
+                          原文不可达：结果引用没有可用的原文地址（服务没有说明它指向哪种记录）
+                        </span>
+                      ) : null}
+                    </span>
+                  )
                 ) : null}
                 <span className="shrink-0 text-xs text-muted-foreground" title={ev.occurredAt ?? undefined}>
                   {at.text ?? <Dashed reason={at.reason} />}

@@ -322,7 +322,9 @@ describe("the tool family carries the result reference", () => {
   it("labels a tool intent and keeps an unlisted type in the fallback word", () => {
     expect(eventLabel("tool_intent")).toBe("工具意图");
     expect(eventLabel("tool_result")).toBe("工具结果");
-    expect(eventLabel("mystery")).toBe("其他事件");
+    // An unlisted type is not "other": the row says it could not be read and
+    // keeps the service spelling in its title.
+    expect(eventLabel("mystery")).toBe("待核实");
   });
 
   it("treats tool_intent, tool_call and tool_result alike, case-insensitively", () => {

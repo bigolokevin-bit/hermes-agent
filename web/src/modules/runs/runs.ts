@@ -570,7 +570,9 @@ export function eventLabel(raw?: string): string {
     case "completed": return "完成";
     case "failed": return "失败";
     case "in_progress": return "进行中";
-    default: return "其他事件";
+    // An unlisted event type is not "other" — the screen has to say it could
+    // not be read and keep the service's own spelling in the title.
+    default: return "待核实";
   }
 }
 
@@ -594,6 +596,65 @@ export function resultRef(ev: Pick<RunEvent, "eventType" | "payload">): string |
 }
 
 /** The 请求编号's own honest word when the answer carried none. */
+/** A short, human line for one timeline event; never an empty cell. */
+export function eventSummary(ev: Pick<RunEvent, "payload">): { text: string; reason: string } {
+  const payload = ev.payload ?? {};
+  for (const key of ["delta", "message", "summary", "text", "note", "reason"]) {
+    const raw = payload[key];
+    if (typeof raw !== "string") continue;
+    const text = raw.replace(/\s+/g, " ").trim();
+    if (!text) continue;
+    return { text: text.length > 120 ? `${text.slice(0, 120)}…` : text, reason: "" };
+  }
+  return {
+    text: "未记录",
+    reason: "这条事件没有带回可读的摘要（期望字段 delta / message / summary / text / note / reason）",
+  };
+}
+
+/** True when this event is the failure of a step, so a cause may exist. */
+export function isFailureEvent(ev: Pick<RunEvent, "eventType" | "payload">): boolean {
+  const type = (ev.eventType ?? "").trim().toLowerCase();
+  if (type.includes("fail") || type.includes("error") || type === "denied") return true;
+  const error = ev.payload?.error;
+  return typeof error === "object" && error !== null;
+}
+
+/** The cause a failed step carries, with the field it was read from. */
+export function eventReason(
+  ev: Pick<RunEvent, "eventType" | "payload">,
+): { text: string; reason: string } | null {
+  if (!isFailureEvent(ev)) return null;
+  const payload = ev.payload ?? {};
+  const error = (payload.error ?? {}) as Record<string, unknown>;
+  const codeRaw = error.code ?? payload.errorCode ?? payload.reasonCode ?? payload.reason;
+  const code = typeof codeRaw === "string" ? codeRaw.trim() : "";
+  const said = error.messageRedacted ?? error.message;
+  const sentence = typeof said === "string" ? said.replace(/\s+/g, " ").trim() : "";
+  const known = code ? reasonLabel(code) : "—";
+  if (known !== "—") return { text: sentence ? `${known}：${sentence}` : known, reason: "" };
+  if (code) {
+    return {
+      text: `原因代码未识别（${shortId(code)}）`,
+      reason: "服务给的原因不在这份对照表里",
+    };
+  }
+  return {
+    text: "未记录",
+    reason: "服务没有给出失败原因（期望字段 error.code / reasonCode / reason）",
+  };
+}
+
+/**
+ * Where a tool event's result reference points, when the console can read it.
+ * Only audit-event ids have a page on this generation; anything else is said
+ * to be unreachable instead of becoming a link that lands nowhere.
+ */
+export function resultRefHref(ref: string | null): string | null {
+  if (!ref) return null;
+  return /^(ev|evt)_[A-Za-z0-9]{6,}$/.test(ref) ? `/audit?detail=${encodeURIComponent(ref)}` : null;
+}
+
 export const NO_REQUEST_ID = "未提供";
 
 /** What the fallback chain did, as one collapsed technical line. */

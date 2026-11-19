@@ -133,8 +133,8 @@ describe("what the answer can say", () => {
     expect(text()).toContain("对不上的");
     expect(text()).toContain("2026-11-18 08:00 至 2026-11-19 08:00");
     // each count is addressable, and its denominator is part of the same line
-    expect(document.querySelector("[data-testid='aud03-scanned']")?.textContent).toContain("120 / 200");
-    expect(document.querySelector("[data-testid='aud03-broken']")?.textContent).toContain("0");
+    expect(document.querySelector("[data-testid='aud01-verify-scanned']")?.textContent).toContain("120 / 200");
+    expect(document.querySelector("[data-testid='aud01-verify-broken']")?.textContent).toContain("0");
   });
 
   it("a broken chain says how many, and does not soften it", async () => {
@@ -167,7 +167,7 @@ describe("what the answer can say", () => {
     expect(text()).toContain("校验窗口（北京时间）：2026");
     // chain internals never reach the surface
     expect(text()).not.toMatch(/chainHeadHash|anchorCheckpointId|ah_031a89f9|cp_t_seakoi/);
-    const toggle = document.querySelector<HTMLButtonElement>("[data-testid='aud03-result-details'] button")!;
+    const toggle = document.querySelector<HTMLButtonElement>("[data-testid='aud01-verify-result-details'] button")!;
     await act(async () => {
       toggle.click();
     });
@@ -215,7 +215,7 @@ describe("a check that cannot run", () => {
       });
     });
     await runWindow();
-    return document.querySelector("[data-testid='aud03-unavailable']")?.outerHTML ?? "";
+    return document.querySelector("[data-testid='aud01-verify-unavailable']")?.outerHTML ?? "";
   };
 
   it("403 and 404 render one identical 本环境未启用 body, with reason and request id", async () => {
@@ -253,20 +253,39 @@ describe("a check that cannot run", () => {
 });
 
 describe("the QA legs", () => {
-  it("each forced state renders and asks nothing", async () => {
-    const open = async (state: string): Promise<void> => {
+  it("a stray ?state= no longer fakes a state: nothing is asked and the pane stays idle", async () => {
+    for (const state of ["loading", "empty", "error", "denied"]) {
       await render(`/system?tab=events&view=verify&state=${state}`, <AuditVerifyModulePage />);
-      await waitFor(() => text().includes("复现出来的状态") || state === "loading", `?state=${state}`);
-    };
-    await open("loading");
-    expect(document.querySelector("[data-testid='aud03-loading']")).toBeTruthy();
-    await open("empty");
-    expect(document.querySelector("[data-testid='aud03-idle']")).toBeTruthy();
-    await open("error");
-    expect(document.querySelector("[data-testid='aud03-error']")).toBeTruthy();
-    await open("denied");
-    expect(document.querySelector("[data-testid='aud03-unavailable']")).toBeTruthy();
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(document.querySelector("[data-testid='aud01-verify-idle']")).toBeTruthy();
+      expect(document.querySelector("[data-testid='aud01-verify-loading']")).toBeNull();
+      expect(document.querySelector("[data-testid='aud01-verify-error']")).toBeNull();
+      expect(document.querySelector("[data-testid='aud01-verify-unavailable']")).toBeNull();
+      expect(text()).not.toContain("复现出来的状态");
+    }
     expect(api.fetchJSON).not.toHaveBeenCalled();
+  });
+
+  it("a run that never asked for a window shows no digits at all", async () => {
+    api.fetchJSON.mockImplementation(async () => ({ ok: true }));
+    await runWindow();
+    const scanned = document.querySelector("[data-testid='aud01-verify-scanned']");
+    const broken = document.querySelector("[data-testid='aud01-verify-broken']");
+    const win = document.querySelector("[data-testid='aud01-verify-window']");
+    expect(scanned?.textContent).toContain("—");
+    expect(broken?.textContent).toContain("—");
+    // the window may fall back to what the page itself asked for — that is the
+    // question, not an invented answer; what must never appear is a count.
+    expect(win?.textContent).toContain("至");
+    expect(scanned?.textContent).not.toMatch(/[0-9]/);
+    expect(broken?.textContent).not.toMatch(/[0-9]/);
+    expect(text()).not.toContain("没有发现断点");
+    const asof = document.querySelector("[data-testid='aud01-verify-asof']");
+    expect(asof?.textContent).toContain("—");
+    expect(asof?.querySelector("[title]")?.getAttribute("title")).toContain("不拿浏览器时间顶替");
+    expect(document.querySelector("[data-testid='aud01-verify-break-list']")?.textContent).toContain("不推断断点明细");
   });
 
   it("the engineering words stay behind 技术详情", async () => {
@@ -279,7 +298,7 @@ describe("the QA legs", () => {
     }));
     await runWindow();
     expect(text()).not.toMatch(/scanned|checkedWindow|total_count|ok:/);
-    const toggle = document.querySelector<HTMLButtonElement>("[data-testid='aud03-result-details'] button");
+    const toggle = document.querySelector<HTMLButtonElement>("[data-testid='aud01-verify-result-details'] button");
     if (!toggle) throw new Error("the result's own 技术详情 is missing");
     if (toggle) {
       await act(async () => {
