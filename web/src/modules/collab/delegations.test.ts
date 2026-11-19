@@ -18,6 +18,7 @@ import {
   actorLabel,
   askedLine,
   beijingMinute,
+  readingStamp,
   errorInfo,
   isMachineHandle,
   listUrl,
@@ -362,5 +363,25 @@ describe("times read in Beijing to the minute", () => {
 describe("the gap number", () => {
   it("carries the number this lane claimed", () => {
     expect(GAP).toBe("GAP-10");
+  });
+});
+
+describe("the service's own read stamp", () => {
+  it("keeps asOf from the answer and dates it in Beijing minutes", async () => {
+    api.fetchJSON.mockResolvedValue({ items: [], asOf: "2026-11-19T06:48:38.660Z" });
+    const state = await loadDelegations();
+    expect(state.phase).toBe("empty");
+    expect(state.asOf).toBe("2026-11-19T06:48:38.660Z");
+    expect(readingStamp(state.asOf)).toBe("11-19 14:48");
+  });
+
+  it("never invents a stamp the answer did not carry", async () => {
+    api.fetchJSON.mockResolvedValue({ items: [] });
+    const state = await loadDelegations();
+    expect(state.asOf).toBeNull();
+    expect(readingStamp(state.asOf)).toBeNull();
+    expect(readingStamp(undefined)).toBeNull();
+    expect(readingStamp("")).toBeNull();
+    expect(readingStamp("not-a-time")).toBeNull();
   });
 });

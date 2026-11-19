@@ -1,0 +1,32 @@
+[
+  {
+    "label": "1440",
+    "file": "/Users/kevin_studio/Projects/forks/console-aud/docs/_artifacts/aud/shots/collab-1440.png",
+    "url": "/overview",
+    "title": "Hermes Agent - Dashboard",
+    "text": "HERMES\nAGENT\n控制台\n运营\n运营总览\n数字员工\n任务与运行\n审批与发布门\n治理\n人员与访问\n知识与数据\n平台\n能力与接入\n系统\n系统设置\n业务运营\n数字员工\n审批\n任务\n协作\n未接入\n运行\n企业治理\n知识\n组织与人员\n租户与配额\n未接入\n访问控制\n未接入\n人员名录\n组织与部门\n角色与权限\n知识空间\n审计事件\n运行时\nCHAT\nSESSIONS\nFILES\nMODELS\nMCP\n平台接入\nCRON\nLOGS\nSYSTEM\n系统\nCONFIG\nKEYS\nDOCUMENTATION\nPLUGINS\nSKILLS\nPROFILES\nWEBHOOKS\nPAIRING\nSystem\nRestart Gateway\n规划中\nHERMES TEAL\nEN\n暂时确认不到登录状态\n—\nNous Research\nOverview\n运营 · 控制台\n运营总览\n值班台\n用量与成本\n值班台\n运营总览 · 只读\n刷新\n可上岗\n各项检查全部通过才计入\n\n—\n/ 2 可上岗\n\n3 项检查的数据源尚未接入，可上岗人数暂不能判定\n\n群@\n待核实\n工位与渠道事件 · 渠道事件数据源未接入\nReBAC\n待核实\n有效配置与策略校验 · 策略校验数据源未接入\n引用\n待核实\n知识空间与引用 · 知识数据源未接入\n审批\n2 / 2\n负责人推断（2/2）· 审批人名单未冻结\n\n各项检查独立判定，全部通过才算可上岗；标「待核实」的项既不算通过，也不算不通过。\n\n今日运行\n运行记录\n\n0\n次\n\n在跑 0 · 成功 0 · 失败 0\n\n最近运行明细尚未返回，合计仍以服务端为准。\n\n今日 00:00 起 · 北京时间 · 合计来自服务端窗口统计\n\n今日成本\n成本账本\n\n—\n今日\n\n账本未覆盖全部员工（缺 3 人），不展示合计\n\n已覆盖\n0 / 2 人\n账本口径\n只认账本实际金额\n\n金额 USD · 缺行不按 0 计入 · 日账与月账分开相加\n\n发布\n待核实\n版本发布数据源未接入\n出站\n待核实\n网关健康数据源未接入\n账本\n已接入\n只认账本实际金额\n近 14 天运行\n每日启动\n\n数据服务暂时没有响应，请稍后重试。\n\n本次请求未记录编号，可复制时间与操作路径反馈\n\n重试\n24 小时活跃\n每格 1 小时\n\n22:00\n峰值 1 次\n\n虚线之后为尚未发生的时段\n\n00\n06\n12\n18\n24\n\n近 7 天同小时分布 · 当前时段之后留空 · 不补零\n\n阻塞\n查看全部\n阻塞\n\n阻塞对象：验收用任务 · 受阻\n\n卡在哪一步：任务处于阻塞状态 · 等谁：任务负责人 · 已等时长：67 小时 48 分钟（2026-11-16 19:03 起）\n\n下一步动作：处理阻塞或重新指派\n\n补充：任务处于阻塞状态\n\n去处理\n\n阻塞卡五字段：阻塞对象 · 卡在哪一步 · 等谁 · 已等时长 · 下一步动作\n\n待我处理\n查看全部\n\n0\n待办 · 0 即将到期\n\n今天没有待你审批的事\n\n只统计待你处理的审批 · 到期窗口 24 小时\n\n最近运行\n查看全部\nrn_01M…X1XZ\n成功\n1m 13s\nrn_01M…VDZ8\n运行中\n112h 26m\nrn_01M…YTGH\n成功\n34s\n\n最近 3 次 · 时间北京时间 · 详情在运行记录",
+    "sw": 1440,
+    "cw": 1440,
+    "testids": []
+  },
+  {
+    "label": "1280",
+    "file": "/Users/kevin_studio/Projects/forks/console-aud/docs/_artifacts/aud/shots/collab-1280.png",
+    "url": "/overview",
+    "title": "Hermes Agent - Dashboard",
+    "text": "HERMES\nAGENT\n控制台\n运营\n运营总览\n数字员工\n任务与运行\n审批与发布门\n治理\n人员与访问\n知识与数据\n平台\n能力与接入\n系统\n系统设置\n业务运营\n数字员工\n审批\n任务\n协作\n未接入\n运行\n企业治理\n知识\n组织与人员\n租户与配额\n未接入\n访问控制\n未接入\n人员名录\n组织与部门\n角色与权限\n知识空间\n审计事件\n运行时\nCHAT\nSESSIONS\nFILES\nMODELS\nMCP\n平台接入\nCRON\nLOGS\nSYSTEM\n系统\nCONFIG\nKEYS\nDOCUMENTATION\nPLUGINS\nSKILLS\nPROFILES\nWEBHOOKS\nPAIRING\nSystem\nRestart Gateway\n规划中\nHERMES TEAL\nEN\n暂时确认不到登录状态\n—\nNous Research\nOverview\n运营 · 控制台\n运营总览\n值班台\n用量与成本\n值班台\n运营总览 · 只读\n刷新\n可上岗\n各项检查全部通过才计入\n\n—\n/ 2 可上岗\n\n3 项检查的数据源尚未接入，可上岗人数暂不能判定\n\n群@\n待核实\n工位与渠道事件 · 渠道事件数据源未接入\nReBAC\n待核实\n有效配置与策略校验 · 策略校验数据源未接入\n引用\n待核实\n知识空间与引用 · 知识数据源未接入\n审批\n2 / 2\n负责人推断（2/2）· 审批人名单未冻结\n\n各项检查独立判定，全部通过才算可上岗；标「待核实」的项既不算通过，也不算不通过。\n\n今日运行\n运行记录\n\n0\n次\n\n在跑 0 · 成功 0 · 失败 0\n\n最近运行明细尚未返回，合计仍以服务端为准。\n\n今日 00:00 起 · 北京时间 · 合计来自服务端窗口统计\n\n今日成本\n成本账本\n\n—\n今日\n\n账本未覆盖全部员工（缺 3 人），不展示合计\n\n已覆盖\n0 / 2 人\n账本口径\n只认账本实际金额\n\n金额 USD · 缺行不按 0 计入 · 日账与月账分开相加\n\n发布\n待核实\n版本发布数据源未接入\n出站\n待核实\n网关健康数据源未接入\n账本\n已接入\n只认账本实际金额\n近 14 天运行\n每日启动\n\n14\n次 · 峰值 13\n\n日均 7.0 次；峰值在 11/14\n\n11/12\n今天\n\n近 14 天 · 按北京时间切日 · 只画有运行的桶\n\n24 小时活跃\n每格 1 小时\n\n22:00\n峰值 1 次\n\n虚线之后为尚未发生的时段\n\n00\n06\n12\n18\n24\n\n近 7 天同小时分布 · 当前时段之后留空 · 不补零\n\n阻塞\n查看全部\n阻塞\n\n阻塞对象：验收用任务 · 受阻\n\n卡在哪一步：任务处于阻塞状态 · 等谁：任务负责人 · 已等时长：67 小时 48 分钟（2026-11-16 19:03 起）\n\n下一步动作：处理阻塞或重新指派\n\n补充：任务处于阻塞状态\n\n去处理\n\n阻塞卡五字段：阻塞对象 · 卡在哪一步 · 等谁 · 已等时长 · 下一步动作\n\n待我处理\n查看全部\n\n0\n待办 · 0 即将到期\n\n今天没有待你审批的事\n\n只统计待你处理的审批 · 到期窗口 24 小时\n\n最近运行\n查看全部\nrn_01M…X1XZ\n成功\n1m 13s\nrn_01M…VDZ8\n运行中\n112h 26m\nrn_01M…YTGH\n成功\n34s\n\n最近 3 次 · 时间北京时间 · 详情在运行记录",
+    "sw": 1280,
+    "cw": 1280,
+    "testids": []
+  },
+  {
+    "label": "375",
+    "file": "/Users/kevin_studio/Projects/forks/console-aud/docs/_artifacts/aud/shots/collab-375.png",
+    "url": "/overview",
+    "title": "Hermes Agent - Dashboard",
+    "text": "菜单\nHermes Agent\nHERMES\nAGENT\n控制台\n运营\n运营总览\n数字员工\n任务与运行\n审批与发布门\n治理\n人员与访问\n知识与数据\n平台\n能力与接入\n系统\n系统设置\n业务运营\n数字员工\n审批\n任务\n协作\n未接入\n运行\n企业治理\n知识\n组织与人员\n租户与配额\n未接入\n访问控制\n未接入\n人员名录\n组织与部门\n角色与权限\n知识空间\n审计事件\n运行时\nCHAT\nSESSIONS\nFILES\nMODELS\nMCP\n平台接入\nCRON\nLOGS\nSYSTEM\n系统\nCONFIG\nKEYS\nDOCUMENTATION\nPLUGINS\nSKILLS\nPROFILES\nWEBHOOKS\nPAIRING\nSystem\nRestart Gateway\n规划中\n暂时确认不到登录状态\n—\nNous Research\nOverview\n运营 · 控制台\n运营总览\n值班台\n用量与成本\n值班台\n运营总览 · 只读\n刷新\n可上岗\n各项检查全部通过才计入\n\n—\n/ 2 可上岗\n\n3 项检查的数据源尚未接入，可上岗人数暂不能判定\n\n群@\n待核实\n工位与渠道事件 · 渠道事件数据源未接入\nReBAC\n待核实\n有效配置与策略校验 · 策略校验数据源未接入\n引用\n待核实\n知识空间与引用 · 知识数据源未接入\n审批\n2 / 2\n负责人推断（2/2）· 审批人名单未冻结\n\n各项检查独立判定，全部通过才算可上岗；标「待核实」的项既不算通过，也不算不通过。\n\n今日运行\n运行记录\n\n0\n次\n\n在跑 0 · 成功 0 · 失败 0\n\n最近运行明细尚未返回，合计仍以服务端为准。\n\n今日 00:00 起 · 北京时间 · 合计来自服务端窗口统计\n\n今日成本\n成本账本\n\n—\n今日\n\n账本未覆盖全部员工（缺 3 人），不展示合计\n\n已覆盖\n0 / 2 人\n账本口径\n只认账本实际金额\n\n金额 USD · 缺行不按 0 计入 · 日账与月账分开相加\n\n发布\n待核实\n版本发布数据源未接入\n出站\n待核实\n网关健康数据源未接入\n账本\n已接入\n只认账本实际金额\n近 14 天运行\n每日启动\n\n14\n次 · 峰值 13\n\n日均 7.0 次；峰值在 11/14\n\n11/12\n今天\n\n近 14 天 · 按北京时间切日 · 只画有运行的桶\n\n24 小时活跃\n每格 1 小时\n\n22:00\n峰值 1 次\n\n虚线之后为尚未发生的时段\n\n00\n06\n12\n18\n24\n\n近 7 天同小时分布 · 当前时段之后留空 · 不补零\n\n阻塞\n查看全部\n阻塞\n\n阻塞对象：验收用任务 · 受阻\n\n卡在哪一步：任务处于阻塞状态 · 等谁：任务负责人 · 已等时长：67 小时 48 分钟（2026-11-16 19:03 起）\n\n下一步动作：处理阻塞或重新指派\n\n补充：任务处于阻塞状态\n\n去处理\n\n阻塞卡五字段：阻塞对象 · 卡在哪一步 · 等谁 · 已等时长 · 下一步动作\n\n待我处理\n查看全部\n\n0\n待办 · 0 即将到期\n\n今天没有待你审批的事\n\n只统计待你处理的审批 · 到期窗口 24 小时\n\n最近运行\n查看全部\nrn_01M…X1XZ\n成功\n1m 13s\nrn_01M…VDZ8\n运行中\n112h 26m\nrn_01M…YTGH\n成功\n34s\n\n最近 3 次 · 时间北京时间 · 详情在运行记录",
+    "sw": 375,
+    "cw": 375,
+    "testids": []
+  }
+]

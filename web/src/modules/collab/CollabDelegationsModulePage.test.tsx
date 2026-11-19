@@ -452,3 +452,25 @@ describe("the six columns and the language on every leg", () => {
     expect(onScreen).not.toMatch(/agent-api|\/api\/delegations/);
   });
 });
+
+describe("the read stamp on screen", () => {
+  it("prints the service's own asOf in Beijing minutes", async () => {
+    api.fetchJSON.mockImplementation(async (url: string) =>
+      url.includes("/api/delegations") ? { items: [], asOf: "2026-11-19T06:48:38.660Z" } : { items: [] },
+    );
+    await render("/collab");
+    await waitFor(() => document.querySelector("[data-testid='col4-empty']") !== null, "empty");
+    const stamp = document.querySelector("[data-testid='col4-asof']");
+    expect(stamp?.textContent).toBe("读取于 11-19 14:48");
+    expect(stamp?.getAttribute("title")).toContain("服务在回答里给出");
+  });
+
+  it("says the time is unknown when the answer carries none", async () => {
+    api.fetchJSON.mockImplementation(okList([]));
+    await render("/collab");
+    await waitFor(() => document.querySelector("[data-testid='col4-empty']") !== null, "empty");
+    const stamp = document.querySelector("[data-testid='col4-asof']");
+    expect(stamp?.textContent).toBe("读取于 —");
+    expect(stamp?.getAttribute("title")).toContain("没有带读取时刻");
+  });
+});

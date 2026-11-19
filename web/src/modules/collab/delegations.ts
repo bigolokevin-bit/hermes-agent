@@ -105,6 +105,12 @@ export interface ListState {
   /** Rows the answer carried but this reader could not attribute an id to. */
   unreadable: number;
   failure: Failure | null;
+  /**
+   * The service's own read stamp (`asOf` from the answer), verbatim. Absent or
+   * malformed stays null — the page then says the time is unknown instead of
+   * printing the browser clock as if the service had said it.
+   */
+  asOf?: string | null;
 }
 
 /* ── defensive reading ──────────────────────────────────────────────── */
@@ -317,10 +323,42 @@ export async function loadDelegations(): Promise<ListState> {
     unreadable += 1;
     return false;
   });
-  return { phase: rows.length ? "ready" : "empty", rows, unreadable, failure: null };
+  return {
+    phase: rows.length ? "ready" : "empty",
+    rows,
+    unreadable,
+    failure: null,
+    asOf: typeof body.asOf === "string" ? body.asOf : null,
+  };
 }
 
 /* ── display ────────────────────────────────────────────────────────── */
+
+/**
+ * The service's read stamp as a Beijing wall-clock minute (`MM-DD HH:mm`).
+ * Anything the service did not stamp, or that does not parse, is null: the
+ * page prints 「—」 plus a reason rather than substituting the local clock.
+ */
+export function readingStamp(asOf: string | null | undefined): string | null {
+  if (typeof asOf !== "string" || asOf.trim() === "") return null;
+  const ms = Date.parse(asOf);
+  if (!Number.isFinite(ms)) return null;
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Shanghai",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(ms));
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  const month = get("month");
+  const day = get("day");
+  const hour = get("hour");
+  const minute = get("minute");
+  if (!month || !day || !hour || !minute) return null;
+  return `${month}-${day} ${hour}:${minute}`;
+}
 
 /**
  * The 8-character display code: last segment of a handle, alphanumerics only,
