@@ -98,3 +98,102 @@ $ npx vite build --outDir /private/tmp/knw5d-dist --emptyOutDir
 ## 七、边界
 
 只改 `web/src/modules/knowledge/**` 与本证据目录；未动 `App.tsx`、`web/src/shell/**`、其他模块、`package.json`/lock、`web/scripts`、`ops`；未重启或改动 9122；无 force、无 amend、无 `--no-verify`。
+
+---
+
+# KNW5 追加：引用下钻深度（2026-11-20 BJT）
+
+基线对齐：`git merge-base --is-ancestor HEAD 9c7789f6` 为真 → `git reset --hard 9c7789f6`（快进保留历史，本轮之前提交 `df315cae`、`68c8db3e` 均已在目标内）。本轮提交见 `lane/console-ui1`。
+
+## 一、探针（cookie 只在 curl 命令内拼 Header，值零回显）
+
+```text
+404 knowledge.not_wired      /agent-api/api/knowledge/citations?limit=20   rid 53e93617   rows=0
+404 console.unknown_route    /agent-api/api/knowledge/search?q=员工&limit=5                rows=0
+200 items=0                  /agent-api/api/console-sessions?limit=20
+200 sessions=0 total=0       /agent-api/api/sessions?limit=20
+200 events=0                 /agent-api/api/audit?action=kb.read&limit=50
+400 request.missing_filter   /agent-api/api/runs?limit=5（要 employeeId/status/since）
+```
+
+引用读口与检索读口今天都不给数据，所以线上呈现是「未接入」；**深度字段按契约实现**，
+不是猜的：`bff-v4-serve/services/runtime/CONSOLE-SESSIONS-SHAPE.md` 规定会话详情是
+`messages[]{seq, role, content, requestId, createdAt}`，assistant-only 且“有才出现”的
+`citations` 元素契约形状只有 `{"doc":"…"}`。因此：上游真给的（哪一轮的提问、第几条回答、
+文档名、消息时间）才上屏，其余一律「—」+原因，绝不编页码/原话/链接。
+
+## 二、下钻一条引用能看到什么（wired 模式真实 DOM 文本）
+
+```text
+引用的是 员工手册 · 考勤篇
+原文位置 打开原文(/documents/doc_attendance)
+在原文中的位置 第 12 页
+来源 员工手册.pdf
+这段引用从哪里来 当时的提问：员工迟到怎么算？ · 由一次运行引出(→/runs/run_20261119abcd)
+被引用的原话 迟到三十分钟以内记为弹性工时，超过三十分钟需事前报备。
+摘要 本页给出的是接口原样返回的条目……
+留下这段引用 陈嘉禾 · E5F60718
+时间 2026-11-19 15:20
+```
+
+只有契约里那种 `{"doc":"远程办公约定.pdf"}` 的引用（真实上游形状）：
+
+```text
+引用的是 远程办公约定.pdf
+原文位置 原文不可达 · 上游没有给出原文位置，无法打开原文。
+在原文中的位置 —上游没有给出这段内容在原文里的位置
+来源 —上游没有给出来源文档或空间
+这段引用从哪里来 会话 · 6789ABCD 的第 2 条回答 · 当时的提问：远程办公要谁批？
+被引用的原话 —上游没有给出被引用的原话
+摘要 —上游没有给出这段内容的摘要
+留下这段引用 员工 · FF6F42E1
+时间 2026-11-19 13:56
+```
+
+## 三、状态与 DOM 读数（Chromium 无头，哈希深链；harness 在 /tmp，未入库）
+
+```text
+today  ×{1440,1280,375} ×{#/knowledge, ?tab=retrieval, ?tab=citations, ?tab=evidence, ?tab=ingest}
+  → 5/5 面板正确（spaces/retrieval/evidence/evidence/ingest），fixture 节点=0，
+    docSW==vw==bodySW，页容器 SW==CW，屏面无 GAP-03、无 403/404/500、无路由、无字段名，
+    surfaces: knw5-search=unwired/len0 knw5-records=ready/len0 knw5-citations=unwired/len0
+              knw5-session-cites=ready/len0 knw5-ingest-tasks=unwired/len0 knw5-ingest=unwired/len0
+    errors: none
+wired  ×三档 → evidence: drills=4 opens=1 unreach=3；retrieval: drills=2 opens=2 unreach=1；
+  drill 后 url=`…panel=evidence&ref=cit_page&tab=spaces` detail=true；
+  reload 后 detail=true tab=evidence；换面板再 goBack 后 detail=true tab=evidence（4/4 保持）
+failing ×{500 citations, 403 spaces, 404 sources} →
+  error 正文：这次没能读到知识数据 / 数据服务暂时没有响应，请稍后重试。+ 请求编号 + 复制 + 重试（无状态码）
+  403 正文 === 404 正文（逐字一致，GAP-03 只在 title）
+  骨架：aria-busy=true aria-label=加载中 data-state=loading
+```
+
+## 四、验证尾行（本轮）
+
+```text
+$ npx vitest run src/modules/knowledge
+ Test Files  2 passed (2)
+      Tests  27 passed (27)
+
+$ npx vitest run
+ Test Files  127 passed (127)
+      Tests  1303 passed (1303)
+
+$ npx eslint src/modules/knowledge
+（无输出，exit 0）
+
+$ npx tsc -b . --noEmit | grep modules/knowledge
+（无输出，本模块 0 错）
+
+$ npx vite build --outDir /private/tmp/knw6-dist --emptyOutDir
+✓ built in 4.21s
+```
+
+## 五、修掉的一处真实缺陷
+
+`referencesOf` 里 `rows.map(citationOf)` 会把数组下标当成第二个参数（会话）漏进适配器，
+导致引用登记面的「这段引用从哪里来」显示 `来自会话 · null`。改为逐元素显式调用，
+并加了两条断言（页码/原话/提问只在上游真给时出现；`cit_*` 原始编号不进屏面）。
+
+边界同前：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App/shell/routes/registry/
+package/lock/web/scripts/ops；未重启 9122；无 force、无 amend、无 `--no-verify`。

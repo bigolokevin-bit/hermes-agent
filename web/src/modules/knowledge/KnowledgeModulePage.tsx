@@ -346,6 +346,7 @@ function RefList({ rows, testid }: { rows: CitationRow[]; testid: string }): Rea
                 <Reason>{row.employeeReason}</Reason>
                 <span>时间：{row.at}</span>
                 <Reason>{row.atReason}</Reason>
+                {row.locator ? <span className="knw5-sub">{row.locator}</span> : null}
               </div>
             </div>
             <div className="knw5-ref-side">
@@ -373,6 +374,13 @@ function RefList({ rows, testid }: { rows: CitationRow[]; testid: string }): Rea
             {isOpen ? (
               <dl className="knw5-ref-detail" data-testid={`${testid}-detail`} title={row.id || undefined}>
                 <div>
+                  <dt>引用的是</dt>
+                  <dd data-testid={`${testid}-detail-title`}>
+                    {row.title}
+                    <Reason>{row.titleReason}</Reason>
+                  </dd>
+                </div>
+                <div>
                   <dt>原文位置</dt>
                   <dd>
                     {row.href ? (
@@ -386,10 +394,45 @@ function RefList({ rows, testid }: { rows: CitationRow[]; testid: string }): Rea
                   </dd>
                 </div>
                 <div>
+                  <dt>在原文中的位置</dt>
+                  <dd data-testid={`${testid}-detail-locator`}>
+                    {row.locator ?? "—"}
+                    <Reason>{row.locatorReason}</Reason>
+                  </dd>
+                </div>
+                <div>
                   <dt>来源</dt>
                   <dd title={row.sourceRaw ?? undefined}>
                     {row.source}
                     <Reason>{row.sourceReason}</Reason>
+                  </dd>
+                </div>
+                <div>
+                  <dt>这段引用从哪里来</dt>
+                  <dd data-testid={`${testid}-detail-origin`} title={row.originRaw ?? undefined}>
+                    {row.origin ? (
+                      <>
+                        {row.originHref ? (
+                          <Link className="knw5-link" to={row.originHref} data-testid={`${testid}-detail-origin-link`}>
+                            {row.origin}
+                            <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                          </Link>
+                        ) : (
+                          row.origin
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        —<Reason>{row.originReason}</Reason>
+                      </>
+                    )}
+                  </dd>
+                </div>
+                <div>
+                  <dt>被引用的原话</dt>
+                  <dd data-testid={`${testid}-detail-quote`}>
+                    {row.quote ?? "—"}
+                    <Reason>{row.quoteReason}</Reason>
                   </dd>
                 </div>
                 <div>
@@ -408,7 +451,7 @@ function RefList({ rows, testid }: { rows: CitationRow[]; testid: string }): Rea
                 </div>
                 <div>
                   <dt>时间</dt>
-                  <dd>
+                  <dd data-testid={`${testid}-detail-time`}>
                     {row.at}
                     <Reason>{row.atReason}</Reason>
                   </dd>
