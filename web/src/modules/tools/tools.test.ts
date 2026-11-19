@@ -20,8 +20,8 @@ import {
 
 describe("routes", () => {
   it("uses the real same-origin Hermes dashboard routes", () => {
-    expect(TOOLSETS_PATH).toBe("/api/tools/toolsets");
-    expect(SERVERS_PATH).toBe("/api/mcp/servers");
+    expect(TOOLSETS_PATH).toBe("/agent-api/api/tools/toolsets");
+    expect(SERVERS_PATH).toBe("/agent-api/api/mcp/servers");
     expect(GAP).toBe("GAP-04");
   });
 });
@@ -58,6 +58,12 @@ describe("toolset reader", () => {
     expect(rows?.[0]?.detail.join(" ")).toContain("web_search");
   });
 
+  it("reads an upstream last-call timestamp as Beijing wall clock", () => {
+    const rows = readToolsets([{ name: "web", tools: ["web_search"], last_used_at: "2026-11-19T01:20:00Z" }]);
+    expect(rows?.[0]?.lastUsed).toBe("2026-11-19 09:20");
+    expect(rows?.[0]?.lastUsedReason).toBeNull();
+  });
+
   it("rejects a non-list answer rather than treating it as empty", () => {
     expect(readToolsets({ items: [] })).toBeNull();
     expect(readToolsets(null)).toBeNull();
@@ -79,6 +85,7 @@ describe("MCP reader", () => {
     expect(JSON.stringify(rows)).not.toContain("secret");
     expect(rows?.[0]?.credential).toBe("configured");
     expect(rows?.[1]?.credential).toBe("unknown");
+    expect(readServers({ servers: [{ name: "关闭凭据", configured: false }] })?.[0]?.credential).toBe("missing");
   });
 
   it("rejects a malformed answer instead of inventing an empty list", () => {

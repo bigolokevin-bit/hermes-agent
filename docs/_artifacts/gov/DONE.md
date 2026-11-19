@@ -1614,3 +1614,29 @@ built /private/tmp/health-r38/index.html
 - 构建：`PATH="/opt/homebrew/bin:$PATH" node scripts/build/web.mjs --source . --out /tmp/r39-build --icons .` → exit 0，`built /private/tmp/r39-build2/index.html`。
 - DOM（临时 harness，已删除；1440/375）：settings/health/version/models/tenant/access/cron/tools/org/people 的 `bodySW==bodyCW==innerWidth`；settings 在 1440 `pageSW/pageCW=1440`（已隐藏共享 Button 的 2px 装饰弧）；11 个被审计页面强制态均出现对应内容 testid，非仅角标。
 - 边界：无 App/shell/routes/registry/manifest/package·lock/web-scripts/ops 改动；无 install；未并 main、未重建 9122；`retention` 属 audit 域，本 lane 未改并已在上表外标注；未跑独立观察者。
+
+## R41 — /capabilities?tab=tools 凭据与状态面（同窗）
+
+- 基线：`origin/lane/hermes-console` **53543118**（gate ledger stamped at `d0b50590`）；未并 main、未重建 9122。
+- 端点实测（8122/9122 带登录态，token 不落日志）：
+  - `GET /agent-api/api/tools/toolsets` → **404** `console.unknown_route`；`GET /agent-api/api/mcp/servers` → **404**。
+  - 同源 `GET /api/tools/toolsets` → **200 text/html**（SPA 外壳，不是 JSON）；`GET /api/mcp/servers` → **200 text/html**。
+  - 原生 Hermes 9119：`/api/tools/toolsets` → **200 / 26 toolsets**；`/api/mcp/servers` → **200 / 0 servers**；`/api/tools/calls`、`/api/tool-calls` → **404**（无最近调用时间路由）。
+  - 结论：消费端走 BFF 时没有工具读口；本页诚实「工具与 MCP 读口未接入」+原因，`GAP-04` 只进 `title`；原生 Hermes 宿主仍可读真实目录。
+- 实现：
+  - 读取顺序改为 BFF 优先、同源 Hermes 回退：`/agent-api/api/tools/toolsets` → `/api/tools/toolsets`，MCP 同理；`fetchJsonStrict` 识别 HTML 200，不再把 SPA 外壳当 JSON 解析错误。
+  - 最近调用：解析 `last_used/lastUsed/last_used_at/lastUsedAt/last_call_at/lastCallAt/last_invoked_at/lastRunAt`，北京时间到分；缺失显示 `—` +「接口没有提供最近调用时间（不表示从未调用）」。
+  - 凭据只显示 已配置/未配置/未知；MCP 优先读显式 `configured/credential_configured/auth_configured` 布尔，其次 auth/env/headers 是否声明；只读键名，不读任何值。
+  - 不可用行（停用/待核实）保留并标灰，`title` 合并原始标识、启用原因、凭据原因与最近调用原因。
+  - 移除 `FIXTURE_ROWS`、`FixtureRead`、`ToolRead`、`fixture` 阶段与样例提示；删除未使用的 `states.tsx`；强制态仅保留 `data-fixture` 标记，不渲染样例行。
+  - 403 与 404 同一「读口未接入」体；401 登录态；500 人话 + 可复制请求编号 + 重试；零写入口。
+- 四态内容面（DOM 实测，1440）：
+  - loading：`tol5-loading` +「正在读取工具与 MCP 清单…」，`data-fixture=loading`。
+  - empty：`tol5-empty` +「服务已响应，清单里没有工具或 MCP 连接…」，`data-fixture=empty`。
+  - error：`tol5-error` +「工具与 MCP 清单没能加载出来」+「请求编号：未提供」+ 重试，`data-fixture=error`。
+  - denied：`tol5-denied` +「工具与 MCP 读口未接入」+ 重试，`data-fixture=denied`。
+  - ready：真实读取，5 行（3 工具 + 2 MCP），`data-fixture` 无；`最近调用：2026-11-19 09:20`、`凭据：已配置`。
+- 三档宽度（DOM，ready）：1440/1280/375 `bodySW=bodyCW=pageSW=pageCW=1440/1280/375`，无页面横溢。
+- 截图：`docs/_artifacts/gov/shots/tol5-1440.png`、`tol5-1280.png`、`tol5-375.png`。
+- 验证：`npx vitest run src/modules/tools` → **2 files / 23 tests passed**；全量 → **131 files / 1371 tests passed**；`tsc -b . --noEmit` 仅基线 `src/modules/employees/EmployeesModulePage.test.tsx(73,5): TS18047`，本域 0；build 到 `/tmp/tools-build` 被同一基线错误阻断。
+- 边界：仅改 `web/src/modules/tools/**` + `docs/_artifacts/gov/**`；未改 App/shell/routes/registry/package·lock/scripts/ops；未 install；未并 main、未重建 9122；未跑独立观察者。真实 token/密钥/二维码未读取、未渲染。

@@ -1,20 +1,24 @@
 /**
  * 工具与 MCP — read-side adapters.
  *
- * Two real Hermes dashboard reads, both same-origin and authenticated by the
- * app's normal fetchJSON path (session token in loopback, cookie in gated mode):
- *   GET /api/tools/toolsets
- *   GET /api/mcp/servers
+ * Two real reads, attempted through the consumer BFF first and the same-origin
+ * Hermes dashboard second (session token or cookie as the host provides):
+ *   GET /agent-api/api/tools/toolsets -> GET /api/tools/toolsets
+ *   GET /agent-api/api/mcp/servers   -> GET /api/mcp/servers
  *
- * No fixture is ever painted for a successful answer. The only fixture is the
- * clearly marked field example shown when BOTH routes are absent (404), and it
- * carries data-fixture + a GAP title; it never impersonates a live row.
+ * The served consumer console reads through the BFF first
+ * (`/agent-api/...`, session or cookie), then falls back to the same-origin
+ * dashboard routes for the native Hermes host. A non-JSON SPA shell is treated
+ * as “not wired”, never parsed as data. No fixture row is ever painted: when
+ * both routes are absent the page says so and shows no sample row.
  */
 import { ApiError, errorMessage } from "@/lib/api-error";
-import { fetchJSON } from "@/lib/api";
+import { fetchJsonStrict } from "@/modules/models/fetchJson";
 
-export const TOOLSETS_PATH = "/api/tools/toolsets";
-export const SERVERS_PATH = "/api/mcp/servers";
+export const TOOLSETS_PATH = "/agent-api/api/tools/toolsets";
+export const SERVERS_PATH = "/agent-api/api/mcp/servers";
+export const TOOLSETS_PATHS = [TOOLSETS_PATH, "/api/tools/toolsets"] as const;
+export const SERVERS_PATHS = [SERVERS_PATH, "/api/mcp/servers"] as const;
 export const GAP = "GAP-04";
 
 export type ToolStatus = "enabled" | "disabled" | "unknown";
@@ -40,19 +44,6 @@ export interface ToolRow {
   failureReason?: string | null;
   source: "toolset" | "mcp";
 }
-
-export interface FixtureRead {
-  kind: "fixture";
-}
-
-export interface RowsRead {
-  kind: "rows";
-  rows: ToolRow[];
-  toolsetRows: number;
-  mcpRows: number;
-}
-
-export type ToolRead = RowsRead | FixtureRead;
 
 const TOOLSET_LABEL: Record<string, string> = {
   web: "网页搜索与抓取",
@@ -213,6 +204,33 @@ function failureOf(rec: Record<string, unknown>): { failure: string | null; reas
   return { failure: raw.length > 240 ? `${raw.slice(0, 240)}…` : raw, reason: null };
 }
 
+const LAST_USED_KEYS = [
+  "last_used",
+  "lastUsed",
+  "last_used_at",
+  "lastUsedAt",
+  "last_call_at",
+  "lastCallAt",
+  "last_invoked_at",
+  "lastInvokedAt",
+  "last_run_at",
+  "lastRunAt",
+] as const;
+
+function lastUsedOf(rec: Record<string, unknown>): { value: string | null; reason: string | null } {
+  const raw = pick(rec, LAST_USED_KEYS);
+  if (!raw) return { value: null, reason: "接口没有提供最近调用时间（不表示从未调用）。" };
+  const value = beijingMinute(raw);
+  if (value) return { value, reason: null };
+  return { value: null, reason: "接口给出的最近调用时间无法解析（不表示从未调用）。" };
+}
+
+function humanToolName(tool: string): string {
+  const known = TOOL_LABEL[tool];
+  if (known) return known;
+  return tool.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
 function credentialOf(value: boolean | null): { state: CredentialState; raw: string | null; reason: string | null } {
   if (value === true) return { state: "configured", raw: "true", reason: null };
   if (value === false) return { state: "missing", raw: "false", reason: null };
@@ -232,6 +250,7 @@ function toolsetRows(value: unknown, index: number): ToolRow[] {
   const tools = Array.isArray(rec.tools) ? rec.tools.map(text).filter((x): x is string => x !== null) : [];
   const platform = pick(rec, ["platform_label", "platform"]);
   const cred = credentialOf(configured);
+  const lastUsed = lastUsedOf(rec);
   const base = {
     type: groupName,
     typeReason: null,
@@ -241,8 +260,8 @@ function toolsetRows(value: unknown, index: number): ToolRow[] {
     credential: cred.state,
     credentialRaw: cred.raw,
     credentialReason: cred.reason,
-    lastUsed: null,
-    lastUsedReason: "接口没有提供最近调用时间。",
+    lastUsed: lastUsed.value,
+    lastUsedReason: lastUsed.reason,
     ...failureOf(rec),
     source: "toolset" as const,
   };
@@ -257,7 +276,7 @@ function toolsetRows(value: unknown, index: number): ToolRow[] {
   return tools.map((tool) => ({
     ...base,
     key: `toolset:${key}:${tool}`,
-    name: TOOL_LABEL[tool] ?? tool.replace(/_/g, " "),
+    name: humanToolName(tool),
     nameReason: null,
     rawId: tool,
     detail: detailBase,
@@ -274,10 +293,17 @@ function serverRow(value: unknown, index: number): ToolRow | null {
   const auth = pick(rec, ["auth"]);
   const env = record(rec.env);
   const headers = record(rec.headers);
+  const explicit = bool(rec.configured ?? rec.credential_configured ?? rec.credentialConfigured ?? rec.auth_configured ?? rec.authConfigured);
   const credentialsDeclared = auth !== null || (env && Object.keys(env).length > 0) || (headers && Object.keys(headers).length > 0);
-  const credential = credentialsDeclared
-    ? { state: "configured" as const, raw: auth ?? "declared", reason: null }
-    : { state: "unknown" as const, raw: null, reason: "接口没有说明这个连接是否需要凭据。" };
+  const credential =
+    explicit === true
+      ? { state: "configured" as const, raw: "true", reason: null }
+      : explicit === false
+        ? { state: "missing" as const, raw: "false", reason: null }
+        : credentialsDeclared
+          ? { state: "configured" as const, raw: auth ?? "declared", reason: null }
+          : { state: "unknown" as const, raw: null, reason: "接口没有说明这个连接是否需要凭据。" };
+  const lastUsed = lastUsedOf(rec);
   const detail = [
     `连接标识：${pick(rec, ["id", "serverId", "server_id"]) ?? rawName}`,
     `传输方式：${transport}`,
@@ -296,8 +322,8 @@ function serverRow(value: unknown, index: number): ToolRow | null {
     credential: credential.state,
     credentialRaw: credential.raw,
     credentialReason: credential.reason,
-    lastUsed: null,
-    lastUsedReason: "接口没有提供最近调用时间。",
+    lastUsed: lastUsed.value,
+    lastUsedReason: lastUsed.reason,
     ...failureOf(rec),
     rawId: rawName,
     detail,
@@ -325,16 +351,41 @@ export function readServers(payload: unknown): ToolRow[] | null {
   return rows;
 }
 
+function missingRoute(url: string): ApiError {
+  return new ApiError("这个数据接口还没有接入。", { status: 404, body: "", url });
+}
+
+async function fetchFirst(
+  paths: readonly string[],
+  reader: (payload: unknown) => ToolRow[] | null,
+): Promise<ToolRow[]> {
+  let firstOther: unknown = null;
+  let lastMissing: ApiError | null = null;
+  for (const path of paths) {
+    try {
+      const rows = reader(await fetchJsonStrict(path));
+      if (rows === null) throw new Error("服务回答的内容不是一份清单");
+      return rows;
+    } catch (err) {
+      const status = err instanceof ApiError ? err.status : -1;
+      // 403/404 and a 200 HTML shell all mean “this route is not wired here”.
+      if (status === 403 || status === 404 || status === 200) {
+        if (lastMissing === null) lastMissing = err instanceof ApiError ? err : missingRoute(path);
+        continue;
+      }
+      if (firstOther === null) firstOther = err;
+    }
+  }
+  if (firstOther !== null) throw firstOther;
+  throw lastMissing ?? missingRoute(paths[paths.length - 1]);
+}
+
 export async function fetchToolsets(): Promise<ToolRow[]> {
-  const rows = readToolsets(await fetchJSON<unknown>(TOOLSETS_PATH));
-  if (rows === null) throw new Error("工具集回答不是一份清单");
-  return rows;
+  return fetchFirst(TOOLSETS_PATHS, readToolsets);
 }
 
 export async function fetchServers(): Promise<ToolRow[]> {
-  const rows = readServers(await fetchJSON<unknown>(SERVERS_PATH));
-  if (rows === null) throw new Error("MCP 连接回答不是一份清单");
-  return rows;
+  return fetchFirst(SERVERS_PATHS, readServers);
 }
 
 export interface FailureInfo {
@@ -384,79 +435,3 @@ export function shapeFailure(): FailureCopy {
 
 export const requestIdLine = (id: string | null): string =>
   id ? `请求编号：${id}` : "本次请求未记录编号，可复制时间与操作路径反馈";
-
-/** Clearly marked field example; only for the both-routes-404 case. */
-export const FIXTURE_ROWS: ToolRow[] = [
-  {
-    key: "fixture:web",
-    name: "网页搜索与抓取",
-    nameReason: null,
-    type: "工具集",
-    typeReason: null,
-    status: "enabled",
-    statusRaw: "true",
-    statusReason: null,
-    credential: "configured",
-    credentialRaw: "true",
-    credentialReason: null,
-    lastUsed: null,
-    lastUsedReason: "示例行：接口未接入，没有最近调用时间。",
-    rawId: "web",
-    detail: ["字段示例", "工具集标识：web", "包含工具：web_search、web_extract"],
-    source: "toolset",
-  },
-  {
-    key: "fixture:kanban",
-    name: "看板",
-    nameReason: null,
-    type: "工具集",
-    typeReason: null,
-    status: "disabled",
-    statusRaw: "false",
-    statusReason: null,
-    credential: "missing",
-    credentialRaw: "false",
-    credentialReason: null,
-    lastUsed: null,
-    lastUsedReason: "示例行：接口未接入，没有最近调用时间。",
-    rawId: "kanban",
-    detail: ["字段示例", "工具集标识：kanban", "包含工具：kanban_create、kanban_list"],
-    source: "toolset",
-  },
-  {
-    key: "fixture:mcp-http",
-    name: "文档检索",
-    nameReason: null,
-    type: "MCP · HTTP 服务",
-    typeReason: null,
-    status: "enabled",
-    statusRaw: "true",
-    statusReason: null,
-    credential: "configured",
-    credentialRaw: "declared",
-    credentialReason: null,
-    lastUsed: null,
-    lastUsedReason: "示例行：接口未接入，没有最近调用时间。",
-    rawId: "docs-search",
-    detail: ["字段示例", "连接标识：docs-search", "传输方式：http"],
-    source: "mcp",
-  },
-  {
-    key: "fixture:mcp-unknown",
-    name: "日程连接",
-    nameReason: null,
-    type: "MCP · 本地进程",
-    typeReason: null,
-    status: "unknown",
-    statusRaw: null,
-    statusReason: "示例行：接口没有说明启用状态。",
-    credential: "unknown",
-    credentialRaw: null,
-    credentialReason: "示例行：接口没有说明凭据状态。",
-    lastUsed: null,
-    lastUsedReason: "示例行：接口未接入，没有最近调用时间。",
-    rawId: "calendar",
-    detail: ["字段示例", "连接标识：calendar", "传输方式：stdio"],
-    source: "mcp",
-  },
-];
