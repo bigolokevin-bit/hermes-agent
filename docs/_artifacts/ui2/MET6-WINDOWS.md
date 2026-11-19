@@ -156,3 +156,29 @@
 ### 未测项
 - 真浏览器下载路径未人工走查（沿用既有 Blob/anchor 机制，未改）。
 - 未测「注记行被 Excel 打开后的显示」；按 RFC 4180 单列字段处理，未做 Excel 特化。
+
+## 导出顺序与屏上一致（metJ，2026-11-20）
+
+### 改了什么 / 为何此前可能不一致
+- 明细：把表体行序固化成**一个数组** `detailLines`（`breakdownView.kind === 'ready' ? breakdownView.lines : []`），表格 `<tbody>` 与 `exportCsv` 都只读这一数组。此前两边虽然都从 `breakdownView.lines` 取，但导出侧直接引用 `breakdownView.lines` 再走 `map`——一旦未来表格加了排序/切片而导出没跟上，就会出现「屏上一套、文件一套」。现在顺序只有一个来源。
+- 分摊：导出在注释处明确「消费的正是表格渲染的 `shareRows`」（已按 `?sort/?dir` 排序，默认成本降序，`sortModelCost` 决定 null 排最后），导出侧不再有任何重排。
+- 新增屏上说明 `metJ-export-order-note`：「两份导出逐行照屏上表体顺序写：屏上第一行就是文件第一行。分摊按当前排序（默认成本从高到低），明细照表体原序。」
+- 注记行（metI 的「本次导出缺少…」）仍固定末行，且不计入 `可导出 N 行` / `N 行`。
+
+### 实测对照（jsdom，逐值）
+- 明细（`?view=model`，两行）：屏上首行 `qwen-plus`、末行 `deepseek-v4`；CSV 数据行首格依次 `qwen-plus`、`deepseek-v4`（完全相等）。
+- 分摊默认（无 sort/dir）：屏上 `zeta、alpha、mid`（成本降序，null 末）；CSV 首格依次相同，首 `zeta` / 末 `mid`。
+- 分摊 `?sort=model&dir=asc`：屏上 `alpha、mid、zeta`；CSV 首格依次相同，首 `alpha`。
+- 明细带缺口（运行统计 500）：数据行顺序仍与表体逐行相同，末行是 `# 本次导出缺少 1 块：运行统计（…）`，数据行数不变。
+
+### testid
+`metJ-export-order-note`（新增）。met5–metI 全族不变。
+
+### 验证
+- 定向 74 → 78 passed；全量 132 files / 1482 passed（2 条上游 employee-detail unhandled rejection 为既存噪声）。
+- `tsc -b . --noEmit`：`modules/metrics` 0 条。
+- build `/tmp/build-metJ`：entry `assets/index-BzlUpiPy.js` sha256 `d0758452d921455bbdb7bcf9957ce715f54a3119b4c68ec9ac6294d67bf92cc1`，entry 内 `metJ-export-order-note` 0；chunk `MetricsModulePage-DEi3bydN.js`：metJ 1、metI 1。
+
+### 未测项
+- 真浏览器下载与 Excel 打开未走查（顺序与转义均为字符串级断言）。
+- 明细表目前没有排序控件，故「明细跟 ?sort」不适用；若将来给明细加排序，必须同样改 `detailLines` 这一处（代码注释已写明）。

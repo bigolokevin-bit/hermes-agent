@@ -1853,3 +1853,131 @@ describe('metI — exports under partial failure', () => {
     expect(q('met6-retry')).not.toBeNull();
   });
 });
+
+describe('metJ — export order matches the table', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+  const captured: { blob: Blob | null } = { blob: null };
+  let clickSpy: { mockRestore: () => void } | null = null;
+
+  function capture(): void {
+    captured.blob = null;
+    Object.assign(URL, {
+      createObjectURL: vi.fn((blob: Blob) => {
+        captured.blob = blob;
+        return 'blob:metJ';
+      }),
+      revokeObjectURL: vi.fn(),
+    });
+    clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+  }
+
+  const csvRows = async (): Promise<string[]> =>
+    (await (captured.blob as Blob).text())
+      .replace(/^\uFEFF/, '')
+      .split('\r\n')
+      .slice(1)
+      // The note, when present, is always the last line and never a data row.
+      .filter((line) => !line.startsWith('#'));
+
+  const firstCell = (line: string): string => (line.startsWith('"') ? line.slice(1, line.indexOf('",')) : line.split(',')[0]);
+
+  const detailOrder = (): string[] =>
+    Array.from(document.querySelectorAll('tr[data-testid^="met6-row-"]')).map(
+      (tr) => tr.querySelector('.met6-rowname')?.textContent ?? '',
+    );
+
+  const shareOrder = (): string[] =>
+    Array.from(document.querySelectorAll('tr[data-testid^="met7-row-"]')).map(
+      (tr) => tr.querySelector('.met7-model')?.textContent ?? '',
+    );
+
+  afterEach(() => {
+    clickSpy?.mockRestore();
+    clickSpy = null;
+  });
+
+  it('writes the detail file in the exact row order of the table', async () => {
+    capture();
+    const router = usageRouter();
+    await mount(
+      (url) => (url.includes('hermes-usage') ? Promise.resolve(HERMES_USAGE) : router(url)),
+      '/metrics?view=model',
+    );
+
+    const onScreen = detailOrder();
+    expect(onScreen).toEqual(['qwen-plus', 'deepseek-v4']);
+    expect(q('metJ-export-order-note')).not.toBeNull();
+
+    await act(async () => {
+      (q('met6-export') as HTMLButtonElement).click();
+    });
+
+    const rows = await csvRows();
+    expect(rows.map(firstCell)).toEqual(onScreen);
+  });
+
+  it('keeps the share file in the default cost-descending order the table shows', async () => {
+    capture();
+    await mountShare(SHARE_USAGE);
+
+    const onScreen = shareOrder();
+    expect(onScreen).toEqual(['zeta', 'alpha', 'mid']);
+
+    await act(async () => {
+      (q('metA-export') as HTMLButtonElement).click();
+    });
+
+    const rows = await csvRows();
+    expect(rows.map(firstCell)).toEqual(onScreen);
+    expect(firstCell(rows[0] ?? '')).toBe('zeta');
+    expect(firstCell(rows.at(-1) ?? '')).toBe('mid');
+  });
+
+  it('follows ?sort/?dir in both the table and the file, and keeps the gap note last', async () => {
+    capture();
+    await mountShare(SHARE_USAGE, '/metrics?sort=model&dir=asc');
+
+    const onScreen = shareOrder();
+    expect(onScreen).toEqual(['alpha', 'mid', 'zeta']);
+
+    await act(async () => {
+      (q('metA-export') as HTMLButtonElement).click();
+    });
+
+    const rows = await csvRows();
+    expect(rows.map(firstCell)).toEqual(onScreen);
+    expect(firstCell(rows[0] ?? '')).toBe('alpha');
+
+    // Nothing this file draws from is missing, so it has no note line at all.
+    const all = (await (captured.blob as Blob).text()).replace(/^\uFEFF/, '').split('\r\n');
+    expect(all[0]).toBe('group,runs,cost_usd,share_pct,as_of,window');
+    expect(all.at(-1)).not.toContain('# 本次导出缺少');
+    expect(rows).toHaveLength(onScreen.length);
+  });
+
+  it('keeps the gap note after every data row while the row order still matches the table', async () => {
+    capture();
+    const router = usageRouter();
+    await mount((url) =>
+      url.includes('run-stats')
+        ? Promise.reject(new ApiError('boom', { status: 500, body: '', url, requestId: 'req-metJ-stats' }))
+        : url.includes('hermes-usage')
+          ? Promise.resolve(HERMES_USAGE)
+          : router(url),
+      '/metrics?view=model',
+    );
+
+    const onScreen = detailOrder();
+    expect(onScreen.length).toBeGreaterThan(1);
+
+    await act(async () => {
+      (q('met6-export') as HTMLButtonElement).click();
+    });
+
+    const rows = await csvRows();
+    expect(rows.map(firstCell)).toEqual(onScreen);
+    const all = (await (captured.blob as Blob).text()).replace(/^\uFEFF/, '').split('\r\n');
+    expect(all.at(-1)).toContain('# 本次导出缺少 1 块：运行统计');
+    expect(rows).toHaveLength(onScreen.length);
+  });
+});
