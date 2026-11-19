@@ -980,3 +980,12 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - shots-anon auxiliary=true 102/102 mode=anon obs=1 仅观测(#/knowledge?tab=scope，envOnly51)；匿名实锤 textLen=732；png 同名覆盖回 tonight/shots=102。
 - 纪律执行注：两批 completed 后才注入六键（79 轮新坑正例）；mktemp 目录名=shell PID（shots-anon80.74255）；上一代 9c7789f6 作废未重做。
 - 环境：9122 v4_proxy 受管未动、caddy 28034 未动、8092 pid 10844 未动；web/src 未碰；他人脏零沾染。
+
+## 八十二轮·波终代次九件重章 @ 9fedd46f（2026-11-20 01:2x，一波一盖）
+
+- 波并入四笔：appr e3ae64e8（R32 三拦车）、gov 2d41545d（tenant quota）、aud e4217d9e（evidence drillback）、ui1 61ebae8d（knowledge ingest）；HEAD=9fedd46f=远端，porc=0。
+- 代次三向互证：entry assets/index-tDlDDulZ.js 163539B sha 80c791fb…b4f1 全等；9122==8183==磁盘；拍后复证未漂。
+- 九件全 exit=0：ia-html/react ok{51,22,1,8}；lint-fake v=[]；lint-reuse v=0 exempt=1（chat→T40）；crawl-anon DL0/CE0/PE0 routesCE=51（401 归因）；crawl-auth routesCE=27；state-quad 20/20 文本重建注 source。
+- shots main(auth) 102/102 failures=[] ceAuth=login-state obs=1 仅观测（#/identity?tab=people&view=admins，envOnly=27 不入 ok）rootBaseline textLen=675（采集时刻 —/数据截至 —=新值班台诚实态）；shots-anon auxiliary=true 102/102 mode=anon obs=5 仅观测（approvals view=mine、knowledge evidence/ingest/retrieval、work cron，envOnly=50）匿名实锤 ok=true。
+- 同窗完成 R32（bff 侧）：只读 GET /api/models/pricing，上游 Bisheng 7860 实测无价目口（四候选 404）→ fail-closed 404 {code:models.pricing_not_wired, rid, message, asOf}；上游 2xx 时纯转发+asOf 注入；匿名 401 门先。356 passed（+3 新）；branch lane/L7-r32-models-pricing=33811ca push；8092 受管重启 43857→84366（lstart Fri Nov 20 01:22:37，ppid=1）。活体：带 cookie 404 envelope（rid=fbd770f6，asOf=2026-11-19T17:23:23Z）✓ 匿名 401 ✓。
+- 环境：9122 受管 v4_proxy、caddy 28034、8092 84366 全程未 kill 未确认进程；web/src 未碰；他人脏零沾染；上一代 33fc7029 作废未重做。

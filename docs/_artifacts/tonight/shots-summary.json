@@ -9,12 +9,12 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 490,
-    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 今日运行 运行记录 今日成本 成本账本 发布 ",
+    "textLen": 675,
+    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 — 刷新 可上岗 各项检查全部通过才计入 数据截至 — · 来源 员工目",
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 26,
+  "distinctMainHeads": 25,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -141,13 +141,13 @@
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "1440",
-      "chars": 1034,
+      "chars": 128,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "375",
-      "chars": 128,
+      "chars": 1034,
       "hasMainEl": true
     },
     {
@@ -219,7 +219,7 @@
     {
       "route": "#/employees/:employeeId?zone=config",
       "viewport": "375",
-      "chars": 51,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -237,7 +237,7 @@
     {
       "route": "#/employees/:employeeId?zone=runs",
       "viewport": "1440",
-      "chars": 42,
+      "chars": 115,
       "hasMainEl": true
     },
     {
@@ -465,13 +465,13 @@
     {
       "route": "#/overview",
       "viewport": "1440",
-      "chars": 1042,
+      "chars": 1222,
       "hasMainEl": true
     },
     {
       "route": "#/overview",
       "viewport": "375",
-      "chars": 1041,
+      "chars": 1222,
       "hasMainEl": true
     },
     {
@@ -633,7 +633,7 @@
   ],
   "consoleErrorsObservedByShots": 1,
   "consoleErrorRoutesObservedByShots": [
-    "#/overview"
+    "#/identity?tab=people&view=admins"
   ],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 27,
@@ -644,11 +644,11 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "33fc7029",
+  "headHash": "9fedd46f",
   "exitCode": 0,
-  "entry": "assets/index-C9I6RDGq.js",
-  "entrySha256": "184dc885ce19566c4e6b594ff21fba0fa2803eaa27d18cdb1ac2d91c0c13fec6",
-  "entryBytes": 161271,
-  "servedEntryBefore": "index-C9I6RDGq.js",
-  "servedEntryAfter": "index-C9I6RDGq.js"
+  "entry": "assets/index-tDlDDulZ.js",
+  "entrySha256": "80c791fb4c47571b50feb9f5184fd5c9d65b9baf120d7eb0b5dc2adb83f2b4f1",
+  "entryBytes": 163539,
+  "servedEntryBefore": "index-tDlDDulZ.js",
+  "servedEntryAfter": "index-tDlDDulZ.js"
 }

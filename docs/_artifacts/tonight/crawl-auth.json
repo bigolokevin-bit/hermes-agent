@@ -26,8 +26,8 @@
   "rootShell": {
     "url": "http://127.0.0.1:9122/",
     "hasMainEl": true,
-    "mainChars": 242,
-    "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 今日运"
+    "mainChars": 411,
+    "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 — 刷新 可上岗 各项检查全部通过"
   },
   "contentChecked": 51,
   "contentRows": [
@@ -517,13 +517,13 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 1005,
+      "mainChars": 1175,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
       "consoleErrorEnv": null,
       "evalError": null,
-      "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检"
+      "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 — 刷新 "
     },
     {
       "route": "#/overview?tab=usage",
@@ -673,7 +673,7 @@
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 1816,
+      "mainChars": 202,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
@@ -695,8 +695,8 @@
       "headSample": "运营 · 控制台 任务与运行 任务 运行 控制台 · 运行 运行 按时间看运行记录。这一面只读："
     }
   ],
-  "distinctMainHeads": 30,
-  "medianMainChars": 234,
+  "distinctMainHeads": 31,
+  "medianMainChars": 224,
   "contentEmpty": [],
   "contentEmptyCount": 0,
   "mode": "auth-attributed",
@@ -739,7 +739,7 @@
   "routesWithConsoleErrors": 27,
   "parseErrors": [],
   "ok": true,
-  "headHash": "33fc7029",
+  "headHash": "9fedd46f",
   "exitCode": 0,
   "counts": {
     "probed": 75,
