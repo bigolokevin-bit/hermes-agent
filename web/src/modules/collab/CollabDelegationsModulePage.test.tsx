@@ -360,7 +360,13 @@ describe("read-only: no control that cannot do anything", () => {
     for (const button of buttons) {
       const owner = button.closest("[data-testid]")?.getAttribute("data-testid") ?? "";
       const label = `${owner}|${button.textContent ?? ""}`;
+      const plannedButton =
+        button.getAttribute("data-planned") === "true" &&
+        button.getAttribute("aria-disabled") === "true" &&
+        button.hasAttribute("disabled") &&
+        (button.getAttribute("title") ?? "").length > 0;
       const known =
+        plannedButton ||
         /col5-refresh|col5-row-0-tech|col5-page-tech|col5-view-list|col5-view-chain/.test(label) ||
         button.getAttribute("aria-label")?.startsWith("复制") === true;
       expect({ label, known }).toEqual({ label, known: true });
@@ -519,10 +525,24 @@ describe("the delegation chain view", () => {
     await waitFor(() => document.querySelector("[data-testid='col5-chain']") !== null, "chain painted");
     for (const word of ["撤销", "新建", "发起委托", "接受", "拒绝", "交接给", "完成委托"]) {
       const clickable = Array.from(document.querySelectorAll("button, a")).filter((node) =>
-        (node.textContent ?? "").includes(word),
+        (node.textContent ?? "").includes(word) && node.getAttribute("data-planned") !== "true",
       );
       expect(clickable).toHaveLength(0);
     }
+    for (const id of ["col5-planned-create", "col5-planned-revoke"]) {
+      const planned = document.querySelector<HTMLButtonElement>("[data-testid='" + id + "']");
+      expect(planned).not.toBeNull();
+      expect(planned!.disabled).toBe(true);
+      expect(planned!.getAttribute("data-planned")).toBe("true");
+      expect(planned!.getAttribute("aria-disabled")).toBe("true");
+      expect((planned!.getAttribute("title") ?? "").length).toBeGreaterThan(0);
+    }
+    const askedBefore = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='col5-planned-create']")?.click();
+      document.querySelector<HTMLButtonElement>("[data-testid='col5-planned-revoke']")?.click();
+    });
+    expect(api.fetchJSON.mock.calls.length).toBe(askedBefore);
     expect(document.querySelector("[data-testid='col5-write-note']")?.textContent).toContain("只读");
   });
 });
