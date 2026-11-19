@@ -336,14 +336,47 @@ export function ledgerAsOf(rows: LedgerRow[]): string | null {
   return latest;
 }
 
-/** USD with cents. A missing value is «—», never $0.00. */
-export function formatUsd(value: number | null): string {
-  if (value === null || !Number.isFinite(value)) return '—';
-  return `${value < 0 ? '-' : ''}$${Math.abs(value).toFixed(2)}`;
+/** Thousands groups in the integer part. Display decoration only: no value changes. */
+function groupThousands(digits: string): string {
+  const negative = digits.startsWith('-');
+  const body = negative ? digits.slice(1) : digits;
+  const [int, frac] = body.split('.');
+  const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return `${negative ? '-' : ''}${grouped}${frac === undefined ? '' : `.${frac}`}`;
 }
 
+/**
+ * The one rounding rule for money: two decimals, no symbol, no grouping.
+ * Machine form for files; `formatUsd` decorates the same digits for the screen.
+ */
+export function usdDigits(value: number | null): string | null {
+  if (value === null || !Number.isFinite(value)) return null;
+  return value.toFixed(2);
+}
+
+/** USD with cents and thousands: `$1,234.56`. A missing value is «—», never $0.00. */
+export function formatUsd(value: number | null): string {
+  const digits = usdDigits(value);
+  if (digits === null) return '—';
+  const negative = digits.startsWith('-');
+  return `${negative ? '-' : ''}$${groupThousands(negative ? digits.slice(1) : digits)}`;
+}
+
+/** Counts group thousands: `1,234`. A missing count is «—», never 0. */
 export function formatCount(value: number | null): string {
-  return value === null || !Number.isFinite(value) ? '—' : String(value);
+  return value === null || !Number.isFinite(value) ? '—' : groupThousands(String(value));
+}
+
+/** The one rounding rule for a share: one decimal, no «%». Machine form for files. */
+export function digitsPct(value: number | null): string | null {
+  if (value === null || !Number.isFinite(value)) return null;
+  return value.toFixed(1);
+}
+
+/** Screen share: `12.3%`; a share that cannot be computed is «—». */
+export function formatSharePct(value: number | null): string {
+  const digits = digitsPct(value);
+  return digits === null ? '—' : `${digits}%`;
 }
 
 /** 0.9967 → 99.7%; null → «—». Only formats a rate the server computed. */
@@ -494,7 +527,8 @@ export function readPricing(payload: unknown): ParsedPricing {
 export function formatUnitPrice(value: number | null, currency: string | null): string {
   if (value === null || !Number.isFinite(value)) return '—';
   const symbol = currency === null || currency.toUpperCase() === 'USD' ? '$' : '';
-  return `${symbol}${value.toFixed(2)} / 百万 token`;
+  const digits = usdDigits(value) ?? '—';
+  return digits === '—' ? digits : `${symbol}${groupThousands(digits)} / 百万 token`;
 }
 
 // ---- MET6: breakdown views (by employee / by model) -------------------------
@@ -845,8 +879,8 @@ export function shareCsvRows(rows: ShareCsvRow[]): (string | number | null)[][] 
   return rows.map((row) => [
     row.name,
     row.runs,
-    row.costUsd === null ? null : row.costUsd.toFixed(2),
-    row.sharePct === null ? null : row.sharePct.toFixed(1),
+    usdDigits(row.costUsd),
+    digitsPct(row.sharePct),
     isoOrNull(row.asOf),
     row.window ?? null,
   ]);

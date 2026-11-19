@@ -233,3 +233,50 @@ metB 的「采集时刻」列内新增滞后徽标，不新增列、不改版式
 - 验证：单文件 12 例；`src/modules/metrics` 2 files / 102 passed；全量 133 files / 1506 passed（2 条上游 employee-detail 未处理拒绝为既存噪声）；`tsc` 全仓 55 条既存基线、`modules/metrics` 0。
 - build entry `assets/index-DZ3ixbOI.js` sha256 `e3d1042d0f4692ab3df331a33ac48a79922a69cabfb5742bcbaa8f25341369fc`，entry 内 `readTopAsOf` 与 `metB-source-toggle` 均 0；chunk `MetricsModulePage-C2Expni7.js` 内 `metB-source-toggle` 1。
 - 未测项：浏览器真实剪贴板/下载与表格顺序的人工对照未走查（均为字符串级断言）；`asOf` 恰为未来时间时不判滞后，属设计选择，未与上游约定核对。
+
+## 数值格式与单位一致性（metO，2026-11-20）
+
+### 一套数位，两层装饰
+
+`metrics.ts` 把格式化拆成两层，屏幕与文件共用同一套四舍五入：
+
+| 层 | 函数 | 输出 |
+|---|---|---|
+| 数位（文件/求和） | `usdDigits(v)` | `1234.50`、`0.00`，缺失 `null` |
+| 数位（文件/求和） | `digitsPct(v)` | `75.0`，缺失 `null` |
+| 屏幕 | `formatUsd(v)` | `$1,234.56`、`$0.00`、`—` |
+| 屏幕 | `formatCount(v)` | `1,234`、`—` |
+| 屏幕 | `formatSharePct(v)` | `75.0%`、`—` |
+
+`formatUnitPrice`、`shareCsvRows`、明细导出的金额与占比都改为调用上面两个数位函数，屏幕则调用装饰函数 —— 两处小数位只由一处代码决定。
+
+### 屏幕 ↔ 文件对照（2 组，实测）
+
+数据：`big` 1234 次 / 1234.5 USD，`bulk` 1200 次 / 1000 USD。
+
+| 值 | 屏上 | CSV |
+|---|---|---|
+| 金额 | `$1,234.50` | `1234.50` |
+| 次数 | `1,234` | `1234` |
+
+即同一精度，CSV 去掉 `$` 与千分位（`1,234.56` 的逗号会被当成字段分隔符），表头已带 USD / %。
+
+### 真零与缺失
+
+`zero`（0 次 / 0 USD）与 `none`（两字段都缺）同屏：屏上 `0` / `$0.00` 对 `—`；CSV `zero,0,0.00` 对 `none,,`。不把缺失写成 0。
+
+### 单位说明
+
+- 明细表：`支出（USD）`（title 金额单位·两位小数，`metO-fmt-th-spend`）、`次数（次）`（`metO-fmt-th-count`）、`占比（%）`（`metG-a11y-th-share`）。
+- 分摊表：运行数列 `data-metO-unit="次"`、成本列 `data-metO-unit="USD"`、`占比（%）`（`metO-fmt-th-pct`）。
+- 分摊区说明 `metO-fmt-note`：「数字口径：计数与金额按千分位分组（如 1,234 与 $1,234.56），占比保留一位小数（如 12.3%）；金额只以美元（USD）记，次数只以次记，不再混用别的单位。缺失显示「—」，真实的零显示 0 或 $0.00。导出文件沿用同一套小数位，只去掉符号与千分位，方便程序读取。」
+
+### 验证
+
+- 定向 `vitest run src/modules/metrics` → 2 files / 106 passed（基线 102，+4）。
+- 全量 `vitest run` → 133 files / 1510 passed（基线 133/1506，+4）；`Errors 2` 为上游 employee-detail 既存噪声。
+- `tsc -b . --noEmit` → 全仓 55 条既存基线，`modules/metrics` 0 条（一次修正：移除未使用的 `digitsPct` 导入）。
+- build `--outDir /tmp/build-metO` → entry `assets/index-AnzFwKuS.js` sha256 `fca55468b44d82b8018f9a3e00a48a22f5ffd92043e274d9c1d244d42eb4e94a`，entry 内 `metO-fmt-note` = 0；chunk `assets/MetricsModulePage-D7z_fTpv.js` 命中 1。
+- 已知改动：既有「员工成本分摊」断言中的占比由 `75%` 改为 `75.0%`（口径统一为一位小数，未放宽断言）。
+
+未测：真浏览器 375/1280 下千分位不折行未逐像素走查；CSV 在 Excel 中打开未实测（逗号在字段内仍由 RFC 4180 转义保证）。

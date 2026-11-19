@@ -76,6 +76,8 @@ import {
   readSourceStamp,
   sourceKeyOfPath,
   sourceRows,
+  formatSharePct,
+  usdDigits,
   usageWindowOf,
   windowRange,
   windowOf,
@@ -1235,7 +1237,7 @@ export function MetricsModulePage() {
     const batchAsOf = isoOrNull(breakdownView.asOf);
     const rows = detailLines.map((line) => [
       line.label,
-      line.costUsd === null ? null : line.costUsd.toFixed(2),
+      usdDigits(line.costUsd),
       line.count,
       line.share,
       line.asOf ? formatBeijing(line.asOf) : null,
@@ -1782,9 +1784,9 @@ export function MetricsModulePage() {
                     <thead>
                       <tr>
                         <th scope="col">{breakdownView.view === 'model' ? '模型' : '员工'}</th>
-                        <th scope="col">支出</th>
-                        <th scope="col">次数</th>
-                        <th scope="col" className="met6-num" data-testid="metG-a11y-th-share">占比</th>
+                        <th scope="col" title="金额单位：美元（USD），两位小数" data-testid="metO-fmt-th-spend">支出（USD）</th>
+                        <th scope="col" title="调用次数，单位：次" data-testid="metO-fmt-th-count">次数（次）</th>
+                        <th scope="col" className="met6-num" data-testid="metG-a11y-th-share" title="占本窗口合计的比例，单位：百分比，一位小数">占比（%）</th>
                         <th scope="col">账本截至</th>
                       </tr>
                     </thead>
@@ -1800,7 +1802,7 @@ export function MetricsModulePage() {
                             {line.count ?? '—'}
                             {line.countNote ? <span className="met6-rowsub">{line.countNote}</span> : null}
                           </td>
-                          <td className="met6-num">{line.share === null ? '—' : `${line.share}%`}</td>
+                          <td className="met6-num">{formatSharePct(line.share)}</td>
                           <td className="met6-num">{line.asOf ? formatBeijing(line.asOf) : '—'}</td>
                         </tr>
                       ))}
@@ -2216,17 +2218,17 @@ export function MetricsModulePage() {
                             {sortKey === 'model' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
                           </button>
                         </th>
-                        <th scope="col" className="met6-num" data-testid="metG-a11y-th-runs" aria-sort={sortKey === 'runs' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                        <th scope="col" className="met6-num" data-testid="metG-a11y-th-runs" data-metO-unit="次" title="运行计数，单位：次" aria-sort={sortKey === 'runs' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
                           <button type="button" className="met7-sort" onClick={() => chooseSort('runs')} data-testid={`${sharePrefix}-sort-runs`}>
                             运行数{sortKey === 'runs' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
                           </button>
                         </th>
-                        <th scope="col" className="met6-num" data-testid="metG-a11y-th-cost" aria-sort={sortKey === 'cost' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                        <th scope="col" className="met6-num" data-testid="metG-a11y-th-cost" data-metO-unit="USD" title="金额单位：美元（USD），两位小数" aria-sort={sortKey === 'cost' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
                           <button type="button" className="met7-sort" onClick={() => chooseSort('cost')} data-testid={`${sharePrefix}-sort-cost`}>
                             成本{sortKey === 'cost' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
                           </button>
                         </th>
-                        <th scope="col">占比</th>
+                        <th scope="col" title="占本窗口可分摊实扣的比例，单位：百分比，一位小数" data-testid="metO-fmt-th-pct">占比（%）</th>
                         <th scope="col">运行</th>
                       </tr>
                     </thead>
@@ -2236,7 +2238,7 @@ export function MetricsModulePage() {
                           key={`${row.model}-${row.slug}`}
                           className="met7-row"
                           tabIndex={0}
-                          aria-label={`${row.model}：${formatCount(row.runs)} 次运行，${formatUsd(row.costUsd)}，占比 ${row.sharePct === null ? '—' : `${row.sharePct.toFixed(1)}%`}`}
+                          aria-label={`${row.model}：${formatCount(row.runs)} 次运行，${formatUsd(row.costUsd)}，占比 ${formatSharePct(row.sharePct)}`}
                           data-testid={`${sharePrefix}-row-${row.slug}`}
                         >
                           <td className="met7-model" title={row.model}>{row.model}</td>
@@ -2259,7 +2261,7 @@ export function MetricsModulePage() {
                             data-testid={`${sharePrefix}-share-${row.slug}`}
                             title={row.sharePct === null ? '可读到的实扣金额为 0 或缺失，无法分摊' : '按可读到的实扣金额归一'}
                           >
-                            {row.sharePct === null ? '—' : `${row.sharePct.toFixed(1)}%`}
+                            {formatSharePct(row.sharePct)}
                           </td>
                           <td className="met6-num">
                             <Link
@@ -2284,6 +2286,9 @@ export function MetricsModulePage() {
                 </p>
                 <p className="met6-hint" data-testid={`${sharePrefix}-hint`}>
                   占比按可读到的实扣金额归一，合计 100%；缺金额的行不参与分摊，显示「—」。排序写在地址里，刷新与前进后退都保留。
+                </p>
+                <p className="met6-hint" data-testid="metO-fmt-note">
+                  数字口径：计数与金额按千分位分组（如 1,234 与 $1,234.56），占比保留一位小数（如 12.3%）；金额只以美元（USD）记，次数只以次记，不再混用别的单位。缺失显示「—」，真实的零显示 0 或 $0.00。导出文件沿用同一套小数位，只去掉符号与千分位，方便程序读取。
                 </p>
                 {groupBy === 'employee' ? (
                   <p className="met6-hint" data-testid="met9-note">

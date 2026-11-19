@@ -432,9 +432,9 @@ describe('MetricsModulePage — cost breakdown', () => {
     expect(rows).toHaveLength(2);
     expect(rows[0]?.textContent).toContain('小鲤 · AAAABBBB');
     expect(rows[0]?.textContent).toContain('$0.30');
-    expect(rows[0]?.textContent).toContain('75%');
+    expect(rows[0]?.textContent).toContain('75.0%');
     expect(rows[1]?.textContent).toContain('$0.10');
-    expect(rows[1]?.textContent).toContain('25%');
+    expect(rows[1]?.textContent).toContain('25.0%');
     // The ledger does not carry run counts: — with its reason, never 0.
     expect(rows[0]?.textContent).toContain('—');
     expect(rows[0]?.textContent).toContain('不记运行次数');
@@ -2258,5 +2258,113 @@ describe('metM — staleness hints', () => {
 
     expect(document.querySelector('[data-testid="metM-stale-run-stats"]')).toBeNull();
     expect(document.querySelector('[data-testid="metB-source-table"]')).toBeTruthy();
+  });
+});
+
+describe('metO — number format consistency', () => {
+  function captureDownload(): {
+    captured: { blob: Blob | null; name: string | null };
+    click: ReturnType<typeof vi.spyOn>;
+  } {
+    const captured: { blob: Blob | null; name: string | null } = { blob: null, name: null };
+    Object.assign(URL, {
+      createObjectURL: vi.fn((blob: Blob) => {
+        captured.blob = blob;
+        return 'blob:metO';
+      }),
+      revokeObjectURL: vi.fn(),
+    });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
+      captured.name = this.download;
+    });
+    return { captured, click };
+  }
+
+  it('groups thousands on screen and exports the same precision without decoration', async () => {
+    const { captured, click } = captureDownload();
+    await mountShare({
+      by_model: [
+        { model: 'big', sessions: 1234, actual_cost_usd: 1234.5 },
+        { model: 'bulk', sessions: 1200, actual_cost_usd: 1000 },
+      ],
+      asOf: '2026-11-19T20:12:00.000Z',
+    });
+
+    // Screen: one shared formatter for counts and money.
+    expect(document.querySelector('[data-testid="met7-runs-big"]')?.textContent).toBe('1,234');
+    expect(document.querySelector('[data-testid="met7-cost-big"]')?.textContent).toBe('$1,234.50');
+    expect(document.querySelector('[data-testid="met7-runs-bulk"]')?.textContent).toBe('1,200');
+    expect(document.querySelector('[data-testid="met7-cost-bulk"]')?.textContent).toBe('$1,000.00');
+
+    await act(async () => {
+      (document.querySelector('[data-testid="metA-export"]') as HTMLButtonElement).click();
+    });
+    const lines = (await (captured.blob as Blob).text()).replace(/^\uFEFF/, '').split('\r\n');
+    const big = (lines.find((line) => line.startsWith('big,')) ?? '').split(',');
+    const bulk = (lines.find((line) => line.startsWith('bulk,')) ?? '').split(',');
+
+    // Pair 1: $1,234.50 on screen ↔ 1234.50 in the file. Pair 2: 1,234 ↔ 1234.
+    expect(big.slice(0, 3)).toEqual(['big', '1234', '1234.50']);
+    expect(bulk.slice(0, 3)).toEqual(['bulk', '1200', '1000.00']);
+    expect(lines.every((line) => !line.includes('$'))).toBe(true);
+    click.mockRestore();
+  });
+
+  it('keeps a real zero and a missing value apart on screen and in the file', async () => {
+    const { captured, click } = captureDownload();
+    await mountShare({
+      by_model: [{ model: 'zero', sessions: 0, actual_cost_usd: 0 }, { model: 'none' }],
+      asOf: '2026-11-19T20:12:00.000Z',
+    });
+
+    expect(document.querySelector('[data-testid="met7-cost-zero"]')?.textContent).toBe('$0.00');
+    expect(document.querySelector('[data-testid="met7-runs-zero"]')?.textContent).toBe('0');
+    expect(document.querySelector('[data-testid="met7-cost-none"]')?.textContent).toBe('—');
+    expect(document.querySelector('[data-testid="met7-runs-none"]')?.textContent).toBe('—');
+
+    await act(async () => {
+      (document.querySelector('[data-testid="metA-export"]') as HTMLButtonElement).click();
+    });
+    const lines = (await (captured.blob as Blob).text()).replace(/^\uFEFF/, '').split('\r\n');
+    const zero = (lines.find((line) => line.startsWith('zero,')) ?? '').split(',');
+    const none = (lines.find((line) => line.startsWith('none,')) ?? '').split(',');
+
+    expect(zero.slice(0, 3)).toEqual(['zero', '0', '0.00']);
+    expect(none.slice(0, 3)).toEqual(['none', '', '']);
+    click.mockRestore();
+  });
+
+  it('states the unit on every numeric column of the share table', async () => {
+    await mountShare(SHARE_USAGE);
+
+    const runs = document.querySelector('[data-testid="metG-a11y-th-runs"]') as HTMLElement;
+    const cost = document.querySelector('[data-testid="metG-a11y-th-cost"]') as HTMLElement;
+    const pct = document.querySelector('[data-testid="metO-fmt-th-pct"]') as HTMLElement;
+
+    expect(runs.getAttribute('data-metO-unit')).toBe('次');
+    expect(runs.title).toContain('次');
+    expect(cost.getAttribute('data-metO-unit')).toBe('USD');
+    expect(cost.title).toContain('USD');
+    expect(pct.textContent).toBe('占比（%）');
+    expect(pct.title).toContain('百分比');
+
+    const note = document.querySelector('[data-testid="metO-fmt-note"]')?.textContent ?? '';
+    expect(note).toContain('千分位');
+    expect(note).toContain('美元（USD）');
+    expect(note).toContain('缺失显示「—」');
+    expect(note).toContain('导出文件沿用同一套小数位');
+  });
+
+  it('states the unit on the detail columns', async () => {
+    await mount(usageRouter());
+
+    const spend = document.querySelector('[data-testid="metO-fmt-th-spend"]') as HTMLElement;
+    const count = document.querySelector('[data-testid="metO-fmt-th-count"]') as HTMLElement;
+    expect(spend.textContent).toBe('支出（USD）');
+    expect(spend.title).toContain('美元');
+    expect(count.textContent).toBe('次数（次）');
+    expect(count.title).toContain('次');
   });
 });
