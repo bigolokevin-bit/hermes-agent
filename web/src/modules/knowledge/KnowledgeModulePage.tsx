@@ -1,8 +1,11 @@
 /**
  * `/knowledge` — 知识空间、数据接入、检索、证据与引用。
  *
- * Every surface on this page makes ONE real request and renders the answer it got.
- * There is no sample row, no invented count, and no `?state=` repro standing behind a
+ * The page is seven real reads: knowledge spaces, the designated data-source read
+ * answered as 接入任务, document登记, the knowledge search read, the retrieval audit
+ * records, the knowledge citation read, and the citations that recent console
+ * sessions carry. Each makes ONE request and renders the answer it got. There is no
+ * sample row, no invented count, and no `?state=` repro standing behind a
  * `data-fixture` badge: the four states come from the service, and a 403 and a 404
  * draw the same body on purpose. Technical values (raw ids, the GAP number, the full
  * 摘要) live in `title` attributes, never on screen.
@@ -28,6 +31,7 @@ import {
   SURFACE_SOURCE,
   TAB_LABEL,
   TAB_ORDER,
+  TASKS_URL,
   UNWIRED_HUMAN,
   citationsFromDetail,
   initialTab,
@@ -36,9 +40,11 @@ import {
   readRows,
   readSearch,
   readSessions,
+  readTasks,
   searchUrl,
   sessionCitations,
   type CitationRow,
+  type IngestTaskRow,
   type KnowledgeRow,
   type KnowledgeTab,
   type RetrievalRow,
@@ -176,13 +182,17 @@ interface SurfaceProps<T> {
 function Surface<T>({ testid, source, state, onRetry, empty, render }: SurfaceProps<T>): ReactNode {
   const value = state.kind === "ready" ? state.value : null;
   const stamp = value?.stamp ?? null;
-  const stampReason =
-    value?.stampReason ??
-    (state.kind === "loading"
+  // A read that DID give a collection time says nothing else about time: the reason
+  // line only appears when the time is genuinely missing.
+  const stampReason = value
+    ? value.stamp
+      ? null
+      : value.stampReason ?? "上游响应没有给出可用时间，数据截至时间未知。"
+    : state.kind === "loading"
       ? "正在读取，数据截至时间未知。"
       : state.kind === "unwired"
         ? "这块数据没有读到，数据截至时间未知。"
-        : "这次没有读到数据，数据截至时间未知。");
+        : "这次没有读到数据，数据截至时间未知。";
 
   return (
     <section
@@ -400,16 +410,82 @@ function SpacesSurface({ nonce }: { nonce: string }): ReactNode {
 function IngestSurface({ nonce }: { nonce: string }): ReactNode {
   const surface = useSurface<KnowledgeRow>(
     () => fetchJsonStrict(DOCUMENTS_URL).then((body) => readRows(body, "ingest")),
-    `ingest|${nonce}`,
+    `documents|${nonce}`,
   );
   return (
     <Surface
       testid="knw5-ingest"
-      source="ingest"
+      source="documents"
       state={surface.state}
       onRetry={surface.retry}
       empty={() => <p>当前没有读到文档登记。接口已响应，但列表为空；不显示 0 篇。</p>}
       render={(value) => <RowTable rows={value.rows} testid="knw5-ingest-table" />}
+    />
+  );
+}
+
+/** What the data-source reads answer as 接入任务, in the operator's own words. */
+function TaskTable({ rows }: { rows: IngestTaskRow[] }): ReactNode {
+  return (
+    <div className="knw5-scroll">
+      <table className="knw5-table" data-testid="knw5-ingest-tasks-table">
+        <thead>
+          <tr>
+            <th scope="col">数据源</th>
+            <th scope="col">状态</th>
+            <th scope="col">进度与数量</th>
+            <th scope="col">时间</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, index) => (
+            <tr key={row.id || `task-${index}`} data-testid="knw5-ingest-tasks-row" title={row.id || undefined}>
+              <td data-label="数据源">
+                <span className="knw5-name">{row.name}</span>
+                <Reason>{row.nameReason}</Reason>
+                <span className="knw5-sub" title={row.kindRaw ?? undefined}>
+                  {row.kind}
+                </span>
+                <Reason>{row.kindReason}</Reason>
+              </td>
+              <td data-label="状态">
+                <Badge
+                  tone={row.status === "成功" ? "success" : row.status === "失败" ? "destructive" : "outline"}
+                >
+                  {row.status}
+                </Badge>
+                <Reason>{row.statusReason}</Reason>
+              </td>
+              <td data-label="进度与数量">
+                <span>{row.progress}</span>
+                {row.issue ? <span className="knw5-sub">{row.issue}</span> : null}
+                <Reason>{row.progressReason}</Reason>
+              </td>
+              <td data-label="时间">
+                <span>{row.timeLabel ? `${row.timeLabel}：${row.at}` : row.at}</span>
+                <Reason>{row.atReason}</Reason>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function IngestTasksSurface({ nonce }: { nonce: string }): ReactNode {
+  const surface = useSurface<IngestTaskRow>(
+    () => fetchJsonStrict(TASKS_URL).then(readTasks),
+    `tasks|${nonce}`,
+  );
+  return (
+    <Surface
+      testid="knw5-ingest-tasks"
+      source="tasks"
+      state={surface.state}
+      onRetry={surface.retry}
+      empty={() => <p>接口已响应，但没有给出接入任务；这不等于没有数据源在接入，也不显示 0 个任务。</p>}
+      render={(value) => <TaskTable rows={value.rows} />}
     />
   );
 }
@@ -620,7 +696,12 @@ export default function KnowledgeModulePage() {
         <CardContent className="knw5-body" data-testid="knw5-panel" data-tab={tab}>
           <div data-testid={`knw5-panel-${tab}`}>
             {tab === "spaces" ? <SpacesSurface nonce={nonce} /> : null}
-            {tab === "ingest" ? <IngestSurface nonce={nonce} /> : null}
+            {tab === "ingest" ? (
+              <>
+                <IngestTasksSurface nonce={nonce} />
+                <IngestSurface nonce={nonce} />
+              </>
+            ) : null}
             {tab === "retrieval" ? (
               <>
                 <SearchSurface nonce={nonce} query={query} onSearch={commitQuery} />

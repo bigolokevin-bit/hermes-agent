@@ -15,11 +15,12 @@ import KnowledgeModulePage from "./KnowledgeModulePage";
 
 const SPACES = "/agent-api/api/knowledge/spaces";
 const DOCUMENTS = "/agent-api/api/documents?limit=50";
+const TASKS = "/agent-api/api/knowledge/sources?limit=20";
 const SEARCH_NO_QUERY = "/agent-api/api/knowledge/search?limit=12";
 const SEARCH_STAFF = "/agent-api/api/knowledge/search?q=%E5%91%98%E5%B7%A5&limit=12";
 const CITATIONS = "/agent-api/api/knowledge/citations?limit=20";
 const RECORDS = "/agent-api/api/audit?action=kb.read&limit=50";
-const SESSIONS = "/agent-api/api/sessions?limit=20";
+const SESSIONS = "/agent-api/api/console-sessions?limit=20";
 
 function LocationProbe() {
   const loc = useLocation();
@@ -187,6 +188,10 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(text).toContain("接口已响应，但列表为空");
     expect(text).not.toContain("0 个空间");
     expect(text).not.toContain("共 0");
+    // 这一份回答没带采集时间：时间那行要如实说未知并给原因。
+    const source = byTestid("knw5-spaces-source")?.textContent ?? "";
+    expect(source).toContain("数据截至 未知");
+    expect(source).toContain("上游响应没有带采集时间");
   });
 
   it("searches through the knowledge search read and draws its real hits", async () => {
@@ -263,7 +268,7 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
         });
       }
       if (url === RECORDS) return Promise.resolve({ events: [] });
-      if (url === SESSIONS) return Promise.resolve({ sessions: [] });
+      if (url === SESSIONS) return Promise.resolve({ items: [] });
       return fail(404, "这个数据接口还没有接入。");
     });
 
@@ -321,8 +326,8 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
       if (url === CITATIONS) return fail(404, "这个数据接口还没有接入。", "rid-cit");
       if (url === SESSIONS) {
         return Promise.resolve({
-          sessions: [{ sessionId: "cs_123456789", employeeId: "u_123456789", messageCount: 2, updatedAt: "2026-11-19T06:01:00Z" }],
-          total: 1,
+          items: [{ session_id: "cs_123456789", employee_id: "u_123456789", message_count: 2, updated_at: "2026-11-19T06:01:00Z" }],
+          nextCursor: null,
         });
       }
       if (url === "/agent-api/api/console-sessions/cs_123456789") {
@@ -357,6 +362,98 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(text).not.toContain("u_123456789");
     expect(text).not.toContain("示例");
     expect(text).not.toContain("样例引用");
+  });
+
+  it("renders 接入任务 in human words with real counts, 真实时刻 and per-field reasons", async () => {
+    fetchMock.mockImplementation((url: string) => {
+      if (url === TASKS) {
+        return Promise.resolve({
+          asOf: "2026-11-19T07:00:00Z",
+          items: [
+            {
+              sourceId: "src_HR2026AAA",
+              sourceName: "人事制度库",
+              sourceType: "sharepoint",
+              status: "processing",
+              processed: 412,
+              total: 1380,
+              failed: 3,
+              lastSyncAt: "2026-11-19T06:40:00Z",
+            },
+            {
+              taskId: "tk_done_shape",
+              name: "法务合同归档",
+              type: "s3",
+              state: "succeeded",
+              totalItems: 96,
+              updatedAt: "2026-11-18T20:05:00Z",
+            },
+            { taskId: "tk_thin_shape" },
+          ],
+        });
+      }
+      return fail(404, "这个数据接口还没有接入。", "rid-docs");
+    });
+
+    await render("/knowledge?tab=ingest");
+    expect(fetchMock).toHaveBeenCalledWith(TASKS);
+    expect(attr("knw5-ingest-tasks", "data-state")).toBe("ready");
+    expect(attr("knw5-ingest-tasks", "data-len")).toBe("3");
+    expect(container.querySelectorAll('[data-testid="knw5-ingest-tasks-row"]')).toHaveLength(3);
+    const text = container.textContent ?? "";
+    expect(text).toContain("人事制度库");
+    expect(text).toContain("处理中");
+    expect(text).toContain("412 / 1380");
+    expect(text).toContain("失败 3");
+    expect(text).toContain("最近同步：2026-11-19 14:40");
+    expect(text).toContain("法务合同归档");
+    expect(text).toContain("成功");
+    expect(text).toContain("共 96");
+    expect(text).toContain("最近更新：2026-11-19 04:05");
+    expect(text).toContain("数据截至 2026-11-19 15:00");
+    // 缺值不补造，也不把另一条的数字借过来。
+    expect(text).toContain("上游没有给出这条记录叫什么");
+    expect(text).toContain("上游没有给出处理状态");
+    expect(text).toContain("上游没有给出这一条处理了多少、共多少");
+    expect(text).toContain("上游没有给出时间");
+    // 文档登记是另一个读口：它没接上，就单独说没接上。
+    expect(attr("knw5-ingest", "data-state")).toBe("unwired");
+    expect(text).toContain("请求编号：rid-docs");
+    // 给到了采集时间，就不要再写一句「时间未知」自打嘴巴。
+    const taskSource = byTestid("knw5-ingest-tasks-source")?.textContent ?? "";
+    expect(taskSource).toContain("数据截至 2026-11-19 15:00");
+    expect(taskSource).not.toContain("时间未知");
+    // 屏面不出现原始值与英文状态词。
+    expect(text).not.toContain("src_HR2026AAA");
+    expect(text).not.toContain("tk_thin_shape");
+    expect(text).not.toContain("processing");
+    expect(text).not.toContain("sharepoint");
+    expect(attr("knw5-ingest-tasks-row", "title")).toBe("src_HR2026AAA");
+  });
+
+  it("draws the one unwired body for the ingest task read on 403 and on 404", async () => {
+    fetchMock.mockImplementation((url: string) =>
+      url === TASKS ? fail(403, "没有查看这项数据的权限。", "rid-tasks-denied") : fail(404, "这个数据接口还没有接入。", "rid-tasks-gone"),
+    );
+
+    await render("/knowledge?tab=spaces&panel=ingest");
+    const denied = byTestid("knw5-ingest-tasks-unwired");
+    expect(denied).toBeTruthy();
+    expect(denied?.getAttribute("title")).toBe("GAP-03");
+    expect(container.textContent).toContain("请求编号：rid-tasks-denied");
+    expect(byTestid("knw5-ingest-tasks-table")).toBeNull();
+
+    await click("knw5-tab-spaces");
+    await click("knw5-tab-ingest");
+    const gone = byTestid("knw5-ingest-tasks-unwired");
+    expect(gone).toBeTruthy();
+    expect(container.textContent).toContain("请求编号：rid-tasks-gone");
+    const bodyOf = (node: Element | null) =>
+      Array.from(node?.querySelectorAll("b, .knw5-wrap") ?? [])
+        .map((part) => part.textContent ?? "")
+        .join(" ")
+        .replace(/\s+/g, " ");
+    expect(bodyOf(gone)).toBe(bodyOf(denied));
   });
 
   it("renders real retrieval audit rows without raw field names", async () => {
@@ -397,11 +494,11 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     fetchMock.mockResolvedValue({ items: [] });
     const cases: [string, string, string[]][] = [
       ["/knowledge", "spaces", [SPACES]],
-      ["/knowledge?tab=spaces&panel=ingest", "ingest", [DOCUMENTS]],
+      ["/knowledge?tab=spaces&panel=ingest", "ingest", [TASKS, DOCUMENTS]],
       ["/knowledge?tab=spaces&panel=retrieval", "retrieval", [SEARCH_NO_QUERY, RECORDS]],
       ["/knowledge?tab=spaces&panel=evidence", "evidence", [CITATIONS, SESSIONS]],
-      ["/knowledge?tab=ingest", "ingest", [DOCUMENTS]],
-      ["/knowledge?tab=sources", "ingest", [DOCUMENTS]],
+      ["/knowledge?tab=ingest", "ingest", [TASKS, DOCUMENTS]],
+      ["/knowledge?tab=sources", "ingest", [TASKS, DOCUMENTS]],
       ["/knowledge?tab=retrieval", "retrieval", [SEARCH_NO_QUERY, RECORDS]],
       ["/knowledge?tab=search", "retrieval", [SEARCH_NO_QUERY, RECORDS]],
       ["/knowledge?tab=citations", "evidence", [CITATIONS, SESSIONS]],
@@ -473,7 +570,7 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
   it("uses no engineering copy anywhere on the page", async () => {
     fetchMock.mockImplementation((url: string) => {
       if (url === RECORDS) return Promise.resolve({ events: [] });
-      if (url === SESSIONS) return Promise.resolve({ sessions: [] });
+      if (url === SESSIONS) return Promise.resolve({ items: [] });
       return fail(404, "这个数据接口还没有接入。");
     });
     for (const panel of ["spaces", "ingest", "retrieval", "evidence"]) {

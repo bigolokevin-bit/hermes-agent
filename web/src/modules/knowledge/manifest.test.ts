@@ -31,4 +31,36 @@ describe('knowledge deep-link boot normalisation', () => {
     expect(params.get('tab')).toBe('spaces');
     expect(params.get('panel')).toBe('retrieval');
   });
+
+  it('normalises the hash spelling of a knowledge deep link', async () => {
+    const cases: [string, string][] = [
+      ['#/knowledge?tab=ingest', 'ingest'],
+      ['#/knowledge?tab=sources', 'ingest'],
+      ['#/knowledge?tab=retrieval', 'retrieval'],
+      ['#/knowledge?tab=citations', 'evidence'],
+      ['#/knowledge?tab=evidence', 'evidence'],
+      ['#/knowledge?tab=scope', 'spaces'],
+    ];
+    for (const [hash, panel] of cases) {
+      vi.resetModules();
+      window.history.replaceState({}, '', `/${hash}`);
+      await import('./manifest');
+      const next = window.location.hash;
+      expect(next.startsWith('#/knowledge?')).toBe(true);
+      const params = new URLSearchParams(next.slice('#/knowledge?'.length));
+      expect(params.get('tab')).toBe('spaces');
+      expect(params.get('panel')).toBe(panel);
+    }
+  });
+
+  it('keeps a hash panel on reload and leaves other modules alone', async () => {
+    window.history.replaceState({}, '', '/#/knowledge?tab=spaces&panel=ingest');
+    await import('./manifest');
+    expect(window.location.hash).toBe('#/knowledge?tab=spaces&panel=ingest');
+
+    vi.resetModules();
+    window.history.replaceState({}, '', '/#/employees?tab=matrix');
+    await import('./manifest');
+    expect(window.location.hash).toBe('#/employees?tab=matrix');
+  });
 });

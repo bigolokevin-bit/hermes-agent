@@ -346,6 +346,16 @@
   overflow-wrap: anywhere;
 }
 
+/* A second line inside a cell (类型、失败条数) — smaller, never its own column. */
+.knw5-sub {
+  display: block;
+  min-width: 0;
+  color: var(--color-muted-foreground);
+  font-size: 0.68rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
 .knw5-copy {
   display: inline-flex;
   align-items: center;
@@ -418,7 +428,9 @@
     font-size: 0.66rem;
   }
 
-  .knw5-table td > .knw5-reason {
+  /* Every value in a stacked cell sits in the second column; only the
+     data-label sits in the first, so a second line cannot drift under it. */
+  .knw5-table td > * {
     grid-column: 2;
   }
 }
