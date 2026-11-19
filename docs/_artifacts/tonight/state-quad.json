@@ -1,10 +1,10 @@
 {
-  "raw": "state-quad: sampled=20 passed=20 base=http://127.0.0.1:9122 head=b229ad2e\n",
-  "source": "state-quad.mjs text output rebuilt (57/58/60-round recipe)",
+  "raw": "state-quad: sampled=20 passed=20 base=http://127.0.0.1:9122 head=a37fe73e",
+  "source": "state-quad.mjs text output parsed (r62)",
   "sampled": 20,
   "passed": 20,
   "total": 20,
   "ok": true,
   "exitCode": 0,
-  "headHash": "b229ad2e"
+  "headHash": "a37fe73e"
 }

@@ -907,3 +907,10 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - shots main(auth)：102/102 failures=[] mode=auth ceAuthority=login-state consoleErrorsObservedByShots=0，routesWithEnvOnlyConsoleErrors=22 环境归因；三键=entry DQ6ZY4lw 全名/sha256 全值/158719B，servedEntryBefore=After（拍后 curl 复证未漂）。
 - shots-anon：隔离目录 /tmp/shots-anon61.gmME 法 102/102 ok=true mode=anon（rootBaseline 含『登录状态已过期』=匿名实锤）→auxiliary=true+同六键注入→rm 旧 png 后 mv 回同名覆盖，仓库留一套 png+两份 summary。
 - 环境：9122 pid 64868、caddy 8183 pid 28034 未动；web/src 未碰；他人脏（M web/src、?? A/*、探针 png）零沾染。
+
+## 六十二轮·九件账本重章 @ a37fe73e（2026-11-19 21:0x）
+
+- 代次四件：entry assets/index-B-vUz5d4.js / sha bed884ea…7ce7 / 158940B / served==磁盘==8183（L0 亲验+本拍复证）；b229ad2e 一代作废被 aud ret4+gov adm5 修正超越，未重做（卡注）。
+- 九腿全 exit=0 盖 a37fe73e：ia-html/react ok {51,22,1,8}（tabsAll23 html）；lint-fake ok v=[]；lint-reuse ok v=0 exempt=1 chat→T40；crawl-anon DL0/CE0/PE0 routesCE=51（匿名401归因）；crawl-auth DL0/CE0/PE0 routesCE=22（趋势 23→22→21→22，auth-state 窗内环境项，非红）；state-quad 20/20（文本输出重建 JSON，注 source）。
+- shots main(auth)：102/102 failures=[] obs=0 ceAuth=login-state，三键全值，拍后 served 未漂；shots-anon auxiliary=true 102/102 mode=anon（隔离目录法）。仓库留一套 png+两份 summary（同名覆盖口径同 58/61 轮）。
+- 环境：9122 pid 64868、caddy 8183 pid 28034、8092 pid 24491 未动；web/src 未碰；他人脏零沾染。
