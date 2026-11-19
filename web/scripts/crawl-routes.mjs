@@ -459,6 +459,17 @@ async function contentRender() {
 
   const measure = async (url) => {
     const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, ...(AUTH_STATE ? { storageState: AUTH_STATE } : {}) });
+    // L0 十五轮：gated-mode 标志。v4_proxy 预览静态服务 index.html，不注入
+    // __HERMES_SESSION_TOKEN__/__HERMES_AUTH_REQUIRED__；匿名模块请求 401 后，
+    // api.ts 的 stale-token 恢复（attemptDashboardTokenReloadOnce）判定当前非
+    // gated，于是整页 reload 取"新 token"——但静态产物永远不带 token，形成
+    // 每路由 130+ 次 document reload 风暴，root-shell-text「⠋Loading…」永不落定
+    // （crawl 判 content-empty 的实况，8 条 lane 模块路由全中）。该标志正是真实
+    // gated 部署 HTML 会注入的值（api.ts:221 注释：gated 模式不得 reload-loop）。
+    // 置位后 401 照常计为 consoleErrors 并归因 env=auth-required-401。
+    await ctx.addInitScript(() => {
+      window.__HERMES_AUTH_REQUIRED__ = true;
+    });
     const page = await ctx.newPage();
     const consoleErrors = [];
     page.on('console', (m) => {

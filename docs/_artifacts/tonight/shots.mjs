@@ -216,8 +216,19 @@ let pngCount = 0;
 // route — which is exactly why "main text > 0" is the binding criterion here and
 // a body fallback would report ~770 chars of chrome as if it were content.
 let rootProbe = { textLen: 0, head: '', hasMainEl: false, ok: false };
+// L0 十六轮：与 crawl-routes 同口径的两处修复。
+// (1) gated 标志注入：v4_proxy 静态 index.html 不注入 __HERMES_SESSION_TOKEN__/
+//     __HERMES_AUTH_REQUIRED__，匿名 401 触发 api.ts stale-token reload（整页
+//     reload 风暴，8 条 lane 模块路由截到「⠋Loading…」壳）。标志是真实 gated 部署
+//     HTML 本会注入的值，置位后按 api.ts:221 注释「gated 模式不得 reload-loop」。
+// (2) console 错误归因：401/404「Failed to load resource」是环境（无登录态）噪声，
+//     与 crawl 的 env=auth-required-401 归因一致，不计入产品红灯；pageerror 与
+//     其余 error 仍为产品面。
+const ENV_NOISE_RE = /\b(401|404)\s*\((Unauthorized|Not Found)\)/;
+const GATED_FLAG_INIT = () => { window.__HERMES_AUTH_REQUIRED__ = true; };
 {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  await ctx.addInitScript(GATED_FLAG_INIT);
   const p = await ctx.newPage();
   try {
     await p.goto(`${BASE}/`, { waitUntil: 'domcontentloaded', timeout: 30_000 });
@@ -238,12 +249,18 @@ const rootMainText = rootProbe.head;
 for (const row of target) {
   for (const vp of VIEWPORTS) {
     const ctx = await browser.newContext({ viewport: { width: vp.width, height: vp.height } });
+    await ctx.addInitScript(GATED_FLAG_INIT);
     const page = await ctx.newPage();
     const consoleErrors = [];
+    let consoleErrorsProduct = 0;
     page.on('console', (m) => {
-      if (m.type() === 'error') consoleErrors.push(m.text().slice(0, 160));
+      if (m.type() === 'error') {
+        const msg = m.text().slice(0, 160);
+        consoleErrors.push(msg);
+        if (!ENV_NOISE_RE.test(msg)) consoleErrorsProduct += 1;
+      }
     });
-    page.on('pageerror', (e) => consoleErrors.push(String(e.message ?? e).slice(0, 160)));
+    page.on('pageerror', (e) => { consoleErrors.push(String(e.message ?? e).slice(0, 160)); consoleErrorsProduct += 1; });
 
     // L0 拍板口径（2026-11-19 卡·门禁 D 预跑）：9122 是 python http.server
     // 纯静态，只有根路径保证 200，直链 path 形态必 404。截图导航改为
@@ -317,6 +334,7 @@ for (const row of target) {
       png: path.relative(OUT_DIR, file),
       pngBytes: bytes,
       consoleErrors: consoleErrors.length,
+      consoleErrorsProduct,
       consoleErrorSample: consoleErrors[0] ?? null,
     });
     await ctx.close();
@@ -358,7 +376,9 @@ md.push('## failures');
 md.push(failures.length ? failures.map((f) => `- ${f.hash} @ ${f.viewport}: ${f.error}`).join('\n') : '- none');
 writeFileSync(path.join(OUT_DIR, 'shots-index.md'), `${md.join('\n')}\n`);
 
-const consoleErrRoutes = [...new Set(index.filter((r) => r.consoleErrors > 0).map((r) => r.hash))];
+const consoleErrRoutes = [...new Set(index.filter((r) => r.consoleErrorsProduct > 0).map((r) => r.hash))];
+// 归因透明：环境噪声（401/404）单列，不计入 ok，但保留可审计计数。
+const envOnlyErrRoutes = [...new Set(index.filter((r) => r.consoleErrors > 0 && r.consoleErrorsProduct === 0).map((r) => r.hash))];
 
 const summary = {
   base: BASE,
@@ -380,6 +400,8 @@ const summary = {
   })),
   routesWithConsoleErrors: consoleErrRoutes.length,
   consoleErrorRoutes: consoleErrRoutes,
+  routesWithEnvOnlyConsoleErrors: envOnlyErrRoutes.length,
+  envAttribution: '401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径',
   overflowing: [...new Set(index.filter((r) => r.overflowPx > 1).map((r) => r.hash))],
   driver: { playwrightFrom: PW_HOST, chromium: CHROMIUM },
   ok:

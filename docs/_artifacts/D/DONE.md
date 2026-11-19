@@ -526,3 +526,13 @@ L0 新落点：`http://127.0.0.1:9122`（python http.server --directory hermes_c
   - envAttribution={"auth-required-401":36}（结构化，达标）；deniedEndpoints=20条401；redirects=24归因不判红。
 - **shots**：102/102张（PID 6092后台腿运行约2分钟即完成，SIGTERM终止时文件已就位；entry=index-B5fmOKJ8.js代次）。
 - **commit+push**：第二笔 commit `fix(lane-d): 102-shot full regen at B5fmOKJ8 with live proxy` + 第三笔含crawl改动与leg产物。
+
+## D 恢复单第2步·auth 归因（2026-11-19 10:0x，L0 卡『contentEmpty=8 归因』，orchestrator 亲自）
+
+- 登录腿修复：ops/opsadmin-evidence-login.sh（l7-ops 写域）captcha 逻辑 patch——本 Bisheng 版 get_captcha 的 data.captcha 为 base64 PNG（len≈12k），旧逻辑把图当码致 10607 Kode verifikasi salah；改为 len<=16 才直接用，否则走 captcha_from_logs()（docker logs bisheng-backend grep captcha_char）。cryptography 依赖经 /tmp/pyshim python shim（uv run --with cryptography，零装包入仓）满足。重跑 **PASS**：http=200 token_len=252 cookie=access_token_cookie，落 ~/.seakoi/opsadmin-token.txt（600，零明文入日志）。带 cookie 打 9122 `/agent-api/api/employees?limit=1`=**200**（anon 401）⇒ 9122 代理认 8182 壳的 JWT。
+- crawl-routes.mjs 加 `--auth-state <playwright storageState JSON>`（flagOf + newContext({storageState})），storageState 文件留在 TMP 不入仓。commit A=**fca6a8fe**『chore(gates): add --auth-state to crawl-routes, land pending shots and vitest artifact』14 files（脚本+12 shots png 新代次+vitest-0914.txt），porcelain 归零。
+- **crawl-anon.json** exit=0 ok=true headHash=fca6a8fe counts={probed:75, deadLinks:0, contentEmpty:0, probeErrors:0} envAttribution={auth-required-401:36} denied=22。**十四轮 contentEmpty=8 在 anon 态全转 content-ok**（mainChars 104-237 真 pane 文本）；entry 仍旧 index-B5fmOKJ8.js（dist mtime 02:41:16）同代次结果翻转 ⇒ 定性=**settle 时序竞态自伤**（探针加载时机敏感），非产品空态、非代次差异。
+- **crawl-auth.json** exit=0 ok=true 同 counts 全零红；envAttribution={auth-required-401:21} denied=9（登录态拒绝面收窄=auth 生效证据）。8 路由登录态 mainChars 逐条：#/employees 188、?tab=matrix 382、#/system 205、#/approvals?tab=policy 138、#/identity?tab=binding 125、?tab=checks 125、#/knowledge?tab=evidence 203、#/work?tab=board&view=cron 914——全部 >=50 ⇒ **真缺陷 0 条**（卡①判据『登录态有内容→env=auth-required-401 剔除』成立，无需交 A 修单）。
+- 四快腿重章 fca6a8fe：assert-ia-react exit=0（51/22/1/8）、assert-ia-html exit=0（51/22/23/1/8）、lint-fake exit=0（violations=0）、lint-reuse exit=0（violations=0 exempted=1 chat→T40）。
+- 注：dom-probe3 的『Loading… 永挂』铁证属当时窗口（09:3x 前）；本轮两 crawl 同代次 anon/auth 双绿证明当时为竞态+鉴权缺位复合自伤。十五轮 loading-at-401 判据改动**未采用**（本卡 auth-state 路线取代），crawl-routes.mjs ok 公式维持 deadLinks==0&&contentEmpty==0&&probeErrors==0。
+- shots 腿：本卡未要求重拍，12 张新代次 png（02:58-03:05 SIGTERM 前写出）已随 commit A 收口；如需 102 全量新 mtime 另开。
