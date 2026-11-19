@@ -498,3 +498,9 @@ F7 审计入口+别名：App.tsx nav 治理组新增 /audit「审计事件」（
 四门 asOf（工单②）：types GateView+asOf:string|null；buildReadiness 第三参 stamp=stats 回答的 asOf/generatedAt 经 beijing 到分；GateRow 渲染——unknown 门显「未接入 · 截至 —」（title=code：该数据源尚未接入，没有采集时间；V1/V2/V3 code 只进 title），V6 有 stamp 显「截至 <BJT 到分>」、无 stamp 显「截至 —」+title 原因；无假 0。
 testid 双标（工单④）：本轮未破既有——duty-gate-*/duty-ready-value/duty-page 等 data-testid=ov6-*+data-duty-testid=duty-* 双标在位（R28 落），usage usg4-*、matrix matrix-* 前缀不动（域内自有家族），四态/rid 可复制/403≡404 既有机制未逆。
 验证：定向 duty 3 files 49 passed；全量 126 files/1272 passed 0 fail。9122=1fff2e58 代次由 R30 QA 活体跑，本车道 DOM 读数以上述 vitest 断言+grep 为准。
+
+## 员工详情 运行/审计 两区真数据（feat(console): employee detail runs and audit zones real data）
+两区真实请求与 http 码（ego 登录态 9122 现势代次，emp_86A81CE8FF6F42E187BCF2B540）：runs=/agent-api/api/runs?employeeId=<id> → 200 n=13（runId rn_01M7D7421P5PA27TEXMT9YVDZ8…，前端 URL 已是 employeeId=，QA 判 400 为旧代次 employee= 拼写）；audit 旧 URL actorId=<id> → 200 events:[]（该员工无自发操作）→ 本笔改 resourceId=<id> → 200 events n=2（真事件 ev_EED6C34F4CB140EABD674C42A0：occurredAt/actor{type:system,id:employee-api}/action budget.ledger_ensured/outcome success）。
+渲染：运行区既有真数据链不动（状态人话 Badge/BJT 到分/成本 money 缺—/用量 dash）；审计区新列——结果列 outcome 人话（success 成功/failure 失败/denied 拒绝/未知 待核实，raw 进 title）、操作人 system 类显「系统操作」（id 进 title，非 emp_/human: 裸上屏）、请求编号列=RequestIdCopy（本代次事件体无 rid→诚实「这条记录未携带编号」，有值即真+可复制）；readAudit 兼容 events 信封+occurredAt+actor 对象+outcome。
+testid：ed5-zone-runs-list/ed5-zone-runs-row、ed5-zone-audit-list/ed5-zone-audit-row 新增；既有 ed5-audit/ed5-runs 家族保留；两区零写入口、四态、403≡404 同体未逆；375 堆叠 grid-cols-1 天然无横溢。
+验证：定向 employee-detail 18 passed（R32 新用例断 22:46 北京时间/系统操作/成功/未携带编号/裸句柄零）；全量 126 files/1273 passed 0 fail。9122 活体屏幕复跑待 L0 合批。

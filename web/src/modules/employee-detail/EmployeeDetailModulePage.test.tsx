@@ -227,6 +227,32 @@ describe("EmployeeDetailModulePage — approvals / runs / audit", () => {
     expect(card?.querySelector('[title="emp_B2C4D6E8F0"]')).toBeTruthy();
   });
 
+  it("R32: audit rows from the real events shape state outcome, system actor and a copyable request id slot", async () => {
+    mockApi((url) =>
+      url.includes("/api/audit")
+        ? Promise.resolve({
+            events: [
+              {
+                eventId: "ev_EED6C34F4CB140EABD674C42A0",
+                occurredAt: "2026-11-16T14:46:56.464Z",
+                actor: { type: "system", id: "employee-api" },
+                action: "budget.ledger_ensured",
+                outcome: "success",
+              },
+            ],
+          })
+        : Promise.resolve({}),
+    );
+    await renderAt(page, at("evidence"));
+    const card = container.querySelector('[data-testid="ed5-audit"]');
+    expect(card?.querySelector('[data-testid="ed5-zone-audit-row"]')).toBeTruthy();
+    expect(card?.textContent).toContain("2026-11-16 22:46");
+    expect(card?.textContent).toContain("系统操作");
+    expect(card?.textContent).toContain("成功");
+    expect(card?.textContent).toContain("这条记录未携带编号");
+    expect(card?.textContent).not.toMatch(/emp_[0-9A-Fa-f]{8,}|human:/);
+  });
+
   it("approvals empty names the reason", async () => {
     mockApi(() => Promise.resolve({ items: [] }));
     await renderAt(page, at("tasks"));
