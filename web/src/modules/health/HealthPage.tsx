@@ -104,7 +104,7 @@ export function HealthPage() {
   const counts = view.k === "ready" ? summarize(view.rows) : { healthy: 0, error: 0, unknown: 0 };
 
   return (
-    <section className="space-y-4" data-testid="hlt4-page" data-fixture={forced ?? undefined}>
+    <section className="space-y-4" data-testid="hlt4-page">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="font-mondwest text-xl">系统健康</h1>

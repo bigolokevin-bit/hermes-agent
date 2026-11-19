@@ -299,7 +299,7 @@ export default function KnowledgeModulePage() {
   const stampText = payload.stamp ?? "时间未知";
 
   return (
-    <div className="knw4-page" data-testid="knw4-page" data-fixture={forced ? "1" : undefined}>
+    <div className="knw4-page" data-testid="knw4-page">
       <header className="knw4-head">
         <div className="knw4-title">
           <BookOpen className="h-5 w-5" aria-hidden />

@@ -1359,3 +1359,18 @@ $ cd web && npx vitest run
 - ret4 testid family (45 rendered testid nodes in the no-route fixture; unique ids include): `ret4-page`, `ret4-summary`, `ret4-refresh`, `ret4-sections`, `ret4-section-{audit,runs,sessions,uploads}`, `ret4-unwired-{...}`, `ret4-unwired-note`, `ret4-days|last|next|used|limit|share-{...}`, `ret4-note-{...}`, `ret4-planned`, `ret4-planned-cleanup`, `ret4-planned-policy`, `ret4-loading|denied|error`, `ret4-error-request-id|ret4-error-retry`, `ret4-denied-request-id`, `ret4-tech-details`.
 - Fixture render: temporary vitest (deleted after run) mounted the page at `/system?tab=retention` with `/api/retention` 404 `console.unknown_route` → **45 ret4 testid nodes**, four sections all 未接入, 24 field values `—`, two planned write buttons disabled/aria-disabled/title; existing suite `RetentionModulePage.test.tsx` is **9/9**.
 - No App/shell/routes/registry/package/lock/scripts/ops edits; no fake 0/sample rows.
+
+## R30 fixture debt burn — 3 gov pages (2026-11-19, branch lane/console-gov)
+
+### Inventory before (grep -rl data-fixture, modules scope)
+`people/PeopleModulePage`, `org/OrgModulePage`, `access/AccessModulePage`, `tenant/TenantQuotaPage`, `settings/SettingsPage`, `cron/CronModulePage`, `retention` (none), `health/HealthPage`, `models/ModelsModulePage`, `tools/ToolsPage` + `tools/states.tsx`, `version/VersionPage`, `knowledge/KnowledgeModulePage` (plus their test files).
+
+### Selected three: real source or honest gap
+- `cron/CronModulePage`: real same-origin Hermes `GET /api/cron/jobs`; 200 data shape covered by tests (name, human schedule, last/next BJT, status, result reason). Production `data-fixture` attributes **4 → 0**; test references **2 → 0**.
+- `health/HealthPage`: real probe reads `/agent-api/api/__health-probe__`, `/api/hermes-summary`, `/api/skills`; 403/404 surfaces honest 未接入 and raw status/GAP stay in title. Production `data-fixture` **1 → 0**; no test reference.
+- `knowledge/KnowledgeModulePage`: citations use real sessions + console-session details, retrieval uses real `audit?action=kb.read`; spaces/ingest 404 show 未接入 + reason, no sample. Production `data-fixture` **1 → 0**; test references **2 → 0**.
+- No page invents 0: missing values render `—` + reason; `?state=` QA previews remain as explicit `?state=` fixtures but no `data-fixture` marker (removed per this task).
+
+### DOM/test readings after
+- `cron5-page` + cron5 testid family (21 unique), `hlt4-page` + health family (10 unique), `knw4-page` + knowledge family (25 unique); targeted vitest **4 files / 29 tests passed**.
+- No production `data-fixture` remains in the three selected modules (`grep -rl` empty).
