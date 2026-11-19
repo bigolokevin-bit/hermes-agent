@@ -937,3 +937,39 @@ ESLINT_EXIT=0     无输出（0 problems）
 5. `本次核验` 仍写本页 `new Date()` 的时刻（标注为核验，不叫同步）。判据「never a wall-clock now」
    按字面只约束同步行；两行已分开并在测试与注释里留痕，若验收方认为账本上连核验时刻也不该出现，
    删 `ds4-checked` 一处即可，不影响其它列。
+
+## TASK COLLAB — 复验（2026-11-19，基座 35000331）
+
+页面本体早前已交：commit `32005b4c feat(console): delegation read-only view on upstream shell`（6 文件，`web/src/modules/collab/**`），已随主树并入本次基座。本轮按派单在 `35000331`（`58e59535` 的后继，`git merge-base --is-ancestor 58e59535 origin/lane/hermes-console` 为真）上复验，未改代码。
+
+### C1. 页面契约（复验结论）
+- 入口 `web/src/modules/collab/CollabDelegationsModulePage.tsx`：具名导出 `CollabDelegationsModulePage`（零 props），另默认导出同一组件；期望路由 `/collab`（兼容别名 `/collaboration`）。
+- 列：委托方 / 受托方（「姓名 · 8 位短码」或「未指派」；无姓名的委托方不冒充「未指派」）/ scope 人话 / 动作词 / 生效·到期（`beijingMinute()`，`Asia/Shanghai`，到分）/ 状态人话（未知 →「待核实」）。
+- 只读：`grep -n "创建\|撤销\|保存\|发起委托" web/src/modules/collab/*.tsx` → 0 命中；无按钮型写入口。
+- 复现腿：`?state=` 渲染 `data-fixture`（`CollabDelegationsModulePage.tsx:221`）+ GAP-10，零请求。
+- `col4-*` testid 分布：页面 11 处、`states.tsx` 9 处、页面测试 48 处。
+
+### C2. 原始门禁 stdout（`web/` 下）
+```
+$ npx tsc -b . --noEmit
+TSC_EXIT=2   TOTAL_ERRORS=49   NON_SHARED=0   COLLAB_ERRORS=0
+（49 条全部为 ../apps/shared/** 预存基线，逐条 TS2307 'vitest' 等）
+
+$ npx vitest run src/modules/collab --reporter=dot
+Tests  84 passed (84)   Duration 1.08s
+VITEST_EXIT=0
+
+$ npx eslint src/modules/collab
+ESLINT_EXIT=0（无输出）
+```
+
+### C3. 端点实测（127.0.0.1:8092，无身份）
+```
+/api/delegations?limit=50          -> 401  {"code":"console.unauthenticated"}  rid=c82d44c3fbc044ddb28da1bccb5632d7
+/agent-api/api/delegations?limit=50 -> 404  {"code":"console.not_found"}       rid=ce479857a67040979f5b22a53ecf85a6
+```
+401 = 需鉴权（非 404）；404 来自本机 serving 无 `/agent-api` 代理（`vite.config.ts` 只代理 `/api`、`/dashboard-plugins`）；Caddy 域下由网关注入身份并转 `/agent-api`。未伪造任何数据行。
+
+### C4. 未验项
+- 截图未产出：本 worktree 禁 install、无浏览器落点（页面尚未接路由，接线属 R5 写域），jsdom 无布局引擎，无法产出像素级 1440/1280/375 证据；仅以渲染测试 + `flex/min-w-0/break-words` 契约替代。
+- 真实 2xx 载荷形状（字段名、状态枚举、scope 文案）未采样；`delegations.ts` 的候选键表为仓内推导。
