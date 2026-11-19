@@ -16,6 +16,7 @@ import KnowledgeModulePage from "./KnowledgeModulePage";
 const SPACES = "/agent-api/api/knowledge/spaces?limit=20";
 const DOCUMENTS = "/agent-api/api/documents?limit=50";
 const TASKS = "/agent-api/api/knowledge/sources?limit=20";
+const INGEST_STATUS = "/agent-api/api/knowledge/ingest-status?limit=20";
 const SEARCH_NO_QUERY = "/agent-api/api/knowledge/search?limit=12";
 const SEARCH_STAFF = "/agent-api/api/knowledge/search?q=%E5%91%98%E5%B7%A5&limit=12";
 const CITATIONS = "/agent-api/api/knowledge/citations?limit=20";
@@ -484,7 +485,7 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(text).toContain("对象存储");
     expect(text).toContain("网页抓取");
     expect(text).toContain("接口同步");
-    expect(text).toContain("同步中");
+    expect(text).toContain("进行中");
     expect(text).toContain("最近同步：2026-11-19 14:40");
     expect(text).toContain("1,380 条");
     expect(text).toContain("已处理 412 条");
@@ -592,11 +593,11 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     fetchMock.mockResolvedValue({ items: [] });
     const cases: [string, string, string[]][] = [
       ["/knowledge", "spaces", [SPACES]],
-      ["/knowledge?tab=spaces&panel=ingest", "ingest", [TASKS, DOCUMENTS]],
+      ["/knowledge?tab=spaces&panel=ingest", "ingest", [INGEST_STATUS, TASKS, DOCUMENTS]],
       ["/knowledge?tab=spaces&panel=retrieval", "retrieval", [SEARCH_NO_QUERY, RECORDS]],
       ["/knowledge?tab=spaces&panel=evidence", "evidence", [CITATIONS, SESSIONS]],
-      ["/knowledge?tab=ingest", "ingest", [TASKS, DOCUMENTS]],
-      ["/knowledge?tab=sources", "ingest", [TASKS, DOCUMENTS]],
+      ["/knowledge?tab=ingest", "ingest", [INGEST_STATUS, TASKS, DOCUMENTS]],
+      ["/knowledge?tab=sources", "ingest", [INGEST_STATUS, TASKS, DOCUMENTS]],
       ["/knowledge?tab=retrieval", "retrieval", [SEARCH_NO_QUERY, RECORDS]],
       ["/knowledge?tab=search", "retrieval", [SEARCH_NO_QUERY, RECORDS]],
       ["/knowledge?tab=citations", "evidence", [CITATIONS, SESSIONS]],
@@ -921,6 +922,86 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect((byTestid("loc")?.textContent ?? "")).toContain("ref=cit_b");
     expect(byTestid("knw5-citations-list-detail-unreachable")).toBeTruthy();
     expect(byTestid("knw5-citations-list-detail-open")).toBeNull();
+  });
+
+  it("reads 入库状态 on its own port and says 「入库状态未接入」 when it is not wired", async () => {
+    const STATUS_ROWS = {
+      asOf: "2026-11-19T08:30:00Z",
+      items: [
+        { sourceName: "人事制度库", sourceType: "sharepoint", status: "in_progress", itemCount: 1380, processed: 412, lastSyncAt: "2026-11-19T06:40:00Z" },
+        { sourceName: "法务合同归档", type: "s3", state: "completed", totalItems: 0, lastSyncAt: "2026-11-19T05:05:00Z" },
+        { sourceName: "薪酬口径镜像", provider: "http", status: "failed", lastError: "凭据已过期，请重新授权", itemCount: 214 },
+        { sourceId: "st_thin" },
+      ],
+    };
+    fetchMock.mockImplementation((url: string) => {
+      if (url === INGEST_STATUS) return Promise.resolve(STATUS_ROWS);
+      if (url === TASKS) return fail(404, "这个数据接口还没有接入。", "rid-tasks-gone");
+      return fail(404, "这个数据接口还没有接入。", "rid-docs");
+    });
+
+    await render("/knowledge?tab=ingest");
+    expect(fetchMock).toHaveBeenCalledWith(INGEST_STATUS);
+    expect(attr("knw5-ingest-status", "data-state")).toBe("ready");
+    expect(attr("knw5-ingest-status", "data-len")).toBe("4");
+    expect(container.querySelectorAll('[data-testid="knw5-ingest-status-row"]')).toHaveLength(4);
+    const text = container.textContent ?? "";
+    expect(text).toContain("进行中");
+    expect(text).toContain("1,380 条");
+    expect(text).toContain("已处理 412 条");
+    expect(text).toContain("最近同步：2026-11-19 14:40");
+    // 真 0 与缺失可区分
+    expect(text).toContain("已完成");
+    expect(text).toContain("0 条");
+    expect(text).toContain("失败");
+    expect(text).toContain("凭据已过期，请重新授权");
+    expect(text).toContain("来源：知识入库状态 · 数据截至 2026-11-19 16:30");
+    // 三个读口各自说话：另两个没接上，不用入库状态的数据冒充。
+    expect(attr("knw5-ingest-tasks", "data-state")).toBe("unwired");
+    expect(attr("knw5-ingest", "data-state")).toBe("unwired");
+    expect(text).toContain("数据源接入读口未接入");
+    expect(text).toContain("文档登记读口未接入");
+    expect(text).not.toContain("sourceName");
+    expect(text).not.toContain("in_progress");
+
+    // 404：一份诚实正文，点名这页自己的读口，GAP 只进 title。
+    const bodyOf = (node: Element | null) =>
+      Array.from(node?.querySelectorAll("b, .knw5-wrap") ?? [])
+        .map((part) => part.textContent ?? "")
+        .join(" ")
+        .replace(/\s+/g, " ");
+    fetchMock.mockImplementation((url: string) =>
+      url === INGEST_STATUS ? fail(404, "这个数据接口还没有接入。", "rid-status-gone") : fail(403, "没有查看这项数据的权限。", "rid-other-denied"),
+    );
+    await render("/knowledge?tab=ingest");
+    const gone = byTestid("knw5-ingest-status-unwired");
+    expect(gone).toBeTruthy();
+    expect(gone?.querySelector("b")?.textContent).toBe("入库状态未接入");
+    expect(gone?.getAttribute("title")).toBe("GAP-03");
+    expect(bodyOf(gone)).toContain("也不写「0 个源」");
+    expect(byTestid("knw5-ingest-status-table")).toBeNull();
+    expect(byTestid("knw5-ingest-status-retry")).toBeTruthy();
+    expect(byTestid("knw5-ingest-status-apply")).toBeTruthy();
+    expect(container.textContent).toContain("请求编号：rid-status-gone");
+
+    // 403 同一份正文，只有请求编号不同。
+    fetchMock.mockImplementation(() => fail(403, "没有查看这项数据的权限。", "rid-status-denied"));
+    await render("/knowledge?tab=ingest");
+    const denied = byTestid("knw5-ingest-status-unwired");
+    expect(bodyOf(denied)).toBe(bodyOf(gone));
+    expect(container.textContent).toContain("请求编号：rid-status-denied");
+    const screen = container.textContent ?? "";
+    for (const banned of ["GAP-03", "/api/", "ingest-status", "403", "404", "0 个源。", "共 0"]) {
+      expect(screen, banned).not.toContain(banned);
+    }
+
+    // 200 空列表：如实说没读到，不编源。
+    fetchMock.mockResolvedValue({ items: [] });
+    await render("/knowledge?tab=ingest");
+    expect(attr("knw5-ingest-status", "data-state")).toBe("ready");
+    expect(attr("knw5-ingest-status", "data-len")).toBe("0");
+    expect(container.textContent).toContain("这不等于一个源都没有");
+    expect(container.querySelectorAll('[data-testid="knw5-ingest-status-row"]')).toHaveLength(0);
   });
 
   it("keeps the ingest bodies honest per read, identical for 403 and 404, and never a count", async () => {
