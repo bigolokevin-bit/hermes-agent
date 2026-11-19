@@ -133,6 +133,14 @@ const CapModelsConsolePage = lazy(() =>
     default: m.ModelsModulePage,
   })),
 );
+/* R11 item 3: V4 channels page body (lane aud contract: named export
+ * ChannelsPage from @/modules/channels/ChannelsPage) replaces the bare
+ * upstream English shell in the capabilities live slot. */
+const CapChannelsConsolePage = lazy(() =>
+  import("@/modules/channels/ChannelsPage").then((m) => ({
+    default: m.ChannelsPage,
+  })),
+);
 const HealthConsolePage = lazy(() =>
   import("@/modules/health/HealthPage").then((m) => ({ default: m.HealthPage })),
 );
@@ -1187,7 +1195,7 @@ export default function App() {
                               skills: <CapSkillsConsolePage />,
                               tools: <CapToolsConsolePage />,
                               models: <CapModelsConsolePage />,
-                              channels: <ChannelsPage />,
+                              channels: <CapChannelsConsolePage />,
                             }}
                           />
                         }
@@ -1247,6 +1255,14 @@ export default function App() {
                       <Route
                         path="/channels"
                         element={<Navigate to="/capabilities?tab=channels" replace />}
+                      />
+                      {/* R11 item 2: /models renders the gov V4 models module
+                        through the same capabilities tab it mirrors in
+                        routes.ts (#/capabilities?tab=models), not the upstream
+                        page with the raw parse error. */}
+                      <Route
+                        path="/models"
+                        element={<Navigate to="/capabilities?tab=models" replace />}
                       />
                       {!overriddenPaths.has("/employees/:employeeId") && (
                         <>

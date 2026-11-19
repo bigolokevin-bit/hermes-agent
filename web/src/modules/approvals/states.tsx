@@ -18,7 +18,8 @@ import { Button } from "@nous-research/ui/ui/components/button";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 
 import { themedBody } from "@/lib/utils";
-import { requestIdLine, type FailureCopy } from "./copy";
+import { type FailureCopy } from "./copy";
+import { RequestIdCopy } from "@/components/RequestIdCopy";
 
 interface Marked {
   /** Set to the state name when the pane is showing the `?state=` repro. */
@@ -146,7 +147,7 @@ export function ErrorPanel({
           <span className="min-w-0 break-words">{title}</span>
         </div>
         <p className="max-w-prose break-words text-xs text-muted-foreground">{failure.sentence}</p>
-        <p className="break-words text-xs text-muted-foreground">{requestIdLine(failure.requestId)}</p>
+        <p className="break-words text-xs text-muted-foreground"><RequestIdCopy requestId={failure.requestId} fallback="本次请求未记录编号，可复制时间与操作路径反馈" /></p>
         {failure.technical ? <DetailsDisclosure lines={[failure.technical]} testId={`${testId}-details`} /> : null}
         <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
           重试
@@ -173,7 +174,7 @@ export function DeniedPanel({ failure, fixture }: Marked & { failure: FailureCop
           这块内容要么尚未对你开放，要么当前环境还没有提供它。这里不会显示任何猜测的内容。
           需要处理审批时，请联系工作区管理员为你开通。
         </p>
-        <p className="break-words text-xs text-muted-foreground">{requestIdLine(failure?.requestId ?? null)}</p>
+        <p className="break-words text-xs text-muted-foreground"><RequestIdCopy requestId={failure?.requestId ?? null} fallback="本次请求未记录编号，可复制时间与操作路径反馈" /></p>
         <PanelExits testId="approvals-denied-exits" />
       </CardContent>
     </Card>
@@ -202,7 +203,7 @@ export function InlineFailure({
       data-testid={testId}
     >
       <p className="max-w-prose break-words text-xs text-destructive">{`${action}：${failure.sentence}`}</p>
-      <p className="break-words text-xs text-muted-foreground">{requestIdLine(failure.requestId)}</p>
+      <p className="break-words text-xs text-muted-foreground"><RequestIdCopy requestId={failure.requestId} fallback="本次请求未记录编号，可复制时间与操作路径反馈" /></p>
       <div className="flex flex-wrap items-center gap-2">
         {failure.technical ? <DetailsDisclosure lines={[failure.technical]} testId={`${testId}-details`} /> : null}
         {onRetry ? (

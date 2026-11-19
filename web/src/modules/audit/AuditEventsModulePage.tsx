@@ -17,7 +17,7 @@
  *
  * The 时间窗 and 事件类型 filters change the request (asserted in
  * `AuditEventsModulePage.test.tsx`). The 操作者 filter is rendered
- * disabled-by-design with 「未接入 · GAP-06」: the read side has no such
+ * disabled-by-design with 「未接入」: the read side has no such
  * parameter to send, so a live control there would be a dead one.
  *
  * The detail body has zero raw field names on screen; every technical value
