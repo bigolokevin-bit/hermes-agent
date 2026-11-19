@@ -696,3 +696,120 @@ built /Users/kevin_studio/Projects/forks/console-gov/hermes_cli/web_dist/index.h
 - 无真实 200（无登录态）；401 仅证明鉴权门。
 - 1439 宽下未做像素级对比；观察者复核未跑，仅本地 DOM 与截图自检。
 - 预置 fixture 仅用于预览，带 `data-fixture="1"` 与可见标注，不参与任何线上结论。
+
+## OV5 尾项 · 数据截至时间与自动恢复（2026-11-19）
+
+### 交付
+
+- 基线 `c4c6e750`；页面 commit `4d6c052a feat(console): overview freshness stamps and auto recovery (ov5)`，push `5c90504a..4d6c052a lane/console-gov`。
+- 文件：`web/src/modules/overview/{OverviewPage.tsx,OverviewPage.test.tsx,overview.ts,overview.css}`。未改 App/shell/manifest/pages/scripts/package。
+- 每个 KPI、趋势、最近活动、阻塞队列逐来源上屏「数据截至 <北京时间到分> · 来源 <名称>」。来源响应无采集时间时写「数据截至 时间未知」+ 具体原因；读取中、读取失败、无来源分别有原因。**不使用浏览器当前时间冒充采集时间**。
+- 采集时间只读上游 `asOf/as_of/generatedAt/generated_at/snapshotAt/collectedAt/updatedAt/lastUpdated`（含 `meta/source/ledger` 嵌套）；无法解析按未知处理。
+- 任一来源出错后，页面 20 秒自动重试一次；手动「刷新」和块内「重试」同样重跑全部来源，服务恢复后自动回填。错误态保留可复制请求编号。
+- GAP 编号仍只在对应说明的 `title`；正文零 GAP/HTTP/裸字段。
+
+### 端点真实度
+
+```text
+本轮未取得真实 200（无登录态）。页面读取既有 BFF 端点：
+员工统计 / 运行统计 / 审批统计 / 成本账本 / 运行记录 / 阻塞任务 / 风险矩阵。
+上游是否带采集时间因端点而异；缺失时按上述规则显示「时间未知」+ 原因，不补时间。
+```
+
+### 原始 stdout
+
+```text
+$ cd web && ./node_modules/.bin/tsc -b . --noEmit
+# TSC_EXIT=0
+
+$ cd web && npx vitest run src/modules/overview
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+
+$ cd web && npx vitest run
+ Test Files  118 passed (118)
+      Tests  1157 passed (1157)
+
+$ cd /Users/kevin_studio/Projects/forks/console-gov && PATH="/opt/homebrew/bin:$PATH" pnpm --filter web build
+built /Users/kevin_studio/Projects/forks/console-gov/hermes_cli/web_dist/index.html
+# BUILD_EXIT=0
+```
+
+### DOM 读数（Chrome CDP，临时 harness，已删除）
+
+```text
+1440×900: vw=1440 bodySW=1440 bodyCW=1440 pageSW=1408 pageCW=1408 kpis=4 stamps=10
+1280×800: vw=1280 bodySW=1280 bodyCW=1280 pageSW=1248 pageCW=1248 kpis=4 stamps=10
+375×812:  vw=375 bodySW=375 bodyCW=375 pageSW=343 pageCW=343 kpis=4 stamps=10
+```
+
+三档 body 宽度均等于视口，无横向溢出；375 为单列卡片，10 条时间/来源说明完整。截图：`docs/_artifacts/gov/shots/ov5-1440.png`、`ov5-1280.png`、`ov5-375.png`。
+
+### 需壳层注册的路由/槽位清单
+
+- 无。`/overview` 已由 App 挂到 overview 模块；本页未改 App/shell/manifest。
+
+### 边界
+
+- 真实 200 未取得（无登录态）；截图数据为临时 fixture 的 DOM 证明，不代表线上数值。
+- 自动恢复为 20 秒静默重试，只在前端运行期间生效；不保证服务恢复瞬间立即刷新。
+- 独立观察者未跑，完成 DOM 测量与截图自检。
+
+## HLT5 · 系统健康三探针新鲜度（2026-11-19）
+
+### 交付
+
+- 基线 `c4c6e750`（在 OV5 尾项之后）；页面 commit `0c9dfaa1 feat(console): health probe freshness and copyable request ids (hlt5)`，push `77de5a32..0c9dfaa1 lane/console-gov`。
+- 文件：`web/src/modules/health/{HealthPage.tsx,HealthPage.test.tsx,health.ts}`。未改 App/shell/manifest/pages/scripts/package。
+- 三探针：控制台服务（BFF 健康口径）、Hermes 运行时（`/api/hermes-summary`，BFF 转发到 9119）、域服务（`/api/skills`，BFF 转发到 8101）。浏览器只经 BFF 同源访问，不直连 8101/9119。
+- 每项显示「正常 / 异常 / 未知」+ 人话原因；采集时刻统一 `YYYY-MM-DD HH:mm`（北京时间）。没有可记录时间时显式「采集时刻：时间未知（本次没有收到可记录的时间）」，不补浏览器时间。
+- 失败探针显示「请求编号：…」+ 复制按钮；整页全无响应时显示可复制请求编号 + 重试。
+- 不默认绿勾：仅拿到 HTTP 响应才判正常；无响应为未知/异常；未接入仍为未知 + 人话原因。
+
+### 端点真实度
+
+```text
+本轮无登录态，未取得真实 200。三条路径均经 8182 BFF：
+/agent-api/api/__health-probe__
+/agent-api/api/hermes-summary
+/agent-api/api/skills
+401 只证明鉴权门先于路由；页面按响应/失败如实显示正常/异常/未知。
+```
+
+### 原始 stdout
+
+```text
+$ cd web && ./node_modules/.bin/tsc -b . --noEmit
+# TSC_EXIT=0
+
+$ cd web && npx vitest run src/modules/health
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+
+$ cd web && npx vitest run
+ Test Files  118 passed (118)
+      Tests  1158 passed (1158)
+
+$ cd /Users/kevin_studio/Projects/forks/console-gov && PATH="/opt/homebrew/bin:$PATH" pnpm --filter web build
+built /Users/kevin_studio/Projects/forks/console-gov/hermes_cli/web_dist/index.html
+# BUILD_EXIT=0
+```
+
+### DOM 读数（Chrome CDP，临时 harness，已删除）
+
+```text
+1440×900: vw=1440 bodySW=1440 bodyCW=1440 pageSW=1410 pageCW=1408 rows=4
+375×812:  vw=375 bodySW=375 bodyCW=375 pageSW=345 pageCW=343 rows=4
+```
+
+375 为单列探针卡，状态、原因、请求编号、复制与采集时刻均可见，无横向溢出。截图：`docs/_artifacts/gov/shots/hlt5-1440.png`、`hlt5-375.png`。
+
+### 需壳层注册的路由/槽位清单
+
+- 无。`/system?tab=health` 已由 App/shell 挂到 health 模块；本页未改 App/shell/manifest。
+
+### 边界
+
+- 真实 200 未取得（无登录态）；截图数据来自临时 fetch stub 的 DOM 证明，不代表线上读数。
+- 探针经 BFF，不直接连接 8101/9119；BFF 到上游的转发失败会按「上游返回异常」呈现，不冒充端口直连。
+- 独立观察者未跑，完成 DOM 测量与截图自检。

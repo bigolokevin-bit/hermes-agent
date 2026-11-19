@@ -30,7 +30,7 @@ export const PILOT_ROW: ProbeRow = {
 
 export function formatBeijingTime(value: number | null): string | null {
   if (value === null || !Number.isFinite(value)) return null;
-  return new Intl.DateTimeFormat("zh-CN", {
+  return new Intl.DateTimeFormat("sv-SE", {
     timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit", hour12: false,
   }).format(new Date(value));

@@ -78,6 +78,19 @@ describe("HealthPage", () => {
     expect(container.textContent).not.toContain("404");
   });
 
+  it("writes an explicit unknown time and a copyable request id on a failed probe", async () => {
+    fetchJSON.mockImplementation((url: string) => url.includes("hermes-summary")
+      ? Promise.reject(new ApiError("offline", { status: 0, body: "", url, requestId: "req-runtime-offline" }))
+      : Promise.resolve({}));
+    await render();
+    const row = container.querySelector('[data-testid="hlt4-row-runtime"]');
+    expect(row?.textContent).toContain("控制台不可达");
+    expect(row?.textContent).toContain("采集时刻：时间未知（本次没有收到可记录的时间）");
+    expect(row?.textContent).not.toContain("—（未采集）");
+    expect(row?.textContent).toContain("请求编号：req-runtime-offline");
+    expect(row?.querySelector("button")?.textContent).toContain("复制");
+  });
+
   it("shows a whole-page error and retries when every live probe has no response", async () => {
     fetchJSON.mockRejectedValueOnce(new ApiError("offline", { status: 0, body: "", url: "probe", requestId: "req-dead" }))
       .mockRejectedValueOnce(new ApiError("offline", { status: 0, body: "", url: "summary" }))
@@ -86,7 +99,7 @@ describe("HealthPage", () => {
       .mockResolvedValueOnce({})
       .mockResolvedValueOnce({});
     await render();
-    expect(container.textContent).toContain("请求号：req-dead");
+    expect(container.textContent).toContain("请求编号：req-dead");
     await act(async () => { [...container.querySelectorAll("button")].find((button) => button.textContent?.includes("重试"))?.click(); });
     await act(async () => {});
     expect(container.querySelector('[data-testid="hlt4-list"]')).toBeTruthy();
