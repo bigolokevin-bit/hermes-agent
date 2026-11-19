@@ -593,3 +593,25 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 8. anon 负例 shots-anon/ 19@1440 全 401 门壳（overview 732 含『登录状态已过期』），summary 保留脚本 ok=false + runExitCode=1 + headHash；state-quad 20/20@9122 ok=true exitCode=0。
 
 代次注记：fd1e43f2 账本（bf357dc1）作废于本代次覆盖；0c48062b 此前已作废。收口：单 commit `chore(gates): full gate ledger stamped at 4bfb31ef (entry CnQ2kP3Z)`，push 后 porcelain 归零。
+## R10·matrix 根因取证与 anon 辅助件口径（2026-11-19 11:5x 实钟，fork HEAD=20d25b06）
+
+- 卡：R9 三件套@L0，唯一待办=R10。禁改 web/src、禁直推 main、question 未用。
+- item1 取证（只读，seakoi-agent-os）：`git fetch origin main` RC=0，origin/main=1e67a666；
+  `git show origin/main:apps/console/server.py | grep -n "api/matrix"` 三处：
+  L534 `# GET /api/matrix → 域 GET /v1/matrix/employees（contract matrix.py：`
+  L537 `"/api/matrix": {`
+  L780 `"/api/console-sessions", "/api/skills", "/api/matrix", "/api/delegations",`
+  `grep -c "dashboard/status"` = 0（与卡面一致）。⇒ **零改码**（卡①：确已含则不改，L7 换服务代次）。
+- 代次现查翻案：卡点名的 pid 45965/detached 308a5f1b 已非现状——8092 现由 **pid 91606**
+  服务，cwd=/Users/kevin_studio/Projects/bff-v4-serve（主仓 worktree，branch main @ **a60fbf2**，
+  含 matrix 路由）。实测 9122 代理：/agent-api/api/matrix anon=**401**（fail-closed 带鉴权门）、
+  auth cookie=**200** 且载荷含真实 items（emp_217A91BA995044DFBB3E2E94 等）；
+  /agent-api/dashboard/status anon=**404**（main 亦 0 处，口径一致）。
+  ⇒ 服务代次已换到位，R9 拦车②（matrix 数据腿）可由 L0 复测核销；本单未重启任何服务、
+  主仓 dirty（M server.py / M conftest.py / AM NIGHT-RUN-20261118.md，属他人在途）一律未碰。
+- item2 anon 口径：shots-anon-summary.json 补 auxiliary=true、ok=(failures==0 && produced==expected)=true(19/19)、
+  note=『anon 腿为 401 门控辅助件，不作为主账 ok 依据』，保留 runExitCode=1/headHash=4bfb31ef；
+  主账 shots-summary.json 不动（ok 只看主件）。
+- item3 账本：九件盘读全 headHash=4bfb31ef（代码 HEAD；20d25b06 为纯产物 chore，按二十三轮先例规则
+  章取代码 HEAD）exitCode=0 ok=true 逐件坐实；vitest.txt 原文行在：
+  ` Test Files  104 passed (104)` / `      Tests  826 passed (826)`。未重跑浏览器腿（无代码变化，避免 churn）。
