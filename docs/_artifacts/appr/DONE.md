@@ -519,3 +519,10 @@ URL 可回放：筛选+分页组合全量落 ?status=&assignee=&cursor=（setPar
 空 vs 失败区分：rows=0 → tsk4-filter-empty「没有符合条件的任务。」「这是服务端的真实回答…不是加载失败。」+清空钮；error/denied → 人话标题+message+RequestIdCopy 可复制 rid+tsk4-filter-retry 重试；403/404 → denied 同体既有口径。
 testid：沿用 tsk4-*；新增 tsk4-filter（组）/tsk4-filter-status/-assignee/-priority/-clear/-retry/-view/-empty/-list/-row-<id>/tsk4-page/-prev/-info/-next。三档无横溢：筛选行 grid 375 单列堆叠、sm 起六列定宽 minmax(0,…)。
 验证：定向 tasks 2 files 17 passed（新增：共享筛选=恰 1 条 /api/tasks 真查询+游标翻页写 URL；空结果=真实回答非失败；priority disabled）；全量 126 files/1276 passed 0 fail。屏幕活体待 L0 合批。
+
+## R31 总览采集时刻与 KPI 标记族收口（fix(console): overview asOf and KPI stamp family (R31)）
+DOM 自证（vitest OverviewView R29 用例，夹具 asOf 2026-11-19T04:20Z→北京 12:20）：ov6-asof 文本=「采集时刻 北京时间 2026-11-19 12:20 · 每卡来源见卡内标注」（正则断言 北京时间 YYYY-MM-DD HH:mm）；取不到=「采集时刻 —」+title 原因（sourceStamp.reason 人话），禁编时。
+八卡 stamp：ov6-kpi-employees-stamp/-runs-stamp/-pending-stamp/-cost-stamp/-health-stamp + ov6-trend-stamp/ov6-activity-stamp/ov6-blockers-stamp（R29 用例 9 testid 全在位，每 stamp 走 Freshness=「数据截至 <分> · 来源 <人话>」+未知原因）。
+关键修复=此前 ov6-asof 只在主返回渲染，总览全失败/全空两早退分支 DOM 无 ov6-asof（R31 探针 asofTxt=null 根因）；AsofLine 组件三分支常驻（forced ?state= 复现分支带空来源=「—」+title，非编时）。
+KPI 族：五卡 data-testid=ov6-kpi-<name> 统一在位+新增 data-duty-testid=duty-kpi-* 别名 5 处、ov6-trend/activity/blockers 卡 duty-* 别名 3 处（QA 旧选择器零回归）；数值口径未动（真 0 与「—」区分、dashed/money 机制原样，成本卡真 0→$0.00 既有断言保持）；错误/空态人话+可复制 rid+重试未逆。
+验证：定向 overview 1 file 9 passed exit0（新增 asof 正则+duty-kpi 计数断言）。

@@ -97,6 +97,11 @@ describe('OverviewView', () => {
     for (const id of ids) {
       expect(container.querySelector(`[data-testid="${id}"]`), id).toBeTruthy();
     }
+    // R31: as-of shows the real minute stamp; KPI family keeps duty-* aliases.
+    expect(container.querySelector('[data-testid="ov6-asof"]')?.textContent).toMatch(
+      /北京时间 \d{4}-\d{2}-\d{2} \d{2}:\d{2}|采集时刻 —/,
+    );
+    expect(container.querySelectorAll('[data-duty-testid^="duty-kpi-"]')).toHaveLength(5);
   });
 
   it('renders KPIs, trend, recent activity and blockers from real data', async () => {
