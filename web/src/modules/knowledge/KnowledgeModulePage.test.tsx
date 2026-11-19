@@ -424,7 +424,7 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(text).not.toContain("样例引用");
   });
 
-  it("renders one row per source: 名称 / 类型 / 最近一次 / 状态人话 / 条目数", async () => {
+  it("renders one row per source: 来源名称 / 类型 / 最近同步 / 状态人话 / 条目数", async () => {
     fetchMock.mockImplementation((url: string) => {
       if (url === TASKS) {
         return Promise.resolve({
@@ -476,8 +476,9 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(container.querySelectorAll('[data-testid="knw5-ingest-tasks-row"]')).toHaveLength(5);
     const text = container.textContent ?? "";
 
-    // 五个列头按运营口径写；时间列写清它是哪一刻。
-    for (const head of ["名称", "类型", "最近一次", "状态", "条目数"]) expect(text).toContain(head);
+    // 列头按运营口径写；时间列写清它是哪一刻。
+    for (const head of ["来源名称", "类型", "最近同步", "状态", "条目数"]) expect(text).toContain(head);
+    expect(text).not.toContain("最近一次");
     expect(text).toContain("人事制度库");
     expect(text).toContain("SharePoint");
     expect(text).toContain("对象存储");
@@ -518,9 +519,11 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(text).not.toContain("lastError");
     expect(attr("knw5-ingest-tasks-row", "title")).toBe("src_HR2026AAA");
 
-    // 文档登记是另一个读口：它没接上，就单独说没接上。
+    // 文档登记是另一个读口：它没接上，就用自己的话说自己没接上。
     expect(attr("knw5-ingest", "data-state")).toBe("unwired");
     expect(text).toContain("请求编号：rid-docs");
+    expect(byTestid("knw5-ingest-unwired")?.querySelector("b")?.textContent).toBe("文档登记读口未接入");
+    expect(byTestid("knw5-ingest-unwired")?.getAttribute("title")).toBe("GAP-03");
     const taskSource = byTestid("knw5-ingest-tasks-source")?.textContent ?? "";
     expect(taskSource).toContain("数据截至 2026-11-19 15:00");
     expect(taskSource).not.toContain("时间未知");
@@ -918,6 +921,43 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect((byTestid("loc")?.textContent ?? "")).toContain("ref=cit_b");
     expect(byTestid("knw5-citations-list-detail-unreachable")).toBeTruthy();
     expect(byTestid("knw5-citations-list-detail-open")).toBeNull();
+  });
+
+  it("keeps the ingest bodies honest per read, identical for 403 and 404, and never a count", async () => {
+    const bodyOf = (node: Element | null) =>
+      Array.from(node?.querySelectorAll("b, .knw5-wrap") ?? [])
+        .map((part) => part.textContent ?? "")
+        .join(" ")
+        .replace(/\s+/g, " ");
+
+    fetchMock.mockImplementation(() => fail(404, "这个数据接口还没有接入。", "rid-gone-x"));
+    await render("/knowledge?tab=ingest");
+    const notFound = byTestid("knw5-ingest-tasks-unwired");
+    expect(notFound?.querySelector("b")?.textContent).toBe("数据源接入读口未接入");
+    expect(notFound?.getAttribute("title")).toBe("GAP-03");
+    const notFoundText = bodyOf(notFound);
+    expect(notFoundText).toContain("也不写「0 个源」");
+    expect(byTestid("knw5-ingest-tasks-table")).toBeNull();
+    expect(byTestid("knw5-ingest-tasks-apply")).toBeTruthy();
+
+    fetchMock.mockImplementation(() => fail(403, "没有查看这项数据的权限。", "rid-denied-x"));
+    await render("/knowledge?tab=ingest");
+    const denied = byTestid("knw5-ingest-tasks-unwired");
+    expect(bodyOf(denied)).toBe(notFoundText);
+    expect(container.textContent).toContain("请求编号：rid-denied-x");
+
+    const screen = container.textContent ?? "";
+    for (const banned of ["共 0", "0 个源。", "403", "404", "/api/", "knowledge/sources", "documents?limit", "syncStatus", "itemCount", "GAP-03"]) {
+      expect(screen, banned).not.toContain(banned);
+    }
+
+    // 200 但空：说清是空回答，不编源、不写数量。
+    fetchMock.mockResolvedValue({ items: [] });
+    await render("/knowledge?tab=ingest");
+    expect(attr("knw5-ingest-tasks", "data-state")).toBe("ready");
+    expect(attr("knw5-ingest-tasks", "data-len")).toBe("0");
+    expect(container.textContent).toContain("接口已响应，但没有给出接入中的数据源");
+    expect(container.querySelectorAll('[data-testid="knw5-ingest-tasks-row"]')).toHaveLength(0);
   });
 
   it("selects all four tabs and restores the chosen one on refresh and on back", async () => {
