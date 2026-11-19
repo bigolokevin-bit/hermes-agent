@@ -56,3 +56,60 @@ ERRORS:0
 - Live BFF/毕升 user/dept endpoints were not available; GAP-02 states are exercised by tests, not a live 200.
 - Pages are still mounted by the shell lane (no App/manifest change here); preview harness was used for layout proof.
 - Org's 2px per-section scroll delta at 375 is internal only; body never exceeds 375.
+
+---
+
+# T22 / T23 · 访问控制 + 知识空间（2026-11-19）
+
+## Delivered
+
+- **T22 访问控制** (`web/src/modules/access/**`, commit `ff874d13`):
+  - three groups: 角色 / 成员 / 管理员; rows show `姓名或角色名 · 8位短码`; raw ids only in `title`.
+  - permission provenance in words (角色授权 / 菜单授权 / 部门继承 / 直接授予 / 其他来源); missing → `—（来源未提供）`.
+  - no write controls; 404 from all candidates → `未接入` + `GAP-02` + real `/approvals` application link; 403 → denied; 5xx → request id + retry.
+  - `?state=loading|empty|error|denied` supported; no fabricated 0.
+- **T23 知识空间** (`web/src/modules/knowledge/**`, commit `9c28055d`):
+  - space list / document count / retrieval entry; GAP-03 means the knowledge read API does not exist, so all three show `未接入` + reason, never 0 or sample rows.
+  - `?tab=sources` deep link preserved; `?state=` four states; read-only, no test/sync buttons.
+
+## Commands + raw stdout
+
+```bash
+$ cd /Users/kevin_studio/Projects/forks/console-gov/web
+$ ./node_modules/.bin/tsc -b . --noEmit
+# EXIT: 0
+```
+
+```bash
+$ pnpm exec vitest run src/modules/access src/modules/knowledge
+ Test Files  2 passed (2)
+      Tests  7 passed (7)
+```
+
+```bash
+$ cd /Users/kevin_studio/Projects/forks/console-gov
+$ pnpm --filter web build
+# EXIT: 0
+# 82 assets / 3.4M
+```
+
+```text
+Chrome CDP preview measurements (temporary harness removed before commit):
+access 1440 {"sw":1440,"bw":1440,"iw":1440}
+access  375 {"sw":375,"bw":375,"iw":375}
+knowledge 1440 {"sw":1440,"bw":1440,"iw":1440}
+knowledge  375 {"sw":375,"bw":375,"iw":375}
+```
+
+## Screenshots
+
+- `docs/_artifacts/gov/shots/acc4-1440.png`
+- `docs/_artifacts/gov/shots/acc4-375.png`
+- `docs/_artifacts/gov/shots/knw4-1440.png`
+- `docs/_artifacts/gov/shots/knw4-375.png`
+
+## Honest gaps
+
+- Access and knowledge read endpoints are not live (GAP-02/GAP-03); engine tests exercise the honest unavailable/error states, not a live 200.
+- Pages are ready-to-mount but not wired by this lane: no App/shell/manifest edits (lane boundary). Preview harness provided layout proof only.
+- Node modules in this worktree were materialized as a real directory of symlinks plus a real pnpm task-state directory to satisfy pnpm; no package install.
