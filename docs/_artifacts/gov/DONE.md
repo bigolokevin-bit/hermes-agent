@@ -1662,3 +1662,26 @@ built /private/tmp/health-r38/index.html
 - 类型：`tsc -b . --noEmit` 仅基线 `src/modules/employees/EmployeesModulePage.test.tsx(73,5): TS18047 'root' possibly null`，本域 0 错。
 - assert-ia：`--source=html` 与 `--source=react` 均 exit 0，counts 51/22/1/8，无新增 Tab。
 - 活体：9122 当前代次 d0b50590 不含此修复；源码+单测自证，活体待下代次。未重建 9122、未并 main。
+
+## R42 — /system?tab=retention 保留与清理只读面（R41 派工）
+
+- 基线：`origin/lane/hermes-console` gate ledger `8bbf8910`（stamped at `53a3ef4c`）；本地 `lane/console-gov` 以 merge `5098c64d` 对齐，未 rebase/force。
+- 端点实测（9122，登录 cookie 不落日志）：
+  - `GET /agent-api/api/retention` → **404** `{"code":"console.unknown_route","message":"unknown console API route"}`。
+  - `GET /api/retention`、`/api/retention-policy`、`/api/data-retention` → **200 text/html**（SPA 外壳，不是 JSON 数据面）。
+  - 结论：保留/清理读口未接入；页面按四区诚实「未接入」列出，不画 0 天、0 B 或样例清理记录；`GAP-13` 只在 `title` 与折叠技术详情。
+- 实现：
+  - 四区固定审计事件 / 运行记录 / 会话日志 / 上传物；每区保留天数、最近清理、下次执行（北京时间到分）、当前占用、阈值、占用比例。
+  - 缺失字段一律 `—` + `title` 原因；真实 0 显示 `0 B` / `0%`；`readRetention` 只把服务返回的区标为已接入，未返回的区继续标「未接入」。
+  - 新增超限提示：`used > limit` 显示「已超限：占用比阈值多 …」；`used === limit` 显示「已达阈值：…」；两者都只在服务给出有效阈值时出现。
+  - 写型按钮（立即清理 / 修改策略）保持 `disabled` + `aria-disabled` + `data-planned` + `title`，零可点写入口。
+  - 四态内容面：`?state=loading` 骨架不请求；`?state=empty` 说明「没有读到记录，不代表 0」；`?state=error&rid=` 人话 + 可复制请求编号 + 重试；`?state=ready` 走真实读口。实际 403/404 共用同一整页文案与请求编号。
+- 四态 DOM 读数（1440，临时 harness，已删除）：
+  - loading：`ret4-loading=true`，`sections=0`，无请求。
+  - empty：`ret4-empty` 文案含「不代表保留天数是 0」，`sections=0`，无请求。
+  - error：`ret4-error` 含「数据保留与清理没能读出来」，`ret4-error-request-id` 含 `abc12345`，复制按钮 aria-label「复制请求编号」，`ret4-error-retry=true`，`sections=0`。
+  - ready：4 个区，`ret4-over-audit` 含「已超限：占用比阈值多 200 B」；「已达阈值」由单测锁定。
+- 三档宽度（DOM，ready）：1440/1280/375 均为 `bodySW=bodyCW=pageSW=pageCW=1440/1280/375`，无横溢。
+- 截图：`docs/_artifacts/gov/shots/ret4-1440.png`、`ret4-1280.png`、`ret4-375.png`。
+- 验证：`npx vitest run src/modules/audit/RetentionModulePage.test.tsx` → **1 file / 11 tests passed**；`npx vitest run src/modules/audit` → **10 files / 161 passed**；全量 `npx vitest run` → **131 files / 1388 passed**；`tsc -b . --noEmit` 仅基线 `src/modules/employees/EmployeesModulePage.test.tsx(73,5): TS18047`，本域 0 错。
+- 边界：仅改 `web/src/modules/audit/**` + `docs/_artifacts/gov/**`；未改 App/shell/routes/registry/package·lock/web scripts/ops；未 install；未并 main、未重建 9122；未跑独立观察者。

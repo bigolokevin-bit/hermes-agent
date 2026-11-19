@@ -21,7 +21,8 @@
  * never a painted 保留天数 table.
  */
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { CalendarClock, Database, Gauge, HardDrive, RefreshCw, ShieldAlert, TriangleAlert } from "lucide-react";
+import { useSearchParams } from "react-router";
+import { CalendarClock, Database, Gauge, HardDrive, Inbox, RefreshCw, ShieldAlert, TriangleAlert } from "lucide-react";
 
 import { Button } from "@nous-research/ui/ui/components/button";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
@@ -48,7 +49,7 @@ import {
 } from "./retention";
 import { LoadingPanel, RequestIdLine, TechnicalDisclosure } from "./states";
 
-export type Phase = "loading" | "ready" | "unwired" | "error" | "denied";
+export type Phase = "loading" | "ready" | "empty" | "unwired" | "error" | "denied";
 
 interface Failure {
   status: number;
@@ -67,6 +68,16 @@ interface Read {
 }
 
 const PENDING: Read = { phase: "loading", sections: [], asOf: null, failure: null, probe: RETENTION_PATH };
+const EMPTY_PREVIEW: Read = { phase: "empty", sections: [], asOf: null, failure: null, probe: "preview" };
+
+/** R41: the preview reproduces the state surface, never a sample policy. */
+const FORCED_STATES = new Set(["loading", "empty", "error", "ready"] as const);
+type ForcedState = "loading" | "empty" | "error" | "ready";
+
+function readForced(value: string | null): ForcedState | null {
+  const next = (value ?? "").trim().toLowerCase();
+  return (FORCED_STATES as Set<string>).has(next) ? (next as ForcedState) : null;
+}
 
 /** One labelled field; a missing value is `—` with the reason in `title`. */
 function Field({
@@ -138,6 +149,17 @@ function SectionCard({ row }: { row: SectionRow }): ReactNode {
           testId={`ret4-share-${row.key}`}
         />
       </dl>
+      {row.usedBytes !== null && row.limitBytes !== null && row.limitBytes > 0 ? (
+        row.usedBytes > row.limitBytes ? (
+          <p className="m-0 break-words text-xs text-destructive" data-testid={`ret4-over-${row.key}`}>
+            已超限：占用比阈值多 {formatBytes(row.usedBytes - row.limitBytes) ?? "—"}，请处理后再看下一轮清理。
+          </p>
+        ) : row.usedBytes === row.limitBytes ? (
+          <p className="m-0 break-words text-xs text-amber-600" data-testid={`ret4-over-${row.key}`}>
+            已达阈值：占用正好等于阈值，下一轮清理前请留意。
+          </p>
+        ) : null
+      ) : null}
       {row.note ? (
         <p className="m-0 max-w-prose break-words text-xs text-muted-foreground" data-testid={`ret4-note-${row.key}`}>
           {row.note}
@@ -236,15 +258,41 @@ function ErrorPanel({
 }
 
 export function RetentionModulePage(): ReactNode {
+  const [sp, setSp] = useSearchParams();
+  const forced = readForced(sp.get("state"));
+  const forcedRid = (sp.get("rid") ?? "").trim() || null;
   const [attempt, setAttempt] = useState(0);
   const [read, setRead] = useState<Read>(PENDING);
 
   const retry = useCallback(() => {
+    if (forced) {
+      const next = new URLSearchParams(sp);
+      next.delete("state");
+      setSp(next, { replace: true });
+    }
     setAttempt((value) => value + 1);
-  }, []);
+  }, [forced, setSp, sp]);
 
   useEffect(() => {
     let alive = true;
+    if (forced === "loading") {
+      setRead(PENDING);
+      return () => { alive = false; };
+    }
+    if (forced === "empty") {
+      setRead(EMPTY_PREVIEW);
+      return () => { alive = false; };
+    }
+    if (forced === "error") {
+      setRead({
+        phase: "error",
+        sections: [],
+        asOf: null,
+        failure: { status: -1, requestId: forcedRid ?? "preview-request", technical: null, code: null },
+        probe: "preview",
+      });
+      return () => { alive = false; };
+    }
     setRead(PENDING);
     void fetchJSON<unknown>(RETENTION_PATH, undefined, { allowUnauthorized: true })
       .then((payload) => {
@@ -282,12 +330,14 @@ export function RetentionModulePage(): ReactNode {
     return () => {
       alive = false;
     };
-  }, [attempt]);
+  }, [attempt, forced, forcedRid]);
 
   const answered = read.sections.filter((row) => !row.unwired).length;
   const total = SECTIONS.length;
   const summary =
-    read.phase === "unwired"
+    read.phase === "empty"
+      ? "当前没有可展示的保留策略记录。"
+      : read.phase === "unwired"
       ? `${total} 个区块都未接入：这个环境没有可读的保留策略源。`
       : read.phase === "ready"
         ? `已接入 ${answered} / ${total} 个区块${read.asOf ? "" : "；服务的回答没有带读取时刻"}`
@@ -330,6 +380,18 @@ export function RetentionModulePage(): ReactNode {
           </p>
         ) : null}
       </div>
+
+      {read.phase === "empty" ? (
+        <Card className="border-border bg-card" data-testid="ret4-empty">
+          <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-8">
+            <Inbox className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+            <p className={`m-0 min-w-0 break-words text-sm ${themedBody}`}>当前没有可展示的保留策略记录。</p>
+            <p className="m-0 max-w-prose break-words text-xs text-muted-foreground">
+              这只表示本次没有读到记录，不代表保留天数是 0，也不代表没有数据需要清理。
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {read.phase === "loading" ? <LoadingPanel testId="ret4-loading" /> : null}
       {read.phase === "denied" ? <DeniedPanel requestId={read.failure?.requestId ?? null} /> : null}

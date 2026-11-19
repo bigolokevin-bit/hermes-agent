@@ -238,3 +238,46 @@ describe("four states", () => {
     await waitFor(() => q("ret4-unwired-note") !== null, "unwired after settle");
   });
 });
+
+describe("forced preview states", () => {
+  it("renders loading without requesting the service", async () => {
+    await render("/system?tab=retention&state=loading");
+    expect(q("ret4-loading")).not.toBeNull();
+    expect(q("ret4-sections")).toBeNull();
+    expect(calls()).toBe(0);
+  });
+
+  it("renders an honest empty state without turning it into a zero", async () => {
+    await render("/system?tab=retention&state=empty");
+    expect(q("ret4-empty")?.textContent).toContain("当前没有可展示的保留策略记录");
+    expect(q("ret4-empty")?.textContent).toContain("不代表保留天数是 0");
+    expect(q("ret4-sections")).toBeNull();
+    expect(calls()).toBe(0);
+  });
+
+  it("renders a preview error with the supplied request id and a copy control", async () => {
+    await render("/system?tab=retention&state=error&rid=abc12345");
+    expect(q("ret4-error")).not.toBeNull();
+    expect(q("ret4-error")?.textContent).toContain("数据保留与清理没能读出来");
+    expect(q("ret4-error-request-id")?.textContent).toContain("abc12345");
+    expect(q("ret4-error-request-id-value")?.querySelector("button")?.getAttribute("aria-label")).toContain("复制");
+    expect(q("ret4-error-retry")).not.toBeNull();
+    expect(calls()).toBe(0);
+  });
+});
+
+describe("threshold prompts", () => {
+  it("marks over-limit and at-limit areas from the service numbers", async () => {
+    api.fetchJSON.mockResolvedValue({
+      sections: [
+        { key: "audit", days: 180, usedBytes: 1200, limitBytes: 1000 },
+        { key: "runs", days: 30, usedBytes: 1000, limitBytes: 1000 },
+      ],
+    });
+    await render();
+    await waitFor(() => q("ret4-over-audit") !== null, "over audit");
+    expect(q("ret4-over-audit")?.textContent).toContain("已超限");
+    expect(q("ret4-over-runs")?.textContent).toContain("已达阈值");
+    expect(q("ret4-over-sessions")).toBeNull();
+  });
+});
