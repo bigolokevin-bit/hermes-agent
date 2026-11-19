@@ -29,6 +29,7 @@ import {
   type TaskDetail,
   type TaskRow,
 } from "./tasksBoard";
+import { TaskCreateForm } from "./TaskCreateForm";
 
 const COLUMN_LABEL: Record<(typeof BOARD_STATUSES)[number], string> = {
   open: "待处理",
@@ -169,6 +170,13 @@ export function TasksBoardModulePage() {
   const [tick, setTick] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [detail, setDetail] = useState<DetailState>({ k: "idle" });
+  const [createOpen, setCreateOpen] = useState(false);
+
+  const afterCreate = useCallback((taskId: string) => {
+    // Refresh the board and open the new task's detail through the real link.
+    setSelected(taskId);
+    setTick((n) => n + 1);
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -259,16 +267,34 @@ export function TasksBoardModulePage() {
             按后端状态看任务；拖动排序未启用，状态不会被前端改写。
           </p>
         </div>
-        <Button
-          size="sm"
-          outlined
-          onClick={retry}
-          disabled={board.phase === "loading"}
-          prefix={<RefreshCw className={"h-4 w-4" + (board.phase === "loading" ? " animate-spin" : "")} />}
-        >
-          刷新
-        </Button>
+        <div className="flex shrink-0 gap-2">
+          <Button
+            size="sm"
+            outlined
+            onClick={() => setCreateOpen((v) => !v)}
+            data-testid="tsk4-create-open"
+          >
+            {createOpen ? "收起新建" : "新建任务"}
+          </Button>
+          <Button
+            size="sm"
+            outlined
+            onClick={retry}
+            disabled={board.phase === "loading"}
+            prefix={<RefreshCw className={"h-4 w-4" + (board.phase === "loading" ? " animate-spin" : "")} />}
+          >
+            刷新
+          </Button>
+        </div>
       </header>
+
+      {createOpen ? (
+        <TaskCreateForm
+          nameMap={board.nameMap}
+          onCreated={afterCreate}
+          onClose={() => setCreateOpen(false)}
+        />
+      ) : null}
 
       <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm" data-testid="tsk4-summary">
         <span data-testid="status">
@@ -283,7 +309,7 @@ export function TasksBoardModulePage() {
         <span data-testid="owner">负责人：任务指派对象</span>
       </div>
       <p className="text-xs text-muted-foreground">
-        仅显示本页已加载的任务，不是全量统计；新建与状态迁移待写入车间接线后开放。
+        仅显示本页已加载的任务，不是全量统计；新建走任务服务真接口，状态迁移待写入车间接线后开放。
       </p>
 
       <TaskDetailCard
