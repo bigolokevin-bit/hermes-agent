@@ -846,3 +846,16 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 挂账（非本单引入、本单写域外）：全量尾行带 `Errors 2`——`EmployeeDetailModulePage.tsx:1003/1028` 的 `api?.requestId` 是 71870656（R47 跨区一致性）在 useOverview 作用域引入的 ReferenceError（该 catch 形参名是 `err`，无 `api` 变量；tsc 因 ambient 未拦）。处置=403/404 分支应写 `err instanceof ApiError ? (err.requestId ?? null) : null`（1028 处可用 `r.requestId`）。employee-detail 不在 R55 写域，留待独立小单，勿并入本笔。
 
 未测项：9122（==6a02ed58 代次，禁重建）活体滚动/返回读数待并入后代次；三档横溢=aside 既有 flex+min-w-0 形态学报（jsdom 不可测）。
+
+## R56 P0 修单：useOverview catch 的自由变量 api（ReferenceError）— 2026-11-20
+
+工单：`api?.requestId` 在 useOverview 两个 catch 中引用未声明的 `api`（该形参名是 err/err2），403/404 时 setState 抛 ReferenceError→unhandled rejection、档案态停在 loading。随 71870656（R47）进入 wave-16=6a02ed58 现网。
+
+修法（仅两处，语义不变：403→denied、404/401→notfound/denied、其它→error）：
+- L1003（detail 腿 403 分支）→ `requestId: err instanceof ApiError ? (err.requestId ?? null) : null`。
+- L1028（matrix 回落腿 denied 且 status===404）→ `requestId: r.requestId ?? null`（r=toResourceError(err2) 已在作用域）。
+- toResourceError 内部 L226/227/229 三处 `api?.requestId` 是其局部形参，合法不动。
+
+验收读数：`git grep -n "api?\.requestId" -- web/src/modules/employee-detail` 修后仅剩 226/227/229；`npx tsc --noEmit -p tsconfig.json` 本模块 0 error；定向 employee-detail 1 file/40 passed（新增 R56 两用例=①ApiError.requestId=req-r56-403 时 ed5-overview-denied 上屏含该 rid+req-copy 可复制 ②无 rid 时显「本次请求没有带回编号」fallback，禁编造）；全量 132 files/1470 passed 且尾行不再报 Errors（原 2 条 unhandled rejection 即这两个旧用例打到坏 setState 所致，本笔清零）。
+
+未动项：文案、testid、路由、其它模块零改动（本笔仅两行产品码+两用例）。9122==6a02ed58 现网仍带病（禁重建），修后活体读数待并入后代次。

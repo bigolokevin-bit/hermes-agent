@@ -257,6 +257,28 @@ describe("EmployeeDetailModulePage — capability (reuse: /v1/matrix/employees)"
     const denied = container.querySelector('[data-testid="ed5-capability-denied"]');
     expect(denied?.textContent).toContain("还没接入");
   });
+
+  // R56 P0: the overview catch paths must read the requestId from the real
+  // error object (they used to reference a free variable `api`, throwing a
+  // ReferenceError that left the state at loading as an unhandled rejection).
+  it("R56: overview 403 catch carries the ApiError requestId into the denied state", async () => {
+    mockApi((url) =>
+      url.includes("/api/employees/")
+        ? Promise.reject(new ApiError("forbidden", { status: 403, body: "", url, requestId: "req-r56-403" }))
+        : Promise.resolve({}),
+    );
+    await renderAt(page, at("overview"));
+    const denied = container.querySelector('[data-testid="ed5-overview-denied"]');
+    expect(denied?.textContent).toContain("req-r56-403");
+    expect(denied?.querySelector('[data-testid="req-copy"]')).toBeTruthy();
+  });
+
+  it("R56: overview 403 without a request id says so instead of inventing one", async () => {
+    mockApi((url) => (url.includes("/api/employees/") ? forbidden(url) : Promise.resolve({})));
+    await renderAt(page, at("overview"));
+    const denied = container.querySelector('[data-testid="ed5-overview-denied"]');
+    expect(denied?.textContent).toContain("本次请求没有带回编号");
+  });
 });
 
 describe("EmployeeDetailModulePage — approvals / runs / audit", () => {

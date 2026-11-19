@@ -1000,7 +1000,7 @@ function useOverview(empId: string, nonce: number): OverviewState {
         // the capability zone reuses — see file header).
         const status = err instanceof ApiError ? err.status : undefined;
         if (status === 403) {
-          setState({ phase: "denied", message: DENIED_COPY, requestId: api?.requestId ?? null });
+          setState({ phase: "denied", message: DENIED_COPY, requestId: err instanceof ApiError ? (err.requestId ?? null) : null });
           return;
         }
         try {
@@ -1025,7 +1025,7 @@ function useOverview(empId: string, nonce: number): OverviewState {
           if (cancelled) return;
           const r = toResourceError(err2);
           if (r.phase === "denied" && status === 404) {
-            setState({ phase: "denied", message: DENIED_COPY, requestId: api?.requestId ?? null });
+            setState({ phase: "denied", message: DENIED_COPY, requestId: r.requestId ?? null });
           } else if (r.phase === "error") {
             setState({ phase: "error", message: r.message, requestId: r.requestId });
           } else {
