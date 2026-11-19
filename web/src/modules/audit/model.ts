@@ -125,6 +125,9 @@ export function shortCode(value: string, size = 8): string {
  * showing. A raw `emp_…` / `human:1` / UUID never becomes the label.
  */
 export function maskedName(rawName: string | null, rawId: string | null, noun: string): { label: string; raw: string | null } {
+  // Neither a name nor an id arrived: the record was never attributed to anyone,
+  // and 「未指派」 says that plainly instead of showing a bare handle or a dash.
+  if (!rawName && !rawId) return { label: "未指派", raw: null };
   const id = rawId ?? rawName ?? "";
   const code = shortCode(id);
   const name = rawName && !isMachineHandle(rawName) ? rawName : null;
@@ -349,6 +352,17 @@ export function actionView(raw: string | null): ActionView {
   return { label: text || "—", raw, known: false };
 }
 
+/**
+ * The 事件类型 filter's options: only the codes this vocabulary actually names,
+ * sent to the service verbatim. An unmapped code is never offered as a choice —
+ * the filter cannot ask for a word we have not seen the service use.
+ */
+export function eventTypeChoices(): { value: string; label: string }[] {
+  return Object.entries(ACTION_LABEL)
+    .map(([value, label]) => ({ value, label }))
+    .sort((a, b) => a.label.localeCompare(b.label, "zh-CN"));
+}
+
 // ── Outcome vocabulary ───────────────────────────────────────────────
 
 export type OutcomeKind = "success" | "failure" | "pending" | "unknown";
@@ -413,6 +427,12 @@ const PREV_HASH_KEYS = ["prevHash", "prev_hash", "previousHash", "previous_hash"
 const LIST_KEYS = ["items", "events", "audit", "entries", "results", "records", "data", "list"] as const;
 const CURSOR_KEYS = ["nextCursor", "next_cursor", "next", "cursor", "nextPage", "next_page"] as const;
 const ERROR_KEYS = ["error", "failure", "errorInfo", "error_info"] as const;
+/**
+ * 请求编号 — the number a person quotes when something went wrong. Request-shaped
+ * keys win over correlation/trace ones; an answer with neither shows 「未提供」.
+ */
+const REQUEST_ID_KEYS = ["requestId", "request_id", "reqId", "req_id", "requestNo", "request_no"] as const;
+const TRACE_ID_KEYS = ["correlationId", "correlation_id", "traceId", "trace_id"] as const;
 
 /** The related ids the console chains together, each named the way a person reads it. */
 const LINK_SPECS: readonly { keys: readonly string[]; noun: string }[] = [
@@ -454,6 +474,8 @@ export interface AuditRow {
   resource: { label: string; raw: string | null };
   occurredAt: string | null;
   recordedAt: string | null;
+  /** 请求编号 — what the service called this request, or null when it said none. */
+  requestId: string | null;
   /** Why it failed / what was decided, in human words only. */
   reason: string | null;
 }
@@ -520,6 +542,17 @@ function reasonOf(rec: Record<string, unknown>, outcome: OutcomeView): string | 
   return plain ?? decision;
 }
 
+/**
+ * The request number on the surface: a real identifier a person quotes to
+ * support. A handle-shaped one (a 32-char hex trace id) is not a human-readable
+ * code, so it is shown in full but kept breakable and paired with 「技术编号」
+ * in the `title` — never dressed up as a name, never invented. `null` = the
+ * answer carried none, and the screen says 「未提供」 with the reason.
+ */
+function requestIdOf(rec: Record<string, unknown>): string | null {
+  return pickText(rec, REQUEST_ID_KEYS) ?? pickText(rec, TRACE_ID_KEYS);
+}
+
 function rowFrom(item: unknown, index: number): AuditRow | null {
   const rec = asRecord(item);
   if (!rec) return null;
@@ -538,6 +571,7 @@ function rowFrom(item: unknown, index: number): AuditRow | null {
     resource: resourceOf(rec),
     occurredAt: beijing(pick(rec, OCCURRED_KEYS)),
     recordedAt: beijing(pick(rec, RECORDED_KEYS)),
+    requestId: requestIdOf(rec),
     reason: reasonOf(rec, outcome),
   };
 }
@@ -653,6 +687,8 @@ export interface AuditDetail {
   occurredAt: string | null;
   recordedAt: string | null;
   sourceSystem: string | null;
+  /** 请求编号 shown on the human layer (copyable); null renders 「未提供」 + reason. */
+  requestId: string | null;
   reason: string | null;
   /** The code the service gave for a failure — technical, never on the surface. */
   code: string | null;
@@ -688,6 +724,7 @@ export function auditDetailFrom(payload: unknown): AuditDetail | null {
   const tenantRaw = pickText(body, TENANT_KEYS);
   const tenant = maskedRef(tenantRaw, "工作区");
   const sourceSystem = pickText(body, SOURCE_KEYS);
+  const requestId = requestIdOf(body);
 
   const technical: string[] = [];
   if (rawId) technical.push(`事件标识：${rawId}`);
@@ -713,6 +750,7 @@ export function auditDetailFrom(payload: unknown): AuditDetail | null {
     occurredAt: beijing(pick(body, OCCURRED_KEYS)),
     recordedAt: beijing(pick(body, RECORDED_KEYS)),
     sourceSystem,
+    requestId,
     reason: reasonOf(body, outcome),
     code,
     change,

@@ -12,18 +12,87 @@
  * reviewer can tell it apart from an answer the service actually gave.
  */
 import { useState, type ReactNode } from "react";
-import { ChevronDown, ChevronUp, Inbox, RefreshCw, ShieldAlert, TriangleAlert } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Copy, Inbox, RefreshCw, ShieldAlert, TriangleAlert } from "lucide-react";
 
 import { Button } from "@nous-research/ui/ui/components/button";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 
 import { themedBody } from "@/lib/utils";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import { fixtureAttr } from "./fixture";
 import { requestIdLine, type FailureCopy } from "./copy";
 
 interface Marked {
   /** Set to the state name when the pane is showing the `?state=` repro. */
   fixture?: string;
+}
+
+/** 请求编号 has its own honest word: the answer simply did not carry one. */
+export const NO_REQUEST_ID = "未提供";
+
+/**
+ * 请求编号 on the surface, copyable, and honest when it is missing: 「未提供」
+ * with the reason in its `title`. An id is quoted to support, so it is shown in
+ * full and allowed to wrap — `break-all` keeps a 32-character hex inside a
+ * 375px column instead of pushing the page sideways. `failure` switches the
+ * missing word to the sentence a failure panel owes a person: what to quote
+ * when there is no number at all.
+ */
+export function CopyValue({
+  value,
+  reason,
+  label,
+  testId,
+  failure = false,
+}: {
+  value: string | null;
+  /** What to say instead when the service sent nothing. */
+  reason: string;
+  /** The field name, for the button's accessible label. */
+  label: string;
+  testId: string;
+  /** A failure panel speaks its own missing-id sentence instead of 「未提供」. */
+  failure?: boolean;
+}): ReactNode {
+  const [copied, setCopied] = useState<"idle" | "done" | "failed">("idle");
+  if (!value) {
+    if (failure) return <span className="min-w-0 break-words">{requestIdLine(null)}</span>;
+    return (
+      <span className="min-w-0 break-words text-muted-foreground" data-testid={`${testId}-absent`} title={reason}>
+        {NO_REQUEST_ID}
+      </span>
+    );
+  }
+  return (
+    <span className="flex min-w-0 flex-wrap items-center gap-1.5" data-testid={testId}>
+      <span className={`min-w-0 break-all font-mono text-xs ${themedBody}`}>{value}</span>
+      <button
+        type="button"
+        aria-label={`复制${label}`}
+        title="复制"
+        className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground underline underline-offset-2"
+        onClick={() => {
+          void copyTextToClipboard(value).then((ok) => {
+            setCopied(ok ? "done" : "failed");
+            if (ok) window.setTimeout(() => setCopied("idle"), 2500);
+          });
+        }}
+      >
+        {copied === "done" ? <Check className="h-3 w-3" aria-hidden="true" /> : <Copy className="h-3 w-3" aria-hidden="true" />}
+        {copied === "done" ? "已复制" : copied === "failed" ? "复制失败，请手动选择" : "复制"}
+      </button>
+    </span>
+  );
+}
+
+/** The 请求编号 line of a failure panel: copyable when there is one, honest when there is not. */
+export function RequestIdLine({ requestId, testId }: { requestId: string | null; testId: string }): ReactNode {
+  return (
+    <p className="flex min-w-0 flex-wrap items-center gap-1 text-xs text-muted-foreground" data-testid={testId}>
+      {requestId ? <span>请求编号：</span> : null}
+      <CopyValue value={requestId} reason="" label="请求编号" testId={`${testId}-value`} failure />
+    </p>
+  );
 }
 
 /**
@@ -119,7 +188,7 @@ export function ErrorPanel({
           <span className="min-w-0 break-words">{title}</span>
         </div>
         <p className="max-w-prose break-words text-xs text-muted-foreground">{failure.sentence}</p>
-        <p className="break-words text-xs text-muted-foreground">{requestIdLine(failure.requestId)}</p>
+        <RequestIdLine requestId={failure.requestId} testId={`${testId}-request-id`} />
         {failure.technical ? <TechnicalDisclosure lines={[failure.technical]} testId={`${testId}-details`} /> : null}
         <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
           重试
@@ -130,13 +199,17 @@ export function ErrorPanel({
 }
 
 /** 403 and 404 both land here, and they read exactly the same. */
-export function DeniedPanel({ failure, fixture }: Marked & { failure: FailureCopy | null }): ReactNode {
+export function DeniedPanel({
+  failure,
+  fixture,
+  testId = "audit-denied",
+}: Marked & { failure: FailureCopy | null; testId?: string }): ReactNode {
   return (
     <Card
       role="alert"
       aria-label="审计事件不可用"
       className="border-border bg-card"
-      data-testid="audit-denied"
+      data-testid={testId}
       {...fixtureAttr(fixture)}
     >
       <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
@@ -146,7 +219,7 @@ export function DeniedPanel({ failure, fixture }: Marked & { failure: FailureCop
           这块内容要么尚未对你开放，要么当前环境还没有提供它。这里不会显示任何猜测的内容。
           需要查看审计记录时，请联系工作区管理员为你开通。
         </p>
-        <p className="break-words text-xs text-muted-foreground">{requestIdLine(failure?.requestId ?? null)}</p>
+        <RequestIdLine requestId={failure?.requestId ?? null} testId={`${testId}-request-id`} />
       </CardContent>
     </Card>
   );
@@ -160,14 +233,15 @@ export function VerifyUnavailablePanel({
   failure,
   onRetry,
   fixture,
-}: Marked & { failure: FailureCopy; onRetry: () => void }): ReactNode {
+  testId = "aud03-unavailable",
+}: Marked & { failure: FailureCopy; onRetry: () => void; testId?: string }): ReactNode {
   return (
     // No `title` here on purpose: the raw answer differs between a 403 and a
     // 404, and this body must not. The technical line is reachable collapsed.
     <Card
       role="status"
       className="border-border bg-card"
-      data-testid="audit-verify-unavailable"
+      data-testid={testId}
       {...fixtureAttr(fixture)}
     >
       <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-8">
@@ -176,8 +250,11 @@ export function VerifyUnavailablePanel({
           <span className={`min-w-0 break-words ${themedBody}`}>本环境未启用</span>
         </div>
         <p className="max-w-prose break-words text-xs text-muted-foreground">{failure.sentence}</p>
-        <p className="break-words text-xs text-muted-foreground">{requestIdLine(failure.requestId)}</p>
-        {failure.technical ? <TechnicalDisclosure lines={[failure.technical]} testId="audit-verify-unavailable-details" /> : null}
+        <p className="max-w-prose break-words text-xs text-muted-foreground">
+          下一步：让工作区管理员在审计服务里开通时间窗完整性校验，开通后回到这一页重新运行即可；这里不会先给一个「已通过」的结论。
+        </p>
+        <RequestIdLine requestId={failure.requestId} testId={`${testId}-request-id`} />
+        {failure.technical ? <TechnicalDisclosure lines={[failure.technical]} testId={`${testId}-details`} /> : null}
         <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
           再运行一次
         </Button>
@@ -208,7 +285,7 @@ export function InlineFailure({
       data-testid={testId}
     >
       <p className="max-w-prose break-words text-xs text-destructive">{`${action}：${failure.sentence}`}</p>
-      <p className="break-words text-xs text-muted-foreground">{requestIdLine(failure.requestId)}</p>
+      <RequestIdLine requestId={failure.requestId} testId={`${testId}-request-id`} />
       <div className="flex flex-wrap items-center gap-2">
         {failure.technical ? <TechnicalDisclosure lines={[failure.technical]} testId={`${testId}-details`} /> : null}
         {onRetry ? (

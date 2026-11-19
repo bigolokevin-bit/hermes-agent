@@ -64,6 +64,7 @@ const EVENTS = {
       outcome: "succeeded",
       actor: { type: "human", id: "user:2f3a4b5c6d7e8f90", displayName: "李思" },
       resource: { type: "approval", id: "ap_1122334455667788" },
+      requestId: "req-20261119-0a7b3c",
     },
     {
       event_id: "evt_8d2e3f4051627384",
@@ -85,6 +86,28 @@ async function mount(handler?: (url: string) => Promise<unknown>, entry = "/syst
   await waitFor(() => !skeleton(), "first page settled");
 }
 
+/** Choose an option in one of the filter selects, the way a person does. */
+async function choose(testId: string, value: string): Promise<void> {
+  const node = document.querySelector<HTMLSelectElement>(`[data-testid='${testId}']`);
+  if (!node) throw new Error(`select ${testId} not found`);
+  await act(async () => {
+    node.value = value;
+    node.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+}
+
+const lastUrl = (): string => {
+  const all = urls();
+  return all[all.length - 1] ?? "";
+};
+
+/** The window a URL asked for, in milliseconds. */
+const spanOf = (url: string): number => {
+  const from = Date.parse(decodeURIComponent(/from=([^&]*)/.exec(url)?.[1] ?? ""));
+  const to = Date.parse(decodeURIComponent(/to=([^&]*)/.exec(url)?.[1] ?? ""));
+  return to - from;
+};
+
 beforeEach(() => {
   api.fetchJSON.mockReset();
 });
@@ -98,16 +121,16 @@ afterEach(() => {
 });
 
 describe("the ledger list", () => {
-  it("asks the real route, /api/ segment included", async () => {
+  it("asks the real route, /api/ segment included, with the window it shows", async () => {
     await mount();
-    expect(urls()[0]).toBe("/agent-api/api/audit?limit=50");
+    expect(urls()[0]).toMatch(/^\/agent-api\/api\/audit\?limit=50&from=\d{4}-\d{2}-\d{2}T.*&to=\d{4}-\d{2}-\d{2}T/);
   });
 
   it("says the time in Beijing words and labels it", async () => {
     await mount();
     expect(text()).toContain("2026-11-19 09:20");
     expect(text()).toContain("2026-11-19 10:05");
-    expect(text()).toContain("发生时间（北京时间）");
+    expect(text()).toContain("时间（北京时间）");
     expect(text()).toContain("时间为北京时间");
     // no ISO string anywhere on the surface
     expect(text()).not.toMatch(/2026-11-19T|:00:00\.?\d*Z/);
@@ -156,13 +179,13 @@ describe("the ledger list", () => {
       (Array.from(document.querySelectorAll("button")).find((b) => (b.textContent ?? "").includes("加载更多")) as HTMLButtonElement).click();
     });
     await waitFor(() => urls().some((u) => u.includes("cursor=cur_page2")), "second page asked");
-    expect(urls()).toContain("/agent-api/api/audit?limit=50&cursor=cur_page2");
+    expect(urls().some((u) => /^\/agent-api\/api\/audit\?limit=50&from=.*&to=.*&cursor=cur_page2$/.test(u))).toBe(true);
   });
 
   it("a record with nothing readable is counted, not painted blank", async () => {
     await mount(async () => ({ items: [EVENTS.items[0], { note: "只有备注" }] }));
     expect(text()).toContain("有 1 / 2 条记录缺少可显示的内容");
-    expect(document.querySelectorAll("[data-testid^='audit-row-']")).toHaveLength(1);
+    expect(document.querySelectorAll("[data-testid^='aud01-row-']")).toHaveLength(1);
   });
 });
 
@@ -170,7 +193,7 @@ describe("the event detail", () => {
   it("opens on click against the real route", async () => {
     await mount();
     await act(async () => {
-      document.querySelector<HTMLButtonElement>("[data-testid='audit-row-evt_7c1f2a3b4d5e6f70'] button")?.click();
+      document.querySelector<HTMLButtonElement>("[data-testid='aud01-row-evt_7c1f2a3b4d5e6f70'] button")?.click();
     });
     await waitFor(() => urls().some((u) => u.startsWith("/agent-api/api/audit/detail")), "detail asked");
     expect(urls()).toContain("/agent-api/api/audit/detail?id=evt_7c1f2a3b4d5e6f70");
@@ -179,7 +202,7 @@ describe("the event detail", () => {
   it("a row without an identifier says the detail cannot open, and asks nothing", async () => {
     await mount(async () => ({ items: [{ action: "task_created", outcome: "success" }] }));
     await act(async () => {
-      document.querySelector<HTMLButtonElement>("[data-testid^='audit-row-'] button")?.click();
+      document.querySelector<HTMLButtonElement>("[data-testid^='aud01-row-'] button")?.click();
     });
     await waitFor(() => text().includes("详情没有打开"), "unaddressable row");
     expect(text()).toContain("这条记录没有给出可打开的事件标识");
@@ -232,7 +255,7 @@ describe("the event detail", () => {
     await openDetail();
     expect(text()).not.toContain("1a2b3c4d5e6f7081");
     expect(text()).not.toContain("evt_D6FC9A2B4E6F8012");
-    const toggle = document.querySelector<HTMLButtonElement>("[data-testid='audit-detail-details'] button")!;
+    const toggle = document.querySelector<HTMLButtonElement>("[data-testid='aud02-detail-details'] button")!;
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
     await act(async () => {
       toggle.click();
@@ -273,12 +296,13 @@ describe("the event detail", () => {
         return EVENTS;
       });
       await render("/system?tab=events&id=evt_D6FC9A2B4E6F8012", <AuditEventsModulePage />);
-      await waitFor(() => document.querySelector("[data-testid='audit-denied']") !== null, `denied ${status}`);
-      return document.querySelector("[data-testid='audit-denied']")?.outerHTML ?? "";
+      await waitFor(() => document.querySelector("[data-testid='aud02-detail-denied']") !== null, `denied ${status}`);
+      return document.querySelector("[data-testid='aud02-detail-denied']")?.outerHTML ?? "";
     };
     const forbidden = await once(403);
     expect(forbidden).toContain("暂时无法查看审计事件");
-    expect(forbidden).toContain("请求编号：dt-deny");
+    expect(forbidden).toContain("请求编号：");
+    expect(forbidden).toContain("dt-deny");
     expect(await once(404)).toBe(forbidden);
   });
 });
@@ -288,7 +312,7 @@ describe("whole-panel states", () => {
     api.fetchJSON.mockImplementation(() => new Promise(() => {}));
     await render("/system?tab=events", <AuditEventsModulePage />);
     expect(skeleton()).toBe(true);
-    expect(text()).toContain("正在读取审计事件…");
+    expect(text()).toContain("正在读取审计事件（");
     expect(text()).not.toContain("审计事件为空");
     await act(async () => {
       root?.unmount();
@@ -298,8 +322,8 @@ describe("whole-panel states", () => {
 
   it("empty names the reason and the next step", async () => {
     await mount(async () => ({ items: [] }));
-    expect(text()).toContain("服务回了这个环境里最近的审计事件为空");
-    expect(text()).toContain("稍后再刷新一次");
+    expect(text()).toContain("按现在的筛选条件，这个窗口里没有审计事件");
+    expect(text()).toContain("把时间窗放宽一格");
     expect(text()).toContain("刷新");
   });
 
@@ -311,6 +335,8 @@ describe("whole-panel states", () => {
     });
     expect(text()).toContain("审计事件没能加载出来");
     expect(text()).toContain("请求编号：au-1101");
+    // the number is there to be copied, not to be retyped
+    expect(document.querySelector("[data-testid='aud01-error-request-id-value'] button")).toBeTruthy();
     expect(text()).not.toMatch(/\b500\b|HTTP/);
     answer(EVENTS);
     await act(async () => {
@@ -342,7 +368,7 @@ describe("whole-panel states", () => {
     const forbidden = await once(403);
     expect(text()).toContain("暂时无法查看审计事件");
     expect(text()).toContain("请求编号：au-deny");
-    expect(document.querySelectorAll("[data-testid^='audit-row-']")).toHaveLength(0);
+    expect(document.querySelectorAll("[data-testid^='aud01-row-']")).toHaveLength(0);
     expect(await once(404)).toBe(forbidden);
   });
 
@@ -359,13 +385,13 @@ describe("whole-panel states", () => {
     expect(document.querySelector("[data-fixture='loading']")).toBeTruthy();
     expect(api.fetchJSON).not.toHaveBeenCalled();
     await open("empty");
-    expect(document.querySelector("[data-testid='audit-events-empty'][data-fixture='empty']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='aud01-empty'][data-fixture='empty']")).toBeTruthy();
     await open("error");
     expect(text()).toContain("本次请求未记录编号，可复制时间与操作路径反馈");
     expect(document.querySelector("[data-fixture='error']")).toBeTruthy();
     await open("denied");
     expect(document.querySelector("[data-fixture='denied']")).toBeTruthy();
-    expect(document.querySelectorAll("[data-testid^='audit-row-']")).toHaveLength(0);
+    expect(document.querySelectorAll("[data-testid^='aud01-row-']")).toHaveLength(0);
     expect(api.fetchJSON).not.toHaveBeenCalled();
   });
 
@@ -375,5 +401,80 @@ describe("whole-panel states", () => {
     await mount();
     expect(text()).toContain("已显示 2 条审计事件");
     expect(document.querySelector("[data-fixture]")).toBeNull();
+  });
+});
+
+describe("the filters change the request (aud01)", () => {
+  it("carries event_type on the wire when a type is chosen", async () => {
+    await mount();
+    const before = urls().length;
+    await choose("aud01-filter-type", "approval_approved");
+    await waitFor(() => urls().length > before, "filtered read asked");
+    const asked = urls().slice(before).join(" ");
+    expect(asked).toContain("event_type=approval_approved");
+    // and the surface says the same thing it asked for
+    expect(document.querySelector("[data-testid='aud01-filters']")).toBeTruthy();
+  });
+
+  it("dropping the type filter again stops sending the parameter", async () => {
+    await mount();
+    await choose("aud01-filter-type", "approval_approved");
+    await waitFor(() => urls().some((u) => u.includes("event_type=")), "filtered once");
+    const before = urls().length;
+    await choose("aud01-filter-type", "");
+    await waitFor(() => urls().length > before, "unfiltered read asked");
+    expect(lastUrl()).not.toContain("event_type=");
+  });
+
+  it("a wider time window means a wider pair of instants on the wire", async () => {
+    await mount();
+    const narrow = lastUrl();
+    expect(narrow).toMatch(/from=&|from=\d{4}/);
+    const before = urls().length;
+    await choose("aud01-filter-window", "7d");
+    await waitFor(() => urls().length > before, "wider window asked");
+    const wide = lastUrl();
+    expect(wide).toMatch(/from=/);
+    expect(spanOf(wide) / spanOf(narrow)).toBeCloseTo(7, 1);
+  });
+
+  it("不限时间 drops both bounds instead of inventing them", async () => {
+    await mount();
+    const before = urls().length;
+    await choose("aud01-filter-window", "all");
+    await waitFor(() => urls().length > before, "unbounded window asked");
+    expect(lastUrl()).not.toContain("from=");
+    expect(lastUrl()).not.toContain("to=");
+  });
+
+  it("the operator filter is disabled-by-design with its GAP number, not a dead control", async () => {
+    await mount();
+    const node = document.querySelector<HTMLSelectElement>("[data-testid='aud01-filter-operator']")!;
+    expect(node.disabled).toBe(true);
+    expect(text()).toContain("未接入");
+    expect(text()).toContain("GAP-06");
+  });
+});
+
+describe("请求编号 (aud01)", () => {
+  it("shows the number the service gave, copyable", async () => {
+    await mount();
+    const cell = document.querySelector("[data-testid='aud01-cell-evt_7c1f2a3b4d5e6f70-request-id']")!;
+    expect(cell.textContent).toContain("req-20261119-0a7b3c");
+    expect(cell.querySelector("button")).toBeTruthy();
+  });
+
+  it("an answer with no number says 未提供 and the reason, and never a blank or a 0", async () => {
+    await mount();
+    const cell = document.querySelector("[data-testid='aud01-cell-evt_8d2e3f4051627384-request-id']")!;
+    expect(cell.textContent).toContain("未提供");
+    const titled = Array.from(cell.querySelectorAll("[title]")).map((n) => n.getAttribute("title") ?? "").join(" ");
+    expect(titled).toContain("服务这次没有回传请求编号");
+  });
+
+  it("an unattributed operator reads 未指派, never a bare handle", async () => {
+    await mount(async () => ({ items: [{ eventId: "e9", action: "task_created", outcome: "success" }] }));
+    expect(text()).toContain("未指派");
+    expect(text()).not.toMatch(/emp_|human:|user:/);
   });
 });

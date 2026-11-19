@@ -88,6 +88,7 @@ describe("the check only runs when it is asked for", () => {
     api.fetchJSON.mockImplementation(async () => ({ ok: true, scanned: 12, total: 12, broken: 0 }));
     await runWindow();
     expect(urls()[0]).toMatch(/^\/agent-api\/api\/audit\/verify\?from=\d{4}-\d{2}-\d{2}T.*&to=\d{4}-\d{2}-\d{2}T/);
+    expect(document.querySelector("[data-testid='agent-v2-page-audit-verify']")).toBeTruthy();
   });
 
   it("the window is shown as Beijing wall clock, never as the wire form", async () => {
@@ -129,6 +130,9 @@ describe("what the answer can say", () => {
     expect(text()).toContain("120 / 200");
     expect(text()).toContain("对不上的");
     expect(text()).toContain("2026-11-18 08:00 至 2026-11-19 08:00");
+    // each count is addressable, and its denominator is part of the same line
+    expect(document.querySelector("[data-testid='aud03-scanned']")?.textContent).toContain("120 / 200");
+    expect(document.querySelector("[data-testid='aud03-broken']")?.textContent).toContain("0");
   });
 
   it("a broken chain says how many, and does not soften it", async () => {
@@ -181,14 +185,17 @@ describe("a check that cannot run", () => {
       });
     });
     await runWindow();
-    return document.querySelector("[data-testid='audit-verify-unavailable']")?.outerHTML ?? "";
+    return document.querySelector("[data-testid='aud03-unavailable']")?.outerHTML ?? "";
   };
 
   it("403 and 404 render one identical 本环境未启用 body, with reason and request id", async () => {
     const forbidden = await deniedOnce(403);
     expect(forbidden).toContain("本环境未启用");
     expect(forbidden).toContain("没有提供完整性校验");
-    expect(forbidden).toContain("请求编号：vf-deny");
+    expect(forbidden).toContain("请求编号：");
+    expect(forbidden).toContain("vf-deny");
+    // and it says where to go next, not just that it failed
+    expect(forbidden).toContain("下一步");
     expect(text()).not.toContain("没有发现断点");
     // the same answer at a 404 draws the same markup, down to the byte
     expect(await deniedOnce(404)).toBe(forbidden);
@@ -220,13 +227,13 @@ describe("the QA legs", () => {
       await waitFor(() => text().includes("复现出来的状态") || state === "loading", `?state=${state}`);
     };
     await open("loading");
-    expect(document.querySelector("[data-testid='audit-verify-loading'][data-fixture='loading']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='aud03-loading'][data-fixture='loading']")).toBeTruthy();
     await open("empty");
-    expect(document.querySelector("[data-testid='audit-verify-idle'][data-fixture='empty']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='aud03-idle'][data-fixture='empty']")).toBeTruthy();
     await open("error");
-    expect(document.querySelector("[data-testid='audit-verify-error'][data-fixture='error']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='aud03-error'][data-fixture='error']")).toBeTruthy();
     await open("denied");
-    expect(document.querySelector("[data-testid='audit-verify-unavailable'][data-fixture='denied']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='aud03-unavailable'][data-fixture='denied']")).toBeTruthy();
     expect(api.fetchJSON).not.toHaveBeenCalled();
   });
 
@@ -240,7 +247,7 @@ describe("the QA legs", () => {
     }));
     await runWindow();
     expect(text()).not.toMatch(/scanned|checkedWindow|total_count|ok:/);
-    const toggle = document.querySelector<HTMLButtonElement>("[data-testid='audit-verify-result-details'] button");
+    const toggle = document.querySelector<HTMLButtonElement>("[data-testid='aud03-result-details'] button");
     if (!toggle) throw new Error("the result's own 技术详情 is missing");
     if (toggle) {
       await act(async () => {
