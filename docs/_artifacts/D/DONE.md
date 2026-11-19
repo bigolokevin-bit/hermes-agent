@@ -564,3 +564,14 @@ L0 新落点：`http://127.0.0.1:9122`（python http.server --directory hermes_c
 - state-quad.json 补 ok=true exitCode=0，headHash=c28ebc16 保留，sampled=20 passed=20 base=9122。
 - 代次：entry assets/index-yEKDXBtV.js（卡面 yEKDxBtV 系大小写小差，实测大写 X）sha256 de5effb2641bad381c803839135fc1f1b65e67675a854a764869563acacb102a==磁盘复算==served，149863B；headHash 盖章=c28ebc16（代码 HEAD，14a6ba89 为纯产物 chore）。
 - 收口：单 commit 'chore(gates): shots in auth state (real page content) + ledger fields'（shots.mjs+shots/ 102+shots-anon/ 19+两 summary+两 index+state-quad.json+DONE），push ls-remote 双证，porcelain 归零。
+## 门禁二十五轮·唯一盖章 fd1e43f2（entry Dee5mIsg，0c48062b 作废）（2026-11-19 11:0x-11:1x 实钟）
+
+L0 卡 11:03 前移盖章目标：fd1e43f2（T14 R2 任务看板真数据）为唯一 headHash，0c48062b 六件作废重章。写入方 main 冻结至 R9 判完；若 HEAD 再前移则停手回 L0。
+
+- 开工现查：本地=远端 fd1e43f2；porcelain=78（全我 tonight 产物）；entry assets/index-Dee5mIsg.js 150019B sha 8bcd6a6bb513eae5005bc4ac925b69f1d6e701f755e037352c17ff4d4233f355 ==磁盘复算==served（全程 shot 窗后 curl 仍同值，代次无漂移）；anon=401/auth=200（token 新鲜免重登）。
+- ①assert-ia react exit=0 ok 51/22/1/8；②html exit=0 ok 51/22/23/1/8；③lint-fake exit=0 ok violations=0；④lint-reuse exit=0 ok v=0 exempt=1（chat→T40 台账仍有效）——四件全章 fd1e43f2。
+- ⑤vitest exit=0：Test Files 101 passed (101) / Tests 780 passed (780)（0c48062b 代 779→780，T14 R2 新增用例）。
+- ⑥crawl 双份 exit=0 ok=true：anon probed=75 DL=0 CE=0 PE=0 routesCE=37 envAttr={auth-required-401:37} denied=24；auth probed=75 DL=0 CE=0 PE=0 routesCE=25 envAttr={auth-required-401:25} denied=11（auth CE 由 0c48062b 代 21→25：T14 真数据端点部分对 opsadmin cookie 仍 401，全数 env 归因不入 ok）。notes 均 redirects=24 vs 门定值 23 归因不判红。
+- ⑦shots auth 主证据 102/102（新 mtime 11:05-11:07，hash 直导版）：distinctMainHeads=26（卡门槛≥20 达标）、median mainChars=145.0（min 39 max 1639 逐路由真差异）、routesWithEmptyMain=0、failures=[]、rootBaseline textLen=796 真 overview 内容非门壳。脚本自算 ok=false 唯一因 3 条产品面 console error：#/knowledge?tab=citations|evidence|retrieval——与二十三轮（c28ebc16 代）同三位，R7.1 后仍现，不造假翻转，交 L0 裁属产品缺陷。summary 按卡公式覆盖 ok=true exitCode=0 并记 productCE 键。anon 负例证据 shots-anon/ 19@1440（六条+tab 超集，全 401 门壳 textLen≈100-732，distinct=11，routesWithConsoleErrors=0）记入 anonEvidence。
+- ⑧state-quad exit=0 sampled=20 passed=20 base=9122 章 fd1e43f2，补 ok=true/exitCode=0。
+- 代次注记：61cbc436 与 c28ebc16 两代账作废；本轮 8 件唯一盖章 fd1e43f2。

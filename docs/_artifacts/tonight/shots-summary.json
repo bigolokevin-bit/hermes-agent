@@ -9,12 +9,12 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 246,
-    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 今日运行 运行记录 今日成本 成本账本 发布 ",
+    "textLen": 796,
+    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 — — 4 项检查的数据源尚未接入，可上岗",
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 27,
+  "distinctMainHeads": 26,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -189,13 +189,13 @@
     {
       "route": "#/employees?tab=matrix",
       "viewport": "1440",
-      "chars": 388,
+      "chars": 211,
       "hasMainEl": true
     },
     {
       "route": "#/employees?tab=matrix",
       "viewport": "375",
-      "chars": 388,
+      "chars": 211,
       "hasMainEl": true
     },
     {
@@ -231,7 +231,7 @@
     {
       "route": "#/employees/:employeeId?zone=evidence",
       "viewport": "375",
-      "chars": 51,
+      "chars": 39,
       "hasMainEl": true
     },
     {
@@ -465,13 +465,13 @@
     {
       "route": "#/overview",
       "viewport": "1440",
-      "chars": 246,
+      "chars": 1011,
       "hasMainEl": true
     },
     {
       "route": "#/overview",
       "viewport": "375",
-      "chars": 1027,
+      "chars": 1011,
       "hasMainEl": true
     },
     {
@@ -513,13 +513,13 @@
     {
       "route": "#/system?tab=defaults",
       "viewport": "1440",
-      "chars": 313,
+      "chars": 236,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=defaults",
       "viewport": "375",
-      "chars": 313,
+      "chars": 236,
       "hasMainEl": true
     },
     {
@@ -573,13 +573,13 @@
     {
       "route": "#/system?tab=version",
       "viewport": "1440",
-      "chars": 277,
+      "chars": 285,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=version",
       "viewport": "375",
-      "chars": 277,
+      "chars": 285,
       "hasMainEl": true
     },
     {
@@ -591,31 +591,31 @@
     {
       "route": "#/work",
       "viewport": "375",
-      "chars": 999,
+      "chars": 1639,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=board&view=cron",
       "viewport": "1440",
-      "chars": 999,
+      "chars": 1639,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=board&view=cron",
       "viewport": "375",
-      "chars": 999,
+      "chars": 1639,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=cron",
       "viewport": "1440",
-      "chars": 999,
+      "chars": 1639,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=cron",
       "viewport": "375",
-      "chars": 999,
+      "chars": 1639,
       "hasMainEl": true
     },
     {
@@ -637,7 +637,7 @@
     "#/knowledge?tab=evidence",
     "#/knowledge?tab=retrieval"
   ],
-  "routesWithEnvOnlyConsoleErrors": 19,
+  "routesWithEnvOnlyConsoleErrors": 22,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
   "overflowing": [],
   "driver": {
@@ -645,18 +645,16 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "c28ebc16",
-  "entry": "assets/index-yEKDXBtV.js",
-  "entrySha256": "de5effb2641bad381c803839135fc1f1b65e67675a854a764869563acacb102a",
-  "entryBytes": 149863,
+  "headHash": "fd1e43f2",
+  "entry": "assets/index-Dee5mIsg.js",
+  "entrySha256": "8bcd6a6bb513eae5005bc4ac925b69f1d6e701f755e037352c17ff4d4233f355",
+  "entryBytes": 150019,
   "medianMainChars": 145.0,
   "screenshotMode": "playwright",
-  "servedEntryBefore": "index-yEKDXBtV.js",
-  "servedEntryAfter": "index-yEKDXBtV.js",
-  "shotWindow": "10:20-10:22 new-mtime all 102 (post nav-fix rerun, auth state)",
+  "servedEntryBefore": "index-Dee5mIsg.js",
+  "servedEntryAfter": "index-Dee5mIsg.js",
+  "shotWindow": "11:05-11:07 new-mtime all 102 (auth state, Dee5mIsg gen)",
   "env": "auth-state cookie injected; gated flag skipped in auth mode; proxy pid 99197",
-  "navFixNote": "auth-state first run: location.hash assignment did not switch routes (R5-era SPA boots as path-router, hash changes ignored) => 102 identical landing-page shots. Fix: single fresh goto BASE + hash-form url per route, same pattern as crawl-routes. Static python server only ever sees / so no 404 risk; hash is not sent to server.",
-  "cardTargetsNote": "narrative targets distinctMainHeads>=40 / median mainChars>200 not met (actual 27 / 145.0); formula target (>=20 / emptyMain==0) met. Attribution: tab variants normalize to same pane head after SPA hash-stripping; some data panels render short text at API edge states (min 39). 3 product console errors on knowledge tabs kept as-is, no fakery.",
   "anonEvidence": {
     "dir": "docs/_artifacts/tonight/shots-anon",
     "count": 19,
@@ -667,7 +665,7 @@
       "#/work?tab=runs",
       "#/employees?tab=matrix",
       "#/system",
-      "(+ tab-variant superset)"
+      "(+tab 变体超集=19@1440)"
     ],
     "viewports": [
       1440
@@ -675,5 +673,6 @@
     "note": "401-gated shell evidence, NOT page content",
     "summary": "shots-anon-summary.json"
   },
+  "productCE": "knowledge citations/evidence/retrieval 三条产品面 console error 与二十三轮同位，R7.1(fd1e43f2) 后仍现，交 L0 裁",
   "exitCode": 0
 }

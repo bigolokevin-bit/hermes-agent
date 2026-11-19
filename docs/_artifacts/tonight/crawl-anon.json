@@ -26,8 +26,8 @@
   "rootShell": {
     "url": "http://127.0.0.1:9122/",
     "hasMainEl": true,
-    "mainChars": 674,
-    "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 数据服"
+    "mainChars": 706,
+    "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 登录状"
   },
   "contentChecked": 51,
   "contentRows": [
@@ -218,7 +218,7 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 199,
+      "mainChars": 215,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 1,
@@ -569,7 +569,7 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 145,
+      "mainChars": 116,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 1,
@@ -634,7 +634,7 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 267,
+      "mainChars": 275,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
@@ -650,7 +650,7 @@
       "mainChars": 235,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 5,
+      "consoleErrors": 6,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
       "headSample": "运营 · 控制台 任务与运行 任务 运行 任务看板 按后端状态看任务；拖动排序未启用，状态不会被"
@@ -663,7 +663,7 @@
       "mainChars": 235,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 5,
+      "consoleErrors": 6,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
       "headSample": "运营 · 控制台 任务与运行 任务 运行 任务看板 按后端状态看任务；拖动排序未启用，状态不会被"
@@ -676,7 +676,7 @@
       "mainChars": 235,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 5,
+      "consoleErrors": 6,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
       "headSample": "运营 · 控制台 任务与运行 任务 运行 任务看板 按后端状态看任务；拖动排序未启用，状态不会被"
@@ -726,6 +726,7 @@
     "401 /agent-api/api/tasks",
     "401 /agent-api/api/v1/dept/list",
     "401 /agent-api/api/v1/dept/tree",
+    "401 /agent-api/api/v1/matrix/employees",
     "401 /agent-api/api/v1/user/all",
     "401 /agent-api/api/v1/user/list"
   ],
@@ -742,7 +743,7 @@
   "routesWithConsoleErrors": 37,
   "parseErrors": [],
   "ok": true,
-  "headHash": "c28ebc16",
+  "headHash": "fd1e43f2",
   "exitCode": 0,
   "counts": {
     "probed": 75,

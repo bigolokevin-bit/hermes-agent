@@ -26,8 +26,8 @@
   "rootShell": {
     "url": "http://127.0.0.1:9122/",
     "hasMainEl": true,
-    "mainChars": 708,
-    "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 — —"
+    "mainChars": 242,
+    "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 今日运"
   },
   "contentChecked": 51,
   "contentRows": [
@@ -218,7 +218,7 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 382,
+      "mainChars": 204,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 1,
@@ -517,7 +517,7 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 990,
+      "mainChars": 974,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
@@ -569,7 +569,7 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 300,
+      "mainChars": 223,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 1,
@@ -634,7 +634,7 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 267,
+      "mainChars": 275,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
@@ -647,11 +647,11 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 914,
+      "mainChars": 1534,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 0,
-      "consoleErrorEnv": null,
+      "consoleErrors": 1,
+      "consoleErrorEnv": "auth-required-401",
       "evalError": null,
       "headSample": "运营 · 控制台 任务与运行 任务 运行 任务看板 按后端状态看任务；拖动排序未启用，状态不会被"
     },
@@ -660,11 +660,11 @@
       "source": "VIEW_DEEP_LINKS",
       "kind": "view",
       "verdict": "content-ok",
-      "mainChars": 914,
+      "mainChars": 1534,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 0,
-      "consoleErrorEnv": null,
+      "consoleErrors": 1,
+      "consoleErrorEnv": "auth-required-401",
       "evalError": null,
       "headSample": "运营 · 控制台 任务与运行 任务 运行 任务看板 按后端状态看任务；拖动排序未启用，状态不会被"
     },
@@ -673,11 +673,11 @@
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 914,
+      "mainChars": 1534,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 0,
-      "consoleErrorEnv": null,
+      "consoleErrors": 1,
+      "consoleErrorEnv": "auth-required-401",
       "evalError": null,
       "headSample": "运营 · 控制台 任务与运行 任务 运行 任务看板 按后端状态看任务；拖动排序未启用，状态不会被"
     },
@@ -701,7 +701,7 @@
   "contentEmptyCount": 0,
   "mode": "auth-attributed",
   "envAttribution": {
-    "auth-required-401": 22
+    "auth-required-401": 25
   },
   "probeErrors": [],
   "deniedEndpoints": [
@@ -713,6 +713,7 @@
     "404 /agent-api/api/models",
     "404 /agent-api/api/v1/dept/list",
     "404 /agent-api/api/v1/dept/tree",
+    "404 /agent-api/api/v1/matrix/employees",
     "404 /agent-api/api/v1/user/all",
     "404 /agent-api/api/v1/user/list"
   ],
@@ -726,10 +727,10 @@
     "redirects=24 vs 门定值 23（routes.ts 并发新增形态，归因非判红；门值更新归 L0/A）"
   ],
   "routesRenderedWithoutMainEl": 0,
-  "routesWithConsoleErrors": 22,
+  "routesWithConsoleErrors": 25,
   "parseErrors": [],
   "ok": true,
-  "headHash": "c28ebc16",
+  "headHash": "fd1e43f2",
   "exitCode": 0,
   "counts": {
     "probed": 75,

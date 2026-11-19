@@ -3,12 +3,12 @@
   "file": "docs/console-v4-skeleton.html",
   "linesScanned": 9252,
   "allowedInfo": {
-    "\u89c4\u5212\u4e2d": 188,
-    "\u4e0d\u4f1a\u4fdd\u5b58": 1,
-    "\u672a\u63a5\u5165": 22
+    "规划中": 188,
+    "不会保存": 1,
+    "未接入": 22
   },
   "violations": [],
   "ok": true,
-  "headHash": "c28ebc16",
+  "headHash": "fd1e43f2",
   "exitCode": 0
 }
