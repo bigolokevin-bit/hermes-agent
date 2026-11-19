@@ -2513,3 +2513,33 @@ Clicked `aud01-verify-window-7d`, waited 4 s, at 1440×900 / 1280×800 / 375×81
 - The live deployment has no `brokenCount`, so the break-list branch with a positive count is test-proven only; the counted-zero branch is likewise only reachable from a stubbed answer.
 - No per-element pixel diff (only `sw==cw` + textLen).
 - `?tab=retention` routing untouched; 9122 not rebuilt, main not merged.
+
+## R36 run timeline and tool intent depth (2026-11-20, base 2f9b0092)
+
+Scope: web/src/modules/runs/** only (page, data layer, tests) plus this ledger.
+
+### What the timeline now says
+- 事件类型: known types keep their Chinese word; an unlisted type reads 待核实 and the service's own spelling lives in the row's title attribute (never on screen as raw code).
+- 摘要: new per-event line testid run5-tl-summary-<seq>. Source fields, in order: payload.delta, payload.message, payload.summary, payload.text, payload.note, payload.reason; whitespace collapsed; capped at 120 chars with an ellipsis. Missing reads 未记录 with the reason "这条事件没有带回可读的摘要（期望字段 delta / message / summary / text / note / reason）" in the title.
+- 失败原因: new per-event line testid run5-tl-reason-<seq>, rendered only for failure-shaped events (eventType contains fail/error or equals denied, or payload.error is an object). Field mapping, named exactly: error.code, then payload.errorCode, payload.reasonCode, payload.reason; the human sentence comes from error.messageRedacted (fallback error.message). Mapped codes render "失败原因：<中文>：<服务原句>"; an unmapped code renders 原因代码未识别（短码） with the reason "服务给的原因不在这份对照表里"; no code renders 未记录 with the reason naming the expected fields.
+- 结果引用 (ToolIntent/tool_call/tool_result): resultRefHref links only handles matching ev_/evt_ plus 6+ alphanumerics, to /audit?detail=<id>. Any other reference is not linked: the line keeps 结果引用：<短码> and gains testid run5-result-unreachable-<seq> reading 原文不可达：结果引用没有可用的原文地址（服务没有说明它指向哪种记录）. A missing reference reads 未记录 with the reason in the title and is never blank.
+- 时间: every row carries the Beijing minute stamp; a missing or unparseable occurredAt renders the dashed placeholder with its reason.
+- 重试 stays the honest disabled entry (data-planned, aria-disabled, data-endpoint-http=405): measured on this deployment POST /api/run-retry -> 405 console.read_only and GET -> 404 console.unknown_route, so no click is offered and no new id is fabricated. No other write entry exists on the page.
+
+### Tests
+- Runs suite: 2 files / 66 tests green (was 65). New lock "R36 — the timeline says what it read" mounts a dedicated event payload and asserts: unknown type reads 待核实 while the raw code is only in a title; the delta summary renders; a failed event carries 失败原因：运行超时 plus the service sentence; an event without summarisable fields reads exactly 未记录 with the reason title; an ev_ reference becomes an anchor to /audit?detail=<id>; a non-audit reference renders 原文不可达 and is not an anchor; the absent reference stays 未记录 and non-empty.
+- Stale expectations updated: eventLabel("mystery") now 待核实; the two new node families are run5-tl-summary-*/run5-tl-reason-* so the pre-existing run5-event-* row count keeps its meaning.
+
+### Gates (from web/)
+- npx tsc -b . --noEmit -> exit 2, 73 errors, all pre-existing/foreign (49 ../apps/shared/**, approvals 14, duty 5, tasks test 1, security 1, LoginPage.test 2); modules/runs contributes 0.
+- eslint src/modules/runs -> exit 0.
+- lefthook lint web really ran.
+
+### Live readings (entry assets/index-BvBor-UV.js, served on 127.0.0.1:4210 with /agent-api proxied to 8092 and the session cookie)
+- /runs/?window=7d&run=rn_01M7DGZA9SDAZKVV9M82G4F38G: detail open, header reads 事件 50 条（服务说还有更多）, timeline renders 50 rows with real delta summaries (#1 消息 The, #4 消息 canonical probe is, ...), every row carries a Beijing minute stamp, employee reads 产品助理 · 86A81CE8, upstream reads 运行 · BDD1 with the copy-only sentence.
+- Widths 1440 / 1280 / 375: scrollWidth == clientWidth at all three (1440/1440, 1280/1280, 375/375).
+- Screen hygiene: 32-hex runs 0, 16-hex runs 0, scheme handles 0, 14 masked short codes.
+
+### Untested / disclosed
+- The live event stream on this tenant carries only 消息/完成 events, so the tool-reference, 原文不可达 and 失败原因 branches are test-proven only (grep on the live dump: 结果引用 0, 未记录 0, 待核实 0, 原文不可达 0).
+- No per-element pixel comparison (only sw==cw plus text length); 9122 not rebuilt and main not merged per the order.

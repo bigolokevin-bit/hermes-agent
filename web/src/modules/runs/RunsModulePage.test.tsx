@@ -700,3 +700,50 @@ describe("R23 — a detail is a real history entry", () => {
     expect(document.querySelector("[data-testid='probe-location']")?.textContent).not.toContain("run=");
   });
 });
+
+const EVENTS_R36 = {
+  items: [
+    { runId: DETAIL.runId, seq: 1, eventType: "quantum.recalibration", occurredAt: "2026-11-18T02:00:00Z", payload: { delta: "整理今天的巡检记录，并把缺项点出来" } },
+    { runId: DETAIL.runId, seq: 2, eventType: "failed", occurredAt: "2026-11-18T02:00:40Z", payload: { error: { code: "run.timeout", messageRedacted: "运行超时，被系统中止" } } },
+    { runId: DETAIL.runId, seq: 3, eventType: "tool_intent", occurredAt: "2026-11-18T02:01:00Z", payload: { resultRef: "ev_2BAA7DD7F3BC4767AF39764D91" } },
+    { runId: DETAIL.runId, seq: 4, eventType: "tool_result", occurredAt: "2026-11-18T02:01:10Z", payload: {} },
+  ],
+  hasMore: false,
+};
+
+describe("R36 — the timeline says what it read", () => {
+  it("names an unlisted type 待核实, keeps the raw code in the title, and shows summary, cause and a real link", async () => {
+    api.fetchJSON.mockImplementation(detailOk({ events: EVENTS_R36 }));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 1, "list ready");
+    await act(async () => {
+      (document.querySelector("[data-testid='run5-row-0-open']") as HTMLElement).click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='run5-detail']") !== null, "detail ready");
+    await waitFor(() => document.querySelector("[data-testid='run5-tl-summary-1']") !== null, "timeline ready");
+
+    const row1 = document.querySelector("[data-testid='run5-event-1']");
+    expect(row1?.textContent).toContain("待核实");
+    expect(row1?.textContent).not.toContain("quantum.recalibration");
+    const titles = Array.from(row1?.querySelectorAll("[title]") ?? []).map((node) => node.getAttribute("title"));
+    expect(titles).toContain("quantum.recalibration");
+
+    expect(document.querySelector("[data-testid='run5-tl-summary-1']")?.textContent).toContain("整理今天的巡检记录");
+
+    const reason = document.querySelector("[data-testid='run5-tl-reason-2']");
+    expect(reason?.textContent).toContain("失败原因：运行超时");
+    expect(reason?.textContent).toContain("被系统中止");
+    const absentSummary = document.querySelector("[data-testid='run5-tl-summary-2']");
+    expect(absentSummary?.textContent).toBe("未记录");
+    expect(absentSummary?.getAttribute("title")).toContain("没有带回可读的摘要");
+
+    const link = document.querySelector("[data-testid='run5-result-ref-3']") as HTMLAnchorElement | null;
+    expect(link?.tagName).toBe("A");
+    expect(link?.getAttribute("href")).toBe("/audit?detail=ev_2BAA7DD7F3BC4767AF39764D91");
+
+    const absent = document.querySelector("[data-testid='run5-result-ref-4']");
+    expect(absent?.getAttribute("data-result-ref")).toBe("absent");
+    expect(absent?.textContent ?? "").not.toBe("");
+    expect(absent?.textContent).toContain("未记录");
+  });
+});
