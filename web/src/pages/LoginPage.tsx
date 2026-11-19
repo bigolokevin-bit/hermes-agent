@@ -33,6 +33,21 @@ const NO_RID_FALLBACK = "本次请求未记录编号，可复制时间与操作�
 
 const FORCED = new Set(["loading", "empty", "error", "denied"]);
 
+/** P1: Feishu SSO entry. The bridge owns /auth/feishu/start; a click is a
+ * whole-page navigation, never a fetch. Password sign-in stays as fallback. */
+export const FEISHU_START_PATH = "/auth/feishu/start";
+
+export function startFeishuLogin(): void {
+  window.location.assign(FEISHU_START_PATH);
+}
+
+const FEISHU_FAIL_COPY: Record<string, string> = {
+  "auth.feishu_denied": "飞书那边没有完成授权，登录没有发生。",
+  "auth.feishu_unavailable": "飞书登录暂时连不上，可以改用账号密码。",
+};
+
+const FEISHU_GENERIC = "飞书登录没有成功。可以再试一次，或改用下面的账号密码登录。";
+
 function forcedState(sp: URLSearchParams): string | null {
   const s = sp.get("state");
   return s && FORCED.has(s) ? s : null;
@@ -184,6 +199,14 @@ export default function LoginPage(): ReactNode {
     );
   }
 
+  const feishuErrorCode = sp.get("feishu_error") ?? sp.get("error");
+  const feishuFail = feishuErrorCode
+    ? {
+        sentence: FEISHU_FAIL_COPY[feishuErrorCode] ?? FEISHU_GENERIC,
+        requestId: sp.get("rid") ?? sp.get("request_id"),
+      }
+    : null;
+
   const busy = phase === "submitting";
   return (
     <div className="flex min-w-0 w-full max-w-full items-center justify-center px-4 py-10" data-testid="auth5-page">
@@ -198,6 +221,38 @@ export default function LoginPage(): ReactNode {
       >
         <h1 className="text-base font-medium">登录控制台</h1>
         <p className="text-xs text-muted-foreground">登录后即可访问数字员工、审批与运行等页面。</p>
+
+        {feishuFail ? (
+          <div role="alert" className="flex min-w-0 flex-col gap-1 rounded-sm border border-destructive/40 bg-destructive/5 p-2 text-xs" data-testid="auth5-feishu-error">
+            <p className="min-w-0 break-words text-destructive">{feishuFail.sentence}</p>
+            <p className="min-w-0 break-words text-muted-foreground">
+              <RequestIdCopy requestId={feishuFail.requestId} fallback={NO_RID_FALLBACK} />
+            </p>
+            <button
+              type="button"
+              onClick={startFeishuLogin}
+              className="self-start rounded-sm border border-border px-2 py-1"
+              data-testid="auth5-feishu-retry"
+            >
+              再用飞书试一次
+            </button>
+          </div>
+        ) : null}
+
+        <button
+          type="button"
+          onClick={startFeishuLogin}
+          aria-label="使用飞书账号登录，将整页跳转到飞书授权"
+          className="w-full rounded-sm bg-primary px-3 py-2 text-sm text-primary-foreground"
+          data-testid="auth5-feishu"
+        >
+          用飞书登录
+        </button>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span className="h-px flex-1 bg-border" aria-hidden="true" />
+          或使用账号密码
+          <span className="h-px flex-1 bg-border" aria-hidden="true" />
+        </div>
 
         {phase === "loading" ? (
           <div className="h-10 w-full animate-pulse rounded-sm bg-muted/20" data-testid="auth5-loading" aria-label="加载中" />

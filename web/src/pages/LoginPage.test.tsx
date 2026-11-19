@@ -4,7 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import LoginPage from "./LoginPage";
+import LoginPage, { FEISHU_START_PATH, startFeishuLogin } from "./LoginPage";
 
 declare global {
   interface Window {
@@ -118,6 +118,43 @@ describe("LoginPage (auth5 / R18)", () => {
     expect(after).not.toBe(before);
     expect(captchaCount).toBe(2);
     expect(spy).toBeTruthy();
+  });
+
+  it("offers the feishu entry and refuses silently only never: click navigates the page", async () => {
+    const assign = vi.fn();
+    const original = window.location;
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { ...original, assign },
+    });
+    try {
+      mount(() => jsonResponse(200, CAPTCHA_A));
+      await flush();
+      const btn = container.querySelector<HTMLButtonElement>('[data-testid="auth5-feishu"]');
+      expect(btn).toBeTruthy();
+      await act(async () => {
+        btn!.click();
+      });
+      expect(assign).toHaveBeenCalledWith(FEISHU_START_PATH);
+      expect(FEISHU_START_PATH).toBe("/auth/feishu/start");
+      // the password fallback is still on screen
+      expect(container.querySelector('[data-testid="auth5-password"]')).toBeTruthy();
+    } finally {
+      Object.defineProperty(window, "location", { configurable: true, value: original });
+      void startFeishuLogin;
+    }
+  });
+
+  it("renders an honest feishu callback failure with a copyable request id", async () => {
+    mountAt("/login?error=auth.feishu_denied&rid=fs-77", () => jsonResponse(200, CAPTCHA_A));
+    await flush();
+    const card = container.querySelector('[data-testid="auth5-feishu-error"]');
+    expect(card?.textContent).toContain("飞书那边没有完成授权");
+    expect(card?.textContent).toContain("fs-77");
+    expect(card?.textContent).not.toContain("auth.feishu_denied");
+    expect(card?.querySelector('[data-testid="req-copy"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="auth5-feishu-retry"]')).toBeTruthy();
+    expect(container.textContent).toContain("登录控制台");
   });
 
   it("posts credentials, confirms whoami, marks the session and lands on overview; double clicks send once", async () => {
