@@ -53,11 +53,9 @@ import {
   ErrorPanel,
   LoadingPanel,
   ReproNote,
-  RequestIdLine,
   TechnicalDisclosure,
 } from "./states";
 import {
-  GAP,
   PAGE_LIMIT,
   SINCE_OPTIONS,
   STATUS_KEYS,
@@ -69,11 +67,9 @@ import {
   costText,
   elapsedMinute,
   employeeLabel,
-  errorInfo,
   eventLabel,
   failureSummary,
   isToolEvent,
-  requestRetryRun,
   resultRef,
   runCode,
   shortId,
@@ -83,7 +79,6 @@ import {
   statusTone,
   taskLabel,
   usd,
-  type ErrorInfo,
   type RunRow,
 } from "./runs";
 import { forcedStateOf, useRunsData } from "./useRunsData";
@@ -195,11 +190,16 @@ const GRID =
 function ListRows({
   rows,
   names,
-  onOpen,
+  hrefOf,
 }: {
   rows: RunRow[];
   names: Map<string, string>;
-  onOpen: (runId: string) => void;
+  /**
+   * R28: a row is a real anchor. QA measured deepLinks=[] while this was a
+   * button, and a keyboard user needs a URL they can copy or open in a tab.
+   * The href keeps the current filters and adds run=<id>.
+   */
+  hrefOf: (runId: string) => string;
 }): ReactNode {
   return (
     <Card className="min-w-0 border-border bg-card" data-testid="run5-table">
@@ -240,21 +240,22 @@ function ListRows({
                 <span className="min-w-0 self-center break-words" data-testid={`${base}-reason`} title={reason.reason || undefined}>
                   {reason.text}
                 </span>
-                <button
-                  type="button"
-                  className="self-center justify-self-end rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted/40 focus-visible:outline-none"
+                <Link
+                  className="self-center justify-self-end rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground no-underline hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                  to={hrefOf(row.runId)}
+                  state={{ fromList: true }}
                   data-testid={`${base}-open`}
+                  data-run-id={row.runId}
                   aria-label={`查看 ${runCode(row.runId)} 的详情与事件`}
-                  onClick={() => onOpen(row.runId)}
                 >
                   查看
-                </button>
+                </Link>
               </li>
             );
           })}
         </ul>
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-2 text-xs text-muted-foreground" data-testid="run5-foot">
-          <span>只读列表 · 点一行看详情与事件 · 不发起、不取消，重试只会新建一次运行</span>
+          <span>只读列表 · 行尾「查看」是真链接，可复制或新开标签 · 不发起、不取消；重试的写入口本代次未接通</span>
         </div>
       </CardContent>
     </Card>
@@ -319,39 +320,9 @@ function Timeline({
   );
 }
 
-type AttemptAsk =
-  | { key: string; k: "sending" }
-  | { key: string; k: "failed"; failure: ErrorInfo }
-  | { key: string; k: "done"; newId: string };
-
-function AttemptLine({ ask, runId }: { ask: AttemptAsk | null; runId: string | null }): ReactNode {
-  if (!ask || ask.key !== runId) return null;
-  if (ask.k === "sending") {
-    return (
-      <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="run5-retry-result">
-        <Spinner className="mr-1 inline h-3 w-3" />
-        正在请求新建一次运行…
-      </p>
-    );
-  }
-  if (ask.k === "done") {
-    return (
-      <p className="min-w-0 break-words text-xs text-success" data-testid="run5-retry-result" title={ask.newId}>
-        {`已新建 ${runCode(ask.newId)} 并切换到这条新运行；原运行不受影响。`}
-      </p>
-    );
-  }
-  return (
-    <div className="min-w-0 space-y-1" data-testid="run5-retry-result">
-      <p className="min-w-0 break-words text-xs text-muted-foreground">
-        {ask.k === "failed" && (ask.failure.status === 403 || ask.failure.status === 404)
-          ? `新建运行的写入还没有在本控制台接通（${GAP}），本页没有替你发起任何新运行。`
-          : ask.failure.sentence}
-      </p>
-      <RequestIdLine requestId={ask.failure.requestId} testId="run5-retry-request-id" />
-    </div>
-  );
-}
+// R28: the retry write channel is not connected in this generation, so the
+// entry renders as a sentence (data-planned + aria-disabled) and no AttemptAsk
+// state exists to report a request that is never sent.
 
 function DetailField({ label, children }: { label: string; children: ReactNode }): ReactNode {
   return (
@@ -387,7 +358,6 @@ export function RunsModulePage() {
 
   const [readTick, setReadTick] = useState(0);
   const detail = useRunDetail(forced, selected, readTick);
-  const [attemptAsk, setAttemptAsk] = useState<AttemptAsk | null>(null);
 
   const [names, setNames] = useState<Map<string, string>>(new Map());
   // Employee names decorate the list as well as the detail line, so the ask is
@@ -440,16 +410,17 @@ export function RunsModulePage() {
     [params, setParams, locationState],
   );
 
-  const openRun = (runId: string) => {
-    setAttemptAsk(null);
-    if (runId === selected) return;
-    // R23: a detail is a real history entry, so the browser back button (and a
-    // same-document traversal) returns to this list — with its scroll position
-    // restored by the browser — instead of leaving a blank page behind.
-    setParam("run", runId, { push: true });
+  /**
+   * R28: the row href. It keeps every current filter and adds run=<id>, because
+   * this shell registers only /runs (no /runs/:runId route), so a path-form link
+   * would land on the unknown-route fallback and rewrite the URL away.
+   */
+  const hrefOf = (runId: string) => {
+    const next = new URLSearchParams(params);
+    next.set("run", runId);
+    return `/runs?${next.toString()}`;
   };
   const closeRun = () => {
-    setAttemptAsk(null);
     // The detail was pushed from the list above, so walk back to that entry.
     // A detail opened as a deep link has nothing behind it, so it rewrites the
     // current entry into the list instead of leaving the app.
@@ -463,20 +434,6 @@ export function RunsModulePage() {
     data.reload();
   };
   const reloadDetail = () => setReadTick((n) => n + 1);
-
-  const retryAsNewRun = useCallback(() => {
-    if (selected === null) return;
-    setAttemptAsk({ key: selected, k: "sending" });
-    requestRetryRun(selected)
-      .then((newId) => {
-        setAttemptAsk({ key: newId, k: "done", newId });
-        setReadTick((n) => n + 1);
-        setParam("run", newId);
-      })
-      .catch((err: unknown) => {
-        setAttemptAsk({ key: selected, k: "failed", failure: errorInfo(err) });
-      });
-  }, [selected, setParam]);
 
   const failedCount = rows.filter((row) => row.status === "failed").length;
   const runningCount = rows.filter((row) => row.status === "running").length;
@@ -671,21 +628,18 @@ export function RunsModulePage() {
             <Timeline outcome={detail} onRetryEvents={reloadDetail} />
 
             <div className="min-w-0 space-y-2 border-t border-border pt-3">
-              <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <Button
-                  size="sm"
-                  outlined
-                  onClick={retryAsNewRun}
-                  disabled={isForced || attemptAsk?.k === "sending"}
-                  data-testid="run5-retry-new"
-                >
-                  重试 · 新建一次运行
-                </Button>
-              </div>
-              <p className="max-w-prose min-w-0 break-words text-xs text-muted-foreground">
-                重试会新建一次运行并生成新编号，本页随后切换到这条新编号；当前运行不会被改写、复用或取消。
+              <p
+                className="min-w-0 break-words text-sm font-medium text-muted-foreground"
+                data-testid="run5-retry-new"
+                data-planned="true"
+                aria-disabled="true"
+                title="本代次这一面是只读的：重试的写入口还没有接通，这里只说明语义，点它不会发起任何请求"
+              >
+                重试 · 新建一次运行（写入口未接通，本页只渲文案）
               </p>
-              <AttemptLine ask={attemptAsk} runId={selected} />
+              <p className="max-w-prose min-w-0 break-words text-xs text-muted-foreground">
+                重试的语义是新建一次运行并生成新编号，原运行不会被改写、复用或取消。本代次没有接通这个写入口，所以这里只说明语义、不提供可点的动作。
+              </p>
             </div>
 
             <TechnicalDisclosure
@@ -715,7 +669,7 @@ export function RunsModulePage() {
       {phase === "denied" ? (
         <DeniedPanel requestId={failure?.requestId ?? null} fixture={forced === "denied" ? "denied" : undefined} />
       ) : null}
-      {phase === "ready" ? <ListRows rows={rows} names={names} onOpen={openRun} /> : null}
+      {phase === "ready" ? <ListRows rows={rows} names={names} hrefOf={hrefOf} /> : null}
 
       {phase === "ready" && rows.length > 0 ? (
         <TechnicalDisclosure lines={technical} testId="run5-list-details" />

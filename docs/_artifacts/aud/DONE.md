@@ -2114,3 +2114,38 @@ The /audit page body printed full record handles, e.g. ap_123DE49B9A1F42A1976796
 - The row technical fold was not expanded in the live DOM; its 同一次操作原值 line is asserted at the model level, not on screen.
 - 375 and 1280 were not re-shot for this change; the fix only shortens strings, and 1440 measured scrollWidth == clientWidth.
 - The 9122 dev server was not rebuilt (per the order: no window close before R28), so the served dist still shows the old text.
+
+
+## R28 runs row deep links + audit entry contract (2026-11-20, base ad72c31c)
+
+### 1. /runs rows are real links now
+- Cause: the row action was a button calling openRun(), so QA measured deepLinks=[] — a button carries no href and cannot be copied or opened in a new tab.
+- Fix: the action cell is a react-router Link to /runs?<current filters>&run=<runId>, carrying data-run-id and state {fromList:true}; run5-row-* stays on the li with data-status. The anchor sets no tabindex, because an href anchor is natively focusable.
+- Why not the literal hash form #/runs/<runId>: this shell registers only /runs (App.tsx has no /runs/:runId route), so a path-form href would land on the unknown-route fallback and a bare hash change would be a no-op. ?run= is the deep link the page actually honours, including on refresh.
+- Measured (headless Chrome 1440x900 over a local build plus an /agent-api proxy to the live BFF): 14 rows, 14 anchors, 14 carrying a run= target, 14 focusable; href sample /runs?window=7d&run=rn_01M7822XN781D2S9JASH5TX1XZ — the active filters ride along. scrollWidth == clientWidth == 1440.
+
+### 2. The retry entry is text, not a control
+- The detail retry block is now a p element with data-testid run5-retry-new, data-planned=true, aria-disabled=true and the reason in title; retryAsNewRun, the AttemptAsk union and AttemptLine were deleted, and requestRetryRun stays in runs.ts untouched for the generation that connects the write channel.
+- Measured on a real run detail: the element is a P, data-planned true, 0 buttons on the page, so no write can be issued from it.
+
+### 3. resultRef timeline reading
+- Code (unchanged this pass, from cb4f7a75): a tool-family event (tool_intent / tool_call / tool_result) prints 结果引用 plus a short code, and 未记录 with the reason when its payload has no resultRef; non-tool events render no such line at all.
+- Measured live on the run with the most events (75): the timeline painted 50 message rows and 0 tool events, so 结果引用 count 0 and 未记录 count 0. The line is absent because the data has no tool event, not because it was suppressed. The 未记录 branch itself is locked by vitest (a tool_intent event whose payload is empty).
+
+### 4. Audit entry contract for R5 (page is healthy; only the rail entry is missing)
+- Canonical URL: /audit. App.tsx mounts AuditAwareEntry there; ?tab=verify switches to the verify page; R24 fixed the white screen and nothing rewrites the URL, so a rail item can point straight at it.
+- Alias: #/system?tab=events renders the same audit events page through the system module live slot and keeps the system tab lit; use it only if the rail entry must stay inside the system group.
+- Cause of auditHits=0: web/src/shell/routes.ts marks the audit compat row visible:false, and the App.tsx nav list has no 审计 item.
+- Checkpoints after wiring: data-testid agent-v2-page-audit on the page root, aud01-filters, aud01-tech-details, aud01-row-*, and agent-v2-page-audit-verify on ?tab=verify.
+- Suggested nav item: path /audit, label 审计事件, icon Shield, group governance.
+
+### Gates
+- vitest run src/modules/runs src/modules/audit -> exit 0, 10 files / 207 tests.
+- tsc -b . --noEmit -> exit 2 with the standing 53 errors (49 ../apps/shared/**, 2 src/modules/approvals/api.test.ts, 2 src/pages/LoginPage.test.tsx); modules/runs and modules/audit 0.
+- eslint on both dirs -> exit 0, 0 errors / 5 pre-existing warnings.
+
+### Untested / limits
+- 375 and 1280 were not re-measured; only 1440 was, and the change turns a button into an anchor of the same size.
+- The literal #/runs/<id> form named in the order is not delivered because no such route exists; if R5 registers /runs/:runId, hrefOf can switch to the path form in one line.
+- The 9122 dev server was not rebuilt (R28 close window), so the served dist still shows the old button.
+- 未记录 is proven by mocks only; the live runs carry no tool event.
