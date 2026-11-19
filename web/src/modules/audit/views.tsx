@@ -468,3 +468,67 @@ export function AuditRowPreview({ row, testId }: { row: AuditRow; testId: string
     </div>
   );
 }
+
+/** R51: the event-type distribution of the rows already in hand - no extra request. */
+export function AuditTypeSummary({
+  open,
+  onToggle,
+  groups,
+  total,
+  testId = "aud7-types",
+}: {
+  open: boolean;
+  onToggle: () => void;
+  groups: { key: string; label: string; count: number }[];
+  total: number;
+  testId?: string;
+}): ReactNode {
+  if (total === 0) return null;
+  return (
+    <section
+      className="flex min-w-0 flex-col gap-2 rounded-md border border-border bg-card px-3 py-2"
+      data-testid={testId}
+      aria-label="事件类型分布"
+    >
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+        <button
+          type="button"
+          className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+          aria-expanded={open}
+          aria-controls={testId + "-panel"}
+          data-testid={testId + "-toggle"}
+          onClick={onToggle}
+        >
+          {open ? "收起事件类型分布" : "展开事件类型分布"}
+        </button>
+        <span
+          className="min-w-0 break-words text-xs text-muted-foreground"
+          title="服务没有给出总数；这一块按当前已加载的这一页统计，不是整窗全量"
+        >
+          按已加载的 {total} 条统计
+        </span>
+      </div>
+      {open ? (
+        <ul className="flex min-w-0 flex-col gap-1" id={testId + "-panel"} data-testid={testId + "-panel"}>
+          {groups.map((group) => {
+            const share =
+              group.count >= total
+                ? 100
+                : Math.max(1, Math.min(99, Math.floor((group.count / total) * 100)));
+            return (
+              <li
+                key={group.key}
+                className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-xs"
+                data-testid={testId + "-row"}
+              >
+                <span className="min-w-0 break-words" title={group.key}>{group.label}</span>
+                <span className="shrink-0 font-mono" data-testid={testId + "-count"}>{group.count}</span>
+                <span className="shrink-0 text-muted-foreground" data-testid={testId + "-share"}>{String(share) + "%"}</span>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+    </section>
+  );
+}

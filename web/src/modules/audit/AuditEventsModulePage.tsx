@@ -41,7 +41,7 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { Spinner } from "@nous-research/ui/ui/components/spinner";
 
 import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel, TechnicalDisclosure, VerifyUnavailablePanel } from "./states";
-import { AuditEventDetailBody, AuditEventRowCard, VerifyResultBody, AuditRowPreview } from "./views";
+import { AuditEventDetailBody, AuditEventRowCard, VerifyResultBody, AuditRowPreview, AuditTypeSummary } from "./views";
 import RetentionModulePage from "./RetentionModulePage";
 import { useAuditDetail, useAuditList, useAuditVerify } from "./useAuditData";
 import type { FailureCopy } from "./copy";
@@ -247,6 +247,7 @@ function AuditEventsSurface(): ReactNode {
   // clicking 详情 really expands something every time (R19 tail b).
   const [openTech, setOpenTech] = useState<string | null>(null);
   const [openPreview, setOpenPreview] = useState<string | null>(null);
+  const [typesOpen, setTypesOpen] = useState(false);
   // The window check is a read the person asks for; it never runs on load and
   // it is not driven by `?state=` (that repro belongs to the aud03 pane).
   const verify = useAuditVerify(null);
@@ -335,6 +336,18 @@ function AuditEventsSurface(): ReactNode {
     for (const value of stack.slice(0, -1)) draft.append("cursor", value);
     setParams(draft, { replace: true });
   }, [params, setParams]);
+
+  const typeGroups = (() => {
+    if (list.phase !== "ready" || list.rows.length === 0) return [];
+    const counted = new Map<string, { key: string; label: string; count: number }>();
+    for (const row of list.rows) {
+      const key = row.action.raw ?? row.action.label;
+      const found = counted.get(key);
+      if (found) found.count += 1;
+      else counted.set(key, { key, label: row.action.label, count: 1 });
+    }
+    return [...counted.values()].sort((a, b) => b.count - a.count).slice(0, 8);
+  })();
 
   const canExport = list.phase === "ready" && list.rows.length > 0;
 
@@ -478,6 +491,8 @@ function AuditEventsSurface(): ReactNode {
         </Button>
         <span className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud5-export-count">将导出 {list.rows.length} 条</span>
       </div>
+
+      <AuditTypeSummary open={typesOpen} onToggle={() => setTypesOpen((value) => !value)} groups={typeGroups} total={list.rows.length} />
 
       <AuditFilterBar
         windowChoice={windowChoice}

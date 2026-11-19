@@ -2876,3 +2876,12 @@ Untested: the four-state body lengths are jsdom readings, not browser pixels; th
 - Ids added: `aud6-toggle-*`, `aud6-preview-*`, `aud6-preview-*-time`, `-rid`, `-open`; `aud5-*`/`aud4-*`/`aud2-*`/`aud3-*`/`aud01-*`/`agent-v2-page-audit*` untouched.
 - Gates: vitest `src/modules/audit` 10 files / 168 tests (167 + the R50 lock: aria-expanded flips, preview text, real href, no extra request, Esc closes); tsc `-b` 50-floor with `modules/audit` 0; eslint 0 errors.
 - Untested: no live browser keyboard/pixel sweep (jsdom only), 9122 not rebuilt, main not merged.
+
+## Audit event type distribution (R51, 2026-11-20, base 1bb72474)
+
+- 折叠小结：默认收起（typesOpen=false），原生按钮 aud7-types-toggle 带 aria-expanded / aria-controls；展开渲染 aud7-types-panel，行 aud7-types-row 含类型人话、aud7-types-count 计数、aud7-types-share 整数占比（floor，1..99，count==total 才是 100）。
+- 同源计数：按当前响应已加载行聚合 top 8（row.action.raw 归并、row.action.label 上屏），不发第二次请求；空集（total 0）整块隐藏。
+- 总数口径：服务只回 {events, nextCursor} 没有 total，因此界面注明「按已加载的 N 条统计」，title 说明不是整窗全量，禁自算假总数、禁假 0。
+- 不改 URL、不改页码、不影响筛选；aud5-*/aud6-*/aud4-*/aud2-*/aud3-*/aud01-*/agent-v2-page-audit* 未破。
+- 门禁：vitest src/modules/audit exit 0（10 files / 169 tests）；tsc -b 50 条既有地板、本模块 0；eslint 0 errors / 4 既有 warnings。
+- 未测：占比是已加载页口径非整窗；无真浏览器像素走查；9122 未重建；未并 main。
