@@ -440,3 +440,9 @@ testid：家族 ov5-→ov6- 全量升级（page 32+test 19 处，CSS class 保�
 修复四处：itemsOf 兼容 audit {events:[...]} 信封（此前只认 items→audit 永远假空）；readAudit actor 对象解包（{type:system,id:employee-api}→name/id 回落，emp_ 句柄仍走 actorLabel 8 位掩码）；runs 区 URL employee=→employeeId=（BFF runs 要求 employeeId 过滤，employee= 必 400 missing_filter）；audit 区 URL employee=→actorId=（BFF audit 白名单无 employee 键，400 console.missing_filter）。
 gap 台账（报 L0 转 D）：BFF 缺 GET /api/employees/{id} 详情路由（404 console.unknown_route）——概览已按既有 matrix 回落合规，非屏面缺口。
 验证：定向 employee-detail 13 passed；全量 vitest 122 files/1223 passed 0 fail。9122 屏幕 DOM 复跑待 L0 合批重建代次。
+
+## T18 员工详情五区真数据深化（feat(console): employee detail five zones real data）
+五区实测（ego 登录态经 9122 BFF，emp_86A81CE8FF6F42E187BCF2B540，2026-11-19）：概览=/api/employees/{id} 404 console.unknown_route→既有回落 /api/matrix?employee= 200 n=3 真数据；能力=200 n=3；审批=/api/approvals?employeeId= 200 n=8（D 别名增补后可用）；运行=/api/runs?employeeId= 200 真行 rn_01M7D7421P5PA27TEXMT9YVDZ8（running，costStatus unknown→成本「—」不假 0）；审计=/api/audit?actorId=&limit=50 200 events:[]=诚实空态（该员工无自发操作），from/to 全量通道 ev_2BAA7DD7F3BC4767AF39764D91 证明 events 信封解析已通。
+修复四处：itemsOf 兼容 audit {events:[...]} 信封（原只认 items→审计永远假空）；readAudit actor 对象解包（{type,id}→name/id，emp_ 句柄仍走 actorLabel 8 位掩码，系统 actor employee-api 原词合规）；runs 区 URL employee=→employeeId=（BFF runs 必 400 missing_filter）；audit 区 URL employee=→actorId=（BFF audit 白名单无 employee 键 400）。
+gap 台账（报 L0 转 D）：BFF 缺 GET /api/employees/{id} 详情路由（404）——概览 matrix 回落合规，非屏面缺口。
+验证：定向 employee-detail 13 passed；全量 122 files/1223 passed 0 fail。屏幕 DOM 复跑待 L0 合批重建代次。
