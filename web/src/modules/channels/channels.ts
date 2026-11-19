@@ -68,8 +68,11 @@ export const PAGE_LIMIT = 50;
 /**
  * 状态 on the screen. `available` is the only state that may look green, and it
  * is only reached from an upstream token that says the thing is connected.
+ * `disabled` is its own word, not a flavour of 「未接入」: a platform somebody
+ * switched off on purpose reads 「未启用」, so the person looking at the list
+ * learns to turn it on rather than to wire it up.
  */
-export type RowStatus = "available" | "unavailable" | "unknown";
+export type RowStatus = "available" | "disabled" | "unavailable" | "unknown";
 
 /** Which section a source feeds. */
 export type SourceRole = "channels" | "datasources";
@@ -209,13 +212,29 @@ const SEEN_KEYS = [
 const CONNECTED_TOKENS = ["connected", "available", "online", "ok", "healthy", "active", "ready", "up"] as const;
 
 /**
+ * Tokens that say somebody switched this platform off on purpose. They get a
+ * word of their own — 「未启用」 — because 「未接入」 would send a person off to
+ * wire something that is only switched off. The sentence says what is true
+ * (禁用, and that it must be enabled again before anything can be read here) and
+ * never names an actor the token did not name: `disabled` on its own does not
+ * prove an admin touched it, so only `disabled_by_admin` says 管理员.
+ * Checked before DOWN_TOKENS, so a `disabled` answer can never fall through to
+ * 「未知」.
+ */
+const DISABLED_TOKENS: Record<string, string> = {
+  disabled: "已被禁用，需要先启用后再读取",
+  disabled_by_admin: "已被管理员禁用，需要先启用后再读取",
+  disabled_by_config: "配置里已经把它禁用，需要先启用后再读取",
+  switched_off: "这个平台处于禁用状态，开关是关着的，需要先启用后再读取",
+};
+
+/**
  * Tokens that say it is not talking, each with the plain-Chinese reason the
  * screen shows. This is a translation of a documented vocabulary
  * (`web/src/lib/api-messaging.ts:26-30`), not an invention: the raw token stays
- * in 「技术详情」.
+ * in 「技术详情」. `disabled` used to be here; it now folds to 「未启用」 above.
  */
 const DOWN_TOKENS: Record<string, string> = {
-  disabled: "这个平台的开关是关着的",
   not_configured: "还缺必要的配置，平台没有真正接上",
   pending_restart: "改动还没生效，要等网关重启",
   gateway_stopped: "网关没有在运行",
@@ -240,6 +259,8 @@ export function statusOf(
   if ((CONNECTED_TOKENS as readonly string[]).includes(normalized)) {
     return { status: "available", reason: null };
   }
+  const disabled = DISABLED_TOKENS[normalized];
+  if (disabled) return { status: "disabled", reason: disabled };
   const down = DOWN_TOKENS[normalized];
   if (down) return { status: "unavailable", reason: down };
   return { status: "unknown", reason: null };
@@ -439,17 +460,18 @@ export function readSource(payload: unknown, source: SourceSpec, path: string): 
  * The request
  * ------------------------------------------------------------------ */
 
-/** The three states the screen can ask for; `all` asks for everything. */
-export type StatusFilter = "all" | "available" | "unavailable";
+/** The states the screen can ask for; `all` asks for everything. */
+export type StatusFilter = "all" | "available" | "unavailable" | "disabled";
 
 export const FILTERS: readonly { key: StatusFilter; label: string }[] = [
   { key: "all", label: "全部" },
   { key: "available", label: "已接入" },
   { key: "unavailable", label: "未接入与未知" },
+  { key: "disabled", label: "未启用" },
 ];
 
 export function filterOf(raw: string | null): StatusFilter {
-  return raw === "available" || raw === "unavailable" ? raw : "all";
+  return raw === "available" || raw === "unavailable" || raw === "disabled" ? raw : "all";
 }
 
 /**
@@ -470,6 +492,10 @@ export function sourceUrl(path: string, filter: StatusFilter, limit = PAGE_LIMIT
 export function applyFilter(rows: ChannelRow[], filter: StatusFilter): ChannelRow[] {
   if (filter === "all") return rows;
   if (filter === "available") return rows.filter((row) => row.status === "available");
+  // 「未启用」 is its own question. 「未接入与未知」 keeps asking for everything
+  // that is not working — so a switched-off platform still turns up there, and
+  // no row can hide from both choices at once.
+  if (filter === "disabled") return rows.filter((row) => row.status === "disabled");
   return rows.filter((row) => row.status !== "available");
 }
 
@@ -558,9 +584,13 @@ export function shapeFailure(): FailureCopy {
 export const requestIdLine = (id: string | null): string =>
   id ? `请求编号：${id}` : "本次请求未记录编号，可复制时间与操作路径反馈";
 
-/** The status word on the badge. Unknown is 「未知」, never a favourable word. */
+/**
+ * The status word on the badge. Unknown is 「未知」, never a favourable word, and
+ * a platform somebody switched off says 「未启用」 instead of being called 未接入.
+ */
 export const STATUS_LABEL: Record<RowStatus, string> = {
   available: "已接入",
+  disabled: "未启用",
   unavailable: "未接入",
   unknown: "未知",
 };

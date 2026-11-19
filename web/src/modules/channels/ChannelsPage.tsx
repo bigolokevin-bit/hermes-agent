@@ -10,8 +10,10 @@
  *   denied   403 and 404 draw one identical body, no row above it, no path echoed
  *
  * A platform that is down, or whose state the upstream never explained, stays
- * on the list: greyed, with its reason, and its badge reads 未接入 or 未知 —
- * never 正常 and never a green 「已接入」. `enabled: true` is not read as
+ * on the list: greyed, with its reason, and its badge reads 未接入、未启用 or
+ * 未知 — never 正常 and never a green 「已接入」. A platform the upstream says is
+ * switched off reads 未启用, which tells a person to switch it on instead of
+ * wiring it up again. `enabled: true` is not read as
  * connected anywhere in this module, because a switched-on but broken platform
  * is not a working one. Raw ids, upstream state tokens and HTTP statuses live
  * in `title` attributes and the collapsed 「技术详情」, not in the sentence layer;
@@ -113,11 +115,18 @@ function ChannelRowCard({ row, testId }: { row: ChannelRow; testId: string }): R
           类型：{row.kindLabel}
         </p>
 
-        {row.status === "unavailable" ? (
+        {row.status === "unavailable" || row.status === "disabled" ? (
           <p className="min-w-0 break-words text-xs text-muted-foreground">
             {row.reason ?? (
               <>
-                原因未说明<Dashed reason="上游没有解释这个平台为什么不可用" />
+                原因未说明
+                <Dashed
+                  reason={
+                    row.status === "disabled"
+                      ? "上游没有解释这个平台为什么被禁用"
+                      : "上游没有解释这个平台为什么不可用"
+                  }
+                />
               </>
             )}
           </p>
@@ -210,6 +219,7 @@ export function ChannelsPage(): ReactNode {
   const forcedTitle = isForced ? "复现腿不发起真实请求，去掉 ?state= 即为真实读取" : undefined;
 
   const availableCount = shown.filter((row) => row.status === "available").length;
+  const disabledCount = shown.filter((row) => row.status === "disabled").length;
   const downCount = shown.filter((row) => row.status === "unavailable").length;
   const unknownCount = shown.filter((row) => row.status === "unknown").length;
   /** Every denominator the answers declared; null means the upstream said nothing. */
@@ -221,7 +231,7 @@ export function ChannelsPage(): ReactNode {
   const countLine =
     phase === "ready" ? (
       <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="chn4-counts">
-        {`列出 ${shown.length} 个渠道或平台（已接入 ${availableCount}，未接入 ${downCount}，状态未说明 ${unknownCount}）`}
+        {`列出 ${shown.length} 个渠道或平台（已接入 ${availableCount}，未启用 ${disabledCount}，未接入 ${downCount}，状态未说明 ${unknownCount}）`}
         {declared === null
           ? "；上游未声明一共有多少条"
           : declared > rows.length

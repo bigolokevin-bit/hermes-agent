@@ -66,10 +66,12 @@ describe("the request changes with the filter", () => {
     const all = sourceUrl(path, "all");
     const up = sourceUrl(path, "available");
     const down = sourceUrl(path, "unavailable");
+    const off = sourceUrl(path, "disabled");
     expect(all).toBe("/agent-api/api/messaging/platforms?limit=50");
     expect(up).toBe(`${all}&status=available`);
     expect(down).toBe(`${all}&status=unavailable`);
-    expect(new Set([all, up, down]).size).toBe(3);
+    expect(off).toBe(`${all}&status=disabled`);
+    expect(new Set([all, up, down, off]).size).toBe(4);
     expect(all).not.toContain("status=");
   });
 
@@ -78,6 +80,7 @@ describe("the request changes with the filter", () => {
     expect(filterOf("nonsense")).toBe("all");
     expect(filterOf("available")).toBe("available");
     expect(filterOf("unavailable")).toBe("unavailable");
+    expect(filterOf("disabled")).toBe("disabled");
   });
 
   it("narrows rows by the same condition it asked with", () => {
@@ -85,11 +88,15 @@ describe("the request changes with the filter", () => {
       { status: "available" },
       { status: "unavailable" },
       { status: "unknown" },
+      { status: "disabled" },
     ] as never as Parameters<typeof applyFilter>[0];
-    expect(applyFilter(rows, "all")).toHaveLength(3);
+    expect(applyFilter(rows, "all")).toHaveLength(4);
     expect(applyFilter(rows, "available")).toHaveLength(1);
-    // 「未接入与未知」 keeps the row whose state nobody explained.
-    expect(applyFilter(rows, "unavailable")).toHaveLength(2);
+    // 「未接入与未知」 keeps the row whose state nobody explained, and the
+    // switched-off one too: nothing may hide from both choices at once.
+    expect(applyFilter(rows, "unavailable")).toHaveLength(3);
+    // 「未启用」 is the narrower question, and answers only with that word.
+    expect(applyFilter(rows, "disabled").map((row) => row.status)).toEqual(["disabled"]);
   });
 });
 
@@ -112,7 +119,6 @@ describe("the status vocabulary folds without inventing a state", () => {
 
   it("translates the documented down tokens into plain Chinese", () => {
     const cases: [string, string][] = [
-      ["disabled", "这个平台的开关是关着的"],
       ["not_configured", "还缺必要的配置，平台没有真正接上"],
       ["gateway_stopped", "网关没有在运行"],
       ["pending_restart", "改动还没生效，要等网关重启"],
@@ -128,14 +134,30 @@ describe("the status vocabulary folds without inventing a state", () => {
     }
   });
 
+  it("folds a switched-off platform into 未启用, not 未接入 and not 未知", () => {
+    const disabled = statusOf("disabled");
+    expect(disabled.status).toBe("disabled");
+    expect(disabled.reason).toBe("已被禁用，需要先启用后再读取");
+    // every spelling of 「switched off」 lands in the same bucket, before the
+    // unknown leg can turn it into a grey 「未知」
+    for (const token of ["disabled", "disabled_by_admin", "disabled_by_config", "switched_off", "Switched-Off"]) {
+      expect(statusOf(token).status).toBe("disabled");
+      expect(statusOf(token).reason).toContain("禁用");
+    }
+    expect(statusOf("disabled_by_admin").reason).toBe("已被管理员禁用，需要先启用后再读取");
+    // and the word an admin earned is not handed to a token that did not name one
+    expect(statusOf("disabled").reason).not.toContain("管理员");
+  });
+
   it("keeps an unknown token unknown, with no favourable word attached", () => {
     expect(statusOf("probe-v2").status).toBe("unknown");
     expect(statusOf("probe-v2").reason).toBeNull();
     expect(statusOf(null).status).toBe("unknown");
   });
 
-  it("never lets a word mean health, only 已接入 / 未接入 / 未知", () => {
+  it("never lets a word mean health, only 已接入 / 未启用 / 未接入 / 未知", () => {
     expect(STATUS_LABEL.available).toBe("已接入");
+    expect(STATUS_LABEL.disabled).toBe("未启用");
     expect(STATUS_LABEL.unavailable).toBe("未接入");
     expect(STATUS_LABEL.unknown).toBe("未知");
     expect(Object.values(STATUS_LABEL)).not.toContain("正常");
@@ -180,7 +202,7 @@ describe("reading one source's answer", () => {
     expect(first.status).toBe("available");
     expect(second.name).toBeNull();
     expect(second.masked).toBe("连接 · 后4位 5b6a");
-    expect(second.status).toBe("unavailable");
+    expect(second.status).toBe("disabled");
     // the reason is the upstream's own sentence, not a token
     expect(second.reason).toBe("凭据已过期");
     expect(second.rawState).toBe("disabled");

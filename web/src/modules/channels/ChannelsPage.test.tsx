@@ -156,6 +156,28 @@ describe("the platform list keeps the bad rows visible", () => {
     expect(row.className).toContain("opacity-60");
   });
 
+  it("a platform the upstream switched off reads 未启用, with data-status to prove it", async () => {
+    await mount(ok({ platforms: [{ id: "conn_7a7b", name: "被停用的渠道", state: "disabled" }] }));
+    const row = document.querySelector("[data-testid='chn4-row-0']")!;
+    expect(row.getAttribute("data-status")).toBe("disabled");
+    expect(document.querySelector("[data-testid='chn4-row-0-badge']")?.textContent?.trim()).toBe("未启用");
+    // the sentence says what to do, in plain Chinese, and never the raw token
+    expect(row.textContent).toContain("已被禁用，需要先启用后再读取");
+    expect(row.textContent).not.toContain("disabled");
+    expect(row.className).toContain("opacity-60");
+    // the count line carries the same word, so the one-liner adds up to the list
+    expect(document.querySelector("[data-testid='chn4-counts']")?.textContent).toContain("未启用 1");
+  });
+
+  it("the 未启用 choice narrows the list to the switched-off rows only", async () => {
+    await mount(byUrl, "/capabilities?tab=channels&status=disabled");
+    expect(urls()).toContain("/agent-api/api/messaging/platforms?limit=50&status=disabled");
+    expect(statusRows()).toBe(1);
+    const row = document.querySelector("[data-testid='chn4-row-0']")!;
+    expect(row.getAttribute("data-status")).toBe("disabled");
+    expect(document.querySelector("[data-testid='chn4-row-0-badge']")?.textContent?.trim()).toBe("未启用");
+  });
+
   it("a platform nobody explains reads 未知, never 正常 and never a green 已接入", async () => {
     await mount(ok({ platforms: [{ id: "x1", name: "探测中的渠道", state: "probe-v2" }] }));
     const row = document.querySelector("[data-testid='chn4-row-0']")!;
