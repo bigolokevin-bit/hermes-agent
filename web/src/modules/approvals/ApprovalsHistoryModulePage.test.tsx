@@ -414,4 +414,47 @@ describe("history whole-panel states", () => {
     expect(detailText).not.toContain("emp_");
     expect(document.querySelector("[data-testid='apd5-field-change-kind']")?.textContent).toContain("对外发送消息");
   });
+
+  it("R31 obs: the approver field renders once and bare human:1 reads 人员 with the handle in the title", async () => {
+    const sample = {
+      approvalId: "ap_123DE49B9A1F42A197679681F1",
+      tenantId: "t_seakoi_pilot",
+      type: "business_action",
+      status: "expired",
+      requestedBy: { type: "user", id: "human:1" },
+      action: "message.send",
+      resource: { employeeId: "emp_86A81CE8FF6F42E187BCF2B540", channel: "feishu" },
+      argsDigest: "sha256:apr02",
+      binding: { changeKind: "message_send", runId: "run_apr02_seed" },
+      riskLevel: "high",
+      reasonText: "APR-02 VG live seed",
+      approvers: [{ userId: "human:1", role: "owner" }],
+      requiredApprovals: 1,
+      decisions: [],
+      createdAt: "2026-11-16T13:09:04.322Z",
+      decidedAt: "2026-11-17T13:09:04.322Z",
+      expiresAt: "2026-11-17T13:09:04.322Z",
+      remainingSeconds: 0,
+      ttlSeconds: 86400,
+      policyDecisionId: "pd_apr02_seed_20261116",
+    };
+    await mount(async (url) => {
+      if (url.includes("/api/approval?id=")) return sample;
+      return { items: [sample] };
+    });
+    const card = document.querySelector("[data-testid^='apr5-row-']") as HTMLElement | null;
+    expect(card, "row card").toBeTruthy();
+    await act(async () => {
+      card!.click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='apr5-detail']") !== null, "detail opened");
+    // The live defect was 「审批人：审批人」 — label plus echoing value.
+    const detailText = document.querySelector("[data-testid='apr5-detail']")?.textContent ?? "";
+    expect(detailText).not.toContain("审批人：审批人");
+    expect(document.querySelectorAll("[data-testid='apd5-field-approver']")).toHaveLength(1);
+    expect(document.querySelectorAll("[data-testid='apd5-approver']")).toHaveLength(1);
+    expect(document.querySelector("[data-testid='apd5-approver']")?.textContent).toBe("人员");
+    expect(document.querySelector("[data-testid='apd5-approver']")?.getAttribute("title")).toContain("human:1");
+    expect(detailText).not.toContain("human:");
+  });
 });

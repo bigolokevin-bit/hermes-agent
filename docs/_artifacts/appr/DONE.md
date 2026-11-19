@@ -526,3 +526,10 @@ DOM 自证（vitest OverviewView R29 用例，夹具 asOf 2026-11-19T04:20Z→�
 关键修复=此前 ov6-asof 只在主返回渲染，总览全失败/全空两早退分支 DOM 无 ov6-asof（R31 探针 asofTxt=null 根因）；AsofLine 组件三分支常驻（forced ?state= 复现分支带空来源=「—」+title，非编时）。
 KPI 族：五卡 data-testid=ov6-kpi-<name> 统一在位+新增 data-duty-testid=duty-kpi-* 别名 5 处、ov6-trend/activity/blockers 卡 duty-* 别名 3 处（QA 旧选择器零回归）；数值口径未动（真 0 与「—」区分、dashed/money 机制原样，成本卡真 0→$0.00 既有断言保持）；错误/空态人话+可复制 rid+重试未逆。
 验证：定向 overview 1 file 9 passed exit0（新增 asof 正则+duty-kpi 计数断言）。
+
+## R31-obs · 审批详情 approver 标签重复 + 锚点漂移（小单，2026-11-20）
+- 根因：`approverLabels`/`decisionEntries` 对裸机器值（human:1）回显角色名词「审批人」，而字段本身已渲「审批人：」→ 屏上「审批人：审批人」。
+- 修法（model.ts）：裸值名词统一改「人员」（含短码形态「人员 · 86A81CE8」）；数组项无姓名时把原始 handle 回填 `raw` → 字段 title 带原值 human:1；上屏仍不出现裸 human:/emp_。
+- 锁：新用例「R31 obs: the approver field renders once and bare human:1 reads 人员 with the handle in the title」——断 不出现「审批人：审批人」、apd5-field-approver 与 apd5-approver 各计数=1、值=「人员」、title 含 human:1；api.test 八字段用例补 labels 不含「审批人」+ raw 含 human:1；human:2 决策回放 who 断言同步「人员」。
+- 八字段 testid、零写入口（history 无 actions）、403≡404 同体既有锁未动。
+- 验证：定向 approvals 3 files 56 passed EXIT=0；全量 126 files/1277 passed。9122 停在 9c7789f6（R32 取证中，禁重建），故实测值取自 DOM 用例读数：审批人：人员（title=human:1）。

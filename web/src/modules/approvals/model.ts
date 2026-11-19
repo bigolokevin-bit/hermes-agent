@@ -170,15 +170,27 @@ export function approverLabels(rec: Record<string, unknown>): { labels: string[]
   const raw = pickText(rec, ["approvers", "approversJson"]);
   const list = rec.approvers;
   if (Array.isArray(list)) {
+    // R31-obs: the label 「审批人：」 is rendered by the field itself; the
+    // value must never echo it. Bare machine handles (human:1) read as
+    // 人员/人员 · 短码 and the original handle is backfilled into `raw` so
+    // the field's title still carries it.
+    const handles: string[] = [];
     const labels = list.map((item) => {
-      if (typeof item === "string") return maskHandle(item, "审批人");
+      if (typeof item === "string") {
+        handles.push(item);
+        return maskHandle(item, "人员");
+      }
       const rec2 = asRecord(item);
       if (!rec2) return "";
       const name = pickText(rec2, ["name", "displayName", "label"]);
-      return name && !isMachineHandle(name) ? name : maskHandle(pickText(rec2, ["userId", "user_id", "id"]) ?? "", "审批人");
+      if (name && !isMachineHandle(name)) return name;
+      const id = pickText(rec2, ["userId", "user_id", "id"]) ?? "";
+      handles.push(id);
+      return maskHandle(id, "人员");
     });
     const clean = labels.filter((x) => x);
-    if (clean.length) return { labels: clean, raw };
+    const rawBackfill = raw ?? (handles.length ? handles.join("、") : null);
+    if (clean.length) return { labels: clean, raw: rawBackfill };
   }
   const count = pickNumber(rec, ["requiredApprovals", "approverCount"]);
   if (count !== null) return { labels: [`需要 ${count} 人审批`], raw };
@@ -503,7 +515,7 @@ function decisionEntries(rec: Record<string, unknown>): DecisionEntry[] {
     const whoRaw = pickText(one, ["userId", "user_id", "by", "actor", "approver"]);
     const whoName = pickText(one, ["name", "displayName", "userName"]);
     out.push({
-      who: whoName && !isMachineHandle(whoName) ? whoName : maskHandle(whoRaw ?? "", "审批人") || "未指派",
+      who: whoName && !isMachineHandle(whoName) ? whoName : maskHandle(whoRaw ?? "", "人员") || "未指派",
       whoRaw,
       verdict: verdictLabel(verdictRaw),
       verdictRaw,

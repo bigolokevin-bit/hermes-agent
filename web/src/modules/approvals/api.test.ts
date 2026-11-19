@@ -49,6 +49,9 @@ describe("R25 detail eight fields (PRD 4.2 keys exist, values honest)", () => {
     expect(d.decisions).toHaveLength(0);
     expect(d.decided).toBe("2026-11-17 21:09");
     expect(d.approvers.labels.join(";")).not.toContain("human:");
+    // R31-obs: the value never echoes the field label 「审批人：」.
+    expect(d.approvers.labels.join(";")).not.toContain("审批人");
+    expect(d.approvers.raw).toContain("human:1");
     expect(d.actionHash).toBe("sha256:apr02");
     expect(d.recipient.label).toBe("—");
     expect(d.dataScope).toBeNull();
@@ -309,7 +312,7 @@ describe("read model", () => {
     expect(detail.approvers.labels).toEqual(["郑涛"]);
     // `human:2` is one character short of anything worth masking, so it reads
     // as the bare role rather than as a handle or a made-up name.
-    expect(detail.decisions[0]).toMatchObject({ who: "审批人", verdict: "通过", at: "2026-11-18 11:00" });
+    expect(detail.decisions[0]).toMatchObject({ who: "人员", verdict: "通过", at: "2026-11-18 11:00" });
     expect(detail.technical.join(" ")).toContain("th_0123456789abcdef");
     expect(JSON.stringify(detail).toLowerCase()).not.toContain("run_id");
   });
