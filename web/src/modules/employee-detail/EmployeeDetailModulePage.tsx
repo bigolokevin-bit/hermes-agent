@@ -133,6 +133,22 @@ function lifecycleTone(value?: string | null): "success" | "warning" | undefined
   return undefined;
 }
 
+/** 风险档人话：只认上游回传的已知档；缺值「—」+原因，未知值「待核实」。 */
+function riskLabel(value: string | null): { text: string; title?: string } {
+  switch (value) {
+    case "high":
+      return { text: "高风险" };
+    case "medium":
+      return { text: "中风险" };
+    case "low":
+      return { text: "低风险" };
+    case null:
+      return { text: "—", title: "上游没有回传风险等级" };
+    default:
+      return { text: "待核实", title: `未识别的风险等级「${value}」，不猜测` };
+  }
+}
+
 function approvalStatusLabel(value: string | null): string {
   switch (value) {
     case "pending":
@@ -146,7 +162,8 @@ function approvalStatusLabel(value: string | null): string {
     case "processing":
       return "流转中";
     default:
-      return "状态未知";
+      // 未识别的审批状态不猜：与全站一致标「待核实」。
+      return "待核实";
   }
 }
 
@@ -275,7 +292,7 @@ function readMatrix(body: unknown): CapabilityRow[] {
   return rows;
 }
 
-type ApprovalRow = { ref: string | null; status: string | null; title: string | null; at: string | null; amount: number | null };
+type ApprovalRow = { ref: string | null; status: string | null; title: string | null; at: string | null; updatedAt: string | null; risk: string | null; amount: number | null };
 
 function readApprovals(body: unknown): ApprovalRow[] {
   return itemsOf(body).map((item) => ({
@@ -283,6 +300,8 @@ function readApprovals(body: unknown): ApprovalRow[] {
     status: pickString(item.status, item.state),
     title: pickString(item.title, item.type, item.name, item.category),
     at: pickString(item.createdAt, item.created_at, item.submittedAt, item.applyTime),
+    updatedAt: pickString(item.updatedAt, item.updated_at, item.decidedAt, item.changedAt),
+    risk: pickString(item.riskLevel, item.risk_level, item.risk),
     amount: pickNumber(item.amountUsd, item.amount, item.monthlyCostUsd),
   }));
 }
@@ -664,7 +683,13 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
 
   const overview = useOverview(empId, reload.overview);
   const capability = useResourceList(zone === "capability" ? `/agent-api/api/matrix?employee=${enc}` : "", reload.capability, readMatrix);
-  const approvals = useResourceList(zone === "approvals" ? `/agent-api/api/approvals?employeeId=${enc}` : "", reload.approvals, readApprovals);
+  // R49 measured on this generation: employeeId/assignee do NOT filter the
+  // approvals read surface (same 200/8 set for two different employees and
+  // for the bare call; the BFF whitelist is status/limit/cursor and the
+  // assignee is injected from the logged-in identity). Sending a per-employee
+  // parameter would therefore be a fake filter — instead the zone reads the
+  // real aggregate and states the scope honestly on screen.
+  const approvals = useResourceList(zone === "approvals" ? "/agent-api/api/approvals?status=all&limit=20" : "", reload.approvals, readApprovals);
   const runs = useResourceList(zone === "runs" ? `/agent-api/api/runs?employeeId=${enc}` : "", reload.runs, readRuns);
   const audit = useResourceList(zone === "audit" ? `/agent-api/api/audit?resourceId=${enc}&limit=50` : "", reload.audit, readAudit);
   const tasklist = useResourceList(
@@ -1045,8 +1070,8 @@ function ApprovalsZone({ resource, onRetry }: { resource: Resource<ApprovalRow[]
   if (resource.phase === "empty") {
     return (
       <ZoneEmpty
-        title="这位员工还没有审批事项"
-        hint="有新的申请或待办审批时，会出现在这里。"
+        title="当前没有审批事项"
+        hint="审批读口暂不支持按员工筛选；这是按你的登录身份返回（全部状态）下的空集，不是把缺失当 0。"
         testid="ed5-approvals-empty"
       />
     );
@@ -1068,37 +1093,49 @@ function ApprovalsZone({ resource, onRetry }: { resource: Resource<ApprovalRow[]
   return (
     <Card data-testid="ed5-approvals">
       <CardContent className="p-0">
-        <div className="hidden grid-cols-[minmax(0,1.4fr)_minmax(0,0.7fr)_minmax(0,0.8fr)_minmax(0,0.6fr)] gap-2 border-b border-white/10 px-4 py-2 text-xs text-white/45 md:grid">
+        <p
+          className="px-4 pt-3 text-xs text-white/45"
+          data-testid="ed8-appr-note"
+          title="实测（本代次）：employeeId/assignee 参数不改变返回集合；BFF /api/approvals 白名单只透传 status/limit/cursor，审批归属按登录者注入。为避免把「全量」伪装成「该员工的」，此处按真实口径展示并保留队列跳转。"
+        >
+          审批读口暂不支持按员工筛选：以下为当前登录身份的全部状态审批。
+        </p>
+        <div className="hidden grid-cols-[minmax(0,1.4fr)_minmax(0,0.7fr)_minmax(0,0.6fr)_minmax(0,0.8fr)] gap-2 border-b border-white/10 px-4 py-2 text-xs text-white/45 md:grid">
           <span>事项</span>
           <span>状态</span>
-          <span>提交时间</span>
-          <span>涉及金额</span>
+          <span>风险档</span>
+          <span title="口径：更新时间 updatedAt（缺则回退提交时间），按北京时间到分">更新时间</span>
         </div>
         <ul className="divide-y divide-white/5">
           {resource.data.map((row, i) => {
             const label = row.title ?? (row.ref ? `审批单 · ${shortCode(row.ref)}` : "审批事项");
+            const risk = riskLabel(row.risk);
+            const updated = row.updatedAt ?? row.at;
             const inner = (
               <>
-                <span className="min-w-0 truncate text-sm">{label}</span>
-                <span title={row.status ?? undefined}>
+                <span className="min-w-0 truncate text-sm" data-testid={`ed8-appr-title-${i}`}>{label}</span>
+                <span data-testid={`ed8-appr-status-${i}`} title={row.status ?? undefined}>
                   <Badge tone={approvalStatusTone(row.status)}>{approvalStatusLabel(row.status)}</Badge>
                 </span>
-                <span className="font-mono text-xs text-white/55">{beijing(row.at)}</span>
-                <span className="text-xs text-white/55">{money(row.amount)}</span>
+                <span className="text-xs text-white/55" data-testid={`ed8-appr-risk-${i}`} title={risk.title}>
+                  {risk.text}
+                </span>
+                <span className="font-mono text-xs text-white/55" data-testid={`ed8-appr-time-${i}`} title={row.updatedAt === null ? "上游没有回传更新时间，此处显示提交时间" : undefined}>
+                  {beijing(updated)}
+                </span>
               </>
             );
+            const grid = "grid grid-cols-1 gap-1 px-4 py-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,0.7fr)_minmax(0,0.6fr)_minmax(0,0.8fr)] md:items-center md:gap-2";
+            // 行出口：既有可达落点 = 审批队列并保留该行状态筛选（本代次无 /approvals/:id 详情路由）。
+            const href = row.status ? `/approvals?status=${encodeURIComponent(row.status)}` : "/approvals";
             return row.ref ? (
-              <li key={`${row.ref}-${i}`}>
-                <Link
-                  to="/approvals"
-                  title={row.ref}
-                  className="grid grid-cols-1 gap-1 px-4 py-3 hover:bg-white/5 md:grid-cols-[minmax(0,1.4fr)_minmax(0,0.7fr)_minmax(0,0.8fr)_minmax(0,0.6fr)] md:items-center md:gap-2"
-                >
+              <li key={`${row.ref}-${i}`} data-testid={`ed8-appr-row-${i}`}>
+                <Link to={href} title={row.ref} className={grid} data-testid={`ed8-appr-link-${i}`}>
                   {inner}
                 </Link>
               </li>
             ) : (
-              <li key={`row-${i}`} className="grid grid-cols-1 gap-1 px-4 py-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,0.7fr)_minmax(0,0.8fr)_minmax(0,0.6fr)] md:items-center md:gap-2">
+              <li key={`row-${i}`} className={grid} data-testid={`ed8-appr-row-${i}`}>
                 {inner}
               </li>
             );

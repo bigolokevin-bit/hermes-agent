@@ -273,12 +273,11 @@ describe("EmployeeDetailModulePage — approvals / runs / audit", () => {
     await renderAt(page, at("approvals"));
     const card = container.querySelector('[data-testid="ed5-approvals"]');
     const link = card?.querySelector("a");
-    expect(link?.getAttribute("href")).toBe("/approvals");
+    expect(link?.getAttribute("href")).toBe("/approvals?status=pending");
     expect(link?.getAttribute("title")).toBe("task_9F3A1B2C3D");
     expect(card?.textContent).not.toContain("task_9F3A1B2C3D");
     expect(card?.textContent).toContain("待审批");
     expect(card?.textContent).toContain("2026-11-18 12:00");
-    expect(card?.textContent).toContain("$300.00");
   });
 
   it("runs: USD money, Beijing minute time, zero tokens stay 0", async () => {
@@ -374,7 +373,51 @@ describe("EmployeeDetailModulePage — approvals / runs / audit", () => {
     mockApi(() => Promise.resolve({ items: [] }));
     await renderAt(page, at("approvals"));
     const card = container.querySelector('[data-testid="ed5-approvals-empty"]');
-    expect(card?.textContent).toContain("还没有审批事项");
+    expect(card?.textContent).toContain("当前没有审批事项");
+    expect(card?.textContent).toContain("暂不支持按员工筛选");
+  });
+});
+
+describe("EmployeeDetailModulePage — approvals zone R49", () => {
+  it("reads the honest aggregate (no fake employee filter) and renders the four-column spec", async () => {
+    const urls: string[] = [];
+    mockApi((url) => {
+      urls.push(url);
+      if (url.includes("/api/approvals")) {
+        return Promise.resolve({
+          items: [
+            { approvalId: "apr_R49A", status: "expired", riskLevel: "high", updatedAt: "2026-11-19T02:30:00Z", title: "密钥轮换" },
+            { approvalId: "ap_R49B", status: "weird_state", riskLevel: "purple" },
+          ],
+        });
+      }
+      return Promise.resolve({});
+    });
+    await renderAt(page, at("approvals"));
+    const calls = urls.filter((u) => u.includes("/api/approvals"));
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toContain("status=all");
+    expect(calls[0]).toContain("limit=20");
+    expect(calls[0]).not.toContain("employeeId");
+    const note = container.querySelector('[data-testid="ed8-appr-note"]');
+    expect(note?.textContent).toContain("暂不支持按员工筛选");
+    expect(note?.getAttribute("title")).toContain("白名单");
+    const card = container.querySelector('[data-testid="ed5-approvals"]');
+    expect(container.querySelector('[data-testid="ed8-appr-title-0"]')?.textContent).toBe("密钥轮换");
+    expect(container.querySelector('[data-testid="ed8-appr-risk-0"]')?.textContent).toBe("高风险");
+    expect(container.querySelector('[data-testid="ed8-appr-time-0"]')?.textContent).toBe("2026-11-19 10:30");
+    const link0 = container.querySelector('[data-testid="ed8-appr-link-0"]') as HTMLAnchorElement;
+    expect(link0?.getAttribute("href")).toBe("/approvals?status=expired");
+    expect(container.querySelector('[data-testid="ed8-appr-status-1"]')?.textContent).toBe("待核实");
+    const risk1 = container.querySelector('[data-testid="ed8-appr-risk-1"]');
+    expect(risk1?.textContent).toBe("待核实");
+    expect(risk1?.getAttribute("title")).toContain("purple");
+    expect(container.querySelector('[data-testid="ed8-appr-time-1"]')?.textContent).toBe("—");
+    expect(container.querySelector('[data-testid="ed8-appr-time-1"]')?.getAttribute("title")).toContain("更新时间");
+    expect(card?.textContent).not.toContain("apr_R49A");
+    expect(card?.textContent).not.toContain("ap_R49B");
+    expect(card?.textContent).not.toContain("apr_");
+    expect(card?.textContent).not.toContain("human:");
   });
 });
 

@@ -767,3 +767,11 @@ L0 判 /runs/<id> 无路由=死链（routes.ts 只有 /runs）。禁碰 shell/Ap
 活体实证（ego 只读，9122==02a7385c）：无参 /runs → 「本页 13 次…」且 run5-detail=false；带 ?run=rn_01M7D7421P5PA27TEXMT9YVDZ8 → **run5-detail=true 且卡文=「运行 · VDZ8运行中 · 开始 2026-11-14 22:24 · 耗时 128 小时 33 分钟」**（VDZ8=该 id 尾码=确为参数对应运行）→ 参数生效，无需退 span。testid 不变；两处用例断言同步（=/runs?run=run_X1Y2Z3 与 =/runs?run=rn_01M7…）；屏上无裸 id 断言保持（href 属性不计 textContent）。
 
 验证：定向 employee-detail 33 passed；全量 131 files/1410 passed；assert-ia 两模式 exit0 51/22/1/8（未动壳层）。commit fix(console): employee runs rows link to supported run param。
+
+## R49 员工详情「审批」区（2026-11-20，lane/console-appr）
+
+活体实测（ego 只读，9122==02a7385c）：/api/approvals?employeeId=emp_86A8…&limit=50→200 n=8；employeeId=emp_217A…→200 n=8 同首行 ap_123DE49B…（expired/high）=**employeeId 不过滤**；bare→200 n=8 同集合；assignee=employee%3A…→200 n=8 同（BFF inject_assignee：客户端值一律忽略，按登录者注入）；status=pending→200 n=0（status 真参数有效）。server.py passthrough=(status,limit,cursor)+all_statuses。
+
+实现（EmployeeDetailModulePage.tsx）：①区腿 line667 由假筛选 `?employeeId=` 改诚实聚合 `?status=all&limit=20`（同请求出计数，无重复腿）。②说明行 ed8-appr-note「审批读口暂不支持按员工筛选：以下为当前登录身份的全部状态审批。」title 带白名单+注入口径实证（GAP 仅 title）。③四列表=事项标题｜状态人话（approvalStatusLabel default→「待核实」）｜风险档（riskLabel：high/medium/low→高/中/低风险，缺「—」+title，未知值「待核实」+title 原值不猜）｜更新时间 BJT 到分（updatedAt 多键 decidedAt/changedAt，缺→回退提交时间+cell title 注明）。④行出口真链 href=/approvals?status=<行状态>（既有可达落点保筛选；无详情路由不为造链而发明）；ed8-appr-row/link/title/status/risk/time-<i> 族新增，ed5-approvals-* 现名全保留；金额列按四列规格移除（解析器字段留）。⑤空集=「当前没有审批事项」+「按你的登录身份返回（全部状态）下的空集，不是把缺失当 0」——工单句「该员工暂无审批事项」在不支持筛选实证下不诚实，按工单诚实条款取代。⑥四态/可复制 rid/403≡404=Zone* 既有（R47 线）。
+
+测试：既有两断言同步（href 带 status、金额断言删、空态新句）+R49 新用例（恰 1 fetch 无 employeeId、note 上屏、行 0/行 1 四列读数、待核实×2、无裸 apr_/emp_/human:）。定向 34 passed；全量与 assert-ia 读数见回执。⑦三档横溢=jsdom 不可测，形态学报（grid 全 minmax(0)+truncate+flex-wrap 说明行）。9122 禁重建：页面活体读数待并入后代次；API 面五组实证已贴。
