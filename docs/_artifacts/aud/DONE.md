@@ -1835,6 +1835,72 @@ ChannelsPage.tsx
 - 非管理员身份下的 403 真腿未复现（当前数据是管理员可见范围）；403 与 404 的同体性由模块结构与既有测试保证。
 - 站内跳转与直链共用同一条 /audit 路由，直链已证渲染；未逐一截取每个导航入口的点击路径。
 
+## TASK evidence citations real data (2026-11-19, base de23c92e)
+
+### Probes (session cookie, via the console BFF on 127.0.0.1:9122/agent-api)
+| request | HTTP | what it said |
+|---|---|---|
+| `/api/run-events?kind=citation&limit=50` | **400** | `{"code":"console.missing_param","message":"runId is required"}` — run-events cannot serve a citation list |
+| `/api/run-events?runId=rn_01M7822XN781D2S9JASH5TX1XZ&limit=20` | 200 | `{"items":[{runId,seq,eventType,payload,pulledAt,occurredAt}]}` — run deltas only, **no citations array** |
+| `/api/audit?from=<7d ISO>&to=<now ISO>&limit=50` | **200** | `{"events":[...]}` — **50 real events**, each with eventId / sourceSystem / actor / resource / occurredAt / outcome |
+
+So the real surface for this pane is the audit event list; an "evidence row"
+is one audit event. Nothing is fabricated: there is no per-row citation array
+upstream, and the page does not pretend to have one.
+
+### What changed (write scope: web/src/modules/evidence/**)
+- `evidence.ts` rewritten: `CitationRow` now carries 引用来源 (`sourceLabel`,
+  masked `actorLabel` + raw `actorTitle`), 目标对象 (`targetTypeLabel`,
+  masked `targetLabel` + raw `targetTitle`), `at`, `href`, `unverified` and
+  `unreachableReason`. `shortCode` (8-char) / `midEllipsis` (prefix + 4…4)
+  keep bare ids off the screen; `SOURCE_LABELS` / `RESOURCE_LABELS` turn wire
+  enums into plain words while unlisted values pass through verbatim;
+  `readCitations` reads the `events` key the route really sends;
+  `citationsUrl` asks for a bounded 7-day window (`from`/`to`/`limit=50`)
+  because an unfiltered scan is refused.
+- `EvidenceModulePage.tsx` rewritten on the `ev5-*` id family. Rows show
+  来源 badge + actor + 「目标对象 <类型> · <码>」 + 北京时间到分, and either
+  「打开原文」 → `/audit?id=<eventId>` (verified: `AuditEventsModulePage.tsx:145`
+  reads `params.get("id")`) or 「原文不可达」 with the reason. A missing event
+  id or object id paints 「待核实」 (GAP number only in the `title`).
+- The old silent fallback is gone: on 404 the page used to paint fixture rows
+  as if they were data. Now 403 and 404 both land on ONE denied panel (same
+  body, copyable request id, no path echo), the fixture exists only behind
+  `?state=` reproduction legs (marked `data-fixture` + a 「复现态」 badge +
+  GAP in the title, zero requests issued).
+- Four states plus a session-less 「需要登录」 leg (zero requests); error panel
+  carries a copyable request id (or 「本次请求未记录编号」) and a working retry.
+- Layout: flex + `min-w-0` + `break-words`, no fixed widths; list stacks at
+  375 and keeps `scrollWidth == clientWidth` by construction.
+
+### Gates (from web/)
+- `./node_modules/.bin/vitest run src/modules/evidence` → **exit 0**, 2 files / **25 tests**
+  (`evidence.test.ts` 12 pure + `EvidenceModulePage.test.tsx` 13 page).
+- `npx tsc -b . --noEmit` → **53** `error TS` lines, `modules/evidence` **0**;
+  the non-owned ones are the standing `../apps/shared/**` block plus
+  `src/modules/approvals/api.test.ts(80,12)` and two in `src/pages/LoginPage.test.tsx`.
+- `./node_modules/.bin/eslint src/modules/evidence` → exit 0, 0 errors /
+  2 warnings (exported `fmtStamp` refresh rule; the repo's standing
+  `set-state-in-effect` idiom in the forced-state branch).
+
+### Live readings
+- `/api/audit?from=&to=&limit=50` returned **50** events for the 7-day window,
+  so the pane's first page is 50 rows.
+- Unreachable count: every real row carried `eventId`, so 0 unreachable in that
+  sample; the state is exercised by tests (a row without an event id) and by the
+  `?state=ready` reproduction leg.
+
+### Untested / limits
+- 1440 / 1280 / 375 pixel measurement: the pane is only reachable through the
+  shell's knowledge/audit slot in another lane's write scope, and the served
+  dist predates this change. Overflow safety is a contract (`min-w-0`,
+  `break-words`, flex wrap, no fixed widths), not a measured number.
+- No per-row citation object exists upstream (run-events has none), so the
+  pane's rows are audit events; if a citation endpoint lands later, `readRow`
+  is the one place to extend.
+- `tabNav.ts` (manifest) intentionally untouched: its `dataSource` string still
+  names run-events citations.
+
 ## TASK collab delegation chain real data (2026-11-19, base de23c92e / trunk f8046930)
 
 ### Probes (session cookie, value never printed)
@@ -1899,3 +1965,4 @@ never a 0 dressed up as a count of something else.
 - `action` / `effectiveFrom` key names are candidate lists; the frozen
   DELEGATION v1.0 record names neither, so both may legitimately read
   「未记录」 against a real row.
+

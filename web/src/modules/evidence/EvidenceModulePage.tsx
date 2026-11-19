@@ -1,11 +1,12 @@
 /**
- * T25 · 证据与引用 (`#/knowledge?tab=evidence`).
+ * T25 · 证据与引用 (`#/knowledge?tab=evidence` / `#/audit?tab=evidence`).
  *
- * Read-only list of citations produced by runs and audit rows. Each row either
- * jumps to its real source or says plainly why it cannot — a citation is never
- * rendered as a control that goes nowhere.
- *
- * reuse: /v1/run-events/citations
+ * Live surface: GET /agent-api/api/audit?from=&to=&limit=50 (bounded 7-day
+ * window — the route refuses an unfiltered scan). Each row is one audit event:
+ * 引用来源 (source system + actor), 目标对象 (resource type + masked id),
+ * 时间 (Beijing, to the minute) and a real link back to /audit?id=<eventId>.
+ * A row whose event id is missing reads 「待核实」 and its link block says
+ * 「原文不可达」 with the reason; no control is ever rendered that goes nowhere.
  */
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
@@ -17,12 +18,10 @@ import { ApiError } from '@/lib/api-error';
 import { hasConsoleSession } from '@/modules/knowledge/session';
 
 import {
-  EVIDENCE_FIXTURE,
-  citationKindLabel,
-  employeeLabel,
+  REPRO_ROWS,
+  WINDOW_DAYS,
+  citationsUrl,
   readCitations,
-  shortCode,
-  unreachableReason,
   type CitationRow,
   type CitationsPayload,
 } from './evidence';
@@ -31,11 +30,11 @@ type Phase = 'loading' | 'ready' | 'empty' | 'error' | 'denied' | 'login';
 
 const FORCED = new Set<Phase>(['loading', 'ready', 'empty', 'error', 'denied']);
 
-function fmtStamp(iso: string | null): string {
+export function fmtStamp(iso: string | null): string {
   if (!iso) return '—';
   const ms = Date.parse(iso);
   if (Number.isNaN(ms)) return '—';
-  const parts = new Intl.DateTimeFormat('sv-SE', {
+  return new Intl.DateTimeFormat('sv-SE', {
     timeZone: 'Asia/Shanghai',
     year: 'numeric',
     month: '2-digit',
@@ -43,8 +42,9 @@ function fmtStamp(iso: string | null): string {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
-  }).format(new Date(ms));
-  return parts.replace('T', ' ');
+  })
+    .format(new Date(ms))
+    .replace('T', ' ');
 }
 
 function StateBlock({ testId, children }: { testId: string; children: ReactNode }) {
@@ -55,63 +55,80 @@ function StateBlock({ testId, children }: { testId: string; children: ReactNode 
   );
 }
 
-function Cell({ label, value, title }: { label: string; value: string; title?: string }) {
+function RequestIdLine({ requestId, testId }: { requestId: string | null; testId: string }) {
+  const [copied, setCopied] = useState(false);
+  if (!requestId) {
+    return (
+      <p className="text-xs" style={{ color: 'var(--fg-3)' }} data-testid={`${testId}-absent`}>
+        本次请求未记录编号，可复制时间与操作路径反馈
+      </p>
+    );
+  }
   return (
-    <span className="inline-flex min-w-0 items-baseline gap-1.5">
+    <p className="flex flex-wrap items-center gap-2 text-xs" style={{ color: 'var(--fg-3)' }}>
+      <span data-testid={testId}>请求编号：{requestId}</span>
+      <button
+        type="button"
+        className="rounded border px-1.5 py-0.5"
+        style={{ borderColor: 'var(--border)' }}
+        data-testid={`${testId}-copy`}
+        onClick={() => {
+          const write = navigator.clipboard?.writeText?.(requestId);
+          if (write && typeof write.then === 'function') {
+            void write.then(() => setCopied(true)).catch(() => setCopied(false));
+          }
+        }}
+      >
+        {copied ? '已复制' : '复制'}
+      </button>
+    </p>
+  );
+}
+
+function Cell({ label, value, title, testId }: { label: string; value: string; title?: string; testId: string }) {
+  return (
+    <span className="inline-flex min-w-0 items-baseline gap-1.5" data-testid={testId} title={title}>
       <span className="text-xs" style={{ color: 'var(--fg-3)' }}>
         {label}
       </span>
-      <span className="truncate text-sm" title={title}>
-        {value}
-      </span>
+      <span className="truncate text-sm">{value}</span>
     </span>
   );
 }
 
 function CitationItem({ row }: { row: CitationRow }) {
-  const reason = unreachableReason(row);
-  const rawId = row.employeeId ?? '';
   return (
-    <li className="min-w-0 px-3 py-3" data-testid={`evidence-row-${row.id}`}>
+    <li className="min-w-0 px-3 py-3" data-testid={`ev5-row-${row.id}`} data-unverified={row.unverified ? 'true' : undefined}>
       <div className="flex min-w-0 flex-col gap-2 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0 space-y-1">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <span
-              className="rounded-full border px-2 py-0.5 text-[11px]"
-              style={{ borderColor: 'var(--border)', color: 'var(--fg-2)' }}
-            >
-              {citationKindLabel(row.kind)}
-            </span>
-            {row.state === 'unverified' ? (
+            <Badge tone="secondary">{row.sourceLabel}</Badge>
+            {row.unverified ? (
               <span
-                className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px]"
+                className="rounded-full border px-2 py-0.5 text-[11px]"
                 style={{ borderColor: 'var(--border)', color: 'var(--fg-3)' }}
-                data-gap="1"
-                data-testid={`evidence-gap-${row.id}`}
-                title="GAP：后端没有给出这条引用的核验状态，按「待核实」显示，不猜"
+                data-testid={`ev5-unverified-${row.id}`}
+                title={`数据源缺口 GAP-1：这条记录缺少可核实的编号（事件编号或对象编号），如实显示「待核实」，不猜`}
               >
                 待核实
-                <span className="rounded-sm px-1 text-[10px]" style={{ background: 'var(--surface-2)' }}>
-                  GAP
-                </span>
               </span>
             ) : null}
-            <span className="text-sm font-medium break-words">{row.title}</span>
+            <span
+              className="break-words text-sm font-medium"
+              data-testid={`ev5-actor-${row.id}`}
+              title={row.actorTitle ?? undefined}
+            >
+              {row.actorLabel}
+            </span>
           </div>
-          {row.snippet ? (
-            <p className="max-w-[72ch] break-words text-sm" style={{ color: 'var(--fg-2)' }}>
-              {row.snippet}
-            </p>
-          ) : null}
           <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1">
             <Cell
-              label="员工"
-              value={employeeLabel(row.employeeName, row.employeeId)}
-              title={rawId || undefined}
+              label="目标对象"
+              value={`${row.targetTypeLabel} · ${row.targetLabel}`}
+              title={row.targetTitle ?? undefined}
+              testId={`ev5-target-${row.id}`}
             />
-            {row.runId ? <Cell label="运行" value={shortCode(row.runId) || '—'} title={row.runId} /> : null}
-            {row.auditId ? <Cell label="审计" value={shortCode(row.auditId) || '—'} title={row.auditId} /> : null}
-            <Cell label="时间" value={fmtStamp(row.at)} />
+            <Cell label="时间" value={fmtStamp(row.at)} title={row.at ?? undefined} testId={`ev5-at-${row.id}`} />
           </div>
         </div>
         <div className="min-w-0 shrink-0 md:pl-4">
@@ -119,7 +136,7 @@ function CitationItem({ row }: { row: CitationRow }) {
             <Link
               className="inline-flex items-center gap-1 text-sm underline-offset-4 hover:underline"
               to={row.href}
-              data-testid={`evidence-open-${row.id}`}
+              data-testid={`ev5-open-${row.id}`}
             >
               打开原文
             </Link>
@@ -127,10 +144,10 @@ function CitationItem({ row }: { row: CitationRow }) {
             <span
               className="inline-flex max-w-[36ch] flex-col gap-0.5 text-xs"
               style={{ color: 'var(--fg-3)' }}
-              data-testid={`evidence-unreachable-${row.id}`}
+              data-testid={`ev5-unreachable-${row.id}`}
             >
               <span className="font-medium">原文不可达</span>
-              <span className="break-words">{reason}</span>
+              <span className="break-words">{row.unreachableReason}</span>
             </span>
           )}
         </div>
@@ -151,15 +168,15 @@ export function EvidenceModulePage() {
   const [token, setToken] = useState(0);
 
   const load = useCallback(async () => {
-    // reuse: /v1/run-events/citations
-    const body = await fetchJSON<unknown>('/agent-api/api/run-events?kind=citation&limit=50');
+    const body = await fetchJSON<unknown>(citationsUrl(new Date()));
     return readCitations(body);
   }, []);
 
   useEffect(() => {
     if (forced) {
-      setPhase(forced === 'ready' ? 'ready' : forced);
-      if (forcedRid) setRequestId(forcedRid);
+      setPayload(forced === 'ready' ? { items: REPRO_ROWS, asOf: null, origin: 'repro' } : null);
+      setRequestId(forcedRid ?? null);
+      setPhase(forced);
       return;
     }
     if (!hasConsoleSession()) {
@@ -182,15 +199,10 @@ export function EvidenceModulePage() {
         const apiError = error instanceof ApiError ? error : null;
         const status = apiError?.status ?? -1;
         setRequestId(apiError?.requestId ?? null);
-        if (status === 403) {
+        setPayload(null);
+        // 403 and 404 are one answer: the pane must not say which.
+        if (status === 403 || status === 404) {
           setPhase('denied');
-          return;
-        }
-        // A missing route (404) or an unreachable BFF (0) still renders the
-        // reviewed sample, clearly badged; it never pretends to be live data.
-        if (status === 404 || status === 0) {
-          setPayload(EVIDENCE_FIXTURE);
-          setPhase('ready');
           return;
         }
         setPhase('error');
@@ -209,56 +221,58 @@ export function EvidenceModulePage() {
   };
 
   const rows = useMemo(() => payload?.items ?? [], [payload]);
-  const fixture = payload?.origin === 'fixture';
+  const repro = payload?.origin === 'repro';
   const counts = useMemo(() => {
-    let verified = 0;
     let unverified = 0;
+    let unreachable = 0;
     for (const row of rows) {
-      if (row.state === 'verified') verified += 1;
-      else unverified += 1;
+      if (row.unverified) unverified += 1;
+      if (!row.href) unreachable += 1;
     }
-    return { verified, unverified };
+    return { unverified, unreachable };
   }, [rows]);
 
   return (
-    <section className="space-y-4" data-testid="evidence-module" data-fixture={fixture ? '1' : undefined}>
+    <section className="min-w-0 space-y-4" data-testid="ev5-page" data-fixture={repro ? '1' : undefined}>
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <h1 className="font-mondwest text-xl">证据与引用</h1>
           <p className="text-sm" style={{ color: 'var(--fg-2)' }}>
-            回答、运行与审计留下的引用都在这里；每一条要么点得回原文，要么说清为什么点不回去。
+            每条记录都写明谁留下的、动了什么对象、什么时候；能点回原文的给链接，点不回去的说清原因。
           </p>
         </div>
-        <Button size="sm" outlined onClick={retry} data-testid="evidence-refresh">
-          <RefreshCw className="mr-1 size-4" />
+        <Button size="sm" outlined onClick={retry} data-testid="ev5-refresh" aria-busy={phase === 'loading'}>
+          <RefreshCw className={phase === 'loading' ? 'mr-1 size-4 animate-spin' : 'mr-1 size-4'} />
           重新读取
         </Button>
       </header>
 
-      {fixture ? (
+      {repro ? (
         <div
           className="flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-sm"
           style={{ borderColor: 'var(--warning)', background: 'var(--warning-soft)' }}
-          data-testid="evidence-fixture-note"
+          data-testid="ev5-fixture-note"
         >
-          <Badge tone="warning">示例数据</Badge>
-          <span title="数据源缺口 GAP-1：等待 /api/run-events 与 /api/audit 接入">
-            真实引用还没接上，下面展示的是格式样例，不是真实记录。接入后这里会自动换成真实引用。
+          <Badge tone="warning">复现态</Badge>
+          <span title={`数据源缺口 GAP-1：?state= 复现腿不读真实数据（本次没有发出请求）`}>
+            这是用 ?state= 复现出来的行样式，不是本次读到的记录。
           </span>
         </div>
       ) : null}
 
       {phase === 'ready' ? (
         <>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm" data-testid="evidence-summary">
-            <span>共 {rows.length} 条引用</span>
-            <span style={{ color: 'var(--fg-2)' }}>已核验 {counts.verified}</span>
+          <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 text-sm" data-testid="ev5-summary">
+            <span>共 {rows.length} 条记录（最近 {WINDOW_DAYS} 天）</span>
             <span style={{ color: 'var(--fg-2)' }}>待核实 {counts.unverified}</span>
-            <span style={{ color: 'var(--fg-3)' }}>读取于 {fmtStamp(payload?.asOf ?? null)}</span>
+            <span style={{ color: 'var(--fg-2)' }}>原文不可达 {counts.unreachable}</span>
+            <span style={{ color: 'var(--fg-3)' }} title="服务没有在这份回答里给出读取时刻，本页不用浏览器时间顶替">
+              读取于 {fmtStamp(payload?.asOf ?? null)}
+            </span>
           </div>
           <Card>
-            <CardContent className="p-0">
-              <ul className="divide-y" data-testid="evidence-list">
+            <CardContent className="min-w-0 p-0">
+              <ul className="divide-y" data-testid="ev5-list">
                 {rows.map((row) => (
                   <CitationItem key={row.id} row={row} />
                 ))}
@@ -269,7 +283,7 @@ export function EvidenceModulePage() {
       ) : null}
 
       {phase === 'loading' ? (
-        <StateBlock testId="evidence-loading">
+        <StateBlock testId="ev5-loading">
           <div className="flex items-center gap-2 text-sm">
             <RefreshCw className="size-4 animate-spin" />
             正在读取引用…
@@ -280,22 +294,22 @@ export function EvidenceModulePage() {
       ) : null}
 
       {phase === 'empty' ? (
-        <StateBlock testId="evidence-empty">
+        <StateBlock testId="ev5-empty">
           <div className="flex items-center gap-2">
             <Inbox className="size-5" />
-            <span className="font-medium">还没有引用</span>
+            <span className="font-medium">最近 {WINDOW_DAYS} 天没有留下记录</span>
           </div>
           <p className="text-sm" style={{ color: 'var(--fg-2)' }}>
-            运行或审计产生引用之后，这里才会出现记录。现在没有，是因为还没有人留下引用。
+            读取成功，只是这段时间里还没有可引用的审计记录。产生记录后这里会自动出现。
           </p>
-          <Button size="sm" outlined onClick={retry} data-testid="evidence-empty-retry">
+          <Button size="sm" outlined onClick={retry} data-testid="ev5-empty-retry">
             再看看
           </Button>
         </StateBlock>
       ) : null}
 
       {phase === 'error' ? (
-        <StateBlock testId="evidence-error">
+        <StateBlock testId="ev5-error">
           <div className="flex items-center gap-2">
             <TriangleAlert className="size-5" />
             <span className="font-medium">引用没能读出来</span>
@@ -303,36 +317,32 @@ export function EvidenceModulePage() {
           <p className="text-sm" style={{ color: 'var(--fg-2)' }}>
             这次读取没有成功，可能是服务一时忙。刚才的读取没有改动任何东西。
           </p>
-          <p className="text-xs" style={{ color: 'var(--fg-3)' }}>
-            {requestId ? `请求编号：${requestId}` : '本次请求未记录编号，可复制时间与操作路径反馈'}
-          </p>
-          <Button size="sm" onClick={retry} data-testid="evidence-error-retry">
+          <RequestIdLine requestId={requestId} testId="ev5-error-request-id" />
+          <Button size="sm" onClick={retry} data-testid="ev5-error-retry">
             重试
           </Button>
         </StateBlock>
       ) : null}
 
       {phase === 'denied' ? (
-        <StateBlock testId="evidence-denied">
+        <StateBlock testId="ev5-denied">
           <div className="flex items-center gap-2">
             <ShieldAlert className="size-5" />
             <span className="font-medium">你看不到这些引用</span>
           </div>
           <p className="text-sm" style={{ color: 'var(--fg-2)' }}>
-            可能是这页不存在，也可能是你的账号还没有查看证据的权限。
+            可能是这页不存在，也可能是你的账号还没有查看证据的权限。两种情况在这里显示一样，不透露有没有这条记录。
           </p>
-          <p className="text-xs" style={{ color: 'var(--fg-3)' }}>
-            {requestId ? `请求编号：${requestId}` : '本次请求未记录编号，可复制时间与操作路径反馈'}
-          </p>
-          <div className="flex gap-2">
-            <Button size="sm" outlined onClick={retry} data-testid="evidence-denied-retry">
+          <RequestIdLine requestId={requestId} testId="ev5-denied-request-id" />
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" outlined onClick={retry} data-testid="ev5-denied-retry">
               刷新试试
             </Button>
             <Link
               className="inline-flex items-center rounded-md border px-3 py-1.5 text-sm"
               style={{ borderColor: 'var(--border)' }}
               to="/overview"
-              data-testid="evidence-denied-back"
+              data-testid="ev5-denied-back"
             >
               回总览
             </Link>
@@ -341,7 +351,7 @@ export function EvidenceModulePage() {
       ) : null}
 
       {phase === 'login' ? (
-        <StateBlock testId="evidence-login">
+        <StateBlock testId="ev5-login">
           <div className="flex items-center gap-2">
             <ShieldAlert className="size-5" />
             <span className="font-medium">需要登录</span>
@@ -352,7 +362,7 @@ export function EvidenceModulePage() {
           <p className="text-xs" style={{ color: 'var(--fg-3)' }}>
             本页没有发送请求，也没有改动任何数据。
           </p>
-          <Button size="sm" outlined onClick={retry} data-testid="evidence-login-retry">
+          <Button size="sm" outlined onClick={retry} data-testid="ev5-login-retry">
             重新检查登录状态
           </Button>
         </StateBlock>
