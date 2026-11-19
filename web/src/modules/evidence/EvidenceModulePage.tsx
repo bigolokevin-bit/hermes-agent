@@ -14,6 +14,7 @@ import { Badge, Button, Card, CardContent } from '@nous-research/ui';
 
 import { fetchJSON } from '@/lib/api';
 import { ApiError } from '@/lib/api-error';
+import { hasConsoleSession } from '@/modules/knowledge/session';
 
 import {
   EVIDENCE_FIXTURE,
@@ -26,7 +27,7 @@ import {
   type CitationsPayload,
 } from './evidence';
 
-type Phase = 'loading' | 'ready' | 'empty' | 'error' | 'denied';
+type Phase = 'loading' | 'ready' | 'empty' | 'error' | 'denied' | 'login';
 
 const FORCED = new Set<Phase>(['loading', 'ready', 'empty', 'error', 'denied']);
 
@@ -159,6 +160,12 @@ export function EvidenceModulePage() {
     if (forced) {
       setPhase(forced === 'ready' ? 'ready' : forced);
       if (forcedRid) setRequestId(forcedRid);
+      return;
+    }
+    if (!hasConsoleSession()) {
+      setPayload(null);
+      setRequestId(null);
+      setPhase('login');
       return;
     }
     let live = true;
@@ -330,6 +337,24 @@ export function EvidenceModulePage() {
               回总览
             </Link>
           </div>
+        </StateBlock>
+      ) : null}
+
+      {phase === 'login' ? (
+        <StateBlock testId="evidence-login">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="size-5" />
+            <span className="font-medium">需要登录</span>
+          </div>
+          <p className="text-sm" style={{ color: 'var(--fg-2)' }}>
+            当前浏览器没有控制台会话，引用读取没有发出；登录后再打开这一页。
+          </p>
+          <p className="text-xs" style={{ color: 'var(--fg-3)' }}>
+            本页没有发送请求，也没有改动任何数据。
+          </p>
+          <Button size="sm" outlined onClick={retry} data-testid="evidence-login-retry">
+            重新检查登录状态
+          </Button>
         </StateBlock>
       ) : null}
 

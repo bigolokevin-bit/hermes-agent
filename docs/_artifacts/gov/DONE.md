@@ -166,23 +166,57 @@ models  375 {"sw":375,"bw":375,"iw":375}; inner table scrolls: price 640/311, ca
 
 - BFF 尚未注册 `/api/models`、`/api/models/pricing`（GAP-07）；账本口 `/api/hermes-usage` 已存在但本批未取得带鉴权的真实 200。三块未接入态由测试覆盖，不是活数据。
 - 页面 ready-to-mount，但本 lane 未改 App/shell/manifest；预览仅为布局证据。
-- 未跑 vite build / 不声称 entry sha（软链树不可信）。
+- 未声称 vite entry sha（软链树不可信）；布局前已跑 `pnpm --filter web build`，exit 0。
 
 ## 追加核查：knowledge 三条 console error（2026-11-19）
 
-对 9122 上旧产物（fd1e43f2 代次）用 Chrome CDP 打开 `#/knowledge?tab=citations|evidence|retrieval`，原始 error 文本一致：
+### 修前（9122 旧产物，fd1e43f2 代次）
+
+三个 tab 的捕获一致，各 1 条 error：
 
 ```text
+citations  consoleErrors=1
+evidence   consoleErrors=1
+retrieval  consoleErrors=1
+
 [log] Failed to load resource: the server responded with a status of 401 (Unauthorized)
       http://127.0.0.1:9122/agent-api/api/run-events?kind=citation&limit=50
 [console.error] [api] HTTP 401 /agent-api/api/run-events?kind=citation&limit=50
       {"code": "console.unauthenticated", "message": "identity check failed"}
 ```
 
-核查结论：
+### 修复
 
-- 三个 tab 最终都解析到同一个证据页，唯一请求是 `/agent-api/api/run-events?kind=citation&limit=50`；401 来自未注入 `__HERMES_SESSION_TOKEN__` 的静态预览，账本自身把它标为 `consoleErrorEnv: "auth-required-401"`。
-- 当前基线 4bfb31ef 的 `web/src/lib/api.ts` 已用 `console.warn("[api]", …)`，不再产生 `[console.error] [api] HTTP 401`；旧产物 9122 才有这条。
-- 仍会留下浏览器对 401 资源的 `Failed to load resource` 环境日志；除非在无会话时直接跳过请求（会误伤 cookie 鉴权），否则无法由页面代码消除。
-- 因此本批未改 knowledge/evidence 代码：没有可归因的产品异常（undefined/i18n/重复 key/图表空数据均未复现），不做掩盖式改动。
-- `docs/_artifacts/tonight/` 的旧账本副本已整块删除（提交 `b022006c`），权威账本只保留在 `forks/hermes-agent` 主树。
+- 三个 tab 最终都渲染 `EvidenceModulePage`，唯一请求是 `/agent-api/api/run-events?kind=citation&limit=50`。
+- 新增 `web/src/modules/knowledge/session.ts` 的 `hasConsoleSession()`；`EvidenceModulePage` 在无 `window.__HERMES_SESSION_TOKEN__` 时**不发请求**，直接渲染「需要登录」状态（`evidence-login`），并说明“引用读取没有发出”。
+- 有会话 token 时行为不变，仍读取引用；401/403/404/空/错态保持原样。
+- 说明：三个 tab 的实际渲染文件属于 `web/src/modules/evidence/`，`web/src/modules/knowledge/**` 本身不参与该渲染；本次只改了这一处渲染入口和新增的 knowledge 会话判断文件。
+
+### 修后（本分支构建产物，5427 本地 served，`/agent-api` 代理真实返回 401）
+
+同一 Chrome CDP 捕获：
+
+```text
+citations  consoleErrors=0
+evidence   consoleErrors=0
+retrieval  consoleErrors=0
+```
+
+页面文本包含「需要登录」「引用读取没有发出」「本页没有发送请求」，且网络面板没有 `/agent-api/api/run-events` 请求。
+
+### 测试
+
+```text
+$ cd web && npx vitest run src/modules/evidence src/modules/knowledge
+ Test Files  2 passed (2)
+      Tests  5 passed (5)
+
+$ ./node_modules/.bin/tsc -b . --noEmit
+# EXIT: 0
+```
+
+### 账本引用
+
+- `docs/_artifacts/tonight/` 的模块树副本已整块删除（`b022006c`）。
+- 本文件此前指向该副本的 1 处已改为：权威账本只在主树 `/Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/`，模块树不生成任何 tonight 账本。
+- 其他 lane 的 DONE 仍含 31 处历史路径引用（`docs/_artifacts/D/DONE.md` 等），不在本 lane 写域，未改；阅读时一律以主树权威账本为准。
