@@ -22,9 +22,11 @@
  * re-read and copy.
  *
  * The one request this page makes is `GET /agent-api/api/delegations` — the
- * `/api/` segment is part of the route. R32 fixture debt burn removed the
- * `?state=` repro leg: this route answered 200 on this deployment (an empty
- * tenant), so the page paints the service's own answer and nothing else.
+ * `/api/` segment is part of the route. The `?state=` repro leg (R39, restored
+ * after R32 burned it) draws its state from the URL alone, carries
+ * `data-fixture` plus the on-screen note, and issues zero requests; without
+ * `?state=` this route answered 200 on this deployment (an empty tenant), so
+ * the ready leg paints the service's own answer and nothing else.
  */
 import type { ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
@@ -43,6 +45,7 @@ import {
   ErrorPanel,
   LoadingPanel,
   LoginPanel,
+  ReproNote,
   TechnicalDisclosure,
 } from "./states";
 import {
@@ -63,7 +66,7 @@ import {
   validityCell,
   type DelegationRow,
 } from "./delegations";
-import { useDelegations } from "./useDelegations";
+import { forcedStateOf, useDelegations } from "./useDelegations";
 
 /** 「—」 with the reason in its title: a gap reads as a gap, never as a zero. */
 function Dashed({ reason }: { reason: string }): ReactNode {
@@ -360,8 +363,13 @@ export function CollabDelegationsModulePage(): ReactNode {
     else search.delete("view");
     setParams(search, { replace: true });
   };
-  const data = useDelegations();
-  const { phase, rows, unreadable, failure } = data;
+  const forced = forcedStateOf(params.get("state"));
+  const data = useDelegations(forced);
+  const { phase, rows, unreadable, failure, forced: isForced } = data;
+
+  const reloadTitle = isForced
+    ? "复现腿不发起真实请求，去掉 ?state= 即为真实读取"
+    : "重新向服务要一次委托清单";
 
   const statusLine =
     phase === "loading"
@@ -379,7 +387,7 @@ export function CollabDelegationsModulePage(): ReactNode {
   const countsKnown = phase === "ready" || phase === "empty";
   const stamp = readingStamp(data.asOf);
 
-  const technical = [askedLine(), failure?.technical ?? ""].filter(Boolean);
+  const technical = [askedLine(), !isForced && failure?.technical ? failure.technical : ""].filter(Boolean);
 
   return (
     <div
@@ -387,6 +395,7 @@ export function CollabDelegationsModulePage(): ReactNode {
       data-testid="col5-page"
       data-page="collab"
       data-view={view}
+      data-fixture={forced ?? undefined}
     >
       <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-2">
         <div className="min-w-0">
@@ -429,8 +438,8 @@ export function CollabDelegationsModulePage(): ReactNode {
             size="sm"
             outlined
             onClick={data.reload}
-            disabled={phase === "loading"}
-            title="重新向服务要一次委托清单"
+            disabled={phase === "loading" || isForced}
+            title={reloadTitle}
             data-testid="col5-refresh"
             prefix={phase === "loading" ? <Spinner className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" />}
           >
@@ -438,6 +447,8 @@ export function CollabDelegationsModulePage(): ReactNode {
           </Button>
         </div>
       </div>
+
+      {forced !== null ? <ReproNote state={forced} /> : null}
 
       <p className="min-w-0 break-words text-xs text-muted-foreground" aria-live="polite" data-testid="col5-status">
         {statusLine}
@@ -458,13 +469,15 @@ export function CollabDelegationsModulePage(): ReactNode {
         {`读取于 ${stamp ?? "—"}`}
       </p>
 
-      {phase === "loading" ? <LoadingPanel /> : null}
+      {phase === "loading" ? <LoadingPanel fixture={forced ?? undefined} /> : null}
 
-      {phase === "empty" ? <EmptyPanel onRetry={data.reload} filtered={false} /> : null}
+      {phase === "empty" ? <EmptyPanel onRetry={data.reload} filtered={false} fixture={forced ?? undefined} /> : null}
 
-      {phase === "denied" ? <DeniedPanel requestId={failure?.requestId ?? null} /> : null}
+      {phase === "denied" ? <DeniedPanel requestId={failure?.requestId ?? null} fixture={forced ?? undefined} /> : null}
 
-      {phase === "error" && failure ? <ErrorPanel failure={failure} onRetry={data.reload} /> : null}
+      {phase === "error" && failure ? (
+        <ErrorPanel failure={failure} onRetry={data.reload} fixture={forced ?? undefined} />
+      ) : null}
 
       {phase === "login" ? (
         <LoginPanel

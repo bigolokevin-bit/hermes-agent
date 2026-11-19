@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Badge, Card, CardContent } from "@nous-research/ui";
+import { Badge, Button, Card, CardContent } from "@nous-research/ui";
 import { ApiError } from "@/lib/api-error";
 import { fetchJsonStrict } from "../models/fetchJson";
 import { MODELS_GAP, fmtStamp, fmtUnitPrice, readPrices, type ModelPriceRow } from "../models/models";
@@ -40,6 +40,24 @@ function StateBadge({ unknown }: { unknown: boolean }) {
   return <Badge tone={unknown ? "outline" : "success"}>{unknown ? "未知" : "已提供"}</Badge>;
 }
 
+
+function leavePreview(): void {
+  if (typeof window === "undefined") return;
+  const search = new URLSearchParams(window.location.search);
+  search.delete("state");
+  const hash = window.location.hash;
+  const mark = hash.indexOf("?");
+  let nextHash = hash;
+  if (mark >= 0) {
+    const params = new URLSearchParams(hash.slice(mark + 1));
+    params.delete("state");
+    const qs = params.toString();
+    nextHash = hash.slice(0, mark) + (qs ? `?${qs}` : "");
+  }
+  window.history.replaceState({}, "", `${window.location.pathname}${search.toString() ? `?${search}` : ""}${nextHash}`);
+  window.dispatchEvent(new PopStateEvent("popstate"));
+}
+
 function BuildRows({ rows }: { rows: BuildRow[] }) {
   return <dl className="divide-y divide-white/10" data-testid="ver4-build-rows">
     {rows.map((row) => (
@@ -55,8 +73,7 @@ function BuildRows({ rows }: { rows: BuildRow[] }) {
 }
 
 export function VersionPage() {
-  const [retried, setRetried] = useState(false);
-  const forced = retried ? null : currentFixtureState();
+  const forced = currentFixtureState();
   const preview = fixtureView<State | null>(forced ?? "ready", {
     loading: () => ({ k: "loading" }), empty: () => ({ k: "empty" }),
     error: () => ({ k: "error", requestId: null }), ready: () => null,
@@ -71,9 +88,11 @@ export function VersionPage() {
   const view = preview ?? liveState;
   const [prices, setPrices] = useState<PriceState>({ k: "loading" });
   const [priceReload, setPriceReload] = useState(0);
+  const [, setPreviewTick] = useState(0);
+  const leaveForLive = () => { leavePreview(); setPreviewTick((n) => n + 1); };
 
   useEffect(() => {
-    if (forced) return;
+    if (forced && forced !== "ready") return;
     let live = true;
     fetchJsonStrict("/agent-api/api/models/pricing")
       .then((payload) => {
@@ -128,34 +147,10 @@ export function VersionPage() {
           <p className="mt-2 text-xs text-white/50">当前构建没有注入版本信息。</p>
         </CardContent></Card>
       ) : view.k === "error" ? (
-        <Card><CardContent className="space-y-3 py-10 text-center" data-testid="ver4-error" role="status">
-          <p className="text-sm text-white/80">这次没能读出构建与依赖信息</p>
-          <p className="text-xs text-white/50">
-            页面没有把旧内容顶上来充数，也没有编造版本号；重试只会再读一次本机构建信息。
-          </p>
-          <p className="flex min-w-0 flex-wrap items-center justify-center gap-1 text-xs text-white/45" data-testid="ver4-error-request-id">
-            <span>请求编号：</span>
-            {view.requestId ? <code className="min-w-0 break-all" title={view.requestId}>{view.requestId}</code> : <span>未提供</span>}
-            {view.requestId ? (
-              <button
-                type="button"
-                className="underline underline-offset-2"
-                aria-label="复制请求编号"
-                data-testid="ver4-error-copy"
-                onClick={() => { void navigator.clipboard?.writeText(view.requestId ?? ""); }}
-              >
-                复制
-              </button>
-            ) : null}
-          </p>
-          <button
-            type="button"
-            className="rounded-md border border-white/15 px-2.5 py-1 text-xs text-white/70"
-            data-testid="ver4-error-retry"
-            onClick={() => setRetried(true)}
-          >
-            重试
-          </button>
+        <Card><CardContent className="py-10 text-center" data-testid="ver4-error" role="status">
+          <p className="text-sm text-white/80">本地版本信息暂不可用</p>
+          <CopyRequestId id={view.requestId} />
+          <Button size="sm" outlined onClick={leaveForLive} data-testid="ver4-retry">重试</Button>
         </CardContent></Card>
       ) : (
         <div className="grid min-w-0 gap-4 lg:grid-cols-2" data-testid="ver4-content">
@@ -180,7 +175,7 @@ export function VersionPage() {
         </div>
       )}
 
-      <Card data-testid="ver4-prices">
+      {view.k === "ready" ? <Card data-testid="ver4-prices">
         <CardContent className="space-y-3 p-4">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="text-sm font-medium text-white/85">模型单价</h2>
@@ -233,7 +228,7 @@ export function VersionPage() {
           )}
           <p className="text-xs text-white/40">单价是价目表标价；实际扣费在「模型与单价」页的账本卡，不用单价乘次数推算。</p>
         </CardContent>
-      </Card>
+      </Card> : null}
     </section>
   );
 }

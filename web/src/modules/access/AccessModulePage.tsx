@@ -471,6 +471,16 @@ export default function AccessModulePage() {
     void loadHighRisk().then(setRisk);
   }, []);
 
+  const retry = useCallback(() => {
+    if (FORCED.has(forced)) {
+      const params = new URLSearchParams(sp);
+      params.delete("state");
+      setSp(params);
+    }
+    reload();
+    if (view === "admins") reloadRisk();
+  }, [forced, reload, reloadRisk, setSp, sp, view]);
+
   useEffect(() => {
     if (FORCED.has(forced)) return;
     reload();
@@ -501,7 +511,7 @@ export default function AccessModulePage() {
         </header>
         <Card>
           <CardContent>
-            <ForcedBlock state={forced} onRetry={reload} />
+            <ForcedBlock state={forced} onRetry={retry} />
           </CardContent>
         </Card>
       </div>

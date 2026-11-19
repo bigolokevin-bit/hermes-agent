@@ -1033,3 +1033,11 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 九件全 exit=0 盖 466e2d2b：ia-html/react ok{51,22,1,8}｜lint-fake v=[]｜lint-reuse v=0 exempt=1 chat→T40（stdout 抄件）｜crawl-anon DL0/CE0/PE0 routesCE51(401归因)｜crawl-auth routesCE27（88轮26→27 波动，环境项）｜state-quad 20/20 文本重建注 source。
 - shots main(auth) 102/102 failures=[] oversize=[] ceAuth=login-state obs=4 仅观测（#/employees/:employeeId、#/identity?tab=binding、#/system?tab=events&view=anomaly、#/system?tab=version，不入 ok）distinctMainHeads=27 rootBaseline textLen=1275 真数据；三键全值+拍后 curl 复证未漂。shots-anon auxiliary=true 102/102 mode=anon obs=3（zone=tasks、#/system、events&view=anomaly）envOnly=51。anon png 同名覆盖 pngs=102。
 - 环境：9122 v4_proxy 受管未动、caddy 8183 28034、8092 pid 5950；web/src 未碰；他人脏零沾染；auth-state 昨夜 23:5x 版窗内。
+
+## 九十一轮·波终代次九件重章 @ d0b50590（2026-11-20 05:0x，一波一盖·代次更正）
+
+- 代次：wave-10 终代次 d0b50590『merge(lane/console-aud): collab runs four-state content wiring (R39)』（卡面更正：998cb124 作废不重章，中途已跑的六腿直接以 d0b50590 覆盖重写）；entry index-CmkaMZfk.js 163974B sha 0d744545ba680714…57a6bbe；三向互证过（盘==9122==8183），21/21 路由 200。注：9122 已换受管 v4_proxy 飞书版 pid 95667（R39 拍板重启），served 判据不变。
+- 九件全 exit=0 盖 d0b50590：ia-html/react ok{51,22,1,8}｜lint-fake v=[]｜lint-reuse v=0 exempt=1 chat→T40（stdout 抄件）｜crawl-anon DL0/CE0/PE0 routesCE51(401归因)｜crawl-auth routesCE26（89轮27→26 波动，环境项）｜state-quad 20/20 文本重建注 source。
+- shots main(auth) 102/102 failures=[] oversize=[] ceAuth=login-state obs=1 仅观测（#/overview，不入 ok）distinctMainHeads=26 rootBaseline textLen=1276 真数据；三键全值+拍后 curl 复证未漂。shots-anon auxiliary=true 102/102 mode=anon obs=1（#/knowledge?tab=sources）envOnly=51。anon png 同名覆盖 pngs=102。
+- BFF 四读口活体补录（卡面另项，R39 已交付，本轮新 cookie 法现测）：/__health-probe__ 200 ok=true；/health/sources 200 三源 console/runtime/bisheng 全 state=ok 各带 asOf（runtime/bisheng 探 404 应答=ok 口径）；models/pricing=404、knowledge/spaces=404（fail-closed 信封）。
+- 环境：web/src 未碰；他人脏零沾染；auth-state 昨夜 23:5x 版窗内。

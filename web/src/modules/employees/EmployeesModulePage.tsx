@@ -159,6 +159,7 @@ function errorState(err: unknown): State {
 export function EmployeesModulePage() {
   const [params, setParams] = useSearchParams();
   const forced = params.get("state");
+  const forcedRid = params.get("rid");
   // URL is the single source of truth (?q=&lifecycle=): a refresh or a back
   // step reopens exactly the same answer.
   const q = params.get("q") ?? "";
@@ -199,7 +200,8 @@ export function EmployeesModulePage() {
         items: [],
         status: forced === "denied" ? 403 : forced === "error" ? 502 : 0,
         message: forced === "error" ? humanizeStatus(502) : undefined,
-        requestId: forced === "error" ? (params.get("rid") ?? "preview-request") : undefined,
+        // state 与 rid 同源读取（同一 params 快照），见下方 forcedRid 依赖。
+        requestId: forced === "error" ? (forcedRid ?? "preview-request") : undefined,
       });
       return;
     }
@@ -222,7 +224,7 @@ export function EmployeesModulePage() {
     return () => {
       cancelled = true;
     };
-  }, [q, lifecycle, reload, forced]);
+  }, [q, lifecycle, reload, forced, forcedRid]);
 
   const counts = useMemo(() => {
     let active = 0;

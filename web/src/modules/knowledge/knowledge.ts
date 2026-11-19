@@ -52,6 +52,10 @@ export const TASKS_UNWIRED_HEAD = "数据源接入读口未接入";
 export const TASKS_UNWIRED_HUMAN =
   "数据源的接入状态接口尚未接入本控制台，或当前账号没有查看它的权限。接入或开通后，这里会按源逐行列出最近同步、同步状态与条目数；在此之前不展示样例，也不写「0 个源」。";
 
+export const INGEST_STATUS_UNWIRED_HEAD = "入库状态未接入";
+export const INGEST_STATUS_UNWIRED_HUMAN =
+  "知识内容的入库状态接口尚未接入本控制台，或当前账号没有查看它的权限。接入后这里会按来源逐行列出最近同步、进行或完成的状态、失败原因与条目数；在此之前不展示样例，也不写「0 个源」。";
+
 export const DOCUMENTS_UNWIRED_HEAD = "文档登记读口未接入";
 export const DOCUMENTS_UNWIRED_HUMAN =
   "文档登记接口尚未接入本控制台，或当前账号没有查看它的权限。接入或开通后，这里会列出真实登记的文档与其数量、更新时间和状态；在此之前不展示样例，也不写「0 篇」。";
@@ -91,6 +95,15 @@ export const CITATIONS_URL = "/agent-api/api/knowledge/citations?limit=20";
  * are both ignored), so its rows are not knowledge ingestion and must not appear here.
  */
 export const TASKS_URL = "/agent-api/api/knowledge/sources?limit=20";
+/**
+ * 入库状态. Probed 2026-11-20 with the login cookie: this path is NOT one of the
+ * three the BFF names for itself — it answers the generic
+ * `{"code":"console.unknown_route"}`, while `/api/knowledge/spaces` answers
+ * `{"code":"knowledge.not_wired","rid":"b9f1187b"}`. So the surface is wired to the
+ * status path the dispatcher asked for, and today it honestly reports 「入库状态未接入」
+ * instead of borrowing the sources read's numbers.
+ */
+export const INGEST_STATUS_URL = "/agent-api/api/knowledge/ingest-status?limit=20";
 
 const SEARCH_LIMIT = 12;
 
@@ -108,6 +121,7 @@ export function searchUrl(query: string): string {
 
 export type SurfaceKey =
   | "spaces"
+  | "ingest-status"
   | "tasks"
   | "documents"
   | "search"
@@ -118,6 +132,7 @@ export type SurfaceKey =
 /** Human label for each surface's source line — no route, no field name. */
 export const SURFACE_SOURCE: Record<SurfaceKey, string> = {
   spaces: "知识空间登记",
+  "ingest-status": "知识入库状态",
   tasks: "数据源接入任务",
   documents: "文档与数据接入登记",
   search: "知识库检索",
@@ -753,7 +768,7 @@ function ingestStatusLabel(raw: string | null): string {
       lower,
     )
   ) {
-    return "同步中";
+    return "进行中";
   }
   if (["failed", "error", "broken", "aborted"].includes(lower)) return "失败";
   if (

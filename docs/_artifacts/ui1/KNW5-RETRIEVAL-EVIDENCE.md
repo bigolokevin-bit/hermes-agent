@@ -495,3 +495,96 @@ $ npx vite build --outDir /tmp/knw9-dist --emptyOutDir
 
 边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
 package / lock / web/scripts / ops；未重启或重建 9122；无 force / amend / `--no-verify` / `git add -A`。
+
+---
+
+# KNW5 追加：入库状态面（ingest-status）（2026-11-20 BJT）
+
+基线：porcelain 空 → `git fetch origin lane/hermes-console` + `git merge`（**不 rebase、不 force**）。
+来路 tip = `fa2c3bf7`（在预期的 `466e2d2b` 之上多一枚 gate ledger 戳记），`b886b72d` 为其祖先，
+合并为快进、零冲突；来路未改动 `web/src/modules/knowledge/**`。
+
+## 一、探针（cookie 只在 curl 命令内拼 Header，值零回显；9122 只读、未重启、未重建）
+
+```text
+HTTP 404  /agent-api/api/knowledge/ingest-status
+   body[:120] {"code": "console.unknown_route", "message": "unknown console API route"}
+   rows=0（无行数组；这不在 BFF 自己点名的读口清单里）
+
+HTTP 404  /agent-api/api/knowledge/spaces
+   body[:120] {"code": "knowledge.not_wired", "message": "本环境未接入知识库读口", "rid": "b9f1187b"}
+   rows=0
+
+旁证：sources → 404 knowledge.not_wired；documents → 404 documents.read_not_wired；
+      citations → 404 knowledge.not_wired；search / tasks / datasets → 404 console.unknown_route
+```
+
+入库状态读口没有接上，所以第 2 步（有数据）不成立，按第 3 步落地：一份诚实正文
+「**入库状态未接入**」+ 人话原因 + GAP-03 只进 `title` + 可复制请求编号 + 重试 +
+既有申请入口；不编来源、不放样例、不写「0 个源」。三个读口（ingest-status / sources /
+documents）各自点名自己那份没接上，互不借数。
+
+## 二、入库状态启用后的行口径（wired 模式真实 DOM，`data-len=5`）
+
+```text
+列头：来源名称 / 类型 / 最近同步 / 状态 / 条目数      sw=1440/1280/375 均 == vw，fixture=0
+row1 人事制度库 | SharePoint | 最近同步：2026-11-19 14:40 | 进行中 | 1,380 条 · 已处理 412 条
+row2 法务合同归档 | 对象存储 | 最近同步：2026-11-19 13:05 | 已完成 | 0 条           ← 上游真给 0
+row3 薪酬口径镜像 | 网页抓取 | —  上游没有给出时间 | 失败 凭据已过期，请重新授权 | 214 条
+row4 工单镜像 | 接口同步 | —  上游没有给出时间 | 失败 上游记的原因偏技术，这里不原样上屏；悬停可看原文。
+     条目数=— 约 5.0 MB 上游没有给出这一条有多少条目                                ← 大小不冒充条目数
+row5 —（缺名）| —（缺类型）| —（缺时间）| 待核实（缺状态）| —（缺条目数）
+```
+
+- 状态词按本页口径：待同步 / 进行中 / 已完成 / 失败（+原因）；认不出来或没给 → 待核实 + 原因。
+  （同一屏里 `数据源接入任务` 面用同一套行适配器，两面对同一状态词给出一致说法。）
+- 真 0 与缺失可区分：`0 条` 只在上游真给 0 时出现；缺失是「—」+缺什么；代码里没有 `?? 0`。
+- 技术性失败原文（连接被拒、IP:端口、重试字样）不进屏面，只进 `title`。
+- 屏面零工程语言：路由、状态码、字段名、`in_progress`、`ECONNREFUSED` 全部 false。
+
+## 三、四态与门禁复核（Chromium 无头；today / wired / denied / 强制上游不可用）
+
+```text
+未接入   state=unwired len=0，无表格；403 正文与 404 正文逐字相等（true），请求编号不同，title 同为 GAP-03
+错误     强制 503：state=error，「这次没能读到知识数据 / 数据服务暂时没有响应，请稍后重试。」
+         + 可复制请求编号（rid-upstream-busy-77）+ 重试；屏面无 500/503/404 数字；
+         点重试后重新真请求（该口回 404 就如实回到未接入，不留在旧数据）
+骨架     读口挂起时 data-state=loading，[data-testid$="-loading"] 存在，aria-busy=true
+空态     200 { items: [] }：state=ready len=0，正文「……这不等于一个源都没有，也不写 0 个源」，行数 0
+四 tab  1440/1280/375 全 4/4；深链 5/5（?tab=ingest、?tab=sources、根、?tab=retrieval、?tab=citations）
+保持    刷新仍 knw5-tab-ingest；后退回 knw5-tab-retrieval；面板 data-tab 与选中 testid 一致
+溢出     docSW == vw == bodySW；页容器 SW==CW；OVERFLOW 元素 0；写入口 0
+fixture  today / wired / denied / 强制错误 四组 × 三档视口 [data-fixture] 全部为 0（端点没启用时也不会冒出来）
+testid   本面新增家族：knw5-ingest-status、-table、-row、-time、-count、-failure、-source、
+         -unwired、-empty、-error、-loading、-request-id、-retry、-apply
+         实测 ingest 面板 DOM 内 knw5-* testid 数：未接入 26 / 有数据 27（原 knw5-* 全部保留）
+页面报错 none
+```
+
+## 四、验证尾行（本轮）
+
+```text
+$ npx vitest run src/modules/knowledge
+ Test Files  2 passed (2)
+      Tests  30 passed (30)
+
+$ npx vitest run
+ Test Files  131 passed (131)
+      Tests  1347 passed (1347)
+
+$ npx eslint src/modules/knowledge
+（无输出，exit 0）
+
+$ npx tsc -b . --noEmit | grep modules/knowledge
+（无输出，本模块 0 错）
+
+$ npx vite build --outDir /tmp/knw10-dist --emptyOutDir
+✓ built in 3.72s   （产物只落 /tmp）
+
+$ node scripts/assert-ia.mjs --source=react
+（只读复核：51 / 22 / 1 / 8 未变）
+```
+
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；未并 main、未重启或重建 9122；无 force / amend / `--no-verify` /
+`git add -A`。`pnpm build` 的非本域 typecheck 阻塞按指示未追。

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@nous-research/ui", () => ({
   Badge: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
+  Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => <button {...props}>{children}</button>,
   Card: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   CardContent: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => <div {...props}>{children}</div>,
 }));
@@ -64,11 +65,11 @@ describe("VersionPage", () => {
     await render();
     const error = container.querySelector('[data-testid="ver4-error"]');
     expect(error).toBeTruthy();
-    expect(error?.textContent).toContain("这次没能读出构建与依赖信息");
-    expect(error?.textContent).toContain("未提供");
+    expect(error?.textContent).toContain("本地版本信息暂不可用");
+    expect(error?.textContent).toContain("请求编号");
     expect(container.querySelector('[data-testid="ver4-dep-react"]')).toBeNull();
     await act(async () => {
-      (container.querySelector('[data-testid="ver4-error-retry"]') as HTMLButtonElement).click();
+      (container.querySelector('[data-testid="ver4-retry"]') as HTMLButtonElement).click();
     });
     expect(container.querySelector('[data-testid="ver4-error"]')).toBeNull();
     expect(container.querySelector('[data-testid="ver4-dep-react"]')).toBeTruthy();

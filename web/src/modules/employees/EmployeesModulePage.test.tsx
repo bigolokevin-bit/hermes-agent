@@ -61,8 +61,16 @@ afterEach(() => {
 const q = (id: string) => document.querySelector(`[data-testid="${id}"]`);
 
 async function render(entry: string) {
+  // MemoryRouter ignores initialEntries updates on an existing tree — a
+  // re-render must start from a fresh root (R39 rid case).
   await act(async () => {
-    root?.render(
+    root?.unmount();
+  });
+  const host = document.createElement("div");
+  document.body.append(host);
+  root = createRoot(host);
+  await act(async () => {
+    root.render(
       <MemoryRouter initialEntries={[entry]}>
         <EmployeesModulePage />
         <LocProbe />
@@ -163,6 +171,19 @@ describe("EmployeesModulePage list depth", () => {
     // A fresh mount of the same URL (refresh) starts from it again.
     await render("/employees?lifecycle=paused");
     expect((q("employees-lifecycle") as HTMLSelectElement).value).toBe("paused");
+  });
+
+  it("forced ?state=error&rid= shows that request id, copyable, with retry (R39)", async () => {
+    fetchJSON.mockImplementation(() => Promise.resolve({ items: [] }));
+    await render("/employees?state=error&rid=fs-77");
+    const card = q("employees-error");
+    expect(card).toBeTruthy();
+    expect(card?.textContent).toContain("fs-77");
+    expect(q("req-copy")).toBeTruthy();
+    expect(document.body.textContent).toContain("重试");
+    // rid is read from the same params snapshot as state: changing it re-renders.
+    await render("/employees?state=error&rid=fs-88");
+    expect(q("employees-error")?.textContent).toContain("fs-88");
   });
 
   it("403 and 404 answer with the same body and never echo a path", async () => {

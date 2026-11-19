@@ -1569,3 +1569,48 @@ built /private/tmp/health-r38/index.html
 - 只改 `web/src/modules/health/**` + 本证据；无 App/shell/routes/registry/manifest/package/lock/scripts/ops 改动。
 - 未取得真实浏览器登录态的 `hermes-summary` 元数据；缺字段按「—」+原因，不补零、不冒充采集时间。
 - 无独立观察者；页面已在 App `/system` live map 中注册（`health: <HealthConsolePage />`）。
+
+## R39 — /identity?tab=departments 组织与部门真数据面
+
+- 基线：`origin/lane/hermes-console` gate ledger `fa2c3bf7`（stamped at `466e2d2b`）；本地 lane 合入 merge `e9b1f22c`，未 rebase/force。
+- 端点实测（9122，`access_token_cookie` 从本机 auth-state 读取，未打印值）：
+  - `GET /agent-api/api/v1/departments` → **404** `console.unknown_route`
+  - `GET /agent-api/api/v1/user/list?page=1&page_size=20` → **404** `console.unknown_route`
+  - `GET /agent-api/api/v1/dept/list` → **404**；`/api/v1/dept/tree` → **404**
+  - 旁证：`GET /agent-api/api/employees?limit=20` → **200**，3 条数字员工，`department` 全为 `null`，因此不能据此编造部门树。
+- 实现：`web/src/modules/org/OrgModulePage.tsx` 候选端点首位改为 `/agent-api/api/v1/departments`，保留 `/dept/list`、`/dept/tree` 回退；403/404 同一「组织与部门未接入」体，GAP-02 仅 `title`，提供 `#/approvals` 申请去处；负责人名称存在但短码缺失时显示「姓名 · —」并给出“上游未提供负责人短码”，短码只接受 8 位字母数字；真实 0 才显示 `0 人`，缺失仍 `—` + 原因；无写入口、无 `data-fixture`、无样例/假 0。
+- 四态：加载骨架 / 空（真实 200 空列表才出现）/ 错（人话 + 可复制请求编号 + 重试）/ 未接入；403 与 404 同体；401 保留登录提示。
+- 验证：`npx vitest run src/modules/org` → **13/13 passed**；全量 `npx vitest run` → **131 files / 1346 passed**；`tsc -b . --noEmit` → exit 0。
+- DOM（临时 harness，404 真实形态；已删除）：1440/1280/375 `bodySW=bodyCW=pageSW=pageCW=1440/1280/375`，`org5-denied` 存在、`title=GAP-02`、申请链接可见；真实接口无数据故树层数 0；单测覆盖 3 层树的默认展开/折叠。
+- 测试 id：`org5-*` 唯一 token **37 个**（page/loading/empty/error/denied/apply/list/node/name/parent/count/owner/updated/request-id/copy/refresh 等）。
+- 边界：未改 App.tsx / shell / routes / registry / manifest / package·lock / scripts / ops；未跑 build，未重建 9122；无独立观察者。真实部门数据仍待上游接口接入（GAP-02）。
+
+## R39 — gov 页面四态内容面自查（同窗）
+
+- 基线：`origin/lane/hermes-console` gate ledger `fa2c3bf7`（stamped at `466e2d2b`）；本地 lane 保留 `b422431c`（org5）并以 merge `e9b1f22c` 对齐，未 rebase/force。
+- 排查范围：people / org / access / tenant / settings / cron / retention / health / models / tools / version / knowledge。retention 实现在 `web/src/modules/audit/RetentionModulePage.tsx`（audit 域，非本 lane 写域，且已明确移除 `?state=` 复现腿）；本 lane 不改 audit，仅在回执点明。
+- 逐页四态（`?state=loading|empty|error` 的可见内容；`ready` 均回真实读口，非 fixture）：
+
+| 页面 | loading | empty | error | ready | data-fixture 计数 |
+|---|---|---|---|---|---|
+| settings | 正在读取默认设置… + 骨架 | 这项配置未提供 | 默认设置暂时无法读取 + 请求号（可复制）+ 重试 | 写入开关 / 上游自检 / 风险去处 | 0 |
+| health | 正在检查服务… + 骨架 | 探针未接入，请看接入说明 | 所有探针均未收到响应 + 请求号 + 重试 | 4 行探针 + 状态/上次成功失败/连续成功/采集时间 | 1（仅强制态） |
+| version | 正在读取版本信息… + 骨架 | 这项信息未提供 | 本地版本信息暂不可用 + 请求号（可复制）+ 重试 | 构建/依赖 + 单价表（单价表仅在 ready 渲染） | 0 |
+| models | 正在读取模型目录、价目表与账本… | 还没有可展示的模型（空不等于 0） | 这次没能读取模型与账本 + 请求号 + 重试 | 目录/单价/账本三块独立态 | 0 |
+| tenant | 骨架 | 这个账号当前还没有可展示的用量 | 这次没能读取租户用量 + 未记录编号说明 + 重试 | 员工数/运行数/其余额度诚实未知 | 1（仅强制态） |
+| access | 骨架 | 没有读到访问控制记录（不是 0） | 访问控制数据读取失败 + 编号说明 + 重试 | 角色表/成员/管理员真实读口 | 0 |
+| cron | 骨架 | 服务已响应，没有定时任务 | 定时任务没能加载出来 + 编号 + 重试 | 任务列表 | 0 |
+| tools | 骨架 | 服务已响应，清单为空 | 工具与 MCP 清单没能加载出来 + 编号 + 重试 | 工具与 MCP 两块列表 | 2（页面 + 状态卡） |
+| org | 骨架 | 部门树暂时是空的 | 没能加载出组织架构 + 请求号 + 重试 | 部门树/负责人/更新时间 | 0 |
+| people | 骨架 | 目录暂时是空的 | 没能加载出人员目录 + 请求号 + 重试 | 人员表（数字员工台账来源） | 1（仅强制态） |
+| knowledge | 骨架 | 分组没有可展示条目（不显示 0） | 预览错误 + 无请求号说明 | 四个真实 surface | 1（仅强制态） |
+
+- 修复的错位：
+  - settings/health/version 的强制态重试原先只加 attempt、仍停在 fixture；现在先清除 URL 的 `state` 再重新读取。version 的同额修复还包括：`state=ready` 允许单价表真实读取，非 ready 时不渲染单价卡；error 加可复制请求号与重试。
+  - access/cron/tools/tenant 的强制态 error 重试同样先清除 `state`，不再“点重试画面不动”。
+  - org 的 `?state=` 改为同时识别 hash 内查询与 window.search，修复 SPA 深链下强制态失效；error 重试清除预览后读真实接口。
+  - people/knowledge 原先完全不接 `?state=`：新增 loading/empty/error 内容面（不发起请求），`state=ready` 走真实读口；people 强制态带 `data-fixture="1"`，knowledge 同理。
+- 验证：`npx vitest run src/modules/settings src/modules/health src/modules/version src/modules/access src/modules/cron src/modules/tools src/modules/tenant src/modules/org src/modules/people src/modules/knowledge` → **12 files / 119 tests passed**；全量 `npx vitest run` → **131 files / 1347 passed**；`tsc -b . --noEmit` → exit 0。
+- 构建：`PATH="/opt/homebrew/bin:$PATH" node scripts/build/web.mjs --source . --out /tmp/r39-build --icons .` → exit 0，`built /private/tmp/r39-build2/index.html`。
+- DOM（临时 harness，已删除；1440/375）：settings/health/version/models/tenant/access/cron/tools/org/people 的 `bodySW==bodyCW==innerWidth`；settings 在 1440 `pageSW/pageCW=1440`（已隐藏共享 Button 的 2px 装饰弧）；11 个被审计页面强制态均出现对应内容 testid，非仅角标。
+- 边界：无 App/shell/routes/registry/manifest/package·lock/web-scripts/ops 改动；无 install；未并 main、未重建 9122；`retention` 属 audit 域，本 lane 未改并已在上表外标注；未跑独立观察者。

@@ -130,14 +130,14 @@ function ChannelRowCard({ row, testId }: { row: ChannelRow; testId: string }): R
       }`}
       data-testid={testId}
       data-status={row.status}
-      data-platform={isPlatform ? "true" : undefined}
+      data-platform={isPlatform ? "true" : undefined} data-platform-key={isPlatform ? row.key : undefined}
     >
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <p className="min-w-0 break-words text-sm" title={row.rawId ?? undefined}>
+        <p className="min-w-0 break-words text-sm" title={row.rawId ?? undefined} data-testid={isPlatform ? "chn4-platform-name-" + row.key : undefined}>
           {row.name ?? <span className="min-w-0 break-words">{row.masked ?? "名称未提供"}</span>}
         </p>
 
-        <p className="min-w-0 break-words text-xs text-muted-foreground">
+        <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid={isPlatform ? "chn4-platform-type-" + row.key : undefined}>
           类型：{row.kindLabel}
         </p>
 
@@ -193,11 +193,13 @@ function ChannelRowCard({ row, testId }: { row: ChannelRow; testId: string }): R
         {technical.length ? <TechnicalDisclosure lines={technical} testId={`${testId}-details`} /> : null}
       </div>
 
+      <span className="contents" data-testid={isPlatform ? "chn4-platform-status-" + row.key : undefined}>
       <StatusBadge
         status={row.status}
         testId={`${testId}-badge`}
         label={isPlatform ? PLATFORM_STATUS_LABEL[row.status] : undefined}
       />
+      </span>
     </div>
   );
 }
