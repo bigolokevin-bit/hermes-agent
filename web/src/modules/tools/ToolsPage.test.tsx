@@ -286,6 +286,38 @@ describe("row detail", () => {
     expect(document.querySelectorAll("[data-testid='cap7-detail-tools']")).toHaveLength(0);
     expect(rows()).toHaveLength(6);
   });
+
+  it("shows only a top-level ISO asOf from the inventory payload", async () => {
+    const handler = (url?: string) => {
+      if (!url) return Promise.resolve({});
+      if (url === "/api/tools") {
+        return Promise.resolve({
+          items: [{ name: "alpha", enabled: true }],
+          asOf: "2026-11-19T06:00:00Z",
+          asOfSource: "清单快照",
+        });
+      }
+      return Promise.reject(new ApiError("missing", { status: 404, body: "{}", url }));
+    };
+    await mount(handler);
+    await act(async () => document.querySelector<HTMLButtonElement>("[data-testid='cap7-detail-toggle']")!.click());
+    const asof = document.querySelector("[data-testid='cap7-detail-asof']");
+    expect(asof?.textContent).toBe("2026-11-19 14:00");
+    expect(asof?.getAttribute("title")).toContain("asOfSource：清单快照");
+    expect(document.body.textContent).not.toContain("asOfSource");
+  });
+
+  it("closes on Escape and keeps the tab and search state", async () => {
+    await mount(answer, "/capabilities?tab=tools&q=%E7%BD%91%E9%A1%B5");
+    await act(async () => document.querySelector<HTMLButtonElement>("[data-testid='cap7-detail-toggle']")!.click());
+    expect(document.querySelectorAll("[data-testid='cap7-detail-tools']")).toHaveLength(1);
+    expect(document.querySelector<HTMLInputElement>("[data-testid='cap5-search']")?.value).toBe("网页");
+    expect(rows()).toHaveLength(2);
+    await act(async () => { window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })); });
+    expect(document.querySelectorAll("[data-testid='cap7-detail-tools']")).toHaveLength(0);
+    expect(document.querySelector<HTMLInputElement>("[data-testid='cap5-search']")?.value).toBe("网页");
+    expect(rows()).toHaveLength(2);
+  });
 });
 
 describe("local name search", () => {

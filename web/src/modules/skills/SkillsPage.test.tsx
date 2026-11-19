@@ -219,7 +219,7 @@ describe("SkillsPage", () => {
     expect(details[0]!.textContent).toContain("资料整理");
     expect(details[0]!.textContent).toContain("/agent-api/api/skills");
     expect(container.querySelector("[data-testid='cap7-detail-asof']")?.textContent).toContain("该字段未返回");
-    expect(container.querySelector("[data-testid='cap7-detail-asof']")?.getAttribute("title")).toContain("没有带采集时刻");
+    expect(container.querySelector("[data-testid='cap7-detail-asof']")?.getAttribute("title")).toContain("没有 asOf");
     expect(window.location.search).toBe(searchBefore);
 
     await act(async () => toggles[1]!.click());
@@ -231,6 +231,43 @@ describe("SkillsPage", () => {
 
     await act(async () => toggles[1]!.click());
     expect(container.querySelectorAll("[data-testid='cap7-detail-skills']")).toHaveLength(0);
+  });
+
+  it("reads only a top-level ISO asOf for the detail and keeps asOfSource in the title", async () => {
+    window.history.replaceState({}, "", "/capabilities?tab=skills&q=%E8%B5%84%E6%96%99");
+    fetchJsonStrict.mockResolvedValue({
+      asOf: "2026-11-19T06:00:00Z",
+      asOfSource: "台账快照",
+      generated_at: "2026-11-18T01:00:00Z",
+      items: [{ skillId: "s1", name: "资料整理", scope: "tenant-shared" }],
+    });
+    await render();
+    const searchBefore = window.location.search;
+    await act(async () => container.querySelector<HTMLButtonElement>("[data-testid='cap7-detail-toggle']")!.click());
+    const asof = container.querySelector("[data-testid='cap7-detail-asof']");
+    expect(asof?.textContent).toBe("2026-11-19 14:00");
+    expect(asof?.getAttribute("title")).toBe("asOfSource：台账快照");
+    expect(container.textContent).not.toContain("asOfSource");
+    expect(window.location.search).toBe(searchBefore);
+    expect(searchBefore).toContain("tab=skills");
+    expect(searchBefore).toContain("q=");
+
+    await act(async () => { window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })); });
+    expect(container.querySelectorAll("[data-testid='cap7-detail-skills']")).toHaveLength(0);
+  });
+
+  it("shows a dash and a title reason for a non-ISO asOf instead of the browser clock", async () => {
+    window.history.replaceState({}, "", "/capabilities?tab=skills");
+    fetchJsonStrict.mockResolvedValue({
+      asOf: "2026/11/19 14:00",
+      items: [{ skillId: "s1", name: "资料整理", scope: "tenant-shared" }],
+    });
+    await render();
+    await act(async () => container.querySelector<HTMLButtonElement>("[data-testid='cap7-detail-toggle']")!.click());
+    const asof = container.querySelector("[data-testid='cap7-detail-asof']");
+    expect(asof?.textContent).toBe("该字段未返回");
+    expect(asof?.getAttribute("title")).toContain("不是 ISO");
+    expect(container.textContent).not.toContain("2026/11/19");
   });
 
   it("leaks no engineering names or raw ids into the page", async () => {

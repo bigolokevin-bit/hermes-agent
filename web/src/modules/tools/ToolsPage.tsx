@@ -139,8 +139,8 @@ function Row({ row, open, onToggle }: { row: ToolRow; open: boolean; onToggle: (
         enabled={STATUS_LABEL[row.status]}
         updatedAt={row.updatedAt}
         endpoint={row.source === "mcp" ? "/api/mcp/servers" : "/api/tools/toolsets"}
-        asOf={null}
-        asOfReason="清单接口返回的是数组，没有顶层采集时刻。"
+        asOf={row.asOf}
+        asOfReason={row.asOfReason ?? "这次读数没有带采集时刻。"}
         testid="cap7-detail-tools"
       />
     ) : null}
@@ -200,6 +200,15 @@ function FailurePanel({
 export function ToolsPage(): ReactNode {
   const [params, setParams] = useSearchParams();
   const [openTool, setOpenTool] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!openTool) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpenTool(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [openTool]);
   const forced = forcedStateOf(params.get("state"));
   const tools = useToolsData(forced);
   const { phase, rows } = tools;

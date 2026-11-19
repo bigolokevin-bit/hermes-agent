@@ -25,7 +25,7 @@ type State =
   | { k: "loading" }
   | { k: "empty" }
   | { k: "error"; message: string; requestId: string | null; gap: string | null }
-  | { k: "ready"; rows: SkillRow[]; asOf: string | null };
+  | { k: "ready"; rows: SkillRow[]; asOf: string | null; asOfReason: string | null; asOfTitle: string | null };
 
 function requestIdOf(error: unknown): string | null {
   if (error instanceof ApiError && error.requestId) return error.requestId;
@@ -115,19 +115,28 @@ export function SkillsPage() {
     setAttempt((value) => value + 1);
   };
 
+  useEffect(() => {
+    if (!openSkill) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpenSkill(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [openSkill]);
+
   const load = useCallback(async (signal: { live: boolean }) => {
     setState({ k: "loading" });
     try {
       const body = await fetchJsonStrict("/agent-api/api/skills");
       if (!signal.live) return;
-      const { rows, asOf } = readSkills(body);
+      const { rows, asOf, asOfReason, asOfTitle } = readSkills(body);
       publishCapabilityCount("skills", {
         value: rows.length,
         source: rows.length ? "ready" : "empty",
         reason: null,
         gap: null,
       });
-      setState(rows.length ? { k: "ready", rows, asOf } : { k: "empty" });
+      setState(rows.length ? { k: "ready", rows, asOf, asOfReason, asOfTitle } : { k: "empty" });
     } catch (error) {
       if (!signal.live) return;
       const gap = error instanceof ApiError && (error.status === 403 || error.status === 404) ? SKILLS_GAP : null;
@@ -289,7 +298,8 @@ export function SkillsPage() {
                             updatedAt={row.updatedAt}
                             endpoint="/agent-api/api/skills"
                             asOf={page.asOf}
-                            asOfReason="这次读数没有带采集时刻。"
+                            asOfReason={page.asOfReason ?? ""}
+                            asOfTitle={page.asOfTitle}
                             testid="cap7-detail-skills"
                           />
                         </td>

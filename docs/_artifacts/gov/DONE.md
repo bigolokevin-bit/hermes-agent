@@ -1813,3 +1813,18 @@ built /private/tmp/health-r38/index.html
 - 验证：`npx vitest run src/modules/health` → **3 files / 21 tests passed**（新增 4 条：四读口字段/路径/耗时/asOf、非 ISO 不用本机时钟、展开跨重挂载保留且不改 URL、预览零请求）。全量 `npx vitest run` → **135 files / 1473 passed**，另有 2 个基线 employee-detail unhandled（非本域）。`tsc -b . --noEmit` → 6 行全为基线 employee-detail/employees，本域 0。
 - DOM（临时 harness，已删；Vite 5462 / Chrome 9264）：1440/1280/375 `vw=bodySW=pageSW=视口`；展开前 table 不存在、展开后 4 行；耗时 1–4 ms；asOf `2026-11-19 23:17` / `—` / `—` / `2026-11-20 06:15`；汇总 `4 个读口 · 成功 2 · 失败 1 · 读口未接入 1`；375 仅矩阵卡内滚动（760/343），页面不横溢。截图 `docs/_artifacts/gov/shots/sys6-{1440,1280,375}.png`。
 - 边界：只改 `web/src/modules/health/**` 与 DONE/截图；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；无独立观察者。
+
+## R53 /capabilities 行详情（cap7 补强，2026-11-20）
+
+- 基线：显式 refspec fetch 后 `git merge --no-ff origin/lane/hermes-console` 报 Already up to date；从已推 `46cfa271` 继续，未 reset。
+- 端点实读（9122，登录 cookie 只读、不打印）：`/agent-api/api/skills` → **200**，顶层 `asOf=2026-11-19T23:49:51.387Z`、`asOfSource=null`、`items=[]`；换算北京时间 `2026-11-20 07:49`。
+- 实现补强：
+  - `skills.ts` 新增严格顶层 asOf 取值：只认 `payload.asOf` 且必须是 ISO（正则 + 可解析）；`as_of/generatedAt/generated_at` 一律不再兜底；缺失/非 ISO 一律「—」+title 原因（`响应顶层没有 asOf` / `不是 ISO 时间`）。`asOfSource` 只写进采集时刻的 title（`asOfSource：…`），正文不出现。
+  - `rowDetail.tsx`：采集时刻 cell 的 title 同时支持缺值原因与 `asOfSource`；有值有 title 时也保留悬停说明。
+  - 工具页：`ToolRow` 新增 `asOf/asOfReason`，`readInventory/readToolsets/readServers` 统一按“数组无顶层 asOf、对象取顶层 ISO asOf”打标；详情直接用行上的 asOf，不再写死 null。MCP 与工具集各自读口路径保持分别显示。
+  - 技能页与工具页都加 Esc 收起（仅展开时挂 keydown，卸载清理）；展开/收起不改 URL，`?tab=` 与 `?q=` 保持；同时仍只允许一行展开。
+  - 页面级 403/404 仍是整页「读口未接入」+原因+`#/approvals` 去处，GAP 只在 title；四态未改。
+- 验证：`npx vitest run src/modules/skills src/modules/tools src/modules/capabilities` → **4 files / 45 tests passed**；全量 `npx vitest run` → **135 files / 1477 passed**，另有 2 个基线 employee-detail unhandled。`tsc -b . --noEmit` 本域 0（6 行均为基线 employee-detail/employees）。
+- DOM（临时 harness，已删；Vite 5465 / Chrome 9266）：1440/1280/375 技能页与工具页 `bodySW=bodyCW=pageSW=pageCW=视口`，详情 1 行展开；技能详情 口径名 资料整理 / 来源 平台内置 / 启用态 正常 / 最近更新 `2026-11-19 14:30` / 读口 `/agent-api/api/skills` / 采集时刻 `2026-11-20 07:49`，title `asOfSource：台账快照`（stub 证明 asOfSource 只进 title）；`?q=资料` 与 `?q=网页` 展开前后保持。工具详情读口 `/api/tools/toolsets`，数组无顶层 asOf →「该字段未返回」+title。
+- 截图：`docs/_artifacts/gov/shots/cap7-skills-{1440,1280,375}.png`、`cap7-tools-{1440,375}.png`。
+- 边界：只改 `web/src/modules/{capabilities,skills,tools}/**` 与 DONE/截图；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；无独立观察者。
