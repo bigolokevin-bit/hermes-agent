@@ -477,3 +477,48 @@ built .../hermes_cli/web_dist/index.html
 ### 需壳层注册
 
 `web/src/App.tsx` 增加 `/metrics` → `web/src/modules/metrics/MetricsModulePage`；`shell/routes.ts` 的 `#/metrics` 目前是 hidden compat 行并指向 `#/overview?tab=usage`，`shell/bridge.ts` 将其映射到 `/analytics`；`App.tsx` 当前无 `/metrics` 路由。未改 App/shell/manifest/package。
+
+## SKL4 `/skills` 真数据页（2026-11-19）
+
+- 基线：`b4341cc7`；提交：`35cfbcc8 feat(console): skills real data page (skl4)`（4 files，+437/−211）。
+- 写域：`web/src/modules/skills/**`；未改 App.tsx / shell / manifest / package；`/skills` 路由原本已存在。
+- 数据：`/agent-api/api/skills`（BFF 活代理）。本机实测 **401 `console.unauthenticated`**，路径存在，未取得真实 200。
+- 列表列：名称 / 来源 / 状态 / 更新时间 / 共享范围。上游台账只有 `skillId,name,version,contentHash,ownerUserId,sharedWith,sharedCount,scope` 与 `asOf`；来源、状态、更新时间无字段时显 `—` + 原因，不臆造、不补 0。
+- 时间：北京时间到分（`YYYY-MM-DD HH:mm`）；表头来源行显示台账 `asOf` 读取时刻。
+- 四态：加载骨架 / 正常 / 空（不显示 0 个技能）/ 错（人话 + 可复制请求编号 + 重试）；404 显「技能数据还没有接入」且 GAP-SKL4-01 只进 `title`。
+- testid `skl4-*`；`data-fixture` 仅在 `?state=loading|empty|error` 预览态出现；无写入口、无死控件。
+
+### 自测
+
+```text
+$ cd web && ./node_modules/.bin/tsc -b . --noEmit
+# EXIT: 0
+
+$ cd web && npx vitest run src/modules/skills
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+
+$ cd web && npx vitest run
+ Test Files  118 passed (118)
+      Tests  1137 passed (1137)
+
+$ cd /Users/kevin_studio/Projects/forks/console-gov && pnpm --filter web build
+built /Users/kevin_studio/Projects/forks/console-gov/hermes_cli/web_dist/index.html
+# EXIT: 0
+```
+
+### DOM 读数（Chrome CDP，临时预览 harness，已删除）
+
+```text
+1440×900: vw=1440 bodySW=1440 bodyCW=1440 pageSW=1410 tableW=1406 scSW=1406 scCW=1406 rows=2
+1280×800: vw=1280 bodySW=1280 bodyCW=1280 pageSW=1250 tableW=1246 scSW=1246 scCW=1246 rows=2
+375×812:  vw=375 bodySW=375 bodyCW=375 pageSW=345 tableW=760 scSW=760 scCW=341 rows=2
+```
+
+375 仅表格容器内滚动（760/341），页面无横溢。截图：`docs/_artifacts/gov/shots/skl4-1440.png`、`skl4-1280.png`、`skl4-375.png`。
+
+### 边界
+
+- 真实 200 未取得；401 只证明路径存在。
+- 列表不提供逐行详情；来源/状态/更新时间字段若上游后续补入，同一列直接显示。
+- 无需壳层注册（`/skills` 已在 App 路由与侧栏）。
