@@ -2789,3 +2789,32 @@ Order: deepen /runs/:runId timeline with per-event step name, human status, elap
 
 ### Untested / disclosed
 - Live event stream on this tenant is message/completed only, so tool-family statuses and the resultRef anchor/unreachable branches remain test-proven; no per-element pixel diff (only sw==cw + text); 9122 not rebuilt, main not merged.
+
+## Audit window filters + CSV export — live re-verification (2026-11-20, base e33b3531)
+
+Toplevel verified (`/Users/kevin_studio/Projects/forks/console-aud`), fetched and reset to `origin/lane/hermes-console` = `e33b3531` (`merge(lane/console-appr): wave-11`), tree clean. Module suite: 10 files / 157 tests green.
+
+### 1) Four real windows (logged-in cookie, `/api/audit?from=&to=&limit=50`)
+| window | from (UTC) | to (UTC) | HTTP | events |
+|---|---|---|---|---|
+| 24h | 2026-11-18T21:30:31Z | 2026-11-19T21:30:31Z | 200 | 0 |
+| 7d | 2026-11-12T21:30:31Z | 2026-11-19T21:30:31Z | 200 | 50 |
+| 30d | 2026-10-20T21:30:31Z | 2026-11-19T21:30:31Z | 200 | 50 |
+| custom (now-3d to now-1d) | 2026-11-16T21:30:31Z | 2026-11-18T21:30:31Z | 200 | 47 |
+
+The service rejects an inverted range with 400 `request.invalid_query` ("'from' must not be later than 'to'"); the page guards this client-side by asking nothing until both custom fields are filled and ordered (existing `aud01-custom-hint`).
+
+### 2) CSV contract (existing hooked test, 5/5 green)
+`csv.test.ts` subclasses `window.Blob` and proves: the six Chinese columns (`时间,类型,结果,操作者,对象,请求编号`); a BOM plus header plus one line per row with blanks where the service sent nothing (never a 0); quoting for cells with commas/quotes; the filename carries the window and the Beijing minute (`audit-<窗口>-YYYYMMDD-HHmm.csv`); the file is handed to the browser and the object URL released. No live download click was performed (jsdom asserts the Blob body and filename).
+
+### 3) Page surface (`/audit?window=7d`, 1440 / 1280 / 375)
+`sw==cw` at all three widths (1440/1440, 1280/1280, 375/375). On screen: 「已显示 50 条审计事件（最近 7 天），下面还有更多」「时间为北京时间」, the buttons 导出 CSV / 完整性校验 / 刷新, the window select offering 最近 24 小时 / 最近 7 天 / 最近 30 天 / 自定义, human event-type names (按审批结论执行 / 绑定工位 / 变更员工生命周期 / 驳回新建数字员工 / 创建任务 / 发布数字员工新版本 / 发出预算提醒 / 给出审批结论 / 工位绑定冲突 / 核对预算账本 / 记录一笔预算流水 / 其他事件), and rows reading 时间（北京时间）2026-11-18 02:18 · 操作者 系统 · 对象 建号申请 · 021810 · 请求编号 未提供 · 原因：denied by domain validation; raw message not stored in audit · 技术详情. Masked short codes only (no 32-hex full handles); the request number is honestly 未提供 rather than borrowed from a correlation handle.
+
+### 4) Verdict on this base
+No code change was needed this round: the four windows, the URL-owned `?window=`/`?from=`/`?to=`, the incomplete-custom guard, the CSV export (six columns, BJT minutes, blanks not zeros, window+timestamp filename, disabled with a title reason when there is nothing to export) and the R31 human vocabularies plus handle masking are all already in the tree and were re-verified live. This commit is evidence-only.
+
+### Untested / disclosed
+- No real browser download click-through (jsdom asserts the Blob body, header, row count and filename).
+- The audit pane has no `?state=` fixture leg by design, so the four states are service-driven (loading/empty/error/denied all render from real answers; forcing them would need an injected fixture, which the standing contract forbids here).
+- No per-element pixel diff, only `sw==cw` plus text.
+- 9122 was not rebuilt; main was not merged.
