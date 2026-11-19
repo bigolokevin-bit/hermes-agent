@@ -192,10 +192,10 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 164,
+      "mainChars": 184,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 1,
+      "consoleErrors": 3,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
       "headSample": "平台 · 控制台 能力与接入 技能 工具与 MCP 模型与单价 平台接入 工具与 MCP 只读工"
@@ -244,10 +244,10 @@
       "source": "DETAIL_ZONES_EXTRA",
       "kind": "detail-zone",
       "verdict": "content-ok",
-      "mainChars": 49,
+      "mainChars": 137,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 1,
+      "consoleErrors": 3,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
       "headSample": "工作台 配置 任务 运行 证据 员工 · EMPLOYEE — 概览 能力与权限 审批 运行 审"
@@ -634,13 +634,13 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 400,
+      "mainChars": 411,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 2,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 版本 构建与依赖信息 构建与代码"
+      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 版本 构建与依赖信息 下载诊断包"
     },
     {
       "route": "#/work",
@@ -696,7 +696,7 @@
     }
   ],
   "distinctMainHeads": 37,
-  "medianMainChars": 175,
+  "medianMainChars": 184,
   "contentEmpty": [],
   "contentEmptyCount": 0,
   "mode": "auth-attributed",
@@ -737,6 +737,7 @@
     "401 /agent-api/api/sessions",
     "401 /agent-api/api/skills",
     "401 /agent-api/api/tasks",
+    "401 /agent-api/api/tools/toolsets",
     "401 /agent-api/api/v1/departments",
     "401 /agent-api/api/v1/role/list",
     "401 /agent-api/api/v1/roles",
@@ -757,7 +758,7 @@
   "routesWithConsoleErrors": 51,
   "parseErrors": [],
   "ok": true,
-  "headHash": "d0b50590",
+  "headHash": "53a3ef4c",
   "exitCode": 0,
   "counts": {
     "probed": 75,

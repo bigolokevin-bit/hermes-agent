@@ -1041,3 +1041,10 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - shots main(auth) 102/102 failures=[] oversize=[] ceAuth=login-state obs=1 仅观测（#/overview，不入 ok）distinctMainHeads=26 rootBaseline textLen=1276 真数据；三键全值+拍后 curl 复证未漂。shots-anon auxiliary=true 102/102 mode=anon obs=1（#/knowledge?tab=sources）envOnly=51。anon png 同名覆盖 pngs=102。
 - BFF 四读口活体补录（卡面另项，R39 已交付，本轮新 cookie 法现测）：/__health-probe__ 200 ok=true；/health/sources 200 三源 console/runtime/bisheng 全 state=ok 各带 asOf（runtime/bisheng 探 404 应答=ok 口径）；models/pricing=404、knowledge/spaces=404（fail-closed 信封）。
 - 环境：web/src 未碰；他人脏零沾染；auth-state 昨夜 23:5x 版窗内。
+
+## 九十二轮·波终代次九件重章 @ 53a3ef4c（2026-11-20 05:3x，一波一盖 wave-11）
+
+- 代次：wave-11 终代次 53a3ef4c『merge(lane/console-appr): R40 employees forced-state rid passthrough』（gov a257f66f shell/fixtures 强制态 rid + appr b22cf447 employees rid 真读渲染），entry index-BXJbyCwh.js 166648B sha bae3a970ec9fec7e…ef47508；三向互证过（盘==9122==8183），21/21 路由 200；上一代 d0b50590/e33b3531 作废直接覆盖重写。
+- 九件全 exit=0 盖 53a3ef4c：ia-html/react ok{51,22,1,8}｜lint-fake v=[]｜lint-reuse v=0 exempt=1 chat→T40（stdout 抄件）｜crawl-anon DL0/CE0/PE0 routesCE51(401归因)｜crawl-auth routesCE27（26→27 波动，环境项）｜state-quad 20/20 文本重建注 source。
+- shots main(auth) 102/102 failures=[] oversize=[] ceAuth=login-state obs=2 仅观测（#/employees/:employeeId、#/identity，不入 ok）distinctMainHeads=26 rootBaseline textLen=729 真数据；三键全值+拍后 curl 复证未漂。shots-anon auxiliary=true 102/102 mode=anon obs=2（#/approvals?tab=release、#/employees）envOnly=51。anon png 同名覆盖 pngs=102。
+- 环境：9122 v4_proxy 95667 未动、caddy 8183 28034、8092 pid 95651；web/src 未碰；他人脏零沾染；auth-state 昨夜 23:5x 版窗内。
