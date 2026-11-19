@@ -1427,3 +1427,13 @@ $ cd web && npx vitest run
 - 403 and 404 share one neutral body; error carries copyable request id + retry. asOf is payload-only; missing source time renders 「时间未知」 + reason (no browser clock).
 - Tests `npx vitest run src/modules/tenant` → **9/9**; `TenantQuotaPage` `ten4-*` family retained (profile, quotas, five rows, gap, request id, retry).
 - Shell `/identity?tab=tenant` still aliases to people; module-level `?tab=tenant`/`?view=tenant` behavior remains; registration is outside this lane.
+
+## R27 /system?tab=security read-only surface (2026-11-19)
+
+- Module `web/src/modules/security/**`; export `SecurityModulePage` (named + default); root `sec5-page`; 40 unique `sec5-*` ids.
+- `/api/config` live probe **404 `console.unknown_route`** → 登录与会话三项、密钥与凭据三项 all 「未知/未配置」+ reasons; no values or fake 0.
+- `/api/audit?action=grant.created&limit=3` live probe **200, 3 events** → high-risk rows with object + copyable request id.
+- Write-shaped controls: 3, each `data-planned` + `aria-disabled` + title; no write path.
+- Four states; 403≡404 one neutral body (GAP only in title); retry + copyable rid; CSS stacks ≤720, no page overflow.
+- Export/registration contract for R5: mount `SecurityModulePage` at `/system?tab=security`; shell currently maps that tab to events/anomaly, so sec5 count at target route is 0 until registration.
+- Tests `npx vitest run src/modules/security` → 4/4 passed.
