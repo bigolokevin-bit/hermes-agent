@@ -2657,3 +2657,29 @@ Out-of-domain live markers (measured, not touched): tenant/TenantQuotaPage.tsx 2
 Gates: vitest src/modules/{runs,collab,audit,evidence} exit 0 — 15 files / 324 tests; tsc -b exit 2 with 49 errors (standing floor), 0 in these modules; eslint exit 0.
 
 Untested: nothing functional (comment-only change). 9122 not rebuilt; main not merged.
+
+
+## Platform channels real-data surface (2026-11-20, base fa2c3bf7 = gate ledger @466e2d2b)
+
+### Probes (logged-in cookie, both entry paths)
+| route | 9122 /agent-api | 8092 /api | body head |
+|---|---|---|---|
+| /api/platforms | 404 console.unknown_route | 404 console.unknown_route | {"code": "console.unknown_route", "message": "unknown console API route"} |
+| /api/channels | 404 console.unknown_route | 404 console.unknown_route | same |
+| /api/platforms/status | 404 console.unknown_route | 404 console.unknown_route | same |
+
+The three routes named by the order do not exist on this BFF, so they are treated as 未接入 (GAP only in the technical fold title). The real platform surface is GET /agent-api/api/hermes-summary -> gateway.platforms = api_server + feishu (2 rows, both connected).
+
+### Change
+- PLATFORM_STATUS_LABEL: available 正常 / disabled 停用 / unavailable 未接入 / unknown 待核实.
+- Platform rows gained chn4-platform-name-<key>, chn4-platform-type-<key>, chn4-platform-status-<key> (status wrapped in a contents span) and data-platform-key; every existing chn4-* / ds4-* id kept.
+- Credential line still shows only 已配置 / 未配置 / 未知 with the reason in the title; no token, secret or QR text ever rendered.
+
+### Live reading (/channels -> /capabilities?tab=channels)
+- 1440/1280/375 all sw==cw; chn4 ids 36; chn4-platform ids 6 (3 per row x 2 rows); rows 2.
+- Text: 平台接入与数据源; 读取成功; 列出 2 个渠道或平台（已接入 2，未启用 0，未接入 0，状态未说明 0）；服务说共 2 条; row 1 API 服务 / 类型：接口服务 / 凭据：未知+原因 / 最近事件（北京时间）：2026-11-20 04:27 / 正常; row 2 飞书 / 类型：消息平台 / same credential + time / 正常; ledger 平台与渠道接入 读到 2 条, 最近同步 2026-11-20 04:27.
+
+### Disclosures
+- Vocabulary split: platform-row badges use 正常/停用/未接入/待核实 (this order), while the aggregate sentence and the status filter still use 已接入 for channel/connection semantics. Both are visible on the same card; stated rather than silently mixed.
+- No data-fixture existed in this module to remove (already 0 before this round).
+- Untested: the three named endpoints carry no data, so no 200 payload could be verified; no per-element pixel diff (only sw==cw + text); 9122 not rebuilt, main not merged.

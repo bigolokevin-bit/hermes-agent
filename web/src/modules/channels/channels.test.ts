@@ -595,13 +595,13 @@ describe("the gateway summary is the real platform surface", () => {
     expect(api.name).toBe("API 服务");
     expect(api.kindLabel).toBe("接口服务");
     expect(api.platformStatus).toBe("available");
-    expect(PLATFORM_STATUS_LABEL[api.platformStatus!]).toBe("已连接");
+    expect(PLATFORM_STATUS_LABEL[api.platformStatus!]).toBe("正常");
     expect(byKey.get("platforms:feishu")!.name).toBe("飞书");
     expect(byKey.get("platforms:feishu")!.kindLabel).toBe("消息平台");
     expect(byKey.get("platforms:wecom")!.platformStatus).toBe("disabled");
-    expect(PLATFORM_STATUS_LABEL[byKey.get("platforms:wecom")!.platformStatus!]).toBe("未配置");
+    expect(PLATFORM_STATUS_LABEL[byKey.get("platforms:wecom")!.platformStatus!]).toBe("停用");
     expect(byKey.get("platforms:dead")!.platformStatus).toBe("unavailable");
-    expect(PLATFORM_STATUS_LABEL[byKey.get("platforms:dead")!.platformStatus!]).toBe("未连接");
+    expect(PLATFORM_STATUS_LABEL[byKey.get("platforms:dead")!.platformStatus!]).toBe("未接入");
   });
 
   it("falls back to the gateway stamp, and says so instead of pretending it is per-platform", () => {

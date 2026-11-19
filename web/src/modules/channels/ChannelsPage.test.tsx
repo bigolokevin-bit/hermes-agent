@@ -677,8 +677,8 @@ describe("platform rows come from the gateway summary", () => {
     expect(body).toContain("API 服务");
     expect(body).toContain("飞书");
     expect(body).toContain("企业微信");
-    expect(body).toContain("已连接");
-    expect(body).toContain("未配置");
+    expect(body).toContain("正常");
+    expect(body).toContain("停用");
     expect(body).toContain("凭据：未知");
     expect(body).toContain("最近事件（北京时间）");
     expect(body).toContain("19:43");
@@ -704,6 +704,6 @@ describe("platform rows come from the gateway summary", () => {
       }),
     );
     expect(text()).toContain("需要处理");
-    expect(text()).toContain("已连接");
+    expect(text()).toContain("正常");
   });
 });
