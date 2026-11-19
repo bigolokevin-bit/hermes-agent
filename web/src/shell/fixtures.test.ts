@@ -16,6 +16,7 @@ import {
   applyFixtureAttribute,
   currentFixtureState,
   fixtureView,
+  parseFixtureRid,
   parseFixtureState,
   resetFixtureWarnOnce,
   resolveFixtureState,
@@ -26,6 +27,22 @@ import {
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 /* ------------------------------ pure: parse ----------------------------- */
+
+describe('parseFixtureRid', () => {
+  it('reads the window.search form and the in-hash form', () => {
+    expect(parseFixtureRid('?rid=abc12345', '')).toBe('abc12345');
+    expect(parseFixtureRid('', '#/employees?state=error&rid=abc12345')).toBe('abc12345');
+  });
+
+  it('hash-internal query takes precedence over window.search', () => {
+    expect(parseFixtureRid('?rid=outer', '#/duty?rid=inner')).toBe('inner');
+  });
+
+  it('missing/empty → null', () => {
+    expect(parseFixtureRid('', '#/duty')).toBeNull();
+    expect(parseFixtureRid('?rid=', '#/duty')).toBeNull();
+  });
+});
 
 describe('parseFixtureState', () => {
   beforeEach(() => resetFixtureWarnOnce());

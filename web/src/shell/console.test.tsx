@@ -198,6 +198,30 @@ describe("ConsoleModulePage pane contract", () => {
     }
   });
 
+  it("?state= keeps rid on screen with a copy control", () => {
+    renderAt(
+      <ConsoleModulePage module="employees" live={{ list: <div data-testid="live-list" /> }} />,
+      "/employees?state=error&rid=abc12345",
+    );
+    const pane = container.querySelector(".pane");
+    expect(pane?.getAttribute("data-state")).toBe("error");
+    expect(pane?.textContent).toContain("请求编号");
+    expect(pane?.textContent).toContain("abc12345");
+    expect(pane?.querySelector("[data-testid='state-rid']")?.textContent).toBe("abc12345");
+    expect(pane?.querySelector("[data-testid='state-rid-copy']")).not.toBeNull();
+    expect(pane?.querySelector("[data-testid='state-rid-fallback']")).toBeNull();
+    expect(pane?.querySelector("[data-testid='state-retry']")).not.toBeNull();
+    expect(pane?.querySelector("[data-testid='state-back']")).not.toBeNull();
+  });
+
+  it("?state= tab switches preserve rid and state", () => {
+    renderAt(<ConsoleModulePage module="knowledge" />, "/knowledge?state=error&rid=abc12345");
+    const tab = container.querySelector("[role='tab']");
+    expect(tab).not.toBeNull();
+    expect(tab?.getAttribute("href")).toContain("state=error");
+    expect(tab?.getAttribute("href")).toContain("rid=abc12345");
+  });
+
   // T42 item 2: the forced-state legs must be reproducible on ALL eight
   // console tabs, and item 1's honest exits (retry + back, or back alone)
   // must be present in every forced pane.
