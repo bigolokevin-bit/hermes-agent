@@ -70,7 +70,7 @@ const forbidden = (url: string) =>
 async function renderAt(element: ReactElement, entry: string) {
   await act(async () => {
     root.render(
-      <MemoryRouter initialEntries={[entry]}>
+      <MemoryRouter key={entry} initialEntries={[entry]}>
         <Routes>
           <Route path="/employees/:employeeId" element={element} />
         </Routes>
@@ -246,4 +246,20 @@ describe("EmployeeDetailModulePage — tabs", () => {
     const active = tabs.find((t) => t.getAttribute("aria-selected") === "true");
     expect(active?.textContent).toBe("审批");
   });
+  it("renders the capability panel for ?zone=capability and the approvals panel for ?zone=approvals", async () => {
+    mockApi((url) =>
+      url.includes("/api/matrix")
+        ? Promise.resolve({ items: [{ capabilities: ["数据查询"] }] })
+        : url.includes("/api/approvals")
+          ? Promise.resolve({ items: [{ taskId: "task_1", status: "pending", title: "预算上调" }] })
+          : Promise.resolve({ items: [] }),
+    );
+    await renderAt(page, at("capability"));
+    expect(container.querySelector('[data-testid="ed5-capability"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="ed5-capability"]')?.textContent).toContain("数据查询");
+    await renderAt(page, at("approvals"));
+    expect(container.querySelector('[data-testid="ed5-approvals"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="ed5-approvals"]')?.textContent).toContain("预算上调");
+  });
+
 });

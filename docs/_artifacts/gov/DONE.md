@@ -1332,3 +1332,11 @@ $ cd web && npx vitest run
 - `/system?tab=health` (`HealthPage`) no longer prints a full request id on screen: `RowRequestId` renders only the first 8 characters (shorter ids unchanged), with the full id in the `title`; the copy button copies the full value and is labelled 「复制完整请求编号」.
 - Probe timestamps remain `YYYY-MM-DD HH:mm` via `formatBeijingTime` (Asia/Shanghai); raw HTTP status / GAP values stay in row `title` only. Four states, counts and retry unchanged.
 - Verification: `npx vitest run src/modules/health` → **6/6**; full `npx vitest run` → **126 files / 1264 passed**; no App/shell/routes/registry/manifest/package changes.
+
+## R28 employee zones + cron slot contract (2026-11-19, base ad72c31c)
+
+- Employee detail root cause: `mapShellZone()` handled legacy `config`/`tasks` but not the tab links' own `?zone=capability|approvals`, so both fell through to `overview` while the URL changed. Added explicit `capability`/`approvals` cases (legacy spellings retained).
+- Zone panels now render `ed5-capability` / `ed5-approvals` (plus their loading/empty/denied/error siblings) for direct `?zone=` links; added a regression test rendering both zones in sequence, and keyed the test router by entry so a search-only navigation remounts.
+- Cron export contract for R5: `web/src/modules/cron/CronModulePage.tsx` exports named `CronModulePage` and default same, no props; root `cron5-page`; testid family `cron5-row|name|schedule|status|result|last|next|loading|empty|denied|error|retry|request-id|apply|refresh|status-line`. Source is same-origin Hermes `GET /api/cron/jobs`; unavailable body is 「定时任务读口未接入」 + reason + `/approvals` (GAP only in title). No module change was required this round.
+- Registration needed from R5: `#/work?tab=cron` (and `#/cron`) → `CronModulePage`; current bridge redirects to board, so `cron5Count` stays 0 until shell maps the slot.
+- Verification: `npx vitest run src/modules/employee-detail` → **14/14**; full suite after this change (see receipt). No App/shell/routes/registry/manifest/package changes.

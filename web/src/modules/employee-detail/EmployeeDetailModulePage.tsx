@@ -327,6 +327,10 @@ type ZoneId = (typeof ZONES)[number]["id"];
 
 function mapShellZone(raw: string): ZoneId {
   switch (raw) {
+    case "capability":
+      return "capability";
+    case "approvals":
+      return "approvals";
     case "config":
       return "capability";
     case "tasks":
