@@ -919,3 +919,136 @@ export function heatFromStats(stats: RunStats): StatHeatGrid {
     max,
   };
 }
+
+// ---------------------------------------------------------------------------
+// metB — data sources and freshness.
+//
+// Only an ISO-8601 `asOf` returned by the upstream may be shown as a
+// collection time. Anything else (missing, local clock, human text) renders as
+// "—"; the page never substitutes its own clock. No extra request is issued
+// for this block: stamps are recorded by the same calls the cards already make.
+// ---------------------------------------------------------------------------
+export type SourceKey =
+  | 'run-activity'
+  | 'run-stats'
+  | 'employees'
+  | 'budget-usage'
+  | 'pricing'
+  | 'hermes-usage';
+
+export type SourceDescriptor = { key: SourceKey; label: string; path: string };
+
+export const SOURCE_CATALOG: SourceDescriptor[] = [
+  { key: 'run-activity', label: '运行活动热力', path: '/api/run-activity' },
+  { key: 'run-stats', label: '运行统计', path: '/api/run-stats' },
+  { key: 'employees', label: '员工目录', path: '/api/employees' },
+  { key: 'budget-usage', label: '平台扣费账本', path: '/api/budget-usage' },
+  { key: 'pricing', label: '模型价目表', path: '/api/models/pricing' },
+  { key: 'hermes-usage', label: 'Hermes 用量', path: '/api/hermes-usage' },
+];
+
+export type SourceStamp = {
+  asOf: string | null;
+  asOfSource: string | null;
+  error: string | null;
+  gap: string | null;
+  requestId: string | null;
+};
+
+export const EMPTY_SOURCE_STAMP: SourceStamp = {
+  asOf: null,
+  asOfSource: null,
+  error: null,
+  gap: null,
+  requestId: null,
+};
+
+const ISO_STAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/;
+
+/** A stamp counts only when it is a full ISO-8601 instant with a zone. */
+export function isIsoStamp(value: unknown): value is string {
+  if (typeof value !== 'string' || !ISO_STAMP.test(value)) return false;
+  return !Number.isNaN(Date.parse(value));
+}
+
+/** Read the BFF envelope's top-level `asOf` / `asOfSource`, inventing nothing. */
+export function readSourceStamp(payload: unknown): { asOf: string | null; asOfSource: string | null } {
+  if (!isRecord(payload)) return { asOf: null, asOfSource: null };
+  return {
+    asOf: isIsoStamp(payload.asOf) ? payload.asOf : null,
+    asOfSource: text(payload.asOfSource),
+  };
+}
+
+export function sourceKeyOfPath(path: string): SourceKey | null {
+  if (path.includes('/api/run-activity')) return 'run-activity';
+  if (path.includes('/api/run-stats')) return 'run-stats';
+  if (path.includes('/api/employees')) return 'employees';
+  if (path.includes('/api/budget-usage')) return 'budget-usage';
+  if (path.includes('/api/models/pricing')) return 'pricing';
+  if (path.includes('/api/hermes-usage')) return 'hermes-usage';
+  return null;
+}
+
+/**
+ * Fold a response into the recorded stamp. A newer `asOf` wins; a response
+ * without one keeps whatever was recorded before. A successful read clears the
+ * failure state, so the block reflects the last attempt, not a stale error.
+ */
+export function mergeSourceStamp(
+  prev: SourceStamp | undefined,
+  next: { asOf: string | null; asOfSource: string | null },
+): SourceStamp {
+  const base = prev ?? EMPTY_SOURCE_STAMP;
+  let asOf = base.asOf;
+  let asOfSource = base.asOfSource;
+  if (next.asOf) {
+    const nextMs = Date.parse(next.asOf);
+    const baseMs = base.asOf ? Date.parse(base.asOf) : Number.NEGATIVE_INFINITY;
+    if (!Number.isFinite(baseMs) || nextMs >= baseMs) {
+      asOf = next.asOf;
+      asOfSource = next.asOfSource ?? base.asOfSource;
+    }
+  }
+  return { asOf, asOfSource, error: null, gap: null, requestId: null };
+}
+
+export type SourceRow = SourceDescriptor & {
+  asOf: string | null;
+  asOfSource: string | null;
+  state: 'ok' | 'missing' | 'error';
+  error: string | null;
+  gap: string | null;
+  requestId: string | null;
+};
+
+export function sourceRows(stamps: Record<string, SourceStamp>): SourceRow[] {
+  return SOURCE_CATALOG.map((descriptor) => {
+    const stamp = stamps[descriptor.key] ?? EMPTY_SOURCE_STAMP;
+    const state: SourceRow['state'] = stamp.error ? 'error' : stamp.asOf ? 'ok' : 'missing';
+    return {
+      ...descriptor,
+      asOf: stamp.asOf,
+      asOfSource: stamp.asOfSource,
+      state,
+      error: stamp.error,
+      gap: stamp.gap,
+      requestId: stamp.requestId,
+    };
+  });
+}
+
+/** The newest upstream collection time across the sources, for the summary line. */
+export function latestSourceAsOf(rows: SourceRow[]): string | null {
+  let best: string | null = null;
+  let bestMs = Number.NEGATIVE_INFINITY;
+  for (const row of rows) {
+    if (!row.asOf) continue;
+    const ms = Date.parse(row.asOf);
+    if (Number.isFinite(ms) && ms > bestMs) {
+      bestMs = ms;
+      best = row.asOf;
+    }
+  }
+  return best;
+}

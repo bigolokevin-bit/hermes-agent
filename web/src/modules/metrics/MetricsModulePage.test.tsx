@@ -1131,3 +1131,86 @@ describe('metA — export the current cost view', () => {
     expect(note?.textContent).toContain('导出明细 CSV');
   });
 });
+
+// metB — the source & freshness block. It must never invent a collection time:
+// only a top-level ISO `asOf` from the payload counts, everything else is 「—」.
+const metBSource = (): HTMLElement | null => document.querySelector('[data-testid="metB-source-toggle"]');
+const metBCell = (key: string): HTMLElement | null => document.querySelector(`[data-testid="metB-source-asof-${key}"]`);
+
+function sourceRouter(runStats: unknown | ((url: string) => unknown), pricing?: () => Promise<unknown>) {
+  return (url: string): Promise<unknown> => {
+    if (url.includes('run-activity')) return Promise.resolve(activityBody());
+    if (url.includes('run-stats')) {
+      return Promise.resolve(typeof runStats === 'function' ? (runStats as (u: string) => unknown)(url) : runStats);
+    }
+    if (url.includes('/api/employees')) return Promise.resolve(EMPLOYEE_BODY);
+    if (url.includes('models/pricing')) {
+      return pricing ? pricing() : Promise.reject(new ApiError('missing', { status: 404, body: '', url }));
+    }
+    if (url.includes('periodKind=month')) return Promise.resolve(LEDGER_MONTH);
+    if (url.includes('periodKind=day')) return Promise.resolve(LEDGER_DAY);
+    return Promise.resolve({});
+  };
+}
+
+async function openSources(): Promise<void> {
+  const toggle = metBSource();
+  expect(toggle).toBeTruthy();
+  await act(async () => {
+    toggle?.click();
+  });
+}
+
+describe('metB — source freshness', () => {
+  it('stays collapsed by default and keeps raw paths off the page until opened', async () => {
+    await mount(usageRouter());
+
+    expect(metBSource()?.getAttribute('aria-expanded')).toBe('false');
+    expect(document.querySelector('[data-testid="metB-source-table"]')).toBeNull();
+    expect(text()).not.toContain('/api');
+  });
+
+  it('shows no toggle at all before the page has read anything', async () => {
+    await mount(usageRouter(), '/metrics?state=empty');
+
+    expect(metBSource()).toBeNull();
+    expect(document.querySelector('[data-testid="metB-source-empty"]')?.textContent).toContain('还没有读取记录');
+  });
+
+  it('shows the upstream collection time, and 「—」 when the payload carries none', async () => {
+    await mount(sourceRouter({ ...STATS_24H, asOf: '2026-11-19T20:12:00.000Z', asOfSource: 'bff' }));
+    await openSources();
+
+    expect(document.querySelector('[data-testid="metB-source-table"]')).toBeTruthy();
+    // 20:12Z is 04:12 the next day in Beijing.
+    expect(metBCell('run-stats')?.textContent).toBe('2026-11-20 04:12');
+    expect(metBCell('run-stats')?.getAttribute('title')).toBe('采集时刻来自 bff');
+    // run-activity returns no asOf: must stay blank, never the local clock.
+    expect(metBCell('run-activity')?.textContent).toBe('—');
+    expect(metBCell('run-activity')?.getAttribute('title')).toBe('上游未返回采集时刻');
+    expect(document.querySelector('[data-testid="metB-source-state-run-stats"]')?.textContent).toBe('正常');
+  });
+
+  it('treats a non-ISO asOf as missing instead of formatting it', async () => {
+    await mount(sourceRouter({ ...STATS_24H, asOf: 'yesterday' }));
+    await openSources();
+
+    expect(metBCell('run-stats')?.textContent).toBe('—');
+    expect(metBCell('run-stats')?.getAttribute('title')).toBe('上游未返回采集时刻');
+    expect(metBCell('run-stats')?.textContent).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+  });
+
+  it('marks a degraded source as unreadable and keeps the rest of the page working', async () => {
+    await mount(
+      sourceRouter({ ...STATS_24H, asOf: '2026-11-19T20:12:00.000Z' }, () =>
+        Promise.reject(new ApiError('boom', { status: 500, body: '', url: '/api/models/pricing', requestId: 'req-metB-1' })),
+      ),
+    );
+    await openSources();
+
+    const state = document.querySelector('[data-testid="metB-source-state-pricing"]');
+    expect(state?.textContent).toBe('读不到');
+    expect(state?.getAttribute('title')).toContain('请求编号 req-metB-1');
+    expect(document.querySelector('[data-testid="met6-runs-value"]')).toBeTruthy();
+  });
+});

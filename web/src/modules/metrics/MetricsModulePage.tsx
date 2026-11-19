@@ -60,6 +60,12 @@ import {
   usageTone,
   shareOf,
   sparkSlots,
+  EMPTY_SOURCE_STAMP,
+  latestSourceAsOf,
+  mergeSourceStamp,
+  readSourceStamp,
+  sourceKeyOfPath,
+  sourceRows,
   usageWindowOf,
   windowRange,
   windowOf,
@@ -74,6 +80,7 @@ import {
   type StatHeatGrid,
   type RunStats,
   type SortDir,
+  type SourceStamp,
   type UsageWindowId,
 } from './metrics';
 import './metrics.css';
@@ -282,11 +289,38 @@ export function MetricsModulePage() {
   const [heatAt, setHeatAt] = useState<string>(new Date().toISOString());
   const [attempt, setAttempt] = useState(0);
   const [selected, setSelected] = useState<{ dow: number; hour: number } | null>(null);
+  const [sources, setSources] = useState<Record<string, SourceStamp>>({});
+  const [sourcesOpen, setSourcesOpen] = useState(false);
+  const [sourcesSeen, setSourcesSeen] = useState(false);
+
+  // Every card reads through this wrapper, so the freshness block records the
+  // same responses the cards got — no extra request, no separate bookkeeping.
+  const loadJson = useCallback(async (path: string): Promise<unknown> => {
+    const key = sourceKeyOfPath(path);
+    try {
+      const payload = await fetchJsonStrict(path);
+      if (key) {
+        setSourcesSeen(true);
+        setSources((prev) => ({ ...prev, [key]: mergeSourceStamp(prev[key], readSourceStamp(payload)) }));
+      }
+      return payload;
+    } catch (error) {
+      if (key) {
+        const failure = blockFailure(error);
+        setSourcesSeen(true);
+        setSources((prev) => ({
+          ...prev,
+          [key]: { ...EMPTY_SOURCE_STAMP, error: failure.reason, gap: failure.gap, requestId: failure.requestId },
+        }));
+      }
+      throw error;
+    }
+  }, []);
 
   const load = useCallback(async (signal: { live: boolean }) => {
     setState({ kind: 'loading' });
     try {
-      const payload = await fetchJsonStrict(`/agent-api/api/run-activity?weeks=${weeks}&tz=Asia/Shanghai`);
+      const payload = await loadJson(`/agent-api/api/run-activity?weeks=${weeks}&tz=Asia/Shanghai`);
       if (!signal.live) return;
       const parsed = readActivity(payload);
       if (parsed.kind === 'invalid') {
@@ -304,7 +338,7 @@ export function MetricsModulePage() {
       const gap = error instanceof ApiError && error.status === 404 ? METRICS_GAP : null;
       setState({ kind: 'error', message: messageFor(error), requestId: requestIdOf(error), gap });
     }
-  }, [weeks]);
+  }, [weeks, loadJson]);
 
   useEffect(() => {
     if (forced) return;
@@ -339,7 +373,7 @@ export function MetricsModulePage() {
 
     const stats = await readBlock(
       () =>
-        fetchJsonStrict(
+        loadJson(
           `/agent-api/api/run-stats?from=${encodeURIComponent(range.from)}` +
             `&to=${encodeURIComponent(range.to)}&bucket=${preset.bucket}`,
         ),
@@ -354,7 +388,7 @@ export function MetricsModulePage() {
     const prev = previousRange(now, windowId);
     const prevRuns = await readBlock(
       () =>
-        fetchJsonStrict(
+        loadJson(
           `/agent-api/api/run-stats?from=${encodeURIComponent(prev.from)}` +
             `&to=${encodeURIComponent(prev.to)}&bucket=${preset.bucket}`,
         ),
@@ -367,7 +401,7 @@ export function MetricsModulePage() {
     );
 
     const ledgerSnapshot = async (periodKind: 'day' | 'month', period: string): Promise<LedgerSnapshot> => {
-      const directory = employeeIdsOf(await fetchJsonStrict('/agent-api/api/employees?limit=200'));
+      const directory = employeeIdsOf(await loadJson('/agent-api/api/employees?limit=200'));
       if (directory.ids.length === 0) {
         return {
           total: null,
@@ -380,7 +414,7 @@ export function MetricsModulePage() {
       }
       const bodies = await Promise.all(
         chunkIds(directory.ids).map((ids) =>
-          fetchJsonStrict(
+          loadJson(
             `/agent-api/api/budget-usage?employeeId=${ids.map(encodeURIComponent).join(',')}` +
               `&periodKind=${periodKind}&period=${encodeURIComponent(period)}`,
           ),
@@ -414,7 +448,7 @@ export function MetricsModulePage() {
     );
 
     const pricing = await readBlock(
-      () => fetchJsonStrict('/agent-api/api/models/pricing'),
+      () => loadJson('/agent-api/api/models/pricing'),
       (body) => {
         const parsed = readPricing(body);
         return parsed.kind === 'ok'
@@ -434,7 +468,7 @@ export function MetricsModulePage() {
       prevRuns,
       loadedAt: new Date().toISOString(),
     });
-  }, []);
+  }, [loadJson]);
 
   useEffect(() => {
     if (forced) return;
@@ -463,7 +497,7 @@ export function MetricsModulePage() {
       }
       try {
         if (view === 'model') {
-          const parsed = readModelUsage(await fetchJsonStrict(`/agent-api/api/hermes-usage?days=${days}`));
+          const parsed = readModelUsage(await loadJson(`/agent-api/api/hermes-usage?days=${days}`));
           if (parsed.kind === 'invalid') {
             setBreakdown({ kind: 'unavailable', reason: parsed.reason, gap: null, requestId: null });
             return;
@@ -495,12 +529,12 @@ export function MetricsModulePage() {
           return;
         }
 
-        const directory = employeeIdsOf(await fetchJsonStrict('/agent-api/api/employees?limit=200'));
+        const directory = employeeIdsOf(await loadJson('/agent-api/api/employees?limit=200'));
         const readDays = async (keys: string[]): Promise<LedgerRow[]> => {
           const bodies = await Promise.all(
             keys.flatMap((day) =>
               chunkIds(directory.ids).map((ids) =>
-                fetchJsonStrict(
+                loadJson(
                   `/agent-api/api/budget-usage?employeeId=${ids.map(encodeURIComponent).join(',')}` +
                     `&periodKind=day&period=${encodeURIComponent(day)}`,
                 ),
@@ -547,7 +581,7 @@ export function MetricsModulePage() {
         setBreakdown({ kind: 'unavailable', ...blockFailure(error) });
       }
     },
-    [],
+    [loadJson],
   );
 
   useEffect(() => {
@@ -565,7 +599,7 @@ export function MetricsModulePage() {
     const from = new Date(to.getTime() - 7 * 24 * 3_600_000);
     try {
       const parsed = readRunStats(
-        await fetchJsonStrict(
+        await loadJson(
           `/agent-api/api/run-stats?from=${encodeURIComponent(from.toISOString())}` +
             `&to=${encodeURIComponent(to.toISOString())}&bucket=hour`,
         ),
@@ -581,7 +615,7 @@ export function MetricsModulePage() {
       if (!signal.live) return;
       setHeat({ kind: 'unavailable', ...blockFailure(error) });
     }
-  }, []);
+  }, [loadJson]);
 
   useEffect(() => {
     if (forced) return;
@@ -602,11 +636,11 @@ export function MetricsModulePage() {
       dayKeys.push(beijingDayKey(new Date(now.getTime() - back * 86_400_000)));
     }
     try {
-      const directory = employeeIdsOf(await fetchJsonStrict('/agent-api/api/employees?limit=200'));
+      const directory = employeeIdsOf(await loadJson('/agent-api/api/employees?limit=200'));
       const bodies = await Promise.all(
         dayKeys.flatMap((day) =>
           chunkIds(directory.ids).map((ids) =>
-            fetchJsonStrict(
+            loadJson(
               `/agent-api/api/budget-usage?employeeId=${ids.map(encodeURIComponent).join(',')}` +
                 `&periodKind=day&period=${encodeURIComponent(day)}`,
             ),
@@ -647,7 +681,7 @@ export function MetricsModulePage() {
       if (!signal.live) return;
       setBudget({ kind: 'unavailable', ...blockFailure(error) });
     }
-  }, []);
+  }, [loadJson]);
 
   useEffect(() => {
     if (forced) return;
@@ -672,12 +706,12 @@ export function MetricsModulePage() {
       );
 
     try {
-      const directory = employeeIdsOf(await fetchJsonStrict('/agent-api/api/employees?limit=200'));
+      const directory = employeeIdsOf(await loadJson('/agent-api/api/employees?limit=200'));
       const sumLedger = async (kind: 'day' | 'month', keys: string[]): Promise<number | null> => {
         const bodies = await Promise.all(
           keys.flatMap((key) =>
             chunkIds(directory.ids).map((ids) =>
-              fetchJsonStrict(
+              loadJson(
                 `/agent-api/api/budget-usage?employeeId=${ids.map(encodeURIComponent).join(',')}` +
                   `&periodKind=${kind}&period=${encodeURIComponent(key)}`,
               ),
@@ -696,7 +730,7 @@ export function MetricsModulePage() {
       };
       const runsFor = async (from: string, to: string): Promise<number | null> => {
         const parsed = readRunStats(
-          await fetchJsonStrict(
+          await loadJson(
             `/agent-api/api/run-stats?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&bucket=day`,
           ),
         );
@@ -739,7 +773,7 @@ export function MetricsModulePage() {
       if (!signal.live) return;
       setCmp({ kind: 'unavailable', ...blockFailure(error) });
     }
-  }, []);
+  }, [loadJson]);
 
   useEffect(() => {
     if (forced) return;
@@ -756,7 +790,7 @@ export function MetricsModulePage() {
     const days = Math.max(1, Math.round(preset.hours / 24));
     try {
       if (view === 'model') {
-        const parsed = readModelCost(await fetchJsonStrict(`/agent-api/api/hermes-usage?days=${days}`));
+        const parsed = readModelCost(await loadJson(`/agent-api/api/hermes-usage?days=${days}`));
         if (!signal.live) return;
         if (parsed.kind === 'invalid') {
           setShare({ kind: 'unavailable', reason: parsed.reason, gap: USAGE_GAP, requestId: null });
@@ -765,7 +799,7 @@ export function MetricsModulePage() {
         setShare({ kind: 'ready', value: { rows: parsed.rows, asOf: parsed.asOf, days, source: 'model' } });
         return;
       }
-      const directory = employeeIdsOf(await fetchJsonStrict('/agent-api/api/employees?limit=200'));
+      const directory = employeeIdsOf(await loadJson('/agent-api/api/employees?limit=200'));
       const now = new Date();
       const dayKeys: string[] = [];
       for (let back = days - 1; back >= 0; back -= 1) {
@@ -774,7 +808,7 @@ export function MetricsModulePage() {
       const bodies = await Promise.all(
         dayKeys.flatMap((day) =>
           chunkIds(directory.ids).map((ids) =>
-            fetchJsonStrict(
+            loadJson(
               `/agent-api/api/budget-usage?employeeId=${ids.map(encodeURIComponent).join(',')}` +
                 `&periodKind=day&period=${encodeURIComponent(day)}`,
             ),
@@ -800,7 +834,7 @@ export function MetricsModulePage() {
       if (!signal.live) return;
       setShare({ kind: 'unavailable', ...blockFailure(error) });
     }
-  }, []);
+  }, [loadJson]);
 
   useEffect(() => {
     if (forced) return;
@@ -1096,6 +1130,9 @@ export function MetricsModulePage() {
     next.set('w', String(nextWeeks));
     setParams(next, { replace: true });
   };
+
+  const sourceList = sourceRows(sources);
+  const newestSource = latestSourceAsOf(sourceList);
 
   return (
     <main className="met5-page" data-testid="met5-page">
@@ -2092,6 +2129,88 @@ export function MetricsModulePage() {
           </Card>
         </>
       ) : null}
+    <section className="metB" data-testid="metB-source">
+        {sourcesSeen ? (
+          <>
+            <div className="metB-head">
+              <Button
+                size="sm"
+                outlined
+                data-testid="metB-source-toggle"
+                aria-expanded={sourcesOpen}
+                aria-controls="metB-source-table"
+                onClick={() => setSourcesOpen((open) => !open)}
+              >
+                数据来源与新鲜度
+              </Button>
+              <span className="met5-note">
+                最近采集 {newestSource ? formatBeijing(newestSource) : '—'} · {sourceList.length} 个读口
+              </span>
+            </div>
+            {sourcesOpen ? (
+              <div className="metB-wrap">
+                <div
+                  className="metB-table"
+                  id="metB-source-table"
+                  data-testid="metB-source-table"
+                  role="table"
+                  aria-label="数据来源与新鲜度"
+                >
+                  <div className="metB-row metB-row-head" role="row">
+                    <span role="columnheader">口径</span>
+                    <span role="columnheader">来源</span>
+                    <span role="columnheader">最近采集</span>
+                    <span role="columnheader">状态</span>
+                  </div>
+                  {sourceList.map((row) => (
+                    <div className="metB-row" role="row" data-testid={`metB-source-row-${row.key}`} key={row.key}>
+                      <span className="metB-name" role="cell">
+                        {row.label}
+                      </span>
+                      <code className="metB-path" role="cell">
+                        {row.path}
+                      </code>
+                      <span
+                        role="cell"
+                        data-testid={`metB-source-asof-${row.key}`}
+                        title={
+                          row.asOf
+                            ? row.asOfSource
+                              ? `采集时刻来自 ${row.asOfSource}`
+                              : '上游返回的采集时刻'
+                            : '上游未返回采集时刻'
+                        }
+                      >
+                        {row.asOf ? formatBeijing(row.asOf) : '—'}
+                      </span>
+                      <span
+                        role="cell"
+                        data-testid={`metB-source-state-${row.key}`}
+                        title={
+                          row.state === 'error'
+                            ? `${row.error ?? '这次读取没有成功'}${row.requestId ? ` · 请求编号 ${row.requestId}` : ''}`
+                            : row.asOfSource
+                              ? `采集时刻来源 ${row.asOfSource}`
+                              : undefined
+                        }
+                      >
+                        {row.state === 'error' ? '读不到' : row.state === 'missing' ? '未返回采集时刻' : '正常'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <p className="met5-note">
+                  时间只取上游返回的采集时刻；上游没给就是「—」，不拿本机时间顶替。降级项写明原因，不猜。
+                </p>
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <p className="met5-note" data-testid="metB-source-empty">
+            还没有读取记录：这一页还没向任何读口发起请求。
+          </p>
+        )}
+      </section>
     </main>
   );
 }
