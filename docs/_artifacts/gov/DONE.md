@@ -522,3 +522,55 @@ built /Users/kevin_studio/Projects/forks/console-gov/hermes_cli/web_dist/index.h
 - 真实 200 未取得；401 只证明路径存在。
 - 列表不提供逐行详情；来源/状态/更新时间字段若上游后续补入，同一列直接显示。
 - 无需壳层注册（`/skills` 已在 App 路由与侧栏）。
+
+## OV5 /overview 聚合收口（2026-11-19）
+
+- 提交：`bbefbdba feat(console): overview aggregation honesty and retries (ov5)`（4 files，+126/−22）
+- 写域：`web/src/modules/overview/**`；`/overview` 已由壳层挂载，未改 App.tsx / shell / manifest / package。
+- 数据源（逐卡标注）：
+  - 员工：`/agent-api/api/employee-stats`（总数/在岗）；风险数另读 `/agent-api/api/matrix`。
+  - 今日运行：`/agent-api/api/run-stats`（北京当日窗口，totals.runs/failed）。
+  - 待审批：`/agent-api/api/approval-stats`。
+  - 今日成本：`/agent-api/api/budget-usage`（periodKind=day，账本实扣）。
+  - 趋势：`/agent-api/api/run-stats` 近 14 天 buckets；最近活动：`/agent-api/api/runs`；阻塞：失败运行 / 阻塞任务 / 待审批。
+- 缺失与错误：KPI 源失败时值显 `—`，卡片内显「<来源>未接入：<人话原因>」、可复制请求编号与重试；GAP-OV5-* 编号只进 `title`，正文不显示。趋势/最近活动/阻塞各自带重试，部分阻塞源失败时只展示已读部分并明示不代表全部。
+- `读取于` 是本次读取完成的客户端北京时间（BJT 到分）；现有 BFF payload 不提供源端 asOf，未伪造源时间。该限制在页面不显示、由本证据披露。
+- 趋势 bucket 缺字段不再补 0：缺 `runs` 显示带斜纹的 `—` 柱，显式 0 才是真 0。
+- 四态：加载/正常/空/错；`?state=loading|empty|error` 预览不取数且带 `data-fixture="1"`；`?state=ready` 不再作为夹具态，真实正常态直接走实时数据。
+- 空态：仅在所有核心源 ready 且员工/运行/待审批均为 0 时出现「还没有可汇总的数据」+ 去员工页；不把读不到当 0。
+- testid `ov5-*`。
+
+### 自测
+
+```text
+$ cd web && ./node_modules/.bin/tsc -b . --noEmit
+# EXIT: 0
+
+$ cd web && npx vitest run src/modules/overview
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+
+$ cd web && npx vitest run
+ Test Files  118 passed (118)
+      Tests  1142 passed (1142)
+
+$ cd /Users/kevin_studio/Projects/forks/console-gov && pnpm --filter web build
+built /Users/kevin_studio/Projects/forks/console-gov/hermes_cli/web_dist/index.html
+# EXIT: 0
+```
+
+### DOM 读数（Chrome CDP，临时预览 harness，已删除）
+
+```text
+1440×900: vw=1440 bodySW=1440 bodyCW=1440 kpis=4 activityRows=3
+1280×800: vw=1280 bodySW=1280 bodyCW=1280 kpis=4 activityRows=3
+375×812:  vw=375 bodySW=375 bodyCW=375 kpis=4 activityRows=3
+```
+
+三档 body 均无横向滚动；卡片装饰性弧形边框仅在页面内部伸出 2px，已由页面 `overflow-x` 裁切，不影响页面宽度。截图：`docs/_artifacts/gov/shots/ov5-1440.png`、`ov5-1280.png`、`ov5-375.png`。
+
+### 边界
+
+- 未取得真实 200（本机无登录态）；数据源端点存在性与错误态由代码/测试覆盖。
+- 源端 asOf 未提供，页面只标「读取于」（读取完成时间），不冒充账本/统计的生成时间。
+- 页面未改壳层；`/overview` 路由与侧栏均由既有壳层提供。
