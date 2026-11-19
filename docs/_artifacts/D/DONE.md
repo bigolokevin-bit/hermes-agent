@@ -623,3 +623,22 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - CE 口径（R10 watchdog 裁定生效）：CE 权威=登录态捕获（crawl-auth + QA live）；匿名态 consoleErrorRoutes 仅作 env 旁证不计 productCE。本代 auth crawl 全部 routesCE 均 envAttribution=auth-required-401 ⇒ product CE(auth crawl)=0，crawl ok 按 DL/CE/PE 三项判绿。shots auth 本跑 consoleErrorRoutes=1（#/work?tab=board&view=cron，ENV_NOISE 外）如实保留不造假不放宽。
 - redirects=24 vs 门定值 23 归因照旧（notes，门值更新归 L0/A）。shots png mtime 窗 12:15-12:16 全新代次；anon 19@1440 门壳负例（runs→#/work?tab=runs 映射）。旧账残留复查：crawl.json/gates.exit.json/ia.json/react-baseline.json/lint-reuse-baseline.json/vitest-0914.txt 均不在（NO-STALE-RESIDUE）。
 - 收口：单笔 chore(gates) 九件+vitest.txt+shots/102+shots-anon/19+两 index+DONE，push 后 porcelain 归零。
+
+
+## 门禁二十八轮·三红转绿全量重章 @ 743acf8f（2026-11-19 13:0x，orchestrator 亲自，硬截止 13:20）
+
+- 基准：fork HEAD=远端 tip=743acf8f（ledger pin 笔）；entry assets/index-CjruA64U.js 151475B sha256 6526172a2105c013142bad26155bd8ab1a7b3ac5cc5cd1aab421de271c6657db，腿跑前后 curl served==磁盘==卡面；9122 pid 99197 proxy-live（anon-matrix 401 / auth 200，token 新鲜免重登）。
+- 五腿（单文件单 JSON+exitCode+headHash 全=743acf8f，禁拼接零违例）：
+  1. assert-ia-react exit=0 ok counts{routes:51,tabs:22,chatHosts:1,modules:8}
+  2. assert-ia-html exit=0 ok（tabsAll=23）
+  3. lint-fake exit=0 ok violations=0
+  4. lint-reuse exit=0 ok violations=0 exempted=1（chat→T40 台账仍有效，未放宽）
+  5. vitest exit=0：Test Files 113 passed / Tests 1013 passed（=卡面基线）
+- crawl 分层腿两份 exit=0 ok=true（ok=deadLinks==0&&contentEmpty==0）：
+  - crawl-anon：probed 75，DL 0 / CE 0 / PE 0，routesWithConsoleErrors=40 全 env=auth-required-401，denied=24 端点（全 401）入 envAttribution 证据
+  - crawl-auth（--auth-state 登录态）：DL 0 / CE 0 / PE 0，routesWithConsoleErrors=20，denied=11 端点为 **404**（代理已通但 BFF 缺该端点面）——CE 权威口径按登录态裁定，均属环境归因不算 product fail
+  - redirects=24 vs 门定值 23 继续 notes 归因（门值更新归 L0/A）
+- shots auth 主腿 102/102 produced==expected，failures=0、emptyMain=0、oversize=0、distinctMainHeads=28、medianMainChars=145.0、routesCE=1/envOnly=19；runExit=1（脚本内部严格 ok=false，卡口径 CE 环境归因覆盖，ledger ok=true）；拍窗 13:03:37-13:04:32，前后 servedEntry 同=CjruA64U。
+- anon 负例辅助腿：19/19 门壳图（六条点名路由 @1440），auxiliary=true ok=true(failures==0&&produced==expected) runExitCode=1，不作主账 ok 依据。
+- state-quad @9122 显式传参：20/20 passed，ok=true exit=0。
+- 代次注：本轮九件全章 743acf8f；上轮 780cc513 账本作废于本代次覆盖。收口单 commit 'chore(gates): full gate ledger stamped at 743acf8f (entry CjruA64U)'，他人 web/src 脏（tasks lane 2 件）绝不 add，porcelain 本车道归零。

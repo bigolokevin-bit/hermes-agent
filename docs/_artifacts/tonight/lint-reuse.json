@@ -1,7 +1,7 @@
 {
   "script": "lint-reuse",
   "root": "web/src/modules",
-  "scanned": 115,
+  "scanned": 124,
   "reuseMarkers": 31,
   "chatHostFiles": [
     {
@@ -78,13 +78,13 @@
       "owner": "employees",
       "declaredWhere": "web/src/modules/employees/manifest.ts（matrix tab）",
       "declared": true,
-      "codeMentions": 4,
+      "codeMentions": 1,
       "via": "marker web/src/modules/employee-detail/EmployeeDetailModulePage.test.tsx:144"
     }
   ],
   "violations": [],
   "count": 0,
   "ok": true,
-  "headHash": "780cc513",
+  "headHash": "743acf8f",
   "exitCode": 0
 }

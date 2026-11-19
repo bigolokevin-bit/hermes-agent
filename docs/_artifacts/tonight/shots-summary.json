@@ -9,8 +9,8 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 246,
-    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 今日运行 运行记录 今日成本 成本账本 发布 ",
+    "textLen": 766,
+    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 — — 4 项检查的数据源尚未接入，可上岗",
     "hasMainEl": true,
     "ok": true
   },
@@ -21,13 +21,13 @@
     {
       "route": "#/access",
       "viewport": "1440",
-      "chars": 104,
+      "chars": 89,
       "hasMainEl": true
     },
     {
       "route": "#/access",
       "viewport": "375",
-      "chars": 104,
+      "chars": 89,
       "hasMainEl": true
     },
     {
@@ -87,7 +87,7 @@
     {
       "route": "#/approvals?tab=pending&view=release",
       "viewport": "375",
-      "chars": 145,
+      "chars": 85,
       "hasMainEl": true
     },
     {
@@ -117,13 +117,13 @@
     {
       "route": "#/audit",
       "viewport": "1440",
-      "chars": 100,
+      "chars": 673,
       "hasMainEl": true
     },
     {
       "route": "#/audit",
       "viewport": "375",
-      "chars": 100,
+      "chars": 673,
       "hasMainEl": true
     },
     {
@@ -189,13 +189,13 @@
     {
       "route": "#/employees?tab=matrix",
       "viewport": "1440",
-      "chars": 215,
+      "chars": 191,
       "hasMainEl": true
     },
     {
       "route": "#/employees?tab=matrix",
       "viewport": "375",
-      "chars": 215,
+      "chars": 191,
       "hasMainEl": true
     },
     {
@@ -230,35 +230,35 @@
     },
     {
       "route": "#/employees/:employeeId?zone=evidence",
+      "viewport": "375",
+      "chars": 39,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=runs",
+      "viewport": "1440",
+      "chars": 39,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=runs",
+      "viewport": "375",
+      "chars": 39,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=tasks",
+      "viewport": "1440",
+      "chars": 39,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=tasks",
       "viewport": "375",
       "chars": 51,
       "hasMainEl": true
     },
     {
-      "route": "#/employees/:employeeId?zone=runs",
-      "viewport": "1440",
-      "chars": 179,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=runs",
-      "viewport": "375",
-      "chars": 39,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=tasks",
-      "viewport": "1440",
-      "chars": 39,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=tasks",
-      "viewport": "375",
-      "chars": 39,
-      "hasMainEl": true
-    },
-    {
       "route": "#/identity",
       "viewport": "1440",
       "chars": 129,
@@ -333,13 +333,13 @@
     {
       "route": "#/identity?tab=roles",
       "viewport": "1440",
-      "chars": 104,
+      "chars": 89,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=roles",
       "viewport": "375",
-      "chars": 104,
+      "chars": 89,
       "hasMainEl": true
     },
     {
@@ -357,13 +357,13 @@
     {
       "route": "#/knowledge",
       "viewport": "1440",
-      "chars": 107,
+      "chars": 92,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge",
       "viewport": "375",
-      "chars": 107,
+      "chars": 92,
       "hasMainEl": true
     },
     {
@@ -393,13 +393,13 @@
     {
       "route": "#/knowledge?tab=ingest",
       "viewport": "1440",
-      "chars": 97,
+      "chars": 82,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=ingest",
       "viewport": "375",
-      "chars": 97,
+      "chars": 82,
       "hasMainEl": true
     },
     {
@@ -417,25 +417,25 @@
     {
       "route": "#/knowledge?tab=scope",
       "viewport": "1440",
-      "chars": 107,
+      "chars": 92,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=scope",
       "viewport": "375",
-      "chars": 107,
+      "chars": 92,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=sources",
       "viewport": "1440",
-      "chars": 97,
+      "chars": 82,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=sources",
       "viewport": "375",
-      "chars": 97,
+      "chars": 82,
       "hasMainEl": true
     },
     {
@@ -465,13 +465,13 @@
     {
       "route": "#/overview",
       "viewport": "1440",
-      "chars": 1012,
+      "chars": 1011,
       "hasMainEl": true
     },
     {
       "route": "#/overview",
       "viewport": "375",
-      "chars": 1012,
+      "chars": 1011,
       "hasMainEl": true
     },
     {
@@ -501,13 +501,13 @@
     {
       "route": "#/system",
       "viewport": "1440",
-      "chars": 229,
+      "chars": 221,
       "hasMainEl": true
     },
     {
       "route": "#/system",
       "viewport": "375",
-      "chars": 229,
+      "chars": 221,
       "hasMainEl": true
     },
     {
@@ -525,109 +525,109 @@
     {
       "route": "#/system?tab=events",
       "viewport": "1440",
-      "chars": 100,
+      "chars": 673,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events",
       "viewport": "375",
-      "chars": 100,
+      "chars": 673,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "1440",
-      "chars": 100,
+      "chars": 673,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "375",
-      "chars": 100,
+      "chars": 673,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=retention",
       "viewport": "1440",
-      "chars": 100,
+      "chars": 673,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=retention",
       "viewport": "375",
-      "chars": 100,
+      "chars": 673,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=security",
       "viewport": "1440",
-      "chars": 100,
+      "chars": 673,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=security",
       "viewport": "375",
-      "chars": 100,
+      "chars": 673,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=version",
       "viewport": "1440",
-      "chars": 285,
+      "chars": 391,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=version",
       "viewport": "375",
-      "chars": 285,
+      "chars": 391,
       "hasMainEl": true
     },
     {
       "route": "#/work",
       "viewport": "1440",
-      "chars": 132,
+      "chars": 1769,
       "hasMainEl": true
     },
     {
       "route": "#/work",
       "viewport": "375",
-      "chars": 1639,
+      "chars": 1769,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=board&view=cron",
       "viewport": "1440",
-      "chars": 1639,
+      "chars": 1769,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=board&view=cron",
       "viewport": "375",
-      "chars": 226,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/work?tab=cron",
-      "viewport": "1440",
       "chars": 1639,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=cron",
+      "viewport": "1440",
+      "chars": 1769,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/work?tab=cron",
       "viewport": "375",
-      "chars": 1639,
+      "chars": 1769,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=runs",
       "viewport": "1440",
-      "chars": 1096,
+      "chars": 1006,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=runs",
       "viewport": "375",
-      "chars": 1075,
+      "chars": 982,
       "hasMainEl": true
     }
   ],
@@ -635,7 +635,7 @@
   "consoleErrorRoutes": [
     "#/work?tab=board&view=cron"
   ],
-  "routesWithEnvOnlyConsoleErrors": 23,
+  "routesWithEnvOnlyConsoleErrors": 19,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
   "overflowing": [],
   "driver": {
@@ -643,34 +643,16 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "780cc513",
-  "entry": "assets/index-CCPfuglc.js",
-  "entrySha256": "801565e3f3a86d95b8bf1acd59e6c0be8b4b3ab734f43c0d2e666dee55a1dffe",
-  "entryBytes": 150566,
-  "medianMainChars": 138.5,
-  "screenshotMode": "playwright",
-  "servedEntryBefore": "index-CCPfuglc.js",
-  "servedEntryAfter": "index-CCPfuglc.js",
-  "shotWindow": "Nov 19 12:15-12:16 new-mtime all 102 (auth state, CCPfuglc gen)",
-  "env": "auth-state cookie injected; gated flag skipped in auth mode; proxy pid 99197",
-  "anonEvidence": {
-    "dir": "docs/_artifacts/tonight/shots-anon",
-    "count": 19,
-    "routes": [
-      "#/overview",
-      "#/employees",
-      "#/approvals",
-      "#/work?tab=runs",
-      "#/employees?tab=matrix",
-      "#/system",
-      "(+tab variants superset)"
-    ],
-    "viewports": [
-      1440
-    ],
-    "note": "401-gated shell evidence, NOT page content",
-    "summary": "shots-anon-summary.json"
-  },
-  "ceCaliber": "R10 watchdog 裁定：CE 权威=登录态捕获（crawl-auth + QA live）。匿名态 consoleErrorRoutes 仅作 env 旁证不计 productCE。auth crawl 本代 routesCE=22 全部 envAttribution=auth-required-401（env），product CE(auth crawl)=0。shots auth 本跑 consoleErrorRoutes=1 (#/work?tab=board&view=cron, ENV_NOISE 外) 如实保留不造假。",
-  "exitCode": 0
+  "medianMainChars": 145.0,
+  "headHash": "743acf8f",
+  "entry": "assets/index-CjruA64U.js",
+  "entrySha256": "6526172a2105c013142bad26155bd8ab1a7b3ac5cc5cd1aab421de271c6657db",
+  "entryBytes": 151475,
+  "shotWindow": "13:03:37-13:04:32 local",
+  "anonEvidence": "crawl-anon ok=true exit=0 probed=75 DL=0 CE=0 PE=0 routesCE=40(env=401x40); shots-anon auxiliary leg: see shots-anon-summary.json produced/expected",
+  "ceCaliber": "CE authoritative=crawl-auth routesCE=20 env-attributed {\"auth-required-401\": 20} denied404=11; crawl-anon routesCE=40 env-attributed {\"auth-required-401\": 40} denied=24; ok formula = deadLinks==0 && contentEmpty==0 (both legs DL=0 CE=0 PE=0)",
+  "servedEntryBefore": "assets/index-CjruA64U.js",
+  "servedEntryAfter": "assets/index-CjruA64U.js",
+  "env": "9122 proxy-live (anon 401 / auth 200+404-missing); CE env-attributed, not product fail",
+  "exitCode": 1
 }

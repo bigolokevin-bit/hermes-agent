@@ -87,7 +87,7 @@
     {
       "route": "#/system",
       "viewport": "1440",
-      "chars": 275,
+      "chars": 267,
       "hasMainEl": true
     },
     {
@@ -99,43 +99,43 @@
     {
       "route": "#/system?tab=events",
       "viewport": "1440",
-      "chars": 100,
+      "chars": 685,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "1440",
-      "chars": 100,
+      "chars": 685,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=retention",
       "viewport": "1440",
-      "chars": 100,
+      "chars": 685,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=security",
       "viewport": "1440",
-      "chars": 100,
+      "chars": 685,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=version",
       "viewport": "1440",
-      "chars": 285,
+      "chars": 406,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=runs",
       "viewport": "1440",
-      "chars": 291,
+      "chars": 265,
       "hasMainEl": true
     }
   ],
   "routesWithConsoleErrors": 0,
   "consoleErrorRoutes": [],
-  "routesWithEnvOnlyConsoleErrors": 14,
+  "routesWithEnvOnlyConsoleErrors": 19,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
   "overflowing": [],
   "driver": {
@@ -143,8 +143,8 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "780cc513",
   "auxiliary": true,
+  "headHash": "743acf8f",
   "runExitCode": 1,
-  "note": "anon 腿为 401 门控辅助件，不作为主账 ok 依据"
+  "note": "anon shots are the 401-gate auxiliary leg; not the basis of main-ledger ok"
 }
