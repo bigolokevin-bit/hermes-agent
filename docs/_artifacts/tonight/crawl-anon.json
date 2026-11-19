@@ -26,7 +26,7 @@
   "rootShell": {
     "url": "http://127.0.0.1:9122/",
     "hasMainEl": true,
-    "mainChars": 690,
+    "mainChars": 706,
     "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 登录状"
   },
   "contentChecked": 51,
@@ -36,13 +36,13 @@
       "source": "COMPAT_MODULES",
       "kind": "compat-module",
       "verdict": "content-ok",
-      "mainChars": 89,
+      "mainChars": 209,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 0,
-      "consoleErrorEnv": null,
+      "consoleErrors": 4,
+      "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 角色与权限 · 规划中 数据源未"
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 访问控制 角色、成员与管理员 ·"
     },
     {
       "route": "#/approvals",
@@ -153,13 +153,13 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 115,
+      "mainChars": 150,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 1,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "平台 · 控制台 能力与接入 技能 工具与 MCP 模型与单价 平台接入 技能 已登记的技能及其"
+      "headSample": "平台 · 控制台 能力与接入 技能 工具与 MCP 模型与单价 平台接入 技能 已登记的技能、共"
     },
     {
       "route": "#/capabilities?tab=channels",
@@ -374,13 +374,13 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 89,
+      "mainChars": 209,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 0,
-      "consoleErrorEnv": null,
+      "consoleErrors": 4,
+      "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 角色与权限 · 规划中 数据源未"
+      "headSample": "治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 访问控制 角色、成员与管理员 ·"
     },
     {
       "route": "#/identity?tab=tenant",
@@ -400,13 +400,13 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 92,
+      "mainChars": 242,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
       "consoleErrorEnv": null,
       "evalError": null,
-      "headSample": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 知识空间 · 规划中 数据源未落地—"
+      "headSample": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 知识空间 空间、文档与检索 · 只读"
     },
     {
       "route": "#/knowledge?tab=citations",
@@ -439,7 +439,7 @@
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 82,
+      "mainChars": 88,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
@@ -465,20 +465,20 @@
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 92,
+      "mainChars": 242,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
       "consoleErrorEnv": null,
       "evalError": null,
-      "headSample": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 知识空间 · 规划中 数据源未落地—"
+      "headSample": "治理 · 控制台 知识与数据 知识空间 数据源 证据与引用 知识空间 空间、文档与检索 · 只读"
     },
     {
       "route": "#/knowledge?tab=sources",
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 82,
+      "mainChars": 88,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
@@ -695,13 +695,13 @@
       "headSample": "运营 · 控制台 任务与运行 任务 运行 控制台 · 运行 运行 按时间看运行记录。这一面只读："
     }
   ],
-  "distinctMainHeads": 34,
+  "distinctMainHeads": 35,
   "medianMainChars": 159,
   "contentEmpty": [],
   "contentEmptyCount": 0,
   "mode": "auth-attributed",
   "envAttribution": {
-    "auth-required-401": 41
+    "auth-required-401": 43
   },
   "probeErrors": [],
   "deniedEndpoints": [
@@ -732,6 +732,8 @@
     "401 /agent-api/api/tasks",
     "401 /agent-api/api/v1/dept/list",
     "401 /agent-api/api/v1/dept/tree",
+    "401 /agent-api/api/v1/role/list",
+    "401 /agent-api/api/v1/roles",
     "401 /agent-api/api/v1/user/all",
     "401 /agent-api/api/v1/user/list"
   ],
@@ -745,10 +747,10 @@
     "redirects=24 vs 门定值 23（routes.ts 并发新增形态，归因非判红；门值更新归 L0/A）"
   ],
   "routesRenderedWithoutMainEl": 0,
-  "routesWithConsoleErrors": 41,
+  "routesWithConsoleErrors": 43,
   "parseErrors": [],
   "ok": true,
-  "headHash": "b4341cc7",
+  "headHash": "2767ac9b",
   "exitCode": 0,
   "counts": {
     "probed": 75,

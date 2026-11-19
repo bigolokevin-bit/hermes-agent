@@ -9,8 +9,8 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 246,
-    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 今日运行 运行记录 今日成本 成本账本 发布 ",
+    "textLen": 1012,
+    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 — / 2 可上岗 3 项检查的数据源尚未",
     "hasMainEl": true,
     "ok": true
   },
@@ -21,13 +21,13 @@
     {
       "route": "#/access",
       "viewport": "1440",
-      "chars": 89,
+      "chars": 202,
       "hasMainEl": true
     },
     {
       "route": "#/access",
       "viewport": "375",
-      "chars": 89,
+      "chars": 202,
       "hasMainEl": true
     },
     {
@@ -129,13 +129,13 @@
     {
       "route": "#/capabilities",
       "viewport": "1440",
-      "chars": 99,
+      "chars": 110,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities",
       "viewport": "375",
-      "chars": 99,
+      "chars": 110,
       "hasMainEl": true
     },
     {
@@ -333,13 +333,13 @@
     {
       "route": "#/identity?tab=roles",
       "viewport": "1440",
-      "chars": 89,
+      "chars": 202,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=roles",
       "viewport": "375",
-      "chars": 89,
+      "chars": 202,
       "hasMainEl": true
     },
     {
@@ -357,13 +357,13 @@
     {
       "route": "#/knowledge",
       "viewport": "1440",
-      "chars": 92,
+      "chars": 244,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge",
       "viewport": "375",
-      "chars": 92,
+      "chars": 244,
       "hasMainEl": true
     },
     {
@@ -393,13 +393,13 @@
     {
       "route": "#/knowledge?tab=ingest",
       "viewport": "1440",
-      "chars": 82,
+      "chars": 88,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=ingest",
       "viewport": "375",
-      "chars": 82,
+      "chars": 88,
       "hasMainEl": true
     },
     {
@@ -417,25 +417,25 @@
     {
       "route": "#/knowledge?tab=scope",
       "viewport": "1440",
-      "chars": 92,
+      "chars": 244,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=scope",
       "viewport": "375",
-      "chars": 92,
+      "chars": 244,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=sources",
       "viewport": "1440",
-      "chars": 82,
+      "chars": 88,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=sources",
       "viewport": "375",
-      "chars": 82,
+      "chars": 88,
       "hasMainEl": true
     },
     {
@@ -465,13 +465,13 @@
     {
       "route": "#/overview",
       "viewport": "1440",
-      "chars": 1011,
+      "chars": 1012,
       "hasMainEl": true
     },
     {
       "route": "#/overview",
       "viewport": "375",
-      "chars": 1011,
+      "chars": 1012,
       "hasMainEl": true
     },
     {
@@ -591,13 +591,13 @@
     {
       "route": "#/work",
       "viewport": "375",
-      "chars": 239,
+      "chars": 1782,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=board&view=cron",
       "viewport": "1440",
-      "chars": 239,
+      "chars": 1782,
       "hasMainEl": true
     },
     {
@@ -631,13 +631,10 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 2,
-  "consoleErrorRoutesObservedByShots": [
-    "#/work",
-    "#/work?tab=board&view=cron"
-  ],
+  "consoleErrorsObservedByShots": 0,
+  "consoleErrorRoutesObservedByShots": [],
   "ceAuthority": "login-state",
-  "routesWithEnvOnlyConsoleErrors": 20,
+  "routesWithEnvOnlyConsoleErrors": 22,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
   "overflowing": [],
   "driver": {
@@ -645,16 +642,16 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "b4341cc7",
-  "entry": "assets/index-JUxw8TcI.js",
-  "entrySha256": "9935d4d716967087dcd15c3923cf00693e767226f55d2e1fe44d53179b71d513",
-  "entryBytes": 153280,
-  "medianMainChars": 145.0,
-  "shotWindow": "14:04:37-14:05:31 local",
-  "servedEntryBefore": "assets/index-JUxw8TcI.js",
-  "servedEntryAfter": "assets/index-JUxw8TcI.js",
+  "headHash": "2767ac9b",
+  "entry": "assets/index-BKZoUKl8.js",
+  "entrySha256": "8d1f98cc4aea8e5d708c7f8fcc981d4cd9bdd66791012f8f0e37ba2b3e995e53",
+  "entryBytes": 154051,
+  "medianMainChars": 192.5,
+  "shotWindow": "14:15:31-14:16:25 local",
+  "servedEntryBefore": "assets/index-BKZoUKl8.js",
+  "servedEntryAfter": "assets/index-BKZoUKl8.js",
   "env": "9122 proxy-live (anon 401 / auth 200); CE 权威=登录态, 观察字段仅旁证",
-  "ceCaliber": "ceAuthority=login-state; crawl-auth routesCE=20 denied=16; crawl-anon routesCE=41 denied=29; ok 不含 CE 项（L0 二十九轮裁定落码）",
-  "anonEvidence": "crawl-anon ok=True exit=0 probed=75 DL=0 CE=0 PE=0 routesCE=41(env 旁证); shots-anon 辅助腿见 shots-anon-summary.json",
+  "ceCaliber": "ceAuthority=login-state; crawl-auth routesCE=21 denied=18; crawl-anon routesCE=43 denied=31; ok 不含 CE 项（L0 二十九轮裁定落码）",
+  "anonEvidence": "crawl-anon ok=True exit=0 probed=75 DL=0 CE=0 PE=0 routesCE=43(env 旁证); shots-anon 辅助腿见 shots-anon-summary.json",
   "exitCode": 0
 }

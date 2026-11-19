@@ -710,3 +710,21 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - vitest exit=0 原文：`Test Files  118 passed (118)` / `Tests  1135 passed (1135)`（=卡面）。
 - redirects=24 vs 门定值 23 notes 归因照旧。上代 58e59535/35000331 账本由本代次覆盖作废。
 - 收口：commit `chore(gates): full gate ledger stamped at b4341cc7 (entry JUxw8TcI)`，push lane/hermes-console，ls-remote 双证，本车道 porcelain=0。
+
+
+## 门禁三十三轮·最终代次全量重章 @ 2767ac9b（2026-11-19 14:1x，L0 放行令 ≤14:30 达成）
+
+- 基准：fork HEAD=远端 tip=**2767ac9b**（并入 gov skills 369f0cc9 + aud employeeId 29ecdb0a + R5 1855c070/aa718e39），开工 porcelain=0；entry `assets/index-BKZoUKl8.js` 154051B sha256 `8d1f98cc4aea8e5d708c7f8fcc981d4cd9bdd66791012f8f0e37ba2b3e995e53`，开工+拍后双 curl served==磁盘==卡面；9122 pid 99197（未动）、12 路由 200。
+- 九件全章 headHash=**2767ac9b**，单文件单 JSON+exitCode，tmp+os.replace 原子写零拼接：
+  1. assert-ia-react ok exit=0 counts{51,22,1,8}
+  2. assert-ia-html ok exit=0（tabsAll=23）
+  3. lint-fake ok exit=0 violations=0
+  4. lint-reuse ok exit=0 violations=0 exempted=1（chat→T40）
+  5. crawl-anon ok exit=0 probed75 DL0 CE0 PE0 routesCE=43（env 旁证）denied=31
+  6. crawl-auth ok exit=0 DL0 CE0 PE0 routesCE=21 denied=18
+  7. shots-summary ok=true exit=0 102/102 failures=[] consoleErrorsObservedByShots=0 ceAuthority=login-state entry/sha/bytes 三键=卡面 distinctMainHeads=27 medianMainChars=192.5 拍窗 14:15:31-14:16:25（ok=failures==0&&produced==expected）
+  8. shots-anon-summary auxiliary ok=true exit=0 19/19 failures=[]
+  9. state-quad ok=true exit=0 20/20@9122
+- vitest exit=0 原文：`Test Files  118 passed (118)` / `Tests  1141 passed (1141)`（=卡面 118/1141）。
+- redirects=24 vs 门定值 23 notes 归因照旧（门值更新归 L0/A）。上代 b4341cc7 账本由本代次覆盖作废。
+- 收口：commit `chore(gates): full gate ledger stamped at 2767ac9b (entry BKZoUKl8)`，git add -A docs/_artifacts/tonight + DONE，push lane/hermes-console，ls-remote 双证，本车道 porcelain 归零。
