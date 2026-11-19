@@ -139,6 +139,18 @@ describe("pending queue states", () => {
     expect(text()).toContain("已显示 1 条申请，其中 1 条待处理");
   });
 
+  it("R50: the queue summary keeps off-scope counts at — with a stated reason", async () => {
+    await mount(queue());
+    const pending = document.querySelector('[data-testid="apv6-summary-pending"]');
+    expect(pending?.getAttribute("href")).toBe("/approvals?tab=history&status=pending");
+    expect(pending?.textContent).toContain("1");
+    const approved = document.querySelector('[data-testid="apv6-summary-approved"]');
+    expect(approved?.tagName).toBe("SPAN");
+    expect(approved?.textContent).toContain("—");
+    expect(approved?.getAttribute("title")).toContain("决策历史");
+    expect(document.querySelector('[data-testid="apv6-summary-risk-low"]')).toBeTruthy();
+  });
+
   it("loading is a skeleton, not an empty queue", async () => {
     let release: (value: unknown) => void = () => {};
     api.fetchJSON.mockImplementation(

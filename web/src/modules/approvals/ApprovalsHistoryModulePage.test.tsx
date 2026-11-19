@@ -559,3 +559,27 @@ describe("history whole-panel states", () => {
     expect(detailText).not.toContain("human:");
   });
 });
+
+describe("R50 queue summary bar", () => {
+  it("counts the same result set, and single-status scopes stay — not fake zeros", async () => {
+    await mount(); // status 未传 → BFF 聚合全状态，每态一行（8 行）
+    const bar = document.querySelector('[data-testid="apv6-summary"]');
+    expect(bar).toBeTruthy();
+    const pending = document.querySelector('[data-testid="apv6-summary-pending"]');
+    expect(pending?.getAttribute("href")).toBe("/approvals?tab=history&status=pending");
+    expect(pending?.textContent).toContain("1");
+    expect(document.querySelector('[data-testid="apv6-summary-approved"]')?.textContent).toContain("1");
+    // 聚合夹具每态一行 → 已拒同为真计数。
+    expect(document.querySelector('[data-testid="apv6-summary-rejected"]')?.textContent).toContain("1");
+    // 夹具行没有 riskLevel 字段 → 风险桶在覆盖范围内为 0（真零），只读 span。
+    expect(document.querySelector('[data-testid="apv6-summary-risk-high"]')?.textContent).toContain("0");
+    expect(document.querySelector('[data-testid="apv6-summary-risk-high"]')?.getAttribute("title")).toContain("只读");
+    // 单选状态下，其余状态桶不同源 → 「—」并写明原因。
+    await mount(undefined, "/approvals?tab=history&status=pending");
+    const approved2 = document.querySelector('[data-testid="apv6-summary-approved"]');
+    expect(approved2?.textContent).toContain("—");
+    expect(approved2?.getAttribute("title")).toContain("不同源");
+    expect(document.querySelector('[data-testid="apv6-summary-pending"]')?.textContent).toContain("1");
+  });
+});
+

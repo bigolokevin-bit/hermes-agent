@@ -30,6 +30,7 @@ import { writeFailure, type FailureCopy } from "./copy";
 import type { ApprovalRow } from "./model";
 import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel } from "./states";
 import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
+import { QueueSummaryBar } from "./QueueSummaryBar";
 import { ApprovalDetailBody, ApprovalRowCard } from "./views";
 
 const VERDICT_LABEL: Record<Verdict, string> = { approve: "批准", reject: "驳回" };
@@ -190,6 +191,8 @@ export function ApprovalsPendingModulePage(): ReactNode {
 
   return (
     <div className="flex min-w-0 w-full max-w-full flex-col gap-3" data-testid="apr5-page-pending">
+      <QueueSummaryBar phase={list.phase} rows={list.rows} scope="queue" />
+
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
         <p className="min-w-0 break-words text-xs text-muted-foreground" aria-live="polite">
           {list.phase === "loading"

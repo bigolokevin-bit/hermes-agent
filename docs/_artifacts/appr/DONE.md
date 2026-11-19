@@ -775,3 +775,11 @@ L0 判 /runs/<id> 无路由=死链（routes.ts 只有 /runs）。禁碰 shell/Ap
 实现（EmployeeDetailModulePage.tsx）：①区腿 line667 由假筛选 `?employeeId=` 改诚实聚合 `?status=all&limit=20`（同请求出计数，无重复腿）。②说明行 ed8-appr-note「审批读口暂不支持按员工筛选：以下为当前登录身份的全部状态审批。」title 带白名单+注入口径实证（GAP 仅 title）。③四列表=事项标题｜状态人话（approvalStatusLabel default→「待核实」）｜风险档（riskLabel：high/medium/low→高/中/低风险，缺「—」+title，未知值「待核实」+title 原值不猜）｜更新时间 BJT 到分（updatedAt 多键 decidedAt/changedAt，缺→回退提交时间+cell title 注明）。④行出口真链 href=/approvals?status=<行状态>（既有可达落点保筛选；无详情路由不为造链而发明）；ed8-appr-row/link/title/status/risk/time-<i> 族新增，ed5-approvals-* 现名全保留；金额列按四列规格移除（解析器字段留）。⑤空集=「当前没有审批事项」+「按你的登录身份返回（全部状态）下的空集，不是把缺失当 0」——工单句「该员工暂无审批事项」在不支持筛选实证下不诚实，按工单诚实条款取代。⑥四态/可复制 rid/403≡404=Zone* 既有（R47 线）。
 
 测试：既有两断言同步（href 带 status、金额断言删、空态新句）+R49 新用例（恰 1 fetch 无 employeeId、note 上屏、行 0/行 1 四列读数、待核实×2、无裸 apr_/emp_/human:）。定向 34 passed；全量与 assert-ia 读数见回执。⑦三档横溢=jsdom 不可测，形态学报（grid 全 minmax(0)+truncate+flex-wrap 说明行）。9122 禁重建：页面活体读数待并入后代次；API 面五组实证已贴。
+
+## R50 审批队列汇总条 apv6-*（2026-11-20，lane/console-appr）
+
+基线：显式 refspec fetch + merge origin/lane/hermes-console（wave-16 6a02ed58）→ merge tip 5cea8f7e，toplevel ✓ porc=0。
+
+实现：新文件 modules/approvals/QueueSummaryBar.tsx（只读，计数全部由**列表同一请求结果** rows 现算，零重复请求）。①状态桶=待办/已批/已拒：history 视图 status 缺省(聚合)时按 row.status.raw 真计数（夹具 8 态各 1 行→待办1/已批1/已拒1 实测）；单选状态时其余桶=「—」+title「与这份结果不同源；切回全部可见」（禁假 0）；queue 视图只读 pending 集合→待办=rows.length、已批/已拒=「—」+title 指向决策历史。②风险档桶=高/中/低：row.risk（model.ts ApprovalRow 新增 risk=riskView(pickText(riskLevel/risk_level/risk))，行解析增量、既有字段零动）现算；读口不支持 risk 参数（R44 实证被丢）⇒风险桶只读 span 不建链（禁假筛选），title 写明。③点状态计数=Link /approvals?tab=history&status=<值>（写既有 ?status= 筛选，history 消费，URL 同源刷新/分享可复现）。④phase loading/error/denied → 全桶「—」+人话原因 title（不作 0）。⑤挂载=两页顶部（pending 页 aria-live 读数行前、history 页读数行与 apr5-filter 组之间），flex-wrap gap 无横溢（形态学报）。testid：apv6-summary / apv6-summary-<status> / apv6-summary-risk-<level>；apv5-*/apr5-*/apd6-*/ed* 零破坏（既有 59 用例先绿后加 2 新用例）。
+
+验证：定向 approvals 3 files/61 passed exit0；tsc 本域零红；assert-ia 两模式 exit0（51/22/1/8）；全量 **132 files/1456 passed**（≥基线，含 wave-16 合入用例）。9122==6a02ed58 代次未重建（L0 取证窗）：活体汇总条读数待并入后代次；本轮以 jsdom 实测为权威。
