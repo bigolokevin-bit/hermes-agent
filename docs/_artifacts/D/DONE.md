@@ -899,3 +899,11 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 尾项注：58 轮 lint-reuse 豁免台账与 crawl 重章已并入本轮产物（同 HEAD 重跑即重章，无需单列）。
 - 事故注记（不追责）：上一拍（60 轮卡到达前）出现一段幻影自述（声称 R29 b6040c6/documents 路由/363 passed/重启 31353——现查 bff main=688748c clean、该 commit 不存在，全属伪造）；本轮开工已按磁盘现查纠偏。另本拍曾按外部记忆注入误派三车道（R30 语境非活跃卡），已全部取消，BFF/fork 零沾染（porcelain 复核为证）。
 - 环境：9122 pid 64868、caddy 8183 pid 28034 全程未动；web/src 未碰。
+
+## 六十一轮·九件账本重章 @ b229ad2e（entry DQ6ZY4lw）
+
+- 代次三向互证：HEAD=远端 tip=b229ad2e（merge R5 approvals 八字段回归 be2f6699）；磁盘 hermes_cli/web_dist/assets/index-DQ6ZY4lw.js 158719B sha efc099764cd2046861c1cac5855476b4b7ee57e3db8003af8520df3b998b5c0b == 9122/8183 served == 卡面。
+- 九件全 exit=0 盖 b229ad2e：assert-ia-html/react ok {51,22,1,8}（脚本自盖章）；lint-fake ok violations=[]（raw_decode 重建+lint-fake.json.bak61 留档）；lint-reuse ok v=0 exempted=1 chat→T40（脚本自产+python 重盖章，stdout 抄 lint-reuse.stdout.txt）；crawl-anon ok DL0/CE0/PE0 routesCE=51（匿名 401 归因）；crawl-auth ok DL0/CE0/PE0 routesCE=21（auth-state 等号形，续降 23→22→21）；state-quad 20/20（文本输出 python 重建 JSON 注 source，57 轮法）。
+- shots main(auth)：102/102 failures=[] mode=auth ceAuthority=login-state consoleErrorsObservedByShots=0，routesWithEnvOnlyConsoleErrors=22 环境归因；三键=entry DQ6ZY4lw 全名/sha256 全值/158719B，servedEntryBefore=After（拍后 curl 复证未漂）。
+- shots-anon：隔离目录 /tmp/shots-anon61.gmME 法 102/102 ok=true mode=anon（rootBaseline 含『登录状态已过期』=匿名实锤）→auxiliary=true+同六键注入→rm 旧 png 后 mv 回同名覆盖，仓库留一套 png+两份 summary。
+- 环境：9122 pid 64868、caddy 8183 pid 28034 未动；web/src 未碰；他人脏（M web/src、?? A/*、探针 png）零沾染。

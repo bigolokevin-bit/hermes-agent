@@ -26,7 +26,7 @@
   "rootShell": {
     "url": "http://127.0.0.1:9122/",
     "hasMainEl": true,
-    "mainChars": 482,
+    "mainChars": 242,
     "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 今日运"
   },
   "contentChecked": 51,
@@ -244,19 +244,6 @@
       "source": "DETAIL_ZONES_EXTRA",
       "kind": "detail-zone",
       "verdict": "content-ok",
-      "mainChars": 177,
-      "hasMainEl": true,
-      "httpStatus": 200,
-      "consoleErrors": 1,
-      "consoleErrorEnv": "auth-required-401",
-      "evalError": null,
-      "headSample": "工作台 配置 任务 运行 证据 QA2 契约验证 1794894768 · EMPLOYEE Q"
-    },
-    {
-      "route": "#/employees/:employeeId?zone=evidence",
-      "source": "DETAIL_ZONES_EXTRA",
-      "kind": "detail-zone",
-      "verdict": "content-ok",
       "mainChars": 49,
       "hasMainEl": true,
       "httpStatus": 200,
@@ -264,6 +251,19 @@
       "consoleErrorEnv": null,
       "evalError": null,
       "headSample": "工作台 配置 任务 运行 证据 员工 · EMPLOYEE — 概览 能力与权限 审批 运行 审"
+    },
+    {
+      "route": "#/employees/:employeeId?zone=evidence",
+      "source": "DETAIL_ZONES_EXTRA",
+      "kind": "detail-zone",
+      "verdict": "content-ok",
+      "mainChars": 177,
+      "hasMainEl": true,
+      "httpStatus": 200,
+      "consoleErrors": 1,
+      "consoleErrorEnv": "auth-required-401",
+      "evalError": null,
+      "headSample": "工作台 配置 任务 运行 证据 QA2 契约验证 1794894768 · EMPLOYEE Q"
     },
     {
       "route": "#/employees/:employeeId?zone=runs",
@@ -517,7 +517,7 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 975,
+      "mainChars": 482,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
@@ -660,7 +660,7 @@
       "source": "VIEW_DEEP_LINKS",
       "kind": "view",
       "verdict": "content-ok",
-      "mainChars": 142,
+      "mainChars": 1677,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
@@ -695,8 +695,8 @@
       "headSample": "运营 · 控制台 任务与运行 任务 运行 控制台 · 运行 运行 按时间看运行记录。这一面只读："
     }
   ],
-  "distinctMainHeads": 27,
-  "medianMainChars": 185,
+  "distinctMainHeads": 26,
+  "medianMainChars": 191,
   "contentEmpty": [],
   "contentEmptyCount": 0,
   "mode": "auth-attributed",
@@ -735,7 +735,7 @@
   "routesWithConsoleErrors": 21,
   "parseErrors": [],
   "ok": true,
-  "headHash": "04e73990",
+  "headHash": "b229ad2e",
   "exitCode": 0,
   "counts": {
     "probed": 75,
