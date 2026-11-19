@@ -76,3 +76,12 @@
 - 测试断言切窗后只发一组请求（新批次里 run-stats 恰两条、均 `bucket=day`，无重复 URL），采集时刻与卡片数字同批更新；另有展开态保持、`$0.00`／`—` 同屏、403 请求编号可复制、缺 `asOf` 判「降级」四例。
 - testid：新增 `metC-source-rid-<key>`；`metB-source-*`、`met5/6/7/8/9/A-*` 保持不变。
 - 验证：定向 `vitest run src/modules/metrics` 54 passed；全量 132 files / 1458 passed（另 2 条 unhandled rejection 来自上游新并入的 `modules/employee-detail`，与指标页无关）；`tsc -b . --noEmit` 在 `modules/metrics` 0 条（全仓 55 条为既有基线）；build entry `assets/index-DIcUxZyk.js` sha256 `e3f7c70a…3c8193`，entry 内 `metC-source-rid`=0、`metB-source`=0，chunk `MetricsModulePage-BuWP9xmG.js` 命中 1。
+
+## 空态与降级态一致性（metD，2026-11-20）
+
+- 一处读不到，两处同一句话、同一个请求编号：卡片区的失败句与「数据来源与新鲜度」里对应读口的那句都来自同一个失败分类；卡片 gap 追加与新鲜度行相同的编号（`metD-gap-rid-<key>`），整块失败卡另给 `metD-card-reason` / `metD-card-rid`，不再各自造句。
+- 新鲜度行在「读不到」下直接显示那句人话（`metD-source-reason-<key>`），复制仍是 `metC-source-rid-<key>`；编号值两处一致。
+- 空态出口：`met6-empty` 增加 `metD-empty-window`（换到 7 天看看，已在该窗口时不渲染）与 `metD-empty-retry`（重新读取），不画死按钮。
+- 重试只重发一批：`met6-retry` 点击后各 loader 各跑一次；测试以「按 URL 形状（from/to 掩码）计数」比对重试批与首批完全一致，避免把时间戳差异误当成二次请求。
+- 窗口内真 0 仍是 `$0.00`，缺失仍是「—」；空态/错误态不补 0、不顶旧内容。
+- 验证：定向 58 passed（+4）；全量 132 files / 1462 passed（另有 2 条 unhandled rejection 来自上游 employee-detail 测试，与本页无关）；tsc `modules/metrics` 0 条；build entry `assets/index-CGjbb-h3.js` sha256 `9f488c4fed8255c9301ddef163d2894be4e8f518cc544826c23b3c29d0470805`，entry 内 metD=0、metB=0，chunk `MetricsModulePage-BhtPB8kO.js` metD-card-reason=1、metD-empty-window=1。

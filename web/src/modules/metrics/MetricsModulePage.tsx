@@ -260,6 +260,19 @@ function RequestId({ id }: { id: string | null }): ReactNode {
   );
 }
 
+/** The same request id the freshness block shows, inline beside a card gap. */
+function GapRid({ id, testId }: { id: string | null; testId: string }): ReactNode {
+  if (!id) return null;
+  return (
+    <span className="metD-gap-rid" data-testid={testId}>
+      {' '}· 请求编号{' '}
+      <code className="break-all" title={id}>
+        {id}
+      </code>
+    </span>
+  );
+}
+
 /** A compact copy control for the request id of one source row. */
 function SourceRidButton({ id, label, testId }: { id: string; label: string; testId: string }): ReactNode {
   const [copied, setCopied] = useState<'idle' | 'done' | 'failed'>('idle');
@@ -939,6 +952,11 @@ export function MetricsModulePage() {
   const usageDown = usageReady !== null && usageBlocks.every((block) => block.kind === 'unavailable');
   const usageDenied =
     usageDown && usageBlocks.every((block) => block.kind === 'unavailable' && block.gap === USAGE_GAP);
+  const usageLeadFailure = usageBlocks.find((block) => block.kind === 'unavailable');
+  const usageLeadReason =
+    usageLeadFailure && usageLeadFailure.kind === 'unavailable' ? usageLeadFailure.reason : null;
+  const usageLeadRid =
+    usageLeadFailure && usageLeadFailure.kind === 'unavailable' ? usageLeadFailure.requestId : null;
   const usageQuiet =
     usageReady !== null &&
     !usageDown &&
@@ -1223,18 +1241,18 @@ export function MetricsModulePage() {
             <Card data-testid={usageDenied ? 'met6-denied' : 'met6-error'}>
               <CardContent className="space-y-2 p-6">
                 <p className="font-medium">{usageDenied ? '这几项数据暂时读不到' : '这次没能读取用量与成本'}</p>
-                <p className="text-sm text-muted-foreground">
-                  {usageDenied
-                    ? '可能是这些数据还没有接入，也可能是当前账号没有查看权限。两种情况给同一句话，页面不回答「到底有没有」。'
-                    : '读取的时候没有成功，页面没有用旧内容顶上，也没有按 0 补。'}
+                <p className="text-sm text-muted-foreground" data-testid="metD-card-reason">
+                  {usageLeadReason ??
+                    (usageDenied
+                      ? '这项数据当前读不到：可能还没有接入，也可能当前账号没有查看权限。'
+                      : '这次没能读取这项数据，请稍后重试。')}
                 </p>
-                <RequestId
-                  id={
-                    usageBlocks
-                      .map((block) => (block.kind === 'unavailable' ? block.requestId : null))
-                      .find((id): id is string => typeof id === 'string' && id.length > 0) ?? null
-                  }
-                />
+                <p className="text-xs text-muted-foreground">
+                  上面这句和「数据来源与新鲜度」里对应读口的那句是同一句，请求编号也是同一个——两处不各说一词。
+                </p>
+                <div data-testid="metD-card-rid">
+                  <RequestId id={usageLeadRid} />
+                </div>
                 <Button size="sm" outlined onClick={() => setAttempt((value) => value + 1)} data-testid="met6-retry">
                   重试
                 </Button>
@@ -1249,6 +1267,16 @@ export function MetricsModulePage() {
                 <p className="text-sm text-muted-foreground">
                   运行统计没有返回这个窗口的运行，账本也没有今天的实扣行，因此这里既没有次数也没有金额——不补 0，也不拿别的时段顶替。
                 </p>
+                <div className="metD-empty-acts">
+                  {usageWindow.id !== '7d' ? (
+                    <Button size="sm" outlined onClick={() => chooseUsageWindow('7d')} data-testid="metD-empty-window">
+                      换到 7 天看看
+                    </Button>
+                  ) : null}
+                  <Button size="sm" outlined onClick={() => setAttempt((value) => value + 1)} data-testid="metD-empty-retry">
+                    重新读取
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ) : null}
@@ -1284,7 +1312,8 @@ export function MetricsModulePage() {
                 {usageReady && usageReady.stats.kind === 'unavailable' ? (
                   <p className="met6-gap" data-testid="met6-runs-gap" title={usageReady.stats.gap ?? undefined}>
                     {usageReady.stats.reason}
-                  </p>
+                  
+                    <GapRid id={usageReady.stats.requestId} testId="metD-gap-rid-runs" /></p>
                 ) : null}
               </CardContent>
             </Card>
@@ -1321,7 +1350,8 @@ export function MetricsModulePage() {
                 {usageReady && usageReady.day.kind === 'unavailable' ? (
                   <p className="met6-gap" data-testid="met6-cost-gap" title={usageReady.day.gap ?? undefined}>
                     {usageReady.day.reason}
-                  </p>
+                  
+                    <GapRid id={usageReady.day.requestId} testId="metD-gap-rid-cost" /></p>
                 ) : null}
                 {usageReady && usageReady.day.kind === 'ready' && usageReady.day.value.total === null ? (
                   <p className="met6-gap" data-testid="met6-cost-gap">
@@ -1395,7 +1425,8 @@ export function MetricsModulePage() {
                 {usageReady && usageReady.stats.kind === 'unavailable' ? (
                   <p className="met6-gap" data-testid="met6-trend-gap" title={usageReady.stats.gap ?? undefined}>
                     {usageReady.stats.reason}
-                  </p>
+                  
+                    <GapRid id={usageReady.stats.requestId} testId="metD-gap-rid-trend" /></p>
                 ) : null}
               </CardContent>
             </Card>
@@ -1428,7 +1459,8 @@ export function MetricsModulePage() {
                 {usageReady && usageReady.pricing.kind === 'unavailable' ? (
                   <p className="met6-gap" data-testid="met6-price-gap" title={usageReady.pricing.gap ?? undefined}>
                     {usageReady.pricing.reason}
-                  </p>
+                  
+                    <GapRid id={usageReady.pricing.requestId} testId="metD-gap-rid-price" /></p>
                 ) : null}
               </CardContent>
             </Card>
@@ -2239,6 +2271,11 @@ export function MetricsModulePage() {
                             label={row.label}
                             testId={`metC-source-rid-${row.key}`}
                           />
+                        ) : null}
+                        {row.state === 'down' && row.error ? (
+                          <span className="metB-reason" data-testid={`metD-source-reason-${row.key}`}>
+                            {row.error}
+                          </span>
                         ) : null}
                       </span>
                     </div>

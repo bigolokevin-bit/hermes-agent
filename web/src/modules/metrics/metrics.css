@@ -670,3 +670,22 @@
 .metB-rid:hover {
   color: var(--color-foreground);
 }
+
+/* metD — one failure sentence and one request id for a read, in both places. */
+.metD-gap-rid {
+  color: var(--color-muted-foreground);
+  overflow-wrap: anywhere;
+}
+.metD-empty-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 4px;
+}
+.metB-reason {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--color-muted-foreground);
+}

@@ -1352,3 +1352,103 @@ describe('metC — window and freshness consistency', () => {
     expect(cell?.getAttribute('title')).toContain('上游未返回采集时刻');
   });
 });
+
+// metD — the card area and the freshness block must describe a failed read the
+// same way: one sentence, one request id, no second vocabulary.
+describe('metD — state consistency with the freshness block', () => {
+  const DENIED = '这项数据当前读不到：可能还没有接入，也可能当前账号没有查看权限。';
+
+  it('prints the same sentence and the same request id in a card gap and in the freshness row', async () => {
+    await mount((url) => {
+      if (url.includes('run-activity')) return Promise.resolve(activityBody());
+      if (url.includes('run-stats')) {
+        return Promise.reject(new ApiError('denied', { status: 403, body: '', url, requestId: 'req-metD-A' }));
+      }
+      if (url.includes('/api/employees')) return Promise.resolve(EMPLOYEE_BODY);
+      if (url.includes('periodKind=month')) return Promise.resolve(LEDGER_MONTH);
+      if (url.includes('periodKind=day')) return Promise.resolve(LEDGER_DAY);
+      return Promise.reject(new ApiError('missing', { status: 404, body: '', url }));
+    });
+    await openSources();
+
+    const gap = document.querySelector('[data-testid="met6-runs-gap"]');
+    const fresh = document.querySelector('[data-testid="metD-source-reason-run-stats"]');
+    expect(gap?.textContent).toContain(DENIED);
+    expect(fresh?.textContent).toBe(DENIED);
+    expect(document.querySelector('[data-testid="metD-gap-rid-runs"]')?.textContent).toContain('req-metD-A');
+    expect(document.querySelector('[data-testid="metC-source-rid-run-stats"]')?.getAttribute('title')).toBe(
+      'req-metD-A',
+    );
+  });
+
+  it('uses that same sentence and id in the whole-block card, not a second wording', async () => {
+    await mount((url) => {
+      if (url.includes('run-activity')) return Promise.resolve(activityBody());
+      return Promise.reject(new ApiError('denied', { status: 403, body: '', url, requestId: 'req-metD-all' }));
+    });
+    await openSources();
+
+    expect(document.querySelector('[data-testid="met6-denied"]')).toBeTruthy();
+    expect(document.querySelector('[data-testid="metD-card-reason"]')?.textContent?.trim()).toBe(DENIED);
+    expect(document.querySelector('[data-testid="metD-source-reason-run-stats"]')?.textContent?.trim()).toBe(DENIED);
+    expect(document.querySelector('[data-testid="metD-card-rid"]')?.textContent).toContain('req-metD-all');
+    expect(document.querySelector('[data-testid="metC-source-rid-run-stats"]')?.getAttribute('title')).toBe(
+      'req-metD-all',
+    );
+  });
+
+  it('offers an exit from an empty window and sends one request batch when it moves', async () => {
+    await mount((url) => {
+      if (url.includes('run-activity')) return Promise.resolve(activityBody());
+      if (url.includes('run-stats')) return Promise.resolve(url.includes('bucket=day') ? STATS_7D : STATS_24H);
+      if (url.includes('/api/employees')) return Promise.resolve({ items: [], nextCursor: null });
+      if (url.includes('budget-usage')) return Promise.resolve({ items: [], missingEmployeeIds: [] });
+      return Promise.resolve({});
+    });
+
+    expect(document.querySelector('[data-testid="met6-empty"]')).toBeTruthy();
+    const switchWindow = document.querySelector('[data-testid="metD-empty-window"]') as HTMLButtonElement;
+    expect(switchWindow).toBeTruthy();
+    expect(document.querySelector('[data-testid="metD-empty-retry"]')).toBeTruthy();
+
+    const before = urls().length;
+    await act(async () => {
+      switchWindow.click();
+    });
+    await waitFor(settled, 'window switched');
+
+    const batch = urls().slice(before);
+    const stats = batch.filter((url) => url.includes('run-stats'));
+    expect(stats.length).toBeGreaterThan(0);
+    expect(stats.every((url) => url.includes('bucket=day'))).toBe(true);
+    expect(document.querySelector('[data-testid="met6-runs-value"]')?.textContent).toBe('13');
+  });
+
+  it('re-sends exactly one batch when the error card retries', async () => {
+    await mount((url) => Promise.reject(new ApiError('boom', { status: 500, body: '', url, requestId: 'req-metD-500' })));
+
+    expect(document.querySelector('[data-testid="met6-error"]')).toBeTruthy();
+    const initial = urls().length;
+    expect(initial).toBeGreaterThan(0);
+
+    await act(async () => {
+      (document.querySelector('[data-testid="met6-retry"]') as HTMLButtonElement).click();
+    });
+    await waitFor(() => urls().length >= initial * 2, 'retry batch');
+    await new Promise((resolve) => setTimeout(resolve, 60));
+
+    // Window bounds are computed from the clock, so compare shapes with the
+    // timestamps masked; everything else (path, bucket, period) must match.
+    const shape = (url: string): string => url.replace(/from=[^&]*/, 'from=*').replace(/to=[^&]*/, 'to=*');
+    const tally = (list: string[]): Record<string, number> =>
+      list.reduce<Record<string, number>>((counts, url) => {
+        const key = shape(url);
+        return { ...counts, [key]: (counts[key] ?? 0) + 1 };
+      }, {});
+    const batch = urls().slice(initial);
+    expect(batch.length).toBe(initial);
+    // One retry re-runs the same loaders once each: the per-URL counts match the
+    // first batch exactly, so no loader fired twice for one click.
+    expect(tally(batch)).toEqual(tally(urls().slice(0, initial)));
+  });
+});
