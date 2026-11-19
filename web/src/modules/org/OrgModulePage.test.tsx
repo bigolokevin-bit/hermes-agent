@@ -80,14 +80,14 @@ describe("OrgModulePage — 组织与部门 (T21)", () => {
   it("loading: skeleton, no engineering text", async () => {
     mockApi(() => new Promise(() => {}));
     await renderPage();
-    expect(container.querySelector('[data-testid="org-loading"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="org4-loading"]')).toBeTruthy();
     expect(container.textContent).not.toMatch(/undefined|dept_id|NaN/);
   });
 
   it("flat rows build a tree: child nests under parent, headcounts shown", async () => {
     mockApi((url) => (url.includes("/dept/list") ? Promise.resolve(FLAT) : missing(url)));
     await renderPage();
-    const list = container.querySelector('[data-testid="org-list"]');
+    const list = container.querySelector('[data-testid="org4-list"]');
     expect(list?.textContent).toContain("南隅堂");
     expect(list?.textContent).toContain("文书阁");
     expect(list?.textContent).toContain("共 12 人");
@@ -97,7 +97,7 @@ describe("OrgModulePage — 组织与部门 (T21)", () => {
     expect(list?.textContent).not.toContain("共 0 人");
     expect(list?.textContent).not.toMatch(/dept_id|parent_id/);
     // raw ids stay in title only
-    const nodes = list?.querySelectorAll('[data-testid="org-node"]');
+    const nodes = list?.querySelectorAll('[data-testid="org4-node"]');
     expect(nodes?.[0]?.getAttribute("title")).toBe("记录号 1");
     // child is indented deeper than its parent
     const parent = nodes?.[0] as HTMLElement;
@@ -114,7 +114,7 @@ describe("OrgModulePage — 组织与部门 (T21)", () => {
           }),
     );
     await renderPage();
-    const nodes = container.querySelectorAll('[data-testid="org-node"]');
+    const nodes = container.querySelectorAll('[data-testid="org4-node"]');
     expect(nodes).toHaveLength(2);
     expect(container.textContent).toContain("总堂");
     expect(container.textContent).toContain("分堂");
@@ -124,7 +124,7 @@ describe("OrgModulePage — 组织与部门 (T21)", () => {
   it("collapse and expand a branch", async () => {
     mockApi((url) => (url.includes("/dept/list") ? Promise.resolve(FLAT) : missing(url)));
     await renderPage();
-    const toggleBtn = container.querySelector('[data-testid="org-node"] button[aria-expanded]');
+    const toggleBtn = container.querySelector('[data-testid="org4-node"] button[aria-expanded]');
     expect(toggleBtn?.getAttribute("aria-expanded")).toBe("true");
     await act(async () => {
       (toggleBtn as HTMLButtonElement).click();
@@ -140,33 +140,33 @@ describe("OrgModulePage — 组织与部门 (T21)", () => {
   it("empty roster names the reason", async () => {
     mockApi(() => Promise.resolve({ items: [] }));
     await renderPage();
-    const empty = container.querySelector('[data-testid="org-empty"]');
+    const empty = container.querySelector('[data-testid="org4-empty"]');
     expect(empty?.textContent).toContain("后台还没有建立任何部门");
   });
 
   it("no endpoint answers → honest GAP-02 state with the 申请入口", async () => {
     mockApi((url) => missing(url));
     await renderPage();
-    const denied = container.querySelector('[data-testid="org-denied"]');
+    const denied = container.querySelector('[data-testid="org4-denied"]');
     expect(denied?.textContent).toContain("待核实");
     expect(denied?.textContent).toContain("上游部门数据接口尚未接入");
     expect(denied?.textContent).toContain("重试");
-    expect(denied?.querySelector('[data-testid="org-apply"]')?.textContent).toContain("申请接入");
-    expect(container.querySelector('[data-testid="org-list"]')).toBeNull();
+    expect(denied?.querySelector('[data-testid="org4-apply"]')?.textContent).toContain("申请接入");
+    expect(container.querySelector('[data-testid="org4-list"]')).toBeNull();
   });
 
   it("403 → permission sentence, not a fake tree", async () => {
     mockApi((url) => forbidden(url));
     await renderPage();
-    const denied = container.querySelector('[data-testid="org-denied"]');
+    const denied = container.querySelector('[data-testid="org4-denied"]');
     expect(denied?.textContent).toContain("你没有查看这块数据的权限");
-    expect(denied?.querySelector('[data-testid="org-apply"]')).toBeNull();
+    expect(denied?.querySelector('[data-testid="org4-apply"]')).toBeNull();
   });
 
   it("5xx carries the plain sentence, request id, and a retry", async () => {
     mockApi((url) => boom502(url));
     await renderPage();
-    const err = container.querySelector('[data-testid="org-error"]');
+    const err = container.querySelector('[data-testid="org4-error"]');
     expect(err?.textContent).toContain("请求编号：req-31");
     expect(err?.textContent).toContain("重试");
     expect(err?.textContent).not.toMatch(/HTTP 502|ApiError/);
@@ -177,7 +177,7 @@ describe("OrgModulePage — 组织与部门 (T21)", () => {
       url.includes("/dept/list") ? Promise.resolve({ items: [{ dept_id: 9, parent_id: 0 }] }) : missing(url),
     );
     await renderPage();
-    const node = container.querySelector('[data-testid="org-node"]');
+    const node = container.querySelector('[data-testid="org4-node"]');
     expect(node?.textContent).toContain("待核实");
   });
 });

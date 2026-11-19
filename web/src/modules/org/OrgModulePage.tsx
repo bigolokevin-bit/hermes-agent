@@ -230,7 +230,7 @@ function DeptRow({
   return (
     <>
       <li
-        data-testid="org-node"
+        data-testid="org4-node"
         className="flex items-center gap-2 py-2 pr-4"
         style={{ paddingLeft: 8 + depth * 16 }}
         title={node.rawId ? `记录号 ${node.rawId}` : undefined}
@@ -294,7 +294,7 @@ export default function OrgModulePage() {
     });
 
   return (
-    <section className="flex flex-col gap-4" data-testid="org-page">
+    <section className="flex flex-col gap-4" data-testid="org4-page">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <h1 className="font-mondwest text-xl text-white/90">组织与部门</h1>
@@ -311,7 +311,7 @@ export default function OrgModulePage() {
 
       {org.phase === "loading" ? (
         <section
-          data-testid="org-loading"
+          data-testid="org4-loading"
           className="flex flex-col gap-2 rounded-lg border border-white/5 bg-white/[0.02] p-4"
           aria-label="正在加载组织架构"
         >
@@ -323,14 +323,14 @@ export default function OrgModulePage() {
 
       {org.phase === "denied" ? (
         <StateShell
-          testid="org-denied"
+          testid="org4-denied"
           icon={<ShieldAlert className="h-4 w-4 text-amber-300/80" aria-hidden />}
           title={org.message === DENIED_FORBIDDEN ? "暂时看不到组织架构" : "数据源待核实"}
           body={org.message}
           onRetry={() => setReload((n) => n + 1)}
           extra={
             org.message === GAP02_MESSAGE ? (
-              <p data-testid="org-apply" className="text-xs leading-relaxed text-white/55">
+              <p data-testid="org4-apply" className="text-xs leading-relaxed text-white/55">
                 申请接入：请提交平台工单，说明用于控制台「组织与部门」页，申请接入部门数据接口。
               </p>
             ) : undefined
@@ -340,7 +340,7 @@ export default function OrgModulePage() {
 
       {org.phase === "error" ? (
         <StateShell
-          testid="org-error"
+          testid="org4-error"
           icon={<TriangleAlert className="h-4 w-4 text-rose-300/80" aria-hidden />}
           title="没能加载出组织架构"
           body={`${org.message}${org.requestId ? `（请求编号：${org.requestId}）` : "（本次请求未记录编号，可复制时间与操作路径反馈）"}`}
@@ -350,7 +350,7 @@ export default function OrgModulePage() {
 
       {org.phase === "empty" ? (
         <StateShell
-          testid="org-empty"
+          testid="org4-empty"
           icon={<Inbox className="h-4 w-4 text-white/30" aria-hidden />}
           title="部门树暂时是空的"
           body="后台还没有建立任何部门。建档完成后这里会自动长出树形结构。"
@@ -360,7 +360,7 @@ export default function OrgModulePage() {
 
       {org.phase === "ready" ? (
         <Card className="border-white/5 bg-white/[0.02]">
-          <CardContent className="p-0" data-testid="org-list">
+          <CardContent className="p-0" data-testid="org4-list">
             <ul className="divide-y divide-white/5">
               {roots.map((node) => (
                 <DeptRow key={node.key} node={node} depth={0} collapsed={collapsed} onToggle={toggle} />
