@@ -130,6 +130,35 @@ describe("the human layer speaks human", () => {
     expect(text()).toContain("失败代码：policy.denied");
   });
 
+  it("a machine-shaped change value is folded, never printed", async () => {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async () => ({
+      audit: {
+        eventId: "evt_1a2b3c4d5e6f7081",
+        event_type: "policy_changed",
+        outcome: "succeeded",
+        actor: { displayName: "陈默", id: "user:5566778899aabbcc" },
+        change: {
+          // no displayable value: only field names, which is engineering text
+          before: { budget_cap: "ten_thousand", owner: "emp_9c1f2a3b4d5e6f70" },
+          // a raw JSON string is engineering text too
+          after: '{"budget_cap":"twenty_thousand"}',
+        },
+      },
+    }));
+    await render("/audit/detail?id=evt_1a2b3c4d5e6f7081");
+    await waitFor(() => text().includes("变更前"), "change painted");
+    // the human layer says where the value went instead of showing wire text
+    expect(text()).toContain("见「技术详情」");
+    expect(text()).not.toMatch(/budget_cap|ten_thousand|emp_9c1f2a3b4d5e6f70/);
+    const toggle = document.querySelector<HTMLButtonElement>("[data-testid='aud02-detail-details'] button")!;
+    await act(async () => {
+      toggle.click();
+    });
+    expect(text()).toContain("变更前原值：{budget_cap、owner}");
+    expect(text()).toContain('变更后原值：{"budget_cap":"twenty_thousand"}');
+  });
+
   it("请求编号 is shown in full and copyable", async () => {
     await openDetail();
     const cell = document.querySelector("[data-testid='aud02-detail-request-id']")!;

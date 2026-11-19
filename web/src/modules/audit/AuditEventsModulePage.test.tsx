@@ -303,6 +303,8 @@ describe("the event detail", () => {
     expect(forbidden).toContain("暂时无法查看审计事件");
     expect(forbidden).toContain("请求编号：");
     expect(forbidden).toContain("dt-deny");
+    // and the same sentence carries no trace of which route was asked for
+    expect(forbidden).not.toMatch(/\/agent-api|api\/audit|console\.forbidden|\b40[34]\b/);
     expect(await once(404)).toBe(forbidden);
   });
 });
@@ -369,6 +371,9 @@ describe("whole-panel states", () => {
     expect(text()).toContain("暂时无法查看审计事件");
     expect(text()).toContain("请求编号：au-deny");
     expect(document.querySelectorAll("[data-testid^='aud01-row-']")).toHaveLength(0);
+    // 同体 also means neither body may echo the wire: no path, no service code,
+    // no status number — a 404's path would tell a person what is missing.
+    expect(forbidden).not.toMatch(/\/agent-api|api\/audit|console\.forbidden|\b40[34]\b/);
     expect(await once(404)).toBe(forbidden);
   });
 

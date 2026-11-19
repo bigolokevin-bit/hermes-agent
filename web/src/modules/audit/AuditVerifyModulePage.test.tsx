@@ -197,6 +197,8 @@ describe("a check that cannot run", () => {
     // and it says where to go next, not just that it failed
     expect(forbidden).toContain("下一步");
     expect(text()).not.toContain("没有发现断点");
+    // no echo of the route or the status: an unrun check says so in words only
+    expect(forbidden).not.toMatch(/\/agent-api|api\/audit|console\.forbidden|\b40[34]\b/);
     // the same answer at a 404 draws the same markup, down to the byte
     expect(await deniedOnce(404)).toBe(forbidden);
   });
