@@ -1484,3 +1484,76 @@ npx eslint src/modules/audit        → exit 0，0 errors / 3 warnings（useAudi
 - `runId / taskId / resourceId` 三个参数未单独探（本轮只探派单点名的 type/since/actor）。
 - 服务端「采样到的动作码」是有限集合，下拉只暴露采样到的码；
   新动作出现前不会出现在筛选里（这是诚实而非缺陷）。
+
+## R19 PASS tail b (2026-11-19, base c9266b55 → HEAD b65673c8)
+
+QA 点不到的两处：行内「详情」格点了没反应；「完整性校验」按钮根本不场。
+
+### 1) 行内「详情」格 — 真展开（读数）
+
+- 原因：旧实现里可点的是格子里一个 12px 的下划线文字，格子本身不是控件；点格子什么都不会发生，
+  QA 的 textLen 自然不变。另：旧折叠在没内容时整块 `return null`，会出现「点开但看不见东西」。
+- 现在：整格就是一个 `button`（`aud01-cell-<key>-details`，`aria-expanded` 随状态），
+  展开后有独立面板 `data-testid="aud01-tech-details"`，固定六行技术字段
+  （事件标识 / 事件类型原值 / 结果原值 / 发生时间原值 / 记账时间原值 / 请求编号；服务没给的写「服务未回传」），
+  面板永不空。折叠状态由页面持有 → 同一时刻只开一行，`aud01-tech-details` 始终唯一。
+- **DOM 读数**（jsdom，`document.body.textContent.length`）：
+  `before=562 → after=684，差 +122`（断言 `> 40`，即至少一行真内容；测试名
+  `the 详情 cell opens a real technical panel and grows the text by a measured amount`）。
+
+### 2) 「完整性校验」按钮 — 在场、可点、状态诚实
+
+- 按钮 `data-testid="aud01-verify"`（文案「完整性校验」，请求中禁用并转圈），位于页面工具条，
+  **denied 态也渲染**（403/404 时列表整页替换，但按钮仍在，点了也只会得到同一句「本环境未启用」）。
+- 点击后用当前时间窗真发 `GET /agent-api/api/audit-verify?from=…&to=…`（与列表同一对 instants）。
+- 四种落点：
+  - loading → `aud01-verify-loading`；
+  - 200 → `aud01-verify-result`（复用 `VerifyResultBody`：条数带分母、断点、技术详情折叠）；
+  - **403/404/405/501/0/5xx → `aud01-verify-not-enabled`**：标题「本环境未启用」+ 原因句
+    （`verifyUnavailableReason`，404 → 「这套环境没有提供完整性校验，或者它还没有对你开放。」）
+    + 「下一步：让工作区管理员在审计服务里开通时间窗完整性校验…」+ 请求编号（缺失给可复制兜底）
+    + 技术详情折叠（原始 body 只在这层）+ 再运行一次；**不回显路由、不回显 404、不出现 `console.unknown_route`**；
+  - 其它失败 → `aud01-verify-error`（人话 + 请求编号 + 重试）。
+- **DOM 读数**（stub 404）：`before=562 → after=681，差 +119`（断言 `> 20`）。
+
+### 3) 本轮实测到的运行态（比 QA 的观察更细）
+
+带会话 cookie 直打 BFF：
+
+| 请求 | HTTP | 响应 |
+|---|---|---|
+| `GET /api/audit/verify?from=&to=` | **404** | `{"code":"audit.verify_not_enabled","message":"本环境未启用完整性校验，链校验请走 /api/audit-verify","rid":"3c133e68"}` |
+| `GET /api/audit-verify?from=&to=` | **200** | `{"ok":true,"complete":true,"scanned":0,"anchorCheckpointId":"cp_t_seakoi_pilot_2026111300","chainHeadHash":"ah_031a89f9…"}` |
+| `GET 127.0.0.1:9122/agent-api/api/audit-verify?…`（开发 SPA 代理） | **200** | 同上（真跑通） |
+| `GET 127.0.0.1:8092/agent-api/…`（BFF 直连无该前缀） | 404 | `console.not_found`（静态资源） |
+
+即：`/api/audit/verify` 是**未启用的旧别名**，它自己回了 404 并把去处写在 message 里；
+页面用的是真路由，本环境 200。所以按钮在真环境里会出真实条数，只有在路由真的没有/被关掉时
+才落 `aud01-verify-not-enabled`（用 404 stub 证过）。
+
+### 4) 顺手修掉的假绿（本轮新面板会把它暴露出来）
+
+`scanned: 0` 且 `ok: true` 的真实回答，旧 `VerifyResultBody` 会给出「没有发现断点」+ 绿色徽标 ——
+什么都没核对却报通过。现在 `scanned === 0` → 徽标中性、「这一段没有核对到记录」，
+并在正文写「这不等于「完整」，只是这一段没有可核对的内容。」
+（aud03 与列表共用该组件，两处同时受益；新增用例断言不出现「没有发现断点」。）
+
+### 5) 未动的三条约束
+
+- 零写入口：新按钮是只读 GET；页内无 form/提交；403≡404 同体与 `aud01-*` 家族未改。
+- 未新增依赖、未改共享件（`App.tsx`/`shell/**`/其它模块/locale 全部未碰）。
+- `TechnicalDisclosure` 原样保留给详情面与失败面，行内格改用自己的面板。
+
+### 6) 门禁（`web/` 下，本轮实测）
+
+```
+npx vitest run src/modules/audit   → exit 0，Test Files 5 passed / Tests 107 passed（原 104，+3）
+npx tsc -b . --noEmit              → exit 2，49 条 error TS 全在 ../apps/shared/**，非 shared 0 条
+npx eslint src/modules/audit       → exit 0，0 errors / 3 warnings（useAuditData 既有）
+```
+
+### 7) not verified
+
+- 未做真浏览器像素/点击量测（无 playwright、禁 install、需鉴权）——上面两个 len 差是 jsdom 读数，
+  不是浏览器渲染读数；未测 1440/375 下新面板的换行表现（沿用既有 `min-w-0 break-words` 契约）。
+- 服务在真实 200 里给 `scanned: 0`；没有窗口同时含事件与断点样本，`broken > 0` 的界面分支只有单元测试覆盖。

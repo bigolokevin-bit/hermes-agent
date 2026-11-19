@@ -8,6 +8,7 @@
  * in `title` attributes and the collapsed 「技术详情」 disclosure.
  */
 import type { ReactNode } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 import { Badge } from "@nous-research/ui/ui/components/badge";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
@@ -80,15 +81,31 @@ export function AuditEventRowCard({
   row,
   selected,
   onOpen,
+  techOpen,
+  onToggleTech,
   testId,
 }: {
   row: AuditRow;
   selected: boolean;
   onOpen: () => void;
+  /** The technical fold is page-owned so only one row can hold it open at a time. */
+  techOpen: boolean;
+  onToggleTech: () => void;
   /** `aud01-row-<key>` from the list page; every column test id hangs off it. */
   testId: string;
 }): ReactNode {
   const cells = `aud01-cell-${row.key}`;
+  // Every technical line is present, including the ones the service did not
+  // send: a fold that can open onto nothing is indistinguishable from a dead
+  // control, and the whole point of this cell is that it really expands.
+  const techLines = [
+    `事件标识：${row.rawId ?? "服务未回传"}`,
+    `事件类型原值：${row.action.raw ?? "服务未回传"}`,
+    `结果原值：${row.outcome.raw ?? "服务未回传"}`,
+    `发生时间原值：${row.occurredAt ?? "服务未回传"}`,
+    `记账时间原值：${row.recordedAt ?? "服务未回传"}`,
+    `请求编号：${row.requestId ?? "服务未回传"}`,
+  ];
   return (
     <Card className={`border-border bg-card ${selected ? "ring-1 ring-primary/60" : ""}`} data-testid={testId}>
       <CardContent className="flex min-w-0 flex-col gap-2 px-4 py-3">
@@ -133,16 +150,34 @@ export function AuditEventRowCard({
 
         {row.reason ? <p className="min-w-0 break-words text-xs text-muted-foreground">原因：{row.reason}</p> : null}
 
-        <TechnicalDisclosure
-          testId={`${cells}-details`}
-          label="详情"
-          lines={[
-            row.rawId ? `事件标识：${row.rawId}` : "",
-            row.action.known ? "" : `事件类型原值：${row.action.raw ?? "未提供"}`,
-            row.outcome.raw ? `结果原值：${row.outcome.raw}` : "",
-            row.requestId ? "" : "请求编号：服务未回传",
-          ]}
-        />
+        {/* The whole cell toggles, not a 12px word inside it: a reviewer who
+            clicks the 详情 cell must see the fold open (R19 tail b). */}
+        <button
+          type="button"
+          onClick={onToggleTech}
+          aria-expanded={techOpen}
+          className="flex w-full min-w-0 items-center gap-1 text-left text-xs text-muted-foreground underline underline-offset-2"
+          data-testid={`${cells}-details`}
+        >
+          {techOpen ? (
+            <ChevronUp className="h-3 w-3 shrink-0" aria-hidden="true" />
+          ) : (
+            <ChevronDown className="h-3 w-3 shrink-0" aria-hidden="true" />
+          )}
+          技术详情
+        </button>
+        {techOpen ? (
+          <div
+            className="min-w-0 rounded-sm border border-border bg-muted/40 px-2 py-1.5"
+            data-testid="aud01-tech-details"
+          >
+            <ul className="flex min-w-0 flex-col gap-0.5 break-words font-mono text-xs text-muted-foreground">
+              {techLines.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );
@@ -273,13 +308,22 @@ export function VerifyResultBody({
   const scanned = countValue(result.scanned);
   const total = countValue(result.total);
   const broken = countValue(result.broken);
-  const headline =
-    result.verdict === "intact"
+  const counted = result.scanned;
+  const nothingScanned = counted === 0;
+  const headline = nothingScanned
+    ? "这一段没有核对到记录"
+    : result.verdict === "intact"
       ? "没有发现断点"
       : result.verdict === "broken"
         ? "发现对不上的地方"
         : "校验跑完了，但结论没说清楚";
-  const tone = result.verdict === "intact" ? "success" : result.verdict === "broken" ? "destructive" : "secondary";
+  const tone = nothingScanned
+    ? "secondary"
+    : result.verdict === "intact"
+      ? "success"
+      : result.verdict === "broken"
+        ? "destructive"
+        : "secondary";
   const countsKnown = result.scanned !== null || result.total !== null || result.broken !== null;
   return (
     <div className="flex min-w-0 flex-col gap-3" data-testid={testId}>
@@ -308,6 +352,12 @@ export function VerifyResultBody({
           reason={result.broken === null ? "服务没有给出对不上的条数" : undefined}
         />
       </dl>
+
+      {nothingScanned ? (
+        <p className="min-w-0 break-words text-xs text-warning">
+          服务的回答里已核对 0 条：这不等于「完整」，只是这一段没有可核对的内容。
+        </p>
+      ) : null}
 
       {!countsKnown ? (
         <p className="min-w-0 break-words text-xs text-warning">
