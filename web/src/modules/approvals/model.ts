@@ -126,8 +126,19 @@ function personView(
   idKeys: readonly string[],
   noun: string,
 ): Person {
-  const rawId = pickText(rec, idKeys);
-  const name = pickText(rec, nameKeys);
+  // R24: the BFF sometimes answers with an object handle, e.g.
+  // requestedBy: { type: "user", id: "1" } — unwrap it before picking.
+  let rawId = pickText(rec, idKeys);
+  let name = pickText(rec, nameKeys);
+  if (!rawId || !name) {
+    for (const k of idKeys) {
+      const inner = asRecord(rec[k]);
+      if (!inner) continue;
+      rawId = rawId ?? pickText(inner, ["id", "userId", "user_id", "value", "handle"]);
+      name = name ?? pickText(inner, ["name", "displayName", "label"]);
+      if (rawId || name) break;
+    }
+  }
   if (name && !isMachineHandle(name)) return { label: name, raw: rawId };
   const handle = name ?? rawId;
   if (handle) {
@@ -137,9 +148,10 @@ function personView(
       .pop();
     const clean = (tail ?? "").replace(/[^0-9A-Za-z]/g, "");
     // R15 apd5: eight-digit code, matching the people-directory standard.
-    if (clean.length >= 4) return { label: `${noun} · ${clean.slice(0, 8).toUpperCase()}`, raw: handle };
+    if (clean.length >= 1) return { label: `${noun} · ${clean.slice(0, 8).toUpperCase()}`, raw: handle };
   }
-  return { label: "未指派", raw: rawId };
+  // R24: an absent person is an honest dash, never a confident 「未指派」.
+  return { label: "—", raw: rawId };
 }
 
 const REQUESTER_NAME_KEYS = ["requestedByName", "applicantName", "requesterName", "humanName", "ownerName"] as const;
@@ -509,7 +521,7 @@ export function approvalDetailFrom(payload: unknown): ApprovalDetail | null {
   technical.push(`状态原值：${status.raw ?? "未提供"}`);
   if (rawId) technical.push(`单据标识：${rawId}`);
   // R15 apd5: PRD §4.2 frozen fields, extracted honestly.
-  const actionHash = pickText(body, ["actionHash", "action_hash"]);
+  const actionHash = pickText(body, ["actionHash", "action_hash", "argsDigest"]);
   const requestId = pickText(body, ["requestId", "request_id", "consoleRequestId"]);
   if (actionHash) technical.push(`操作指纹：${actionHash}`);
   if (requestId) technical.push(`请求编号：${requestId}`);

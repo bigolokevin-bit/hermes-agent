@@ -25,6 +25,7 @@ import { Link, useParams, useSearchParams } from "react-router";
 import { ClipboardCheck, Gauge, Inbox, RefreshCw, ShieldAlert, TriangleAlert, Wallet } from "lucide-react";
 import { Badge, Button, Card, CardContent } from "@nous-research/ui";
 
+import { RequestIdCopy } from "@/components/RequestIdCopy";
 import { fetchJSON } from "@/lib/api";
 import { API_UNREACHABLE_MESSAGE, ApiError, humanizeStatus } from "@/lib/api-error";
 
@@ -41,8 +42,10 @@ type Resource<T> =
   | { phase: "denied"; message: string }
   | { phase: "error"; message: string; requestId: string | null };
 
-const DENIED_FORBIDDEN = "你没有查看这块数据的权限。";
-const DENIED_MISSING = "这块数据还没接入（后台尚未提供该数据源）。";
+/* R-ed5: 403 and 404 share ONE body — the same sentence and code, no path
+ * echo — so the screen never leaks whether the data or the permission is
+ * what is missing. */
+const DENIED_COPY = "这块数据还没接入，或你没有查看权限。请联系工作区管理员确认数据源与权限。";
 
 function isRecord(value: unknown): value is Rec {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -200,8 +203,8 @@ function actionLabel(value: string | null): string {
 function toResourceError(err: unknown): Resource<never> {
   const api = err instanceof ApiError ? err : null;
   const status = api?.status;
-  if (status === 403) return { phase: "denied", message: DENIED_FORBIDDEN };
-  if (status === 404) return { phase: "denied", message: DENIED_MISSING };
+  if (status === 403) return { phase: "denied", message: DENIED_COPY };
+  if (status === 404) return { phase: "denied", message: DENIED_COPY };
   const message = api?.message || (status ? humanizeStatus(status) : API_UNREACHABLE_MESSAGE);
   return { phase: "error", message, requestId: api?.requestId ?? null };
 }
@@ -386,7 +389,7 @@ function ZoneError({ title, message, requestId, onRetry, testid }: { title: stri
         <p className="text-sm">{title}没能加载出来</p>
         <p className="text-xs text-white/55">{message}</p>
         <p className="font-mono text-xs text-white/45">
-          {requestId ? `请求编号：${requestId}` : "本次请求未记录编号，可复制时间与操作路径反馈"}
+          <RequestIdCopy requestId={requestId} fallback="本次请求未记录编号，可复制时间与操作路径反馈" />
         </p>
         <Button size="sm" outlined onClick={onRetry}>
           <RefreshCw className="mr-2 h-4 w-4" />
@@ -439,7 +442,7 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
   );
 
   return (
-    <section className="min-w-0 space-y-4" data-testid="emp-detail-module">
+    <section className="min-w-0 space-y-4" data-testid="ed5-module">
       {header}
 
       <div
@@ -447,7 +450,7 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
         aria-label="详情分区"
         className="flex min-w-0 flex-wrap gap-1 border-b pb-1"
         style={{ borderColor: "var(--line-2)" }}
-        data-testid="emp-detail-tabs"
+        data-testid="ed5-tabs"
       >
         {ZONES.map((z) => {
           const active = z.id === zone;
@@ -523,7 +526,7 @@ function useOverview(empId: string, nonce: number): OverviewState {
         // the capability zone reuses — see file header).
         const status = err instanceof ApiError ? err.status : undefined;
         if (status === 403) {
-          setState({ phase: "denied", message: DENIED_FORBIDDEN });
+          setState({ phase: "denied", message: DENIED_COPY });
           return;
         }
         try {
@@ -539,7 +542,7 @@ function useOverview(empId: string, nonce: number): OverviewState {
           if (cancelled) return;
           const r = toResourceError(err2);
           if (r.phase === "denied" && status === 404) {
-            setState({ phase: "denied", message: DENIED_MISSING });
+            setState({ phase: "denied", message: DENIED_COPY });
           } else if (r.phase === "error") {
             setState({ phase: "error", message: r.message, requestId: r.requestId });
           } else {
@@ -556,18 +559,18 @@ function useOverview(empId: string, nonce: number): OverviewState {
 }
 
 function OverviewZone({ state, onRetry, empId }: { state: OverviewState; onRetry: () => void; empId: string }) {
-  if (state.phase === "loading") return <ZoneLoading testid="emp-detail-overview-loading" />;
+  if (state.phase === "loading") return <ZoneLoading testid="ed5-overview-loading" />;
   if (state.phase === "empty") {
     return (
       <ZoneEmpty
         title="还没找到这位员工的档案"
         hint="可能刚被移除，或后台还没同步。稍后重试，或回到列表确认。"
-        testid="emp-detail-overview-empty"
+        testid="ed5-overview-empty"
       />
     );
   }
   if (state.phase === "denied") {
-    return <ZoneDenied title="员工档案" message={state.message} onRetry={onRetry} testid="emp-detail-overview-denied" />;
+    return <ZoneDenied title="员工档案" message={state.message} onRetry={onRetry} testid="ed5-overview-denied" />;
   }
   if (state.phase === "error") {
     return (
@@ -576,7 +579,7 @@ function OverviewZone({ state, onRetry, empId }: { state: OverviewState; onRetry
         message={state.message}
         requestId={state.requestId}
         onRetry={onRetry}
-        testid="emp-detail-overview-error"
+        testid="ed5-overview-error"
       />
     );
   }
@@ -591,7 +594,7 @@ function OverviewZone({ state, onRetry, empId }: { state: OverviewState; onRetry
     { label: "月度预算", value: money(pickNumber(d.monthlyBudgetUsd, budget?.monthlyCostUsd)) },
   ];
   return (
-    <Card data-testid="emp-detail-overview">
+    <Card data-testid="ed5-overview">
       <CardContent className="p-0">
         <dl className="divide-y divide-white/5">
           {rows.map((r) => (
@@ -613,18 +616,18 @@ function OverviewZone({ state, onRetry, empId }: { state: OverviewState; onRetry
  * ------------------------------------------------------------------ */
 
 function CapabilityZone({ resource, onRetry }: { resource: Resource<CapabilityRow[]>; onRetry: () => void }) {
-  if (resource.phase === "loading") return <ZoneLoading testid="emp-detail-capability-loading" />;
+  if (resource.phase === "loading") return <ZoneLoading testid="ed5-capability-loading" />;
   if (resource.phase === "empty") {
     return (
       <ZoneEmpty
         title="还没有这位员工的能力记录"
         hint="能力配置生效后会自动出现；如果已经配置，可能是后台还没接入该数据源。"
-        testid="emp-detail-capability-empty"
+        testid="ed5-capability-empty"
       />
     );
   }
   if (resource.phase === "denied") {
-    return <ZoneDenied title="能力与权限" message={resource.message} onRetry={onRetry} testid="emp-detail-capability-denied" />;
+    return <ZoneDenied title="能力与权限" message={resource.message} onRetry={onRetry} testid="ed5-capability-denied" />;
   }
   if (resource.phase !== "ready") {
     return (
@@ -633,12 +636,12 @@ function CapabilityZone({ resource, onRetry }: { resource: Resource<CapabilityRo
         message={resource.phase === "error" ? resource.message : ""}
         requestId={resource.phase === "error" ? resource.requestId : null}
         onRetry={onRetry}
-        testid="emp-detail-capability-error"
+        testid="ed5-capability-error"
       />
     );
   }
   return (
-    <Card data-testid="emp-detail-capability">
+    <Card data-testid="ed5-capability">
       <CardContent className="p-0">
         <div className="hidden grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,1fr)] gap-2 border-b border-white/10 px-4 py-2 text-xs text-white/45 md:grid">
           <span>能力</span>
@@ -667,18 +670,18 @@ function CapabilityZone({ resource, onRetry }: { resource: Resource<CapabilityRo
  * ------------------------------------------------------------------ */
 
 function ApprovalsZone({ resource, onRetry }: { resource: Resource<ApprovalRow[]>; onRetry: () => void }) {
-  if (resource.phase === "loading") return <ZoneLoading testid="emp-detail-approvals-loading" />;
+  if (resource.phase === "loading") return <ZoneLoading testid="ed5-approvals-loading" />;
   if (resource.phase === "empty") {
     return (
       <ZoneEmpty
         title="这位员工还没有审批事项"
         hint="有新的申请或待办审批时，会出现在这里。"
-        testid="emp-detail-approvals-empty"
+        testid="ed5-approvals-empty"
       />
     );
   }
   if (resource.phase === "denied") {
-    return <ZoneDenied title="审批" message={resource.message} onRetry={onRetry} testid="emp-detail-approvals-denied" />;
+    return <ZoneDenied title="审批" message={resource.message} onRetry={onRetry} testid="ed5-approvals-denied" />;
   }
   if (resource.phase !== "ready") {
     return (
@@ -687,12 +690,12 @@ function ApprovalsZone({ resource, onRetry }: { resource: Resource<ApprovalRow[]
         message={resource.phase === "error" ? resource.message : ""}
         requestId={resource.phase === "error" ? resource.requestId : null}
         onRetry={onRetry}
-        testid="emp-detail-approvals-error"
+        testid="ed5-approvals-error"
       />
     );
   }
   return (
-    <Card data-testid="emp-detail-approvals">
+    <Card data-testid="ed5-approvals">
       <CardContent className="p-0">
         <div className="hidden grid-cols-[minmax(0,1.4fr)_minmax(0,0.7fr)_minmax(0,0.8fr)_minmax(0,0.6fr)] gap-2 border-b border-white/10 px-4 py-2 text-xs text-white/45 md:grid">
           <span>事项</span>
@@ -768,18 +771,18 @@ function runStatusTone(value: string | null): "success" | "warning" | "destructi
 }
 
 function RunsZone({ resource, onRetry }: { resource: Resource<RunRow[]>; onRetry: () => void }) {
-  if (resource.phase === "loading") return <ZoneLoading testid="emp-detail-runs-loading" />;
+  if (resource.phase === "loading") return <ZoneLoading testid="ed5-runs-loading" />;
   if (resource.phase === "empty") {
     return (
       <ZoneEmpty
         title="还没有运行记录"
         hint="员工开始执行任务后，运行会出现在这里。"
-        testid="emp-detail-runs-empty"
+        testid="ed5-runs-empty"
       />
     );
   }
   if (resource.phase === "denied") {
-    return <ZoneDenied title="运行" message={resource.message} onRetry={onRetry} testid="emp-detail-runs-denied" />;
+    return <ZoneDenied title="运行" message={resource.message} onRetry={onRetry} testid="ed5-runs-denied" />;
   }
   if (resource.phase !== "ready") {
     return (
@@ -788,12 +791,12 @@ function RunsZone({ resource, onRetry }: { resource: Resource<RunRow[]>; onRetry
         message={resource.phase === "error" ? resource.message : ""}
         requestId={resource.phase === "error" ? resource.requestId : null}
         onRetry={onRetry}
-        testid="emp-detail-runs-error"
+        testid="ed5-runs-error"
       />
     );
   }
   return (
-    <Card data-testid="emp-detail-runs">
+    <Card data-testid="ed5-runs">
       <CardContent className="p-0">
         <div className="hidden grid-cols-[minmax(0,0.9fr)_minmax(0,0.7fr)_minmax(0,1fr)_minmax(0,0.6fr)_minmax(0,0.6fr)] gap-2 border-b border-white/10 px-4 py-2 text-xs text-white/45 md:grid">
           <span>运行</span>
@@ -836,18 +839,18 @@ function RunsZone({ resource, onRetry }: { resource: Resource<RunRow[]>; onRetry
  * ------------------------------------------------------------------ */
 
 function AuditZone({ resource, onRetry }: { resource: Resource<AuditRow[]>; onRetry: () => void }) {
-  if (resource.phase === "loading") return <ZoneLoading testid="emp-detail-audit-loading" />;
+  if (resource.phase === "loading") return <ZoneLoading testid="ed5-audit-loading" />;
   if (resource.phase === "empty") {
     return (
       <ZoneEmpty
         title="还没有审计记录"
         hint="涉及这位员工的敏感操作会逐条记在这里。"
-        testid="emp-detail-audit-empty"
+        testid="ed5-audit-empty"
       />
     );
   }
   if (resource.phase === "denied") {
-    return <ZoneDenied title="审计" message={resource.message} onRetry={onRetry} testid="emp-detail-audit-denied" />;
+    return <ZoneDenied title="审计" message={resource.message} onRetry={onRetry} testid="ed5-audit-denied" />;
   }
   if (resource.phase !== "ready") {
     return (
@@ -856,12 +859,12 @@ function AuditZone({ resource, onRetry }: { resource: Resource<AuditRow[]>; onRe
         message={resource.phase === "error" ? resource.message : ""}
         requestId={resource.phase === "error" ? resource.requestId : null}
         onRetry={onRetry}
-        testid="emp-detail-audit-error"
+        testid="ed5-audit-error"
       />
     );
   }
   return (
-    <Card data-testid="emp-detail-audit">
+    <Card data-testid="ed5-audit">
       <CardContent className="p-0">
         <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.7fr)_minmax(0,1.2fr)] gap-2 border-b border-white/10 px-4 py-2 text-xs text-white/45 md:grid">
           <span>时间</span>

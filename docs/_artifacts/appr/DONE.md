@@ -391,3 +391,15 @@ helper=web/src/lib/csrf.ts：readCsrfToken 每请求从 document.cookie 读 cons
 ## P1 飞书 SSO 入口（feat(console): feishu SSO entry on login page）
 实现：/login 主按钮 auth5-feishu（aria 说明整页跳转）→ window.location.assign(FEISHU_START_PATH=/auth/feishu/start)，非 fetch；密码表单保留为兜底（分隔行「或使用账号密码」）。回调失败回 /login 读 query feishu_error??error（rid=request_id??rid）：已知 code 专属人话（auth.feishu_denied=「飞书那边没有完成授权，登录没有发生。」/auth.feishu_unavailable=连不上句）+泛句兜底，auth5-feishu-error 卡含 RequestIdCopy 可复制编号与 auth5-feishu-retry「再用飞书试一次」；裸 code 零上屏；无 query 零回归。375 无横溢=按钮 w-full 于 max-w-sm 卡内。
 读数：LoginPage.test 10 passed（旧 8 不回归+新 2：点击断 assign(/auth/feishu/start)+密码在；?error=auth.feishu_denied&rid=fs-77 断人话+fs-77+req-copy+重试钮+无裸 code）；全量 vitest 121 files/1194 passed 0 fail；tsc web 单包 0。桥端点由 lane D l7-ops 提供，本单前端接线；需 L0 合批 build+重章后 QA 上屏联调。
+
+## ed5 员工详情五区真数据（feat(console): employee detail five zones real data，2026-11-19）
+基线 23a8a7e0（reset --hard origin/lane/hermes-console；reset 前 P1-approvals 未提交残留已备份 /p1-approvals-leftover.patch 57 行交 L0 裁定）。五区端点全真（无 fixture，data-fixture 零出现）：概览 /agent-api/api/employees/{id}（404 回落 matrix 行）、能力 /api/matrix?employee=、审批 /api/approvals?employeeId=、运行 /api/runs?employee=、审计 /api/audit?employee=。
+ego 登录态实测（emp_86A81CE8FF6F42E187BCF2B540，经 9122）：employees/{id}=404 信封（rid 09d865…）→概览走 matrix 回落；matrix=200 rows=3（rid 41f1…）；approvals=200 rows=0（诚实空态，rid a28f…）；runs=400 rows=2（错误态人话+rid a9ae…）；audit=400 rows=2（rid e2c3…）。运行/审计当前 BFF 拒参数=error 态如实渲染，非未接入态非假 0。
+本单改动：①testid 家族 emp-detail-*→ed5-*（页面 27+测试 12 处）；②403≡404 同体：两文案常量合并 DENIED_COPY=「这块数据还没接入，或你没有查看权限。请联系工作区管理员确认数据源与权限。」不回显路径；③ZoneError 请求编号行接 RequestIdCopy（可复制+已复制/复制失败反馈）+重试；④缺值 —+原因、shortCode 8 位大写、USD、北京到分等既有判据核实保留。
+验证：定向 employee-detail 13 passed；全量 vitest Test Files 122 passed / Tests 1220 passed 0 fail。9122 served=旧代次，DOM/屏幕读数留 L0 合批 build 后 QA 复跑；本单未单独构建。
+
+## R24 审批八字段取数收口（fix(console): approvals detail eight fields）
+BFF 实测形态（ego 登录态 GET /agent-api/api/approvals?status=consumed&limit=2 =200）：row 键含 approvalId/type/status/requestedBy{type,id}/approvers[{userId,role}]/argsDigest/verdict/decidedAt/createdAt…；无 recipient/dataScope/actionHash/changeKind 严格键（type=变更kind、argsDigest=动作指纹）。
+修复：①personView 支持对象 handle 解包（requestedBy={type:user,id:1}→「成员 · 1」，approvers userId human:1→「人员 · 1」；有 name 用「姓名 · 短码」），clean>=1 放宽（单人 id=1 不再误显「—」）；②缺值 fallback「未指派」→「—」+原因（工单口径：未指派=真未指派语义保留，缺值=—）；③详情操作指纹 actionHash 键补 argsDigest（真数据接上，短码+title 全值+可复制钮）；④行卡/详情 申请人/执行员工 缺值句统一「服务未提供申请人信息。」「服务未提供执行员工。」（title 原因，无假 0）。
+八字段现状（详情面板 apd5-*）：类型✓(changeKind 人话) 申请人✓(对象解包) 审批人✓(apd5-approver 顿号分隔姓名·短码) 结论✓(verdict 通过/驳回/要求修改) decidedAt✓(北京到分) 操作指纹✓(argsDigest) recipient/dataScope=该代次 BFF 无键→「—」+原因诚实 请求编号✓(可复制)。零写入口/403≡404 同体/apr5-* 家族维持。
+测试：api.test 新 describe 2 用例（对象 handle/无 handle「—」不名未指派/argsDigest→actionHash）；定向 approvals 3 files 52 passed；全量 122 files/1222 passed 0 fail。屏幕 DOM 复跑待 L0 合批构建代次。

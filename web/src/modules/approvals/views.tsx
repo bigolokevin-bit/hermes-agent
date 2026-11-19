@@ -75,8 +75,16 @@ export function ApprovalRowCard({
         </div>
 
         <dl className="flex min-w-0 flex-wrap gap-x-5 gap-y-1 text-xs">
-          <Field label="申请人" value={row.requester.label} reason={row.requester.raw ?? undefined} />
-          <Field label="执行员工" value={row.worker.label} reason={row.worker.raw ?? undefined} />
+          <Field
+            label="申请人"
+            value={row.requester.label}
+            reason={row.requester.raw ?? (row.requester.label === "—" ? "服务未提供申请人信息。" : undefined)}
+          />
+          <Field
+            label="执行员工"
+            value={row.worker.label}
+            reason={row.worker.raw ?? (row.worker.label === "—" ? "服务未提供执行员工。" : undefined)}
+          />
           <Field label="提交" value={row.submitted ?? "—"} reason={row.submitted ? undefined : MISSING_TIME} />
           <Field
             label={row.clockLabel}
@@ -133,8 +141,16 @@ export function ApprovalDetailBody({
 
       <dl className="flex min-w-0 flex-wrap gap-x-5 gap-y-1 text-xs">
         <Field label="类型" value={detail.kind.label} />
-        <Field label="申请人" value={detail.requester.label} reason={detail.requester.raw ?? undefined} />
-        <Field label="执行员工" value={detail.worker.label} reason={detail.worker.raw ?? undefined} />
+        <Field
+          label="申请人"
+          value={detail.requester.label}
+          reason={detail.requester.raw ?? (detail.requester.label === "—" ? "服务未提供申请人信息。" : undefined)}
+        />
+        <Field
+          label="执行员工"
+          value={detail.worker.label}
+          reason={detail.worker.raw ?? (detail.worker.label === "—" ? "服务未提供执行员工。" : undefined)}
+        />
         <Field label="提交" value={detail.submitted ?? "—"} reason={detail.submitted ? undefined : MISSING_TIME} />
         <Field
           label="处理期限"
