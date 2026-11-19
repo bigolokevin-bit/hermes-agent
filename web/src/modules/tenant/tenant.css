@@ -4,6 +4,7 @@
   gap: 16px;
   min-width: 0;
   width: 100%;
+  overflow-x: clip;
 }
 
 .ten4-head {
@@ -60,6 +61,7 @@
 
 .ten4-card {
   min-width: 0;
+  overflow: hidden;
 }
 
 .ten4-card-body {

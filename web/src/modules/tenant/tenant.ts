@@ -14,8 +14,10 @@ export interface UsageRead {
   value: number | null;
   /** Why the value is null, in human language. */
   reason: string | null;
-  /** Source timestamp from the payload, or the fetch time. */
-  asOf: string;
+  /** Source timestamp from the payload only; the browser clock is never substituted. */
+  asOf: string | null;
+  /** Why the source timestamp is unknown, in human language. */
+  asOfReason: string | null;
   requestId: string | null;
 }
 
@@ -36,6 +38,21 @@ function count(value: unknown): number | null {
 
 function stamp(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function sourceTime(body: Record<string, unknown> | null): {
+  asOf: string | null;
+  asOfReason: string | null;
+} {
+  const raw = stamp(body?.asOf) ?? stamp(body?.as_of) ?? stamp(body?.generatedAt) ?? stamp(body?.generated_at);
+  if (!raw) {
+    return { asOf: null, asOfReason: '上游响应没有带采集时间，不能用浏览器时间代替；数据截至时间未知。' };
+  }
+  const shown = formatBeijing(raw);
+  if (shown === '—') {
+    return { asOf: null, asOfReason: '上游采集时间无法解析；数据截至时间未知。' };
+  }
+  return { asOf: shown, asOfReason: null };
 }
 
 export function formatBeijing(value: string | null | undefined): string {
@@ -63,12 +80,10 @@ export function shortTenantId(value: string | null): string {
 
 export function readEmployeeUsage(payload: unknown): UsageRead {
   const body = record(payload);
-  const asOf = formatBeijing(
-    stamp(body?.asOf) ?? stamp(body?.as_of) ?? stamp(body?.generatedAt) ?? stamp(body?.generated_at) ?? new Date().toISOString(),
-  );
+  const time = sourceTime(body);
   const total = count(body?.total);
   if (total !== null) {
-    return { value: total, reason: null, asOf, requestId: null };
+    return { value: total, reason: null, ...time, requestId: null };
   }
   const by = record(body?.byLifecycle) ?? record(body?.by_lifecycle);
   if (by) {
@@ -76,31 +91,29 @@ export function readEmployeeUsage(payload: unknown): UsageRead {
     const paused = count(by.paused);
     const offboarding = count(by.offboarding);
     if (active !== null && paused !== null && offboarding !== null) {
-      return { value: active + paused + offboarding, reason: null, asOf, requestId: null };
+      return { value: active + paused + offboarding, reason: null, ...time, requestId: null };
     }
   }
   return {
     value: null,
     reason: '员工统计已返回，但没有给出可用的员工总数；这里不补 0。',
-    asOf,
+    ...time,
     requestId: null,
   };
 }
 
 export function readRunUsage(payload: unknown): UsageRead {
   const body = record(payload);
-  const asOf = formatBeijing(
-    stamp(body?.asOf) ?? stamp(body?.as_of) ?? stamp(body?.generatedAt) ?? stamp(body?.generated_at) ?? new Date().toISOString(),
-  );
+  const time = sourceTime(body);
   const totals = record(body?.totals);
   const total = count(totals?.runs);
   if (total !== null) {
-    return { value: total, reason: null, asOf, requestId: null };
+    return { value: total, reason: null, ...time, requestId: null };
   }
   return {
     value: null,
     reason: '运行统计已返回，但没有给出可用的运行总数；这里不补 0。',
-    asOf,
+    ...time,
     requestId: null,
   };
 }
