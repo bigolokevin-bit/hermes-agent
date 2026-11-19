@@ -1,6 +1,8 @@
 # DONE — 审计三面（console-aud 车道，branch `lane/console-aud`，基线 `c28ebc16`）
 
 日期：2026-11-19（Asia/Shanghai）。作者：Fixer（受派会话）。
+提交（`lane/console-aud`，基线 `c28ebc16`）：`0c04ecb8` 列表 → `20ccb789` 详情 → `7fe0e412` 校验 →
+`79aa086b` 筛选 URL 断言与列表口径注释补记（本行之后只剩这一份 DONE 的补记提交，远端尾巴以 `git ls-remote` 现查为准）。
 写域：`web/src/modules/audit/**`、`docs/_artifacts/aud/**`。写域外一律未改：`App.tsx`、`web/src/shell/**`、
 任何 `manifest.ts`（本模块继续用 `tabNav.ts`，未新建/未编辑 `manifest.ts`）、`web/src/pages/**`、
 `web/scripts/**`、`package.json`、锁文件、`node_modules`、其他模块、i18n。未跑任何 install。
