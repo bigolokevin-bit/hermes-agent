@@ -114,13 +114,15 @@ const VersionConsolePage = lazy(() =>
   import("@/modules/version/VersionPage").then((m) => ({ default: m.VersionPage })),
 );
 // Wave-2 module pages (lanes T05/T11/T18-21/T25-30) — same live-map policy.
-/* R15 item 2: the gov metrics module (met5-* compatibility table, 7×24
- * heat) is the usage tab's page body; /metrics compat-redirects here. */
+/* R15 item 2: /metrics mounts the gov metrics module (met5-* compatibility
+ * table, 7×24 heat) as its own page body — the /overview usage tab stays on
+ * the delivered usage page. */
 const MetricsConsolePage = lazy(() =>
   import("@/modules/metrics/MetricsModulePage").then((m) => ({
     default: m.MetricsModulePage,
   })),
 );
+const UsageConsolePage = lazy(() => import("@/modules/duty/UsagePage"));
 const PeopleConsolePage = lazy(() => import("@/modules/people/PeopleModulePage"));
 const OrgConsolePage = lazy(() => import("@/modules/org/OrgModulePage"));
 /* R13 item 1: governance page bodies delivered by lane gov — default
@@ -1183,7 +1185,7 @@ export default function App() {
                         element={
                           <ConsoleModulePage
                             module="overview"
-                            live={{ duty: <DutyConsolePage />, usage: <MetricsConsolePage /> }}
+                            live={{ duty: <DutyConsolePage />, usage: <UsageConsolePage /> }}
                           />
                         }
                       />
@@ -1306,12 +1308,12 @@ export default function App() {
                         path="/skills"
                         element={<Navigate to="/capabilities?tab=skills" replace />}
                       />
-                      {/* R15 item 2: /metrics compat-redirects to the usage
-                        tab, whose live slot now carries the gov metrics
-                        module (met5-*), mirroring routes.ts #/metrics. */}
+                      {/* R15 item 2: /metrics carries the gov metrics module
+                        (met5-* heat table) as its own page body, mirroring
+                        routes.ts #/metrics without falling to upstream pages. */}
                       <Route
                         path="/metrics"
-                        element={<Navigate to="/overview?tab=usage" replace />}
+                        element={<MetricsConsolePage />}
                       />
                       {!overriddenPaths.has("/employees/:employeeId") && (
                         <>
