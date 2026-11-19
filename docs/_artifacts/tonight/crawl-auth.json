@@ -26,7 +26,7 @@
   "rootShell": {
     "url": "http://127.0.0.1:9122/",
     "hasMainEl": true,
-    "mainChars": 975,
+    "mainChars": 974,
     "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 — /"
   },
   "contentChecked": 51,
@@ -140,13 +140,13 @@
       "source": "COMPAT_MODULES",
       "kind": "compat-module",
       "verdict": "content-ok",
-      "mainChars": 657,
+      "mainChars": 7674,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
       "consoleErrorEnv": null,
       "evalError": null,
-      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 这个筛选条件里没有审计事件 时间"
+      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 已显示 50 条审计事件（最近 "
     },
     {
       "route": "#/capabilities",
@@ -517,7 +517,7 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 975,
+      "mainChars": 974,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
@@ -556,7 +556,7 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 205,
+      "mainChars": 258,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 1,
@@ -582,52 +582,52 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 657,
+      "mainChars": 7674,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
       "consoleErrorEnv": null,
       "evalError": null,
-      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 这个筛选条件里没有审计事件 时间"
+      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 已显示 50 条审计事件（最近 "
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "source": "VIEW_DEEP_LINKS",
       "kind": "view",
       "verdict": "content-ok",
-      "mainChars": 657,
+      "mainChars": 7674,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
       "consoleErrorEnv": null,
       "evalError": null,
-      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 这个筛选条件里没有审计事件 时间"
+      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 已显示 50 条审计事件（最近 "
     },
     {
       "route": "#/system?tab=retention",
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 657,
+      "mainChars": 7674,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
       "consoleErrorEnv": null,
       "evalError": null,
-      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 这个筛选条件里没有审计事件 时间"
+      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 已显示 50 条审计事件（最近 "
     },
     {
       "route": "#/system?tab=security",
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 657,
+      "mainChars": 7674,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
       "consoleErrorEnv": null,
       "evalError": null,
-      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 这个筛选条件里没有审计事件 时间"
+      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 已显示 50 条审计事件（最近 "
     },
     {
       "route": "#/system?tab=version",
@@ -737,7 +737,7 @@
   "routesWithConsoleErrors": 22,
   "parseErrors": [],
   "ok": true,
-  "headHash": "c4c6e750",
+  "headHash": "e3efe15a",
   "exitCode": 0,
   "counts": {
     "probed": 75,

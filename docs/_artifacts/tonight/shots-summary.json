@@ -9,7 +9,7 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 246,
+    "textLen": 493,
     "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 今日运行 运行记录 今日成本 成本账本 发布 ",
     "hasMainEl": true,
     "ok": true
@@ -117,13 +117,13 @@
     {
       "route": "#/audit",
       "viewport": "1440",
-      "chars": 664,
+      "chars": 7776,
       "hasMainEl": true
     },
     {
       "route": "#/audit",
       "viewport": "375",
-      "chars": 664,
+      "chars": 7776,
       "hasMainEl": true
     },
     {
@@ -465,13 +465,13 @@
     {
       "route": "#/overview",
       "viewport": "1440",
-      "chars": 1012,
+      "chars": 1011,
       "hasMainEl": true
     },
     {
       "route": "#/overview",
       "viewport": "375",
-      "chars": 1012,
+      "chars": 1011,
       "hasMainEl": true
     },
     {
@@ -501,13 +501,13 @@
     {
       "route": "#/system",
       "viewport": "1440",
-      "chars": 221,
+      "chars": 275,
       "hasMainEl": true
     },
     {
       "route": "#/system",
       "viewport": "375",
-      "chars": 85,
+      "chars": 275,
       "hasMainEl": true
     },
     {
@@ -525,49 +525,49 @@
     {
       "route": "#/system?tab=events",
       "viewport": "1440",
-      "chars": 664,
+      "chars": 7776,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events",
       "viewport": "375",
-      "chars": 664,
+      "chars": 7776,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "1440",
-      "chars": 664,
+      "chars": 7776,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "375",
-      "chars": 664,
+      "chars": 7776,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=retention",
       "viewport": "1440",
-      "chars": 664,
+      "chars": 7776,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=retention",
       "viewport": "375",
-      "chars": 664,
+      "chars": 7776,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=security",
       "viewport": "1440",
-      "chars": 664,
+      "chars": 7776,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=security",
       "viewport": "375",
-      "chars": 664,
+      "chars": 7776,
       "hasMainEl": true
     },
     {
@@ -585,7 +585,7 @@
     {
       "route": "#/work",
       "viewport": "1440",
-      "chars": 1782,
+      "chars": 145,
       "hasMainEl": true
     },
     {
@@ -642,16 +642,16 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "c4c6e750",
-  "entry": "assets/index-px6GtnGJ.js",
-  "entrySha256": "10bca6680e606ab31cf7a29cfc3956733af41a334db8db8d91400f852bcc98fb",
-  "entryBytes": 154744,
+  "headHash": "e3efe15a",
+  "entry": "assets/index-DTYih5Xl.js",
+  "entrySha256": "54cc1852d34e9c351f0301cf23ac7dff916741a8978034c2b201a4cf56bb9b20",
+  "entryBytes": 158484,
   "medianMainChars": 191.0,
-  "shotWindow": "15:19:27-15:20:16 local",
-  "servedEntryBefore": "assets/index-px6GtnGJ.js",
-  "servedEntryAfter": "assets/index-px6GtnGJ.js",
+  "shotWindow": "16:04:19-16:05:08 local",
+  "servedEntryBefore": "assets/index-DTYih5Xl.js",
+  "servedEntryAfter": "assets/index-DTYih5Xl.js",
   "env": "9122 proxy-live (anon 401 / auth 200); CE 权威=登录态, 观察字段仅旁证",
-  "ceCaliber": "ceAuthority=login-state; crawl-auth routesCE=22 denied=18; crawl-anon routesCE=43 denied=30; ok 不含 CE 项（L0 二十九轮裁定落码）",
-  "anonEvidence": "crawl-anon ok=True exit=0 probed=75 DL=0 CE=0 PE=0 routesCE=43(env 旁证); shots-anon 辅助腿见 shots-anon-summary.json",
+  "ceCaliber": "ceAuthority=login-state; crawl-auth routesCE=22 denied=18; crawl-anon routesCE=51 denied=31; ok 不含 CE 项（L0 二十九轮裁定落码）",
+  "anonEvidence": "crawl-anon ok=True exit=0 probed=75 DL=0 CE=0 PE=0 routesCE=51(env 旁证); shots-anon 辅助腿见 shots-anon-summary.json",
   "exitCode": 0
 }

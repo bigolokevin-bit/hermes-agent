@@ -1,0 +1,33 @@
+{
+  "headHash": "e3efe15a",
+  "entry": "assets/index-DTYih5Xl.js",
+  "entrySha256": "54cc1852d34e9c351f0301cf23ac7dff916741a8978034c2b201a4cf56bb9b20",
+  "entryBytes": 158484,
+  "route": "/login (BrowserRouter real page, lane R5 auth5)",
+  "expectedShots": 2,
+  "producedShots": 2,
+  "failures": [],
+  "consoleErrorsObservedByShots": 2,
+  "consoleErrorRoutesObservedByShots": [],
+  "ceAuthority": "login-state",
+  "rows": [
+    {
+      "viewport": "1440",
+      "httpStatus": 200,
+      "mainChars": 42,
+      "headSample": "登录控制台\n\n登录后即可访问数字员工、审批与运行等页面。\n\n账号\n密码\n验证码\n",
+      "hasPasswordInput": true,
+      "ok": true
+    },
+    {
+      "viewport": "375",
+      "httpStatus": 200,
+      "mainChars": 42,
+      "headSample": "登录控制台\n\n登录后即可访问数字员工、审批与运行等页面。\n\n账号\n密码\n验证码\n",
+      "hasPasswordInput": true,
+      "ok": true
+    }
+  ],
+  "ok": true,
+  "exitCode": 0
+}

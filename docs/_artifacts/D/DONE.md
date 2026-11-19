@@ -785,3 +785,14 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 坑：`uv run ... python -` 会把 payload 当程序读致 stdout 空（首版 login 500=crypto_unavailable）——程序走 `-c`、payload 走 stdin。
 - 回退：`cd /Users/kevin_studio/Projects/l7-ops && git revert --no-edit ae8bdc7e && launchctl kickstart -k gui/$(id -u)/cn.seakoi.v4-serve`
 - 证据：docs/_artifacts/D/AUTH-BRIDGE.md（四段原始 stdout+行号+判据片段）。
+
+## 三十八轮 · 九件终代次重章 @ e3efe15a（entry DTYih5Xl，≤16:25 卡）— 2026-11-19 16:0x
+
+- 现查三件套全对：e3efe15a=local=FETCH_HEAD、porcelain=0、entry DTYih5Xl 158484B sha 54cc1852…==磁盘==served（拍窗前后同值）、pid 61816。
+- 九件一次性 tmp+os.replace 全章 head=e3efe15a ok exit=0：ia-react/html{51,22,1,8}、lint-fake v0、lint-reuse v0 e1、
+  crawl-anon DL0/CE0/PE0 routesCE=51（登录腿断供期全 401 属环境项 env 归因）、crawl-auth DL0/CE0/PE0 routesCE=22、
+  shots 102/102 failures=[] entry 三键齐 ceAuthority=login-state 旧 routesWithConsoleErrors 未复活、anon 19/19 auxiliary、state-quad 20/20。
+- vitest 119 files/1173 passed == 卡面。
+- `/login` 真页补拍（BrowserRouter，不在 51 hash 表→102 口径不变）：shots-login/ 1440+375 两图 200、
+  密码表单+验证码在位、正文非空，login-shot-summary.json ok=true（head/entry 三键齐）。
+- commit 单笔 chore(gates): full gate ledger stamped at e3efe15a (entry DTYih5Xl)。
