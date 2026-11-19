@@ -1,104 +1,205 @@
-import { useEffect, useState } from "react";
-import { RefreshCw, Wrench } from "lucide-react";
-import { Badge, Button, Card, CardContent } from "@nous-research/ui";
-import { fetchJSON } from "@/lib/api";
-import { currentFixtureState, fixtureView, type FixtureState } from "../../shell/fixtures";
-import { formatBeijingTime, readServers, SERVER_FIXTURE, type Server } from "./tools";
+/**
+ * 工具与 MCP (T27) — a read-only list of the registered MCP connections.
+ *
+ * One real read:
+ *   `GET /agent-api/api/mcp/servers`
+ *
+ * What is on the screen is what the answer carried, and nothing else:
+ *   loading  a skeleton, not a list of zero
+ *   ready    the rows the service sent, with their count against its denominator
+ *   empty    the service sent an empty list, with the reason and where to go
+ *   error    human wording + a copyable 请求编号 (「未提供」 when there was none) + retry
+ *   denied   403 and 404 draw one identical body, no row above it, no path echoed
+ *
+ * A server that is unavailable, or whose state the upstream never explained,
+ * stays on the list: greyed, with its reason. An unknown state reads 「—」 — it is
+ * never rounded down to 不可用 and never counted as a working connection.
+ * Raw ids and upstream status tokens live in `title` and 「技术详情」 only.
+ */
+import type { ReactNode } from "react";
+import { useSearchParams } from "react-router";
+import { RefreshCw } from "lucide-react";
 
-type State = { k: "loading" } | { k: "empty" } | { k: "error"; requestId: string } | { k: "ready"; rows: Server[]; fixture: boolean };
+import { Badge } from "@nous-research/ui/ui/components/badge";
+import { Button } from "@nous-research/ui/ui/components/button";
+import { Card, CardContent } from "@nous-research/ui/ui/components/card";
+import { Spinner } from "@nous-research/ui/ui/components/spinner";
 
-function fixtureState(state: FixtureState | null): State | null {
-  if (state === "loading") return { k: "loading" };
-  if (state === "empty") return { k: "empty" };
-  if (state === "error") return { k: "error", requestId: "示例请求号" };
-  return null;
-}
+import { themedBody } from "@/lib/utils";
 
-export function ToolsPage() {
-  const [state, setState] = useState<State>({ k: "loading" });
-  const [attempt, setAttempt] = useState(0);
-  const forced = currentFixtureState();
-  const preview = fixtureView<State | null>(forced ?? "ready", {
-    loading: () => ({ k: "loading" }), empty: () => ({ k: "empty" }),
-    error: () => ({ k: "error", requestId: "示例请求号" }), ready: () => null,
-  });
+import { DeniedPanel, EmptyPanel, ErrorPanel, LoadingPanel, ReproNote, TechnicalDisclosure } from "./states";
+import {
+  STATUS_LABEL,
+  beijingMinute,
+  type ServerRow,
+} from "./tools";
+import { forcedStateOf, useToolsData } from "./useToolsData";
 
-  useEffect(() => {
-    let alive = true;
-    const run = async () => {
-      const forcedNow = fixtureState(forced);
-      if (forcedNow) { setState(forcedNow); return; }
-      try {
-        const rows = readServers(await fetchJSON<unknown>("/agent-api/api/mcp/servers"));
-        if (alive) setState(rows.length ? { k: "ready", rows, fixture: false } : { k: "empty" });
-      } catch {
-        if (alive) setState({ k: "ready", rows: SERVER_FIXTURE, fixture: true });
-      }
-    };
-    void run();
-    return () => { alive = false; };
-  }, [forced, attempt]);
-
-  const view = preview ?? state;
-  const retry = () => setAttempt((value) => value + 1);
-  const fixture = view.k === "ready" && view.fixture;
-
+/** 「—」 with the reason in its `title`, so a gap reads as a gap. */
+function Dashed({ reason }: { reason: string }): ReactNode {
   return (
-    <section className="space-y-4" data-testid="tools-page" data-fixture={fixture ? "1" : forced ?? undefined}>
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="font-mondwest text-xl">工具与 MCP</h1>
-          <p className="mt-1 text-sm text-white/55">查看已登记的连接及其状态</p>
-        </div>
-        <Button size="sm" outlined onClick={retry} disabled={view.k === "loading"}>
-          <RefreshCw className="mr-1 size-3.5" aria-hidden="true" />重新读取
-        </Button>
-      </header>
-
-      {fixture ? (
-        <div className="flex flex-wrap items-start gap-2 rounded-md border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-xs text-amber-100" data-testid="tools-fixture-note">
-          <Badge tone="warning">示例数据</Badge>
-          <p className="min-w-0 flex-1">工具连接的数据接口尚未接入本控制台，接通后自动显示真实数据。</p>
-        </div>
-      ) : null}
-
-      {view.k === "loading" ? (
-        <Card><CardContent className="space-y-3 p-4" data-testid="tools-loading" aria-busy="true">
-          <p className="text-sm text-white/55">正在读取连接…</p>
-          {[1, 2, 3].map((row) => <div key={row} className="h-12 animate-pulse rounded bg-white/5" />)}
-        </CardContent></Card>
-      ) : view.k === "empty" ? (
-        <Card><CardContent className="flex flex-col items-center gap-2 py-12 text-center" data-testid="tools-empty">
-          <Wrench className="size-7 text-white/35" aria-hidden="true" />
-          <p className="text-sm text-white/80">还没有登记的连接</p>
-          <p className="text-xs text-white/50">如需接入新连接，请在原生 MCP 管理页操作；控制台入口待接线。</p>
-        </CardContent></Card>
-      ) : view.k === "error" ? (
-        <Card><CardContent className="flex flex-col items-center gap-3 py-10 text-center" data-testid="tools-error" role="alert">
-          <p className="text-sm text-white/80">连接列表暂时无法读取</p>
-          <p className="text-xs text-white/40">请求号：{view.requestId}</p>
-          <Button size="sm" outlined onClick={retry}>重试</Button>
-        </CardContent></Card>
-      ) : (
-        <Card><CardContent className="p-0" data-testid="tools-list">
-          {view.rows.map((server) => {
-            const unavailable = server.status === "unavailable";
-            return (
-              <div key={server.id} className={`flex min-w-0 flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3 last:border-b-0 ${unavailable ? "opacity-55" : ""}`}>
-                <div className="min-w-0 flex-1">
-                  <p className="break-words text-sm text-white/85" title={server.id}>{server.name}</p>
-                  {unavailable ? <p className="mt-1 break-words text-xs text-white/55">{server.reason ?? "—（上游未说明不可用原因）"}</p> : null}
-                  <p className="mt-1 text-xs text-white/40">最近检查：{server.checkedAt ? formatBeijingTime(server.checkedAt) ?? "—（时间格式无法识别）" : "—（未提供检查时刻）"}</p>
-                </div>
-                <Badge tone={server.status === "available" ? "success" : server.status === "unavailable" ? "outline" : "outline"}>
-                  {server.status === "available" ? "正常" : server.status === "unavailable" ? "不可用" : "—（上游未说明）"}
-                </Badge>
-                {server.status === "unknown" ? <p className="basis-full text-right text-xs text-white/40">上游未说明连接状态</p> : null}
-              </div>
-            );
-          })}
-        </CardContent></Card>
-      )}
-    </section>
+    <span className="min-w-0 break-words text-muted-foreground" title={reason}>
+      —
+    </span>
   );
 }
+
+function ServerRowCard({ row, testId }: { row: ServerRow; testId: string }): ReactNode {
+  const dimmed = row.status !== "available";
+  const checked = beijingMinute(row.checkedAt);
+  const technical = [
+    row.rawId ? `连接标识：${row.rawId}` : null,
+    row.rawStatus ? `状态原值：${row.rawStatus}` : null,
+    row.checkedAt ? `检查时刻原值：${row.checkedAt}` : null,
+    row.rawReason ? `原因原值：${row.rawReason}` : null,
+  ].filter((line): line is string => line !== null);
+
+  return (
+    <div
+      className={`flex min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-1 border-b border-border px-4 py-3 last:border-b-0 ${
+        dimmed ? "opacity-60" : ""
+      }`}
+      data-testid={testId}
+      data-status={row.status}
+    >
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <p className="min-w-0 break-words text-sm" title={row.rawId ?? undefined}>
+          {row.name ?? <Dashed reason="服务未提供这个连接的名称" />}
+        </p>
+
+        {row.status === "unavailable" ? (
+          <p className="min-w-0 break-words text-xs text-muted-foreground">
+            {row.reason ?? (
+              <>
+                原因未说明<Dashed reason="上游没有给出不可用的原因" />
+              </>
+            )}
+          </p>
+        ) : null}
+
+        {row.status === "unknown" ? (
+          <p className="min-w-0 break-words text-xs text-muted-foreground">
+            上游没有说明这个连接现在的状态，所以这里既不写正常，也不写不可用。
+          </p>
+        ) : null}
+
+        <p className="min-w-0 break-words text-xs text-muted-foreground">
+          最近检查（北京时间）：
+          {checked ?? <Dashed reason={row.checkedAt ? "服务给的时间读不出时刻" : "服务未提供检查时刻"} />}
+        </p>
+
+        {technical.length ? <TechnicalDisclosure lines={technical} testId={`${testId}-details`} /> : null}
+      </div>
+
+      <Badge tone={row.status === "available" ? "success" : row.status === "unavailable" ? "destructive" : "secondary"}>
+        {STATUS_LABEL[row.status]}
+      </Badge>
+    </div>
+  );
+}
+
+export function ToolsPage(): ReactNode {
+  const [params] = useSearchParams();
+  const forced = forcedStateOf(params.get("state"));
+  const tools = useToolsData(forced);
+  const { phase, rows } = tools;
+
+  const available = rows.filter((row) => row.status === "available").length;
+  const unavailable = rows.filter((row) => row.status === "unavailable").length;
+  const unknown = rows.filter((row) => row.status === "unknown").length;
+  /** What the answer declared, or the rows themselves when it declared nothing. */
+  const denominator = tools.declaredTotal ?? rows.length;
+
+  const countLine = (() => {
+    if (phase !== "ready") return null;
+    const parts = [`正常 ${available}`, `不可用 ${unavailable}`];
+    if (unknown) parts.push(`状态未说明 ${unknown}`);
+    const tail =
+      tools.declaredTotal === null
+        ? "上游未声明一共有多少连接"
+        : tools.declaredTotal > rows.length
+          ? `服务说共 ${tools.declaredTotal} 条，这一页只回了 ${rows.length} 条`
+          : `共 ${tools.declaredTotal} 条`;
+    return (
+      <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="tools-counts">
+        {`列出 ${rows.length} / ${denominator} 个连接（${parts.join("，")}）；${tail}。`}
+        {tools.unreadable
+          ? `另有 ${tools.unreadable} 条回的内容读不出是哪个连接，没有算在上面。`
+          : ""}
+      </p>
+    );
+  })();
+
+  const body = (() => {
+    if (phase === "loading") return <LoadingPanel fixture={forced === "loading" ? "loading" : undefined} />;
+    if (phase === "denied") return <DeniedPanel requestId={tools.failure?.requestId ?? null} fixture={forced === "denied" ? "denied" : undefined} />;
+    if (phase === "error") {
+      return (
+        <ErrorPanel
+          failure={tools.failure ?? { sentence: "读取连接时出了问题，请稍后重试。", requestId: null, technical: null }}
+          onRetry={tools.reload}
+          fixture={forced === "error" ? "error" : undefined}
+        />
+      );
+    }
+    if (phase === "empty") return <EmptyPanel onRetry={tools.reload} fixture={forced === "empty" ? "empty" : undefined} />;
+    return (
+      <Card className="border-border bg-card" data-testid="tools-list">
+        <CardContent className="p-0">
+          {rows.map((row, index) => (
+            <ServerRowCard key={row.key} row={row} testId={`tools-row-${index}`} />
+          ))}
+        </CardContent>
+      </Card>
+    );
+  })();
+
+  return (
+    <div
+      className="flex min-w-0 w-full max-w-full flex-col gap-3"
+      data-testid="tools-page"
+      data-page="tools"
+      data-fixture={forced ?? undefined}
+    >
+      <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-2">
+        <div className="min-w-0">
+          <h1 className={`min-w-0 break-words text-xl ${themedBody}`}>工具与 MCP</h1>
+          <p className="mt-1 min-w-0 break-words text-xs text-muted-foreground">
+            这里只读已登记的 MCP 连接，不新建、不改配置、不连接任何服务。
+          </p>
+        </div>
+        <Button
+          size="sm"
+          outlined
+          onClick={tools.reload}
+          disabled={phase === "loading" || forced !== null}
+          title={forced !== null ? "复现腿不发起真实请求，去掉 ?state= 即为真实读取" : undefined}
+          data-testid="tools-retry"
+          prefix={phase === "loading" ? <Spinner className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" />}
+        >
+          重新读取
+        </Button>
+      </div>
+
+      {forced ? <ReproNote state={forced} /> : null}
+
+      <p className="min-w-0 break-words text-xs text-muted-foreground" aria-live="polite" data-testid="tools-status">
+        {phase === "loading"
+          ? "正在读取连接…"
+          : phase === "denied"
+            ? "这一面当前看不到内容"
+            : phase === "error"
+              ? "这次读取没有成功"
+              : phase === "empty"
+                ? "读取成功，清单是空的"
+                : "读取成功"}
+      </p>
+
+      {countLine}
+
+      {body}
+    </div>
+  );
+}
+
+export default ToolsPage;
