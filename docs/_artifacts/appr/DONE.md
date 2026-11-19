@@ -783,3 +783,15 @@ L0 判 /runs/<id> 无路由=死链（routes.ts 只有 /runs）。禁碰 shell/Ap
 实现：新文件 modules/approvals/QueueSummaryBar.tsx（只读，计数全部由**列表同一请求结果** rows 现算，零重复请求）。①状态桶=待办/已批/已拒：history 视图 status 缺省(聚合)时按 row.status.raw 真计数（夹具 8 态各 1 行→待办1/已批1/已拒1 实测）；单选状态时其余桶=「—」+title「与这份结果不同源；切回全部可见」（禁假 0）；queue 视图只读 pending 集合→待办=rows.length、已批/已拒=「—」+title 指向决策历史。②风险档桶=高/中/低：row.risk（model.ts ApprovalRow 新增 risk=riskView(pickText(riskLevel/risk_level/risk))，行解析增量、既有字段零动）现算；读口不支持 risk 参数（R44 实证被丢）⇒风险桶只读 span 不建链（禁假筛选），title 写明。③点状态计数=Link /approvals?tab=history&status=<值>（写既有 ?status= 筛选，history 消费，URL 同源刷新/分享可复现）。④phase loading/error/denied → 全桶「—」+人话原因 title（不作 0）。⑤挂载=两页顶部（pending 页 aria-live 读数行前、history 页读数行与 apr5-filter 组之间），flex-wrap gap 无横溢（形态学报）。testid：apv6-summary / apv6-summary-<status> / apv6-summary-risk-<level>；apv5-*/apr5-*/apd6-*/ed* 零破坏（既有 59 用例先绿后加 2 新用例）。
 
 验证：定向 approvals 3 files/61 passed exit0；tsc 本域零红；assert-ia 两模式 exit0（51/22/1/8）；全量 **132 files/1456 passed**（≥基线，含 wave-16 合入用例）。9122==6a02ed58 代次未重建（L0 取证窗）：活体汇总条读数待并入后代次；本轮以 jsdom 实测为权威。
+
+## R51 员工详情区导航条 edz-nav-*（2026-11-20，lane/console-appr）
+
+基线：957bba3e 上续交（wave-17 持窗核可，现网代次 6a02ed58/章 5d91f22d/entry CpeSWPtM——回执引用已更正）。写域=modules/employee-detail/**+DONE；App/shell/routes/registry 零动。
+
+实现（EmployeeDetailModulePage.tsx）：在既有五区条（ed5-tabs 原样保留=深区条）之上新增四区直达条 `edz-nav`：总览/任务/运行/审批，NAV_ZONES 词表；每项=真 Link role=tab → `/employees/<id>`（总览裸路径）或 `?zone=tasks|runs|approvals`（mapShellZone 既有映射，任务区=?zone=tasks→tasklist 视图），当前区 aria-selected=true+panel 高亮；直达/粘贴 URL=同一 zone 派生链路（sp.get("zone") 既有）；reachable 判定防御分支=不在接线词表时渲 aria-disabled span+title「尚未接线，不提供假入口」（本四区实测全部可达=分支未触发，DONE 如实）。键盘=Link 原生 tab 序+focus-visible outline 类（焦点可见）。请求面：各区腿本就 `zone === X` 条件挂载，无预取。
+
+自证读数（jsdom 实测）：切区只取该区数据=?zone=runs 挂载 urls 中 /api/runs=1 条、/api/tasks|/api/approvals|/api/audit|/api/console-sessions=0；?zone=tasks 挂载 /api/tasks=1 条、/api/runs=0。四 tab 全为 A 标签、aria-disabled=null、href 真值、tasks 高亮时 overview=false。既有「five tabs」用例断言**作用域收窄到 ed5-tabs 容器内**（语义保持：五区词表原样），非删断言。
+
+验证：定向 employee-detail 36 passed exit0（+2 新用例，其余零改绿）；assert-ia 两模式 exit0 51/22/1/8；全量 **132 files/1458 passed**（基线 1456+2）；tsc 本域零红。ed1/ed5/ed7/ed8/edx/apd6/apv5/apr5/apv6 全族零破坏（既有用例全绿为证）。
+
+未测项：9122 活体导航读数（禁重建，待下代次）；三档横溢=jsdom 不可测，形态学报（flex-wrap gap-1 容器+文本短标签，与 ed5-tabs 同构）。坑记：R50 回执曾出现「4s 超时后 ls 截断看不到落盘行→误判未投→重投」=同单双落盘（070630/070817），教训=超时后必须完整 ls 或按内容 grep receipts 目录再判，禁止凭截断输出重发。

@@ -343,6 +343,14 @@ function readAudit(body: unknown): AuditRow[] {
  * zone ids ↔ shell `?zone=` spellings
  * ------------------------------------------------------------------ */
 
+/** R51: 四区直达条的词表（任务区走 ?zone=tasks → tasklist 视图）。 */
+const NAV_ZONES = [
+  { id: "overview", label: "总览" },
+  { id: "tasks", label: "任务" },
+  { id: "runs", label: "运行" },
+  { id: "approvals", label: "审批" },
+] as const;
+
 const ZONES = [
   { id: "overview", label: "概览" },
   { id: "capability", label: "能力与权限" },
@@ -735,6 +743,55 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
   return (
     <section className="min-w-0 space-y-4" data-testid="ed5-module">
       {header}
+
+      {/* R51: 四区直达导航。每个条目都映射到本版本真实接线的分区；
+          万一某区不在，渲 aria-disabled+原因，绝不假装可点。键盘走
+          tab 序即可达（Link 原生），焦点样式显式给 outline。 */}
+      <div
+        role="tablist"
+        aria-label="分区直达（总览 / 任务 / 运行 / 审批）"
+        className="flex min-w-0 flex-wrap gap-1"
+        data-testid="edz-nav"
+      >
+        {NAV_ZONES.map((n) => {
+          const reachable = (["overview", "tasks", "runs", "approvals"] as const).includes(
+            n.id as "overview" | "tasks" | "runs" | "approvals",
+          );
+          const active = mapShellZone(n.id) === zone;
+          if (!reachable) {
+            return (
+              <span
+                key={n.id}
+                role="tab"
+                aria-disabled="true"
+                aria-selected={false}
+                data-testid={`edz-nav-${n.id}`}
+                title="该分区在本版本尚未接线，不提供假入口。"
+                className="cursor-not-allowed rounded px-3 py-1.5 text-sm"
+                style={{ color: "var(--fg-3)" }}
+              >
+                {n.label}
+              </span>
+            );
+          }
+          return (
+            <Link
+              key={n.id}
+              to={`/employees/${empId ? encodeURIComponent(empId) : ""}${n.id === "overview" ? "" : `?zone=${n.id}`}`}
+              role="tab"
+              aria-selected={active}
+              data-testid={`edz-nav-${n.id}`}
+              className="rounded px-3 py-1.5 text-sm no-underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+              style={{
+                background: active ? "var(--panel-2)" : "transparent",
+                color: active ? "var(--fg)" : "var(--fg-3)",
+              }}
+            >
+              {n.label}
+            </Link>
+          );
+        })}
+      </div>
 
       <div
         role="tablist"

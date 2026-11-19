@@ -425,7 +425,11 @@ describe("EmployeeDetailModulePage — tabs", () => {
   it("five tabs, shell-zone spellings, overview lands on the bare path", async () => {
     mockApi(() => Promise.resolve({}));
     await renderAt(page, at("approvals"));
-    const tabs = Array.from(container.querySelectorAll('[role="tab"]'));
+    // R51 added the four-tab quick nav; the five-zone vocabulary check
+    // stays scoped to the original ed5 tab strip.
+    const tabs = Array.from(
+      (container.querySelector('[data-testid="ed5-tabs"]') ?? document).querySelectorAll('[role="tab"]'),
+    );
     expect(tabs.map((t) => t.textContent)).toEqual(["概览", "能力与权限", "审批", "运行", "审计"]);
     expect(tabs[0]?.getAttribute("href")).toBe(`/employees/${encodeURIComponent(EMP)}`);
     expect(tabs[1]?.getAttribute("href")).toContain("?zone=capability");
@@ -695,5 +699,52 @@ describe("R47 cross-zone consistency (edx-*)", () => {
     await renderAt(page, at());
     expect(qq("edx-back")).toBeTruthy();
     expect(qq("ed1-identity-name")?.textContent).toContain("小鲤");
+  });
+});
+
+describe("EmployeeDetailModulePage — zone nav (R51)", () => {
+  it("renders four reachable tabs with real ?zone= links and highlights the current zone", async () => {
+    mockApi(() => Promise.resolve({ items: [] }));
+    await renderAt(page, at("tasks"));
+    expect(container.querySelector('[data-testid="edz-nav"]')).toBeTruthy();
+    const overview = container.querySelector('[data-testid="edz-nav-overview"]') as HTMLAnchorElement;
+    const tasks = container.querySelector('[data-testid="edz-nav-tasks"]') as HTMLAnchorElement;
+    const runs = container.querySelector('[data-testid="edz-nav-runs"]') as HTMLAnchorElement;
+    const approvals = container.querySelector('[data-testid="edz-nav-approvals"]') as HTMLAnchorElement;
+    for (const el of [overview, tasks, runs, approvals]) {
+      expect(el?.tagName).toBe("A");
+      expect(el?.getAttribute("aria-disabled")).toBeNull();
+      expect(el?.className).toContain("focus-visible:outline");
+    }
+    expect(overview.getAttribute("href")).toBe(`/employees/${encodeURIComponent(EMP)}`);
+    expect(tasks.getAttribute("href")).toBe(`/employees/${encodeURIComponent(EMP)}?zone=tasks`);
+    expect(runs.getAttribute("href")).toContain("?zone=runs");
+    expect(approvals.getAttribute("href")).toContain("?zone=approvals");
+    expect(tasks.getAttribute("aria-selected")).toBe("true");
+    expect(overview.getAttribute("aria-selected")).toBe("false");
+    // 既有五区条原样在屏（ed5-* 零破）。
+    expect(container.querySelector('[data-testid="ed5-tabs"]')).toBeTruthy();
+  });
+
+  it("entering a zone fetches only that zone's data — measured request counts", async () => {
+    const urls: string[] = [];
+    mockApi((url) => {
+      urls.push(url);
+      return Promise.resolve({ items: [] });
+    });
+    await renderAt(page, at("runs"));
+    const runsCalls = urls.filter((u) => u.includes("/api/runs"));
+    expect(runsCalls).toHaveLength(1);
+    expect(runsCalls[0]).toContain("employeeId=");
+    expect(urls.some((u) => u.includes("/api/tasks"))).toBe(false);
+    expect(urls.some((u) => u.includes("/api/approvals"))).toBe(false);
+    expect(urls.some((u) => u.includes("/api/audit"))).toBe(false);
+    expect(urls.some((u) => u.includes("/api/console-sessions"))).toBe(false);
+    // 任务区同理：只打任务腿，不打运行腿。
+    urls.length = 0;
+    await renderAt(page, at("tasks"));
+    expect(urls.filter((u) => u.includes("/api/tasks"))).toHaveLength(1);
+    expect(urls.some((u) => u.includes("/api/runs"))).toBe(false);
+    expect(container.querySelector('[data-testid="edz-nav-tasks"]')?.getAttribute("aria-selected")).toBe("true");
   });
 });
