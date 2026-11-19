@@ -39,13 +39,37 @@ function appendQuery(url: string, key: string, value: string | null | undefined)
 }
 
 /**
+ * The two filters the screen offers, as the wire wants them. `null` means the
+ * person did not choose that filter, so the parameter is dropped from the URL
+ * rather than sent empty.
+ *
+ * `eventType` carries the code as this module's vocabulary spells it
+ * (`approval_approved`); `from`/`to` are the two ISO instants of the chosen
+ * time window. Both genuinely change what is asked — see the URL assertions in
+ * `api.test.ts`. The parameter *names* follow the BFF route table
+ * (`require_any` seven-filter gate, docs/_artifacts/D/T02-ENDPOINT-RECONCILIATION.md);
+ * the seven names themselves are not sampled in this repo, which is why the
+ * operator filter is rendered 未接入 (GAP-06) instead of as a live control.
+ */
+export interface ListFilters {
+  eventType: string | null;
+  from: string | null;
+  to: string | null;
+}
+
+export const NO_FILTERS: ListFilters = { eventType: null, from: null, to: null };
+
+/**
  * One page of the ledger. `cursor` is the opaque value the previous answer
  * carried; without it the request asks for the newest page only. `limit` is
  * always sent so the denominator on screen matches what was asked for.
  */
-export function listUrl(cursor: string | null = null, limit = PAGE_LIMIT): string {
+export function listUrl(cursor: string | null = null, filters: ListFilters = NO_FILTERS, limit = PAGE_LIMIT): string {
   let url = LIST_PATH;
   url = appendQuery(url, "limit", String(limit));
+  url = appendQuery(url, "event_type", filters.eventType);
+  url = appendQuery(url, "from", filters.from);
+  url = appendQuery(url, "to", filters.to);
   url = appendQuery(url, "cursor", cursor);
   return url;
 }
@@ -67,8 +91,8 @@ export function verifyUrl(from: string | null, to: string | null): string {
 }
 
 /** One page of events. `null` page = the answer is not a list at all (a failure). */
-export async function fetchList(cursor: string | null): Promise<AuditPage | null> {
-  const payload = await fetchJSON<unknown>(listUrl(cursor));
+export async function fetchList(cursor: string | null, filters: ListFilters = NO_FILTERS): Promise<AuditPage | null> {
+  const payload = await fetchJSON<unknown>(listUrl(cursor, filters));
   return auditPageFrom(payload);
 }
 

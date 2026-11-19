@@ -130,13 +130,17 @@ export function ErrorPanel({
 }
 
 /** 403 and 404 both land here, and they read exactly the same. */
-export function DeniedPanel({ failure, fixture }: Marked & { failure: FailureCopy | null }): ReactNode {
+export function DeniedPanel({
+  failure,
+  fixture,
+  testId = "audit-denied",
+}: Marked & { failure: FailureCopy | null; testId?: string }): ReactNode {
   return (
     <Card
       role="alert"
       aria-label="审计事件不可用"
       className="border-border bg-card"
-      data-testid="audit-denied"
+      data-testid={testId}
       {...fixtureAttr(fixture)}
     >
       <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
@@ -160,14 +164,15 @@ export function VerifyUnavailablePanel({
   failure,
   onRetry,
   fixture,
-}: Marked & { failure: FailureCopy; onRetry: () => void }): ReactNode {
+  testId = "aud03-unavailable",
+}: Marked & { failure: FailureCopy; onRetry: () => void; testId?: string }): ReactNode {
   return (
     // No `title` here on purpose: the raw answer differs between a 403 and a
     // 404, and this body must not. The technical line is reachable collapsed.
     <Card
       role="status"
       className="border-border bg-card"
-      data-testid="audit-verify-unavailable"
+      data-testid={testId}
       {...fixtureAttr(fixture)}
     >
       <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-8">
@@ -176,8 +181,11 @@ export function VerifyUnavailablePanel({
           <span className={`min-w-0 break-words ${themedBody}`}>本环境未启用</span>
         </div>
         <p className="max-w-prose break-words text-xs text-muted-foreground">{failure.sentence}</p>
+        <p className="max-w-prose break-words text-xs text-muted-foreground">
+          下一步：让工作区管理员在审计服务里开通时间窗完整性校验，开通后回到这一页重新运行即可；这里不会先给一个「已通过」的结论。
+        </p>
         <p className="break-words text-xs text-muted-foreground">{requestIdLine(failure.requestId)}</p>
-        {failure.technical ? <TechnicalDisclosure lines={[failure.technical]} testId="audit-verify-unavailable-details" /> : null}
+        {failure.technical ? <TechnicalDisclosure lines={[failure.technical]} testId={`${testId}-details`} /> : null}
         <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
           再运行一次
         </Button>

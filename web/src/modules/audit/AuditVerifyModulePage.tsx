@@ -1,5 +1,5 @@
 /**
- * T33 — 审计事件时间窗完整性校验 (lane console-approvals).
+ * 时间窗完整性校验 (screen 3 of the audit surface, `aud03-*`).
  *
  * One real call, and only when a person asks for it:
  *   `GET /agent-api/api/audit/verify?from=<ISO>&to=<ISO>`
@@ -62,7 +62,7 @@ export function AuditVerifyModulePage(): ReactNode {
 
   const body = (() => {
     if (verify.phase === "loading") {
-      return <LoadingPanel testId="audit-verify-loading" fixture={verify.forced ? "loading" : undefined} />;
+      return <LoadingPanel testId="aud03-loading" fixture={verify.forced ? "loading" : undefined} />;
     }
     if (verify.phase === "ready" && verify.result) {
       return (
@@ -94,14 +94,14 @@ export function AuditVerifyModulePage(): ReactNode {
           failure={verify.failure ?? { sentence: "校验回答的形状不对，这里没能读出结论。", requestId: null, technical: null }}
           onRetry={() => run(askedKey ?? choice)}
           title="完整性校验没能给出结果"
-          testId="audit-verify-error"
+          testId="aud03-error"
           fixture={verify.forced ? "error" : undefined}
         />
       );
     }
     // The honest empty for this pane: nobody has asked, so nothing was checked.
     return (
-      <Card className="border-border bg-card" data-testid="audit-verify-idle" {...fixtureAttr(verify.forced ? "empty" : undefined)}>
+      <Card className="border-border bg-card" data-testid="aud03-idle" {...fixtureAttr(verify.forced ? "empty" : undefined)}>
         <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
           <ShieldQuestion className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
           <p className="min-w-0 break-words text-sm">还没有运行校验</p>
@@ -115,9 +115,9 @@ export function AuditVerifyModulePage(): ReactNode {
   })();
 
   return (
-    <div className="flex min-w-0 w-full max-w-full flex-col gap-3" data-testid="audit-verify">
+    <div className="flex min-w-0 w-full max-w-full flex-col gap-3" data-testid="agent-v2-page-audit-verify" data-page="audit-verify">
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-        <p className="min-w-0 break-words text-xs text-muted-foreground" aria-live="polite">
+        <p className="min-w-0 break-words text-xs text-muted-foreground" aria-live="polite" data-testid="aud03-status">
           {verify.phase === "loading"
             ? "正在按所选时间窗核对审计链…"
             : verify.phase === "ready"
@@ -141,7 +141,7 @@ export function AuditVerifyModulePage(): ReactNode {
               invert={active}
               aria-pressed={active}
               onClick={() => run(item.value)}
-              data-testid={`audit-verify-window-${item.value}`}
+              data-testid={`aud03-window-${item.value}`}
             >
               {item.label}
             </Button>
@@ -153,20 +153,20 @@ export function AuditVerifyModulePage(): ReactNode {
           onClick={() => run(choice)}
           disabled={verify.phase === "loading"}
           prefix={<RefreshCw className="h-3.5 w-3.5" />}
-          data-testid="audit-verify-run"
+          data-testid="aud03-run"
         >
           重新运行
         </Button>
       </div>
 
       {verify.forced ? (
-        <p className="min-w-0 break-words text-xs text-warning" data-testid="audit-verify-forced-note">
+        <p className="min-w-0 break-words text-xs text-warning" data-testid="aud03-forced-note">
           这是用 ?state= 复现出来的状态，不是服务此刻的回答。
         </p>
       ) : null}
 
       {askedLabel ? (
-        <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="audit-verify-window-label">
+        <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud03-window-label">
           校验窗口（北京时间）：{askedLabel.from} 至 {askedLabel.to}
         </p>
       ) : null}

@@ -181,7 +181,7 @@ describe("a check that cannot run", () => {
       });
     });
     await runWindow();
-    return document.querySelector("[data-testid='audit-verify-unavailable']")?.outerHTML ?? "";
+    return document.querySelector("[data-testid='aud03-unavailable']")?.outerHTML ?? "";
   };
 
   it("403 and 404 render one identical 本环境未启用 body, with reason and request id", async () => {
@@ -220,13 +220,13 @@ describe("the QA legs", () => {
       await waitFor(() => text().includes("复现出来的状态") || state === "loading", `?state=${state}`);
     };
     await open("loading");
-    expect(document.querySelector("[data-testid='audit-verify-loading'][data-fixture='loading']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='aud03-loading'][data-fixture='loading']")).toBeTruthy();
     await open("empty");
-    expect(document.querySelector("[data-testid='audit-verify-idle'][data-fixture='empty']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='aud03-idle'][data-fixture='empty']")).toBeTruthy();
     await open("error");
-    expect(document.querySelector("[data-testid='audit-verify-error'][data-fixture='error']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='aud03-error'][data-fixture='error']")).toBeTruthy();
     await open("denied");
-    expect(document.querySelector("[data-testid='audit-verify-unavailable'][data-fixture='denied']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='aud03-unavailable'][data-fixture='denied']")).toBeTruthy();
     expect(api.fetchJSON).not.toHaveBeenCalled();
   });
 
@@ -240,7 +240,7 @@ describe("the QA legs", () => {
     }));
     await runWindow();
     expect(text()).not.toMatch(/scanned|checkedWindow|total_count|ok:/);
-    const toggle = document.querySelector<HTMLButtonElement>("[data-testid='audit-verify-result-details'] button");
+    const toggle = document.querySelector<HTMLButtonElement>("[data-testid='aud03-result-details'] button");
     if (!toggle) throw new Error("the result's own 技术详情 is missing");
     if (toggle) {
       await act(async () => {

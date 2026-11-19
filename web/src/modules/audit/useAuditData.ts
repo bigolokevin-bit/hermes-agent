@@ -17,7 +17,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { failureInfo, fetchDetail, fetchList, fetchVerify, isDenied, isVerifyUnavailable } from "./api";
+import { failureInfo, fetchDetail, fetchList, fetchVerify, isDenied, isVerifyUnavailable, type ListFilters } from "./api";
 import { detailShapeFailure, readFailure, shapeFailure, verifyFailure, type FailureCopy, type VerifyFailure } from "./copy";
 import type { AuditDetail, AuditRow, VerifyResult } from "./model";
 
@@ -42,6 +42,8 @@ export interface ListApi {
   loadingMore: boolean;
   /** True when the state came from `?state=` rather than from the service. */
   forced: boolean;
+  /** The filters the current rows were read with, echoed back so the screen can say what it asked. */
+  filters: ListFilters;
   reload: () => void;
   loadMore: () => void;
 }
@@ -83,47 +85,58 @@ function forcedCopy(kind: "error" | "denied", forced: ForcedState): FailureCopy 
   };
 }
 
-/** One page of the ledger. `null` answer = the payload is not a list: a failure. */
-export function useAuditList(forced: ForcedState): ListApi {
+/**
+ * One page of the ledger, re-read whenever the filter set changes. `null`
+ * answer = the payload is not a list: a failure. A filter change clears the
+ * previous rows before asking again, so a narrowed screen never shows rows
+ * that were read under the wider question.
+ *
+ * `asked` is part of `run`'s identity, so the caller must pass a stable object
+ * (the page memoises it): a re-render with the same filters asks nothing new.
+ */
+export function useAuditList(forced: ForcedState, asked: ListFilters): ListApi {
   const [state, setState] = useState<ListState>(INITIAL);
   const seq = useRef(0);
   const nextRef = useRef<string | null>(null);
 
-  const run = useCallback((cursor: string | null, append: boolean): void => {
-    const ticket = ++seq.current;
-    void (async () => {
-      try {
-        const page = await fetchList(cursor);
-        if (ticket !== seq.current) return;
-        if (!page) throw new Error("audit: answer is not a list");
-        nextRef.current = page.next && page.next !== cursor ? page.next : null;
-        setState((prev) => ({
-          phase: !append && page.rows.length === 0 && page.unreadable === 0 ? "empty" : "ready",
-          rows: append ? [...prev.rows, ...page.rows] : page.rows,
-          unreadable: append ? prev.unreadable + page.unreadable : page.unreadable,
-          next: nextRef.current,
-          failure: null,
-          pageFailure: append ? prev.pageFailure : null,
-          loadingMore: false,
-          forced: false,
-        }));
-      } catch (err) {
-        if (ticket !== seq.current) return;
-        const failure = listCopy(err);
-        if (append) {
-          setState((prev) => ({ ...prev, pageFailure: failure, loadingMore: false }));
-          return;
+  const run = useCallback(
+    (cursor: string | null, append: boolean): void => {
+      const ticket = ++seq.current;
+      void (async () => {
+        try {
+          const page = await fetchList(cursor, asked);
+          if (ticket !== seq.current) return;
+          if (!page) throw new Error("audit: answer is not a list");
+          nextRef.current = page.next && page.next !== cursor ? page.next : null;
+          setState((prev) => ({
+            phase: !append && page.rows.length === 0 && page.unreadable === 0 ? "empty" : "ready",
+            rows: append ? [...prev.rows, ...page.rows] : page.rows,
+            unreadable: append ? prev.unreadable + page.unreadable : page.unreadable,
+            next: nextRef.current,
+            failure: null,
+            pageFailure: append ? prev.pageFailure : null,
+            loadingMore: false,
+            forced: false,
+          }));
+        } catch (err) {
+          if (ticket !== seq.current) return;
+          const failure = listCopy(err);
+          if (append) {
+            setState((prev) => ({ ...prev, pageFailure: failure, loadingMore: false }));
+            return;
+          }
+          // Denied and error both clear the rows: nothing may sit above the panel.
+          nextRef.current = null;
+          setState({
+            ...INITIAL,
+            phase: isDenied(failureInfo(err).status) ? "denied" : "error",
+            failure,
+          });
         }
-        // Denied and error both clear the rows: nothing may sit above the panel.
-        nextRef.current = null;
-        setState({
-          ...INITIAL,
-          phase: isDenied(failureInfo(err).status) ? "denied" : "error",
-          failure,
-        });
-      }
-    })();
-  }, []);
+      })();
+    },
+    [asked],
+  );
 
   useEffect(() => {
     if (forced === "loading" || forced === "empty" || forced === "denied" || forced === "error") {
@@ -139,6 +152,8 @@ export function useAuditList(forced: ForcedState): ListApi {
       setState({ ...INITIAL, phase: forced, failure: forcedCopy(forced, forced), forced: true });
       return;
     }
+    // A new filter set is a new question: drop the old rows before asking.
+    setState((prev) => (prev.rows.length === 0 && prev.phase === "loading" && !prev.forced ? prev : { ...INITIAL }));
     run(null, false);
   }, [forced, run]);
 
@@ -154,7 +169,7 @@ export function useAuditList(forced: ForcedState): ListApi {
     run(cursor, true);
   }, [run]);
 
-  return { ...state, reload, loadMore };
+  return { ...state, filters: asked, reload, loadMore };
 }
 
 export type DetailPhase = "idle" | "loading" | "ready" | "error" | "denied";
