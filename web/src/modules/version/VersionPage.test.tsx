@@ -29,7 +29,7 @@ describe("VersionPage", () => {
     await render();
     expect(container.querySelector('[data-testid="ver4-page"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="ver4-build-rows"]')?.textContent).toContain("未知");
-    expect(container.textContent).toContain("构建未注入版本变量（V4 构建脚本硬线未接）");
+    expect(container.textContent).toContain("构建时没有写入这项信息；请让发布流程补齐构建标识");
     expect(container.textContent).not.toContain("0.0.0");
     expect([...container.querySelectorAll("button, input, select, textarea")]).toHaveLength(0);
   });
@@ -43,7 +43,7 @@ describe("VersionPage", () => {
     expect(container.textContent).toContain("build-20261118");
     expect(container.textContent).toContain("release-candidate");
     expect(container.textContent).toContain("01234567");
-    expect(container.textContent).toContain("2026/11/19 00:30");
+    expect(container.textContent).toContain("2026-11-19 00:30");
     expect(container.querySelector('[data-testid="ver4-build-rows"] [title="0123456789abcdef"]')).toBeTruthy();
   });
 

@@ -97,14 +97,14 @@ describe("PeopleModulePage — T20 人员目录", () => {
     await act(async () => {
       root.render(<PeopleModulePage />);
     });
-    expect(container.querySelector('[data-testid="people-loading"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="ppl4-loading"]')).toBeTruthy();
     expect(container.textContent).not.toMatch(/undefined|NaN|user_id/);
   });
 
   it("ready: words, 北京时间到分, raw ids stay out of visible text", async () => {
     mockApi((url) => (url.includes("/user/list") ? Promise.resolve(ROWS) : missing(url)));
     await render();
-    const list = container.querySelector('[data-testid="people-list"]');
+    const list = container.querySelector('[data-testid="ppl4-list"]');
     expect(list?.textContent).toContain("李鲤");
     expect(list?.textContent).toContain("lili");
     expect(list?.textContent).toContain("客服中心");
@@ -112,7 +112,7 @@ describe("PeopleModulePage — T20 人员目录", () => {
     expect(list?.textContent).toContain("已停用");
     expect(list?.textContent).toContain("2026-11-18 10:30");
     expect(list?.textContent).not.toMatch(/user_id|42/);
-    expect(container.querySelector('[data-testid="people-row"]')?.getAttribute("title")).toBe("记录号 42");
+    expect(container.querySelector('[data-testid="ppl4-row"]')?.getAttribute("title")).toBe("记录号 42");
     expect(container.textContent).toContain("共 2 人");
   });
 
@@ -121,7 +121,7 @@ describe("PeopleModulePage — T20 人员目录", () => {
       Promise.resolve({ items: [{ user_id: 7, realname: "测试", user_name: "test", status: 99 }] }),
     );
     await render();
-    const list = container.querySelector('[data-testid="people-list"]');
+    const list = container.querySelector('[data-testid="ppl4-list"]');
     expect(list?.textContent).toContain("待核实");
     expect(list?.textContent).not.toMatch(/status|99(?!人)/);
   });
@@ -133,56 +133,56 @@ describe("PeopleModulePage — T20 人员目录", () => {
         : missing(url),
     );
     await render();
-    const row = container.querySelector('[data-testid="people-row"]');
+    const row = container.querySelector('[data-testid="ppl4-row"]');
     expect(row?.textContent).toContain("待核实");
   });
 
   it("search narrows rows; a miss names the cause", async () => {
     mockApi((url) => (url.includes("/user/list") ? Promise.resolve(ROWS) : missing(url)));
     await render();
-    const input = container.querySelector('[data-testid="people-search"]') as HTMLInputElement;
+    const input = container.querySelector('[data-testid="ppl4-search"]') as HTMLInputElement;
     const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
     await act(async () => {
       setter?.call(input, "阿澜");
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
-    expect(container.querySelectorAll('[data-testid="people-row"]').length).toBe(1);
+    expect(container.querySelectorAll('[data-testid="ppl4-row"]').length).toBe(1);
     await act(async () => {
       setter?.call(input, "不存在的人");
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
-    const nomatch = container.querySelector('[data-testid="people-nomatch"]');
+    const nomatch = container.querySelector('[data-testid="ppl4-nomatch"]');
     expect(nomatch?.textContent).toContain("没有匹配");
   });
 
   it("empty roster names the reason, never a blank pane", async () => {
     mockApi(() => Promise.resolve({ items: [] }));
     await render();
-    const empty = container.querySelector('[data-testid="people-empty"]');
+    const empty = container.querySelector('[data-testid="ppl4-empty"]');
     expect(empty?.textContent).toContain("后台还没有登记在册人员");
   });
 
   it("GAP-02: every candidate 404 → honest 待核实, no fabricated rows", async () => {
     mockApi((url) => missing(url));
     await render();
-    const denied = container.querySelector('[data-testid="people-denied"]');
+    const denied = container.querySelector('[data-testid="ppl4-denied"]');
     expect(denied?.textContent).toContain("待核实");
     expect(denied?.textContent).toContain("上游用户中心接口尚未接入");
     expect(denied?.textContent).toContain("重试");
-    expect(container.querySelector('[data-testid="people-list"]')).toBeNull();
+    expect(container.querySelector('[data-testid="ppl4-list"]')).toBeNull();
   });
 
   it("403 → permission sentence, not a fake empty", async () => {
     mockApi((url) => forbidden(url));
     await render();
-    const denied = container.querySelector('[data-testid="people-denied"]');
+    const denied = container.querySelector('[data-testid="ppl4-denied"]');
     expect(denied?.textContent).toContain("你没有查看这块数据的权限");
   });
 
   it("5xx → plain sentence with request id and retry", async () => {
     mockApi((url) => silent502(url, "req-91"));
     await render();
-    const err = container.querySelector('[data-testid="people-error"]');
+    const err = container.querySelector('[data-testid="ppl4-error"]');
     expect(err?.textContent).toContain("请求编号：req-91");
     expect(err?.textContent).toContain("重试");
     expect(err?.textContent).not.toMatch(/HTTP 502|ApiError/);

@@ -15,18 +15,31 @@ function stateOf(value: unknown): SettingState {
 export function readSettings(payload: unknown, unavailable = false): { switches: SwitchItem[]; upstreams: UpstreamItem[] } {
   const root = record(payload);
   const rawSwitches = record(root.writeSwitches);
-  const reason = "配置自检口（CR-M2-02）尚未接入，读取不到当前值";
+  const unknownReason = "配置自检尚未接入，读取不到当前值";
+  const landedReason = "来自当前配置（只读）";
+  const reasonFor = (state: SettingState): string => {
+    if (state === "not-landed") return "配置自检尚未接入，该项未启用";
+    if (state === "unknown") return unknownReason;
+    return landedReason;
+  };
   const switches: SwitchItem[] = ([
     ["approval", "审批流变更提交"],
     ["chat", "会话发送"],
-  ] as const).map(([key, label]) => ({ key, label, state: unavailable ? "not-landed" : stateOf(rawSwitches[key]), reason }));
+  ] as const).map(([key, label]) => {
+    const state = unavailable ? "not-landed" : stateOf(rawSwitches[key]);
+    return { key, label, state, reason: reasonFor(state) };
+  });
   const upstreams: UpstreamItem[] = Array.isArray(root.upstreams)
     ? root.upstreams.map((value) => {
         const upstream = record(value);
+        const state = stateOf(upstream.state);
         return {
           name: typeof upstream.name === "string" && upstream.name.trim() ? upstream.name : "—",
-          state: stateOf(upstream.state),
-          reason: typeof upstream.reason === "string" && upstream.reason.trim() ? upstream.reason : reason,
+          state,
+          reason:
+            typeof upstream.reason === "string" && upstream.reason.trim()
+              ? upstream.reason.trim()
+              : reasonFor(state),
         };
       })
     : [];

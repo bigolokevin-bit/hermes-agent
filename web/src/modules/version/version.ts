@@ -19,14 +19,14 @@ export function formatBeijingMinute(value: string | null): string | null {
   const numeric = /^\d+$/.test(value) ? Number(value) : Number.NaN;
   const date = Number.isFinite(numeric) ? new Date(numeric) : new Date(value);
   if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat("zh-CN", {
+  return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit", hour12: false,
-  }).format(date);
+  }).format(date).replace(",", "");
 }
 
 export function readBuildRows(env: BuildEnv): BuildRow[] {
-  const reason = "构建未注入版本变量（V4 构建脚本硬线未接）";
+  const reason = "构建时没有写入这项信息；请让发布流程补齐构建标识";
   const identity = nonEmpty(env.VITE_BUILD_IDENTITY);
   const ref = nonEmpty(env.VITE_BUILD_REF);
   const commit = nonEmpty(env.VITE_BUILD_COMMIT);
