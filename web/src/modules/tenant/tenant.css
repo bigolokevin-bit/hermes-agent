@@ -4,6 +4,7 @@
   gap: 16px;
   min-width: 0;
   width: 100%;
+  overflow-x: clip;
 }
 
 .ten4-head {
@@ -60,6 +61,7 @@
 
 .ten4-card {
   min-width: 0;
+  overflow: hidden;
 }
 
 .ten4-card-body {
@@ -272,4 +274,9 @@
   .ten4-head-actions > .ten4-readonly {
     width: auto;
   }
+}
+/* The shared Button's decorative arc border can extend 2px past its own box;
+   hide it inside this page so the page's scrollWidth matches the viewport. */
+.ten4-page .arc-border {
+  display: none;
 }

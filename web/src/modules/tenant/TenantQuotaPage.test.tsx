@@ -76,32 +76,59 @@ describe('TenantQuotaPage', () => {
     expect(text()).toContain('租户名称');
     expect(text()).toContain('接口未接入');
     expect(text()).toContain('员工数');
-    expect(text()).toContain('3');
+    expect(text()).toContain('3 人');
     expect(text()).toContain('运行数（近 7 天）');
-    expect(text()).toContain('12');
-    expect(text()).toContain('来源：员工统计');
-    expect(text()).toContain('来源：运行统计');
-    expect(text()).toContain('2026-11-19 13:30');
-    expect(text()).toContain('GAP-TEN-01');
-    expect(text()).toContain('配额上限 —');
+    expect(text()).toContain('12 次');
+    expect(text()).toContain('来源：员工统计 · 数据截至 2026-11-19 13:30');
+    expect(text()).toContain('来源：运行统计 · 数据截至 2026-11-19 13:31');
+    expect(text()).toContain('来源：租户资料 · 未接入 · 数据截至 时间未知');
+    expect(text()).toContain('来源：额度上限 · 待核实');
     expect(text()).toContain('存储与 token');
+    expect(text()).toContain('来源：存储与 token 用量 · 未接入 · 数据截至 时间未知');
     expect(text()).toContain('无法判断是否已用尽');
     expect(text()).not.toContain('$0.00');
+    expect(text()).not.toContain('GAP-TEN-01');
+    expect(document.querySelector('[data-testid="ten4-gap"]')?.getAttribute('title')).toContain('GAP-TEN-01');
+    expect(document.querySelector('[data-testid="ten4-profile"] .ten4-gap-pill')?.getAttribute('title')).toContain('GAP-TEN-01');
   });
 
-  it('renders a real empty state when both live usage totals are zero', async () => {
+  it('shows a true zero as 0 with its unit instead of converting it to empty', async () => {
     await mount((url) =>
       Promise.resolve(
         url.includes('employee-stats')
-          ? { byLifecycle: { active: 0, paused: 0, offboarding: 0 } }
-          : { totals: { runs: 0 } },
+          ? { byLifecycle: { active: 0, paused: 0, offboarding: 0 }, asOf: '2026-11-19T05:30:00Z' }
+          : { totals: { runs: 0 }, asOf: '2026-11-19T05:31:00Z' },
       ),
+    );
+    await waitFor(settled, 'settled');
+    await waitFor(() => document.querySelector('[data-testid="ten4-quotas"]') !== null, 'quotas');
+    expect(document.querySelector('[data-testid="ten4-quota-employees"]')?.textContent).toContain('0 人');
+    expect(document.querySelector('[data-testid="ten4-quota-runs"]')?.textContent).toContain('0 次');
+    expect(document.querySelector('[data-testid="ten4-empty"]')).toBeNull();
+    expect(text()).not.toContain('GAP-TEN-01');
+  });
+
+  it('renders a real empty state when neither live usage carries a usable total', async () => {
+    await mount((url) =>
+      Promise.resolve(url.includes('employee-stats') ? { byLifecycle: {} } : { totals: {} }),
     );
     await waitFor(settled, 'settled');
     await waitFor(() => document.querySelector('[data-testid="ten4-empty"]') !== null, 'empty');
     expect(text()).toContain('当前还没有可展示的用量');
     expect(text()).toContain('不用 0 代替缺失的额度');
     expect(document.querySelector('[data-testid="ten4-quotas"]')).toBeNull();
+  });
+
+  it('never substitutes the browser clock when a usage payload has no source timestamp', async () => {
+    await mount((url) =>
+      Promise.resolve(url.includes('employee-stats') ? { total: 4 } : { totals: { runs: 9 } }),
+    );
+    await waitFor(settled, 'settled');
+    await waitFor(() => document.querySelector('[data-testid="ten4-quotas"]') !== null, 'quotas');
+    expect(text()).toContain('数据截至 时间未知');
+    expect(document.querySelector('[data-testid="ten4-asof-employees"]')?.textContent).toContain('不能用浏览器时间代替');
+    expect(document.querySelector('[data-testid="ten4-asof-runs"]')?.textContent).toContain('不能用浏览器时间代替');
+    expect(text()).not.toMatch(/数据截至 20\d\d-\d\d-\d\d/);
   });
 
   it('turns two failed reads into human copy, a request id and retry', async () => {

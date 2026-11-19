@@ -38,18 +38,19 @@ function dataFixture(): DutyData {
       { employeeId: 'emp_1', name: '陈可', lifecycleState: 'active' },
       { employeeId: 'emp_2', name: '林一舟', lifecycleState: 'active' },
     ]),
-    stats: ready({ byLifecycle: { active: 1, paused: 1, offboarding: 0 } }),
-    todayStats: ready({ totals: { runs: 10, failed: 2, succeeded: 8 } }),
+    stats: ready({ byLifecycle: { active: 1, paused: 1, offboarding: 0 }, asOf: '2026-11-19T04:20:00Z' }),
+    todayStats: ready({ totals: { runs: 10, failed: 2, succeeded: 8 }, asOf: '2026-11-19T04:21:00Z' }),
     stats14: ready({
+      asOf: '2026-11-19T04:22:00Z',
       buckets: [
         { bucketStart: '2026-11-18T16:00:00Z', runs: 4, failed: 1 },
         { bucketStart: '2026-11-19T16:00:00Z', runs: 6, failed: 1 },
       ],
     }),
     activity: ready({ cells: [] }),
-    budgetDay: ready({ items: [{ employeeId: 'emp_1', costUsd: 1.5 }, { employeeId: 'emp_2', costUsd: 0 }], missingEmployeeIds: [] }),
+    budgetDay: ready({ items: [{ employeeId: 'emp_1', costUsd: 1.5 }, { employeeId: 'emp_2', costUsd: 0 }], missingEmployeeIds: [], asOf: '2026-11-19T04:23:00Z' }),
     budgetMonth: ready({ items: [{ employeeId: 'emp_1', costUsd: 12 }, { employeeId: 'emp_2', costUsd: 0 }], missingEmployeeIds: [] }),
-    approvalStats: ready({ pending: 3, dueSoon: 1 }),
+    approvalStats: ready({ pending: 3, dueSoon: 1, asOf: '2026-11-19T04:24:00Z' }),
     approvals: ready([{ approvalId: 'a1', title: '开通频道' }]),
     todayRuns: ready([]),
     recentRuns: ready([{ runId: 'run_1', employeeId: 'emp_1', status: 'failed', startedAt: '2026-11-19T02:00:00Z' }]),
@@ -78,7 +79,6 @@ describe('OverviewView', () => {
       <OverviewView
         data={dataFixture()}
         matrix={{ k: 'ready', data: { items: [{ employeeId: 'emp_2', risk: { failedRuns: 2 } }] } }}
-        readAt="2026-11-19 12:20"
         loading={false}
         onRetry={() => {}}
       />,
@@ -96,7 +96,10 @@ describe('OverviewView', () => {
     expect(container.querySelector('[data-testid="ov5-blockers"]')?.textContent).toContain('运行');
     expect(text).not.toContain('$0.00');
     expect(text).not.toContain('GAP-');
-    expect((text.match(/读取于/g) ?? []).length).toBeGreaterThanOrEqual(4);
+    expect(text).toContain('数据截至 2026-11-19 12:20 · 来源 员工统计');
+    expect(text).toContain('数据截至 2026-11-19 12:23 · 来源 成本账本');
+    expect((text.match(/数据截至/g) ?? []).length).toBeGreaterThanOrEqual(4);
+    expect(text).not.toContain('读取于');
   });
 
   it('shows — and a GAP note when the cost ledger does not cover every employee', async () => {
@@ -106,7 +109,6 @@ describe('OverviewView', () => {
       <OverviewView
         data={data}
         matrix={{ k: 'error', status: 404, message: '未接入', requestId: null }}
-        readAt="2026-11-19 12:20"
         loading={false}
         onRetry={() => {}}
       />,
@@ -121,13 +123,25 @@ describe('OverviewView', () => {
     expect(employeeCard?.querySelector('[data-testid="ov5-kpi-employees-issue-retry"]')).toBeTruthy();
   });
 
+  it('never substitutes a client clock when the source has no collection time', async () => {
+    const data = dataFixture();
+    data.budgetDay = ready({ items: [{ employeeId: 'emp_1', costUsd: 1.5 }, { employeeId: 'emp_2', costUsd: 0 }], missingEmployeeIds: [] });
+    await render(
+      <OverviewView data={data} matrix={{ k: 'ready', data: { items: [] } }} loading={false} onRetry={() => {}} />,
+    );
+    const cost = container.querySelector('[data-testid="ov5-kpi-cost"]')?.textContent ?? '';
+    expect(cost).toContain('数据截至 时间未知 · 来源 成本账本');
+    expect(cost).toContain('原因：上游响应没有带采集时间');
+    expect(container.textContent ?? '').not.toContain('读取于');
+  });
+
   it('keeps partial blocks honest and retryable when one source fails', async () => {
     const data = dataFixture();
     data.todayStats = { k: 'error', status: 503, message: '数据服务暂时没有响应', requestId: 'req-run-9' };
     data.recentRuns = { k: 'error', status: 503, message: '数据服务暂时没有响应', requestId: 'req-act-9' };
     data.failedRuns = { k: 'error', status: 503, message: '数据服务暂时没有响应', requestId: 'req-blk-9' };
     await render(
-      <OverviewView data={data} matrix={{ k: 'ready', data: { items: [] } }} readAt="2026-11-19 12:20" loading={false} onRetry={() => {}} />,
+      <OverviewView data={data} matrix={{ k: 'ready', data: { items: [] } }} loading={false} onRetry={() => {}} />,
     );
     const runs = container.querySelector('[data-testid="ov5-kpi-runs"]');
     expect(runs?.textContent).toContain('运行统计未接入');
@@ -145,7 +159,7 @@ describe('OverviewView', () => {
       };
     }
     await render(
-      <OverviewView data={data} matrix={{ k: 'loading' }} readAt="" loading={false} onRetry={() => {}} />,
+      <OverviewView data={data} matrix={{ k: 'loading' }} loading={false} onRetry={() => {}} />,
     );
     expect(container.querySelector('[data-testid="ov5-error"]')?.textContent).toContain('req-ov5-1');
     expect(container.textContent).toContain('没有编造任何数字');
