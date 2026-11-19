@@ -1374,3 +1374,10 @@ $ cd web && npx vitest run
 ### DOM/test readings after
 - `cron5-page` + cron5 testid family (21 unique), `hlt4-page` + health family (10 unique), `knw4-page` + knowledge family (25 unique); targeted vitest **4 files / 29 tests passed**.
 - No production `data-fixture` remains in the three selected modules (`grep -rl` empty).
+
+## R31 version + models deep pass (2026-11-19, base 1fff2e58)
+
+- Version (`/system?tab=version`): build identity/ref/commit/time stay `未知` + explicit release-pipeline reason; injected commit is shortened to 8 chars with full value in title; build time uses Beijing `YYYY-MM-DD HH:mm`. Price block now has a retry and copyable request id; 403 and 404 share one neutral `单价表未接入，或当前账号无权读取` body with `GAP-07` only in `title`, no path.
+- Models (`/capabilities?tab=models`): catalog/price/ledger remain separate with their own source and `asOf`; price and ledger never multiply; unknown `—`/「未计价」, no `$0.00`. 403 and 404 now both map to the same block-level 「未接入（GAP-07）」 bodies; 401 stays login-denied.
+- Testids unchanged: `ver4-*` and `mdl4-*`.
+- Verification: `npx vitest run src/modules/version` → **6/6**; `npx vitest run src/modules/models` → **12/12**; full suite below. No App/shell/routes/package/lock/scripts/ops changes.
