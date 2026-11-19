@@ -384,3 +384,52 @@ Unexpected token = 0
 ```
 
 全量：`114 files / 1021 passed`；`tsc` 0；`pnpm --filter web build` EXIT 0。
+
+## TEN4 租户与配额（2026-11-19）
+
+- 提交：`df2e7efe feat(console): tenant and quota honest page (ten4)`（4 files，+962）
+- 写域：`web/src/modules/tenant/**`；未改 App.tsx / shell / manifest / package / lock。
+- BFF 无租户、配额或身份读取路由（源码核对，候选路径在鉴权前统一 401）。页面因此将租户名称 / ID / 创建时间与全部额度上限标为「未接入（GAP-TEN-01）」并给「—」，不造租户、不补 0。
+- 只展示已有端点可读的当前用量：员工数 `/agent-api/api/employee-stats`、近 7 天运行数 `/agent-api/api/run-stats`；各自标来源与北京时间读取时刻，与额度上限分区。
+- 存储与 token 用量无端点，显 `—` 和原因；用尽态说明额度未知、无法判断。
+- 四态：加载 / 正常 / 空（两读数均真 0）/ 错（人话 + 可复制请求编号 + 重试）；`?state=loading|empty|error` 仅预览，零取数并带 `data-fixture="1"`。
+- testid：`ten4-*`；错误态无 HTTP 码/裸字段；申请入口为真实 `/approvals`。
+
+### 自测
+
+```text
+$ cd web && ./node_modules/.bin/tsc -b . --noEmit
+# EXIT: 0
+
+$ cd web && npx vitest run src/modules/tenant
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+
+$ cd web && npx vitest run
+ Test Files  115 passed (115)
+      Tests  1028 passed (1028)
+
+$ cd /Users/kevin_studio/Projects/forks/console-gov && pnpm --filter web build
+built /Users/kevin_studio/Projects/forks/console-gov/hermes_cli/web_dist/index.html
+# EXIT: 0
+```
+
+### DOM 读数（Chrome CDP，临时预览 harness，已删除）
+
+```text
+1440×900: vw=1440 bodySW=1440 bodyCW=1440 pageSW=1410 pageCW=1408
+375×812:  vw=375 bodySW=375 bodyCW=375 pageSW=345 pageCW=343
+```
+
+页面无横溢；375 主列单列。截图：`docs/_artifacts/gov/shots/ten4-1440.png`、`ten4-375.png`。
+
+### 需壳层注册
+
+1. `web/src/App.tsx` 增加 `/tenant-quota` 路由，指向 `web/src/modules/tenant/TenantQuotaPage.tsx`。
+2. 侧栏 `/tenant-quota` 去掉 `placeholder: true` 并指向该页。
+3. `#/identity?tab=tenant` 的 bridge 改指本页（现映射到人员目录）。
+
+### 边界
+
+- 无租户/配额端点，真实租户资料与额度上限未取得。
+- 页面在新路由注册前不可达 `/tenant-quota`。
