@@ -12,8 +12,6 @@ import {
   failureInfo,
   fetchServers,
   fetchToolsets,
-  FIXTURE_ROWS,
-  isMissingRoute,
   readFailure,
   type FailureCopy,
   type ToolRow,
@@ -89,20 +87,19 @@ function classify(results: PromiseSettledResult<ToolRow[]>[]): Settled {
     if (info.status === 401) {
       return { ...PENDING, phase: "login", failure: readFailure(failure, info) };
     }
-    if (info.status === 403) {
-      return { ...PENDING, phase: "denied", failure: readFailure(failure, info) };
-    }
-    const allMissing = results.every(
-      (r) => r.status === "rejected" && isMissingRoute(failureInfo(r.reason).status),
+    const allDenied = results.every(
+      (r) => r.status === "rejected" && [403, 404].includes(failureInfo(r.reason).status),
     );
-    if (allMissing) {
+    if (allDenied) {
       return {
         ...PENDING,
-        phase: "fixture",
-        rows: FIXTURE_ROWS,
-        toolsetRows: FIXTURE_ROWS.filter((row) => row.source === "toolset").length,
-        mcpRows: FIXTURE_ROWS.filter((row) => row.source === "mcp").length,
-        fixture: true,
+        phase: "denied",
+        failure: {
+          sentence:
+            "这块内容要么尚未接入本控制台，要么当前账号无权查看；这里不显示猜测的行，也不展示样例。",
+          requestId: info.requestId,
+          technical: info.technical,
+        },
       };
     }
     return { ...PENDING, phase: "error", failure: readFailure(failure, info) };

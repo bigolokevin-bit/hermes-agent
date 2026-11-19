@@ -36,6 +36,8 @@ export interface ToolRow {
   lastUsedReason: string | null;
   rawId: string | null;
   detail: string[];
+  failure?: string | null;
+  failureReason?: string | null;
   source: "toolset" | "mcp";
 }
 
@@ -202,6 +204,15 @@ export const CREDENTIAL_LABEL: Record<CredentialState, string> = {
   unknown: "未知",
 };
 
+function failureOf(rec: Record<string, unknown>): { failure: string | null; reason: string | null } {
+  const raw = pick(rec, ["last_error", "lastError", "error", "failure", "last_failure", "lastFailure"]);
+  if (!raw) return { failure: null, reason: null };
+  if (/^[{[]/.test(raw) || /^[a-z][a-z0-9_.:-]{6,}$/i.test(raw)) {
+    return { failure: "最近一次调用失败，上游只给了错误代号，没有可读说明。", reason: null };
+  }
+  return { failure: raw.length > 240 ? `${raw.slice(0, 240)}…` : raw, reason: null };
+}
+
 function credentialOf(value: boolean | null): { state: CredentialState; raw: string | null; reason: string | null } {
   if (value === true) return { state: "configured", raw: "true", reason: null };
   if (value === false) return { state: "missing", raw: "false", reason: null };
@@ -232,6 +243,7 @@ function toolsetRows(value: unknown, index: number): ToolRow[] {
     credentialReason: cred.reason,
     lastUsed: null,
     lastUsedReason: "接口没有提供最近调用时间。",
+    ...failureOf(rec),
     source: "toolset" as const,
   };
   const detailBase = [
@@ -286,6 +298,7 @@ function serverRow(value: unknown, index: number): ToolRow | null {
     credentialReason: credential.reason,
     lastUsed: null,
     lastUsedReason: "接口没有提供最近调用时间。",
+    ...failureOf(rec),
     rawId: rawName,
     detail,
     source: "mcp",

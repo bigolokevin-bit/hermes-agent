@@ -1437,3 +1437,12 @@ $ cd web && npx vitest run
 - Four states; 403≡404 one neutral body (GAP only in title); retry + copyable rid; CSS stacks ≤720, no page overflow.
 - Export/registration contract for R5: mount `SecurityModulePage` at `/system?tab=security`; shell currently maps that tab to events/anomaly, so sec5 count at target route is 0 until registration.
 - Tests `npx vitest run src/modules/security` → 4/4 passed.
+
+## R28 tools/MCP surface depth (2026-11-19)
+
+- Base `28702d34`; write domain `web/src/modules/tools/**` + `docs/_artifacts/gov/**`.
+- Data unchanged: same-origin `GET /api/tools/toolsets` (live 200, 26 toolsets/54 tools) and `GET /api/mcp/servers` (200, 0 servers); no BFF `/agent-api/api/mcp/servers` route (404).
+- Row type now human `内置 · <group>` or `MCP · <transport>`; last call shows `无调用记录` when absent; unavailable rows visible/dimmed with visible status reason; optional failure line renders human reason, raw error stays off screen.
+- Credential remains only 已配置/未配置/未知; added test that a missing-credential row with `API_KEY=super-secret-value` in payload prints no key/secret text.
+- 403 and 404 now share one neutral `未接入` body, no fixture/sample, GAP only in `title`; four states, copyable rid, retry, `tol5-*`.
+- Tests: `npx vitest run src/modules/tools` → 2 files / 20 passed.

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // 工具与 MCP 真数据面：两个真实路由、逐行字段、凭据只显示状态、不可用项留灰色、
-// 404 双缺才出示标记过的字段示例、403 与 404 的拒绝体不回显路径，四态与重试齐全。
+// 403 与 404 使用同一未接入体、不出示样例、不回显路径，四态与重试齐全。
 
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -136,19 +136,34 @@ describe("failures and gaps", () => {
     await mount(failed(403, "/api/tools/toolsets", "req-deny"));
     expect(document.querySelector("[data-testid='tol5-denied']")).toBeTruthy();
     expect(rows()).toHaveLength(0);
-    expect(text()).toContain("暂时看不到工具与 MCP 清单");
+    expect(text()).toContain("工具与 MCP 读口未接入");
     expect(text()).toContain("请求编号：req-deny");
     expect(text()).not.toMatch(/\/api\/|403|GAP-04/);
   });
 
-  it("both 404 routes show the marked fixture with GAP only in a title", async () => {
-    await mount(failed(404, "/api/tools/toolsets"));
-    expect(document.querySelector("[data-testid='tol5-fixture-note']")).toBeTruthy();
-    expect(document.querySelector("[data-testid='tol5-page']")?.getAttribute("data-fixture")).toBe("fixture");
-    expect(text()).toContain("字段示例");
-    expect(text()).not.toContain("GAP-04");
-    expect(document.querySelector("[data-testid='tol5-fixture-note']")?.getAttribute("title")).toBe("GAP-04");
-    expect(rows().length).toBeGreaterThan(0);
+  it("both 404 routes use the same neutral not-wired body as 403", async () => {
+    await mount(failed(404, "/api/tools/toolsets", "req-deny"));
+    expect(document.querySelector("[data-testid='tol5-denied']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='tol5-fixture-note']")).toBeNull();
+    expect(rows()).toHaveLength(0);
+    expect(text()).toContain("工具与 MCP 读口未接入");
+    expect(text()).toContain("请求编号：req-deny");
+    expect(text()).not.toMatch(/\/api\/|403|404|GAP-04|字段示例/);
+    expect(document.querySelector("[data-testid='tol5-denied']")?.getAttribute("title")).toBe("GAP-04");
+  });
+
+  it("missing credentials never render secret-like config values", async () => {
+    await mount((url) =>
+      Promise.resolve(
+        (url ?? "").includes("/api/tools/toolsets")
+          ? [{ name: "clean-set", label: "Clean Set", enabled: true, configured: false, env: { API_KEY: "super-secret-value" }, tools: ["clean_tool"] }]
+          : { servers: [] },
+      ),
+    );
+    expect(text()).toContain("凭据：未配置");
+    expect(text()).not.toContain("super-secret-value");
+    expect(text()).not.toContain("API_KEY");
+    expect(text()).not.toMatch(/token|secret|密钥值/i);
   });
 
   it("500 shows human copy, a copyable request id and a working retry", async () => {
