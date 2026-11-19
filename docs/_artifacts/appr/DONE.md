@@ -408,3 +408,10 @@ BFF 实测形态（ego 登录态 GET /agent-api/api/approvals?status=consumed&li
 五列登录态实测（9122 BFF 带 cookie，GET /agent-api/api/tasks?status=<v>&limit=50）：open=200:17行(rid 5c5dba) | in_progress=200:1(bc706d) | blocked=200:1(af24cc) | done=200:0(69847f) | cancelled=200:1(0089e3)；不带 status 的 ALL 口径=400:0(43d8f4)——lane D 的 status=all 修复未到，看板走五路显式 status 不受影响，如实记录。
 判据对照：五态列 ✓（BOARD_STATUSES 真传参）；负责人「姓名 · 8位短码」/「未指派」✓（rowId/actorLabel，裸 emp_/human: 零上屏）；更新时间北京到分 ✓；成本 USD $x.xx ✓、真 0 显 $0.00、缺值本笔补原因=卡片行与详情成本改为非有限数时「—」+title「后台没有回传这条任务的成本。」（数据层不动）；状态未知「待核实」✓；状态迁移无死控件、创建入口=真 POST+csrf gate（CSRF 单已接）不假成功 ✓；四态齐+错误态可复制请求编号+重试 ✓；403≡404 同体不回显路径 ✓；testid tsk4-* 全家族不破 ✓；1440/1280/375 响应式（xl:grid-cols-5 md:grid-cols-2 min-w-0）✓。
 验证：定向 src/modules/tasks 2 files 14 passed；全量 122 files/1222 passed 0 fail。屏幕 DOM 复跑待 L0 合批构建代次。
+
+## matrix 能力与权限矩阵真数据双视角（feat(console): capability matrix real-data dual view）
+真数据实测（ego 登录态 GET /agent-api/api/matrix）：http=200 rows=3 asOf=2026-11-19T12:06:28Z；三行=QA2契约验证(draft)·emp_217A91BA、AgentOS产品助理(active)·emp_86A81CE8、AgentOS产品助理(active)·emp_0166858D——同名两行由行头「姓名 · 8位短码」消歧（短码=前8位大写，裸 emp_ 零上屏、raw 进 title）；skillRefs 全空⇒技能引用=0、单元格三态计数 0/0/0 为真实口径（禁假 0/禁空白：三态渲染器 CellPill ●已授权/○未授权/?待核实+title 原因在位）。
+双视角：员工视角/角色视角 tab（mtx5-view-people/mtx5-view-resource）+?view= URL 保态；宽表 mtx5-scroll 仅表内横向滚动，页面无横溢。
+汇总条五项落地：员工 3 · 在岗 2 · 有风险「—」（title：风险数据源尚未接入，不做猜测）· 技能引用 0（与明细 cells 同口径）· 今日运行「—」（title：运行统计源未接入）+ 三态计数 + 读取于 asOf。
+403≡404 同体：两路都进 denied 静态句「可能是这页不存在，也可能是账号还没有查看权限」，不回显路径 ✓；fixture 回落仅端点不可用且 data-fixture=1+人话注记（无 GAP 编号上屏）✓；testid 家族 matrix-→mtx5- 全替换（page 17+test 5 处，零残留）。
+测试：定向 src/modules/matrix 5 passed；全量 122 files/1222 passed 0 fail。屏幕 DOM 复跑待 L0 合批构建。

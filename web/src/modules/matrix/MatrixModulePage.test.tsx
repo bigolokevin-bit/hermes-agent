@@ -108,24 +108,24 @@ describe("MatrixModulePage (R7.1 item 2 — live endpoint, no fixture fallback)"
     fetchJSON.mockRejectedValue(missing("req-77"));
     await renderPage();
     const text = container.textContent ?? "";
-    expect(container.querySelector('[data-testid="matrix-denied"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="mtx5-denied"]')).not.toBeNull();
     expect(text).toContain("请求编号：req-77");
     expect(text).not.toContain("示例数据");
     expect(text).not.toContain("还没接上，这张表");
     expect(container.querySelector("[data-fixture='1']")).toBeNull();
-    expect(container.querySelector('[data-testid="matrix-fixture-note"]')).toBeNull();
-    expect(container.querySelector('[data-testid="matrix-summary"]')).toBeNull();
+    expect(container.querySelector('[data-testid="mtx5-fixture-note"]')).toBeNull();
+    expect(container.querySelector('[data-testid="mtx5-summary"]')).toBeNull();
   });
 
   it("an anonymous 401 renders the login-required state with retry and exit", async () => {
     fetchJSON.mockRejectedValue(expired("req-401"));
     await renderPage();
     const text = container.textContent ?? "";
-    expect(container.querySelector('[data-testid="matrix-error"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="mtx5-error"]')).not.toBeNull();
     expect(text).toContain("需要登录");
     expect(text).not.toContain("unauthenticated");
     expect(text).toContain("请求编号：req-401");
-    expect(container.querySelector('[data-testid="matrix-error-retry"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="mtx5-error-retry"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="auth-reload-exit"]')).not.toBeNull();
     expect(container.querySelector("[data-fixture='1']")).toBeNull();
   });
