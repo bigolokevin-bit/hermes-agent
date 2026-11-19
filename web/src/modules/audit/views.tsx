@@ -105,6 +105,7 @@ export function AuditEventRowCard({
     `发生时间原值：${row.occurredAt ?? "服务未回传"}`,
     `记账时间原值：${row.recordedAt ?? "服务未回传"}`,
     `请求编号：${row.requestId ?? "服务未回传"}`,
+    `同一次操作原值：${row.correlation ?? "服务未回传"}`,
   ];
   return (
     <Card className={`border-border bg-card ${selected ? "ring-1 ring-primary/60" : ""}`} data-testid={testId}>

@@ -101,8 +101,25 @@ const SCHEME_PREFIX = /^(?:emp|employee|agent|human|user|member|staff|svc|servic
 const UUID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const LONG_HEX = /^[0-9a-f]{16,}$/i;
 
+/**
+ * Any scheme-prefixed handle, whether or not its scheme is in the list above:
+ * `ap_123DE49B9A1F42A197679681F1` (an approval), `ce_01M7AJ3Q…`, `dl_01ABC…`.
+ * The live audit answer carries `ap_` and `01A1LIVE…` handles, so a fixed
+ * scheme list alone let them reach the screen in full (2026-11-20 defect).
+ */
+const SCHEME_HANDLE = /^[a-z][a-z0-9]{1,11}_[0-9A-Za-z]{4,}$/i;
+/** A long separator-free token: a ULID-ish id (`01A1LIVE202611170000000002`). */
+const OPAQUE_TOKEN = /^[0-9A-Za-z]{16,}$/;
+
 export function isMachineHandle(value: string): boolean {
-  return SCHEME_PREFIX.test(value) || UUID_SHAPE.test(value) || LONG_HEX.test(value) || /^emp_/i.test(value);
+  return (
+    SCHEME_PREFIX.test(value) ||
+    UUID_SHAPE.test(value) ||
+    LONG_HEX.test(value) ||
+    SCHEME_HANDLE.test(value) ||
+    OPAQUE_TOKEN.test(value) ||
+    /^emp_/i.test(value)
+  );
 }
 
 /**
@@ -524,6 +541,8 @@ export interface AuditRow {
   recordedAt: string | null;
   /** 请求编号 — what the service called this request, or null when it said none. */
   requestId: string | null;
+  /** The correlation handle, masked on screen and raw only in the fold. */
+  correlation: string | null;
   /** Why it failed / what was decided, in human words only. */
   reason: string | null;
 }
@@ -598,13 +617,23 @@ function reasonOf(rec: Record<string, unknown>, outcome: OutcomeView): string | 
 
 /**
  * The request number on the surface: a real identifier a person quotes to
- * support. A handle-shaped one (a 32-char hex trace id) is not a human-readable
- * code, so it is shown in full but kept breakable and paired with 「技术编号」
- * in the `title` — never dressed up as a name, never invented. `null` = the
- * answer carried none, and the screen says 「未提供」 with the reason.
+ * support, so a genuine one (a short hex code from the BFF) is shown in full,
+ * breakable, and paired with 「技术编号」 in the `title`. `null` = the answer
+ * carried none, and the screen says 「未提供」 with the reason — it never
+ * borrows a business handle to fill the line.
  */
 function requestIdOf(rec: Record<string, unknown>): string | null {
-  return pickText(rec, REQUEST_ID_KEYS) ?? pickText(rec, TRACE_ID_KEYS);
+  // Only a field the service calls a request number. It used to fall back to
+  // `correlationId`, which in this tenant carries a business handle
+  // (`ap_123DE49B9A1F42A197679681F1`, `01A1LIVE202611170000000002`) — that put a
+  // full record handle on screen dressed as 「请求编号」. A correlation value is
+  // still shown, but as the masked 同一次操作 link and in the technical fold.
+  return pickText(rec, REQUEST_ID_KEYS);
+}
+
+/** The correlation handle, shown masked (同一次操作 · 短码) and raw in the fold. */
+function correlationOf(rec: Record<string, unknown>): string | null {
+  return pickText(rec, TRACE_ID_KEYS);
 }
 
 function rowFrom(item: unknown, index: number): AuditRow | null {
@@ -626,6 +655,7 @@ function rowFrom(item: unknown, index: number): AuditRow | null {
     occurredAt: beijing(pick(rec, OCCURRED_KEYS)),
     recordedAt: beijing(pick(rec, RECORDED_KEYS)),
     requestId: requestIdOf(rec),
+    correlation: correlationOf(rec),
     reason: reasonOf(rec, outcome),
   };
 }
@@ -788,6 +818,8 @@ export interface AuditDetail {
   sourceSystem: string | null;
   /** 请求编号 shown on the human layer (copyable); null renders 「未提供」 + reason. */
   requestId: string | null;
+  /** The correlation handle; the 关联 row shows it as 同一次操作 · 短码. */
+  correlation: string | null;
   reason: string | null;
   /** The code the service gave for a failure — technical, never on the surface. */
   code: string | null;
@@ -824,6 +856,7 @@ export function auditDetailFrom(payload: unknown): AuditDetail | null {
   const tenant = maskedRef(tenantRaw, "工作区");
   const sourceSystem = pickText(body, SOURCE_KEYS);
   const requestId = requestIdOf(body);
+  const correlation = correlationOf(body);
 
   const technical: string[] = [];
   if (rawId) technical.push(`事件标识：${rawId}`);
@@ -834,6 +867,7 @@ export function auditDetailFrom(payload: unknown): AuditDetail | null {
   if (action.raw && !action.known) technical.push(`未识别的事件类型按原样显示：${action.raw}`);
   if (sourceSystem) technical.push(`来源系统：${sourceSystem}`);
   if (tenantRaw) technical.push(`租户标识：${tenantRaw}`);
+  if (correlation) technical.push(`同一次操作原值：${correlation}`);
   if (hash.raw) technical.push(`本条摘要：${hash.raw}`);
   if (prevHash.raw) technical.push(`前一条摘要：${prevHash.raw}`);
 
@@ -850,6 +884,7 @@ export function auditDetailFrom(payload: unknown): AuditDetail | null {
     recordedAt: beijing(pick(body, RECORDED_KEYS)),
     sourceSystem,
     requestId,
+    correlation,
     reason: reasonOf(body, outcome),
     code,
     change,

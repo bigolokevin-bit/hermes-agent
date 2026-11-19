@@ -2077,3 +2077,40 @@ Interpretation: the live event stream only carries `message` and `completed` tod
 2. The tenant's delegation answer is still `{"items":[]}` — the expanded detail is proven with fixtures; no real row has ever rendered.
 3. Neither `/collab` nor `/runs` is mounted by a shell lane in this worktree, and the served dev SPA predates this change, so no 1440/1280/375 pixel measurement was produced; layout rests on `min-w-0` + `break-words` + grid columns and the jsdom assertions.
 4. `run-retry` remains unproven against a real 200 (identity gate answers 401 before routing), so the new-id contract is enforced in code and tests, not measured live.
+
+
+## TASK audit full record handles hidden (2026-11-20, base c32f2635 = gate ledger @ 1f3fe2ad)
+
+### Symptom
+The /audit page body printed full record handles, e.g. ap_123DE49B9A1F42A197679681F1 — engineering language on a human surface.
+
+### Measured before the fix (live BFF data, headless Chrome over a local build + /agent-api proxy)
+- GET /api/audit?from=2026-11-12&to=2026-11-20&limit=50 -> 200, 30430 B, 50 events, and no requestId key anywhere on the wire.
+- Rendered /audit?window=7d at 1440x900: textLen 7981, aud01 ids 459, scrollWidth == clientWidth == 1440.
+- Visible text contained 1 ap_123DE49B9A1F42A197679681F1 and 2 ULID-shaped handles (01A1LIVE20261117000000000x), all under the 请求编号 label.
+- The 对象 cell was already correct (审批单 · 679681F1), so the leak was not resource masking.
+
+### Root cause (two defects, one visible symptom)
+1. requestIdOf fell back to correlationId/traceId, and this tenant's correlation values are business handles (ap_..., ULID). The request-id line is printed in full by design (it is quoted to support), so the handle went to screen.
+2. maskedRef early-returned the whole value whenever it was neither isMachineHandle nor a 12+ hex run. isMachineHandle's prefix list lacked ap/ce/ev/rn/tk/dl/empv/cp/ah, and a ULID has no hex run, so those handles also printed in full wherever maskedRef was used (links, tenant).
+
+### Fix (write scope: web/src/modules/audit/** only)
+- model.ts: added SCHEME_HANDLE (^[a-z][a-z0-9]{1,11}_[0-9A-Za-z]{4,}$) and OPAQUE_TOKEN (^[0-9A-Za-z]{16,}$) to isMachineHandle; requestIdOf now reads request-number keys only; new correlationOf() carries the correlation value separately; AuditRow/AuditDetail gained correlation; detailFrom adds the technical line 同一次操作原值.
+- views.tsx: the list row technical fold gained 同一次操作原值 (collapsed; raw handles live there and in title).
+- Net effect: a handle is masked to an 8-character tail wherever it is shown as a label (raw only in title / the collapsed 技术详情), and the request-id line never borrows a business handle — it reads 未提供 when the wire carries no request number.
+
+### Measured after the fix (same harness, same data)
+- textLen 6852 (was 7981), aud01 ids 459, scrollWidth == clientWidth == 1440.
+- ap_ handles: 0 (was 1). Scheme handles: 0. Alnum runs of 20+ chars: 0 (was 2).
+- Masked labels measured at 8 characters, e.g. 审批单 · 679681F1, 员工 · 1FDFC8BB.
+- 请求编号 reads 未提供 for all 50 rows, which is the honest state: the wire has no request number.
+
+### Gates (web/)
+- ./node_modules/.bin/vitest run src/modules/audit -> exit 0, 8 files / 137 tests (was 136; +1 masking regression case asserting ap_, ULID and empv_ handles mask to 8-character tails with the whole value kept in raw).
+- npx tsc -b . --noEmit -> exit 2, 53 errors = the standing floor (49 ../apps/shared/**, 2 src/modules/approvals/api.test.ts, 2 src/pages/LoginPage.test.tsx); modules/audit 0.
+- ./node_modules/.bin/eslint src/modules/audit -> exit 0, 0 errors / 5 pre-existing warnings.
+
+### Untested / limits
+- The row technical fold was not expanded in the live DOM; its 同一次操作原值 line is asserted at the model level, not on screen.
+- 375 and 1280 were not re-shot for this change; the fix only shortens strings, and 1440 measured scrollWidth == clientWidth.
+- The 9122 dev server was not rebuilt (per the order: no window close before R28), so the served dist still shows the old text.
