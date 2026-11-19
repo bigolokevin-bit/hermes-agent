@@ -175,6 +175,21 @@ describe("identity never reaches the screen bare", () => {
     expect(maskedRef("run_77aaee33ff001122", "运行").label).toBe("运行 · ff001122");
     expect(maskedRef("knowledge-space-a", "知识空间").label).toBe("knowledge-space-a");
   });
+
+  it("a business handle of any scheme masks to its short tail, whole value only in raw", () => {
+    // The 2026-11-20 leak: ap_… and ULID-shaped correlation handles escaped the
+    // old prefix list and printed in full.
+    const approval = maskedRef("ap_123DE49B9A1F42A197679681F1", "审批单");
+    expect(approval.label).toBe("审批单 · 679681F1");
+    expect(approval.raw).toBe("ap_123DE49B9A1F42A197679681F1");
+    const ulid = maskedRef("01A1LIVE202611170000000002", "同一次操作");
+    expect(ulid.label).toMatch(/^同一次操作 · [0-9A-Z]{8}$/);
+    expect(ulid.label).not.toContain("01A1LIVE");
+    expect(ulid.raw).toBe("01A1LIVE202611170000000002");
+    const version = maskedRef("empv_4FCDD6FD44D547FC9468CEE387", "岗位版本");
+    expect(version.label).toMatch(/^岗位版本 · [0-9A-F]{8}$/);
+    expect(version.raw).toBe("empv_4FCDD6FD44D547FC9468CEE387");
+  });
 });
 
 describe("read model", () => {
@@ -294,7 +309,7 @@ describe("read model", () => {
     expect(auditDetailFrom({ note: "只有备注" })).toBeNull();
   });
 
-  it("reads 请求编号 from either spelling and stays missing when there is none", () => {
+  it("读 请求编号 only from a request-number field, never from a correlation handle", () => {
     const rows = auditPageFrom({
       items: [
         { id: "r1", action: "task_created", requestId: "req-9" },
@@ -303,7 +318,10 @@ describe("read model", () => {
       ],
     })!.rows;
     expect(rows[0]!.requestId).toBe("req-9");
-    expect(rows[1]!.requestId).toBe("corr-7");
+    // A correlation value is not a request number: the line stays empty and the
+    // handle is carried separately (shown masked as 同一次操作, raw in the fold).
+    expect(rows[1]!.requestId).toBeNull();
+    expect(rows[1]!.correlation).toBe("corr-7");
     expect(rows[2]!.requestId).toBeNull();
     expect(auditDetailFrom({ id: "e1", action: "task_created", request_id: "req-12" })!.requestId).toBe("req-12");
     expect(auditDetailFrom({ id: "e1", action: "task_created" })!.requestId).toBeNull();
@@ -450,8 +468,10 @@ describe("live-sampled answer shapes", () => {
     // resource creation_attempt · 021810, the id masked to its short tail
     expect(row.resource.label).toBe("建号申请 · 021810");
     expect(row.occurredAt).toBe("2026-11-18 02:18");
-    // no requestId key on the wire; correlationId is the quotable number
-    expect(row.requestId).toBe("l6-shape2-H-021810");
+    // no requestId key on the wire: the line stays 「未提供」, and the correlation
+    // handle is carried as 同一次操作 (masked on screen, raw only in the fold)
+    expect(row.requestId).toBeNull();
+    expect(row.correlation).toBe("l6-shape2-H-021810");
     expect(row.reason).toBe("denied by domain validation; raw message not stored in audit");
   });
 
