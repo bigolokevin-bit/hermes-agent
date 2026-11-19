@@ -282,6 +282,8 @@ export interface LedgerRow {
   period: string | null;
   tokensUsed: number | null;
   costUsd: number | null;
+  /** Budget cap for the period, when the ledger ever carries one. */
+  limitUsd: number | null;
   updatedAt: string | null;
 }
 
@@ -300,6 +302,7 @@ export function readLedger(payload: unknown): ParsedLedger {
     period: text(raw.period),
     tokensUsed: numberOrNull(raw.tokensUsed),
     costUsd: numberOrNull(raw.costUsd),
+    limitUsd: numberOrNull(raw.limitUsd) ?? numberOrNull(raw.limit) ?? numberOrNull(raw.capUsd),
     updatedAt: text(raw.updatedAt),
   }));
   const missing = Array.isArray(payload.missingEmployeeIds)
@@ -333,7 +336,7 @@ export function ledgerAsOf(rows: LedgerRow[]): string | null {
 /** USD with cents. A missing value is «—», never $0.00. */
 export function formatUsd(value: number | null): string {
   if (value === null || !Number.isFinite(value)) return '—';
-  return `$${value.toFixed(2)}`;
+  return `${value < 0 ? '-' : ''}$${Math.abs(value).toFixed(2)}`;
 }
 
 export function formatCount(value: number | null): string {
@@ -616,4 +619,53 @@ export function toCsv(header: string[], rows: (string | number | null)[][]): str
 export function csvFileName(view: 'employee' | 'model', window: UsageWindowId, now: Date): string {
   const stamp = formatBeijing(now.toISOString(), now).replace(/[-:]/g, '').replace(' ', '-');
   return `metrics-${view}-${window}-${stamp}.csv`;
+}
+
+
+// ---- MET6: budget vs actual -------------------------------------------------
+
+export interface BudgetLine {
+  key: string;
+  subject: string;
+  budget: number | null;
+  used: number | null;
+  remaining: number | null;
+  usagePct: number | null;
+  asOf: string | null;
+  /** Why a cell is «—»; shown only as a title. */
+  gap: string | null;
+}
+
+/**
+ * Budget vs actual for one ledger row. The used amount is the ledger's own
+ * number; the cap only exists when the row carries one — otherwise every
+ * cap-derived cell is «—» with its reason, never 0 and never inferred.
+ */
+export function budgetLines(rows: LedgerRow[], names: Record<string, string>): BudgetLine[] {
+  return rows.map((row, index) => {
+    const budget = row.limitUsd;
+    const used = row.costUsd;
+    const remaining = budget !== null && used !== null ? budget - used : null;
+    const usagePct = budget !== null && budget > 0 && used !== null ? Math.round((used / budget) * 1000) / 10 : null;
+    return {
+      key: `budget-${row.employeeId ?? index}-${index}`,
+      subject: employeeLabel(row.employeeId ? names[row.employeeId] ?? null : null, row.employeeId),
+      budget,
+      used,
+      remaining,
+      usagePct,
+      asOf: row.updatedAt,
+      gap: budget === null ? '账本没有给出预算上限，所以预算、剩余与使用率无法计算' : null,
+    };
+  });
+}
+
+export type UsageTone = 'ok' | 'warn' | 'over';
+
+/** ≥100% over, ≥80% warn, otherwise ok; null stays uncoloured. */
+export function usageTone(pct: number | null): UsageTone | null {
+  if (pct === null || !Number.isFinite(pct)) return null;
+  if (pct >= 100) return 'over';
+  if (pct >= 80) return 'warn';
+  return 'ok';
 }
