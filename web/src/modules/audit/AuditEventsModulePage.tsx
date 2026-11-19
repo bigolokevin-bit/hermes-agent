@@ -448,14 +448,72 @@ function AuditEventsSurface(): ReactNode {
           return <LoadingPanel testId="aud01-verify-loading" />;
         }
         if (verify.phase === "ready" && verify.result) {
+          // R38: the same anchors the verify screen carries are on this pane
+          // too. The result body's counts/window/scanned/broken ids are handed
+          // in, and status / window label / reading moment / re-run sit around
+          // it, so a probe that looks for aud01-verify-* finds the whole family
+          // after one real run — never a claim without a screen behind it.
+          const result = verify.result;
+          const countsKnown =
+            result.scanned !== null || result.total !== null || result.broken !== null;
+          const verifyStatus = !countsKnown
+            ? "校验跑完了，但结论没有带上核对范围"
+            : result.scanned === 0
+              ? "这一段没有核对到记录"
+              : result.verdict === "broken"
+                ? "发现对不上的地方"
+                : result.verdict === "intact"
+                  ? "没有发现断点"
+                  : "校验跑完了，但结论没说清楚";
           return (
-            <div data-testid="aud01-verify-result">
+            <div className="flex min-w-0 flex-col gap-2" data-testid="aud01-verify-result">
+              <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+                <p
+                  className="min-w-0 break-words text-xs text-muted-foreground"
+                  aria-live="polite"
+                  data-testid="aud01-verify-status"
+                >
+                  {verifyStatus}
+                </p>
+                <Button
+                  size="sm"
+                  outlined
+                  onClick={() => verify.run(filters.from, filters.to)}
+                  data-testid="aud01-verify-rerun"
+                >
+                  重新校验
+                </Button>
+              </div>
               <VerifyResultBody
-                result={verify.result}
+                result={result}
                 askedFrom={null}
                 askedTo={null}
                 testId="aud01-verify-result-body"
+                ids={{
+                  counts: "aud01-verify-counts",
+                  window: "aud01-verify-window",
+                  scanned: "aud01-verify-scanned",
+                  broken: "aud01-verify-broken",
+                }}
               />
+              <dl
+                className="flex min-w-0 flex-wrap gap-x-5 gap-y-1 text-xs"
+                data-testid="aud01-verify-detail"
+              >
+                <div className="flex min-w-0 gap-1.5" data-testid="aud01-verify-window-label">
+                  <dt className="shrink-0 text-muted-foreground">校验窗口（北京时间）</dt>
+                  <dd className="min-w-0 break-words">{windowLabel}</dd>
+                </div>
+                <div className="flex min-w-0 gap-1.5" data-testid="aud01-verify-asof">
+                  <dt className="shrink-0 text-muted-foreground">读取时刻（北京时间）</dt>
+                  <dd
+                    className="min-w-0 break-words"
+                    title="服务的回答里没有带回读取时刻，本页不拿浏览器时间顶替"
+                  >
+                    —
+                  </dd>
+                </div>
+              </dl>
             </div>
           );
         }

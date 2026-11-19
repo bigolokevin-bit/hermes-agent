@@ -2543,3 +2543,77 @@ Scope: web/src/modules/runs/** only (page, data layer, tests) plus this ledger.
 ### Untested / disclosed
 - The live event stream on this tenant carries only 消息/完成 events, so the tool-reference, 原文不可达 and 失败原因 branches are test-proven only (grep on the live dump: 结果引用 0, 未记录 0, 待核实 0, 原文不可达 0).
 - No per-element pixel comparison (only sw==cw plus text length); 9122 not rebuilt and main not merged per the order.
+
+## R37 fixture debt burn - 2 aud pages (2026-11-20, base 165e62a5 / lane tip e4c03f8c)
+
+### Inventory (grep -rl data-fixture, *.tsx)
+- audit / runs / collab / evidence: **no live data-fixture attribute left**. The only hits are header comments in `collab/states.tsx` and `runs/states.tsx` (left by the R32 / R30 burns).
+- Live markers in this checkout belong to other lanes: `tenant/TenantQuotaPage.tsx:286,303,325`, `tools/states.tsx:39-40` + `tools/ToolsPage.tsx:133,173,188,261`, `access/AccessModulePage.tsx:498,519`. All three are outside this round's write domain.
+
+### The one in-scope page that still carried a repro leg
+`web/src/modules/audit/AuditDetailModulePage.tsx` (standalone aud02 detail) read `?state=` through `forcedStateOf` and passed `fixture=` to three panels, while `audit/states.tsx` no longer rendered any marker for it - an unlabelled repro leg.
+
+Changes:
+- `forcedStateOf` import and the `forced` value deleted; `useAuditDetail(id, null)`.
+- The three `fixture={detail.forced ? ... }` props and the `aud02-forced-note` block deleted; header comment records that all four states now come from the service's own answer.
+- `audit/states.tsx`: dead `Marked` interface and its `fixture?: string` member removed, plus the `fixture?: string` fragment in `ErrorPanel`'s inline props.
+- Test rewritten: `a stray ?state= no longer fakes a state: the record is read for real` loops loading/empty/error/denied, asserts the real `audit-detail?id=` read happens, `aud02-detail` renders, and neither `aud02-forced-note` nor 「复现出来的状态」 appears.
+- The hook-level `forced` capability in `useAuditData.ts` is left in place but no page passes a non-null value (documented, not refactored inside this time box).
+
+### Second page: does not exist inside the write domain
+After R30 (runs/audit-events/evidence) and R32 (channels/collab/retention) and R35 (audit verify), no second page in `web/src/modules/{audit,runs,collab,evidence}` carries a `data-fixture` marker or a `?state=` leg. The three live marker surfaces listed above are in `tenant` / `tools` / `access` and were forbidden this round. Reported plainly rather than inventing a second burn.
+
+### Gates
+- `vitest run src/modules/audit` -> exit 0, **10 files / 154 tests**.
+- `npx tsc -b . --noEmit` -> **49** errors, `modules/audit` **0** (the floor dropped from 73 to 49 on this base generation; none belong to this module).
+- `eslint src/modules/audit` -> exit 0, 0 errors / 4 pre-existing `react-hooks/set-state-in-effect` warnings (`RetentionModulePage.tsx:248`, `useAuditData.ts:152,228,325`).
+
+### Live reading
+`/audit/detail?id=ev_2BAA7DD7F3BC4767AF39764D91` is **not a mounted route** in this generation: the shell rewrites it to `/overview` (probe url `/overview`, `pageAudit 0`, `aud01 0`, textLen 1413 at 1440; 1257 with sw==cw at 1440/1280/375). No pixel evidence can be produced for this page until the shell registers it; the burn is proven by the module suite.
+
+### Untested / pending
+- Standalone audit-detail route mount (shell lane).
+- Per-element pixel diff (only sw==cw + textLen on the shell).
+- 9122 not rebuilt; main not merged.
+
+## R38 aud01-verify anchors on screen (2026-11-20, lane tip 9549d197, base e4c03f8c)
+
+QA R36 final judgement on generation 165e62a5 (entry DpFqr-g2) counted a single
+aud01-verify anchor on /audit across all four windows. Measured cause: the inline
+verify area rendered only the toolbar button plus loading / not-enabled / error
+panels; the result family lived exclusively on the standalone /audit?tab=verify
+page. Path chosen: A — paint the family inline, no claim rewrite.
+
+Code (web/src/modules/audit/AuditEventsModulePage.tsx, ready branch only):
+- root aud01-verify-result with aud01-verify-status (human verdict sentence) and a
+  plain read-only aud01-verify-rerun button (re-runs the same GET window);
+- VerifyResultBody receives ids counts/window/scanned/broken so the inline panel
+  paints aud01-verify-counts, -window, -scanned, -broken and -result-body(-details);
+- aud01-verify-detail holds aud01-verify-window-label and aud01-verify-asof
+  (always the em dash with the title saying the service answer carried no read
+  time; the browser clock is never substituted).
+Loading / not-enabled / error panels and the toolbar button are unchanged.
+
+Four-window live readings (fresh build assets/index-*, /tmp/serve-audh.cjs on
+127.0.0.1:4210 proxying /agent-api to 8092 with the session cookie; probe
+/tmp/cdp-r38.cjs clicks aud01-verify then counts [data-testid^='aud01-verify']):
+| window | countBefore | count | status | counts |
+|---|---|---|---|---|
+| 24h | 1 | 13 | 这一段没有核对到记录 | 已核对 0 / 对不上的 — |
+| 7d | 1 | 13 | 没有发现断点 | 已核对 43 |
+| 30d | 1 | 13 | 没有发现断点 | 已核对 43 |
+| custom 11-16 17:00 to 11-18 17:00 | 1 | 13 | 没有发现断点 | 已核对 1 |
+Id set (13): aud01-verify, -result, -status, -rerun, -result-body,
+-result-body-details, -counts, -window, -scanned, -broken, -detail,
+-window-label, -asof.
+
+Regression lock (AuditEventsModulePage.test.tsx): one real 200 verify run must
+leave at least seven aud01-verify anchors (count 1 before the click, >= 7 after)
+and each named id must exist.
+
+Gates: vitest src/modules/audit 10 files / 155 tests exit 0; tsc -b . --noEmit 49
+errors with modules/audit contributing 0; eslint src/modules/audit exit 0 with the
+four pre-existing set-state-in-effect warnings; lefthook lint web really ran.
+
+Untested: no per-element pixel diff (counts and text only); 9122 not rebuilt; main
+not merged.

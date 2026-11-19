@@ -238,18 +238,23 @@ describe("the four states", () => {
     expect(text()).toContain("服务回的内容不是一条审计记录");
   });
 
-  it("each QA leg opens from the URL and is stamped as a repro", async () => {
-    const open = async (state: string): Promise<void> => {
+  it("a stray ?state= no longer fakes a state: the record is read for real", async () => {
+    // R37: the ?state= repro leg is gone. Whatever the address asks for, the
+    // pane reads the record and paints what the service answered.
+    for (const state of ["loading", "empty", "error", "denied"]) {
       api.fetchJSON.mockReset();
+      api.fetchJSON.mockImplementation(async () => DETAIL);
       await render(`/audit/detail?id=evt_D6FC9A2B4E6F8012&state=${state}`);
-      await waitFor(() => text().includes("复现出来的状态") || state === "loading", `?state=${state}`);
-    };
-    await open("loading");
-    expect(document.querySelector("[data-testid='aud02-detail-loading']")).toBeTruthy();
-    expect(api.fetchJSON).not.toHaveBeenCalled();
-    await open("error");
-    expect(document.querySelector("[data-testid='aud02-detail-error']")).toBeTruthy();
-    await open("denied");
-    expect(document.querySelector("[data-testid='aud02-detail-denied']")).toBeTruthy();
+      await waitFor(
+        () => document.querySelector("[data-testid='aud02-detail']") !== null,
+        `real read for ?state=${state}`,
+      );
+      expect(document.querySelector("[data-testid='aud02-forced-note']")).toBeNull();
+      expect(text()).not.toContain("复现出来的状态");
+      expect(api.fetchJSON).toHaveBeenCalledTimes(1);
+      expect(String(api.fetchJSON.mock.calls[0]?.[0])).toContain(
+        "/api/audit-detail?id=evt_D6FC9A2B4E6F8012",
+      );
+    }
   });
 });
