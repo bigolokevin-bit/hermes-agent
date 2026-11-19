@@ -2575,3 +2575,45 @@ After R30 (runs/audit-events/evidence) and R32 (channels/collab/retention) and R
 - Standalone audit-detail route mount (shell lane).
 - Per-element pixel diff (only sw==cw + textLen on the shell).
 - 9122 not rebuilt; main not merged.
+
+## R38 aud01-verify anchors on screen (2026-11-20, lane tip 9549d197, base e4c03f8c)
+
+QA R36 final judgement on generation 165e62a5 (entry DpFqr-g2) counted a single
+aud01-verify anchor on /audit across all four windows. Measured cause: the inline
+verify area rendered only the toolbar button plus loading / not-enabled / error
+panels; the result family lived exclusively on the standalone /audit?tab=verify
+page. Path chosen: A — paint the family inline, no claim rewrite.
+
+Code (web/src/modules/audit/AuditEventsModulePage.tsx, ready branch only):
+- root aud01-verify-result with aud01-verify-status (human verdict sentence) and a
+  plain read-only aud01-verify-rerun button (re-runs the same GET window);
+- VerifyResultBody receives ids counts/window/scanned/broken so the inline panel
+  paints aud01-verify-counts, -window, -scanned, -broken and -result-body(-details);
+- aud01-verify-detail holds aud01-verify-window-label and aud01-verify-asof
+  (always the em dash with the title saying the service answer carried no read
+  time; the browser clock is never substituted).
+Loading / not-enabled / error panels and the toolbar button are unchanged.
+
+Four-window live readings (fresh build assets/index-*, /tmp/serve-audh.cjs on
+127.0.0.1:4210 proxying /agent-api to 8092 with the session cookie; probe
+/tmp/cdp-r38.cjs clicks aud01-verify then counts [data-testid^='aud01-verify']):
+| window | countBefore | count | status | counts |
+|---|---|---|---|---|
+| 24h | 1 | 13 | 这一段没有核对到记录 | 已核对 0 / 对不上的 — |
+| 7d | 1 | 13 | 没有发现断点 | 已核对 43 |
+| 30d | 1 | 13 | 没有发现断点 | 已核对 43 |
+| custom 11-16 17:00 to 11-18 17:00 | 1 | 13 | 没有发现断点 | 已核对 1 |
+Id set (13): aud01-verify, -result, -status, -rerun, -result-body,
+-result-body-details, -counts, -window, -scanned, -broken, -detail,
+-window-label, -asof.
+
+Regression lock (AuditEventsModulePage.test.tsx): one real 200 verify run must
+leave at least seven aud01-verify anchors (count 1 before the click, >= 7 after)
+and each named id must exist.
+
+Gates: vitest src/modules/audit 10 files / 155 tests exit 0; tsc -b . --noEmit 49
+errors with modules/audit contributing 0; eslint src/modules/audit exit 0 with the
+four pre-existing set-state-in-effect warnings; lefthook lint web really ran.
+
+Untested: no per-element pixel diff (counts and text only); 9122 not rebuilt; main
+not merged.

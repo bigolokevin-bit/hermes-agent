@@ -891,3 +891,47 @@ describe("R34 — a real window and an honest export", () => {
     }
   });
 });
+
+/**
+ * R38 — QA measured a single aud01-verify anchor on screen because the inline
+ * panel only rendered the result body. The whole family is handed in now, so
+ * one real run has to put at least seven of them in the DOM.
+ */
+describe("R38 — one real verify run paints the aud01-verify family", () => {
+  it("a 200 verify answer yields at least seven aud01-verify anchors", async () => {
+    api.fetchJSON.mockImplementation(async (url: string) => {
+      const href = String(url);
+      if (href.startsWith("/agent-api/api/audit-verify")) {
+        return { ok: true, complete: true, scanned: 43, anchorCheckpointId: "cp_x", chainHeadHash: "ah_x" };
+      }
+      return EVENTS;
+    });
+    await render("/audit?window=7d", <AuditEventsModulePage />);
+    await waitFor(() => text().includes("已显示 2 条"), "list loaded");
+    expect(document.querySelectorAll("[data-testid^='aud01-verify']").length).toBe(1);
+
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud01-verify']")!.click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='aud01-verify-result']") !== null, "verify result");
+
+    expect(document.querySelectorAll("[data-testid^='aud01-verify']").length).toBeGreaterThanOrEqual(7);
+    for (const id of [
+      "aud01-verify",
+      "aud01-verify-status",
+      "aud01-verify-rerun",
+      "aud01-verify-result",
+      "aud01-verify-result-body",
+      "aud01-verify-counts",
+      "aud01-verify-window",
+      "aud01-verify-scanned",
+      "aud01-verify-broken",
+      "aud01-verify-detail",
+      "aud01-verify-window-label",
+      "aud01-verify-asof",
+    ]) {
+      expect(document.querySelector("[data-testid='" + id + "']"), id).not.toBeNull();
+    }
+    expect(document.querySelector("[data-testid='aud01-verify-result']")!.textContent ?? "").toContain("已核对");
+  });
+});
