@@ -154,19 +154,15 @@ export default function KnowledgeModulePage() {
   const [sp, setSp] = useSearchParams();
   const forcedRaw = (sp.get("state") ?? "").toLowerCase();
   const forced = isForcedState(forcedRaw) ? forcedRaw : null;
-  const requestedTab = initialTab(sp.get("tab"), sp.get("panel"));
-  const [tab, setTab] = useState<KnowledgeTab>(requestedTab);
+  // The URL is the single source of truth: refresh, back/forward and direct
+  // links all resolve to the same internal panel without a stale state copy.
+  const tab = initialTab(sp.get("tab"), sp.get("panel"));
   const [phase, setPhase] = useState<KnowledgePhase>("loading");
   const [payload, setPayload] = useState(() => readKnowledge("spaces", null));
   const [error, setError] = useState<ErrorView | null>(null);
   const [nonce, setNonce] = useState(0);
 
-  useEffect(() => {
-    setTab(requestedTab);
-  }, [requestedTab]);
-
   const selectTab = (key: KnowledgeTab) => {
-    setTab(key);
     const next = new URLSearchParams(sp);
     // Keep `tab` on a shell-known value so the module stays mounted; `panel`
     // carries the knw4 panel, which is what refresh/back must restore.
