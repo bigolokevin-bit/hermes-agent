@@ -150,10 +150,11 @@ describe("errors and access", () => {
     const a = await once(403);
     const b = await once(404);
     expect(a).toBe(b);
-    expect(text()).toContain("暂时看不到定时任务");
+    expect(text()).toContain("定时任务读口未接入");
     expect(text()).toContain("请求编号：req-cron");
     expect(text()).not.toMatch(/\/api\/|403|404|GAP-CRON-01/);
     expect(document.querySelector("[data-testid='cron5-denied']")?.getAttribute("title")).toBe("GAP-CRON-01");
+    expect(document.querySelector("[data-testid='cron5-apply']")?.getAttribute("href")).toBe("/approvals");
   });
 
   it("500 shows human wording, a copyable request id and a retry that recovers", async () => {

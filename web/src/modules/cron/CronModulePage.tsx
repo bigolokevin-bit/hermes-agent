@@ -7,7 +7,7 @@
  * neutral body, and an absent route never becomes sample rows.
  */
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { Check, Copy, Inbox, RefreshCw, ShieldAlert, TriangleAlert } from "lucide-react";
 
 import { Badge } from "@nous-research/ui/ui/components/badge";
@@ -181,12 +181,21 @@ export function CronModulePage(): ReactNode {
             <div className="flex min-w-0 items-center gap-2 text-sm">
               {denied ? <ShieldAlert className="h-4 w-4" aria-hidden /> : <TriangleAlert className="h-4 w-4" aria-hidden />}
               <span className="min-w-0 break-words">
-                {denied ? "暂时看不到定时任务" : login ? "需要重新登录" : "定时任务没能加载出来"}
+                {denied ? "定时任务读口未接入" : login ? "需要重新登录" : "定时任务没能加载出来"}
               </span>
             </div>
             <p className="max-w-prose break-words text-xs text-muted-foreground">
               {failure?.sentence ?? "读取定时任务时出了问题，请稍后重试。"}
             </p>
+            {denied ? (
+              <Link
+                to="/approvals"
+                data-testid="cron5-apply"
+                className="inline-flex min-w-0 items-center gap-1 text-xs underline underline-offset-4"
+              >
+                去审批中心提交开通申请
+              </Link>
+            ) : null}
             <RequestId failure={failure} />
             <Button size="sm" outlined onClick={reload} prefix={<RefreshCw className="h-3.5 w-3.5" />} data-testid="cron5-retry">
               重试
