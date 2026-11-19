@@ -167,3 +167,22 @@ models  375 {"sw":375,"bw":375,"iw":375}; inner table scrolls: price 640/311, ca
 - BFF 尚未注册 `/api/models`、`/api/models/pricing`（GAP-07）；账本口 `/api/hermes-usage` 已存在但本批未取得带鉴权的真实 200。三块未接入态由测试覆盖，不是活数据。
 - 页面 ready-to-mount，但本 lane 未改 App/shell/manifest；预览仅为布局证据。
 - 未跑 vite build / 不声称 entry sha（软链树不可信）。
+
+## 追加核查：knowledge 三条 console error（2026-11-19）
+
+对 9122 上旧产物（fd1e43f2 代次）用 Chrome CDP 打开 `#/knowledge?tab=citations|evidence|retrieval`，原始 error 文本一致：
+
+```text
+[log] Failed to load resource: the server responded with a status of 401 (Unauthorized)
+      http://127.0.0.1:9122/agent-api/api/run-events?kind=citation&limit=50
+[console.error] [api] HTTP 401 /agent-api/api/run-events?kind=citation&limit=50
+      {"code": "console.unauthenticated", "message": "identity check failed"}
+```
+
+核查结论：
+
+- 三个 tab 最终都解析到同一个证据页，唯一请求是 `/agent-api/api/run-events?kind=citation&limit=50`；401 来自未注入 `__HERMES_SESSION_TOKEN__` 的静态预览，账本自身把它标为 `consoleErrorEnv: "auth-required-401"`。
+- 当前基线 4bfb31ef 的 `web/src/lib/api.ts` 已用 `console.warn("[api]", …)`，不再产生 `[console.error] [api] HTTP 401`；旧产物 9122 才有这条。
+- 仍会留下浏览器对 401 资源的 `Failed to load resource` 环境日志；除非在无会话时直接跳过请求（会误伤 cookie 鉴权），否则无法由页面代码消除。
+- 因此本批未改 knowledge/evidence 代码：没有可归因的产品异常（undefined/i18n/重复 key/图表空数据均未复现），不做掩盖式改动。
+- `docs/_artifacts/tonight/` 的旧账本副本已整块删除（提交 `b022006c`），权威账本只保留在 `forks/hermes-agent` 主树。
