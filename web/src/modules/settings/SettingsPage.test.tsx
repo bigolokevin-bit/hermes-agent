@@ -38,9 +38,9 @@ describe("SettingsPage", () => {
     await render();
     expect(container.querySelector('[data-testid="set4-switch-approval"]')?.textContent).toContain("未启用");
     expect(container.querySelector('[data-testid="set4-switch-chat"]')?.textContent).toContain("未启用");
-    expect(container.textContent).toContain("配置自检尚未接入，读取不到当前值");
+    expect(container.textContent).toContain("配置自检尚未接入，该项未启用");
     expect(container.textContent).toContain("上游连通自检");
-    expect(container.textContent).toContain("配置自检尚未接入，读取不到当前值");
+    expect(container.textContent).toContain("配置自检尚未接入，该项未启用");
     expect(container.textContent).not.toContain("CR-M2-02");
     expect(container.textContent).not.toContain("HTTP");
     expect(container.querySelectorAll("button")).toHaveLength(1);
