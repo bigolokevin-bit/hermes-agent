@@ -760,6 +760,28 @@ export function toCsv(header: string[], rows: (string | number | null)[][]): str
   return [header.map(csvCell).join(','), ...rows.map((row) => row.map(csvCell).join(','))].join('\r\n');
 }
 
+/** A block this file could not carry, with the sentence the page shows for it. */
+export interface ExportGap {
+  label: string;
+  reason: string;
+}
+
+/**
+ * One trailing note naming what the file is missing. A file with nothing
+ * missing gets no note at all, so its shape stays exactly as before.
+ */
+export function exportGapNote(gaps: ExportGap[]): string | null {
+  if (gaps.length === 0) return null;
+  const parts = gaps.map((gap) => `${gap.label}（${gap.reason}）`).join('；');
+  return `# 本次导出缺少 ${gaps.length} 块：${parts}`;
+}
+
+/** The note rides in its own row; RFC 4180 escaping still applies. */
+export function withGapNote(body: string, gaps: ExportGap[]): string {
+  const note = exportGapNote(gaps);
+  return note === null ? body : `${body}\r\n${csvCell(note)}`;
+}
+
 /** `metrics-employee-7d-20261120-0931.csv` in Beijing time. */
 export function csvFileName(view: 'employee' | 'model', window: UsageWindowId, now: Date): string {
   const stamp = formatBeijing(now.toISOString(), now).replace(/[-:]/g, '').replace(' ', '-');

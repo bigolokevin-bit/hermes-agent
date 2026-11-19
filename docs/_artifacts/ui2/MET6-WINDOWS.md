@@ -132,3 +132,27 @@
 ### 未测项
 - 真浏览器下逐个读口真实失败（网断、502）未演练；未测「重试期间用户切窗」的竞态（`retryUsageBlock` 用当前 `usageWindow.id`，切窗会触发全量重读覆盖）。
 - 单卡重试不写 `sources` 的批次号之外逻辑：失败重试会更新该读口的新鲜度行（`loadJson` 同一 epoch），其余行不变——已在代码路径上确认，未单独加断言。
+
+## 导出在部分失败下的一致性（metI，2026-11-20）
+
+### 规则
+- 两处导出只写**当前成功读块**的数据：明细的窗口起止列来自运行统计，读不到就留空（不填 0、不填本机时钟）；分摊要求自身分摊块可读，否则不生成文件。
+- 只有该文件真正用到的读块才算「缺少」，注释不会把与该文件无关的卡片失败写进去（例如单价失败不影响两个 CSV：两份文件都没有单价列）。
+- 有缺少时，CSV **末行**追加一行注记（单列，RFC 4180 转义）：`# 本次导出缺少 N 块：<块名>（<页面同一句人话原因>）`。没有缺少时不加任何行，文件形状与 metA/metF 时完全一致。
+- `as_of` 仍只取 payload 顶层 ISO（缺失留空）；`window` 仍是当前时间窗 id。
+- 整页失败（`usageDown`，即运行统计/账本/价目表三块都不可用）：两份导出按钮都 disabled，title「整页读取失败，这份导出暂时不生成；先重试上面的读取，读到数据再导。」，并显示 `metI-share-blocked`。
+- 自身块不可用：明细则显示 `metI-detail-blocked` 且按钮禁用；分摊显示 `met7/met8-error` 且计数为 0、按钮禁用。
+
+### testid
+`metI-detail-gap`（屏上提前告知本次导出缺少哪些块）、`metI-detail-blocked`、`metI-share-blocked`。met5–metH 全族不变。
+
+### 实测（jsdom）
+- 运行统计失败（500，rid `req-metI-stats`）、成本明细正常：明细 CSV 表头末两列仍 `as_of,window`；数据行 = 屏上 `met6-row-*` 行数（= `met6-cat-source` 的 N 行）；窗口开始/结束两列为空串；末行 `# 本次导出缺少 1 块：运行统计（这次没能读取这项数据，请稍后重试。）`；文件无 `undefined`/`NaN`。
+- 单价失败、其余正常：屏上有 `metH-card-error-price`，分摊 CSV 行数 = `metA-export-count` 的 N（示例 2），表头仍 `group,runs,cost_usd,share_pct,as_of,window`，**无**注记行（单价不是该文件的列）。
+- 分摊自身源失败（hermes-usage 503）：按钮 disabled、`可导出 0 行`、错误卡在，不产生空文件。
+- 全失败：两钮均 disabled 且 title 含「整页读取失败」，`metI-share-blocked` 在，`met6-retry` 仍在（有回头路）。
+- 定向 70 → 74 passed；全量 132 files / 1478 passed；tsc `modules/metrics` 0；build entry `assets/index-mg2zWAxY.js` sha256 `06495b1f211c9bb193009ddbaf9c3f06597378a55c6206fba056982b7b93a262`，entry 内 metI/metH 均 0，chunk `MetricsModulePage-DqFsjhUs.js`：metI 1、metH 11、注记文案 2。
+
+### 未测项
+- 真浏览器下载路径未人工走查（沿用既有 Blob/anchor 机制，未改）。
+- 未测「注记行被 Excel 打开后的显示」；按 RFC 4180 单列字段处理，未做 Excel 特化。

@@ -1736,3 +1736,120 @@ describe('metH — partial failure isolation', () => {
     expect(q('metH-card-error-heat')).toBeNull();
   });
 });
+
+describe('metI — exports under partial failure', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+  const captured: { blob: Blob | null; name: string | null } = { blob: null, name: null };
+  let clickSpy: { mockRestore: () => void } | null = null;
+
+  function capture(): void {
+    captured.blob = null;
+    captured.name = null;
+    Object.assign(URL, {
+      createObjectURL: vi.fn((blob: Blob) => {
+        captured.blob = blob;
+        return 'blob:metI';
+      }),
+      revokeObjectURL: vi.fn(),
+    });
+    clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      captured.name = this.download;
+    });
+  }
+
+  const lines = async (): Promise<string[]> =>
+    (await (captured.blob as Blob).text()).replace(/^\uFEFF/, '').split('\r\n');
+
+  afterEach(() => {
+    clickSpy?.mockRestore();
+    clickSpy = null;
+  });
+
+  it('leaves the run-stats columns empty and names the missing block in the detail file', async () => {
+    capture();
+    const router = usageRouter();
+    await mount((url) =>
+      url.includes('run-stats')
+        ? Promise.reject(new ApiError('boom', { status: 500, body: '', url, requestId: 'req-metI-stats' }))
+        : router(url),
+    );
+
+    // The screen says the same thing the file will say.
+    expect(q('metI-detail-gap')?.textContent).toContain('运行统计');
+
+    const onScreen = document.querySelectorAll('[data-testid^="met6-row-"]').length;
+    expect(onScreen).toBeGreaterThan(0);
+
+    await act(async () => {
+      (q('met6-export') as HTMLButtonElement).click();
+    });
+    const rows = await lines();
+    expect(rows[0].split(',').slice(-2)).toEqual(['as_of', 'window']);
+    // header + the rows already counted on screen + one note line.
+    expect(rows).toHaveLength(onScreen + 2);
+
+    const note = rows.at(-1) ?? '';
+    expect(note).toContain('# 本次导出缺少 1 块：运行统计');
+    expect(note).toContain('这次没能读取这项数据');
+
+    // The two window columns stay empty: no 0, no local clock standing in.
+    const cells = (rows[1] ?? '').split(',');
+    expect(cells[6]).toBe('');
+    expect(cells[7]).toBe('');
+    expect(rows[1]).not.toMatch(/undefined|NaN/);
+    expect(cells.at(-1)).toBe('24h');
+  });
+
+  it('keeps the share file equal to the printed row count even when another card failed', async () => {
+    capture();
+    const router = usageRouter();
+    await mount((url) => {
+      if (url.includes('hermes-usage')) return Promise.resolve(SHARE_USAGE);
+      if (url.includes('models/pricing')) {
+        return Promise.reject(new ApiError('missing', { status: 404, body: '', url, requestId: 'req-metI-price' }));
+      }
+      return router(url);
+    });
+
+    // A failed price card does not put a note in a file that has no price column.
+    expect(q('metH-card-error-price')).not.toBeNull();
+    const shown = Number((q('metA-export-count')?.textContent ?? '').replace(/\D/g, ''));
+    expect(shown).toBeGreaterThan(0);
+
+    await act(async () => {
+      (q('metA-export') as HTMLButtonElement).click();
+    });
+    const rows = await lines();
+    expect(rows).toHaveLength(shown + 1);
+    expect(rows[0]).toBe('group,runs,cost_usd,share_pct,as_of,window');
+  });
+
+  it('disables the share export when its own source failed instead of writing an empty file', async () => {
+    await mount((url) =>
+      url.includes('hermes-usage')
+        ? Promise.reject(new ApiError('boom', { status: 503, body: '', url, requestId: 'req-metI-share' }))
+        : usageRouter()(url),
+    );
+
+    const button = q('metA-export') as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(q('metA-export-count')?.textContent).toContain('可导出 0 行');
+    expect(q('met7-error')).not.toBeNull();
+  });
+
+  it('blocks both exports when the whole section failed and points at the retry', async () => {
+    await mount((url) =>
+      Promise.reject(new ApiError('boom', { status: 500, body: '', url, requestId: 'req-metI-all' })),
+    );
+
+    const detail = q('met6-export') as HTMLButtonElement;
+    const share = q('metA-export') as HTMLButtonElement;
+    expect(detail.disabled).toBe(true);
+    expect(share.disabled).toBe(true);
+    expect(detail.title).toContain('整页读取失败');
+    expect(share.title).toContain('整页读取失败');
+    expect(q('metI-share-blocked')).not.toBeNull();
+    // The way back is still on screen.
+    expect(q('met6-retry')).not.toBeNull();
+  });
+});

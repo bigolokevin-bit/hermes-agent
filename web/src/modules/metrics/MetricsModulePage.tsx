@@ -40,6 +40,8 @@ import {
   formatUsd,
   heatFromStats,
   isoOrNull,
+  withGapNote,
+  type ExportGap,
   ledgerAsOf,
   ledgerTotal,
   readActivity,
@@ -1195,6 +1197,14 @@ export function MetricsModulePage() {
       : deltaOf(currentCost, previousCost, 'usd');
 
   const exportable = breakdownView.kind === 'ready' && breakdownView.lines.length > 0;
+  // Only the blocks this file actually pulls columns from are named in its note:
+  // a source nobody exported from is not a gap in the file.
+  const pageFailed = usageDown;
+  const detailGaps: ExportGap[] =
+    usageReady && usageReady.stats.kind === 'unavailable'
+      ? [{ label: '运行统计', reason: usageReady.stats.reason }]
+      : [];
+  const shareGaps: ExportGap[] = [];
 
   const exportCsv = () => {
     if (breakdownView.kind !== 'ready' || breakdownView.lines.length === 0) return;
@@ -1215,7 +1225,8 @@ export function MetricsModulePage() {
       batchAsOf,
       usageWindow.id,
     ]);
-    const blob = new Blob([`\uFEFF${toCsv(header, rows)}`], { type: 'text/csv;charset=utf-8' });
+    const body = withGapNote(toCsv(header, rows), detailGaps);
+    const blob = new Blob([`\uFEFF${body}`], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
@@ -1228,21 +1239,20 @@ export function MetricsModulePage() {
 
   const exportShare = () => {
     if (shareView.kind !== 'ready' || shareRows.length === 0) return;
-    const blob = new Blob(
-      [
-        `\uFEFF${shareCsv(
-          shareRows.map((row) => ({
-            name: row.model,
-            runs: row.runs,
-            costUsd: row.costUsd,
-            sharePct: row.sharePct,
-            asOf: isoOrNull(shareView.value.asOf),
-            window: usageWindow.id,
-          })),
-        )}`,
-      ],
-      { type: 'text/csv;charset=utf-8' },
+    const shareBody = withGapNote(
+      shareCsv(
+        shareRows.map((row) => ({
+          name: row.model,
+          runs: row.runs,
+          costUsd: row.costUsd,
+          sharePct: row.sharePct,
+          asOf: isoOrNull(shareView.value.asOf),
+          window: usageWindow.id,
+        })),
+      ),
+      shareGaps,
     );
+    const blob = new Blob([`\uFEFF${shareBody}`], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
@@ -1625,13 +1635,29 @@ export function MetricsModulePage() {
                 <Button
                   size="sm"
                   outlined
-                  disabled={!exportable}
-                  title={exportable ? '导出明细 CSV：当前窗口与当前分类下账本逐行的实扣明细，不是分摊汇总。' : '当前没有可导出的行：账本没有实扣行或上游没有给出模型行'}
+                  disabled={pageFailed || !exportable}
+                  title={
+                    pageFailed
+                      ? '整页读取失败，这份导出暂时不生成；先重试上面的读取，读到数据再导。'
+                      : exportable
+                        ? '导出明细 CSV：当前窗口与当前分类下账本逐行的实扣明细，不是分摊汇总。'
+                        : '当前没有可导出的行：账本没有实扣行或上游没有给出模型行'
+                  }
                   onClick={exportCsv}
                   data-testid="met6-export"
                 >
                   导出明细 CSV
                 </Button>
+                {breakdownView.kind === 'unavailable' ? (
+                  <span className="metI-gap" data-testid="metI-detail-blocked">
+                    成本明细这次没读出来，明细导出暂不生成。
+                  </span>
+                ) : null}
+                {detailGaps.length > 0 ? (
+                  <span className="metI-gap" data-testid="metI-detail-gap">
+                    本次导出缺少：{detailGaps.map((gap) => gap.label).join('、')}——文件末尾会写明原因，缺的列留空，不填 0。
+                  </span>
+                ) : null}
               </div>
             </div>
 
@@ -2045,8 +2071,14 @@ export function MetricsModulePage() {
               <Button
                 size="sm"
                 outlined
-                disabled={shareRows.length === 0}
-                title={shareRows.length === 0 ? '当前视图无可导出数据' : '导出分摊 CSV：当前窗口、分组与排序下的聚合行，含成本与占比，不是账本逐行明细。'}
+                disabled={pageFailed || shareRows.length === 0}
+                title={
+                  pageFailed
+                    ? '整页读取失败，这份导出暂时不生成；先重试上面的读取，读到数据再导。'
+                    : shareRows.length === 0
+                      ? '当前视图无可导出数据'
+                      : '导出分摊 CSV：当前窗口、分组与排序下的聚合行，含成本与占比，不是账本逐行明细。'
+                }
                 onClick={exportShare}
                 data-testid="metA-export"
               >
@@ -2055,6 +2087,11 @@ export function MetricsModulePage() {
               <span className="metA-count" data-testid="metA-export-count">
                 可导出 {shareRows.length} 行
               </span>
+              {pageFailed ? (
+                <span className="metI-gap" data-testid="metI-share-blocked">
+                  整页读取失败，分摊导出暂不生成。
+                </span>
+              ) : null}
             </div>
             {shareView.kind === 'loading' ? (
               <Card data-testid={`${sharePrefix}-loading`}>

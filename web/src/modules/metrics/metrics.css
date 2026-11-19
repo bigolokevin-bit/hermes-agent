@@ -730,3 +730,11 @@
     min-width: 0;
   }
 }
+
+/* metI — exports say what they could not carry. */
+.metI-gap {
+  color: var(--color-muted-foreground);
+  font-size: 12px;
+  line-height: 1.5;
+  max-width: 42ch;
+}
