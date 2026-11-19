@@ -41,7 +41,7 @@ function forcedStateOf(raw: string | null): ForcedState {
 }
 
 export function ApprovalsPendingModulePage(): ReactNode {
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const forced = forcedStateOf(params.get("state"));
 
   const [selected, setSelected] = useState<string | null>(() => params.get("id"));
@@ -58,13 +58,21 @@ export function ApprovalsPendingModulePage(): ReactNode {
 
   const pendingCount = useMemo(() => list.rows.filter((row) => row.status.pending).length, [list.rows]);
 
-  const openRow = useCallback((row: ApprovalRow) => {
-    setRefused(null);
-    setComment("");
-    setConfirming(null);
-    setUnaddressable(row.rawId === null);
-    setSelected(row.rawId);
-  }, []);
+  const openRow = useCallback(
+    (row: ApprovalRow) => {
+      setRefused(null);
+      setComment("");
+      setConfirming(null);
+      setUnaddressable(row.rawId === null);
+      setSelected(row.rawId);
+      // R17 apd5 item 1: selection lives in the URL, so refresh keeps it open.
+      const draft = new URLSearchParams(params);
+      if (row.rawId) draft.set("id", row.rawId);
+      else draft.delete("id");
+      setParams(draft, { replace: true });
+    },
+    [params, setParams],
+  );
 
   const send = useCallback(
     async (verdict: Verdict) => {
@@ -105,13 +113,13 @@ export function ApprovalsPendingModulePage(): ReactNode {
           action="详情没有打开"
           onRetry={list.reload}
           retryLabel="刷新列表"
-          testId="apr4-detail-unaddressable"
+          testId="apr5-detail-unaddressable"
         />
       );
     }
     if (!selected) {
       return (
-        <Card className="border-border bg-card" data-testid="apr4-detail-empty">
+        <Card className="border-border bg-card" data-testid="apr5-detail-empty">
           <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
             <p className="text-sm text-muted-foreground">还没有选中申请</p>
             <p className="max-w-prose break-words text-xs text-muted-foreground">
@@ -122,7 +130,7 @@ export function ApprovalsPendingModulePage(): ReactNode {
       );
     }
     if (detail.phase === "loading") {
-      return <LoadingPanel testId="apr4-detail-loading" fixture={detail.forced ? "loading" : undefined} />;
+      return <LoadingPanel testId="apr5-detail-loading" fixture={detail.forced ? "loading" : undefined} />;
     }
     if (detail.phase === "denied") {
       return <DeniedPanel failure={detail.failure} fixture={detail.forced ? "denied" : undefined} />;
@@ -133,13 +141,13 @@ export function ApprovalsPendingModulePage(): ReactNode {
           failure={detail.failure ?? { sentence: "详情没能加载出来。", requestId: null, technical: null }}
           onRetry={detail.reload}
           title="这张申请没能加载出来"
-          testId="apr4-detail-error"
+          testId="apr5-detail-error"
           fixture={detail.forced ? "error" : undefined}
         />
       );
     }
     const actions = detail.detail.status.pending ? (
-      <div className="flex min-w-0 flex-col gap-2 border-t border-border pt-3" data-testid="apr4-actions">
+      <div className="flex min-w-0 flex-col gap-2 border-t border-border pt-3" data-testid="apr5-actions">
         {refused ? (
           <InlineFailure
             failure={refused}
@@ -148,10 +156,10 @@ export function ApprovalsPendingModulePage(): ReactNode {
             retryLabel="重新读取这张单"
           />
         ) : null}
-        <label className="flex min-w-0 flex-col gap-1 text-xs text-muted-foreground" htmlFor="apr4-comment">
+        <label className="flex min-w-0 flex-col gap-1 text-xs text-muted-foreground" htmlFor="apr5-comment">
           备注（可选，会和决定一起记给申请人）
           <Input
-            id="apr4-comment"
+            id="apr5-comment"
             value={comment}
             placeholder="写一句理由"
             disabled={inFlight}
@@ -182,7 +190,7 @@ export function ApprovalsPendingModulePage(): ReactNode {
   })();
 
   return (
-    <div className="flex min-w-0 w-full max-w-full flex-col gap-3" data-testid="apr4-page-pending">
+    <div className="flex min-w-0 w-full max-w-full flex-col gap-3" data-testid="apr5-page-pending">
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
         <p className="min-w-0 break-words text-xs text-muted-foreground" aria-live="polite">
           {list.phase === "loading"
@@ -215,19 +223,19 @@ export function ApprovalsPendingModulePage(): ReactNode {
       </div>
 
       {list.forced ? (
-        <p className="min-w-0 break-words text-xs text-warning" data-testid="apr4-forced-note">
+        <p className="min-w-0 break-words text-xs text-warning" data-testid="apr5-forced-note">
           这是用 ?state= 复现出来的状态，不是服务此刻的回答。
         </p>
       ) : null}
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
-        <section className="flex min-w-0 flex-col gap-2" data-testid="apr4-list" aria-label="待处理审批队列">
+        <section className="flex min-w-0 flex-col gap-2" data-testid="apr5-list" aria-label="待处理审批队列">
           {list.phase === "loading" ? <LoadingPanel fixture={list.forced ? "loading" : undefined} /> : null}
 
           {list.phase === "denied" ? <DeniedPanel failure={list.failure} fixture={list.forced ? "denied" : undefined} /> : null}
 
           {list.phase === "error" && list.failure ? (
-            <ErrorPanel failure={list.failure} onRetry={list.reload} retryTestId="apr4-retry" fixture={list.forced ? "error" : undefined} />
+            <ErrorPanel failure={list.failure} onRetry={list.reload} retryTestId="apr5-retry" fixture={list.forced ? "error" : undefined} />
           ) : null}
 
           {list.phase === "empty" ? (

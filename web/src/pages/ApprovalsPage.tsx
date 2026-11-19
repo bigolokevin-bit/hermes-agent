@@ -389,9 +389,9 @@ function ErrorPanel({ failure, onRetry }: { failure: Failure; onRetry: () => voi
             size="sm"
             outlined
             data-testid="auth-reload-exit"
-            onClick={() => window.location.reload()}
+            onClick={() => { window.location.href = "/login"; }}
           >
-            刷新重新登录
+            去登录
           </Button>
         )}
       </CardContent>

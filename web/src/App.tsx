@@ -122,6 +122,15 @@ const MetricsConsolePage = lazy(() =>
     default: m.MetricsModulePage,
   })),
 );
+/* R17 collab: the delegation page body is delivered by lane aud
+ * (named export CollabDelegationsModulePage); the shell only mounts it. */
+/* R17 auth5: console sign-in page (same-origin /auth bridge by lane D). */
+const LoginPage = lazy(() => import("@/pages/LoginPage"));
+const CollabConsolePage = lazy(() =>
+  import("@/modules/collab/CollabDelegationsModulePage").then((m) => ({
+    default: m.CollabDelegationsModulePage,
+  })),
+);
 const UsageConsolePage = lazy(() => import("@/modules/duty/UsagePage"));
 const PeopleConsolePage = lazy(() => import("@/modules/people/PeopleModulePage"));
 const OrgConsolePage = lazy(() => import("@/modules/org/OrgModulePage"));
@@ -1090,6 +1099,7 @@ export default function App() {
             </nav>
 
             <div className="shrink-0">
+              <Auth5Session />
               <SidebarSystemActions
                 collapsed={isDesktopCollapsed}
                 onNavigate={closeMobile}
@@ -1314,6 +1324,24 @@ export default function App() {
                       <Route
                         path="/metrics"
                         element={<MetricsConsolePage />}
+                      />
+                      {/* R17 collab: /collab and /collaboration mount the aud
+                        delegation page directly (col4-* reaches the screen),
+                        and /org lands on the departments view — replacing the
+                        old fall-through to /overview. */}
+                      {/* R17 auth5: the console sign-in page; the bridge
+                        cookie is set by the same-origin /auth/login proxy. */}
+                      <Route path="/login" element={<LoginPage />} />
+                      <Route path="/collab" element={<CollabConsolePage />} />
+                      <Route
+                        path="/collaboration"
+                        element={<CollabConsolePage />}
+                      />
+                      <Route
+                        path="/org"
+                        element={
+                          <Navigate to="/identity?tab=departments" replace />
+                        }
                       />
                       {!overriddenPaths.has("/employees/:employeeId") && (
                         <>
@@ -1572,6 +1600,105 @@ function SidebarNavLink({
         <SidebarTooltip anchor={tooltipAnchor} label={navLabel} warmRef={tooltipWarmRef} />
       )}
     </li>
+  );
+}
+
+/* R17 auth5: sidebar session chip wired to the same-origin /auth bridge
+ * (lane D). Anonymous visitors get a real way into /login; signed-in users
+ * see who they are and can sign out. Tokens and raw ids never reach screen. */
+function Auth5Session(): ReactNode {
+  const navigate = useNavigate();
+  const [who, setWho] = useState<
+    { k: "loading" } | { k: "anon" } | { k: "ok"; display: string; role: string; tenant: string }
+  >({ k: "loading" });
+  useEffect(() => {
+    let alive = true;
+    fetch("/auth/whoami", { credentials: "same-origin" })
+      .then(async (res) => {
+        if (!alive) return;
+        if (res.status === 401) {
+          setWho({ k: "anon" });
+          return;
+        }
+        const body = (await res.json().catch(() => null)) as Record<string, unknown> | null;
+        if (res.ok && body) {
+          const disp =
+            typeof body.display === "string" && body.display.trim()
+              ? body.display.trim()
+              : "未命名账号";
+          const role =
+            typeof body.granted === "string" && body.granted.trim()
+              ? body.granted.trim()
+              : "—";
+          const tid = typeof body.tenant_id === "string" ? body.tenant_id.trim() : "";
+          const tenant = tid && !/^[a-z]+_[0-9A-Za-z]+$/.test(tid) ? tid : "—";
+          setWho({ k: "ok", display: disp, role, tenant });
+        } else {
+          setWho({ k: "anon" });
+        }
+      })
+      .catch(() => {
+        if (alive) setWho({ k: "anon" });
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  if (who.k === "loading") {
+    return (
+      <div
+        className="mx-3 mb-2 h-8 animate-pulse rounded-sm bg-white/5"
+        data-testid="auth5-widget"
+        aria-label="加载中"
+      />
+    );
+  }
+  if (who.k === "anon") {
+    return (
+      <div
+        className="flex items-center justify-between gap-2 px-3 py-2 text-xs"
+        data-testid="auth5-widget"
+      >
+        <span className="min-w-0 break-words text-muted-foreground">未登录</span>
+        <button
+          type="button"
+          onClick={() => navigate("/login")}
+          className="shrink-0 rounded-sm border border-border px-2 py-1"
+          data-testid="auth5-goto-login"
+        >
+          去登录
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div
+      className="flex min-w-0 flex-col gap-1 px-3 py-2 text-xs"
+      data-testid="auth5-widget"
+    >
+      <span className="min-w-0 truncate font-medium" data-testid="auth5-display" title={who.display}>
+        {who.display}
+      </span>
+      <span className="min-w-0 break-words text-muted-foreground" data-testid="auth5-role">
+        角色：{who.role}
+      </span>
+      <span className="min-w-0 break-words text-muted-foreground" data-testid="auth5-tenant">
+        租户：{who.tenant}
+      </span>
+      <button
+        type="button"
+        className="mt-1 shrink-0 self-start rounded-sm border border-border px-2 py-1"
+        data-testid="auth5-logout"
+        onClick={() => {
+          void fetch("/auth/logout", { method: "POST", credentials: "same-origin" }).finally(() => {
+            sessionStorage.removeItem("auth5.session");
+            navigate("/login");
+          });
+        }}
+      >
+        退出登录
+      </button>
+    </div>
   );
 }
 

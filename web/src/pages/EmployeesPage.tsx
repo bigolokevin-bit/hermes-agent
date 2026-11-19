@@ -674,11 +674,11 @@ export function ErrorStateBlock({
                 size="sm"
                 outlined
                 onClick={() => {
-                  if (typeof window !== "undefined") window.location.reload();
+                  if (typeof window !== "undefined") window.location.href = "/login";
                 }}
                 data-testid="auth-reload-exit"
               >
-                刷新重新登录
+                去登录
               </Button>
             )}
           </div>

@@ -64,9 +64,9 @@ const stubClipboard = (): ReturnType<typeof vi.fn> => {
   return writeText;
 };
 const copyButton = (): HTMLButtonElement | null =>
-  document.querySelector("[data-testid='apr4-copy-request-id']") as HTMLButtonElement | null;
+  document.querySelector("[data-testid='apr5-copy-request-id']") as HTMLButtonElement | null;
 const shownRequestId = (): string | null =>
-  (document.querySelector("[data-testid='apr4-request-id']") as HTMLElement | null)?.textContent ?? null;
+  (document.querySelector("[data-testid='apr5-request-id']") as HTMLElement | null)?.textContent ?? null;
 
 const PENDING_PAGE = {
   items: [
@@ -159,10 +159,10 @@ describe("pending queue states", () => {
     expect(text()).toContain("提出后立刻出现在这里");
     expect(buttonNamed("刷新")).toBeTruthy();
     // QA V4-R4 条目2: 零结果面板必须有真出口，不许死链。
-    const back = document.querySelector("[data-testid='apr4-empty-exits-back']") as HTMLAnchorElement;
+    const back = document.querySelector("[data-testid='apr5-empty-exits-back']") as HTMLAnchorElement;
     expect(back?.getAttribute("href")).toBe("/overview");
     expect(back?.textContent).toContain("返回控制台");
-    const contact = document.querySelector("[data-testid='apr4-empty-exits-contact']") as HTMLAnchorElement;
+    const contact = document.querySelector("[data-testid='apr5-empty-exits-contact']") as HTMLAnchorElement;
     expect(contact?.getAttribute("href")).toMatch(/^mailto:/);
     expect(contact?.textContent).toContain("联系管理员");
   });
@@ -176,8 +176,8 @@ describe("pending queue states", () => {
     expect(text()).not.toContain("未提供");
     // a missing id is honest: there is a fallback line but no copy button, and no
     // value is invented for it
-    expect(document.querySelector("[data-testid='apr4-request-id-missing']")).toBeTruthy();
-    expect(document.querySelector("[data-testid='apr4-request-id']")).toBeNull();
+    expect(document.querySelector("[data-testid='apr5-request-id-missing']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='apr5-request-id']")).toBeNull();
     expect(copyButton()).toBeNull();
     // 失败时队列不给任何数字口径，不给假零。
     expect(text()).not.toContain("共 0 条");
@@ -203,7 +203,7 @@ describe("pending queue states", () => {
     expect(text()).toContain("审批服务在处理时出了错");
     expect(text()).toContain("请求编号：b6g1c2d3");
     expect(text()).not.toContain("503");
-    expect(document.querySelector("[data-testid='apr4-error']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='apr5-error']")).toBeTruthy();
     expect(shownRequestId()).toBe("b6g1c2d3");
     // the copy control writes the SAME string that is shown
     await act(async () => {
@@ -212,7 +212,7 @@ describe("pending queue states", () => {
     expect(writeText).toHaveBeenCalledTimes(1);
     expect(writeText).toHaveBeenCalledWith("b6g1c2d3");
     expect(String(writeText.mock.calls[0][0])).toBe(shownRequestId());
-    const retry = document.querySelector("[data-testid='apr4-retry']") as HTMLButtonElement;
+    const retry = document.querySelector("[data-testid='apr5-retry']") as HTMLButtonElement;
     expect(retry).toBeTruthy();
     api.fetchJSON.mockImplementation(queue());
     await act(async () => {
@@ -239,13 +239,13 @@ describe("pending queue states", () => {
     expect(text()).not.toContain("对外发送本周报表");
     expect(document.querySelectorAll("dl")).toHaveLength(0);
     // one denied body, under the apr4 id, with no path echo
-    expect(document.querySelector("[data-testid='apr4-denied']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='apr5-denied']")).toBeTruthy();
     expect(forbidden).not.toContain("/agent-api");
     // overflow discipline: the page shrinks, the long sentence breaks
-    const root = document.querySelector("[data-testid='apr4-page-pending']") as HTMLElement;
+    const root = document.querySelector("[data-testid='apr5-page-pending']") as HTMLElement;
     expect(root.className).toContain("min-w-0");
     expect(root.className).toContain("max-w-full");
-    const deniedPanel = document.querySelector("[data-testid='apr4-denied']") as HTMLElement;
+    const deniedPanel = document.querySelector("[data-testid='apr5-denied']") as HTMLElement;
     expect(deniedPanel.querySelector("p.break-words")).toBeTruthy();
     // the denied id is on screen and copyable
     expect(shownRequestId()).toBe("ap-9c31");
@@ -286,7 +286,7 @@ describe("pending queue states", () => {
 
 describe("decision writes", () => {
   const openTicket = async () => {
-    const opener = document.querySelector("[data-testid='apr4-row-ap_9F3A1111'] button") as HTMLButtonElement;
+    const opener = document.querySelector("[data-testid='apr5-row-ap_9F3A1111'] button") as HTMLButtonElement;
     await act(async () => {
       opener.click();
     });
@@ -344,7 +344,7 @@ describe("decision writes", () => {
   it("sends a written comment with the rejection", async () => {
     await mount(queue());
     await openTicket();
-    const field = document.getElementById("apr4-comment") as HTMLInputElement;
+    const field = document.getElementById("apr5-comment") as HTMLInputElement;
     // React owns the value: write it through the native setter so the change
     // reaches the controlled input the same way typing would.
     const writeValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
@@ -449,27 +449,27 @@ describe("the ?state= repro switch (web/src/shell/fixtures.ts)", () => {
   it("shows each state on demand and marks it as a repro", async () => {
     await forcedMount("loading");
     expect(document.querySelector("[data-fixture='loading']")).toBeTruthy();
-    expect(document.querySelector("[data-testid='apr4-loading']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='apr5-loading']")).toBeTruthy();
     expect(text()).toContain("正在读取待处理审批…");
     expect(api.fetchJSON).not.toHaveBeenCalled();
 
     await forcedMount("empty");
     expect(document.querySelector("[data-fixture='empty']")).toBeTruthy();
-    expect(document.querySelector("[data-testid='apr4-empty']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='apr5-empty']")).toBeTruthy();
     expect(text()).toContain("现在没有需要你处理的申请");
 
     await forcedMount("error");
     expect(document.querySelector("[data-fixture='error']")).toBeTruthy();
-    expect(document.querySelector("[data-testid='apr4-error']")).toBeTruthy();
-    expect(document.querySelector("[data-testid='apr4-retry']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='apr5-error']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='apr5-retry']")).toBeTruthy();
     expect(text()).toContain("本次请求未记录编号，可复制时间与操作路径反馈");
     expect(text()).not.toContain("未提供");
 
     await forcedMount("denied");
     expect(document.querySelector("[data-fixture='denied']")).toBeTruthy();
-    expect(document.querySelector("[data-testid='apr4-denied']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='apr5-denied']")).toBeTruthy();
     expect(text()).toContain("暂时无法查看审批申请");
-    expect(document.querySelectorAll("[data-testid^='apr4-row-']")).toHaveLength(0);
+    expect(document.querySelectorAll("[data-testid^='apr5-row-']")).toHaveLength(0);
     // Denied keeps no refresh affordance: re-asking cannot change the answer.
     expect(buttonNamed("刷新")).toBeUndefined();
   });

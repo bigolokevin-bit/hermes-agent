@@ -286,3 +286,81 @@ $ curl -s -o /dev/null -w "%{http_code}\n" "http://127.0.0.1:8092/api/audit-nope
 
 - `feat(console): audit events list and detail on upstream shell`
 - `feat(console): audit window chain verify on upstream shell`
+
+---
+
+# apr5 — 审批历史 8 态筛选（lane/console-appr，base c4c6e750）
+
+## 8 态权威名单（PRD v4.1 §4 / WBS T17 / model.ts STATUS_FILTERS line196-205）
+
+| 值 | 中文 |
+|---|---|
+| pending | 待处理 |
+| approved | 已通过 |
+| rejected | 已拒绝 |
+| revise_requested | 要求修改 |
+| expired | 已过期 |
+| cancelled | 已撤回 |
+| consumed | 已执行 |
+| superseded | 已被新单替代 |
+
+未知值 → 「状态未识别」+原值保留在详情，不猜测、不假 0。筛选=「全部」不发 status；每态真传 `/agent-api/api/approvals?status=<值>&limit=50`（BFF 参数，非前端假过滤）。
+
+## 本单改动
+
+1. `apr4-*` → `apr5-*` testid 全家族改名（denied/row-/retry/request-id/error/copy-request-id/loading/comment/request-id-missing/page-pending/page-history/list/forced-note/filter-/empty-history 等）。
+2. ApprovalsHistoryModulePage：筛选下拉（`apr5-filter-status`）URL 驱动——`?tab=history&status=<值>` 可分享、刷新/回退保态；条数行「已显示 N 条「<状态>」记录」。
+3. 请求编号沿用 RequestIdCopy（`apr5-copy-request-id`），文案「复制」→「已复制」/「复制失败，请手动选择」。
+4. 新用例⑥「八状态筛选逐个真传参，可分享可刷新」：循环 8 值断言 mock fetch URL 含 `status=<值>` + 深链 selected 保态；⑦「未知状态行不猜测」断言「状态未识别」。
+
+## 定向 vitest（原始 stdout，exit 0）
+
+```
+Test Files  3 passed (3)
+      Tests  48 passed (48)
+   Start at  15:24:00
+   Duration  1.21s
+```
+
+（改名、筛选区、用例⑥⑦全部落地后复跑，原始 stdout 如上，exit 0。）
+
+## 屏幕读数（9123 静态预览 = vite build --outDir dist-appr + python3 -m http.server；只读验证，不碰 9122 served 代次）
+
+- 同源 SPA pushState `/approvals?tab=history&status=consumed`：location.search 保持 `?tab=history&status=consumed` ✓（URL 保态/可分享坐实）。
+- 切 `status=superseded`：location.search 保持 ✓。
+- 375×812 同源 iframe `/approvals`：scrollWidth=375 ✓（1440 主布局无横溢改动）。
+- **如实注明**：optCount/rows 预览读数为 0——9123 静态预览无 BFF，列表数据腿不可用（错误态而非假 0）；每态参数与条数证据以上面 vitest ⑥⑦（mock 网络断言 URL 含 status=<值>）为准。截图同受此限制未附。
+
+## 残留核查
+
+`grep -rn "apr4" web/src/modules/approvals/` → 1 处命中 = states.tsx line35 **注释**「（GAP-04：审批引擎尚未提供该接口）」，非上屏文本、非 testid，保留。
+
+## 提交
+
+- 单 commit `feat(console): approvals eight-state filters (apr5)`，写域仅 `web/src/modules/approvals/**` + `docs/_artifacts/appr/**`；App.tsx/shell/其他 modules/package/lock/web/scripts 未动；未跑 install；未 amend/force/--no-verify。
+
+## R17 collab/org 接线 + apd5 详情字段冻结（lane/console-appr，2026-11-19）
+
+### collab/org（fix(console): mount collab route and org alias）
+接线前（QA R16 判词为据）：/collab、/collaboration、/work?tab=delegations、/employees?tab=delegations 全部落 /overview，col4Count=0（chunk CollabDelegationsModulePage-C9MmsxBf.js 为孤儿）；/org 落 /overview。
+接线后（App.tsx 锚点）：lazy CollabConsolePage（named CollabDelegationsModulePage，modules/collab line192/314 现场核实）；console Routes 块 /metrics 之后新增 Route /collab 与 /collaboration 直挂 <CollabConsolePage />（first-in-tree wins，不落上游也不落 /overview）；Route /org → Navigate /identity?tab=departments replace。数据口工单已核实 200（GET /agent-api/api/delegations=200 items:[]）。屏幕 col4Count 复跑留给 L0 合并代次（本车道不建 9122，纪律）。
+
+### apd5（feat(console): approval detail per PRD 4.2 field freeze (apd5)，commit 39cf3fa6）
+8 字段到位：1) approvalId 深链保态（History/Pending selected=useState(()=>params.get("id"))，openRow 把 id 写进 search 并保留 status，切换筛选清 id——刷新/分享保选中）；2) decidedAt apd5-field-decided-at 北京到分，缺「—」+title 原因；3) approver apd5-approver 姓名·8位大写短码（personView/maskHandle slice(0,8).toUpperCase）或「未指派」，裸 emp_/human: 零上屏；4) verdict apd5-field-verdict 通过/驳回/要求修改（VERDICT_LABEL approve 族改「通过」）；5) changeKind 4 类人话+未命中「未写明类型」；6) actionHash apd5-field-action-hash 短码显示+完整值 title+apd5-copy-action-hash 复制钮（已复制/复制失败反馈）；7) recipient apd5-field-recipient；8) dataScope apd5-field-scope 只读快照注记 + requestId apd5-field-request-id 可复制（缺=apd5-request-id-missing 诚实文案）。缺失一律「—」+原因，禁假 0；只读页零写入口（history 详情无 actions，仅说明文字）；403≡404 同体=既有 DeniedPanel（同 code+rid 不回显路径，既有用例「403 and 404 read the same」锁定）。
+
+### 原始 stdout
+定向：Test Files 3 passed (3) / Tests 48 passed (48)
+      Tests  1156 passed (1156)
+   Start at  15:42:25
+   Duration  7.08s (transform 42.15s, setup 0ms, import 53.04s, tests 18.97s, environment 27.64s)
+
+EXIT=0
+assert-ia：node scripts/assert-ia.mjs A=0；--source=react B=0（51/22/1/8 未破，App.tsx 仅加 React Route 数据层未动）。
+截图/屏幕读数受限声明：本车道禁建 9122、静态预览无 BFF，DOM 级 col4Count/apd5 计数由 L0 合并代次复跑；375 无横溢由 Field flex min-w-0 结构与既有 apr5 全页 375=375 读数支撑。
+
+## auth5 登录页与会话组件（feat(console): login page and session widget，2026-11-19）
+交付：/login 页（账号/密码/验证码+点图刷新；成功 sessionStorage 轻标记+navigate /overview；失败按 code 人话+可复制请求编号+重试；aria-busy+busyRef 防连点）；App.tsx Auth5Session 侧栏组件（GET /auth/whoami：ok→display(空=未命名账号)/角色(缺失—)/租户(内部 id 形态不裸上屏显—)+退出登录 POST /auth/logout→/login；401/异常→未登录+去登录→/login；loading 骨架）；pages 三页 401 整页态主出口「刷新重新登录」→「去登录」href=/login（EmployeesPage/RunsPage/ApprovalsPage，各 1 处，重试钮保留）。
+testid：auth5-page/form/loading/user/password/captcha-input/captcha-image/error/copy-request-id/copy-state/request-id-missing/submit/retry + widget/display/role/tenant/logout/goto-login。
+whoami 登录前/后读数声明：lane D 的 /auth 桥本车道未联调（桥未上线或不可依赖），登录前=未登录+去登录、登录后=display+退出登录 两条出口由 LoginPage.test 5 用例（mock fetch，含 POST 契约 body 断言与 captcha_invalid 自动刷新）与 Auth5Session 代码锚点交付；真桥联调待 D 回执后 QA 复跑。
+残留如实报：modules/matrix/MatrixModulePage.tsx 的「刷新重新登录」出口 1 处属禁碰写域，转报 L0/aud。
+测试原始读数：LoginPage.test 5 passed；定向 pages+shell 14 files 105 passed；全量 vitest 1161 passed EXIT=0；assert-ia 两模式 exit 0/0（51/22/1/8）。
