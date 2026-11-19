@@ -1,0 +1,14 @@
+{
+  "script": "lint-fake-success",
+  "file": "docs/console-v4-skeleton.html",
+  "linesScanned": 9252,
+  "allowedInfo": {
+    "规划中": 188,
+    "不会保存": 1,
+    "未接入": 22
+  },
+  "violations": [],
+  "ok": true,
+  "headHash": "de23c92e",
+  "exitCode": 0
+}

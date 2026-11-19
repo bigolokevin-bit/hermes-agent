@@ -877,3 +877,17 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 九件重章 headHash=de23c92e 全 exit=0 单文件单 JSON：assert-ia-html/react ok {51,22,1,8}（脚本自盖章）；lint-fake ok violations=[]；lint-reuse ok violations=0 exempted=1（python raw_decode 注入盖章+stdout 抄件，回读全过）；crawl-anon ok DL0/CE0/PE0 routesCE=51（匿名 401 环境归因）；crawl-auth ok DL0/CE0/PE0 routesCE=23（--auth-state= 等号形，fresh token）；state-quad 20/20——**脚本输出改为纯文本行**（sampled/passed/head=），本轮起 python 解析文本重建 JSON（raw 全文入 state-quad.json，注 source）；shots main/anon 见下节注入。
 - R26 BFF approvals 收口（已先行完成，本卡引用）：status=all/缺省= BFF 逐状态扇出聚合 all=8=expired3+consumed5；别名 recipient←approvers/requestId←approvalId（setdefault 原键保留）；344 passed（新 3 测+conftest 桩分支）；bff main=87ca746（rebase 至 11aa51e 上连推 f184c63+87ca746）；8092 受管重启 83970→11821（Label 实名 cn.seakoi.console-bff，卡面 sekoi 笔误；ppid=1，lstart 19:59:58）。
 - 环境：auth-state 19:1x 版（24h 窗）；9122 pid 64868、caddy 8183 28034 全程未动；禁改 web/src 遵守（本轮 fork 仅 docs/_artifacts 写域）。
+## 五十八轮·九件账本重章 d6d9bb07（entry D3sU0dej） 2026-11-19 20:3x
+
+- L0 卡点名代次 **d6d9bb07**（merge lane/console-aud 1a936811，aud history 已并入上屏）；watchdog 幻影 67f172b0/6e9274f0/e90f568e 全部 cat-file MISSING，零引用。
+- 三向互证：HEAD=远端 tip=d6d9bb07；9122 served entry=index-D3sU0dej.js；磁盘 sha256 0f0bbfc3ab411d15…18c09be2 全等卡面，bytes=158481。
+- 九件全 exit=0，单文件单 JSON+exitCode+tmp/os.replace，headHash=d6d9bb07：
+  - assert-ia-html / assert-ia-react：ok，{routes51, tabs22, tabsAll23, chatHosts1, modules8}（脚本自盖章）
+  - lint-fake：ok violations=0；lint-reuse：ok violations=0 exempted=1（chat→T40）
+  - crawl-anon：ok DL0/CE0/PE0 routesCE=51（匿名 401 环境归因）
+  - crawl-auth：ok DL0/CE0/PE0 **routesCE=22**（auth-state 19:1x 版窗内，较 57 轮 23 再降）
+  - state-quad：20/20（脚本纯文本输出，python 重建 JSON 注 source——57 轮同法）
+  - shots 登录态：produced=expected=102，failures=[]，consoleErrorsObservedByShots=0，ceAuthority=login-state，servedEntry before/after=D3sU0dej（拍后未漂），三键 entry/sha256/bytes 全值
+  - shots-anon：auxiliary=true 102/102 failures=[]（mktemp 隔离目录法）
+- 坑（本拍自伤并纠正）：首跑把 shots/state-quad 当 web/scripts/ 下脚本——实际落点 docs/_artifacts/tonight/（state-quad.mjs 亦此）。以后腿件路径先 find 再跑。
+- 9122 pid 64868、8092 pid 24491、caddy 28034 全程未动。

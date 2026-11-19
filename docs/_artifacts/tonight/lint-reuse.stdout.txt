@@ -5,7 +5,7 @@ exempted=1
   "script": "lint-reuse",
   "root": "web/src/modules",
   "scanned": 140,
-  "reuseMarkers": 31,
+  "reuseMarkers": 28,
   "chatHostFiles": [
     {
       "file": "web/src/modules/chat/ChatModulePage.tsx",

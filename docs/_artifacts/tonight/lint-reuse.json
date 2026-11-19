@@ -2,7 +2,7 @@
   "script": "lint-reuse",
   "root": "web/src/modules",
   "scanned": 140,
-  "reuseMarkers": 31,
+  "reuseMarkers": 28,
   "chatHostFiles": [
     {
       "file": "web/src/modules/chat/ChatModulePage.tsx",
@@ -85,6 +85,6 @@
   "violations": [],
   "count": 0,
   "ok": true,
-  "headHash": "de23c92e",
+  "headHash": "d6d9bb07",
   "exitCode": 0
 }
