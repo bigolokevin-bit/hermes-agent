@@ -53,6 +53,7 @@ import {
   actorLabel,
   askedLine,
   beijingMinute,
+  readingStamp,
   scopeCell,
   shortCode,
   sourceWords,
@@ -210,6 +211,7 @@ export function CollabDelegationsModulePage(): ReactNode {
               : `读取成功，本页 ${rows.length} 条`;
 
   const countsKnown = phase === "ready" || phase === "empty";
+  const stamp = readingStamp(data.asOf);
 
   const technical = [askedLine(), !isForced && failure?.technical ? failure.technical : ""].filter(Boolean);
 
@@ -260,6 +262,14 @@ export function CollabDelegationsModulePage(): ReactNode {
           ? `本页 ${rows.length} 条（最多按 ${PAGE_LIMIT} 条读取，不是全量统计）`
           : "本页 — 条（暂时读不到委托数据，数字不作零处理）"}
         {unreadable > 0 && countsKnown ? `；另有 ${unreadable} 条回的内容没有可读的委托编号，没有算在上面` : ""}
+      </p>
+
+      <p
+        className="min-w-0 break-words text-xs text-muted-foreground"
+        data-testid="col4-asof"
+        title={stamp ? "这个时间是服务在回答里给出的读取时刻" : "服务的回答没有带读取时刻，本页不用浏览器时间代替"}
+      >
+        {`读取于 ${stamp ?? "—"}`}
       </p>
 
       {phase === "loading" ? <LoadingPanel fixture={forced ?? undefined} /> : null}

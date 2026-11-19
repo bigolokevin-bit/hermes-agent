@@ -1137,3 +1137,87 @@ states.tsx 新增模块内 `RequestIdCopyField`（lane 本地等价物，未改�
 
 - 真后端 200 与各态真实行数（身份门先于参数校验，本机无签名 cookie → 复现态用 `?state=` 与 mock 载荷，非实测服务）。
 - 1440/1280/375 像素级不溢出（无浏览器 fixture、禁 install）。
+
+## TASK collab real data (2026-11-19, base cd2806fc)
+
+### 1. Endpoint probes (raw, cookie from ~/.local/state/sekoi-ops/v4-auth-state.json, value never printed)
+```
+GET http://127.0.0.1:9122/agent-api/api/delegations?limit=5
+  -> HTTP 200, 46 bytes
+  {"items":[],"asOf":"2026-11-19T06:48:38.660Z"}
+
+GET http://127.0.0.1:8092/api/delegations?limit=5
+  -> HTTP 200, 46 bytes
+  {"items":[],"asOf":"2026-11-19T06:48:38.674Z"}
+```
+Reading: the route IS wired and the identity check passed. The tenant really has zero
+delegations on this generation, so the honest rendering is the empty state — not
+「未接入」, not an error, and no rows may be invented. The service also hands back its
+own `asOf`, which the page now shows as the read stamp instead of borrowing the
+browser clock.
+
+### 2. Code changes (write scope only: web/src/modules/collab/**)
+- `delegations.ts`
+  - `ListState` gained optional `asOf?: string | null`; absent/malformed stays `null`
+    so the page can never substitute a browser time for a service time.
+  - success branch now returns `asOf: typeof body.asOf === "string" ? body.asOf : null`.
+  - new exported `readingStamp(asOf)`: non-string / blank / unparsable -> `null`;
+    otherwise formats in `Asia/Shanghai` as `MM-DD HH:mm` (h23).
+- `CollabDelegationsModulePage.tsx`
+  - imports `readingStamp`; renders `<p data-testid="col4-asof" title=...>读取于 {stamp ?? "—"}</p>`
+    right after `col4-counts`. Missing stamp reads 「—」 with a title explaining that the
+    service answer carried no read time and the browser clock is deliberately not used.
+- Tests (both files) extended by 4 cases: service stamp kept + formatted `11-19 14:48`;
+  missing/garbage stamp -> null on both layers; on-screen `读取于 11-19 14:48`; on-screen
+  `读取于 —` with the honest title.
+
+### 3. Gates (raw tails)
+```
+$ cd web && npx vitest run src/modules/collab --reporter=dot
+ Test Files  2 passed (2)
+      Tests  88 passed (88)
+VITEST_EXIT=0
+
+$ npx tsc -b . --noEmit
+TSC_EXIT=2 ; grep -c 'error TS' = 49 (all ../apps/shared/**) ; grep -c 'modules/collab' = 0
+
+$ npx eslint src/modules/collab
+ESLINT_EXIT=0
+```
+The 49 pre-existing `../apps/shared/**` type errors are the known worktree baseline and
+are untouched by this lane.
+
+### 4. Screenshots — produced, but they show the shell fallback, not this page
+Tool: `/tmp/cdp-shot.mjs` (headless `/Applications/Google Chrome.app`, CDP, session cookie
+injected via `Network.setCookie`; no playwright/puppeteer is installed and installs are
+prohibited). Three viewports captured into `docs/_artifacts/aud/shots/`:
+- `collab-1440.png` 155456 B — sw==cw==1440
+- `collab-1280.png` 139635 B — sw==cw==1280
+- `collab-375.png`  60348 B — sw==cw==375
+- `probe.json` 10081 B — url/text/scrollWidth/clientWidth/`col4-*` counts per viewport
+
+Honest reading of that evidence: `probe.json` records `url = /overview` and `col4-*` id
+count = 0 in all three viewports. Both `/collab` and `/collaboration` are redirected to
+`/overview` by the shell's unknown-route fallback, so the PNGs are the fallback page, not
+the delegations UI. No overflow was measured on the real page because it cannot be reached
+from the shell at this generation (see §5).
+
+### 5. Route gap — needs a shared-file change (R5 / L0)
+`web/src/App.tsx:350` still declares the nav entry as
+`{ path: "/collaboration", label: "协作", icon: Handshake, group: "operations", placeholder: true }`.
+`placeholder: true` registers no route, and `grep -rln 'CollabDelegationsModulePage' web/src`
+matches only the module itself and its tests. So the page is delivered but unmounted, and
+the sidebar shows 「未接入」 for 协作.
+
+Requested shared-file change (outside this lane's write scope):
+`App.tsx` — drop `placeholder: true` from that entry and mount
+`CollabDelegationsModulePage` at `/collaboration` (compat alias `/collab` if the shell
+supports aliases). Module contract: named export `CollabDelegationsModulePage`, zero props,
+reads `?state=loading|empty|error|denied` for QA legs.
+
+### 6. Not verified
+- Real non-empty rows: the tenant has zero delegations, so the populated table, the
+  per-column formatting and the 「姓名 · 8 位短码」 masking are covered by unit tests with
+  fixtures only — never observed against a live 2xx payload with rows.
+- Pixel-level overflow on the real page (unreachable, §5); only the shell fallback was shot.
+- `?limit=` beyond 5 and cursor behaviour against the live route.
