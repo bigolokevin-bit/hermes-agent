@@ -844,3 +844,11 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - **红因根除（sessions 别名形状回归）**：crawl-auth 曾红 #/sessions content-empty:no-main-element（200 但 body 崩）——手工取证 PAGEERROR `Cannot read properties of undefined (reading 'filter')`；根因=50 轮 R20-e 别名透传 runtime 原形状 {items}，而前端 SessionsPage 契约 {sessions,total}（web/src/lib/api.ts getSessions→resp.sessions）→ undefined.filter 白屏。修复在 BFF（apps/console/server.py PROXY_ROUTES["/api/sessions"].response_map=_sessions_shape_map：{items}→{sessions,total=len}，total 上游不返回以本页长度近似，分页偏差归 R5/L0）；uv pytest 336 passed；bff main=**8426f4b** push；kickstart 8092（66857→**70001**）后复测链通 `{"sessions":[],"total":0}` → crawl-auth 重跑全绿。offset/order 不透传（cursor 纪律），前端旧参数被忽略不报错。
 - R21 CSRF『未入 main』说法已过时：d800807 双提交门早已在 main 链（merge-base --is-ancestor=0），本轮 ff 到 faa4da1（心跳文档笔）再 8426f4b；8092 现跑 main==工作树==faa4da1+8426f4b 代码。
 - 登录腿小坑：opsadmin-evidence-login.sh 需 cryptography，系统 python3 无 → uv run --with cryptography shim 跑通（零安装入库）。
+
+## 五十三轮 · 九件终代次重章 @ b642c64d（entry DW4fkEEp，账本重章卡）— 2026-11-19 19:0-19:2x
+
+- 触发：L0 卡『账本重章·新代次 b642c64d』（aud R21-b 825eac0e + gov knowledge 真数据并入，entry assets/index-DW4fkEEp.js 157324B sha bd6ca30c…699bd，9122/8183/磁盘三向全等；9122 pid 64868 本车道未动）。
+- 九件重章 headHash=b642c64d 全绿（单文件单 JSON+exitCode+tmp/os.replace）：assert-ia-html/react exit=0 {51,22,1,8}；lint-fake ok；lint-reuse violations=0 exempted=1；crawl-anon DL0/CE0/PE0（routesCE=51 匿名 401 环境项）；crawl-auth DL0/CE0/PE0（routesCE=22，auth-state 18:4x opsadmin RSA 刷新版）；shots 102/102 failures=[] ceAuthority=login-state obs=0 三键 DW4fkEEp/bd6ca30c…/157324；shots-anon auxiliary=true 102/102；state-quad 20/20。
+- 52 轮遗留收尾：shots-anon 改跑法为 TMP 目录生成后整体搬入 tonight（清掉旧代次混入），104 M/?? 全部收编白名单。
+- BFF 8092 活体：pid 70001 lstart 18:47:23（8426f4b push 之后）server.py console_csrf=4 处 == main==工作树 porcelain 0，**8426f4b 已加载，无需重启**；回退一行（如需）：git -C bff-v4-serve revert --no-edit 8426f4b && launchctl kickstart -k gui/$(id -u)/cn.seakoi.console-bff。
+- 同窗 967（feishu start 501）收口另报：503 fail-closed+rid、302 腿 Content-Length:0、HMAC canonical/X-Signature 对齐 Bisheng，l7-ops lane/L7-t15=92f42f56；start9122/start8183 实测 302（APP_ID/SECRET 从 ~/.seakoi/feishu.env 0600 注入，plist 改 sh -c source，改后需 bootout+bootstrap——kickstart 不重读 plist）；真 code 联调 BLOCKED：Bisheng sso_sync.gateway_hmac_secret len=0（19301 fail-closed 实测），需 L0/用户拍板配置。

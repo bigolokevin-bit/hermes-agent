@@ -4,8 +4,8 @@
   "authStateFile": null,
   "navForm": "fresh-goto hash-form #/<route> (crawl-parity, 二十三轮修复)",
   "routesEnumerated": 51,
-  "expectedShots": 19,
-  "producedShots": 19,
+  "expectedShots": 102,
+  "producedShots": 102,
   "failures": [],
   "oversize": [],
   "rootBaseline": {
@@ -14,13 +14,31 @@
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 11,
+  "distinctMainHeads": 26,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
     {
+      "route": "#/access",
+      "viewport": "1440",
+      "chars": 211,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/access",
+      "viewport": "375",
+      "chars": 211,
+      "hasMainEl": true
+    },
+    {
       "route": "#/approvals",
       "viewport": "1440",
+      "chars": 166,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/approvals",
+      "viewport": "375",
       "chars": 166,
       "hasMainEl": true
     },
@@ -31,8 +49,20 @@
       "hasMainEl": true
     },
     {
+      "route": "#/approvals?tab=history",
+      "viewport": "375",
+      "chars": 212,
+      "hasMainEl": true
+    },
+    {
       "route": "#/approvals?tab=mine",
       "viewport": "1440",
+      "chars": 166,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/approvals?tab=mine",
+      "viewport": "375",
       "chars": 166,
       "hasMainEl": true
     },
@@ -43,8 +73,20 @@
       "hasMainEl": true
     },
     {
+      "route": "#/approvals?tab=pending&view=mine",
+      "viewport": "375",
+      "chars": 166,
+      "hasMainEl": true
+    },
+    {
       "route": "#/approvals?tab=pending&view=release",
       "viewport": "1440",
+      "chars": 166,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/approvals?tab=pending&view=release",
+      "viewport": "375",
       "chars": 166,
       "hasMainEl": true
     },
@@ -55,14 +97,92 @@
       "hasMainEl": true
     },
     {
+      "route": "#/approvals?tab=policy",
+      "viewport": "375",
+      "chars": 166,
+      "hasMainEl": true
+    },
+    {
       "route": "#/approvals?tab=release",
       "viewport": "1440",
       "chars": 166,
       "hasMainEl": true
     },
     {
+      "route": "#/approvals?tab=release",
+      "viewport": "375",
+      "chars": 166,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/audit",
+      "viewport": "1440",
+      "chars": 518,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/audit",
+      "viewport": "375",
+      "chars": 518,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/capabilities",
+      "viewport": "1440",
+      "chars": 156,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/capabilities",
+      "viewport": "375",
+      "chars": 156,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/capabilities?tab=channels",
+      "viewport": "1440",
+      "chars": 215,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/capabilities?tab=channels",
+      "viewport": "375",
+      "chars": 215,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/capabilities?tab=models",
+      "viewport": "1440",
+      "chars": 178,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/capabilities?tab=models",
+      "viewport": "375",
+      "chars": 178,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/capabilities?tab=tools",
+      "viewport": "1440",
+      "chars": 189,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/capabilities?tab=tools",
+      "viewport": "375",
+      "chars": 189,
+      "hasMainEl": true
+    },
+    {
       "route": "#/employees",
       "viewport": "1440",
+      "chars": 124,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees",
+      "viewport": "375",
       "chars": 124,
       "hasMainEl": true
     },
@@ -73,8 +193,284 @@
       "hasMainEl": true
     },
     {
+      "route": "#/employees?tab=matrix",
+      "viewport": "375",
+      "chars": 226,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId",
+      "viewport": "1440",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId",
+      "viewport": "375",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=config",
+      "viewport": "1440",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=config",
+      "viewport": "375",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=evidence",
+      "viewport": "1440",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=evidence",
+      "viewport": "375",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=runs",
+      "viewport": "1440",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=runs",
+      "viewport": "375",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=tasks",
+      "viewport": "1440",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=tasks",
+      "viewport": "375",
+      "chars": 51,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/identity",
+      "viewport": "1440",
+      "chars": 161,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/identity",
+      "viewport": "375",
+      "chars": 161,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/identity?tab=admins",
+      "viewport": "1440",
+      "chars": 161,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/identity?tab=admins",
+      "viewport": "375",
+      "chars": 161,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/identity?tab=binding",
+      "viewport": "1440",
+      "chars": 161,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/identity?tab=binding",
+      "viewport": "375",
+      "chars": 161,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/identity?tab=checks",
+      "viewport": "1440",
+      "chars": 161,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/identity?tab=checks",
+      "viewport": "375",
+      "chars": 161,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/identity?tab=departments",
+      "viewport": "1440",
+      "chars": 147,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/identity?tab=departments",
+      "viewport": "375",
+      "chars": 147,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/identity?tab=people&view=admins",
+      "viewport": "1440",
+      "chars": 161,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/identity?tab=people&view=admins",
+      "viewport": "375",
+      "chars": 161,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/identity?tab=roles",
+      "viewport": "1440",
+      "chars": 211,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/identity?tab=roles",
+      "viewport": "375",
+      "chars": 211,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/identity?tab=tenant",
+      "viewport": "1440",
+      "chars": 161,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/identity?tab=tenant",
+      "viewport": "375",
+      "chars": 161,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/knowledge",
+      "viewport": "1440",
+      "chars": 294,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/knowledge",
+      "viewport": "375",
+      "chars": 294,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/knowledge?tab=citations",
+      "viewport": "1440",
+      "chars": 194,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/knowledge?tab=citations",
+      "viewport": "375",
+      "chars": 194,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/knowledge?tab=evidence",
+      "viewport": "1440",
+      "chars": 194,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/knowledge?tab=evidence",
+      "viewport": "375",
+      "chars": 194,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/knowledge?tab=ingest",
+      "viewport": "1440",
+      "chars": 88,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/knowledge?tab=ingest",
+      "viewport": "375",
+      "chars": 88,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/knowledge?tab=retrieval",
+      "viewport": "1440",
+      "chars": 194,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/knowledge?tab=retrieval",
+      "viewport": "375",
+      "chars": 194,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/knowledge?tab=scope",
+      "viewport": "1440",
+      "chars": 294,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/knowledge?tab=scope",
+      "viewport": "375",
+      "chars": 294,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/knowledge?tab=sources",
+      "viewport": "1440",
+      "chars": 88,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/knowledge?tab=sources",
+      "viewport": "375",
+      "chars": 88,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/metrics",
+      "viewport": "1440",
+      "chars": 818,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/metrics",
+      "viewport": "375",
+      "chars": 818,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/org",
+      "viewport": "1440",
+      "chars": 161,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/org",
+      "viewport": "375",
+      "chars": 161,
+      "hasMainEl": true
+    },
+    {
       "route": "#/overview",
       "viewport": "1440",
+      "chars": 732,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/overview",
+      "viewport": "375",
       "chars": 732,
       "hasMainEl": true
     },
@@ -85,8 +481,32 @@
       "hasMainEl": true
     },
     {
+      "route": "#/overview?tab=usage",
+      "viewport": "375",
+      "chars": 152,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/sessions",
+      "viewport": "1440",
+      "chars": 106,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/sessions",
+      "viewport": "375",
+      "chars": 106,
+      "hasMainEl": true
+    },
+    {
       "route": "#/system",
       "viewport": "1440",
+      "chars": 405,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/system",
+      "viewport": "375",
       "chars": 405,
       "hasMainEl": true
     },
@@ -97,8 +517,20 @@
       "hasMainEl": true
     },
     {
+      "route": "#/system?tab=defaults",
+      "viewport": "375",
+      "chars": 121,
+      "hasMainEl": true
+    },
+    {
       "route": "#/system?tab=events",
       "viewport": "1440",
+      "chars": 518,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/system?tab=events",
+      "viewport": "375",
       "chars": 518,
       "hasMainEl": true
     },
@@ -109,8 +541,20 @@
       "hasMainEl": true
     },
     {
+      "route": "#/system?tab=events&view=anomaly",
+      "viewport": "375",
+      "chars": 518,
+      "hasMainEl": true
+    },
+    {
       "route": "#/system?tab=retention",
       "viewport": "1440",
+      "chars": 518,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/system?tab=retention",
+      "viewport": "375",
       "chars": 518,
       "hasMainEl": true
     },
@@ -121,9 +565,57 @@
       "hasMainEl": true
     },
     {
+      "route": "#/system?tab=security",
+      "viewport": "375",
+      "chars": 518,
+      "hasMainEl": true
+    },
+    {
       "route": "#/system?tab=version",
       "viewport": "1440",
       "chars": 406,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/system?tab=version",
+      "viewport": "375",
+      "chars": 406,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/work",
+      "viewport": "1440",
+      "chars": 255,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/work",
+      "viewport": "375",
+      "chars": 255,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/work?tab=board&view=cron",
+      "viewport": "1440",
+      "chars": 255,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/work?tab=board&view=cron",
+      "viewport": "375",
+      "chars": 255,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/work?tab=cron",
+      "viewport": "1440",
+      "chars": 255,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/work?tab=cron",
+      "viewport": "375",
+      "chars": 255,
       "hasMainEl": true
     },
     {
@@ -131,12 +623,18 @@
       "viewport": "1440",
       "chars": 265,
       "hasMainEl": true
+    },
+    {
+      "route": "#/work?tab=runs",
+      "viewport": "375",
+      "chars": 265,
+      "hasMainEl": true
     }
   ],
   "consoleErrorsObservedByShots": 0,
   "consoleErrorRoutesObservedByShots": [],
   "ceAuthority": "login-state",
-  "routesWithEnvOnlyConsoleErrors": 19,
+  "routesWithEnvOnlyConsoleErrors": 51,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
   "overflowing": [],
   "driver": {
@@ -144,8 +642,10 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "auxiliary": true,
-  "headHash": "3ca5338f",
+  "headHash": "b642c64d",
   "exitCode": 0,
-  "note": "anon shots 为 401 门控辅助腿；CE 观察仅旁证，不作主账 ok 依据"
+  "auxiliary": true,
+  "entry": "assets/index-DW4fkEEp.js",
+  "entrySha256": "bd6ca30c1e88e2f778e514b5b4301d366dd180b9afcf9b67204f946d03f699bd",
+  "entryBytes": 157324
 }
