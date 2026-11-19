@@ -635,3 +635,64 @@ built /Users/kevin_studio/Projects/forks/console-gov/hermes_cli/web_dist/index.h
 - 修正后 DOM：1440/1280 body 与 page 宽度精确等于视口，表格无横溢；375 body/page=375，表格容器 `scrollSW=349/scrollCW=349`、`overflowX=visible`，四字段堆叠可见。
 - 第二次观察者复核：**PASS 1440 / 1280 / 375**。页脚与返回链首字完整；375 四字段全部可见，`更新时间 2026-11-19 13:30` 在卡片内；无横向溢出。仅非阻塞的 2px 对齐差与 375 截图下方空白，无需改码。
 - 截图已覆盖：`docs/_artifacts/gov/shots/role5-1440.png`、`role5-1280.png`、`role5-375.png`。
+
+## ORG5 · 组织与部门只读页（2026-11-19）
+
+### 交付
+
+- 基线 `cd2806fc`；页面 commit `9f2d1173 feat(console): organization departments read-only page (org5)`，push `d277839e..9f2d1173 lane/console-gov`。
+- 文件：`web/src/modules/org/OrgModulePage.tsx`、`OrgModulePage.test.tsx`、新增 `org.css`。
+- 字段：部门名 / 上级部门 / 人数 / 负责人（`姓名 · 8 位短码`，无则「未指派」）/ 更新时间（北京时间到分）。缺失一律 `—` + 原因；人数缺失不显示 0；负责人不显示裸 `emp_`/`human:`；原始部门 id 只在行 `title`。
+- 树：默认展开；层级可折叠；上级部门名由树内 id 解析；顶级部门显 `—` +「顶级部门」。
+- 状态：loading / ready / empty / error；403 与无端点均诚实「未接入」+ 原因 + `GAP-02`（仅 `title`）+ `#/approvals` 开通申请入口；401 需登录；5xx/网络错误人话 + 请求编号 + 复制 + 重试。
+- 预览：`?state=loading|empty|error|denied|ready` 不取数，页面带 `data-fixture="1"`；`ready` 样例明确标注「不是线上部门数据」。
+
+### 端点真实度
+
+```text
+$ curl http://127.0.0.1:8182/agent-api/api/v1/dept/list
+401 {"code": "console.unauthenticated", "message": "identity check failed"}
+$ curl http://127.0.0.1:8182/agent-api/api/v1/dept/tree
+401 {"code": "console.unauthenticated", "message": "identity check failed"}
+```
+
+401 只证明鉴权门先于路由；BFF 源码 `apps/console/server.py` 无部门路由，故没有真实 200。页面按 404/403 显示「未接入」，不伪造部门树。
+
+### 原始 stdout
+
+```text
+$ cd web && ./node_modules/.bin/tsc -b . --noEmit
+# EXIT: 0
+
+$ cd web && npx vitest run src/modules/org
+ Test Files  1 passed (1)
+      Tests  13 passed (13)
+
+$ cd web && npx vitest run
+ Test Files  118 passed (118)
+      Tests  1152 passed (1152)
+
+$ cd /Users/kevin_studio/Projects/forks/console-gov && PATH="/opt/homebrew/bin:$PATH" pnpm --filter web build
+built /Users/kevin_studio/Projects/forks/console-gov/hermes_cli/web_dist/index.html
+# EXIT: 0
+```
+
+### DOM 读数（Chrome CDP，临时 harness，已删除）
+
+```text
+1440×900: vw=1440 bodySW=1440 bodyCW=1440 pageSW=1440 pageCW=1440 rows=4
+1280×800: vw=1280 bodySW=1280 bodyCW=1280 pageSW=1280 pageCW=1280 rows=4
+375×812:  vw=375 bodySW=375 bodyCW=375 pageSW=375 pageCW=375 rows=4
+```
+
+375 使用堆叠卡片（表头隐藏），四字段与原因全部可见，body 无横溢。截图：`docs/_artifacts/gov/shots/org5-1440.png`、`org5-1280.png`、`org5-375.png`（视觉自检，未跑独立观察者）。
+
+### 需壳层注册的路由/槽位清单
+
+- 无。`App.tsx` 已把 `/identity?tab=departments` 映射到 `modules/org/OrgModulePage`，identity manifest 已有 departments tab；本页未改 App/shell/manifest/package。
+
+### 边界
+
+- 无真实 200（无登录态）；401 仅证明鉴权门。
+- 1439 宽下未做像素级对比；观察者复核未跑，仅本地 DOM 与截图自检。
+- 预置 fixture 仅用于预览，带 `data-fixture="1"` 与可见标注，不参与任何线上结论。
