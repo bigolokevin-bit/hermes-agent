@@ -421,3 +421,9 @@ BFF 实测形态（ego 登录态 GET /agent-api/api/approvals?status=consumed&li
 口径：汇总与明细同 payload（buildKpis/duty aggregate 单源）；每源 stamps 只认服务端采集时间键（sourceStamp），无 stamp 给原因不冒充；金额 ledger USD；错误态人话+RequestIdCopy 可复制编号+重试；403≡404 同体（Freshness/issue 文案不区分不回显路径）；宽卡网格既有 overflow 保 375 无横溢。
 testid：家族 ov5-→ov6- 全量升级（page 32+test 19 处，CSS class 保持 ov5- 为样式钩子）；fixture/forced ?state= 代次既有。
 测试：定向 src/modules/overview 8 passed；全量 vitest 122 files/1222 passed 0 fail。屏幕 DOM 复跑待 L0 合批 build 代次。
+
+## R25 审批详情八字段回归修复（fix(console): approvals detail eight-field regression）
+根因链（ego 真样本 ap_123DE49B9A1F42A197679681F1 经 9122 登录态 GET /agent-api/api/approval?id= 200）：①kind 取数被 body.type=business_action（审批类别）抢先，真变更 kind 在 binding.changeKind=message_send → 屏显「未写明类型」；②「类型」Field 无 data-testid → 探针口径缺 1/8；③R24 的 Field testId 渲染已核实落 DOM（verdict/decided-at/recipient/scope 四件 testid 在位）。
+修复：model.ts kind 改取数序 changeKind/change_kind→binding.changeKind→kind/category→type(仅非 business_action)；views.tsx 类型 Field 补 testId=apd5-field-change-kind ⇒ 8/8 testid：change-kind/verdict/decided-at/approver/action-hash/recipient/scope/request-id。maskHandle 对短句柄 human:1 显「审批人」（无裸句柄上屏，合规不修）。
+八字段逐项读数（真样本，api.test R25 用例锁定）：changeKind=对外发送消息✓ verdict=—（decisions 空诚实）✓ decidedAt=2026-11-17 21:09✓ approver=审批人·无裸 human:✓ actionHash=sha256:apr02（面板短码+title+复制钮）✓ recipient=—（无键诚实）✓ dataScope=null→—✓ requestId=null→—+未记录句✓；requester 解包无裸 human:。
+验证：定向 approvals 3 files 53 passed；全量 122 files/1223 passed 0 fail。曾试 History.test 组件级用例污染既有 describe 已回滚改函数级锁。served 代次 d6d9bb07 属 L0 合批，需 L0 重建 dist 后 QA 复跑 8/8。

@@ -529,7 +529,14 @@ export function approvalDetailFrom(payload: unknown): ApprovalDetail | null {
     rawId,
     title: title ?? "未写明事由的申请",
     status,
-    kind: changeKindView(pickText(body, ["changeKind", "change_kind", "kind", "type", "category"])),
+    // R25: the real change kind lives in `binding.changeKind`; the top-level
+    // `type` is the approval class (business_action) and must not win.
+    kind: changeKindView(
+      pickText(body, ["changeKind", "change_kind"]) ??
+        pickText(asRecord(body.binding) ?? {}, ["changeKind", "change_kind"]) ??
+        pickText(body, ["kind", "category"]) ??
+        (pickText(body, ["type"]) !== "business_action" ? pickText(body, ["type"]) : null),
+    ),
     risk: riskView(pickText(body, ["riskLevel", "risk_level", "risk"])),
     requester: requesterView(body),
     worker: workerView(body),
