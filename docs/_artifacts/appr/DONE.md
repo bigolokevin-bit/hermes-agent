@@ -702,3 +702,11 @@ BFF 关键读数（9122==01175128 活体，只读）：工单点名 URL `GET /ap
 测试：既有 3 用例入口由 at("tasks")（旧借 approvals 映射）改为 at("approvals")（语义=审批区本尊，断言文本零改动）；新增 R43 describe 4 用例：①真查询带 assignee=employee%3A<EMP>+limit=20、行 href=/tasks/tk_0762C4D5、待处理/待核实/高优先级、BJT 10:00/09:30、无标题行=「任务 · 1B4EA3C9」（用 tasksBoard.short8 全站口径——坑：模块自研 shortCode 会把 tk_ 计进短码=TK1B4EA3，已换 short8）②空集诚实句+不放宽筛选+面板卡不渲 ③error=人话+请求编号：req-tsk-43 冒号形制+req-copy+重试同卡（坑：querySelector("button") 先命中复制钮，断言改 some(含「重试」)；**同一 it 内二次 mockApi+renderAt 不会重发请求（useResourceList deps=[url,nonce] 未变）=403≡404 必须拆独立 it（root 重建习语）**）。定向 employee-detail 26 passed exit0；assert-ia 两模式 exit0（51/22/1/8 未动）；tsc 本域零红；全量 **131 files/1399 passed**（≥基线 1387）。
 
 三档横溢：jsdom 不可测，形态学=行网格 grid-cols-1 md:grid-cols-[1.8fr_.8fr_.8fr_1fr]+min-w-0 truncate+列头 md:grid（与 chat 区同构已验），如实报。9122 取证代次禁重建：活体行读数待并入后代次。
+
+## R44 审批队列筛选与 URL 可分享（2026-11-20，lane/console-appr）
+
+基线：显式 refspec fetch + reset --hard origin/lane/hermes-console = f0419b0b（ledger stamped at 02a7385c，entry DmuaaNyX），toplevel ✓ porc=0。写域=modules/approvals/**（落点=history 页：只读+已有筛选=工单「深度增强不加新页」的既有面；pending 页写区是先前已验收功能，未动）。
+
+实现（ApprovalsHistoryModulePage.tsx）：①新组 data-testid=apv5-filter（role=group）=四快捷钮 apv5-filter-status-{all,pending,approved,rejected}（人话「全部/待办/已批/已拒」），sends 真 status 值走既有 choose→URL ?status=→useApprovalsList 恰一次重取（新用例实测 fresh filter api/approvals =1 条带 status=rejected）；active 态与八态组同源（?status=pending 重放时 apv5 快捷钮与 apr5-filter-pending 同时 aria-pressed=true）。②apv5-count=ready 期 {list.rows.length}，与「已显示 N 条」同变量同元素树=计数与列表同源（pending 重放=1 且读数行 1 条实测一致）。③风险档 apv5-filter-risk 与时间窗 apv5-filter-window=**控件在屏但 disabled+title 人话带活体读数**：BFF passthrough=(status,limit,cursor)，risk/window/since 实测被丢（status=all 下 8 条同集合，带参不带一致）——前端假过滤被工单禁→按 P2 priority 先例诚实禁用，DONE/回执上报。④空集文案按工单=「该条件下无审批：「X」结果下没有记录」（既有两用例断言同步），清筛选去处（换结果/全部+exits-back/exits-contact 真出口）既有保留。⑤apr5-* 现名族零改动；URL 刷新/复制链接复现=既有 replace 机制+新组共用；四态/403≡404/可复制 rid+重试=既有形态未破坏。⑥三档横溢=jsdom 不可测，形态学报（新组复用 flex-wrap gap-1.5 容器）。
+
+验证：定向 approvals 3 files/57 passed exit0；assert-ia 两模式 exit0（51/22/1/8，未动壳层）；全量 **131 files/1401 passed**（≥基线 1399）。9122==02a7385c 取证代次禁重建：活体 DOM 读数待并入后代次，本轮 jsdom+ego 参数探测双交付。

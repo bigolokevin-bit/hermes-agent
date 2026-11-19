@@ -198,13 +198,43 @@ describe("the eight states", () => {
     expect(text()).not.toContain("过期未处理的采购");
   });
 
+  it("R44: shareable queue shortcuts ride the real status parameter, count is same-source, honest axes stay disabled", async () => {
+    await mount();
+    const sc = (v: string) => document.querySelector(`[data-testid='apv5-filter-${v}']`) as HTMLButtonElement;
+    expect(sc("status-pending")).toBeTruthy();
+    expect(sc("status-all")).toBeTruthy();
+    const before = urls().length;
+    await act(async () => {
+      sc("status-rejected").click();
+    });
+    await waitFor(() => text().includes("临时提权申请"), "rejected row");
+    const fresh = urls().slice(before).filter((u) => u.includes("api/approvals"));
+    expect(fresh).toHaveLength(1);
+    expect(fresh[0]).toContain("status=rejected");
+    // A shared/refreshed URL reopens exactly the same answer, and both the
+    // shortcut and the eight-state chip read the same active source.
+    await render("/approvals?tab=history&status=pending", <ApprovalsHistoryModulePage />);
+    await waitFor(() => text().includes("等待你点头的发布"), "pending replay");
+    expect(sc("status-pending").getAttribute("aria-pressed")).toBe("true");
+    expect(chip("pending").getAttribute("aria-pressed")).toBe("true");
+    expect(document.querySelector("[data-testid='apv5-count']")?.textContent).toBe("1");
+    expect(text()).toContain("已显示 1 条「待处理」记录");
+    // Risk and window are stated, never faked: disabled with the measured
+    // reason in the title.
+    const risk = document.querySelector("[data-testid='apv5-filter-risk']") as HTMLSelectElement;
+    expect(risk.disabled).toBe(true);
+    expect(risk.title).toContain("假过滤");
+    const win = document.querySelector("[data-testid='apv5-filter-window']") as HTMLSelectElement;
+    expect(win.disabled).toBe(true);
+  });
+
   it("a state with no history says so, and 全部 drops the parameter", async () => {
     await mount();
     await pick("consumed");
     expect(text()).toContain("已执行的批量导出");
     api.fetchJSON.mockImplementation(async () => ({ items: [] }));
     await pick("superseded");
-    expect(text()).toContain("「已被新单替代」状态下没有记录");
+    expect(text()).toContain("该条件下无审批：「已被新单替代」结果下没有记录");
     expect(text()).toContain("换一个结果看看");
     // QA V4-R4 条目2: 零结果面板必须有真出口，不许死链。
     const back = document.querySelector("[data-testid='apr5-empty-history-exits-back']") as HTMLAnchorElement;
@@ -346,7 +376,7 @@ describe("history whole-panel states", () => {
     expect(document.querySelector("[data-testid='apr5-loading']")).toBeTruthy();
     expect(api.fetchJSON).not.toHaveBeenCalled();
     await open("empty");
-    expect(text()).toContain("状态下没有记录");
+    expect(text()).toContain("该条件下无审批");
     expect(document.querySelector("[data-testid='apr5-empty-history']")).toBeTruthy();
     await open("error");
     expect(text()).toContain("本次请求未记录编号，可复制时间与操作路径反馈");
