@@ -588,3 +588,91 @@ $ node scripts/assert-ia.mjs --source=react
 边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
 package·lock / web-scripts / ops；未并 main、未重启或重建 9122；无 force / amend / `--no-verify` /
 `git add -A`。`pnpm build` 的非本域 typecheck 阻塞按指示未追。
+
+---
+
+# KNW5 追加 R40：引用行深（目标对象 / 真人账号 / 暂无引用）（2026-11-20 BJT）
+
+安全闸：porcelain 空 → fetch → `git merge-base --is-ancestor HEAD d0b50590` 为真 →
+`git reset --hard d0b50590`（快进保留历史；来路 `998cb124` 已含本轮上一提交）。
+注意：来路里的 R39（`5fe7dec1`）给本模块加了 `?state=` 内容预览开关，本轮未动它，
+实测普通 URL（不带 `?state=`）下 `[data-fixture]` 仍为 0。
+
+## 一、探针（cookie 只在 curl 命令内拼 Header，值零回显；9122 只读、未重启、未重建）
+
+```text
+HTTP 404  /agent-api/api/knowledge/citations?limit=20   code=knowledge.not_wired  rid 56c84a8d62  行数 0
+HTTP 404  /agent-api/api/knowledge/citations            code=knowledge.not_wired  rid aba4552486  行数 0
+HTTP 200  /agent-api/api/console-sessions?limit=20      items=0
+HTTP 200  /agent-api/api/sessions?limit=20              sessions=0 total=0
+HTTP 200  /agent-api/api/audit?action=kb.read&limit=50  events=0
+HTTP 404  /agent-api/api/run-events?runId=run_probe&kind=citation&limit=20   code=run.not_found（探针 id 是编的，不据此造引用）
+```
+
+引用登记读口仍是 BFF 点名的 fail-closed 404；能给出真实引用的只有会话族，
+而它今天回 200 但 0 个会话。所以两条腿分别是：**一条诚实「未接入」**与
+**一条诚实「暂无引用」**，都不放样例、都不写 0 条。
+
+## 二、每行给什么（wired 模式真实 DOM，`knw5-citations=ready/len3`）
+
+```text
+row1 PDF 员工手册 · 考勤篇 | — 上游没有给出这段内容的摘要 | 来源：员工手册.pdf | 指向：文档 · 20261119
+     留下：陈嘉禾 · FF6F42E1 | 时间：2026-11-19 15:20 | 第 12 页 | 打开原文（站内可点）
+row2 引用 薪酬口径说明 | 摘要（原样一句）| 来源：— 上游没有给出来源文档或空间 | 指向：知识片段 · 00000991
+     留下：真人账号 | 时间：2026-11-19 14:10 | 原文不可达：上游给出的原文位置不是站内地址，无法直接打开。
+row3 引用 —（缺标题）| —（缺摘要）| 来源：—（缺来源）| 指向：—（上游没有说明这段引用指向哪个对象）
+     留下：—（没说谁留下）| 时间：—（没给时间）| 原文不可达：上游没有给出原文位置，无法打开原文。
+```
+
+- **目标对象**是这段引用指的是哪个对象：`文档 / 知识片段 / 业务记录 / 知识空间 / 网页` + 短码；
+  文档名归「来源」列，不重复占位；上游没给就说没给，不编一个对象。
+- **归属人话化**：`actor` / `createdBy` 的 `{type,id}` 翻译成「数字员工 / 真人账号 / 系统 / 待核实」，
+  id 取去类型前缀后的尾段短码；短码不足四位就只说身份词（`human:1` → 「真人账号」），
+  原值只进 `title`。屏面不出现 `emp_…`、`human:`、`HUMAN1`、`cs_…`、`cit_…`。
+- 时间一律北京时区到分（07:20Z → 15:20，06:10Z → 14:10）；站内位置可点回原文，
+  站外或缺失显「原文不可达」并给具体原因。
+- 下钻一块（`*-detail`）把上面这些一次给全，另加 在原文中的位置 / 被引用的原话 / 从哪里来
+  （当时的提问、由一次运行引出）；`ref=` 进 URL，刷新与后退都还原。
+
+## 三、四态确实换内容（同一面在四种回答下的 DOM 分支，Chromium 实测）
+
+```text
+404 /api/knowledge/citations → data-state=unwired，出「未接入」正文 + 原因 + title=GAP-03 + rid 可复制 + 重试，行 0
+403 同一路由                 → 正文与 404 逐字相等（true），只有请求编号不同；行 0
+200 { citations: [] }        → data-state=ready len0，走 *-empty 分支：「暂无引用。接口已响应，……不写 0 条」；
+                               会话那条腿同样「暂无引用」；行 0
+503 上游不可用               → data-state=error，正文「这次没能读到知识数据 / 数据服务暂时没有响应，请稍后重试。」
+                               + 可复制请求编号 + 重试；此时未接入正文不存在（不是只换徽标）
+挂起中                       → data-state=loading，出 *-loading 骨架（aria-busy），无表格
+```
+
+其余复核：`[data-fixture]` 在 today/wired/empty/denied/boom 五组模式普通 URL 下都为 **0**；
+写入口 **0**；1440/1280/375 三档 `docSW == vw == bodySW`、页容器 `SW == CW`、无溢出元素；
+屏面泄漏检查（裸 id / 字段名 / 状态码 / 路由 / `GAP-03` / 假 0）全部 false；页面报错 none；
+深链 `#/knowledge?tab=citations` 与 `?tab=evidence` 都落到引用面板并选中 `knw5-tab-evidence`；
+面板内 `knw5-*` testid 计数：未接入 17，有数据 27（原 knw5-* 家族全部保留）。
+
+## 四、验证尾行（本轮）
+
+```text
+$ npx vitest run src/modules/knowledge
+ Test Files  2 passed (2)
+      Tests  32 passed (32)
+
+$ npx vitest run
+ Test Files  131 passed (131)
+      Tests  1369 passed (1369)
+
+$ npx eslint src/modules/knowledge
+（无输出，exit 0）
+
+$ npx tsc -b . --noEmit | grep modules/knowledge
+（无输出，本模块 0 错）
+
+$ npx vite build --outDir /tmp/knw11-dist --emptyOutDir
+✓ built in 3.94s   （产物只落 /tmp）
+```
+
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；未并 main、未重启或重建 9122；无 force / amend / `--no-verify` /
+`git add -A`。非本域的 `pnpm build` typecheck 阻塞按指示未追。

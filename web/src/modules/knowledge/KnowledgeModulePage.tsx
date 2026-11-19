@@ -365,6 +365,10 @@ function RefList({ rows, testid }: { rows: CitationRow[]; testid: string }): Rea
                   来源：{row.source}
                 </span>
                 <Reason>{row.sourceReason}</Reason>
+                <span data-testid={`${testid}-target`} title={row.targetRaw ?? undefined}>
+                  指向：{row.target}
+                </span>
+                <Reason>{row.targetReason}</Reason>
                 <span title={row.employeeRaw ?? undefined}>留下：{row.employee}</span>
                 <Reason>{row.employeeReason}</Reason>
                 <span>时间：{row.at}</span>
@@ -428,6 +432,13 @@ function RefList({ rows, testid }: { rows: CitationRow[]; testid: string }): Rea
                   <dd title={row.sourceRaw ?? undefined}>
                     {row.source}
                     <Reason>{row.sourceReason}</Reason>
+                  </dd>
+                </div>
+                <div>
+                  <dt>指向的对象</dt>
+                  <dd data-testid={`${testid}-detail-target`} title={row.targetRaw ?? undefined}>
+                    {row.target}
+                    <Reason>{row.targetReason}</Reason>
                   </dd>
                 </div>
                 <div>
@@ -845,7 +856,7 @@ function CitationsSurface({ nonce }: { nonce: string }): ReactNode {
       source="citations"
       state={surface.state}
       onRetry={surface.retry}
-      empty={() => <p>接口已响应，引用登记为空；不展示样例引用。</p>}
+      empty={() => <p>暂无引用。接口已响应，这一份引用登记里没有条目；不展示样例，也不写 0 条。</p>}
       render={(value) => <RefList rows={value.rows} testid="knw5-citations-list" />}
     />
   );
@@ -888,8 +899,8 @@ function SessionCitationsSurface({ nonce }: { nonce: string }): ReactNode {
       empty={(value) => (
         <p>
           {value.scanned !== null && value.scanned > 0
-            ? `已读取最近 ${value.scanned} 个会话，没有引用记录；不展示样例。`
-            : "当前没有读到会话引用记录；不展示样例。"}
+            ? `暂无引用：已读取最近 ${value.scanned} 个会话，这些会话里的回答没有带引用；不展示样例。`
+            : "暂无引用。接口已响应，最近会话里没有可展示的引用记录；不展示样例，也不写 0 条。"}
         </p>
       )}
       render={(value) => <RefList rows={value.rows} testid="knw5-session-cites-list" />}
