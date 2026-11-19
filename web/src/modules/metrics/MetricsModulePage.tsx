@@ -26,6 +26,7 @@ import {
   cellRangeLabel,
   chunkIds,
   formatBeijing,
+  aggregateByEmployee,
   employeeLabel,
   formatCount,
   formatRate,
@@ -35,8 +36,10 @@ import {
   ledgerTotal,
   readActivity,
   readLedger,
+  readModelUsage,
   readPricing,
   readRunStats,
+  shareOf,
   sparkSlots,
   usageWindowOf,
   windowRange,
@@ -85,6 +88,30 @@ interface TrendSnapshot {
   from: string;
   to: string;
 }
+
+interface BreakdownLine {
+  key: string;
+  label: string;
+  sub: string | null;
+  costUsd: number | null;
+  count: number | null;
+  countNote: string | null;
+  share: number | null;
+  asOf: string | null;
+}
+
+type BreakdownState =
+  | { kind: 'loading' }
+  | {
+      kind: 'ready';
+      view: 'employee' | 'model';
+      lines: BreakdownLine[];
+      total: number | null;
+      asOf: string | null;
+      source: string;
+      note: string | null;
+    }
+  | { kind: 'unavailable'; reason: string; gap: string | null; requestId: string | null };
 
 type UsageState =
   | { kind: 'loading' }
@@ -196,6 +223,7 @@ export function MetricsModulePage() {
   const weeks = activeWindow.weeks;
   const [state, setState] = useState<PageState>({ kind: 'loading' });
   const [usage, setUsage] = useState<UsageState>({ kind: 'loading' });
+  const [breakdown, setBreakdown] = useState<BreakdownState>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [selected, setSelected] = useState<{ dow: number; hour: number } | null>(null);
 
@@ -337,6 +365,106 @@ export function MetricsModulePage() {
     };
   }, [attempt, forced, loadUsage, usageWindow.id]);
 
+  const viewMode: 'employee' | 'model' = params.get('view') === 'model' ? 'model' : 'employee';
+
+  const loadBreakdown = useCallback(
+    async (signal: { live: boolean }, windowId: UsageWindowId, view: 'employee' | 'model') => {
+      setBreakdown({ kind: 'loading' });
+      const preset = usageWindowOf(windowId);
+      const days = Math.max(1, Math.round(preset.hours / 24));
+      const now = new Date();
+      const dayKeys: string[] = [];
+      for (let back = days - 1; back >= 0; back -= 1) {
+        dayKeys.push(beijingDayKey(new Date(now.getTime() - back * 86_400_000)));
+      }
+      try {
+        if (view === 'model') {
+          const parsed = readModelUsage(await fetchJsonStrict(`/agent-api/api/hermes-usage?days=${days}`));
+          if (parsed.kind === 'invalid') {
+            setBreakdown({ kind: 'unavailable', reason: parsed.reason, gap: null, requestId: null });
+            return;
+          }
+          const lines: BreakdownLine[] = parsed.lines.map((line) => ({
+            key: `model-${line.model}`,
+            label: line.model,
+            sub:
+              [line.inputTokens === null ? null : `输入 ${line.inputTokens}`, line.outputTokens === null ? null : `输出 ${line.outputTokens}`]
+                .filter((part): part is string => part !== null)
+                .join(' · ') || null,
+            costUsd: null,
+            count: line.apiCalls ?? line.sessions,
+            countNote: line.apiCalls === null && line.sessions === null ? '上游没有给调用次数' : null,
+            share: null,
+            asOf: parsed.asOf,
+          }));
+          if (!signal.live) return;
+          setBreakdown({
+            kind: 'ready',
+            view,
+            lines,
+            total: parsed.costUsd,
+            asOf: parsed.asOf,
+            source: 'Hermes 用量（按模型）',
+            note: '上游按模型只给 token 与调用次数，金额不按模型拆分，所以支出列显示「—」。',
+          });
+          return;
+        }
+
+        const directory = employeeIdsOf(await fetchJsonStrict('/agent-api/api/employees?limit=200'));
+        const bodies = await Promise.all(
+          dayKeys.flatMap((day) =>
+            chunkIds(directory.ids).map((ids) =>
+              fetchJsonStrict(
+                `/agent-api/api/budget-usage?employeeId=${ids.map(encodeURIComponent).join(',')}` +
+                  `&periodKind=day&period=${encodeURIComponent(day)}`,
+              ),
+            ),
+          ),
+        );
+        const rows: LedgerRow[] = [];
+        for (const body of bodies) {
+          const parsed = readLedger(body);
+          if (parsed.kind === 'invalid') throw new ApiError(parsed.reason, { status: 200, body: '', url: 'budget-usage' });
+          rows.push(...parsed.rows);
+        }
+        const total = ledgerTotal(rows);
+        const lines: BreakdownLine[] = aggregateByEmployee(rows, directory.names).map((row, index) => ({
+          key: `emp-${row.employeeId ?? index}`,
+          label: employeeLabel(row.name, row.employeeId),
+          sub: null,
+          costUsd: row.costUsd,
+          count: null,
+          countNote: '账本只记金额与用量，不记运行次数',
+          share: shareOf(row.costUsd, total),
+          asOf: row.asOf,
+        }));
+        if (!signal.live) return;
+        setBreakdown({
+          kind: 'ready',
+          view,
+          lines,
+          total,
+          asOf: ledgerAsOf(rows),
+          source: '平台扣费账本（按员工日账合计）',
+          note: '次数不在账本里，所以这一列显示「—」；占比按同窗口账本合计计算。',
+        });
+      } catch (error) {
+        if (!signal.live) return;
+        setBreakdown({ kind: 'unavailable', ...blockFailure(error) });
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (forced) return;
+    const signal = { live: true };
+    void loadBreakdown(signal, usageWindow.id, viewMode);
+    return () => {
+      signal.live = false;
+    };
+  }, [attempt, forced, loadBreakdown, usageWindow.id, viewMode]);
+
   const view: PageState = forced
     ? forced === 'loading'
       ? { kind: 'loading' }
@@ -415,6 +543,29 @@ export function MetricsModulePage() {
       : null;
   const sparkPeak = spark && spark.max !== null && spark.max > 0 ? spark.max : 1;
   const monthSnapshot = usageReady && usageReady.month.kind === 'ready' ? usageReady.month.value : null;
+
+  const breakdownView: BreakdownState = forced
+    ? forced === 'loading'
+      ? { kind: 'loading' }
+      : forced === 'empty'
+        ? { kind: 'ready', view: viewMode, lines: [], total: null, asOf: null, source: '—', note: null }
+        : {
+            kind: 'unavailable',
+            reason:
+              forced === 'denied'
+                ? '这项数据当前读不到：可能还没有接入，也可能当前账号没有查看权限。'
+                : '这次没能读取这项数据，请稍后重试。',
+            gap: forced === 'denied' ? USAGE_GAP : null,
+            requestId: null,
+          }
+    : breakdown;
+
+  const chooseView = (next: 'employee' | 'model') => {
+    const query = new URLSearchParams(params);
+    if (next === 'employee') query.delete('view');
+    else query.set('view', next);
+    setParams(query, { replace: true });
+  };
 
   const chooseUsageWindow = (next: UsageWindowId) => {
     const query = new URLSearchParams(params);
@@ -688,6 +839,116 @@ export function MetricsModulePage() {
                 ) : null}
               </CardContent>
             </Card>
+          </div>
+
+          <div className="met6-cat" data-testid="met6-cat">
+            <div className="met6-cat-head">
+              <h3>成本明细</h3>
+              <div className="met6-window" role="group" aria-label="成本明细视角">
+                <Button
+                  size="sm"
+                  outlined={viewMode !== 'employee'}
+                  aria-pressed={viewMode === 'employee'}
+                  onClick={() => chooseView('employee')}
+                  data-testid="met6-cat-employee"
+                >
+                  按员工
+                </Button>
+                <Button
+                  size="sm"
+                  outlined={viewMode !== 'model'}
+                  aria-pressed={viewMode === 'model'}
+                  onClick={() => chooseView('model')}
+                  data-testid="met6-cat-model"
+                >
+                  按模型
+                </Button>
+              </div>
+            </div>
+
+            {breakdownView.kind === 'loading' ? (
+              <Card data-testid="met6-cat-loading">
+                <CardContent className="space-y-2 p-4">
+                  <div className="met5-skeleton h-4 w-40" />
+                  <div className="met5-skeleton h-24 w-full" />
+                </CardContent>
+              </Card>
+            ) : null}
+
+            {breakdownView.kind === 'unavailable' ? (
+              <Card data-testid="met6-cat-unavailable">
+                <CardContent className="space-y-2 p-4">
+                  <p className="font-medium">这份成本明细暂时读不到</p>
+                  <p className="text-sm text-muted-foreground" title={breakdownView.gap ?? undefined}>
+                    {breakdownView.reason}
+                  </p>
+                  <RequestId id={breakdownView.requestId} />
+                  <Button size="sm" outlined onClick={() => setAttempt((value) => value + 1)} data-testid="met6-cat-retry">
+                    重试
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : null}
+
+            {breakdownView.kind === 'ready' && breakdownView.lines.length === 0 ? (
+              <Card data-testid="met6-cat-empty">
+                <CardContent className="space-y-2 p-4">
+                  <p className="font-medium">
+                    {breakdownView.view === 'model' ? '上游没有给出按模型的用量' : '这个窗口的账本没有实扣行'}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {breakdownView.view === 'model'
+                      ? '按模型的明细来自 Hermes 用量；上游这次没有返回任何模型行，页面不补空行、不按 0 记。'
+                      : '账本在这个窗口没有任何实扣行，所以没有可列的员工；不补 0，也不拿别的时段顶替。'}
+                  </p>
+                </CardContent>
+              </Card>
+            ) : null}
+
+            {breakdownView.kind === 'ready' && breakdownView.lines.length > 0 ? (
+              <>
+                <div className="met6-table-scroll">
+                  <table className="met6-table" data-testid="met6-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">{breakdownView.view === 'model' ? '模型' : '员工'}</th>
+                        <th scope="col">支出</th>
+                        <th scope="col">次数</th>
+                        <th scope="col">占比</th>
+                        <th scope="col">账本截至</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {breakdownView.lines.map((line, index) => (
+                        <tr key={line.key} data-testid={`met6-row-${index}`}>
+                          <td>
+                            <span className="met6-rowname">{line.label}</span>
+                            {line.sub ? <span className="met6-rowsub">{line.sub}</span> : null}
+                          </td>
+                          <td className="met6-num">{formatUsd(line.costUsd)}</td>
+                          <td className="met6-num">
+                            {line.count ?? '—'}
+                            {line.countNote ? <span className="met6-rowsub">{line.countNote}</span> : null}
+                          </td>
+                          <td className="met6-num">{line.share === null ? '—' : `${line.share}%`}</td>
+                          <td className="met6-num">{line.asOf ? formatBeijing(line.asOf) : '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="met6-source" data-testid="met6-cat-source">
+                  来源：{breakdownView.source} · 截至{' '}
+                  {breakdownView.asOf ? formatBeijing(breakdownView.asOf) : '—'}
+                  {' · 合计 '}
+                  <span className="font-mono" data-testid="met6-cat-total">
+                    {formatUsd(breakdownView.total)}
+                  </span>
+                  {` · ${breakdownView.lines.length} 行`}
+                </p>
+                {breakdownView.note ? <p className="met6-hint">{breakdownView.note}</p> : null}
+              </>
+            ) : null}
           </div>
         </section>
       )}

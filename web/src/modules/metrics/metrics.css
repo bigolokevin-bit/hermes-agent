@@ -386,3 +386,84 @@
     grid-column: 1 / -1;
   }
 }
+
+/* ---- met6: cost breakdown (by employee / by model) ----------------------- */
+.met6-cat {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.met6-cat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.met6-cat-head h3 {
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.met6-table-scroll {
+  min-width: 0;
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.met6-table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.met6-table th {
+  padding: 8px 10px;
+  text-align: left;
+  white-space: nowrap;
+  font-weight: 550;
+  color: var(--color-muted-foreground);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.met6-table td {
+  padding: 8px 10px;
+  vertical-align: top;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.met6-table tr:last-child td {
+  border-bottom: none;
+}
+
+.met6-num {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.met6-rowname {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.met6-rowsub {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--color-muted-foreground);
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+@media (max-width: 720px) {
+  .met6-table {
+    min-width: 480px;
+  }
+}
