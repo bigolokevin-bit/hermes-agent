@@ -973,3 +973,63 @@ ESLINT_EXIT=0（无输出）
 ### C4. 未验项
 - 截图未产出：本 worktree 禁 install、无浏览器落点（页面尚未接路由，接线属 R5 写域），jsdom 无布局引擎，无法产出像素级 1440/1280/375 证据；仅以渲染测试 + `flex/min-w-0/break-words` 契约替代。
 - 真实 2xx 载荷形状（字段名、状态枚举、scope 文案）未采样；`delegations.ts` 的候选键表为仓内推导。
+
+## TASK runs filter contract (2026-11-19, base b4341cc7)
+
+### Contract
+The runs read accepts exactly three filter names: `employeeId`, `status`, `since`
+(plus `limit` / `cursor` for paging). Any other filter key answers
+`400 request.missing_filter`, which is why a display-level alias must never be
+sent as a query key.
+
+### What the tree actually contained
+- `grep -rn "createdByEmpIdEquals" --include='*.ts' --include='*.tsx' .` → 0 hits.
+- `git log --oneline -S "createdByEmpIdEquals" -- web/src` → no output (absent from
+  the whole history of this tree, not only from the current base).
+- `grep -rn "谁创建" web/src` → 0 hits (the only 创建人 wording lives in the tasks
+  module and is unrelated).
+So the failing alias was never in this page's code; the real gap was that no
+employee filter existed at all. This commit names the accepted parameter and pins
+the query-key set so the alias cannot creep in later.
+
+### Change
+- `runs.ts`: `ListQuery` gained `employeeId?: string`; `askListRoute` sets
+  `employeeId` on the runs route only (the `run-stats` fallback keeps its own
+  `from`/`to` names) with a comment naming the contract and the forbidden alias.
+- `useRunsData.ts`: `ListFilters` gained `employeeId`, the request-identity key
+  includes it, and `loadRuns` forwards it.
+- `RunsModulePage.tsx`: a deep link `?employee=<id>` narrows the list through
+  `employeeId`. No filter control is rendered for it, so no dead control appears
+  (the page keeps its zero-write, control-light surface).
+- `runs.test.ts`: three new cases — `employeeId` reaches the URL, no request URL
+  contains `createdBy`/`createdByEmpIdEquals`, and every runs-route query key is
+  inside `{since, limit, status, cursor, employeeId}`, with the parameter omitted
+  when no employee is selected.
+
+### Raw endpoint readings (BFF 127.0.0.1:8092, no identity on disk)
+```
+GET /api/runs?employeeId=emp_9f3a4b7c&limit=5
+  -> 401  {"code":"console.unauthenticated","message":"identity check failed"}
+     x-console-request-id: 65ecca00a33140e3a058084c5a82860c
+GET /api/runs?since=2026-11-18T00:00:00.000Z&limit=5
+  -> 401  {"code":"console.unauthenticated","message":"identity check failed"}
+     x-console-request-id: 1b3f70d2a4914405b14ccc34423d443a
+GET /agent-api/api/runs?employeeId=emp_9f3a4b7c&limit=5
+  -> 404  {"code":"console.not_found","message":"static asset not found"}
+     x-console-request-id: 05fd6f2fa3fd4013ab3f705caeccfc47
+```
+The identity gate runs before parameter validation, so a 200 (or even the
+`400 request.missing_filter` original symptom) cannot be reproduced on this
+machine without a signed-in cookie. That is stated rather than simulated.
+
+### Gates (run in `web/`)
+- `npx vitest run src/modules/runs` → exit 0, `Test Files 2 passed`, `Tests 54 passed`
+- `npx tsc -b . --noEmit` → exit 2, 49 `error TS` lines, all under `../apps/shared/**`,
+  zero under `src/modules/runs` (pre-existing baseline)
+- `npx eslint src/modules/runs` → exit 0, no output
+
+### Not verified
+- A real 200 from `/api/runs?employeeId=...` (needs an authenticated cookie).
+- Whether the running BFF enforces `status`/`since` as required filters for this
+  route — only the accepted name set is pinned here.
+- Pixel-level overflow at 1440/1280/375 (no browser fixture in this worktree).

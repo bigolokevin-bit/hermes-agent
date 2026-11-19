@@ -115,6 +115,8 @@ export interface ListState {
 
 export interface ListQuery {
   status?: string;
+  /** Accepted by the BFF under exactly this name (contract: employeeId/status/since). */
+  employeeId?: string;
   since: string;
   cursor?: string;
 }
@@ -201,6 +203,10 @@ async function askListRoute(path: string, q: ListQuery): Promise<RouteAnswer> {
     : new URLSearchParams({ since: q.since, limit: String(PAGE_LIMIT) });
   if (!path.includes("run-stats")) {
     if (q.status) params.set("status", q.status);
+    // The BFF accepts exactly employeeId/status/since. Never send a display-level
+    // alias such as createdByEmpIdEquals — it is not a known key and the read fails
+    // with 400 request.missing_filter.
+    if (q.employeeId) params.set("employeeId", q.employeeId);
     if (q.cursor) params.set("cursor", q.cursor);
   }
   const url = `${path}?${params.toString()}`;

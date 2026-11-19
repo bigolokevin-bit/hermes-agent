@@ -54,6 +54,8 @@ function forcedResult(state: ForcedState): ListState {
 
 export interface ListFilters {
   status: string | null;
+  /** Sent to the BFF under the accepted `employeeId` name; null when no employee is addressed. */
+  employeeId?: string | null;
   sinceKey: SinceKey;
 }
 
@@ -68,7 +70,7 @@ export function useRunsData(forced: ForcedState | null, filters: ListFilters): R
   const [read, setRead] = useState<{ key: string; settled: ListState } | null>(null);
 
   const reload = useCallback(() => setAttempt((value) => value + 1), []);
-  const key = `${attempt}|${filters.status ?? ""}|${filters.sinceKey}`;
+  const key = `${attempt}|${filters.status ?? ""}|${filters.employeeId ?? ""}|${filters.sinceKey}`;
 
   useEffect(() => {
     if (forced !== null) return;
@@ -76,6 +78,7 @@ export function useRunsData(forced: ForcedState | null, filters: ListFilters): R
     const askedKey = key;
     void loadRuns({
       status: filters.status ?? undefined,
+      employeeId: filters.employeeId ?? undefined,
       since: sinceIso(filters.sinceKey),
     }).then((settled) => {
       if (alive) setRead({ key: askedKey, settled });

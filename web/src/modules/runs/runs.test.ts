@@ -246,3 +246,35 @@ describe("retry means a NEW run", () => {
     await expect(requestRetryRun(RUN.runId)).rejects.toBeInstanceOf(ApiError);
   });
 });
+
+
+describe("the employee filter uses only the accepted parameter name", () => {
+  it("sends employeeId and never a display-level alias", async () => {
+    api.fetchJSON.mockResolvedValue({ items: [RUN] });
+    await loadRuns({ since: "2026-11-12T00:00:00Z", employeeId: "emp_9f3a4b7c" });
+    const url = String(api.fetchJSON.mock.calls[0]?.[0]);
+    expect(url).toContain("employeeId=emp_9f3a4b7c");
+    expect(url).not.toContain("createdByEmpIdEquals");
+    expect(url).not.toContain("createdBy");
+  });
+
+  it("keeps the runs route query keys inside the accepted five", async () => {
+    api.fetchJSON.mockResolvedValue({ items: [RUN] });
+    await loadRuns({
+      since: "2026-11-12T00:00:00Z",
+      status: "failed",
+      employeeId: "emp_9f3a4b7c",
+      cursor: "c1",
+    });
+    const url = String(api.fetchJSON.mock.calls[0]?.[0]);
+    const search = new URL(url, "http://console.local").searchParams;
+    const allowed = new Set(["since", "limit", "status", "cursor", "employeeId"]);
+    for (const key of search.keys()) expect(allowed.has(key)).toBe(true);
+  });
+
+  it("omits the employee parameter when no employee is selected", async () => {
+    api.fetchJSON.mockResolvedValue({ items: [RUN] });
+    await loadRuns({ since: "2026-11-12T00:00:00Z" });
+    expect(String(api.fetchJSON.mock.calls[0]?.[0])).not.toContain("employeeId=");
+  });
+});
