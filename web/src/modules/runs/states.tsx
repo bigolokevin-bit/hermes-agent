@@ -7,7 +7,7 @@
  * but the pane receives a request id and nothing else, so it cannot repeat
  * what the two differ on — no code word, no route, no row above it.
  *
- * Fixture debt burn (R30): the `?state=` repro leg and its `data-fixture`
+ * Fixture debt burn (R30): the `?state=` repro leg and its `fixture 标记`
  * marker are gone — every panel below is painted from a real read of
  * `/agent-api/api/runs`, and a failed read is said as a failure, never faked.
  */

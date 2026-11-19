@@ -715,10 +715,11 @@ describe('MetricsModulePage — 7×24 heat', () => {
     expect(busy.className).not.toContain('is-missing');
     expect(busy.getAttribute('title')).toContain('4 次');
     expect(busy.getAttribute('title')).toContain('（北京时间）');
+    expect(busy.getAttribute('title')).toContain('成本 —');
     expect(idle.className).toContain('is-zero');
     expect(idle.getAttribute('title')).toContain('0 次');
     expect(missing.className).toContain('is-missing');
-    expect(missing.getAttribute('title')).toContain('接口未返回这一格');
+    expect(missing.getAttribute('title')).toContain('无数据');
 
     expect(document.querySelector('[data-testid="met6-heat-count"]')?.textContent).toBe('2');
     expect(document.querySelector('[data-testid="met6-heat-total"]')?.textContent).toBe('4');

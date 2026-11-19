@@ -26,7 +26,7 @@
   "rootShell": {
     "url": "http://127.0.0.1:9122/",
     "hasMainEl": true,
-    "mainChars": 701,
+    "mainChars": 1228,
     "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 刷新 可上岗 各项"
   },
   "contentChecked": 51,
@@ -205,13 +205,13 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 224,
+      "mainChars": 353,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
       "consoleErrorEnv": null,
       "evalError": null,
-      "headSample": "运营 · 控制台 数字员工 列表 能力与权限 数字员工 （3） 刷新 员工 状态 工位 模型 支"
+      "headSample": "运营 · 控制台 数字员工 列表 能力与权限 数字员工 3 刷新 在岗 / 受限 / 暂停 2 "
     },
     {
       "route": "#/employees?tab=matrix",
@@ -231,11 +231,11 @@
       "source": "DETAIL_TAB",
       "kind": "detail-zone",
       "verdict": "content-ok",
-      "mainChars": 49,
+      "mainChars": 110,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 0,
-      "consoleErrorEnv": null,
+      "consoleErrors": 1,
+      "consoleErrorEnv": "auth-required-401",
       "evalError": null,
       "headSample": "工作台 配置 任务 运行 证据 员工 · EMPLOYEE — 概览 能力与权限 审批 运行 审"
     },
@@ -556,13 +556,13 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 234,
+      "mainChars": 355,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 1,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 系统健康 实例活着吗 健康 3 "
+      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 系统健康 实例活着吗 正常 3 "
     },
     {
       "route": "#/system?tab=defaults",
@@ -660,7 +660,7 @@
       "source": "VIEW_DEEP_LINKS",
       "kind": "view",
       "verdict": "content-ok",
-      "mainChars": 202,
+      "mainChars": 1816,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
@@ -686,7 +686,7 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 1280,
+      "mainChars": 1281,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
@@ -695,13 +695,13 @@
       "headSample": "运营 · 控制台 任务与运行 任务 运行 控制台 · 运行 运行 按时间看运行记录。这一面只读："
     }
   ],
-  "distinctMainHeads": 31,
-  "medianMainChars": 371,
+  "distinctMainHeads": 30,
+  "medianMainChars": 391,
   "contentEmpty": [],
   "contentEmptyCount": 0,
   "mode": "auth-attributed",
   "envAttribution": {
-    "auth-required-401": 26
+    "auth-required-401": 27
   },
   "probeErrors": [],
   "deniedEndpoints": [
@@ -736,10 +736,10 @@
     "redirects=24 vs 门定值 23（routes.ts 并发新增形态，归因非判红；门值更新归 L0/A）"
   ],
   "routesRenderedWithoutMainEl": 0,
-  "routesWithConsoleErrors": 26,
+  "routesWithConsoleErrors": 27,
   "parseErrors": [],
   "ok": true,
-  "headHash": "a1a26ccf",
+  "headHash": "466e2d2b",
   "exitCode": 0,
   "counts": {
     "probed": 75,

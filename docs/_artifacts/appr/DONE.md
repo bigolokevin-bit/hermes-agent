@@ -610,3 +610,18 @@ KPI 族：五卡 data-testid=ov6-kpi-<name> 统一在位+新增 data-duty-testid
 环境侧定性与修法（非包声明改动）：apps/shared 已在 pnpm-workspace（packages 含 apps/*）与 pnpm-lock（importer apps/shared，vitest@4.1.12 devDep，line 525/593/724 link）正确声明；红因=本 checkout 的 apps/shared/node_modules 缺失（strict 隔离下 shared 自身测试文件解析不到 vitest）。补装=仓库根 `pnpm install --frozen-lockfile`——默认 node 24.22.0 被 engines{node>=26} 拒（ Unsupported engine），用本机 nvm v26.13.1 一次成功（Done in 10s，未改 package.json/pnpm-lock）。可复现判据：无 node_modules/apps/shared 时 TS2307/7006 必现；install 后 0 现。门不必拆 web-only——web/tsconfig.app.json include 有意含 ../apps/shared/src（源码+其测试面同项目校验），拆include 反而遮蔽 shared 面类型；建议保留现形，把「node>=26 下 pnpm install --frozen-lockfile」写进环境引导即可。
 
 修后：同一命令 EXIT=0、0 行错误。定向 employees 6 passed（仅删类型断言，未跑全量=零运行时改动，全量读数沿用上笔 130 files/1336 passed）。
+
+## R38 唯一产品拦车：/employees 挂载错实现修复（2026-11-20 04:1x，lane/console-appr）
+
+基线：按单 fetch+reset --hard origin/lane/hermes-console=**66d18551**（wave-9；toplevel 校验 ✓，porc=0）。
+
+根因与修法：R38 卡实测 /employees 渲 legacy pages/EmployeesPage——App.tsx:1232 `/employees` ConsoleModulePage 的 live slot `list: <EmployeesPage />` 挂的是旧页；模块 EmployeesModulePage（6e7f16ac 搜索/筛选深度单）从未接路由（其 chunk 在产物里只因 manifest reuse 静态可达）。修法=App.tsx:92 新 lazy import modules/employees/EmployeesModulePage + slot 换 `list: <EmployeesModulePage />`；matrix slot 与 /employees/:id 详情未动；routes.ts/registry 零改动，无新增 Tab。
+
+自证（jsdom 真实挂载链，新文件 EmployeesRouteMount.test.tsx 4 用例全绿；9122 禁重建，活体 DOM 待下一代次复核）：
+- emp-l-page（frame 级）+emp-l-search=1+emp-l-filter-lifecycle=1+emp-l-list 在屏；legacy 独有文案「这台机器还没有接入任何数字员工」「无法打开数字员工列表」均不在=非 legacy 判别证据。
+- 行姓名=真 a[href=/employees/emp_AAAA1111BBBB2222CCCC3333]（emp-l-name-link-*），emp-l-row-* ×2，行文本无裸 emp_；部门列真值「增长组」/缺值「—」；最近活跃 2026-11-18 09:10（BJT 到分）；未知态走「待核实」。
+- 筛选生效：?lifecycle=paused 深链→select 回填 paused、行数 2→1、fetch 带 lifecycleState=paused；交互 change→active 再过滤（小鲤 1 行）。URL 唯一状态源=readback：?q=%E5%B0%8F%E9%B2%A4 深链回填搜索框并恰发该 keyword 查询；back/刷新同 URL（上单 6e7f16ac 机制，本单挂上路由后真实可达）。
+- 错误态=人话+RequestIdCopy（req-copy）+重试；403≡404 同体且不外泄 agent-api 路径。
+- ⑦三档无横溢：jsdom 不可测三档宽度，如实报形态学证据=七列 grid 全 minmax(0,·)+truncate、375 档单列堆叠 data-label（与 tasks P2 单已验同款布局），待活体复核。
+
+门禁：assert-ia 两模式 exit 0，routes 51/tabs 22/chatHosts 1/modules 8；定向 employees 2 files/10 passed；全量 131 files/1346 passed（≥基线）；tsc -p App.tsx/employees 零红。

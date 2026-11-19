@@ -14,7 +14,7 @@
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 25,
+  "distinctMainHeads": 26,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -177,13 +177,13 @@
     {
       "route": "#/employees",
       "viewport": "1440",
-      "chars": 124,
+      "chars": 186,
       "hasMainEl": true
     },
     {
       "route": "#/employees",
       "viewport": "375",
-      "chars": 124,
+      "chars": 186,
       "hasMainEl": true
     },
     {
@@ -213,7 +213,7 @@
     {
       "route": "#/employees/:employeeId?zone=config",
       "viewport": "1440",
-      "chars": 51,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -243,13 +243,13 @@
     {
       "route": "#/employees/:employeeId?zone=runs",
       "viewport": "375",
-      "chars": 51,
+      "chars": 42,
       "hasMainEl": true
     },
     {
       "route": "#/employees/:employeeId?zone=tasks",
       "viewport": "1440",
-      "chars": 42,
+      "chars": 36,
       "hasMainEl": true
     },
     {
@@ -501,13 +501,13 @@
     {
       "route": "#/system",
       "viewport": "1440",
-      "chars": 333,
+      "chars": 406,
       "hasMainEl": true
     },
     {
       "route": "#/system",
       "viewport": "375",
-      "chars": 333,
+      "chars": 403,
       "hasMainEl": true
     },
     {
@@ -537,7 +537,7 @@
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "1440",
-      "chars": 379,
+      "chars": 371,
       "hasMainEl": true
     },
     {
@@ -549,7 +549,7 @@
     {
       "route": "#/system?tab=retention",
       "viewport": "1440",
-      "chars": 371,
+      "chars": 379,
       "hasMainEl": true
     },
     {
@@ -631,10 +631,11 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 2,
+  "consoleErrorsObservedByShots": 3,
   "consoleErrorRoutesObservedByShots": [
-    "#/overview?tab=usage",
-    "#/system?tab=retention"
+    "#/employees/:employeeId?zone=tasks",
+    "#/system",
+    "#/system?tab=events&view=anomaly"
   ],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
@@ -645,12 +646,12 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "a1a26ccf",
+  "headHash": "466e2d2b",
   "exitCode": 0,
-  "entry": "assets/index-y91x2LYj.js",
-  "entrySha256": "0d6ead0a1172a136038c0378694e84cdac82b3e7f704a5bdb8d78608849ba54b",
-  "entryBytes": 163770,
-  "servedEntryBefore": "index-y91x2LYj.js",
-  "servedEntryAfter": "index-y91x2LYj.js",
+  "entry": "assets/index-DBjC1SjB.js",
+  "entrySha256": "6e025535458adcc88e2311f9c3e569f07a1442299d5004803b890ab7010c1d78",
+  "entryBytes": 163911,
+  "servedEntryBefore": "index-DBjC1SjB.js",
+  "servedEntryAfter": "index-DBjC1SjB.js",
   "auxiliary": true
 }

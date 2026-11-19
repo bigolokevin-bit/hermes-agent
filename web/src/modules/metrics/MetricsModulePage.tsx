@@ -1377,8 +1377,8 @@ export function MetricsModulePage() {
                             const tone = !cell.present ? 'is-missing' : cell.runs === 0 ? 'is-zero' : `is-l${cell.level}`;
                             const hh = String(cell.hour).padStart(2, '0');
                             const label = cell.present
-                              ? `${row.label} ${hh}:00–${hh}:59 · ${cell.runs} 次（北京时间）`
-                              : `${row.label} ${hh}:00–${hh}:59 · 接口未返回这一格（—）`;
+                              ? `${cell.at ? formatBeijing(cell.at) : `${row.label} ${hh}:00`}（北京时间） · ${cell.runs} 次 · 成本 —（账本按日/月记账，没有小时粒度）`
+                              : `${row.label} ${hh}:00（北京时间） · 无数据（接口没有返回这一格，不当作 0 次）`;
                             return (
                               <button
                                 key={cell.hour}
@@ -1406,8 +1406,19 @@ export function MetricsModulePage() {
                   <span className="font-mono" data-testid="met6-heat-total">{formatCount(heatView.value.total)}</span>
                   {' 次'}
                 </p>
+                <div className="met5-legend" data-testid="met6-heat-legend">
+                  <span>少</span>
+                  {[1, 2, 3, 4].map((level) => (
+                    <span key={level} className={`met5-swatch is-l${level}`} aria-hidden="true" />
+                  ))}
+                  <span>多</span>
+                  <span className="met5-swatch is-zero" aria-hidden="true" />
+                  <span>0 次</span>
+                  <span className="met5-swatch is-missing" aria-hidden="true" />
+                  <span>无数据</span>
+                </div>
                 <p className="met6-hint">
-                  返回 0 的格子是「这一小时真的没跑」；接口没返回的格子标「—」，两者不混。左右滑动看 12–23 点。
+                  色阶只表达返回过的运行密度；返回 0 的格子是「这一小时真的没跑」，接口没返回的格子标「无数据」，两者不混。成本没有小时粒度，tooltip 里统一显示「—」。左右滑动看 12–23 点。
                 </p>
               </>
             ) : null}

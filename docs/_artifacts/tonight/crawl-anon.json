@@ -205,13 +205,13 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 120,
+      "mainChars": 175,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 3,
+      "consoleErrors": 2,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "运营 · 控制台 数字员工 列表 能力与权限 数字员工 刷新 需要登录 这个页面的登录状态已经失"
+      "headSample": "运营 · 控制台 数字员工 列表 能力与权限 数字员工 刷新 在岗 / 受限 / 暂停 0 · "
     },
     {
       "route": "#/employees?tab=matrix",
@@ -231,10 +231,10 @@
       "source": "DETAIL_TAB",
       "kind": "detail-zone",
       "verdict": "content-ok",
-      "mainChars": 137,
+      "mainChars": 49,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 3,
+      "consoleErrors": 1,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
       "headSample": "工作台 配置 任务 运行 证据 员工 · EMPLOYEE — 概览 能力与权限 审批 运行 审"
@@ -556,13 +556,13 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 312,
+      "mainChars": 388,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 4,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 系统健康 实例活着吗 健康 1 "
+      "headSample": "系统 · 控制台 系统设置 系统健康 默认设置 版本 审计事件 系统健康 实例活着吗 正常 1 "
     },
     {
       "route": "#/system?tab=defaults",
@@ -696,7 +696,7 @@
     }
   ],
   "distinctMainHeads": 36,
-  "medianMainChars": 172,
+  "medianMainChars": 175,
   "contentEmpty": [],
   "contentEmptyCount": 0,
   "mode": "auth-attributed",
@@ -756,7 +756,7 @@
   "routesWithConsoleErrors": 51,
   "parseErrors": [],
   "ok": true,
-  "headHash": "a1a26ccf",
+  "headHash": "466e2d2b",
   "exitCode": 0,
   "counts": {
     "probed": 75,
