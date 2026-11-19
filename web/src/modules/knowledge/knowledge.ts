@@ -5,17 +5,25 @@
  * the real login cookie (the token value was never printed, and never is):
  *
  *   GET /agent-api/api/knowledge/search?q=员工&limit=5  404 console.unknown_route      0 rows
- *   GET /agent-api/api/knowledge/citations?limit=5      404 knowledge.not_wired        0 rows
+ *   GET /agent-api/api/knowledge/search?limit=12        404 console.unknown_route      0 rows
+ *   GET /agent-api/api/knowledge/citations?limit=20     404 knowledge.not_wired        0 rows
  *   GET /agent-api/api/knowledge/spaces                 404 knowledge.not_wired        0 rows
+ *   GET /agent-api/api/knowledge/sources?limit=20       404 knowledge.not_wired        0 rows
+ *   GET /agent-api/api/knowledge/ingest?limit=20        404 console.unknown_route      0 rows
+ *   GET /agent-api/api/knowledge/tasks?limit=20         404 console.unknown_route      0 rows
+ *   GET /agent-api/api/knowledge/documents?limit=20     404 console.unknown_route      0 rows
  *   GET /agent-api/api/documents?limit=50               404 console.unknown_route      0 rows
  *   GET /agent-api/api/audit?action=kb.read&limit=50    200 { events: [] }             0 rows
- *   GET /agent-api/api/sessions?limit=20                200 { sessions: [], total: 0 } 0 rows
- *   GET /agent-api/api/console-sessions/<id>            404 (no session to read)
+ *   GET /agent-api/api/console-sessions?limit=20        200 { items: [] }              0 rows
+ *   GET /agent-api/api/console-sessions/<id>            404 console_session.not_found
+ *   GET /agent-api/api/run-events?kind=citation         400 console.missing_param（要 runId）
+ *   GET /agent-api/api/tasks?limit=20                   200 items=20 —— 运营任务看板，不是知识接入
  *
  * So every surface makes one real request and renders the answer it got: rows when
  * the read is wired; ONE body for a 403 and a 404 alike when it is not, because the
  * screen must not reveal which of the two the service actually said. Nothing here
- * fabricates a row, a count or a sample, and no fixture stands in for a missing read.
+ * fabricates a row, a count or a sample, no fixture stands in for a missing read, and
+ * no other module's endpoint is borrowed to fill a number.
  */
 
 export const KNOWLEDGE_GAP = "GAP-03";
@@ -42,8 +50,26 @@ export const TAB_ORDER: KnowledgeTab[] = ["spaces", "ingest", "retrieval", "evid
 export const SPACES_URL = "/agent-api/api/knowledge/spaces";
 export const DOCUMENTS_URL = "/agent-api/api/documents?limit=50";
 export const RECORDS_URL = "/agent-api/api/audit?action=kb.read&limit=50";
-export const SESSIONS_URL = "/agent-api/api/sessions?limit=20";
+/**
+ * The session list the citation scan reads. The canonical console-session collection is
+ * used because the detail read belongs to the same route family; `/api/sessions` is only
+ * a documented legacy alias of it (same upstream, `{sessions,total}` reshaped from
+ * `{items,next_cursor}`), so list and detail now come from one family.
+ */
+export const SESSIONS_URL = "/agent-api/api/console-sessions?limit=20";
 export const CITATIONS_URL = "/agent-api/api/knowledge/citations?limit=20";
+/**
+ * 数据源接入任务. The BFF names exactly three knowledge reads as its own fail-closed
+ * routes — `/api/knowledge/spaces`, `/api/knowledge/sources`, `/api/knowledge/citations`
+ * (`_KNOWLEDGE_NOT_WIRED_ROUTES` in `apps/console/server.py`) — and answers
+ * `knowledge.not_wired` for them, so `sources` is the designated ingest read.
+ * Probed and deliberately NOT used: `/api/knowledge/ingest`, `/api/knowledge/ingest/tasks`,
+ * `/api/knowledge/tasks`, `/api/knowledge/documents`, `/api/knowledge/datasets` (all
+ * `console.unknown_route`), and `/api/tasks` — which answers 200 with 20 rows but is the
+ * operator task board (`source.kind` manual/console; `kind=knowledge` and `type=ingest`
+ * are both ignored), so its rows are not knowledge ingestion and must not appear here.
+ */
+export const TASKS_URL = "/agent-api/api/knowledge/sources?limit=20";
 
 const SEARCH_LIMIT = 12;
 
@@ -59,12 +85,20 @@ export function searchUrl(query: string): string {
   return `/agent-api/api/knowledge/search?${params.toString()}`;
 }
 
-export type SurfaceKey = "spaces" | "ingest" | "search" | "records" | "citations" | "session-cites";
+export type SurfaceKey =
+  | "spaces"
+  | "tasks"
+  | "documents"
+  | "search"
+  | "records"
+  | "citations"
+  | "session-cites";
 
 /** Human label for each surface's source line — no route, no field name. */
 export const SURFACE_SOURCE: Record<SurfaceKey, string> = {
   spaces: "知识空间登记",
-  ingest: "文档与数据接入登记",
+  tasks: "数据源接入任务",
+  documents: "文档与数据接入登记",
   search: "知识库检索",
   records: "检索审计记录",
   citations: "知识库引用登记",
@@ -87,6 +121,30 @@ export interface KnowledgeRow {
   status: string;
   statusRaw: string | null;
   statusReason: string | null;
+}
+
+/**
+ * One 数据源接入任务: what is being brought in, how far it got, how much of it there
+ * is, and when that was last true. Every value the read did not return says 「—」 with
+ * the reason; a returned 0 stays a real 0.
+ */
+export interface IngestTaskRow {
+  id: string;
+  name: string;
+  nameReason: string | null;
+  kind: string;
+  kindRaw: string | null;
+  kindReason: string | null;
+  status: string;
+  statusRaw: string | null;
+  statusReason: string | null;
+  progress: string;
+  progressReason: string | null;
+  issue: string | null;
+  timeLabel: string | null;
+  at: string;
+  atRaw: string | null;
+  atReason: string | null;
 }
 
 /**
@@ -545,6 +603,146 @@ export function readRows(body: unknown, tab: KnowledgeTab): SurfaceValue<Knowled
   const rows = rowsOf(body);
   if (rows === null) return { rows: [], ...envelope, scanned: null };
   return { rows: rows.map((row) => readRowOf(row, tab)), ...envelope, scanned: null };
+}
+
+/** 接入任务状态 — human words only; an unknown word is 待核实, never a silent 「成功」. */
+function ingestStatusLabel(raw: string | null): string {
+  if (!raw) return "待核实";
+  const lower = raw.toLowerCase();
+  if (["queued", "pending", "scheduled", "waiting"].includes(lower)) return "排队中";
+  if (["processing", "running", "ingesting", "indexing", "syncing", "in_progress"].includes(lower)) {
+    return "处理中";
+  }
+  if (["success", "succeeded", "completed", "done", "ok", "ready", "active", "indexed"].includes(lower)) {
+    return "成功";
+  }
+  if (["failed", "error", "broken", "aborted"].includes(lower)) return "失败";
+  if (["cancelled", "canceled", "skipped"].includes(lower)) return "已取消";
+  if (["partial", "degraded", "warning"].includes(lower)) return "部分成功";
+  if (["disabled", "paused", "offline", "stopped"].includes(lower)) return "已停用";
+  if (["draft", "new", "unpublished"].includes(lower)) return "待处理";
+  return "待核实";
+}
+
+/** Which moment a timestamp is, in the operator's words — the field name never shows. */
+const TIME_KEYS: [string[], string][] = [
+  [["lastSyncAt", "last_sync_at", "syncedAt", "synced_at"], "最近同步"],
+  [["lastRunAt", "last_run_at", "finishedAt", "finished_at", "completedAt", "completed_at"], "最近处理"],
+  [["startedAt", "started_at"], "最近开始"],
+  [["updatedAt", "updated_at", "modifiedAt", "modified_at"], "最近更新"],
+  [["createdAt", "created_at"], "登记时间"],
+];
+
+function momentOf(row: Rec): { atRaw: string | null; timeLabel: string | null } {
+  for (const [keys, label] of TIME_KEYS) {
+    const value = pickString(...keys.map((key) => row[key]));
+    if (value) return { atRaw: value, timeLabel: label };
+  }
+  return { atRaw: null, timeLabel: null };
+}
+
+function taskOf(row: Rec): IngestTaskRow {
+  const id = pickString(row.taskId, row.task_id, row.jobId, row.job_id, row.sourceId, row.source_id, row.id) ?? "";
+  const name = pickString(
+    row.name,
+    row.title,
+    row.sourceName,
+    row.source_name,
+    row.displayName,
+    row.display_name,
+  );
+  const kindRaw = pickString(
+    row.kind,
+    row.type,
+    row.sourceType,
+    row.source_type,
+    row.provider,
+    row.mimeType,
+    row.mime_type,
+  );
+  const statusRaw = pickString(row.status, row.state, row.taskStatus, row.task_status, row.jobStatus, row.phase);
+  const done = pickNumber(
+    row.processed,
+    row.processedCount,
+    row.processed_count,
+    row.processedItems,
+    row.completed,
+    row.completedCount,
+    row.importedCount,
+    row.imported_count,
+  );
+  const total = pickNumber(
+    row.total,
+    row.totalCount,
+    row.total_count,
+    row.totalItems,
+    row.total_items,
+    row.itemCount,
+    row.item_count,
+    row.docCount,
+    row.documentCount,
+  );
+  const failed = pickNumber(
+    row.failed,
+    row.failedCount,
+    row.failed_count,
+    row.errorCount,
+    row.error_count,
+  );
+  const bytes = pickNumber(row.sizeBytes, row.size_bytes, row.bytes, row.size);
+  const moment = momentOf(row);
+  const at = beijing(moment.atRaw);
+  let progress: string;
+  let progressReason: string | null;
+  if (done !== null && total !== null) {
+    progress = `${done} / ${total}`;
+    progressReason = null;
+  } else if (total !== null) {
+    progress = `共 ${total}`;
+    progressReason = null;
+  } else if (done !== null) {
+    progress = `已完成 ${done}`;
+    progressReason = null;
+  } else if (bytes !== null) {
+    const size = formatBytes(bytes);
+    progress = size ?? "—";
+    progressReason = size ? null : "上游给的字节数读不出可读大小";
+  } else {
+    progress = "—";
+    progressReason = "上游没有给出这一条处理了多少、共多少";
+  }
+  return {
+    id,
+    name: name ?? "—",
+    nameReason: name ? null : "上游没有给出这条记录叫什么",
+    kind: kindLabel(kindRaw, "ingest"),
+    kindRaw,
+    kindReason: kindRaw ? null : "上游没有给出来源类型",
+    status: ingestStatusLabel(statusRaw),
+    statusRaw,
+    statusReason: statusRaw ? null : "上游没有给出处理状态",
+    progress,
+    progressReason,
+    issue: failed === null ? null : `失败 ${failed}`,
+    timeLabel: moment.timeLabel,
+    at: at ?? "—",
+    atRaw: moment.atRaw,
+    atReason: at ? null : moment.atRaw ? "上游给的时间读不出是哪一刻" : "上游没有给出时间",
+  };
+}
+
+/** 接入任务 from the designated data-source read. */
+export function readTasks(body: unknown): SurfaceValue<IngestTaskRow> {
+  const envelope = stampOf(body);
+  const rows = rowsOf(body);
+  if (rows === null) return { rows: [], ...envelope, scanned: null };
+  const mapped = rows.map(taskOf);
+  const newest = newestOf(
+    mapped.map((row) => row.atRaw),
+    envelope,
+    "上游响应没有带采集时间，任务也没有给出可用时间，数据截至时间未知。",
+  );
+  return { rows: mapped, ...newest, scanned: null };
 }
 
 export function readSessions(body: unknown): SessionSummary[] {

@@ -263,10 +263,10 @@
 }
 
 .knw5-ref {
-  display: flex;
+  display: grid;
   min-width: 0;
-  align-items: flex-start;
-  justify-content: space-between;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
   gap: 12px;
   padding: 11px 0;
   border-bottom: 1px solid var(--color-border);
@@ -311,6 +311,58 @@
   -webkit-line-clamp: 3;
 }
 
+/* Row side: the drill button and the original's entry, stacked, never squeezed. */
+.knw5-ref-side {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.knw5-drill {
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--color-foreground);
+  cursor: pointer;
+  font-size: 0.68rem;
+  padding: 3px 8px;
+}
+
+/* The drill is a row-wide band: it sits under both columns of its own row. */
+.knw5-ref-detail {
+  display: grid;
+  min-width: 0;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 18px;
+  margin: 2px 0 0;
+  padding: 10px 0 2px;
+  border-top: 1px dashed var(--color-border);
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.knw5-ref-detail > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.knw5-ref-detail dt {
+  color: var(--color-muted-foreground);
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+}
+
+.knw5-ref-detail dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 .knw5-unreachable {
   display: flex;
   min-width: 0;
@@ -346,6 +398,16 @@
   overflow-wrap: anywhere;
 }
 
+/* A second line inside a cell (类型、失败条数) — smaller, never its own column. */
+.knw5-sub {
+  display: block;
+  min-width: 0;
+  color: var(--color-muted-foreground);
+  font-size: 0.68rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
 .knw5-copy {
   display: inline-flex;
   align-items: center;
@@ -375,8 +437,13 @@
     max-width: none;
   }
 
+  /* One column at phone width: 摘要, then the row's own actions, then the drill. */
   .knw5-ref {
-    flex-direction: column;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .knw5-ref-detail {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .knw5-scroll {
@@ -418,7 +485,9 @@
     font-size: 0.66rem;
   }
 
-  .knw5-table td > .knw5-reason {
+  /* Every value in a stacked cell sits in the second column; only the
+     data-label sits in the first, so a second line cannot drift under it. */
+  .knw5-table td > * {
     grid-column: 2;
   }
 }

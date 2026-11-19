@@ -1,13 +1,16 @@
 /**
  * `/knowledge` — 知识空间、数据接入、检索、证据与引用。
  *
- * Every surface on this page makes ONE real request and renders the answer it got.
- * There is no sample row, no invented count, and no `?state=` repro standing behind a
+ * The page is seven real reads: knowledge spaces, the designated data-source read
+ * answered as 接入任务, document登记, the knowledge search read, the retrieval audit
+ * records, the knowledge citation read, and the citations that recent console
+ * sessions carry. Each makes ONE request and renders the answer it got. There is no
+ * sample row, no invented count, and no `?state=` repro standing behind a
  * `data-fixture` badge: the four states come from the service, and a 403 and a 404
  * draw the same body on purpose. Technical values (raw ids, the GAP number, the full
  * 摘要) live in `title` attributes, never on screen.
  */
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
 import { ArrowRight, BookOpen, Copy, RefreshCw, Search } from "lucide-react";
 import { Badge } from "@nous-research/ui/ui/components/badge";
@@ -28,6 +31,7 @@ import {
   SURFACE_SOURCE,
   TAB_LABEL,
   TAB_ORDER,
+  TASKS_URL,
   UNWIRED_HUMAN,
   citationsFromDetail,
   initialTab,
@@ -36,9 +40,11 @@ import {
   readRows,
   readSearch,
   readSessions,
+  readTasks,
   searchUrl,
   sessionCitations,
   type CitationRow,
+  type IngestTaskRow,
   type KnowledgeRow,
   type KnowledgeTab,
   type RetrievalRow,
@@ -49,6 +55,18 @@ import {
 import "./knowledge.css";
 
 const SESSION_SCAN_LIMIT = 10;
+
+/**
+ * Which citation row is drilled open. The URL carries it (`ref=`), exactly like the
+ * panel does, so refresh, back/forward and a pasted link all reopen the same row —
+ * and nothing about the open row lives in a second copy of state.
+ */
+interface DrillState {
+  open: string;
+  toggle: (key: string) => void;
+}
+
+const RefDrill = createContext<DrillState>({ open: "", toggle: () => {} });
 
 type Surf<T> =
   | { kind: "loading" }
@@ -176,13 +194,17 @@ interface SurfaceProps<T> {
 function Surface<T>({ testid, source, state, onRetry, empty, render }: SurfaceProps<T>): ReactNode {
   const value = state.kind === "ready" ? state.value : null;
   const stamp = value?.stamp ?? null;
-  const stampReason =
-    value?.stampReason ??
-    (state.kind === "loading"
+  // A read that DID give a collection time says nothing else about time: the reason
+  // line only appears when the time is genuinely missing.
+  const stampReason = value
+    ? value.stamp
+      ? null
+      : value.stampReason ?? "上游响应没有给出可用时间，数据截至时间未知。"
+    : state.kind === "loading"
       ? "正在读取，数据截至时间未知。"
       : state.kind === "unwired"
         ? "这块数据没有读到，数据截至时间未知。"
-        : "这次没有读到数据，数据截至时间未知。");
+        : "这次没有读到数据，数据截至时间未知。";
 
   return (
     <section
@@ -290,46 +312,112 @@ function RowTable({ rows, testid }: { rows: KnowledgeRow[]; testid: string }): R
   );
 }
 
-/** Search hits and citations share one list: title, 摘要, 来源, 时间, 原文. */
+/** Search hits and citations share one list, and one drilldown per row. */
 function RefList({ rows, testid }: { rows: CitationRow[]; testid: string }): ReactNode {
+  const drill = useContext(RefDrill);
   return (
     <ul className="knw5-refs" data-testid={testid}>
-      {rows.map((row, index) => (
-        <li key={row.id || `ref-${index}`} className="knw5-ref" data-testid={`${testid}-row`}>
-          <div className="knw5-ref-main">
-            <div className="knw5-ref-title">
-              <Badge tone="outline">{row.kind}</Badge>
-              <span title={row.id || undefined}>{row.title}</span>
-              <Reason>{row.titleReason}</Reason>
+      {rows.map((row, index) => {
+        const key = row.id !== "" ? row.id : `${testid}-${index}`;
+        const isOpen = drill.open !== "" && drill.open === key;
+        return (
+          <li
+            key={key}
+            className="knw5-ref"
+            data-testid={`${testid}-row`}
+            data-open={isOpen ? "1" : "0"}
+          >
+            <div className="knw5-ref-main">
+              <div className="knw5-ref-title">
+                <Badge tone="outline">{row.kind}</Badge>
+                <span title={row.id || undefined}>{row.title}</span>
+                <Reason>{row.titleReason}</Reason>
+              </div>
+              <p className="knw5-ref-summary" data-testid={`${testid}-summary`} title={row.summary ?? undefined}>
+                {row.summary ?? "—"}
+                <Reason>{row.summaryReason}</Reason>
+              </p>
+              <div className="knw5-ref-meta">
+                <span data-testid={`${testid}-source-name`} title={row.sourceRaw ?? undefined}>
+                  来源：{row.source}
+                </span>
+                <Reason>{row.sourceReason}</Reason>
+                <span title={row.employeeRaw ?? undefined}>留下：{row.employee}</span>
+                <Reason>{row.employeeReason}</Reason>
+                <span>时间：{row.at}</span>
+                <Reason>{row.atReason}</Reason>
+              </div>
             </div>
-            <p className="knw5-ref-summary" data-testid={`${testid}-summary`} title={row.summary ?? undefined}>
-              {row.summary ?? "—"}
-              <Reason>{row.summaryReason}</Reason>
-            </p>
-            <div className="knw5-ref-meta">
-              <span data-testid={`${testid}-source-name`} title={row.sourceRaw ?? undefined}>
-                来源：{row.source}
-              </span>
-              <Reason>{row.sourceReason}</Reason>
-              <span title={row.employeeRaw ?? undefined}>留下：{row.employee}</span>
-              <Reason>{row.employeeReason}</Reason>
-              <span>时间：{row.at}</span>
-              <Reason>{row.atReason}</Reason>
+            <div className="knw5-ref-side">
+              <button
+                type="button"
+                className="knw5-drill"
+                aria-expanded={isOpen}
+                data-testid={`${testid}-drill`}
+                onClick={() => drill.toggle(key)}
+              >
+                {isOpen ? "收起原文" : "看原文与摘要"}
+              </button>
+              {row.href ? (
+                <Link className="knw5-link" to={row.href} data-testid={`${testid}-open`}>
+                  打开原文
+                  <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                </Link>
+              ) : (
+                <span className="knw5-unreachable" data-testid={`${testid}-unreachable`}>
+                  <b>原文不可达</b>
+                  <span>{row.unreachable}</span>
+                </span>
+              )}
             </div>
-          </div>
-          {row.href ? (
-            <Link className="knw5-link" to={row.href} data-testid={`${testid}-open`}>
-              打开原文
-              <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-            </Link>
-          ) : (
-            <span className="knw5-unreachable" data-testid={`${testid}-unreachable`}>
-              <b>原文不可达</b>
-              <span>{row.unreachable}</span>
-            </span>
-          )}
-        </li>
-      ))}
+            {isOpen ? (
+              <dl className="knw5-ref-detail" data-testid={`${testid}-detail`} title={row.id || undefined}>
+                <div>
+                  <dt>原文位置</dt>
+                  <dd>
+                    {row.href ? (
+                      <Link className="knw5-link" to={row.href} data-testid={`${testid}-detail-open`}>
+                        打开原文
+                        <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                      </Link>
+                    ) : (
+                      <span data-testid={`${testid}-detail-unreachable`}>原文不可达 · {row.unreachable}</span>
+                    )}
+                  </dd>
+                </div>
+                <div>
+                  <dt>来源</dt>
+                  <dd title={row.sourceRaw ?? undefined}>
+                    {row.source}
+                    <Reason>{row.sourceReason}</Reason>
+                  </dd>
+                </div>
+                <div>
+                  <dt>摘要</dt>
+                  <dd data-testid={`${testid}-detail-summary`}>
+                    {row.summary ?? "—"}
+                    <Reason>{row.summaryReason}</Reason>
+                  </dd>
+                </div>
+                <div>
+                  <dt>留下这段引用</dt>
+                  <dd title={row.employeeRaw ?? undefined}>
+                    {row.employee}
+                    <Reason>{row.employeeReason}</Reason>
+                  </dd>
+                </div>
+                <div>
+                  <dt>时间</dt>
+                  <dd>
+                    {row.at}
+                    <Reason>{row.atReason}</Reason>
+                  </dd>
+                </div>
+              </dl>
+            ) : null}
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -400,16 +488,82 @@ function SpacesSurface({ nonce }: { nonce: string }): ReactNode {
 function IngestSurface({ nonce }: { nonce: string }): ReactNode {
   const surface = useSurface<KnowledgeRow>(
     () => fetchJsonStrict(DOCUMENTS_URL).then((body) => readRows(body, "ingest")),
-    `ingest|${nonce}`,
+    `documents|${nonce}`,
   );
   return (
     <Surface
       testid="knw5-ingest"
-      source="ingest"
+      source="documents"
       state={surface.state}
       onRetry={surface.retry}
       empty={() => <p>当前没有读到文档登记。接口已响应，但列表为空；不显示 0 篇。</p>}
       render={(value) => <RowTable rows={value.rows} testid="knw5-ingest-table" />}
+    />
+  );
+}
+
+/** What the data-source reads answer as 接入任务, in the operator's own words. */
+function TaskTable({ rows }: { rows: IngestTaskRow[] }): ReactNode {
+  return (
+    <div className="knw5-scroll">
+      <table className="knw5-table" data-testid="knw5-ingest-tasks-table">
+        <thead>
+          <tr>
+            <th scope="col">数据源</th>
+            <th scope="col">状态</th>
+            <th scope="col">进度与数量</th>
+            <th scope="col">时间</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, index) => (
+            <tr key={row.id || `task-${index}`} data-testid="knw5-ingest-tasks-row" title={row.id || undefined}>
+              <td data-label="数据源">
+                <span className="knw5-name">{row.name}</span>
+                <Reason>{row.nameReason}</Reason>
+                <span className="knw5-sub" title={row.kindRaw ?? undefined}>
+                  {row.kind}
+                </span>
+                <Reason>{row.kindReason}</Reason>
+              </td>
+              <td data-label="状态">
+                <Badge
+                  tone={row.status === "成功" ? "success" : row.status === "失败" ? "destructive" : "outline"}
+                >
+                  {row.status}
+                </Badge>
+                <Reason>{row.statusReason}</Reason>
+              </td>
+              <td data-label="进度与数量">
+                <span>{row.progress}</span>
+                {row.issue ? <span className="knw5-sub">{row.issue}</span> : null}
+                <Reason>{row.progressReason}</Reason>
+              </td>
+              <td data-label="时间">
+                <span>{row.timeLabel ? `${row.timeLabel}：${row.at}` : row.at}</span>
+                <Reason>{row.atReason}</Reason>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function IngestTasksSurface({ nonce }: { nonce: string }): ReactNode {
+  const surface = useSurface<IngestTaskRow>(
+    () => fetchJsonStrict(TASKS_URL).then(readTasks),
+    `tasks|${nonce}`,
+  );
+  return (
+    <Surface
+      testid="knw5-ingest-tasks"
+      source="tasks"
+      state={surface.state}
+      onRetry={surface.retry}
+      empty={() => <p>接口已响应，但没有给出接入任务；这不等于没有数据源在接入，也不显示 0 个任务。</p>}
+      render={(value) => <TaskTable rows={value.rows} />}
     />
   );
 }
@@ -565,6 +719,7 @@ export default function KnowledgeModulePage() {
   const [sp, setSp] = useSearchParams();
   const tab = initialTab(sp.get("tab"), sp.get("panel"));
   const query = sp.get("q") ?? "";
+  const drilled = sp.get("ref") ?? "";
   const [nonce, setNonce] = useState("0");
 
   const selectTab = (key: KnowledgeTab) => {
@@ -573,6 +728,18 @@ export default function KnowledgeModulePage() {
     // the internal panel, which is what refresh and back/forward must restore.
     if (!next.get("tab")) next.set("tab", "spaces");
     next.set("panel", key);
+    // A drill belongs to the list it came from; carrying it across panels would open
+    // nothing and read like a stuck row.
+    next.delete("ref");
+    setSp(next);
+  };
+
+  const toggleDrill = (key: string) => {
+    const next = new URLSearchParams(sp);
+    if (drilled === key) next.delete("ref");
+    else next.set("ref", key);
+    if (!next.get("tab")) next.set("tab", "spaces");
+    next.set("panel", tab);
     setSp(next);
   };
 
@@ -619,20 +786,27 @@ export default function KnowledgeModulePage() {
       <Card>
         <CardContent className="knw5-body" data-testid="knw5-panel" data-tab={tab}>
           <div data-testid={`knw5-panel-${tab}`}>
-            {tab === "spaces" ? <SpacesSurface nonce={nonce} /> : null}
-            {tab === "ingest" ? <IngestSurface nonce={nonce} /> : null}
-            {tab === "retrieval" ? (
-              <>
-                <SearchSurface nonce={nonce} query={query} onSearch={commitQuery} />
-                <RecordsSurface nonce={nonce} />
-              </>
-            ) : null}
-            {tab === "evidence" ? (
-              <>
-                <CitationsSurface nonce={nonce} />
-                <SessionCitationsSurface nonce={nonce} />
-              </>
-            ) : null}
+            <RefDrill.Provider value={{ open: drilled, toggle: toggleDrill }}>
+              {tab === "spaces" ? <SpacesSurface nonce={nonce} /> : null}
+              {tab === "ingest" ? (
+                <>
+                  <IngestTasksSurface nonce={nonce} />
+                  <IngestSurface nonce={nonce} />
+                </>
+              ) : null}
+              {tab === "retrieval" ? (
+                <>
+                  <SearchSurface nonce={nonce} query={query} onSearch={commitQuery} />
+                  <RecordsSurface nonce={nonce} />
+                </>
+              ) : null}
+              {tab === "evidence" ? (
+                <>
+                  <CitationsSurface nonce={nonce} />
+                  <SessionCitationsSurface nonce={nonce} />
+                </>
+              ) : null}
+            </RefDrill.Provider>
           </div>
         </CardContent>
       </Card>
