@@ -124,8 +124,8 @@ const MetricsConsolePage = lazy(() =>
 );
 /* R17 collab: the delegation page body is delivered by lane aud
  * (named export CollabDelegationsModulePage); the shell only mounts it. */
-/* R17 auth5: console sign-in page (same-origin /auth bridge by lane D). */
-const LoginPage = lazy(() => import("@/pages/LoginPage"));
+/* R18: static import — the sign-in page must never sit behind a lazy
+ * boundary; QA saw a dead event chain on the served generation. */
 const CollabConsolePage = lazy(() =>
   import("@/modules/collab/CollabDelegationsModulePage").then((m) => ({
     default: m.CollabDelegationsModulePage,
@@ -207,6 +207,7 @@ import {
   ConsoleNav,
   ConsoleRunsAdapter,
 } from "@/shell/console";
+import LoginPage from "@/pages/LoginPage";
 import { ParkedAwareSystem } from "@/shell/ParkedPage";
 import { runsModulePageAvailable, useConsoleHashBridge } from "@/shell/bridge";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
