@@ -81,7 +81,7 @@ function itemsOf(body: unknown): Rec[] {
 
 /** emp_A3F1B2C4D5… → "A3F1B2C4"; non-id-looking values pass through. */
 function shortCode(value: string): string {
-  const tail = value.replace(/^(emp|run|rn|task|apr|aud)_/i, "").replace(/[^0-9a-z]/gi, "").slice(0, 8).toUpperCase();
+  const tail = value.replace(/^(emp|run|rn|task|apr|aud|cs|session)_/i, "").replace(/[^0-9a-z]/gi, "").slice(0, 8).toUpperCase();
   return tail || "—";
 }
 
@@ -359,10 +359,13 @@ const ZONES = [
   { id: "audit", label: "审计" },
 ] as const;
 
-type ZoneId = (typeof ZONES)[number]["id"] | "chat" | "tasklist";
+type ZoneId = (typeof ZONES)[number]["id"] | "chat" | "tasklist" | "sessions";
 
 function mapShellZone(raw: string): ZoneId {
   switch (raw) {
+    case "sessions":
+      // R52: 会话区（结构化会话列表，只读）；与 chat 摘要区并存、互不动。
+      return "sessions";
     case "chat":
       // PRD 聊天区：只读会话摘要，深链 ?zone=chat 可达；导航条保持五区不变。
       return "chat";
@@ -487,6 +490,8 @@ type ChatRow = {
   messages: number | null;
   status: string | null;
   ref: string | null;
+  /** R52: channel of the session when the runtime returns one. */
+  channel?: string | null;
 };
 
 function readSessions(body: unknown): ChatRow[] {
@@ -500,6 +505,7 @@ function readSessions(body: unknown): ChatRow[] {
       messages: num === undefined ? null : num,
       status: pickString(item.status, item.state),
       ref: pickString(item.sessionId, item.session_id, item.id),
+      channel: pickString(item.channel, item.source, item.platform, item.channelType),
     });
   }
   return rows;
@@ -511,6 +517,18 @@ function chatStatusLabel(raw: string | null): string {
   if (s0 === "active" || s0 === "open") return "进行中";
   if (s0 === "archived" || s0 === "closed" || s0 === "ended") return "已结束";
   return "待核实";
+}
+
+/** R52: 渠道人话；未知值「待核实」，缺值「—」+原因，绝不猜。 */
+function channelLabel(raw: string | null | undefined): { text: string; title?: string } {
+  if (!raw) return { text: "—", title: "上游没有回传该会话的渠道信息。" };
+  const c = raw.trim().toLowerCase();
+  if (c === "feishu" || c === "lark") return { text: "飞书" };
+  if (c === "wecom" || c === "wechatwork") return { text: "企业微信" };
+  if (c === "web") return { text: "网页" };
+  if (c === "console") return { text: "控制台" };
+  if (c === "api") return { text: "接口" };
+  return { text: "待核实", title: `渠道原值：${raw}（未识别，不猜）` };
 }
 
 function TasksZone({ resource, empId, onRetry }: { resource: Resource<TaskZoneRow[]>; empId: string; onRetry: () => void }) {
@@ -671,6 +689,93 @@ function ChatZone({ resource, empId, onRetry }: { resource: Resource<ChatRow[]>;
   );
 }
 
+function SessionsZone({ resource, empId, onRetry }: { resource: Resource<ChatRow[]>; empId: string; onRetry: () => void }) {
+  if (!empId) {
+    return (
+      <ZoneEmpty
+        testid="ed9-sessions-empty"
+        title="缺少员工编号，无法确定会话归属。"
+        hint="本页只按该员工读取会话列表，不展示猜测内容。"
+      />
+    );
+  }
+  if (resource.phase === "loading") return <ZoneLoading testid="ed9-sessions-loading" />;
+  if (resource.phase === "denied") {
+    return <ZoneDenied title="会话列表" message={resource.message} requestId={resource.requestId} onRetry={onRetry} testid="ed9-sessions-denied" />;
+  }
+  if (resource.phase === "error") {
+    return <ZoneError title="会话列表" message={resource.message} requestId={resource.requestId} onRetry={onRetry} testid="ed9-sessions-error" />;
+  }
+  if (resource.phase === "empty") {
+    return (
+      <Card data-testid="ed9-sessions-empty">
+        <CardContent className="flex flex-col items-center gap-3 p-8 text-center">
+          <Inbox className="h-6 w-6 text-white/40" />
+          <p className="text-sm">该员工暂无可查会话。</p>
+          <p className="text-xs text-white/50">
+            请求带了该员工的 employeeId（读口白名单参数），这是服务端的真实空集；不是加载失败，也不在这里造会话。
+          </p>
+          <p
+            className="font-mono text-xs text-white/40"
+            title="GAP：console-sessions 上游形状由 L2 车道文档化（排序 updated_at DESC）；本代次部署面整体返回 200/0，筛前筛后都没有行可对照。"
+          >
+            数据面现状见悬停。
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+  return (
+    <Card data-testid="ed9-sessions">
+      <CardContent className="p-0">
+        <div className="hidden grid-cols-[minmax(0,1.3fr)_minmax(0,0.8fr)_minmax(0,0.6fr)_minmax(0,0.9fr)] gap-2 border-b border-white/10 px-4 py-2 text-xs text-white/45 md:grid">
+          <span>会话</span>
+          <span>渠道</span>
+          <span>消息数</span>
+          <span title="口径：updated_at（北京时间切到分）">最近活动</span>
+        </div>
+        <ul className="divide-y divide-white/5" data-testid="ed9-sessions-list">
+          {resource.data.map((row, i) => {
+            const ch = channelLabel(row.channel);
+            return (
+              <li
+                key={`${row.ref ?? "session"}-${i}`}
+                data-testid={`ed9-sessions-row-${i}`}
+                className="grid grid-cols-1 gap-1 px-4 py-3 md:grid-cols-[minmax(0,1.3fr)_minmax(0,0.8fr)_minmax(0,0.6fr)_minmax(0,0.9fr)] md:items-center md:gap-2"
+              >
+                <Link
+                  to="/chat"
+                  data-testid={`ed9-sessions-link-${i}`}
+                  title={row.ref ?? undefined}
+                  className="min-w-0 truncate text-sm no-underline hover:underline focus-visible:underline"
+                >
+                  {row.title ?? `会话 · ${row.ref ? shortCode(row.ref) : "待核实"}`}
+                </Link>
+                <span className="text-xs text-white/55" data-testid={`ed9-sessions-channel-${i}`} title={ch.title}>
+                  {ch.text}
+                </span>
+                <span
+                  className="text-xs text-white/55"
+                  data-testid={`ed9-sessions-count-${i}`}
+                  title={row.messages === null ? "上游没有回传该会话的消息数或轮次。" : undefined}
+                >
+                  {row.messages === null ? "—" : `${row.messages} 条`}
+                </span>
+                <span className="font-mono text-xs text-white/55" data-testid={`ed9-sessions-time-${i}`}>
+                  {beijing(row.lastAt)}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+        <p className="px-4 py-2 text-xs text-white/45">
+          只读列表 · 本页不提供会话创建或消息写入；要继续聊天请前往“对话”页（全站唯一承载）。
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
 /* ------------------------------------------------------------------ *
  * page
  * ------------------------------------------------------------------ */
@@ -686,7 +791,7 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
   const enc = encodeURIComponent(empId);
   const zone = mapShellZone(sp.get("zone") ?? "");
 
-  const [reload, setReload] = useState<Record<ZoneId, number>>({ overview: 0, capability: 0, approvals: 0, runs: 0, audit: 0, chat: 0, tasklist: 0 });
+  const [reload, setReload] = useState<Record<ZoneId, number>>({ overview: 0, capability: 0, approvals: 0, runs: 0, audit: 0, chat: 0, tasklist: 0, sessions: 0 });
   const retry = (z: ZoneId) => setReload((prev) => ({ ...prev, [z]: prev[z] + 1 }));
 
   const overview = useOverview(empId, reload.overview);
@@ -704,6 +809,15 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
     zone === "tasklist" && empId ? `/agent-api/api/tasks?assignee=${encodeURIComponent(`employee:${empId}`)}&limit=20` : "",
     reload.tasklist,
     readTasks,
+  );
+  // R52: employeeId IS whitelisted on the console-sessions read port
+  // (server.py passthrough=(employeeId,limit,cursor); measured this generation:
+  // the whitelist call answers 200 and the deploy scope currently holds zero
+  // sessions for every employee, so filtering stays stated, not faked).
+  const sessions = useResourceList(
+    zone === "sessions" && empId ? `/agent-api/api/console-sessions?employeeId=${enc}&limit=20` : "",
+    reload.sessions,
+    readSessions,
   );
   const chat = useResourceList(
     zone === "chat" && empId ? `/agent-api/api/console-sessions?employeeId=${enc}&limit=5` : "",
@@ -833,6 +947,7 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
       {zone === "audit" ? <AuditZone resource={audit} onRetry={() => retry("audit")} /> : null}
       {zone === "chat" ? <ChatZone resource={chat} empId={empId} onRetry={() => retry("chat")} /> : null}
       {zone === "tasklist" ? <TasksZone resource={tasklist} empId={empId} onRetry={() => retry("tasklist")} /> : null}
+      {zone === "sessions" ? <SessionsZone resource={sessions} empId={empId} onRetry={() => retry("sessions")} /> : null}
     </section>
   );
 }

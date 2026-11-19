@@ -421,6 +421,58 @@ describe("EmployeeDetailModulePage — approvals zone R49", () => {
   });
 });
 
+describe("EmployeeDetailModulePage — sessions zone R52", () => {
+  it("reads the employee-scoped list and renders code/channel/count/activity honestly", async () => {
+    const urls: string[] = [];
+    mockApi((url) => {
+      urls.push(url);
+      if (url.includes("/api/console-sessions")) {
+        return Promise.resolve({
+          items: [
+            { sessionId: "cs_AAAA1111BBBB2222CCCC", channel: "feishu", messageCount: 7, updatedAt: "2026-11-19T02:30:00Z" },
+            { session_id: "cs_DDDD3333EEEE4444", status: "open" },
+          ],
+        });
+      }
+      return Promise.resolve({});
+    });
+    await renderAt(page, at("sessions"));
+    const calls = urls.filter((u) => u.includes("/api/console-sessions"));
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toContain(`employeeId=${encodeURIComponent(EMP)}`);
+    expect(calls[0]).toContain("limit=20");
+    const qid = (id: string) => container.querySelector(`[data-testid="${id}"]`);
+    expect(qid("ed9-sessions")).toBeTruthy();
+    const link0 = qid("ed9-sessions-link-0") as HTMLAnchorElement;
+    expect(link0?.getAttribute("href")).toBe("/chat");
+    expect(link0?.getAttribute("title")).toBe("cs_AAAA1111BBBB2222CCCC");
+    expect(link0.textContent).toContain("会话 · AAAA1111");
+    expect(qid("ed9-sessions-channel-0")?.textContent).toBe("飞书");
+    expect(qid("ed9-sessions-count-0")?.textContent).toBe("7 条");
+    expect(qid("ed9-sessions-time-0")?.textContent).toBe("2026-11-19 10:30");
+    // 缺渠道=「—」+原因；缺计数=「—」+原因；无时间=「—」。
+    expect(qid("ed9-sessions-channel-1")?.textContent).toBe("—");
+    expect(qid("ed9-sessions-channel-1")?.getAttribute("title")).toContain("没有回传");
+    expect(qid("ed9-sessions-count-1")?.textContent).toBe("—");
+    expect(qid("ed9-sessions-time-1")?.textContent).toBe("—");
+    expect(container.textContent).not.toContain("cs_AAAA1111BBBB2222CCCC");
+    expect(container.querySelector("[data-chat-host]")).toBeNull();
+  });
+
+  it("empty answers with the stated real zero, not a failure", async () => {
+    mockApi((url) =>
+      url.includes("/api/console-sessions")
+        ? Promise.resolve({ items: [] })
+        : Promise.resolve({}),
+    );
+    await renderAt(page, at("sessions"));
+    const empty = container.querySelector('[data-testid="ed9-sessions-empty"]');
+    expect(empty).toBeTruthy();
+    expect(empty?.textContent).toContain("该员工暂无可查会话");
+    expect(empty?.textContent).toContain("真实空集");
+  });
+});
+
 describe("EmployeeDetailModulePage — tabs", () => {
   it("five tabs, shell-zone spellings, overview lands on the bare path", async () => {
     mockApi(() => Promise.resolve({}));

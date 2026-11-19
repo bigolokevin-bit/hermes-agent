@@ -795,3 +795,13 @@ L0 判 /runs/<id> 无路由=死链（routes.ts 只有 /runs）。禁碰 shell/Ap
 验证：定向 employee-detail 36 passed exit0（+2 新用例，其余零改绿）；assert-ia 两模式 exit0 51/22/1/8；全量 **132 files/1458 passed**（基线 1456+2）；tsc 本域零红。ed1/ed5/ed7/ed8/edx/apd6/apv5/apr5/apv6 全族零破坏（既有用例全绿为证）。
 
 未测项：9122 活体导航读数（禁重建，待下代次）；三档横溢=jsdom 不可测，形态学报（flex-wrap gap-1 容器+文本短标签，与 ed5-tabs 同构）。坑记：R50 回执曾出现「4s 超时后 ls 截断看不到落盘行→误判未投→重投」=同单双落盘（070630/070817），教训=超时后必须完整 ls 或按内容 grep receipts 目录再判，禁止凭截断输出重发。
+
+## R52 员工详情会话区（2026-11-20，lane/console-appr）
+
+基线：显式 refspec fetch + merge origin/lane/hermes-console → 97df94a0（代码代次 6a02ed58/章 5d91f22d），toplevel ✓ porc=0。
+
+活体实测（ego 四组，9122==6a02ed58 仅访问）：/api/console-sessions?employeeId=emp_86A8…&limit=20→200 n=0；employeeId=emp_217A…→200 n=0；bare→200 n=0；employee=…（非白名单键）→200 n=0。server.py passthrough=(employeeId,limit,cursor)=**employeeId 是白名单参数被接受**；当前部署面对所有员工均 0 会话（筛前筛后无行可对照）⇒工单「暂不支持按员工筛选」条款不触发，区头与空态写诚实句：请求带了该员工的 employeeId（白名单参数），这是服务端真实空集，不是加载失败；GAP 现状仅 title。
+
+实现（EmployeeDetailModulePage.tsx）：①ZoneId/mapShellZone 加 "sessions"（chat 区 ed5-zone-chat-* 全不动=零破坏）；reload 加 sessions。②sessions leg=`/agent-api/api/console-sessions?employeeId=${enc}&limit=20` 条件挂载（zone 进入才取数）；复用 readSessions 并扩展 channel 多键（channel|source|platform|channelType）。③channelLabel 人话=飞书/企业微信/网页/控制台/接口；缺「—」+title「上游没有回传该会话的渠道信息。」；未知「待核实」+title 原值禁猜。④SessionsZone 四态内容面（ed9-sessions-loading/denied(403≡404 同体+可复制 rid+重试 Zone* 既有)/error/empty）+ready 四列表=会话短码（禁裸 cs_ 全值，完整 ref 进 title）｜渠道｜消息数（缺「—」+title）｜最近活动 beijing BJT 到分；行真 a[href]=/chat（App.tsx:299 全站唯一对话承载=既有可达落点，chatHosts=1 语义不破）；空集「该员工暂无可查会话。」；尾注只读+指路。⑤修 shortCode 剥前缀缺陷：补 cs|session（否则 cs_AAAA1111… 显示 CSAAAA11）。⑥三档横溢=形态学报（grid 全 minmax(0)+truncate+flex-wrap）；jsdom 不测三档。
+
+测试：新 describe 2 用例（恰 1 fetch 带 employeeId+limit=20、四列读数、href=/chat、缺值—+title、无裸 cs_、无 data-chat-host；空集双句）。定向 employee-detail 38 passed exit0；tsc 本域零红；assert-ia 两模式 exit0 51/22/1/8；全量 **132 files/1460 passed**（基线 1458+2）。ed1/ed5/ed7/ed8/edz/edx/apd6/apv5/apv6/apr5 零破（既有用例全绿为证）。9122 禁重建：活体页面读数待并入后代次；API 面四组实证已贴。回执代次引用统一 6a02ed58。
