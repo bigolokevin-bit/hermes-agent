@@ -858,3 +858,9 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 代次：HEAD=084cd645（merge aud runs depth）=远端 tip；entry assets/index-C_LYrwy0.js 157324B sha256 d70fe09d…9bf0，磁盘==served 9122==served 8183（root 200）。
 - 九件全 exit=0 重章 084cd645（单文件单 JSON+exitCode+tmp/os.replace）：assert-ia-html/react ok {51,22,(23),1,8}；lint-fake ok violations=[]；lint-reuse ok violations=0 exempted=1；crawl-anon ok DL0/CE0/PE0 routesCE=51（匿名 401 环境归因）；crawl-auth ok DL0/CE0/PE0 routesCE=23（fresh opsadmin RSA token 重写 v4-auth-state 19:1x）；state-quad 20/20 ok=true；shots 102/102 failures=[] ceAuthority=login-state obs=0 三键全值；shots-anon auxiliary 102/102。
 - R22 腿③（l7 侧写域）：BFF cn.seakoi.console-bff plist 注入 CONSOLE_ALLOWED_ORIGINS="http://127.0.0.1:9122,http://localhost:9122,http://100.117.184.117:8183,http://100.117.184.117:8182"（旧值=空；plist 备份 .bak-191133；bootout+bootstrap 重启 70001→83970，kickstart 不重读 plist 已验证）。自测：认证 GET 下发 console_csrf（32ch，非 HttpOnly）；同源写 POST /api/employee-chat via 9122 与 via 8183 均 400 request.invalid_body（不再 403；门序 Origin→token→X-Console-Write→body 逐门推进）。回退：还原 plist 备份 + bootout/bootstrap。
+
+## 五十五轮·账本重章 33596dc4（entry CifqHAU7）+ index 假 JSON 清理（2026-11-19 19:2x-2x）
+
+- 代次：HEAD=33596dc4=远端 tip；entry assets/index-CifqHAU7.js 158301B sha256 056adfc2…f6b6，磁盘==served 9122（root/entry 实测）==8183（200）。
+- 九件全 exit=0 盖 33596dc4：ia-html/react ok {51,22,(23),1,8}；lint-fake ok；lint-reuse v0/exempt1；crawl-anon DL0/CE0/PE0 routesCE=51（匿名 401 归因）；crawl-auth DL0/CE0/PE0 routesCE=22（19:1x RSA state 续用，较 54 轮 23 再降）；state-quad 20/20；shots 102/102 failures=[] 三键全值 ceAuth=login-state obs=0；shots-anon auxiliary 102/102。
+- 修正：54 轮误将 md 内容写入 *.json 后缀——git rm shots-index.json / shots-anon-index.json，恢复脚本默认 .md 落点（本两轮 index 均以 .md 重产）；后续 shots 腿 --index 一律传 .md。
