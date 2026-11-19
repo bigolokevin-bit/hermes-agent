@@ -1,0 +1,91 @@
+.ppl5-page {
+  overflow-x: clip;
+}
+.ppl5-page .arc-border {
+  display: none;
+}
+.ppl5-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+.ppl5-actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+.ppl5-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 8px;
+  align-items: center;
+}
+.ppl5-thead {
+  padding: 8px 16px;
+  border-bottom: 1px solid color-mix(in srgb, white 5%, transparent);
+  color: color-mix(in srgb, white 40%, transparent);
+  font-size: 11px;
+}
+.ppl5-row {
+  padding: 8px 16px;
+}
+.ppl5-reason {
+  display: block;
+  margin-top: 2px;
+  color: color-mix(in srgb, white 35%, transparent);
+  font-size: 10px;
+}
+.ppl5-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px;
+}
+.ppl5-state-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: color-mix(in srgb, white 80%, transparent);
+  font-size: 13px;
+}
+.ppl5-state-body {
+  margin: 0;
+  max-width: 68ch;
+  color: color-mix(in srgb, white 45%, transparent);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.ppl5-req {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  color: color-mix(in srgb, white 50%, transparent);
+  font-size: 11px;
+}
+.ppl5-req button {
+  border: 1px solid color-mix(in srgb, white 15%, transparent);
+  border-radius: 4px;
+  background: transparent;
+  padding: 1px 5px;
+  color: inherit;
+  font-size: 10px;
+}
+@media (max-width: 760px) {
+  .ppl5-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3px;
+  }
+  .ppl5-thead {
+    display: none;
+  }
+  .ppl5-row {
+    padding: 10px 16px;
+  }
+  .ppl5-row > span:not(:first-child)::before {
+    content: attr(data-label);
+  }
+}
