@@ -1,212 +1,298 @@
 // @vitest-environment jsdom
-import { act } from "react";
+// T15 (PRD v4.1) list page. The assertions are about what a person can check
+// with their eyes: the real BFF routes are the ones asked (the `/api/`
+// segment included), rows only ever come from an answer, 403 and 404 draw one
+// identical body with no row above it, the filters change what is asked, and
+// a `?state=` repro asks for nothing at all.
+
+import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api-error";
 
-const fetchJSON = vi.fn();
-vi.mock("@/lib/api", () => ({
-  fetchJSON: (...args: unknown[]) => fetchJSON(...args),
-}));
+const api = vi.hoisted(() => ({ fetchJSON: vi.fn() }));
+vi.mock("@/lib/api", () => ({ fetchJSON: api.fetchJSON }));
 
-import RunsModulePage from "./RunsModulePage";
+import { RunsModulePage } from "./RunsModulePage";
 
-let container: HTMLDivElement;
-let root: Root;
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-beforeEach(() => {
-  container = document.createElement("div");
-  document.body.appendChild(container);
-  root = createRoot(container);
-});
-afterEach(() => {
-  act(() => root.unmount());
-  container.remove();
-  fetchJSON.mockReset();
-});
+let root: Root | null = null;
 
-const run = {
+async function waitFor(cond: () => boolean, label = "condition"): Promise<void> {
+  const start = Date.now();
+  while (!cond()) {
+    if (Date.now() - start > 3000) throw new Error(`waitFor: ${label} never became true`);
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    });
+  }
+}
+
+async function render(entry: string, page: ReactNode = <RunsModulePage />): Promise<void> {
+  await act(async () => {
+    root?.unmount();
+  });
+  document.body.replaceChildren();
+  const container = document.createElement("div");
+  document.body.append(container);
+  root = createRoot(container);
+  await act(async () => {
+    root?.render(<MemoryRouter initialEntries={[entry]}>{page}</MemoryRouter>);
+  });
+}
+
+const text = (): string => document.body.textContent ?? "";
+const html = (): string => document.body.innerHTML;
+const urls = (): string[] => api.fetchJSON.mock.calls.map((call) => String(call[0]));
+const rowNodes = (): number => document.querySelectorAll("[data-testid^='run5-row-'][data-status]").length;
+
+const RUN_A = {
   runId: "rn_01M7822XN781D2S9JASH5TX1XZ",
-  employeeId: "emp_9f3a4b7c",
-  taskId: "tsk_open_1",
   status: "failed",
   reasonCode: "run.budget_exhausted",
   costStatus: "upstream",
   costUsd: 0.42,
   startedAt: "2026-11-18T02:00:00Z",
-  endedAt: "2026-11-18T02:01:48Z",
-  budgetCapUsd: 5,
-  attemptNo: 1,
+  endedAt: "2026-11-18T02:11:48Z",
+};
+const RUN_B = {
+  runId: "rn_01M7822ABCDEF0123456789XYZ",
+  status: "running",
+  costStatus: "unknown",
+  costUsd: null,
+  startedAt: "2026-11-18T03:30:00Z",
 };
 
-function ok(url: string): unknown {
-  if (url.includes("/api/employees")) return { items: [{ employeeId: "emp_9f3a4b7c", name: "陈可" }] };
-  if (url.includes("/api/run-detail")) return { ...run, upstreamRunId: "run_upstream_9f3a" };
-  if (url.includes("/api/run-events")) {
-    return { items: [
-      { runId: run.runId, seq: 1, eventType: "started", occurredAt: "2026-11-18T02:00:00Z", payload: {} },
-      { runId: run.runId, seq: 2, eventType: "tool_call", occurredAt: "2026-11-18T02:00:30Z", payload: {} },
-      { runId: run.runId, seq: 3, eventType: "tool_result", occurredAt: "2026-11-18T02:01:40Z", payload: { resultRef: "rn-step-9" } },
-      { runId: run.runId, seq: 4, eventType: "tool_result", occurredAt: "2026-11-18T02:01:45Z", payload: {} },
-      { runId: run.runId, seq: 5, eventType: "completed", occurredAt: "2026-11-18T02:01:48Z", payload: {} },
-    ], nextSeq: 2, hasMore: false };
-  }
-  if (url.includes("/api/runs")) return { items: [run], nextCursor: "cur-2" };
-  return {};
-}
+const okList = (items: unknown[], extra: Record<string, unknown> = {}) => async (url: string) => {
+  if (url.includes("/api/runs") || url.includes("/api/run-stats")) return { items, ...extra };
+  return { items: [] };
+};
 
-async function render(entry = "/runs") {
-  await act(async () => {
-    root.unmount();
+beforeEach(() => {
+  api.fetchJSON.mockReset();
+});
+afterEach(() => {
+  act(() => {
+    root?.unmount();
   });
-  container.remove();
-  container = document.createElement("div");
-  document.body.appendChild(container);
-  root = createRoot(container);
-  await act(async () => {
-    root.render(<MemoryRouter initialEntries={[entry]}><RunsModulePage /></MemoryRouter>);
-  });
-  await act(async () => {});
-}
+  root = null;
+  document.body.replaceChildren();
+});
 
-describe("RunsModulePage", () => {
-  it("renders the run list with a real employee label and USD", async () => {
-    fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
-    await render();
-    expect(container.querySelector('[data-testid="runs-table"]')).toBeTruthy();
-    expect(container.textContent).toContain("陈可");
-    expect(container.textContent).toContain("$0.42");
-    expect(container.textContent).not.toContain("emp_9f3a4b7c");
-    expect(container.textContent).not.toContain("HTTP");
+describe("the read asks the real routes", () => {
+  it("mounts asking /api/runs with the /api/ segment kept and the window stated", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 1, "one row");
+    expect(urls()[0]?.startsWith("/agent-api/api/runs?")).toBe(true);
+    expect(urls()[0]).toContain("limit=30");
+    expect(urls()[0]).toContain("since=");
   });
 
-  it("opens detail and reads run events", async () => {
-    fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
-    await render();
-    await act(async () => {
-      (container.querySelector('[data-testid^="run-row-"]') as HTMLElement).click();
+  it("paints the rows the answer carried and nothing more", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A, RUN_B]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 2, "two rows");
+    expect(text()).toContain("运行 · X1XZ");
+    expect(text()).toContain("运行 · 9XYZ");
+    expect(text()).not.toContain("rn_01M7822XN781D2S9JASH5TX1XZ");
+    expect(text()).not.toContain("emp_");
+    expect(text()).not.toMatch(/2026-11-18T/); // raw ISO stays off the surface
+    expect(text()).toContain("2026-11-18 10:00"); // Beijing minute
+    expect(text()).toContain("失败");
+    expect(text()).toContain("预算耗尽");
+    expect(text()).toContain("$0.42");
+    expect(text()).toContain("已计价");
+  });
+
+  it("the fallback route is asked only when /api/runs says it is not there", async () => {
+    api.fetchJSON.mockImplementation(async (url: string) => {
+      if (url.includes("/api/runs")) {
+        throw new ApiError("gone", { status: 404, body: "{}", url, requestId: "r1" });
+      }
+      if (url.includes("/api/run-stats")) return { items: [RUN_A] };
+      return { items: [] };
     });
-    await act(async () => {});
-    expect(container.textContent).toContain("预算耗尽");
-    expect(container.textContent).toContain("工具调用");
-    expect(container.textContent).toContain("已计价");
-    expect(container.textContent).toContain("结果引用：rn-step-9");
-    expect(container.textContent).toContain("结果引用：未记录");
-    expect(container.textContent).toContain("重试（新建运行）");
-    expect(container.textContent).toContain("不会复用本条 runId");
-    const retry = container.querySelector('[data-testid="run-retry-planned"]') as HTMLButtonElement;
-    expect(retry.disabled).toBe(true);
-    const upstream = container.querySelector('a[href^="/runs?upstream="]') as HTMLAnchorElement;
-    expect(upstream).toBeTruthy();
-    expect(upstream.getAttribute("href")).toContain("run_upstream_9f3a");
-    expect(container.querySelector('[data-testid="run-events"]')?.children.length).toBe(5);
+    await render("/runs");
+    await waitFor(() => rowNodes() === 1, "fallback row");
+    expect(urls()[1]).toContain("/agent-api/api/run-stats?");
+    expect(text()).toContain("运行 · X1XZ");
   });
 
-  it("renders unknown cost as — with a reason, never as 0", async () => {
-    fetchJSON.mockImplementation((url: string) =>
-      url.includes("/api/runs")
-        ? Promise.resolve({ items: [{ ...run, costStatus: "unknown", costUsd: 0.42 }] })
-        : Promise.resolve(ok(url)),
-    );
-    await render();
-    const text = container.textContent ?? "";
-    expect(text).toContain("未知");
-    expect(text).toContain("账本没有这条运行的计价记录");
-    expect(text).not.toContain("$0.42");
-    expect(container.querySelector('[data-testid="runs-table"]')).toBeTruthy();
+  it("an unknown cost reads 「—」 + 未知 + reason, never a number", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_B]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 1, "one row");
+    const costCell = document.querySelector("[data-testid='run5-row-0-cost']");
+    expect(costCell?.textContent).toContain("—");
+    expect(costCell?.textContent).toContain("未知");
+    expect(costCell?.textContent).toContain("账本没有这条运行的计价记录");
+    expect(costCell?.textContent).not.toMatch(/\$0\.00|\$0(?![.\d])/);
   });
 
-  it("opens a real upstream deep link instead of a dead anchor", async () => {
-    fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
-    await render("/runs?upstream=run_upstream_9f3a");
-    expect(container.querySelector('[data-testid="upstream-run-id"]')?.textContent).toBe("run_upstream_9f3a");
-    expect(container.textContent).toContain("返回运行列表");
+  it("a true zero cost prints $0.00, honest and explicit", async () => {
+    api.fetchJSON.mockImplementation(okList([{ ...RUN_A, costUsd: 0 }]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 1, "zero row");
+    expect(document.querySelector("[data-testid='run5-row-0-cost']")?.textContent).toContain("$0.00");
+  });
+});
+
+describe("the four states", () => {
+  it("loading is a skeleton, not a list of zero", async () => {
+    let resolveList: (v: unknown) => void = () => {};
+    api.fetchJSON.mockImplementation(() => new Promise((r) => { resolveList = r; }));
+    await render("/runs");
+    expect(document.querySelector("[data-testid='run5-loading']")).toBeTruthy();
+    expect(document.querySelector('[aria-busy="true"]')).toBeTruthy();
+    expect(rowNodes()).toBe(0);
+    expect(text()).not.toMatch(/失败 0|运行中 0/);
+    resolveList({ items: [] });
+    await waitFor(() => document.querySelector("[data-testid='run5-empty']") !== null, "empty after settle");
   });
 
-  it("turns a 400 into a filter-reading message with a request id", async () => {
-    fetchJSON.mockImplementation((url: string) =>
-      url.includes("/api/runs")
-        ? Promise.reject(new ApiError("bad filter", { status: 400, body: "{}", url, requestId: "req-400" }))
-        : Promise.resolve(ok(url)),
-    );
-    await render();
-    expect(container.textContent).toContain("这次筛选没有被接受");
-    expect(container.textContent).toContain("req-400");
-    expect(container.textContent).toContain("重试");
-    expect(container.textContent).not.toContain("HTTP");
+  it("an empty answer explains itself and names the next step", async () => {
+    api.fetchJSON.mockImplementation(okList([]));
+    await render("/runs");
+    await waitFor(() => document.querySelector("[data-testid='run5-empty']") !== null, "empty");
+    expect(text()).toContain("确实没有运行");
+    expect(text()).toContain("把时间范围放宽一档");
+    // earned zeros: the read succeeded and really returned nothing
+    expect(text()).toContain("本页 0 次 · 失败 0 · 运行中 0");
   });
 
-  it("renders empty and denied states honestly", async () => {
-    fetchJSON.mockImplementation((url: string) =>
-      url.includes("/api/runs") ? Promise.resolve({ items: [] }) : Promise.resolve(ok(url)),
-    );
-    await render();
-    expect(container.querySelector('[data-testid="runs-empty"]')).toBeTruthy();
-
-    fetchJSON.mockImplementation((url: string) =>
-      url.includes("/api/runs")
-        ? Promise.reject(new ApiError("gone", { status: 404, body: "{}", url, requestId: "req-404" }))
-        : Promise.resolve(ok(url)),
-    );
-    await render();
-    expect(container.textContent).toContain("运行记录暂不可见");
-    expect(container.textContent).toContain("req-404");
+  it("an error speaks human words, quotes the copyable request id, and offers retry", async () => {
+    api.fetchJSON.mockImplementation(async (url: string) => {
+      throw new ApiError("bad", { status: 400, body: "{}", url, requestId: "run5-rid-filter" });
+    });
+    await render("/runs");
+    await waitFor(() => document.querySelector("[data-testid='run5-error']") !== null, "error");
+    expect(text()).toContain("这次筛选没有被接受");
+    expect(text()).toContain("run5-rid-filter");
+    expect(document.querySelector("[aria-label='复制请求编号']")).toBeTruthy();
+    expect(text()).not.toMatch(/\b400\b|agent-api|HTTP/);
+    const before = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      (document.querySelector("[data-testid='run5-error-retry']") as HTMLButtonElement).click();
+    });
+    await waitFor(() => api.fetchJSON.mock.calls.length > before, "retry asked again");
   });
 
-  it("shows a 运营 · 控制台 breadcrumb that routes to the console", async () => {
-    fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
-    await render();
-    const nav = container.querySelector('[data-testid="runs-breadcrumb"]');
-    expect(nav).toBeTruthy();
-    expect(nav?.textContent).toContain("运营");
-    expect(nav?.textContent).toContain("控制台");
-    expect(nav?.textContent).toContain("运行");
-    expect(nav?.querySelector('a[href="/overview"]')).toBeTruthy();
+  it("a failure with no request id says 「未提供」 and why", async () => {
+    api.fetchJSON.mockImplementation(async (url: string) => {
+      throw new ApiError("down", { status: 503, body: "no rid", url });
+    });
+    await render("/runs");
+    await waitFor(() => document.querySelector("[data-testid='run5-error']") !== null, "error");
+    expect(document.querySelector("[data-testid='run5-error-request-id-value-absent']")).toBeTruthy();
+    expect(text()).toContain("未提供");
+    expect(text()).not.toMatch(/\b503\b|agent-api|HTTP/);
   });
 
-  it("never shows hard zeros when the fetch fails: — plus reason line and real exits", async () => {
-    fetchJSON.mockImplementation((url: string) =>
-      Promise.reject(new ApiError("down", { status: 0, body: "", url })),
-    );
-    await render();
-    const text = container.textContent ?? "";
-    // 假零整改：失败时数字是「—」，不是 0；并附原因行。
-    expect(text).toContain("本页 — 次 · 失败 — · 运行中 —");
-    expect(text).not.toContain("0 次");
-    expect(text).not.toContain("失败 0");
-    expect(text).not.toContain("运行中 0");
-    expect(text).toContain("暂时读不到运行数据（接口不可达），数字不作零处理");
-    // 错误面板真出口：返回控制台（路由可达）+ 联系管理员（真实 href）。
-    const back = container.querySelector('[data-testid="runs-error-back"]') as HTMLAnchorElement;
-    expect(back?.getAttribute("href")).toBe("/overview");
-    const contact = container.querySelector('[data-testid="runs-error-contact"]') as HTMLAnchorElement;
-    expect(contact?.getAttribute("href")).toMatch(/^mailto:/);
-    expect(contact?.textContent).toContain("联系管理员");
-    // 请求编号话术：没有编号时给可执行说明，不再写「未提供」。
-    expect(text).toContain("本次请求未记录编号，可复制时间与操作路径反馈");
-    expect(text).not.toContain("未提供");
+  it("403 and 404 draw one identical body with no rows above it", async () => {
+    const once = async (status: number): Promise<string> => {
+      api.fetchJSON.mockReset();
+      api.fetchJSON.mockImplementation(async (url: string) => {
+        throw new ApiError("no", { status, body: "{}", url, requestId: "run5-deny" });
+      });
+      await render("/runs");
+      await waitFor(() => document.querySelector("[data-testid='run5-denied']") !== null, "denied");
+      return html();
+    };
+    const forbidden = await once(403);
+    expect(text()).toContain("现在看不到运行记录");
+    expect(text()).toContain("请求编号：run5-deny");
+    expect(rowNodes()).toBe(0);
+    expect(document.querySelector("[data-testid='run5-table']")).toBeNull();
+    expect(forbidden).not.toMatch(/agent-api|console\.\w+|\b40[34]\b|HTTP/);
+    expect(await once(404)).toBe(forbidden);
   });
 
-  it("denied panel carries the same real exits", async () => {
-    fetchJSON.mockImplementation((url: string) =>
-      Promise.reject(new ApiError("gone", { status: 404, body: "{}", url, requestId: "req-404" })),
-    );
-    await render();
-    expect(container.querySelector('[data-testid="runs-denied-back"]')?.getAttribute("href")).toBe("/overview");
-    expect(container.querySelector('[data-testid="runs-denied-contact"]')?.getAttribute("href")).toMatch(/^mailto:/);
-    expect(container.textContent).toContain("暂时读不到运行数据（没有查看权限），数字不作零处理");
-    expect(container.textContent).not.toContain("0 次");
+  it("the denied body carries the gap number instead of a guess", async () => {
+    api.fetchJSON.mockImplementation(async (url: string) => {
+      throw new ApiError("no", { status: 403, body: "{}", url, requestId: "r" });
+    });
+    await render("/runs");
+    await waitFor(() => document.querySelector("[data-testid='run5-denied']") !== null, "denied");
+    expect(text()).toContain("GAP-09");
   });
 
-  it("an empty result after a successful read still shows zero, honestly", async () => {
-    fetchJSON.mockImplementation((url: string) =>
-      url.includes("/api/runs") ? Promise.resolve({ items: [] }) : Promise.resolve(ok(url)),
-    );
-    await render();
-    expect(container.textContent).toContain("本页 0 次 · 失败 0 · 运行中 0");
-    expect(container.textContent).not.toContain("数字不作零处理");
+  it("unreadable rows are counted, not painted, and never fake zeros", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A, { status: "failed" }]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 1, "one readable row");
+    expect(text()).toContain("另有 1 条");
+    expect(text()).toContain("本页 1 次");
+  });
+});
+
+describe("the controls change what is asked", () => {
+  it("the window deep link really moves the since instant, and 30d ≠ 7d ≠ 24h", async () => {
+    const sinceOf = async (entry: string): Promise<number> => {
+      api.fetchJSON.mockReset();
+      api.fetchJSON.mockImplementation(okList([]));
+      await render(entry);
+      await waitFor(() => api.fetchJSON.mock.calls.length >= 1, "asked");
+      const raw = new URLSearchParams(urls()[0]?.split("?")[1] ?? "").get("since") ?? "";
+      return Date.parse(raw);
+    };
+    const d24 = await sinceOf("/runs?window=24h");
+    const d7 = await sinceOf("/runs?window=7d");
+    const d30 = await sinceOf("/runs?window=30d");
+    const now = Date.now();
+    expect(Math.abs(now - d24 - 24 * 3600_000) < 60_000).toBe(true);
+    expect(Math.abs(now - d7 - 7 * 24 * 3600_000) < 60_000).toBe(true);
+    expect(Math.abs(now - d30 - 30 * 24 * 3600_000) < 60_000).toBe(true);
+  });
+
+  it("a bogus window or status falls back to the default leg, not the raw value", async () => {
+    api.fetchJSON.mockImplementation(okList([]));
+    await render("/runs?window=whatever&status=open");
+    await waitFor(() => api.fetchJSON.mock.calls.length >= 1, "asked");
+    expect(urls()[0]).not.toContain("status=");
+    const since = new URLSearchParams(urls()[0]?.split("?")[1] ?? "").get("since") ?? "";
+    expect(Math.abs(Date.parse(since) - (Date.now() - 7 * 24 * 3600_000)) < 60_000).toBe(true);
+  });
+
+  it("choosing a status rebuilds the ask", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 1, "first ask");
+    const select = document.querySelector("[data-testid='run5-filter-status']") as HTMLSelectElement;
+    await act(async () => {
+      select.value = "failed";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await waitFor(() => urls().some((u) => u.includes("status=failed")), "status ask");
+  });
+});
+
+describe("the ?state= repro legs", () => {
+  for (const state of ["loading", "empty", "error", "denied"] as const) {
+    it(`?state=${state} carries data-fixture + the note and asks nothing`, async () => {
+      api.fetchJSON.mockImplementation(async () => {
+        throw new Error("forced leg must not ask");
+      });
+      await render(`/runs?state=${state}`);
+      expect(document.querySelector(`[data-fixture='${state}']`)).toBeTruthy();
+      expect(document.querySelector("[data-testid='run5-forced-note']")?.textContent).toContain(`?state=${state}`);
+      expect(document.querySelector("[data-testid='run5-forced-note']")?.textContent).toContain("GAP-09");
+      expect(document.querySelector("[data-testid='run5-page']")?.getAttribute("data-fixture")).toBe(state);
+      expect(api.fetchJSON).not.toHaveBeenCalled();
+      const panel = document.querySelector(`[data-testid='run5-${state === "loading" ? "loading" : state}']`);
+      expect(panel).toBeTruthy();
+      expect(panel?.getAttribute("data-fixture")).toBe(state);
+      expect((document.querySelector("[data-testid='run5-refresh']") as HTMLButtonElement).disabled).toBe(true);
+    });
+  }
+
+  it("?state=ready is not a repro — the real read runs", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs?state=ready");
+    await waitFor(() => rowNodes() === 1, "real ask");
+    expect(document.querySelector("[data-testid='run5-page']")?.hasAttribute("data-fixture")).toBe(false);
   });
 });
