@@ -562,3 +562,13 @@ KPI 族：五卡 data-testid=ov6-kpi-<name> 统一在位+新增 data-duty-testid
 ## R34 追加两项（2026-11-20 01:5x，一笔 commit）
 ① /duty 显式归一：注册于 shell/routes.ts 新 PATH_ALIASES 表（{"/duty":"/overview"}），App.tsx 既有 <Route path="/duty"><Navigate to="/overview" replace/></Route>（R32③）即其消费形态——**有意归一（值班台语义已并入 /overview 的 duty tab），不是未命中后的 SPA 兜底**。不进 REDIRECTS 数据行因附录 A 计数法锁 redirects=24/24（routes.ts 运行自检），前后台数不变：assert-ia html 与 --source=react 均 exit 0，routes=51 tabs=22（chatHosts=1 modules=8 未动）。侧栏值班台已指 /overview（console.tsx:273 to="/overview"，未改）。
 ② asOf 时区文案：ov6-asof 取不到值时=「采集时刻 —（北京时间）」（真分支+forced 三分支同改）；八卡 ov6-<card>-stamp=「数据截至 —（北京时间） · 来源 …」；有值分支保持原「采集时刻 北京时间 X」形制。NC① 判据（文本含北京时间）现两分支均满足。验证：shell+duty 定向 8 files/88 passed。
+
+## R35 放行条件①：sec5 壳层挂载（2026-11-20 02:0x，lane/console-appr）
+
+基线：fetch 后 reset --hard origin/lane/hermes-console = **7e7b92cd**（工单预期 e4c03f8c 为旧指针，wave-4 合并后实际 tip；toplevel 校验通过，porc=0）。代码含 gov security 页体（184dd521 系已并入）。
+
+挂载（只动壳层，不碰页体）：App.tsx line107-110 新 `const SecurityConsolePage = lazy(() => import("@/modules/security/SecurityModulePage"))`（默认导出已在，无需改模块）；line1605-1607 SystemAwareTabs 在 retention 判断前拦截 `sp.get("tab")==="security"` → 直接渲 SecurityConsolePage（App 级 Suspense line1166 兜底 loading）。`/system?tab=security` 与 `?tab=security&view=anomaly` 变体同点命中；routes.ts 既有条目（line256 compat-tab visible:false、line348 TAB_ALIAS、line356）一律未改——**不新增 Tab、registry 计数不动**。
+
+四态/零写入口=模块既有实现（gov 交付）：loading/empty/error（可复制 rid+重试）/gap（403≡404 同体「未接入」+原因，GAP 编号只进 title）；planned 按钮 data-planned+aria-disabled+title；本轮 SecurityModulePage.test 加 sec5-page DOM 唯一性锁（toHaveLength(1)，q 助手用 document 级查询的坑同修）。
+
+自证读数：①App.tsx 107/110/1605 + routes.ts 256/348/356（上列）②sec5-page 命中=1（新锁）；sec5 家族 40 个 testid（page/loading/empty/error/gap/retry/risk-* /mfa/keyring/session/secrets/planned-*/summary/refresh/copy/req…）③assert-ia html/react 两模式 exit 0，routes 51 / tabs 22 / tabsAll 23 / chatHosts 1 / modules 8 全不变 ④定向 security+audit+shell 16 files/195 passed exit 0；全量 129 files/1319 passed=基线绿。9122 停旧代次禁重建：活体 DOM 读数待下一代次复核，本轮以 jsdom 实测交付。
