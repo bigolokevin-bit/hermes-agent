@@ -963,3 +963,11 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 代次四件=17c36d25 / assets/index-mWfpIjM6.js 161271B / d530609b…054a4812 / served==磁盘==8183（拍后复证）。
 - 九件全 exit=0：ia×2 {51,22,1,8}｜lf v=[]｜lr v=0 exempt1 chat→T40｜crawl-anon DL0/CE0/PE0 routesCE51(401)｜crawl-auth routesCE27｜state-quad 20/20 文本重建｜shots main 102/102 auth failures=[] obs=0 ceAuth=login-state｜shots-anon auxiliary=true 102/102 obs=0。
 - 环境：9122 v4_proxy pid 31520、caddy 28034、8092 pid 10844 未动；web/src 未碰；auth-state 昨夜 23:5x 版窗内。上一代 3bff4208 账本作废不重做。
+
+## 七十七轮·波终代次九件重章 @ 9c7789f6（2026-11-20 00:5x，一波一盖）
+
+- 代次四向互证：HEAD=远端=9c7789f6『merge(lane/console-ui2): metrics cost breakdown by employee and model』（appr 187e88c4 含 8a095891 + ui2 007aba70，vitest 127 files/1300 passed）；磁盘 hermes_cli/web_dist/assets/index-qXDDXt1v.js 161271B sha256 5e6c8221fcf9c8f7ef67bd8dc6b5f2fd70853d1d98d86ced8f597e7c7df9c954==卡面；9122==8183==qXDDXt1v（均 200）；porc=0。
+- 九件全 exit=0 盖 9c7789f6：ia-react/html ok {51,22,1,8}（html 含 tabsAll=23）｜lint-fake v=0｜lint-reuse v=0 exempt=1 chat→T40（stdout 抄件在）｜crawl-anon DL0/CE0/PE0 routesCE=51（401 归因）｜crawl-auth routesCE=27（持平 76 轮）｜state-quad 20/20 文本重建注 source。
+- shots main(auth) 102/102 failures=[] ceAuthority=login-state consoleErrorsObservedByShots=2 仅观测（#/employees/:employeeId?zone=runs、#/knowledge?tab=evidence，routesWithEnvOnly=26，不入 ok）三键=qXDDXt1v/5e6c8221…9c954/161271B servedEntry Before=After 拍后 curl 复证未漂；shots-anon auxiliary=true 102/102 mode=anon obs=2（#/employees、#/identity?tab=people&view=admins）envOnly=51 匿名实锤 textLen=732（/tmp/shots-anon77b 隔离，同名覆盖 mv 回 pngs=102）。
+- 新坑注记：main 脚本完成时刻会覆盖此前注入的六键（注入 obs=0 系中间态误读），正确序=等两批 shell completed 后再注入六键；本轮已按终态重注入并回读验证。
+- 上一代 17c36d25 账本作废不重做（卡注）。环境：9122 v4_proxy pid 31520、caddy 28034、8092 pid 10844 未动；web/src 未碰；他人脏零沾染；已推送笔禁 amend/rebase 一次成型。
