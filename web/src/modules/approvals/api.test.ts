@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { decisionUrl, detailUrl, failureInfo, isDenied, listUrl } from "./api";
+import { CsrfMissingError, decisionUrl, detailUrl, failureInfo, isDenied, listUrl, postDecision } from "./api";
 import { readFailure, requestIdLine, writeFailure } from "./copy";
 import {
   approvalDetailFrom,
@@ -16,6 +16,43 @@ import {
   money,
   statusView,
 } from "./model";
+
+describe("approvals csrf double-submit guard (CSRF order)", () => {
+  it("maps the two CSRF 403 codes to plain sentences with a copyable rid", async () => {
+    const { ApiError } = await import("@/lib/api-error");
+    const origin = new ApiError("forbidden", {
+      status: 403,
+      body: '{"code":"console.csrf_origin","rid":"rid-csrf-1"}',
+      url: decisionUrl("apr_1"),
+    });
+    const info = failureInfo(origin);
+    expect(info.sentence).toContain("当前访问来源不被允许写入");
+    expect(info.requestId).toBe("rid-csrf-1");
+    const write = writeFailure(origin, "approve", info);
+    expect(write.sentence).toContain("当前访问来源不被允许写入");
+    expect(write.sentence).not.toContain("不归你审批");
+    expect(write.sentence).not.toContain("csrf_origin");
+
+    const mismatch = new ApiError("forbidden", {
+      status: 403,
+      body: '{"code":"console.csrf_token_mismatch"}',
+      url: decisionUrl("apr_1"),
+      requestId: "hdr-rid-2",
+    });
+    const w2 = writeFailure(mismatch, "reject", failureInfo(mismatch));
+    expect(w2.sentence).toContain("登录状态已过期，写入被拦下了");
+    expect(w2.requestId).toBe("hdr-rid-2");
+  });
+
+  it("refuses the write without a session cookie and sends nothing", async () => {
+    // node env: no document, so the CSRF cookie is absent — the write must
+    // be refused before any request goes out.
+    await expect(postDecision("apr_1", "approve")).rejects.toBeInstanceOf(CsrfMissingError);
+    const write = writeFailure(new CsrfMissingError(), "approve", failureInfo(new CsrfMissingError()));
+    expect(write.sentence).toContain("需要登录后才能提交");
+    expect(write.sentence).not.toContain("CsrfMissing");
+  });
+});
 
 describe("approvals endpoints", () => {
   it("asks the list route with the state the pane chose", () => {

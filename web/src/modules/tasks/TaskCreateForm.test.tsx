@@ -41,12 +41,15 @@ let root: Root;
 beforeEach(() => {
   container = document.createElement("div");
   document.body.appendChild(container);
+  // CSRF double-submit: give the session cookie unless a test clears it.
+  document.cookie = "console_csrf=test-csrf-token; path=/";
 });
 
 afterEach(() => {
   root?.unmount();
   container.remove();
   document.body.innerHTML = "";
+  document.cookie = "console_csrf=; path=/; max-age=0";
   fetchJSON.mockReset();
 });
 
@@ -134,11 +137,50 @@ describe("TaskCreateForm (T-create)", () => {
     const headers = init.headers as Record<string, string>;
     expect(headers["content-type"]).toBe("application/json");
     expect(headers["Idempotency-Key"]).toBeTruthy();
+    expect(headers["X-Console-CSRF"]).toBe("test-csrf-token");
     const body = JSON.parse(init.body as string) as Record<string, unknown>;
     expect(body.title).toBe("整理巡检报告");
     expect(body.source).toEqual({ kind: "manual" });
     expect(body.assignee).toEqual({ type: "employee", id: "emp_1a2b3c4d" });
     expect(body).not.toHaveProperty("createdBy");
+  });
+
+  it("refuses to send the write without the session cookie", async () => {
+    document.cookie = "console_csrf=; path=/; max-age=0";
+    renderForm({});
+    setValue(
+      container.querySelector<HTMLInputElement>('[data-testid="tsk4-create-title"]')!,
+      "无会话写入",
+    );
+    submit();
+    await flush();
+    expect(fetchJSON).not.toHaveBeenCalled();
+    const err = container.querySelector('[data-testid="tsk4-create-error"]');
+    expect(err?.textContent).toContain("需要登录后才能提交");
+    expect(err?.textContent).toContain("请先登录");
+  });
+
+  it("maps a CSRF 403 to a plain sentence with a copyable request id", async () => {
+    const { ApiError } = await import("@/lib/api-error");
+    fetchJSON.mockRejectedValue(
+      new ApiError("forbidden", {
+        status: 403,
+        body: '{"code":"console.csrf_token_mismatch","rid":"csrf-rid-77"}',
+        url: "/agent-api/api/tasks",
+      }),
+    );
+    renderForm({});
+    setValue(
+      container.querySelector<HTMLInputElement>('[data-testid="tsk4-create-title"]')!,
+      "过期会话写入",
+    );
+    submit();
+    await flush();
+    const err = container.querySelector('[data-testid="tsk4-create-error"]');
+    expect(err?.textContent).toContain("登录状态已过期，写入被拦下了。请重新登录后再试。");
+    expect(err?.textContent).toContain("csrf-rid-77");
+    expect(err?.textContent).not.toContain("console.csrf_token_mismatch");
+    expect(container.querySelector('[data-testid="req-copy"]')).toBeTruthy();
   });
 
   it("shows the new id and opens its detail on success", async () => {

@@ -36,10 +36,13 @@ export function readFailure(err: unknown, info: { status: number; requestId: str
 export function writeFailure(
   err: unknown,
   verdict: "approve" | "reject",
-  info: { status: number; requestId: string | null; technical: string | null },
+  info: { status: number; requestId: string | null; technical: string | null; sentence?: string },
 ): FailureCopy {
   const done = verdict === "approve" ? "批准" : "驳回";
   const { status } = info;
+  if (info.sentence) {
+    return { sentence: info.sentence, requestId: info.requestId, technical: info.technical };
+  }
   let sentence: string;
   if (status === 0) sentence = `连不上审批服务，这次${done}没有提交成功。请确认它已启动后重试。`;
   else if (status === 401) sentence = "登录状态已经失效，请重新登录后再提交决定。";

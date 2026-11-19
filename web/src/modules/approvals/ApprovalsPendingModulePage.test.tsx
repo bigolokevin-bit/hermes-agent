@@ -112,10 +112,13 @@ function queue(handler?: (url: string, init?: RequestInit) => Promise<unknown>) 
 }
 
 beforeEach(() => {
+  // CSRF double-submit: the decision write needs a session cookie.
+  document.cookie = "console_csrf=test-csrf-token; path=/";
   api.fetchJSON.mockReset();
 });
 
 afterEach(() => {
+  document.cookie = "console_csrf=; path=/; max-age=0";
   act(() => {
     root?.unmount();
   });

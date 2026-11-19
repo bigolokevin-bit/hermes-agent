@@ -13,6 +13,8 @@ import { useRef, useState } from "react";
 import { Button } from "@nous-research/ui/ui/components/button";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { fetchJSON } from "@/lib/api";
+import { ApiError } from "@/lib/api-error";
+import { csrfFailureCopy, csrfWriteHeaders } from "@/lib/csrf";
 import { RequestIdCopy } from "@/components/RequestIdCopy";
 
 import { employeeLabel, errorInfo, shortRef } from "./tasksBoard";
@@ -72,6 +74,17 @@ export function TaskCreateForm({
       return;
     }
     if (state.k === "submitting") return;
+    // CSRF double-submit: without the session cookie there is no honest
+    // write to attempt — say so instead of sending a doomed request.
+    const csrf = csrfWriteHeaders();
+    if (!csrf) {
+      setState({
+        k: "error",
+        message: "需要登录后才能提交。当前没有可用的写入会话，请先登录。",
+        requestId: null,
+      });
+      return;
+    }
     setState({ k: "submitting" });
     const body: Record<string, unknown> = {
       title: t,
@@ -86,6 +99,7 @@ export function TaskCreateForm({
         method: "POST",
         headers: {
           "content-type": "application/json",
+          ...csrf,
           "Idempotency-Key": idemRef.current,
         },
         body: JSON.stringify(body),
@@ -97,14 +111,19 @@ export function TaskCreateForm({
       if (id) onCreated(id);
     } catch (err: unknown) {
       const info = errorInfo(err);
+      const csrfCopy = csrfFailureCopy(
+        info.status,
+        err instanceof ApiError ? err.body : null,
+      );
       // 401 的通用文案是给读场景的，这里补一句写场景的话。
       setState({
         k: "error",
-        message:
-          info.status === 401
+        message: csrfCopy
+          ? csrfCopy.sentence
+          : info.status === 401
             ? "需要登录：登录状态已失效，任务没有提交。重新登录后再试。"
             : `任务没有创建成功：${info.message}`,
-        requestId: info.requestId,
+        requestId: csrfCopy?.requestId ?? info.requestId,
       });
     }
   }
