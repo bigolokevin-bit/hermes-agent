@@ -10,10 +10,10 @@ import { ApiError } from "@/lib/api-error";
 // The ui barrel pulls in .webp assets that node cannot load; stub the four
 // primitives the page uses (deep-path imports would change product code).
 vi.mock("@nous-research/ui", () => ({
-  Badge: (props: Record<string, unknown>) => <span {...drop(props, ["className"])} /> as JSX.Element,
-  Button: (props: Record<string, unknown>) => <button {...drop(props, ["outlined", "size", "prefix"])} /> as JSX.Element,
-  Card: (props: Record<string, unknown>) => <div {...drop(props, ["className"])} /> as JSX.Element,
-  CardContent: (props: Record<string, unknown>) => <div {...drop(props, ["className"])} /> as JSX.Element,
+  Badge: (props: Record<string, unknown>) => <span {...drop(props, ["className"])} />,
+  Button: (props: Record<string, unknown>) => <button {...drop(props, ["outlined", "size", "prefix"])} />,
+  Card: (props: Record<string, unknown>) => <div {...drop(props, ["className"])} />,
+  CardContent: (props: Record<string, unknown>) => <div {...drop(props, ["className"])} />,
 }));
 
 function drop(props: Record<string, unknown>, strip: string[]): Record<string, unknown> {
