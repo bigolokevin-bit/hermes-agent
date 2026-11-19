@@ -505,3 +505,24 @@ L0 新落点：`http://127.0.0.1:9122`（python http.server --directory hermes_c
 - redirects=24 vs 门定值 23 维持 notes 归因不判红；deniedEndpoints 20 条 401 证据面。
 - 四快腿重跑盖章 e0fa680c：assert-ia-react exit=0（51/22/1/8）、assert-ia-html exit=0（51/22/23/1/8）、lint-fake exit=0、lint-reuse exit=0（violations=0 exempted=1）。
 - shots：十二轮并发腿已终止（防探针竞态+吞吐异常），十三轮于 crawl 后全量重启重拍 102 张（B5fmOKJ8 代次，代理已通 pid 95949），完成后第二笔 commit。
+
+## 门禁十四轮·probe稳态加固+全腿重章（2026-11-19 03:1x）
+- 卡：L0『门禁清零』——五腿headHash仍e0fa680c（非当前HEAD 95ddffe6），违反规则第4条；crawl探针需稳态升级。
+- **脚本改造**（web/scripts/crawl-routes.mjs，node --check OK）：
+  - probe retry升级为≤2次重试，每次先waitForSelector(main,{timeout:2000})再eval，200ms间隔；累积evalError history字符串。
+  - success→content-ok，still-fail→probe-error保留evalError。
+  - envAttribution改结构化计数{auth-required-401:N}（不再写说明文字）。
+- **四快腿重跑盖章 e0fa680c→95ddffe6**：
+  - assert-ia-react: exit=0 ok=true headHash=95ddffe6 counts={routes:51,tabs:22,chatHosts:1,modules:8}
+  - assert-ia-html: exit=0 ok=true headHash=95ddffe6 counts={routes:51,tabs:22,...}
+  - lint-fake: exit=0 ok=true headHash=95ddffe6 violations=[]
+  - lint-reuse: exit=0 ok=true headHash=95ddffe6 violations=[] exempted=1 chat→T40
+- **crawl复跑结果**：exit=1
+  - **probeErrors=0**（上轮2条→修复成功：tenant/overview context destroyed 双次错误已消除）
+  - **deadLinks=0**
+  - **contentEmpty=8**（均为 root-shell-text：mainChars=10、httpStatus=200、verdict="content-empty:root-shell-text"）
+    涉及路由：#/approvals?tab=policy、#/employees、#/employees?tab=matrix、#/identity?tab=binding、#/identity?tab=checks、#/knowledge?tab=evidence、#/system、#/work?tab=board&view=cron
+  - 归因分析：probe改进后waitForSelector(main,2s)使原本context-destruction的路由能执行evaluate，但部分tab内容面板的`head===rootHead&&!(route∈LANDING)`判定命中（根壳文本≠tab pane文本，主元素存在但tab内无差异化数据）——需L0裁定是否放宽root-shell-text判据或调整LANDING集。
+  - envAttribution={"auth-required-401":36}（结构化，达标）；deniedEndpoints=20条401；redirects=24归因不判红。
+- **shots**：102/102张（PID 6092后台腿运行约2分钟即完成，SIGTERM终止时文件已就位；entry=index-B5fmOKJ8.js代次）。
+- **commit+push**：第二笔 commit `fix(lane-d): 102-shot full regen at B5fmOKJ8 with live proxy` + 第三笔含crawl改动与leg产物。

@@ -489,14 +489,18 @@ async function contentRender() {
     } else {
       probeResult = await probeOnce();
       if (probeResult.__evalError) {
-        // L0 十三轮：evaluate 异常=探针自伤（并发竞态/上下文 detach），每路由重试一次：等 main 或 300ms 兜底
-        try {
-          await page.waitForSelector('main, .main, [data-console-main]', { timeout: 300 });
-        } catch {}
-        const retry = await probeOnce();
-        probeResult = retry.__evalError
-          ? { where: null, len: 0, head: '', hasMainEl: false, evalError: `${probeResult.__evalError} | retry: ${retry.__evalError}` }
-          : { ...retry, evalError: null };
+        // L0 十四轮：导航后先稳 main，再 evaluate；最多重试 2 次（每次 200ms），成功即 content-ok
+        let ok = false;
+        const history = [probeResult.__evalError];
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try { await page.waitForSelector('main', { timeout: 2000 }); } catch {}
+          await new Promise(r => setTimeout(r, 200));
+          const r2 = await probeOnce();
+          if (!r2.__evalError) { probeResult = { ...r2, evalError: null }; ok = true; break; }
+          history.push(r2.__evalError);
+          probeResult = { ...r2, evalError: history.join(' | ') };
+        }
+        if (!ok) { /* probe-error stays with accumulated evalError */ }
       } else {
         probeResult = { ...probeResult, evalError: null };
       }
