@@ -50,6 +50,8 @@ import {
   previousRange,
   parseSortDir,
   parseSortKey,
+  shareCsv,
+  shareCsvFileName,
   shareOfCosts,
   runsDrill,
   shortCode,
@@ -1049,6 +1051,31 @@ export function MetricsModulePage() {
     URL.revokeObjectURL(url);
   };
 
+  const exportShare = () => {
+    if (shareView.kind !== 'ready' || shareRows.length === 0) return;
+    const blob = new Blob(
+      [
+        `\uFEFF${shareCsv(
+          shareRows.map((row) => ({
+            name: row.model,
+            runs: row.runs,
+            costUsd: row.costUsd,
+            sharePct: row.sharePct,
+          })),
+        )}`,
+      ],
+      { type: 'text/csv;charset=utf-8' },
+    );
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = shareCsvFileName(groupBy, usageWindow.id, new Date());
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  };
+
   const chooseView = (next: 'employee' | 'model') => {
     const query = new URLSearchParams(params);
     if (next === 'employee') query.delete('view');
@@ -1776,6 +1803,19 @@ export function MetricsModulePage() {
               >
                 按员工
               </Button>
+              <Button
+                size="sm"
+                outlined
+                disabled={shareRows.length === 0}
+                title={shareRows.length === 0 ? '当前视图无可导出数据' : '导出当前窗口、分组与排序下的成本分摊'}
+                onClick={exportShare}
+                data-testid="metA-export"
+              >
+                导出当前视图
+              </Button>
+              <span className="metA-count" data-testid="metA-export-count">
+                可导出 {shareRows.length} 行
+              </span>
             </div>
             {shareView.kind === 'loading' ? (
               <Card data-testid={`${sharePrefix}-loading`}>

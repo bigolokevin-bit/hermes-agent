@@ -1024,3 +1024,93 @@ describe('met9 — cost rows drill into the runs list', () => {
     expect(note?.textContent).toContain('不假装过滤');
   });
 });
+
+// ---- metA: export the current cost view -------------------------------------
+
+describe('metA — export the current cost view', () => {
+  function captureDownload(): {
+    captured: { blob: Blob | null; name: string | null };
+    click: ReturnType<typeof vi.spyOn>;
+  } {
+    const captured: { blob: Blob | null; name: string | null } = { blob: null, name: null };
+    Object.assign(URL, {
+      createObjectURL: vi.fn((blob: Blob) => {
+        captured.blob = blob;
+        return 'blob:metA';
+      }),
+      revokeObjectURL: vi.fn(),
+    });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
+      captured.name = this.download;
+    });
+    return { captured, click };
+  }
+
+  
+
+  it('exports exactly the rows on screen under the fixed key header', async () => {
+    const { captured, click } = captureDownload();
+    await mountEmployeeShare(TWO_EMPLOYEE_LEDGER);
+    expect(document.querySelector('[data-testid="metA-export-count"]')?.textContent).toBe('可导出 2 行');
+
+    await act(async () => {
+      (document.querySelector('[data-testid="metA-export"]') as HTMLButtonElement).click();
+    });
+
+    expect(click).toHaveBeenCalledTimes(1);
+    expect(captured.name).toMatch(/^metrics-24h-employee-\d{8}-\d{4}\.csv$/);
+    const lines = (await (captured.blob as Blob).text()).replace(/^\uFEFF/, '').split('\r\n');
+    expect(lines[0]).toBe('group,runs,cost_usd,share_pct');
+    const onScreen = document.querySelectorAll('[data-testid^="met8-row-"]').length;
+    expect(onScreen).toBe(2);
+    expect(lines).toHaveLength(onScreen + 1);
+    expect(lines[1].split(',')).toEqual(['小鲤', '7', '3.00', '75.0']);
+    expect(lines[2].split(',')).toEqual(['小满', '3', '1.00', '25.0']);
+    click.mockRestore();
+  });
+
+  it('keeps a real zero at 0.00 and a missing value empty', async () => {
+    const { captured, click } = captureDownload();
+    await mountEmployeeShare({
+      items: [
+        { employeeId: 'emp_aaaabbbbcccc', costUsd: 0, runs: 2, updatedAt: '2026-11-19T03:20:00.000Z' },
+        { employeeId: 'emp_ddddeeeeffff', updatedAt: '2026-11-19T02:10:00.000Z' },
+      ],
+      missingEmployeeIds: [],
+    });
+
+    await act(async () => {
+      (document.querySelector('[data-testid="metA-export"]') as HTMLButtonElement).click();
+    });
+
+    const lines = (await (captured.blob as Blob).text()).replace(/^\uFEFF/, '').split('\r\n');
+    expect(lines[1].split(',')).toEqual(['小鲤', '2', '0.00', '']);
+    expect(lines[2].split(',')).toEqual(['小满', '', '', '']);
+    click.mockRestore();
+  });
+
+  it('escapes commas and quotes the RFC 4180 way', async () => {
+    const { captured, click } = captureDownload();
+    await mountShare({ by_model: [{ model: 'a,"b"', sessions: 1, actual_cost_usd: 2 }], asOf: null });
+
+    await act(async () => {
+      (document.querySelector('[data-testid="metA-export"]') as HTMLButtonElement).click();
+    });
+
+    const lines = (await (captured.blob as Blob).text()).replace(/^\uFEFF/, '').split('\r\n');
+    expect(lines[1]).toBe('"a,""b""",1,2.00,100.0');
+    expect(captured.name).toMatch(/^metrics-24h-model-\d{8}-\d{4}\.csv$/);
+    click.mockRestore();
+  });
+
+  it('disables the button and says so when the view has nothing to export', async () => {
+    await mountShare({ by_model: [] });
+
+    const button = document.querySelector('[data-testid="metA-export"]') as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(button.getAttribute('title')).toBe('当前视图无可导出数据');
+    expect(document.querySelector('[data-testid="metA-export-count"]')?.textContent).toBe('可导出 0 行');
+  });
+});

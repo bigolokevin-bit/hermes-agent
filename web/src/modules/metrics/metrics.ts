@@ -766,6 +766,39 @@ export function csvFileName(view: 'employee' | 'model', window: UsageWindowId, n
   return `metrics-${view}-${window}-${stamp}.csv`;
 }
 
+// ---- MET-A: export the current cost-share view ------------------------------
+
+export type ShareCsvRow = {
+  /** The row's model name or employee name — the on-screen first column. */
+  name: string;
+  runs: number | null;
+  costUsd: number | null;
+  sharePct: number | null;
+};
+
+/** Fixed English keys, one per data column on screen. */
+export const SHARE_CSV_HEADER = ['group', 'runs', 'cost_usd', 'share_pct'];
+
+/** Missing stays an empty cell, a real zero stays `0.00`, shares keep one decimal. */
+export function shareCsvRows(rows: ShareCsvRow[]): (string | number | null)[][] {
+  return rows.map((row) => [
+    row.name,
+    row.runs,
+    row.costUsd === null ? null : row.costUsd.toFixed(2),
+    row.sharePct === null ? null : row.sharePct.toFixed(1),
+  ]);
+}
+
+export function shareCsv(rows: ShareCsvRow[]): string {
+  return toCsv(SHARE_CSV_HEADER, shareCsvRows(rows));
+}
+
+/** `metrics-24h-model-20261120-0655.csv` in Beijing time. */
+export function shareCsvFileName(group: 'model' | 'employee', window: UsageWindowId, now: Date): string {
+  const stamp = formatBeijing(now.toISOString(), now).replace(/[-:]/g, '').replace(' ', '-');
+  return `metrics-${window}-${group}-${stamp}.csv`;
+}
+
 
 // ---- MET6: budget vs actual -------------------------------------------------
 

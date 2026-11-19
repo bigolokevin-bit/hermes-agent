@@ -566,3 +566,14 @@
   outline: 2px solid currentColor;
   outline-offset: 2px;
 }
+
+/* MET-A — export the current cost view */
+.metA-count {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.metA-count:empty {
+  display: none;
+}
