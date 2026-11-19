@@ -192,7 +192,7 @@ describe("TasksBoardModulePage", () => {
       Promise.reject(new ApiError("boom", { status: 500, body: "{}", url, requestId: "req-tasks" })),
     );
     await render();
-    expect(container.textContent).toContain("请求编号 req-tasks");
+    expect(container.textContent).toContain("请求编号：req-tasks");
     expect(container.textContent).toContain("重试");
     expect(container.textContent).not.toContain("HTTP");
   });
@@ -264,13 +264,77 @@ describe("TasksBoardModulePage", () => {
     expect(container.textContent).toContain("第 2 页");
   });
 
+  it("R41: an assignee filter keeps the five columns and each leg carries it (counts stay linked)", async () => {
+    const urls: string[] = [];
+    fetchJSON.mockImplementation(async (url: string) => {
+      if (url.includes("/api/matrix")) return resolveDirectory();
+      if (url.includes("/api/tasks")) {
+        urls.push(url);
+        const only = new URLSearchParams(url.split("?")[1] ?? "").get("assignee");
+        return only
+          ? { items: [{ taskId: "tk_aff_1", title: "筛选后任务", status: "open", priority: "high", assignee: "emp_1a2b3c4d", updatedAt: "2026-11-18T02:00:00Z" }] }
+          : resolveBoard(url);
+      }
+      return resolveDetail();
+    });
+    await render("/work?tab=board&assignee=employee%3Aemp_1a2b3c4d");
+    await act(async () => {});
+    expect(urls.filter((u) => u.includes("api/matrix")).length).toBe(0);
+    expect(urls).toHaveLength(5);
+    for (const u of urls) expect(u).toContain("assignee=employee%3Aemp_1a2b3c4d");
+    expect(container.querySelectorAll('[data-testid^="tsk4-col-"]')).toHaveLength(5);
+    const openCol = container.querySelector('[data-testid="tsk4-col-open"]');
+    expect(openCol?.textContent).toContain("1 条（本页已加载）");
+    expect(container.querySelector('[data-testid="tsk4-card-tk_aff_1"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="tsk4-emptycol-in_progress"]')?.textContent).toContain("本列暂无任务");
+    expect(container.querySelector('[data-testid="tsk4-emptycol-in_progress"]')?.textContent).toContain("按负责人筛选");
+    expect(container.querySelector('[data-testid="tsk4-filter-view"]')).toBeNull();
+  });
+
+  it("R41: rows inside a column sort by priority then recency, with the key in the title", async () => {
+    fetchJSON.mockImplementation(async (url: string) => {
+      if (url.includes("/api/matrix")) return resolveDirectory();
+      if (url.includes("status=open")) {
+        return {
+          items: [
+            { taskId: "tk_low_old", title: "低旧", status: "open", priority: "low", updatedAt: "2026-11-16T01:00:00Z" },
+            { taskId: "tk_high_new", title: "高新的", status: "open", priority: "high", updatedAt: "2026-11-18T01:00:00Z" },
+            { taskId: "tk_low_new", title: "低新", status: "open", priority: "low", updatedAt: "2026-11-19T01:00:00Z" },
+          ],
+        };
+      }
+      if (url.includes("/api/tasks")) return { items: [] };
+      return resolveDetail();
+    });
+    await render("/work");
+    await act(async () => {});
+    const cards = Array.from(container.querySelectorAll('[data-testid^="tsk4-card-tk_"]'));
+    const ids = cards.map((c) => c.getAttribute("data-testid"));
+    expect(ids[0]).toBe("tsk4-card-tk_high_new");
+    expect(ids.indexOf("tsk4-card-tk_low_new")).toBeLessThan(ids.indexOf("tsk4-card-tk_low_old"));
+    expect(container.querySelector('[data-testid="tsk4-col-open"]')?.textContent).toContain("3 条（本页已加载）");
+  });
+
+  it("R41: the denied board keeps a copyable rid and a live retry (no dead controls)", async () => {
+    fetchJSON.mockImplementation(async (url: string) => {
+      if (url.includes("/api/matrix")) return resolveDirectory();
+      throw new ApiError("gone", { status: 404, body: "{}", url, requestId: "req-r41-404" });
+    });
+    await render("/work");
+    await act(async () => {});
+    const card = container.querySelector('[data-testid="tsk4-denied"]');
+    expect(card?.textContent).toContain("req-r41-404");
+    expect(card?.querySelector('[data-testid="req-copy"]')).toBeTruthy();
+    expect(card?.querySelector('[data-testid="tsk4-retry"]')).toBeTruthy();
+  });
+
   it("P2: an empty filter answer is stated as a real answer, not a failure", async () => {
     fetchJSON.mockImplementation(async (url: string) => {
       if (url.includes("/api/matrix")) return resolveDirectory();
       if (url.includes("/api/tasks")) return { items: [], nextCursor: null };
       return resolveDetail();
     });
-    await render("/work?tab=board&assignee=employee%3Aemp_1a2b3c4d");
+    await render("/work?tab=board&status=open&assignee=employee%3Aemp_1a2b3c4d");
     await act(async () => {});
     expect(container.querySelector('[data-testid="tsk4-filter-empty"]')).toBeTruthy();
     expect(container.textContent).toContain("这是服务端的真实回答");

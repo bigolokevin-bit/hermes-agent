@@ -671,3 +671,11 @@ KPI 族：五卡 data-testid=ov6-kpi-<name> 统一在位+新增 data-duty-testid
 新断言（EmployeesModulePage.test.tsx，R40 用例）：window URL=…&rid=live-42 而路由条目只带 state=error → 卡上屏 live-42、req-copy 存在、点击后 clipboard.writeText 收到的值=上屏值（回环一致）、req-copy-state=已复制、employees-error-retry 同卡、forced 下零 fetch。既有 R38/R39 用例（fs-77/fs-88 同源、同体、真实 500）全保留。
 
 验证：定向 employees 2 files/12 passed exit0；assert-ia 两模式 exit 0（51/22/1/8）；tsc 本域零红；全量 **131 files/1373 passed**（基线 1372+1）。9122 未重建（R39 取证代次）：活体复测待 gov shell 修笔与下代次合并后一并核。
+
+## R41 看板列分组与计数口径统一（2026-11-20，lane/console-appr）
+
+基线：fetch + merge origin/lane/hermes-console → tip=8bbf8910（ledger on 53a3ef4c，entry BXJbyCwh），toplevel ✓ porc=0。写域=modules/tasks/**+DONE。
+
+①计数口径：列头徽标 `N 条（本页已加载）`（title=排序键），空列仍「—」不计数为 0；汇总条与「仅显示本页已加载」尾注语义不变。②组内排序：PRIORITY_RANK（high/urgent=0，normal=1，low=2，未知=3）同列降序，次键 updatedAt 新→旧；排序键写进徽标 title（用例实测 high_new 首位、low_new 先于 low_old）。③空列诚实：文案改「本列暂无任务」，带负责人筛选时追加「（当前正按负责人筛选，清空筛选或换一位负责人可见更多）」；testid=tsk4-emptycol-<status>（命名避开 ^tsk4-col- 前缀——该坑已记）。④筛选与列计数联动：视图语义拆开——status 筛选=单查询钻取面板（P2 形态，panelActive），**assignee 筛选保留五列**并把 assignee 原样传给五腿（loadBoard(assignee) 追加 `&assignee=employee:<id>` BFF 白名单参数），列头计数随筛选结果真实联动；URL ?status=&assignee=&cursor= 保态不变（刷新/back 沿用 R32/P2 机制）。⑤四态/错误：board error/denied 卡 rid 由纯文本换 RequestIdCopy（req-copy 可复制，缺号=fallback 人话句），重试按钮 denied 也保留（data-testid=tsk4-retry，权限可能变化非死控件）；既有 `请求编号 req-tasks` 断言同步为 `请求编号：`（RequestIdCopy 冒号形制——同 tasks detail R40 口径）。⑥三档横溢：徽标句变长仍在 flex items-center justify-between gap-2 内，列网格 min-w-0 不变；jsdom 不可测，形态学如实报。
+
+测试：定向 tasks 2 files/24 passed（+3 新用例：assignee 五腿联动+列计数+空列提示+面板不出现；列内排序键；denied 可复制 rid+重试非死控）。P2 空态用例入口补 status=open（面板语义只随 status）。全量 **131 files/1387 passed**（≥基线 1373）；assert-ia 两模式 exit 0（51/22/1/8）；tsc 本域零红。9122=53a3ef4c 代次禁重建（R41 取证中），活体列读数待并入后代次复测。
