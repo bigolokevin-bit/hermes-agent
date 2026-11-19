@@ -25,6 +25,10 @@ import {
   buildHeatGrid,
   cellRangeLabel,
   chunkIds,
+  csvFileName,
+  deltaOf,
+  formatDeltaCount,
+  formatDeltaUsd,
   formatBeijing,
   aggregateByEmployee,
   employeeLabel,
@@ -39,6 +43,8 @@ import {
   readModelUsage,
   readPricing,
   readRunStats,
+  previousRange,
+  toCsv,
   shareOf,
   sparkSlots,
   usageWindowOf,
@@ -107,6 +113,7 @@ type BreakdownState =
       view: 'employee' | 'model';
       lines: BreakdownLine[];
       total: number | null;
+      prevTotal: number | null;
       asOf: string | null;
       source: string;
       note: string | null;
@@ -122,6 +129,7 @@ type UsageState =
       day: UsageBlock<LedgerSnapshot>;
       month: UsageBlock<LedgerSnapshot>;
       pricing: UsageBlock<{ rows: PriceRow[]; asOf: string | null }>;
+      prevRuns: UsageBlock<number | null>;
       loadedAt: string;
     };
 
@@ -295,6 +303,21 @@ export function MetricsModulePage() {
       },
     );
 
+    const prev = previousRange(now, windowId);
+    const prevRuns = await readBlock(
+      () =>
+        fetchJsonStrict(
+          `/agent-api/api/run-stats?from=${encodeURIComponent(prev.from)}` +
+            `&to=${encodeURIComponent(prev.to)}&bucket=${preset.bucket}`,
+        ),
+      (body) => {
+        const parsed = readRunStats(body);
+        return parsed.kind === 'ok'
+          ? { ok: true, value: parsed.stats.totals.runs }
+          : { ok: false, reason: parsed.reason };
+      },
+    );
+
     const ledgerSnapshot = async (periodKind: 'day' | 'month', period: string): Promise<LedgerSnapshot> => {
       const directory = employeeIdsOf(await fetchJsonStrict('/agent-api/api/employees?limit=200'));
       if (directory.ids.length === 0) {
@@ -353,7 +376,16 @@ export function MetricsModulePage() {
     );
 
     if (!signal.live) return;
-    setUsage({ kind: 'ready', window: windowId, stats, day, month, pricing, loadedAt: new Date().toISOString() });
+    setUsage({
+      kind: 'ready',
+      window: windowId,
+      stats,
+      day,
+      month,
+      pricing,
+      prevRuns,
+      loadedAt: new Date().toISOString(),
+    });
   }, []);
 
   useEffect(() => {
@@ -376,6 +408,10 @@ export function MetricsModulePage() {
       const dayKeys: string[] = [];
       for (let back = days - 1; back >= 0; back -= 1) {
         dayKeys.push(beijingDayKey(new Date(now.getTime() - back * 86_400_000)));
+      }
+      const prevDayKeys: string[] = [];
+      for (let back = days * 2 - 1; back >= days; back -= 1) {
+        prevDayKeys.push(beijingDayKey(new Date(now.getTime() - back * 86_400_000)));
       }
       try {
         if (view === 'model') {
@@ -403,6 +439,7 @@ export function MetricsModulePage() {
             view,
             lines,
             total: parsed.costUsd,
+            prevTotal: null,
             asOf: parsed.asOf,
             source: 'Hermes 用量（按模型）',
             note: '上游按模型只给 token 与调用次数，金额不按模型拆分，所以支出列显示「—」。',
@@ -411,23 +448,31 @@ export function MetricsModulePage() {
         }
 
         const directory = employeeIdsOf(await fetchJsonStrict('/agent-api/api/employees?limit=200'));
-        const bodies = await Promise.all(
-          dayKeys.flatMap((day) =>
-            chunkIds(directory.ids).map((ids) =>
-              fetchJsonStrict(
-                `/agent-api/api/budget-usage?employeeId=${ids.map(encodeURIComponent).join(',')}` +
-                  `&periodKind=day&period=${encodeURIComponent(day)}`,
+        const readDays = async (keys: string[]): Promise<LedgerRow[]> => {
+          const bodies = await Promise.all(
+            keys.flatMap((day) =>
+              chunkIds(directory.ids).map((ids) =>
+                fetchJsonStrict(
+                  `/agent-api/api/budget-usage?employeeId=${ids.map(encodeURIComponent).join(',')}` +
+                    `&periodKind=day&period=${encodeURIComponent(day)}`,
+                ),
               ),
             ),
-          ),
-        );
-        const rows: LedgerRow[] = [];
-        for (const body of bodies) {
-          const parsed = readLedger(body);
-          if (parsed.kind === 'invalid') throw new ApiError(parsed.reason, { status: 200, body: '', url: 'budget-usage' });
-          rows.push(...parsed.rows);
-        }
+          );
+          const out: LedgerRow[] = [];
+          for (const body of bodies) {
+            const parsed = readLedger(body);
+            if (parsed.kind === 'invalid') {
+              throw new ApiError(parsed.reason, { status: 200, body: '', url: 'budget-usage' });
+            }
+            out.push(...parsed.rows);
+          }
+          return out;
+        };
+        const rows = await readDays(dayKeys);
+        const prevRows = await readDays(prevDayKeys);
         const total = ledgerTotal(rows);
+        const prevTotal = ledgerTotal(prevRows);
         const lines: BreakdownLine[] = aggregateByEmployee(rows, directory.names).map((row, index) => ({
           key: `emp-${row.employeeId ?? index}`,
           label: employeeLabel(row.name, row.employeeId),
@@ -444,6 +489,7 @@ export function MetricsModulePage() {
           view,
           lines,
           total,
+          prevTotal,
           asOf: ledgerAsOf(rows),
           source: '平台扣费账本（按员工日账合计）',
           note: '次数不在账本里，所以这一列显示「—」；占比按同窗口账本合计计算。',
@@ -515,6 +561,7 @@ export function MetricsModulePage() {
           day: forced === 'empty' ? forcedEmptyLedger : forcedDown,
           month: forced === 'empty' ? forcedEmptyLedger : forcedDown,
           pricing: forcedDown,
+          prevRuns: forced === 'empty' ? { kind: 'ready', value: 0 } : forcedDown,
           loadedAt: new Date().toISOString(),
         }
     : usage;
@@ -548,7 +595,7 @@ export function MetricsModulePage() {
     ? forced === 'loading'
       ? { kind: 'loading' }
       : forced === 'empty'
-        ? { kind: 'ready', view: viewMode, lines: [], total: null, asOf: null, source: '—', note: null }
+        ? { kind: 'ready', view: viewMode, lines: [], total: null, prevTotal: null, asOf: null, source: '—', note: null }
         : {
             kind: 'unavailable',
             reason:
@@ -559,6 +606,47 @@ export function MetricsModulePage() {
             requestId: null,
           }
     : breakdown;
+
+  const currentRuns =
+    usageReady && usageReady.stats.kind === 'ready' ? usageReady.stats.value.stats.totals.runs : null;
+  const previousRuns = usageReady && usageReady.prevRuns.kind === 'ready' ? usageReady.prevRuns.value : null;
+  const runsDelta = deltaOf(currentRuns, previousRuns, 'runs');
+
+  const currentCost = breakdownView.kind === 'ready' ? breakdownView.total : null;
+  const previousCost = breakdownView.kind === 'ready' ? breakdownView.prevTotal : null;
+  const costDelta =
+    viewMode === 'model'
+      ? { kind: 'none' as const, reason: '按模型视图不提供金额，无法比较' }
+      : deltaOf(currentCost, previousCost, 'usd');
+
+  const exportable = breakdownView.kind === 'ready' && breakdownView.lines.length > 0;
+
+  const exportCsv = () => {
+    if (breakdownView.kind !== 'ready' || breakdownView.lines.length === 0) return;
+    const header =
+      viewMode === 'model'
+        ? ['模型', '支出USD', '次数', '占比%', '读取于', '窗口', '窗口开始', '窗口结束']
+        : ['员工', '支出USD', '次数', '占比%', '账本截至', '窗口', '窗口开始', '窗口结束'];
+    const rows = breakdownView.lines.map((line) => [
+      line.label,
+      line.costUsd === null ? null : line.costUsd.toFixed(2),
+      line.count,
+      line.share,
+      line.asOf ? formatBeijing(line.asOf) : null,
+      usageWindow.label,
+      usageReady && usageReady.stats.kind === 'ready' ? formatBeijing(usageReady.stats.value.from) : null,
+      usageReady && usageReady.stats.kind === 'ready' ? formatBeijing(usageReady.stats.value.to) : null,
+    ]);
+    const blob = new Blob([`\uFEFF${toCsv(header, rows)}`], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = csvFileName(viewMode, usageWindow.id, new Date());
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  };
 
   const chooseView = (next: 'employee' | 'model') => {
     const query = new URLSearchParams(params);
@@ -683,6 +771,9 @@ export function MetricsModulePage() {
                       : '—'}
                   </span>
                 </p>
+                <p className="met6-sub" data-testid="met6-delta-runs" title={runsDelta.kind === 'none' ? runsDelta.reason : '与上一周期等长窗口比较'}>
+                  较上一周期 <span className="font-mono">{formatDeltaCount(runsDelta)}</span>
+                </p>
                 <p className="met6-hint">
                   {usageReady && usageReady.stats.kind === 'ready'
                     ? `${formatBeijing(usageReady.stats.value.from)} — ${formatBeijing(usageReady.stats.value.to)}（北京时间）`
@@ -710,6 +801,9 @@ export function MetricsModulePage() {
                   <span className="font-mono" data-testid="met6-cost-month">
                     {usageReady && usageReady.month.kind === 'ready' ? formatUsd(usageReady.month.value.total) : '—'}
                   </span>
+                </p>
+                <p className="met6-sub" data-testid="met6-delta-cost" title={costDelta.kind === 'none' ? costDelta.reason : '与上一周期等长窗口比较'}>
+                  较上一周期 <span className="font-mono">{formatDeltaUsd(costDelta)}</span>
                 </p>
                 <p className="met6-hint">
                   {usageReady && usageReady.day.kind === 'ready' && usageReady.day.value.rows.length > 0
@@ -862,6 +956,16 @@ export function MetricsModulePage() {
                   data-testid="met6-cat-model"
                 >
                   按模型
+                </Button>
+                <Button
+                  size="sm"
+                  outlined
+                  disabled={!exportable}
+                  title={exportable ? '导出当前窗口与当前视图的明细' : '当前没有可导出的行：账本没有实扣行或上游没有给出模型行'}
+                  onClick={exportCsv}
+                  data-testid="met6-export"
+                >
+                  导出 CSV
                 </Button>
               </div>
             </div>

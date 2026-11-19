@@ -564,3 +564,56 @@ export function shareOf(value: number | null, total: number | null): number | nu
   if (value === null || total === null || !Number.isFinite(value) || !Number.isFinite(total) || total <= 0) return null;
   return Math.round((value / total) * 1000) / 10;
 }
+
+// ---- MET6: period-over-period delta and CSV export --------------------------
+
+/** Equal-length window immediately before [now-span, now). */
+export function previousRange(now: Date, id: UsageWindowId): { from: string; to: string } {
+  const preset = usageWindowOf(id);
+  const span = preset.hours * 3_600_000;
+  return {
+    from: new Date(now.getTime() - 2 * span).toISOString(),
+    to: new Date(now.getTime() - span).toISOString(),
+  };
+}
+
+export type DeltaValue = { kind: 'value'; value: number } | { kind: 'none'; reason: string };
+
+/** Difference, or an explicit "no comparison" — never a filled-in zero. */
+export function deltaOf(current: number | null, previous: number | null, unit: 'runs' | 'usd'): DeltaValue {
+  if (current === null || previous === null) {
+    return { kind: 'none', reason: unit === 'runs' ? '上一周期没有可比的运行数' : '上一周期没有可比的账本金额' };
+  }
+  return { kind: 'value', value: current - previous };
+}
+
+/** `+3` / `-2` / `±0`; a missing comparison is «—». */
+export function formatDeltaCount(delta: DeltaValue): string {
+  if (delta.kind === 'none') return '—';
+  if (delta.value === 0) return '±0';
+  return `${delta.value > 0 ? '+' : '-'}${Math.abs(delta.value)}`;
+}
+
+/** `+$0.12` / `-$0.03` / `±$0.00`; a missing comparison is «—». */
+export function formatDeltaUsd(delta: DeltaValue): string {
+  if (delta.kind === 'none') return '—';
+  if (delta.value === 0) return '±$0.00';
+  return `${delta.value > 0 ? '+' : '-'}${formatUsd(Math.abs(delta.value))}`;
+}
+
+/** One CSV cell; a missing value is empty, never 0. */
+export function csvCell(value: string | number | null): string {
+  if (value === null) return '';
+  const raw = String(value);
+  return /[",\n]/.test(raw) ? `"${raw.replace(/"/g, '""')}"` : raw;
+}
+
+export function toCsv(header: string[], rows: (string | number | null)[][]): string {
+  return [header.map(csvCell).join(','), ...rows.map((row) => row.map(csvCell).join(','))].join('\r\n');
+}
+
+/** `metrics-employee-7d-20261120-0931.csv` in Beijing time. */
+export function csvFileName(view: 'employee' | 'model', window: UsageWindowId, now: Date): string {
+  const stamp = formatBeijing(now.toISOString(), now).replace(/[-:]/g, '').replace(' ', '-');
+  return `metrics-${view}-${window}-${stamp}.csv`;
+}

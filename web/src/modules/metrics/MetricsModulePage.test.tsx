@@ -511,3 +511,105 @@ describe('MetricsModulePage — cost breakdown', () => {
     expect(row?.textContent).toContain('—');
   });
 });
+
+// ---- met6: CSV export + period-over-period delta ---------------------------
+
+describe('MetricsModulePage — export and delta', () => {
+  it('exports exactly the rows on screen with empty cells for missing values', async () => {
+    const captured: { blob: Blob | null; name: string | null } = { blob: null, name: null };
+    const createObjectURL = vi.fn((blob: Blob) => {
+      captured.blob = blob;
+      return 'blob:metrics';
+    });
+    const revokeObjectURL = vi.fn();
+    Object.assign(URL, { createObjectURL, revokeObjectURL });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
+      captured.name = this.download;
+    });
+
+    await mount(breakdownRouter());
+    await act(async () => {
+      (document.querySelector('[data-testid="met6-export"]') as HTMLButtonElement).click();
+    });
+
+    expect(click).toHaveBeenCalledTimes(1);
+    expect(captured.name).toMatch(/^metrics-employee-24h-\d{8}-\d{4}\.csv$/);
+    const text = await (captured.blob as Blob).text();
+    const lines = text.replace(/^\uFEFF/, '').split('\r\n');
+    expect(lines[0]).toBe('员工,支出USD,次数,占比%,账本截至,窗口,窗口开始,窗口结束');
+    // Two ledger rows on screen → header + two data rows.
+    expect(lines).toHaveLength(3);
+    expect(lines[1]).toContain('小鲤 · AAAABBBB');
+    expect(lines[1]).toContain('0.30');
+    expect(lines[1]).toContain('75');
+    // The ledger has no run counts: an empty cell, never 0.
+    expect(lines[1].split(',')[2]).toBe('');
+    click.mockRestore();
+  });
+
+  it('uses the model header set and disables export when nothing is on screen', async () => {
+    await mount(breakdownRouter(), '/metrics?view=model');
+    expect(document.querySelector('[data-testid="met6-export"]')).toBeTruthy();
+
+    await mount(
+      breakdownRouter({
+        ledger: () => Promise.resolve({ items: [], missingEmployeeIds: [] }),
+      }),
+    );
+    const button = document.querySelector('[data-testid="met6-export"]') as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(button.getAttribute('title')).toContain('当前没有可导出的行');
+  });
+
+  it('shows a signed delta per window and keeps a real zero distinct from missing', async () => {
+    await mount((url) => {
+      if (url.includes('run-activity')) return Promise.resolve(activityBody());
+      if (url.includes('run-stats')) {
+        const from = new URL(url, 'http://local').searchParams.get('from');
+        const hours = from ? (Date.now() - Date.parse(from)) / 3_600_000 : 0;
+        if (hours < 25) return Promise.resolve(STATS_24H);
+        if (hours < 49) return Promise.resolve({ ...STATS_24H, totals: { ...STATS_24H.totals, runs: 5 } });
+        if (hours < 200) return Promise.resolve(STATS_7D);
+        return Promise.resolve(STATS_30D);
+      }
+      if (url.includes('/api/employees')) return Promise.resolve(EMPLOYEE_BODY);
+      if (url.includes('models/pricing')) return Promise.reject(new ApiError('missing', { status: 404, body: '', url }));
+      if (url.includes('budget-usage')) return Promise.resolve(DAY_SPLIT);
+      return Promise.resolve({});
+    });
+
+    await waitFor(
+      () => (document.querySelector('[data-testid="met6-delta-runs"]')?.textContent ?? '').includes('-5'),
+      'runs delta',
+    );
+    expect(document.querySelector('[data-testid="met6-delta-runs"]')?.textContent).toContain('-5');
+    // Same ledger on both periods → a real ±$0.00, not «—».
+    await waitFor(
+      () => (document.querySelector('[data-testid="met6-delta-cost"]')?.textContent ?? '').includes('±$0.00'),
+      'cost delta',
+    );
+    expect(document.querySelector('[data-testid="met6-delta-cost"]')?.textContent).toContain('±$0.00');
+  });
+
+  it('says — with a reason when the previous period cannot be compared', async () => {
+    await mount((url) => {
+      if (url.includes('run-activity')) return Promise.resolve(activityBody());
+      if (url.includes('run-stats')) {
+        const from = new URL(url, 'http://local').searchParams.get('from');
+        const hours = from ? (Date.now() - Date.parse(from)) / 3_600_000 : 0;
+        if (hours >= 25) return Promise.reject(new ApiError('missing', { status: 404, body: '', url }));
+        return Promise.resolve(STATS_24H);
+      }
+      if (url.includes('/api/employees')) return Promise.resolve(EMPLOYEE_BODY);
+      if (url.includes('models/pricing')) return Promise.reject(new ApiError('missing', { status: 404, body: '', url }));
+      if (url.includes('budget-usage')) return Promise.resolve(DAY_SPLIT);
+      return Promise.resolve({});
+    });
+
+    const delta = document.querySelector('[data-testid="met6-delta-runs"]');
+    expect(delta?.textContent).toContain('—');
+    expect(delta?.getAttribute('title')).toContain('上一周期没有可比的运行数');
+  });
+});
