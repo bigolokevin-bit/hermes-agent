@@ -14,7 +14,7 @@
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 26,
+  "distinctMainHeads": 27,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -243,7 +243,7 @@
     {
       "route": "#/employees/:employeeId?zone=runs",
       "viewport": "375",
-      "chars": 42,
+      "chars": 51,
       "hasMainEl": true
     },
     {
@@ -255,7 +255,7 @@
     {
       "route": "#/employees/:employeeId?zone=tasks",
       "viewport": "375",
-      "chars": 42,
+      "chars": 51,
       "hasMainEl": true
     },
     {
@@ -597,13 +597,13 @@
     {
       "route": "#/work?tab=board&view=cron",
       "viewport": "1440",
+      "chars": 1782,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/work?tab=board&view=cron",
+      "viewport": "375",
       "chars": 145,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/work?tab=board&view=cron",
-      "viewport": "375",
-      "chars": 1782,
       "hasMainEl": true
     },
     {
@@ -642,16 +642,11 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "6ed07356",
-  "entry": "assets/index-DsyX4ZaS.js",
-  "entrySha256": "3d3805796d78f080efbd4a77248d0c787e8127aa7c93ce80a016894929e5201e",
-  "entryBytes": 155746,
-  "medianMainChars": 189.0,
-  "shotWindow": "17:48:33-17:49:26 local",
-  "servedEntryBefore": "assets/index-DsyX4ZaS.js",
-  "servedEntryAfter": "assets/index-DsyX4ZaS.js",
-  "env": "9122 proxy-live (anon 401 / auth 200); CE 权威=登录态, 观察字段仅旁证",
-  "ceCaliber": "ceAuthority=login-state; crawl-auth routesCE=24 denied=19; crawl-anon routesCE=51 denied=32; ok 不含 CE 项（L0 二十九轮裁定落码）",
-  "anonEvidence": "crawl-anon ok=True exit=0 probed=75 DL=0 CE=0 PE=0 routesCE=51(env 旁证); shots-anon 辅助腿见 shots-anon-summary.json",
-  "exitCode": 0
+  "headHash": "3ca5338f",
+  "exitCode": 0,
+  "entry": "assets/index-B3mMW8Ns.js",
+  "entrySha256": "4db7f629670a1758c5dbc0825e55b4e63722504c8019f8764c5cb9ef22ce6f13",
+  "entryBytes": 157357,
+  "servedEntryBefore": "assets/index-B3mMW8Ns.js",
+  "servedEntryAfter": "assets/index-B3mMW8Ns.js"
 }
