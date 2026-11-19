@@ -93,6 +93,15 @@ export const TAB_ORDER: KnowledgeTab[] = ["spaces", "ingest", "retrieval", "evid
 
 /** Read URLs — one per surface, so every body can say where it came from. */
 export const SPACES_URL = "/agent-api/api/knowledge/spaces?limit=20";
+/**
+ * The cross-space document list. Probed 2026-11-20 with the login cookie:
+ * `?q=` and `?query=` on this route make no difference (both answer the same
+ * `documents.read_not_wired` envelope, because the route is intercepted before any
+ * query is parsed), and `/api/knowledge/documents?q=`,
+ * `/api/knowledge/spaces/<id>/documents?q=` answer bare `console.unknown_route`.
+ * There is therefore NO server-side keyword filter to claim: the box filters the
+ * rows this read already returned, and says so on screen.
+ */
 export const DOCUMENTS_URL = "/agent-api/api/documents?limit=50";
 
 /**
@@ -156,6 +165,7 @@ export function searchUrl(query: string): string {
 export type SurfaceKey =
   | "spaces"
   | "space-docs"
+  | "doc-search"
   | "ingest-status"
   | "tasks"
   | "documents"
@@ -168,6 +178,7 @@ export type SurfaceKey =
 export const SURFACE_SOURCE: Record<SurfaceKey, string> = {
   spaces: "知识空间登记",
   "space-docs": "空间内文档登记",
+  "doc-search": "文档名（当前已加载的列表）",
   "ingest-status": "知识入库状态",
   tasks: "数据源接入任务",
   documents: "文档与数据接入登记",
@@ -1256,6 +1267,9 @@ export interface DocRow {
   at: string;
   atRaw: string | null;
   atHint: string | null;
+  /** 所属空间：跨空间列表要说清这条来自哪个空间；上游没给就是 null（不占位）。 */
+  spaceLabel: string | null;
+  spaceRaw: string | null;
   /** 站内可打开的原文位置；站外或缺失为 null。 */
   href: string | null;
   /** 打不开时这一条自己的原因（屏面可见）。 */
@@ -1290,7 +1304,9 @@ function docTypeLabel(raw: string | null): string {
   if (map[lower]) return map[lower];
   const mime = raw.toLowerCase().split("/").pop() ?? "";
   if (map[mime]) return map[mime];
-  return raw;
+  // Nothing to translate it into: 「其他类型」 goes on screen and the raw value stays
+  // available through the cell's title, instead of an English token leaking into copy.
+  return "其他类型";
 }
 
 function docOf(row: Rec): DocRow {
@@ -1316,6 +1332,11 @@ function docOf(row: Rec): DocRow {
     atHint: at ? null : moment.atRaw ? "上游给的时间读不出是哪一刻" : "上游没有给出更新时间",
     href: link.href,
     unreachable: link.unreachable,
+    spaceLabel: pickString(row.spaceName, row.space_name, row.knowledgeSpaceName, row.knowledge_space_name)
+      ?? (shortCode(pickString(row.spaceId, row.space_id))
+        ? `空间 · ${shortCode(pickString(row.spaceId, row.space_id))}`
+        : null),
+    spaceRaw: pickString(row.spaceId, row.space_id) ?? null,
   };
 }
 

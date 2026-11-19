@@ -576,3 +576,33 @@
   font-size: 0.76rem;
   overflow-wrap: anywhere;
 }
+
+/* R47 — the cross-space document-name box at the top of /knowledge.
+   It is one read plus a client-side filter, so nothing here may imply a search
+   service: the note under the box counts what is actually loaded. */
+.kn6-search {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.kn6-search .knw5-form {
+  align-items: center;
+}
+
+.kn6-search .knw5-sub {
+  color: var(--color-muted-foreground);
+}
+
+.kn6-search [data-testid="kn6-search-empty-clear"] {
+  margin-left: 6px;
+}
+
+@media (max-width: 560px) {
+  .kn6-search .knw5-form .knw5-field {
+    flex: 1 1 100%;
+  }
+}

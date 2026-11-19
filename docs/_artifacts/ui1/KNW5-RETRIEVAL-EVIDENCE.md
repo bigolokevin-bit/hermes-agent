@@ -997,3 +997,101 @@ $ npx vite build --outDir /tmp/knw14-dist --emptyOutDir
 本轮顺手避掉一处真实错误用法：行锚最初写成裸 `<a href>`，在 SPA 里点击会整页重载；
 改成 `Link` 后仍是带 href 的可聚焦锚点，但走客户端路由（实测 URL 变化、文档不重载）。
 非本域 `pnpm build` 阻塞未追；无 force / amend / `--no-verify` / `git add -A`。
+
+---
+
+# KNW5 追加 R47：顶部跨空间文档名搜索框（testid `kn6-search-*`）（2026-11-20 BJT）
+
+安全闸：toplevel 相符 → porcelain 空 → 显式 refspec fetch → `git merge --no-edit refs/remotes/origin/lane/hermes-console`
+（tip `f0419b0b`，与预期一致；**未用 reset --hard**，`35451fd8` 与合并提交 `513bddef` 都在）→ 零冲突。
+未并 main、未重建 9122。
+
+## 一、后端是否接受 `q` / `query`：实测不接受（cookie 只在 curl 命令内拼 Header，值零回显）
+
+```text
+HTTP 404 rid da7280fd4f /api/knowledge/documents?q=员工&limit=50   console.unknown_route     过滤后条数 0
+HTTP 404 rid 171ffcfe0d /api/knowledge/documents?query=员工&limit=50 console.unknown_route   过滤后条数 0
+HTTP 404 rid 2b3b2321e7 /api/documents?q=员工&limit=50             documents.read_not_wired  过滤后条数 0
+HTTP 404 rid 00117e3985 /api/documents?query=员工&limit=50          documents.read_not_wired  过滤后条数 0
+HTTP 404 rid 007f015e7f /api/documents?limit=50                    documents.read_not_wired  过滤前条数 0
+HTTP 404 rid e4d550e9f3 /api/knowledge/spaces/sp_hr/documents?q=员工 console.unknown_route    过滤后条数 0
+HTTP 404 rid c6381f0da4 /api/knowledge/search?q=员工&limit=50       console.unknown_route     过滤后条数 0
+```
+
+结论：带不带 `q`/`query` 回答**逐字一致**（该路由在 query 解析前就被 fail-closed 拦掉，
+BFF 源码 R34 NC③；路由表里也没有 `/api/documents` 的 `passthrough` 白名单可指望），
+所以**没有可声称的服务端过滤**：搜索框只做本地筛选，且屏面必须写清。
+
+## 二、口径
+
+- 框固定在 `/knowledge` 顶部（tab 条之上），四个页签都在；`?q=` 进 URL，可分享、刷新复现，
+  回填输入框并给出同一份筛选结果。
+- 只取数一次：本地筛选**不再发请求**。实测 `手册` 输入时 `/api/documents` 资源计数 1→1，
+  提交 `?q=手册` 后仍 1→1；`data-len` 4→1。
+- 框下注脚（wired）：「仅在当前已加载 4 条内搜索：这份文档读口今天不接受关键词参数
+  （实测 q 与 query 回答一致），所以这里不叫全库搜索；换关键词不会再请求一次。」
+  读口没通时改为不带条数的同一句口径，绝不写「全库」。
+- 无结果：「没有匹配的文档：已加载的 4 条里没有名字含「查无」的文档。这是本地筛选的结果，
+  不代表全库没有。」+ 就地清除入口；空列表本身另说「这只说明这份回答是空的，不下别的结论，也不给数量」。
+- 行仍是真实可聚焦 `a[href]`（实测 `focus()` 后 activeElement 命中，4/4 行）：
+  点开写 `?sdoc=<文档标识>`，与空间详情位的 `?doc=` 各自独立、互不覆盖。
+- 列：文档名 / 所属空间 / 类型 / 大小 / 更新（北京时区到分）。缺失屏面只写「—」，
+  原因进该格 `title`；上游没给空间就「—」，不硬编「未知空间」；
+  认不出的类型值不再上屏（改「其他类型」，原值进 title）。
+- 打不开就写「原文不可达」+这一条自己的原因（站外地址 / 没有给位置两种说法实测都在）。
+- 清除入口会把**未提交的输入框文本**一起清掉——只动 URL 的话，没按回车的关键词会看着清不掉
+  （本轮顺手修掉的一处真实交互缺陷）。
+- 零写入口：全页无 `form[method=post]`、无 textarea/select/checkbox；搜索框是
+  `type=search` 的读侧控件，提交只做客户端路由。
+- 他车道的 `?state=` 预览开关仍“一个请求都不发”：强制态下本框整体不挂载（实测
+  `kn6-search-panel` 不存在且 `fetch` 零调用）。
+
+## 三、状态与四页签读数（Chromium 无头，today / wired / denied × 1440 / 1280 / 375）
+
+```text
+404 文档读口 → data-state=unwired，正文「文档登记读口未接入」，title=GAP-03，
+              可复制请求编号 + 重试 + 申请入口，行 0，注脚自动去掉条数
+403 → 正文与 404 逐字相等（true），只有请求编号不同
+wired → data-state=ready len=4，四行 anchor，本地筛选 len→1 且文档请求数不变，
+        `?q=` 提交进 URL 并在刷新后复现，清除后 len 回 4、URL 干净
+挂起中 → data-state=loading + 骨架，无表
+溢出：三档 sw==vw==bodySW，页容器 SW==CW，无 OVERFLOW 元素；[data-fixture]=0；writes=0
+泄漏：GAP-03 / 403 / 404 / 500 / 路由 / not_wired / d_manual / sp_hr / fileName / sizeBytes /
+      mimeType / limit=50 全部 false；页面报错 none
+四页签：#/knowledge?tab=spaces|ingest|retrieval|citations 四档视口全部命中，
+        `kn3-docs-*` 回归通过（空间详情位仍 ready，行 href 仍写 doc=）
+成本记录：ingest 页签上顶部框与该面自己的文档登记面都读 `/api/documents?limit=50`，
+          该页一次加载会看到 2 次同一读口——每个面各打自己那一次请求是本页一贯口径，
+          没有把两面并成一个数；关键词切换仍是 0 次额外请求。
+```
+
+## 四、验证尾行（本轮）
+
+```text
+$ npx vitest run src/modules/knowledge
+ Test Files  2 passed (2)
+      Tests  39 passed (39)
+
+$ npx vitest run
+ Test Files  131 passed (131)
+      Tests  1404 passed (1404)
+
+$ npx eslint src/modules/knowledge
+（无输出，exit 0）
+
+$ npx tsc -b . --noEmit | grep modules/knowledge
+（无输出，本模块 0 错）
+
+$ npx vite build --outDir /tmp/knw15-dist --emptyOutDir
+✓ built in 4.08s   （产物只落 /tmp）
+
+$ node scripts/assert-ia.mjs --source=react
+（只读复核：51 / 22 / 1 / 8，ok=true）
+```
+
+testid：新增 `kn6-search-*` 家族（panel/form/input/submit/clear/note/table/row/name/space/type/size/
+updated/detail/detail-open/detail-unreachable/unwired/empty/error/loading/request-id/retry/apply/
+empty-clear），`kn3-docs-*` 与 `knw5-*` 一字未改。
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；无 force / amend / `--no-verify` / `git add -A`；
+非本域 `pnpm build` 阻塞未追。
