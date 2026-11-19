@@ -1,5 +1,10 @@
 # 波 3 治理组 — T20 / T21 / T23 / T24
 
+> 账本单一落点纪律（2026-11-19）：
+> 1. 任何提交都不得包含 `docs/_artifacts/tonight/**` 的**修改**；`git commit` 前先 `git reset -q HEAD -- docs/_artifacts/tonight`。
+> 2. 合入主树导致该目录复活旧账时，一律 `git checkout origin/lane/hermes-console -- docs/_artifacts/tonight` 覆盖后再提交。
+> 3. 本 lane 的页面证据只写 `docs/_artifacts/gov/**`；权威账本只在 `forks/hermes-agent` 主树。
+
 Worktree: `/Users/kevin_studio/Projects/forks/console-gov` · branch `lane/console-gov` · base `c28ebc16`.
 Write domain: `web/src/modules/{people,org,settings,version}/**`, `docs/_artifacts/gov/**`.
 No App/routes/shell/registry/manifest/package.json/lockfile changes.
