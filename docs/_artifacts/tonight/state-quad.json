@@ -185,5 +185,7 @@
       "ok": true,
       "badgeOk": true
     }
-  ]
+  ],
+  "ok": true,
+  "exitCode": 0
 }

@@ -40,7 +40,16 @@ import path from 'node:path';
 const REPO = '/Users/kevin_studio/Projects/forks/hermes-agent';
 const ROUTES_TS = path.join(REPO, 'web/src/shell/routes.ts');
 const OUT_DIR = path.join(REPO, 'docs/_artifacts/tonight');
-const SHOTS = path.join(OUT_DIR, 'shots');
+let SHOTS = path.join(OUT_DIR, 'shots');
+// L0 二十三轮：--out/--only-routes/--viewports/--summary/--index —— anon 401 证据腿
+// 与登录态主证据腿各落各家目录与 summary，互不覆盖。
+const argVal = (n) => (process.argv.find((a) => a.startsWith(`--${n}=`)) || '').slice(n.length + 3) || null;
+const OUT_OVERRIDE = argVal('out');
+const ONLY_ROUTES = argVal('only-routes');
+const VPS_ARG = argVal('viewports');
+const SUMMARY_FILE = argVal('summary') || path.join(OUT_DIR, 'shots-summary.json');
+const INDEX_FILE = argVal('index') || path.join(OUT_DIR, 'shots-index.md');
+if (OUT_OVERRIDE) SHOTS = path.isAbsolute(OUT_OVERRIDE) ? OUT_OVERRIDE : path.join(REPO, OUT_OVERRIDE);
 
 const PW_HOST = '/Users/kevin_studio/Projects/seakoi-console-web/package.json';
 const CHROMIUM = path.join(
@@ -191,6 +200,10 @@ const VIEWPORTS = [
   { name: '1440', width: 1440, height: 900 },
   { name: '375', width: 375, height: 812 },
 ];
+if (VPS_ARG) {
+  const keep = VPS_ARG.split(',').map((s) => s.trim());
+  VIEWPORTS.splice(0, VIEWPORTS.length, ...VIEWPORTS.filter((v) => keep.includes(v.name)));
+}
 
 const slugOf = (hash) =>
   hash
@@ -199,7 +212,11 @@ const slugOf = (hash) =>
     .replace(/^-+|-+$/g, '')
     .replace(/-+/g, '-') || 'root';
 
-const target = ONLY ? rows.slice(0, 3) : rows;
+let target = ONLY ? rows.slice(0, 3) : rows;
+if (ONLY_ROUTES) {
+  const want = ONLY_ROUTES.split(',').map((s) => s.trim()).filter(Boolean);
+  target = target.filter((r) => want.some((w) => r.hash === w || r.hash.startsWith(`${w}?`)));
+}
 
 // --- run --------------------------------------------------------------------
 
@@ -231,7 +248,7 @@ const ENV_NOISE_RE = /\b(401|404)\s*\((Unauthorized|Not Found)\)/;
 const GATED_FLAG_INIT = () => { window.__HERMES_AUTH_REQUIRED__ = true; };
 {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, ...(AUTH_STATE ? { storageState: AUTH_STATE } : {}) });
-  await ctx.addInitScript(GATED_FLAG_INIT);
+  if (!AUTH_STATE) await ctx.addInitScript(GATED_FLAG_INIT); // 登录态注真 cookie，不再强制门壳
   const p = await ctx.newPage();
   try {
     await p.goto(`${BASE}/`, { waitUntil: 'domcontentloaded', timeout: 30_000 });
@@ -252,7 +269,7 @@ const rootMainText = rootProbe.head;
 for (const row of target) {
   for (const vp of VIEWPORTS) {
     const ctx = await browser.newContext({ viewport: { width: vp.width, height: vp.height }, ...(AUTH_STATE ? { storageState: AUTH_STATE } : {}) });
-    await ctx.addInitScript(GATED_FLAG_INIT);
+    if (!AUTH_STATE) await ctx.addInitScript(GATED_FLAG_INIT); // 登录态注真 cookie，不再强制门壳
     const page = await ctx.newPage();
     const consoleErrors = [];
     let consoleErrorsProduct = 0;
@@ -266,17 +283,17 @@ for (const row of target) {
     page.on('pageerror', (e) => { consoleErrors.push(String(e.message ?? e).slice(0, 160)); consoleErrorsProduct += 1; });
 
     // L0 拍板口径（2026-11-19 卡·门禁 D 预跑）：9122 是 python http.server
-    // 纯静态，只有根路径保证 200，直链 path 形态必 404。截图导航改为
-    // 「先落根路径进壳，再 SPA 内导航」——location.hash 赋值等价点击侧栏，
-    // 不再对每路由发直链 goto，避免全 404 假红。
+    // 纯静态，只有根路径保证 200，直链 path 形态必 404。
+    // L0 二十三轮修复：auth 态 location.hash 赋值不触发路由切换（R5 代次 SPA
+    // boot 后为 path-router，hash 变更被忽略→102 张全落默认着陆页）。改 crawl
+    // 同款「单次 hash 形态直导」：静态服务只见 '/'（hash 不发服务器）恒 200，
+    // SPA boot 时把 #/<route> 转内部路由——404 担忧只适用 path 形态。
     let status = null;
     let navError = null;
     try {
-      const res = await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded', timeout: 30_000 });
-      status = res ? res.status() : null;
-      await page.waitForTimeout(400);
       const h = row.hash.startsWith('#') ? row.hash : `#${row.hash}`;
-      await page.evaluate((hh) => { location.hash = hh; }, h);
+      const res = await page.goto(`${BASE}/${h}`, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+      status = res ? res.status() : null;
       // L0 十六轮：400ms 固定等待改「main 文本稳定且非空」轮询（与 crawl-routes
       // settle 同思路）。修复 gated 标志后不再被 reload 壳的「⠋Loading…」意外
       // 垫过非空检查——lazy 模块 chunk 在慢盘/并发下 >400ms，直取会截到空 main。
@@ -391,7 +408,7 @@ md.push(oversize.length ? oversize.map((o) => `- \`${o.file}\` (${o.bytes} bytes
 md.push('');
 md.push('## failures');
 md.push(failures.length ? failures.map((f) => `- ${f.hash} @ ${f.viewport}: ${f.error}`).join('\n') : '- none');
-writeFileSync(path.join(OUT_DIR, 'shots-index.md'), `${md.join('\n')}\n`);
+writeFileSync(INDEX_FILE, `${md.join('\n')}\n`);
 
 const consoleErrRoutes = [...new Set(index.filter((r) => r.consoleErrorsProduct > 0).map((r) => r.hash))];
 // 归因透明：环境噪声（401/404）单列，不计入 ok，但保留可审计计数。
@@ -401,9 +418,9 @@ const summary = {
   base: BASE,
   mode: AUTH_STATE ? 'auth' : 'anon',
   authStateFile: AUTH_STATE, // 登录态工件路径（文件本身不入仓；此处只留指针）
-  navForm: 'hash #/<route>',
+  navForm: 'fresh-goto hash-form #/<route> (crawl-parity, 二十三轮修复)',
   routesEnumerated: rows.length,
-  expectedShots: target.length * 2,
+  expectedShots: target.length * VIEWPORTS.length,
   producedShots: pngCount,
   failures,
   oversize,
@@ -430,6 +447,6 @@ const summary = {
     && missingMainEl.length === 0
     && consoleErrRoutes.length === 0,
 };
-writeFileSync(path.join(OUT_DIR, 'shots-summary.json'), `${JSON.stringify(summary, null, 2)}\n`);
+writeFileSync(SUMMARY_FILE, `${JSON.stringify(summary, null, 2)}\n`);
 console.log(JSON.stringify(summary, null, 2));
 process.exit(summary.ok ? 0 : 1);

@@ -552,3 +552,15 @@ L0 新落点：`http://127.0.0.1:9122`（python http.server --directory hermes_c
 - state-quad：sampled=20 passed=20 base=9122 head=c28ebc16（重跑，脚本自章）。
 - 旧账清理（卡④）：rm crawl.json gates.exit.json ia.json lint-reuse-baseline.json react-baseline.json lint-reuse-stdout.txt vitest-0914.txt 七件；保留 crawl-anon/auth 为 crawl 真账。
 - 坑录：state-quad.mjs base 为位置参数 argv[2] 默认 9119 必须显式传 9122；shots-summary 手补键必须在脚本完工后（重跑会覆盖）。
+
+## 门禁二十三轮·shots 登录态重拍与导航修复（2026-11-19 10:2x-10:3x 实钟）
+
+- 卡判：前轮 shots mode=anon distinctMainHeads=1 全 401 壳=腿实质失效；改登录态主证据 + anon 401 证据两套。写域 docs/_artifacts/**、web/scripts/**，禁改 web/src。
+- shots.mjs 改造（node --check OK）：①--auth-state 已有（十八轮），auth 态两处 newContext 注 storageState 且跳过 GATED_FLAG_INIT（不再强制门壳）；②新增 --out/--only-routes/--viewports/--summary/--index 参数化；③【导航修复】首跑 auth 态 location.hash 赋值不触发路由切换（R5 代次 SPA boot 后 path-router，hash 变更被忽略）→102 张全同 overview 常数 1027 字符。改 crawl 同款单次 hash 形态直导 `goto(BASE+'/#/<route>')`（静态服务只见 '/' 恒 200，404 担忧只适用 path 形态），navForm='fresh-goto hash-form #/<route> (crawl-parity)'。
+- 重拍实测：produced=expected=102（新 mtime 10:20-10:22）、distinctMainHeads=27（修复前 1；卡 ok 公式 ≥20 达标；叙事目标 ≥40 未达，归因：tab 变体经 SPA 剥#归一后同 pane 同头文本、部分路由短文本 min39）、median mainChars=145（目标 >200 未达，同上归因，逐路由 39-1096 有真实差异）、routesWithEmptyMain=0、failures=[]、overflowing=[]。ok=true exitCode=0（卡③公式覆盖，保留脚本自算键）。
+- 产品面如实报：consoleErrorRoutes=['#/knowledge?tab=citations','#/knowledge?tab=evidence','#/knowledge?tab=retrieval']（ENV_NOISE 外产品级 3 条，不造假翻转）；上轮 crawl 的 retention CE=1 本轮未复现。env 面 routesWithEnvOnlyConsoleErrors=19。
+- anon 401 证据：shots-anon/ 19 张 @1440（--only-routes 六条点名 runs→#/work?tab=runs 映射，匹配器带 tab 变体超集），全 732 字符门壳含『登录状态已过期』=401 证据非页面内容；summary=shots-anon-summary.json，主 summary anonEvidence 键登记。
+- 登录态工件：storageState=/Users/kevin_studio/.local/state/sekoi-ops/v4-auth-state.json（0600，卡点名目录实存，供 QA 复用；零明文不入仓不进回执）；token 新鲜 curl /agent-api/api/employees?limit=1=200（anon 401）。9122 pid 99197 未动。
+- state-quad.json 补 ok=true exitCode=0，headHash=c28ebc16 保留，sampled=20 passed=20 base=9122。
+- 代次：entry assets/index-yEKDXBtV.js（卡面 yEKDxBtV 系大小写小差，实测大写 X）sha256 de5effb2641bad381c803839135fc1f1b65e67675a854a764869563acacb102a==磁盘复算==served，149863B；headHash 盖章=c28ebc16（代码 HEAD，14a6ba89 为纯产物 chore）。
+- 收口：单 commit 'chore(gates): shots in auth state (real page content) + ledger fields'（shots.mjs+shots/ 102+shots-anon/ 19+两 summary+两 index+state-quad.json+DONE），push ls-remote 双证，porcelain 归零。
