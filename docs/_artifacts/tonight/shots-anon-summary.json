@@ -207,19 +207,19 @@
     {
       "route": "#/employees/:employeeId",
       "viewport": "375",
-      "chars": 51,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=config",
-      "viewport": "1440",
       "chars": 42,
       "hasMainEl": true
     },
     {
       "route": "#/employees/:employeeId?zone=config",
-      "viewport": "375",
+      "viewport": "1440",
       "chars": 51,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=config",
+      "viewport": "375",
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -243,7 +243,7 @@
     {
       "route": "#/employees/:employeeId?zone=runs",
       "viewport": "375",
-      "chars": 42,
+      "chars": 51,
       "hasMainEl": true
     },
     {
@@ -303,7 +303,7 @@
     {
       "route": "#/identity?tab=checks",
       "viewport": "375",
-      "chars": 161,
+      "chars": 163,
       "hasMainEl": true
     },
     {
@@ -549,7 +549,7 @@
     {
       "route": "#/system?tab=retention",
       "viewport": "1440",
-      "chars": 379,
+      "chars": 371,
       "hasMainEl": true
     },
     {
@@ -631,9 +631,10 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 1,
+  "consoleErrorsObservedByShots": 2,
   "consoleErrorRoutesObservedByShots": [
-    "#/identity?tab=checks"
+    "#/overview?tab=usage",
+    "#/system?tab=retention"
   ],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
@@ -644,12 +645,12 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "e08cbb60",
+  "headHash": "a1a26ccf",
   "exitCode": 0,
-  "entry": "assets/index-DNlTCozE.js",
-  "entrySha256": "a798a5960e18608be7ee79bcca881bc4849d93bb927fa1461b311c865b831b6b",
+  "entry": "assets/index-y91x2LYj.js",
+  "entrySha256": "0d6ead0a1172a136038c0378694e84cdac82b3e7f704a5bdb8d78608849ba54b",
   "entryBytes": 163770,
-  "servedEntryBefore": "index-DNlTCozE.js",
-  "servedEntryAfter": "index-DNlTCozE.js",
+  "servedEntryBefore": "index-y91x2LYj.js",
+  "servedEntryAfter": "index-y91x2LYj.js",
   "auxiliary": true
 }

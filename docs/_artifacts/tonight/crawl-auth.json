@@ -26,7 +26,7 @@
   "rootShell": {
     "url": "http://127.0.0.1:9122/",
     "hasMainEl": true,
-    "mainChars": 465,
+    "mainChars": 701,
     "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 刷新 可上岗 各项"
   },
   "contentChecked": 51,
@@ -231,11 +231,11 @@
       "source": "DETAIL_TAB",
       "kind": "detail-zone",
       "verdict": "content-ok",
-      "mainChars": 110,
+      "mainChars": 49,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 1,
-      "consoleErrorEnv": "auth-required-401",
+      "consoleErrors": 0,
+      "consoleErrorEnv": null,
       "evalError": null,
       "headSample": "工作台 配置 任务 运行 证据 员工 · EMPLOYEE — 概览 能力与权限 审批 运行 审"
     },
@@ -660,7 +660,7 @@
       "source": "VIEW_DEEP_LINKS",
       "kind": "view",
       "verdict": "content-ok",
-      "mainChars": 1816,
+      "mainChars": 202,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
@@ -673,7 +673,7 @@
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 202,
+      "mainChars": 1816,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 0,
@@ -701,7 +701,7 @@
   "contentEmptyCount": 0,
   "mode": "auth-attributed",
   "envAttribution": {
-    "auth-required-401": 27
+    "auth-required-401": 26
   },
   "probeErrors": [],
   "deniedEndpoints": [
@@ -736,10 +736,10 @@
     "redirects=24 vs 门定值 23（routes.ts 并发新增形态，归因非判红；门值更新归 L0/A）"
   ],
   "routesRenderedWithoutMainEl": 0,
-  "routesWithConsoleErrors": 27,
+  "routesWithConsoleErrors": 26,
   "parseErrors": [],
   "ok": true,
-  "headHash": "e08cbb60",
+  "headHash": "a1a26ccf",
   "exitCode": 0,
   "counts": {
     "probed": 75,
