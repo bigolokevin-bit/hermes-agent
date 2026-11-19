@@ -1,3 +1,4 @@
+<!-- Ledger discipline (2026-11-19): the authoritative ledgers live only in the forks/hermes-agent main tree. This module worktree must never commit modifications of docs/_artifacts/tonight/**; before any commit run `git reset -q HEAD -- docs/_artifacts/tonight`, and when a merge resurrects old ledgers restore them with `git checkout origin/lane/hermes-console -- docs/_artifacts/tonight`. Page evidence for this lane goes to docs/_artifacts/aud/**. -->
 # DONE — 审计三面（console-aud 车道，branch `lane/console-aud`，基线 `c28ebc16`）
 
 日期：2026-11-19（Asia/Shanghai）。作者：Fixer（受派会话）。
