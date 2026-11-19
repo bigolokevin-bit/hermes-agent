@@ -1,15 +1,24 @@
 /**
- * T33 — 审计事件列表 + 单条详情 (lane console-approvals).
+ * 审计事件列表 — screen 1 of the audit surface (T33, lane console-approvals).
+ * Page-level id `agent-v2-page-audit`; its own test ids are `aud01-*`, the
+ * detail drawer's are `aud02-*`, the window check's are `aud03-*`.
  *
  * Two real reads, one screen:
- *   `GET /agent-api/api/audit?limit=50[&cursor=]`        the newest ledger page
- *   `GET /agent-api/api/audit/detail?id=<eventId>`       one record, on demand
+ *   `GET /agent-api/api/audit?limit=50[&event_type=&from=&to=&cursor=]`  the ledger
+ *   `GET /agent-api/api/audit/detail?id=<eventId>`                       one record
  *
  * What the list says (PRD 每字段口径):
- *   时间   北京时间到分，标签写明「（北京时间）」；服务没给时间就显示「—」并说明原因
- *   操作者 「姓名 · 8位短码」或「员工 · 短码」；`emp_…` / `human:1` / UUID 只做 `title`
- *   类型   已知动作给中文；不认识的按原样显示，绝不机翻成我们没得到的说法
- *   结果   成功 / 失败（被拒）/ 待完成，失败再带一句人话原因
+ *   时间     北京时间到分，标签写明「（北京时间）」；服务没给时间就显示「—」并说明原因
+ *   操作者   「姓名 · 8位短码」或「员工 · 短码」，没有归属就写「未指派」；
+ *            `emp_…` / `human:1` / UUID 只做 `title`
+ *   类型     已知动作给中文；不认识的按原样显示，绝不机翻成我们没得到的说法
+ *   结果     成功 / 失败（被拒）/ 待完成，失败再带一句人话原因
+ *   请求编号 可复制；服务没给就写「未提供」，不留空、不写 0
+ *
+ * The 时间窗 and 事件类型 filters change the request (asserted in
+ * `AuditEventsModulePage.test.tsx`). The 操作者 filter is rendered
+ * disabled-by-design with 「未接入 · GAP-06」: the read side has no such
+ * parameter to send, so a live control there would be a dead one.
  *
  * The detail body has zero raw field names on screen; every technical value
  * collapses into 「技术详情」, closed by default (closed means those strings are
