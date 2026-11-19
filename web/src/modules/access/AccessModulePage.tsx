@@ -8,6 +8,7 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import {
   GAP02_PEOPLE,
   GAP02_ROLES,
+  PEOPLE_GAP,
   PEOPLE_ENDPOINTS,
   ROLE_ENDPOINTS,
   ROLE_GAP,
@@ -81,8 +82,9 @@ function GroupState({
     return <div className="acc4-skeleton" aria-busy="true"><span /><span /><span /></div>;
   }
   if (resource.phase === "unavailable") {
+    const gapCode = gap === GAP02_ROLES ? ROLE_GAP : gap === GAP02_PEOPLE ? PEOPLE_GAP : undefined;
     return (
-      <div className="acc4-gap" data-testid={gap === GAP02_ROLES ? "role5-gap" : "acc4-gap"} title={gap === GAP02_ROLES ? ROLE_GAP : undefined}>
+      <div className="acc4-gap" data-testid={gap === GAP02_ROLES ? "role5-gap" : "acc4-gap"} title={gapCode}>
         <b>未接入</b>
         <span>{gap}</span>
         <Link className="acc4-link" to="/approvals">

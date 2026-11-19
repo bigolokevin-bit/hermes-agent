@@ -6,9 +6,7 @@
  *   GET /api/tools/toolsets
  *   GET /api/mcp/servers
  *
- * No fixture is ever painted for a successful answer. The only fixture is the
- * clearly marked field example shown when BOTH routes are absent (404), and it
- * carries data-fixture + a GAP title; it never impersonates a live row.
+No sample row is ever painted; a missing route renders an honest gap.
  */
 import { ApiError, errorMessage } from "@/lib/api-error";
 import { fetchJSON } from "@/lib/api";
@@ -41,18 +39,12 @@ export interface ToolRow {
   source: "toolset" | "mcp";
 }
 
-export interface FixtureRead {
-  kind: "fixture";
-}
-
 export interface RowsRead {
   kind: "rows";
   rows: ToolRow[];
   toolsetRows: number;
   mcpRows: number;
 }
-
-export type ToolRead = RowsRead | FixtureRead;
 
 const TOOLSET_LABEL: Record<string, string> = {
   web: "网页搜索与抓取",
@@ -384,79 +376,3 @@ export function shapeFailure(): FailureCopy {
 
 export const requestIdLine = (id: string | null): string =>
   id ? `请求编号：${id}` : "本次请求未记录编号，可复制时间与操作路径反馈";
-
-/** Clearly marked field example; only for the both-routes-404 case. */
-export const FIXTURE_ROWS: ToolRow[] = [
-  {
-    key: "fixture:web",
-    name: "网页搜索与抓取",
-    nameReason: null,
-    type: "工具集",
-    typeReason: null,
-    status: "enabled",
-    statusRaw: "true",
-    statusReason: null,
-    credential: "configured",
-    credentialRaw: "true",
-    credentialReason: null,
-    lastUsed: null,
-    lastUsedReason: "示例行：接口未接入，没有最近调用时间。",
-    rawId: "web",
-    detail: ["字段示例", "工具集标识：web", "包含工具：web_search、web_extract"],
-    source: "toolset",
-  },
-  {
-    key: "fixture:kanban",
-    name: "看板",
-    nameReason: null,
-    type: "工具集",
-    typeReason: null,
-    status: "disabled",
-    statusRaw: "false",
-    statusReason: null,
-    credential: "missing",
-    credentialRaw: "false",
-    credentialReason: null,
-    lastUsed: null,
-    lastUsedReason: "示例行：接口未接入，没有最近调用时间。",
-    rawId: "kanban",
-    detail: ["字段示例", "工具集标识：kanban", "包含工具：kanban_create、kanban_list"],
-    source: "toolset",
-  },
-  {
-    key: "fixture:mcp-http",
-    name: "文档检索",
-    nameReason: null,
-    type: "MCP · HTTP 服务",
-    typeReason: null,
-    status: "enabled",
-    statusRaw: "true",
-    statusReason: null,
-    credential: "configured",
-    credentialRaw: "declared",
-    credentialReason: null,
-    lastUsed: null,
-    lastUsedReason: "示例行：接口未接入，没有最近调用时间。",
-    rawId: "docs-search",
-    detail: ["字段示例", "连接标识：docs-search", "传输方式：http"],
-    source: "mcp",
-  },
-  {
-    key: "fixture:mcp-unknown",
-    name: "日程连接",
-    nameReason: null,
-    type: "MCP · 本地进程",
-    typeReason: null,
-    status: "unknown",
-    statusRaw: null,
-    statusReason: "示例行：接口没有说明启用状态。",
-    credential: "unknown",
-    credentialRaw: null,
-    credentialReason: "示例行：接口没有说明凭据状态。",
-    lastUsed: null,
-    lastUsedReason: "示例行：接口未接入，没有最近调用时间。",
-    rawId: "calendar",
-    detail: ["字段示例", "连接标识：calendar", "传输方式：stdio"],
-    source: "mcp",
-  },
-];

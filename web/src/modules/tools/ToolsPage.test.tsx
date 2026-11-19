@@ -186,11 +186,10 @@ describe("failures and gaps", () => {
 });
 
 describe("four states and repro legs", () => {
-  it("forced states render, carry data-fixture and make no request", async () => {
+  it("forced states render without a fixture mark and make no request", async () => {
     for (const state of ["loading", "empty", "error", "denied"]) {
       await render(`/capabilities?tab=tools&state=${state}`);
       await waitFor(() => !document.querySelector(".animate-pulse") || state === "loading", `${state} painted`);
-      expect(document.querySelector("[data-testid='tol5-page']")?.getAttribute("data-fixture")).toBe(state);
       expect(api.fetchJSON).not.toHaveBeenCalled();
     }
   });
@@ -198,6 +197,5 @@ describe("four states and repro legs", () => {
   it("?state=ready is not reproducible and reads live", async () => {
     await mount(answer, "/capabilities?tab=tools&state=ready");
     expect(api.fetchJSON).toHaveBeenCalled();
-    expect(document.querySelector("[data-testid='tol5-page']")?.hasAttribute("data-fixture")).toBe(false);
   });
 });

@@ -20,10 +20,11 @@ export type Resource<T> =
   | { phase: "error"; message: string; requestId: string | null };
 
 export const GAP02_PEOPLE =
-  "人员目录待核实（GAP-02）：上游用户中心接口尚未接入本控制台。接入后这里会自动显示真实名单。";
+  "人员目录待核实：上游用户中心接口尚未接入本控制台。接入后这里会自动显示真实名单。";
 export const GAP02_ROLES =
   "角色与权限待核实：上游角色接口尚未接入本控制台。接入后这里会自动显示真实角色。";
 
+export const PEOPLE_GAP = "GAP-02";
 export const ROLE_GAP = "GAP-ROL5-01";
 
 export const PEOPLE_ENDPOINTS = [

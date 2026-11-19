@@ -122,7 +122,7 @@ export function HealthPage() {
   const counts = view.k === "ready" ? summarize(view.rows) : { healthy: 0, error: 0, unknown: 0 };
 
   return (
-    <section className="hlt5-page" data-testid="hlt5-page" data-fixture={forced ? "1" : undefined}>
+    <section className="hlt5-page" data-testid="hlt5-page">
       <header className="hlt5-head">
         <div className="min-w-0">
           <h1 className="font-mondwest text-xl">系统健康</h1>

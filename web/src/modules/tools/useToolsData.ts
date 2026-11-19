@@ -3,8 +3,6 @@
  *
  * Both reads are attempted together. A failure of one section does not erase
  * the rows the other section returned; it keeps a visible, retryable note.
- * A fixture exists only when both routes are genuinely absent (404); a 403 is
- * always the normal denied body, never a fixture.
  */
 import { useCallback, useEffect, useState } from "react";
 
@@ -25,7 +23,7 @@ export function forcedStateOf(raw: string | null): ForcedState | null {
   return raw !== null && FORCED.includes(raw) ? (raw as ForcedState) : null;
 }
 
-export type ToolsPhase = "loading" | "ready" | "empty" | "error" | "denied" | "login" | "fixture";
+export type ToolsPhase = "loading" | "ready" | "empty" | "error" | "denied" | "login";
 
 export interface SectionIssue {
   label: string;
@@ -40,7 +38,6 @@ export interface ToolsState {
   issues: SectionIssue[];
   failure: FailureCopy | null;
   forced: boolean;
-  fixture: boolean;
   reload: () => void;
 }
 
@@ -53,7 +50,6 @@ const PENDING: Settled = {
   mcpRows: 0,
   issues: [],
   failure: null,
-  fixture: false,
 };
 
 const FORCED_RESULT: Record<ForcedState, Settled> = {

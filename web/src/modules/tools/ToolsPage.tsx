@@ -116,12 +116,10 @@ function FailurePanel({
   kind,
   failure,
   onRetry,
-  fixture,
 }: {
   kind: "error" | "denied" | "login";
   failure: FailureCopy | null;
   onRetry: () => void;
-  fixture?: string;
 }): ReactNode {
   const denied = kind === "denied";
   const login = kind === "login";
@@ -130,7 +128,6 @@ function FailurePanel({
       role="alert"
       className={denied ? "border-border bg-card" : "border-destructive/40 bg-destructive/5"}
       data-testid={denied ? "tol5-denied" : login ? "tol5-login" : "tol5-error"}
-      data-fixture={fixture}
       title={denied ? GAP : failure?.technical ?? undefined}
     >
       <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-6">
@@ -173,12 +170,10 @@ export function ToolsPage(): ReactNode {
     }
     tools.reload();
   };
-  const fixtureMark = forced ?? (tools.fixture ? "fixture" : undefined);
-
   const body = (() => {
     if (phase === "loading") {
       return (
-        <div className="flex min-w-0 flex-col gap-2" data-testid="tol5-loading" aria-busy="true" data-fixture={forced ?? undefined}>
+        <div className="flex min-w-0 flex-col gap-2" data-testid="tol5-loading" aria-busy="true">
           {[0, 1, 2, 3].map((row) => (
             <div key={row} className="animate-pulse rounded-md border border-border bg-card px-4 py-4" aria-hidden="true">
               <div className="h-3 w-1/3 rounded-sm bg-muted" />
@@ -188,12 +183,12 @@ export function ToolsPage(): ReactNode {
         </div>
       );
     }
-    if (phase === "denied") return <FailurePanel kind="denied" failure={tools.failure} onRetry={retry} fixture={forced ?? undefined} />;
-    if (phase === "login") return <FailurePanel kind="login" failure={tools.failure} onRetry={retry} fixture={forced ?? undefined} />;
-    if (phase === "error") return <FailurePanel kind="error" failure={tools.failure} onRetry={retry} fixture={forced ?? undefined} />;
+    if (phase === "denied") return <FailurePanel kind="denied" failure={tools.failure} onRetry={retry} />;
+    if (phase === "login") return <FailurePanel kind="login" failure={tools.failure} onRetry={retry} />;
+    if (phase === "error") return <FailurePanel kind="error" failure={tools.failure} onRetry={retry} />;
     if (phase === "empty") {
       return (
-        <Card className="border-border bg-card" data-testid="tol5-empty" data-fixture={forced ?? undefined}>
+        <Card className="border-border bg-card" data-testid="tol5-empty">
           <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
             <Inbox className="h-6 w-6 text-muted-foreground" aria-hidden />
             <p className={`min-w-0 break-words text-sm ${themedBody}`}>服务已响应，清单里没有工具或 MCP 连接</p>
@@ -210,16 +205,6 @@ export function ToolsPage(): ReactNode {
 
     return (
       <div className="flex min-w-0 flex-col gap-3">
-        {tools.fixture ? (
-          <p
-            className="min-w-0 break-words rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs"
-            data-testid="tol5-fixture-note"
-            title={GAP}
-          >
-            当前是接口未接入时的字段示例，不是真实连接；接入后这里会被真实读取替换。
-          </p>
-        ) : null}
-
         {tools.issues.map((issue) => (
           <div
             className="min-w-0 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs"
@@ -266,7 +251,6 @@ export function ToolsPage(): ReactNode {
       className="tol5-page flex min-w-0 w-full max-w-full flex-col gap-3"
       data-testid="tol5-page"
       data-page="tools"
-      data-fixture={fixtureMark}
     >
       <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-2">
         <div className="min-w-0">
@@ -289,7 +273,7 @@ export function ToolsPage(): ReactNode {
 
       {forced ? (
         <p className="min-w-0 break-words text-xs text-warning" data-testid="tol5-forced-note" title={GAP}>
-          {`这是用 ?state=${forced} 复现出来的状态，不是服务此刻的回答；数据源未接入时只展示标记过的字段示例。`}
+          {`这是用 ?state=${forced} 复现出来的状态，不是服务此刻的回答。`}
         </p>
       ) : null}
 
@@ -298,14 +282,12 @@ export function ToolsPage(): ReactNode {
           ? "正在读取工具与 MCP 清单…"
           : phase === "ready"
             ? `读取成功：${toolRows.length} 条工具与工具集，${mcpRows.length} 个 MCP 连接`
-            : phase === "fixture"
-              ? "接口未接入：当前展示字段示例"
               : phase === "empty"
                 ? "读取成功，清单是空的"
                 : "这次读取没有成功"}
       </p>
 
-      {phase === "ready" || phase === "fixture" ? (
+      {phase === "ready" ? (
         <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="tol5-counts">
           工具与工具集 {toolRows.length} · MCP 连接 {mcpRows.length}
           {disabled ? ` · 停用 ${disabled}` : ""}
