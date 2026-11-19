@@ -1,0 +1,7 @@
+/* Page-scoped guard: the shared Button's decorative arc can widen a page by 2px. */
+.cron5-page {
+  overflow-x: clip;
+}
+.cron5-page .arc-border {
+  display: none;
+}
