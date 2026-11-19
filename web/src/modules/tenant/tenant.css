@@ -275,3 +275,8 @@
     width: auto;
   }
 }
+/* The shared Button's decorative arc border can extend 2px past its own box;
+   hide it inside this page so the page's scrollWidth matches the viewport. */
+.ten4-page .arc-border {
+  display: none;
+}
