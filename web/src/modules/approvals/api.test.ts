@@ -133,8 +133,8 @@ describe("R24 person handles from the real BFF shape", () => {
       status: "consumed",
       argsDigest: "d4e5f6a7b8c9",
     });
-    expect(detail.actionHash).toBe("d4e5f6a7b8c9");
-    expect(detail.kind.label).not.toBe("—");
+    expect(detail?.actionHash).toBe("d4e5f6a7b8c9");
+    expect(detail?.kind.label).not.toBe("—");
   });
 });
 

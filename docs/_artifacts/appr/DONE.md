@@ -562,3 +562,8 @@ KPI 族：五卡 data-testid=ov6-kpi-<name> 统一在位+新增 data-duty-testid
 ## R34 追加两项（2026-11-20 01:5x，一笔 commit）
 ① /duty 显式归一：注册于 shell/routes.ts 新 PATH_ALIASES 表（{"/duty":"/overview"}），App.tsx 既有 <Route path="/duty"><Navigate to="/overview" replace/></Route>（R32③）即其消费形态——**有意归一（值班台语义已并入 /overview 的 duty tab），不是未命中后的 SPA 兜底**。不进 REDIRECTS 数据行因附录 A 计数法锁 redirects=24/24（routes.ts 运行自检），前后台数不变：assert-ia html 与 --source=react 均 exit 0，routes=51 tabs=22（chatHosts=1 modules=8 未动）。侧栏值班台已指 /overview（console.tsx:273 to="/overview"，未改）。
 ② asOf 时区文案：ov6-asof 取不到值时=「采集时刻 —（北京时间）」（真分支+forced 三分支同改）；八卡 ov6-<card>-stamp=「数据截至 —（北京时间） · 来源 …」；有值分支保持原「采集时刻 北京时间 X」形制。NC① 判据（文本含北京时间）现两分支均满足。验证：shell+duty 定向 8 files/88 passed。
+
+## R36 基线 tsc 两处红·机械修（2026-11-20 01:5x，lane/console-appr）
+- web/src/modules/approvals/api.test.ts:136-137 TS18047：detail 加可选链断言（detail?.actionHash / detail?.kind.label），值与语义不变。
+- web/src/pages/LoginPage.test.tsx:131,149 TS2739：两处同步 `() => jsonResponse(...)` 改 `async`（与文件既有 20+ 处习语一致）。
+- 定向 2 files 32 passed；全量见回执。诚实挂账：tsc -b 仍 exit 2——余红不在本单写域（apps/shared 缺 vitest 类型环境红 40+、approvals 产品码 Marked TS2322×14、duty DutyPage TS2339×5、employee-detail TS2322×1、security TS2353×1、tasks 测试 TS2698×1），归因=本 lane R32/R35 自引入与别车道，待后续单处置。
