@@ -81,7 +81,7 @@ function itemsOf(body: unknown): Rec[] {
 
 /** emp_A3F1B2C4D5… → "A3F1B2C4"; non-id-looking values pass through. */
 function shortCode(value: string): string {
-  const tail = value.replace(/^(emp|run|task|apr|aud)_/i, "").replace(/[^0-9a-z]/gi, "").slice(0, 8).toUpperCase();
+  const tail = value.replace(/^(emp|run|rn|task|apr|aud)_/i, "").replace(/[^0-9a-z]/gi, "").slice(0, 8).toUpperCase();
   return tail || "—";
 }
 
@@ -287,13 +287,14 @@ function readApprovals(body: unknown): ApprovalRow[] {
   }));
 }
 
-type RunRow = { ref: string | null; status: string | null; startedAt: string | null; cost: number | null; tokens: number | null };
+type RunRow = { ref: string | null; status: string | null; startedAt: string | null; endedAt: string | null; cost: number | null; tokens: number | null };
 
 function readRuns(body: unknown): RunRow[] {
   return itemsOf(body).map((item) => ({
     ref: pickString(item.runId, item.id),
     status: pickString(item.status, item.state),
     startedAt: pickString(item.startedAt, item.started_at, item.createdAt, item.created_at),
+    endedAt: pickString(item.endedAt, item.ended_at, item.finishedAt, item.completedAt),
     cost: pickNumber(item.costUsd, item.totalCostUsd, item.cost),
     tokens: pickNumber(item.totalTokens, item.tokens, item.tokenUsage),
   }));
@@ -1112,6 +1113,17 @@ function ApprovalsZone({ resource, onRetry }: { resource: Resource<ApprovalRow[]
  * runs (real jump: rows link to the runs surface)
  * ------------------------------------------------------------------ */
 
+/** 耗时人话：只有起止都真才计算；缺任何一段都是「—」+原因，不估。 */
+function runDuration(startedAt: string | null, endedAt: string | null): { text: string; title?: string } {
+  if (!startedAt || !endedAt) return { text: "—", title: endedAt ? "上游没有回传开始时间" : "运行还没有结束（或未回传结束时间）" };
+  const a = Date.parse(startedAt);
+  const b = Date.parse(endedAt);
+  if (!Number.isFinite(a) || !Number.isFinite(b) || b < a) return { text: "—", title: "起止时间无法计算耗时" };
+  const mins = Math.max(0, Math.round((b - a) / 60_000));
+  const text = mins < 60 ? `${mins} 分钟` : `${Math.floor(mins / 60)} 小时 ${mins % 60} 分`;
+  return { text };
+}
+
 function runStatusLabel(value: string | null): string {
   switch (value) {
     case "completed":
@@ -1129,7 +1141,8 @@ function runStatusLabel(value: string | null): string {
     case "pending":
       return "排队中";
     default:
-      return "状态未知";
+      // 未识别的状态不猜：与全站口径一致「待核实」。
+      return "待核实";
   }
 }
 
@@ -1145,8 +1158,8 @@ function RunsZone({ resource, onRetry }: { resource: Resource<RunRow[]>; onRetry
   if (resource.phase === "empty") {
     return (
       <ZoneEmpty
-        title="还没有运行记录"
-        hint="员工开始执行任务后，运行会出现在这里。"
+        title="该员工暂无运行记录"
+        hint="这是按员工筛选后的真实结果（运行读口按 employeeId 过滤），不是加载失败；没有拿别人的运行凑数。"
         testid="ed5-runs-empty"
       />
     );
@@ -1168,10 +1181,11 @@ function RunsZone({ resource, onRetry }: { resource: Resource<RunRow[]>; onRetry
   return (
     <Card data-testid="ed5-runs">
       <CardContent className="p-0">
-        <div className="hidden grid-cols-[minmax(0,0.9fr)_minmax(0,0.7fr)_minmax(0,1fr)_minmax(0,0.6fr)_minmax(0,0.6fr)] gap-2 border-b border-white/10 px-4 py-2 text-xs text-white/45 md:grid">
+        <div className="hidden grid-cols-[minmax(0,0.9fr)_minmax(0,0.7fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.6fr)_minmax(0,0.6fr)] gap-2 border-b border-white/10 px-4 py-2 text-xs text-white/45 md:grid">
           <span>运行</span>
           <span>状态</span>
           <span>开始时间</span>
+          <span>耗时</span>
           <span>花费</span>
           <span>用量</span>
         </div>
@@ -1179,18 +1193,26 @@ function RunsZone({ resource, onRetry }: { resource: Resource<RunRow[]>; onRetry
           {resource.data.map((row, i) => (
             <li key={`${row.ref ?? "run"}-${i}`} data-testid="ed5-zone-runs-row">
               <Link
-                to="/runs"
+                to={row.ref ? `/runs/${encodeURIComponent(row.ref)}` : "/runs"}
+                data-testid={`ed7-runs-link-${i}`}
                 title={row.ref ?? undefined}
-                className="grid grid-cols-1 gap-1 px-4 py-3 hover:bg-white/5 md:grid-cols-[minmax(0,0.9fr)_minmax(0,0.7fr)_minmax(0,1fr)_minmax(0,0.6fr)_minmax(0,0.6fr)] md:items-center md:gap-2"
+                className="grid grid-cols-1 gap-1 px-4 py-3 hover:bg-white/5 md:grid-cols-[minmax(0,0.9fr)_minmax(0,0.7fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.6fr)_minmax(0,0.6fr)] md:items-center md:gap-2"
               >
-                <span className="font-mono text-xs" title={row.ref ?? undefined}>
+                <span className="font-mono text-xs" title={row.ref ?? undefined} data-testid={`ed7-runs-code-${i}`}>
                   运行 · {row.ref ? shortCode(row.ref) : "—"}
                 </span>
                 <span title={row.status ?? undefined}>
                   <Badge tone={runStatusTone(row.status)}>{runStatusLabel(row.status)}</Badge>
                 </span>
                 <span className="font-mono text-xs text-white/55">{beijing(row.startedAt)}</span>
-                <span className="text-xs text-white/55">
+                <span
+                  className="text-xs text-white/55"
+                  data-testid={`ed7-runs-duration-${i}`}
+                  title={runDuration(row.startedAt, row.endedAt).title}
+                >
+                  {runDuration(row.startedAt, row.endedAt).text}
+                </span>
+                <span className="text-xs text-white/55" data-testid={`ed7-runs-cost-${i}`}>
                   <Wallet className="mr-1 inline h-3.5 w-3.5 text-white/40" />
                   {money(row.cost)}
                 </span>

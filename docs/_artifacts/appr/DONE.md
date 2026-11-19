@@ -747,3 +747,15 @@ BFF/数据面现查：GET /agent-api/api/employees/<id>（server.py EMPLOYEES_DE
 坑（记档）：该测试文件 react-router import 原为 MemoryRouter,Route,Routes——先 sed 读现场再加 useLocation；forbidden() 助手不带 requestId，用例内直接 new ApiError(status 403, requestId)；renderAt key={entry} 单入口测不了回退，需双 entries 栈 helper。
 
 验证：定向 employee-detail 3 files/32 passed（+3 R47 用例）、approvals 3 files/59 passed 零影响；assert-ia 两模式 exit 0（51/22/1/8，未动壳层）；tsc 本域零红；全量 **131 files/1409 passed**（基线 1406+3）。9122=02a7385c 禁重建：活体回退保参读数待并入后代次，本轮 jsdom 栈实测为行为权威。
+
+## R48 员工详情运行区（2026-11-20，lane/console-appr）
+
+基线：显式 refspec fetch + merge origin/lane/hermes-console（Already up to date @71870656），未 reset，已推笔全保；toplevel ✓。
+
+参数实测（ego 只读，9122=02a7385c 代次）：/agent-api/api/runs 白名单=(employeeId,status,since,limit,cursor)（server.py 现查）；`?employeeId=emp_86A8…`→200 n=13；换 `?employeeId=emp_217A…`→200 n=0（**真按员工过滤实证**，筛前筛后差集）；`?employee=`→400、无员工参→400（只吃 employeeId，禁假筛选无语义空转）。区腿沿用既有 `employeeId=${enc}`（本单前已正确），无越域。
+
+实现（EmployeeDetailModulePage.tsx）：①每行真深链 `a[href=/runs/<runId>]`（encodeURIComponent；无 ref 才退 /runs）——既有 runs 用例 href 断言同步 /runs/run_X1Y2Z3。②新「耗时」列=runDuration(startedAt,endedAt)：双真才算「12 分钟/x 小时 y 分」，缺 endedAt=「—」+title「运行还没有结束（或未回传结束时间）」，不估不编；readRuns/RunRow 加 endedAt 多键（endedAt/ended_at/finishedAt/completedAt，活体 row0 实证 endedAt:null）。③短码：shortCode 剥前缀字符类补 `rn_`（活体真 id 形态=rn_01M7…，原 regex 只认 run_ 会把 rn 计进码）；屏上「运行 · 01M7D742」+title 全 id，无裸 rn_/run_。④runStatusLabel 未知态「状态未知」→「待核实」（旧文案无测试引用，实测 teleporting→待核实且原值不上屏）。⑤空集文案按工单=「该员工暂无运行记录。」+「按 employeeId 筛选的真实结果…没有拿别人的运行凑数」。⑥成本列既有 money() 天然区分真 0=$0.00 / 缺失=「—」（活体行有 costStatus:unknown 无 costUsd=真实缺失路径）。⑦testid：新增 ed7-runs-link-<i>/ed7-runs-code-<i>/ed7-runs-duration-<i>/ed7-runs-cost-<i>；ed5-*/ed1-*/edx-*/apd6-*/apv5-*/apr5-* 零改动（既有 ed5-zone-runs-* 名全保留）。⑧四态/denied rid 可复制/重试/403≡404=R47 统一件既有；③三档横溢=形态学报（6 列全 minmax(0)+truncate，手机档 grid-cols-1 堆叠，同 tasks 已验形态）。
+
+坑：href= /runs/<id> 深链落地页 = /runs/:runId 路由不在本树 App（只读核过，仅 path="/runs" 列表；写域外禁碰 App）——href 带真 id 满足工单判据，点后进兜底面属壳层待接线项，DONE 记账；测试 mock 变量名=fetchJSON（本文件无 mockFetch）。
+
+验证：定向 employee-detail 33 passed（+1 R48 用例、1 处既有断言按工单同步）exit0；assert-ia 两模式 exit0（51/22/1/8）；tsc 本域零红；全量 **131 files/1410 passed**（基线 1409+1）。9122 代次禁重建：运行区活体行读数待并入后代次，本轮 jsdom+API 双实测为权威。

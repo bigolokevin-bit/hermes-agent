@@ -291,11 +291,40 @@ describe("EmployeeDetailModulePage — approvals / runs / audit", () => {
     );
     await renderAt(page, at("runs"));
     const card = container.querySelector('[data-testid="ed5-runs"]');
-    expect(card?.querySelector("a")?.getAttribute("href")).toBe("/runs");
+    // R48: 每行真深链（run id 上 href，屏上仍是短码）。
+    expect(card?.querySelector("a")?.getAttribute("href")).toBe("/runs/run_X1Y2Z3");
     expect(card?.textContent).toContain("$2.50");
     expect(card?.textContent).toContain("2026-11-19 00:30");
     expect(card?.textContent).toContain("已完成");
     expect(card?.textContent).not.toContain("run_X1Y2Z3");
+  });
+
+  it("R48: runs rows carry real deep links, duration, and 0-vs-missing cost", async () => {
+    mockApi((url) =>
+      url.includes("/api/runs")
+        ? Promise.resolve({
+            items: [
+              { runId: "rn_01M7D7421P5PA27TEXMT9YVDZ8", status: "completed", startedAt: "2026-11-14T14:24:28.752Z", endedAt: "2026-11-14T14:36:28.752Z", costUsd: 0, totalTokens: 120 },
+              { runId: "rn_02AAAA1111BBBB2222CCCC3333", status: "teleporting", startedAt: "2026-11-15T01:00:00Z", endedAt: null, totalTokens: 0 },
+            ],
+          })
+        : Promise.resolve({}),
+    );
+    await renderAt(page, at("runs"));
+    const card = container.querySelector('[data-testid="ed5-runs"]');
+    expect(card?.querySelector("a")?.getAttribute("href")).toBe("/runs/rn_01M7D7421P5PA27TEXMT9YVDZ8");
+    const text = card?.textContent ?? "";
+    expect(text).toContain("12 分钟");
+    // 真 0 与缺失可区分：$0.00 有金额，null 走「—」。
+    expect(text).toContain("$0.00");
+    expect(text).toContain("待核实");
+    expect(text).not.toContain("teleporting");
+    expect(text).not.toContain("rn_01M7");
+    expect(text).toContain("01M7D742");
+    expect(card?.querySelector('[data-testid="ed7-runs-duration-1"]')?.getAttribute("title")).toContain("还没有结束");
+    // 查询腿带 employeeId（活体实证真过滤：13 行/0 行差集）。
+    const runUrl = fetchJSON.mock.calls.map((c) => String(c[0])).find((u) => u.includes("/api/runs"));
+    expect(runUrl).toContain("employeeId=");
   });
 
   it("audit: actor codes are masked, action verbs become words", async () => {
