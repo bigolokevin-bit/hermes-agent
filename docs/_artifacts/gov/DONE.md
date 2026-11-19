@@ -1341,6 +1341,7 @@ $ cd web && npx vitest run
 - Registration needed from R5: `#/work?tab=cron` (and `#/cron`) → `CronModulePage`; current bridge redirects to board, so `cron5Count` stays 0 until shell maps the slot.
 - Verification: `npx vitest run src/modules/employee-detail` → **14/14**; full suite after this change (see receipt). No App/shell/routes/registry/manifest/package changes.
 
+ HEAD
 ## R29 retention tab rendering (2026-11-19, base da807e4f)
 
 - Root cause: `system` aliases `retention -> events`, so `/system?tab=retention` mounts the events live node and the retention module was never rendered.
@@ -1348,3 +1349,13 @@ $ cd web && npx vitest run
 - Retention behavior unchanged: missing `/api/retention` → `ret4-unwired-note` + four sections all 未接入 + `—` reasons, no 0; write actions `data-planned=true` + `aria-disabled=true` + title; 403/404 same denied body; request id + retry.
 - DOM (Vite 5448, Chrome CDP 9248, `?tab=retention&state=unwired`): 1440 body/page **1440/1133**, 375 **375/353**; `ret4-page=true`, rendered ret4 testid nodes **45**, planned buttons 2 (both disabled/aria-disabled/title); shell selected tab label `审计事件` (alias limitation above).
 - Test: `npx vitest run src/modules/audit/AuditEventsModulePage.test.tsx` → **41/41**; full suite below. No App/shell/routes/registry/package edits.
+
+
+## R29 retention mount contract (2026-11-19, base 43ea29d1)
+
+- Module export: `web/src/modules/audit/RetentionModulePage.tsx` exports named `RetentionModulePage` and default `RetentionModulePage`; **no props** (reads `?state=loading|ready|unwired|error|denied` from its own router context). Page root `ret4-page` + `data-page="retention"`.
+- Mount slot: App `/system` `ConsoleModulePage module="system" live={{ ..., retention: <RetentionConsolePage /> }}` plus a `CONSOLE_TABS` row with `tabId="retention"` / route `#/system?tab=retention`. Today `shell/routes.ts:247` folds `retention` into `events` and `bridge.test.ts` asserts that redirect, so the page is unreachable at the target URL; App/shell/routes are outside this write domain.
+- Expected shell tab key: `retention` (label 数据保留与清理). If R5 keeps the compat redirect, retention cannot win over the events tab.
+- ret4 testid family (45 rendered testid nodes in the no-route fixture; unique ids include): `ret4-page`, `ret4-summary`, `ret4-refresh`, `ret4-sections`, `ret4-section-{audit,runs,sessions,uploads}`, `ret4-unwired-{...}`, `ret4-unwired-note`, `ret4-days|last|next|used|limit|share-{...}`, `ret4-note-{...}`, `ret4-planned`, `ret4-planned-cleanup`, `ret4-planned-policy`, `ret4-loading|denied|error`, `ret4-error-request-id|ret4-error-retry`, `ret4-denied-request-id`, `ret4-tech-details`.
+- Fixture render: temporary vitest (deleted after run) mounted the page at `/system?tab=retention` with `/api/retention` 404 `console.unknown_route` → **45 ret4 testid nodes**, four sections all 未接入, 24 field values `—`, two planned write buttons disabled/aria-disabled/title; existing suite `RetentionModulePage.test.tsx` is **9/9**.
+- No App/shell/routes/registry/package/lock/scripts/ops edits; no fake 0/sample rows.
