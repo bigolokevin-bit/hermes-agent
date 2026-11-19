@@ -1981,3 +1981,110 @@ describe('metJ — export order matches the table', () => {
     expect(rows).toHaveLength(onScreen.length);
   });
 });
+
+describe('metK — chart accessibility alternatives', () => {
+  function heatCellRuns(dow: number): number {
+    const cells = Array.from(
+      document.querySelectorAll(`[data-testid^="met5-cell-${dow}-"]`),
+    ) as HTMLButtonElement[];
+    return cells.reduce((sum, cell) => {
+      const match = /运行 (\d+) 次/.exec(cell.getAttribute('aria-label') ?? '');
+      return sum + (match ? Number(match[1]) : 0);
+    }, 0);
+  }
+
+  it('labels a heat cell with its date, count and strength band, and says 无数据 when missing', async () => {
+    await mount(() => Promise.resolve(activityBody()));
+
+    const busy = document.querySelector('[data-testid="met5-cell-3-8"]') as HTMLButtonElement;
+    const busyLabel = busy.getAttribute('aria-label') ?? '';
+    expect(busyLabel).toContain('2026-11-18');
+    expect(busyLabel).toContain('运行 4 次');
+    expect(busyLabel).toContain('强度 4 档');
+
+    const missing = document.querySelector('[data-testid="met5-cell-2-3"]') as HTMLButtonElement;
+    const missingLabel = missing.getAttribute('aria-label') ?? '';
+    expect(missingLabel).toContain('无数据');
+    expect(missingLabel).not.toContain('运行');
+  });
+
+  it('describes the whole grid in one sentence whose numbers match the card', async () => {
+    await mount(() => Promise.resolve(activityBody()));
+
+    const figure = document.querySelector('[data-testid="metK-heat-figure"]');
+    expect(figure?.getAttribute('role')).toBe('img');
+    expect(figure?.getAttribute('aria-describedby')).toBe('metK-heat-summary');
+
+    const total = document.querySelector('[data-testid="met5-count"]')?.textContent ?? '';
+    const summary = document.querySelector('[data-testid="metK-heat-summary"]')?.textContent ?? '';
+    expect(summary).toContain(`总运行 ${total} 次`);
+    expect(summary).toContain('最高 周三 50 次');
+    expect(summary).toContain('最低 周二 45 次');
+    expect(summary).toContain('覆盖 7 / 7 天');
+  });
+
+  it('opens a semantic per-weekday table without changing the window or issuing reads', async () => {
+    await mount(() => Promise.resolve(activityBody()));
+
+    expect(document.querySelector('[data-testid="metK-table"]')).toBeNull();
+    const toggle = document.querySelector('[data-testid="metK-table-toggle"]') as HTMLButtonElement;
+    expect(toggle.tagName).toBe('BUTTON');
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle.getAttribute('aria-controls')).toBe('metK-table');
+
+    const before = urls().length;
+    await act(async () => {
+      toggle.click();
+    });
+
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    const table = document.querySelector('[data-testid="metK-table"]') as HTMLTableElement;
+    expect(table.tagName).toBe('TABLE');
+    expect(table.querySelector('caption')?.textContent).toContain('按星期汇总的运行次数');
+
+    const headers = Array.from(table.querySelectorAll('thead th'));
+    expect(headers.map((th) => th.textContent)).toEqual(['星期', '运行数']);
+    expect(headers.every((th) => th.getAttribute('scope') === 'col')).toBe(true);
+
+    // Three weekdays cross-checked: the table matches the sum of the cells' own labels.
+    for (const dow of [1, 2, 3]) {
+      const row = table.querySelector(`[data-testid="metK-table-row-${dow}"]`);
+      const value = row?.querySelectorAll('td')[1]?.textContent ?? '';
+      expect(Number(value)).toBe(heatCellRuns(dow));
+    }
+    const missingDay = table.querySelector('[data-testid="metK-table-row-2"]')?.querySelectorAll('td')[1];
+    expect(missingDay?.textContent).toBe('45');
+
+    expect(urls().length).toBe(before);
+
+    await act(async () => {
+      toggle.click();
+    });
+    expect(document.querySelector('[data-testid="metK-table"]')).toBeNull();
+    expect(urls().length).toBe(before);
+  });
+
+  it('describes the trend with first, last, peak and low from the same slots', async () => {
+    await mount(usageRouter());
+
+    await act(async () => {
+      (document.querySelector('[data-testid="met6-window-7d"]') as HTMLButtonElement).click();
+    });
+    await waitFor(
+      () => document.querySelector('[data-testid="met6-runs-value"]')?.textContent === '13',
+      '7d runs',
+    );
+
+    const svg = document.querySelector('[data-testid="met6-sparkline"]');
+    expect(svg?.getAttribute('role')).toBe('img');
+    expect(svg?.getAttribute('aria-describedby')).toBe('metK-trend-summary');
+    expect(svg?.querySelectorAll('rect')).toHaveLength(1);
+
+    const summary = document.querySelector('[data-testid="metK-trend-summary"]')?.textContent ?? '';
+    expect(summary).toContain('共 1 个时段有记录');
+    expect(summary).toContain('首值 13 次');
+    expect(summary).toContain('末值 13 次');
+    expect(summary).toContain('峰值 13 次');
+    expect(summary).toContain('最低 13 次');
+  });
+});

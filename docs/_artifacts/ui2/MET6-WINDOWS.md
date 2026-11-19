@@ -182,3 +182,13 @@
 ### 未测项
 - 真浏览器下载与 Excel 打开未走查（顺序与转义均为字符串级断言）。
 - 明细表目前没有排序控件，故「明细跟 ?sort」不适用；若将来给明细加排序，必须同样改 `detailLines` 这一处（代码注释已写明）。
+
+## 图表可访问性替代（metK，2026-11-20）
+
+- **每个热力格**：`aria-label` 由 `heatCellLabel(cell, weeks, to)` 生成 —— 日期（`cellRangeLabel`，最近多周时给「最近 N 周 · 周三 08:00–08:59」）+ `运行 N 次` + `强度 N 档（共 4 档）`；接口没返回的格子写「无数据」，不写 0。7 天小时热力（`met6-heat-cell-*`）的标签同样补上强度档位。
+- **整图替代句**：热力网格容器 `role="img"` + `aria-describedby="metK-heat-summary"`；`metK-heat-summary` 是 sr-only 一段：`heatGridSummary()` 现算「总运行 X 次；最高 周三 50 次；最低 周二 45 次；覆盖 7 / 7 天」。无可用格子时只说明「没有总数可报，也不按 0 补」。
+- **以表格查看**：`metK-table-toggle`（原生 button，`aria-expanded` / `aria-controls`）默认收起；展开得到 `metK-table`：`caption`「按星期汇总的运行次数（窗口范围）」+ `th scope="col"`（星期 / 运行数），逐星期一行，无数据的星期显示「—」。展开/收起只改本地状态，不动 `?window=` / `?w=`，也不发请求。
+- **趋势图**：`met6-sparkline` 保留 `role="img"`，新增 `aria-describedby="metK-trend-summary"`；摘要由 `sparkSummaryText()` 现算「共 N 个时段有记录；首值 …；末值 …；峰值 …；最低 …。没有返回的时段不计入」。
+- **同源**：热力摘要与表格取自 `grid = buildHeatGrid(view.activity)`，趋势摘要取自同一个 `spark = sparkSlots(...)`；不另发请求（测试实测展开/收起前后请求数相等）。
+- 验证：定向 82 例（基线 78，+4）；全量 132 files / 1486 passed（另有 2 条上游 employee-detail unhandled rejection 为既存噪声）；tsc 全仓 55 条既存基线、`modules/metrics` 0；build entry `assets/index-BRl7Bi9x.js` sha256 `5c65bb2f…24d6`，entry 内 `metK-heat-summary` 0，chunk `MetricsModulePage-BN_0W06-.js` 三个 metK 标记各 1。
+- 未测项：真浏览器 + 读屏软件走查未做（标签为 DOM 字符串断言）；表格按星期汇总而非按具体日期拆分（活动接口的格子轴就是星期 × 小时，最近多周时为聚合值）。

@@ -1097,3 +1097,78 @@ export function latestSourceAsOf(rows: SourceRow[]): string | null {
   }
   return best;
 }
+
+// ---- METK: non-visual equivalents for the heat grid and the trend chart ----
+
+export interface HeatDayRow {
+  dow: Weekday;
+  label: string;
+  runs: number | null;
+}
+
+/** Sum each weekday across returned cells; a weekday with no returned cell stays null, never 0. */
+export function heatDayRows(grid: HeatGrid): HeatDayRow[] {
+  return grid.rows.map((row) => {
+    const present = row.cells.filter((cell) => cell.present);
+    return {
+      dow: row.dow,
+      label: row.label,
+      runs: present.length === 0 ? null : present.reduce((sum, cell) => sum + (cell.count ?? 0), 0),
+    };
+  });
+}
+
+/** One sentence an assistive reader can announce for the whole heat grid. */
+export function heatGridSummary(grid: HeatGrid): string {
+  const days = heatDayRows(grid).filter((day): day is HeatDayRow & { runs: number } => day.runs !== null);
+  if (grid.total === null || days.length === 0) {
+    return '运行热力：接口没有返回可用的格子，没有总数可报，也不按 0 补。';
+  }
+  let high = days[0];
+  let low = days[0];
+  for (const day of days) {
+    if (day.runs > high.runs) high = day;
+    if (day.runs < low.runs) low = day;
+  }
+  return `运行热力：总运行 ${grid.total} 次；最高 ${high.label} ${high.runs} 次；最低 ${low.label} ${low.runs} 次；覆盖 ${days.length} / 7 天。`;
+}
+
+/** Date + count + strength band — the same facts the colour carries. */
+export function heatCellLabel(
+  cell: { dow: Weekday; hour: number; count: number | null; present: boolean; level: number },
+  weeks: number,
+  to: string | null,
+): string {
+  const range = cellRangeLabel(cell.dow, cell.hour, weeks, to);
+  if (!cell.present) return `${range} · 无数据`;
+  return `${range} · 运行 ${cell.count ?? 0} 次 · 强度 ${cell.level} 档（共 4 档）`;
+}
+
+export interface SparkSummary {
+  observed: number;
+  first: number | null;
+  last: number | null;
+  peak: number | null;
+  low: number | null;
+}
+
+/** First/last/peak/low over returned slots; missing slots never become 0. */
+export function sparkSummary(spark: SparkGrid): SparkSummary {
+  const values = spark.slots.map((slot) => slot.runs).filter((runs): runs is number => runs !== null);
+  if (values.length === 0) return { observed: 0, first: null, last: null, peak: null, low: null };
+  return {
+    observed: values.length,
+    first: values[0],
+    last: values[values.length - 1],
+    peak: Math.max(...values),
+    low: Math.min(...values),
+  };
+}
+
+export function sparkSummaryText(spark: SparkGrid, windowLabel: string): string {
+  const summary = sparkSummary(spark);
+  if (summary.observed === 0) {
+    return `${windowLabel}趋势：没有可用的运行记录，不补 0，也不画柱子。`;
+  }
+  return `${windowLabel}趋势：共 ${summary.observed} 个时段有记录；首值 ${summary.first} 次；末值 ${summary.last} 次；峰值 ${summary.peak} 次；最低 ${summary.low} 次。没有返回的时段不计入。`;
+}

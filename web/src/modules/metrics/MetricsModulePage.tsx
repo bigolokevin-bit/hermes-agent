@@ -38,7 +38,10 @@ import {
   formatRate,
   formatUnitPrice,
   formatUsd,
+  heatCellLabel,
+  heatDayRows,
   heatFromStats,
+  heatGridSummary,
   isoOrNull,
   withGapNote,
   type ExportGap,
@@ -63,6 +66,7 @@ import {
   usageTone,
   shareOf,
   sparkSlots,
+  sparkSummaryText,
   EMPTY_SOURCE_STAMP,
   latestSourceAsOf,
   mergeSourceStamp,
@@ -345,6 +349,7 @@ export function MetricsModulePage() {
   const [attempt, setAttempt] = useState(0);
   const [retryingBlock, setRetryingBlock] = useState<UsageBlockKind | null>(null);
   const [selected, setSelected] = useState<{ dow: number; hour: number } | null>(null);
+  const [heatTableOpen, setHeatTableOpen] = useState(false);
   const [sources, setSources] = useState<Record<string, SourceStamp>>({});
   const [sourcesOpen, setSourcesOpen] = useState(false);
   const [sourcesSeen, setSourcesSeen] = useState(false);
@@ -988,6 +993,8 @@ export function MetricsModulePage() {
     : state;
 
   const grid = view.kind === 'ready' ? buildHeatGrid(view.activity) : null;
+  const heatDays = grid ? heatDayRows(grid) : [];
+  const heatSummary = grid ? heatGridSummary(grid) : '';
   const selectedCell = selected && grid ? grid.rows[selected.dow - 1]?.cells[selected.hour] ?? null : null;
 
   const forcedDown = {
@@ -1062,6 +1069,7 @@ export function MetricsModulePage() {
         )
       : null;
   const sparkPeak = spark && spark.max !== null && spark.max > 0 ? spark.max : 1;
+  const sparkSummaryLine = spark ? sparkSummaryText(spark, usageWindow.label) : '';
   const monthSnapshot = usageReady && usageReady.month.kind === 'ready' ? usageReady.month.value : null;
   const cmpView: CmpState = forced
     ? forced === 'loading'
@@ -1526,6 +1534,7 @@ export function MetricsModulePage() {
                     preserveAspectRatio="none"
                     role="img"
                     aria-label={`${usageWindow.label}每${usageWindow.bucket === 'hour' ? '小时' : '天'}运行数，共 ${spark.observed} 个时段有记录`}
+                    aria-describedby="metK-trend-summary"
                     data-testid="met6-sparkline"
                   >
                     {spark.slots.map((slot) => {
@@ -1549,6 +1558,9 @@ export function MetricsModulePage() {
                     {usageReady && usageReady.stats.kind === 'ready' ? '没有运行' : '—'}
                   </p>
                 )}
+                <p id="metK-trend-summary" className="sr-only" data-testid="metK-trend-summary">
+                  {sparkSummaryLine || '趋势：这次没有可报告的数据。'}
+                </p>
                 <p className="met6-hint">
                   {spark && spark.observed > 0
                     ? `共 ${spark.observed} 个时段有记录；空档表示那个时段接口没有返回运行，不按 0 画。`
@@ -1930,7 +1942,7 @@ export function MetricsModulePage() {
                             const tone = !cell.present ? 'is-missing' : cell.runs === 0 ? 'is-zero' : `is-l${cell.level}`;
                             const hh = String(cell.hour).padStart(2, '0');
                             const label = cell.present
-                              ? `${cell.at ? formatBeijing(cell.at) : `${row.label} ${hh}:00`}（北京时间） · ${cell.runs} 次 · 成本 —（账本按日/月记账，没有小时粒度）`
+                              ? `${cell.at ? formatBeijing(cell.at) : `${row.label} ${hh}:00`}（北京时间） · ${cell.runs} 次 · 强度 ${cell.level} 档（共 4 档） · 成本 —（账本按日/月记账，没有小时粒度）`
                               : `${row.label} ${hh}:00（北京时间） · 无数据（接口没有返回这一格，不当作 0 次）`;
                             return (
                               <button
@@ -2337,7 +2349,13 @@ export function MetricsModulePage() {
                 <span>接口未返回（—）</span>
               </div>
               <div className="met5-scroll">
-                <div className="met5-gridwrap">
+                <div
+                  className="met5-gridwrap"
+                  role="img"
+                  aria-label="运行热力：星期与小时的运行次数"
+                  aria-describedby="metK-heat-summary"
+                  data-testid="metK-heat-figure"
+                >
                   <div className="met5-grid" data-testid="met5-grid">
                     <span className="met5-corner" aria-hidden="true" />
                     {Array.from({ length: 24 }, (_, hour) => (
@@ -2356,7 +2374,7 @@ export function MetricsModulePage() {
                             className={`met5-cell ${cellTone(cell)}`}
                             data-testid={`met5-cell-${cell.dow}-${cell.hour}`}
                             title={`${row.label} ${String(cell.hour).padStart(2, '0')}:00–${String(cell.hour).padStart(2, '0')}:59 · ${cellText(cell)} · ${cellRangeLabel(row.dow, cell.hour, weeks, view.activity.to)}`}
-                            aria-label={`${row.label} ${String(cell.hour).padStart(2, '0')} 点，${cellText(cell)}`}
+                            aria-label={heatCellLabel(cell, weeks, view.activity.to)}
                             onClick={() => setSelected({ dow: cell.dow, hour: cell.hour })}
                           >
                             <span className="met5-cell-dot" aria-hidden="true" />
@@ -2366,6 +2384,44 @@ export function MetricsModulePage() {
                     ))}
                   </div>
                 </div>
+              </div>
+              <p id="metK-heat-summary" className="sr-only" data-testid="metK-heat-summary">
+                {heatSummary}
+              </p>
+              <div className="metK-table-block">
+                <Button
+                  size="sm"
+                  outlined
+                  data-testid="metK-table-toggle"
+                  aria-expanded={heatTableOpen}
+                  aria-controls="metK-table"
+                  onClick={() => setHeatTableOpen((open) => !open)}
+                >
+                  以表格查看
+                </Button>
+                {heatTableOpen ? (
+                  <div className="metK-tablewrap">
+                    <table className="metK-table" id="metK-table" data-testid="metK-table">
+                      <caption data-testid="metK-table-caption">
+                        按星期汇总的运行次数（{windowRangeLabel(view.activity)}）
+                      </caption>
+                      <thead>
+                        <tr>
+                          <th scope="col">星期</th>
+                          <th scope="col">运行数</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {heatDays.map((day) => (
+                          <tr key={day.dow} data-testid={`metK-table-row-${day.dow}`}>
+                            <td>{day.label}</td>
+                            <td>{day.runs === null ? '—' : formatCount(day.runs)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : null}
               </div>
               <p className="met5-scrollhint">左右滑动热力图，查看 12–23 点</p>
               <div className="met5-selected" data-testid="met5-selected" aria-live="polite">

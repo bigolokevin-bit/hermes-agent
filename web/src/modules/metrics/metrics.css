@@ -738,3 +738,42 @@
   line-height: 1.5;
   max-width: 42ch;
 }
+
+/* metK — table alternative for the heat grid */
+.metK-table-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+.metK-tablewrap {
+  width: 100%;
+  overflow-x: auto;
+}
+.metK-table {
+  width: 100%;
+  max-width: 420px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.metK-table caption {
+  padding-bottom: 6px;
+  text-align: left;
+  font-size: 12px;
+  color: var(--color-muted-foreground);
+}
+.metK-table th,
+.metK-table td {
+  padding: 6px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+.metK-table thead th {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-muted-foreground);
+}
+.metK-table td:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
