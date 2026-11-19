@@ -635,18 +635,14 @@ describe('MetricsModulePage — budget vs actual', () => {
   it('colours a cap when the row carries one', async () => {
     await mount(
       breakdownRouter({
-        ledger: (url) =>
-          Promise.resolve(
-            url.includes('periodKind=month')
-              ? {
-                  items: [
-                    { employeeId: 'emp_aaaabbbbcccc', period: '2026-11', periodKind: 'month', costUsd: 0.12, limitUsd: 0.1, updatedAt: '2026-11-14T19:25:51.543Z' },
-                    { employeeId: 'emp_ddddeeeeffff', period: '2026-11', periodKind: 'month', costUsd: 0.085, limitUsd: 0.1, updatedAt: '2026-11-13T06:41:33.974Z' },
-                  ],
-                  missingEmployeeIds: [],
-                }
-              : { items: [], missingEmployeeIds: [] },
-          ),
+        ledger: () =>
+          Promise.resolve({
+            items: [
+              { employeeId: 'emp_aaaabbbbcccc', period: '2026-11', periodKind: 'month', costUsd: 0.12, limitUsd: 0.1, updatedAt: '2026-11-14T19:25:51.543Z' },
+              { employeeId: 'emp_ddddeeeeffff', period: '2026-11', periodKind: 'month', costUsd: 0.085, limitUsd: 0.1, updatedAt: '2026-11-13T06:41:33.974Z' },
+            ],
+            missingEmployeeIds: [],
+          }),
       }),
     );
 
@@ -656,6 +652,10 @@ describe('MetricsModulePage — budget vs actual', () => {
     expect(first?.querySelectorAll('td')[4].className).toContain('is-over');
     expect(second?.textContent).toContain('85%');
     expect(second?.querySelectorAll('td')[4].className).toContain('is-warn');
+    expect(document.querySelector('[data-testid="met6-budget-variance-0"]')?.textContent).toContain('超支');
+    expect(document.querySelector('[data-testid="met6-budget-variance-1"]')?.textContent).toContain('结余');
+    expect(document.querySelector('[data-testid="met6-budget-status-0"]')?.textContent).toBe('超支');
+    expect(document.querySelector('[data-testid="met6-budget-status-0"]')?.querySelector('span')?.getAttribute('title')).toContain('≥100%');
     expect(first?.querySelectorAll('td')[3].textContent).toBe('-$0.02');
   });
 
@@ -730,5 +730,42 @@ describe('MetricsModulePage — 7×24 heat', () => {
     expect(document.querySelector('[data-testid="met6-heat-empty"]')).toBeTruthy();
     expect(document.querySelector('[data-testid="met6-heat-grid"]')).toBeNull();
     expect(text()).not.toContain('met6-heat-cell-1-0');
+  });
+});
+
+describe('MetricsModulePage — budget variance & window', () => {
+  it('shows a real 0 as $0.00 with a 正常 badge, and switches with the window', async () => {
+    await mount((url) => {
+      if (url.includes('run-activity')) return Promise.resolve(activityBody());
+      if (url.includes('run-stats')) return Promise.resolve(STATS_24H);
+      if (url.includes('/api/employees')) return Promise.resolve(EMPLOYEE_BODY);
+      if (url.includes('models/pricing')) return Promise.reject(new ApiError('missing', { status: 404, body: '', url }));
+      if (url.includes('budget-usage')) {
+        return Promise.resolve({
+          items: [
+            { employeeId: 'emp_aaaabbbbcccc', period: '2026-11-19', periodKind: 'day', costUsd: 0, limitUsd: 0.5, updatedAt: '2026-11-19T03:20:00.000Z' },
+          ],
+          missingEmployeeIds: [],
+        });
+      }
+      return Promise.resolve({});
+    });
+
+    const row = document.querySelector('[data-testid="met6-budget-row-0"]');
+    expect(row?.querySelectorAll('td')[2].textContent).toBe('$0.00');
+    expect(row?.querySelectorAll('td')[4].textContent).toBe('0%');
+    expect(document.querySelector('[data-testid="met6-budget-status-0"]')?.textContent).toBe('正常');
+    expect(document.querySelector('[data-testid="met6-budget-variance-0"]')?.textContent).toContain('结余 $0.50');
+    expect(document.querySelector('[data-testid="met6-budget-source"]')?.textContent).toContain('最近 24 小时');
+
+    await act(async () => {
+      (document.querySelector('[data-testid="met6-window-7d"]') as HTMLButtonElement).click();
+    });
+    await waitFor(
+      () => document.querySelector('[data-testid="met6-budget-source"]')?.textContent?.includes('最近 7 天') === true,
+      'budget window',
+    );
+    const dayCalls = urls().filter((url) => url.includes('budget-usage') && url.includes('periodKind=day'));
+    expect(dayCalls.length).toBeGreaterThanOrEqual(8);
   });
 });
