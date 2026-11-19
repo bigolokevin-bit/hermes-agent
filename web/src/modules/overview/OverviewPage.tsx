@@ -55,16 +55,18 @@ function AsofLine({ states }: { states: Array<Loadable<unknown> | null> }) {
     .filter((x): x is string => Boolean(x) && x !== '—')
     .sort();
   if (shown.length > 0) {
+    // R41: newest (maximum) stamp wins, matching the mounted duty surface.
+    const newest = shown.reduce((a, b) => (a >= b ? a : b));
     return (
-      <p className="ov5-sub" data-testid="ov6-asof" title="取各来源响应自带的采集时间，最早的一个上屏">
-        {`采集时刻 北京时间 ${shown[0]} · 每卡来源见卡内标注`}
+      <p className="ov5-sub" data-testid="ov6-asof" title="取各来源响应自带的采集时间，最新的一个上屏">
+        {`采集时刻 北京时间 ${newest} · 每卡来源见卡内标注`}
       </p>
     );
   }
   const reason = stamps.find((x) => x.reason)?.reason ?? '所有来源都没有返回采集时间';
   return (
     <p className="ov5-sub" data-testid="ov6-asof" title={`取不到采集时间：${reason}`}>
-      采集时刻 —
+      采集时刻 —（北京时间）
     </p>
   );
 }

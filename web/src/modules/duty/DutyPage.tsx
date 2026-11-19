@@ -706,19 +706,36 @@ export default function DutyPage() {
           <h1>值班台</h1>
           <span>运营总览 · 只读</span>
           {(() => {
-            const stamp =
-              data.todayStats.k === "ready" &&
-              typeof (data.todayStats.data as { asOf?: unknown }).asOf === "string"
-                ? ((data.todayStats.data as { asOf: string }).asOf)
-                : data.stats.k === "ready" && typeof (data.stats.data as { asOf?: unknown }).asOf === "string"
-                  ? ((data.stats.data as { asOf: string }).asOf)
-                  : null;
-            const reason = legReason([data.employees, data.stats, data.todayStats]);
+            // R41: ANY source that carries its own collection stamp counts;
+            // the newest (maximum) stamp goes on screen. Only when every
+            // source lacks one do we fall back to the em-dash, naming the
+            // missing sources in the title. Never a client-side fetch time.
+            const stampLegs: { name: string; leg: { k: string; data?: unknown } }[] = [
+              { name: "今日运行统计", leg: data.todayStats },
+              { name: "运行窗口统计", leg: data.stats },
+              { name: "近 14 天统计", leg: data.stats14 },
+              { name: "当日成本账本", leg: data.budgetDay },
+              { name: "审批统计", leg: data.approvalStats },
+            ];
+            const raws = stampLegs.map((sl) =>
+              sl.leg.k === "ready" ? asOfOf((sl.leg as { data?: unknown }).data) : null,
+            );
+            const stamp = raws.reduce<string | null>(
+              (acc, v) => (v === null ? acc : acc === null || Date.parse(v) > Date.parse(acc) ? v : acc),
+              null,
+            );
+            const missing = stampLegs
+              .map((sl, i) => (raws[i] === null ? sl.name : null))
+              .filter((n): n is string => n !== null);
             return (
               <span
                 className="duty-meta"
                 data-testid="ov6-asof"
-                title={stamp ? "取各来源响应自带的采集时间上屏" : `取不到采集时间：${reason}`}
+                title={
+                  stamp
+                    ? "取各来源响应自带的采集时间，最新的一个上屏"
+                    : `取不到采集时间：未返回采集时间的来源：${missing.join("、")}`
+                }
               >
                 {stamp ? `采集时刻 北京时间 ${beijing(stamp)}` : "采集时刻 —（北京时间）"}
               </span>
