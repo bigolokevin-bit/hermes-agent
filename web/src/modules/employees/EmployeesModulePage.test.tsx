@@ -186,6 +186,32 @@ describe("EmployeesModulePage list depth", () => {
     expect(q("employees-error")?.textContent).toContain("fs-88");
   });
 
+  it("R40: rid is read live when the router snapshot lost it, and the copy round-trips", async () => {
+    // Mirror the shell override: the window URL carries the rid, but the
+    // route entry the module mounts with has only the state. The module must
+    // still read the id live (never invent one).
+    window.history.replaceState(null, "", "/employees?state=error&rid=live-42");
+    fetchJSON.mockImplementation(() => Promise.resolve(rowsBody));
+    let copied: string | null = null;
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: (t: string) => { copied = t; return Promise.resolve(); } },
+    });
+    await render("/employees?state=error");
+    expect(q("employees-error")).toBeTruthy();
+    expect(q("employees-error")?.textContent).toContain("live-42");
+    const copy = q("req-copy") as HTMLButtonElement;
+    expect(copy).toBeTruthy();
+    await act(async () => {
+      copy.click();
+    });
+    expect(copied).toBe("live-42");
+    expect(q("req-copy-state")?.textContent).toContain("已复制");
+    // The retry control sits on the same card as the id.
+    expect(q("employees-error")?.querySelector('[data-testid="employees-error-retry"]')).toBeTruthy();
+    expect(fetchJSON.mock.calls.filter((c) => String(c[0]).includes("api/employees")).length).toBe(0);
+  });
+
   it("403 and 404 answer with the same body and never echo a path", async () => {
     const mk = (status: number) => () =>
       Promise.reject(new ApiError("nope", { status, body: "{}", url: "/agent-api/api/employees" }));

@@ -143,6 +143,21 @@ function beijingMinute(value?: string | null): string | null {
   return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
 }
 
+/** R40: rid 兜底从 window.location 实读（search 与 hash 两个容器都查），
+ * 这样即使壳层在覆盖强制态 URL 时把 rid 参数从 router 快照里洗掉，模块
+ * 仍然能真读到 QA 给的编号；取不到就交给 fallback 句，绝不编造。 */
+function liveRid(): string | null {
+  if (typeof window === "undefined") return null;
+  const hash = window.location.hash;
+  const cut = hash.indexOf("?");
+  for (const src of [window.location.search, cut === -1 ? "" : hash.slice(cut)]) {
+    if (!src) continue;
+    const v = new URLSearchParams(src).get("rid");
+    if (v) return v;
+  }
+  return null;
+}
+
 function errorState(err: unknown): State {
   const api = err instanceof ApiError ? err : null;
   const status = api?.status ?? 0;
@@ -159,7 +174,7 @@ function errorState(err: unknown): State {
 export function EmployeesModulePage() {
   const [params, setParams] = useSearchParams();
   const forced = params.get("state");
-  const forcedRid = params.get("rid");
+  const forcedRid = params.get("rid") ?? params.get("requestId") ?? liveRid();
   // URL is the single source of truth (?q=&lifecycle=): a refresh or a back
   // step reopens exactly the same answer.
   const q = params.get("q") ?? "";
@@ -344,7 +359,7 @@ export function EmployeesModulePage() {
             <p className="text-xs text-white/55">
               该数据源尚未开放，或你没有查看权限。请确认后台已接入对应服务，或联系管理员开通权限。
             </p>
-            <Button size="sm" outlined onClick={retry}>
+            <Button size="sm" outlined onClick={retry} data-testid="employees-denied-retry">
               <RefreshCw className="mr-2 h-4 w-4" />
               重试
             </Button>
@@ -364,7 +379,7 @@ export function EmployeesModulePage() {
                 fallback="本次请求未记录编号，可复制时间与操作路径反馈"
               />
             </p>
-            <Button size="sm" outlined onClick={retry}>
+            <Button size="sm" outlined onClick={retry} data-testid="employees-error-retry">
               <RefreshCw className="mr-2 h-4 w-4" />
               重试
             </Button>

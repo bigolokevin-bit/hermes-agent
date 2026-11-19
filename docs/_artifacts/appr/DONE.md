@@ -661,3 +661,13 @@ KPI 族：五卡 data-testid=ov6-kpi-<name> 统一在位+新增 data-duty-testid
 坑：JSX 文本内「<编号>」被 Babel 当标签解析→文案改「/tasks/ 加任务编号」；forced 分支编辑时勿吞 `let alive = true`。
 
 验证：定向 tasks 2 files/21 passed（原 17+新 4：深链直开/URL+刷新保态/forced 三态内容切换/来源未接入）；tsc -p 本域零红；assert-ia 两模式 exit0 51/22/1/8；全量 **131 files/1372 passed**（≥基线 1347）。⑦三档横溢=jsdom 不可测，形态学沿用既有 dl sm:grid-cols-2 xl:grid-cols-3 + truncate + flex-wrap（如实报）。9122=d0b50590 代次禁重建：深链活体读数待下一代次，本轮 jsdom 挂载链实测为权威。
+
+## R40 唯一产品 FAIL 次 owner（appr 侧配证）（2026-11-20，lane/console-appr）
+
+背景：`/employees?state=error&rid=<码>` 活体不上屏可复制编号；主因=shell/fixtures 强制态丢 rid（gov 修），次因=模块 rid 只读 router params 快照，壳层覆盖后即被饿掉。本单只做模块侧保证（写域 employees/**+DONE；未动 App/shell）。
+
+修法（EmployeesModulePage.tsx）：①`forcedRid = params.get("rid") ?? params.get("requestId") ?? liveRid()`——liveRid() 从 window.location 实读（search 与 hash 两容器都扫），不依赖任何被覆盖前的路由快照；取不到仍走诚实 fallback 句，绝不编编号。②四态卡片锚点补齐：error/denied 的重试按钮带 data-testid（employees-error-retry/employees-denied-retry，与 rid 复制件同屏可指认）；error rid 行既有 RequestIdCopy（req-copy）不动，denied 403≡404 同体既有。
+
+新断言（EmployeesModulePage.test.tsx，R40 用例）：window URL=…&rid=live-42 而路由条目只带 state=error → 卡上屏 live-42、req-copy 存在、点击后 clipboard.writeText 收到的值=上屏值（回环一致）、req-copy-state=已复制、employees-error-retry 同卡、forced 下零 fetch。既有 R38/R39 用例（fs-77/fs-88 同源、同体、真实 500）全保留。
+
+验证：定向 employees 2 files/12 passed exit0；assert-ia 两模式 exit 0（51/22/1/8）；tsc 本域零红；全量 **131 files/1373 passed**（基线 1372+1）。9122 未重建（R39 取证代次）：活体复测待 gov shell 修笔与下代次合并后一并核。
