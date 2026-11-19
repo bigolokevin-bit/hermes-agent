@@ -9,12 +9,12 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 493,
+    "textLen": 494,
     "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 今日运行 运行记录 今日成本 成本账本 发布 ",
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 26,
+  "distinctMainHeads": 27,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -141,7 +141,7 @@
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "1440",
-      "chars": 128,
+      "chars": 326,
       "hasMainEl": true
     },
     {
@@ -153,7 +153,7 @@
     {
       "route": "#/capabilities?tab=models",
       "viewport": "1440",
-      "chars": 391,
+      "chars": 104,
       "hasMainEl": true
     },
     {
@@ -231,7 +231,7 @@
     {
       "route": "#/employees/:employeeId?zone=evidence",
       "viewport": "375",
-      "chars": 42,
+      "chars": 51,
       "hasMainEl": true
     },
     {
@@ -465,13 +465,13 @@
     {
       "route": "#/overview",
       "viewport": "1440",
-      "chars": 1011,
+      "chars": 1012,
       "hasMainEl": true
     },
     {
       "route": "#/overview",
       "viewport": "375",
-      "chars": 1011,
+      "chars": 1012,
       "hasMainEl": true
     },
     {
@@ -596,23 +596,23 @@
     },
     {
       "route": "#/work?tab=board&view=cron",
-      "viewport": "1440",
-      "chars": 1782,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/work?tab=board&view=cron",
-      "viewport": "375",
-      "chars": 1782,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/work?tab=cron",
       "viewport": "1440",
       "chars": 145,
       "hasMainEl": true
     },
     {
+      "route": "#/work?tab=board&view=cron",
+      "viewport": "375",
+      "chars": 1782,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/work?tab=cron",
+      "viewport": "1440",
+      "chars": 1782,
+      "hasMainEl": true
+    },
+    {
       "route": "#/work?tab=cron",
       "viewport": "375",
       "chars": 1782,
@@ -621,13 +621,13 @@
     {
       "route": "#/work?tab=runs",
       "viewport": "1440",
-      "chars": 1335,
+      "chars": 1336,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=runs",
       "viewport": "375",
-      "chars": 1307,
+      "chars": 1308,
       "hasMainEl": true
     }
   ],
@@ -642,11 +642,11 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "33596dc4",
+  "headHash": "23a8a7e0",
   "exitCode": 0,
-  "entry": "index-CifqHAU7.js",
-  "entrySha256": "056adfc24b7c2322e1693827990495c49c1ca674e31936fad5f1f9d34cf1f6b6",
+  "entry": "assets/index-DM1VZwgg.js",
+  "entrySha256": "048e37b58b7e62f18003a79f420f784c200a22202be2a0642b7db9cc800129d5",
   "entryBytes": 158301,
-  "servedEntryBefore": "index-CifqHAU7.js",
-  "servedEntryAfter": "index-CifqHAU7.js"
+  "servedEntryBefore": "assets/index-DM1VZwgg.js",
+  "servedEntryAfter": "assets/index-DM1VZwgg.js"
 }

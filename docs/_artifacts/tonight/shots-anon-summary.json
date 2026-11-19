@@ -207,7 +207,7 @@
     {
       "route": "#/employees/:employeeId",
       "viewport": "375",
-      "chars": 42,
+      "chars": 51,
       "hasMainEl": true
     },
     {
@@ -219,7 +219,7 @@
     {
       "route": "#/employees/:employeeId?zone=config",
       "viewport": "375",
-      "chars": 51,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -231,7 +231,7 @@
     {
       "route": "#/employees/:employeeId?zone=evidence",
       "viewport": "375",
-      "chars": 51,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -243,7 +243,7 @@
     {
       "route": "#/employees/:employeeId?zone=runs",
       "viewport": "375",
-      "chars": 51,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -642,12 +642,12 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "33596dc4",
+  "auxiliary": true,
+  "headHash": "23a8a7e0",
   "exitCode": 0,
-  "entry": "index-CifqHAU7.js",
-  "entrySha256": "056adfc24b7c2322e1693827990495c49c1ca674e31936fad5f1f9d34cf1f6b6",
+  "entry": "assets/index-DM1VZwgg.js",
+  "entrySha256": "048e37b58b7e62f18003a79f420f784c200a22202be2a0642b7db9cc800129d5",
   "entryBytes": 158301,
-  "servedEntryBefore": "index-CifqHAU7.js",
-  "servedEntryAfter": "index-CifqHAU7.js",
-  "auxiliary": true
+  "servedEntryBefore": "assets/index-DM1VZwgg.js",
+  "servedEntryAfter": "assets/index-DM1VZwgg.js"
 }
