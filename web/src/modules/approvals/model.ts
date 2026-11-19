@@ -498,6 +498,9 @@ export interface ApprovalDetail {
   recipient: Person;
   dataScope: string | null;
   requestId: string | null;
+  /** R46 apd6: related-object ids when the ticket carries them. */
+  runId: string | null;
+  taskId: string | null;
   /** Raw technical lines for the 「详情」 disclosure only. */
   technical: string[];
 }
@@ -578,6 +581,8 @@ export function approvalDetailFrom(payload: unknown): ApprovalDetail | null {
     ),
     dataScope: pickText(body, ["dataScope", "data_scope"]),
     requestId,
+    runId: pickText(body, ["runId", "run_id"]),
+    taskId: pickText(body, ["taskId", "task_id"]),
     technical,
   };
 }

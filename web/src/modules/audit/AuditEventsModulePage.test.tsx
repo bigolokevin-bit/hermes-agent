@@ -213,7 +213,7 @@ describe("the ledger list", () => {
     expect(text()).toContain("已显示 2 条审计事件");
     expect(text()).toContain("下面还有更多");
     await act(async () => {
-      (Array.from(document.querySelectorAll("button")).find((b) => (b.textContent ?? "").includes("加载更多")) as HTMLButtonElement).click();
+      (document.querySelector("[data-testid='aud01-load-more']") as HTMLButtonElement).click();
     });
     await waitFor(() => urls().some((u) => u.includes("cursor=cur_page2")), "second page asked");
     expect(urls().some((u) => /^\/agent-api\/api\/audit\?limit=50&from=.*&to=.*&cursor=cur_page2$/.test(u))).toBe(true);
@@ -1017,5 +1017,48 @@ describe("R39 — a record is a history entry and the verify panel never echoes 
     expect(panel.textContent).toContain("本环境未启用");
     expect(panel.textContent).not.toContain("unknown_route");
     expect(panel.textContent).not.toContain("console.unknown");
+  });
+});
+
+describe("R50 - the inline row preview", () => {
+  it("opens in place, announces itself, links to the real detail, and Esc closes it", async () => {
+    await mount();
+    const toggle = document.querySelector<HTMLButtonElement>("[data-testid='aud6-toggle-evt_7c1f2a3b4d5e6f70']");
+    expect(toggle).not.toBeNull();
+    expect(toggle!.getAttribute("aria-expanded")).toBe("false");
+    const before = urls().length;
+    await act(async () => { toggle!.click(); });
+    expect(toggle!.getAttribute("aria-expanded")).toBe("true");
+    const preview = document.querySelector("[data-testid='aud6-preview-evt_7c1f2a3b4d5e6f70']");
+    expect(preview).not.toBeNull();
+    expect(preview!.textContent).toContain("事件类型");
+    expect(preview!.textContent).toContain("李思");
+    const link = preview!.querySelector("a[href]");
+    expect(link!.getAttribute("href")).toBe("/audit?detail=evt_7c1f2a3b4d5e6f70");
+    expect(urls().length).toBe(before);
+    await act(async () => {
+      (toggle!.closest("div") as HTMLElement).dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    expect(document.querySelector("[data-testid='aud6-preview-evt_7c1f2a3b4d5e6f70']")).toBeNull();
+  });
+});
+
+describe("R51 - the event type distribution", () => {
+  it("counts the loaded page by type, stays collapsed first, and asks nothing new", async () => {
+    await mount();
+    expect(document.querySelector("[data-testid='aud7-types-panel']")).toBeNull();
+    const toggle = document.querySelector<HTMLButtonElement>("[data-testid='aud7-types-toggle']");
+    expect(toggle).not.toBeNull();
+    expect(toggle!.getAttribute("aria-expanded")).toBe("false");
+    const before = urls().length;
+    await act(async () => { toggle!.click(); });
+    const panel = document.querySelector("[data-testid='aud7-types-panel']");
+    expect(panel).not.toBeNull();
+    const rows = document.querySelectorAll("[data-testid='aud7-types-row']");
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.length).toBeLessThanOrEqual(8);
+    expect(document.querySelector("[data-testid='aud7-types']")!.textContent).toContain("按已加载的 2 条统计");
+    expect(document.querySelectorAll("[data-testid='aud7-types-count']").length).toBe(rows.length);
+    expect(urls().length).toBe(before);
   });
 });

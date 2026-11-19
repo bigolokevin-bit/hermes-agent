@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { MemoryRouter, Route, Routes } from "react-router";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useEffect } from "react";
 import type { ReactElement, ReactNode } from "react";
 
 vi.mock("@/lib/api", () => ({ fetchJSON: vi.fn() }));
@@ -85,6 +86,92 @@ const at = (zone?: string) =>
   `/employees/${encodeURIComponent(EMP)}${zone ? `?zone=${zone}` : ""}`;
 
 const page = <EmployeeDetailModulePage employeeId={EMP} />;
+
+function SearchProbe() {
+  const loc = useLocation();
+  useEffect(() => {
+    document.body.setAttribute("data-r47-search", loc.search);
+  }, [loc.search]);
+  return null;
+}
+
+async function renderStack(r: Root, entries: string[], element: ReactNode) {
+  await act(async () => {
+    r.render(
+      <MemoryRouter initialEntries={entries}>
+        <Routes>
+          <Route path="/employees/:employeeId" element={element} />
+        </Routes>
+        <SearchProbe />
+      </MemoryRouter>,
+    );
+  });
+  for (let i = 0; i < 4; i += 1) await act(async () => {});
+}
+
+describe("EmployeeDetailModulePage — identity card (R45)", () => {
+  const qid = (t: string) => container.querySelector(`[data-testid="${t}"]`);
+
+  it("ed1-identity renders name/code/role/state/reports/created from the real detail body", async () => {
+    mockApi((url) =>
+      url.includes(`/api/employees/${encodeURIComponent(EMP)}`)
+        ? Promise.resolve({
+            id: EMP,
+            name: "AgentOS 产品助理",
+            title: "产品助理（数字员工 · Pilot）",
+            lifecycleState: "active",
+            ownerUserId: "1",
+            createdAt: "2026-11-13T22:15:30Z",
+            department: null,
+            duty: null,
+            asOf: "2026-11-20T07:00:00Z",
+          })
+        : silent502(url),
+    );
+    await renderAt(page, at());
+    expect(qid("ed1-identity")).toBeTruthy();
+    expect(qid("ed1-identity-name")?.textContent).toBe("AgentOS 产品助理");
+    expect(qid("ed1-identity-code")?.textContent).toBe("A3F1B2C4");
+    expect(qid("ed1-identity-code")?.getAttribute("title")).toBe(EMP);
+    expect(qid("ed1-identity-role")?.textContent).toBe("产品助理（数字员工 · Pilot）");
+    expect(qid("ed1-identity-state")?.textContent).toBe("在岗");
+    expect(qid("ed1-identity-reports")?.textContent).toBe("—");
+    expect(qid("ed1-identity-reports")?.getAttribute("title")).toContain("后台没有回传这位员工的汇报对象");
+    expect(qid("ed1-identity-created")?.textContent).toBe("2026-11-14 06:15");
+    expect(qid("ed1-identity")?.textContent).not.toContain("emp_");
+  });
+
+  it("an answered reports-to becomes a real /employees link with the masked label", async () => {
+    const MGR = "emp_BEEF000011112222333344AA";
+    mockApi((url) =>
+      url.includes(`/api/employees/${encodeURIComponent(EMP)}`)
+        ? Promise.resolve({ id: EMP, name: "小鲤", reportsTo: `employee:${MGR}`, reportsToName: "主管", lifecycleState: "active" })
+        : silent502(url),
+    );
+    await renderAt(page, at());
+    const link = qid("ed1-identity-reports")?.querySelector("a") as HTMLAnchorElement | null;
+    expect(link).toBeTruthy();
+    expect(link?.getAttribute("href")).toBe(`/employees/${MGR}`);
+    expect(link?.textContent).toBe("主管 · BEEF0000");
+    expect(link?.getAttribute("title")).toBe(`employee:${MGR}`);
+  });
+
+  it("unknown lifecycle reads 待核实 and every missing field dashes with a stated reason", async () => {
+    mockApi((url) =>
+      url.includes(`/api/employees/${encodeURIComponent(EMP)}`)
+        ? Promise.resolve({ id: EMP, lifecycleState: "weird_state" })
+        : silent502(url),
+    );
+    await renderAt(page, at());
+    expect(qid("ed1-identity-state")?.textContent).toBe("待核实");
+    expect(qid("ed1-identity-state")?.getAttribute("title")).toBe("weird_state");
+    for (const id of ["name", "role", "reports", "created"]) {
+      expect(qid(`ed1-identity-${id}`)?.textContent).toBe("—");
+      expect(qid(`ed1-identity-${id}`)?.getAttribute("title")).toContain("后台没有回传");
+    }
+    expect(container.textContent).not.toMatch(/\?\? 0|undefined|null/);
+  });
+});
 
 describe("EmployeeDetailModulePage — overview", () => {
   it("loading: skeleton, no engineering text", async () => {
@@ -204,11 +291,41 @@ describe("EmployeeDetailModulePage — approvals / runs / audit", () => {
     );
     await renderAt(page, at("runs"));
     const card = container.querySelector('[data-testid="ed5-runs"]');
-    expect(card?.querySelector("a")?.getAttribute("href")).toBe("/runs");
+    // R48: 每行真深链。R48b: href 走 /runs 页支持的 run 查询参数
+    // （/runs/<id> 无路由=死链；活体实证 /runs?run=<id> 渲出该运行的 run5-detail）。
+    expect(card?.querySelector("a")?.getAttribute("href")).toBe("/runs?run=run_X1Y2Z3");
     expect(card?.textContent).toContain("$2.50");
     expect(card?.textContent).toContain("2026-11-19 00:30");
     expect(card?.textContent).toContain("已完成");
     expect(card?.textContent).not.toContain("run_X1Y2Z3");
+  });
+
+  it("R48: runs rows carry real deep links, duration, and 0-vs-missing cost", async () => {
+    mockApi((url) =>
+      url.includes("/api/runs")
+        ? Promise.resolve({
+            items: [
+              { runId: "rn_01M7D7421P5PA27TEXMT9YVDZ8", status: "completed", startedAt: "2026-11-14T14:24:28.752Z", endedAt: "2026-11-14T14:36:28.752Z", costUsd: 0, totalTokens: 120 },
+              { runId: "rn_02AAAA1111BBBB2222CCCC3333", status: "teleporting", startedAt: "2026-11-15T01:00:00Z", endedAt: null, totalTokens: 0 },
+            ],
+          })
+        : Promise.resolve({}),
+    );
+    await renderAt(page, at("runs"));
+    const card = container.querySelector('[data-testid="ed5-runs"]');
+    expect(card?.querySelector("a")?.getAttribute("href")).toBe("/runs?run=rn_01M7D7421P5PA27TEXMT9YVDZ8");
+    const text = card?.textContent ?? "";
+    expect(text).toContain("12 分钟");
+    // 真 0 与缺失可区分：$0.00 有金额，null 走「—」。
+    expect(text).toContain("$0.00");
+    expect(text).toContain("待核实");
+    expect(text).not.toContain("teleporting");
+    expect(text).not.toContain("rn_01M7");
+    expect(text).toContain("01M7D742");
+    expect(card?.querySelector('[data-testid="ed7-runs-duration-1"]')?.getAttribute("title")).toContain("还没有结束");
+    // 查询腿带 employeeId（活体实证真过滤：13 行/0 行差集）。
+    const runUrl = fetchJSON.mock.calls.map((c) => String(c[0])).find((u) => u.includes("/api/runs"));
+    expect(runUrl).toContain("employeeId=");
   });
 
   it("audit: actor codes are masked, action verbs become words", async () => {
@@ -476,3 +593,64 @@ describe("EmployeeDetailModulePage — tasks zone (R43)", () => {
   });
 });
 
+describe("R47 cross-zone consistency (edx-*)", () => {
+  const qq = (t: string) => container.querySelector(`[data-testid="${t}"]`);
+
+  it("edx-back uses real history, keeping the list filter query on the way back", async () => {
+    mockApi((url) =>
+      url.includes(`/api/employees/${encodeURIComponent(EMP)}`)
+        ? Promise.resolve({ id: EMP, name: "小鲤", lifecycleState: "active", createdAt: "2026-11-13T22:15:30Z" })
+        : Promise.resolve({}),
+    );
+    document.body.removeAttribute("data-r47-search");
+    await renderStack(root, ["/employees?q=%E5%B0%8F%E9%B2%A4&lifecycle=active", at()], page);
+    expect(qq("edx-back")).toBeTruthy();
+    const back = qq("edx-back") as HTMLButtonElement;
+    await act(async () => {
+      back.click();
+    });
+    await act(async () => {});
+    expect(document.body.getAttribute("data-r47-search")).toBe("?q=%E5%B0%8F%E9%B2%A4&lifecycle=active");
+  });
+
+  it("denied zones carry the request id with a copy control that round-trips", async () => {
+    mockApi((url) => {
+      if (url.includes("/api/tasks?")) {
+        return Promise.reject(
+          new ApiError("forbidden", { status: 403, body: "", url, requestId: "req-d-1" }),
+        );
+      }
+      if (url.includes(`/api/employees/${encodeURIComponent(EMP)}`)) {
+        return Promise.resolve({ id: EMP, name: "小鲤", lifecycleState: "active" });
+      }
+      return Promise.resolve({});
+    });
+    let copied: string | null = null;
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: (t: string) => { copied = t; return Promise.resolve(); } },
+    });
+    await renderAt(page, at("tasks"));
+    const card = qq("ed5-zone-tasks-denied");
+    expect(card).toBeTruthy();
+    expect(card?.textContent).toContain("req-d-1");
+    const copy = qq("req-copy") as HTMLButtonElement;
+    expect(copy).toBeTruthy();
+    await act(async () => {
+      copy.click();
+    });
+    expect(copied).toBe("req-d-1");
+    expect(document.body.textContent).toContain("已复制");
+  });
+
+  it("edx-back sits on the default zone without breaking existing families", async () => {
+    mockApi((url) =>
+      url.includes(`/api/employees/${encodeURIComponent(EMP)}`)
+        ? Promise.resolve({ id: EMP, name: "小鲤", lifecycleState: "active" })
+        : Promise.resolve({}),
+    );
+    await renderAt(page, at());
+    expect(qq("edx-back")).toBeTruthy();
+    expect(qq("ed1-identity-name")?.textContent).toContain("小鲤");
+  });
+});

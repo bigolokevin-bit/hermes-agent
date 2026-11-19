@@ -69,3 +69,61 @@ export function downloadCsv(rows: readonly AuditRow[], name: string): void {
   anchor.remove();
   URL.revokeObjectURL(url);
 }
+
+// R43: a second export shaped for the filtered page — fixed English keys.
+export const FILTERED_HEADER = ["time", "actor", "action", "resource", "rid"] as const;
+
+export function rfc4180(cell: string): string {
+  const text = cell ?? "";
+  if (/[",\r\n]/.test(text)) return '"' + text.split('"').join('""') + '"';
+  return text;
+}
+
+export function filteredCsvText(rows: readonly AuditRow[]): string {
+  const lines: string[] = [FILTERED_HEADER.join(",")];
+  for (const row of rows) {
+    lines.push([
+      rfc4180(row.occurredAt ?? ""),
+      rfc4180(row.actor.label ?? ""),
+      rfc4180(row.action.label ?? ""),
+      rfc4180(row.resource.label ?? ""),
+      rfc4180(row.requestId ?? ""),
+    ].join(","));
+  }
+  return "\uFEFF" + lines.join("\r\n") + "\r\n";
+}
+
+function asciiToken(value: string, fallback: string): string {
+  const cleaned = (value ?? "").trim().replace(/[^A-Za-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "");
+  return cleaned || fallback;
+}
+
+export function filteredExportName(windowToken: string, actorToken: string, resourceToken: string, now: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now).reduce<Record<string, string>>((acc, part) => {
+    acc[part.type] = part.value;
+    return acc;
+  }, {});
+  const stamp = parts.year + parts.month + parts.day + "-" + parts.hour + parts.minute;
+  return "audit-" + asciiToken(windowToken, "7d") + "-" + asciiToken(actorToken, "all") + "-" + asciiToken(resourceToken, "all") + "-" + stamp + ".csv";
+}
+
+export function downloadText(name: string, text: string): void {
+  const blob = new Blob([text], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = name;
+  anchor.rel = "noopener";
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}

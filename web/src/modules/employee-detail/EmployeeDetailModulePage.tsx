@@ -21,7 +21,7 @@
  * visible text — they live in `title` attributes only.
  */
 import { useEffect, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { ClipboardCheck, Gauge, Inbox, RefreshCw, ShieldAlert, TriangleAlert, Wallet } from "lucide-react";
 import { Badge, Button, Card, CardContent } from "@nous-research/ui";
 
@@ -40,7 +40,7 @@ type Resource<T> =
   | { phase: "loading" }
   | { phase: "empty" }
   | { phase: "ready"; data: T }
-  | { phase: "denied"; message: string }
+  | { phase: "denied"; message: string; requestId: string | null }
   | { phase: "error"; message: string; requestId: string | null };
 
 /* R-ed5: 403 and 404 share ONE body — the same sentence and code, no path
@@ -81,7 +81,7 @@ function itemsOf(body: unknown): Rec[] {
 
 /** emp_A3F1B2C4D5… → "A3F1B2C4"; non-id-looking values pass through. */
 function shortCode(value: string): string {
-  const tail = value.replace(/^(emp|run|task|apr|aud)_/i, "").replace(/[^0-9a-z]/gi, "").slice(0, 8).toUpperCase();
+  const tail = value.replace(/^(emp|run|rn|task|apr|aud)_/i, "").replace(/[^0-9a-z]/gi, "").slice(0, 8).toUpperCase();
   return tail || "—";
 }
 
@@ -206,8 +206,8 @@ function actionLabel(value: string | null): string {
 function toResourceError(err: unknown): Resource<never> {
   const api = err instanceof ApiError ? err : null;
   const status = api?.status;
-  if (status === 403) return { phase: "denied", message: DENIED_COPY };
-  if (status === 404) return { phase: "denied", message: DENIED_COPY };
+  if (status === 403) return { phase: "denied", message: DENIED_COPY, requestId: api?.requestId ?? null };
+  if (status === 404) return { phase: "denied", message: DENIED_COPY, requestId: api?.requestId ?? null };
   const message = api?.message || (status ? humanizeStatus(status) : API_UNREACHABLE_MESSAGE);
   return { phase: "error", message, requestId: api?.requestId ?? null };
 }
@@ -287,13 +287,14 @@ function readApprovals(body: unknown): ApprovalRow[] {
   }));
 }
 
-type RunRow = { ref: string | null; status: string | null; startedAt: string | null; cost: number | null; tokens: number | null };
+type RunRow = { ref: string | null; status: string | null; startedAt: string | null; endedAt: string | null; cost: number | null; tokens: number | null };
 
 function readRuns(body: unknown): RunRow[] {
   return itemsOf(body).map((item) => ({
     ref: pickString(item.runId, item.id),
     status: pickString(item.status, item.state),
     startedAt: pickString(item.startedAt, item.started_at, item.createdAt, item.created_at),
+    endedAt: pickString(item.endedAt, item.ended_at, item.finishedAt, item.completedAt),
     cost: pickNumber(item.costUsd, item.totalCostUsd, item.cost),
     tokens: pickNumber(item.totalTokens, item.tokens, item.tokenUsage),
   }));
@@ -386,13 +387,16 @@ function ZoneEmpty({ title, hint, testid }: { title: string; hint: string; testi
   );
 }
 
-function ZoneDenied({ title, message, onRetry, testid }: { title: string; message: string; onRetry: () => void; testid: string }) {
+function ZoneDenied({ title, message, requestId, onRetry, testid }: { title: string; message: string; requestId?: string | null; onRetry: () => void; testid: string }) {
   return (
     <Card data-testid={testid}>
       <CardContent className="flex flex-col items-start gap-3 p-5">
         <ShieldAlert className="h-5 w-5 text-amber-400" />
         <p className="text-sm">{title}暂不可见</p>
         <p className="text-xs text-white/55">{message}请确认后台已接入对应服务，或联系管理员开通权限。</p>
+        <p className="font-mono text-xs text-white/45">
+          <RequestIdCopy requestId={requestId ?? null} fallback="本次请求没有带回编号；可复制时间与页面路径反馈。" />
+        </p>
         <Button size="sm" outlined onClick={onRetry}>
           <RefreshCw className="mr-2 h-4 w-4" />
           重试
@@ -494,7 +498,7 @@ function TasksZone({ resource, empId, onRetry }: { resource: Resource<TaskZoneRo
   }
   if (resource.phase === "loading") return <ZoneLoading testid="ed5-zone-tasks-loading" />;
   if (resource.phase === "denied") {
-    return <ZoneDenied title="任务" message={resource.message} onRetry={onRetry} testid="ed5-zone-tasks-denied" />;
+    return <ZoneDenied title="任务" message={resource.message} requestId={resource.requestId} onRetry={onRetry} testid="ed5-zone-tasks-denied" />;
   }
   if (resource.phase === "error") {
     return (
@@ -573,7 +577,7 @@ function ChatZone({ resource, empId, onRetry }: { resource: Resource<ChatRow[]>;
   }
   if (resource.phase === "loading") return <ZoneLoading testid="ed5-zone-chat-loading" />;
   if (resource.phase === "denied") {
-    return <ZoneDenied title="对话记录" message={resource.message} onRetry={onRetry} testid="ed5-zone-chat-denied" />;
+    return <ZoneDenied title="对话记录" message={resource.message} requestId={resource.requestId} onRetry={onRetry} testid="ed5-zone-chat-denied" />;
   }
   if (resource.phase === "error") {
     return (
@@ -647,6 +651,7 @@ function ChatZone({ resource, empId, onRetry }: { resource: Resource<ChatRow[]>;
 export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: string }) {
   const params = useParams<{ employeeId: string; id: string }>();
   const [sp] = useSearchParams();
+  const navigate = useNavigate();
   const empId =
     employeeId?.trim() ||
     (params.employeeId ? decodeURIComponent(params.employeeId) : "") ||
@@ -688,6 +693,17 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
       {overview.phase === "ready" ? (
         <Badge tone={lifecycleTone(lifecycle)}>{lifecycleLabel(lifecycle)}</Badge>
       ) : null}
+      {/* R47: 返回走真实历史后退，来源列表的筛选 query 原样保留；
+          直开无栈时由页内 Link 出口兜底（带本页可见的 query）。 */}
+      <Button
+        size="sm"
+        outlined
+        data-testid="edx-back"
+        onClick={() => navigate(-1)}
+        title="返回上一页（保留列表筛选条件）"
+      >
+        返回
+      </Button>
     </header>
   );
 
@@ -746,7 +762,7 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
 type OverviewState =
   | { phase: "loading" }
   | { phase: "empty" }
-  | { phase: "denied"; message: string }
+  | { phase: "denied"; message: string; requestId: string | null }
   | { phase: "error"; message: string; requestId: string | null }
   /** R28-1: the backend said this id does not exist (or we may not see it). */
   | { phase: "notfound"; requestId: string | null }
@@ -787,7 +803,7 @@ function useOverview(empId: string, nonce: number): OverviewState {
         // the capability zone reuses — see file header).
         const status = err instanceof ApiError ? err.status : undefined;
         if (status === 403) {
-          setState({ phase: "denied", message: DENIED_COPY });
+          setState({ phase: "denied", message: DENIED_COPY, requestId: api?.requestId ?? null });
           return;
         }
         try {
@@ -812,7 +828,7 @@ function useOverview(empId: string, nonce: number): OverviewState {
           if (cancelled) return;
           const r = toResourceError(err2);
           if (r.phase === "denied" && status === 404) {
-            setState({ phase: "denied", message: DENIED_COPY });
+            setState({ phase: "denied", message: DENIED_COPY, requestId: api?.requestId ?? null });
           } else if (r.phase === "error") {
             setState({ phase: "error", message: r.message, requestId: r.requestId });
           } else {
@@ -828,6 +844,70 @@ function useOverview(empId: string, nonce: number): OverviewState {
   return state;
 }
 
+function IdentityField({ id, label, children, title }: { id: string; label: string; children: React.ReactNode; title?: string | null }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs text-white/45">{label}</dt>
+      <dd className="min-w-0 truncate text-sm" data-testid={`ed1-identity-${id}`} title={title ?? undefined}>
+        {children}
+      </dd>
+    </div>
+  );
+}
+
+/**
+ * R45 · the identity card on the default zone. Every field comes from the
+ * same detail body the overview already trusts; anything the backend did
+ * not answer renders "—" with the reason in the title — never a 0, never a
+ * placeholder.
+ */
+function IdentityCard({ d, empId }: { d: Rec; empId: string }) {
+  const name = pickString(d.name);
+  const role = pickString(d.title, d.role, d.position);
+  const stateRaw = lifecycleLabel(pickString(d.lifecycleState, d.lifecycle));
+  const stateLabel = stateRaw === "状态未知" ? "待核实" : stateRaw;
+  const reportsTo = pickString(d.reportsTo, d.reports_to, d.managerEmployeeId, d.manager);
+  const reportsName = pickString(d.reportsToName, d.managerName);
+  const created = pickString(d.createdAt, d.created_at);
+  const reportsValue = reportsTo ? (
+    <Link
+      className="underline underline-offset-2"
+      to={`/employees/${encodeURIComponent(reportsTo.replace(/^employee:/i, ""))}`}
+      title={reportsTo}
+    >
+      {reportsName ? `${reportsName} · ${shortCode(reportsTo.replace(/^employee:/i, ""))}` : shortCode(reportsTo.replace(/^employee:/i, ""))}
+    </Link>
+  ) : (
+    <span>—</span>
+  );
+  return (
+    <Card className="min-w-0" data-testid="ed1-identity">
+      <CardContent className="p-0">
+        <dl className="grid gap-x-6 gap-y-3 px-4 py-3 sm:grid-cols-2 xl:grid-cols-3">
+          <IdentityField id="name" label="姓名" title={name ? undefined : "后台没有回传这位员工的姓名。"}>
+            {name ?? "—"}
+          </IdentityField>
+          <IdentityField id="code" label="工号" title={empId}>
+            {shortCode(empId)}
+          </IdentityField>
+          <IdentityField id="role" label="角色" title={role ? undefined : "后台没有回传这位员工的角色。"}>
+            {role ?? "—"}
+          </IdentityField>
+          <IdentityField id="state" label="在职态" title={pickString(d.lifecycleState, d.lifecycle) ?? "后台没有回传在职状态。"}>
+            {stateLabel}
+          </IdentityField>
+          <IdentityField id="reports" label="汇报对象" title={reportsTo ? undefined : "后台没有回传这位员工的汇报对象。"}>
+            {reportsValue}
+          </IdentityField>
+          <IdentityField id="created" label="创建时间" title={created ? "北京时间，精确到分" : "后台没有回传创建时间。"}>
+            {created ? beijing(created) : "—"}
+          </IdentityField>
+        </dl>
+      </CardContent>
+    </Card>
+  );
+}
+
 function OverviewZone({ state, onRetry, empId }: { state: OverviewState; onRetry: () => void; empId: string }) {
   if (state.phase === "loading") return <ZoneLoading testid="ed5-overview-loading" />;
   if (state.phase === "empty") {
@@ -840,7 +920,7 @@ function OverviewZone({ state, onRetry, empId }: { state: OverviewState; onRetry
     );
   }
   if (state.phase === "denied") {
-    return <ZoneDenied title="员工档案" message={state.message} onRetry={onRetry} testid="ed5-overview-denied" />;
+    return <ZoneDenied title="员工档案" message={state.message} requestId={state.requestId} onRetry={onRetry} testid="ed5-overview-denied" />;
   }
   if (state.phase === "notfound") {
     return (
@@ -882,20 +962,23 @@ function OverviewZone({ state, onRetry, empId }: { state: OverviewState; onRetry
     { label: "月度预算", value: money(pickNumber(d.monthlyBudgetUsd, budget?.monthlyCostUsd)) },
   ];
   return (
-    <Card data-testid="ed5-overview">
-      <CardContent className="p-0">
-        <dl className="divide-y divide-white/5">
-          {rows.map((r) => (
-            <div key={r.label} className="grid grid-cols-1 gap-1 px-4 py-3 sm:grid-cols-[8rem_minmax(0,1fr)] sm:items-center">
-              <dt className="text-xs text-white/45">{r.label}</dt>
-              <dd className="min-w-0 truncate text-sm" title={r.raw ?? undefined}>
-                {r.value}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </CardContent>
-    </Card>
+    <div className="min-w-0 space-y-4" data-testid="ed5-overview-wrap">
+      <IdentityCard d={d} empId={empId} />
+      <Card data-testid="ed5-overview">
+        <CardContent className="p-0">
+          <dl className="divide-y divide-white/5">
+            {rows.map((r) => (
+              <div key={r.label} className="grid grid-cols-1 gap-1 px-4 py-3 sm:grid-cols-[8rem_minmax(0,1fr)] sm:items-center">
+                <dt className="text-xs text-white/45">{r.label}</dt>
+                <dd className="min-w-0 truncate text-sm" title={r.raw ?? undefined}>
+                  {r.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
@@ -915,7 +998,7 @@ function CapabilityZone({ resource, onRetry }: { resource: Resource<CapabilityRo
     );
   }
   if (resource.phase === "denied") {
-    return <ZoneDenied title="能力与权限" message={resource.message} onRetry={onRetry} testid="ed5-capability-denied" />;
+    return <ZoneDenied title="能力与权限" message={resource.message} requestId={resource.requestId} onRetry={onRetry} testid="ed5-capability-denied" />;
   }
   if (resource.phase !== "ready") {
     return (
@@ -969,7 +1052,7 @@ function ApprovalsZone({ resource, onRetry }: { resource: Resource<ApprovalRow[]
     );
   }
   if (resource.phase === "denied") {
-    return <ZoneDenied title="审批" message={resource.message} onRetry={onRetry} testid="ed5-approvals-denied" />;
+    return <ZoneDenied title="审批" message={resource.message} requestId={resource.requestId} onRetry={onRetry} testid="ed5-approvals-denied" />;
   }
   if (resource.phase !== "ready") {
     return (
@@ -1030,6 +1113,17 @@ function ApprovalsZone({ resource, onRetry }: { resource: Resource<ApprovalRow[]
  * runs (real jump: rows link to the runs surface)
  * ------------------------------------------------------------------ */
 
+/** 耗时人话：只有起止都真才计算；缺任何一段都是「—」+原因，不估。 */
+function runDuration(startedAt: string | null, endedAt: string | null): { text: string; title?: string } {
+  if (!startedAt || !endedAt) return { text: "—", title: endedAt ? "上游没有回传开始时间" : "运行还没有结束（或未回传结束时间）" };
+  const a = Date.parse(startedAt);
+  const b = Date.parse(endedAt);
+  if (!Number.isFinite(a) || !Number.isFinite(b) || b < a) return { text: "—", title: "起止时间无法计算耗时" };
+  const mins = Math.max(0, Math.round((b - a) / 60_000));
+  const text = mins < 60 ? `${mins} 分钟` : `${Math.floor(mins / 60)} 小时 ${mins % 60} 分`;
+  return { text };
+}
+
 function runStatusLabel(value: string | null): string {
   switch (value) {
     case "completed":
@@ -1047,7 +1141,8 @@ function runStatusLabel(value: string | null): string {
     case "pending":
       return "排队中";
     default:
-      return "状态未知";
+      // 未识别的状态不猜：与全站口径一致「待核实」。
+      return "待核实";
   }
 }
 
@@ -1063,14 +1158,14 @@ function RunsZone({ resource, onRetry }: { resource: Resource<RunRow[]>; onRetry
   if (resource.phase === "empty") {
     return (
       <ZoneEmpty
-        title="还没有运行记录"
-        hint="员工开始执行任务后，运行会出现在这里。"
+        title="该员工暂无运行记录"
+        hint="这是按员工筛选后的真实结果（运行读口按 employeeId 过滤），不是加载失败；没有拿别人的运行凑数。"
         testid="ed5-runs-empty"
       />
     );
   }
   if (resource.phase === "denied") {
-    return <ZoneDenied title="运行" message={resource.message} onRetry={onRetry} testid="ed5-runs-denied" />;
+    return <ZoneDenied title="运行" message={resource.message} requestId={resource.requestId} onRetry={onRetry} testid="ed5-runs-denied" />;
   }
   if (resource.phase !== "ready") {
     return (
@@ -1086,10 +1181,11 @@ function RunsZone({ resource, onRetry }: { resource: Resource<RunRow[]>; onRetry
   return (
     <Card data-testid="ed5-runs">
       <CardContent className="p-0">
-        <div className="hidden grid-cols-[minmax(0,0.9fr)_minmax(0,0.7fr)_minmax(0,1fr)_minmax(0,0.6fr)_minmax(0,0.6fr)] gap-2 border-b border-white/10 px-4 py-2 text-xs text-white/45 md:grid">
+        <div className="hidden grid-cols-[minmax(0,0.9fr)_minmax(0,0.7fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.6fr)_minmax(0,0.6fr)] gap-2 border-b border-white/10 px-4 py-2 text-xs text-white/45 md:grid">
           <span>运行</span>
           <span>状态</span>
           <span>开始时间</span>
+          <span>耗时</span>
           <span>花费</span>
           <span>用量</span>
         </div>
@@ -1097,18 +1193,26 @@ function RunsZone({ resource, onRetry }: { resource: Resource<RunRow[]>; onRetry
           {resource.data.map((row, i) => (
             <li key={`${row.ref ?? "run"}-${i}`} data-testid="ed5-zone-runs-row">
               <Link
-                to="/runs"
+                to={row.ref ? `/runs?run=${encodeURIComponent(row.ref)}` : "/runs"}
+                data-testid={`ed7-runs-link-${i}`}
                 title={row.ref ?? undefined}
-                className="grid grid-cols-1 gap-1 px-4 py-3 hover:bg-white/5 md:grid-cols-[minmax(0,0.9fr)_minmax(0,0.7fr)_minmax(0,1fr)_minmax(0,0.6fr)_minmax(0,0.6fr)] md:items-center md:gap-2"
+                className="grid grid-cols-1 gap-1 px-4 py-3 hover:bg-white/5 md:grid-cols-[minmax(0,0.9fr)_minmax(0,0.7fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.6fr)_minmax(0,0.6fr)] md:items-center md:gap-2"
               >
-                <span className="font-mono text-xs" title={row.ref ?? undefined}>
+                <span className="font-mono text-xs" title={row.ref ?? undefined} data-testid={`ed7-runs-code-${i}`}>
                   运行 · {row.ref ? shortCode(row.ref) : "—"}
                 </span>
                 <span title={row.status ?? undefined}>
                   <Badge tone={runStatusTone(row.status)}>{runStatusLabel(row.status)}</Badge>
                 </span>
                 <span className="font-mono text-xs text-white/55">{beijing(row.startedAt)}</span>
-                <span className="text-xs text-white/55">
+                <span
+                  className="text-xs text-white/55"
+                  data-testid={`ed7-runs-duration-${i}`}
+                  title={runDuration(row.startedAt, row.endedAt).title}
+                >
+                  {runDuration(row.startedAt, row.endedAt).text}
+                </span>
+                <span className="text-xs text-white/55" data-testid={`ed7-runs-cost-${i}`}>
                   <Wallet className="mr-1 inline h-3.5 w-3.5 text-white/40" />
                   {money(row.cost)}
                 </span>
@@ -1138,7 +1242,7 @@ function AuditZone({ resource, onRetry }: { resource: Resource<AuditRow[]>; onRe
     );
   }
   if (resource.phase === "denied") {
-    return <ZoneDenied title="审计" message={resource.message} onRetry={onRetry} testid="ed5-audit-denied" />;
+    return <ZoneDenied title="审计" message={resource.message} requestId={resource.requestId} onRetry={onRetry} testid="ed5-audit-denied" />;
   }
   if (resource.phase !== "ready") {
     return (

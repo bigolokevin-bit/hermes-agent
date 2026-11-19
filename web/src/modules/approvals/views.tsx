@@ -8,6 +8,7 @@
  * disclosure, which is collapsed by default.
  */
 import type { ReactNode } from "react";
+import { Link } from "react-router";
 
 import { Badge } from "@nous-research/ui/ui/components/badge";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
@@ -15,6 +16,7 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { themedBody } from "@/lib/utils";
 import { humanizeHandles, money, type ApprovalDetail, type ApprovalRow } from "./model";
 import { DetailsDisclosure } from "./states";
+import { shortRef } from "@/modules/tasks/tasksBoard";
 
 /** A label/value pair that never overflows its column at 375px. */
 function Field({
@@ -127,6 +129,106 @@ export function ApprovalRowCard({
 }
 
 /** The decision controls, supplied by the pending pane only. */
+
+/* ------------------------------------------------------------------ *
+ * R46 apd6 — the decision trail. Same data, one honest timeline:
+ * submitted → every recorded decision (service order, never re-sorted
+ * here) → approvers still outstanding → terminal state → related
+ * run/task/evidence. Any segment without backing data says 该段无记录
+ * with the reason in the title; nothing is invented.
+ * ------------------------------------------------------------------ */
+
+function NoSeg({ reason }: { reason: string }) {
+  return (
+    <span className="text-muted-foreground" title={reason}>
+      该段无记录
+    </span>
+  );
+}
+
+export function DecisionTrail({ detail }: { detail: ApprovalDetail }): ReactNode {
+  const acted = detail.decisions;
+  const pending = detail.approvers.labels.filter((label) => !acted.some((entry) => entry.who === label));
+  return (
+    <section
+      className="flex min-w-0 flex-col gap-1"
+      data-testid="apd6-trail"
+      aria-label="决策链路（只读）"
+    >
+      <h3 className="text-xs font-medium text-muted-foreground">决策链路 · 只读（节点顺序即服务返回顺序）</h3>
+      <ol className="flex min-w-0 flex-col gap-1 text-xs">
+        <li className="min-w-0 break-words" data-testid="apd6-step-submitted" title={detail.requester.raw ?? undefined}>
+          提交 · {detail.requester.label} ·{" "}
+          {detail.submitted ?? <NoSeg reason={MISSING_TIME} />}
+        </li>
+        {acted.length === 0 ? (
+          <li className="min-w-0 break-words" data-testid="apd6-step-nodes-none">
+            审批节点 · <NoSeg reason="服务未返回任何决策记录。" />
+          </li>
+        ) : (
+          acted.map((entry, index) => (
+            <li
+              key={`${entry.who}-${index}`}
+              className="min-w-0 break-words"
+              data-testid={`apd6-step-node-${index}`}
+              title={entry.whoRaw ?? undefined}
+            >
+              节点 {index + 1} · {entry.who} · {entry.verdict} ·{" "}
+              {entry.at ?? <NoSeg reason="这个节点没有带回决策时间。" />} · 意见：{entry.note ?? "未填"}
+            </li>
+          ))
+        )}
+        {pending.map((label, index) => (
+          <li
+            key={`pending-${label}-${index}`}
+            className="min-w-0 break-words"
+            data-testid={`apd6-step-pending-${index}`}
+            title={detail.approvers.raw ?? undefined}
+          >
+            {label} · 待办 · <NoSeg reason="该审批人还没有给出决定。" /> · 意见：未填
+          </li>
+        ))}
+        <li className="min-w-0 break-words" data-testid="apd6-step-final" title={detail.status.raw ?? undefined}>
+          终态 · {detail.status.label}
+          {detail.decided ? ` · ${detail.decided}` : ""}
+        </li>
+        <li className="min-w-0 break-words" data-testid="apd6-step-links">
+          关联：{" "}
+          {detail.runId ? (
+            <Link
+              className="underline underline-offset-2"
+              to={`/runs/${encodeURIComponent(detail.runId)}`}
+              title={detail.runId}
+              data-testid="apd6-link-run"
+            >
+              运行 · {shortRef(detail.runId)}
+            </Link>
+          ) : (
+            <span data-testid="apd6-link-run-none">运行 <NoSeg reason="服务返回的单据没有带关联运行编号。" /></span>
+          )}{" "}
+          ·{" "}
+          {detail.taskId ? (
+            <Link
+              className="underline underline-offset-2"
+              to={`/tasks/${encodeURIComponent(detail.taskId)}`}
+              title={detail.taskId}
+              data-testid="apd6-link-task"
+            >
+              任务 · {shortRef(detail.taskId)}
+            </Link>
+          ) : (
+            <span data-testid="apd6-link-task-none">任务 <NoSeg reason="服务返回的单据没有带关联任务编号。" /></span>
+          )}{" "}
+          ·{" "}
+          <span data-testid="apd6-link-evidence-none">
+            证据 <NoSeg reason="证据读取路径尚未在服务侧开放（本代次实测该路由返回 unknown_route）。" />
+          </span>
+        </li>
+      </ol>
+    </section>
+  );
+}
+
 export function ApprovalDetailBody({
   detail,
   actions,
@@ -298,6 +400,8 @@ export function ApprovalDetailBody({
           <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="apd5-replay-empty">无决策记录。</p>
         )}
       </section>
+
+      <DecisionTrail detail={detail} />
 
       <DetailsDisclosure testId={`${testId}-details`} lines={details} />
 

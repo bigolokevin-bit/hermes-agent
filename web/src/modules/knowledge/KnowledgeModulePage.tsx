@@ -31,6 +31,8 @@ import {
   DOCUMENTS_UNWIRED_HUMAN,
   SEARCH_UNWIRED_HEAD,
   SEARCH_UNWIRED_HUMAN,
+  SPACE_DOC_UNWIRED_HEAD,
+  SPACE_DOC_UNWIRED_HUMAN,
   SPACES_UNWIRED_HEAD,
   SPACES_UNWIRED_HUMAN,
   TASKS_UNWIRED_HEAD,
@@ -45,17 +47,20 @@ import {
   INGEST_STATUS_UNWIRED_HEAD,
   INGEST_STATUS_UNWIRED_HUMAN,
   INGEST_STATUS_URL,
+  documentsUrl,
   initialTab,
   readCitations,
   readRecords,
   readRows,
   readSearch,
   readSessions,
+  readSpaceDocuments,
   readSpaces,
   readTasks,
   searchUrl,
   sessionCitations,
   type CitationRow,
+  type DocRow,
   type IngestTaskRow,
   type KnowledgeRow,
   type KnowledgeTab,
@@ -548,7 +553,7 @@ function RecordsTable({ rows }: { rows: RetrievalRow[] }): ReactNode {
 }
 
 /** 一行一个知识空间：名称 / 来源 / 文档数 / 最近同步 / 状态。 */
-function SpaceTable({ rows }: { rows: SpaceRow[] }): ReactNode {
+function SpaceTable({ rows, spaceLink }: { rows: SpaceRow[]; spaceLink: (id: string) => string }): ReactNode {
   return (
     <div className="knw5-scroll">
       <table className="knw5-table" data-testid="knw5-spaces-table">
@@ -565,9 +570,25 @@ function SpaceTable({ rows }: { rows: SpaceRow[] }): ReactNode {
           {rows.map((row, index) => (
             <tr key={row.id || `space-${index}`} data-testid="knw5-spaces-row" title={row.id || undefined}>
               <td data-label="空间名称">
-                <span className="knw5-name" data-testid="knw5-space-name">
-                  {row.name}
-                </span>
+                {row.id ? (
+                  <Link
+                    className="knw5-name knw5-rowlink"
+                    data-testid="knw5-space-link"
+                    to={spaceLink(row.id)}
+                    title="看这个空间里的文档"
+                  >
+                    {row.name}
+                  </Link>
+                ) : (
+                  <>
+                    <span className="knw5-name" data-testid="knw5-space-name">
+                      {row.name}
+                    </span>
+                    <span className="knw5-sub" title="上游没有给出这个空间的标识">
+                      — 点不进文档列表
+                    </span>
+                  </>
+                )}
                 <Reason>{row.nameReason}</Reason>
                 {row.kind ? (
                   <span className="knw5-sub" data-testid="knw5-space-scope" title={row.kindRaw ?? undefined}>
@@ -626,7 +647,7 @@ function SpaceTable({ rows }: { rows: SpaceRow[] }): ReactNode {
   );
 }
 
-function SpacesSurface({ nonce }: { nonce: string }): ReactNode {
+function SpacesSurface({ nonce, spaceLink }: { nonce: string; spaceLink: (id: string) => string }): ReactNode {
   const surface = useSurface<SpaceRow>(
     () => fetchJsonStrict(SPACES_URL).then(readSpaces),
     `spaces|${nonce}`,
@@ -640,8 +661,397 @@ function SpacesSurface({ nonce }: { nonce: string }): ReactNode {
       unwiredHead={SPACES_UNWIRED_HEAD}
       unwiredHuman={SPACES_UNWIRED_HUMAN}
       empty={() => <p>当前没有读到知识空间。接口已响应，但列表为空；这不等于「没有空间」，也不写 0 个。</p>}
-      render={(value) => <SpaceTable rows={value.rows} />}
+      render={(value) => <SpaceTable rows={value.rows} spaceLink={spaceLink} />}
     />
+  );
+}
+
+/**
+ * The document list of one space. Every row is a real focusable anchor: it opens that
+ * row's own detail, which either links to the original or says why it cannot be opened.
+ * The name box filters only what this read already returned, and says so on screen.
+ */
+function DocTable({
+  rows,
+  docLink,
+  openKey,
+}: {
+  rows: DocRow[];
+  docLink: (key: string) => string;
+  openKey: string;
+}): ReactNode {
+  return (
+    <div className="kn3-docs-wrap">
+      <table className="knw5-table kn3-docs-table" data-testid="kn3-docs-table">
+        <thead>
+          <tr>
+            <th scope="col">文档名</th>
+            <th scope="col">类型</th>
+            <th scope="col">大小</th>
+            <th scope="col">更新</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, index) => {
+            const key = row.id !== "" ? row.id : `row-${index}`;
+            const isOpen = openKey !== "" && openKey === key;
+            return (
+              <tr
+                key={key}
+                data-testid="kn3-docs-row"
+                data-open={isOpen ? "1" : "0"}
+                title={row.id || undefined}
+              >
+                <td data-label="文档名">
+                  <Link className="kn3-docs-name" data-testid="kn3-docs-name" to={docLink(key)} title={row.nameHint ?? undefined}>
+                    {row.name}
+                  </Link>
+                </td>
+                <td data-label="类型">
+                  <span data-testid="kn3-docs-type" title={row.typeHint ?? (row.typeRaw ?? undefined)}>
+                    {row.type}
+                  </span>
+                </td>
+                <td data-label="大小">
+                  <span data-testid="kn3-docs-size" title={row.sizeHint ?? undefined}>
+                    {row.size}
+                  </span>
+                </td>
+                <td data-label="更新">
+                  <span data-testid="kn3-docs-updated" title={row.atHint ?? undefined}>
+                    {row.at}
+                  </span>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function SpaceDetailSurface({
+  nonce,
+  spaceId,
+  openDoc,
+  docLink,
+  backLink,
+}: {
+  nonce: string;
+  spaceId: string;
+  openDoc: string;
+  docLink: (key: string) => string;
+  backLink: string;
+}): ReactNode {
+  const [filter, setFilter] = useState("");
+  const surface = useSurface<DocRow>(
+    () => fetchJsonStrict(documentsUrl(spaceId)).then(readSpaceDocuments),
+    `space-docs|${nonce}|${spaceId}`,
+  );
+  const keyword = filter.trim().toLowerCase();
+  const rows = surface.state.kind === "ready" ? surface.state.value.rows : [];
+  const shown = keyword === "" ? rows : rows.filter((row) => row.name.toLowerCase().includes(keyword));
+  const shownValue =
+    surface.state.kind === "ready" ? { ...surface.state.value, rows: shown } : null;
+  const openRow = shown.find((row, index) => (row.id !== "" ? row.id : `row-${index}`) === openDoc) ?? null;
+
+  return (
+    <>
+      <p className="knw5-hint">
+        <Link className="knw5-link" data-testid="kn3-docs-back" to={backLink}>
+          返回空间列表
+        </Link>
+        <span className="kn3-docs-title" title={spaceId}>
+          这个空间的文档列表
+        </span>
+        <span className="knw5-sub">列表的名字取自上面的空间列表；这一页只列它自己的文档，不替空间编名字。</span>
+      </p>
+
+      <div className="kn3-docs-filter" data-testid="kn3-docs-filter">
+        <label className="knw5-field">
+          <span className="knw5-sr-only">按文档名筛选</span>
+          <input
+            className="knw5-input"
+            type="search"
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+            placeholder="按文档名筛选"
+            data-testid="kn3-docs-filter-input"
+          />
+        </label>
+        <span className="knw5-sub" data-testid="kn3-docs-filter-note">
+          本地筛选：只在接口已经返回的这份列表里按名字挑，不再问一次服务，也不改变数量口径。
+        </span>
+      </div>
+
+      <Surface
+        testid="kn3-docs"
+        source="space-docs"
+        state={
+          surface.state.kind === "ready" && shownValue ? { kind: "ready", value: shownValue } : surface.state
+        }
+        onRetry={surface.retry}
+        unwiredHead={SPACE_DOC_UNWIRED_HEAD}
+        unwiredHuman={SPACE_DOC_UNWIRED_HUMAN}
+        empty={() =>
+          keyword === "" ? (
+            <p>该空间暂无文档。接口已响应，这份列表里没有文档；这只说明这份回答是空的，不下别的结论，也不给数量。</p>
+          ) : (
+            <p>
+              本地筛选没有匹配：这份列表里有 {rows.length} 份文档，按「{filter.trim()}」一条都没留下。
+              这是筛完的结果，不是空间没有文档。
+            </p>
+          )
+        }
+        render={(value) => (
+          <>
+            <DocTable rows={value.rows} docLink={docLink} openKey={openDoc} />
+            {openRow ? (
+              <dl className="knw5-ref-detail" data-testid="kn3-docs-detail" title={openRow.id || undefined}>
+                <div>
+                  <dt>文档</dt>
+                  <dd data-testid="kn3-docs-detail-name" title={openRow.nameHint ?? undefined}>
+                    {openRow.name}
+                  </dd>
+                </div>
+                <div>
+                  <dt>原文位置</dt>
+                  <dd>
+                    {openRow.href ? (
+                      <Link className="knw5-link" data-testid="kn3-docs-detail-open" to={openRow.href}>
+                        打开原文
+                      </Link>
+                    ) : (
+                      <span data-testid="kn3-docs-detail-unreachable">原文不可达 · {openRow.unreachable}</span>
+                    )}
+                  </dd>
+                </div>
+                <div>
+                  <dt>类型</dt>
+                  <dd title={openRow.typeHint ?? (openRow.typeRaw ?? undefined)}>{openRow.type}</dd>
+                </div>
+                <div>
+                  <dt>大小</dt>
+                  <dd title={openRow.sizeHint ?? undefined}>{openRow.size}</dd>
+                </div>
+                <div>
+                  <dt>更新</dt>
+                  <dd title={openRow.atHint ?? undefined}>{openRow.at}</dd>
+                </div>
+              </dl>
+            ) : null}
+          </>
+        )}
+      />
+    </>
+  );
+}
+
+/**
+ * The cross-space document-name box at the top of `/knowledge`.
+ *
+ * The read is fetched once and never re-requested by the keyword, because the BFF
+ * has no keyword filter on this route (probed: `?q=` and `?query=` change nothing).
+ * So this is a filter over what is already loaded, the note under the box counts the
+ * loaded rows, and the wording never claims a whole-library search.
+ */
+function SearchDocTable({
+  rows,
+  docLink,
+  openKey,
+}: {
+  rows: DocRow[];
+  docLink: (key: string) => string;
+  openKey: string;
+}): ReactNode {
+  return (
+    <div className="k3-docs-wrap">
+      <table className="knw5-table" data-testid="kn6-search-table">
+        <thead>
+          <tr>
+            <th scope="col">文档名</th>
+            <th scope="col">所属空间</th>
+            <th scope="col">类型</th>
+            <th scope="col">大小</th>
+            <th scope="col">更新</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, index) => {
+            const key = row.id !== "" ? row.id : `row-${index}`;
+            return (
+              <tr key={key} data-testid="kn6-search-row" data-open={openKey === key ? "1" : "0"} title={row.id || undefined}>
+                <td data-label="文档名">
+                  <Link className="kn3-docs-name" data-testid="kn6-search-name" to={docLink(key)} title={row.nameHint ?? undefined}>
+                    {row.name}
+                  </Link>
+                </td>
+                <td data-label="所属空间">
+                  <span data-testid="kn6-search-space" title={row.spaceRaw ?? row.spaceLabel ?? undefined}>
+                    {row.spaceLabel ?? "—"}
+                  </span>
+                </td>
+                <td data-label="类型">
+                  <span data-testid="kn6-search-type" title={row.typeHint ?? (row.typeRaw ?? undefined)}>
+                    {row.type}
+                  </span>
+                </td>
+                <td data-label="大小">
+                  <span data-testid="kn6-search-size" title={row.sizeHint ?? undefined}>
+                    {row.size}
+                  </span>
+                </td>
+                <td data-label="更新">
+                  <span data-testid="kn6-search-updated" title={row.atHint ?? undefined}>
+                    {row.at}
+                  </span>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function DocumentNameSearch({
+  nonce,
+  keyword,
+  openKey,
+  sdocLink,
+  onCommit,
+  onClear,
+}: {
+  nonce: string;
+  keyword: string;
+  openKey: string;
+  sdocLink: (key: string) => string;
+  onCommit: (value: string) => void;
+  onClear: () => void;
+}): ReactNode {
+  const [draft, setDraft] = useState<{ from: string; text: string }>({ from: keyword, text: keyword });
+  const text = draft.from === keyword ? draft.text : keyword;
+  // The read happens once per refresh only: the keyword never re-triggers it,
+  // because there is no server-side keyword filter to ask for.
+  const surface = useSurface<DocRow>(
+    () => fetchJsonStrict(DOCUMENTS_URL).then(readSpaceDocuments),
+    `doc-search|${nonce}`,
+  );
+  const loaded = surface.state.kind === "ready" ? surface.state.value.rows : [];
+  const needle = text.trim().toLowerCase();
+  const shown = needle === "" ? loaded : loaded.filter((row) => row.name.toLowerCase().includes(needle));
+  const openRow = shown.find((row, index) => (row.id !== "" ? row.id : `row-${index}`) === openKey) ?? null;
+  // Clearing resets the box itself too: a keyword typed but never submitted lives
+  // only here, so a button that only touched the URL would look dead.
+  const clear = () => {
+    setDraft({ from: keyword, text: "" });
+    onClear();
+  };
+
+  return (
+    <section className="kn6-search" data-testid="kn6-search-panel">
+      <form
+        className="knw5-form"
+        data-testid="kn6-search-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onCommit(text);
+        }}
+      >
+        <label className="knw5-field">
+          <span className="knw5-sr-only">按文档名搜索</span>
+          <input
+            className="knw5-input"
+            type="search"
+            value={text}
+            onChange={(event) => setDraft({ from: keyword, text: event.target.value })}
+            placeholder="按文档名搜索"
+            data-testid="kn6-search-input"
+          />
+        </label>
+        <Button size="sm" type="submit" prefix={<Search className="h-3.5 w-3.5" aria-hidden />} data-testid="kn6-search-submit">
+          搜索
+        </Button>
+        {keyword !== "" || text.trim() !== "" ? (
+          <Button size="sm" outlined onClick={clear} data-testid="kn6-search-clear">
+            清除关键词
+          </Button>
+        ) : null}
+      </form>
+
+      <p className="knw5-sub" data-testid="kn6-search-note">
+        {surface.state.kind === "ready"
+          ? `仅在当前已加载 ${loaded.length} 条内搜索：这份文档读口今天不接受关键词参数（实测 q 与 query 回答一致），所以这里不叫全库搜索；换关键词不会再请求一次。`
+          : "仅在当前已加载的条目内搜索：这份文档读口今天不接受关键词参数，所以这里不叫全库搜索。"}
+      </p>
+
+      <Surface
+        testid="kn6-search"
+        source="doc-search"
+        state={
+          surface.state.kind === "ready" ? { kind: "ready", value: { ...surface.state.value, rows: shown } } : surface.state
+        }
+        onRetry={surface.retry}
+        unwiredHead={DOCUMENTS_UNWIRED_HEAD}
+        unwiredHuman={DOCUMENTS_UNWIRED_HUMAN}
+        empty={() =>
+          needle === "" ? (
+            <p>接口已响应，这份文档列表里没有条目；这只说明这份回答是空的，不下别的结论，也不给数量。</p>
+          ) : (
+            <p>
+              没有匹配的文档：已加载的 {loaded.length} 条里没有名字含「{text.trim()}」的文档。
+              这是本地筛选的结果，不代表全库没有。
+              <button type="button" className="knw5-drill" data-testid="kn6-search-empty-clear" onClick={clear}>
+                清除关键词
+              </button>
+            </p>
+          )
+        }
+        render={(value) => (
+          <>
+            <SearchDocTable rows={value.rows} docLink={sdocLink} openKey={openKey} />
+            {openRow ? (
+              <dl className="knw5-ref-detail" data-testid="kn6-search-detail" title={openRow.id || undefined}>
+                <div>
+                  <dt>文档</dt>
+                  <dd title={openRow.nameHint ?? undefined}>{openRow.name}</dd>
+                </div>
+                <div>
+                  <dt>所属空间</dt>
+                  <dd title={openRow.spaceRaw ?? undefined}>{openRow.spaceLabel ?? "—"}</dd>
+                </div>
+                <div>
+                  <dt>原文位置</dt>
+                  <dd>
+                    {openRow.href ? (
+                      <a className="knw5-link" data-testid="kn6-search-detail-open" href={openRow.href}>
+                        打开原文
+                      </a>
+                    ) : (
+                      <span data-testid="kn6-search-detail-unreachable">原文不可达 · {openRow.unreachable}</span>
+                    )}
+                  </dd>
+                </div>
+                <div>
+                  <dt>类型</dt>
+                  <dd title={openRow.typeHint ?? (openRow.typeRaw ?? undefined)}>{openRow.type}</dd>
+                </div>
+                <div>
+                  <dt>大小</dt>
+                  <dd title={openRow.sizeHint ?? undefined}>{openRow.size}</dd>
+                </div>
+                <div>
+                  <dt>更新</dt>
+                  <dd title={openRow.atHint ?? undefined}>{openRow.at}</dd>
+                </div>
+              </dl>
+            ) : null}
+          </>
+        )}
+      />
+    </section>
   );
 }
 
@@ -944,6 +1354,9 @@ export default function KnowledgeModulePage() {
   const tab = initialTab(sp.get("tab"), sp.get("panel"));
   const query = sp.get("q") ?? "";
   const drilled = sp.get("ref") ?? "";
+  const spaceId = sp.get("space") ?? "";
+  const openDoc = sp.get("doc") ?? "";
+  const openSearchDoc = sp.get("sdoc") ?? "";
   const [nonce, setNonce] = useState("0");
   const forced = readForced(sp.get("state"));
 
@@ -953,11 +1366,64 @@ export default function KnowledgeModulePage() {
     // the internal panel, which is what refresh and back/forward must restore.
     if (!next.get("tab")) next.set("tab", "spaces");
     next.set("panel", key);
-    // A drill belongs to the list it came from; carrying it across panels would open
-    // nothing and read like a stuck row.
+    // A drill, an open space and an open document row all belong to the panel they
+    // came from; carrying them across would show nothing and read like a stuck row.
     next.delete("ref");
+    next.delete("space");
+    next.delete("doc");
+    next.delete("sdoc");
     setSp(next);
   };
+
+  /** In-page addresses: the space detail is a query state, not a new route. */
+  const keepBase = () => {
+    const next = new URLSearchParams(sp);
+    if (!next.get("tab")) next.set("tab", "spaces");
+    next.set("panel", "spaces");
+    return next;
+  };
+  const spaceLink = (id: string) => {
+    const next = keepBase();
+    next.set("space", id);
+    next.delete("doc");
+    return `/knowledge?${next.toString()}`;
+  };
+  const docLink = (key: string) => {
+    const next = keepBase();
+    next.set("space", spaceId);
+    if (openDoc === key) next.delete("doc");
+    else next.set("doc", key);
+    return `/knowledge?${next.toString()}`;
+  };
+  /** The top keyword box keeps its own opened row, so it never moves the
+      space-detail row that `doc=` already owns. */
+  const sdocLink = (key: string) => {
+    const next = new URLSearchParams(sp);
+    if (openSearchDoc === key) next.delete("sdoc");
+    else next.set("sdoc", key);
+    return `/knowledge?${next.toString()}`;
+  };
+  const commitKeyword = (value: string) => {
+    const next = new URLSearchParams(sp);
+    const trimmed = value.trim();
+    if (trimmed === "") next.delete("q");
+    else next.set("q", trimmed);
+    next.delete("sdoc");
+    setSp(next);
+  };
+  const clearKeyword = () => {
+    const next = new URLSearchParams(sp);
+    next.delete("q");
+    next.delete("sdoc");
+    setSp(next);
+  };
+
+  const backLink = (() => {
+    const next = keepBase();
+    next.delete("space");
+    next.delete("doc");
+    return `/knowledge?${next.toString()}`;
+  })();
 
   const toggleDrill = (key: string) => {
     const next = new URLSearchParams(sp);
@@ -992,6 +1458,17 @@ export default function KnowledgeModulePage() {
           刷新
         </Button>
       </header>
+
+      {forced === null ? (
+        <DocumentNameSearch
+          nonce={nonce}
+          keyword={query}
+          openKey={openSearchDoc}
+          sdocLink={sdocLink}
+          onCommit={commitKeyword}
+          onClear={clearKeyword}
+        />
+      ) : null}
 
       <div className="knw5-seg" role="tablist" aria-label="知识分组">
         {TAB_ORDER.map((key) => (
@@ -1028,7 +1505,19 @@ export default function KnowledgeModulePage() {
               )
             ) : (
             <RefDrill.Provider value={{ open: drilled, toggle: toggleDrill }}>
-              {tab === "spaces" ? <SpacesSurface nonce={nonce} /> : null}
+              {tab === "spaces" ? (
+                spaceId === "" ? (
+                  <SpacesSurface nonce={nonce} spaceLink={spaceLink} />
+                ) : (
+                  <SpaceDetailSurface
+                    nonce={nonce}
+                    spaceId={spaceId}
+                    openDoc={openDoc}
+                    docLink={docLink}
+                    backLink={backLink}
+                  />
+                )
+              ) : null}
               {tab === "ingest" ? (
                 <>
                   <IngestStatusSurface nonce={nonce} />

@@ -511,3 +511,98 @@
 .knw5-page .arc-border {
   display: none;
 }
+
+/* R45 — the space's document list (testids kn3-docs-*). It reuses .knw5-table for
+   the phone stacking rule, so nothing here may add a fixed min-width. */
+.knw5-rowlink {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.knw5-rowlink:hover {
+  text-decoration: underline;
+}
+
+.knw5-input {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-foreground);
+  font-size: 0.76rem;
+  padding: 6px 8px;
+}
+
+.knw5-input:focus-visible {
+  outline: 1px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+.knw5-input::-webkit-search-cancel-button {
+  all: unset;
+}
+
+.k3-docs-filter {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.k3-docs-wrap {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.k3-docs-name {
+  color: var(--color-primary);
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+.k3-docs-name:hover {
+  text-decoration: underline;
+}
+
+/* The row's anchor must stay keyboard-reachable in the stacked layout too. */
+.k3-docs-name:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.k3-docs-title {
+  color: var(--color-foreground);
+  font-size: 0.76rem;
+  overflow-wrap: anywhere;
+}
+
+/* R47 — the cross-space document-name box at the top of /knowledge.
+   It is one read plus a client-side filter, so nothing here may imply a search
+   service: the note under the box counts what is actually loaded. */
+.kn6-search {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.kn6-search .knw5-form {
+  align-items: center;
+}
+
+.kn6-search .knw5-sub {
+  color: var(--color-muted-foreground);
+}
+
+.kn6-search [data-testid="kn6-search-empty-clear"] {
+  margin-left: 6px;
+}
+
+@media (max-width: 560px) {
+  .kn6-search .knw5-form .knw5-field {
+    flex: 1 1 100%;
+  }
+}

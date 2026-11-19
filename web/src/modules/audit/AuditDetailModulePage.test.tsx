@@ -258,3 +258,36 @@ describe("the four states", () => {
     }
   });
 });
+
+describe("R41 — seconds and the raw payload", () => {
+  it("shows the event time to the second and says so", async () => {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async () => DETAIL);
+    await render("/audit/detail?id=evt_D6FC9A2B4E6F8012");
+    await waitFor(() => document.querySelector("[data-testid='aud3-time']") !== null, "time block");
+    expect(document.querySelector("[data-testid='aud3-time']")?.textContent).toContain("2026-11-18 11:00:00");
+    expect(text()).toContain("精确到秒");
+  });
+
+  it("says the raw payload is unavailable when the answer only carries differences", async () => {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async () => DETAIL);
+    await render("/audit/detail?id=evt_D6FC9A2B4E6F8012");
+    await waitFor(() => document.querySelector("[data-testid='aud3-payload-unavailable']") !== null, "payload note");
+    expect(document.querySelector("[data-testid='aud3-payload-unavailable']")?.textContent).toContain("证据不可用");
+  });
+
+  it("masks credential-shaped keys and counts them", async () => {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async () => ({
+      audit: { ...DETAIL.audit, payload: { token: "abc123", nested: { password: "x" }, safe: "ok" } },
+    }));
+    await render("/audit/detail?id=evt_D6FC9A2B4E6F8012");
+    await waitFor(() => document.querySelector("[data-testid='aud3-payload-json']") !== null, "payload block");
+    const shown = document.querySelector("[data-testid='aud3-payload-json']")?.textContent ?? "";
+    expect(shown).toContain('"token": "***"');
+    expect(shown).toContain('"password": "***"');
+    expect(shown).not.toContain("abc123");
+    expect(document.querySelector("[data-testid='aud3-payload-masked']")?.textContent).toContain("已隐去 2 项");
+  });
+});
