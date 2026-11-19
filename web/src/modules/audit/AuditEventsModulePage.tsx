@@ -41,7 +41,7 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { Spinner } from "@nous-research/ui/ui/components/spinner";
 
 import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel, TechnicalDisclosure, VerifyUnavailablePanel } from "./states";
-import { AuditEventDetailBody, AuditEventRowCard, VerifyResultBody } from "./views";
+import { AuditEventDetailBody, AuditEventRowCard, VerifyResultBody, AuditRowPreview } from "./views";
 import RetentionModulePage from "./RetentionModulePage";
 import { useAuditDetail, useAuditList, useAuditVerify } from "./useAuditData";
 import type { FailureCopy } from "./copy";
@@ -246,6 +246,7 @@ function AuditEventsSurface(): ReactNode {
   // One row at a time owns the technical fold: the panel id stays unique and
   // clicking 详情 really expands something every time (R19 tail b).
   const [openTech, setOpenTech] = useState<string | null>(null);
+  const [openPreview, setOpenPreview] = useState<string | null>(null);
   // The window check is a read the person asks for; it never runs on load and
   // it is not driven by `?state=` (that repro belongs to the aud03 pane).
   const verify = useAuditVerify(null);
@@ -636,15 +637,31 @@ function AuditEventsSurface(): ReactNode {
           {!customInvalid && list.phase === "ready" ? (
             <>
               {list.rows.map((row) => (
-                <AuditEventRowCard
+                <div
+                  className="flex min-w-0 flex-col gap-1"
                   key={row.key}
-                  row={row}
-                  selected={row.rawId !== null && row.rawId === selected}
-                  onOpen={() => openRow(row.rawId)}
-                  techOpen={openTech === row.key}
-                  onToggleTech={() => setOpenTech((current) => (current === row.key ? null : row.key))}
-                  testId={`aud01-row-${row.key}`}
-                />
+                  onKeyDown={(event) => { if (event.key === "Escape") setOpenPreview(null); }}
+                >
+                  <button
+                    type="button"
+                    className="w-full rounded-md px-2 py-1 text-left text-xs text-muted-foreground hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                    aria-expanded={openPreview === row.key}
+                    aria-controls={"aud6-preview-" + row.key}
+                    data-testid={"aud6-toggle-" + row.key}
+                    onClick={() => setOpenPreview((current) => (current === row.key ? null : row.key))}
+                  >
+                    {openPreview === row.key ? "收起预览" : "预览这一条"}
+                  </button>
+                  <AuditEventRowCard
+                    row={row}
+                    selected={row.rawId !== null && row.rawId === selected}
+                    onOpen={() => openRow(row.rawId)}
+                    techOpen={openTech === row.key}
+                    onToggleTech={() => setOpenTech((current) => (current === row.key ? null : row.key))}
+                    testId={`aud01-row-${row.key}`}
+                  />
+                  {openPreview === row.key ? <AuditRowPreview row={row} testId={"aud6-preview-" + row.key} /> : null}
+                </div>
               ))}
 
               {list.unreadable > 0 ? (

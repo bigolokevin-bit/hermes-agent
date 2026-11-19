@@ -562,6 +562,8 @@ export interface AuditRow {
   actor: Person;
   resource: { label: string; raw: string | null };
   occurredAt: string | null;
+  /** Raw instant when the service sent one; the inline preview needs seconds. */
+  occurredAtRaw?: string | null;
   recordedAt: string | null;
   /** 请求编号 — what the service called this request, or null when it said none. */
   requestId: string | null;
@@ -684,6 +686,7 @@ function rowFrom(item: unknown, index: number): AuditRow | null {
     actor: actorView(rec),
     resource: resourceOf(rec),
     occurredAt: beijing(pick(rec, OCCURRED_KEYS)),
+    occurredAtRaw: pickText(rec, OCCURRED_KEYS),
     recordedAt: beijing(pick(rec, RECORDED_KEYS)),
     requestId: requestIdOf(rec),
     correlation: correlationOf(rec),

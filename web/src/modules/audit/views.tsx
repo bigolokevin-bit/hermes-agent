@@ -425,3 +425,46 @@ export function VerifyResultBody({
     </div>
   );
 }
+
+/** R50: the inline preview a row opens in place - the same loaded row, no request. */
+export function AuditRowPreview({ row, testId }: { row: AuditRow; testId: string }): ReactNode {
+  const at = beijingSeconds(row.occurredAtRaw) ?? row.occurredAt;
+  return (
+    <div
+      className="flex min-w-0 flex-col gap-1 rounded-md border border-border bg-card px-3 py-2 text-xs"
+      data-testid={testId}
+      role="region"
+      aria-label="行内预览"
+    >
+      <div className="flex min-w-0 flex-wrap gap-x-4 gap-y-1">
+        <span className="min-w-0 break-words">
+          <span className="text-muted-foreground">事件类型：</span>
+          {row.action.label}
+        </span>
+        <span className="min-w-0 break-words">
+          <span className="text-muted-foreground">操作者：</span>
+          {row.actor.label}
+        </span>
+        <span className="min-w-0 break-words">
+          <span className="text-muted-foreground">资源：</span>
+          {row.resource.label}
+        </span>
+        <span className="min-w-0 break-words" data-testid={testId + "-time"} title={row.occurredAtRaw ?? undefined}>
+          <span className="text-muted-foreground">时间（北京时间）：</span>
+          {at ?? "该字段未返回"}
+        </span>
+      </div>
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <span className="min-w-0 break-words" data-testid={testId + "-rid"} title={row.requestId ?? undefined}>
+          <span className="text-muted-foreground">请求编号：</span>
+          {row.requestId ?? "该字段未返回"}
+        </span>
+        {row.rawId ? (
+          <a className="underline" href={"/audit?detail=" + encodeURIComponent(row.rawId)} data-testid={testId + "-open"}>
+            打开详情
+          </a>
+        ) : null}
+      </div>
+    </div>
+  );
+}

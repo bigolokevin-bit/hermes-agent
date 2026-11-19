@@ -2866,3 +2866,13 @@ Untested: the four-state body lengths are jsdom readings, not browser pixels; th
 - 口径披露：上一轮 actor/资源类型筛选 BLOCKED 未实现，故文件名两段固定为 all；导出范围是当前已加载的这一页（时间窗 + 游标页），不是整个窗口（服务没有 total）。
 - 门禁：vitest src/modules/audit exit 0（10 files/167 tests）；tsc -b 50 条既有地板、本模块 0；eslint 0 errors（4 既有 warnings）。
 - 未测：浏览器内真实下载点击（Blob 契约由 vitest 断言）；无逐元素像素比对；9122 未重建、未并 main。
+
+## Audit inline row preview (R50, 2026-11-20, base 1bb72474)
+
+- Each row gains a native toggle button `aud6-toggle-<key>` with `aria-expanded` and `aria-controls`; expanding renders `aud6-preview-<key>` in place under the row: 事件类型 / 操作者 / 资源 / 时间（北京时间，到秒） / 请求编号（可复制，来自已加载行）+ 真链 `a[href="/audit?detail=<id>"]` 「打开详情」。
+- Seconds come from the new optional `AuditRow.occurredAtRaw` via `beijingSeconds`, falling back to the formatted minute; a missing field reads 「该字段未返回」 with the reason in `title`.
+- No second request (preview renders from the loaded row), no URL write, no persistence: a refresh returns to the collapsed state. Only one row can be open at a time (page-owned `openPreview`), and Escape anywhere inside the row closes it.
+- Deviation, disclosed: the preview toggle is its own labelled button rather than the row body, so the existing row → detail interaction (`aud01-*`, R39 history entry) stays intact; the button is native, so Enter/Space toggle and `role="button"`/tabIndex/focus-visible are inherent.
+- Ids added: `aud6-toggle-*`, `aud6-preview-*`, `aud6-preview-*-time`, `-rid`, `-open`; `aud5-*`/`aud4-*`/`aud2-*`/`aud3-*`/`aud01-*`/`agent-v2-page-audit*` untouched.
+- Gates: vitest `src/modules/audit` 10 files / 168 tests (167 + the R50 lock: aria-expanded flips, preview text, real href, no extra request, Esc closes); tsc `-b` 50-floor with `modules/audit` 0; eslint 0 errors.
+- Untested: no live browser keyboard/pixel sweep (jsdom only), 9122 not rebuilt, main not merged.

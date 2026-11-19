@@ -1019,3 +1019,26 @@ describe("R39 — a record is a history entry and the verify panel never echoes 
     expect(panel.textContent).not.toContain("console.unknown");
   });
 });
+
+describe("R50 - the inline row preview", () => {
+  it("opens in place, announces itself, links to the real detail, and Esc closes it", async () => {
+    await mount();
+    const toggle = document.querySelector<HTMLButtonElement>("[data-testid='aud6-toggle-evt_7c1f2a3b4d5e6f70']");
+    expect(toggle).not.toBeNull();
+    expect(toggle!.getAttribute("aria-expanded")).toBe("false");
+    const before = urls().length;
+    await act(async () => { toggle!.click(); });
+    expect(toggle!.getAttribute("aria-expanded")).toBe("true");
+    const preview = document.querySelector("[data-testid='aud6-preview-evt_7c1f2a3b4d5e6f70']");
+    expect(preview).not.toBeNull();
+    expect(preview!.textContent).toContain("事件类型");
+    expect(preview!.textContent).toContain("李思");
+    const link = preview!.querySelector("a[href]");
+    expect(link!.getAttribute("href")).toBe("/audit?detail=evt_7c1f2a3b4d5e6f70");
+    expect(urls().length).toBe(before);
+    await act(async () => {
+      (toggle!.closest("div") as HTMLElement).dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    expect(document.querySelector("[data-testid='aud6-preview-evt_7c1f2a3b4d5e6f70']")).toBeNull();
+  });
+});
