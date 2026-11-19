@@ -346,6 +346,7 @@ export default function KnowledgeModulePage() {
                 : payload.rows.length
           }
         >
+          <div data-testid={`knw4-panel-${tab}`}>
           {forced === "loading" ? (
             <Skeleton testid="knw4-loading" />
           ) : forced === "empty" ? (
@@ -419,6 +420,7 @@ export default function KnowledgeModulePage() {
           ) : (
             <RowTable rows={payload.rows} testid="knw4-table" />
           )}
+          </div>
         </CardContent>
       </Card>
 

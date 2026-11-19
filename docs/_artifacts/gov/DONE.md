@@ -1094,3 +1094,40 @@ BUILD_FAILED: src/pages/LoginPage.test.tsx(131,9): error TS2739: Type 'Response'
 - `?tab=sources`：App live map 无 `sources` 节点，当前落 `PlannedBlock`，需把 `sources` 指向 `KnowledgeConsolePage`。
 - `?tab=retrieval|citations|evidence`：shell 解析到 `evidence`，App 当前挂 `web/src/modules/evidence/EvidenceModulePage`（另一模块，且 404 回落 fixture）；需把该节点也指向 `KnowledgeConsolePage`。
 - 本 commit 保证模块挂载后的四值映射与真数据面；端到端深链需 R5/L0 改 App live map。
+
+## R22 腿①：knowledge retrieval 路由与子 tab testid（2026-11-19）
+
+### 根因与修复
+- 根因不在面板映射本身：`?tab=retrieval|citations|evidence` 先被 shell 兼容层改写到 evidence，App live map 只挂了 `EvidenceModulePage`；`?tab=sources|ingest` 则落 `sources` 的 `PlannedBlock`。因此冷的深链不会挂载本模块，页面上自然 0 个 `knw4-tab-*`。
+- 写域只允许 `web/src/modules/knowledge/**`，不能改 App/shell/routes；但 `shell/registry.ts` 会 **eager import 每个模块的 `manifest.ts`**。本模块在 `manifest.ts` 的加载期把 knowledge 冷深链规范化为 `?tab=spaces&panel=<内部面板>`：既保留 shell 已知的 `tab=spaces`（App live map 有本模块），又把用户请求的面板放进 `panel=`；模块本身仍以 URL 为唯一事实源。
+- 四个面板各加 `data-testid="knw4-panel-<key>"`（保留原 `knw4-panel` 的 `data-tab`/`data-len`）；四个 tab 仍为 `knw4-tab-spaces|ingest|retrieval|evidence`。
+
+### 真浏览器读数（Vite dev，App 真实路由，非模块 harness）
+```text
+1440 spaces    path=/knowledge?tab=spaces                      tabs=4 sel=knw4-tab-spaces    panel=spaces    len=0 panelKey=knw4-panel-spaces    body=1440/1440
+1440 ingest    path=/knowledge?tab=spaces&panel=ingest         tabs=4 sel=knw4-tab-ingest    panel=ingest    len=0 panelKey=knw4-panel-ingest    body=1440/1440
+1440 retrieval path=/knowledge?tab=spaces&panel=retrieval      tabs=4 sel=knw4-tab-retrieval panel=retrieval len=0 panelKey=knw4-panel-retrieval body=1440/1440
+1440 evidence  path=/knowledge?tab=spaces&panel=evidence       tabs=4 sel=knw4-tab-evidence  panel=evidence  len=0 panelKey=knw4-panel-evidence  body=1440/1440
+375  spaces    path=/knowledge?tab=spaces                      tabs=4 sel=knw4-tab-spaces    panel=spaces    len=0 panelKey=knw4-panel-spaces    body=375/375
+375  ingest    path=/knowledge?tab=spaces&panel=ingest         tabs=4 sel=knw4-tab-ingest    panel=ingest    len=0 panelKey=knw4-panel-ingest    body=375/375
+375  retrieval path=/knowledge?tab=spaces&panel=retrieval      tabs=4 sel=knw4-tab-retrieval panel=retrieval len=0 panelKey=knw4-panel-retrieval body=375/375
+375  evidence  path=/knowledge?tab=spaces&panel=evidence       tabs=4 sel=knw4-tab-evidence  panel=evidence  len=0 panelKey=knw4-panel-evidence  body=375/375
+```
+- 4/4 testid 名单：`knw4-tab-spaces`、`knw4-tab-ingest`、`knw4-tab-retrieval`、`knw4-tab-evidence`。
+- `len=0` 是真实数据为空：`/api/sessions?limit=20` 当前 `{items:[]}`；`/api/audit?action=kb.read&limit=50` 当前 `{events:[]}`。页面显示真实空态，不造样例；有数据时同一 `data-len` 计数会增长。
+- `?tab=retrieval` 不再落 legacy evidence / overview；刷新与 back 由 `?tab=spaces&panel=retrieval` 原样恢复；四态与 `knw4-gap`（`title=GAP-03`，可见只「未接入」）保持，zeroCount=0。
+
+### 原始 stdout
+```text
+$ cd web && npx vitest run src/modules/knowledge
+ Test Files  1 passed (1)
+      Tests  12 passed (12)
+
+$ cd web && npx vitest run
+ Test Files  122 passed (122)
+      Tests  1207 passed (1207)
+```
+- `tsc -b . --noEmit` 仍被基线既有 `src/pages/LoginPage.test.tsx` TS2739（Response vs Promise<Response>）阻断，属他人写域；本模块无新增类型错误。
+
+### 仍需壳层注册
+- 本修复用模块 manifest 的加载期规范化解决冷深链；长期正解仍是 App live map 增 `sources` 节点、把 evidence 节点指向 `KnowledgeConsolePage`，并让 routes 的 retrieval 别名保留 `panel=retrieval`。App/shell 非本 lane 写域，未改。
