@@ -995,3 +995,32 @@ describe('MetricsModulePage — met8 cost share by employee', () => {
     expect(text()).not.toContain('0.0%');
   });
 });
+
+describe('met9 — cost rows drill into the runs list', () => {
+  it('sends an employee row to /runs with the accepted employee filter and the same window', async () => {
+    await mountEmployeeShare(TWO_EMPLOYEE_LEDGER, '/metrics?groupBy=employee&window=7d');
+
+    const link = document.querySelector('[data-testid="met9-link-aaaabbbb"]') as HTMLAnchorElement;
+    expect(link).not.toBeNull();
+    // A real anchor: middle-click and copy-link both work.
+    expect(link.tagName).toBe('A');
+    expect(link.getAttribute('href')).toBe('/runs/?employee=emp_aaaabbbbcccc&window=7d');
+    expect(link.textContent).toBe('查看运行');
+    expect(link.getAttribute('aria-label')).toContain('小鲤');
+    // The raw id rides in the href only; the page never prints it.
+    expect(text()).not.toContain('emp_aaaabbbbcccc');
+    expect(document.querySelector('[data-testid="met9-note"]')?.textContent).toContain('按这位员工筛选');
+  });
+
+  it('never paints a model filter the runs page cannot honour', async () => {
+    await mountShare(SHARE_USAGE, '/metrics?window=30d');
+
+    const link = document.querySelector('[data-testid="met9-link-zeta"]') as HTMLAnchorElement;
+    expect(link.getAttribute('href')).toBe('/runs/?window=30d');
+    expect(link.getAttribute('href')).not.toContain('model=');
+    expect(link.getAttribute('title')).toContain('运行页暂不支持按模型筛选');
+    const note = document.querySelector('[data-testid="met9-note"]');
+    expect(note?.textContent).toContain('运行页暂不支持按模型筛选');
+    expect(note?.textContent).toContain('不假装过滤');
+  });
+});

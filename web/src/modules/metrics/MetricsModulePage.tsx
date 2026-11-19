@@ -5,7 +5,7 @@
 // absent (—); only a returned count of 0 is a real zero. No count is inferred
 // from another endpoint, and no raw field name or HTTP status reaches the page.
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { Copy, RefreshCw } from 'lucide-react';
 
 import { Button } from '@nous-research/ui/ui/components/button';
@@ -51,6 +51,7 @@ import {
   parseSortDir,
   parseSortKey,
   shareOfCosts,
+  runsDrill,
   shortCode,
   sortModelCost,
   toCsv,
@@ -787,6 +788,7 @@ export function MetricsModulePage() {
       const mapped: ModelCostRow[] = aggregateByEmployee(rows, directory.names).map((row) => ({
         model: row.name ?? (row.employeeId ? `员工 · ${shortCode(row.employeeId)}` : '未署名员工'),
         key: row.employeeId ? shortCode(row.employeeId) : undefined,
+        rawId: row.employeeId ?? undefined,
         runs: row.runs,
         costUsd: row.costUsd,
       }));
@@ -974,7 +976,12 @@ export function MetricsModulePage() {
           return sorted.map((row, index) => {
             const raw = row.key ?? row.model;
             const slug = raw.replace(/[^0-9a-zA-Z]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || `row-${index}`;
-            return { ...row, sharePct: shares[index], slug };
+            return {
+              ...row,
+              sharePct: shares[index],
+              slug,
+              drill: runsDrill(row, groupBy, usageWindow.id),
+            };
           });
         })()
       : [];
@@ -1825,6 +1832,7 @@ export function MetricsModulePage() {
                           </button>
                         </th>
                         <th scope="col">占比</th>
+                        <th scope="col">运行</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1852,6 +1860,17 @@ export function MetricsModulePage() {
                           >
                             {row.sharePct === null ? '—' : `${row.sharePct.toFixed(1)}%`}
                           </td>
+                          <td className="met6-num">
+                            <Link
+                              to={row.drill.href}
+                              className="met9-link"
+                              data-testid={`met9-link-${row.slug}`}
+                              title={row.drill.note ?? '让运行页只看这一项的运行'}
+                              aria-label={`查看${row.model}的运行`}
+                            >
+                              查看运行
+                            </Link>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -1865,6 +1884,15 @@ export function MetricsModulePage() {
                 <p className="met6-hint" data-testid={`${sharePrefix}-hint`}>
                   占比按可读到的实扣金额归一，合计 100%；缺金额的行不参与分摊，显示「—」。排序写在地址里，刷新与前进后退都保留。
                 </p>
+                {groupBy === 'employee' ? (
+                  <p className="met6-hint" data-testid="met9-note">
+                    「查看运行」按这位员工筛选，并带上同一个时间窗；它只做导航，不改这一页的任何数字。
+                  </p>
+                ) : (
+                  <p className="met6-hint" data-testid="met9-note">
+                    「查看运行」按同一个时间窗打开运行列表——运行页暂不支持按模型筛选，这里不假装过滤。
+                  </p>
+                )}
               </>
             ) : null}
           </div>

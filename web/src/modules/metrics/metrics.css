@@ -547,3 +547,22 @@
 .met7-model {
   overflow-wrap: anywhere;
 }
+
+/* MET9 — cost rows drill into the runs list */
+.met9-link {
+  color: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}
+
+.met9-link:hover {
+  text-decoration-style: solid;
+}
+
+.met9-link:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}

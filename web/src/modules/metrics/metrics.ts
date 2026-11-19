@@ -581,6 +581,12 @@ export interface ModelCostRow {
   model: string;
   /** Stable key for test ids when the label is not ASCII (employee names). */
   key?: string;
+  /**
+   * The upstream identifier this row stands for (employeeId today). It is never
+   * rendered: it only rides into a drill href, so the list keeps showing names
+   * and 8-character codes.
+   */
+  rawId?: string;
   /** Session count as upstream reports it; null when the answer has none. */
   runs: number | null;
   /** Ledger actual only. An estimate is never promoted into this field. */
@@ -589,6 +595,41 @@ export interface ModelCostRow {
 
 export type ModelCostSort = 'cost' | 'runs' | 'model';
 export type SortDir = 'asc' | 'desc';
+
+/** Where a cost row's runs drill points, and whether /runs can honour it. */
+export interface RunsDrill {
+  href: string;
+  /** True only when the runs page really narrows by this row's owner. */
+  filtered: boolean;
+  /** Honest sentence when the row filter cannot ride along; null when it does. */
+  note: string | null;
+}
+
+/**
+ * Measured contract (2026-11-20): `/runs` reads exactly
+ * `window|status|state|run|employee`, and the BFF list accepts exactly
+ * `employeeId|status|since`. A `model` key is neither read by the page nor
+ * accepted by the BFF, so a model row opens the same time window unfiltered
+ * instead of painting a filter that does nothing.
+ */
+export function runsDrill(row: ModelCostRow, source: 'model' | 'employee', windowId: string): RunsDrill {
+  const windowKey = /^(24h|7d|30d)$/.test(windowId) ? windowId : '7d';
+  if (source === 'employee' && row.rawId) {
+    return {
+      href: `/runs/?employee=${encodeURIComponent(row.rawId)}&window=${windowKey}`,
+      filtered: true,
+      note: null,
+    };
+  }
+  return {
+    href: `/runs/?window=${windowKey}`,
+    filtered: false,
+    note:
+      source === 'employee'
+        ? '这一行没有员工标识，运行页无法按人筛选；打开的是同一时间窗的全部运行。'
+        : '运行页暂不支持按模型筛选；打开的是同一时间窗的全部运行。',
+  };
+}
 
 export type ParsedModelCost =
   | { kind: 'ok'; rows: ModelCostRow[]; asOf: string | null }
