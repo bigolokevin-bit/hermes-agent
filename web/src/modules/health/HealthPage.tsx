@@ -80,12 +80,12 @@ export function HealthPage() {
   const counts = view.k === "ready" ? summarize(view.rows) : { healthy: 0, error: 0, unknown: 0 };
 
   return (
-    <section className="space-y-4" data-testid="health-page" data-fixture={forced ?? undefined}>
+    <section className="space-y-4" data-testid="hlt4-page" data-fixture={forced ?? undefined}>
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="font-mondwest text-xl">系统健康</h1>
           <p className="mt-1 text-sm text-white/55">实例活着吗</p>
-          <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-white/55" data-testid="health-counts">
+          <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-white/55" data-testid="hlt4-counts">
             <span>健康 {counts.healthy}</span><span>异常 {counts.error}</span><span>未知 {counts.unknown}</span>
           </p>
         </div>
@@ -99,30 +99,30 @@ export function HealthPage() {
       </div>
 
       {view.k === "loading" ? (
-        <Card><CardContent className="space-y-3 p-4" data-testid="health-loading" aria-busy="true">
+        <Card><CardContent className="space-y-3 p-4" data-testid="hlt4-loading" aria-busy="true">
           <p className="text-sm text-white/55">正在检查服务…</p>
           {[1, 2, 3, 4].map((row) => <div key={row} className="h-16 animate-pulse rounded bg-white/5" />)}
         </CardContent></Card>
       ) : view.k === "empty" ? (
-        <Card><CardContent className="py-10 text-center" data-testid="health-empty">
+        <Card><CardContent className="py-10 text-center" data-testid="hlt4-empty">
           <p className="text-sm text-white/80">探针未接入</p><p className="mt-2 text-xs text-white/50">请看接入说明。</p>
         </CardContent></Card>
       ) : view.k === "error" ? (
-        <Card><CardContent className="flex flex-col items-center gap-3 py-10 text-center" data-testid="health-error" role="alert">
+        <Card><CardContent className="flex flex-col items-center gap-3 py-10 text-center" data-testid="hlt4-error" role="alert">
           <p className="text-sm text-white/80">所有探针均未收到响应</p>
           <p className="text-xs text-white/40">请求号：{view.requestId}</p>
           <Button size="sm" outlined onClick={() => { void runProbes(); }}>重试</Button>
         </CardContent></Card>
       ) : (
-        <Card><CardContent className="p-0" data-testid="health-list">
+        <Card><CardContent className="p-0" data-testid="hlt4-list">
           {view.rows.map((row) => (
-            <div key={row.id} className="flex min-w-0 flex-wrap items-start justify-between gap-3 border-b border-white/10 px-4 py-3 last:border-b-0" data-testid={`health-row-${row.id}`}>
+            <div key={row.id} title={row.detail ?? undefined} className="flex min-w-0 flex-wrap items-start justify-between gap-3 border-b border-white/10 px-4 py-3 last:border-b-0" data-testid={`hlt4-row-${row.id}`}>
               <div className="min-w-0 flex-1">
                 <p className="break-words text-sm text-white/85">{row.name}</p>
                 {row.reason ? <p className="mt-1 break-words text-xs text-white/55">{row.reason}</p> : null}
                 <p className="mt-1 text-xs text-white/40">采集时刻：{row.collectedAt ?? "—（未采集）"}</p>
               </div>
-              <Badge tone={statusTone(row.status)}>{statusLabel(row.status)}</Badge>
+              <Badge tone={statusTone(row.status)} data-testid={`hlt4-status-${row.id}`}>{statusLabel(row.status)}</Badge>
             </div>
           ))}
         </CardContent></Card>

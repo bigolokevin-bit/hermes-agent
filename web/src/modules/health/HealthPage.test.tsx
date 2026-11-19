@@ -44,7 +44,8 @@ describe("HealthPage", () => {
     expect(container.textContent).toContain("健康 2");
     expect(container.textContent).toContain("异常 1");
     expect(container.textContent).toContain("未知 1");
-    expect(container.textContent).toContain("状态码 500");
+    expect(container.textContent).not.toContain("状态码");
+    expect(container.querySelector('[data-testid="hlt4-row-runtime"]')?.getAttribute("title")).toContain("500");
     expect(container.textContent).toContain("探针未接入");
   });
 
@@ -52,16 +53,29 @@ describe("HealthPage", () => {
     fetchJSON.mockImplementation((url: string) => url.includes("hermes-summary") ? Promise.reject(new ApiError("offline", { status: 0, body: "", url })) : Promise.resolve({}));
     await render();
     expect(container.textContent).toContain("控制台不可达，无法判定");
-    expect(container.querySelector('[data-testid="health-row-bisheng"]')?.textContent).toContain("未知");
+    expect(container.querySelector('[data-testid="hlt4-row-bisheng"]')?.textContent).toContain("未知");
   });
 
-  it("marks Hermes HTTP failures as exceptions with the status code", async () => {
+  it("marks Hermes HTTP failures as exceptions without showing a raw status code", async () => {
     fetchJSON.mockImplementation((url: string) => url.includes("hermes-summary")
       ? Promise.reject(new ApiError("failure", { status: 500, body: "", url }))
       : Promise.resolve({}));
     await render();
-    expect(container.querySelector('[data-testid="health-row-runtime"]')?.textContent).toContain("异常");
-    expect(container.textContent).toContain("上游返回异常（状态码 500）");
+    expect(container.querySelector('[data-testid="hlt4-row-runtime"]')?.textContent).toContain("异常");
+    expect(container.textContent).toContain("上游返回异常，请看接入说明。");
+    expect(container.textContent).not.toContain("500");
+  });
+
+
+  it("renders a missing read endpoint as not connected, with the raw status only in the title", async () => {
+    fetchJSON.mockImplementation((url: string) => url.includes("hermes-summary")
+      ? Promise.reject(new ApiError("missing", { status: 404, body: "", url }))
+      : Promise.resolve({}));
+    await render();
+    const row = container.querySelector('[data-testid="hlt4-row-runtime"]');
+    expect(row?.textContent).toContain("接口未接入");
+    expect(row?.getAttribute("title")).toContain("404");
+    expect(container.textContent).not.toContain("404");
   });
 
   it("shows a whole-page error and retries when every live probe has no response", async () => {
@@ -75,6 +89,6 @@ describe("HealthPage", () => {
     expect(container.textContent).toContain("请求号：req-dead");
     await act(async () => { [...container.querySelectorAll("button")].find((button) => button.textContent?.includes("重试"))?.click(); });
     await act(async () => {});
-    expect(container.querySelector('[data-testid="health-list"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="hlt4-list"]')).toBeTruthy();
   });
 });

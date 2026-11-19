@@ -8,6 +8,8 @@ export type ProbeRow = {
   reason: string;
   collectedAt: string | null;
   requestId: string | null;
+  /** Engineering detail; only ever rendered as a title, never as body copy. */
+  detail: string | null;
 };
 
 export const PROBE_DEFINITIONS = [
@@ -20,9 +22,10 @@ export const PILOT_ROW: ProbeRow = {
   id: "bisheng",
   name: "上游业务平台",
   status: "unknown",
-  reason: "探针未接入，请看接入说明。",
+  reason: "探针未接入（GAP-05），请看接入说明。",
   collectedAt: null,
   requestId: null,
+  detail: null,
 };
 
 export function formatBeijingTime(value: number | null): string | null {
@@ -36,23 +39,29 @@ export function formatBeijingTime(value: number | null): string | null {
 export function probeResult(id: string, result: PromiseSettledResult<unknown>, returnedAt: number): ProbeRow {
   const name = PROBE_DEFINITIONS.find((probe) => probe.id === id)?.name ?? "—";
   if (result.status === "fulfilled") {
-    return { id, name, status: "healthy", reason: "", collectedAt: formatBeijingTime(returnedAt), requestId: null };
+    return { id, name, status: "healthy", reason: "", collectedAt: formatBeijingTime(returnedAt), requestId: null, detail: null };
   }
   const error = result.reason;
   const apiError = error instanceof ApiError ? error : null;
   const requestId = apiError?.requestId ?? (error && typeof error === "object" && "requestId" in error && typeof error.requestId === "string" ? error.requestId : null);
   if (id === "console") {
     if (apiError && apiError.status > 0) {
-      return { id, name, status: "healthy", reason: "", collectedAt: formatBeijingTime(returnedAt), requestId };
+      return { id, name, status: "healthy", reason: "", collectedAt: formatBeijingTime(returnedAt), requestId, detail: `HTTP ${apiError.status}` };
     }
-    return { id, name, status: "error", reason: "控制台服务未响应", collectedAt: null, requestId };
+    return { id, name, status: "error", reason: "控制台服务未响应", collectedAt: null, requestId, detail: null };
   }
   if (apiError?.status === 0 || !apiError) {
-    return { id, name, status: "unknown", reason: "控制台不可达，无法判定", collectedAt: null, requestId };
+    return { id, name, status: "unknown", reason: "控制台不可达，无法判定", collectedAt: null, requestId, detail: null };
+  }
+  if (apiError.status === 401 || apiError.status === 403 || apiError.status === 404) {
+    return {
+      id, name, status: "unknown", reason: "接口未接入：这个读取口还没有对控制台开放。",
+      collectedAt: formatBeijingTime(returnedAt), requestId, detail: `HTTP ${apiError.status}`,
+    };
   }
   return {
-    id, name, status: "error", reason: `上游返回异常（状态码 ${apiError.status}）`,
-    collectedAt: formatBeijingTime(returnedAt), requestId,
+    id, name, status: "error", reason: "上游返回异常，请看接入说明。",
+    collectedAt: formatBeijingTime(returnedAt), requestId, detail: `HTTP ${apiError.status}`,
   };
 }
 
