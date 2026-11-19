@@ -777,3 +777,108 @@ $ node scripts/assert-ia.mjs --source=react
 边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes /
 registry / package·lock / web-scripts / ops；未并 main、未重启或重建 9122；
 无 force / amend / `--no-verify` / `git add -A`。非本域的 `pnpm build` 阻塞按指示未追。
+
+---
+
+# KNW5 追加 R43：知识空间面加「来源」列（2026-11-20 BJT）
+
+安全闸：toplevel 相符 → porcelain 空 → fetch → `git merge-base --is-ancestor HEAD b71c4535` 为真 →
+`git reset --hard b71c4535`（快进保留历史，上一轮 `14d44b42` 已在目标内；来路未改动 `modules/knowledge`）。
+
+## 一、探针（cookie 只在 curl 命令内拼 Header，值零回显；9122 只读、未重启、未重建）
+
+```text
+HTTP 404  rid f821eb1a93  /agent-api/api/knowledge/spaces
+   body[:120] {"code": "knowledge.not_wired", "message": "本环境未接入知识库读口", "asOf": "2026-11-19T22:01:17Z", "rid": "f821eb1a"}
+   行数 0（没有行数组）
+
+HTTP 404  rid 2f25a7bfd9  /agent-api/api/knowledge/sources?limit=20
+   body[:120] {"code": "knowledge.not_wired", "message": "本环境未接入知识库读口", "asOf": "2026-11-19T22:01:18Z", "rid": "2f25a7bf"}
+   行数 0
+
+HTTP 404  rid 1f2cefb8da  /agent-api/api/knowledge/spaces?limit=20
+   body[:120] {"code": "knowledge.not_wired", "message": "本环境未接入知识库读口", "asOf": "2026-11-19T22:01:18Z", "rid": "1f2cefb8"}
+   行数 0
+```
+
+新观察：fail-closed 信封现在带 `asOf`。这一页**不**把它当「数据截至」显示——
+错误响应里的时刻只代表网关回答的那一刻，不代表任何数据；读不到就照旧写
+「这块数据没有读到，数据截至时间未知」，接上后 `asOf` 才进入来源行（wired 实测
+`来源：知识空间登记 · 数据截至 2026-11-19 15:00`，200 空列表实测 `… 2026-11-20 06:10`）。
+两腿也不互借：404 正文只说自己那枚读口，不拿 sources 的数字补 spaces。
+
+## 二、逐空间（wired 真实 DOM，`knw5-spaces=ready/len5`，三档视口同读，375 不横溢）
+
+```text
+列头：空间名称 / 来源 / 文档数 / 最近同步 / 状态
+row1 人事制度空间（团队空间） | 来源=SharePoint · 集团人事库 | 文档数=1,240 篇
+     最近同步=最近同步：2026-11-19 14:20 | 状态=已同步
+row2 空的知识空间              | 来源=对象存储             | 文档数=0 篇          ← 上游真给 0
+     最近同步=最近同步：2026-11-19 12:00 | 状态=可用
+row3 对外口径镜像              | 来源=外部地址 · mirror.example.com | 文档数=18 篇
+     最近同步=— 上游没有给出时间 | 状态=待核实              ← 认不出的值不猜
+row4 断掉的数据库空间          | 来源=crm-mysql            | 文档数=— 分块 512 段
+     （上游没有给出这个空间有多少文档）
+     最近同步=— 上游没有给出时间 | 状态=失败 上游记的原因偏技术，这里不原样上屏；悬停可看原文。
+row5 —（缺名） | —（缺来源） | —（缺文档数） | —（缺时间） | 待核实（缺状态）
+```
+
+- **来源人话**新列：有名字就用名字；只给工具/连接器就翻成 对象存储 / SharePoint /
+  网页抓取 / 数据库 / 接口同步 …；只给 URL 就写「外部地址 · 主机名」，
+  完整地址与原始 id 一律只进 `title`（屏面扫到 `https://mirror…` = false）。
+  上游没说从哪来就写「—」+「上游没有说明这个空间的内容从哪里来」。
+- **文档数**：真 0 写「0 篇」，没给写「—」+原因；只有分块或大小时另起副行
+  （分块 512 段 / 约 X MB），不冒充文档数；代码里没有 `?? 0`。
+- **最近同步**只在真给同步/索引时间时叫「最近同步」，否则据实写
+  最近更新 / 登记时间；一律北京时区到分。
+- **状态**只出 已同步 / 同步中 / 待同步 / 失败 / 可用 / 部分可用 / 已停用；
+  认不出或没给一律「待核实」+原因；失败带原因，技术性原文只进 `title`。
+
+## 三、四态真的换内容（同一面四种回答下的 DOM 分支，Chromium 实测 375）
+
+```text
+404 → data-state=unwired，正文「知识空间未接入」+ 原因 + 去处（正文指明可先看「证据与引用」，
+      并给 knw5-spaces-apply → /approvals）+ 可复制请求编号 + 重试；无表格、行数 0；title=GAP-03
+403 → 正文与 404 逐字相等（true），只有请求编号不同；title 同为 GAP-03
+500 → data-state=error，正文「这次没能读到知识数据 / 数据服务暂时没有响应，请稍后重试。」
+      + 可复制 rid + 重试；此时未接入正文不存在（不是只换徽标）
+挂起 → data-state=loading，出 knw5-spaces-loading 骨架（aria-busy=true），表格不存在
+200 空集 → data-state=ready len=0，出 knw5-spaces-empty「当前没有读到知识空间。接口已响应，
+      但列表为空；这不等于「没有空间」，也不写 0 个。」；行数 0
+```
+
+`data-fixture` 口径复核：普通 URL（`#/knowledge?tab=spaces`、路径写法、`?tab=scope` 兼容写法）
+实测 `[data-fixture]` = **0**；只有 `?state=` 强制态下为 2，且这两枚是**壳层**自己挂的
+（`shell-fixture-badge` 存在，页内没有本模块的 forced 块），符合「只在强制态出现、普通 URL 为 0」。
+其余：`docSW == vw == bodySW`（1440/1280/375）页容器 `SW == CW`，OVERFLOW 元素 0；
+写入口 0（无 post 表单、无输入控件）；屏面无状态码 / 路由 / `GAP-03` / 裸 id / 字段名 /
+`ECONNREFUSED` / 假 0；页面报错 none。
+testid：原 `knw5-*` 全保留（`knw5-spaces`、`knw5-spaces-table/-row/-source/-unwired/-empty/-error/
+-loading/-request-id/-retry/-apply` 等），新增本面行内家族 8 个：
+`knw5-space-name / -scope / -source / -docs / -docs-extra / -time / -status / -failure`。
+IA 计数未动：`assert-ia --source=react` → 51 / 22 / 1 / 8，ok=true。
+
+## 四、验证尾行（本轮）
+
+```text
+$ npx vitest run src/modules/knowledge
+ Test Files  2 passed (2)
+      Tests  35 passed (35)
+
+$ npx vitest run
+ Test Files  131 passed (131)
+      Tests  1394 passed (1394)
+
+$ npx eslint src/modules/knowledge
+（无输出，exit 0）
+
+$ npx tsc -b . --noEmit | grep modules/knowledge
+（无输出，本模块 0 错）
+
+$ npx vite build --outDir /tmp/knw13-dist --emptyOutDir
+✓ built in 3.91s   （产物只落 /tmp）
+```
+
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes /
+registry / package·lock / web-scripts / ops；未并 main、未重启或重建 9122；
+无 force / amend / `--no-verify` / `git add -A`；非本域 `pnpm build` 阻塞未追。

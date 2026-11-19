@@ -547,7 +547,7 @@ function RecordsTable({ rows }: { rows: RetrievalRow[] }): ReactNode {
   );
 }
 
-/** 一行一个知识空间：名称 / 文档数 / 最近同步 / 状态。 */
+/** 一行一个知识空间：名称 / 来源 / 文档数 / 最近同步 / 状态。 */
 function SpaceTable({ rows }: { rows: SpaceRow[] }): ReactNode {
   return (
     <div className="knw5-scroll">
@@ -555,6 +555,7 @@ function SpaceTable({ rows }: { rows: SpaceRow[] }): ReactNode {
         <thead>
           <tr>
             <th scope="col">空间名称</th>
+            <th scope="col">来源</th>
             <th scope="col">文档数</th>
             <th scope="col">最近同步</th>
             <th scope="col">状态</th>
@@ -564,43 +565,55 @@ function SpaceTable({ rows }: { rows: SpaceRow[] }): ReactNode {
           {rows.map((row, index) => (
             <tr key={row.id || `space-${index}`} data-testid="knw5-spaces-row" title={row.id || undefined}>
               <td data-label="空间名称">
-                <span className="knw5-name">{row.name}</span>
+                <span className="knw5-name" data-testid="knw5-space-name">
+                  {row.name}
+                </span>
                 <Reason>{row.nameReason}</Reason>
                 {row.kind ? (
-                  <span className="knw5-sub" title={row.kindRaw ?? undefined}>
+                  <span className="knw5-sub" data-testid="knw5-space-scope" title={row.kindRaw ?? undefined}>
                     {row.kind}
                   </span>
                 ) : null}
               </td>
+              <td data-label="来源">
+                <span data-testid="knw5-space-source" title={row.sourceRaw ?? undefined}>
+                  {row.source}
+                </span>
+                <Reason>{row.sourceReason}</Reason>
+              </td>
               <td data-label="文档数">
-                <span data-testid="knw5-spaces-docs">{row.docs}</span>
-                {row.docsExtra ? <span className="knw5-sub">{row.docsExtra}</span> : null}
+                <span data-testid="knw5-space-docs">{row.docs}</span>
+                {row.docsExtra ? <span className="knw5-sub" data-testid="knw5-space-docs-extra">{row.docsExtra}</span> : null}
                 <Reason>{row.docsReason}</Reason>
               </td>
               <td data-label="最近同步">
-                <span data-testid="knw5-spaces-time">{row.timeLabel ? `${row.timeLabel}：${row.at}` : row.at}</span>
+                <span data-testid="knw5-space-time">
+                  {row.timeLabel ? `${row.timeLabel}：${row.at}` : row.at}
+                </span>
                 <Reason>{row.atReason}</Reason>
               </td>
               <td data-label="状态">
-                <Badge
-                  tone={
-                    row.status === "已同步" || row.status === "可用"
-                      ? "success"
-                      : row.status === "失败" || row.status === "部分可用"
-                        ? "destructive"
-                        : "outline"
-                  }
-                >
-                  {row.status}
-                </Badge>
+                <span data-testid="knw5-space-status">
+                  <Badge
+                    tone={
+                      row.status === "已同步" || row.status === "可用"
+                        ? "success"
+                        : row.status === "失败" || row.status === "部分可用"
+                          ? "destructive"
+                          : "outline"
+                    }
+                  >
+                    {row.status}
+                  </Badge>
+                </span>
                 <Reason>{row.statusReason}</Reason>
                 {row.failure ? (
-                  <span className="knw5-sub" data-testid="knw5-spaces-failure" title={row.failureRaw ?? undefined}>
+                  <span className="knw5-sub" data-testid="knw5-space-failure" title={row.failureRaw ?? undefined}>
                     {row.failure}
                   </span>
                 ) : null}
                 {row.failure === null && row.failureRaw ? (
-                  <span className="knw5-sub" data-testid="knw5-spaces-failure" title={row.failureRaw}>
+                  <span className="knw5-sub" data-testid="knw5-space-failure" title={row.failureRaw}>
                     上游记的原因偏技术，这里不原样上屏；悬停可看原文。
                   </span>
                 ) : null}
