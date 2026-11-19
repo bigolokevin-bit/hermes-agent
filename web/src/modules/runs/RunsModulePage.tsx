@@ -85,6 +85,8 @@ import {
   taskLabel,
   usd,
   type RunRow,
+  eventStatus,
+  eventElapsed,
 } from "./runs";
 import { forcedStateOf, useRunsData } from "./useRunsData";
 import { useRunDetail, type DetailOutcome } from "./useRunDetail";
@@ -294,7 +296,10 @@ function Timeline({
         <p className="min-w-0 break-words text-sm text-muted-foreground">这条运行的事件流还没有读到内容。</p>
       ) : (
         <ol className="min-w-0 space-y-2" data-testid="run5-timeline">
-          {events.map((ev) => {
+          {events.map((ev, index) => {
+            const prev = index > 0 ? events[index - 1] : null;
+            const st = eventStatus(ev);
+            const dur = eventElapsed(ev, prev);
             const at = beijingMinute(ev.occurredAt);
             const ref = resultRef(ev);
             const sum = eventSummary(ev);
@@ -363,6 +368,8 @@ function Timeline({
                   )
                 ) : null}
                 <span className="shrink-0 text-xs text-muted-foreground" title={ev.occurredAt ?? undefined}>
+                  <span className="shrink-0 text-xs text-muted-foreground" data-testid={"run5-status-" + ev.seq} title={st.reason || undefined}>{st.text}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground" data-testid={"run5-duration-" + ev.seq} title={dur.reason || undefined}>{dur.text ?? "—"}</span>
                   {at.text ?? <Dashed reason={at.reason} />}
                 </span>
               </li>
