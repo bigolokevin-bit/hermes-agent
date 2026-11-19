@@ -94,7 +94,7 @@ function forcedCopy(kind: "error" | "denied", forced: ForcedState): FailureCopy 
  * `asked` is part of `run`'s identity, so the caller must pass a stable object
  * (the page memoises it): a re-render with the same filters asks nothing new.
  */
-export function useAuditList(forced: ForcedState, asked: ListFilters): ListApi {
+export function useAuditList(forced: ForcedState, asked: ListFilters, enabled: boolean = true): ListApi {
   const [state, setState] = useState<ListState>(INITIAL);
   const seq = useRef(0);
   const nextRef = useRef<string | null>(null);
@@ -139,6 +139,13 @@ export function useAuditList(forced: ForcedState, asked: ListFilters): ListApi {
   );
 
   useEffect(() => {
+    // R34: an incomplete custom window is not a question the service can
+    // answer, so nothing is asked. The screen says what is missing instead of
+    // falling back to an unbounded scan (which the route 400s).
+    if (!enabled) {
+      ++seq.current;
+      return;
+    }
     if (forced === "loading" || forced === "empty" || forced === "denied" || forced === "error") {
       ++seq.current; // an in-flight answer must not overwrite the repro
       if (forced === "loading") {
@@ -155,7 +162,7 @@ export function useAuditList(forced: ForcedState, asked: ListFilters): ListApi {
     // A new filter set is a new question: drop the old rows before asking.
     setState((prev) => (prev.rows.length === 0 && prev.phase === "loading" && !prev.forced ? prev : { ...INITIAL }));
     run(null, false);
-  }, [forced, run]);
+  }, [forced, run, enabled]);
 
   const reload = useCallback(() => {
     setState((prev) => ({ ...prev, phase: "loading", rows: [], forced: false }));
