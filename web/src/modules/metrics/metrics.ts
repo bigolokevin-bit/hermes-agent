@@ -1016,16 +1016,21 @@ export function mergeSourceStamp(
 export type SourceRow = SourceDescriptor & {
   asOf: string | null;
   asOfSource: string | null;
-  state: 'ok' | 'missing' | 'error';
+  state: 'ok' | 'degraded' | 'down';
   error: string | null;
   gap: string | null;
   requestId: string | null;
 };
 
+/**
+ * Three words, no fourth: a source that answered with a collection time is
+ * `ok`; one that answered without one is `degraded` (the payload is usable but
+ * we cannot say how fresh it is); one that failed to answer is `down`.
+ */
 export function sourceRows(stamps: Record<string, SourceStamp>): SourceRow[] {
   return SOURCE_CATALOG.map((descriptor) => {
     const stamp = stamps[descriptor.key] ?? EMPTY_SOURCE_STAMP;
-    const state: SourceRow['state'] = stamp.error ? 'error' : stamp.asOf ? 'ok' : 'missing';
+    const state: SourceRow['state'] = stamp.error ? 'down' : stamp.asOf ? 'ok' : 'degraded';
     return {
       ...descriptor,
       asOf: stamp.asOf,

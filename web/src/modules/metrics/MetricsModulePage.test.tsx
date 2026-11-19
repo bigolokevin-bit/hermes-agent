@@ -10,8 +10,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/lib/api-error';
 
 const api = vi.hoisted(() => ({ fetchJsonStrict: vi.fn() }));
+const clip = vi.hoisted(() => ({ copyTextToClipboard: vi.fn(() => Promise.resolve(true)) }));
 vi.mock('@/modules/models/fetchJson', () => ({ fetchJsonStrict: api.fetchJsonStrict }));
-vi.mock('@/lib/clipboard', () => ({ copyTextToClipboard: () => Promise.resolve(true) }));
+vi.mock('@/lib/clipboard', () => ({ copyTextToClipboard: clip.copyTextToClipboard }));
 
 import { MetricsModulePage } from './MetricsModulePage';
 
@@ -1209,8 +1210,145 @@ describe('metB — source freshness', () => {
     await openSources();
 
     const state = document.querySelector('[data-testid="metB-source-state-pricing"]');
-    expect(state?.textContent).toBe('读不到');
+    expect(state?.textContent).toContain('读不到');
     expect(state?.getAttribute('title')).toContain('请求编号 req-metB-1');
     expect(document.querySelector('[data-testid="met6-runs-value"]')).toBeTruthy();
+  });
+});
+
+// metC — a window switch must produce one fresh batch: the cards and the
+// freshness block come from the same reads, the opened block survives the
+// switch, and a failed source still hands out a copyable request id.
+function freshnessRouter(asOf: () => string | undefined, pricing?: () => Promise<unknown>) {
+  return (url: string): Promise<unknown> => {
+    if (url.includes('run-activity')) return Promise.resolve(activityBody());
+    if (url.includes('run-stats')) {
+      const stamp = asOf();
+      return Promise.resolve({
+        ...(statsFor(url) as Record<string, unknown>),
+        ...(stamp ? { asOf: stamp, asOfSource: 'bff' } : {}),
+      });
+    }
+    if (url.includes('/api/employees')) return Promise.resolve(EMPLOYEE_BODY);
+    if (url.includes('models/pricing')) {
+      return pricing ? pricing() : Promise.reject(new ApiError('missing', { status: 404, body: '', url }));
+    }
+    if (url.includes('periodKind=month')) return Promise.resolve(LEDGER_MONTH);
+    if (url.includes('periodKind=day')) return Promise.resolve(LEDGER_DAY);
+    return Promise.resolve({});
+  };
+}
+
+describe('metC — window and freshness consistency', () => {
+  it('refreshes the stamp with the numbers from one request batch', async () => {
+    let batchAsOf = '2026-11-19T20:12:00.000Z';
+    await mount(freshnessRouter(() => batchAsOf));
+    await openSources();
+    expect(metBCell('run-stats')?.textContent).toBe('2026-11-20 04:12');
+
+    const before = urls().length;
+    batchAsOf = '2026-11-20T01:30:00.000Z';
+    await act(async () => {
+      (document.querySelector('[data-testid="met6-window-7d"]') as HTMLButtonElement).click();
+    });
+    await waitFor(() => document.querySelector('[data-testid="met6-runs-value"]')?.textContent === '13', '7d runs');
+    await waitFor(() => metBCell('run-stats')?.textContent === '2026-11-20 09:30', 'stamp follows');
+
+    // One batch: the two run-stats reads for the 7d window (current + previous),
+    // and the hourly heat read is untouched by a window switch.
+    const freshStats = urls().slice(before).filter((url) => url.includes('run-stats'));
+    expect(freshStats).toHaveLength(2);
+    expect(freshStats.every((url) => url.includes('bucket=day'))).toBe(true);
+    expect(metBCell('run-stats')?.textContent).not.toBe('2026-11-20 04:12');
+  });
+
+  it('keeps the block open across a window switch', async () => {
+    let batchAsOf = '2026-11-19T20:12:00.000Z';
+    await mount(freshnessRouter(() => batchAsOf));
+    await openSources();
+    expect(document.querySelector('[data-testid="metB-source-table"]')).toBeTruthy();
+
+    batchAsOf = '2026-11-20T01:30:00.000Z';
+    await act(async () => {
+      (document.querySelector('[data-testid="met6-window-7d"]') as HTMLButtonElement).click();
+    });
+    await waitFor(() => metBCell('run-stats')?.textContent === '2026-11-20 09:30', 'stamp follows');
+
+    expect(metBSource()?.getAttribute('aria-expanded')).toBe('true');
+    expect(document.querySelector('[data-testid="metB-source-table"]')).toBeTruthy();
+  });
+
+  it('keeps a real $0.00 apart from a missing — on an empty window', async () => {
+    const rows = (kind: 'day' | 'month') => ({
+      items: [
+        {
+          employeeId: 'emp_aaaabbbbcccc',
+          period: kind === 'month' ? '2026-11' : '2026-11-19',
+          periodKind: kind,
+          costUsd: 0,
+          updatedAt: '2026-11-19T03:20:00.000Z',
+        },
+        {
+          employeeId: 'emp_ddddeeeeffff',
+          period: kind === 'month' ? '2026-11' : '2026-11-19',
+          periodKind: kind,
+          updatedAt: '2026-11-19T03:20:00.000Z',
+        },
+      ],
+      missingEmployeeIds: [],
+    });
+
+    await mount(
+      usageRouter({
+        ledger: (url) => Promise.resolve(rows(url.includes('periodKind=month') ? 'month' : 'day')),
+      }),
+    );
+    await act(async () => {
+      (document.querySelector('[data-testid="met6-window-7d"]') as HTMLButtonElement).click();
+    });
+    await waitFor(() => document.querySelector('[data-testid="met6-runs-value"]')?.textContent === '13', '7d runs');
+
+    const list = document.querySelector('[data-testid="met6-cost-rows"]');
+    expect(list?.textContent).toContain('$0.00');
+    expect(list?.textContent).toContain('—');
+    expect(document.querySelector('[data-testid="met6-cost-value"]')?.textContent).toBe('$0.00');
+  });
+
+  it('hands out a copyable request id when a source cannot be read', async () => {
+    clip.copyTextToClipboard.mockClear();
+    await mount(
+      freshnessRouter(
+        () => '2026-11-19T20:12:00.000Z',
+        () =>
+          Promise.reject(
+            new ApiError('boom', {
+              status: 403,
+              body: '',
+              url: '/api/models/pricing',
+              requestId: 'req-metC-403',
+            }),
+          ),
+      ),
+    );
+    await openSources();
+
+    const cell = document.querySelector('[data-testid="metB-source-state-pricing"]');
+    expect(cell?.textContent).toContain('读不到');
+    const button = document.querySelector('[data-testid="metC-source-rid-pricing"]') as HTMLButtonElement | null;
+    expect(button).toBeTruthy();
+    await act(async () => {
+      button?.click();
+    });
+    await waitFor(() => button?.textContent?.includes('已复制') ?? false, 'copied');
+    expect(clip.copyTextToClipboard).toHaveBeenCalledWith('req-metC-403');
+  });
+
+  it('calls a readable source without a collection time degraded, not normal', async () => {
+    await mount(freshnessRouter(() => undefined));
+    await openSources();
+
+    const cell = document.querySelector('[data-testid="metB-source-state-run-stats"]');
+    expect(cell?.textContent).toBe('降级');
+    expect(cell?.getAttribute('title')).toContain('上游未返回采集时刻');
   });
 });

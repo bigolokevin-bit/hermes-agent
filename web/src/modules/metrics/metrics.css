@@ -649,3 +649,24 @@
     font-weight: 600;
   }
 }
+
+/* MET-C: the status cell keeps the three words and, when a source is down,
+   the request id becomes something the reader can copy without boxing it. */
+.metB-state {
+  display: inline-block;
+}
+
+.metB-rid {
+  display: inline-block;
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--color-muted-foreground);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}
+
+.metB-rid:hover {
+  color: var(--color-foreground);
+}

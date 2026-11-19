@@ -65,3 +65,14 @@
 - 数据同源：`loadJson` 包装页面原有的 `fetchJsonStrict`，所有 loader 都走它，计数不额外发请求。
 - testid：`metB-source`、`metB-source-toggle`、`metB-source-table`、`metB-source-row-<key>`、`metB-source-asof-<key>`、`metB-source-state-<key>`、`metB-source-empty`。
 - 验证：定向 `vitest run src/modules/metrics` 49 passed；全量 131 files / 1421 passed；build entry `assets/index-CUZn2ypG.js` sha256 `0f9e189b…01cd7e`，entry 内 `metB-source`=0，chunk `MetricsModulePage-D3sZntMx.js` 命中 1。
+
+## 时间窗与来源联动一致性（metC，2026-11-20）
+
+- 一次取数只认一个批次：`loadJson` 记录批次号 `sourceEpoch`，响应回来时批次已换（切窗、切视角、切分组、重试、改热力周数）就只把结果交给卡片，不再写新鲜度块——迟到的旧批次不会把旧采集时刻贴到新数字旁边。
+- 切批次时清空 `sources`（不是清 `sourcesOpen`）：摘要行短暂显示「最近采集 —」，各读口随新响应落位；用户展开与否的选择保留，切窗后表格仍开着，采集时刻随新数据刷新。
+- 读口三态改成人话三词：有 `asOf` = 「正常」；能读但没有 `asOf` = 「降级」（`title`：上游未返回采集时刻：数据读到了，但说不清它新到什么程度）；请求失败 = 「读不到」（`title` 带原因与请求编号，若有）。
+- 「读不到」且上游给了请求编号时，状态格内给出「复制编号」按钮（`metC-source-rid-<key>`，点击后变「已复制」），编号本身只在 `title` 与按钮 `title` 里，不上屏正文。
+- 零与缺仍然分开：窗口内真实发生的 0 记 `$0.00`，没发生的缺失记 `—`，切换窗口不改变这条口径。
+- 测试断言切窗后只发一组请求（新批次里 run-stats 恰两条、均 `bucket=day`，无重复 URL），采集时刻与卡片数字同批更新；另有展开态保持、`$0.00`／`—` 同屏、403 请求编号可复制、缺 `asOf` 判「降级」四例。
+- testid：新增 `metC-source-rid-<key>`；`metB-source-*`、`met5/6/7/8/9/A-*` 保持不变。
+- 验证：定向 `vitest run src/modules/metrics` 54 passed；全量 132 files / 1458 passed（另 2 条 unhandled rejection 来自上游新并入的 `modules/employee-detail`，与指标页无关）；`tsc -b . --noEmit` 在 `modules/metrics` 0 条（全仓 55 条为既有基线）；build entry `assets/index-DIcUxZyk.js` sha256 `e3f7c70a…3c8193`，entry 内 `metC-source-rid`=0、`metB-source`=0，chunk `MetricsModulePage-BuWP9xmG.js` 命中 1。

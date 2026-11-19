@@ -4,7 +4,7 @@
 // aggregates whole weeks, so there is no 24-hour window here. Absent cells stay
 // absent (—); only a returned count of 0 is a real zero. No count is inferred
 // from another endpoint, and no raw field name or HTTP status reaches the page.
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { Copy, RefreshCw } from 'lucide-react';
 
@@ -260,6 +260,25 @@ function RequestId({ id }: { id: string | null }): ReactNode {
   );
 }
 
+/** A compact copy control for the request id of one source row. */
+function SourceRidButton({ id, label, testId }: { id: string; label: string; testId: string }): ReactNode {
+  const [copied, setCopied] = useState<'idle' | 'done' | 'failed'>('idle');
+  return (
+    <button
+      type="button"
+      className="metB-rid"
+      data-testid={testId}
+      aria-label={`复制${label}的请求编号`}
+      title={id}
+      onClick={() => {
+        void copyTextToClipboard(id).then((ok) => setCopied(ok ? 'done' : 'failed'));
+      }}
+    >
+      {copied === 'done' ? '已复制' : copied === 'failed' ? '复制失败' : '复制编号'}
+    </button>
+  );
+}
+
 function cellTone(cell: HeatCell): string {
   if (!cell.present) return 'is-missing';
   if (cell.count === 0) return 'is-zero';
@@ -295,17 +314,24 @@ export function MetricsModulePage() {
 
   // Every card reads through this wrapper, so the freshness block records the
   // same responses the cards got — no extra request, no separate bookkeeping.
+  //
+  // A response only counts while the batch it belongs to is still current: when
+  // the window, the grouping or the retry counter changes, the epoch moves and a
+  // late answer from the previous batch can no longer put a collection time next
+  // to numbers it did not produce.
+  const sourceEpoch = useRef(0);
   const loadJson = useCallback(async (path: string): Promise<unknown> => {
     const key = sourceKeyOfPath(path);
+    const epoch = sourceEpoch.current;
     try {
       const payload = await fetchJsonStrict(path);
-      if (key) {
+      if (key && epoch === sourceEpoch.current) {
         setSourcesSeen(true);
         setSources((prev) => ({ ...prev, [key]: mergeSourceStamp(prev[key], readSourceStamp(payload)) }));
       }
       return payload;
     } catch (error) {
-      if (key) {
+      if (key && epoch === sourceEpoch.current) {
         const failure = blockFailure(error);
         setSourcesSeen(true);
         setSources((prev) => ({
@@ -480,6 +506,14 @@ export function MetricsModulePage() {
   }, [attempt, forced, loadUsage, usageWindow.id]);
 
   const viewMode: 'employee' | 'model' = params.get('view') === 'model' ? 'model' : 'employee';
+
+  // A new batch starts on any of these: the collection times from the previous
+  // batch described numbers that are about to leave the screen. The expanded or
+  // collapsed choice is the reader's and survives the switch.
+  useEffect(() => {
+    sourceEpoch.current += 1;
+    setSources((prev) => (Object.keys(prev).length === 0 ? prev : {}));
+  }, [attempt, usageWindow.id, viewMode, groupBy, weeks]);
 
   const loadBreakdown = useCallback(
     async (signal: { live: boolean }, windowId: UsageWindowId, view: 'employee' | 'model') => {
@@ -2187,14 +2221,25 @@ export function MetricsModulePage() {
                         role="cell"
                         data-testid={`metB-source-state-${row.key}`}
                         title={
-                          row.state === 'error'
+                          row.state === 'down'
                             ? `${row.error ?? '这次读取没有成功'}${row.requestId ? ` · 请求编号 ${row.requestId}` : ''}`
-                            : row.asOfSource
-                              ? `采集时刻来源 ${row.asOfSource}`
-                              : undefined
+                            : row.state === 'degraded'
+                              ? '上游未返回采集时刻：数据读到了，但说不清它新到什么程度'
+                              : row.asOfSource
+                                ? `采集时刻来源 ${row.asOfSource}`
+                                : undefined
                         }
                       >
-                        {row.state === 'error' ? '读不到' : row.state === 'missing' ? '未返回采集时刻' : '正常'}
+                        <span className="metB-state">
+                          {row.state === 'down' ? '读不到' : row.state === 'degraded' ? '降级' : '正常'}
+                        </span>
+                        {row.state === 'down' && row.requestId ? (
+                          <SourceRidButton
+                            id={row.requestId}
+                            label={row.label}
+                            testId={`metC-source-rid-${row.key}`}
+                          />
+                        ) : null}
                       </span>
                     </div>
                   ))}
