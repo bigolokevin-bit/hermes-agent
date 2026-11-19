@@ -1395,3 +1395,12 @@ $ cd web && npx vitest run
 ### DOM/test readings
 - Vite 5450 / CDP 9250: 1440/1280/375 body width exactly viewport for `/system?tab=events|health|defaults`; `[data-fixture]` count **0**; audit page present at 1280/375, health/settings roots present.
 - `npx vitest run src/modules/audit src/modules/settings src/modules/health` → **10 files / 147 passed**; full suite below.
+
+## R33 security settings read-only surface (2026-11-20, base 3bff4208)
+
+- `web/src/modules/security/{SecurityModulePage.tsx,security.ts,security.css,SecurityModulePage.test.tsx}`: read-only `/system?tab=security` body, testids `sec5-*`.
+- Data truth with auth cookie: `GET /api/config` → **404** `console.unknown_route` (config fields therefore show 未知 + source/asOf reason, never guessed); `GET /api/audit?action=grant.created&limit=3` → **200, 3 events** (high-risk rows real; action/object/BJT/request id, full id only in title/copy).
+- Sections: 登录与会话 (会话有效期/并发登录/双因素认证), 密钥与凭据 (模型/渠道/审计导出密钥 only 已配置/未配置/未知, never values), 高危操作 (3 rows or honest gap). Missing source: `sec5-gap` with GAP only in title; risk gap same.
+- Write-shaped controls: 3 (`sec5-planned-session|mfa|rotate`) all `data-planned=true` + `aria-disabled=true` + title, no write action.
+- Four states, copyable request id, 403≡404 same body, no path leakage; CSS grid/table stacks ≤720px, page overflow clipped. Shell registration remains outside write domain: `/system?tab=security` currently resolves to events view anomaly, so this page needs a `security` live slot/tab in App/shell.
+- Verification: `npx vitest run src/modules/security` → **4/4**; full suite **127 files / 1280 passed**.
