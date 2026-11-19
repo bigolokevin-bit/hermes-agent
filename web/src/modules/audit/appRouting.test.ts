@@ -25,4 +25,21 @@ describe("the /audit compat route", () => {
   it("still lazy-loads the audit module through the same pointer", () => {
     expect(app).toContain('import("@/modules/audit/AuditEventsModulePage")');
   });
+
+  /**
+   * R24 — the `/audit` white screen. `AuditAwareEntry` called `useSearchParams()`
+   * while App.tsx imported only Routes/Route/NavLink/Navigate/useLocation/
+   * useNavigate from react-router. esbuild leaves an unresolved identifier as a
+   * global lookup, so the route threw a ReferenceError at render time and the
+   * whole page went blank (tsc called it TS2552 on App.tsx:1592). A hook the
+   * entry calls must be imported by name; this pins that sentence at the source
+   * level, because the failure mode is a blank screen rather than a broken
+   * widget.
+   */
+  it("imports the hooks the audit entry calls, so the route cannot throw at render", () => {
+    expect(app).toContain("const [sp] = useSearchParams();");
+    const reactRouterImport = app.match(/import \{[\s\S]*?\} from "react-router";/);
+    expect(reactRouterImport).not.toBeNull();
+    expect(reactRouterImport?.[0]).toContain("useSearchParams");
+  });
 });

@@ -10,26 +10,32 @@ import { describe, expect, it } from "vitest";
 
 import {
   CHANNEL_SOURCES,
+  CREDENTIAL_LABEL,
   GAP,
   GAP_NO_ENTRIES,
   GAP_UNVERIFIABLE,
   LEDGER_SOURCES,
   LEDGER_STATUS_LABEL,
   NO_SYNC_REASON,
+  PLATFORM_STATUS_LABEL,
   SOURCES,
   STATUS_LABEL,
   applyFilter,
   beijingMinute,
+  credentialOf,
   filterOf,
   isDenied,
   ledgerRows,
   maskId,
   newestSeen,
+  platformStatusOf,
   readFailure,
   readSource,
   requestIdLine,
   settle,
   sourceUrl,
+  summaryPlatforms,
+  summaryStamp,
   statusOf,
   type SourceRead,
 } from "./channels";
@@ -47,8 +53,14 @@ describe("the routes", () => {
 
   it("are exactly the names this repo or the task supplies, in the tried order", () => {
     // Pinned on purpose: adding a path here means inventing a route, and the
-    // whole point of the pane is that it does not do that.
-    expect(pathOf("platforms")).toEqual(["/agent-api/api/messaging/platforms", "/agent-api/api/channels"]);
+    // whole point of the pane is that it does not do that. The first name is the
+    // gateway's own summary — the only surface this BFF actually answers
+    // (2026-11-19 probes: messaging/platforms and channels are 404).
+    expect(pathOf("platforms")).toEqual([
+      "/agent-api/api/hermes-summary",
+      "/agent-api/api/messaging/platforms",
+      "/agent-api/api/channels",
+    ]);
     expect(pathOf("connectors")).toEqual(["/agent-api/api/gateway-connections", "/agent-api/api/connectors"]);
     expect(pathOf("datasources")).toEqual(["/agent-api/api/datasources"]);
     expect(pathOf("mcp")).toEqual(["/agent-api/api/mcp/servers"]);
@@ -82,7 +94,7 @@ describe("the request changes with the filter", () => {
     const up = sourceUrl(path, "available");
     const down = sourceUrl(path, "unavailable");
     const off = sourceUrl(path, "disabled");
-    expect(all).toBe("/agent-api/api/messaging/platforms?limit=50");
+    expect(all).toBe("/agent-api/api/hermes-summary?limit=50");
     expect(up).toBe(`${all}&status=available`);
     expect(down).toBe(`${all}&status=unavailable`);
     expect(off).toBe(`${all}&status=disabled`);
@@ -545,5 +557,107 @@ describe("failure wording", () => {
   it("says what a missing request id means", () => {
     expect(requestIdLine("abc123")).toBe("请求编号：abc123");
     expect(requestIdLine(null)).toContain("未记录编号");
+  });
+});
+
+describe("the gateway summary is the real platform surface", () => {
+  const platformsSource = SOURCES.find((source) => source.id === "platforms")!;
+  const SUMMARY = {
+    schema: "runtime.hermes.summary.v1",
+    gateway: {
+      status: "ok",
+      updated_at: "2026-11-19T11:43:46.578965+00:00",
+      platforms: {
+        api_server: { state: "connected", needs_attention: false },
+        feishu: { state: "connected", needs_attention: false, updated_at: "2026-11-19T09:10:00Z" },
+        wecom: { state: "not_configured" },
+        dead: { state: "disconnected", needs_attention: true },
+      },
+    },
+  };
+
+  it("finds the platform block and the gateway's own stamp", () => {
+    expect(summaryPlatforms(SUMMARY)).toEqual(SUMMARY.gateway.platforms);
+    expect(summaryStamp(SUMMARY)).toBe("2026-11-19T11:43:46.578965+00:00");
+    expect(summaryPlatforms({ gateway: {} })).toBeNull();
+    expect(summaryStamp({ gateway: {} })).toBeNull();
+    expect(summaryPlatforms(null)).toBeNull();
+  });
+
+  it("turns each platform into one row with a Chinese name and kind", () => {
+    const read = readSource(SUMMARY, platformsSource, "/agent-api/api/hermes-summary");
+    expect(read.kind).toBe("rows");
+    if (read.kind !== "rows") return;
+    expect(read.path).toBe("/agent-api/api/hermes-summary");
+    expect(read.declaredTotal).toBe(4);
+    const byKey = new Map(read.rows.map((row) => [row.key, row]));
+    const api = byKey.get("platforms:api_server")!;
+    expect(api.name).toBe("API 服务");
+    expect(api.kindLabel).toBe("接口服务");
+    expect(api.platformStatus).toBe("available");
+    expect(PLATFORM_STATUS_LABEL[api.platformStatus!]).toBe("已连接");
+    expect(byKey.get("platforms:feishu")!.name).toBe("飞书");
+    expect(byKey.get("platforms:feishu")!.kindLabel).toBe("消息平台");
+    expect(byKey.get("platforms:wecom")!.platformStatus).toBe("disabled");
+    expect(PLATFORM_STATUS_LABEL[byKey.get("platforms:wecom")!.platformStatus!]).toBe("未配置");
+    expect(byKey.get("platforms:dead")!.platformStatus).toBe("unavailable");
+    expect(PLATFORM_STATUS_LABEL[byKey.get("platforms:dead")!.platformStatus!]).toBe("未连接");
+  });
+
+  it("falls back to the gateway stamp, and says so instead of pretending it is per-platform", () => {
+    const read = readSource(SUMMARY, platformsSource, "/agent-api/api/hermes-summary");
+    if (read.kind !== "rows") throw new Error("expected rows");
+    const byKey = new Map(read.rows.map((row) => [row.key, row]));
+    const api = byKey.get("platforms:api_server")!;
+    expect(api.lastSeen).toBe("2026-11-19T11:43:46.578965+00:00");
+    expect(api.lastSeenNote).toContain("网关整体");
+    // A platform that answered with its own instant keeps it, and needs no note.
+    const feishu = byKey.get("platforms:feishu")!;
+    expect(feishu.lastSeen).toBe("2026-11-19T09:10:00Z");
+    expect(feishu.lastSeenNote ?? null).toBeNull();
+  });
+
+  it("never invents a credential state, and never carries a token", () => {
+    expect(CREDENTIAL_LABEL.unknown).toBe("未知");
+    expect(credentialOf(null).state).toBe("unknown");
+    const bare = credentialOf({ state: "connected" });
+    expect(bare.state).toBe("unknown");
+    expect(bare.reason).toContain("不替它猜");
+    expect(credentialOf({ credentialStatus: "configured" }).state).toBe("configured");
+    expect(credentialOf({ credentials: "missing" }).state).toBe("missing");
+    expect(credentialOf({ auth: "expired" }).state).toBe("missing");
+    expect(credentialOf({ auth: "expired" }).reason).toContain("失效");
+    expect(credentialOf({ tokenStatus: "hunter2" }).state).toBe("unknown");
+
+    const read = readSource(SUMMARY, platformsSource, "/agent-api/api/hermes-summary");
+    if (read.kind !== "rows") throw new Error("expected rows");
+    for (const row of read.rows) {
+      expect(row.credential).toBe("unknown");
+      expect(row.credentialReason).toContain("凭据");
+    }
+    expect(JSON.stringify(read.rows)).not.toMatch(/hunter2|secret|api[_-]?key/i);
+  });
+
+  it("reads an unlisted state as 待核实 and an empty block as an empty answer", () => {
+    expect(platformStatusOf("connected")).toBe("available");
+    expect(platformStatusOf("disconnected")).toBe("unavailable");
+    expect(platformStatusOf("not_configured")).toBe("disabled");
+    expect(platformStatusOf("who_knows")).toBe("unknown");
+    expect(PLATFORM_STATUS_LABEL.unknown).toBe("待核实");
+
+    const odd = readSource(
+      { gateway: { platforms: { mystery: { state: "who_knows" } }, updated_at: "2026-11-19T00:00:00Z" } },
+      platformsSource,
+      "/agent-api/api/hermes-summary",
+    );
+    if (odd.kind !== "rows") throw new Error("expected rows");
+    expect(odd.rows[0].platformStatus).toBe("unknown");
+    expect(odd.rows[0].name).toBe("mystery");
+    expect(odd.rows[0].lastSeen).toBe("2026-11-19T00:00:00Z");
+
+    expect(readSource({ gateway: { platforms: {} } }, platformsSource, "/agent-api/api/hermes-summary")).toEqual({
+      kind: "empty",
+      path: "/agent-api/api/hermes-summary",
+    });
   });
 });

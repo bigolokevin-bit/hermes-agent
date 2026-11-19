@@ -47,10 +47,12 @@ import { themedBody } from "@/lib/utils";
 
 import { DeniedPanel, EmptyPanel, ErrorPanel, LoadingPanel, ReproNote, TechnicalDisclosure } from "./states";
 import {
+  CREDENTIAL_LABEL,
   FILTERS,
   GAP,
   LEDGER_STATUS_LABEL,
   NO_SYNC_REASON,
+  PLATFORM_STATUS_LABEL,
   STATUS_LABEL,
   applyFilter,
   beijingMinute,
@@ -119,6 +121,7 @@ function ChannelRowCard({ row, testId }: { row: ChannelRow; testId: string }): R
   const dimmed = row.status !== "available";
   const seen = beijingMinute(row.lastSeen);
   const technical = technicalLines(row);
+  const isPlatform = Boolean(row.platformStatus);
 
   return (
     <div
@@ -127,6 +130,7 @@ function ChannelRowCard({ row, testId }: { row: ChannelRow; testId: string }): R
       }`}
       data-testid={testId}
       data-status={row.status}
+      data-platform={isPlatform ? "true" : undefined}
     >
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <p className="min-w-0 break-words text-sm" title={row.rawId ?? undefined}>
@@ -160,15 +164,40 @@ function ChannelRowCard({ row, testId }: { row: ChannelRow; testId: string }): R
           </p>
         ) : null}
 
-        <p className="min-w-0 break-words text-xs text-muted-foreground">
-          最近可见（北京时间）：
+        {isPlatform && row.credential ? (
+          <p
+            className="min-w-0 break-words text-xs text-muted-foreground"
+            data-testid={`${testId}-credential`}
+            data-credential={row.credential}
+          >
+            凭据：{CREDENTIAL_LABEL[row.credential]}
+            {row.credentialReason ? `，${row.credentialReason}` : null}
+          </p>
+        ) : null}
+
+        {isPlatform && row.attention ? (
+          <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid={`${testId}-attention`}>
+            服务把这项平台标记为需要处理
+          </p>
+        ) : null}
+
+        <p
+          className="min-w-0 break-words text-xs text-muted-foreground"
+          title={row.lastSeenNote ?? undefined}
+          data-testid={`${testId}-seen`}
+        >
+          {isPlatform ? "最近事件（北京时间）：" : "最近可见（北京时间）："}
           {seen.text ?? <Dashed reason={seen.reason} />}
         </p>
 
         {technical.length ? <TechnicalDisclosure lines={technical} testId={`${testId}-details`} /> : null}
       </div>
 
-      <StatusBadge status={row.status} testId={`${testId}-badge`} />
+      <StatusBadge
+        status={row.status}
+        testId={`${testId}-badge`}
+        label={isPlatform ? PLATFORM_STATUS_LABEL[row.status] : undefined}
+      />
     </div>
   );
 }
@@ -313,6 +342,7 @@ export function ChannelsPage(): ReactNode {
         outlined
         onClick={data.reload}
         disabled={phase === "loading" || isForced}
+        aria-busy={phase === "loading"}
         title={forcedTitle}
         data-testid="chn4-retry"
         prefix={phase === "loading" ? <Spinner className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" />}

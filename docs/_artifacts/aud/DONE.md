@@ -1718,3 +1718,119 @@ native scroll restoration on back is reasoned from the same-document traversal
 the test exercises, not measured; the shell still registers only `/runs`
 (`App.tsx:1375`), so the path form `/runs/<runId>` is served by this page's own
 parser but has no dedicated route yet.
+
+## TASK platform channels real-data surface (2026-11-19, base 23a8a7e0)
+
+### What the service actually answers (probed with the session cookie, value never printed)
+
+| route | HTTP | body |
+|---|---|---|
+| /agent-api/api/messaging/platforms?limit=50 | 404 | console.unknown_route |
+| /agent-api/api/channels?limit=50 | 404 | console.unknown_route |
+| /agent-api/api/gateway-connections?limit=50 | 404 | console.unknown_route |
+| /agent-api/api/connectors?limit=50 | 404 | console.unknown_route |
+| /agent-api/api/datasources?limit=50 | 404 | console.unknown_route |
+| /agent-api/api/mcp/servers?limit=50 | 404 | console.unknown_route |
+| /agent-api/api/hermes-summary?limit=50 | 200 | schema runtime.hermes.summary.v1 |
+
+The BFF route table (seakoi-agent-os-l0-board/apps/console/server.py) has no
+channel / platform / datasource route at all. The only real platform surface is
+the gateway summary: gateway.platforms is a record, and the live tenant answers
+
+    api_server: { state: connected, needs_attention: false }
+    feishu:     { state: connected, needs_attention: false }
+
+so the real row count is 2. gateway.updated_at is the only instant it carries
+(2026-11-19T11:43:46.578965+00:00, one gateway-wide stamp, not per platform),
+and there is no credential field anywhere in the payload.
+
+### What changed
+
+channels.ts
+- The platforms source now probes /agent-api/api/hermes-summary first, keeping
+  /api/messaging/platforms and /api/channels as later candidates. Origin reads
+  「网关自己报告的运行状态」; the absent-route reason says the platform list
+  cannot be verified without it.
+- New platform row path: PLATFORM_LABELS / PLATFORM_KINDS (api_server → API 服务
+  · 接口服务, feishu → 飞书 · 消息平台, unknown key stays verbatim),
+  PLATFORM_STATUS_LABEL (已连接 / 未连接 / 未配置 / 待核实), platformStatusOf
+  (exported so the token map is pinned by a unit test), summaryPlatforms,
+  summaryStamp, and platformRow.
+- Credential is a STATE only: credentialOf returns configured / missing /
+  unknown plus a plain-Chinese reason, and never returns any value. With no such
+  field upstream every live row reads 「凭据：未知」 with the reason 「服务的回答里
+  没有给出这份凭据的状态，本页不替它猜，也不显示任何令牌内容」.
+- A platform with no instant of its own borrows the gateway stamp and carries
+  lastSeenNote 「服务按网关整体给出更新时间，这项平台没有单独的时间」; the note
+  rides in the element title, not as a second line of noise.
+
+ChannelsPage.tsx
+- Platform rows use the platform vocabulary for the badge, print 「最近事件（北京
+  时间）」, add the credential line and the 「需要处理」 line when the service sets
+  needs_attention, and keep the existing dimming (opacity-60) for anything not
+  已连接. Non-platform rows are unchanged.
+- The refresh button now carries aria-busy while a read is in flight.
+
+### Gates (run from web/)
+
+- npx vitest run src/modules/channels → 2 files, 101 tests passed (was 94).
+- npx tsc -b . --noEmit → 52 error TS lines: 49 in ../apps/shared/**, 2 in
+  src/pages/LoginPage.test.tsx and 1 in src/App.tsx:1592 (useSearchParams).
+  The last three are pre-existing at this base and outside this lane's write
+  scope; grep for modules/channels in the output returns 0.
+- npx eslint src/modules/channels → exit 0, no output.
+
+### Honest limits
+
+- The status select filters the ROWS THIS PAGE READ (applyFilter), because the
+  gateway summary ignores status= (probed: status=unavailable still returns both
+  platforms). The select genuinely changes what is painted; there is simply no
+  server-side status filter to lean on, and the DONE says so instead of implying
+  one.
+- No browser pixel measurement at 1440 / 1280 / 375: the page reaches runtime
+  only through the shell slot (capabilities tab), which is another lane's write
+  scope, and the served dist predates this change.
+- Credential stays 未知 by construction until the BFF exposes a per-platform
+  credential state; the page cannot and must not invent one.
+- A platform key outside PLATFORM_LABELS keeps its raw key as the name (no
+  invented Chinese label).
+
+## R24 white-screen restore (2026-11-19, base 23a8a7e0 / lane tip de3eb977)
+
+### 症状与根因
+- QA R24：直链 /audit 可见白屏（v4r24-audit-1440.png / v4r24-audit-pw-1440.png），是已清项的回退。
+- 根因（TS 证据）：web/src/App.tsx 的 AuditAwareEntry（由 997a73c1 加入）调用 useSearchParams()，但同一文件的 react-router import 列表里没有它。
+  tsc 原文：src/App.tsx(1592,16): error TS2552: Cannot find name 'useSearchParams'.
+  esbuild 不校验这一行，运行时按全局标识符查找 -> ReferenceError -> 整条 /audit 路由渲染为空，即白屏。
+- 修复：web/src/App.tsx 的 react-router import 增加一行 useSearchParams（仅此一处，无其它改动）。
+  这行在 R24 写域（modules/audit）之外，属于必要的越域一行修复，在此与 commit body 如实标注。
+
+### 回归锁（写域内）
+- web/src/modules/audit/appRouting.test.ts 新增用例：断言 App.tsx 含 const [sp] = useSearchParams();，且 react-router 的 import 块包含 useSearchParams；注释写明 R24、esbuild 的全局查找行为与 TS2552。
+
+### 真机读数（本 worktree 新构建 + 本地反代）
+- 构建：npx vite build --outDir build-r24 -> exit 0；入口 /assets/index-DsDPj1MW.js。
+- 供页：/tmp/serve-r24.cjs 静态服 build-r24，并把 /agent-api/* 反代到 127.0.0.1:8092（携带会话 cookie，值不打印）。
+- 直链 /audit（无头 Chrome via CDP，两档各一次）：
+  - 1440x900：mainLen 178749；[data-testid^="aud01-"] 459；[data-testid^="agent-v2-page-audit"] 1；scrollWidth/clientWidth 1440/1440。
+  - 375x812：mainLen 178749；aud01 459；page-audit 1；375/375（无横溢）。
+  - 首屏文案：「已显示 50 条审计事件（最近 7 天），下面还有更多」「时间为北京时间」——真数据行，不是空壳。
+- 反证（同一构建但无 /agent-api 反代，vite preview）：mainLen 10104；aud01 10；page-audit 1；文案「读取失败」。
+  即接口不可达时页面落诚实的失败态而不是白屏，仍非空。
+- 截图：docs/_artifacts/aud/shots/audit-1440.png、audit-375.png（取反代那一次，真实 50 行）。
+  说明：截图左侧「暂时确认不到登录状态 —」是壳的身份角标（浏览器本身无 cookie，数据由反代补足），不属于被修页面。
+
+### 403/404 与模块口径（未改，已复核）
+- states.tsx 的 DeniedPanel 是单一实体，同时服务 403 与 404（同文案，带可复制请求编号）；列表 aud01-denied、详情 aud02-detail-denied。
+- 技术详情折叠与完整性校验（真路由 /agent-api/api/audit-verify）本次未改动。
+
+### 门禁（web/ 下）
+- ./node_modules/.bin/vitest run src/modules/audit -> exit 0，6 files / 114 tests（原 113，+1 回归锁）。
+- npx tsc -b . --noEmit -> 51 条：49 条在 ../apps/shared/**，2 条在 src/pages/LoginPage.test.tsx；App.tsx:1592 的 TS2552 已消失，modules/audit 0 条。
+- ./node_modules/.bin/eslint src/modules/audit -> exit 0（0 errors / 3 既有 set-state-in-effect warning）。
+
+### 未验 / 披露
+- 这行修复在写域外（App.tsx），是白屏的唯一成因，别无他法；未改 App.tsx 其它内容。
+- 9122 常驻 dev SPA 仍服务 forks/hermes-agent/hermes_cli/web_dist 的旧构建，所以彼处看不到本修复；上述读数来自本 worktree 的新构建 + 反代，build-r24 为未跟踪产物，不入库。
+- 非管理员身份下的 403 真腿未复现（当前数据是管理员可见范围）；403 与 404 的同体性由模块结构与既有测试保证。
+- 站内跳转与直链共用同一条 /audit 路由，直链已证渲染；未逐一截取每个导航入口的点击路径。

@@ -131,7 +131,10 @@ describe("the read asks the real routes", () => {
   it("tries the other name for the same source only after the first one fails", async () => {
     await mount(byUrl);
     const order = urls();
-    expect(order[0]).toBe("/agent-api/api/messaging/platforms?limit=50");
+    // The gateway summary is asked first; it does not answer in this fixture,
+    // so the legacy platform name is asked too and carries the rows.
+    expect(order[0]).toBe("/agent-api/api/hermes-summary?limit=50");
+    expect(order).toContain("/agent-api/api/messaging/platforms?limit=50");
     // the first candidate answered, so its second name is not asked
     expect(order).not.toContain("/agent-api/api/channels?limit=50");
     // the connector source's first name 404s, so its second name is asked too
@@ -681,5 +684,68 @@ describe("the pane never writes", () => {
     expect(html()).not.toMatch(/<form|method="post"/i);
     expect(document.querySelectorAll("input, textarea").length).toBe(0);
     expect(labels.join("|")).toMatch(/重新读取/);
+  });
+});
+
+describe("platform rows come from the gateway summary", () => {
+  const SUMMARY_PLATFORMS = {
+    schema: "runtime.hermes.summary.v1",
+    gateway: {
+      status: "ok",
+      updated_at: "2026-11-19T11:43:46.578965+00:00",
+      platforms: {
+        api_server: { state: "connected", needs_attention: false },
+        feishu: { state: "connected", needs_attention: false },
+        wecom: { state: "not_configured" },
+      },
+    },
+  };
+
+  /** The gateway summary is the only answer; every legacy name stays 404. */
+  const summaryOnly = (payload: unknown) => async (url: string): Promise<unknown> => {
+    if (url.startsWith("/agent-api/api/hermes-summary")) return payload;
+    throw new ApiError("missing", {
+      status: 404,
+      body: '{"code":"console.not_found"}',
+      url,
+      requestId: "chn-probe",
+    });
+  };
+
+  it("paints names, badges, an honest credential state and the gateway stamp", async () => {
+    await mount(summaryOnly(SUMMARY_PLATFORMS));
+    const body = text();
+    expect(statusRows()).toBe(3);
+    expect(body).toContain("API 服务");
+    expect(body).toContain("飞书");
+    expect(body).toContain("企业微信");
+    expect(body).toContain("已连接");
+    expect(body).toContain("未配置");
+    expect(body).toContain("凭据：未知");
+    expect(body).toContain("最近事件（北京时间）");
+    expect(body).toContain("19:43");
+    expect(body).not.toMatch(/hunter2|api_key|secret/i);
+
+    const unconfigured = Array.from(document.querySelectorAll("[data-testid^='chn4-row-'][data-status]")).find(
+      (el) => el.textContent?.includes("企业微信"),
+    )!;
+    expect(unconfigured.getAttribute("data-status")).toBe("disabled");
+    expect(unconfigured.getAttribute("data-platform")).toBe("true");
+    expect(unconfigured.className).toContain("opacity-60");
+    expect(unconfigured.querySelector("[data-testid$='-credential']")).toBeTruthy();
+    expect(unconfigured.querySelector("[data-testid$='-seen']")?.getAttribute("title")).toContain("网关整体");
+  });
+
+  it("marks a platform the service flagged as needing attention, without inventing a fault", async () => {
+    await mount(
+      summaryOnly({
+        gateway: {
+          updated_at: "2026-11-19T11:43:46.578965+00:00",
+          platforms: { feishu: { state: "connected", needs_attention: true } },
+        },
+      }),
+    );
+    expect(text()).toContain("需要处理");
+    expect(text()).toContain("已连接");
   });
 });
