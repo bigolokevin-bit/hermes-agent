@@ -1062,3 +1062,10 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 九件全 exit=0 盖 01175128：ia-html/react ok{51,22,1,8}｜lint-fake v=[]｜lint-reuse v=0 exempt=1 chat→T40（stdout 抄件）｜crawl-anon DL0/CE0/PE0 routesCE51(401归因)｜crawl-auth routesCE28（26→28 波动，环境项）｜state-quad 20/20 文本重建注 source。
 - shots main(auth) 102/102 failures=[] oversize=[] ceAuth=login-state obs=4 仅观测（#/employees/:employeeId?zone=runs、#/identity?tab=binding、#/identity?tab=people&view=admins、#/knowledge?tab=citations，不入 ok）distinctMainHeads=26 rootBaseline textLen=729 真数据；三键全值+拍后 curl 复证未漂。shots-anon auxiliary=true 102/102 mode=anon obs=4（#/identity、binding、tenant、#/work?tab=cron）envOnly=51。anon png 同名覆盖 pngs=102。
 - 环境：9122 v4_proxy 受管未动、caddy 8183 28034、8092 pid 95651；web/src 未碰；他人脏零沾染；auth-state 昨夜 23:5x 版窗内。
+
+## 九十五轮·波终代次九件重章 @ 02a7385c（2026-11-20 07:0x，一波一盖）
+
+- 代次：wave-15 三笔并入 02a7385c『merge(lane/console-appr): wave-15』（aud bf831bd8/ui1 4a912601 同波），entry index-DmuaaNyX.js 166682B sha 224e4d53090047ce…813216；三向互证过（盘==9122==8183），21/21 路由 200；上一代 01175128 已盖（d26a66d5）不重做。
+- 九件全 exit=0 盖 02a7385c：ia-html/react ok{51,22,1,8}｜lint-fake v=[]｜lint-reuse v=0 exempt=1 chat→T40（stdout 抄件）｜crawl-anon DL0/CE0/PE0 routesCE51(401归因)｜crawl-auth routesCE28｜state-quad 20/20 文本重建注 source。
+- shots main(auth) 102/102 failures=[] oversize=[] **obs=0 登录面全干净** ceAuth=login-state distinctMainHeads=24 rootBaseline textLen=729；三键全值+拍后 curl 复证未漂。shots-anon auxiliary=true 102/102 mode=anon **obs=0** envOnly=51。anon png 同名覆盖 pngs=102。
+- 环境：9122 v4_proxy 95667 未动、caddy 8183 28034、8092 95651；web/src 未碰；他人脏零沾染。
