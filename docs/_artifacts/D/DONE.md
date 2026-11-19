@@ -956,3 +956,10 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - shots main(auth)：102/102 failures=[] oversize=[] distinctMainHeads=28 rootBaseline textLen=491 真数据（overview 1005/audit 6753/work 1782/runs 1284）ceAuthority=login-state ok=true；**观测注记：consoleErrorsObservedByShots=1（#/employees/:employeeId?zone=evidence，与 overflowing 同路由=R31 详情页 evidence 区新面，仅观测不入 ok，交 L0 裁是否立案）**；拍后 served 复证 CG7jx7Y5 未漂；summary 六键注入（69 轮 index-index- 笔误已避，直接全名）。
 - shots-anon(auxiliary)：102/102 mode=anon 匿名实锤 textLen=732 含「登录状态已过期」；obs=2 仅观测（#/employees/:employeeId、#/system?tab=retention）不入 ok；同名覆盖 mv 回 pngs=102。
 - 环境：9122 受管 v4_proxy pid 63777 未动、caddy 8183 pid 28034 未动、8092 pid 76933 未动；web/src 未碰；他人脏零沾染。
+
+## 七十六轮·波终代次九件重章 @ 17c36d25（2026-11-20 00:1x-00:2x，催办收口）
+
+- 催办卡（≤10min）：七件已在盘盖 17c36d25；本拍补 shots 两 summary 六键（tmp+os.replace）+anon png mv 回同名覆盖 102 张。
+- 代次四件=17c36d25 / assets/index-mWfpIjM6.js 161271B / d530609b…054a4812 / served==磁盘==8183（拍后复证）。
+- 九件全 exit=0：ia×2 {51,22,1,8}｜lf v=[]｜lr v=0 exempt1 chat→T40｜crawl-anon DL0/CE0/PE0 routesCE51(401)｜crawl-auth routesCE27｜state-quad 20/20 文本重建｜shots main 102/102 auth failures=[] obs=0 ceAuth=login-state｜shots-anon auxiliary=true 102/102 obs=0。
+- 环境：9122 v4_proxy pid 31520、caddy 28034、8092 pid 10844 未动；web/src 未碰；auth-state 昨夜 23:5x 版窗内。上一代 3bff4208 账本作废不重做。
