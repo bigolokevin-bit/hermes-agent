@@ -1419,3 +1419,11 @@ $ cd web && npx vitest run
 ### DOM / tests
 - Browser sweep 5451/9252 at 1440/1280/375: `[data-fixture]` **0**; body scrollWidth 1424/1264/375 (never exceeds viewport; scrollbar accounts for 1440/1280 delta). Page roots are covered by module vitest because lazy routes did not settle within the probe window.
 - `npx vitest run src/modules/people src/modules/models src/modules/version` → **4 files / 25 passed**; full suite below.
+
+## R34 tenant quota & usage depth (2026-11-19, base 33fc7029)
+
+- Endpoint truth: `/agent-api/api/employee-stats` → **200** total 3; `/agent-api/api/run-stats?...` → **200** runs 13; neither payload carries `asOf`; quota/concurrency/budget/storage endpoints absent → honest 未接入.
+- Quota items: 员工数 (已用 3 人, source 员工统计), 运行数（近 7 天） (已用 13 次, source 运行统计), 并发 (—, 未接入), 月度预算 (—, ledger 未接入), 存储与 token (—, 未接入). Each row shows 配额上限 / 已用 / 剩余 / unit or `—` + title reason; no `?? 0`; true 0 would render `$0.00` (not fabricated here).
+- 403 and 404 share one neutral body; error carries copyable request id + retry. asOf is payload-only; missing source time renders 「时间未知」 + reason (no browser clock).
+- Tests `npx vitest run src/modules/tenant` → **9/9**; `TenantQuotaPage` `ten4-*` family retained (profile, quotas, five rows, gap, request id, retry).
+- Shell `/identity?tab=tenant` still aliases to people; module-level `?tab=tenant`/`?view=tenant` behavior remains; registration is outside this lane.

@@ -23,6 +23,7 @@ import {
   readRunUsage,
   requestIdOf,
   runWindow,
+  statusOf,
   shortTenantId,
   type RowState,
   type UsageRead,
@@ -65,7 +66,7 @@ function RequestId({ id, testid = 'ten4-request-id' }: { id: string | null; test
 
 function rowFrom(result: PromiseSettledResult<unknown>, reader: (payload: unknown) => UsageRead): RowState {
   if (result.status === 'rejected') {
-    return { kind: 'error', message: messageFor(result.reason), requestId: requestIdOf(result.reason) };
+    return { kind: 'error', message: messageFor(result.reason), requestId: requestIdOf(result.reason), status: statusOf(result.reason) };
   }
   return { kind: 'ready', usage: reader(result.value) };
 }
@@ -109,6 +110,9 @@ function UsageRow({
           {shown === '—' ? '' : ` ${unit}`}
         </strong>
       </div>
+      <p className="ten4-quota-remaining" data-testid={`ten4-remaining-${id}`} title="额度上限未接入，无法计算剩余">
+        剩余 —（额度上限未接入）
+      </p>
       <p className="ten4-quota-source" data-testid={`ten4-source-${id}`}>
         来源：{source}
         {usage ? ` · 数据截至 ${usage.asOf ?? '时间未知'}` : ''}
@@ -184,6 +188,22 @@ function QuotaCard({ employee, runs }: { employee: RowState; runs: RowState }): 
           source="运行统计"
           unit="次"
         />
+        <UsageRow
+          id="concurrency"
+          label="并发"
+          hint="并发执行上限与当前占用"
+          row={{ kind: 'ready', usage: { value: null, reason: '并发上限与当前占用接口未接入，不显示 0。', asOf: null, asOfReason: '并发用量没有可读的采集时间。', requestId: null } }}
+          source="并发用量 · 未接入"
+          unit="个"
+        />
+        <UsageRow
+          id="budget"
+          label="月度预算"
+          hint="真实扣费账本；不用单价乘次数推算"
+          row={{ kind: 'ready', usage: { value: null, reason: '月度预算账本未接入，不显示金额或推算值。', asOf: null, asOfReason: '预算账本没有可读的采集时间。', requestId: null } }}
+          source="预算账本 · 未接入"
+          unit="美元"
+        />
         <div className="ten4-quota-row" data-testid="ten4-quota-storage">
           <div className="ten4-quota-head">
             <span className="ten4-quota-name">存储与 token</span>
@@ -228,9 +248,12 @@ export function TenantQuotaPage() {
     const employeeRow = rowFrom(employee, readEmployeeUsage);
     const runsRow = rowFrom(runs, readRunUsage);
     if (employeeRow.kind === 'error' && runsRow.kind === 'error') {
+      const unavailable = [employeeRow.status, runsRow.status].every((status) => status === 403 || status === 404);
       setState({
         kind: 'error',
-        message: employeeRow.message,
+        message: unavailable
+          ? '这块数据还没有接入，或当前账号无权查看；这里不显示猜测的配额。'
+          : employeeRow.message,
         requestId: employeeRow.requestId ?? runsRow.requestId,
       });
       return;

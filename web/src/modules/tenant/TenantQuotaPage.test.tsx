@@ -84,6 +84,8 @@ describe('TenantQuotaPage', () => {
     expect(text()).toContain('来源：租户资料 · 未接入 · 数据截至 时间未知');
     expect(text()).toContain('来源：额度上限 · 待核实');
     expect(text()).toContain('存储与 token');
+    expect(text()).toContain('并发');
+    expect(text()).toContain('月度预算');
     expect(text()).toContain('来源：存储与 token 用量 · 未接入 · 数据截至 时间未知');
     expect(text()).toContain('无法判断是否已用尽');
     expect(text()).not.toContain('$0.00');
@@ -145,7 +147,7 @@ describe('TenantQuotaPage', () => {
     await waitFor(settled, 'settled');
     await waitFor(() => document.querySelector('[data-testid="ten4-error"]') !== null, 'error');
     expect(text()).toContain('这次没能读取租户用量');
-    expect(text()).toContain('这项数据还没有接入');
+    expect(text()).toContain('这块数据还没有接入');
     expect(text()).toContain('请求编号');
     expect(text()).toContain('req-ten-missing');
     expect(text()).not.toContain('404');
