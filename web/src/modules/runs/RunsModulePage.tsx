@@ -35,7 +35,7 @@
  * the full value lives in the title and the clipboard, not on the surface.
  */
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { Link, useLocation, useSearchParams } from "react-router";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 import { Check, Copy, RefreshCw, X } from "lucide-react";
 
 import { Badge } from "@nous-research/ui/ui/components/badge";
@@ -359,7 +359,8 @@ function DetailField({ label, children }: { label: string; children: ReactNode }
 
 export function RunsModulePage() {
   const [params, setParams] = useSearchParams();
-  const { pathname } = useLocation();
+  const { pathname, state: locationState } = useLocation();
+  const navigate = useNavigate();
   const forced = forcedStateOf(params.get("state"));
   const sinceKey = sinceKeyOf(params.get("window"));
   const status = statusFilterOf(params.get("status"));
@@ -418,22 +419,39 @@ export function RunsModulePage() {
 
   const forcedTitle = isForced ? "复现腿不发起真实请求，去掉 ?state= 即为真实读取" : undefined;
 
+  // Filter changes replace the current entry: they are the same page, and a
+  // history entry per keystroke would make the back button useless.
   const setParam = useCallback(
-    (key: string, value: string | null) => {
+    (key: string, value: string | null, opts?: { push?: boolean }) => {
       const next = new URLSearchParams(params);
       if (value === null || value === "") next.delete(key);
       else next.set(key, value);
-      setParams(next, { replace: true });
+      if (opts?.push) {
+        setParams(next, { replace: false, state: { fromList: true } });
+        return;
+      }
+      setParams(next, { replace: true, state: locationState ?? null });
     },
-    [params, setParams],
+    [params, setParams, locationState],
   );
 
   const openRun = (runId: string) => {
     setAttemptAsk(null);
-    setParam("run", runId);
+    if (runId === selected) return;
+    // R23: a detail is a real history entry, so the browser back button (and a
+    // same-document traversal) returns to this list — with its scroll position
+    // restored by the browser — instead of leaving a blank page behind.
+    setParam("run", runId, { push: true });
   };
   const closeRun = () => {
     setAttemptAsk(null);
+    // The detail was pushed from the list above, so walk back to that entry.
+    // A detail opened as a deep link has nothing behind it, so it rewrites the
+    // current entry into the list instead of leaving the app.
+    if (locationState?.fromList === true) {
+      navigate(-1);
+      return;
+    }
     setParam("run", null);
   };
   const reloadList = () => {

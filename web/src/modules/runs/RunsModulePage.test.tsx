@@ -7,7 +7,7 @@
 
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, useLocation, useNavigate } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api-error";
@@ -48,6 +48,18 @@ const text = (): string => document.body.textContent ?? "";
 const html = (): string => document.body.innerHTML;
 const urls = (): string[] => api.fetchJSON.mock.calls.map((call) => String(call[0]));
 const rowNodes = (): number => document.querySelectorAll("[data-testid^='run5-row-'][data-status]").length;
+
+/** Stands in for the browser back button and shows where the router thinks it is. */
+function HistoryProbe(): ReactNode {
+  const navigate = useNavigate();
+  const location = useLocation();
+  return (
+    <div>
+      <button data-testid="probe-back" onClick={() => navigate(-1)}>浏览器后退</button>
+      <span data-testid="probe-location">{`${location.pathname}${location.search}`}</span>
+    </div>
+  );
+}
 
 const RUN_A = {
   runId: "rn_01M7822XN781D2S9JASH5TX1XZ",
@@ -593,5 +605,84 @@ describe("real-data depth: people, status words and the deep link", () => {
     await render(`/runs/${encodeURIComponent(DETAIL.runId)}`);
     await waitFor(() => document.querySelector("[data-testid='run5-detail']") !== null, "detail from the path");
     expect(text()).toContain("运行 · X1XZ");
+  });
+});
+
+// R23 (2026-11-19): opening a detail used to replace the list entry, so the
+// browser back button left the page before it ever returned to the list. The
+// detail is now pushed as its own entry; these locks fail if that regresses.
+describe("R23 — a detail is a real history entry", () => {
+  it("list → detail → back, three times over, always lands back on the list", async () => {
+    api.fetchJSON.mockImplementation(detailOk({}));
+    await render(
+      "/runs",
+      <>
+        <HistoryProbe />
+        <RunsModulePage />
+      </>,
+    );
+    await waitFor(() => rowNodes() === 1, "list ready");
+
+    for (let cycle = 1; cycle <= 3; cycle += 1) {
+      await act(async () => {
+        (document.querySelector("[data-testid='run5-row-0-open']") as HTMLButtonElement).click();
+      });
+      await waitFor(
+        () => document.querySelector("[data-testid='run5-detail']") !== null,
+        `detail open (cycle ${cycle})`,
+      );
+      expect(document.querySelector("[data-testid='probe-location']")?.textContent).toContain("run=");
+
+      await act(async () => {
+        (document.querySelector("[data-testid='probe-back']") as HTMLButtonElement).click();
+      });
+      await waitFor(
+        () => document.querySelector("[data-testid='run5-detail']") === null,
+        `back to the list (cycle ${cycle})`,
+      );
+      // Back must leave a list on screen, not an empty page: the row is still
+      // there and the URL no longer carries the detail parameter.
+      expect(rowNodes()).toBe(1);
+      expect(document.querySelector("[data-testid='probe-location']")?.textContent).not.toContain("run=");
+    }
+  });
+
+  it("a deep-linked detail closes in place, because there is no list entry behind it", async () => {
+    api.fetchJSON.mockImplementation(detailOk({}));
+    await render(
+      `/runs?run=${encodeURIComponent(DETAIL.runId)}`,
+      <>
+        <HistoryProbe />
+        <RunsModulePage />
+      </>,
+    );
+    await waitFor(() => document.querySelector("[data-testid='run5-detail']") !== null, "deep detail");
+    await act(async () => {
+      (document.querySelector("[data-testid='run5-detail-close']") as HTMLButtonElement).click();
+    });
+    expect(document.querySelector("[data-testid='run5-detail']")).toBeNull();
+    expect(document.querySelector("[data-testid='probe-location']")?.textContent).toBe("/runs");
+  });
+
+  it("closing a detail that was pushed walks back instead of stacking another entry", async () => {
+    api.fetchJSON.mockImplementation(detailOk({}));
+    await render(
+      "/runs",
+      <>
+        <HistoryProbe />
+        <RunsModulePage />
+      </>,
+    );
+    await waitFor(() => rowNodes() === 1, "list ready");
+    await act(async () => {
+      (document.querySelector("[data-testid='run5-row-0-open']") as HTMLButtonElement).click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='run5-detail']") !== null, "detail open");
+    await act(async () => {
+      (document.querySelector("[data-testid='run5-detail-close']") as HTMLButtonElement).click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='run5-detail']") === null, "list after close");
+    expect(rowNodes()).toBe(1);
+    expect(document.querySelector("[data-testid='probe-location']")?.textContent).not.toContain("run=");
   });
 });
