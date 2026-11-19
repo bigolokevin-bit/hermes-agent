@@ -2477,3 +2477,39 @@ Export entry, measured at three widths (`/tmp/cdp-r34.cjs`):
 - No real browser click-through of the download (jsdom asserts the Blob body, the header, the row count and the filename; a browser save dialog is outside this harness).
 - No per-element pixel diff — only `sw==cw` plus text length at three widths.
 - 9122 was not rebuilt and main was not merged, per the order.
+
+
+## R35 audit verify result surface (2026-11-20, base 7e7b92cd = gate ledger @ bc7671a1)
+
+### Endpoint truth (live, cookie via 127.0.0.1:8092)
+| request | HTTP | body |
+|---|---|---|
+| `GET /api/audit-verify` (no query) | **400** | `{"code":"request.invalid_query","message":"query `from` is required"}` |
+| `GET /api/audit-verify?from=<24h>&to=<now>` | **200** | `{"ok":true,"complete":true,"scanned":0,"anchorCheckpointId":"cp_t_seakoi_pilot_2026111300","chainHeadHash":"ah_031a89f9…"}` |
+| `GET /api/audit-verify?from=<7d>&to=<now>` | **200** | same shape with `"scanned":43` |
+
+The answer carries **no** `brokenCount`, **no** `total`, **no** `asOf`, and **no per-event ids**. So the surface must not build a break list and must not print a read instant — it says so instead.
+
+### Code
+- `views.tsx` `VerifyResultBody` gained an optional `ids?: { counts, window, scanned, broken }` (default `aud03-*`, exported `VerifyCountIds`), so the standalone pane hands in `aud01-verify-*` while the inline panel on `/audit` keeps the shared defaults and its tests stay green.
+- `views.tsx` headline/tone now require `countsKnown` for a green or red claim: an `ok:true` answer with no counts reads 「结论没有带上核对范围」 (secondary), never 「没有发现断点」.
+- `AuditVerifyModulePage.tsx`: every id renamed to the `aud01-verify-*` family (`-status`, `-window-<key>`, `-run`, `-window-label`, `-loading`, `-idle`, `-error`, `-unavailable`, and the result `-result`/`-counts`/`-window`/`-scanned`/`-broken`/`-result-details`); root `agent-v2-page-audit-verify` and `data-page="audit-verify"` kept.
+- The `?state=` repro leg is gone (three `fixture=` props and the forced note removed); `useAuditVerify(null)` now. The pane adds `aud01-verify-detail` with `aud01-verify-asof` (「—」 + title 服务的回答里没有带回读取时刻，本页不拿浏览器时间顶替) and `aud01-verify-break-list` (counted zero → 「未发现断点…」; a count → states the count and that per-record detail was not included; unknown → 「服务没有给出对不上的条数，本页不推断断点明细。」).
+
+### Tests
+- `AuditVerifyModulePage.test.tsx`: 9 stale `aud03-` ids renamed; the old forced-state case replaced by 「a stray ?state= no longer fakes a state: nothing is asked and the pane stays idle」 (four values, zero requests, no 复现 note) and a new honest-number lock 「a run that never asked for a window shows no digits at all」 (`{ok:true}` → scanned/broken both 「—」 with no digit, no 「没有发现断点」, asOf 「—」 with its reason, break line says it will not infer).
+- `vitest run src/modules/audit` → **10 files / 154 tests passed** (base 153).
+
+### Live readings (`/audit?tab=verify`, build entry `assets/index-DdoAfj1t.js`, `/tmp/serve-audh.cjs` 4210 proxying `/agent-api` → 8092)
+Clicked `aud01-verify-window-7d`, waited 4 s, at 1440×900 / 1280×800 / 375×812:
+- `sw == cw` at all three widths (1440/1440, 1280/1280, 375/375), 15 `aud01-verify*` ids, textLen 504/504/505.
+- counts read 「校验窗口（北京时间）2026-11-13 01:48 至 2026-11-20 01:48 · 已核对 43 · 对不上的 —」 — a real scanned count, and 「—」 where the service said nothing.
+- `aud01-verify-asof` reads 「读取时刻（北京时间）—」; `aud01-verify-break-list` reads 「服务没有给出对不上的条数，本页不推断断点明细。」
+
+### Gates
+`npx tsc -b . --noEmit` → exit 2, **73** errors, `modules/audit` **0** (floor drifted 72→73; the extra is foreign). `eslint src/modules/audit` → exit 0, 0 errors / 4 pre-existing `react-hooks/set-state-in-effect` warnings. Lefthook `lint web` must run on the commit.
+
+### Untested / disclosed
+- The live deployment has no `brokenCount`, so the break-list branch with a positive count is test-proven only; the counted-zero branch is likewise only reachable from a stubbed answer.
+- No per-element pixel diff (only `sw==cw` + textLen).
+- `?tab=retention` routing untouched; 9122 not rebuilt, main not merged.
