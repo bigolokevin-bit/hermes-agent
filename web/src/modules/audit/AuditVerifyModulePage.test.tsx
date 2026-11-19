@@ -88,6 +88,7 @@ describe("the check only runs when it is asked for", () => {
     api.fetchJSON.mockImplementation(async () => ({ ok: true, scanned: 12, total: 12, broken: 0 }));
     await runWindow();
     expect(urls()[0]).toMatch(/^\/agent-api\/api\/audit\/verify\?from=\d{4}-\d{2}-\d{2}T.*&to=\d{4}-\d{2}-\d{2}T/);
+    expect(document.querySelector("[data-testid='agent-v2-page-audit-verify']")).toBeTruthy();
   });
 
   it("the window is shown as Beijing wall clock, never as the wire form", async () => {
@@ -129,6 +130,9 @@ describe("what the answer can say", () => {
     expect(text()).toContain("120 / 200");
     expect(text()).toContain("对不上的");
     expect(text()).toContain("2026-11-18 08:00 至 2026-11-19 08:00");
+    // each count is addressable, and its denominator is part of the same line
+    expect(document.querySelector("[data-testid='aud03-scanned']")?.textContent).toContain("120 / 200");
+    expect(document.querySelector("[data-testid='aud03-broken']")?.textContent).toContain("0");
   });
 
   it("a broken chain says how many, and does not soften it", async () => {
@@ -189,6 +193,8 @@ describe("a check that cannot run", () => {
     expect(forbidden).toContain("本环境未启用");
     expect(forbidden).toContain("没有提供完整性校验");
     expect(forbidden).toContain("请求编号：vf-deny");
+    // and it says where to go next, not just that it failed
+    expect(forbidden).toContain("下一步");
     expect(text()).not.toContain("没有发现断点");
     // the same answer at a 404 draws the same markup, down to the byte
     expect(await deniedOnce(404)).toBe(forbidden);

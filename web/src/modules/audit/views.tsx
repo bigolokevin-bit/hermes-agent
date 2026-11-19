@@ -320,14 +320,21 @@ export function VerifyResultBody({
         <Badge tone={tone}>{headline}</Badge>
       </div>
 
-      <dl className="flex min-w-0 flex-wrap gap-x-5 gap-y-1 text-xs">
-        <Field label="校验窗口（北京时间）" value={from && to ? `${from} 至 ${to}` : "服务未回窗口"} reason={from && to ? undefined : MISSING_VALUE} />
+      <dl className="flex min-w-0 flex-wrap gap-x-5 gap-y-1 text-xs" data-testid="aud03-counts">
         <Field
+          testId="aud03-window"
+          label="校验窗口（北京时间）"
+          value={from && to ? `${from} 至 ${to}` : "服务未回窗口"}
+          reason={from && to ? undefined : MISSING_VALUE}
+        />
+        <Field
+          testId="aud03-scanned"
           label="已核对"
           value={result.total === null ? scanned : `${scanned} / ${total}`}
           reason={result.total === null ? "服务未说明这个窗口里一共有多少条" : "窗口内的总条数来自服务的回答"}
         />
         <Field
+          testId="aud03-broken"
           label="对不上的"
           value={broken}
           reason={result.broken === null ? "服务没有给出对不上的条数" : undefined}

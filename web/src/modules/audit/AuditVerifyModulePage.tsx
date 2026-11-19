@@ -9,8 +9,8 @@
  *   ready        counts shown with their denominators (已核对 X / Y，对不上 Z);
  *                a missing number stays 「—」 with the reason in its `title`
  *   unavailable  403 / 404 / 405 / 501 / 连不上 / 5xx → 「本环境未启用」 + the
- *                reason + the request id, with 403 and 404 rendering the exact
- *                same body. Never a green chain
+ *                reason + where to go next + the request id, with 403 and 404
+ *                rendering the exact same body. Never a green chain
  *   error        the answer came back but carries no check shape at all
  *
  * The window bounds are ISO on the wire and never on the screen: the page
