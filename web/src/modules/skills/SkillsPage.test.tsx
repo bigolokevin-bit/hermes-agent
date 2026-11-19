@@ -200,6 +200,39 @@ describe("SkillsPage", () => {
     expect(container.querySelector("[data-testid='skl4-clear']")).toBeTruthy();
   });
 
+  it("expands one row detail at a time without changing the search state", async () => {
+    window.history.replaceState({}, "", "/capabilities?tab=skills&q=");
+    fetchJsonStrict.mockResolvedValue({
+      items: [
+        { skillId: "s1", name: "资料整理", scope: "tenant-shared" },
+        { skillId: "s2", name: "质检", source: "platform", status: "active", updatedAt: "2026-11-19T05:30:00Z" },
+      ],
+    });
+    await render();
+    const searchBefore = window.location.search;
+    const toggles = [...container.querySelectorAll<HTMLButtonElement>("[data-testid='cap7-detail-toggle']")];
+    expect(toggles).toHaveLength(2);
+
+    await act(async () => toggles[0]!.click());
+    let details = [...container.querySelectorAll("[data-testid='cap7-detail-skills']")];
+    expect(details).toHaveLength(1);
+    expect(details[0]!.textContent).toContain("资料整理");
+    expect(details[0]!.textContent).toContain("/agent-api/api/skills");
+    expect(container.querySelector("[data-testid='cap7-detail-asof']")?.textContent).toContain("该字段未返回");
+    expect(container.querySelector("[data-testid='cap7-detail-asof']")?.getAttribute("title")).toContain("没有带采集时刻");
+    expect(window.location.search).toBe(searchBefore);
+
+    await act(async () => toggles[1]!.click());
+    details = [...container.querySelectorAll("[data-testid='cap7-detail-skills']")];
+    expect(details).toHaveLength(1);
+    expect(details[0]!.textContent).toContain("质检");
+    expect(details[0]!.textContent).not.toContain("资料整理");
+    expect(details[0]!.textContent).toContain("2026-11-19 13:30");
+
+    await act(async () => toggles[1]!.click());
+    expect(container.querySelectorAll("[data-testid='cap7-detail-skills']")).toHaveLength(0);
+  });
+
   it("leaks no engineering names or raw ids into the page", async () => {
     fetchJsonStrict.mockResolvedValue({
       asOf: "2026-11-19T06:00:00Z",

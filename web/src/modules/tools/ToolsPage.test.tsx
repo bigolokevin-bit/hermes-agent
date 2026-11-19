@@ -260,6 +260,34 @@ describe("four states and repro legs", () => {
   });
 });
 
+describe("row detail", () => {
+  it("opens one detail at a time and reports the read endpoint and missing asOf", async () => {
+    await mount();
+    const toggles = [...document.querySelectorAll<HTMLButtonElement>("[data-testid='cap7-detail-toggle']")];
+    expect(toggles).toHaveLength(6);
+
+    await act(async () => toggles[0]!.click());
+    let details = [...document.querySelectorAll("[data-testid='cap7-detail-tools']")];
+    expect(details).toHaveLength(1);
+    expect(details[0]!.textContent).toContain("网页搜索");
+    expect(details[0]!.textContent).toContain("/api/tools/toolsets");
+    expect(document.querySelector("[data-testid='cap7-detail-asof']")?.textContent).toContain("该字段未返回");
+    expect(document.querySelector("[data-testid='cap7-detail-asof']")?.getAttribute("title")).toContain("没有顶层采集时刻");
+    expect(document.querySelector("[data-testid='cap7-detail-updated']")?.textContent).toContain("该字段未返回");
+
+    await act(async () => toggles[5]!.click());
+    details = [...document.querySelectorAll("[data-testid='cap7-detail-tools']")];
+    expect(details).toHaveLength(1);
+    expect(details[0]!.textContent).toContain("旧连接");
+    expect(details[0]!.textContent).toContain("/api/mcp/servers");
+    expect(details[0]!.textContent).not.toContain("网页搜索");
+
+    await act(async () => toggles[5]!.click());
+    expect(document.querySelectorAll("[data-testid='cap7-detail-tools']")).toHaveLength(0);
+    expect(rows()).toHaveLength(6);
+  });
+});
+
 describe("local name search", () => {
   it("filters the loaded rows by ?q= and reports the loaded-scope note without refetching", async () => {
     await mount(answer, "/capabilities?tab=tools&q=%E7%BD%91%E9%A1%B5");

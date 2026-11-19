@@ -31,6 +31,7 @@ import { forcedStateOf, useToolsData } from "./useToolsData";
 import { CapabilityCounts, publishCapabilityCount } from "../capabilities/counts";
 import { CapabilitySearch } from "../capabilities/search";
 import { CapabilityExport } from "../capabilities/csvExport";
+import { CapabilityRowDetail } from "../capabilities/rowDetail";
 import "./tools.css";
 
 
@@ -72,9 +73,10 @@ function kindLabel(row: ToolRow): string {
   return `内置 · ${row.type}`;
 }
 
-function Row({ row }: { row: ToolRow }): ReactNode {
+function Row({ row, open, onToggle }: { row: ToolRow; open: boolean; onToggle: () => void }): ReactNode {
   const dimmed = row.status !== "enabled";
   return (
+    <>
     <div
       className={`flex min-w-0 flex-wrap items-start justify-between gap-x-4 gap-y-2 border-b border-border px-4 py-3 last:border-b-0 ${dimmed ? "opacity-60" : ""}`}
       data-testid="tol5-row"
@@ -102,6 +104,15 @@ function Row({ row }: { row: ToolRow }): ReactNode {
         ) : null}
       </div>
       <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-3 gap-y-1">
+        <button
+          type="button"
+          className="cap7-toggle"
+          aria-expanded={open}
+          onClick={onToggle}
+          data-testid="cap7-detail-toggle"
+        >
+          {open ? "收起" : "详情"}
+        </button>
         <span className="min-w-0 text-xs text-muted-foreground" data-testid="tol5-credential">
           凭据：{CREDENTIAL_LABEL[row.credential]}
           {row.credentialReason ? <span className="ml-1">{row.credentialReason}</span> : null}
@@ -121,6 +132,19 @@ function Row({ row }: { row: ToolRow }): ReactNode {
         </span>
       </div>
     </div>
+    {open ? (
+      <CapabilityRowDetail
+        name={row.name}
+        type={kindLabel(row)}
+        enabled={STATUS_LABEL[row.status]}
+        updatedAt={row.updatedAt}
+        endpoint={row.source === "mcp" ? "/api/mcp/servers" : "/api/tools/toolsets"}
+        asOf={null}
+        asOfReason="清单接口返回的是数组，没有顶层采集时刻。"
+        testid="cap7-detail-tools"
+      />
+    ) : null}
+    </>
   );
 }
 
@@ -175,6 +199,7 @@ function FailurePanel({
 
 export function ToolsPage(): ReactNode {
   const [params, setParams] = useSearchParams();
+  const [openTool, setOpenTool] = useState<string | null>(null);
   const forced = forcedStateOf(params.get("state"));
   const tools = useToolsData(forced);
   const { phase, rows } = tools;
@@ -300,7 +325,7 @@ export function ToolsPage(): ReactNode {
             <div className="border-b border-border px-4 py-2 text-xs text-muted-foreground" data-testid="tol5-tools-head">
               工具与工具集：{toolRows.length} 条
             </div>
-            {toolRows.length ? toolRows.map((row) => <Row row={row} key={row.key} />) : (
+            {toolRows.length ? toolRows.map((row) => <Row row={row} key={row.key} open={openTool === row.key} onToggle={() => setOpenTool(openTool === row.key ? null : row.key)} />) : (
               <p className="px-4 py-4 text-xs text-muted-foreground" data-testid="tol5-tools-empty">
                 工具目录已响应，没有列出工具。
               </p>
@@ -313,7 +338,7 @@ export function ToolsPage(): ReactNode {
             <div className="border-b border-border px-4 py-2 text-xs text-muted-foreground">
               MCP 连接：{mcpRows.length} 个
             </div>
-            {mcpRows.length ? mcpRows.map((row) => <Row row={row} key={row.key} />) : (
+            {mcpRows.length ? mcpRows.map((row) => <Row row={row} key={row.key} open={openTool === row.key} onToggle={() => setOpenTool(openTool === row.key ? null : row.key)} />) : (
               <p className="px-4 py-4 text-xs text-muted-foreground" data-testid="tol5-mcp-empty">
                 服务已响应，没有登记 MCP 连接；这不是加载失败。
               </p>

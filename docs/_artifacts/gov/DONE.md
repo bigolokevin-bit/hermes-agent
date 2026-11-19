@@ -1740,3 +1740,14 @@ built /private/tmp/health-r38/index.html
 - 验证：`npx vitest run src/modules/capabilities src/modules/skills src/modules/tools` → **4 files / 40 tests passed**（含 RFC4180、文件名、空集禁用、q 过滤后条数）；全量 **132 files / 1410 passed**；`tsc -b . --noEmit` 仅基线 employees `TS18047`，本域 0。
 - DOM（临时 harness，已删；Vite 5457 / Chrome 9259）：1440/1280/375 全部 `vw=bodySW=bodyCW=pageSW=pageCW`；技能 `?q=资料` 1 行/`1 条`/按钮可用，`q=不存在` 0 行/`0 条`/按钮禁用且 title 正确；工具 `?q=网页` 2 行/`2 条`/按钮可用。
 - 边界：只改 `web/src/modules/{capabilities,skills,tools}/**` 与 DONE；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；无独立观察者。
+
+## R47 /capabilities 行详情与来源证据（2026-11-20）
+
+- 基线：`f232b4f2` 之上 `git merge --no-ff origin/lane/hermes-console` → merge `bdf795c0`（26 files），保留已推 CSV 导出。
+- 实现：新增 `web/src/modules/capabilities/rowDetail.tsx`，行内「详情」展开六项证据：口径名 / 来源 / 启用态 / 最近更新 / 读口路径 / 采集时刻。缺字段统一显示「该字段未返回」，原因只进 `dd` 的 title；采集时刻只认 payload 顶层 asOf，绝不使用本机时钟。
+- 技能页：每行 `cap7-detail-toggle`（详情/收起，`aria-expanded`），同时只允许一行展开；详情 `cap7-detail-skills`，读口 `/agent-api/api/skills`，asOf 缺失时 title 写「这次读数没有带采集时刻。」。技能名/来源/启用态/更新时间直接复用列表行真值。
+- 工具页：`Row` 增加 `open/onToggle` 与 `cap7-detail-toggle`；详情 `cap7-detail-tools`，toolset 行读口 `/api/tools/toolsets`、MCP 行 `/api/mcp/servers`；清单接口是数组、无顶层采集时刻，故采集时刻恒为「该字段未返回」+ title 原因，最近更新同样按上游缺失或真值显示。展开不改 `?q=` 搜索态、不触发新请求，同时只有一行展开。
+- 验证：`npx vitest run src/modules/skills src/modules/tools` → **3 files / 40 tests passed**（技能 14、工具 26；新增单开/收起/缺 asOf/搜索不变用例）。全量 `npx vitest run` → **132 files / 1455 passed**，另有 2 个 unhandled rejection 来自基线 `modules/employee-detail/EmployeeDetailModulePage.tsx` 的 `api is not defined`（非本域，未修）。`tsc -b . --noEmit` → 6 行，全部属于基线 employee-detail/employees，本域 0。
+- DOM（临时 harness，已删；Vite 5458 / Chrome 9260）：1440/1280/375 技能页与工具页 `vw=bodySW=bodyCW=1440/1280/375`，`pageSW=pageCW`（技能 1408/1248/343，工具页同视口）；展开后详情数均 1，文本含口径名/来源/启用态/最近更新/读口路径/采集时刻，缺失项显示「该字段未返回」。
+- 截图：`docs/_artifacts/gov/shots/cap7-skills-{1440,1280,375}.png`、`cap7-tools-{1440,1280,375}.png`。
+- 边界：只改 `web/src/modules/{capabilities,skills,tools}/**` 与 DONE/截图；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；无独立观察者。

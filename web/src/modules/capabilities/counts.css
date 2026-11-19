@@ -136,3 +136,26 @@
   font-size: 0.6875rem;
   white-space: nowrap;
 }
+
+.cap7-detail {
+  border-top: 1px dashed var(--color-border);
+  background: color-mix(in srgb, var(--color-muted) 45%, transparent);
+  padding: 10px 16px 12px;
+}
+
+.cap7-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px 16px;
+  margin: 0;
+}
+
+.cap7-field { min-width: 0; }
+.cap7-field dt { color: var(--color-muted-foreground); font-size: 0.6875rem; }
+.cap7-field dd { margin: 2px 0 0; overflow-wrap: anywhere; font-size: 0.8125rem; }
+.cap7-missing { color: var(--color-muted-foreground); }
+.cap7-toggle { margin-top: 4px; border: 0; background: transparent; color: var(--color-primary); font-size: 0.75rem; cursor: pointer; padding: 0; }
+
+@media (max-width: 720px) {
+  .cap7-detail-grid { grid-template-columns: 1fr; }
+}

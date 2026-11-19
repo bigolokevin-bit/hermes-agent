@@ -5,7 +5,7 @@
 // payload, so those cells are "—" with a reason; no value is invented and no
 // sample row is shown. A missing route is reported as 未接入 with the GAP id
 // only in a tooltip. No raw field name or HTTP status reaches the page.
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { useSearchParams } from "react-router";
 
@@ -16,6 +16,7 @@ import { copyTextToClipboard } from "@/lib/clipboard";
 import { currentFixtureRid, currentFixtureState, fixtureView, type FixtureState } from "../../shell/fixtures";
 import { SKILLS_GAP, formatBeijingTime, readSkills, type SkillRow } from "./skills";
 import { CapabilityCounts, publishCapabilityCount } from "../capabilities/counts";
+import { CapabilityRowDetail } from "../capabilities/rowDetail";
 import { CapabilitySearch } from "../capabilities/search";
 import { CapabilityExport } from "../capabilities/csvExport";
 import "./skills.css";
@@ -106,6 +107,7 @@ export function SkillsPage() {
   const q = (sp.get("q") ?? "").trim();
   const [state, setState] = useState<State>({ k: "loading" });
   const [attempt, setAttempt] = useState(0);
+  const [openSkill, setOpenSkill] = useState<string | null>(null);
   const fixture = currentFixtureState();
   const forced = forcedState(fixture, currentFixtureRid());
   const retry = () => {
@@ -254,12 +256,22 @@ export function SkillsPage() {
                 </thead>
                 <tbody>
                   {visibleRows.map((row) => (
-                    <tr key={row.id} data-testid={`skl4-row-${row.id}`} title={row.id}>
+                    <Fragment key={row.id}>
+                    <tr data-testid={`skl4-row-${row.id}`} title={row.id}>
                       <td>
                         <span className="skl4-cell">
                           <span className={row.name === "—" ? "skl4-missing" : ""}>{row.name}</span>
                           {row.nameReason ? <span className="skl4-reason">{row.nameReason}</span> : null}
                           {row.version ? <span className="skl4-reason">版本 {row.version}</span> : null}
+                          <button
+                            type="button"
+                            className="cap7-toggle"
+                            aria-expanded={openSkill === row.id}
+                            onClick={() => setOpenSkill((current) => (current === row.id ? null : row.id))}
+                            data-testid="cap7-detail-toggle"
+                          >
+                            {openSkill === row.id ? "收起" : "详情"}
+                          </button>
                         </span>
                       </td>
                       <td><Cell value={row.source} reason={row.sourceReason} /></td>
@@ -267,6 +279,23 @@ export function SkillsPage() {
                       <td><Cell value={row.updatedAt} reason={row.updatedAtReason} /></td>
                       <td><Badge tone="outline">{row.scope}</Badge></td>
                     </tr>
+                    {openSkill === row.id ? (
+                      <tr data-testid="cap7-detail-row-skills">
+                        <td colSpan={5}>
+                          <CapabilityRowDetail
+                            name={row.name === "—" ? null : row.name}
+                            type={row.source}
+                            enabled={row.status}
+                            updatedAt={row.updatedAt}
+                            endpoint="/agent-api/api/skills"
+                            asOf={page.asOf}
+                            asOfReason="这次读数没有带采集时刻。"
+                            testid="cap7-detail-skills"
+                          />
+                        </td>
+                      </tr>
+                    ) : null}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
