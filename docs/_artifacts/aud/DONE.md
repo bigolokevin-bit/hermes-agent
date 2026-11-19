@@ -2431,3 +2431,49 @@ The evidence pane gates on `window.__HERMES_SESSION_TOKEN__`; with a token injec
 - The pane is **not reachable at runtime on this generation**: `/knowledge?tab=evidence` is rewritten by the shell to `/knowledge?tab=spaces&panel=evidence` and the evidence live tab never mounts (measured ev5Page 0, textLen 534, same with `/audit?tab=evidence` → textLen 6148 no ev5 ids). shell/routes.ts:161 still declares the tab (`tab: 'evidence'`); the rewrite is the shell lane's, out of this write scope. Row-level pixels therefore come from module tests, while the drill-back target they point at was measured live.
 - The tenant's 50 audit events are all 审计 records, so 知识库/运行 rows have no live sample; those branches are pinned by code paths only.
 - No per-element pixel comparison; 1440/1280/375 overflow checked by sw==cw on the drill-back page only.
+
+## R34 audit window filter + CSV export (2026-11-20, base 9fedd46f / lane tip 50119b5e)
+
+### The four windows are real, measured against the running BFF
+`GET /api/audit?from=<iso>&to=<iso>&limit=50` with the session cookie (via 127.0.0.1:8092; value never printed):
+
+| window | http | events | body head |
+|---|---|---|---|
+| 最近 24 小时 | 200 | **0** | `{"events":[]}` |
+| 最近 7 天 | 200 | **50** | `{"events":[{…}]}` |
+| 最近 30 天 | 200 | **50** | same page — this tenant has nothing older in that read |
+| 自定义 (now−3d → now−1d) | 200 | **47** | `{"events":[{…}]}` |
+| inverted range | **400** | — | `{"code":"request.invalid_query","message":"'from' must not be later than 'to'"}` |
+
+So `from`/`to` are honoured, 24h really is empty on this deployment, and the service itself rejects an inverted range — hence the client-side guard below.
+
+### Live page readings (fresh build entry `assets/index-BjkYlsD7.js`; `/tmp/serve-audh.cjs` on 127.0.0.1:4210 proxying `/agent-api/*` → 8092)
+| window | url | rows | `aud01-*` | 32hex | masked codes | sw/cw (1440) |
+|---|---|---|---|---|---|---|
+| 24h | `/audit?window=24h` | 0 | 9 | 0 | 0 | 1440/1440 |
+| 7d | `/audit?window=7d` | 50 | 460 | 0 | 22 | 1440/1440 |
+| 30d | `/audit?window=30d` | 50 | 460 | 0 | 22 | 1440/1440 |
+| custom | `/audit?window=custom&from=…&to=…` | 47 | 435 | 0 | 19 | 1440/1440 |
+
+Every window kept `agent-v2-page-audit` 1, `aud01-verify` 1, `hex16` 0, `scheme` 0, raw action only in `title`, and no ISO string on screen.
+
+Export entry, measured at three widths (`/tmp/cdp-r34.cjs`):
+- `/audit?window=7d` → `exportDisabled false`, `aria-disabled "false"`, title 「导出当前筛选结果为 CSV（北京时间）」, 50 rows, sw==cw at 1440/1280/375.
+- `/audit?window=24h` (no records) → `exportDisabled true`, `aria-disabled "true"`, title 「当前筛选没有可导出的记录」, sw==cw at 1440/1280/375.
+
+### What changed
+- `window.ts`: `FilterWindowKey` (`24h|7d|30d|custom`), `FILTER_WINDOW_CHOICES`, `CUSTOM_WINDOW_LABEL`, `beijingInputValue()`, `parseBeijingInput()`, `customBounds()`, `filterWindowOf()`; private `instantOf()` accepts an ISO instant **or** a Beijing wall-clock value.
+- `export.ts` (new): `CSV_HEADER` = 时间 / 类型 / 结果 / 操作者 / 对象 / 请求编号; `csvText()` writes a BOM, CRLF rows, BJT minutes, and an empty cell for a missing value (never `0`); `exportName()` = `audit-<窗口>-YYYYMMDD-HHmm.csv` in Beijing time; `downloadCsv()` uses `window.Blob` + `URL.createObjectURL` + a temporary `<a download>` and revokes the URL.
+- `useAuditData.ts`: `useAuditList(forced, asked, enabled = true)`; when `enabled` is false the effect bumps the sequence and returns **without asking**.
+- `AuditEventsModulePage.tsx`: the window now lives in the address (`?window=` plus `?from=`/`?to=` for custom, written with `replace` so refresh keeps it); custom renders two `datetime-local` inputs (`aud01-custom-from`/`aud01-custom-to`) with `aud01-custom-error`; an incomplete custom window paints `aud01-custom-hint`, asks nothing (no fallback to an unfiltered scan), and disables both 完整性校验 and 导出; `aud01-export` added to the top row and the list branches gated on `!customInvalid`; all `aud01-*` / `agent-v2-page-audit` ids preserved.
+- Defect found by the new tests: `customBounds` was re-suffixing an ISO instant with `+08:00`, so `Date.parse` returned NaN and **every** custom window looked incomplete (no request at all). Fixed with `instantOf()`.
+
+### Gates
+- `vitest run src/modules/audit` → exit 0, **10 files / 153 tests** (base 8 / 142; new `window.test.ts`, `export.test.ts`, 4 page cases).
+- `npx tsc -b . --noEmit` → exit 2, **72** errors, `modules/audit` **0** (floor is foreign: 49 `apps/shared`, approvals 14, duty 5, LoginPage.test 2, tasks test 1, security 1).
+- `eslint src/modules/audit` → exit 0, 0 errors / 4 pre-existing warnings.
+
+### Not done / not provable here
+- No real browser click-through of the download (jsdom asserts the Blob body, the header, the row count and the filename; a browser save dialog is outside this harness).
+- No per-element pixel diff — only `sw==cw` plus text length at three widths.
+- 9122 was not rebuilt and main was not merged, per the order.
