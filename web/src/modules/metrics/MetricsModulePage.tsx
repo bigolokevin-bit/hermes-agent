@@ -112,6 +112,18 @@ interface BreakdownLine {
   asOf: string | null;
 }
 
+interface CmpRow {
+  id: UsageWindowId;
+  label: string;
+  runs: number | null;
+  prevRuns: number | null;
+  cost: number | null;
+  prevCost: number | null;
+  basis: string;
+}
+
+type CmpState = { kind: 'loading' } | UsageBlock<CmpRow[]>;
+
 type BudgetState =
   | { kind: 'loading' }
   | UsageBlock<{ lines: BudgetLine[]; asOf: string | null; total: number | null; windowLabel: string }>;
@@ -246,6 +258,7 @@ export function MetricsModulePage() {
   const [breakdown, setBreakdown] = useState<BreakdownState>({ kind: 'loading' });
   const [heat, setHeat] = useState<HeatState>({ kind: 'loading' });
   const [budget, setBudget] = useState<BudgetState>({ kind: 'loading' });
+  const [cmp, setCmp] = useState<CmpState>({ kind: 'loading' });
   const [heatAt, setHeatAt] = useState<string>(new Date().toISOString());
   const [attempt, setAttempt] = useState(0);
   const [selected, setSelected] = useState<{ dow: number; hour: number } | null>(null);
@@ -624,6 +637,98 @@ export function MetricsModulePage() {
     };
   }, [attempt, forced, loadBudget, usageWindow.id]);
 
+  const loadCmp = useCallback(async (signal: { live: boolean }) => {
+    setCmp({ kind: 'loading' });
+    const now = new Date();
+    const today = beijingDayKey(now);
+    const monthKey = today.slice(0, 7);
+    const prevMonthDate = new Date(`${monthKey}-01T00:00:00+08:00`);
+    prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
+    const prevMonth = beijingDayKey(prevMonthDate).slice(0, 7);
+    const dayKeys = (count: number, offset = 0) =>
+      Array.from({ length: count }, (_, index) =>
+        beijingDayKey(new Date(now.getTime() - (offset + index) * 86_400_000)),
+      );
+
+    try {
+      const directory = employeeIdsOf(await fetchJsonStrict('/agent-api/api/employees?limit=200'));
+      const sumLedger = async (kind: 'day' | 'month', keys: string[]): Promise<number | null> => {
+        const bodies = await Promise.all(
+          keys.flatMap((key) =>
+            chunkIds(directory.ids).map((ids) =>
+              fetchJsonStrict(
+                `/agent-api/api/budget-usage?employeeId=${ids.map(encodeURIComponent).join(',')}` +
+                  `&periodKind=${kind}&period=${encodeURIComponent(key)}`,
+              ),
+            ),
+          ),
+        );
+        const rows: LedgerRow[] = [];
+        for (const body of bodies) {
+          const parsed = readLedger(body);
+          if (parsed.kind === 'invalid') {
+            throw new ApiError(parsed.reason, { status: 200, body: '', url: 'budget-usage' });
+          }
+          rows.push(...parsed.rows);
+        }
+        return ledgerTotal(rows);
+      };
+      const runsFor = async (from: string, to: string): Promise<number | null> => {
+        const parsed = readRunStats(
+          await fetchJsonStrict(
+            `/agent-api/api/run-stats?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&bucket=day`,
+          ),
+        );
+        if (parsed.kind !== 'ok') throw new ApiError(parsed.reason, { status: 200, body: '', url: 'run-stats' });
+        return parsed.stats.totals.runs;
+      };
+
+      const to = now.toISOString();
+      const specs = [
+        { id: '24h' as const, label: '最近 24 小时', hours: 24, kind: 'day' as const, keys: dayKeys(1), prevKeys: dayKeys(1, 1) },
+        { id: '7d' as const, label: '最近 7 天', hours: 168, kind: 'day' as const, keys: dayKeys(7), prevKeys: dayKeys(7, 7) },
+        { id: '30d' as const, label: '最近 30 天', hours: 720, kind: 'month' as const, keys: [monthKey], prevKeys: [prevMonth] },
+      ];
+
+      const rows = await Promise.all(
+        specs.map(async (spec) => {
+          const from = new Date(now.getTime() - spec.hours * 3_600_000).toISOString();
+          const prevFrom = new Date(now.getTime() - spec.hours * 2 * 3_600_000).toISOString();
+          const [runs, prevRuns, cost, prevCost] = await Promise.all([
+            runsFor(from, to),
+            runsFor(prevFrom, from),
+            sumLedger(spec.kind, spec.keys),
+            sumLedger(spec.kind, spec.prevKeys),
+          ]);
+          return {
+            id: spec.id,
+            label: spec.label,
+            runs,
+            prevRuns,
+            cost,
+            prevCost,
+            basis: spec.kind === 'month' ? '本月 vs 上月（账本按月落账）' : `${spec.hours / 24} 天 vs 前 ${spec.hours / 24} 天`,
+          };
+        }),
+      );
+
+      if (!signal.live) return;
+      setCmp({ kind: 'ready', value: rows });
+    } catch (error) {
+      if (!signal.live) return;
+      setCmp({ kind: 'unavailable', ...blockFailure(error) });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (forced) return;
+    const signal = { live: true };
+    void loadCmp(signal);
+    return () => {
+      signal.live = false;
+    };
+  }, [attempt, forced, loadCmp]);
+
   const view: PageState = forced
     ? forced === 'loading'
       ? { kind: 'loading' }
@@ -703,6 +808,22 @@ export function MetricsModulePage() {
       : null;
   const sparkPeak = spark && spark.max !== null && spark.max > 0 ? spark.max : 1;
   const monthSnapshot = usageReady && usageReady.month.kind === 'ready' ? usageReady.month.value : null;
+  const cmpView: CmpState = forced
+    ? forced === 'loading'
+      ? { kind: 'loading' }
+      : forced === 'empty'
+        ? { kind: 'ready', value: [] }
+        : {
+            kind: 'unavailable',
+            reason:
+              forced === 'denied'
+                ? '这项数据当前读不到：可能还没有接入，也可能当前账号没有查看权限。'
+                : '这次没能读取这项数据，请稍后重试。',
+            gap: forced === 'denied' ? USAGE_GAP : null,
+            requestId: null,
+          }
+    : cmp;
+
   const budgetView: BudgetState = forced
     ? forced === 'loading'
       ? { kind: 'loading' }
@@ -1420,6 +1541,75 @@ export function MetricsModulePage() {
                 <p className="met6-hint">
                   色阶只表达返回过的运行密度；返回 0 的格子是「这一小时真的没跑」，接口没返回的格子标「无数据」，两者不混。成本没有小时粒度，tooltip 里统一显示「—」。左右滑动看 12–23 点。
                 </p>
+              </>
+            ) : null}
+          </div>
+
+          <div className="met6-cmp" data-testid="met6-cmp">
+            <div className="met6-cat-head"><h3>窗口对比（较上一周期）</h3></div>
+            {cmpView.kind === 'loading' ? (
+              <Card data-testid="met6-cmp-loading"><CardContent className="p-4"><div className="met5-skeleton h-24 w-full" /></CardContent></Card>
+            ) : null}
+            {cmpView.kind === 'unavailable' ? (
+              <Card data-testid="met6-cmp-unavailable">
+                <CardContent className="space-y-2 p-4">
+                  <p className="font-medium">这份窗口对比暂时读不到</p>
+                  <p className="text-sm text-muted-foreground" title={cmpView.gap ?? undefined}>{cmpView.reason}</p>
+                  <RequestId id={cmpView.requestId} />
+                  <Button size="sm" outlined onClick={() => setAttempt((value) => value + 1)} data-testid="met6-cmp-retry">重试</Button>
+                </CardContent>
+              </Card>
+            ) : null}
+            {cmpView.kind === 'ready' && cmpView.value.length === 0 ? (
+              <Card data-testid="met6-cmp-empty">
+                <CardContent className="space-y-2 p-4">
+                  <p className="font-medium">没有可对比的窗口</p>
+                  <p className="text-sm text-muted-foreground">运行统计与账本都没有返回可比的数字，这里不补 0。</p>
+                </CardContent>
+              </Card>
+            ) : null}
+            {cmpView.kind === 'ready' && cmpView.value.length > 0 ? (
+              <>
+                <div className="met6-table-scroll">
+                  <table className="met6-table" data-testid="met6-cmp-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">窗口</th>
+                        <th scope="col">运行数</th>
+                        <th scope="col">较上一周期</th>
+                        <th scope="col">成本</th>
+                        <th scope="col">较上一周期</th>
+                        <th scope="col">口径</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cmpView.value.map((row) => {
+                        const runsDelta = deltaOf(row.runs, row.prevRuns, 'runs');
+                        const costDelta = deltaOf(row.cost, row.prevCost, 'usd');
+                        return (
+                          <tr key={row.id} data-testid={`met6-cmp-row-${row.id}`}>
+                            <td>{row.label}</td>
+                            <td className="met6-num">{formatCount(row.runs)}</td>
+                            <td className="met6-num" data-testid={`met6-cmp-runs-delta-${row.id}`}
+                              title={runsDelta.kind === 'none' ? runsDelta.reason : '与上一等长窗口的运行数比较'}>
+                              {formatDeltaCount(runsDelta)}
+                            </td>
+                            <td className="met6-num" data-testid={`met6-cmp-cost-${row.id}`}
+                              title={row.cost === null ? '这个窗口的账本没有实扣行' : '账本实扣 USD'}>
+                              {formatUsd(row.cost)}
+                            </td>
+                            <td className="met6-num" data-testid={`met6-cmp-cost-delta-${row.id}`}
+                              title={costDelta.kind === 'none' ? costDelta.reason : '账本实扣，与上一等长窗口比较'}>
+                              {formatDeltaUsd(costDelta)}
+                            </td>
+                            <td className="met6-rowsub">{row.basis}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="met6-hint">成本只认账本实扣；没有实扣行显示「—」，真实 0 显示零额；差值只做对比，不是花费预测。</p>
               </>
             ) : null}
           </div>
