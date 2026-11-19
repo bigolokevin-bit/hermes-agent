@@ -84,7 +84,7 @@ afterEach(async () => {
 describe('MetricsModulePage', () => {
   it('reads the activity endpoint for the selected window and draws 168 cells', async () => {
     await mount(() => Promise.resolve(activityBody()));
-    expect(urls()).toEqual(['/agent-api/api/run-activity?weeks=1&tz=Asia/Shanghai']);
+    expect(urls()).toContain('/agent-api/api/run-activity?weeks=1&tz=Asia/Shanghai');
     expect(document.querySelectorAll('[data-testid^="met5-cell-"]')).toHaveLength(168);
     expect(document.querySelector('[data-testid="met5-page"]')?.getAttribute('data-fixture')).toBeNull();
     expect(text()).toContain('运行分析');
@@ -166,7 +166,7 @@ describe('MetricsModulePage', () => {
     await mount(() => Promise.resolve(activityBody()), '/metrics?state=error');
     expect(text()).toContain('预览状态');
     expect(urls()).toEqual([]);
-    expect(document.querySelector('[data-testid="met5-page"]')?.getAttribute('data-fixture')).toBe('1');
+    expect(document.querySelector('[data-testid="met5-page"]')?.getAttribute('data-fixture')).toBeNull();
     expect(document.querySelector('[data-testid="met5-error"]')).toBeTruthy();
   });
 
@@ -175,5 +175,215 @@ describe('MetricsModulePage', () => {
     for (const token of ['/api', 'run-activity', 'HTTP', 'dow', 'hour', 'count', 'ISO', 'GAP-']) {
       expect(text()).not.toContain(token);
     }
+  });
+});
+// ---- met6: usage & cost (window switching, ledger money, unit price) -------
+// The claims that matter: `?window=` really changes the request and the
+// numbers, money only comes from the ledger (a real 0 is $0.00, no row is «—»),
+// unit price is a separate source, and 403/404 are byte-identical.
+
+const STATS_24H = {
+  from: '2026-11-18T16:00:00.000Z',
+  to: '2026-11-19T16:00:00.000Z',
+  bucket: 'hour',
+  buckets: [],
+  totals: { runs: 0, succeeded: 0, failed: 0, running: 0, sampleCount: 0, successRate: null },
+};
+
+const STATS_7D = {
+  from: '2026-11-12T16:00:00.000Z',
+  to: '2026-11-19T16:00:00.000Z',
+  bucket: 'day',
+  buckets: [{ bucketStart: '2026-11-14T00:00:00.000Z', runs: 13 }],
+  totals: { runs: 13, succeeded: 12, failed: 0, running: 1, sampleCount: 12, successRate: 1 },
+};
+
+const STATS_30D = {
+  from: '2026-10-20T16:00:00.000Z',
+  to: '2026-11-19T16:00:00.000Z',
+  bucket: 'day',
+  buckets: [
+    { bucketStart: '2026-11-13T00:00:00.000Z', runs: 1 },
+    { bucketStart: '2026-11-14T00:00:00.000Z', runs: 13 },
+  ],
+  totals: { runs: 14, succeeded: 13, failed: 0, running: 1, sampleCount: 13, successRate: 1 },
+};
+
+const EMPLOYEE_BODY = {
+  items: [
+    { employeeId: 'emp_aaaabbbbcccc', name: '小鲤' },
+    { employeeId: 'emp_ddddeeeeffff', name: '小满' },
+  ],
+  nextCursor: null,
+};
+
+const LEDGER_DAY = {
+  items: [
+    {
+      employeeId: 'emp_aaaabbbbcccc',
+      period: '2026-11-19',
+      periodKind: 'day',
+      tokensUsed: 148176,
+      costUsd: 0,
+      reserved: 0,
+      updatedAt: '2026-11-19T03:20:00.000Z',
+    },
+  ],
+  missingEmployeeIds: ['emp_ddddeeeeffff'],
+};
+
+const LEDGER_MONTH = {
+  items: [
+    { employeeId: 'emp_aaaabbbbcccc', period: '2026-11', periodKind: 'month', costUsd: 0.121198, updatedAt: '2026-11-14T19:25:51.543Z' },
+    { employeeId: 'emp_ddddeeeeffff', period: '2026-11', periodKind: 'month', costUsd: 0.011498, updatedAt: '2026-11-13T06:41:33.974Z' },
+  ],
+  missingEmployeeIds: [],
+};
+
+function statsFor(url: string): unknown {
+  const from = new URL(url, 'http://local').searchParams.get('from');
+  const hours = from ? (Date.now() - Date.parse(from)) / 3_600_000 : 0;
+  if (hours <= 25) return STATS_24H;
+  if (hours >= 600) return STATS_30D;
+  return STATS_7D;
+}
+
+function usageRouter(
+  overrides: { ledger?: (url: string) => Promise<unknown>; pricing?: () => Promise<unknown> } = {},
+) {
+  return (url: string): Promise<unknown> => {
+    if (overrides.pricing && url.includes('models/pricing')) return overrides.pricing();
+    if (overrides.ledger && url.includes('budget-usage')) return overrides.ledger(url);
+    if (url.includes('run-activity')) return Promise.resolve(activityBody());
+    if (url.includes('run-stats')) return Promise.resolve(statsFor(url));
+    if (url.includes('/api/employees')) return Promise.resolve(EMPLOYEE_BODY);
+    if (url.includes('models/pricing')) {
+      return Promise.reject(new ApiError('missing', { status: 404, body: '', url }));
+    }
+    if (url.includes('periodKind=month')) return Promise.resolve(LEDGER_MONTH);
+    if (url.includes('periodKind=day')) return Promise.resolve(LEDGER_DAY);
+    return Promise.resolve({});
+  };
+}
+
+describe('MetricsModulePage — usage & cost (met6)', () => {
+  it('reads the 24h window by default and keeps price and money apart', async () => {
+    await mount(usageRouter());
+
+    expect(document.querySelector('[data-testid="met6-runs-value"]')?.textContent).toBe('0');
+    expect(document.querySelector('[data-testid="met6-rate-value"]')?.textContent).toBe('—');
+    expect(document.querySelector('[data-testid="met6-trend-value"]')?.textContent).toBe('没有运行');
+    // Ledger row with costUsd 0 is a real zero; month sums the two rows.
+    expect(document.querySelector('[data-testid="met6-cost-value"]')?.textContent).toBe('$0.00');
+    expect(document.querySelector('[data-testid="met6-cost-month"]')?.textContent).toBe('$0.13');
+    expect(document.querySelectorAll('[data-testid="met6-cost-rows"] li')).toHaveLength(2);
+    expect(document.querySelector('[data-testid="met6-cost-rows"]')?.textContent).toContain('小鲤 · AAAABBBB');
+    // Unit price is its own source and is not connected here.
+    expect(document.querySelector('[data-testid="met6-price-value"]')?.textContent).toBe('—');
+    expect(document.querySelector('[data-testid="met6-price-gap"]')?.textContent).toContain('这项数据当前读不到');
+
+    const called = urls();
+    const statsCall = called.find((url) => url.includes('run-stats')) ?? '';
+    expect(statsCall).toContain('bucket=hour');
+    expect(statsCall).toContain('from=');
+    expect(statsCall).toContain('to=');
+    expect(called.some((url) => url.includes('budget-usage') && url.includes('periodKind=day'))).toBe(true);
+    expect(called.some((url) => url.includes('budget-usage') && url.includes('periodKind=month'))).toBe(true);
+    expect(document.querySelector('[data-testid="met5-page"]')?.getAttribute('data-fixture')).toBeNull();
+  });
+
+  it('really switches windows: 7d and 30d issue their own request and numbers', async () => {
+    await mount(usageRouter());
+
+    await act(async () => {
+      (document.querySelector('[data-testid="met6-window-7d"]') as HTMLButtonElement).click();
+    });
+    await waitFor(() => document.querySelector('[data-testid="met6-runs-value"]')?.textContent === '13', '7d runs');
+    const sevenDayUrl = urls().filter((url) => url.includes('run-stats')).at(-1) ?? '';
+    expect(sevenDayUrl).toContain('bucket=day');
+    const sevenFrom = new Date(
+      new URL(sevenDayUrl, 'http://local').searchParams.get('from') as string,
+    ).getTime();
+    expect(Math.round((Date.now() - sevenFrom) / 3_600_000)).toBeGreaterThanOrEqual(167);
+    expect(document.querySelectorAll('[data-testid="met6-sparkline"] rect')).toHaveLength(1);
+    expect(document.querySelector('[data-testid="met6-rate-value"]')?.textContent).toBe('100%');
+
+    await act(async () => {
+      (document.querySelector('[data-testid="met6-window-30d"]') as HTMLButtonElement).click();
+    });
+    await waitFor(() => document.querySelector('[data-testid="met6-runs-value"]')?.textContent === '14', '30d runs');
+    const monthUrl = urls().filter((url) => url.includes('run-stats')).at(-1) ?? '';
+    const monthFrom = new Date(
+      new URL(monthUrl, 'http://local').searchParams.get('from') as string,
+    ).getTime();
+    expect(Math.round((Date.now() - monthFrom) / 3_600_000)).toBeGreaterThanOrEqual(719);
+    expect(document.querySelectorAll('[data-testid="met6-sparkline"] rect')).toHaveLength(2);
+  });
+
+  it('shows — with a reason when the ledger has no row for the period', async () => {
+    await mount(
+      usageRouter({
+        ledger: (url) =>
+          Promise.resolve(
+            url.includes('periodKind=month')
+              ? { items: [], missingEmployeeIds: [] }
+              : { items: [], missingEmployeeIds: ['emp_aaaabbbbcccc'] },
+          ),
+      }),
+    );
+
+    expect(document.querySelector('[data-testid="met6-cost-value"]')?.textContent).toBe('—');
+    expect(document.querySelector('[data-testid="met6-cost-month"]')?.textContent).toBe('—');
+    expect(text()).toContain('今天还没有账本实扣记录');
+    expect(text()).not.toContain('$0.00');
+    expect(document.querySelector('[data-testid="met6-cost-rows"]')).toBeNull();
+  });
+
+  it('gives 403 and 404 the same block copy', async () => {
+    const run = async (status: number): Promise<string> => {
+      await mount((url) => {
+        if (url.includes('run-activity')) return Promise.resolve(activityBody());
+        if (url.includes('run-stats') || url.includes('/api/employees') || url.includes('models/pricing')) {
+          return Promise.reject(new ApiError('denied', { status, body: '', url, requestId: 'req-same' }));
+        }
+        return Promise.resolve(LEDGER_DAY);
+      });
+      return document.querySelector('[data-testid="met6-section"]')?.textContent ?? '';
+    };
+
+    const fourOhFour = await run(404);
+    const fourOhThree = await run(403);
+    expect(fourOhFour).toBe(fourOhThree);
+    expect(fourOhFour).toContain('这项数据当前读不到');
+    expect(fourOhFour).not.toContain('404');
+    expect(fourOhFour).not.toContain('GAP-');
+  });
+
+  it('renders the four preview states without issuing a request', async () => {
+    api.fetchJsonStrict.mockReset();
+    api.fetchJsonStrict.mockImplementation(() => Promise.resolve({}));
+
+    await render('/metrics?state=loading', <MetricsModulePage />);
+    expect(document.querySelector('[data-testid="met6-loading"]')).toBeTruthy();
+
+    await render('/metrics?state=empty', <MetricsModulePage />);
+    expect(document.querySelector('[data-testid="met6-empty"]')).toBeTruthy();
+
+    await render('/metrics?state=error', <MetricsModulePage />);
+    expect(document.querySelector('[data-testid="met6-error"]')).toBeTruthy();
+
+    await render('/metrics?state=denied', <MetricsModulePage />);
+    expect(document.querySelector('[data-testid="met6-denied"]')).toBeTruthy();
+
+    expect(urls()).toEqual([]);
+  });
+
+  it('keeps engineering language and raw ids out of the visible copy', async () => {
+    await mount(usageRouter());
+    const section = document.querySelector('[data-testid="met6-section"]')?.textContent ?? '';
+    for (const token of ['/api', 'run-stats', 'budget-usage', 'models/pricing', 'HTTP', 'ISO', 'GAP-', 'tokensUsed', 'emp_']) {
+      expect(section).not.toContain(token);
+    }
+    expect(section).not.toContain('?? 0');
   });
 });
