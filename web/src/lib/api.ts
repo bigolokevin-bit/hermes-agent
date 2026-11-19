@@ -176,12 +176,19 @@ export async function fetchJSON<T>(
     throw err;
   }
   if (res.status === 401) {
-    // Phase 6: the gated middleware emits a structured envelope so the
-    // SPA can full-page-navigate to /login on session expiry. Parse it,
-    // and only redirect on the known error codes — domain-level 401s
-    // (e.g. "you don't have permission to read this monitor") bubble
-    // up as regular errors so callers can handle them.
-    let body: { error?: string; login_url?: string } = {};
+    // R7.1 item 1: the console surfaces (/overview /employees /matrix
+    // /approvals /runs /audit) render their own honest「需要登录」state with a
+    // retry and an exit. On those paths a 401 must NOT trigger a login
+    // redirect or a stale-token reload — either one leaves the surface on an
+    // endless Loading skeleton or a blank screen. Fall through to the
+    // structured error below instead.
+    if (!CONSOLE_SURFACE_PATH_RE.test(window.location.pathname)) {
+      // Phase 6: the gated middleware emits a structured envelope so the
+      // SPA can full-page-navigate to /login on session expiry. Parse it,
+      // and only redirect on the known error codes — domain-level 401s
+      // (e.g. "you don't have permission to read this monitor") bubble
+      // up as regular errors so callers can handle them.
+      let body: { error?: string; login_url?: string } = {};
     try {
       body = await res.clone().json();
     } catch {
@@ -227,6 +234,7 @@ export async function fetchJSON<T>(
         return pendingAuthNavigation<T>(url);
       }
     }
+    }
   }
   if (res.ok) {
     // Clear the stale-token reload guard: a successful 2xx proves the
@@ -249,6 +257,12 @@ export async function fetchJSON<T>(
 // redirect or stale-token reload). Normally the page unloads and this never
 // fires; if the navigation is blocked, the promise rejects after a grace
 // period with the plain 「需要登录」 error so the UI exits Loading.
+// R7.1 item 1: SPA paths that render their own「需要登录」error state instead
+// of being redirected to /login. Keep in sync with the console surface
+// routes in App.tsx (/overview /employees /matrix /approvals /runs /audit).
+const CONSOLE_SURFACE_PATH_RE =
+  /^\/(overview|employees|matrix|approvals|runs|audit|knowledge|tasks|work|identity|system)(\/|\?|#|$)/;
+
 function pendingAuthNavigation<T>(url: string): Promise<T> {
   return new Promise<T>((_, reject) => {
     setTimeout(() => reject(authExpiredError(url)), AUTH_NAVIGATION_GRACE_MS);

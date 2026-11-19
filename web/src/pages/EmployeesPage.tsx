@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 /**
  * 数字员工列表页（只读）。
  *
- * 数据来自 BFF（Caddy 代理到 8092）：先试 `/agent-api/api/matrix`，拿不到再退到
+ * 数据来自 BFF：先试 `/agent-api/api/v1/matrix/employees`，拿不到再退到
  * `/agent-api/api/employees`。两个都失败时如实降级，绝不编造行。本页不写任何数据，
  * 唯一可点的东西就是跳转。
  *
@@ -177,6 +177,25 @@ export function displayName(
 
 export function idOf(obj: Rec): string | null {
   return pickStr(obj, ["id", "employee_id", "emp_id", "agent_id", "user_id", "key"]);
+}
+
+/**
+ * 详情入口用的行 id（R7.1 item 4）：优先真实的员工 id 字段；纯数字的行号（旧
+ * 演示矩阵的 "1"/"2"）永不作链接；再退到 agent 引用的 emp_/agent_ 编码，最后
+ * 才是信封键 _key（非纯数字时）。
+ */
+export function rowId(row: Rec): string | null {
+  const stable = pickStr(row, ["employee_id", "emp_id", "agent_id"]);
+  if (stable) return stable;
+  const plain = idOf(row);
+  if (plain && !/^-?\d+(\.\d+)?$/.test(plain)) return plain;
+  const agent = pickStr(row, ["agent", "agent_key", "employee"]);
+  if (agent && /^(emp|agent|bot|human)[_-]/i.test(agent)) return agent;
+  const envelope = row._key;
+  if (typeof envelope === "string" && envelope && !/^-?\d+(\.\d+)?$/.test(envelope)) {
+    return envelope;
+  }
+  return plain;
 }
 export function nameOf(obj: Rec): string | null {
   return pickStr(obj, ["name", "display_name", "full_name", "label", "title", "nickname"]);
@@ -341,7 +360,11 @@ export function requestIdOf(err: unknown): string | null {
   return scan(parsed, 0);
 }
 
-/** 兼容裸数组 / {employees} / {items} / {results} / {data} / {rows} / {matrix} 等信封。 */
+/**
+ * 兼容裸数组 / {employees} / {items} / {results} / {data} / {rows} / {matrix} 等信封。
+ * 单层 { "<id>": {...} } 矩阵形状时把信封键存进 _key：行内没有 string id 时，
+ * 详情入口靠它（R7.1 item 4）。
+ */
 export function asRows(raw: unknown): Rec[] {
   if (Array.isArray(raw)) return raw.filter(isRecord);
   if (isRecord(raw)) {
@@ -350,8 +373,10 @@ export function asRows(raw: unknown): Rec[] {
       if (Array.isArray(v)) return v.filter(isRecord);
     }
     // 单层 { <id>: {...} } 矩阵形状
-    const vals = Object.values(raw);
-    if (vals.length > 0 && vals.every(isRecord)) return vals as Rec[];
+    const entries = Object.entries(raw);
+    if (entries.length > 0 && entries.every(([, v]) => isRecord(v))) {
+      return entries.map(([key, v]) => ({ ...(v as Rec), _key: key }));
+    }
   }
   return [];
 }
@@ -400,7 +425,10 @@ export function useResourceList(urls: string[]): {
 // ── 页面 ─────────────────────────────────────────────────────────────────
 
 export default function EmployeesPage() {
-  const { state, reload } = useResourceList(["/agent-api/api/matrix", "/agent-api/api/employees"]);
+  const { state, reload } = useResourceList([
+    "/agent-api/api/v1/matrix/employees",
+    "/agent-api/api/employees",
+  ]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -461,7 +489,7 @@ function EmployeesTable({ rows }: { rows: Rec[] }) {
         </div>
         <ul className="divide-y divide-border" data-testid="emp-l-list">
           {rows.map((row, i) => (
-            <EmployeeRow key={idOf(row) ?? `row-${i}`} row={row} />
+            <EmployeeRow key={rowId(row) ?? `row-${i}`} row={row} />
           ))}
         </ul>
       </CardContent>
@@ -470,8 +498,10 @@ function EmployeesTable({ rows }: { rows: Rec[] }) {
 }
 
 function EmployeeRow({ row }: { row: Rec }) {
-  const id = idOf(row);
-  const dn = displayName(nameOf(row), id);
+  // R7.1 item 4/6: the link id is the real employee id (never a row number),
+  // and the visible name carries the 8-digit code for same-name disambiguation.
+  const id = rowId(row);
+  const dn = displayName(nameOf(row), id ?? idOf(row));
 
   const cells = (
     <>

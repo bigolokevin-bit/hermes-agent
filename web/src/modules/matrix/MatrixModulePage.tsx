@@ -8,7 +8,6 @@ import { ApiError } from "@/lib/api-error";
 
 import {
   buildMatrixView,
-  MATRIX_FIXTURE,
   readMatrixPayload,
   type MatrixCellState,
   type MatrixPayload,
@@ -81,7 +80,7 @@ export function MatrixModulePage() {
     setPhase("loading");
     setErrorNote(null);
     // reuse: /v1/matrix/employees
-    fetchJSON<unknown>("/agent-api/api/matrix")
+    fetchJSON<unknown>("/agent-api/api/v1/matrix/employees")
       .then((body) => {
         if (!live) return;
         const next = readMatrixPayload(body);
@@ -93,10 +92,12 @@ export function MatrixModulePage() {
         const status = error instanceof ApiError ? error.status : 0;
         const requestId = error instanceof ApiError ? (error.requestId ?? null) : null;
         if (status === 404 || status === 0) {
-          // The BFF route is not wired yet: preview the layout from the fixture,
-          // and say so on the page rather than pretending it is live.
-          setPayload(MATRIX_FIXTURE);
-          setPhase("ready");
+          // R7.1 item 2: an unwired or unreachable endpoint is reported as it
+          // is — the page shows the honest「看不到/没接上」state with the
+          // request number and a retry. No fixture table may impersonate live
+          // data, ever.
+          setPhase("denied");
+          setErrorNote({ requestId, detail: "后台还没有提供这份矩阵（或暂时连不上）" });
           return;
         }
         if (status === 403) {
@@ -251,14 +252,30 @@ export function MatrixModulePage() {
           {phase === "error" ? (
             <div className="flex flex-col items-center gap-2 py-10 text-center" data-testid="matrix-error">
               <TriangleAlert className="size-8 text-rose-300/80" aria-hidden="true" />
-              <p className="text-sm text-white/80">这份矩阵没能读出来</p>
-              <p className="max-w-md text-xs text-white/50">刚才的读取没有改动任何东西，可以重试一次。</p>
+              <p className="text-sm text-white/80">
+                {errorNote?.detail?.startsWith("需要登录") ? "需要登录" : "这份矩阵没能读出来"}
+              </p>
+              <p className="max-w-md text-xs text-white/50">
+                {errorNote?.detail?.startsWith("需要登录")
+                  ? "这个页面的登录状态已经失效。重新登录后就能继续查看，这些内容不会丢失。"
+                  : "刚才的读取没有改动任何东西，可以重试一次。"}
+              </p>
               <p className="text-xs text-white/40">
                 {errorNote?.requestId ? `请求编号：${errorNote.requestId}` : "本次请求未记录编号，可复制时间与操作路径反馈"}
               </p>
               <Button size="sm" outlined onClick={retry} data-testid="matrix-error-retry">
                 重试
               </Button>
+              {errorNote?.detail?.startsWith("需要登录") ? (
+                <Button
+                  size="sm"
+                  outlined
+                  data-testid="auth-reload-exit"
+                  onClick={() => window.location.reload()}
+                >
+                  刷新重新登录
+                </Button>
+              ) : null}
             </div>
           ) : null}
 

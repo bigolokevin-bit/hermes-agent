@@ -80,6 +80,38 @@ describe("fetchJSON", () => {
     expect(reloadMocks.clearDashboardTokenReloadAttempt).not.toHaveBeenCalled();
   });
 
+  it("rejects structured 401s on console surfaces instead of redirecting (R7.1 item 1)", async () => {
+    const original = window.location;
+    const assign = vi.fn();
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { pathname: "/employees", search: "", hash: "", href: "http://localhost/employees", origin: "http://localhost", assign, reload: vi.fn() },
+    });
+    try {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => ({
+          ok: false,
+          status: 401,
+          statusText: "Unauthorized",
+          clone: () => ({ json: async () => ({ error: "unauthenticated", login_url: "/login?next=/x" }) }),
+          text: async () => JSON.stringify({ error: "unauthenticated", request_id: "req-401-console" }),
+          headers: new Headers({ "x-request-id": "req-401-console" }),
+        })),
+      );
+      // On /employees the 401 must surface as a structured error the page can
+      // render (「需要登录」 + request id + retry) — never a login redirect or
+      // a stale-token reload that leaves the surface hanging on Loading.
+      await expect(fetchJSON("/agent-api/api/employees")).rejects.toMatchObject({
+        status: 401,
+      });
+      expect(assign).not.toHaveBeenCalled();
+      expect(reloadMocks.attemptDashboardTokenReloadOnce).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(window, "location", { configurable: true, value: original });
+    }
+  });
+
   it("clears the reload latch after a successful response", async () => {
     vi.stubGlobal(
       "fetch",

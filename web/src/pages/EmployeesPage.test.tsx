@@ -194,3 +194,38 @@ describe("EmployeesPage", () => {
     expect(container.querySelector('[aria-busy="true"]')).toBeFalsy();
   });
 });
+
+describe("EmployeesPage (R7.1 item 4/6 — real detail links and same-name codes)", () => {
+  it("live /v1/matrix/employees envelope rows link by real agent id, not row numbers", async () => {
+    fetchJSON.mockImplementation((url: string) =>
+      url.includes("/api/v1/matrix/employees")
+        ? Promise.resolve({
+            "1": {
+              name: "AgentOS 产品助理",
+              agent: "emp_41018EB4A68341AE8FA0B34856AE01F7",
+              lifecycle: "active",
+            },
+            "2": {
+              name: "AgentOS 产品助理",
+              agent: "emp_80C8938810144061B7238B79F23DD4BD",
+              lifecycle: "onboarding",
+            },
+          })
+        : Promise.reject(new ApiError("找不到", { status: 404, body: "", url })),
+    );
+    await render();
+    const links = Array.from(
+      container.querySelectorAll<HTMLAnchorElement>('a[href^="/employees/"]'),
+    );
+    expect(links).toHaveLength(2);
+    expect(links[0]!.getAttribute("href")).toContain("emp_41018EB4A68341AE8FA0B34856AE01F7");
+    expect(links[1]!.getAttribute("href")).toContain("emp_80C8938810144061B7238B79F23DD4BD");
+    const names = links.map((a) => a.textContent ?? "");
+    expect(names[0]).not.toBe(names[1]);
+    expect(names.join(" ")).toContain("41018EB4");
+    expect(names.join(" ")).toContain("80C89388");
+    expect(names.join(" ")).not.toContain("/employees/1");
+    const hrefs = links.map((a) => a.getAttribute("href") ?? "");
+    expect(hrefs.join(" ")).not.toMatch(/\/employees\/\d+$/);
+  });
+});

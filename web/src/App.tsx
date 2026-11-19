@@ -321,8 +321,7 @@ const BUILTIN_NAV_REST: NavItem[] = [
   },
   {
     path: "/collaboration",
-    labelKey: "collaboration",
-    label: "Collaboration",
+    label: "协作",
     icon: Handshake,
     group: "operations",
     placeholder: true,
@@ -350,27 +349,23 @@ const BUILTIN_NAV_REST: NavItem[] = [
   },
   {
     path: "/tenant-quota",
-    labelKey: "tenantQuota",
-    label: "Tenant & quota",
+    label: "租户与配额",
     icon: Gauge,
     group: "governance",
     placeholder: true,
   },
   {
     path: "/access-control",
-    labelKey: "accessControl",
-    label: "Access control",
+    label: "访问控制",
     icon: Shield,
     group: "governance",
     placeholder: true,
   },
   {
-    path: "/directory",
-    labelKey: "directory",
-    label: "People directory",
+    path: "/identity?tab=people",
+    label: "人员名录",
     icon: Contact,
     group: "governance",
-    placeholder: true,
   },
 
   // 3) Runtime — every existing upstream route is preserved verbatim.
@@ -1366,7 +1361,7 @@ function SidebarNavLink({
   const navLabel = labelKey
     ? ((t.app.nav as Record<string, string>)[labelKey] ?? label)
     : label;
-  const comingSoon = t.app.comingSoon ?? "Coming soon";
+  const comingSoon = "未接入";
 
   // Placeholders are deliberately not links: a future module must not open a
   // blank route, and a disabled <button> would still look like a dead control.
@@ -1383,7 +1378,7 @@ function SidebarNavLink({
             "text-text-tertiary/70 select-none",
           )}
           data-nav-placeholder={item.path}
-          title={`${navLabel} — ${comingSoon}`}
+          title={`${navLabel} — 未接入：后台数据源尚未提供这块能力，接入后会自动出现在导航里`}
         >
           <span className="flex min-w-0 items-start gap-2">
             <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0" />

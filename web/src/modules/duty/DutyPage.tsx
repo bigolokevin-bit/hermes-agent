@@ -127,11 +127,14 @@ function gateRoute(gate: GateView): string {
 function GateRow({ gate, narrowest }: { gate: GateView; narrowest: boolean }) {
   const unknown = gate.state === "unknown";
   return (
-    <div className={cn("duty-gate", narrowest && "is-narrow")} data-testid={`duty-gate-${gate.key}`}>
-      <span className="duty-gate-name">
-        {gate.key} {gate.name}
-        {gate.inferred ? <em>推断</em> : null}
-      </span>
+    <div
+      className={cn("duty-gate", narrowest && "is-narrow")}
+      data-testid={`duty-gate-${gate.key}`}
+      // R7.1 item 8: the internal gate code (V1…V6) and the fact that a state
+      // is inferred live in the tooltip, never on screen.
+      title={`${gate.key} · ${gate.name}${gate.inferred ? " · 当前状态由现有数据推断，待数据源接入后确认" : ""}`}
+    >
+      <span className="duty-gate-name">{gate.name}</span>
       <span className={cn("duty-gate-value", unknown && "is-unknown")}>
         {unknown ? "待核实" : `${dashed(gate.pass)} / ${dashed((gate.pass ?? 0) + (gate.fail ?? 0))}`}
       </span>

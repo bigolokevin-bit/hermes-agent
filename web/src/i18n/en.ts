@@ -64,7 +64,7 @@ export const en: Translations = {
       org: "Nous Research",
     },
     auth: {
-      statusUnavailable: "Could not check your sign-in status right now.",
+      statusUnavailable: "暂时确认不到登录状态",
       loggedInAs: "Logged in as {{name}}",
       viaProvider: "via {{provider}}",
       logout: "Log out",
