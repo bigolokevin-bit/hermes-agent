@@ -485,3 +485,9 @@ F7 审计入口+别名：App.tsx nav 治理组新增 /audit「审计事件」（
 - 项3 retention 挂载：App.tsx line1249 /system element=<SystemAwareTabs/>（tab=retention→RetentionConsolePage，ret4-* 页体只挂载）；9122 旧代次活体 ret4 读数待合批，DOM 证据=组件链+行号。
 - 项4 human 掩码：model.ts line300 humanizeHandles；views.tsx line112/详情事由 p title=原值+掩码文；api.test 三断言（人员出现+human:/user: 零残留+emp_ 保留）99 passed。活体两处裸 human:=种子单 reasonText 业务正文（EGO R29-LIST/DETAIL 上下文实证），显示层掩码后=0。
 验证：定向 approvals+shell+overview=9 files 99 passed 0 fail。
+
+## 夹具债清零·appr 域 3 页（feat(console): fixture debt burn - 3 appr pages real or honest）
+清单（工单第一步）：grep -rl data-fixture web/src/modules/{approvals,tasks,employee-detail} --include=*.tsx 改前命中=approvals/{states.tsx,两页 test}；tasks=0、employee-detail=0（前轮已真数据）。
+改后：生产码（非 test）data-fixture 命中=0（grep 实测 wc -l=0）；states.tsx fixtureAttr 机制删除、两页 16 处 fixture={} 传参摘除；?state= 复现保留数据行为（useApprovalsData forced 机制不动），标注改屏上诚实文本 apr5-forced-note（Pending line225/History line212『这是用 ?state= 复现出来的状态，不是服务此刻的回答。』）；两 test 6 处属性断言换 forced-note testid 断言。
+3 页 DOM 读数（vitest=DOM 证据）：Pending forced loading/empty/error/denied 四态各 apr5-loading/apr5-empty/apr5-error+apr5-retry/apr5-denied+forced-note 全存在（用例 marks it as a repro 绿）；History 同（loading/denied 两态绿）；真数据态=既有全绿用例（approvals 域 55 passed）：200 渲染真值、事由 humanizeHandles 掩码、金额 ledger、BJT 到分、8 位短码。
+验证：定向 approvals 3 files 55 passed；全量 126 files/1272 passed 0 fail。

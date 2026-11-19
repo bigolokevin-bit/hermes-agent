@@ -130,10 +130,10 @@ export function ApprovalsPendingModulePage(): ReactNode {
       );
     }
     if (detail.phase === "loading") {
-      return <LoadingPanel testId="apr5-detail-loading" fixture={detail.forced ? "loading" : undefined} />;
+      return <LoadingPanel testId="apr5-detail-loading" />;
     }
     if (detail.phase === "denied") {
-      return <DeniedPanel failure={detail.failure} fixture={detail.forced ? "denied" : undefined} />;
+      return <DeniedPanel failure={detail.failure} />;
     }
     if (detail.phase === "error" || !detail.detail) {
       return (
@@ -142,7 +142,6 @@ export function ApprovalsPendingModulePage(): ReactNode {
           onRetry={detail.reload}
           title="这张申请没能加载出来"
           testId="apr5-detail-error"
-          fixture={detail.forced ? "error" : undefined}
         />
       );
     }
@@ -230,12 +229,12 @@ export function ApprovalsPendingModulePage(): ReactNode {
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
         <section className="flex min-w-0 flex-col gap-2" data-testid="apr5-list" aria-label="待处理审批队列">
-          {list.phase === "loading" ? <LoadingPanel fixture={list.forced ? "loading" : undefined} /> : null}
+          {list.phase === "loading" ? <LoadingPanel /> : null}
 
-          {list.phase === "denied" ? <DeniedPanel failure={list.failure} fixture={list.forced ? "denied" : undefined} /> : null}
+          {list.phase === "denied" ? <DeniedPanel failure={list.failure} /> : null}
 
           {list.phase === "error" && list.failure ? (
-            <ErrorPanel failure={list.failure} onRetry={list.reload} retryTestId="apr5-retry" fixture={list.forced ? "error" : undefined} />
+            <ErrorPanel failure={list.failure} onRetry={list.reload} retryTestId="apr5-retry" />
           ) : null}
 
           {list.phase === "empty" ? (
@@ -243,7 +242,6 @@ export function ApprovalsPendingModulePage(): ReactNode {
               reason="现在没有需要你处理的申请"
               nextStep="员工遇到需要你点头的操作时会提出申请，提出后立刻出现在这里。"
               onRefresh={list.reload}
-              fixture={list.forced ? "empty" : undefined}
             />
           ) : null}
 
