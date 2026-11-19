@@ -50,6 +50,9 @@ const CHROMIUM = path.join(
 );
 
 const BASE = (process.argv.find((a) => a.startsWith('--base=')) || '--base=http://127.0.0.1:9119').slice(7);
+// L0 十八轮：--auth-state <playwright storageState JSON>（与 crawl-routes 同款），
+// 登录态下 pane 数据进 main，emptyMain 判据才有产品意义；缺省仍匿名=环境口径。
+const AUTH_STATE = (process.argv.find((a) => a.startsWith('--auth-state=')) || '').slice(13) || null;
 const MAX_BYTES = Number((process.argv.find((a) => a.startsWith('--max-bytes=')) || '--max-bytes=2097152').split('=')[1]);
 const ONLY = process.argv.includes('--smoke'); // --smoke = 3 routes x 2 viewports
 
@@ -227,7 +230,7 @@ let rootProbe = { textLen: 0, head: '', hasMainEl: false, ok: false };
 const ENV_NOISE_RE = /\b(401|404)\s*\((Unauthorized|Not Found)\)/;
 const GATED_FLAG_INIT = () => { window.__HERMES_AUTH_REQUIRED__ = true; };
 {
-  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, ...(AUTH_STATE ? { storageState: AUTH_STATE } : {}) });
   await ctx.addInitScript(GATED_FLAG_INIT);
   const p = await ctx.newPage();
   try {
@@ -248,7 +251,7 @@ const rootMainText = rootProbe.head;
 
 for (const row of target) {
   for (const vp of VIEWPORTS) {
-    const ctx = await browser.newContext({ viewport: { width: vp.width, height: vp.height } });
+    const ctx = await browser.newContext({ viewport: { width: vp.width, height: vp.height }, ...(AUTH_STATE ? { storageState: AUTH_STATE } : {}) });
     await ctx.addInitScript(GATED_FLAG_INIT);
     const page = await ctx.newPage();
     const consoleErrors = [];
@@ -396,6 +399,8 @@ const envOnlyErrRoutes = [...new Set(index.filter((r) => r.consoleErrors > 0 && 
 
 const summary = {
   base: BASE,
+  mode: AUTH_STATE ? 'auth' : 'anon',
+  authStateFile: AUTH_STATE, // 登录态工件路径（文件本身不入仓；此处只留指针）
   navForm: 'hash #/<route>',
   routesEnumerated: rows.length,
   expectedShots: target.length * 2,
