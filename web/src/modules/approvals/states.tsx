@@ -19,7 +19,6 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 
 import { themedBody } from "@/lib/utils";
 import { type FailureCopy } from "./copy";
-import { RequestIdCopy } from "@/components/RequestIdCopy";
 
 interface Marked {
   /** Set to the state name when the pane is showing the `?state=` repro. */
@@ -28,6 +27,67 @@ interface Marked {
 
 const fixtureAttr = (fixture: string | undefined): { "data-fixture"?: string } =>
   fixture ? { "data-fixture": fixture } : {};
+
+/**
+ * The request-id line, with a copy control that writes the SAME string that is
+ * shown. This is the approvals-module (apr4) sibling of the shell's
+ * `@/components/RequestIdCopy`: it keeps the lane's own testids (`apr4-request-id`
+ * for the value, `apr4-copy-request-id` for the button) without touching the
+ * shared component. A missing id keeps the honest fallback sentence and renders
+ * NO button — a value is never invented so there is something to copy.
+ */
+export function RequestIdCopyField({
+  requestId,
+  fallback,
+}: {
+  requestId: string | null | undefined;
+  fallback: string;
+}): ReactNode {
+  const [copied, setCopied] = useState<"idle" | "ok" | "fail">("idle");
+
+  if (!requestId) {
+    return (
+      <span className="min-w-0 break-words" data-testid="apr4-request-id-missing">
+        {fallback}
+      </span>
+    );
+  }
+
+  const copy = (): void => {
+    const clip = navigator.clipboard;
+    if (!clip?.writeText) {
+      setCopied("fail");
+      return;
+    }
+    clip.writeText(requestId).then(
+      () => setCopied("ok"),
+      () => setCopied("fail"),
+    );
+  };
+
+  return (
+    <span className="inline-flex min-w-0 flex-wrap items-center gap-1">
+      请求编号：<code className="break-all" data-testid="apr4-request-id">{requestId}</code>
+      <button
+        type="button"
+        data-testid="apr4-copy-request-id"
+        className="rounded-sm border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-1 focus-visible:outline-primary/40"
+        onClick={copy}
+      >
+        复制
+      </button>
+      {copied === "ok" ? (
+        <span data-testid="apr4-copy-state" className="text-[11px] text-muted-foreground">
+          已复制
+        </span>
+      ) : copied === "fail" ? (
+        <span data-testid="apr4-copy-state" className="text-[11px] text-warning">
+          复制失败，请手动选择
+        </span>
+      ) : null}
+    </span>
+  );
+}
 
 /**
  * QA V4-R4 条目2: 零结果与错误面板都要有真出口。壳与页脚没有既有联系入口
@@ -61,7 +121,7 @@ function PanelExits({ testId }: { testId: string }): ReactNode {
 /** The only place engineering values reach the screen: collapsed until clicked. */
 export function DetailsDisclosure({
   lines,
-  testId = "approvals-details",
+  testId = "apr4-details",
 }: {
   lines: string[];
   testId?: string;
@@ -91,7 +151,7 @@ export function DetailsDisclosure({
   );
 }
 
-export function LoadingPanel({ testId = "approvals-loading", fixture }: Marked & { testId?: string }): ReactNode {
+export function LoadingPanel({ testId = "apr4-loading", fixture }: Marked & { testId?: string }): ReactNode {
   return (
     <div className="flex min-w-0 flex-col gap-2" data-testid={testId} {...fixtureAttr(fixture)}>
       {[0, 1, 2, 3].map((row) => (
@@ -108,7 +168,7 @@ export function EmptyPanel({
   reason,
   nextStep,
   onRefresh,
-  testId = "approvals-empty",
+  testId = "apr4-empty",
   fixture,
 }: Marked & { reason: string; nextStep: string; onRefresh: () => void; testId?: string }): ReactNode {
   return (
@@ -130,9 +190,10 @@ export function ErrorPanel({
   failure,
   onRetry,
   title = "审批申请没能加载出来",
-  testId = "approvals-error",
+  testId = "apr4-error",
+  retryTestId,
   fixture,
-}: Marked & { failure: FailureCopy; onRetry: () => void; title?: string; testId?: string }): ReactNode {
+}: Marked & { failure: FailureCopy; onRetry: () => void; title?: string; testId?: string; retryTestId?: string }): ReactNode {
   return (
     <Card
       role="alert"
@@ -147,9 +208,9 @@ export function ErrorPanel({
           <span className="min-w-0 break-words">{title}</span>
         </div>
         <p className="max-w-prose break-words text-xs text-muted-foreground">{failure.sentence}</p>
-        <p className="break-words text-xs text-muted-foreground"><RequestIdCopy requestId={failure.requestId} fallback="本次请求未记录编号，可复制时间与操作路径反馈" /></p>
+        <p className="min-w-0 break-words text-xs text-muted-foreground"><RequestIdCopyField requestId={failure.requestId} fallback="本次请求未记录编号，可复制时间与操作路径反馈" /></p>
         {failure.technical ? <DetailsDisclosure lines={[failure.technical]} testId={`${testId}-details`} /> : null}
-        <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
+        <Button size="sm" outlined onClick={onRetry} data-testid={retryTestId ?? `${testId}-retry`} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
           重试
         </Button>
       </CardContent>
@@ -164,7 +225,7 @@ export function DeniedPanel({ failure, fixture }: Marked & { failure: FailureCop
       role="alert"
       aria-label="审批申请不可用"
       className="border-border bg-card"
-      data-testid="approvals-denied"
+      data-testid="apr4-denied"
       {...fixtureAttr(fixture)}
     >
       <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
@@ -174,8 +235,8 @@ export function DeniedPanel({ failure, fixture }: Marked & { failure: FailureCop
           这块内容要么尚未对你开放，要么当前环境还没有提供它。这里不会显示任何猜测的内容。
           需要处理审批时，请联系工作区管理员为你开通。
         </p>
-        <p className="break-words text-xs text-muted-foreground"><RequestIdCopy requestId={failure?.requestId ?? null} fallback="本次请求未记录编号，可复制时间与操作路径反馈" /></p>
-        <PanelExits testId="approvals-denied-exits" />
+        <p className="min-w-0 break-words text-xs text-muted-foreground"><RequestIdCopyField requestId={failure?.requestId ?? null} fallback="本次请求未记录编号，可复制时间与操作路径反馈" /></p>
+        <PanelExits testId="apr4-denied-exits" />
       </CardContent>
     </Card>
   );
@@ -187,7 +248,7 @@ export function InlineFailure({
   action = "这次操作没有成功",
   onRetry,
   retryLabel = "重试",
-  testId = "approvals-inline-failure",
+  testId = "apr4-inline-failure",
 }: {
   failure: FailureCopy;
   action?: string;
@@ -203,7 +264,7 @@ export function InlineFailure({
       data-testid={testId}
     >
       <p className="max-w-prose break-words text-xs text-destructive">{`${action}：${failure.sentence}`}</p>
-      <p className="break-words text-xs text-muted-foreground"><RequestIdCopy requestId={failure.requestId} fallback="本次请求未记录编号，可复制时间与操作路径反馈" /></p>
+      <p className="min-w-0 break-words text-xs text-muted-foreground"><RequestIdCopyField requestId={failure.requestId} fallback="本次请求未记录编号，可复制时间与操作路径反馈" /></p>
       <div className="flex flex-wrap items-center gap-2">
         {failure.technical ? <DetailsDisclosure lines={[failure.technical]} testId={`${testId}-details`} /> : null}
         {onRetry ? (

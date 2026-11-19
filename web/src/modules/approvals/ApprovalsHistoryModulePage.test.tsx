@@ -14,6 +14,7 @@ const api = vi.hoisted(() => ({ fetchJSON: vi.fn() }));
 vi.mock("@/lib/api", () => ({ fetchJSON: api.fetchJSON }));
 
 import ApprovalsHistoryModulePage from "@/modules/approvals/ApprovalsHistoryModulePage";
+import { STATUS_FILTERS } from "@/modules/approvals/model";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -45,7 +46,7 @@ async function render(entry: string, page: ReactNode): Promise<void> {
 const text = (): string => document.body.textContent ?? "";
 const urls = (): string[] => api.fetchJSON.mock.calls.map((call) => String(call[0]));
 const chip = (value: string): HTMLButtonElement =>
-  document.querySelector(`[data-testid='approvals-filter-${value}']`) as HTMLButtonElement;
+  document.querySelector(`[data-testid='apr4-filter-${value}']`) as HTMLButtonElement;
 
 /** One record per state, so a filter that ignored `status=` would show 8 rows. */
 const ROWS_BY_STATE: Record<string, unknown[]> = {
@@ -84,6 +85,26 @@ const pick = async (value: string): Promise<void> => {
   );
 };
 
+/** The row CARDS only (not their 「详情」 disclosure, whose id also starts apr4-row-). */
+const rowNodes = (): HTMLElement[] =>
+  Array.from(document.querySelectorAll("[data-testid^='apr4-row-']")).filter(
+    (el) => !(el.getAttribute("data-testid") ?? "").includes("-details-"),
+  ) as HTMLElement[];
+
+/** Stub navigator.clipboard (absent in jsdom) and hand back the writeText spy. */
+const stubClipboard = (): ReturnType<typeof vi.fn> => {
+  const writeText = vi.fn(async () => {});
+  Object.defineProperty(window.navigator, "clipboard", {
+    configurable: true,
+    value: { writeText },
+  });
+  return writeText;
+};
+const copyButton = (): HTMLButtonElement | null =>
+  document.querySelector("[data-testid='apr4-copy-request-id']") as HTMLButtonElement | null;
+const shownRequestId = (): string | null =>
+  (document.querySelector("[data-testid='apr4-request-id']") as HTMLElement | null)?.textContent ?? null;
+
 beforeEach(() => {
   api.fetchJSON.mockReset();
 });
@@ -120,6 +141,51 @@ describe("the eight states", () => {
     }
   });
 
+  it("proves all eight canonical states are live: request, repaint, and 全部 drops status", async () => {
+    // The eight values model.ts exposes are exactly the eight this test drives,
+    // spelled on the wire, not renamed.
+    const canonical = [...STATUS_FILTERS.map((f) => f.value)];
+    expect([...canonical].sort()).toEqual(
+      ["pending", "approved", "rejected", "revise_requested", "expired", "cancelled", "consumed", "superseded"].sort(),
+    );
+
+    await mount();
+    for (const f of STATUS_FILTERS) {
+      await pick(f.value);
+      // (a) the chosen value reaches the request with exactly this spelling
+      expect(urls()).toContain(`/agent-api/api/approvals?status=${f.value}&limit=50`);
+      // (b) the rows repaint to just this state's distinguishable payload
+      const expected = ROWS_BY_STATE[f.value] as { approvalId: string; title: string }[];
+      expect(rowNodes()).toHaveLength(expected.length);
+      for (const row of expected) {
+        expect(text()).toContain(row.title);
+        expect(document.querySelector(`[data-testid='apr4-row-${row.approvalId}']`)).toBeTruthy();
+      }
+      // no other state's row is painted while this filter is active
+      for (const other of canonical) {
+        if (other === f.value) continue;
+        for (const row of ROWS_BY_STATE[other] as { title: string }[]) {
+          expect(text()).not.toContain(row.title);
+        }
+      }
+      expect(text()).toContain(`已显示 ${expected.length} 条「${f.label}」记录`);
+    }
+
+    // (c) 全部 sends no status-bearing request: the param is dropped, never
+    // leaked as the literal `status=all`.
+    await pick("expired");
+    api.fetchJSON.mockClear();
+    await pick("all");
+    const listCalls = urls().filter((u) => u.startsWith("/agent-api/api/approvals"));
+    expect(listCalls.length).toBeGreaterThan(0);
+    for (const u of listCalls) {
+      expect(u).not.toContain("status=");
+      expect(u).not.toContain("status=all");
+    }
+    expect(rowNodes()).toHaveLength(Object.keys(ROWS_BY_STATE).length);
+    expect(text()).toContain("已显示 8 条「全部状态」记录");
+  });
+
   it("changes the rows when the state changes", async () => {
     await mount();
     expect(text()).toContain("已显示 8 条「全部状态」记录");
@@ -141,9 +207,9 @@ describe("the eight states", () => {
     expect(text()).toContain("「已被新单替代」状态下没有记录");
     expect(text()).toContain("换一个结果看看");
     // QA V4-R4 条目2: 零结果面板必须有真出口，不许死链。
-    const back = document.querySelector("[data-testid='approvals-history-empty-exits-back']") as HTMLAnchorElement;
+    const back = document.querySelector("[data-testid='apr4-empty-history-exits-back']") as HTMLAnchorElement;
     expect(back?.getAttribute("href")).toBe("/overview");
-    const contact = document.querySelector("[data-testid='approvals-history-empty-exits-contact']") as HTMLAnchorElement;
+    const contact = document.querySelector("[data-testid='apr4-empty-history-exits-contact']") as HTMLAnchorElement;
     expect(contact?.getAttribute("href")).toMatch(/^mailto:/);
   });
 
@@ -208,8 +274,53 @@ describe("history whole-panel states", () => {
     const forbidden = await once(403);
     expect(text()).toContain("暂时无法查看审批申请");
     expect(text()).toContain("请求编号：hs-deny");
-    expect(document.querySelectorAll("[data-testid^='approval-row-']")).toHaveLength(0);
+    // one denied body, under the apr4 id, with no path echo
+    expect(document.querySelector("[data-testid='apr4-denied']")).toBeTruthy();
+    expect(forbidden).not.toContain("/agent-api");
+    expect(document.querySelectorAll("[data-testid^='apr4-row-']")).toHaveLength(0);
+    // overflow discipline: the page shrinks, the long sentence breaks
+    const root = document.querySelector("[data-testid='apr4-page-history']") as HTMLElement;
+    expect(root.className).toContain("min-w-0");
+    expect(root.className).toContain("max-w-full");
+    const denied = document.querySelector("[data-testid='apr4-denied']") as HTMLElement;
+    expect(denied.querySelector("p.break-words")).toBeTruthy();
+    // 404 is byte-identical to 403
     expect(await once(404)).toBe(forbidden);
+  });
+
+  it("copies the displayed request id verbatim on the error leg", async () => {
+    const writeText = stubClipboard();
+    await mount(async () => {
+      throw new ApiError("gateway", { status: 500, body: "", url: "/agent-api/api/approvals", requestId: "hs-copy-err" });
+    });
+    expect(document.querySelector("[data-testid='apr4-error']")).toBeTruthy();
+    expect(shownRequestId()).toBe("hs-copy-err");
+    const btn = copyButton();
+    expect(btn).toBeTruthy();
+    await act(async () => {
+      (btn as HTMLButtonElement).click();
+    });
+    expect(writeText).toHaveBeenCalledTimes(1);
+    expect(writeText).toHaveBeenCalledWith("hs-copy-err");
+    // the copied value is byte-for-byte the value on screen
+    expect(String(writeText.mock.calls[0][0])).toBe(shownRequestId());
+  });
+
+  it("copies the displayed request id verbatim on the denied leg", async () => {
+    const writeText = stubClipboard();
+    await mount(async () => {
+      throw new ApiError("denied", { status: 403, body: "", url: "/agent-api/api/approvals", requestId: "hs-copy-deny" });
+    });
+    expect(document.querySelector("[data-testid='apr4-denied']")).toBeTruthy();
+    expect(shownRequestId()).toBe("hs-copy-deny");
+    const btn = copyButton();
+    expect(btn).toBeTruthy();
+    await act(async () => {
+      (btn as HTMLButtonElement).click();
+    });
+    expect(writeText).toHaveBeenCalledTimes(1);
+    expect(writeText).toHaveBeenCalledWith("hs-copy-deny");
+    expect(String(writeText.mock.calls[0][0])).toBe(shownRequestId());
   });
 
   it("a chosen state survives a reload and the filter stays pressed", async () => {
@@ -232,14 +343,19 @@ describe("history whole-panel states", () => {
     };
     await open("loading");
     expect(document.querySelector("[data-fixture='loading']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='apr4-loading']")).toBeTruthy();
     expect(api.fetchJSON).not.toHaveBeenCalled();
     await open("empty");
     expect(text()).toContain("状态下没有记录");
+    expect(document.querySelector("[data-testid='apr4-empty-history']")).toBeTruthy();
     await open("error");
     expect(text()).toContain("本次请求未记录编号，可复制时间与操作路径反馈");
     expect(text()).not.toContain("未提供");
+    expect(document.querySelector("[data-testid='apr4-error']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='apr4-retry']")).toBeTruthy();
     await open("denied");
     expect(document.querySelector("[data-fixture='denied']")).toBeTruthy();
-    expect(document.querySelectorAll("[data-testid^='approval-row-']")).toHaveLength(0);
+    expect(document.querySelector("[data-testid='apr4-denied']")).toBeTruthy();
+    expect(document.querySelectorAll("[data-testid^='apr4-row-']")).toHaveLength(0);
   });
 });

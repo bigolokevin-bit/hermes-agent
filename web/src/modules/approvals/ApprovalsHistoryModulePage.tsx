@@ -95,13 +95,13 @@ export function ApprovalsHistoryModulePage(): ReactNode {
           action="详情没有打开"
           onRetry={list.reload}
           retryLabel="刷新列表"
-          testId="approval-history-detail-unaddressable"
+          testId="apr4-detail-unaddressable"
         />
       );
     }
     if (!selected) {
       return (
-        <Card className="border-border bg-card" data-testid="approval-history-detail-empty">
+        <Card className="border-border bg-card" data-testid="apr4-detail-empty">
           <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
             <History className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
             <p className="text-sm text-muted-foreground">还没有选中记录</p>
@@ -113,7 +113,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
       );
     }
     if (detail.phase === "loading") {
-      return <LoadingPanel testId="approval-history-detail-loading" fixture={detail.forced ? "loading" : undefined} />;
+      return <LoadingPanel testId="apr4-detail-loading" fixture={detail.forced ? "loading" : undefined} />;
     }
     if (detail.phase === "denied") {
       return <DeniedPanel failure={detail.failure} fixture={detail.forced ? "denied" : undefined} />;
@@ -124,7 +124,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
           failure={detail.failure ?? { sentence: "详情没能加载出来。", requestId: null, technical: null }}
           onRetry={detail.reload}
           title="这条记录没能加载出来"
-          testId="approval-history-detail-error"
+          testId="apr4-detail-error"
           fixture={detail.forced ? "error" : undefined}
         />
       );
@@ -132,7 +132,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
     return (
       <ApprovalDetailBody
         detail={detail.detail}
-        testId="approval-history-detail"
+        testId="apr4-detail"
         actions={
           <p className="min-w-0 break-words border-t border-border pt-3 text-xs text-muted-foreground">
             历史决策只用于回看。这张单的处理已经结束，这里不再改动结论。
@@ -143,7 +143,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
   })();
 
   return (
-    <div className="flex min-w-0 w-full max-w-full flex-col gap-3" data-testid="approvals-history">
+    <div className="flex min-w-0 w-full max-w-full flex-col gap-3" data-testid="apr4-page-history">
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
         <p className="min-w-0 break-words text-xs text-muted-foreground" aria-live="polite">
           {list.phase === "loading"
@@ -175,7 +175,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
         ) : null}
       </div>
 
-      <div className="flex min-w-0 flex-wrap gap-1.5" role="group" aria-label="按处理结果筛选">
+      <div className="flex min-w-0 flex-wrap gap-1.5" role="group" data-testid="apr4-filter" aria-label="按处理结果筛选">
         {CHOICES.map((choice) => {
           const active = choice.value === activeValue;
           return (
@@ -186,7 +186,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
               invert={active}
               aria-pressed={active}
               onClick={() => choose(choice.sends)}
-              data-testid={`approvals-filter-${choice.value}`}
+              data-testid={`apr4-filter-${choice.value}`}
             >
               {choice.label}
             </Button>
@@ -195,25 +195,25 @@ export function ApprovalsHistoryModulePage(): ReactNode {
       </div>
 
       {!known ? (
-        <p className="min-w-0 break-words text-xs text-warning" data-testid="approvals-filter-unknown">
+        <p className="min-w-0 break-words text-xs text-warning" data-testid="apr4-filter-unknown">
           这个筛选值不在已知的八种结果里，系统仍按原样去读；读到的内容可能与服务端的状态说法不一致。
         </p>
       ) : null}
 
       {list.forced ? (
-        <p className="min-w-0 break-words text-xs text-warning" data-testid="approvals-forced-note">
+        <p className="min-w-0 break-words text-xs text-warning" data-testid="apr4-forced-note">
           这是用 ?state= 复现出来的状态，不是服务此刻的回答。
         </p>
       ) : null}
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
-        <section className="flex min-w-0 flex-col gap-2" aria-label="历史决策列表">
+        <section className="flex min-w-0 flex-col gap-2" data-testid="apr4-list" aria-label="历史决策列表">
           {list.phase === "loading" ? <LoadingPanel fixture={list.forced ? "loading" : undefined} /> : null}
 
           {list.phase === "denied" ? <DeniedPanel failure={list.failure} fixture={list.forced ? "denied" : undefined} /> : null}
 
           {list.phase === "error" && list.failure ? (
-            <ErrorPanel failure={list.failure} onRetry={list.reload} fixture={list.forced ? "error" : undefined} />
+            <ErrorPanel failure={list.failure} onRetry={list.reload} retryTestId="apr4-retry" fixture={list.forced ? "error" : undefined} />
           ) : null}
 
           {list.phase === "empty" ? (
@@ -221,7 +221,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
               reason={`「${summary}」状态下没有记录`}
               nextStep="换一个结果看看，或点「全部」把所有历史决策列出来。"
               onRefresh={list.reload}
-              testId="approvals-history-empty"
+              testId="apr4-empty-history"
               fixture={list.forced ? "empty" : undefined}
             />
           ) : null}
