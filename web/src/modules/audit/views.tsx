@@ -7,21 +7,17 @@
  * event-type tokens and HTTP codes never reach the text of the page — they live
  * in `title` attributes and the collapsed 「技术详情」 disclosure.
  */
-import { useState, type ReactNode } from "react";
-import { Check, Copy } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { Badge } from "@nous-research/ui/ui/components/badge";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 
-import { copyTextToClipboard } from "@/lib/clipboard";
 import { themedBody, themedChrome } from "@/lib/utils";
 import type { AuditDetail, AuditRow, VerifyResult } from "./model";
-import { TechnicalDisclosure } from "./states";
+import { CopyValue, TechnicalDisclosure } from "./states";
 
 const MISSING_TIME = "服务未提供该时间";
 const MISSING_VALUE = "服务未提供该信息";
-/** 请求编号 has its own honest word: the answer simply did not carry one. */
-export const NO_REQUEST_ID = "未提供";
 
 /** A label/value pair that never overflows its column at 375px. */
 function Field({
@@ -48,55 +44,6 @@ function Field({
         {tone}
       </dd>
     </div>
-  );
-}
-
-/**
- * 请求编号 on the surface, copyable, and honest when it is missing: 「未提供」
- * with the reason in its `title`. An id is quoted to support, so it is shown in
- * full and allowed to wrap — `break-all` keeps a 32-character hex inside a
- * 375px column instead of pushing the page sideways.
- */
-export function CopyValue({
-  value,
-  reason,
-  label,
-  testId,
-}: {
-  value: string | null;
-  /** What to say instead when the service sent nothing. */
-  reason: string;
-  /** The field name, for the button's accessible label. */
-  label: string;
-  testId: string;
-}): ReactNode {
-  const [copied, setCopied] = useState<"idle" | "done" | "failed">("idle");
-  if (!value) {
-    return (
-      <span className="min-w-0 break-words text-muted-foreground" data-testid={`${testId}-absent`} title={reason}>
-        {NO_REQUEST_ID}
-      </span>
-    );
-  }
-  return (
-    <span className="flex min-w-0 flex-wrap items-center gap-1.5" data-testid={testId}>
-      <span className={`min-w-0 break-all font-mono text-xs ${themedBody}`}>{value}</span>
-      <button
-        type="button"
-        aria-label={`复制${label}`}
-        title="复制"
-        className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground underline underline-offset-2"
-        onClick={() => {
-          void copyTextToClipboard(value).then((ok) => {
-            setCopied(ok ? "done" : "failed");
-            if (ok) window.setTimeout(() => setCopied("idle"), 2500);
-          });
-        }}
-      >
-        {copied === "done" ? <Check className="h-3 w-3" aria-hidden="true" /> : <Copy className="h-3 w-3" aria-hidden="true" />}
-        {copied === "done" ? "已复制" : copied === "failed" ? "复制失败，请手动选择" : "复制"}
-      </button>
-    </span>
   );
 }
 

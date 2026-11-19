@@ -301,7 +301,8 @@ describe("the event detail", () => {
     };
     const forbidden = await once(403);
     expect(forbidden).toContain("暂时无法查看审计事件");
-    expect(forbidden).toContain("请求编号：dt-deny");
+    expect(forbidden).toContain("请求编号：");
+    expect(forbidden).toContain("dt-deny");
     expect(await once(404)).toBe(forbidden);
   });
 });
@@ -334,6 +335,8 @@ describe("whole-panel states", () => {
     });
     expect(text()).toContain("审计事件没能加载出来");
     expect(text()).toContain("请求编号：au-1101");
+    // the number is there to be copied, not to be retyped
+    expect(document.querySelector("[data-testid='aud01-error-request-id-value'] button")).toBeTruthy();
     expect(text()).not.toMatch(/\b500\b|HTTP/);
     answer(EVENTS);
     await act(async () => {

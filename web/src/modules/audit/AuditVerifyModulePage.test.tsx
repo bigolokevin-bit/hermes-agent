@@ -192,7 +192,8 @@ describe("a check that cannot run", () => {
     const forbidden = await deniedOnce(403);
     expect(forbidden).toContain("本环境未启用");
     expect(forbidden).toContain("没有提供完整性校验");
-    expect(forbidden).toContain("请求编号：vf-deny");
+    expect(forbidden).toContain("请求编号：");
+    expect(forbidden).toContain("vf-deny");
     // and it says where to go next, not just that it failed
     expect(forbidden).toContain("下一步");
     expect(text()).not.toContain("没有发现断点");

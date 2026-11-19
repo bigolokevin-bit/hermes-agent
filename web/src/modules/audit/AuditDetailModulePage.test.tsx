@@ -165,6 +165,7 @@ describe("the four states", () => {
     await waitFor(() => document.querySelector("[data-testid='aud02-detail-error']") !== null, "error painted");
     expect(text()).toContain("这条事件没能加载出来");
     expect(text()).toContain("请求编号：dt-err");
+    expect(document.querySelector("[data-testid='aud02-detail-error-request-id-value'] button")).toBeTruthy();
     expect(text()).not.toMatch(/\b500\b|HTTP|gateway/);
     api.fetchJSON.mockImplementation(async () => DETAIL);
     await act(async () => {
@@ -186,7 +187,8 @@ describe("the four states", () => {
     };
     const forbidden = await once(403);
     expect(forbidden).toContain("暂时无法查看审计事件");
-    expect(forbidden).toContain("请求编号：dt-deny");
+    expect(forbidden).toContain("请求编号：");
+    expect(forbidden).toContain("dt-deny");
     expect(await once(404)).toBe(forbidden);
   });
 

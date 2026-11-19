@@ -2,7 +2,8 @@
 
 日期：2026-11-19（Asia/Shanghai）。作者：Fixer（受派会话）。
 提交（`lane/console-aud`，基线 `c28ebc16`）：`0c04ecb8` 列表 → `20ccb789` 详情 → `7fe0e412` 校验 →
-`79aa086b` 筛选 URL 断言与列表口径注释补记（本行之后只剩这一份 DONE 的补记提交，远端尾巴以 `git ls-remote` 现查为准）。
+`79aa086b` 筛选 URL 断言与列表口径注释补记 → `bc75fb4a` 本文件台账 → 其后一次把「失败面板里的请求编号」改成可复制
+（`CopyValue` / `RequestIdLine` 收进 `states.tsx`，三面共用；新增断言两个 testid）。哈希以 `git log --oneline c28ebc16..HEAD` 现查为准。
 写域：`web/src/modules/audit/**`、`docs/_artifacts/aud/**`。写域外一律未改：`App.tsx`、`web/src/shell/**`、
 任何 `manifest.ts`（本模块继续用 `tabNav.ts`，未新建/未编辑 `manifest.ts`）、`web/src/pages/**`、
 `web/scripts/**`、`package.json`、锁文件、`node_modules`、其他模块、i18n。未跑任何 install。
@@ -41,8 +42,9 @@
 
 ## 4. 四态与红线（三面共用 `states.tsx`）
 
-- loading：骨架屏；empty：带原因 + 下一步（列表按是否带筛选给两种说法）；error：人话 + 可复制请求编号 + 重试；
-  denied：403 与 404 **逐字节同体**（`toBe(forbidden)` 断言 outerHTML 相等），且 denied 之前不画任何行。
+- loading：骨架屏；empty：带原因 + 下一步（列表按是否带筛选给两种说法）；error：人话 + **可复制的请求编号**（`RequestIdLine`
+  走 `CopyValue`，复制成功显「已复制」、失败显「复制失败，请手动选择」；没有编号时给「本次请求未记录编号，可复制时间与操作路径反馈」）
+  + 重试；denied：403 与 404 **逐字节同体**（`toBe(forbidden)` 断言 outerHTML 相等），且 denied 之前不画任何行。
 - 屏 3 额外一条腿：跑不动 → **「本环境未启用」** + 原因 + 下一步去处 + 请求编号；403/404/405/501/连不上/5xx 都归这条腿，
   永不写成绿色链。401（登录失效）是「可执行的错误」，走 error 腿并说「重新登录」。
 - 屏 2 的人话层零工程词：无原始字段名、无 HTTP 码、无 ISO 串、无 `undefined`；技术值只在默认关闭的「技术详情」里
@@ -69,7 +71,7 @@ $ cd web && ./node_modules/.bin/vitest run src/modules/audit
 VITEST_EXIT=0
  Test Files  5 passed (5)
       Tests  96 passed (96)
-   Duration  1.27s
+   Duration  1.38s
 
 $ cd web && ./node_modules/.bin/eslint src/modules/audit
 ESLINT_EXIT=0
