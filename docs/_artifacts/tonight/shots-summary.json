@@ -9,12 +9,12 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 493,
+    "textLen": 246,
     "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 今日运行 运行记录 今日成本 成本账本 发布 ",
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 26,
+  "distinctMainHeads": 27,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -141,7 +141,7 @@
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "1440",
-      "chars": 326,
+      "chars": 128,
       "hasMainEl": true
     },
     {
@@ -153,7 +153,7 @@
     {
       "route": "#/capabilities?tab=models",
       "viewport": "1440",
-      "chars": 104,
+      "chars": 391,
       "hasMainEl": true
     },
     {
@@ -231,7 +231,7 @@
     {
       "route": "#/employees/:employeeId?zone=evidence",
       "viewport": "375",
-      "chars": 42,
+      "chars": 51,
       "hasMainEl": true
     },
     {
@@ -465,13 +465,13 @@
     {
       "route": "#/overview",
       "viewport": "1440",
-      "chars": 1012,
+      "chars": 1011,
       "hasMainEl": true
     },
     {
       "route": "#/overview",
       "viewport": "375",
-      "chars": 1012,
+      "chars": 1011,
       "hasMainEl": true
     },
     {
@@ -591,13 +591,13 @@
     {
       "route": "#/work",
       "viewport": "375",
-      "chars": 1782,
+      "chars": 239,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=board&view=cron",
       "viewport": "1440",
-      "chars": 1782,
+      "chars": 239,
       "hasMainEl": true
     },
     {
@@ -631,8 +631,11 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 0,
-  "consoleErrorRoutesObservedByShots": [],
+  "consoleErrorsObservedByShots": 2,
+  "consoleErrorRoutesObservedByShots": [
+    "#/work",
+    "#/work?tab=board&view=cron"
+  ],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 20,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
@@ -642,16 +645,16 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "58e59535",
-  "entry": "assets/index-BsM2N2uP.js",
-  "entrySha256": "38dcba076a64deb4605afc3b4d815a3cc5ca6e1704cd8d5be9174d5d3fe8e547",
+  "headHash": "b4341cc7",
+  "entry": "assets/index-JUxw8TcI.js",
+  "entrySha256": "9935d4d716967087dcd15c3923cf00693e767226f55d2e1fe44d53179b71d513",
   "entryBytes": 153280,
   "medianMainChars": 145.0,
-  "shotWindow": "13:33:52-13:34:42 local",
-  "servedEntryBefore": "assets/index-BsM2N2uP.js",
-  "servedEntryAfter": "assets/index-BsM2N2uP.js",
+  "shotWindow": "14:04:37-14:05:31 local",
+  "servedEntryBefore": "assets/index-JUxw8TcI.js",
+  "servedEntryAfter": "assets/index-JUxw8TcI.js",
   "env": "9122 proxy-live (anon 401 / auth 200); CE 权威=登录态, 观察字段仅旁证",
-  "ceCaliber": "ceAuthority=login-state; crawl-auth routesCE=21 denied=16; crawl-anon routesCE=41 denied=29; ok 不含 CE 项（L0 二十九轮裁定落码）",
+  "ceCaliber": "ceAuthority=login-state; crawl-auth routesCE=20 denied=16; crawl-anon routesCE=41 denied=29; ok 不含 CE 项（L0 二十九轮裁定落码）",
   "anonEvidence": "crawl-anon ok=True exit=0 probed=75 DL=0 CE=0 PE=0 routesCE=41(env 旁证); shots-anon 辅助腿见 shots-anon-summary.json",
   "exitCode": 0
 }

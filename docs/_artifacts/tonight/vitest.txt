@@ -70,6 +70,6 @@ Not implemented: Window's open() method
 
  Test Files  118 passed (118)
       Tests  1135 passed (1135)
-   Start at  13:32:41
-   Duration  6.91s (transform 42.84s, setup 0ms, import 53.75s, tests 16.39s, environment 28.28s)
+   Start at  14:03:26
+   Duration  6.77s (transform 40.00s, setup 0ms, import 50.97s, tests 17.05s, environment 30.09s)
 
