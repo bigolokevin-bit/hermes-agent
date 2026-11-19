@@ -1718,3 +1718,79 @@ native scroll restoration on back is reasoned from the same-document traversal
 the test exercises, not measured; the shell still registers only `/runs`
 (`App.tsx:1375`), so the path form `/runs/<runId>` is served by this page's own
 parser but has no dedicated route yet.
+
+## TASK platform channels real-data surface (2026-11-19, base 23a8a7e0)
+
+### What the service actually answers (probed with the session cookie, value never printed)
+
+| route | HTTP | body |
+|---|---|---|
+| /agent-api/api/messaging/platforms?limit=50 | 404 | console.unknown_route |
+| /agent-api/api/channels?limit=50 | 404 | console.unknown_route |
+| /agent-api/api/gateway-connections?limit=50 | 404 | console.unknown_route |
+| /agent-api/api/connectors?limit=50 | 404 | console.unknown_route |
+| /agent-api/api/datasources?limit=50 | 404 | console.unknown_route |
+| /agent-api/api/mcp/servers?limit=50 | 404 | console.unknown_route |
+| /agent-api/api/hermes-summary?limit=50 | 200 | schema runtime.hermes.summary.v1 |
+
+The BFF route table (seakoi-agent-os-l0-board/apps/console/server.py) has no
+channel / platform / datasource route at all. The only real platform surface is
+the gateway summary: gateway.platforms is a record, and the live tenant answers
+
+    api_server: { state: connected, needs_attention: false }
+    feishu:     { state: connected, needs_attention: false }
+
+so the real row count is 2. gateway.updated_at is the only instant it carries
+(2026-11-19T11:43:46.578965+00:00, one gateway-wide stamp, not per platform),
+and there is no credential field anywhere in the payload.
+
+### What changed
+
+channels.ts
+- The platforms source now probes /agent-api/api/hermes-summary first, keeping
+  /api/messaging/platforms and /api/channels as later candidates. Origin reads
+  「网关自己报告的运行状态」; the absent-route reason says the platform list
+  cannot be verified without it.
+- New platform row path: PLATFORM_LABELS / PLATFORM_KINDS (api_server → API 服务
+  · 接口服务, feishu → 飞书 · 消息平台, unknown key stays verbatim),
+  PLATFORM_STATUS_LABEL (已连接 / 未连接 / 未配置 / 待核实), platformStatusOf
+  (exported so the token map is pinned by a unit test), summaryPlatforms,
+  summaryStamp, and platformRow.
+- Credential is a STATE only: credentialOf returns configured / missing /
+  unknown plus a plain-Chinese reason, and never returns any value. With no such
+  field upstream every live row reads 「凭据：未知」 with the reason 「服务的回答里
+  没有给出这份凭据的状态，本页不替它猜，也不显示任何令牌内容」.
+- A platform with no instant of its own borrows the gateway stamp and carries
+  lastSeenNote 「服务按网关整体给出更新时间，这项平台没有单独的时间」; the note
+  rides in the element title, not as a second line of noise.
+
+ChannelsPage.tsx
+- Platform rows use the platform vocabulary for the badge, print 「最近事件（北京
+  时间）」, add the credential line and the 「需要处理」 line when the service sets
+  needs_attention, and keep the existing dimming (opacity-60) for anything not
+  已连接. Non-platform rows are unchanged.
+- The refresh button now carries aria-busy while a read is in flight.
+
+### Gates (run from web/)
+
+- npx vitest run src/modules/channels → 2 files, 101 tests passed (was 94).
+- npx tsc -b . --noEmit → 52 error TS lines: 49 in ../apps/shared/**, 2 in
+  src/pages/LoginPage.test.tsx and 1 in src/App.tsx:1592 (useSearchParams).
+  The last three are pre-existing at this base and outside this lane's write
+  scope; grep for modules/channels in the output returns 0.
+- npx eslint src/modules/channels → exit 0, no output.
+
+### Honest limits
+
+- The status select filters the ROWS THIS PAGE READ (applyFilter), because the
+  gateway summary ignores status= (probed: status=unavailable still returns both
+  platforms). The select genuinely changes what is painted; there is simply no
+  server-side status filter to lean on, and the DONE says so instead of implying
+  one.
+- No browser pixel measurement at 1440 / 1280 / 375: the page reaches runtime
+  only through the shell slot (capabilities tab), which is another lane's write
+  scope, and the served dist predates this change.
+- Credential stays 未知 by construction until the BFF exposes a per-platform
+  credential state; the page cannot and must not invent one.
+- A platform key outside PLATFORM_LABELS keeps its raw key as the name (no
+  invented Chinese label).

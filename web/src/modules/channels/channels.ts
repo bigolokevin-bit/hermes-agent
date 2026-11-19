@@ -139,10 +139,14 @@ export const SOURCES: readonly SourceSpec[] = [
     id: "platforms",
     label: "平台与渠道接入",
     kindLabel: "消息平台",
-    originLabel: "上游的消息平台清单",
+    // The gateway's own runtime summary is the only answer on this machine that
+    // names platforms (`gateway.platforms`). The messaging/channel routes below
+    // were probed on 2026-11-19 and each one answered 404 console.unknown_route,
+    // so they stay as fallbacks only.
+    originLabel: "网关自己报告的运行状态",
     role: "channels",
-    paths: ["/agent-api/api/messaging/platforms", "/agent-api/api/channels"],
-    missingReason: "本控制台还没有接通这份平台清单的读取",
+    paths: ["/agent-api/api/hermes-summary", "/agent-api/api/messaging/platforms", "/agent-api/api/channels"],
+    missingReason: "这份网关状态在本控制台读不到，平台清单也就无从核实",
     gap: GAP,
   },
   {
@@ -352,6 +356,19 @@ export interface ChannelRow {
   rawReason: string | null;
   /** Raw 「技术详情」 lines for the type the answer named. */
   rawType: string | null;
+  /**
+   * Set only for rows that came from the gateway summary: the platform word the
+   * screen uses instead of 已接入/未接入 (已连接/未连接/未配置/待核实).
+   */
+  platformStatus?: RowStatus;
+  /** Credential STATE only — never a value, never a fragment of one. */
+  credential?: CredentialState;
+  /** Why the credential reads the way it does, in plain words. */
+  credentialReason?: string;
+  /** The service itself flagged this platform as needing attention. */
+  attention?: boolean;
+  /** Why the instant shown belongs to the gateway rather than this platform. */
+  lastSeenNote?: string | null;
 }
 
 function rowOf(value: unknown, source: SourceSpec, index: number): ChannelRow | null {
@@ -438,6 +455,201 @@ function plainType(token: string): string {
   return TYPE_LABELS[normalized] ?? "类型未说明";
 }
 
+/* ------------------------------------------------------------------ *
+ * Platform rows from the gateway summary
+ * ------------------------------------------------------------------ */
+
+/**
+ * `GET /agent-api/api/hermes-summary` is the only live answer that names
+ * platforms: `gateway.platforms` carries one entry per platform the gateway
+ * reports about itself. It is not a list of connections and it carries no
+ * credential value, so this page reads it as "what the gateway says about each
+ * platform" and nothing more.
+ */
+const PLATFORM_LABELS: Record<string, string> = {
+  api_server: "API 服务",
+  api: "API 服务",
+  feishu: "飞书",
+  lark: "飞书",
+  wecom: "企业微信",
+  wechat: "微信",
+  dingtalk: "钉钉",
+  slack: "Slack",
+  telegram: "Telegram",
+  discord: "Discord",
+  whatsapp: "WhatsApp",
+  webhook: "回调地址",
+};
+
+const PLATFORM_KINDS: Record<string, string> = {
+  api_server: "接口服务",
+  api: "接口服务",
+  feishu: "消息平台",
+  lark: "消息平台",
+  wecom: "消息平台",
+  wechat: "消息平台",
+  dingtalk: "消息平台",
+  slack: "消息平台",
+  telegram: "消息平台",
+  discord: "消息平台",
+  whatsapp: "消息平台",
+  webhook: "回调地址",
+};
+
+/** The three words the page promises, plus the honest fourth. */
+export const PLATFORM_STATUS_LABEL: Record<RowStatus, string> = {
+  available: "已连接",
+  unavailable: "未连接",
+  disabled: "未配置",
+  unknown: "待核实",
+};
+
+export type CredentialState = "configured" | "missing" | "unknown";
+
+export const CREDENTIAL_LABEL: Record<CredentialState, string> = {
+  configured: "已配置",
+  missing: "未配置",
+  unknown: "未知",
+};
+
+const CREDENTIAL_KEYS = [
+  "credentialStatus",
+  "credential_status",
+  "credentials",
+  "credential",
+  "auth",
+  "authentication",
+  "tokenStatus",
+  "token_status",
+] as const;
+
+const CREDENTIAL_PRESENT = ["configured", "present", "set", "ok", "ready", "valid"] as const;
+const CREDENTIAL_ABSENT = [
+  "missing",
+  "absent",
+  "none",
+  "empty",
+  "not_configured",
+  "unconfigured",
+  "required",
+  "invalid",
+  "expired",
+  "revoked",
+] as const;
+
+/**
+ * Only the STATE of a credential leaves this function. A value that happens to
+ * be a token is never carried into a row, a title or 「技术详情」 — the page shows
+ * what the service says about it, never what it is.
+ */
+export function credentialOf(rec: Record<string, unknown> | null): { state: CredentialState; reason: string } {
+  if (!rec) return { state: "unknown", reason: "服务的回答里没有这段平台信息，凭据状态也就无从核实" };
+  const raw = pick(rec, CREDENTIAL_KEYS);
+  if (raw === null) {
+    return { state: "unknown", reason: "服务的回答里没有给出这份凭据的状态，本页不替它猜，也不显示任何令牌内容" };
+  }
+  const normalized = raw.toLowerCase().replace(/[\s-]+/g, "_");
+  if ((CREDENTIAL_PRESENT as readonly string[]).includes(normalized)) {
+    return { state: "configured", reason: "服务说这份凭据已经配置好" };
+  }
+  if ((CREDENTIAL_ABSENT as readonly string[]).includes(normalized)) {
+    const broken = normalized === "invalid" || normalized === "expired" || normalized === "revoked";
+    return {
+      state: "missing",
+      reason: broken ? "服务说这份凭据已失效，需要重新配置" : "服务说这份凭据还没有配置",
+    };
+  }
+  return { state: "unknown", reason: "服务的回答里这条凭据状态认不出来，本页不给它下结论" };
+}
+
+const PLATFORM_UNCONFIGURED = [
+  "not_configured",
+  "unconfigured",
+  "missing_credentials",
+  "no_credentials",
+  "disabled",
+] as const;
+
+export function platformStatusOf(token: string | null): RowStatus {
+  if (token === null) return "unknown";
+  const normalized = token.toLowerCase().replace(/[\s-]+/g, "_");
+  if ((CONNECTED_TOKENS as readonly string[]).includes(normalized)) return "available";
+  if ((PLATFORM_UNCONFIGURED as readonly string[]).includes(normalized)) return "disabled";
+  if (DOWN_TOKENS[normalized]) return "unavailable";
+  return "unknown";
+}
+
+/** `gateway.platforms`, when the answer is the gateway summary. */
+export function summaryPlatforms(payload: unknown): Record<string, unknown> | null {
+  const outer = record(payload);
+  if (!outer) return null;
+  const gateway = record(outer["gateway"]);
+  if (!gateway) return null;
+  return record(gateway["platforms"]);
+}
+
+/** The gateway-level instant, used only where a platform carries none of its own. */
+export function summaryStamp(payload: unknown): string | null {
+  const outer = record(payload);
+  const gateway = outer ? record(outer["gateway"]) : null;
+  return gateway ? pick(gateway, SEEN_KEYS) : null;
+}
+
+function platformRow(
+  key: string,
+  value: unknown,
+  source: SourceSpec,
+  gatewayStamp: string | null,
+): ChannelRow | null {
+  const rec = record(value);
+  if (!rec) return null;
+  const token = pick(rec, STATE_KEYS);
+  const status = platformStatusOf(token);
+  const attention = flag(rec["needs_attention"]) === true;
+  const credential = credentialOf(rec);
+  const own = pick(rec, SEEN_KEYS);
+  const typeToken = pick(rec, TYPE_KEYS);
+  const normalized = key.toLowerCase().replace(/[\s-]+/g, "_");
+  const name = pick(rec, NAME_KEYS) ?? PLATFORM_LABELS[normalized] ?? key;
+
+  const reason =
+    status === "available"
+      ? attention
+        ? "服务把这项平台标记为需要处理"
+        : null
+      : (reasonOf(rec) ??
+        (status === "disabled"
+          ? "服务的回答说这项平台还没有配置好"
+          : status === "unavailable"
+            ? "服务的回答说这项平台没有连上"
+            : "服务的回答里没有说明这项平台当前的状态"));
+
+  return {
+    key: `${source.id}:${key}`,
+    name,
+    // The gateway summary always names the platform key, so a masked handle is
+    // never the only thing on the row.
+    masked: null,
+    kindLabel: PLATFORM_KINDS[normalized] ?? (typeToken ? plainType(typeToken) : source.kindLabel),
+    status,
+    reason,
+    lastSeen: own ?? gatewayStamp,
+    lastSeenNote:
+      own === null && gatewayStamp !== null
+        ? "服务按网关整体给出更新时间，这项平台没有单独的时间"
+        : null,
+    sourceId: source.id,
+    platformStatus: status,
+    credential: credential.state,
+    credentialReason: credential.reason,
+    attention,
+    rawId: key,
+    rawState: token,
+    rawReason: status === "available" ? null : pick(rec, REASON_KEYS),
+    rawType: typeToken,
+  };
+}
+
 /** The list of entries, wherever the answer chose to hang it. */
 function listIn(payload: unknown, keys: readonly string[]): unknown[] | null {
   if (Array.isArray(payload)) return payload;
@@ -479,6 +691,24 @@ export type SourceRead =
   | { kind: "failed"; failure: FailureCopy; denied: boolean };
 
 export function readSource(payload: unknown, source: SourceSpec, path: string): SourceRead {
+  // The gateway summary is not a list at all: its platforms live in a record
+  // under `gateway.platforms`. Read that shape first, for that source only.
+  if (source.id === "platforms") {
+    const platforms = summaryPlatforms(payload);
+    if (platforms) {
+      const gatewayStamp = summaryStamp(payload);
+      const rows: ChannelRow[] = [];
+      let unreadable = 0;
+      for (const [key, value] of Object.entries(platforms)) {
+        const row = platformRow(key, value, source, gatewayStamp);
+        if (row) rows.push(row);
+        else unreadable += 1;
+      }
+      if (!rows.length && !unreadable) return { kind: "empty", path };
+      return { kind: "rows", rows, declaredTotal: rows.length + unreadable, unreadable, path };
+    }
+  }
+
   const list = listIn(payload, PLATFORM_KEYS);
   if (list === null) return { kind: "shape" };
   const rows: ChannelRow[] = [];
