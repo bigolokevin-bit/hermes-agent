@@ -16,7 +16,7 @@
 | 2 | `node web/scripts/assert-ia.mjs --source=react` | 1 | digest: `{"ok":false,"mode":"react","routes":51,"tabs":5,"chatHosts":3,"modules":6,"badCode":[],"missing":[]}` |
 | 3 | `node web/scripts/crawl-routes.mjs --base http://127.0.0.1:9119` | 1 | TOOL_MISSING — Error: Cannot find module 'playwright' (9119 itself answers HTTP 200) |
 | 4 | `node web/scripts/lint-fake-success.mjs` | 1 | Error: ENOENT: no such file or directory, open '/Users/kevin_studio/Projects/forks/hermes-agent/web/docs/console-v4-skeleton.html' — same missing HTML file as gate 1 |
-| 5 | `node web/scripts/lint-reuse.mjs` | 1 | `violations=5` — JSON mirrored to `docs/_artifacts/tonight/lint-reuse.json` |
+| 5 | `node web/scripts/lint-reuse.mjs` | 1 | `violations=5` — JSON mirrored to `主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/lint-reuse.json` |
 
 ## 1-assert-ia-html
 
@@ -297,7 +297,7 @@ ESLINT_EXIT=0
 - `web/scripts/lint-reuse.mjs` (new)
 - `web/e2e/ia-smoke.spec.ts`, `web/e2e/density.spec.ts` (new)
 - `docs/_artifacts/D/1-assert-ia-html.txt` … `5-lint-reuse.txt` (five raw gate logs) and `docs/_artifacts/D/DONE.md` (this file). `docs/_artifacts/D/6-commit-hook-blocked.txt` was a hook-failure transcript from the `just` outage: it was never committed and has since been deleted (see the `T00 收口 + T02` section below).
-- `docs/_artifacts/tonight/lint-reuse.json` (written by `lint-reuse.mjs` itself)
+- `主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/lint-reuse.json` (written by `lint-reuse.mjs` itself)
 
 ## Commit status at capture time
 
@@ -324,19 +324,19 @@ This worktree is shared with lanes A/B/C/E on the same branch. While lane D work
 
 | # | cwd | 命令 | 期望 | 实际（exit） | 产物 |
 |---|-----|------|------|--------------|------|
-| 1 | `web/` | `node_modules/.bin/vitest run src/lib/usePaneData.test.ts` | T02 hook 纯函数层全绿 | **exit 0** — `Test Files 1 passed (1)` / `Tests 7 passed (7)` / `Duration 82ms` | `tonight/vitest.txt` |
-| 2 | `web/` | `node scripts/assert-ia.mjs --source=react` | routes=51, tabs=22, chatHosts=1, modules=8, badCode=[] | **exit 1** — routes **51 ✓**、tabs **5 ✗**、chatHosts **3 ✗**、modules **6 ✗**、badCode `[] ✓`、missing `[]`（lane A 仍在落 manifest，非 lane-D bug） | `tonight/ia.json`（react 段 + `--- baseline(html) ---` 段） |
-| 2b | `web/` | `node scripts/assert-ia.mjs`（HTML baseline） | 与上游脚本逐字一致 | **exit 1** — `ENOENT … web/docs/console-v4-skeleton.html`（本 fork 无 `docs/`，逐字行为即如此；等价性另在临时 fixture 用同一份 skeleton 验过 stdout byte-identical） | 同上 `tonight/ia.json` 尾段 |
-| 3 | `web/` | `node scripts/crawl-routes.mjs --base http://127.0.0.1:9119` | 逐路由 deadLinks/overflow 清单 | **exit 1** — `Cannot find module 'playwright'` = **TOOL_MISSING**；9119 本身在服（`/api/status` HTTP 200），未重启、未加依赖 | `tonight/crawl.json` |
-| 4 | `web/` | `node scripts/lint-fake-success.mjs` | violations=0 | **exit 1** — `ENOENT … console-v4-skeleton.html`（同 2b 根因） | `tonight/lint-fake.json` |
-| 5 | `web/` | `node scripts/lint-reuse.mjs` | 五处复用标记齐、无硬编码 | **exit 1** — `violations=5`，全为 `reuse-marker-incomplete`；`scanned=21`、`reuseMarkers=0` | `tonight/lint-reuse.json`（脚本自产）+ `tonight/lint-reuse.stdout.txt` |
+| 1 | `web/` | `node_modules/.bin/vitest run src/lib/usePaneData.test.ts` | T02 hook 纯函数层全绿 | **exit 0** — `Test Files 1 passed (1)` / `Tests 7 passed (7)` / `Duration 82ms` | `主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/vitest.txt` |
+| 2 | `web/` | `node scripts/assert-ia.mjs --source=react` | routes=51, tabs=22, chatHosts=1, modules=8, badCode=[] | **exit 1** — routes **51 ✓**、tabs **5 ✗**、chatHosts **3 ✗**、modules **6 ✗**、badCode `[] ✓`、missing `[]`（lane A 仍在落 manifest，非 lane-D bug） | `主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/ia.json`（react 段 + `--- baseline(html) ---` 段） |
+| 2b | `web/` | `node scripts/assert-ia.mjs`（HTML baseline） | 与上游脚本逐字一致 | **exit 1** — `ENOENT … web/docs/console-v4-skeleton.html`（本 fork 无 `docs/`，逐字行为即如此；等价性另在临时 fixture 用同一份 skeleton 验过 stdout byte-identical） | 同上 `主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/ia.json` 尾段 |
+| 3 | `web/` | `node scripts/crawl-routes.mjs --base http://127.0.0.1:9119` | 逐路由 deadLinks/overflow 清单 | **exit 1** — `Cannot find module 'playwright'` = **TOOL_MISSING**；9119 本身在服（`/api/status` HTTP 200），未重启、未加依赖 | `主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/crawl.json` |
+| 4 | `web/` | `node scripts/lint-fake-success.mjs` | violations=0 | **exit 1** — `ENOENT … console-v4-skeleton.html`（同 2b 根因） | `主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/lint-fake.json` |
+| 5 | `web/` | `node scripts/lint-reuse.mjs` | 五处复用标记齐、无硬编码 | **exit 1** — `violations=5`，全为 `reuse-marker-incomplete`；`scanned=21`、`reuseMarkers=0` | `主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/lint-reuse.json`（脚本自产）+ `主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/lint-reuse.stdout.txt` |
 
 构建与主仓腿：
 
 | # | cwd | 命令 | 实际（exit） | 产物 |
 |---|-----|------|--------------|------|
-| 6 | 仓根 | `nvm use 26 && npx --yes pnpm@12.15.0 --filter web build`（node v26.13.1） | **exit 1 — BUILD_FAIL，非 lane-D 成因**：`TypeScript build failed (2)`，两处均在 `src/shell/console.tsx:210:9` 与 `src/shell/console.tsx:603:30`（TS2367 `ZoneId` 与 `""` 无重叠；该文件是 **lane A 当日未跟踪新文件**，不在 lane-D 写域，故只报不改）。日志内 `usePaneData` 出现 0 次，lane-D 两文件未引入任何错误。无 `vite built` 行。 | `tonight/build.log` |
-| 7 | 主仓 m0-d 树 `apps/console` | `uv run --no-project --with pytest python -m pytest tests -q`（本轮按派工直接取产物尾行，lane-D 未在主仓执行） | 尾行 `321 passed in 8.41s` | `tonight/pytest.log` |
+| 6 | 仓根 | `nvm use 26 && npx --yes pnpm@12.15.0 --filter web build`（node v26.13.1） | **exit 1 — BUILD_FAIL，非 lane-D 成因**：`TypeScript build failed (2)`，两处均在 `src/shell/console.tsx:210:9` 与 `src/shell/console.tsx:603:30`（TS2367 `ZoneId` 与 `""` 无重叠；该文件是 **lane A 当日未跟踪新文件**，不在 lane-D 写域，故只报不改）。日志内 `usePaneData` 出现 0 次，lane-D 两文件未引入任何错误。无 `vite built` 行。 | `主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/build.log` |
+| 7 | 主仓 m0-d 树 `apps/console` | `uv run --no-project --with pytest python -m pytest tests -q`（本轮按派工直接取产物尾行，lane-D 未在主仓执行） | 尾行 `321 passed in 8.41s` | `主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/pytest.log` |
 
 ### T02 交付：`web/src/lib/usePaneData.ts` + `usePaneData.test.ts`
 
@@ -355,7 +355,7 @@ const pane = usePaneData<{ items: Employee[] }>({ url });
 
 ### 命名冲突处置（一处偏离派工字面）
 
-派工第 3 步要求 lint-reuse 的**原始 stdout** 落到固定名 `tonight/lint-reuse.json`，但 `lint-reuse.mjs` 自身就把结构化 JSON 写在同名路径（该 JSON 是第一轮已入库的机读产物）。用文本覆盖会毁掉 JSON 契约，因此：脚本自产的 `lint-reuse.json` 保留（本轮已刷新，`python3 -c json.load` 复验 keys=`count/reuseMarkers/root/scanned/violations`、`count=5`、`scanned=21`），原始 stdout 另存 `tonight/lint-reuse.stdout.txt`（文件内 NOTE 行说明缘由）。
+派工第 3 步要求 lint-reuse 的**原始 stdout** 落到固定名 `主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/lint-reuse.json`，但 `lint-reuse.mjs` 自身就把结构化 JSON 写在同名路径（该 JSON 是第一轮已入库的机读产物）。用文本覆盖会毁掉 JSON 契约，因此：脚本自产的 `lint-reuse.json` 保留（本轮已刷新，`python3 -c json.load` 复验 keys=`count/reuseMarkers/root/scanned/violations`、`count=5`、`scanned=21`），原始 stdout 另存 `主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/lint-reuse.stdout.txt`（文件内 NOTE 行说明缘由）。
 
 ### 上轮遗留处置
 
@@ -372,8 +372,8 @@ const pane = usePaneData<{ items: Employee[] }>({ url });
 
 | cwd | 命令 | exit | 产物 |
 |-----|------|------|------|
-| `web/` | `node scripts/lint-reuse.mjs` | **0** | `tonight/lint-reuse.json`（脚本自产纯 JSON）+ `tonight/lint-reuse.stdout.txt`（原始 stdout/stderr + `exit=0`） |
-| `web/` | `mv tonight/lint-reuse-exemptions.json /tmp && node scripts/lint-reuse.mjs`（回滚安全测试） | **1** | `/tmp/rollback.txt`：`violations=4`、`exemptionFile: "missing"`，随后台账已还原（4 条） |
+| `web/` | `node scripts/lint-reuse.mjs` | **0** | `主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/lint-reuse.json`（脚本自产纯 JSON）+ `主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/lint-reuse.stdout.txt`（原始 stdout/stderr + `exit=0`） |
+| `web/` | `mv 主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/lint-reuse-exemptions.json /tmp && node scripts/lint-reuse.mjs`（回滚安全测试） | **1** | `/tmp/rollback.txt`：`violations=4`、`exemptionFile: "missing"`，随后台账已还原（4 条） |
 | 临时 fixture | R5 失效检测：给 chat 补上 `reuse: 对话 ChatPage` 后台账仍在列 | **1** | 命中 `exemption-stale 豁免已失效须删除：对话 ChatPage 现已声明（pending=T40）` |
 
 ### 规则摘要（脚本头注释同步）
@@ -383,7 +383,7 @@ const pane = usePaneData<{ items: Employee[] }>({ url });
 - R3 `chat-host-not-unique`：modules/ 下 import ChatPage/ChatHost 的文件数 >1 → 违规，**不可豁免**。
 - R4 `reuse-marker-incomplete`：五个复用面（对话 ChatPage / 运行详情 RunDetailPage / 任务看板 TasksListPage / schema 表单 AutoField / 能力矩阵 /v1/matrix/employees）逐个判定，声明方式两选一：某处 `reuse:` 标记文本点名该面，或宿主模块 manifest 有 `kind:'reuse'`（这是 lanes 实际采用的约定，T10 duty / T12 employees / T13 matrix 都这么写）。清单外命中才判违规。
 - R5 `exemption-stale`：豁免项对应的面一旦声明，必须从台账删除，否则判违规——防止豁免台账烂成永久白名单。
-- 台账：`docs/_artifacts/tonight/lint-reuse-exemptions.json`，条目 `{module, reuse, pending, owner, reason, evidence, rules?}`；文件缺失 = 零豁免（照判 R4 违规）。
+- 台账：`主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/lint-reuse-exemptions.json`，条目 `{module, reuse, pending, owner, reason, evidence, rules?}`；文件缺失 = 零豁免（照判 R4 违规）。
 
 ### 现态结果：violations=0 / exempted=4 / scanned=31 / reuseMarkers=5
 
@@ -398,11 +398,11 @@ const pane = usePaneData<{ items: Employee[] }>({ url });
 ### 两处必须记在案上的偏离与纠正
 
 1. **台账是 4 条不是 5 条**：上一轮快照里的 `chat-host-not-unique`（判 chat/ 与 employee-detail/ 两处 import ChatPage = 入口不唯一）经复核是**脚本假阳**——旧正则在 `employee-detail/EmployeeDetailWorkbench.tsx:97` 命中的是用户可见文案字符串 `"生产环境在此 import Hermes ChatPage（同源部署…）"`，不是 import 语句；同时它**漏掉**了 chat/ 的真实动态 import（`import(` 后无空白）。R3 已改为**结构化**判定（只取静态 `from '…'` / 动态 `import('…')` / `export * from` 的模块说明符，外加 `<ChatHost` JSX 挂载），现在 `chatHostFiles` = 1（chat，via `<ChatHost> mount`），R3 自然通过，故无需也不应为它写豁免。若 L0 仍认为「employee-detail 复用 ChatPage」是 DoD-6 的真违例候选，那是判定口径问题，不是台账问题，请回话我按口径改规则而不是加豁免。
-2. **`tonight/lint-reuse.json` 仍是脚本自产的纯 JSON**：任务书写「`; echo exit=$?` 覆盖 tonight/lint-reuse.json」，但该路径是脚本自己的机读产物（其它车道在 `json.load` 它），追加 `exit=` 行会把它变成非 JSON。故真码记在 `lint-reuse.stdout.txt` 与 `gates.exit.json`，JSON 保持可解析。这是延续既定的处置口径，非新发明。
+2. **`主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/lint-reuse.json` 仍是脚本自产的纯 JSON**：任务书写「`; echo exit=$?` 覆盖 主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/lint-reuse.json」，但该路径是脚本自己的机读产物（其它车道在 `json.load` 它），追加 `exit=` 行会把它变成非 JSON。故真码记在 `lint-reuse.stdout.txt` 与 `gates.exit.json`，JSON 保持可解析。这是延续既定的处置口径，非新发明。
 
 ## 门禁七轮·阶段一 lint-reuse 豁免台账（2026-11-19 00:3x，orchestrator 代中断 fixer 收尾提交）
 
-- 三阶段整改（L0 00:08『两红要真因+截图腿要修』）执行中被 task cancelled 中断；阶段一产物已在盘且自洽，先行提交保护：web/scripts/lint-reuse.mjs 外置豁免清单驱动 + docs/_artifacts/tonight/lint-reuse-exemptions.json（4 条 pending:T40/T15/T14/SET01，逐条带 owner/reason/evidence）+ lint-reuse.json 实跑 ok:true violations=0 exempted=4 exemptionFile=present + lint-reuse.stdout.txt。
+- 三阶段整改（L0 00:08『两红要真因+截图腿要修』）执行中被 task cancelled 中断；阶段一产物已在盘且自洽，先行提交保护：web/scripts/lint-reuse.mjs 外置豁免清单驱动 + 主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/lint-reuse-exemptions.json（4 条 pending:T40/T15/T14/SET01，逐条带 owner/reason/evidence）+ lint-reuse.json 实跑 ok:true violations=0 exempted=4 exemptionFile=present + lint-reuse.stdout.txt。
 - 阶段二（crawl-routes main 文本判据）与阶段三（shots 汇总 usable 改判）未开工，shots* 的 M 态属半成品不随本笔提交。
 - 处置口径：chat-host 判据经 evidence 复核收敛为单宿主（App.tsx renderConsoleChatHost），不再列违规；若 L0/参谋仍判其为真违例候选，凭 exemptions.json 首条可回溯。
 
@@ -417,11 +417,11 @@ L0 判词：只证「SPA 返回 200」不够。本轮把 crawl-routes 改成**�
 
 | cwd | 命令 | exit | 产物 |
 |-----|------|------|------|
-| `web/` | `node scripts/crawl-routes.mjs --base http://127.0.0.1:9119`（默认串行渲染） | **0** | `tonight/crawl.json`（末行 `exit=0`） |
+| `web/` | `node scripts/crawl-routes.mjs --base http://127.0.0.1:9119`（默认串行渲染） | **0** | `主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/crawl.json`（末行 `exit=0`） |
 | `web/` | `node scripts/crawl-routes.mjs --no-render`（负向自测） | **1**（设计如此） | 临时：`contentMethod: skipped`、`ok:false` —— 无内容判据时**不许过闸** |
-| `web/` | `node scripts/assert-ia.mjs --source=react` | **0** | `tonight/assert-ia-react.json`：`{"ok":true,…,"routes":51,"tabs":22,"chatHosts":1,"modules":8,"badCode":[],"missing":[]}` |
-| `web/` | `node scripts/assert-ia.mjs` / `node scripts/lint-fake-success.mjs` | **0** / **0** | `tonight/assert-ia-html.json`、`tonight/lint-fake.json`（violations=0、规划中=188） |
-| — | 台账重建（逐条从盘上产物回读 exit 与 JSON，不手填） | — | `tonight/gates.exit.json`：`red=[]`、`green` 五件全列 |
+| `web/` | `node scripts/assert-ia.mjs --source=react` | **0** | `主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/assert-ia-react.json`：`{"ok":true,…,"routes":51,"tabs":22,"chatHosts":1,"modules":8,"badCode":[],"missing":[]}` |
+| `web/` | `node scripts/assert-ia.mjs` / `node scripts/lint-fake-success.mjs` | **0** / **0** | `主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/assert-ia-html.json`、`主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/lint-fake.json`（violations=0、规划中=188） |
+| — | 台账重建（逐条从盘上产物回读 exit 与 JSON，不手填） | — | `主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/gates.exit.json`：`red=[]`、`green` 五件全列 |
 
 五门禁本轮真态（`gates.exit.json` @ ef7e4916）：assert-ia-react **0** / assert-ia-html **0** / lint-fake **0** / lint-reuse **0**（violations=0、exempted=4）/ crawl **0**。
 
@@ -443,7 +443,7 @@ L0 判词：只证「SPA 返回 200」不够。本轮把 crawl-routes 改成**�
 
 ### 工具与写域
 
-- 新增文件仅 `tonight/crawl.json`、`tonight/gates.exit.json`、`tonight/assert-ia-react.json`、`tonight/assert-ia-html.json`、`tonight/lint-fake.json` 与本节；脚本改动只在 `web/scripts/crawl-routes.mjs`（写域内）。
+- 新增文件仅 `主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/crawl.json`、`主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/gates.exit.json`、`主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/assert-ia-react.json`、`主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/assert-ia-html.json`、`主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/lint-fake.json` 与本节；脚本改动只在 `web/scripts/crawl-routes.mjs`（写域内）。
 - 本轮 lint 实跑：`web/node_modules/.bin/eslint scripts/crawl-routes.mjs scripts/lint-reuse.mjs` → **exit 0**（注：`web/../node_modules/.bin/eslint` 在本机是坏的入口，报 MODULE_NOT_FOUND，不是代码问题；用 web 本地 bin 才有效）。lefthook 的 `lint web` job glob 仍不含 `.mjs`，故钩子只会 skip——已在台账与回执标明，属 L0 的门禁配置项，我不改 `lefthook.yml`。
 
 ## 阶段二补账：gates.exit.json 五门禁+pytest 行（2026-11-19 00:5x，第二 fixer 会话）
@@ -451,18 +451,18 @@ L0 判词：只证「SPA 返回 200」不够。本轮把 crawl-routes 改成**�
 7698d126（并行会话以本车道名义提交并推送的阶段二）落地后，本会话按 L0 00:08 口径补齐其台账缺口：`gates.exit.json` 原只列 assert-ia×2/lint-fake/lint-reuse/crawl 五件，缺 **vitest** 与 **pytest** 行（L0 明令「五门禁+pytest 行保留」）。
 
 - **crawl 独立复核**：本会话在 7698d126 的同内容脚本（`git diff HEAD -- web/scripts/crawl-routes.mjs` 为空）上重跑 `node scripts/crawl-routes.mjs --base http://127.0.0.1:9119`，**exit=0**，与已入库 crawl.json 逐键比对 `ok/routes/redirects/probed/uniqueHtmlShells/contentMethod/contentChecked/contentEmptyCount/routesRenderedWithoutMainEl/routesWithConsoleErrors/unresolvedParams/deadLinks/rootShell` **全部 MATCH**。两红判据真绿：deadLinks=0、contentEmpty=0。
-- **vitest 行（现跑）**：`cd web/ && ./node_modules/.bin/vitest run` → **exit=0**，`Test Files 84 passed (84) / Tests 566 passed (566)`，原始 stdout 覆盖 `tonight/vitest.txt`（末行 `exit=0`）。注：上一版 vitest.txt 是 23:18（合流前）的 1 文件/7 测试快照，已过时；首跑误用 `--reporter=basic`（vitest4 无此内建 reporter，exit=1）属仪器错误，已按默认 reporter 重跑取真码。
-- **pytest 行（carry，不假跑）**：`tonight/pytest.log`（Nov 18 23:20）`321 passed in 8.41s` → exit 0。本 head 未复跑：`.venv/bin/python -m pytest` 逐字报 `No module named pytest`（homebrew python3.15 同），canonical runner `scripts/run_tests.sh` 会全量同步 pm.testenv（34k 测试套件）超出本车道写域与本轮授权。有效性论证已写进 legs[].provenance：`git diff --stat c4f0029a..HEAD -- '*.py'` 为空，23:20 之后的提交（f0e85bd4/dab959ff/ef7e4916/7698d126）未触任何 .py，carry 的 exit 对本树 Python 仍成立。
+- **vitest 行（现跑）**：`cd web/ && ./node_modules/.bin/vitest run` → **exit=0**，`Test Files 84 passed (84) / Tests 566 passed (566)`，原始 stdout 覆盖 `主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/vitest.txt`（末行 `exit=0`）。注：上一版 vitest.txt 是 23:18（合流前）的 1 文件/7 测试快照，已过时；首跑误用 `--reporter=basic`（vitest4 无此内建 reporter，exit=1）属仪器错误，已按默认 reporter 重跑取真码。
+- **pytest 行（carry，不假跑）**：`主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/pytest.log`（Nov 18 23:20）`321 passed in 8.41s` → exit 0。本 head 未复跑：`.venv/bin/python -m pytest` 逐字报 `No module named pytest`（homebrew python3.15 同），canonical runner `scripts/run_tests.sh` 会全量同步 pm.testenv（34k 测试套件）超出本车道写域与本轮授权。有效性论证已写进 legs[].provenance：`git diff --stat c4f0029a..HEAD -- '*.py'` 为空，23:20 之后的提交（f0e85bd4/dab959ff/ef7e4916/7698d126）未触任何 .py，carry 的 exit 对本树 Python 仍成立。
 - 台账 head 字段更新为 7698d126；`green` 列全七件（pytest 标注 carried）。
 
 ## 门禁八轮·阶段三定稿收口（2026-11-19 01:1x，orchestrator 代哑火/幻影写者收尾）
 
-写者会话 ses_e107df2ecffeYIeKXkjD7fWBvb 自 00:46:53 后零文件写入（哑火实证：shots.mjs/shots-summary mtime 静止 15+ 分钟双采样；task_status=stopped/interrupted，已 task_cancel 终结）。其幻影完成回报宣称的 commit `e1393b06` 经 `git cat-file -t` = Not a valid object name、`git log --all | grep` 0 命中、ls-remote=7698d126 三重证伪——fixer 通道就此弃用，本节由 orchestrator 按 L0 判据直接收口（写域仅 docs/_artifacts/tonight/** 与 DONE.md）。
+写者会话 ses_e107df2ecffeYIeKXkjD7fWBvb 自 00:46:53 后零文件写入（哑火实证：shots.mjs/shots-summary mtime 静止 15+ 分钟双采样；task_status=stopped/interrupted，已 task_cancel 终结）。其幻影完成回报宣称的 commit `e1393b06` 经 `git cat-file -t` = Not a valid object name、`git log --all | grep` 0 命中、ls-remote=7698d126 三重证伪——fixer 通道就此弃用，本节由 orchestrator 按 L0 判据直接收口（写域仅 主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/** 与 DONE.md）。
 
 - **png 代次实证**：盘上 102 张全为 00:42-00:45 旧代次（早于任何 dist 读数），零当代 ⇒ 整腿重拍成立。
-- **整腿重拍**：`node docs/_artifacts/tonight/shots.mjs` → **SHOTS-RC=0 ok:true**；driver 逐字 playwrightFrom=/Users/kevin_studio/Projects/seakoi-console-web/package.json + chromium-1255（createRequire 复用，零装包）；102/102 全当代（find ! -newermt 00:59:45 计数=0，最新 01:05:11，run.log=01:05:27）；routesEnumerated=51、rootBaseline textLen=0（hasMainEl:true）→ rootMainEmpty=true 记为事实、routesWithEmptyMain=[]、routesWithConsoleErrors=0、overflowing=[]、failures=[]、distinctMainHeads=26。
+- **整腿重拍**：`node 主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/shots.mjs` → **SHOTS-RC=0 ok:true**；driver 逐字 playwrightFrom=/Users/kevin_studio/Projects/seakoi-console-web/package.json + chromium-1255（createRequire 复用，零装包）；102/102 全当代（find ! -newermt 00:59:45 计数=0，最新 01:05:11，run.log=01:05:27）；routesEnumerated=51、rootBaseline textLen=0（hasMainEl:true）→ rootMainEmpty=true 记为事实、routesWithEmptyMain=[]、routesWithConsoleErrors=0、overflowing=[]、failures=[]、distinctMainHeads=26。
 - **shots-summary 定稿五键（写后回读证实）**：screenshotMode="playwright"、rootMainEmpty=true、staleInheritedPngs=0、servedEntryBefore=servedEntryAfter="index-CynjunXk.js"（拍启/拍毕两次当场 curl 同值，dist mtime Nov 19 00:18:22 窗内未变）。
-- **crawl 定稿复跑**：`node scripts/crawl-routes.mjs --base http://127.0.0.1:9119 > tonight/crawl.json` → **exit=0**，ok:true、deadLinks=[]、contentEmpty=[]、probed=74、distinctMainHeads=25、medianMainChars=118（render 判据口径与 --no-render exit=1 负向自注不变）。
+- **crawl 定稿复跑**：`node scripts/crawl-routes.mjs --base http://127.0.0.1:9119 > 主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/crawl.json` → **exit=0**，ok:true、deadLinks=[]、contentEmpty=[]、probed=74、distinctMainHeads=25、medianMainChars=118（render 判据口径与 --no-render exit=1 负向自注不变）。
 - **gates.exit.json**：新增 shots leg（exit 0+digest 全值），notes 记哑火/幻影证伪与收口人。七门禁+shots 八腿全绿 red=[]。
 
 ## 门禁九轮·V4 落点 9122 复跑（2026-11-19 01:2x，orchestrator 亲自，fixer 通道已弃用）
@@ -472,8 +472,8 @@ L0 新落点：`http://127.0.0.1:9122`（python http.server --directory hermes_c
 - `cd web && node scripts/assert-ia.mjs --source=react` → **exit=1**：routes=51✓ chatHosts=1✓ badCode=[]✓ missing=[]✓，但 **tabs actual=24 expected=22、modules actual=10 expected=8**——并发线已把模块加过 PRD 基线，断言值归 L0/A 定标（待决策），本车道不擅改断言。
 - `node scripts/assert-ia.mjs`（HTML baseline）→ **exit=0**；`node scripts/lint-fake-success.mjs` → **exit=0**；`node scripts/lint-reuse.mjs` → **exit=0**（violations=0 exempted=4，台账 lint-reuse-exemptions.json 生效）。
 - `node scripts/crawl-routes.mjs --base http://127.0.0.1:9122` → **exit=1**：deadLinks=70 全 404（BASE+path 形态）——根因=9122 纯静态无 SPA fallback（path 形态必 404，hash 形态可用）；contentEmpty=1（#/sessions==root 文本 104，默认路由/root 基线仪器伪象，sessions 面板本身有内容）。对照：72d3368e 轮同脚本对 9119 **exit=0** deadLinks=0 contentEmpty=0。
-- `node docs/_artifacts/tonight/shots.mjs --base=http://127.0.0.1:9122` → **exit=1**：producedShots=102/102、failures=[]、emptyMain=[]、overflowing=[]，但 **consoleErrors=51**。对照探针（同 #/access 双开）：9122 consoleErrors=9，失败请求 404 `/api/shared-metrics/consent` `/api/auth/me` `/api/dashboard/plugins`（File not found）；9119 同路由 **consoleErrors=0**；72d3368e 轮 9119 summary consoleErrors=0。**归因=9122 无 /api 后端（环境），非应用缺陷**；逐字证据在 shots-summary.consoleErrorsNote。
-- `?state=` 四态抽 5 页@9122（#/employees #/work #/approvals #/sessions #/system × loading/empty/error/ready，hash 形态，钩子 [data-fixture]+badge 加载中/空态/错误/就绪）→ **exit=0 sampled=20 passed=20**（tonight/state-quad.json）。fixture chrome 在无 API 静态落点上同样工作。
+- `node 主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/shots.mjs --base=http://127.0.0.1:9122` → **exit=1**：producedShots=102/102、failures=[]、emptyMain=[]、overflowing=[]，但 **consoleErrors=51**。对照探针（同 #/access 双开）：9122 consoleErrors=9，失败请求 404 `/api/shared-metrics/consent` `/api/auth/me` `/api/dashboard/plugins`（File not found）；9119 同路由 **consoleErrors=0**；72d3368e 轮 9119 summary consoleErrors=0。**归因=9122 无 /api 后端（环境），非应用缺陷**；逐字证据在 shots-summary.consoleErrorsNote。
+- `?state=` 四态抽 5 页@9122（#/employees #/work #/approvals #/sessions #/system × loading/empty/error/ready，hash 形态，钩子 [data-fixture]+badge 加载中/空态/错误/就绪）→ **exit=0 sampled=20 passed=20**（主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/state-quad.json）。fixture chrome 在无 API 静态落点上同样工作。
 - `node_modules/.bin/vitest run` → **exit=1**：727 passed / **1 failed**（`src/shell/console.test.tsx > ConsoleEmployeeDetailPage (hidden 23rd pane) > bare detail probe-detail-page` expected truthy got null——lane A T18 隐藏面板覆盖测试，非 lane-D 文件，如实报红并归 A）。
 - pytest：carry 321 passed（provenance 见上轮 legs[]，本轮无 .py 变更）。
 - 采纳哑火写者合法仪器修复：`web/scripts/crawl-routes.mjs`（--render-concurrency 默认 1、--settle-cap 稳定轮询、mainTextProbe 补强）。
@@ -483,8 +483,8 @@ L0 新落点：`http://127.0.0.1:9122`（python http.server --directory hermes_c
 
 - **5423：未另起**（lsof -iTCP:5423 无 LISTEN、curl 空）。running 进程：本车道无遗留。9122 入口=拍板确认（唯一 V4 验收入口）。
 - ① 基线快照（现值原样存，不修规则）：
-  - `tonight/react-baseline.json`：assert-ia --source=react **exit=0**，counts{routes:51 tabs:22 chatHosts:1 modules:8} missing=[] badCode=[] ok:true（A 已接 P0 修单+8-group fold-in 后转绿）。
-  - `tonight/lint-reuse-baseline.json`：lint-reuse **exit=1**，violations=3 全为 exemption-stale（RunDetailPage/TasksListPage/AutoField 三项豁免对应声明现已在 work/system manifest 落地，按清单纪律应删）；exempted=1（chat→T40 仍有效）；scanned=84 reuseMarkers=37。**台账清理与复跑属 A 首笔后统一复跑腿，本轮只存档不修。**
+  - `主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/react-baseline.json`：assert-ia --source=react **exit=0**，counts{routes:51 tabs:22 chatHosts:1 modules:8} missing=[] badCode=[] ok:true（A 已接 P0 修单+8-group fold-in 后转绿）。
+  - `主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/lint-reuse-baseline.json`：lint-reuse **exit=1**，violations=3 全为 exemption-stale（RunDetailPage/TasksListPage/AutoField 三项豁免对应声明现已在 work/system manifest 落地，按清单纪律应删）；exempted=1（chat→T40 仍有效）；scanned=84 reuseMarkers=37。**台账清理与复跑属 A 首笔后统一复跑腿，本轮只存档不修。**
 - ② crawl@9122 复跑：exit=1，probed=74，deadLinks=74 全 path 形态 404，contentEmpty=0（render 判据 51/51 非空）——9122 python http.server 无 SPA fallback 的直链 404 属环境项；按拍板口径「根路径进入再点导航」判，脚本侧改法见 ③。
 - ③ shots.mjs 导航改法（本轮不重拍，等 A 首笔后复跑 102）：每路由不再 `page.goto(BASE+'/'+hash)` 直链，改为 `page.goto(BASE+'/')` 落根进壳 → `page.evaluate(({h})=>{location.hash=h})` SPA 内导航（等价点击侧栏）→ settle 轮询 → 两视口截图；node --check SYNTAX-OK。
 
@@ -493,7 +493,7 @@ L0 新落点：`http://127.0.0.1:9122`（python http.server --directory hermes_c
 代次注记：卡发时 fork HEAD=fd54c95b，执行中被并发续推，当场链=242d8a33→a655e02e（腿①）。9122 pid 80670（v4-serve pidfile 管理），dist 01:56 entry assets/index-DoE_SxXx.js sha256 613d4492519b880632a9daf6db672f00a565b1fe57448c5d2641d5db16c12fc5 served==磁盘（root 200 size 1091；卡面 size 149478=entry 文件字节）。shots 腿按卡未跑（等 A 重建 dist）。
 
 - 腿① lint-reuse：prune lint-reuse-exemptions.json 4→1（删 RunDetailPage/TasksListPage/AutoField 三条 exemption-stale——reuse 声明已在 work/system manifest.ts 落地；保留 chat→T40：复用已落地缺声明属 web/src）。复跑 `node scripts/lint-reuse.mjs` → **exit=0，violations=0，exempted=1，scanned=84，reuseMarkers=37**。commit a655e02e。
-- 腿② assert-ia：脚本改单 JSON——react 模式删第二条 compact console.log（双段拼接 Extra data 根源），html/react 两模式产物内嵌 headHash+exitCode。复跑：`node scripts/assert-ia.mjs --source=react; echo exit=$?` → **exit=0**（counts routes=51 tabs=22 chatHosts=1 modules=8 badCode=[] missing=[]——tabs/modules 已回 22/8 与 PRD 一致，24/10 系旧盘态，无需偏离登记）；`node scripts/assert-ia.mjs; echo exit=$?`（html）→ **exit=0**（51/22/tabsAll23/1/8）。产物单文件单 JSON：tonight/assert-ia-react.json、tonight/assert-ia-html.json（headHash=a655e02e，python json.load 回读证实非拼接）。
+- 腿② assert-ia：脚本改单 JSON——react 模式删第二条 compact console.log（双段拼接 Extra data 根源），html/react 两模式产物内嵌 headHash+exitCode。复跑：`node scripts/assert-ia.mjs --source=react; echo exit=$?` → **exit=0**（counts routes=51 tabs=22 chatHosts=1 modules=8 badCode=[] missing=[]——tabs/modules 已回 22/8 与 PRD 一致，24/10 系旧盘态，无需偏离登记）；`node scripts/assert-ia.mjs; echo exit=$?`（html）→ **exit=0**（51/22/tabsAll23/1/8）。产物单文件单 JSON：主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/assert-ia-react.json、主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/assert-ia-html.json（headHash=a655e02e，python json.load 回读证实非拼接）。
 - 腿③ crawl-routes：脚本按卡修——hash 路由 HTTP 判据只打 base 根路径（python http.server 无 SPA fallback，path 直链 404 全是仪器假红），verdict 'spa-fallback'→'spa-hash'；content-empty 基线显式排除落地页 LANDING={'#/overview'}（本构建根路径即落地页渲染文本 618==root 618 的伪红源）；每条 transport 结果加 httpStatus，contentRows 加 verdict；out 内嵌 headHash/exitCode/counts{probed,deadLinks,contentEmpty,verdicts}。复跑 `node scripts/crawl-routes.mjs --base http://127.0.0.1:9122; echo exit=$?` → **exit=1，如实报不放宽**：deadLinks=0、contentEmpty=0、verdicts 全 spa-hash(75)、statusByCode 全 200、parseErrors=[]——唯一败因 **redirects=24 ≠ 门定值 23**（routes.ts 被并发车道新增一条重定向形态；probed=75=51+24）。归属：lane A/并发代次漂移，门值更新归 L0 裁定；本车道不改 23 定值。
 
 ## 门禁十三轮·探针重试与结构化归因（2026-11-19 03:0x）

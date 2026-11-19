@@ -82,7 +82,7 @@ web/src/modules:0 reuse-marker-incomplete 五处复用标记缺一：未见 reus
 
 ## 其他说明
 
-- `docs/_artifacts/tonight/lint-reuse.json` 工作树显示 modified：是 `scripts/lint-reuse.mjs` 运行时自动回写的巡检快照，非本车道产物，未纳入 commit。
+- `主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/lint-reuse.json` 工作树显示 modified：是 `scripts/lint-reuse.mjs` 运行时自动回写的巡检快照，非本车道产物，未纳入 commit。
 - 测试需 stub `@nous-research/ui`：该包 dist 含 `.webp`，vitest 直接 import 会 `Unknown file extension ".webp"` 崩 suite（仓库现有测试从未直接 import 它，T12 页面没有测试文件正是此因）。
 - 员工显示统一「姓名 · 8位短码」，原始 id 只进 title；时间北京时间到分；金额 USD；缺失「—」（0 保留）；审批/运行行链接真跳 `/approvals`、`/runs`。
 - pre-commit 钩子实跑通过（`✔️ lint web (0.62 seconds)`），未用 --no-verify。
