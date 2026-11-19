@@ -1,11 +1,10 @@
 {
-  "headHash": "d6d9bb07",
-  "exitCode": 0,
-  "ok": true,
+  "raw": "state-quad: sampled=20 passed=20 base=http://127.0.0.1:9122 head=04e73990",
+  "source": "state-quad.mjs 纯文本输出（57 轮起无 JSON），python 重建 JSON 同 57/58 轮配方",
   "sampled": 20,
   "passed": 20,
   "total": 20,
-  "base": "http://127.0.0.1:9122",
-  "raw": "state-quad: sampled=20 passed=20 base=http://127.0.0.1:9122 head=d6d9bb07",
-  "source": "state-quad.mjs 纯文本输出，python 重建 JSON（56 轮起脚本无 JSON；57/58 轮同法）"
+  "ok": true,
+  "exitCode": 0,
+  "headHash": "04e73990"
 }

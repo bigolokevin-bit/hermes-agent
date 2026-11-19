@@ -9,7 +9,7 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 493,
+    "textLen": 494,
     "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 刷新 可上岗 各项检查全部通过才计入 今日运行 运行记录 今日成本 成本账本 发布 ",
     "hasMainEl": true,
     "ok": true
@@ -165,13 +165,13 @@
     {
       "route": "#/capabilities?tab=tools",
       "viewport": "1440",
-      "chars": 296,
+      "chars": 170,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=tools",
       "viewport": "375",
-      "chars": 296,
+      "chars": 170,
       "hasMainEl": true
     },
     {
@@ -465,13 +465,13 @@
     {
       "route": "#/overview",
       "viewport": "1440",
-      "chars": 1011,
+      "chars": 1012,
       "hasMainEl": true
     },
     {
       "route": "#/overview",
       "viewport": "375",
-      "chars": 1011,
+      "chars": 1012,
       "hasMainEl": true
     },
     {
@@ -621,20 +621,20 @@
     {
       "route": "#/work?tab=runs",
       "viewport": "1440",
-      "chars": 1335,
+      "chars": 1336,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=runs",
       "viewport": "375",
-      "chars": 1307,
+      "chars": 1308,
       "hasMainEl": true
     }
   ],
   "consoleErrorsObservedByShots": 0,
   "consoleErrorRoutesObservedByShots": [],
   "ceAuthority": "login-state",
-  "routesWithEnvOnlyConsoleErrors": 23,
+  "routesWithEnvOnlyConsoleErrors": 22,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
   "overflowing": [],
   "driver": {
@@ -642,11 +642,11 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "d6d9bb07",
+  "headHash": "04e73990",
   "exitCode": 0,
-  "entry": "assets/index-D3sU0dej.js",
-  "entrySha256": "0f0bbfc3ab411d15032859cf37d988d341c5a14a1cbed2d79a217c2118c09be2",
-  "entryBytes": 158481,
-  "servedEntryBefore": "D3sU0dej",
-  "servedEntryAfter": "D3sU0dej"
+  "entry": "assets/index-Bnj_QXJq.js",
+  "entrySha256": "5cb07652c08a89a3bfb61d867b79d2ed4ec26ae1ab01d34992d3c2f153c7ee7d",
+  "entryBytes": 158719,
+  "servedEntryBefore": "index-Bnj_QXJq.js",
+  "servedEntryAfter": "index-Bnj_QXJq.js"
 }

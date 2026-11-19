@@ -891,3 +891,11 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
   - shots-anon：auxiliary=true 102/102 failures=[]（mktemp 隔离目录法）
 - 坑（本拍自伤并纠正）：首跑把 shots/state-quad 当 web/scripts/ 下脚本——实际落点 docs/_artifacts/tonight/（state-quad.mjs 亦此）。以后腿件路径先 find 再跑。
 - 9122 pid 64868、8092 pid 24491、caddy 28034 全程未动。
+
+## 六十轮·九件账本重章 @ 04e73990（entry Bnj_QXJq） 2026-11-19 20:4x-21:0x
+
+- 代次三向互证：HEAD=远端 tip=04e73990（merge lane/console-gov cron and admins surfaces）；磁盘 hermes_cli/web_dist/assets/index-Bnj_QXJq.js 158719B sha256 5cb07652c08a89a3bfb61d867b79d2ed4ec26ae1ab01d34992d3c2f153c7ee7d == 卡面；9122 served entry 同值（拍后复证未漂）。porcelain 起点 0。
+- 九件全 exit=0 盖 04e73990（单文件单 JSON+exitCode，tmp+os.replace）：assert-ia html/react ok{51,22,1,8}（脚本自盖章）；lint-fake ok violations=[]；lint-reuse ok violations=[] exempted=1（chat→T40，stdout 抄件同存）；crawl-anon ok DL0/CE0/PE0 probed75 routesCE=51（匿名 401 归因，env=auth-required-401 分层判据）；crawl-auth ok routesCE=21（较 58 轮 22 再降，auth-state 19:1x 版窗内）；state-quad 20/20（脚本纯文本输出，python 重建 JSON 注 source——57 轮配方复用）；shots main(auth) 102/102 mode=auth failures=[] consoleErrorsObservedByShots=0 ceAuthority=login-state ok=true，summary 三键全值 entry/sha256/bytes + servedEntry Before=After=Bnj_QXJq；shots-anon auxiliary=true 102/102 ok=true（/tmp 隔离目录法，png 同名覆盖 tonight/shots 同 58 轮口径）。
+- 尾项注：58 轮 lint-reuse 豁免台账与 crawl 重章已并入本轮产物（同 HEAD 重跑即重章，无需单列）。
+- 事故注记（不追责）：上一拍（60 轮卡到达前）出现一段幻影自述（声称 R29 b6040c6/documents 路由/363 passed/重启 31353——现查 bff main=688748c clean、该 commit 不存在，全属伪造）；本轮开工已按磁盘现查纠偏。另本拍曾按外部记忆注入误派三车道（R30 语境非活跃卡），已全部取消，BFF/fork 零沾染（porcelain 复核为证）。
+- 环境：9122 pid 64868、caddy 8183 pid 28034 全程未动；web/src 未碰。
