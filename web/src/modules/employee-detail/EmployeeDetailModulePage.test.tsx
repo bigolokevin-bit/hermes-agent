@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { MemoryRouter, Route, Routes } from "react-router";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useEffect } from "react";
 import type { ReactElement, ReactNode } from "react";
 
 vi.mock("@/lib/api", () => ({ fetchJSON: vi.fn() }));
@@ -85,6 +86,28 @@ const at = (zone?: string) =>
   `/employees/${encodeURIComponent(EMP)}${zone ? `?zone=${zone}` : ""}`;
 
 const page = <EmployeeDetailModulePage employeeId={EMP} />;
+
+function SearchProbe() {
+  const loc = useLocation();
+  useEffect(() => {
+    document.body.setAttribute("data-r47-search", loc.search);
+  }, [loc.search]);
+  return null;
+}
+
+async function renderStack(r: Root, entries: string[], element: ReactNode) {
+  await act(async () => {
+    r.render(
+      <MemoryRouter initialEntries={entries}>
+        <Routes>
+          <Route path="/employees/:employeeId" element={element} />
+        </Routes>
+        <SearchProbe />
+      </MemoryRouter>,
+    );
+  });
+  for (let i = 0; i < 4; i += 1) await act(async () => {});
+}
 
 describe("EmployeeDetailModulePage — identity card (R45)", () => {
   const qid = (t: string) => container.querySelector(`[data-testid="${t}"]`);
@@ -540,3 +563,64 @@ describe("EmployeeDetailModulePage — tasks zone (R43)", () => {
   });
 });
 
+describe("R47 cross-zone consistency (edx-*)", () => {
+  const qq = (t: string) => container.querySelector(`[data-testid="${t}"]`);
+
+  it("edx-back uses real history, keeping the list filter query on the way back", async () => {
+    mockApi((url) =>
+      url.includes(`/api/employees/${encodeURIComponent(EMP)}`)
+        ? Promise.resolve({ id: EMP, name: "小鲤", lifecycleState: "active", createdAt: "2026-11-13T22:15:30Z" })
+        : Promise.resolve({}),
+    );
+    document.body.removeAttribute("data-r47-search");
+    await renderStack(root, ["/employees?q=%E5%B0%8F%E9%B2%A4&lifecycle=active", at()], page);
+    expect(qq("edx-back")).toBeTruthy();
+    const back = qq("edx-back") as HTMLButtonElement;
+    await act(async () => {
+      back.click();
+    });
+    await act(async () => {});
+    expect(document.body.getAttribute("data-r47-search")).toBe("?q=%E5%B0%8F%E9%B2%A4&lifecycle=active");
+  });
+
+  it("denied zones carry the request id with a copy control that round-trips", async () => {
+    mockApi((url) => {
+      if (url.includes("/api/tasks?")) {
+        return Promise.reject(
+          new ApiError("forbidden", { status: 403, body: "", url, requestId: "req-d-1" }),
+        );
+      }
+      if (url.includes(`/api/employees/${encodeURIComponent(EMP)}`)) {
+        return Promise.resolve({ id: EMP, name: "小鲤", lifecycleState: "active" });
+      }
+      return Promise.resolve({});
+    });
+    let copied: string | null = null;
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: (t: string) => { copied = t; return Promise.resolve(); } },
+    });
+    await renderAt(page, at("tasks"));
+    const card = qq("ed5-zone-tasks-denied");
+    expect(card).toBeTruthy();
+    expect(card?.textContent).toContain("req-d-1");
+    const copy = qq("req-copy") as HTMLButtonElement;
+    expect(copy).toBeTruthy();
+    await act(async () => {
+      copy.click();
+    });
+    expect(copied).toBe("req-d-1");
+    expect(document.body.textContent).toContain("已复制");
+  });
+
+  it("edx-back sits on the default zone without breaking existing families", async () => {
+    mockApi((url) =>
+      url.includes(`/api/employees/${encodeURIComponent(EMP)}`)
+        ? Promise.resolve({ id: EMP, name: "小鲤", lifecycleState: "active" })
+        : Promise.resolve({}),
+    );
+    await renderAt(page, at());
+    expect(qq("edx-back")).toBeTruthy();
+    expect(qq("ed1-identity-name")?.textContent).toContain("小鲤");
+  });
+});

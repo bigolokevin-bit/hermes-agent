@@ -732,3 +732,18 @@ BFF/数据面现查：GET /agent-api/api/employees/<id>（server.py EMPLOYEES_DE
 不破与门禁：apd5-*/apr5-*/apv5-*/ed* 零改动（既有 57 用例全绿）；四态/可复制 rid/403≡404/零写入口=宿主页与 detail 既有分支既有锁；三档横溢=jsdom 不可测，形态学沿用既有 flex-col break-words（如实报）。新测试 2 用例：①链路顺序/pending 段/缺段人话/无裸 human:emp_②runId/taskId 真 href+意见原文。
 
 验证：定向 approvals 3 files/59 passed exit0；tsc 本域零红；assert-ia 两模式 exit0 51/22/1/8；全量 **131 files/1406 passed**（基线 1404+2）。
+
+## R47 员工详情跨区一致性（2026-11-20，lane/console-appr）
+
+基线：显式 refspec fetch + merge origin/lane/hermes-console（f0419b0b 系=Already up to date @84ccdb26），禁 reset 遵守——已推笔全保，toplevel ✓。
+
+改动（modules/employee-detail/EmployeeDetailModulePage.tsx，approvals 侧零改动）：
+① **返回保参**：header 加 `edx-back` 返回钮=真 `navigate(-1)`（useNavigate），title 注明「返回上一页（保留列表筛选条件）」；实测证据=测试栈 ["/employees?q=%E5%B0%8F%E9%B2%A4&lifecycle=active", /employees/<id>] 点返回后 location.search 原样=`?q=%E5%B0%8F%E9%B2%A4&lifecycle=active`（SearchProbe 写 DOM dataset）。直开无历史栈时页内 notfound/Link 出口兜底。
+② **denied 相 rid 统一**：Resource/OverviewState denied 形态加 `requestId: string|null`；toResourceError 403/404 与 useOverview setState denied 两处捕获 `api?.requestId ?? null`；ZoneDenied 组件加 RequestIdCopy 行（同一复制组件 req-copy/req-copy-state 可见反馈，fallback=「本次请求没有带回编号；可复制时间与页面路径反馈。」），七个区（tasks/chat/capability/approvals/runs/audit/overview）全部传参；实测=403 requestId=req-d-1 上屏+复制回环 clipboard 值一致+「已复制」。
+③ approvals 侧判定：states.tsx 自制复制件已含可见反馈（apr5-copy-state 已复制/复制失败）与「请求编号：」同形制；apr5-request-id/-missing 三处测试引用不可破→**不动文件，行为口径等价**（本轮 approvals 59 passed 零影响）。
+④ 缺读口区（capability/audit）：GAP 编号仅 title+「尚未接入」句既有，未造假；③三档横溢=形态学报（header flex-wrap gap+truncate 既有，jsdom 不可测）。
+⑤ testid：ed1-identity-*/ed5-zone-tasks-*/apd6-*/apr5-*/apv5-* 零改动；新增=edx-back + ZoneDenied 内既有 req-copy 家族。
+
+坑（记档）：该测试文件 react-router import 原为 MemoryRouter,Route,Routes——先 sed 读现场再加 useLocation；forbidden() 助手不带 requestId，用例内直接 new ApiError(status 403, requestId)；renderAt key={entry} 单入口测不了回退，需双 entries 栈 helper。
+
+验证：定向 employee-detail 3 files/32 passed（+3 R47 用例）、approvals 3 files/59 passed 零影响；assert-ia 两模式 exit 0（51/22/1/8，未动壳层）；tsc 本域零红；全量 **131 files/1409 passed**（基线 1406+3）。9122=02a7385c 禁重建：活体回退保参读数待并入后代次，本轮 jsdom 栈实测为行为权威。

@@ -21,7 +21,7 @@
  * visible text — they live in `title` attributes only.
  */
 import { useEffect, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { ClipboardCheck, Gauge, Inbox, RefreshCw, ShieldAlert, TriangleAlert, Wallet } from "lucide-react";
 import { Badge, Button, Card, CardContent } from "@nous-research/ui";
 
@@ -40,7 +40,7 @@ type Resource<T> =
   | { phase: "loading" }
   | { phase: "empty" }
   | { phase: "ready"; data: T }
-  | { phase: "denied"; message: string }
+  | { phase: "denied"; message: string; requestId: string | null }
   | { phase: "error"; message: string; requestId: string | null };
 
 /* R-ed5: 403 and 404 share ONE body — the same sentence and code, no path
@@ -206,8 +206,8 @@ function actionLabel(value: string | null): string {
 function toResourceError(err: unknown): Resource<never> {
   const api = err instanceof ApiError ? err : null;
   const status = api?.status;
-  if (status === 403) return { phase: "denied", message: DENIED_COPY };
-  if (status === 404) return { phase: "denied", message: DENIED_COPY };
+  if (status === 403) return { phase: "denied", message: DENIED_COPY, requestId: api?.requestId ?? null };
+  if (status === 404) return { phase: "denied", message: DENIED_COPY, requestId: api?.requestId ?? null };
   const message = api?.message || (status ? humanizeStatus(status) : API_UNREACHABLE_MESSAGE);
   return { phase: "error", message, requestId: api?.requestId ?? null };
 }
@@ -386,13 +386,16 @@ function ZoneEmpty({ title, hint, testid }: { title: string; hint: string; testi
   );
 }
 
-function ZoneDenied({ title, message, onRetry, testid }: { title: string; message: string; onRetry: () => void; testid: string }) {
+function ZoneDenied({ title, message, requestId, onRetry, testid }: { title: string; message: string; requestId?: string | null; onRetry: () => void; testid: string }) {
   return (
     <Card data-testid={testid}>
       <CardContent className="flex flex-col items-start gap-3 p-5">
         <ShieldAlert className="h-5 w-5 text-amber-400" />
         <p className="text-sm">{title}暂不可见</p>
         <p className="text-xs text-white/55">{message}请确认后台已接入对应服务，或联系管理员开通权限。</p>
+        <p className="font-mono text-xs text-white/45">
+          <RequestIdCopy requestId={requestId ?? null} fallback="本次请求没有带回编号；可复制时间与页面路径反馈。" />
+        </p>
         <Button size="sm" outlined onClick={onRetry}>
           <RefreshCw className="mr-2 h-4 w-4" />
           重试
@@ -494,7 +497,7 @@ function TasksZone({ resource, empId, onRetry }: { resource: Resource<TaskZoneRo
   }
   if (resource.phase === "loading") return <ZoneLoading testid="ed5-zone-tasks-loading" />;
   if (resource.phase === "denied") {
-    return <ZoneDenied title="任务" message={resource.message} onRetry={onRetry} testid="ed5-zone-tasks-denied" />;
+    return <ZoneDenied title="任务" message={resource.message} requestId={resource.requestId} onRetry={onRetry} testid="ed5-zone-tasks-denied" />;
   }
   if (resource.phase === "error") {
     return (
@@ -573,7 +576,7 @@ function ChatZone({ resource, empId, onRetry }: { resource: Resource<ChatRow[]>;
   }
   if (resource.phase === "loading") return <ZoneLoading testid="ed5-zone-chat-loading" />;
   if (resource.phase === "denied") {
-    return <ZoneDenied title="对话记录" message={resource.message} onRetry={onRetry} testid="ed5-zone-chat-denied" />;
+    return <ZoneDenied title="对话记录" message={resource.message} requestId={resource.requestId} onRetry={onRetry} testid="ed5-zone-chat-denied" />;
   }
   if (resource.phase === "error") {
     return (
@@ -647,6 +650,7 @@ function ChatZone({ resource, empId, onRetry }: { resource: Resource<ChatRow[]>;
 export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: string }) {
   const params = useParams<{ employeeId: string; id: string }>();
   const [sp] = useSearchParams();
+  const navigate = useNavigate();
   const empId =
     employeeId?.trim() ||
     (params.employeeId ? decodeURIComponent(params.employeeId) : "") ||
@@ -688,6 +692,17 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
       {overview.phase === "ready" ? (
         <Badge tone={lifecycleTone(lifecycle)}>{lifecycleLabel(lifecycle)}</Badge>
       ) : null}
+      {/* R47: 返回走真实历史后退，来源列表的筛选 query 原样保留；
+          直开无栈时由页内 Link 出口兜底（带本页可见的 query）。 */}
+      <Button
+        size="sm"
+        outlined
+        data-testid="edx-back"
+        onClick={() => navigate(-1)}
+        title="返回上一页（保留列表筛选条件）"
+      >
+        返回
+      </Button>
     </header>
   );
 
@@ -746,7 +761,7 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
 type OverviewState =
   | { phase: "loading" }
   | { phase: "empty" }
-  | { phase: "denied"; message: string }
+  | { phase: "denied"; message: string; requestId: string | null }
   | { phase: "error"; message: string; requestId: string | null }
   /** R28-1: the backend said this id does not exist (or we may not see it). */
   | { phase: "notfound"; requestId: string | null }
@@ -787,7 +802,7 @@ function useOverview(empId: string, nonce: number): OverviewState {
         // the capability zone reuses — see file header).
         const status = err instanceof ApiError ? err.status : undefined;
         if (status === 403) {
-          setState({ phase: "denied", message: DENIED_COPY });
+          setState({ phase: "denied", message: DENIED_COPY, requestId: api?.requestId ?? null });
           return;
         }
         try {
@@ -812,7 +827,7 @@ function useOverview(empId: string, nonce: number): OverviewState {
           if (cancelled) return;
           const r = toResourceError(err2);
           if (r.phase === "denied" && status === 404) {
-            setState({ phase: "denied", message: DENIED_COPY });
+            setState({ phase: "denied", message: DENIED_COPY, requestId: api?.requestId ?? null });
           } else if (r.phase === "error") {
             setState({ phase: "error", message: r.message, requestId: r.requestId });
           } else {
@@ -904,7 +919,7 @@ function OverviewZone({ state, onRetry, empId }: { state: OverviewState; onRetry
     );
   }
   if (state.phase === "denied") {
-    return <ZoneDenied title="员工档案" message={state.message} onRetry={onRetry} testid="ed5-overview-denied" />;
+    return <ZoneDenied title="员工档案" message={state.message} requestId={state.requestId} onRetry={onRetry} testid="ed5-overview-denied" />;
   }
   if (state.phase === "notfound") {
     return (
@@ -982,7 +997,7 @@ function CapabilityZone({ resource, onRetry }: { resource: Resource<CapabilityRo
     );
   }
   if (resource.phase === "denied") {
-    return <ZoneDenied title="能力与权限" message={resource.message} onRetry={onRetry} testid="ed5-capability-denied" />;
+    return <ZoneDenied title="能力与权限" message={resource.message} requestId={resource.requestId} onRetry={onRetry} testid="ed5-capability-denied" />;
   }
   if (resource.phase !== "ready") {
     return (
@@ -1036,7 +1051,7 @@ function ApprovalsZone({ resource, onRetry }: { resource: Resource<ApprovalRow[]
     );
   }
   if (resource.phase === "denied") {
-    return <ZoneDenied title="审批" message={resource.message} onRetry={onRetry} testid="ed5-approvals-denied" />;
+    return <ZoneDenied title="审批" message={resource.message} requestId={resource.requestId} onRetry={onRetry} testid="ed5-approvals-denied" />;
   }
   if (resource.phase !== "ready") {
     return (
@@ -1137,7 +1152,7 @@ function RunsZone({ resource, onRetry }: { resource: Resource<RunRow[]>; onRetry
     );
   }
   if (resource.phase === "denied") {
-    return <ZoneDenied title="运行" message={resource.message} onRetry={onRetry} testid="ed5-runs-denied" />;
+    return <ZoneDenied title="运行" message={resource.message} requestId={resource.requestId} onRetry={onRetry} testid="ed5-runs-denied" />;
   }
   if (resource.phase !== "ready") {
     return (
@@ -1205,7 +1220,7 @@ function AuditZone({ resource, onRetry }: { resource: Resource<AuditRow[]>; onRe
     );
   }
   if (resource.phase === "denied") {
-    return <ZoneDenied title="审计" message={resource.message} onRetry={onRetry} testid="ed5-audit-denied" />;
+    return <ZoneDenied title="审计" message={resource.message} requestId={resource.requestId} onRetry={onRetry} testid="ed5-audit-denied" />;
   }
   if (resource.phase !== "ready") {
     return (
