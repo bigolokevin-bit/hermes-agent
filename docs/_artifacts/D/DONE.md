@@ -938,3 +938,12 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - shots main(auth) 102/102 failures=[] obs=0 ceAuth=login-state，三键=DE2Dr0C5/74f2f276…/158988，拍后 served 复证未漂；shots-anon auxiliary=true 102/102 mode=anon（mktemp /tmp/shots-anon67 隔离同名覆盖 mv 回，pngs=102）。
 - 坑注：crawl-routes.mjs 在 web/scripts——必须 cd web 跑（本拍首跑 repo 根 exit=1=MODULE_NOT_FOUND 非环境红，纠正即绿）；python heredoc print 关键字参数笔误会中断后续盖章段，拆跑补齐。
 - 环境：9122 v4_proxy 受管 pid 63777、caddy 8183 pid 28034、8092 pid 76933 全程未动；web/src 未碰；他人脏零沾染。
+
+## 六十九轮·终代次九件重章 @ da807e4f（entry BM8v0tKe，2026-11-19 22:2x）
+
+- 68 轮 ad72c31c 半成品按 L0 停手令 checkout 作废（零提交）；终窗锁 da807e4f（=HEAD=远端，porc=0），上一代 1f3fe2ad/127ff670 作废不重做。
+- 代次四向互证：盘 hermes_cli/web_dist/assets/index-BM8v0tKe.js 159647B sha fc597ad02ce8…b4f94cc==卡面；9122==磁盘；拍后 served 复证未漂。
+- 九件全 exit=0 盖 da807e4f：ia-html/react ok{51,22,1,8}｜lint-fake ok v=[]｜lint-reuse ok v=0 exempt=1(chat→T40)｜crawl-anon DL0/CE0/PE0 routesCE=51(401 归因)｜crawl-auth routesCE=21(趋势 23→22→21→22→22→21)｜state-quad 20/20 文本重建。
+- shots main(auth) 102/102 failures=[] oversize=[] obs=0 ceAuthority=login-state distinctMainHeads=27 rootBaseline textLen=490 真数据；shots-anon auxiliary=true 102/102 mode=anon failures=[]（obs=1 仅观测 #/approvals?tab=policy，匿名态 textLen=732 含「登录状态已过期」实锤）；两 summary 六键注入（entry 全名/sha256 全值/159647/servedEntry Before=After）；同名覆盖 mv 回 pngs=102。
+- 一次成型纪律：本笔盖章 commit 事后禁 amend/rebase（69 轮卡新纪律）。
+- 环境：9122 pid 63777（受管 v4_proxy 未动）、caddy 8183 28034、8092 pid 76933；web/src 未碰；他人脏零沾染。

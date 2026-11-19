@@ -556,7 +556,7 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 384,
+      "mainChars": 312,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 4,
@@ -751,7 +751,7 @@
   "routesWithConsoleErrors": 51,
   "parseErrors": [],
   "ok": true,
-  "headHash": "1f3fe2ad",
+  "headHash": "da807e4f",
   "exitCode": 0,
   "counts": {
     "probed": 75,
