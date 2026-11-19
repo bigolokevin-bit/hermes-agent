@@ -11,7 +11,10 @@
  *   /api/audit?from=<7d>&to=<now>&limit=50     → 200, 50 events (the surface used here)
  *
  * So an "evidence row" is one audit event: who produced it, what object it
- * touched, when, and a link back to the event itself (/audit?id=<eventId>).
+ * touched, when, and a link back to the event itself (/audit?detail=<eventId>,
+ * the canonical deep link since R31). Every row also names which surface it is
+ * evidence from — 知识库 / 运行 / 审计 — with 审计 being the honest answer for
+ * an audit event.
  * Nothing is invented: a missing event id reads 「待核实」 and the link block
  * says 「原文不可达」 with the reason, rather than rendering a dead control.
  */
@@ -21,7 +24,9 @@ export interface CitationRow {
   id: string;
   /** The audit event this row stands for, raw (title / copy only). */
   eventId: string | null;
-  /** 引用来源 in plain words: which part of the system produced the record. */
+  /** 引用来源, one of the three surfaces this pane can cite: 知识库 / 运行 / 审计. */
+  sourceKind: string;
+  /** 引用来源 detail: which part of the system produced the record. */
   sourceLabel: string;
   /** 引用来源's actor, already masked: 「姓名 · 8 位短码」/「系统 · 服务名」/「未指派」. */
   actorLabel: string;
@@ -99,6 +104,48 @@ export function midEllipsis(id: string): string {
   return `${prefix}${body.slice(0, 4)}…${body.slice(-4)}`;
 }
 
+/**
+ * 引用来源 vocabulary (R33): a citation either lives in a knowledge base, in a
+ * run record, or in the audit ledger. The audit route is the only surface that
+ * answers on this deployment, so every live row honestly reads 审计; the other
+ * two words are used the moment a row says it came from there.
+ */
+const SOURCE_KINDS: Record<string, string> = {
+  knowledge: '知识库',
+  kb: '知识库',
+  document: '知识库',
+  knowledge_base: '知识库',
+  run: '运行',
+  runs: '运行',
+  audit: '审计',
+  event: '审计',
+};
+
+export function sourceKindOf(raw: unknown): string {
+  if (!isRecord(raw)) return '审计';
+  const declared = pickString(raw, ['citationKind', 'citation_kind', 'sourceKind', 'source_kind', 'kind']);
+  const mapped = SOURCE_KINDS[declared.trim().toLowerCase()];
+  if (mapped) return mapped;
+  const resource = isRecord(raw.resource) ? text(raw.resource.type).trim().toLowerCase() : '';
+  if (resource.startsWith('knowledge')) return '知识库';
+  if (resource === 'run') return '运行';
+  return '审计';
+}
+
+/** Directory names for the ids an audit event carries: `{items:[{employeeId,name}]}`. */
+export function employeeNames(payload: unknown): Map<string, string> {
+  const names = new Map<string, string>();
+  const list = pickArray(payload, ['items', 'employees', 'rows', 'data']);
+  if (!list) return names;
+  for (const entry of list) {
+    if (!isRecord(entry)) continue;
+    const id = pickString(entry, ['employeeId', 'employee_id', 'id']);
+    const name = pickString(entry, ['name', 'displayName', 'display_name']);
+    if (id && name) names.set(id, name);
+  }
+  return names;
+}
+
 const SOURCE_LABELS: Record<string, string> = {
   employee: '员工操作',
   channel: '渠道消息',
@@ -141,11 +188,14 @@ export function resourceLabel(type: string): string {
 }
 
 /** 「姓名 · 8 位短码」/「系统 · 服务名」/「成员 · 后4位」/「未指派」 — never a bare id. */
-export function actorLabel(actor: unknown): { label: string; title: string | null } {
+export function actorLabel(
+  actor: unknown,
+  names?: Map<string, string>,
+): { label: string; title: string | null } {
   if (!isRecord(actor)) return { label: '未指派', title: null };
   const type = text(actor.type).trim().toLowerCase();
   const id = text(actor.id).trim();
-  const name = text(actor.displayName ?? actor.display_name).trim();
+  const name = text(actor.displayName ?? actor.display_name).trim() || names?.get(id) || '';
   const title = id || name || null;
   if (name) return { label: `${name} · ${shortCode(id || name)}`, title };
   if (!id && !type) return { label: '未指派', title: null };
@@ -158,7 +208,10 @@ export function actorLabel(actor: unknown): { label: string; title: string | nul
 }
 
 /** 目标对象: employee ids get the same masked treatment, everything else a mid-ellipsis code. */
-function targetOf(resource: unknown): {
+function targetOf(
+  resource: unknown,
+  names?: Map<string, string>,
+): {
   typeLabel: string;
   label: string;
   title: string | null;
@@ -170,28 +223,35 @@ function targetOf(resource: unknown): {
   const type = text(resource.type).trim();
   const id = text(resource.id).trim();
   const typeLabel = resourceLabel(type);
-  if (!id) return { typeLabel, label: '待核实', title: null, missing: true };
-  if (type.toLowerCase() === 'employee') {
-    return { typeLabel, label: shortCode(id), title: id, missing: false };
+  const person = type.toLowerCase() === 'employee';
+  if (!id) {
+    // A person-shaped target without an id reads 「未指派」 rather than inventing a code.
+    return { typeLabel, label: person ? '未指派' : '待核实', title: null, missing: true };
   }
+  const name = person ? names?.get(id) ?? '' : '';
+  if (name) return { typeLabel, label: `${name} · ${shortCode(id)}`, title: id, missing: false };
+  if (person) return { typeLabel, label: `员工 · ${shortCode(id)}`, title: id, missing: false };
   return { typeLabel, label: midEllipsis(id), title: id, missing: false };
 }
 
 const EVENT_LIST_KEYS = ['events', 'items', 'rows', 'data', 'records'];
 
 /** One audit event → one evidence row. */
-export function readRow(raw: unknown, index: number): CitationRow {
+export function readRow(raw: unknown, index: number, names?: Map<string, string>): CitationRow {
   const eventId = pickString(raw, ['eventId', 'event_id', 'id']);
-  const actor = isRecord(raw) ? actorLabel(raw.actor) : { label: '未指派', title: null };
+  const actor = isRecord(raw) ? actorLabel(raw.actor, names) : { label: '未指派', title: null };
   const resourceRaw = isRecord(raw) ? raw.resource : null;
-  const target = targetOf(resourceRaw);
+  const target = targetOf(resourceRaw, names);
   const source = sourceLabel(pickString(raw, ['sourceSystem', 'source_system', 'source']));
   const at = pickString(raw, ['occurredAt', 'occurred_at', 'recordedAt', 'recorded_at', 'at', 'timestamp']);
-  const href = eventId ? `/audit?id=${encodeURIComponent(eventId)}` : null;
+  // R31 moved the audit detail deep link to `?detail=`; `?id=` stays supported
+  // for old links, but this pane writes the canonical spelling only.
+  const href = eventId ? `/audit?detail=${encodeURIComponent(eventId)}` : null;
   const unverified = !eventId || target.missing;
   return {
     id: eventId || `ev5-row-${index + 1}`,
     eventId: eventId || null,
+    sourceKind: sourceKindOf(raw),
     sourceLabel: source,
     actorLabel: actor.label,
     actorTitle: actor.title,
@@ -209,9 +269,9 @@ export function readRow(raw: unknown, index: number): CitationRow {
   };
 }
 
-export function readCitations(payload: unknown): CitationsPayload {
+export function readCitations(payload: unknown, names?: Map<string, string>): CitationsPayload {
   const list = pickArray(payload, EVENT_LIST_KEYS) ?? [];
-  const items = list.map((raw, index) => readRow(raw, index));
+  const items = list.map((raw, index) => readRow(raw, index, names));
   const asOf = pickString(payload, ['asOf', 'as_of', 'generatedAt', 'generated_at']);
   return { items, asOf: asOf || null, origin: 'bff' };
 }

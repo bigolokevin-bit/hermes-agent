@@ -2402,3 +2402,32 @@ The evidence pane gates on `window.__HERMES_SESSION_TOKEN__`; with a token injec
 - 本租户 `delegations` 真 0 条，行级布局（七列、委托链）仍由 mock 用例证明。
 - retention 页面在真实环境永远走「未接入」分支，`ready` 分支只剩 mock 覆盖。
 - `audit/AuditDetailModulePage`、`AuditVerifyModulePage` 的无角标复现腿未处理（写明在本节第 2 部分）。
+
+## R33 evidence citation drill-back (2026-11-20, base 33fc7029)
+
+### Live probes (session cookie via 127.0.0.1:8092, value never printed)
+| request | code | reading |
+|---|---|---|
+| GET /api/audit?from=<7d>&to=<now>&limit=50 | 200 | 50 events, **50/50 carry eventId** (可达率 100%) |
+| sourceSystem distribution | — | employee 25, console 14, runtime 8, policy 2, approval 1 → all are audit records |
+| resource.type set | — | approval, channel_event, creation_attempt, employee, task, workstation |
+| GET /audit?detail=ev_2BAA7DD7F3BC4767AF39764D91 (built dist, 4210 proxy) | 200 | detailPane 1, rows 50, aud01 459, textLen 6386, hex32 0, masked labels 8 chars, sw==cw |
+
+### Changes (write scope: web/src/modules/evidence/**)
+1. Drill-back href is now the canonical audit deep link `/audit?detail=<eventId>` (R31 moved it from `?id=`; `?id=` still accepted for old links, this pane writes the new spelling only).
+2. 引用来源 vocabulary 知识库 / 运行 / 审计 via new `sourceKindOf()`: honours an explicit citationKind/sourceKind/kind on the row, else derives from the resource type (knowledge* → 知识库, run → 运行), else 审计. Every live row honestly reads 审计 because the audit route is the only surface that answers; the other two words activate as soon as a row declares them.
+3. Side read `GET /agent-api/api/employees?limit=100` (new `employeeNames()`); a failure degrades to 「员工 · 短码」 and never blocks the citations. With a directory name the actor and a person-shaped target both read 「姓名 · 8 位短码」.
+4. A person-shaped target without an id reads 「未指派」 (was 待核实); non-person targets keep type · code and 待核实 when unreadable.
+5. Summary gained 「可回原文 N」 next to 原文不可达; unreachable reasons and the 待核实 pill (GAP only in title) unchanged.
+6. testid family preserved: ev5-page/list/row-*/source-*/actor-*/target-*/at-*/open-*/unreachable-*/unverified-*/summary and the four states (loading/empty/error/denied) + login.
+
+### Gates (from web/)
+- vitest run src/modules/evidence → exit 0, **1 file / 11 tests** (9 before; +2: directory-name resolution, missing person id → 未指派).
+- npx tsc -b . --noEmit → exit 2, **67** error TS, all pre-existing (49 ../apps/shared/**, approvals 12+2, security 1, tasks test 1, LoginPage.test 2); `modules/evidence` **0**.
+- eslint src/modules/evidence → exit 0, 0 errors / 2 pre-existing warnings (react-refresh on the exported helper, set-state-in-effect on the session gate).
+- lefthook lint web really ran.
+
+### Untested / disclosed
+- The pane is **not reachable at runtime on this generation**: `/knowledge?tab=evidence` is rewritten by the shell to `/knowledge?tab=spaces&panel=evidence` and the evidence live tab never mounts (measured ev5Page 0, textLen 534, same with `/audit?tab=evidence` → textLen 6148 no ev5 ids). shell/routes.ts:161 still declares the tab (`tab: 'evidence'`); the rewrite is the shell lane's, out of this write scope. Row-level pixels therefore come from module tests, while the drill-back target they point at was measured live.
+- The tenant's 50 audit events are all 审计 records, so 知识库/运行 rows have no live sample; those branches are pinned by code paths only.
+- No per-element pixel comparison; 1440/1280/375 overflow checked by sw==cw on the drill-back page only.
