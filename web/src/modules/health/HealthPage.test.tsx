@@ -34,26 +34,40 @@ afterEach(() => { act(() => root.unmount()); container.remove(); });
 async function render() { await act(async () => { root.render(<HealthPage />); }); await act(async () => {}); }
 
 describe("HealthPage", () => {
-  it("shows live probe status, unknown pilot and matching counts", async () => {
+  it("shows per-source status, source metadata and matching counts", async () => {
     fetchJSON.mockImplementation((url: string) => {
-      if (url.includes("__health-probe__")) return Promise.resolve({});
+      if (url.includes("__health-probe__")) return Promise.resolve({
+        status: "healthy",
+        asOf: "2026-11-19T06:00:00Z",
+        lastSuccessAt: "2026-11-19T05:50:00Z",
+        lastFailureAt: "2026-11-19T04:30:00Z",
+        consecutiveSuccesses: 3,
+      });
       if (url.includes("hermes-summary")) return Promise.reject(new ApiError("failure", { status: 500, body: "", url, requestId: "req-runtime" }));
       return Promise.resolve({ items: [] });
     });
     await render();
-    expect(container.textContent).toContain("健康 2");
+    expect(container.textContent).toContain("正常 2");
     expect(container.textContent).toContain("异常 1");
     expect(container.textContent).toContain("未知 1");
     expect(container.textContent).not.toContain("状态码");
-    expect(container.querySelector('[data-testid="hlt4-row-runtime"]')?.getAttribute("title")).toContain("500");
-    expect(container.textContent).toContain("探针未接入");
+    const row = container.querySelector('[data-testid="hlt5-row-console"]');
+    expect(row?.querySelector('[data-testid="hlt5-last-success-console"]')?.textContent).toBe("2026-11-19 13:50");
+    expect(row?.querySelector('[data-testid="hlt5-last-failure-console"]')?.textContent).toBe("2026-11-19 12:30");
+    expect(row?.querySelector('[data-testid="hlt5-streak-console"]')?.textContent).toBe("3 次");
+    expect(row?.querySelector('[data-testid="hlt5-asof-console"]')?.textContent).toBe("2026-11-19 14:00");
+    expect(container.querySelector('[data-testid="hlt5-row-bisheng"]')?.textContent).toContain("未知");
   });
 
-  it("marks a network failure unknown and keeps unknown distinct", async () => {
+  it("marks a network failure unknown and keeps missing metadata as dashes with reasons", async () => {
     fetchJSON.mockImplementation((url: string) => url.includes("hermes-summary") ? Promise.reject(new ApiError("offline", { status: 0, body: "", url })) : Promise.resolve({}));
     await render();
-    expect(container.textContent).toContain("控制台不可达，无法判定");
-    expect(container.querySelector('[data-testid="hlt4-row-bisheng"]')?.textContent).toContain("未知");
+    const row = container.querySelector('[data-testid="hlt5-row-runtime"]');
+    expect(row?.textContent).toContain("控制台不可达，无法判定");
+    expect(row?.querySelector('[data-testid="hlt5-last-success-runtime"]')?.textContent).toBe("—");
+    expect(row?.querySelector('[data-testid="hlt5-last-failure-runtime"]')?.textContent).toBe("—");
+    expect(row?.querySelector('[data-testid="hlt5-asof-runtime"]')?.textContent).toBe("—");
+    expect(row?.querySelector('[data-testid="hlt5-asof-runtime"]')?.getAttribute("title")).toContain("没有采集时间");
   });
 
   it("marks Hermes HTTP failures as exceptions without showing a raw status code", async () => {
@@ -61,36 +75,49 @@ describe("HealthPage", () => {
       ? Promise.reject(new ApiError("failure", { status: 500, body: "", url }))
       : Promise.resolve({}));
     await render();
-    expect(container.querySelector('[data-testid="hlt4-row-runtime"]')?.textContent).toContain("异常");
+    const row = container.querySelector('[data-testid="hlt5-row-runtime"]');
+    expect(row?.textContent).toContain("异常");
     expect(container.textContent).toContain("上游返回异常，请看接入说明。");
     expect(container.textContent).not.toContain("500");
+    expect(row?.querySelector('[data-testid="hlt5-last-failure-runtime"]')?.textContent).not.toBe("—");
   });
 
+  it("renders 403 and 404 with the same neutral body and raw status only in the title", async () => {
+    for (const status of [403, 404]) {
+      fetchJSON.mockReset();
+      fetchJSON.mockImplementation((url: string) => url.includes("hermes-summary")
+        ? Promise.reject(new ApiError("missing", { status, body: "", url }))
+        : Promise.resolve({}));
+      await render();
+      const row = container.querySelector('[data-testid="hlt5-row-runtime"]');
+      expect(row?.textContent).toContain("接口未接入：这个读取口还没有对控制台开放。");
+      expect(row?.getAttribute("title")).toContain(String(status));
+      expect(container.textContent).not.toContain(String(status));
+      act(() => root.unmount());
+      root = createRoot(container);
+    }
+  });
 
-  it("renders a missing read endpoint as not connected, with the raw status only in the title", async () => {
-    fetchJSON.mockImplementation((url: string) => url.includes("hermes-summary")
-      ? Promise.reject(new ApiError("missing", { status: 404, body: "", url }))
-      : Promise.resolve({}));
+  it("never substitutes a browser clock for a missing source asOf", async () => {
+    fetchJSON.mockImplementation(() => Promise.resolve({}));
     await render();
-    const row = container.querySelector('[data-testid="hlt4-row-runtime"]');
-    expect(row?.textContent).toContain("接口未接入");
-    expect(row?.getAttribute("title")).toContain("404");
-    expect(container.textContent).not.toContain("404");
+    const asOf = container.querySelector('[data-testid="hlt5-asof-console"]');
+    expect(asOf?.textContent).toBe("—");
+    expect(asOf?.getAttribute("title")).toContain("不能用浏览器时间代替");
+    expect(container.querySelector('[data-testid="hlt5-streak-console"]')?.textContent).toBe("—");
+    expect(container.textContent).not.toMatch(/采集时间：\d{4}/);
   });
 
-  it("writes an explicit unknown time and shows only the short request id, full id in title", async () => {
+  it("shows a copyable full request id and only the short id in the body", async () => {
     const full = "0123456789abcdef0123456789abcdef";
     fetchJSON.mockImplementation((url: string) => url.includes("hermes-summary")
       ? Promise.reject(new ApiError("offline", { status: 0, body: "", url, requestId: full }))
       : Promise.resolve({}));
     await render();
-    const row = container.querySelector('[data-testid="hlt4-row-runtime"]');
-    expect(row?.textContent).toContain("控制台不可达");
-    expect(row?.textContent).toContain("采集时刻：时间未知（本次没有收到可记录的时间）");
-    expect(row?.textContent).not.toContain("—（未采集）");
+    const row = container.querySelector('[data-testid="hlt5-row-runtime"]');
     expect(row?.textContent).toContain("请求编号：01234567");
     expect(row?.textContent).not.toContain(full);
-    expect(row?.querySelector('[data-testid="hlt4-reqid-short"]')?.getAttribute("title")).toBe(full);
+    expect(row?.querySelector('[data-testid="hlt5-reqid-short"]')?.getAttribute("title")).toBe(full);
     expect(row?.querySelector("button")?.getAttribute("aria-label")).toContain("复制完整请求编号");
   });
 
@@ -103,8 +130,16 @@ describe("HealthPage", () => {
       .mockResolvedValueOnce({});
     await render();
     expect(container.textContent).toContain("请求编号：req-dead");
-    await act(async () => { [...container.querySelectorAll("button")].find((button) => button.textContent?.includes("重试"))?.click(); });
+    await act(async () => { container.querySelector('[data-testid="hlt5-retry"]')?.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
     await act(async () => {});
-    expect(container.querySelector('[data-testid="hlt4-list"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="hlt5-list"]')).toBeTruthy();
+  });
+
+  it("previews loading and empty without fetching and marks the page as a fixture", async () => {
+    window.history.replaceState({}, "", "/?state=empty");
+    await render();
+    expect(fetchJSON).not.toHaveBeenCalled();
+    expect(container.querySelector('[data-testid="hlt5-page"]')?.getAttribute("data-fixture")).toBe("1");
+    expect(container.querySelector('[data-testid="hlt5-empty"]')).toBeTruthy();
   });
 });

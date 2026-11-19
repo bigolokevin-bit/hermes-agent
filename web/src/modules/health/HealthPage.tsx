@@ -5,6 +5,7 @@ import { fetchJSON } from "@/lib/api";
 import { ApiError } from "@/lib/api-error";
 import { currentFixtureState, fixtureView, type FixtureState } from "../../shell/fixtures";
 import { PILOT_ROW, PROBE_DEFINITIONS, probeResult, summarize, type ProbeRow, type ProbeStatus } from "./health";
+import "./health.css";
 
 type State = { k: "loading" } | { k: "empty" } | { k: "error"; requestId: string } | { k: "ready"; rows: ProbeRow[] };
 
@@ -37,12 +38,12 @@ function RowRequestId({ id }: { id: string }) {
   };
   const short = id.length > 8 ? id.slice(0, 8) : id;
   return (
-    <span className="flex flex-wrap items-center gap-2 text-xs text-white/55">
-      <span title={id} data-testid="hlt4-reqid-short">请求编号：{short}</span>
+    <span className="hlt5-req" data-testid="hlt5-reqid">
+      <span title={id} data-testid="hlt5-reqid-short">请求编号：{short}</span>
       <button
         type="button"
         aria-label="复制完整请求编号"
-        className="underline underline-offset-2 hover:text-white/80"
+        className="hlt5-copy"
         onClick={copy}
       >
         {copied ? "已复制" : "复制"}
@@ -61,6 +62,15 @@ function readRequestId(results: PromiseSettledResult<unknown>[]): string {
   return "—（未收到响应，无请求号）";
 }
 
+function Metric({ label, value, reason, testid }: { label: string; value: string; reason: string | null; testid: string }) {
+  return (
+    <div className="hlt5-metric">
+      <dt>{label}</dt>
+      <dd data-testid={testid} title={reason ?? undefined}>{value}</dd>
+    </div>
+  );
+}
+
 export function HealthPage() {
   const [state, setState] = useState<State>({ k: "loading" });
   const [attempt, setAttempt] = useState(0);
@@ -76,7 +86,7 @@ export function HealthPage() {
     const settled = await Promise.allSettled(PROBE_DEFINITIONS.map((probe) => fetchJSON<unknown>(probe.path)));
     const returnedAt = Date.now();
     const rows = PROBE_DEFINITIONS.map((probe, index) => probeResult(probe.id, settled[index] as PromiseSettledResult<unknown>, returnedAt));
-      if (settled.every((result) => result.status === "rejected" && result.reason instanceof ApiError && result.reason.status === 0)) {
+    if (settled.every((result) => result.status === "rejected" && result.reason instanceof ApiError && result.reason.status === 0)) {
       setState({ k: "error", requestId: readRequestId(settled) });
       return;
     }
@@ -104,58 +114,64 @@ export function HealthPage() {
   const counts = view.k === "ready" ? summarize(view.rows) : { healthy: 0, error: 0, unknown: 0 };
 
   return (
-    <section className="space-y-4" data-testid="hlt4-page">
-      <header className="flex flex-wrap items-start justify-between gap-3">
+    <section className="hlt5-page" data-testid="hlt5-page" data-fixture={forced ? "1" : undefined}>
+      <header className="hlt5-head">
         <div className="min-w-0">
           <h1 className="font-mondwest text-xl">系统健康</h1>
           <p className="mt-1 text-sm text-white/55">实例活着吗</p>
-          <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-white/55" data-testid="hlt4-counts">
-            <span>健康 {counts.healthy}</span><span>异常 {counts.error}</span><span>未知 {counts.unknown}</span>
+          <p className="hlt5-counts" data-testid="hlt5-counts">
+            <span>正常 {counts.healthy}</span><span>异常 {counts.error}</span><span>未知 {counts.unknown}</span>
           </p>
         </div>
-        <Button size="sm" outlined onClick={retry} disabled={view.k === "loading"}>
+        <Button size="sm" outlined onClick={retry} disabled={view.k === "loading"} data-testid="hlt5-refresh">
           <RefreshCw className="mr-1 size-3.5" aria-hidden="true" />刷新
         </Button>
       </header>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-white/50">
+      <div className="hlt5-owner">
         <span>运维负责人</span><span>处理异常探针</span>
       </div>
 
       {view.k === "loading" ? (
-        <Card><CardContent className="space-y-3 p-4" data-testid="hlt4-loading" aria-busy="true">
+        <Card><CardContent className="space-y-3 p-4" data-testid="hlt5-loading" aria-busy="true">
           <p className="text-sm text-white/55">正在检查服务…</p>
-          {[1, 2, 3, 4].map((row) => <div key={row} className="h-16 animate-pulse rounded bg-white/5" />)}
+          {[1, 2, 3, 4].map((row) => <div key={row} className="hlt5-skeleton" />)}
         </CardContent></Card>
       ) : view.k === "empty" ? (
-        <Card><CardContent className="py-10 text-center" data-testid="hlt4-empty">
+        <Card><CardContent className="py-10 text-center" data-testid="hlt5-empty">
           <p className="text-sm text-white/80">探针未接入</p><p className="mt-2 text-xs text-white/50">请看接入说明。</p>
         </CardContent></Card>
       ) : view.k === "error" ? (
-        <Card><CardContent className="flex flex-col items-center gap-3 py-10 text-center" data-testid="hlt4-error" role="alert">
+        <Card><CardContent className="flex flex-col items-center gap-3 py-10 text-center" data-testid="hlt5-error" role="alert">
           <p className="text-sm text-white/80">所有探针均未收到响应</p>
           {view.requestId.startsWith("—") ? (
             <p className="text-xs text-white/40">请求编号：未提供（这次没有收到可记录的请求编号）</p>
           ) : (
             <RowRequestId id={view.requestId} />
           )}
-          <Button size="sm" outlined onClick={() => { void runProbes(); }}>重试</Button>
+          <Button size="sm" outlined onClick={() => { void runProbes(); }} data-testid="hlt5-retry">重试</Button>
         </CardContent></Card>
       ) : (
-        <Card><CardContent className="p-0" data-testid="hlt4-list">
+        <Card><CardContent className="p-0" data-testid="hlt5-list">
           {view.rows.map((row) => (
-            <div key={row.id} title={row.detail ?? undefined} className="flex min-w-0 flex-wrap items-start justify-between gap-3 border-b border-white/10 px-4 py-3 last:border-b-0" data-testid={`hlt4-row-${row.id}`}>
-              <div className="min-w-0 flex-1">
-                <p className="break-words text-sm text-white/85">{row.name}</p>
-                {row.reason ? <p className="mt-1 break-words text-xs text-white/55">{row.reason}</p> : null}
-                {row.requestId ? <div className="mt-1" data-testid={`hlt4-reqid-${row.id}`}><RowRequestId id={row.requestId}/></div> : null}
-                <p className="mt-1 break-words text-xs text-white/40">
-                  {row.collectedAt ? `采集时刻：${row.collectedAt}` : "采集时刻：时间未知（本次没有收到可记录的时间）"}
-                </p>
+            <article key={row.id} title={row.detail ?? undefined} className="hlt5-row" data-testid={`hlt5-row-${row.id}`}>
+              <div className="hlt5-main">
+                <div className="hlt5-title">
+                  <p>{row.name}</p>
+                  <Badge tone={statusTone(row.status)} data-testid={`hlt5-status-${row.id}`}>{statusLabel(row.status)}</Badge>
+                </div>
+                {row.reason ? <p className="hlt5-reason">{row.reason}</p> : null}
+                {row.requestId ? <div data-testid={`hlt5-reqid-${row.id}`}><RowRequestId id={row.requestId} /></div> : null}
               </div>
-              <Badge tone={statusTone(row.status)} data-testid={`hlt4-status-${row.id}`}>{statusLabel(row.status)}</Badge>
-            </div>
+              <dl className="hlt5-meta">
+                <Metric label="上次成功" value={row.lastSuccessAt ?? "—"} reason={row.lastSuccessReason} testid={`hlt5-last-success-${row.id}`} />
+                <Metric label="上次失败" value={row.lastFailureAt ?? "—"} reason={row.lastFailureReason} testid={`hlt5-last-failure-${row.id}`} />
+                <Metric label="连续成功" value={row.consecutiveSuccesses === null ? "—" : `${row.consecutiveSuccesses} 次`} reason={row.consecutiveReason} testid={`hlt5-streak-${row.id}`} />
+                <Metric label="采集时间" value={row.asOf ?? "—"} reason={row.asOfReason} testid={`hlt5-asof-${row.id}`} />
+              </dl>
+            </article>
           ))}
+          <p className="hlt5-foot" data-testid="hlt5-foot">字段缺失显示「—」，原因在悬停说明里；不用浏览器时间补齐，也不把未知当成功。</p>
         </CardContent></Card>
       )}
     </section>

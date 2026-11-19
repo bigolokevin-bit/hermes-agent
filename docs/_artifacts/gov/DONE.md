@@ -1523,3 +1523,49 @@ Base: `6c9db598` (remote tip `965cec5d` gate ledger); lane merged with `origin/l
 - Write domain only `web/src/modules/people/**` + this file. No App/shell/routes/registry/manifest/package/lock/scripts/ops changes.
 - No sample rows or fake 0; user-center真人目录 remains GAP-02 until its endpoint exists.
 - No build run (module-only); no independent observer.
+
+## R38 — /system?tab=health 探针新鲜度（hlt5）
+
+基线：`origin/lane/hermes-console` = a1a26ccf（远端 tip 0bee53cd，gate ledger），本地 merge `e1e07086`。
+
+### 端点与真实度（BFF 8092，Cookie 从 `~/.local/state/sekoi-ops/v4-auth-state.json` 读取，未打印值）
+- `GET /api/__health-probe__` → **404** `{"code":"console.unknown_route"}`；控制台进程有响应，按「控制台服务」健康处理，原始码只进 `title`。
+- `GET /api/hermes-summary` → **200** `runtime.hermes.summary.v1`；响应未带 `asOf` / `lastSuccessAt` / `lastFailureAt` / `consecutiveSuccesses`，这些字段显示「—」并在 `title` 说明原因。
+- `GET /api/skills` → **200** `{"items":[],"asOf":"2026-11-19T19:37:48.524Z"}`；采集时间来自 `asOf`，转换为北京时间到分。
+
+### 页面实现
+- `web/src/modules/health/health.ts`：`ProbeRow` 增加 `lastSuccessAt/lastFailureAt/consecutiveSuccesses/asOf` 及各自 reason；从上游响应读取 `asOf|collectedAt|generatedAt|...`、`lastSuccessAt|last_success_at|...`、`lastFailureAt|...`、`consecutiveSuccesses|successStreak|...`；未回显一律 `null` → 「—」+ `title` 原因，不用浏览器时间代替采集时间。
+- 成功探针的「上次成功」使用本次返回时刻（真实观测），失败探针的「上次失败」同理；对侧历史仍要求上游回显，否则「—」+原因。
+- `HealthPage.tsx`：每源展示 状态人话 / 上次成功 / 上次失败 / 连续成功 / 采集时间；`0 次` 是上游真实 0，不转成「—」；`?state=loading|empty|error` 预览带 `data-fixture=1`。
+- 403 与 404 共用同一句「接口未接入：这个读取口还没有对控制台开放。」，HTTP 码只在 `title`；无写入口。
+- testids：`hlt5-page`、`hlt5-counts`、`hlt5-loading`、`hlt5-empty`、`hlt5-error`、`hlt5-list`、`hlt5-row-*`、`hlt5-status-*`、`hlt5-last-success-*`、`hlt5-last-failure-*`、`hlt5-streak-*`、`hlt5-asof-*`、`hlt5-reqid-*`、`hlt5-retry`、`hlt5-refresh`。
+- 新增 `health.css`：桌面双列、≤720px 单列；页面 body/page 无横溢。
+
+### 原始验证
+```
+npx vitest run src/modules/health
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+
+npx vitest run
+ Test Files  130 passed (130)
+      Tests  1342 passed (1342)
+
+./node_modules/.bin/tsc -b . --noEmit
+TSC_EXIT=0
+
+node scripts/build/web.mjs --source . --out /tmp/health-r38 --icons .
+BUILD_EXIT=0
+built /private/tmp/health-r38/index.html
+```
+
+### DOM 读数（临时 harness，已删除；1440/1280/375）
+- 1440：`vw=1440 bodySW=1440 bodyCW=1440 pageSW=1440 pageCW=1440`，4 行。
+- 1280：`vw=1280 bodySW=1280 bodyCW=1280 pageSW=1280 pageCW=1280`，4 行。
+- 375：`vw=375 bodySW=375 bodyCW=375 pageSW=375 pageCW=375`，4 行；状态 正常/正常/未知/未知；`上次失败` 对无记录源为「—」；`连续成功 0 次` 为真实 0；`采集时间 2026-11-19 15:30`。
+- 截图：`docs/_artifacts/gov/shots/hlt5-1440.png`、`hlt5-1280.png`、`hlt5-375.png`。
+
+### 边界
+- 只改 `web/src/modules/health/**` + 本证据；无 App/shell/routes/registry/manifest/package/lock/scripts/ops 改动。
+- 未取得真实浏览器登录态的 `hermes-summary` 元数据；缺字段按「—」+原因，不补零、不冒充采集时间。
+- 无独立观察者；页面已在 App `/system` live map 中注册（`health: <HealthConsolePage />`）。
