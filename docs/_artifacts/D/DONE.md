@@ -536,3 +536,9 @@ L0 新落点：`http://127.0.0.1:9122`（python http.server --directory hermes_c
 - 四快腿重章 fca6a8fe：assert-ia-react exit=0（51/22/1/8）、assert-ia-html exit=0（51/22/23/1/8）、lint-fake exit=0（violations=0）、lint-reuse exit=0（violations=0 exempted=1 chat→T40）。
 - 注：dom-probe3 的『Loading… 永挂』铁证属当时窗口（09:3x 前）；本轮两 crawl 同代次 anon/auth 双绿证明当时为竞态+鉴权缺位复合自伤。十五轮 loading-at-401 判据改动**未采用**（本卡 auth-state 路线取代），crawl-routes.mjs ok 公式维持 deadLinks==0&&contentEmpty==0&&probeErrors==0。
 - shots 腿：本卡未要求重拍，12 张新代次 png（02:58-03:05 SIGTERM 前写出）已随 commit A 收口；如需 102 全量新 mtime 另开。
+
+## shots 十六轮重拍收口（2026-11-19 10:2x）
+- 102 张全当代新 mtime（窗 09:30:42-09:32:22），gated flag 版 shots.mjs（随 commit B 68220676 入库）。
+- summary 补齐键：screenshotMode/headHash=68220676/servedEntryBefore=After=index-B5fmOKJ8.js/shotWindow/env/visualCheckNote（写后回读证实）。
+- 看图核验（employees-1440.png）：完整壳+侧栏导航+System 面板+「Sessions」pane 标题已渲染，数据区空白=未登录 401 空列表；非 ⠋Loading 壳、非登录门遮罩。routesWithEmptyMain=52 chars=0(hasMainEl=true) 与看图一致：pane 标题在 <main> 外，main 内数据区未登录为空。
+- 与 crawl 量测差异注记：同代 crawl（gated plain）contentEmpty=0 mainChars 104-237——settle 时序与取文口径不同，两腿各按仪器如实报；auth 态（cookie）mainChars 125-914 证明产品无缺陷，空 main 属环境鉴权项。
