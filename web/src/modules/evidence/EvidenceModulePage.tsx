@@ -235,7 +235,9 @@ export function EvidenceModulePage() {
           data-testid="evidence-fixture-note"
         >
           <Badge tone="warning">示例数据</Badge>
-          <span>真实引用接口还没接上（GAP-1：等 `/api/run-events` 与 `/api/audit`），下面是形状样例，不是真实记录。</span>
+          <span title="数据源缺口 GAP-1：等待 /api/run-events 与 /api/audit 接入">
+            真实引用还没接上，下面展示的是格式样例，不是真实记录。接入后这里会自动换成真实引用。
+          </span>
         </div>
       ) : null}
 

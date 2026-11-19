@@ -570,7 +570,15 @@ function HealthStrip({
       </div>
       <div className="duty-health-item">
         <span>账本</span>
-        <b>{cost.k === "error" || runs.k === "error" ? "待核实（GAP-01）" : "已接入"}</b>
+        <b
+          title={
+            cost.k === "error" || runs.k === "error"
+              ? "数据源缺口编号 GAP-01（详见技术详情）"
+              : undefined
+          }
+        >
+          {cost.k === "error" || runs.k === "error" ? "待核实" : "已接入"}
+        </b>
         <em>{cost.k === "error" ? "成本账本读取失败" : totals ? "只认账本实际金额" : "运行合计未返回"}</em>
       </div>
     </div>

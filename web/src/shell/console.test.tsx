@@ -111,6 +111,32 @@ describe("ConsoleModulePage pane contract", () => {
     );
   });
 
+  // R5 item 2: /matrix must land on the real matrix page, never a planned
+  // placeholder or /system. The live slot is the whole contract.
+  it("R5-2 /employees?tab=matrix renders the live matrix module page", () => {
+    renderAt(
+      <ConsoleModulePage
+        module="employees"
+        live={{
+          list: <div data-testid="live-list" />,
+          matrix: <div data-testid="live-matrix" />,
+        }}
+      />,
+      "/employees?tab=matrix",
+    );
+    const pane = container.querySelector(".pane");
+    expect(pane?.getAttribute("data-tab")).toBe("matrix");
+    expect(pane?.getAttribute("data-state")).toBe("ready");
+    expect(pane?.querySelector('[data-testid="live-matrix"]')).toBeTruthy();
+    expect(pane?.querySelector('[data-testid="live-list"]')).toBeFalsy();
+    // The tab strip offers the canonical matrix href (and /matrix redirect
+    // in App routes lands on exactly this URL).
+    const matrixLink = Array.from(
+      container.querySelectorAll<HTMLAnchorElement>('[role="tab"] a, a[role="tab"]'),
+    ).find((a) => a.getAttribute("href")?.includes("tab=matrix") || a.textContent?.includes("矩阵"));
+    expect(matrixLink).toBeTruthy();
+  });
+
   it("roView auditor: system defaults serves whole-pane 403 + request number", () => {
     renderAt(
       <ConsoleModulePage module="system" />,

@@ -57,7 +57,7 @@ export const zh: Translations = {
       org: "Nous Research",
     },
     auth: {
-      statusUnavailable: "登录状态不可用",
+      statusUnavailable: "暂时确认不到登录状态",
       loggedInAs: "已登录：{{name}}",
       viaProvider: "通过 {{provider}}",
       logout: "退出登录",
