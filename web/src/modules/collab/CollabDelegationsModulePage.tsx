@@ -50,9 +50,12 @@ import {
   GAP,
   NOT_RECORDED,
   PAGE_LIMIT,
+  CHAIN_LINK_REASON,
+  actionWords,
   actorLabel,
   askedLine,
   beijingMinute,
+  chainGroups,
   readingStamp,
   scopeCell,
   shortCode,
@@ -84,14 +87,16 @@ function ActorCell({ row, side, testId }: { row: DelegationRow; side: "from" | "
 }
 
 const GRID =
-  "grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,0.9fr)]";
+  "grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,0.7fr)_minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,0.9fr)]";
 
 /** Mobile label text for the two-column stack; desktop shows a header row. */
-const STACK_LABELS = ["委托方", "受托方", "范围", "状态", "生效至", "来源"] as const;
+const STACK_LABELS = ["委托方", "受托方", "范围", "动作", "状态", "生效 / 到期", "来源"] as const;
 
 function RowCells({ row, index }: { row: DelegationRow; index: number }): ReactNode {
-  const base = `col4-row-${index}`;
+  const base = `col5-row-${index}`;
   const scope = scopeCell(row);
+  const action = actionWords(row.action);
+  const effective = beijingMinute(row.effectiveFrom);
   const status = statusWords(row.status);
   const validity = validityCell(row);
   const source = sourceWords(row.source);
@@ -103,6 +108,8 @@ function RowCells({ row, index }: { row: DelegationRow; index: number }): ReactN
     row.taskId ? `task ${row.taskId}` : "",
     row.from.id ? `from ${row.from.id}` : "",
     row.to.id ? `to ${row.to.id}` : "",
+    row.action ? `action ${row.action}` : "",
+    row.effectiveFrom ? `effective ${row.effectiveFrom}` : "",
     row.status ? `status ${row.status}` : "",
     row.source ? `source ${row.source}` : "",
     row.expiresAt ? `expires ${row.expiresAt}` : "",
@@ -123,29 +130,43 @@ function RowCells({ row, index }: { row: DelegationRow; index: number }): ReactN
           <Dashed reason={scope.reason} />
         )}
       </span>
+      <span className="min-w-0 self-center break-words" data-testid={`${base}-action`} title={action.raw ?? undefined}>
+        {action.text}
+      </span>
       <span className="min-w-0 self-center" data-testid={`${base}-status`}>
         <Badge tone={status.tone} title={status.raw ?? undefined}>
           {status.text}
         </Badge>
       </span>
-      <span className="min-w-0 self-center break-words" data-testid={`${base}-validity`} title={row.expiresAt ?? validity.reason}>
-        {validity.text ? (
-          <span className="flex min-w-0 flex-wrap items-center gap-1">
-            <span>{validity.text}</span>
-            {validity.note ? (
-              <Badge tone="outline" data-testid={`${base}-validity-note`}>
-                {validity.note}
-              </Badge>
-            ) : null}
+      <span
+        className="min-w-0 self-center break-words"
+        data-testid={`${base}-validity`}
+        title={[row.effectiveFrom, row.expiresAt].filter(Boolean).join(" → ") || validity.reason}
+      >
+        <span className="flex min-w-0 flex-col gap-0.5">
+          <span data-testid={`${base}-effective`} title={effective.reason || undefined}>
+            {effective.text ? `起 ${effective.text}` : <Dashed reason={effective.reason} />}
           </span>
-        ) : (
-          <Dashed reason={validity.reason} />
-        )}
+          <span className="flex min-w-0 flex-wrap items-center gap-1" data-testid={`${base}-expiry`}>
+            {validity.text ? (
+              <>
+                <span>{`至 ${validity.text}`}</span>
+                {validity.note ? (
+                  <Badge tone="outline" data-testid={`${base}-validity-note`}>
+                    {validity.note}
+                  </Badge>
+                ) : null}
+              </>
+            ) : (
+              <Dashed reason={validity.reason} />
+            )}
+          </span>
+        </span>
       </span>
       <span className="min-w-0 self-center break-words" data-testid={`${base}-source`} title={source.raw ?? undefined}>
         {source.text}
       </span>
-      <div className="col-span-2 min-w-0 sm:col-span-6">
+      <div className="col-span-2 min-w-0 sm:col-span-7">
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
           <TechnicalDisclosure lines={technical} testId={`${base}-tech`} />
           <span
@@ -166,7 +187,7 @@ function RowCells({ row, index }: { row: DelegationRow; index: number }): ReactN
 
 function ListRows({ rows }: { rows: DelegationRow[] }): ReactNode {
   return (
-    <Card className="min-w-0 border-border bg-card" data-testid="col4-table">
+    <Card className="min-w-0 border-border bg-card" data-testid="col5-table">
       <CardContent className="p-0">
         <div className={`hidden ${GRID} border-b border-border px-4 py-2 text-xs uppercase tracking-wide text-muted-foreground sm:grid`}>
           {STACK_LABELS.map((label) => (
@@ -180,7 +201,7 @@ function ListRows({ rows }: { rows: DelegationRow[] }): ReactNode {
         </ul>
         <div
           className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-2 text-xs text-muted-foreground"
-          data-testid="col4-foot"
+          data-testid="col5-foot"
         >
           <span>只读清单 · 接受、拒绝、交接、完成都在任务详情里进行，本页不代为操作</span>
         </div>
@@ -189,9 +210,94 @@ function ListRows({ rows }: { rows: DelegationRow[] }): ReactNode {
   );
 }
 
+/**
+ * 委托链 — grouped by delegator, never a depth.
+ *
+ * The frozen DELEGATION v1.0 record has no parent delegation id, so the link
+ * above each row is not in the answer at all. The view says 「链未接入」 with
+ * that reason and groups by 委托方; it never prints a level, a root count or
+ * 0, because none of those were read.
+ */
+function ChainView({ rows }: { rows: DelegationRow[] }): ReactNode {
+  const groups = chainGroups(rows);
+  return (
+    <section className="flex min-w-0 flex-col gap-2" data-testid="col5-chain" data-chain="unavailable">
+      <div
+        className="flex min-w-0 flex-wrap items-center gap-2 rounded-md border border-border px-3 py-2 text-xs text-muted-foreground"
+        data-testid="col5-chain-gap"
+        title={CHAIN_LINK_REASON}
+      >
+        <Badge tone="outline">链未接入</Badge>
+        <span className="min-w-0 break-words">
+          服务没有给出每条委托的上一手编号，链的上游接不上；这里只按委托方分组，不推断层级、不补造上游。
+        </span>
+      </div>
+      <ul className="flex min-w-0 flex-col gap-2">
+        {groups.map((group, gIndex) => (
+          <li key={group.key} className="min-w-0">
+            <Card className="min-w-0 border-border bg-card" data-testid={`col5-chain-group-${gIndex}`}>
+              <CardContent className="flex min-w-0 flex-col gap-2 p-3">
+                <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-2">
+                  <span className="min-w-0 break-words text-sm font-medium" title={group.title ?? undefined}>
+                    {`委托方 · ${group.text}`}
+                  </span>
+                  <span className="min-w-0 break-words text-[11px] text-muted-foreground">
+                    {`本页 ${group.rows.length} 条（只数这一页，不是全量）`}
+                  </span>
+                </div>
+                <ul className="flex min-w-0 flex-col gap-1">
+                  {group.rows.map((row, rIndex) => {
+                    const to = actorLabel(row.to, "to");
+                    const action = actionWords(row.action);
+                    const status = statusWords(row.status);
+                    const at = beijingMinute(row.createdAt);
+                    return (
+                      <li
+                        key={row.delegationId}
+                        className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-1 text-xs"
+                        data-testid={`col5-chain-node-${gIndex}-${rIndex}`}
+                        data-status={row.status ?? "unknown"}
+                      >
+                        <span className="min-w-0 break-words" data-testid={`col5-chain-node-${gIndex}-${rIndex}-to`} title={to.title ?? undefined}>
+                          {`→ 受托方 · ${to.text}`}
+                        </span>
+                        <span className="min-w-0 break-words" data-testid={`col5-chain-node-${gIndex}-${rIndex}-action`} title={action.raw ?? undefined}>
+                          {action.text}
+                        </span>
+                        <Badge tone={status.tone} title={status.raw ?? undefined}>
+                          {status.text}
+                        </Badge>
+                        <span className="min-w-0 break-words text-muted-foreground" data-testid={`col5-chain-node-${gIndex}-${rIndex}-at`} title={row.createdAt ?? undefined}>
+                          {at.text ? at.text : `提出时间${NOT_RECORDED}`}
+                        </span>
+                        <span className="min-w-0 break-words text-[11px] text-muted-foreground" title={row.delegationId}>
+                          {`委托 · ${shortCode(row.delegationId) || NOT_RECORDED}`}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </CardContent>
+            </Card>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export function CollabDelegationsModulePage(): ReactNode {
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const forced = forcedStateOf(params.get("state"));
+  const view = params.get("view") === "chain" ? "chain" : "list";
+  // The view lives in the URL so a refresh or a shared link keeps the pane the
+  // reader was on. `replace` keeps the back button on the page they came from.
+  const setView = (next: "list" | "chain"): void => {
+    const search = new URLSearchParams(params);
+    if (next === "chain") search.set("view", "chain");
+    else search.delete("view");
+    setParams(search, { replace: true });
+  };
   const data = useDelegations(forced);
   const { phase, rows, unreadable, failure, forced: isForced } = data;
 
@@ -218,13 +324,14 @@ export function CollabDelegationsModulePage(): ReactNode {
   return (
     <div
       className="flex min-w-0 w-full max-w-full flex-col gap-3"
-      data-testid="col4-page"
+      data-testid="col5-page"
       data-page="collab"
+      data-view={view}
       data-fixture={forced ?? undefined}
     >
       <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-2">
         <div className="min-w-0">
-          <nav aria-label="面包屑" className="min-w-0 break-words text-xs text-muted-foreground" data-testid="col4-breadcrumb">
+          <nav aria-label="面包屑" className="min-w-0 break-words text-xs text-muted-foreground" data-testid="col5-breadcrumb">
             <Link to="/overview" className="underline decoration-dotted underline-offset-2 hover:text-foreground">
               控制台
             </Link>
@@ -237,13 +344,35 @@ export function CollabDelegationsModulePage(): ReactNode {
           </p>
         </div>
         <div className="flex min-w-0 flex-wrap items-end gap-2" role="group" aria-label="委托读取">
+          <div className="flex min-w-0 flex-wrap items-center gap-1" role="group" aria-label="视图">
+            <Button
+              size="sm"
+              outlined={view !== "list"}
+              onClick={() => setView("list")}
+              aria-pressed={view === "list"}
+              title="按一条一条的委托看"
+              data-testid="col5-view-list"
+            >
+              清单
+            </Button>
+            <Button
+              size="sm"
+              outlined={view !== "chain"}
+              onClick={() => setView("chain")}
+              aria-pressed={view === "chain"}
+              title="按委托方分组看这条链；上游编号服务没有给出，链未接入"
+              data-testid="col5-view-chain"
+            >
+              委托链
+            </Button>
+          </div>
           <Button
             size="sm"
             outlined
             onClick={data.reload}
             disabled={phase === "loading" || isForced}
             title={reloadTitle}
-            data-testid="col4-refresh"
+            data-testid="col5-refresh"
             prefix={phase === "loading" ? <Spinner className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" />}
           >
             重新读取
@@ -253,11 +382,11 @@ export function CollabDelegationsModulePage(): ReactNode {
 
       {forced !== null ? <ReproNote state={forced} /> : null}
 
-      <p className="min-w-0 break-words text-xs text-muted-foreground" aria-live="polite" data-testid="col4-status">
+      <p className="min-w-0 break-words text-xs text-muted-foreground" aria-live="polite" data-testid="col5-status">
         {statusLine}
       </p>
 
-      <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="col4-counts">
+      <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="col5-counts">
         {countsKnown
           ? `本页 ${rows.length} 条（最多按 ${PAGE_LIMIT} 条读取，不是全量统计）`
           : "本页 — 条（暂时读不到委托数据，数字不作零处理）"}
@@ -266,7 +395,7 @@ export function CollabDelegationsModulePage(): ReactNode {
 
       <p
         className="min-w-0 break-words text-xs text-muted-foreground"
-        data-testid="col4-asof"
+        data-testid="col5-asof"
         title={stamp ? "这个时间是服务在回答里给出的读取时刻" : "服务的回答没有带读取时刻，本页不用浏览器时间代替"}
       >
         {`读取于 ${stamp ?? "—"}`}
@@ -292,20 +421,21 @@ export function CollabDelegationsModulePage(): ReactNode {
         />
       ) : null}
 
-      {phase === "ready" ? <ListRows rows={rows} /> : null}
+      {phase === "ready" && view === "chain" ? <ChainView rows={rows} /> : null}
+      {phase === "ready" && view === "list" ? <ListRows rows={rows} /> : null}
 
       {phase === "ready" && unreadable > 0 ? (
-        <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="col4-unreadable">
+        <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="col5-unreadable">
           {`有 ${unreadable} 条回答没有带出可核对的委托编号，本页没有把它们画成委托。`}
         </p>
       ) : null}
 
       <div className="flex min-w-0 flex-col gap-1">
-        <p className="max-w-prose break-words text-xs text-muted-foreground" data-testid="col4-write-note">
-          {`这一页不提供接受、拒绝、交接、完成这些动作：它们属于任务本身，请在任务详情里由受托员工操作。` +
+        <p className="max-w-prose break-words text-xs text-muted-foreground" data-testid="col5-write-note">
+          {`这一页是只读的，不提供接受、拒绝、交接、完成这些动作：它们属于任务本身，请在任务详情里由受托员工操作。` +
             `写入口在本控制台的接通情况尚未核实（${GAP}）。`}
         </p>
-        <TechnicalDisclosure lines={technical} testId="col4-page-tech" />
+        <TechnicalDisclosure lines={technical} testId="col5-page-tech" />
       </div>
     </div>
   );

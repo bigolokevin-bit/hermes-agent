@@ -82,6 +82,10 @@ export interface DelegationRow {
   capabilityCount: number | null;
   /** 范围 — who it applies to, as a name or a handle. */
   audience: string | null;
+  /** 动作 — raw token (assign / handoff / …); words on screen, raw in title. */
+  action: string | null;
+  /** 生效 — raw instant; rendered to the Beijing minute or 「未记录」. */
+  effectiveFrom: string | null;
   /** 生效至 — raw instant; rendered to the Beijing minute or 「未记录」. */
   expiresAt: string | null;
   /** 来源 — raw token; mapped to words, raw only in `title`. */
@@ -142,6 +146,8 @@ const TASK_ID_KEYS = ["taskId", "task_id"] as const;
 const STATUS_KEYS = ["status", "state"] as const;
 const SCOPE_TEXT_KEYS = ["scope", "scopeText", "summary", "description", "intent"] as const;
 const AUDIENCE_KEYS = ["audience", "forWhom", "appliesTo", "subject"] as const;
+const ACTION_KEYS = ["action", "delegationAction", "delegation_action", "actionType", "action_type", "kind", "verb", "mode"] as const;
+const EFFECTIVE_KEYS = ["effectiveFrom", "effective_from", "validFrom", "valid_from", "startsAt", "starts_at"] as const;
 const EXPIRES_KEYS = ["expiresAt", "expires_at", "validUntil", "valid_until", "until"] as const;
 const SOURCE_KEYS = ["source", "origin", "createdVia", "via"] as const;
 const CREATED_KEYS = ["createdAt", "created_at"] as const;
@@ -231,6 +237,8 @@ export function normalizeDelegation(v: unknown): DelegationRow | null {
     scopeText: humanSentence(pick(v, SCOPE_TEXT_KEYS)),
     capabilityCount: capabilities ? capabilities.length : null,
     audience: pick(v, AUDIENCE_KEYS) ?? null,
+    action: pick(v, ACTION_KEYS) ?? null,
+    effectiveFrom: pick(v, EFFECTIVE_KEYS) ?? null,
     expiresAt: pick(v, EXPIRES_KEYS) ?? null,
     source: pick(v, SOURCE_KEYS) ?? null,
     createdAt: pick(v, CREATED_KEYS) ?? null,
@@ -421,6 +429,31 @@ export function statusWords(status: string | null): { text: string; tone: Tone; 
   }
 }
 
+/** 动作人话. The raw token only ever travels in `title`. */
+export function actionWords(action: string | null): { text: string; raw: string | null } {
+  switch (action) {
+    case "assign":
+      return { text: "指派", raw: action };
+    case "handoff":
+    case "hand_off":
+      return { text: "交接", raw: action };
+    case "borrow":
+      return { text: "借调", raw: action };
+    case "return":
+      return { text: "交还", raw: action };
+    case "request":
+      return { text: "请求协助", raw: action };
+    case "transfer":
+      return { text: "转移", raw: action };
+    case "delegate":
+      return { text: "委托", raw: action };
+    case null:
+      return { text: NOT_RECORDED, raw: null };
+    default:
+      return { text: "动作未识别", raw: action };
+  }
+}
+
 /** 来源人话. The raw token only ever travels in `title`. */
 export function sourceWords(source: string | null): { text: string; raw: string | null } {
   switch (source) {
@@ -508,6 +541,41 @@ export function scopeCell(row: DelegationRow): { text: string | null; detail: st
   }
   if (audience) return { text: `范围未写明（只写明对象：${audience}）`, detail: null, reason: "" };
   return { text: null, detail: null, reason: "服务没有随这条委托给出范围说明" };
+}
+
+/**
+ * The chain the DELEGATION v1.0 record cannot carry: it has no parent
+ * delegation id, so a row's upstream hand is simply not in the answer. The
+ * chain view therefore groups by delegator and says the link is missing —
+ * it never prints a depth, never invents a root, never shows 0.
+ */
+export const CHAIN_LINK_REASON =
+  "服务没有给出这条委托的上一手编号（DELEGATION v1.0 记录里没有这个字段），链的上游接不上";
+
+/** One delegator and the rows that started from them, in answer order. */
+export interface ChainGroup {
+  key: string;
+  text: string;
+  title: string | null;
+  rows: DelegationRow[];
+}
+
+export function chainGroups(rows: DelegationRow[]): ChainGroup[] {
+  const groups: ChainGroup[] = [];
+  const index = new Map<string, ChainGroup>();
+  for (const row of rows) {
+    const label = actorLabel(row.from, "from");
+    const key = label.text;
+    const seen = index.get(key);
+    if (seen) {
+      seen.rows.push(row);
+      continue;
+    }
+    const group: ChainGroup = { key, text: label.text, title: label.title, rows: [row] };
+    index.set(key, group);
+    groups.push(group);
+  }
+  return groups;
 }
 
 /** What the fallback chain never did: this page has exactly one route. */

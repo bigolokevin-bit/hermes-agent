@@ -1834,3 +1834,68 @@ ChannelsPage.tsx
 - 9122 常驻 dev SPA 仍服务 forks/hermes-agent/hermes_cli/web_dist 的旧构建，所以彼处看不到本修复；上述读数来自本 worktree 的新构建 + 反代，build-r24 为未跟踪产物，不入库。
 - 非管理员身份下的 403 真腿未复现（当前数据是管理员可见范围）；403 与 404 的同体性由模块结构与既有测试保证。
 - 站内跳转与直链共用同一条 /audit 路由，直链已证渲染；未逐一截取每个导航入口的点击路径。
+
+## TASK collab delegation chain real data (2026-11-19, base de23c92e / trunk f8046930)
+
+### Probes (session cookie, value never printed)
+| request | HTTP | body |
+|---|---|---|
+| `http://127.0.0.1:9122/agent-api/api/delegations?limit=5` | **200** 46 B | `{"items":[],"asOf":"2026-11-19T12:15:11.531Z"}` |
+| `http://127.0.0.1:8092/api/delegations?limit=5` | **200** 46 B | `{"items":[],"asOf":"2026-11-19T12:15:11.546Z"}` |
+
+Read: the route is wired and authorised for this tenant; there are genuinely
+zero delegations. The page therefore shows the honest empty state (reason +
+next step + the service's own `asOf`), never 「未接入」, never a fake row and
+never a 0 dressed up as a count of something else.
+
+### Code (write scope `web/src/modules/collab/**` only)
+- `delegations.ts`: `DelegationRow` gained `action` + `effectiveFrom`
+  (`ACTION_KEYS`, `EFFECTIVE_KEYS`, both defensive key lists); new
+  `actionWords()` (指派/交接/借调/交还/请求协助/转移/委托, unknown →
+  「动作未识别」, absent → 「未记录」, raw token only in `title`);
+  `CHAIN_LINK_REASON`; `ChainGroup` + `chainGroups(rows)` grouping by 委托方
+  in answer order.
+- `CollabDelegationsModulePage.tsx`: 7 columns 委托方 / 受托方 / 范围 /
+  **动作** / 状态 / **生效 / 到期** / 来源; the validity cell now prints
+  「起 <BJT minute>」 and 「至 <BJT minute>」 (each `—` with its own reason
+  when absent) and keeps the raw instants in `title`; new **委托链** view
+  (`?view=chain`, written to the URL with `replace` so refresh and shared
+  links keep the pane; `data-view` on the page root) grouping rows under
+  委托方 with 「本页 N 条（只数这一页，不是全量）」 and a 链未接入 banner whose
+  reason is that DELEGATION v1.0 carries no parent delegation id — no level,
+  no root, no 0 is printed; the list and chain views share one read (switching
+  the view issues no request). All testids renamed `col4-*` → `col5-*`
+  (page, row, states, retry/request-id ids).
+- Zero write entries kept as the earlier ruling defines it: **no 撤销/新建
+  button is rendered at all** (a disabled button would be a dead control);
+  the read-only sentence was strengthened to 「这一页是只读的，不提供接受、
+  拒绝、交接、完成这些动作…」 and a test asserts no button/link carries
+  撤销/新建/发起委托/接受/拒绝/交接给/完成委托.
+
+### Gates (from `web/`)
+- `./node_modules/.bin/vitest run src/modules/collab` → exit 0, **2 files /
+  95 tests** (was 88; +7: action words + title, 生效/到期 split, absent →
+  「未记录」/「—」, view switch keeps the URL and issues no extra read,
+  `?view=chain` opens the chain, grouping + 链未接入 reason + no 「0 层」,
+  empty truth on the chain link, no write affordance on either view).
+- `npx tsc -b . --noEmit` → **53** `error TS`, `grep -c modules/collab` = 0;
+  the non-shared lines are the standing pre-existing ones
+  (`src/modules/approvals/api.test.ts(79,12)/(80,12)` TS18047 and two
+  `src/pages/LoginPage.test.tsx` TS2739).
+- `./node_modules/.bin/eslint src/modules/collab` → exit 0, no output.
+- Housekeeping: an untracked `web/src/modules/evidence/evidence.test.ts`
+  debris (referencing exports absent at this trunk, 8 new tsc errors) was
+  moved to `/tmp/l4p4-debris/` — not deleted, not committed; the tree now
+  matches the trunk generation apart from this task's files.
+
+### Untested / unmeasured
+- The live tenant has zero delegations, so the chain grouping and the list
+  rows were exercised with mocked answers only; no real 2xx row was ever
+  sampled in this generation.
+- No 1440/1280/375 pixel measurement: the pane is mounted by the shell lane
+  and the dev SPA on `127.0.0.1:9122` serves a dist older than this change.
+  The layout keeps the standing discipline (flex + `minmax(0,…)` grid,
+  `min-w-0`/`break-words`, no fixed pixel widths) and a test pins it.
+- `action` / `effectiveFrom` key names are candidate lists; the frozen
+  DELEGATION v1.0 record names neither, so both may legitimately read
+  「未记录」 against a real row.
