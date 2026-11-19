@@ -615,3 +615,11 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - item3 账本：九件盘读全 headHash=4bfb31ef（代码 HEAD；20d25b06 为纯产物 chore，按二十三轮先例规则
   章取代码 HEAD）exitCode=0 ok=true 逐件坐实；vitest.txt 原文行在：
   ` Test Files  104 passed (104)` / `      Tests  826 passed (826)`。未重跑浏览器腿（无代码变化，避免 churn）。
+## 门禁二十七轮·全量盖章 780cc513（entry CCPfuglc，watchdog 混代纠偏版）（2026-11-19 12:1x-12:3x git log 实钟）
+
+- 基准：fork HEAD=远端 tip=780cc513（gov 02ec942d T30/T28 + knowledge session guard + aud 6b50f476 T11 用量 ledger/T29/T24 由 L0 亲合入并重建）；entry assets/index-CCPfuglc.js 150566B sha256 801565e3f3a86d95b8bf1acd59e6c0be8b4b3ab734f43c0d2e666dee55a1dffe，磁盘 shasum==served==卡面；9122 pid 99197 anon 401/auth 200（token 新鲜免重登）。旧盖章值 4bfb31ef 作废。
+- watchdog 68 拍指账本混代（四快腿已章 780cc513、crawl/shots/anon/state-quad 仍旧代）→ 本单一次性重跑+补键后逐件现查，**九件 headHash 全=780cc513**：assert-ia-react ok exit=0 counts{routes:51,tabs:22,chatHosts:1,modules:8}；assert-ia-html ok exit=0（tabsAll=23）；lint-fake ok exit=0 violations=0；lint-reuse ok exit=0 violations=0 exempted=1（chat→T40 台账仍有效）；crawl-anon ok exit=0 probed75 DL0 CE0 PE0 routesCE=34（全 env=auth-required-401）denied=24；crawl-auth ok exit=0 DL0 CE0 PE0 routesCE=22（全 env）denied=12；shots-summary ok=true exit=0 produced/expected=102/102 distinctMainHeads=28 medianMainChars=138.5 emptyMain=0 failures=0 entry/entrySha256/entryBytes 三键=当代；shots-anon-summary auxiliary=true ok=true(19==19 failures=0) runExitCode=1；state-quad ok=true exit=0 20/20@9122。
+- vitest.txt 原文行： Test Files  110 passed (110) / Tests  961 passed (961)，exit=0。
+- CE 口径（R10 watchdog 裁定生效）：CE 权威=登录态捕获（crawl-auth + QA live）；匿名态 consoleErrorRoutes 仅作 env 旁证不计 productCE。本代 auth crawl 全部 routesCE 均 envAttribution=auth-required-401 ⇒ product CE(auth crawl)=0，crawl ok 按 DL/CE/PE 三项判绿。shots auth 本跑 consoleErrorRoutes=1（#/work?tab=board&view=cron，ENV_NOISE 外）如实保留不造假不放宽。
+- redirects=24 vs 门定值 23 归因照旧（notes，门值更新归 L0/A）。shots png mtime 窗 12:15-12:16 全新代次；anon 19@1440 门壳负例（runs→#/work?tab=runs 映射）。旧账残留复查：crawl.json/gates.exit.json/ia.json/react-baseline.json/lint-reuse-baseline.json/vitest-0914.txt 均不在（NO-STALE-RESIDUE）。
+- 收口：单笔 chore(gates) 九件+vitest.txt+shots/102+shots-anon/19+两 index+DONE，push 后 porcelain 归零。
