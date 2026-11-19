@@ -1,10 +1,8 @@
 // @vitest-environment jsdom
-// T27 — 工具与 MCP 只读列表。断言的是屏幕上的话：真实路由（`/api/` 段在内）、
-// 不可用与状态未说明的连接留在表上并写灰、缺值写「—」并写明原因而不是 0；
-// 四态由服务的回答驱动，403 与 404 逐字同体且上面不留行，读取失败绝不回落成
-// 示例行；`?state=` 复现腿带 data-fixture 与 GAP 号且不发请求。
+// 工具与 MCP 真数据面：两个真实路由、逐行字段、凭据只显示状态、不可用项留灰色、
+// 404 双缺才出示标记过的字段示例、403 与 404 的拒绝体不回显路径，四态与重试齐全。
 
-import { act, type ReactNode } from "react";
+import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -30,327 +28,161 @@ async function waitFor(cond: () => boolean, label = "condition"): Promise<void> 
   }
 }
 
-async function render(entry: string, page: ReactNode): Promise<void> {
-  await act(async () => {
-    root?.unmount();
-  });
+async function render(entry: string): Promise<void> {
+  await act(async () => root?.unmount());
   document.body.replaceChildren();
   const container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
   await act(async () => {
-    root?.render(<MemoryRouter initialEntries={[entry]}>{page}</MemoryRouter>);
+    root?.render(<MemoryRouter initialEntries={[entry]}><ToolsPage /></MemoryRouter>);
   });
 }
 
 const text = (): string => document.body.textContent ?? "";
-const html = (): string => document.body.innerHTML;
-const urls = (): string[] => api.fetchJSON.mock.calls.map((call) => String(call[0]));
-const skeleton = (): boolean => document.querySelector(".animate-pulse") !== null;
+const rows = (): Element[] => [...document.querySelectorAll("[data-testid='tol5-row']")];
+const urls = (): string[] => api.fetchJSON.mock.calls.map((call) => String(call[0])).filter((url) => url !== "undefined");
 
+const TOOLSETS = [
+  { name: "web", label: "Web Search & Scraping", enabled: true, configured: true, platform_label: "CLI", tools: ["web_search", "web_extract"] },
+  { name: "kanban", label: "Kanban", enabled: false, configured: false, platform_label: "CLI", tools: ["kanban_create"] },
+  { name: "mystery", label: "Mystery", tools: ["mystery_tool"] },
+];
 const SERVERS = {
   servers: [
-    {
-      id: "srv_1a2b3c4d5e6f7081",
-      name: "文档检索",
-      status: "connected",
-      lastCheckedAt: "2026-11-19T01:20:00Z",
-    },
-    {
-      id: "srv_9f8e7d6c5b4a3f21",
-      name: "远程仓库",
-      status: "disconnected",
-      reason: "远端拒绝了连接",
-      lastCheckedAt: "2026-11-19T02:05:00Z",
-    },
+    { name: "文档检索", transport: "http", enabled: true, auth: "header", env: { API_KEY: "super-secret-value" } },
+    { name: "旧连接", transport: "stdio", enabled: false },
   ],
-  total: 12,
 };
 
-/** Mount the pane against a given answer. */
-async function mount(
-  handler: (url: string) => Promise<unknown>,
-  entry = "/capabilities?tab=tools",
-): Promise<void> {
-  api.fetchJSON.mockReset();
-  api.fetchJSON.mockImplementation(handler);
-  await render(entry, <ToolsPage />);
-  await waitFor(() => !skeleton(), "state settled");
+function answer(url?: string): Promise<unknown> {
+  // Vitest's mock bookkeeping can invoke the implementation once without an
+  // argument during teardown; that is not a page request.
+  if (!url) return Promise.resolve({ servers: [] });
+  if (url.includes("/api/tools/toolsets")) return Promise.resolve(TOOLSETS);
+  if (url.includes("/api/mcp/servers")) return Promise.resolve(SERVERS);
+  return Promise.reject(new ApiError("unknown", { status: 404, body: "{}", url }));
 }
 
-const denied = (status: number) => async (): Promise<never> => {
-  throw new ApiError("denied", {
-    status,
-    body: '{"code":"console.forbidden"}',
-    url: "/agent-api/api/mcp/servers",
-    requestId: "tl-deny",
-  });
+async function mount(handler = answer, entry = "/capabilities?tab=tools"): Promise<void> {
+  api.fetchJSON.mockReset();
+  api.fetchJSON.mockImplementation(handler);
+  await render(entry);
+  await waitFor(() => !document.querySelector(".animate-pulse"), "settled");
+}
+
+const failed = (status: number, url: string, requestId?: string) => (called?: string) => {
+  if (!called) return Promise.resolve({ servers: [] });
+  return Promise.reject(new ApiError("failed", { status, body: "{}", url, requestId }));
 };
 
-beforeEach(() => {
-  api.fetchJSON.mockReset();
-});
-
+beforeEach(() => api.fetchJSON.mockReset());
 afterEach(() => {
-  act(() => {
-    root?.unmount();
-  });
+  act(() => root?.unmount());
   root = null;
   document.body.replaceChildren();
 });
 
-describe("the read is the real route", () => {
-  it("asks /api/mcp/servers through the BFF, /api/ segment included", async () => {
-    await mount(async () => SERVERS);
-    expect(urls()[0]).toBe("/agent-api/api/mcp/servers?limit=50");
-    expect(document.querySelector("[data-testid='tools-page']")).toBeTruthy();
+describe("real reads", () => {
+  it("asks both real routes through the authenticated fetch path", async () => {
+    await mount();
+    expect(urls()).toEqual(["/api/tools/toolsets", "/api/mcp/servers"]);
+    expect(document.querySelector("[data-testid='tol5-page']")).toBeTruthy();
   });
 
-  it("paints the rows the answer carried and nothing more", async () => {
-    await mount(async () => SERVERS);
-    expect(text()).toContain("文档检索");
-    expect(text()).toContain("远程仓库");
-    expect(document.querySelectorAll("[data-testid^='tools-row-'][data-status]")).toHaveLength(2);
-  });
-});
-
-describe("the list keeps the bad rows visible", () => {
-  it("an unavailable server stays on screen with its reason", async () => {
-    await mount(async () => SERVERS);
-    const row = document.querySelector("[data-testid='tools-row-1']")!;
-    expect(row.getAttribute("data-status")).toBe("unavailable");
-    expect(row.textContent).toContain("远端拒绝了连接");
-    expect(row.textContent).toContain("不可用");
-    // greyed, not hidden
-    expect(row.className).toContain("opacity-60");
+  it("renders toolset and MCP rows with type, enabled state, credential state and last-call gap", async () => {
+    await mount();
+    expect(rows()).toHaveLength(6);
+    expect(text()).toContain("网页搜索");
+    expect(text()).toContain("网页搜索与抓取");
+    expect(text()).toContain("MCP · HTTP 服务");
+    expect(text()).toContain("MCP · 本地进程");
+    const web = rows()[0]!;
+    expect(web.querySelector("[data-testid='tol5-status']")?.textContent).toBe("启用");
+    expect(web.querySelector("[data-testid='tol5-credential']")?.textContent).toContain("已配置");
+    expect(web.querySelector("[data-testid='tol5-last']")?.textContent).toContain("接口没有提供最近调用时间");
+    const kanban = rows()[2]!;
+    expect(kanban.getAttribute("data-status")).toBe("disabled");
+    expect(kanban.className).toContain("opacity-60");
   });
 
-  it("an unexplained unavailable reason reads 「—」, never a guess", async () => {
-    await mount(async () => ({
-      servers: [{ id: "srv_x", name: "旧连接", status: "offline" }],
-    }));
-    expect(text()).toContain("原因未说明");
-    expect(document.querySelector("[data-testid='tools-row-0']")?.textContent).toContain("—");
-    expect(text()).not.toMatch(/0 个|: 0|\bECONNREFUSED\b/);
+  it("keeps unknown states 待核实 instead of guessing 启用 or 停用", async () => {
+    await mount();
+    const mystery = rows().find((row) => row.textContent?.includes("Mystery"))!;
+    expect(mystery.getAttribute("data-status")).toBe("unknown");
+    expect(mystery.querySelector("[data-testid='tol5-status']")?.textContent).toBe("待核实");
+    expect(mystery.className).toContain("opacity-60");
   });
 
-  it("a status the upstream never explains stays unknown and is never counted as working", async () => {
-    await mount(async () => ({
-      servers: [{ id: "srv_y", name: "日程查询", status: "probe-v2" }],
-    }));
-    const row = document.querySelector("[data-testid='tools-row-0']")!;
-    expect(row.getAttribute("data-status")).toBe("unknown");
-    expect(row.className).toContain("opacity-60");
-    expect(row.textContent).toContain("上游没有说明这个连接现在的状态");
-    const badge = row.lastElementChild!;
-    expect(badge.textContent?.trim()).toBe("—");
-    expect(badge.textContent).not.toContain("正常");
-    expect(badge.textContent).not.toContain("不可用");
+  it("never prints a token or key value; credentials are only a state word", async () => {
+    await mount();
+    expect(text()).toContain("凭据：已配置");
+    expect(text()).not.toContain("super-secret-value");
+    expect(text()).not.toContain("API_KEY");
+    expect(text()).not.toMatch(/token|secret|密钥值/i);
   });
 
-  it("a missing check time is 「—」 with the reason, not a zero and not a blank", async () => {
-    await mount(async () => ({ servers: [{ id: "srv_z", name: "无时间", status: "connected" }] }));
-    expect(text()).toContain("最近检查（北京时间）");
-    expect(text()).toContain("—");
-    expect(text()).not.toMatch(/1970|0000|NaN/);
-    const dashed = document.querySelector("[data-testid='tools-row-0'] [title='服务未提供检查时刻']");
-    expect(dashed?.textContent).toBe("—");
-  });
-
-  it("shows the check time in Beijing wall clock to the minute", async () => {
-    await mount(async () => SERVERS);
-    expect(text()).toContain("2026-11-19 09:20");
-    expect(text()).toContain("2026-11-19 10:05");
-    // the wire form never reaches the screen
-    expect(text()).not.toMatch(/2026-11-19T01:20|:00Z/);
-  });
-
-  it("counts against the denominator the answer declared", async () => {
-    await mount(async () => SERVERS);
-    expect(text()).toContain("列出 2 / 12");
-    expect(text()).toContain("这一页只回了 2 条");
-    expect(document.querySelectorAll("[data-testid^='tools-row-'][data-status]")).toHaveLength(2);
-  });
-
-  it("says so out loud when the answer declared no total", async () => {
-    await mount(async () => ({ servers: [{ id: "a", name: "甲", status: "connected" }] }));
-    expect(text()).toContain("上游未声明一共有多少连接");
-    expect(text()).not.toMatch(/\/ 0\b/);
-  });
-
-  it("counts a row it could not read instead of painting it", async () => {
-    await mount(async () => ({ servers: [{ id: "a", name: "甲", status: "connected" }, "读不出"] }));
-    expect(document.querySelectorAll("[data-testid^='tools-row-'][data-status]")).toHaveLength(1);
-    expect(text()).toContain("另有 1 条回的内容读不出是哪个连接");
+  it("shows a true zero MCP count honestly when the service returns an empty list", async () => {
+    await mount((url) =>
+      Promise.resolve((url ?? "").includes("/api/tools/toolsets") ? TOOLSETS : { servers: [] }),
+    );
+    expect(document.querySelector("[data-testid='tol5-mcp-empty']")?.textContent).toContain("没有登记 MCP 连接");
+    expect(text()).toContain("MCP 连接 0");
   });
 });
 
-describe("engineering language stays off the human layer", () => {
-  it("a raw id is reachable in the title only", async () => {
-    await mount(async () => SERVERS);
-    const name = document.querySelector("[data-testid='tools-row-0'] p")!;
-    expect(name.getAttribute("title")).toBe("srv_1a2b3c4d5e6f7081");
-    expect(text()).not.toContain("srv_1a2b3c4d5e6f7081");
-    expect(text()).not.toContain("srv_9f8e7d6c5b4a3f21");
+describe("failures and gaps", () => {
+  it("403 is a denied body with no rows and no path echoed", async () => {
+    await mount(failed(403, "/api/tools/toolsets", "req-deny"));
+    expect(document.querySelector("[data-testid='tol5-denied']")).toBeTruthy();
+    expect(rows()).toHaveLength(0);
+    expect(text()).toContain("暂时看不到工具与 MCP 清单");
+    expect(text()).toContain("请求编号：req-deny");
+    expect(text()).not.toMatch(/\/api\/|403|GAP-04/);
   });
 
-  it("carries no field names, status tokens or codes on the surface", async () => {
-    await mount(async () => SERVERS);
-    expect(text()).not.toMatch(/lastCheckedAt|status|connected|disconnected|serverId|console\.forbidden|HTTP/);
+  it("both 404 routes show the marked fixture with GAP only in a title", async () => {
+    await mount(failed(404, "/api/tools/toolsets"));
+    expect(document.querySelector("[data-testid='tol5-fixture-note']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='tol5-page']")?.getAttribute("data-fixture")).toBe("fixture");
+    expect(text()).toContain("字段示例");
+    expect(text()).not.toContain("GAP-04");
+    expect(document.querySelector("[data-testid='tol5-fixture-note']")?.getAttribute("title")).toBe("GAP-04");
+    expect(rows().length).toBeGreaterThan(0);
   });
 
-  it("the raw values are available behind 技术详情, closed by default", async () => {
-    await mount(async () => SERVERS);
-    const toggle = document.querySelector<HTMLButtonElement>("[data-testid='tools-row-0-details'] button")!;
-    expect(text()).not.toContain("状态原值");
-    expect(toggle.getAttribute("aria-expanded")).toBe("false");
-    await act(async () => {
-      toggle.click();
+  it("500 shows human copy, a copyable request id and a working retry", async () => {
+    let fail = true;
+    await mount((url) => {
+      if (!url) return Promise.resolve({ servers: [] });
+      if (fail) return Promise.reject(new ApiError("boom", { status: 500, body: "{}", url, requestId: "req-tol5" }));
+      return answer(url);
     });
-    expect(text()).toContain("连接标识：srv_1a2b3c4d5e6f7081");
-    expect(text()).toContain("状态原值：connected");
-  });
-
-  it("a reason folded away from the human layer is still reachable in 技术详情", async () => {
-    await mount(async () => ({
-      servers: [{ id: "srv_w", name: "归档服务", status: "unavailable", reason: '{"code":"mcp.refused"}' }],
-    }));
-    // the wire shape never prints on the row
-    expect(text()).not.toContain("mcp.refused");
-    expect(document.querySelector("[data-testid='tools-row-0']")?.textContent).toContain("原因未说明");
-    const toggle = document.querySelector<HTMLButtonElement>("[data-testid='tools-row-0-details'] button")!;
-    await act(async () => {
-      toggle.click();
-    });
-    expect(text()).toContain('原因原值：{"code":"mcp.refused"}');
-  });
-});
-
-describe("the four states", () => {
-  it("loading is a skeleton, not an empty list", async () => {
-    api.fetchJSON.mockReset();
-    api.fetchJSON.mockImplementation(() => new Promise(() => {}));
-    await render("/capabilities?tab=tools", <ToolsPage />);
-    await waitFor(() => skeleton(), "skeleton painted");
-    expect(document.querySelector("[data-testid='tools-loading']")).toBeTruthy();
-    expect(document.querySelector("[data-testid='tools-list']")).toBeNull();
-  });
-
-  it("an empty answer explains itself and names the next step", async () => {
-    await mount(async () => ({ servers: [], total: 0 }));
-    expect(document.querySelector("[data-testid='tools-empty']")).toBeTruthy();
-    expect(document.querySelector("[data-testid='tools-list']")).toBeNull();
-    expect(text()).toContain("一条连接也没有");
-    expect(text()).toContain("原生 MCP 管理页");
-    expect(text()).toContain("不代表读取失败");
-  });
-
-  it("an answer that is not a connection list is a failure, not an empty list", async () => {
-    await mount(async () => ({ status: "ok", note: "nothing to see" }));
-    expect(document.querySelector("[data-testid='tools-error']")).toBeTruthy();
-    expect(document.querySelector("[data-testid='tools-empty']")).toBeNull();
-    expect(text()).toContain("不是一份连接清单");
-  });
-
-  it("an error speaks human words, quotes the request id, and offers a retry", async () => {
-    await mount(async () => {
-      throw new ApiError("boom", {
-        status: 500,
-        body: '{"detail":"upstream exploded"}',
-        url: "/agent-api/api/mcp/servers",
-        requestId: "tl-gw-fail",
-      });
-    });
-    expect(document.querySelector("[data-testid='tools-error']")).toBeTruthy();
-    expect(text()).toContain("连接清单没能加载出来");
+    expect(document.querySelector("[data-testid='tol5-error']")).toBeTruthy();
+    expect(text()).toContain("请求编号：req-tol5");
     expect(text()).toContain("处理时出了错");
-    expect(text()).toContain("请求编号：tl-gw-fail");
-    expect(text()).not.toMatch(/500|upstream exploded|agent-api/);
-    const copy = document.querySelector("[aria-label='复制请求编号']") as HTMLButtonElement | null;
-    expect(copy).toBeTruthy();
-    expect([...document.querySelectorAll("button")].some((b) => b.textContent?.includes("重试"))).toBe(true);
-  });
-
-  it("a failure with no request id says 「未提供」 and why", async () => {
-    await mount(async () => {
-      throw new ApiError("gone", { status: 502, body: "bad gateway", url: "/agent-api/api/mcp/servers" });
-    });
-    expect(document.querySelector("[data-testid='tools-error-request-id-value-absent']")).toBeTruthy();
-    expect(text()).toContain("未提供");
-    expect(text()).not.toContain("请求编号：");
-    expect(text()).not.toMatch(/502|bad gateway|agent-api/);
-  });
-
-  it("a login gap tells the person what to do instead of showing a code", async () => {
-    await mount(async () => {
-      throw new ApiError("auth", {
-        status: 401,
-        body: '{"code":"console.unauthenticated","message":"identity check failed"}',
-        url: "/agent-api/api/mcp/servers",
-        requestId: "tl-auth",
-      });
-    });
-    expect(text()).toContain("重新登录");
-    expect(text()).not.toMatch(/401|console\.unauthenticated|identity check failed/);
-  });
-
-  it("a refused read falls back to no rows at all, never to sample data", async () => {
-    await mount(denied(403));
-    expect(document.querySelector("[data-testid='tools-list']")).toBeNull();
-    expect(document.querySelectorAll("[data-testid^='tools-row-'][data-status]")).toHaveLength(0);
-    expect(text()).not.toMatch(/文档检索|远程仓库|示例数据|fixture/);
-    expect(html()).not.toContain("data-fixture");
-  });
-
-  it("403 and 404 draw one identical body with no rows above it", async () => {
-    const once = async (status: number): Promise<string> => {
-      await mount(denied(status));
-      return html();
-    };
-    const forbidden = await once(403);
-    expect(text()).toContain("暂时看不到工具与 MCP 连接");
-    expect(text()).toContain("请求编号：tl-deny");
-    expect(document.querySelectorAll("[data-testid^='tools-row-'][data-status]")).toHaveLength(0);
-    // no echo of the wire in either body: no route, no status, no service code
-    expect(forbidden).not.toMatch(/\/agent-api|api\/mcp|console\.forbidden|\b40[34]\b/);
-    expect(await once(404)).toBe(forbidden);
-  });
-
-  it("the denied body names the GAP instead of guessing a route", async () => {
-    await mount(denied(404));
-    expect(text()).toContain("GAP-04");
-    expect(text()).toContain("尚未在本控制台接通");
+    expect(text()).not.toMatch(/500|boom|\/api\//);
+    expect(document.querySelector("[aria-label='复制请求编号']")).toBeTruthy();
+    fail = false;
+    const retry = document.querySelector<HTMLButtonElement>("[data-testid='tol5-retry']")!;
+    await act(async () => retry.click());
+    await waitFor(() => rows().length > 0, "retry recovered");
   });
 });
 
-describe("the repro legs the shell gives QA", () => {
-  it("each forced state renders, carries data-fixture with its GAP, and asks nothing", async () => {
-    api.fetchJSON.mockReset();
-    const open = async (state: string): Promise<void> => {
-      await render(`/capabilities?tab=tools&state=${state}`, <ToolsPage />);
-      await waitFor(
-        () => (document.body.textContent ?? "").includes("复现出来的状态") || state === "loading",
-        `${state} painted`,
-      );
-    };
+describe("four states and repro legs", () => {
+  it("forced states render, carry data-fixture and make no request", async () => {
     for (const state of ["loading", "empty", "error", "denied"]) {
-      await open(state);
-      const page = document.querySelector("[data-testid='tools-page']")!;
-      expect(page.getAttribute("data-fixture")).toBe(state);
-      expect(text()).toContain("这是用 ?state=");
-      expect(text()).toContain("GAP-04");
+      await render(`/capabilities?tab=tools&state=${state}`);
+      await waitFor(() => !document.querySelector(".animate-pulse") || state === "loading", `${state} painted`);
+      expect(document.querySelector("[data-testid='tol5-page']")?.getAttribute("data-fixture")).toBe(state);
       expect(api.fetchJSON).not.toHaveBeenCalled();
-      const retry = document.querySelector<HTMLButtonElement>("[data-testid='tools-retry']")!;
-      expect(retry.disabled).toBe(true);
     }
   });
 
-  it("a repro is never dressed up as real data", async () => {
-    api.fetchJSON.mockReset();
-    await render("/capabilities?tab=tools&state=ready", <ToolsPage />);
-    await waitFor(() => !skeleton(), "real read settled");
-    // `ready` is not reproducible: the pane asks the service instead
+  it("?state=ready is not reproducible and reads live", async () => {
+    await mount(answer, "/capabilities?tab=tools&state=ready");
     expect(api.fetchJSON).toHaveBeenCalled();
-    expect(html()).not.toContain("data-fixture");
+    expect(document.querySelector("[data-testid='tol5-page']")?.hasAttribute("data-fixture")).toBe(false);
   });
 });

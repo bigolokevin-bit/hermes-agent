@@ -1184,3 +1184,30 @@ $ cd web && npx vitest run
   - `?tab=retrieval` → 前后均 `tab=spaces&panel=retrieval`、selected `knw4-tab-retrieval`、panel `retrieval`
   - `?tab=citations|evidence` → 前后均 `tab=spaces&panel=evidence`、selected `knw4-tab-evidence`、panel `evidence`
 - 验证：`npx vitest run src/modules/knowledge` → 2 files / 15 passed；全量 `npx vitest run` → 123 files / 1223 passed；四态/GAP-03 title/zeroCount=0 未改。
+
+## 工具与 MCP 真数据面（T27，2026-11-19）
+
+### 数据源与真实度
+- Hermes dashboard 原生路由（同源、登录态由 `fetchJSON` 的 session token / cookie 携带）：
+  - `GET /api/tools/toolsets` → **200**，26 个工具集，展开 **54 个工具**；其中 7 个工具集停用，对应 **27 个停用工具**。
+  - `GET /api/mcp/servers` → **200** `{"servers":[]}`，当前真实 **0 个 MCP 连接**（空列表，无假行）。
+- BFF 侧 `GET /agent-api/api/mcp/servers` → **404** `console.unknown_route`；因此本页使用同源 Hermes 原生路由，不把 BFF 404 伪装成空清单。
+- 凭据只显示「已配置 / 未配置 / 未知」；MCP `env` 值不读取上屏，无 token/密钥值。
+
+### 页面与判据
+- 每行：名称（工具中文名；工具集名作为类型）/ 类型 / 启用状态（启停真实，未知「待核实」）/ 凭据状态 / 最近调用（接口未提供 → 「—」+ 原因）。
+- 不可用或未知行保留并降透明度；空 MCP 段明确「服务已响应，没有登记 MCP 连接」。
+- 四态齐；错误态人话 + 可复制请求编号 + 重试；403 单一拒绝体，不回显路径/状态码；两个路由都 404 时才展示带 `data-fixture` 的字段示例，GAP-04 仅进 `title`。
+- testid `tol5-*`；1440/1280/375 DOM：body 与 page `scrollWidth == clientWidth == 视口`（1440/1280/375），54 个工具行、0 个 MCP 行。
+
+### 原始 stdout
+```text
+$ cd web && npx vitest run src/modules/tools
+ Test Files  2 passed (2)
+      Tests  19 passed (19)
+
+$ cd web && npx vitest run
+ Test Files  123 passed (123)
+      Tests  1208 passed (1208)
+```
+- 构建 `node scripts/build/web.mjs --source . --out /tmp/tools-build --icons .` **BUILD_EXIT=1**，阻断为基线既有 `src/pages/LoginPage.test.tsx` TS2739（非本写域），本模块 tsc 无新增错误。

@@ -1,58 +1,63 @@
 /**
- * tools & MCP read — the four states, driven only by what the service answered.
+ * tools & MCP read — the four states, driven only by what the services answer.
  *
- * There is no fallback leg any more. An earlier cut painted fixture rows when
- * the read failed; that made a broken environment look like working servers,
- * which is the one thing this pane must not do. A failure now shows a failure,
- * and the only rows ever drawn are rows the answer carried.
- *
- * The effect never sets state synchronously: a read is stored against the
- * attempt that asked for it, and anything that does not match the current
- * attempt simply renders as loading. That keeps retry honest without a
- * setState-in-effect hop.
+ * Both reads are attempted together. A failure of one section does not erase
+ * the rows the other section returned; it keeps a visible, retryable note.
+ * A fixture exists only when both routes are genuinely absent (404); a 403 is
+ * always the normal denied body, never a fixture.
  */
 import { useCallback, useEffect, useState } from "react";
 
 import {
-  fetchServers,
   failureInfo,
-  isDenied,
+  fetchServers,
+  fetchToolsets,
+  FIXTURE_ROWS,
+  isMissingRoute,
   readFailure,
-  shapeFailure,
   type FailureCopy,
-  type ServerRow,
+  type ToolRow,
 } from "./tools";
 
 export type ForcedState = "loading" | "empty" | "error" | "denied";
 
 const FORCED: readonly string[] = ["loading", "empty", "error", "denied"];
 
-/** `?state=` is the shell's QA handle; `ready` is deliberately not reproducible. */
 export function forcedStateOf(raw: string | null): ForcedState | null {
   return raw !== null && FORCED.includes(raw) ? (raw as ForcedState) : null;
 }
 
-export type ToolsPhase = "loading" | "ready" | "empty" | "error" | "denied";
+export type ToolsPhase = "loading" | "ready" | "empty" | "error" | "denied" | "login" | "fixture";
+
+export interface SectionIssue {
+  label: string;
+  failure: FailureCopy;
+}
 
 export interface ToolsState {
   phase: ToolsPhase;
-  rows: ServerRow[];
-  /** Total the answer declared; null renders 「—」 rather than a counted guess. */
-  declaredTotal: number | null;
-  /** Rows the answer carried that could not be read — counted, never shown as data. */
-  unreadable: number;
+  rows: ToolRow[];
+  toolsetRows: number;
+  mcpRows: number;
+  issues: SectionIssue[];
   failure: FailureCopy | null;
-  /** True when the phase came from `?state=` instead of from the service. */
   forced: boolean;
+  fixture: boolean;
   reload: () => void;
 }
 
-/** The part of the state a read produces, before the reload handle is attached. */
 type Settled = Omit<ToolsState, "reload" | "forced">;
 
-const PENDING: Settled = { phase: "loading", rows: [], declaredTotal: null, unreadable: 0, failure: null };
+const PENDING: Settled = {
+  phase: "loading",
+  rows: [],
+  toolsetRows: 0,
+  mcpRows: 0,
+  issues: [],
+  failure: null,
+  fixture: false,
+};
 
-/** A forced panel is derived, never stored: it must not survive into a real read. */
 const FORCED_RESULT: Record<ForcedState, Settled> = {
   loading: PENDING,
   empty: { ...PENDING, phase: "empty" },
@@ -68,26 +73,53 @@ const FORCED_RESULT: Record<ForcedState, Settled> = {
   },
 };
 
-function settledOf(read: Awaited<ReturnType<typeof fetchServers>>): Settled {
-  if (read.kind === "shape") {
-    return { ...PENDING, phase: "error", failure: shapeFailure() };
-  }
-  return {
-    phase: read.rows.length ? "ready" : "empty",
-    rows: read.rows,
-    declaredTotal: read.declaredTotal,
-    unreadable: read.unreadable,
-    failure: null,
-  };
+function firstFailure(results: PromiseSettledResult<ToolRow[]>[]): unknown | null {
+  for (const result of results) if (result.status === "rejected") return result.reason;
+  return null;
 }
 
-function failedOf(err: unknown): Settled {
-  const info = failureInfo(err);
-  return {
-    ...PENDING,
-    phase: isDenied(info.status) ? "denied" : "error",
-    failure: readFailure(err, info),
-  };
+function classify(results: PromiseSettledResult<ToolRow[]>[]): Settled {
+  const toolset = results[0];
+  const server = results[1];
+  const succeeded = results.filter((r): r is PromiseFulfilledResult<ToolRow[]> => r.status === "fulfilled");
+  const failure = firstFailure(results);
+  const info = failureInfo(failure);
+
+  if (succeeded.length === 0) {
+    if (info.status === 401) {
+      return { ...PENDING, phase: "login", failure: readFailure(failure, info) };
+    }
+    if (info.status === 403) {
+      return { ...PENDING, phase: "denied", failure: readFailure(failure, info) };
+    }
+    const allMissing = results.every(
+      (r) => r.status === "rejected" && isMissingRoute(failureInfo(r.reason).status),
+    );
+    if (allMissing) {
+      return {
+        ...PENDING,
+        phase: "fixture",
+        rows: FIXTURE_ROWS,
+        toolsetRows: FIXTURE_ROWS.filter((row) => row.source === "toolset").length,
+        mcpRows: FIXTURE_ROWS.filter((row) => row.source === "mcp").length,
+        fixture: true,
+      };
+    }
+    return { ...PENDING, phase: "error", failure: readFailure(failure, info) };
+  }
+
+  const rows = succeeded.flatMap((r) => r.value);
+  const issues: SectionIssue[] = [];
+  if (toolset.status === "rejected") {
+    issues.push({ label: "工具目录", failure: readFailure(toolset.reason, failureInfo(toolset.reason)) });
+  }
+  if (server.status === "rejected") {
+    issues.push({ label: "MCP 连接", failure: readFailure(server.reason, failureInfo(server.reason)) });
+  }
+  const toolsetRows = rows.filter((row) => row.source === "toolset").length;
+  const mcpRows = rows.filter((row) => row.source === "mcp").length;
+  const phase: ToolsPhase = rows.length > 0 || issues.length > 0 ? "ready" : "empty";
+  return { ...PENDING, phase, rows, toolsetRows, mcpRows, issues };
 }
 
 export function useToolsData(forced: ForcedState | null): ToolsState {
@@ -101,12 +133,8 @@ export function useToolsData(forced: ForcedState | null): ToolsState {
     let alive = true;
     const asked = attempt;
     void (async () => {
-      try {
-        const settled = settledOf(await fetchServers());
-        if (alive) setRead({ attempt: asked, settled });
-      } catch (err) {
-        if (alive) setRead({ attempt: asked, settled: failedOf(err) });
-      }
+      const results = await Promise.allSettled([fetchToolsets(), fetchServers()]);
+      if (alive) setRead({ attempt: asked, settled: classify(results) });
     })();
     return () => {
       alive = false;

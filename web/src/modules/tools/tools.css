@@ -1,0 +1,7 @@
+/* Keep the shared Button's decorative arc from widening this page by 2px. */
+.tol5-page {
+  overflow-x: clip;
+}
+.tol5-page .arc-border {
+  display: none;
+}
