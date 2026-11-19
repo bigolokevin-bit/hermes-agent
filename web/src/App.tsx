@@ -122,6 +122,13 @@ const MetricsConsolePage = lazy(() =>
     default: m.MetricsModulePage,
   })),
 );
+/* R17 collab: the delegation page body is delivered by lane aud
+ * (named export CollabDelegationsModulePage); the shell only mounts it. */
+const CollabConsolePage = lazy(() =>
+  import("@/modules/collab/CollabDelegationsModulePage").then((m) => ({
+    default: m.CollabDelegationsModulePage,
+  })),
+);
 const UsageConsolePage = lazy(() => import("@/modules/duty/UsagePage"));
 const PeopleConsolePage = lazy(() => import("@/modules/people/PeopleModulePage"));
 const OrgConsolePage = lazy(() => import("@/modules/org/OrgModulePage"));
@@ -1314,6 +1321,21 @@ export default function App() {
                       <Route
                         path="/metrics"
                         element={<MetricsConsolePage />}
+                      />
+                      {/* R17 collab: /collab and /collaboration mount the aud
+                        delegation page directly (col4-* reaches the screen),
+                        and /org lands on the departments view — replacing the
+                        old fall-through to /overview. */}
+                      <Route path="/collab" element={<CollabConsolePage />} />
+                      <Route
+                        path="/collaboration"
+                        element={<CollabConsolePage />}
+                      />
+                      <Route
+                        path="/org"
+                        element={
+                          <Navigate to="/identity?tab=departments" replace />
+                        }
                       />
                       {!overriddenPaths.has("/employees/:employeeId") && (
                         <>

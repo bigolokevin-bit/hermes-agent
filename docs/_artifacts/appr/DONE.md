@@ -338,3 +338,22 @@ Test Files  3 passed (3)
 ## 提交
 
 - 单 commit `feat(console): approvals eight-state filters (apr5)`，写域仅 `web/src/modules/approvals/**` + `docs/_artifacts/appr/**`；App.tsx/shell/其他 modules/package/lock/web/scripts 未动；未跑 install；未 amend/force/--no-verify。
+
+## R17 collab/org 接线 + apd5 详情字段冻结（lane/console-appr，2026-11-19）
+
+### collab/org（fix(console): mount collab route and org alias）
+接线前（QA R16 判词为据）：/collab、/collaboration、/work?tab=delegations、/employees?tab=delegations 全部落 /overview，col4Count=0（chunk CollabDelegationsModulePage-C9MmsxBf.js 为孤儿）；/org 落 /overview。
+接线后（App.tsx 锚点）：lazy CollabConsolePage（named CollabDelegationsModulePage，modules/collab line192/314 现场核实）；console Routes 块 /metrics 之后新增 Route /collab 与 /collaboration 直挂 <CollabConsolePage />（first-in-tree wins，不落上游也不落 /overview）；Route /org → Navigate /identity?tab=departments replace。数据口工单已核实 200（GET /agent-api/api/delegations=200 items:[]）。屏幕 col4Count 复跑留给 L0 合并代次（本车道不建 9122，纪律）。
+
+### apd5（feat(console): approval detail per PRD 4.2 field freeze (apd5)，commit 39cf3fa6）
+8 字段到位：1) approvalId 深链保态（History/Pending selected=useState(()=>params.get("id"))，openRow 把 id 写进 search 并保留 status，切换筛选清 id——刷新/分享保选中）；2) decidedAt apd5-field-decided-at 北京到分，缺「—」+title 原因；3) approver apd5-approver 姓名·8位大写短码（personView/maskHandle slice(0,8).toUpperCase）或「未指派」，裸 emp_/human: 零上屏；4) verdict apd5-field-verdict 通过/驳回/要求修改（VERDICT_LABEL approve 族改「通过」）；5) changeKind 4 类人话+未命中「未写明类型」；6) actionHash apd5-field-action-hash 短码显示+完整值 title+apd5-copy-action-hash 复制钮（已复制/复制失败反馈）；7) recipient apd5-field-recipient；8) dataScope apd5-field-scope 只读快照注记 + requestId apd5-field-request-id 可复制（缺=apd5-request-id-missing 诚实文案）。缺失一律「—」+原因，禁假 0；只读页零写入口（history 详情无 actions，仅说明文字）；403≡404 同体=既有 DeniedPanel（同 code+rid 不回显路径，既有用例「403 and 404 read the same」锁定）。
+
+### 原始 stdout
+定向：Test Files 3 passed (3) / Tests 48 passed (48)
+      Tests  1156 passed (1156)
+   Start at  15:42:25
+   Duration  7.08s (transform 42.15s, setup 0ms, import 53.04s, tests 18.97s, environment 27.64s)
+
+EXIT=0
+assert-ia：node scripts/assert-ia.mjs A=0；--source=react B=0（51/22/1/8 未破，App.tsx 仅加 React Route 数据层未动）。
+截图/屏幕读数受限声明：本车道禁建 9122、静态预览无 BFF，DOM 级 col4Count/apd5 计数由 L0 合并代次复跑；375 无横溢由 Field flex min-w-0 结构与既有 apr5 全页 375=375 读数支撑。
