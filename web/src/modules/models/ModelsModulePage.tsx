@@ -1,36 +1,58 @@
 // Module: models — 模型与单价
-// reuse: /v1/models
-// reuse: /v1/models/pricing
-import { useCallback, useEffect, useMemo, useState } from 'react';
+//
+// 三块数据各读各的：模型目录、单价表、平台账本。缺一块就只说那一块未接入，
+// 不拿别的数据补，也不把「单价 × 用量」当作已花费。所有未知值都是 `—` 或
+// 「未计价」，没有示例数字、没有补 0。
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { Copy, RefreshCw } from 'lucide-react';
 
-import { Button, Card, CardContent } from '@nous-research/ui';
+import { Button } from '@nous-research/ui/ui/components/button';
+import { Card, CardContent } from '@nous-research/ui/ui/components/card';
 
 import { fetchJSON } from '@/lib/api';
-import { API_UNREACHABLE_MESSAGE, ApiError, humanizeStatus } from '@/lib/api-error';
+import { copyTextToClipboard } from '@/lib/clipboard';
+import { ApiError } from '@/lib/api-error';
 
 import {
-  MODELS_FIXTURE,
+  MODELS_GAP,
   fmtStamp,
   fmtUnitPrice,
-  fmtUsd,
+  ledgerMoney,
+  ledgerStatusLabel,
   priceLabel,
+  readCatalog,
+  readLedger,
   readPrices,
-  readSpend,
-  spendLabel,
+  shortCode,
+  type ModelCatalogRow,
+  type ModelLedger,
   type ModelPriceRow,
-  type ModelSpendRow,
-  type ModelsPayload,
 } from './models';
 
-type Phase = 'loading' | 'ready' | 'empty' | 'error' | 'denied';
+type PagePhase = 'loading' | 'ready' | 'empty' | 'error' | 'denied';
+type SourcePhase = 'ready' | 'empty' | 'unavailable' | 'denied' | 'error';
 
-const FORCED = new Set(['loading', 'empty', 'error', 'denied']);
+type Catalog = { rows: ModelCatalogRow[]; asOf: string | null };
+type Pricelist = { rows: ModelPriceRow[]; asOf: string | null };
 
-function readForcedState(params: URLSearchParams): Phase | null {
+type Source<T> = {
+  phase: SourcePhase;
+  data: T | null;
+  requestId: string | null;
+};
+
+type Loaded = {
+  catalog: Source<Catalog>;
+  prices: Source<Pricelist>;
+  ledger: Source<ModelLedger>;
+};
+
+const FORCED = new Set<PagePhase>(['loading', 'empty', 'error', 'denied']);
+
+function readForcedState(params: URLSearchParams): PagePhase | null {
   const raw = params.get('state');
-  return raw && FORCED.has(raw) ? (raw as Phase) : null;
+  return raw && FORCED.has(raw as PagePhase) ? (raw as PagePhase) : null;
 }
 
 function requestIdOf(error: unknown): string | null {
@@ -38,66 +60,129 @@ function requestIdOf(error: unknown): string | null {
   return null;
 }
 
+function sourceFrom<T>(
+  result: PromiseSettledResult<unknown>,
+  parse: (payload: unknown) => T,
+  isEmpty: (value: T) => boolean,
+): Source<T> {
+  if (result.status === 'fulfilled') {
+    const data = parse(result.value);
+    return { phase: isEmpty(data) ? 'empty' : 'ready', data, requestId: null };
+  }
+  const error = result.reason;
+  const status = error instanceof ApiError ? error.status : 0;
+  const requestId = requestIdOf(error);
+  if (status === 404) return { phase: 'unavailable', data: null, requestId };
+  if (status === 401 || status === 403) return { phase: 'denied', data: null, requestId };
+  return { phase: 'error', data: null, requestId };
+}
+
+function phaseOf(loaded: Loaded): PagePhase {
+  const sources = [loaded.catalog, loaded.prices, loaded.ledger];
+  if (sources.every((source) => source.phase === 'error')) return 'error';
+  if (sources.every((source) => source.phase === 'denied')) return 'denied';
+  if (sources.every((source) => source.phase === 'empty')) return 'empty';
+  return 'ready';
+}
+
+function sourceRequestId(sources: Source<unknown>[]): string | null {
+  for (const source of sources) {
+    if (source.requestId) return source.requestId;
+  }
+  return null;
+}
+
+function RequestId({ id, testId }: { id: string | null; testId: string }): ReactNode {
+  const [copied, setCopied] = useState<'idle' | 'done' | 'failed'>('idle');
+  if (!id) {
+    return (
+      <p className="text-xs text-muted-foreground" data-testid={testId}>
+        本次请求未记录编号，可复制时间与操作路径反馈。
+      </p>
+    );
+  }
+  return (
+    <p className="flex min-w-0 flex-wrap items-center gap-1 text-xs text-muted-foreground" data-testid={testId}>
+      <span>请求编号：</span>
+      <code className="min-w-0 break-all" title={id}>{id}</code>
+      <button
+        type="button"
+        className="inline-flex items-center gap-1 underline underline-offset-2"
+        aria-label="复制请求编号"
+        onClick={() => {
+          void copyTextToClipboard(id).then((ok) => setCopied(ok ? 'done' : 'failed'));
+        }}
+      >
+        <Copy className="size-3" aria-hidden="true" />
+        {copied === 'done' ? '已复制' : copied === 'failed' ? '复制失败，请手动选择' : '复制'}
+      </button>
+    </p>
+  );
+}
+
+function Missing({ title, body, testId }: { title: string; body: string; testId: string }): ReactNode {
+  return (
+    <div className="space-y-1 text-sm" data-testid={testId}>
+      <p className="font-medium">{title}</p>
+      <p className="text-muted-foreground">{body}</p>
+    </div>
+  );
+}
+
+function Failure({
+  title,
+  requestId,
+  onRetry,
+  testId,
+}: {
+  title: string;
+  requestId: string | null;
+  onRetry: () => void;
+  testId: string;
+}): ReactNode {
+  return (
+    <div className="space-y-2 text-sm" data-testid={testId}>
+      <p className="font-medium">{title}</p>
+      <p className="text-muted-foreground">服务暂时没有回答，稍后重试；这不影响已经读到的其他两块。</p>
+      <RequestId id={requestId} testId={`${testId}-rid`} />
+      <Button size="sm" outlined onClick={onRetry} data-testid={`${testId}-retry`}>
+        重试
+      </Button>
+    </div>
+  );
+}
+
 export function ModelsModulePage() {
   const [params, setParams] = useSearchParams();
   const forced = readForcedState(params);
-  const [phase, setPhase] = useState<Phase>(forced ?? 'loading');
-  const [payload, setPayload] = useState<ModelsPayload | null>(null);
-  const [failure, setFailure] = useState<{ message: string; requestId: string | null } | null>(null);
+  const [phase, setPhase] = useState<PagePhase>(forced ?? 'loading');
+  const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [token, setToken] = useState(0);
 
   useEffect(() => {
-    if (forced) {
-      setPhase(forced);
-      return;
-    }
+    if (forced) return;
     let live = true;
     setPhase('loading');
-    setFailure(null);
-
+    setLoaded(null);
     const load = async () => {
-      try {
-        // reuse: /v1/models
-        const catalog = await fetchJSON<unknown>('/agent-api/api/models');
-        // reuse: /v1/models/pricing
-        const pricing = await fetchJSON<unknown>('/agent-api/api/models/pricing').catch(() => null);
-        if (!live) return;
-
-        const pricePart = readPrices(pricing ?? catalog);
-        const spendPart = readSpend(pricing ?? catalog);
-        const next: ModelsPayload = {
-          prices: pricePart.rows,
-          spend: spendPart.rows,
-          pricesAsOf: pricePart.asOf,
-          spendAsOf: spendPart.asOf,
-          origin: 'bff',
-        };
-        if (!next.prices.length && !next.spend.length) {
-          setPhase('empty');
-          return;
-        }
-        setPayload(next);
-        setPhase('ready');
-      } catch (error) {
-        if (!live) return;
-        if (error instanceof ApiError && (error.status === 403 || error.status === 404)) {
-          setPhase(error.status === 403 ? 'denied' : 'empty');
-          return;
-        }
-        // 接口还没接上时给示例数据，但页面明确标「示例数据」，不冒充真实值。
-        if (error instanceof ApiError && (error.status === 0 || error.status === 404)) {
-          setPayload(MODELS_FIXTURE);
-          setPhase('ready');
-          return;
-        }
-        setFailure({
-          message: error instanceof ApiError && error.status ? humanizeStatus(error.status) : API_UNREACHABLE_MESSAGE,
-          requestId: requestIdOf(error),
-        });
-        setPhase('error');
-      }
+      const [catalogResult, pricesResult, usageResult] = await Promise.allSettled([
+        fetchJSON<unknown>('/agent-api/api/models'),
+        fetchJSON<unknown>('/agent-api/api/models/pricing'),
+        fetchJSON<unknown>('/agent-api/api/hermes-usage?days=30'),
+      ]);
+      if (!live) return;
+      const next: Loaded = {
+        catalog: sourceFrom(catalogResult, readCatalog, (value) => value.rows.length === 0),
+        prices: sourceFrom(pricesResult, readPrices, (value) => value.rows.length === 0),
+        ledger: sourceFrom(
+          usageResult,
+          readLedger,
+          (value) => value.spent === null && value.rows === null && value.status === null,
+        ),
+      };
+      setLoaded(next);
+      setPhase(phaseOf(next));
     };
-
     void load();
     return () => {
       live = false;
@@ -112,56 +197,51 @@ export function ModelsModulePage() {
     setToken((value) => value + 1);
   }, [params, setParams]);
 
-  const fixture = payload?.origin === 'fixture';
-  const prices = useMemo(() => payload?.prices ?? [], [payload]);
-  const spend = useMemo(() => payload?.spend ?? [], [payload]);
+  const catalog = loaded?.catalog;
+  const prices = loaded?.prices;
+  const ledger = loaded?.ledger;
+  const pageRequestId = loaded ? sourceRequestId([loaded.catalog, loaded.prices, loaded.ledger]) : null;
 
   return (
-    <section className="space-y-4" data-testid="models-module" data-fixture={fixture ? '1' : undefined}>
+    <section className="space-y-4" data-testid="mdl4-page" data-fixture={forced ?? undefined}>
       <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <h1 className="font-mondwest text-xl">模型与单价</h1>
           <p className="text-sm text-muted-foreground">
-            价目表和账本各说各的：单价是标价，扣费是真实发生过的花费。
+            模型目录、价目表、平台账本各读各的：单价是标价，扣费是真实发生过的金额。
           </p>
         </div>
-        <Button size="sm" outlined onClick={retry} data-testid="models-refresh">
-          <RefreshCw className="mr-1 h-3.5 w-3.5" />
+        <Button size="sm" outlined onClick={retry} data-testid="mdl4-refresh" disabled={phase === 'loading'}>
+          <RefreshCw className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
           重新读取
         </Button>
       </header>
 
-      {fixture ? (
-        <div
-          className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200"
-          data-testid="models-fixture-note"
-        >
-          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          <span>
-            示例数据：模型目录和价格表还没接上。接上后同一张表直接显示真实标价与账本扣费，本页不改任何数字。
-          </span>
+      {forced ? (
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200" data-testid="mdl4-fixture-note">
+          预览状态：这是用 `?state=` 复现出来的画面，不是服务此刻的回答。数据源尚未接通（{MODELS_GAP}）。
         </div>
       ) : null}
 
       {phase === 'loading' ? (
         <Card>
-          <CardContent className="space-y-2 p-4" data-testid="models-loading">
+          <CardContent className="space-y-2 p-4" data-testid="mdl4-loading" aria-busy="true">
             <div className="h-4 w-40 animate-pulse rounded bg-muted" />
             <div className="h-4 w-full animate-pulse rounded bg-muted" />
             <div className="h-4 w-2/3 animate-pulse rounded bg-muted" />
-            <p className="pt-2 text-xs text-muted-foreground">正在读取模型目录与账本…</p>
+            <p className="pt-2 text-xs text-muted-foreground">正在读取模型目录、价目表与账本…</p>
           </CardContent>
         </Card>
       ) : null}
 
       {phase === 'empty' ? (
         <Card>
-          <CardContent className="space-y-2 p-6 text-sm" data-testid="models-empty">
+          <CardContent className="space-y-2 p-6 text-sm" data-testid="mdl4-empty">
             <p className="font-medium">还没有可展示的模型</p>
             <p className="text-muted-foreground">
-              模型目录里暂时没有任何模型，或者这一份价格表还没生成。等有模型登记之后，这里会出现它的标价与账本扣费。
+              模型目录、价目表和账本都还没有条目。空不等于 0：这里不显示「0 个模型」或「$0.00」。
             </p>
-            <Button size="sm" outlined onClick={retry}>
+            <Button size="sm" outlined onClick={retry} data-testid="mdl4-empty-retry">
               再看看
             </Button>
           </CardContent>
@@ -170,15 +250,11 @@ export function ModelsModulePage() {
 
       {phase === 'denied' ? (
         <Card>
-          <CardContent className="space-y-2 p-6 text-sm" data-testid="models-denied">
-            <p className="font-medium">你看不到这组单价</p>
-            <p className="text-muted-foreground">
-              可能是这一页不存在，也可能是当前账号没有查看模型与计价的权限。
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {params.get('rid') ? `请求编号：${params.get('rid')}` : '本次请求未记录编号，可复制时间与操作路径反馈'}
-            </p>
-            <Button size="sm" outlined onClick={retry}>
+          <CardContent className="space-y-2 p-6 text-sm" data-testid="mdl4-denied">
+            <p className="font-medium">没有权限查看模型与单价</p>
+            <p className="text-muted-foreground">这一页需要模型与计价的查看权限；请联系管理员开通后再来。</p>
+            <RequestId id={pageRequestId ?? params.get('rid')} testId="mdl4-denied-rid" />
+            <Button size="sm" outlined onClick={retry} data-testid="mdl4-denied-retry">
               刷新试试
             </Button>
           </CardContent>
@@ -187,112 +263,197 @@ export function ModelsModulePage() {
 
       {phase === 'error' ? (
         <Card>
-          <CardContent className="space-y-2 p-6 text-sm" data-testid="models-error">
-            <p className="font-medium">这几条单价没能读出来</p>
-            <p className="text-muted-foreground">{failure?.message ?? API_UNREACHABLE_MESSAGE}</p>
-            <p className="text-xs text-muted-foreground">
-              {failure?.requestId ? `请求编号：${failure.requestId}` : '本次请求未记录编号，可复制时间与操作路径反馈'}
-            </p>
-            <Button size="sm" outlined onClick={retry}>
+          <CardContent className="space-y-2 p-6 text-sm" data-testid="mdl4-error" role="alert">
+            <p className="font-medium">这次没能读取模型与账本</p>
+            <p className="text-muted-foreground">服务暂时不可达或出错了，请稍后重试。</p>
+            <RequestId id={pageRequestId ?? params.get('rid')} testId="mdl4-error-rid" />
+            <Button size="sm" outlined onClick={retry} data-testid="mdl4-error-retry">
               重试
             </Button>
           </CardContent>
         </Card>
       ) : null}
 
-      {phase === 'ready' && payload ? (
+      {phase === 'ready' ? (
         <>
           <Card>
-            <CardContent className="space-y-3 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <h2 className="text-base font-medium">单价（价目表）</h2>
-                  <p className="text-xs text-muted-foreground">
-                    来源：{fixture ? '示例价格表' : '模型价格表'} · 读取于 {fmtStamp(payload.pricesAsOf)}
-                  </p>
-                </div>
-                <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">每百万 token</span>
-              </div>
-              <div className="overflow-x-auto" data-testid="models-price-scroll">
-                <table className="w-full min-w-[640px] text-sm">
-                  <thead>
-                    <tr className="text-left text-xs text-muted-foreground">
-                      <th className="py-2 pr-3 font-normal">模型</th>
-                      <th className="py-2 pr-3 font-normal">供应商</th>
-                      <th className="py-2 pr-3 font-normal">输入</th>
-                      <th className="py-2 pr-3 font-normal">输出</th>
-                      <th className="py-2 pr-3 font-normal">价格生效</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {prices.map((row: ModelPriceRow) => (
-                      <tr key={row.modelId} data-testid={`models-price-${row.modelId}`}>
-                        <td className="py-2 pr-3" title={row.modelId}>
-                          {priceLabel(row)}
-                        </td>
-                        <td className="py-2 pr-3 text-muted-foreground">{row.provider || '—'}</td>
-                        <td className="py-2 pr-3 tabular-nums">
-                          {fmtUnitPrice(row.inputPerMillion, row.currency)}
-                        </td>
-                        <td className="py-2 pr-3 tabular-nums">
-                          {fmtUnitPrice(row.outputPerMillion, row.currency)}
-                        </td>
-                        <td className="py-2 pr-3 text-muted-foreground">{fmtStamp(row.asOf)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {prices.length === 0 ? (
-                <p className="text-xs text-muted-foreground" data-testid="models-prices-empty">
-                  这份价格表还没有条目。
+            <CardContent className="space-y-3 p-4" data-testid="mdl4-catalog">
+              <div>
+                <h2 className="text-base font-medium">模型目录</h2>
+                <p className="text-xs text-muted-foreground">
+                  来源：模型目录 · 读取于 {fmtStamp(catalog?.data?.asOf ?? null)}
                 </p>
-              ) : null}
+              </div>
+              {catalog?.phase === 'ready' && catalog.data ? (
+                <div className="overflow-x-auto" data-testid="mdl4-catalog-scroll">
+                  <table className="w-full min-w-[520px] text-sm">
+                    <thead>
+                      <tr className="text-left text-xs text-muted-foreground">
+                        <th className="py-2 pr-3 font-normal">模型</th>
+                        <th className="py-2 pr-3 font-normal">提供方</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {catalog.data.rows.map((row) => (
+                        <tr key={row.modelId} data-testid={`mdl4-catalog-${row.modelId}`}>
+                          <td className="py-2 pr-3" title={row.modelId}>
+                            {row.label || shortCode(row.modelId)}
+                          </td>
+                          <td className="py-2 pr-3 text-muted-foreground">{row.provider ?? '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : catalog?.phase === 'empty' ? (
+                <Missing
+                  title="模型目录里还没有模型"
+                  body="目录是空的，不拿价格表或账本里的名字补；等模型登记后再看。"
+                  testId="mdl4-catalog-empty"
+                />
+              ) : catalog?.phase === 'unavailable' ? (
+                <Missing
+                  title={`模型目录未接入（${MODELS_GAP}）`}
+                  body="上游还没有提供模型清单读取口。这里不摆示例模型，也不显示「0 个模型」。"
+                  testId="mdl4-catalog-unavailable"
+                />
+              ) : catalog?.phase === 'denied' ? (
+                <div className="space-y-2" data-testid="mdl4-catalog-denied">
+                  <Missing title="没有权限查看模型目录" body="请联系管理员开通模型查看权限。" testId="mdl4-catalog-denied-body" />
+                  <RequestId id={catalog.requestId} testId="mdl4-catalog-denied-rid" />
+                </div>
+              ) : (
+                <Failure
+                  title="模型目录读取失败"
+                  requestId={catalog?.requestId ?? null}
+                  onRetry={retry}
+                  testId="mdl4-catalog-error"
+                />
+              )}
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="space-y-3 p-4">
+            <CardContent className="space-y-3 p-4" data-testid="mdl4-prices">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h2 className="text-base font-medium">单价（价目表）</h2>
+                  <p className="text-xs text-muted-foreground">
+                    来源：模型价格表 · 读取于 {fmtStamp(prices?.data?.asOf ?? null)}
+                  </p>
+                </div>
+                <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">每百万 token</span>
+              </div>
+              {prices?.phase === 'ready' && prices.data ? (
+                <div className="overflow-x-auto" data-testid="mdl4-price-scroll">
+                  <table className="w-full min-w-[640px] text-sm">
+                    <thead>
+                      <tr className="text-left text-xs text-muted-foreground">
+                        <th className="py-2 pr-3 font-normal">模型</th>
+                        <th className="py-2 pr-3 font-normal">提供方</th>
+                        <th className="py-2 pr-3 font-normal">输入</th>
+                        <th className="py-2 pr-3 font-normal">输出</th>
+                        <th className="py-2 pr-3 font-normal">价格生效</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {prices.data.rows.map((row) => (
+                        <tr key={row.modelId} data-testid={`mdl4-price-${row.modelId}`}>
+                          <td className="py-2 pr-3" title={row.modelId}>
+                            {priceLabel(row)}
+                          </td>
+                          <td className="py-2 pr-3 text-muted-foreground">{row.provider ?? '—'}</td>
+                          <td className="py-2 pr-3 tabular-nums" title={row.inputPerMillion === null ? '价格表没有给这一项标价' : undefined}>
+                            {fmtUnitPrice(row.inputPerMillion, row.currency)}
+                          </td>
+                          <td className="py-2 pr-3 tabular-nums" title={row.outputPerMillion === null ? '价格表没有给这一项标价' : undefined}>
+                            {fmtUnitPrice(row.outputPerMillion, row.currency)}
+                          </td>
+                          <td className="py-2 pr-3 text-muted-foreground">{fmtStamp(row.asOf)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : prices?.phase === 'empty' ? (
+                <Missing
+                  title="价目表还没有条目"
+                  body="不按模型目录猜价，也不显示 0 元；等价格表生成后再看。"
+                  testId="mdl4-prices-empty"
+                />
+              ) : prices?.phase === 'unavailable' ? (
+                <Missing
+                  title={`单价表未接入（${MODELS_GAP}）`}
+                  body="上游还没有提供价目表。这里不显示 0 元，也不拿目录里的名字冒充价格。"
+                  testId="mdl4-prices-unavailable"
+                />
+              ) : prices?.phase === 'denied' ? (
+                <div className="space-y-2" data-testid="mdl4-prices-denied">
+                  <Missing title="没有权限查看单价" body="请联系管理员开通模型与计价查看权限。" testId="mdl4-prices-denied-body" />
+                  <RequestId id={prices.requestId} testId="mdl4-prices-denied-rid" />
+                </div>
+              ) : (
+                <Failure
+                  title="单价表读取失败"
+                  requestId={prices?.requestId ?? null}
+                  onRetry={retry}
+                  testId="mdl4-prices-error"
+                />
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="space-y-3 p-4" data-testid="mdl4-ledger">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <h2 className="text-base font-medium">实际扣费（账本）</h2>
                   <p className="text-xs text-muted-foreground">
-                    来源：{fixture ? '示例账本' : '平台扣费账本'} · 截至 {fmtStamp(payload.spendAsOf)}
+                    来源：平台扣费账本 · 截至 {fmtStamp(ledger?.data?.asOf ?? null)}
                   </p>
                 </div>
                 <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">USD</span>
               </div>
-              <div className="overflow-x-auto" data-testid="models-spend-scroll">
-                <table className="w-full min-w-[520px] text-sm">
-                  <thead>
-                    <tr className="text-left text-xs text-muted-foreground">
-                      <th className="py-2 pr-3 font-normal">模型</th>
-                      <th className="py-2 pr-3 font-normal">扣费</th>
-                      <th className="py-2 pr-3 font-normal">运行数</th>
-                      <th className="py-2 pr-3 font-normal">账本截至</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {spend.map((row: ModelSpendRow) => (
-                      <tr key={row.modelId} data-testid={`models-spend-${row.modelId}`}>
-                        <td className="py-2 pr-3" title={row.modelId}>
-                          {spendLabel(row)}
-                        </td>
-                        <td className="py-2 pr-3 tabular-nums">{fmtUsd(row.spent)}</td>
-                        <td className="py-2 pr-3 tabular-nums text-muted-foreground">
-                          {row.runs === null ? '—' : row.runs}
-                        </td>
-                        <td className="py-2 pr-3 text-muted-foreground">{fmtStamp(row.asOf)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {spend.length === 0 ? (
-                <p className="text-xs text-muted-foreground" data-testid="models-spend-empty">
-                  本期账本没有这个模型的扣费记录。
-                </p>
-              ) : null}
+              {ledger?.phase === 'ready' && ledger.data ? (
+                <div className="grid gap-3 sm:grid-cols-3" data-testid="mdl4-ledger-figures">
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">账本合计</p>
+                    <p className="break-words text-xl tabular-nums" data-testid="mdl4-ledger-total">{ledgerMoney(ledger.data)}</p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">计价状态</p>
+                    <p className="text-sm">{ledgerStatusLabel(ledger.data.status)}</p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">账本行数</p>
+                    <p className="text-sm tabular-nums">{ledger.data.rows === null ? '—' : ledger.data.rows}</p>
+                  </div>
+                </div>
+              ) : ledger?.phase === 'empty' ? (
+                <Missing
+                  title="账本还没有记录"
+                  body="没有扣费记录不等于 0 元；等账本落账后再看。"
+                  testId="mdl4-ledger-empty"
+                />
+              ) : ledger?.phase === 'unavailable' ? (
+                <Missing
+                  title={`扣费账本未接入（${MODELS_GAP}）`}
+                  body="上游还没有提供账本读取口。这里不显示零金额，也不按单价乘用量算一个数。"
+                  testId="mdl4-ledger-unavailable"
+                />
+              ) : ledger?.phase === 'denied' ? (
+                <div className="space-y-2" data-testid="mdl4-ledger-denied">
+                  <Missing title="没有权限查看扣费账本" body="请联系管理员开通账本查看权限。" testId="mdl4-ledger-denied-body" />
+                  <RequestId id={ledger.requestId} testId="mdl4-ledger-denied-rid" />
+                </div>
+              ) : (
+                <Failure
+                  title="扣费账本读取失败"
+                  requestId={ledger?.requestId ?? null}
+                  onRetry={retry}
+                  testId="mdl4-ledger-error"
+                />
+              )}
             </CardContent>
           </Card>
 

@@ -1,44 +1,38 @@
 // Module: models — 模型与单价
-// reuse: /v1/models
-// reuse: /v1/models/pricing
 //
-// 两条数据线严格分开：
-//   ① 单价表（价目）：模型标价，来源是价格文件或模型目录，自带 asOf；
-//   ② 实际扣费（ledger）：平台账本上真实发生的花费，自带 asOf。
-// 两者不是同一条时间轴，也**不允许**用单价 × 用量反推「已花费」——那会在页面上
-// 造出一个后端没有的数字。缺值一律 `—`，并在 title 里写清为什么缺。
+// 三条数据线各自独立，页面不把它们互相换算：
+//   ① 模型目录（BFF `/api/models`）：有哪些模型、供应商是谁；
+//   ② 单价表（BFF `/api/models/pricing`）：标价，自带 asOf；
+//   ③ 实际扣费（BFF `/api/hermes-usage`，平台账本）：真实发生过的金额，自带 asOf。
+// 单价 × 用量不是已花费；缺值一律 `—` / 「未计价」，绝不补 0，也不摆示例数字。
 
-export type PriceOrigin = 'catalog' | 'ledger' | 'fixture' | 'unknown';
+export type LedgerStatus = 'upstream' | 'estimated' | 'mixed' | 'unknown';
 
-export interface ModelPriceRow {
+export interface ModelCatalogRow {
   /** 原始模型标识，只进 title。 */
   modelId: string;
   label: string;
-  provider: string;
+  provider: string | null;
+}
+
+export interface ModelPriceRow {
+  modelId: string;
+  label: string;
+  provider: string | null;
   inputPerMillion: number | null;
   outputPerMillion: number | null;
   currency: string | null;
   asOf: string | null;
-  origin: PriceOrigin;
 }
 
-export interface ModelSpendRow {
-  modelId: string;
-  label: string;
+export interface ModelLedger {
   spent: number | null;
-  currency: string | null;
-  runs: number | null;
+  rows: number | null;
+  status: LedgerStatus | null;
   asOf: string | null;
-  origin: PriceOrigin;
 }
 
-export interface ModelsPayload {
-  prices: ModelPriceRow[];
-  spend: ModelSpendRow[];
-  pricesAsOf: string | null;
-  spendAsOf: string | null;
-  origin: 'bff' | 'fixture';
-}
+export const MODELS_GAP = 'GAP-07';
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -82,8 +76,16 @@ export function priceLabel(row: ModelPriceRow): string {
   return row.label || row.modelId || '未命名模型';
 }
 
-export function spendLabel(row: ModelSpendRow): string {
-  return row.label || row.modelId || '未命名模型';
+function readCatalogRow(raw: unknown): ModelCatalogRow | null {
+  if (!isRecord(raw)) return null;
+  const modelId = pickString(raw, ['modelId', 'model_id', 'id', 'model', 'name']);
+  const label = pickString(raw, ['label', 'displayName', 'display_name', 'title', 'name']);
+  if (!modelId && !label) return null;
+  return {
+    modelId: modelId || label,
+    label,
+    provider: pickString(raw, ['provider', 'vendor', 'owner']) || null,
+  };
 }
 
 function readPriceRow(raw: unknown): ModelPriceRow | null {
@@ -94,35 +96,25 @@ function readPriceRow(raw: unknown): ModelPriceRow | null {
   return {
     modelId: modelId || label,
     label,
-    provider: pickString(raw, ['provider', 'vendor', 'owner']),
+    provider: pickString(raw, ['provider', 'vendor', 'owner']) || null,
     inputPerMillion: pickNumber(raw, ['inputPerMillion', 'input_per_million', 'inputPerMTok', 'inputPricePerMillion']),
     outputPerMillion: pickNumber(raw, ['outputPerMillion', 'output_per_million', 'outputPerMTok', 'outputPricePerMillion']),
     currency: pickString(raw, ['currency', 'unit']).toUpperCase() || null,
     asOf: pickString(raw, ['asOf', 'as_of', 'updatedAt', 'effectiveAt']) || null,
-    origin: raw.origin === 'fixture' ? 'fixture' : 'catalog',
   };
 }
 
-function readSpendRow(raw: unknown): ModelSpendRow | null {
-  if (!isRecord(raw)) return null;
-  const modelId = pickString(raw, ['modelId', 'model_id', 'id', 'model', 'name']);
-  const label = pickString(raw, ['label', 'displayName', 'display_name', 'title', 'name']);
-  if (!modelId && !label) return null;
-  return {
-    modelId: modelId || label,
-    label,
-    spent: pickNumber(raw, ['spent', 'spentUsd', 'spent_usd', 'costUsd', 'cost_usd', 'totalCost']),
-    currency: pickString(raw, ['currency']).toUpperCase() || 'USD',
-    runs: pickNumber(raw, ['runs', 'runCount', 'run_count', 'requests']),
-    asOf: pickString(raw, ['asOf', 'as_of', 'updatedAt']) || null,
-    origin: 'ledger',
-  };
+/** 模型目录：只认 BFF 的模型清单，不拿价格表或用量表冒充。 */
+export function readCatalog(payload: unknown): { rows: ModelCatalogRow[]; asOf: string | null } {
+  if (!isRecord(payload)) return { rows: [], asOf: null };
+  const holder = isRecord(payload.catalog) ? payload.catalog : payload;
+  const rows = readArray(holder, ['models', 'items', 'rows', 'data'])
+    .map(readCatalogRow)
+    .filter((row): row is ModelCatalogRow => row !== null);
+  return { rows, asOf: pickString(holder, ['asOf', 'as_of', 'generatedAt']) || null };
 }
 
-/**
- * 宽容 reader：BFF 可能把价目与账本分两条路径返回，也可能合成一个对象。
- * 两种形状都接受，缺哪块就留空数组（页面自己走空态/降级，不猜）。
- */
+/** 单价表：只认价格端点；没有价格就是空，不从目录猜。 */
 export function readPrices(payload: unknown): { rows: ModelPriceRow[]; asOf: string | null } {
   if (!isRecord(payload)) return { rows: [], asOf: null };
   const holder = isRecord(payload.pricing) ? payload.pricing : payload;
@@ -132,80 +124,29 @@ export function readPrices(payload: unknown): { rows: ModelPriceRow[]; asOf: str
   return { rows, asOf: pickString(holder, ['asOf', 'as_of', 'generatedAt']) || null };
 }
 
-export function readSpend(payload: unknown): { rows: ModelSpendRow[]; asOf: string | null } {
-  if (!isRecord(payload)) return { rows: [], asOf: null };
-  const holder = isRecord(payload.ledger) ? payload.ledger : payload;
-  const rows = readArray(holder, ['spend', 'ledger', 'items', 'rows', 'models'])
-    .map(readSpendRow)
-    .filter((row): row is ModelSpendRow => row !== null);
-  return { rows, asOf: pickString(holder, ['asOf', 'as_of', 'generatedAt']) || null };
+/** 账本：金额来自成本账本投影，null/unknown 保持未知，绝不写成 0。 */
+export function readLedger(payload: unknown): ModelLedger {
+  if (!isRecord(payload)) return { spent: null, rows: null, status: null, asOf: null };
+  const cost = isRecord(payload.cost) ? payload.cost : null;
+  const rawStatus = cost ? pickString(cost, ['cost_status', 'status']) : '';
+  const status: LedgerStatus | null =
+    rawStatus === 'upstream' || rawStatus === 'estimated' || rawStatus === 'mixed' || rawStatus === 'unknown'
+      ? rawStatus
+      : null;
+  return {
+    spent: cost ? pickNumber(cost, ['cost_usd', 'costUsd']) : null,
+    rows: cost ? pickNumber(cost, ['rows', 'rowCount', 'row_count']) : null,
+    status,
+    asOf: pickString(payload, ['asOf', 'as_of', 'generatedAt']) || null,
+  };
 }
 
-/** 演示数据只在接口 404 或不可达时上场，页面会打「示例数据」角标。 */
-export const MODELS_FIXTURE: ModelsPayload = {
-  prices: [
-    {
-      modelId: 'mdl_deepseek_v41_flash',
-      label: 'DeepSeek V4.1 Flash',
-      provider: 'alibaba-cn',
-      inputPerMillion: 0.14,
-      outputPerMillion: 0.28,
-      currency: 'USD',
-      asOf: '2026-11-18T02:00:00.000Z',
-      origin: 'fixture',
-    },
-    {
-      modelId: 'mdl_qwen38_flash',
-      label: 'Qwen3.8 Flash',
-      provider: 'alibaba-cn',
-      inputPerMillion: 0.21,
-      outputPerMillion: 0.63,
-      currency: 'USD',
-      asOf: '2026-11-18T02:00:00.000Z',
-      origin: 'fixture',
-    },
-    {
-      modelId: 'mdl_local_strata',
-      label: 'Strata（本地）',
-      provider: 'self-hosted',
-      inputPerMillion: null,
-      outputPerMillion: null,
-      currency: null,
-      asOf: null,
-      origin: 'fixture',
-    },
-  ],
-  spend: [
-    {
-      modelId: 'mdl_deepseek_v41_flash',
-      label: 'DeepSeek V4.1 Flash',
-      spent: 12.48,
-      currency: 'USD',
-      runs: 214,
-      asOf: '2026-11-18T02:00:00.000Z',
-      origin: 'fixture',
-    },
-    {
-      modelId: 'mdl_qwen38_flash',
-      label: 'Qwen3.8 Flash',
-      spent: null,
-      currency: 'USD',
-      runs: null,
-      asOf: '2026-11-18T02:00:00.000Z',
-      origin: 'fixture',
-    },
-  ],
-  pricesAsOf: '2026-11-18T02:00:00.000Z',
-  spendAsOf: '2026-11-18T02:00:00.000Z',
-  origin: 'fixture',
-};
-
-/** 北京时间到分；无效/缺失给 `—`（不落空字符串）。 */
+/** 北京时间到分；无效/缺失给 `—`。 */
 export function fmtStamp(iso: string | null | undefined): string {
   if (!iso) return '—';
   const time = new Date(iso).getTime();
   if (!Number.isFinite(time)) return '—';
-  const parts = new Intl.DateTimeFormat('sv-SE', {
+  return new Intl.DateTimeFormat('sv-SE', {
     timeZone: 'Asia/Shanghai',
     year: 'numeric',
     month: '2-digit',
@@ -213,8 +154,7 @@ export function fmtStamp(iso: string | null | undefined): string {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
-  }).format(new Date(time));
-  return parts.replace('T', ' ');
+  }).format(new Date(time)).replace('T', ' ');
 }
 
 /** USD 两位小数；未知给 `—`（绝不写 0 冒充「没花钱」）。 */
@@ -235,4 +175,17 @@ export function fmtUnitPrice(value: number | null, currency: string | null): str
   if (value === null || !Number.isFinite(value)) return '—';
   const unit = currency === 'USD' || currency === null ? '$' : `${currency} `;
   return `${unit}${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / 百万 token`;
+}
+
+export function ledgerStatusLabel(status: LedgerStatus | null): string {
+  if (status === 'upstream') return '账本实测';
+  if (status === 'estimated' || status === 'mixed') return '含估算';
+  if (status === 'unknown') return '未计价';
+  return '计价状态未提供';
+}
+
+/** 账本金额：状态未知时显式「未计价」，不把 null/unknown 当 0。 */
+export function ledgerMoney(ledger: ModelLedger): string {
+  if (ledger.status === 'unknown') return '未计价';
+  return fmtUsd(ledger.spent);
 }

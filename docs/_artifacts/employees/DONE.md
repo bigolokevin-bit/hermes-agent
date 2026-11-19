@@ -135,7 +135,7 @@ sha256=cf4d8cc48a65662a84a8c1e6227a26314e6dd6d0d4070f1772ae4e06d8e3ac97
 ### lint
 
 - eslint src/modules/org/ → `0 errors, 1 warning`（react-hooks/set-state-in-effect，同 T18/T20 基线噪音）
-- lint-reuse → `violations=4`（全基线既有缺标记 ChatPage/RunDetailPage/TasksListPage/AutoField），org 零新增；tonight/lint-reuse.json 快照 scanned 27→30
+- lint-reuse → `violations=4`（全基线既有缺标记 ChatPage/RunDetailPage/TasksListPage/AutoField），org 零新增；主树权威账本 /Users/kevin_studio/Projects/forks/hermes-agent/docs/_artifacts/tonight/lint-reuse.json 快照 scanned 27→30
 
 ### 交付与 GAP-02
 

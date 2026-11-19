@@ -17,7 +17,7 @@ const manifest: ModuleManifest = {
       route: '#/models',
       kind: 'reuse',
       reuse: () => import('./ModelsModulePage').then((m) => ({ default: m.ModelsModulePage })),
-      dataSource: '/api/models 目录 + /api/models/pricing 价格表（fixture 门：接口 404/不可达）',
+      dataSource: '/api/models 目录 + /api/models/pricing 价目表 + /api/hermes-usage 账本（未接入时显 GAP-07，不回落示例）',
     },
   ],
 };
