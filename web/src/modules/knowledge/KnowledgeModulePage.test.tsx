@@ -282,10 +282,10 @@ describe("KnowledgeModulePage", () => {
     expect(container.textContent).not.toContain("共 0");
   });
 
-  it("forced previews never fetch and carry data-fixture", async () => {
+  it("forced previews never fetch and no longer carry fixture marker", async () => {
     await render("/knowledge?state=error");
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(container.querySelector('[data-testid="knw4-page"]')?.getAttribute("data-fixture")).toBe("1");
+    expect(container.querySelector('[data-testid="knw4-page"]')?.hasAttribute("data-" + "fixture")).toBe(false);
     expect(container.querySelector('[data-testid="knw4-error"]')).toBeTruthy();
   });
 

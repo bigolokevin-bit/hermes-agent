@@ -754,3 +754,16 @@ describe("R21 b — a refused window check stays human", () => {
     expect(said).not.toContain("request.missing_filter");
   });
 });
+
+describe("retention tab dispatch", () => {
+  it("renders the ret4 retention surface when ?tab=retention resolves to the events slot", async () => {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockRejectedValue(new ApiError("missing route", { status: 404, body: JSON.stringify({ code: "console.unknown_route" }), url: "/agent-api/api/retention" }));
+    await render("/system?tab=retention", <AuditEventsModulePage />);
+    await waitFor(() => !!document.querySelector('[data-testid="ret4-page"]'), "retention page");
+    await waitFor(() => !!document.querySelector('[data-testid="ret4-unwired-note"]'), "retention unwired note");
+    expect(document.querySelector('[data-testid="ret4-page"]')).toBeTruthy();
+    expect(document.querySelector('[data-testid="ret4-unwired-note"]')).toBeTruthy();
+    expect(document.body.textContent).not.toContain("agent-v2-page-audit");
+  });
+});

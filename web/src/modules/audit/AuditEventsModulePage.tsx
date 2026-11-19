@@ -41,6 +41,7 @@ import { Spinner } from "@nous-research/ui/ui/components/spinner";
 
 import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel, TechnicalDisclosure, VerifyUnavailablePanel } from "./states";
 import { AuditEventDetailBody, AuditEventRowCard, VerifyResultBody } from "./views";
+import RetentionModulePage from "./RetentionModulePage";
 import { forcedStateOf, useAuditDetail, useAuditList, useAuditVerify } from "./useAuditData";
 import type { FailureCopy } from "./copy";
 import type { VerifyFailure } from "./copy";
@@ -139,6 +140,16 @@ export function AuditFilterBar({
 }
 
 export function AuditEventsModulePage(): ReactNode {
+  const [params] = useSearchParams();
+  // `?tab=retention` resolves to the events live slot in shell/routes.ts;
+  // render the retention surface here instead of pretending the audit list is it.
+  if (params.get("tab") === "retention" || params.get("view") === "retention") {
+    return <RetentionModulePage />;
+  }
+  return <AuditEventsSurface />;
+}
+
+function AuditEventsSurface(): ReactNode {
   const [params, setParams] = useSearchParams();
   const forced = forcedStateOf(params.get("state"));
   // The URL owns the selected record, so a shared link opens the same event.

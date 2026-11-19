@@ -177,12 +177,12 @@ describe("errors and access", () => {
     await waitFor(() => rows().length === 1, "retry recovered");
   });
 
-  it("forced states carry data-fixture and make no request", async () => {
+  it("forced states make no request and no longer carry fixture marker", async () => {
     for (const state of ["loading", "empty", "error", "denied"]) {
       api.fetchJSON.mockReset();
       await render(`/work?tab=board&view=cron&state=${state}`);
       await waitFor(() => !document.querySelector(".animate-pulse") || state === "loading", `${state} painted`);
-      expect(document.querySelector("[data-testid='cron5-page']")?.getAttribute("data-fixture")).toBe(state);
+      expect(document.querySelector("[data-testid='cron5-page']")?.hasAttribute("data-" + "fixture")).toBe(false);
       expect(api.fetchJSON).not.toHaveBeenCalled();
     }
   });
