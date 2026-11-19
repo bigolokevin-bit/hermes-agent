@@ -2818,3 +2818,17 @@ No code change was needed this round: the four windows, the URL-owned `?window=`
 - The audit pane has no `?state=` fixture leg by design, so the four states are service-driven (loading/empty/error/denied all render from real answers; forcing them would need an injected fixture, which the standing contract forbids here).
 - No per-element pixel diff, only `sw==cw` plus text.
 - 9122 was not rebuilt; main was not merged.
+
+## Collab delegation chain detail (2026-11-20, base 30ea4f95 = gate ledger @ b71c4535)
+
+Verified on this base; the earlier rounds' work is intact and this round adds the planned write entries plus the chain/inventory evidence.
+
+- (1) per-row 明细: each row's <details> expands 8 lines — 范围 / 动作 / 状态 / 生效 / 到期 / 来源 / 提出时间 / 委托编号 (col5-row-<i>-detail-*), times in Beijing minutes, raw tokens only in title, missing reads 「—」 plus a reason; 委托方/受托方 go through the identity module (「姓名 · 8 位短码」 or 「未指派」), never a bare emp_/human:.
+- (2) chain view: ?view=chain is URL-owned; ids col5-chain, col5-chain-gap, col5-chain-group-<i>, col5-chain-node-<i>-<j> (plus -to / -action / -at); 「链未接入」 with a reason (GAP only in title) and never a fake 0.
+- (3) four states: ?state=loading|empty|error|denied|ready each paints its own content (jsdom body lengths 266 / 370 / 307 / 402 / 509, all different); fixture legs ask nothing and only they carry data-fixture (2 marked nodes per leg); error shows the copyable col5-error-request-id plus retry; 403 and 404 share one body with no path echo.
+- (4) zero write entries: added two planned controls col5-planned-create / col5-planned-revoke (disabled + data-planned + aria-disabled + title explaining the write channel is not connected); no enabled write control exists (a case clicks both and asserts zero requests).
+- (5) three widths: /collab at 1440 / 1280 / 375 all sw==cw (1440/1440, 1280/1280, 375/375), textLen 450.
+- (6) testids: every col5-* id kept, new col5-chain-* and col5-planned-* added.
+
+Gates: vitest src/modules/collab exit 0 (2 files / 99 tests); tsc -b 50 errors total (standing floor incl. other lanes), modules/collab 0; eslint collab exit 0; build exit 0.
+Untested: the four-state body lengths are jsdom readings, not browser pixels; the tenant really has zero delegations so the row-level layout is test-proven only; no per-element pixel diff; 9122 not rebuilt, main not merged.

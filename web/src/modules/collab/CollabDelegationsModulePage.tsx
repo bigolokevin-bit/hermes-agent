@@ -445,6 +445,30 @@ export function CollabDelegationsModulePage(): ReactNode {
           >
             重新读取
           </Button>
+          <div className="flex min-w-0 flex-wrap items-center gap-1" role="group" aria-label="写入口（未接通）">
+            <button
+              type="button"
+              disabled
+              data-planned="true"
+              aria-disabled="true"
+              title="写入口未接通：这一面只读，发起委托要在任务详情里指派受托员工"
+              data-testid="col5-planned-create"
+              className="h-8 rounded-md border border-border px-2 text-xs text-muted-foreground opacity-60"
+            >
+              发起委托
+            </button>
+            <button
+              type="button"
+              disabled
+              data-planned="true"
+              aria-disabled="true"
+              title="写入口未接通：撤销要在任务详情里完成，本页不代为操作"
+              data-testid="col5-planned-revoke"
+              className="h-8 rounded-md border border-border px-2 text-xs text-muted-foreground opacity-60"
+            >
+              撤销委托
+            </button>
+          </div>
         </div>
       </div>
 
