@@ -1340,3 +1340,11 @@ $ cd web && npx vitest run
 - Cron export contract for R5: `web/src/modules/cron/CronModulePage.tsx` exports named `CronModulePage` and default same, no props; root `cron5-page`; testid family `cron5-row|name|schedule|status|result|last|next|loading|empty|denied|error|retry|request-id|apply|refresh|status-line`. Source is same-origin Hermes `GET /api/cron/jobs`; unavailable body is 「定时任务读口未接入」 + reason + `/approvals` (GAP only in title). No module change was required this round.
 - Registration needed from R5: `#/work?tab=cron` (and `#/cron`) → `CronModulePage`; current bridge redirects to board, so `cron5Count` stays 0 until shell maps the slot.
 - Verification: `npx vitest run src/modules/employee-detail` → **14/14**; full suite after this change (see receipt). No App/shell/routes/registry/manifest/package changes.
+
+## R29 retention tab rendering (2026-11-19, base da807e4f)
+
+- Root cause: `system` aliases `retention -> events`, so `/system?tab=retention` mounts the events live node and the retention module was never rendered.
+- `AuditEventsModulePage` now dispatches `?tab=retention` (and `?view=retention`) to `RetentionModulePage` before the audit hooks/page render; the URL is left intact. Shell strip label is still 「审计事件」 because `CONSOLE_TABS` has no retention tab and shell/routes are not in this write domain; the rendered pane is `ret4-page` with `data-page=retention`.
+- Retention behavior unchanged: missing `/api/retention` → `ret4-unwired-note` + four sections all 未接入 + `—` reasons, no 0; write actions `data-planned=true` + `aria-disabled=true` + title; 403/404 same denied body; request id + retry.
+- DOM (Vite 5448, Chrome CDP 9248, `?tab=retention&state=unwired`): 1440 body/page **1440/1133**, 375 **375/353**; `ret4-page=true`, rendered ret4 testid nodes **45**, planned buttons 2 (both disabled/aria-disabled/title); shell selected tab label `审计事件` (alias limitation above).
+- Test: `npx vitest run src/modules/audit/AuditEventsModulePage.test.tsx` → **41/41**; full suite below. No App/shell/routes/registry/package edits.
