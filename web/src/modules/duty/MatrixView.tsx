@@ -7,14 +7,16 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 
 import { cn } from "@/lib/utils";
 import { fetchMatrix, humanError, requestIdOf, statusOf } from "./api";
-import { CAP_RESOURCES, MATRIX_FIXTURE, normalizeMatrixRow, resourceRows } from "./fixture";
+import { CAP_RESOURCES, normalizeMatrixRow, resourceRows } from "./fixture";
 import { employeeLabel, lifecycleLabel } from "./format";
 import type { MatrixRow } from "./types";
 import "./duty.css";
 
 type State =
   | { k: "loading" }
-  | { k: "ready"; rows: MatrixRow[]; fixture: boolean }
+  | { k: "ready"; rows: MatrixRow[] }
+  // R31: a missing BFF route is stated as 未接入 — sample rows are retired.
+  | { k: "unwired" }
   | { k: "error"; status: number; message: string; requestId: string | null };
 
 function riskCount(row: MatrixRow): number {
@@ -61,15 +63,14 @@ export default function MatrixView() {
           return;
         }
         const rows = (body.items ?? []).map(normalizeMatrixRow).filter((x): x is MatrixRow => x !== null);
-        setState({ k: "ready", rows, fixture: false });
+        setState({ k: "ready", rows });
       })
       .catch((err: unknown) => {
         if (!alive) return;
         const status = statusOf(err);
-        // 404 = the BFF route is not deployed yet. Other failures are real and
-        // must not be papered over with sample rows.
+        // 404 = the BFF route is not deployed yet: say 未接入, never sample.
         if (status === 404) {
-          setState({ k: "ready", rows: MATRIX_FIXTURE, fixture: true });
+          setState({ k: "unwired" });
           return;
         }
         setState({
@@ -106,7 +107,7 @@ export default function MatrixView() {
   const activeCount = rows.filter((r) => r.lifecycleState === "active").length;
 
   return (
-    <div className="duty-page duty-matrix" data-testid="matrix-page" data-fixture={state.k === "ready" && state.fixture ? "true" : "false"}>
+    <div className="duty-page duty-matrix" data-testid="matrix-page">
       <header className="duty-head">
         <div className="duty-title">
           <ShieldQuestion className="h-5 w-5" aria-hidden />
@@ -126,11 +127,19 @@ export default function MatrixView() {
         </div>
       </header>
 
-      {state.k === "ready" && state.fixture ? (
-        <div className="duty-fixture" data-testid="matrix-fixture-badge">
-          <Badge tone="warning">样例</Badge>
-          能力矩阵接口尚未接入，本页用样例展示结构；样例不会冒充真实覆盖，也不进入验收。
-        </div>
+      {state.k === "unwired" ? (
+        <Card role="status" className="border-border bg-card" data-testid="matrix-unwired">
+          <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-6">
+            <ShieldQuestion className="h-5 w-5 text-muted-foreground" aria-hidden />
+            <p className="text-sm">能力矩阵未接入</p>
+            <p className="max-w-prose break-words text-xs text-muted-foreground" title="GAP-06：能力矩阵 BFF 路由尚未部署">
+              后台还没有提供这份矩阵（数据源尚未接入）。这里不展示任何占位数据；接入后本页自动显示真数据。
+            </p>
+            <Button size="sm" outlined onClick={() => load()} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
+              重试
+            </Button>
+          </CardContent>
+        </Card>
       ) : null}
 
       <Card>
@@ -263,7 +272,7 @@ export default function MatrixView() {
       )}
 
       <p className="duty-note">
-        覆盖分母只算在岗员工；缺口只对设了业务下限的资源成立。矩阵接口未接入时使用样例，并明确标注。
+        覆盖分母只算在岗员工；缺口只对设了业务下限的资源成立。矩阵接口未接入时整块标注未接入，不展示占位数据。
       </p>
       <Link className="duty-link" to="/employees">
         去员工列表

@@ -198,6 +198,9 @@ export interface GateView {
   state: "pass" | "fail" | "unknown";
   code: string;
   source: string;
+  /** R31: Beijing-minute stamp of the source answer; null when the source
+   * itself is not wired (the gate then states 未接入 with a reason). */
+  asOf: string | null;
   inferred?: boolean;
 }
 

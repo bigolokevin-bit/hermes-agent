@@ -43,6 +43,7 @@ export function activeCount(stats: Record<string, unknown> | null): number | nul
 export function buildReadiness(
   employees: EmployeeRow[] | null,
   stats: Record<string, unknown> | null,
+  stamp: string | null = null,
 ): ReadinessView {
   const total = lifecycleTotal(stats);
   const active = activeCount(stats);
@@ -54,6 +55,7 @@ export function buildReadiness(
     state: "unknown",
     code,
     source,
+    asOf: null,
   });
 
   const v1 = unknown("V1", "群@", "E_GROUP_WHITELIST", "工位与渠道事件 · 渠道事件数据源未接入");
@@ -76,6 +78,7 @@ export function buildReadiness(
       state: fail === 0 ? "pass" : "fail",
       code: "E_NO_APPROVER",
       source: `负责人推断（${pass}/${total}）· 审批人名单未冻结`,
+      asOf: stamp,
       inferred: true,
     };
   }

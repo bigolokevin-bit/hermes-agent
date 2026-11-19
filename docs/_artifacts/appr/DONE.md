@@ -491,3 +491,10 @@ F7 审计入口+别名：App.tsx nav 治理组新增 /audit「审计事件」（
 改后：生产码（非 test）data-fixture 命中=0（grep 实测 wc -l=0）；states.tsx fixtureAttr 机制删除、两页 16 处 fixture={} 传参摘除；?state= 复现保留数据行为（useApprovalsData forced 机制不动），标注改屏上诚实文本 apr5-forced-note（Pending line225/History line212『这是用 ?state= 复现出来的状态，不是服务此刻的回答。』）；两 test 6 处属性断言换 forced-note testid 断言。
 3 页 DOM 读数（vitest=DOM 证据）：Pending forced loading/empty/error/denied 四态各 apr5-loading/apr5-empty/apr5-error+apr5-retry/apr5-denied+forced-note 全存在（用例 marks it as a repro 绿）；History 同（loading/denied 两态绿）；真数据态=既有全绿用例（approvals 域 55 passed）：200 渲染真值、事由 humanizeHandles 掩码、金额 ledger、BJT 到分、8 位短码。
 验证：定向 approvals 3 files 55 passed；全量 126 files/1272 passed 0 fail。
+
+## duty 页夹具清零 + 四门来源标注（feat(console): duty gate sources and fixture burn）
+清单（工单①）：grep -rl data-fixture web/src/modules/duty 改前命中=4 文件（UsagePage.tsx fixtureAttr 机制+MatrixView.tsx 样例回落+UsagePage.test+dutyPage.test）。改后生产码命中=0（grep 实测 UsagePage/MatrixView 均 0；test 内仅剩 toBeNull 反向断言，非夹具）。
+夹具处置：①MatrixView 404→MATRIX_FIXTURE 样例回落删除，改整块诚实「能力矩阵未接入」（matrix-unwired：人话+GAP-06 进 title+重试，不展示占位数据；MATRIX_FIXTURE import 摘除，dutyPage.test 两用例同步改未接入/非未接入断言）；②UsagePage fixtureAttr 函数与 5 处属性展开删除，?state= 复现腿保留屏上诚实文本（『这是用 ?state= 复现出来的状态…GAP-07』line104）与控件禁用 title，repro 用例断言由属性改文本+testid。
+四门 asOf（工单②）：types GateView+asOf:string|null；buildReadiness 第三参 stamp=stats 回答的 asOf/generatedAt 经 beijing 到分；GateRow 渲染——unknown 门显「未接入 · 截至 —」（title=code：该数据源尚未接入，没有采集时间；V1/V2/V3 code 只进 title），V6 有 stamp 显「截至 <BJT 到分>」、无 stamp 显「截至 —」+title 原因；无假 0。
+testid 双标（工单④）：本轮未破既有——duty-gate-*/duty-ready-value/duty-page 等 data-testid=ov6-*+data-duty-testid=duty-* 双标在位（R28 落），usage usg4-*、matrix matrix-* 前缀不动（域内自有家族），四态/rid 可复制/403≡404 既有机制未逆。
+验证：定向 duty 3 files 49 passed；全量 126 files/1272 passed 0 fail。9122=1fff2e58 代次由 R30 QA 活体跑，本车道 DOM 读数以上述 vitest 断言+grep 为准。

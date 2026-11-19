@@ -147,6 +147,15 @@ function GateRow({ gate, narrowest }: { gate: GateView; narrowest: boolean }) {
       <Link className="duty-gate-source" to={gateRoute(gate)} title={gate.source}>
         {gate.source}
       </Link>
+      {gate.state === "unknown" ? (
+        <span className="duty-gate-asof text-xs text-muted-foreground" title={`${gate.code}：该数据源尚未接入，没有采集时间`}>
+          未接入 · 截至 —
+        </span>
+      ) : gate.asOf ? (
+        <span className="duty-gate-asof text-xs text-muted-foreground">截至 {gate.asOf}</span>
+      ) : (
+        <span className="duty-gate-asof text-xs text-muted-foreground" title="来源回答未携带采集时间">截至 —</span>
+      )}
       <i
         className={cn("duty-dot", unknown ? "is-unknown" : gate.state === "pass" ? "is-ok" : "is-warn")}
         title={unknown ? "证据源缺失，暂不计入可上岗人数" : gate.state === "pass" ? "通过" : `${gate.fail ?? "—"} 人未达`}
@@ -156,9 +165,16 @@ function GateRow({ gate, narrowest }: { gate: GateView; narrowest: boolean }) {
 }
 
 function ReadinessCard({ employees, stats, onRetry }: { employees: Loadable<EmployeeRow[]>; stats: Loadable<Record<string, unknown>>; onRetry: () => void }) {
+  const rawStamp =
+    stats.k === "ready"
+      ? (typeof stats.data.asOf === "string" && stats.data.asOf) ||
+        (typeof stats.data.generatedAt === "string" && stats.data.generatedAt) ||
+        null
+      : null;
   const readiness = buildReadiness(
     employees.k === "ready" ? employees.data : null,
     stats.k === "ready" ? stats.data : null,
+    rawStamp ? beijing(rawStamp) : null,
   );
   const state = employees.k === "error" ? employees : stats.k === "error" ? stats : employees;
   return (
