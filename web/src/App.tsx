@@ -1802,6 +1802,15 @@ function SystemActionButton({
           {displayLabel}
         </span>
 
+        {/* R14 item 2: the honest explanation is visible, not just an
+          * attribute — this control is inert by design (B9 preserved). */}
+        <span
+          className="ml-auto shrink-0 text-[0.625rem] text-text-tertiary"
+          title="规划中：系统动作暂不由控制台代发"
+        >
+          规划中
+        </span>
+
         <span
           aria-hidden
           className="absolute inset-y-0.5 left-1.5 right-1.5 bg-midground opacity-0 pointer-events-none transition-opacity duration-200 group-hover/action:opacity-5"
