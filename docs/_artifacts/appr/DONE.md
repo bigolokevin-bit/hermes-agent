@@ -647,3 +647,17 @@ KPI 族：五卡 data-testid=ov6-kpi-<name> 统一在位+新增 data-duty-testid
 修法（modules/employees/**）：`const forcedRid = params.get("rid")` 与 `forced` 同源声明，effect 内改用 forcedRid、deps=[q,lifecycle,reload,forced,forcedRid]。?state=error&rid=X 上屏「请求编号：X」+req-copy 可复制钮+重试钮。
 
 测试：EmployeesModulePage.test 新用例 forced ?state=error&rid= 显示该 rid、可复制、显重试；且 rid 改 fs-88 即刷新（同源）。坑：MemoryRouter initialEntries 不随重渲染更新——render() 改为每次重建 root（与 R32 console.test 同坑，已在文件注释）。定向 employees 11 passed；assert-ia 两模式 exit 0（51/22/1/8）；全量 131 files/1347 passed。活体复测待含挂载修复的下代次。
+
+## R40 任务详情深链 + 详情字段真数据（2026-11-20，lane/console-appr）
+
+基线：fetch + reset --hard origin/lane/hermes-console = 53543118（ledger on d0b505907ddc，entry CmkaMZfk），toplevel ✓ porc=0。
+
+深链（要求①）：App.tsx 于 /tasks Navigate 后新增**一条**路由映射 `<Route path="/tasks/:taskId" element={<TasksBoardConsolePage />} />`（更具体路径自动优先；routes.ts/registry/manifest 零改动，assert-ia 两模式实跑仍 51/22/1/8 exit 0）。模块内 selected 改为 URL 派生：深链模式=pathname /tasks/<id>（decodeURIComponent），看板模式=?task= 参数；打开=openTask（看板 push ?task= 进历史→浏览器 back 关抽屉、再 back 回看板；深链内互跳走 /tasks/<id>）、关闭=closeTask（看板删 param 留历史，深链→/work?tab=board）。刷新/分享保态：同 URL 重挂直接重开详情（新用例实测 /work?tab=board&task=… 与 /tasks/tsk_open_1）。
+
+详情真数据（②字段现状+本轮补齐）：标题=ready 时真 `<Link href=/tasks/<id>>`（testid=tsk4-detail-link，完整 id 进 title）；负责人 actorLabel 姓名·8位短码/human→人员/未指派（既有）；优先级 priorityLabel（既有）；状态未知→「待核实」（statusLabel default 既有）；创建/更新/截止 BJT 到分 beijing()（既有）；成本只认 ledger：真 0 $0.00、缺失「—」+title 原因（既有）；**来源缺=「未接入」+title「后台没有回传这条任务的来源信息。」**（tasksBoard.sourceLabel「—」→「未接入」+字段带 title）；最近事件 ≤3 条或「无事件」+title（既有）。旧 note 文案「当前版本没有按任务的深链」已随深链上线改为诚实新句（不存在不诚实文案）。
+
+四态/错误（③④⑥）：?state= 在详情上**换内容面**——loading 骨架卡、error/empty/denied 直接 setDetail 对应卡不 fetch（tsk4-detail-error 人话句+RequestIdCopy 可复制 rid（rid=fs-9 实测）+重试钮 tsk4-detail-retry **始终显示**含 403/404）；denied 与 404 同体（detailError 既有锁，无 agent-api 路径回显）。零写入口：详情尾新增迁移钮 data-planned="true"+aria-disabled+title「状态迁移待写入车间接线后开放」（tsk4-detail-transition，disabled 实测）。
+
+坑：JSX 文本内「<编号>」被 Babel 当标签解析→文案改「/tasks/ 加任务编号」；forced 分支编辑时勿吞 `let alive = true`。
+
+验证：定向 tasks 2 files/21 passed（原 17+新 4：深链直开/URL+刷新保态/forced 三态内容切换/来源未接入）；tsc -p 本域零红；assert-ia 两模式 exit0 51/22/1/8；全量 **131 files/1372 passed**（≥基线 1347）。⑦三档横溢=jsdom 不可测，形态学沿用既有 dl sm:grid-cols-2 xl:grid-cols-3 + truncate + flex-wrap（如实报）。9122=d0b50590 代次禁重建：深链活体读数待下一代次，本轮 jsdom 挂载链实测为权威。

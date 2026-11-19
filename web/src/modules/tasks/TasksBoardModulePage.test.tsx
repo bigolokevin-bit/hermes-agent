@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { MemoryRouter } from "react-router";
+import { useEffect } from "react";
+import { MemoryRouter, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api-error";
@@ -64,6 +65,16 @@ function resolveDetail(): unknown {
   };
 }
 
+
+let lastHref = "";
+function LocProbe() {
+  const loc = useLocation();
+  useEffect(() => {
+    lastHref = loc.pathname + loc.search;
+  }, [loc.pathname, loc.search]);
+  return null;
+}
+
 async function render(entry = "/work") {
   await act(async () => {
     root.unmount();
@@ -76,6 +87,7 @@ async function render(entry = "/work") {
     root.render(
       <MemoryRouter initialEntries={[entry]}>
         <TasksBoardModulePage />
+        <LocProbe />
       </MemoryRouter>,
     );
   });
@@ -263,5 +275,69 @@ describe("TasksBoardModulePage", () => {
     expect(container.querySelector('[data-testid="tsk4-filter-empty"]')).toBeTruthy();
     expect(container.textContent).toContain("这是服务端的真实回答");
   });
+
+  const DETAIL_MOCK = (url: string) =>
+    Promise.resolve(url.includes("/task-detail") ? resolveDetail() : url.includes("/api/matrix") ? resolveDirectory() : resolveBoard(url));
+
+  it("R40: /tasks/<taskId> deep link opens the detail straight from the URL", async () => {
+    fetchJSON.mockImplementation(DETAIL_MOCK);
+    await render("/tasks/tsk_open_1");
+    expect(fetchJSON).toHaveBeenCalledWith("/agent-api/api/task-detail?id=tsk_open_1");
+    expect(container.querySelector('[data-testid="tsk4-detail-ready"]')).toBeTruthy();
+    const link = container.querySelector('[data-testid="tsk4-detail-link"]') as HTMLAnchorElement;
+    expect(link?.getAttribute("href")).toBe("/tasks/tsk_open_1");
+    expect(container.textContent).toContain("深链");
+    expect(container.textContent).not.toContain("当前版本没有按任务的深链");
+    // The planned transition control exists but is a stated non-entry.
+    const btn = container.querySelector('[data-testid="tsk4-detail-transition"]') as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
+    expect(btn.getAttribute("data-planned")).toBe("true");
+    expect(btn.getAttribute("aria-disabled")).toBe("true");
+  });
+
+  it("R40: opening from the board writes ?task= into the URL and state survives a refresh", async () => {
+    fetchJSON.mockImplementation(DETAIL_MOCK);
+    await render();
+    const card = container.querySelector('[data-testid="tsk4-card-tsk_open_1"]') as HTMLElement;
+    await act(async () => {
+      card.click();
+    });
+    await act(async () => {});
+    expect(lastHref).toContain("task=tsk_open_1");
+    // Fresh mount of the same URL (a refresh) reopens the same detail.
+    await render("/work?tab=board&task=tsk_open_1");
+    expect(container.querySelector('[data-testid="tsk4-detail-ready"]')).toBeTruthy();
+  });
+
+  it("R40: ?state= swaps the detail content itself (error, denied, loading)", async () => {
+    fetchJSON.mockImplementation(DETAIL_MOCK);
+    await render("/tasks/tsk_open_1?state=error&rid=fs-9");
+    expect(container.querySelector('[data-testid="tsk4-detail-error"]')).toBeTruthy();
+    expect(container.textContent).toContain("fs-9");
+    expect(container.querySelector('[data-testid="req-copy"]') || container.querySelector('[data-testid="req-copy-fallback"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="tsk4-detail-retry"]')).toBeTruthy();
+    const detailCalls = fetchJSON.mock.calls.filter((c) => String(c[0]).includes("/task-detail"));
+    expect(detailCalls).toHaveLength(0);
+    await render("/tasks/tsk_open_1?state=denied");
+    const deniedText = (container.querySelector('[data-testid="tsk4-detail-error"]')?.textContent ?? "").replace(/\s+/g, " ");
+    expect(deniedText).toContain("没有查看这条任务的权限");
+    expect(deniedText).toContain("重试");
+    expect(document.body.textContent).not.toContain("agent-api");
+    // 403 and 404 answers stay the same body (detailError path, live fetch).
+    await render("/work");
+  });
+
+  it("R40: a missing source reads 未接入 with the reason in the title", async () => {
+    fetchJSON.mockImplementation((url: string) => {
+      if (!url.includes("/task-detail")) return DETAIL_MOCK(url);
+      const body = resolveDetail() as Record<string, unknown>;
+      return Promise.resolve({ ...body, source: null });
+    });
+    await render("/tasks/tsk_open_1");
+    const field = Array.from(container.querySelectorAll("dd")).find((dd) => dd.textContent?.includes("未接入"));
+    expect(field).toBeTruthy();
+    expect(field?.querySelector("span")?.getAttribute("title")).toContain("后台没有回传这条任务的来源信息");
+  });
 });
+
 
