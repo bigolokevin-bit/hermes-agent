@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { Badge, Button, Card, CardContent } from "@nous-research/ui";
 import { fetchJSON } from "@/lib/api";
@@ -14,6 +14,24 @@ function fixtureState(value: FixtureState | null): State | null {
   if (value === "empty") return { k: "empty" };
   if (value === "error") return { k: "error", requestId: "—（未收到响应，无请求号）" };
   return null;
+}
+
+
+function leavePreview(): void {
+  if (typeof window === "undefined") return;
+  const search = new URLSearchParams(window.location.search);
+  search.delete("state");
+  const hash = window.location.hash;
+  const mark = hash.indexOf("?");
+  let nextHash = hash;
+  if (mark >= 0) {
+    const params = new URLSearchParams(hash.slice(mark + 1));
+    params.delete("state");
+    const qs = params.toString();
+    nextHash = hash.slice(0, mark) + (qs ? `?${qs}` : "");
+  }
+  window.history.replaceState({}, "", `${window.location.pathname}${search.toString() ? `?${search}` : ""}${nextHash}`);
+  window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
 function statusLabel(status: ProbeStatus): string {
@@ -80,19 +98,6 @@ export function HealthPage() {
     error: () => ({ k: "error", requestId: "—（未收到响应，无请求号）" }), ready: () => null,
   });
 
-  const runProbes = useCallback(async () => {
-    if (fixtureState(forced)) return;
-    setState({ k: "loading" });
-    const settled = await Promise.allSettled(PROBE_DEFINITIONS.map((probe) => fetchJSON<unknown>(probe.path)));
-    const returnedAt = Date.now();
-    const rows = PROBE_DEFINITIONS.map((probe, index) => probeResult(probe.id, settled[index] as PromiseSettledResult<unknown>, returnedAt));
-    if (settled.every((result) => result.status === "rejected" && result.reason instanceof ApiError && result.reason.status === 0)) {
-      setState({ k: "error", requestId: readRequestId(settled) });
-      return;
-    }
-    setState({ k: "ready", rows: [...rows, PILOT_ROW] });
-  }, [forced]);
-
   useEffect(() => {
     let alive = true;
     const forcedState = fixtureState(forced);
@@ -110,7 +115,10 @@ export function HealthPage() {
   }, [forced, attempt]);
 
   const view = preview ?? state;
-  const retry = () => setAttempt((value) => value + 1);
+  const retry = () => {
+    if (forced) leavePreview();
+    setAttempt((value) => value + 1);
+  };
   const counts = view.k === "ready" ? summarize(view.rows) : { healthy: 0, error: 0, unknown: 0 };
 
   return (
@@ -149,7 +157,7 @@ export function HealthPage() {
           ) : (
             <RowRequestId id={view.requestId} />
           )}
-          <Button size="sm" outlined onClick={() => { void runProbes(); }} data-testid="hlt5-retry">重试</Button>
+          <Button size="sm" outlined onClick={retry} data-testid="hlt5-retry">重试</Button>
         </CardContent></Card>
       ) : (
         <Card><CardContent className="p-0" data-testid="hlt5-list">

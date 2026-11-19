@@ -102,7 +102,7 @@ function JobRow({ row }: { row: CronRow }): ReactNode {
   );
 }
 export function CronModulePage(): ReactNode {
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const forcedRaw = params.get("state");
   const forced = forcedRaw && FORCED.has(forcedRaw) ? (forcedRaw as Forced) : null;
   const [phase, setPhase] = useState<Phase>("loading");
@@ -110,6 +110,14 @@ export function CronModulePage(): ReactNode {
   const [failure, setFailure] = useState<FailureCopy | null>(null);
   const [attempt, setAttempt] = useState(0);
   const reload = useCallback(() => setAttempt((n) => n + 1), []);
+  const retry = useCallback(() => {
+    if (forced) {
+      const next = new URLSearchParams(params);
+      next.delete("state");
+      setParams(next);
+    }
+    setAttempt((n) => n + 1);
+  }, [forced, params, setParams]);
   useEffect(() => {
     if (forced) {
       if (forced === "loading") setPhase("loading");
@@ -186,7 +194,7 @@ export function CronModulePage(): ReactNode {
               </Link>
             ) : null}
             <RequestId failure={failure} />
-            <Button size="sm" outlined onClick={reload} prefix={<RefreshCw className="h-3.5 w-3.5" />} data-testid="cron5-retry">
+            <Button size="sm" outlined onClick={retry} prefix={<RefreshCw className="h-3.5 w-3.5" />} data-testid="cron5-retry">
               重试
             </Button>
           </CardContent>
@@ -202,7 +210,7 @@ export function CronModulePage(): ReactNode {
             <p className="max-w-prose break-words text-xs text-muted-foreground">
               这不是加载失败，也不展示样例；在原生定时任务管理页创建后回到这里重新读取。
             </p>
-            <Button size="sm" outlined onClick={reload} prefix={<RefreshCw className="h-3.5 w-3.5" />} data-testid="cron5-retry">
+            <Button size="sm" outlined onClick={retry} prefix={<RefreshCw className="h-3.5 w-3.5" />} data-testid="cron5-retry">
               重新读取
             </Button>
           </CardContent>

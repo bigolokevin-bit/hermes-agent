@@ -9,7 +9,7 @@
  * with a reason, status words never expose codes, and raw ids stay in `title`.
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { Inbox, RefreshCw, ShieldAlert, TriangleAlert, Users } from "lucide-react";
 import { Badge, Button, Card, CardContent } from "@nous-research/ui";
 
@@ -171,6 +171,18 @@ async function loadPeople(): Promise<Resource<Rec[]>> {
   return { phase: "unavailable", message: PEOPLE_GAP_MESSAGE };
 }
 
+type Forced = "loading" | "empty" | "error" | "ready";
+
+function readForced(raw: string | null): Forced | null {
+  return raw === "loading" || raw === "empty" || raw === "error" || raw === "ready" ? raw : null;
+}
+
+function previewResource(forced: Exclude<Forced, "ready">): Resource<Rec[]> {
+  if (forced === "loading") return { phase: "loading" };
+  if (forced === "empty") return { phase: "empty" };
+  return { phase: "error", message: "预览错误：这次读取没有成功，页面没有编造人员数据。", requestId: null };
+}
+
 function usePeople(nonce: number, enabled: boolean): Resource<Rec[]> {
   const [resource, setResource] = useState<Resource<Rec[]>>({ phase: "loading" });
   useEffect(() => {
@@ -250,9 +262,12 @@ function StateShell({
 }
 
 export default function PeopleModulePage() {
+  const [sp] = useSearchParams();
+  const forced = readForced(sp.get("state"));
   const [reload, setReload] = useState(0);
   const [query, setQuery] = useState("");
-  const people = usePeople(reload, true);
+  const live = usePeople(reload, forced === null || forced === "ready");
+  const people = forced && forced !== "ready" ? previewResource(forced) : live;
 
   const rows = useMemo<PersonRow[]>(() => {
     if (people.phase !== "ready") return [];
@@ -270,7 +285,7 @@ export default function PeopleModulePage() {
   }, [people, query]);
 
   return (
-    <section className="ppl5-page flex min-w-0 flex-col gap-4" data-testid="ppl5-page">
+    <section className="ppl5-page flex min-w-0 flex-col gap-4" data-testid="ppl5-page" data-fixture={forced && forced !== "ready" ? "1" : undefined}>
       <header className="ppl5-head">
         <div className="min-w-0">
           <h1 className="font-mondwest text-xl text-white/90">人员目录</h1>

@@ -157,7 +157,7 @@ function FailurePanel({
 }
 
 export function ToolsPage(): ReactNode {
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const forced = forcedStateOf(params.get("state"));
   const tools = useToolsData(forced);
   const { phase, rows } = tools;
@@ -165,6 +165,14 @@ export function ToolsPage(): ReactNode {
   const unknown = rows.filter((row) => row.status === "unknown").length;
   const toolRows = rows.filter((row) => row.source === "toolset");
   const mcpRows = rows.filter((row) => row.source === "mcp");
+  const retry = () => {
+    if (forced !== null) {
+      const next = new URLSearchParams(params);
+      next.delete("state");
+      setParams(next);
+    }
+    tools.reload();
+  };
   const fixtureMark = forced ?? (tools.fixture ? "fixture" : undefined);
 
   const body = (() => {
@@ -180,9 +188,9 @@ export function ToolsPage(): ReactNode {
         </div>
       );
     }
-    if (phase === "denied") return <FailurePanel kind="denied" failure={tools.failure} onRetry={tools.reload} fixture={forced ?? undefined} />;
-    if (phase === "login") return <FailurePanel kind="login" failure={tools.failure} onRetry={tools.reload} fixture={forced ?? undefined} />;
-    if (phase === "error") return <FailurePanel kind="error" failure={tools.failure} onRetry={tools.reload} fixture={forced ?? undefined} />;
+    if (phase === "denied") return <FailurePanel kind="denied" failure={tools.failure} onRetry={retry} fixture={forced ?? undefined} />;
+    if (phase === "login") return <FailurePanel kind="login" failure={tools.failure} onRetry={retry} fixture={forced ?? undefined} />;
+    if (phase === "error") return <FailurePanel kind="error" failure={tools.failure} onRetry={retry} fixture={forced ?? undefined} />;
     if (phase === "empty") {
       return (
         <Card className="border-border bg-card" data-testid="tol5-empty" data-fixture={forced ?? undefined}>
@@ -192,7 +200,7 @@ export function ToolsPage(): ReactNode {
             <p className="max-w-prose break-words text-xs text-muted-foreground">
               这不是加载失败，也不显示样例；在原生工具与 MCP 管理页登记后回到这里重新读取。
             </p>
-            <Button size="sm" outlined onClick={tools.reload} prefix={<RefreshCw className="h-3.5 w-3.5" />} data-testid="tol5-retry">
+            <Button size="sm" outlined onClick={retry} prefix={<RefreshCw className="h-3.5 w-3.5" />} data-testid="tol5-retry">
               重新读取
             </Button>
           </CardContent>

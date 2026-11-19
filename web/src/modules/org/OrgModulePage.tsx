@@ -43,7 +43,7 @@ type Resource<T> =
 
 const GAP02 = "GAP-02";
 const MISSING_REASON =
-  "上游部门接口还没有接入本控制台。接入后这里会自动显示真实部门树，不显示样例或 0。";
+  "上游部门接口还没有接入本控制台，或当前账号无权查看。接入后这里会自动显示真实部门树，不显示样例或 0。";
 function isRecord(value: unknown): value is Rec {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -169,7 +169,12 @@ function collect(rows: Rec[], parentId: string, out: Dept[]): void {
       countReason: count === null ? "上游未返回人数" : null,
       ownerName,
       ownerCode,
-      ownerReason: !ownerName && !ownerCode ? "上游未指定负责人" : null,
+      ownerReason:
+        !ownerName && !ownerCode
+          ? "上游未指定负责人"
+          : ownerName && !ownerCode
+            ? "上游未提供负责人短码"
+            : null,
       updatedAt,
       updatedReason: updatedAt
         ? null
@@ -220,7 +225,11 @@ function buildTree(depts: Dept[]): TreeNode[] {
  * fetch — real endpoints, honest 未接入 when none answers
  * ------------------------------------------------------------------ */
 
-const ORG_ENDPOINTS = ["/agent-api/api/v1/dept/list", "/agent-api/api/v1/dept/tree"];
+const ORG_ENDPOINTS = [
+  "/agent-api/api/v1/departments",
+  "/agent-api/api/v1/dept/list",
+  "/agent-api/api/v1/dept/tree",
+];
 
 function errorMessage(status: number | null | undefined): string {
   if (status === 0) return "当前网络不可达，请检查网络后重试。";
@@ -375,7 +384,7 @@ const MAX_DEPTH = 12;
 
 function ownerText(dept: Dept): string {
   if (dept.ownerName && dept.ownerCode) return `${dept.ownerName} · ${dept.ownerCode}`;
-  if (dept.ownerName) return dept.ownerName;
+  if (dept.ownerName) return `${dept.ownerName} · —`;
   if (dept.ownerCode) return `员工 · ${dept.ownerCode}`;
   return "未指派";
 }
@@ -468,13 +477,37 @@ function DeptRow({
 
 type Forced = "loading" | "empty" | "error" | "denied";
 
+function readState(value: string): string | null {
+  const mark = value.indexOf("?");
+  if (mark < 0) return null;
+  try {
+    return new URLSearchParams(value.slice(mark + 1)).get("state");
+  } catch {
+    return null;
+  }
+}
+
 function forcedState(): Forced | null {
   if (typeof window === "undefined") return null;
-  const value = new URLSearchParams(window.location.search).get("state");
-  if (value === "loading" || value === "empty" || value === "error" || value === "denied") {
-    return value;
+  const value = readState(window.location.hash) ?? new URLSearchParams(window.location.search).get("state");
+  return value === "loading" || value === "empty" || value === "error" || value === "denied" ? value : null;
+}
+
+function leavePreview(): void {
+  if (typeof window === "undefined") return;
+  const search = new URLSearchParams(window.location.search);
+  search.delete("state");
+  const hash = window.location.hash;
+  const mark = hash.indexOf("?");
+  let nextHash = hash;
+  if (mark >= 0) {
+    const params = new URLSearchParams(hash.slice(mark + 1));
+    params.delete("state");
+    const qs = params.toString();
+    nextHash = hash.slice(0, mark) + (qs ? `?${qs}` : "");
   }
-  return null;
+  window.history.replaceState({}, "", `${window.location.pathname}${search.toString() ? `?${search}` : ""}${nextHash}`);
+  window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
 export default function OrgModulePage() {
@@ -482,7 +515,10 @@ export default function OrgModulePage() {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const forced = forcedState();
   const org = useOrg(reload, forced === null);
-  const refresh = () => setReload((n) => n + 1);
+  const refresh = () => {
+    if (forced) leavePreview();
+    setReload((n) => n + 1);
+  };
 
   const roots = useMemo<TreeNode[]>(() => {
     if (org.phase !== "ready") return [];
@@ -580,7 +616,7 @@ export default function OrgModulePage() {
       <StateShell
         testid="org5-denied"
         icon={<ShieldAlert className="h-4 w-4 text-amber-300/80" aria-hidden />}
-        title="组织架构未接入"
+        title="组织与部门未接入"
         reason={MISSING_REASON}
         gapTitle={GAP02}
         extra={
@@ -607,7 +643,7 @@ export default function OrgModulePage() {
       <StateShell
         testid="org5-denied"
         icon={<ShieldAlert className="h-4 w-4 text-amber-300/80" aria-hidden />}
-        title="组织架构未接入"
+        title="组织与部门未接入"
         reason={org.reason}
         gapTitle={GAP02}
         extra={

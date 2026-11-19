@@ -97,8 +97,9 @@ describe("OrgModulePage — 组织与部门 (org5)", () => {
   });
 
   it("flat rows build a tree with parent, headcount, owner and Beijing time", async () => {
-    mockApi((url) => (url.includes("/dept/list") ? Promise.resolve(FLAT) : missing(url)));
+    mockApi((url) => (url.includes("/v1/departments") ? Promise.resolve(FLAT) : missing(url)));
     await renderPage();
+    expect(vi.mocked(fetchJSON).mock.calls[0]?.[0]).toBe("/agent-api/api/v1/departments");
     const list = container.querySelector('[data-testid="org5-list"]');
     expect(list?.textContent).toContain("南隅堂");
     expect(list?.textContent).toContain("文书阁");
