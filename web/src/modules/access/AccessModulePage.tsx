@@ -10,7 +10,6 @@ import {
   GAP02_ROLES,
   PEOPLE_ENDPOINTS,
   ROLE_ENDPOINTS,
-  ROLE_FIXTURE,
   ROLE_GAP,
   adminsOf,
   loadList,
@@ -495,7 +494,6 @@ export default function AccessModulePage() {
         className="acc4-page"
         data-testid={view === "admins" ? "adm5-page" : "ac3-page"}
         data-page={view === "admins" ? "admins" : undefined}
-        data-fixture="1"
       >
         <header className="acc4-head">
           <ShieldCheck className="h-5 w-5" />
@@ -510,13 +508,11 @@ export default function AccessModulePage() {
     );
   }
 
-  const rolePreview = roles.phase === "unavailable";
   return (
     <div
       className="acc4-page"
       data-testid={view === "admins" ? "adm5-page" : "ac3-page"}
       data-page={view === "admins" ? "admins" : undefined}
-      data-fixture={rolePreview ? "1" : undefined}
     >
       <header className="acc4-head">
         <div className="acc4-title">
@@ -561,21 +557,7 @@ export default function AccessModulePage() {
         <CardContent className="acc4-body">
           {view === "roles" ? (
             roles.phase === "unavailable" || roles.phase === "denied" ? (
-              <>
-                <AccessGap />
-                {rolePreview ? (
-                  <>
-                    <p className="acc4-meta" data-testid="ac3-fixture-note">
-                      示例布局：角色接口未接入，以下内容仅用于展示字段结构，不代表真实角色。
-                    </p>
-                    <RoleTable
-                      rows={ROLE_FIXTURE}
-                      expanded={expanded}
-                      onToggle={(id) => setExpanded((prev) => (prev === id ? null : id))}
-                    />
-                  </>
-                ) : null}
-              </>
+              <AccessGap />
             ) : (
               <GroupState resource={roles} gap={GAP02_ROLES} onRetry={reload}>
                 {(rows) => (

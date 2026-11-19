@@ -186,11 +186,16 @@ describe("OrgModulePage — 组织与部门 (org5)", () => {
     expect(container.querySelector('[data-testid="org5-list"]')).toBeNull();
   });
 
-  it("403 → honest 未接入 with permission reason, not a fake tree", async () => {
+  it("403 and 404 share the same honest 未接入 body", async () => {
     mockApi((url) => forbidden(url));
     await renderPage();
     const denied = container.querySelector('[data-testid="org5-denied"]');
-    expect(denied?.textContent).toContain("没有查看部门数据的权限");
+    expect(denied?.textContent).toContain("上游部门接口还没有接入本控制台");
+    const body403 = denied?.textContent;
+    mockApi((url) => missing(url));
+    await renderPage();
+    const body404 = container.querySelector('[data-testid="org5-denied"]')?.textContent;
+    expect(body404).toBe(body403);
     expect(denied?.textContent).toContain("开通申请");
     expect(denied?.getAttribute("title")).toBe("GAP-02");
     expect(container.querySelector('[data-testid="org5-list"]')).toBeNull();
@@ -227,25 +232,25 @@ describe("OrgModulePage — 组织与部门 (org5)", () => {
     expect(node?.textContent).toContain("上游未提供部门名");
   });
 
-  it("forced state renders a labelled fixture and performs no fetch", async () => {
+  it("forced error renders without sample data and performs no fetch", async () => {
     window.history.replaceState({}, "", "/?state=error");
     await renderPage();
     const page = container.querySelector('[data-testid="org5-page"]');
-    expect(page?.getAttribute("data-fixture")).toBe("1");
+    expect(page?.hasAttribute("data-fixture")).toBe(false);
     expect(container.querySelector('[data-testid="org5-error"]')).toBeTruthy();
-    expect(container.textContent).toContain("预览状态");
+    expect(container.textContent).not.toContain("示例部门");
     expect(fetchJSON).not.toHaveBeenCalled();
   });
 
-  it("forced ready fixture is clearly labelled and never passed as live", async () => {
+  it("state=ready is not a fixture preview: it reads the live service", async () => {
     window.history.replaceState({}, "", "/?state=ready");
+    mockApi((url) => (url.includes("/dept/list") ? Promise.resolve(FLAT) : missing(url)));
     await renderPage();
     const page = container.querySelector('[data-testid="org5-page"]');
-    expect(page?.getAttribute("data-fixture")).toBe("1");
+    expect(page?.hasAttribute("data-fixture")).toBe(false);
     expect(container.querySelector('[data-testid="org5-list"]')).toBeTruthy();
-    expect(container.textContent).toContain("示例部门（预览）");
-    expect(container.textContent).toContain("不是线上部门数据");
-    expect(fetchJSON).not.toHaveBeenCalled();
+    expect(container.textContent).toContain("南隅堂");
+    expect(fetchJSON).toHaveBeenCalled();
   });
 
   it("leak guard: no endpoint paths, raw fields, GAP ids, HTTP codes or raw employee ids", async () => {

@@ -38,14 +38,12 @@ type Resource<T> =
   | { phase: "loading" }
   | { phase: "empty" }
   | { phase: "ready"; data: T }
-  | { phase: "unavailable"; reason: string; forbidden: boolean; requestId: string | null }
+  | { phase: "unavailable"; reason: string; requestId: string | null }
   | { phase: "error"; message: string; requestId: string | null };
 
 const GAP02 = "GAP-02";
 const MISSING_REASON =
   "上游部门接口还没有接入本控制台。接入后这里会自动显示真实部门树，不显示样例或 0。";
-const FORBIDDEN_REASON = "当前账号没有查看部门数据的权限。可以提交开通申请后重试。";
-
 function isRecord(value: unknown): value is Rec {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -267,12 +265,11 @@ async function loadOrg(): Promise<Resource<Dept[]>> {
   if (sawForbidden) {
     return {
       phase: "unavailable",
-      reason: FORBIDDEN_REASON,
-      forbidden: true,
+      reason: MISSING_REASON,
       requestId: sawForbidden.requestId ?? null,
     };
   }
-  return { phase: "unavailable", reason: MISSING_REASON, forbidden: false, requestId: null };
+  return { phase: "unavailable", reason: MISSING_REASON, requestId: null };
 }
 
 function useOrg(nonce: number, enabled: boolean): Resource<Dept[]> {
@@ -466,54 +463,15 @@ function DeptRow({
 }
 
 /* ------------------------------------------------------------------ *
- * fixture preview (four states, clearly labelled, never passed as live)
- * ------------------------------------------------------------------ */
-
-const FIXTURE_DEPTS: Dept[] = [
-  {
-    key: "fixture-root",
-    parent: "",
-    rawId: "fixture-root",
-    name: "示例部门（预览）",
-    nameReason: null,
-    parentName: null,
-    parentReason: "顶级部门",
-    count: 6,
-    countReason: null,
-    ownerName: "示例负责人",
-    ownerCode: "ABCD1234",
-    ownerReason: null,
-    updatedAt: "2026-11-19 13:20",
-    updatedReason: null,
-  },
-  {
-    key: "fixture-child",
-    parent: "fixture-root",
-    rawId: "fixture-child",
-    name: "示例子部门",
-    nameReason: null,
-    parentName: "示例部门（预览）",
-    parentReason: null,
-    count: null,
-    countReason: "上游未返回人数",
-    ownerName: null,
-    ownerCode: null,
-    ownerReason: "上游未指定负责人",
-    updatedAt: null,
-    updatedReason: "上游未返回更新时间",
-  },
-];
-
-/* ------------------------------------------------------------------ *
  * the page
  * ------------------------------------------------------------------ */
 
-type Forced = "loading" | "empty" | "error" | "denied" | "ready";
+type Forced = "loading" | "empty" | "error" | "denied";
 
 function forcedState(): Forced | null {
   if (typeof window === "undefined") return null;
   const value = new URLSearchParams(window.location.search).get("state");
-  if (value === "loading" || value === "empty" || value === "error" || value === "denied" || value === "ready") {
+  if (value === "loading" || value === "empty" || value === "error" || value === "denied") {
     return value;
   }
   return null;
@@ -542,7 +500,7 @@ export default function OrgModulePage() {
     });
 
   const shell = (children: ReactNode) => (
-    <section className="org5-page" data-testid="org5-page" data-fixture={forced ? "1" : undefined}>
+    <section className="org5-page" data-testid="org5-page">
       <header className="org5-head-row">
         <div className="org5-heading">
           <h1 className="org5-h1">组织与部门</h1>
@@ -550,11 +508,6 @@ export default function OrgModulePage() {
             部门树 · 上下级关系、人数、负责人与更新时间
             {org.phase === "ready" && !forced ? ` · 共 ${total} 个部门` : ""}
           </p>
-          {forced ? (
-            <p className="org5-preview" data-testid="org5-preview-note">
-              预览状态：这是界面自检用的样例，不是线上部门数据。
-            </p>
-          ) : null}
         </div>
         <Button size="sm" outlined onClick={refresh} data-testid="org5-refresh">
           <RefreshCw className="h-3.5 w-3.5" aria-hidden />
@@ -637,10 +590,6 @@ export default function OrgModulePage() {
         }
       />,
     );
-  }
-
-  if (forced === "ready") {
-    return shell(tree(buildTree(FIXTURE_DEPTS)));
   }
 
   if (org.phase === "loading") {
