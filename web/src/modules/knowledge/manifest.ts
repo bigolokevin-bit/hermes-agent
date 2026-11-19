@@ -62,7 +62,7 @@ const manifest: ModuleManifest = {
       kind: 'planned',
       group: 'knowledge',
       icon: 'Library',
-      dataSource: '知识空间登记（读取接口未开放，显示诚实空态）',
+      dataSource: '知识空间与文档登记、知识库检索与引用读取（真实读取，未接入时显示原因）',
     },
     {
       id: 'sources',
@@ -71,7 +71,7 @@ const manifest: ModuleManifest = {
       kind: 'planned',
       group: 'knowledge',
       icon: 'Database',
-      dataSource: '数据源管理（尚无读取接口）',
+      dataSource: '文档与数据接入登记（读取接口未开放，显示诚实未接入）',
     },
     {
       id: 'evidence',
