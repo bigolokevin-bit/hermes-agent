@@ -689,6 +689,8 @@ export interface StatHeatCell {
   dow: Weekday;
   hour: number;
   runs: number | null;
+  /** Bucket start (ISO) when the endpoint returned this hour. */
+  at: string | null;
   present: boolean;
   level: 0 | 1 | 2 | 3 | 4;
 }
@@ -706,7 +708,7 @@ export interface StatHeatGrid {
  * missing («—») and is never painted as zero.
  */
 export function heatFromStats(stats: RunStats): StatHeatGrid {
-  const seen = new Map<string, number>();
+  const seen = new Map<string, { runs: number; at: string }>();
   for (const bucket of stats.buckets) {
     if (!bucket.bucketStart || bucket.runs === null) continue;
     const date = new Date(bucket.bucketStart);
@@ -716,18 +718,19 @@ export function heatFromStats(stats: RunStats): StatHeatGrid {
       new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Shanghai', hour: '2-digit', hourCycle: 'h23' }).format(date),
     );
     if (!Number.isFinite(hour)) continue;
-    seen.set(`${parts.dow}-${hour}`, bucket.runs);
+    seen.set(`${parts.dow}-${hour}`, { runs: bucket.runs, at: bucket.bucketStart });
   }
-  const values = [...seen.values()].filter((value) => value > 0);
+  const values = [...seen.values()].map((entry) => entry.runs).filter((value) => value > 0);
   const max = values.length > 0 ? Math.max(...values) : null;
   const rows = ([1, 2, 3, 4, 5, 6, 7] as const).map((dow) => ({
     dow,
     label: WEEKDAY_LABELS[dow - 1],
     cells: Array.from({ length: 24 }, (_, hour) => {
       const key = `${dow}-${hour}`;
-      const present = seen.has(key);
-      const runs = present ? seen.get(key) ?? null : null;
-      return { dow, hour, runs, present, level: levelOf(runs, max) };
+      const found = seen.get(key);
+      const present = found !== undefined;
+      const runs = found ? found.runs : null;
+      return { dow, hour, runs, at: found ? found.at : null, present, level: levelOf(runs, max) };
     }),
   }));
   const flat = rows.flatMap((row) => row.cells).filter((cell) => cell.present);
