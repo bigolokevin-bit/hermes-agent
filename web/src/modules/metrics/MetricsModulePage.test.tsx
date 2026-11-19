@@ -1113,4 +1113,21 @@ describe('metA — export the current cost view', () => {
     expect(button.getAttribute('title')).toBe('当前视图无可导出数据');
     expect(document.querySelector('[data-testid="metA-export-count"]')?.textContent).toBe('可导出 0 行');
   });
+
+  it('labels the two export buttons by scope and explains which one is the aggregate', async () => {
+    await mountShare(SHARE_USAGE);
+
+    const detail = document.querySelector('[data-testid="met6-export"]') as HTMLButtonElement;
+    const share = document.querySelector('[data-testid="metA-export"]') as HTMLButtonElement;
+    expect(detail).toBeTruthy();
+    expect(share).toBeTruthy();
+    expect(detail.textContent?.trim()).toBe('导出明细 CSV');
+    expect(share.textContent?.trim()).toBe('导出分摊 CSV');
+    expect(detail.textContent).not.toBe(share.textContent);
+    expect(detail.getAttribute('title')).toContain('账本逐行');
+    expect(share.getAttribute('title')).toContain('聚合行');
+    const note = document.querySelector('[data-testid="metA-scope-note"]');
+    expect(note?.textContent).toContain('聚合行');
+    expect(note?.textContent).toContain('导出明细 CSV');
+  });
 });

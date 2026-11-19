@@ -1389,11 +1389,11 @@ export function MetricsModulePage() {
                   size="sm"
                   outlined
                   disabled={!exportable}
-                  title={exportable ? '导出当前窗口与当前视图的明细' : '当前没有可导出的行：账本没有实扣行或上游没有给出模型行'}
+                  title={exportable ? '导出明细 CSV：当前窗口与当前分类下账本逐行的实扣明细，不是分摊汇总。' : '当前没有可导出的行：账本没有实扣行或上游没有给出模型行'}
                   onClick={exportCsv}
                   data-testid="met6-export"
                 >
-                  导出 CSV
+                  导出明细 CSV
                 </Button>
               </div>
             </div>
@@ -1781,6 +1781,7 @@ export function MetricsModulePage() {
             <div className="met6-cat-head">
               <div>
                 <h3>成本分摊</h3>
+                <p className="met6-rowsub" data-testid="metA-scope-note">这里是聚合行；逐行明细用上方的「导出明细 CSV」。</p>
                 <p className="met6-rowsub">只认账本实扣；上游没给出金额的行显示「—」，不按 0 计，也不拿估算金额顶替。</p>
               </div>
             </div>
@@ -1807,11 +1808,11 @@ export function MetricsModulePage() {
                 size="sm"
                 outlined
                 disabled={shareRows.length === 0}
-                title={shareRows.length === 0 ? '当前视图无可导出数据' : '导出当前窗口、分组与排序下的成本分摊'}
+                title={shareRows.length === 0 ? '当前视图无可导出数据' : '导出分摊 CSV：当前窗口、分组与排序下的聚合行，含成本与占比，不是账本逐行明细。'}
                 onClick={exportShare}
                 data-testid="metA-export"
               >
-                导出当前视图
+                导出分摊 CSV
               </Button>
               <span className="metA-count" data-testid="metA-export-count">
                 可导出 {shareRows.length} 行
