@@ -140,7 +140,8 @@ describe('ModelsModulePage', () => {
       if (url.includes('/models')) return Promise.resolve(CATALOG);
       return Promise.resolve(USAGE);
     });
-    expect(text()).toContain('单价表未接入（GAP-07）');
+    expect(text()).toContain('单价表未接入');
+    expect(document.querySelector('[data-testid="mdl4-prices-unavailable"]')?.getAttribute('title')).toBe('GAP-07');
     expect(text()).toContain('DeepSeek V4.1 Flash');
     expect(text()).toContain('$12.48');
     expect(text()).not.toContain('$0.00');
@@ -169,11 +170,14 @@ describe('ModelsModulePage', () => {
     expect(text()).not.toContain('<!doctype');
   });
 
-  it('shows honest not-connected blocks instead of fixture data when all three endpoints are missing', async () => {
+  it('shows honest not-connected blocks when all three endpoints are missing', async () => {
     await mount((url) => Promise.reject(new ApiError('missing', { status: 404, body: '', url })));
-    expect(text()).toContain('模型目录未接入（GAP-07）');
-    expect(text()).toContain('单价表未接入（GAP-07）');
-    expect(text()).toContain('扣费账本未接入（GAP-07）');
+    expect(text()).toContain('模型目录未接入');
+    expect(text()).toContain('单价表未接入');
+    expect(document.querySelector('[data-testid="mdl4-prices-unavailable"]')?.getAttribute('title')).toBe('GAP-07');
+    expect(text()).toContain('扣费账本未接入');
+    expect(document.querySelector('[data-testid="mdl4-catalog-unavailable"]')?.getAttribute('title')).toBe('GAP-07');
+    expect(document.querySelector('[data-testid="mdl4-ledger-unavailable"]')?.getAttribute('title')).toBe('GAP-07');
     expect(text()).not.toContain('示例数据');
     expect(text()).not.toContain('$0.00');
     expect(document.querySelector('[data-testid="mdl4-page"]')).toBeTruthy();
@@ -197,7 +201,8 @@ describe('ModelsModulePage', () => {
   it('labels a forced ?state= screen as a preview and does not issue a request', async () => {
     await mount(() => Promise.resolve(CATALOG), '/models?state=error');
     expect(text()).toContain('预览状态');
-    expect(text()).toContain('GAP-07');
+    expect(text()).not.toContain('GAP-07');
+    expect(document.querySelector('[data-testid="mdl4-fixture-note"]')?.getAttribute('title')).toBe('GAP-07');
     expect(urls()).toEqual([]);
     expect(document.querySelector('[data-testid="mdl4-error"]')).toBeTruthy();
   });
@@ -214,9 +219,9 @@ describe('ModelsModulePage', () => {
   it('uses the same neutral unavailable blocks for 403 and 404', async () => {
     await mount((url) => Promise.reject(new ApiError('forbidden', { status: 403, body: '', url })));
     const t = text();
-    expect(t).toContain('模型目录未接入（GAP-07）');
-    expect(t).toContain('单价表未接入（GAP-07）');
-    expect(t).toContain('扣费账本未接入（GAP-07）');
+    expect(t).toContain('模型目录未接入');
+    expect(t).toContain('单价表未接入');
+    expect(t).toContain('扣费账本未接入');
     expect(t).not.toContain('没有权限查看');
     expect(t).not.toContain('/api/');
   });

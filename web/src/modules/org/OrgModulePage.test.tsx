@@ -236,8 +236,6 @@ describe("OrgModulePage — 组织与部门 (org5)", () => {
   it("forced error renders without sample data and performs no fetch", async () => {
     window.history.replaceState({}, "", "/?state=error");
     await renderPage();
-    const page = container.querySelector('[data-testid="org5-page"]');
-    expect(page?.hasAttribute("data-fixture")).toBe(false);
     expect(container.querySelector('[data-testid="org5-error"]')).toBeTruthy();
     expect(container.textContent).not.toContain("示例部门");
     expect(fetchJSON).not.toHaveBeenCalled();
@@ -247,8 +245,6 @@ describe("OrgModulePage — 组织与部门 (org5)", () => {
     window.history.replaceState({}, "", "/?state=ready");
     mockApi((url) => (url.includes("/dept/list") ? Promise.resolve(FLAT) : missing(url)));
     await renderPage();
-    const page = container.querySelector('[data-testid="org5-page"]');
-    expect(page?.hasAttribute("data-fixture")).toBe(false);
     expect(container.querySelector('[data-testid="org5-list"]')).toBeTruthy();
     expect(container.textContent).toContain("南隅堂");
     expect(fetchJSON).toHaveBeenCalled();

@@ -1615,6 +1615,17 @@ built /private/tmp/health-r38/index.html
 - DOM（临时 harness，已删除；1440/375）：settings/health/version/models/tenant/access/cron/tools/org/people 的 `bodySW==bodyCW==innerWidth`；settings 在 1440 `pageSW/pageCW=1440`（已隐藏共享 Button 的 2px 装饰弧）；11 个被审计页面强制态均出现对应内容 testid，非仅角标。
 - 边界：无 App/shell/routes/registry/manifest/package·lock/web-scripts/ops 改动；无 install；未并 main、未重建 9122；`retention` 属 audit 域，本 lane 未改并已在上表外标注；未跑独立观察者。
 
+## R40 夹具债第三批（gov 域内剩余）
+
+- 基线：`origin/lane/hermes-console` = `998cb124`（已有 R39 `5fe7dec1`）；worktree `forks/console-gov`，分支 `lane/console-gov`。
+- 改前 grep（限定目录，`--include=*.tsx`）：**12 文件 / 26 处** `data-fixture`：access(test)、health(page/test)、knowledge(page/test)、org(test)、people(page)、tenant(page/test)、tools(page/test/states)。
+- 改后同一 grep：**0 文件 / 0 处**。已删除 tools 死夹具 `FIXTURE_ROWS`/`FixtureRead`/`ToolRead`/`fixture` phase 与未引用 `states.tsx`；各页仅保留真实读取，缺失时「未接入 + 原因 + 去处」，GAP 仅在 `title`。
+- 真数据页：people（`/api/employees` 200 / 3 行）、tools（`/api/tools/toolsets` 200 / 26 toolsets）、cron（`/api/cron/jobs` 200 / 1 条）、health（console 探针 404 但进程存活，runtime/skills 200）、tenant（employee-stats/run-stats 200，仅用量；配额上限未接入）。
+- 诚实未接入页：org（部门端点 404）、access（roles/admins 端点 404，risk 用真实 grant.created）、retention（保留/清理端点 404）、knowledge spaces/ingest（404；citations/retrieval 走真实会话/审计）、models（目录/价目/账本缺失时逐块未接入）、version（构建信息未知，价目缺失时未接入）、settings（`/api/config` 未接入项逐项未知）。
+- 修复：models 可见 `GAP-07` 撤屏（转 `title`）；access 人员目录可见 `（GAP-02）` 撤屏（转 `title`）；无假 0、无样例冒充；四态内容面与 R39 行为保留。
+- 验证：`npx vitest run` **131 files / 1349 passed**；定向 12 模块 **14 files / 132 passed**；`tsc -b . --noEmit` 仅基线 `EmployeesModulePage.test.tsx` TS18047（域外），本批模块 0 行错误。
+- 边界：未改 App/shell/routes/registry/manifest/package·lock/web scripts/ops；未 install；未并 main；未重建 9122。
+
 ## R41 — /capabilities?tab=tools 凭据与状态面（同窗）
 
 - 基线：`origin/lane/hermes-console` **53543118**（gate ledger stamped at `d0b50590`）；未并 main、未重建 9122。

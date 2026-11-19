@@ -123,7 +123,6 @@ describe("AccessModulePage roles", () => {
     expect(container.textContent).not.toContain("GAP-");
     expect(container.querySelector('a[href="/approvals"]')?.textContent).toContain("提交开通申请");
     expect(container.querySelector('[data-testid="ac3-fixture-note"]')).toBeNull();
-    expect(container.querySelector('[data-testid="ac3-page"]')?.hasAttribute("data-fixture")).toBe(false);
     expect(container.querySelectorAll('[data-testid="ac3-row"]')).toHaveLength(0);
   });
 
@@ -161,10 +160,9 @@ describe("AccessModulePage roles", () => {
     expect(container.textContent).not.toContain("HTTP");
   });
 
-  it("forced error is live-state only: no sample rows, no fixture mark and no fetch", async () => {
+  it("forced error is live-state only: no sample rows and no fetch", async () => {
     await render("/access?state=error");
     expect(fetchJSON).not.toHaveBeenCalled();
-    expect(container.querySelector('[data-testid="ac3-page"]')?.hasAttribute("data-fixture")).toBe(false);
     expect(container.querySelector('.acc4-error')).toBeTruthy();
   });
 

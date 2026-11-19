@@ -135,11 +135,10 @@ describe("HealthPage", () => {
     expect(container.querySelector('[data-testid="hlt5-list"]')).toBeTruthy();
   });
 
-  it("previews loading and empty without fetching and marks the page as a fixture", async () => {
+  it("previews loading and empty without fetching", async () => {
     window.history.replaceState({}, "", "/?state=empty");
     await render();
     expect(fetchJSON).not.toHaveBeenCalled();
-    expect(container.querySelector('[data-testid="hlt5-page"]')?.getAttribute("data-fixture")).toBe("1");
     expect(container.querySelector('[data-testid="hlt5-empty"]')).toBeTruthy();
   });
 });

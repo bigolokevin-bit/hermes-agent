@@ -134,9 +134,9 @@ function RequestId({ id, testId }: { id: string | null; testId: string }): React
   );
 }
 
-function Missing({ title, body, testId }: { title: string; body: string; testId: string }): ReactNode {
+function Missing({ title, body, testId, gap }: { title: string; body: string; testId: string; gap?: string }): ReactNode {
   return (
-    <div className="space-y-1 text-sm" data-testid={testId}>
+    <div className="space-y-1 text-sm" data-testid={testId} title={gap}>
       <p className="font-medium">{title}</p>
       <p className="text-muted-foreground">{body}</p>
     </div>
@@ -237,8 +237,8 @@ export function ModelsModulePage() {
       </header>
 
       {forced ? (
-        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200" data-testid="mdl4-fixture-note">
-          预览状态：这是用 `?state=` 复现出来的画面，不是服务此刻的回答。数据源尚未接通（{MODELS_GAP}）。
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200" data-testid="mdl4-fixture-note" title={MODELS_GAP}>
+          预览状态：这是用 `?state=` 复现出来的画面，不是服务此刻的回答。
         </div>
       ) : null}
 
@@ -334,9 +334,10 @@ export function ModelsModulePage() {
                 />
               ) : catalog?.phase === 'unavailable' ? (
                 <Missing
-                  title={`模型目录未接入（${MODELS_GAP}）`}
+                  title="模型目录未接入"
                   body="上游还没有提供模型清单读取口。这里不摆示例模型，也不显示「0 个模型」。"
                   testId="mdl4-catalog-unavailable"
+                  gap={MODELS_GAP}
                 />
               ) : catalog?.phase === 'denied' ? (
                 <div className="space-y-2" data-testid="mdl4-catalog-denied">
@@ -405,9 +406,10 @@ export function ModelsModulePage() {
                 />
               ) : prices?.phase === 'unavailable' ? (
                 <Missing
-                  title={`单价表未接入（${MODELS_GAP}）`}
+                  title="单价表未接入"
                   body="上游还没有提供价目表。这里不显示 0 元，也不拿目录里的名字冒充价格。"
                   testId="mdl4-prices-unavailable"
+                  gap={MODELS_GAP}
                 />
               ) : prices?.phase === 'denied' ? (
                 <div className="space-y-2" data-testid="mdl4-prices-denied">
@@ -460,9 +462,10 @@ export function ModelsModulePage() {
                 />
               ) : ledger?.phase === 'unavailable' ? (
                 <Missing
-                  title={`扣费账本未接入（${MODELS_GAP}）`}
+                  title="扣费账本未接入"
                   body="上游还没有提供账本读取口。这里不显示零金额，也不按单价乘用量算一个数。"
                   testId="mdl4-ledger-unavailable"
+                  gap={MODELS_GAP}
                 />
               ) : ledger?.phase === 'denied' ? (
                 <div className="space-y-2" data-testid="mdl4-ledger-denied">

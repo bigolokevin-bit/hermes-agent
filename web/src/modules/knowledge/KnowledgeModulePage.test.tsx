@@ -648,7 +648,6 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
 
   it("?state=error switches the content surface without calling the service", async () => {
     await render("/knowledge?state=error");
-    expect(attr("knw5-page", "data-fixture")).toBe("1");
     expect(container.querySelector('[data-testid="knw5-forced-error"]')).toBeTruthy();
     expect(container.textContent).toContain("预览错误");
     expect(fetchMock).not.toHaveBeenCalled();
@@ -657,7 +656,6 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
   it("?state=ready is live data, not a fixture", async () => {
     fetchMock.mockResolvedValue({ items: [{ spaceId: "s1", name: "空间一" }] });
     await render("/knowledge?state=ready");
-    expect(attr("knw5-page", "data-fixture")).toBeNull();
     expect(fetchMock).toHaveBeenCalledWith(SPACES);
     expect(container.textContent).toContain("空间一");
   });

@@ -285,7 +285,7 @@ export default function PeopleModulePage() {
   }, [people, query]);
 
   return (
-    <section className="ppl5-page flex min-w-0 flex-col gap-4" data-testid="ppl5-page" data-fixture={forced && forced !== "ready" ? "1" : undefined}>
+    <section className="ppl5-page flex min-w-0 flex-col gap-4" data-testid="ppl5-page">
       <header className="ppl5-head">
         <div className="min-w-0">
           <h1 className="font-mondwest text-xl text-white/90">人员目录</h1>
