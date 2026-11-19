@@ -1,0 +1,275 @@
+.ten4-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  width: 100%;
+}
+
+.ten4-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ten4-head h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.ten4-head p {
+  margin: 4px 0 0;
+  color: var(--color-muted-foreground);
+  font-size: 13px;
+}
+
+.ten4-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.ten4-readonly,
+.ten4-gap-pill {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 2px 8px;
+  color: var(--color-muted-foreground);
+  font-size: 11px;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.ten4-gap {
+  margin: 0;
+  border: 1px solid color-mix(in srgb, var(--midground-base) 45%, var(--color-border));
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--midground-base) 12%, transparent);
+  padding: 10px 12px;
+  color: var(--color-foreground);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.ten4-card {
+  min-width: 0;
+}
+
+.ten4-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  padding: 18px;
+}
+
+.ten4-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ten4-card-head h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.ten4-kv {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.ten4-kv > div {
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--radius) - 2px);
+  padding: 10px 12px;
+}
+
+.ten4-kv dt {
+  color: var(--color-muted-foreground);
+  font-size: 12px;
+}
+
+.ten4-kv dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  margin: 4px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.ten4-why {
+  color: var(--color-muted-foreground);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.ten4-quota-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--radius) - 2px);
+  padding: 12px;
+}
+
+.ten4-quota-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ten4-quota-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ten4-limit {
+  color: var(--color-muted-foreground);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.ten4-quota-hint,
+.ten4-quota-source,
+.ten4-quota-note,
+.ten4-quota-error {
+  margin: 0;
+  color: var(--color-muted-foreground);
+  font-size: 12px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.ten4-quota-error {
+  color: var(--color-destructive);
+}
+
+.ten4-quota-value {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.ten4-quota-value strong {
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.ten4-quota-label {
+  color: var(--color-muted-foreground);
+  font-size: 12px;
+}
+
+.ten4-exhausted {
+  margin: 4px 0 0;
+  border-left: 2px solid color-mix(in srgb, var(--midground-base) 70%, var(--color-border));
+  padding-left: 10px;
+  color: var(--color-muted-foreground);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.ten4-error {
+  border-color: color-mix(in srgb, var(--color-destructive) 35%, var(--color-border));
+}
+
+.ten4-error h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.ten4-error p {
+  margin: 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.ten4-skeleton {
+  display: grid;
+  gap: 12px;
+}
+
+.ten4-skeleton > div {
+  height: 96px;
+  border-radius: var(--radius);
+  background: var(--color-muted);
+  animation: ten4-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes ten4-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+.ten4-preview {
+  margin: 0;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--midground-base) 18%, transparent);
+  padding: 8px 10px;
+  color: var(--color-muted-foreground);
+  font-size: 12px;
+}
+
+.ten4-foot {
+  margin: 0;
+  color: var(--color-muted-foreground);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.ten4-foot a {
+  margin-left: 4px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.ten4-spin {
+  animation: ten4-spin 1s linear infinite;
+}
+
+@keyframes ten4-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 720px) {
+  .ten4-kv {
+    grid-template-columns: 1fr;
+  }
+
+  .ten4-head-actions,
+  .ten4-head-actions > * {
+    width: 100%;
+  }
+
+  .ten4-head-actions > .ten4-readonly {
+    width: auto;
+  }
+}
