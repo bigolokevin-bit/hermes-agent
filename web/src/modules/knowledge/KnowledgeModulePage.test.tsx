@@ -304,6 +304,120 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(text).not.toContain("hit_987654321");
   });
 
+  it("renders search depth per hit and says 「检索未接入」 on 404 with a way forward", async () => {
+    const HITS = {
+      asOf: "2026-11-19T09:30:00Z",
+      results: [
+        {
+          citationId: "hit_full",
+          title: "员工手册 · 考勤与加班",
+          summary: "弹性工时的边界：三十分钟以内不计迟到，超过需事前报备，跨月加班按调休处理。",
+          sourceName: "员工手册.pdf",
+          sourceType: "pdf",
+          documentId: "emp_DOC20261119",
+          page: 12,
+          citedAt: "2026-11-19T07:05:00Z",
+          href: "/documents/doc_attendance",
+        },
+        {
+          citationId: "hit_ext",
+          title: "外部镜像：加班口径问答",
+          excerpt: "这份镜像把问答原样搬过来，没有站内位置。",
+          url: "https://mirror.example.invalid/overtime.pdf",
+          createdAt: "2026-11-19T06:40:00Z",
+        },
+        { citationId: "hit_thin", title: "只有一条标题" },
+      ],
+    };
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SEARCH_STAFF) return Promise.resolve(HITS);
+      if (url === RECORDS) return Promise.resolve({ events: [] });
+      return fail(404, "这个数据接口还没有接入。", "rid-search-probe");
+    });
+
+    await render(`/knowledge?tab=spaces&panel=retrieval&q=%E5%91%98%E5%B7%A5`);
+    expect(urlsCalled()).toContain(SEARCH_STAFF);
+    expect(attr("knw5-search", "data-state")).toBe("ready");
+    expect(attr("knw5-search", "data-len")).toBe("3");
+    expect(container.querySelectorAll('[data-testid="knw5-search-results-row"]')).toHaveLength(3);
+    const first = container.querySelectorAll('[data-testid="knw5-search-results-row"]')[0]?.textContent ?? "";
+    // 标题 / 摘要 / 来源人话 / BJT 到分 / 原文可点
+    expect(first).toContain("员工手册 · 考勤与加班");
+    expect(first).toContain("弹性工时的边界：三十分钟以内不计迟到");
+    expect(first).toContain("来源：员工手册.pdf");
+    expect(first).toContain("时间：2026-11-19 15:05");
+    expect(first).toContain("第 12 页");
+    expect(first).toContain("打开原文");
+    // 第二条：站外位置 → 原文不可达并给这一条自己的原因
+    const second = container.querySelectorAll('[data-testid="knw5-search-results-row"]')[1]?.textContent ?? "";
+    expect(second).toContain("原文不可达");
+    expect(second).toContain("不是站内地址");
+    // 第三条：只有标题，其余逐项说缺，不借上面两条的值
+    const third = container.querySelectorAll('[data-testid="knw5-search-results-row"]')[2]?.textContent ?? "";
+    expect(third).toContain("上游没有给出这段内容的摘要");
+    expect(third).toContain("上游没有给出来源文档或空间");
+    expect(third).toContain("上游记录没有给出时间");
+    const screen = container.textContent ?? "";
+    for (const banned of ["hit_full", "hit_ext", "emp_DOC20261119", "https://mirror", "citationId", "/api/", "404"]) {
+      expect(screen, banned).not.toContain(banned);
+    }
+
+    // 404：一份「检索未接入」正文 + 去处；GAP 只进 title。
+    const bodyOf = (node: Element | null) =>
+      Array.from(node?.querySelectorAll("b, .knw5-wrap") ?? [])
+        .map((part) => part.textContent ?? "")
+        .join(" ")
+        .replace(/\s+/g, " ");
+    fetchMock.mockImplementation((url: string) =>
+      url === RECORDS ? Promise.resolve({ events: [] }) : fail(404, "这个数据接口还没有接入。", "rid-404-gone"),
+    );
+    await render("/knowledge?tab=spaces&panel=retrieval");
+    const gone = byTestid("knw5-search-unwired");
+    expect(gone).toBeTruthy();
+    expect(gone?.querySelector("b")?.textContent).toBe("检索未接入");
+    expect(gone?.getAttribute("title")).toBe("GAP-03");
+    expect(bodyOf(gone)).toContain("不编命中");
+    expect(bodyOf(gone)).not.toContain("0 条");
+    expect(byTestid("knw5-search-results")).toBeNull();
+    expect(byTestid("knw5-search-apply")).toBeTruthy();
+    expect(byTestid("knw5-search-retry")).toBeTruthy();
+    expect(container.querySelector('a[href="/approvals"]')).toBeTruthy();
+
+    // 403 同一份正文，只有请求编号不同。
+    fetchMock.mockImplementation((url: string) =>
+      url === RECORDS ? Promise.resolve({ events: [] }) : fail(403, "没有查看这项数据的权限。", "rid-403-denied"),
+    );
+    await render("/knowledge?tab=spaces&panel=retrieval");
+    expect(bodyOf(byTestid("knw5-search-unwired"))).toBe(bodyOf(gone));
+
+    // 200 空集：说「没有匹配结果」，并给另一条能看的腿。
+    fetchMock.mockImplementation((url: string) =>
+      url === SEARCH_STAFF || url === SEARCH_NO_QUERY
+        ? Promise.resolve({ results: [] })
+        : Promise.resolve({ events: [] }),
+    );
+    await render("/knowledge?tab=spaces&panel=retrieval&q=%E5%91%98%E5%B7%A5");
+    expect(attr("knw5-search", "data-state")).toBe("ready");
+    expect(attr("knw5-search", "data-len")).toBe("0");
+    const emptyText = byTestid("knw5-search-empty")?.textContent ?? "";
+    expect(emptyText).toContain("没有匹配结果");
+    expect(emptyText).toContain("员工");
+    expect(emptyText).not.toContain("0 条");
+    expect(byTestid("knw5-search-empty-citations")).toBeTruthy();
+
+    // 500：错误态换的是内容，不只是徽标。
+    fetchMock.mockImplementation((url: string) =>
+      url === RECORDS
+        ? Promise.resolve({ events: [] })
+        : fail(500, "数据服务暂时没有响应，请稍后重试。", "rid-search-busy"),
+    );
+    await render("/knowledge?tab=spaces&panel=retrieval");
+    expect(byTestid("knw5-search-error")).toBeTruthy();
+    expect(byTestid("knw5-search-unwired")).toBeNull();
+    expect(container.textContent).toContain("请求编号：rid-search-busy");
+    expect(byTestid("knw5-search-retry")).toBeTruthy();
+  });
+
   it("says 原文不可达 with a reason when the original cannot be opened", async () => {
     fetchMock.mockImplementation((url: string) => {
       if (url === SEARCH_STAFF || url === CITATIONS) {

@@ -32,6 +32,20 @@ const KNOWLEDGE_PANELS: Record<string, KnowledgePanel> = {
 
 type KnowledgePanel = 'spaces' | 'ingest' | 'retrieval' | 'evidence';
 
+/**
+ * rewrite the address without ever risking the boot. A document that is still
+ * settling its own history entry can reject `replaceState` carrying the previous
+ * entry's state; that must not take the app down, because the page itself also
+ * resolves the panel straight from `?tab=`.
+ */
+function replaceKnowledgeUrl(next: string): void {
+  try {
+    window.history.replaceState(window.history.state ?? null, '', next);
+  } catch {
+    // leave the address as it is; the module still opens the requested panel
+  }
+}
+
 function panelOf(current: string | null, raw: string | null): KnowledgePanel | null {
   const byPanel = KNOWLEDGE_PANELS[(current ?? '').toLowerCase()];
   if (byPanel) return byPanel;
@@ -52,11 +66,7 @@ function normaliseKnowledgeDeepLink(): void {
     if (params.get('tab') === 'spaces' && panel === 'spaces' && !params.has('panel')) return;
     params.set('tab', 'spaces');
     params.set('panel', panel);
-    window.history.replaceState(
-      window.history.state,
-      '',
-      `${window.location.pathname}?${params.toString()}${hash}`,
-    );
+    replaceKnowledgeUrl(`${window.location.pathname}?${params.toString()}${hash}`);
     return;
   }
 
@@ -68,11 +78,7 @@ function normaliseKnowledgeDeepLink(): void {
   if (params.get('tab') === 'spaces' && panel === 'spaces' && !params.has('panel')) return;
   params.set('tab', 'spaces');
   params.set('panel', panel);
-  window.history.replaceState(
-    window.history.state,
-    '',
-    `${window.location.pathname}${window.location.search}${path}?${params.toString()}`,
-  );
+  replaceKnowledgeUrl(`${window.location.pathname}${window.location.search}${path}?${params.toString()}`);
 }
 
 normaliseKnowledgeDeepLink();

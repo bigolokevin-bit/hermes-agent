@@ -676,3 +676,104 @@ $ npx vite build --outDir /tmp/knw11-dist --emptyOutDir
 边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
 package·lock / web-scripts / ops；未并 main、未重启或重建 9122；无 force / amend / `--no-verify` /
 `git add -A`。非本域的 `pnpm build` typecheck 阻塞按指示未追。
+
+---
+
+# KNW5 追加 R42：检索面真检索深（2026-11-20 BJT）
+
+安全闸：`git rev-parse --show-toplevel` = 本 worktree、porcelain 空、
+`git merge-base --is-ancestor HEAD e33b3531` 为真 → `git reset --hard e33b3531`（快进保留历史）。
+来路 wave-11 在本模块删掉了页根的 `data-fixture` 属性（`?state=` 的内容预览开关保留），
+属他车道闸门，本轮不回滚；另注：壳层在 `?state=` 下自己会挂两枚 fixture 标记，
+普通 URL 下 `[data-fixture]` 实测为 0。
+
+## 一、探针（cookie 只在 curl 命令内拼 Header，值零回显；9122 只读、未重启、未重建）
+
+```text
+HTTP 404  rid 6e2ef9f848  /agent-api/api/knowledge/search?q=员工&limit=5
+   body[:120] {"code": "console.unknown_route", "message": "unknown console API route"}
+   命中行数 0（响应里没有行数组）
+
+HTTP 404  rid 2e23dabaa9  /agent-api/api/knowledge/search?limit=12
+   body[:120] {"code": "console.unknown_route", "message": "unknown console API route"}
+   命中行数 0
+```
+
+检索读口没接入，因此线上走第 3 条：一份 **`检索未接入`** 正文 + 人话原因 + **去处**
+（正文里指明可以先看「证据与引用」里会话留下的引用；开通这枚读口去审批中心提申请，
+正文下方即 `knw5-search-apply` 入口）+ 可复制请求编号 + 重试；GAP-03 只进 `title`。
+不编命中、不给命中数、不放样例。空集分支（第 200 但 0 条）文案是「**没有匹配结果**」。
+
+## 二、每条命中给什么（wired 真实 DOM，`knw5-search=ready/len3`，1440/1280/375 同读）
+
+```text
+hit1 PDF 员工手册 · 考勤与加班 | 摘要（原样一句，超长三行截断，全文在 title）
+     来源：员工手册.pdf | 指向：文档 · 20261119 | 留下：— 上游没有说明这段内容是谁留下的
+     时间：2026-11-19 15:05 | 第 12 页 | 打开原文（站内可点）
+hit2 引用 外部镜像：加班口径问答 | 摘要 | 来源：— 上游没有给出来源文档或空间
+     指向：— 上游没有说明这段引用指向哪个对象 | 时间：2026-11-19 14:40
+     原文不可达：上游给出的原文位置不是站内地址，无法直接打开。
+hit3 引用 只有一条标题 | —（缺摘要）| —（缺来源）| —（缺对象）| —（缺归属）| —（缺时间）
+     原文不可达：上游没有给出原文位置，无法打开原文。
+```
+
+下钻一块（`knw5-search-results-detail`，`ref=hit_full` 进 URL，刷新后仍展开）：
+引用的是 / 原文位置 / 在原文中的位置 / 来源 / 指向的对象 / 这段引用从哪里来（当时的提问）/
+被引用的原话 / 摘要 / 留下这段引用 / 时间。缺的逐项写「—」+缺什么，绝不借上面一条的值。
+
+## 三、四态真的换内容（同一面四种回答下的 DOM 分支，Chromium 实测）
+
+```text
+404 → data-state=unwired，出 *-unwired 正文（head=检索未接入，title=GAP-03）+ rid 可复制 + 重试 + 申请入口；结果表不存在
+403 → 与 404 正文逐字相等（375 下 len=114 与 114，BYTE-IDENTICAL: true），只有请求编号不同
+500 → data-state=error，出 *-error：「这次没能读到知识数据 / 数据服务暂时没有响应，请稍后重试。」
+      + 可复制请求编号 + 重试；此时未接入正文不存在（不是只换徽标）
+挂起 → data-state=loading，出 *-loading 骨架（aria-busy），无结果表
+200 空集 → data-state=ready len=0，出 *-empty「没有匹配结果。接口已响应，这份回答里没有条目；
+      这不等于知识库是空的，也不给命中数。」+「先看会话里留下的引用」去处；行 0
+```
+
+其余复核：哈希 `/knowledge?tab=retrieval` 与路径两种写法都挂到本模块检索面板
+（URL 分别归一到 `?panel=retrieval` 与 `?tab=spaces&panel=retrieval`）；
+`docSW == vw`（1280/375）与页容器 `SW == CW`（1440/1280/375）无横向溢出；
+`[data-fixture]` 普通 URL 全 0；写入口 0（关键词框是 GET 读查询，不是写入）；
+屏面无状态码 / 路由 / `GAP-03` / 裸 id / 字段名 / 假 0；页面报错 none；
+检索面板 `knw5-*` testid 计数：未接入 21 / 有数据 27（原 `knw5-*` 家族全部保留）。
+
+## 四、顺手修掉的一处真实缺陷（本轮）
+
+`manifest.ts` 的深链归一在**新文档尚未落定自己的 history entry** 时调用
+`history.replaceState(window.history.state, …)` 会抛 `InvalidStateError`，
+而它在模块加载期执行——足以打断整个 SPA 启动（实测同一浏览器上下文里
+先走哈希再走路径写法时复现）。现在归一写入统一走 `replaceKnowledgeUrl()`：
+try/catch 包住、失败就保持原地址不重写，因为面板本身也能直接从 `?tab=` 解析
+（新增用例断言 replaceState 抛错时模块仍能 import、且 `initialTab` 照样给出
+retrieval）。修后三档视口重跑：`mode=today errors: none`。
+
+## 五、验证尾行（本轮）
+
+```text
+$ npx vitest run src/modules/knowledge
+ Test Files  2 passed (2)
+      Tests  34 passed (34)
+
+$ npx vitest run
+ Test Files  131 passed (131)
+      Tests  1380 passed (1380)
+
+$ npx eslint src/modules/knowledge
+（无输出，exit 0）
+
+$ npx tsc -b . --noEmit | grep modules/knowledge
+（无输出，本模块 0 错）
+
+$ npx vite build --outDir /tmp/knw12-dist --emptyOutDir
+✓ built in 3.77s   （产物只落 /tmp）
+
+$ node scripts/assert-ia.mjs --source=react
+（只读复核：51 / 22 / 1 / 8，ok=true）
+```
+
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes /
+registry / package·lock / web-scripts / ops；未并 main、未重启或重建 9122；
+无 force / amend / `--no-verify` / `git add -A`。非本域的 `pnpm build` 阻塞按指示未追。

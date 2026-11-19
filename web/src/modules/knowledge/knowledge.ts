@@ -56,6 +56,14 @@ export const INGEST_STATUS_UNWIRED_HEAD = "入库状态未接入";
 export const INGEST_STATUS_UNWIRED_HUMAN =
   "知识内容的入库状态接口尚未接入本控制台，或当前账号没有查看它的权限。接入后这里会按来源逐行列出最近同步、进行或完成的状态、失败原因与条目数；在此之前不展示样例，也不写「0 个源」。";
 
+/**
+ * The search read: this page is where an operator asks the knowledge base a
+ * question, so its body says what to do instead of looking at a blank box.
+ */
+export const SEARCH_UNWIRED_HEAD = "检索未接入";
+export const SEARCH_UNWIRED_HUMAN =
+  "知识库的检索接口尚未接入本控制台，或当前账号没有查看它的权限。现在这里搜不出结果：接口没通时不编命中、不给命中数、不放样例。要读已被引用的内容，可看「证据与引用」里会话留下的引用；要开通这枚读口，去审批中心提交申请。";
+
 export const DOCUMENTS_UNWIRED_HEAD = "文档登记读口未接入";
 export const DOCUMENTS_UNWIRED_HUMAN =
   "文档登记接口尚未接入本控制台，或当前账号没有查看它的权限。接入或开通后，这里会列出真实登记的文档与其数量、更新时间和状态；在此之前不展示样例，也不写「0 篇」。";
