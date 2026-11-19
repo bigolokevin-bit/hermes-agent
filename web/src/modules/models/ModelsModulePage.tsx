@@ -18,16 +18,20 @@ import {
   MODELS_GAP,
   fmtStamp,
   fmtUnitPrice,
+  fmtUsd,
   ledgerMoney,
   ledgerStatusLabel,
   priceLabel,
   readCatalog,
   readLedger,
   readPrices,
+  readUsageLines,
+  estimateUsd,
   shortCode,
   type ModelCatalogRow,
   type ModelLedger,
   type ModelPriceRow,
+  type UsageLine,
 } from './models';
 
 type PagePhase = 'loading' | 'ready' | 'empty' | 'error' | 'denied';
@@ -186,6 +190,7 @@ export function ModelsModulePage() {
   const [phase, setPhase] = useState<PagePhase>(forced ?? 'loading');
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [token, setToken] = useState(0);
+  const [usageLines, setUsageLines] = useState<UsageLine[] | null>(null);
 
   useEffect(() => {
     if (forced) return;
@@ -208,6 +213,7 @@ export function ModelsModulePage() {
           (value) => value.spent === null && value.rows === null && value.status === null,
         ),
       };
+      setUsageLines(usageResult.status === 'fulfilled' ? readUsageLines(usageResult.value) : null);
       setLoaded(next);
       setPhase(phaseOf(next));
     };
@@ -497,6 +503,83 @@ export function ModelsModulePage() {
           <p className="text-xs text-muted-foreground">
             单价与扣费分两块看：单价是标价，扣费是账本里真实发生过的金额。本页不用单价乘用量，也不把两块数字相互换算；缺少的值显示「—」，不补零。
           </p>
+
+          <Card data-testid="mdl4-check">
+            <CardContent className="space-y-3 p-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h2 className="text-base font-medium">单价 × 用量（仅参考） vs 账本实扣</h2>
+                <span className="text-xs text-muted-foreground">参考值不是花费；账本没有按模型拆分</span>
+              </div>
+              {prices?.phase === 'ready' && prices.data && prices.data.rows.length > 0 ? (
+                <div className="overflow-x-auto" data-testid="mdl4-check-scroll">
+                  <table className="w-full min-w-[720px] text-sm">
+                    <thead>
+                      <tr className="text-left text-xs text-muted-foreground">
+                        <th className="py-2 pr-3 font-normal">模型</th>
+                        <th className="py-2 pr-3 font-normal">单价（输入 / 输出）</th>
+                        <th className="py-2 pr-3 font-normal">用量（输入 + 输出 token）</th>
+                        <th className="py-2 pr-3 font-normal">按单价估算（仅参考）</th>
+                        <th className="py-2 pr-3 font-normal">账本实扣</th>
+                        <th className="py-2 font-normal">差额</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {prices.data.rows.map((row) => {
+                        const usage = usageLines?.find(
+                          (line) => line.model.toLowerCase() === (row.modelId ?? row.label).toLowerCase(),
+                        );
+                        const tokens =
+                          usage && usage.inputTokens !== null && usage.outputTokens !== null
+                            ? `${usage.inputTokens} + ${usage.outputTokens}`
+                            : null;
+                        const estimate = usage
+                          ? estimateUsd(row.inputPerMillion, row.outputPerMillion, usage.inputTokens, usage.outputTokens)
+                          : null;
+                        return (
+                          <tr key={row.modelId} data-testid={`mdl4-check-row-${row.modelId}`}>
+                            <td className="py-2 pr-3" title={row.modelId}>{priceLabel(row)}</td>
+                            <td className="py-2 pr-3 tabular-nums">
+                              {fmtUnitPrice(row.inputPerMillion, row.currency)} / {fmtUnitPrice(row.outputPerMillion, row.currency)}
+                            </td>
+                            <td className="py-2 pr-3 tabular-nums" title={tokens === null ? '用量侧没有给这一项的 token' : undefined}>
+                              {tokens ?? '—'}
+                            </td>
+                            <td className="py-2 pr-3 tabular-nums" data-testid={`mdl4-check-estimate-${row.modelId}`}
+                              title={estimate === null ? '缺单价或用量，不能估算' : '按标价乘 token 的参考值，不是账本扣费'}>
+                              {estimate === null ? '—' : fmtUsd(estimate)}
+                            </td>
+                            <td className="py-2 pr-3 tabular-nums" data-testid={`mdl4-check-ledger-${row.modelId}`}
+                              title="账本没有按模型拆分，只有平台合计；这里不把合计摊到模型上">
+                              —
+                            </td>
+                            <td className="py-2 tabular-nums" data-testid={`mdl4-check-diff-${row.modelId}`}
+                              title="账本没有按模型拆分，差额无法计算">
+                              —
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : prices?.phase === 'unavailable' ? (
+                <Missing
+                  title={`单价未接入（${MODELS_GAP}）`}
+                  body="价格表没有接入，估算与差额都显示「—」；不空算一个参考值。"
+                  testId="mdl4-check-unavailable"
+                />
+              ) : (
+                <Missing
+                  title="没有可核对的单价行"
+                  body="价格表还没有条目，这里不按模型目录造行。"
+                  testId="mdl4-check-empty"
+                />
+              )}
+              <p className="text-xs text-muted-foreground">
+                估算 = 标价 × token 数，只用于核对量级；它永远不是花费来源。真正的金额只看左边账本卡的 USD。
+              </p>
+            </CardContent>
+          </Card>
         </>
       ) : null}
     </section>
