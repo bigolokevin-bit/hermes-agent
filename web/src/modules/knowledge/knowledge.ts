@@ -39,9 +39,13 @@ export const UNWIRED_HUMAN =
  * The spaces surface names its own read, so a reviewer can tell which read is
  * missing. A 403 and a 404 still draw this same pair — only the request id differs.
  */
-export const SPACES_UNWIRED_HEAD = "知识空间读口未接入";
+/**
+ * The spaces surface names its own read and its own way forward, and it says which
+ * other surface can already be read while this one stays closed.
+ */
+export const SPACES_UNWIRED_HEAD = "知识空间未接入";
 export const SPACES_UNWIRED_HUMAN =
-  "知识空间的列表接口尚未接入本控制台，或当前账号没有查看它的权限。接入或开通后，这里会自动列出真实空间、各自的文档数与最近同步时间；在此之前不展示样例，也不写「0 个」。";
+  "知识空间接口尚未接入本控制台，或当前账号没有查看它的权限。现在这里列不出任何空间：不编空间、不放样例，也不给数量。想先看在用知识的内容，可以打开「证据与引用」看会话里留下的引用；要开通这枚读口，去审批中心提交申请。接入或开通后，这页会自动列出真实空间、各自的来源、文档数、最近同步时间与状态。";
 
 /**
  * The ingest tab reads two things, and the BFF answers them with two different
@@ -208,6 +212,10 @@ export interface SpaceRow {
   id: string;
   name: string;
   nameReason: string | null;
+  /** 来源人话：这个空间的内容从哪里来。 */
+  source: string;
+  sourceRaw: string | null;
+  sourceReason: string | null;
   /** 上游给了才作为副行显示；缺字段不占位、不编「其他类型」。 */
   kind: string | null;
   kindRaw: string | null;
@@ -1114,6 +1122,46 @@ function syncMomentOf(row: Rec): { atRaw: string | null; timeLabel: string | nul
   return momentOf(row);
 }
 
+/**
+ * 来源人话 for a space: where its content is actually pulled from. A name is shown
+ * as it is; a bare connector or URL becomes the tool's own word (plus its host), and
+ * nothing is invented when the read stays silent.
+ */
+function spaceSourceOf(row: Rec): {
+  source: string;
+  sourceRaw: string | null;
+  sourceReason: string | null;
+} {
+  const name = pickString(
+    row.sourceName,
+    row.source_name,
+    row.repositoryName,
+    row.repository_name,
+    row.bucketName,
+    row.bucket_name,
+    row.spaceSource,
+    row.space_source,
+  );
+  const kindRaw = pickString(row.provider, row.sourceType, row.source_type, row.originType, row.origin_type);
+  const origin = pickString(row.origin, row.syncSource, row.sync_source, row.repository, row.repo, row.bucket, row.source);
+  const explicit = pickString(row.targetName, row.target_name);
+  if (explicit) return { source: explicit, sourceRaw: null, sourceReason: null };
+  if (name) return { source: name, sourceRaw: origin ?? kindRaw ?? null, sourceReason: null };
+  if (origin) {
+    const urlHost = origin.match(/^https?:\/\/([^/?#]+)/i);
+    if (urlHost !== null) {
+      const word = kindRaw ? sourceKindLabel(kindRaw) : "外部地址";
+      return { source: `${word} · ${urlHost[1]}`, sourceRaw: origin, sourceReason: null };
+    }
+    const word = kindRaw ? sourceKindLabel(kindRaw) : sourceKindLabel(origin);
+    // A recognised tool name is the human wording; anything else is shown as the
+    // value itself rather than dressed up with a label that repeats it.
+    return { source: word !== origin ? word : origin, sourceRaw: origin, sourceReason: null };
+  }
+  if (kindRaw) return { source: sourceKindLabel(kindRaw), sourceRaw: kindRaw, sourceReason: null };
+  return { source: "—", sourceRaw: null, sourceReason: "上游没有说明这个空间的内容从哪里来" };
+}
+
 function spaceOf(row: Rec): SpaceRow {
   const id = pickString(row.spaceId, row.space_id, row.knowledgeId, row.knowledge_id, row.id) ?? "";
   const name = pickString(row.name, row.spaceName, row.space_name, row.title, row.displayName, row.display_name);
@@ -1135,6 +1183,7 @@ function spaceOf(row: Rec): SpaceRow {
   const statusRaw = pickString(row.status, row.state, row.indexStatus, row.index_status, row.syncStatus, row.sync_status);
   const status = spaceStatusLabel(statusRaw);
   const failure = failureOf(row, status);
+  const source = spaceSourceOf(row);
   const moment = syncMomentOf(row);
   const at = beijing(moment.atRaw);
   const extras: string[] = [];
@@ -1147,6 +1196,7 @@ function spaceOf(row: Rec): SpaceRow {
     id,
     name: name ?? "—",
     nameReason: name ? null : "上游没有给出这个空间叫什么",
+    ...source,
     kind: kindRaw ? kindLabel(kindRaw, "spaces") : null,
     kindRaw,
     docs: docs === null ? "—" : `${docs.toLocaleString("zh-CN")} 篇`,
