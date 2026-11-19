@@ -664,6 +664,181 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(attr("knw5-session-cites-list-detail-open", "href")).toBe("/documents/d1");
   });
 
+  it("drills a citation down to 定位、原话与出处，缺的那一项各自写明原因", async () => {
+    const CITATION_ROWS = {
+      asOf: "2026-11-19T08:00:00Z",
+      citations: [
+        {
+          citationId: "cit_page",
+          title: "员工手册 · 考勤篇",
+          documentName: "员工手册.pdf",
+          sourceType: "pdf",
+          page: 12,
+          quote: "迟到三十分钟以内记为弹性工时，超过三十分钟需事前报备。",
+          summary: "这一段讲弹性工时与迟到报备的口径。",
+          query: "员工迟到怎么算？",
+          runId: "run_20261119abcd",
+          citeCount: 4,
+          href: "/documents/doc_attendance",
+          citedAt: "2026-11-19T07:20:00Z",
+        },
+        { citationId: "cit_lines", doc: "薪酬口径说明", lineStart: 40, lineEnd: 52 },
+        { citationId: "cit_doc_only", doc: "远程办公约定" },
+      ],
+    };
+    fetchMock.mockImplementation((url: string) => {
+      if (url === CITATIONS) return Promise.resolve(CITATION_ROWS);
+      if (url === SESSIONS) return Promise.resolve({ items: [] });
+      return fail(404, "这个数据接口还没有接入。");
+    });
+
+    await render("/knowledge?tab=spaces&panel=evidence");
+    expect(attr("knw5-citations", "data-state")).toBe("ready");
+    expect(attr("knw5-citations", "data-len")).toBe("3");
+
+    await click("knw5-citations-list-drill");
+    const detail = byTestid("knw5-citations-list-detail");
+    const detailText = detail?.textContent ?? "";
+    expect(detailText).toContain("第 12 页");
+    expect(detailText).toContain("迟到三十分钟以内记为弹性工时，超过三十分钟需事前报备。");
+    expect(detailText).toContain("当时的提问：员工迟到怎么算？");
+    expect(detailText).toContain("由一次运行引出");
+    expect(detailText).toContain("被引用 4 次");
+    expect(detailText).toContain("2026-11-19 15:20");
+    expect(attr("knw5-citations-list-detail-open", "href")).toBe("/documents/doc_attendance");
+    expect(attr("knw5-citations-list-detail-origin-link", "href")).toBe("/runs/run_20261119abcd");
+    expect(detailText).not.toContain("cit_page");
+    expect(detail?.getAttribute("title")).toBe("cit_page");
+
+    // 只有行区间的一条：页码缺着就写缺，不借别条的数字。
+    await clickNth("knw5-citations-list-drill", 1);
+    const second = byTestid("knw5-citations-list-detail")?.textContent ?? "";
+    expect(second).toContain("行 40–52");
+    expect(second).toContain("上游没有说明这段内容是谁留下的");
+    expect(second).not.toContain("第 12 页");
+
+    // 契约里 citations 只有 {"doc":"…"}：其余全部如实缺省，不编造。
+    await clickNth("knw5-citations-list-drill", 2);
+    const third = byTestid("knw5-citations-list-detail")?.textContent ?? "";
+    expect(third).toContain("原文不可达");
+    expect(third).toContain("上游没有给出原文位置");
+    expect(third).toContain("上游没有给出这段内容在原文里的位置");
+    expect(third).toContain("上游没有给出被引用的原话");
+    expect(third).toContain("上游没有说明这段引用是从哪儿产生的");
+    expect(third).toContain("上游没有给出这段内容的摘要");
+    expect(third).toContain("上游记录没有给出时间");
+    expect(third).toContain("上游没有说明这段引用是从哪儿产生的");
+    expect(third).not.toContain("被引用 0");
+    expect(third).not.toContain("共 0");
+  });
+
+  it("carries the conversation depth of session citations: 哪一轮问的、第几条回答", async () => {
+    fetchMock.mockImplementation((url: string) => {
+      if (url === CITATIONS) return fail(404, "这个数据接口还没有接入。", "rid-cit-404");
+      if (url === SESSIONS) {
+        return Promise.resolve({
+          items: [
+            { sessionId: "cs_01M7ABCDEF0123456789abcd", tenantId: "t_1", employeeId: "emp_86A81CE8FF6F42E1", createdAt: "2026-11-19T05:50:00Z", updatedAt: "2026-11-19T06:01:00Z", messageCount: 4 },
+          ],
+        });
+      }
+      if (url.startsWith("/agent-api/api/console-sessions/cs_01M7")) {
+        return Promise.resolve({
+          sessionId: "cs_01M7ABCDEF0123456789abcd",
+          messageCount: 4,
+          messages: [
+            { seq: 1, role: "user", content: "远程办公要谁批？", requestId: "req-a", createdAt: "2026-11-19T05:55:00Z" },
+            {
+              seq: 2,
+              role: "assistant",
+              content: "按制度需要直属上级与人事双批。",
+              requestId: "req-a",
+              createdAt: "2026-11-19T05:56:00Z",
+              citations: [{ doc: "远程办公约定.pdf" }],
+            },
+            { seq: 3, role: "user", content: "那加班呢？", requestId: "req-b", createdAt: "2026-11-19T05:59:00Z" },
+            {
+              seq: 4,
+              role: "assistant",
+              content: "加班需事前报备。",
+              requestId: "req-b",
+              createdAt: "2026-11-19T06:00:00Z",
+              citations: [{ doc: "员工手册 · 考勤篇" }],
+            },
+          ],
+        });
+      }
+      return fail(404, "这个数据接口还没有接入。");
+    });
+
+    await render("/knowledge?tab=spaces&panel=evidence");
+    expect(attr("knw5-citations", "data-state")).toBe("unwired");
+    expect(attr("knw5-session-cites", "data-state")).toBe("ready");
+    expect(attr("knw5-session-cites", "data-len")).toBe("2");
+
+    await click("knw5-session-cites-list-drill");
+    const detail = byTestid("knw5-session-cites-list-detail")?.textContent ?? "";
+    expect(detail).toContain("会话 · 6789ABCD 的第 2 条回答");
+    expect(detail).toContain("当时的提问：远程办公要谁批？");
+    expect(detail).toContain("远程办公约定.pdf");
+    expect(detail).toContain("原文不可达");
+    expect(detail).toContain("上游没有给出原文位置");
+    expect(detail).toContain("2026-11-19 13:56");
+
+    await clickNth("knw5-session-cites-list-drill", 1);
+    const secondDetail = byTestid("knw5-session-cites-list-detail")?.textContent ?? "";
+    expect(secondDetail).toContain("会话 · 6789ABCD 的第 4 条回答");
+    expect(secondDetail).toContain("当时的提问：那加班呢？");
+
+    const screen = container.textContent ?? "";
+    expect(screen).not.toContain("cs_01M7");
+    expect(screen).not.toContain("req-a");
+    expect(screen).not.toContain("emp_86A81CE8FF6F42E1");
+    expect(screen).not.toContain("citationId");
+    expect(screen).not.toContain("messageCount");
+  });
+
+  it("keeps the drilled row through browser back and refresh, and drops it on another panel", async () => {
+    fetchMock.mockImplementation((url: string) => {
+      if (url === CITATIONS) {
+        return Promise.resolve({
+          citations: [
+            { citationId: "cit_a", title: "第一条", doc: "第一条", href: "/documents/a", createdAt: "2026-11-19T06:00:00Z" },
+            { citationId: "cit_b", title: "第二条", doc: "第二条", url: "https://x.invalid/b.pdf", createdAt: "2026-11-19T06:05:00Z" },
+          ],
+        });
+      }
+      if (url === SESSIONS) return Promise.resolve({ items: [] });
+      return Promise.resolve({ items: [] });
+    });
+
+    await render("/knowledge");
+    await click("knw5-tab-evidence");
+    await click("knw5-citations-list-drill");
+    expect((byTestid("loc")?.textContent ?? "")).toContain("ref=cit_a");
+    expect(byTestid("knw5-citations-list-detail")).toBeTruthy();
+
+    await click("knw5-tab-spaces");
+    expect((byTestid("loc")?.textContent ?? "")).not.toContain("ref=");
+    expect(byTestid("knw5-citations-list-detail")).toBeNull();
+
+    // 后退 = 回到刚才那一面板与那一条展开行。
+    await click("go-back");
+    expect(attr("knw5-panel", "data-tab")).toBe("evidence");
+    expect((byTestid("loc")?.textContent ?? "")).toContain("ref=cit_a");
+    expect(byTestid("knw5-citations-list-detail")).toBeTruthy();
+
+    const loc = byTestid("loc")?.textContent ?? "";
+    await render(`/knowledge${loc}`);
+    expect(attr("knw5-panel", "data-tab")).toBe("evidence");
+    expect(byTestid("knw5-citations-list-detail")).toBeTruthy();
+
+    await clickNth("knw5-citations-list-drill", 1);
+    expect((byTestid("loc")?.textContent ?? "")).toContain("ref=cit_b");
+    expect(byTestid("knw5-citations-list-detail-unreachable")).toBeTruthy();
+    expect(byTestid("knw5-citations-list-detail-open")).toBeNull();
+  });
+
   it("selects all four tabs and restores the chosen one on refresh and on back", async () => {
     fetchMock.mockResolvedValue({ items: [], results: [], events: [], sessions: [] });
     await render();

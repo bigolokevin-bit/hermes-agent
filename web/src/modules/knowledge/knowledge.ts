@@ -164,6 +164,17 @@ export interface CitationRow {
   sourceReason: string | null;
   summary: string | null;
   summaryReason: string | null;
+  /** 被引用的原话 — kept apart from the summarised 摘要. */
+  quote: string | null;
+  quoteReason: string | null;
+  /** 在原文中的位置（页/行/段），只在上游真给时出现。 */
+  locator: string | null;
+  locatorReason: string | null;
+  /** 这段引用是从哪儿产生的（哪一次提问、哪一次运行、哪一轮会话回答）。 */
+  origin: string | null;
+  originRaw: string | null;
+  originHref: string | null;
+  originReason: string | null;
   employee: string;
   employeeRaw: string | null;
   employeeReason: string | null;
@@ -512,7 +523,7 @@ function summaryOf(row: Rec): { summary: string | null; summaryReason: string | 
     row.summary,
     row.snippet,
     row.excerpt,
-    row.quote,
+    row.highlights,
     row.text,
     row.content,
   );
@@ -520,10 +531,70 @@ function summaryOf(row: Rec): { summary: string | null; summaryReason: string | 
 }
 
 /**
- * One reference row: a knowledge citation or a search hit. `at` prefers the row's own
- * time; the session scan injects the carrying message's time when the citation has none.
+ * A row's place inside the original, in human words. Only a value the read
+ * actually returned becomes text; anything else says what is missing.
  */
-export function citationOf(raw: unknown): CitationRow {
+function locatorOf(row: Rec): { locator: string | null; locatorReason: string | null } {
+  const pages = pickString(row.pageRange, row.page_range, row.pages, row.pageSpan, row.page_span);
+  const page = pickNumber(row.page, row.pageNumber, row.page_number, row.pageNo, row.page_no);
+  const lines = pickString(row.lineRange, row.line_range, row.lines);
+  const lineStart = pickNumber(row.lineStart, row.line_start, row.line);
+  const lineEnd = pickNumber(row.lineEnd, row.line_end);
+  const section = pickString(row.sectionTitle, row.section_title, row.heading, row.section);
+  const paragraph = pickNumber(row.paragraph, row.paragraphIndex, row.paragraph_index);
+  const chunk = pickNumber(row.chunkIndex, row.chunk_index, row.chunk, row.chunkNo);
+  if (pages) return { locator: `第 ${pages} 页`, locatorReason: null };
+  if (page !== null) return { locator: `第 ${page} 页`, locatorReason: null };
+  if (lines) return { locator: `行 ${lines}`, locatorReason: null };
+  if (lineStart !== null && lineEnd !== null) return { locator: `行 ${lineStart}–${lineEnd}`, locatorReason: null };
+  if (lineStart !== null) return { locator: `第 ${lineStart} 行`, locatorReason: null };
+  if (section) return { locator: `章节：${section}`, locatorReason: null };
+  if (paragraph !== null) return { locator: `第 ${paragraph} 段`, locatorReason: null };
+  if (chunk !== null) return { locator: `第 ${chunk} 个引用片段`, locatorReason: null };
+  return { locator: null, locatorReason: "上游没有给出这段内容在原文里的位置" };
+}
+
+/**
+ * Where the citation came from. A knowledge read can name the query that produced
+ * it; the session scan names the conversation and the answer inside it. Raw ids
+ * go to `title`/`originRaw` only.
+ */
+function originOf(row: Rec, fallbackSession?: SessionSummary | null): {
+  origin: string | null;
+  originRaw: string | null;
+  originHref: string | null;
+  originReason: string | null;
+} {
+  const asked = pickString(row.query, row.question, row.prompt, row.asked, row.userQuery, row.user_query);
+  const runId = pickString(row.runId, row.run_id);
+  const citeCount = pickNumber(row.citeCount, row.cite_count, row.timesCited);
+  const parts: string[] = [];
+  if (asked) parts.push(`当时的提问：${asked}`);
+  if (runId && runId.startsWith("run_")) parts.push("由一次运行引出");
+  if (citeCount !== null) parts.push(`被引用 ${citeCount} 次`);
+  if (fallbackSession) {
+    const seq = pickNumber(row.messageSeq, row.message_seq, row.seq);
+    const code = shortCode(fallbackSession.sessionId);
+    parts.unshift(seq !== null ? `会话 · ${code} 的第 ${seq} 条回答` : `来自会话 · ${code}`);
+  }
+  if (parts.length === 0) {
+    return { origin: null, originRaw: null, originHref: null, originReason: "上游没有说明这段引用是从哪儿产生的" };
+  }
+  return {
+    origin: parts.join(" · "),
+    originRaw: fallbackSession?.sessionId ?? pickString(row.sessionId, row.session_id) ?? runId,
+    originHref: runId && runId.startsWith("run_") ? `/runs/${encodeURIComponent(runId)}` : null,
+    originReason: null,
+  };
+}
+
+/** The words that were actually quoted, kept apart from the summarised 摘要. */
+function quoteOf(row: Rec): { quote: string | null; quoteReason: string | null } {
+  const quote = pickString(row.quote, row.quotedText, row.quoted_text, row.verbatim, row.matchedText, row.matched_text);
+  return { quote, quoteReason: quote ? null : "上游没有给出被引用的原话" };
+}
+
+export function citationOf(raw: unknown, session?: SessionSummary | null): CitationRow {
   const row = isRecord(raw) ? raw : {};
   const id = pickString(row.id, row.citationId, row.citation_id, row.eventId, row.event_id) ?? "";
   const title = pickString(
@@ -543,6 +614,9 @@ export function citationOf(raw: unknown): CitationRow {
   const source = sourceOf(row);
   const summary = summaryOf(row);
   const employee = employeeOf(row);
+  const locator = locatorOf(row);
+  const quote = quoteOf(row);
+  const origin = originOf(row, session ?? null);
   const atRaw = pickString(
     row.at,
     row.createdAt,
@@ -564,6 +638,9 @@ export function citationOf(raw: unknown): CitationRow {
     kindReason: kindRaw ? null : "上游记录没有给出类型",
     ...source,
     ...summary,
+    ...quote,
+    ...locator,
+    ...origin,
     ...employee,
     at: at ?? "—",
     atRaw,
@@ -578,7 +655,8 @@ function referencesOf(body: unknown): SurfaceValue<CitationRow> {
   const envelope = stampOf(body);
   const rows = rowsOf(body);
   if (rows === null) return { rows: [], ...envelope, scanned: null };
-  const mapped = rows.map(citationOf);
+  // 逐个显式调用：`map(citationOf)` 会把数组下标当第二个参数（会话）漏进去。
+  const mapped = rows.map((row) => citationOf(row));
   const newest = newestOf(
     mapped.map((row) => row.atRaw),
     envelope,
@@ -759,21 +837,46 @@ export function readSessions(body: unknown): SessionSummary[] {
     .filter((row): row is SessionSummary => row !== null);
 }
 
-/** Citations the assistant messages of one session left behind. */
+/**
+ * Citations the assistant messages of one session left behind.
+ *
+ * The documented session shape is `messages[]{seq, role, content, requestId,
+ * createdAt}` with an assistant-only, only-when-non-empty `citations` list whose
+ * entries carry just `{"doc": "…"}`. So this scan supplies the depth the upstream
+ * really has — which turn asked it (the user message of the same `requestId`), and
+ * where in the conversation the citation sits — and never invents a page, a quote
+ * or a link that the read did not return.
+ */
 export function citationsFromDetail(body: unknown, session: SessionSummary): CitationRow[] {
   if (!isRecord(body) || !Array.isArray(body.messages)) return [];
   const out: CitationRow[] = [];
+  const askedByTurn = new Map<string, string>();
+  let lastAsked: string | null = null;
   for (const message of body.messages) {
-    if (!isRecord(message) || !Array.isArray(message.citations)) continue;
+    if (!isRecord(message)) continue;
+    const role = pickString(message.role)?.toLowerCase();
+    const content = pickString(message.content);
+    const turnId = pickString(message.requestId, message.request_id);
+    if (role === "user" && content) {
+      lastAsked = content;
+      if (turnId) askedByTurn.set(turnId, content);
+    }
+    if (!Array.isArray(message.citations)) continue;
     const messageAt = pickString(message.createdAt, message.created_at);
+    const asked = (turnId ? askedByTurn.get(turnId) : undefined) ?? lastAsked;
     for (const raw of message.citations) {
       const row: Rec = isRecord(raw) ? raw : { title: typeof raw === "string" ? raw : null };
       out.push(
-        citationOf({
-          ...row,
-          employeeId: session.employeeId,
-          at: pickString(row.at, row.createdAt, row.created_at) ?? messageAt,
-        }),
+        citationOf(
+          {
+            ...row,
+            employeeId: session.employeeId,
+            at: pickString(row.at, row.createdAt, row.created_at) ?? messageAt,
+            messageSeq: pickString(message.seq),
+            query: asked ?? undefined,
+          },
+          session,
+        ),
       );
     }
   }
