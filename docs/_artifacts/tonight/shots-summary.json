@@ -9,12 +9,12 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 1275,
+    "textLen": 1276,
     "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 刷新 可上岗 各项检查全部通过才计入 数据截至 —（北京",
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 27,
+  "distinctMainHeads": 26,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -141,13 +141,13 @@
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "1440",
-      "chars": 128,
+      "chars": 1032,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "375",
-      "chars": 1034,
+      "chars": 128,
       "hasMainEl": true
     },
     {
@@ -225,40 +225,40 @@
     {
       "route": "#/employees/:employeeId?zone=evidence",
       "viewport": "1440",
-      "chars": 42,
+      "chars": 51,
       "hasMainEl": true
     },
     {
       "route": "#/employees/:employeeId?zone=evidence",
       "viewport": "375",
-      "chars": 42,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=runs",
-      "viewport": "1440",
-      "chars": 42,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=runs",
-      "viewport": "375",
-      "chars": 42,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=tasks",
-      "viewport": "1440",
-      "chars": 42,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=tasks",
-      "viewport": "375",
       "chars": 51,
       "hasMainEl": true
     },
     {
+      "route": "#/employees/:employeeId?zone=runs",
+      "viewport": "1440",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=runs",
+      "viewport": "375",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=tasks",
+      "viewport": "1440",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=tasks",
+      "viewport": "375",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
       "route": "#/identity",
       "viewport": "1440",
       "chars": 394,
@@ -285,7 +285,7 @@
     {
       "route": "#/identity?tab=binding",
       "viewport": "1440",
-      "chars": 392,
+      "chars": 394,
       "hasMainEl": true
     },
     {
@@ -309,13 +309,13 @@
     {
       "route": "#/identity?tab=departments",
       "viewport": "1440",
-      "chars": 140,
+      "chars": 151,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=departments",
       "viewport": "375",
-      "chars": 140,
+      "chars": 151,
       "hasMainEl": true
     },
     {
@@ -393,19 +393,19 @@
     {
       "route": "#/knowledge?tab=ingest",
       "viewport": "1440",
-      "chars": 550,
+      "chars": 747,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=ingest",
       "viewport": "375",
-      "chars": 240,
+      "chars": 276,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=retrieval",
       "viewport": "1440",
-      "chars": 270,
+      "chars": 469,
       "hasMainEl": true
     },
     {
@@ -429,13 +429,13 @@
     {
       "route": "#/knowledge?tab=sources",
       "viewport": "1440",
-      "chars": 550,
+      "chars": 747,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=sources",
       "viewport": "375",
-      "chars": 550,
+      "chars": 747,
       "hasMainEl": true
     },
     {
@@ -465,7 +465,7 @@
     {
       "route": "#/overview",
       "viewport": "1440",
-      "chars": 1275,
+      "chars": 727,
       "hasMainEl": true
     },
     {
@@ -501,13 +501,13 @@
     {
       "route": "#/system",
       "viewport": "1440",
-      "chars": 369,
+      "chars": 367,
       "hasMainEl": true
     },
     {
       "route": "#/system",
       "viewport": "375",
-      "chars": 369,
+      "chars": 367,
       "hasMainEl": true
     },
     {
@@ -543,7 +543,7 @@
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "375",
-      "chars": 6005,
+      "chars": 6061,
       "hasMainEl": true
     },
     {
@@ -561,19 +561,19 @@
     {
       "route": "#/system?tab=security",
       "viewport": "1440",
-      "chars": 6061,
+      "chars": 857,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=security",
       "viewport": "375",
-      "chars": 6061,
+      "chars": 837,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=version",
       "viewport": "1440",
-      "chars": 406,
+      "chars": 415,
       "hasMainEl": true
     },
     {
@@ -591,13 +591,13 @@
     {
       "route": "#/work",
       "viewport": "375",
-      "chars": 1921,
+      "chars": 205,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=board&view=cron",
       "viewport": "1440",
-      "chars": 205,
+      "chars": 1921,
       "hasMainEl": true
     },
     {
@@ -631,12 +631,9 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 4,
+  "consoleErrorsObservedByShots": 1,
   "consoleErrorRoutesObservedByShots": [
-    "#/employees/:employeeId",
-    "#/identity?tab=binding",
-    "#/system?tab=events&view=anomaly",
-    "#/system?tab=version"
+    "#/overview"
   ],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 27,
@@ -647,11 +644,11 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "466e2d2b",
+  "headHash": "d0b50590",
   "exitCode": 0,
-  "entry": "assets/index-DBjC1SjB.js",
-  "entrySha256": "6e025535458adcc88e2311f9c3e569f07a1442299d5004803b890ab7010c1d78",
-  "entryBytes": 163911,
-  "servedEntryBefore": "index-DBjC1SjB.js",
-  "servedEntryAfter": "index-DBjC1SjB.js"
+  "entry": "assets/index-CmkaMZfk.js",
+  "entrySha256": "0d744545ba6807145fd3e2e2f92a25198fe9ebc3f02c17dec2746d2cc57a6bbe",
+  "entryBytes": 163974,
+  "servedEntryBefore": "index-CmkaMZfk.js",
+  "servedEntryAfter": "index-CmkaMZfk.js"
 }

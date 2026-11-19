@@ -14,7 +14,7 @@
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 26,
+  "distinctMainHeads": 24,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -249,7 +249,7 @@
     {
       "route": "#/employees/:employeeId?zone=tasks",
       "viewport": "1440",
-      "chars": 36,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -393,13 +393,13 @@
     {
       "route": "#/knowledge?tab=ingest",
       "viewport": "1440",
-      "chars": 318,
+      "chars": 393,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=ingest",
       "viewport": "375",
-      "chars": 318,
+      "chars": 393,
       "hasMainEl": true
     },
     {
@@ -429,13 +429,13 @@
     {
       "route": "#/knowledge?tab=sources",
       "viewport": "1440",
-      "chars": 318,
+      "chars": 393,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=sources",
       "viewport": "375",
-      "chars": 318,
+      "chars": 393,
       "hasMainEl": true
     },
     {
@@ -507,19 +507,19 @@
     {
       "route": "#/system",
       "viewport": "375",
-      "chars": 403,
+      "chars": 406,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=defaults",
       "viewport": "1440",
-      "chars": 121,
+      "chars": 125,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=defaults",
       "viewport": "375",
-      "chars": 121,
+      "chars": 125,
       "hasMainEl": true
     },
     {
@@ -537,7 +537,7 @@
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "1440",
-      "chars": 371,
+      "chars": 379,
       "hasMainEl": true
     },
     {
@@ -561,13 +561,13 @@
     {
       "route": "#/system?tab=security",
       "viewport": "1440",
-      "chars": 379,
+      "chars": 317,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=security",
       "viewport": "375",
-      "chars": 379,
+      "chars": 317,
       "hasMainEl": true
     },
     {
@@ -631,11 +631,9 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 3,
+  "consoleErrorsObservedByShots": 1,
   "consoleErrorRoutesObservedByShots": [
-    "#/employees/:employeeId?zone=tasks",
-    "#/system",
-    "#/system?tab=events&view=anomaly"
+    "#/knowledge?tab=sources"
   ],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
@@ -646,12 +644,12 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "466e2d2b",
+  "headHash": "d0b50590",
   "exitCode": 0,
-  "entry": "assets/index-DBjC1SjB.js",
-  "entrySha256": "6e025535458adcc88e2311f9c3e569f07a1442299d5004803b890ab7010c1d78",
-  "entryBytes": 163911,
-  "servedEntryBefore": "index-DBjC1SjB.js",
-  "servedEntryAfter": "index-DBjC1SjB.js",
+  "entry": "assets/index-CmkaMZfk.js",
+  "entrySha256": "0d744545ba6807145fd3e2e2f92a25198fe9ebc3f02c17dec2746d2cc57a6bbe",
+  "entryBytes": 163974,
+  "servedEntryBefore": "index-CmkaMZfk.js",
+  "servedEntryAfter": "index-CmkaMZfk.js",
   "auxiliary": true
 }
