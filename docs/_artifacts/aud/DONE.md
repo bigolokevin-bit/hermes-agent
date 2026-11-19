@@ -537,3 +537,118 @@ ESLINT_EXIT=0     无输出（0 problems；上一版残留的 4 条 set-state-in
 5. 403≡404 同体的真实身份验证（现网 `console.forbidden` vs `console.unknown_route`）未做，只有测试内逐字节断言。
 6. 接线：页已由上游壳挂好（`App.tsx` `ConsoleRunsAdapter` → `/runs`，`/work?tab=runs` 同组件）；本车道未动壳。
 7. `pnpm-lock.yaml` 未验证——未跑 install，未改锁。
+
+# R10 收口 — audit/channels 挂载契约 + 账本纪律 + 验收证据（2026-11-19，基线 `17066e23`）
+
+本轮零代码改动，只落契约与证据。路由不动：`App.tsx`、`web/src/shell/**`、任何
+`manifest.ts`、`pages/**`、`web/scripts/**`、`package.json`/`pnpm-lock` 均在本车道写域外。
+
+## R10.1 挂载契约（给 R5 写入方）
+
+两个模块的页面组件全部**零 props**，状态只从 react-router 的 `useSearchParams` 读，
+挂载即渲染，不需要向组件传任何东西。
+
+### audit 三面（模块入口文件 → 导出组件名）
+
+| 期望路径 | 入口文件 | 导出 |
+|---|---|---|
+| `/audit` | `web/src/modules/audit/AuditEventsModulePage.tsx` | `AuditEventsModulePage`（具名 + default） |
+| `/audit/detail?id=` | `web/src/modules/audit/AuditDetailModulePage.tsx` | `AuditDetailModulePage`（具名 + default） |
+| `/audit/verify` | `web/src/modules/audit/AuditVerifyModulePage.tsx` | `AuditVerifyModulePage`（具名 + default） |
+
+查询参数口径：
+- `?id=`：列表页的行内选中与详情页的事件定位共用同一参数（列表页写 URL，分享链接可直达详情）。
+- `?state=`：复现腿，合法值 `loading` / `empty` / `error` / `denied`
+  （`useAuditData.ts:27`），值外一律按真实数据走。
+- `?tab=`：壳现状把 `#/audit` 作为 `#/system?tab=events` 的 compat 别名
+  （`shell/routes.ts:257`），`audit/tabNav.ts` 的清单也按「审计事件是 `/system` 的
+  `?tab=events` pane」声明（icon 用 `ICON_MAP` 已有键 `Shield`，不新增 App.tsx 条目）。
+  R5 若把 `/audit` 直接挂为独立路由，应同时改掉这条别名行的指向，两处口径必须一致。
+
+### channels（数据源面）
+
+| 期望路径 | 入口文件 | 导出 |
+|---|---|---|
+| `/channels` | `web/src/modules/channels/ChannelsPage.tsx` | `ChannelsPage`（具名 + default） |
+
+查询参数口径：`?status=` 筛选（合法值 `available` / `unavailable`，其余按 `all`，
+`channels.ts:451`）；`?state=` 同上四值（`useChannelsData.ts:29`）。壳侧现状：
+`shell/routes.ts:301` 的冲突表记明 App 既有路由 `/channels` 当前指向**上游英文壳
+ChannelsPage**（复用为 `capabilities?tab=channels`）。因此浏览器里 `/channels` 仍显示
+上游英文壳——这是 **R5 接线缺口**，不是本车道模块语义：本车道的中文数据源面没有任何
+一行代码被挂到路由上。R5 接线时按上表把 `/channels`（或 `#/channels` 别名）重定向到
+本模块 `ChannelsPage` 即可。
+
+## R10.2 账本纪律（本车道长期有效）
+
+1. 提交前必跑 `git reset -q HEAD -- docs/_artifacts/tonight`——tonight 账本不是本车道写域，
+   任何索引残留都不许进 commit。
+2. merge 若复活旧 tonight 账，用 `git checkout origin/lane/hermes-console -- docs/_artifacts/tonight`
+   取回上游权威版，不手改。
+3. 本车道证据只写 `docs/_artifacts/aud/**`；不引用 tonight 账本里的任何数值作为本轮依据。
+
+## R10.3 DOM 读数说明（为何没有）
+
+模块页面未接路由（R10.1），且本环境禁 install、无浏览器夹具，`/audit`、`/channels` 在
+真实浏览器里根本到不了本车道组件——**DOM 读数无法产出，本轮不伪造任何 DOM 数值**。
+可用证据面 = 模块级渲染测试（vitest + testing-library，见 R10.5）+ 源码 grep（R10.4）。
+
+## R10.4 grep 证据（2026-11-19 实测）
+
+`web/src/modules/channels/**` 英文壳字符串（必须 0，实测全 0）：
+
+```
+'The gateway is not running'  0
+'channels configured'         0
+'of 0 channels'               0
+```
+
+`web/src/modules/channels/**` 中文语义证据（V4 判据）：
+
+```
+未接入: 17   平台接入: 17   数据源: 34   未启用: 0   禁用: 0
+```
+
+（「未启用」「禁用」两词本模块话术未使用，缺席照实记；不可用语义由「未接入」承担。）
+
+`web/src/modules/audit/**` 语义判据：
+
+```
+北京: 11   Asia/Shanghai: 1   请求编号: 34   未提供: 18   技术详情: 21   本环境未启用: 12
+DeniedPanel: 6 处引用（定义在 states.tsx:202）
+```
+
+403/404 同体：单一 `DeniedPanel`（`states.tsx:201` 注释「403 and 404 both land here,
+and they read exactly the same」），`api.ts:130` `isDenied = status === 403 || status === 404`，
+列表/详情/校验三面全部路由进同一面板，无 403/404 分支文案。
+
+## R10.5 门禁（精确退出码）
+
+```
+$ cd web && npx tsc -b . --noEmit
+TSC_EXIT=2        49 条 error TS，全部在 ../apps/shared/**（基线同款，环境未装其 devDeps）；
+                  grep -v 前缀后 error TS 行数 = 0；src/modules/** = 0
+
+$ cd web && npx vitest run src/modules/audit src/modules/channels
+VITEST_EXIT=0     Test Files  7 passed (7)   Tests  171 passed (171)   Duration 1.12s
+
+$ cd web && npx vitest run          （全量）
+VITEST_FULL_EXIT=0  Test Files  111 passed (111)   Tests  1002 passed (1002)   Duration 8.91s
+                    无既有失败，零文件名可贴
+
+$ cd web && pnpm run build
+BUILD_EXIT=1      耗时 4.8s（wall）。死在 scripts/build/web.mjs 的 typecheck 段：
+                  该段对整 solution（含 apps/shared）跑 tsc -b，被上述 49 条基线外错误拦停，
+                  未进 vite 段。工作树本轮零代码改动，同因在 HEAD 即存在——环境性（禁 install），
+                  与车道代码无关（错误面 src/modules = 0）。
+
+$ cd web && npx vite build --outDir <tmp>/aud-build --emptyOutDir   （绕 typecheck 段的补测）
+VITE_EXIT=0       ✓ built in 3.08s   （仅补出包证据；产物落仓外临时目录，未触碰仓内文件）
+```
+
+## R10.6 未验项（照实留）
+
+1. 真浏览器 DOM 读数：未接线 + 禁 install，无落点（R10.3），未伪造。
+2. `/channels` 上游英文壳在真实路由上的消退：要等 R5 接线后复测。
+3. `pnpm run build` 全链通过：被 apps/shared 基线错误拦停，只有分离的两段证据
+   （tsc 基线口径 + vite 段单独通过）。
