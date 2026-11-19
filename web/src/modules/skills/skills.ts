@@ -32,6 +32,29 @@ const SCOPE_LABELS: Record<string, string> = {
   unused: "未被引用",
 };
 
+const SOURCE_LABELS: Record<string, string> = {
+  builtin: "平台内置",
+  internal: "平台内置",
+  platform: "平台内置",
+  system: "平台内置",
+  custom: "团队自建",
+  tenant: "团队自建",
+  user: "员工自建",
+  employee: "员工自建",
+  external: "外部集成",
+  third_party: "外部集成",
+  mcp: "MCP 工具",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  active: "正常",
+  enabled: "正常",
+  ready: "正常",
+  inactive: "停用",
+  disabled: "停用",
+  paused: "停用",
+};
+
 function record(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -66,11 +89,31 @@ export function readSkills(body: unknown): SkillsRead {
   const rows = items.map((item, index) => {
     const row = record(item);
     const name = text(row.name);
-    const source = text(row.source) ?? text(row.origin);
-    const status = text(row.status);
+    const rawScope = text(row.scope);
+    const scopeKey = rawScope?.toLowerCase() ?? "";
+    const scope = rawScope ? SCOPE_LABELS[scopeKey] ?? "其他范围" : "—";
+    const rawSource = (text(row.source) ?? text(row.origin))?.toLowerCase() ?? null;
+    const source = rawSource
+      ? SOURCE_LABELS[rawSource] ?? (/[\u4e00-\u9fff]/.test(rawSource) ? rawSource : "其他来源")
+      : rawScope
+        ? `类型：${scope}`
+        : null;
+    const sourceReason = source
+      ? rawSource && !SOURCE_LABELS[rawSource]
+        ? "台账来源值未归类"
+        : ""
+      : "台账列表未提供来源或类型";
+    const rawStatus = text(row.status)
+      ?? (typeof row.enabled === "boolean" ? (row.enabled ? "active" : "disabled") : null);
+    const statusKey = rawStatus?.toLowerCase() ?? null;
+    const status = statusKey ? STATUS_LABELS[statusKey] ?? "待核实" : null;
+    const statusReason = !statusKey
+      ? "台账列表未提供启用状态"
+      : STATUS_LABELS[statusKey]
+        ? ""
+        : "台账状态值未归类";
     const updatedRaw = text(row.updatedAt) ?? text(row.updated_at) ?? text(row.modifiedAt) ?? null;
     const updatedAt = formatBeijingTime(updatedRaw);
-    const rawScope = text(row.scope);
     const version = text(row.version);
 
     return {
@@ -78,12 +121,12 @@ export function readSkills(body: unknown): SkillsRead {
       name: name ?? "—",
       nameReason: name ? null : "台账未提供名称",
       source,
-      sourceReason: source ? "" : "台账列表未提供来源",
+      sourceReason,
       status,
-      statusReason: status ? "" : "台账列表未提供状态",
+      statusReason,
       updatedAt,
       updatedAtReason: updatedAt ? "" : updatedRaw ? "更新时间无法识别" : "台账列表未提供更新时间",
-      scope: rawScope ? SCOPE_LABELS[rawScope] ?? rawScope : "—",
+      scope,
       version,
     };
   });

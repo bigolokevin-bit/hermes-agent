@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const fetchJsonStrict = vi.fn();
@@ -13,6 +14,7 @@ vi.mock("@nous-research/ui", () => ({
 }));
 import { ApiError } from "@/lib/api-error";
 import { SkillsPage } from "./SkillsPage";
+import { resetCapabilityCounts } from "../capabilities/counts";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -23,12 +25,14 @@ beforeEach(() => {
   document.body.appendChild(container);
   root = createRoot(container);
   fetchJsonStrict.mockReset();
+  resetCapabilityCounts();
   window.history.replaceState({}, "", "/");
 });
 afterEach(() => { act(() => root.unmount()); container.remove(); });
 
 async function render() {
-  await act(async () => { root.render(<SkillsPage />); });
+  const entry = window.location.pathname + window.location.search;
+  await act(async () => { root.render(<MemoryRouter initialEntries={[entry]}><SkillsPage /></MemoryRouter>); });
   await act(async () => {});
 }
 
@@ -53,16 +57,21 @@ describe("SkillsPage", () => {
     await render();
 
     const headers = [...container.querySelectorAll("th")].map((node) => node.textContent);
-    expect(headers).toEqual(["名称", "来源", "状态", "更新时间", "共享范围"]);
+    expect(headers).toEqual(["技能名", "来源/类型", "启用态", "最近更新", "共享范围"]);
     expect(text()).toContain("资料整理");
     expect(text()).toContain("团队共享");
-    expect(text()).toContain("台账列表未提供来源");
-    expect(text()).toContain("台账列表未提供状态");
+    expect(text()).toContain("类型：团队共享");
+    expect(text()).toContain("台账列表未提供启用状态");
     expect(text()).toContain("台账列表未提供更新时间");
     expect(text()).toContain("质检");
     expect(text()).toContain("平台内置");
+    expect(text()).toContain("正常");
     expect(text()).toContain("2026-11-19 13:30");
     expect(text()).toContain("读取于 2026-11-19 14:00");
+    const skillsCount = container.querySelector('[data-testid="cap4-count-skills"]')!;
+    expect(skillsCount.textContent).toContain("2");
+    expect(skillsCount.textContent).toContain("有源");
+    expect(container.querySelector('[data-testid="cap4-count-tools"]')?.textContent).toContain("未取数");
   });
 
   it("explains a missing name without inventing one", async () => {
@@ -89,26 +98,106 @@ describe("SkillsPage", () => {
     fetchJsonStrict.mockResolvedValue({ items: [] });
     await render();
     expect(container.querySelector('[data-testid="skl4-empty"]')).toBeTruthy();
-    expect(text()).toContain("不显示 0 个技能");
+    expect(text()).toContain("不补样例行");
   });
 
   it("puts the GAP id only in the title when the endpoint is missing", async () => {
     fetchJsonStrict.mockRejectedValue(new ApiError("missing", { status: 404, body: "", url: "/agent-api/api/skills" }));
     await render();
-    expect(text()).toContain("技能数据还没有接入");
+    expect(text()).toContain("技能读口未接入");
     expect(document.querySelector('[data-testid="skl4-error"] p[title]')?.getAttribute("title")).toBe("GAP-SKL4-01");
     expect(text()).not.toContain("GAP-");
     expect(text()).not.toContain("404");
     expect(container.querySelector('[data-testid="skl4-retry"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="skl4-apply"]')).toBeTruthy();
+  });
+
+  it("renders 403 and 404 with the same neutral body and no status code", async () => {
+    fetchJsonStrict.mockRejectedValue(new ApiError("denied", { status: 403, body: "", url: "/agent-api/api/skills" }));
+    await render();
+    expect(text()).toContain("技能读口未接入");
+    expect(text()).toContain("当前账号无权查看");
+    expect(text()).not.toContain("403");
+    expect(document.querySelector('[data-testid="skl4-error"] p[title]')?.getAttribute("title")).toBe("GAP-SKL4-01");
+    expect(container.querySelector('[data-testid="skl4-apply"]')).toBeTruthy();
+  });
+
+  it("keeps the row testid and humanizes source and status", async () => {
+    fetchJsonStrict.mockResolvedValue({
+      items: [{ skillId: "skill-12345678", name: "资料整理", source: "builtin", status: "disabled", scope: "tenant-shared" }],
+    });
+    await render();
+    const row = container.querySelector('[data-testid="skl4-row-skill-12345678"]');
+    expect(row).toBeTruthy();
+    expect(row?.textContent).toContain("平台内置");
+    expect(row?.textContent).toContain("停用");
   });
 
   it("previews the error fixture without fetching and marks data-fixture", async () => {
-    window.history.replaceState({}, "", "/?state=error");
-    await act(async () => { root.render(<SkillsPage />); });
+    window.history.replaceState({}, "", "/?state=error&rid=abc12345");
+    await act(async () => { root.render(<MemoryRouter initialEntries={[window.location.pathname + window.location.search]}><SkillsPage /></MemoryRouter>); });
     await act(async () => {});
     expect(fetchJsonStrict).not.toHaveBeenCalled();
     expect(container.querySelector('[data-testid="skl4-page"]')?.getAttribute("data-fixture")).toBe("error");
     expect(container.querySelector('[data-testid="skl4-error"]')).toBeTruthy();
+    expect(text()).toContain("abc12345");
+    expect(container.querySelector('[data-testid="skl4-error"] button[aria-label="复制请求编号"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="skl4-apply"]')).toBeTruthy();
+  });
+
+  it("switches loading and empty preview content without fetching", async () => {
+    for (const state of ["loading", "empty"] as const) {
+      window.history.replaceState({}, "", `/?state=${state}`);
+      await act(async () => { root.render(<MemoryRouter initialEntries={[window.location.pathname + window.location.search]}><SkillsPage /></MemoryRouter>); });
+      await act(async () => {});
+      expect(fetchJsonStrict).not.toHaveBeenCalled();
+      expect(container.querySelector(`[data-testid="skl4-${state}"]`)).toBeTruthy();
+      expect(text()).toContain(state === "loading" ? "正在读取技能" : "还没有已登记的技能");
+      act(() => root.unmount());
+      root = createRoot(container);
+    }
+  });
+
+  it("leaves the error preview and retries the live read", async () => {
+    window.history.replaceState({}, "", "/?state=error&rid=abc12345");
+    fetchJsonStrict.mockResolvedValue({ items: [{ skillId: "s2", name: "恢复后的技能", status: "active" }] });
+    await act(async () => { root.render(<MemoryRouter initialEntries={[window.location.pathname + window.location.search]}><SkillsPage /></MemoryRouter>); });
+    await act(async () => {});
+    expect(fetchJsonStrict).not.toHaveBeenCalled();
+    const retry = container.querySelector('[data-testid="skl4-retry"]') as HTMLButtonElement | null;
+    await act(async () => { retry?.click(); });
+    await act(async () => {});
+    expect(window.location.search).not.toContain("state=");
+    expect(fetchJsonStrict).toHaveBeenCalledWith("/agent-api/api/skills");
+    expect(text()).toContain("恢复后的技能");
+    expect(container.querySelector('[data-testid="skl4-error"]')).toBeNull();
+  });
+
+  it("filters the loaded rows locally and writes the query into the URL", async () => {
+    window.history.replaceState({}, "", "/capabilities?tab=skills&q=资料");
+    fetchJsonStrict.mockResolvedValue({
+      asOf: "2026-11-19T06:00:00Z",
+      items: [
+        { skillId: "s1", name: "资料整理", scope: "tenant-shared" },
+        { skillId: "s2", name: "质检", scope: "unused" },
+      ],
+    });
+    await render();
+    expect(container.querySelectorAll("[data-testid^='skl4-row-']")).toHaveLength(1);
+    expect(text()).toContain("资料整理");
+    expect(text()).not.toContain("质检");
+    expect(container.querySelector("[data-testid='cap5-scope-note']")?.textContent).toContain("仅在当前已加载 2 项内搜索");
+    expect(container.querySelector("[data-testid='cap4-count-skills']")?.textContent).toContain("1");
+    expect(container.querySelector("[data-testid='cap6-export-count']")?.textContent).toContain("1 条");
+    expect(container.querySelector<HTMLButtonElement>("[data-testid='cap6-export']")?.disabled).toBe(false);
+  });
+
+  it("shows a no-match state with a clear exit", async () => {
+    window.history.replaceState({}, "", "/capabilities?tab=skills&q=不存在");
+    fetchJsonStrict.mockResolvedValue({ items: [{ skillId: "s1", name: "资料整理" }] });
+    await render();
+    expect(text()).toContain("没有匹配项");
+    expect(container.querySelector("[data-testid='skl4-clear']")).toBeTruthy();
   });
 
   it("leaks no engineering names or raw ids into the page", async () => {

@@ -1685,3 +1685,58 @@ built /private/tmp/health-r38/index.html
 - 截图：`docs/_artifacts/gov/shots/ret4-1440.png`、`ret4-1280.png`、`ret4-375.png`。
 - 验证：`npx vitest run src/modules/audit/RetentionModulePage.test.tsx` → **1 file / 11 tests passed**；`npx vitest run src/modules/audit` → **10 files / 161 passed**；全量 `npx vitest run` → **131 files / 1388 passed**；`tsc -b . --noEmit` 仅基线 `src/modules/employees/EmployeesModulePage.test.tsx(73,5): TS18047`，本域 0 错。
 - 边界：仅改 `web/src/modules/audit/**` + `docs/_artifacts/gov/**`；未改 App/shell/routes/registry/package·lock/web scripts/ops；未 install；未并 main、未重建 9122；未跑独立观察者。
+
+## R42 skills real-data surface (SKL4)
+
+- Base: `d26a66d5` (web/src 01175128). Write domain: `web/src/modules/skills/**` + this DONE.
+- Endpoint truth (9122, auth cookie, value never printed):
+  - `GET /agent-api/api/skills` -> **200 application/json**, `{"items":[],"asOf":"2026-11-19T22:15:01.655Z"}` (true empty, 0 rows).
+  - `GET /api/skills` -> **200 text/html** (SPA shell), not a data API.
+- Page: columns 技能名 / 来源/类型 / 启用态 / 最近更新 / 共享范围; source/status humanized with unknown raw -> 其他来源/待核实; missing `—` + reason; BJT to minute; no fake 0.
+- 403 and 404 share the same 「技能读口未接入」 body, GAP-SKL4-01 only in `title`, `#/approvals` apply link.
+- Four states content-switch: `?state=loading|empty|error&rid=...`; error shows copyable request id + retry and clearing preview re-fetches; ready reads live.
+- Zero write: `skl4-planned-create` disabled, `data-planned`, `aria-disabled`, reason in `title`; no other write controls.
+- Tests: `npx vitest run src/modules/skills` -> **1 file / 11 tests passed**. Full suite -> **131 files / 1399 passed**.
+- `tsc -b . --noEmit`: only baseline `src/modules/employees/EmployeesModulePage.test.tsx(73,5) TS18047`; zero skills errors.
+- Build to `/tmp/skills-build` blocked by that same baseline typecheck (BUILD_EXIT 2); no 9122 rebuild.
+- DOM (ready, two rows): 1440/1280/375 `bodySW==bodyCW==pageSW==pageCW==vw`; 375 table scroll 760/373 inside card only. Screenshots `docs/_artifacts/gov/shots/skl4-{1440,1280,375}.png`.
+- Boundaries: no App/shell/routes/registry/manifest/package·lock/web scripts/ops changes; no install; no main merge; no observer.
+
+## R43 /capabilities?tab=tools 工具清单真数据面（2026-11-20）
+
+- 基线：merge `bc94be67`（`origin/lane/hermes-console` f0419b0b，gate 代次 02a7385c）；未 reset，`bd5fc469`（skills）保留为祖先。
+- 端点实测（9122，登录 cookie 只读、不打印）：`/agent-api/api/tools` → **404** `console.unknown_route`；`/agent-api/api/tools/toolsets` → **404**；`/agent-api/api/mcp/servers` → **404**。同源 `/api/tools*` → **200 text/html**（SPA 外壳，非 JSON）。9119 原生：`/api/tools` → 404 No such API endpoint；`/api/tools/toolsets` → **200，26 toolsets**；`/api/mcp/servers` → **200，0 servers**。
+- 实现：`fetchInventory` 依次尝试 `/agent-api/api/tools` → `/api/tools` → 既有 toolsets 两候选；平铺数组/`{items|tools|data}` 与 toolsets 形状均可读。行字段：工具名、类型/来源、启用态（正常/停用/待核实）、最近更新时间（BJT 到分；缺失 `—` + title/可见原因）。原「最近调用」保留但不再冒充更新时间。
+- 页面：新增 `tl3-page`、`tl3-row-*`、`tl3-name/type/status/updated`、`tl3-request-id`、`tl3-retry`、`tl3-apply`、`tl3-planned-create`；保留全部 `tol5-*` 旧标记。403 与 404 同一「工具读口未接入」体，GAP-04 只在 title；错误态可复制请求编号+重试；零写入口，仅一个不可点「新建工具」（data-planned + aria-disabled + title）。
+- 验证：`npx vitest run src/modules/tools` → **2 files / 23 tests passed**；全量 `npx vitest run` → **131 files / 1404 passed**；`tsc -b . --noEmit` → 仅基线 `employees/EmployeesModulePage.test.tsx(73,5) TS18047`，本域 0。DOM（临时 harness，已删；Vite 5454 / Chrome 9256）：1440/1280/375 `vw=bodySW=bodyCW=pageSW=pageCW`，行 3，状态 正常，最近更新 `—` + 原因，`data-fixture` 为 null；四态 testid 与文案逐态不同（loading/empty/error/denied）。
+- 截图：`docs/_artifacts/gov/shots/tl3-{1440,1280,375}.png`。
+- 边界：只改 `web/src/modules/tools/**` 与 DONE/截图；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并入 main、未重建 9122；无独立观察者。
+
+## R44 /capabilities 顶部计数与来源状态（2026-11-20）
+
+- 基线：merge `bc94be67`（`origin/lane/hermes-console` f0419b0b），保留已推 `bd5fc469`/`fb8722c2`；未 reset。
+- 实现：新增 `web/src/modules/capabilities/{counts.tsx,counts.css}`。计数条在技能页与工具页顶部（`cap4-count-strip`），skills/tools 各一项，值来自各自列表请求的同一结果（同一 `rows` 长度），不另发请求；模块级快照经 `useSyncExternalStore` 跨 tab 保留，未访问项显示 `—`/未取数，不闪 0。
+- 状态：`有源` / `有源（空）` / `无源` / `加载中` / `未取数`。403/404 计数 `—` + 无源，GAP-SKL4-01 / GAP-04 只在 title；错误/部分来源时计数 `—` 并写原因；真实 0 行显示 0 + 有源（空）。
+- testid：`cap4-count-strip`、`cap4-count-skills|tools`、`cap4-count-skills|tools-state`；保留 `skl4-*` / `tl3-*` / `tol5-*`。
+- 验证：`npx vitest run src/modules/skills src/modules/tools` → **3 files / 34 tests passed**；全量 `npx vitest run` → **131 files / 1404 passed**；`tsc -b . --noEmit` → 仅基线 `employees/EmployeesModulePage.test.tsx(73,5) TS18047`，本域 0。
+- DOM（临时 harness，已删；Vite 5455 / Chrome 9257）：技能页 1440/1280/375 `vw=bodySW=bodyCW`，page 1408/1248/343，技能 `2 有源`、工具 `— 未取数`；切工具页后工具 `4 有源`，技能仍 `2 有源`（缓存不闪错值）。截图 `docs/_artifacts/gov/shots/cap4-counts-{1440,1280,375}.png`。
+- 边界：只改 `web/src/modules/{capabilities,skills,tools}/**` 与 DONE/截图；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并入 main、未重建 9122；无独立观察者。
+
+## R45 /capabilities skills/tools 名称搜索过滤（2026-11-20）
+
+- 基线：merge `bc94be67`（`origin/lane/hermes-console` f0419b0b，含 02a7385c）；未 reset，`8840bf29`（cap4 counts）保留。
+- 端点实测（9122，登录 cookie 只读、不打印）：`/agent-api/api/skills` → **200**（46 B，`items: []`）；加 `?q=zzz` / `?query=zzz` / `?name=zzz` 均为 **200** 且载荷不随参数变化，判定服务端不接受名称过滤。`/agent-api/api/tools` → **404**；`/agent-api/api/tools?q=zzz` → **404**；同源 `/api/tools/toolsets?q=zzz` → **200 text/html**（SPA 外壳，非 JSON）。
+- 实现：因后端不吃检索参数，采用**当前已加载行本地过滤**。新增 `web/src/modules/capabilities/search.tsx`（`cap5-search` 输入、`cap5-clear` 清空、`cap5-scope-note` 明写「仅在当前已加载 N 项内搜索」，不冒充服务端过滤）。检索词写 `?q=`，刷新/切 tab 可复现；过滤不触发额外请求。
+- 技能页：按技能名过滤 `skl4-table` 行；无匹配显示 `skl4-no-match`「没有匹配项」+ `skl4-clear`；计数条改用可见行数（`cap4` 同源口径，0 行显 0 + 有源（空），不回退成 `—`/假 0）。
+- 工具页：按工具名过滤 tools/MCP 行；无匹配显示 `tl3-no-match`（说明当前已加载项数）+ `tl3-clear`；计数条改用可见行数；分区计数随过滤结果收敛。
+- 验证：`npx vitest run src/modules/tools src/modules/skills` → **3 files / 38 tests passed**（tools 25 / skills 13）；全量 `npx vitest run` → **131 files / 1408 passed**；`tsc -b . --noEmit` → 仅基线 `employees/EmployeesModulePage.test.tsx(73,5) TS18047`，本域 0。
+- DOM（临时 harness，已删；Vite 5456 / Chrome 9258）：1440/1280/375 所有用例 `vw=bodySW=bodyCW`、page 宽等于视口。技能 `?q=资料`：1 行、计数 `技能1有源`、范围注 `仅在当前已加载 2 项内搜索`；`q=zzz`：0 行、`技能0有源（空）`、`没有匹配项`+清空。工具 `?q=网页`：2 行、`工具2有源`、范围注 4 项；`q=zzz`：0 行、`工具0有源（空）`、无匹配+清空。搜索全程请求数不增。
+- 边界：只改 `web/src/modules/{capabilities,skills,tools}/**` 与 DONE；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并入 main、未重建 9122；无独立观察者。
+
+## R46 /capabilities 清单 CSV 导出（2026-11-20）
+
+- 基线：`f664a67c`（cap5 搜索）之上，merge 与 `origin/lane/hermes-console` 已同步；未 reset。
+- 实现：纯前端导出，无新后端端点。`web/src/modules/capabilities/csv.ts` 固定表头 `name,type,enabled,updated_at`，字段按 RFC4180 转义（逗号/引号/换行，引号翻倍），缺值留空；文件名按北京时间 `capabilities-<tab>-YYYYMMDD-HHmm.csv`。`csvExport.tsx` 提供 `cap6-export` 按钮与 `cap6-export-count`，Blob + `a.download`，空集禁用并在 title 写「当前视图无可导出数据」。技能/工具页均导出**当前 tab + 当前搜索词**的可见行，不触发额外请求、不触发行点击或 tab 切换。
+- 验证：`npx vitest run src/modules/capabilities src/modules/skills src/modules/tools` → **4 files / 40 tests passed**（含 RFC4180、文件名、空集禁用、q 过滤后条数）；全量 **132 files / 1410 passed**；`tsc -b . --noEmit` 仅基线 employees `TS18047`，本域 0。
+- DOM（临时 harness，已删；Vite 5457 / Chrome 9259）：1440/1280/375 全部 `vw=bodySW=bodyCW=pageSW=pageCW`；技能 `?q=资料` 1 行/`1 条`/按钮可用，`q=不存在` 0 行/`0 条`/按钮禁用且 title 正确；工具 `?q=网页` 2 行/`2 条`/按钮可用。
+- 边界：只改 `web/src/modules/{capabilities,skills,tools}/**` 与 DONE；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；无独立观察者。
