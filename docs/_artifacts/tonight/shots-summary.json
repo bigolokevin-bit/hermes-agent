@@ -9,12 +9,12 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 729,
+    "textLen": 728,
     "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 刷新 可上岗 各项检查全部通过才计入 数据截至 —（北京",
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 25,
+  "distinctMainHeads": 26,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -117,7 +117,7 @@
     {
       "route": "#/audit",
       "viewport": "1440",
-      "chars": 6005,
+      "chars": 6061,
       "hasMainEl": true
     },
     {
@@ -153,7 +153,7 @@
     {
       "route": "#/capabilities?tab=models",
       "viewport": "1440",
-      "chars": 104,
+      "chars": 388,
       "hasMainEl": true
     },
     {
@@ -243,7 +243,7 @@
     {
       "route": "#/employees/:employeeId?zone=runs",
       "viewport": "375",
-      "chars": 42,
+      "chars": 51,
       "hasMainEl": true
     },
     {
@@ -357,13 +357,13 @@
     {
       "route": "#/knowledge",
       "viewport": "1440",
-      "chars": 349,
+      "chars": 357,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge",
       "viewport": "375",
-      "chars": 349,
+      "chars": 357,
       "hasMainEl": true
     },
     {
@@ -417,13 +417,13 @@
     {
       "route": "#/knowledge?tab=scope",
       "viewport": "1440",
-      "chars": 349,
+      "chars": 357,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=scope",
       "viewport": "375",
-      "chars": 349,
+      "chars": 357,
       "hasMainEl": true
     },
     {
@@ -471,7 +471,7 @@
     {
       "route": "#/overview",
       "viewport": "375",
-      "chars": 1276,
+      "chars": 1275,
       "hasMainEl": true
     },
     {
@@ -591,13 +591,13 @@
     {
       "route": "#/work",
       "viewport": "375",
-      "chars": 1921,
+      "chars": 205,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=board&view=cron",
       "viewport": "1440",
-      "chars": 205,
+      "chars": 1921,
       "hasMainEl": true
     },
     {
@@ -631,12 +631,13 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 1,
+  "consoleErrorsObservedByShots": 2,
   "consoleErrorRoutesObservedByShots": [
-    "#/audit"
+    "#/capabilities?tab=models",
+    "#/identity"
   ],
   "ceAuthority": "login-state",
-  "routesWithEnvOnlyConsoleErrors": 26,
+  "routesWithEnvOnlyConsoleErrors": 27,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
   "overflowing": [],
   "driver": {
@@ -644,11 +645,11 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "bc7671a1",
+  "headHash": "165e62a5",
   "exitCode": 0,
-  "entry": "assets/index-BHzDls-M.js",
-  "entrySha256": "1c2aa6f9944b245183ffe6c5f20b08a7f4a901f1807e6284dbdf992945551a03",
+  "entry": "assets/index-DpFqr-g2.js",
+  "entrySha256": "1f439c11f8152303f22c6bedc311c9e0cf415cf4ae1ccde89b348572563dc8bc",
   "entryBytes": 163539,
-  "servedEntryBefore": "index-BHzDls-M.js",
-  "servedEntryAfter": "index-BHzDls-M.js"
+  "servedEntryBefore": "index-DpFqr-g2.js",
+  "servedEntryAfter": "index-DpFqr-g2.js"
 }

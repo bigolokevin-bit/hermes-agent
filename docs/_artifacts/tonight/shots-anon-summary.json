@@ -14,7 +14,7 @@
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 23,
+  "distinctMainHeads": 25,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -117,7 +117,7 @@
     {
       "route": "#/audit",
       "viewport": "1440",
-      "chars": 379,
+      "chars": 371,
       "hasMainEl": true
     },
     {
@@ -231,7 +231,7 @@
     {
       "route": "#/employees/:employeeId?zone=evidence",
       "viewport": "375",
-      "chars": 42,
+      "chars": 51,
       "hasMainEl": true
     },
     {
@@ -633,7 +633,7 @@
   ],
   "consoleErrorsObservedByShots": 1,
   "consoleErrorRoutesObservedByShots": [
-    "#/system?tab=retention"
+    "#/audit"
   ],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
@@ -644,12 +644,12 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "bc7671a1",
+  "headHash": "165e62a5",
   "exitCode": 0,
-  "entry": "assets/index-BHzDls-M.js",
-  "entrySha256": "1c2aa6f9944b245183ffe6c5f20b08a7f4a901f1807e6284dbdf992945551a03",
+  "entry": "assets/index-DpFqr-g2.js",
+  "entrySha256": "1f439c11f8152303f22c6bedc311c9e0cf415cf4ae1ccde89b348572563dc8bc",
   "entryBytes": 163539,
-  "servedEntryBefore": "index-BHzDls-M.js",
-  "servedEntryAfter": "index-BHzDls-M.js",
+  "servedEntryBefore": "index-DpFqr-g2.js",
+  "servedEntryAfter": "index-DpFqr-g2.js",
   "auxiliary": true
 }

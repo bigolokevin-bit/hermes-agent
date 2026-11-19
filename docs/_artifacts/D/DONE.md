@@ -997,3 +997,11 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 九件全 exit=0：ia-html/react ok{51,22,1,8}（html tabsAll23）；lint-fake v=[]；lint-reuse v=0 exempt=1（chat→T40）；crawl-anon DL0/CE0/PE0 routesCE=51（401 归因）；crawl-auth routesCE=26；state-quad 20/20 文本重建注 source。
 - shots main(auth) 102/102 failures=[] ceAuth=login-state obs=1 仅观测（#/audit，envOnly=26 不入 ok）rootBaseline textLen=729 采集时刻/数据截至显 —（北京时间）诚实态；shots-anon auxiliary=true 102/102 mode=anon obs=1（#/system?tab=retention）envOnly=51 ok=true。
 - 上一代 9fedd46f（82 轮账本 50119b5e）作废未重做；web/src 未碰；他人脏零沾染；9122 v4_proxy 受管、caddy 28034、8092 84366 未动。
+
+## 八十五轮·波终代次九件重章 @ 165e62a5（2026-11-20 02:0x，一波一盖）
+
+- 波并入五线：appr 0b5c1dc7（typecheck 清零）/ aud 77ccc8df（runs 时间线）/ gov aae923c1（tools/MCP）/ ui1 916776a1（knowledge spaces）/ ui2 e36ca338（metrics budget）；HEAD=165e62a5=远端，porc=0。
+- 代次三向互证：entry assets/index-DpFqr-g2.js 163539B sha 1f439c11…63dc8bc 全等；9122==8183==磁盘；21 路由含 /duty 全 200；拍后复证未漂。
+- 九件全 exit=0：ia-html/react ok{51,22,1,8}；lint-fake v=[]；lint-reuse v=0 exempt=1（chat→T40）；crawl-anon DL0/CE0/PE0 routesCE=51（401 归因）；crawl-auth routesCE=27；state-quad 20/20 文本重建注 source。
+- shots main(auth) 102/102 failures=[] ceAuth=login-state obs=2 仅观测（#/capabilities?tab=models、#/identity，envOnly=27 不入 ok）；shots-anon auxiliary=true 102/102 mode=anon obs=1（#/audit）envOnly=51 匿名实锤 ok=true；三键全值注入（entry 全名未拼 index-，pngs=102 同名覆盖，临时区已清）。
+- 上一代 bc7671a1（83 轮账本 7e7b92cd）作废未重做；web/src 未碰；他人脏零沾染；9122 v4_proxy 受管、caddy 28034、8092 5950 全程未动。
