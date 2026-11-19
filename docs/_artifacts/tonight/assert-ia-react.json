@@ -15,12 +15,10 @@
       "web/src/modules/identity/manifest.ts",
       "web/src/modules/knowledge/manifest.ts",
       "web/src/modules/overview/manifest.ts",
-      "web/src/modules/settings/manifest.ts",
       "web/src/modules/system/manifest.ts",
-      "web/src/modules/version/manifest.ts",
       "web/src/modules/work/manifest.ts"
     ],
-    "scannedFiles": 78,
+    "scannedFiles": 76,
     "chatHostMarkers": [
       "web/src/modules/chat/ChatModulePage.tsx attrs=1 mounts=1"
     ]
@@ -28,9 +26,9 @@
   "missing": [],
   "counts": {
     "routes": 51,
-    "tabs": 24,
+    "tabs": 22,
     "chatHosts": 1,
-    "modules": 10
+    "modules": 8
   },
   "badCode": [],
   "checks": [
@@ -42,8 +40,8 @@
     },
     {
       "name": "tabs",
-      "ok": false,
-      "actual": 24,
+      "ok": true,
+      "actual": 22,
       "expected": 22
     },
     {
@@ -54,8 +52,8 @@
     },
     {
       "name": "modules",
-      "ok": false,
-      "actual": 10,
+      "ok": true,
+      "actual": 8,
       "expected": 8
     },
     {
@@ -65,7 +63,7 @@
       "expected": []
     }
   ],
-  "ok": false,
-  "headHash": "7700d536",
-  "exitCode": 1
+  "ok": true,
+  "headHash": "c28ebc16",
+  "exitCode": 0
 }

@@ -542,3 +542,13 @@ L0 新落点：`http://127.0.0.1:9122`（python http.server --directory hermes_c
 - summary 补齐键：screenshotMode/headHash=68220676/servedEntryBefore=After=index-B5fmOKJ8.js/shotWindow/env/visualCheckNote（写后回读证实）。
 - 看图核验（employees-1440.png）：完整壳+侧栏导航+System 面板+「Sessions」pane 标题已渲染，数据区空白=未登录 401 空列表；非 ⠋Loading 壳、非登录门遮罩。routesWithEmptyMain=52 chars=0(hasMainEl=true) 与看图一致：pane 标题在 <main> 外，main 内数据区未登录为空。
 - 与 crawl 量测差异注记：同代 crawl（gated plain）contentEmpty=0 mainChars 104-237——settle 时序与取文口径不同，两腿各按仪器如实报；auth 态（cookie）mainChars 125-914 证明产品无缺陷，空 main 属环境鉴权项。
+
+## 门禁二十二轮·账本全章 c28ebc16（entry yEKDXBtV 代次闭环，2026-11-19 10:0x git log 实钟 c28ebc16=09:57:01）
+- 卡：L0『门禁全量盖章收尾（唯一一次，目标 headHash=c28ebc16）』。代次坐实：entry assets/index-yEKDXBtV.js 磁盘复算 sha256 de5effb2641bad381c803839135fc1f1b65e67675a854a764869563acacb102a（149863B）==served==卡面；构建确定性成立。
+- 五件重章 c28ebc16 全绿 exit=0：assert-ia-react counts{routes:51,tabs:22,chatHosts:1,modules:8}（IA freeze 生效，24/10 红消）；assert-ia-html +tabsAll:23；lint-fake violations=0；lint-reuse violations=0 exempted=1（exitCode+headHash 已补键）。
+- vitest：exit=0，Test Files 99 passed (99) / Tests 748 passed (748)，Start 10:00:16（原文 vitest.txt）。
+- crawl 双口径均 exit=0 ok=true counts{probed:75,deadLinks:0,contentEmpty:0,probeErrors:0,verdicts spa-hash:75}：anon routesCE=36 envAttr{auth-required-401:36} denied=22；auth routesCE=21 denied=9（登录腿 cookie 生效证据）。二十轮 #/system?tab=security 产品级错误 1 条本轮 crawl 双口径未复现。
+- shots 重拍（卡⑥ mtime 早于 c28ebc16 判据）：102/102 全新增 mtime 窗 10:02-10:04；failures=[] overflowing=[] routesWithEmptyMain=[] routesWithoutMainEl=[]；ok=false 唯一红因 routesWithConsoleErrors=1 = #/system?tab=retention（与上轮 security tab 不同位，如实上报待裁，不造假翻转）；rootBaseline textLen=732 含『登录状态已过期』=R5 统一 401 门态属预期。summary 四键已补：headHash=c28ebc16 entry=assets/index-yEKDXBtV.js entrySha256=de5effb2…b102a entryBytes=149863。
+- state-quad：sampled=20 passed=20 base=9122 head=c28ebc16（重跑，脚本自章）。
+- 旧账清理（卡④）：rm crawl.json gates.exit.json ia.json lint-reuse-baseline.json react-baseline.json lint-reuse-stdout.txt vitest-0914.txt 七件；保留 crawl-anon/auth 为 crawl 真账。
+- 坑录：state-quad.mjs base 为位置参数 argv[2] 默认 9119 必须显式传 9122；shots-summary 手补键必须在脚本完工后（重跑会覆盖）。

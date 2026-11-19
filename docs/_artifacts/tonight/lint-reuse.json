@@ -1,8 +1,8 @@
 {
   "script": "lint-reuse",
   "root": "web/src/modules",
-  "scanned": 92,
-  "reuseMarkers": 39,
+  "scanned": 90,
+  "reuseMarkers": 37,
   "chatHostFiles": [
     {
       "file": "web/src/modules/chat/ChatModulePage.tsx",
@@ -16,9 +16,7 @@
     "identity",
     "knowledge",
     "overview",
-    "settings",
     "system",
-    "version",
     "work"
   ],
   "reuseKindModules": [
@@ -28,9 +26,7 @@
     "identity",
     "knowledge",
     "overview",
-    "settings",
     "system",
-    "version",
     "work"
   ],
   "exemptionFile": "present",
@@ -89,6 +85,6 @@
   "violations": [],
   "count": 0,
   "ok": true,
-  "headHash": "7700d536",
-  "exitCode": 0
+  "exitCode": 0,
+  "headHash": "c28ebc16"
 }
