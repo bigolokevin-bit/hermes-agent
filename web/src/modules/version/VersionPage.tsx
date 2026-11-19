@@ -99,7 +99,7 @@ export function VersionPage() {
   }, [forced, priceReload]);
 
   return (
-    <section className="space-y-4" data-testid="ver4-page" data-fixture={forced ?? undefined}>
+    <section className="space-y-4" data-testid="ver4-page">
       <header>
         <h1 className="font-mondwest text-xl">版本</h1>
         <p className="mt-1 text-sm text-white/55">构建与依赖信息</p>

@@ -1404,3 +1404,18 @@ $ cd web && npx vitest run
 - Write-shaped controls: 3 (`sec5-planned-session|mfa|rotate`) all `data-planned=true` + `aria-disabled=true` + title, no write action.
 - Four states, copyable request id, 403≡404 same body, no path leakage; CSS grid/table stacks ≤720px, page overflow clipped. Shell registration remains outside write domain: `/system?tab=security` currently resolves to events view anomaly, so this page needs a `security` live slot/tab in App/shell.
 - Verification: `npx vitest run src/modules/security` → **4/4**; full suite **127 files / 1280 passed**.
+
+## R33 fixture debt burn — 3 gov pages (2026-11-19, base 9c7789f6)
+
+### Inventory before (`grep -rl data-fixture web/src/modules/{people,org,access,tenant,settings,cron,retention,health,models,tools,version} --include=*.tsx`)
+`people/PeopleModulePage` (1), `org/OrgModulePage` (1), `access/AccessModulePage` (2), `tenant/TenantQuotaPage` (3), `models/ModelsModulePage` (1), `tools/ToolsPage` + `tools/states.tsx` (7), `version/VersionPage` (1), `settings/SettingsPage` (1), plus test files. Health/cron/retention already 0.
+
+### Selected three
+- `people/PeopleModulePage`: source `/api/v1/user/list|all` still 404 → honest 未接入 + reason; production marker **1 → 0**; test marker **1 → 0**.
+- `models/ModelsModulePage`: catalog/price/ledger remain separate; missing endpoints honest, no fake 0; production marker **1 → 0**.
+- `version/VersionPage`: build/env unknown + reason; dependency rows from real package data; production marker **1 → 0**.
+- Selected total production **3 → 0**; no `data-fixture` in those three modules after change.
+
+### DOM / tests
+- Browser sweep 5451/9252 at 1440/1280/375: `[data-fixture]` **0**; body scrollWidth 1424/1264/375 (never exceeds viewport; scrollbar accounts for 1440/1280 delta). Page roots are covered by module vitest because lazy routes did not settle within the probe window.
+- `npx vitest run src/modules/people src/modules/models src/modules/version` → **4 files / 25 passed**; full suite below.

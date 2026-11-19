@@ -222,7 +222,7 @@ export function ModelsModulePage() {
   const pageMessage = loaded ? sourceMessage([loaded.catalog, loaded.prices, loaded.ledger]) : null;
 
   return (
-    <section className="space-y-4" data-testid="mdl4-page" data-fixture={forced ?? undefined}>
+    <section className="space-y-4" data-testid="mdl4-page">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <h1 className="font-mondwest text-xl">模型与单价</h1>

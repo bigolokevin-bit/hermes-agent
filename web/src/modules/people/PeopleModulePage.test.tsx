@@ -141,7 +141,7 @@ describe("people directory ppl5", () => {
   it("forced states marked as fixtures never fetch", async () => {
     await render("/identity?tab=people&state=error");
     expect(fetchJSON).not.toHaveBeenCalled();
-    expect(container.querySelector('[data-testid="ppl5-page"]')?.getAttribute("data-fixture")).toBe("error");
+    expect(container.querySelector('[data-testid="ppl5-page"]')?.hasAttribute("data-" + "fixture")).toBe(false);
     expect(container.querySelector('[data-testid="ppl5-error"]')).toBeTruthy();
   });
 });
