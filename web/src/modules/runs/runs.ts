@@ -402,7 +402,13 @@ export function statusLabel(raw?: string): string {
     case "failed": return "失败";
     case "cancelled": return "已取消";
     case "interrupted": return "已中断";
-    default: return "—";
+    // An unlisted word is not the same thing as an absent one: a status this
+    // table has not met reads 「待核实」 (raw value in the cell title), while a
+    // genuinely missing status keeps the missing-value dash.
+    case undefined:
+    case "":
+      return "—";
+    default: return "待核实";
   }
 }
 
@@ -443,13 +449,28 @@ export function taskLabel(raw?: string): string {
   return bare ? `任务 · ${bare.slice(-4).toUpperCase()}` : "任务";
 }
 
-/** Employees may be unnamed in this read; mask the id the same way. */
+/**
+ * The employee cell speaks the same way as the rest of the console: a display
+ * name plus an 8-character code, or 「未指派」 when the run carries no owner.
+ * The full id never becomes a text node — it rides the cell `title`/copy.
+ */
+export function employeeCode(id: string | null | undefined): string {
+  if (!id) return "";
+  // `emp_9F42…`, `human:u_10001` and a bare hex id all reduce to the same
+  // thing: the ledger's own characters, prefix dropped.
+  const bare = id.replace(/^[A-Za-z]+[_:]/, "").replace(/[^0-9A-Za-z]/g, "");
+  if (!bare) return "";
+  return bare.length >= 8 ? bare.slice(0, 8).toUpperCase() : bare.toUpperCase();
+}
+
+/** Employees may be unnamed in this read; the code still identifies them. */
 export function employeeLabel(id: string | null | undefined, names: Map<string, string>): string {
-  if (!id) return "—";
+  if (!id) return "未指派";
+  const code = employeeCode(id);
   const named = names.get(id);
+  if (named && code) return `${named} · ${code}`;
   if (named) return named;
-  const tail = id.replace(/^[^:]*:/, "").replace(/[^0-9A-Za-z]/g, "").slice(-4).toUpperCase();
-  return tail ? `员工 · ${tail}` : "员工";
+  return code ? `员工 · ${code}` : "员工";
 }
 
 /* ── detail leg: the one run, its events, and a retry that means a NEW run ── */

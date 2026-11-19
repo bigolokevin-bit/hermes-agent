@@ -35,7 +35,7 @@
  * the full value lives in the title and the clipboard, not on the surface.
  */
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { Link, useSearchParams } from "react-router";
+import { Link, useLocation, useSearchParams } from "react-router";
 import { Check, Copy, RefreshCw, X } from "lucide-react";
 
 import { Badge } from "@nous-research/ui/ui/components/badge";
@@ -131,6 +131,47 @@ function RunCodeCell({ row, testId }: { row: RunRow; testId: string }): ReactNod
   );
 }
 
+/**
+ * The upstream id is a runtime-side handle. The console has no route that
+ * queries by it (probed: `upstreamRunId=` and `upstream=` are both ignored by
+ * /api/runs), so a link here would only rewrite the URL and change nothing.
+ * Copy stays; the jump is not offered and the reason is on screen.
+ */
+function UpstreamLine({ raw }: { raw?: string }): ReactNode {
+  const [copied, setCopied] = useState<"idle" | "done" | "failed">("idle");
+  if (!raw) return <Dashed reason="这条运行没有带上游编号" />;
+  return (
+    <span className="flex min-w-0 flex-col items-start gap-0.5">
+      <span className="flex min-w-0 flex-wrap items-center gap-1.5" data-testid="run5-detail-upstream" title={raw}>
+        <span className="min-w-0 break-words">{runCode(raw)}</span>
+        <button
+          type="button"
+          aria-label="复制上游运行编号"
+          title="复制完整编号（供运行时侧排查）"
+          className="inline-flex shrink-0 items-center text-xs text-muted-foreground underline underline-offset-2"
+          onClick={() => {
+            void copyTextToClipboard(raw).then((ok) => {
+              setCopied(ok ? "done" : "failed");
+              if (ok) window.setTimeout(() => setCopied("idle"), 2500);
+            });
+          }}
+        >
+          {copied === "done" ? (
+            <Check className="h-3 w-3" aria-hidden="true" />
+          ) : copied === "failed" ? (
+            <span>复制失败，请手动选择</span>
+          ) : (
+            <Copy className="h-3 w-3" aria-hidden="true" />
+          )}
+        </button>
+      </span>
+      <span className="min-w-0 break-words text-[11px] leading-tight text-muted-foreground">
+        运行时侧的上游编号。控制台没有按上游编号查询的入口，所以这里只提供复制，不做会落空的跳转。
+      </span>
+    </span>
+  );
+}
+
 function CostCell({ row, testId }: { row: RunRow; testId: string }): ReactNode {
   const state = costState(row);
   const tone = state === "known" ? "success" : state === "unknown" ? "warning" : "secondary";
@@ -148,14 +189,22 @@ function CostCell({ row, testId }: { row: RunRow; testId: string }): ReactNode {
 }
 
 const GRID =
-  "grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,1.1fr)_minmax(0,0.8fr)_minmax(0,1.2fr)_minmax(0,1fr)_auto]";
+  "grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,0.7fr)_minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,0.9fr)_minmax(0,1.1fr)_minmax(0,1fr)_auto]";
 
-function ListRows({ rows, onOpen }: { rows: RunRow[]; onOpen: (runId: string) => void }): ReactNode {
+function ListRows({
+  rows,
+  names,
+  onOpen,
+}: {
+  rows: RunRow[];
+  names: Map<string, string>;
+  onOpen: (runId: string) => void;
+}): ReactNode {
   return (
     <Card className="min-w-0 border-border bg-card" data-testid="run5-table">
       <CardContent className="p-0">
         <div className={`hidden ${GRID} border-b border-border px-4 py-2 text-xs uppercase tracking-wide text-muted-foreground sm:grid`}>
-          <span>运行</span><span>状态</span><span>开始</span><span>耗时</span><span>成本（美元）</span><span>失败原因</span><span aria-hidden="true"></span>
+          <span>运行</span><span>状态</span><span>开始</span><span>耗时</span><span>成本（美元）</span><span>负责人</span><span>失败原因</span><span aria-hidden="true"></span>
         </div>
         <ul className="divide-y divide-border">
           {rows.map((row, index) => {
@@ -176,6 +225,17 @@ function ListRows({ rows, onOpen }: { rows: RunRow[]; onOpen: (runId: string) =>
                   {elapsed.text ?? <Dashed reason={elapsed.reason} />}
                 </span>
                 <CostCell row={row} testId={`${base}-cost`} />
+                <span
+                  className="min-w-0 self-center break-words"
+                  data-testid={`${base}-employee`}
+                  title={
+                    row.employeeId
+                      ? row.employeeId
+                      : "这条运行没有带回负责人；不代填、不猜"
+                  }
+                >
+                  {employeeLabel(row.employeeId, names)}
+                </span>
                 <span className="min-w-0 self-center break-words" data-testid={`${base}-reason`} title={reason.reason || undefined}>
                   {reason.text}
                 </span>
@@ -299,11 +359,19 @@ function DetailField({ label, children }: { label: string; children: ReactNode }
 
 export function RunsModulePage() {
   const [params, setParams] = useSearchParams();
+  const { pathname } = useLocation();
   const forced = forcedStateOf(params.get("state"));
   const sinceKey = sinceKeyOf(params.get("window"));
   const status = statusFilterOf(params.get("status"));
-  const selected = forced === null ? params.get("run") : null;
-  const upstream = forced === null ? params.get("upstream") : null;
+  // Deep link: `?run=` keeps working on refresh, and `/runs/<runId>` is read
+  // from the path so the same link survives once the shell registers the route.
+  const pathRun = (() => {
+    const m = /(?:^|\/)runs\/([^/?#]+)/.exec(pathname);
+    if (!m) return null;
+    const decoded = (() => { try { return decodeURIComponent(m[1]); } catch { return m[1]; } })();
+    return decoded.trim() || null;
+  })();
+  const selected = forced === null ? params.get("run") ?? pathRun : null;
   // Deep-link only: `?employee=` narrows the list through the accepted employeeId
   // parameter. No filter control exists for it, so no dead control is implied.
   const employee = forced === null ? (params.get("employee")?.trim() || null) : null;
@@ -316,11 +384,11 @@ export function RunsModulePage() {
   const [attemptAsk, setAttemptAsk] = useState<AttemptAsk | null>(null);
 
   const [names, setNames] = useState<Map<string, string>>(new Map());
-  // Employee names only decorate the detail line, and a masked code is the
-  // honest fallback. The ask is gated on the detail actually being open:
-  // a `?state=` repro never opens one and requests nothing; the list leg
-  // asks only its own routes.
-  const namesGated = selected !== null && forced === null;
+  // Employee names decorate the list as well as the detail line, so the ask is
+  // gated on a real (non-repro) read rather than on the detail being open. The
+  // directory is a side-read for labels only: if it fails, the 8-character
+  // code stays as the honest fallback and the run answer is untouched.
+  const namesGated = forced === null;
   useEffect(() => {
     if (!namesGated) return;
     let alive = true;
@@ -360,25 +428,13 @@ export function RunsModulePage() {
     [params, setParams],
   );
 
-  // One URL write per action: two consecutive setParams calls would each
-  // rebuild from the same stale `params`, and the second would drop the
-  // first. `run` opens the detail; `upstream` is a different lens.
-  const setParamsBoth = (entries: Array<[string, string | null]>) => {
-    const next = new URLSearchParams(params);
-    for (const [key, value] of entries) {
-      if (value === null || value === "") next.delete(key);
-      else next.set(key, value);
-    }
-    setParams(next, { replace: true });
-  };
-
   const openRun = (runId: string) => {
     setAttemptAsk(null);
-    setParamsBoth([["run", runId], ["upstream", null]]);
+    setParam("run", runId);
   };
   const closeRun = () => {
     setAttemptAsk(null);
-    setParamsBoth([["run", null]]);
+    setParam("run", null);
   };
   const reloadList = () => {
     data.reload();
@@ -503,20 +559,6 @@ export function RunsModulePage() {
           : ""}
       </p>
 
-      {upstream ? (
-        <Card className="min-w-0 border-border bg-card" data-testid="run5-upstream">
-          <CardContent className="flex min-w-0 flex-col items-start gap-2 p-4">
-            <h2 className="min-w-0 break-words text-base font-semibold">上游运行</h2>
-            <RunCodeCell row={{ runId: upstream }} testId="run5-upstream-code" />
-            <p className="max-w-prose break-words text-xs text-muted-foreground">
-              这是 Hermes 运行时侧的上游编号。控制台没有上游详情页，这个编号可供运行时排查；
-              本页不会伪造上游数据。
-            </p>
-            <Link className="text-sm underline decoration-dotted underline-offset-2" to="/runs">返回运行列表</Link>
-          </CardContent>
-        </Card>
-      ) : null}
-
       {detail.k === "loading" ? (
         <Card data-testid="run5-detail-loading" aria-busy="true">
           <CardContent className="space-y-3 p-4">
@@ -598,19 +640,7 @@ export function RunsModulePage() {
               </DetailField>
               <div className="min-w-0 sm:col-span-2">
                 <DetailField label="上游运行">
-                  {detail.run.upstreamRunId ? (
-                    <button
-                      type="button"
-                      className="min-w-0 break-words text-sm underline decoration-dotted underline-offset-2"
-                      data-testid="run5-detail-upstream"
-                      title={detail.run.upstreamRunId}
-                      onClick={() => setParam("upstream", detail.run.upstreamRunId ?? null)}
-                    >
-                      {`上游 ${runCode(detail.run.upstreamRunId)}`}
-                    </button>
-                  ) : (
-                    <Dashed reason="这条运行没有带上游编号" />
-                  )}
+                  <UpstreamLine raw={detail.run.upstreamRunId} />
                 </DetailField>
               </div>
             </div>
@@ -662,7 +692,7 @@ export function RunsModulePage() {
       {phase === "denied" ? (
         <DeniedPanel requestId={failure?.requestId ?? null} fixture={forced === "denied" ? "denied" : undefined} />
       ) : null}
-      {phase === "ready" ? <ListRows rows={rows} onOpen={openRun} /> : null}
+      {phase === "ready" ? <ListRows rows={rows} names={names} onOpen={openRun} /> : null}
 
       {phase === "ready" && rows.length > 0 ? (
         <TechnicalDisclosure lines={technical} testId="run5-list-details" />

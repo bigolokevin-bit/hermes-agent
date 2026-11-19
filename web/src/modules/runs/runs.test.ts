@@ -19,6 +19,9 @@ import {
   costState,
   costText,
   elapsedMinute,
+  employeeCode,
+  employeeLabel,
+  statusLabel,
   errorInfo,
   failureSummary,
   loadRunDetail,
@@ -276,5 +279,38 @@ describe("the employee filter uses only the accepted parameter name", () => {
     api.fetchJSON.mockResolvedValue({ items: [RUN] });
     await loadRuns({ since: "2026-11-12T00:00:00Z" });
     expect(String(api.fetchJSON.mock.calls[0]?.[0])).not.toContain("employeeId=");
+  });
+});
+
+describe("the words a person reads for a status and an owner", () => {
+  it("keeps the six known statuses and says 待核实 for a word this table has not met", () => {
+    expect(statusLabel("running")).toBe("运行中");
+    expect(statusLabel("completed")).toBe("成功");
+    expect(statusLabel("failed")).toBe("失败");
+    expect(statusLabel("cancelled")).toBe("已取消");
+    expect(statusLabel("interrupted")).toBe("已中断");
+    expect(statusLabel("pending")).toBe("待派发");
+    expect(statusLabel("quantum")).toBe("待核实");
+    expect(statusLabel("—")).toBe("待核实");
+  });
+
+  it("reads an absent status as a dash, never as a verdict", () => {
+    expect(statusLabel(undefined)).toBe("—");
+    expect(statusLabel("")).toBe("—");
+  });
+
+  it("reduces an owner id to its own 8 characters, prefix dropped", () => {
+    expect(employeeCode("emp_9F42AAE299D541FBBB6ECE3671")).toBe("9F42AAE2");
+    expect(employeeCode("emp_86A81CE8FF6F42E187BCF2B540")).toBe("86A81CE8");
+    expect(employeeCode("human:u_10001")).toBe("U10001");
+    expect(employeeCode(null)).toBe("");
+  });
+
+  it("pairs a directory name with that code, falls back to 员工 · code, and says 未指派 when nobody was sent", () => {
+    const names = new Map([["emp_86A81CE8FF6F42E187BCF2B540", "小鲤"]]);
+    expect(employeeLabel("emp_86A81CE8FF6F42E187BCF2B540", names)).toBe("小鲤 · 86A81CE8");
+    expect(employeeLabel("emp_9F42AAE299D541FBBB6ECE3671", names)).toBe("员工 · 9F42AAE2");
+    expect(employeeLabel(undefined, names)).toBe("未指派");
+    expect(employeeLabel("", names)).toBe("未指派");
   });
 });
