@@ -293,3 +293,151 @@ ESLINT_EXIT=0     ✖ 3 problems (0 errors, 3 warnings)
 4. 视觉/截图核对：未做。
 5. `../apps/shared` 的 49 项 tsc 既有错误：写域外，未修。
 6. 「重新读取」在真实 401 环境下的登录跳转：本模块只读、不碰会话，未实现也未验（与审计三面同口径）。
+
+---
+
+# TASK T11 — 用量与成本（`web/src/modules/duty/UsagePage.tsx`，本轮交付）
+
+派单：T11 usage & cost，写域 `web/src/modules/duty/**` + 本文件。基线 `4bfb31ef`。
+日期 2026-11-19（Asia/Shanghai）。**本轮未声称任何 vite entry sha。**
+
+## C1. 端点与实探状态码（本机 BFF `127.0.0.1:8092`，无身份头，`curl` 实测）
+
+| 请求 | 结果 | 处置 |
+|---|---|---|
+| `GET /agent-api/api/hermes-usage?days=30`（页面真调用形） | **404** | 本机 serving 无 `/agent-api` 代理（与 §B1 同一条环境事实），页面走 denied 腿，不画任何行 |
+| `GET /api/hermes-usage?days=30`（去掉代理前缀直连 BFF） | **401** | 门在身份检查之前；未认证，拿不到 2xx 样本 |
+| `GET /api/budget-usage` | **401** | 本页金额只取 usage 响应自带的 `cost` 账本块，未单独调 budget-usage（口径同 `docs/_artifacts/duty/DONE.md` T11 段） |
+
+三条都是**没有真数据**。页面因此一条金额也不编：`docs/_artifacts/aud` 之外不新数仓，
+`hermes-usage` 的 2xx 形态在派单台账里**从未被采到**（见 C5）。
+
+## C2. 判据落点
+
+- **金额只看账本实扣**（`usage.ts` `costCell`，页面层无第二算法）：`cost_status:"upstream"` 才呈现数字，
+  真实 0 → `$0.00`；缺失 → 「—」+ 短句原因（卡内直接写在旁边，表内写进单元格 `title`）；
+  `unknown` → 「—」+「账本记为未计价」；`estimated`/`mixed` → **不伪装成已花费**，「—」+「含估算，不作实扣呈现」；
+  `source` 非 `cost_ledger/ledger` → 「—」+「不是成本账本记的实扣」；状态词不认识 → 徽章「—」，不猜。
+  无前端计价、无求和、无二次舍入；`grep '?? 0\||| 0'` 在本页四个文件 0 命中（仅注释提及）。
+- **窗口过滤器是真的**：`usg4-window` 选 24h/7d/30d → 请求 `?days=1 / 7 / 30`，三个窗口三张不同的 URL；
+  纯层逐字断言（`usage.test.ts`「each window builds its own URL」），页面层实测切换后新请求落地
+  （`UsagePage.test.tsx`「24h and 7d each rebuild the URL」）。端点支持 `days`（上轮 T11 即按此调用），
+  控件不是死控件。
+- **时间与币种**：`as_of` 一律 `Asia/Shanghai` 到分（复用模块既有 `beijing()`），缺失 → 「—」+ 原因；
+  金额 USD；原始 ISO、`employee:` 句柄、`cost_ledger/upstream` 状态原值、HTTP 码只进 `title`
+  与默认关闭的「技术详情」（关=不在 DOM）；员工显示「员工 · 8位短码」。
+- **四态**（`useUsageData.ts`，attempt+window 双键存储，effect 内零同步 setState，见 C4 lint 数）：
+  loading 骨架非零值卡；empty 带原因+下一步（换窗口/等用量）；error 人话+**可复制请求编号**
+  （缺号→「未提供」+ `title` 原因）+重试；denied 403≡404 **逐字节同体**（`outerHTML` `toBe` 断言，
+  组件只收 `requestId`，两份 403/404 的 body 不同也不外泄），上面不留一行数据。
+  回答不是用量对象 = error（shape 腿），不是 empty。
+- **无占位/计划文案**：整页无「planned/敬请期待」；未接通之处只有 denied/empty 腿上的真话 + GAP。
+- **fixture 纪律**：`?state=` 四腿（loading/empty/error/denied）**不发请求**（测试断言 fetch 调用数 0），
+  根节点 `data-fixture="<state>"`，说明行带 **GAP-07**；`ready` 不在复现表里，`?state=ready` 会照发真请求
+  （有测试钉住）；复现腿上窗口选择与「重新读取」disabled 并写明原因，不做点了没反应的死控件。
+  本轮**没有**新增任何示例数据行（GAP-07 是编号新号，已核 `docs/_artifacts/**` 与 `web/src` 无撞号，
+  现有 GAP-01…GAP-06）。
+- **横溢**：外层 `flex/grid + min-w-0`，长词 `break-words`，请求编号 `break-all`；宽表只在卡内
+  `overflow-x-auto` 滚动（家机口径：行数多时只允许表格内部滚动）。
+
+## C3. 本轮文件（全在写域内）
+
+新增 `web/src/modules/duty/usage.ts`（纯数据层）、`useUsageData.ts`（四态钩子）、
+`usage.test.ts`（纯层 24 例）、`UsagePage.test.tsx`（页面 21 例）；重写 `UsagePage.tsx`
+（testid 全部换 `usg4-*`，旧 `usage-*` 无 shell 侧消费者，已核 `src/shell/*.test*` 不引用）。
+`api.ts`/`format.ts` 未改（`BFF`、`beijing`、`usd`、`dashed` 直接复用）。
+
+## C4. 门禁（精确退出码）
+
+```
+$ cd web && npx tsc -b . --noEmit
+TSC_EXIT=2      49 error TS 行：apps/shared=49、src/modules/**=0（含 src/modules/duty=0，与基线一致）
+$ cd web && ./node_modules/.bin/vitest run src/modules/duty
+VITEST_EXIT=0   Test Files 3 passed (3)   Tests 49 passed (49)
+                ← dutyPage.test.tsx 4（既有）+ usage.test.ts 24 + UsagePage.test.tsx 21
+$ cd web && ./node_modules/.bin/eslint src/modules/duty
+ESLINT_EXIT=0   ✖ 3 problems (0 errors, 3 warnings)
+                ← 三条全是既有 MatrixView(×2)+useDutyData(×1) 的 set-state-in-effect/exhaustive-deps 告警；
+                  重写前的 UsagePage.tsx 原有 2 条（effect 同步 setState、memo 无法保留），
+                  本轮按 attempt 双键存储的写法清零，本模块新增文件 0 告警
+```
+
+## C5. 未验项（照实留）
+
+1. **`hermes-usage` 真 2xx 样本为 0**：`as_of/period_days/cost.cost_usd/cost_status/rows/per_employee`
+   键名取自上一轮 T11 静态页的既有读法（`docs/_artifacts/duty/DONE.md`），**本轮未采到真身**；
+   真数据到达可能要回填键名。
+2. `days=1/7/30` 是否被上游真的按窗口过滤：本机无代理（404）、直连需登录（401），**未实测**；
+   页面侧已证「URL 真的变」。
+3. `?budget-usage` 独立调用：本页未接（金额随 usage 响应 cost 块），口径沿用，如 BFF 要求拆分需下阶段补。
+4. **1440 / 375 像素级横溢未实测**（无浏览器落点，同 §B7-3 口径）；按 `flex + min-w-0 + break-words + break-all` 写。
+5. 视觉/截图核对：未做；明主题未验（本模块用白透明色阶，与 DutyPage 同风格）。
+6. `../apps/shared` 的 49 项 tsc 既有错误：写域外，未修。
+
+---
+
+# TASK T29/T24（小手术）— 数据源面的 `ds4-*` 测试 id（2026-11-19）
+
+派单：给 channels 模块的 T24 数据源账本补 `ds4-*` 稳定测试 id，**不改任何行为、文案、布局、数据逻辑**；
+`chn4-*` 一律保留原值、原位、原精确匹配。
+
+## T1. 加了哪些 id（`web/src/modules/channels/ChannelsPage.tsx`）
+
+- `ds4-ledger`：`SourcesLedger` 的 `CardContent`（`chn4-sources` 的 Card 根仍在，包着它）。
+- `ds4-row`：每条账本行的内容容器 `div`；外层行 div 仍是 `chn4-source-<N>`（`data-status`、`data-gap` 不动），
+  断言用 `closest("[data-status]")` 回到行。
+- `ds4-status`：账本徽章的 `display: contents` 包裹 `span`（仓内既有模式，见 `App.tsx:1347`），
+  徽章本体继续拿 `chn4-source-<N>-badge`；渠道行的徽章不带 marker，零变化。
+- `ds4-gap`：`缺口编号 GAP-…` 那个 `<p>`（此前没有 testid，直接落位）。
+- `ds4-request`：**没有加**——这一面是只读的，全模块 grep「申请」0 命中，不存在申请入口链接/按钮；
+  按判据不造控件。
+
+## T2. 新增断言（`ChannelsPage.test.tsx` 新 describe「the data-source ledger carries its own ds4-* ids」，3 例）
+
+1. `ds4-ledger` 包住 4 条 `ds4-row`，且 `chn4-source-2`、`chn4-source-2-details`、`chn4-row-0-badge` 仍按原值可查；
+2. 4 个 `ds4-status` 逐一与所在行 `data-status` 的词对上（已接入/未接入/未知），徽章的 chn4 id 共存；
+3. 端点缺席的行上 `ds4-gap` 带缺口编号（fixture 里 3 个：GAP-08×2、GAP-04×1），答到了的那行没有 gap 单元格。
+
+## T3. 门禁（精确退出码）
+
+```
+$ cd web && npx tsc -b . --noEmit
+TSC_EXIT=2        49 error TS 行：全部在 ../apps/shared；src/modules/channels=0、shared 以外=0（与基线一致）
+$ cd web && ./node_modules/.bin/vitest run src/modules/channels
+VITEST_EXIT=0     Test Files 2 passed (2)   Tests 77 passed (77)   Duration 1.10s
+                  ← 原 74（channels.test.ts 38 + ChannelsPage.test.tsx 36）+ 本轮 3
+$ cd web && ./node_modules/.bin/eslint src/modules/channels
+ESLINT_EXIT=0     无输出（0 problems）
+```
+
+## T4. 端点实探状态码（本轮重跑，本机 BFF `127.0.0.1:8092`，`L4ConsoleBFF/0.1`，无身份头）
+
+```
+GET /api/messaging/platforms?limit=50   -> 401
+GET /api/channels?limit=50              -> 401
+GET /api/datasources?limit=50           -> 401
+GET /api/mcp/servers?limit=50           -> 401
+GET /api/gateway-connections?limit=50   -> 401
+GET /api/connectors?limit=50            -> 401
+响应头样例：X-Console-Request-Id: a98c795132e841c9b801c66fd44dd991
+```
+
+门在路由之前：六条全部 401，带不带筛选从外部分辨不出来；前端 401 走「登录状态已经失效」人话腿，
+不画任何行。真实 2xx 下 `ds4-gap` 是否缺席、GAP 编号是否变化，仍要真身份才能验。
+
+## T5. `?state=` 复现腿与 `data-fixture` 值
+
+- 腿值：`loading` / `empty` / `error` / `denied`（页根 `data-fixture="<state>"`，`chn4-page` 上）；
+  写 `?state=ready` 不发复现、照真读取且不打 `data-fixture`（既有测试钉住）。
+- 复现腿页面同时打「这是用 ?state=… 复现出来的状态」+ GAP-08；复现腿不发请求，`chn4-retry` 与筛选禁用。
+- 复现的 loading/empty/error/denied 四腿账本为空 → `ds4-*` 也不存在（`SourcesLedger` 空表返回 null），与 `chn4-sources` 同进退。
+- 测试里的 fixture 值（非屏上）：`byUrl` 用 `/agent-api/api/messaging/platforms` 回 2xx、其余路由统一
+  `ApiError 404 {"code":"console.not_found"}`（requestId `chn-probe`）。
+
+## T6. 未验项（照实留）
+
+1. `contents` 包裹的像素级回归：类名与 `App.tsx:1347` 同款、jsdom 无布局，1440/375 未截图实测；
+   理论上 `display:contents` 不产生盒子，徽章位置与间距不应变。
+2. 真身份（2xx 真负载）下的 `ds4-*` 行为：本机没有可过 `identity-check` 的身份头，未验。
+3. `ds4-request` 缺席的判定依据是当前模块无申请入口；若后续接入带申请入口的真实渠道面，需另补 id 与断言。
+4. 页面接线（shell 路由）仍归接线车道；本轮只动 `web/src/modules/channels/` 两文件 + 本段。
