@@ -520,7 +520,7 @@ function ChatZone({ resource, empId, onRetry }: { resource: Resource<ChatRow[]>;
               <span className="font-mono text-xs text-white/55">{beijing(row.lastAt)}</span>
               <span className="text-xs text-white/55">{row.messages === null ? "—" : `${row.messages} 条`}</span>
               <span title={row.status ?? undefined}>
-                <Badge tone={row.status === null ? "neutral" : "info"}>{chatStatusLabel(row.status)}</Badge>
+                <Badge>{chatStatusLabel(row.status)}</Badge>
               </span>
             </li>
           ))}

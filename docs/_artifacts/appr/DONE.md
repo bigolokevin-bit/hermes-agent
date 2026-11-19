@@ -562,3 +562,19 @@ KPI 族：五卡 data-testid=ov6-kpi-<name> 统一在位+新增 data-duty-testid
 ## R34 追加两项（2026-11-20 01:5x，一笔 commit）
 ① /duty 显式归一：注册于 shell/routes.ts 新 PATH_ALIASES 表（{"/duty":"/overview"}），App.tsx 既有 <Route path="/duty"><Navigate to="/overview" replace/></Route>（R32③）即其消费形态——**有意归一（值班台语义已并入 /overview 的 duty tab），不是未命中后的 SPA 兜底**。不进 REDIRECTS 数据行因附录 A 计数法锁 redirects=24/24（routes.ts 运行自检），前后台数不变：assert-ia html 与 --source=react 均 exit 0，routes=51 tabs=22（chatHosts=1 modules=8 未动）。侧栏值班台已指 /overview（console.tsx:273 to="/overview"，未改）。
 ② asOf 时区文案：ov6-asof 取不到值时=「采集时刻 —（北京时间）」（真分支+forced 三分支同改）；八卡 ov6-<card>-stamp=「数据截至 —（北京时间） · 来源 …」；有值分支保持原「采集时刻 北京时间 X」形制。NC① 判据（文本含北京时间）现两分支均满足。验证：shell+duty 定向 8 files/88 passed。
+
+## R36 基线 tsc 两处红·机械修（2026-11-20 01:5x，lane/console-appr）
+- web/src/modules/approvals/api.test.ts:136-137 TS18047：detail 加可选链断言（detail?.actionHash / detail?.kind.label），值与语义不变。
+- web/src/pages/LoginPage.test.tsx:131,149 TS2739：两处同步 `() => jsonResponse(...)` 改 `async`（与文件既有 20+ 处习语一致）。
+- 定向 2 files 32 passed；全量见回执。诚实挂账：tsc -b 仍 exit 2——余红不在本单写域（apps/shared 缺 vitest 类型环境红 40+、approvals 产品码 Marked TS2322×14、duty DutyPage TS2339×5、employee-detail TS2322×1、security TS2353×1、tasks 测试 TS2698×1），归因=本 lane R32/R35 自引入与别车道，待后续单处置。
+
+## R37 写域内 tsc 红清除（2026-11-20 02:0x，lane/console-appr，merge 基线姿势）
+
+基线：`git fetch origin` + `git merge origin/lane/hermes-console`（7e7b92cd，不 rebase 不 force）。
+每处文件:行 → 修法（只动类型，禁 skip/ts-ignore/tsconfig/行为改动）：
+- web/src/modules/approvals/states.tsx:25 — `Marked = Record<string, never>` → `Record<never, never>`（具名 props 交叉后被 never 索引签名吞掉，消 ApprovalsHistory/PendingModulePage 共 12 处 TS2322；行为零变化）。
+- web/src/modules/duty/DutyPage.tsx:269/328/369/416/549 — `stampOf(asOfOf(X.data))` → `X.k === "ready" ? asOfOf(X.data) : null`（消 5 处 TS2339；非 ready 腿本无可用时间，渲染不变）。
+- web/src/modules/employee-detail/EmployeeDetailModulePage.tsx:523 — `<Badge tone={...neutral/info}>` → `<Badge>`（两值都不在 Tone 联合，运行时本就落基础样式；消 1 处 TS2322）。
+- web/src/modules/tasks/TasksBoardModulePage.test.tsx:133 — `...resolveDetail(),` → `...(resolveDetail() as Record<string, unknown>)`（unknown 不可 spread，TS2698 清零试）。
+
+验收：`tsc -b . --noEmit` EXIT=2，写域四域 grep 命中=0；剩余 src 红仅 1 行=src/modules/security/SecurityModulePage.tsx（写域外，挂账 R36 清单）+ apps/shared TS2307 环境噪声（写域外）。定向 vitest（approvals/duty/employee-detail/tasks）9 files/145 passed exit0；全量 129 files/1319 passed（≥基线 127/1306，merge 带入他人用例）。
