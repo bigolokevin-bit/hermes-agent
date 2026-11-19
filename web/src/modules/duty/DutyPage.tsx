@@ -97,12 +97,14 @@ function HCard({
   action,
   children,
   testid,
+  stamp,
 }: {
   title: string;
   meta?: ReactNode;
   action?: ReactNode;
   children: ReactNode;
   testid: string;
+  stamp?: { shown: string | null; source: string; reason?: string };
 }) {
   return (
     <Card
@@ -116,10 +118,50 @@ function HCard({
           <h2>{title}</h2>
           <span className="duty-meta">{action ?? meta}</span>
         </div>
+        {stamp ? (
+          <p
+            className="duty-note"
+            data-testid={`${testid.replace(/^duty-/, "ov6-")}-stamp`}
+            data-duty-testid={`${testid}-stamp`}
+            title={
+              stamp.shown
+                ? `来源：${stamp.source}；采集时间取自上游响应`
+                : `取不到采集时间：${stamp.reason ?? "上游响应没有带采集时间"}`
+            }
+          >
+            数据截至 {stamp.shown ?? "—"} · 来源 {stamp.source}
+          </p>
+        ) : null}
         {children}
       </CardContent>
     </Card>
   );
+}
+
+/** R32 item 1: honest per-card collection time — only from upstream payloads. */
+function asOfOf(x: unknown): string | null {
+  if (x && typeof x === "object" && !Array.isArray(x)) {
+    const rec = x as Record<string, unknown>;
+    for (const k of ["asOf", "generatedAt", "as_of", "generated_at"]) {
+      const v = rec[k];
+      if (typeof v === "string" && v.trim() !== "") return v;
+    }
+  }
+  return null;
+}
+
+function legReason(legs: readonly { k: string }[]): string {
+  if (legs.some((l) => l.k === "loading")) return "数据还在读取";
+  if (legs.some((l) => l.k === "error")) return "本次读取失败，取不到采集时间";
+  return "上游响应没有带采集时间";
+}
+
+function stampOf(
+  raw: string | null,
+  source: string,
+  legs: readonly { k: string }[],
+): { shown: string | null; source: string; reason?: string } {
+  return { shown: raw ? beijing(raw) : null, source, reason: raw ? undefined : legReason(legs) };
 }
 
 function gateRoute(gate: GateView): string {
@@ -178,10 +220,12 @@ function ReadinessCard({ employees, stats, onRetry }: { employees: Loadable<Empl
   );
   const state = employees.k === "error" ? employees : stats.k === "error" ? stats : employees;
   return (
-    <HCard title="可上岗" meta="各项检查全部通过才计入" testid="duty-ready">
+    <HCard title="可上岗" meta="各项检查全部通过才计入" testid="duty-ready" stamp={stampOf(rawStamp, "员工目录与运行统计", [employees, stats])}>
       <StateLine state={state} onRetry={onRetry} loadingText="正在汇总各项检查…">
         <p className="duty-num" data-testid="ov6-ready-value" data-duty-testid="duty-ready-value">
-          {readiness.confirmed === null ? "—" : readiness.confirmed}
+          <span data-testid="ov6-kpi-employees" data-duty-testid="duty-kpi-employees">
+            {readiness.confirmed === null ? "—" : readiness.confirmed}
+          </span>
           <em>{readiness.total === null ? "—" : `/ ${readiness.total} 可上岗`}</em>
         </p>
         <p className="duty-say">
@@ -222,7 +266,7 @@ function TodayRunsCard({ stats, runs, onRetry }: { stats: Loadable<RunStatsBody>
   return (
     <HCard
       title="今日运行"
-      testid="duty-today-runs"
+      testid="duty-today-runs" stamp={stampOf(asOfOf(stats.data), "运行窗口统计", [stats, runs])}
       action={
         <Link className="duty-link" to="/runs">
           运行记录
@@ -231,7 +275,7 @@ function TodayRunsCard({ stats, runs, onRetry }: { stats: Loadable<RunStatsBody>
       }
     >
       <StateLine state={stats} onRetry={onRetry}>
-        <p className="duty-num">
+        <p className="duty-num" data-testid="ov6-kpi-runs" data-duty-testid="duty-kpi-runs">
           {totals ? totals.runs : "—"}
           <em>次</em>
         </p>
@@ -281,9 +325,9 @@ function CostCard({
   );
   const state = day.k === "error" ? day : month.k === "error" ? month : day;
   return (
-    <HCard title="今日成本" meta="成本账本" testid="duty-today-cost">
+    <HCard title="今日成本" meta="成本账本" testid="duty-today-cost" stamp={stampOf(asOfOf(day.data), "当日成本账本", [day, month])}>
       <StateLine state={state} onRetry={onRetry}>
-        <p className="duty-num">
+        <p className="duty-num" data-testid="ov6-kpi-cost" data-duty-testid="duty-kpi-cost">
           {usd(cost.dayUsd)}
           <em>今日</em>
         </p>
@@ -322,7 +366,7 @@ function TrendCard({ stats, onRetry }: { stats: Loadable<RunStatsBody>; onRetry:
   const peak = bucketPeak(buckets);
   const max = Math.max(1, ...buckets.map((b) => b.runs));
   return (
-    <HCard title="近 14 天运行" meta="每日启动" testid="duty-trend">
+    <HCard title="近 14 天运行" meta="每日启动" testid="duty-trend" stamp={stampOf(asOfOf(stats.data), "近 14 天运行统计", [stats])}>
       <StateLine state={stats} onRetry={onRetry}>
         <p className="duty-num">
           {totals ? totals.runs : "—"}
@@ -369,7 +413,7 @@ function ActivityCard({ activity, onRetry }: { activity: Loadable<ActivityBody>;
     beijingHour(),
   );
   return (
-    <HCard title="24 小时活跃" meta="每格 1 小时" testid="duty-activity">
+    <HCard title="24 小时活跃" meta="每格 1 小时" testid="duty-activity" stamp={stampOf(asOfOf(activity.data), "24 小时活跃统计", [activity])}>
       <StateLine state={activity} onRetry={onRetry}>
         <p className="duty-num">
           {view.peakHour === null ? "—" : `${String(view.peakHour).padStart(2, "0")}:00`}
@@ -456,7 +500,7 @@ function BlockersCard({
   return (
     <HCard
       title="阻塞"
-      testid="duty-blockers"
+      testid="duty-blockers" stamp={stampOf(null, "运行·任务·审批明细", [runs, tasks, approvals])}
       action={
         <Link className="duty-link" to="/tasks">
           查看全部
@@ -502,7 +546,7 @@ function PendingCard({
   return (
     <HCard
       title="待我处理"
-      testid="duty-pending"
+      testid="duty-pending" stamp={stampOf(asOfOf(stats.data), "审批统计", [stats, approvals])}
       action={
         <Link className="duty-link" to="/approvals">
           查看全部
@@ -511,7 +555,7 @@ function PendingCard({
       }
     >
       <StateLine state={state} onRetry={onRetry}>
-        <p className="duty-num">
+        <p className="duty-num" data-testid="ov6-kpi-pending" data-duty-testid="duty-kpi-pending">
           {dashed(view.pending)}
           <em>{view.dueSoon === null ? "待办" : `待办 · ${view.dueSoon} 即将到期`}</em>
         </p>
@@ -537,7 +581,7 @@ function RecentCard({ runs, onRetry }: { runs: Loadable<RunRow[]>; onRetry: () =
   return (
     <HCard
       title="最近运行"
-      testid="duty-recent"
+      testid="duty-recent" stamp={stampOf(null, "运行明细", [runs])}
       action={
         <Link className="duty-link" to="/runs">
           查看全部
@@ -596,6 +640,8 @@ function HealthStrip({
       <div className="duty-health-item">
         <span>账本</span>
         <b
+          data-testid="ov6-kpi-health"
+          data-duty-testid="duty-kpi-health"
           title={
             cost.k === "error" || runs.k === "error"
               ? "数据源缺口编号 GAP-01（详见技术详情）"
@@ -621,6 +667,7 @@ export default function DutyPage() {
     return (
       <div className="duty-page" data-testid="ov6-page" data-duty-testid="duty-page">
         <p className="duty-note">正在读取值班数据…</p>
+        <p className="duty-note" data-testid="ov6-asof" title="取不到采集时间：数据还在读取">采集时刻 —</p>
       </div>
     );
   }
@@ -630,6 +677,7 @@ export default function DutyPage() {
         <div className="duty-empty">
           <p>当前没有可显示的值班数据。</p>
           <p>数据源返回为空，可能尚未接入。</p>
+          <p className="duty-note" data-testid="ov6-asof" title="取不到采集时间：上游响应没有带采集时间">采集时刻 —</p>
           <Link className="duty-link" to="/employees">去员工列表</Link>
         </div>
       </div>
@@ -641,6 +689,7 @@ export default function DutyPage() {
         <div className="duty-empty">
           <p>值班数据暂时不可用。</p>
           <p>请求编号：未提供</p>
+          <p className="duty-note" data-testid="ov6-asof" title="取不到采集时间：本次读取失败">采集时刻 —</p>
           <Button outlined onClick={reload}>重试</Button>
         </div>
       </div>
@@ -664,11 +713,16 @@ export default function DutyPage() {
                 : data.stats.k === "ready" && typeof (data.stats.data as { asOf?: unknown }).asOf === "string"
                   ? ((data.stats.data as { asOf: string }).asOf)
                   : null;
-            return stamp ? (
-              <span className="duty-meta" data-testid="ov6-asof">
-                采集于 {beijing(stamp)}
+            const reason = legReason([data.employees, data.stats, data.todayStats]);
+            return (
+              <span
+                className="duty-meta"
+                data-testid="ov6-asof"
+                title={stamp ? "取各来源响应自带的采集时间上屏" : `取不到采集时间：${reason}`}
+              >
+                {stamp ? `采集时刻 北京时间 ${beijing(stamp)}` : "采集时刻 —"}
               </span>
-            ) : null;
+            );
           })()}
         </div>
         <div className="duty-head-actions">

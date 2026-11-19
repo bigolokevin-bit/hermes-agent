@@ -224,6 +224,7 @@ import {
 } from "@/shell/console";
 import LoginPage from "@/pages/LoginPage";
 import { ParkedAwareSystem } from "@/shell/ParkedPage";
+import { NotWiredPage } from "@/shell/NotWiredPage";
 import { Auth5Session } from "@/shell/Auth5Session";
 import { runsModulePageAvailable, useConsoleHashBridge } from "@/shell/bridge";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
@@ -1311,6 +1312,23 @@ export default function App() {
                           <Navigate to="/identity?tab=departments" replace />
                         }
                       />
+                      {/* R32 item 3: the seven bare paths no longer fall
+                          through to /overview silently. duty IS the /overview
+                          default tab; tasks/settings/events normalize onto
+                          real surfaces; the rest state 未接入 in plain words
+                          instead of showing the duty console. */}
+                      <Route path="/duty" element={<Navigate to="/overview" replace />} />
+                      <Route path="/tasks" element={<Navigate to="/work?tab=board" replace />} />
+                      <Route path="/settings" element={<Navigate to="/system?tab=defaults" replace />} />
+                      <Route
+                        path="/events"
+                        element={
+                          <Navigate to="/system?tab=events" replace />
+                        }
+                      />
+                      <Route path="/calendar" element={<NotWiredPage label="日历" testId="cal-page" />} />
+                      <Route path="/integrations" element={<NotWiredPage label="集成" testId="int-page" />} />
+                      <Route path="/forms" element={<NotWiredPage label="表单" testId="frm-page" />} />
                       {!overriddenPaths.has("/employees/:employeeId") && (
                         <>
                           <Route

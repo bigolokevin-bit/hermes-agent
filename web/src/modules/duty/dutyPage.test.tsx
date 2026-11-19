@@ -87,6 +87,30 @@ describe("DutyPage", () => {
     expect(text).not.toContain("HTTP");
   });
 
+  it("R32 item 1: /overview carries ov6-asof, eight card stamps and the ov6-kpi family", async () => {
+    fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
+    await render(<DutyPage />);
+    const asof = container.querySelector('[data-testid="ov6-asof"]');
+    expect(asof).toBeTruthy();
+    expect((asof?.textContent ?? "").replace(/\s+/g, " ")).toMatch(
+      /采集时刻 北京时间 \d{4}-\d{2}-\d{2} \d{2}:\d{2}|采集时刻 —/,
+    );
+    for (const id of [
+      "ov6-ready-stamp",
+      "ov6-today-runs-stamp",
+      "ov6-today-cost-stamp",
+      "ov6-trend-stamp",
+      "ov6-activity-stamp",
+      "ov6-blockers-stamp",
+      "ov6-pending-stamp",
+      "ov6-recent-stamp",
+    ]) {
+      expect(container.querySelector(`[data-testid="${id}"]`)).toBeTruthy();
+    }
+    expect(container.querySelectorAll('[data-testid^="ov6-kpi-"]').length).toBeGreaterThanOrEqual(5);
+    expect(container.querySelectorAll('[data-duty-testid^="duty-kpi-"]').length).toBeGreaterThanOrEqual(5);
+  });
+
   it("shows a request id and retry on an error card", async () => {
     fetchJSON.mockImplementation((url: string) =>
       url.includes("/run-stats")

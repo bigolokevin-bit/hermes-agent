@@ -327,9 +327,11 @@ function ConsolePane({ entry, liveNode, forced, roView }: ConsolePaneProps) {
 function ConsoleModulesFrame({
   activeModule,
   children,
+  pageTestId,
 }: {
   activeModule: ConsoleModule;
   children: ReactNode;
+  pageTestId?: string;
 }) {
   return (
     <>
@@ -338,6 +340,7 @@ function ConsoleModulesFrame({
           <section
             key={meta.module}
             data-mod={meta.module}
+            data-testid={pageTestId}
             className="flex min-h-0 flex-1 flex-col gap-3"
           >
             {children}
@@ -425,8 +428,20 @@ export function ConsoleModulePage({ module, live }: ConsoleModulePageProps) {
 
   if (active === undefined || meta === undefined) return null;
 
+  // R32 item 2: page-level anchors for the route-level adapters. /employees,
+  // /approvals and the matrix tab each answer to one stable id that route
+  // probes can hit alongside the module data-mod.
+  const pageTestId =
+    module === "approvals"
+      ? "apr5-page"
+      : module === "employees"
+        ? active.tabId === "matrix"
+          ? "mtx5-page"
+          : "emp-l-page"
+        : undefined;
+
   return (
-    <ConsoleModulesFrame activeModule={module}>
+    <ConsoleModulesFrame activeModule={module} pageTestId={pageTestId}>
       <header className="flex min-w-0 flex-col gap-1">
         <span
           className="text-xs tracking-[0.12em]"

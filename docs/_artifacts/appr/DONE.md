@@ -533,3 +533,18 @@ KPI 族：五卡 data-testid=ov6-kpi-<name> 统一在位+新增 data-duty-testid
 - 锁：新用例「R31 obs: the approver field renders once and bare human:1 reads 人员 with the handle in the title」——断 不出现「审批人：审批人」、apd5-field-approver 与 apd5-approver 各计数=1、值=「人员」、title 含 human:1；api.test 八字段用例补 labels 不含「审批人」+ raw 含 human:1；human:2 决策回放 who 断言同步「人员」。
 - 八字段 testid、零写入口（history 无 actions）、403≡404 同体既有锁未动。
 - 验证：定向 approvals 3 files 56 passed EXIT=0；全量 126 files/1277 passed。9122 停在 9c7789f6（R32 取证中，禁重建），故实测值取自 DOM 用例读数：审批人：人员（title=human:1）。
+
+## R32 三条产品拦车修复（2026-11-20 01:4x，lane/console-appr）
+
+**① ov6 族落到实际挂载组件（根因=g1d5d99a/187e88c4 改到了未挂载的 modules/overview/OverviewPage.tsx）**
+- 挂载链证据：App.tsx route `path="/overview"` → `TabbedModulePage/ConsoleModulePage module="overview" live={{ duty: <DutyConsolePage/> }}`，默认 tab=duty；DutyConsolePage=lazy `@/modules/duty/DutyPage`（App.tsx line94）。OverviewPage.tsx 全仓零 import=死码。
+- DutyPage.tsx：ov6-asof 改恒渲染——有上游时间→「采集时刻 北京时间 YYYY-MM-DD HH:mm」（仅取 todayStats.asOf/stats.asOf 真值，无编时）；取不到→「采集时刻 —」+title 人话原因；forced loading/empty/error 三分支也带 ov6-asof。
+- 八卡 stamp：HCard 新增 stamp 属性，DOM `ov6-<card>-stamp`（duty-<card>-stamp 别名）=ready/today-runs/today-cost/trend/activity/blockers/pending/recent，行「数据截至 X · 来源 Y」；数组明细腿（阻塞/最近运行）诚实「—」+title 原因，禁编时。
+- ov6-kpi 族×5（含 duty-kpi-* 别名）：ov6-kpi-employees（可上岗值 span）/ov6-kpi-runs/ov6-kpi-cost/ov6-kpi-pending（各 duty-num p）/ov6-kpi-health（账本 b）。
+- 读数（vitest jsdom，夹具无 asOf→诚实「采集时刻 —」）：dutyPage.test 新用例锁 asof 正则+八 stamp testid+kpi≥5。9122 停 33fc7029 代次禁重建，活体读数待下一代次复核。
+
+**② 页级 testid**：shell/console.tsx ConsoleModulePage 计算 pageTestId → ConsoleModulesFrame 活跃 section data-testid：/employees→emp-l-page、/employees?tab=matrix（=/matrix 重定向同点）→mtx5-page、/approvals→apr5-page。console.test.tsx 三个新用例逐一命中。
+
+**③ 七条静默兜底显式化**：App.tsx 新增 Route——/duty→/overview（值班台本就是默认 tab）、/tasks→/work?tab=board、/settings→/system?tab=defaults、/events→/system?tab=events（均 routes.ts 真在的 tab）；/calendar、/integrations、/forms→新 shell/NotWiredPage「未接入」页（testId=cal-page/int-page/frm-page + notice，明说无数据源不猜内容，带返回值班台）。未知路径不再回落值班台假装有数据。
+
+验证：定向 duty+shell 64 passed；assert-ia html/react 两模式 exit 0（51/22/1/8 计数未动，routes.ts 未改）；全量 vitest 见回执。
