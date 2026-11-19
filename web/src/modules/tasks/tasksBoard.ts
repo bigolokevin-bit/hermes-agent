@@ -228,6 +228,24 @@ export async function loadBoard(): Promise<BoardState> {
   }
 }
 
+/** P2: while a filter view is active the five-column board is not rendered,
+ * but the directory leg still loads so assignee labels stay real names. */
+export async function loadNamesOnly(): Promise<BoardState> {
+  try {
+    const directory = await fetchJSON<unknown>("/agent-api/api/matrix");
+    return {
+      phase: "ready",
+      rows: [],
+      status: 200,
+      message: "",
+      requestId: null,
+      nameMap: collectNames(directory),
+    };
+  } catch {
+    return { phase: "ready", rows: [], status: 200, message: "", requestId: null, nameMap: {} };
+  }
+}
+
 export async function loadDetail(taskId: string): Promise<TaskDetail> {
   const body = await fetchJSON<unknown>(
     `/agent-api/api/task-detail?id=${encodeURIComponent(taskId)}`,
@@ -282,7 +300,7 @@ export function priorityLabel(value?: string): { text: string; tone: "warning" |
 }
 
 /** 8 位短码：去前缀取字母数字前 8 位大写（全站消歧口径，T14 R2）。 */
-function short8(id: string): string {
+export function short8(id: string): string {
   const bare = id.replace(/^[^:]*:/, "").replace(/^[A-Za-z]{2,8}[_-]/, "");
   const alnum = bare.replace(/[^0-9A-Za-z]/g, "").toUpperCase();
   return alnum.slice(0, 8) || "—";
@@ -337,3 +355,51 @@ export function shortRef(id: string): string {
 }
 /** Detail errors use the same Chinese copy and request id as the board. */
 export const detailError = errorInfo;
+
+/* ------------------------------------------------------------------ *
+ * P2: filtered list + real cursor paging (single-query leg)
+ * ------------------------------------------------------------------ */
+
+export type FilterParams = { status: string | null; assignee: string | null; cursor: string | null };
+
+export interface FilterResult {
+  phase: "ready" | "error" | "denied";
+  rows: TaskRow[];
+  nextCursor: string | null;
+  status: number;
+  message: string;
+  requestId: string | null;
+}
+
+/** One real BFF query for the filter view: status/assignee/cursor are passed
+ * through exactly as the BFF whitelist accepts them. */
+export async function loadFiltered(f: FilterParams): Promise<FilterResult> {
+  const qs = new URLSearchParams({ limit: "50" });
+  if (f.status && f.status !== "all") qs.set("status", f.status);
+  if (f.assignee) qs.set("assignee", f.assignee);
+  if (f.cursor) qs.set("cursor", f.cursor);
+  try {
+    const body = await fetchJSON<unknown>(`/agent-api/api/tasks?${qs.toString()}`);
+    const rec = body && typeof body === "object" && !Array.isArray(body) ? (body as Record<string, unknown>) : {};
+    const nextRaw = rec.nextCursor ?? rec.next_cursor;
+    const next = typeof nextRaw === "string" && nextRaw.trim() ? nextRaw.trim() : null;
+    return {
+      phase: "ready",
+      rows: rowsFrom(body),
+      nextCursor: next,
+      status: 200,
+      message: "",
+      requestId: null,
+    };
+  } catch (err: unknown) {
+    const info = errorInfo(err);
+    return {
+      phase: info.status === 403 || info.status === 404 ? "denied" : "error",
+      rows: [],
+      nextCursor: null,
+      status: info.status,
+      message: info.message,
+      requestId: info.requestId,
+    };
+  }
+}
