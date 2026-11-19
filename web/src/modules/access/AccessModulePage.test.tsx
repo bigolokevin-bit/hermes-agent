@@ -11,7 +11,7 @@ vi.mock("@/lib/api", () => ({
   fetchJSON: (...args: unknown[]) => fetchJSON(...args),
 }));
 
-import AccessModulePage from "./AccessModulePage";
+import AccessModulePage, { AdminsModulePage } from "./AccessModulePage";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -218,6 +218,7 @@ describe("AccessModulePage admins and high-risk operations", () => {
     });
     await render("/access?tab=admins");
     expect(container.querySelector('[data-testid="ac3-tab-admins"]')?.getAttribute("aria-selected")).toBe("true");
+    expect(container.querySelector('[data-testid="adm5-page"]')).toBeTruthy();
     const adminTable = container.querySelector('[data-testid="adm5-admin-table"]');
     expect(adminTable?.textContent).toContain("林一舟 · 34567890");
     expect(adminTable?.textContent).toContain("平台管理员");
@@ -287,4 +288,26 @@ describe("AccessModulePage admins and high-risk operations", () => {
     expect(error?.textContent).toContain("重试");
     expect(container.textContent).not.toContain("HTTP");
   });
+  it("exports AdminsModulePage for the shell's admins slot and honours ?tab=admins", async () => {
+    fetchJSON.mockImplementation((url: string) => {
+      if (url.includes("/v1/user/")) {
+        return Promise.resolve({ items: [{ user_id: "u_1234567890abcdef", realname: "陈可", is_admin: true }] });
+      }
+      if (url.includes("/role")) return Promise.resolve({ items: [] });
+      if (url.includes("/api/audit")) return Promise.resolve({ events: [] });
+      return Promise.resolve({ items: [] });
+    });
+    await act(async () => {
+      root.render(
+        <MemoryRouter initialEntries={["/identity?tab=admins"]}>
+          <AdminsModulePage />
+        </MemoryRouter>,
+      );
+    });
+    await act(async () => {});
+    expect(container.querySelector('[data-testid="adm5-page"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="adm5-admin-row"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="ac3-tab-admins"]')?.getAttribute("aria-selected")).toBe("true");
+  });
+
 });

@@ -491,7 +491,12 @@ export default function AccessModulePage() {
 
   if (FORCED.has(forced)) {
     return (
-      <div className="acc4-page" data-testid="ac3-page" data-fixture="1">
+      <div
+        className="acc4-page"
+        data-testid={view === "admins" ? "adm5-page" : "ac3-page"}
+        data-page={view === "admins" ? "admins" : undefined}
+        data-fixture="1"
+      >
         <header className="acc4-head">
           <ShieldCheck className="h-5 w-5" />
           <h1>访问控制</h1>
@@ -509,7 +514,8 @@ export default function AccessModulePage() {
   return (
     <div
       className="acc4-page"
-      data-testid="ac3-page"
+      data-testid={view === "admins" ? "adm5-page" : "ac3-page"}
+      data-page={view === "admins" ? "admins" : undefined}
       data-fixture={rolePreview ? "1" : undefined}
     >
       <header className="acc4-head">
@@ -632,4 +638,9 @@ export default function AccessModulePage() {
       </Link>
     </div>
   );
+}
+
+/** R26 stable export for the /identity?tab=admins slot (R5 registration). */
+export function AdminsModulePage() {
+  return <AccessModulePage />;
 }

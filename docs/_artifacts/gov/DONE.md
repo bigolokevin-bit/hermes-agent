@@ -1319,3 +1319,10 @@ $ cd web && npx vitest run
       Tests  1258 passed (1258)
 ```
 - Build to `/tmp/ppl5-build` blocked by baseline `src/pages/LoginPage.test.tsx` TS2739, outside this write domain.
+
+## R26 admins slot export + adm5 page root (2026-11-19, base 1f3fe2ad)
+
+- `/identity?tab=admins` shell compat currently resolves to `tabId=people`; the access module itself is mounted at `?tab=roles&view=admins`. Added stable named export `AdminsModulePage` and page root `adm5-page` (also for forced states) so R5 can register the admins slot without touching page internals.
+- Data truth unchanged: `/api/v1/user/list|all` and role endpoints 404 `console.unknown_route` → admin rows 0, `adm5-gap` (title `GAP-ADM5-01`) + `/approvals`; high-risk audit `grant.created` 200 (6 events), other delete/grant/credential actions 200 empty; all failures keep copyable request id + retry, 403≡404 one body.
+- Table columns: 账号「姓名 · 8 位短码」/角色/最近登录/最近高危操作/状态; high-risk rows carry time/category/action/object/actor/copyable request id; missing values `—` with reason; no write controls.
+- Verification: `npx vitest run src/modules/access` → **13/13**; full `npx vitest run` → **126 files / 1263 passed** (before the final export test; access 13 now). No App/shell/routes/registry/manifest/package changes.
