@@ -378,7 +378,7 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(text).not.toContain("样例引用");
   });
 
-  it("renders 接入任务 in human words with real counts, 真实时刻 and per-field reasons", async () => {
+  it("renders one row per source: 名称 / 类型 / 最近一次 / 状态人话 / 条目数", async () => {
     fetchMock.mockImplementation((url: string) => {
       if (url === TASKS) {
         return Promise.resolve({
@@ -386,23 +386,37 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
           items: [
             {
               sourceId: "src_HR2026AAA",
-              sourceName: "人事制度库",
+              name: "人事制度库",
               sourceType: "sharepoint",
-              status: "processing",
+              syncStatus: "syncing",
+              itemCount: 1380,
               processed: 412,
-              total: 1380,
-              failed: 3,
               lastSyncAt: "2026-11-19T06:40:00Z",
             },
             {
-              taskId: "tk_done_shape",
-              name: "法务合同归档",
+              sourceId: "src_legal",
+              sourceName: "法务合同归档",
               type: "s3",
-              state: "succeeded",
-              totalItems: 96,
-              updatedAt: "2026-11-18T20:05:00Z",
+              status: "completed",
+              documentCount: 0,
+              syncedAt: "2026-11-19T05:05:00Z",
             },
-            { taskId: "tk_thin_shape" },
+            {
+              sourceId: "src_pay",
+              name: "薪酬口径外部镜像",
+              provider: "http",
+              state: "failed",
+              lastError: "凭据已过期，无法登录源站",
+              totalItems: 214,
+            },
+            {
+              sourceId: "src_tech",
+              name: "工单系统接口",
+              provider: "api",
+              state: "failed",
+              lastError: "ECONNREFUSED 10.0.0.8:8443 after 3 retries",
+            },
+            { sourceId: "src_thin" },
           ],
         });
       }
@@ -412,37 +426,58 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     await render("/knowledge?tab=ingest");
     expect(fetchMock).toHaveBeenCalledWith(TASKS);
     expect(attr("knw5-ingest-tasks", "data-state")).toBe("ready");
-    expect(attr("knw5-ingest-tasks", "data-len")).toBe("3");
-    expect(container.querySelectorAll('[data-testid="knw5-ingest-tasks-row"]')).toHaveLength(3);
+    expect(attr("knw5-ingest-tasks", "data-len")).toBe("5");
+    expect(container.querySelectorAll('[data-testid="knw5-ingest-tasks-row"]')).toHaveLength(5);
     const text = container.textContent ?? "";
+
+    // 五个列头按运营口径写；时间列写清它是哪一刻。
+    for (const head of ["名称", "类型", "最近一次", "状态", "条目数"]) expect(text).toContain(head);
     expect(text).toContain("人事制度库");
-    expect(text).toContain("处理中");
-    expect(text).toContain("412 / 1380");
-    expect(text).toContain("失败 3");
+    expect(text).toContain("SharePoint");
+    expect(text).toContain("对象存储");
+    expect(text).toContain("网页抓取");
+    expect(text).toContain("接口同步");
+    expect(text).toContain("同步中");
     expect(text).toContain("最近同步：2026-11-19 14:40");
-    expect(text).toContain("法务合同归档");
-    expect(text).toContain("成功");
-    expect(text).toContain("共 96");
-    expect(text).toContain("最近更新：2026-11-19 04:05");
+    expect(text).toContain("1,380 条");
+    expect(text).toContain("已处理 412 条");
     expect(text).toContain("数据截至 2026-11-19 15:00");
-    // 缺值不补造，也不把另一条的数字借过来。
-    expect(text).toContain("上游没有给出这条记录叫什么");
-    expect(text).toContain("上游没有给出处理状态");
-    expect(text).toContain("上游没有给出这一条处理了多少、共多少");
+
+    // 真实 0 与「没给」是两回事。
+    expect(text).toContain("0 条");
+    expect(text).not.toContain("法务合同归档 —");
+    expect(text).toContain("最近同步：2026-11-19 13:05");
+
+    // 失败要带原因：人话直出，技术性原文只进 title。
+    expect(text).toContain("凭据已过期，无法登录源站");
+    expect(text).not.toContain("ECONNREFUSED");
+    const technical = container.querySelector('[data-testid="knw5-ingest-tasks-failure"][title*="ECONNREFUSED"]');
+    expect(technical).toBeTruthy();
+    expect(technical?.textContent ?? "").toContain("悬停可看原文");
+    expect(text).toContain("214 条");
+
+    // 近乎空壳的一条：每一缺项各自说明缺什么，不借别行的数字。
+    expect(text).toContain("上游没有给出这个数据源叫什么");
+    expect(text).toContain("上游没有给出来源类型");
+    expect(text).toContain("上游没有给出同步状态");
+    expect(text).toContain("待核实");
+    expect(text).toContain("上游没有给出这一条有多少条目");
     expect(text).toContain("上游没有给出时间");
+
+    // 原始值不上屏。
+    for (const raw of ["src_HR2026AAA", "src_legal", "src_pay", "src_tech", "src_thin"]) expect(text).not.toContain(raw);
+    expect(text).not.toContain("syncing");
+    expect(text).not.toContain("sourceId");
+    expect(text).not.toContain("itemCount");
+    expect(text).not.toContain("lastError");
+    expect(attr("knw5-ingest-tasks-row", "title")).toBe("src_HR2026AAA");
+
     // 文档登记是另一个读口：它没接上，就单独说没接上。
     expect(attr("knw5-ingest", "data-state")).toBe("unwired");
     expect(text).toContain("请求编号：rid-docs");
-    // 给到了采集时间，就不要再写一句「时间未知」自打嘴巴。
     const taskSource = byTestid("knw5-ingest-tasks-source")?.textContent ?? "";
     expect(taskSource).toContain("数据截至 2026-11-19 15:00");
     expect(taskSource).not.toContain("时间未知");
-    // 屏面不出现原始值与英文状态词。
-    expect(text).not.toContain("src_HR2026AAA");
-    expect(text).not.toContain("tk_thin_shape");
-    expect(text).not.toContain("processing");
-    expect(text).not.toContain("sharepoint");
-    expect(attr("knw5-ingest-tasks-row", "title")).toBe("src_HR2026AAA");
   });
 
   it("draws the one unwired body for the ingest task read on 403 and on 404", async () => {

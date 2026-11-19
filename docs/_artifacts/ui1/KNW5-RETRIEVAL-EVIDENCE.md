@@ -197,3 +197,105 @@ $ npx vite build --outDir /private/tmp/knw6-dist --emptyOutDir
 
 边界同前：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App/shell/routes/registry/
 package/lock/web/scripts/ops；未重启 9122；无 force、无 amend、无 `--no-verify`。
+
+---
+
+# KNW5 追加：数据接入面按数据源成行（2026-11-20 BJT）
+
+基线：`git merge-base --is-ancestor HEAD 33fc7029` 为真且 porcelain 空 → `git reset --hard 33fc7029`
+（快进保留历史；上一轮 `10eaa7ae` 已在目标内，来路未改动 `modules/knowledge`）。
+
+## 一、探针（cookie 只在 curl 命令内拼 Header，值零回显；9122 只读、未重启、未重建）
+
+```text
+404 knowledge.not_wired     /agent-api/api/knowledge/sources?limit=20    rows=0   ← 本页指定的接入读口
+404 knowledge.not_wired     /agent-api/api/knowledge/citations?limit=20  rows=0
+404 knowledge.not_wired     /agent-api/api/knowledge/spaces              rows=0
+404 console.unknown_route   /agent-api/api/knowledge/ingest?limit=20     rows=0
+404 console.unknown_route   /agent-api/api/knowledge/ingest/tasks        rows=0
+404 console.unknown_route   /agent-api/api/knowledge/tasks               rows=0
+404 console.unknown_route   /agent-api/api/knowledge/documents?limit=20  rows=0
+404 console.unknown_route   /agent-api/api/documents?limit=50            rows=0
+404 console.unknown_route   /agent-api/api/datasources?limit=20          rows=0
+404 console.unknown_route   /agent-api/api/connectors?limit=20           rows=0
+404 console.unknown_route   /agent-api/api/knowledge/search?q=员工&limit=5 rows=0
+```
+
+BFF 只点名三条知识读口（`_KNOWLEDGE_NOT_WIRED_ROUTES`：spaces / sources / citations）。
+接入面因此打 `/api/knowledge/sources`；`ingest|tasks|ingest/tasks|documents|datasets|datasources|connectors`
+全是裸 unknown_route，不当成契约。`/api/tasks` 有 20 行真数据但属运营任务看板（`source.kind`
+只有 manual/console，`kind=knowledge`、`type=ingest` 都被忽略），**不借它的行**。
+
+结论：读口今天不通 → 面板呈现一份「未接入」正文（GAP-03 只进 `title`）+ 人话原因 +
+可复制请求编号 + 重试 + 明确申请入口（`knw5-ingest-tasks-apply` → /approvals）。
+按数据源成行的真实渲染同批实现，用 wired 读数与单测证明，不靠样例。
+
+## 二、一行一个数据源（375 堆叠态的真实 DOM 文本，wired 模式）
+
+```text
+列头：名称 / 类型 / 最近一次 / 状态 / 条目数          sw=375 vw=375
+row1 名称=人事制度库（2026 年修订版全文）| 类型=SharePoint | 最近一次=最近同步：2026-11-19 14:40
+     状态=同步中 | 条目数=1,380 条 已处理 412 条
+row2 名称=法务合同归档 | 类型=对象存储 | 最近一次=最近同步：2026-11-19 13:05 | 状态=已完成 | 条目数=0 条
+row3 名称=薪酬口径外部镜像 | 类型=网页抓取 | 最近一次=— 上游没有给出时间
+     状态=失败 凭据已过期，无法登录源站 | 条目数=214 条
+row4 名称=工单系统接口 | 类型=接口同步 | 最近一次=— 上游没有给出时间
+     状态=失败 上游记的原因偏技术，这里不原样上屏；悬停可看原文。（title=ECONNREFUSED 10.0.0.8:8443 after 3 retries）
+     条目数=— 约 5.0 MB 上游没有给出这一条有多少条目
+row5 名称=— 上游没有给出这个数据源叫什么 | 类型=— 上游没有给出来源类型 | 最近一次=— 上游没有给出时间
+     状态=待核实 上游没有给出同步状态 | 条目数=— 上游没有给出这一条有多少条目
+```
+
+口径：
+
+- 状态只出这四个词（外加确实存在的 部分完成 / 已停用 / 已取消）：**待同步 / 同步中 / 失败 / 已完成**；
+  上游没给状态 → 「待核实」+原因，不猜。
+- 失败带原因：人话原样上屏；技术性原文（堆栈、地址、端口、状态码、重试字样）不进屏面，
+  改说一句可操作的说明并把原文留在 `title`。
+- 条目数只认真正表示“多少条”的字段：真 0 写「0 条」，没给写「—」+原因；
+  只有大小时另起一行写「约 X MB」，不当条目数。
+- 时间列写清它是哪一刻（最近同步 / 最近处理 / 最近更新 / 登记时间），一律北京时区到分。
+- 原始 `sourceId` / 状态英文值 / 字段名一律不上屏，只在 `title`。
+
+## 三、门禁复核（today / wired / failing × 1440 / 1280 / 375，Chromium 无头，harness 在 /tmp 已删）
+
+```text
+四 tab：spaces:OK ingest:OK retrieval:OK evidence:OK（三档视口全通过，哈希与路径两种写法都可直达）
+today  ：knw5-ingest-tasks=unwired/len0 knw5-ingest=unwired/len0，apply 入口存在，rows=0（不编行）
+wired  ：knw5-ingest-tasks=ready/len5（375 同样 len5，无横向溢出）
+failing：403 的正文 === 404 的正文（逐字一致），两者 title 均为 GAP-03，均带 rid + 重试 + 申请入口
+401    ：state=login，「需要登录…重新登录后就能再看这块知识数据」+ 重试
+data-fixture 节点：三模式 × 三档视口 = 0（前一轮也是 0，本轮保持 0）
+屏面泄漏检查：GAP-03 / 403 / 404 / 500 / 路由 / unknown_route / not_wired /
+             sourceId / itemCount / lastError / syncStatus / ECONNREFUSED  全部 false
+页面报错：none
+```
+
+`ref=` 展开行仍随 URL：切面板后浏览器后退回到 `…panel=evidence&ref=cit_page&tab=spaces`
+且 detail=true（1440/1280 实测）。
+
+## 四、验证尾行（本轮）
+
+```text
+$ npx vitest run src/modules/knowledge
+ Test Files  2 passed (2)
+      Tests  27 passed (27)
+
+$ npx vitest run
+ Test Files  127 passed (127)
+      Tests  1296 passed (1296)
+
+$ npx eslint src/modules/knowledge
+（无输出，exit 0）
+
+$ npx tsc -b . --noEmit | grep modules/knowledge
+（无输出，本模块 0 错）
+
+$ npx vite build --outDir /private/tmp/knw7-dist --emptyOutDir
+✓ built in 3.85s
+```
+
+`pnpm build` 的已知非本域阻塞（LoginPage / approvals 两处）按指示未追。
+
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App / shell / routes / registry /
+package / lock / web/scripts / ops；未触碰 9122；无 force、无 amend、无 `--no-verify`、无 `git add -A`。

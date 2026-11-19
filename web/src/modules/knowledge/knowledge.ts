@@ -128,6 +128,10 @@ export interface KnowledgeRow {
  * is, and when that was last true. Every value the read did not return says 「—」 with
  * the reason; a returned 0 stays a real 0.
  */
+/**
+ * 一个数据源接入条：名称 / 类型 / 最近动作 / 状态 / 条目数。
+ * 状态用运营看得懂的四个词，上游没给的字段一律「—」并说明缺什么。
+ */
 export interface IngestTaskRow {
   id: string;
   name: string;
@@ -138,13 +142,18 @@ export interface IngestTaskRow {
   status: string;
   statusRaw: string | null;
   statusReason: string | null;
-  progress: string;
-  progressReason: string | null;
-  issue: string | null;
+  /** 失败原因（人话那一份）；技术性原文只进 `title`。 */
+  failure: string | null;
+  failureRaw: string | null;
+  /** 「最近同步 / 最近处理 / 最近更新 / 登记时间」——按上游真给的哪一个。 */
   timeLabel: string | null;
   at: string;
   atRaw: string | null;
   atReason: string | null;
+  count: string;
+  countReason: string | null;
+  /** 真实存在时的补充：已处理 N，或只有大小时写约 X KB。 */
+  extra: string | null;
 }
 
 /**
@@ -684,39 +693,84 @@ export function readRows(body: unknown, tab: KnowledgeTab): SurfaceValue<Knowled
 }
 
 /** 接入任务状态 — human words only; an unknown word is 待核实, never a silent 「成功」. */
+/**
+ * 运营看到的四个状态词：待同步 / 同步中 / 失败 / 已完成（外加确实存在的
+ * 部分完成、已停用、已取消）。上游没给状态就写「待核实」，不猜。
+ */
 function ingestStatusLabel(raw: string | null): string {
   if (!raw) return "待核实";
-  const lower = raw.toLowerCase();
-  if (["queued", "pending", "scheduled", "waiting"].includes(lower)) return "排队中";
-  if (["processing", "running", "ingesting", "indexing", "syncing", "in_progress"].includes(lower)) {
-    return "处理中";
+  const lower = raw.toLowerCase().replace(/[-\s]/g, "_");
+  if (["queued", "pending", "scheduled", "waiting", "not_started", "new", "draft"].includes(lower)) {
+    return "待同步";
   }
-  if (["success", "succeeded", "completed", "done", "ok", "ready", "active", "indexed"].includes(lower)) {
-    return "成功";
+  if (
+    ["processing", "running", "syncing", "sync", "ingesting", "indexing", "in_progress", "transferring", "uploading"].includes(
+      lower,
+    )
+  ) {
+    return "同步中";
   }
   if (["failed", "error", "broken", "aborted"].includes(lower)) return "失败";
+  if (
+    ["completed", "succeeded", "success", "done", "finished", "ok", "indexed", "normal", "available", "active", "ready"].includes(
+      lower,
+    )
+  ) {
+    return "已完成";
+  }
+  if (["partial", "degraded", "warning"].includes(lower)) return "部分完成";
   if (["cancelled", "canceled", "skipped"].includes(lower)) return "已取消";
-  if (["partial", "degraded", "warning"].includes(lower)) return "部分成功";
   if (["disabled", "paused", "offline", "stopped"].includes(lower)) return "已停用";
-  if (["draft", "new", "unpublished"].includes(lower)) return "待处理";
+  if (["never_synced", "never", "unsynced"].includes(lower)) return "待同步";
   return "待核实";
 }
 
-/** Which moment a timestamp is, in the operator's words — the field name never shows. */
-const TIME_KEYS: [string[], string][] = [
-  [["lastSyncAt", "last_sync_at", "syncedAt", "synced_at"], "最近同步"],
-  [["lastRunAt", "last_run_at", "finishedAt", "finished_at", "completedAt", "completed_at"], "最近处理"],
-  [["startedAt", "started_at"], "最近开始"],
-  [["updatedAt", "updated_at", "modifiedAt", "modified_at"], "最近更新"],
-  [["createdAt", "created_at"], "登记时间"],
-];
-
-function momentOf(row: Rec): { atRaw: string | null; timeLabel: string | null } {
-  for (const [keys, label] of TIME_KEYS) {
-    const value = pickString(...keys.map((key) => row[key]));
-    if (value) return { atRaw: value, timeLabel: label };
+/** 数据源类型的人话；认不出的原样留着（它本来就是运营认得的工具名）。 */
+function sourceKindLabel(raw: string | null): string {
+  if (!raw) return "—";
+  const lower = raw.toLowerCase();
+  if (["sharepoint", "sp"].includes(lower)) return "SharePoint";
+  if (["s3", "oss", "cos", "gcs", "azure_blob", "azureblob"].includes(lower)) return "对象存储";
+  if (["http", "https", "web", "crawler", "website"].includes(lower)) return "网页抓取";
+  if (["ftp", "sftp", "nfs", "smb"].includes(lower)) return "文件服务器";
+  if (["mysql", "postgres", "postgresql", "dm8", "oracle", "sqlserver", "database", "db"].includes(lower)) {
+    return "数据库";
   }
-  return { atRaw: null, timeLabel: null };
+  if (["api", "rest", "webhook"].includes(lower)) return "接口同步";
+  if (["upload", "local", "file", "files"].includes(lower)) return "本地上传";
+  if (["knowledge", "kb", "space"].includes(lower)) return "知识库";
+  if (["pdf", "application/pdf"].includes(lower)) return "PDF";
+  if (["md", "markdown", "text/markdown"].includes(lower)) return "Markdown";
+  if (["doc", "docx", "word", "application/msword"].includes(lower)) return "Word 文档";
+  return raw;
+}
+
+/**
+ * 失败原因。人话就直接上屏；技术性原文（堆栈、地址、状态码、字段名）只进 `title`，
+ * 屏面改说这一条读不得的原因，不替上游编一句好话。
+ */
+function failureOf(row: Rec, status: string): { failure: string | null; failureRaw: string | null } {
+  if (status !== "失败" && status !== "部分完成") return { failure: null, failureRaw: null };
+  const raw = pickString(
+    row.failureReason,
+    row.failure_reason,
+    row.lastError,
+    row.last_error,
+    row.errorMessage,
+    row.error_message,
+    row.errorDetail,
+    row.error_detail,
+    row.reason,
+    row.error,
+  );
+  if (!raw) {
+    return { failure: "上游只说这一条没成，没给出为什么", failureRaw: null };
+  }
+  const technical =
+    /[A-Z]{4,}_|[A-Z]{4,}\d|https?:\/\/|\|row [0-9]+|:[0-9]{2,5}\b|\b(50[0-9]|40[0-9])\b|\/[a-z0-9_.-]+\/[a-z0-9_.-]+/i.test(
+      raw,
+    ) || raw.length > 96;
+  return { failure: technical ? null : raw, failureRaw: raw };
 }
 
 function taskOf(row: Rec): IngestTaskRow {
@@ -738,75 +792,102 @@ function taskOf(row: Rec): IngestTaskRow {
     row.mimeType,
     row.mime_type,
   );
-  const statusRaw = pickString(row.status, row.state, row.taskStatus, row.task_status, row.jobStatus, row.phase);
+  const statusRaw = pickString(
+    row.status,
+    row.state,
+    row.taskStatus,
+    row.task_status,
+    row.jobStatus,
+    row.job_status,
+    row.syncStatus,
+    row.sync_status,
+    row.phase,
+  );
+  const status = ingestStatusLabel(statusRaw);
+  const failure = failureOf(row, status);
   const done = pickNumber(
     row.processed,
     row.processedCount,
     row.processed_count,
     row.processedItems,
-    row.completed,
-    row.completedCount,
     row.importedCount,
     row.imported_count,
   );
-  const total = pickNumber(
+  const items = pickNumber(
+    row.itemCount,
+    row.item_count,
+    row.items,
+    row.entryCount,
+    row.entry_count,
+    row.recordCount,
+    row.record_count,
+    row.objectCount,
+    row.totalItems,
+    row.total_items,
+    row.documentCount,
+    row.document_count,
+    row.docCount,
+    row.doc_count,
     row.total,
     row.totalCount,
     row.total_count,
-    row.totalItems,
-    row.total_items,
-    row.itemCount,
-    row.item_count,
-    row.docCount,
-    row.documentCount,
+    row.count,
   );
-  const failed = pickNumber(
-    row.failed,
-    row.failedCount,
-    row.failed_count,
-    row.errorCount,
-    row.error_count,
-  );
-  const bytes = pickNumber(row.sizeBytes, row.size_bytes, row.bytes, row.size);
+  const failed = pickNumber(row.failed, row.failedCount, row.failed_count, row.errorCount, row.error_count);
+  const bytes = pickNumber(row.sizeBytes, row.size_bytes, row.storageBytes, row.storage_bytes, row.bytes);
   const moment = momentOf(row);
   const at = beijing(moment.atRaw);
-  let progress: string;
-  let progressReason: string | null;
-  if (done !== null && total !== null) {
-    progress = `${done} / ${total}`;
-    progressReason = null;
-  } else if (total !== null) {
-    progress = `共 ${total}`;
-    progressReason = null;
-  } else if (done !== null) {
-    progress = `已完成 ${done}`;
-    progressReason = null;
-  } else if (bytes !== null) {
-    const size = formatBytes(bytes);
-    progress = size ?? "—";
-    progressReason = size ? null : "上游给的字节数读不出可读大小";
+  // 条目数只认真正表示“多少条”的字段；真给了 0 就写 0，没给就写「—」并说明缺什么。
+  let count: string;
+  let countReason: string | null;
+  if (items !== null) {
+    count = `${items.toLocaleString("zh-CN")} 条`;
+    countReason = null;
   } else {
-    progress = "—";
-    progressReason = "上游没有给出这一条处理了多少、共多少";
+    count = "—";
+    countReason = "上游没有给出这一条有多少条目";
   }
+  const extras: string[] = [];
+  if (items !== null && done !== null && done !== items) extras.push(`已处理 ${done.toLocaleString("zh-CN")} 条`);
+  if (failed !== null) extras.push(`失败 ${failed.toLocaleString("zh-CN")} 条`);
+  const size = formatBytes(bytes);
+  if (items === null && size !== null) extras.push(`约 ${size}`);
   return {
     id,
     name: name ?? "—",
-    nameReason: name ? null : "上游没有给出这条记录叫什么",
-    kind: kindLabel(kindRaw, "ingest"),
+    nameReason: name ? null : "上游没有给出这个数据源叫什么",
+    kind: sourceKindLabel(kindRaw),
     kindRaw,
     kindReason: kindRaw ? null : "上游没有给出来源类型",
-    status: ingestStatusLabel(statusRaw),
+    status,
     statusRaw,
-    statusReason: statusRaw ? null : "上游没有给出处理状态",
-    progress,
-    progressReason,
-    issue: failed === null ? null : `失败 ${failed}`,
+    statusReason: statusRaw ? null : "上游没有给出同步状态",
+    ...failure,
     timeLabel: moment.timeLabel,
     at: at ?? "—",
     atRaw: moment.atRaw,
     atReason: at ? null : moment.atRaw ? "上游给的时间读不出是哪一刻" : "上游没有给出时间",
+    count,
+    countReason,
+    extra: extras.length > 0 ? extras.join(" · ") : null,
   };
+}
+
+/** Which moment a timestamp is, in the operator's words — the field name never shows. */
+const TIME_KEYS: [string[], string][] = [
+  [["lastSyncAt", "last_sync_at", "syncedAt", "synced_at"], "最近同步"],
+  [["lastRunAt", "last_run_at", "finishedAt", "finished_at", "completedAt", "completed_at"], "最近处理"],
+  [["startedAt", "started_at"], "最近开始"],
+  [["updatedAt", "updated_at", "modifiedAt", "modified_at"], "最近更新"],
+  [["createdAt", "created_at"], "登记时间"],
+];
+
+function momentOf(row: Rec): { atRaw: string | null; timeLabel: string | null } {
+  for (const [keys, label] of TIME_KEYS) {
+    const value = pickString(...keys.map((key) => row[key]));
+    if (value) return { atRaw: value, timeLabel: label };
+  }
+  return { atRaw: null, timeLabel: null };
 }
 
 /** 接入任务 from the designated data-source read. */
