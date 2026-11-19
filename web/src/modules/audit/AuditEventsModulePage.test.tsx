@@ -579,3 +579,109 @@ describe("请求编号 (aud01)", () => {
     expect(text()).not.toMatch(/emp_|human:|user:/);
   });
 });
+
+/**
+ * R19 PASS tail b — the two things a reviewer tried to click and could not see:
+ * the row's 详情 cell (it opened nothing) and the 完整性校验 control (it was not
+ * there at all). Both are asserted by what lands in the DOM, with the text
+ * length measured before and after the click so "expanded" is a number, not a
+ * claim.
+ */
+describe("R19 tail b — the 详情 cell expands, the window check exists", () => {
+  it("the 详情 cell opens a real technical panel and grows the text by a measured amount", async () => {
+    await mount();
+    const cell = document.querySelector<HTMLButtonElement>("[data-testid='aud01-cell-evt_7c1f2a3b4d5e6f70-details']");
+    expect(cell).not.toBeNull();
+    expect(cell!.getAttribute("aria-expanded")).toBe("false");
+
+    const before = (document.body.textContent ?? "").length;
+    await act(async () => {
+      cell!.click();
+    });
+    const panel = document.querySelector("[data-testid='aud01-tech-details']");
+    expect(panel).not.toBeNull();
+    expect(panel!.textContent).toContain("事件标识");
+    expect(panel!.textContent).toContain("evt_7c1f2a3b4d5e6f70");
+    const after = (document.body.textContent ?? "").length;
+    // The panel carries six labelled lines; anything under 40 chars would mean
+    // it opened onto nothing.
+    expect(after - before).toBeGreaterThan(40);
+    expect(cell!.getAttribute("aria-expanded")).toBe("true");
+
+    // One row owns the fold at a time, so the panel id stays unique.
+    const other = document.querySelector<HTMLButtonElement>("[data-testid='aud01-cell-evt_8d2e3f4051627384-details']");
+    await act(async () => {
+      other!.click();
+    });
+    expect(document.querySelectorAll("[data-testid='aud01-tech-details']")).toHaveLength(1);
+  });
+
+  it("the window check is present and clickable, and a missing route reads 本环境未启用 with a reason", async () => {
+    api.fetchJSON.mockImplementation(async (url: string) => {
+      if (String(url).startsWith("/agent-api/api/audit-verify")) {
+        throw new ApiError("unknown route", {
+          status: 404,
+          body: '{"code":"console.unknown_route"}',
+          url: String(url),
+          requestId: "rid-verify-r19",
+        });
+      }
+      return EVENTS;
+    });
+    await render("/audit", <AuditEventsModulePage />);
+    await waitFor(() => text().includes("已显示 2 条"), "list loaded");
+
+    const lenBefore = (document.body.textContent ?? "").length;
+    const button = document.querySelector<HTMLButtonElement>("[data-testid='aud01-verify']");
+    expect(button).not.toBeNull();
+    expect(button!.disabled).toBe(false);
+    expect(button!.textContent).toContain("完整性校验");
+
+    await act(async () => {
+      button!.click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='aud01-verify-not-enabled']") !== null, "not-enabled panel");
+
+    // The request really went out, carrying the window the page shows.
+    expect(urls().some((url) => /^\/agent-api\/api\/audit-verify\?from=.*&to=/.test(url))).toBe(true);
+
+    const panel = document.querySelector("[data-testid='aud01-verify-not-enabled']")!;
+    const lenAfter = (document.body.textContent ?? "").length;
+    expect(lenAfter - lenBefore).toBeGreaterThan(20);
+    const said = panel.textContent ?? "";
+    expect(said).toContain("本环境未启用");
+    expect(said).toContain("这套环境没有提供完整性校验"); // the reason
+    expect(said).toContain("下一步"); // where to go from here
+    expect(said).toContain("rid-verify-r19");
+    // No route echo and no engineering code on the surface.
+    expect(said).not.toContain("audit-verify");
+    expect(said).not.toContain("console.unknown_route");
+    expect(said).not.toContain("404");
+    // It is not a generic error panel.
+    expect(document.querySelector("[data-testid='aud01-verify-error']")).toBeNull();
+  });
+});
+
+describe("R19 tail b — the window check never calls an empty scan a pass", () => {
+  it("a real 200 with scanned 0 says 没有核对到记录, never 没有发现断点", async () => {
+    api.fetchJSON.mockImplementation(async (url: string) => {
+      if (String(url).startsWith("/agent-api/api/audit-verify")) {
+        return { ok: true, complete: true, scanned: 0, anchorCheckpointId: "cp_x", chainHeadHash: "ah_x" };
+      }
+      return EVENTS;
+    });
+    await render("/audit", <AuditEventsModulePage />);
+    await waitFor(() => text().includes("已显示 2 条"), "list loaded");
+
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud01-verify']")!.click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='aud01-verify-result']") !== null, "result panel");
+
+    const panel = document.querySelector("[data-testid='aud01-verify-result']")!;
+    const said = panel.textContent ?? "";
+    expect(said).toContain("这一段没有核对到记录");
+    expect(said).toContain("这不等于「完整」");
+    expect(said).not.toContain("没有发现断点");
+  });
+});

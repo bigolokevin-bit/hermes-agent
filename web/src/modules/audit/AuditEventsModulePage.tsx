@@ -32,16 +32,18 @@
  */
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
-import { ReceiptText, RefreshCw } from "lucide-react";
+import { ReceiptText, RefreshCw, ShieldCheck } from "lucide-react";
 
 import { Badge } from "@nous-research/ui/ui/components/badge";
 import { Button } from "@nous-research/ui/ui/components/button";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { Spinner } from "@nous-research/ui/ui/components/spinner";
 
-import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel, TechnicalDisclosure } from "./states";
-import { AuditEventDetailBody, AuditEventRowCard } from "./views";
-import { forcedStateOf, useAuditDetail, useAuditList } from "./useAuditData";
+import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel, TechnicalDisclosure, VerifyUnavailablePanel } from "./states";
+import { AuditEventDetailBody, AuditEventRowCard, VerifyResultBody } from "./views";
+import { forcedStateOf, useAuditDetail, useAuditList, useAuditVerify } from "./useAuditData";
+import type { FailureCopy } from "./copy";
+import type { VerifyFailure } from "./copy";
 import { eventTypeChoices } from "./model";
 import type { ListFilters } from "./api";
 import { DEFAULT_WINDOW, WINDOW_CHOICES, windowBounds, type WindowKey } from "./window";
@@ -156,6 +158,12 @@ export function AuditEventsModulePage(): ReactNode {
   const list = useAuditList(forced, filters);
   const detail = useAuditDetail(selected, forced);
   const [unaddressable, setUnaddressable] = useState(false);
+  // One row at a time owns the technical fold: the panel id stays unique and
+  // clicking 详情 really expands something every time (R19 tail b).
+  const [openTech, setOpenTech] = useState<string | null>(null);
+  // The window check is a read the person asks for; it never runs on load and
+  // it is not driven by `?state=` (that repro belongs to the aud03 pane).
+  const verify = useAuditVerify(null);
 
   const openRow = useCallback(
     (rawId: string | null) => {
@@ -254,6 +262,18 @@ export function AuditEventsModulePage(): ReactNode {
         </p>
         <div className="flex min-w-0 items-center gap-2">
           <span className="min-w-0 break-words text-xs text-muted-foreground">时间为北京时间</span>
+          <Button
+            size="sm"
+            outlined
+            onClick={() => verify.run(filters.from, filters.to)}
+            disabled={verify.phase === "loading"}
+            data-testid="aud01-verify"
+            prefix={
+              verify.phase === "loading" ? <Spinner className="h-3.5 w-3.5" /> : <ShieldCheck className="h-3.5 w-3.5" />
+            }
+          >
+            完整性校验
+          </Button>
           {list.phase !== "denied" ? (
             <Button
               size="sm"
@@ -281,6 +301,60 @@ export function AuditEventsModulePage(): ReactNode {
           这是用 ?state= 复现出来的状态，不是服务此刻的回答。
         </p>
       ) : null}
+
+      {/* The window check lives on the list too, and it says exactly one of
+          four things: asking, the real counts, 本环境未启用 + why + where, or a
+          plain failure. A 404 route answers 「本环境未启用」, never a generic
+          error — see the copy in copy.ts. */}
+      {(() => {
+        if (verify.phase === "loading") {
+          return <LoadingPanel testId="aud01-verify-loading" />;
+        }
+        if (verify.phase === "ready" && verify.result) {
+          return (
+            <div data-testid="aud01-verify-result">
+              <VerifyResultBody
+                result={verify.result}
+                askedFrom={null}
+                askedTo={null}
+                testId="aud01-verify-result-body"
+              />
+            </div>
+          );
+        }
+        if (verify.phase === "unavailable") {
+          const failure: FailureCopy =
+            (verify.failure as VerifyFailure | null) ?? {
+              sentence: "完整性校验此刻没有可用结果。",
+              requestId: null,
+              technical: null,
+            };
+          return (
+            <VerifyUnavailablePanel
+              failure={failure}
+              onRetry={() => verify.run(filters.from, filters.to)}
+              testId="aud01-verify-not-enabled"
+            />
+          );
+        }
+        if (verify.phase === "error") {
+          return (
+            <ErrorPanel
+              failure={
+                verify.failure ?? {
+                  sentence: "校验回答的形状不对，这里没能读出结论。",
+                  requestId: null,
+                  technical: null,
+                }
+              }
+              onRetry={() => verify.run(filters.from, filters.to)}
+              title="完整性校验没能给出结果"
+              testId="aud01-verify-error"
+            />
+          );
+        }
+        return null;
+      })()}
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
         <section className="flex min-w-0 flex-col gap-2" aria-label="审计事件列表">
@@ -317,6 +391,8 @@ export function AuditEventsModulePage(): ReactNode {
                   row={row}
                   selected={row.rawId !== null && row.rawId === selected}
                   onOpen={() => openRow(row.rawId)}
+                  techOpen={openTech === row.key}
+                  onToggleTech={() => setOpenTech((current) => (current === row.key ? null : row.key))}
                   testId={`aud01-row-${row.key}`}
                 />
               ))}
