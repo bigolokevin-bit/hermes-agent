@@ -95,6 +95,8 @@ describe('OverviewView', () => {
     expect(container.querySelectorAll('[data-testid="ov5-activity-row"]').length).toBe(1);
     expect(container.querySelector('[data-testid="ov5-blockers"]')?.textContent).toContain('运行');
     expect(text).not.toContain('$0.00');
+    expect(text).not.toContain('GAP-');
+    expect((text.match(/读取于/g) ?? []).length).toBeGreaterThanOrEqual(4);
   });
 
   it('shows — and a GAP note when the cost ledger does not cover every employee', async () => {
@@ -112,7 +114,27 @@ describe('OverviewView', () => {
     const cost = container.querySelector('[data-testid="ov5-kpi-cost"]')?.textContent ?? '';
     expect(cost).toContain('—');
     expect(cost).not.toContain('$1.50');
-    expect(container.querySelector('[data-testid="ov5-kpi-employees"]')?.textContent).toContain('GAP-OV5-RISK');
+    const employeeCard = container.querySelector('[data-testid="ov5-kpi-employees"]');
+    expect(employeeCard?.textContent).not.toContain('GAP-');
+    expect(employeeCard?.querySelector('.ov5-note')?.getAttribute('title')).toContain('GAP-OV5-RISK');
+    expect(employeeCard?.querySelector('.ov5-kpi-issue')?.textContent).toContain('风险矩阵未接入');
+    expect(employeeCard?.querySelector('[data-testid="ov5-kpi-employees-issue-retry"]')).toBeTruthy();
+  });
+
+  it('keeps partial blocks honest and retryable when one source fails', async () => {
+    const data = dataFixture();
+    data.todayStats = { k: 'error', status: 503, message: '数据服务暂时没有响应', requestId: 'req-run-9' };
+    data.recentRuns = { k: 'error', status: 503, message: '数据服务暂时没有响应', requestId: 'req-act-9' };
+    data.failedRuns = { k: 'error', status: 503, message: '数据服务暂时没有响应', requestId: 'req-blk-9' };
+    await render(
+      <OverviewView data={data} matrix={{ k: 'ready', data: { items: [] } }} readAt="2026-11-19 12:20" loading={false} onRetry={() => {}} />,
+    );
+    const runs = container.querySelector('[data-testid="ov5-kpi-runs"]');
+    expect(runs?.textContent).toContain('运行统计未接入');
+    expect(runs?.textContent).toContain('req-run-9');
+    expect(runs?.querySelector('[data-testid="ov5-kpi-runs-issue-retry"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="ov5-activity-retry"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="ov5-blockers-retry"]')).toBeTruthy();
   });
 
   it('renders a whole-page error when every core source fails', async () => {

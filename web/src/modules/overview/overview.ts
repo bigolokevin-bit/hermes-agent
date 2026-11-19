@@ -1,9 +1,12 @@
-import { activeCount, buildBlockers, buildCost, dailyBuckets, lifecycleTotal, runTotals } from '../duty/aggregate';
+import { activeCount, buildBlockers, buildCost, lifecycleTotal, runTotals } from '../duty/aggregate';
 import { num } from '../duty/types';
 import type { ApprovalRow, BudgetBody, Loadable, MatrixBody, RunRow, RunStatsBody, TaskRow } from '../duty/types';
 import { normalizeMatrixRow } from '../duty/fixture';
 
 export const OVERVIEW_GAP = {
+  employees: 'GAP-OV5-EMPLOYEES',
+  runs: 'GAP-OV5-RUNS',
+  approvals: 'GAP-OV5-APPROVALS',
   risk: 'GAP-OV5-RISK',
   cost: 'GAP-OV5-COST',
   trend: 'GAP-OV5-TREND',
@@ -71,12 +74,27 @@ export function buildKpis(input: {
 
 export interface TrendPoint {
   label: string;
-  runs: number;
-  failed: number;
+  runs: number | null;
+  failed: number | null;
 }
 
+const DAY_LABEL = new Intl.DateTimeFormat('zh-CN', {
+  timeZone: 'Asia/Shanghai',
+  month: '2-digit',
+  day: '2-digit',
+});
+
 export function trendPoints(stats: RunStatsBody | null): TrendPoint[] {
-  return dailyBuckets(stats).slice(-14);
+  const buckets = stats?.buckets;
+  if (!Array.isArray(buckets)) return [];
+  return buckets.slice(-14).map((bucket) => {
+    const at = new Date(bucket.bucketStart);
+    return {
+      label: Number.isNaN(at.getTime()) ? '—' : DAY_LABEL.format(at),
+      runs: num(bucket.runs),
+      failed: num(bucket.failed),
+    };
+  });
 }
 
 export function blockerRows(input: {

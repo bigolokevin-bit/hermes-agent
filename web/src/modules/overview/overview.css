@@ -3,6 +3,7 @@
   flex-direction: column;
   gap: 16px;
   min-width: 0;
+  overflow-x: hidden;
 }
 
 .ov5-head {
@@ -108,6 +109,18 @@
   overflow-wrap: anywhere;
 }
 
+.ov5-kpi-issue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+  color: var(--fg-2);
+  font-size: 11px;
+}
+
 .ov5-watermark {
   position: absolute;
   right: 12px;
@@ -165,6 +178,17 @@
   flex-direction: column;
   gap: 4px;
   align-items: center;
+}
+
+.ov5-bar.is-missing .ov5-bar-track {
+  border-bottom-style: dashed;
+  background: repeating-linear-gradient(
+    135deg,
+    transparent,
+    transparent 4px,
+    var(--bg-2, rgba(127, 127, 127, 0.12)) 4px,
+    var(--bg-2, rgba(127, 127, 127, 0.12)) 8px
+  );
 }
 
 .ov5-bar-track {
