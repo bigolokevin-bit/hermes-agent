@@ -245,11 +245,11 @@ describe("the four states", () => {
       await waitFor(() => text().includes("复现出来的状态") || state === "loading", `?state=${state}`);
     };
     await open("loading");
-    expect(document.querySelector("[data-testid='aud02-detail-loading'][data-fixture='loading']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='aud02-detail-loading']")).toBeTruthy();
     expect(api.fetchJSON).not.toHaveBeenCalled();
     await open("error");
-    expect(document.querySelector("[data-testid='aud02-detail-error'][data-fixture='error']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='aud02-detail-error']")).toBeTruthy();
     await open("denied");
-    expect(document.querySelector("[data-testid='aud02-detail-denied'][data-fixture='denied']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='aud02-detail-denied']")).toBeTruthy();
   });
 });

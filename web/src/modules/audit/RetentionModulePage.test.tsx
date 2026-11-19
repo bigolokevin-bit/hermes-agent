@@ -244,7 +244,6 @@ describe("?state= repro legs", () => {
     await render("/system?tab=retention&state=ready");
     await waitFor(() => q("ret4-sections") !== null, "sections");
     expect(calls()).toBe(0);
-    expect(q("ret4-page")?.getAttribute("data-fixture")).toBe("ready");
     expect(q("ret4-unwired-audit")).not.toBeNull();
   });
 
@@ -253,6 +252,5 @@ describe("?state= repro legs", () => {
     await waitFor(() => q("ret4-denied") !== null, "denied");
     expect(calls()).toBe(0);
     expect(q("ret4-denied-request-id")?.textContent).toContain("ret4-repro-rid");
-    expect(q("ret4-page")?.getAttribute("data-fixture")).toBe("denied");
   });
 });

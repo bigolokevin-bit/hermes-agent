@@ -1375,9 +1375,23 @@ $ cd web && npx vitest run
 - `cron5-page` + cron5 testid family (21 unique), `hlt4-page` + health family (10 unique), `knw4-page` + knowledge family (25 unique); targeted vitest **4 files / 29 tests passed**.
 - No production `data-fixture` remains in the three selected modules (`grep -rl` empty).
 
+ HEAD
 ## R31 version + models deep pass (2026-11-19, base 1fff2e58)
 
 - Version (`/system?tab=version`): build identity/ref/commit/time stay `未知` + explicit release-pipeline reason; injected commit is shortened to 8 chars with full value in title; build time uses Beijing `YYYY-MM-DD HH:mm`. Price block now has a retry and copyable request id; 403 and 404 share one neutral `单价表未接入，或当前账号无权读取` body with `GAP-07` only in `title`, no path.
 - Models (`/capabilities?tab=models`): catalog/price/ledger remain separate with their own source and `asOf`; price and ledger never multiply; unknown `—`/「未计价」, no `$0.00`. 403 and 404 now both map to the same block-level 「未接入（GAP-07）」 bodies; 401 stays login-denied.
 - Testids unchanged: `ver4-*` and `mdl4-*`.
 - Verification: `npx vitest run src/modules/version` → **6/6**; `npx vitest run src/modules/models` → **12/12**; full suite below. No App/shell/routes/package/lock/scripts/ops changes.
+
+
+## R32 fixture debt batch 2 + audit words (2026-11-19, base 1fff2e58)
+
+### Inventory before (`grep -rl data-fixture web/src/modules/{audit,health,retention,settings} --include=*.tsx`)
+`audit/AuditDetailModulePage.test.tsx` (3), `audit/AuditEventsModulePage.tsx` (1), `audit/AuditEventsModulePage.test.tsx` (1), `audit/AuditVerifyModulePage.tsx` (1), `audit/AuditVerifyModulePage.test.tsx` (5), `audit/RetentionModulePage.tsx` (2), `audit/RetentionModulePage.test.tsx` (2), `audit/states.tsx` (1), `settings/SettingsPage.tsx` (1); health had 0.
+### After
+- Production `data-fixture` attributes removed from audit states/verify/retention/settings and audit fixture helper deleted; `grep -rl data-fixture` over the four modules returns **0 files**. Production occurrences **6 → 0**; test assertions **11 → 0**.
+- Audit events wording: `CopyValue` now masks a 32-hex request handle to its first 8 chars on screen with the full value in `title`; copy still copies full. Event types/outcomes/actors/times remain humanized; raw values stay in titles/technical fold.
+- Data truth: audit events/detail/verify are real `/agent-api/api/audit*` reads (missing route/denied render 未接入/同体 403/404); retention `/api/retention` is honest 未接入 (four areas, `—`); settings uses `/api/config` with 未接入/未知 reasons. No fake 0.
+### DOM/test readings
+- Vite 5450 / CDP 9250: 1440/1280/375 body width exactly viewport for `/system?tab=events|health|defaults`; `[data-fixture]` count **0**; audit page present at 1280/375, health/settings roots present.
+- `npx vitest run src/modules/audit src/modules/settings src/modules/health` → **10 files / 147 passed**; full suite below.
