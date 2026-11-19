@@ -121,6 +121,9 @@ describe("LoginPage (auth5 / R18)", () => {
   });
 
   it("posts credentials, confirms whoami, marks the session and lands on overview; double clicks send once", async () => {
+    const seen: string[] = [];
+    const listener = () => seen.push("auth5:session");
+    window.addEventListener("auth5:session", listener);
     let loginCalls = 0;
     let resolveLogin: ((r: Response) => void) | null = null;
     const spy = mount(async (url, init) => {
@@ -156,6 +159,8 @@ describe("LoginPage (auth5 / R18)", () => {
     expect(loginCalls).toBe(1);
     expect(container.textContent).toContain("登录成功页");
     expect(sessionStorage.getItem("auth5.session")).toBe("1");
+    expect(seen.length).toBeGreaterThanOrEqual(1);
+    window.removeEventListener("auth5:session", listener);
   });
 
   it("refuses to fake success when whoami stays 401", async () => {
@@ -178,7 +183,7 @@ describe("LoginPage (auth5 / R18)", () => {
   it("says 用户名或密码错误 for invalid credentials and offers a copyable request id", async () => {
     mount(async (url) => {
       if (url === "/auth/captcha") return jsonResponse(200, CAPTCHA_A);
-      if (url === "/auth/login") return jsonResponse(401, { code: "auth.invalid_credentials", request_id: "req-9" });
+      if (url === "/auth/login") return jsonResponse(401, { code: "auth.invalid_credentials", rid: "4958432cabcd" });
       throw new Error(`unexpected call ${url}`);
     });
     await flush();
@@ -187,7 +192,7 @@ describe("LoginPage (auth5 / R18)", () => {
     await flush();
     const error = container.querySelector("[data-testid='auth5-error']");
     expect(error?.textContent).toContain("用户名或密码错误。");
-    expect(error?.textContent).toContain("req-9");
+    expect(error?.textContent).toContain("4958432cabcd");
     expect(container.querySelector("[data-testid='req-copy']")).toBeTruthy();
     expect(container.querySelector("[data-testid='auth5-captcha-image']")).toBeTruthy();
   });
