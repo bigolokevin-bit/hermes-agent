@@ -50,6 +50,18 @@
  * connected, because a switched-on but broken platform is not working. Raw
  * ids, upstream state tokens and field names live in `title` attributes and
  * the collapsed 「技术详情」, never in the sentence layer.
+ *
+ * THE LEDGER'S THREE WORDS (T24). A data-source row says 已接入 only where
+ * entries actually arrived, 未接入 where the route is absent or refused, and
+ * 待核实 for everything this page cannot verify — an empty answer, a 5xx, an
+ * unreadable shape, a cycle that produced nothing. The ledger never prints
+ * 「未知」: on a row that speaks for a whole source, an unverified state is an
+ * instruction to go check, not a shrug. Every non-green row carries the gap
+ * number that says which kind of gap it is (GAP-08 / GAP-11 / GAP-12, or MCP's
+ * own GAP-04). 来源 names whose list the row speaks for, in human words.
+ * 最近同步 is the newest instant the ANSWER carried, and 「—」 plus
+ * `NO_SYNC_REASON` when it carried none — this page's own clock stays a separate
+ * line (本次核验) and is never dressed up as a sync stamp.
  */
 import { ApiError, errorMessage } from "@/lib/api-error";
 import { fetchJSON } from "@/lib/api";
@@ -62,14 +74,34 @@ import { fetchJSON } from "@/lib/api";
  */
 export const GAP = "GAP-08";
 
+/**
+ * Two more numbers this page owes the 数据源 ledger, because 「未接入」 is the
+ * wrong word for a route that DID answer. Numbered the way the other lanes
+ * number theirs: grepped first — `web/src/**`, `docs/_artifacts/**` and
+ * `apps/**` carry GAP-01…GAP-10 (GAP-09 = 运行列表, GAP-10 = 委托), so 11 and 12
+ * were free on 2026-11-19.
+ *
+ *   GAP-11  路由有回答，但这一轮一条也没有 —— 接通与否无法判定 → 待核实
+ *   GAP-12  服务回了错误，或回了读不出来的东西 —— 状态无法核实 → 待核实
+ *
+ * A ledger row that is not 已接入 always carries one of the three numbers
+ * (GAP-08 / GAP-11 / GAP-12, or the source's own GAP-04 for MCP), never a bare
+ * verdict. The meaning of each is written out in `docs/_artifacts/aud/DONE.md`.
+ */
+export const GAP_NO_ENTRIES = "GAP-11";
+export const GAP_UNVERIFIABLE = "GAP-12";
+
 /** Page size asked for; the denominator on screen is stated against it. */
 export const PAGE_LIMIT = 50;
 
 /**
  * 状态 on the screen. `available` is the only state that may look green, and it
  * is only reached from an upstream token that says the thing is connected.
+ * `disabled` is its own word, not a flavour of 「未接入」: a platform somebody
+ * switched off on purpose reads 「未启用」, so the person looking at the list
+ * learns to turn it on rather than to wire it up.
  */
-export type RowStatus = "available" | "unavailable" | "unknown";
+export type RowStatus = "available" | "disabled" | "unavailable" | "unknown";
 
 /** Which section a source feeds. */
 export type SourceRole = "channels" | "datasources";
@@ -81,6 +113,13 @@ export interface SourceSpec {
   label: string;
   /** Plain-Chinese kind printed on rows that came from this source. */
   kindLabel: string;
+  /**
+   * 来源 in human words: whose list this row speaks for, in the terms a person
+   * already uses for it. No route, no service name, no field name — those stay
+   * in 「技术详情」. This is what the ledger shows as 来源, and it is a property of
+   * the source, never a guess about an individual row.
+   */
+  originLabel: string;
   role: SourceRole;
   /** Routes tried in order. Each is repo-discovered or task-named — none invented. */
   paths: readonly string[];
@@ -100,6 +139,7 @@ export const SOURCES: readonly SourceSpec[] = [
     id: "platforms",
     label: "平台与渠道接入",
     kindLabel: "消息平台",
+    originLabel: "上游的消息平台清单",
     role: "channels",
     paths: ["/agent-api/api/messaging/platforms", "/agent-api/api/channels"],
     missingReason: "本控制台还没有接通这份平台清单的读取",
@@ -109,6 +149,7 @@ export const SOURCES: readonly SourceSpec[] = [
     id: "connectors",
     label: "外部连接器",
     kindLabel: "连接器",
+    originLabel: "上游的连接器清单",
     role: "channels",
     paths: ["/agent-api/api/gateway-connections", "/agent-api/api/connectors"],
     missingReason: "本控制台还没有接通连接器清单的读取",
@@ -118,6 +159,7 @@ export const SOURCES: readonly SourceSpec[] = [
     id: "datasources",
     label: "数据源目录",
     kindLabel: "数据源",
+    originLabel: "本控制台的数据源目录",
     role: "datasources",
     paths: ["/agent-api/api/datasources"],
     // This repo's own tab table already says 数据源「尚无读取接口」
@@ -130,6 +172,7 @@ export const SOURCES: readonly SourceSpec[] = [
     id: "mcp",
     label: "MCP 工具连接",
     kindLabel: "MCP 连接",
+    originLabel: "上游的工具与 MCP 服务清单",
     role: "datasources",
     paths: ["/agent-api/api/mcp/servers"],
     missingReason: "上游有这份清单，本控制台还没有把它接通（与工具与 MCP 页是同一条缺口）",
@@ -209,13 +252,29 @@ const SEEN_KEYS = [
 const CONNECTED_TOKENS = ["connected", "available", "online", "ok", "healthy", "active", "ready", "up"] as const;
 
 /**
+ * Tokens that say somebody switched this platform off on purpose. They get a
+ * word of their own — 「未启用」 — because 「未接入」 would send a person off to
+ * wire something that is only switched off. The sentence says what is true
+ * (禁用, and that it must be enabled again before anything can be read here) and
+ * never names an actor the token did not name: `disabled` on its own does not
+ * prove an admin touched it, so only `disabled_by_admin` says 管理员.
+ * Checked before DOWN_TOKENS, so a `disabled` answer can never fall through to
+ * 「未知」.
+ */
+const DISABLED_TOKENS: Record<string, string> = {
+  disabled: "已被禁用，需要先启用后再读取",
+  disabled_by_admin: "已被管理员禁用，需要先启用后再读取",
+  disabled_by_config: "配置里已经把它禁用，需要先启用后再读取",
+  switched_off: "这个平台处于禁用状态，开关是关着的，需要先启用后再读取",
+};
+
+/**
  * Tokens that say it is not talking, each with the plain-Chinese reason the
  * screen shows. This is a translation of a documented vocabulary
  * (`web/src/lib/api-messaging.ts:26-30`), not an invention: the raw token stays
- * in 「技术详情」.
+ * in 「技术详情」. `disabled` used to be here; it now folds to 「未启用」 above.
  */
 const DOWN_TOKENS: Record<string, string> = {
-  disabled: "这个平台的开关是关着的",
   not_configured: "还缺必要的配置，平台没有真正接上",
   pending_restart: "改动还没生效，要等网关重启",
   gateway_stopped: "网关没有在运行",
@@ -240,6 +299,8 @@ export function statusOf(
   if ((CONNECTED_TOKENS as readonly string[]).includes(normalized)) {
     return { status: "available", reason: null };
   }
+  const disabled = DISABLED_TOKENS[normalized];
+  if (disabled) return { status: "disabled", reason: disabled };
   const down = DOWN_TOKENS[normalized];
   if (down) return { status: "unavailable", reason: down };
   return { status: "unknown", reason: null };
@@ -439,17 +500,18 @@ export function readSource(payload: unknown, source: SourceSpec, path: string): 
  * The request
  * ------------------------------------------------------------------ */
 
-/** The three states the screen can ask for; `all` asks for everything. */
-export type StatusFilter = "all" | "available" | "unavailable";
+/** The states the screen can ask for; `all` asks for everything. */
+export type StatusFilter = "all" | "available" | "unavailable" | "disabled";
 
 export const FILTERS: readonly { key: StatusFilter; label: string }[] = [
   { key: "all", label: "全部" },
   { key: "available", label: "已接入" },
   { key: "unavailable", label: "未接入与未知" },
+  { key: "disabled", label: "未启用" },
 ];
 
 export function filterOf(raw: string | null): StatusFilter {
-  return raw === "available" || raw === "unavailable" ? raw : "all";
+  return raw === "available" || raw === "unavailable" || raw === "disabled" ? raw : "all";
 }
 
 /**
@@ -470,6 +532,10 @@ export function sourceUrl(path: string, filter: StatusFilter, limit = PAGE_LIMIT
 export function applyFilter(rows: ChannelRow[], filter: StatusFilter): ChannelRow[] {
   if (filter === "all") return rows;
   if (filter === "available") return rows.filter((row) => row.status === "available");
+  // 「未启用」 is its own question. 「未接入与未知」 keeps asking for everything
+  // that is not working — so a switched-off platform still turns up there, and
+  // no row can hide from both choices at once.
+  if (filter === "disabled") return rows.filter((row) => row.status === "disabled");
   return rows.filter((row) => row.status !== "available");
 }
 
@@ -558,16 +624,77 @@ export function shapeFailure(): FailureCopy {
 export const requestIdLine = (id: string | null): string =>
   id ? `请求编号：${id}` : "本次请求未记录编号，可复制时间与操作路径反馈";
 
-/** The status word on the badge. Unknown is 「未知」, never a favourable word. */
+/**
+ * The status word on the badge. Unknown is 「未知」, never a favourable word, and
+ * a platform somebody switched off says 「未启用」 instead of being called 未接入.
+ */
 export const STATUS_LABEL: Record<RowStatus, string> = {
   available: "已接入",
+  disabled: "未启用",
   unavailable: "未接入",
   unknown: "未知",
+};
+
+/**
+ * The 数据源 ledger's own three words. A ledger row speaks for a WHOLE source,
+ * and this page cannot verify a source it could not read — so where a platform
+ * row may honestly say 「状态未说明」, a ledger row says 「待核实」: the work left
+ * to do is checking, not guessing. `disabled` never occurs here (no ledger read
+ * folds to it) but is mapped so the table cannot fall back to the other word.
+ * Never 正常, never green.
+ */
+export const LEDGER_STATUS_LABEL: Record<RowStatus, string> = {
+  available: "已接入",
+  disabled: "未启用",
+  unavailable: "未接入",
+  unknown: "待核实",
 };
 
 /* ------------------------------------------------------------------ *
  * Time
  * ------------------------------------------------------------------ */
+
+/**
+ * Parse the three forms an upstream instant arrives in: epoch seconds, epoch
+ * milliseconds, or a date/datetime string. Anything else is not an instant and
+ * returns null — the caller then writes 「—」 plus that reason. Shared by
+ * `beijingMinute` and the ledger's newest-timestamp fold, so the two can never
+ * disagree about what counts as a time.
+ */
+function toInstant(value: string | number | null): Date | null {
+  if (value === null) return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+  if (/^\d{9,10}$/.test(raw)) return new Date(Number(raw) * 1000);
+  if (/^\d{11,13}$/.test(raw)) return new Date(Number(raw));
+  if (/^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2})?/.test(raw)) {
+    const parsed = new Date(raw);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  return null;
+}
+
+/**
+ * The newest instant the answer itself carried, in its raw wire form, or null
+ * when nothing in it was an instant. Used for the ledger's 最近同步: a source
+ * that never said when it last refreshed shows 「—」 with that said plainly, and
+ * this page's own clock is never offered in its place.
+ */
+export function newestSeen(rows: readonly ChannelRow[]): string | null {
+  let best: { raw: string; at: number } | null = null;
+  for (const row of rows) {
+    const raw = row.lastSeen;
+    if (!raw) continue;
+    const date = toInstant(raw);
+    if (!date) continue;
+    const at = date.getTime();
+    if (best === null || at > best.at) best = { raw, at };
+  }
+  return best?.raw ?? null;
+}
+
+/** What the ledger's 「—」 means when the answer carried no instant at all. */
+export const NO_SYNC_REASON = "这份回答没有说它最近是什么时候同步的";
 
 /**
  * Beijing wall clock to the minute. `null` means the value was not an instant
@@ -611,11 +738,21 @@ export interface LedgerRow {
   key: string;
   /** Plain-Chinese name of the data source. */
   label: string;
+  /** Plain-Chinese kind of this source (数据源 / MCP 连接 / …). */
+  kindLabel: string;
+  /** 来源 in human words: whose list this row speaks for. */
+  originLabel: string;
   status: RowStatus;
   /** Plain sentence: what was tried, and what it said. */
   reason: string;
-  /** Set only where the endpoint is genuinely missing. */
+  /**
+   * Every row that is not 已接入 carries the number that says which kind of gap
+   * this is (GAP-08 路由缺席 / GAP-11 有回答但无条目 / GAP-12 读了个错出来, or the
+   * source's own number). A verdict is never shown without one.
+   */
   gap: string | null;
+  /** 最近同步: the newest instant the ANSWER carried, in wire form. null → 「—」. */
+  syncedAt: string | null;
   /** This page's own verification instant, never an upstream timestamp. */
   checkedAt: Date | null;
   /** The route that answered, or the last one tried — 「技术详情」 only. */
@@ -628,22 +765,36 @@ export interface LedgerRow {
  * One row per data source, saying what THIS read cycle observed.
  *
  * `available` requires entries to have actually arrived; a route that answers
- * with an empty list is not called 已接入 (it is 「未知」, with that said plainly),
- * and a missing route is 未接入 carrying its GAP number. Nothing here can be
- * green without an answer behind it.
+ * with an empty list is not called 已接入 (it is 「待核实」, with that said
+ * plainly), a missing route is 未接入 carrying its GAP number, and a read that
+ * came back wrong or unreadable is 待核实 carrying GAP-12. Nothing here can be
+ * green without an answer behind it, and no row that is not green is shown
+ * without the gap number that says why.
+ *
+ * 最近同步 comes from the answer only (`newestSeen`). A source that never
+ * carried an instant gets null and renders 「—」 plus the reason — this page's own
+ * clock is kept separate as 本次核验, and is never offered as a sync stamp.
  */
 export function ledgerRows(reads: Record<string, SourceRead>, checkedAt: Date | null): LedgerRow[] {
   return SOURCES.map((source) => {
     const read = reads[source.id];
-    const base = { key: source.id, label: source.label, checkedAt };
+    const base = {
+      key: source.id,
+      label: source.label,
+      kindLabel: source.kindLabel,
+      originLabel: source.originLabel,
+      checkedAt,
+    };
+    const lastTried = source.paths[source.paths.length - 1] ?? null;
 
     if (!read) {
       return {
         ...base,
         status: "unknown" as RowStatus,
-        reason: "这一轮没有读到它的结果",
-        gap: source.gap,
-        rawPath: source.paths[source.paths.length - 1] ?? null,
+        reason: "这一轮没有读到它的结果，所以现在既不能说它接好了，也不能说它没接",
+        gap: GAP_UNVERIFIABLE,
+        syncedAt: null,
+        rawPath: lastTried,
         rawDetail: null,
       };
     }
@@ -653,6 +804,7 @@ export function ledgerRows(reads: Record<string, SourceRead>, checkedAt: Date | 
         status: "available" as RowStatus,
         reason: `这一次读到 ${read.rows.length} 条`,
         gap: null,
+        syncedAt: newestSeen(read.rows),
         rawPath: read.path,
         rawDetail: read.declaredTotal === null ? null : `服务声明共 ${read.declaredTotal} 条`,
       };
@@ -661,8 +813,9 @@ export function ledgerRows(reads: Record<string, SourceRead>, checkedAt: Date | 
       return {
         ...base,
         status: "unknown" as RowStatus,
-        reason: "这条读取路由有回答，只是这次清单里一条也没有，所以这里不写成已接入",
-        gap: null,
+        reason: "这条读取路由有回答，只是这次清单里一条也没有，所以这里不写成已接入，要人工核实一次",
+        gap: GAP_NO_ENTRIES,
+        syncedAt: null,
         rawPath: read.path,
         rawDetail: null,
       };
@@ -670,10 +823,13 @@ export function ledgerRows(reads: Record<string, SourceRead>, checkedAt: Date | 
     if (read.kind === "shape") {
       return {
         ...base,
-        status: "unavailable" as RowStatus,
-        reason: `${source.missingReason}（回的内容不是一份清单）`,
-        gap: source.gap,
-        rawPath: source.paths[source.paths.length - 1] ?? null,
+        // The route answered — so 未接入 would be a lie — but what it answered
+        // with is not a list, so nothing here proves it works either.
+        status: "unknown" as RowStatus,
+        reason: "这条路由有回答，但回的内容不是一份清单，这里读不出它到底接没接通",
+        gap: GAP_UNVERIFIABLE,
+        syncedAt: null,
+        rawPath: lastTried,
         rawDetail: "unexpected payload shape",
       };
     }
@@ -683,7 +839,8 @@ export function ledgerRows(reads: Record<string, SourceRead>, checkedAt: Date | 
         status: "unavailable" as RowStatus,
         reason: source.missingReason,
         gap: source.gap,
-        rawPath: source.paths[source.paths.length - 1] ?? null,
+        syncedAt: null,
+        rawPath: lastTried,
         rawDetail: read.failure.technical,
       };
     }
@@ -691,8 +848,9 @@ export function ledgerRows(reads: Record<string, SourceRead>, checkedAt: Date | 
       ...base,
       status: "unknown" as RowStatus,
       reason: read.failure.sentence,
-      gap: null,
-      rawPath: source.paths[source.paths.length - 1] ?? null,
+      gap: GAP_UNVERIFIABLE,
+      syncedAt: null,
+      rawPath: lastTried,
       rawDetail: read.failure.technical,
     };
   });

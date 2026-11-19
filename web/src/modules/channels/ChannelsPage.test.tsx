@@ -13,6 +13,7 @@ import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api-error";
+import { sourceUrl } from "./channels";
 
 const api = vi.hoisted(() => ({ fetchJSON: vi.fn() }));
 vi.mock("@/lib/api", () => ({ fetchJSON: api.fetchJSON }));
@@ -156,6 +157,28 @@ describe("the platform list keeps the bad rows visible", () => {
     expect(row.className).toContain("opacity-60");
   });
 
+  it("a platform the upstream switched off reads 未启用, with data-status to prove it", async () => {
+    await mount(ok({ platforms: [{ id: "conn_7a7b", name: "被停用的渠道", state: "disabled" }] }));
+    const row = document.querySelector("[data-testid='chn4-row-0']")!;
+    expect(row.getAttribute("data-status")).toBe("disabled");
+    expect(document.querySelector("[data-testid='chn4-row-0-badge']")?.textContent?.trim()).toBe("未启用");
+    // the sentence says what to do, in plain Chinese, and never the raw token
+    expect(row.textContent).toContain("已被禁用，需要先启用后再读取");
+    expect(row.textContent).not.toContain("disabled");
+    expect(row.className).toContain("opacity-60");
+    // the count line carries the same word, so the one-liner adds up to the list
+    expect(document.querySelector("[data-testid='chn4-counts']")?.textContent).toContain("未启用 1");
+  });
+
+  it("the 未启用 choice narrows the list to the switched-off rows only", async () => {
+    await mount(byUrl, "/capabilities?tab=channels&status=disabled");
+    expect(urls()).toContain("/agent-api/api/messaging/platforms?limit=50&status=disabled");
+    expect(statusRows()).toBe(1);
+    const row = document.querySelector("[data-testid='chn4-row-0']")!;
+    expect(row.getAttribute("data-status")).toBe("disabled");
+    expect(document.querySelector("[data-testid='chn4-row-0-badge']")?.textContent?.trim()).toBe("未启用");
+  });
+
   it("a platform nobody explains reads 未知, never 正常 and never a green 已接入", async () => {
     await mount(ok({ platforms: [{ id: "x1", name: "探测中的渠道", state: "probe-v2" }] }));
     const row = document.querySelector("[data-testid='chn4-row-0']")!;
@@ -277,7 +300,14 @@ describe("engineering language stays off the human layer", () => {
 });
 
 describe("the data-source ledger carries its own ds4-* ids", () => {
-  const WORD: Record<string, string> = { available: "已接入", unavailable: "未接入", unknown: "未知" };
+  const WORD: Record<string, string> = { available: "已接入", unavailable: "未接入", unknown: "待核实" };
+
+  /** Platforms answer; the 数据源目录 answers with an empty list; the rest 404. */
+  const withEmptySource = async (url: string): Promise<unknown> => {
+    if (url.startsWith("/agent-api/api/messaging/platforms")) return PLATFORMS;
+    if (url.startsWith("/agent-api/api/datasources")) return { sources: [] };
+    throw new ApiError("missing", { status: 404, body: "{}", url, requestId: "chn-probe" });
+  };
 
   it("ds4-ledger wraps every ds4-row, and every chn4-* id is untouched", async () => {
     await mount(byUrl);
@@ -302,7 +332,7 @@ describe("the data-source ledger carries its own ds4-* ids", () => {
   });
 
   it("every ledger row shows a status under ds4-status, matching its row", async () => {
-    await mount(byUrl);
+    await mount(withEmptySource);
     const badges = document.querySelectorAll("[data-testid='ds4-status']");
     expect(badges).toHaveLength(4);
     for (const badge of badges) {
@@ -312,6 +342,72 @@ describe("the data-source ledger carries its own ds4-* ids", () => {
     }
     // the badge's own chn4 id survives next to the ds4 marker
     expect(document.querySelector("[data-testid='chn4-source-0-badge']")).toBeTruthy();
+  });
+
+  it("an unverifiable source reads 待核实, never 未知, and never a shrug", async () => {
+    await mount(withEmptySource);
+    const row = document.querySelector("[data-testid='chn4-source-2']")!;
+    expect(row.getAttribute("data-status")).toBe("unknown");
+    expect(document.querySelector("[data-testid='chn4-source-2-badge']")?.textContent?.trim()).toBe("待核实");
+    // it stays listed and greyed, with its reason and a gap number behind it
+    expect(row.className).toContain("opacity-60");
+    expect(row.textContent).toContain("一条也没有");
+    expect(row.querySelector("[data-testid='ds4-gap']")?.textContent).toContain("GAP-11");
+    // the word 未知 belongs to a platform row, not to a row speaking for a source
+    expect(row.textContent).not.toContain("未知");
+    expect(text()).not.toContain("正常");
+  });
+
+  it("a service error leaves the row 待核实 with its own gap number, not 未接入", async () => {
+    await mount(async (url) => {
+      if (url.startsWith("/agent-api/api/messaging/platforms")) return PLATFORMS;
+      if (url.startsWith("/agent-api/api/datasources"))
+        throw new ApiError("boom", { status: 500, body: '{"detail":"upstream exploded"}', url, requestId: "ds-500" });
+      throw new ApiError("missing", { status: 404, body: "{}", url, requestId: "chn-probe" });
+    });
+    const row = document.querySelector("[data-testid='chn4-source-2']")!;
+    expect(row.getAttribute("data-status")).toBe("unknown");
+    expect(row.getAttribute("data-gap")).toBe("GAP-12");
+    expect(row.textContent).toContain("处理时出了错");
+    // no code, no route, no upstream sentence on the human layer
+    expect(row.textContent).not.toMatch(/500|upstream exploded|agent-api|GAP-08/);
+  });
+
+  it("each row names its kind and 来源 in human words", async () => {
+    await mount(byUrl);
+    const mcp = document.querySelector("[data-testid='chn4-source-3']")!;
+    expect(mcp.querySelector("[data-testid='ds4-kind']")?.textContent).toBe("类型：MCP 连接");
+    expect(mcp.querySelector("[data-testid='ds4-origin']")?.textContent).toBe("来源：上游的工具与 MCP 服务清单");
+    const datasources = document.querySelector("[data-testid='chn4-source-2']")!;
+    expect(datasources.querySelector("[data-testid='ds4-kind']")?.textContent).toBe("类型：数据源");
+    expect(datasources.querySelector("[data-testid='ds4-origin']")?.textContent).toBe("来源：本控制台的数据源目录");
+    // engineering spellings stay out of both columns
+    expect(text()).not.toMatch(/datasource|mcp\/servers|kind|source_id/);
+  });
+
+  it("最近同步 is the newest instant the answer carried, in Beijing minutes", async () => {
+    await mount(byUrl);
+    const answered = document.querySelector("[data-testid='chn4-source-0']")!;
+    const sync = answered.querySelector("[data-testid='ds4-sync']")!;
+    expect(sync.textContent).toContain("最近同步（北京时间）：");
+    // 02:05Z is the newer of the two stamps the platforms answer sent
+    expect(sync.textContent).toContain("2026-11-19 10:05");
+    expect(sync.textContent).not.toMatch(/T\d{2}:\d{2}|Z\b/);
+    // and this page's own clock keeps its own line, so the two cannot be confused
+    const checked = answered.querySelector("[data-testid='ds4-checked']")!.textContent ?? "";
+    expect(checked).toContain("本次核验（北京时间）：");
+    expect(checked).not.toBe(sync.textContent);
+  });
+
+  it("a source whose answer had no timestamp shows 「—」 plus why, never now()", async () => {
+    await mount(withEmptySource);
+    const row = document.querySelector("[data-testid='chn4-source-2']")!;
+    const sync = row.querySelector("[data-testid='ds4-sync']")!;
+    expect(sync.textContent).toContain("—");
+    expect(row.querySelector("[title='这份回答没有说它最近是什么时候同步的']")).toBeTruthy();
+    // a dash here is not a zero, and the page's own instant did not move into it
+    expect(sync.textContent).not.toMatch(/0\b|1970|NaN|undefined/);
+    expect(text()).not.toMatch(/1970|NaN|undefined/);
   });
 
   it("where the endpoint is absent, ds4-gap carries the gap code on that row", async () => {
@@ -491,6 +587,33 @@ describe("the controls change what is asked", () => {
     await mount(byUrl, "/capabilities?tab=channels&status=unavailable");
     expect(urls()).toContain("/agent-api/api/messaging/platforms?limit=50&status=unavailable");
     expect(statusRows()).toBe(2);
+  });
+
+  it("the ledger is re-asked too, not repainted from the last answer", async () => {
+    await mount(byUrl);
+    const select = document.querySelector<HTMLSelectElement>("[data-testid='chn4-filter-status']")!;
+    await act(async () => {
+      select.value = "disabled";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await waitFor(() => !skeleton(), "filtered read settled");
+    const asked = urls();
+    // every source carries the condition, so no part of the page is a leftover
+    expect(asked).toContain("/agent-api/api/datasources?limit=50&status=disabled");
+    expect(asked).toContain("/agent-api/api/mcp/servers?limit=50&status=disabled");
+    expect(asked).toContain("/agent-api/api/gateway-connections?limit=50&status=disabled");
+    expect(asked).toContain("/agent-api/api/messaging/platforms?limit=50&status=disabled");
+    // and the four choices are four different asks
+    const paths = [
+      sourceUrl("/agent-api/api/datasources", "all"),
+      sourceUrl("/agent-api/api/datasources", "available"),
+      sourceUrl("/agent-api/api/datasources", "unavailable"),
+      sourceUrl("/agent-api/api/datasources", "disabled"),
+    ];
+    expect(new Set(paths).size).toBe(4);
+    // the ledger still answers, on the row it always had, with its own gap
+    expect(sourceRows()).toBe(4);
+    expect(document.querySelector("[data-testid='chn4-source-2']")?.getAttribute("data-gap")).toBe("GAP-08");
   });
 
   it("重新读取 asks again instead of repainting what it already had", async () => {

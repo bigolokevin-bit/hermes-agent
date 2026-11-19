@@ -856,3 +856,84 @@ VITE_EXIT=0       ✓ built in 3.23s；产物落仓外临时目录，未触碰�
 - **改了哪些词**：`未启用` 上了徽标词表（`STATUS_LABEL.disabled`）、筛选选项（`FILTERS` 第 4 项）与计数句新桶「未启用 d」；`禁用` 上了四条人话原因（`DISABLED_TOKENS`：已被禁用／已被管理员禁用／配置里已经把它禁用／处于禁用状态，均写「需要先启用后再读取」）。`disabled` 从 `DOWN_TOKENS` 挪进 `DISABLED_TOKENS`，判定顺序 CONNECTED→DISABLED→DOWN，行上落 `data-status="disabled"`；模块内 grep 命中：改前 `未启用` 0、`禁用` 0 → 改后 `未启用` 19、`禁用` 10（只看 `channels.ts`+`ChannelsPage.tsx` 为 10／6）。
 - **测试数**：新增 3 条（`channels.test.ts` 38→39：`statusOf` 四个禁用拼写 + 词表；`ChannelsPage.test.tsx` 39→41：禁用行出「未启用」且 `data-status="disabled"`、「未启用」筛选只留禁用行），既有断言无一条改弱；`npx vitest run src/modules/channels` → exit 0，`Test Files 2 passed (2) / Tests 80 passed (80)`；`npx tsc -b . --noEmit` → exit 2，49 条全在 `../apps/shared/**`，`src/modules` 0；`npx eslint src/modules/channels` → exit 0 无输出。
 - **未验项**：真负载里是否真会出现 `disabled`／`switched_off` 这类 token、服务是否按 `&status=disabled` 过滤，本机无身份未联调（沿用 GAP-08 口径，页面仍按同一条件自己再挑一遍）；简报给的句式「已被管理员禁用…」只用在 `disabled_by_admin` 上——`disabled` 本身不证明是谁关的，按本模块「不臆造主语」纪律收口为「已被禁用…」，差一词已在此留痕；真实浏览器 DOM 读数未做。
+
+# TASK T24（续）— 数据源账本对齐判据（待核实／来源／最近同步）（2026-11-19）
+
+派单：把 channels 模块已有的只读数据源账本做到判据（`ds4-*` 面）。写域只有
+`web/src/modules/channels/**` 与本文件，壳、路由表、i18n、其它模块未碰。
+
+## N1. 改了什么
+
+**词表（`channels.ts`）**
+- 新增账本自己的三词 `LEDGER_STATUS_LABEL`：`已接入 / 未接入 / 待核实`。账本一行说的是「一整份数据源」，
+  读不出来的那一档在渠道行叫「状态未说明／未知」，在账本里叫 `待核实`——它是待办，不是耸肩。
+  账本面不再出现「未知」（测试钉住：`LEDGER_STATUS_LABEL` 值集里 `未知`、`正常` 均 0 命中）。
+- 渠道行词表 `STATUS_LABEL` 一字未动（T29 已交付面），`StatusBadge` 加可选 `label` 供账本换词，
+  徽章 tone 规则不变（只有 `available` 是 success）。
+
+**行上多了三样**
+- `类型：…`（`ds4-kind`）＝ `SourceSpec.kindLabel`，中文，来源决定、不按行猜；
+- `来源：…`（`ds4-origin`）＝ `SourceSpec` 新字段 `originLabel`，四行分别是「上游的消息平台清单／
+  上游的连接器清单／本控制台的数据源目录／上游的工具与 MCP 服务清单」；路由原值继续只在 `title`
+  与折叠的「技术详情」里；
+- `最近同步（北京时间）：…`（`ds4-sync`）＝ 新函数 `newestSeen()`，只从**回答自带**的时刻里取最新一条
+  （epoch 秒／毫秒／日期串三形，与 `beijingMinute` 共用 `toInstant()` 解析，两者对「什么算时刻」不可能分歧）。
+  回答里没有时刻 → 「—」＋ `NO_SYNC_REASON`「这份回答没有说它最近是什么时候同步的」，
+  不拿 `new Date()` 顶替、不写 0、不写空串、不写 ISO。本页自己的时刻另起一行 `本次核验`（`ds4-checked`），
+  缺刻时另有说法 `NO_CHECK_REASON`，与同步行分开。
+
+**GAP 取号（新增两个）**——落笔前 grep `web/src/**`、`docs/_artifacts/**`、`apps/**`：
+GAP-01…GAP-10 已被占（09＝运行列表车道，10＝委托车道），11／12 空闲；含义：
+
+| 编号 | 含义 | 账本状态 |
+|---|---|---|
+| `GAP-08` | 本控制台尚未接通这份读取（路由缺席或被拒） | 未接入 |
+| `GAP-11` | 路由有回答，但这一轮一条也没有——接通与否无法判定 | 待核实 |
+| `GAP-12` | 服务回了错误、或回了读不出清单的东西、或这一轮根本没有结果 | 待核实 |
+| `GAP-04` | MCP 清单未注册（T27 既有编号，该行沿用） | 未接入 |
+
+配套：非 `已接入` 的账本行一律带编号（`ledgerRows` 五个分支都有断言）。其中两处是**行为翻转**：
+`shape`（回了非清单）原判 `未接入`＋GAP-08，现判 `待核实`＋GAP-12——路由明明答了，说它「没接通」是假话；
+`empty`（空清单）与服务错误原先 `gap:null`，现分别带 GAP-11／GAP-12。其余为增列，无删。
+
+**未动**：`chn4-*` 全部 id 原位原值；`?state=` 四腿（零请求、`data-fixture`、GAP 注记、控件禁用）；
+403／404 同一具身体；筛选与重新读取的请求语义；只读纪律（无申请入口，`ds4-request` 仍不加）。
+
+## N2. 测试（`src/modules/channels`，2 files／94 tests）
+
+- `channels.test.ts` 39 → 47（＋8）：账本三词与「未知／正常」0 命中；空清单落 GAP-11；服务错误落 GAP-12；
+  `shape` 落 GAP-12；`originLabel`／`kindLabel` 是人话（不含 `/`、`api`、下划线）；`newestSeen` 取回答里最新、
+  读不出的串一律不算时刻；无时刻 → `syncedAt:null` 且 `checkedAt` 仍是本页时刻；
+  非 green 行必带 `GAP-\d+`；GAP-11／12 取号钉住。
+- `ChannelsPage.test.tsx` 41 → 47（＋6）：`ds4-status` 上出「待核实」；待核实行灰着（`opacity-60`）、
+  留在表里、带原因与 `ds4-gap` GAP-11；500 那行落 GAP-12 且 `500`／上游原句／路由不上人话层；
+  类型与来源两列出文；最近同步取回答里较新的 `02:05Z`→「2026-11-19 10:05」且与本次核验分行；
+  无时刻那行是「—」＋ `title` 原因（不是 0、不是 1970、不是本页时刻）；
+  选「未启用」时账本四条路由（datasources／mcp/servers／gateway-connections／platforms）的请求 URL
+  一并带上 `&status=disabled`，四个条件的 URL 互不相同。
+
+## N3. 门禁（精确退出码）
+
+```
+$ cd web && npx tsc -b . --noEmit
+TSC_EXIT=2        49 error TS 行：全部在 ../apps/shared/**；src/modules=0、shared 以外=0（与基线一致）
+$ cd web && npx vitest run src/modules/channels
+VITEST_EXIT=0     Test Files 2 passed (2)   Tests 94 passed (94)   Duration 1.12s
+$ cd web && npx eslint src/modules/channels
+ESLINT_EXIT=0     无输出（0 problems）
+```
+
+## N4. 未验项（照实留）
+
+1. 1440／375 的像素级横溢：新列全是 `min-w-0 break-words` 的 `<p>`，未引入固定 px 宽，
+   但本机无浏览器夹具落点，未实测截图（沿用 T29 口径）。
+2. `originLabel` 四条措辞按仓内既有说法写成「谁的清单」；真负载到达后若上游另有正式名称需回填。
+   `newestSeen` 取的是**行上**时刻（`SEEN_KEYS` 候选表）；上游若另有源级同步时间戳而不在行上，
+   读不到就写「—」＋原因，不猜、不用本页时钟补。
+3. 服务是否真按 `&status=` 过滤仍未联调（本机六条路由恒 401，门在路由之前，见上文 T4）；
+   「筛选会改变账本的请求 URL」已由测试钉住，返回内容是否随之变化未验。
+4. GAP-11 依赖「路由答了但条目为 0」这一形态。若真实环境里数据源目录尚未落库而答空清单，
+   屏上是 `待核实`＋GAP-11 而不是 `未接入`，是否再细分要一次真负载定夺。
+5. `本次核验` 仍写本页 `new Date()` 的时刻（标注为核验，不叫同步）。判据「never a wall-clock now」
+   按字面只约束同步行；两行已分开并在测试与注释里留痕，若验收方认为账本上连核验时刻也不该出现，
+   删 `ds4-checked` 一处即可，不影响其它列。

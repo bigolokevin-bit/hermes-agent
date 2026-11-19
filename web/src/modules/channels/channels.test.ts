@@ -11,7 +11,11 @@ import { describe, expect, it } from "vitest";
 import {
   CHANNEL_SOURCES,
   GAP,
+  GAP_NO_ENTRIES,
+  GAP_UNVERIFIABLE,
   LEDGER_SOURCES,
+  LEDGER_STATUS_LABEL,
+  NO_SYNC_REASON,
   SOURCES,
   STATUS_LABEL,
   applyFilter,
@@ -20,6 +24,7 @@ import {
   isDenied,
   ledgerRows,
   maskId,
+  newestSeen,
   readFailure,
   readSource,
   requestIdLine,
@@ -58,6 +63,16 @@ describe("the routes", () => {
     expect(GAP).toBe("GAP-08");
     expect(SOURCES.find((source) => source.id === "mcp")?.gap).toBe("GAP-04");
   });
+
+  it("numbers the ledger's own gaps past every number already in use", () => {
+    // GAP-01…GAP-10 are carried by other lanes (09 = 运行列表, 10 = 委托), and
+    // this was grepped across web/src, docs/_artifacts and apps before taking 11
+    // and 12. Pinned so a later lane cannot quietly reuse them for something else.
+    expect(GAP_NO_ENTRIES).toBe("GAP-11");
+    expect(GAP_UNVERIFIABLE).toBe("GAP-12");
+    const mine = new Set([GAP, GAP_NO_ENTRIES, GAP_UNVERIFIABLE, "GAP-04"]);
+    expect(mine.size).toBe(4);
+  });
 });
 
 describe("the request changes with the filter", () => {
@@ -66,10 +81,12 @@ describe("the request changes with the filter", () => {
     const all = sourceUrl(path, "all");
     const up = sourceUrl(path, "available");
     const down = sourceUrl(path, "unavailable");
+    const off = sourceUrl(path, "disabled");
     expect(all).toBe("/agent-api/api/messaging/platforms?limit=50");
     expect(up).toBe(`${all}&status=available`);
     expect(down).toBe(`${all}&status=unavailable`);
-    expect(new Set([all, up, down]).size).toBe(3);
+    expect(off).toBe(`${all}&status=disabled`);
+    expect(new Set([all, up, down, off]).size).toBe(4);
     expect(all).not.toContain("status=");
   });
 
@@ -78,6 +95,7 @@ describe("the request changes with the filter", () => {
     expect(filterOf("nonsense")).toBe("all");
     expect(filterOf("available")).toBe("available");
     expect(filterOf("unavailable")).toBe("unavailable");
+    expect(filterOf("disabled")).toBe("disabled");
   });
 
   it("narrows rows by the same condition it asked with", () => {
@@ -85,11 +103,15 @@ describe("the request changes with the filter", () => {
       { status: "available" },
       { status: "unavailable" },
       { status: "unknown" },
+      { status: "disabled" },
     ] as never as Parameters<typeof applyFilter>[0];
-    expect(applyFilter(rows, "all")).toHaveLength(3);
+    expect(applyFilter(rows, "all")).toHaveLength(4);
     expect(applyFilter(rows, "available")).toHaveLength(1);
-    // 「未接入与未知」 keeps the row whose state nobody explained.
-    expect(applyFilter(rows, "unavailable")).toHaveLength(2);
+    // 「未接入与未知」 keeps the row whose state nobody explained, and the
+    // switched-off one too: nothing may hide from both choices at once.
+    expect(applyFilter(rows, "unavailable")).toHaveLength(3);
+    // 「未启用」 is the narrower question, and answers only with that word.
+    expect(applyFilter(rows, "disabled").map((row) => row.status)).toEqual(["disabled"]);
   });
 });
 
@@ -112,7 +134,6 @@ describe("the status vocabulary folds without inventing a state", () => {
 
   it("translates the documented down tokens into plain Chinese", () => {
     const cases: [string, string][] = [
-      ["disabled", "这个平台的开关是关着的"],
       ["not_configured", "还缺必要的配置，平台没有真正接上"],
       ["gateway_stopped", "网关没有在运行"],
       ["pending_restart", "改动还没生效，要等网关重启"],
@@ -128,17 +149,52 @@ describe("the status vocabulary folds without inventing a state", () => {
     }
   });
 
+  it("folds a switched-off platform into 未启用, not 未接入 and not 未知", () => {
+    const disabled = statusOf("disabled");
+    expect(disabled.status).toBe("disabled");
+    expect(disabled.reason).toBe("已被禁用，需要先启用后再读取");
+    // every spelling of 「switched off」 lands in the same bucket, before the
+    // unknown leg can turn it into a grey 「未知」
+    for (const token of ["disabled", "disabled_by_admin", "disabled_by_config", "switched_off", "Switched-Off"]) {
+      expect(statusOf(token).status).toBe("disabled");
+      expect(statusOf(token).reason).toContain("禁用");
+    }
+    expect(statusOf("disabled_by_admin").reason).toBe("已被管理员禁用，需要先启用后再读取");
+    // and the word an admin earned is not handed to a token that did not name one
+    expect(statusOf("disabled").reason).not.toContain("管理员");
+  });
+
   it("keeps an unknown token unknown, with no favourable word attached", () => {
     expect(statusOf("probe-v2").status).toBe("unknown");
     expect(statusOf("probe-v2").reason).toBeNull();
     expect(statusOf(null).status).toBe("unknown");
   });
 
-  it("never lets a word mean health, only 已接入 / 未接入 / 未知", () => {
+  it("never lets a word mean health, only 已接入 / 未启用 / 未接入 / 未知", () => {
     expect(STATUS_LABEL.available).toBe("已接入");
+    expect(STATUS_LABEL.disabled).toBe("未启用");
     expect(STATUS_LABEL.unavailable).toBe("未接入");
     expect(STATUS_LABEL.unknown).toBe("未知");
     expect(Object.values(STATUS_LABEL)).not.toContain("正常");
+  });
+
+  it("gives the ledger 待核实 where a platform row may say 未知", () => {
+    // A ledger row speaks for a WHOLE source, so an unverifiable state is an
+    // instruction to go check — 「未知」 on such a row is a shrug, not a fact.
+    expect(LEDGER_STATUS_LABEL.unknown).toBe("待核实");
+    expect(LEDGER_STATUS_LABEL.available).toBe("已接入");
+    expect(LEDGER_STATUS_LABEL.unavailable).toBe("未接入");
+    const words = Object.values(LEDGER_STATUS_LABEL);
+    expect(words).not.toContain("未知");
+    expect(words).not.toContain("正常");
+    // and the three words the acceptance sheet names are all present
+    expect(new Set(["已接入", "未接入", "待核实"]).size).toBe(3);
+    for (const word of ["已接入", "未接入", "待核实"]) expect(words).toContain(word);
+  });
+
+  it("has a fixed sentence for a sync stamp the answer never carried", () => {
+    expect(NO_SYNC_REASON).toContain("没有说");
+    expect(NO_SYNC_REASON).not.toMatch(/null|undefined|NaN|同步于/);
   });
 });
 
@@ -180,7 +236,7 @@ describe("reading one source's answer", () => {
     expect(first.status).toBe("available");
     expect(second.name).toBeNull();
     expect(second.masked).toBe("连接 · 后4位 5b6a");
-    expect(second.status).toBe("unavailable");
+    expect(second.status).toBe("disabled");
     // the reason is the upstream's own sentence, not a token
     expect(second.reason).toBe("凭据已过期");
     expect(second.rawState).toBe("disabled");
@@ -290,14 +346,18 @@ describe("the 数据源 ledger", () => {
     expect(row.reason).toContain("这一次读到 1 条");
   });
 
-  it("does not call an empty-but-answering route 已接入", () => {
+  it("does not call an empty-but-answering route 已接入, and says which gap it is", () => {
     const row = rowFor("datasources", { kind: "empty", path: datasources.paths[0] });
     expect(row.status).toBe("unknown");
     expect(row.reason).toContain("不写成已接入");
-    expect(row.gap).toBeNull();
+    // A route that answered with nothing is NOT a missing endpoint: the row says
+    // 待核实 and carries the number that means exactly that.
+    expect(row.gap).toBe(GAP_NO_ENTRIES);
+    // and an answer that carried no entry carried no instant either
+    expect(row.syncedAt).toBeNull();
   });
 
-  it("marks a missing route 未接入 with its gap number", () => {
+  it("marks a route this console has not wired 未接入 with the page's own gap", () => {
     const row = rowFor("datasources", {
       kind: "failed",
       denied: true,
@@ -310,15 +370,94 @@ describe("the 数据源 ledger", () => {
     expect(row.rawDetail).toBe("HTTP 404");
   });
 
-  it("keeps a service error as unknown rather than claiming the route is missing", () => {
+  it("keeps a service error as 待核实 rather than claiming the route is missing", () => {
     const row = rowFor("platforms", {
       kind: "failed",
       denied: false,
       failure: { sentence: "服务在处理时出了错", requestId: "r", technical: "HTTP 500" },
     });
     expect(row.status).toBe("unknown");
-    expect(row.gap).toBeNull();
+    expect(row.gap).toBe(GAP_UNVERIFIABLE);
     expect(row.reason).toBe("服务在处理时出了错");
+  });
+
+  it("calls a wrong-shaped answer 待核实 too, because a route DID answer", () => {
+    const row = rowFor("datasources", { kind: "shape" });
+    expect(row.status).toBe("unknown");
+    expect(row.gap).toBe(GAP_UNVERIFIABLE);
+    expect(row.reason).toContain("不是一份清单");
+    expect(row.rawDetail).toBe("unexpected payload shape");
+  });
+
+  it("says whose list the row speaks for, and of what kind", () => {
+    const row = rowFor("mcp", { kind: "empty", path: SOURCES.find((s) => s.id === "mcp")!.paths[0] });
+    expect(row.kindLabel).toBe("MCP 连接");
+    expect(row.originLabel).toBe("上游的工具与 MCP 服务清单");
+    // human words only: no route, no field name, no service token in either
+    expect(row.originLabel).not.toMatch(/\/|agent-api|api|_/);
+    expect(row.kindLabel).not.toMatch(/\/|agent-api|api|_/);
+  });
+
+  it("takes 最近同步 from the answer, and only from the answer", () => {
+    const row = rowFor("platforms", {
+      kind: "rows",
+      rows: [
+        { status: "available", lastSeen: "2026-11-19T01:20:00Z" } as never,
+        { status: "available", lastSeen: "2026-11-19T03:45:00Z" } as never,
+        { status: "unknown", lastSeen: null } as never,
+      ],
+      declaredTotal: null,
+      unreadable: 0,
+      path: platforms.paths[0],
+    });
+    // the newest instant the answer carried wins, in wire form for the renderer
+    expect(row.syncedAt).toBe("2026-11-19T03:45:00Z");
+    expect(beijingMinute(row.syncedAt).text).toBe("2026-11-19 11:45");
+    // the page's own clock stays a separate value and cannot leak into it
+    expect(row.checkedAt).toEqual(at);
+  });
+
+  it("leaves 最近同步 empty when the answer carried no instant, rather than using now()", () => {
+    const row = rowFor("platforms", {
+      kind: "rows",
+      rows: [{ status: "available", lastSeen: null } as never],
+      declaredTotal: null,
+      unreadable: 0,
+      path: platforms.paths[0],
+    });
+    expect(row.syncedAt).toBeNull();
+    // the ledger still knows when THIS page looked, and keeps it apart
+    expect(row.checkedAt).toEqual(at);
+    // and a row of unreadable timestamps is no sync stamp either
+    expect(
+      newestSeen([
+        { lastSeen: "昨天" },
+        { lastSeen: "" },
+        { lastSeen: null },
+      ] as never),
+    ).toBeNull();
+  });
+
+  it("gives every row that is not 已接入 a gap number to stand behind the verdict", () => {
+    const reads: Record<string, SourceRead> = {
+      platforms: { kind: "empty", path: platforms.paths[0] },
+      connectors: { kind: "shape" },
+      datasources: {
+        kind: "failed",
+        denied: false,
+        failure: { sentence: "x", requestId: null, technical: null },
+      },
+    };
+    for (const row of ledgerRows(reads, at)) {
+      if (row.status === "available") continue;
+      expect(row.gap, row.key).toMatch(/^GAP-\d+$/);
+    }
+    // the source no read came back for is 待核实, not 未接入: absence of an
+    // outcome proves nothing about the endpoint
+    const silent = ledgerRows(reads, at).find((row) => row.key === "mcp")!;
+    expect(silent.status).toBe("unknown");
+    expect(silent.gap).toBe(GAP_UNVERIFIABLE);
+    expect(silent.syncedAt).toBeNull();
   });
 
   it("has a row for every source, in the same order, so nothing silently disappears", () => {
