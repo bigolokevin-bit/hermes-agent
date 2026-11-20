@@ -8,5 +8,7 @@
     "未接入": 22
   },
   "violations": [],
-  "ok": true
+  "ok": true,
+  "headHash": "cafd2d81",
+  "exitCode": 0
 }

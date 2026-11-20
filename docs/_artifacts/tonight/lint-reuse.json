@@ -84,5 +84,7 @@
   ],
   "violations": [],
   "count": 0,
-  "ok": true
+  "ok": true,
+  "headHash": "cafd2d81",
+  "exitCode": 0
 }

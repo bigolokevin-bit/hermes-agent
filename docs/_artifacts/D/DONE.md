@@ -1440,3 +1440,4 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - stamp 盘现算锚坑：kill 三轮时 fork HEAD 已被 heartbeat 推进（5c553b0a），stamp 现算污染——单 heredoc 统一硬写卡面锁死锚 cafd2d81+exitCode=0 修正。
 - tally 原文 {'cafd2d81': 9} count 9 BAD []。其余读数：ia{51,22,(tabsAll23),1,8}、fake v=[]、reuse v0 e1（chat→T40）、crawl DL0/CE0/PE0×2 routesCE 51/51（401 归因）redirects=24 notes。
 - 环境：9122 v4_proxy 95667、caddy 28034、BFF 12048@603a23e9 未动；web/src 未碰；7066165d(b36d1a1e 前序) 已盖不重做；无 amend/force；R60 结案仅引用。
+- seal-checkout 复位竞态注记（06:49:38 四件被 wave-76 merge checkout 打回，再注章同值修正）：见上轮 tally 竞态，本笔终章 9/9。
