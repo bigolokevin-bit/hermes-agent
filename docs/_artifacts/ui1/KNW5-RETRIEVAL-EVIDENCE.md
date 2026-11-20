@@ -3449,3 +3449,59 @@ sdoc/doc 参数在 ⑤ 链上的存留未单独断（spaceSelfLink 删 sdoc 由 
 边界：只新增 web/src/modules/knowledge/knowledge.space.filters.test.tsx 与本证据；
 显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
 「test(console): knowledge space filter combination guards」。
+
+# KNW5 追加 R164：类型筛选×分页交叉护栏（纯测试单）（2026-11-20 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `d6dac47f`
+（代次 `1bc3a760`）。merge 带 knowledge 面视觉改动（Surface 空/错态铺 knw5-skeleton
+占位条，page +12 / css +7，设计车道 ④）——非本单所写，先复跑基线 **13/118 全绿**
+确认零破再开工。本单自身零产品文件改动。
+
+## 名实替换（三处照派工+grep 落）
+
+```text
+①?source= 无控件（source 仅空间行「来源」列标签）→ 映射为「ktype×q（+ksort/kdir）同存
+  地址时，documents 请求参集合恰 {limit, spaceId}」——本地过滤不入线的正锁
+  （R157 只反锁过「无 cursor=」，此为参集合维度新锁）。
+③非法 ktype/type 下 kn3-page-cap 不渲染 —— R157（knowledge.space.filters.test.tsx
+  ③④ 尾段：loc 保原值+kn-type-empty+cap null+0 行）已锁 → 引用；派工「cap 如实」
+  名实不符按产品现状（cap 属非空 ready 态，见本单 ② 终态回归断言）。
+④三值实名：详情面钮 kn-row-copy-space-<i>（检索面才是 kn-row-copy-<i>）、可变位 M、
+  50 常量位、导出仅 data-export="absent" —— R142/R152 已锁 → 引用。
+```
+
+## 查重判定（引用 vs 新写）
+
+```text
+已覆盖引用：候选 A「第 2 页后切类型桶→归 1 页/无旧 cursor/行替换」——空间详情面已锁：
+  knowledge.paging.test.tsx:115-125（R131①）+ knowledge.space.paging.test.tsx ⑤（R152
+  合并态钮面）；单键清除动线——R146 ①（ktype 双删）、R157 ②（清 q 保 ktype）。
+真缺口新写（knowledge.type.source.test.tsx 2 例）：
+· ① 四筛选键同存地址时 spaceId 读参集合逐字 == {limit, spaceId}（两轮：初始 +
+  切桶/改词提交后），全程 fetch 计数不变；
+· ② 「一路清全部」组合终态：清 q → 清 ktype → 排序两击回默认后，URL 只剩
+  "?tab=spaces&panel=spaces&space=sp_x"（ktype/q/type/ksort/kdir/cursor 六键零残留）
+  且行回全量 3、默认序首行 A、cap 句回归在场（对照 ③ 空态不渲染的另一半）。
+```
+
+## 验证尾行（R164）
+```text
+$ npx vitest run src/modules/knowledge   → 14 files / 120 tests passed（基线 118 + 2）
+$ npx vitest run                         → 229 files：2746 passed + 4 failed——
+  4 红全为已知上游 audit.filters×4（非本域，记录不追）；此前已知的 runs.filters×3
+  已由本次并入的上游 wave 修绿（较 R157 时点 -3 红，非本单所致）。
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r164-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+  （上游新加的 skeleton 占位条 aria-hidden，宽度约束由上游 css 自带，375 实测不溢）。
+零破：kn3*/kn-row-copy*/kn-doc-copy*/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort/kn-gates/
+kn-space-preview/knE-page-*/kn3-page-cap/kn-type 全族通过。
+请求口径：①②全程本地清线零 fetch 增量（①断言 c0 前后相等 + 参集合两轮逐字）。
+```
+未测如实：带登录会话真实屏；排序清除态在 legacy ?sort/dir 键下的双轨行为（R66 注释
+「两套键互不清除」已锁读侧，写侧清除只删 ksort/kdir——本单终态断言 ksort/kdir 无残留，
+未构造 legacy sort 在场的清线组合）。
+边界：只新增 web/src/modules/knowledge/knowledge.type.source.test.tsx 与本证据；
+显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「test(console): knowledge type source cross guards」。
