@@ -4431,3 +4431,102 @@ describe('metAO — the file names and the scope line carry the same four values
     expect(detailFile()).toBe(`metrics-detail-7d-employee-cost-desc-${STAMP}`);
   });
 });
+
+describe('metAP — the three faces of the run count, spelled out', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+  const face = (id: string): string => q(id)?.textContent ?? '';
+  const line = (): HTMLElement | null => q('metAP-runs-caliber');
+
+  const caliberRouter =
+    (activity: unknown, usage: unknown) =>
+    (url: string): Promise<unknown> => {
+      if (url.includes('run-activity')) return Promise.resolve(activity);
+      if (url.includes('hermes-usage')) return Promise.resolve(usage);
+      if (url.includes('run-stats')) return Promise.resolve(statsFor(url));
+      if (url.includes('/api/employees')) return Promise.resolve(EMPLOYEE_BODY);
+      if (url.includes('models/pricing')) {
+        return Promise.reject(new ApiError('missing', { status: 404, body: '', url }));
+      }
+      if (url.includes('periodKind=month')) return Promise.resolve(LEDGER_MONTH);
+      if (url.includes('periodKind=day')) return Promise.resolve(LEDGER_DAY);
+      return Promise.resolve({});
+    };
+
+  const flatActivity = (counts: number[]) => ({
+    cells: counts.map((count, index) => ({ dow: 1, hour: index, count })),
+    max: Math.max(...counts),
+    from: '2026-11-12T16:00:00Z',
+    to: '2026-11-19T15:59:59Z',
+    tz: 'Asia/Shanghai',
+  });
+
+  it('names the three faces, repeats the on-screen numbers, and says why they differ', async () => {
+    await mount(caliberRouter(activityBody(), HERMES_USAGE), '/metrics?view=model');
+
+    expect(line()).not.toBeNull();
+    expect(face('metAP-heat')).toBe(face('met5-count'));
+    expect(face('metAP-detail')).toBe(face('metT-detail-total-count'));
+    expect(face('metAP-heat')).not.toBe('—');
+    expect(face('metAP-detail')).not.toBe('—');
+    expect(face('metAP-runs')).toBe('—');
+    expect(face('metAP-verdict')).toContain('口径不同');
+
+    const hint = line()?.getAttribute('title') ?? '';
+    expect(hint).toContain('/api/run-activity');
+    expect(hint).toContain('/api/hermes-usage');
+    expect(hint).toContain('/api/runs');
+    expect(hint).toContain('limit');
+    expect(hint).toContain('不等于窗口总数');
+    expect(hint).toContain('口径差');
+    // Paths stay in the hint; the line itself never carries them.
+    expect(line()?.textContent ?? '').not.toContain('/api');
+  });
+
+  it('says so when the heat sum and the detail total land on the same number', async () => {
+    await mount(
+      caliberRouter(flatActivity([4, 5]), { by_model: [{ model: 'qwen-plus', api_calls: 9, sessions: 9 }] }),
+      '/metrics?view=model',
+    );
+
+    expect(face('metAP-heat')).toBe('9');
+    expect(face('metAP-detail')).toBe('9');
+    expect(face('metAP-verdict')).toContain('热力与明细一致');
+    expect(face('metAP-verdict')).toContain('运行页未核对');
+    expect(line()?.getAttribute('title')).toContain('热力与明细差 0');
+  });
+
+  it('keeps the ledger view honest: no count there, so it says a face is missing', async () => {
+    await mountEmployeeShare(TWO_EMPLOYEE_LEDGER);
+
+    expect(face('metAP-detail')).toBe('—');
+    expect(face('metAP-verdict')).toContain('有面缺数');
+    const hint = line()?.getAttribute('title') ?? '';
+    expect(hint).toContain('/api/budget-usage');
+    expect(hint).toContain('不记录运行次数');
+    expect(hint).toContain('算不出差');
+  });
+
+  it('reads nothing of its own', async () => {
+    await mount(caliberRouter(activityBody(), HERMES_USAGE), '/metrics?view=model');
+    const before = urls().length;
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 60));
+    });
+    expect(urls().length).toBe(before);
+  });
+
+  it('follows a window switch with the same batch', async () => {
+    await mount(caliberRouter(activityBody(), HERMES_USAGE), '/metrics?view=model');
+    const before = urls().length;
+
+    await act(async () => {
+      (q('met6-window-30d') as HTMLButtonElement).click();
+    });
+    await waitFor(() => q('met6-window-30d')?.getAttribute('aria-pressed') === 'true', '30d pressed');
+
+    expect(face('metAP-heat')).toBe(face('met5-count'));
+    expect(face('metAP-detail')).toBe(face('metT-detail-total-count'));
+    // The switch refetches its own batch; the caliber line adds nothing to it.
+    expect(urls().length).toBeGreaterThan(before);
+  });
+});

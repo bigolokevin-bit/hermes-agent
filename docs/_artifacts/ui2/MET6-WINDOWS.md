@@ -608,3 +608,21 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 验证：定向 `src/modules/metrics` 4 files / 210 passed（原 205，+5）；全量 145 files / 1825 passed（原 1820）；`tsc -b . --noEmit` 全仓 67 条既存、`modules/metrics` 0。
 
 未测项：真浏览器 375 下长文件名的省略号宽度未目视走查（CSS `text-overflow: ellipsis` + `title` 已就位）。
+
+## 运行数口径三面对齐（metAP，2026-11-20）
+
+一行话 `metAP-runs-caliber` 把「运行数」在三个面上的口径写清，逐面标数据源与筛选条件：
+
+- 热力面 `metAP-heat`：`/api/run-activity?weeks=N&tz=Asia/Shanghai`，整周窗口汇总，**含未成功的运行**，未返回的格不计入；与卡片 `met5-count` 同值。
+- 明细面 `metAP-detail`：模型视图 `/api/hermes-usage`（按模型的调用次数，`api_calls`），员工视图 `/api/budget-usage` 账本（只记金额与用量，**不记录运行次数**，故该面为「—」）；与 `metT-detail-total-count` 同值。
+- 运行页面 `metAP-runs`：`/api/runs?since=…&limit=…` 是**分页列表**，列表条数有上限，不等于窗口总数；本页不另发该请求，故固定显「—」并在 title 点名原因。
+
+尾句三种：两面已知且相等 →「热力与明细一致；运行页未核对，见 title」；不等 →「口径不同，见 title」（title 写差值 D 与「属口径差，不是数据错误」）；缺数 →「有面缺数，见 title」（如员工视图，或热力还没读出来）。
+
+`title` 收全部工程信息（三条路径、筛选条件、limit 语义、差值），可见行只写人话数字——零工程语言不破。缺失不按 0：热力/明细缺数一律「—」，差值算不出时 title 明写「算不出差，也不按 0 记」。
+
+零额外请求：三面全部读现有 payload 派生（`heatWindowTotal` / `detailCountSum` / 固定 `—`），挂载后 60ms 内 `urls()` 不变。
+
+验证：定向 `src/modules/metrics` 4 files / 215 passed（原 210，+5）；全量 145 files / 1830 passed（原 1825）；`tsc -b . --noEmit` 全仓 67 条既存、`modules/metrics` 0。
+
+未测项：真实后端上三面的实际数值差未用线上数据复算（历史上 run-stats 与 `/runs` 条数差 1 的先例仍在记忆里），本单只保证每面读数与它自己的来源一致、并在差存在时如实标出。

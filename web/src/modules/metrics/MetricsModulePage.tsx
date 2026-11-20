@@ -107,6 +107,7 @@ import {
   type SortDir,
   type SourceStamp,
   type UsageWindowId,
+  runsCaliberTitle,
 } from './metrics';
 import './metrics.css';
 
@@ -1484,6 +1485,20 @@ export function MetricsModulePage() {
           ? '成本明细这次没有读出来'
           : '明细没有可求和的次数';
   const deltaReason = countDelta === null ? '三处没有同时读到数，算不出差' : undefined;
+  // metAP — the one sentence that spells out how the three «run count» faces
+  // differ. It reads only what this batch already returned.
+  const runsCaliber = {
+    heat: heatWindowTotal,
+    heatRange: view.kind === 'ready' ? windowRangeLabel(view.activity) : '本期',
+    detail: detailCountSum,
+    detailRange: `${usageWindow.label} · ${groupBy === 'employee' ? '按员工' : '按模型'}`,
+    detailSource:
+      viewMode === 'employee'
+        ? '/api/budget-usage 账本（只记金额与用量，不记录运行次数）'
+        : '/api/hermes-usage 按模型的调用次数',
+    delta: countDelta,
+  };
+  const runsCaliberHint = runsCaliberTitle(runsCaliber);
 
   const detailTotals = {
     cost: formatUsd(detailCostTotal),
@@ -3003,6 +3018,29 @@ export function MetricsModulePage() {
         。三处都取自这一次读取、不发新请求；热力按{' '}
         {view.kind === 'ready' ? windowRangeLabel(view.activity) : '本期'}，明细按 {usageWindow.label}
         ，口径不同，数值不一致时以各自卡片为准。
+      </p>
+
+      <p className="met6-hint metAP-line" data-testid="metAP-runs-caliber" title={runsCaliberHint}>
+        <span className="metAP-face">
+          运行数口径：热力{' '}
+          <span data-testid="metAP-heat">{runsCaliber.heat ?? '—'}</span>
+        </span>
+        {' · '}
+        <span className="metAP-face">
+          明细 <span data-testid="metAP-detail">{runsCaliber.detail ?? '—'}</span>
+        </span>
+        {' · '}
+        <span className="metAP-face">
+          运行页 <span data-testid="metAP-runs">—</span>
+        </span>
+        {'｜'}
+        <span data-testid="metAP-verdict">
+          {runsCaliber.heat !== null && runsCaliber.detail !== null
+            ? runsCaliber.heat === runsCaliber.detail
+              ? '热力与明细一致；运行页未核对，见 title'
+              : '口径不同，见 title'
+            : '有面缺数，见 title'}
+        </span>
       </p>
 
       {view.kind === 'loading' ? (

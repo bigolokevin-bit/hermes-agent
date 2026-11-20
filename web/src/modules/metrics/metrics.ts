@@ -1551,3 +1551,41 @@ export function metricsSummaryText(input: MetricsSummaryInput): string {
     `生成时刻：${formatBeijing(input.generatedAt)}（北京时间）`,
   ].join('\n');
 }
+
+// metAP — one sentence for «how many runs», naming where each face comes from and
+// why the faces need not agree. Everything is derived from the batch already on
+// screen; nothing here issues a read.
+export type RunsCaliberInput = {
+  heat: number | null;
+  heatRange: string;
+  detail: number | null;
+  detailRange: string;
+  detailSource: string;
+  delta: number | null;
+};
+
+export function runsCaliberLine(input: RunsCaliberInput): string {
+  const face = (value: number | null): string => (value === null ? '—' : String(value));
+  const bothKnown = input.heat !== null && input.detail !== null;
+  const tail = bothKnown
+    ? input.heat === input.detail
+      ? '｜热力与明细一致；运行页未核对，见 title'
+      : '｜口径不同，见 title'
+    : '｜有面缺数，见 title';
+  return `运行数口径：热力 ${face(input.heat)} · 明细 ${face(input.detail)} · 运行页 —${tail}`;
+}
+
+export function runsCaliberTitle(input: RunsCaliberInput): string {
+  const parts = [
+    `热力：来源 /api/run-activity，按 ${input.heatRange} 的整周窗口汇总接口返回的格子（含未成功的运行）；没返回的格子不计入，也不按 0 记。`,
+    `明细：来源 ${input.detailSource}，按 ${input.detailRange} 分组求和${
+      input.detail === null ? '；这一面没有可求和的值' : ''
+    }。`,
+    '运行页：来源 /api/runs?since=…&limit=…，按时间窗分页列出且每页有上限；那里的条数是「这一页列出的行」，不等于窗口总数。',
+    '这一页不另发运行列表读取，所以运行页一栏固定写「—」；要核对请打开运行页，按同一时间窗对照。',
+    input.delta === null
+      ? '热力和明细没有同时读到数，算不出差，也不按 0 记。'
+      : `热力与明细差 ${input.delta}（热力减明细）：两处的筛选与聚合不同，属口径差，不是数据错误。`,
+  ];
+  return parts.join(' ');
+}
