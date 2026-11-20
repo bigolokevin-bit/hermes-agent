@@ -454,3 +454,17 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 - 不改状态：展开/收起不写 URL（`met7-loc` 前后相同）、不发请求（`urls()` 前后相同）、不清空任何卡片或新鲜度块；折叠后 `metB-source-table` 仍在。
 - 验证：定向 `src/modules/metrics` 2 files / **157 passed**（基线 154，+3）；全量 **137 files / 1680 passed**（基线 1677）；`tsc -b . --noEmit` 全仓 58 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metAB` → entry `assets/index-CE_eqhLj.js` sha256 `eeed0cc6ec3645be807ad468bf243c45b85fdac6061c63c46a60c5ed33528196`，entry 内 `metAB-notes` 命中 0，chunk `assets/MetricsModulePage-CMjnDoV9.js` 命中 1。
 - 未测项：375 下六条说明的长段落折行与滚动高度未人工走查；屏幕阅读器对折叠块的播报未走查。
+
+## 屏上与 CSV 逐值对账护栏（metAC，2026-11-20）
+
+新增 `web/src/modules/metrics/metrics.export-parity.test.ts`，把「屏上 ↔ 两份 CSV」的六条约定钉成回归断言；本轮**未改产品代码**（构建 entry 与上一刀完全相同，可作为旁证）。
+
+- P1 行数：明细 CSV 数据行 = `met6-cat-source` 的 N = 表体行数（本例 2）；分摊 = `metA-export-count` = 表体行数。
+- P2 合计注释：`# 合计：成本 … · 次数 … · 占比 …`（明细）与 `# 合计：运行 … · 成本 … · 占比 …`（分摊）逐字等于表尾单元格；`# 本次导出缺少 1 块：运行统计` 恒为最后一行；两类注释都不计入数据行。
+- P3 采集时刻：上游顶层 ISO 才进 `as_of` 列（有值时逐行回声 `2026-11-19T20:12:00.000Z`）；假时钟设到 2031 后，`metB-source-asof-*` 全部为「—」，CSV 该列全空且全文不含 2031。页面自身「读取于」仍可显示当下时间——那是读取时刻，不是数据时刻。
+- P4 窗口列：默认写 `24h`；点 7 天后再导出写 `7d`，屏上 `met6-window-7d` 同步按下。
+- P5 零与缺失：屏上 `$0.00` / 「—」，文件 `0.00` / 空字段（员工视图 `$ 与千分位` 去装饰后仍可解析）。
+- P6 行序：默认成本降序与 `?dsort=runs&ddir=asc` 两组，CSV 首列顺序都等于表体首列顺序。
+- 断言全部走真实导出入口（点击按钮 + mock `URL.createObjectURL` 取 Blob），不起浏览器；BOM 仍按字节 `EF BB BF` 校验。
+- 验证：`src/modules/metrics` **3 files / 167 passed**（原 157，+10）；全量 **137 files / 1690 passed**（原 1680）；`tsc -b . --noEmit` 全仓 58 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metAC` → entry `assets/index-CE_eqhLj.js` sha256 `eeed0cc6ec3645be807ad468bf243c45b85fdac6061c63c46a60c5ed33528196`（与 metAB 构建产物一致，说明本轮只增测试）。
+- 未测项：真实后端 `as_of` 形态（六别名之外的变体）未联调；Safari/Firefox 下载文件名未走查。
