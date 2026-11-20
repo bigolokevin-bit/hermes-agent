@@ -567,7 +567,7 @@ describe('MetricsModulePage — export and delta', () => {
     click.mockRestore();
   });
 
-  it('uses the model header set and still exports a header-only file when nothing is on screen', async () => {
+  it('uses the model header set, and stands the detail export down when nothing is on screen', async () => {
     await mount(breakdownRouter(), '/metrics?view=model');
     expect(document.querySelector('[data-testid="met6-export"]')).toBeTruthy();
 
@@ -577,8 +577,8 @@ describe('MetricsModulePage — export and delta', () => {
       }),
     );
     const button = document.querySelector('[data-testid="met6-export"]') as HTMLButtonElement;
-    expect(button.disabled).toBe(false);
-    expect(button.getAttribute('title')).toContain('只写表头');
+    expect(button.disabled).toBe(true);
+    expect(button.getAttribute('title')).toContain('没有可导出的数据');
   });
 
   it('shows a signed delta per window and keeps a real zero distinct from missing', async () => {
@@ -2774,7 +2774,7 @@ describe('metR — export and copy availability under failure states', () => {
     expect(q('metR-export-state')?.textContent).toContain('分摊暂不可用');
   });
 
-  it('exports header-only files on an empty window and keeps the count on screen', async () => {
+  it('stands the detail export down on an empty window, still exports the share header and keeps the count on screen', async () => {
     const { captured, click } = captureDownload();
     const quietStats = {
       from: '2026-11-18T16:00:00.000Z',
@@ -2796,20 +2796,14 @@ describe('metR — export and copy availability under failure states', () => {
 
     const detail = q('met6-export') as HTMLButtonElement;
     const share = q('metA-export') as HTMLButtonElement;
-    expect(detail.disabled).toBe(false);
+    // R116: with no detail row there is nothing to export, so the detail file
+    // stands down instead of shipping a header-only file. The share file keeps
+    // its header-only path (a zero-row aggregate is still a meaningful view).
+    expect(detail.disabled).toBe(true);
+    expect(detail.getAttribute('title')).toContain('没有可导出的数据');
     expect(share.disabled).toBe(false);
     expect(q('metA-export-count')?.textContent).toBe('可导出 0 行');
     expect(q('metL-copy') as HTMLButtonElement).toHaveProperty('disabled', false);
-
-    await act(async () => {
-      detail.click();
-    });
-    const detailLines = (await (captured.blob as Blob).text())
-      .replace(/^\uFEFF/, '')
-      .split('\r\n')
-      .filter(Boolean);
-    expect(dataOnly(detailLines)).toHaveLength(1);
-    expect(detailLines[0]).toContain('as_of,window');
 
     await act(async () => {
       share.click();
@@ -4279,7 +4273,8 @@ describe('metAM — one availability matrix for every action', () => {
     await mount(usageRouter({ ledger: () => Promise.resolve(emptyLedger) }), '/metrics?window=7d');
 
     expect(btn('metAK-refresh').disabled).toBe(false);
-    expect(btn('met6-export').disabled).toBe(false);
+    // R116: no detail row -> the detail export stands down; share and summary stay.
+    expect(btn('met6-export').disabled).toBe(true);
     expect(btn('metA-export').disabled).toBe(false);
     expect(btn('metL-copy').disabled).toBe(false);
     expect(q('metA-export-count')?.textContent).toBe('可导出 0 行');
