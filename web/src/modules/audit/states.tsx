@@ -650,6 +650,7 @@ export function EmptyPanel({
   onRefresh,
   testId = "audit-empty",
   slot,
+  clear,
 }: {
   reason: string;
   nextStep: string;
@@ -662,17 +663,42 @@ export function EmptyPanel({
    * body), because zero records and no route are not the same statement.
    */
   slot?: StateSlot;
+  /**
+   * Empty-state composition (UI-B): when a filter produced this empty answer,
+   * its way out IS the single primary action of the card — 清筛选. The caller
+   * wires it to an EXISTING single-dimension handler (no new composite clear).
+   * With no filter to clear, 刷新 becomes that sole primary instead. The named
+   * underline exits below the card (audB/audD) keep their exact anchors.
+   */
+  clear?: { label: string; onClear: () => void };
 }): ReactNode {
   return (
     <Card className="border-border bg-card" data-testid={testId}>
-      <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
+      {/* 留白令牌化：py-10(40px) 不在间距阶梯，收到 space-8(32)；标题走 15px
+          字号台阶（Mondwest 只有 400 face，字重是死杠杆）。 */}
+      <CardContent className="flex min-w-0 flex-col items-center gap-[var(--space-2)] px-[var(--space-4)] py-[var(--space-8)] text-center">
         {slot ? <StateMark slot={slot} phase="empty" /> : null}
         <Inbox className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
-        <p className={`min-w-0 break-words text-sm ${themedBody}`}>{reason}</p>
+        <p className={`min-w-0 break-words text-base ${themedBody}`}>{reason}</p>
         <p className="max-w-prose break-words text-xs text-muted-foreground">{nextStep}</p>
-        <Button size="sm" outlined onClick={onRefresh} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
-          刷新
-        </Button>
+        <div
+          className="flex min-w-0 flex-wrap items-center justify-center gap-[var(--space-2)]"
+          data-testid={`${testId}-actions`}
+        >
+          {clear ? (
+            <Button size="sm" onClick={clear.onClear} data-testid={`${testId}-clear`}>
+              {clear.label}
+            </Button>
+          ) : null}
+          <Button
+            size="sm"
+            outlined={clear ? true : undefined}
+            onClick={onRefresh}
+            prefix={<RefreshCw className="h-3.5 w-3.5" />}
+          >
+            刷新
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
