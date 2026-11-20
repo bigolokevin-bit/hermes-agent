@@ -1521,30 +1521,48 @@ export function readSpaceDocuments(body: unknown): SurfaceValue<DocRow> {
  * ------------------------------------------------------------------ */
 
 /** 表头与表内列名逐字一致。 */
-export const DOC_COPY_HEADER = ["文档名", "类型", "大小", "更新"];
+/* ------------------------------------------------------------------ *
+ * R71 — 文档行复制行的单点派生：knF（空间文档清单）与 knG（检索命中）共用
+ * 同一函数集，字段序与缺值规则只有一份：
+ *   文档名 | 类型 | 大小 | 更新（BJT 到分）| 短码（标识人话尾段大写）
+ * 缺值一律「—」不补 0；全 id 只在屏上 title，不进文本。
+ * knG 与 knF 的唯一列差异（recorded）：多一列「所属空间」，固定在第 2 列，
+ * 与屏上命中表列序一致；其余列逐格同值同行、粘贴可按列对齐。
+ * ------------------------------------------------------------------ */
+
+export const DOC_LINE_HEADER = ["文档名", "类型", "大小", "更新", "短码"];
+
+export function docLineFields(doc: DocRow): string[] {
+  return [doc.name, doc.type, doc.size, doc.at, shortId(doc.id) ?? "—"];
+}
+
+export function docLine(doc: DocRow): string {
+  return docLineFields(doc).join(" | ");
+}
+
+export const DOC_COPY_HEADER = DOC_LINE_HEADER;
 
 export function docCopyText(rows: DocRow[]): string {
-  const lines = [
-    DOC_COPY_HEADER.join(" | "),
-    ...rows.map((row) => [row.name, row.type, row.size, row.at].join(" | ")),
-  ];
+  const lines = [DOC_COPY_HEADER.join(" | "), ...rows.map(docLine)];
   return `${lines.join("\n")}\n`;
 }
 
 /* ------------------------------------------------------------------ *
- * R56 — 「复制结果」的文本（全局文档名搜索的命中行）：同样是纯屏上数据，
- * 列序与命中表五列一致（文档名 | 所属空间 | 类型 | 大小 | 更新），顺序=当前
- * 检索词下的命中顺序（本地筛选不改序）。所属空间取屏上那格的人话标签，缺就
- * 「—」，不落裸标识符；不补值、不再问服务。
+ * R56→R71 — 「复制结果」（全局文档名搜索命中行）：行体走 docLineFields，
+ * 只在第 2 列插入「所属空间」（屏上命中表同款人话标签，缺「—」、不落裸标识符）。
+ * 顺序=当前检索词下的命中顺序；不补值、不再问服务。
  * ------------------------------------------------------------------ */
 
-/** 表头与命中表列名逐字一致。 */
-export const DOC_HIT_COPY_HEADER = ["文档名", "所属空间", "类型", "大小", "更新"];
+/** 命中表头：公共五列 + 固定的第 2 列「所属空间」。 */
+export const DOC_HIT_COPY_HEADER = ["文档名", "所属空间", ...DOC_LINE_HEADER.slice(1)];
 
 export function docHitCopyText(rows: DocRow[]): string {
   const lines = [
     DOC_HIT_COPY_HEADER.join(" | "),
-    ...rows.map((row) => [row.name, row.spaceLabel ?? "—", row.type, row.size, row.at].join(" | ")),
+    ...rows.map((row) => {
+      const fields = docLineFields(row);
+      return [fields[0], row.spaceLabel ?? "—", ...fields.slice(1)].join(" | ");
+    }),
   ];
   return `${lines.join("\n")}\n`;
 }

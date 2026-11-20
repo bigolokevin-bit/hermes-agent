@@ -232,4 +232,43 @@ describe("knowledge cross-surface parity (kn6-search-* vs kn3-docs-*)", () => {
     expect(document.querySelectorAll('[data-testid^="kn-space-toggle-"]')).toHaveLength(0);
     expect(fetchMock.mock.calls.length).toBe(urlsAfterSdoc);
   });
+
+  it("derives both copy payloads from the one docLine function: same lines byte-for-byte except the documented space column", async () => {
+    bothTablesFixture();
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+
+    // knF：详情清单复制（头行 + 两行）
+    await clickNth("knF-copy", 0);
+    const knF = String(writeText.mock.calls[writeText.mock.calls.length - 1][0])
+      .trimEnd()
+      .split("\n");
+    // knG：检索命中复制（头行 + 两行）
+    await clickNth("knG-copy", 0);
+    const knG = String(writeText.mock.calls[writeText.mock.calls.length - 1][0])
+      .trimEnd()
+      .split("\n");
+
+    // 头行：knG = knF 头行插入固定的第 2 列「所属空间」，其余列序逐字同
+    expect(knG[0]).toBe("文档名 | 所属空间 | 类型 | 大小 | 更新 | 短码");
+    expect(knF[0]).toBe("文档名 | 类型 | 大小 | 更新 | 短码");
+    // 行对齐：knG 每行去第 2 列 === knF 同行（第 1 行完整记录、第 2 行缺值记录）
+    expect(knF.length).toBe(3);
+    expect(knG.length).toBe(3);
+    for (let i = 1; i < 3; i += 1) {
+      const g = knG[i].split(" | ");
+      expect(g.slice(0, 1).concat(g.slice(2)).join(" | ")).toBe(knF[i]);
+    }
+    // 缺值统一「—」不补 0：缺值行（d_m）的类型/大小/更新两面同「—」
+    expect(knF[2].split(" | ")[1]).toBe("—");
+    expect(knF[2].split(" | ")[2]).toBe("—");
+    expect(knF[2].split(" | ")[3]).toBe("—");
+    // 完整行：短码走同一 docLineFields（shortId("d_p")=DP：strip 非字母数字后取尾段大写）
+    expect(knF[1]).toBe("同值文档.pdf | PDF | 2.4 MB | 2026-11-19 15:10 | DP");
+    expect(q('kn3-docs-row')?.getAttribute("title")).toBe("d_p");
+    // 两处 title 同一句：「当前已加载 N 条，不是全量」（N=本面加载数）
+    expect(q('knF-copy')?.getAttribute("title") ?? "").toContain("当前已加载 2 条，不是全量；");
+    expect(q('knG-copy')?.getAttribute("title") ?? "").toContain("当前已加载 2 条，不是全量；");
+  });
 });

@@ -2596,6 +2596,7 @@ function DocumentNameSearch({
       state: gateStateOf(surface.state.kind, surface.state.kind === "unwired" && surface.state.denied),
       rows: shown.length,
       filterText: text.trim(),
+      loadedTotal: loaded.length,
     },
     copyAct,
   );

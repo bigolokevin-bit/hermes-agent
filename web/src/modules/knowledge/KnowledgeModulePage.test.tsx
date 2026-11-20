@@ -2678,11 +2678,12 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
       ],
     };
     // 屏上口径：默认 updated/desc → A(15:10)·B(13:30)·缺值末位；缺值「—」，BJT 到分
+    // R71：行体走单点 docLine——公共五列（含短码），knF 无「所属空间」列
     const EXPECTED_FULL =
-      "文档名 | 类型 | 大小 | 更新\n" +
-      "A 手册.pdf | PDF | 2.3 MB | 2026-11-19 15:10\n" +
-      "B 表.xlsx | 表格 | 40.0 KB | 2026-11-19 13:30\n" +
-      "— | — | — | —\n";
+      "文档名 | 类型 | 大小 | 更新 | 短码\n" +
+      "A 手册.pdf | PDF | 2.3 MB | 2026-11-19 15:10 | DA\n" +
+      "B 表.xlsx | 表格 | 40.0 KB | 2026-11-19 13:30 | DB\n" +
+      "— | — | — | — | DC\n";
     const copyBtn = () => byTestid("knF-copy") as HTMLButtonElement | null;
     const statusText = () => (byTestid("knF-copy-status")?.textContent ?? "").trim();
     const stubClipboard = (writeText: ReturnType<typeof vi.fn>) =>
@@ -2722,7 +2723,7 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     await type("kn3-docs-filter-input", "B 表");
     await click("knF-copy");
     expect(writeText2).toHaveBeenCalledTimes(1);
-    expect(writeText2.mock.calls[0][0]).toBe("文档名 | 类型 | 大小 | 更新\nB 表.xlsx | 表格 | 40.0 KB | 2026-11-19 13:30\n");
+    expect(writeText2.mock.calls[0][0]).toBe("文档名 | 类型 | 大小 | 更新 | 短码\nB 表.xlsx | 表格 | 40.0 KB | 2026-11-19 13:30 | DB\n");
     expect(statusText()).toBe("已复制");
     expect(fetchMock.mock.calls.length).toBe(urlsBefore); // 筛选与复制都零新请求
 
@@ -2780,13 +2781,15 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
         { documentId: "d_bare" },
       ],
     };
+    // R71：knG 行体 = docLine 五列 + 固定的第 2 列「所属空间」
     const EXPECTED_ALL =
-      "文档名 | 所属空间 | 类型 | 大小 | 更新\n" +
-      "员工手册.pdf | 人事制度空间 | PDF | 2.4 MB | 2026-11-19 15:10\n" +
-      "薪酬口径表.xlsx | 空间 · SPFIN | 表格 | 40.0 KB | 2026-11-19 13:30\n" +
-      "— | — | — | — | —\n";
+      "文档名 | 所属空间 | 类型 | 大小 | 更新 | 短码\n" +
+      "员工手册.pdf | 人事制度空间 | PDF | 2.4 MB | 2026-11-19 15:10 | DMANUAL\n" +
+      "薪酬口径表.xlsx | 空间 · SPFIN | 表格 | 40.0 KB | 2026-11-19 13:30 | DPAY\n" +
+      "— | — | — | — | — | DBARE\n";
     const EXPECTED_HUMAN =
-      "文档名 | 所属空间 | 类型 | 大小 | 更新\n" + "员工手册.pdf | 人事制度空间 | PDF | 2.4 MB | 2026-11-19 15:10\n";
+      "文档名 | 所属空间 | 类型 | 大小 | 更新 | 短码\n" +
+      "员工手册.pdf | 人事制度空间 | PDF | 2.4 MB | 2026-11-19 15:10 | DMANUAL\n";
     const gBtn = () => byTestid("knG-copy") as HTMLButtonElement | null;
     const gStatus = () => (byTestid("knG-copy-status")?.textContent ?? "").trim();
     const stubClipboard = (writeText: ReturnType<typeof vi.fn>) =>

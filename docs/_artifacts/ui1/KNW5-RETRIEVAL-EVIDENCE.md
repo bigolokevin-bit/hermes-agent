@@ -2349,3 +2349,66 @@ $ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 
 App.tsx / shell / routes / registry / package·lock / web-scripts / ops；未并 main、未重建 9122；
 显式路径提交（无 `git add -A`）；无 force / amend / `--no-verify`；merge（9813d7af）与
 test commit 分开。
+
+# KNW5 追加 R71：复制行单点派生 docLine（knF/knG 字段与口径统一）（2026-11-20 BJT）
+
+安全闸：toplevel 相符、porcelain 空、显式 refspec fetch 后 merge 实到 `ee64b4f0`——
+**比派工章面更新**（章面 `0c1b94c3`/HEAD `3e94876c`/代次 `9813d7af` 的下游），如实记录。
+merge 对本知识面 delta 为空；合后基线 65/65 先绿再动工。
+
+## 一、单点派生
+
+```text
+新函数集（knowledge.ts）：
+  DOC_LINE_HEADER = 文档名 | 类型 | 大小 | 更新 | 短码
+  docLineFields(doc) = [name, type, size, at, shortId(id) ?? "—"]   ← 唯一一份字段序与缺值规则
+  docLine(doc) = fields.join(" | ")
+调用方（只此三处，全部经同一函数）：
+  knF docCopyText：头行=DOC_LINE_HEADER；每行=docLine(row)。
+  knG docHitCopyText：头行=DOC_LINE_HEADER 第 1 列后插入固定「所属空间」；
+      每行=docLineFields(row) 第 1 列后插入 spaceLabel ?? "—"——唯一 recorded 列差异。
+  kn.parity.test.ts：新增守卫例，逐行断言「knG 行去第 2 列 === knF 行」字节相等。
+缺值统一「—」不补 0；短码=shortId 人话尾段大写（d_a→DA、d_p→DP），全 id 只在屏上 title 不进文本。
+```
+
+## 二、title 同句（改前 → 改后，逐字）
+
+```text
+knF 改前：复制当前排序与筛选后在屏幕上的这些行：文档名 | 类型 | 大小 | 更新。屏上数据，不会再发请求。
+knF 改后：复制当前排序与筛选后在屏幕上的这些行：文档名 | 类型 | 大小 | 更新 | 短码。当前已加载 2 条，不是全量；屏上数据，不会再发请求。
+knG 改前：复制当前检索词下的命中行：文档名 | 所属空间 | 类型 | 大小 | 更新。屏上数据，不会再发请求。
+knG 改后：复制当前检索词下的命中行：文档名 | 所属空间 | 类型 | 大小 | 更新 | 短码。当前已加载 2 条，不是全量；屏上数据，不会再发请求。
+「当前已加载 N 条，不是全量；」为两处同一句；N=本面已加载数（与计数位/命中注同源），
+由 copyGates 的 FACE_TABLE.enabledTitle(loadedTotal) 单点拼装（gate 表仍是唯一文案出处）。
+用户可见改动仅此两处 title + 复制正文短码列——其余字节级不变；成功状态句未动。
+```
+
+## 三、粘贴对照（同值记录 d_p；两组首末行）
+
+```text
+knF 首行：文档名 | 类型 | 大小 | 更新 | 短码
+knF 末行：— | — | — | — | DM                ← d_m 行在 knF 面为…（见下注）
+knG 首行：文档名 | 所属空间 | 类型 | 大小 | 更新 | 短码
+knG 末行：— | — | — | — | — | DM
+按列对齐：knG 每行去第 2 列 === knF 同行（parity 守卫例逐行断言字节相等）。
+注：两面行集同为 [d_p, d_m]（读入序=默认序），d_m 的 name 有值「缺值文档.md」——
+    上面末行取自守卫例实测串，完整行 knF=「同值文档.pdf | PDF | 2.4 MB | 2026-11-19 15:10 | DP」。
+```
+
+既有测试同步（属派工统一口径本身，非回归）：R55 knF 三组 EXPECTED、R56 knG 两组 EXPECTED
+改为含短码列；title contains 断言原样通过。knI/knL 复制与 R57/R60 断言零动。
+
+## 验证尾行（R71）
+```text
+$ npx vitest run src/modules/knowledge   → 3 files / 66 tests passed（基线 65 + parity 守卫 1）
+$ npx vitest run                         → 160 files / 2175 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-copydist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零额外请求：复制动作与 parity 全程 fetchMock 计数与快照逐字相等（守卫例与 R55/R56 段各自锁定）。
+未测如实：带登录态的真机三档行态（静态预览无会话）、真机剪贴板权限路径。
+```
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；未并 main、未重建 9122；显式路径提交（无 `git add -A`）；
+无 force / amend / `--no-verify`；merge（ee64b4f0）与单 feature commit 分开。
