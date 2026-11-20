@@ -1056,6 +1056,11 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* 数字列表头跟格子里的数字同侧，不落在表体右对齐数值的左边。 */
+.met6-table th.met6-num {
+  text-align: right;
+}
+
 /* ---- metAK: manual refresh -------------------------------------------- */
 .metAK-bar {
   display: flex;
