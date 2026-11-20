@@ -189,3 +189,14 @@
 - 测试 5 例：loading 骨架 4 块不变且无复制；无筛选空 vs 筛选空（清空后请求无 `status=`）；error rid + 计数「—」+ 重试恰 +1 请求；403/404 同体且四参保留；复制/预览 disabled 的 title 一致。
 - 验证：runs 2 files / 89 passed（+5）；全量 151 files / 2033 passed；tsc 本域 0；eslint 本域 exit 0（修掉一处 redundant Boolean）。
 - 未测：真实浏览器 375 折行、Esc/焦点走查；`?state=` fixture 腿的键盘行为。
+
+## 运行列表 CSV 导出（runs list export，2026-11-20）
+
+- 复制钮旁新增 `run-list-export`（同一条 `RunListCopy` 条内），文件名预览 `run-export-name`，行数 `run-list-export-count`（文本「可导出 N 行」，`data-rows` 同值）。
+- 导出为浏览器内 Blob（`\uFEFF` BOM、`text/csv;charset=utf-8`、临时 `a.download`），**零新端点**：数据就是屏上这一页的行，`fetchJSON` 计数在导出前后不变。
+- 表头固定 `run,status,started,ended,elapsed,cost,employee`；值取同一批渲染数据：运行短码（无 `rn_`）、状态人话（未列出的词「待核实」）、起止北京时间到分、耗时仅两端齐时算否则空字段、成本真 0 写 `0.00`/未知或缺失留空、员工 8 位短码（无名「员工 · CODE」、无负责人「未指派」）；行序=表体行序。
+- 文件名 `runs-<window|all>-<status|all>-<YYYYMMDD-HHmm>.csv`（BJT 到分，片段只含 `[a-z0-9.-]`）；`run-export-name` 与下载瞬间同一串（`useMemo` 固定，不随分钟漂移）。
+- 字段转义走 `csvField`（含逗号/引号/换行→引号包裹、`"`→`""`），供程序读取；`run-list-export-status` 为 `role=status aria-live=polite`（「已导出 N 行」/失败「导出没成功：这份文件没有生成」）。
+- 四态走同一单点 `listActionGate().export`：空列表 title「没有可导出的 CSV」、错误「先重试，读到数据再导出」、无权「看不到运行记录」；加载/失败/无权时不渲染行列表但导出条仍在且禁用。
+- 分页口径随复制按钮 title：「当前已加载 N 行，不是全量（每页最多 30 条）」。
+- 验证：runs 2 files / 94 passed（基线 89），全量 2038 passed（基线 2033），tsc 本域 0，eslint 本域 exit 0；build exit 0，chunk `RunsModulePage-*.js` 内 `run-list-export`=1（entry 0）。未测：真实浏览器下载落盘与 375 折行。

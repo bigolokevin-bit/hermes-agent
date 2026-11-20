@@ -36,9 +36,9 @@
  * 「技术详情」. The run id reads 「运行 · 后4位」 with a copy affordance;
  * the full value lives in the title and the clipboard, not on the surface.
  */
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
-import { Check, Copy, RefreshCw, X } from "lucide-react";
+import { Check, Copy, Download, RefreshCw, X } from "lucide-react";
 
 import { Badge } from "@nous-research/ui/ui/components/badge";
 import { Button } from "@nous-research/ui/ui/components/button";
@@ -59,6 +59,8 @@ import {
 } from "./states";
 import {
   PAGE_LIMIT,
+  runCsvFileName,
+  runListCsv,
   runListText,
   SINCE_OPTIONS,
   STATUS_KEYS,
@@ -234,10 +236,46 @@ function RunPreviewPanel({ row, names, index }: { row: RunRow; names: Map<string
 const GRID =
   "grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,0.7fr)_minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,0.9fr)_minmax(0,1.1fr)_minmax(0,1fr)_auto]";
 
-function RunListCopy({ rows, names, gate }: { rows: RunRow[]; names: Map<string, string>; gate: ListGate }): ReactNode {
+function RunListCopy({
+  rows,
+  names,
+  copyGate,
+  exportGate,
+  windowKey,
+  statusKey,
+}: {
+  rows: RunRow[];
+  names: Map<string, string>;
+  copyGate: ListGate;
+  exportGate: ListGate;
+  windowKey: string | null;
+  statusKey: string | null;
+}): ReactNode {
   const [status, setStatus] = useState<"idle" | "done" | "failed">("idle");
   const [body, setBody] = useState("");
+  const [exportStatus, setExportStatus] = useState<"idle" | "done" | "failed">("idle");
   const empty = rows.length === 0;
+  // One name, computed when the filter changes: the preview and the download
+  // both read this string, so they cannot disagree about the minute.
+  const fileName = useMemo(
+    () => runCsvFileName(windowKey, statusKey, new Date()),
+    [windowKey, statusKey],
+  );
+  const exportCsv = () => {
+    try {
+      const blob = new Blob([`\uFEFF${runListCsv(rows, names)}`], { type: "text/csv;charset=utf-8" });
+      const href = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = href;
+      anchor.download = fileName;
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(href);
+      setExportStatus("done");
+    } catch {
+      setExportStatus("failed");
+    }
+  };
   const copy = () => {
     const text = runListText(rows, names);
     setBody(text);
@@ -248,12 +286,12 @@ function RunListCopy({ rows, names, gate }: { rows: RunRow[]; names: Map<string,
       <Button
         size="sm"
         outlined
-        disabled={gate.disabled || empty}
+        disabled={copyGate.disabled || empty}
         onClick={copy}
         data-testid="run-list-copy"
         title={
-          gate.disabled
-            ? gate.title
+          copyGate.disabled
+            ? copyGate.title
             : empty
               ? "当前列表没有行，没有可复制的文本"
               : `复制当前列表为纯文本：表头加 ${rows.length} 行；当前已加载 ${rows.length} 行，不是全量（每页最多 ${PAGE_LIMIT} 条）`
@@ -262,6 +300,37 @@ function RunListCopy({ rows, names, gate }: { rows: RunRow[]; names: Map<string,
         <Copy className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
         复制为纯文本
       </Button>
+      <Button
+        size="sm"
+        outlined
+        disabled={exportGate.disabled || empty}
+        onClick={exportCsv}
+        data-testid="run-list-export"
+        title={
+          exportGate.disabled
+            ? exportGate.title
+            : empty
+              ? "当前列表没有行，没有可导出的 CSV"
+              : `导出当前列表为 CSV：表头加 ${rows.length} 行；当前已加载 ${rows.length} 行，不是全量（每页最多 ${PAGE_LIMIT} 条）`
+        }
+      >
+        <Download className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+        导出 CSV
+      </Button>
+      <span className="min-w-0 text-xs text-muted-foreground" data-testid="run-list-export-count" data-rows={rows.length}>
+        可导出 {rows.length} 行
+      </span>
+      <code className="min-w-0 break-all font-mono text-xs text-muted-foreground" data-testid="run-export-name" title={fileName}>
+        {fileName}
+      </code>
+      <span
+        className="min-w-0 text-xs text-muted-foreground"
+        role="status"
+        aria-live="polite"
+        data-testid="run-list-export-status"
+      >
+        {exportStatus === "done" ? `已导出 ${rows.length} 行` : exportStatus === "failed" ? "导出没成功：这份文件没有生成" : ""}
+      </span>
       <span
         className="min-w-0 text-xs text-muted-foreground"
         role="status"
@@ -904,7 +973,16 @@ export function RunsModulePage() {
         <DeniedPanel requestId={failure?.requestId ?? null} fixture={forced ?? undefined} />
       ) : null}
       {phase === "ready" ? <ListRows rows={rows} names={names} hrefOf={hrefOf} previewGate={listGate.preview} /> : null}
-      {phase !== "loading" ? <RunListCopy rows={rows} names={names} gate={listGate.copy} /> : null}
+      {phase !== "loading" ? (
+        <RunListCopy
+          rows={rows}
+          names={names}
+          copyGate={listGate.copy}
+          exportGate={listGate.export}
+          windowKey={params.get("window")}
+          statusKey={params.get("status")}
+        />
+      ) : null}
 
       {phase === "ready" && rows.length > 0 ? (
         <TechnicalDisclosure lines={technical} testId="run5-list-details" />

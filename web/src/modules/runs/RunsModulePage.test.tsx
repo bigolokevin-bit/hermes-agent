@@ -19,6 +19,7 @@ vi.mock("@/lib/api", () => ({ fetchJSON: api.fetchJSON }));
 vi.mock("@/lib/clipboard", () => ({ copyTextToClipboard: clip.copyTextToClipboard }));
 
 import { RunsModulePage } from "./RunsModulePage";
+import { runCsvFileName, runListCsv } from "./runs";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -1121,6 +1122,111 @@ describe("runs list copy", () => {
     expect(copyButton().disabled).toBe(true);
     expect(copyButton().getAttribute("title")).toContain("没有可复制的文本");
     expect(statusText()).not.toContain("已复制");
+  });
+});
+
+
+/* ── list CSV export ───────────────────────────────────────────────── */
+describe("runs list CSV export", () => {
+  const EXP_A = {
+    runId: "rn_01M7822EXPT0000000001",
+    status: "completed",
+    costStatus: "upstream",
+    costUsd: 0,
+    startedAt: "2026-11-18T02:00:00Z",
+    endedAt: "2026-11-18T02:11:00Z",
+    employeeId: "emp_aaaabbbbcccc",
+  };
+  const EXP_B = {
+    runId: "rn_01M7822EXPT0000000002",
+    status: "running",
+    costStatus: "unknown",
+    costUsd: null,
+    startedAt: "2026-11-18T03:30:00Z",
+  };
+  let blobs: Blob[] = [];
+  let names: string[] = [];
+  const originalCreate = URL.createObjectURL;
+  const originalRevoke = URL.revokeObjectURL;
+
+  beforeEach(() => {
+    blobs = [];
+    names = [];
+    (URL as unknown as { createObjectURL: (b: Blob) => string }).createObjectURL = (blob: Blob) => {
+      blobs.push(blob);
+      return "blob:runs-export";
+    };
+    (URL as unknown as { revokeObjectURL: (u: string) => void }).revokeObjectURL = () => {};
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      names.push(this.download);
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    URL.createObjectURL = originalCreate;
+    URL.revokeObjectURL = originalRevoke;
+  });
+
+  const exportButton = (): HTMLButtonElement =>
+    document.querySelector("[data-testid='run-list-export']") as HTMLButtonElement;
+  const countNode = (): HTMLElement =>
+    document.querySelector("[data-testid='run-list-export-count']") as HTMLElement;
+  const nameNode = (): HTMLElement =>
+    document.querySelector("[data-testid='run-export-name']") as HTMLElement;
+
+  it("exports the same rows, in the same order, and names the file what the preview says", async () => {
+    api.fetchJSON.mockImplementation(okList([EXP_A, EXP_B]));
+    await render("/runs?window=7d&status=failed");
+    await waitFor(() => rowNodes() === 2, "two rows");
+    const before = api.fetchJSON.mock.calls.length;
+    const preview = nameNode().textContent ?? "";
+    expect(preview).toMatch(/^runs-7d-failed-\d{8}-\d{4}\.csv$/);
+    expect(countNode().textContent).toContain("2");
+    expect(countNode().getAttribute("data-rows")).toBe("2");
+    await act(async () => {
+      exportButton().click();
+    });
+    expect(names).toEqual([preview]);
+    const text = (await blobs[0].text()).replace(/^\uFEFF/, "");
+    expect(text.split("\n")).toEqual([
+      "run,status,started,ended,elapsed,cost,employee",
+      "运行 · 0001,成功,2026-11-18 10:00,2026-11-18 10:11,11 分钟,0.00,员工 · AAAABBBB",
+      "运行 · 0002,运行中,2026-11-18 11:30,,,,未指派",
+    ]);
+    expect(api.fetchJSON.mock.calls.length).toBe(before);
+    expect(document.body.textContent).not.toContain("rn_01M7822EXPT");
+  });
+
+  it("quotes a field that carries a comma or a quote", () => {
+    const names = new Map([["emp_aaaabbbbcccc", '小鲤, "运营"']]);
+    const csv = runListCsv([EXP_A] as never, names);
+    const line = csv.split("\n")[1];
+    expect(line).toContain('"小鲤, ""运营"" · AAAABBBB"');
+  });
+
+  it("uses all when neither window nor status is in the address", () => {
+    const name = runCsvFileName(null, null, new Date("2026-11-20T09:30:00Z"));
+    expect(name).toBe("runs-all-all-20261120-1730.csv");
+    expect(name).toMatch(/^[a-z0-9.-]+$/);
+  });
+
+  it("disables the export on an empty list", async () => {
+    api.fetchJSON.mockImplementation(okList([]));
+    await render("/runs");
+    await waitFor(() => exportButton() !== null, "export bar");
+    expect(exportButton().disabled).toBe(true);
+    expect(exportButton().getAttribute("title")).toContain("没有可导出的 CSV");
+  });
+
+  it("disables the export on a failed read with the shared reason", async () => {
+    api.fetchJSON.mockImplementation(() =>
+      Promise.reject(new ApiError("down", { status: 500, body: "", url: "/api/runs", requestId: "req-exp" })),
+    );
+    await render("/runs");
+    await waitFor(() => exportButton() !== null, "export bar after failure");
+    expect(exportButton().disabled).toBe(true);
+    expect(exportButton().getAttribute("title")).toContain("先重试");
   });
 });
 

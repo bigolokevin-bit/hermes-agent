@@ -800,38 +800,96 @@ export function runListText(rows: RunRow[], names: Map<string, string>): string 
   return lines.join("\n");
 }
 
+/* ── CSV export: the same rows, in a file ───────────────────────────────── */
+
+/** CSV cells carry no placeholder glyph: a missing value is an empty field. */
+function csvField(value: string): string {
+  return /[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+}
+
+function csvCost(row: RunRow): string {
+  const state = costState(row);
+  if (state !== "known") return "";
+  const value = row.costUsd;
+  return typeof value === "number" && Number.isFinite(value) ? value.toFixed(2) : "";
+}
+
+/**
+ * Renders the rows the list already holds as RFC 4180 CSV. Order and values
+ * come from the same reading the table shows; nothing is re-read or re-sorted.
+ */
+export function runListCsv(rows: RunRow[], names: Map<string, string>): string {
+  const lines = [RUN_LIST_HEADER.join(",")];
+  for (const row of rows) {
+    const start = beijingMinute(row.startedAt);
+    const end = beijingMinute(row.endedAt);
+    const elapsed = start.text && end.text ? elapsedMinute(row.startedAt, row.endedAt).text ?? "" : "";
+    const cells = [
+      runCode(row.runId),
+      row.status ? statusLabel(row.status) : "",
+      start.text ?? "",
+      end.text ?? "",
+      elapsed,
+      csvCost(row),
+      employeeLabel(row.employeeId, names),
+    ];
+    lines.push(cells.map(csvField).join(","));
+  }
+  return lines.join("\n");
+}
+
+function filePart(value: string | null, fallback: string): string {
+  if (!value) return fallback;
+  const safe = value.toLowerCase().replace(/[^a-z0-9.-]+/g, "-").replace(/^-+|-+$/g, "");
+  return safe || fallback;
+}
+
+/** `runs-<window|all>-<status|all>-YYYYMMDD-HHmm.csv`, Beijing time to the minute. */
+export function runCsvFileName(windowKey: string | null, statusKey: string | null, now: Date): string {
+  const stamp = beijingMinute(now.toISOString()).text;
+  const compact = stamp ? stamp.replace(/[-:]/g, "").replace(" ", "-") : "unknown";
+  return `runs-${filePart(windowKey, "all")}-${filePart(statusKey, "all")}-${compact}.csv`;
+}
+
 /** One decision per phase, so no two entries on the pane disagree about whether the list is usable. */
 export interface ListGate {
   disabled: boolean;
   title: string;
 }
 
-export function listActionGate(phase: ListState["phase"]): { copy: ListGate; preview: ListGate } {
+export function listActionGate(
+  phase: ListState["phase"],
+): { copy: ListGate; preview: ListGate; export: ListGate } {
   switch (phase) {
     case "loading":
       return {
         copy: { disabled: true, title: "还在读取运行记录：等这一页读完再复制。" },
         preview: { disabled: true, title: "还在读取运行记录：等这一页读完再展开。" },
+        export: { disabled: true, title: "还在读取运行记录：等这一页读完再导出。" },
       };
     case "empty":
       return {
         copy: { disabled: true, title: "这一页没有行：没有可复制的文本。" },
         preview: { disabled: true, title: "这一页没有行：没有可展开的预览。" },
+        export: { disabled: true, title: "这一页没有行：没有可导出的 CSV。" },
       };
     case "error":
       return {
         copy: { disabled: true, title: "这次读取没有成功：先重试，读到数据再复制。" },
         preview: { disabled: true, title: "这次读取没有成功：先重试，读到数据再展开。" },
+        export: { disabled: true, title: "这次读取没有成功：先重试，读到数据再导出。" },
       };
     case "denied":
       return {
         copy: { disabled: true, title: "当前看不到运行记录：没有可复制的文本。" },
         preview: { disabled: true, title: "当前看不到运行记录：没有可展开的预览。" },
+        export: { disabled: true, title: "当前看不到运行记录：没有可导出的 CSV。" },
       };
     default:
       return {
         copy: { disabled: false, title: "复制当前列表为纯文本" },
         preview: { disabled: false, title: "展开这一行的预览" },
+        export: { disabled: false, title: "导出当前列表为 CSV" },
       };
   }
 }
