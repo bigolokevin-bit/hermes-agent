@@ -62,7 +62,9 @@ import {
   runCsvFileName,
   runListCsv,
   runListText,
+  RUN_PARAM_TABLE,
   runSource,
+  sinceLabel,
   SINCE_OPTIONS,
   STATUS_KEYS,
   askedLine,
@@ -814,6 +816,20 @@ function DetailField({ label, children }: { label: string; children: ReactNode }
 }
 
 
+const RUN_SORT_LABEL: Record<RunSortKey, string> = {
+  status: "状态",
+  started: "开始时间",
+  elapsed: "耗时",
+  cost: "成本",
+};
+
+const RUN_STATE_LABEL: Record<string, string> = {
+  loading: "加载中",
+  empty: "空列表",
+  error: "读取失败",
+  denied: "无权限",
+};
+
 function RunSourceBar({ source }: { source: ReturnType<typeof runSource> }) {
   const [status, setStatus] = useState<"idle" | "done" | "failed">("idle");
   const body = source.path;
@@ -953,7 +969,6 @@ export function RunsModulePage() {
     if (filterReset.removed.length === 0) return;
     setParams(filterReset.next, { replace: true, state: locationState ?? null });
   };
-
   const data = useRunsData(forced, { status, sinceKey, employeeId: employee });
   const { phase, rows, cursor, answeredBy, unreadable, failure, forced: isForced } = data;
 
@@ -979,6 +994,54 @@ export function RunsModulePage() {
   const detail = useRunDetail(selected, readTick);
 
   const [names, setNames] = useState<Map<string, string>>(new Map());
+  const removeChip = (keys: readonly string[]) => {
+    const next = new URLSearchParams(params);
+    for (const key of keys) next.delete(key);
+    setParams(next, { replace: true, state: locationState ?? null });
+  };
+  // One chip per entry of the shared table; the two sort parameters are one
+  // chip because the address always carries them together.
+  const filterChips: { key: string; label: string; value: string; title: string; params: string[] }[] = [];
+  for (const spec of RUN_PARAM_TABLE) {
+    if (spec.key === "rdir") continue;
+    if (spec.key === "rsort") {
+      if (!params.has("rsort") && !params.has("rdir")) continue;
+      const raw = [params.get("rsort"), params.get("rdir")].filter(Boolean).join(" / ");
+      filterChips.push({
+        key: "sort",
+        label: "排序",
+        value: `按${RUN_SORT_LABEL[rsort ?? "cost"]} ${rdir === "asc" ? "升序" : "降序"}`,
+        title: `地址原值：${raw}；排序只在已加载的行内生效，移除后回到默认的成本降序。`,
+        params: ["rsort", "rdir"],
+      });
+      continue;
+    }
+    const raw = params.get(spec.key);
+    if (raw === null) continue;
+    let value = raw;
+    let note = "";
+    if (spec.key === "window") {
+      value = sinceLabel(sinceKey);
+      if (raw !== sinceKey) note = "该值未被识别，按近 7 天读取";
+    } else if (spec.key === "status") {
+      const parsed = statusFilterOf(raw);
+      value = parsed ? statusLabel(parsed) : raw;
+      if (!parsed) note = "该值未被识别，按全部状态读取";
+    } else if (spec.key === "employee") {
+      value = employeeLabel(employee, names);
+    } else if (spec.key === "state") {
+      value = forced ? RUN_STATE_LABEL[forced] : raw;
+      if (!forced) note = "该值未被识别，按正常读取";
+    }
+    filterChips.push({
+      key: spec.key,
+      label: spec.label,
+      value,
+      title: note ? `地址原值：${raw}；${note}` : `地址原值：${raw}`,
+      params: [spec.key],
+    });
+  }
+
   // Employee names decorate the list as well as the detail line. The directory
   // is a side-read for labels only: if it fails, the 8-character code stays as
   // the honest fallback and the run answer is untouched.
@@ -1164,6 +1227,34 @@ export function RunsModulePage() {
             清除筛选
           </Button>
         </div>
+        {filterChips.length > 0 ? (
+          <div
+            className="flex min-w-0 flex-wrap items-center gap-2"
+            data-testid="run-filter-chips"
+            aria-label="生效筛选"
+          >
+            <span className="text-xs text-muted-foreground">当前筛选</span>
+            {filterChips.map((chip) => (
+              <span
+                key={chip.key}
+                className="inline-flex min-w-0 items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs"
+                data-testid={`run-chip-${chip.key}`}
+                title={chip.title}
+              >
+                <span className="min-w-0 truncate">{chip.label}：{chip.value}</span>
+                <button
+                  type="button"
+                  className="shrink-0 rounded-full px-1 text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                  aria-label={`移除${chip.label}筛选`}
+                  data-testid={`run-chip-${chip.key}-remove`}
+                  onClick={() => removeChip(chip.params)}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       {forced !== null ? <ReproNote state={forced} /> : null}

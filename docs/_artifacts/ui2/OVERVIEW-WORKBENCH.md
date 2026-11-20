@@ -326,3 +326,16 @@
 - 零新增请求（三例均断言 `urls()` 与 `/api/runs` 次数不变）。
 - 契约变更：旧用例曾断言 Esc 后焦点在预览开关上，本版按新契约改为「焦点回触发行」，断言随之更新。
 - 验证：`vitest run src/modules/runs` 3 files / 129 passed（基线 126）；全量 162 files / 2242 passed（基线 2239）；`tsc` 本域 0；`eslint` exit 0；build 通过，entry 内 `run-row-toggle` 命中 0、`RunsModulePage-*.js` 命中 1。
+
+## 生效筛选 chip 摘要（runs filter chips，2026-11-20）
+
+一次把地址里还在生效的筛选摆到条上，每枚只有一个 × 出口。
+
+- 位置与 testid：`run5-filters` 之下、`run5-status` 之上，仅在「至少一项筛选在地址里」时渲染 `run-filter-chips`（`aria-label="生效筛选"`）；每枚 `run-chip-<key>`，× 为真 `<button>`（`run-chip-<key>-remove`，`aria-label="移除<label>筛选"`）。
+- 单表：chip 的键、顺序、中文名全部来自 `RUN_PARAM_TABLE`（与 `run-reset-filters` 同一张表），`rdir` 不单独成枚，与 `rsort` 合成 `run-chip-sort`（「按开始时间 降序」），× 一次删两键——排序只在已加载行内生效，移除后回到默认的成本降序。
+- 值：时间窗用 `sinceLabel`（近 30 天），状态用 `statusLabel`（失败），负责人用 `employeeLabel`（员工 · AAAABBBB / 配到名字时「小鲤 · AAAABBBB」），复现态用页面既有四态词（加载中/空列表/读取失败/无权限），排序用列名 + 升/降序。地址原值只进 `title`（`地址原值：30d`），不上屏。
+- 未知值：如 `?status=zz` 仍显示原文 `zz`，`title` 追加「该值未被识别，按全部状态读取」；它依旧是可移除项。
+- 请求行为（实测）：移除 `status` → `/api/runs` 恰 +1，`window/employee/rsort/rdir/keep=1` 原地保留；移除 `employee` → 下一次读不带 `employeeId=`，+1；移除排序 chip → 0 次新请求（纯前端排序）。移除后源条、表体、复制文本、导出计数同批重算（复制首行 == 表体首行）。
+- 无筛选时整条不渲染；`run-notes`/`run-sort-*`/`run-list-*`/`run-row-preview-*`/`run-row-copy*`/`run-export-*`/`run-source-*`/`run5-*`/`run-reset-filters` 全部未改名。
+- 验证：定向 runs 3 files / 132 passed（基线 129）；全量 162 files / **2245 passed**；`tsc` 本域 0；`eslint src/modules/runs` exit 0；build exit 0（entry 内 `run-filter-chips` = 0，`RunsModulePage-*.js` = 1）。
+- 未测：真实浏览器 375 下 chips 折行与 × 触控目标尺寸。

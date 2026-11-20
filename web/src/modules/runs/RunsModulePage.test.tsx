@@ -2047,3 +2047,104 @@ describe("runs list keyboard navigation", () => {
     expect(document.querySelector("[data-testid='run-list-copy']")).not.toBeNull();
   });
 });
+
+/* ── the chips that name every filter still in force ─────────────── */
+
+describe("run filter chips", () => {
+  const chips = (): string[] =>
+    Array.from(document.querySelectorAll("[data-testid^='run-chip-']"))
+      .filter((node) => !node.getAttribute("data-testid")?.endsWith("-remove"))
+      .map((node) => node.getAttribute("data-testid") ?? "");
+  const probe = (): string => document.querySelector("[data-testid='probe-location']")?.textContent ?? "";
+  const runsReads = (): number =>
+    api.fetchJSON.mock.calls.filter((call) => String(call[0]).includes("/api/runs")).length;
+  const rowCodes = (): string[] =>
+    Array.from(document.querySelectorAll("[data-testid^='run5-row-'][data-status]")).map(
+      (row) => row.querySelector("[data-testid$='-code']")?.textContent ?? "",
+    );
+
+  it("names every filter once, merges the two sort keys, and removes one at a time", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A, RUN_B]));
+    await render(
+      "/runs?window=30d&status=failed&employee=emp_aaaabbbbcccc&rsort=started&rdir=desc&keep=1",
+      <><RunsModulePage /><HistoryProbe /></>,
+    );
+    await waitFor(() => rowNodes() === 2, "two rows");
+    expect(chips()).toEqual(["run-chip-window", "run-chip-status", "run-chip-employee", "run-chip-sort"]);
+    const text = (id: string) => document.querySelector(`[data-testid='${id}']`)?.textContent ?? "";
+    expect(text("run-chip-window")).toContain("近 30 天");
+    expect(text("run-chip-status")).toContain("失败");
+    expect(text("run-chip-employee")).toContain("员工 · AAAABBBB");
+    expect(text("run-chip-sort")).toContain("按开始时间 降序");
+    expect(document.querySelector("[data-testid='run-chip-window']")?.getAttribute("title")).toContain("30d");
+    expect(document.querySelector("[data-testid='run-chip-sort']")?.getAttribute("title")).toContain("started");
+    expect(document.querySelector("[data-testid='run-chip-sort']")?.getAttribute("title")).toContain("desc");
+
+    // Drop status: one new list read, the other filters and keep=1 stay.
+    const beforeStatus = runsReads();
+    const beforeCodes = rowCodes();
+    await act(async () => {
+      (document.querySelector("[data-testid='run-chip-status-remove']") as HTMLButtonElement).click();
+    });
+    await waitFor(() => !chips().includes("run-chip-status"), "status chip gone");
+    expect(runsReads()).toBe(beforeStatus + 1);
+    expect(probe()).toContain("window=30d");
+    expect(probe()).toContain("employee=emp_aaaabbbbcccc");
+    expect(probe()).toContain("rsort=started");
+    expect(probe()).toContain("keep=1");
+    // Table, count and copy text all move with the same batch.
+    expect(document.querySelector("[data-testid='run5-counts']")?.textContent ?? "").toContain(`本页 ${rowNodes()} 次`);
+    await act(async () => {
+      (document.querySelector("[data-testid='run-list-copy']") as HTMLButtonElement).click();
+    });
+    const lines = String(clip.copyTextToClipboard.mock.calls.at(-1)?.[0] ?? "").split("\n");
+    expect(lines[1]?.startsWith(rowCodes()[0] ?? "____")).toBe(true);
+    expect(beforeCodes.length).toBe(2);
+
+    // Drop employee: the next read carries no employeeId.
+    const beforeEmployee = runsReads();
+    await act(async () => {
+      (document.querySelector("[data-testid='run-chip-employee-remove']") as HTMLButtonElement).click();
+    });
+    await waitFor(() => !chips().includes("run-chip-employee"), "employee chip gone");
+    expect(runsReads()).toBe(beforeEmployee + 1);
+    const lastRunUrl = String(api.fetchJSON.mock.calls.filter((call) => String(call[0]).includes("/api/runs")).at(-1)?.[0] ?? "");
+    expect(lastRunUrl).not.toContain("employeeId=");
+
+    // Drop sort: both keys leave and nothing is read again.
+    const beforeSort = runsReads();
+    await act(async () => {
+      (document.querySelector("[data-testid='run-chip-sort-remove']") as HTMLButtonElement).click();
+    });
+    await waitFor(() => !chips().includes("run-chip-sort"), "sort chip gone");
+    expect(runsReads()).toBe(beforeSort);
+    expect(probe()).not.toContain("rsort=");
+    expect(probe()).not.toContain("rdir=");
+  });
+
+  it("shows an unreadable value verbatim and says it was not recognised", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs?status=zz", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => rowNodes() === 1, "one row");
+    expect(chips()).toEqual(["run-chip-status"]);
+    const chip = document.querySelector("[data-testid='run-chip-status']");
+    expect(chip?.textContent).toContain("zz");
+    expect(chip?.getAttribute("title")).toContain("未被识别");
+    expect(document.querySelector("[data-testid='run-chip-status-remove']")).not.toBeNull();
+  });
+
+  it("renders no strip when nothing is set, and can drop the preview state", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => rowNodes() === 1, "one row");
+    expect(document.querySelector("[data-testid='run-filter-chips']")).toBeNull();
+
+    await render("/runs?state=empty", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => chips().length === 1, "state chip");
+    expect(document.querySelector("[data-testid='run-chip-state']")?.textContent).toContain("空列表");
+    await act(async () => {
+      (document.querySelector("[data-testid='run-chip-state-remove']") as HTMLButtonElement).click();
+    });
+    await waitFor(() => probe() === "/runs", "state cleared");
+  });
+});
