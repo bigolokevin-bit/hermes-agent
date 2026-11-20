@@ -35,6 +35,13 @@
   line-height: var(--line-height-1);
   font-weight: var(--font-weight-medium);
   color: var(--color-text);
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+/* 详情主体的标题就是这一屏的主标题：走 14px 档，字重仍在 ladder 内 */
+.ui-c-head-title--lead {
+  font-size: var(--font-size-3);
 }
 
 .ui-c-head-sub {
@@ -245,4 +252,103 @@
   .ui-c-cell-label {
     display: none;
   }
+}
+
+/* ------------------------------------------------------------------ *
+ * 详情主体（侧栏族：审批 / 运行 / 任务）· 按容器宽度排布
+ * ------------------------------------------------------------------ */
+
+/* 详情侧栏在 1440 档也只有约 26rem：用视口断点排列数会把它挤成读不下去的
+   两到三列，所以字段栅格改按容器宽度决定列数（不支持 @container 时回落单列）。 */
+.ui-c-container {
+  container-type: inline-size;
+}
+
+.ui-c-fields--compact {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3) var(--space-6);
+  margin: 0;
+  padding: 0;
+}
+
+@container (min-width: 34rem) {
+  .ui-c-fields--compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* 详情主体是密集区：值域走 13px 档（标签仍是 12px 档），不与卡片区同字号 */
+.ui-c-fields--compact .ui-c-field-value {
+  font-size: var(--font-size-2);
+  line-height: var(--line-height-2);
+}
+
+/* 区块头：无卡面时只留分隔线，不额外吃左右内距 */
+.ui-c-head--plain {
+  padding: 0 0 var(--space-2);
+}
+
+/* 区块之间一条令牌分隔线；标题在左，复制/导出入口收到同排右上 */
+.ui-c-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding-top: var(--space-3);
+  border-top: var(--border-1);
+}
+
+.ui-c-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.ui-c-section-title {
+  margin: 0;
+  font-size: var(--font-size-2);
+  line-height: var(--line-height-1);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+}
+
+.ui-c-section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+  font-size: var(--font-size-1);
+  line-height: var(--line-height-2);
+  color: var(--color-text-muted);
+}
+
+/* 字段值域里的次级入口（行内复制）：字号降档，与值同排不抢位 */
+.ui-c-field-actions {
+  font-size: var(--font-size-1);
+  color: var(--color-text-muted);
+}
+
+/* 标签与值同排的一行式字段（事由 / 审批人）：值域整串折行不拆词 */
+.ui-c-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--space-1);
+  min-width: 0;
+  margin: 0;
+  font-size: var(--font-size-1);
+  line-height: var(--line-height-3);
+  color: var(--color-text-muted);
+}
+
+.ui-c-inline-value {
+  min-width: 0;
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
