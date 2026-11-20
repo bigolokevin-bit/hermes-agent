@@ -403,3 +403,56 @@ R52 OBS 整改：`disabled` 与 `aria-disabled` 说同一句话，与 `title` �
 - `run-state-*`、`effectiveListGate` 的导出门、`run-list-*`、`run-sort-*`、`run-window-*`、`run-asof`、`run-row-*`、`run-notes` 零改。
 - 验证：定向 runs 4 files / 151 passed（基线 147）；全量 171 files / **2360 passed**（基线 2356）；`tsc` 本域 0；`eslint` exit 0；build exit 0（entry 内 `run-refresh-bar`=0，`RunsModulePage-*.js`=1）。
 - 未测：真实浏览器挂起批的交错时序（用 jsdom 的挂起 promise 替代）；375 下刷新条与错误行折行。
+
+## 刷新一致性护栏（refresh parity，2026-11-20）
+
+`/runs` 的 `run-refresh` 与 `/metrics` 的 `metAK-refresh` 现在由同一份测试口径盯住；本单只加测试，未改产品行为，产物 chunk 名与上一单一致即可佐证。
+
+- 同形制：两处都是原生 `button`，`aria-busy` 从 `false` 切到 `true`；busy 期间连点三次，请求数与点一次相同（runs 只 +1 次 `/api/runs`；metrics 只多发一批）。行数用 `[data-testid^="run5-row-"][data-status]` 数——`run5-row-` 前缀也会匹配单元格 testid，漏掉属性会把 2 行数成 18。
+- 失败：两页都保留旧数据、给可复制的请求编号位与「再试」，且都不写 updated-at（runs 行数不变；metrics 的失败块自身会转不可用，故只断言计数位非空，不假装数字没变）。
+- 在途批丢弃：`run-window-*` / `met6-window-*` 切换后 busy 立即消失，迟到响应回来也不写 updated-at。
+- 成功只写读取时刻：`run-updated-at` / `metAK-updated-at` 出现，而 `run-asof` 与 `metB-source-asof-run-stats` 的文本、title 原样不动。
+- **登记一处时序依赖**：`/metrics` 判定刷新失败靠 `sourcesRef` 在 `Promise.allSettled` 后 0ms 内被 React flush；测试里给非 run-stats 请求加 40ms 延迟（“keep one slow sibling in flight”）把该时序固定住，否则失败会被误判为成功。这是测试手法，产品代码未动。
+- 验证：单文件 4 passed；定向 runs+metrics 11 files / 399 passed；全量 171 files / **2364 passed**（基线 2360）；`tsc` 两域 0；`eslint` exit 0（0 error / 10 warning，多出的 1 条来自新测试文件）；build exit 0（entry 内 `run-refresh-bar`=0，`RunsModulePage-*.js`=1）。
+- 未测：真实浏览器下两页刷新按钮的视觉同步；移除 chip 触发取消的路径（与切窗共用 `cancel()`，本单只覆盖切窗）。
+
+## 空态与筛选空态互斥（runs empty exclusivity，2026-11-20）
+
+`/runs` 有两种「没有行」，产物必须互斥；本单只加测试，未改产品行为。
+
+- 真无运行（无 `status`、无 `employee`）：只渲 `run-empty-guide`——一句人话 + 两个真链接（`/work?tab=board`、`/metrics`，均为 `<a href>` 无 onclick）+ 「清空筛选看全部」的提示；`run-state-clear` 必须为 null，`run5-empty` 文案是「服务回答了，这个时间窗口里确实没有运行」，且不出现 `$0.00`、不出现筛选空态那句。
+- 筛选无匹配（`?status=failed&window=7d`）：只渲 `run-state-clear`（「清空筛选」），`run-empty-guide` 必须为 null，文案为「当前筛选下没有运行记录」；点清空后地址保留 `window=7d`、去掉 `status`，并重发一次 `/api/runs`，且**最后一次**请求不再带 `status=failed`（清空前那次带 status 属正常，不能拿历史全量请求做判据）。
+- 读口失败：`run-state-error` 出现，`run-empty-guide`、`run-state-clear`、`run-state-empty` 三者全为 null（失败不算空），给 `run-state-rid` 与 `run5-error-retry`。
+- 验证：单文件 3 passed；定向 runs 6 files / 158 passed；全量 175 files / **2398 passed**；`tsc` 本域 0；`eslint src/modules/runs` exit 0；build exit 0（entry 内 `run-empty-guide`=0，`RunsModulePage-*.js`=1）。
+- 未测：真实浏览器 375 下引导三段与两个链接的触控间距。
+
+## 单页上限诚实化（runs page cap，2026-11-20）
+
+`/api/runs` 每次只取 `limit=30`（`runs.ts:51 PAGE_LIMIT`，`askListRoute` 行 223 拼 `since + limit`，行 230 仅在有 cursor 时追加）。页面从不跟进 `nextCursor`，所以屏上只能有一个口径：一页。
+
+- 常驻行 `run-page-cap`：「本页最多显示 30 条（当前已加载 N 行；这一页的复制与导出也用同一个行数，不报全量）」。N 直接取 `rows.length`，与 `run-list-export-count` 的「可导出 N 行」和 `run-list-copy` 的 title「当前已加载 N 行」同源；读不到时写「—」，不写 0。
+- title 写明读口参数：`since + limit=30`（可带 `status` / `employeeId` / `cursor`），读口用 `nextCursor` 表示还有更多，但本页只读第一页、暂不提供翻页，读满 30 行不代表全部运行。title 里刻意不写站点路径与状态码，避免 403/404 同体用例把工程语言扫出来（首版写 `/agent-api/...` 即被该断言拦下）。
+- 满页提示：`phase==='ready' && rows.length===PAGE_LIMIT` 时追加 `run-page-cap-more`「可能还有更多，收窄筛选或换窗口」；少于 30 行不渲染。
+- 原有 `run5-counts`「仅本页已加载，最多 30 条，不是全量统计」与 `run5-status` 的服务端「还有更多」提示均保留，未改文案。
+- 验证：`runs.pagecap.test.tsx` 3 例（30 行→常驻句 + 满页提示 + 导出/复制同数；2 行→无常驻提示、数仍同源；500→「当前已加载 — 行」且无满页提示）。定向 runs 7 files / 161 passed；全量 176 files / 2401 passed；`tsc` 本域 0；`eslint src/modules/runs` exit 0（1 条既存 unused-disable warning）；build exit 0（entry 内 `run-page-cap`=0，`RunsModulePage-CczfD3ZM.js`=1）。
+- 未测：真实浏览器 375 下常驻句与满页提示同行折行；读口真的给出 `nextCursor` 时（本页不跟进，只影响 `run5-status` 的「还有更多」尾句）。
+
+## 加载更多（runs load more，2026-11-20）
+
+上一轮写的是「暂不提供翻页」；这一轮把游标接上，那句话必须同时改掉，否则同一页两处口径互相打脸。
+
+- 现查：`runs.ts:51 PAGE_LIMIT=30`；`askListRoute` 行 223 拼 `since + limit`，行 249 仅在 `q.cursor` 存在时写 `cursor`；`loadRuns` 把响应 `nextCursor` 读进 `ListState.cursor`。之前页面不消费它。
+- 数据层 `useRunsData`：新增 `paging: { busy, hasMore, error, loadMore, resetPages }`。追加页放在 `extra` 状态里、以 `key`（attempt|status|employee|window）分区，渲染时只合并当前 key 的那份——旧窗口的迟到页落在旧 key 上，永远不显示。合并时按 `runId` 去重（先到先留），`cursor`/`asOf` 取最新一页；`cancel()` 与 `resetPages()` 都丢弃追加页与它们的错误；刷新成功后也清掉追加页（重读的就是第一页）。
+- 页面：`run-more-bar` 内 `run-more`（原生 button，`aria-busy`，无下一页时 disabled）＋忙碌时 `run-more-busy`＋`hasMore=false` 时 `run-more-end`「已到末页」；失败渲染 `run-more-error`：「这一页没有取到更多运行记录，已加载的行仍然保留。」+ `run-more-rid`（无号写「本次请求未记录编号」）+ `run-more-copy` + `run-more-retry`。
+- 排序是本地动作、过去零请求，所以改排序不重新取数：`chooseSort` 先 `paging.resetPages()`，行数回到第一页、旧游标不再续用，`urls()` 不变。切窗口/切状态/清筛选走参数变化，key 变了自然回第一页，且旧 `cursor` 不会带上（`loadMore` 只在 `read.key === key` 时出手）。
+- 口径统一：`run-page-cap` 改为「已加载 N 行（每页 30 条；复制与导出也只含这些行，不报全量）」，N 与 `run-list-export-count` 的文案/`data-rows`、复制 title 的「当前已加载 N 行」同源；`run-page-cap-more` 的显示条件从「行数满 30」改为「服务确实给了 `nextCursor`」——满页但服务说没有下一页时不再暗示还有。
+- 验证：单文件 `runs.more.test.tsx` 5 例全绿（追加+去重+同源 N、末页 disabled、失败保行+可复制 rid+重试、改排序回第一页且零请求、切窗口不带旧 cursor）；定向 runs 8 files / 166 passed；全量 177 files / 2406 passed；`tsc` 本域 0；`eslint src/modules/runs` exit 0；build exit 0（entry 内 `run-more`=0，`RunsModulePage-BySzOfBO.js`=1）。
+- 未测：真实浏览器 375 下 `run-more-bar` 与错误行折行；读口在游标失效时若静默回首页（本页按追加页处理、靠 runId 去重，不额外探测）。
+
+## 分页契约护栏（runs paging guards，2026-11-20）
+
+纯测试，产品码零改动；把「加载更多」的四条契约钉死。
+
+- 新增 `web/src/modules/runs/runs.paging.test.tsx`（5 例）：①第二页把首页整整 30 行再发一次 → 屏上只多出 5 行，`codes()` 去重后长度不变（一个 runId 一行），`run-page-cap` 同步写 35；②带 `?status=failed` 加载第二页后移除状态 chip → 回第一页 30 行，新请求不带 `cursor=` 也不带 `status=`，只多一次 `/api/runs`；③`nextCursor=null` → `run-more` disabled、title 含「到底」、`run-more-end` 显「已到末页」、无 `run-page-cap-more`；④第二页 500（rid `req-paging`）→ 行仍 30、`run-more-error` 含「已加载的行仍然保留」、`run-more-rid` = rid，重试后**恰好** +1 次 `/api/runs` 并追加成功；⑤加载到 35 行后 `run-list-export-count` 的 `data-rows` 与文案、`run-page-cap` 的 N、以及复制文本的数据行数三者相等（复制首行仍是 `run,status,started,ended,elapsed,cost,employee`）。
+- 验证：单文件 5 passed；定向 runs 9 files / 171 passed；全量 177 files / 2414 passed；`tsc` 本域 0；`eslint src/modules/runs` exit 0（2 条 warning，均为既有）；build exit 0（entry 内 `run-page-cap`=0，`RunsModulePage-CVaT7OEe.js`=1）。
+- 未测：真实浏览器 375 下「加载更多」与错误行折行；服务端返回超长游标串时的断行表现。
