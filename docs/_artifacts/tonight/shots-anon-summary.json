@@ -213,7 +213,7 @@
     {
       "route": "#/employees/:employeeId?zone=config",
       "viewport": "1440",
-      "chars": 146,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -243,7 +243,7 @@
     {
       "route": "#/employees/:employeeId?zone=runs",
       "viewport": "375",
-      "chars": 66,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -591,7 +591,7 @@
     {
       "route": "#/work",
       "viewport": "375",
-      "chars": 281,
+      "chars": 261,
       "hasMainEl": true
     },
     {
@@ -631,13 +631,12 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 2,
+  "consoleErrorsObservedByShots": 1,
   "consoleErrorRoutesObservedByShots": [
-    "#/work",
-    "#/work?tab=cron"
+    "#/work"
   ],
   "ceAuthority": "login-state",
-  "routesWithEnvOnlyConsoleErrors": 51,
+  "routesWithEnvOnlyConsoleErrors": 50,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
   "overflowing": [],
   "driver": {
@@ -645,12 +644,12 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "dcac5182",
+  "headHash": "4148ce6a",
   "exitCode": 0,
-  "entry": "assets/index-90TH2F6t.js",
-  "entrySha256": "411b129304c1ed91e4ce467e883185d0a7c7a766ee0124ff224246b4a714ae6e",
-  "entryBytes": 171967,
-  "servedEntryBefore": "index-90TH2F6t.js",
-  "servedEntryAfter": "index-90TH2F6t.js",
+  "entry": "assets/index-Cc6Mpxjk.js",
+  "entrySha256": "9d1791851c6cd1fee22aac92aa1823418c57b631ee1ee8f72ae9e707d8e4d954",
+  "entryBytes": 171948,
+  "servedEntryBefore": "index-Cc6Mpxjk.js",
+  "servedEntryAfter": "index-Cc6Mpxjk.js",
   "auxiliary": true
 }

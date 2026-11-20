@@ -1285,3 +1285,10 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - shots auth 102/102 failures=[] obs=0 distinct=24 envOnly=51（与上代持平）；anon auxiliary=true 102/102 **obs=2（#/work、#/work?tab=cron；上代 1，+1 与知识页单源化无关向，如实登记不入判据）distinct=24（上代 23，回正）envOnly=51**；三键两 summary 全值、servedEntryBefore==After=index-90TH2F6t.js、ceAuthority=login-state。
 - 42180cd6 章 c467fc92 已盖不重做；无 amend/force；R60 已 unsigned 结案（33c2b838），本轮仅账本引用，未写 PASS/已验收、未动 ACC 判词节。
 - 环境：9122 v4_proxy 95667、caddy 8183 28034、BFF 8092 pid 12048@603a23e9 均未动；web/src 未碰；零凭据明文。
+
+## 一三六轮 · 波次代次九件重章 @ 4148ce6a（entry Cc6Mpxjk / CSS Dy6bEprR 双换代，2026-11-21 01:0x）
+
+- 代次现查：LOCAL=ls-remote=4148ce6afd27（ANCH=0）、porc 0 脏；entry assets/index-Cc6Mpxjk.js 171948B sha256 9d179185…d954 == 卡面逐字 == 9122 served；CSS assets/index-Dy6bEprR.css 137665B sha fb9c8edb…21c9（本代双换代，wave-51 四笔 appr c177f769 R213 / gov d9f030cc R212 / ui1 6f38d91a R208 / ui-a bca1006d 令牌收编）。
+- 九腿全 exit=0（/tmp/wave51-exits.txt），served 拍前后同值未漂；heads 9/9=={4148ce6a:9} bad=[] 全 ok/exit=0。ia-html/react {51,22,1,8}；fake v=[]；reuse v=0 exempt=1；quad 20/20；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）；redirects=24 归因 notes。
+- shots auth 102/102 failures=[] obs=0 obsR=[] distinct=23（上代 24，-1 如实）envOnly=51；anon auxiliary=true 102/102 **obs=1（#/work 单条；上代 2 中 #/work?tab=cron 本代消失=好转，原值如实分开记）distinct=24 envOnly=50（-1）**。三键两 summary 全值、servedEntryBefore==After=index-Cc6Mpxjk.js、ceAuthority=login-state（两腿）。
+- 环境：9122 v4_proxy 95667 / caddy 8183 28034 / BFF 8092 12048@603a23e9 未动；web/src 未碰；零凭据明文。dcac5182 章 db490245 已盖不重做、无 amend/force。R60 已 unsigned 结案（qa-verify 33c2b838）——本节只做账本，禁写 PASS/禁动 ACC 判词节。
