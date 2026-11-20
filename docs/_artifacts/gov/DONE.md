@@ -2112,3 +2112,19 @@ built /private/tmp/health-r38/index.html
   - denied：六入口全 false，title 同句含 GAP；skills `GAP-SKL4-01`，tools `GAP-04`；导出 count `—`。
 - 验证：定向 `npx vitest run src/modules/skills src/modules/tools src/modules/capabilities` → **8 files / 80 passed**；全量 `npx vitest run` → **149 files / 1931 passed**；`tsc -b . --noEmit` → 23 行均既有基线（approvals/employee-detail/employees），本域 0。
 - 边界：仅 `web/src/modules/{capabilities,skills,tools}/**` + 本 DONE；未碰 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未 install/force/amend/--no-verify。
+
+## R73 — /capabilities 行详情深链 `?row=`（2026-11-20）
+
+- 基线：显式 refspec fetch `origin/lane/hermes-console`（章面 `a5832d15` / 代次 `60a4a429`）后 `git merge --no-ff` → merge `2fb316de`；未 reset，未并 main，未重建 9122。
+- 新增 `web/src/modules/capabilities/rowLink.tsx`：`row=<tab>:<name>` 解析/写入/删除；只匹配当前 tab；`rowHref` 生成可复制 hash 链接；`listHref` 去掉 row 与 q、保留 tab/sort/dir/ssort。
+- Skills/Tools 行详情接线：
+  - 点「详情」/键盘 Enter：写 `row=skills:<name>` / `row=tools:<name>`（URLSearchParams 负责百分号编码，浏览器地址栏为 `%3A`），同一时刻仍只展开一行。
+  - 「链接」`cap-row-link` 是可复制/新开的 hash 链接；「关闭」`cap-row-close` 只删 `row`，保留 tab/q/sort/dir/ssort。
+  - 刷新/粘链：按 row 名匹配当前搜索+排序后的行，自动展开、`scrollIntoView({block:'center'})`、行上 `aria-current="true"`；不存在的 row 只显示「该条目不在当前列表里」`cap-row-missing`（title `GAP-CAPROW-01`）+ 原因 + 「查看完整列表」去处，不补行；`cap-row-expanded` 标记当前展开详情。
+- 验证：定向 `npx vitest run src/modules/skills src/modules/tools src/modules/capabilities` → **8 files / 80 passed**；全量 `npx vitest run` → **151 files / 2001 passed**；`tsc -b . --noEmit` → 仅有既有基线错误（approvals/employee-detail/employees），本域 0。
+- DOM（临时 harness 已删；Vite 5496 / Chrome CDP 9296）：
+  - 1440/1280/375 × skills/tools × link/missing：`body=page=视口`，无横溢；`cap-row-link` 每行 1 个。
+  - skills `row=skills:质检&q=质`：detail 1、expanded 1、`aria-current=true`、fetch **1**；点关闭后 detail 0、`row` 删除、`q` 保留、fetch **1**。
+  - tools `row=tools:网页搜索&q=网页`：detail 1、expanded 1、`aria-current=true`、fetch **4**；关闭后 detail 0、`row` 删除、`q` 保留、fetch **4**。
+  - 两边 `row=…:不存在`：`cap-row-missing` 可见、title `GAP-CAPROW-01`、detail 0、行数不变、fetch 不变。
+- 边界：仅 `web/src/modules/{capabilities,skills,tools}/**` + 本 DONE；未碰 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未 install/force/amend/--no-verify。

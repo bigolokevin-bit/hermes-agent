@@ -636,3 +636,67 @@ describe("SkillsPage", () => {
     expect(css).toMatch(/min-height:\s*220px/);
   });
 });
+describe("row deep link", () => {
+  const deepSkills = {
+    asOf: "2026-11-19T06:00:00Z",
+    items: [
+      { skillId: "s1", name: "资料整理", scope: "tenant-shared", version: "2" },
+      { skillId: "s2", name: "质检", scope: "unused", version: "1" },
+    ],
+  };
+
+  it("writes the open row to the URL and closes without losing q/sort/dir", async () => {
+    window.history.replaceState({}, "", "/capabilities?tab=skills&q=%E8%B5%84%E6%96%99&sort=name&dir=asc");
+    fetchJsonStrict.mockResolvedValue(deepSkills);
+    await render();
+    const calls = fetchJsonStrict.mock.calls.length;
+
+    await act(async () => container.querySelector<HTMLButtonElement>("[data-testid='cap7-detail-toggle']")!.click());
+    const afterOpen = new URLSearchParams(container.querySelector("[data-testid='cap8-location']")?.textContent ?? "");
+    expect(afterOpen.get("row")).toBe("skills:资料整理");
+    expect(afterOpen.get("q")).toBe("资料");
+    expect(afterOpen.get("sort")).toBe("name");
+    expect(afterOpen.get("dir")).toBe("asc");
+    expect(container.querySelectorAll("[data-testid='cap7-detail-skills']")).toHaveLength(1);
+    expect(container.querySelector("[data-testid='cap-row-expanded']")).toBeTruthy();
+    expect(container.querySelector("tr[data-testid^='skl4-row-']")?.getAttribute("aria-current")).toBe("true");
+
+    await act(async () => container.querySelector<HTMLButtonElement>("[data-testid='cap-row-close']")!.click());
+    const afterClose = new URLSearchParams(container.querySelector("[data-testid='cap8-location']")?.textContent ?? "");
+    expect(afterClose.get("row")).toBeNull();
+    expect(afterClose.get("q")).toBe("资料");
+    expect(afterClose.get("sort")).toBe("name");
+    expect(afterClose.get("dir")).toBe("asc");
+    expect(container.querySelectorAll("[data-testid='cap7-detail-skills']")).toHaveLength(0);
+    expect(fetchJsonStrict.mock.calls.length).toBe(calls);
+  });
+
+  it("opens and scrolls a pasted row link without another read", async () => {
+    const scroll = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: scroll });
+    window.history.replaceState({}, "", `/capabilities?tab=skills&${new URLSearchParams({ row: "skills:质检" }).toString()}`);
+    fetchJsonStrict.mockResolvedValue(deepSkills);
+    await render();
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 10)); });
+
+    expect(container.querySelectorAll("[data-testid='cap7-detail-skills']")).toHaveLength(1);
+    const row = [...container.querySelectorAll<HTMLElement>("tr[data-testid^='skl4-row-']")].find((node) => node.textContent?.includes("质检"));
+    expect(row?.getAttribute("aria-current")).toBe("true");
+    expect(scroll).toHaveBeenCalled();
+    expect(fetchJsonStrict).toHaveBeenCalledTimes(1);
+    delete (HTMLElement.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+  });
+
+  it("reports a missing row without inventing one", async () => {
+    window.history.replaceState({}, "", `/capabilities?tab=skills&${new URLSearchParams({ row: "skills:不存在" }).toString()}`);
+    fetchJsonStrict.mockResolvedValue(deepSkills);
+    await render();
+
+    const missing = container.querySelector("[data-testid='cap-row-missing']");
+    expect(missing?.textContent).toContain("该条目不在当前列表里");
+    expect(missing?.getAttribute("title")).toBe("GAP-CAPROW-01");
+    expect(container.querySelectorAll("[data-testid='cap7-detail-skills']")).toHaveLength(0);
+    expect(container.querySelectorAll("[data-testid^='skl4-row-']")).toHaveLength(2);
+    expect(fetchJsonStrict).toHaveBeenCalledTimes(1);
+  });
+});

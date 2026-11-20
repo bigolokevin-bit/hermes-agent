@@ -37,6 +37,7 @@ import { applySort, ariaSort, cycleSort, readSort, sortRows, type SortKey } from
 import { CapabilityRowDetail } from "../capabilities/rowDetail";
 import { useEnsureTabParam } from "../capabilities/tabParam";
 import { captureTabView, focusTabButton, noteTabMount, restoreTabView } from "../capabilities/tabView";
+import { RowMissingNotice, listHref, rowHref, rowTargetFor, withRowTarget, withoutRowTarget } from "../capabilities/rowLink";
 import "./tools.css";
 
 
@@ -87,6 +88,9 @@ function Row({
   onFocus,
   onKeyDown,
   detailGate,
+  linkHref,
+  onLink,
+  onClose,
 }: {
   row: ToolRow;
   open: boolean;
@@ -96,6 +100,9 @@ function Row({
   onFocus: () => void;
   onKeyDown: (event: ReactKeyboardEvent<HTMLDivElement>) => void;
   detailGate: ActionGate;
+  linkHref: string;
+  onLink: () => void;
+  onClose: () => void;
 }): ReactNode {
   const dimmed = row.status !== "enabled";
   return (
@@ -104,6 +111,7 @@ function Row({
       ref={setRowRef}
       tabIndex={tabIndex}
       aria-expanded={open}
+      aria-current={open ? "true" : undefined}
       onFocus={onFocus}
       onKeyDown={onKeyDown}
       className={`tol5-row flex min-w-0 flex-wrap items-start justify-between gap-x-4 gap-y-2 border-b border-border px-4 py-3 last:border-b-0 ${dimmed ? "opacity-60" : ""}`}
@@ -132,17 +140,35 @@ function Row({
         ) : null}
       </div>
       <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-3 gap-y-1">
-        <button
-          type="button"
-          className="cap7-toggle"
-          aria-expanded={open}
-          disabled={!detailGate.enabled}
-          title={detailGate.title}
-          onClick={onToggle}
-          data-testid="cap7-detail-toggle"
-        >
-          {open ? "收起" : "详情"}
-        </button>
+        <span className="inline-flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className="cap7-toggle"
+            aria-expanded={open}
+            disabled={!detailGate.enabled}
+            title={detailGate.title}
+            onClick={onToggle}
+            data-testid="cap7-detail-toggle"
+          >
+            {open ? "收起" : "详情"}
+          </button>
+          <a
+            className="cap-row-link"
+            href={linkHref}
+            data-testid="cap-row-link"
+            onClick={(event) => {
+              event.preventDefault();
+              onLink();
+            }}
+          >
+            链接
+          </a>
+          {open ? (
+            <button type="button" className="cap-row-close" onClick={onClose} data-testid="cap-row-close">
+              关闭
+            </button>
+          ) : null}
+        </span>
         <span className="min-w-0 text-xs text-muted-foreground" data-testid="tol5-credential">
           凭据：{CREDENTIAL_LABEL[row.credential]}
           {row.credentialReason ? <span className="ml-1">{row.credentialReason}</span> : null}
@@ -163,7 +189,9 @@ function Row({
       </div>
     </div>
     {open ? (
-      <CapabilityRowDetail
+      <div>
+        <span className="sr-only" data-testid="cap-row-expanded" />
+        <CapabilityRowDetail
         name={row.name}
         nameReason={row.nameReason}
         type={kindLabel(row)}
@@ -178,7 +206,8 @@ function Row({
         asOfReason=""
         asOfTitle={row.asOfTitle}
         testid="cap7-detail-tools"
-      />
+        />
+      </div>
     ) : null}
     </>
   );
@@ -247,6 +276,27 @@ export function ToolsPage(): ReactNode {
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const rootRef = useRef<HTMLElement | null>(null);
 
+  const setRowParam = (row: ToolRow | null) => {
+    setParams(row ? withRowTarget(params, "tools", row.name) : withoutRowTarget(params), { replace: true });
+  };
+  const openToolRow = (row: ToolRow) => {
+    setOpenTool(row.key);
+    setRowParam(row);
+  };
+  const closeToolRow = () => {
+    setOpenTool(null);
+    setRowParam(null);
+  };
+  const toggleToolRow = (row: ToolRow) => {
+    if (openTool === row.key) closeToolRow();
+    else openToolRow(row);
+  };
+  const clearRowLookup = () => {
+    const next = withoutRowTarget(params);
+    next.delete("q");
+    setParams(next, { replace: true });
+  };
+
   useEffect(() => {
     rememberOpenTool(openTool);
   }, [openTool]);
@@ -273,13 +323,13 @@ export function ToolsPage(): ReactNode {
     if (!openTool) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setOpenTool(null);
+        closeToolRow();
         rowRefs.current[openTool]?.focus();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [openTool]);
+  }, [openTool, params]);
   const forced = forcedStateOf(params.get("state"));
   const tools = useToolsData(forced);
   const { phase, rows } = tools;
@@ -294,6 +344,16 @@ export function ToolsPage(): ReactNode {
   const toolRows = sortedRows.filter((row) => row.source === "toolset");
   const mcpRows = sortedRows.filter((row) => row.source === "mcp");
   const keyRows = [...toolRows, ...mcpRows];
+  const linkTarget = rowTargetFor(params, "tools");
+  const linkedRow = linkTarget ? sortedRows.find((row) => row.name === linkTarget.name) ?? null : null;
+  const rowMissing = Boolean(linkTarget && (phase === "ready" || phase === "empty") && !linkedRow);
+  const rowMissingReason = linkTarget
+    ? q
+      ? `当前搜索词「${q}」把这个条目隐藏了，或它已不在清单里。`
+      : phase === "empty"
+        ? "读口已接入，本次返回 0 条；没有可定位的条目。"
+        : "当前清单里没有这个条目；它可能已被删除或改名。"
+    : "";
   const gatePhase: GatePhase =
     phase === "denied"
       ? "denied"
@@ -385,6 +445,19 @@ export function ToolsPage(): ReactNode {
       gap: null,
     });
   }, [forced, phase, visibleRows.length, gates.counts.title, tools.issues.length]);
+
+  useEffect(() => {
+    if (!linkTarget) return;
+    if (linkedRow) {
+      setOpenTool(linkedRow.key);
+      const timer = window.setTimeout(() => {
+        rowRefs.current[linkedRow.key]?.scrollIntoView?.({ block: "center" });
+      }, 0);
+      return () => window.clearTimeout(timer);
+    }
+    if (phase === "ready" || phase === "empty") setOpenTool(null);
+  }, [linkTarget?.tab, linkTarget?.name, linkedRow?.key, phase]);
+
   const retry = () => {
     if (forced !== null) {
       const next = new URLSearchParams(params);
@@ -472,12 +545,15 @@ export function ToolsPage(): ReactNode {
                 row={row}
                 key={row.key}
                 open={openTool === row.key}
-                onToggle={() => setOpenTool(openTool === row.key ? null : row.key)}
+                onToggle={() => toggleToolRow(row)}
                 tabIndex={row.key === activeToolKey ? 0 : -1}
                 setRowRef={(node) => { rowRefs.current[row.key] = node; }}
                 onFocus={() => setRovingKey(row.key)}
                 onKeyDown={(event) => onRowKeyDown(event, row, index)}
                 detailGate={gates.rowDetail}
+                linkHref={rowHref("tools", row.name, params)}
+                onLink={() => openToolRow(row)}
+                onClose={closeToolRow}
               />
             )) : (
               <p className="px-4 py-4 text-xs text-muted-foreground" data-testid="tol5-tools-empty">
@@ -497,12 +573,15 @@ export function ToolsPage(): ReactNode {
                 row={row}
                 key={row.key}
                 open={openTool === row.key}
-                onToggle={() => setOpenTool(openTool === row.key ? null : row.key)}
+                onToggle={() => toggleToolRow(row)}
                 tabIndex={row.key === activeToolKey ? 0 : -1}
                 setRowRef={(node) => { rowRefs.current[row.key] = node; }}
                 onFocus={() => setRovingKey(row.key)}
                 onKeyDown={(event) => onRowKeyDown(event, row, toolRows.length + index)}
                 detailGate={gates.rowDetail}
+                linkHref={rowHref("tools", row.name, params)}
+                onLink={() => openToolRow(row)}
+                onClose={closeToolRow}
               />
             )) : (
               <p className="px-4 py-4 text-xs text-muted-foreground" data-testid="tol5-mcp-empty">
@@ -595,6 +674,10 @@ export function ToolsPage(): ReactNode {
       </p>
 
       <CapabilitySearch value={q} total={rows.length} onChange={setQ} gate={gates.search} />
+
+      {rowMissing ? (
+        <RowMissingNotice reason={rowMissingReason} href={listHref(params)} onClear={clearRowLookup} />
+      ) : null}
 
       {phase === "ready" ? (
         <div className="cap8-sortbar" role="row" data-testid="cap8-sortbar">

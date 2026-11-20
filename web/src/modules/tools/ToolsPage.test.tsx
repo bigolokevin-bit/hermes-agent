@@ -695,3 +695,53 @@ describe("tab state memory", () => {
     expect(css).toMatch(/min-height:\s*220px/);
   });
 });
+
+describe("row deep link", () => {
+  it("writes the open row to the URL and closes without losing q/sort/dir", async () => {
+    await mount(answer, "/capabilities?tab=tools&q=%E7%BD%91%E9%A1%B5&sort=name&dir=asc");
+    const calls = urls().length;
+
+    await act(async () => document.querySelector<HTMLButtonElement>("[data-testid='cap7-detail-toggle']")!.click());
+    const afterOpen = new URLSearchParams(document.querySelector("[data-testid='cap8-location']")?.textContent ?? "");
+    expect(afterOpen.get("row")).toBe("tools:网页内容提取");
+    expect(afterOpen.get("q")).toBe("网页");
+    expect(afterOpen.get("sort")).toBe("name");
+    expect(afterOpen.get("dir")).toBe("asc");
+    expect(document.querySelectorAll("[data-testid='cap7-detail-tools']")).toHaveLength(1);
+    expect(document.querySelector("[data-testid='cap-row-expanded']")).toBeTruthy();
+    expect(rows()[0].getAttribute("aria-current")).toBe("true");
+
+    await act(async () => document.querySelector<HTMLButtonElement>("[data-testid='cap-row-close']")!.click());
+    const afterClose = new URLSearchParams(document.querySelector("[data-testid='cap8-location']")?.textContent ?? "");
+    expect(afterClose.get("row")).toBeNull();
+    expect(afterClose.get("q")).toBe("网页");
+    expect(afterClose.get("sort")).toBe("name");
+    expect(afterClose.get("dir")).toBe("asc");
+    expect(document.querySelectorAll("[data-testid='cap7-detail-tools']")).toHaveLength(0);
+    expect(urls()).toHaveLength(calls);
+  });
+
+  it("opens and scrolls a pasted row link without another read", async () => {
+    const scroll = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: scroll });
+    await mount(answer, `/capabilities?tab=tools&${new URLSearchParams({ row: "tools:网页搜索" }).toString()}`);
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 10)); });
+
+    expect(document.querySelectorAll("[data-testid='cap7-detail-tools']")).toHaveLength(1);
+    const row = rows().find((node) => node.textContent?.includes("网页搜索"));
+    expect(row?.getAttribute("aria-current")).toBe("true");
+    expect(scroll).toHaveBeenCalled();
+    expect(urls()).toHaveLength(6);
+    delete (HTMLElement.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+  });
+
+  it("reports a missing row without inventing one", async () => {
+    await mount(answer, `/capabilities?tab=tools&${new URLSearchParams({ row: "tools:不存在" }).toString()}`);
+    const missing = document.querySelector("[data-testid='cap-row-missing']");
+    expect(missing?.textContent).toContain("该条目不在当前列表里");
+    expect(missing?.getAttribute("title")).toBe("GAP-CAPROW-01");
+    expect(document.querySelectorAll("[data-testid='cap7-detail-tools']")).toHaveLength(0);
+    expect(rows()).toHaveLength(6);
+    expect(urls()).toHaveLength(6);
+  });
+});
