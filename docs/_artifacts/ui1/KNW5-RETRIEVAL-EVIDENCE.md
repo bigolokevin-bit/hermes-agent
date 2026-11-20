@@ -4906,3 +4906,53 @@ kn-gates + 既有 36 套全绿。
 ```
 未测如实：带会话真屏（详情 200/500 真信封 mock 代证）；(b) 的 404 变体四处链（R217④ 已锁
 其子集，本轮按派工择 500）；抽屉三态 title 全句（R152③ 族，非本单四腿）。
+
+# KNW5 追加 R220：导出命名/字符集缺席护栏（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做（HEAD 即调度方 merge `f6ebdd39`，含预期章笔 `08fe4abe`——
+merge commit 按实记录）、基线先跑 37/186 全绿 Errors 0 再动笔。零产品文件改动、
+未造任何导出件。新增 knowledge.export.naming.test.tsx 三例（本体）。
+
+## 三件点名产物「按现状缺口」逐字记录（同时抄入文件头）
+
+```text
+(a) a.download 文件名词表——不存在：kn-export-name 全面 0 个（DOM+grep 双确认）、
+    产品源码无 download= 属性、无任何导出文件名构造；
+(b) Blob.type "text/csv;charset=utf-8"——不存在：源码无 new Blob（R190 已锁文本面），
+    本单补行为面——vi.stubGlobal("Blob", spy) 三类复制器全程 0 调用；
+(c) BOM \uFEFF——不存在：源码零命中、无导出字节流可言。
+以上缺席锁成「变红即提醒」不变量：若将来真落 CSV 导出，①②③ 相应断言变红逼对齐口径。
+```
+
+## 三例读数
+
+```text
+① 源码四文件（page/knowledge/copyGates/updated）合串：createObjectURL / a.download|
+  download= / new Blob( / text/csv / \uFEFF 全部 0 命中（R190 同法补两形）；DOM 面：
+  kn-export-name 0、a[download] 0；absent 标记逐面（kn-gates-knF/knG）= SPAN +
+  aria-hidden=true + 内部无 button/a[href]——诚实陈述而非假 disabled 按钮。
+② 三类复制器（knF-copy/knG-copy/详情行钮）各点一次：writeText 恰 3 次、表头逐字
+  「文档名 | 类型 | 大小 | 更新 | 短码」与「文档名 | 所属空间 | … | 短码」、缺值行进
+  文本「M 缺项档 | — | — | — | DM」（「—」口径）；createObjectURL spy 0、Blob ctor spy 0、
+  a[download] 全程 0。
+③ 复制前后 urls 排序快照逐字相等（本地零增量）；空集两面 disabled + knF title 含
+  「没有可复制」、点击 writeText 0 + urls 不动 + 字节流三计数全 0。
+```
+
+## 验证尾行（R220）
+```text
+$ npx vitest run src/modules/knowledge   → 38 files / 189 tests passed（基线 186 + 3 ≥187），
+  全输出 grep unhandled|Errors = 0（clipboard 桩全 Promise、Blob stub 在 afterEach unstub，
+  R214 教训守住）
+$ npx vitest run                         → 316 files / 3078 passed 全绿（无豁免）
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r220-dist → exit 0
+$ 三档：1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn-row-copy*/kn-row-copy-space*/kn-doc-copy*/kn-doc-preview*/kn-space-preview*/
+kn3-page-cap/knE-page-*/kn7-preview-*/kn-type*/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort*/
+kn-gates + 既有 37 套全绿。
+```
+未测如实：带登录会话真屏（缺席不变量与信封无关）；absent 标记全 4 处中 knI/knL 两面
+未逐个点开（同构造、knF/knG 两面已代表性锁定）；真落 CSV 时的正向命名/编码断言
+（本单只锁现状缺席）。
