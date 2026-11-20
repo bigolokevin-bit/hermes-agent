@@ -2223,3 +2223,61 @@ $ npx vite build --outDir /tmp/knw-rowprev-dist → exit 0
 边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
 package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
 无 force / amend / `--no-verify`；单 commit「feat(console): knowledge document row preview」。
+
+# KNW5 追加 R68：空间列表行内预览（testid `kn-space-preview-*`）（2026-11-20 BJT）
+
+安全闸：toplevel 相符、porcelain 空、显式 refspec fetch；上游 tip 仍章面 `a5832d15`
+（代次 60a4a429），merge 为 Already up to date——本笔只有 feature commit。e2130b4f（文档行内
+预览）已核可，本轮同范式复制到空间列表行。
+
+## 一、口径（与 kn-doc-preview 同族规）
+
+```text
+控件       每行文档名单元格内专用 BUTTON `kn-space-toggle-<i>`（aria-expanded/aria-controls
+           指向同行 `kn-space-preview-<i>`）；容器常挂载、收起用 hidden——aria-controls
+           永不指空。行名 `knw5-space-link` 的下钻导航零动（专用控件路线，同 R67 声明）。
+内容       四格全取已加载 SpaceRow，不发任何新请求：
+           · 空间名：有→人话名；缺名有标识→「空间 · 短码」+ title 全 id；全缺→「该字段未返回」
+             + title 点名空间名缺。屏面实测无裸 sp_。
+           · 文档数：有（含真 0 逐字「0 篇」——真实零值口径不动）；缺→「—」+title 原因。
+           · 最近更新：有→屏上同款前缀 +BJT 到分（「最近同步：2026-11-19 14:20」）；
+             缺→「该字段未返回」+title。
+           · 短码：标识尾段大写（sp_hr→SPHR），全 id 只在 title；无标识→「该字段未返回」。
+视图态     previewKey 存本面本地：开/关/Esc 全程 loc 逐字不变（快照比对）；刷新同址全收起；
+           进详情、切页签随组件卸载自然清零。同时至多一行（换行自动收前一行，逐钮 aria 实测）。
+Esc        展开态：收起 + 焦点守本钮（activeElement=kn-space-toggle-3 实测）+ stopPropagation
+           （不触 roving 的「Esc 回搜索框」）；收起态：Esc 交还既有列表语义。
+互斥锁     四方逐对：
+           · vs 检索行内展开（?sdoc=）：开预览→静默删 sdoc=（实测 URL 落净）；点命中行开
+             sdoc→预览作废（state 比较的渲染期调整形态，非 effect 非 ref）。双向实测。
+           · vs 文档行预览 / kn7 抽屉：路由结构互斥（列表与详情不同屏；进详情列表卸载、
+             预览态清零），实测 DOM 无 kn-space-toggle-*。
+           任何互斥切换都不清不属于被关面的参数（q/ksort/kdir/space 原样）。
+roving     toggle 与行名同行同权（共用 tabIndexFor，0/-1 分布实测），无正数 tabindex；
+           ↑/↓/Home/End/Esc(框) 语义零动；ArrowDown 焦点仍落行名链接。
+```
+
+## 三档与零破
+
+真实浏览器（headless Chrome + 静态产物预览，端口/进程用毕即杀）：`/knowledge?tab=spaces`
+1440/1280/375 `vw==bodySW==docSW` 全等。预览行为态本身在 preview 无会话屏落错误态，
+行态真实屏三档由 hidden 容器+既有表格布局保证、jsdom 断言覆盖，未复测项如下如实列出。
+kn3 / kn6 / kn7 / kn8 / kn9 / knB / knD / knF / knG / knI / knL / kn-sort / kn-gates /
+kn-doc-preview 零破：62 例 = 基线 61 + 本轮 1 全绿；全仓 150 files / 1992 passed。
+本轮修 lint 一处形态问题：渲染期互斥调整先写成 ref 比较（触发 3 条
+no-access-ref-during-render warning），改为官方 state 比较形态后回到既有 1 条 warning。
+
+未测如实：行态（展开预览）真实浏览器三档与真机鼠标聚焦行为（静态预览无登录会话；以 jsdom
+断言替代）；真机剪贴板不在本单范围。
+
+## 验证尾行（R68）
+```text
+$ npx vitest run src/modules/knowledge   → 2 files / 62 tests passed
+$ npx vitest run                         → 150 files / 1992 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-sp-dist → exit 0
+```
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
+无 force / amend / `--no-verify`；单 commit「feat(console): knowledge space row preview」。

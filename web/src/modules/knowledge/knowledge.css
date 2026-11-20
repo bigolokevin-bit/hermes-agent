@@ -1129,3 +1129,44 @@
   font-size: 0.6875rem;
   overflow-wrap: anywhere;
 }
+
+/* R68 — 空间行内预览：toggle 与文档行同规格；预览体 flex-wrap，hidden 时不占屏。 */
+.kn-space-toggle {
+  margin-left: 8px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-muted-foreground);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.kn-space-toggle:focus-visible {
+  outline: 2px solid var(--color-ring, var(--color-border));
+  outline-offset: 2px;
+}
+.kn-space-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 4px 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--color-muted);
+}
+.kn-space-preview[hidden] {
+  display: none;
+}
+.kn-space-preview div {
+  min-width: 0;
+}
+.kn-space-preview dt {
+  font-size: 0.6875rem;
+  color: var(--color-muted-foreground);
+}
+.kn-space-preview dd {
+  margin: 0;
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+}

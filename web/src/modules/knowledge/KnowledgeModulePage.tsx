@@ -878,12 +878,19 @@ function SpaceTable({
   needle,
   tabIndexFor,
   active,
+  previewKey,
+  sdocOpen,
+  onPreview,
 }: {
   rows: SpaceRow[];
   spaceLink: (id: string) => string;
   needle: string;
   tabIndexFor: (index: number) => number;
   active: number;
+  /** R68 — 行内预览：本地视图态；检索面板的行内展开（?sdoc=）在场时互斥收起。 */
+  previewKey: string | null;
+  sdocOpen: boolean;
+  onPreview: (key: string) => void;
 }): ReactNode {
   return (
     <div className="knw5-scroll">
@@ -898,82 +905,162 @@ function SpaceTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, index) => (
-            <tr key={row.id || `space-${index}`} data-testid="knw5-spaces-row" data-active={index} title={row.id || undefined}>
-              <td data-label="空间名称">
-                {row.id ? (
-                  <Link
-                    className="knw5-name knw5-rowlink"
-                    data-testid="knw5-space-link"
-                    to={spaceLink(row.id)}
-                    tabIndex={tabIndexFor(index)}
-                    aria-current={active === index ? "true" : undefined}
-                    title="看这个空间里的文档——文档预览抽屉只对文档行打开，请进入空间后预览文档"
-                  >
-                    <Highlight text={row.name} needle={needle} testid="kn9-mark-space" />
-                  </Link>
-                ) : (
-                  <>
-                    <span className="knw5-name" data-testid="knw5-space-name">
-                      <Highlight text={row.name} needle={needle} testid="kn9-mark-space" />
+          {rows.map((row, index) => {
+            const rowKey = row.id !== "" ? row.id : `space-${index}`;
+            const previewActive = !sdocOpen && previewKey === rowKey;
+            const previewId = `kn-space-preview-${index}`;
+            const nameText =
+              row.nameReason === null
+                ? row.name
+                : shortId(row.id) !== null
+                  ? `空间 · ${shortId(row.id)}`
+                  : "该字段未返回";
+            const nameTitle =
+              row.nameReason === null
+                ? undefined
+                : shortId(row.id) !== null
+                  ? row.id
+                  : `空间名：${row.nameReason}`;
+            return (
+              <Fragment key={rowKey}>
+                <tr data-testid="knw5-spaces-row" data-active={index} data-preview={previewActive ? "1" : "0"} title={row.id || undefined}>
+                  <td data-label="空间名称">
+                    {row.id ? (
+                      <Link
+                        className="knw5-name knw5-rowlink"
+                        data-testid="knw5-space-link"
+                        to={spaceLink(row.id)}
+                        tabIndex={tabIndexFor(index)}
+                        aria-current={active === index ? "true" : undefined}
+                        title="看这个空间里的文档——文档预览抽屉只对文档行打开，请进入空间后预览文档"
+                      >
+                        <Highlight text={row.name} needle={needle} testid="kn9-mark-space" />
+                      </Link>
+                    ) : (
+                      <>
+                        <span className="knw5-name" data-testid="knw5-space-name">
+                          <Highlight text={row.name} needle={needle} testid="kn9-mark-space" />
+                        </span>
+                        <span className="knw5-sub" title="上游没有给出这个空间的标识">
+                          — 点不进文档列表
+                        </span>
+                      </>
+                    )}
+                    <button
+                      type="button"
+                      className="kn-space-toggle"
+                      data-testid={`kn-space-toggle-${index}`}
+                      aria-expanded={previewActive ? "true" : "false"}
+                      aria-controls={previewId}
+                      tabIndex={tabIndexFor(index)}
+                      onClick={() => onPreview(rowKey)}
+                      onKeyDown={(event) => {
+                        // 展开态 Esc=收起、焦点守本钮；收起态的 Esc 交还 roving 原语义（回搜索框）。
+                        if (!previewActive || event.key !== "Escape") return;
+                        event.preventDefault();
+                        event.stopPropagation();
+                        onPreview(rowKey);
+                      }}
+                      title={previewActive ? "收起这个空间的行内预览" : "行内预览这个空间已读到的字段：不会再发任何请求"}
+                    >
+                      {previewActive ? "收起预览" : "预览"}
+                    </button>
+                    <Reason>{row.nameReason}</Reason>
+                    {row.kind ? (
+                      <span className="knw5-sub" data-testid="knw5-space-scope" title={row.kindRaw ?? undefined}>
+                        {row.kind}
+                      </span>
+                    ) : null}
+                  </td>
+                  <td data-label="来源">
+                    <span data-testid="knw5-space-source" title={row.sourceRaw ?? undefined}>
+                      {row.source}
                     </span>
-                    <span className="knw5-sub" title="上游没有给出这个空间的标识">
-                      — 点不进文档列表
+                    <Reason>{row.sourceReason}</Reason>
+                  </td>
+                  <td data-label="文档数">
+                    <span data-testid="knw5-space-docs">{row.docs}</span>
+                    {row.docsExtra ? <span className="knw5-sub" data-testid="knw5-space-docs-extra">{row.docsExtra}</span> : null}
+                    <Reason>{row.docsReason}</Reason>
+                  </td>
+                  <td data-label="最近同步">
+                    <span data-testid="knw5-space-time">
+                      {row.timeLabel ? `${row.timeLabel}：${row.at}` : row.at}
                     </span>
-                  </>
-                )}
-                <Reason>{row.nameReason}</Reason>
-                {row.kind ? (
-                  <span className="knw5-sub" data-testid="knw5-space-scope" title={row.kindRaw ?? undefined}>
-                    {row.kind}
-                  </span>
-                ) : null}
-              </td>
-              <td data-label="来源">
-                <span data-testid="knw5-space-source" title={row.sourceRaw ?? undefined}>
-                  {row.source}
-                </span>
-                <Reason>{row.sourceReason}</Reason>
-              </td>
-              <td data-label="文档数">
-                <span data-testid="knw5-space-docs">{row.docs}</span>
-                {row.docsExtra ? <span className="knw5-sub" data-testid="knw5-space-docs-extra">{row.docsExtra}</span> : null}
-                <Reason>{row.docsReason}</Reason>
-              </td>
-              <td data-label="最近同步">
-                <span data-testid="knw5-space-time">
-                  {row.timeLabel ? `${row.timeLabel}：${row.at}` : row.at}
-                </span>
-                <Reason>{row.atReason}</Reason>
-              </td>
-              <td data-label="状态">
-                <span data-testid="knw5-space-status">
-                  <Badge
-                    tone={
-                      row.status === "已同步" || row.status === "可用"
-                        ? "success"
-                        : row.status === "失败" || row.status === "部分可用"
-                          ? "destructive"
-                          : "outline"
-                    }
-                  >
-                    {row.status}
-                  </Badge>
-                </span>
-                <Reason>{row.statusReason}</Reason>
-                {row.failure ? (
-                  <span className="knw5-sub" data-testid="knw5-space-failure" title={row.failureRaw ?? undefined}>
-                    {row.failure}
-                  </span>
-                ) : null}
-                {row.failure === null && row.failureRaw ? (
-                  <span className="knw5-sub" data-testid="knw5-space-failure" title={row.failureRaw}>
-                    上游记的原因偏技术，这里不原样上屏；悬停可看原文。
-                  </span>
-                ) : null}
-              </td>
-            </tr>
-          ))}
+                    <Reason>{row.atReason}</Reason>
+                  </td>
+                  <td data-label="状态">
+                    <span data-testid="knw5-space-status">
+                      <Badge
+                        tone={
+                          row.status === "已同步" || row.status === "可用"
+                            ? "success"
+                            : row.status === "失败" || row.status === "部分可用"
+                              ? "destructive"
+                              : "outline"
+                        }
+                      >
+                        {row.status}
+                      </Badge>
+                    </span>
+                    <Reason>{row.statusReason}</Reason>
+                    {row.failure ? (
+                      <span className="knw5-sub" data-testid="knw5-space-failure" title={row.failureRaw ?? undefined}>
+                        {row.failure}
+                      </span>
+                    ) : null}
+                    {row.failure === null && row.failureRaw ? (
+                      <span className="knw5-sub" data-testid="knw5-space-failure" title={row.failureRaw}>
+                        上游记的原因偏技术，这里不原样上屏；悬停可看原文。
+                      </span>
+                    ) : null}
+                  </td>
+                </tr>
+                <tr data-testid={`kn-space-preview-row-${index}`}>
+                  <td colSpan={5}>
+                    {/* 容器常在（收起=hidden 不卸载）：aria-controls 永远指得到真节点。 */}
+                    <dl
+                      id={previewId}
+                      className="kn-space-preview"
+                      data-testid={`kn-space-preview-${index}`}
+                      hidden={!previewActive}
+                    >
+                      <div>
+                        <dt>空间名</dt>
+                        <dd data-testid={`kn-space-name-${index}`} title={nameTitle}>
+                          {nameText}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>文档数</dt>
+                        <dd
+                          data-testid={`kn-space-docs-${index}`}
+                          title={row.docsReason !== null ? `文档数：${row.docsReason}` : undefined}
+                        >
+                          {row.docsReason === null ? row.docs : "—"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>最近更新</dt>
+                        <dd data-testid={`kn-space-at-${index}`} title={row.at !== "—" ? undefined : `更新：${row.atReason ?? "上游没有给出时间"}`}>
+                          {row.at === "—" ? "该字段未返回" : row.timeLabel ? `${row.timeLabel}：${row.at}` : row.at}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>短码</dt>
+                        <dd
+                          data-testid={`kn-space-code-${index}`}
+                          title={row.id !== "" ? row.id : "短码：上游没有给出空间标识"}
+                        >
+                          {row.id !== "" ? shortId(row.id) ?? "该字段未返回" : "该字段未返回"}
+                        </dd>
+                      </div>
+                    </dl>
+                  </td>
+                </tr>
+              </Fragment>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -997,13 +1084,20 @@ function SpacesSurface({
   keyword,
   onCommitKeyword,
   onClearKeyword,
+  sdocOpen,
+  onCloseSdoc,
 }: {
   nonce: string;
   spaceLink: (id: string) => string;
   keyword: string;
   onCommitKeyword: (value: string) => void;
   onClearKeyword: () => void;
+  /** R68 — 与检索行内展开互斥：?sdoc= 在场即收起空间预览，开空间预览即静默删 sdoc=。 */
+  sdocOpen: boolean;
+  onCloseSdoc: () => void;
 }): ReactNode {
+  // 行内预览是本面视图态：不进 URL；刷新、切面、切页签都随组件重挂自然回收起。
+  const [previewKey, setPreviewKey] = useState<string | null>(null);
   const surface = useSurface<SpaceRow>(
     () => {
       markKnwLoading("spaces", SPACES_URL);
@@ -1031,6 +1125,28 @@ function SpacesSurface({
     setDraft({ from: keyword, text: "" });
     onClearKeyword();
   };
+
+  // R68 — 开合行内预览：本身不写 URL；检索行内展开（?sdoc=）在场时开预览 = 静默关它（只删 sdoc=，不抢焦点）。
+  const handlePreview = (key: string) => {
+    if (previewKey === key) {
+      setPreviewKey(null);
+      return;
+    }
+    setPreviewKey(key);
+    if (sdocOpen) {
+      onCloseSdoc();
+    }
+  };
+  // 反向互斥：用户点了检索命中（?sdoc= 被写入）时，上一行的预览作废——
+  // 不靠派生遮蔽后「sdoc 一关预览自己复活」。官方「渲染期按输入变化调整 state」形态（比较值用 state，不碰 ref），
+  // 同组件重渲染即刻收敛，不发任何请求。
+  const [wasSdocOpen, setWasSdocOpen] = useState(sdocOpen);
+  if (sdocOpen !== wasSdocOpen) {
+    setWasSdocOpen(sdocOpen);
+    if (sdocOpen) {
+      setPreviewKey(null);
+    }
+  }
 
   // ---- R57 — 复制空间清单：文本只取当前屏上可见行（含「已加载 N 个空间」的口径行），此路不发任何请求。
   // 与 knF/knG 同一手法：回执带内容签名，检索词或列表一变，旧的「已复制 N 行」立即作废。
@@ -1141,6 +1257,9 @@ function SpacesSurface({
             needle={text}
             tabIndexFor={roving.tabIndexFor}
             active={roving.active}
+            previewKey={previewKey}
+            sdocOpen={sdocOpen}
+            onPreview={handlePreview}
           />
         )}
       />
@@ -3106,6 +3225,13 @@ function containerQuery(key: string): HTMLElement | null {
     setSp(next);
   };
 
+  // R68 — 开空间行内预览时静默收掉检索行内展开：只删 sdoc=，不抢焦点。
+  const closeSdocQuietly = () => {
+    const next = new URLSearchParams(sp);
+    next.delete("sdoc");
+    setSp(next);
+  };
+
   const backLink = (() => {
     const next = keepBase();
     next.delete("space");
@@ -3252,6 +3378,8 @@ function containerQuery(key: string): HTMLElement | null {
                       keyword={query}
                       onCommitKeyword={commitKeyword}
                       onClearKeyword={clearKeyword}
+                      sdocOpen={openSearchDoc !== ""}
+                      onCloseSdoc={closeSdocQuietly}
                     />
                   ) : (
                     <SpaceDetailSurface

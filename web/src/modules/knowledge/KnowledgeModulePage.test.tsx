@@ -4262,4 +4262,112 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(toggles()[1]?.getAttribute("tabindex")).toBe("-1"); // 非活动行整体退出 tab 序
     expect(urls()).toBe(urlsRoving); // roving 走位与 tabindex 断言全程零新请求
   });
+
+  it("previews a space row inline (kn-space-preview-*): honest fields, one-at-a-time, Esc to toggle, sdoc mutex, zero requests", async () => {
+    const SPACE_LIST = {
+      asOf: "2026-11-19T08:00:00Z",
+      items: [
+        { spaceId: "sp_hr", name: "人事制度空间", docCount: 12, lastSyncAt: "2026-11-19T06:20:00Z", status: "synced" },
+        { spaceId: "sp_zero", name: "空表空间", docCount: 0, lastSyncAt: "2026-11-19T04:00:00Z", status: "ready" },
+        { spaceId: "sp_fin", docCount: 3 },
+        { sourceName: "无信息的角落" },
+      ],
+    };
+    const SEARCH = {
+      asOf: "2026-11-19T08:00:00Z",
+      documents: [{ documentId: "d_x", fileName: "员工手册.pdf", spaceId: "sp_hr", spaceName: "人事制度空间" }],
+    };
+    fetchMock.mockClear();
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SPACE_LIST);
+      if (url === DOCUMENTS_PLAIN) return Promise.resolve(SEARCH);
+      return fail(404, "这个数据接口还没有接入。", "rid-sp-x");
+    });
+    await render("/knowledge?tab=spaces");
+    const toggle = (i: number) => byTestid(`kn-space-toggle-${i}`) as HTMLButtonElement | null;
+    const body = (i: number) => byTestid(`kn-space-preview-${i}`) as HTMLElement | null;
+    const dd = (name: string, i: number) => byTestid(`kn-space-${name}-${i}`);
+    const loc = () => byTestid("loc")?.textContent ?? "";
+    const urls = () => fetchMock.mock.calls.length;
+
+    // 初始：toggle 齐、aria-expanded=false、容器常挂载但 hidden
+    expect(toggle(0)?.getAttribute("aria-expanded")).toBe("false");
+    expect(body(0)?.hidden).toBe(true);
+    expect(body(0)).toBeTruthy(); // aria-controls 的目标始终在场
+    const loc0 = loc();
+    const urls0 = urls();
+
+    // ---------- 完整行：四格逐字；真 0 给「0 篇」不当缺值 ----------
+    await click("kn-space-toggle-0");
+    expect(body(0)?.hidden).toBe(false);
+    expect(dd("name", 0)?.textContent).toBe("人事制度空间");
+    expect(dd("docs", 0)?.textContent).toBe("12 篇");
+    expect(dd("at", 0)?.textContent).toBe("最近同步：2026-11-19 14:20");
+    expect(dd("code", 0)?.textContent).toBe("SPHR");
+    expect(dd("code", 0)?.getAttribute("title")).toBe("sp_hr"); // 全 id 只在 title
+    await click("kn-space-toggle-1");
+    expect(dd("docs", 1)?.textContent).toBe("0 篇"); // 真 0 保持既有真实口径
+    expect(dd("docs", 1)?.getAttribute("title") ?? "").not.toContain("没给出");
+
+    // ---------- 名缺行：短码 + title 全 id；裸 sp_ 不上屏 ----------
+    await click("kn-space-toggle-2");
+    expect(dd("name", 2)?.textContent).toBe("空间 · SPFIN");
+    expect(dd("name", 2)?.getAttribute("title")).toBe("sp_fin");
+    expect((body(2)?.textContent ?? "")).not.toContain("sp_fin");
+
+    // ---------- 全缺行：逐格「该字段未返回」/「—」+title 点名；不编值 ----------
+    await click("kn-space-toggle-3");
+    expect(dd("name", 3)?.textContent).toBe("该字段未返回");
+    expect(dd("name", 3)?.getAttribute("title") ?? "").toContain("空间名");
+    expect(dd("docs", 3)?.textContent).toBe("—");
+    expect(dd("docs", 3)?.getAttribute("title") ?? "").toContain("文档数");
+    expect(dd("at", 3)?.textContent).toBe("该字段未返回");
+    expect(dd("at", 3)?.getAttribute("title") ?? "").toContain("更新");
+    expect(dd("code", 3)?.textContent).toBe("该字段未返回");
+    expect(dd("code", 3)?.getAttribute("title") ?? "").toContain("短码");
+
+    // ---------- 同时只一行：前三行全灭，只剩 3 ----------
+    expect([0, 1, 2].every((i) => body(i)?.hidden === true)).toBe(true);
+    expect([0, 1, 2].every((i) => toggle(i)?.getAttribute("aria-expanded") === "false")).toBe(true);
+    expect(toggle(3)?.getAttribute("aria-expanded")).toBe("true");
+
+    // ---------- Esc：收起、焦点守钮、URL 逐字不变、零新请求 ----------
+    await act(async () => {
+      toggle(3)?.focus();
+    });
+    const esc = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+    await act(async () => {
+      toggle(3)?.dispatchEvent(esc);
+    });
+    await act(async () => {});
+    expect(esc.defaultPrevented).toBe(true);
+    expect(body(3)?.hidden).toBe(true);
+    expect(document.activeElement).toBe(toggle(3));
+    expect(loc()).toBe(loc0); // 全程 URL 逐字不变
+    expect(urls()).toBe(urls0); // 全程零新请求
+
+    // ---------- 刷新回收起 ----------
+    await click("kn-space-toggle-0");
+    await render("/knowledge?tab=spaces");
+    expect(body(0)?.hidden).toBe(true);
+
+    // ---------- 互斥 · 检索行内展开：开 sdoc 即收预览；开预览即静默删 sdoc；全程零请求 ----------
+    await click("kn6-search-name"); // sdoc 打开（内联展开，本就不发详情请求）
+    expect(loc()).toContain("sdoc=d_x");
+    await click("kn-space-toggle-0"); // 开空间预览
+    expect(loc()).not.toContain("sdoc"); // 互斥：sdoc 静默删除
+    expect(body(0)?.hidden).toBe(false);
+    const urlsMutex = urls();
+    await click("kn6-search-name"); // 再开 sdoc
+    expect(body(0)?.hidden).toBe(true); // 预览收起且不留活体
+    expect(toggle(0)?.getAttribute("aria-expanded")).toBe("false");
+    expect(urls()).toBe(urlsMutex);
+
+    // ---------- 互斥 · 与文档行预览/抽屉：路由结构互斥（进详情即卸载列表） ----------
+    await click("knw5-space-link");
+    await act(async () => {});
+    expect(container.querySelectorAll('[data-testid^="kn-space-toggle-"]')).toHaveLength(0);
+    expect(byTestid("kn3-docs-table") ?? container.querySelector('[data-testid="kn3-docs-head-strip"]')).toBeTruthy();
+    expect(loc()).toContain("space=sp_hr"); // 下钻是加法：不清与本次无关的面参数（sdoc 仍在页顶搜索面）
+  });
 });
