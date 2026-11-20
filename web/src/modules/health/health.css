@@ -795,3 +795,13 @@
   overflow-wrap: anywhere;
   resize: vertical;
 }
+
+/* UI-A 2026-11-21 wave-64：/system 密度收口补档。
+ * 既有已覆盖（本笔只补缺，不动任何既有串——SourceMatrix 契约测试锚本文件子串）：
+ *   表头次级色（sys6/sys3 th）、时间与数字列右对齐+tabular-nums、
+ *   长错误文本 overflow-wrap: anywhere、sys6 读源矩阵行高 40（共享 [data-tab] 域）。
+ * 本笔缺口：sys3 健康事件表按子表口径收 36px。与共享域同分，!important 压过。
+ * 斑马纹：本文件无 even/odd 背景源。375：sys6-scroll 既有横滚壳保持。 */
+[data-testid="sys3-table"] tbody > tr {
+  height: var(--table-row-h-compact) !important;
+}
