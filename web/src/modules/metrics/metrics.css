@@ -328,8 +328,10 @@
 }
 
 @media (max-width: 720px) {
+  /* 汇总卡窄屏两列：一张卡不再占满整屏高，滚动距离减半。 */
   .met6-grid {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
   }
 
   .met6-window {
@@ -729,6 +731,20 @@
 @media (max-width: 375px) {
   .metH-card-acts > * {
     min-width: 0;
+  }
+
+  /* 两列档每张卡约 175px：数值降字号、允许折行，标签与金额不被挤断。 */
+  .met6-value {
+    font-size: 19px;
+  }
+
+  .met6-value-small {
+    font-size: 14px;
+  }
+
+  .met6-label,
+  .met6-value {
+    overflow-wrap: anywhere;
   }
 }
 
