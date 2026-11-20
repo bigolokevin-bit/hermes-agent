@@ -1307,3 +1307,11 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - shots auth 102/102 failures=[] obs=0 obsR=[] **distinct=23（上代 24，-1 与员工详情首屏并入方向一致如实）** envOnly=51；anon auxiliary=true 102/102 obs=0 distinct=24 envOnly=51；三键全值、servedEntryBefore==After=index-BPuvjew0.js、ceAuthority=login-state 两腿。
 - CSS 换代注：本代账本 entry 三键为 JS 侧；CSS 143210B/sha 1e37d056 现值登记于本节与 DONE 头注（账本 summary 键形未含 CSS，维持单文件 JSON 既有契约不改）。
 - 环境：9122 v4_proxy 95667 未动；caddy 8183 28034 未动；BFF 8092 pid 12048@603a23e9 未动；web/src 未碰；零凭据明文；916b943b 章 be33e3f4 已盖不重做、无 amend/force。R60 结案仅引用，未动 ACC 判词节。
+
+## 一三九轮 · 波次代次九件重章 @ 5f1b7428（entry Dq8WBeME / CSS jJCfJ6Ay 双换代，2026-11-21 01:5x）
+
+- 代次现查：LOCAL=ls-remote=5f1b7428ef4e（wave-54 六笔：appr 07df79aa R215 / aud 21dd1adb R213 / ui-c 06ce80f8 / ui-d 86ebeb89 / ui-qa ed70a3cf / ui-a 16a836ad table density on /system）。entry assets/index-Dq8WBeME.js 171948B sha256 af17209e…8cdf 逐字==卡面；CSS assets/index-jJCfJ6Ay.css 143307B sha a49ff980…78ab；9122 served 同值。
+- 九腿全 exit=0；heads 9/9=={5f1b7428:9} bad=[] 全 ok/exit=0：ia-html/react{51,22,1,8}、fake v=[]、reuse v0 e1(chat→T40)、quad 20/20、crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）、redirects=24 notes 归因。
+- shots auth 102/102 failures=[] obs=0 distinct=25（上代 23，+2 与 ui-a /system 表格密度并入方向一致如实）envOnly=51；anon aux=true 102/102 obs=0 distinct=23（-1）envOnly=51；served 拍前后同值未漂；ceAuthority=login-state 两腿。
+- 注：stamp_wave54 首跑崩于 L6 沿用上代 entry 硬码（BPuvjew0 残留——sed 位应以 stamp 现值为准，换代波 sed 后必 grep 旧 entry 残留复核，教训固化）；修复后即绿，非 state-quad 写不出（用户 01:5x 现读 bad=[state-quad] 时点早于本拍 stamp 完成，实际刷新成功 20/20，无沿用上代）。
+- 804ad319 章 cb790a3c 已盖不重做；无 amend/force；R60 结案仅引用；web/src/9122(v4_proxy 95667)/BFF(8092 pid 12048@603a23e9)/caddy 28034 未动；零凭据明文。
