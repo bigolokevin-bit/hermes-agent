@@ -47,3 +47,13 @@
 - 闸门 V1/V2/V3 仍是 unknown（无读口，按设计不给假值），V6 为负责人推断——不属于夹具。
 
 验证（本单）：`vitest run src/modules/duty` 3 files / 54 passed；全量 147 files / 1928 passed；tsc 本域 0；eslint 0 error / 3 既有 warning；build 见回执（`ov6-asof` entry 0、DutyPage chunk 1）。
+
+## duty/overview 真数据护栏（duty caliber，2026-11-20）
+
+新增 `web/src/modules/duty/duty.caliber.test.ts`（6 例）：六区块只调真接口（`/employee-stats`、`/run-activity`、`/budget-usage`、`/runs`、`/tasks`、`/api/matrix`）且渲染结果中 `MATRIX_FIXTURE` / `data-fixture` / 「样例」零命中；`ov6-*` 锚点 24 枚 + `ov6-gate-*` 逐枚断言保留；asOf 六别名（asOf/as_of/collectedAt/collected_at/generatedAt/generated_at）逐个注入→BJT 到分；非 ISO + 假时钟 2031→「—」且 title 含「不用本机时间顶替」，屏上无 2031；缺 KPI 与 `queue available:false` 均「—」+原因，不补 0；单口 500 只坏成本卡，其余卡照常，失败卡带可复制请求编号与重试。
+
+同单修两处真缺陷（改前/改后）：
+1. `asOfOf` 原来只认 4 个别名且接受任意非空字符串；改为六别名 + 带时区 ISO 校验（非 ISO 返回 null）。
+2. `PendingCard` 原来在计数缺失（读口失败）时仍说「今天没有待你审批的事」；改为「审批数量没有读出来：<原因>。不当成 0，也不当作空队列。」并用 `ApprovalStatsBody.reason`。
+
+另加 `CopyRid`（`ov6-rid-copy`）：失败卡请求编号可一键复制，`copyTextToClipboard` 成功后按钮显示「已复制」。
