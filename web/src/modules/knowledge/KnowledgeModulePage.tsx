@@ -3563,6 +3563,14 @@ export default function KnowledgeModulePage() {
     });
   }, []);
   const forced = readForced(sp.get("state"));
+  // 预览夹具的强制态：URL 参数 state/rid 钉住、不发真实请求。可清除的等价物不是
+  // 「筛选」而是夹具本身，所以两态的单一主操作统一为「退出预览」（撤掉 state/rid）。
+  const exitForced = () => {
+    const next = new URLSearchParams(sp);
+    next.delete("state");
+    next.delete("rid");
+    setSp(next, { replace: true });
+  };
 
   const selectTab = (key: KnowledgeTab) => {
     const next = new URLSearchParams(sp);
@@ -3825,8 +3833,17 @@ function containerQuery(key: string): HTMLElement | null {
                   <div /><div /><div />
                 </div>
               ) : forced === "empty" ? (
-                <div className="knw5-forced" data-testid="knw5-forced-empty">
-                  <p>服务已响应，这个分组没有可展示的条目；不显示 0，也不展示样例。</p>
+                <div
+                  className="knw5-forced flex min-w-0 flex-col gap-[var(--space-2)] px-[var(--space-4)] py-[var(--space-8)]"
+                  data-testid="knw5-forced-empty"
+                >
+                  <p className="knw5-forced-title text-base font-medium">这个分组没有条目</p>
+                  <p className="max-w-prose">服务已响应，这个分组没有可展示的条目；不显示 0，也不展示样例。</p>
+                  <div className="knw5-forced-actions pt-[var(--space-2)]">
+                    <Button size="sm" onClick={exitForced} data-testid="knw5-forced-exit">
+                      退出预览，读实时数据
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div className="knw5-forced" data-testid="knw5-forced-error" role="alert">
