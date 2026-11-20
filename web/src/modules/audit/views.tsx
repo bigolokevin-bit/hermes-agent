@@ -16,11 +16,11 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { themedBody, themedChrome } from "@/lib/utils";
 import type { AuditChange, AuditDetail, AuditRow, VerifyResult } from "./model";
 import { beijingSeconds, maskSensitive } from "./model";
+import { AUDJ_TIME_ZONE, auditActorView, auditTimeView } from "./timeActor";
 import { CopyValue, DeniedPanel, ErrorPanel, LoadingPanel, PermalinkCopy, SummaryCopy, TechnicalDisclosure } from "./states";
 import type { FailureCopy } from "./copy";
 import { summaryFromDetail, summaryFromRow } from "./summary";
 
-const MISSING_TIME = "服务未提供该时间";
 const MISSING_VALUE = "服务未提供该信息";
 /** A change side that exists but is engineering text: pointed at the fold, not printed. */
 const FOLDED_VALUE = "见「技术详情」";
@@ -50,6 +50,7 @@ function Field({
   title,
   tone,
   testId,
+  mark,
 }: {
   label: string;
   value: string;
@@ -58,6 +59,13 @@ function Field({
   title?: string;
   tone?: ReactNode;
   testId?: string;
+  /**
+   * audJ: a probe locator for the SAME value this cell shows. It carries the
+   * text and the `title` as attributes instead of a second visible line — the
+   * screen must read the field once, and a comparison between surfaces has to
+   * be able to see what each surface actually printed.
+   */
+  mark?: string;
 }): ReactNode {
   return (
     <div className="flex min-w-0 items-baseline gap-1.5" data-testid={testId}>
@@ -66,6 +74,14 @@ function Field({
         {value}
         {tone}
       </dd>
+      {mark ? (
+        <span
+          aria-hidden="true"
+          data-testid={mark}
+          data-audj-value={value}
+          data-audj-title={title ?? reason ?? ""}
+        />
+      ) : null}
     </div>
   );
 }
@@ -98,6 +114,9 @@ export function AuditEventRowCard({
   testId: string;
 }): ReactNode {
   const cells = `aud01-cell-${row.key}`;
+  // audJ: one presentation for WHEN and WHO, shared by all three surfaces.
+  const time = auditTimeView(row.occurredAtRaw, row.occurredAt);
+  const actor = auditActorView(row.actor);
   // Every technical line is present, including the ones the service did not
   // send: a fold that can open onto nothing is indistinguishable from a dead
   // control, and the whole point of this cell is that it really expands.
@@ -105,7 +124,8 @@ export function AuditEventRowCard({
     `事件标识：${row.rawId ?? "服务未回传"}`,
     `事件类型原值：${row.action.raw ?? "服务未回传"}`,
     `结果原值：${row.outcome.raw ?? "服务未回传"}`,
-    `发生时间原值：${row.occurredAt ?? "服务未回传"}`,
+    `发生时间原值：${(row.occurredAtRaw ?? "").trim() || row.occurredAt || "服务未回传"}`,
+    `发生时间（${AUDJ_TIME_ZONE}）：${time.text}`,
     `记账时间原值：${row.recordedAt ?? "服务未回传"}`,
     `请求编号：${row.requestId ?? "服务未回传"}`,
     `同一次操作原值：${row.correlation ?? "服务未回传"}`,
@@ -131,13 +151,23 @@ export function AuditEventRowCard({
         </div>
 
         <dl className="flex min-w-0 flex-wrap gap-x-5 gap-y-1 text-xs">
+          {/* audJ: the same two helpers the preview and the record pane call,
+              so one event cannot be read at two different precisions on one
+              screen, at the same precision, with the same missing word. */}
           <Field
             testId={`aud01-cell-${row.key}-time`}
+            mark={`audJ-time-list-${row.key}`}
             label="时间（北京时间）"
-            value={row.occurredAt ?? "—"}
-            reason={row.occurredAt ? undefined : MISSING_TIME}
+            value={time.text}
+            title={time.title}
           />
-          <Field testId={`aud01-cell-${row.key}-actor`} label="操作者" value={row.actor.label} title={row.actor.raw ?? undefined} />
+          <Field
+            testId={`aud01-cell-${row.key}-actor`}
+            mark={`audJ-actor-list-${row.key}`}
+            label="操作者"
+            value={actor.text}
+            title={actor.title}
+          />
           <Field testId={`aud01-cell-${row.key}-object`} label="对象" value={row.resource.label} title={row.resource.raw ?? undefined} />
           <div className="flex min-w-0 flex-col gap-1" data-testid={`aud01-cell-${row.key}-request-id`}>
             <dt className="shrink-0 text-muted-foreground">请求编号</dt>
@@ -197,6 +227,10 @@ export function AuditEventDetailBody({
   testId?: string;
 }): ReactNode {
   const lines = detail.technical.filter((line) => line);
+  // audJ: the same two helpers as the list row and the inline preview.
+  const occurred = auditTimeView(detail.occurredAtRaw, detail.occurredAt);
+  const recorded = auditTimeView(detail.recordedAtRaw, detail.recordedAt);
+  const who = auditActorView(detail.actor);
   const before = changeSide(detail.change, "before");
   const after = changeSide(detail.change, "after");
   return (
@@ -218,14 +252,15 @@ export function AuditEventDetailBody({
         <dl className="flex min-w-0 flex-wrap gap-x-5 gap-y-1 text-xs" data-testid="aud3-time">
           <Field
             testId="audA-detail-time"
+            mark="audJ-time-detail"
             label="发生时间"
-            value={beijingSeconds(detail.occurredAtRaw) ?? detail.occurredAt ?? "—"}
-            reason={beijingSeconds(detail.occurredAtRaw) || detail.occurredAt ? undefined : MISSING_TIME}
+            value={occurred.text}
+            title={occurred.title}
           />
           <Field
             label="记账时间"
-            value={beijingSeconds(detail.recordedAtRaw) ?? detail.recordedAt ?? "—"}
-            reason={beijingSeconds(detail.recordedAtRaw) || detail.recordedAt ? undefined : MISSING_TIME}
+            value={recorded.text}
+            title={recorded.title}
           />
         </dl>
         <div className="flex min-w-0 flex-col gap-1 text-xs" data-testid={`${testId}-request-id`} data-auda-parity="rid">
@@ -247,7 +282,7 @@ export function AuditEventDetailBody({
 
       <Section title="操作者">
         <dl className="flex min-w-0 flex-wrap gap-x-5 gap-y-1 text-xs">
-          <Field testId="audA-detail-actor" label="谁" value={detail.actor.label} title={detail.actor.raw ?? undefined} />
+          <Field testId="audA-detail-actor" mark="audJ-actor-detail" label="谁" value={who.text} title={who.title} />
           {detail.actor.kindLabel ? <Field label="身份" value={detail.actor.kindLabel} /> : null}
           <Field label="所属工作区" value={detail.tenant.label} title={detail.tenant.raw ?? undefined} />
         </dl>
@@ -467,6 +502,10 @@ export function AuditRowPreview({
   // (seconds, with 服务未提供该时间 as the stated reason) and the same
   // CopyValue control, with the same missing-rid sentence, for 请求编号.
   const at = beijingSeconds(row.occurredAtRaw) ?? row.occurredAt;
+  // audJ: the preview, the list row and the record pane all print through
+  // these two calls, so one event has one reading everywhere.
+  const time = auditTimeView(row.occurredAtRaw, row.occurredAt);
+  const actor = auditActorView(row.actor);
   return (
     <div
       className="flex min-w-0 flex-col gap-1 rounded-md border border-border bg-card px-3 py-2 text-xs"
@@ -482,11 +521,12 @@ export function AuditRowPreview({
         <span
           className="min-w-0 break-words"
           data-testid="audA-preview-actor"
-          title={row.actor.raw ?? undefined}
+          title={actor.title}
         >
           <span className="text-muted-foreground">操作者：</span>
-          {row.actor.label}
+          {actor.text}
         </span>
+        <span aria-hidden="true" data-testid="audJ-actor-preview" data-audj-value={actor.text} data-audj-title={actor.title} />
         <span
           className="min-w-0 break-words"
           data-testid="audA-preview-resource"
@@ -499,11 +539,12 @@ export function AuditRowPreview({
           className="min-w-0 break-words"
           data-testid={testId + "-time"}
           data-auda-parity="time"
-          title={at ? (row.occurredAtRaw ?? undefined) : MISSING_TIME}
+          title={time.title}
         >
           <span className="text-muted-foreground">时间（北京时间）：</span>
-          {at ?? "—"}
+          {time.text}
         </span>
+        <span aria-hidden="true" data-testid="audJ-time-preview" data-audj-value={time.text} data-audj-title={time.title} />
       </div>
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         <div className="flex min-w-0 flex-col gap-1" data-testid={testId + "-rid"}>
@@ -591,9 +632,15 @@ export function AuditTypeSummary({
         </button>
         <span
           className="min-w-0 break-words text-xs text-muted-foreground"
-          title="服务没有给出总数；这一块按当前已加载的这一页统计，不是整窗全量"
+          data-testid="audI-scope-note"
+          title={
+            selected
+              ? "已经按这一类筛选：这一份分布只有这一个桶，它数的是服务端在这一窗里回给本页的记录，不是整窗各类的原样分布"
+              : "服务端没有按类型的聚合读口，也没有带回整窗总数；这一块数的是本页已加载的记录，放宽时间窗或翻页后按同一口径重算"
+          }
         >
           按已加载的 {total} 条统计
+          {selected ? "（已按这一类筛，所以只剩这一个桶）" : "（不是整窗全量：这一页读到几条就数几条）"}
         </span>
       </div>
       {open ? (

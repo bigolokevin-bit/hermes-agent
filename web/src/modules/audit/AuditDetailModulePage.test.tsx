@@ -536,3 +536,42 @@ describe("audF - the same states on the detail screen", () => {
     expect(document.querySelector("[data-testid='audF-state-detail-error']")).toBeNull();
   });
 });
+
+/**
+ * audJ — 独立详情屏（aud3）的时间与操作者与列表行、行内预览同一 helper、同一句话。
+ * 断言的是：到秒的绝对北京时间、title 里的原值与时区标注、缺失时「该字段未返回」，
+ * 以及操作者的完整标识只在 title。
+ */
+describe("audJ - the detail screen reads time and operator the same way", () => {
+  const markValue = (testId: string): string | null =>
+    document.querySelector(`[data-testid='${testId}']`)?.getAttribute("data-audj-value") ?? null;
+  const markTitle = (testId: string): string | null =>
+    document.querySelector(`[data-testid='${testId}']`)?.getAttribute("data-audj-title") ?? null;
+
+  it("one absolute Beijing instant, quoted to the second, with its UTC origin", async () => {
+    await openDetail();
+    // DETAIL carries occurredAt 2026-11-18T03:00:00Z → 北京 11:00:00
+    expect(markValue("audJ-time-detail")).toBe("2026-11-18 11:00:00");
+    expect(markTitle("audJ-time-detail")).toContain("2026-11-18T03:00:00Z");
+    expect(markTitle("audJ-time-detail")).toContain("北京时间（UTC+8）");
+    expect(markValue("audJ-actor-detail")).toBe("郑涛 · 55667788");
+    expect(markTitle("audJ-actor-detail")).toContain("user:1122334455667788");
+    const surface = document.querySelector("[data-testid='agent-v2-page-audit-detail']")!.textContent ?? "";
+    expect(surface).not.toContain("user:1122334455667788");
+    // the visible cells still say which clock they speak
+    expect(surface).toContain("以上时间均为北京时间，精确到秒");
+  });
+
+  it("a record whose answer carries no time says 该字段未返回 in the title's own words", async () => {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async () => ({
+      audit: { eventId: "evt_D6FC9A2B4E6F8012", action: "task.created", outcome: "succeeded" },
+    }));
+    await render("/audit/detail?id=evt_D6FC9A2B4E6F8012");
+    await waitFor(() => document.querySelector("[data-testid='aud02-detail']") !== null, "record painted");
+    expect(markValue("audJ-time-detail")).toBe("该字段未返回");
+    expect(markTitle("audJ-time-detail")).toContain("不拿浏览器时间顶替");
+    expect(markValue("audJ-actor-detail")).toBe("未指派");
+    expect(markTitle("audJ-actor-detail")).toContain("没有带回这条记录的操作者");
+  });
+});

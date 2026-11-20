@@ -7,7 +7,19 @@
 
 import { describe, expect, it } from "vitest";
 
-import { detailUrl, isDenied, isVerifyUnavailable, listUrl, verifyUrl, LIST_PATH, VERIFY_PATH, PAGE_LIMIT } from "./api";
+import {
+  PAGE_SIZE_CHOICES,
+  detailUrl,
+  isDenied,
+  isVerifyUnavailable,
+  listUrl,
+  readPageSize,
+  verifyUrl,
+  LIST_PATH,
+  VERIFY_PATH,
+  PAGE_LIMIT,
+} from "./api";
+import { NO_FILTERS } from "./api";
 import { readFailure, verifyFailure, verifyUnavailableReason, requestIdLine } from "./copy";
 import {
   actionView,
@@ -587,5 +599,48 @@ describe("aud8 - address-borne filters and a stated total", () => {
     expect(auditPageFrom({ items: [{}], events: 999 })!.total).toBeNull();
     expect(auditPageFrom({ items: [{}], total: -3 })!.total).toBeNull();
     expect(auditPageFrom({ items: [{}] })!.total).toBeNull();
+  });
+});
+
+/**
+ * audH — 每页条数。可选档位、地址值的判别（合法档位照发，其它一律不发并说明），
+ * 以及回答里带回的生效值（含 meta/pageInfo 包裹与非法值不当生效值）。
+ */
+describe("audH - page size", () => {
+  it("sends only an offered size", () => {
+    expect(PAGE_SIZE_CHOICES).toEqual([25, 50, 100]);
+    expect(readPageSize(null).asked).toBe(PAGE_LIMIT);
+    expect(readPageSize("25")).toMatchObject({ asked: 25, fromAddress: true, rejected: false, note: null });
+    expect(readPageSize("100").asked).toBe(100);
+    expect(readPageSize("abc").rejected).toBe(true);
+    expect(readPageSize("999").rejected).toBe(true);
+    expect(readPageSize("0").rejected).toBe(true);
+    expect(readPageSize("-5").rejected).toBe(true);
+    expect(readPageSize("").asked).toBe(PAGE_LIMIT);
+    expect(readPageSize("999").note).toContain("没有把它发出去");
+    expect(readPageSize("999").note).toContain(String(PAGE_LIMIT));
+    expect(readPageSize("abc").note).toContain("不是一个每页条数");
+  });
+
+  it("puts the chosen size on the wire, in the same place as before", () => {
+    expect(listUrl(null, NO_FILTERS, 100)).toBe(`/agent-api/api/audit?limit=100`);
+    expect(listUrl("c1", { action: "task.created", from: "a", to: "b" }, 25)).toBe(
+      `/agent-api/api/audit?limit=25&action=task.created&from=a&to=b&cursor=c1`,
+    );
+    // the default stays the BFF's own size, so an untouched page asks what it always asked
+    expect(listUrl()).toBe(`/agent-api/api/audit?limit=${PAGE_LIMIT}`);
+  });
+
+  it("reads the size the answer says it served", () => {
+    expect(auditPageFrom({ items: [{}], limit: 50 })!.pageSize).toBe(50);
+    expect(auditPageFrom({ items: [{}], meta: { limit: 25 } })!.pageSize).toBe(25);
+    expect(auditPageFrom({ items: [{}], pageInfo: { pageSize: 100 } })!.pageSize).toBe(100);
+    expect(auditPageFrom({ audit: { items: [{}] }, limit: 25 })!.pageSize).toBe(25);
+    // an answer that says nothing keeps saying nothing
+    expect(auditPageFrom({ items: [{}] })!.pageSize).toBeNull();
+    expect(auditPageFrom({ items: [{}], limit: 0 })!.pageSize).toBeNull();
+    expect(auditPageFrom({ items: [{}], limit: -10 })!.pageSize).toBeNull();
+    expect(auditPageFrom({ items: [{}], limit: 12.5 })!.pageSize).toBeNull();
+    expect(auditPageFrom({ items: [{}], limit: "many" })!.pageSize).toBeNull();
   });
 });

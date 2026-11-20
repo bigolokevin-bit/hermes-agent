@@ -1571,8 +1571,10 @@ describe("audA - preview/detail field parity and the keyboard loop", () => {
     await mountBoth("/audit?window=7d&preview=evt_parity_00000001&detail=evt_parity_00000001", sparse);
     const previewTime = (document.querySelector("[data-auda-parity='time']")!.textContent ?? "").replace("时间（北京时间）：", "").trim();
     expect(previewTime).toBe(detailValue("time"));
-    expect(previewTime).toBe("—");
-    expect(document.querySelector("[data-auda-parity='time']")!.getAttribute("title")).toContain("服务未提供该时间");
+    // audJ replaced the dash with the stated missing word, in every surface:
+    // a cell that says 「—」 reads like an answer, and this is not one.
+    expect(previewTime).toBe("该字段未返回");
+    expect(document.querySelector("[data-auda-parity='time']")!.getAttribute("title")).toContain("不拿浏览器时间顶替");
     expect(document.querySelector("[data-testid='audA-preview-rid-absent']")).not.toBeNull();
     expect(document.querySelector("[data-testid='audA-preview-rid-absent']")!.textContent).toBe(
       document.querySelector("[data-auda-parity='rid'] [data-testid='aud02-detail-request-value-absent']")!.textContent,
@@ -1627,16 +1629,17 @@ describe("audA - preview/detail field parity and the keyboard loop", () => {
     expect(document.querySelector(`[data-testid='${controls}']`)).not.toBeNull();
   });
 
-  it("the row cell, the preview and the detail are the same instant at two precisions", async () => {
+  it("the row cell, the preview and the detail are one identical instant", async () => {
     await mountBoth("/audit?window=7d&preview=evt_parity_00000001&detail=evt_parity_00000001");
     const cell = document.querySelector("[data-testid='aud01-cell-evt_parity_00000001-time']")!.textContent ?? "";
     const preview = (document.querySelector("[data-auda-parity='time']")!.textContent ?? "").replace("时间（北京时间）：", "").trim();
     const detail = detailValue("time");
-    // 列表行到分、预览与详情到秒：同一个瞬间的两种精度，秒值必须以分值开头
-    const toMin = (value: string): string => value.slice(0, 16);
-    expect(toMin(preview)).toBe(toMin(detail));
-    expect(cell).toContain(toMin(preview));
+    // audJ closed the last gap here: the list row used to read to the minute
+    // while the other two read to the second. One helper, one precision.
     expect(cell).toContain("时间（北京时间）");
+    expect(cell.replace("时间（北京时间）", "").trim()).toBe(preview);
+    expect(preview).toBe(detail);
+    expect(preview).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
   });
 
   it("the preview keeps a keyboard path to its own controls", async () => {
@@ -2793,5 +2796,736 @@ describe("audG - the shareable filter summary", () => {
     await render("/audit?window=7d&type=task.created", <AuditEventsModulePage />);
     await waitFor(() => document.querySelector("[data-testid='aud01-denied']") !== null, "denied");
     expect(document.querySelector("[data-testid='audG-filter-copy-block']")).toBeNull();
+  });
+});
+
+/**
+ * audH — 每页条数选择器。断言的是：选择落 `?limit=`、切条数重取恰一次并回到第 1 页
+ * 清掉游标栈、与时间窗/类型/操作者/资源组合冷挂载可复现；服务带回生效值时按生效值
+ * 回显并说明，服务没带回时只报「请求值 + 实收条数」两个数；地址里的非法/超大值
+ * 一律不发出去并如实说明；空集控件 disabled+title；加载中与被拒时没有该控件；
+ * total 仍走服务端字段，缺则「总数不可用」。
+ */
+describe("audH - the page size selector", () => {
+  const many = (n: number): unknown[] =>
+    Array.from({ length: n }, (_unused, index) => ({
+      eventId: `evt_size_${String(index).padStart(4, "0")}`,
+      action: "task.created",
+      occurredAt: "2026-11-19T01:20:00Z",
+      outcome: "succeeded",
+      actor: { type: "system", id: "employee-api" },
+    }));
+
+  const listReads = (): string[] => urls().filter((u) => /^\/agent-api\/api\/audit\?/.test(u));
+  const sizeValue = (): string =>
+    (document.querySelector<HTMLSelectElement>("[data-testid='audH-page-size']")?.value ?? "").trim();
+
+  async function pickSize(size: string): Promise<void> {
+    const node = document.querySelector<HTMLSelectElement>("[data-testid='audH-page-size']")!;
+    await act(async () => {
+      node.value = size;
+      node.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+  }
+
+  async function mountProbed(entry: string, handler?: (url: string) => Promise<unknown>): Promise<void> {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(
+      handler ??
+        (async (url: string) => {
+          const asked = Number(new URLSearchParams(String(url).split("?")[1] ?? "").get("limit") ?? "50");
+          return { items: many(asked), nextCursor: "cur_page2" };
+        }),
+    );
+    await render(entry, <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await waitFor(() => !skeleton(), "first page settled");
+  }
+
+  it("changing the size asks once, at that size, and starts the page over", async () => {
+    await mountProbed("/audit?window=7d&cursor=cur_page1&cursor=cur_page2");
+    expect(sizeValue()).toBe("50");
+    expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 3 页");
+    const before = listReads().length;
+    await pickSize("100");
+    await waitFor(() => listReads().length === before + 1, "one read at the new size");
+    expect(listReads().length).toBe(before + 1);
+    expect(locationText()).toContain("limit=100");
+    expect(locationText()).not.toContain("cursor=");
+    expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 1 页");
+    expect(listReads().pop()).toContain("limit=100");
+    expect(sizeValue()).toBe("100");
+    expect(document.querySelector("[data-testid='audH-clamp-note']")).toBeNull();
+  });
+
+  it("a pasted size replays cold: control filled, first read at that size", async () => {
+    await mountProbed(
+      "/audit?window=custom&from=2026-11-17T01%3A00%3A00.000Z&to=2026-11-17T02%3A30%3A00.000Z" +
+        "&type=task.created&actor=employee-api&resource=ap_1&limit=25",
+    );
+    expect(sizeValue()).toBe("25");
+    const asked = listReads().pop() ?? "";
+    expect(asked).toContain("limit=25");
+    expect(asked).toContain("action=task.created");
+    expect(asked).toContain("actorId=employee-api");
+    expect(asked).toContain("from=2026-11-17T01");
+    expect(listReads()).toHaveLength(1);
+    // audG 的摘要同源：请求路径就是这条，limit 已在里面
+    const clip = stubClipboardForSummary();
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='audG-filter-copy']")?.click();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+    expect(clip.calls[0]).toContain(`请求：${asked}`);
+  });
+
+  function stubClipboardForSummary(): { calls: string[] } {
+    const box: { calls: string[] } = { calls: [] };
+    Object.defineProperty(window, "isSecureContext", { configurable: true, value: true });
+    Object.defineProperty(window.navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: async (text: string) => void box.calls.push(text) },
+    });
+    return box;
+  }
+
+  it("a size the service clamped is echoed as the size in force", async () => {
+    await mountProbed("/audit?window=7d", async (url) => {
+      const asked = new URLSearchParams(String(url).split("?")[1] ?? "");
+      if (asked.get("limit") === "100") return { items: many(50), limit: 50, nextCursor: null };
+      return { items: many(50), nextCursor: null };
+    });
+    await pickSize("100");
+    await waitFor(() => sizeValue() === "50", "the served size is what the control shows");
+    const note = document.querySelector("[data-testid='audH-clamp-note']");
+    expect(note).not.toBeNull();
+    expect(note!.textContent).toContain("请求按每页 100 条发出");
+    expect(note!.textContent).toContain("服务这一页带回的是每页 50 条");
+    // the control does not offer 100 as if it were in force
+    expect(document.querySelector<HTMLSelectElement>("[data-testid='audH-page-size']")!.selectedOptions[0]!.text).toBe("50 条");
+    expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("已加载 50 条");
+  });
+
+  it("a service that states no size gets only the two numbers the screen has", async () => {
+    await mountProbed("/audit?window=7d", async () => ({ items: many(30), nextCursor: null }));
+    const note = document.querySelector("[data-testid='audH-clamp-note']");
+    expect(note).not.toBeNull();
+    expect(note!.textContent).toContain("服务没有带回这一页按多少条读");
+    expect(note!.textContent).toContain("limit=50");
+    expect(note!.textContent).toContain("实收 30 条");
+    expect(sizeValue()).toBe("50");
+    expect(document.querySelector("[data-testid='aud2-total']")!.textContent).toBe("总数不可用");
+    expect(document.querySelector("[data-testid='aud2-total']")!.getAttribute("title")).toContain("游标分页不能自算总数");
+  });
+
+  it("an address size nobody offered is reported, not requested", async () => {
+    for (const written of ["999", "abc", "0"]) {
+      await mountProbed(`/audit?window=7d&limit=${written}`);
+      expect(listReads().pop()).toContain("limit=50");
+      expect(listReads().pop()).not.toContain(`limit=${written}`);
+      expect(sizeValue()).toBe("50");
+      const note = document.querySelector("[data-testid='audH-clamp-note']");
+      expect(note).not.toBeNull();
+      expect(note!.textContent).toContain("没有把它发出去");
+      expect(document.querySelector<HTMLSelectElement>("[data-testid='audH-page-size']")!.getAttribute("title")).toContain(
+        "没有把它发出去",
+      );
+    }
+  });
+
+  it("an empty answer leaves the size selector on screen but unusable", async () => {
+    await mountProbed("/audit?window=24h", async () => ({ items: [], nextCursor: null }));
+    const node = document.querySelector<HTMLSelectElement>("[data-testid='audH-page-size']")!;
+    expect(node.disabled).toBe(true);
+    expect(node.getAttribute("title")).toContain("没有事件");
+    expect(document.querySelector("[data-testid='aud01-empty']")).not.toBeNull();
+    // the empty answer keeps the SAME control (one widget, not a second one) and
+    // marks it unusable with its reason. jsdom dispatches change even on a
+    // disabled node, so the contract proven here is the disabled state and its
+    // title, not a click-through request count.
+    expect(document.querySelectorAll("[data-testid='audH-page-size']")).toHaveLength(1);
+    expect(document.querySelectorAll("[data-testid='audH-clamp-note']")).toHaveLength(0);
+  });
+
+  it("loading and denied offer no size to choose", async () => {
+    let release: ((value: unknown) => void) | null = null;
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(() => new Promise((resolve) => { release = resolve; }));
+    await render("/audit?window=7d", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud01-loading']") !== null, "loading");
+    expect(document.querySelector("[data-testid='audH-page-size']")).toBeNull();
+    await act(async () => {
+      release?.({ items: many(2), nextCursor: null });
+    });
+    await waitFor(() => !skeleton(), "ready");
+    expect(document.querySelector("[data-testid='audH-page-size']")).not.toBeNull();
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockRejectedValue(
+      new ApiError("no", { status: 403, body: '{"code":"console.forbidden"}', url: "/agent-api/api/audit", requestId: "rid-h" }),
+    );
+    await render("/audit?window=7d", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud01-denied']") !== null, "denied");
+    expect(document.querySelector("[data-testid='audH-page-size']")).toBeNull();
+  });
+
+  it("a stated total still reads as the service's own number", async () => {
+    await mountProbed("/audit?window=7d", async () => ({ items: many(5), total: 137, limit: 25, nextCursor: null }));
+    await pickSize("25");
+    await waitFor(() => document.querySelector("[data-testid='aud2-total']")!.textContent === "共 137 条", "total painted");
+    expect(document.querySelector("[data-testid='aud2-total']")!.getAttribute("title")).toContain("顶层 total");
+    expect(sizeValue()).toBe("25");
+  });
+});
+
+/**
+ * audI — 类型分布与导出集合同源。断言的是：点一个类型桶之后，屏上「已显示 N 条」
+ * ＝该桶计数＝导出 CSV 的数据行数（三值对照）；清掉类型后同一口径重算再对照一次；
+ * 分布在游标分页下上屏写明「按已加载 N 条统计」而不是冒充整窗；导出文件名带当前
+ * 筛选快照（时间窗/actor/资源/动作/行数）；导出集合口径上屏（audI-export-scope）；
+ * 空集导出按钮 disabled 并写明原因；展开分布、点导出都不多发一次请求。
+ */
+describe("audI - the distribution and the export answer for one set", () => {
+  const ROW = (id: string, action: string): unknown => ({
+    eventId: id,
+    action,
+    occurredAt: "2026-11-19T01:20:00Z",
+    outcome: "succeeded",
+    actor: { type: "system", id: "employee-api" },
+    resource: { type: "task", id: "ts_" + id },
+    requestId: "req-" + id,
+  });
+  const MIXED = [ROW("evt_i_a1", "task.created"), ROW("evt_i_a2", "task.created"), ROW("evt_i_b1", "run.failed")];
+
+  /** A service that really filters by action, so the three numbers can be compared. */
+  const byAction = async (url: string): Promise<unknown> => {
+    const asked = new URLSearchParams(String(url).split("?")[1] ?? "");
+    const action = asked.get("action");
+    return { items: action ? MIXED.filter((row) => (row as { action: string }).action === action) : [...MIXED], nextCursor: null };
+  };
+
+  const reads = (prefix: RegExp): number => urls().filter((u) => prefix.test(u)).length;
+  const auditReads = (): number => reads(/^\/agent-api\/api\/audit\?/);
+
+  async function expand(): Promise<void> {
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud7-types-toggle']")?.click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='aud7-types-panel']") !== null, "panel open");
+  }
+
+  async function pick(code: string): Promise<void> {
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>(`[data-testid='audD-bucket-${code}']`)?.click();
+    });
+    await waitFor(() => locationText().includes("type=" + code) || !locationText().includes("type="), "the bucket answered");
+  }
+
+  /** Everything the download would have carried, without letting it leave the page. */
+  function captureDownload(): { lines: () => string[]; name: () => string } {
+    const bodies: string[] = [];
+    const realBlob = window.Blob;
+    const realCreate = URL.createObjectURL;
+    const realRevoke = URL.revokeObjectURL;
+    let fileName = "";
+    const spy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      fileName = this.download;
+    });
+    class SpyBlob extends realBlob {
+      constructor(parts: BlobPart[], options?: BlobPropertyBag) {
+        super(parts, options);
+        bodies.push(String(parts[0] ?? ""));
+      }
+    }
+    window.Blob = SpyBlob as unknown as typeof Blob;
+    URL.createObjectURL = vi.fn(() => "blob:audit-i") as unknown as typeof URL.createObjectURL;
+    URL.revokeObjectURL = vi.fn() as unknown as typeof URL.revokeObjectURL;
+    afterEachSpy.push(() => {
+      window.Blob = realBlob;
+      URL.createObjectURL = realCreate;
+      URL.revokeObjectURL = realRevoke;
+      spy.mockRestore();
+    });
+    return {
+      lines: () => (bodies[0] ?? "").replace(/^\uFEFF/, "").split("\r\n").filter((line) => line !== ""),
+      name: () => fileName,
+    };
+  }
+
+  const afterEachSpy: Array<() => void> = [];
+  afterEach(() => {
+    for (const restore of afterEachSpy.splice(0)) restore();
+  });
+
+  async function mountProbed(entry: string): Promise<void> {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(byAction);
+    await render(entry, <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await waitFor(() => !skeleton(), "first page settled");
+  }
+
+  it("one bucket: the count on screen, the bucket and the CSV are the same set", async () => {
+    await mountProbed("/audit?window=7d");
+    await expand();
+    const bucket = Number(
+      document
+        .querySelector("[data-testid='audD-bucket-task.created']")!
+        .closest("li")!
+        .querySelector("[data-testid='aud7-types-count']")!.textContent,
+    );
+    expect(bucket).toBe(2);
+    const download = captureDownload();
+    await pick("task.created");
+    await waitFor(() => document.querySelectorAll("[data-testid^='aud01-row-']").length === bucket, "only this type on screen");
+    expect(document.querySelector("[data-testid='aud01-status']")!.textContent).toContain("已显示 2 条");
+    expect(document.querySelector("[data-testid='aud5-export-count']")!.textContent).toContain("将导出 2 条");
+    // 导出 = 屏上那份集合
+    await act(async () => {
+      document
+        .querySelector<HTMLElement>("[data-testid='aud5-export']")!
+        .dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+    expect(download.lines()).toHaveLength(bucket + 1); // header + rows
+    // audI: the name is a name and the body is the body (they were swapped)
+    expect(download.name()).toMatch(/^audit-[A-Za-z0-9._-]+\.csv$/);
+    expect(download.lines()[0]).toBe("time,actor,action,resource,rid");
+    expect(download.lines().slice(1).every((line) => line.includes("创建任务"))).toBe(true);
+    expect(download.name()).toContain("task-created");
+    expect(download.name()).toContain("n2-");
+    // 口径上屏
+    const scope = document.querySelector("[data-testid='audI-export-scope']")!.textContent ?? "";
+    expect(scope).toContain("只含「创建任务」这一类");
+    expect(scope).toContain("共 2 行");
+    const note = document.querySelector("[data-testid='audI-scope-note']")!.textContent ?? "";
+    expect(note).toContain("按已加载的 2 条统计");
+    expect(note).toContain("已按这一类筛");
+    // 桶点击 + 展开 + 导出：除那一读之外没多发任何请求
+    expect(auditReads()).toBe(2);
+    expect(reads(/^\/agent-api\/api\/audit-detail/)).toBe(0);
+    expect(reads(/^\/agent-api\/api\/audit-verify/)).toBe(0);
+  });
+
+  it("clearing the type recomputes all three under the same rule", async () => {
+    await mountProbed("/audit?window=7d&type=run.failed");
+    await expand();
+    expect(document.querySelectorAll("[data-testid^='aud01-row-']")).toHaveLength(1);
+    const download = captureDownload();
+    await pick("run.failed"); // pressed again → back to every type
+    await waitFor(() => document.querySelectorAll("[data-testid^='aud01-row-']").length === 3, "全量回到屏上");
+    expect(document.querySelector("[data-testid='aud01-status']")!.textContent).toContain("已显示 3 条");
+    expect(document.querySelector("[data-testid='aud5-export-count']")!.textContent).toContain("将导出 3 条");
+    await act(async () => {
+      document.querySelector<HTMLElement>("[data-testid='aud5-export']")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(download.lines()).toHaveLength(4);
+    expect(download.name()).toContain("-all-n3-");
+    expect(download.name()).not.toContain("run-failed");
+    const note = document.querySelector("[data-testid='audI-scope-note']")!.textContent ?? "";
+    expect(note).toContain("按已加载的 3 条统计");
+    expect(note).toContain("不是整窗全量");
+    expect(locationText()).not.toContain("type=");
+    expect(auditReads()).toBe(2);
+  });
+
+  it("a second page keeps saying which denominator was counted", async () => {
+    await mountProbed("/audit?window=7d&cursor=cur_page2");
+    await expand();
+    const note = document.querySelector("[data-testid='audI-scope-note']")!;
+    expect(note.textContent).toContain("按已加载的 3 条统计");
+    expect(note.getAttribute("title")).toContain("服务端没有按类型的聚合读口");
+    expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 2 页");
+  });
+
+  it("an empty set cannot be exported, and says why in the same words", async () => {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async () => ({ items: [], nextCursor: null }));
+    await render("/audit?window=7d&type=dispatch.event", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud01-empty']") !== null, "empty answer");
+    const node = document.querySelector<HTMLElement>("[data-testid='aud5-export']")!;
+    expect(node.getAttribute("aria-disabled")).toBe("true");
+    expect(node.getAttribute("title")).toContain("当前筛选无事件可导出");
+    const before = urls().length;
+    await act(async () => {
+      node.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(urls()).toHaveLength(before);
+    // no set, no distribution to count
+    expect(document.querySelector("[data-testid='aud7-types']")).toBeNull();
+  });
+});
+
+/**
+ * audJ — 三处时间与操作者的呈现统一。断言的是：同一事件的同一字段在列表行、
+ * 行内预览、事件详情里逐字相同（绝对北京时间到秒），title 给服务原值并标注时区，
+ * 缺失一律「该字段未返回」且不拿浏览器当前时间顶替，裸机器句柄不进可见文本；
+ * 读这三处不多发一次请求。
+ */
+describe("audJ - one reading of the time and the operator everywhere", () => {
+  const COMPLETE = {
+    eventId: "evt_present_00000001",
+    action: "task.created",
+    occurredAt: "2026-11-19T01:20:00Z",
+    recordedAt: "2026-11-19T01:20:01Z",
+    outcome: "succeeded",
+    actor: { type: "human", id: "user:2f3a4b5c6d7e8f90", displayName: "李思" },
+    resource: { type: "approval", id: "ap_1122334455667788" },
+    requestId: "req-20261119-0a7b3c",
+  };
+
+  async function mountThree(body: unknown, extra = ""): Promise<void> {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url) =>
+      String(url).startsWith("/agent-api/api/audit-detail") ? { audit: body } : { items: [body] },
+    );
+    await render(`/audit?window=7d&preview=evt_present_00000001&detail=evt_present_00000001${extra}`, <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud02-detail']") !== null, "detail painted");
+    await waitFor(() => document.querySelector("[data-testid='aud6-preview-evt_present_00000001']") !== null, "preview painted");
+  }
+
+  const markValue = (testId: string): string | null =>
+    document.querySelector(`[data-testid='${testId}']`)?.getAttribute("data-audj-value") ?? null;
+  const markTitle = (testId: string): string | null =>
+    document.querySelector(`[data-testid='${testId}']`)?.getAttribute("data-audj-title") ?? null;
+
+  it("the list row, the preview and the record pane print one identical instant", async () => {
+    await mountThree(COMPLETE);
+    const surfaces = ["audJ-time-list-evt_present_00000001", "audJ-time-preview", "audJ-time-detail"];
+    const values = surfaces.map(markValue);
+    expect(values).toEqual(["2026-11-19 09:20:00", "2026-11-19 09:20:00", "2026-11-19 09:20:00"]);
+    // and each of them says where the reading came from
+    for (const id of surfaces) {
+      const title = markTitle(id) ?? "";
+      expect(title).toContain("2026-11-19T01:20:00Z");
+      expect(title).toContain("（UTC）");
+      expect(title).toContain("北京时间（UTC+8）");
+      expect(title).toContain("精确到秒");
+    }
+    // no relative time anywhere on the page
+    expect(text()).not.toMatch(/分钟前|小时前|昨天|刚刚/);
+  });
+
+  it("the operator is the same person in all three, with the handle only in the title", async () => {
+    await mountThree(COMPLETE);
+    const surfaces = ["audJ-actor-list-evt_present_00000001", "audJ-actor-preview", "audJ-actor-detail"];
+    expect(surfaces.map(markValue)).toEqual(["李思 · 6d7e8f90", "李思 · 6d7e8f90", "李思 · 6d7e8f90"]);
+    for (const id of surfaces) expect(markTitle(id)).toContain("user:2f3a4b5c6d7e8f90");
+    const surface = document.querySelector("[data-testid='agent-v2-page-audit']")!.textContent ?? "";
+    expect(surface).not.toContain("user:2f3a4b5c6d7e8f90");
+    expect(surface).not.toMatch(/human:|employee:/);
+  });
+
+  it("a record with no time reads the same missing word in all three, and no clock fills it", async () => {
+    const today = new Date();
+    const stamp = `${String(today.getFullYear())}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    await mountThree({
+      eventId: "evt_present_00000001",
+      action: "task.created",
+      outcome: "succeeded",
+      actor: { type: "human", id: "user:2f3a4b5c6d7e8f90", displayName: "李思" },
+    });
+    const surfaces = ["audJ-time-list-evt_present_00000001", "audJ-time-preview", "audJ-time-detail"];
+    expect(surfaces.map(markValue)).toEqual(["该字段未返回", "该字段未返回", "该字段未返回"]);
+    for (const id of surfaces) expect(markTitle(id)).toContain("不拿浏览器时间顶替");
+    // the browser's own day never shows up as if the service had sent it
+    expect(surfaces.map(markValue).join(" ")).not.toContain(stamp);
+  });
+
+  it("an operator with no name keeps the short code and the full id in the title, in all three", async () => {
+    await mountThree({
+      eventId: "evt_present_00000001",
+      action: "task.created",
+      occurredAt: "2026-11-19T01:20:00Z",
+      outcome: "succeeded",
+      actor: { type: "employee", id: "employee:9f8e7d6c5b4a3f21" },
+    });
+    const surfaces = ["audJ-actor-list-evt_present_00000001", "audJ-actor-preview", "audJ-actor-detail"];
+    const values = surfaces.map(markValue);
+    expect(new Set(values).size).toBe(1);
+    expect(values[0]).toBe("员工 · 5b4a3f21");
+    for (const id of surfaces) expect(markTitle(id)).toContain("employee:9f8e7d6c5b4a3f21");
+    const surface = document.querySelector("[data-testid='agent-v2-page-audit']")!.textContent ?? "";
+    expect(surface).not.toContain("9f8e7d6c5b4a3f21\"");
+    expect(surface).not.toMatch(/employee:9f8e7d6c5b4a3f21/);
+  });
+
+  it("reading the three surfaces costs no extra request", async () => {
+    await mountThree(COMPLETE);
+    const before = urls().length;
+    // open, close and reopen the preview; the record pane is already open
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud6-toggle-evt_present_00000001']")?.click();
+    });
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud6-toggle-evt_present_00000001']")?.click();
+    });
+    expect(markValue("audJ-time-preview")).toBe("2026-11-19 09:20:00");
+    expect(urls()).toHaveLength(before);
+    expect(urls().filter((u) => /^\/agent-api\/api\/audit\?/.test(u))).toHaveLength(1);
+  });
+});
+
+/**
+ * audK — 列表键盘漫游（roving tabIndex）。断言全部走 jsdom 的 keydown/focus，
+ * 不依赖浏览器：整表一个 Tab 停靠点（当前行 tabIndex=0、其余 −1），↑↓ 逐行移焦、
+ * Home/End 到首末、Enter 展开/收起既有 aud6-preview、Esc 收起并把焦点送回该行；
+ * aud6-toggle 的 aria-expanded 与预览可见性同步；筛选、页码与其它地址键不动；
+ * 一整套键盘操作前后 urls() 逐字相等（零额外请求）；加载中/空集/被拒不接管方向键。
+ */
+describe("audK - the list is one roving tab stop", () => {
+  const KEYS = [
+    "evt_7c1f2a3b4d5e6f70",
+    "evt_8d2e3f4051627384",
+    "evt_k3",
+    "evt_k4",
+  ];
+  const FOUR = {
+    items: KEYS.map((id, index) => ({
+      eventId: id,
+      action: index % 2 === 0 ? "task.created" : "run.failed",
+      occurredAt: "2026-11-19T01:20:00Z",
+      outcome: index % 2 === 0 ? "succeeded" : "error",
+      actor: { type: "human", id: `user:000000000000000${index}`, displayName: `同行${index}` },
+      requestId: `req-${id}`,
+    })),
+    nextCursor: null,
+  };
+
+  const shell = (key: string): HTMLDivElement =>
+    document.querySelector(`[data-audk-row='${key}']`) as HTMLDivElement;
+  const stop = (key: string): string | null => shell(key)?.getAttribute("tabIndex") ?? null;
+  const rovingMark = (key: string): string | null =>
+    document.querySelector(`[data-testid='audK-row-${key}']`)?.getAttribute("data-audk-roving") ?? null;
+  const openMark = (key: string): string | null =>
+    document.querySelector(`[data-testid='audK-row-${key}']`)?.getAttribute("data-audk-open") ?? null;
+  const active = (): string | null => (document.activeElement as HTMLElement)?.getAttribute("data-audk-row") ?? null;
+
+  async function press(key: string, on: Element | null = document.activeElement): Promise<void> {
+    if (!on) throw new Error("nothing is focused");
+    await act(async () => {
+      on.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+    });
+  }
+
+  async function mountFour(entry = "/audit?window=7d"): Promise<void> {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async () => FOUR);
+    await render(entry, <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await waitFor(() => !skeleton(), "first page settled");
+  }
+
+  it("the whole list is one tab stop, held by the first row until it is moved", async () => {
+    await mountFour();
+    expect(document.querySelector("[data-testid='audK-list']")).not.toBeNull();
+    expect(stop(KEYS[0]!)).toBe("0");
+    expect(KEYS.slice(1).map(stop)).toEqual(["-1", "-1", "-1"]);
+    expect(rovingMark(KEYS[0]!)).toBe("true");
+    expect(rovingMark(KEYS[3]!)).toBe("false");
+    // the ring is the existing focus-visible token, not a new colour
+    expect(shell(KEYS[0]!).className).toContain("focus-visible:outline-2");
+  });
+
+  it("arrows walk the rows, Home and End jump to the ends, and the stop follows", async () => {
+    await mountFour();
+    await act(async () => {
+      shell(KEYS[0]!)?.focus();
+    });
+    expect(active()).toBe(KEYS[0]);
+    await press("ArrowDown");
+    expect(active()).toBe(KEYS[1]);
+    expect(stop(KEYS[1]!)).toBe("0");
+    expect(stop(KEYS[0]!)).toBe("-1");
+    await press("ArrowDown");
+    await press("ArrowDown");
+    expect(active()).toBe(KEYS[3]);
+    // past the last row there is nowhere to go, and nothing is asked
+    await press("ArrowDown");
+    expect(active()).toBe(KEYS[3]);
+    await press("ArrowUp");
+    expect(active()).toBe(KEYS[2]);
+    await press("Home");
+    expect(active()).toBe(KEYS[0]);
+    await press("End");
+    expect(active()).toBe(KEYS[3]);
+    expect(rovingMark(KEYS[3]!)).toBe("true");
+  });
+
+  it("Enter opens the row's own preview, aria-expanded follows, Enter again closes it", async () => {
+    await mountFour();
+    const row = shell(KEYS[2]!);
+    await act(async () => {
+      row.focus();
+    });
+    const toggle = document.querySelector<HTMLButtonElement>(`[data-testid='aud6-toggle-${KEYS[2]}']`)!;
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(document.querySelector(`[data-testid='aud6-preview-${KEYS[2]}']`)).toBeNull();
+    await press("Enter");
+    expect(document.querySelector(`[data-testid='aud6-preview-${KEYS[2]}']`)).not.toBeNull();
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(openMark(KEYS[2]!)).toBe("true");
+    expect(locationText()).toContain(`preview=${KEYS[2]}`);
+    // one row, one fold: the other rows have no panel of their own at all
+    for (const key of KEYS.filter((one) => one !== KEYS[2])) {
+      expect(document.querySelector(`[data-testid='aud6-preview-${key}']`), key).toBeNull();
+    }
+    await press("Enter");
+    expect(document.querySelector(`[data-testid='aud6-preview-${KEYS[2]}']`)).toBeNull();
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(locationText()).not.toContain("preview=");
+  });
+
+  it("Esc closes the fold and the focus comes back into that same row", async () => {
+    await mountFour();
+    const row = shell(KEYS[1]!);
+    await act(async () => {
+      row.focus();
+    });
+    await press("Enter");
+    // the person has tabbed into the row's own handle: Esc goes back to it
+    const toggle = document.querySelector<HTMLButtonElement>(`[data-testid='aud6-toggle-${KEYS[1]}']`)!;
+    await act(async () => {
+      toggle.focus();
+    });
+    await press("Escape");
+    expect(document.querySelector(`[data-testid='aud6-preview-${KEYS[1]}']`)).toBeNull();
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(row.contains(document.activeElement as globalThis.Node)).toBe(true);
+    expect(document.activeElement).toBe(toggle);
+    expect(rovingMark(KEYS[1]!)).toBe("true");
+  });
+
+  it("the keyboard reading touches nothing else: filters, page and the address stay put", async () => {
+    await mountFour("/audit?window=24h&type=task.created&actor=employee-api&cursor=cur_page1&cursor=cur_page2");
+    const held = () => {
+      const p = new URLSearchParams(locationText().split("?")[1] ?? "");
+      return [p.get("window"), p.get("type"), p.get("actor"), p.get("limit"), p.getAll("cursor").join(",")];
+    };
+    const before = urls();
+    const state = held();
+    await act(async () => {
+      shell(KEYS[0]!)?.focus();
+    });
+    await press("ArrowDown");
+    await press("Enter");
+    expect(held()).toEqual(state);
+    expect(locationText()).toContain(`preview=${KEYS[1]}`);
+    // moving is not opening: the stop walks, the fold stays where it was
+    await press("ArrowDown");
+    expect(held()).toEqual(state);
+    expect(active()).toBe(KEYS[2]);
+    expect(locationText()).toContain(`preview=${KEYS[1]}`);
+    expect(openMark(KEYS[2]!)).toBe("false");
+    // Enter on the row now under focus is the one keystroke that moves the fold
+    await press("Enter");
+    expect(locationText()).toContain(`preview=${KEYS[2]}`);
+    await press("Escape");
+    expect(held()).toEqual(state);
+    expect(locationText()).not.toContain("preview=");
+    // 整套键盘操作：一条请求都没多发
+    expect(urls()).toEqual(before);
+    expect(before.filter((u) => /^\/agent-api\/api\/audit\?/.test(u))).toHaveLength(1);
+    expect(before.filter((u) => u.startsWith("/agent-api/api/audit-detail"))).toHaveLength(0);
+    expect(before.filter((u) => u.startsWith("/agent-api/api/audit-verify"))).toHaveLength(0);
+  });
+
+  it("inside a control the arrows are not stolen, and a row without a name still walks", async () => {
+    // 缺 actor 的那一档：服务只给了机器句柄，行照样可读、可漫游
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async () => ({
+      items: [
+        { eventId: "evt_n1", action: "task.created", occurredAt: "2026-11-19T01:20:00Z", outcome: "succeeded" },
+        { eventId: "evt_n2", action: "run.failed", occurredAt: "2026-11-19T02:05:00Z", outcome: "error" },
+      ],
+      nextCursor: null,
+    }));
+    await render("/audit?window=7d", <AuditEventsModulePage />);
+    await waitFor(() => !skeleton(), "rows settled");
+    const first = shell("evt_n1")!;
+    await act(async () => {
+      first.focus();
+    });
+    // focus is on the row, so arrows move; the export control is a select whose
+    // own keys must keep working — dispatch from inside it and assert no move
+    await press("ArrowDown");
+    expect(active()).toBe("evt_n2");
+    const typeSelect = document.querySelector("[data-testid='aud01-filter-type']")!;
+    await act(async () => {
+      typeSelect.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, cancelable: true }));
+    });
+    expect(active()).toBe("evt_n2");
+    expect(document.querySelector("[data-testid='aud01-filter-type']")).toBe(typeSelect);
+    // a row nobody attributed is still a row: text and roving both work
+    expect(first.textContent).toContain("操作者");
+    expect(first.textContent).not.toMatch(/undefined|null/);
+  });
+
+  it("a pasted address with an open fold replays it, and the stop starts at the first row", async () => {
+    // audK 口径：漫游停靠点与展开的行是两件事。刷新或粘贴地址带 `?preview=`
+    // 回来时，那一行照旧展开，键盘停靠点仍从第一行起——不因为上一次展开过
+    // 就把整表焦点抢到一个可能已经不在本页的行上。
+    await mountFour("/audit?window=7d&preview=evt_k4");
+    expect(document.querySelector(`[data-testid='aud6-preview-${KEYS[3]}']`)).not.toBeNull();
+    expect(document.querySelector<HTMLButtonElement>(`[data-testid='aud6-toggle-${KEYS[3]}']`)!.getAttribute("aria-expanded")).toBe("true");
+    expect(openMark(KEYS[3]!)).toBe("true");
+    expect(stop(KEYS[0]!)).toBe("0");
+    expect(stop(KEYS[3]!)).toBe("-1");
+    // and the stop can be walked to the open row without touching the fold
+    await act(async () => {
+      shell(KEYS[0]!)?.focus();
+    });
+    await press("End");
+    expect(active()).toBe(KEYS[3]);
+    expect(locationText()).toContain(`preview=${KEYS[3]}`);
+    await press("Enter");
+    expect(locationText()).not.toContain("preview=");
+  });
+
+  it("no rows means no hijacked arrows, in every state that has none", async () => {
+    const legs: Array<{ label: string; entry: string; handler: (url: string) => Promise<unknown> }> = [
+      { label: "loading", entry: "/audit?window=7d", handler: () => new Promise(() => undefined) },
+      { label: "empty", entry: "/audit?window=7d", handler: async () => ({ items: [], nextCursor: null }) },
+      {
+        label: "denied",
+        entry: "/audit?window=7d",
+        handler: async () => {
+          throw new ApiError("no", { status: 403, body: '{"code":"console.forbidden"}', url: "/agent-api/api/audit", requestId: "rid-k" });
+        },
+      },
+      {
+        label: "error",
+        entry: "/audit?window=7d",
+        handler: async () => {
+          throw new ApiError("down", { status: 503, body: "{}", url: "/agent-api/api/audit", requestId: "rid-k2" });
+        },
+      },
+    ];
+    for (const leg of legs) {
+      api.fetchJSON.mockReset();
+      api.fetchJSON.mockImplementation(leg.handler);
+      await render(leg.entry, <AuditEventsModulePage />);
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      });
+      expect(document.querySelector("[data-testid='audK-list']"), leg.label).toBeNull();
+      expect(document.querySelector("[data-audk-row]"), leg.label).toBeNull();
+      const before = document.activeElement;
+      await act(async () => {
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, cancelable: true }));
+      });
+      // nothing moved, nothing was asked beyond that state's own read
+      expect(document.activeElement, leg.label).toBe(before);
+      expect(urls().filter((u) => /^\/agent-api\/api\/audit\?/.test(u)).length).toBeLessThanOrEqual(1);
+    }
   });
 });
