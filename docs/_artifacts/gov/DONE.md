@@ -2002,3 +2002,17 @@ built /private/tmp/health-r38/index.html
   - 500：两者禁用，标题含「请求编号：req-capg-9」「重试成功后才能导出/复制」，计数 `—`；单元测试覆盖重试后恢复为 `1 条` / `6 条`。
 - 验证：定向 `npx vitest run src/modules/capabilities src/modules/skills src/modules/tools` → **6 files / 68 passed**；全量 `npx vitest run` → **144 files / 1795 passed**；`tsc -b . --noEmit` 仅剩基线 approvals/employee-detail/employees 错误，本域 0 行。
 - 边界：仅 `web/src/modules/{capabilities,skills,tools}/**` + 本 DONE；未改 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未 install/force/amend/--no-verify。
+
+## R67 / sys13 — /system 读源矩阵可排序列（2026-11-20）
+
+- 基线：先显式 refspec fetch `origin/lane/hermes-console`（tip `3c7f70f6`，代码代次 `cca9cf7e`），再 `git merge --no-ff` 得 `f811cfaa`；未 reset，未并 main，未重建 9122。
+- 变更：新增 `web/src/modules/health/sourceSort.ts`；`SourceMatrix.tsx` 的状态/耗时/采集时刻三列表头改为真 `button[type=button]`，`aria-sort` 三态；默认口径名升序（URL 不带 `ssort/sdir`），其余列按 升→降→默认 三态循环，URL 写 `?ssort=state|ms|asof&sdir=asc|desc`，刷新/粘 URL 可复现；排序只改屏上与复制/导出顺序，不发请求。缺值/非 ISO 采集时刻排末；采集时刻按 ISO 原值比较；表体、`sys10-copy`、导出共用同一排序结果。
+- 读数（临时 harness 已删除；Vite 5484 / Chrome CDP 9284；真实 `HealthPage` + 四个读口 stub）：
+  - 默认：`initialAria=ascending`（口径名），行序 `console,health,domain,runtime`，URL `#/system?tab=health`。
+  - 状态升序：`console,health,runtime,domain`，URL `#/system?tab=health&ssort=state&sdir=asc`，`aria-sort=ascending`；降序：`domain,runtime,health,console`，URL `...&sdir=desc`，`aria-sort=descending`；第三次点击回默认，URL 清回 `#/system?tab=health`，`aria-sort` 回 `ascending/none`。
+  - 采集时刻升序：`health,console,runtime,domain`（runtime/domain 无 asOf 排末），URL `...&ssort=asof&sdir=asc`；降序：`console,health,runtime,domain`。
+  - 请求计数：排序点击前后 **4 → 4**，无新请求。
+  - 复制对照（asof 降序）：表体首/末 `console` / `domain`；`sys10-copy` 文本首数据行「控制台服务探针 | /agent-api/api/__health-probe__ | 成功 | 2 ms | 2026-11-20 10:31」，末行「域服务探针 | /agent-api/api/skills | 读口未接入 | 2 ms | —」，与表体一致；表头为「口径名 | 路径 | 状态 | 耗时 | 采集时刻」。
+  - 三档：1440 `vw=bodySW=bodyCW=1440`，page 1438/1438，table 1408/1408；1280 全部 1280，page 1278/1278，table 1248/1248；375 `body 375/375`，page 373/373，table 及 `.sys6-scroll` **760/343**（仅表内滚动）；无页面横溢。
+- 验证：`npx vitest run src/modules/health` → **5 files / 32 passed**；全量 `npx vitest run` → **145 files / 1800 passed**；`tsc -b . --noEmit` → exit 2，20 行均为既有基线（approvals/employee-detail/employees），`modules/health|sourceSort|SourceMatrix` 0 行。
+- 边界：仅 `web/src/modules/health/{SourceMatrix.tsx,sourceSort.ts,sourceSort.test.ts,SourceMatrix.test.tsx,health.css}` + 本 DONE；未改 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未 install/force/amend/--no-verify。

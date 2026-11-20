@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent } from "@nous-research/ui";
 import {
   SOURCE_STATUS_LABEL as STATUS_LABEL,
@@ -7,6 +7,15 @@ import {
   useSourceMatrix,
 } from "./sourceReads";
 import { csvRows, downloadCsv, exportFilename, toCsv, toPlainText } from "./sourceMatrixCsv";
+import {
+  ariaSourceSort,
+  nextSourceSort,
+  readSourceSort,
+  sortSourceRows,
+  writeSourceSort,
+  type SourceSortKey,
+  type SourceSortState,
+} from "./sourceSort";
 
 const ASOF_CRITERION = "判据：只取 payload 顶层 ISO，缺失或非 ISO 显示「—」，不使用本机时钟";
 
@@ -33,8 +42,47 @@ function CopyRid({ id, testid }: { id: string; testid: string }) {
   );
 }
 
+const SORT_LABEL: Record<Exclude<SourceSortKey, "name">, string> = {
+  state: "本次状态",
+  ms: "响应耗时",
+  asof: "采集时刻",
+};
+
+function SortButton({ sort, sortKey, onSort }: { sort: SourceSortState; sortKey: Exclude<SourceSortKey, "name">; onSort: (key: Exclude<SourceSortKey, "name">) => void }) {
+  const active = sort.key === sortKey;
+  const indicator = active ? (sort.dir === "asc" ? "↑" : "↓") : "↕";
+  return (
+    <button
+      type="button"
+      className="sys13-sort"
+      data-testid={`sys13-sort-${sortKey}`}
+      aria-label={`按${SORT_LABEL[sortKey]}排序；当前${active ? (sort.dir === "asc" ? "升序" : "降序") : "未排序"}`}
+      onClick={() => onSort(sortKey)}
+    >
+      {SORT_LABEL[sortKey]}
+      <span className="sys13-indicator" aria-hidden="true">{indicator}</span>
+    </button>
+  );
+}
+
 export function SourceMatrix() {
   const { rows, expanded } = useSourceMatrix();
+  const [sort, setSort] = useState<SourceSortState>(() => readSourceSort(window.location.search, window.location.hash));
+  useEffect(() => {
+    const sync = () => setSort(readSourceSort(window.location.search, window.location.hash));
+    window.addEventListener("popstate", sync);
+    window.addEventListener("hashchange", sync);
+    return () => {
+      window.removeEventListener("popstate", sync);
+      window.removeEventListener("hashchange", sync);
+    };
+  }, []);
+  const sortedRows = sortSourceRows(rows, sort);
+  const onSort = (key: Exclude<SourceSortKey, "name">) => {
+    const next = nextSourceSort(sort, key);
+    setSort(next);
+    writeSourceSort(next);
+  };
   const counts = rows.reduce<Record<string, number>>((out, row) => {
     out[row.status] = (out[row.status] ?? 0) + 1;
     return out;
@@ -46,10 +94,10 @@ export function SourceMatrix() {
     `读口未接入 ${counts.unwired ?? 0}`,
   ].join(" · ");
 
-  const exportRows = csvRows(rows);
+  const exportRows = csvRows(sortedRows);
   const exportDisabled = exportRows.length === 0;
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
-  const copyText = toPlainText(rows);
+  const copyText = toPlainText(sortedRows);
   const copyDisabled = rows.length === 0;
 
   async function copyMatrix() {
@@ -121,19 +169,33 @@ export function SourceMatrix() {
           />
         ) : null}
         {expanded ? (
-          <div className="sys6-scroll">
+          <>
+            <p className="sys13-sort-note" data-testid="sys13-sort-note">
+              点「本次状态 / 响应耗时 / 采集时刻」可排序；排序只改屏上与复制文本的行序，不会重新取数。默认按口径名升序，缺失值排在最后。
+            </p>
+            <div className="sys6-scroll">
             <table className="sys6-table" data-testid="sys6-table">
               <thead>
                 <tr>
-                  <th title="读口的中文口径名">口径名</th>
+                  <th data-testid="sys13-head-name" aria-sort={ariaSourceSort(sort, "name")} title="默认按口径名升序；缺失值排在最后">口径名</th>
                   <th title="本次实际发出的请求路径">实际请求路径</th>
-                  <th title="本次读取的结果；读口未接入时给出申请入口">本次状态</th>
-                  <th title="本次请求耗时；失败或未读取时留空">响应耗时</th>
-                  <th title="健康清单行取 /api/health 响应顶层 asOf，与服务列表的“最近检查时刻”同值；其余三行各取自己探针响应的顶层 asOf，互不替代。">采集时刻</th>
+                  <th data-testid="sys13-head-state" aria-sort={ariaSourceSort(sort, "state")} title="按状态分组排序；缺失值排在最后">
+                    <SortButton sort={sort} sortKey="state" onSort={onSort} />
+                  </th>
+                  <th data-testid="sys13-head-ms" aria-sort={ariaSourceSort(sort, "ms")} title="按本次耗时数值排序；缺失值排在最后">
+                    <SortButton sort={sort} sortKey="ms" onSort={onSort} />
+                  </th>
+                  <th
+                    data-testid="sys13-head-asof"
+                    aria-sort={ariaSourceSort(sort, "asof")}
+                    title="按 payload 顶层 ISO 原值排序；缺失或非 ISO 排在最后"
+                  >
+                    <SortButton sort={sort} sortKey="asof" onSort={onSort} />
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => {
+                {sortedRows.map((row) => {
                   const rid = row.status === "failed" ? row.requestId : null;
                   return (
                     <tr key={row.id} data-testid={`sys6-row-${row.id}`} data-status={row.status}>
@@ -186,7 +248,8 @@ export function SourceMatrix() {
                 })}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         ) : null}
         <p className="sys8-same-source-note" data-testid="sys8-same-source-note">
           「最近检查时刻」与「采集时刻」：健康清单行和矩阵第一行同源，都取 <code>/api/health</code> 响应顶层 asOf（同一 ISO 值，同一北京时间到分呈现）；其余三行是各自探针响应的顶层 asOf，不与健康清单互相代替。

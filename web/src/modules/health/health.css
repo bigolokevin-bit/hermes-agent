@@ -525,3 +525,37 @@
 .sys9-src-link:hover { text-decoration-thickness: 2px; }
 .sys9-src-link:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; border-radius: 2px; }
 .sys9-src-nolink { color: var(--color-muted-foreground); }
+
+/* sys13 — source matrix sortable columns */
+.sys13-sort-note {
+  margin: 0 0 4px;
+  color: var(--color-muted-foreground);
+  font-size: 0.6875rem;
+  line-height: 1.5;
+}
+.sys13-sort {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 500;
+  white-space: nowrap;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.sys13-sort:hover { color: var(--color-foreground); }
+.sys13-sort:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+.sys13-indicator {
+  color: var(--color-muted-foreground);
+  font-size: 0.6875rem;
+  text-decoration: none;
+}

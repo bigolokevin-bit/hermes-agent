@@ -57,6 +57,8 @@ async function waitFor(cond: () => boolean, label = "condition"): Promise<void> 
 }
 
 const q = (id: string) => container.querySelector(`[data-testid='${id}']`);
+const rowIds = () => Array.from(container.querySelectorAll("[data-testid^='sys6-row-']"))
+  .map((node) => (node.getAttribute("data-testid") ?? "").replace("sys6-row-", ""));
 
 beforeEach(() => {
   resetSourceMatrix();
@@ -158,8 +160,9 @@ describe("source matrix", () => {
     const lines = text.trimEnd().split("\n");
     expect(lines[0]).toBe("口径名 | 路径 | 状态 | 耗时 | 采集时刻");
     expect(lines).toHaveLength(5);
-    expect(lines[1]).toContain("系统健康清单 | /agent-api/api/health | 成功 | ");
-    expect(lines[1]).toMatch(/\| \d+ ms \| 2026-11-19 23:17$/);
+    const healthLine = lines.find((line) => line.includes("系统健康清单"));
+    expect(healthLine).toContain("系统健康清单 | /agent-api/api/health | 成功 | ");
+    expect(healthLine).toMatch(/\| \d+ ms \| 2026-11-19 23:17$/);
     const consoleLine = lines.find((line) => line.includes("控制台服务探针"));
     expect(consoleLine).toContain("| 读口未接入 |");
     expect(consoleLine?.endsWith("| —")).toBe(true);
@@ -211,6 +214,62 @@ describe("source matrix", () => {
     await render();
     expect(q("sys6-toggle")?.getAttribute("aria-expanded")).toBe("true");
     expect(q("sys6-table")).not.toBeNull();
+  });
+
+  it("sorts status, elapsed and asOf columns from the URL without another request", async () => {
+    await render();
+    await act(async () => { (q("sys6-toggle") as HTMLButtonElement).click(); });
+    await waitFor(() => q("sys6-status-health")?.textContent?.includes("成功") ?? false, "health row");
+    expect(api.fetchJSON).toHaveBeenCalledTimes(4);
+    expect(rowIds()).toEqual(["console", "health", "domain", "runtime"]);
+    expect(q("sys13-head-name")?.getAttribute("aria-sort")).toBe("ascending");
+    expect(q("sys13-head-state")?.getAttribute("aria-sort")).toBe("none");
+    expect(window.location.search).toBe("?tab=health");
+
+    await act(async () => { (q("sys13-sort-state") as HTMLButtonElement).click(); });
+    expect(q("sys13-head-state")?.getAttribute("aria-sort")).toBe("ascending");
+    expect(q("sys13-head-name")?.getAttribute("aria-sort")).toBe("none");
+    expect(rowIds()).toEqual(["health", "domain", "runtime", "console"]);
+    expect(window.location.search).toBe("?tab=health&ssort=state&sdir=asc");
+
+    await act(async () => { (q("sys13-sort-state") as HTMLButtonElement).click(); });
+    expect(q("sys13-head-state")?.getAttribute("aria-sort")).toBe("descending");
+    expect(rowIds()).toEqual(["console", "runtime", "health", "domain"]);
+    expect(window.location.search).toBe("?tab=health&ssort=state&sdir=desc");
+
+    await act(async () => { (q("sys13-sort-state") as HTMLButtonElement).click(); });
+    expect(q("sys13-head-state")?.getAttribute("aria-sort")).toBe("none");
+    expect(q("sys13-head-name")?.getAttribute("aria-sort")).toBe("ascending");
+    expect(window.location.search).toBe("?tab=health");
+
+    await act(async () => { (q("sys13-sort-asof") as HTMLButtonElement).click(); });
+    expect(q("sys13-head-asof")?.getAttribute("aria-sort")).toBe("ascending");
+    expect(rowIds()).toEqual(["health", "domain", "console", "runtime"]);
+    await act(async () => { (q("sys13-sort-asof") as HTMLButtonElement).click(); });
+    expect(q("sys13-head-asof")?.getAttribute("aria-sort")).toBe("descending");
+    expect(rowIds()).toEqual(["domain", "health", "console", "runtime"]);
+    expect(window.location.search).toBe("?tab=health&ssort=asof&sdir=desc");
+    expect(api.fetchJSON).toHaveBeenCalledTimes(4);
+  });
+
+  it("restores a pasted ssort/sdir URL and copies rows in the same order", async () => {
+    window.history.replaceState({}, "", "/system?tab=health&ssort=asof&sdir=desc");
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    await render();
+    await act(async () => { (q("sys6-toggle") as HTMLButtonElement).click(); });
+    await waitFor(() => q("sys6-status-health")?.textContent?.includes("成功") ?? false, "health row");
+    expect(q("sys13-head-asof")?.getAttribute("aria-sort")).toBe("descending");
+    expect(rowIds()).toEqual(["domain", "health", "console", "runtime"]);
+    expect(window.location.search).toBe("?tab=health&ssort=asof&sdir=desc");
+    const firstLabel = q("sys6-name-domain")?.textContent;
+    const lastLabel = q("sys6-name-runtime")?.textContent;
+    await act(async () => { (q("sys10-copy") as HTMLButtonElement).click(); await Promise.resolve(); });
+    await waitFor(() => q("sys10-copy-status")?.textContent === "已复制", "copied");
+    const lines = (writeText.mock.calls[0][0] as string).trimEnd().split("\n");
+    expect(lines[1].startsWith(`${firstLabel} | `)).toBe(true);
+    expect(lines[4].startsWith(`${lastLabel} | `)).toBe(true);
+    expect(api.fetchJSON).toHaveBeenCalledTimes(4);
   });
 
   it("shows preview rows without issuing a read when a forced state is active", async () => {
