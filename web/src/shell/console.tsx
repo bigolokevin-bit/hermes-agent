@@ -65,6 +65,7 @@ import EmployeeDetailWorkbench from "../modules/employee-detail/EmployeeDetailWo
 import { ConsoleButton } from "./ConsoleButton";
 import { StatePlaceholder } from "./StatePlaceholder";
 import "./console-nav.css";
+import "../styles/table-density.css";
 import { copyTextToClipboard } from "@/lib/clipboard";
 
 /* ------------------------------------------------------------------ *
