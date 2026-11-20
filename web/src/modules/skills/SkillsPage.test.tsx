@@ -126,6 +126,12 @@ describe("SkillsPage", () => {
     await render();
     expect(text()).toContain("请求编号：");
     expect(text()).toContain("req-skills-1");
+    expect(container.querySelector('[data-testid="capF-state-error"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="capF-state-unavailable"]')).toBeNull();
+    expect(text()).toContain("技能列表暂时无法读取");
+    const count = container.querySelector('[data-testid="cap4-count-skills"]')!;
+    expect(count.textContent).toContain("—");
+    expect(count.textContent).not.toContain("0");
     const before = fetchJsonStrict.mock.calls.length;
     const button = [...container.querySelectorAll("button")].find((node) => node.textContent?.includes("重试"));
     await act(async () => { button?.click(); });
@@ -134,11 +140,34 @@ describe("SkillsPage", () => {
     expect(fetchJsonStrict.mock.calls.length).toBe(before + 1);
   });
 
+  it("keeps q/sort/dir in the URL through error and retry", async () => {
+    window.history.replaceState({}, "", "/capabilities?tab=skills&q=资料&sort=name&dir=asc");
+    fetchJsonStrict
+      .mockRejectedValueOnce(new ApiError("boom", { status: 500, body: "", url: "/agent-api/api/skills", requestId: "req-skills-keep" }))
+      .mockResolvedValueOnce({ items: [{ skillId: "s1", name: "资料整理" }] });
+    await render();
+    const loc = container.querySelector('[data-testid="cap8-location"]')?.textContent ?? "";
+    expect(loc).toContain("tab=skills");
+    expect(loc).toContain("sort=name");
+    expect(loc).toContain("dir=asc");
+    expect(decodeURIComponent(loc)).toContain("q=资料");
+    const retry = container.querySelector<HTMLButtonElement>('[data-testid="skl4-retry"]')!;
+    await act(async () => { retry.click(); });
+    await act(async () => {});
+    expect(container.querySelector('[data-testid="skl4-row-s1"]')).toBeTruthy();
+    const after = container.querySelector('[data-testid="cap8-location"]')?.textContent ?? "";
+    expect(decodeURIComponent(after)).toContain("q=资料");
+    expect(after).toContain("sort=name");
+    expect(after).toContain("dir=asc");
+  });
+
   it("renders the empty state for an empty list without a fake count", async () => {
     fetchJsonStrict.mockResolvedValue({ items: [] });
     await render();
     expect(container.querySelector('[data-testid="skl4-empty"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="cap9-state-empty"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="capF-state-empty"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="skl4-page"]')?.getAttribute("data-cap-state")).toBe("empty");
     expect(container.querySelector('[data-testid="skl4-error"]')).toBeNull();
     const count = container.querySelector('[data-testid="cap4-count-skills"]')!;
     expect(count.textContent).toContain("0");
@@ -154,9 +183,12 @@ describe("SkillsPage", () => {
     expect(text()).not.toContain("GAP-");
     expect(text()).not.toContain("404");
     expect(container.querySelector('[data-testid="skl4-retry"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="capF-retry"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="skl4-apply"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="cap9-state-unavailable"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="cap9-state-denied"]')).toBeNull();
+    expect(container.querySelector('[data-testid="capF-state-unavailable"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="skl4-page"]')?.getAttribute("data-cap-state")).toBe("unavailable");
     const count = container.querySelector('[data-testid="cap4-count-skills"]')!;
     expect(count.textContent).toContain("—");
     expect(count.textContent).not.toContain("0");
@@ -177,6 +209,7 @@ describe("SkillsPage", () => {
     expect(container.querySelector('[data-testid="skl4-apply"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="cap9-state-denied"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="cap9-state-unavailable"]')).toBeNull();
+    expect(container.querySelector('[data-testid="capF-state-unavailable"]')).toBeTruthy();
     const count = container.querySelector('[data-testid="cap4-count-skills"]')!;
     expect(count.textContent).toContain("—");
     expect(count.textContent).not.toContain("0");
@@ -213,6 +246,8 @@ describe("SkillsPage", () => {
       await act(async () => {});
       expect(fetchJsonStrict).not.toHaveBeenCalled();
       expect(container.querySelector(`[data-testid="skl4-${state}"]`)).toBeTruthy();
+      expect(container.querySelector(`[data-testid="capF-state-${state}"]`)).toBeTruthy();
+      expect(container.querySelector('[data-testid="skl4-page"]')?.getAttribute("data-cap-state")).toBe(state);
       expect(text()).toContain(state === "loading" ? "正在读取技能" : "还没有已登记的技能");
       act(() => root.unmount());
       root = createRoot(container);
@@ -538,5 +573,7 @@ describe("SkillsPage", () => {
     const css = readFileSync(`${process.cwd()}/src/modules/skills/skills.css`, "utf8");
     expect(css).toContain("tr[tabindex]:focus-visible");
     expect(css).toContain("var(--color-ring)");
+    expect(css).toContain(".capF-state");
+    expect(css).toMatch(/min-height:\s*220px/);
   });
 });

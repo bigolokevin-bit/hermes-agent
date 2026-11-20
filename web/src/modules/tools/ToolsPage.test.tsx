@@ -219,8 +219,11 @@ describe("failures and gaps", () => {
     expect(document.querySelector("[data-testid='tl3-apply']")).toBeTruthy();
     expect(document.querySelector("[data-testid='tl3-request-id']")).toBeTruthy();
     expect(document.querySelector("[data-testid='tl3-retry']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='capF-retry']")).toBeTruthy();
     expect(document.querySelector("[data-testid='cap9-state-denied']")).toBeTruthy();
     expect(document.querySelector("[data-testid='cap9-state-unavailable']")).toBeNull();
+    expect(document.querySelector("[data-testid='capF-state-unavailable']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='tol5-page']")?.getAttribute("data-cap-state")).toBe("unavailable");
     const count = document.querySelector("[data-testid='cap4-count-tools']")!;
     expect(count.textContent).toContain("—");
     expect(count.textContent).toContain("无源");
@@ -239,6 +242,7 @@ describe("failures and gaps", () => {
     expect(document.querySelector("[data-testid='tol5-denied']")?.getAttribute("title")).toBe("GAP-04");
     expect(document.querySelector("[data-testid='cap9-state-unavailable']")).toBeTruthy();
     expect(document.querySelector("[data-testid='cap9-state-denied']")).toBeNull();
+    expect(document.querySelector("[data-testid='capF-state-unavailable']")).toBeTruthy();
     const copy = document.querySelector<HTMLButtonElement>('[data-testid="capC-copy"]')!;
     expect(copy.disabled).toBe(true);
     expect(copy.title).toContain("没有可复制");
@@ -255,6 +259,8 @@ describe("failures and gaps", () => {
     });
     expect(document.querySelector("[data-testid='tol5-empty']")).toBeTruthy();
     expect(document.querySelector("[data-testid='cap9-state-empty']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='capF-state-empty']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='tol5-page']")?.getAttribute("data-cap-state")).toBe("empty");
     expect(document.querySelector("[data-testid='tol5-denied']")).toBeNull();
     const count = document.querySelector("[data-testid='cap4-count-tools']")!;
     expect(count.textContent).toContain("0");
@@ -287,6 +293,29 @@ describe("failures and gaps", () => {
     expect(text()).not.toMatch(/token|secret|密钥值/i);
   });
 
+  it("keeps q/sort/dir in the URL through error and retry", async () => {
+    let fail = true;
+    api.fetchJsonStrict.mockImplementation((url: string) => {
+      if (fail) return Promise.reject(new ApiError("boom", { status: 500, body: "{}", url, requestId: "req-tools-keep" }));
+      return url.includes("/api/tools/toolsets") ? Promise.resolve(TOOLSETS) : Promise.resolve({ servers: [] });
+    });
+    await render("/capabilities?tab=tools&q=%E7%BD%91%E9%A1%B5&sort=name&dir=asc");
+    const loc = document.querySelector('[data-testid="cap8-location"]')?.textContent ?? "";
+    expect(loc).toContain("tab=tools");
+    expect(decodeURIComponent(loc)).toContain("q=网页");
+    expect(loc).toContain("sort=name");
+    expect(loc).toContain("dir=asc");
+    const retry = document.querySelector<HTMLButtonElement>("[data-testid='tol5-retry']")!;
+    fail = false;
+    await act(async () => retry.click());
+    await waitFor(() => rows().length > 0, "retry recovered");
+    const after = document.querySelector('[data-testid="cap8-location"]')?.textContent ?? "";
+    expect(after).toContain("tab=tools");
+    expect(decodeURIComponent(after)).toContain("q=网页");
+    expect(after).toContain("sort=name");
+    expect(after).toContain("dir=asc");
+  });
+
   it("500 shows human copy, a copyable request id and a working retry", async () => {
     let fail = true;
     await mount((url) => {
@@ -295,9 +324,14 @@ describe("failures and gaps", () => {
       return answer(url);
     });
     expect(document.querySelector("[data-testid='tol5-error']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='capF-state-error']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='tol5-page']")?.getAttribute("data-cap-state")).toBe("error");
     expect(text()).toContain("请求编号：req-tol5");
     expect(text()).toContain("处理时出了错");
     expect(text()).not.toMatch(/500|boom|\/api\//);
+    const count = document.querySelector("[data-testid='cap4-count-tools']")!;
+    expect(count.textContent).toContain("—");
+    expect(count.textContent).not.toContain("0");
     expect(document.querySelector("[aria-label='复制请求编号']")).toBeTruthy();
     fail = false;
     const before = urls().length;
@@ -325,6 +359,9 @@ describe("four states and repro legs", () => {
       await render(`/capabilities?tab=tools&state=${state}`);
       await waitFor(() => !document.querySelector(".animate-pulse") || state === "loading", `${state} painted`);
       expect(document.querySelector("[data-testid='tol5-page']")?.getAttribute("data-fixture")).toBe(state);
+      const capState = state === "denied" ? "unavailable" : state;
+      expect(document.querySelector(`[data-testid='capF-state-${capState}']`)).toBeTruthy();
+      expect(document.querySelector("[data-testid='tol5-page']")?.getAttribute("data-cap-state")).toBe(capState);
       expect(api.fetchJsonStrict).not.toHaveBeenCalled();
     }
   });
@@ -598,5 +635,7 @@ describe("tab state memory", () => {
     const css = readFileSync(`${process.cwd()}/src/modules/tools/tools.css`, "utf8");
     expect(css).toContain(".tol5-row:focus-visible");
     expect(css).toContain("var(--color-ring)");
+    expect(css).toContain(".capF-state");
+    expect(css).toMatch(/min-height:\s*220px/);
   });
 });

@@ -1970,3 +1970,23 @@ built /private/tmp/health-r38/index.html
   - 三档宽度：skills/tools 均 `vw=bodySW=bodyCW=1440/1280/375`，无横溢。
 - 验证：定向 `skills+tools+capabilities` → **6 files / 66 passed**；全量 **139 files / 1681 passed**；tsc 本域 0 错误（仅基线 approvals/employee-detail/employees 11 行既有错误）。
 - 边界：仅改 `web/src/modules/{skills,tools}/**`（含各自 CSS/测试）+ DONE；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未并 main、未重建 9122。
+
+## R65 / capF — /capabilities 空态与错误态统一（2026-11-20）
+
+- 基线：`lane/console-gov` HEAD `c33bd13f`；远端 `origin/lane/hermes-console` tip `b797bc98`（代码代次 `053da5c4`）；fetch + merge 为 Already up to date，未 reset。
+- 变更：`web/src/modules/skills/SkillsPage.tsx` 与 `web/src/modules/tools/ToolsPage.tsx` 统一四态标记：
+  - 页面根节点 `data-cap-state=loading|empty|unavailable|error|ready`（tools denied 记为 unavailable）。
+  - 新增 `capF-state-loading` / `capF-state-empty` / `capF-state-unavailable` / `capF-state-error` / `capF-state-login`（按状态出现其一），`capF-retry` 包裹重试按钮；保留 `cap9-state-*`、`skl4-*`、`tl3-*`、`tol5-*`。
+  - skills 403/404 标题改为「技能读口未接入」；其他错误仍为「技能列表暂时无法读取」。空态文案保留「读口已接入，本次返回 0 条…」；错误态计数保持 `—` + `无源`，不显示 0。
+  - tools 错误/未接入已有不同标题；empty 与 unavailable testid、文案保持分离。
+  - `skills.css` / `tools.css` 增加 `.capF-state { min-height: 220px; }`，避免 loading/empty/error 切换时内容区高度跳动。
+- 定向验证：
+  - `cd web && npx vitest run src/modules/skills src/modules/tools` → `3 files / 59 tests passed`。
+  - 全量 `npx vitest run` → `139 files / 1683 tests passed`。
+  - `tsc -b . --noEmit` → 仅基线 employee-detail / employees 错误，`modules/(skills|tools|capabilities)` 0 行。
+- DOM（临时 harness `web/capF-preview.html` + `web/src/capF-preview.tsx`，已删除；Vite 5482 / Chrome CDP 9282）：
+  - 1440 / 1280 / 375 三档，skills/tools × empty/error：`bodySW=bodyCW=pageSW=pageCW=viewport`，无横溢。
+  - skills empty → `data-cap-state=empty`、`capF-state-empty`、count `—/未取数`；skills error 预览 → `data-cap-state=unavailable`、`capF-state-unavailable`、`capF-retry`、标题「技能读口未接入」。
+  - tools empty → `data-cap-state=empty`、`capF-state-empty`；tools error → `data-cap-state=error`、`capF-state-error`、`capF-retry`。
+  - 单元测试覆盖 live 403/404 同体、generic 500 计数 `—`、q/sort/dir 在错误与重试后保留、重试只重发当前 tab（tools 仅 tools/mcp 候选）。
+- 边界：仅 `web/src/modules/{skills,tools}/**` + 本 DONE；未改 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未并 main；未重建 9122；未 install/force/amend/--no-verify。

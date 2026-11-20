@@ -191,12 +191,13 @@ function FailurePanel({
   return (
     <Card
       role="alert"
-      className={denied ? "border-border bg-card" : "border-destructive/40 bg-destructive/5"}
+      className={denied ? "capF-state border-border bg-card" : "capF-state border-destructive/40 bg-destructive/5"}
       data-testid={denied ? "tol5-denied" : login ? "tol5-login" : "tol5-error"}
       title={denied ? GAP : failure?.technical ?? undefined}
     >
       <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-6">
         <span className="sr-only" data-testid={denied ? "tl3-denied" : login ? "tl3-login" : "tl3-error"} />
+        <span className="sr-only" data-testid={denied ? "capF-state-unavailable" : login ? "capF-state-login" : "capF-state-error"} />
         {denied ? (
           <span className="sr-only" data-testid={failure?.status === 403 ? "cap9-state-denied" : "cap9-state-unavailable"} />
         ) : null}
@@ -220,9 +221,11 @@ function FailurePanel({
         ) : null}
         <RequestId failure={failure} />
         <span className="contents" data-testid="tl3-retry">
-          <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />} data-testid="tol5-retry">
-            重试
-          </Button>
+          <span className="contents" data-testid="capF-retry">
+            <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />} data-testid="tol5-retry">
+              重试
+            </Button>
+          </span>
         </span>
       </CardContent>
     </Card>
@@ -355,8 +358,9 @@ export function ToolsPage(): ReactNode {
   const body = (() => {
     if (phase === "loading") {
       return (
-        <div className="flex min-w-0 flex-col gap-2" data-testid="tol5-loading" aria-busy="true" data-fixture={forced ?? undefined}>
+        <div className="capF-state flex min-w-0 flex-col gap-2" data-testid="tol5-loading" aria-busy="true" data-fixture={forced ?? undefined}>
           <span className="sr-only" data-testid="tl3-loading" />
+          <span className="sr-only" data-testid="capF-state-loading" />
           {[0, 1, 2, 3].map((row) => (
             <div key={row} className="animate-pulse rounded-md border border-border bg-card px-4 py-4" aria-hidden="true">
               <div className="h-3 w-1/3 rounded-sm bg-muted" />
@@ -371,10 +375,11 @@ export function ToolsPage(): ReactNode {
     if (phase === "error") return <FailurePanel kind="error" failure={tools.failure} onRetry={retry} />;
     if (phase === "empty") {
       return (
-        <Card className="border-border bg-card" data-testid="tol5-empty" data-fixture={forced ?? undefined}>
+        <Card className="capF-state border-border bg-card" data-testid="tol5-empty" data-fixture={forced ?? undefined}>
           <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
             <span className="sr-only" data-testid="tl3-empty" />
             <span className="sr-only" data-testid="cap9-state-empty" />
+            <span className="sr-only" data-testid="capF-state-empty" />
             <Inbox className="h-6 w-6 text-muted-foreground" aria-hidden />
             <p className={`min-w-0 break-words text-sm ${themedBody}`}>服务已响应，清单里没有工具或 MCP 连接</p>
             <p className="min-w-0 break-words text-xs text-muted-foreground">读口已接入，本次返回 0 条；不补样例。</p>
@@ -492,6 +497,7 @@ export function ToolsPage(): ReactNode {
       data-testid="tol5-page"
       data-page="tools"
       data-fixture={forced ?? undefined}
+      data-cap-state={phase === "denied" ? "unavailable" : phase}
     >
       <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-2">
         <div className="min-w-0">

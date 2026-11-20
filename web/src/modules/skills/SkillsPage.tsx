@@ -273,9 +273,11 @@ export function SkillsPage() {
     enabled: row.status,
     updated_at: row.updatedAt,
   }));
+  const unavailable = page.k === "error" && (page.status === 403 || page.status === 404);
+  const capState = page.k === "error" ? (unavailable ? "unavailable" : "error") : page.k;
 
   return (
-    <section className="skl4-page" data-testid="skl4-page" data-fixture={fixture ?? undefined}>
+    <section className="skl4-page" data-testid="skl4-page" data-fixture={fixture ?? undefined} data-cap-state={capState}>
       <CapabilityCounts />
       {page.k === "ready" ? <CapabilitySearch value={q} total={page.rows.length} onChange={setQ} /> : null}
       <header className="skl4-head">
@@ -307,30 +309,35 @@ export function SkillsPage() {
       {fixture ? <p className="skl4-preview" data-testid="skl4-preview-note">预览状态：以下内容只用于验收布局，不是实时数据。</p> : null}
 
       {page.k === "loading" ? (
-        <Card><CardContent className="space-y-3 p-4" data-testid="skl4-loading" aria-busy="true">
+        <Card className="capF-state"><CardContent className="space-y-3 p-4" data-testid="skl4-loading" aria-busy="true">
+          <span className="sr-only" data-testid="capF-state-loading" />
           <p className="skl4-note">正在读取技能…</p>
           {[1, 2, 3, 4].map((item) => <div key={item} className="skl4-skeleton" />)}
         </CardContent></Card>
       ) : null}
 
       {page.k === "empty" ? (
-        <Card><CardContent className="space-y-2 p-8 text-center" data-testid="skl4-empty">
+        <Card className="capF-state"><CardContent className="space-y-2 p-8 text-center" data-testid="skl4-empty">
           <span className="sr-only" data-testid="cap9-state-empty" />
+          <span className="sr-only" data-testid="capF-state-empty" />
           <p className="skl4-empty-title">还没有已登记的技能</p>
           <p className="skl4-note">读口已接入，本次返回 0 条；台账没有返回任何技能，这里不补样例行。</p>
         </CardContent></Card>
       ) : null}
 
       {page.k === "error" ? (
-        <Card><CardContent className="space-y-3 p-6" data-testid="skl4-error" role="alert">
+        <Card className="capF-state"><CardContent className="space-y-3 p-6" data-testid="skl4-error" role="alert">
           {(page.status === 403 || page.status === 404) ? (
             <span className="sr-only" data-testid={page.status === 403 ? "cap9-state-denied" : "cap9-state-unavailable"} />
           ) : null}
-          <p className="skl4-error-title">技能列表暂时无法读取</p>
+          <span className="sr-only" data-testid={unavailable ? "capF-state-unavailable" : "capF-state-error"} />
+          <p className="skl4-error-title">{unavailable ? "技能读口未接入" : "技能列表暂时无法读取"}</p>
           <p className="skl4-note" title={page.gap ?? undefined}>{page.message}</p>
           <RequestId id={page.requestId} />
           <div className="skl4-actions">
-            <Button size="sm" outlined onClick={retry} data-testid="skl4-retry">重试</Button>
+            <span className="contents" data-testid="capF-retry">
+              <Button size="sm" outlined onClick={retry} data-testid="skl4-retry">重试</Button>
+            </span>
             {page.gap ? <a className="skl4-apply" href="#/approvals" data-testid="skl4-apply">提交开通申请</a> : null}
           </div>
         </CardContent></Card>
