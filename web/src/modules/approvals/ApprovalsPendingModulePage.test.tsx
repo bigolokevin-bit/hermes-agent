@@ -639,3 +639,21 @@ describe("R70 pending queue state consistency (apv-state-*)", () => {
     expect((qa("apv7-export") as HTMLButtonElement).disabled).toBe(true);
   });
 });
+
+describe("R71 pending column sorting", () => {
+  it("gates on phase and sorts loaded rows without any refetch", async () => {
+    await mount(queue(), "/approvals?tab=pending");
+    await waitFor(() => !!document.querySelector('[data-testid^="apr5-row-ap"]'), "queue rows");
+    const btn = document.querySelector('[data-testid="apv-sort-title"]') as HTMLButtonElement | null;
+    expect(btn, "sort bar on pending too").toBeTruthy();
+    expect(btn!.disabled, "ready pane enables sorting").toBe(false);
+    const before = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      btn!.click();
+    });
+    await act(async () => {});
+    expect(btn.getAttribute("aria-sort")).toBe("ascending");
+    expect(api.fetchJSON.mock.calls.length, "sorting never fetches").toBe(before);
+    expect(document.querySelector('[data-testid="apv-sort-scope-note"]')?.textContent).toContain("条内排序");
+  });
+});

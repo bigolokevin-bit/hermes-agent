@@ -25,10 +25,11 @@ import { Button } from "@nous-research/ui/ui/components/button";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { Spinner } from "@nous-research/ui/ui/components/spinner";
 
-import { approvalsRowSearchText, STATUS_FILTERS, isKnownStatus } from "./model";
+import { STATUS_FILTERS, approvalSortKeyOf, approvalsRowSearchText, isKnownStatus, sortApprovalRows, type ApprovalSortDir, type ApprovalSortKey } from "./model";
 import { QueueSummaryBar } from "./QueueSummaryBar";
 import { BackToList, restoreListScroll, saveListScroll } from "./BackToList";
 import { QueueCsvExport } from "./QueueCsvExport";
+import { QueueSortBar } from "./QueueSortBar";
 import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel } from "./states";
 import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
 import { ApprovalDetailBody, ApprovalRowCard } from "./views";
@@ -80,11 +81,33 @@ export function ApprovalsHistoryModulePage(): ReactNode {
     },
     [params, setParams],
   );
+  // R71: 列排序=本地能力（读口忽略 sort/order/orderBy/dir，实测同序同集合），
+  // asort/adir 落 URL 且不动 tab/status/q；缺值恒排末。
+  const asort = approvalSortKeyOf(params.get("asort"));
+  const adir: ApprovalSortDir = params.get("adir") === "desc" ? "desc" : "asc";
+  const cycleSort = useCallback(
+    (key: ApprovalSortKey) => {
+      const draft = new URLSearchParams(params);
+      if (asort !== key) {
+        draft.set("asort", key);
+        draft.set("adir", "asc");
+      } else if (adir === "asc") {
+        draft.set("adir", "desc");
+      } else {
+        draft.delete("asort");
+        draft.delete("adir");
+      }
+      setParams(draft, { replace: true });
+    },
+    [params, setParams, asort, adir],
+  );
   const visibleRows = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    if (!needle) return list.rows;
-    return list.rows.filter((row) => approvalsRowSearchText(row).includes(needle));
-  }, [list.rows, q]);
+    const base = needle
+      ? list.rows.filter((row) => approvalsRowSearchText(row).includes(needle))
+      : list.rows;
+    return sortApprovalRows(base, asort, adir);
+  }, [list.rows, q, asort, adir]);
   const [selected, setSelected] = useState<string | null>(() => params.get("id"));
   const [unaddressable, setUnaddressable] = useState(false);
   // R60: at most one row shows its inline preview; it never touches URL/filters.
@@ -246,7 +269,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
       </div>
 
       <QueueSummaryBar phase={list.phase} rows={visibleRows} scope="history" singleStatus={status} />
-      <QueueCsvExport rows={list.rows} tab="history" status={status} phase={list.phase} />
+      <QueueCsvExport rows={visibleRows} tab="history" status={status} phase={list.phase} />
       <div className="flex min-w-0 flex-wrap items-center gap-1.5" role="group" data-testid="apv8-search-group" aria-label="搜索审批">
         <input
           type="search"
@@ -270,6 +293,8 @@ export function ApprovalsHistoryModulePage(): ReactNode {
       >
         仅在当前已加载 {list.rows.length} 条内搜索；关键字是前端本地过滤，不产生新请求（实测后台 q/keyword/title 参数被忽略）。
       </p>
+
+      <QueueSortBar phase={list.phase} sort={asort} dir={adir} loadedCount={list.rows.length} onCycle={cycleSort} />
 
 
       <div className="flex min-w-0 flex-wrap gap-1.5" role="group" data-testid="apr5-filter" aria-label="按处理结果筛选">

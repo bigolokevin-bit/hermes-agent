@@ -1018,3 +1018,12 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 测试：history 新 describe 5 用例 + pending 2 用例（await mount 形态；error req-r70-500 可复制 rid+重试+三闸；clear 点击后全量恢复；403≡404 首行人话相等且 apv-state-error=null；loading 4 骨架+钮闸+计数「—」）。定向 approvals 3 files/90 passed（83+7）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **144 files/1819 passed**（基线 1812+7）。
 - 坑（本单实证）：①history/pending 测试的 mount(handler?,entry) 会把默认 mock 覆盖到调用方 mockImplementation 之上=必须先设入 mount 参数；②mount 不 await 时依赖 waitFor 轮询推 act 队列=时序不稳，本单统一 await mount；③risk 桶 testid=apv6-summary-risk-<v>；④denied 面板 textContent 含每请求 rid=「同体」比对取首行人话 p。
 - 零破：apv5/apv6/apv7/apv8/apv9/apd5/apd6/apd7/apr5/ed*/emp-*（既有 83 用例全绿为证）；三档=grid/data-phase 容器与面板 flex-col 既有形态学报（jsdom 不可测）；9122==cca9cf7e 禁重建，活体四态读数待并入后代次。
+
+## R71 审批队列列排序（apv-sort-*，本地+诚实口径，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @7d360b9b（章面 3c7f70f6），toplevel ✓ porc=0；代次 cca9cf7e。
+- 活体实测（ego 9122==cca9cf7e）：/api/approvals?status=all&limit=50 基线 200 n=8 first=123DE4 last=449D1C；`&sort=title&order=asc`、`&sort=decidedAt&order=desc`、`&orderBy=status&dir=asc` 三组全部 **200 同序同集合** = 读口忽略排序参数 → 本地排序分支确定（禁假装服务端排序）。
+- 实现：model.ts 新 `ApprovalSortKey/Dir + approvalSortValue + sortApprovalRows + approvalSortKeyOf`（risk=严重度 rank critical0/high1/medium2/low3；time=新行字段 `decidedAt` raw ISO epoch（屏上仍走 decided 人话）；**缺值 partition 恒排末**不当 0；title localeCompare zh）；新 QueueSortBar.tsx（四列真 button[type=button]：apv-sort-{title,status,risk,time}，aria-sort 三态循环 asc→desc→清除（button 上属性可读），active 图标 ArrowUp/Down，disabled=phase!=="ready"+title「不能排序：<原因>；恢复列表后自动可用」；apv-sort-scope-note「仅在当前已加载 N 条内排序；不是服务端排序（实测同序同集合），缺值恒排末」+title 三组实测细节；blocked 态注脚不渲）；两页接线=asort/adir 从 params 派生+cycleSort 差分 set/delete（**tab/status/q 互不动**，replace 写回）、visibleRows=过滤后 sortApprovalRows（与 apv8 本地过滤同链）。
+- 同源联动：QueueCsvExport rows 由 list.rows 改 **visibleRows**（默认态首末=c9,b9 服务端序；?asort=status&adir=asc 组 blob 首行 ap_a9 末行 ap_c9=表体同序，用例双组锁）；QueueSummaryBar 桶计数与排序无关（approved=1 两态相等锁）。
+- 测试：history 3 用例（三态循环+缺时间行恒末+计数不变零请求锁 / 粘 asort&adir URL 复现+CSV 逐行对照+汇总不变 / error 态控件 disabled+原因 title+注脚隐藏）+pending 1 用例（ready 启用+点击零 refetch+注脚）。定向 approvals 3 files/94 passed（90+4）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **144 files/1823 passed**（基线 1819+4）。
+- 零破：apv5–apv9/apd5–apd7/apr5/ed*/emp-*（既有 90 用例全绿为证）；Enter/Space=原生 button 语义（jsdom dispatch Enter 不经 onClick 的框架差异在断言中如实注记，键盘可达由 type=button+可聚焦保证）；三档=控件 flex-wrap+note min-w-0 形态学报；9122==cca9cf7e 禁重建，活体排序 DOM 读数待并入后代次。

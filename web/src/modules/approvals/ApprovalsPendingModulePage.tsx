@@ -28,12 +28,13 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { failureInfo, isWriteUnavailable, postDecision, type Verdict } from "./api";
 import { writeFailure, type FailureCopy } from "./copy";
 import type { ApprovalRow } from "./model";
-import { approvalsRowSearchText } from "./model";
+import { approvalSortKeyOf, approvalsRowSearchText, sortApprovalRows, type ApprovalSortDir, type ApprovalSortKey } from "./model";
 import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel } from "./states";
 import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
 import { QueueSummaryBar } from "./QueueSummaryBar";
 import { BackToList, restoreListScroll, saveListScroll } from "./BackToList";
 import { QueueCsvExport } from "./QueueCsvExport";
+import { QueueSortBar } from "./QueueSortBar";
 import { ApprovalDetailBody, ApprovalRowCard } from "./views";
 
 const VERDICT_LABEL: Record<Verdict, string> = { approve: "批准", reject: "驳回" };
@@ -76,11 +77,32 @@ export function ApprovalsPendingModulePage(): ReactNode {
     },
     [params, setParams],
   );
+  // R71: 同 history——本地列排序 + URL 复现，缺值恒排末。
+  const asort = approvalSortKeyOf(params.get("asort"));
+  const adir: ApprovalSortDir = params.get("adir") === "desc" ? "desc" : "asc";
+  const cycleSort = useCallback(
+    (key: ApprovalSortKey) => {
+      const draft = new URLSearchParams(params);
+      if (asort !== key) {
+        draft.set("asort", key);
+        draft.set("adir", "asc");
+      } else if (adir === "asc") {
+        draft.set("adir", "desc");
+      } else {
+        draft.delete("asort");
+        draft.delete("adir");
+      }
+      setParams(draft, { replace: true });
+    },
+    [params, setParams, asort, adir],
+  );
   const visibleRows = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    if (!needle) return list.rows;
-    return list.rows.filter((row) => approvalsRowSearchText(row).includes(needle));
-  }, [list.rows, q]);
+    const base = needle
+      ? list.rows.filter((row) => approvalsRowSearchText(row).includes(needle))
+      : list.rows;
+    return sortApprovalRows(base, asort, adir);
+  }, [list.rows, q, asort, adir]);
 
   const openRow = useCallback(
     (row: ApprovalRow) => {
@@ -228,7 +250,7 @@ export function ApprovalsPendingModulePage(): ReactNode {
   return (
     <div className="flex min-w-0 w-full max-w-full flex-col gap-3" data-testid="apr5-page-pending">
       <QueueSummaryBar phase={list.phase} rows={visibleRows} scope="queue" />
-      <QueueCsvExport rows={list.rows} tab="pending" status="pending" phase={list.phase} />
+      <QueueCsvExport rows={visibleRows} tab="pending" status="pending" phase={list.phase} />
       <div className="flex min-w-0 flex-wrap items-center gap-1.5" role="group" data-testid="apv8-search-group" aria-label="搜索审批">
         <input
           type="search"
@@ -252,6 +274,8 @@ export function ApprovalsPendingModulePage(): ReactNode {
       >
         仅在当前已加载 {list.rows.length} 条内搜索；关键字是前端本地过滤，不产生新请求（实测后台 q/keyword/title 参数被忽略）。
       </p>
+
+      <QueueSortBar phase={list.phase} sort={asort} dir={adir} loadedCount={list.rows.length} onCycle={cycleSort} />
 
 
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
