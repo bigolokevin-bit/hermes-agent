@@ -26,6 +26,9 @@ import { applySort, ariaSort, cycleSort, readSort, sortRows, type SortKey } from
 import { useEnsureTabParam } from "../capabilities/tabParam";
 import { captureTabView, focusTabButton, noteTabMount, restoreTabView } from "../capabilities/tabView";
 import { RowMissingNotice, listHref, rowHref, rowTargetFor, withRowTarget, withoutRowTarget } from "../capabilities/rowLink";
+import { CapStateAnchor, stateAnchor } from "../capabilities/stateAnchor";
+import { CapabilityRowCopyButton, type CapRowCopyResult } from "../capabilities/rowCopyButton";
+import { capRowCopyText } from "../capabilities/rowCopyText";
 import "./skills.css";
 
 type State =
@@ -131,6 +134,8 @@ export function SkillsPage() {
   const [attempt, setAttempt] = useState(0);
   const [openSkill, setOpenSkill] = useState<string | null>(() => cachedSkillsOpen);
   const [rovingKey, setRovingKey] = useState<string | null>(null);
+  // One result for the whole table: only the last-copied row shows its node.
+  const [rowCopyResult, setRowCopyResult] = useState<CapRowCopyResult | null>(null);
   const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
   const rootRef = useRef<HTMLElement | null>(null);
   const fixture = currentFixtureState();
@@ -416,8 +421,7 @@ export function SkillsPage() {
 
       {page.k === "loading" ? (
         <Card className="capF-state"><CardContent className="space-y-3 p-4" data-testid="skl4-loading" aria-busy="true">
-          <span className="sr-only" data-testid="capF-state-loading" aria-live="polite">正在读取技能…</span>
-          <p className="skl4-note">正在读取技能…</p>
+          <CapStateAnchor testid="capF-state-loading" anchor={stateAnchor({ kind: "loading", subject: "技能" })} />
           {[1, 2, 3, 4].map((item) => <div key={item} className="skl4-skeleton" />)}
         </CardContent></Card>
       ) : null}
@@ -425,9 +429,8 @@ export function SkillsPage() {
       {page.k === "empty" ? (
         <Card className="capF-state"><CardContent className="space-y-2 p-8 text-center" data-testid="skl4-empty">
           <span className="sr-only" data-testid="cap9-state-empty" />
-          <span className="sr-only" data-testid="capF-state-empty" aria-live="polite">读口已接入，本次返回 0 条；台账没有返回任何技能，这里不补样例行。</span>
           <p className="skl4-empty-title">还没有已登记的技能</p>
-          <p className="skl4-note" data-testid="capF-state-empty-text">读口已接入，本次返回 0 条；台账没有返回任何技能，这里不补样例行。</p>
+          <CapStateAnchor testid="capF-state-empty" anchor={stateAnchor({ kind: "empty", subject: "技能" })} />
         </CardContent></Card>
       ) : null}
 
@@ -436,11 +439,17 @@ export function SkillsPage() {
           {(page.status === 403 || page.status === 404) ? (
             <span className="sr-only" data-testid={page.status === 403 ? "cap9-state-denied" : "cap9-state-unavailable"} />
           ) : null}
-          <span className="sr-only" data-testid={unavailable ? "capF-state-unavailable" : "capF-state-error"} aria-live="polite">
-            {unavailable ? page.message : `技能列表暂时无法读取：${page.message}`}
-          </span>
-          <p className="skl4-error-title">{unavailable ? "技能读口未接入" : "技能列表暂时无法读取"}</p>
-          <p className="skl4-note" title={page.gap ?? undefined}>{page.message}</p>
+          <CapStateAnchor
+            testid={unavailable ? "capF-state-unavailable" : "capF-state-error"}
+            anchor={stateAnchor({
+              kind: unavailable ? "denied" : "error",
+              subject: "技能",
+              heading: unavailable ? "技能读口未接入" : "技能列表暂时无法读取",
+              reason: page.message,
+              gap: page.gap,
+              requestId: page.requestId,
+            })}
+          />
           <RequestId id={page.requestId} />
           <div className="skl4-actions">
             <span className="contents" data-testid="capF-retry">
@@ -457,7 +466,15 @@ export function SkillsPage() {
             <p className="skl4-source" data-testid="skl4-source">来源：技能台账 · 读取于 {page.asOf ?? "—（未提供读取时刻）"}</p>
             {q && visibleRows.length === 0 ? (
               <div className="cap5-no-match" data-testid="skl4-no-match">
-                没有匹配项
+                <CapStateAnchor
+                  testid="capF-state-filter-empty"
+                  anchor={stateAnchor({
+                    kind: "filter-empty",
+                    subject: "技能",
+                    reason: q,
+                    loaded: page.rows.length,
+                  })}
+                />
                 <button type="button" className="cap5-clear" onClick={() => setQ("")} data-testid="skl4-clear">清空搜索</button>
               </div>
             ) : (
@@ -482,6 +499,7 @@ export function SkillsPage() {
                       </button>
                     </th>
                     <th scope="col">共享范围</th>
+                    {sortedRows.length > 0 ? <th scope="col">复制</th> : null}
                   </tr>
                 </thead>
                 <tbody>
@@ -542,10 +560,28 @@ export function SkillsPage() {
                       <td><Cell value={row.status} reason={row.statusReason} title={row.statusRaw} /></td>
                       <td><Cell value={row.updatedAt} reason={row.updatedAtReason} /></td>
                       <td><Badge tone="outline">{row.scope}</Badge></td>
+                      {sortedRows.length > 0 ? (
+                        <td>
+                          <CapabilityRowCopyButton
+                            index={index}
+                            rowKey={row.id}
+                            name={row.name === "—" ? "未署名条目" : row.name}
+                            text={capRowCopyText({
+                              name: row.name,
+                              type: row.source,
+                              status: row.status,
+                              calls: null,
+                              id: row.id,
+                            })}
+                            result={rowCopyResult}
+                            onResult={setRowCopyResult}
+                          />
+                        </td>
+                      ) : null}
                     </tr>
                     {openSkill === row.id ? (
                       <tr data-testid="cap7-detail-row-skills">
-                        <td colSpan={5}>
+                        <td colSpan={sortedRows.length > 0 ? 6 : 5}>
                           <span className="sr-only" data-testid="cap-row-expanded" />
                           <CapabilityRowDetail
                             name={row.name === "—" ? null : row.name}

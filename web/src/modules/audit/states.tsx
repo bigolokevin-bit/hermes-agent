@@ -31,7 +31,114 @@ import { SUMMARY_COPY_LABEL } from "./summary";
 import { PERMALINK_COPY_LABEL, permalinkFromEvent } from "./permalink";
 import type { Gate } from "./auditGates";
 import { FILTER_SUMMARY_COPY_LABEL } from "./filterSummary";
+import { AUDIT_RESOURCE_NO_LINK_TEXT, resourceLinkOf } from "./resourceLinks";
+import {
+  DETAIL_COPY_DISABLED_TITLE,
+  DETAIL_COPY_LABEL,
+  auditCopyText,
+  type CopyableEvent,
+} from "./detailCopy";
+import { AUDJ_TIME_MISSING } from "./timeActor";
+import type { ResourceView } from "./model";
 import type { AuditChip } from "./filterChips";
+
+/**
+ * audW — 「打开资源」, rendered by BOTH legs (the inline preview and the event
+ * detail) from the ONE table in resourceLinks.ts.
+ *
+ * A real anchor: focusable, openable in a new tab, and its `href` is the address
+ * the landing page itself reads. Never an onClick that only looks like a link.
+ * A type with no page, or a record whose id never came back, is said in words
+ * instead — a dead link reads as a defect in the ledger rather than in the
+ * mapping, and the ledger has done nothing wrong.
+ */
+export function AuditResourceLink({ resource }: { resource: ResourceView }): ReactNode {
+  const link = resourceLinkOf(resource);
+  const shell =
+    "flex min-w-0 items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-xs text-muted-foreground";
+  if (link.kind === "link") {
+    return (
+      <a
+        href={link.href}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="min-w-0 max-w-full break-words rounded-md border border-border bg-card px-2 py-1 text-xs underline underline-offset-2"
+        data-testid="aud-resource-link"
+        data-aud-resource={resource.type ?? undefined}
+        title={link.title}
+      >
+        {link.label}
+      </a>
+    );
+  }
+  if (link.kind === "missing") {
+    return (
+      <span className={shell} data-testid="aud-resource-missing" title={link.title}>
+        {AUDJ_TIME_MISSING}
+      </span>
+    );
+  }
+  return (
+    <span className={shell} data-testid="aud-resource-nolink" title={link.title}>
+      {AUDIT_RESOURCE_NO_LINK_TEXT}
+    </span>
+  );
+}
+
+/**
+ * R106 — the 关联资源 column on a list row. The href comes from the SAME one
+ * table the preview and the record pane ask (`resourceLinkOf`), and so does the
+ * text: the 类型人话 · 短码 the ledger already built in `model.ts`, never a bare
+ * machine id. One event therefore cannot offer two different ways out depending
+ * on which face of the page a person happened to land on.
+ *
+ * Three states, no fourth:
+ * - a reachable type is a real `<a>` over the whole value — focusable, openable
+ *   in a new tab, with no click handler standing in for navigation;
+ * - nothing to point at (no identifier came back) is the module's one absent-field
+ *   word 「该字段未返回」, never 「—」 and never 0, because this column is a claim
+ *   about what the service sent;
+ * - a type with no page here keeps the value as plain text and puts the reason —
+ *   and the fact that there is no destination — in `title`.
+ */
+export function AuditResourceCell({ resource }: { resource: ResourceView }): ReactNode {
+  const link = resourceLinkOf(resource);
+  const plain = "min-w-0 break-words text-xs text-muted-foreground";
+  if (link.kind === "link") {
+    return (
+      <a
+        href={link.href}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="min-w-0 max-w-full break-words text-xs underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+        data-testid="aud-resource-link"
+        data-aud-resource={resource.type ?? undefined}
+        title={link.title}
+      >
+        {resource.label}
+      </a>
+    );
+  }
+  // The absence wins over the type sentence: a row with no identifier has nothing
+  // to link even when its type has a page, and saying 「暂无页面」 would hide the
+  // real reason.
+  if (resource.id === null || resource.id === "") {
+    const title =
+      link.kind === "missing"
+        ? link.title
+        : `${AUDIT_RESOURCE_NO_LINK_TEXT}：${AUDJ_TIME_MISSING}，这一行没有可定位的资源编号`;
+    return (
+      <span className={plain} data-testid="aud-resource-missing" title={title}>
+        {AUDJ_TIME_MISSING}
+      </span>
+    );
+  }
+  return (
+    <span className={plain} data-testid="aud-resource-nolink" title={`${AUDIT_RESOURCE_NO_LINK_TEXT}：${link.title}`}>
+      {resource.label}
+    </span>
+  );
+}
 
 /**
  * audC: the 结论行 copy control, rendered by BOTH legs (the inline row preview
@@ -71,6 +178,65 @@ export function SummaryCopy({ line }: { line: string }): ReactNode {
           data-testid="audC-copy-fallback"
           className="min-h-[3rem] w-full min-w-0 break-words rounded-md border border-border bg-muted/40 px-2 py-1 font-mono text-xs"
           onFocus={(event) => event.currentTarget.select()}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * R121 — the same row, copied from the record pane, built by ONE helper.
+ *
+ * audC's 结论行 (`summary.ts`) ends with 请求编号 and says 「该字段未返回」 for an
+ * absent field; this line (`detailCopy.ts`) ends with 同一次操作 and says 「—」。Two
+ * different promises about two different uses, so they keep two wordings — and
+ * ONE widget implementation, because a second copy widget is how two faces start
+ * promising different things. Nothing here sends a request: the text is read off
+ * what is already on the screen.
+ */
+export function DetailCopy({ event }: { event: CopyableEvent | null }): ReactNode {
+  const [state, setState] = useState<"idle" | "copied" | "manual">("idle");
+  const line = event === null ? "" : auditCopyText(event);
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="aud-detail-copy-block">
+      {/* A real button, focusable, and disabled with a reason when there is nothing
+          selected — a control that copies silence is worse than no control. */}
+      <button
+        type="button"
+        aria-label={DETAIL_COPY_LABEL}
+        disabled={event === null}
+        title={
+          event === null
+            ? DETAIL_COPY_DISABLED_TITLE
+            : "复制这一行（时间·操作者·动作·资源·同一次操作），不再向服务发任何请求"
+        }
+        className="min-w-0 rounded-md border border-border px-2 py-1 text-xs hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        data-testid="aud-detail-copy"
+        onClick={() => {
+          if (event === null) return;
+          void copyTextToClipboard(line).then((ok) => {
+            setState(ok ? "copied" : "manual");
+          });
+        }}
+      >
+        {DETAIL_COPY_LABEL}
+      </button>
+      <span
+        className="min-w-0 break-words text-xs text-muted-foreground"
+        role="status"
+        aria-live="polite"
+        data-testid="aud-detail-copy-status"
+      >
+        {state === "copied" ? "已复制" : state === "manual" ? "剪贴板不可用，这一行可以直接选中复制" : ""}
+      </span>
+      {state === "manual" ? (
+        <textarea
+          readOnly
+          value={line}
+          aria-label="该事件（可手动选中复制）"
+          data-testid="aud-detail-copy-fallback"
+          className="min-h-[3rem] w-full min-w-0 break-words rounded-md border border-border bg-muted/40 px-2 py-1 font-mono text-xs"
+          onFocus={(event2) => event2.currentTarget.select()}
         />
       ) : null}
     </div>
@@ -315,11 +481,13 @@ export function AuditUrlFilterChips({
   );
 }
 
-/** 请求编号 has its own honest word: the answer simply did not carry one. */
-export const NO_REQUEST_ID = "未提供";
+/** 请求编号 has its own honest word: the answer simply did not carry one — the
+ * same word the missing 时间 and the copied 结论行 use, so one absent field
+ * never reads two different things on three surfaces. */
+export const NO_REQUEST_ID = "该字段未返回";
 
 /**
- * 请求编号 on the surface, copyable, and honest when it is missing: 「未提供」
+ * 请求编号 on the surface, copyable, and honest when it is missing: 「该字段未返回」
  * with the reason in its `title`. An id is quoted to support, so it is shown in
  * full and allowed to wrap — `break-all` keeps a 32-character hex inside a
  * 375px column instead of pushing the page sideways. `failure` switches the

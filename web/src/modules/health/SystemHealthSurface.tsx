@@ -1,6 +1,8 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { Badge, Button, Card, CardContent } from "@nous-research/ui";
 import { fetchJSON } from "@/lib/api";
+import { copyTextToClipboard } from "@/lib/clipboard";
+import { sysRowCopyText } from "./rowCopy";
 import {
   SYS3_GAP,
   SYS3_PATH,
@@ -95,6 +97,10 @@ export function SystemHealthSurface({ preview = null, onRetry, refreshTick = 0, 
   const [reload, setReload] = useState(0);
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [filter, setFilter] = useState<Sys3State | null>(null);
+  // Last row-copy attempt: which rendered row, the exact text handed over, and
+  // whether the clipboard refused. One node carries the announcement for the
+  // whole table so screen readers hear a single 「已复制」 per click.
+  const [rowCopy, setRowCopy] = useState<{ index: number; text: string; failed: boolean } | null>(null);
   const [q, setQ] = useState(() => readServiceQuery(window.location.search, window.location.hash));
   const [svc, setSvc] = useState<string | null>(() => readServiceParam(window.location.search, window.location.hash));
   const [targetKey, setTargetKey] = useState<string | null>(null);
@@ -163,6 +169,13 @@ export function SystemHealthSurface({ preview = null, onRetry, refreshTick = 0, 
   const toggleRow = (key: string) => {
     setOpenKey((current) => (current === key ? null : key));
     if (svc) dropService();
+  };
+
+  // Copy reads only what is already on screen: sysRowCopyText rebuilds the
+  // line from the row object this render already rendered. No fetch, no clock.
+  const copyRow = (index: number, row: SystemHealthRow) => {
+    const text = sysRowCopyText(row);
+    void copyTextToClipboard(text).then((ok) => setRowCopy({ index, text, failed: !ok }));
   };
 
   useEffect(() => {
@@ -519,11 +532,11 @@ export function SystemHealthSurface({ preview = null, onRetry, refreshTick = 0, 
               <table className="sys3-table" data-testid="sys3-table">
                 <thead>
                   <tr>
-                    <th>服务名</th><th>状态</th><th>版本或构建标识</th><th>最近检查时刻</th><th>响应耗时</th>
+                    <th>服务名</th><th>状态</th><th>版本或构建标识</th><th>最近检查时刻</th><th>响应耗时</th><th className="sys-row-copy-head">复制</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {visibleRows.map((row) => (
+                  {visibleRows.map((row, index) => (
                     <Fragment key={row.key}>
                       <tr
                         ref={(node) => { rowRefs.current[row.key] = node; }}
@@ -553,10 +566,30 @@ export function SystemHealthSurface({ preview = null, onRetry, refreshTick = 0, 
                         </td>
                         <td data-testid="sys3-checked" title={row.checkedReason ?? undefined}>{row.checkedAt ?? "—"}</td>
                         <td data-testid="sys3-latency" title={row.latencyReason ?? undefined}>{row.latency ?? "—"}</td>
+                        <td className="sys-row-copy-cell">
+                          <button
+                            type="button"
+                            className="sys-row-copy"
+                            data-testid={`sys-row-copy-${index}`}
+                            aria-label={`复制${row.name ?? row.key}这一行`}
+                            title="复制这一行的表名、读数、数据时刻与状态；只读屏上已显示的值，不会再发请求。"
+                            onClick={(event) => {
+                              // The row itself toggles on click; copying must not open the detail.
+                              event.stopPropagation();
+                              copyRow(index, row);
+                            }}
+                            onKeyDown={(event) => {
+                              // Enter/Space would bubble to the row handler and toggle it too.
+                              if (event.key === "Enter" || event.key === " ") event.stopPropagation();
+                            }}
+                          >
+                            复制该行
+                          </button>
+                        </td>
                       </tr>
                       {openKey === row.key ? (
                         <tr data-testid={`sys4-detail-row-${row.key}`} id={`sys4-detail-row-${row.key}`}>
-                          <td colSpan={5}><RowDetail row={row} /></td>
+                          <td colSpan={6}><RowDetail row={row} /></td>
                         </tr>
                       ) : null}
                     </Fragment>
@@ -564,6 +597,23 @@ export function SystemHealthSurface({ preview = null, onRetry, refreshTick = 0, 
                 </tbody>
               </table>
             </div>
+            {rowCopy ? (
+              <div className="sys-row-copy-result" data-row-index={rowCopy.index}>
+                <span className="sys-row-copy-status" data-testid="sys-row-copy-status" role="status" aria-live="polite">
+                  {rowCopy.failed ? "复制失败，已展开可手动选择的文本" : "已复制"}
+                </span>
+                {rowCopy.failed ? (
+                  <textarea
+                    className="sys-row-copy-fallback"
+                    data-testid="sys-row-copy-fallback-text"
+                    aria-label={`手动复制第 ${rowCopy.index + 1} 行`}
+                    readOnly
+                    rows={1}
+                    value={rowCopy.text}
+                  />
+                ) : null}
+              </div>
+            ) : null}
             </>
             )}
             <p className="sys3-foot">缺失值显示「—」，原因在悬停说明里；不用本机时钟补采集时刻，也不把未知当正常。</p>

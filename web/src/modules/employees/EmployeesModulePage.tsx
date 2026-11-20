@@ -77,7 +77,7 @@ function readRows(body: unknown): { rows: EmployeeRow[]; nextCursor: string | nu
       lifecycleState: pickString(raw.lifecycleState),
       ownerUserId: pickString(raw.ownerUserId),
       updatedAt: pickString(raw.updatedAt),
-      department: pickString(raw.department),
+      department: raw.department === undefined ? undefined : pickString(raw.department),
       enrichment: enrichment
         ? {
             currentVersionNo: pickNumber(enrichment.currentVersionNo),
@@ -245,6 +245,20 @@ export const FIELD_MISSING = "该字段未返回";
 /** R68: the hover reason for any missing field, list or detail alike. */
 export const FIELD_MISSING_TITLE = "读口没有回传该字段。";
 /** R68: 「label：该字段未返回」 one-line form. */
+/** R96: 部门口径单点——列表桶与详情身份卡共用同一三态判据。 */
+export const DEPT_UNLABELED_LABEL = "未标注部门";
+
+export function departmentView(
+  hasKey: boolean,
+  value: string | null,
+): { label: string; title: string | null } {
+  if (!hasKey) return { label: FIELD_MISSING, title: FIELD_MISSING_TITLE };
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed)
+    return { label: DEPT_UNLABELED_LABEL, title: "读口带了部门键，但值为空：该员工未标注部门。" };
+  return { label: trimmed, title: null };
+}
+
 export function fieldMissing(label: string): string {
   return `${label}：${FIELD_MISSING}`;
 }
@@ -307,11 +321,18 @@ function RowPreview({ row }: { row: EmployeeRow }) {
  * 只读已加载行、零额外请求；口径写明「当前已加载 N 人」，禁冒充全量。
  * ------------------------------------------------------------------ */
 
-const COPY_HEADER = "name,employee_no,lifecycle,last_active";
+const COPY_HEADER = "name,employee_no,lifecycle,last_active,department";
 
 /** RFC4180：含逗号/引号/换行的值加引号，内部引号双写。 */
 function csvCell(value: string): string {
   return /[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+}
+
+/** R110: 部门列——复制与 CSV 同 helper 同串，三态直接复用 R96
+ * departmentView（真值原样 / 键在值空=未标注部门 / 键缺失=该字段未返回）；
+ * CSV 里也写该句，不写空、不写「—」——缺的是语义值，不是格式字符。 */
+function deptCopyValue(row: EmployeeRow): string {
+  return departmentView(row.department !== undefined, row.department ?? null).label;
 }
 
 /** 屏上行序（sortedItems 已含当前排序）逐行拼表；缺值「—」不补 0。 */
@@ -322,6 +343,7 @@ function buildEmployeesCopyText(rows: EmployeeRow[]): { text: string; count: num
       csvCell(`员工 · ${shortCode(row.employeeId)}`),
       csvCell(lifecycleLabel(row.lifecycleState)),
       csvCell(beijingMinute(row.updatedAt) ?? "—"),
+      csvCell(deptCopyValue(row)),
     ].join(","),
   );
   return { text: [COPY_HEADER, ...lines].join("\n"), count: lines.length };
@@ -416,6 +438,8 @@ export function buildEmployeesCsv(rows: EmployeeRow[]): string {
         csvCell(`员工 · ${shortCode(row.employeeId)}`),
         csvCell(lifecycleLabel(row.lifecycleState)),
         csvCell(beijingMinute(row.updatedAt) ?? ""),
+        // R110: 部门列与复制同 helper 同串（缺值写三态句，不写空）。
+        csvCell(deptCopyValue(row)),
       ].join(","),
   );
   // BOM 让 Excel 认中文；RFC4180 行尾 CRLF。
@@ -764,7 +788,7 @@ export function EmployeesModulePage() {
                 onClick={() => patchParams({ dept: dept === key ? null : key })}
                 className="h-6 min-w-0 max-w-full truncate rounded-md border border-white/15 px-2 hover:bg-white/5 focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/60 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {key === NONE_DEPT ? "未标注部门" : key}{" "}
+                {key === NONE_DEPT ? DEPT_UNLABELED_LABEL : key}{" "}
                 <b className="font-mono">{state.phase === "ready" ? count : "—"}</b>
               </button>
             ))}
@@ -985,9 +1009,12 @@ export function EmployeesModulePage() {
                     <span
                       className="min-w-0 truncate text-xs text-white/55"
                       data-label="部门"
-                      title={row.department ? undefined : "上游响应没有带部门信息"}
+                      title={
+                        departmentView(row.department !== undefined, row.department ?? null).title ??
+                        undefined
+                      }
                     >
-                      {row.department ?? "—"}
+                      {departmentView(row.department !== undefined, row.department ?? null).label}
                     </span>
                     <span
                       className="min-w-0 truncate font-mono text-xs text-white/55"

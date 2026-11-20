@@ -115,7 +115,8 @@ describe("SkillsPage", () => {
     await render();
 
     const headers = [...container.querySelectorAll("th")].map((node) => node.textContent);
-    expect(headers).toEqual(["技能名↕", "来源/类型↕", "启用态", "最近更新↕", "共享范围"]);
+    // R128 added the trailing copy column; the pinned header list grows with it.
+    expect(headers).toEqual(["技能名↕", "来源/类型↕", "启用态", "最近更新↕", "共享范围", "复制"]);
     expect(text()).toContain("资料整理");
     expect(text()).toContain("团队共享");
     expect(text()).toContain("类型：团队共享");
@@ -201,7 +202,7 @@ describe("SkillsPage", () => {
     expect(container.querySelector('[data-testid="cap9-state-empty"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="capF-state-empty"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="capF-state-empty"]')?.textContent).toContain("读口已接入，本次返回 0 条");
-    expect(container.querySelector('[data-testid="capF-state-empty-text"]')?.textContent).toBe("读口已接入，本次返回 0 条；台账没有返回任何技能，这里不补样例行。");
+    expect(container.querySelector('[data-testid="capF-state-empty-text"]')?.textContent).toBe("读口已接入，本次返回 0 条；技能没有返回任何条目，这里不补样例行。");
     expect(container.querySelector('[data-testid="skl4-page"]')?.getAttribute("data-cap-state")).toBe("empty");
     expect(container.querySelector('[data-testid="skl4-error"]')).toBeNull();
     const count = container.querySelector('[data-testid="cap4-count-skills"]')!;
@@ -228,7 +229,7 @@ describe("SkillsPage", () => {
     fetchJsonStrict.mockRejectedValue(new ApiError("missing", { status: 404, body: "", url: "/agent-api/api/skills" }));
     await render();
     expect(text()).toContain("技能读口未接入");
-    expect(document.querySelector('[data-testid="skl4-error"] p[title]')?.getAttribute("title")).toBe("GAP-SKL4-01");
+    expect(document.querySelector('[data-testid="capF-state-unavailable"]')?.getAttribute("title")).toContain("GAP-SKL4-01");
     expect(text()).not.toContain("GAP-");
     expect(text()).not.toContain("404");
     expect(container.querySelector('[data-testid="skl4-retry"]')).toBeTruthy();
@@ -265,7 +266,7 @@ describe("SkillsPage", () => {
     expect(text()).toContain("技能读口未接入");
     expect(text()).toContain("当前账号无权查看");
     expect(text()).not.toContain("403");
-    expect(document.querySelector('[data-testid="skl4-error"] p[title]')?.getAttribute("title")).toBe("GAP-SKL4-01");
+    expect(document.querySelector('[data-testid="capF-state-unavailable"]')?.getAttribute("title")).toContain("GAP-SKL4-01");
     expect(container.querySelector('[data-testid="skl4-apply"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="cap9-state-denied"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="cap9-state-unavailable"]')).toBeNull();

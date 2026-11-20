@@ -30,7 +30,13 @@ vi.mock("@/lib/api", () => ({
   fetchJSON: (...args: unknown[]) => fetchJSON(...args),
 }));
 
-import { EmployeesModulePage, FIELD_MISSING, FIELD_MISSING_TITLE } from "./EmployeesModulePage";
+import {
+  EmployeesModulePage,
+  DEPT_UNLABELED_LABEL,
+  FIELD_MISSING,
+  FIELD_MISSING_TITLE,
+  departmentView,
+} from "./EmployeesModulePage";
 
 let container: HTMLDivElement;
 let root: Root | null = null;
@@ -136,8 +142,8 @@ describe("EmployeesModulePage list depth", () => {
     // Unknown lifecycle states never get invented words.
     expect(link.textContent).toContain("待核实");
     const dept = document.querySelector('[data-label="部门"]');
-    expect(dept?.textContent).toBe("—");
-    expect(dept?.getAttribute("title")).toContain("上游响应没有带部门信息");
+    expect(dept?.textContent).toBe("未标注部门"); // R96：部门键在值为空=未标注口径（不再显 —）
+    expect(dept?.getAttribute("title")).toContain("值为空");
     expect(document.querySelector('[data-label="最近活跃"]')?.textContent).toBe("2026-11-17 13:52");
   });
 
@@ -481,7 +487,7 @@ describe("R64 employees list copy as text (emp-list-copy)", () => {
     expect(fetchJSON.mock.calls.length, "copy never fetches").toBe(callsBefore);
     expect(written.length).toBe(1);
     const lines = written[0].split("\n");
-    expect(lines[0]).toBe("name,employee_no,lifecycle,last_active");
+    expect(lines[0]).toBe("name,employee_no,lifecycle,last_active,department");
     expect(lines).toHaveLength(3); // 表头 + 屏上 2 人
     expect(lines[1]).toContain("小鲤");
     expect(lines[1]).toContain("员工 · 217A91BA");
@@ -722,10 +728,10 @@ describe("R66 employees list CSV export (emp-list-export)", () => {
     expect(fetchJSON.mock.calls.length, "export never fetches").toBe(callsBefore);
     const lines = raw.replace(/^\uFEFF/, "").split("\r\n").filter((l) => l !== "");
     expect(lines).toHaveLength(3); // 表头 + 屏上 2 人
-    expect(lines[0]).toBe("name,employee_no,lifecycle,last_active");
+    expect(lines[0]).toBe("name,employee_no,lifecycle,last_active,department");
     expect(lines[1]).toContain('"小鲤, 带头"'); // RFC4180 逗号转义
     expect(lines[1]).toContain("员工 · 217A91BA");
-    expect(lines[2].endsWith(",")).toBe(true); // last_active 缺=空字段（非「—」非 0）
+    expect(lines[2].endsWith(",增长组")).toBe(true); // R110：末列=部门真值；last_active 缺=空字段（非「—」非 0）
     expect(lines[2]).toContain("待核实"); // weird_state 人话
     // Blob.text() 按规范剥离前导 BOM，字节级验证 Excel 兼容头
     expect(Array.from(await stub.head())).toEqual([0xef, 0xbb, 0xbf]);
@@ -1020,5 +1026,101 @@ describe("R81 department filter (emp-list-dept-*)", () => {
     expect(all!.disabled).toBe(true);
     expect(all!.getAttribute("title")).toContain("不能按部门筛选");
     expect(q("emp-list-dept-scope-note")?.textContent).toContain("按当前已加载 0 人");
+  });
+});
+
+describe("R96 department caliber parity (emp-list-dept-*)", () => {
+  const deptRows = {
+    items: [
+      { employeeId: "emp_217A91BA995044DFBB3E2E940B", name: "小鲤", lifecycleState: "active", updatedAt: "2026-11-17T05:52:48.030Z", department: "增长组" },
+      { employeeId: "emp_2B2C2D2E4F506172", name: "阿朝", lifecycleState: "active", updatedAt: "2026-11-18T05:52:48.030Z", department: null },
+      { employeeId: "emp_3C3D3E3F40414243", name: "阿象", lifecycleState: "paused", updatedAt: "2026-11-18T01:10:00.030Z" },
+    ],
+  };
+  const cell = (id: string) =>
+    document.querySelector(`[data-testid="emp-l-row-${id}"] [data-label="部门"]`);
+
+  it("row cells and rail buckets read the same three-state helper output", async () => {
+    fetchJSON.mockImplementation(async () => deptRows);
+    await render("/employees");
+    await flushTimers();
+    // 有值 / 空值 / 缺键三态逐字走 departmentView（与详情身份卡同一 helper=同源）
+    expect(cell("emp_217A91BA995044DFBB3E2E940B")?.textContent).toBe(
+      departmentView(true, "增长组").label,
+    );
+    expect(cell("emp_2B2C2D2E4F506172")?.textContent).toBe(DEPT_UNLABELED_LABEL);
+    expect(cell("emp_2B2C2D2E4F506172")?.getAttribute("title")).toContain("值为空");
+    expect(cell("emp_3C3D3E3F40414243")?.textContent).toBe(FIELD_MISSING);
+    expect(cell("emp_3C3D3E3F40414243")?.getAttribute("title")).toBe(FIELD_MISSING_TITLE);
+    // 桶名与文案共用判据：null 与缺键都归「未标注部门」桶（2 人）
+    const unlabeled = Array.from(document.querySelectorAll('[data-testid^="emp-list-dept-"]')).find(
+      (b) => (b.textContent ?? "").startsWith(DEPT_UNLABELED_LABEL),
+    );
+    expect(unlabeled, "unlabeled bucket").toBeTruthy();
+    expect(unlabeled?.textContent).toContain("2");
+    expect(unlabeled?.getAttribute("title")).toContain("只看没有部门信息的行");
+  });
+});
+
+describe("R110 copy and export department column", () => {
+  const deptRows = {
+    items: [
+      { employeeId: "emp_DDD11122223333", name: "甲", lifecycleState: "active", updatedAt: "2026-11-18T05:52:48.030Z", department: "增长组" },
+      { employeeId: "emp_DDD11122223334", name: "乙", lifecycleState: "active", updatedAt: "2026-11-18T05:52:48.030Z", department: null },
+      { employeeId: "emp_DDD11122223335", name: "丙", lifecycleState: "active", updatedAt: "2026-11-18T05:52:48.030Z" },
+    ],
+  };
+  const DEPT_STATES = ["增长组", "未标注部门", "该字段未返回"];
+
+  it("copy and CSV carry the same departmentView three-state string per row with zero requests", async () => {
+    fetchJSON.mockImplementation(() => Promise.resolve(deptRows));
+    await render("/employees");
+    await act(async () => {
+      flushTimers();
+    });
+    const before = fetchJSON.mock.calls.length;
+
+    const written: string[] = [];
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async (text: string) => {
+          written.push(text);
+        },
+      },
+    });
+    await act(async () => {
+      (q("emp-list-copy") as HTMLButtonElement).click();
+    });
+    const copyLines = written[0].split("\n");
+    expect(copyLines[0]).toBe("name,employee_no,lifecycle,last_active,department");
+    expect(copyLines.slice(1).map((line) => line.split(",").at(-1))).toEqual(DEPT_STATES);
+
+    let captured: Blob | null = null;
+    const saved = URL.createObjectURL;
+    const savedRevoke = URL.revokeObjectURL;
+    URL.createObjectURL = ((b: Blob) => {
+      captured = b;
+      return "blob:mock";
+    }) as typeof URL.createObjectURL;
+    URL.revokeObjectURL = (() => undefined) as typeof URL.revokeObjectURL;
+    try {
+      await act(async () => {
+        (q("emp-list-export") as HTMLButtonElement).click();
+      });
+      const csvText = await (captured as Blob).text();
+      const csvLines = csvText.replace(/^\uFEFF/, "").split("\r\n").filter((line) => line !== "");
+      expect(csvLines[0]).toBe(copyLines[0]);
+      expect(csvLines.slice(1).map((line) => line.split(",").at(-1))).toEqual(DEPT_STATES);
+      // 逐行 department 列：复制与 CSV 同串。
+      for (let i = 1; i <= 3; i += 1) {
+        expect(csvLines[i].split(",").at(-1)).toBe(copyLines[i].split(",").at(-1));
+      }
+      expect(csvLines.length).toBe(4); // header + 屏上 3 行=同源
+    } finally {
+      URL.createObjectURL = saved;
+      URL.revokeObjectURL = savedRevoke;
+    }
+    expect(fetchJSON.mock.calls.length).toBe(before);
   });
 });

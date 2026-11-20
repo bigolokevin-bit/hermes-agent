@@ -59,6 +59,9 @@ import {
 } from "./states";
 import {
   PAGE_LIMIT,
+  pageCapMoreText,
+  pageCapText,
+  pageCapTitle,
   runCsvFileName,
   runListCsv,
   runListText,
@@ -972,11 +975,16 @@ export function RunsModulePage() {
   const resetTitle = resetFiltersTitle(filterReset.removed, unrecognizedFilters);
   const resetFilters = () => {
     if (filterReset.removed.length === 0) return;
+    cancelRefreshRef.current();
     setParams(filterReset.next, { replace: true, state: locationState ?? null });
   };
   const data = useRunsData(forced, { status, sinceKey, employeeId: employee });
   const { phase, rows, cursor, asOf, asOfSource, answeredBy, unreadable, failure, forced: isForced } =
     data;
+  const { refreshState, paging } = data;
+  useEffect(() => {
+    cancelRefreshRef.current = refreshState.cancel;
+  }, [refreshState.cancel]);
   const asof = asOfCell(asOf, asOfSource);
 
   // Sorting is local: the list route accepts no sort parameter (see runs.ts
@@ -988,6 +996,9 @@ export function RunsModulePage() {
     [rows, rsort, rdir],
   );
   const chooseSort = (key: RunSortKey) => {
+    // A new order starts again from page one: the cursor that fetched the
+    // appended pages belongs to the old order, not this one.
+    paging.resetPages();
     // One write for both keys: two setParam calls would both start from the
     // same params snapshot and the second would drop the first.
     const next = new URLSearchParams(params);
@@ -1000,8 +1011,10 @@ export function RunsModulePage() {
   const [readTick, setReadTick] = useState(0);
   const detail = useRunDetail(selected, readTick);
 
+  const cancelRefreshRef = useRef<() => void>(() => {});
   const [names, setNames] = useState<Map<string, string>>(new Map());
   const removeChip = (keys: readonly string[]) => {
+    cancelRefreshRef.current();
     const next = new URLSearchParams(params);
     for (const key of keys) next.delete(key);
     setParams(next, { replace: true, state: locationState ?? null });
@@ -1138,6 +1151,7 @@ export function RunsModulePage() {
   const listGate = listActionGate(phase);
   const filtersNarrow = Boolean(status) || Boolean(employee);
   const clearFilters = () => {
+    refreshState.cancel();
     const next = new URLSearchParams(params);
     next.delete("status");
     next.delete("employee");
@@ -1168,6 +1182,54 @@ export function RunsModulePage() {
       data-page="runs"
       data-fixture={forced ?? undefined}
     >
+      <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="run-refresh-bar">
+        <Button
+          size="sm"
+          outlined
+          onClick={refreshState.refresh}
+          aria-busy={refreshState.busy}
+          disabled={isForced}
+          title={forcedTitle ?? "按当前窗口、状态、负责人与排序再要一次运行记录；只读，不改任何运行"}
+          data-testid="run-refresh"
+          prefix={<RefreshCw className="h-3.5 w-3.5" />}
+        >
+          刷新
+        </Button>
+        {refreshState.busy ? (
+          <span className="min-w-0 break-words text-xs text-muted-foreground" role="status" aria-live="polite" data-testid="run-busy-note">
+            更新中…（先保留上一次读到的数据）
+          </span>
+        ) : null}
+        {!refreshState.busy && refreshState.updatedAt !== null ? (
+          <span className="min-w-0 break-words text-xs text-muted-foreground" data-testid="run-updated-at">
+            {`刷新完成于 ${beijingMinute(refreshState.updatedAt).text ?? "—"}（读取时刻，不是数据时刻）`}
+          </span>
+        ) : null}
+      </div>
+      {refreshState.error !== null ? (
+        <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-md border border-border px-2 py-1 text-xs" data-testid="run-refresh-error">
+          <span className="min-w-0 break-words">这次刷新没成功：{refreshState.error.sentence}</span>
+          {refreshState.error.requestId !== null ? (
+            <>
+              <span className="text-muted-foreground">请求编号</span>
+              <code className="min-w-0 break-all text-[11px]" data-testid="run-refresh-rid">{refreshState.error.requestId}</code>
+              <Button
+                size="sm"
+                outlined
+                onClick={() => void copyTextToClipboard(refreshState.error?.requestId ?? "")}
+                data-testid="run-refresh-copy"
+              >
+                复制编号
+              </Button>
+            </>
+          ) : (
+            <span className="text-muted-foreground" data-testid="run-refresh-rid-absent">本次请求未记录编号</span>
+          )}
+          <Button size="sm" outlined onClick={refreshState.refresh} data-testid="run-refresh-retry">
+            再试
+          </Button>
+        </div>
+      ) : null}
       <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-2">
         <div className="min-w-0">
           <nav aria-label="面包屑" className="min-w-0 break-words text-xs text-muted-foreground" data-testid="run5-breadcrumb">
@@ -1201,7 +1263,10 @@ export function RunsModulePage() {
                       ? "rounded-md border border-border bg-muted px-2.5 py-1 text-xs font-medium"
                       : "rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground"
                   }
-                  onClick={() => setParam("window", option.key)}
+                  onClick={() => {
+                    refreshState.cancel();
+                    setParam("window", option.key);
+                  }}
                 >
                   {option.label}
                 </button>
@@ -1216,7 +1281,10 @@ export function RunsModulePage() {
               className="h-8 min-w-0 max-w-40 rounded-md border border-border bg-transparent px-2 text-sm"
               value={status ?? ""}
               title={isForced ? forcedTitle : "换状态会重新向服务要一次数据"}
-              onChange={(event) => setParam("status", event.target.value || null)}
+              onChange={(event) => {
+                refreshState.cancel();
+                setParam("status", event.target.value || null);
+              }}
             >
               <option value="">全部状态</option>
               {STATUS_KEYS.map((key) => (
@@ -1301,6 +1369,19 @@ export function RunsModulePage() {
         {unreadable > 0 && countsKnown
           ? `；另有 ${unreadable} 条回的内容没有可读的运行编号，没有算在上面`
           : ""}
+      </p>
+
+      <p
+        className="min-w-0 break-words text-xs text-muted-foreground"
+        data-testid="run-page-cap"
+        title={pageCapTitle()}
+      >
+        已加载 {countsKnown ? rows.length : "—"} 行（{pageCapText()}；复制与导出也只含这些行，不报全量）
+        {phase === "ready" && cursor ? (
+          <span className="ml-2" data-testid="run-page-cap-more">
+            {pageCapMoreText()}
+          </span>
+        ) : null}
       </p>
 
       <p
@@ -1483,6 +1564,77 @@ export function RunsModulePage() {
           onSort={chooseSort}
           sortDisabled={false}
         />
+      ) : null}
+      {phase === "ready" ? (
+        <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="run-more-bar">
+          <Button
+            size="sm"
+            outlined
+            type="button"
+            data-testid="run-more"
+            aria-busy={paging.busy}
+            disabled={paging.busy || !paging.hasMore}
+            title={
+              paging.hasMore
+                ? `按当前筛选、排序继续取下一页；每页最多 ${PAGE_LIMIT} 条。`
+                : "服务没有给出下一页，列表已经到底了。"
+            }
+            onClick={paging.loadMore}
+          >
+            加载更多
+          </Button>
+          {paging.busy ? (
+            <span className="text-xs text-muted-foreground" role="status" aria-live="polite" data-testid="run-more-busy">
+              正在取下一页…（已加载的行先保留）
+            </span>
+          ) : null}
+          {!paging.hasMore ? (
+            <span className="text-xs text-muted-foreground" data-testid="run-more-end">
+              已到末页
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+      {paging.error ? (
+        <div
+          className="min-w-0 space-y-1 rounded-md border border-border bg-card p-3 text-xs text-muted-foreground"
+          role="status"
+          data-testid="run-more-error"
+        >
+          <p className="min-w-0 break-words">
+            这一页没有取到更多运行记录，已加载的行仍然保留。{paging.error.sentence}
+          </p>
+          <p className="flex min-w-0 flex-wrap items-center gap-2">
+            <span>请求编号</span>
+            {paging.error.requestId ? (
+              <code className="min-w-0 break-all" data-testid="run-more-rid">
+                {paging.error.requestId}
+              </code>
+            ) : (
+              <span data-testid="run-more-rid-absent">本次请求未记录编号</span>
+            )}
+            {paging.error.requestId ? (
+              <button
+                type="button"
+                className="underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                data-testid="run-more-copy"
+                onClick={() => {
+                  if (paging.error?.requestId) void copyTextToClipboard(paging.error.requestId);
+                }}
+              >
+                复制编号
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              data-testid="run-more-retry"
+              onClick={paging.loadMore}
+            >
+              重试
+            </button>
+          </p>
+        </div>
       ) : null}
       {phase === "ready" ? (
         <p

@@ -1279,3 +1279,59 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 测试 pending 2 用例：深链 status=expired→note 在+chip 消失+list 请求恰 1 条含 status=pending 不含 expired（删参不触 fetch）；干净入口→note 常驻+无 chip+无额外请求。定向 approvals 5 files/**166 passed**（164+2 一次全绿）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **166 files/2310 passed**（基线 2308+2）。
 - 零破：apv5–9/apd5–7/apr5/state/sort/export/live/parity（既有 164 全绿为证）；三档=note p break-words+flex-col 既有形态学报（jsdom 不可测）；9122==fa7c2155 禁重建，活体地址栏收敛读数待并入后代次。
 - 交付拆笔教训（DONE 记）：R93b 段 append 因 `assert "## R93 " not in s` 误匹配早前 R93 播报单段而中止（文件未写），commit 已先行且只含代码 2 文件=push 460bcbe5；DONE 单独 docs 尾笔补交。教训=查重锚用**本单唯一节名**（R93b），不用前缀子串（"## R93 " 命中历史 R93）。
+
+## R96 部门口径一致：列表 ↔ 员工详情身份卡（2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @72161996（页面代次 86cb2ede/fa7c2155 系），toplevel ✓ porc=0；重发三件套 grep ed1-identity-department=0=全新。
+- 实测（ego 9122 只读）：GET /api/employees/emp_86A81CE8FF6F42E187BCF2B540 → **200** keys=asOf,createdAt,currentVersionId,department,duty,id,lifecycleState,name,ownerUserId,revision,tenantId,title,updatedAt，deptVal=**null** ⇒ 详情读口**带 department 键、值为空**=现状真实员工应上「未标注部门」（键不存在才是「该字段未返回」）。
+- 交付=①employees 模块单点 helper：export DEPT_UNLABELED_LABEL=「未标注部门」+departmentView(hasKey,value)三态（缺键→FIELD_MISSING+FIELD_MISSING_TITLE；空/null→未标注部门+title「读口带了部门键，但值为空…」；有值→原值无 title）；readRows 改为 raw.department===undefined?undefined:pickString(…)（键缺失与空值可区分）；行部门格弃「—」改走 helper（「—」冒充空值清除）；rail 桶名接常量。②ed IdentityCard 新格 ed1-identity-department（label=部门，值=departmentView("department" in d, typeof string?…)——跨模块 import helper 自 employees 模块=R68 rosterLifecycleLabel 同方向先例；三态零编造）。③两侧对同一记录同源=同一 helper 调用（用例 toBe departmentView 输出）。
+- 测试：employees 新用例（三态行 fixture：值/null/缺键→cell 逐字=helper 输出+桶名=DEPT_UNLABELED_LABEL 计数 2+title 判据）；ed 新 describe 3 用例（三态各独立 it=**R43 老坑复证：同 it 换 mock 再 render 不重发，useResourceList deps=[url,nonce]**）；既有断言同步两处=mount「—」→未标注部门+title、list depth「—」→同口径（工单②明禁「—」当空=语义更新非破）。定向 employees+employee-detail 3 files/103 passed；approvals 复跑 172 passed 零破；tsc 两域 0 红；assert-ia 两模式 exit0；全量 **170 files/2361 passed**（基线 2357+4）。
+- 零破：ed1-*/ed5-*/emp-list-*/emp-list-dept-* 现名全在（新格=ed1-identity-department 属 ed1-* 族扩展）；三档=IdentityCard dl 三列 grid+格 truncate 既有形态学报（jsdom 不可测）；9122 活体身份卡部门读数待并入后代次。
+- 决定：列表「未标注部门」桶含缺键与空值两种行（桶=筛选能力，聚合从宽）；详情三态严格区分（缺键≠空值≠有值）——桶名与详情文案共用 DEPT_UNLABELED_LABEL/FIELD_MISSING 常量，无第二套措辞。
+
+## V2 知识空间「最新版本」深链调查（只读，2026-11-20）
+
+- 只读调查完成，零产品码/零写请求/零启停；结论文件=docs/_artifacts/appr/V2-knowledge-latest-version-link.md。
+- 判定=kn7「最新版本」深链**不可行，标未实现（非未接通）**：BFF /api/documents（b3b0f16 server.py L1333-1390）行键无 version/revision/current_version 任何版本字段，is_released 仅 bool 旗标；?revision=/?version= 均不存在=禁编假参数。唯一诚实近似=按 updated_at 排序取最新（排序语义非版本）。真做版本=Bisheng 上游功能缺口，不自裁。
+
+## R100 审批行详情复制（apd11-*）
+- 交付=RowDetailCopy.tsx 新（rowDetailText 单点七行拼装+Button apd11-copy/status/fallback 三件套）+两页 ActorBuckets 行后常驻挂载 `<RowDetailCopy row={visibleRows.find((r) => r.key === previewKey) ?? null} />`。基线=Already up to date @111536df（代次 1683d467/章笔 f1b509b9）。
+- 落点裁决：工单「行内预览面板加」与「未展开时按钮 disabled」要求按钮常驻 DOM（面板内则无该态）→放两页常驻筛选区，disabled 态与启用态同源（previewKey 派生行对象，零新请求）。
+- 文本口径：标题/状态人话/风险档=行对象逐字；提交/更新时间=row.submittedAt/decidedAt（raw ISO）→epochOf→timeTitle 绝对句「绝对 YYYY-MM-DD HH:mm:ss（北京时间） · ISO <raw>」（R76 相对时间 helper 单点）；缺值句走 stateCopy 单点（FIELD_MISSING_SENTENCE/APPROVAL_RID_MISSING）；审批人=labels join「、」缺=该字段未返回。与 apd8-copy（链路文本）、apv7-export（CSV）语义三分。
+- aria-live 契约处置：工单要显式 role=status aria-live=polite；本仓 R86 契约=全页唯一显式播报器 apv-live（R88 用例锁计数=1）。沿用 role=status（隐式 polite）不加显式 aria-live，用例断 [aria-live=polite] 仍恰 1。
+- 读数：history 夹具 ap_r100（高/郑涛/req-r100-1/createdAt 02:00Z→绝对 10:00:00，无 decided 键→更新时间该字段未返回）written 七行逐字+计数锁；pending 队列行 ap_9F3A1111（未标注风险/提交 09:20:00 绝对句/审批人与 rid 均该字段未返回）同款；未展开 disabled+title 逐字「先展开一行审批再复制」；剪贴板拒→readOnly textarea value 逐字同。
+- 坑（必记）：新钮文案含「详情」二字 ⇒ pending 既有用例 buttonNamed("详情")（includes 查找）被「复制预览详情」抢占致详情没打开=1 FAIL；修法=该用例改 textContent.trim()==="详情" 精确查找（DetailsDisclosure states.tsx L147 钮文本本就精确）。教训=页级加钮必 grep 短文案钮查找函数（buttonNamed/text() 抢占族）。
+- 验证=定向 approvals 8 files/185 passed；tsc 本域 0 红；assert-ia 两模式 exit0；全量 175 files/2404 passed。三档=既有 flex-wrap gap-2+break-words 形态学报（jsdom 不可测）；9122==1683d467 系禁重建，活体复制读数待并入后代次。
+
+## R107 审批 CSV 补 correlation/rid 列
+- 交付=QueueCsvExport.tsx：CSV_HEADER 追加为 id,title,status,risk,updated_at,correlation,rid（固定前序、只追加不重排）；行值 correlation=csvEscape(row.rawId ?? "")（与 apd9-correlation 审计 resource 同源=审批单号）、rid=csvEscape(row.requestId ?? "")（与 apd11-copy 同一来源行）；缺值=空字段，禁「—」/缺值句进 CSV（屏上渲染层仍是「该字段未返回」零改动）。Button enabled title 追加列头说明一句。基线=Already up to date @c3cbff32（章笔 f1b509b9/代次 1683d467），toplevel ✓ porc=0；grep correlation=0=全新。
+- 同源三数=apv7-export-count「共 8 行」==blob 非空段 9（header+8）==表体行（R91 crosssurface/9 段断言在列数变更后仍绿）；空集 disabled+title 与零新端点计数锁既有断言零破；RFC4180 csvEscape 复用。
+- 测试同步=R54 纯函数用例加第三行夹具（ap_Z+requestId=req-z-1）断 lines[0] 新表头、缺 rid 行尾 `,ap_X,`、updated_at 缺行 `,高风险,,ap_Y,`（教训=7 列时 updated_at 空列夹在 risk 与 correlation 之间，endsWith 需含空列逗号——首跑即此 FAIL 实打实读 lines[2] 后修正）、带 rid 行 `,ap_Z,req-z-1`；mkRow 默认补 requestId:null。
+- 验证=定向 approvals 8 files/185 passed；tsc 本域 0 红；assert-ia 两模式 exit0；全量 175 files/2404 passed。三档=导出行为无版面新增（title 文案变长不换行载体）形态学报；9122==1683d467 系活体下载读数待并入后代次。
+
+## R110 员工列表复制/导出 department 列
+- 交付=EmployeesModulePage.tsx：COPY_HEADER（复制与 CSV 共用同一常量=天然同串）追加 department → name,employee_no,lifecycle,last_active,department；新 deptCopyValue(row) 单点=reuse R96 departmentView(row.department !== undefined, row.department ?? null).label（真值原样/键在值空=未标注部门/键缺失=该字段未返回）；buildEmployeesCopyText 与 buildEmployeesCsv 行尾各加 csvCell(deptCopyValue(row))——CSV 缺值写三态句、不写空不写「—」（与 last_active 的 CSV 空字段口径不同=本工单点名语义值非格式字符，DONE 记差异）。
+- 基线=显式 refspec fetch+merge Already up to date @d1fbd294（tip f1b509b9=代次 1683d467 纯账本已含），toplevel ✓ porc=0；grep R110=0 全新。行序=sortedItems 同源零改；RFC4180 csvCell 复用。
+- 测试=新 describe 1 用例：三态夹具（增长组/null/缺键）→复制 written[0] 表头逐字+行末列 toEqual 三态；blob CSV 去 BOM 表头与复制逐字相等、逐行末列 toBe 对应复制行、4 段=header+屏上 3 人同源；两点击后 fetchJSON 计数不变（零额外请求）。既有 R64/R66 两处表头 toBe 与阿朝行尾断言同步（契约追加=语义等价，行尾 ,→,增长组）。
+- 验证=定向 employees 2 files/42 passed；tsc 本域 0 红；assert-ia 两模式 exit0；全量 175 files/2405 passed。emp-list-*/emp-row-preview/emp-list-page-*/ed*/apv* 零破（合跑绿为证）。三档=纯列值追加无新载体形态学报；9122==1683d467 系活体读数待并入后代次。
+
+## R127 审批队列行复制（apr-row-copy-*，单 helper）— feat(console): approvals row copy
+
+- 新 `web/src/modules/approvals/RowCopy.tsx`：`approvalRowCopyText(row)` 单点拼六段=
+  单号(rawId)/标题/状态人话(statusView)/风险人话(riskView)/更新时间(row.clock，缺「—」)/
+  短码(requestId 后 8 位，禁裸内部 id)；`RowCopy({row,index})` 行末钮
+  `apr-row-copy-<i>`（i=行序随排序/筛选变，天然同序）、aria-label「复制<标题或单号>这一行」、
+  `apr-row-copy-status` role=status（隐式 polite——工单要显式 aria-live=polite 与 R86
+  全页单播报器契约 [aria-live=polite]===1 冲突，按 R100 先例走 role=status，差异上报）、
+  剪贴板缺/拒 → `apr-row-copy-fallback` 只读 textarea 与投递文本逐字同。
+- `views.tsx` L15 import + L227 `<RowCopy row={row} index={index} />` 插行卡 reason 后、
+  preview 包壳前；onClick/onKeyDown stopPropagation 不误触发行开详情；空表无行无钮天然。
+- 与 apd8-copy（决策链路文本）/apd10（固定链接）/apd11（预览详情）/apv7（CSV）四种
+  文本各走各的单点 helper，禁混用。
+- 测试 4 用例（history.test 末 describe）：六段逐字（期望串手写不 import helper）+零请求
+  计数锁；缺值「—」/「未标注风险」禁假 0；点 apv-sort-title 两下翻转后 apr-row-copy-0
+  aria-label 随新第 0 行；clipboard reject → fallback value 逐字等。
+- 读数：定向 approvals 10 files/197 passed；tsc 本域 0 红；assert-ia 两模式 exit0；
+  全量 193 files/2528 passed（基线 2524+4）。坑记=import 追加撞既有同符号行
+  （L21 已 import riskView/statusView from model，L19 再加=Identifier already declared，
+  回滚原行即绿）。三档=行内 flex-wrap 形态学报；9122==d7965c2a 系活体待下代次。

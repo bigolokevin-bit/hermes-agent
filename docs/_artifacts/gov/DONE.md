@@ -2307,3 +2307,101 @@ built /private/tmp/health-r38/index.html
 - 验证：定向 `src/modules/{capabilities,skills,tools}` → **10 files / 103 passed**；全量 → **166 files / 2314 passed**（0 failed，approvals 那条上游串扰本轮未复现）；`tsc -b . --noEmit` exit 2，错误只在 approvals/employee-detail/employees 基线，本域 0 条。
 - 诚实披露：派工单引用的「已加载 N 项」不是 `cap-page-scope` 的实际文案 —— 屏上真实字符串是「表内全量渲染，共 N 项」/「本页按读口单页上限显示 N 项，总数以读口回传为准」，「仅在当前已加载 N 项内搜索」属于 `cap5-scope-note`（搜索作用域）。本轮按真实 mode 出措辞，没有为贴合派工单而改列表既有文案。另外注记在**空列表**时仍然渲染并写「共 0 项」（与 `cap-page-scope` 的 0 口径一致），只有按钮 title 不加注记（保持门控空态句逐字）。
 - 边界：写域只有 `web/src/modules/{capabilities,skills,tools}/**` + `docs/_artifacts/gov/DONE.md`（11 文件）；未碰 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未 install、未并 main、未重建 9122；禁 force/amend/--no-verify。
+
+## R87 / capabilities rowparity guards — wave-29 三面 parity 纯测试护栏
+
+- 基线：显式 refspec fetch + `git merge --no-ff origin/lane/hermes-console`（上游 tip `54f3dcfc` 账本章笔并入）；HEAD merge `591f7777`；禁 reset 未用；工作树开工前干净。
+- 交付：新增 `web/src/modules/capabilities/capabilities.rowparity.test.tsx`（jsdom，11 tests），零产品码改动。①行详情 vs 列表行：`cap7-detail-{name,type,enabled,updated}` 与 `skl4-row-*` 四格逐字相等（s1 全值行 + s2 全缺行）；未知态两处同「待核实」，列表格 title=原值 `mystery`、详情 title 含 `mystery`；endpoint `/agent-api/api/skills`，asOf `2026-11-19 14:00` 且 title 含 UTC 原文。②`capC-copy`：复制行 == 表体行序 == 四格值 join(',')，缺值「—」且正则断言无 `,0` 伪造；空集 disabled、title === `cap-gates-copy` title === 「当前没有可导出的条目。」，点击零剪贴板调用。③条数范围：`cap-page-scope` N == 表体行数 == 导出数据行数（注记除外），`cap-export-scope-note` `data-shown`==N 且 CSV 末行 == `#`+注记逐字；capped 分支（total 57+nextCursor）注记「已加载 2 项…不是全量」且全页无「表内全量渲染」。④采集时刻：`vi.useFakeTimers({now:2031, toFake:["Date"]})` 冻结假时钟，`generated_at` 别名 → 屏上/行复制/列表复制均 `2026-11-19 14:00` 且无「2031」；无别名/非法 `asOf`/非 ISO `collectedAt` 三例 → 「—」+title 含「不用本机时间顶替」且不含 2031。
+- 诚实边界：2031 断言范围是采集时刻相关节点（`cap7-detail-asof`/`skl4-source`/`cap-page-scope`/两份复制文本）；`cap-export-name` 的导出时刻戳按既定契约合法取本机时钟（文件名契约，非数据时刻），故不纳入 2031 断言。护栏首跑全绿：未测出真缺陷，零产品码改动。
+- 验证：新文件 11/11 定向通过；`src/modules/capabilities` 8 files/45；三面定向 11 files/114；全量 **170 files / 2362 passed 0 failed**；`tsc -b . --noEmit` exit 2 仅 approvals/employee-detail/employees 基线，本文件 0 错（修过 2 类 TS 报错：`querySelector` 泛型与未使用变量，均为测试自身，非行为）。
+- 纪律：写域仅 `modules/capabilities/**` + DONE；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未 install、未并 main、未 force/amend/--no-verify。
+
+## R88 / cap-filter-parity — 能力面复制与导出在筛选态下的一致性护栏（纯测试）
+
+- 基线：显式 refspec SSH fetch，上游 lane/hermes-console 移动 54f3dcfc..1683d467；git merge --no-ff → 合并提交 1c7080d4（28 文件 +1490/−42：appr V2 知识最新版本链接、ui1 KNW5、ui2 MET6、approvals/audit/employee-detail/employees 测试与代码、knowledge updated.ts、metrics 时间一致性测试、runs 模块）。上游改动与 capabilities/skills/tools 无交集，本域写面未被触碰；未用 reset --hard。
+- 交付：新增 web/src/modules/capabilities/capabilities.filterparity.test.tsx（15 例）+ 本节 DONE。零产品码改动。
+- ① 筛选/排序态三方同源：skills ?q=报&sort=name&dir=desc → 表体 [周报汇总, 日报生成]，capC-copy 首列序列逐字等于表体，cap6-export 非 # 行 3 行（表头+2）首列等于表体，cap-page-scope N=2，cap-export-scope-note data-shown=2，CSV 末行 === #+屏上注记；cap5-scope-note 同时写「仅在当前已加载 4 项内搜索」——已加载 4 与当前可见 2 是两回事，两处各说各的口径。skills 无 q + sort=name&dir=asc → 4 行表体与 localeCompare(zh-Hans) 升序一致，三面同源；复制/导出后 calledUrls 仍是 ["/agent-api/api/skills"]，零额外请求。tools：sort=name 升/降两次挂载行集相同、顺序不同（排序确实生效，且不去猜它读哪个字段——tools 的排序取值并非屏上显示名，见下），再以 q 收窄后 capC-copy / cap6-export / 表体 / cap-page-scope 四者同步。
+- ② 空集与未知读口（含偏离披露）：?q=不存在的词 → skl4-no-match 存在、表体 0 行、capC-copy 与 cap6-export 均 disabled、cap-gates-copy.title === cap-gates-export.title === 「当前没有可导出的条目。」、两处 data-enabled="false"、剪贴板调用数 0。计数位实测渲染 「0 条」 而非派工单要求的 「—」 —— 本轮为纯测试禁改产品行为，故按实际断言并在此登记偏离：deriveGates 的 countText 是 success ? N 条 : 「—」，no-match 属读取成功、当前视图真值为 0，写 「—」 反而抹掉这个真 0；「—」 归未知计数分支。该分支由第二例证实：读口 500 → 计数位 「—」、两处门标题相同且不同于空集句、cap-page-scope 为 「读口未接入，无法判断总数 · 不把空列表当 0 项，也不按已加载条数推算总数。」（不含「共 0 项」/「显示 0 项」）、cap-export-scope-note data-mode=unavailable 且含「不代表全量」。
+- ③ 切 tab：shell 标签条（src/shell/console.tsx 的 preserve memo，只丢 tab/view/zone）把 q/sort/dir 带过去——该文件在禁碰范围，故测试不点击真标签，而是用带过去的同一串 search 挂载另一页，并断言产品侧事实：两页挂载都不剥 q/sort/dir（cap8-location 仍含 q=%E6%8A%A5、sort=name、dir=desc），tools 页吃同一个 q，切回 skills 后 fetchJsonStrict 调用数不变（cachedSkillsState / useToolsData 的 cachedTools 命中，0 新请求）；URL 与切走前逐字相同。第二例：入口无 tab= 时 useEnsureTabParam 补上 tab=skills 且不动 q/sort。
+- ④ 采集时刻：it.each 六个顶层别名（asOf/as_of/collectedAt/collected_at/generatedAt/generated_at）配假时钟 2031-03-01 → cap7-detail-asof 「2026-11-19 14:00」、行详情 cap-row-copy 文本含「采集时刻：2026-11-19 14:00」、cell/复制文本/cap-page-scope 三处均无 「2031」；无任何别名 → 「—」 且 title 含「不用本机时间顶替」，复制行为「采集时刻：—」；generated_at 非 ISO（「昨天下午」）同样拒用本机时间。
+- 自测纠错（非产品缺陷）：首轮 2 例红。其一以为 tools 降序 = 升序反转，实际排序取值不是显示名，改为「行集相同 + 顺序不同」的内部一致性判据；其二对 cap-page-scope 用了 not.toMatch(/\b0\b/)，撞上诚实文案「不把空列表当 0 项」，收窄为禁止「共 0 项」/「显示 0 项」。两处只改测试断言，产品码零改动。
+- 验证：新文件 15/15；src/modules/capabilities 9 文件 / 60；三域定向 12 文件 / 129；全量 174 文件 / 2406 passed 0 failed（合并后新基线）；tsc -b . --noEmit exit 2，错误仅在 approvals / employee-detail / employees 基线，本域 0。
+- 边界：只加 1 个测试文件 + DONE；未改 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未 install、未并 main、未重建 9122；未用 force/amend/--no-verify；单 commit。
+
+## R89 / capF-state-anchor-text — 能力面状态锚改为可见文案（@202@）
+
+- 基线：显式 refspec fetch 后 `git merge --no-ff origin/lane/hermes-console` → 合并提交 `6b03ef65`（上游 `1683d467`，150 文件，多为 `docs/_artifacts/tonight/**` 证据）；未用 reset。
+- **派工前提已过时（如实披露）**：单据称 `capF-state-*` 四态锚「只有 testid 无人类可读文本」。实测不是：R47（commit `b4f962f5`）已给每个锚写了整句，但挂在 `className="sr-only"` 上不可见，且旁边另有一段重复的可见段落。真正的缺陷是**可见性 + 重复**，本轮按此修：锚去掉 `sr-only` 成为可见 `<p className="capF-state-text">`，删掉被它涵盖的重复段落。
+- 单一 helper：新增 `capabilities/stateAnchor.tsx`，`stateAnchor({kind,subject,heading,reason,gap,requestId,loaded})` 六态（loading / empty / filter-empty / error / denied / login）一处产出 lead + detail + title；`CapStateAnchor` 渲染。文案按单据口径：loading「正在读取<对象>…」（把主语写进句子而非裸「正在读取…」）、真空「这个读口已接入，但目前没有条目。」+ 明细、筛选空「当前条件下没有匹配项。」、error「读取失败：…（可用下方重试）」、denied「无权读取这条数据。」、login「需要重新登录。」。title 一律带「原因：」「请求编号：」「去处：」（重试 / 清空搜索 / 审批中心 `#/approvals` / 刷新重登）；`gap` 只进 title，屏上永不出现 `GAP-`。
+- 接线：`SkillsPage.tsx` 四态 + no-match、`ToolsPage.tsx` `FailurePanel`（denied/login/error）+ loading + empty + no-match 全走该 helper；`tl3-no-match` Card 补 `capF-state` 类。`counts.css` 新增 `.capF-state-text` / `.capF-state-detail`，两者皆 `overflow-wrap:anywhere`。
+- 去重：`ToolsPage.tsx` 页级状态行 `tol5-status` 原先在 loading 时重复同一句「正在读取工具与 MCP 清单…」，改为 loading 期不渲染（读取中的唯一句子是锚）。注：`tol5-status` 本就同时是行内 `<span>`（:183）与页级 `<p>`（:683）的 testid —— 既有碰撞，未在本轮范围内动。
+- GAP 承载回归：旧的 `<p className="skl4-note" title={page.gap}>` 被合并进锚，故 skills 测试 231/268 改为断言 `capF-state-unavailable` 的 title 含 `GAP-SKL4-01`；屏面无 `GAP-` 的守卫不动。
+- 文案更正两处 `capF-state-empty-text`：skills →「读口已接入，本次返回 0 条；技能没有返回任何条目，这里不补样例行。」；tools →「…工具与 MCP 清单没有返回任何条目，这里不补样例行。」
+- 实测中发现并修的缺陷：上游原因句自带句号，模板再加一个 → 屏上出现「。。」。`stateAnchor()` 新增 `reasonText = reason.replace(/[。；;.\s]+$/, "")`（只作用于原因位，搜索词在「」内保留原字符），并补一条回归测试断言 error/denied/login 三态拼接后无「。。」。
+- DOM 三档（临时 harness，已删）：1440/1280/375 × 10 个状态组合共 30 行，每行 `innerWidth == body.scrollWidth == body.clientWidth`，每个 `.capF-state-text` 的 `scrollWidth == clientWidth`（如 1440 skills loading 1376/1376、375 tools loading 343/343），`sr-only` 全为 false，每状态页恰好一个锚，ready 态无锚。六态文案在两档逐字相同且互不相同。
+- 一处既有事实如实记录：skills 的 `?state=error` 落在 **unavailable** 分支（`capF-state-unavailable`），error 分支须用真实 502 拒绝驱动；tools 的 `?state=error` 正确落 `capF-state-error`。属既有 fixture 映射，未改。
+- 验证：定向 `src/modules/{capabilities,skills,tools}` → 14 files / 142 passed；新增两文件 2 files / 14 passed；全量 176 files / 2420 tests → **2419 passed / 1 failed**，失败者是上游 `src/modules/audit/audit.window.test.ts`「has one meaning per tier…」，`windowBounds` 两次取时钟差 1 ms（…148Z vs …149Z）的抖动 flake，单跑该文件 12/12 绿，非本域改动所致；`tsc -b . --noEmit` exit 2，错误仅在 approvals / employee-detail / employees 基线，本域 0。
+- 零破坏：`cap4 / cap5 / cap6 / cap7 / cap8 / capC / cap-page-scope / gates` 全绿（本轮只动 `capF-*` 与 `tl3-no-match` 容器类名）；`cap9-state-*`、`tl3-*`、`skl4-*` 语义标记保留。
+- 边界：写域仅 `modules/{capabilities,skills,tools}/**` + `docs/_artifacts/gov/**`；`web/src/shell/fixtures.ts` 只读未改；未动 App.tsx / shell / routes / registry / package·lock / web-scripts / ops；未 install、未并 main、未重建 9122；无 force / amend / `--no-verify`。
+
+## R90 / sys-refresh-asof-separation — /system 刷新时刻与数据时刻分离护栏（纯测试）
+
+- 基线：显式 refspec fetch 后 `git merge --no-ff origin/lane/hermes-console`（上游 `f1b509b9..608148d3`，wave-31 代次）→ 合并提交 `40c9147e`；上游改动与本域零重叠（`git diff --name-only HEAD^1 HEAD -- web/src/modules/{health,skills,tools}` 为空）；未 reset --hard。零产品码改动。
+- 新增 `web/src/modules/health/system.refresh.test.tsx`（4 测试）：夹具给四个读口各配**互不相同**的顶层 asOf（health 14:00 / console 09:30 / runtime 10:45 / domain 12:15，bisheng 试点行「—」），并用假时钟把本机时间钉在 2030-06-01，使 `sys-updated-at` 与 13 个数据时刻格（`sys3-asof`、`sys6-asof-*`/`sys8-asof-*`×4、`hlt5-asof-*`×4）可逐格比对。
+- ① 成功刷新：`sys-updated-at` 含「（读取时刻，不是数据时刻）」与「2030-06-01 08:00」；提取其时刻与每一数据格**全不相等**，且刷新前后数据格逐字不变（两个方向都不覆盖）；busy 期间 `sys-updated-at` 为 null 而数据格保持原值——读取时刻缺席时不冒充数据时刻。
+- ② 失败刷新（health 读 500，rid `req-refresh-500`）：不写读取时刻（`sys-updated-at` null）、`sys-refresh-error` 带请求编号与重试钮、sys3 表 2 行 / hlt5 4 行 / 矩阵 4 行全部保留旧批；重试成功清错并落「刷新完成于」，全部数据格与刷新前逐字相同（health 时刻恢复）。
+- ③ busy 连点三次（含首次）：按钮 busy 期 disabled，各读口计数恰 {2,2,2,2}——只发一批；`sys-busy-note` 恰一个。
+- ④ 单探针失败（runtime 500）只坏自己：三表行数不变，sys3/console/domain 数据格不变，`sys6-row-runtime data-status=failed` 且其时刻「—」，hlt5 行显「异常」带短 rid；其余行不受影响。
+- 如实断言的两条产品语义（非缺陷，按现状写死）：其一，非全批失败的单探针失败**不**触发 `sys-refresh-error`——该批仍算完成，协调器落读取时刻；错误条只属于整体不可达或 health 列表读失败。其二，health 列表读失败时矩阵只撤回**该读口自己的**采集时刻格为「—」并标 failed，sys3 表与其余探针时刻全部保留旧批（`hasDataRef` 语义）。
+- 验证：新文件 4/4；`src/modules/health` 9 files / 74 passed；全量 **186 files / 2487 passed, 0 failed**（新基线，上游并入抬高了文件数）；`tsc -b . --noEmit` exit 2，错误仅限 approvals / employee-detail / employees 基线文件，本域 0。
+- 边界：仅新增该测试文件 + 本节 DONE；未碰 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；纯测试无需浏览器三档；未 install、未并 main、未重建 9122；禁 force/amend/--no-verify 遵守。
+
+## R91 / cap-deeplink-guards — /capabilities 行深链与复原护栏（纯测试）
+
+- 基线：显式 refspec fetch 后 `git merge --no-ff origin/lane/hermes-console`（上游 `dff01eed` 线 → `9014f6ba`）→ 合并提交 `d4f3bcb0`，149 文件全是 `docs/_artifacts/tonight/**` 证据与 `docs/_artifacts/D/DONE.md`，与源码零重叠；未 reset --hard。本轮零产品码改动。
+- **派工前提已过时（如实披露）**：单据要求以 `?toolset=<存在/不存在>` 驱动。实测本代代码**不读 `toolset` 参数**：`web/src` 内 grep `toolset=` / `"toolset"` / `'toolset'` 的命中只有读口路径 `/api/tools/toolsets` 与行字段 `source:"toolset"`，没有任何 `params.get("toolset")`；`ToolsPage` 只读 `state`(:340) / `q`(:343) / `sort`·`dir`(:344 `readSort`) / `row`(:354 `rowTargetFor`)，`SkillsPage` 只读 `q` + sort/dir + row。真实的「工具集定位」面是行深链 `?row=tools:<名称>`（`capabilities/rowLink.tsx`）加本地筛选 `?q=`，故 ①–⑤ 按真实机制落测试，不为迁就字面而新增产品行为。
+- 同样如实：③ 的「页码归 1」**不适用本代** —— 能力面没有任何分页参数（分页只见于 employees / tasks / runs）。测试把它写成缺席守卫：断言 `page` / `pageNum` / `pageNumber` / `page_size` / `cursor` / `nextCursor` / `offset` / `limit` 一个都不出现在切换前后的参数快照里，而不是假装重置了第 1 页。
+- 新增 `web/src/modules/capabilities/capabilities.deeplink.test.tsx`（4 测试）。夹具沿用 tools 既有形状（3 个 toolset 共 4 个工具 + 2 个 MCP ⇒ 6 行），行名一律从 DOM 的 `tl3-name` 派生而不硬编码；读口计数 `reads()` 过滤掉 Vitest 收尾时的无参调用；比对「参数不增加读取」前必须 `resetToolsTabState()`，否则 tools 模块缓存让第二次挂载 0 请求，比对失去意义。
+- ① `?row=tools=<存在>` 打开即展开：`cap7-detail-tools` 恰 1、`cap-row-expanded` 在、目标行 `aria-current="true"`；与 `?q=<前两字>&sort=name&dir=asc` 同挂时筛选生效，且 URL 与粘贴串逐字节相同、参数集恰为粘贴的五项（`tab/q/row/sort/dir`）——深链不改写任何筛选。
+- ② `?row=tools=<不存在>`：`cap-row-missing` 在、title 逐字 `GAP-CAPROW-01`、文案含「该条目不在当前列表里」与「把这个条目隐藏了」；`cap-row-missing-clear` 的 href 是 `listHref`（删 `row` 与 `q`，保留 `tab=tools`）；URL 未被静默改写（逐字节等于粘贴串）；零详情面板、零行、`tl3-no-match` 在。`capF` 锚仍在且同值：`capF-state-filter-empty` 可见（class 含 `capF-state-text`、不含 `sr-only`），其 textContent 与 title 逐字等于单点 `stateAnchor({kind:"filter-empty",subject:"工具与 MCP 清单",reason,loaded})` 的 `lead+detail` 与 `title`。
+- ③ 换深链只动 `row`：点第一行 `cap-row-link` 再点第二行，每次都 `details()===1`、`row === tools:<该行名>`、键集恒为 `[dir,q,row,sort,tab]`，而 `tab/q/sort/dir` 四项逐字与点击前相同；两次点击都不产生新读取。
+- ④ 刷新复原：同 URL 直接重挂（不重置 spy）后 `cap8-location` 逐字相同、行序与行名数组 `toEqual` 刷新前、详情仍恰 1，读取计数不变（`cachedTools`/`cachedOpenTool` 生效）；随后点 `cap-row-close` 只删 `row`，`q/sort/dir` 原位保留。
+- ⑤ 全程读口计数：首载 6 次；深链、换链、重挂、关闭各步之后计数仍是同一个数，没有任何一步为筛选或定位多发请求。
+- 三处作者侧修正（均非产品缺陷）：`cap8-location` 文本自带前导 `?`，比较须写成 `"?" + new URLSearchParams(fields).toString()`；第二次挂载吃到 tools 缓存 ⇒ 先 `resetToolsTabState()`；`q()` 选择器需带泛型默认 `<T extends HTMLElement = HTMLElement>` 才能服务 `q<HTMLButtonElement>("cap-row-close")`。
+- 验证：新文件 4/4；定向 `src/modules/{capabilities,skills,tools}` → **15 files / 147 passed**；全量 → **187 files / 2491 passed, 0 failed**（R90 基线 186/2487 + 本文件 1 file / 4 tests）；`tsc -b . --noEmit` exit 2，错误仅限 approvals / employee-detail / employees 基线文件，本域 0。既有 `ToolsPage.test.tsx`「row deep link」三条与 `capabilities.stateanchor` / `filterparity` / `rowparity` 全绿。
+- 零破坏与三档：`cap*`（含 `cap4–capH`、`capC`、`capF`、`cap-page-scope`、gates）与 `sys*` 族无任何改动；本轮是纯测试，无 markup / CSS 增量，故不重跑浏览器 harness —— 几何证据沿用 R89 的 1440/1280/375 三档实测（同一批渲染产物未被触碰）。
+- 边界：仅新增该测试文件 + 本节 DONE；未碰 App.tsx / shell / routes / registry / package·lock / web-scripts / ops；未 install、未并 main、未重建 9122；无 force / amend / `--no-verify`。
+
+## R92 / sys-row-copy — /system 运行健康表行复制（单 helper）
+
+- 基线：显式 refspec fetch（`9014f6ba..bbb13340`，wave-32）+ `git merge --no-ff origin/lane/hermes-console` → 合并笔 `a63e16af`；未用 reset。上游增量落在 audit / employees / knowledge / metrics，`web/src/modules/health` 零重叠。
+- 单点措辞：新增 `health/rowCopy.ts` 的 `sysRowCopyText(row)` = `表名 · 读数 · 数据时刻 · 状态人话`。表名缺时回落口径 key（与搜索框同口径，不造名）；读数取屏上原字符串，真 0 保留「0 ms」，只有缺失才「—」；数据时刻取该行 `checkedAt`（上游顶层 ISO 经既有 `readTopAsOf` 转北京时分），**绝不取 `sys-updated-at`**；状态取映射后的 `Sys3State` 人话。按钮与兜底 textarea 同读这一个返回值。
+- 挂载：`sys3-table` 加第六列（thead `<th className="sys-row-copy-head">复制</th>`，详情行 `colSpan` 5→6）；每行末 `<button type="button" data-testid="sys-row-copy-<i>" aria-label="复制<表名>这一行">复制该行</button>`，`onClick` 与 `onKeyDown`(Enter/Space) 双双 `stopPropagation` —— 行本身在这两个事件上展开详情，复制不得顺带开关。`<i>` 是**当前渲染序**下标，故状态筛选后重新编号（用例覆盖）。
+- 反馈位：表体滚动容器之后一个共享块 `.sys-row-copy-result[data-row-index]`，内含 `sys-row-copy-status`（`role=status` + `aria-live=polite`，成功「已复制」/失败「复制失败，已展开可手动选择的文本」）与失败时的只读 `sys-row-copy-fallback-text`（value 逐字同 `sysRowCopyText`）。整表只有一个播报节点，一次点击只播一次；再点别的行替换而非叠加。
+- CSS：`health.css` 列宽改 20/10/24/18/14/14%，新增 `.sys-row-copy-cell/-sys-row-copy/.sys-row-copy-result/.sys-row-copy-status/.sys-row-copy-fallback`，按钮 focus-visible 用既有 ring 习语，文本类一律 `overflow-wrap:anywhere`。
+- 测试：新增 `health/system.rowcopy.test.tsx` 5 例 —— 三行逐字（含无名回落 key、缺耗时「—」、真 0 显示 `0 ms`）+ aria-label/type=button/零请求 + 点按钮不展开详情；无顶层时刻时复制为「—」且注入 2031 假时钟不出现 2031；刷新态下（2030 假时钟）busy 期 `sys-updated-at` 为 null、复制仍是数据时刻且与刷新戳互不覆盖，`sysRowCopyText(readSystemHealth(...))` 与屏上复制逐字相等；剪贴板拒 → fallback 只读同文，随后成功点击整块替换；状态筛选后编号自洽。
+- DOM 三档（临时 harness，已删）：1440 / 1280 / 375 均 `body.scrollWidth == body.clientWidth`（375 时为 364，视差来自滚动条，无横溢）；`thCount=6`、3 个 BUTTON:type=button、aria-label 三条逐字；`.focus()` 后 `document.activeElement` 即按钮，outline 3px；点击 0/2 号 → 状态「已复制」role=status/live=polite，`copied` 分别为「控制台服务(BFF) · 12 ms · 2026-11-19 23:17 · 正常」「legacy-svc · — · 2026-11-19 23:17 · 不可达」，`details=0`（未顺带展开），请求数 4→4；点 `sys-refresh` 后 `sys-updated-at`「刷新完成于 2026-11-20 18:24（读取时刻，不是数据时刻）」而行内数据时刻仍「2026-11-19 23:17」，请求 4→8（刷新批次），复制零增量。375 档表格 680px 落在 `.sys3-scroll` 内自滚（既有契约，页脚已有「左右滑动查看全部列」提示），body 不溢出。浏览器侧剪贴板成功，拒答兜底分支由 jsdom 用例覆盖。
+- 验证：新文件 5/5；定向 `src/modules/health` → **10 files / 79 passed**（原 9/74）；全量 → **191 files / 2516 passed, 0 failed**（合并上游 3 个新测试文件后基线 190/2511 + 本文件 1/5）；`tsc -b . --noEmit` exit 2，`modules/health` 命中 0，错误仅限 approvals / employee-detail / employees 基线。R112 `system.refresh.test.tsx` 4 例与 `sys*` / `sys-*asof*` / `sys4-detail-*` 断言全绿。
+- 边界：仅 `web/src/modules/health/{rowCopy.ts,SystemHealthSurface.tsx,health.css,system.rowcopy.test.tsx}` + 本节 DONE；未碰 App.tsx / shell / routes / registry / package·lock / web-scripts / ops；未 install、未并 main、未重建 9122；无 force / amend / `--no-verify`。
+
+## R93 / cap-row-copy-btn — /capabilities 工具行复制（单 helper）
+
+- 基线：显式 refspec fetch + `git merge --no-ff origin/lane/hermes-console` → 合并章 `9ab1eb72`（上游 tip `133f2c16` = 代次 `d7965c2a`，纯账本章笔 + knowledge 测试），与 capabilities/skills/tools 零重叠；未用 reset。
+- 现查纪律（先 grep 再动手）：`capRowCopyText` 不存在；`cap-row-copy`（无索引）已被行详情复制占用（`listCopy.tsx` 的 `CapabilityFieldCopy`）；`capF-row-<i>` 标记不存在（capF 只有状态锚）；「调用次数」在上游 skills/tools 行上都没有字段（计数只在 metrics 模块）。
+- 实现：新 `capabilities/rowCopyText.ts` 单点措辞 `capRowCopyText(row)` = `名称：X · 类型：Y · 状态：Z · 调用次数：N|— · 短码：CODE`；`capShortCode` 折叠合成 id（`row-<n>`）与纯中文 id 为「—」，其余取字母数字前 8 位大写，禁裸内部 id。新 `rowCopyButton.tsx` 挂载原生 `<button type="button" data-testid="cap-row-copy-<i>">`（aria-label「复制<名称>这一行」，行容器 keydown 有 target 自检故无需 stopPropagation）；状态/兜底节点按 rowKey 匹配只在该行渲染，文案「已复制」/「复制失败，已展开手动复制」+ 只读 fallback 逐字同。skills 加第 6 列 th「复制」（空集不渲染列），tools 在两分区行尾挂载，mcp 行用全局序号 `toolRows.length + index` 与键盘导航同序。
+- 诚实披露三处：①「调用次数」本面没有上游字段，行恒为「—」，helper 的真 0 分支只有单元测试覆盖（`调用次数：0`），页面不伪造；②派工单的 `capF-row-<i>` 不存在，i 的同序断言改对着真实标记 `skl4-row-<id>` / `tol5-row` 的 DOM 顺序；③`cap-row-copy-status/-fallback` 与行详情复制同名，两处可同屏共存（详情展开 + 行复制各一个节点），有专门共存用例守住，既有冻结测试只查无索引的 `cap-row-copy`，零碰撞。
+- 既有用例唯一一处改动：`SkillsPage.test.tsx` 冻结表头数组加「复制」（新列是本轮特性本身，属同步更新非破坏）。
+- 验证：新增单元 5 + 集成 7 全绿；定向三域 17 files / 159 passed；全量 **194 files / 2533 passed, 0 failed**；tsc exit 2 仅 approvals/employee-detail/employees 基线，本域 0。R117 深链用例、capF/cap4–capH/capC/sys* 全绿。
+- DOM 三档（临时 harness，已删）：1440/1280/375 × skills/tools 六组，`body.scrollWidth==clientWidth`（375 tools 364/364 为滚动条宽）；按钮 2/2 均为 BUTTON:type=button，aria-label 逐字「复制资料整理这一行」等，`.focus()` 后 activeElement 命中、outline 3px；点击后状态「已复制」role=status aria-live=polite，无 fallback，按钮/状态零溢出；请求数点击前后不变（skills 1→1，tools 4→4）。屏上复制串实测：skills `名称：资料整理 · 类型：平台内置 · 状态：正常 · 调用次数：— · 短码：SKALPHA4`；tools mcp 行 `短码：—`（纯中文服务名折叠，不露裸 id）。
+- 边界：只动 `modules/{capabilities,skills,tools}/**` + DONE；未碰 App/shell/路由/注册表/package·lock/web-scripts/ops；未 install、未并 main、未重建 9122；禁 force/amend/--no-verify 未触。
+
+## R94 / cap-empty-guards — /capabilities 筛选态与空态护栏（纯测试，R130）
+
+- 基线：显式 refspec fetch + `git merge --no-ff origin/lane/hermes-console` → 合并提交 `36b7b23a`（上游 `76090480` = wave-34 代次；落点全在 approvals/knowledge 等，`git diff --name-only HEAD^1 HEAD -- web/src/modules/{capabilities,skills,tools}` 为空，零重叠）。禁 reset --hard 未用。
+- 现查既有用例（先 grep 后写，只补缺口，不写重复用例）：① filterparity 已钉 skills no-match 的双钮 disabled + 同一 gates 原因句 + 剪贴板零调用；deeplink 已钉 tools「缺行 + q 同缺」的 URL 逐字不改写；SkillsPage/ToolsPage 各自的 no-match 用例已钉「没有匹配项」文案与清空钮存在。缺口＝skills 清空钮从未被点过、清空后 `cap-row-copy-*` 计数无人钉、tools 无 q 的缺行深链、skills 缺行的 URL 不改写、空态下「零请求」半边与 R128 索引钮缺席。
+- 新文件 `web/src/modules/capabilities/capabilities.empty.test.tsx`（7 用例）：①skills no-match — `capF-state-filter-empty` 可见文本逐字等于 `stateAnchor`（lead+detail），锚文只报已加载 3 项、不含「0 项」，`cap5-scope-note`「仅在当前已加载 3 项内搜索」，清空钮在 + title「去处：清空搜索词恢复完整列表。」；②skills 空态 — `capC-copy`/`cap6-export` disabled、`cap-gates-copy`==`cap-gates-export`==「当前没有可导出的条目。」、`cap-row-copy-*` 零个，点两个禁用钮后剪贴板零调用且 reads() 恒 1；③skills 清空 — 点 `skl4-clear` 恢复 3 行 3 钮、URL q 消失、零重取，复制钮出 LINE_0；④tools 空态 — 同 ② 形状（reads 恒 6）；⑤tools 清空 — 点 `tl3-clear` 恢复 2 行 2 钮、零重取；⑥tools 无 q 缺行深链 — `cap-row-missing` 文案「当前清单里没有这个条目；它可能已被删除或改名。」+ title `GAP-CAPROW-01`、零详情面板、全列表 2 行保留、URL 逐字 == 粘贴参数；⑦skills 缺行深链 — 同 ⑥ 的 URL 逐字不改写（既有 SkillsPage 用例只钉了文案没钉 URL）。
+- 两处按实际行为落地并披露：派工单说的「换个关键词」类提示不存在——可读出口实际是清空钮 + 锚 title「去处：清空搜索词恢复完整列表。」，按实际断言；「capF 四态不计入 0 行」实现为锚文只报已加载数、不含「0 项」（`cap-page-scope` 的「共 0 项」是筛后真实 0，属既有诚实口径，不动）。
+- 首跑 5 败均为自造：settle 条件没认 no-match 面（skills 加 `skl4-no-match`、tools 加 `tl3-no-match` 后全绿）；零产品码改动。
+- 验证：新文件 7/7；定向 `src/modules/{capabilities,skills,tools}` 18 files / 166 passed；全量 `npx vitest run` **198 files / 2555 passed, 0 failed**；`tsc -b . --noEmit` exit 2，本域 grep 0（基线仅 approvals/employee-detail/employees）。`capF`/`cap-row-copy-*`/`cap-row-*`/stateAnchor/R117 深链既有断言全绿。
+- 三档未重跑：纯测试、零 markup/CSS delta，几何证据沿用 R93 实测（同 ① 纪律披露）。
+- 边界：只加 `capabilities.empty.test.tsx` + 本节 DONE；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未 install、未并 main、未 force/amend/--no-verify。

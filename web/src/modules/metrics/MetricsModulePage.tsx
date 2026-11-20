@@ -92,6 +92,7 @@ import {
   sourceKeyOfPath,
   sourceRows,
   formatSharePct,
+  rowCopyText,
   usdDigits,
   usageWindowOf,
   windowRange,
@@ -440,6 +441,14 @@ export function MetricsModulePage() {
   const refreshSignalRef = useRef<{ live: boolean } | null>(null);
   const sourcesRef = useRef<Record<string, SourceStamp>>({});
   const [sourceCopyStatus, setSourceCopyStatus] = useState<'idle' | 'done' | 'failed'>('idle');
+
+  // met-rowcopy — one row of the cost detail table as a single line of plain text.
+  // The text is computed from what the row already renders; pressing it never
+  // re-reads anything, and a clipboard refusal leaves the same text selectable.
+  const [rowCopy, setRowCopy] = useState<{ status: 'idle' | 'done' | 'failed'; body: string }>({
+    status: 'idle',
+    body: '',
+  });
 
   // met-output — one visible line says what just happened. The signature gate is
   // deliberate: pressing the same export twice must not replay the same sentence,
@@ -1603,7 +1612,7 @@ export function MetricsModulePage() {
   const shareGaps: ExportGap[] = [];
 
   const exportCsv = () => {
-    if (pageFailed) return;
+    if (pageFailed || !exportable) return;
     const header =
       viewMode === 'model'
         ? ['模型', '支出USD', '次数', '占比%', '读取于', '窗口', '窗口开始', '窗口结束', 'as_of', 'window']
@@ -1759,6 +1768,16 @@ export function MetricsModulePage() {
     });
   };
 
+  // Copy one rendered cost-detail row. The body is built by the same helper the
+  // table uses for its numbers, so pressing the button never re-reads a source.
+  const copyDetailRow = (line: { label: string; count: number | null; costUsd: number | null; share: number | null }) => {
+    const text = rowCopyText(line);
+    setRowCopy({ status: 'idle', body: text });
+    void copyTextToClipboard(text).then((ok) => {
+      setRowCopy({ status: ok ? 'done' : 'failed', body: text });
+    });
+  };
+
   // metAM — every action on this page asks one object for its availability, so a
   // single failing batch can never leave one button dead and its twin alive.
   type Gate = { enabled: boolean; title: string | null };
@@ -1775,14 +1794,14 @@ export function MetricsModulePage() {
     refresh: { enabled: true, title: refreshBusy ? '这一批还在读，按钮不会重复发请求。' : '重新读取当前窗口与当前分组的全部读口。' },
     scope: { enabled: !refreshBusy, title: refreshBusy ? '刷新进行中，视图切换等这一批结束。' : null },
     detailExport: {
-      enabled: !refreshBusy && !pageFailed,
+      enabled: !refreshBusy && !pageFailed && exportable,
       title: refreshBusy
         ? '刷新进行中，导出等这一批结束。'
         : pageFailed
           ? '整页读取失败，这份导出暂时不生成；先重试上面的读取，读到数据再导。'
           : exportable
             ? '导出明细 CSV：当前窗口与当前分类下账本逐行的实扣明细，不是分摊汇总。'
-            : '当前窗口没有明细行：导出的文件只写表头，缺块会在末尾注明。',
+            : '当前窗口没有明细行：没有可导出的数据；空窗口用屏上的计数说明，不导一个只含表头的文件。',
     },
     shareExport: {
       enabled: !refreshBusy && !pageFailed && shareView.kind === 'ready',
@@ -1913,7 +1932,7 @@ export function MetricsModulePage() {
       </div>
 
       <p className="metAM-note" data-testid="metAM-matrix-note">
-        可用性一句话：整页都读不出来的时候，只留「刷新」可用，导出与复制一起停下；只有某一块读不出来的时候，用到它的导出与复制停下，单卡重试照常；时间窗没有数据时，导出只写表头、复制照常；刷新进行中，除刷新本身外都不点，刷新也不会重复发请求。
+        可用性一句话：整页都读不出来的时候，只留「刷新」可用，导出与复制一起停下；只有某一块读不出来的时候，用到它的导出与复制停下，单卡重试照常；时间窗没有明细行时，明细导出停下、摘要复制照常（分摊为空仍可导出只含表头的文件）；刷新进行中，除刷新本身外都不点，刷新也不会重复发请求。
       </p>
 
       {output ? (
@@ -2491,6 +2510,7 @@ export function MetricsModulePage() {
                           </button>
                         </th>
                         <th scope="col">账本截至</th>
+                        <th scope="col">复制</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2507,6 +2527,18 @@ export function MetricsModulePage() {
                           </td>
                           <td className="met6-num">{formatSharePct(line.share)}</td>
                           <td className="met6-num">{line.asOf ? formatBeijing(line.asOf) : '—'}</td>
+                          <td className="met6-num">
+                            <button
+                              type="button"
+                              className="met-rowcopy"
+                              data-testid={`met-row-copy-${index}`}
+                              aria-label={`复制${line.label}这一行`}
+                              title="把这一行屏上已显示的分组、运行数、成本与占比复制成一行纯文本"
+                              onClick={() => copyDetailRow(line)}
+                            >
+                              复制该行
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -2523,10 +2555,29 @@ export function MetricsModulePage() {
                           {detailTotals.share}
                         </td>
                         <td className="met6-num">—</td>
+                        <td className="met6-num">—</td>
                       </tr>
                     </tfoot>
                   </table>
                 </div>
+                {rowCopy.status !== 'idle' ? (
+                  <div className="met-rowcopy-bar">
+                    <span className="met6-hint" role="status" aria-live="polite" data-testid="met-row-copy-status">
+                      {rowCopy.status === 'done' ? '已复制' : '复制没成功：下面的文本可以自己选中复制。'}
+                    </span>
+                    {rowCopy.status === 'failed' ? (
+                      <div data-testid="met-row-copy-fallback">
+                        <textarea
+                          readOnly
+                          className="met-rowcopy-text"
+                          data-testid="met-row-copy-fallback-text"
+                          aria-label="这一行的纯文本"
+                          value={rowCopy.body}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
                 {groupResetNote && !pageFailed ? (
                   <p className="met6-hint" data-testid="metS-reset-note">
                     切换分组后，明细排序已回到默认的成本降序；时间窗与分摊的排序、分组选择保持不变。

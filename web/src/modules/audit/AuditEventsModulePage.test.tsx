@@ -659,10 +659,10 @@ describe("请求编号 (aud01)", () => {
     expect(cell.querySelector("button")).toBeTruthy();
   });
 
-  it("an answer with no number says 未提供 and the reason, and never a blank or a 0", async () => {
+  it("an answer with no number says 该字段未返回 and the reason, and never a blank or a 0", async () => {
     await mount();
     const cell = document.querySelector("[data-testid='aud01-cell-evt_8d2e3f4051627384-request-id']")!;
-    expect(cell.textContent).toContain("未提供");
+    expect(cell.textContent).toContain("该字段未返回");
     const titled = Array.from(cell.querySelectorAll("[title]")).map((n) => n.getAttribute("title") ?? "").join(" ");
     expect(titled).toContain("服务这次没有回传请求编号");
   });

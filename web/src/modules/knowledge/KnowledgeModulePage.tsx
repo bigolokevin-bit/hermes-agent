@@ -42,7 +42,9 @@ import {
   type KnmRow,
 } from "./sourceReads";
 import { blockedReasonByState, faceGates, retryTitle, type GateSurfaceState } from "./copyGates";
+import { updatedText } from "./updated";
 import {
+  DOCUMENTS_LIMIT,
   CITATIONS_URL,
   DOCUMENTS_URL,
   KNOWLEDGE_GAP,
@@ -79,6 +81,7 @@ import {
   INGEST_STATUS_UNWIRED_HUMAN,
   INGEST_STATUS_URL,
   docCopyText,
+  docSingleCopy,
   docHitCopyText,
   docMetaCopyText,
   docTypeBuckets,
@@ -931,7 +934,7 @@ function SpaceTable({
                     {row.id ? (
                       <Link
                         className="knw5-name knw5-rowlink"
-                        data-testid="knw5-space-link"
+                        data-testid="kn-space-open"
                         to={spaceLink(row.id)}
                         tabIndex={tabIndexFor(index)}
                         aria-current={active === index ? "true" : undefined}
@@ -944,7 +947,8 @@ function SpaceTable({
                         <span className="knw5-name" data-testid="knw5-space-name">
                           <Highlight text={row.name} needle={needle} testid="kn9-mark-space" />
                         </span>
-                        <span className="knw5-sub" title="上游没有给出这个空间的标识">
+                        {/* R102：无标识行不给链接，只给这块文本；不写剪贴板、不造 id。 */}
+                        <span className="knw5-sub" data-testid="kn-space-nolink" title="该空间没有可用标识">
                           — 点不进文档列表
                         </span>
                       </>
@@ -987,8 +991,10 @@ function SpaceTable({
                     <Reason>{row.docsReason}</Reason>
                   </td>
                   <td data-label="最近同步">
-                    <span data-testid="knw5-space-time">
-                      {row.timeLabel ? `${row.timeLabel}：${row.at}` : row.at}
+                    <span data-testid="knw5-space-time" title={updatedText(row.atRaw).title}>
+                      {row.timeLabel
+                        ? `${row.timeLabel}：${updatedText(row.atRaw).value}`
+                        : updatedText(row.atRaw).value}
                     </span>
                     <Reason>{row.atReason}</Reason>
                   </td>
@@ -1123,7 +1129,7 @@ function SpacesSurface({
   const loaded = surface.state.kind === "ready" ? surface.state.value.rows : [];
   const needle = text.trim().toLowerCase();
   const shown = needle === "" ? loaded : loaded.filter((row) => row.name.toLowerCase().includes(needle) || row.source.toLowerCase().includes(needle));
-  const roving = useRovingRows("kn8", 'a[data-testid="knw5-space-link"]');
+  const roving = useRovingRows("kn8", 'a[data-testid="kn-space-open"]');
   const clear = () => {
     setDraft({ from: keyword, text: "" });
     onClearKeyword();
@@ -1504,6 +1510,15 @@ function DocPreviewDrawer({
 
   if (typeof document === "undefined") return null;
 
+  // R125 — 抽屉四字段缺值句式收口：与两处行内预览同走 previewField（R70 单点），
+  // 在场值的文本与 title 与改前逐字一致；缺值/未载入统一「该字段未返回」+「<字段>：<原因>」，
+  // 不再允许抽屉自带第二套缺值文案。
+  const offList = "这条不在当前已加载的列表里";
+  const fName = previewField("文档名", row !== null && row.nameHint === null, row?.name ?? "—", row?.nameHint ?? offList);
+  const fType = previewField("类型", row !== null && row.typeHint === null, row?.type ?? "—", row?.typeHint ?? offList, row?.typeRaw ?? undefined);
+  const fSize = previewField("大小", row !== null && row.sizeHint === null, row?.size ?? "—", row?.sizeHint ?? offList);
+  const fUpdated = previewField("更新", row !== null && row.atHint === null, row?.at ?? "—", row?.atHint ?? offList);
+
   return createPortal(
     <div className="kn7-preview-scrim" data-testid="kn7-preview-backdrop" onClick={onClose}>
       <div
@@ -1533,11 +1548,8 @@ function DocPreviewDrawer({
         <dl className="knw5-ref-detail" data-testid="kn3-docs-detail" title={row?.id || undefined}>
           <div>
             <dt>文档名</dt>
-            <dd
-              data-testid="kn7-preview-field-name"
-              title={row?.nameHint ?? (row ? undefined : "这条不在当前已加载的列表里")}
-            >
-              <span data-testid="kn3-docs-detail-name">{row?.name ?? "—"}</span>
+            <dd data-testid="kn7-preview-field-name" title={fName.title}>
+              <span data-testid="kn3-docs-detail-name">{fName.text}</span>
             </dd>
           </div>
           <div>
@@ -1556,20 +1568,20 @@ function DocPreviewDrawer({
           </div>
           <div>
             <dt>类型</dt>
-            <dd data-testid="kn7-preview-field-type" title={row ? (row.typeHint ?? (row.typeRaw ?? undefined)) : "这条不在当前已加载的列表里"}>
-              {row?.type ?? "—"}
+            <dd data-testid="kn7-preview-field-type" title={fType.title}>
+              {fType.text}
             </dd>
           </div>
           <div>
             <dt>大小</dt>
-            <dd data-testid="kn7-preview-field-size" title={row ? (row.sizeHint ?? undefined) : "这条不在当前已加载的列表里"}>
-              {row?.size ?? "—"}
+            <dd data-testid="kn7-preview-field-size" title={fSize.title}>
+              {fSize.text}
             </dd>
           </div>
           <div>
             <dt>更新时间</dt>
-            <dd data-testid="kn7-preview-field-updated" title={row ? (row.atHint ?? undefined) : "这条不在当前已加载的列表里"}>
-              {row?.at ?? "—"}
+            <dd data-testid="kn7-preview-field-updated" title={fUpdated.title}>
+              {fUpdated.text}
             </dd>
           </div>
         </dl>
@@ -1846,6 +1858,130 @@ function DocHeadStrip({
   );
 }
 
+/**
+ * R132 — 列表级行复制：每行一枚按钮，状态与兜底条整表共享一具（testid 由调用方给，
+ * 两表同屏不撞名）。文本只出 docSingleCopy（与行预览/命中展开的 kn-doc-copy 同一串，
+ * 禁另拼列）。纯屏上数据：复制/拒绝/排序切换零请求。
+ */
+function useRowCopyBar(statusTestid: string, fallbackTestid: string) {
+  const [state, setState] = useState<{ kind: "copied" | "failed"; text: string } | null>(null);
+  const copy = (doc: DocRow) => {
+    const text = docSingleCopy(doc);
+    if (!navigator.clipboard?.writeText) {
+      setState({ kind: "failed", text });
+      return;
+    }
+    navigator.clipboard
+      .writeText(text)
+      .then(() => setState({ kind: "copied", text }))
+      .catch(() => setState({ kind: "failed", text }));
+  };
+  const bar = (
+    <>
+      <p className="knw5-sub" data-testid={statusTestid} role="status" aria-live="polite">
+        {state === null ? "" : state.kind === "copied" ? "已复制" : "剪贴板没接受：文本在下方，可手动选取。"}
+      </p>
+      {state?.kind === "failed" ? (
+        <textarea
+          className="knF-fallback"
+          data-testid={fallbackTestid}
+          aria-label="手动复制这一行文档的文本"
+          readOnly
+          rows={2}
+          value={state.text}
+        />
+      ) : null}
+    </>
+  );
+  return { copy, bar };
+}
+
+/** 行末复制按钮：空行（名与标识都没给）不可复制，如实 title；i 随可见行序（0 起）。 */
+function RowCopyButton({
+  doc,
+  index,
+  testidPrefix,
+  onCopy,
+}: {
+  doc: DocRow;
+  index: number;
+  testidPrefix: string;
+  onCopy: (doc: DocRow) => void;
+}) {
+  const emptyRow = doc.name === "—" && doc.id === "";
+  return (
+    <td data-label="操作" className="kn-row-copy-cell">
+      <button
+        type="button"
+        className="knw5-drill"
+        data-testid={`${testidPrefix}-${index}`}
+        disabled={emptyRow}
+        title={
+          emptyRow
+            ? "这一行没有可复制的文档内容：文档名与标识都没给出。"
+            : "复制这一行为一行表头 + 单行文本（与清单、预览复制同一派生）。"
+        }
+        onClick={() => onCopy(doc)}
+      >
+        复制这一行
+      </button>
+    </td>
+  );
+}
+
+/**
+ * R114 — 两处落点共用的「行复制」控件（行预览与检索命中展开块）：文本只出 docSingleCopy
+ * （一行表头 + 该文档一行，逐字同清单复制的行派生）。剪贴板拒 → 只读 textarea 兜底
+ * （value 与目标串逐字同）；成功「已复制」走 aria-live；空行（无名无标识）disabled + 如实
+ * title。纯屏上数据：此路零请求。
+ */
+function DocLineCopy({ doc }: { doc: DocRow }) {
+  const text = docSingleCopy(doc);
+  const emptyRow = doc.name === "—" && doc.id === "";
+  const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
+  const copy = () => {
+    if (!navigator.clipboard?.writeText) {
+      setState("failed");
+      return;
+    }
+    navigator.clipboard
+      .writeText(text)
+      .then(() => setState("copied"))
+      .catch(() => setState("failed"));
+  };
+  return (
+    <div className="knF-row" data-testid="kn-doc-copy-row">
+      <Button
+        size="sm"
+        outlined
+        onClick={copy}
+        disabled={emptyRow}
+        title={
+          emptyRow
+            ? "这一行没有可复制的文档内容：文档名与标识都没给出。"
+            : "复制这一行为一行表头 + 单行文本（与清单复制同一派生）。"
+        }
+        data-testid="kn-doc-copy"
+      >
+        复制这行
+      </Button>
+      <span className="knF-status" data-testid="kn-doc-copy-status" aria-live="polite">
+        {state === "copied" ? "已复制" : state === "failed" ? "剪贴板没接受：文本在下方，可手动选取。" : ""}
+      </span>
+      {state === "failed" ? (
+        <textarea
+          className="knF-fallback"
+          data-testid="kn-doc-copy-fallback"
+          aria-label="手动复制这一行文档的文本"
+          readOnly
+          rows={2}
+          value={text}
+        />
+      ) : null}
+    </div>
+  );
+}
+
 function DocTable({
   entries,
   docLink,
@@ -1882,6 +2018,8 @@ function DocTable({
   /** R70 — 检索命中展开在场时本面预览不显示（双向互斥的渲染侧）。 */
   sdocOpen: boolean;
 }): ReactNode {
+  // R132 — 列表级行复制：状态/兜底整表一具；与检索表同屏，testid 带 -space- 后缀分族。
+  const rowCopy = useRowCopyBar("kn-row-copy-space-status", "kn-row-copy-space-fallback");
   return (
     <div
       className="kn3-docs-wrap"
@@ -1896,6 +2034,7 @@ function DocTable({
             <SortableHead col="type" label="类型" sort={sort} dir={dir} onSort={onSort} />
             <SortableHead col="size" label="大小" sort={sort} dir={dir} onSort={onSort} />
             <SortableHead col="updated" label="更新" sort={sort} dir={dir} onSort={onSort} />
+            <th scope="col">操作</th>
           </tr>
         </thead>
         <tbody>
@@ -1965,14 +2104,16 @@ function DocTable({
                     </span>
                   </td>
                   <td data-label="更新">
-                    <span data-testid="kn3-docs-updated" title={row.atHint ?? undefined}>
-                      {row.at}
+                    {/* R75 — 值与 title 单点判出；旧 hint 句不再作本列 title（仍服务预览/复制）。 */}
+                    <span data-testid="kn3-docs-updated" title={updatedText(row.atRaw).title}>
+                      {updatedText(row.atRaw).value}
                     </span>
                   </td>
+                  <RowCopyButton doc={row} index={index} testidPrefix="kn-row-copy-space" onCopy={rowCopy.copy} />
                 </tr>
                 {previewOpen ? (
                   <tr data-testid="kn-doc-preview-row">
-                    <td colSpan={4}>
+                    <td colSpan={5}>
                       <dl id={previewId} className="kn-doc-preview" data-testid="kn-doc-preview">
                         <div>
                           <dt>文档名</dt>
@@ -2017,6 +2158,7 @@ function DocTable({
                           </dd>
                         </div>
                       </dl>
+                      <DocLineCopy doc={row} />
                     </td>
                   </tr>
                 ) : null}
@@ -2025,6 +2167,7 @@ function DocTable({
           })}
         </tbody>
       </table>
+      {rowCopy.bar}
     </div>
   );
 }
@@ -2406,6 +2549,23 @@ function SpaceDetailSurface({
               sdocOpen={sdocOpen}
             />
 
+            {/* R108 — 单页上限常驻句：N 与取数 limit 同一常量，M 与屏上可见行同一集合
+                （复制清单走同一 shown），三处读数同源；游标口径跟分页条一致，不编造翻页。 */}
+            <p
+              className="knw5-sub"
+              data-testid="kn3-page-cap"
+              title={`limit=${DOCUMENTS_LIMIT}；${
+                cursorOffered
+                  ? "上游回答给了分页游标，翻页走旁边的分页条。"
+                  : "上游回答没给可用的分页游标：暂不支持翻页，本页上限句不假装还有下一页。"
+              }`}
+            >
+              {`本页最多显示 ${DOCUMENTS_LIMIT} 篇（当前已加载 ${shown.length > 0 ? shown.length : "—"} 篇；复制清单也只含这些篇）`}
+              {shown.length === DOCUMENTS_LIMIT ? (
+                <span data-testid="kn3-page-cap-more">可能还有更多，改用全库检索或收窄类型筛选</span>
+              ) : null}
+            </p>
+
             {/* R54 — 游标分页条：读数只来自信封给的字段；缺什么就说什么不可用，一律不推算。 */}
             <div className="knE-page-bar" data-testid="knE-page-bar">
               <span
@@ -2589,6 +2749,8 @@ function SearchDocTable({
   needle: string;
   tabIndexFor: (index: number) => number;
 }): ReactNode {
+  // R132 — 列表级行复制（主 tab 检索表）：持有派工原名 id；空间详情侧带 -space- 后缀。
+  const rowCopy = useRowCopyBar("kn-row-copy-status", "kn-row-copy-fallback");
   return (
     <div className="k3-docs-wrap">
       <table className="knw5-table" data-testid="kn6-search-table">
@@ -2599,6 +2761,7 @@ function SearchDocTable({
             <th scope="col">类型</th>
             <th scope="col">大小</th>
             <th scope="col">更新</th>
+            <th scope="col">操作</th>
           </tr>
         </thead>
         <tbody>
@@ -2639,15 +2802,17 @@ function SearchDocTable({
                   </span>
                 </td>
                 <td data-label="更新">
-                  <span data-testid="kn6-search-updated" title={row.atHint ?? undefined}>
-                    {row.at}
+                  <span data-testid="kn6-search-updated" title={updatedText(row.atRaw).title}>
+                    {updatedText(row.atRaw).value}
                   </span>
                 </td>
+                <RowCopyButton doc={row} index={index} testidPrefix="kn-row-copy" onCopy={rowCopy.copy} />
               </tr>
             );
           })}
         </tbody>
       </table>
+      {rowCopy.bar}
     </div>
   );
 }
@@ -2869,6 +3034,7 @@ function DocumentNameSearch({
                 );
               })}
               {openRow ? (
+              <>
               <dl className="knw5-ref-detail" data-testid="kn6-search-detail" title={openRow.id || undefined}>
                 <div>
                   <dt>文档</dt>
@@ -2915,6 +3081,8 @@ function DocumentNameSearch({
                   </dd>
                 </div>
               </dl>
+              <DocLineCopy doc={openRow} />
+              </>
               ) : null}
             </>
           );

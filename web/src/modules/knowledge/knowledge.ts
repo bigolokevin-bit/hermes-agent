@@ -26,6 +26,7 @@
  * no other module's endpoint is borrowed to fill a number.
  */
 
+import { updatedText } from "./updated";
 export const KNOWLEDGE_GAP = "GAP-03";
 
 /**
@@ -134,7 +135,10 @@ export const SPACES_URL = "/agent-api/api/knowledge/spaces?limit=20";
  * There is therefore NO server-side keyword filter to claim: the box filters the
  * rows this read already returned, and says so on screen.
  */
-export const DOCUMENTS_URL = "/agent-api/api/documents?limit=50";
+/** R108 — 文档读口的单页上限：唯一的 limit 常量，取数 URL 与屏上「本页最多显示 N 篇」同源于此。 */
+export const DOCUMENTS_LIMIT = 50;
+
+export const DOCUMENTS_URL = `/agent-api/api/documents?limit=${DOCUMENTS_LIMIT}`;
 
 /**
  * The document list of one space. `/api/documents` is the designated document read:
@@ -160,7 +164,7 @@ export function documentDetailUrl(documentId: string): string {
 
 export function documentsUrl(spaceId: string): string {
   const params = new URLSearchParams();
-  params.set("limit", "50");
+  params.set("limit", String(DOCUMENTS_LIMIT));
   params.set("spaceId", spaceId);
   return `/agent-api/api/documents?${params.toString()}`;
 }
@@ -171,7 +175,7 @@ export function documentsUrl(spaceId: string): string {
  */
 export function documentsPageUrl(spaceId: string, cursor: string | null): string {
   const params = new URLSearchParams();
-  params.set("limit", "50");
+  params.set("limit", String(DOCUMENTS_LIMIT));
   params.set("spaceId", spaceId);
   if (cursor) params.set("cursor", cursor);
   return `/agent-api/api/documents?${params.toString()}`;
@@ -1378,7 +1382,7 @@ function spaceOf(row: Rec): SpaceRow {
   const failure = failureOf(row, status);
   const source = spaceSourceOf(row);
   const moment = syncMomentOf(row);
-  const at = beijing(moment.atRaw);
+  const at = updatedText(moment.atRaw).value; // R75 单点（spaceOf）
   const extras: string[] = [];
   if (docs === null && chunks !== null) extras.push(`分块 ${chunks.toLocaleString("zh-CN")} 段`);
   if (docs === null && bytes !== null) {
@@ -1396,9 +1400,9 @@ function spaceOf(row: Rec): SpaceRow {
     docsReason: docs === null ? "上游没有给出这个空间有多少文档" : null,
     docsExtra: extras.length > 0 ? extras.join(" · ") : null,
     timeLabel: moment.timeLabel,
-    at: at ?? "—",
+    at,
     atRaw: moment.atRaw,
-    atReason: at ? null : moment.atRaw ? "上游给的时间读不出是哪一刻" : "上游没有给出时间",
+    atReason: at !== "—" ? null : moment.atRaw ? "上游给的时间读不出是哪一刻" : "上游没有给出时间",
     status,
     statusRaw,
     statusReason: statusRaw ? null : "上游没有给出空间状态",
@@ -1482,7 +1486,7 @@ function docOf(row: Rec): DocRow {
   const bytes = pickNumber(row.sizeBytes, row.size_bytes, row.storageBytes, row.storage_bytes, row.bytes, row.size);
   const size = formatBytes(bytes);
   const moment = syncMomentOf(row);
-  const at = beijing(moment.atRaw);
+  const at = updatedText(moment.atRaw).value; // R75 单点（docOf）
   const link = linkOf(row);
   return {
     id,
@@ -1494,9 +1498,9 @@ function docOf(row: Rec): DocRow {
     size: size ?? "—",
     sizeHint: size ? null : bytes !== null ? "上游给的数值读不出可读大小" : "上游没有给出文件大小",
     sizeBytes: bytes,
-    at: at ?? "—",
+    at,
     atRaw: moment.atRaw,
-    atHint: at ? null : moment.atRaw ? "上游给的时间读不出是哪一刻" : "上游没有给出更新时间",
+    atHint: at !== "—" ? null : moment.atRaw ? "上游给的时间读不出是哪一刻" : "上游没有给出更新时间",
     href: link.href,
     unreachable: link.unreachable,
     spaceLabel: pickString(row.spaceName, row.space_name, row.knowledgeSpaceName, row.knowledge_space_name)
@@ -1549,6 +1553,14 @@ export function docLine(doc: DocRow): string {
 }
 
 export const DOC_COPY_HEADER = DOC_LINE_HEADER;
+
+/**
+ * R114 — 单文档行复制（行预览 kn-doc-preview / 检索命中展开块 kn6-search-detail 两处共用）：
+ * 一行表头 + 该文档一行，行体逐字走 docLine——与清单复制同派生，禁第二套格式。
+ */
+export function docSingleCopy(doc: DocRow): string {
+  return `${DOC_LINE_HEADER.join(" | ")}\n${docLine(doc)}\n`;
+}
 
 export function docCopyText(rows: DocRow[]): string {
   const lines = [DOC_COPY_HEADER.join(" | "), ...rows.map(docLine)];

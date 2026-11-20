@@ -712,3 +712,34 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 - 验证：定向 metrics+runs 4+3 files / 386 passed；全量 168 files / **2324 passed**；`tsc` 两域 0；`eslint` 0 error（9 条既存 warning）；build exit 0（entry 内 `run-asof`=0，`RunsModulePage-*.js`=1，`MetricsModulePage-*.js` 内 `metB-source-asof`=1）。
 - 既有断言随统一口径收紧三处：metB 合法 title 由「采集时刻来自 bff」改为完整 ISO+来源；两处缺值 title 补「；不用本机时间顶替。」；`run-note-asOf` 文案改用「不用本机时间顶替」。均属口径统一，非放宽。
 - 未测：真实浏览器 375 下 `run-asof-line` 折行；上游真的给出非 UTC 偏移时的显示（按同一 ISO 解析，理论一致）。
+
+## 跨页时间与窗口护栏（cross-page guards，2026-11-20）
+
+两页的「采集时刻」与 `/runs` 的时间窗，各自单一实现已在测试里钉住；本单只加测试，未改产品行为。
+
+- 同源证据：源码读取断言 `RunsModulePage.tsx` 出现 `"../metrics/asof"`、`MetricsModulePage.tsx` 出现 `"./asof"`（不存在第三套）；同一 payload（`asOf=2026-11-19T20:12:00.000Z`、`asOfSource=bff-aggregation`）下 `run-asof` 与 `metB-source-asof-run-stats` 的文本逐字 `toBe` 相等（`2026-11-20 04:12`），title 亦 `toBe` 相等（`采集时刻 2026-11-19T20:12:00.000Z（UTC） · 来源 bff-aggregation`）。
+- 三态：缺失、`yesterday`、空串三份 payload，两页文本都 `—`、title 都 `上游未返回采集时刻；不用本机时间顶替。`；注入假时钟 2031 后 `run-asof` 仍 `—`（只断言该处文本与 title —— 页面别处的导出文件名含生成时刻，属真实读取时刻，不算本机时钟冒充）。
+- 窗口语义：`run-window-7d` 默认选中；24h/7d/30d 的 `/api/runs` `since` 与现在差落在 ±2 分钟；`run-window-all` 必发 `since=1970-01-01T00:00:00.000Z`，不省略（省略会被读口以 400 `request.missing_filter` 拒收）；`?window=xxx&status=failed` 按下 7 天读取、地址原样保留、`run-source-note` 写「未识别」。
+- 批大小实测：`/runs` 切窗只让 `/api/runs` +1（`run-stats`、`employees` 零增）；`/metrics` 切统计窗只重发 usage 的 2 条 `run-stats`（当前窗 + 上一窗），`run-activity` 不动；第二次切换仍恰 +2。
+- 验证：单文件 5 passed；定向 metrics+runs 10 files / 391 passed；全量 170 files / **2356 passed**；`tsc` 两域 0；`eslint` exit 0（9 条既存 warning）；build exit 0（entry 内 `metB-source-asof`=0，`MetricsModulePage-*.js`=1）。
+- 未测：375 折行；读口在 `since=1970` 极限窗口下的真实响应（只钉请求形状）。
+
+## 成本明细行复制（met-rowcopy，2026-11-20）
+
+成本明细表每行末尾多一列「复制」，按钮 `met-row-copy-<i>`（原生 `button[type=button]`，可聚焦、有 `aria-label`「复制<分组名>这一行」）。
+
+- 文本由 `metrics.ts` 的 `rowCopyText(line)` 一处拼出：`分组名 · 运行数 · 成本 · 占比`，四段全部走表格同一套格式化函数（`formatCount` / `formatUsd` / `formatSharePct`），所以真 0 仍是 `$0.00` 与 `0`、缺失仍是「—」，不读时钟、不带裸内部 id。
+- 零额外请求：按钮只读该行已渲染的数据；用例断言点击前后 `fetchJsonStrict` 调用数相等。
+- 反馈：成功显示 `met-row-copy-status`（`role=status` + `aria-live=polite`，「已复制」）；剪贴板拒绝时同一块给「复制没成功：下面的文本可以自己选中复制。」并渲染只读 `met-row-copy-fallback-text`，值与投递文本逐字相同。
+- 行序：`met-row-copy-<i>` 的 `i` 与 `met6-row-<i>` 同序，随 `?dsort/?ddir` 变化（`?dsort=cost&ddir=asc` 时第 0 行即最便宜的一行）。
+- 表头与表尾各补一格，合计行仍只加表体的可读数值。
+- 验证：定向 metrics 6 files / 247 passed；全量 177 files / 2409 passed；`tsc` 本域 0；`eslint src/modules/metrics` exit 0（9 条既存 warning）；build exit 0（entry 内 `met-row-copy`=0，`MetricsModulePage-*.js`=1）。
+- 未测：真实浏览器 375 下多一列后的横向滚动宽度；系统剪贴板权限弹窗。
+
+## 导出与复制同源护栏（R116，2026-11-20）
+
+- 新增 `web/src/modules/metrics/metrics.export.test.tsx`（5 例）：明细 CSV 的数据行数、`met6-table` 表体行数、`met-row-copy-*` 按钮数三值相等（同一夹具 3 行）；导出顺序跟随 `?dsort/?ddir`（asc 首行=小鲤、desc 首行=小满，文件首列与屏上第一行同名）；真 0 与缺失在文件与复制里各自成立；导出与复制全程 `fetchJsonStrict` 调用数不变；无行时导出 disabled + title 且不渲染任何行复制按钮。
+- **改前/改后（口径收紧，R116 ⑤ 覆盖 metR 的旧口径）**：改前明细导出在「有窗口、无明细行」时仍可点，文件只写表头，`metAM` 说明句写「时间窗没有数据时，导出只写表头、复制照常」；改后 `gates.detailExport.enabled` 追加 `&& exportable`，`exportCsv` 也短路，空明细一律 disabled，title 改为「当前窗口没有明细行：没有可导出的数据；空窗口用屏上的计数说明，不导一个只含表头的文件。」，`metAM-matrix-note` 同步改为「时间窗没有明细行时，明细导出停下、摘要复制照常（分摊为空仍可导出只含表头的文件）」。分摊导出（metA）保持原样：空分摊仍可导表头。随之为两处旧断言改口（`metR` 空窗用例与 `metAM` cell 3），属语义收紧，非放宽。
+- 格式分层沿用 metO：屏上 `$0.00` / `0.0%`，CSV 写机器数位（真 0 为 `0.00`，占比按上游原值 `0` / `100`，不带 `%`），缺失在两边分别写空字段与「—」；两者取同一行对象，不各自重算。
+- 验证：定向 metrics 7 files / 252 passed；全量 184 files / 2474 passed；`tsc` 本域 0；`eslint src/modules/metrics` exit 0（9 条既存 warning）；build exit 0（entry 内 `met-row-copy`=0，`MetricsModulePage-*.js`=1）。
+- 未测：真实浏览器 375 下表格与行复制列宽；系统剪贴板权限拒绝弹窗。

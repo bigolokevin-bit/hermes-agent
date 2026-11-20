@@ -25,7 +25,7 @@ import {
   joinTitles,
   truncatedView,
 } from "./truncation";
-import { CopyValue, DeniedPanel, ErrorPanel, LoadingPanel, PermalinkCopy, SummaryCopy, TechnicalDisclosure } from "./states";
+import { AuditResourceCell, AuditResourceLink, CopyValue, DetailCopy, DeniedPanel, ErrorPanel, LoadingPanel, PermalinkCopy, SummaryCopy, TechnicalDisclosure } from "./states";
 import { copyLinkGate } from "./auditGates";
 import type { FailureCopy } from "./copy";
 import { summaryFromDetail, summaryFromRow } from "./summary";
@@ -270,6 +270,18 @@ export function AuditEventRowCard({
             title={row.resource.raw ?? undefined}
             truncate
           />
+          {/* R106: 关联资源 — the way out of the ledger, as a column. The 对象 line
+           * above says what the event touched; this says where a person can go
+           * read the thing itself, and it asks the same one table the preview and
+           * the record pane ask, so the three faces cannot promise two different
+           * destinations for one resource. The anchor replaces the value cell
+           * rather than dressing up the label, and nothing here is fetched. */}
+          <div className="flex min-w-0 flex-col gap-1" data-testid={`aud01-cell-${row.key}-resource`}>
+            <dt className="shrink-0 text-muted-foreground">关联资源</dt>
+            <dd className="min-w-0">
+              <AuditResourceCell resource={row.resource} />
+            </dd>
+          </div>
           <div className="flex min-w-0 flex-col gap-1" data-testid={`aud01-cell-${row.key}-request-id`}>
             <dt className="shrink-0 text-muted-foreground">请求编号</dt>
             <dd className="min-w-0">
@@ -384,6 +396,13 @@ export function AuditEventDetailBody({
         <p className="min-w-0 break-words text-xs text-muted-foreground">以上时间均为北京时间，精确到秒。</p>
         {/* audC: the 结论行, from the same builder the inline preview uses. */}
         <SummaryCopy line={summaryFromDetail(detail, beijingSeconds(detail.occurredAtRaw) ?? detail.occurredAt)} />
+
+        {/* R121: the same event, as ONE line, copied from the record pane. The text
+         * is built by a single helper (detailCopy.ts) out of the values the model
+         * already parsed for THIS screen — 时间 · 操作者 · 动作 · 资源 · 同一次操作 —
+         * so the words a person pastes cannot be a second, luckier reading of the
+         * record. It sends nothing: a copy is not a reason to ask again. */}
+        <DetailCopy event={detail} />
         {/* audE: the fixed link for this record, built from the identifier the
             answer itself carried — never from a guessed one. */}
         {/* audQ: availability comes from the same gates the ledger uses; a
@@ -416,6 +435,14 @@ export function AuditEventDetailBody({
             expandName="detail-resource"
           />
         </dl>
+        {/* audW: the way out of the ledger to the resource itself. One table
+         * (resourceLinks.ts) decides the href for both this pane and the inline
+         * preview, and a type with no page says so instead of linking nowhere.
+         * Read off the screen only: a link is never worth a request. Outside the
+         * `dl` because a definition list holds terms and definitions, not anchors. */}
+        <p className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs">
+          <AuditResourceLink resource={detail.resource} />
+        </p>
       </Section>
 
       <Section title="结果与原因">
@@ -700,6 +727,14 @@ export function AuditRowPreview({
             打开详情
           </a>
         ) : null}
+        {/* audW: the way out, next to the other way out. 打开详情 is the record
+         * itself and 打开资源 is the thing the record acted on — both are exits
+         * from the ledger, so they sit in one row, while the row above stays what
+         * the event says. One table (resourceLinks.ts) decides the href for this
+         * face and the record pane, so the two cannot promise different places; a
+         * type with no page says so instead of linking nowhere. Nothing here is
+         * worth a request: it is read off the row already on screen. */}
+        <AuditResourceLink resource={row.resource} />
       </div>
       {/* audC: the same 结论行 the detail offers, built by the same function,
           so both legs copy one sentence for one event. */}

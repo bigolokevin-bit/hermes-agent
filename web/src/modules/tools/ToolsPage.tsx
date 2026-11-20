@@ -39,6 +39,9 @@ import { CapabilityRowDetail } from "../capabilities/rowDetail";
 import { useEnsureTabParam } from "../capabilities/tabParam";
 import { captureTabView, focusTabButton, noteTabMount, restoreTabView } from "../capabilities/tabView";
 import { RowMissingNotice, listHref, rowHref, rowTargetFor, withRowTarget, withoutRowTarget } from "../capabilities/rowLink";
+import { CapStateAnchor, stateAnchor } from "../capabilities/stateAnchor";
+import { CapabilityRowCopyButton, type CapRowCopyResult } from "../capabilities/rowCopyButton";
+import { capRowCopyText } from "../capabilities/rowCopyText";
 import "./tools.css";
 
 
@@ -92,6 +95,7 @@ function Row({
   linkHref,
   onLink,
   onClose,
+  copy,
 }: {
   row: ToolRow;
   open: boolean;
@@ -104,6 +108,8 @@ function Row({
   linkHref: string;
   onLink: () => void;
   onClose: () => void;
+  /** Pre-built row-copy slot; the parent owns the single result state. */
+  copy: ReactNode;
 }): ReactNode {
   const dimmed = row.status !== "enabled";
   return (
@@ -187,6 +193,7 @@ function Row({
             </span>
           ) : null}
         </span>
+        {copy}
       </div>
     </div>
     {open ? (
@@ -240,17 +247,22 @@ function FailurePanel({
     >
       <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-6">
         <span className="sr-only" data-testid={denied ? "tl3-denied" : login ? "tl3-login" : "tl3-error"} />
-        <span className="sr-only" data-testid={denied ? "capF-state-unavailable" : login ? "capF-state-login" : "capF-state-error"} aria-live="polite">
-          {`${heading}：${sentence}`}
-        </span>
+        <div className="flex min-w-0 items-start gap-2">
+          {denied ? <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /> : <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />}
+          <CapStateAnchor
+            testid={denied ? "capF-state-unavailable" : login ? "capF-state-login" : "capF-state-error"}
+            anchor={stateAnchor({
+              kind: denied ? "denied" : login ? "login" : "error",
+              subject: "工具与 MCP 清单",
+              heading,
+              reason: sentence,
+              requestId: failure?.requestId ?? null,
+            })}
+          />
+        </div>
         {denied ? (
           <span className="sr-only" data-testid={failure?.status === 403 ? "cap9-state-denied" : "cap9-state-unavailable"} />
         ) : null}
-        <div className="flex min-w-0 items-center gap-2 text-sm">
-          {denied ? <ShieldAlert className="h-4 w-4 shrink-0" aria-hidden /> : <TriangleAlert className="h-4 w-4 shrink-0" aria-hidden />}
-          <span className="min-w-0 break-words">{heading}</span>
-        </div>
-        <p className="max-w-prose break-words text-xs text-muted-foreground">{sentence}</p>
         {denied ? (
           <a href="#/approvals" className="text-xs underline underline-offset-2" data-testid="tl3-apply">
             提交开通申请
@@ -274,6 +286,9 @@ export function ToolsPage(): ReactNode {
   useEnsureTabParam("tools");
   const [openTool, setOpenTool] = useState<string | null>(() => readOpenTool());
   const [rovingKey, setRovingKey] = useState<string | null>(null);
+  // One result for the whole list (both sections): only the last-copied row
+  // shows its status node, and it follows the row key, not the position.
+  const [rowCopyResult, setRowCopyResult] = useState<CapRowCopyResult | null>(null);
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const rootRef = useRef<HTMLElement | null>(null);
 
@@ -472,7 +487,7 @@ export function ToolsPage(): ReactNode {
       return (
         <div className="capF-state flex min-w-0 flex-col gap-2" data-testid="tol5-loading" aria-busy="true" data-fixture={forced ?? undefined}>
           <span className="sr-only" data-testid="tl3-loading" />
-          <span className="sr-only" data-testid="capF-state-loading" aria-live="polite">正在读取工具与 MCP 清单…</span>
+          <CapStateAnchor testid="capF-state-loading" anchor={stateAnchor({ kind: "loading", subject: "工具与 MCP 清单" })} />
           {[0, 1, 2, 3].map((row) => (
             <div key={row} className="animate-pulse rounded-md border border-border bg-card px-4 py-4" aria-hidden="true">
               <div className="h-3 w-1/3 rounded-sm bg-muted" />
@@ -491,10 +506,8 @@ export function ToolsPage(): ReactNode {
           <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
             <span className="sr-only" data-testid="tl3-empty" />
             <span className="sr-only" data-testid="cap9-state-empty" />
-            <span className="sr-only" data-testid="capF-state-empty" aria-live="polite">读口已接入，本次返回 0 条；不补样例。</span>
             <Inbox className="h-6 w-6 text-muted-foreground" aria-hidden />
-            <p className={`min-w-0 break-words text-sm ${themedBody}`}>服务已响应，清单里没有工具或 MCP 连接</p>
-            <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="capF-state-empty-text">读口已接入，本次返回 0 条；不补样例。</p>
+            <CapStateAnchor testid="capF-state-empty" anchor={stateAnchor({ kind: "empty", subject: "工具与 MCP 清单" })} />
             <p className="max-w-prose break-words text-xs text-muted-foreground">
               这不是加载失败，也不显示样例；在原生工具与 MCP 管理页登记后回到这里重新读取。
             </p>
@@ -508,12 +521,12 @@ export function ToolsPage(): ReactNode {
 
     if (q && visibleRows.length === 0) {
       return (
-        <Card className="border-border bg-card" data-testid="tl3-no-match">
+        <Card className="capF-state border-border bg-card" data-testid="tl3-no-match">
           <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-8 text-center">
-            <p className={`min-w-0 break-words text-sm ${themedBody}`}>没有匹配项</p>
-            <p className="max-w-prose break-words text-xs text-muted-foreground">
-              当前已加载的 {rows.length} 项里没有名称包含「{q}」的条目。
-            </p>
+            <CapStateAnchor
+              testid="capF-state-filter-empty"
+              anchor={stateAnchor({ kind: "filter-empty", subject: "工具与 MCP 清单", reason: q, loaded: rows.length })}
+            />
             <Button size="sm" outlined onClick={() => setQ("")} data-testid="tl3-clear">
               清空搜索
             </Button>
@@ -555,6 +568,22 @@ export function ToolsPage(): ReactNode {
                 linkHref={rowHref("tools", row.name, params)}
                 onLink={() => openToolRow(row)}
                 onClose={closeToolRow}
+                copy={
+                  <CapabilityRowCopyButton
+                    index={index}
+                    rowKey={row.key}
+                    name={row.name}
+                    text={capRowCopyText({
+                      name: row.name,
+                      type: kindLabel(row),
+                      status: STATUS_LABEL[row.status],
+                      calls: null,
+                      id: row.rawId,
+                    })}
+                    result={rowCopyResult}
+                    onResult={setRowCopyResult}
+                  />
+                }
               />
             )) : (
               <p className="px-4 py-4 text-xs text-muted-foreground" data-testid="tol5-tools-empty">
@@ -583,6 +612,22 @@ export function ToolsPage(): ReactNode {
                 linkHref={rowHref("tools", row.name, params)}
                 onLink={() => openToolRow(row)}
                 onClose={closeToolRow}
+                copy={
+                  <CapabilityRowCopyButton
+                    index={toolRows.length + index}
+                    rowKey={row.key}
+                    name={row.name}
+                    text={capRowCopyText({
+                      name: row.name,
+                      type: kindLabel(row),
+                      status: STATUS_LABEL[row.status],
+                      calls: null,
+                      id: row.rawId,
+                    })}
+                    result={rowCopyResult}
+                    onResult={setRowCopyResult}
+                  />
+                }
               />
             )) : (
               <p className="px-4 py-4 text-xs text-muted-foreground" data-testid="tol5-mcp-empty">
@@ -676,15 +721,17 @@ export function ToolsPage(): ReactNode {
         </p>
       ) : null}
 
-      <p className="min-w-0 break-words text-xs text-muted-foreground" aria-live="polite" data-testid="tol5-status">
-        {phase === "loading"
-          ? "正在读取工具与 MCP 清单…"
-          : phase === "ready"
+      {/* While loading, the `capF-state-loading` anchor above is the only sentence on screen;
+          repeating it here would double the announcement and the text. */}
+      {phase === "loading" ? null : (
+        <p className="min-w-0 break-words text-xs text-muted-foreground" aria-live="polite" data-testid="tol5-status">
+          {phase === "ready"
             ? `读取成功：${toolRows.length} 条工具与工具集，${mcpRows.length} 个 MCP 连接`
             : phase === "empty"
-                ? "读取成功，清单是空的"
-                : "这次读取没有成功"}
-      </p>
+              ? "读取成功，清单是空的"
+              : "这次读取没有成功"}
+        </p>
+      )}
 
       <CapabilitySearch value={q} total={rows.length} onChange={setQ} gate={gates.search} />
       <CapabilityPageScope scope={pageScope} />
