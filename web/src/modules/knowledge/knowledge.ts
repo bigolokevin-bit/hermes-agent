@@ -1470,7 +1470,15 @@ function docTypeLabel(raw: string | null): string {
 function docOf(row: Rec): DocRow {
   const id = pickString(row.documentId, row.document_id, row.docId, row.doc_id, row.fileId, row.file_id, row.id) ?? "";
   const name = pickString(row.fileName, row.file_name, row.documentName, row.document_name, row.title, row.name);
-  const typeRaw = pickString(row.docType, row.doc_type, row.mimeType, row.mime_type, row.fileType, row.file_type, row.type, row.extension, row.suffix);
+  // R74 — 活体契约（BFF b3b0f16）实测：type/kind 是数字枚举（如 0），不是字符串；
+  // pickString 会把数字读成缺失——那会谎报「该字段未返回」。数字照原样进 raw 字符串，
+  // 人话映射查不到就落「其他类型」，原始值只进 title，不猜 0 的含义。
+  const typeRaw =
+    pickString(row.docType, row.doc_type, row.mimeType, row.mime_type, row.fileType, row.file_type, row.type, row.extension, row.suffix) ??
+    (() => {
+      const n = pickNumber(row.type, row.docType, row.doc_type);
+      return n === null ? null : String(n);
+    })();
   const bytes = pickNumber(row.sizeBytes, row.size_bytes, row.storageBytes, row.storage_bytes, row.bytes, row.size);
   const size = formatBytes(bytes);
   const moment = syncMomentOf(row);
@@ -1632,13 +1640,18 @@ export interface TypeBucket {
   count: number;
 }
 
+/** R74 — 桶标签单点：过滤比较与桶聚合必须用同一个函数，禁两处各写字面量。 */
+export function typeBucketLabel(row: DocRow): string {
+  return row.type !== "—" ? row.type : "未标注类型";
+}
+
 export function docTypeBuckets(rows: DocRow[]): TypeBucket[] {
   const out: TypeBucket[] = [
     { label: "全部", count: rows.length },
   ];
   const by = new Map<string, number>();
   for (const row of rows) {
-    const label = row.type !== "—" ? row.type : "未归类";
+    const label = typeBucketLabel(row);
     by.set(label, (by.get(label) ?? 0) + 1);
   }
   for (const [label, count] of by) {
