@@ -42,6 +42,9 @@ export interface ToolRow {
   lastUsedReason: string | null;
   updatedAt: string | null;
   updatedAtReason: string | null;
+  /** Top-level ISO asOf of the payload that produced this row. */
+  asOf: string | null;
+  asOfReason: string | null;
   rawId: string | null;
   detail: string[];
   failure?: string | null;
@@ -260,7 +263,31 @@ function updatedAtOf(rec: Record<string, unknown>): { value: string | null; reas
   return { value: null, reason: "接口给出的最近更新时间无法解析。" };
 }
 
-function toolsetRows(value: unknown, index: number): ToolRow[] {
+type RowStamp = { asOf: string | null; asOfReason: string | null };
+
+const ISO_STAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?$/;
+
+function stampOf(payload: unknown): RowStamp {
+  if (Array.isArray(payload)) {
+    return { asOf: null, asOfReason: "清单接口返回的是数组，没有顶层采集时刻。" };
+  }
+  const rec = record(payload);
+  if (!rec) return { asOf: null, asOfReason: "响应不是对象，读不到顶层 asOf。" };
+  const raw = rec.asOf;
+  if (typeof raw !== "string" || !raw.trim()) {
+    return { asOf: null, asOfReason: "响应顶层没有 asOf，采集时刻未知。" };
+  }
+  const value = raw.trim();
+  if (!ISO_STAMP.test(value) || Number.isNaN(new Date(value).getTime())) {
+    return { asOf: null, asOfReason: "响应顶层 asOf 不是 ISO 时间，采集时刻未知。" };
+  }
+  const shown = beijingMinute(value);
+  return shown
+    ? { asOf: shown, asOfReason: rec.asOfSource ? `asOfSource：${String(rec.asOfSource)}` : null }
+    : { asOf: null, asOfReason: "响应顶层 asOf 无法解析，采集时刻未知。" };
+}
+
+function toolsetRows(value: unknown, index: number, stamp: RowStamp): ToolRow[] {
   const rec = record(value);
   if (!rec) return [];
   const rawName = pick(rec, ["name", "toolset", "id"]);
@@ -288,6 +315,8 @@ function toolsetRows(value: unknown, index: number): ToolRow[] {
     lastUsedReason: lastUsed.reason,
     updatedAt: updated.value,
     updatedAtReason: updated.reason,
+    asOf: stamp.asOf,
+    asOfReason: stamp.asOfReason,
     ...failureOf(rec),
     source: "toolset" as const,
   };
@@ -309,7 +338,7 @@ function toolsetRows(value: unknown, index: number): ToolRow[] {
   }));
 }
 
-function serverRow(value: unknown, index: number): ToolRow | null {
+function serverRow(value: unknown, index: number, stamp: RowStamp): ToolRow | null {
   const rec = record(value);
   if (!rec) return null;
   const rawName = pick(rec, ["name", "displayName", "display_name", "title", "label", "id"]);
@@ -353,6 +382,8 @@ function serverRow(value: unknown, index: number): ToolRow | null {
     lastUsedReason: lastUsed.reason,
     updatedAt: updated.value,
     updatedAtReason: updated.reason,
+    asOf: stamp.asOf,
+    asOfReason: stamp.asOfReason,
     ...failureOf(rec),
     rawId: rawName,
     detail,
@@ -360,7 +391,7 @@ function serverRow(value: unknown, index: number): ToolRow | null {
   };
 }
 
-function flatToolRow(value: unknown, index: number): ToolRow | null {
+function flatToolRow(value: unknown, index: number, stamp: RowStamp): ToolRow | null {
   const rec = record(value);
   if (!rec) return null;
   const rawName = pick(rec, ["name", "label", "tool", "tool_name", "toolName", "id"]);
@@ -387,6 +418,8 @@ function flatToolRow(value: unknown, index: number): ToolRow | null {
     lastUsedReason: lastUsed.reason,
     updatedAt: updated.value,
     updatedAtReason: updated.reason,
+    asOf: stamp.asOf,
+    asOfReason: stamp.asOfReason,
     ...failureOf(rec),
     rawId: rawName,
     detail: [`工具标识：${rawName}`],
@@ -404,12 +437,13 @@ export function readInventory(payload: unknown): ToolRow[] | null {
         return Array.isArray(raw) ? raw : null;
       })();
   if (!list) return null;
+  const stamp = stampOf(payload);
   const rows: ToolRow[] = [];
   list.forEach((value, index) => {
     const rec = record(value);
-    if (rec && Array.isArray(rec.tools)) rows.push(...toolsetRows(value, index));
+    if (rec && Array.isArray(rec.tools)) rows.push(...toolsetRows(value, index, stamp));
     else {
-      const row = flatToolRow(value, index);
+      const row = flatToolRow(value, index, stamp);
       if (row) rows.push(row);
     }
   });
@@ -418,8 +452,9 @@ export function readInventory(payload: unknown): ToolRow[] | null {
 
 export function readToolsets(payload: unknown): ToolRow[] | null {
   if (!Array.isArray(payload)) return null;
+  const stamp = stampOf(payload);
   const rows: ToolRow[] = [];
-  payload.forEach((value, index) => rows.push(...toolsetRows(value, index)));
+  payload.forEach((value, index) => rows.push(...toolsetRows(value, index, stamp)));
   return rows;
 }
 
@@ -428,9 +463,10 @@ export function readServers(payload: unknown): ToolRow[] | null {
   if (!outer) return null;
   const raw = outer.servers ?? outer.items ?? outer.data;
   if (!Array.isArray(raw)) return null;
+  const stamp = stampOf(payload);
   const rows: ToolRow[] = [];
   raw.forEach((value, index) => {
-    const row = serverRow(value, index);
+    const row = serverRow(value, index, stamp);
     if (row) rows.push(row);
   });
   return rows;

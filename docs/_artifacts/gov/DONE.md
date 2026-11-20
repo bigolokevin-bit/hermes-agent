@@ -1740,3 +1740,106 @@ built /private/tmp/health-r38/index.html
 - 验证：`npx vitest run src/modules/capabilities src/modules/skills src/modules/tools` → **4 files / 40 tests passed**（含 RFC4180、文件名、空集禁用、q 过滤后条数）；全量 **132 files / 1410 passed**；`tsc -b . --noEmit` 仅基线 employees `TS18047`，本域 0。
 - DOM（临时 harness，已删；Vite 5457 / Chrome 9259）：1440/1280/375 全部 `vw=bodySW=bodyCW=pageSW=pageCW`；技能 `?q=资料` 1 行/`1 条`/按钮可用，`q=不存在` 0 行/`0 条`/按钮禁用且 title 正确；工具 `?q=网页` 2 行/`2 条`/按钮可用。
 - 边界：只改 `web/src/modules/{capabilities,skills,tools}/**` 与 DONE；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；无独立观察者。
+
+## R47 /capabilities 行详情与来源证据（2026-11-20）
+
+- 基线：`f232b4f2` 之上 `git merge --no-ff origin/lane/hermes-console` → merge `bdf795c0`（26 files），保留已推 CSV 导出。
+- 实现：新增 `web/src/modules/capabilities/rowDetail.tsx`，行内「详情」展开六项证据：口径名 / 来源 / 启用态 / 最近更新 / 读口路径 / 采集时刻。缺字段统一显示「该字段未返回」，原因只进 `dd` 的 title；采集时刻只认 payload 顶层 asOf，绝不使用本机时钟。
+- 技能页：每行 `cap7-detail-toggle`（详情/收起，`aria-expanded`），同时只允许一行展开；详情 `cap7-detail-skills`，读口 `/agent-api/api/skills`，asOf 缺失时 title 写「这次读数没有带采集时刻。」。技能名/来源/启用态/更新时间直接复用列表行真值。
+- 工具页：`Row` 增加 `open/onToggle` 与 `cap7-detail-toggle`；详情 `cap7-detail-tools`，toolset 行读口 `/api/tools/toolsets`、MCP 行 `/api/mcp/servers`；清单接口是数组、无顶层采集时刻，故采集时刻恒为「该字段未返回」+ title 原因，最近更新同样按上游缺失或真值显示。展开不改 `?q=` 搜索态、不触发新请求，同时只有一行展开。
+- 验证：`npx vitest run src/modules/skills src/modules/tools` → **3 files / 40 tests passed**（技能 14、工具 26；新增单开/收起/缺 asOf/搜索不变用例）。全量 `npx vitest run` → **132 files / 1455 passed**，另有 2 个 unhandled rejection 来自基线 `modules/employee-detail/EmployeeDetailModulePage.tsx` 的 `api is not defined`（非本域，未修）。`tsc -b . --noEmit` → 6 行，全部属于基线 employee-detail/employees，本域 0。
+- DOM（临时 harness，已删；Vite 5458 / Chrome 9260）：1440/1280/375 技能页与工具页 `vw=bodySW=bodyCW=1440/1280/375`，`pageSW=pageCW`（技能 1408/1248/343，工具页同视口）；展开后详情数均 1，文本含口径名/来源/启用态/最近更新/读口路径/采集时刻，缺失项显示「该字段未返回」。
+- 截图：`docs/_artifacts/gov/shots/cap7-skills-{1440,1280,375}.png`、`cap7-tools-{1440,1280,375}.png`。
+- 边界：只改 `web/src/modules/{capabilities,skills,tools}/**` 与 DONE/截图；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；无独立观察者。
+
+## R48 版本与健康真数据面（2026-11-20）
+
+- 基线：显式 refspec fetch 后已与 `origin/lane/hermes-console` 同步（=6a02ed58，wave-16），`git merge --no-ff` 报 Already up to date；保留已推 `1d321200`。toplevel 校验通过。
+- 端点实测（9122，登录 cookie 只读、不打印）：`/agent-api/api/version` → **404** `console.unknown_route`（无版本读口）；`/agent-api/api/health` → **200** `console.health.sources.v1`，`ok:true`、`asOf:2026-11-19T23:17:09Z`、3 个 sources。同源 `/api/version`、`/api/health` 均为 **200 text/html**（SPA 外壳，非 JSON）。
+- 实现：新增 `web/src/modules/version/{versionHealth.ts,VersionHealthSurface.tsx}`，并在 `VersionPage` 头部下方挂载，现有 `ver4-*` 构建/依赖/单价区不动。
+  - 版本表列 = 组件名 / 版本 / 构建时刻（BJT 到分）/ 状态人话（正常·降级·待核实）。缺值「—」，原因只进该单元格 title；禁 `?? 0`、禁编造版本号；状态映射 ok/healthy→正常，degraded/warn/partial/down→降级，其余→待核实。
+  - 403/404 同一「版本读口未接入」体，`GAP-VER5-01` 只在 title；401 登录失效；5xx/网络人话 + 可复制 `ver5-request-id` + `ver5-retry`；`ver5-apply` 去 `/approvals`。零写入口。
+  - 整体健康行独立读 `/agent-api/api/health`：正常/降级/待核实 + 采集时刻 BJT + 来源项数；健康失败只降级该行（「不影响上方版本表」），不阻塞版本表，`GAP-VER5-02` 只进 title。
+  - 四态：`ver5-loading` / `ver5-empty` / `ver5-error`（或 gap）/ `ver5-table`；`?state=loading|empty|error` 由现有全局预览接管，不额外请求。
+- 验证：`npx vitest run src/modules/version` → **2 files / 12 tests passed**（新增 `VersionHealthSurface.test.tsx` 5 条：404 gap+health、403≡404、真实行与缺字段原因、健康失败不阻塞、空/错误预览零请求）。全量 `npx vitest run` → **133 files / 1460 passed**，另有 2 个 unhandled rejection 来自基线 `modules/employee-detail` 的 `api is not defined`（非本域）。`tsc -b . --noEmit` → 6 行全为基线 employee-detail/employees，本域 0。
+- DOM（临时 harness，已删；Vite 5459 / Chrome 9261）：1440/1280/375 `vw=bodySW=bodyCW=1440/1280/375`，`ver5-page` 宽 1406/1246/341，版本行 2，健康 `正常`，首行 `控制台 / 4.2.1 / 2026-11-20 00:05 / 正常`；版本表 560px 仅在卡内横向滚动，页面不横溢。截图 `docs/_artifacts/gov/shots/ver5-{1440,1280,375}.png`。
+- **需壳层注册（本 lane 不可改）**：`/capabilities?tab=version` 目前不在 `CONSOLE_TABS`，未知 tab 回落到技能页；`App.tsx` `/capabilities` live map 也无 `version` 节点。要按目标路由上屏，需壳层：①`routes.ts` 增 capabilities 的 version tab（hash `#/capabilities?tab=version`，并相应迁出/保留 system version 以维持 22 tab 口径）；②`App.tsx` `/capabilities` live map 挂 `version: <VersionConsolePage />`（或本 surface）。当前同一 surface 已在既有真路由 `/system?tab=version` 挂载可用。
+- 边界：只改 `web/src/modules/version/**` 与 DONE/截图；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；无独立观察者。
+
+## R49 /system 系统健康真数据面（2026-11-20）
+
+- 基线：显式 refspec fetch 后 `git merge --no-ff origin/lane/hermes-console`（tip 5d91f22d，代码代次 6a02ed58）→ merge `3a137624`，保留已推 `7780108f`；未 reset。
+- 端点实测（9122，登录 cookie 只读、不打印）：`/agent-api/api/health` → **200** `console.health.sources.v1`，`ok:true`、顶层 `asOf:2026-11-19T23:17:09Z`、3 个 sources（console/runtime/bisheng）；同源 `/api/health` → 200 text/html 外壳。`/agent-api/api/version` 仍 404（ver5 已诚实处理）。
+- 实现：新增 `web/src/modules/health/{systemHealth.ts,SystemHealthSurface.tsx}` 并挂在 `HealthPage` 头部下方，既有 `hlt5-*` 探针区保留不动。
+  - 服务表列 = 服务名 / 状态人话（正常·降级·不可达·待核实）/ 版本或构建标识 / 最近检查时刻 / 响应耗时。状态映射 ok/healthy→正常，degraded/warn/partial→降级，down/error/unreachable/failed→不可达，其余→待核实；版本缺失「—」+title，不编造版本号；检查时刻**只取 payload 顶层 asOf**，缺失/不可解析→「—」+title，绝不使用本机时钟；耗时缺失「—」+title。
+  - 404/403 同一「健康读口未接入」体，`GAP-SYS3-01` 只进 title；401 登录失效；5xx/网络人话 + 可复制 `sys3-request-id` + `sys3-retry`；`sys3-apply` 去 `/approvals`。零写入口，仅一个 `sys3-planned-edit`（data-planned + aria-disabled + title）。
+  - 四态：`sys3-loading` / `sys3-empty`（空清单不补服务行、不给绿色结论）/ `sys3-error`（或 gap）/ `sys3-table`；`?state=loading|empty|error` 由现有全局预览接管，不额外请求。
+- 验证：`npx vitest run src/modules/health` → **2 files / 14 tests passed**（新增 `SystemHealthSurface.test.tsx` 6 条：状态/顶层时刻/缺字段、403≡404、500 rid+重试、空清单、无本机时钟、预览零请求与 planned 控件）。全量 `npx vitest run` → **134 files / 1466 passed**，另有 2 个基线 employee-detail unhandled（非本域）。`tsc -b . --noEmit` → 6 行全为基线 employee-detail/employees，本域 0。
+- DOM（临时 harness，已删；Vite 5460 / Chrome 9262）：1440/1280/375 `vw=bodySW=bodyCW=1440/1280/375`，`sys3-page` 宽 1406/1246/341，行 3，整体 `正常`，首行 `控制台服务(BFF) / 正常 / 4.2.1 / 2026-11-19 23:17 / 12 ms`；375 仅表格在卡内滚动（680/311），页面不横溢。截图 `docs/_artifacts/gov/shots/sys3-{1440,1280,375}.png`。
+- 边界：只改 `web/src/modules/health/**` 与 DONE/截图；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；`hlt5-*` 与 `ver5-*` 未破；无独立观察者。
+
+## R50 /system 系统健康行详情（2026-11-20）
+
+- 基线：显式 refspec fetch 后与 `origin/lane/hermes-console` 同步（tip 5d91f22d，代码代次 6a02ed58），`git merge --no-ff` 报 Already up to date；保留已推 `76ccc9ca`，未 reset。
+- 端点：继续读 `/agent-api/api/health`（9122 实测 **200** `console.health.sources.v1`，顶层 `asOf:2026-11-19T23:17:09Z`，3 sources）；无新增后端端点。
+- 实现：`SystemHealthSurface` 行可点/可键盘展开，行下详情 `sys4-detail-*`：
+  - 服务名、口径（读口路径，默认 `/agent-api/api/health`）、状态依据（3 条人话：服务判定、整体健康、只依据本次响应）、最近检查时刻（只取 payload 顶层 `asOf`，缺失 `该字段未返回`+title，禁本机时钟）、响应耗时（缺失 `该字段未返回`+title）、最近一次错误摘要。
+  - 错误摘要强制脱敏：`Authorization: Bearer …`、`token/cookie/secret/password/api_key/access_key/private_key` 赋值、`sk-*`/`ghp_*`/JWT 一律打码为 `***`，显示「已脱敏 N 处」；超 200 字截断标「摘要已截断」；不保留/不渲染整段原文，raw 不进 title。
+  - 行 `tabIndex=0`、Enter/Space 展开、Esc 收起；同时只允许一行；展开不改 tab/URL（实测 `location.search` 为空）。无「重试该服务检查」写入口，详情明写只读；既有 planned 编辑按钮保持 data-planned + aria-disabled + title。
+  - 四态/gap/403≡404 沿用 sys3 不退化；`sys4-*` 新增，`sys3-*`/`ver5-*`/`cap4-7`/`skl4`/`tl3` 未改。
+- 验证：`npx vitest run src/modules/health` → **2 files / 16 tests passed**（新增 2 条：单开/字段/脱敏计数、Enter 开 Esc 关且 URL 不变）。全量 `npx vitest run` → **134 files / 1468 passed**，另有 2 个基线 employee-detail unhandled（非本域）。`tsc -b . --noEmit` → 6 行全为基线 employee-detail/employees，本域 0。
+- DOM（临时 harness，已删；Vite 5461 / Chrome 9263）：1440/1280/375 `vw=bodySW=bodyCW`，`sys3-page` 1406/1246/341，行 3、展开详情 1；详情显示 `/agent-api/api/health`、3 条状态依据、`2026-11-19 23:17`、`12 ms`、`token: *** cookie: *** api_key: ***`+「已脱敏 3 处」；375 仅表格内滚动（680/311），页面不横溢。截图 `docs/_artifacts/gov/shots/sys4-{1440,1280,375}.png`。
+- 边界：只改 `web/src/modules/health/**` 与 DONE/截图；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；无独立观察者。
+
+## R51 /system 健康状态计数条（2026-11-20）
+
+- 基线：显式 refspec fetch 后 `git merge --no-ff origin/lane/hermes-console` 报 Already up to date；HEAD `97c72f09`（保留已推 sys4），代码代次 6a02ed58 / 远端 tip 5d91f22d；未 reset。
+- 端点：`/agent-api/api/health` 9122 实测 **200** `console.health.sources.v1`，顶层 `asOf` + sources；本页未新增端点、未新增请求。
+- 实现：`SystemHealthSurface` 在 Card 顶部新增 `sys5-counts`，四桶 正常/降级/不可达/待核实（`sys5-count-normal|degraded|unreachable|unknown`）。计数**只由本次 `/api/health` 响应行现算**，ready 时 0 也照实显示 0；gap/loading/error/login 时每桶显示「—」，title 写明原因（读口未接入/正在读取/读取失败），不补 0。空清单给「健康接口返回了空清单，计数为 0；这不等于所有服务正常。」
+- 筛选：点桶为**本地筛选、不改 URL**（写明「筛选只在本地生效，不改网址；刷新后回到全部服务。」）；再点同桶或 `sys5-clear` 清除；`aria-pressed` 标记选中；筛选后无行显示 `sys5-filter-empty`「当前筛选下没有服务；计数来自同一次健康响应，这里不补服务行。」。筛选不触发新请求（单测断言 fetch 次数恒为 1）。行详情 sys4 与四态、403≡404 未改。
+- 验证：`npx vitest run src/modules/health` → **2 files / 17 tests passed**（新增 1 条：同响应计数+本地筛选+零额外请求+清空）。全量 `npx vitest run` → **134 files / 1469 passed**，另有 2 个基线 employee-detail unhandled（非本域）。`tsc -b . --noEmit` → 6 行全为基线 employee-detail/employees，本域 0。`node scripts/build/web.mjs --source . --out /tmp/sys5-build --icons .` → exit 1，仅被同一基线类型错误挡住（employee-detail `api` 未定义、employees TS18047），无本域错误；未重建 9122。
+- DOM（临时 harness，已删；Vite 5460 / Chrome 9260）：1440/1280/375 `vw=bodySW=bodyCW`，`sys3-page` 1440/1280/375，行 4；计数 `正常1/降级1/不可达1/待核实1`；点「正常」后仅 1 行 `控制台服务(BFF)`、`aria-pressed=true`、body 宽不变；375 仅表格卡内滚动（680/343），页面不横溢。截图 `docs/_artifacts/gov/shots/sys5-{1440,1280,375}.png`。
+- 边界：只改 `web/src/modules/health/**` 与 DONE/截图；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；sys3/sys4/ver5/cap4-7/skl4/tl3 未破；无独立观察者（截图复核未回，未阻塞）。
+- 观察者复核修正（sys5，2026-11-20）：1440/1280 PASS，375 FAIL——sys3 表格第 3 列在卡片内边缘被截断，第 4/5 列完全在屏外且**没有任何横向滚动提示**。修法：`SystemHealthSurface` 表格滚动区前加 `sys3-scrollhint`「左右滑动查看全部列」（≤720px 显示），并为 `.sys3-scroll` 加右缘 18px 渐隐 mask（仅 ≤720px），保留 `overflow-x:auto`。复测 375：`hintDisplay=block`、mask 生效、`scrollSW=680 / scrollCW=311`、`bodySW=bodyCW=375`，页面不横溢；截图 `sys5-375.png` 已重拍。健康单测 21/21（新增 hint 断言）。非阻塞项（计数口径两源并存、全宽带无内边距、两处对比度 ~3.3）本笔未改，如实记录。
+
+## R52 /system 本页数据来源矩阵（2026-11-20）
+
+- 基线：显式 refspec fetch 后 `git merge --no-ff origin/lane/hermes-console` 报 Already up to date；从已推 `58c055f4` 继续，未 reset。
+- 数据来源：矩阵只复用本页四笔既有读取——`/agent-api/api/health`（系统健康清单）与 `__health-probe__` / `hermes-summary` / `/api/skills` 三个探针；**不新增任何请求**。实测展开前后 fetch 调用数恒为 4。
+- 实现：新增 `web/src/modules/health/sourceReads.ts`（模块级快照 + `useSyncExternalStore`，读口读取时发布状态/耗时/顶层 asOf/请求号；展开状态也在模块级，切 tab 卸载再挂载不丢）与 `SourceMatrix.tsx`，挂在 HealthPage 底部，默认收起。
+  - 每行：口径名 / 实际请求路径 / 本次状态（成功·降级·失败·读口未接入·读取中·预览未读取）/ 响应耗时（实测 ms，无则「—」+title）/ 采集时刻。
+  - 采集时刻**只取响应顶层 ISO `asOf`**；缺失、非 ISO、无法解析一律「—」并在 title 写原因，绝不用本机时钟；`/health` 顶层 `asOf` 与 `/api/skills` 顶层 `asOf` 正常显示为北京时间到分。
+  - 403/404 行状态「读口未接入」+ 人话原因 + `#/approvals` 去处；`GAP-SYS6-01` 只进该状态格 title；失败行显示可复制请求编号（短码在正文、完整值在 title），上游原始错误只进 title，不直接上屏。
+  - 展开不写 URL（实测 `location.search` 仍为 `?tab=health`），无独立请求；sys3/sys4/sys5 既有 testid 与行为未改。
+- 验证：`npx vitest run src/modules/health` → **3 files / 21 tests passed**（新增 4 条：四读口字段/路径/耗时/asOf、非 ISO 不用本机时钟、展开跨重挂载保留且不改 URL、预览零请求）。全量 `npx vitest run` → **135 files / 1473 passed**，另有 2 个基线 employee-detail unhandled（非本域）。`tsc -b . --noEmit` → 6 行全为基线 employee-detail/employees，本域 0。
+- DOM（临时 harness，已删；Vite 5462 / Chrome 9264）：1440/1280/375 `vw=bodySW=pageSW=视口`；展开前 table 不存在、展开后 4 行；耗时 1–4 ms；asOf `2026-11-19 23:17` / `—` / `—` / `2026-11-20 06:15`；汇总 `4 个读口 · 成功 2 · 失败 1 · 读口未接入 1`；375 仅矩阵卡内滚动（760/343），页面不横溢。截图 `docs/_artifacts/gov/shots/sys6-{1440,1280,375}.png`。
+- 边界：只改 `web/src/modules/health/**` 与 DONE/截图；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；无独立观察者。
+
+## R53 /capabilities 行详情（cap7 补强，2026-11-20）
+
+- 基线：显式 refspec fetch 后 `git merge --no-ff origin/lane/hermes-console` 报 Already up to date；从已推 `46cfa271` 继续，未 reset。
+- 端点实读（9122，登录 cookie 只读、不打印）：`/agent-api/api/skills` → **200**，顶层 `asOf=2026-11-19T23:49:51.387Z`、`asOfSource=null`、`items=[]`；换算北京时间 `2026-11-20 07:49`。
+- 实现补强：
+  - `skills.ts` 新增严格顶层 asOf 取值：只认 `payload.asOf` 且必须是 ISO（正则 + 可解析）；`as_of/generatedAt/generated_at` 一律不再兜底；缺失/非 ISO 一律「—」+title 原因（`响应顶层没有 asOf` / `不是 ISO 时间`）。`asOfSource` 只写进采集时刻的 title（`asOfSource：…`），正文不出现。
+  - `rowDetail.tsx`：采集时刻 cell 的 title 同时支持缺值原因与 `asOfSource`；有值有 title 时也保留悬停说明。
+  - 工具页：`ToolRow` 新增 `asOf/asOfReason`，`readInventory/readToolsets/readServers` 统一按“数组无顶层 asOf、对象取顶层 ISO asOf”打标；详情直接用行上的 asOf，不再写死 null。MCP 与工具集各自读口路径保持分别显示。
+  - 技能页与工具页都加 Esc 收起（仅展开时挂 keydown，卸载清理）；展开/收起不改 URL，`?tab=` 与 `?q=` 保持；同时仍只允许一行展开。
+  - 页面级 403/404 仍是整页「读口未接入」+原因+`#/approvals` 去处，GAP 只在 title；四态未改。
+- 验证：`npx vitest run src/modules/skills src/modules/tools src/modules/capabilities` → **4 files / 45 tests passed**；全量 `npx vitest run` → **135 files / 1477 passed**，另有 2 个基线 employee-detail unhandled。`tsc -b . --noEmit` 本域 0（6 行均为基线 employee-detail/employees）。
+- DOM（临时 harness，已删；Vite 5465 / Chrome 9266）：1440/1280/375 技能页与工具页 `bodySW=bodyCW=pageSW=pageCW=视口`，详情 1 行展开；技能详情 口径名 资料整理 / 来源 平台内置 / 启用态 正常 / 最近更新 `2026-11-19 14:30` / 读口 `/agent-api/api/skills` / 采集时刻 `2026-11-20 07:49`，title `asOfSource：台账快照`（stub 证明 asOfSource 只进 title）；`?q=资料` 与 `?q=网页` 展开前后保持。工具详情读口 `/api/tools/toolsets`，数组无顶层 asOf →「该字段未返回」+title。
+- 截图：`docs/_artifacts/gov/shots/cap7-skills-{1440,1280,375}.png`、`cap7-tools-{1440,375}.png`。
+- 边界：只改 `web/src/modules/{capabilities,skills,tools}/**` 与 DONE/截图；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；无独立观察者。
+
+## R54 /capabilities 排序与 URL 同源 + 导出顺序一致（cap8，2026-11-20）
+
+- 基线：显式 refspec fetch 后 `git merge --no-ff origin/lane/hermes-console` 报 Already up to date；从已推 `764922cf` 继续，未 reset。
+- 排序实现：新增 `capabilities/sorting.ts`——`?sort=name|type|updated&dir=asc|desc` 为唯一来源；`none→asc→desc→none` 循环；缺值恒排最后、并列保留台账原序；未知 sort/非法 dir 回落默认序。技能表三列表头与工具页排序条均用真 `<button type="button">`（键盘 Enter/Space 原生可触发），`th` / `columnheader` 上 `aria-sort=ascending|descending|none`，指示符 `↕/↑/↓`。
+- URL 同源：点击排序写入 `sort`/`dir` 并保留 `tab`、`q`、`state`；粘 URL 与刷新直接复现（技能 `?sort=name&dir=asc`、工具同）；`state` 清空排序回到默认序。
+- 零额外请求：技能点表头 fetch 计数 1→1；工具 6→6（DOM 实测，排序只重排内存行）。
+- 导出同序：`cap6-export` 的 CSV 行序与当前表体逐行相同。
+  - 技能按 `updated` 升序：DOM 首 Gamma / 末 Delta；CSV 首 `Gamma,平台内置,正常,2026-11-10 14:00`、末 `Delta,平台内置,正常,2026-11-14 14:00`，共 5 行 + 表头。
+  - 工具按名称升序后切 `updated`（全缺）：DOM 首 网页搜索 / 末 doc write；CSV 首 `网页搜索,网页搜索与抓取,enabled,`、末 `doc write,Doc,enabled,`，共 6 行 + 表头；工具导出顺序按表体两段（工具集 → MCP）拼接，不再用可能交错的原始数组。
+  - 无排序参：默认序 DOM 与 CSV 同序（单测 `B2/A1/C3` 与工具默认首末对照）。
+- 验证：`npx vitest run src/modules/capabilities src/modules/skills src/modules/tools` → **5 files / 52 tests passed**；全量 `npx vitest run` → **136 files / 1483 passed**，另有 2 个基线 employee-detail unhandled。`tsc -b . --noEmit` 本域 0（6 行均为基线 employee-detail/employees）。
+- DOM（临时 harness，已删；Vite 5467 / Chrome 9268）：1440/1280/375 技能与工具 `bodySW=bodyCW=pageSW=pageCW=视口`；`aria-sort` 点击前 `名称↑`、点击后 `最近更新↑`（ascending）；`?q=` 与 `tab` 保持。截图 `docs/_artifacts/gov/shots/cap8-skills-{1440,1280,375}.png`、`cap8-tools-{1440,375}.png`。
+- `cap8-*` 新增；`cap4/5/6/7`、`skl4`、`tl3` 未破。边界：只改 `web/src/modules/{capabilities,skills,tools}/**` 与 DONE/截图；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；无独立观察者。

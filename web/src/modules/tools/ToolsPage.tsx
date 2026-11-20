@@ -31,6 +31,8 @@ import { forcedStateOf, useToolsData } from "./useToolsData";
 import { CapabilityCounts, publishCapabilityCount } from "../capabilities/counts";
 import { CapabilitySearch } from "../capabilities/search";
 import { CapabilityExport } from "../capabilities/csvExport";
+import { applySort, ariaSort, cycleSort, readSort, sortRows, type SortKey } from "../capabilities/sorting";
+import { CapabilityRowDetail } from "../capabilities/rowDetail";
 import "./tools.css";
 
 
@@ -72,9 +74,10 @@ function kindLabel(row: ToolRow): string {
   return `内置 · ${row.type}`;
 }
 
-function Row({ row }: { row: ToolRow }): ReactNode {
+function Row({ row, open, onToggle }: { row: ToolRow; open: boolean; onToggle: () => void }): ReactNode {
   const dimmed = row.status !== "enabled";
   return (
+    <>
     <div
       className={`flex min-w-0 flex-wrap items-start justify-between gap-x-4 gap-y-2 border-b border-border px-4 py-3 last:border-b-0 ${dimmed ? "opacity-60" : ""}`}
       data-testid="tol5-row"
@@ -102,6 +105,15 @@ function Row({ row }: { row: ToolRow }): ReactNode {
         ) : null}
       </div>
       <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-3 gap-y-1">
+        <button
+          type="button"
+          className="cap7-toggle"
+          aria-expanded={open}
+          onClick={onToggle}
+          data-testid="cap7-detail-toggle"
+        >
+          {open ? "收起" : "详情"}
+        </button>
         <span className="min-w-0 text-xs text-muted-foreground" data-testid="tol5-credential">
           凭据：{CREDENTIAL_LABEL[row.credential]}
           {row.credentialReason ? <span className="ml-1">{row.credentialReason}</span> : null}
@@ -121,6 +133,19 @@ function Row({ row }: { row: ToolRow }): ReactNode {
         </span>
       </div>
     </div>
+    {open ? (
+      <CapabilityRowDetail
+        name={row.name}
+        type={kindLabel(row)}
+        enabled={STATUS_LABEL[row.status]}
+        updatedAt={row.updatedAt}
+        endpoint={row.source === "mcp" ? "/api/mcp/servers" : "/api/tools/toolsets"}
+        asOf={row.asOf}
+        asOfReason={row.asOfReason ?? "这次读数没有带采集时刻。"}
+        testid="cap7-detail-tools"
+      />
+    ) : null}
+    </>
   );
 }
 
@@ -175,16 +200,35 @@ function FailurePanel({
 
 export function ToolsPage(): ReactNode {
   const [params, setParams] = useSearchParams();
+  const [openTool, setOpenTool] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!openTool) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpenTool(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [openTool]);
   const forced = forcedStateOf(params.get("state"));
   const tools = useToolsData(forced);
   const { phase, rows } = tools;
   const q = (params.get("q") ?? "").trim();
+  const sort = readSort(params);
   const needle = q.toLowerCase();
   const visibleRows = needle ? rows.filter((row) => row.name.toLowerCase().includes(needle)) : rows;
-  const disabled = visibleRows.filter((row) => row.status === "disabled").length;
-  const unknown = visibleRows.filter((row) => row.status === "unknown").length;
-  const toolRows = visibleRows.filter((row) => row.source === "toolset");
-  const mcpRows = visibleRows.filter((row) => row.source === "mcp");
+  const sortedRows = sortRows(visibleRows, sort, (row: ToolRow, key) =>
+    key === "name" ? row.name : key === "type" ? row.type : row.updatedAt);
+  const disabled = sortedRows.filter((row) => row.status === "disabled").length;
+  const unknown = sortedRows.filter((row) => row.status === "unknown").length;
+  const toolRows = sortedRows.filter((row) => row.source === "toolset");
+  const mcpRows = sortedRows.filter((row) => row.source === "mcp");
+  const onSort = (key: SortKey) => {
+    const next = cycleSort(sort, key);
+    const search = new URLSearchParams(params);
+    applySort(search, next);
+    setParams(search);
+  };
   const setQ = (next: string) => {
     const search = new URLSearchParams(params);
     if (next) search.set("q", next);
@@ -300,7 +344,7 @@ export function ToolsPage(): ReactNode {
             <div className="border-b border-border px-4 py-2 text-xs text-muted-foreground" data-testid="tol5-tools-head">
               工具与工具集：{toolRows.length} 条
             </div>
-            {toolRows.length ? toolRows.map((row) => <Row row={row} key={row.key} />) : (
+            {toolRows.length ? toolRows.map((row) => <Row row={row} key={row.key} open={openTool === row.key} onToggle={() => setOpenTool(openTool === row.key ? null : row.key)} />) : (
               <p className="px-4 py-4 text-xs text-muted-foreground" data-testid="tol5-tools-empty">
                 工具目录已响应，没有列出工具。
               </p>
@@ -313,7 +357,7 @@ export function ToolsPage(): ReactNode {
             <div className="border-b border-border px-4 py-2 text-xs text-muted-foreground">
               MCP 连接：{mcpRows.length} 个
             </div>
-            {mcpRows.length ? mcpRows.map((row) => <Row row={row} key={row.key} />) : (
+            {mcpRows.length ? mcpRows.map((row) => <Row row={row} key={row.key} open={openTool === row.key} onToggle={() => setOpenTool(openTool === row.key ? null : row.key)} />) : (
               <p className="px-4 py-4 text-xs text-muted-foreground" data-testid="tol5-mcp-empty">
                 服务已响应，没有登记 MCP 连接；这不是加载失败。
               </p>
@@ -343,7 +387,7 @@ export function ToolsPage(): ReactNode {
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <CapabilityExport
             tab="tools"
-            rows={visibleRows.map((row) => ({
+            rows={[...toolRows, ...mcpRows].map((row) => ({
               name: row.name,
               type: row.type,
               enabled: row.status,
@@ -392,6 +436,23 @@ export function ToolsPage(): ReactNode {
 
       {phase === "ready" ? (
         <CapabilitySearch value={q} total={rows.length} onChange={setQ} />
+      ) : null}
+
+      {phase === "ready" ? (
+        <div className="cap8-sortbar" role="row" data-testid="cap8-sortbar">
+          <span className="cap8-sortlabel">排序</span>
+          {([
+            ["name", "名称"],
+            ["type", "类型/来源"],
+            ["updated", "最近更新"],
+          ] as Array<[SortKey, string]>).map(([key, label]) => (
+            <span key={key} role="columnheader" aria-sort={ariaSort(sort, key)}>
+              <button type="button" className="cap8-sort" data-testid={`cap8-sort-${key}`} onClick={() => onSort(key)}>
+                {label}<span className="cap8-indicator" data-testid={`cap8-indicator-${key}`}>{ariaSort(sort, key) === "ascending" ? "↑" : ariaSort(sort, key) === "descending" ? "↓" : "↕"}</span>
+              </button>
+            </span>
+          ))}
+        </div>
       ) : null}
 
       {phase === "ready" ? (

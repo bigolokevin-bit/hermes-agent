@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const fetchJsonStrict = vi.fn();
@@ -30,10 +30,41 @@ beforeEach(() => {
 });
 afterEach(() => { act(() => root.unmount()); container.remove(); });
 
+function LocationProbe() {
+  const loc = useLocation();
+  return <span data-testid="cap8-location">{loc.search}</span>;
+}
+
 async function render() {
   const entry = window.location.pathname + window.location.search;
-  await act(async () => { root.render(<MemoryRouter initialEntries={[entry]}><SkillsPage /></MemoryRouter>); });
+  await act(async () => { root.render(<MemoryRouter initialEntries={[entry]}><LocationProbe /><SkillsPage /></MemoryRouter>); });
   await act(async () => {});
+}
+
+
+async function exportCsv(): Promise<string> {
+  const blobs: Blob[] = [];
+  const originalCreate = URL.createObjectURL;
+  const originalRevoke = URL.revokeObjectURL;
+  const originalClick = HTMLAnchorElement.prototype.click;
+  URL.createObjectURL = ((blob: Blob) => { blobs.push(blob); return "blob:cap8"; }) as typeof URL.createObjectURL;
+  URL.revokeObjectURL = (() => undefined) as typeof URL.revokeObjectURL;
+  HTMLAnchorElement.prototype.click = function click() { /* capture only */ };
+  try {
+    await act(async () => container.querySelector<HTMLButtonElement>("[data-testid='cap6-export']")!.click());
+  } finally {
+    URL.createObjectURL = originalCreate;
+    URL.revokeObjectURL = originalRevoke;
+    HTMLAnchorElement.prototype.click = originalClick;
+  }
+  const blob = blobs[0];
+  expect(blob).toBeTruthy();
+  return await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(blob!);
+  });
 }
 
 const text = () => container.textContent ?? "";
@@ -57,7 +88,7 @@ describe("SkillsPage", () => {
     await render();
 
     const headers = [...container.querySelectorAll("th")].map((node) => node.textContent);
-    expect(headers).toEqual(["技能名", "来源/类型", "启用态", "最近更新", "共享范围"]);
+    expect(headers).toEqual(["技能名↕", "来源/类型↕", "启用态", "最近更新↕", "共享范围"]);
     expect(text()).toContain("资料整理");
     expect(text()).toContain("团队共享");
     expect(text()).toContain("类型：团队共享");
@@ -198,6 +229,119 @@ describe("SkillsPage", () => {
     await render();
     expect(text()).toContain("没有匹配项");
     expect(container.querySelector("[data-testid='skl4-clear']")).toBeTruthy();
+  });
+
+  it("expands one row detail at a time without changing the search state", async () => {
+    window.history.replaceState({}, "", "/capabilities?tab=skills&q=");
+    fetchJsonStrict.mockResolvedValue({
+      items: [
+        { skillId: "s1", name: "资料整理", scope: "tenant-shared" },
+        { skillId: "s2", name: "质检", source: "platform", status: "active", updatedAt: "2026-11-19T05:30:00Z" },
+      ],
+    });
+    await render();
+    const searchBefore = window.location.search;
+    const toggles = [...container.querySelectorAll<HTMLButtonElement>("[data-testid='cap7-detail-toggle']")];
+    expect(toggles).toHaveLength(2);
+
+    await act(async () => toggles[0]!.click());
+    let details = [...container.querySelectorAll("[data-testid='cap7-detail-skills']")];
+    expect(details).toHaveLength(1);
+    expect(details[0]!.textContent).toContain("资料整理");
+    expect(details[0]!.textContent).toContain("/agent-api/api/skills");
+    expect(container.querySelector("[data-testid='cap7-detail-asof']")?.textContent).toContain("该字段未返回");
+    expect(container.querySelector("[data-testid='cap7-detail-asof']")?.getAttribute("title")).toContain("没有 asOf");
+    expect(window.location.search).toBe(searchBefore);
+
+    await act(async () => toggles[1]!.click());
+    details = [...container.querySelectorAll("[data-testid='cap7-detail-skills']")];
+    expect(details).toHaveLength(1);
+    expect(details[0]!.textContent).toContain("质检");
+    expect(details[0]!.textContent).not.toContain("资料整理");
+    expect(details[0]!.textContent).toContain("2026-11-19 13:30");
+
+    await act(async () => toggles[1]!.click());
+    expect(container.querySelectorAll("[data-testid='cap7-detail-skills']")).toHaveLength(0);
+  });
+
+  it("sorts by URL, cycles aria-sort and never refetches on sort clicks", async () => {
+    window.history.replaceState({}, "", "/capabilities?tab=skills&sort=name&dir=asc");
+    fetchJsonStrict.mockResolvedValue({
+      items: [
+        { skillId: "s1", name: "B2", source: "platform", status: "active", updatedAt: "2026-11-18T06:00:00Z" },
+        { skillId: "s2", name: "A1", source: "custom", status: "active", updatedAt: "2026-11-19T06:00:00Z" },
+        { skillId: "s3", name: "C3", source: "external", status: "disabled", updatedAt: "2026-11-17T06:00:00Z" },
+      ],
+    });
+    await render();
+    const order = () => [...container.querySelectorAll("[data-testid^='skl4-row-']")].map((row) => row.textContent);
+    expect(order()[0]).toContain("A1");
+    expect(order()[2]).toContain("C3");
+    const csv = await exportCsv();
+    const lines = csv.trim().split("\r\n");
+    expect(lines[0]).toBe("name,type,enabled,updated_at");
+    expect(lines[1]).toMatch(/^A1,/);
+    expect(order()[0]).toMatch(/^A1/);
+    expect(lines[3]).toMatch(/^C3,/);
+    expect(order()[2]).toMatch(/^C3/);
+    expect(container.querySelector("[data-testid='cap8-location']")?.textContent).toContain("sort=name");
+    expect(container.querySelector("th[aria-sort='ascending']")?.textContent).toContain("技能名");
+
+    await act(async () => container.querySelector<HTMLButtonElement>("[data-testid='cap8-sort-name']")!.click());
+    expect(container.querySelector("[data-testid='cap8-location']")?.textContent).toContain("dir=desc");
+    expect(order()[0]).toContain("C3");
+    expect(order()[2]).toContain("A1");
+    expect(container.querySelector("th[aria-sort='descending']")?.textContent).toContain("技能名");
+
+    await act(async () => container.querySelector<HTMLButtonElement>("[data-testid='cap8-sort-name']")!.click());
+    expect(container.querySelector("[data-testid='cap8-location']")?.textContent).not.toContain("sort=");
+    expect(container.querySelector("th[aria-sort='ascending']")).toBeNull();
+    expect(container.querySelector("th[aria-sort='descending']")).toBeNull();
+    expect(container.querySelector("th[aria-sort='none']")?.textContent).toContain("技能名");
+    expect(fetchJsonStrict).toHaveBeenCalledTimes(1);
+    expect(order()[0]).toContain("B2");
+    expect(order()[2]).toContain("C3");
+    const csvDefault = await exportCsv();
+    const defaultLines = csvDefault.trim().split("\r\n");
+    expect(defaultLines[1]).toMatch(/^B2,/);
+    expect(defaultLines[3]).toMatch(/^C3,/);
+  });
+
+  it("reads only a top-level ISO asOf for the detail and keeps asOfSource in the title", async () => {
+    window.history.replaceState({}, "", "/capabilities?tab=skills&q=%E8%B5%84%E6%96%99");
+    fetchJsonStrict.mockResolvedValue({
+      asOf: "2026-11-19T06:00:00Z",
+      asOfSource: "台账快照",
+      generated_at: "2026-11-18T01:00:00Z",
+      items: [{ skillId: "s1", name: "资料整理", scope: "tenant-shared" }],
+    });
+    await render();
+    const searchBefore = window.location.search;
+    await act(async () => container.querySelector<HTMLButtonElement>("[data-testid='cap7-detail-toggle']")!.click());
+    const asof = container.querySelector("[data-testid='cap7-detail-asof']");
+    expect(asof?.textContent).toBe("2026-11-19 14:00");
+    expect(asof?.getAttribute("title")).toBe("asOfSource：台账快照");
+    expect(container.textContent).not.toContain("asOfSource");
+    expect(window.location.search).toBe(searchBefore);
+    expect(searchBefore).toContain("tab=skills");
+    expect(searchBefore).toContain("q=");
+
+    await act(async () => { window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })); });
+    expect(container.querySelectorAll("[data-testid='cap7-detail-skills']")).toHaveLength(0);
+  });
+
+  it("shows a dash and a title reason for a non-ISO asOf instead of the browser clock", async () => {
+    window.history.replaceState({}, "", "/capabilities?tab=skills");
+    fetchJsonStrict.mockResolvedValue({
+      asOf: "2026/11/19 14:00",
+      items: [{ skillId: "s1", name: "资料整理", scope: "tenant-shared" }],
+    });
+    await render();
+    await act(async () => container.querySelector<HTMLButtonElement>("[data-testid='cap7-detail-toggle']")!.click());
+    const asof = container.querySelector("[data-testid='cap7-detail-asof']");
+    expect(asof?.textContent).toBe("该字段未返回");
+    expect(asof?.getAttribute("title")).toContain("不是 ISO");
+    expect(container.textContent).not.toContain("2026/11/19");
   });
 
   it("leaks no engineering names or raw ids into the page", async () => {

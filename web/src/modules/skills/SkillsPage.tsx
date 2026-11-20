@@ -5,7 +5,7 @@
 // payload, so those cells are "—" with a reason; no value is invented and no
 // sample row is shown. A missing route is reported as 未接入 with the GAP id
 // only in a tooltip. No raw field name or HTTP status reaches the page.
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { useSearchParams } from "react-router";
 
@@ -16,15 +16,17 @@ import { copyTextToClipboard } from "@/lib/clipboard";
 import { currentFixtureRid, currentFixtureState, fixtureView, type FixtureState } from "../../shell/fixtures";
 import { SKILLS_GAP, formatBeijingTime, readSkills, type SkillRow } from "./skills";
 import { CapabilityCounts, publishCapabilityCount } from "../capabilities/counts";
+import { CapabilityRowDetail } from "../capabilities/rowDetail";
 import { CapabilitySearch } from "../capabilities/search";
 import { CapabilityExport } from "../capabilities/csvExport";
+import { applySort, ariaSort, cycleSort, readSort, sortRows, type SortKey } from "../capabilities/sorting";
 import "./skills.css";
 
 type State =
   | { k: "loading" }
   | { k: "empty" }
   | { k: "error"; message: string; requestId: string | null; gap: string | null }
-  | { k: "ready"; rows: SkillRow[]; asOf: string | null };
+  | { k: "ready"; rows: SkillRow[]; asOf: string | null; asOfReason: string | null; asOfTitle: string | null };
 
 function requestIdOf(error: unknown): string | null {
   if (error instanceof ApiError && error.requestId) return error.requestId;
@@ -104,8 +106,10 @@ function Cell({ value, reason }: { value: string | null; reason: string }) {
 export function SkillsPage() {
   const [sp, setSp] = useSearchParams();
   const q = (sp.get("q") ?? "").trim();
+  const sort = readSort(sp);
   const [state, setState] = useState<State>({ k: "loading" });
   const [attempt, setAttempt] = useState(0);
+  const [openSkill, setOpenSkill] = useState<string | null>(null);
   const fixture = currentFixtureState();
   const forced = forcedState(fixture, currentFixtureRid());
   const retry = () => {
@@ -113,19 +117,28 @@ export function SkillsPage() {
     setAttempt((value) => value + 1);
   };
 
+  useEffect(() => {
+    if (!openSkill) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpenSkill(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [openSkill]);
+
   const load = useCallback(async (signal: { live: boolean }) => {
     setState({ k: "loading" });
     try {
       const body = await fetchJsonStrict("/agent-api/api/skills");
       if (!signal.live) return;
-      const { rows, asOf } = readSkills(body);
+      const { rows, asOf, asOfReason, asOfTitle } = readSkills(body);
       publishCapabilityCount("skills", {
         value: rows.length,
         source: rows.length ? "ready" : "empty",
         reason: null,
         gap: null,
       });
-      setState(rows.length ? { k: "ready", rows, asOf } : { k: "empty" });
+      setState(rows.length ? { k: "ready", rows, asOf, asOfReason, asOfTitle } : { k: "empty" });
     } catch (error) {
       if (!signal.live) return;
       const gap = error instanceof ApiError && (error.status === 403 || error.status === 404) ? SKILLS_GAP : null;
@@ -151,8 +164,16 @@ export function SkillsPage() {
   const visibleRows = page.k === "ready" && q
     ? page.rows.filter((row) => row.name.toLocaleLowerCase().includes(q.toLocaleLowerCase()))
     : page.k === "ready" ? page.rows : [];
+  const sortedRows = sortRows(visibleRows, sort, (row: SkillRow, key) =>
+    key === "name" ? row.name : key === "type" ? row.source : row.updatedAt);
+  const onSort = (key: SortKey) => {
+    const next = cycleSort(sort, key);
+    const params = new URLSearchParams(sp);
+    applySort(params, next);
+    setSp(params);
+  };
   const setQ = (next: string) => {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(sp);
     if (next) params.set("q", next); else params.delete("q");
     setSp(params, { replace: true });
   };
@@ -179,7 +200,7 @@ export function SkillsPage() {
         <div className="skl4-actions">
           <CapabilityExport
             tab="skills"
-            rows={visibleRows.map((row) => ({
+            rows={sortedRows.map((row) => ({
               name: row.name === "—" ? null : row.name,
               type: row.source,
               enabled: row.status,
@@ -245,21 +266,43 @@ export function SkillsPage() {
               <table className="skl4-table" data-testid="skl4-table">
                 <thead>
                   <tr>
-                    <th scope="col">技能名</th>
-                    <th scope="col">来源/类型</th>
+                    <th scope="col" aria-sort={ariaSort(sort, "name")}>
+                      <button type="button" className="cap8-sort" data-testid="cap8-sort-name" onClick={() => onSort("name")}>
+                        技能名<span className="cap8-indicator" data-testid="cap8-indicator-name">{ariaSort(sort, "name") === "ascending" ? "↑" : ariaSort(sort, "name") === "descending" ? "↓" : "↕"}</span>
+                      </button>
+                    </th>
+                    <th scope="col" aria-sort={ariaSort(sort, "type")}>
+                      <button type="button" className="cap8-sort" data-testid="cap8-sort-type" onClick={() => onSort("type")}>
+                        来源/类型<span className="cap8-indicator" data-testid="cap8-indicator-type">{ariaSort(sort, "type") === "ascending" ? "↑" : ariaSort(sort, "type") === "descending" ? "↓" : "↕"}</span>
+                      </button>
+                    </th>
                     <th scope="col">启用态</th>
-                    <th scope="col">最近更新</th>
+                    <th scope="col" aria-sort={ariaSort(sort, "updated")}>
+                      <button type="button" className="cap8-sort" data-testid="cap8-sort-updated" onClick={() => onSort("updated")}>
+                        最近更新<span className="cap8-indicator" data-testid="cap8-indicator-updated">{ariaSort(sort, "updated") === "ascending" ? "↑" : ariaSort(sort, "updated") === "descending" ? "↓" : "↕"}</span>
+                      </button>
+                    </th>
                     <th scope="col">共享范围</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {visibleRows.map((row) => (
-                    <tr key={row.id} data-testid={`skl4-row-${row.id}`} title={row.id}>
+                  {sortedRows.map((row) => (
+                    <Fragment key={row.id}>
+                    <tr data-testid={`skl4-row-${row.id}`} title={row.id}>
                       <td>
                         <span className="skl4-cell">
                           <span className={row.name === "—" ? "skl4-missing" : ""}>{row.name}</span>
                           {row.nameReason ? <span className="skl4-reason">{row.nameReason}</span> : null}
                           {row.version ? <span className="skl4-reason">版本 {row.version}</span> : null}
+                          <button
+                            type="button"
+                            className="cap7-toggle"
+                            aria-expanded={openSkill === row.id}
+                            onClick={() => setOpenSkill((current) => (current === row.id ? null : row.id))}
+                            data-testid="cap7-detail-toggle"
+                          >
+                            {openSkill === row.id ? "收起" : "详情"}
+                          </button>
                         </span>
                       </td>
                       <td><Cell value={row.source} reason={row.sourceReason} /></td>
@@ -267,6 +310,24 @@ export function SkillsPage() {
                       <td><Cell value={row.updatedAt} reason={row.updatedAtReason} /></td>
                       <td><Badge tone="outline">{row.scope}</Badge></td>
                     </tr>
+                    {openSkill === row.id ? (
+                      <tr data-testid="cap7-detail-row-skills">
+                        <td colSpan={5}>
+                          <CapabilityRowDetail
+                            name={row.name === "—" ? null : row.name}
+                            type={row.source}
+                            enabled={row.status}
+                            updatedAt={row.updatedAt}
+                            endpoint="/agent-api/api/skills"
+                            asOf={page.asOf}
+                            asOfReason={page.asOfReason ?? ""}
+                            asOfTitle={page.asOfTitle}
+                            testid="cap7-detail-skills"
+                          />
+                        </td>
+                      </tr>
+                    ) : null}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
