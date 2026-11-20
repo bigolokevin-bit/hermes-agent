@@ -5008,3 +5008,115 @@ describe("R114 — per-document row copy in preview surfaces (kn-doc-copy)", () 
     expect(urlsCalled().slice().sort().join("|")).toBe(u0);
   });
 });
+
+// ---------- R132：两张文档表的行末复制（列表级，kn-row-copy*） ----------
+describe("R132 — list row copy (kn-row-copy / kn-row-copy-space)", () => {
+  const R132_SP = {
+    asOf: "2026-11-19T08:00:00Z",
+    items: [{ spaceId: "sp_hr", name: "人事制度空间", docCount: 2, status: "synced" }],
+  };
+  const D1 = { documentId: "d_a", fileName: "A 手册.pdf", mimeType: "application/pdf", sizeBytes: 2048, updatedAt: "2026-11-19T07:00:00Z" };
+  const D2 = { documentId: "d_b", fileName: "B 表.xlsx", mimeType: "xlsx", sizeBytes: 1024, updatedAt: "2026-11-19T06:00:00Z" };
+  const EMPTY = { mimeType: "pdf", sizeBytes: 9 }; // 无名无标识：不可复制行
+  const wire132 = () =>
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(R132_SP);
+      if (url === DOCUMENTS_PLAIN) return Promise.resolve({ asOf: R132_SP.asOf, documents: [D1, D2, EMPTY] });
+      if (url === docsUrlFor("sp_hr")) return Promise.resolve({ asOf: R132_SP.asOf, documents: [D1, D2, EMPTY] });
+      return fail(404, "这个数据接口还没有接入。", "rid-r132");
+    });
+  const clickNode = async (node: Element | null, label: string) => {
+    expect(node, label).toBeTruthy();
+    await act(async () => {
+      node?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => {});
+  };
+  const qd = (testid: string) => document.querySelector(`[data-testid="${testid}"]`);
+
+  it("row copy text is byte-identical to the preview/expand kn-doc-copy for the same document, both tables", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    wire132();
+    const DETAIL = "/knowledge?tab=spaces&space=sp_hr";
+    await render(DETAIL);
+    // 检索表首行（主 tab 原名 id）
+    await clickNode(container.querySelector('[data-testid="kn-row-copy-0"]'), "kn-row-copy-0");
+    expect(writeText).toHaveBeenCalledTimes(1);
+    const searchLine = String(writeText.mock.calls[0][0]);
+    // 同文档在命中展开块里经 kn-doc-copy 复制：逐字等
+    await click("kn6-search-name");
+    await click("kn-doc-copy");
+    expect(String(writeText.mock.calls[1][0])).toBe(searchLine);
+    // 详情表首行（-space- 后缀）与行内预览 kn-doc-copy 对同文档逐字等
+    const rowA = [...container.querySelectorAll('[data-testid="kn3-docs-row"]')].find((r) => (r.textContent ?? "").includes("A 手册.pdf"))!;
+    await clickNode(rowA.querySelector('[data-testid="kn-row-copy-space-0"]') ?? rowA.querySelector('button[data-testid^="kn-row-copy-space-"]'), "space row copy A");
+    const detailLine = String(writeText.mock.calls[2][0]);
+    await clickNode(rowA.querySelector('[data-testid="kn-doc-preview-toggle"]'), "preview open");
+    await click("kn-doc-copy");
+    expect(String(writeText.mock.calls[3][0])).toBe(detailLine);
+    // 表头 + 单行 + 尾换行的骨架
+    expect(searchLine.split("\n")).toHaveLength(3);
+    expect(searchLine.split("\n")[0]).toBe("文档名 | 类型 | 大小 | 更新 | 短码");
+    expect(detailLine.split("\n")[1]).toContain("A 手册.pdf");
+  });
+
+  it("index follows the sorted/filtered visible order; both surfaces coexist same-screen with distinct ids", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    wire132();
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    // 同屏共存：检索表 kn-row-copy-0 与详情表 kn-row-copy-space-* 互不吞并
+    expect(qd("kn-row-copy-0")).toBeTruthy(); // 检索表在主 tab 顶部同屏在场
+    expect(container.querySelector('[data-testid^="kn-row-copy-space-"]')).toBeTruthy();
+    // 排序切换（updated 三态两击换向）：首行换了人，0 号按钮的文本跟着新首行走
+    const tr0 = () =>
+      (container.querySelector('button[data-testid="kn-row-copy-space-0"]')?.closest("tr")?.textContent ?? "").slice(0, 12);
+    const firstBefore = tr0();
+    expect(firstBefore).toContain("A 手册"); // 默认 updated/desc：07:00 在前
+    // 一击换 asc：06:00 在前、缺时仍垫底（missing-last）；0 号按钮的文本跟着新首行走
+    await click("kn-sort-updated");
+    expect(tr0()).toContain("B 表");
+    await clickNode(container.querySelector('button[data-testid="kn-row-copy-space-0"]'), "copy first in asc");
+    const lineAsc = String(writeText.mock.calls.at(-1)?.[0] ?? "");
+    expect(lineAsc.split("\n")).toHaveLength(3); // 表头 + 单行 + 尾换行
+    expect(lineAsc.split("\n")[1].startsWith("B 表.xlsx")).toBe(true);
+    // 二击回 desc：0 号又指向另一文档（编号随可见行序重排，不钉死文档）
+    await click("kn-sort-updated");
+    expect(tr0()).toContain("A 手册");
+    await clickNode(container.querySelector('button[data-testid="kn-row-copy-space-0"]'), "copy first in desc");
+    expect(String(writeText.mock.calls.at(-1)?.[0] ?? "").split("\n")[1].startsWith("A 手册.pdf")).toBe(true);
+  });
+
+  it("clipboard rejection: fallback textarea is byte-equal to the target and read-only; empty rows disabled with honest title; zero requests throughout", async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error("denied"));
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    wire132();
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    const c0 = fetchMock.mock.calls.length;
+    const u0 = urlsCalled().slice().sort().join("|");
+    await clickNode(container.querySelector('[data-testid="kn-row-copy-1"]'), "search row 1"); // d_b：可复制
+    await act(async () => {});
+    const status = container.querySelector('[data-testid="kn-row-copy-status"]');
+    expect(status?.getAttribute("role")).toBe("status");
+    expect(status?.getAttribute("aria-live")).toBe("polite");
+    expect((status?.textContent ?? "")).toContain("剪贴板没接受");
+    const ta = container.querySelector('[data-testid="kn-row-copy-fallback"]') as HTMLTextAreaElement | null;
+    expect(ta).toBeTruthy();
+    expect(ta?.readOnly).toBe(true);
+    expect(ta?.value.split("\n")[1]).toContain("B 表.xlsx");
+    // 空行（无名无标识）：两表都 disabled + 具体 title
+    const emptyBtnSearch = [...container.querySelectorAll('button[data-testid^="kn-row-copy-"]')].find(
+      (b) => b.getAttribute("data-testid") === "kn-row-copy-2",
+    ) as HTMLButtonElement | undefined;
+    expect(emptyBtnSearch?.disabled).toBe(true);
+    expect(emptyBtnSearch?.getAttribute("title")).toBe("这一行没有可复制的文档内容：文档名与标识都没给出。");
+    const emptyBtnSpace = [...container.querySelectorAll('button[data-testid^="kn-row-copy-space-"]')].find(
+      (b) => (b as HTMLButtonElement).disabled,
+    ) as HTMLButtonElement | undefined;
+    expect(emptyBtnSpace?.getAttribute("title")).toBe("这一行没有可复制的文档内容：文档名与标识都没给出。");
+    // 全程零请求：复制、拒写、fallback 在场，fetch 计数与 urls 快照逐字不变
+    expect(fetchMock.mock.calls.length).toBe(c0);
+    expect(urlsCalled().slice().sort().join("|")).toBe(u0);
+  });
+});
