@@ -3060,3 +3060,22 @@ Untested: the four-state body lengths are jsdom readings, not browser pixels; th
 - 新增 testid：`audI-scope-note`（分布口径）、`audI-export-scope`（导出集合口径）。
 - 门禁：vitest `src/modules/audit` **exit 0**（**14** files / **286** tests = 基线 14/278 + 8：`csv.test.ts` audI 4 条 + 页面 audI 4 条）；`pnpm exec tsc -b . --noEmit` 共 **67** errors（= 本机当前地板，改动前后同数、增量 0）且 `modules/audit` **0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings（中途一次把 BOM 写成正则字面量触发 `no-irregular-whitespace` + 一条类型多余属性，已改回 `\uFEFF`）。
 - 活体腿沿用已知不可用实测（未重跑）：9122 无身份头 **401 `console.unauthenticated`**、8092 **404 `console.not_found`**；三值对照、文件名快照与「零额外请求」证据都是 vitest 腿（真按 `action` 过滤的 mock + Blob/anchor 双头捕获），未假装活体。
+
+## Audit time and actor presentation (audJ, 2026-11-20, base e41976d5)
+
+- 写域：`web/src/modules/audit/{timeActor.ts,timeActor.test.ts,views.tsx,AuditEventsModulePage.test.tsx,AuditDetailModulePage.test.tsx}` + 本节。App.tsx / shell / routes / registry / package·lock / web scripts / ops 未碰。基线：`git merge origin/lane/hermes-console` → Already up to date（章面已在 HEAD 内），porc=0。
+- **同一 helper**：新增 `timeActor.ts`，导出 `auditTimeView(raw, minute)` 与 `auditActorView(person)`；三处（列表行 `AuditEventRowCard`、行内预览 `AuditRowPreview`、事件详情 `AuditEventDetailBody`——抽屉与独立详情屏共用同一组件）都改成只调这两个函数，屏幕不再各自拼字符串。views.tsx 里旧的模块内常量 `MISSING_TIME`（「服务未提供该时间」）随之下线，缺失口径由 helper 统一给出。
+- **改前 / 改后（同一条 `evt_parity_00000001`，occurredAt=`2026-11-19T01:20:00Z`，actor=`{human, user:2f3a4b5c6d7e8f90, 李思}`）**：
+
+  | 处 | 改前 时间 | 改后 时间 | 改前 操作者 | 改后 操作者 |
+  |---|---|---|---|---|
+  | 列表行 | `2026-11-19 09:20`（到分，旧代码 `value={row.occurredAt ?? "—"}`） | `2026-11-19 09:20:00` | `李思 · 6d7e8f90`（title=裸 id） | 同左（title 改为「服务标识 user:…（原始值只在这里给出）」） |
+  | 行内预览 | `2026-11-19 09:20:00` | 同左 | `李思 · 6d7e8f90` | 同左 |
+  | 事件详情 | `2026-11-19 09:20:00` | 同左 | `李思 · 6d7e8f90` | 同左 |
+  即：本轮唯一的**值级不一致**是列表行到分、另两处到秒（工单点名的「不一致即修」），现三处逐字相同；用例 `one identical instant` 断言三处文本完全相等且匹配 `^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$`。旧的 audA 精度对照用例（「两种精度」）已改为单精度等值断言，testid 一个未改名。
+- **缺失态对照（同一 helper，同一条无 occurredAt 的记录）**：三处时间全部 `该字段未返回`，title 全部 `服务没有带回这条记录的时间；这里不拿浏览器时间顶替`；用例显式取当天日期串断言它不出现在三处读数里（禁补当前时间）。改前这里是三处 `—` + title「服务未提供该时间」——按工单口径统一为「该字段未返回」，audA 那条 `toBe("—")` 断言同步改为新句（testid `audA-preview-time`/`audA-detail-time`/`data-auda-parity` 保留）。操作者缺失（无名无标识）三处仍 `未指派`（aud01 既有行为契约），title 说明「服务没有带回这条记录的操作者」；只带 id 不带名字时三处一致为 `员工 · 5b4a3f21` 且 title 带完整 `employee:9f8e7d6c5b4a3f21`，用例断言可见文本里不出现 `user:`/`employee:`/`human:` 或完整 32 位 id。
+- **title 的原值与时区标注**：可换算时为 `服务原值 <原文>（UTC）· 屏上为北京时间（UTC+8），精确到秒`；带回的是不可换算的自由文本（如 `yesterday evening`）时不谎称做过 UTC 换算，title 写「服务带回的原文是「…」，不是一个可换算的瞬间…到分钟/秒」。epoch 秒/毫秒字符串统一撑到毫秒再格式化（`1763515200` 与 `1763515200000` 读出同一瞬间），否则按 beijingSeconds 的毫秒解释会落到 1970 年——用例锁这一条。
+- **零额外请求 / 零破**：两个函数纯读模型，不发请求；用例在开→关→开预览后断言 `urls()` 长度不变、`/agent-api/api/audit?` 仍只 1 条。`aud01*`、`aud2*`–`audI*`（含 `aud01-cell-*-time/-actor`、`audA-preview-*`/`audA-detail-*`、`aud6-preview-*`、`aud7-types-*`/`audD-bucket-*`、`audF-state-*`、`audG-*`、`audH-page-size`）与页级 `agent-v2-page-audit*`/`agent-v2-page-audit-detail*` 未改名未删节点；技术折叠里新增一行「发生时间（北京时间（UTC+8））：…」并把原值行改为优先引用带回的原始瞬间（折叠仍默认收起）。四态、403≡404 同体、三档结构（新标记是 `aria-hidden` 空 span，无布局影响）无回退。
+- 新增 testid：`audJ-time-list-<key>` `audJ-actor-list-<key>` `audJ-time-preview` `audJ-actor-preview` `audJ-time-detail` `audJ-actor-detail`（值与 title 分别挂在 `data-audj-value` / `data-audj-title`，对照用；屏幕上的字仍是那一格本身，标记不复制可见文本）。
+- 门禁：vitest `src/modules/audit` **exit 0**（**15** files / **299** tests = 基线 14/286 + 13：`timeActor.test.ts` 6 条 + 列表页 audJ 5 条 + 独立详情屏 audJ 2 条）；`pnpm exec tsc -b . --noEmit` 共 **67** errors（= 本机当前地板，改动前后同数、增量 0）且 `modules/audit` **0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings。
+- 活体腿沿用已知不可用实测（未重跑）：9122 无身份头 **401 `console.unauthenticated`**、8092 **404 `console.not_found`**；三处对照与缺失态证据为 vitest 腿（同一 mock 喂两条读口后逐字段比读数），未假装活体。

@@ -1571,8 +1571,10 @@ describe("audA - preview/detail field parity and the keyboard loop", () => {
     await mountBoth("/audit?window=7d&preview=evt_parity_00000001&detail=evt_parity_00000001", sparse);
     const previewTime = (document.querySelector("[data-auda-parity='time']")!.textContent ?? "").replace("时间（北京时间）：", "").trim();
     expect(previewTime).toBe(detailValue("time"));
-    expect(previewTime).toBe("—");
-    expect(document.querySelector("[data-auda-parity='time']")!.getAttribute("title")).toContain("服务未提供该时间");
+    // audJ replaced the dash with the stated missing word, in every surface:
+    // a cell that says 「—」 reads like an answer, and this is not one.
+    expect(previewTime).toBe("该字段未返回");
+    expect(document.querySelector("[data-auda-parity='time']")!.getAttribute("title")).toContain("不拿浏览器时间顶替");
     expect(document.querySelector("[data-testid='audA-preview-rid-absent']")).not.toBeNull();
     expect(document.querySelector("[data-testid='audA-preview-rid-absent']")!.textContent).toBe(
       document.querySelector("[data-auda-parity='rid'] [data-testid='aud02-detail-request-value-absent']")!.textContent,
@@ -1627,16 +1629,17 @@ describe("audA - preview/detail field parity and the keyboard loop", () => {
     expect(document.querySelector(`[data-testid='${controls}']`)).not.toBeNull();
   });
 
-  it("the row cell, the preview and the detail are the same instant at two precisions", async () => {
+  it("the row cell, the preview and the detail are one identical instant", async () => {
     await mountBoth("/audit?window=7d&preview=evt_parity_00000001&detail=evt_parity_00000001");
     const cell = document.querySelector("[data-testid='aud01-cell-evt_parity_00000001-time']")!.textContent ?? "";
     const preview = (document.querySelector("[data-auda-parity='time']")!.textContent ?? "").replace("时间（北京时间）：", "").trim();
     const detail = detailValue("time");
-    // 列表行到分、预览与详情到秒：同一个瞬间的两种精度，秒值必须以分值开头
-    const toMin = (value: string): string => value.slice(0, 16);
-    expect(toMin(preview)).toBe(toMin(detail));
-    expect(cell).toContain(toMin(preview));
+    // audJ closed the last gap here: the list row used to read to the minute
+    // while the other two read to the second. One helper, one precision.
     expect(cell).toContain("时间（北京时间）");
+    expect(cell.replace("时间（北京时间）", "").trim()).toBe(preview);
+    expect(preview).toBe(detail);
+    expect(preview).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
   });
 
   it("the preview keeps a keyboard path to its own controls", async () => {
@@ -3157,5 +3160,115 @@ describe("audI - the distribution and the export answer for one set", () => {
     expect(urls()).toHaveLength(before);
     // no set, no distribution to count
     expect(document.querySelector("[data-testid='aud7-types']")).toBeNull();
+  });
+});
+
+/**
+ * audJ — 三处时间与操作者的呈现统一。断言的是：同一事件的同一字段在列表行、
+ * 行内预览、事件详情里逐字相同（绝对北京时间到秒），title 给服务原值并标注时区，
+ * 缺失一律「该字段未返回」且不拿浏览器当前时间顶替，裸机器句柄不进可见文本；
+ * 读这三处不多发一次请求。
+ */
+describe("audJ - one reading of the time and the operator everywhere", () => {
+  const COMPLETE = {
+    eventId: "evt_present_00000001",
+    action: "task.created",
+    occurredAt: "2026-11-19T01:20:00Z",
+    recordedAt: "2026-11-19T01:20:01Z",
+    outcome: "succeeded",
+    actor: { type: "human", id: "user:2f3a4b5c6d7e8f90", displayName: "李思" },
+    resource: { type: "approval", id: "ap_1122334455667788" },
+    requestId: "req-20261119-0a7b3c",
+  };
+
+  async function mountThree(body: unknown, extra = ""): Promise<void> {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url) =>
+      String(url).startsWith("/agent-api/api/audit-detail") ? { audit: body } : { items: [body] },
+    );
+    await render(`/audit?window=7d&preview=evt_present_00000001&detail=evt_present_00000001${extra}`, <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud02-detail']") !== null, "detail painted");
+    await waitFor(() => document.querySelector("[data-testid='aud6-preview-evt_present_00000001']") !== null, "preview painted");
+  }
+
+  const markValue = (testId: string): string | null =>
+    document.querySelector(`[data-testid='${testId}']`)?.getAttribute("data-audj-value") ?? null;
+  const markTitle = (testId: string): string | null =>
+    document.querySelector(`[data-testid='${testId}']`)?.getAttribute("data-audj-title") ?? null;
+
+  it("the list row, the preview and the record pane print one identical instant", async () => {
+    await mountThree(COMPLETE);
+    const surfaces = ["audJ-time-list-evt_present_00000001", "audJ-time-preview", "audJ-time-detail"];
+    const values = surfaces.map(markValue);
+    expect(values).toEqual(["2026-11-19 09:20:00", "2026-11-19 09:20:00", "2026-11-19 09:20:00"]);
+    // and each of them says where the reading came from
+    for (const id of surfaces) {
+      const title = markTitle(id) ?? "";
+      expect(title).toContain("2026-11-19T01:20:00Z");
+      expect(title).toContain("（UTC）");
+      expect(title).toContain("北京时间（UTC+8）");
+      expect(title).toContain("精确到秒");
+    }
+    // no relative time anywhere on the page
+    expect(text()).not.toMatch(/分钟前|小时前|昨天|刚刚/);
+  });
+
+  it("the operator is the same person in all three, with the handle only in the title", async () => {
+    await mountThree(COMPLETE);
+    const surfaces = ["audJ-actor-list-evt_present_00000001", "audJ-actor-preview", "audJ-actor-detail"];
+    expect(surfaces.map(markValue)).toEqual(["李思 · 6d7e8f90", "李思 · 6d7e8f90", "李思 · 6d7e8f90"]);
+    for (const id of surfaces) expect(markTitle(id)).toContain("user:2f3a4b5c6d7e8f90");
+    const surface = document.querySelector("[data-testid='agent-v2-page-audit']")!.textContent ?? "";
+    expect(surface).not.toContain("user:2f3a4b5c6d7e8f90");
+    expect(surface).not.toMatch(/human:|employee:/);
+  });
+
+  it("a record with no time reads the same missing word in all three, and no clock fills it", async () => {
+    const today = new Date();
+    const stamp = `${String(today.getFullYear())}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    await mountThree({
+      eventId: "evt_present_00000001",
+      action: "task.created",
+      outcome: "succeeded",
+      actor: { type: "human", id: "user:2f3a4b5c6d7e8f90", displayName: "李思" },
+    });
+    const surfaces = ["audJ-time-list-evt_present_00000001", "audJ-time-preview", "audJ-time-detail"];
+    expect(surfaces.map(markValue)).toEqual(["该字段未返回", "该字段未返回", "该字段未返回"]);
+    for (const id of surfaces) expect(markTitle(id)).toContain("不拿浏览器时间顶替");
+    // the browser's own day never shows up as if the service had sent it
+    expect(surfaces.map(markValue).join(" ")).not.toContain(stamp);
+  });
+
+  it("an operator with no name keeps the short code and the full id in the title, in all three", async () => {
+    await mountThree({
+      eventId: "evt_present_00000001",
+      action: "task.created",
+      occurredAt: "2026-11-19T01:20:00Z",
+      outcome: "succeeded",
+      actor: { type: "employee", id: "employee:9f8e7d6c5b4a3f21" },
+    });
+    const surfaces = ["audJ-actor-list-evt_present_00000001", "audJ-actor-preview", "audJ-actor-detail"];
+    const values = surfaces.map(markValue);
+    expect(new Set(values).size).toBe(1);
+    expect(values[0]).toBe("员工 · 5b4a3f21");
+    for (const id of surfaces) expect(markTitle(id)).toContain("employee:9f8e7d6c5b4a3f21");
+    const surface = document.querySelector("[data-testid='agent-v2-page-audit']")!.textContent ?? "";
+    expect(surface).not.toContain("9f8e7d6c5b4a3f21\"");
+    expect(surface).not.toMatch(/employee:9f8e7d6c5b4a3f21/);
+  });
+
+  it("reading the three surfaces costs no extra request", async () => {
+    await mountThree(COMPLETE);
+    const before = urls().length;
+    // open, close and reopen the preview; the record pane is already open
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud6-toggle-evt_present_00000001']")?.click();
+    });
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud6-toggle-evt_present_00000001']")?.click();
+    });
+    expect(markValue("audJ-time-preview")).toBe("2026-11-19 09:20:00");
+    expect(urls()).toHaveLength(before);
+    expect(urls().filter((u) => /^\/agent-api\/api\/audit\?/.test(u))).toHaveLength(1);
   });
 });
