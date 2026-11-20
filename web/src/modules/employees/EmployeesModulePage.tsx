@@ -321,11 +321,18 @@ function RowPreview({ row }: { row: EmployeeRow }) {
  * 只读已加载行、零额外请求；口径写明「当前已加载 N 人」，禁冒充全量。
  * ------------------------------------------------------------------ */
 
-const COPY_HEADER = "name,employee_no,lifecycle,last_active";
+const COPY_HEADER = "name,employee_no,lifecycle,last_active,department";
 
 /** RFC4180：含逗号/引号/换行的值加引号，内部引号双写。 */
 function csvCell(value: string): string {
   return /[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+}
+
+/** R110: 部门列——复制与 CSV 同 helper 同串，三态直接复用 R96
+ * departmentView（真值原样 / 键在值空=未标注部门 / 键缺失=该字段未返回）；
+ * CSV 里也写该句，不写空、不写「—」——缺的是语义值，不是格式字符。 */
+function deptCopyValue(row: EmployeeRow): string {
+  return departmentView(row.department !== undefined, row.department ?? null).label;
 }
 
 /** 屏上行序（sortedItems 已含当前排序）逐行拼表；缺值「—」不补 0。 */
@@ -336,6 +343,7 @@ function buildEmployeesCopyText(rows: EmployeeRow[]): { text: string; count: num
       csvCell(`员工 · ${shortCode(row.employeeId)}`),
       csvCell(lifecycleLabel(row.lifecycleState)),
       csvCell(beijingMinute(row.updatedAt) ?? "—"),
+      csvCell(deptCopyValue(row)),
     ].join(","),
   );
   return { text: [COPY_HEADER, ...lines].join("\n"), count: lines.length };
@@ -430,6 +438,8 @@ export function buildEmployeesCsv(rows: EmployeeRow[]): string {
         csvCell(`员工 · ${shortCode(row.employeeId)}`),
         csvCell(lifecycleLabel(row.lifecycleState)),
         csvCell(beijingMinute(row.updatedAt) ?? ""),
+        // R110: 部门列与复制同 helper 同串（缺值写三态句，不写空）。
+        csvCell(deptCopyValue(row)),
       ].join(","),
   );
   // BOM 让 Excel 认中文；RFC4180 行尾 CRLF。
