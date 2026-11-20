@@ -1353,3 +1353,10 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 九腿全 exit=0（/tmp/wave62-exits.txt），heads 9/9=={4f2f4e54:9} bad=[] 全 ok=true：ia-html/react {51,22,1,8}（tabsAll=23）；lint-fake v=[]；lint-reuse v=0 exempt=1（chat→T40）；state-quad 20/20 真重跑非 carried；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）；redirects=24 notes 归因不判红。
 - shots auth 102/102 failures=[] **obs=0 obsR=[]（上代 1 条 channels 已收敛=好转）** distinct=24 envOnly=51；anon auxiliary=true 102/102 **obs=0（上代 #/system 条消失）** distinct=23 envOnly=51；三键=anDq62Is/9b712a4e 全串/172175，servedEntryBefore==After=index-anDq62Is.js，ceAuthority=login-state 双腿。
 - 65882219 章 37a84999 不重做；R60 已结案仅引用，未动 ACC 判词节；web/src/9122/BFF/caddy/qa-verify 未动；零凭据明文；无 amend/force。
+
+## 一五一轮 · 波次代次九件重章 @ 43d83d65（entry SBrq-NLu / CSS D_6u7tAM 双换代，2026-11-21 03:5x）
+
+- 代次现查：LOCAL=ls-remote=43d83d65cb76（wave-62 九笔并入）；『前两代漏推』指控现查证伪：37a84999 与 08fe4abe 均 ANCE=0 在当前链（各自 push 当时 ls-remote 已一致，后续 heartbeat 并入）。盘 entry assets/index-SBrq-NLu.js 172175B sha256 e7a12b56…c1a5、CSS assets/index-D_6u7tAM.css 144938B sha 55d9745a…dfa53 双逐字==卡面；9122 served 同值；21/21 路由 200。
+- 九腿全 exit=0（/tmp/wave63-exits.txt 无挂死无复跑），heads 9/9=={43d83d65:9} bad=[] 全 ok=true：ia-html/react {51,22,1,8}（tabsAll=23）；lint-fake v=[]；lint-reuse v=0 exempt=1（chat→T40）；state-quad 20/20 真重跑非 carried；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）；redirects=24 notes 归因。
+- shots auth 102/102 failures=[] **obs=1（#/capabilities?tab=channels；上代 0/0 后本代复现单条，如实不入判据）** distinct=25（上代 24，+1）envOnly=51；anon auxiliary=true 102/102 obs=0 distinct=23 envOnly=51；三键=SBrq-NLu/e7a12b56 全串/172175，servedEntryBefore==After=index-SBrq-NLu.js，ceAuthority=login-state 双腿。
+- 4f2f4e54 章 08fe4abe 不重做；R60 仅引用未动 ACC 判词节；web/src/9122/BFF/caddy/qa-verify 未动；零凭据明文；无 amend/force。
