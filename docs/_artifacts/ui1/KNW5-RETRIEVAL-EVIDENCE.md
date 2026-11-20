@@ -2870,3 +2870,64 @@ kn-doc-preview、kn-space-preview、kn-type 全族 86/86 通过。
 边界：只改 web/src/modules/knowledge/** 与本证据；显式路径 add；无 force/amend/
 --no-verify/git add -A；未并 main、未重建 9122；单 commit
 「feat(console): knowledge document copy in preview」。
+
+# KNW5 追加 R118：类型与筛选 URL 保参护栏（纯测试单）（2026-11-20 BJT）
+
+安全门：toplevel 相符、porcelain 空、显式 refspec fetch 后 merge 实测 tip 即预期 `9014f6ba`
+（Already up to date）。本单**零产品文件改动**（提交仅新增 knowledge.filters.test.tsx
+与本证据追加）。
+
+## 一、参数现状核实（grep 命中行）
+
+```text
+KnowledgeModulePage.tsx:3345  const query = sp.get("q") ?? "";
+  :3353-3354  sortCol = docSortCol(sp.get("ksort") ?? sp.get("sort")); sortDirRaw = sp.get("kdir") ?? sp.get("dir")
+  :3359       typeKey = sp.get("ktype") ?? sp.get("type") ?? ""      ← 旧键只读兜底
+  :3468-3476  写只写 ktype；清除时 next.delete("ktype") + next.delete("type") 双删
+  :2215-2222  分页复位 effect：[spaceId,nonce,sort,dir,filter,typeKey,kind,meta1] 变化 →
+              setMoreRows([]); setCursor(meta1?.nextCursor ?? null)（游标只在组件 state，URL 无 cursor 参数）
+  :2401-2402  kn-type-all / kn-type-<i> 真 button + aria-pressed；:2429 kn-type-empty 空态
+派工补正确认：?source= 在本模块无对应控件（source 只是空间行列标签），本单以
+ktype 新键 + type 旧键覆盖，未造参数。
+```
+
+## 二、五项护栏与读数
+
+```text
+① 深链回填：?ktype=表格 → 该桶 aria-pressed="true"、PDF 桶 "false"；旧键 ?type=PDF 同值
+   回填且 ktype 不被静默写入；?space=sp_x → 请求 URL 的 spaceId 与地址参数 toBe 逐字同；
+   ?q=人事 → kn8-global-input 与 kn6-search-input value 均逐字「人事」。
+② 改一不动余：ktype=表格 态下点 PDF 桶 → 只写 ktype=PDF、type 键不冒头，
+   q/ksort/kdir/space/tab/panel 逐字不动；先翻到末页（knE-page-end 在场）再切桶 →
+   end 标记消失、「显示更多」回可点、data-len 回第一页口径（1）——游标复位有行级+状态级
+   双证；URL 全程无 cursor 参数（断言 has("cursor")===false）。
+③ 复原：同 URL 二次 render → loc 逐字同、桶 pressed 同、data-len 同。
+④ 非法枚举：?ktype=__nope__ 与旧键 ?type=__nope__ 两路 → loc 与传入逐字等（不改写）、
+   kn-type-empty「该类型下没有文档…「__nope__」…」在场、kn-type-all/kn-type-clear/
+   kn3-docs 锚全在。
+⑤ 请求计数：ktype 三跳+本地名筛+排序双点后 fetchMock 计数与 urls() 逐字不变（+0）；
+   非法与合法枚举两轮 render 的增量读取 toEqual 逐字同；space= 切换（不重挂、查询态导航）
+   增量恰为 docsUrlFor(sp_y)×1，sp_x 读取与 SPACES 均 +0——如实：这不是零请求，是该空间
+   文档的既有读取。
+过程记录（均测试自身期望错，产品行为无改动）：初稿把「页码归 1」后行集期望成 d1+d3=2，
+实测复位同时弃第二页累加行（combined 退回 baseRows，len=1）——按产品语义（复位即回第一
+页行集）修正期望；初稿合法/非法对照误比累计计数，改为比每轮增量。
+```
+
+## 验证尾行（R118）
+```text
+$ npx vitest run src/modules/knowledge   → 5 files / 91 tests passed（基线 86 + 护栏 5）
+$ npx vitest run                         → 184 files / 2478 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning；本单曾有的
+  1 条 unused(DETAIL_Y) error 提交前已清零）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r118-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn3/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort/kn-gates/kn-doc-copy*/kn-space-preview
+全族在 91/91 与全仓 2478/2478 中通过。
+```
+未测如实：带登录会话真实数据屏（护栏用显式夹具，游标翻页走 mock 信封 nextCursor=c2 代证）；
+`ref=` 参数在场性只做「不动」侧断言未单独回填（本模块 ref 为锚点提示参数，无控件回填语义）。
+边界：只新增 web/src/modules/knowledge/knowledge.filters.test.tsx 与本证据；零产品改动；
+显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「test(console): knowledge filter url guards」。
