@@ -50,6 +50,7 @@ import {
   docSortDir,
   docSortLandDir,
   sortDocs,
+  spaceCopyText,
   spaceScopeNote,
   SPACES_UNWIRED_HEAD,
   SPACES_UNWIRED_HUMAN,
@@ -929,6 +930,23 @@ function SpacesSurface({
     onClearKeyword();
   };
 
+  // ---- R57 — 复制空间清单：文本只取当前屏上可见行（含「已加载 N 个空间」的口径行），此路不发任何请求。
+  // 与 knF/knG 同一手法：回执带内容签名，检索词或列表一变，旧的「已复制 N 行」立即作废。
+  const copyText = spaceCopyText(shown, loaded.length, text);
+  const [copyState, setCopyState] = useState<{ kind: "copied" | "failed"; sig: string } | null>(null);
+  const copyAct = copyState !== null && copyState.sig === copyText ? copyState.kind : "idle";
+  const copySpaces = () => {
+    if (shown.length === 0) return;
+    if (!navigator.clipboard?.writeText) {
+      setCopyState({ kind: "failed", sig: copyText });
+      return;
+    }
+    void navigator.clipboard.writeText(copyText).then(
+      () => setCopyState({ kind: "copied", sig: copyText }),
+      () => setCopyState({ kind: "failed", sig: copyText }),
+    );
+  };
+
   return (
     <>
       <form
@@ -1003,6 +1021,39 @@ function SpacesSurface({
         render={(value) => <SpaceTable rows={value.rows} spaceLink={spaceLink} needle={text} tabIndexFor={roving.tabIndexFor} />}
       />
       </div>
+      {surface.state.kind === "ready" ? (
+        <div className="knI-row" data-testid="knI-row">
+          <Button
+            size="sm"
+            outlined
+            className="knI-copy"
+            onClick={copySpaces}
+            disabled={shown.length === 0}
+            title={
+              shown.length === 0
+                ? "当前没有可复制的空间"
+                : "复制当前屏上的可见行：空间名 | 文档数 | 最近更新 | 短码。文本首行写明这份清单只覆盖已加载的空间，不冒充全库；屏上数据，不会再发请求。"
+            }
+            data-testid="knI-copy"
+          >
+            复制清单
+          </Button>
+          <span className="knw5-sub" data-testid="knI-lines">{shown.length} 行</span>
+          <span className="knI-status" data-testid="knI-copy-status" aria-live="polite">
+            {copyAct === "copied" ? `已复制 ${shown.length} 行` : copyAct === "failed" ? "复制失败，已展开可选文本，可手动复制" : ""}
+          </span>
+          {copyAct === "failed" ? (
+            <textarea
+              className="knI-fallback"
+              data-testid="knI-copy-fallback"
+              aria-label="手动复制空间清单文本"
+              readOnly
+              rows={Math.min(8, shown.length + 3)}
+              value={copyText}
+            />
+          ) : null}
+        </div>
+      ) : null}
     </>
   );
 }

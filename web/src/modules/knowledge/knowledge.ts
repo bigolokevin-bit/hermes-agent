@@ -1487,6 +1487,35 @@ export function docHitCopyText(rows: DocRow[]): string {
 }
 
 /* ------------------------------------------------------------------ *
+ * R57 — 空间清单「复制清单」的文本：同样是纯屏上数据。首行明写这份清单只
+ * 覆盖已加载的空间（读口 limit=20、没有分页游标），绝不冒充全库；有检索词时
+ * 第二行写明是筛后行。列值取屏上原样：文档数缺「—」（原因仍在屏上，不另编），
+ * 时间带屏上同款前缀（「最近同步：…」），短码用屏上人话（全 id 只在行的
+ * title 里，不进文本，裸 sp_ 不上屏）。
+ * ------------------------------------------------------------------ */
+
+/** 清单列头。 */
+export const SPACE_COPY_HEADER = ["空间名", "文档数", "最近更新", "短码"];
+
+export function spaceCopyText(rows: SpaceRow[], loadedTotal: number, keyword: string): string {
+  const trimmed = keyword.trim();
+  const lines = [
+    `当前已加载 ${loadedTotal} 个空间；本清单只覆盖这份回答，不冒充全库。`,
+    ...(trimmed === "" ? [] : [`以下为检索词「${trimmed}」筛后的可见行。`]),
+    SPACE_COPY_HEADER.join(" | "),
+    ...rows.map((row) =>
+      [
+        row.name,
+        row.docs,
+        row.at === "—" ? "—" : row.timeLabel ? `${row.timeLabel}：${row.at}` : row.at,
+        shortId(row.id) ?? "—",
+      ].join(" | "),
+    ),
+  ];
+  return `${lines.join("\n")}\n`;
+}
+
+/* ------------------------------------------------------------------ *
  * 文档列表本地排序：只排已经读到的行，点表头绝不再问服务。
  * ------------------------------------------------------------------ */
 

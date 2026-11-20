@@ -1574,3 +1574,47 @@ $ npx vite build --outDir /tmp/knw24-dist → exit 0（产物只落 /tmp）
 边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
 package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
 无 force / amend / `--no-verify`；单 commit「feat(console): knowledge search results copy」。
+
+# KNW5 追加 R57：空间列表的复制清单（testid `knI-*`）（2026-11-20 BJT）
+
+基线安全闸：toplevel 相符、porcelain 先为空、显式 refspec fetch；上游 tip 仍为交接所述
+`b797bc98`（generation 053da5c4），merge 结果 Already up to date——本笔只有 feature commit。
+
+## 一、口径（与 R55/knF、R56/knG 同一手法，作用于 `/knowledge` 的空间列表面）
+
+```text
+取数       零新请求：文本只由当前屏上可见行拼成。测试逐段实测 fetchMock 计数在复制、键入
+           筛选、提交 ?q=、0 命中守卫、fallback 各段前后一律不变（提交只进 URL：spaces 读口
+           不随关键词重发，R50 口径）。
+禁冒充全量 文本首行逐字：「当前已加载 N 个空间；本清单只覆盖这份回答，不冒充全库。」
+           检索词筛过时另起一行「以下为检索词「q」筛后的可见行。」——复制件自己带着口径，
+           离开这屏也能看清它不是全库清单（读口 limit=20、无分页游标）。
+文本       头行「空间名 | 文档数 | 最近更新 | 短码」+ 每可见行一条，顺序=屏上行顺序；
+           值与屏上逐字同源：文档数「12 篇」、缺「—」（原因仍在屏上，不另编）；
+           时间带屏上同款前缀（「最近同步：2026-11-19 14:20」「最近更新：…」，BJT 到分），
+           缺「—」；短码取人话尾段（SPHR/SPFIN），裸 sp_ 实测不进文本，
+           全 id 仍在行的 title（屏上口径不变）。
+状态       knI-copy-status 常驻挂载（aria-live=polite）：成功「已复制 N 行」（N=当次可见行）；
+           内容签名守卫——列表或检索词一变，旧的「已复制 N 行」立即作废。
+0 行       筛到 0 行与真空集都：按钮 disabled + title 逐字「当前没有可复制的空间」+ 守卫不写
+           剪贴板；读口未接入/失败/加载中不出复制条（没有列表可复制，不摆空控件）。
+失败       navigator.clipboard 拒绝与不可用两路（jsdom 实测）→「复制失败，已展开可选文本」
+           + knI-copy-fallback 只读 textarea（value 与文本逐字一致）；再点成功即收起。
+键盘       BUTTON[type=button] 真按钮，Tab 可达、Enter 原生触发；fallback 原生 textarea 可聚焦。
+```
+
+testid 新增 `knI-row` / `knI-copy` / `knI-lines` / `knI-copy-status` / `knI-copy-fallback`。
+kn3 / kn6 / kn7 / kn8 / kn9 / knB / knC / knD / knE / knF / knG / knw5 全套既有断言零改零破。
+复制条 flex-wrap、textarea 100% 盒宽，无固定宽；本轮未重建 9122，三宽度横溢未做浏览器复测。
+
+## 验证尾行（R57）
+```text
+$ npx vitest run src/modules/knowledge   → 2 files / 50 tests passed（含新增空间复制六段测试）
+$ npx vitest run                         → 138 files / 1673 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 set-state-in-effect warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw25-dist → exit 0（产物只落 /tmp）
+```
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
+无 force / amend / `--no-verify`；单 commit「feat(console): knowledge spaces list copy」。
