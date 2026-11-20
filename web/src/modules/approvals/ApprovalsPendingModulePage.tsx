@@ -478,7 +478,15 @@ export function ApprovalsPendingModulePage(): ReactNode {
         >
           重置筛选{filterState.active ? `（${filterState.count}）` : ""}
         </button>
-        <FilterSummary params={params} onRemove={removeFilterKeys} />
+        <FilterSummary
+          params={params}
+          onRemove={removeFilterKeys}
+          phase={list.phase}
+          disclosure={{
+            expanded: filtersOpen,
+            onToggle: () => setFiltersOpen((value) => !value),
+          }}
+        />
       </div>
       {/* 结果集动作（导出/排序/行内预览复制）不进面板：它们作用于当前读数，
           与筛选控件不同归属，收起时同样可用（工单第 5 条）。 */}
