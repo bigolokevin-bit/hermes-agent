@@ -3647,3 +3647,56 @@ kn-space-preview/kn3-page-cap/knE-page-*/kn-type 全族通过（含修复前的�
 类型/解构+注释/编号行/调用点）, knowledge.counts.parity.test.tsx（新增）} 与本证据；
 真缺陷修复属派工允许条款，其余零产品改动；显式路径 add；无 force/amend/--no-verify/
 git add -A；未并 main、未重建 9122；单 commit「test(console): knowledge counts parity guards」。
+
+# KNW5 追加 R172：知识排序同源护栏（纯测试单）（2026-11-20 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `d6dac47f`
+（Already up to date）。零产品文件改动（本轮无真缺陷：R169 已修的跨组重号未复现）。
+
+## 名实核对与「哪些面真有排序」
+
+```text
+· SortableHead（kn-sort-<col>，:1796/:1821）只挂空间详情面：DocTable 活动头 :2045-2048
+  与 DocHeadStrip 非 ready 禁用头 :1861-1864。检索命中面/全局文档面同为 SearchDocTable
+  （thead 固定列，测试实证 kn6-search-table 内 kn-sort 计数 0）——「四处同源」按实降级：
+  详情面锁三值行序逐行、命中面锁「行序==knG 复制行」+不受详情排序牵动，无排序控件
+  为事实缺口记录（未造控件）。
+· 「导出」族不存在：data-export="absent"（:1297/:1630/:2630/:3032）+ copyGates NO_EXPORT
+  → 行序同源第三值映射为列表复制器数据行（knF-copy/knG-copy，皆走 R71 docLine 单点）。
+· ?source= 非筛选参数；排序纯本地（口径句 :2693「文档读口实测不接受 sort/order/orderBy」）
+  ——②腿断言请求集合逐字不变而非「请求带排序参数」。
+```
+
+## 查重判定
+
+```text
+引用不重写：主测 kn-sort 段 :2194-2270 已锁三态 URL/aria-sort/等键稳定/缺值垫底两向/
+  粘链复现/复制首末行==表体/整循环零请求（R58/R67 与排序代次交付）；
+  派工②（ktype×q×ksort×kdir 组合下请求参集合恰 {limit,spaceId} 且零增量）——
+  knowledge.type.source.test.tsx ①（R164）已整腿锁 → 引用。
+新写（knowledge.sort.parity.test.tsx 2 例）：①三档（name asc/desc/清除 + size + updated）
+  每一步「行名序列 == knF 复制数据行第 1 列」逐行 toEqual（主测只锁首末行，全序列此前
+  零 pin）；④全程 kn3-page-cap 文案逐字不变（排序×「已加载 M」正交无 pin）+ 请求快照
+  逐字；②命中面无排序事实下的行序==knG 行逐行一致 + 详情排序动作不染命中面（独立派生
+  反证：详情首行已换「中册.xlsx」而 hit 序列原样）。
+```
+
+## 验证尾行（R172）
+```text
+$ npx vitest run src/modules/knowledge   → 17 files / 130 tests passed（基线 128 + 2）
+$ npx vitest run                         → 232 files：2756 passed + 4 failed
+  （仍全为已知上游 audit.filters×4，非本域记录不追）
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r172-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn-sort-*/kn-row-copy*/kn-doc-copy*/kn3*/导出标记（absent 在场）/kn3-page-cap/
+knE-page-*/kn6–kn9 全族通过。缺值行（d_n 全缺）在六步逐行对账中恒末、未上浮。
+请求口径：①六步循环 fetch 计数与 urls() 排序快照逐字不变；②详情排序两次点击命中面
+  零变化零新请求（②腿请求侧结论引 R164①）。
+```
+未测如实：带登录会话真实数据屏（排序为本地派生，夹具三行覆盖缺值/等键维度）；
+DocHeadStrip 禁用头排序按钮点击行为（禁用态 marker 已在 kn-gates 族锁）。
+边界：只新增 web/src/modules/knowledge/knowledge.sort.parity.test.tsx 与本证据；
+显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「test(console): knowledge sort parity guards」。
