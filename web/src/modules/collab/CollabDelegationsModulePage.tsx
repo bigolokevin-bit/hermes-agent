@@ -445,13 +445,13 @@ export function CollabDelegationsModulePage(): ReactNode {
           >
             重新读取
           </Button>
-          <div className="flex min-w-0 flex-wrap items-center gap-1" role="group" aria-label="写入口（未接通）">
+          <div className="flex min-w-0 flex-wrap items-center gap-1" role="group" aria-label="暂未开放的操作">
             <button
               type="button"
               disabled
               data-planned="true"
               aria-disabled="true"
-              title="写入口未接通：这一面只读，发起委托要在任务详情里指派受托员工"
+              title="此操作将在后续版本提供：这一面只读，发起委托可以在任务详情里指派受托员工"
               data-testid="col5-planned-create"
               className="h-8 rounded-md border border-border px-2 text-xs text-muted-foreground opacity-60"
             >
@@ -462,7 +462,7 @@ export function CollabDelegationsModulePage(): ReactNode {
               disabled
               data-planned="true"
               aria-disabled="true"
-              title="写入口未接通：撤销要在任务详情里完成，本页不代为操作"
+              title="此操作将在后续版本提供：撤销委托要在任务详情里完成，本页不代为操作"
               data-testid="col5-planned-revoke"
               className="h-8 rounded-md border border-border px-2 text-xs text-muted-foreground opacity-60"
             >
@@ -481,9 +481,19 @@ export function CollabDelegationsModulePage(): ReactNode {
       <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="col5-counts">
         {countsKnown
           ? `本页 ${rows.length} 条（最多按 ${PAGE_LIMIT} 条读取，不是全量统计）`
-          : "本页 — 条（暂时读不到委托数据，数字不作零处理）"}
-        {unreadable > 0 && countsKnown ? `；另有 ${unreadable} 条回的内容没有可读的委托编号，没有算在上面` : ""}
+          : "本页 — 条（暂时读不到委托数据，请稍后重试）"}
+        {unreadable > 0 && countsKnown ? `；另有 ${unreadable} 条这次没有返回有效的委托编号，没有算在上面` : ""}
       </p>
+      {countsKnown ? null : (
+        // 设计车道⑤：技术口径从主句撤下，收进「详情」折叠（样式参照 pages/SystemPage.tsx 的原生 details 先例）。
+        <details className="text-xs text-muted-foreground" data-testid="col5-counts-detail">
+          <summary className="cursor-pointer">详情</summary>
+          <p className="mt-1">
+            读取没有成功之前数字不作零处理：这里写「—」，不按 0 算。
+            {failure?.requestId ? `请求编号：${failure.requestId}` : ""}
+          </p>
+        </details>
+      )}
 
       <p
         className="min-w-0 break-words text-xs text-muted-foreground"

@@ -117,16 +117,21 @@ describe("MatrixModulePage (R7.1 item 2 — live endpoint, no fixture fallback)"
     expect(container.querySelector('[data-testid="mtx5-summary"]')).toBeNull();
   });
 
-  it("an anonymous 401 renders the login-required state with retry and exit", async () => {
+  it("设计车道 ①: an anonymous 401 falls back to the generic error state — no per-page expiry card", async () => {
     fetchJSON.mockRejectedValue(expired("req-401"));
     await renderPage();
     const text = container.textContent ?? "";
     expect(container.querySelector('[data-testid="mtx5-error"]')).not.toBeNull();
-    expect(text).toContain("需要登录");
+    // 「会话已过期」只由全站 SessionExpiredBanner 说一次：这张卡不再重复它，
+    // 也不带自己的重新登录出口。
+    expect(text).not.toContain("需要登录");
+    expect(text).not.toContain("登录状态已失效");
+    expect(text).toContain("这份矩阵没能读出来");
     expect(text).not.toContain("unauthenticated");
     expect(text).toContain("请求编号：req-401");
     expect(container.querySelector('[data-testid="mtx5-error-retry"]')).not.toBeNull();
-    expect(container.querySelector('[data-testid="auth-reload-exit"]')).not.toBeNull();
+    expect(text).toContain("重试");
+    expect(container.querySelector('[data-testid="auth-reload-exit"]')).toBeNull();
     expect(container.querySelector("[data-fixture='1']")).toBeNull();
   });
 

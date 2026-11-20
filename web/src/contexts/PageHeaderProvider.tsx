@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useLocation } from "react-router";
 import { PageHeaderContext } from "./page-header-context";
+import { SessionExpiredBanner } from "@/shell/SessionExpiredBanner";
 import { isConsoleShellPath, resolvePageTitle } from "@/lib/resolve-page-title";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n";
@@ -129,6 +130,11 @@ export function PageHeaderProvider({
             ) : null}
           </div>
         </header>
+
+        {/* Design lane ①: the one session-expiry notice for every page under this
+            header. It hangs here (not in App.tsx, whose route registry this lane
+            must not touch) so it sits above the content column on every surface. */}
+        <SessionExpiredBanner />
 
         <main
           className={cn(

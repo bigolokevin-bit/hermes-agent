@@ -206,12 +206,12 @@ function TaskDetailCard({
               disabled
               data-planned="true"
               aria-disabled="true"
-              title="状态迁移待写入车间接线后开放，这里不提供写入口。"
+              title="状态迁移将在后续版本开放，这里暂时不能操作。"
               data-testid="tsk4-detail-transition"
             >
               迁移
             </Button>
-            <span className="text-xs text-muted-foreground">状态迁移待写入车间接线后开放。</span>
+            <span className="text-xs text-muted-foreground">状态迁移将在后续版本开放。</span>
           </div>
         ) : null}
       </CardContent>
@@ -642,9 +642,19 @@ export function TasksBoardModulePage() {
           待处理 <b>{countsUnknown ? "—" : counts.open}</b> · 阻塞 <b>{countsUnknown ? "—" : counts.blocked}</b>
         </span>
         {countsUnreadable ? (
-          <span data-testid="tasks-summary-caveat" className="text-xs text-muted-foreground">
-            {board.phase === "denied" ? "暂时读不到任务数据（没有查看权限）" : "暂时读不到任务数据（接口不可达）"}，数字不作零处理
-          </span>
+          <>
+            <span data-testid="tasks-summary-caveat" className="text-xs text-muted-foreground">
+              {board.phase === "denied" ? "暂时读不到任务数据（没有查看权限）" : "暂时读不到任务数据，请稍后重试"}
+            </span>
+            {/* 设计车道⑤：技术口径从主句撤下，收进「详情」折叠（样式参照 pages/SystemPage.tsx 的原生 details 先例）。 */}
+            <details className="text-xs text-muted-foreground" data-testid="tasks-summary-caveat-detail">
+              <summary className="cursor-pointer">详情</summary>
+              <p className="mt-1">
+                {board.phase === "denied" ? "没有查看权限时数字不作零处理" : "接口不可达时数字不作零处理"}：读不到就是「—」，不按 0 算。
+                {board.requestId ? `请求编号：${board.requestId}` : ""}
+              </p>
+            </details>
+          </>
         ) : null}
         <span data-testid="next-action">下一步：处理阻塞任务</span>
         <span data-testid="owner">负责人：任务指派对象</span>
@@ -652,7 +662,7 @@ export function TasksBoardModulePage() {
       ) : null}
       {!panelActive ? (
       <p className="text-xs text-muted-foreground">
-        仅显示本页已加载的任务，不是全量统计；新建走任务服务真接口，状态迁移待写入车间接线后开放。
+        仅显示本页已加载的任务，不是全量统计；新建任务会真正提交，状态迁移将在后续版本开放。
       </p>
       ) : null}
 

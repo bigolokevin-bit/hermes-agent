@@ -173,7 +173,7 @@ describe("EmployeesPage", () => {
     expect(container.textContent).toContain("$1,234.50");
   });
 
-  it("R5-1: 401 不再静默挂死 — 「需要登录」人话 + 可复制请求编号 + 重试与重新登录出口", async () => {
+  it("R5-1 → 设计车道 ①: 401 不再自绘失效卡 — 回落通用错误 + 可复制请求编号 + 重试，登录失效只由全站横幅说一次", async () => {
     fetchJSON.mockImplementation((url: string) =>
       Promise.reject(
         new ApiError("unauthenticated", {
@@ -186,10 +186,14 @@ describe("EmployeesPage", () => {
     );
     await render();
     const text = container.textContent ?? "";
-    expect(text).toContain("需要登录");
+    // 页面不再重复说「登录失效」：那句话归 SessionExpiredBanner（shell/SessionExpiredBanner.tsx）。
+    expect(text).not.toContain("需要登录");
+    expect(text).not.toContain("登录状态已失效");
+    expect(container.querySelector('[data-testid="auth-reload-exit"]')).toBeNull();
+    // 通用错误呈现仍在：标题、请求编号、重试。
+    expect(text).toContain("无法加载数字员工列表");
     expect(text).toContain("req-401-77");
     expect(text).toContain("重试");
-    expect(container.querySelector('[data-testid="auth-reload-exit"]')).toBeTruthy();
     // 绝不能停在无限 loading 骨架
     expect(container.querySelector('[aria-busy="true"]')).toBeFalsy();
   });
