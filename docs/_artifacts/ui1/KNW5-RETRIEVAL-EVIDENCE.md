@@ -3813,3 +3813,55 @@ ksort 非法同 helper 同路径，读侧兜底代码共用，未重复铺例）
 边界：只新增 web/src/modules/knowledge/knowledge.sort.persist.test.tsx 与本证据；
 显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
 「test(console): knowledge sort persistence guards」。
+
+# KNW5 追加 R183：文档抽屉错误态护栏（纯测试单）（2026-11-20 BJT）
+
+安全门：porcelain 空起做（HEAD 即 R179 链）、显式 refspec fetch 后 merge 实测 tip
+即预期 `c1b6ca7d`（wave-38+39，知识面 delta 空）。零产品文件改动（无真缺陷）。
+
+## 查重判定
+
+```text
+已锁引用：主测 :263-298——抽屉 error 锚在场、error≠unwired 互斥、
+  「请求编号：rid-detail-busy/denied」上屏、403≡404 body 逐字同（同体=反枚举设计）、
+  抽屉内零 form/textarea/input、裸 id 不上屏、ready 态 field-source/status 值；
+  R125C/R149——打开 +1 详情读、关 0、跨文档各 1。
+真缺口（本文件 3 例）：①错误态下列表两行与 kn3-page-cap 不卸载 + 屏面禁裸
+  「404/500」数字与「undefined」+②空态锚（knN-empty-text-space-docs）不在场——
+  错误不冒充空结果；③重试的**计数与过渡**（主测只锁 retry 按钮在场）：恰 +1 且
+  新增仅 DETAIL_A、失败→成功错误锚消失 + field-source 落值 + 列表全程未卸载；
+  ④错误态并行内预览可用（名实不符记录，见下）。
+```
+
+## 名实记录（按实测，未迁就派工）
+
+```text
+· 「不存在/已过期」不可区分：产品无文档「已过期」语义（grep「过期」只命中空间凭据
+  lastError 文案），403≡404≡404-not-found 同走 unwired 句「文档详情未接入」——
+  如实记缺口，未造文案。
+· 第④腿：brief 写「kn-doc-copy 错误态 disabled + title」——实测该控件挂在**列表层
+  行内预览**（与详情读口无关），抽屉错误态下在场且 disabled=false、点击复制成功
+  「A 手册.pdf | PDF…」、零新请求；断言真实行为并记差异。「详情复制」控件不存在，
+  抽屉层唯一复制件=kn-doc-permalink 固定链接。
+· 预览/抽屉互斥（R67）实测复证：开 kn-doc-preview-toggle 会静默收起抽屉——④例把
+  抽屉面板断言安排在开预览之前（首跑放后面吃了 undefined 断言，属测试时序自纠）。
+```
+
+## 验证尾行（R183）
+```text
+$ npx vitest run src/modules/knowledge   → 19 files / 136 tests passed（基线 133 + 3）
+$ npx vitest run                         → 243 files / 2812 tests passed 全绿
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r183-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn3*/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-doc-copy*/kn-row-copy*/kn3-page-cap/
+knE-page-*/kn-type*/kn-sort-*/kn-space-preview/kn-doc-preview/导出标记（absent 在场）全族。
+请求口径：①②路 render 各按既有读取集；③重试整段增量恰 [DETAIL_A]×1（spaces/列表读
+零连带）；④复制全程 fetch 计数不动。
+```
+未测如实：带登录会话真实 404/403 屏（同体断言以 mock 信封代证，与主测 :280-289 同法）；
+rid 的剪贴板复制交互（RequestId 组件自带复制件由既有族锁，本文件只锁「请求编号：」上屏）。
+边界：只新增 web/src/modules/knowledge/knowledge.detail.error.test.tsx 与本证据；
+显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「test(console): knowledge detail error guards」。
