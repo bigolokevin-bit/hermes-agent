@@ -57,3 +57,35 @@
 
 /* 禁斑马纹：实测基线无任何 nth-child 条纹背景源，无需覆写规则；
  * 若未来出现，在此处以 transparent 覆盖。 */
+
+/* 审计账本：本仓 /audit 无 HTML table（账本行为 role=listitem 卡片流），
+ * 40/36 行高契约不适用；此处只把 dl 字段条间隙收上 4px 档
+ * （基线 gap-x-5 为 20px 非法档）、卡内 chip 间隙 6px 归 8px 档，
+ * 并给时间/RID 数字字段补 tabular-nums。列对齐在卡片流不适用。 */
+[data-tab="events"] dl {
+  column-gap: var(--space-4);
+  row-gap: var(--space-1);
+}
+
+[data-tab="events"] dd {
+  gap: var(--space-2);
+}
+
+[data-tab="events"] [data-testid="aud3-time"] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* UI-A 2026-11-21 续：/audit 事件表密度（卡片流形态）。
+ * 本仓 /audit 无 HTML table：账本行是 role="listitem" 卡片（views.tsx
+ * AuditEventRowCard），40/36 行高契约落为行壳 min-height；子级紧凑面
+ * （卡内 dl 明细流）已由上一笔的 space 档收编。时间/编号数字统一
+ * tabular-nums：audJ 同源三 surface（列表、详情、预览）共用
+ * [data-audj-value] 钩子，一次命中。375px：卡片 flex-wrap 自然折行、
+ * 无固定列宽，无需新横滚壳（audK-list 行不撑破，实测见探针）。 */
+[data-testid="audK-list"] > [role="listitem"] {
+  min-height: var(--table-row-h);
+}
+
+:is([data-audj-value], [data-testid$="-request-value"]) {
+  font-variant-numeric: tabular-nums;
+}

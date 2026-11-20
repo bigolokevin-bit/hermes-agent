@@ -1277,3 +1277,56 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 九腿全 exit=0；heads 9/9=={42180cd6:9} bad=[]：ia-html/react（react counts {51,22,1,8}）、fake v=[]、reuse v=0 exempt=1、quad 20/20、crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）、redirects=24 notes 归因。
 - shots auth 102/102 failures=[] obs=0 obsR=[] distinct=24 envOnly=51；anon auxiliary=true 102/102 **obs=1（#/work?tab=cron，上代 0，+1 与 ui-d 登录失效收敛后 cron 视图回弹方向一致，如实登记不入判据）distinct=23（上代 24，-1 如实）** envOnly=51。三键两 summary 全值（B1CF6bVN/ab3111fe…/171967，servedEntryBefore==After），ceAuthority=login-state。
 - R60 已 unsigned 结案（33c2b838）：本节仅账本引用，禁 PASS/已验收口径、未动 ACC 判词节。cdcffc02 章 77ca6458 已盖不重做；无 amend/force。环境：9122 v4_proxy 95667、caddy 8183 28034、BFF 8092 12048@603a23e9 皆未动；web/src 未碰、零凭据明文。
+
+## 一三五轮 · 波次代次九件重章 @ dcac5182（entry 90TH2F6t，2026-11-21 00:5x-01:0x）
+
+- 代次现查：LOCAL=ls-remote=dcac5182（ANCH=0，卡面 wave-50 两笔 ui-b 6ff1e58d P0-② 知识页重复块单源 / ui-qa 5447067b 基线评审）；entry 换代 assets/index-90TH2F6t.js 171967B sha256 411b1293…ae6e 盘==9122 served 逐字==卡面；CSS 未换代 D5E8gF20 137743；21/21 路由 200。
+- 九腿全 exit=0（/tmp/wave50-exits.txt），heads 9/9=={dcac5182:9} bad=[] 全 ok=true。读数 ia-html/react {51,22,1,8}（tabsAll=23）；lint-fake v=[]；lint-reuse v=0 exempt=1；state-quad 20/20；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）；redirects=24 notes 归因。
+- shots auth 102/102 failures=[] obs=0 distinct=24 envOnly=51（与上代持平）；anon auxiliary=true 102/102 **obs=2（#/work、#/work?tab=cron；上代 1，+1 与知识页单源化无关向，如实登记不入判据）distinct=24（上代 23，回正）envOnly=51**；三键两 summary 全值、servedEntryBefore==After=index-90TH2F6t.js、ceAuthority=login-state。
+- 42180cd6 章 c467fc92 已盖不重做；无 amend/force；R60 已 unsigned 结案（33c2b838），本轮仅账本引用，未写 PASS/已验收、未动 ACC 判词节。
+- 环境：9122 v4_proxy 95667、caddy 8183 28034、BFF 8092 pid 12048@603a23e9 均未动；web/src 未碰；零凭据明文。
+
+## 一三六轮 · 波次代次九件重章 @ 4148ce6a（entry Cc6Mpxjk / CSS Dy6bEprR 双换代，2026-11-21 01:0x）
+
+- 代次现查：LOCAL=ls-remote=4148ce6afd27（ANCH=0）、porc 0 脏；entry assets/index-Cc6Mpxjk.js 171948B sha256 9d179185…d954 == 卡面逐字 == 9122 served；CSS assets/index-Dy6bEprR.css 137665B sha fb9c8edb…21c9（本代双换代，wave-51 四笔 appr c177f769 R213 / gov d9f030cc R212 / ui1 6f38d91a R208 / ui-a bca1006d 令牌收编）。
+- 九腿全 exit=0（/tmp/wave51-exits.txt），served 拍前后同值未漂；heads 9/9=={4148ce6a:9} bad=[] 全 ok/exit=0。ia-html/react {51,22,1,8}；fake v=[]；reuse v=0 exempt=1；quad 20/20；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）；redirects=24 归因 notes。
+- shots auth 102/102 failures=[] obs=0 obsR=[] distinct=23（上代 24，-1 如实）envOnly=51；anon auxiliary=true 102/102 **obs=1（#/work 单条；上代 2 中 #/work?tab=cron 本代消失=好转，原值如实分开记）distinct=24 envOnly=50（-1）**。三键两 summary 全值、servedEntryBefore==After=index-Cc6Mpxjk.js、ceAuthority=login-state（两腿）。
+- 环境：9122 v4_proxy 95667 / caddy 8183 28034 / BFF 8092 12048@603a23e9 未动；web/src 未碰；零凭据明文。dcac5182 章 db490245 已盖不重做、无 amend/force。R60 已 unsigned 结案（qa-verify 33c2b838）——本节只做账本，禁写 PASS/禁动 ACC 判词节。
+
+## 一三七轮 · 波次代次九件重章 @ 916b943b（entry Cc6Mpxjk 未换代，2026-11-21 01:2x）
+
+- 代次现查：LOCAL=ls-remote=916b943b35b7 ANCH 同值、porc 0 脏；wave-52 三笔（appr 8249b2c8 R214 / aud aa47bc79 R212 / ui-b c4059dac employees typecheck 修复）纯测试/类型修复 ⇒ entry/CSS 未换代属正常，盘现算 sha/bytes 逐字==上代（9d179185…/171948、Dy6bEprR/137665）。
+- 九腿全 exit=0，heads 9/9=={916b943b:9} bad=[]：ia{51,22,1,8}（tabsAll 23）；fake v=[]；reuse v0 e1（chat→T40）；quad 20/20；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）；redirects=24 notes 归因。
+- shots auth 102/102 failures=[] obs=0 obsR=[] **distinct=24（上代 23，+1 回正）** envOnly=51；anon auxiliary=true 102/102 **obs=0（上代 1，-1 好转，原值与路由如实：本代空集）** distinct=24 envOnly=51；三键两 summary 全值、servedEntryBefore==After=index-Cc6Mpxjk.js、ceAuthority=login-state。
+- 环境：BFF 8092 12048@603a23e9 未动；9122 v4_proxy 95667、caddy 8183 28034 未动；web/src 未碰；零凭据明文。上代 4148ce6a 章 ea236451 已盖不重做、无 amend/force。R60 已 unsigned 结案（33c2b838），本轮只做账本。
+
+## 一三八轮 · 波次代次九件重章 @ 804ad319（entry BPuvjew0 / CSS CyxefIan 双换代，2026-11-21 01:3x-01:4x）
+
+- 代次现查：LOCAL=ls-remote=804ad319a2d9（ANCH=0）、porc 0 脏。wave-53 并入四笔：ui1 380154cb R209 / gov 2f008bbd R215 / ui-c2 5ef66ccf 员工详情首屏 / ui-qa f11f9181。entry 换代 assets/index-BPuvjew0.js 171948B sha256 1d3a4c4a…52be、CSS 换代 assets/index-CyxefIan.css 143210B sha 1e37d056…8006（UI-C2 详情样式生效，浅色面当代现测）；9122 served 同值。
+- 九腿全 exit=0（/tmp/wave53-exits.txt），heads 9/9=={804ad319:9} bad=[]：ia-html/react {51,22,1,8}（tabsAll=23）；lint-fake v=[]；lint-reuse v=0 exempt=1（chat→T40）；state-quad 20/20；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）；redirects=24 notes 归因。
+- shots auth 102/102 failures=[] obs=0 obsR=[] **distinct=23（上代 24，-1 与员工详情首屏并入方向一致如实）** envOnly=51；anon auxiliary=true 102/102 obs=0 distinct=24 envOnly=51；三键全值、servedEntryBefore==After=index-BPuvjew0.js、ceAuthority=login-state 两腿。
+- CSS 换代注：本代账本 entry 三键为 JS 侧；CSS 143210B/sha 1e37d056 现值登记于本节与 DONE 头注（账本 summary 键形未含 CSS，维持单文件 JSON 既有契约不改）。
+- 环境：9122 v4_proxy 95667 未动；caddy 8183 28034 未动；BFF 8092 pid 12048@603a23e9 未动；web/src 未碰；零凭据明文；916b943b 章 be33e3f4 已盖不重做、无 amend/force。R60 结案仅引用，未动 ACC 判词节。
+
+## 一三九轮 · 波次代次九件重章 @ 5f1b7428（entry Dq8WBeME / CSS jJCfJ6Ay 双换代，2026-11-21 01:5x）
+
+- 代次现查：LOCAL=ls-remote=5f1b7428ef4e（wave-54 六笔：appr 07df79aa R215 / aud 21dd1adb R213 / ui-c 06ce80f8 / ui-d 86ebeb89 / ui-qa ed70a3cf / ui-a 16a836ad table density on /system）。entry assets/index-Dq8WBeME.js 171948B sha256 af17209e…8cdf 逐字==卡面；CSS assets/index-jJCfJ6Ay.css 143307B sha a49ff980…78ab；9122 served 同值。
+- 九腿全 exit=0；heads 9/9=={5f1b7428:9} bad=[] 全 ok/exit=0：ia-html/react{51,22,1,8}、fake v=[]、reuse v0 e1(chat→T40)、quad 20/20、crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）、redirects=24 notes 归因。
+- shots auth 102/102 failures=[] obs=0 distinct=25（上代 23，+2 与 ui-a /system 表格密度并入方向一致如实）envOnly=51；anon aux=true 102/102 obs=0 distinct=23（-1）envOnly=51；served 拍前后同值未漂；ceAuthority=login-state 两腿。
+- 注：stamp_wave54 首跑崩于 L6 沿用上代 entry 硬码（BPuvjew0 残留——sed 位应以 stamp 现值为准，换代波 sed 后必 grep 旧 entry 残留复核，教训固化）；修复后即绿，非 state-quad 写不出（用户 01:5x 现读 bad=[state-quad] 时点早于本拍 stamp 完成，实际刷新成功 20/20，无沿用上代）。
+- 804ad319 章 cb790a3c 已盖不重做；无 amend/force；R60 结案仅引用；web/src/9122(v4_proxy 95667)/BFF(8092 pid 12048@603a23e9)/caddy 28034 未动；零凭据明文。
+
+## 一四〇轮 · 波次代次九件重章 @ d7c95f80（entry BtrO4nd2 / CSS 2b-7v4HE 双换代，2026-11-21 02:0x）
+
+- 代次：wave-55+56 五笔并入（remote d7c95f8083a6）。盘 entry BtrO4nd2 171948B sha=0053699f…f5d0 ==9122==卡面；CSS 2b-7v4HE 143493B sha=1fc18dc3…bee4（UI-A density 生效，浅色面本代现测）。
+- D 第 4 拍硬线处置：state-quad 走路径①真刷新成功（重跑 20/20 head=d7c95f80 exit=0，未沿用上代、无 carried 造假）；shots 双腿等当拍驱动完成（约 02:0x 九腿齐 exit=0），stamp 现测三键=本代 BtrO4nd2，未复用旧代 summary。lint-reuse exitCode 修 1→0（stamp 脚本 int(True) 笔误）。
+- 九件终检 heads 9/9=={d7c95f80:9} bad=[] 全 ok=true exit=0：ia{51,22,1,8}（tabsAll=23）；fake v=[]；reuse v0 e1（chat→T40）；quad 20/20；crawl DL0/CE0/PE0 routesCE=51/51（401 归因）；redirects=24 notes 归因。
+- shots auth 102/102 failures=[] **obs=1（#/capabilities?tab=channels 单条原值，上代 0，+1 如实不入判据）** distinct=23（上代 25，-2 与 UI-A density 收敛方向一致）envOnly=51；anon aux=true 102/102 obs=0 distinct=23 envOnly=51；served 拍前后=index-BtrO4nd2.js 同值未漂；ceAuthority=login-state 两腿。
+- 5f1b7428 章 a29ee78c 不重做；无 amend/force；web/src/9122/BFF/caddy/qa-verify 未动；零凭据明文。R60 已结案仅引用，禁写 PASS 口径沿用。
+
+## 一四一轮 · 波次代次九件重章 @ 024bb79e（entry C1qr4jdG / CSS 92pgMkdO 双换代，2026-11-21 02:15-02:2x）
+
+- 代次现查：LOCAL=ls-remote=024bb79eb0d7（wave-58 并入；4937d63e 系 wave-57 中间代次，按『一波一盖·中间代次不重章』纪律弃跑不盖——其驱动以 SIGTERM 终止，同 wave-41 先例，腿件数据全部作废未入账）。盘 entry assets/index-C1qr4jdG.js 171948B sha256=2cc9cc747aa1…a96dfb、CSS assets/index-92pgMkdO.css 143732B sha256=d2f20b5afdc…071ec6 均逐字==卡面；9122 served 同值；13/13 抽查路由 200。
+- 九腿全 exit=0（/tmp/wave58-exits.txt，served before/after=index-C1qr4jdG.js 同值未漂）；九件终检 heads 9/9=={024bb79e:9} bad=[] 全 ok=true exit=0。读数：ia-html/react {51,22,1,8}（tabsAll=23）；lint-fake v=[]；lint-reuse v=0 exempt=1（chat→T40）；state-quad 20/20（本代真重跑，非 carried）；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）；redirects=24 notes 归因。
+- shots 双腿本代现测 102/102 failures=[] **obs auth=0 / anon=0**（上两代 auth=1 未复现=好转，如实分开记）；三键 entry/sha/bytes 全值、servedEntryBefore==After、ceAuthority=login-state；anon auxiliary=true。D 02:21 时点读『shots-summary 缺 headHash/obs=1』系 stamp 前中间态，本节盖章后终盘 obs=0 键齐。
+- 环境：9122 v4_proxy 95667 未动；caddy 8183 28034；BFF 8092 12048@603a23e9；web/src 未碰；qa-verify 33c2b838 禁动（R60 结案仅引用）；零凭据明文；d7c95f80 章 e7ed46f7 不重做、无 amend/force。

@@ -81,7 +81,7 @@ export function RelativeTime({ iso, testid }: { iso: string | null | undefined; 
     );
   }
   return (
-    <span className="break-all" data-testid={testid} title={timeTitle(ms, iso ?? "")}>
+    <span className="ui-c-num" data-testid={testid} title={timeTitle(ms, iso ?? "")}>
       {now === null ? plain(MINUTE, new Date(ms)) : relativeBeijing(ms, now)}
     </span>
   );

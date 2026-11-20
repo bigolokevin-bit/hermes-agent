@@ -328,8 +328,10 @@
 }
 
 @media (max-width: 720px) {
+  /* 汇总卡窄屏两列：一张卡不再占满整屏高，滚动距离减半。 */
   .met6-grid {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
   }
 
   .met6-window {
@@ -424,16 +426,17 @@
 }
 
 .met6-table th {
-  padding: 8px 10px;
+  /* 行高/内边距由 styles/table-density.css 的 data-tab 规则统一给 40px 档 */
+  padding-inline: var(--space-3);
   text-align: left;
   white-space: nowrap;
-  font-weight: 550;
+  font-weight: var(--font-weight-medium);
   color: var(--color-muted-foreground);
   border-bottom: 1px solid var(--color-border);
 }
 
 .met6-table td {
-  padding: 8px 10px;
+  padding-inline: var(--space-3);
   vertical-align: top;
   border-bottom: 1px solid var(--color-border);
 }
@@ -455,8 +458,8 @@
 
 .met6-rowsub {
   display: block;
-  margin-top: 2px;
-  font-size: 11px;
+  margin-top: var(--space-1);
+  font-size: var(--font-size-1);
   color: var(--color-muted-foreground);
   overflow-wrap: anywhere;
   white-space: normal;
@@ -477,12 +480,12 @@
 }
 
 .met6-budget-pct.is-over {
-  color: #f4737a;
+  color: var(--color-danger);
   font-weight: 650;
 }
 
 .met6-budget-pct.is-warn {
-  color: #f2b155;
+  color: var(--color-warning);
   font-weight: 650;
 }
 
@@ -498,29 +501,29 @@
 }
 
 .met6-budget-badge.is-ok {
-  color: #36bc84;
-  background: color-mix(in srgb, #36bc84 14%, transparent);
-  border-color: color-mix(in srgb, #36bc84 40%, transparent);
+  color: var(--color-success);
+  background: color-mix(in srgb, var(--color-success) 14%, transparent);
+  border-color: color-mix(in srgb, var(--color-success) 40%, transparent);
 }
 
 .met6-budget-badge.is-warn {
-  color: #f2b155;
-  background: color-mix(in srgb, #f2b155 14%, transparent);
-  border-color: color-mix(in srgb, #f2b155 40%, transparent);
+  color: var(--color-warning);
+  background: color-mix(in srgb, var(--color-warning) 14%, transparent);
+  border-color: color-mix(in srgb, var(--color-warning) 40%, transparent);
 }
 
 .met6-budget-badge.is-over {
-  color: #f4737a;
-  background: color-mix(in srgb, #f4737a 14%, transparent);
-  border-color: color-mix(in srgb, #f4737a 40%, transparent);
+  color: var(--color-danger);
+  background: color-mix(in srgb, var(--color-danger) 14%, transparent);
+  border-color: color-mix(in srgb, var(--color-danger) 40%, transparent);
 }
 
 .met6-budget-variance.is-deficit {
-  color: #f4737a;
+  color: var(--color-danger);
 }
 
 .met6-budget-variance.is-surplus {
-  color: #36bc84;
+  color: var(--color-success);
 }
 
 /* MET7 — cost share by model */
@@ -729,6 +732,20 @@
   .metH-card-acts > * {
     min-width: 0;
   }
+
+  /* 两列档每张卡约 175px：数值降字号、允许折行，标签与金额不被挤断。 */
+  .met6-value {
+    font-size: 19px;
+  }
+
+  .met6-value-small {
+    font-size: 14px;
+  }
+
+  .met6-label,
+  .met6-value {
+    overflow-wrap: anywhere;
+  }
 }
 
 /* metI — exports say what they could not carry. */
@@ -757,16 +774,19 @@
   font-size: 13px;
 }
 .metK-table caption {
-  padding-bottom: 6px;
+  padding-bottom: var(--space-2);
   text-align: left;
   font-size: 12px;
   color: var(--color-muted-foreground);
 }
 .metK-table th,
 .metK-table td {
-  padding: 6px 10px;
+  padding-inline: var(--space-3);
   text-align: left;
   border-bottom: 1px solid var(--color-border);
+}
+#metK-table tbody > tr {
+  height: var(--table-row-h-compact);
 }
 .metK-table thead th {
   font-size: 12px;
@@ -828,9 +848,9 @@
   display: inline-block;
   margin-left: 6px;
   padding: 1px 6px;
-  border: 1px solid color-mix(in srgb, var(--color-warning, #d97706) 45%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 45%, transparent);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--color-warning, #d97706) 14%, transparent);
+  background: color-mix(in srgb, var(--color-warning) 14%, transparent);
   color: var(--color-warning-foreground, inherit);
   font-size: 11px;
   line-height: 1.5;
@@ -1052,6 +1072,11 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* 数字列表头跟格子里的数字同侧，不落在表体右对齐数值的左边。 */
+.met6-table th.met6-num {
+  text-align: right;
+}
+
 /* ---- metAK: manual refresh -------------------------------------------- */
 .metAK-bar {
   display: flex;
@@ -1227,4 +1252,25 @@
   background: var(--color-card);
   color: var(--color-foreground);
   overflow-wrap: anywhere;
+}
+
+/* UI-A table density 补完（2026-11-21）：数字列表头与已右对齐的 met6-num 单元格同向。
+   锚点全部来自既有 data-testid / thead 类名 / 固定列位，未触组件与 testid。 */
+[data-testid="metO-fmt-th-spend"],
+[data-testid="metO-fmt-th-count"],
+[data-testid="metO-fmt-th-pct"],
+[data-testid="met6-budget-table"] thead th:nth-child(2),
+[data-testid="met6-budget-table"] thead th:nth-child(3),
+[data-testid="met6-budget-table"] thead th:nth-child(4),
+[data-testid="met6-budget-table"] thead th:nth-child(5),
+[data-testid="met6-budget-table"] thead th:nth-child(6),
+[data-testid="met6-cmp-table"] thead th:nth-child(2),
+[data-testid="met6-cmp-table"] thead th:nth-child(3),
+[data-testid="met6-cmp-table"] thead th:nth-child(4),
+[data-testid="met6-cmp-table"] thead th:nth-child(5),
+thead.metAF-sticky-share th:nth-child(5),
+#metK-table thead th:nth-child(2),
+#metK-table tbody td:nth-child(2) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }

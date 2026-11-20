@@ -170,14 +170,14 @@ function UpstreamLine({ raw }: { raw?: string }): ReactNode {
   const [copied, setCopied] = useState<"idle" | "done" | "failed">("idle");
   if (!raw) return <Dashed reason="这条运行没有带上游编号" />;
   return (
-    <span className="flex min-w-0 flex-col items-start gap-0.5">
-      <span className="flex min-w-0 flex-wrap items-center gap-1.5" data-testid="run5-detail-upstream" title={raw}>
-        <span className="min-w-0 break-words">{runCode(raw)}</span>
+    <span className="flex min-w-0 flex-col items-start gap-1">
+      <span className="flex min-w-0 flex-wrap items-center gap-2" data-testid="run5-detail-upstream" title={raw}>
+        <span className="ui-c-id">{runCode(raw)}</span>
         <button
           type="button"
           aria-label="复制上游运行编号"
           title="复制完整编号（供运行时侧排查）"
-          className="inline-flex shrink-0 items-center text-xs text-muted-foreground underline underline-offset-2"
+          className="ui-c-field-actions inline-flex shrink-0 items-center underline underline-offset-2"
           onClick={() => {
             void copyTextToClipboard(raw).then((ok) => {
               setCopied(ok ? "done" : "failed");
@@ -217,6 +217,9 @@ function CostCell({ row, testId }: { row: RunRow; testId: string }): ReactNode {
   );
 }
 
+/** 时间与金额类字段：数字列一律走 tabular-nums，纵向扫读才对得齐。 */
+const NUM_KEYS = new Set(["started", "ended", "elapsed", "cost"]);
+
 /**
  * The inline preview of one list row. Every value is derived from the row the
  * list already read — opening it asks the service nothing. The toggle owns
@@ -237,48 +240,58 @@ function RunPreviewPanel({ row, names, index }: { row: RunRow; names: Map<string
   return (
     <div
       id={`run-row-preview-${index}`}
-      className="min-w-0 border-t border-border bg-muted/20 px-4 py-3"
+      className="ui-c-container min-w-0 border-t border-border bg-muted/20 px-4 py-3"
       data-testid={`run-row-preview-${index}`}
     >
-      <dl className="grid min-w-0 grid-cols-1 gap-x-4 gap-y-1.5 text-xs sm:grid-cols-2 lg:grid-cols-3">
+      <div className="ui-c-head ui-c-head--plain ui-c-head--start">
+        <div className="ui-c-head-text">
+          <h3 className="ui-c-head-title">运行预览</h3>
+          <p className="ui-c-head-sub">
+            预览只读：六项都取自这一行已读到的数据，打开或收起都不会再发一次请求。
+          </p>
+        </div>
+        <span className="ui-c-head-actions">
+          <Button
+            size="sm"
+            outlined
+            data-testid="run-row-copy"
+            aria-disabled={false}
+            title="复制这一行屏上已渲染的七个字段"
+            onClick={() => {
+              const text = runRowText(row, names);
+              setCopyBody(text);
+              copyTextToClipboard(text).then((ok) => setCopyState(ok ? "done" : "failed"));
+            }}
+          >
+            复制这一行
+          </Button>
+          <span
+            role="status"
+            aria-live="polite"
+            className="min-w-0 break-words text-xs text-muted-foreground"
+            data-testid="run-row-copy-status"
+          >
+            {copyState === "done"
+              ? "已复制"
+              : copyState === "failed"
+                ? "复制没成功：下面的文本可以自己选中复制"
+                : "复制的是这一行屏上已渲染的七个字段。"}
+          </span>
+        </span>
+      </div>
+      <dl className="ui-c-fields ui-c-fields--compact">
         {fields.map(({ key, label, field }) => (
-          <div key={key} className="min-w-0" data-testid={`run-row-preview-${index}-${key}`} title={field.title}>
-            <dt className="text-muted-foreground">{label}</dt>
-            <dd className="m-0 min-w-0 break-words">{field.text}</dd>
+          <div
+            key={key}
+            className="ui-c-field"
+            data-testid={`run-row-preview-${index}-${key}`}
+            title={field.title}
+          >
+            <dt className="ui-c-field-label">{label}</dt>
+            <dd className={`ui-c-field-value${NUM_KEYS.has(key) ? " ui-c-num" : ""}`}>{field.text}</dd>
           </div>
         ))}
       </dl>
-      <p className="mt-2 min-w-0 break-words text-[11px] leading-tight text-muted-foreground">
-        预览只读：六项都取自这一行已读到的数据，打开或收起都不会再发一次请求。
-      </p>
-      <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
-        <Button
-          size="sm"
-          outlined
-          data-testid="run-row-copy"
-          aria-disabled={false}
-          title="复制这一行屏上已渲染的七个字段"
-          onClick={() => {
-            const text = runRowText(row, names);
-            setCopyBody(text);
-            copyTextToClipboard(text).then((ok) => setCopyState(ok ? "done" : "failed"));
-          }}
-        >
-          复制这一行
-        </Button>
-        <span
-          role="status"
-          aria-live="polite"
-          className="min-w-0 break-words text-xs text-muted-foreground"
-          data-testid="run-row-copy-status"
-        >
-          {copyState === "done"
-            ? "已复制"
-            : copyState === "failed"
-              ? "复制没成功：下面的文本可以自己选中复制"
-              : "复制的是这一行屏上已渲染的七个字段。"}
-        </span>
-      </div>
       {copyState === "failed" ? (
         <div className="mt-2 min-w-0" data-testid="run-row-copy-fallback">
           <textarea
@@ -654,9 +667,9 @@ function ListRows({
                 <span className="min-w-0 self-center break-words" data-testid={`${base}-reason`} title={reason.reason || undefined}>
                   {reason.text}
                 </span>
-                <div className="flex min-w-0 flex-col items-end gap-1 self-center">
+                <div className="col-span-2 flex min-w-0 flex-col items-stretch gap-1 self-center sm:col-span-1 sm:items-end">
                   <Link
-                    className="rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground no-underline hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                    className="flex min-h-[44px] w-full items-center justify-center rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground no-underline hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 sm:w-auto"
                     to={hrefOf(row.runId)}
                     state={{ fromList: true }}
                     data-testid={`${base}-open`}
@@ -667,7 +680,7 @@ function ListRows({
                   </Link>
                   <button
                     type="button"
-                    className="rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                    className="flex min-h-[44px] w-full items-center justify-center rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 sm:w-auto"
                     data-testid={`run-row-toggle-${index}`}
                     aria-expanded={open}
                     aria-controls={`run-row-preview-${index}`}
@@ -705,8 +718,8 @@ function Timeline({
 }): ReactNode {
   const { events, hasMore, eventsFailure } = outcome;
   return (
-    <div className="min-w-0 space-y-2">
-      <h3 className="text-sm font-semibold">事件时间线</h3>
+    <div className="ui-c-section">
+      <h3 className="ui-c-section-title">事件时间线</h3>
       {eventsFailure ? (
         <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs">
           <span className="min-w-0 break-words text-muted-foreground">
@@ -733,10 +746,10 @@ function Timeline({
             return (
               <li
                 key={ev.seq}
-                className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5 border-b border-border pb-2 text-sm last:border-0"
+                className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 border-b border-border pb-2 text-sm last:border-0"
                 data-testid={`run5-event-${ev.seq}`}
               >
-                <span className="shrink-0 text-xs text-muted-foreground">#{ev.seq}</span>
+                <span className="ui-c-num shrink-0 text-xs text-muted-foreground">#{ev.seq}</span>
                 <span
                   className="min-w-0 flex-1 break-words"
                   title={ev.eventType ?? undefined}
@@ -763,7 +776,7 @@ function Timeline({
                   ref && href ? (
                     /* the raw handle stays in the title; the line shows a short code */
                     <a
-                      className="min-w-0 break-words text-xs text-muted-foreground underline"
+                      className="ui-c-id text-muted-foreground underline"
                       href={href}
                       data-tool-event={ev.eventType}
                       data-testid={`run5-result-ref-${ev.seq}`}
@@ -774,7 +787,7 @@ function Timeline({
                     </a>
                   ) : (
                     <span
-                      className="min-w-0 break-words text-xs text-muted-foreground"
+                      className="ui-c-id text-muted-foreground"
                       data-tool-event={ev.eventType}
                       data-testid={`run5-result-ref-${ev.seq}`}
                       data-result-ref={ref ? "present" : "absent"}
@@ -792,9 +805,9 @@ function Timeline({
                     </span>
                   )
                 ) : null}
-                <span className="shrink-0 text-xs text-muted-foreground" title={ev.occurredAt ?? undefined}>
-                  <span className="shrink-0 text-xs text-muted-foreground" data-testid={"run5-status-" + ev.seq} title={st.reason || undefined}>{st.text}</span>
-                  <span className="shrink-0 text-xs text-muted-foreground" data-testid={"run5-duration-" + ev.seq} title={dur.reason || undefined}>{dur.text ?? "—"}</span>
+                <span className="ui-c-num flex min-w-0 shrink-0 flex-wrap items-baseline gap-x-2 text-xs text-muted-foreground" title={ev.occurredAt ?? undefined}>
+                  <span className="ui-c-num shrink-0 text-xs text-muted-foreground" data-testid={"run5-status-" + ev.seq} title={st.reason || undefined}>{st.text}</span>
+                  <span className="ui-c-num shrink-0 text-xs text-muted-foreground" data-testid={"run5-duration-" + ev.seq} title={dur.reason || undefined}>{dur.text ?? "—"}</span>
                   {at.text ?? <Dashed reason={at.reason} />}
                 </span>
               </li>
@@ -815,11 +828,19 @@ function Timeline({
 // the page. The entry therefore renders DISABLED with the measured reason in
 // its title: no click, no optimistic success, no reusing the old id.
 
-function DetailField({ label, children }: { label: string; children: ReactNode }): ReactNode {
+function DetailField({
+  label,
+  children,
+  num,
+}: {
+  label: string;
+  children: ReactNode;
+  num?: boolean;
+}): ReactNode {
   return (
-    <div className="min-w-0">
-      <span className="block text-[11px] tracking-wide text-muted-foreground">{label}</span>
-      <span className="min-w-0 break-words">{children}</span>
+    <div className="ui-c-field">
+      <span className="ui-c-field-label">{label}</span>
+      <span className={`ui-c-field-value${num ? " ui-c-num" : ""}`}>{children}</span>
     </div>
   );
 }
@@ -1186,7 +1207,6 @@ export function RunsModulePage() {
       <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="run-refresh-bar">
         <Button
           size="sm"
-          outlined
           onClick={refreshState.refresh}
           aria-busy={refreshState.busy}
           disabled={isForced}
@@ -1261,8 +1281,8 @@ export function RunsModulePage() {
                   aria-pressed={option.key === sinceKey}
                   className={
                     option.key === sinceKey
-                      ? "rounded-md border border-border bg-muted px-2.5 py-1 text-xs font-medium"
-                      : "rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground"
+                      ? "shrink-0 whitespace-nowrap rounded-md border border-border bg-muted px-2.5 py-1 text-xs font-medium"
+                      : "shrink-0 whitespace-nowrap rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground"
                   }
                   onClick={() => {
                     refreshState.cancel();
@@ -1295,6 +1315,7 @@ export function RunsModulePage() {
           <Button
             size="sm"
             outlined
+            className="shrink-0 whitespace-nowrap"
             onClick={reloadList}
             disabled={phase === "loading" || isForced}
             title={forcedTitle ?? "重新向服务要一次运行记录"}
@@ -1306,6 +1327,7 @@ export function RunsModulePage() {
           <Button
             size="sm"
             outlined
+            className="shrink-0 whitespace-nowrap"
             onClick={resetFilters}
             disabled={filterReset.removed.length === 0}
             data-testid="run-reset-filters"
@@ -1426,41 +1448,43 @@ export function RunsModulePage() {
 
       {detail.k === "ready" ? (
         <Card className="min-w-0 border-border bg-card" data-testid="run5-detail">
-          <CardContent className="min-w-0 space-y-4 p-4">
-            <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
-              <div className="min-w-0">
-                <h2 className="min-w-0 break-words text-base font-semibold" title={detail.run.runId}>
+          <CardContent className="ui-c-container min-w-0 space-y-4 p-4">
+            <div className="ui-c-head ui-c-head--plain ui-c-head--start">
+              <div className="ui-c-head-text">
+                <h2 className="ui-c-head-title ui-c-head-title--lead" title={detail.run.runId}>
                   {runCode(detail.run.runId)}
                 </h2>
-                <p className="mt-0.5 min-w-0 break-words text-xs text-muted-foreground" data-testid="run5-detail-summary">
+                <p className="ui-c-head-sub" data-testid="run5-detail-summary">
                   {`${detailView?.status.text ?? "—"} · 开始 ${detailView?.started.text ?? "—"} · 耗时 ${detailView?.elapsed.text ?? "—"}`}
                 </p>
               </div>
-              <Button size="sm" outlined onClick={closeRun} prefix={<X className="h-3.5 w-3.5" />} data-testid="run5-detail-close">
-                关闭
-              </Button>
+              <span className="ui-c-head-actions">
+                <Button size="sm" outlined onClick={closeRun} prefix={<X className="h-3.5 w-3.5" />} data-testid="run5-detail-close">
+                  关闭
+                </Button>
+              </span>
             </div>
 
-            <div className="grid min-w-0 gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
+            <dl className="ui-c-fields ui-c-fields--compact">
               <DetailField label="状态">
                 <span title={detailView?.status.title}>
                   <Badge tone={statusTone(detail.run.status)} data-testid="run5-detail-status">{detailView?.status.text ?? "—"}</Badge>
                 </span>
               </DetailField>
-              <DetailField label="成本">
+              <DetailField label="成本" num>
                 <CostCell row={detail.run} testId="run5-detail-cost" />
               </DetailField>
-              <DetailField label="预算上限">
+              <DetailField label="预算上限" num>
                 {detail.run.budgetCapUsd === null || detail.run.budgetCapUsd === undefined ? (
                   <Dashed reason="服务没有给出预算上限" />
                 ) : (
                   usd(detail.run.budgetCapUsd)
                 )}
               </DetailField>
-              <DetailField label="第几次尝试">
+              <DetailField label="第几次尝试" num>
                 {detail.run.attemptNo === undefined ? <Dashed reason="服务没有给出尝试次数" /> : `第 ${detail.run.attemptNo} 次`}
               </DetailField>
-              <DetailField label="结束">
+              <DetailField label="结束" num>
                 <span data-testid="run5-detail-ended" title={detailView?.ended.title}>
                   {detailView?.ended.text ?? "—"}
                 </span>
@@ -1478,21 +1502,21 @@ export function RunsModulePage() {
                   {detailView?.employee.text ?? "—"}
                 </span>
               </DetailField>
-              <DetailField label="事件">
+              <DetailField label="事件" num>
                 {detail.eventsFailure
                   ? "这次没有读到"
                   : `${detail.events.length} 条${detail.hasMore ? "（服务说还有更多）" : ""}`}
               </DetailField>
-              <div className="min-w-0 sm:col-span-2">
+              <div className="ui-c-field--span">
                 <DetailField label="上游运行">
                   <UpstreamLine raw={detail.run.upstreamRunId} />
                 </DetailField>
               </div>
-            </div>
+            </dl>
 
             <Timeline outcome={detail} onRetryEvents={reloadDetail} />
 
-            <div className="min-w-0 space-y-2 border-t border-border pt-3">
+            <div className="ui-c-section">
               <button
                 type="button"
                 disabled
@@ -1500,7 +1524,7 @@ export function RunsModulePage() {
                 data-testid="run5-retry-new"
                 data-planned="true"
                 data-endpoint-http="405"
-                className="min-w-0 cursor-not-allowed rounded-md border border-border px-2.5 py-1 text-left text-xs text-muted-foreground opacity-60"
+                className="min-w-0 cursor-not-allowed rounded-[var(--radius-1)] border border-border px-3 py-1 text-left text-xs text-muted-foreground opacity-60"
                 title="这个环境的控制台只读：实测写请求一律被拒（POST /api/run-retry → HTTP 405 console.read_only），读路径上也没有这条路由（GET → 404 console.unknown_route）。所以这里只说明语义，点它不会发起任何请求。"
               >
                 重试 · 新建一次运行（当前环境只读，不能在这里修改）

@@ -14,7 +14,7 @@
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 24,
+  "distinctMainHeads": 25,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -141,7 +141,7 @@
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "1440",
-      "chars": 10,
+      "chars": 113,
       "hasMainEl": true
     },
     {
@@ -213,7 +213,7 @@
     {
       "route": "#/employees/:employeeId?zone=config",
       "viewport": "1440",
-      "chars": 42,
+      "chars": 146,
       "hasMainEl": true
     },
     {
@@ -225,7 +225,7 @@
     {
       "route": "#/employees/:employeeId?zone=evidence",
       "viewport": "1440",
-      "chars": 42,
+      "chars": 66,
       "hasMainEl": true
     },
     {
@@ -489,7 +489,7 @@
     {
       "route": "#/sessions",
       "viewport": "1440",
-      "chars": 1,
+      "chars": 10,
       "hasMainEl": true
     },
     {
@@ -642,11 +642,11 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "42180cd6",
+  "headHash": "024bb79e",
   "exitCode": 0,
-  "entry": "assets/index-B1CF6bVN.js",
-  "entrySha256": "ab3111fe47a5b8f464735604e4eae636841d3d103c29a8e15f1ad0de65a6c551",
-  "entryBytes": 171967,
-  "servedEntryBefore": "index-B1CF6bVN.js",
-  "servedEntryAfter": "index-B1CF6bVN.js"
+  "entry": "assets/index-C1qr4jdG.js",
+  "entrySha256": "2cc9cc747aa19687183b7009de7a2dbaa2c6f5189b4c92cf8d327bca49a96dfb",
+  "entryBytes": 171948,
+  "servedEntryBefore": "index-C1qr4jdG.js",
+  "servedEntryAfter": "index-C1qr4jdG.js"
 }
