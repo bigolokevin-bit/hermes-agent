@@ -667,9 +667,9 @@ function ListRows({
                 <span className="min-w-0 self-center break-words" data-testid={`${base}-reason`} title={reason.reason || undefined}>
                   {reason.text}
                 </span>
-                <div className="flex min-w-0 flex-col items-end gap-1 self-center">
+                <div className="col-span-2 flex min-w-0 flex-col items-stretch gap-1 self-center sm:col-span-1 sm:items-end">
                   <Link
-                    className="rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground no-underline hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                    className="flex min-h-[44px] w-full items-center justify-center rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground no-underline hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 sm:w-auto"
                     to={hrefOf(row.runId)}
                     state={{ fromList: true }}
                     data-testid={`${base}-open`}
@@ -680,7 +680,7 @@ function ListRows({
                   </Link>
                   <button
                     type="button"
-                    className="rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                    className="flex min-h-[44px] w-full items-center justify-center rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 sm:w-auto"
                     data-testid={`run-row-toggle-${index}`}
                     aria-expanded={open}
                     aria-controls={`run-row-preview-${index}`}
@@ -1207,7 +1207,6 @@ export function RunsModulePage() {
       <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="run-refresh-bar">
         <Button
           size="sm"
-          outlined
           onClick={refreshState.refresh}
           aria-busy={refreshState.busy}
           disabled={isForced}
@@ -1282,8 +1281,8 @@ export function RunsModulePage() {
                   aria-pressed={option.key === sinceKey}
                   className={
                     option.key === sinceKey
-                      ? "rounded-md border border-border bg-muted px-2.5 py-1 text-xs font-medium"
-                      : "rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground"
+                      ? "shrink-0 whitespace-nowrap rounded-md border border-border bg-muted px-2.5 py-1 text-xs font-medium"
+                      : "shrink-0 whitespace-nowrap rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground"
                   }
                   onClick={() => {
                     refreshState.cancel();
@@ -1316,6 +1315,7 @@ export function RunsModulePage() {
           <Button
             size="sm"
             outlined
+            className="shrink-0 whitespace-nowrap"
             onClick={reloadList}
             disabled={phase === "loading" || isForced}
             title={forcedTitle ?? "重新向服务要一次运行记录"}
@@ -1327,6 +1327,7 @@ export function RunsModulePage() {
           <Button
             size="sm"
             outlined
+            className="shrink-0 whitespace-nowrap"
             onClick={resetFilters}
             disabled={filterReset.removed.length === 0}
             data-testid="run-reset-filters"

@@ -41,6 +41,7 @@ export function PermalinkCopy({ target }: { target: string | null }) {
       <Button
         size="sm"
         outlined
+        className="shrink-0 whitespace-nowrap"
         data-testid="apd10-permalink"
         disabled={link === null}
         title={
