@@ -115,6 +115,7 @@ import {
   ignoredParamsNote,
 } from './metrics';
 import { COST_CALIBER_TEXT, costCaliberTitle } from './costCaliberNote';
+import { asOfCell } from './asof';
 import './metrics.css';
 
 type PageState =
@@ -3475,7 +3476,9 @@ export function MetricsModulePage() {
                     <span role="columnheader">最近采集</span>
                     <span role="columnheader">状态</span>
                   </div>
-                  {sourceList.map((row) => (
+                  {sourceList.map((row) => {
+                    const asof = asOfCell(row.asOf, row.asOfSource);
+                    return (
                     <div className="metB-row" role="row" data-testid={`metB-source-row-${row.key}`} key={row.key}>
                       <span className="metB-name" role="cell">
                         {row.label}
@@ -3486,21 +3489,15 @@ export function MetricsModulePage() {
                       <span role="cell" className="metB-asofcell">
                         <span
                           data-testid={`metB-source-asof-${row.key}`}
-                          title={
-                            row.asOf
-                              ? row.asOfSource
-                                ? `采集时刻来自 ${row.asOfSource}`
-                                : '上游返回的采集时刻'
-                              : '上游未返回采集时刻'
-                          }
+                          title={asof.title}
                         >
-                          {row.asOf ? formatBeijing(row.asOf) : '—'}
+                          {asof.text}
                         </span>
                         {sourceStaleness(row).stale ? (
                           <span
                             className="metM-stale"
                             data-testid={`metM-stale-${row.key}`}
-                            title={`采集时刻 ${formatBeijing(row.asOf)} · 读取时刻 ${formatBeijing(row.fetchedAt)} · 判据：读取时刻比采集时刻晚超过 ${Math.round(
+                            title={`采集时刻 ${asOfCell(row.asOf).text} · 读取时刻 ${formatBeijing(row.fetchedAt)} · 判据：读取时刻比采集时刻晚超过 ${Math.round(
                               SOURCE_STALE_MS / 60_000,
                             )} 分钟就提示「数据可能滞后」。读取时刻是这次读取完成的时刻，不是数据时刻；缺失采集时刻的读口不判滞后。`}
                           >
@@ -3538,7 +3535,8 @@ export function MetricsModulePage() {
                         ) : null}
                       </span>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 <p className="met5-note">
                   时间只取上游返回的采集时刻；上游没给就是「—」，不拿本机时间顶替。降级项写明原因，不猜。

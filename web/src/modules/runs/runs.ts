@@ -38,6 +38,8 @@
 import { ApiError } from "@/lib/api-error";
 import { fetchJSON } from "@/lib/api";
 
+import { readAsOf } from "../metrics/asof";
+
 /**
  * The gap this page belongs to. GAP-01…GAP-08 are already carried by other
  * panes in `web/src/**` and `docs/_artifacts/**` (checked before claiming),
@@ -113,6 +115,10 @@ export interface ListState {
   phase: Phase;
   rows: RunRow[];
   cursor: string | null;
+  /** Top-level collection instant the answer carried, if any (ISO, UTC). */
+  asOf: string | null;
+  /** Who produced that instant; title only, never visible text. */
+  asOfSource: string | null;
   /** The route whose answer produced this state; null = nothing answered. */
   answeredBy: string | null;
   /** Rows dropped because the answer carried no readable run id. */
@@ -196,7 +202,14 @@ export function errorInfo(err: unknown): ErrorInfo {
 
 /** What one route answered, folded into a ListState. */
 type RouteAnswer =
-  | { k: "list"; items: unknown[]; cursor: string | null; answeredBy: string }
+  | {
+      k: "list";
+      items: unknown[];
+      cursor: string | null;
+      answeredBy: string;
+      asOf: string | null;
+      asOfSource: string | null;
+    }
   | { k: "absent"; error: ErrorInfo }
   | { k: "failed"; error: ErrorInfo };
 
@@ -228,7 +241,15 @@ async function askListRoute(path: string, q: ListQuery): Promise<RouteAnswer> {
     return { k: "failed", error: info };
   }
   if (rec(body) && Array.isArray(body.items)) {
-    return { k: "list", items: body.items, cursor: str(body.nextCursor) ?? null, answeredBy: path };
+    const stamp = readAsOf(body);
+    return {
+      k: "list",
+      items: body.items,
+      cursor: str(body.nextCursor) ?? null,
+      answeredBy: path,
+      asOf: stamp.asOf,
+      asOfSource: stamp.source,
+    };
   }
   // A 2xx that is not a list shape says so; it never paints invented rows.
   return {
@@ -257,6 +278,8 @@ export async function loadRuns(q: ListQuery): Promise<ListState> {
         phase: rows.length ? "ready" : "empty",
         rows,
         cursor: answer.cursor,
+        asOf: answer.asOf,
+        asOfSource: answer.asOfSource,
         answeredBy: answer.answeredBy,
         unreadable,
         failure: null,
@@ -267,6 +290,8 @@ export async function loadRuns(q: ListQuery): Promise<ListState> {
         phase: answer.error.status === 403 ? "denied" : "error",
         rows: [],
         cursor: null,
+        asOf: null,
+        asOfSource: null,
         answeredBy: null,
         unreadable: 0,
         failure: {
@@ -285,6 +310,8 @@ export async function loadRuns(q: ListQuery): Promise<ListState> {
     phase: "denied",
     rows: [],
     cursor: null,
+    asOf: null,
+    asOfSource: null,
     answeredBy: null,
     unreadable: 0,
     failure: {

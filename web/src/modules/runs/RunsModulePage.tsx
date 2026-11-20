@@ -107,6 +107,7 @@ import {
   eventStatus,
   eventElapsed,
 } from "./runs";
+import { asOfCell } from "../metrics/asof";
 import { forcedStateOf, useRunsData } from "./useRunsData";
 import { useRunDetail, type DetailOutcome } from "./useRunDetail";
 import { COST_CALIBER_TEXT, costCaliberTitle } from "../metrics/costCaliberNote";
@@ -974,7 +975,9 @@ export function RunsModulePage() {
     setParams(filterReset.next, { replace: true, state: locationState ?? null });
   };
   const data = useRunsData(forced, { status, sinceKey, employeeId: employee });
-  const { phase, rows, cursor, answeredBy, unreadable, failure, forced: isForced } = data;
+  const { phase, rows, cursor, asOf, asOfSource, answeredBy, unreadable, failure, forced: isForced } =
+    data;
+  const asof = asOfCell(asOf, asOfSource);
 
   // Sorting is local: the list route accepts no sort parameter (see runs.ts
   // askListRoute), so this only reorders the rows already on screen.
@@ -1298,6 +1301,14 @@ export function RunsModulePage() {
         {unreadable > 0 && countsKnown
           ? `；另有 ${unreadable} 条回的内容没有可读的运行编号，没有算在上面`
           : ""}
+      </p>
+
+      <p
+        className="min-w-0 break-words text-xs text-muted-foreground"
+        data-testid="run-asof-line"
+      >
+        采集时刻 <span data-testid="run-asof" title={asof.title}>{asof.text}</span>
+        （上游给了才显示；没给就是「—」，不拿本机时间顶替）
       </p>
 
       {detail.k === "loading" ? (

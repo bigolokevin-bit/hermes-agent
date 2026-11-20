@@ -1296,10 +1296,10 @@ describe('metB — source freshness', () => {
     expect(document.querySelector('[data-testid="metB-source-table"]')).toBeTruthy();
     // 20:12Z is 04:12 the next day in Beijing.
     expect(metBCell('run-stats')?.textContent).toBe('2026-11-20 04:12');
-    expect(metBCell('run-stats')?.getAttribute('title')).toBe('采集时刻来自 bff');
+    expect(metBCell('run-stats')?.getAttribute('title')).toBe('采集时刻 2026-11-19T20:12:00.000Z（UTC） · 来源 bff');
     // run-activity returns no asOf: must stay blank, never the local clock.
     expect(metBCell('run-activity')?.textContent).toBe('—');
-    expect(metBCell('run-activity')?.getAttribute('title')).toBe('上游未返回采集时刻');
+    expect(metBCell('run-activity')?.getAttribute('title')).toBe('上游未返回采集时刻；不用本机时间顶替。');
     expect(document.querySelector('[data-testid="metB-source-state-run-stats"]')?.textContent).toBe('正常');
   });
 
@@ -1308,7 +1308,7 @@ describe('metB — source freshness', () => {
     await openSources();
 
     expect(metBCell('run-stats')?.textContent).toBe('—');
-    expect(metBCell('run-stats')?.getAttribute('title')).toBe('上游未返回采集时刻');
+    expect(metBCell('run-stats')?.getAttribute('title')).toBe('上游未返回采集时刻；不用本机时间顶替。');
     expect(metBCell('run-stats')?.textContent).not.toMatch(/\d{4}-\d{2}-\d{2}/);
   });
 

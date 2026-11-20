@@ -1,4 +1,5 @@
 // Module: metrics — 7×24 run activity heatmap.
+import { ASOF_KEYS, readAsOf } from './asof';
 //
 // The activity endpoint aggregates runs by (weekday, hour) over a rolling
 // window of whole weeks in the requested timezone. It returns only cells that
@@ -1028,28 +1029,20 @@ export function isoOrNull(value: unknown): string | null {
   return Number.isNaN(Date.parse(raw)) ? null : raw;
 }
 
-/** The names an envelope may carry its collection time under, in priority order. */
-export const TOP_ASOF_KEYS = [
-  'asOf',
-  'as_of',
-  'collectedAt',
-  'collected_at',
-  'generatedAt',
-  'generated_at',
-] as const;
+/**
+ * The names an envelope may carry its collection time under, in priority
+ * order. The list itself lives in `./asof` so the runs page reads it too;
+ * this alias stays for existing call sites and tests.
+ */
+export const TOP_ASOF_KEYS = ASOF_KEYS;
 
 /**
  * The top-level collection time of one payload, under any of its accepted
- * names. Only a full ISO instant qualifies: a free-form or missing value is
- * null, never the local clock.
+ * names. Delegates to the shared reader: only a full ISO instant qualifies, a
+ * free-form or missing value is null, never the local clock.
  */
 export function readTopAsOf(payload: unknown): string | null {
-  if (!isRecord(payload)) return null;
-  for (const key of TOP_ASOF_KEYS) {
-    const value = isoOrNull(payload[key]);
-    if (value !== null) return value;
-  }
-  return null;
+  return readAsOf(payload).asOf;
 }
 
 // ---- MET-A: export the current cost-share view ------------------------------

@@ -74,7 +74,7 @@ export const RUN_NOTE_ROWS: readonly RunNote[] = [
     key: "asOf",
     area: "采集时刻",
     path: "/api/runs 与兜底 /api/run-stats",
-    scope: "这一版页面不在屏上展示采集时刻；读取的时刻与数据的时刻不混为一谈。",
-    missing: "只取顶层 ISO，缺失显示—，不拿本机时间顶替。",
+    scope: "屏上「采集时刻」只取顶层 ISO 六别名，按北京时间到分显示；读取的时刻与数据的时刻不混为一谈。",
+    missing: "只取顶层 ISO，缺失显示—，并写明不用本机时间顶替。",
   },
 ] as const;

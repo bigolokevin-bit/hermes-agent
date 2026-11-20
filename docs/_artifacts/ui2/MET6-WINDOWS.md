@@ -699,3 +699,16 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 - 零额外请求：四条播报全部读屏上已有数据，断言前后 `fetchJsonStrict` 调用数不变；既有按钮 testid、文件名与 CSV 契约一律未动。
 - 验证：定向 metrics 4 files / 236 passed；全量 **2312 passed**；`tsc` 本域 0；`eslint src/modules/metrics` exit 0（9 条既存 warning）；build exit 0（entry 内 `met-output-status`=0，chunk `MetricsModulePage-*.js`=1）。
 - 未测：真实读屏软件对「文本已存在、仅内容变化」的播报节奏；375 下长文件名折行。
+
+## 采集时刻的统一呈现（asOf helper，2026-11-20）
+
+两页各有一套「采集时刻」，口径已经收成一份：`web/src/modules/metrics/asof.ts`。
+
+- 单一实现：`ASOF_KEYS`（`asOf`/`as_of`/`collectedAt`/`collected_at`/`generatedAt`/`generated_at`，只认顶层、只认带时区的 ISO）、`readAsOf(payload)`、`asOfText(iso)`、`asOfCell(asOf, source)`。`metrics.ts` 的 `readTopAsOf` 与 `TOP_ASOF_KEYS` 改为委托它，旧调用点零改。
+- 渲染：合法值按北京时间到分（如 `2026-11-20 04:12`）；缺失或非 ISO 一律「—」；title 固定两句之一——`采集时刻 <ISO>（UTC） · 来源 <asOfSource>` 或 `上游未返回采集时刻；不用本机时间顶替。`；`asOfSource` 从不上屏。
+- 落点：`/metrics` 的 `metB-source-asof-<key>`（新鲜度表最近采集列，metM 滞后徽标的 title 同样引用 helper 文本）；`/runs` 新增 `run-asof-line` / `run-asof`（计数行下方一行），值来自 `/api/runs` 顶层 `asOf`/`asOfSource`，数据层只多读两个已有字段，**不发新请求**。
+- 零额外请求：两页断言前后 `fetchJsonStrict` / `fetchJSON` 调用数不变；`run-notes` 的采集时刻一行文案同步改为「屏上只取顶层 ISO 六别名」。
+- 用例：新增 `web/src/modules/metrics/asof.parity.test.ts` 3 例——同一 payload 在两页的 `metB-source-asof-run-stats` 与 `run-asof` 文本、title 逐字 `toBe` 相等，覆盖合法 ISO / 缺失 / 非 ISO（`yesterday`）三态，并断言缺值 title 含「不用本机时间顶替」。
+- 验证：定向 metrics+runs 4+3 files / 386 passed；全量 168 files / **2324 passed**；`tsc` 两域 0；`eslint` 0 error（9 条既存 warning）；build exit 0（entry 内 `run-asof`=0，`RunsModulePage-*.js`=1，`MetricsModulePage-*.js` 内 `metB-source-asof`=1）。
+- 既有断言随统一口径收紧三处：metB 合法 title 由「采集时刻来自 bff」改为完整 ISO+来源；两处缺值 title 补「；不用本机时间顶替。」；`run-note-asOf` 文案改用「不用本机时间顶替」。均属口径统一，非放宽。
+- 未测：真实浏览器 375 下 `run-asof-line` 折行；上游真的给出非 UTC 偏移时的显示（按同一 ISO 解析，理论一致）。

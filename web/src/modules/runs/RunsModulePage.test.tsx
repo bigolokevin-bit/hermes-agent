@@ -1674,7 +1674,7 @@ describe("run-notes — footer caliber block", () => {
     // 成本行与屏上的成本口径说明共用同一常量，不存在第二套措辞。
     expect(cost).toContain(COST_CALIBER_TEXT);
     expect(document.querySelector("[data-testid='run-note-elapsed']")?.textContent ?? "").toContain("不拿本机时间补");
-    expect(document.querySelector("[data-testid='run-note-asOf']")?.textContent ?? "").toContain("不拿本机时间顶替");
+    expect(document.querySelector("[data-testid='run-note-asOf']")?.textContent ?? "").toContain("不用本机时间顶替");
     expect(document.querySelector("[data-testid='run-note-window']")?.textContent ?? "").toContain("/api/runs");
     expect(document.querySelector("[data-testid='run-note-state']")?.textContent ?? "").toContain("不读写口");
 
