@@ -236,7 +236,7 @@ export function ConsoleSelect({
                 }}
                 onClick={() => pick(option)}
                 className={[
-                  "block w-full min-w-0 truncate rounded-sm px-2 py-1.5 text-left text-sm tracking-normal",
+                  "block w-full min-w-0 truncate rounded-sm px-2 py-2 text-left text-sm tracking-normal",
                   "focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset",
                   selected ? "bg-accent font-medium" : "hover:bg-accent/60",
                   option.disabled === true ? "cursor-not-allowed opacity-50" : "cursor-pointer",

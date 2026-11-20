@@ -11,7 +11,7 @@ import { useSearchParams } from "react-router";
 
 import { Badge, Button, Card, CardContent } from "@nous-research/ui";
 import { fetchJsonStrict } from "@/modules/models/fetchJson";
-import { ApiError } from "@/lib/api-error";
+import { ApiError, SESSION_REQUIRED_GUIDANCE } from "@/lib/api-error";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import { currentFixtureRid, currentFixtureState, fixtureView, type FixtureState } from "../../shell/fixtures";
 import { SKILLS_GAP, formatBeijingTime, readSkills, type SkillRow } from "./skills";
@@ -59,7 +59,7 @@ function requestIdOf(error: unknown): string | null {
 
 function messageFor(error: unknown): string {
   if (error instanceof ApiError) {
-    if (error.status === 401) return "需要登录：这个页面的登录状态已经失效，请重新登录后再看。";
+    if (error.status === 401) return SESSION_REQUIRED_GUIDANCE;
     if (error.status === 403 || error.status === 404) {
       return "技能读口未接入：上游技能接口还没有接入本控制台，或当前账号无权查看。接入后这里会自动显示真实技能。";
     }

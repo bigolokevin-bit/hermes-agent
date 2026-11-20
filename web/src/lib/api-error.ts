@@ -12,12 +12,21 @@
 export const API_UNREACHABLE_MESSAGE =
   "Hermes dashboard cannot reach the Hermes service. Is `hermes dashboard` still running?";
 
+/**
+ * 设计车道 ①（P0-① 收敛）：401 的页内句只留纯引导，不再复述状态。「会话已过期」
+ * 这件事由全站唯一的 `shell/SessionExpiredBanner` 说一次；页面与模块的错误态引用
+ * 本常量（`lib/api-error` 的 STATUS_COPY[401] 与 tenant/metrics/org/skills/models
+ * 五处逐字重复的同句都 import 它），所以这句话在一屏里最多出现两次（横幅 + 空态）。
+ * 新句必须保持纯引导：不得含「失效」「过期」「需要登录」等状态复述字样。
+ */
+export const SESSION_REQUIRED_GUIDANCE = "重新登录后回到这个页面，即可继续查看。";
+
 /** Status → plain sentence, used when the body carries no usable `detail`. */
 const STATUS_COPY: Record<number, string> = {
   400: "The dashboard sent a request the server could not understand.",
   // R5 item 1: 401 must read as plain Chinese on screen — every consumer
   // renders this sentence; the old English copy leaked raw text to users.
-  401: "需要登录：这个页面的登录状态已经失效。重新登录后就能继续查看。",
+  401: SESSION_REQUIRED_GUIDANCE,
   403: "You are not allowed to do that on this dashboard.",
   404: "The server could not find what the dashboard asked for.",
   409: "That change conflicts with the current state on the server.",
