@@ -491,3 +491,16 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 - 断言（不起浏览器）：两只 thead 的 tagName/class/testid 存在，`.metAF-nowrap` 至少 3 个元素且均为 TH/TD，三个分摊数值表头的 class 同时含 `met6-num` 与 `metAF-nowrap`。
 - 验证：`src/modules/metrics` **3 files / 173 passed**（原 171，+2）；全量 **137 files / 1696 passed**（原 1694）；`tsc -b . --noEmit` 全仓 58 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metAF` → entry `assets/index-BerrBqsL.js` sha256 `3339cb3170dd7d80eb2f565edc26c8f29ed8162effd1620f1688cddb8eec37b9`，entry 内 `metAF-sticky` 命中 0，chunk `assets/MetricsModulePage-BRMjOkzZ.js` 命中 1。
 - 未测项：真浏览器里纵向滚动时表头贴合、首列与表头交角的重叠关系与 375 下数字实际宽度未人工走查（容器纵向高度通常不滚动，粘性表头主要在窄容器下生效）。
+
+## 复制来源摘要（metAG，2026-11-20）
+
+新鲜度块（metB）旁新增「复制来源摘要」`metAG-copy-sources`：把这张表说成纯文本，一行一个读口。
+
+- 文本：按 metB 当前行序（`sourceRows(sources)` 的 `SOURCE_CATALOG` 顺序），每行 `口径名 · 实际路径 · 采集时刻 · 状态`；采集时刻只取该读口顶层 ISO（缺失写「—」，不用本机时钟）；状态三词与表内一致（正常/降级/读不到）。`sourceSummaryText(rows)` 与表格共用同一批 `SourceRow`，不重新取数。
+- 反馈：成功 `metAG-copy-status`（role=status, aria-live=polite）显示「已复制 N 行」（N = 行数，实测 6）；剪贴板被拒显示「复制没成功」并给 `metAG-copy-fallback` 内只读 textarea（`metAG-copy-fallback-text`），内容与目标逐字相同。
+- 全失败：所有已发起的读口都失败时按钮 `disabled`，title「所有读口都没读出来，没有可复制的来源摘要」；「还没请求过」的读口按降级处理，不触发禁用（否则会把「尚未读取」误报成失败）。
+- 安全：文本只含口径名、站点内路径、时间与状态词；测试断言不含 `token`/`bearer`/`authorization`。
+- 零新请求：点击前后 `urls()` 长度不变（测试断言）。
+- 验证：`src/modules/metrics` **3 files / 177 passed**（原 173，+4）；全量 **137 files / 1700 passed**（原 1696）；`tsc -b . --noEmit` 全仓 58 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metAG` → entry `assets/index-C2OuvqzZ.js` sha256 `0c352483753e5f67e8e2baaaf12fd0535cfba16b0a19f98e7c2cca834190a0fe`，entry 内 `metAG-copy-sources` 命中 0，chunk `assets/MetricsModulePage-CkjPbDjF.js` 命中 1。
+- 踩坑：起初用「所有行都 down」判禁用，但从未请求的读口会被 `sourceRows` 记作降级，导致全失败时按钮仍是可点——改为「已发起的行全为 down」后符合预期。
+- 未测项：真实剪贴板权限弹窗与 375 下按钮/说明换行未人工走查。

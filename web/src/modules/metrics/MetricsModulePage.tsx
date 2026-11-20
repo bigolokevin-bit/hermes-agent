@@ -48,6 +48,7 @@ import {
   isoOrNull,
   metricsSummaryText,
   sourceStaleness,
+  sourceSummaryText,
   SOURCE_STALE_MS,
   withGapNote,
   withTotalsNote,
@@ -395,6 +396,8 @@ export function MetricsModulePage() {
   const [heatCopyStatus, setHeatCopyStatus] = useState<'idle' | 'done' | 'failed'>('idle');
   const [heatCopyBody, setHeatCopyBody] = useState('');
   const [notesOpen, setNotesOpen] = useState(false);
+  const [sourceCopyStatus, setSourceCopyStatus] = useState<'idle' | 'done' | 'failed'>('idle');
+  const [sourceCopyBody, setSourceCopyBody] = useState('');
   const [summaryText, setSummaryText] = useState('');
   const [sources, setSources] = useState<Record<string, SourceStamp>>({});
   const [sourcesOpen, setSourcesOpen] = useState(false);
@@ -1491,6 +1494,19 @@ export function MetricsModulePage() {
 
   const sourceList = sourceRows(sources);
   const newestSource = latestSourceAsOf(sourceList);
+
+  // metAG — the copied source summary is the freshness table in words; it reads
+  // the rows already on screen and asks the service for nothing.
+  // Disabled only when nothing was readable: a source this page never asked for
+  // yet is «degraded», not a failure, and must not flip the button either way.
+  const sourceCopyDisabled =
+    sourceList.length > 0 && sourceList.filter((row) => sources[row.key] !== undefined).every((row) => row.state === 'down');
+  const copySourceSummary = () => {
+    if (sourceCopyDisabled || sourceList.length === 0) return;
+    const text = sourceSummaryText(sourceList);
+    setSourceCopyBody(text);
+    void copyTextToClipboard(text).then((ok) => setSourceCopyStatus(ok ? 'done' : 'failed'));
+  };
 
   // metL — the plain-text summary repeats what this page already shows. Both
   // numbers and the collection time come from the batch in hand; the copy
@@ -2925,7 +2941,36 @@ export function MetricsModulePage() {
               <span className="met5-note">
                 最近采集 {newestSource ? formatBeijing(newestSource) : '—'} · {sourceList.length} 个读口
               </span>
+              <Button
+                size="sm"
+                outlined
+                disabled={sourceCopyDisabled}
+                title={sourceCopyDisabled ? '所有读口都没读出来，没有可复制的来源摘要' : '把这张表的内容复制成纯文本'}
+                onClick={copySourceSummary}
+                data-testid="metAG-copy-sources"
+              >
+                <Copy className="size-3.5" aria-hidden="true" />
+                复制来源摘要
+              </Button>
+              <span className="metL-status" role="status" aria-live="polite" data-testid="metAG-copy-status">
+                {sourceCopyStatus === 'done' ? `已复制 ${sourceList.length} 行` : sourceCopyStatus === 'failed' ? '复制没成功' : ''}
+              </span>
             </div>
+
+            {sourceCopyStatus === 'failed' ? (
+              <div className="metL-fallback" data-testid="metAG-copy-fallback">
+                <p>
+                  这次没能写入剪贴板，可能是浏览器没有给权限。下面这段文字可以直接选中复制，内容与刚才要复制的一样。
+                </p>
+                <textarea
+                  readOnly
+                  value={sourceCopyBody}
+                  aria-label="数据来源摘要文本"
+                  data-testid="metAG-copy-fallback-text"
+                  onFocus={(event) => event.currentTarget.select()}
+                />
+              </div>
+            ) : null}
             {sourcesOpen ? (
               <div className="metB-wrap">
                 <div

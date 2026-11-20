@@ -1265,6 +1265,22 @@ export type SourceRow = SourceDescriptor & {
  * `ok`; one that answered without one is `degraded` (the payload is usable but
  * we cannot say how fresh it is); one that failed to answer is `down`.
  */
+/** One line per read, in the order the freshness table shows them. */
+const SOURCE_STATE_WORD: Record<SourceRow['state'], string> = {
+  ok: '正常',
+  degraded: '降级',
+  down: '读不到',
+};
+
+export function sourceSummaryText(rows: SourceRow[]): string {
+  return rows
+    .map(
+      (row) =>
+        `${row.label} · ${row.path} · ${row.asOf === null ? '—' : formatBeijing(row.asOf)} · ${SOURCE_STATE_WORD[row.state]}`,
+    )
+    .join('\n');
+}
+
 export function sourceRows(stamps: Record<string, SourceStamp>): SourceRow[] {
   return SOURCE_CATALOG.map((descriptor) => {
     const stamp = stamps[descriptor.key] ?? EMPTY_SOURCE_STAMP;

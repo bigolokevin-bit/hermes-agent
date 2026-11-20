@@ -3795,3 +3795,75 @@ describe('metAF — sticky table heads and figures that keep one line', () => {
     expect(q('metO-fmt-th-pct')?.className).toContain('metAF-nowrap');
   });
 });
+
+describe('metAG — copy the source summary', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+
+  async function copySources(): Promise<string> {
+    clip.copyTextToClipboard.mockClear();
+    await act(async () => {
+      (q('metAG-copy-sources') as HTMLButtonElement).click();
+    });
+    await waitFor(() => (q('metAG-copy-status')?.textContent ?? '') !== '', 'copy status');
+    return String(clip.copyTextToClipboard.mock.calls[0][0]);
+  }
+
+  it('copies one line per read, matching the rows on screen', async () => {
+    await mount(usageRouter());
+    await openSources();
+    const before = urls().length;
+
+    const body = await copySources();
+
+    expect(urls().length).toBe(before);
+    const lines = body.split('\n');
+    expect(lines).toHaveLength(6);
+    expect(q('metAG-copy-status')?.textContent).toBe('已复制 6 行');
+
+    const row = q('metB-source-row-run-stats');
+    const label = row?.querySelector('.metB-name')?.textContent;
+    const path = row?.querySelector('.metB-path')?.textContent;
+    const asof = q('metB-source-asof-run-stats')?.textContent;
+    const state = q('metB-source-state-run-stats')?.textContent;
+    expect(lines[1]).toBe(`${label} · ${path} · ${asof} · ${state}`);
+    expect(body).toContain('/api/run-activity');
+    expect(body).toContain('/api/models/pricing');
+    // Nothing credential-shaped rides along.
+    expect(body).not.toMatch(/token|bearer|authorization/i);
+  });
+
+  it('writes — for a missing collection time and never the local clock', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2031-03-04T05:06:07.000Z'));
+    await mount(usageRouter());
+    await openSources();
+
+    const body = await copySources();
+
+    expect(q('metB-source-asof-run-activity')?.textContent).toBe('—');
+    expect(body.split('\n')[0]).toContain('· — ·');
+    expect(body).not.toContain('2031');
+  });
+
+  it('keeps the same text in a read-only box when the clipboard refuses', async () => {
+    await mount(usageRouter());
+    await openSources();
+    clip.copyTextToClipboard.mockImplementationOnce(() => Promise.resolve(false));
+
+    const body = await copySources();
+
+    expect(q('metAG-copy-status')?.textContent).toBe('复制没成功');
+    const fallback = q('metAG-copy-fallback-text') as HTMLTextAreaElement;
+    expect(fallback.value).toBe(body);
+    expect(fallback.value.split('\n')).toHaveLength(6);
+  });
+
+  it('disables itself with a reason when every read failed', async () => {
+    await mount(() => Promise.reject(new ApiError('boom', { status: 500, body: '', url: 'x', requestId: 'req-metAG' })));
+    await waitFor(() => q('metB-source-toggle') !== null, 'sources seen');
+
+    const button = q('metAG-copy-sources') as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(button.getAttribute('title')).toContain('所有读口都没读出来');
+  });
+});
