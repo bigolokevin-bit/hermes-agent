@@ -120,17 +120,27 @@ def _iso_ms(dt: Any) -> str:
 
 
 def _sender_ids(event: Any, source: Any) -> dict:
-    """Extract open_id/union_id/tenant user_id from the raw Feishu event when present."""
+    """Extract open_id/union_id/tenant user_id from the raw Feishu event when present.
+
+    Reads ``sender.sender_id`` from plain dicts (HTTP webhook) *and* lark SDK
+    model objects (websocket dispatcher) identically, via ``_field``; the
+    sender is resolved from the nested ``raw.event.sender`` first, then the
+    flat ``raw.sender`` (same shape handling as ``_mentions``). Before this,
+    the dict-only read silently skipped every branch on the websocket path,
+    ``open_id`` never arrived and callers fell back to ``source.user_id``.
+    Never raises: odd or missing shapes leave the ids ``None``.
+    """
     open_id = union_id = user_id = None
     raw = getattr(event, "raw_message", None)
     try:
-        if isinstance(raw, dict):
-            sender = raw.get("sender")
-            sid = sender.get("sender_id") if isinstance(sender, dict) else None
-            if isinstance(sid, dict):
-                open_id = sid.get("open_id") or None
-                union_id = sid.get("union_id") or None
-                user_id = sid.get("user_id") or None
+        sender = _field(_field(raw, "event"), "sender")
+        if sender is None:
+            sender = _field(raw, "sender")
+        sid = _field(sender, "sender_id")
+        if sid is not None:
+            open_id = _field(sid, "open_id") or None
+            union_id = _field(sid, "union_id") or None
+            user_id = _field(sid, "user_id") or None
     except Exception:
         pass
     return {
