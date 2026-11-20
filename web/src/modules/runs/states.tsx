@@ -162,7 +162,14 @@ export function EmptyPanel({
   onClear,
   kind,
   fixture,
-}: Marked & { onRetry: () => void; onClear?: () => void; kind: "window" | "filter" }): ReactNode {
+  guide,
+}: Marked & {
+  onRetry: () => void;
+  onClear?: () => void;
+  kind: "window" | "filter";
+  /** Extra next-step block, shown only for the unfiltered empty window. */
+  guide?: ReactNode;
+}): ReactNode {
   const filtered = kind === "filter";
   return (
     <Card className="border-border bg-card" data-testid="run5-empty" {...fixtureAttr(fixture)}>
@@ -177,6 +184,11 @@ export function EmptyPanel({
             ? "读取是成功的：状态或负责人筛选把这一页筛空了。清空筛选就能看到这个时间范围里的全部运行。"
             : "这是读取成功后的空清单，不代表接口坏了，也不代表运行丢了。下一步：把时间范围放宽一档，或等待新的运行产生后重新读取。"}
         </p>
+        {!filtered && guide ? (
+          <div className="mt-1 flex min-w-0 flex-col items-center gap-1" data-testid="run-empty-guide">
+            {guide}
+          </div>
+        ) : null}
         {filtered && onClear ? (
           <Button
             size="sm"

@@ -2148,3 +2148,49 @@ describe("run filter chips", () => {
     await waitFor(() => probe() === "/runs", "state cleared");
   });
 });
+
+describe("runs empty state guide", () => {
+  const guide = () => document.querySelector("[data-testid='run-empty-guide']");
+
+  it("offers two real places to go when nothing has run yet", async () => {
+    api.fetchJSON.mockImplementation(okList([]));
+    await render("/runs");
+    await waitFor(() => document.querySelector("[data-testid='run-state-empty']") !== null, "empty panel");
+    expect(guide()).not.toBeNull();
+    const work = document.querySelector("[data-testid='run-empty-guide-work']") as HTMLAnchorElement;
+    const metrics = document.querySelector("[data-testid='run-empty-guide-metrics']") as HTMLAnchorElement;
+    expect(work.tagName).toBe("A");
+    expect(work.getAttribute("href")).toBe("/work?tab=board");
+    expect(metrics.tagName).toBe("A");
+    expect(metrics.getAttribute("href")).toBe("/metrics");
+    expect(guide()?.textContent).toContain("清空筛选");
+    // No summary 0 and no filtered-only exit on the unfiltered leg.
+    expect(document.querySelector("[data-testid='run-state-clear']")).toBeNull();
+    expect(text()).not.toContain("$0.00");
+    // The guide asks for nothing.
+    const before = urls().length;
+    await act(async () => {
+      work.click();
+      metrics.click();
+    });
+    expect(urls().length).toBe(before);
+  });
+
+  it("stays out of the way when a filter is what emptied the page", async () => {
+    api.fetchJSON.mockImplementation(okList([]));
+    await render("/runs?status=failed");
+    await waitFor(() => document.querySelector("[data-testid='run-state-empty']") !== null, "empty panel");
+    expect(guide()).toBeNull();
+    expect(document.querySelector("[data-testid='run-state-clear']")).not.toBeNull();
+    expect(text()).toContain("当前筛选下没有运行记录");
+  });
+
+  it("does not read as empty when the read itself failed", async () => {
+    api.fetchJSON.mockRejectedValue(new ApiError("down", { status: 500, body: "", url: "/api/runs", requestId: "req-empty-1" }));
+    await render("/runs");
+    await waitFor(() => document.querySelector("[data-testid='run-state-error']") !== null, "error panel");
+    expect(guide()).toBeNull();
+    expect(document.querySelector("[data-testid='run-state-empty']")).toBeNull();
+    expect(text()).toContain("req-empty-1");
+  });
+});

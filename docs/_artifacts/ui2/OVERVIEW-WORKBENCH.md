@@ -339,3 +339,15 @@
 - 无筛选时整条不渲染；`run-notes`/`run-sort-*`/`run-list-*`/`run-row-preview-*`/`run-row-copy*`/`run-export-*`/`run-source-*`/`run5-*`/`run-reset-filters` 全部未改名。
 - 验证：定向 runs 3 files / 132 passed（基线 129）；全量 162 files / **2245 passed**；`tsc` 本域 0；`eslint src/modules/runs` exit 0；build exit 0（entry 内 `run-filter-chips` = 0，`RunsModulePage-*.js` = 1）。
 - 未测：真实浏览器 375 下 chips 折行与 × 触控目标尺寸。
+
+## 空窗引导（runs empty state guide，2026-11-20）
+
+只在「读取成功、没有筛选、这个时间窗确实没有运行」时出现，与筛选筛空、读取失败三者互不冒充。
+
+- 判据与位置：沿用既有 `phase === "empty"` + `filtersNarrow === false`；引导块渲染在 `EmptyPanel` 卡内（`run-empty-guide`），筛选筛空时该块**不渲染**，仍走既有 `run-state-clear`「清空筛选」。
+- 内容：一句人话（去任务板挑一件来跑，或看这段时间的钱花在哪）+ 两个真链接 `run-empty-guide-work` → `/work?tab=board`、`run-empty-guide-metrics` → `/metrics` + 一句「若你刚收窄过条件，清空筛选就能看全部；这里没有汇总数字，也不把空当 0」。
+- 可达性现查：`/work` 在 `web/src/App.tsx:1193` 注册，`board` 是 `web/src/modules/work/manifest.ts:16` 记载的合法 tab；`/metrics` 在 `web/src/App.tsx:1302` 注册。两条都渲染成 `<a href>`，无 onClick。
+- 读口失败不出现引导：`?state=` 之外的真实 500 → 既有 `run-state-error` 面板 + 可复制请求编号；`run-state-empty` 不存在。
+- 零额外请求：引导渲染与点两个链接后 `urls()` 长度不变（点击只是路由跳转，`/runs` 不发新读）。
+- 验证：定向 runs 3 files / 135 passed（基线 132）；全量 162 files / **2248 passed**（基线 2245）；`tsc` 本域 0；`eslint src/modules/runs` exit 0；build exit 0（entry 内 `run-empty-guide` = 0，`RunsModulePage-*.js` = 1）。
+- 未测：真实浏览器 375 下引导三段文字折行与两个链接的触控间距。

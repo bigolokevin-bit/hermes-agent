@@ -1413,6 +1413,24 @@ export function RunsModulePage() {
           onClear={clearFilters}
           kind={filtersNarrow ? "filter" : "window"}
           fixture={forced ?? undefined}
+          guide={
+            <>
+              <p className="max-w-prose break-words text-xs text-muted-foreground">
+                想先有东西可看：去任务板挑一件来跑，或到指标页看这段时间的钱花在哪。
+              </p>
+              <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs">
+                <Link className="underline underline-offset-2" to="/work?tab=board" data-testid="run-empty-guide-work">
+                  去任务板
+                </Link>
+                <Link className="underline underline-offset-2" to="/metrics" data-testid="run-empty-guide-metrics">
+                  看运行分析
+                </Link>
+              </p>
+              <p className="max-w-prose break-words text-xs text-muted-foreground">
+                若你刚收窄过条件，清空筛选就能看全部；这里没有汇总数字，也不把空当 0。
+              </p>
+            </>
+          }
         />
       ) : null}
       {phase === "error" ? (
