@@ -1118,3 +1118,13 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - shots 三键 assets/index-xSbhqEWR.js / d065cd54…983fc / 166880；auth 102/102 failures=[] obs=0 ceAuthority=login-state distinct=23 envOnly=27（与上代持平）；anon auxiliary=true 102/102 obs 行=2（#/work、#/work?tab=board&view=cron；上代 0，+2 如实登记不入判据）distinct=23 envOnly=51（持平）。
 - 九件全部单文件单 JSON + exitCode + headHash=5630ffce（tmp+os.replace 原子写，读回校验）。
 - 环境：9122 v4_proxy 95667 未动、caddy 8183 28034、web/src 未碰；BFF 本轮不动（a7bccdf 在 8092 pid 81892 运行，R46 已收讫 l7-20261120-100417）；porc 本车道 0。cca9cf7e 已盖不重做、无 amend。
+
+## 一〇一轮 · 波次代次九件重章 @ 60a4a429（entry BjB0lCyb，2026-11-20 11:0x-11:1x）
+
+- 代次现查：LOCAL=ls-remote=60a4a429c2ee（ANCH=0）、porc 0 脏；磁盘 entry assets/index-BjB0lCyb.js 166933B sha256 7eef2315…e9ce == 9122 ==（卡面 8183 由 L0 侧核），CSS index-BbpO1fGB.css 133189B；21/21 路由 200。
+- 九腿全 exit=0（/tmp/wave21-exits.txt），九件全 ok=true 盖 headHash=60a4a429：ia-html/react {51,22,1,8}；lint-fake v=[]；lint-reuse v=0 exempt=1（chat→T40）；state-quad 20/20；crawl-anon DL0/CE0/PE0 routesCE=51（401 归因）；crawl-auth DL0/CE0/PE0 routesCE=29（上代 28，+1）。redirects=24 归因 notes 不判红（门值更新归 L0/A）。
+- shots auth 102/102 failures=[] **obs=1（#/overview 单条，方向与 wave-21 overview 去 fixture 接真数据一致，如实登记不入判据）** distinct=23 envOnly=26（上代 27，-1 与 obs+1 对偶）；三键=entry assets/index-BjB0lCyb.js / 7eef23156920…e9ce / 166933，served before==after 未漂。
+- shots-anon auxiliary=true 102/102 **obs=0（上代 2，-2 好转）** distinct=23 envOnly=51。
+- R48 注记：本轮为 wave-21 重章；R48=FAIL 属 21 条 NM 全环境面（产品面 PASS22/FAIL0，浏览器权限弹窗挂起），与本九件判据无关，不并入判红。
+- 环境：9122 v4_proxy 95667 未动；caddy 8183 28034 未动；BFF 8092 pid 27116（a7bccdf R46 代次）本轮未动；web/src 未碰；零凭据明文。5630ffce 已盖不重做、无 amend。
+- 回执通道挂起项：lanes.yaml l7 owner_session 已按用户令改指 ses_45884148fffe（治理 main 4e0e84fa 已 push），但 openchamber CLI 对该 id 报 Session not found（l0-board dir 下列表仍见 ses_e17dfb527ffe=本车道会话标题），投递通道待用户/L0 裁定，本波回执按脚本纪律落盘不盲投。
