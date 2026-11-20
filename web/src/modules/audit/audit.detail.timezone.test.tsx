@@ -22,6 +22,12 @@
 // ② 【档位按钮】aud01-filter-window-7d 换窗后的换代：表体、读数行、重开的复制句、
 //   新导出的 CSV 四处同时零旧时刻 —— R229② 换的是 custom apply，按钮腿没带过 CSV/复制。
 // ③ 裸地址（无任何筛选）语境下的开合防回归。
+//
+// R239（同工单三例，本文件即其点名文件）：①②③已由上面 R238 三例整体持有，只回证据
+// （tip 见车道历史）。净新增只有一处没拼过的口子：【冷地址直接挂 7d】（R238① 冷挂载是
+// 30d，② 是档位按钮换到 7d）——深链/收藏直接进窄窗时，四载体必须当场就是窄窗的读数，
+// 宽窗的时刻一格都不许出现。工单 commit 主语与本文件首波只差一个词（time vs detail
+// timezone），按「已覆盖只回证据 + 净新增单独一枚 commit」处理。
 
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -398,5 +404,31 @@ describe("R238 - open and close on the bare default window", () => {
     expect(textOf("aud01-status")).toBe(statusBefore);
     expect(paintedRows()).toEqual(rowsBefore);
     expect(exportCountDigits()).toBe(rowsBefore.length);
+  });
+});
+
+describe("R239 - the cold address opens on the narrow window", () => {
+  it("answers with the new window in every carrier and carries nothing of the wider one", async () => {
+    await render("/audit?window=7d");
+    // 冷挂载防残留：宽窗的那一格时刻不许在任何载体里出现
+    const read = urls()[urls().length - 1] ?? "";
+    expect(spanOf(read)).toBeLessThan(29);
+    expect(paramOf(read, "window")).toBeNull();
+    expect(paintedRows()).toEqual([ROW_N, ROW_M]);
+    expect(shownCount()).toBe(2);
+    await openRecord(ROW_N);
+    expect(markValue(`audJ-time-list-${ROW_N}`)).toBe(TIME_N);
+    expect(markValue("audJ-time-detail")).toBe(TIME_N);
+    const line = await copiedLine();
+    expect(line.startsWith(`${TIME_N} ${ZONE}`)).toBe(true);
+    expect(line).not.toContain(TIME_G);
+    const records = await exportRecords();
+    expect(records).toHaveLength(2);
+    expect(captured.text).not.toContain("2026-11-02");
+    const index = records.findIndex((cells) => cells[COL.rid] === `req-${ROW_N}`);
+    expect(index).toBeGreaterThan(-1);
+    expect(records[index]?.[COL.time]).toBe("2026-11-19 09:22");
+    expect(TIME_N.startsWith(records[index]?.[COL.time] ?? "")).toBe(true);
+    await closeRecord();
   });
 });
