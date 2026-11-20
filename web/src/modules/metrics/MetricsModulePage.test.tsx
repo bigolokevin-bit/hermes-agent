@@ -3442,3 +3442,89 @@ describe('metY — skip links around the page and the two wide tables', () => {
     expect(urls().length).toBe(before);
   });
 });
+
+describe('metZ — copy the heat summary', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+
+  async function copyHeat(): Promise<string> {
+    clip.copyTextToClipboard.mockClear();
+    await act(async () => {
+      (q('metZ-copy-heat') as HTMLButtonElement).click();
+    });
+    await waitFor(() => (q('metZ-copy-status')?.textContent ?? '') !== '', 'heat copy status');
+    return String(clip.copyTextToClipboard.mock.calls[0][0]);
+  }
+
+  it('copies the numbers the heat card shows, without reading anything again', async () => {
+    await mount(usageRouter());
+    const before = urls().length;
+
+    const body = await copyHeat();
+
+    expect(urls().length).toBe(before);
+    expect(q('metZ-copy-status')?.textContent).toBe('已复制');
+    expect(q('metZ-copy-fallback')).toBeNull();
+
+    const summary = q('metK-heat-summary')?.textContent ?? '';
+    expect(q('met5-count')?.textContent).toBe('332');
+    expect(summary).toContain('总运行 332 次');
+    expect(summary).toContain('最高 周三 50 次');
+    expect(summary).toContain('最低 周二 45 次');
+    expect(summary).toContain('覆盖 7 / 7 天');
+
+    expect(body).toContain('热力摘要');
+    expect(body).toContain('窗口：最近 7 天（1w）');
+    expect(body).toContain('日期区间：2026-11-13 00:00 — 2026-11-19 23:59');
+    expect(body).toContain('总运行：332');
+    expect(body).toContain('最高：周三 50 次');
+    expect(body).toContain('最低：周二 45 次');
+    expect(body).toContain('覆盖：7 / 7 天');
+    expect(body).not.toContain('不可比较');
+  });
+
+  it('moves to the next heat window and copies that window id', async () => {
+    await mount(usageRouter());
+
+    await act(async () => {
+      (q('met5-window-4') as HTMLButtonElement).click();
+    });
+    await waitFor(() => (q('met5-window-4')?.getAttribute('aria-pressed') ?? '') === 'true', 'four weeks');
+
+    const body = await copyHeat();
+    expect(body).toContain('（4w）');
+    expect(body).toContain('总运行：332');
+  });
+
+  it('keeps the same text in a read-only box when the clipboard refuses', async () => {
+    await mount(usageRouter());
+    clip.copyTextToClipboard.mockImplementationOnce(() => Promise.resolve(false));
+
+    const body = await copyHeat();
+
+    expect(q('metZ-copy-status')?.textContent).toBe('复制没成功');
+    const fallback = q('metZ-copy-fallback-text') as HTMLTextAreaElement;
+    expect(fallback.value).toBe(body);
+    expect(fallback.value).toContain('最高：周三 50 次');
+  });
+
+  it('writes — and says the values cannot be compared when the heat read failed', async () => {
+    const base = usageRouter();
+    await mount((url) =>
+      url.includes('run-activity')
+        ? Promise.reject(new ApiError('boom', { status: 500, body: '', url, requestId: 'req-metZ-heat' }))
+        : base(url),
+    );
+
+    const body = await copyHeat();
+
+    expect(body).toContain('日期区间：—');
+    expect(body).toContain('总运行：—');
+    expect(body).toContain('最高：—');
+    expect(body).toContain('最低：—');
+    expect(body).toContain('覆盖：—');
+    expect(body).toContain('不可比较');
+    // No zero standing in for a missing read, and no local clock for the range.
+    expect(body).not.toContain('总运行：0');
+    expect(body).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+  });
+});

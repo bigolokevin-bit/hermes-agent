@@ -39,6 +39,8 @@ import {
   formatUnitPrice,
   formatUsd,
   heatCellLabel,
+  heatCopyText,
+  heatSummaryParts,
   heatDayRows,
   heatFromStats,
   heatGridSummary,
@@ -383,6 +385,8 @@ export function MetricsModulePage() {
   const [selected, setSelected] = useState<{ dow: number; hour: number } | null>(null);
   const [heatTableOpen, setHeatTableOpen] = useState(false);
   const [summaryStatus, setSummaryStatus] = useState<'idle' | 'done' | 'failed'>('idle');
+  const [heatCopyStatus, setHeatCopyStatus] = useState<'idle' | 'done' | 'failed'>('idle');
+  const [heatCopyBody, setHeatCopyBody] = useState('');
   const [summaryText, setSummaryText] = useState('');
   const [sources, setSources] = useState<Record<string, SourceStamp>>({});
   const [sourcesOpen, setSourcesOpen] = useState(false);
@@ -1032,6 +1036,22 @@ export function MetricsModulePage() {
   const grid = view.kind === 'ready' ? buildHeatGrid(view.activity) : null;
   const heatDays = grid ? heatDayRows(grid) : [];
   const heatSummary = grid ? heatGridSummary(grid) : '';
+
+  // metZ — the heat summary goes to the clipboard from the same parts that draw
+  // the on-screen sentence and the met5-count card; no reading is issued here.
+  const copyHeatSummary = () => {
+    const parts = grid
+      ? heatSummaryParts(grid)
+      : { total: null, peakLabel: null, peakRuns: null, lowLabel: null, lowRuns: null, coveredDays: 0, spanDays: 7 };
+    const text = heatCopyText({
+      weeks,
+      windowLabel: WINDOWS.find((item) => item.weeks === weeks)?.label ?? `最近 ${weeks} 周`,
+      rangeLabel: view.kind === 'ready' ? windowRangeLabel(view.activity) : null,
+      parts,
+    });
+    setHeatCopyBody(text);
+    void copyTextToClipboard(text).then((ok) => setHeatCopyStatus(ok ? 'done' : 'failed'));
+  };
   const selectedCell = selected && grid ? grid.rows[selected.dow - 1]?.cells[selected.hour] ?? null : null;
 
   const forcedDown = {
@@ -2601,6 +2621,31 @@ export function MetricsModulePage() {
         ))}
       </div>
       <p className="met5-note">这个读取口按整周汇总，24 小时窗口不单独提供；最近 30 天按 4 周展示。</p>
+
+      <div className="metZ-heat-copy">
+        <Button size="sm" outlined onClick={copyHeatSummary} data-testid="metZ-copy-heat">
+          <Copy className="size-3.5" aria-hidden="true" />
+          复制热力摘要
+        </Button>
+        <span className="metL-status" role="status" aria-live="polite" data-testid="metZ-copy-status">
+          {heatCopyStatus === 'done' ? '已复制' : heatCopyStatus === 'failed' ? '复制没成功' : ''}
+        </span>
+      </div>
+
+      {heatCopyStatus === 'failed' ? (
+        <div className="metL-fallback" data-testid="metZ-copy-fallback">
+          <p>
+            这次没能写入剪贴板，可能是浏览器没有给权限。下面这段文字可以直接选中复制，内容与刚才要复制的一样。
+          </p>
+          <textarea
+            readOnly
+            value={heatCopyBody}
+            aria-label="热力摘要文本"
+            data-testid="metZ-copy-fallback-text"
+            onFocus={(event) => event.currentTarget.select()}
+          />
+        </div>
+      ) : null}
 
       <p className="met6-hint" data-testid="metX-consistency-note">
         运行数三处对照：窗口总运行{' '}

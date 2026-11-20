@@ -420,3 +420,14 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 - 零新请求：链接只做页内跳转，测试断言聚焦前后 `urls()` 长度不变。
 - 验证：定向 `src/modules/metrics` 2 files / **146 passed**（基线 142，+4）；全量 **137 files / 1618 passed**（基线 1614）；`tsc -b . --noEmit` 全仓 55 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metY` → entry `assets/index-BIvWvNTC.js` sha256 `4be1529960f738edbbf6b7054e0ce5daaabc41b3e155ed634065705c1cd102e1`，entry 内 `metY-skiplink` 命中 0，chunk `assets/MetricsModulePage-CcfclHKN.js`：`metY-skiplink`=1、`metY-main`=1。
 - 未测项：真浏览器里按 Tab 后链接的可见样式与跳转后的滚动定位未人工走查；Safari 对 `:focus-visible` 与 clip 组合的表现未复核。
+
+## 复制热力摘要（metZ，2026-11-20）
+
+热力卡上方新增「复制热力摘要」`metZ-copy-heat`，把这一窗热力的关键数字复制成纯文本；即使热力读失败也能复制，只是内容会如实写「不可比较」。
+
+- 文本七行：`热力摘要` / `窗口：<label>（<weeks>w）` / `日期区间：<windowRangeLabel 或 —>` / `总运行：<grid.total 或 —>` / `最高：<周几> <n> 次` / `最低：<周几> <n> 次` / `覆盖：<有数据的天数> / 7 天`；热力不可用时每项为「—」，并追加一行「说明：这次没有可用的热力格子，以上几项不可比较，不按 0 记。」
+- 同源：新增 `heatSummaryParts(grid)` 作为唯一派生；`heatGridSummary`（屏上 `metK-heat-summary`）与 `heatCopyText`（剪贴板）都读这一个 parts，`总运行` 同时就是 `met5-count` 与 `grid.total`。不重复求和、不补 0、不拿本机时钟填日期区间（失败时区间写「—」）。
+- 零新请求：复制只读组件内 state；测试断言点击前后 `urls()` 长度不变，切到 4 周热力窗后只多出该窗自己的读，文本窗口 id 随之变为 `4w`。
+- 反馈与回退：成功 `metZ-copy-status`（role=status, aria-live=polite）显示「已复制」；剪贴板被拒时显示「复制没成功」并给出 `metZ-copy-fallback` 里的只读 textarea（`metZ-copy-fallback-text`），内容与要复制的文本逐字相同。
+- 验证：定向 `src/modules/metrics` 2 files / **150 passed**（基线 146，+4）；全量 **137 files / 1673 passed**（基线 1618，含 wave-18 上游新增用例）；`tsc -b . --noEmit` 全仓 58 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metZ` → entry `assets/index-C5TeO2dY.js` sha256 `5034df0fd828c5916aa979aba4e4ba483c822bd95aa36d1704381219d44bfaaa`，entry 内 `metZ-copy-heat` 命中 0，chunk `assets/MetricsModulePage-BoK0nIJN.js` 命中 1。
+- 未测项：真浏览器剪贴板权限弹窗下的回退路径未走查；375 下按钮与说明的换行未人工走查。

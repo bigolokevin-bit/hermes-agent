@@ -1281,10 +1281,24 @@ export function heatDayRows(grid: HeatGrid): HeatDayRow[] {
 }
 
 /** One sentence an assistive reader can announce for the whole heat grid. */
-export function heatGridSummary(grid: HeatGrid): string {
+export type HeatSummaryParts = {
+  total: number | null;
+  peakLabel: string | null;
+  peakRuns: number | null;
+  lowLabel: string | null;
+  lowRuns: number | null;
+  coveredDays: number;
+  spanDays: number;
+};
+
+/**
+ * The one derivation behind both the on-screen heat summary and its copied
+ * text, so the two can never quote different numbers.
+ */
+export function heatSummaryParts(grid: HeatGrid): HeatSummaryParts {
   const days = heatDayRows(grid).filter((day): day is HeatDayRow & { runs: number } => day.runs !== null);
   if (grid.total === null || days.length === 0) {
-    return '运行热力：接口没有返回可用的格子，没有总数可报，也不按 0 补。';
+    return { total: null, peakLabel: null, peakRuns: null, lowLabel: null, lowRuns: null, coveredDays: 0, spanDays: 7 };
   }
   let high = days[0];
   let low = days[0];
@@ -1292,7 +1306,48 @@ export function heatGridSummary(grid: HeatGrid): string {
     if (day.runs > high.runs) high = day;
     if (day.runs < low.runs) low = day;
   }
-  return `运行热力：总运行 ${grid.total} 次；最高 ${high.label} ${high.runs} 次；最低 ${low.label} ${low.runs} 次；覆盖 ${days.length} / 7 天。`;
+  return {
+    total: grid.total,
+    peakLabel: high.label,
+    peakRuns: high.runs,
+    lowLabel: low.label,
+    lowRuns: low.runs,
+    coveredDays: days.length,
+    spanDays: 7,
+  };
+}
+
+export function heatGridSummary(grid: HeatGrid): string {
+  const parts = heatSummaryParts(grid);
+  if (parts.total === null || parts.coveredDays === 0) {
+    return '运行热力：接口没有返回可用的格子，没有总数可报，也不按 0 补。';
+  }
+  return `运行热力：总运行 ${parts.total} 次；最高 ${parts.peakLabel} ${parts.peakRuns} 次；最低 ${parts.lowLabel} ${parts.lowRuns} 次；覆盖 ${parts.coveredDays} / ${parts.spanDays} 天。`;
+}
+
+export type HeatCopyInput = {
+  weeks: number;
+  windowLabel: string;
+  /** The range the activity endpoint reported; null when the read failed. */
+  rangeLabel: string | null;
+  parts: HeatSummaryParts;
+};
+
+/** The plain-text heat summary that `metZ-copy-heat` puts on the clipboard. */
+export function heatCopyText(input: HeatCopyInput): string {
+  const { parts } = input;
+  const missing = parts.total === null || parts.coveredDays === 0;
+  const range = input.rangeLabel;
+  return [
+    '热力摘要',
+    `窗口：${input.windowLabel}（${input.weeks}w）`,
+    `日期区间：${range && range.length > 0 ? range : '—'}`,
+    `总运行：${missing ? '—' : parts.total}`,
+    `最高：${missing ? '—' : `${parts.peakLabel} ${parts.peakRuns} 次`}`,
+    `最低：${missing ? '—' : `${parts.lowLabel} ${parts.lowRuns} 次`}`,
+    `覆盖：${missing ? '—' : `${parts.coveredDays} / ${parts.spanDays} 天`}`,
+    ...(missing ? ['说明：这次没有可用的热力格子，以上几项不可比较，不按 0 记。'] : []),
+  ].join('\n');
 }
 
 /** Date + count + strength band — the same facts the colour carries. */

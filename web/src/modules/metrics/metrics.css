@@ -969,3 +969,11 @@
   outline: 2px solid var(--color-ring);
   outline-offset: 2px;
 }
+
+/* ---- metZ: heat summary copy ------------------------------------------- */
+.metZ-heat-copy {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
