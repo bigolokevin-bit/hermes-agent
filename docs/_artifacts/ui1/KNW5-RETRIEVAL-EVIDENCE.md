@@ -3973,3 +3973,116 @@ kn3-page-cap/knE-page-*/导出标记 全族通过。
 边界：只新增 web/src/modules/knowledge/knowledge.export.escape.test.tsx 与本证据；
 显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
 「test(console): knowledge export csv escaping guards」。
+
+# KNW5 追加 R196：预览请求契约余量护栏（纯测试单）（2026-11-20 BJT）
+
+安全门：porcelain 空起做（HEAD 即 R190 链）、显式 refspec fetch 后 merge 实测 tip
+即预期 `cecbd1f1`（知识面 delta 空）。零产品文件改动（无新缺陷可修——R149/R125C/
+R183/R187 的既有断言全绿，未暴露真缺陷）。
+
+## 分面查重（brief 对齐 #1/#2/#3/#5 的引用行号）
+
+```text
+①首屏恰 1 次 spaceId 读、无 cursor= —— 主测 knE 段 :2531 已锁 → 引用。
+②分面陈述：行内预览 kn-doc-preview-* 与检索展开 kn6-search-detail = **0 请求**
+  （knowledge.requests.test.tsx ③ R149 快照逐字 + R125B）；遮罩抽屉 kn7-preview-*
+  （?doc=）= 打开**恰 +1** 详情读、开着零追加、关闭零增量、重开不叠加
+  （knowledge.parity.test.tsx:180-199 R125C）——绝不把行内报成 +1。
+③doc=a↔b 列表集合逐字不变 + 详情各 1 —— knowledge.requests.test.tsx ④:149-166
+  （R149）已锁 → 引用；抽屉标题跟随 = 真缺口，新写。
+④关闭零请求已锁（R125C/R149）；「开关一轮后行序与 kn-row-copy-space id 序列
+  原样」= 真缺口（indexBase 全局序在交互间稳定的消费侧），新写。
+⑤失败路径（可读句+rid+重试恰 +1 且指向本文档 URL）—— knowledge.detail.error.test.tsx ③
+  （R183）已锁 → 引用。
+```
+
+## 新写两例读数（knowledge.preview.requests.test.tsx）
+
+```text
+③开 A：kn7-preview-title 逐字「A 手册.pdf」（标题源=row?.name，非 id）；切 B：
+  逐字变「B 表.xlsx」；detailUrl("d_a")/("d_b") 各恰 1 次。
+④行内开 A→关→开 B→关 全轮：urls() 排序快照与开前逐字相等（零新请求、全程无
+  cursor=、无详情读）、kn3-docs-name 行序数组开前=开后、行钮 testid 序列
+  [space-0, space-1] 前后逐字等；且行内预览全程 kn7-preview-title 为 null
+  （行内面不冒充抽屉标题——分面口径）。
+```
+
+## 验证尾行（R196）
+```text
+$ npx vitest run src/modules/knowledge   → 22 files / 145 tests passed（基线 143 + 2）
+$ npx vitest run                         → 255 files / 2857 tests passed 全绿（无豁免项）
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r196-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn-doc-preview*/kn-space-preview*/kn3*/kn-row-copy*/kn-doc-copy*/kn6-search-detail*/
+kn7-preview-*/kn3-page-cap/knE-page-* 与既有 21 套知识面全绿。
+请求口径：本轮两例全程增量仅 render 期既有读取（③每文档详情 +1 为 R49 既有设计）；
+④整轮零新增（快照逐字）。
+```
+未测如实：带登录会话真实屏（详情 200 真实信封未接——与 R183/R187 同法 mock 代证）；
+「预览内切换」若指行内预览在两行间的直接互切（产品为单开互斥、点击另一行 toggle 即换）
+已由 ④ 的开合两轮覆盖同族路径。
+边界：只新增 web/src/modules/knowledge/knowledge.preview.requests.test.tsx 与本证据；
+显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「test(console): knowledge preview request guards」。
+
+# KNW5 追加 R197：分页后计数与复制同源护栏（纯测试单）（2026-11-20 BJT）
+
+安全门：porcelain 空起做（HEAD 即 R196 链）、显式 refspec fetch 后 merge 实测 tip
+即预期 `1768f36c`（知识面 delta 空）。零产品文件改动（无新缺陷）。
+
+## 名实对齐（分面陈述）
+
+```text
+· 分页面=空间详情文档列表：逐行钮用 `-space-` 族（R132）；检索/全局面实测 knE-page-*
+  计数 0（本文件末腿锁「该面不分页」并出示其行钮族为 kn-row-copy-<i>）。
+· 「导出数据行数」不存在 → knF-copy 数据行代位（R142/R190 先例）；「kn-more」不存在
+  → 实测 knE-page-more/-count/-end/-error/-retry；cursor 只在组件态（R118）——断言
+  全走点击控件 + 读请求 URL。kn3-page-cap 50 常量位 / M 可变位。
+```
+
+## 查重判定（引用 vs 新写）
+
+```text
+引用不重写：R131①（paging:115-125 第 2 页后切桶归 1：计数文本/标识出局/无旧 cursor）、
+  R131②（:128-146 末页 cap-M==count 互等 + disabled+「已到末页」——腿③整腿已锁）、
+  R131③（:150-163 保行/rid/重试整段增量恰 1）、R152③（两态 title）、R152⑤（合并态
+  钮链）、R149②（重叠去重四读）、R169（跨组不重号）、R132（排序重编）。
+真缺口（本文件 4 例）：①翻页后**同屏五读全链**（knE-page-count 句 + 行==data-len==
+  钮数==cap-M==knF 数据行，且复制行序与屏上行名逐行同序——R149 四读未与 count 文本
+  同框、R131④ 未含钮链）；②筛选复位后三值对新集**重算**（R131① 只锁行数与文本，
+  未锁 data-len/钮/cap-M 同步；回「全部」后 cap-M=2 证明复位回第一页集）；
+  ④错误窗口内四读**保持不塌**（R131③ 只锁行数+rid——本例补 [2,2,"2","2"] 窗口期
+  快照与成功后 [3,3,"3","3"] 跃迁）；末腿检索面不分页映射锁。
+```
+
+## 关键读数
+
+```text
+①翻页后：count 逐字「已显示 3 篇 · 总数不可用」（无 total 不推算）；行 3==data-len "3"
+  ==钮 3==cap-M "3"；钮 id [space-0, space-1, space-2] 跨页连续；knF 第 1 列逐行==行名。
+②切「表格」桶：四读全为 1（含 cap-M——复位不只看行数）、钮 [space-0]、knF 行 1；
+  回「全部」：[2,2,"2","2"]（游标回指 p2，第三行未残留）。
+④500 窗口：error 锚+「请求编号：rid-r197-500」、四读 [2,2,"2","2"] 不冒充第三行；
+  重试增量恰 1、error null、四读跃迁 [3,3,"3","3]、钮链三连。
+```
+
+## 验证尾行（R197）
+```text
+$ npx vitest run src/modules/knowledge   → 23 files / 149 tests passed（基线 145 + 4）
+$ npx vitest run                         → 256 files / 2861 tests passed 全绿（无豁免项）
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r197-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn3*/kn-row-copy*/kn-row-copy-space*/kn-doc-copy*/kn-doc-preview*/kn-space-preview*/
+kn3-page-cap/knE-page-*/kn6-search-*/knF/knG/knI/knL-copy* 与既有 22 套全绿。
+请求口径：①②翻页各按其真实 1 次读取；④重试 +1 恰一次；筛选/复制零增量（快照逐字）。
+过程记录：末腿初版沿用空 DOCUMENTS_PLAIN 致「行钮>0」自错，补该面数据后过——非产品缺陷。
+```
+未测如实：带登录会话真实分页屏（重叠页/末页信封 mock 代证）；「共 N 篇」有 total 信封
+下的 count 联动（主测 B 段 :2556-2563 已锁该文本，本轮夹具走无 total 分支）。
+边界：只新增 web/src/modules/knowledge/knowledge.counts.paging.test.tsx 与本证据；
+显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「test(console): knowledge counts after paging guards」。
