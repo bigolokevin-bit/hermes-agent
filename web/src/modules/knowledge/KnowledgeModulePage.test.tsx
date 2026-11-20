@@ -2770,4 +2770,103 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect((copyBtn()?.getAttribute("title") ?? "")).toContain("这份列表是空的");
     expect((byTestid("knF-lines")?.textContent ?? "")).toBe("0 行");
   });
+
+  it("copies the global document-name search hits as on-screen text (knG-*): hit order, zero refetch, empty guard, fallback", async () => {
+    const LIST = {
+      asOf: "2026-11-19T08:00:00Z",
+      documents: [
+        { documentId: "d_manual", fileName: "员工手册.pdf", mimeType: "application/pdf", sizeBytes: 2516582, updatedAt: "2026-11-19T07:10:00Z", url: "/documents/d_manual", spaceId: "sp_hr", spaceName: "人事制度空间" },
+        { documentId: "d_pay", title: "薪酬口径表.xlsx", docType: "xlsx", sizeBytes: 40960, lastSyncAt: "2026-11-19T05:30:00Z", spaceId: "sp_fin" },
+        { documentId: "d_bare" },
+      ],
+    };
+    const EXPECTED_ALL =
+      "文档名 | 所属空间 | 类型 | 大小 | 更新\n" +
+      "员工手册.pdf | 人事制度空间 | PDF | 2.4 MB | 2026-11-19 15:10\n" +
+      "薪酬口径表.xlsx | 空间 · SPFIN | 表格 | 40.0 KB | 2026-11-19 13:30\n" +
+      "— | — | — | — | —\n";
+    const EXPECTED_HUMAN =
+      "文档名 | 所属空间 | 类型 | 大小 | 更新\n" + "员工手册.pdf | 人事制度空间 | PDF | 2.4 MB | 2026-11-19 15:10\n";
+    const gBtn = () => byTestid("knG-copy") as HTMLButtonElement | null;
+    const gStatus = () => (byTestid("knG-copy-status")?.textContent ?? "").trim();
+    const stubClipboard = (writeText: ReturnType<typeof vi.fn>) =>
+      Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+
+    // ---------- 1. 成功复制：命中顺序全文逐字；urls() 前后计数不变 ----------
+    fetchMock.mockClear();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    stubClipboard(writeText);
+    fetchMock.mockImplementation((url: string) => {
+      if (url === DOCUMENTS_PLAIN) return Promise.resolve(LIST);
+      return fail(404, "这个数据接口还没有接入。", "rid-g-x");
+    });
+    await render("/knowledge?tab=spaces");
+    expect(attr("kn6-search", "data-state")).toBe("ready");
+    const urlsBefore = fetchMock.mock.calls.length;
+    expect(gBtn()?.disabled).toBe(false);
+    expect(gBtn()?.tagName).toBe("BUTTON");
+    expect(gStatus()).toBe("");
+    await click("knG-copy");
+    expect(writeText).toHaveBeenCalledTimes(1);
+    expect(writeText.mock.calls[0][0]).toBe(EXPECTED_ALL); // 头行 + 3 条命中，顺序=屏上命中顺序
+    expect(gStatus()).toBe("已复制 3 条");
+    expect(fetchMock.mock.calls.length).toBe(urlsBefore); // 纯屏上数据：零新请求
+    expect(byTestid("knG-copy-fallback")).toBeNull();
+
+    // ---------- 2. 检索词一变，旧「已复制 N 条」立即作废；复制的是筛后行 ----------
+    const writeText2 = vi.fn().mockResolvedValue(undefined);
+    stubClipboard(writeText2);
+    await type("kn6-search-input", "员工");
+    expect(gStatus()).toBe(""); // 内容签名不再相合
+    await click("knG-copy");
+    expect(writeText2.mock.calls[0][0]).toBe(EXPECTED_HUMAN);
+    expect(gStatus()).toBe("已复制 1 条");
+    expect(fetchMock.mock.calls.length).toBe(urlsBefore);
+
+    // ---------- 3. 提交关键词只进 URL，不重发文档读取 ----------
+    await submitForm("kn6-search-form");
+    expect((byTestid("loc")?.textContent ?? "")).toContain("q=%E5%91%98%E5%B7%A5");
+    expect(fetchMock.mock.calls.length).toBe(urlsBefore);
+
+    // ---------- 4. 0 命中：disabled + 指定 title，不伪造行、不写剪贴板 ----------
+    await type("kn6-search-input", "查无此词");
+    expect(gBtn()?.disabled).toBe(true);
+    expect(gBtn()?.getAttribute("title")).toBe("当前没有可复制的结果");
+    expect((byTestid("knG-lines")?.textContent ?? "")).toBe("0 条");
+    await click("knG-copy");
+    expect(writeText2).toHaveBeenCalledTimes(1); // 守卫兜底
+    expect(fetchMock.mock.calls.length).toBe(urlsBefore);
+
+    // ---------- 5. 剪贴板拒绝 → 只读 textarea（内容同文本）；再成功即收起；不可用同路 ----------
+    await type("kn6-search-input", "员工");
+    const writeFail = vi.fn().mockRejectedValue(new Error("denied"));
+    stubClipboard(writeFail);
+    await click("knG-copy");
+    expect(gStatus()).toContain("复制失败");
+    const fallback = byTestid("knG-copy-fallback") as HTMLTextAreaElement | null;
+    expect(fallback).toBeTruthy();
+    expect(fallback?.readOnly).toBe(true);
+    expect(fallback?.value).toBe(EXPECTED_HUMAN);
+    const writeOk = vi.fn().mockResolvedValue(undefined);
+    stubClipboard(writeOk);
+    await click("knG-copy");
+    expect(gStatus()).toBe("已复制 1 条");
+    expect(byTestid("knG-copy-fallback")).toBeNull();
+    Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true });
+    await click("knG-copy");
+    expect(gStatus()).toContain("复制失败");
+    expect(byTestid("knG-copy-fallback")).toBeTruthy();
+    expect(fetchMock.mock.calls.length).toBe(urlsBefore);
+
+    // ---------- 6. 真空集（200 但 0 条）：控件出现但 disabled，空态文案仍在 ----------
+    fetchMock.mockImplementation((url: string) => {
+      if (url === DOCUMENTS_PLAIN) return Promise.resolve({ asOf: "2026-11-19T08:00:00Z", documents: [] });
+      return fail(404, "这个数据接口还没有接入。", "rid-g-x");
+    });
+    await render("/knowledge?tab=spaces");
+    expect(byTestid("kn6-search-empty")).toBeTruthy();
+    expect(byTestid("knG-row")).toBeTruthy();
+    expect(gBtn()?.disabled).toBe(true);
+    expect(gBtn()?.getAttribute("title")).toBe("当前没有可复制的结果");
+  });
 });

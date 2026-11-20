@@ -1535,3 +1535,42 @@ $ npx vite build --outDir /tmp/knw23-dist → exit 0（产物只落 /tmp）
 package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
 无 force / amend / `--no-verify`；merge commit（053da5c4..b797bc98 代次）与单 feature commit
 「feat(console): knowledge document list copy」分开。
+
+# KNW5 追加 R56：全局文档名搜索的复制结果（testid `knG-*`）（2026-11-20 BJT）
+
+基线安全闸：toplevel 相符、porcelain 先为空、显式 refspec fetch；上游 tip 仍为交接所述
+`b797bc98`（generation 053da5c4），`git merge` 结果 Already up to date——本笔只有 feature commit。
+
+## 一、口径（与 R55/knF 同一手法，作用于 `/knowledge` 顶部「按文档名搜索」的命中面）
+
+```text
+取数       零新请求：文本只由当前检索词下的命中行（屏上五列字符串）拼成。测试逐段实测
+           fetchMock 计数在复制、键入筛选、提交关键词、0 命中守卫、fallback 各段前后一律不变
+           （提交 ?q= 也只进 URL：doc-search 读口不随关键词重发，R51 口径）。
+文本       头行「文档名 | 所属空间 | 类型 | 大小 | 更新」+ 每命中行一条，顺序=屏上命中顺序；
+           人话值与屏上逐字一致（PDF、2.4 MB、15:10、空间 · SPFIN 取屏上空间标签，不落裸 id）；
+           缺值「—」（无名/无空间/无类型/无大小/无时间各留各的 —，不当 0、不编行）。
+状态       knG-copy-status 常驻挂载（aria-live=polite）：成功「已复制 N 条」（N=当次命中行数）；
+           内容签名守卫——检索词一改，旧的「已复制 N 条」立即作废，不冒充当前结果复制过。
+0 命中     筛到 0 条与真空集（200+0 条）都：按钮 disabled + title 逐字「当前没有可复制的结果」、
+           行计数「0 条」；即便被触发也有守卫不写剪贴板。读口未接入/失败/加载中不出复制条。
+失败       navigator.clipboard 拒绝与不可用两路（jsdom 实测）→ 「复制失败，已展开可选文本」
+           + knG-copy-fallback 只读 textarea（value 与屏上文本逐字一致）；再点成功即收起。
+键盘       BUTTON[type=button] 真按钮，Tab 可达、Enter 原生触发；fallback 原生 textarea 可聚焦。
+```
+
+testid 新增 `knG-row` / `knG-copy` / `knG-lines` / `knG-copy-status` / `knG-copy-fallback`。
+kn3 / kn6 / kn7 / kn8 / kn9 / knB / knC / knD / knE / knF / knw5 全套既有断言零改零破。
+复制条 flex-wrap、textarea 100% 盒宽，无固定宽；本轮未重建 9122，三宽度横溢未做浏览器复测。
+
+## 验证尾行（R56）
+```text
+$ npx vitest run src/modules/knowledge   → 2 files / 49 tests passed（含新增复制结果六段测试）
+$ npx vitest run                         → 138 files / 1672 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 set-state-in-effect warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw24-dist → exit 0（产物只落 /tmp）
+```
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
+无 force / amend / `--no-verify`；单 commit「feat(console): knowledge search results copy」。

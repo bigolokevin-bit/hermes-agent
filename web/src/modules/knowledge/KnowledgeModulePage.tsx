@@ -66,6 +66,7 @@ import {
   INGEST_STATUS_UNWIRED_HUMAN,
   INGEST_STATUS_URL,
   docCopyText,
+  docHitCopyText,
   documentDetailUrl,
   documentsUrl,
   documentsPageUrl,
@@ -1777,6 +1778,23 @@ function DocumentNameSearch({
     onClear();
   };
 
+  // ---- R56 — 复制结果：文本只取当前检索词下的命中行（屏上五列原样），此路不发任何请求。
+  // 与 knF 同一手法：回执带内容签名，检索词一变旧的「已复制 N 条」立即作废，不冒充当前结果。
+  const copyText = docHitCopyText(shown);
+  const [copyState, setCopyState] = useState<{ kind: "copied" | "failed"; sig: string } | null>(null);
+  const copyAct = copyState !== null && copyState.sig === copyText ? copyState.kind : "idle";
+  const copyHits = () => {
+    if (shown.length === 0) return;
+    if (!navigator.clipboard?.writeText) {
+      setCopyState({ kind: "failed", sig: copyText });
+      return;
+    }
+    void navigator.clipboard.writeText(copyText).then(
+      () => setCopyState({ kind: "copied", sig: copyText }),
+      () => setCopyState({ kind: "failed", sig: copyText }),
+    );
+  };
+
   return (
     <section className="kn6-search" data-testid="kn6-search-panel">
       {openKey !== "" && openSpaceRaw ? (
@@ -1909,6 +1927,39 @@ function DocumentNameSearch({
         )}
       />
       </div>
+      {surface.state.kind === "ready" ? (
+        <div className="knG-row" data-testid="knG-row">
+          <Button
+            size="sm"
+            outlined
+            className="knG-copy"
+            onClick={copyHits}
+            disabled={shown.length === 0}
+            title={
+              shown.length === 0
+                ? "当前没有可复制的结果"
+                : "复制当前检索词下的命中行：文档名 | 所属空间 | 类型 | 大小 | 更新。屏上数据，不会再发请求。"
+            }
+            data-testid="knG-copy"
+          >
+            复制结果
+          </Button>
+          <span className="knw5-sub" data-testid="knG-lines">{shown.length} 条</span>
+          <span className="knG-status" data-testid="knG-copy-status" aria-live="polite">
+            {copyAct === "copied" ? `已复制 ${shown.length} 条` : copyAct === "failed" ? "复制失败，已展开可选文本，可手动复制" : ""}
+          </span>
+          {copyAct === "failed" ? (
+            <textarea
+              className="knG-fallback"
+              data-testid="knG-copy-fallback"
+              aria-label="手动复制检索结果文本"
+              readOnly
+              rows={Math.min(8, shown.length + 2)}
+              value={copyText}
+            />
+          ) : null}
+        </div>
+      ) : null}
     </section>
   );
 }
