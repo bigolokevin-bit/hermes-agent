@@ -69,3 +69,28 @@ expect(landed).toBe("/overview?")   // 通过
 - 未改 `App.tsx` / `shell` / `registry` / 任何产品代码；只新增本文档。
 - 未新增路由、未动 `PATH_ALIASES`、未动 redirects 计数。
 - 未测：真实浏览器里粘贴 `/duty?window=7d` 的落点（需先有上述授权改动）。
+## 2026-11-20 已授权修复（一行级改动）
+
+L0 放开了 `web/src/App.tsx` 中 `/duty` 这一条 Route。实施如下：
+
+- 新增 `web/src/modules/duty/dutyRedirect.tsx`：`dutyRedirectTarget(search)` 只做 `window|range → range`，
+  `14d → 30d`（与 dutyRange 读 30 天再裁 14 天一致）；`view/groupBy/q` 不映射（`/overview` 没有对应读取点，
+  伪造会把页面没读过的值写进地址）。`DutyRedirect` 组件取 `useLocation().search` 后 `<Navigate replace>`。
+- `App.tsx` 仅两行：新增一条 import，`<Route path="/duty" element={<DutyRedirect />} />`。其余 Route、
+  `shell/routes.ts`、registry 未动；`/overview` 的读取逻辑未动。
+
+验收读数（jsdom，`dutyRedirect.test.tsx`）：
+
+| 入口 | 落点 |
+|---|---|
+| `/duty?range=7d` | `/overview?range=7d` |
+| `/duty?window=7d` | `/overview?range=7d` |
+| `/duty?window=14d` | `/overview?range=30d` |
+| `/duty` | `/overview` |
+
+`?view=employee&groupBy=model&q=x&window=zz` → `/overview`（不认识的参数一律不带过去）。
+
+门禁：`assert-ia` html / `--source=react` 均 exit 0，计数 51/22/1/8 不变（routes 运行时自检未触碰，
+redirects 仍 24/24）；duty 6 files / 106 passed；全量 162 files / 2239 passed；tsc 本域 0；eslint exit 0。
+
+未测：真实浏览器从旧书签进入后的落点（jsdom 已覆盖同一 `Navigate` 行为）。

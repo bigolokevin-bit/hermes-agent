@@ -246,6 +246,7 @@ import { latchChatActivation } from "@/lib/chat-activation";
 import { sharedGatewayProfiles, sharedGatewayRestartDescription } from "@/lib/shared-gateway";
 import { api } from "@/lib/api";
 import type { StatusResponse, UpdateCheckResponse } from "@/lib/api";
+import { DutyRedirect } from "./modules/duty/dutyRedirect";
 
 function RouteFallback({ label = "Loading…" }: { label?: string }) {
   return (
@@ -1324,7 +1325,7 @@ export default function App() {
                           default tab; tasks/settings/events normalize onto
                           real surfaces; the rest state 未接入 in plain words
                           instead of showing the duty console. */}
-                      <Route path="/duty" element={<Navigate to="/overview" replace />} />
+                      <Route path="/duty" element={<DutyRedirect />} />
                       <Route path="/tasks" element={<Navigate to="/work?tab=board" replace />} />
                       {/* R40: /tasks/<taskId> deep link renders the task
                           module itself; the detail drawer opens straight from
