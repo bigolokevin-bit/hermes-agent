@@ -1288,3 +1288,8 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 测试：employees 新用例（三态行 fixture：值/null/缺键→cell 逐字=helper 输出+桶名=DEPT_UNLABELED_LABEL 计数 2+title 判据）；ed 新 describe 3 用例（三态各独立 it=**R43 老坑复证：同 it 换 mock 再 render 不重发，useResourceList deps=[url,nonce]**）；既有断言同步两处=mount「—」→未标注部门+title、list depth「—」→同口径（工单②明禁「—」当空=语义更新非破）。定向 employees+employee-detail 3 files/103 passed；approvals 复跑 172 passed 零破；tsc 两域 0 红；assert-ia 两模式 exit0；全量 **170 files/2361 passed**（基线 2357+4）。
 - 零破：ed1-*/ed5-*/emp-list-*/emp-list-dept-* 现名全在（新格=ed1-identity-department 属 ed1-* 族扩展）；三档=IdentityCard dl 三列 grid+格 truncate 既有形态学报（jsdom 不可测）；9122 活体身份卡部门读数待并入后代次。
 - 决定：列表「未标注部门」桶含缺键与空值两种行（桶=筛选能力，聚合从宽）；详情三态严格区分（缺键≠空值≠有值）——桶名与详情文案共用 DEPT_UNLABELED_LABEL/FIELD_MISSING 常量，无第二套措辞。
+
+## V2 知识空间「最新版本」深链调查（只读，2026-11-20）
+
+- 只读调查完成，零产品码/零写请求/零启停；结论文件=docs/_artifacts/appr/V2-knowledge-latest-version-link.md。
+- 判定=kn7「最新版本」深链**不可行，标未实现（非未接通）**：BFF /api/documents（b3b0f16 server.py L1333-1390）行键无 version/revision/current_version 任何版本字段，is_released 仅 bool 旗标；?revision=/?version= 均不存在=禁编假参数。唯一诚实近似=按 updated_at 排序取最新（排序语义非版本）。真做版本=Bisheng 上游功能缺口，不自裁。
