@@ -112,6 +112,7 @@ import {
   normalizeMetricsQuery,
   ignoredParamsNote,
 } from './metrics';
+import { COST_CALIBER_TEXT, costCaliberTitle } from './costCaliberNote';
 import './metrics.css';
 
 type PageState =
@@ -2494,6 +2495,13 @@ export function MetricsModulePage() {
                   title={`判据：这张宽表的行取自当前批次，组件里没有 slice 或行数上限；这里的 ${detailRows.length} 行与上方来源行的计数同源。页面另有两处卡片式短列表（月度快照、价目表）确有截断，各自单独标注。`}
                 >
                   宽表逐行全量渲染，共 {detailRows.length} 行；导出与屏上逐行一致。
+                </p>
+                <p
+                  className="met6-hint"
+                  data-testid="met-cost-caliber-note"
+                  title={costCaliberTitle('metrics')}
+                >
+                  {COST_CALIBER_TEXT}
                 </p>
                 {breakdownView.note ? <p className="met6-hint">{breakdownView.note}</p> : null}
               </>

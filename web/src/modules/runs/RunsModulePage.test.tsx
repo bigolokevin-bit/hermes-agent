@@ -20,6 +20,7 @@ vi.mock("@/lib/clipboard", () => ({ copyTextToClipboard: clip.copyTextToClipboar
 
 import { RunsModulePage } from "./RunsModulePage";
 import { runCsvFileName, runListCsv } from "./runs";
+import { COST_CALIBER_TEXT } from "../metrics/costCaliberNote";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -1634,5 +1635,21 @@ describe("runs preview and detail parity", () => {
     expect(urls()).toHaveLength(before);
     expect(urls().filter((u) => u.includes("/api/run-detail"))).toHaveLength(1);
     expect(urls().filter((u) => u.includes("/api/run-events"))).toHaveLength(1);
+  });
+});
+
+describe("run-cost-caliber-note — cross-page cost caliber", () => {
+  it("prints the one shared sentence and points at the metrics page", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs");
+    const note = document.querySelector("[data-testid='run-cost-caliber-note']");
+    expect(note).not.toBeNull();
+    expect(note?.textContent).toBe(COST_CALIBER_TEXT);
+    const title = note?.getAttribute("title") ?? "";
+    expect(title).toContain("/runs");
+    expect(title).toContain("/metrics");
+    // 静态说明：挂上页面不再追加任何读口。
+    const reads = api.fetchJSON.mock.calls.filter((call) => String(call[0]).includes("/api/runs"));
+    expect(reads).toHaveLength(1);
   });
 });

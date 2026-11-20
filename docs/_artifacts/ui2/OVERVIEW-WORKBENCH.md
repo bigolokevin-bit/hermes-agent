@@ -256,3 +256,15 @@
 - 测试 3 例：完整 run 六字段逐项两处同值（`2026-11-18 10:00` / `10:11` / `11 分钟` / `员工 · AAAABBBB` 逐字相等）；缺失 run 同句；预览开关两次后 `fetchJSON` 计数不变，`/api/run-detail` 与 `/api/run-events` 各恰 1 次。
 - 口径：预览是纯渲染，不新增读；详情仍只读一次明细与一次事件流；`该字段未返回`/`—`/`未指派` 与列表、复制、CSV 三面保持一致。
 - 验证：runs 3 files / 111 passed（基线 108）；全量 2178 passed；tsc 本域 0；eslint 本域 exit 0。未测：真实浏览器 375 详情长文案折行。
+
+## 跨页成本口径说明（cost caliber notes，2026-11-20）
+
+`/runs` 与 `/metrics` 都展示成本，但口径不同：运行列表只有账本实扣，指标页把调用次数与账本金额分列。两页各加一行只读说明，指向对方。
+
+- 单一文案源：`web/src/modules/metrics/costCaliberNote.ts` 导出 `COST_CALIBER_TEXT`、`RUNS_PAGE_PATH`、`METRICS_PAGE_PATH`、`costCaliberTitle(audience)`；两页引用同一常量，禁止各写一版措辞。
+- `/runs`：表体下方 `run-cost-caliber-note`（ready 时渲染），title = `costCaliberTitle('runs')`，含 `/runs` 与 `/metrics` 两条路径。
+- `/metrics`：明细表下方（`metAH-cap-note` 之后）`met-cost-caliber-note`，title = `costCaliberTitle('metrics')`，互指 `/metrics` → `/runs`。
+- 脚本 `react-router` 无关：两处都是静态 `<p>`，不新增读口（`/api/runs` 仍恰 1 次；metrics 读口计数与首载一致）。路径只进 title，可见文案不含 `/api`、不含工程字段名。
+- 可见文案（逐字，两页相同）：成本按账本实扣显示：真实的零写 $0.00，没有记账写「—」，不把读不到当成 0。账本实扣与「调用次数」不是同一套口径，两边数字各以本页卡片为准。
+- 验证：`vitest run src/modules/runs` 3 files / 112 passed；`vitest run src/modules/metrics` 4 files / 228 passed；全量 159 files / 2180 passed；`tsc` 本域 0（全仓既存 79）；`eslint` exit 0；build exit 0，entry 内 marker 0，`RunsModulePage-*.js` / `MetricsModulePage-*.js` 各 1。
+- 未测：真实浏览器三档换行；两页并排人工对照。

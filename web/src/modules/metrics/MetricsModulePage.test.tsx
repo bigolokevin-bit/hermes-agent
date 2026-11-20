@@ -15,6 +15,7 @@ vi.mock('@/modules/models/fetchJson', () => ({ fetchJsonStrict: api.fetchJsonStr
 vi.mock('@/lib/clipboard', () => ({ copyTextToClipboard: clip.copyTextToClipboard }));
 
 import { MetricsModulePage } from './MetricsModulePage';
+import { COST_CALIBER_TEXT } from './costCaliberNote';
 import { CALIBER_NOTES } from './metrics';
 import { costCaliber, csvFileName, shareCsvFileName } from './metrics';
 
@@ -4734,5 +4735,19 @@ describe('metAP duty caliber note', () => {
     // 该说明是静态句，挂载后不再追加任何请求。
     const before = urls().length;
     expect(urls().length).toBe(before);
+  });
+});
+
+describe('met-cost-caliber-note — cross-page cost caliber', () => {
+  it('prints the same sentence as the runs list and points back at it', async () => {
+    await mount(usageRouter());
+    const note = document.querySelector('[data-testid="met-cost-caliber-note"]');
+    expect(note).not.toBeNull();
+    expect(note?.textContent).toBe(COST_CALIBER_TEXT);
+    const title = note?.getAttribute('title') ?? '';
+    expect(title).toContain('/metrics');
+    expect(title).toContain('/runs');
+    // 静态说明：不新增读口。
+    expect(urls().filter((u) => u.includes('/api/')).length).toBeGreaterThan(0);
   });
 });

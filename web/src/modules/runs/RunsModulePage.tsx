@@ -103,6 +103,7 @@ import {
 } from "./runs";
 import { forcedStateOf, useRunsData } from "./useRunsData";
 import { useRunDetail, type DetailOutcome } from "./useRunDetail";
+import { COST_CALIBER_TEXT, costCaliberTitle } from "../metrics/costCaliberNote";
 
 /** 「—」 with the reason in its title: a gap reads as a gap, never as a zero. */
 function Dashed({ reason }: { reason: string }): ReactNode {
@@ -1121,6 +1122,15 @@ export function RunsModulePage() {
           onSort={chooseSort}
           sortDisabled={false}
         />
+      ) : null}
+      {phase === "ready" ? (
+        <p
+          className="min-w-0 break-words text-xs text-muted-foreground"
+          data-testid="run-cost-caliber-note"
+          title={costCaliberTitle("runs")}
+        >
+          {COST_CALIBER_TEXT}
+        </p>
       ) : null}
       {rsort !== null && phase === "ready" ? (
         <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="run-sort-scope-note">
