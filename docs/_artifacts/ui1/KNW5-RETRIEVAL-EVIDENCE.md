@@ -5771,3 +5771,50 @@ kn-doc-copy*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/kn7-preview*/导出 absent 
 未测如实：带登录会话真屏；① 全 51 钮循环为 jsdom 成本上限内全量（真屏性能未测）；
 归位弃页后能否再点 -more 续第 2 页（R216② 清全部路径外推未实锁）；上游闪红体未定位
 （两轮不复现，非知识域）。
+
+# KNW5 追加 R238：导出×分页字节级三链（前缀不变性/换代==直链互等/窗内冻结+尾段合成）（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `ec12d3e7`
+（wave-79）、基线先跑 53/240 全绿 Errors 0、目标文件确认缺席再动笔。零产品文件改动。
+新增 knowledge.export.paging.triple.test.tsx 三例（本体）。
+
+## 重叠判定与名实（红线⑤逐条引用不重写）
+
+```text
+三腿全落详情面（唯一分页；-space- 族）；无真 CSV→导出=knF 数据行、spy 全程 0；
+?type=→?ktype=；cursor 只从请求 URL 断言；51 行夹具（R216/R229 先例）；cap 50/M 位
+引 R108。**派工①「首行非第 1 页首行」不成立**：产品追加保序、屏上首行仍=第 1 页首行
+（R229①:157-171 已锁三方互等）——按实记录不造假。
+重叠引用：①=R229①+R216①:134-148（四值/名链）；②=R229②:173-190+R131①:115-125+
+R237②:168-186（序重建/弃页）；③=R237③:188-220+R216④+R131③/R197④。
+本文件唯一未锁位（按红线⑦落死，导出侧字节级）：
+A 追加**前缀不变性**：post.slice(0,50) toEqual pre（追加前后 50 行逐字节不动、第 51
+  行才新增「卷 51.pdf」——R229① 只数追加后单帧）；
+B 切桶换代态导出全文 **toBe** 全新挂载深链 ?ktype=表格 态（两态归位页 1 同为 2 笔
+  xlsx——R229②/R237② 各查集/序，两态等值未测）；
+C 500 窗内导出全文 **toBe** 失败前快照（文本冻结，R237③ 只数 50 行）且不含卷 51；
+  重试恰 [+P2URL]（末条请求 toBe P2URL）后 51 行=前 50 逐字节==窗前 + 尾行入链
+  （增量合成式对账）。
+```
+
+## 三例读数与验证尾行（R238）
+
+```text
+① pre 50 → append（P2 请求恰 1）→ post 51、post[0..49]==pre、尾行「卷 51.pdf」、
+  首行==屏上首行、四值 [51,51,51(,51 data-len)]。② 追加后切「表格」复制得 switched；
+  直链重挂载复制 toBe switched 且 2 行；切桶段 urls join 逐字==u0（零新请求）。
+  ③ 窗前 textPre →500 窗 textWin toBe textPre 且不含卷 51、错误锚含「请求编号：
+  rid-r238-p2」→重试 urls +1 且末条=P2URL→post 51 行、前缀==textWin、尾行入链。
+$ npx vitest run src/modules/knowledge → 54 files / 243 tests passed（240+3），
+  grep unhandled = 0
+$ npx eslint src/modules/knowledge → 0 errors（1 既有 R54 warning）
+$ 模块 tsc → 0；npx vite build --outDir /tmp/knw-r238-dist → exit 0
+$ 全仓 → 378 files / 3248 passed 全绿（本轮无闪红、无已知红需点名）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knE-page-*/knF/knG/knI/knL*/kn-row-copy*/kn-row-copy-space*/
+kn-doc-copy*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/kn7-preview*/导出 absent 标记 +
+既有 53 套全绿。过程自纠一处（② 首稿复制索引错位与冗余断言，跑前清理），产品零触碰。
+```
+未测如实：带登录会话真屏；直链态与换代态的**钮序**等值（B 只锁导出全文，序位由 R237②
+地盘）；500 窗内 data-len/cap 的逐字节冻结（R237③ 锁 cap 逐字、data-len 窗内在位由
+R197④，本例聚焦导出文本未重复）；追加保序在上游乱序返回时的行为未造样张。
