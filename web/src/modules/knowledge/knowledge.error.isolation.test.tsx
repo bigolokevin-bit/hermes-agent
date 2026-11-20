@@ -178,4 +178,39 @@ describe("knowledge dual-failure isolation guards (R210, gap-only)", () => {
       return fail(500, "上游读取失败，请稍后重试。", "rid-r210-x");
     }
   });
+
+  // R211 补充口径（同单第二笔：R210 已在补充到达前完成推送，按纪律禁 amend，故增量单列）：
+  // ② 列表 500 时本面控件的**真实交互态**——排序表头在场但整排禁用（DocHeadStrip 说原因），
+  // 分页控件与行/行钮/预览族在 rows>0 分支之外，实测渲染数 0：按「不可交互」断言，
+  // 不宣称可翻页（禁造控件）。正常态的「排序翻序 + urls 不变」由主测 kn-sort 段已锁 → 引用。
+  it("②r211 list 500 face interaction reality: sort header present-but-disabled with the honest title, paging/row affordances render nowhere, clicking a disabled sort adds nothing", async () => {
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SP);
+      if (url === DOCUMENTS_PLAIN) return Promise.resolve({ asOf: SP.asOf, documents: [] });
+      if (url === docsUrlFor("sp_x")) return fail(500, "上游读取失败，请稍后重试。", RID_LIST);
+      return fail(404, "这个数据接口还没有接入。", "rid-r211-x");
+    });
+    await render("/knowledge?tab=spaces&panel=spaces&space=sp_x");
+    expect(q("kn3-docs-error")).toBeTruthy();
+    // 排序表头：在场、disabled、title 逐字说「现在不能排序」的原因（DocHeadStrip R66 态）
+    const sortHead = q("kn-sort-name") as HTMLButtonElement | null;
+    expect(sortHead).toBeTruthy();
+    expect(sortHead?.disabled).toBe(true);
+    expect(sortHead?.getAttribute("title")).toBe("这次没有读到这份列表，现在不能排序。"); // error 分支实测句
+    // 分页控件与行/行钮/预览族：渲染数 0（不宣称可翻页——按实测记「不可交互」）
+    expect(document.querySelectorAll('[data-testid^="knE-page"]').length).toBe(0);
+    expect(document.querySelectorAll('[data-testid="kn3-docs-row"]').length).toBe(0);
+    expect(document.querySelectorAll('button[data-testid^="kn-row-copy-space-"]').length).toBe(0);
+    expect(document.querySelectorAll('[data-testid="kn-doc-preview-toggle"]').length).toBe(0);
+    expect(q("kn3-page-cap")).toBeNull();
+    // 对禁用表头的点击零副作用：无 URL 写、无新请求
+    const c0 = urls().length;
+    const loc0 = (document.querySelector('[data-testid="loc"]')?.textContent ?? "") as string;
+    await act(async () => {
+      (sortHead as HTMLElement).dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => {});
+    expect(urls().length).toBe(c0);
+    expect((document.querySelector('[data-testid="loc"]')?.textContent ?? "")).toBe(loc0);
+  });
 });
