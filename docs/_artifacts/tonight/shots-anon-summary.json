@@ -117,13 +117,13 @@
     {
       "route": "#/audit",
       "viewport": "1440",
-      "chars": 792,
+      "chars": 673,
       "hasMainEl": true
     },
     {
       "route": "#/audit",
       "viewport": "375",
-      "chars": 792,
+      "chars": 673,
       "hasMainEl": true
     },
     {
@@ -141,13 +141,13 @@
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "1440",
-      "chars": 215,
+      "chars": 200,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "375",
-      "chars": 215,
+      "chars": 200,
       "hasMainEl": true
     },
     {
@@ -177,25 +177,25 @@
     {
       "route": "#/employees",
       "viewport": "1440",
-      "chars": 327,
+      "chars": 318,
       "hasMainEl": true
     },
     {
       "route": "#/employees",
       "viewport": "375",
-      "chars": 327,
+      "chars": 318,
       "hasMainEl": true
     },
     {
       "route": "#/employees?tab=matrix",
       "viewport": "1440",
-      "chars": 226,
+      "chars": 210,
       "hasMainEl": true
     },
     {
       "route": "#/employees?tab=matrix",
       "viewport": "375",
-      "chars": 226,
+      "chars": 210,
       "hasMainEl": true
     },
     {
@@ -477,13 +477,13 @@
     {
       "route": "#/overview?tab=usage",
       "viewport": "1440",
-      "chars": 152,
+      "chars": 136,
       "hasMainEl": true
     },
     {
       "route": "#/overview?tab=usage",
       "viewport": "375",
-      "chars": 152,
+      "chars": 136,
       "hasMainEl": true
     },
     {
@@ -525,37 +525,37 @@
     {
       "route": "#/system?tab=events",
       "viewport": "1440",
-      "chars": 792,
+      "chars": 673,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events",
       "viewport": "375",
-      "chars": 792,
+      "chars": 673,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "1440",
-      "chars": 792,
+      "chars": 673,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "375",
-      "chars": 792,
+      "chars": 673,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=retention",
       "viewport": "1440",
-      "chars": 792,
+      "chars": 673,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=retention",
       "viewport": "375",
-      "chars": 792,
+      "chars": 673,
       "hasMainEl": true
     },
     {
@@ -585,49 +585,49 @@
     {
       "route": "#/work",
       "viewport": "1440",
-      "chars": 319,
+      "chars": 281,
       "hasMainEl": true
     },
     {
       "route": "#/work",
       "viewport": "375",
-      "chars": 319,
+      "chars": 281,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=board&view=cron",
       "viewport": "1440",
-      "chars": 319,
+      "chars": 281,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=board&view=cron",
       "viewport": "375",
-      "chars": 319,
+      "chars": 281,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=cron",
       "viewport": "1440",
-      "chars": 319,
+      "chars": 281,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=cron",
       "viewport": "375",
-      "chars": 319,
+      "chars": 281,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=runs",
       "viewport": "1440",
-      "chars": 499,
+      "chars": 483,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=runs",
       "viewport": "375",
-      "chars": 499,
+      "chars": 483,
       "hasMainEl": true
     }
   ],
@@ -642,12 +642,12 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "18ec9cfb",
+  "headHash": "1bc3a760",
   "exitCode": 0,
-  "entry": "assets/index-Boj2h4Jf.js",
-  "entrySha256": "4c2b53eac434b6424d8433bfd8def5d410c30d6fdc9fbf1c2ffa9b6d6b8cd40e",
-  "entryBytes": 167498,
-  "servedEntryBefore": "index-Boj2h4Jf.js",
-  "servedEntryAfter": "index-Boj2h4Jf.js",
+  "entry": "assets/index-DGa9lwCA.js",
+  "entrySha256": "491634556c9faf2d517ec314b26c3cf8ef3148e3f60f00e906ff5edb66d8f993",
+  "entryBytes": 170969,
+  "servedEntryBefore": "index-DGa9lwCA.js",
+  "servedEntryAfter": "index-DGa9lwCA.js",
   "auxiliary": true
 }
