@@ -690,7 +690,8 @@ export function EmployeesModulePage() {
             {state.phase === "ready" ? visibleItems.length : "—"}
           </span>
         </div>
-        <span className="flex min-w-0 flex-wrap items-center gap-2">
+        {/* 375：操作组（复制/导出/共N行/刷新）不再与标题挤同一行，独占一行换行。 */}
+        <span className="flex min-w-0 flex-wrap items-center gap-2 max-md:w-full">
           <ListCopyButton rows={visibleItems} totalLoaded={state.items.length} phase={state.phase} />
           <ListExportButton rows={visibleItems} totalLoaded={state.items.length} phase={state.phase} />
           <Button size="sm" outlined onClick={retry} data-testid="employees-refresh">
@@ -995,8 +996,8 @@ export function EmployeesModulePage() {
                     className="grid min-w-0 flex-1 grid-cols-1 gap-1 px-4 py-3 hover:bg-white/5 md:grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)_minmax(0,0.7fr)_minmax(0,0.7fr)_minmax(0,1fr)_minmax(0,0.6fr)_minmax(0,0.8fr)] md:items-center md:gap-2"
                   >
                     <span className="min-w-0">
-                      <span className="block truncate text-sm">{displayName(row)}</span>
-                      <span className="block truncate text-xs text-white/45">{row.title?.trim() || "岗位未提供"}</span>
+                      <span className="block text-sm max-md:whitespace-normal max-md:break-words">{displayName(row)}</span>
+                      <span className="block text-xs text-white/45 max-md:whitespace-normal max-md:break-words">{row.title?.trim() || "岗位未提供"}</span>
                     </span>
                     <span
                       className="font-mono text-xs text-white/60"
@@ -1009,7 +1010,7 @@ export function EmployeesModulePage() {
                       <Badge tone={lifecycleTone(row.lifecycleState)}>{lifecycleLabel(row.lifecycleState)}</Badge>
                     </span>
                     <span
-                      className="min-w-0 truncate text-xs text-white/55"
+                      className="min-w-0 text-xs text-white/55 max-md:whitespace-normal max-md:break-words"
                       data-label="部门"
                       title={
                         departmentView(row.department !== undefined, row.department ?? null).title ??
@@ -1019,7 +1020,7 @@ export function EmployeesModulePage() {
                       {departmentView(row.department !== undefined, row.department ?? null).label}
                     </span>
                     <span
-                      className="min-w-0 truncate font-mono text-xs text-white/55"
+                      className="min-w-0 font-mono text-xs text-white/55 max-md:whitespace-normal max-md:break-words"
                       data-label="最近活跃"
                       title="口径：记录更新时间 updatedAt（北京时间）"
                     >
@@ -1031,6 +1032,8 @@ export function EmployeesModulePage() {
                     <span className="text-xs text-white/55" data-label="月度预算">
                       {money(row.enrichment?.effectiveBudget?.monthlyCostUsd)}
                     </span>
+                    {/* 375：整行即详情入口，补一行独立可见的「查看详情」命中区（≥44px）。 */}
+                    <span className="flex min-h-[44px] items-center text-xs text-white/45 md:hidden">查看详情 →</span>
                   </Link>
                   </span>
                   </div>
