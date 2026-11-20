@@ -105,3 +105,16 @@
   font-size: var(--font-size-1) !important;
   color: var(--color-text-muted) !important;
 }
+
+/* UI-A 2026-11-21 /collab：委托列表无 HTML table（col5-row-* 是 GRID li 行壳，
+ * fr 比例列宽、375 自然折 2 列不撑破）。主表行壳 40；链路视图节点
+ * （col5-chain-node-*，按委托方分组的子表面）36 紧凑档。数字右对齐不适用
+ * （列为 from/to/scope/action/status/validity 文本）；计数行 col5-counts 是
+ * 整句文案非列，制式数字留给文案车道；斑马纹无源（divide-y）。 */
+[data-testid^="col5-row-"] {
+  min-height: var(--table-row-h);
+}
+
+[data-testid^="col5-chain-node-"] {
+  min-height: var(--table-row-h-compact);
+}
