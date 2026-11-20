@@ -1,21 +1,12 @@
 import { useState } from "react";
 import { Card, CardContent } from "@nous-research/ui";
 import {
+  SOURCE_STATUS_LABEL as STATUS_LABEL,
   SYS6_GAP,
   toggleSourceMatrix,
   useSourceMatrix,
-  type SourceStatus,
 } from "./sourceReads";
-
-const STATUS_LABEL: Record<SourceStatus, string> = {
-  idle: "未读取",
-  loading: "读取中",
-  ok: "成功",
-  degraded: "降级",
-  failed: "失败",
-  unwired: "读口未接入",
-  skipped: "预览未读取",
-};
+import { csvRows, downloadCsv, exportFilename, toCsv } from "./sourceMatrixCsv";
 
 function CopyRid({ id, testid }: { id: string; testid: string }) {
   const [copied, setCopied] = useState(false);
@@ -48,6 +39,9 @@ export function SourceMatrix() {
     `读口未接入 ${counts.unwired ?? 0}`,
   ].join(" · ");
 
+  const exportRows = csvRows(rows);
+  const exportDisabled = exportRows.length === 0;
+
   return (
     <Card data-testid="sys6-sources">
       <CardContent className="space-y-2 p-4">
@@ -65,6 +59,20 @@ export function SourceMatrix() {
           </button>
         </div>
         <p className="sys6-note">数值来自本页已经发生的读取，展开或收起不会再发请求；展开状态不写进网址。</p>
+        <div className="sys7-actions">
+          <button
+            type="button"
+            className="sys7-export"
+            data-testid="sys7-export"
+            disabled={exportDisabled}
+            title={exportDisabled ? "当前没有可导出的读口行" : "导出当前矩阵；不会再发请求"}
+            onClick={() => { downloadCsv(exportFilename(), toCsv(exportRows)); }}
+          >
+            导出 CSV
+          </button>
+          <span className="sys7-count" data-testid="sys7-export-count">{exportRows.length} 行</span>
+          <span className="sys7-note">导出与屏上矩阵同源：姓名、路径、人话状态、耗时、响应顶层 ISO 采集时刻；缺失留空，不补 0，也不用本机时钟。</span>
+        </div>
         {expanded ? (
           <div className="sys6-scroll">
             <table className="sys6-table" data-testid="sys6-table">

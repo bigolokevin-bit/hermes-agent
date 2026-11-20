@@ -1869,3 +1869,13 @@ built /private/tmp/health-r38/index.html
 - 断言：技能/工具各补「导出说明 + CSV 行数与名称随 q 变化」，原有排序测试继续比对屏上首末与 CSV 首末。
 - 验证：`npx vitest run src/modules/skills src/modules/tools src/modules/capabilities` → **5 files / 54 tests passed**；全量 `npx vitest run` → **137 files / 1588 passed**；`tsc -b . --noEmit` 本域 0。
 - 边界：只改 `web/src/modules/{capabilities,skills,tools}/**` 与 DONE；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；无独立观察者。
+
+## R57 — /system 读口矩阵 CSV 导出（sys7）
+
+- 基线：显式 refspec fetch 后 merge `origin/lane/hermes-console` = `38793c9a`（门禁章面盖在 `7173b7c6`）；merge commit `a64dba13`；未 reset。
+- 实现：`web/src/modules/health/sourceMatrixCsv.ts` 新增纯前端 CSV（Blob + a.download，零新后端端点）；`SourceMatrix.tsx` 加 `sys7-export` / `sys7-export-count`；`sourceReads.ts` 保留 `asOfIso`（只取 payload 顶层 ISO，无效或缺失为 null）。
+- 格式：表头固定 `name,path,state,elapsed_ms,as_of`；文件名 `system-sources-YYYYMMDD-HHmm.csv`（北京时间到分）；状态写人话（成功/降级/失败/读口未接入/…）；耗时缺失留空（不写 0）；`as_of` 缺失或非 ISO 留空（不用本机时钟）；RFC4180 转义；空集按钮 disabled + title。
+- 同源：导出行即屏上矩阵行，`sys7-export-count` = 4 行；导出不发起任何请求。
+- 定向 vitest：`src/modules/health` → 4 files / 24 passed。全量 → **138 files / 1591 passed**。tsc 基线 8 行（employee-detail/employees），本域 0。
+- DOM（临时 harness，已删除；Vite 5473 / Chrome 9273）：1440/1280/375 均 `vw=bodySW=bodyCW=pageSW=pageCW`；行 4；计数 4 行；按钮可用；点击导出前后 fetch 计数 4 → 4；375 仅矩阵内部滚动 760/343。
+- 边界：仅改 `web/src/modules/health/**` + DONE；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未并 main、未重建 9122。

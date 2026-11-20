@@ -82,6 +82,18 @@ describe("source matrix", () => {
     expect(api.fetchJSON).toHaveBeenCalledTimes(4);
     expect(container.querySelectorAll("[data-testid^='sys6-row-']")).toHaveLength(4);
     expect(api.fetchJSON).toHaveBeenCalledTimes(4);
+    expect(q("sys7-export-count")?.textContent).toBe("4 行");
+    const exportButton = q("sys7-export") as HTMLButtonElement;
+    expect(exportButton.disabled).toBe(false);
+    const createObjectURL = vi.fn(() => "blob:sys7");
+    Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
+    Object.defineProperty(URL, "revokeObjectURL", { value: vi.fn(), configurable: true });
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    await act(async () => { exportButton.click(); });
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    expect(api.fetchJSON).toHaveBeenCalledTimes(4);
+    clickSpy.mockRestore();
 
     expect(q("sys6-name-health")?.textContent).toBe("系统健康清单");
     expect(q("sys6-path-health")?.textContent).toBe("/agent-api/api/health");
