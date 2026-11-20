@@ -94,6 +94,6 @@ describe("audG - the filter summary line", () => {
     expect(hasFilterSummary({ ...BASE, actor: "employee-api" })).toBe(true);
     expect(hasFilterSummary({ ...BASE, resource: "ap_1" })).toBe(true);
     expect(hasFilterSummary({ ...BASE, cursorCount: 1, page: 2 })).toBe(true);
-    expect(FILTER_SUMMARY_EMPTY_TITLE).toBe("当前没有筛选条件可复制");
+    expect(FILTER_SUMMARY_EMPTY_TITLE).toBe("当前没有可复制的筛选条件");
   });
 });

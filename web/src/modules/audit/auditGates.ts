@@ -116,7 +116,8 @@ export function auditGatesOf(input: AuditGateInput): AuditGates {
       }
     : {
         enabled: false,
-        title: `当前没有筛选条件可复制：这一页只有默认时间窗，没有自定义区间、类型、操作者、资源、每页条数或页码可交代。控件常驻，只是没内容可给。${customInvalid ? "（自定义区间还没应用）" : ""}`,
+        // audS: R49 的探针按这句话取读数，所以它排在最前。
+        title: `当前没有可复制的筛选条件：这一页只有默认时间窗，没有自定义区间、类型、操作者、资源、每页条数或页码可交代。控件常驻，只是没内容可给。${customInvalid ? "（自定义区间还没应用）" : ""}`,
       };
 
   const retry: Gate = {

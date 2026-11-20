@@ -575,3 +575,59 @@ describe("audJ - the detail screen reads time and operator the same way", () => 
     expect(markTitle("audJ-actor-detail")).toContain("没有带回这条记录的操作者");
   });
 });
+
+/**
+ * audS — 详情屏作为三面之一，与列表 / 行内预览说同一句话。
+ * 断言：同一 503 桩下，本屏的原因句与状态标签等于其它两面的读数；403≡404 同体；
+ * 加载中也有本面的在场标记（三档各自的读法不再靠推测）。
+ */
+describe("audS - the detail screen speaks the shared sentence", () => {
+  const sentence = (face: string, phase: string): string | null =>
+    document
+      .querySelector(`[data-testid='audF-state-${face}-${phase}']`)
+      ?.getAttribute("data-aud-sentence") ?? null;
+  const label = (face: string, phase: string): string | null =>
+    document.querySelector(`[data-testid='audF-state-${face}-${phase}']`)?.getAttribute("data-audf-label") ?? null;
+
+  it("one 503 stub, one sentence, in every face that prints it", async () => {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url) => {
+      throw new ApiError("down", { status: 503, body: "{}", url: String(url), requestId: "rid-s-detail" });
+    });
+    await render("/audit/detail?id=evt_D6FC9A2B4E6F8012");
+    await waitFor(() => document.querySelector("[data-testid='aud02-detail-error']") !== null, "the record failed");
+    expect(sentence("detail", "error")).toBe("审计服务在处理时出了错，请稍后重试。");
+    expect(label("detail", "error")).toBe("读取没有完成");
+    expect(document.querySelector("[data-testid='aud02-detail-error-sentence']")!.textContent).toBe(sentence("detail", "error"));
+    expect(document.querySelector("[data-testid='aud02-detail-error-request-id']")!.textContent).toContain("rid-s-detail");
+  });
+
+  it("403 and 404 paint the same body here too, and the label says it once", async () => {
+    const once = async (status: number): Promise<string> => {
+      api.fetchJSON.mockReset();
+      api.fetchJSON.mockImplementation(async (url) => {
+        throw new ApiError("closed", { status, body: '{"code":"console.forbidden"}', url: String(url), requestId: "rid-s-eq" });
+      });
+      await render("/audit/detail?id=evt_D6FC9A2B4E6F8012");
+      await waitFor(() => document.querySelector("[data-testid='aud02-detail-denied']") !== null, `denied ${status}`);
+      expect(sentence("detail", "denied")).toBe("暂时无法查看审计事件");
+      return document.querySelector("[data-testid='aud02-detail-denied']")!.textContent ?? "";
+    };
+    const closed = await once(403);
+    expect(await once(404)).toBe(closed);
+  });
+
+  it("the loading leg of this face is on the record, not inferred", async () => {
+    let release: ((value: unknown) => void) | null = null;
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(() => new Promise((resolve) => { release = resolve; }));
+    await render("/audit/detail?id=evt_D6FC9A2B4E6F8012");
+    await waitFor(() => document.querySelector("[data-testid='aud02-detail-loading']") !== null, "loading");
+    expect(label("detail", "loading")).toBe("正在读取");
+    await act(async () => {
+      release?.(DETAIL);
+    });
+    await waitFor(() => document.querySelector("[data-testid='aud02-detail']") !== null, "the record painted");
+    expect(document.querySelector("[data-testid='audF-state-detail-loading']")).toBeNull();
+  });
+});
