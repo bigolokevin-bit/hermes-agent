@@ -486,3 +486,12 @@
   .sys7-export { width: 100%; }
   .sys7-note { flex-basis: 100%; }
 }
+
+/* sys8 — same-source check-time note */
+.sys8-same-source-note {
+  margin-top: 4px;
+  font-size: 0.6875rem;
+  line-height: 1.5;
+  color: var(--color-muted-foreground);
+}
+.sys8-same-source-note code { font-size: 0.6875rem; }

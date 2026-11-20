@@ -78,7 +78,11 @@ export function SourceMatrix() {
             <table className="sys6-table" data-testid="sys6-table">
               <thead>
                 <tr>
-                  <th>口径名</th><th>实际请求路径</th><th>本次状态</th><th>响应耗时</th><th>采集时刻</th>
+                  <th title="读口的中文口径名">口径名</th>
+                  <th title="本次实际发出的请求路径">实际请求路径</th>
+                  <th title="本次读取的结果；读口未接入时给出申请入口">本次状态</th>
+                  <th title="本次请求耗时；失败或未读取时留空">响应耗时</th>
+                  <th title="健康清单行取 /api/health 响应顶层 asOf，与服务列表的“最近检查时刻”同值；其余三行各取自己探针响应的顶层 asOf，互不替代。">采集时刻</th>
                 </tr>
               </thead>
               <tbody>
@@ -107,9 +111,9 @@ export function SourceMatrix() {
                       </td>
                       <td
                         data-testid={`sys6-asof-${row.id}`}
-                        title={row.asOfReason ?? undefined}
+                        title={row.asOfReason ?? row.asOfIso ?? undefined}
                       >
-                        {row.asOf ?? "—"}
+                        <span data-testid={`sys8-asof-${row.id}`}>{row.asOf ?? "—"}</span>
                       </td>
                     </tr>
                   );
@@ -118,6 +122,9 @@ export function SourceMatrix() {
             </table>
           </div>
         ) : null}
+        <p className="sys8-same-source-note" data-testid="sys8-same-source-note">
+          「最近检查时刻」与「采集时刻」：健康清单行和矩阵第一行同源，都取 <code>/api/health</code> 响应顶层 asOf（同一 ISO 值，同一北京时间到分呈现）；其余三行是各自探针响应的顶层 asOf，不与健康清单互相代替。
+        </p>
         <p className="sys6-foot">
           采集时刻只取响应顶层 ISO 的 asOf；缺失或格式不符显示「—」，原因在悬停说明里，绝不用本机时钟补。
         </p>

@@ -1879,3 +1879,13 @@ built /private/tmp/health-r38/index.html
 - 定向 vitest：`src/modules/health` → 4 files / 24 passed。全量 → **138 files / 1591 passed**。tsc 基线 8 行（employee-detail/employees），本域 0。
 - DOM（临时 harness，已删除；Vite 5473 / Chrome 9273）：1440/1280/375 均 `vw=bodySW=bodyCW=pageSW=pageCW`；行 4；计数 4 行；按钮可用；点击导出前后 fetch 计数 4 → 4；375 仅矩阵内部滚动 760/343。
 - 边界：仅改 `web/src/modules/health/**` + DONE；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未并 main、未重建 9122。
+
+## R58 — /system 检查时刻同源一致性（sys8）
+
+- 基线：显式 refspec fetch 后 `git merge origin/lane/hermes-console`（tip `38793c9a`，代码代次 `7173b7c6`）→ Already up to date；未 reset。
+- 口径：服务列表「最近检查时刻」与矩阵「采集时刻」中健康清单那一行同源——都取 `/api/health` 响应顶层 `asOf` 的同一 ISO 值，按同一北京时间到分呈现；其余三行各取自己探针响应的顶层 `asOf`，不互相代替。矩阵「采集时刻」表头加逐列 title，另增可见说明 `sys8-same-source-note`。
+- 新增锚：`sys8-asof-<key>` 包住矩阵四行的采集时刻；既有 `sys6-asof-<key>` 保留。健康行 title 额外给出原始 ISO；缺失或非 ISO 仍显示「—」+原因，本机时钟不入。
+- 取数：整页一次取 4 个读口；展开/收起矩阵、切换状态筛选前后请求计数 **4 → 4**（实测三档）。
+- 验证：`src/modules/health` → 4 files / 24 passed；全量 **138 files / 1591 passed**；tsc 基线 8 行（employee-detail/employees），本域 0。
+- DOM（临时 harness，已删除；Vite 5474 / Chrome 9274）：1440/1280/375 均 `vw=bodySW=bodyCW=pageSW=pageCW`；列表检查时刻与矩阵健康行均为 `2026-11-19 23:17`；探针行「—」；说明可见（375 高 46px 正常换行）；失败探针保留可复制 rid。
+- 边界：仅改 `web/src/modules/health/**` + DONE；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未并 main、未重建 9122。

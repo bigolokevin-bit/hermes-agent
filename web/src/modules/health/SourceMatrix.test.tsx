@@ -115,6 +115,17 @@ describe("source matrix", () => {
 
     expect(q("sys6-status-domain")?.textContent).toContain("成功");
     expect(q("sys6-asof-domain")?.textContent).toBe("2026-11-20 06:15");
+
+    // Same read, same ISO, same Beijing minute: the health list column and the matrix row.
+    expect(q("sys3-checked")?.textContent).toBe("2026-11-19 23:17");
+    expect(q("sys8-asof-health")?.textContent).toBe(q("sys3-checked")?.textContent);
+    expect(q("sys6-asof-health")?.getAttribute("title")).toBe("2026-11-19T15:17:09Z");
+    expect(q("sys8-same-source-note")?.textContent).toContain("同源");
+    expect(q("sys8-same-source-note")?.textContent).toContain("同一 ISO 值");
+    // Probe rows keep their own asOf and never borrow the health list time.
+    expect(q("sys8-asof-console")?.textContent).toBe("—");
+    expect(q("sys8-asof-runtime")?.textContent).toBe("—");
+    expect(api.fetchJSON).toHaveBeenCalledTimes(4);
   });
 
   it("only accepts a top-level ISO asOf and never substitutes the browser clock", async () => {
@@ -126,6 +137,7 @@ describe("source matrix", () => {
     await act(async () => { (q("sys6-toggle") as HTMLButtonElement).click(); });
     await waitFor(() => q("sys6-status-health")?.textContent?.includes("成功") ?? false, "health row");
     expect(q("sys6-asof-health")?.textContent).toBe("—");
+    expect(q("sys3-checked")?.textContent).toBe("—");
     expect(q("sys6-asof-health")?.getAttribute("title")).toContain("不是 ISO");
     expect(q("sys6-asof-console")?.textContent).toBe("—");
     expect(q("sys6-asof-runtime")?.textContent).toBe("—");
