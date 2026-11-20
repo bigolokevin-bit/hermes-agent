@@ -448,3 +448,11 @@ R52 OBS 整改：`disabled` 与 `aria-disabled` 说同一句话，与 `title` �
 - 口径统一：`run-page-cap` 改为「已加载 N 行（每页 30 条；复制与导出也只含这些行，不报全量）」，N 与 `run-list-export-count` 的文案/`data-rows`、复制 title 的「当前已加载 N 行」同源；`run-page-cap-more` 的显示条件从「行数满 30」改为「服务确实给了 `nextCursor`」——满页但服务说没有下一页时不再暗示还有。
 - 验证：单文件 `runs.more.test.tsx` 5 例全绿（追加+去重+同源 N、末页 disabled、失败保行+可复制 rid+重试、改排序回第一页且零请求、切窗口不带旧 cursor）；定向 runs 8 files / 166 passed；全量 177 files / 2406 passed；`tsc` 本域 0；`eslint src/modules/runs` exit 0；build exit 0（entry 内 `run-more`=0，`RunsModulePage-BySzOfBO.js`=1）。
 - 未测：真实浏览器 375 下 `run-more-bar` 与错误行折行；读口在游标失效时若静默回首页（本页按追加页处理、靠 runId 去重，不额外探测）。
+
+## 分页契约护栏（runs paging guards，2026-11-20）
+
+纯测试，产品码零改动；把「加载更多」的四条契约钉死。
+
+- 新增 `web/src/modules/runs/runs.paging.test.tsx`（5 例）：①第二页把首页整整 30 行再发一次 → 屏上只多出 5 行，`codes()` 去重后长度不变（一个 runId 一行），`run-page-cap` 同步写 35；②带 `?status=failed` 加载第二页后移除状态 chip → 回第一页 30 行，新请求不带 `cursor=` 也不带 `status=`，只多一次 `/api/runs`；③`nextCursor=null` → `run-more` disabled、title 含「到底」、`run-more-end` 显「已到末页」、无 `run-page-cap-more`；④第二页 500（rid `req-paging`）→ 行仍 30、`run-more-error` 含「已加载的行仍然保留」、`run-more-rid` = rid，重试后**恰好** +1 次 `/api/runs` 并追加成功；⑤加载到 35 行后 `run-list-export-count` 的 `data-rows` 与文案、`run-page-cap` 的 N、以及复制文本的数据行数三者相等（复制首行仍是 `run,status,started,ended,elapsed,cost,employee`）。
+- 验证：单文件 5 passed；定向 runs 9 files / 171 passed；全量 177 files / 2414 passed；`tsc` 本域 0；`eslint src/modules/runs` exit 0（2 条 warning，均为既有）；build exit 0（entry 内 `run-page-cap`=0，`RunsModulePage-CVaT7OEe.js`=1）。
+- 未测：真实浏览器 375 下「加载更多」与错误行折行；服务端返回超长游标串时的断行表现。
