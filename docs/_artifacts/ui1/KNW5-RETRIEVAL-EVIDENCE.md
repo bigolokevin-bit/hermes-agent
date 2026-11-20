@@ -2467,3 +2467,50 @@ $ npx vite build --outDir /tmp/knw-permalink-dist → exit 0
 边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
 package·lock / web-scripts / ops；未并 main、未重建 9122；显式路径提交（无 `git add -A`）；
 无 force / amend / `--no-verify`；单 commit「feat(console): knowledge document permalink」。
+
+# KNW5 追加 R64：空间文档列表类型桶筛选（testid `kn-type-*`）（2026-11-20 BJT）
+
+安全闸：toplevel 相符、porcelain 空、显式 refspec fetch `lane/hermes-console`；上游 tip
+`ee64b4f0` 已在基线链，merge `Already up to date`。当前 HEAD `9e3c56df`（R63 固定链接）=远端
+tip，工作树干净；未 reset、未并 main、未重建 9122。
+
+## 一、口径
+
+```text
+桶       docTypeBuckets(combined) 纯派生：「全部」置首（计数=已加载行数）、其余按屏上人话
+         类型（docTypeLabel 词表：PDF / Word 文档 / 表格 / 演示文稿 / Markdown / 文本 /
+         结构化数据 / 网页 / 图片 / 其他类型）首现序；缺类型行归「未归类」；每桶真
+         button[type=button]，data-testid `kn-type-<i>`（全部=`kn-type-all`），文本含计数，
+         aria-pressed 反映选中态，同点=清除回全部；禁新造英文枚举上屏。
+过滤     本地过滤 combined（游标分页累加后的全集）∩ 名字筛选 → shown；?type=<人话值> 进
+         URL，与 q/ksort/kdir/面包屑组合互不清除；粘 ?type=表格&… 刷新复现选中态+行数；
+         默认态（全部）不写参数。
+游标     切类型触发 R54 重置 effect（deps 增补 typeKey）：累加页清空、游标退回第一页
+         信封信；切桶本身 0 新请求。
+计数同源 桶计数、kn9 计数句、Surface data-len、表格行数同一份数据；非 ready 聚合不到
+         类型只剩「全部」桶且计数「—」；真空集不写 0。
+空态     ?type=压缩包 无匹配 → `kn-type-empty` 文案 + 清除出口 `kn-type-clear`（只删
+         ?type=，q/sort/dir 不动）；与「该空间暂无文档」真空句严格可分。
+非 ready  loading / error / denied / 未接入 / login 态：类型桶 disabled + title 逐字
+         「当前不可筛选：<短原因>」——原因读自 copyGates blockedReasonByState 同表
+         （403≡404 同句；未造第二套措辞）；点禁用桶不改 URL、零请求。
+键盘     真 button、Tab 走原生、:focus-visible 走现成 token（.kn-type-bucket:focus-visible）；
+         不新增 tabindex，roving（kn3）行链接不受影响。
+```
+
+## 验证尾行（R64）
+```text
+$ npx vitest run src/modules/knowledge   → 3 files / 68 tests passed（基线 67 + 本轮 1）
+$ npx vitest run                         → 160 files / 2177 passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-type-dist → exit 0（preview/CDP 进程已清理）
+```
+三档（vite preview + headless Chrome CDP 真实屏）：1440/1280/375 `vw==bodySW==docSW` 全等。
+未测如实：带会话的登录态桶读数（preview 无后端会话）、真机鼠标/剪贴板权限弹窗。
+kn3 / kn6–knN / knw5 / kn-sort / kn-gates / kn-doc-preview / kn-space-preview / kn-doc-permalink /
+kn.parity 既有断言零改零破（含 R72 knC→kn-sort 改名后续测试）。
+
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
+无 force / amend / `--no-verify`；单 commit「feat(console): knowledge document type filter」。

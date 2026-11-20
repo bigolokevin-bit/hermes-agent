@@ -41,7 +41,7 @@ import {
   useKnwSources,
   type KnmRow,
 } from "./sourceReads";
-import { faceGates, retryTitle, type GateSurfaceState } from "./copyGates";
+import { blockedReasonByState, faceGates, retryTitle, type GateSurfaceState } from "./copyGates";
 import {
   CITATIONS_URL,
   DOCUMENTS_URL,
@@ -81,6 +81,7 @@ import {
   docCopyText,
   docHitCopyText,
   docMetaCopyText,
+  docTypeBuckets,
   groupRowsBySpace,
   previewField,
   documentDetailUrl,
@@ -2040,6 +2041,8 @@ function SpaceDetailSurface({
   onCloseDoc,
   onCloseOverlays,
   sdocOpen,
+  typeKey,
+  onCommitType,
 }: {
   nonce: string;
   spaceId: string;
@@ -2055,6 +2058,10 @@ function SpaceDetailSurface({
   onCloseOverlays: (flags: { doc: boolean; sdoc: boolean }) => void;
   /** R70 — 三面互斥补齐：与检索命中行内展开（?sdoc=）双向互斥，同 R68 空间列表的接法。 */
   sdocOpen: boolean;
+  /** R73 — 类型桶：?type= 人话值进 URL（粘链/刷新可复现），与 q/ksort/kdir 组合互不清除；
+   *  空串 = 「全部」桶。本地过滤已加载文档，零新请求。 */
+  typeKey: string;
+  onCommitType: (key: string) => void;
 }): ReactNode {
   const [filter, setFilter] = useState("");
   // R67 — 行内预览是本面的视图态：不进 URL（刷新/粘贴一律收起），同时至多一行。
@@ -2141,7 +2148,7 @@ function SpaceDetailSurface({
   const hasMore = pageMeta?.hasMore ?? false;
   const cursorOffered = pageMeta?.cursorFieldPresent ?? false;
 
-  // 排序、检索条件、空间或刷新变化 → 清空已累加的后续页、游标退回第一页给的那个。
+  // 排序、检索条件、类型桶、空间或刷新变化 → 清空已累加的后续页、游标退回第一页给的那个（R73：切类型重置分页）。
   // 第一页已在内存里，这一步不重新请求，所以点表头仍是 0 新请求（R52 口径不破）。
   useEffect(() => {
     pageGen.current += 1;
@@ -2152,7 +2159,7 @@ function SpaceDetailSurface({
     setMoreErr(null);
     setMoreRid(null);
     setStale(false);
-  }, [spaceId, nonce, sort, dir, filter, surface.state.kind, meta1]);
+  }, [spaceId, nonce, sort, dir, filter, typeKey, surface.state.kind, meta1]);
 
   // 合并第一页与已加载的后续页；按 id 去重，挡上游坏 cursor 静默重放首页造成的重复行。
   const combined: DocRow[] = moreRows.length === 0 ? baseRows : [...baseRows, ...moreRows];
@@ -2161,7 +2168,11 @@ function SpaceDetailSurface({
     row,
     key: row.id !== "" ? row.id : `row-${index}`,
   }));
-  const filtered = filterKey === "" ? keyedAll : keyedAll.filter((entry) => entry.row.name.toLowerCase().includes(filterKey));
+  const nameFiltered = filterKey === "" ? keyedAll : keyedAll.filter((entry) => entry.row.name.toLowerCase().includes(filterKey));
+  // R73 — 类型桶本地过滤：人话值为桶键，缺类型归「未归类」；「全部」= 不过滤。
+  const bucketOf = (row: DocRow) => (row.type !== "—" ? row.type : "未归类");
+  const filtered = typeKey === "" ? nameFiltered : nameFiltered.filter((entry) => bucketOf(entry.row) === typeKey);
+  const buckets = docTypeBuckets(combined); // 计数基于已加载全集（combined），与可见行同源可核对
   const shown = sortDocs(filtered, sort, dir, (entry) => entry.row);
   const shownValue =
     surface.state.kind === "ready" ? { ...surface.state.value, rows: shown.map((entry) => entry.row) } : null;
@@ -2312,6 +2323,35 @@ function SpaceDetailSurface({
         </span>
       </div>
 
+      {/* R73 — 类型桶：真 button、aria-pressed 选中态、计数同源；非 ready 整排 disabled，
+          原因句读自 copyGates 同表（不造第二套措辞），计数不显示 0。 */}
+      <div className="kn-type-row" data-testid="kn-type-row">
+        {buckets.map((bucket, index) => {
+          const selected = bucket.label === "全部" ? typeKey === "" : typeKey === bucket.label;
+          const ready = surface.state.kind === "ready";
+          const reason = blockedReasonByState(
+            gateStateOf(surface.state.kind, surface.state.kind === "unwired" && surface.state.denied)
+          );
+          return (
+            <button
+              key={bucket.label}
+              type="button"
+              className="kn-type-bucket"
+              data-testid={bucket.label === "全部" ? "kn-type-all" : `kn-type-${index}`}
+              aria-pressed={selected ? "true" : "false"}
+              disabled={!ready}
+              title={!ready ? `当前不可筛选：${reason}` : selected ? "再点一次回「全部」" : `只看${bucket.label}：本地过滤已加载文档，不再问服务`}
+              onClick={() => onCommitType(bucket.label === "全部" ? "" : bucket.label)}
+            >
+              {bucket.label}
+              <span className="kn-type-count" data-testid={bucket.label === "全部" ? "kn-type-all-count" : `kn-type-count-${index}`}>
+                {!ready ? "—" : bucket.count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       <Surface
         testid="kn3-docs"
         source="space-docs"
@@ -2324,7 +2364,15 @@ function SpaceDetailSurface({
         unwiredHead={SPACE_DOC_UNWIRED_HEAD}
         unwiredHuman={SPACE_DOC_UNWIRED_HUMAN}
         empty={() =>
-          filterKey === "" ? (
+          typeKey !== "" ? (
+            <p data-testid="kn-type-empty">
+              这份已加载列表里没有「{typeKey}」类型的文档。
+              这是类型筛选的结果，不代表空间没有文档。
+              <button type="button" className="knw5-drill" data-testid="kn-type-clear" onClick={() => onCommitType("")}>
+                清除类型筛选
+              </button>
+            </p>
+          ) : filterKey === "" ? (
             <p data-testid="knN-empty-text-space-docs" data-knn-empty="empty">
               该空间暂无文档。接口已响应，这份列表里没有文档；这只说明这份回答是空的，不下别的结论，也不给数量。
             </p>
@@ -3225,6 +3273,8 @@ export default function KnowledgeModulePage() {
   const sortDirRaw = sp.get("kdir") ?? sp.get("dir");
   const sortDir: DocSortDir =
     sortDirRaw !== null ? docSortDir(sortDirRaw) : sortCol === "updated" ? "desc" : docSortLandDir(sortCol);
+  // R73 — 类型桶进 URL：?type= 人话值；粘链/刷新复现，切类型/清类型不动其余参数。
+  const typeKey = sp.get("type") ?? "";
   const [nonce, setNonce] = useState("0");
   const [deepCrumb, setDeepCrumb] = useState<DeepCrumb | null>(null);
   const reportCrumb = useCallback((next: DeepCrumb | null) => {
@@ -3257,6 +3307,7 @@ export default function KnowledgeModulePage() {
     next.delete("dir");
     next.delete("ksort");
     next.delete("kdir");
+    next.delete("type"); // R73：类型桶同属文档列表，换页签一并清掉
     setSp(next);
   };
 
@@ -3326,6 +3377,17 @@ function containerQuery(key: string): HTMLElement | null {
     } else {
       next.set("ksort", col);
       next.set("kdir", docSortLandDir(col));
+    }
+    setSp(next);
+  };
+
+  // R73 — 类型桶写 URL：只动 type，q/ksort/kdir/面包屑/分页等其余参数原样保留；「全部」不写参数。
+  const commitType = (key: string) => {
+    const next = new URLSearchParams(sp);
+    if (key === "" || key === typeKey) {
+      next.delete("type");
+    } else {
+      next.set("type", key);
     }
     setSp(next);
   };
@@ -3523,6 +3585,8 @@ function containerQuery(key: string): HTMLElement | null {
                       onCloseDoc={closeDocDrawer}
                       onCloseOverlays={closeOverlaysQuietly}
                       sdocOpen={openSearchDoc !== ""}
+                      typeKey={typeKey}
+                      onCommitType={commitType}
                     />
                   )}
                   <SourceFreshness />
