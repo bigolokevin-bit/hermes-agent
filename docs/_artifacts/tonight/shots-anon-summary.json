@@ -9,12 +9,12 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 588,
+    "textLen": 1109,
     "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 近 24 小时 近 7 天 近 14 天 近 30 天 刷",
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 24,
+  "distinctMainHeads": 23,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -177,13 +177,13 @@
     {
       "route": "#/employees",
       "viewport": "1440",
-      "chars": 306,
+      "chars": 296,
       "hasMainEl": true
     },
     {
       "route": "#/employees",
       "viewport": "375",
-      "chars": 306,
+      "chars": 296,
       "hasMainEl": true
     },
     {
@@ -537,7 +537,7 @@
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "1440",
-      "chars": 650,
+      "chars": 673,
       "hasMainEl": true
     },
     {
@@ -633,7 +633,7 @@
   ],
   "consoleErrorsObservedByShots": 1,
   "consoleErrorRoutesObservedByShots": [
-    "#/system?tab=events&view=anomaly"
+    "#/system"
   ],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
@@ -644,12 +644,12 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "6dc311ea",
+  "headHash": "65882219",
   "exitCode": 0,
-  "entry": "assets/index-BWPUiZQP.js",
-  "entryBytes": 172018,
-  "entrySha256": "f839b31456b0f305b778ee3ff5dd0f20d8cbd5043f28e827f9e3d6dc5cade652",
-  "servedEntryBefore": "index-BWPUiZQP.js",
-  "servedEntryAfter": "index-BWPUiZQP.js",
-  "auxiliary": true
+  "auxiliary": true,
+  "entry": "assets/index-BgHnOrEo.js",
+  "entrySha256": "0f21441dacab412f19516e051af9128e11279b69e306ca0f928e42ec7fdaefe3",
+  "entryBytes": 172121,
+  "servedEntryBefore": "index-BgHnOrEo.js",
+  "servedEntryAfter": "index-BgHnOrEo.js"
 }
