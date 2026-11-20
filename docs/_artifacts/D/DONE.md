@@ -1385,3 +1385,10 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 终检 tally 原文：{'d17c06e2': 9} count 9 BAD []（glob 扫 tonight+shots-login 带 headHash 恰九件；lint-reuse-exemptions.json 列表形无 headHash 面按卡面豁免留存；_stale/ 与 shots-login png 不在扫描面）。
 - 读数对照上代 f7009e21：ia-html{51,22,tabsAll:23,1,8}/react{51,22,1,8}；lint-fake v=[]；lint-reuse v0 e1（chat→T40）；state-quad 20/20 真跑非 carried；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）；redirects=24 notes；shots auth 102/102 failures=[] obs=0 distinct=24 envOnly=51；anon 102/102 obs=0 **distinct=23（上代 24，-1 如实）** envOnly=51。obs 两枚分开均零，无需引 R-OBS1 归因。
 - 环境：9122 v4_proxy 95667、caddy 28034、BFF 12048@603a23e9、qa-verify 33c2b838 均未动；web/src 未碰；37bed781+56613bc4 章不重做；无 amend/force。
+
+## 一五五轮 · 波次代次九件重章 @ c4542fdb（entry xok1NNVT 未换代，2026-11-21 05:2x）
+
+- 代次现查：ls-remote=LOCAL=c4542fdbf799（merge(lane): 475910b1，wave-69 三笔纯测试）、porc 0 脏；盘 entry xok1NNVT 172175B sha ecb50940…c15c9 逐字==卡面、CSS IyhtleuY 145872 未变、9122 served 同值。
+- 驱动 sh_1fad06341 九腿全 exit=0、DONE 行坐实后单 heredoc 硬写锚注章（rev-parse 现算==c4542fdb 当场断言复核）；served 拍前后同值。
+- tally 原文 {'c4542fdb': 9} count 9 BAD []；读数与上代差如实：ia{51,22,tabsAll:23,1,8}、fake v=[]、reuse v0 e1、quad 20/20 真跑、crawl DL0/CE0/PE0×2 routesCE 51/51（401 归因）redirects=24 notes、shots 双腿 102/102 failures=[] obs=0/0、**distinct auth=25/anon=24（上代 24/23，双腿各 +1 如实，entry 未换代属页面渲染面波动不入判据）** envOnly 51/51、anon auxiliary=true。
+- 『前两代漏推』指控现查证伪：ANCE-w68(4daecc1e)=0 且 ANCE-w67(37bed781)=0 均在当前链。4daecc1e/37bed781 不重做、无 amend/force；web/src/9122/BFF/caddy/ACC 判词节未动。
