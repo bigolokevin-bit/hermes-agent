@@ -836,3 +836,33 @@
   line-height: 1.5;
   white-space: nowrap;
 }
+
+/* metP — sortable detail headers: a real button, keyboard reachable, focus ring */
+.met6-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  font: inherit;
+  font-weight: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.met6-sort:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.met6-sort::after {
+  content: '↕';
+  font-size: 10px;
+  color: var(--color-muted-foreground);
+}
+
+.met6-table th[aria-sort='ascending'] .met6-sort::after { content: '↑'; color: var(--color-foreground); }
+.met6-table th[aria-sort='descending'] .met6-sort::after { content: '↓'; color: var(--color-foreground); }

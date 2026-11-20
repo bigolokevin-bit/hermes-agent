@@ -280,3 +280,18 @@ metB 的「采集时刻」列内新增滞后徽标，不新增列、不改版式
 - 已知改动：既有「员工成本分摊」断言中的占比由 `75%` 改为 `75.0%`（口径统一为一位小数，未放宽断言）。
 
 未测：真浏览器 375/1280 下千分位不折行未逐像素走查；CSV 在 Excel 中打开未实测（逗号在字段内仍由 RFC 4180 转义保证）。
+
+## 明细表列排序与导出一致（metP，2026-11-20）
+
+- 三列可排序：次数 / 支出（USD）/ 占比（%）。表头里是真 `button[type=button]`（`metP-sort-runs|cost|share`），Enter/Space 原生触发，`:focus-visible` 有焦点环；`th[aria-sort]` 三态 `ascending|descending|none`，指示符由 CSS `::after` 画，不污染表头文本。
+- URL 是排序的唯一来源：`?dsort=<runs|cost|share>&ddir=<asc|desc>`。默认「支出降序」不写键；点表头只改 URL，**不发请求**（测试实测点击前后 `urls()` 长度相等）。
+- 顺序规则 `sortDetailLines()`：null/缺失一律沉底（两个方向都沉底），真实 0 照常参与排序，等值保持上游原序（稳定）；占比按数值比较，不按字符串。
+- 一张数组喂两处：`detailRows = sortDetailLines(detailLines, …)`，表体与明细 CSV 同读这一数组，导出永不另排。缺块注记仍固定末行、不计入行数。
+- 屏上说明 `metP-export-order-note`：「表头可以点着换排序：默认按支出从高到低；缺数据的行总是排在最后，真实的 0 照常参与排序。导出文件按屏上现在的顺序写，行数与这里列出的行数一致。」
+- 列表头单位（metO）不变：`支出（USD）` / `次数（次）` / `占比（%）`；metG 的表名与行 aria-label 保留；`metG-a11y-th-share` 现在态为 `aria-sort="none"`（该列已可排序，原「无该属性」断言据此更新，属语义变化不是放宽）。
+- 实测对照（屏上 ↔ CSV，两处都取第一列）：
+  - 默认：屏 `小鲤, 小满, 阿吉`（$20.00 / $5.00 / $0.50）↔ CSV `小鲤, 小满, 阿吉`。
+  - `?view=model&dsort=runs&ddir=asc`：屏 `zero, zeta, alpha, mid`（0/4/9/缺）↔ CSV 同序，缺次数的 `mid` 在两端都沉底。
+  - `?dsort=share&ddir=asc`：屏 `阿吉, 小满, 小鲤`（2.0% / 19.6% / 78.4%），首行 2.0% 证明不是按字符串排。
+- 验证：`src/modules/metrics` 2 files / 111 passed（基线 106，新增 metP 5 例）；全量 133 files / 1515 passed（2 条上游 employee-detail 未处理拒绝为既存噪声）；tsc 全仓 55 条既存、`modules/metrics` 0；build entry `assets/index-Btr0ReBT.js` sha256 `6f79263d2f858921b7b9afc31b28d17952261f6b774015170baf1a9c9b735ac6`，entry 内 `metP-sort-cost`=0，chunk `assets/MetricsModulePage-BKuk0soJ.js` 内 1。
+- 未测项：真浏览器 375/1280 下表头按钮与指示符的像素对齐未走查（按钮无 padding，尺寸随字体）；键盘 Enter/Space 仅以原生 button 语义保证，未用真实按键事件回放。

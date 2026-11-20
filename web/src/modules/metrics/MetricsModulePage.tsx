@@ -57,8 +57,10 @@ import {
   readPricing,
   readRunStats,
   previousRange,
+  parseDetailSort,
   parseSortDir,
   parseSortKey,
+  sortDetailLines,
   shareCsv,
   shareCsvFileName,
   shareOfCosts,
@@ -83,6 +85,7 @@ import {
   windowOf,
   windowRangeLabel,
   type Activity,
+  type DetailSort,
   type HeatCell,
   type LedgerRow,
   type BudgetLine,
@@ -1218,7 +1221,24 @@ export function MetricsModulePage() {
   // row by row from this array, so it can never disagree with what the table
   // shows — no re-reading, no sorting from a different source, no object keys.
   const detailLines = breakdownView.kind === 'ready' ? breakdownView.lines : [];
-  const exportable = detailLines.length > 0;
+  const detailSort: DetailSort = parseDetailSort(params.get('dsort')) ?? 'cost';
+  const detailDir: SortDir = params.get('ddir') === 'asc' ? 'asc' : 'desc';
+  const detailRows = sortDetailLines(detailLines, detailSort, detailDir);
+  const exportable = detailRows.length > 0;
+  const ariaSortFor = (key: DetailSort): 'ascending' | 'descending' | 'none' =>
+    detailSort === key ? (detailDir === 'asc' ? 'ascending' : 'descending') : 'none';
+  const chooseDetailSort = (next: DetailSort) => {
+    const dir: SortDir = next === detailSort ? (detailDir === 'desc' ? 'asc' : 'desc') : 'desc';
+    const query = new URLSearchParams(params);
+    if (next === 'cost' && dir === 'desc') {
+      query.delete('dsort');
+      query.delete('ddir');
+    } else {
+      query.set('dsort', next);
+      query.set('ddir', dir);
+    }
+    setParams(query, { replace: true });
+  };
   // Only the blocks this file actually pulls columns from are named in its note:
   // a source nobody exported from is not a gap in the file.
   const pageFailed = usageDown;
@@ -1229,13 +1249,13 @@ export function MetricsModulePage() {
   const shareGaps: ExportGap[] = [];
 
   const exportCsv = () => {
-    if (breakdownView.kind !== 'ready' || detailLines.length === 0) return;
+    if (breakdownView.kind !== 'ready' || detailRows.length === 0) return;
     const header =
       viewMode === 'model'
         ? ['模型', '支出USD', '次数', '占比%', '读取于', '窗口', '窗口开始', '窗口结束', 'as_of', 'window']
         : ['员工', '支出USD', '次数', '占比%', '账本截至', '窗口', '窗口开始', '窗口结束', 'as_of', 'window'];
     const batchAsOf = isoOrNull(breakdownView.asOf);
-    const rows = detailLines.map((line) => [
+    const rows = detailRows.map((line) => [
       line.label,
       usdDigits(line.costUsd),
       line.count,
@@ -1784,14 +1804,26 @@ export function MetricsModulePage() {
                     <thead>
                       <tr>
                         <th scope="col">{breakdownView.view === 'model' ? '模型' : '员工'}</th>
-                        <th scope="col" title="金额单位：美元（USD），两位小数" data-testid="metO-fmt-th-spend">支出（USD）</th>
-                        <th scope="col" title="调用次数，单位：次" data-testid="metO-fmt-th-count">次数（次）</th>
-                        <th scope="col" className="met6-num" data-testid="metG-a11y-th-share" title="占本窗口合计的比例，单位：百分比，一位小数">占比（%）</th>
+                        <th scope="col" aria-sort={ariaSortFor('cost')} title="金额单位：美元（USD），两位小数" data-testid="metO-fmt-th-spend">
+                          <button type="button" className="met6-sort" data-testid="metP-sort-cost" onClick={() => chooseDetailSort('cost')} aria-label="按支出排序">
+                            支出（USD）
+                          </button>
+                        </th>
+                        <th scope="col" aria-sort={ariaSortFor('runs')} title="调用次数，单位：次" data-testid="metO-fmt-th-count">
+                          <button type="button" className="met6-sort" data-testid="metP-sort-runs" onClick={() => chooseDetailSort('runs')} aria-label="按次数排序">
+                            次数（次）
+                          </button>
+                        </th>
+                        <th scope="col" className="met6-num" aria-sort={ariaSortFor('share')} data-testid="metG-a11y-th-share" title="占本窗口合计的比例，单位：百分比，一位小数">
+                          <button type="button" className="met6-sort" data-testid="metP-sort-share" onClick={() => chooseDetailSort('share')} aria-label="按占比排序">
+                            占比（%）
+                          </button>
+                        </th>
                         <th scope="col">账本截至</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {detailLines.map((line, index) => (
+                      {detailRows.map((line, index) => (
                         <tr key={line.key} data-testid={`met6-row-${index}`}>
                           <td>
                             <span className="met6-rowname">{line.label}</span>
@@ -1809,6 +1841,9 @@ export function MetricsModulePage() {
                     </tbody>
                   </table>
                 </div>
+                <p className="met6-hint" data-testid="metP-export-order-note">
+                  表头可以点着换排序：默认按支出从高到低；缺数据的行总是排在最后，真实的 0 照常参与排序。导出文件按屏上现在的顺序写，行数与这里列出的行数一致。
+                </p>
                 <p className="met6-source" data-testid="met6-cat-source">
                   来源：{breakdownView.source} · 截至{' '}
                   {breakdownView.asOf ? formatBeijing(breakdownView.asOf) : '—'}
@@ -1816,7 +1851,7 @@ export function MetricsModulePage() {
                   <span className="font-mono" data-testid="met6-cat-total">
                     {formatUsd(breakdownView.total)}
                   </span>
-                  {` · ${breakdownView.lines.length} 行`}
+                  {` · ${detailRows.length} 行`}
                 </p>
                 {breakdownView.note ? <p className="met6-hint">{breakdownView.note}</p> : null}
               </>

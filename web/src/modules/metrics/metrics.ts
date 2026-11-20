@@ -746,6 +746,38 @@ export function parseSortDir(raw: string | null, key: ModelCostSort): SortDir {
   return key === 'model' ? 'asc' : 'desc';
 }
 
+// ---- METP: detail table sorting --------------------------------------------
+
+export type DetailSort = 'runs' | 'cost' | 'share';
+
+export function parseDetailSort(raw: string | null): DetailSort | null {
+  return raw === 'runs' || raw === 'cost' || raw === 'share' ? raw : null;
+}
+
+/**
+ * Order the detail rows the same way the table shows them, so the CSV export
+ * can never disagree with the screen. A missing value is not a zero: it sinks
+ * to the bottom in both directions, while a real 0 sorts like any other number.
+ * Equal values keep their upstream order (stable by original index).
+ */
+export function sortDetailLines<T extends { count: number | null; costUsd: number | null; share: number | null }>(
+  lines: T[],
+  sort: DetailSort,
+  dir: SortDir,
+): T[] {
+  const valueOf = (line: T): number | null => (sort === 'runs' ? line.count : sort === 'cost' ? line.costUsd : line.share);
+  return lines
+    .map((line, index) => ({ line, index, value: valueOf(line) }))
+    .sort((a, b) => {
+      if (a.value === null && b.value === null) return a.index - b.index;
+      if (a.value === null) return 1;
+      if (b.value === null) return -1;
+      if (a.value !== b.value) return dir === 'asc' ? a.value - b.value : b.value - a.value;
+      return a.index - b.index;
+    })
+    .map((entry) => entry.line);
+}
+
 // ---- MET6: period-over-period delta and CSV export --------------------------
 
 /** Equal-length window immediately before [now-span, now). */
