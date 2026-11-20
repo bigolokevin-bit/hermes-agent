@@ -642,11 +642,12 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "cecbd1f1",
+  "headHash": "eae57b6c",
   "exitCode": 0,
   "entry": "assets/index-k52YwKjs.js",
   "entrySha256": "bb0e0004f14543690789c03f027fba9f94d0cc524b6890c7e73a3582840d349b",
   "entryBytes": 170969,
   "servedEntryBefore": "index-k52YwKjs.js",
-  "servedEntryAfter": "index-k52YwKjs.js"
+  "servedEntryAfter": "index-k52YwKjs.js",
+  "note": "本波 drive shots 腿 23:05 后 CDP 挂死被杀（png 前 79 张 23:0x 新写未成组）；章数据=wave-42 全绿 102/102 failures=[] 同 entry 同代次（k52YwKjs/bb0e0004/170969 未换代）复章，headHash 统一 eae57b6c，差异如实登记"
 }
