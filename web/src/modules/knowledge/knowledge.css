@@ -922,6 +922,45 @@
   .knG-copy { width: 100%; }
 }
 
+/* R65 — 按空间分组：组头是真按钮（focus-visible 用现成 token），行容器 id 常在供 aria-controls 指回。 */
+.kn6-group {
+  margin-top: 12px;
+}
+.kn6-group:first-child {
+  margin-top: 4px;
+}
+.kn-group-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 4px 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.kn-group-toggle:focus-visible {
+  outline: 2px solid var(--color-ring, var(--color-border));
+  outline-offset: 2px;
+}
+.kn-group-header {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.kn-group-count,
+.kn-group-action {
+  font-size: 0.75rem;
+  color: var(--color-muted-foreground);
+}
+.kn-group-action {
+  margin-left: auto;
+}
+
 /* R57 — 空间清单复制条：同 knF/knG 规格，随屏换行、无固定宽，不横溢。 */
 .knI-row {
   display: flex;

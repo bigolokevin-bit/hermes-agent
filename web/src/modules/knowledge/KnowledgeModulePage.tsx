@@ -80,6 +80,7 @@ import {
   docCopyText,
   docHitCopyText,
   docMetaCopyText,
+  groupRowsBySpace,
   documentDetailUrl,
   documentsUrl,
   documentsPageUrl,
@@ -2224,6 +2225,8 @@ function DocumentNameSearch({
 }): ReactNode {
   const [draft, setDraft] = useState<{ from: string; text: string }>({ from: keyword, text: keyword });
   const text = draft.from === keyword ? draft.text : keyword;
+  // R65 — 折叠位是纯本地视图态：按组键存，不进 URL、不触发任何读取。
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   // The read happens once per refresh only: the keyword never re-triggers it,
   // because there is no server-side keyword filter to ask for.
   const surface = useSurface<DocRow>(
@@ -2369,16 +2372,56 @@ function DocumentNameSearch({
             </p>
           )
         }
-        render={(value) => (
-          <>
-            <SearchDocTable
-              rows={value.rows}
-              docLink={sdocLink}
-              openKey={openKey}
-              needle={text}
-              tabIndexFor={roving.tabIndexFor}
-            />
-            {openRow ? (
+        render={(value) => {
+          // R65 — 按所属空间分组：纯派生、组序=首现序、组内保持既有序；折叠的组不挂行，
+          // roving 的 tab 序始终等于可见行的 DOM 序。
+          const groups = groupRowsBySpace(value.rows);
+          let visibleBefore = 0;
+          return (
+            <>
+              {groups.map((group, gi) => {
+                const isCollapsed = collapsedGroups[group.key] === true;
+                const start = visibleBefore;
+                if (!isCollapsed) visibleBefore += group.rows.length;
+                const rowsId = `kn-group-rows-${gi + 1}`;
+                return (
+                  <div className="kn6-group" key={group.key} data-testid="kn6-group">
+                    <button
+                      type="button"
+                      className="kn-group-toggle"
+                      aria-expanded={!isCollapsed}
+                      aria-controls={rowsId}
+                      onClick={() =>
+                        setCollapsedGroups((cur) => ({ ...cur, [group.key]: !(cur[group.key] === true) }))
+                      }
+                      title={group.raw !== null ? `空间标识：${group.raw}` : "上游没有给出这个空间的标识"}
+                      data-testid="kn-group-toggle"
+                    >
+                      <span className="kn-group-header" data-testid="kn-group-header">
+                        {group.label ?? "—"}
+                      </span>
+                      <span className="kn-group-count" data-testid="kn-group-count">
+                        {group.rows.length} 项
+                      </span>
+                      <span className="kn-group-action" aria-hidden="true">
+                        {isCollapsed ? "展开" : "折叠"}
+                      </span>
+                    </button>
+                    <div id={rowsId} data-testid="kn-group-rows">
+                      {isCollapsed ? null : (
+                        <SearchDocTable
+                          rows={group.rows}
+                          docLink={sdocLink}
+                          openKey={openKey}
+                          needle={text}
+                          tabIndexFor={(index) => roving.tabIndexFor(start + index)}
+                        />
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              {openRow ? (
               <dl className="knw5-ref-detail" data-testid="kn6-search-detail" title={openRow.id || undefined}>
                 <div>
                   <dt>文档</dt>
@@ -2413,9 +2456,10 @@ function DocumentNameSearch({
                   <dd title={openRow.atHint ?? undefined}>{openRow.at}</dd>
                 </div>
               </dl>
-            ) : null}
-          </>
-        )}
+              ) : null}
+            </>
+          );
+        }}
       />
       </div>
       {/* 复制条四态常在；enabled/title/状态句/计数位/兜底全读 kngGates（单点，无本地措辞）。 */}

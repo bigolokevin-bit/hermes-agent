@@ -2042,3 +2042,59 @@ $ npx vite build --outDir /tmp/knw33-dist → exit 0；preview 4180 + CDP 测量
 shell / routes / registry / package·lock / web-scripts / ops；未并 main、未重启或重建 9122；
 显式路径提交（无 `git add -A`）；无 force / amend / `--no-verify`；merge（957704be）与单
 feature commit「feat(console): knowledge copy action gates」分开。
+
+# KNW5 追加 R65：全库文档名搜索按空间分组（testid `kn-group-*`）（2026-11-20 BJT）
+
+安全闸：toplevel 相符、porcelain 空、显式 refspec fetch 后 merge 实到章面 `a5832d15`
+（代次含既有全部），零冲突；merge 对本知识面 delta 为空；合后基线 58/58 先绿再动工。
+
+## 一、口径
+
+```text
+派生       分组是对「筛后 shown」的纯派生（knowledge.ts groupRowsBySpace）：组序=首现序、
+           组内行保持既有序；不另发请求、不动 URL。命中读口今天不接受 q（R51 探针口径），
+           筛选与分组都发生在同一份已加载数据上。
+计数同源   组头逐组「N 项」之和 === 该面 shown/总数 === Surface data-len === kn9 计数句同源。
+           派工写的 `kn8-count` 是空间列表面的计数；本面（文档名搜索）的对应总数元素是
+           `kn9-count-docs`，映射如实声明于此，断言按后者执行（测试逐字读数）。
+组头       真 BUTTON：aria-expanded + aria-controls 指组行容器 id（kn-group-rows-<n>，
+           折叠时容器常在、id 不落空）；title 放全空间 id（屏上不见 sp_）；名缺用既有
+           人话短码标签「空间 · SPFIN」；无空间行归「—」组。折叠纯视图态存组件本地：
+           不改 ?q=、不重取（实测 fetchMock 前后计数不变）、文案「折叠/展开」翻转。
+行         组内行与原表逐列同口径：真 a[href]（sdoc= 深链）、类型人话、大小人话、
+           更新 BJT 到分、缺「—」+title 原因；SearchDocTable 原组件复用，非再造一条表。
+roving     折叠的组不挂行 → DOM 序=可见序，tabIndexFor 按「前面已展开组的行数」累计偏移，
+           实测跨组 ↓ 走位不乱、同时只有一个 tabindex=0；Esc 回搜索框原样。
+空态       0 命中走既有 kn6-search-empty（「没有匹配的文档…本地筛选…」+清除关键词），
+           不新增空态文案；未接入/失败面（Surface 非 ready 分支）根本不渲染组。
+单路径     分组只长在页顶「按文档名搜索」面（唯一 render 路径）；retrieval 页的检索命中面
+           （knw5-search*）实测不含任何 kn-group 节点，仍是原表原诚实态——一处实现，一处使用。
+复制       knG 复制句仍按「命中顺序」（读入序）——与 R56 派工文本口径逐字一致；分组是视图
+           呈现，不改变清单内容（集合相同，证据在此明说）。
+```
+
+## 二、三档
+
+```text
+CDP headless Chrome 打 vite preview 静态产物（输出仅 /tmp，端口用毕即杀）：
+  /knowledge?tab=spaces&q=员工：1440/1280/375 三档 vw==bodySW==docSW 全等（该屏含页顶搜索面板）。
+  如实记录：preview 无登录会话，搜索面在真实屏上落 error 诚实态，组行态未能在该静态屏复现
+  （CDP Fetch 打桩被 shell 鉴权链挡下，属 preview 环境限制，非功能缺口）；组行态布局由
+  组件级测试（行数/组序/tabindex 分布）+ 现成 flex-wrap 规约保证。9122 按约束未重建，
+  组行态真实浏览器三档复测列入未测项。
+```
+
+kn3 / kn6–kn9 / knB–knN / knw5 既有断言零破（58 例基线原样绿，含 kn6 全部旧测、roving、
+复制 gates、空态）；本轮 +1 例（59）。无写入口、无新请求、四态与 403≡404 不退化。
+
+## 验证尾行（R65）
+```text
+$ npx vitest run src/modules/knowledge   → 2 files / 59 tests passed
+$ npx vitest run                         → 150 files / 1989 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-group-dist → exit 0（产物只落 /tmp，preview/CDP 进程已清理）
+```
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
+无 force / amend / `--no-verify`；merge 与单 feature commit 分开。

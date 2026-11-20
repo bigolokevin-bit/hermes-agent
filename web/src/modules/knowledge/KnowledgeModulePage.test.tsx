@@ -3888,4 +3888,107 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(STATUS("knL")).toBe("当前不可复制：这条文档不在已加载的列表里");
     expect(byDocTestid("knL-copy-meta-fallback")).toBeNull();
   });
+
+  it("groups the doc-name search hits by owning space (kn-group-*): sums equal total, collapse is view-only, one code path", async () => {
+    const SPACE = { asOf: "2026-11-19T08:00:00Z", items: [] };
+    const LIST = {
+      asOf: "2026-11-19T08:00:00Z",
+      documents: [
+        { documentId: "d1", fileName: "员工手册.pdf", mimeType: "pdf", sizeBytes: 2048, updatedAt: "2026-11-19T07:00:00Z", spaceId: "sp_hr", spaceName: "人事制度空间" },
+        { documentId: "d2", fileName: "员工考勤说明.txt", mimeType: "txt", sizeBytes: 512, updatedAt: "2026-11-19T06:00:00Z", spaceId: "sp_hr", spaceName: "人事制度空间" },
+        { documentId: "d3", fileName: "员工薪酬表.xlsx", docType: "xlsx", sizeBytes: 4096, lastSyncAt: "2026-11-19T05:00:00Z", spaceId: "sp_fin" },
+        { documentId: "d4", fileName: "员工名鉴.md", spaceId: "sp_it", spaceName: "IT 支持空间" },
+      ],
+    };
+    fetchMock.mockClear();
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SPACE);
+      if (url.startsWith("/agent-api/api/documents?")) return Promise.resolve(LIST);
+      return fail(404, "这个数据接口还没有接入。", "rid-gr-x");
+    });
+    await render("/knowledge?tab=spaces&q=%E5%91%98%E5%B7%A5");
+    await act(async () => {});
+    const urlsSettled = fetchMock.mock.calls.length;
+    expect(attr("kn6-search", "data-state")).toBe("ready");
+    expect(attr("kn6-search", "data-len")).toBe("4");
+
+    // 组头读数：首现序、名缺用短码标签、计数与总数同源求和相等
+    const headers = () => [...container.querySelectorAll('[data-testid="kn-group-header"]')].map((n) => (n.textContent ?? "").trim());
+    const counts = () => [...container.querySelectorAll('[data-testid="kn-group-count"]')].map((n) => (n.textContent ?? "").trim());
+    expect(headers()).toEqual(["人事制度空间", "空间 · SPFIN", "IT 支持空间"]);
+    expect(counts()).toEqual(["2 项", "1 项", "1 项"]);
+    const sum = counts().reduce((acc, text) => acc + Number(text.replace(/[^\d]/g, "")), 0);
+    expect(sum).toBe(4);
+    expect((byTestid("kn9-count-docs")?.textContent ?? "")).toContain("4");
+    // 裸 sp_ 不上屏；全 id 只进 toggle 的 title
+    const panelText = (byTestid("kn6-search-panel")?.textContent ?? "").replace(/\s+/g, " ");
+    expect(panelText).not.toContain("sp_hr");
+    expect(panelText).not.toContain("sp_fin");
+    const toggles = () => [...container.querySelectorAll('[data-testid="kn-group-toggle"]')] as HTMLButtonElement[];
+    expect(toggles()[1]?.getAttribute("title")).toContain("sp_fin");
+
+    // 组内行：真 a[href]、既有口径、首组两行保持既有序
+    const firstRows = [...(container.querySelectorAll("#kn-group-rows-1 [data-testid='kn6-search-row']") ?? [])];
+    expect(firstRows).toHaveLength(2);
+    expect((firstRows[0]?.querySelector('[data-testid="kn6-search-name"]')?.textContent ?? "")).toContain("员工手册");
+    expect((firstRows[1]?.querySelector('[data-testid="kn6-search-name"]')?.textContent ?? "")).toContain("员工考勤");
+    expect((firstRows[0]?.querySelector('[data-testid="kn6-search-updated"]')?.textContent ?? "")).toContain("2026-11-19 15:00");
+    const href0 = (firstRows[0]?.querySelector('[data-testid="kn6-search-name"]') as HTMLAnchorElement).getAttribute("href") ?? "";
+    expect(href0).toContain("sdoc=d1");
+
+    // ---------- 折叠只动视图：行数落、URL 不动、零新请求、aria 成对 ----------
+    await clickNth("kn-group-toggle", 0);
+    const locAfterCollapse = byTestid("loc")?.textContent ?? "";
+    expect(locAfterCollapse).toContain("q=%E5%91%98%E5%B7%A5"); // 折叠不改 ?q=
+    expect(toggles()[0]?.getAttribute("aria-expanded")).toBe("false");
+    const controlsId = toggles()[0]?.getAttribute("aria-controls") ?? "";
+    expect(controlsId).toBe("kn-group-rows-1");
+    expect(container.querySelector(`#${controlsId}`)).toBeTruthy(); // 容器常在，aria-controls 不落空
+    expect(container.querySelectorAll('[data-testid="kn6-search-row"]')).toHaveLength(2);
+    expect(fetchMock.mock.calls.length).toBe(urlsSettled); // 折叠 0 新请求
+    await clickNth("kn-group-toggle", 0);
+    expect(toggles()[0]?.getAttribute("aria-expanded")).toBe("true");
+    expect(container.querySelectorAll('[data-testid="kn6-search-row"]')).toHaveLength(4);
+    expect(fetchMock.mock.calls.length).toBe(urlsSettled);
+
+    // ---------- roving 跨组仍闭环：DOM 序 = 组拼接序；同时只有一个 0 ----------
+    const box = byTestid("kn6-search-input") as HTMLInputElement;
+    await act(async () => {
+      box.focus();
+    });
+    await act(async () => {
+      box.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, cancelable: true }));
+    });
+    await act(async () => {});
+    const names = () => [...container.querySelectorAll('a[data-testid="kn6-search-name"]')] as HTMLAnchorElement[];
+    expect(document.activeElement).toBe(names()[0]);
+    expect(names().filter((a) => a.getAttribute("tabindex") === "0")).toHaveLength(1);
+    await act(async () => {
+      names()[0].dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, cancelable: true }));
+    });
+    await act(async () => {});
+    expect(document.activeElement).toBe(names()[1]);
+    await act(async () => {
+      names()[1].dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, cancelable: true }));
+    });
+    await act(async () => {});
+    expect(document.activeElement).toBe(names()[2]); // 跨出首组进第二组，DOM 序不乱
+    expect(fetchMock.mock.calls.length).toBe(urlsSettled); // 键盘全程也 0 新请求
+
+    // ---------- 空结果：走既有空态，组不出现 ----------
+    await type("kn6-search-input", "查无此名");
+    expect(byTestid("kn6-search-empty")?.textContent ?? "").toContain("没有匹配的文档");
+    expect(container.querySelectorAll('[data-testid="kn-group-toggle"]')).toHaveLength(0);
+    expect(fetchMock.mock.calls.length).toBe(urlsSettled);
+
+    // ---------- 单一代码路径：分组只存在于页顶「按文档名搜索」面；
+    // retrieval 页的检索命中面（knw5-search*）不渲染任何分组件 ----------
+    await render("/knowledge?tab=retrieval&q=%E5%91%98%E5%B7%A5");
+    await act(async () => {});
+    const hitsSurface = container.querySelector('[data-testid="knw5-search"]');
+    expect(hitsSurface).toBeTruthy();
+    expect(hitsSurface?.querySelectorAll('[data-testid="kn-group-toggle"], .kn6-group')).toHaveLength(0);
+    // 该面读口今天未接入：走既有「检索未接入」诚实态，没有被分组改造波及
+    expect(byTestid("knw5-search-unwired")).toBeTruthy();
+  });
 });

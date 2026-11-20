@@ -1552,6 +1552,38 @@ export function docMetaCopyText(row: DocRow | null, docId: string): string {
 }
 
 /* ------------------------------------------------------------------ *
+ * R65 — 全库文档名搜索的按空间分组：对「已筛后的 shown」做纯派生。
+ * 组序 = 首次出现序；组内行保持既有序；组名取组内第一个有人话名的行
+ * （缺名用行上短码标签「空间 · XXX」），全 id 只进 title。计数与总数
+ * 同源：各组 rows.length 之和恒等于传入的 rows 数——不另发任何请求。
+ * ------------------------------------------------------------------ */
+
+export interface SpaceGroup {
+  key: string;
+  label: string | null;
+  raw: string | null;
+  rows: DocRow[];
+}
+
+export function groupRowsBySpace(rows: DocRow[]): SpaceGroup[] {
+  const out: SpaceGroup[] = [];
+  const by = new Map<string, SpaceGroup>();
+  for (const row of rows) {
+    const key = row.spaceRaw ?? row.spaceLabel ?? "—";
+    let group = by.get(key);
+    if (group === undefined) {
+      group = { key, label: null, raw: row.spaceRaw ?? null, rows: [] };
+      by.set(key, group);
+      out.push(group);
+    }
+    if (group.label === null && row.spaceLabel !== null) group.label = row.spaceLabel;
+    if (group.raw === null && row.spaceRaw !== null) group.raw = row.spaceRaw;
+    group.rows.push(row);
+  }
+  return out;
+}
+
+/* ------------------------------------------------------------------ *
  * R57 — 空间清单「复制清单」的文本：同样是纯屏上数据。首行明写这份清单只
  * 覆盖已加载的空间（读口 limit=20、没有分页游标），绝不冒充全库；有检索词时
  * 第二行写明是筛后行。列值取屏上原样：文档数缺「—」（原因仍在屏上，不另编），
