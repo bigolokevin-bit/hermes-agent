@@ -4142,3 +4142,56 @@ createObjectURL spy 两例全程 0 调用（R190 之外的再复证）。请求�
 边界：只新增 web/src/modules/knowledge/knowledge.export.columns.test.tsx 与本证据；
 显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
 「test(console): knowledge export column parity guards」。
+
+# KNW5 追加 R204：文档详情字段四面同源护栏（纯测试单）（2026-11-20 BJT）
+
+安全门：porcelain 空起做（HEAD 即 R200 链）、显式 refspec fetch 后 merge 实测 tip
+即预期 `b9fb2cc4`（wave-44，知识面 delta 空）。零产品文件改动（无新缺陷）。
+
+## 查重判定（引用 vs 新写）
+
+```text
+已锁引用：腿③=R196 knowledge.preview.requests.test.tsx（开恰 1 详情读、关 0、行序/钮 id
+  原样、标题随换）+ R125C 快照；腿④=R183 knowledge.detail.error.test.tsx（404/500 可读句、
+  「请求编号：rid-…」cap/列表不卸载、空态互斥、重试 +1）——两腿整腿已锁，只引用。
+  DOM 侧两表/两预览/抽屉四字段=R70/R125；行钮==kn-doc-copy 同串=R114；复制列↔屏上格
+  逐列=R200；缺值两式各自定版=R70/R125/R200。
+真缺口（本文件 2 例）：①同一文档「列表格 × 抽屉 dd × 行钮文本 × kn-doc-copy 文本」
+  四路接成**一条 toBe 链**（逐字段 + 短码列 + 全 id 仅在 title 的落点收口——此前
+  各锁两两，六路从未同案对账）；②缺值行「两种句式」同案对账（表格/复制「—」 vs
+  预览/抽屉「该字段未返回」+「<字段>：<原因>」逐字段 title）。
+名实注记：R67 互斥使抽屉与行内预览不同屏——「四面同框」落实为同一用例内**顺序采集**
+  四面读数再对账（文件头与本段双记录）；测得的面=空间详情（`-space-` 族），检索面
+  行钮 `kn-row-copy-<i>` 不在本文件（R200 已锁其列集）。
+```
+
+## 关键读数
+
+```text
+①全项行样张逐字：字段五元组 ["全项手册.pdf","PDF","2.4 MB","2026-11-19 15:10","DFULL1"]；
+  抽屉四 dd 与列表四格逐格 toBe；行钮文本首行==DOC_LINE_HEADER.join；kn-doc-copy 串
+  ===行钮串（toBe 整串）；行正文无 d_full1 无 DFULL1；抽屉 dl title="d_full1"；
+  body 无 undefined/null。
+②缺项行：表格 type/size/updated 三格「—」==行钮 fields[1..3]；预览与抽屉 dd 逐字
+  「该字段未返回」、title 逐字「类型：上游没有给出文档类型」「更新：上游没有给出更新时间」
+  ——两式各自四面一致；body 无 undefined/null/d_miss9，全 id 只在 dl title。
+```
+
+## 验证尾行（R204）
+```text
+$ npx vitest run src/modules/knowledge   → 25 files / 153 tests passed（基线 151 + 2）
+$ npx vitest run                         → 264 files / 2893 tests passed 全绿（无豁免项）
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r204-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn3*/kn-row-copy*/kn-row-copy-space*/kn-doc-copy*/kn-doc-preview*/kn-space-preview*/
+kn3-page-cap/knE-page-*/kn6-search-*/knF/knG/knI/knL-copy*/kn7-preview-* + 既有 24 套全绿。
+请求口径：两例的全程 = render 既有读取 + 抽屉每开 1 次详情读（R49 既有链）；复制/开关
+列表面零新增（腿③引用 R196 计数锁，本文件未新增动作类型）。
+```
+未测如实：带登录会话真实屏（详情 200 真信封未接——mock 404 代证，抽屉 DOM 字段源为
+已载行、与详情信封无关）；检索面六路（族不同，R200 已锁其列格）。
+边界：只新增 web/src/modules/knowledge/knowledge.detail.parity.test.tsx 与本证据；
+显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「test(console): knowledge detail field parity guards」。
