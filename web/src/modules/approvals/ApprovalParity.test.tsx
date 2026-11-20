@@ -123,7 +123,7 @@ describe("R78 approval parity (ed8 zone vs apv queue)", () => {
     await renderInto("/approvals?tab=history", <ApprovalsHistoryModulePage />);
     await waitFor(() => !!q("apr5-row-ap_p78a"), "queue row");
     await act(async () => {
-      (q("apv9-toggle-ap_p78a") as HTMLButtonElement).click();
+      (document.querySelector(`[data-testid^="apv9-toggle-"][data-record="ap_p78a"]`) as HTMLButtonElement).click();
     });
     await waitFor(() => !!q("apv9-preview-ap_p78a"), "preview open");
     const pvText = q("apv9-preview-ap_p78a")?.textContent ?? "";
@@ -161,7 +161,7 @@ describe("R78 approval parity (ed8 zone vs apv queue)", () => {
     await renderInto("/approvals?tab=history", <ApprovalsHistoryModulePage />);
     await waitFor(() => !!q("apr5-row-ap_p78m"), "queue row");
     await act(async () => {
-      (q("apv9-toggle-ap_p78m") as HTMLButtonElement).click();
+      (document.querySelector(`[data-testid^="apv9-toggle-"][data-record="ap_p78m"]`) as HTMLButtonElement).click();
     });
     await waitFor(() => !!q("apv9-preview-ap_p78m"), "preview open");
     const pv = q("apv9-preview-ap_p78m")?.textContent ?? "";

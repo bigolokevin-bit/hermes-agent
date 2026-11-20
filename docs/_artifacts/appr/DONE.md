@@ -1261,3 +1261,11 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 纯只读：seakoi-agent-os 仓未改一字节；未执行任何写请求/启停服务。产物单文件 docs/_artifacts/appr/V1-identity-link-contract.md（契约与校验/最小 POST body+失败码表/resolve 判定链/风险与回退+证据行号索引）。
 - 关键发现：E8 body 没有 appId 字段——link.app_id 取自部署注入 SEAKOI_DOMAIN_APP_ID（默认 feishu_default_app ≠ cli_aa7fa29bceb95c16）；写前必须确认部署 env 现值，否则 link 建成 E9 也永不匹配。E9 幂等=messageId:eventType（换消息才能看到 unknown=false）；resolve 的 employeeId 出自 workstation 非 link；subjectUserId 不校验=ownerUserId（源码仅要求非空）。
 - 工单 @1473@ 四问全答；写这一步仍需 L0/用户批准（安全边界）。
+
+## R52-obs 审批 DOM 载体与锚名整改（2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console → 1da9223c（带入他人 wave，代码基=2ab2d218 章面，页面代次 fa7c2155），toplevel ✓ porc=0。
+- ①作用域/上限语义挂真 DOM 属性：六个 scope 载体各加与 data-testid 同名 data-* 属性（值=语义 token）：apv-sort-scope-note=local-sort、apv-risk/since-scope-note=local-filter、apv-actor-scope-note=local-buckets、apv8-scope-note=local-search（两页）、**ed8-appr-scope=data-ed8-appr-scope:"aggregate-cap-20"**（R92 曾注「该属性本仓不存在」=本单补上，V1/DONE 旧账结清）；新用例逐对断言 data-testid 存在且 data-<同名> 值逐字相等。emp-list-dept-scope-note 不在本单写域=未动（DONE 注）。
+- ②apv9-toggle 序号化：ApprovalRowCard 新 prop index（两页 visibleRows.map((row, i)) 传位）；toggle testid=apv9-toggle-<0..n> + **data-record=row.key（全 id 进属性不进锚名）**；preview 保持 apv9-preview-<key>（工单②只点名 toggle；preview 引用面 R60/R65/R73/R88/R92 数十处，改动面与收益不称，成对约束由 toggle data-record+aria-expanded 双载体锁——DONE 记裁决）。屏上 textContent 裸 ap_ 既有禁保持（用例扫 toggle 文本）。
+- ③测试同步=引用重写 31+处走组合选择器 `[data-testid^="apv9-toggle-"][data-record="<key>"]`（key→index 知识零迁移，防手改错位）；activeElement 回焦断言改判 data-record；R76 单引号形态与 parity q() 形态逐一收口（正则两轮+反引号修复=坑记：全局 re.sub 生成串需 grep 结果形防引号嵌套/反引号丢失）。新断言 2+1 用例：toggle 数==行数、逐钮 testid=apv9-toggle-<i>+data-record 序==行卡 key 序、toggle 文本不含 ap_；五 scope 对逐值；ed8 属性逐值。
+- 验证：定向 approvals+employee-detail 6 files/**223 passed**（220+3）；tsc 两域 0 红；assert-ia 两模式 exit0；全量 **166 files/2308 passed**（merge 他人 wave 后实跑，本域净增 3 用例）。零破：apv5–9/apd5–7/apr5/ed8/state/sort/export/live（既有 162 全绿为证）；三档=载体行/钮组既有形态学（jsdom 不可测 sw==cw）。9122==fa7c2155 系禁重建，活体属性读数待并入后代次。

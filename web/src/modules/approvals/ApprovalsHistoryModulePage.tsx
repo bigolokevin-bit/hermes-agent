@@ -458,6 +458,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
       <p
         className="min-w-0 break-words text-xs text-muted-foreground"
         data-testid="apv8-scope-note"
+        data-apv8-scope-note="local-search"
         title="实测：本页读口带 q/keyword/title 任一参数都与不带时返回同一全量（同集合），后台不做关键字过滤；为避免「假服务端搜索」，这里只做前端本地过滤。"
       >
         仅在当前已加载 {list.rows.length} 条内搜索；关键字是前端本地过滤，不产生新请求（实测后台 q/keyword/title 参数被忽略）。
@@ -610,9 +611,10 @@ export function ApprovalsHistoryModulePage(): ReactNode {
                   </CardContent>
                 </Card>
               ) : null}
-              {visibleRows.map((row) => (
+              {visibleRows.map((row, i) => (
                 <ApprovalRowCard
                   key={row.key}
+                  index={i}
                   row={row}
                   selected={row.rawId !== null && row.rawId === selected}
                   onOpen={() => openRow(row)}

@@ -1538,6 +1538,7 @@ function ApprovalsZone({ resource, onRetry }: { resource: Resource<ApprovalRow[]
         <p
           className="border-t border-white/5 px-4 pb-3 pt-2 text-xs text-muted-foreground"
           data-testid="ed8-appr-scope"
+        data-ed8-appr-scope="aggregate-cap-20"
           title="实测（本代次）：status=all&limit=20/50/100 均 200 n=8 且 nextCursor 恒 null；带无效 cursor 也原样返回——聚合口径没有游标分页能力，故这里不伪造「加载更多」。单页上限按请求口径为 20 条；本代次全量 8 条未满页。"
         >
           本区按聚合口径读取，单页最多 20 条，超出部分请到

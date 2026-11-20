@@ -814,7 +814,7 @@ describe("R59 approvals queue search (apv8-*)", () => {
         url.includes("/api/approvals") ? ROWS_META : { items: [] },
       );
       const calls = api.fetchJSON.mock.calls.length;
-      const toggle = (document.querySelector as (sel: string) => HTMLButtonElement | null)('[data-testid="apv9-toggle-ap_v1"]');
+      const toggle = (document.querySelector as (sel: string) => HTMLButtonElement | null)('[data-testid^="apv9-toggle-"][data-record="ap_v1"]');
       expect(toggle).toBeTruthy();
       expect(toggle.getAttribute("aria-expanded")).toBe("false");
       await act(async () => {
@@ -828,22 +828,22 @@ describe("R59 approvals queue search (apv8-*)", () => {
       // R76: 相对读数；绝对到秒与 ISO 原文在 title。
       expect(document.querySelector("[data-testid='apv-time-preview-ap_v1']")?.getAttribute("title") ?? "").toContain("2026-11-19 10:00:00");
       expect(preview?.textContent).toContain("高");
-      expect((document.querySelector as (sel: string) => HTMLButtonElement | null)('[data-testid="apv9-toggle-ap_v1"]')?.getAttribute("aria-expanded")).toBe("true");
+      expect((document.querySelector as (sel: string) => HTMLButtonElement | null)('[data-testid^="apv9-toggle-"][data-record="ap_v1"]')?.getAttribute("aria-expanded")).toBe("true");
       // 展开不是打开详情：详情抽屉没被唤起。
       expect(document.querySelector("[data-testid='apr5-detail']")).toBeNull();
       // Esc 收起且焦点回到行内开关。
       await act(async () => {
-        (document.querySelector as (sel: string) => HTMLButtonElement | null)('[data-testid="apv9-toggle-ap_v1"]')?.dispatchEvent(
+        (document.querySelector as (sel: string) => HTMLButtonElement | null)('[data-testid^="apv9-toggle-"][data-record="ap_v1"]')?.dispatchEvent(
           new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
         );
       });
       expect(document.querySelector('[data-testid="apv9-preview-ap_v1"]')).toBeNull();
-      expect(document.activeElement?.getAttribute("data-testid")).toBe("apv9-toggle-ap_v1");
+      expect(document.activeElement?.getAttribute("data-record")).toBe("ap_v1");
     });
 
     it("falls back to 该字段未返回 when the row carries no approvers or request id", async () => {
       await mount(); // 默认 8 态夹具：无 approvers/requestId 键
-      const toggle = (document.querySelector as (sel: string) => HTMLButtonElement | null)('[data-testid="apv9-toggle-ap_p"]');
+      const toggle = (document.querySelector as (sel: string) => HTMLButtonElement | null)('[data-testid^="apv9-toggle-"][data-record="ap_p"]');
       await act(async () => {
         toggle?.click();
       });
@@ -855,12 +855,12 @@ describe("R59 approvals queue search (apv8-*)", () => {
 
     it("keeps at most one preview open", async () => {
       await mount();
-      const first = (document.querySelector as (sel: string) => HTMLButtonElement | null)('[data-testid="apv9-toggle-ap_p"]');
+      const first = (document.querySelector as (sel: string) => HTMLButtonElement | null)('[data-testid^="apv9-toggle-"][data-record="ap_p"]');
       await act(async () => {
         first?.click();
       });
       expect(document.querySelector('[data-testid="apv9-preview-ap_p"]')).toBeTruthy();
-      const second = (document.querySelector as (sel: string) => HTMLButtonElement | null)('[data-testid="apv9-toggle-ap_a"]');
+      const second = (document.querySelector as (sel: string) => HTMLButtonElement | null)('[data-testid^="apv9-toggle-"][data-record="ap_a"]');
       await act(async () => {
         second?.click();
       });
@@ -999,7 +999,7 @@ describe("R65 preview-detail parity (apv9 vs apd5/apd6)", () => {
     document.querySelector(`[data-testid='apv9-preview-${key}']`);
   const detailOf = () => document.querySelector("[data-testid='apr5-detail']");
   const toggleOf = (key: string) =>
-    document.querySelector(`[data-testid='apv9-toggle-${key}']`) as HTMLButtonElement | null;
+    document.querySelector(`[data-testid^="apv9-toggle-"][data-record="${key}"]`) as HTMLButtonElement | null;
 
   it("pending ticket: same title/risk/rid/approver on both surfaces; preview never uses 「该段无记录」", async () => {
     await mount(parityHandler);
@@ -1452,7 +1452,7 @@ describe("R73 keyboard navigation (apv-nav-*)", () => {
     });
     expect(qa("apv9-preview-ap_n1"), "Enter opens the inline preview").toBeTruthy();
     expect(first!.getAttribute("aria-expanded")).toBe("true");
-    expect(qa("apv9-toggle-ap_n1")?.getAttribute("aria-expanded"), "dual carriers agree").toBe("true");
+    expect(document.querySelector(`[data-testid^="apv9-toggle-"][data-record="ap_n1"]`)?.getAttribute("aria-expanded"), "dual carriers agree").toBe("true");
     await act(async () => {
       nav(first, "Enter");
     });
@@ -1679,7 +1679,7 @@ describe("R76 relative time presentation (apv-time-*)", () => {
       },
       "/approvals?tab=history",
     );
-    const toggle = document.querySelector("[data-testid='apv9-toggle-ap_t76']") as HTMLButtonElement | null;
+    const toggle = document.querySelector(`[data-testid^="apv9-toggle-"][data-record="ap_t76"]`) as HTMLButtonElement | null;
     expect(toggle, "row rendered").toBeTruthy();
     const before = api.fetchJSON.mock.calls.length;
     await act(async () => {
@@ -1904,7 +1904,7 @@ describe("R80 long value truncation (apv-trunc-*)", () => {
     expect(rowReason!.textContent).toContain("事由：");
     // 行内预览与行卡同截同 title（同一 helper 单点）
     await act(async () => {
-      (qa("apv9-toggle-ap_tr1") as HTMLButtonElement).click();
+      (document.querySelector(`[data-testid^="apv9-toggle-"][data-record="ap_tr1"]`) as HTMLButtonElement).click();
     });
     const pvTitle = qa("apv-trunc-preview-title-ap_tr1") as HTMLElement | null;
     expect(pvTitle, "preview title carrier").toBeTruthy();
@@ -2316,7 +2316,7 @@ describe("R88 permalink copy (apd10-*)", () => {
     await mount(handler, "/approvals?tab=history");
     await waitFor(() => !!qa("apr5-row-ap_p10"), "row");
     await act(async () => {
-      (qa("apv9-toggle-ap_p10") as HTMLButtonElement).click();
+      (document.querySelector(`[data-testid^="apv9-toggle-"][data-record="ap_p10"]`) as HTMLButtonElement).click();
     });
     const inPreview = qa("apv9-preview-ap_p10")?.querySelector('[data-testid="apd10-permalink"]') as HTMLButtonElement | null;
     expect(inPreview, "permalink inside the preview region").toBeTruthy();
@@ -2509,5 +2509,41 @@ describe("R94 correlation return state (appr-corr)", () => {
     await mount(nineFourHandler, "/approvals?tab=history");
     await waitFor(() => !!qa("apv8-search"), "page up");
     expect(rawCorrelationReturn(), "kept for the pending page").toBeTruthy();
+  });
+});
+
+describe("R52-obs dom carriers and anchor naming", () => {
+  it("toggles are positional anchors carrying the full id in data-record", async () => {
+    await mount();
+    await waitFor(() => !!document.querySelector('[data-testid^="apr5-row-ap"]'), "rows");
+    const rows = document.querySelectorAll('[data-testid^="apr5-row-ap"]');
+    const toggles = document.querySelectorAll('[data-testid^="apv9-toggle-"]');
+    expect(toggles.length, "one toggle per row").toBe(rows.length);
+    toggles.forEach((t, i) => {
+      expect(t.getAttribute("data-testid"), "positional anchor").toBe(`apv9-toggle-${i}`);
+      const rec = t.getAttribute("data-record") ?? "";
+      expect(rec, "full id rides data-record").toMatch(/^ap_/);
+      expect(t.textContent ?? "", "toggle never prints the id").not.toContain("ap_");
+    });
+    const records = Array.from(toggles).map((t) => t.getAttribute("data-record"));
+    const rowKeys = Array.from(rows).map((r) => (r.getAttribute("data-testid") ?? "").replace("apr5-row-", ""));
+    expect(records).toEqual(rowKeys);
+  });
+
+  it("every scope sentence exists as a real data-* attribute beside its testid", async () => {
+    await mount(undefined, "/approvals?tab=history");
+    await waitFor(() => !!document.querySelector('[data-testid="apv-sort-scope-note"]'), "sort note");
+    const pairs: Array<[string, string]> = [
+      ["apv-sort-scope-note", "local-sort"],
+      ["apv-risk-scope-note", "local-filter"],
+      ["apv-since-scope-note", "local-filter"],
+      ["apv-actor-scope-note", "local-buckets"],
+      ["apv8-scope-note", "local-search"],
+    ];
+    for (const [name, value] of pairs) {
+      const el = document.querySelector(`[data-testid="${name}"]`);
+      expect(el, name).toBeTruthy();
+      expect(el!.getAttribute(`data-${name}`), `${name} attribute`).toBe(value);
+    }
   });
 });

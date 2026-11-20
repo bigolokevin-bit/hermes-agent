@@ -579,7 +579,7 @@ describe("R59 pending queue search (apv8-*)", () => {
   it("R60: pending rows expand an inline preview without any extra request", async () => {
     await mount(queue());
     const calls = api.fetchJSON.mock.calls.length;
-    const toggle = document.querySelector<HTMLButtonElement>('[data-testid="apv9-toggle-ap_9F3A1111"]');
+    const toggle = document.querySelector<HTMLButtonElement>('[data-testid^="apv9-toggle-"][data-record="ap_9F3A1111"]');
     expect(toggle).toBeTruthy();
     await act(async () => {
       toggle.click();
