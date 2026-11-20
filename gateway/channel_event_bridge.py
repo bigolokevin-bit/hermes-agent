@@ -23,7 +23,8 @@ Behaviour contract (S7b-2 + L7 spool):
   Corrupt lines (bad JSON, missing/!= ``dedupeKey``) are dropped, never raised.
   Writes are atomic (temp file + ``os.replace``) under one ``asyncio.Lock``.
 - Logs land on the ``gateway.run`` logger (=> ~/.hermes/logs/gateway.log):
-  success ``channel_event_posted`` (message_id/event_id/duplicate), retries
+  success ``channel_event_posted`` (message_id/event_id/duplicate), 409 as
+  idempotent success ``channel_event_duplicate`` (no retry, no spool), retries
   ``channel_event_post_retry``, terminal failure ``channel_event_post_failed``
   (message_id + attempt count + HTTP status or exception class; never message text
   or tokens), spool lines carry dedupeKey/attempts only.
@@ -476,6 +477,9 @@ async def _post_once(
 ) -> Optional[str]:
     """One POST attempt. Returns None on success, else a short reason (no content).
 
+    A 409 (dedupeKey already stored by C1) is an idempotent success: it returns
+    ``None`` without retry or spool and logs ``channel_event_duplicate``.
+
     ``info`` is an optional caller-owned dict: on a 2xx it is filled with the same
     ``event_id``/``duplicate`` values the success log line reports, so the
     authoritative gate can see the first verdict without parsing logs.
@@ -510,6 +514,23 @@ async def _post_once(
                             str(event_id) if event_id is not None else None
                         )
                         info["duplicate"] = bool(body.get("duplicate"))
+                    return None
+                if resp.status == 409:
+                    # C1 answers an already-seen dedupeKey with 409: idempotent
+                    # success, the event is stored there. Not a failure — no
+                    # retry, no spool, no failed counter. The placeholder keeps
+                    # the log shape stable when the body carries no eventId.
+                    event_id = body.get("eventId")
+                    logger.info(
+                        "channel_event_duplicate: message_id=%s event_id=%s reason=already_exists",
+                        message_id,
+                        str(event_id) if event_id is not None else "<unknown>",
+                    )
+                    if info is not None:
+                        info["event_id"] = (
+                            str(event_id) if event_id is not None else None
+                        )
+                        info["duplicate"] = True
                     return None
                 return f"status={resp.status}"
     except asyncio.CancelledError:
