@@ -336,14 +336,47 @@ export function ledgerAsOf(rows: LedgerRow[]): string | null {
   return latest;
 }
 
-/** USD with cents. A missing value is «—», never $0.00. */
-export function formatUsd(value: number | null): string {
-  if (value === null || !Number.isFinite(value)) return '—';
-  return `${value < 0 ? '-' : ''}$${Math.abs(value).toFixed(2)}`;
+/** Thousands groups in the integer part. Display decoration only: no value changes. */
+function groupThousands(digits: string): string {
+  const negative = digits.startsWith('-');
+  const body = negative ? digits.slice(1) : digits;
+  const [int, frac] = body.split('.');
+  const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return `${negative ? '-' : ''}${grouped}${frac === undefined ? '' : `.${frac}`}`;
 }
 
+/**
+ * The one rounding rule for money: two decimals, no symbol, no grouping.
+ * Machine form for files; `formatUsd` decorates the same digits for the screen.
+ */
+export function usdDigits(value: number | null): string | null {
+  if (value === null || !Number.isFinite(value)) return null;
+  return value.toFixed(2);
+}
+
+/** USD with cents and thousands: `$1,234.56`. A missing value is «—», never $0.00. */
+export function formatUsd(value: number | null): string {
+  const digits = usdDigits(value);
+  if (digits === null) return '—';
+  const negative = digits.startsWith('-');
+  return `${negative ? '-' : ''}$${groupThousands(negative ? digits.slice(1) : digits)}`;
+}
+
+/** Counts group thousands: `1,234`. A missing count is «—», never 0. */
 export function formatCount(value: number | null): string {
-  return value === null || !Number.isFinite(value) ? '—' : String(value);
+  return value === null || !Number.isFinite(value) ? '—' : groupThousands(String(value));
+}
+
+/** The one rounding rule for a share: one decimal, no «%». Machine form for files. */
+export function digitsPct(value: number | null): string | null {
+  if (value === null || !Number.isFinite(value)) return null;
+  return value.toFixed(1);
+}
+
+/** Screen share: `12.3%`; a share that cannot be computed is «—». */
+export function formatSharePct(value: number | null): string {
+  const digits = digitsPct(value);
+  return digits === null ? '—' : `${digits}%`;
 }
 
 /** 0.9967 → 99.7%; null → «—». Only formats a rate the server computed. */
@@ -486,7 +519,7 @@ export function readPricing(payload: unknown): ParsedPricing {
       asOf: text(raw.asOf),
     });
   }
-  const asOfRaw = text(payload.asOf);
+  const asOfRaw = readTopAsOf(payload);
   return { kind: 'ok', rows, asOf: asOfRaw };
 }
 
@@ -494,7 +527,8 @@ export function readPricing(payload: unknown): ParsedPricing {
 export function formatUnitPrice(value: number | null, currency: string | null): string {
   if (value === null || !Number.isFinite(value)) return '—';
   const symbol = currency === null || currency.toUpperCase() === 'USD' ? '$' : '';
-  return `${symbol}${value.toFixed(2)} / 百万 token`;
+  const digits = usdDigits(value) ?? '—';
+  return digits === '—' ? digits : `${symbol}${groupThousands(digits)} / 百万 token`;
 }
 
 // ---- MET6: breakdown views (by employee / by model) -------------------------
@@ -549,7 +583,7 @@ export type ParsedModelUsage =
  *  missing cost stays null and the view prints «—» with its reason. */
 export function readModelUsage(payload: unknown): ParsedModelUsage {
   if (!isRecord(payload)) return { kind: 'invalid', reason: '返回内容里没有用量明细。' };
-  const asOf = text(payload.asOf) ?? text(payload.as_of) ?? text(payload.generatedAt);
+  const asOf = readTopAsOf(payload);
   const costBlock = isRecord(payload.cost) ? payload.cost : null;
   const costUsd = costBlock ? numberOrNull(costBlock.cost_usd) : null;
   if (!Array.isArray(payload.by_model)) return { kind: 'ok', lines: [], costUsd, asOf };
@@ -641,8 +675,7 @@ const MODEL_COST_MONEY_KEYS = ['actual_cost_usd', 'actualCostUsd', 'cost_usd', '
 
 export function readModelCost(payload: unknown): ParsedModelCost {
   if (!isRecord(payload)) return { kind: 'invalid', reason: '返回内容里没有按模型的用量。' };
-  const asOf =
-    text(payload.asOf) ?? text(payload.as_of) ?? text(payload.generated_at) ?? text(payload.generatedAt);
+  const asOf = readTopAsOf(payload);
   const costBlock = isRecord(payload.cost) ? payload.cost : null;
   const rowsRaw = Array.isArray(payload.by_model)
     ? payload.by_model
@@ -713,6 +746,38 @@ export function parseSortDir(raw: string | null, key: ModelCostSort): SortDir {
   return key === 'model' ? 'asc' : 'desc';
 }
 
+// ---- METP: detail table sorting --------------------------------------------
+
+export type DetailSort = 'runs' | 'cost' | 'share';
+
+export function parseDetailSort(raw: string | null): DetailSort | null {
+  return raw === 'runs' || raw === 'cost' || raw === 'share' ? raw : null;
+}
+
+/**
+ * Order the detail rows the same way the table shows them, so the CSV export
+ * can never disagree with the screen. A missing value is not a zero: it sinks
+ * to the bottom in both directions, while a real 0 sorts like any other number.
+ * Equal values keep their upstream order (stable by original index).
+ */
+export function sortDetailLines<T extends { count: number | null; costUsd: number | null; share: number | null }>(
+  lines: T[],
+  sort: DetailSort,
+  dir: SortDir,
+): T[] {
+  const valueOf = (line: T): number | null => (sort === 'runs' ? line.count : sort === 'cost' ? line.costUsd : line.share);
+  return lines
+    .map((line, index) => ({ line, index, value: valueOf(line) }))
+    .sort((a, b) => {
+      if (a.value === null && b.value === null) return a.index - b.index;
+      if (a.value === null) return 1;
+      if (b.value === null) return -1;
+      if (a.value !== b.value) return dir === 'asc' ? a.value - b.value : b.value - a.value;
+      return a.index - b.index;
+    })
+    .map((entry) => entry.line);
+}
+
 // ---- MET6: period-over-period delta and CSV export --------------------------
 
 /** Equal-length window immediately before [now-span, now). */
@@ -760,10 +825,68 @@ export function toCsv(header: string[], rows: (string | number | null)[][]): str
   return [header.map(csvCell).join(','), ...rows.map((row) => row.map(csvCell).join(','))].join('\r\n');
 }
 
+/** A block this file could not carry, with the sentence the page shows for it. */
+export interface ExportGap {
+  label: string;
+  reason: string;
+}
+
+/**
+ * One trailing note naming what the file is missing. A file with nothing
+ * missing gets no note at all, so its shape stays exactly as before.
+ */
+export function exportGapNote(gaps: ExportGap[]): string | null {
+  if (gaps.length === 0) return null;
+  const parts = gaps.map((gap) => `${gap.label}（${gap.reason}）`).join('；');
+  return `# 本次导出缺少 ${gaps.length} 块：${parts}`;
+}
+
+/** The note rides in its own row; RFC 4180 escaping still applies. */
+export function withGapNote(body: string, gaps: ExportGap[]): string {
+  const note = exportGapNote(gaps);
+  return note === null ? body : `${body}\r\n${csvCell(note)}`;
+}
+
 /** `metrics-employee-7d-20261120-0931.csv` in Beijing time. */
 export function csvFileName(view: 'employee' | 'model', window: UsageWindowId, now: Date): string {
   const stamp = formatBeijing(now.toISOString(), now).replace(/[-:]/g, '').replace(' ', '-');
   return `metrics-${view}-${window}-${stamp}.csv`;
+}
+
+/**
+ * A raw ISO-8601 stamp and nothing else. Exported files carry the collection
+ * time only when the upstream answered with one; a missing or free-form value
+ * stays an empty cell — the local clock is never a stand-in.
+ */
+export function isoOrNull(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const raw = value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/.test(raw)) return null;
+  return Number.isNaN(Date.parse(raw)) ? null : raw;
+}
+
+/** The names an envelope may carry its collection time under, in priority order. */
+export const TOP_ASOF_KEYS = [
+  'asOf',
+  'as_of',
+  'collectedAt',
+  'collected_at',
+  'generatedAt',
+  'generated_at',
+] as const;
+
+/**
+ * The top-level collection time of one payload, under any of its accepted
+ * names. Only a full ISO instant qualifies: a free-form or missing value is
+ * null, never the local clock.
+ */
+export function readTopAsOf(payload: unknown): string | null {
+  if (!isRecord(payload)) return null;
+  for (const key of TOP_ASOF_KEYS) {
+    const value = isoOrNull(payload[key]);
+    if (value !== null) return value;
+  }
+  return null;
 }
 
 // ---- MET-A: export the current cost-share view ------------------------------
@@ -774,18 +897,24 @@ export type ShareCsvRow = {
   runs: number | null;
   costUsd: number | null;
   sharePct: number | null;
+  /** Raw upstream collection time; null when the answer carried none. */
+  asOf?: string | null;
+  /** The statistics window this row was aggregated over (`24h` / `7d` / `30d`). */
+  window?: string | null;
 };
 
-/** Fixed English keys, one per data column on screen. */
-export const SHARE_CSV_HEADER = ['group', 'runs', 'cost_usd', 'share_pct'];
+/** Fixed English keys, one per data column on screen, plus provenance. */
+export const SHARE_CSV_HEADER = ['group', 'runs', 'cost_usd', 'share_pct', 'as_of', 'window'];
 
 /** Missing stays an empty cell, a real zero stays `0.00`, shares keep one decimal. */
 export function shareCsvRows(rows: ShareCsvRow[]): (string | number | null)[][] {
   return rows.map((row) => [
     row.name,
     row.runs,
-    row.costUsd === null ? null : row.costUsd.toFixed(2),
-    row.sharePct === null ? null : row.sharePct.toFixed(1),
+    usdDigits(row.costUsd),
+    digitsPct(row.sharePct),
+    isoOrNull(row.asOf),
+    row.window ?? null,
   ]);
 }
 
@@ -950,6 +1079,8 @@ export const SOURCE_CATALOG: SourceDescriptor[] = [
 export type SourceStamp = {
   asOf: string | null;
   asOfSource: string | null;
+  /** When this client finished the read that produced `asOf`; never the data clock. */
+  fetchedAt: string | null;
   error: string | null;
   gap: string | null;
   requestId: string | null;
@@ -958,6 +1089,7 @@ export type SourceStamp = {
 export const EMPTY_SOURCE_STAMP: SourceStamp = {
   asOf: null,
   asOfSource: null,
+  fetchedAt: null,
   error: null,
   gap: null,
   requestId: null,
@@ -975,7 +1107,7 @@ export function isIsoStamp(value: unknown): value is string {
 export function readSourceStamp(payload: unknown): { asOf: string | null; asOfSource: string | null } {
   if (!isRecord(payload)) return { asOf: null, asOfSource: null };
   return {
-    asOf: isIsoStamp(payload.asOf) ? payload.asOf : null,
+    asOf: readTopAsOf(payload),
     asOfSource: text(payload.asOfSource),
   };
 }
@@ -997,45 +1129,78 @@ export function sourceKeyOfPath(path: string): SourceKey | null {
  */
 export function mergeSourceStamp(
   prev: SourceStamp | undefined,
-  next: { asOf: string | null; asOfSource: string | null },
+  next: { asOf: string | null; asOfSource: string | null; fetchedAt?: string | null },
 ): SourceStamp {
   const base = prev ?? EMPTY_SOURCE_STAMP;
   let asOf = base.asOf;
   let asOfSource = base.asOfSource;
+  let fetchedAt = base.fetchedAt;
   if (next.asOf) {
     const nextMs = Date.parse(next.asOf);
     const baseMs = base.asOf ? Date.parse(base.asOf) : Number.NEGATIVE_INFINITY;
     if (!Number.isFinite(baseMs) || nextMs >= baseMs) {
       asOf = next.asOf;
       asOfSource = next.asOfSource ?? base.asOfSource;
+      // The read time belongs to the read whose collection time we are showing.
+      fetchedAt = next.fetchedAt ?? fetchedAt;
     }
+  } else if (!base.asOf) {
+    fetchedAt = next.fetchedAt ?? fetchedAt;
   }
-  return { asOf, asOfSource, error: null, gap: null, requestId: null };
+  return { asOf, asOfSource, fetchedAt, error: null, gap: null, requestId: null };
 }
 
 export type SourceRow = SourceDescriptor & {
   asOf: string | null;
   asOfSource: string | null;
-  state: 'ok' | 'missing' | 'error';
+  fetchedAt: string | null;
+  state: 'ok' | 'degraded' | 'down';
   error: string | null;
   gap: string | null;
   requestId: string | null;
 };
 
+/**
+ * Three words, no fourth: a source that answered with a collection time is
+ * `ok`; one that answered without one is `degraded` (the payload is usable but
+ * we cannot say how fresh it is); one that failed to answer is `down`.
+ */
 export function sourceRows(stamps: Record<string, SourceStamp>): SourceRow[] {
   return SOURCE_CATALOG.map((descriptor) => {
     const stamp = stamps[descriptor.key] ?? EMPTY_SOURCE_STAMP;
-    const state: SourceRow['state'] = stamp.error ? 'error' : stamp.asOf ? 'ok' : 'missing';
+    const state: SourceRow['state'] = stamp.error ? 'down' : stamp.asOf ? 'ok' : 'degraded';
     return {
       ...descriptor,
       asOf: stamp.asOf,
       asOfSource: stamp.asOfSource,
+      fetchedAt: stamp.fetchedAt,
       state,
       error: stamp.error,
       gap: stamp.gap,
       requestId: stamp.requestId,
     };
   });
+}
+
+/** A source whose collection time trails the read by more than this is called stale. */
+export const SOURCE_STALE_MS = 15 * 60 * 1000;
+
+/**
+ * Compare the upstream collection time with the moment this client finished
+ * reading. Only a real ISO pair can be stale: a source without a collection
+ * time is never called fresh *or* stale, and the local clock never stands in
+ * for a missing upstream stamp.
+ */
+export function sourceStaleness(
+  row: Pick<SourceRow, 'asOf' | 'fetchedAt'>,
+  thresholdMs = SOURCE_STALE_MS,
+): { stale: boolean; ageMs: number | null } {
+  if (!isIsoStamp(row.asOf) || !isIsoStamp(row.fetchedAt)) return { stale: false, ageMs: null };
+  const asOfMs = Date.parse(row.asOf);
+  const readMs = Date.parse(row.fetchedAt);
+  if (!Number.isFinite(asOfMs) || !Number.isFinite(readMs)) return { stale: false, ageMs: null };
+  const ageMs = readMs - asOfMs;
+  return { stale: ageMs > thresholdMs, ageMs };
 }
 
 /** The newest upstream collection time across the sources, for the summary line. */
@@ -1051,4 +1216,110 @@ export function latestSourceAsOf(rows: SourceRow[]): string | null {
     }
   }
   return best;
+}
+
+// ---- METK: non-visual equivalents for the heat grid and the trend chart ----
+
+export interface HeatDayRow {
+  dow: Weekday;
+  label: string;
+  runs: number | null;
+}
+
+/** Sum each weekday across returned cells; a weekday with no returned cell stays null, never 0. */
+export function heatDayRows(grid: HeatGrid): HeatDayRow[] {
+  return grid.rows.map((row) => {
+    const present = row.cells.filter((cell) => cell.present);
+    return {
+      dow: row.dow,
+      label: row.label,
+      runs: present.length === 0 ? null : present.reduce((sum, cell) => sum + (cell.count ?? 0), 0),
+    };
+  });
+}
+
+/** One sentence an assistive reader can announce for the whole heat grid. */
+export function heatGridSummary(grid: HeatGrid): string {
+  const days = heatDayRows(grid).filter((day): day is HeatDayRow & { runs: number } => day.runs !== null);
+  if (grid.total === null || days.length === 0) {
+    return '运行热力：接口没有返回可用的格子，没有总数可报，也不按 0 补。';
+  }
+  let high = days[0];
+  let low = days[0];
+  for (const day of days) {
+    if (day.runs > high.runs) high = day;
+    if (day.runs < low.runs) low = day;
+  }
+  return `运行热力：总运行 ${grid.total} 次；最高 ${high.label} ${high.runs} 次；最低 ${low.label} ${low.runs} 次；覆盖 ${days.length} / 7 天。`;
+}
+
+/** Date + count + strength band — the same facts the colour carries. */
+export function heatCellLabel(
+  cell: { dow: Weekday; hour: number; count: number | null; present: boolean; level: number },
+  weeks: number,
+  to: string | null,
+): string {
+  const range = cellRangeLabel(cell.dow, cell.hour, weeks, to);
+  if (!cell.present) return `${range} · 无数据`;
+  return `${range} · 运行 ${cell.count ?? 0} 次 · 强度 ${cell.level} 档（共 4 档）`;
+}
+
+export interface SparkSummary {
+  observed: number;
+  first: number | null;
+  last: number | null;
+  peak: number | null;
+  low: number | null;
+}
+
+/** First/last/peak/low over returned slots; missing slots never become 0. */
+export function sparkSummary(spark: SparkGrid): SparkSummary {
+  const values = spark.slots.map((slot) => slot.runs).filter((runs): runs is number => runs !== null);
+  if (values.length === 0) return { observed: 0, first: null, last: null, peak: null, low: null };
+  return {
+    observed: values.length,
+    first: values[0],
+    last: values[values.length - 1],
+    peak: Math.max(...values),
+    low: Math.min(...values),
+  };
+}
+
+export function sparkSummaryText(spark: SparkGrid, windowLabel: string): string {
+  const summary = sparkSummary(spark);
+  if (summary.observed === 0) {
+    return `${windowLabel}趋势：没有可用的运行记录，不补 0，也不画柱子。`;
+  }
+  return `${windowLabel}趋势：共 ${summary.observed} 个时段有记录；首值 ${summary.first} 次；末值 ${summary.last} 次；峰值 ${summary.peak} 次；最低 ${summary.low} 次。没有返回的时段不计入。`;
+}
+
+// ---- metL: the current view as plain text ---------------------------------
+// The summary repeats the numbers this page already rendered from the batch of
+// reads it holds. It never fetches, never recomputes money from price × usage,
+// and never prints an internal id. A real 0 stays `$0.00` / `0`; a missing
+// number stays `—`.
+
+export type MetricsSummaryInput = {
+  windowId: string;
+  windowLabel: string;
+  runs: number | null;
+  costUsd: number | null;
+  groupBy: 'model' | 'employee';
+  /** Top-level asOf of the batch that produced the numbers above; null when absent. */
+  asOf: string | null;
+  /** When the user asked for the copy, as an ISO stamp. */
+  generatedAt: string;
+};
+
+export function metricsSummaryText(input: MetricsSummaryInput): string {
+  const asOf = isoOrNull(input.asOf);
+  return [
+    '运行分析摘要',
+    `窗口：${input.windowLabel}（${input.windowId}）`,
+    `运行数：${formatCount(input.runs)}`,
+    `实扣金额：${formatUsd(input.costUsd)}`,
+    `占比口径：成本分摊按${input.groupBy === 'employee' ? '员工' : '模型'}分组的账本实扣计算，占比合计 100%，保留一位小数`,
+    `采集时刻：${asOf ? formatBeijing(asOf) : '—'}`,
+    `生成时刻：${formatBeijing(input.generatedAt)}（北京时间）`,
+  ].join('\n');
 }

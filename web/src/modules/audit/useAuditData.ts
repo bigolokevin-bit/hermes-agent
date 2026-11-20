@@ -36,6 +36,12 @@ export interface ListApi {
   /** Rows the answer carried but that could not be read — counted, never shown as data. */
   unreadable: number;
   next: string | null;
+  /**
+   * aud8: the denominator the answer itself stated, or `null` when it said no
+   * total. `null` is rendered 总数不可用 with the reason — the loaded row count
+   * is never printed in its place.
+   */
+  total: number | null;
   failure: FailureCopy | null;
   /** A later page failed while the loaded rows stay on screen. */
   pageFailure: FailureCopy | null;
@@ -53,6 +59,7 @@ interface ListState {
   rows: AuditRow[];
   unreadable: number;
   next: string | null;
+  total: number | null;
   failure: FailureCopy | null;
   pageFailure: FailureCopy | null;
   loadingMore: boolean;
@@ -64,6 +71,7 @@ const INITIAL: ListState = {
   rows: [],
   unreadable: 0,
   next: null,
+  total: null,
   failure: null,
   pageFailure: null,
   loadingMore: false,
@@ -118,6 +126,10 @@ export function useAuditList(
             rows: append ? [...prev.rows, ...page.rows] : page.rows,
             unreadable: append ? prev.unreadable + page.unreadable : page.unreadable,
             next: nextRef.current,
+            // aud8: a stated total is kept across pages (same window, same
+            // denominator); a page that states none never overwrites a value
+            // that was stated, and never invents one from the row count.
+            total: append ? (prev.total ?? page.total) : page.total,
             failure: null,
             pageFailure: append ? prev.pageFailure : null,
             loadingMore: false,

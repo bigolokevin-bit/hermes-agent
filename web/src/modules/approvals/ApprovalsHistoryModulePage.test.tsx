@@ -15,6 +15,8 @@ vi.mock("@/lib/api", () => ({ fetchJSON: api.fetchJSON }));
 
 import ApprovalsHistoryModulePage from "@/modules/approvals/ApprovalsHistoryModulePage";
 import { STATUS_FILTERS } from "@/modules/approvals/model";
+import { approvalsCsvName, buildApprovalsCsv, csvEscape } from "@/modules/approvals/QueueCsvExport";
+import { riskView, statusView, type ApprovalRow } from "@/modules/approvals/model";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -559,3 +561,175 @@ describe("history whole-panel states", () => {
     expect(detailText).not.toContain("human:");
   });
 });
+
+describe("R54 CSV export", () => {
+  const mkRow = (over: Partial<ApprovalRow> & { title: string }): ApprovalRow =>
+    ({
+      key: over.rawId ?? "k",
+      rawId: over.rawId ?? "ap_X",
+      status: statusView("pending"),
+      requester: { name: "李思", handle: null },
+      worker: { name: "小鲤", handle: null },
+      submitted: "2026-11-19 09:20",
+      clock: "2026-11-19 09:20",
+      clockLabel: "处理期限",
+      amount: null,
+      reason: null,
+      risk: riskView(null),
+      ...over,
+    } as unknown as ApprovalRow);
+
+  it("escapes RFC4180 hazards, keeps missing times empty, and names the file in Beijing time", () => {
+    const csv = buildApprovalsCsv([
+      mkRow({ title: '预算, 含"引号"' }),
+      mkRow({ rawId: "ap_Y", title: "无时间", clock: null, risk: riskView("high") }),
+    ]);
+    const lines = csv.replace(/^\uFEFF/, "").split("\r\n");
+    expect(lines[0]).toBe("id,title,status,risk,updated_at");
+    expect(lines[1]).toContain('"预算, 含""引号"""');
+    expect(lines[1].endsWith(",2026-11-19 09:20")).toBe(true);
+    expect(lines[2].endsWith(",高风险,")).toBe(true); // risk 屏上值；updated_at 缺=空，不补 0
+    expect(csvEscape("plain")).toBe("plain");
+    expect(approvalsCsvName("history", "pending", new Date("2026-11-20T02:00:00Z"))).toBe(
+      "approvals-history-pending-20261120-1000.csv",
+    );
+    expect(approvalsCsvName("history", null, new Date("2026-11-20T16:05:00Z"))).toBe(
+      "approvals-history-all-20261121-0005.csv",
+    );
+  });
+
+  it("button mirrors the rendered rows; empty filters disable it with a reason", async () => {
+    await mount();
+    expect(document.querySelector('[data-testid="apv7-export-count"]')?.textContent).toContain("共 8 行");
+    const btn = document.querySelector('[data-testid="apv7-export"]') as HTMLButtonElement;
+    expect(btn.disabled).toBe(false);
+    // 导出点击=纯前端 Blob：拦 createObjectURL 核对内容，不发任何额外请求。
+    let text = "";
+    const before = api.fetchJSON.mock.calls.length;
+    const orig = URL.createObjectURL;
+    (URL as unknown as { createObjectURL: (b: Blob) => string }).createObjectURL = (b: Blob) => {
+      void b.text().then((t) => {
+        text = t;
+      });
+      return "blob:captured";
+    };
+    await act(async () => {
+      btn.click();
+    });
+    await waitFor(() => text !== "", "blob text");
+    expect(text.split("\r\n").filter((l) => l !== "").length).toBe(9); // header + 8 行=屏上同源
+    expect(api.fetchJSON.mock.calls.length).toBe(before);
+    (URL as unknown as { createObjectURL: unknown }).createObjectURL = orig;
+
+    await mount(async () => ({ items: [] }));
+    const btn2 = document.querySelector('[data-testid="apv7-export"]') as HTMLButtonElement;
+    expect(btn2.disabled).toBe(true);
+    expect(btn2.getAttribute("title")).toContain("没有可导出的行");
+  });
+});
+
+describe("R55 detail <-> list state preservation", () => {
+  const DETAIL_SAMPLE = {
+    approvalId: "ap_p",
+    status: "pending",
+    requestedBy: { type: "human", id: "human:9" },
+    action: "publish.release",
+    createdAt: "2026-11-19T01:00:00Z",
+    approvers: [{ userId: "human:9" }],
+    decisions: [],
+  };
+
+  it("opens from a row, returns via apd7-back with the filter URL and scroll restored", async () => {
+    Object.defineProperty(window, "scrollY", { configurable: true, value: 123 });
+    const scrolled: number[][] = [];
+    const realScrollTo = window.scrollTo;
+    window.scrollTo = ((x: number, y: number) => {
+      scrolled.push([x, y]);
+    }) as typeof window.scrollTo;
+    await mount(async (url: string) => {
+      if (url.includes("/api/approval?id=")) return DETAIL_SAMPLE;
+      const match = /[?&]status=([^&]*)/.exec(url);
+      const state = match ? decodeURIComponent(match[1]) : null;
+      return { items: state === null ? [] : ((ROWS_BY_STATE[state] ?? []) as unknown[]) };
+    }, "/approvals?tab=history&status=pending");
+    const card = document.querySelector("[data-testid='apr5-row-ap_p']") as HTMLElement;
+    await act(async () => {
+      card.click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='apr5-detail']") !== null, "detail opened");
+    expect(window.sessionStorage.getItem("approvals-history-scroll")).toBe("123");
+    const back = document.querySelector("[data-testid='apd7-back']") as HTMLButtonElement;
+    expect(back).toBeTruthy();
+    await act(async () => {
+      back.click();
+    });
+    expect(document.querySelector("[data-testid='apr5-detail']")).toBeNull();
+    // 筛选复原读数：pending 快捷键仍是按下态，列表仍是该筛选下的一行。
+    expect(document.querySelector("[data-testid='apv5-filter-status-pending']")?.getAttribute("aria-pressed")).toBe("true");
+    expect(document.querySelector("[data-testid='apr5-row-ap_p']")).toBeTruthy();
+    expect(scrolled).toEqual([[0, 123]]);
+    window.scrollTo = realScrollTo;
+  });
+
+  it("a pasted ?id= URL opens that detail straight away, with the real back exit", async () => {
+    await mount(async (url: string) => {
+      if (url.includes("/api/approval?id=")) return DETAIL_SAMPLE;
+      if (/[?&]status=/.test(url)) return { items: [] };
+      return { items: [] };
+    }, "/approvals?tab=history&id=ap_p");
+    await waitFor(() => document.querySelector("[data-testid='apr5-detail']") !== null, "pasted url opened the detail");
+    expect(document.querySelector("[data-testid='apd7-back']")).toBeTruthy();
+  });
+
+  it("loaded pages survive the round trip: no extra list fetch after 返回", async () => {
+    await mount(async (url: string) => {
+      if (url.includes("/api/approval?id=")) return DETAIL_SAMPLE;
+      if (/[?&]cursor=/.test(url)) return { items: [{ approvalId: "ap_a", title: "第二页", status: "approved", decidedAt: "2026-11-17T02:00:00Z" }] };
+      return { items: [{ approvalId: "ap_p", title: "等待你点头的发布", status: "pending" }], nextCursor: "c1" };
+    });
+    await waitFor(() => document.querySelector("[data-testid='apr5-row-ap_p']") !== null, "page one");
+    const more = Array.from(document.querySelectorAll("button")).find((b) => (b.textContent ?? "").includes("加载更多")) as HTMLButtonElement;
+    await act(async () => {
+      more.click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='apr5-row-ap_a']") !== null, "page two");
+    const listCallsBefore = api.fetchJSON.mock.calls.filter((c) => String(c[0]).includes("/api/approvals")).length;
+    const card = document.querySelector("[data-testid='apr5-row-ap_p']") as HTMLElement;
+    await act(async () => {
+      card.click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='apr5-detail']") !== null, "detail opened");
+    const back = document.querySelector("[data-testid='apd7-back']") as HTMLButtonElement;
+    await act(async () => {
+      back.click();
+    });
+    expect(document.querySelector("[data-testid='apr5-row-ap_p']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='apr5-row-ap_a']")).toBeTruthy();
+    const listCallsAfter = api.fetchJSON.mock.calls.filter((c) => String(c[0]).includes("/api/approvals")).length;
+    expect(listCallsAfter).toBe(listCallsBefore);
+  });
+});
+
+describe("R50 queue summary bar", () => {
+  it("counts the same result set, and single-status scopes stay — not fake zeros", async () => {
+    await mount(); // status 未传 → BFF 聚合全状态，每态一行（8 行）
+    const bar = document.querySelector('[data-testid="apv6-summary"]');
+    expect(bar).toBeTruthy();
+    const pending = document.querySelector('[data-testid="apv6-summary-pending"]');
+    expect(pending?.getAttribute("href")).toBe("/approvals?tab=history&status=pending");
+    expect(pending?.textContent).toContain("1");
+    expect(document.querySelector('[data-testid="apv6-summary-approved"]')?.textContent).toContain("1");
+    // 聚合夹具每态一行 → 已拒同为真计数。
+    expect(document.querySelector('[data-testid="apv6-summary-rejected"]')?.textContent).toContain("1");
+    // 夹具行没有 riskLevel 字段 → 风险桶在覆盖范围内为 0（真零），只读 span。
+    expect(document.querySelector('[data-testid="apv6-summary-risk-high"]')?.textContent).toContain("0");
+    expect(document.querySelector('[data-testid="apv6-summary-risk-high"]')?.getAttribute("title")).toContain("只读");
+    // 单选状态下，其余状态桶不同源 → 「—」并写明原因。
+    await mount(undefined, "/approvals?tab=history&status=pending");
+    const approved2 = document.querySelector('[data-testid="apv6-summary-approved"]');
+    expect(approved2?.textContent).toContain("—");
+    expect(approved2?.getAttribute("title")).toContain("不同源");
+    expect(document.querySelector('[data-testid="apv6-summary-pending"]')?.textContent).toContain("1");
+  });
+});
+

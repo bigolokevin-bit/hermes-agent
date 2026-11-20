@@ -257,6 +257,28 @@ describe("EmployeeDetailModulePage — capability (reuse: /v1/matrix/employees)"
     const denied = container.querySelector('[data-testid="ed5-capability-denied"]');
     expect(denied?.textContent).toContain("还没接入");
   });
+
+  // R56 P0: the overview catch paths must read the requestId from the real
+  // error object (they used to reference a free variable `api`, throwing a
+  // ReferenceError that left the state at loading as an unhandled rejection).
+  it("R56: overview 403 catch carries the ApiError requestId into the denied state", async () => {
+    mockApi((url) =>
+      url.includes("/api/employees/")
+        ? Promise.reject(new ApiError("forbidden", { status: 403, body: "", url, requestId: "req-r56-403" }))
+        : Promise.resolve({}),
+    );
+    await renderAt(page, at("overview"));
+    const denied = container.querySelector('[data-testid="ed5-overview-denied"]');
+    expect(denied?.textContent).toContain("req-r56-403");
+    expect(denied?.querySelector('[data-testid="req-copy"]')).toBeTruthy();
+  });
+
+  it("R56: overview 403 without a request id says so instead of inventing one", async () => {
+    mockApi((url) => (url.includes("/api/employees/") ? forbidden(url) : Promise.resolve({})));
+    await renderAt(page, at("overview"));
+    const denied = container.querySelector('[data-testid="ed5-overview-denied"]');
+    expect(denied?.textContent).toContain("本次请求没有带回编号");
+  });
 });
 
 describe("EmployeeDetailModulePage — approvals / runs / audit", () => {
@@ -273,12 +295,11 @@ describe("EmployeeDetailModulePage — approvals / runs / audit", () => {
     await renderAt(page, at("approvals"));
     const card = container.querySelector('[data-testid="ed5-approvals"]');
     const link = card?.querySelector("a");
-    expect(link?.getAttribute("href")).toBe("/approvals");
+    expect(link?.getAttribute("href")).toBe("/approvals?status=pending");
     expect(link?.getAttribute("title")).toBe("task_9F3A1B2C3D");
     expect(card?.textContent).not.toContain("task_9F3A1B2C3D");
     expect(card?.textContent).toContain("待审批");
     expect(card?.textContent).toContain("2026-11-18 12:00");
-    expect(card?.textContent).toContain("$300.00");
   });
 
   it("runs: USD money, Beijing minute time, zero tokens stay 0", async () => {
@@ -374,7 +395,103 @@ describe("EmployeeDetailModulePage — approvals / runs / audit", () => {
     mockApi(() => Promise.resolve({ items: [] }));
     await renderAt(page, at("approvals"));
     const card = container.querySelector('[data-testid="ed5-approvals-empty"]');
-    expect(card?.textContent).toContain("还没有审批事项");
+    expect(card?.textContent).toContain("当前没有审批事项");
+    expect(card?.textContent).toContain("暂不支持按员工筛选");
+  });
+});
+
+describe("EmployeeDetailModulePage — approvals zone R49", () => {
+  it("reads the honest aggregate (no fake employee filter) and renders the four-column spec", async () => {
+    const urls: string[] = [];
+    mockApi((url) => {
+      urls.push(url);
+      if (url.includes("/api/approvals")) {
+        return Promise.resolve({
+          items: [
+            { approvalId: "apr_R49A", status: "expired", riskLevel: "high", updatedAt: "2026-11-19T02:30:00Z", title: "密钥轮换" },
+            { approvalId: "ap_R49B", status: "weird_state", riskLevel: "purple" },
+          ],
+        });
+      }
+      return Promise.resolve({});
+    });
+    await renderAt(page, at("approvals"));
+    const calls = urls.filter((u) => u.includes("/api/approvals"));
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toContain("status=all");
+    expect(calls[0]).toContain("limit=20");
+    expect(calls[0]).not.toContain("employeeId");
+    const note = container.querySelector('[data-testid="ed8-appr-note"]');
+    expect(note?.textContent).toContain("暂不支持按员工筛选");
+    expect(note?.getAttribute("title")).toContain("白名单");
+    const card = container.querySelector('[data-testid="ed5-approvals"]');
+    expect(container.querySelector('[data-testid="ed8-appr-title-0"]')?.textContent).toBe("密钥轮换");
+    expect(container.querySelector('[data-testid="ed8-appr-risk-0"]')?.textContent).toBe("高风险");
+    expect(container.querySelector('[data-testid="ed8-appr-time-0"]')?.textContent).toBe("2026-11-19 10:30");
+    const link0 = container.querySelector('[data-testid="ed8-appr-link-0"]') as HTMLAnchorElement;
+    expect(link0?.getAttribute("href")).toBe("/approvals?status=expired");
+    expect(container.querySelector('[data-testid="ed8-appr-status-1"]')?.textContent).toBe("待核实");
+    const risk1 = container.querySelector('[data-testid="ed8-appr-risk-1"]');
+    expect(risk1?.textContent).toBe("待核实");
+    expect(risk1?.getAttribute("title")).toContain("purple");
+    expect(container.querySelector('[data-testid="ed8-appr-time-1"]')?.textContent).toBe("—");
+    expect(container.querySelector('[data-testid="ed8-appr-time-1"]')?.getAttribute("title")).toContain("更新时间");
+    expect(card?.textContent).not.toContain("apr_R49A");
+    expect(card?.textContent).not.toContain("ap_R49B");
+    expect(card?.textContent).not.toContain("apr_");
+    expect(card?.textContent).not.toContain("human:");
+  });
+});
+
+describe("EmployeeDetailModulePage — sessions zone R52", () => {
+  it("reads the employee-scoped list and renders code/channel/count/activity honestly", async () => {
+    const urls: string[] = [];
+    mockApi((url) => {
+      urls.push(url);
+      if (url.includes("/api/console-sessions")) {
+        return Promise.resolve({
+          items: [
+            { sessionId: "cs_AAAA1111BBBB2222CCCC", channel: "feishu", messageCount: 7, updatedAt: "2026-11-19T02:30:00Z" },
+            { session_id: "cs_DDDD3333EEEE4444", status: "open" },
+          ],
+        });
+      }
+      return Promise.resolve({});
+    });
+    await renderAt(page, at("sessions"));
+    const calls = urls.filter((u) => u.includes("/api/console-sessions"));
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toContain(`employeeId=${encodeURIComponent(EMP)}`);
+    expect(calls[0]).toContain("limit=20");
+    const qid = (id: string) => container.querySelector(`[data-testid="${id}"]`);
+    expect(qid("ed9-sessions")).toBeTruthy();
+    const link0 = qid("ed9-sessions-link-0") as HTMLAnchorElement;
+    expect(link0?.getAttribute("href")).toBe("/chat");
+    expect(link0?.getAttribute("title")).toBe("cs_AAAA1111BBBB2222CCCC");
+    expect(link0.textContent).toContain("会话 · AAAA1111");
+    expect(qid("ed9-sessions-channel-0")?.textContent).toBe("飞书");
+    expect(qid("ed9-sessions-count-0")?.textContent).toBe("7 条");
+    expect(qid("ed9-sessions-time-0")?.textContent).toBe("2026-11-19 10:30");
+    // 缺渠道=「—」+原因；缺计数=「—」+原因；无时间=「—」。
+    expect(qid("ed9-sessions-channel-1")?.textContent).toBe("—");
+    expect(qid("ed9-sessions-channel-1")?.getAttribute("title")).toContain("没有回传");
+    expect(qid("ed9-sessions-count-1")?.textContent).toBe("—");
+    expect(qid("ed9-sessions-time-1")?.textContent).toBe("—");
+    expect(container.textContent).not.toContain("cs_AAAA1111BBBB2222CCCC");
+    expect(container.querySelector("[data-chat-host]")).toBeNull();
+  });
+
+  it("empty answers with the stated real zero, not a failure", async () => {
+    mockApi((url) =>
+      url.includes("/api/console-sessions")
+        ? Promise.resolve({ items: [] })
+        : Promise.resolve({}),
+    );
+    await renderAt(page, at("sessions"));
+    const empty = container.querySelector('[data-testid="ed9-sessions-empty"]');
+    expect(empty).toBeTruthy();
+    expect(empty?.textContent).toContain("该员工暂无可查会话");
+    expect(empty?.textContent).toContain("真实空集");
   });
 });
 
@@ -382,7 +499,11 @@ describe("EmployeeDetailModulePage — tabs", () => {
   it("five tabs, shell-zone spellings, overview lands on the bare path", async () => {
     mockApi(() => Promise.resolve({}));
     await renderAt(page, at("approvals"));
-    const tabs = Array.from(container.querySelectorAll('[role="tab"]'));
+    // R51 added the four-tab quick nav; the five-zone vocabulary check
+    // stays scoped to the original ed5 tab strip.
+    const tabs = Array.from(
+      (container.querySelector('[data-testid="ed5-tabs"]') ?? document).querySelectorAll('[role="tab"]'),
+    );
     expect(tabs.map((t) => t.textContent)).toEqual(["概览", "能力与权限", "审批", "运行", "审计"]);
     expect(tabs[0]?.getAttribute("href")).toBe(`/employees/${encodeURIComponent(EMP)}`);
     expect(tabs[1]?.getAttribute("href")).toContain("?zone=capability");
@@ -652,5 +773,164 @@ describe("R47 cross-zone consistency (edx-*)", () => {
     await renderAt(page, at());
     expect(qq("edx-back")).toBeTruthy();
     expect(qq("ed1-identity-name")?.textContent).toContain("小鲤");
+  });
+});
+
+describe("EmployeeDetailModulePage — zone nav (R51)", () => {
+  it("renders four reachable tabs with real ?zone= links and highlights the current zone", async () => {
+    mockApi(() => Promise.resolve({ items: [] }));
+    await renderAt(page, at("tasks"));
+    expect(container.querySelector('[data-testid="edz-nav"]')).toBeTruthy();
+    const overview = container.querySelector('[data-testid="edz-nav-overview"]') as HTMLAnchorElement;
+    const tasks = container.querySelector('[data-testid="edz-nav-tasks"]') as HTMLAnchorElement;
+    const runs = container.querySelector('[data-testid="edz-nav-runs"]') as HTMLAnchorElement;
+    const approvals = container.querySelector('[data-testid="edz-nav-approvals"]') as HTMLAnchorElement;
+    for (const el of [overview, tasks, runs, approvals]) {
+      expect(el?.tagName).toBe("A");
+      expect(el?.getAttribute("aria-disabled")).toBeNull();
+      expect(el?.className).toContain("focus-visible:outline");
+    }
+    expect(overview.getAttribute("href")).toBe(`/employees/${encodeURIComponent(EMP)}`);
+    expect(tasks.getAttribute("href")).toBe(`/employees/${encodeURIComponent(EMP)}?zone=tasks`);
+    expect(runs.getAttribute("href")).toContain("?zone=runs");
+    expect(approvals.getAttribute("href")).toContain("?zone=approvals");
+    expect(tasks.getAttribute("aria-selected")).toBe("true");
+    expect(overview.getAttribute("aria-selected")).toBe("false");
+    // 既有五区条原样在屏（ed5-* 零破）。
+    expect(container.querySelector('[data-testid="ed5-tabs"]')).toBeTruthy();
+  });
+
+  it("entering a zone fetches only that zone's data — measured request counts", async () => {
+    const urls: string[] = [];
+    mockApi((url) => {
+      urls.push(url);
+      return Promise.resolve({ items: [] });
+    });
+    await renderAt(page, at("runs"));
+    const runsCalls = urls.filter((u) => u.includes("/api/runs"));
+    expect(runsCalls).toHaveLength(1);
+    expect(runsCalls[0]).toContain("employeeId=");
+    expect(urls.some((u) => u.includes("/api/tasks"))).toBe(false);
+    expect(urls.some((u) => u.includes("/api/approvals"))).toBe(false);
+    expect(urls.some((u) => u.includes("/api/audit"))).toBe(false);
+    expect(urls.some((u) => u.includes("/api/console-sessions"))).toBe(false);
+    // 任务区同理：只打任务腿，不打运行腿。
+    urls.length = 0;
+    await renderAt(page, at("tasks"));
+    expect(urls.filter((u) => u.includes("/api/tasks"))).toHaveLength(1);
+    expect(urls.some((u) => u.includes("/api/runs"))).toBe(false);
+    expect(container.querySelector('[data-testid="edz-nav-tasks"]')?.getAttribute("aria-selected")).toBe("true");
+  });
+});
+
+describe("EmployeeDetailModulePage — usage zone R57", () => {
+  const qid = (id: string) => container.querySelector(`[data-testid="${id}"]`);
+  const usageApi = (
+    day: unknown,
+    month: unknown,
+    stats: unknown,
+    urls: string[] = [],
+  ) =>
+    mockApi((url) => {
+      urls.push(url);
+      if (url.includes("periodKind=day")) return Promise.resolve(day);
+      if (url.includes("periodKind=month")) return Promise.resolve(month);
+      if (url.includes("/api/run-stats")) return Promise.resolve(stats);
+      return Promise.resolve({});
+    });
+
+  it("sends exactly three whitelisted queries and renders ledger/stats/asOf honestly", async () => {
+    const urls: string[] = [];
+    const otherDay = new Date(Date.now() - 5 * 86400000).toISOString().slice(0, 10);
+    usageApi(
+      { items: [], missingEmployeeIds: [EMP], asOf: "2026-11-19T23:58:08Z", asOfSource: "bff-read-time" },
+      { items: [{ employeeId: EMP, period: "2026-11", costUsd: 0.12119800000000001 }], asOf: "2026-11-19T23:58:08Z", asOfSource: "bff-read-time" },
+      { buckets: [{ bucketStart: `${otherDay}T00:00:00.000Z`, runs: 13 }], totals: { runs: 13 }, asOf: "2026-11-19T23:58:08Z" },
+      urls,
+    );
+    await renderAt(page, at("usage"));
+    const usageCalls = urls.filter((u) => u.includes("/api/budget-usage") || u.includes("/api/run-stats"));
+    expect(usageCalls).toHaveLength(3);
+    for (const u of usageCalls) expect(u).toContain(`employeeId=${encodeURIComponent(EMP)}`);
+    expect(usageCalls.some((u) => u.includes("periodKind=day") && u.includes("period="))).toBe(true);
+    expect(usageCalls.some((u) => u.includes("periodKind=month"))).toBe(true);
+    expect(usageCalls.some((u) => u.includes("/api/run-stats") && u.includes("bucket=day"))).toBe(true);
+    expect(qid("ed10-usage")).toBeTruthy();
+    expect(qid("ed10-usage-runs-month")?.textContent).toBe("13");
+    expect(qid("ed10-usage-cost-month")?.textContent).toBe("$0.12");
+    expect(qid("ed10-usage-cost-month")?.getAttribute("title")).toContain("实扣金额");
+    expect(qid("ed10-usage-asof-month")?.textContent).toBe("2026-11-20 07:58");
+    expect(qid("ed10-usage-asof-month")?.getAttribute("title")).toContain("bff-read-time");
+    // 今日：账本缺行 + 桶列表没有今天的桶 → 都是缺值，不作 0。
+    expect(qid("ed10-usage-runs-day")?.textContent).toBe("—");
+    expect(qid("ed10-usage-runs-day")?.getAttribute("title")).toContain("不作 0");
+    expect(qid("ed10-usage-cost-day")?.textContent).toBe("—");
+    expect(qid("ed10-usage-cost-day")?.getAttribute("title")).toContain("账本在该日没有这位员工的行");
+    expect(container.textContent).not.toContain("0.121198");
+  });
+
+  it("keeps a real zero distinct from a missing value", async () => {
+    usageApi(
+      { items: [], missingEmployeeIds: [EMP], asOf: null },
+      { items: [{ employeeId: EMP, period: "2026-11", costUsd: 0 }], asOf: null },
+      { buckets: [], totals: { runs: 0 }, asOf: null },
+    );
+    await renderAt(page, at("usage"));
+    expect(qid("ed10-usage")).toBeTruthy();
+    expect(qid("ed10-usage-cost-month")?.textContent).toBe("$0.00");
+    expect(qid("ed10-usage-runs-month")?.textContent).toBe("0");
+    expect(qid("ed10-usage-asof-month")?.textContent).toBe("—");
+    expect(qid("ed10-usage-asof-month")?.getAttribute("title")).toContain("本机时钟");
+  });
+
+  it("empty ledger plus a real zero in stats is stated as an empty answer", async () => {
+    usageApi(
+      { items: [], missingEmployeeIds: [EMP] },
+      { items: [], missingEmployeeIds: [EMP] },
+      { buckets: [], totals: { runs: 0 } },
+    );
+    await renderAt(page, at("usage"));
+    const empty = qid("ed10-usage-empty");
+    expect(empty).toBeTruthy();
+    expect(empty?.textContent).toContain("该员工暂无成本记录");
+    expect(empty?.textContent).toContain("真实回答");
+  });
+
+  it("error keeps the plain sentence, a copyable request id and a retry", async () => {
+    mockApi((url) =>
+      url.includes("/api/budget-usage") || url.includes("/api/run-stats")
+        ? Promise.reject(new ApiError("服务暂时不可用。", { status: 500, body: "", url, requestId: "req-r57-500" }))
+        : Promise.resolve({}),
+    );
+    await renderAt(page, at("usage"));
+    expect(qid("ed10-usage-error")?.textContent).toContain("请求编号：req-r57-500");
+    expect(qid("req-copy")).toBeTruthy();
+    expect(container.textContent).toContain("重试");
+  });
+
+  it("403 and 404 share one denied body without leaking the path", async () => {
+    mockApi((url) =>
+      url.includes("/api/budget-usage") || url.includes("/api/run-stats")
+        ? Promise.reject(new ApiError("forbidden", { status: 403, body: "", url, requestId: "req-r57-403" }))
+        : Promise.resolve({}),
+    );
+    await renderAt(page, at("usage"));
+    const denied = qid("ed10-usage-denied");
+    expect(denied).toBeTruthy();
+    expect(denied?.textContent).toContain("这块数据还没接入");
+    expect(denied?.textContent).not.toContain("budget-usage");
+    expect(qid("req-copy")).toBeTruthy();
+  });
+
+  it("404 denied renders the same body as 403", async () => {
+    mockApi((url) =>
+      url.includes("/api/budget-usage") || url.includes("/api/run-stats")
+        ? Promise.reject(new ApiError("not found", { status: 404, body: "", url }))
+        : Promise.resolve({}),
+    );
+    await renderAt(page, at("usage"));
+    const denied = qid("ed10-usage-denied");
+    expect(denied).toBeTruthy();
+    expect(denied?.textContent).toContain("这块数据还没接入");
   });
 });

@@ -2885,3 +2885,18 @@ Untested: the four-state body lengths are jsdom readings, not browser pixels; th
 - 不改 URL、不改页码、不影响筛选；aud5-*/aud6-*/aud4-*/aud2-*/aud3-*/aud01-*/agent-v2-page-audit* 未破。
 - 门禁：vitest src/modules/audit exit 0（10 files / 169 tests）；tsc -b 50 条既有地板、本模块 0；eslint 0 errors / 4 既有 warnings。
 - 未测：占比是已加载页口径非整窗；无真浏览器像素走查；9122 未重建；未并 main。
+
+## Audit cross-page evidence browsing (aud8, 2026-11-20, base 5d91f22d)
+
+- 写域：`web/src/modules/audit/{AuditEventsModulePage.tsx,views.tsx,model.ts,api.ts,useAuditData.ts,AuditEventsModulePage.test.tsx,api.test.ts}`。App.tsx / shell / routes / registry / package* / ops 未碰。
+- 阅读状态全部落 URL：`?window=`(+`?from/to=`) · `?type=`（事件类型，R34 起只有时间窗在地址里，类型此前是页内 useState，刷新即丢）· `?cursor=`（栈，页码=栈长+1）· `?preview=<rowKey>`（行内预览，aud6 的 openPreview 由页内态升为地址态——aud8 核心缺口）· `?tech=<rowKey>`（行技术折叠）· `?detail=<eventId>`。假定：行的地址键用 `row.key`（= rawId，缺 id 时为 audit-<index>），与既有 testid `aud6-preview-*` 同源，不新造标识。
+- 「详情→返回」复原：打开详情走 push 历史（R39 已在），`navigate(-1)` / 真返回按钮回到那条历史条目本身，因此时间窗、类型、cursor 栈、展开行一起回来。换筛选或翻页则一起丢掉 cursor 栈与两个折叠（resetPagingAndFolds）——更宽问题下展开的行不该留在收窄后的屏幕上。
+- 真返回出口：`aud8-back-to-list`（Button「返回列表」，详情打开时常驻在右栏上方），走与 aud02-detail-close 相同的 closeDetail 逻辑：列表内打开→回历史条目，深链打开→原地删 detail/id，其余参数不动。
+- `?preview=` 展开态在冷挂载可复现，且预览里的「打开详情」链接（views.tsx `AuditRowPreview` 新增可选 `detailHref`）现在带上当前阅读状态；无参数时仍是 `/audit?detail=<id>` 原拼写（R50 断言按新口径改为「含 detail= 且含 preview=」，属有意变更）。
+- 附带修的隐性重读：`bounds` 原依赖整个 `params`，任何地址变化（含打开详情）都会重建 filters→重发列表请求；现只依赖真正读的两个时刻，展开/详情不再触发第二次读取。
+- total 诚实口径：`auditPageFrom` 新增解析顶层 total（`total/totalCount/total_count/totalSize/total_size`，包装体内找不到再看外层；BFF 已在 f1cd0ab/5e233a4 追加顶层 total）；`useAuditList` 透传 `total`。带回就渲染 `共 N 条`，title 写明这个数由服务带回、不是行数相加；没带回仍是「总数不可用」+ 原 title 原因。`count/size/events` 一律不当作总数（负数与非数字亦当缺失）。活体读数：本轮 9122/8092 腿未跑通（见下），真值 leg 由测试腿证明：mock `{items,nextCursor,total:137}` → aud2-total = 「共 137 条」。
+- actor/资源读口（实测口径）：`actorId` 读口**支持**（2026-11-19 会话态探针 #11：`…&limit=50&actorId=employee-api` → **200**，50/50 行 actor.id 全等于该句柄）；`resourceId` 只被该路由 400 体点名为七个可接受筛选之一（`console.missing_filter`），**过滤效果本环境未单独实测**。处置：两者都做成「仅地址带入才生效」的透传（`?actor=`→`actorId=`，`?resource=`→`resourceId=`，值为空则整参数不发），界面用 `aud8-actor-chip`/`aud8-resource-chip` 以人话说「已按句柄/编号筛选」、原始句柄只进 title（不把工程语言铺上人话层），带 `aud8-actor-clear`/`aud8-resource-clear` 取消并重读；两个选择控件仍不给假下拉——操作者维持 `aud01-filter-operator` 禁用+未接入（GAP-06，缺真名目录），资源新增 `aud8-filter-resource` 同样禁用+未接入（缺资源目录且效果未单独实测）。无任何假筛选。
+- 四态/每态 rid/403≡404 同体/零写入口未回退（原用例全绿）；新增控件全部 `min-w-0 flex-wrap`，与既有筛选条同构，桌面/平板/手机无横溢未经浏览器实测（见未测）。
+- 新增 testid：`aud8-back-to-list` `aud8-state-line` `aud8-url-filters` `aud8-actor-chip` `aud8-actor-clear` `aud8-resource-chip` `aud8-resource-clear` `aud8-filter-resource`。aud01-*/aud02-*/aud03-*/aud2-*/aud3-*/aud4-*/aud5-*/aud6-*/aud7-*/agent-v2-page-audit* 一个未破（`aud2-total` 沿用原 id，只按服务是否带回 total 换文案）。
+- 门禁：vitest `src/modules/audit` **exit 0**（10 files / **179** tests，基线 169 + 10：地址落态、详情→返回复原、恢复地址冷挂载复现、句柄上线与取消、无句柄不上线、total 真值、total 缺失/count 不升格、换筛选丢栈与折叠）；`pnpm exec tsc -b . --noEmit` 共 55 errors（本机 HEAD 实测地板即 55，非工单所记 50，改动前后同数），`src/modules/audit` **0**；`pnpm exec eslint src/modules/audit` **0 errors** / 4 既有 warnings。
+- 未测：活体腿未跑通——本仓库 dev server 未起，8092 现对无身份头回 401 `console.unauthenticated`，注入会话的 9122 常驻形态本轮未在预算内搭起来，故没有浏览器里的真实恢复 URL 与 total 读数；可复现性以「状态全部来自 URL + 冷挂载同一地址串的用例」证明。另未测：三档视口像素走查、9122 未重建、未并 main。

@@ -4,7 +4,7 @@
 // aggregates whole weeks, so there is no 24-hour window here. Absent cells stay
 // absent (—); only a returned count of 0 is a real zero. No count is inferred
 // from another endpoint, and no raw field name or HTTP status reaches the page.
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { Copy, RefreshCw } from 'lucide-react';
 
@@ -38,7 +38,16 @@ import {
   formatRate,
   formatUnitPrice,
   formatUsd,
+  heatCellLabel,
+  heatDayRows,
   heatFromStats,
+  heatGridSummary,
+  isoOrNull,
+  metricsSummaryText,
+  sourceStaleness,
+  SOURCE_STALE_MS,
+  withGapNote,
+  type ExportGap,
   ledgerAsOf,
   ledgerTotal,
   readActivity,
@@ -48,8 +57,10 @@ import {
   readPricing,
   readRunStats,
   previousRange,
+  parseDetailSort,
   parseSortDir,
   parseSortKey,
+  sortDetailLines,
   shareCsv,
   shareCsvFileName,
   shareOfCosts,
@@ -60,17 +71,21 @@ import {
   usageTone,
   shareOf,
   sparkSlots,
+  sparkSummaryText,
   EMPTY_SOURCE_STAMP,
   latestSourceAsOf,
   mergeSourceStamp,
   readSourceStamp,
   sourceKeyOfPath,
   sourceRows,
+  formatSharePct,
+  usdDigits,
   usageWindowOf,
   windowRange,
   windowOf,
   windowRangeLabel,
   type Activity,
+  type DetailSort,
   type HeatCell,
   type LedgerRow,
   type BudgetLine,
@@ -104,6 +119,9 @@ function readForced(params: URLSearchParams): Forced | null {
 type UsageBlock<T> =
   | { kind: 'ready'; value: T }
   | { kind: 'unavailable'; reason: string; gap: string | null; requestId: string | null };
+
+/** The five reads behind the usage cards; each one can be retried alone. */
+type UsageBlockKind = 'stats' | 'prevRuns' | 'day' | 'month' | 'pricing';
 
 interface LedgerSnapshot {
   total: number | null;
@@ -260,6 +278,55 @@ function RequestId({ id }: { id: string | null }): ReactNode {
   );
 }
 
+/** The same request id the freshness block shows, inline beside a card gap. */
+function GapRid({ id, testId }: { id: string | null; testId: string }): ReactNode {
+  if (!id) return null;
+  return (
+    <span className="metD-gap-rid" data-testid={testId}>
+      {' '}· 请求编号{' '}
+      <code className="break-all" title={id}>
+        {id}
+      </code>
+    </span>
+  );
+}
+
+/** A compact copy control for the request id of one source row. */
+function SourceRidButton({ id, label, testId }: { id: string; label: string; testId: string }): ReactNode {
+  const [copied, setCopied] = useState<'idle' | 'done' | 'failed'>('idle');
+  return (
+    <button
+      type="button"
+      className="metB-rid"
+      data-testid={testId}
+      aria-label={`复制${label}的请求编号`}
+      title={id}
+      onClick={() => {
+        void copyTextToClipboard(id).then((ok) => setCopied(ok ? 'done' : 'failed'));
+      }}
+    >
+      {copied === 'done' ? '已复制' : copied === 'failed' ? '复制失败' : '复制编号'}
+    </button>
+  );
+}
+
+/** A card-level retry: it re-reads that card's own source and nothing else. */
+function CardRetryButton({ busy, onClick, testId }: { busy: boolean; onClick: () => void; testId: string }): ReactNode {
+  return (
+    <Button
+      size="sm"
+      outlined
+      disabled={busy}
+      aria-busy={busy || undefined}
+      onClick={onClick}
+      data-testid={testId}
+      className="metH-retry"
+    >
+      {busy ? '正在重试…' : '重试这一项'}
+    </Button>
+  );
+}
+
 function cellTone(cell: HeatCell): string {
   if (!cell.present) return 'is-missing';
   if (cell.count === 0) return 'is-zero';
@@ -288,24 +355,38 @@ export function MetricsModulePage() {
   const [share, setShare] = useState<ShareState>({ kind: 'loading' });
   const [heatAt, setHeatAt] = useState<string>(new Date().toISOString());
   const [attempt, setAttempt] = useState(0);
+  const [retryingBlock, setRetryingBlock] = useState<UsageBlockKind | null>(null);
   const [selected, setSelected] = useState<{ dow: number; hour: number } | null>(null);
+  const [heatTableOpen, setHeatTableOpen] = useState(false);
+  const [summaryStatus, setSummaryStatus] = useState<'idle' | 'done' | 'failed'>('idle');
+  const [summaryText, setSummaryText] = useState('');
   const [sources, setSources] = useState<Record<string, SourceStamp>>({});
   const [sourcesOpen, setSourcesOpen] = useState(false);
   const [sourcesSeen, setSourcesSeen] = useState(false);
 
   // Every card reads through this wrapper, so the freshness block records the
   // same responses the cards got — no extra request, no separate bookkeeping.
+  //
+  // A response only counts while the batch it belongs to is still current: when
+  // the window, the grouping or the retry counter changes, the epoch moves and a
+  // late answer from the previous batch can no longer put a collection time next
+  // to numbers it did not produce.
+  const sourceEpoch = useRef(0);
   const loadJson = useCallback(async (path: string): Promise<unknown> => {
     const key = sourceKeyOfPath(path);
+    const epoch = sourceEpoch.current;
     try {
       const payload = await fetchJsonStrict(path);
-      if (key) {
+      if (key && epoch === sourceEpoch.current) {
         setSourcesSeen(true);
-        setSources((prev) => ({ ...prev, [key]: mergeSourceStamp(prev[key], readSourceStamp(payload)) }));
+        setSources((prev) => ({
+          ...prev,
+          [key]: mergeSourceStamp(prev[key], { ...readSourceStamp(payload), fetchedAt: new Date().toISOString() }),
+        }));
       }
       return payload;
     } catch (error) {
-      if (key) {
+      if (key && epoch === sourceEpoch.current) {
         const failure = blockFailure(error);
         setSourcesSeen(true);
         setSources((prev) => ({
@@ -349,15 +430,16 @@ export function MetricsModulePage() {
     };
   }, [attempt, forced, load]);
 
-  const loadUsage = useCallback(async (signal: { live: boolean }, windowId: UsageWindowId) => {
-    setUsage({ kind: 'loading' });
-    const preset = usageWindowOf(windowId);
-    const now = new Date();
-    const range = windowRange(now, windowId);
-    const today = beijingDayKey(now);
-    const monthKey = today.slice(0, 7);
+  // The heat card retries only its own read; the cards below keep their numbers.
+  const retryHeat = useCallback(() => {
+    void load({ live: true });
+  }, [load]);
 
-    const readBlock = async <T,>(
+  // One block of the usage card set. Each read settles on its own, so a source
+  // that fails leaves only its own card without numbers while the others keep
+  // theirs — the page never turns a single failure into a blank section.
+  const readBlock = useCallback(
+    async <T,>(
       run: () => Promise<unknown>,
       parse: (body: unknown) => { ok: true; value: T } | { ok: false; reason: string },
     ): Promise<UsageBlock<T>> => {
@@ -369,38 +451,12 @@ export function MetricsModulePage() {
       } catch (error) {
         return { kind: 'unavailable', ...blockFailure(error) };
       }
-    };
+    },
+    [],
+  );
 
-    const stats = await readBlock(
-      () =>
-        loadJson(
-          `/agent-api/api/run-stats?from=${encodeURIComponent(range.from)}` +
-            `&to=${encodeURIComponent(range.to)}&bucket=${preset.bucket}`,
-        ),
-      (body) => {
-        const parsed = readRunStats(body);
-        return parsed.kind === 'ok'
-          ? { ok: true, value: { stats: parsed.stats, from: range.from, to: range.to } }
-          : { ok: false, reason: parsed.reason };
-      },
-    );
-
-    const prev = previousRange(now, windowId);
-    const prevRuns = await readBlock(
-      () =>
-        loadJson(
-          `/agent-api/api/run-stats?from=${encodeURIComponent(prev.from)}` +
-            `&to=${encodeURIComponent(prev.to)}&bucket=${preset.bucket}`,
-        ),
-      (body) => {
-        const parsed = readRunStats(body);
-        return parsed.kind === 'ok'
-          ? { ok: true, value: parsed.stats.totals.runs }
-          : { ok: false, reason: parsed.reason };
-      },
-    );
-
-    const ledgerSnapshot = async (periodKind: 'day' | 'month', period: string): Promise<LedgerSnapshot> => {
+  const ledgerSnapshot = useCallback(
+    async (periodKind: 'day' | 'month', period: string): Promise<LedgerSnapshot> => {
       const directory = employeeIdsOf(await loadJson('/agent-api/api/employees?limit=200'));
       if (directory.ids.length === 0) {
         return {
@@ -436,39 +492,127 @@ export function MetricsModulePage() {
         truncated: directory.truncated,
         names: directory.names,
       };
-    };
+    },
+    [loadJson],
+  );
 
-    const day = await readBlock(
-      () => ledgerSnapshot('day', today),
-      (body) => ({ ok: true, value: body as LedgerSnapshot }),
-    );
-    const month = await readBlock(
-      () => ledgerSnapshot('month', monthKey),
-      (body) => ({ ok: true, value: body as LedgerSnapshot }),
-    );
+  // One block, one read chain. Retrying a card calls this with that kind alone,
+  // so a retry cannot re-request the other cards' sources.
+  const fetchUsageBlock = useCallback(
+    async (kind: UsageBlockKind, windowId: UsageWindowId): Promise<UsageBlock<unknown>> => {
+      const preset = usageWindowOf(windowId);
+      const now = new Date();
+      const range = windowRange(now, windowId);
+      const today = beijingDayKey(now);
+      const monthKey = today.slice(0, 7);
+      const prev = previousRange(now, windowId);
+      switch (kind) {
+        case 'stats':
+          return readBlock(
+            () =>
+              loadJson(
+                `/agent-api/api/run-stats?from=${encodeURIComponent(range.from)}` +
+                  `&to=${encodeURIComponent(range.to)}&bucket=${preset.bucket}`,
+              ),
+            (body) => {
+              const parsed = readRunStats(body);
+              return parsed.kind === 'ok'
+                ? { ok: true, value: { stats: parsed.stats, from: range.from, to: range.to } }
+                : { ok: false, reason: parsed.reason };
+            },
+          );
+        case 'prevRuns':
+          return readBlock(
+            () =>
+              loadJson(
+                `/agent-api/api/run-stats?from=${encodeURIComponent(prev.from)}` +
+                  `&to=${encodeURIComponent(prev.to)}&bucket=${preset.bucket}`,
+              ),
+            (body) => {
+              const parsed = readRunStats(body);
+              return parsed.kind === 'ok'
+                ? { ok: true, value: parsed.stats.totals.runs }
+                : { ok: false, reason: parsed.reason };
+            },
+          );
+        case 'day':
+          return readBlock(
+            () => ledgerSnapshot('day', today),
+            (body) => ({ ok: true, value: body as LedgerSnapshot }),
+          );
+        case 'month':
+          return readBlock(
+            () => ledgerSnapshot('month', monthKey),
+            (body) => ({ ok: true, value: body as LedgerSnapshot }),
+          );
+        case 'pricing':
+          return readBlock(
+            () => loadJson('/agent-api/api/models/pricing'),
+            (body) => {
+              const parsed = readPricing(body);
+              return parsed.kind === 'ok'
+                ? { ok: true, value: { rows: parsed.rows, asOf: parsed.asOf } }
+                : { ok: false, reason: parsed.reason };
+            },
+          );
+      }
+    },
+    [ledgerSnapshot, loadJson, readBlock],
+  );
 
-    const pricing = await readBlock(
-      () => loadJson('/agent-api/api/models/pricing'),
-      (body) => {
-        const parsed = readPricing(body);
-        return parsed.kind === 'ok'
-          ? { ok: true, value: { rows: parsed.rows, asOf: parsed.asOf } }
-          : { ok: false, reason: parsed.reason };
-      },
-    );
+  const loadUsage = useCallback(
+    async (signal: { live: boolean }, windowId: UsageWindowId) => {
+      setUsage({ kind: 'loading' });
+      const stats = (await fetchUsageBlock('stats', windowId)) as UsageBlock<TrendSnapshot>;
+      const prevRuns = (await fetchUsageBlock('prevRuns', windowId)) as UsageBlock<number | null>;
+      const day = (await fetchUsageBlock('day', windowId)) as UsageBlock<LedgerSnapshot>;
+      const month = (await fetchUsageBlock('month', windowId)) as UsageBlock<LedgerSnapshot>;
+      const pricing = (await fetchUsageBlock('pricing', windowId)) as UsageBlock<{
+        rows: PriceRow[];
+        asOf: string | null;
+      }>;
+      if (!signal.live) return;
+      setUsage({
+        kind: 'ready',
+        window: windowId,
+        stats,
+        day,
+        month,
+        pricing,
+        prevRuns,
+        loadedAt: new Date().toISOString(),
+      });
+    },
+    [fetchUsageBlock],
+  );
 
-    if (!signal.live) return;
-    setUsage({
-      kind: 'ready',
-      window: windowId,
-      stats,
-      day,
-      month,
-      pricing,
-      prevRuns,
-      loadedAt: new Date().toISOString(),
-    });
-  }, [loadJson]);
+  // A card retry replaces exactly one block in place; everything already on the
+  // screen stays there, including the numbers of the blocks that did read.
+  const retryUsageBlock = useCallback(
+    async (kind: UsageBlockKind) => {
+      setRetryingBlock(kind);
+      const block = await fetchUsageBlock(kind, usageWindow.id);
+      // The other cards keep their own read time: replacing one block must not
+      // make the rest look freshly read.
+      setUsage((prev) => {
+        if (prev.kind !== 'ready') return prev;
+        switch (kind) {
+          case 'stats':
+            return { ...prev, stats: block as UsageBlock<TrendSnapshot> };
+          case 'prevRuns':
+            return { ...prev, prevRuns: block as UsageBlock<number | null> };
+          case 'day':
+            return { ...prev, day: block as UsageBlock<LedgerSnapshot> };
+          case 'month':
+            return { ...prev, month: block as UsageBlock<LedgerSnapshot> };
+          case 'pricing':
+            return { ...prev, pricing: block as UsageBlock<{ rows: PriceRow[]; asOf: string | null }> };
+        }
+      });
+      setRetryingBlock(null);
+    },
+    [fetchUsageBlock, usageWindow.id],
+  );
 
   useEffect(() => {
     if (forced) return;
@@ -480,6 +624,14 @@ export function MetricsModulePage() {
   }, [attempt, forced, loadUsage, usageWindow.id]);
 
   const viewMode: 'employee' | 'model' = params.get('view') === 'model' ? 'model' : 'employee';
+
+  // A new batch starts on any of these: the collection times from the previous
+  // batch described numbers that are about to leave the screen. The expanded or
+  // collapsed choice is the reader's and survives the switch.
+  useEffect(() => {
+    sourceEpoch.current += 1;
+    setSources((prev) => (Object.keys(prev).length === 0 ? prev : {}));
+  }, [attempt, usageWindow.id, viewMode, groupBy, weeks]);
 
   const loadBreakdown = useCallback(
     async (signal: { live: boolean }, windowId: UsageWindowId, view: 'employee' | 'model') => {
@@ -854,6 +1006,8 @@ export function MetricsModulePage() {
     : state;
 
   const grid = view.kind === 'ready' ? buildHeatGrid(view.activity) : null;
+  const heatDays = grid ? heatDayRows(grid) : [];
+  const heatSummary = grid ? heatGridSummary(grid) : '';
   const selectedCell = selected && grid ? grid.rows[selected.dow - 1]?.cells[selected.hour] ?? null : null;
 
   const forcedDown = {
@@ -905,6 +1059,11 @@ export function MetricsModulePage() {
   const usageDown = usageReady !== null && usageBlocks.every((block) => block.kind === 'unavailable');
   const usageDenied =
     usageDown && usageBlocks.every((block) => block.kind === 'unavailable' && block.gap === USAGE_GAP);
+  const usageLeadFailure = usageBlocks.find((block) => block.kind === 'unavailable');
+  const usageLeadReason =
+    usageLeadFailure && usageLeadFailure.kind === 'unavailable' ? usageLeadFailure.reason : null;
+  const usageLeadRid =
+    usageLeadFailure && usageLeadFailure.kind === 'unavailable' ? usageLeadFailure.requestId : null;
   const usageQuiet =
     usageReady !== null &&
     !usageDown &&
@@ -923,6 +1082,7 @@ export function MetricsModulePage() {
         )
       : null;
   const sparkPeak = spark && spark.max !== null && spark.max > 0 ? spark.max : 1;
+  const sparkSummaryLine = spark ? sparkSummaryText(spark, usageWindow.label) : '';
   const monthSnapshot = usageReady && usageReady.month.kind === 'ready' ? usageReady.month.value : null;
   const cmpView: CmpState = forced
     ? forced === 'loading'
@@ -1022,6 +1182,7 @@ export function MetricsModulePage() {
         })()
       : [];
   const sharePrefix = groupBy === 'employee' ? 'met8' : 'met7';
+  const sortColumnLabel = sortKey === 'runs' ? '运行数' : sortKey === 'cost' ? '成本' : groupBy === 'employee' ? '员工' : '模型';
   const shareTotal = shareView.kind === 'ready' ? shareView.value.rows.reduce<number | null>((sum, row) => {
     if (row.costUsd === null) return sum;
     return (sum ?? 0) + row.costUsd;
@@ -1056,25 +1217,91 @@ export function MetricsModulePage() {
       ? { kind: 'none' as const, reason: '按模型视图不提供金额，无法比较' }
       : deltaOf(currentCost, previousCost, 'usd');
 
-  const exportable = breakdownView.kind === 'ready' && breakdownView.lines.length > 0;
+  // One ordered array feeds both the table and its export. The file is written
+  // row by row from this array, so it can never disagree with what the table
+  // shows — no re-reading, no sorting from a different source, no object keys.
+  // metQ — one polite announcement per status change. The copyable request id
+  // lives in the card, never inside this live region.
+  const liveUnavailable = usageBlocks.filter((block) => block.kind === 'unavailable').length;
+  const liveSignature = [
+    usageView.kind,
+    usageBlocks.map((block) => block.kind).join(','),
+    usageQuiet ? 'quiet' : 'loud',
+    breakdownView.kind,
+    heatView.kind,
+    budgetView.kind,
+    shareView.kind,
+  ].join('|');
+  const [liveMessage, setLiveMessage] = useState('');
+  const liveSeen = useRef('');
+  useEffect(() => {
+    if (liveSeen.current === liveSignature) return;
+    liveSeen.current = liveSignature;
+    if (usageView.kind !== 'ready') return;
+    if (usageDown) {
+      setLiveMessage('这一页的数据暂时都读不到，卡片上写着原因，可以重试。');
+      return;
+    }
+    if (liveUnavailable > 0) {
+      setLiveMessage(`有 ${liveUnavailable} 项数据暂时读不到，卡片上写着原因。`);
+      return;
+    }
+    if (usageQuiet) {
+      setLiveMessage('这个时间窗没有运行记录，也没有实扣。');
+      return;
+    }
+    setLiveMessage('数据已更新，卡片和下方的表格都读到了。');
+  }, [liveSignature, usageView.kind, usageDown, liveUnavailable, usageQuiet]);
+
+  const detailLines = breakdownView.kind === 'ready' ? breakdownView.lines : [];
+  const detailSort: DetailSort = parseDetailSort(params.get('dsort')) ?? 'cost';
+  const detailDir: SortDir = params.get('ddir') === 'asc' ? 'asc' : 'desc';
+  const detailRows = sortDetailLines(detailLines, detailSort, detailDir);
+  const exportable = detailRows.length > 0;
+  const ariaSortFor = (key: DetailSort): 'ascending' | 'descending' | 'none' =>
+    detailSort === key ? (detailDir === 'asc' ? 'ascending' : 'descending') : 'none';
+  const chooseDetailSort = (next: DetailSort) => {
+    const dir: SortDir = next === detailSort ? (detailDir === 'desc' ? 'asc' : 'desc') : 'desc';
+    const query = new URLSearchParams(params);
+    if (next === 'cost' && dir === 'desc') {
+      query.delete('dsort');
+      query.delete('ddir');
+    } else {
+      query.set('dsort', next);
+      query.set('ddir', dir);
+    }
+    setParams(query, { replace: true });
+  };
+  // Only the blocks this file actually pulls columns from are named in its note:
+  // a source nobody exported from is not a gap in the file.
+  const pageFailed = usageDown;
+  const detailGaps: ExportGap[] =
+    usageReady && usageReady.stats.kind === 'unavailable'
+      ? [{ label: '运行统计', reason: usageReady.stats.reason }]
+      : [];
+  const shareGaps: ExportGap[] = [];
 
   const exportCsv = () => {
-    if (breakdownView.kind !== 'ready' || breakdownView.lines.length === 0) return;
+    if (breakdownView.kind !== 'ready' || detailRows.length === 0) return;
     const header =
       viewMode === 'model'
-        ? ['模型', '支出USD', '次数', '占比%', '读取于', '窗口', '窗口开始', '窗口结束']
-        : ['员工', '支出USD', '次数', '占比%', '账本截至', '窗口', '窗口开始', '窗口结束'];
-    const rows = breakdownView.lines.map((line) => [
+        ? ['模型', '支出USD', '次数', '占比%', '读取于', '窗口', '窗口开始', '窗口结束', 'as_of', 'window']
+        : ['员工', '支出USD', '次数', '占比%', '账本截至', '窗口', '窗口开始', '窗口结束', 'as_of', 'window'];
+    const batchAsOf = isoOrNull(breakdownView.asOf);
+    const rows = detailRows.map((line) => [
       line.label,
-      line.costUsd === null ? null : line.costUsd.toFixed(2),
+      usdDigits(line.costUsd),
       line.count,
       line.share,
       line.asOf ? formatBeijing(line.asOf) : null,
       usageWindow.label,
       usageReady && usageReady.stats.kind === 'ready' ? formatBeijing(usageReady.stats.value.from) : null,
       usageReady && usageReady.stats.kind === 'ready' ? formatBeijing(usageReady.stats.value.to) : null,
+      batchAsOf,
+      usageWindow.id,
     ]);
-    const blob = new Blob([`\uFEFF${toCsv(header, rows)}`], { type: 'text/csv;charset=utf-8' });
+    const body = withGapNote(toCsv(header, rows), detailGaps);
+    const blob = new Blob([`\uFEFF${body}`], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
@@ -1086,20 +1313,23 @@ export function MetricsModulePage() {
   };
 
   const exportShare = () => {
+    // Same array the share table renders, in the same order (already sorted by
+    // ?sort/?dir, default cost descending). The file never re-sorts.
     if (shareView.kind !== 'ready' || shareRows.length === 0) return;
-    const blob = new Blob(
-      [
-        `\uFEFF${shareCsv(
-          shareRows.map((row) => ({
-            name: row.model,
-            runs: row.runs,
-            costUsd: row.costUsd,
-            sharePct: row.sharePct,
-          })),
-        )}`,
-      ],
-      { type: 'text/csv;charset=utf-8' },
+    const shareBody = withGapNote(
+      shareCsv(
+        shareRows.map((row) => ({
+          name: row.model,
+          runs: row.runs,
+          costUsd: row.costUsd,
+          sharePct: row.sharePct,
+          asOf: isoOrNull(shareView.value.asOf),
+          window: usageWindow.id,
+        })),
+      ),
+      shareGaps,
     );
+    const blob = new Blob([`\uFEFF${shareBody}`], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
@@ -1134,24 +1364,76 @@ export function MetricsModulePage() {
   const sourceList = sourceRows(sources);
   const newestSource = latestSourceAsOf(sourceList);
 
+  // metL — the plain-text summary repeats what this page already shows. Both
+  // numbers and the collection time come from the batch in hand; the copy
+  // handler issues no request.
+  const summaryRuns =
+    usageReady && usageReady.stats.kind === 'ready' ? usageReady.stats.value.stats.totals.runs : null;
+  const summaryCost = usageReady && usageReady.day.kind === 'ready' ? usageReady.day.value.total : null;
+  const summaryAsOf =
+    [sources['run-stats']?.asOf ?? null, sources['budget-usage']?.asOf ?? null]
+      .filter((stamp): stamp is string => typeof stamp === 'string' && stamp.length > 0)
+      .sort()
+      .at(-1) ?? null;
+  const copySummary = () => {
+    const text = metricsSummaryText({
+      windowId: usageWindow.id,
+      windowLabel: usageWindow.label,
+      runs: summaryRuns,
+      costUsd: summaryCost,
+      groupBy,
+      asOf: summaryAsOf,
+      generatedAt: new Date().toISOString(),
+    });
+    setSummaryText(text);
+    void copyTextToClipboard(text).then((ok) => setSummaryStatus(ok ? 'done' : 'failed'));
+  };
+
   return (
     <main className="met5-page" data-testid="met5-page">
+      <p className="sr-only" role="status" aria-live="polite" data-testid="metQ-live">
+        {liveMessage}
+      </p>
       <div className="met5-head">
         <div>
           <h1>运行分析</h1>
           <p>按星期与小时看运行都落在什么时段。没有记录的格子显示「—」，不补 0。</p>
         </div>
-        <Button
-          size="sm"
-          outlined
-          disabled={view.kind === 'loading'}
-          onClick={() => setAttempt((value) => value + 1)}
-          data-testid="met5-refresh"
-        >
-          <RefreshCw className="size-3.5" aria-hidden="true" />
-          刷新
-        </Button>
+        <div className="met5-acts">
+          <Button size="sm" outlined onClick={copySummary} data-testid="metL-copy">
+            <Copy className="size-3.5" aria-hidden="true" />
+            复制摘要
+          </Button>
+          <Button
+            size="sm"
+            outlined
+            disabled={view.kind === 'loading'}
+            onClick={() => setAttempt((value) => value + 1)}
+            data-testid="met5-refresh"
+          >
+            <RefreshCw className="size-3.5" aria-hidden="true" />
+            刷新
+          </Button>
+          <span className="metL-status" role="status" aria-live="polite" data-testid="metL-copy-status">
+            {summaryStatus === 'done' ? '已复制' : summaryStatus === 'failed' ? '复制没成功' : ''}
+          </span>
+        </div>
       </div>
+
+      {summaryStatus === 'failed' ? (
+        <div className="metL-fallback" data-testid="metL-fallback">
+          <p>
+            这次没能写入剪贴板，可能是浏览器没有给权限。下面这段文字可以直接选中复制，内容与刚才要复制的一样。
+          </p>
+          <textarea
+            readOnly
+            value={summaryText}
+            aria-label="运行分析摘要文本"
+            data-testid="metL-fallback-text"
+            onFocus={(event) => event.currentTarget.select()}
+          />
+        </div>
+      ) : null}
 
       {usageView.kind === 'loading' ? (
         <Card data-testid="met6-loading">
@@ -1186,26 +1468,28 @@ export function MetricsModulePage() {
           </div>
 
           {usageDown ? (
+            <div data-testid="metH-page-error">
             <Card data-testid={usageDenied ? 'met6-denied' : 'met6-error'}>
               <CardContent className="space-y-2 p-6">
                 <p className="font-medium">{usageDenied ? '这几项数据暂时读不到' : '这次没能读取用量与成本'}</p>
-                <p className="text-sm text-muted-foreground">
-                  {usageDenied
-                    ? '可能是这些数据还没有接入，也可能是当前账号没有查看权限。两种情况给同一句话，页面不回答「到底有没有」。'
-                    : '读取的时候没有成功，页面没有用旧内容顶上，也没有按 0 补。'}
+                <p className="text-sm text-muted-foreground" data-testid="metD-card-reason">
+                  {usageLeadReason ??
+                    (usageDenied
+                      ? '这项数据当前读不到：可能还没有接入，也可能当前账号没有查看权限。'
+                      : '这次没能读取这项数据，请稍后重试。')}
                 </p>
-                <RequestId
-                  id={
-                    usageBlocks
-                      .map((block) => (block.kind === 'unavailable' ? block.requestId : null))
-                      .find((id): id is string => typeof id === 'string' && id.length > 0) ?? null
-                  }
-                />
+                <p className="text-xs text-muted-foreground">
+                  上面这句和「数据来源与新鲜度」里对应读口的那句是同一句，请求编号也是同一个——两处不各说一词。
+                </p>
+                <div data-testid="metD-card-rid">
+                  <RequestId id={usageLeadRid} />
+                </div>
                 <Button size="sm" outlined onClick={() => setAttempt((value) => value + 1)} data-testid="met6-retry">
                   重试
                 </Button>
               </CardContent>
             </Card>
+            </div>
           ) : null}
 
           {usageQuiet ? (
@@ -1215,12 +1499,22 @@ export function MetricsModulePage() {
                 <p className="text-sm text-muted-foreground">
                   运行统计没有返回这个窗口的运行，账本也没有今天的实扣行，因此这里既没有次数也没有金额——不补 0，也不拿别的时段顶替。
                 </p>
+                <div className="metD-empty-acts">
+                  {usageWindow.id !== '7d' ? (
+                    <Button size="sm" outlined onClick={() => chooseUsageWindow('7d')} data-testid="metD-empty-window">
+                      换到 7 天看看
+                    </Button>
+                  ) : null}
+                  <Button size="sm" outlined onClick={() => setAttempt((value) => value + 1)} data-testid="metD-empty-retry">
+                    重新读取
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ) : null}
 
           <div className="met6-grid">
-            <Card className="met6-card" data-testid="met6-runs">
+            <Card className="met6-card metQ-card" tabIndex={0} id="metQ-card-focus-runs" data-testid="met6-runs">
               <CardContent className="space-y-1 p-4">
                 <p className="met6-label">{usageWindow.label}运行</p>
                 <p className="met6-value" data-testid="met6-runs-value">
@@ -1248,14 +1542,22 @@ export function MetricsModulePage() {
                   来源：运行统计 · 读取于 {usageReady ? formatBeijing(usageReady.loadedAt) : '—'}
                 </p>
                 {usageReady && usageReady.stats.kind === 'unavailable' ? (
-                  <p className="met6-gap" data-testid="met6-runs-gap" title={usageReady.stats.gap ?? undefined}>
-                    {usageReady.stats.reason}
-                  </p>
+                  <div className="metH-card-error" data-testid="metH-card-error-runs">
+                    <p className="met6-gap" data-testid="met6-runs-gap" title={usageReady.stats.gap ?? undefined}>
+                      {usageReady.stats.reason}
+                      <GapRid id={usageReady.stats.requestId} testId="metD-gap-rid-runs" />
+                    </p>
+                    <CardRetryButton
+                      busy={retryingBlock === 'stats'}
+                      onClick={() => void retryUsageBlock('stats')}
+                      testId="metH-card-retry-runs"
+                    />
+                  </div>
                 ) : null}
               </CardContent>
             </Card>
 
-            <Card className="met6-card" data-testid="met6-cost">
+            <Card className="met6-card metQ-card" tabIndex={0} id="metQ-card-focus-cost" data-testid="met6-cost">
               <CardContent className="space-y-1 p-4">
                 <p className="met6-label">实扣金额（账本）</p>
                 <p className="met6-value" data-testid="met6-cost-value">
@@ -1285,9 +1587,30 @@ export function MetricsModulePage() {
                     : ''}
                 </p>
                 {usageReady && usageReady.day.kind === 'unavailable' ? (
-                  <p className="met6-gap" data-testid="met6-cost-gap" title={usageReady.day.gap ?? undefined}>
-                    {usageReady.day.reason}
-                  </p>
+                  <div className="metH-card-error" data-testid="metH-card-error-cost">
+                    <p className="met6-gap" data-testid="met6-cost-gap" title={usageReady.day.gap ?? undefined}>
+                      {usageReady.day.reason}
+                      <GapRid id={usageReady.day.requestId} testId="metD-gap-rid-cost" />
+                    </p>
+                    <CardRetryButton
+                      busy={retryingBlock === 'day'}
+                      onClick={() => void retryUsageBlock('day')}
+                      testId="metH-card-retry-cost"
+                    />
+                  </div>
+                ) : null}
+                {usageReady && usageReady.month.kind === 'unavailable' ? (
+                  <div className="metH-card-error" data-testid="metH-card-error-month">
+                    <p className="met6-gap">
+                      本月累计这次没有读出来，显示「—」。
+                      <GapRid id={usageReady.month.requestId} testId="metH-gap-rid-month" />
+                    </p>
+                    <CardRetryButton
+                      busy={retryingBlock === 'month'}
+                      onClick={() => void retryUsageBlock('month')}
+                      testId="metH-card-retry-month"
+                    />
+                  </div>
                 ) : null}
                 {usageReady && usageReady.day.kind === 'ready' && usageReady.day.value.total === null ? (
                   <p className="met6-gap" data-testid="met6-cost-gap">
@@ -1316,7 +1639,7 @@ export function MetricsModulePage() {
               </CardContent>
             </Card>
 
-            <Card className="met6-card" data-testid="met6-trend">
+            <Card className="met6-card metQ-card" tabIndex={0} id="metQ-card-focus-trend" data-testid="met6-trend">
               <CardContent className="space-y-1 p-4">
                 <p className="met6-label">{usageWindow.label}趋势</p>
                 {spark && spark.observed > 0 ? (
@@ -1326,6 +1649,7 @@ export function MetricsModulePage() {
                     preserveAspectRatio="none"
                     role="img"
                     aria-label={`${usageWindow.label}每${usageWindow.bucket === 'hour' ? '小时' : '天'}运行数，共 ${spark.observed} 个时段有记录`}
+                    aria-describedby="metK-trend-summary"
                     data-testid="met6-sparkline"
                   >
                     {spark.slots.map((slot) => {
@@ -1349,6 +1673,9 @@ export function MetricsModulePage() {
                     {usageReady && usageReady.stats.kind === 'ready' ? '没有运行' : '—'}
                   </p>
                 )}
+                <p id="metK-trend-summary" className="sr-only" data-testid="metK-trend-summary">
+                  {sparkSummaryLine || '趋势：这次没有可报告的数据。'}
+                </p>
                 <p className="met6-hint">
                   {spark && spark.observed > 0
                     ? `共 ${spark.observed} 个时段有记录；空档表示那个时段接口没有返回运行，不按 0 画。`
@@ -1359,14 +1686,22 @@ export function MetricsModulePage() {
                   {usageReady ? formatBeijing(usageReady.loadedAt) : '—'}
                 </p>
                 {usageReady && usageReady.stats.kind === 'unavailable' ? (
-                  <p className="met6-gap" data-testid="met6-trend-gap" title={usageReady.stats.gap ?? undefined}>
-                    {usageReady.stats.reason}
-                  </p>
+                  <div className="metH-card-error" data-testid="metH-card-error-trend">
+                    <p className="met6-gap" data-testid="met6-trend-gap" title={usageReady.stats.gap ?? undefined}>
+                      {usageReady.stats.reason}
+                      <GapRid id={usageReady.stats.requestId} testId="metD-gap-rid-trend" />
+                    </p>
+                    <CardRetryButton
+                      busy={retryingBlock === 'stats'}
+                      onClick={() => void retryUsageBlock('stats')}
+                      testId="metH-card-retry-trend"
+                    />
+                  </div>
                 ) : null}
               </CardContent>
             </Card>
 
-            <Card className="met6-card" data-testid="met6-price">
+            <Card className="met6-card metQ-card" tabIndex={0} id="metQ-card-focus-price" data-testid="met6-price">
               <CardContent className="space-y-1 p-4">
                 <p className="met6-label">单价（价目表）</p>
                 {usageReady && usageReady.pricing.kind === 'ready' && usageReady.pricing.value.rows.length > 0 ? (
@@ -1392,9 +1727,17 @@ export function MetricsModulePage() {
                     : '—'}
                 </p>
                 {usageReady && usageReady.pricing.kind === 'unavailable' ? (
-                  <p className="met6-gap" data-testid="met6-price-gap" title={usageReady.pricing.gap ?? undefined}>
-                    {usageReady.pricing.reason}
-                  </p>
+                  <div className="metH-card-error" data-testid="metH-card-error-price">
+                    <p className="met6-gap" data-testid="met6-price-gap" title={usageReady.pricing.gap ?? undefined}>
+                      {usageReady.pricing.reason}
+                      <GapRid id={usageReady.pricing.requestId} testId="metD-gap-rid-price" />
+                    </p>
+                    <CardRetryButton
+                      busy={retryingBlock === 'pricing'}
+                      onClick={() => void retryUsageBlock('pricing')}
+                      testId="metH-card-retry-price"
+                    />
+                  </div>
                 ) : null}
               </CardContent>
             </Card>
@@ -1425,13 +1768,29 @@ export function MetricsModulePage() {
                 <Button
                   size="sm"
                   outlined
-                  disabled={!exportable}
-                  title={exportable ? '导出明细 CSV：当前窗口与当前分类下账本逐行的实扣明细，不是分摊汇总。' : '当前没有可导出的行：账本没有实扣行或上游没有给出模型行'}
+                  disabled={pageFailed || !exportable}
+                  title={
+                    pageFailed
+                      ? '整页读取失败，这份导出暂时不生成；先重试上面的读取，读到数据再导。'
+                      : exportable
+                        ? '导出明细 CSV：当前窗口与当前分类下账本逐行的实扣明细，不是分摊汇总。'
+                        : '当前没有可导出的行：账本没有实扣行或上游没有给出模型行'
+                  }
                   onClick={exportCsv}
                   data-testid="met6-export"
                 >
                   导出明细 CSV
                 </Button>
+                {breakdownView.kind === 'unavailable' ? (
+                  <span className="metI-gap" data-testid="metI-detail-blocked">
+                    成本明细这次没读出来，明细导出暂不生成。
+                  </span>
+                ) : null}
+                {detailGaps.length > 0 ? (
+                  <span className="metI-gap" data-testid="metI-detail-gap">
+                    本次导出缺少：{detailGaps.map((gap) => gap.label).join('、')}——文件末尾会写明原因，缺的列留空，不填 0。
+                  </span>
+                ) : null}
               </div>
             </div>
 
@@ -1481,14 +1840,26 @@ export function MetricsModulePage() {
                     <thead>
                       <tr>
                         <th scope="col">{breakdownView.view === 'model' ? '模型' : '员工'}</th>
-                        <th scope="col">支出</th>
-                        <th scope="col">次数</th>
-                        <th scope="col">占比</th>
+                        <th scope="col" aria-sort={ariaSortFor('cost')} title="金额单位：美元（USD），两位小数" data-testid="metO-fmt-th-spend">
+                          <button type="button" className="met6-sort" data-testid="metP-sort-cost" onClick={() => chooseDetailSort('cost')} aria-label="按支出排序">
+                            支出（USD）
+                          </button>
+                        </th>
+                        <th scope="col" aria-sort={ariaSortFor('runs')} title="调用次数，单位：次" data-testid="metO-fmt-th-count">
+                          <button type="button" className="met6-sort" data-testid="metP-sort-runs" onClick={() => chooseDetailSort('runs')} aria-label="按次数排序">
+                            次数（次）
+                          </button>
+                        </th>
+                        <th scope="col" className="met6-num" aria-sort={ariaSortFor('share')} data-testid="metG-a11y-th-share" title="占本窗口合计的比例，单位：百分比，一位小数">
+                          <button type="button" className="met6-sort" data-testid="metP-sort-share" onClick={() => chooseDetailSort('share')} aria-label="按占比排序">
+                            占比（%）
+                          </button>
+                        </th>
                         <th scope="col">账本截至</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {breakdownView.lines.map((line, index) => (
+                      {detailRows.map((line, index) => (
                         <tr key={line.key} data-testid={`met6-row-${index}`}>
                           <td>
                             <span className="met6-rowname">{line.label}</span>
@@ -1499,13 +1870,16 @@ export function MetricsModulePage() {
                             {line.count ?? '—'}
                             {line.countNote ? <span className="met6-rowsub">{line.countNote}</span> : null}
                           </td>
-                          <td className="met6-num">{line.share === null ? '—' : `${line.share}%`}</td>
+                          <td className="met6-num">{formatSharePct(line.share)}</td>
                           <td className="met6-num">{line.asOf ? formatBeijing(line.asOf) : '—'}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
+                <p className="met6-hint" data-testid="metP-export-order-note">
+                  表头可以点着换排序：默认按支出从高到低；缺数据的行总是排在最后，真实的 0 照常参与排序。导出文件按屏上现在的顺序写，行数与这里列出的行数一致。
+                </p>
                 <p className="met6-source" data-testid="met6-cat-source">
                   来源：{breakdownView.source} · 截至{' '}
                   {breakdownView.asOf ? formatBeijing(breakdownView.asOf) : '—'}
@@ -1513,7 +1887,7 @@ export function MetricsModulePage() {
                   <span className="font-mono" data-testid="met6-cat-total">
                     {formatUsd(breakdownView.total)}
                   </span>
-                  {` · ${breakdownView.lines.length} 行`}
+                  {` · ${detailRows.length} 行`}
                 </p>
                 {breakdownView.note ? <p className="met6-hint">{breakdownView.note}</p> : null}
               </>
@@ -1698,7 +2072,7 @@ export function MetricsModulePage() {
                             const tone = !cell.present ? 'is-missing' : cell.runs === 0 ? 'is-zero' : `is-l${cell.level}`;
                             const hh = String(cell.hour).padStart(2, '0');
                             const label = cell.present
-                              ? `${cell.at ? formatBeijing(cell.at) : `${row.label} ${hh}:00`}（北京时间） · ${cell.runs} 次 · 成本 —（账本按日/月记账，没有小时粒度）`
+                              ? `${cell.at ? formatBeijing(cell.at) : `${row.label} ${hh}:00`}（北京时间） · ${cell.runs} 次 · 强度 ${cell.level} 档（共 4 档） · 成本 —（账本按日/月记账，没有小时粒度）`
                               : `${row.label} ${hh}:00（北京时间） · 无数据（接口没有返回这一格，不当作 0 次）`;
                             return (
                               <button
@@ -1819,6 +2193,10 @@ export function MetricsModulePage() {
               <div>
                 <h3>成本分摊</h3>
                 <p className="met6-rowsub" data-testid="metA-scope-note">这里是聚合行；逐行明细用上方的「导出明细 CSV」。</p>
+                <p className="met6-rowsub" data-testid="metJ-export-order-note">
+                  两份导出逐行照屏上表体顺序写：屏上第一行就是文件第一行。分摊按当前排序（默认成本从高到低），明细照表体原序。
+                </p>
+                <p className="met6-rowsub" data-testid="metF-export-asof-note">两份导出末尾都带「采集时刻」与「时间窗」两列：采集时刻只取上游返回的值，上游没给就留空，不拿本机时间顶替；时间窗标出这份数据统计的是哪一段。行数与屏上一致。</p>
                 <p className="met6-rowsub">只认账本实扣；上游没给出金额的行显示「—」，不按 0 计，也不拿估算金额顶替。</p>
               </div>
             </div>
@@ -1844,8 +2222,14 @@ export function MetricsModulePage() {
               <Button
                 size="sm"
                 outlined
-                disabled={shareRows.length === 0}
-                title={shareRows.length === 0 ? '当前视图无可导出数据' : '导出分摊 CSV：当前窗口、分组与排序下的聚合行，含成本与占比，不是账本逐行明细。'}
+                disabled={pageFailed || shareRows.length === 0}
+                title={
+                  pageFailed
+                    ? '整页读取失败，这份导出暂时不生成；先重试上面的读取，读到数据再导。'
+                    : shareRows.length === 0
+                      ? '当前视图无可导出数据'
+                      : '导出分摊 CSV：当前窗口、分组与排序下的聚合行，含成本与占比，不是账本逐行明细。'
+                }
                 onClick={exportShare}
                 data-testid="metA-export"
               >
@@ -1854,6 +2238,11 @@ export function MetricsModulePage() {
               <span className="metA-count" data-testid="metA-export-count">
                 可导出 {shareRows.length} 行
               </span>
+              {pageFailed ? (
+                <span className="metI-gap" data-testid="metI-share-blocked">
+                  整页读取失败，分摊导出暂不生成。
+                </span>
+              ) : null}
             </div>
             {shareView.kind === 'loading' ? (
               <Card data-testid={`${sharePrefix}-loading`}>
@@ -1886,6 +2275,7 @@ export function MetricsModulePage() {
               <>
                 <div className="met6-table-scroll">
                   <table className="met6-table" data-testid={`${sharePrefix}-table`}>
+                    <caption className="metG-caption" data-testid="metG-a11y-caption">{`成本分摊：${usageWindow.label} · ${groupBy === 'employee' ? '按员工' : '按模型'} · 按${sortColumnLabel}${sortDir === 'asc' ? '升序' : '降序'}排列`}</caption>
                     <thead>
                       <tr>
                         <th scope="col" aria-sort={sortKey === 'model' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
@@ -1899,23 +2289,29 @@ export function MetricsModulePage() {
                             {sortKey === 'model' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
                           </button>
                         </th>
-                        <th scope="col" aria-sort={sortKey === 'runs' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                        <th scope="col" className="met6-num" data-testid="metG-a11y-th-runs" data-metO-unit="次" title="运行计数，单位：次" aria-sort={sortKey === 'runs' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
                           <button type="button" className="met7-sort" onClick={() => chooseSort('runs')} data-testid={`${sharePrefix}-sort-runs`}>
                             运行数{sortKey === 'runs' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
                           </button>
                         </th>
-                        <th scope="col" aria-sort={sortKey === 'cost' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                        <th scope="col" className="met6-num" data-testid="metG-a11y-th-cost" data-metO-unit="USD" title="金额单位：美元（USD），两位小数" aria-sort={sortKey === 'cost' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
                           <button type="button" className="met7-sort" onClick={() => chooseSort('cost')} data-testid={`${sharePrefix}-sort-cost`}>
                             成本{sortKey === 'cost' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
                           </button>
                         </th>
-                        <th scope="col">占比</th>
+                        <th scope="col" title="占本窗口可分摊实扣的比例，单位：百分比，一位小数" data-testid="metO-fmt-th-pct">占比（%）</th>
                         <th scope="col">运行</th>
                       </tr>
                     </thead>
                     <tbody>
                       {shareRows.map((row) => (
-                        <tr key={`${row.model}-${row.slug}`} data-testid={`${sharePrefix}-row-${row.slug}`}>
+                        <tr
+                          key={`${row.model}-${row.slug}`}
+                          className="met7-row"
+                          tabIndex={0}
+                          aria-label={`${row.model}：${formatCount(row.runs)} 次运行，${formatUsd(row.costUsd)}，占比 ${formatSharePct(row.sharePct)}`}
+                          data-testid={`${sharePrefix}-row-${row.slug}`}
+                        >
                           <td className="met7-model" title={row.model}>{row.model}</td>
                           <td
                             className="met6-num"
@@ -1936,7 +2332,7 @@ export function MetricsModulePage() {
                             data-testid={`${sharePrefix}-share-${row.slug}`}
                             title={row.sharePct === null ? '可读到的实扣金额为 0 或缺失，无法分摊' : '按可读到的实扣金额归一'}
                           >
-                            {row.sharePct === null ? '—' : `${row.sharePct.toFixed(1)}%`}
+                            {formatSharePct(row.sharePct)}
                           </td>
                           <td className="met6-num">
                             <Link
@@ -1961,6 +2357,9 @@ export function MetricsModulePage() {
                 </p>
                 <p className="met6-hint" data-testid={`${sharePrefix}-hint`}>
                   占比按可读到的实扣金额归一，合计 100%；缺金额的行不参与分摊，显示「—」。排序写在地址里，刷新与前进后退都保留。
+                </p>
+                <p className="met6-hint" data-testid="metO-fmt-note">
+                  数字口径：计数与金额按千分位分组（如 1,234 与 $1,234.56），占比保留一位小数（如 12.3%）；金额只以美元（USD）记，次数只以次记，不再混用别的单位。缺失显示「—」，真实的零显示 0 或 $0.00。导出文件沿用同一套小数位，只去掉符号与千分位，方便程序读取。
                 </p>
                 {groupBy === 'employee' ? (
                   <p className="met6-hint" data-testid="met9-note">
@@ -2013,11 +2412,16 @@ export function MetricsModulePage() {
         <Card data-testid="met5-error">
           <CardContent className="space-y-2 p-6">
             <p className="font-medium">这次没能读取运行活动</p>
-            <p className="text-sm text-muted-foreground" title={view.gap ?? undefined}>{view.message}</p>
-            <RequestId id={view.requestId} />
-            <Button size="sm" outlined onClick={() => setAttempt((value) => value + 1)} data-testid="met5-retry">
-              重试
-            </Button>
+            <div data-testid="metH-card-error-heat">
+              <p className="text-sm text-muted-foreground" title={view.gap ?? undefined}>{view.message}</p>
+              <RequestId id={view.requestId} />
+            </div>
+            <div className="metH-card-acts">
+              <CardRetryButton busy={false} onClick={retryHeat} testId="metH-card-retry-heat" />
+              <Button size="sm" outlined onClick={() => setAttempt((value) => value + 1)} data-testid="met5-retry">
+                全部重试
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : null}
@@ -2064,7 +2468,7 @@ export function MetricsModulePage() {
             </Card>
           </div>
 
-          <Card data-testid="met5-heatmap">
+          <Card className="metQ-card" tabIndex={0} id="metQ-card-focus-heatmap" data-testid="met5-heatmap">
             <CardContent className="space-y-3 p-4 md:p-6">
               <div className="met5-legend" data-testid="met5-legend">
                 <span>少</span>
@@ -2078,7 +2482,13 @@ export function MetricsModulePage() {
                 <span>接口未返回（—）</span>
               </div>
               <div className="met5-scroll">
-                <div className="met5-gridwrap">
+                <div
+                  className="met5-gridwrap"
+                  role="img"
+                  aria-label="运行热力：星期与小时的运行次数"
+                  aria-describedby="metK-heat-summary"
+                  data-testid="metK-heat-figure"
+                >
                   <div className="met5-grid" data-testid="met5-grid">
                     <span className="met5-corner" aria-hidden="true" />
                     {Array.from({ length: 24 }, (_, hour) => (
@@ -2097,7 +2507,7 @@ export function MetricsModulePage() {
                             className={`met5-cell ${cellTone(cell)}`}
                             data-testid={`met5-cell-${cell.dow}-${cell.hour}`}
                             title={`${row.label} ${String(cell.hour).padStart(2, '0')}:00–${String(cell.hour).padStart(2, '0')}:59 · ${cellText(cell)} · ${cellRangeLabel(row.dow, cell.hour, weeks, view.activity.to)}`}
-                            aria-label={`${row.label} ${String(cell.hour).padStart(2, '0')} 点，${cellText(cell)}`}
+                            aria-label={heatCellLabel(cell, weeks, view.activity.to)}
                             onClick={() => setSelected({ dow: cell.dow, hour: cell.hour })}
                           >
                             <span className="met5-cell-dot" aria-hidden="true" />
@@ -2107,6 +2517,44 @@ export function MetricsModulePage() {
                     ))}
                   </div>
                 </div>
+              </div>
+              <p id="metK-heat-summary" className="sr-only" data-testid="metK-heat-summary">
+                {heatSummary}
+              </p>
+              <div className="metK-table-block">
+                <Button
+                  size="sm"
+                  outlined
+                  data-testid="metK-table-toggle"
+                  aria-expanded={heatTableOpen}
+                  aria-controls="metK-table"
+                  onClick={() => setHeatTableOpen((open) => !open)}
+                >
+                  以表格查看
+                </Button>
+                {heatTableOpen ? (
+                  <div className="metK-tablewrap">
+                    <table className="metK-table" id="metK-table" data-testid="metK-table">
+                      <caption data-testid="metK-table-caption">
+                        按星期汇总的运行次数（{windowRangeLabel(view.activity)}）
+                      </caption>
+                      <thead>
+                        <tr>
+                          <th scope="col">星期</th>
+                          <th scope="col">运行数</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {heatDays.map((day) => (
+                          <tr key={day.dow} data-testid={`metK-table-row-${day.dow}`}>
+                            <td>{day.label}</td>
+                            <td>{day.runs === null ? '—' : formatCount(day.runs)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : null}
               </div>
               <p className="met5-scrollhint">左右滑动热力图，查看 12–23 点</p>
               <div className="met5-selected" data-testid="met5-selected" aria-live="polite">
@@ -2170,31 +2618,59 @@ export function MetricsModulePage() {
                       <code className="metB-path" role="cell">
                         {row.path}
                       </code>
-                      <span
-                        role="cell"
-                        data-testid={`metB-source-asof-${row.key}`}
-                        title={
-                          row.asOf
-                            ? row.asOfSource
-                              ? `采集时刻来自 ${row.asOfSource}`
-                              : '上游返回的采集时刻'
-                            : '上游未返回采集时刻'
-                        }
-                      >
-                        {row.asOf ? formatBeijing(row.asOf) : '—'}
+                      <span role="cell" className="metB-asofcell">
+                        <span
+                          data-testid={`metB-source-asof-${row.key}`}
+                          title={
+                            row.asOf
+                              ? row.asOfSource
+                                ? `采集时刻来自 ${row.asOfSource}`
+                                : '上游返回的采集时刻'
+                              : '上游未返回采集时刻'
+                          }
+                        >
+                          {row.asOf ? formatBeijing(row.asOf) : '—'}
+                        </span>
+                        {sourceStaleness(row).stale ? (
+                          <span
+                            className="metM-stale"
+                            data-testid={`metM-stale-${row.key}`}
+                            title={`采集时刻 ${formatBeijing(row.asOf)} · 读取时刻 ${formatBeijing(row.fetchedAt)} · 判据：读取时刻比采集时刻晚超过 ${Math.round(
+                              SOURCE_STALE_MS / 60_000,
+                            )} 分钟就提示「数据可能滞后」。读取时刻是这次读取完成的时刻，不是数据时刻；缺失采集时刻的读口不判滞后。`}
+                          >
+                            数据可能滞后
+                          </span>
+                        ) : null}
                       </span>
                       <span
                         role="cell"
                         data-testid={`metB-source-state-${row.key}`}
                         title={
-                          row.state === 'error'
+                          row.state === 'down'
                             ? `${row.error ?? '这次读取没有成功'}${row.requestId ? ` · 请求编号 ${row.requestId}` : ''}`
-                            : row.asOfSource
-                              ? `采集时刻来源 ${row.asOfSource}`
-                              : undefined
+                            : row.state === 'degraded'
+                              ? '上游未返回采集时刻：数据读到了，但说不清它新到什么程度'
+                              : row.asOfSource
+                                ? `采集时刻来源 ${row.asOfSource}`
+                                : undefined
                         }
                       >
-                        {row.state === 'error' ? '读不到' : row.state === 'missing' ? '未返回采集时刻' : '正常'}
+                        <span className="metB-state">
+                          {row.state === 'down' ? '读不到' : row.state === 'degraded' ? '降级' : '正常'}
+                        </span>
+                        {row.state === 'down' && row.requestId ? (
+                          <SourceRidButton
+                            id={row.requestId}
+                            label={row.label}
+                            testId={`metC-source-rid-${row.key}`}
+                          />
+                        ) : null}
+                        {row.state === 'down' && row.error ? (
+                          <span className="metB-reason" data-testid={`metD-source-reason-${row.key}`}>
+                            {row.error}
+                          </span>
+                        ) : null}
                       </span>
                     </div>
                   ))}
