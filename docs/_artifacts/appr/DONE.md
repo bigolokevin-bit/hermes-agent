@@ -1205,3 +1205,12 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 测试：新 describe 2 用例（口径行逐字+href=/approvals?status=all+title 含「nextCursor 恒 null」+行在+无 cursor；切 tasks 再回 approvals=行清+新请求无 cursor）；既有用例 1 处选择器钉正=「approval rows link…」原取卡内首个 a，被口径行队列链抢占（用例意图=行链，改按 ed8-appr-link-0 精确取，语义等价）。定向 employee-detail 1 file/**55 passed**（53+2）；tsc 两域 0 红；assert-ia 两模式 exit0；全量 **159 files/2192 passed**（基线 2190+2）。
 - 零破：ed8-appr-*/ed1/ed5/ed7/ed9/ed10/edz/edx/apd6/apd7/apv5–9/apr5（既有用例全绿为证）；三档=口径行 px-4+内联链既有形态学报（jsdom 不可测）；9122==9813d7af 禁重建，活体读数待并入后代次。
 - 习语坑（本窗实证）：ed 测试文件=mockApi(handler) 与 renderAt(element,entry) 两步式（handler 不是 renderAt 第三参）；卡内插新链必须 grep 「querySelector("a")」形态的既有用例防抢占。
+
+## R90 审批筛选重置单点（apv-reset-filters，2026-11-20）
+
+- 基线：显式 refspec fetch + merge = Already up to date @58308a50（章面 0c1b94c3/代次 9813d7af，HEAD ee64b4f0 仅 gateway），toplevel ✓ porc=0；重发三件套 grep apv-reset-filters=0。
+- 单点 helper=新 FilterReset.ts：FILTER_PARAM_KEYS=[status,q,actor,since,risk,asort,adir] 唯一参数表；hasActiveFilters(params)→{active,count}；RESET_NONE_TITLE=「当前没有可清除的筛选条件」；resetTitle(count)（0→该句；否则「一次清除 N 项筛选（状态/搜索/审批人/时间/风险/排序），保留页签；回到第一页。」）；clearFilterParams(draft) 差分删七参——tab/id/state/rid 永不动（页签保持+详情打开态归 apd7-back 管，DONE 注：工单七参未点名 id）。
+- 两 tab：钮=原生 button apv-reset-filters（div apv-reset-row 挂 QueueSummaryBar 前），disabled=!active、title=resetTitle(count)、文案「重置筛选（N）」；history clearFilters 升级走 clearFilterParams（原只删 status+q——能力替代授权，R70 契约用例「恢复全列表」仍绿）且 apv-state-clear 可用性判定同源改 filterState.active（禁第二套）；pending 新 handleReset 同构（无 status URL 维=其清除全本地）。
+- cursor 裁决（DONE 记录）：清 status→listUrl 变→hook 重建恰 1 次新取数且天然无 cursor（第一页）；纯本地参（q/actor/since/risk/asort/adir）清除不触 fetch、服务端游标属已加载基底的续页状态不被污染=不强制 reload。用例锁两形态：history 全参一点=恰 +1 且 fresh url 无 status=/cursor=；pending 双本地参一点=+0 请求。
+- 测试 history 2+pending 1（全参 7 项 enabled→点后回归 disabled+title 逐字 RESET_NONE=URL 清空等效断言法——history 测试无 LocProbe，DONE 注明；apv5–9/apd5–10/apr5/actor/nav/gates/state/sort/export/toggle/live/page 零破=既有 142 全绿为证）。定向 approvals 4 files/**145 passed**（142+3）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **159 files/2195 passed**（基线 2192+3）。
+- 三档=apv-reset-row flex-wrap 形态学报；9122==9813d7af 禁重建，活体读数待并入后代次。R91 摘要条与本单共用 FILTER_PARAM_KEYS/hasActiveFilters（禁两套已立约）。

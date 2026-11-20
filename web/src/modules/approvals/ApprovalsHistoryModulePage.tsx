@@ -28,6 +28,7 @@ import { Spinner } from "@nous-research/ui/ui/components/spinner";
 import { STATUS_FILTERS, approvalSortKeyOf, approvalsRowSearchText, isKnownStatus, sortApprovalRows, type ApprovalSortDir, type ApprovalSortKey } from "./model";
 import { actionGates, announcement } from "./gates";
 import { QueueSummaryBar } from "./QueueSummaryBar";
+import { clearFilterParams, hasActiveFilters, resetTitle } from "./FilterReset";
 import { PermalinkCopy } from "./PermalinkCopy";
 import { BackToList, restoreListScroll, saveListScroll } from "./BackToList";
 import { QueueCsvExport } from "./QueueCsvExport";
@@ -236,12 +237,13 @@ export function ApprovalsHistoryModulePage(): ReactNode {
   // 其余参数不动。
   const clearFilters = useCallback(() => {
     const draft = new URLSearchParams(params);
-    draft.delete("status");
-    draft.delete("q");
+    // R90: one parameter table for every reset entry (FilterReset.ts).
+    clearFilterParams(draft);
     setSelected(null);
     setUnaddressable(false);
     setParams(draft, { replace: true });
   }, [params, setParams]);
+  const filterState = hasActiveFilters(params);
 
   const openRow = useCallback(
     (row: { rawId: string | null }) => {
@@ -382,6 +384,18 @@ export function ApprovalsHistoryModulePage(): ReactNode {
         ) : null}
       </div>
 
+      <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="apv-reset-row">
+        <button
+          type="button"
+          data-testid="apv-reset-filters"
+          disabled={!filterState.active}
+          title={resetTitle(filterState.count)}
+          onClick={clearFilters}
+          className="h-6 rounded-md border border-white/15 px-2 text-xs text-muted-foreground hover:bg-white/5 focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/60 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          重置筛选{filterState.active ? `（${filterState.count}）` : ""}
+        </button>
+      </div>
       <QueueSummaryBar phase={list.phase} rows={visibleRows} scope="history" singleStatus={status} />
       <QueueCsvExport rows={visibleRows} tab="history" status={status} phase={list.phase} sort={asort} dir={asort ? adir : null} />
       <div className="flex min-w-0 flex-wrap items-center gap-1.5" role="group" data-testid="apv8-search-group" aria-label="搜索审批">
@@ -497,7 +511,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
               nextStep="换一个结果看看，或点「全部」把所有历史决策列出来。"
               onRefresh={list.reload}
               testId="apr5-empty-history"
-              clear={status !== null ? { label: "清空筛选", onClear: clearFilters } : undefined}
+              clear={filterState.active ? { label: "清空筛选", onClear: clearFilters } : undefined}
             />
           ) : null}
 

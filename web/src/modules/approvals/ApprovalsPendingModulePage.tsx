@@ -33,6 +33,7 @@ import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel } from
 import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
 import { actionGates, announcement } from "./gates";
 import { QueueSummaryBar } from "./QueueSummaryBar";
+import { clearFilterParams, hasActiveFilters, resetTitle } from "./FilterReset";
 import { PermalinkCopy } from "./PermalinkCopy";
 import { BackToList, restoreListScroll, saveListScroll } from "./BackToList";
 import { QueueCsvExport } from "./QueueCsvExport";
@@ -62,6 +63,17 @@ export function ApprovalsPendingModulePage(): ReactNode {
   // A row that carries no id can be listed but never opened; saying so beats
   // guessing an identifier for it.
   const [unaddressable, setUnaddressable] = useState(false);
+  // R90: same single-source reset as the history pane; the pending queue has
+  // no status URL dimension, so clearing the rest never refetches (measured
+  // in tests: local params never reach the server query).
+  const filterState = hasActiveFilters(params);
+  const clearFilters = useCallback(() => {
+    const draft = new URLSearchParams(params);
+    clearFilterParams(draft);
+    setSelected(null);
+    setUnaddressable(false);
+    setParams(draft, { replace: true });
+  }, [params, setParams]);
   const [comment, setComment] = useState("");
   const [confirming, setConfirming] = useState<Verdict | null>(null);
   const [inFlight, setInFlight] = useState(false);
@@ -354,6 +366,18 @@ export function ApprovalsPendingModulePage(): ReactNode {
 
   return (
     <div className="flex min-w-0 w-full max-w-full flex-col gap-3" data-testid="apr5-page-pending">
+      <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="apv-reset-row">
+        <button
+          type="button"
+          data-testid="apv-reset-filters"
+          disabled={!filterState.active}
+          title={resetTitle(filterState.count)}
+          onClick={clearFilters}
+          className="h-6 rounded-md border border-white/15 px-2 text-xs text-muted-foreground hover:bg-white/5 focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/60 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          重置筛选{filterState.active ? `（${filterState.count}）` : ""}
+        </button>
+      </div>
       <QueueSummaryBar phase={list.phase} rows={visibleRows} scope="queue" />
       <QueueCsvExport rows={visibleRows} tab="pending" status="pending" phase={list.phase} sort={asort} dir={asort ? adir : null} />
       <div className="flex min-w-0 flex-wrap items-center gap-1.5" role="group" data-testid="apv8-search-group" aria-label="搜索审批">

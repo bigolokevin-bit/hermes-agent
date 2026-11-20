@@ -792,3 +792,23 @@ describe("R88 pending permalink (apd10-*)", () => {
     expect(api.fetchJSON.mock.calls.length, "copy never fetches").toBe(before);
   });
 });
+
+describe("R90 pending filter reset (apv-reset-filters)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+
+  it("clearing local-only params never refetches on the pending queue", async () => {
+    await mount(queue(), "/approvals?tab=pending&risk=high&q=zz");
+    const btn = qa("apv-reset-filters") as HTMLButtonElement | null;
+    expect(btn, "reset button present").toBeTruthy();
+    expect(btn!.disabled, "two active filters").toBe(false);
+    expect(btn!.title).toContain("一次清除 2 项筛选");
+    const before = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      btn!.click();
+    });
+    await act(async () => {});
+    expect(api.fetchJSON.mock.calls.length, "local params never hit the server").toBe(before);
+    expect((qa("apv-reset-filters") as HTMLButtonElement).disabled, "reset after reset").toBe(true);
+    expect(qa("apv-reset-filters")?.getAttribute("title")).toBe("当前没有可清除的筛选条件");
+  });
+});

@@ -2329,3 +2329,45 @@ describe("R88 permalink copy (apd10-*)", () => {
     expect(api.fetchJSON.mock.calls.length, "preview copy never fetches").toBe(before);
   });
 });
+
+describe("R90 filter reset (apv-reset-filters)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+  const urls = (): string[] => api.fetchJSON.mock.calls.map((c) => String(c[0]));
+
+  it("one click clears all seven params, keeps the tab and refetches exactly once", async () => {
+    await mount(
+      async (url: string) => {
+        const u = String(url);
+        if (u.includes("/api/approval?id=")) return {};
+        return { items: u.includes("status=") ? [] : [{ approvalId: "ap_all", title: "全部状态的第一条", status: "pending", createdAt: "2026-11-19T01:00:00Z" }] };
+      },
+      "/approvals?tab=history&status=pending&q=zz&actor=human%3A7&since=24h&risk=high&asort=title&adir=asc",
+    );
+    const btn = qa("apv-reset-filters") as HTMLButtonElement | null;
+    expect(btn, "reset button on screen").toBeTruthy();
+    expect(btn!.disabled, "active filters enable reset").toBe(false);
+    expect(btn!.title).toContain("一次清除 7 项筛选");
+    expect(btn!.textContent).toContain("重置筛选（7）");
+    const before = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      btn!.click();
+    });
+    await waitFor(() => api.fetchJSON.mock.calls.length === before + 1, "exactly one refetch");
+    const fresh = urls()[before];
+    expect(fresh, "the refetch is the first page without the status filter").not.toContain("status=");
+    expect(fresh).not.toContain("cursor=");
+    await waitFor(() => !!qa("apr5-row-ap_all"), "unfiltered list renders");
+    expect((qa("apv-reset-filters") as HTMLButtonElement).disabled, "nothing left to clear").toBe(true);
+    expect(qa("apv-reset-filters")?.getAttribute("title")).toBe("当前没有可清除的筛选条件");
+  });
+
+  it("a clean view shows the button disabled with the stated reason", async () => {
+    await mount(async (url: string) => {
+      if (String(url).includes("/api/approval?id=")) return {};
+      return { items: [] };
+    }, "/approvals?tab=history");
+    const btn = qa("apv-reset-filters") as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
+    expect(btn.getAttribute("title")).toBe("当前没有可清除的筛选条件");
+  });
+});
