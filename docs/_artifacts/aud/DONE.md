@@ -3292,3 +3292,27 @@ Untested: the four-state body lengths are jsdom readings, not browser pixels; th
 - 三档：本轮改的是一个属性名与几行用例，未新增可见节点、未动宽度/换行规则（textarea 仍是 `w-full min-w-0 break-words`）；浏览器像素三档仍未实测（活体腿不可用），不声称已验。
 - 门禁：vitest `src/modules/audit` **exit 0**（19 files/**396**）；全量 **161 files / 2234** exit 0；`pnpm exec tsc -b . --noEmit` 共 **82** errors 且 `modules/audit` **0**——82 是本机当前地板，`git stash` 前后各跑一次实测同数（改动前 82、改动后 82，增量 0；比 audS 记的 79 高 3 条，是 wave-23 合入的 54 文件带进来的，全部落在 `modules/{employees,approvals,employee-detail}`，与本写域无关，本轮不越界去修）；`eslint src/modules/audit` **0 errors** / 4 既有 warnings。
 - 活体腿沿用不可用（未重跑，本轮不出示假读数）：9122 无身份头 **401 `console.unauthenticated`**、8092 **404 `console.not_found`**。QA 复跑请按 `data-testid='audC-copy'` / `audC-copy-status` / `audC-copy-fallback`（行内预览与事件详情两处各有），旧名 `audC-fallback` 自本轮起不再存在。
+
+## Audit filter chips (audT, 2026-11-20, base 46c6b00d)
+
+- 写域：`web/src/modules/audit/{filterChips.ts(新),filterChips.test.ts(新),filterSummary.ts,states.tsx,AuditEventsModulePage.tsx,AuditEventsModulePage.test.tsx}` + 本节（7 文件，其中代码 6 文件 diff **+668/−61**，本节 +26）。App/shell/routes/registry/package·lock/web-scripts/ops 与其它模块未碰；基线 merge 由总控完成（显式 refspec fetch 后 `git merge origin/lane/hermes-console` 到 `46c6b00d`，porc=0）；单 commit；全程未用 reset --hard / amend / force / --no-verify。
+- **一张参数表，就是地址本身**：chip 的词不是新写的句子，而是 `filterSeatMap(input, "screen")` 里那一格的 seat —— 与 audG 复制的摘要行、audR 卡片的 `aud-source-seats` 同一个构造器。为把「第 N 页（游标 ×K） · 每页 X 条」拆成两枚 chip，`seatsOf` 改为「先出 map，再按同一分隔符 join」，**输出逐字未变**（audG/audR 的既有用例一字未改就过，见上）。页面把同一份 `summaryInput` 展开后只加三条「只有地址知道」的事实（`rawWindow`、`typeKnown`、`rawLimit`）交给 `filterChipsOf`。工单点名的「与 `audG-filter-copy`/`audB` 预设共用同一参数表（禁第二套）」按此落地：窗口档取 `FILTER_WINDOW_CHOICES`、每页档取 `PAGE_SIZE_CHOICES`、键名取 chip 自带的 `params`，全模块没有第二张键表。
+- **chip → 出现条件 → 词源 → × 删掉的地址键**（顺序按筛选条，不按工单枚举顺序，见下第 4 条口径）：
+
+  | chip | 何时有 | 词 | × 删 |
+  |---|---|---|---|
+  | `aud-chip-window` | 地址写了非默认且可识别的档（如 `?window=24h`） | seat `时间窗：…` | `window` |
+  | `aud-chip-from-to` | `?window=custom`（自定义区间） | 同一 seat 的自定义句 | `window` + `from` + `to`（**一枚同删两参**，区间不能只删一头） |
+  | `aud-chip-action` | `?type=…` | seat `动作类型：…（服务端按 action 精确匹配）` | `type` |
+  | `aud-chip-actor` | `?actor=…` | seat `操作者：已按句柄筛（服务端 actorId）` | `actor` |
+  | `aud-chip-resource` | `?resource=…` | seat `资源：已按编号本地筛（只在本页已加载的记录里）` | `resource` |
+  | `aud-chip-limit` | 非默认档位，或地址写了本面板不提供的数 | seat `每页 X 条` / 原文 `每页 33 条` | `limit` |
+  | `aud-chip-page` | `cursor` 栈非空（第 2 页起） | seat `第 N 页（游标 ×K）` | `cursor` |
+
+- **写址只有一条路**：`removeFilterChip(chip)` 循环 `chip.params` 删键、区间 chip 顺带清 `range` 草稿，然后调**筛选条 setter 用的同一个** `resetPagingAndFolds(draft)` + `setParams(…, {replace:true})` —— 所以移除必然回第 1 页、丢游标栈、收折叠，且只写一次地址、只多读一次（用例逐条断 `listReads()` 增量恰为 1）。机器句柄照 audB/aud9 的旧规矩不上屏，只进 `title`；× 是真 `<button type="button">`（`aud-chip-<key>-clear`，带 `aria-label="移除「…」"`）。
+- **常驻与缺席的口径**：整条在「无生效筛选」时不渲染（`/audit`、`/audit?window=7d&limit=50` 两例断 `aud-filter-chips` 为 null；`?window=24h` 单独在场）；其余一律在场，**包括读取中与被拒**——chip 读的是地址不是行，所以 `aud01-denied` 那句「暂时无法查看审计事件」下面 chip 仍然齐（用例 7）。导出与计数在移除后同源重算：`?resource=ap_1122334455667788` 改前首末行 `将导出 1 条` / 1 行，移除后 `将导出 2 条` / 2 行，首行 id 未变、末行 id 变了——计数、可见行、`aud01-export` 三者仍是同一个 `listedRows`，没有第二份。
+- **三条如实登记的口径差异（未硬造）**：① **未识别值的 chip 移除时不重取**：`?window=14d` 这种值从未上过线（本面板按 `最近 7 天` 读，`spanOf` 改前改后都是 7×24h），删掉它问题一个字没变，所以新增请求数为 **0**（用例明写 0，并另证 `?type=not_a_code` 是按原样进了 `action` 的，移除就多读 1 次）。「移除只重取一次」的诚实边界就是：只有问题真的变了才有一次新的读。② chip 顺序按**筛选条的位置**（window → action → actor → resource → limit → page），不是工单枚举里的 actor 排在 action 前；已在 `filterChips.test.ts` 钉死，避免下轮又被「按工单顺序」改回去。③ **aud8 那排 chip 保留**（`aud8-url-filters`/`aud8-actor-clear`/`aud8-resource-clear` 被 audB/aud9 用例锁着，工单也要求 aud2–audK 零破），于是 actor/resource 在屏上会出现两次：aud8 说「已按句柄筛选 + 取消」，audT 说 seat 原词 + ×。本轮把 `AuditUrlFilterChips` 原样搬进 `states.tsx`（一字未改）与 audT 同族并置，不删不合；要收敛成一枚请另开工单授权破 aud8 用例。页文件靠这次搬迁**净降 15 行**（+43/−58，2156 → 2141）——`AuditEventsModulePage.tsx` 本已过 2000 行红线（只能降不能升），本轮是往下的。
+- **零破**：`aud01*`、`aud2*`–`audS*` 各家族、`audC-copy*`、`audG-filter-copy*`、`audE-*`、`audF-*`、`audR` 的 `aud-source*`、`aud-limit-restore`、`audL-scroll`、`aud8-*` 与页级 `agent-v2-page-audit*`/`-detail*` 未改名未删节点。起算 **19 files / 396** 一条未红，现 **20 files / 414**（新文件 `filterChips.test.ts` 11 条纯推导 + 集成 describe 7 条）；全量 **162 files / 2252**（起算 161/2234，同样 +1 文件 +18 用例）。`filterSummary.ts` 的重构是靠既有用例证明输出未变，不是靠改写既有用例。
+- 三档：新增一行 `flex min-w-0 flex-wrap items-center gap-2`，chip 用 aud8 同一族 class（`rounded-md border border-border bg-card px-2 py-1 text-xs`），无固定宽度、无新列、不换行规则之外的东西；窄屏靠 flex-wrap 折行。浏览器像素三档仍未实测（活体腿不可用），只声明结构口径。
+- 门禁：`vitest run src/modules/audit` **exit 0**（20 files/**414**）；全量 `vitest run` **exit 0**（**162 files / 2252**）；`pnpm exec tsc -b . --noEmit` **exit 2**、共 **82** errors 且 `src/modules/audit` **0**——82 是本基线当前地板，`git stash push -u` / `pop` 前后各跑一次实测同数（改动前 82、改动后 82，增量 0）；`eslint src/modules/audit` **0 errors** / 4 既有 `react-hooks/set-state-in-effect` warnings。
+- 活体腿沿用不可用（未重跑，本轮不出示假读数）：9122 无身份头 **401 `console.unauthenticated`**、8092 **404 `console.not_found`**。QA 复跑请按 `data-testid='aud-filter-chips'` 取整条、按 `aud-chip-<key>` 取单枚、`aud-chip-<key>-clear` 取 ×，未识别值的判据是 title 含「该值未被识别」。

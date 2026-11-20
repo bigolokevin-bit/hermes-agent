@@ -39,7 +39,7 @@ import { Button } from "@nous-research/ui/ui/components/button";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { Spinner } from "@nous-research/ui/ui/components/spinner";
 
-import { DeniedPanel, EmptyPanel, ErrorPanel, FilterSummaryCopy, InlineFailure, LoadingPanel, RequestIdLine, TechnicalDisclosure, VerifyUnavailablePanel } from "./states";
+import { AuditFilterChips, AuditUrlFilterChips, DeniedPanel, EmptyPanel, ErrorPanel, FilterSummaryCopy, InlineFailure, LoadingPanel, RequestIdLine, TechnicalDisclosure, VerifyUnavailablePanel } from "./states";
 import { AuditEventDetailBody, AuditEventRowCard, VerifyResultBody, AuditRowPreview, AuditTypeSummary } from "./views";
 import RetentionModulePage from "./RetentionModulePage";
 import { useAuditDetail, useAuditList, useAuditVerify } from "./useAuditData";
@@ -55,6 +55,7 @@ import {
   hasFilterSummary,
   pageShareHref,
 } from "./filterSummary";
+import { filterChipsOf, type AuditChip } from "./filterChips";
 import { auditGatesOf, gateMirror } from "./auditGates";
 import type { SortColumn, SortState } from "./sorting";
 import { SORT_COLUMNS, ariaSort, nextSort, sortReading, sortRows, sortStateOf } from "./sorting";
@@ -486,63 +487,6 @@ function AuditEventDeepLink({
         清除定位
       </button>
     </p>
-  );
-}
-
-/**
- * aud8: the chips for the two handle filters. aud9 kept them (same ids) and
- * made the handles selectable: the chip is what a pasted `?actor=` /
- * `?resource=` looks like when no option in the pickers matches it, and its
- * 取消 is still the way out. The raw handle stays in the `title`, like every
- * other id on this surface.
- */
-function AuditUrlFilterChips({
-  actor,
-  resource,
-  onClear,
-}: {
-  actor: string;
-  resource: string;
-  onClear: (key: "actor" | "resource") => void;
-}): ReactNode {
-  if (!actor && !resource) return null;
-  return (
-    <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="aud8-url-filters">
-      {actor ? (
-        <span
-          className="flex min-w-0 items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-xs text-muted-foreground"
-          data-testid="aud8-actor-chip"
-          title={`地址栏带入的操作者句柄（原值 ${actor}）已作为 actorId 发给服务；实测该参数生效，但它只吃机器句柄，界面上不铺原始值`}
-        >
-          操作者已按句柄筛选
-          <button
-            type="button"
-            className="underline underline-offset-2"
-            onClick={() => onClear("actor")}
-            data-testid="aud8-actor-clear"
-          >
-            取消
-          </button>
-        </span>
-      ) : null}
-      {resource ? (
-        <span
-          className="flex min-w-0 items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-xs text-muted-foreground"
-          data-testid="aud8-resource-chip"
-          title={`地址栏带入的资源编号（原值 ${resource}）已作为 resourceId 发给服务；该参数由路由接受，但其过滤效果本环境未单独实测，条数以服务回答为准`}
-        >
-          资源已按编号筛选
-          <button
-            type="button"
-            className="underline underline-offset-2"
-            onClick={() => onClear("resource")}
-            data-testid="aud8-resource-clear"
-          >
-            取消
-          </button>
-        </span>
-      ) : null}
-    </div>
   );
 }
 
@@ -1372,6 +1316,29 @@ function AuditEventsSurface(): ReactNode {
     setParams(draft, { replace: true });
   }, [params, setParams]);
 
+  /**
+   * audT: a chip's × removes exactly the address keys the chip itself carries.
+   * The keys sit beside the words (filterChips.ts), so this is one write path
+   * for every chip and there is no second list of parameter names to drift; the
+   * page never re-derives what a chip means from the chip's label.
+   *
+   * Deleting is not clearing by hand: `resetPagingAndFolds` is the same call the
+   * filter bar's own setters make, so a removal lands on page 1 with the cursor
+   * stack and the open folds dropped, and the smaller question is asked ONCE.
+   * A range is a pair, so removing the 自定义 chip drops `window`, `from` and
+   * `to` together and the picked-up draft goes with them.
+   */
+  const removeFilterChip = useCallback(
+    (chip: AuditChip) => {
+      const draft = new URLSearchParams(params);
+      for (const key of chip.params) draft.delete(key);
+      if (chip.params.includes("from")) setRange(null);
+      resetPagingAndFolds(draft);
+      setParams(draft, { replace: true, state: locationState ?? null });
+    },
+    [locationState, params, setParams],
+  );
+
   // audI: the type the address chose, spoken the way the picker speaks it, so
   // the export line can name the set in human words (an unsampled code reads
   // verbatim, exactly like the 类型 column does).
@@ -1553,6 +1520,16 @@ function AuditEventsSurface(): ReactNode {
   const filterSummary = filterSummaryLineOf(summaryInput);
   // audR: the same question, as a link. Origin-free by construction.
   const shareHref = pageShareHref(params);
+  // audT: the same question again, one piece at a time, for removal. The chips
+  // are seats of THIS `summaryInput` — the object audG pastes and audR shows —
+  // plus the three things only the address knows: how the window and the size
+  // were written, and whether the type code is one the picker offers.
+  const filterChips = filterChipsOf({
+    ...summaryInput,
+    rawWindow: params.get("window") ?? "",
+    typeKnown: eventType === "" || typeChoices.some((choice) => choice.value === eventType),
+    rawLimit: sizeReading.rejected ? sizeReading.written ?? "" : "",
+  });
 
   // audQ: one object decides every entry's availability — the two exports, the
   // two copy controls, the row fold and the retry — with the sentences that
@@ -1690,6 +1667,14 @@ function AuditEventsSurface(): ReactNode {
         onActorChange={setActor}
         onResourceChange={setResource}
       />
+
+      {/*
+       * audT: 生效筛选 chip 摘要 — one chip per filter that is on, directly under
+       * the bar that put it there. The row is read off the address, not off the
+       * rows, so it is there while a read is outstanding and there when a read
+       * was refused; it is absent only when nothing is on. × is a real button.
+       */}
+      <AuditFilterChips chips={filterChips} onRemove={removeFilterChip} />
 
       {/* aud9: how far each filter really reaches, right under the controls. */}
       <AuditFilterScope
