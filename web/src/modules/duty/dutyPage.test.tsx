@@ -633,7 +633,7 @@ describe("DutyPage time range", () => {
     expect(q('[data-testid="duty-range-14d"]')?.getAttribute("aria-pressed")).toBe("true");
     expect(q('[data-testid="duty-range-7d"]')?.getAttribute("aria-pressed")).toBe("false");
     expect(urls.filter((u) => u.includes("/workbench/timeseries")).length).toBe(1);
-    expect(urls.some((u) => u.includes("/workbench/timeseries") && u.includes("range=14d"))).toBe(true);
+    expect(urls.some((u) => u.includes("/workbench/timeseries") && u.includes("range=30d"))).toBe(true);
     expect(urls.some((u) => u.includes("/run-activity") && u.includes("weeks=2"))).toBe(true);
   });
 
@@ -973,5 +973,61 @@ describe("DutyPage refresh delta summary", () => {
     await new Promise((r) => setTimeout(r, 20));
     await act(async () => {});
     expect(container.querySelector('[data-testid="duty-changed"]')).toBeNull();
+  });
+});
+
+describe("DutyPage timeseries range contract", () => {
+  const q = (sel: string) => container.querySelector(sel);
+  async function until(cond: () => boolean, label: string) {
+    for (let i = 0; i < 120; i += 1) {
+      if (cond()) return;
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 10));
+      });
+    }
+    throw new Error(`timeout: ${label}`);
+  }
+
+  it("only ever asks the workbench reader for a range it accepts", async () => {
+    const calls: string[] = [];
+    fetchJSON.mockImplementation((url: string) => {
+      calls.push(url);
+      return Promise.resolve(ok(url));
+    });
+    await render(<DutyPage />);
+    await until(() => calls.length > 0, "requests");
+    const series = calls.filter((u) => u.includes("/workbench/timeseries"));
+    expect(series.length).toBeGreaterThan(0);
+    for (const url of series) {
+      const qs = new URLSearchParams(url.split("?")[1] ?? "");
+      expect(["24h", "1d", "7d", "30d"]).toContain(qs.get("range"));
+      expect(qs.get("bucket")).toBe("day");
+      expect(["runs", "failed", "costUsd"]).toContain(qs.get("metric"));
+    }
+  });
+
+  it("keeps the last 14 buckets of the 30 day answer and recomputes the total", async () => {
+    const points = Array.from({ length: 30 }, (_, i) => ({
+      ts: `2026-11-${String(i + 1).padStart(2, "0")}T00:00:00.000Z`,
+      label: `11/${i + 1}`,
+      value: 1,
+    }));
+    fetchJSON.mockImplementation((url: string) => {
+      if (url.includes("/workbench/timeseries")) {
+        return Promise.resolve({ asOf: WB_ASOF, available: true, points, totals: { metric: "runs", value: 30 } });
+      }
+      return Promise.resolve(ok(url));
+    });
+    await render(<DutyPage />);
+    await until(() => q('[data-testid="duty-trend-total"]') !== null, "summary");
+    expect(q('[data-testid="duty-trend-total"]')?.textContent).toBe("14");
+    const toggle = q('[data-testid="duty-trend-table-toggle"]') as HTMLButtonElement;
+    await act(async () => {
+      toggle.click();
+    });
+    await act(async () => {});
+    const rows = q('[data-testid="duty-trend-table"]')?.querySelectorAll("tbody tr") ?? [];
+    expect(rows.length).toBe(14);
+    expect(rows[0].textContent).toContain("11/17");
   });
 });

@@ -16,6 +16,7 @@ import {
   queueStats,
   summaryStats,
   timeseriesStats,
+  trimTimeseries,
 } from "./workbench";
 import { beijingDayWindow, daysAgoWindow } from "./format";
 import { diffDuty, type DutyDelta } from "./dutyDelta";
@@ -99,7 +100,7 @@ async function collect(rangeId: DutyRangeId): Promise<DutyData> {
   // 统计与趋势改吃 workbench 读模型：KPI 与时间序列由 BFF 聚合。
   const todayStatsP = load(async () => summaryStats(await fetchWorkbenchSummary("1d")));
   const stats14P = load(async () =>
-    timeseriesStats(await fetchWorkbenchTimeseries({ range: range.tsRange, bucket: "day" })),
+    timeseriesStats(trimTimeseries(await fetchWorkbenchTimeseries({ range: range.tsRange, bucket: "day" }), range.days)),
   );
   const activityP = load(() => fetchActivity(range.weeks));
   // 待审队列一次取数给两张卡：计数与前三行同源。
@@ -234,7 +235,10 @@ export function useDutyData(rangeId: DutyRangeId = DEFAULT_DUTY_RANGE): {
     setRefreshDelta(null);
     setData((prev) => ({ ...prev, stats14: loading(), activity: loading() }));
     void Promise.all([
-      load(async () => timeseriesStats(await fetchWorkbenchTimeseries({ range: dutyRange(rangeId).tsRange, bucket: "day" }))),
+      load(async () => {
+        const range = dutyRange(rangeId);
+        return timeseriesStats(trimTimeseries(await fetchWorkbenchTimeseries({ range: range.tsRange, bucket: "day" }), range.days));
+      }),
       load(() => fetchActivity(dutyRange(rangeId).weeks)),
     ]).then(([stats14, activity]) => {
       if (version !== rangeVersionRef.current) return;

@@ -59,11 +59,26 @@ export async function fetchWorkbenchSummary(range = "1d"): Promise<unknown> {
   return fetchJSON<unknown>(`${WB}/summary?range=${encodeURIComponent(range)}`);
 }
 
+/** The ranges the workbench timeseries accepts; anything else is a 400. */
+export const WB_TS_RANGES = ["24h", "1d", "7d", "30d"] as const;
+export const WB_TS_METRICS = ["runs", "failed", "costUsd"] as const;
+
+/**
+ * The reader only serves 24h/1d/7d/30d, so a 14 day window asks for 30d and
+ * keeps the last 14 day buckets. Totals are dropped: they describe the wider
+ * window and must be recomputed from the kept points.
+ */
+export function trimTimeseries(body: unknown, days: number): unknown {
+  if (!isRecord(body) || !Array.isArray(body.points)) return body;
+  const points = body.points.slice(-Math.max(1, Math.trunc(days)));
+  return { ...body, points, totals: null };
+}
+
 export async function fetchWorkbenchTimeseries(
   params: { range?: string; bucket?: string; metric?: string } = {},
 ): Promise<unknown> {
   const q = new URLSearchParams({
-    range: params.range ?? "14d",
+    range: params.range ?? "7d",
     bucket: params.bucket ?? "day",
     metric: params.metric ?? "runs",
   });

@@ -200,3 +200,12 @@
 - 四态走同一单点 `listActionGate().export`：空列表 title「没有可导出的 CSV」、错误「先重试，读到数据再导出」、无权「看不到运行记录」；加载/失败/无权时不渲染行列表但导出条仍在且禁用。
 - 分页口径随复制按钮 title：「当前已加载 N 行，不是全量（每页最多 30 条）」。
 - 验证：runs 2 files / 94 passed（基线 89），全量 2038 passed（基线 2033），tsc 本域 0，eslint 本域 exit 0；build exit 0，chunk `RunsModulePage-*.js` 内 `run-list-export`=1（entry 0）。未测：真实浏览器下载落盘与 375 折行。
+
+## R49 修复：workbench timeseries 只收合法范围（2026-11-20）
+
+- 缺陷：`/api/workbench/timeseries` 只接受 `24h|1d|7d|30d`，前端默认传 `14d`（`workbench.ts` 默认值与 `useDutyData` 两处），概览 14 天趋势卡必 400 `console.invalid_range`。
+- 改动前请求：`GET /agent-api/api/workbench/timeseries?range=14d&bucket=day&metric=runs` → 400。
+- 改动后请求：`GET /agent-api/api/workbench/timeseries?range=30d&bucket=day&metric=runs`；回包按天桶保留最后 14 个，`totals` 置空后由保留点重算（`trimTimeseries`），卡片口径仍是「近 14 天」，标题/摘要/arian 与表 caption 文案不变且与实际点数一致。
+- `dutyRange.ts`：`tsRange` 收窄为 `1d|7d|30d`，14d 映射到 `30d`（只读合法超集后裁剪）；`workbench.ts` 默认值改 `7d`。
+- 结构性盲区用例（2 例）：断言实际发出的 timeseries URL 的 `range` ∈ `["24h","1d","7d","30d"]`、`bucket=day`、`metric` ∈ `["runs","failed","costUsd"]`；另注入 30 点回包断言 14 天视图只留 14 桶、合计由点重算为 14、表体 14 行。
+- 验证：duty 5 files / 100 passed（基线 98），全量 151 files / 2040 passed（基线 2038），tsc 本域 0，eslint exit 0。
