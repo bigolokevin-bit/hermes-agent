@@ -10,7 +10,15 @@
  * draw the same body on purpose. Technical values (raw ids, the GAP number, the full
  * 摘要) live in `title` attributes, never on screen.
  */
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { Link, useSearchParams } from "react-router";
 import { ArrowRight, BookOpen, Copy, RefreshCw, Search } from "lucide-react";
@@ -66,6 +74,7 @@ import {
   readTasks,
   searchUrl,
   sessionCitations,
+  shortId,
   type CitationRow,
   type DocDetailRow,
   type DocRow,
@@ -93,6 +102,18 @@ interface DrillState {
 }
 
 const RefDrill = createContext<DrillState>({ open: "", toggle: () => {} });
+
+/**
+ * A detail view owns the deepest level's label (a space name or a document name), but
+ * only the page renders a breadcrumb, so ids never appear twice in the document. The
+ * child publishes what it read; the raw identifier and why it is missing stay in title.
+ */
+interface DeepCrumb {
+  space?: { label: string; title: string; href?: string };
+  doc?: { label: string; title?: string };
+}
+
+const CrumbReport = createContext<(crumb: DeepCrumb | null) => void>(() => {});
 
 type Surf<T> =
   | { kind: "loading" }
@@ -561,6 +582,66 @@ function RecordsTable({ rows }: { rows: RetrievalRow[] }): ReactNode {
 }
 
 /** 一行一个知识空间：名称 / 来源 / 文档数 / 最近同步 / 状态。 */
+const CRUMB_TESTIDS = {
+  list: "knB-crumb-list",
+  space: "knB-crumb-space",
+  doc: "knB-crumb-doc",
+  search: "knB-crumb-search",
+};
+
+export interface CrumbItem {
+  key: "list" | "space" | "doc" | "search";
+  label: string;
+  /** Real in-app target. Absent means this is the last level: not clickable. */
+  href?: string;
+  /** Raw identifier or the reason the label is a code — `title` only, never on screen. */
+  title?: string;
+}
+
+/**
+ * 面包屑：知识 / 空间名 / 文档名。每一级都是页内真链（客户端跳转），最后一级不可点
+ * 并带 aria-current="page"。名字读不到时用短码，并在 title 里说清是短码与原始标识；
+ * 关键词为空时不渲染空的检索段。
+ */
+function Breadcrumbs({ items }: { items: CrumbItem[] }): ReactNode {
+  const testids = CRUMB_TESTIDS;
+  const shown = items.filter((item) => item.label.trim() !== "");
+  if (shown.length === 0) return null;
+  return (
+    <nav className="knB-nav" aria-label="位置" data-testid="knB-nav">
+      <ol className="knB-list">
+        {shown.map((item, index) => {
+          const last = index === shown.length - 1;
+          const clickable = !last && item.href !== undefined;
+          return (
+            <li className="knB-item" key={item.key}>
+              {index > 0 ? (
+                <span className="knB-sep" aria-hidden="true">
+                  /
+                </span>
+              ) : null}
+              {clickable ? (
+                <Link className="knB-link" data-testid={testids[item.key]} to={item.href as string} title={item.title ?? undefined}>
+                  {item.label}
+                </Link>
+              ) : (
+                <span
+                  className="knB-current"
+                  data-testid={testids[item.key]}
+                  aria-current={last ? "page" : undefined}
+                  title={item.title ?? undefined}
+                >
+                  {item.label}
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+}
+
 /**
  * Wraps the matched characters without rewriting the cell: the text a screen reader
  * or a copy-paste gets is still exactly what the read returned, only the matched span
@@ -1164,6 +1245,7 @@ function SpaceDetailSurface({
   openDoc,
   docLink,
   backLink,
+  spaceSelfLink,
   onCloseDoc,
 }: {
   nonce: string;
@@ -1171,19 +1253,46 @@ function SpaceDetailSurface({
   openDoc: string;
   docLink: (key: string) => string;
   backLink: string;
+  spaceSelfLink: string;
   onCloseDoc: () => void;
 }): ReactNode {
   const [filter, setFilter] = useState("");
+  // 空间名不靠 URL 回显：它来自指定空间读口。读不到就用短码，原因放 title。
+  const names = useSurface<SpaceRow>(
+    () => fetchJsonStrict(SPACES_URL).then(readSpaces),
+    `space-name|${nonce}`,
+  );
+  const knownSpace =
+    names.state.kind === "ready" ? names.state.value.rows.find((row) => row.id === spaceId) ?? null : null;
+  const spaceCode = shortId(spaceId);
+  const spaceLabel = knownSpace?.name ?? (spaceCode ? `空间 · ${spaceCode}` : "空间");
+  const spaceTitle = knownSpace
+    ? "名字取自空间读口"
+    : `${spaceId}｜空间名没读到（读口未接入、无权限，或这个标识不在已加载的空间里），这里只显示标识尾段。`;
   const surface = useSurface<DocRow>(
     () => fetchJsonStrict(documentsUrl(spaceId)).then(readSpaceDocuments),
     `space-docs|${nonce}|${spaceId}`,
   );
-  const keyword = filter.trim().toLowerCase();
+  const filterKey = filter.trim().toLowerCase();
   const rows = surface.state.kind === "ready" ? surface.state.value.rows : [];
-  const shown = keyword === "" ? rows : rows.filter((row) => row.name.toLowerCase().includes(keyword));
+  const shown = filterKey === "" ? rows : rows.filter((row) => row.name.toLowerCase().includes(filterKey));
   const shownValue =
     surface.state.kind === "ready" ? { ...surface.state.value, rows: shown } : null;
   const openRow = shown.find((row, index) => (row.id !== "" ? row.id : `row-${index}`) === openDoc) ?? null;
+
+  const openKeyCode = shortId(openDoc);
+  const docLabel = openRow?.name ?? (openKeyCode ? `文档 · ${openKeyCode}` : "");
+  const docTitle = openRow
+    ? (openRow.nameHint ?? undefined)
+    : `${openDoc}｜这条不在已加载的列表里，文档名只能显示标识尾段。`;
+  const report = useContext(CrumbReport);
+  useEffect(() => {
+    report({
+      space: { label: spaceLabel, title: spaceTitle, href: openDoc === "" ? undefined : spaceSelfLink },
+      doc: openDoc === "" ? undefined : { label: docLabel, title: docTitle ?? undefined },
+    });
+    return () => report(null);
+  }, [report, spaceLabel, spaceTitle, spaceSelfLink, openDoc, docLabel, docTitle]);
 
   return (
     <>
@@ -1191,10 +1300,10 @@ function SpaceDetailSurface({
         <Link className="knw5-link" data-testid="kn3-docs-back" to={backLink}>
           返回空间列表
         </Link>
-        <span className="kn3-docs-title" title={spaceId}>
-          这个空间的文档列表
+        <span className="kn3-docs-title" title={spaceTitle}>
+          {spaceLabel}的文档列表
         </span>
-        <span className="knw5-sub">列表的名字取自上面的空间列表；这一页只列它自己的文档，不替空间编名字。</span>
+        <span className="knw5-sub">空间名取自指定空间读口；读不到就只显示标识尾段，不替空间编名字。</span>
       </p>
 
       <div className="kn3-docs-filter" data-testid="kn3-docs-filter">
@@ -1224,7 +1333,7 @@ function SpaceDetailSurface({
         unwiredHead={SPACE_DOC_UNWIRED_HEAD}
         unwiredHuman={SPACE_DOC_UNWIRED_HUMAN}
         empty={() =>
-          keyword === "" ? (
+          filterKey === "" ? (
             <p>该空间暂无文档。接口已响应，这份列表里没有文档；这只说明这份回答是空的，不下别的结论，也不给数量。</p>
           ) : (
             <p>
@@ -1331,6 +1440,7 @@ function DocumentNameSearch({
   keyword,
   openKey,
   sdocLink,
+  spaceLink,
   onCommit,
   onClear,
 }: {
@@ -1338,6 +1448,7 @@ function DocumentNameSearch({
   keyword: string;
   openKey: string;
   sdocLink: (key: string) => string;
+  spaceLink: (id: string) => string;
   onCommit: (value: string) => void;
   onClear: () => void;
 }): ReactNode {
@@ -1353,6 +1464,7 @@ function DocumentNameSearch({
   const needle = text.trim().toLowerCase();
   const shown = needle === "" ? loaded : loaded.filter((row) => row.name.toLowerCase().includes(needle));
   const openRow = shown.find((row, index) => (row.id !== "" ? row.id : `row-${index}`) === openKey) ?? null;
+  const openSpaceRaw = openRow?.spaceRaw ?? null;
   const roving = useRovingRows("kn6", 'a[data-testid="kn6-search-name"]');
   // Clearing resets the box itself too: a keyword typed but never submitted lives
   // only here, so a button that only touched the URL would look dead.
@@ -1363,6 +1475,16 @@ function DocumentNameSearch({
 
   return (
     <section className="kn6-search" data-testid="kn6-search-panel">
+      {openKey !== "" && openSpaceRaw ? (
+        <p className="knw5-sub">
+          <span data-testid="kn6-search-detail-space-note" title={openSpaceRaw}>
+            这条来自另一个空间：
+          </span>
+          <Link className="knB-link" data-testid="knB-crumb-space" to={spaceLink(openSpaceRaw)}>
+            {openRow?.spaceLabel ?? `空间 · ${shortId(openSpaceRaw) ?? ""}`}
+          </Link>
+        </p>
+      ) : null}
       <form
         className="knw5-form"
         data-testid="kn6-search-form"
@@ -1790,6 +1912,18 @@ export default function KnowledgeModulePage() {
   const openDoc = sp.get("doc") ?? "";
   const openSearchDoc = sp.get("sdoc") ?? "";
   const [nonce, setNonce] = useState("0");
+  const [deepCrumb, setDeepCrumb] = useState<DeepCrumb | null>(null);
+  const reportCrumb = useCallback((next: DeepCrumb | null) => {
+    setDeepCrumb((current) => {
+      const same =
+        (current?.space?.label ?? "") === (next?.space?.label ?? "") &&
+        (current?.space?.href ?? "") === (next?.space?.href ?? "") &&
+        (current?.space?.title ?? "") === (next?.space?.title ?? "") &&
+        (current?.doc?.label ?? "") === (next?.doc?.label ?? "") &&
+        (current?.doc?.title ?? "") === (next?.doc?.title ?? "");
+      return same ? current : next;
+    });
+  }, []);
   const forced = readForced(sp.get("state"));
 
   const selectTab = (key: KnowledgeTab) => {
@@ -1875,6 +2009,25 @@ function containerQuery(key: string): HTMLElement | null {
     return `/knowledge?${next.toString()}`;
   })();
 
+  /** The 空间 crumb: this space's own list, with the open document dropped. */
+  const spaceSelfLink = (() => {
+    const next = keepBase();
+    next.set("space", spaceId);
+    next.delete("doc");
+    next.delete("sdoc");
+    return `/knowledge?${next.toString()}`;
+  })();
+
+  /** The 知识 crumb: the search page with its keyword still in the address. */
+  const listLink = (() => {
+    const next = new URLSearchParams(sp);
+    next.delete("space");
+    next.delete("doc");
+    next.delete("sdoc");
+    if (!next.get("tab")) next.set("tab", "spaces");
+    return `/knowledge?${next.toString()}`;
+  })();
+
   const toggleDrill = (key: string) => {
     const next = new URLSearchParams(sp);
     if (drilled === key) next.delete("ref");
@@ -1896,6 +2049,33 @@ function containerQuery(key: string): HTMLElement | null {
 
   const refresh = () => setNonce((value) => String(Number(value) + 1));
 
+  /**
+   * One breadcrumb for the whole page: 知识 /〔检索「q」〕/〔空间〕/〔文档〕.
+   * A level is only skipped when there is genuinely nothing to name — an empty
+   * keyword never renders an empty segment.
+   */
+  // 「知识」去掉关键词回列表；「检索」带着关键词回列表。谁在当前页谁不可点。
+  const plainListLink = (() => {
+    const next = new URLSearchParams(sp);
+    next.delete("q");
+    next.delete("space");
+    next.delete("doc");
+    next.delete("sdoc");
+    if (!next.get("tab")) next.set("tab", "spaces");
+    return `/knowledge?${next.toString()}`;
+  })();
+  const deeper = spaceId !== "" || openSearchDoc !== "" || deepCrumb?.space !== undefined || deepCrumb?.doc !== undefined;
+  const crumbs: CrumbItem[] = [
+    { key: "list", label: "知识", href: query.trim() === "" && !deeper ? undefined : plainListLink },
+    ...(query.trim() === ""
+      ? []
+      : [{ key: "search" as const, label: `检索「${query.trim()}」`, href: deeper ? listLink : undefined }]),
+    ...(deepCrumb?.space
+      ? [{ key: "space" as const, label: deepCrumb.space.label, href: deepCrumb.space.href, title: deepCrumb.space.title }]
+      : []),
+    ...(deepCrumb?.doc ? [{ key: "doc" as const, label: deepCrumb.doc.label, title: deepCrumb.doc.title }] : []),
+  ];
+
   return (
     <div className="knw5-page" data-testid="knw5-page" >
       <header className="knw5-head">
@@ -1915,10 +2095,13 @@ function containerQuery(key: string): HTMLElement | null {
           keyword={query}
           openKey={openSearchDoc}
           sdocLink={sdocLink}
+          spaceLink={spaceLink}
           onCommit={commitKeyword}
           onClear={clearKeyword}
         />
       ) : null}
+
+      <Breadcrumbs items={crumbs} />
 
       <div className="knw5-seg" role="tablist" aria-label="知识分组">
         {TAB_ORDER.map((key) => (
@@ -1954,6 +2137,7 @@ function containerQuery(key: string): HTMLElement | null {
                 </div>
               )
             ) : (
+            <CrumbReport.Provider value={reportCrumb}>
             <RefDrill.Provider value={{ open: drilled, toggle: toggleDrill }}>
               {tab === "spaces" ? (
                 spaceId === "" ? (
@@ -1971,6 +2155,7 @@ function containerQuery(key: string): HTMLElement | null {
                     openDoc={openDoc}
                     docLink={docLink}
                     backLink={backLink}
+                    spaceSelfLink={spaceSelfLink}
                     onCloseDoc={closeDocDrawer}
                   />
                 )
@@ -1994,7 +2179,8 @@ function containerQuery(key: string): HTMLElement | null {
                   <SessionCitationsSurface nonce={nonce} />
                 </>
               ) : null}
-            </RefDrill.Provider>
+              </RefDrill.Provider>
+            </CrumbReport.Provider>
             )}
           </div>
         </CardContent>

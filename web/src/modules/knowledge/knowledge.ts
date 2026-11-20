@@ -420,6 +420,14 @@ function pickNumber(...values: unknown[]): number | null {
   return null;
 }
 
+/**
+ * The short handle used when a name cannot be read: the tail of the identifier the
+ * read did return, never a made-up label. The raw id stays available for `title`.
+ */
+export function shortId(value: string | null | undefined): string | null {
+  return shortCode(value ?? null);
+}
+
 export function beijing(value: string | null): string | null {
   if (!value) return null;
   const ms = Date.parse(value);

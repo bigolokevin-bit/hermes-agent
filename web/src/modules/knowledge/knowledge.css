@@ -738,3 +738,55 @@
 .knw5-page [data-testid="kn9-count-docs"] {
   color: var(--color-muted-foreground);
 }
+
+/* R51 — 面包屑：知识 / 空间 / 文档。每一级都是页内真链，最后一级只是文本。
+   层级不靠边距撑宽，窄屏换行而不横向溢出。 */
+.knB-nav {
+  min-width: 0;
+}
+
+.knB-list {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.74rem;
+}
+
+.knB-item {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.knB-link {
+  color: var(--color-primary);
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+.knB-link:hover {
+  text-decoration: underline;
+}
+
+.knB-link:focus-visible,
+.knB-current:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.knB-current {
+  color: var(--color-foreground);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.knB-sep {
+  color: var(--color-muted-foreground);
+}

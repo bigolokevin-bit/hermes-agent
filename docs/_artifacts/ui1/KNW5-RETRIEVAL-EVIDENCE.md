@@ -1277,3 +1277,80 @@ $ node scripts/assert-ia.mjs --source=react
 边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
 package·lock / web-scripts / ops；按显式路径提交（无 `git add -A`）；无 force / amend / `--no-verify`；
 非本域 `pnpm build` 阻塞未追。
+
+---
+
+# KNW5 追加 R51：空间详情 ↔ 全库检索的返回保态与面包屑（testid `knB-*`）（2026-11-20 BJT）
+
+安全闸：toplevel 相符、porcelain 空、显式 refspec fetch → tip 仍是 `5d91f22d`（代码代次 `6a02ed58`，
+按要求不把 `02a7385c` 当现网）、`git merge` 回 Already up to date、零冲突；未用 reset --hard，
+未并 main、未重建 9122。
+
+## 一、返回保态（Chromium 真实导航与后退，实测 URL）
+
+```text
+列表无关键词  url=/knowledge                              面包屑：知识[current]（不出空检索层级）
+输入并回车    url=/knowledge?q=人事                        面包屑：知识(链→?tab=spaces) / 检索「人事」[current]
+进入空间      url=/knowledge?q=人事&tab=spaces&panel=spaces&space=sp_hr
+              面包屑：知识 / 检索「人事」(链，带 q) / 人事制度空间[current]
+进入文档      url=…&space=sp_hr&doc=d_manual               面包屑：知识 / 检索「人事」 / 人事制度空间(链→去掉 doc) / 员工手册.pdf[current]
+连退两级回列表 url=/knowledge?q=%E4%BA%BA%E4%BA%8B  输入框回填「人事」  rows=1
+              kn9-count「当前已加载 2 项内命中 1 项…」  mark 数=1
+点面包屑「检索「人事」」回列表：q 与命中态同样复原（rows=1、count 同句）
+```
+
+`?q=` 全程留在地址里：进详情不清词，返回（浏览器后退或面包屑）都有同一份关键词与命中态，
+命中数、行数与高亮都取同一个筛选后数组，不复算也不二次请求。
+
+## 二、面包屑
+
+```text
+nav：role=navigate（<nav aria-label="位置">），层级 = 知识 /〔检索「q」〕/〔空间名〕/〔文档名〕
+所有中间层都是页内真链（Link，客户端跳转，focus 可见）；末级是 <span aria-current="page">，不可点
+键盘实测（1280）：knB-crumb-list:fv → knB-crumb-search:fv → knB-crumb-space:fv → knw5-tab-spaces:fv
+空间名不靠 URL 回显：来自指定空间读口那一次请求（每层一次，不为每行文档重复问）
+  读口通：  title=「名字取自空间读口」
+  读口不通：文本退成「空间 · <标识尾段>」，title=「sp_hr｜空间名没读到（读口未接入、无权限，
+            或这个标识不在已加载的空间里），这里只显示标识尾段。」——原始标识只在 title
+文档名同理（「文档 · <尾段>」）；关键词为空时不渲染空的检索段
+```
+
+## 三、没有退化的门禁
+
+```text
+403 与 404 逐字同体：detail 视图下面包屑与各级正文在 today / denied 两种回答里完全一致，
+  只有请求编号不同；kn3-docs 与抽屉都仍给可复制 rid + 重试（实测 rid-today-b7c1 / rid-denied-b7c1）
+四态：未接入 / 空态 / 错误（可复制 rid + 重试）/ 骨架，均按面各自换内容
+零写入口：form[method=post]、textarea、select、checkbox、number 计数 0
+1440 / 1280 / 375：docSW == vw == bodySW；面包屑 flex-wrap + overflow-wrap，不撑宽
+[data-fixture] 普通 URL 为 0；屏面无 GAP-03 / 状态码 / 路由 / 裸 id / 字段名
+家族零破：kn8-*、kn9-*、kn6-search-detail*、kn3-docs-*、kn7-*、knw5-* 都在
+  （实测 wired 详情：kn8=0（详情位不收关键词框）、kn9=2、kn7=11、kn6=10、kn3=20、knw5=8）
+本轮顺手修掉一处真实结构缺陷：面包屑原先由三个面各自渲染，同一页出现两份同名 testid
+  （byTestid 会先命中文档框那一份）；改为「面把最深一级的名字上报给页面，页面只渲染一条
+  面包屑」，id 唯一、层级顺序也固定为 知识 / 检索 / 空间 / 文档。
+```
+
+## 四、验证尾行
+
+```text
+$ npx vitest run src/modules/knowledge
+ Test Files  2 passed (2)
+      Tests  44 passed (44)
+
+$ npx vitest run
+ Test Files  132 passed (132)
+      Tests  1458 passed (1458)
+
+$ npx eslint src/modules/knowledge
+（无输出，exit 0）
+
+$ npx tsc -b . --noEmit | grep modules/knowledge
+（无输出，本模块 0 错）
+
+$ npx vite build --outDir /tmp/knw19-dist --emptyOutDir
+✓ built in 6.17s   （产物只落 /tmp）
+```
+
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；显式路径提交（无 `git add -A`）；无 force / amend / `--no-verify`。
