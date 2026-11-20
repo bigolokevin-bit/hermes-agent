@@ -1546,3 +1546,93 @@ describe("runs list column sorting", () => {
     URL.createObjectURL = original;
   });
 });
+
+/* ── preview ↔ detail parity ─────────────────────────────────────────── */
+describe("runs preview and detail parity", () => {
+  const PAR = {
+    runId: "rn_01M7822PARITY000000001",
+    status: "completed",
+    costStatus: "upstream",
+    costUsd: 2.5,
+    startedAt: "2026-11-18T02:00:00Z",
+    endedAt: "2026-11-18T02:11:00Z",
+    employeeId: "emp_aaaabbbbcccc",
+  };
+  const PAR_BARE = {
+    runId: "rn_01M7822PARITY000000002",
+    startedAt: "2026-11-18T04:00:00Z",
+  };
+
+  const parityMock = (row: unknown) => async (url: string): Promise<unknown> => {
+    if (url.includes("/api/run-detail")) return { ...(row as object) };
+    if (url.includes("/api/run-events")) return { items: [], hasMore: false };
+    if (url.includes("/api/employees")) return { items: [] };
+    if (url.includes("/api/run-stats")) return { items: [] };
+    if (url.includes("/api/runs")) return { items: [row] };
+    return { items: [] };
+  };
+
+  const previewText = (index: number, key: string): string =>
+    document.querySelector(`[data-testid='run-row-preview-${index}-${key}'] dd`)?.textContent ?? "";
+  const detailText = (): string =>
+    document.querySelector("[data-testid='run5-detail']")?.textContent ?? "";
+
+  async function openBoth(): Promise<void> {
+    await waitFor(() => rowNodes() === 1, "row ready");
+    await waitFor(() => document.querySelector("[data-testid='run5-detail']") !== null, "detail ready");
+    await act(async () => {
+      (document.querySelector("[data-testid='run-row-toggle-0']") as HTMLButtonElement).click();
+    });
+  }
+
+  it("reads the same six values on the row preview and in the detail", async () => {
+    api.fetchJSON.mockImplementation(parityMock(PAR));
+    await render(`/runs?run=${encodeURIComponent(PAR.runId)}`);
+    await openBoth();
+    const detail = detailText();
+    const fields = ["status", "started", "ended", "elapsed", "cost", "employee"];
+    for (const key of fields) {
+      const value = previewText(0, key);
+      expect(value.length).toBeGreaterThan(0);
+      expect(detail).toContain(value);
+    }
+    expect(previewText(0, "started")).toBe("2026-11-18 10:00");
+    expect(previewText(0, "ended")).toBe("2026-11-18 10:11");
+    expect(previewText(0, "elapsed")).toBe("11 分钟");
+    expect(previewText(0, "employee")).toBe("员工 · AAAABBBB");
+    expect(document.querySelector("[data-testid='run5-detail-ended']")?.textContent).toBe("2026-11-18 10:11");
+    expect(document.querySelector("[data-testid='run5-detail-employee']")?.textContent).toBe("员工 · AAAABBBB");
+  });
+
+  it("says the same sentence when a field is missing, and never fills the gap", async () => {
+    api.fetchJSON.mockImplementation(parityMock(PAR_BARE));
+    await render(`/runs?run=${encodeURIComponent(PAR_BARE.runId)}`);
+    await openBoth();
+    expect(previewText(0, "status")).toBe("该字段未返回");
+    expect(previewText(0, "ended")).toBe("该字段未返回");
+    expect(document.querySelector("[data-testid='run5-detail-ended']")?.textContent).toBe("该字段未返回");
+    expect(detailText()).toContain("该字段未返回");
+    expect(previewText(0, "elapsed")).toBe("—");
+    expect(document.querySelector("[data-testid='run5-detail-summary']")?.textContent).toContain("耗时 —");
+    expect(previewText(0, "employee")).toBe("未指派");
+    expect(document.querySelector("[data-testid='run5-detail-employee']")?.textContent).toBe("未指派");
+    expect(detailText()).not.toContain("$0.00");
+  });
+
+  it("the preview adds no read while the detail is read exactly once", async () => {
+    api.fetchJSON.mockImplementation(parityMock(PAR));
+    await render(`/runs?run=${encodeURIComponent(PAR.runId)}`);
+    await openBoth();
+    const urls = (): string[] => api.fetchJSON.mock.calls.map((call) => String(call[0]));
+    const before = urls().length;
+    await act(async () => {
+      (document.querySelector("[data-testid='run-row-toggle-0']") as HTMLButtonElement).click();
+    });
+    await act(async () => {
+      (document.querySelector("[data-testid='run-row-toggle-0']") as HTMLButtonElement).click();
+    });
+    expect(urls()).toHaveLength(before);
+    expect(urls().filter((u) => u.includes("/api/run-detail"))).toHaveLength(1);
+    expect(urls().filter((u) => u.includes("/api/run-events"))).toHaveLength(1);
+  });
+});

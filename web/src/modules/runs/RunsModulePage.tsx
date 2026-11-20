@@ -768,6 +768,10 @@ export function RunsModulePage() {
   // Employee names decorate the list as well as the detail line. The directory
   // is a side-read for labels only: if it fails, the 8-character code stays as
   // the honest fallback and the run answer is untouched.
+  // Preview and detail read the same six fields through one helper, so the two
+  // renderings cannot drift apart (missing values say the same sentence).
+  const detailView = detail.k === "ready" ? runPreview(detail.run, names) : null;
+
   useEffect(() => {
     if (forced !== null) return;
     let alive = true;
@@ -995,8 +999,8 @@ export function RunsModulePage() {
                 <h2 className="min-w-0 break-words text-base font-semibold" title={detail.run.runId}>
                   {runCode(detail.run.runId)}
                 </h2>
-                <p className="mt-0.5 min-w-0 break-words text-xs text-muted-foreground">
-                  {`${statusLabel(detail.run.status)} · 开始 ${beijingMinute(detail.run.startedAt).text ?? "—"} · 耗时 ${elapsedMinute(detail.run.startedAt, detail.run.endedAt).text ?? "—"}`}
+                <p className="mt-0.5 min-w-0 break-words text-xs text-muted-foreground" data-testid="run5-detail-summary">
+                  {`${detailView?.status.text ?? "—"} · 开始 ${detailView?.started.text ?? "—"} · 耗时 ${detailView?.elapsed.text ?? "—"}`}
                 </p>
               </div>
               <Button size="sm" outlined onClick={closeRun} prefix={<X className="h-3.5 w-3.5" />} data-testid="run5-detail-close">
@@ -1006,7 +1010,9 @@ export function RunsModulePage() {
 
             <div className="grid min-w-0 gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
               <DetailField label="状态">
-                <Badge tone={statusTone(detail.run.status)} data-testid="run5-detail-status">{statusLabel(detail.run.status)}</Badge>
+                <span title={detailView?.status.title}>
+                  <Badge tone={statusTone(detail.run.status)} data-testid="run5-detail-status">{detailView?.status.text ?? "—"}</Badge>
+                </span>
               </DetailField>
               <DetailField label="成本">
                 <CostCell row={detail.run} testId="run5-detail-cost" />
@@ -1022,9 +1028,9 @@ export function RunsModulePage() {
                 {detail.run.attemptNo === undefined ? <Dashed reason="服务没有给出尝试次数" /> : `第 ${detail.run.attemptNo} 次`}
               </DetailField>
               <DetailField label="结束">
-                {beijingMinute(detail.run.endedAt).text ?? (
-                  <Dashed reason="还没有结束时间：这条运行可能仍在进行，或服务未记录结束" />
-                )}
+                <span data-testid="run5-detail-ended" title={detailView?.ended.title}>
+                  {detailView?.ended.text ?? "—"}
+                </span>
               </DetailField>
               <DetailField label="失败原因">
                 <span title={failureSummary(detail.run).reason || undefined}>
@@ -1035,8 +1041,8 @@ export function RunsModulePage() {
                 <span title={detail.run.taskId ?? undefined}>{taskLabel(detail.run.taskId)}</span>
               </DetailField>
               <DetailField label="员工">
-                <span title={detail.run.employeeId ?? undefined}>
-                  {employeeLabel(detail.run.employeeId, names)}
+                <span data-testid="run5-detail-employee" title={detailView?.employee.title}>
+                  {detailView?.employee.text ?? "—"}
                 </span>
               </DetailField>
               <DetailField label="事件">

@@ -246,3 +246,13 @@
 - 同单修掉一处硬编码：失败分支摘要原写「近 14 天摘要：…」，切 7d/30d 时口径混用 → 改为 `${label}摘要：…`；loading 分支同样使用 `label`（「正在读取近 7 天的运行记录」）。
 - 测试 4 例：14d + 注入 30 点 → 说明句逐字、四处口径一致、表体 14 行；切 7d/30d 说明消失且各自 aria 正确；挂起读口验证 loading 文案随范围；说明句渲染后 40ms 内 `fetchJSON` 计数不变（零额外请求）。
 - 验证：duty 5 files / 104 passed（基线 100）；全量 2175 passed；tsc 本域 0；eslint 本域 exit 0（4 既有 warning）；build exit 0，chunk `DutyPage-*.js` 内 `duty-trend-window-note`=1（entry 0）。未测：真实浏览器 375 说明句折行。
+
+## 预览与详情同值（runs preview/detail parity，2026-11-20）
+
+- 两条渲染路径收成一个 helper：行内预览（`runPreview()` → `RunPreviewPanel`）与 `?run=<id>` 详情卡（`detailView = runPreview(detail.run, names)`）现在读同一份六字段派生；详情卡新增 `run5-detail-summary`、`run5-detail-ended`、`run5-detail-employee` 锚点。
+- 改前/改后（同一缺字段 run：只有 startedAt，无 status / 无 endedAt / 无 employee / 成本未知）：
+  - 改前：详情结束位渲染长句「还没有结束时间…」、耗时可能拿本机时钟算（`elapsedMinute` 未判两端）、状态缺值渲染空 Badge、员工 title 用裸 id。
+  - 改后：两处一律「该字段未返回」；耗时两处「—」且 title 含「不拿本机时间补一端」；成本两处「—」（详情正文不出现 `$0.00`）；员工两处「未指派」、有 id 时两处都显 8 位短码、原始 id 只进 title。
+- 测试 3 例：完整 run 六字段逐项两处同值（`2026-11-18 10:00` / `10:11` / `11 分钟` / `员工 · AAAABBBB` 逐字相等）；缺失 run 同句；预览开关两次后 `fetchJSON` 计数不变，`/api/run-detail` 与 `/api/run-events` 各恰 1 次。
+- 口径：预览是纯渲染，不新增读；详情仍只读一次明细与一次事件流；`该字段未返回`/`—`/`未指派` 与列表、复制、CSV 三面保持一致。
+- 验证：runs 3 files / 111 passed（基线 108）；全量 2178 passed；tsc 本域 0；eslint 本域 exit 0。未测：真实浏览器 375 详情长文案折行。
