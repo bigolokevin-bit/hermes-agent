@@ -735,18 +735,20 @@ function useRovingRows(marker: string, linkSelector: string) {
     return Array.from(scope.querySelectorAll<HTMLElement>(linkSelector));
   };
 
-  const moveTo = (index: number) => {
+  const moveTo = (index: number): boolean => {
     const list = nodes();
-    if (list.length === 0) return;
+    if (list.length === 0) return false;
     const next = Math.max(0, Math.min(index, list.length - 1));
     setActive(next);
     list[next]?.focus();
+    return true;
   };
 
   const onInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key !== "ArrowDown") return;
-    event.preventDefault();
-    moveTo(active < 0 ? 0 : active + 1);
+    // 空结果或读口没接到行时不劫持方向键：preventDefault 只在真的挪了焦点之后发生，
+    // 原生滚动照旧，屏面如实——没行可去，按键不该看起来「失灵」。
+    if (moveTo(active < 0 ? 0 : active + 1)) event.preventDefault();
   };
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -790,11 +792,13 @@ function SpaceTable({
   spaceLink,
   needle,
   tabIndexFor,
+  active,
 }: {
   rows: SpaceRow[];
   spaceLink: (id: string) => string;
   needle: string;
   tabIndexFor: (index: number) => number;
+  active: number;
 }): ReactNode {
   return (
     <div className="knw5-scroll">
@@ -818,6 +822,7 @@ function SpaceTable({
                     data-testid="knw5-space-link"
                     to={spaceLink(row.id)}
                     tabIndex={tabIndexFor(index)}
+                    aria-current={active === index ? "true" : undefined}
                     title="看这个空间里的文档"
                   >
                     <Highlight text={row.name} needle={needle} testid="kn9-mark-space" />
@@ -1018,7 +1023,15 @@ function SpacesSurface({
             </p>
           )
         }
-        render={(value) => <SpaceTable rows={value.rows} spaceLink={spaceLink} needle={text} tabIndexFor={roving.tabIndexFor} />}
+        render={(value) => (
+          <SpaceTable
+            rows={value.rows}
+            spaceLink={spaceLink}
+            needle={text}
+            tabIndexFor={roving.tabIndexFor}
+            active={roving.active}
+          />
+        )}
       />
       </div>
       {surface.state.kind === "ready" ? (
@@ -1311,6 +1324,9 @@ function DocTable({
   sort,
   dir,
   onSort,
+  tabIndexFor,
+  active,
+  onListKeyDown,
 }: {
   entries: DocEntry[];
   docLink: (key: string) => string;
@@ -1319,9 +1335,17 @@ function DocTable({
   sort: DocSortCol;
   dir: DocSortDir;
   onSort: (col: DocSortCol) => void;
+  tabIndexFor: (index: number) => number | undefined;
+  active: number;
+  onListKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) => void;
 }): ReactNode {
   return (
-    <div className="kn3-docs-wrap">
+    <div
+      className="kn3-docs-wrap"
+      data-roving="kn3"
+      data-active-row={active}
+      onKeyDown={onListKeyDown}
+    >
       <table className="knw5-table kn3-docs-table" data-testid="kn3-docs-table">
         <thead>
           <tr>
@@ -1332,12 +1356,20 @@ function DocTable({
           </tr>
         </thead>
         <tbody>
-          {entries.map(({ row, key }) => {
+          {entries.map(({ row, key }, index) => {
             const isOpen = openKey !== "" && openKey === key;
             return (
-              <tr key={key} data-testid="kn3-docs-row" data-open={isOpen ? "1" : "0"} title={row.id || undefined}>
+              <tr key={key} data-testid="kn3-docs-row" data-open={isOpen ? "1" : "0"} data-active={index} title={row.id || undefined}>
                 <td data-label="文档名">
-                  <Link className="kn3-docs-name" data-testid="kn3-docs-name" to={docLink(key)} title={row.nameHint ?? undefined}>
+                  <Link
+                    className="kn3-docs-name"
+                    data-testid="kn3-docs-name"
+                    to={docLink(key)}
+                    // 未进 roving 前不上显式 tabindex（保持无属性=原生序）；进入后同时只有一个 0。
+                    tabIndex={active === -1 ? undefined : tabIndexFor(index)}
+                    aria-current={active === index ? "true" : undefined}
+                    title={row.nameHint ?? undefined}
+                  >
                     <Highlight text={row.name} needle={needle} testid="kn9-mark-doc" />
                   </Link>
                 </td>
@@ -1414,6 +1446,8 @@ function SpaceDetailSurface({
     () => fetchJsonStrict(documentsUrl(spaceId)).then(readSpaceDocuments),
     `space-docs|${nonce}|${spaceId}`,
   );
+  // R58 — 空间详情文档列表的 roving tabindex：与空间卡片（kn8）、检索命中（kn6）同一套钩子。
+  const roving = useRovingRows("kn3", 'a[data-testid="kn3-docs-name"]');
   const filterKey = filter.trim().toLowerCase();
   const baseRows = surface.state.kind === "ready" ? surface.state.value.rows : [];
   const meta1: DocPage | undefined = surface.state.kind === "ready" ? surface.state.value.page : undefined;
@@ -1549,8 +1583,10 @@ function SpaceDetailSurface({
           <input
             className="knw5-input"
             type="search"
+            id="kn3-input"
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
+            onKeyDown={roving.onInputKeyDown}
             placeholder="按文档名筛选"
             data-testid="kn3-docs-filter-input"
           />
@@ -1590,6 +1626,9 @@ function SpaceDetailSurface({
               sort={sort}
               dir={dir}
               onSort={onSort}
+              tabIndexFor={roving.tabIndexFor}
+              active={roving.active}
+              onListKeyDown={roving.onKeyDown}
             />
 
             {/* R54 — 游标分页条：读数只来自信封给的字段；缺什么就说什么不可用，一律不推算。 */}

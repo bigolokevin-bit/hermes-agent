@@ -2974,4 +2974,137 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(iBtn()?.disabled).toBe(true);
     expect(iBtn()?.getAttribute("title")).toBe("当前没有可复制的空间");
   });
+
+  it("roves tabindex through space cards and the space document rows: arrows/Home/End, Esc back to the box, aria-current sync, no hijack when empty", async () => {
+    const SPACE_LIST = {
+      asOf: "2026-11-19T07:00:00Z",
+      items: [
+        { spaceId: "sp_hr", name: "人事制度空间", docCount: 3, status: "synced" },
+        { spaceId: "sp_fin", name: "财务口径空间", docCount: 1, status: "ready" },
+        { spaceId: "sp_ops", name: "运维手册空间", docCount: 2, status: "synced" },
+      ],
+    };
+    const DOC_LIST = {
+      asOf: "2026-11-19T07:00:00Z",
+      documents: [
+        { documentId: "d1", fileName: "员工手册.pdf", updatedAt: "2026-11-19T07:00:00Z" },
+        { documentId: "d2", fileName: "员工考勤补充说明", updatedAt: "2026-11-19T06:00:00Z" },
+        { documentId: "d3", fileName: "定薪表.xlsx", updatedAt: "2026-11-19T05:00:00Z" },
+      ],
+    };
+    const key = (node: Element | null, code: string): KeyboardEvent => {
+      const event = new KeyboardEvent("keydown", { key: code, bubbles: true, cancelable: true });
+      void node?.dispatchEvent(event);
+      return event;
+    };
+
+    // ---------- A. 空间详情文档列表 ----------
+    fetchMock.mockClear();
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SPACE_LIST);
+      if (url.startsWith("/agent-api/api/documents?") && url.includes("spaceId=sp_hr")) return Promise.resolve(DOC_LIST);
+      return fail(404, "这个数据接口还没有接入。", "rid-k-x");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    const urlsBefore = fetchMock.mock.calls.length;
+    const docs = () => [...container.querySelectorAll('a[data-testid="kn3-docs-name"]')] as HTMLAnchorElement[];
+    const filterInput = byTestid("kn3-docs-filter-input") as HTMLInputElement;
+    const docScope = () => container.querySelector('[data-roving="kn3"]');
+
+    // 未进 roving：无显式 tabindex（原生 DOM 序），行是真 a[href]——Enter 由浏览器原生打开
+    expect(docs().map((x) => x.getAttribute("tabindex"))).toEqual([null, null, null]);
+    expect(docs()[0]?.getAttribute("href")).toContain("doc=d1");
+
+    // 筛选框 ArrowDown 进第一行；进入后同时只有一个 0，其余 -1，无正数
+    let ev = key(filterInput, "ArrowDown");
+    await act(async () => {});
+    expect(document.activeElement).toBe(docs()[0]);
+    expect(docs().map((x) => x.getAttribute("tabindex"))).toEqual(["0", "-1", "-1"]);
+    expect(docs().every((x) => !["1", "2", "3"].includes(x.getAttribute("tabindex") ?? ""))).toBe(true);
+    // aria-current 与实际焦点同步
+    expect(docs()[0]?.getAttribute("aria-current")).toBe("true");
+    expect(docs()[1]?.hasAttribute("aria-current")).toBe(false);
+
+    // ↓ → End → Home → ↑ 都在行间走，aria-current 跟着焦点
+    key(filterInput, "ArrowDown");
+    await act(async () => {});
+    expect(document.activeElement).toBe(docs()[1]);
+    ev = key(docScope(), "End");
+    await act(async () => {});
+    expect(document.activeElement).toBe(docs()[2]);
+    expect(docs()[2]?.getAttribute("aria-current")).toBe("true");
+    expect(docs()[0]?.hasAttribute("aria-current")).toBe(false);
+    expect(ev.defaultPrevented).toBe(true); // 有行时确实接管
+    key(docScope(), "Home");
+    await act(async () => {});
+    expect(document.activeElement).toBe(docs()[0]);
+    key(docScope(), "ArrowUp");
+    await act(async () => {});
+    expect(document.activeElement).toBe(docs()[0]); // 首行不越界
+
+    // Esc 回筛选框：tabindex 全数退回原生，aria-current 清干净
+    ev = key(docScope(), "Escape");
+    await act(async () => {});
+    expect(document.activeElement).toBe(filterInput);
+    expect(docs().map((x) => x.getAttribute("tabindex"))).toEqual([null, null, null]);
+    expect(docs().every((x) => !x.hasAttribute("aria-current"))).toBe(true);
+
+    // 全程零额外请求
+    expect(fetchMock.mock.calls.length).toBe(urlsBefore);
+
+    // 筛空后不劫持：方向键 defaultPrevented=false、焦点不动、原生滚动照旧
+    await type("kn3-docs-filter-input", "查无此词");
+    expect(byTestid("kn3-docs-empty")).toBeTruthy();
+    ev = key(filterInput, "ArrowDown");
+    await act(async () => {});
+    expect(ev.defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(filterInput);
+    expect(fetchMock.mock.calls.length).toBe(urlsBefore);
+
+    // 读口 404：没有表、没有 roving scope，也不劫持
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SPACE_LIST);
+      return fail(404, "这个数据接口还没有接入。", "rid-k-gone");
+    });
+    await render("/knowledge?tab=spaces&space=sp_missing");
+    const afterGone = fetchMock.mock.calls.length;
+    const goneInput = byTestid("kn3-docs-filter-input") as HTMLInputElement;
+    await act(async () => {
+      goneInput.focus();
+    });
+    ev = key(goneInput, "ArrowDown");
+    await act(async () => {});
+    expect(ev.defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(goneInput);
+    expect(container.querySelector('[data-roving="kn3"]')).toBeNull();
+    expect(byTestid("knD-state-unavailable")).toBeTruthy();
+    expect(fetchMock.mock.calls.length).toBe(afterGone);
+
+    // ---------- B. 空间卡片的 aria-current 同步（roving 本就在，补同步断言） ----------
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SPACE_LIST);
+      return fail(404, "这个数据接口还没有接入。", "rid-k-x");
+    });
+    await render("/knowledge?tab=spaces");
+    const urlsSpaces = fetchMock.mock.calls.length;
+    const spaceLinks = () => [...container.querySelectorAll('a[data-testid="knw5-space-link"]')] as HTMLAnchorElement[];
+    const box = byTestid("kn8-global-input") as HTMLInputElement;
+    key(box, "ArrowDown");
+    await act(async () => {});
+    expect(document.activeElement).toBe(spaceLinks()[0]);
+    expect(spaceLinks().map((x) => x.getAttribute("tabindex"))).toEqual(["0", "-1", "-1"]);
+    expect(spaceLinks()[0]?.getAttribute("aria-current")).toBe("true");
+    key(box, "ArrowDown");
+    await act(async () => {});
+    expect(spaceLinks()[1]?.getAttribute("aria-current")).toBe("true");
+    expect(spaceLinks()[0]?.hasAttribute("aria-current")).toBe(false);
+    key(byTestid("kn9-space-list") as Element, "End");
+    await act(async () => {});
+    expect(spaceLinks()[2]?.getAttribute("aria-current")).toBe("true");
+    key(byTestid("kn9-space-list") as Element, "Escape");
+    await act(async () => {});
+    expect(document.activeElement).toBe(box);
+    expect(spaceLinks().every((x) => !x.hasAttribute("aria-current"))).toBe(true);
+    expect(fetchMock.mock.calls.length).toBe(urlsSpaces);
+  });
 });

@@ -1618,3 +1618,50 @@ $ npx vite build --outDir /tmp/knw25-dist → exit 0（产物只落 /tmp）
 边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
 package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
 无 force / amend / `--no-verify`；单 commit「feat(console): knowledge spaces list copy」。
+
+# KNW5 追加 R58：空间卡片与空间详情文档列表的 roving tabindex（键盘收口）（2026-11-20 BJT）
+
+基线安全闸：toplevel 相符、porcelain 空、显式 refspec fetch；上游仍 `b797bc98`
+（generation 053da5c4），merge 为 Already up to date——本笔只有 feature commit。
+
+## 一、口径
+
+```text
+钩子       复用 R50 的 useRovingRows（空间卡片 kn8、检索命中 kn6 本在用），本轮把同一钩子
+           接到空间详情文档列表（新 scope data-roving="kn3"，行链接 kn3-docs-name）：
+           ↑/↓ 逐行走、Home/End 首末行、越界钳位（首行↑不动）；Enter 打开该行真 a[href]
+           （浏览器原生激活，行是 client-routing 的 Link，href 带 doc=）；Esc 回搜索框
+           （文档列表→筛选框 #kn3-input，空间卡片→#kn8-input），焦点归还后 roving 状态清空。
+tab 序     进入 roving 后同时只有一个 tabindex=0、其余 -1，全程无正数（测试逐行读数）；
+           未进入/Esc 退出后退回原生 DOM 序——文档列表保持「无显式属性」原形态（R49 断言
+           tabindex null 不破），空间列表保持既有显式 0 形态（R50 断言不破）。
+aria       焦点所在行的链接带 aria-current="true"，其余无——空间卡片与文档列表同规格，
+           与实际焦点严格同步（测试：↓、End、Home、Esc 各态读数）。
+不劫持     空结果与读口 404：列表没有行时方向键 defaultPrevented=false、焦点与原生滚动不动
+           （测试用 cancelable 事件实测），也不渲染 roving scope；屏面仍走既有空态/诚实
+           不可用正文（kn3-docs-empty / knD-state-unavailable），键盘不加新的说辞。
+           顺带收口 R50 钩子的同一死角：搜索框 ArrowDown 也只在真有行可去时才 preventDefault。
+零请求     键盘全程只挪焦点：测试在文档列表段与空间卡片段分别断言 fetchMock 计数前后不变
+           （含重渲染后的 404 段）。
+焦点样式   :focus-visible 全部用现成 token（.knw5-page a[data-testid$="-name"] 已覆盖
+           kn3-docs-name/knw5-space-link），未新增 CSS 规则；真实按键 Tab/Enter 浏览器实测
+           沿 R50 做法，本轮未重建 9122，键盘读数来自 jsdom 定向测试。
+```
+
+testid 无新增；`data-roving="kn3"` / `data-active-row` / `data-active` / `aria-current` 为
+机器可判读数。kn3 / kn6 / kn7 / kn8 / kn9 / knB / knC / knD / knE / knF / knG / knI / knw5
+全套既有断言零改零破（含 R49「行是真 a[href]、tabindex null」、R50「三行 [-1,0,-1] 与 Esc 归位」、
+R52「表头键盘」、R53「诚实态」）。无正数 tabindex、无固定宽改动，三宽度横溢维持既有 flex 布局
+（本轮未重建 9122，未做浏览器复测）。
+
+## 验证尾行（R58）
+```text
+$ npx vitest run src/modules/knowledge   → 2 files / 51 tests passed（含新增键盘收口测试）
+$ npx vitest run                         → 138 files / 1674 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 set-state-in-effect warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw26-dist → exit 0（产物只落 /tmp）
+```
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
+无 force / amend / `--no-verify`；单 commit「feat(console): knowledge keyboard navigation」。
