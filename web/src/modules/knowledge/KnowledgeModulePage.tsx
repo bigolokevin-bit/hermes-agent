@@ -3571,6 +3571,8 @@ export default function KnowledgeModulePage() {
     next.delete("rid");
     setSp(next, { replace: true });
   };
+  // 错误态 rid 复制入口的数据源：预览夹具用 URL rid 参数模拟「上游带了编号」。
+  const forcedRid = (sp.get("rid") ?? "").trim() || null;
 
   const selectTab = (key: KnowledgeTab) => {
     const next = new URLSearchParams(sp);
@@ -3846,9 +3848,27 @@ function containerQuery(key: string): HTMLElement | null {
                   </div>
                 </div>
               ) : (
-                <div className="knw5-forced" data-testid="knw5-forced-error" role="alert">
-                  <p>预览错误：这次读取没有成功，页面没有编造知识数据。</p>
-                  <RequestId id={null} testid="knw5-forced-request-id" />
+                // 错误态组合：可读标题（含「预览错误」锁点）+ 原说明句（逐字保留）+ rid
+                // 复制入口（接 URL rid 参数）+ 技术信息折叠进「详情」+ 单一主操作。
+                // 与空态互斥由上方 forced 三元保证（单值枚举，测试已锁）；375 长 rid
+                // 由 .knw5-req/.knw5-req-value 的 overflow-wrap:anywhere 兜底，不横溢。
+                <div
+                  className="knw5-forced flex min-w-0 flex-col gap-[var(--space-2)] px-[var(--space-4)] py-[var(--space-6)]"
+                  data-testid="knw5-forced-error"
+                  role="alert"
+                >
+                  <p className="knw5-forced-title text-base font-medium">预览错误</p>
+                  <p className="max-w-prose">预览错误：这次读取没有成功，页面没有编造知识数据。</p>
+                  <RequestId id={forcedRid} testid="knw5-forced-request-id" />
+                  <details className="max-w-prose">
+                    <summary>详情</summary>
+                    <p>预览夹具由 URL 参数 state/rid 钉住，不发起真实请求；退出预览即回到实时读取。</p>
+                  </details>
+                  <div className="knw5-forced-actions pt-[var(--space-2)]">
+                    <Button size="sm" onClick={exitForced} data-testid="knw5-forced-exit-error">
+                      退出预览，读实时数据
+                    </Button>
+                  </div>
                 </div>
               )
             ) : (
