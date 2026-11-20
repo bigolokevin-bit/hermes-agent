@@ -37,13 +37,13 @@ import "./duty.css";
 
 type Tone = "default" | "destructive" | "outline" | "secondary" | "success" | "warning";
 
-function CopyRid({ id }: { id: string }) {
+function CopyRid({ id, testId = "ov6-rid-copy" }: { id: string; testId?: string }) {
   const [state, setState] = useState<"idle" | "done" | "failed">("idle");
   return (
     <button
       type="button"
       className="duty-req-copy"
-      data-testid="ov6-rid-copy"
+      data-testid={testId}
       aria-label={`复制请求编号 ${id}`}
       title="把请求编号复制给支持人员"
       onClick={() => {
@@ -716,7 +716,7 @@ function HealthStrip({
 }
 
 export default function DutyPage() {
-  const { data, reload, loading } = useDutyData();
+  const { data, reload, loading, refreshState } = useDutyData();
 
   const forced = (() => {
     const match = window.location.hash.match(/[?&]state=([^&]+)/);
@@ -805,15 +805,50 @@ export default function DutyPage() {
           <Button
             size="sm"
             outlined
-            onClick={reload}
+            onClick={refreshState.refresh}
             disabled={loading}
-            aria-busy={loading}
-            prefix={<RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />}
+            aria-busy={refreshState.refreshing}
+            data-testid="duty-refresh"
+            prefix={
+              <RefreshCw className={cn("h-3.5 w-3.5", refreshState.refreshing && "animate-spin")} />
+            }
           >
             刷新
           </Button>
         </div>
       </header>
+
+      <div className="duty-refreshbar" data-testid="duty-refresh-bar">
+        {refreshState.refreshing ? (
+          <p className="duty-note" role="status" data-testid="duty-busy-note">
+            更新中…（区块先保留上一次读到的数据）
+          </p>
+        ) : null}
+        {!refreshState.refreshing && refreshState.refreshAt ? (
+          <p className="duty-note" data-testid="duty-updated-at">
+            刷新完成于 北京时间 {beijing(refreshState.refreshAt)}（读取时刻，不是数据时刻）
+          </p>
+        ) : null}
+        {!refreshState.refreshing && refreshState.refreshError ? (
+          <div className="duty-refresh-error" data-testid="duty-refresh-error">
+            <span>这次刷新没成功：{refreshState.refreshError.message}</span>
+            {refreshState.refreshError.requestId ? (
+              <span className="duty-rid">
+                请求编号 <code>{refreshState.refreshError.requestId}</code>
+                <CopyRid id={refreshState.refreshError.requestId} testId="duty-refresh-rid" />
+              </span>
+            ) : null}
+            <button
+              type="button"
+              className="duty-retry"
+              data-testid="duty-refresh-retry"
+              onClick={refreshState.refresh}
+            >
+              再试
+            </button>
+          </div>
+        ) : null}
+      </div>
 
       <div className="duty-grid duty-grid-3">
         <ReadinessCard employees={data.employees} stats={data.stats} onRetry={reload} />

@@ -263,3 +263,115 @@ describe("MatrixView", () => {
     expect(container.textContent).not.toContain("陈可");
   });
 });
+
+describe("DutyPage refresh", () => {
+  const hits = (urls: string[], path: string) => urls.filter((u) => u.includes(path)).length;
+
+  it("one click re-reads every card exactly once and stamps the read time, not the data time", async () => {
+    const urls: string[] = [];
+    fetchJSON.mockImplementation((url: string) => {
+      urls.push(url);
+      return Promise.resolve(ok(url));
+    });
+    await render(<DutyPage />);
+    const first = [...urls];
+    expect(first.length).toBeGreaterThan(0);
+
+    await act(async () => {
+      (container.querySelector('[data-testid="duty-refresh"]') as HTMLButtonElement).click();
+    });
+    await act(async () => {});
+    const second = urls.slice(first.length);
+    for (const path of [
+      "/employees",
+      "/employee-stats",
+      "/workbench/summary",
+      "/workbench/timeseries",
+      "/workbench/queue",
+      "/run-activity",
+      "/budget-usage",
+      "/runs",
+      "/tasks",
+    ]) {
+      expect(hits(second, path), path).toBe(hits(first, path));
+    }
+    const stamp = container.querySelector('[data-testid="duty-updated-at"]');
+    expect(stamp?.textContent).toContain("刷新完成于 北京时间");
+    expect(stamp?.textContent).toContain("读取时刻，不是数据时刻");
+    expect(container.querySelector('[data-testid="duty-busy-note"]')).toBeNull();
+    expect(container.querySelector('[data-testid="ov6-kpi-runs"]')?.textContent).toContain("2");
+  });
+
+  it("ignores a second click inside the same batch and keeps the old numbers on screen", async () => {
+    const urls: string[] = [];
+    let holdOnce = false;
+    let release: (() => void) | null = null;
+    fetchJSON.mockImplementation((url: string) => {
+      urls.push(url);
+      if (url.includes("/employee-stats") && holdOnce) {
+        holdOnce = false;
+        return new Promise((resolve) => {
+          release = () => resolve(ok(url));
+        });
+      }
+      return Promise.resolve(ok(url));
+    });
+    await render(<DutyPage />);
+    const before = urls.length;
+    const statsBefore = hits(urls, "/employee-stats");
+    holdOnce = true;
+
+    await act(async () => {
+      const button = container.querySelector('[data-testid="duty-refresh"]') as HTMLButtonElement;
+      button.click();
+      button.click();
+    });
+    await act(async () => {});
+    // Exactly one new employee-stats read: the second click was swallowed.
+    expect(hits(urls, "/employee-stats")).toBe(statsBefore + 1);
+    expect(container.querySelector('[data-testid="duty-busy-note"]')?.textContent).toContain("更新中");
+    expect(container.querySelector('[data-testid="ov6-kpi-runs"]')?.textContent).toContain("2");
+
+    await act(async () => {
+      release?.();
+    });
+    await act(async () => {});
+    expect(container.querySelector('[data-testid="duty-busy-note"]')).toBeNull();
+    expect(container.querySelector('[data-testid="duty-updated-at"]')).toBeTruthy();
+    expect(urls.length).toBeGreaterThan(before);
+  });
+
+  it("keeps the previous batch on a failed refresh, names the request id and retries in place", async () => {
+    const urls: string[] = [];
+    let failSummary = false;
+    fetchJSON.mockImplementation((url: string) => {
+      urls.push(url);
+      if (failSummary && url.includes("/workbench/summary")) {
+        return Promise.reject(
+          new ApiError("boom", { status: 500, body: "{}", url, requestId: "req-duty-rf" }),
+        );
+      }
+      return Promise.resolve(ok(url));
+    });
+    await render(<DutyPage />);
+    failSummary = true;
+    await act(async () => {
+      (container.querySelector('[data-testid="duty-refresh"]') as HTMLButtonElement).click();
+    });
+    await act(async () => {});
+    const error = container.querySelector('[data-testid="duty-refresh-error"]');
+    expect(error?.textContent).toContain("这次刷新没成功");
+    expect(error?.textContent).toContain("req-duty-rf");
+    expect(container.querySelector('[data-testid="duty-updated-at"]')).toBeNull();
+    // Only the summary card is hurt; the other cards keep the old batch.
+    expect(container.querySelector('[data-testid="ov6-kpi-cost"]')?.textContent).toBeTruthy();
+
+    failSummary = false;
+    await act(async () => {
+      (container.querySelector('[data-testid="duty-refresh-retry"]') as HTMLButtonElement).click();
+    });
+    await act(async () => {});
+    expect(container.querySelector('[data-testid="duty-refresh-error"]')).toBeNull();
+    expect(container.querySelector('[data-testid="duty-updated-at"]')).toBeTruthy();
+  });
+});

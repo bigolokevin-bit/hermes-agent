@@ -66,3 +66,13 @@
 - 落地：`HCard` 新增 `hint` 属性（仅 `title` 提示，不上屏），可上岗卡写「workbench/agents 缺 byLifecycle 聚合计数…本卡仍取员工目录 + 员工统计，换成该读口会丢掉总分母，故不换」；`ov6-*` testid 全未改。
 - 测试（`duty.caliber.test.ts` 新增 2 例，共 62）：①卡片只打 `/employees` + `/employee-stats`，`/workbench/agents` 零调用，`ov6-ready` 的 title 含「workbench/agents 缺」「本卡仍取」，`data-fixture` 与「样例」零命中；②`/employee-stats` 500（rid `req-ready`）只坏本卡且可重试，今日运行仍 2、待审仍 1。
 - 未测：`workbench/agents` 200 实例体（cookie 过期，按 BFF 源码形状评估）；375/1440 未实机。
+
+## 值班台刷新语义（duty refresh，2026-11-20）
+
+- 页首 `duty-refresh` 一次全量重取六区块：employees、employee-stats、workbench summary/timeseries/queue（queue 单请求供计数与前三行）、run-activity、budget-usage day+month、runs×3、tasks——每读口恰一次，测试逐路径与首载计数相等。
+- busy：`aria-busy` + `duty-busy-note`「更新中…（区块先保留上一次读到的数据）」；二次点击由同步闸门吞掉（同批 urls 增量只等于一批）。
+- 成功：`duty-updated-at`「刷新完成于 北京时间 …（读取时刻，不是数据时刻）」，与各卡 asOf（数据时刻）分开。
+- 失败：保留旧批，`duty-refresh-error` 人话 + 请求编号（可复制）+ `duty-refresh-retry`；不写 updated-at；单口失败只坏该卡。
+- 批次失效：`cancelRefresh()` 递增版本号，迟到批整批丢弃（不写数据、不写 updated-at）；当前页面无范围/页签切换，卡片重试走 `reload()`（先失效在途批）。
+- 验证：duty 4 files / 65 passed；全量 148 files / 1939 passed；tsc 本域 0；eslint 0 error / 3 既有 warning；entry `assets/index-Da4OMXQN.js` sha256 `c52cb60a056bec5e81aa976d45ad9b9905ce1de17b6ce298c0024349012d18ba`（entry 内 marker 0），chunk `DutyPage-CT9bI_bq.js` marker 1。
+- 未测：真实浏览器下挂起批与手动刷新交错未走查（jsdom 用单测闸门覆盖）；375/1440 未实机。
