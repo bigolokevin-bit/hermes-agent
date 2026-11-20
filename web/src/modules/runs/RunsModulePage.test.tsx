@@ -1653,3 +1653,60 @@ describe("run-cost-caliber-note — cross-page cost caliber", () => {
     expect(reads).toHaveLength(1);
   });
 });
+
+describe("run-notes — footer caliber block", () => {
+  it("starts collapsed and opens seven rows of one sentence each", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs");
+    const toggle = document.querySelector("[data-testid='run-notes-toggle']") as HTMLButtonElement | null;
+    expect(toggle).not.toBeNull();
+    expect(toggle?.tagName).toBe("BUTTON");
+    expect(toggle?.getAttribute("aria-expanded")).toBe("false");
+    expect(toggle?.getAttribute("aria-controls")).toBe("run-notes-body");
+    expect(document.querySelector("[data-testid='run-notes-body']")).toBeNull();
+    expect(document.querySelector("[data-testid='run-note-window']")).toBeNull();
+
+    await act(async () => {
+      toggle?.click();
+    });
+    expect(toggle?.getAttribute("aria-expanded")).toBe("true");
+    expect(document.querySelectorAll("[data-testid^='run-note-']").length).toBe(7);
+    const cost = document.querySelector("[data-testid='run-note-cost']")?.textContent ?? "";
+    // 成本行与屏上的成本口径说明共用同一常量，不存在第二套措辞。
+    expect(cost).toContain(COST_CALIBER_TEXT);
+    expect(document.querySelector("[data-testid='run-note-elapsed']")?.textContent ?? "").toContain("不拿本机时间补");
+    expect(document.querySelector("[data-testid='run-note-asOf']")?.textContent ?? "").toContain("不拿本机时间顶替");
+    expect(document.querySelector("[data-testid='run-note-window']")?.textContent ?? "").toContain("/api/runs");
+    expect(document.querySelector("[data-testid='run-note-state']")?.textContent ?? "").toContain("不读写口");
+
+    await act(async () => {
+      toggle?.click();
+    });
+    expect(toggle?.getAttribute("aria-expanded")).toBe("false");
+    expect(document.querySelector("[data-testid='run-notes-body']")).toBeNull();
+  });
+
+  it("asks the service for nothing when opened or closed", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs");
+    const before = urls().length;
+    const readsBefore = api.fetchJSON.mock.calls.filter((call) => String(call[0]).includes("/api/runs")).length;
+    const toggle = document.querySelector("[data-testid='run-notes-toggle']") as HTMLButtonElement;
+    await act(async () => {
+      toggle.click();
+    });
+    await act(async () => {
+      toggle.click();
+    });
+    expect(urls().length).toBe(before);
+    expect(api.fetchJSON.mock.calls.filter((call) => String(call[0]).includes("/api/runs")).length).toBe(readsBefore);
+  });
+
+  it("is absent on the repro legs, which read nothing", async () => {
+    api.fetchJSON.mockImplementation(async () => {
+      throw new Error("repro legs ask nothing");
+    });
+    await render("/runs?state=error");
+    expect(document.querySelector("[data-testid='run-notes']")).toBeNull();
+  });
+});

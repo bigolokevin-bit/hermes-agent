@@ -268,3 +268,13 @@
 - 可见文案（逐字，两页相同）：成本按账本实扣显示：真实的零写 $0.00，没有记账写「—」，不把读不到当成 0。账本实扣与「调用次数」不是同一套口径，两边数字各以本页卡片为准。
 - 验证：`vitest run src/modules/runs` 3 files / 112 passed；`vitest run src/modules/metrics` 4 files / 228 passed；全量 159 files / 2180 passed；`tsc` 本域 0（全仓既存 79）；`eslint` exit 0；build exit 0，entry 内 marker 0，`RunsModulePage-*.js` / `MetricsModulePage-*.js` 各 1。
 - 未测：真实浏览器三档换行；两页并排人工对照。
+
+## 页尾口径说明块（runs notes，2026-11-20）
+- 位置：`/runs` 页尾、`run5-list-details` 之后；`run-notes-toggle` 是原生 button（`aria-expanded` / `aria-controls="run-notes-body"`），默认收起且**收起时 body 不渲染**；展开后 7 行 `run-note-<key>`（window / status / employee / state / elapsed / cost / asOf），每行四段：口径名 · 实际路径 · 计算范围 · 缺值策略（同一段文字另进该行 title）。
+- 表驱动单一常量：`modules/runs/runNotes.ts` 的 `RUN_NOTE_ROWS` + `RUN_NOTES_TITLE`；成本行缺值策略直接复用 `modules/metrics/costCaliberNote.ts` 的 `COST_CALIBER_TEXT`——与屏上 `run-cost-caliber-note` 同一常量，无第二套措辞。
+- 实际路径按 `askListRoute` 现查：`/api/runs?since=…&limit=30[&status][&employeeId][&cursor]`；`/api/run-stats?from=…&to=…` 只在主路由 404 时兜底，且不带 status/employeeId。`?state=` 复现腿不读任何读口，notes 在复现腿整块不渲染（避免把没读到的口径写成已发生）。
+- 成本行口径：账本实扣、真 0 `$0.00`、未知不显示 0、与 `/metrics` 调用次数不是同一套口径；耗时行写「起止两端齐才计算，缺一端显示—，不拿本机时间补」；采集时刻行写「只取顶层 ISO，缺失显示—，不拿本机时间顶替」（本版页面不在屏上展示采集时刻）。
+- 零额外请求：展开/收起前后 `urls()` 长度与 `/api/runs` 调用次数均不变（用例实测）。
+- 三条用例：收起态与展开七行（含成本行逐字等于 COST_CALIBER_TEXT）、开合零请求、复现腿不渲染。
+- 验证：runs 3 files / 115 passed（基线 112）；全量 159 files / 2187 passed（基线 2184）；tsc 本域 0（全仓既存 79 条）；eslint exit 0（0 error / 9 既有 warning）。
+- 未测：真实浏览器 375/1440 展开后七行的折行与长路径断行。

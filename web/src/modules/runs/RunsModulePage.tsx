@@ -104,6 +104,7 @@ import {
 import { forcedStateOf, useRunsData } from "./useRunsData";
 import { useRunDetail, type DetailOutcome } from "./useRunDetail";
 import { COST_CALIBER_TEXT, costCaliberTitle } from "../metrics/costCaliberNote";
+import { RUN_NOTES_TITLE, RUN_NOTE_ROWS } from "./runNotes";
 
 /** 「—」 with the reason in its title: a gap reads as a gap, never as a zero. */
 function Dashed({ reason }: { reason: string }): ReactNode {
@@ -707,6 +708,50 @@ function RunSourceBar({ source }: { source: ReturnType<typeof runSource> }) {
   );
 }
 
+/**
+ * The footer notes: seven rows of 「口径名 · 实际路径 · 计算范围 · 缺值策略」.
+ * Collapsed by default — the body is not rendered while closed, so a reader
+ * meets a button, not a wall. Opening or closing asks the service for nothing.
+ */
+function RunNotes(): ReactNode {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="min-w-0" data-testid="run-notes">
+      <Button
+        size="sm"
+        outlined
+        type="button"
+        aria-expanded={open}
+        aria-controls="run-notes-body"
+        data-testid="run-notes-toggle"
+        onClick={() => setOpen((value) => !value)}
+      >
+        {open ? "收起口径说明" : RUN_NOTES_TITLE}
+      </Button>
+      {open ? (
+        <div id="run-notes-body" className="mt-2 flex flex-col gap-1" data-testid="run-notes-body">
+          {RUN_NOTE_ROWS.map((note) => (
+            <p
+              key={note.key}
+              className="min-w-0 break-words text-xs leading-5 text-muted-foreground"
+              data-testid={`run-note-${note.key}`}
+              title={`${note.path}｜${note.scope}｜${note.missing}`}
+            >
+              <span className="font-medium text-foreground">{note.area}</span>
+              <span aria-hidden="true"> · </span>
+              <span>{note.path}</span>
+              <span aria-hidden="true"> · </span>
+              <span>{note.scope}</span>
+              <span aria-hidden="true"> · </span>
+              <span>{note.missing}</span>
+            </p>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function RunsModulePage() {
   const [params, setParams] = useSearchParams();
   const { pathname, state: locationState } = useLocation();
@@ -1151,6 +1196,8 @@ export function RunsModulePage() {
       {phase === "ready" && rows.length > 0 ? (
         <TechnicalDisclosure lines={technical} testId="run5-list-details" />
       ) : null}
+
+      {forced === null && (phase === "ready" || phase === "empty") ? <RunNotes /> : null}
     </div>
   );
 }
