@@ -383,6 +383,21 @@ export function formatSharePct(value: number | null): string {
   return digits === null ? '—' : `${digits}%`;
 }
 
+/**
+ * One cost-detail row as a single plain-text line, for the row-level copy button:
+ * `name · runs · cost · share`. Every value goes through the same formatter the
+ * table renders, so a real zero stays `$0.00` / `0` and a missing value stays «—»;
+ * nothing here reads a clock, an id, or a second data source.
+ */
+export function rowCopyText(line: {
+  label: string;
+  count: number | null;
+  costUsd: number | null;
+  share: number | null;
+}): string {
+  return [line.label, formatCount(line.count), formatUsd(line.costUsd), formatSharePct(line.share)].join(' · ');
+}
+
 /** 0.9967 → 99.7%; null → «—». Only formats a rate the server computed. */
 export function formatRate(value: number | null): string {
   if (value === null || !Number.isFinite(value)) return '—';
