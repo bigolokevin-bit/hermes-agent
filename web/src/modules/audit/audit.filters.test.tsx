@@ -138,9 +138,17 @@ const ROWS = {
   nextCursor: "cur_page2",
 };
 
-function answer(body: unknown = ROWS): void {
+/** The list page's answer shape: rows, a first row, and the next-page cursor. */
+interface PageBody {
+  items: Record<string, unknown>[];
+  nextCursor?: string | null;
+}
+
+function answer(body: PageBody = ROWS): void {
   api.fetchJSON.mockImplementation(async (url) =>
-    String(url).startsWith("/agent-api/api/audit-detail") ? { audit: body.items[0] } : { items: body.items, nextCursor: body.nextCursor },
+    String(url).startsWith("/agent-api/api/audit-detail")
+      ? { audit: body.items[0] }
+      : { items: body.items, nextCursor: body.nextCursor },
   );
 }
 
