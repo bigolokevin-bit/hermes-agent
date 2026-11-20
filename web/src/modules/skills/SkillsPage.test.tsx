@@ -51,6 +51,24 @@ async function render() {
 }
 
 
+async function downloadedName(): Promise<string> {
+  let name = "";
+  const originalCreate = URL.createObjectURL;
+  const originalRevoke = URL.revokeObjectURL;
+  const originalClick = HTMLAnchorElement.prototype.click;
+  URL.createObjectURL = (() => "blob:cap8") as typeof URL.createObjectURL;
+  URL.revokeObjectURL = (() => undefined) as typeof URL.revokeObjectURL;
+  HTMLAnchorElement.prototype.click = function click() { name = this.download; };
+  try {
+    await act(async () => container.querySelector<HTMLButtonElement>("[data-testid='cap6-export']")!.click());
+  } finally {
+    URL.createObjectURL = originalCreate;
+    URL.revokeObjectURL = originalRevoke;
+    HTMLAnchorElement.prototype.click = originalClick;
+  }
+  return name;
+}
+
 async function exportCsv(): Promise<string> {
   const blobs: Blob[] = [];
   const originalCreate = URL.createObjectURL;
@@ -392,6 +410,30 @@ describe("SkillsPage", () => {
 
     await act(async () => toggles[1]!.click());
     expect(container.querySelectorAll("[data-testid='cap7-detail-skills']")).toHaveLength(0);
+  });
+
+  it("previews the contract filename and downloads exactly that string as query and sort change", async () => {
+    window.history.replaceState({}, "", "/capabilities?tab=skills&q=a1&sort=name&dir=asc");
+    fetchJsonStrict.mockResolvedValue({
+      items: [
+        { skillId: "s1", name: "A1", source: "platform", status: "active", updatedAt: "2026-11-19T06:00:00Z" },
+        { skillId: "s2", name: "B2", source: "custom", status: "active", updatedAt: "2026-11-18T06:00:00Z" },
+      ],
+    });
+    await render();
+    const preview = () => container.querySelector("[data-testid='cap-export-name']")!;
+    expect(preview().textContent).toMatch(/^capabilities-skills-a1-name-asc-\d{8}-\d{4}\.csv$/);
+    expect(preview().getAttribute("title")).toContain("tab=skills");
+    expect(preview().getAttribute("title")).toContain("q=a1");
+    expect(preview().getAttribute("title")).toContain("sort=name");
+    expect(preview().getAttribute("title")).toContain("dir=asc");
+    expect(await downloadedName()).toBe(preview().textContent);
+    expect(fetchJsonStrict).toHaveBeenCalledTimes(1);
+
+    await act(async () => container.querySelector<HTMLButtonElement>("[data-testid='cap8-sort-name']")!.click());
+    expect(preview().textContent).toMatch(/^capabilities-skills-a1-name-desc-\d{8}-\d{4}\.csv$/);
+    expect(await downloadedName()).toBe(preview().textContent);
+    expect(fetchJsonStrict).toHaveBeenCalledTimes(1);
   });
 
   it("sorts by URL, cycles aria-sort and never refetches on sort clicks", async () => {

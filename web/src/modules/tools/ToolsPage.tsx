@@ -630,7 +630,7 @@ export function ToolsPage(): ReactNode {
           </p>
         </div>
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <CapabilityExport tab="tools" rows={exportRows} gate={gates.export} />
+          <CapabilityExport tab="tools" rows={exportRows} gate={gates.export} q={q} sort={sort.key} dir={sort.key ? sort.dir : null} />
           <CapabilityCopy rows={copyRows} gate={gates.copy} />
           <span className="capA-export-note" data-testid="capA-export-order-note">导出按当前排序与搜索</span>
           <Button

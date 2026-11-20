@@ -53,6 +53,24 @@ async function render(entry: string): Promise<void> {
 const text = (): string => document.body.textContent ?? "";
 const rows = (): Element[] => [...document.querySelectorAll("[data-testid='tol5-row']")];
 
+async function downloadedName(): Promise<string> {
+  let name = "";
+  const originalCreate = URL.createObjectURL;
+  const originalRevoke = URL.revokeObjectURL;
+  const originalClick = HTMLAnchorElement.prototype.click;
+  URL.createObjectURL = (() => "blob:cap8") as typeof URL.createObjectURL;
+  URL.revokeObjectURL = (() => undefined) as typeof URL.revokeObjectURL;
+  HTMLAnchorElement.prototype.click = function click() { name = this.download; };
+  try {
+    await act(async () => document.querySelector<HTMLButtonElement>("[data-testid='cap6-export']")!.click());
+  } finally {
+    URL.createObjectURL = originalCreate;
+    URL.revokeObjectURL = originalRevoke;
+    HTMLAnchorElement.prototype.click = originalClick;
+  }
+  return name;
+}
+
 async function exportCsv(): Promise<string> {
   const blobs: Blob[] = [];
   const originalCreate = URL.createObjectURL;
@@ -522,6 +540,35 @@ describe("row detail", () => {
 });
 
 describe("sortable columns", () => {
+  it("previews the contract filename and downloads exactly that string", async () => {
+    const handler = (url?: string) => {
+      if (!url) return Promise.resolve({});
+      if (url === "/api/tools") {
+        return Promise.resolve({
+          items: [
+            { name: "网页搜索", enabled: true, updated_at: "2026-11-19T06:00:00Z" },
+            { name: "文档写入", enabled: true, updated_at: "2026-11-18T06:00:00Z" },
+          ],
+          asOf: "2026-11-19T06:00:00Z",
+        });
+      }
+      return Promise.reject(new ApiError("missing", { status: 404, body: "{}", url }));
+    };
+    await mount(handler, "/capabilities?tab=tools&q=网页&sort=name&dir=asc");
+    const preview = () => document.querySelector("[data-testid='cap-export-name']")!;
+    expect(preview().textContent).toMatch(/^capabilities-tools-default-name-asc-\d{8}-\d{4}\.csv$/);
+    expect(preview().getAttribute("title")).toContain("tab=tools");
+    expect(preview().getAttribute("title")).toContain("q=网页");
+    expect(preview().getAttribute("title")).toContain("sort=name");
+    expect(preview().getAttribute("title")).toContain("dir=asc");
+    expect(await downloadedName()).toBe(preview().textContent);
+    const calls = api.fetchJsonStrict.mock.calls.length;
+    await act(async () => document.querySelector<HTMLButtonElement>("[data-testid='cap8-sort-name']")!.click());
+    expect(preview().textContent).toMatch(/^capabilities-tools-default-name-desc-\d{8}-\d{4}\.csv$/);
+    expect(await downloadedName()).toBe(preview().textContent);
+    expect(api.fetchJsonStrict).toHaveBeenCalledTimes(calls);
+  });
+
   it("sorts by URL, cycles aria-sort and never refetches on sort clicks", async () => {
     const handler = (url?: string) => {
       if (!url) return Promise.resolve({});

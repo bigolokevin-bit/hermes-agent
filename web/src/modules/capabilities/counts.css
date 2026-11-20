@@ -272,3 +272,14 @@
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+/* cap export filename preview: full text wraps inside the action row. */
+.cap-export-name {
+  display: inline-block;
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--color-muted-foreground);
+  font-size: 11px;
+  line-height: 1.4;
+}

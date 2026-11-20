@@ -2163,3 +2163,15 @@ built /private/tmp/health-r38/index.html
   - 1440/1280/375 均 `body=视口`；ver5/sys3 均 2 行，首行均 `9.9.9`，第二行均「—」且 title 一致；无 `1.1.1`。
   - 375 仅 ver5 表内横滚（560/319），sys3 表 319/319；页面无横溢。
 - 边界：仅 `modules/health/**`、`modules/version/**` + 本 DONE；未碰 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未 install/force/amend/--no-verify。
+
+## R76 / capabilities export filename contract（2026-11-20 11:40）
+
+- 基线：显式 refspec fetch + `git merge origin/lane/hermes-console` → Already up to date；章面 `a5832d15` / 代码代次 `60a4a429`；未 reset、未并 main、未重建 9122。
+- 文件名契约：`capabilities-<tab>-<q|all>-<sort|default>-<dir|default>-YYYYMMDD-HHmm.csv`；q 缺省 `all`；排序缺省 `default-default`；片段只接受 `[a-z0-9.-]`（先小写），中文/空格/冒号等折为 `default`；时间取北京时间到分。
+- 屏上 `cap-export-name` 实时预览，title 写明 `tab/q/sort/dir` 四要素来源；`CapabilityExport` 用 useMemo 冻结当前组合的 name，点击时 `a.download` 与该预览逐字相同。
+- tab / 搜索 / 排序变化均通过 props 更新预览；无新增请求。空结果仍由 cap-gates 单点禁用并保留原因 title。
+- CSV 内容、表头 `name,type,enabled,updated_at`、行序、行数未改；cap6/capC/cap8/cap4–capH/skl4/tl3/cap-gates 零破。
+- 证据：`cd web && npx vitest run src/modules/capabilities src/modules/skills src/modules/tools` → 8 files / 89 passed；全量 152 files / 2013 passed；tsc 仅基线 approvals/employee-detail/employees 错误，本域 0。
+- DOM（1440/1280/375，skills+tools）：body/page 均等于视口；skills `capabilities-skills-a1-name-asc-20261120-1139.csv`，tools `capabilities-tools-default-name-asc-20261120-1139.csv`；预览 title 四要素齐全；导出按钮可用、搜索可用。
+- 单测锁定：skills `?q=a1&sort=name&dir=asc` 预览→下载同名→点排序为 desc 预览/下载更新，fetch 1→1；tools `?q=网页` 折叠为 default，排序 desc 后预览/下载更新，fetch 计数不变；csv 单测覆盖 tab/q/sort/dir、中文/空格/冒号折叠、大小写与 BJT。
+- 边界：只改 `modules/capabilities|skills|tools/**` + 本 DONE；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未安装依赖；无 force/amend/--no-verify。

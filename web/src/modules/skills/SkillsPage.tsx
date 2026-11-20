@@ -383,7 +383,7 @@ export function SkillsPage() {
           <p className="skl4-sub">已登记的技能、共享范围与版本状态。只读。</p>
         </div>
         <div className="skl4-actions">
-          <CapabilityExport tab="skills" rows={exportRows} gate={gates.export} />
+          <CapabilityExport tab="skills" rows={exportRows} gate={gates.export} q={q} sort={sort.key} dir={sort.key ? sort.dir : null} />
           <CapabilityCopy rows={copyRows} gate={gates.copy} />
           <span className="capA-export-note" data-testid="capA-export-order-note">导出按当前排序与搜索</span>
           <Button
