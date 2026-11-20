@@ -5428,3 +5428,49 @@ kn-doc-preview* + 既有 46 套全绿。过程自纠两处（误写重复 global
 未测如实：带登录会话真屏；详情读**成功**时的抽屉体字段链（R125/R196 族已锁，本轮导出
 侧不依赖详情体，按 404 夹具开抽屉并注记）；error 站 title 的具体整句逐字（只锁非空+
 在场性，全句属 R138 族地盘不扩）。
+
+# KNW5 追加 R231：空/错态导出复制同帧收紧 + 筛空恢复三值链（同文件追加·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `9a410487`、
+基线先跑 47/220 全绿 Errors 0。**目标文件已存在（R215 193 行 3 例）→ 按派工纪律同文件
+追加，不重建不覆盖不另起同名文件**；最终 273 行 5 例（+80 行）。零产品文件改动。
+
+## 三腿比对与名实换算（引用不重写）
+
+```text
+① 空面：cap null/双 disabled/title/零请求/spy 0/计数位「—」——R215②:98-123 全覆盖 →
+  引用；本轮只补未锁位：knG-copy title 在场（R215② 只锁 knG disabled）+ 空态点击**零
+  写**（R215② 未桩剪贴板）。
+② rid 复制（检索面 R215④:125-155、详情面 R210）与错误站 knF disabled+title 帧
+  （R230③）→ 引用；本轮新增：**同面锚互斥**（空帧 kn3-docs-error null / 错帧
+  knN-empty-text-space-docs null——R187② 锁的是跨面不卸载，同面互斥此前无 pin）+
+  错误帧 -space- 钮族 **0 节点**（红线④「非 disabled 是不渲染」的详情面当帧实锁）+
+  空帧双族钮 0。
+③ 清筛选：R215③:157-192 只链到「钮==行」两值 → 本轮**第三值 knF 导出行数入链**
+  （三值 toEqual [2,2,2]）+ 恢复后首行==屏上首行（序无关，证全量非筛中残留）。
+换算（红线②）：派工「createObjectURL 只在恢复后调用」**不可兑现**——无导出机制
+（R190① 不变量），按现状断言**全程 0 次**并在此记录；换算（红线③）：cap「显 0 不显
+—」不可兑现——空/错态不渲染（R108/R157/R187），禁假 0 落点换成计数位「—」（R215 已
+锁位引用）+ 裸 0 扫描（R215②:111 引用）。红线⑦收紧一处：文件级 afterEach 补
+vi.unstubAllGlobals()（纪律位，不动任何既有断言）。
+```
+
+## 验证尾行（R231）
+
+```text
+⑤ 空帧：空锚在场、错锚 null、-space- 钮 0、检索族钮 0、knG title 含「没有可复制」、
+  双击 writeText 0、urls 不变；错帧：错锚在场、空锚 null、-space- 钮 0 节点、spy 0。
+  ⑥ 筛中 1 行→清空复原：三值 [2,2,2]、首行逐字==屏上首行、spy 0、urls 快照逐字==u0。
+$ npx vitest run src/modules/knowledge → 47 files / 222 tests passed（220+2），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0；build /tmp/knw-r231-dist exit 0
+$ 全仓 → 355 files / 3191 passed 全绿（无豁免、无已知红需点名）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort*/kn-gates/kn-row-copy*/
+kn-row-copy-space*/kn-doc-copy*/kn3-page-cap/knE-page-*/kn-type*/kn7-preview*/
+kn-doc-preview*/导出 absent 标记 + R215 既有三例复跑同绿（断言零改动，仅 afterEach
++1 行纪律位）。两例一次全过；产品零触碰。
+```
+未测如实：带登录会话真屏；denied 帧锚互斥（本轮只打 empty/error 两帧，denied 与
+error 同族由 R187 口径外推、未实锁）；⑤(b) 错误帧 sort 头禁用整句（红线④点名引用
+R210/R187，不扩）。
