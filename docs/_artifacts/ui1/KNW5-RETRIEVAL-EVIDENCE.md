@@ -4086,3 +4086,59 @@ kn3-page-cap/knE-page-*/kn6-search-*/knF/knG/knI/knL-copy* 与既有 22 套全�
 边界：只新增 web/src/modules/knowledge/knowledge.counts.paging.test.tsx 与本证据；
 显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
 「test(console): knowledge counts after paging guards」。
+
+# KNW5 追加 R200：导出列与屏上列同源 + 三值护栏（纯测试单）（2026-11-20 BJT）
+
+安全门：porcelain 空起做（HEAD 即 R197 链）、显式 refspec fetch 后 merge 实测 tip
+即预期 `eae57b6c`（wave-43，知识面 delta 空）。零产品文件改动（无新缺陷）。
+
+## 名实映射与查重（引用不重写）
+
+```text
+「导出 CSV」不存在（本文件跑前复核 createObjectURL/text/csv/download= 皆 0、
+data-export="absent" 在场）→ 代位：详情面 knF-copy（5 列）/检索面 knG-copy（6 列含
+所属空间第 2 位）；未造控件。已锁引用：R190②（两屏表头与两复制表头各自逐字、缺席
+不变量、怪名、缺值行、空态 spy）、R142①②（详情三值+筛选联动）、R169①（检索面四值）、
+R197①②④（翻页五读族）、R71（docLine 单点）、R75/R76（updatedText）、R125（跨面同值）、
+R167/R168（键盘/编号）。④腿（空集 disabled+逐字 title+零写零请求+spy 0）R190④ 整腿
+已锁 → 本轮只引用不复写。
+真缺口（本文件 2 例）：①复制头↔屏上头**对账单**（差集恰 {复制独有:短码}/
+{屏上独有:操作}，其余逐位同——两侧各自逐字 R190 已有，对照关系是新的）；
+②**逐单元格** toBe（同文档每列复制文本==屏上同列显示文本，缺值「—」成对，短码/全 id
+出现位置按实记录）。
+```
+
+## 关键读数
+
+```text
+①详情面：copy[0..3]==screen[0..3]（文档名/类型/大小/更新），copy[4]=「短码」而
+  screen[4]=「操作」；检索面 copy[0..4]==screen[0..4]（含所属空间@1），copy[5]=「短码」、
+  screen[5]=「操作」；两面 copy 长度==DOC_LINE_HEADER(+空间)=5/6。
+②全项行逐格：「全项手册.pdf|PDF|2.4 MB|2026-11-19 15:10|DFULL1」五格与屏上同列 toBe 逐字；
+  行正文无「FULL1」无「d_full1」、tr[title]="d_full1"（全 id 只在 title 的单元格级复证）。
+  缺项行：type/size/updated 三格两侧同为「—」。
+  检索面分两种产物各对各的（新记录的事实）：knG-copy 数据行 6 列——[0..4] 逐格 toBe 屏上
+  name/space/type/size/updated；而行钮 kn-row-copy-<i> 是 5 列单行文本（docSingleCopy，
+  **无所属空间列**）[0]=全项手册.pdf、[1]=PDF、[4]=DFULL1——初稿把 6 列期望套在行钮上
+  当场失败（expected 'PDF' to be '测试空间'），按产品实际拆分两种对账，产品零改动。
+```
+
+## 验证尾行（R200）
+```text
+$ npx vitest run src/modules/knowledge   → 24 files / 151 tests passed（基线 149 + 2）
+$ npx vitest run                         → 259 files / 2871 tests passed 全绿（无豁免项）
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning；本单曾有
+  1 条 unused(q) 提交前清零）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r200-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn3*/kn-row-copy*/kn-row-copy-space*/kn-doc-copy*/kn-doc-preview*/kn-space-preview*/
+kn3-page-cap/knE-page-*/kn6-search-*/knF/knG/knI/knL-copy* + 既有 23 套全绿。
+createObjectURL spy 两例全程 0 调用（R190 之外的再复证）。请求口径：本轮全程本地
+点击复制，fetch 快照无增长断言在 R190/R142 已锁、本文件未新增动作类型。
+```
+未测如实：带登录会话真实屏；④腿（空集 disabled/零写/spy）整腿引 R190④ 未在本文件重跑
+——其夹具与断言完全同形，重写即违规。
+边界：只新增 web/src/modules/knowledge/knowledge.export.columns.test.tsx 与本证据；
+显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「test(console): knowledge export column parity guards」。
