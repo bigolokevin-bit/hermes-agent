@@ -54,7 +54,7 @@ describe("VersionHealthSurface", () => {
   it("shows the version gap honestly and still renders the health row", async () => {
     api.fetchJsonStrict.mockImplementation((url: string) => {
       if (url.includes("/version")) return reject(404, "req-ver-404")();
-      return Promise.resolve({ ok: true, asOf: "2026-11-19T15:17:09Z", sources: [{ id: "console" }, { id: "runtime" }] });
+      return Promise.resolve({ ok: true, asOf: "2026-11-19T15:17:09Z", sources: [] });
     });
     await render();
     await waitFor(() => !!container.querySelector("[data-testid='ver5-gap']"), "gap");
@@ -114,6 +114,39 @@ describe("VersionHealthSurface", () => {
     expect(container.querySelector("[data-testid='ver5-health-state']")?.textContent).toBe("待核实");
     expect(container.querySelector("[data-testid='ver5-health']")?.textContent).toContain("不影响上方版本表");
     expect(container.querySelector("[data-testid='ver5-table']")?.textContent).toContain("BFF");
+  });
+
+  it("takes the version identifier from health so /system and ver5 agree", async () => {
+    api.fetchJsonStrict.mockImplementation((url: string) => {
+      if (url.includes("/health")) return Promise.resolve({
+        ok: true,
+        asOf: "2026-11-19T15:17:09Z",
+        sources: [{ id: "console", name: "控制台", state: "ok", version: "9.9.9", build: "ignored-fallback" }],
+      });
+      if (url.includes("/version")) return Promise.resolve({ components: [{ name: "控制台", version: "1.1.1" }] });
+      return Promise.reject(new Error("unexpected"));
+    });
+    await render();
+    await waitFor(() => !!container.querySelector("[data-testid='ver5-table']"), "table");
+    expect(container.querySelector("[data-testid='ver5-version']")?.textContent).toBe("9.9.9");
+    expect(api.fetchJsonStrict).toHaveBeenCalledTimes(1);
+    expect(String(api.fetchJsonStrict.mock.calls[0]?.[0])).toContain("/health");
+  });
+
+  it("keeps a missing health version as a dash with a reason, never inventing one", async () => {
+    api.fetchJsonStrict.mockImplementation((url: string) => {
+      if (url.includes("/health")) return Promise.resolve({
+        ok: true,
+        asOf: "2026-11-19T15:17:09Z",
+        sources: [{ id: "console", name: "控制台", state: "ok" }],
+      });
+      return Promise.reject(new Error("unexpected"));
+    });
+    await render();
+    await waitFor(() => !!container.querySelector("[data-testid='ver5-table']"), "table");
+    const version = container.querySelector("[data-testid='ver5-version']")!;
+    expect(version.textContent).toBe("—");
+    expect(version.getAttribute("title")).toContain("不编造版本号");
   });
 
   it("previews empty and error states without any request", async () => {

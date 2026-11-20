@@ -2144,3 +2144,22 @@ built /private/tmp/health-r38/index.html
   - empty：`data-state=empty`、`sys-state-empty-text` 含「不补服务行」、refresh disabled、计数 0（真实空集）、矩阵因探针成功仍可用。
   - filter：`data-state=empty-filter`、`sys-state-empty`、`sys-state-clear` 可见并清空筛选。
 - 边界：仅 `web/src/modules/health/**` + 本 DONE；未碰 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未 install/force/amend/--no-verify。
+
+## R75 — 版本与系统面版本标识一致性（2026-11-20）
+
+- 基线：显式 refspec fetch `origin/lane/hermes-console`（章面 `a5832d15` / 代次 `60a4a429`）后 `git merge --no-ff` → Already up to date；未 reset，未并 main，未重建 9122。
+- 现查读口/字段：
+  - ver5 `VersionHealthSurface` 原先版本表读 `/agent-api/api/version`，字段 `version|buildVersion|build_version|currentVersion|current_version`；健康行读 `/api/health`。
+  - sys3 `readSystemHealth` 读 `/api/health` 的 `sources[]`，字段 `version|build|buildId|build_id|revision|commit`。
+  - 同一组件若两读口给出不同值，会出现两页不一致；缺字段时两页原因文案也不同。
+- 统一：新增 `web/src/modules/health/versionIdentity.ts`（单一 `VERSION_FIELD_KEYS` + `versionIdentity()`）；`systemHealth` 与 `versionHealth` 共用。ver5 改为**优先用 `/api/health` 的 sources 生成版本表**（`readVersionRowsFromHealth`），与 sys3 同源同字段；仅当健康无组件行或读取失败时才回退 `/api/version`。版本表 `builtAt` 不再把检查时刻当构建时间，健康行显示「—」+原因。
+- 改前/改后（同一 payload：health console.version=9.9.9，version components console.version=1.1.1）：
+  - 改前：ver5 显示 `1.1.1`，sys3 显示 `9.9.9`。
+  - 改后：两页均 `9.9.9`；`1.1.1` 不上屏；健康请求只 2 次（两组件各一次），版本端点未被调用。
+  - 缺版本：ver5/sys3 均「—」，title 均为「上游没有提供该服务的版本或构建标识；不编造版本号。」。
+- 采集时刻：两页均走 `readTopAsOf` 六别名，BJT 到分；示例 `2026-11-20 11:28`，`asOfSource` 只进 title；缺失/非法仍「—」+title。
+- 验证：定向 `npx vitest run src/modules/version src/modules/health` → **8 files / 64 passed**；全量 `npx vitest run` → **152 files / 2010 passed**；`tsc -b . --noEmit` 仅既有基线错误，本域 0。
+- DOM（临时 harness 已删；Vite 5498 / Chrome CDP 9298；两组件同屏）：
+  - 1440/1280/375 均 `body=视口`；ver5/sys3 均 2 行，首行均 `9.9.9`，第二行均「—」且 title 一致；无 `1.1.1`。
+  - 375 仅 ver5 表内横滚（560/319），sys3 表 319/319；页面无横溢。
+- 边界：仅 `modules/health/**`、`modules/version/**` + 本 DONE；未碰 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未 install/force/amend/--no-verify。

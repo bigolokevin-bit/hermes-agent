@@ -9,6 +9,7 @@ import {
   healthMessage,
   readHealth,
   readVersionRows,
+  readVersionRowsFromHealth,
   versionMessage,
   type HealthView,
   type VersionRow,
@@ -89,8 +90,29 @@ export function VersionHealthSurface({ preview = null }: { preview?: Preview }) 
     let live = true;
     setVersion({ k: "loading" });
     setHealth({ k: "loading" });
-    void fetchJsonStrict(VERSION_API_PATH)
-      .then((payload) => {
+
+    const load = async () => {
+      // Prefer the health rows: /system reads the same payload and the same
+      // field keys. The version endpoint is only a fallback when health has no
+      // component rows (or cannot be read), so the two surfaces never show
+      // different identifiers for the same service.
+      try {
+        const payload = await fetchJsonStrict(HEALTH_API_PATH);
+        if (!live) return;
+        const view = readHealth(payload);
+        setHealth(view === null ? { k: "unknown", message: "健康接口返回的内容无法解析；不影响版本表。" } : { k: "ready", view });
+        const rows = readVersionRowsFromHealth(payload);
+        if (rows !== null && rows.length > 0) {
+          setVersion({ k: "ready", rows });
+          return;
+        }
+      } catch (error: unknown) {
+        if (!live) return;
+        setHealth({ k: "unknown", message: healthMessage(error) });
+      }
+
+      try {
+        const payload = await fetchJsonStrict(VERSION_API_PATH);
         if (!live) return;
         const rows = readVersionRows(payload);
         if (rows === null) {
@@ -98,24 +120,15 @@ export function VersionHealthSurface({ preview = null }: { preview?: Preview }) 
           return;
         }
         setVersion(rows.length === 0 ? { k: "empty" } : { k: "ready", rows });
-      })
-      .catch((error: unknown) => {
+      } catch (error: unknown) {
         if (!live) return;
         const info = versionMessage(error);
         if (info.status === 401) setVersion({ k: "login", message: info.text });
         else if (info.status === 403 || info.status === 404) setVersion({ k: "gap", message: info.text, requestId: info.requestId });
         else setVersion({ k: "error", message: info.text, requestId: info.requestId });
-      });
-    void fetchJsonStrict(HEALTH_API_PATH)
-      .then((payload) => {
-        if (!live) return;
-        const view = readHealth(payload);
-        setHealth(view === null ? { k: "unknown", message: "健康接口返回的内容无法解析；不影响版本表。" } : { k: "ready", view });
-      })
-      .catch((error: unknown) => {
-        if (!live) return;
-        setHealth({ k: "unknown", message: healthMessage(error) });
-      });
+      }
+    };
+    void load();
     return () => {
       live = false;
     };
@@ -126,7 +139,7 @@ export function VersionHealthSurface({ preview = null }: { preview?: Preview }) 
       <CardContent className="space-y-3 p-4">
         <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-sm font-medium text-white/85">组件版本与健康</h2>
-          <span className="text-xs text-white/45">来源：版本读口 / 健康读口</span>
+          <span className="text-xs text-white/45">来源：健康读口（版本/构建标识）· 版本读口（回退）</span>
         </div>
         <HealthLine state={health} />
 
@@ -182,7 +195,7 @@ export function VersionHealthSurface({ preview = null }: { preview?: Preview }) 
             </table>
           </div>
         )}
-        <p className="text-xs text-white/40">版本与健康各读各的；缺失值显示「—」，不补 0，也不编造版本号。健康读口失败不会挡住版本表。</p>
+        <p className="text-xs text-white/40">版本/构建标识优先取健康读口，与 /system 同源同字段；健康无组件行时才回退版本读口。缺失显示「—」，不补 0，也不编造版本号。</p>
       </CardContent>
     </Card>
   );

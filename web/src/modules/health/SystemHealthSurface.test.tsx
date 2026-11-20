@@ -77,7 +77,7 @@ describe("SystemHealthSurface", () => {
     expect(container.querySelector("[data-testid='sys3-overall']")?.textContent).toBe("正常");
     const runtime = container.querySelector("[data-testid='sys3-row-runtime']")!;
     expect(runtime.querySelector("[data-testid='sys3-version']")?.textContent).toBe("—");
-    expect(runtime.querySelector("[data-testid='sys3-version']")?.getAttribute("title")).toContain("没有给出该服务的版本");
+    expect(runtime.querySelector("[data-testid='sys3-version']")?.getAttribute("title")).toContain("不编造版本号");
     expect(runtime.querySelector("[data-testid='sys3-latency']")?.textContent).toBe("47 ms");
     const bisheng = container.querySelector("[data-testid='sys3-row-bisheng']")!;
     expect(bisheng.querySelector("[data-testid='sys3-latency']")?.textContent).toBe("—");
