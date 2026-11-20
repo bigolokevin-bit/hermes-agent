@@ -68,6 +68,7 @@ export function RiskQuickFilter({
           data-testid="apv-risk-all"
           aria-pressed={risk === null}
           disabled={!ready}
+          aria-disabled={!ready}
           title={ready ? "显示全部风险档" : `不能按风险档筛选：${gateReason(phase)}；恢复列表后自动可用。`}
           onClick={() => onPick(null)}
           className={`${chip} ${risk === null ? onClass : offClass}`}
@@ -81,6 +82,7 @@ export function RiskQuickFilter({
             data-testid={`apv-risk-${option.value}`}
             aria-pressed={risk === option.value}
             disabled={!ready}
+            aria-disabled={!ready}
             title={
               ready
                 ? option.value === "none"
@@ -98,7 +100,7 @@ export function RiskQuickFilter({
       <p
         className="min-w-0 break-words text-xs text-muted-foreground"
         data-testid="apv-risk-scope-note"
-        title="实测 GET /api/approvals 带 risk=high 返回与不带它完全相同的集合（200，8 条同 id 序；R44 对 risk/window/since 三键同判：全 200 且同一全量）——后台不做风险档过滤。为避免假筛选，这里只对已加载的行做前端本地过滤，切换不产生新请求；严重风险（critical）没有独立档位，在「全部」下照常显示。"
+        title="实测本页读口带 risk=high 与不带时返回完全相同的行集（同 id 序；risk/window/since 三键同判）——后台不做风险档过滤。为避免假筛选，这里只对已加载的行做前端本地过滤，切换不产生新请求；严重风险（critical）没有独立档位，在「全部」下照常显示。"
       >
         按当前已加载 {rows.length} 条统计，不是全量；风险档切换不发新请求。
       </p>

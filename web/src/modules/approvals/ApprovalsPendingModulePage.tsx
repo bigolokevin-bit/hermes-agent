@@ -374,7 +374,7 @@ export function ApprovalsPendingModulePage(): ReactNode {
       <p
         className="min-w-0 break-words text-xs text-muted-foreground"
         data-testid="apv8-scope-note"
-        title="实测：GET /api/approvals 带 q/keyword/title 任一参数都返回同一全量（200，8 条同集合），后台不做关键字过滤；为避免「假服务端搜索」，这里只做前端本地过滤。"
+        title="实测：本页读口带 q/keyword/title 任一参数都与不带时返回同一全量（同集合），后台不做关键字过滤；为避免「假服务端搜索」，这里只做前端本地过滤。"
       >
         仅在当前已加载 {list.rows.length} 条内搜索；关键字是前端本地过滤，不产生新请求（实测后台 q/keyword/title 参数被忽略）。
       </p>
@@ -406,6 +406,7 @@ export function ApprovalsPendingModulePage(): ReactNode {
             onClick={list.reload}
             data-testid="apv-gates-refresh"
             title={actionGates(list.phase, list.rows.length).retry.title}
+            aria-disabled={!actionGates(list.phase, list.rows.length).retry.enabled || inFlight}
             disabled={!actionGates(list.phase, list.rows.length).retry.enabled || inFlight}
             prefix={
               list.phase === "loading" ? (
@@ -549,7 +550,7 @@ export function ApprovalsPendingModulePage(): ReactNode {
                   data-testid="apv-page-count"
                   title={
                     list.total === null
-                      ? "读口顶层只有 items/nextCursor（实测 200，无 total 键）；按已加载条数推算会撒谎，故不推算。"
+                      ? "读口响应顶层只有 items/nextCursor（无 total 键，实测本页响应）；按已加载条数推算会撒谎，故不推算。"
                       : "总数来自读口 total 键；已显示=当前已加载行数"
                   }
                 >

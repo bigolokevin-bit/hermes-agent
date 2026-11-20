@@ -1154,3 +1154,19 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 测试 history 3+pending 1+R44 同步：四行夹具（high/medium/缺/critical）——计数读数（高 1/未标注 1/all 4）+点 high→1 行+fetchJSON 计数不变+urls().every(!includes("risk=")) 双锁+全部态 critical 可见；&status=pending&risk=medium 粘链复现+请求带 status 不带 risk；&status&q&risk 三重组合空→apv-risk-empty→清空后 apv8-search-empty 接棒+输入框值=q 保留；error 态五钮 disabled+「不能按风险档筛选：列表读取失败」；pending 轨在+点/清零请求。定向 approvals 4 files/**131 passed**（126+5，一次全绿）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **151 files/2011 passed**（基线 2006+5）。
 - 零破：apv5–9/apd5–7/apr5/actor/nav/gates/state/export-name/since/time/parity/trunc/page/correlation（既有 126 全绿为证；R44 用例改动=被替代控件断言语义迁移非删除）；三档=与 apv-since-rail 同构 flex-wrap+truncate 形态学报；9122==60a4a429 禁重建，活体读数待并入后代次。
 - 判读记录：apv5-filter-risk（disabled select）与 apv-risk-*（真能力）不并存——退役旧 testid 系工单「把 disabled 控件做成真能力」授权；时间窗维仍按 R44 诚实置灰（本单未授权）。
+
+## R85 R49#5 整改：闸门 title 去他方自报数字 + disabled 形制统一（2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console → merge commit ee40933b（带入章面 0c1b94c3/代码代次 9813d7af 系他人 wave 笔，modules/approvals 本域零冲突），toplevel ✓ porc=0；重发三件套=工单为新单（非 R83 重投）。
+- 闸禁措辞单点现状复核（无需迁移）：全部「不能导出/不能排序/不能刷新/不能行内展开/不能按 X 筛选」title 已走 gates.ts gateReason（actionGates 的 deny 模板 + 三 QuickFilter/ActorBuckets rail 复用同句同后缀「；恢复列表后自动可用。」）；apd9-correlation/apd8-copy title 本就无他方数字。本单实际整改=**7 处 DOM title 去他方自报读数** + **闸禁钮统一 disabled+aria-disabled+title（cap6 形制）**。
+- 改前→改后对照（各 3 条代表，其余同法）：
+  1. apv-risk-scope-note title：改前「…带 risk=high 返回与不带它完全相同的集合（200，8 条同 id 序；R44 对 risk/window/since 三键同判：全 200 且同一全量）…」→ 改后「…带 risk=high 与不带时返回完全相同的行集（同 id 序；risk/window/since 三键同判）…」（数字全剥，参数名/同集合判据保留=本页历史自证）。
+  2. apv-since-scope-note title：改前「…since=24h / window=24h / since=<日期> 都返回同一全量（200，8 条同集合）…」→ 改后「…与不带时返回同一全量（同序同行集）…」。
+  3. apv8-scope-note title（两页同句）：改前「…q/keyword/title 任一参数都返回同一全量（200，8 条同集合）…」→ 改后「…都与不带时返回同一全量（同集合）…」。
+  4. apv-actor-scope-note title：「（200，8 条）」→「（即本页已加载的全部行）」。
+  5. apv-sort-scope-note title：「（200，8 条）」→「（即本页已加载行的原序）」并去 GET 绝对化措辞为「本页读口」。
+  6. apv-page-count 非 ready title（两页）：「读口顶层只有 items/nextCursor（实测 200，无 total 键）」→「读口响应顶层只有 items/nextCursor（无 total 键，实测本页响应）」。
+- disabled 形制：apv7-export/apv-sort-<k>/apv-since-<v>/apv-since-all/apv-risk-<v>/apv-risk-all/apv-actor-bucket-<i>/apv-actor-all/apv-gates-refresh 全部 = disabled + aria-disabled（布尔同源表达式，含 pending inFlight 项）+ title；ready 态 aria-disabled="false" 如实声明。
+- 用例（history 新 describe 3）：error 态 5 入口 title 不含 \b200\b/「自报」且含「不能」+「列表读取失败」+aria-disabled=true，refresh 例外（enabled，title「重试读取」）；loading 态 export aria-disabled=true+「正在读取列表」；ready 全页 [title] 扫描零他方数字（>20 条 title 扫，offenders 列表必空）。首跑 1 FAIL=RiskQuickFilter 钮组漏补 aria-disabled 锚（rep 函数 pairs 只写 title 项），补后全绿。
+- 验证：定向 approvals 4 files/**134 passed**（131+3）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **159 files/2179 passed**（merge 带入他人文件后的实跑基线，0 失败）。
+- 零破：apv-state-*/apv-sort-*/apv7-export/apv9-toggle/apd6 行为与文案除被删数字外未动（既有用例含 R74「actor=」子串断言全绿）；views.tsx 代码注释内保留一处历史实测读数（非屏上 DOM，工单范围=title 属性）；三档=title 属性无布局影响；9122==9813d7af 系活体待并入后代次。

@@ -66,6 +66,7 @@ export function SinceQuickFilter({
             data-testid={`apv-since-${option.value}`}
             aria-pressed={since === option.value}
             disabled={!ready}
+            aria-disabled={!ready}
             title={ready ? option.label : `不能按时间范围筛选：${gateReason(phase)}；恢复列表后自动可用。`}
             onClick={() => onPick(since === option.value ? null : option.value)}
             className={`${chip} ${since === option.value ? onClass : offClass}`}
@@ -78,6 +79,7 @@ export function SinceQuickFilter({
           data-testid="apv-since-all"
           aria-pressed={since === null}
           disabled={!ready}
+          aria-disabled={!ready}
           title={ready ? "显示全部提交时间" : `不能按时间范围筛选：${gateReason(phase)}；恢复列表后自动可用。`}
           onClick={() => onPick(null)}
           className={`${chip} ${since === null ? onClass : offClass}`}
@@ -88,7 +90,7 @@ export function SinceQuickFilter({
       <p
         className="min-w-0 break-words text-xs text-muted-foreground"
         data-testid="apv-since-scope-note"
-        title="实测 GET /api/approvals 带 since=24h / window=24h / since=<日期> 都返回同一全量（200，8 条同集合），后台不做时间窗过滤；为避免假筛选，这里只对已加载的行做前端本地过滤，切换不产生新请求。没有提交时间的行不属于任何时间窗。"
+        title="实测本页读口带 since=24h / window=24h / since=<日期> 与不带时返回同一全量（同序同行集），后台不做时间窗过滤；为避免假筛选，这里只对已加载的行做前端本地过滤，切换不产生新请求。没有提交时间的行不属于任何时间窗。"
       >
         按当前已加载 {loadedCount} 条统计，不是全量；切换时间范围不发新请求。
       </p>

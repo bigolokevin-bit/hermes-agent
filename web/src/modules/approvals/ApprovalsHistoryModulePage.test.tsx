@@ -2100,3 +2100,53 @@ describe("R83 risk local filter (apv-risk-*)", () => {
     }
   });
 });
+
+describe("R85 gate titles without foreign readings", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+  const GATED = ["apv7-export", "apv-sort-title", "apv-since-24h", "apv-risk-high", "apv-actor-all"];
+
+  it("error-phase gate titles state only self-evident facts and mark aria-disabled", async () => {
+    await mount(async (url: string) => {
+      if (String(url).includes("/api/approval?id=")) return {};
+      throw new ApiError("boom", { status: 500, body: "", url: "/agent-api/api/approvals", requestId: "req-r85-500" });
+    }, "/approvals?tab=history");
+    await waitFor(() => !!qa("apv-state-error"), "error panel");
+    for (const id of GATED) {
+      const el = qa(id) as HTMLButtonElement | null;
+      expect(el, id).toBeTruthy();
+      const t = el!.getAttribute("title") ?? "";
+      expect(t, `${id} title: ${t}`).not.toMatch(/\b200\b/);
+      expect(t, `${id} title: ${t}`).not.toContain("自报");
+      expect(t, `${id} title: ${t}`).toContain("不能");
+      expect(t, `${id} title: ${t}`).toContain("列表读取失败");
+      expect(el!.getAttribute("aria-disabled"), `${id} aria-disabled`).toBe("true");
+    }
+    const refresh = qa("apv-gates-refresh") as HTMLButtonElement;
+    expect(refresh.disabled, "retry stays usable in error").toBe(false);
+    expect(refresh.getAttribute("aria-disabled")).toBe("false");
+    expect(refresh.getAttribute("title")).toContain("重试读取");
+  });
+
+  it("loading marks gates aria-disabled with the reading sentence", async () => {
+    api.fetchJSON.mockImplementation(() => new Promise(() => {}));
+    await render("/approvals?tab=history", <ApprovalsHistoryModulePage />);
+    await waitFor(() => !!qa("apv7-export"), "export present");
+    const btn = qa("apv7-export") as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
+    expect(btn.getAttribute("aria-disabled")).toBe("true");
+    expect(btn.getAttribute("title")).toContain("正在读取列表");
+    expect(btn.getAttribute("title")).not.toMatch(/\b200\b/);
+  });
+
+  it("no title anywhere on the ready page carries foreign http readings", async () => {
+    await mount(async (url: string) => {
+      if (String(url).includes("/api/approval?id=")) return {};
+      return { items: ALL };
+    }, "/approvals?tab=history");
+    await waitFor(() => !!qa("apv8-search"), "ready page");
+    const titles = Array.from(document.querySelectorAll("[title]")).map((el) => el.getAttribute("title") ?? "");
+    expect(titles.length, "page has titled elements").toBeGreaterThan(20);
+    const offenders = titles.filter((t) => /\b200\b/.test(t) || t.includes("自报") || t.includes("条（接口）"));
+    expect(offenders.join(" | "), "zero foreign readings").toBe("");
+  });
+});

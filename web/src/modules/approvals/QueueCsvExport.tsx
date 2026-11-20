@@ -105,6 +105,7 @@ export function QueueCsvExport({
         outlined
         data-testid="apv7-export"
         disabled={!gate.enabled}
+        aria-disabled={!gate.enabled}
         title={gate.enabled ? `${gate.title}文件名时间=导出时刻（北京时间）。` : gate.title}
         onClick={() => downloadCsv(approvalsCsvName(tab, status, sort, dir), buildApprovalsCsv(rows))}
       >
