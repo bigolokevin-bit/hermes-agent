@@ -1445,3 +1445,5 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 2026-11-21 06:58 章笔 415e1869：assert-ia×2 / crawl×2 / state-quad / lint-fake / lint-reuse 七件未重跑，按 carriedFrom=cafd2d81 沿用（wave-76 八笔全纯测试，entry sha 与 CSS 逐字节未变）；shots 双面已本代真跑 102/102 obs=0
 
 2026-11-21 07:0x 章笔 78bf2ccd：wave-77 三笔全纯测试，entry sha 与 CSS 逐字节未变；九件未重跑，按 carriedFrom=415e1869 沿用。
+
+2026-11-21 07:2x 章笔 69c858af（wave-78）：四笔全纯测试（aud a52be295 / appr 1754e95e / gov 751feccb / ui1 3a43d585），entry sha 4407188f… 与 CSS 逐字节未变；九件按 carriedFrom=78bf2ccd 沿用，shots entry 三键本代现值补写。
