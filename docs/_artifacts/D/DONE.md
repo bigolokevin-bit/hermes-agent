@@ -1447,3 +1447,12 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 2026-11-21 07:0x 章笔 78bf2ccd：wave-77 三笔全纯测试，entry sha 与 CSS 逐字节未变；九件未重跑，按 carriedFrom=415e1869 沿用。
 
 2026-11-21 07:2x 章笔 69c858af（wave-78）：四笔全纯测试（aud a52be295 / appr 1754e95e / gov 751feccb / ui1 3a43d585），entry sha 4407188f… 与 CSS 逐字节未变；九件按 carriedFrom=78bf2ccd 沿用，shots entry 三键本代现值补写。
+
+## 一六四轮 · 波次代次九件重章 @ ec12d3e7（wave-79，七件 carried + shots 本代真跑，2026-11-21 07:1x）
+
+- 代次现查：ls-remote/LOCAL=ec12d3e72d（merge(lane): e4e60525，三笔 appr c02d046b/ui1 663a3c89/aud e4e60525 全纯测试）、porc 0；entry 6g0IMx1G 172175B sha 4407188f…d686b 逐字==卡面、CSS IyhtleuY 145872 未变、9122 served 同值、10/10 路由 200。
+- **wave-79 三笔全纯测试，entry sha 与 CSS 逐字节未变** ⇒ 按 D 令除 shots 外七件不重跑：ia×2/fake/reuse/crawl×2/quad 以 69c858af（wave-78 章）读数原值保留，注 headHash=ec12d3e7 + exitCode=0 + carriedFrom="69c858af" + carried=true + stampNote（同义句如上）；78 章未重做、无 amend。
+- shots 双腿本代真跑（auth sh_1fb514b9d / anon sh_1fb515f20 均 RC=0）：auth 102/102 failures=[] **obs=1（#/capabilities?tab=channels——R-OBS1-43d83d65.md ENV 401/404 归因复现，路由名如实不入判据）** distinct=25 envOnly=51；anon 102/102 **obs=1（#/audit 本代新出，路由名如实）** distinct=23 envOnly=51；双腿注 headHash/三键/servedEntryBefore==After/ceAuthority=login-state、anon auxiliary=true。
+- 七件 carried 值：ia{51,22,(tabsAll23),1,8}、fake v=[]、reuse v0 e1、quad 20/20、crawl DL0/CE0/PE0×2 routesCE=51/51（401 归因）redirects=24 notes。
+- TALLY 原文 {'ec12d3e7': 9} count 9 BAD []（glob+isinstance 形）。硬写锁死锚不走 stamp rev-parse（wave-75 盘现算污染坑）；commit 后 FINAL 盘上复读（seal-checkout 竞态坑）。
+- 环境：9122 v4_proxy 95667、caddy 28034、BFF 12048@603a23e9、qa-verify 33c2b838 均未动；web/src 未碰；禁写 PASS 照守。
