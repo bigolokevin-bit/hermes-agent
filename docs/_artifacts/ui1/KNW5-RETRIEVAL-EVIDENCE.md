@@ -5381,3 +5381,50 @@ combined/门句同源归位语义后按实测 50 锁并补「筛空前 51 在场
 ```
 未测如实：带登录会话真屏；名筛归位后 nextCursor 是否仍可从 -more 续第 2 页（R216②
 只锁清全部路径，本轮未扩）；kn3-page-cap 在「筛空」帧的渲染与否未查（不在本单腿内）。
+
+# KNW5 追加 R230：抽屉打开态 × 导出数据行同帧护栏（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `e2ef3793`
+（wave-73）、基线先跑 46/217 全绿 Errors 0、目标文件确认缺席再动笔。零产品文件改动。
+新增 knowledge.preview.export.parity.test.tsx 三例（本体）。
+
+## 名实换算与查重（引用不重写）
+
+```text
+无真 CSV（源级四件套 0、data-export="absent" ×4——R190①:113-119）→「导出行」= knF-copy
+数据行；「预览打开态」= kn7 抽屉（?doc=，行名点击开；详情读失败抽屉仍开——R196③ 夹具
+同法，导出侧只依赖列表数据，已注记）；行钮 -space- 族（详情面）；kn-doc-copy 非行数。
+**第③腿换算（红线④）**：kn3-page-cap 在 true-0/error 态不渲染（R108/R157/R187 锁）→
+派工「cap 仍如实」不成立，按产品断言两态当帧 cap null 并在此记录。
+引用：R216①/R197①（五读链）、R229①（分页首末行）、R142①:124（单页三值·非预览帧）、
+R190④:190-205（空集内容面 disabled+title+零写+零请求+spy 0）、R196③:104-124（标题随换
++详情读各恰 1+列表集合引 R149④）、R222/R223/R200/R214②。
+新增维（点名）：① 抽屉打开帧三值同帧 + knF 首行逐字==屏上首行 + 导出文本与开抽屉前
+快照逐字互等（R142① 非预览帧）；② a→b 换档**导出内容级逐字不变** + 请求按现实非零：
+换档增量实测恰 1（d_b×1，不重读 d_a——比 R196③ 各恰 1 更精的增量口径）+ 列表读集合
+逐字不动；③ 错误站（列表 500）复制侧 disabled+title+点击零写/零 blob/零请求（R190④
+仅空集站，错误站复制钮模块套件此前无 pin）+ 双态 cap 缺席当帧复跑（换算位）。
+```
+
+## 三例读数与验证尾行（R230）
+
+```text
+① 抽屉开（loc 含 doc=d_a、kn7-preview-title 在场）：三值 [表体 2, 钮 2, knF 2]、
+  首行 toBe 屏上首行、knF 全文 toBe 开抽屉前快照。② 换 B：标题在场、knF 全文逐字==
+  textA、表体名序 toEqual、urls 4→5（恰 +1 全为 d_b）、列表读 join 逐字==基线。
+  ③ true-0：cap null、knF disabled、title 含「没有可复制」、点击 writeText 0、urls 不变；
+  error 站：cap null、disabled、title 非空（原因句在位，逐字句不扩）、点击零写零请求、
+  createObjectURL 全帧 0。
+$ npx vitest run src/modules/knowledge → 47 files / 220 tests passed（217+3），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0；build /tmp/knw-r230-dist exit 0
+$ 全仓 → 353 files / 3185 passed 全绿（无豁免、无已知红需点名）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort*/kn-gates/kn-row-copy*/
+kn-row-copy-space*/kn-doc-copy*/kn3-page-cap/knE-page-*/kn-type*/kn7-preview*/
+kn-doc-preview* + 既有 46 套全绿。过程自纠两处（误写重复 globalThis 行删除；② 预期
+「+2」首跑红，实测换档只重读新档 +1，按实锁并补强注释），产品零触碰。
+```
+未测如实：带登录会话真屏；详情读**成功**时的抽屉体字段链（R125/R196 族已锁，本轮导出
+侧不依赖详情体，按 404 夹具开抽屉并注记）；error 站 title 的具体整句逐字（只锁非空+
+在场性，全句属 R138 族地盘不扩）。
