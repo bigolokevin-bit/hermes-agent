@@ -1223,3 +1223,30 @@
   font-size: 0.75rem;
   overflow-wrap: anywhere;
 }
+
+/* ── UI-A 2026-11-21：/knowledge 表格密度收编 ─────────────────────────
+ * 行高 40px 与纵向 padding 归一由 styles/table-density.css 的 [data-tab]
+ * 共享域命中（本文件不重复声明）。本笔补三件：数字/大小列右对齐 +
+ * 等宽数字；时间类列等宽数字；kn6 搜索表所在 k3-docs-wrap 无横滚壳。
+ * 表头右对齐暂缺可靠钩子（SortableHead 未输出 data-col 属性），列对齐
+ * 以 td 为准，th 侧留给 tsx 类名轮。斑马纹：本文件无条纹背景源。 */
+.knw5-table td[data-label="大小"],
+.knw5-table td[data-label="文档数"],
+.knw5-table td[data-label="条目数"],
+.knw5-table td[data-label="规模"] {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.knw5-table td[data-label="时间"],
+.knw5-table td[data-label="更新"],
+.knw5-table td[data-label="更新时间"],
+.knw5-table td[data-label="最近同步"],
+.knw5-table td[data-label="采集时刻"] {
+  font-variant-numeric: tabular-nums;
+}
+
+.k3-docs-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}

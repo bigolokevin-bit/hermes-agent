@@ -46,6 +46,7 @@ import { BackToList, restoreListScroll, saveListScroll } from "./BackToList";
 import { QueueCsvExport } from "./QueueCsvExport";
 import { QueueSortBar } from "./QueueSortBar";
 import { ActorBuckets } from "./ActorBuckets";
+import "./approvals-density.css";
 import { RowDetailCopy } from "./RowDetailCopy";
 import { SinceQuickFilter, isSinceValue, withinSince } from "./SinceQuickFilter";
 import { RiskQuickFilter, isRiskValue, withinRisk, type RiskValue } from "./RiskQuickFilter";

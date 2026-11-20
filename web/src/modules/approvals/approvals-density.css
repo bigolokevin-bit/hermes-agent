@@ -1,0 +1,21 @@
+/* UI-A 2026-11-21：/approvals 队列密度接线。
+ * 本仓 /approvals 无 HTML table：待处理队列与历史列表都是卡片流行
+ * （apr5-row-* / apr-row-* 行壳），40/36 行高契约落为行壳 min-height：
+ * 主队列 40px，历史子表 36px 紧凑档。数字右对齐不适用（卡片流无固定
+ * 列宽）；375px 行内 flex-wrap 自然折行、不撑破，无需新横滚壳。
+ * tsx 仅各加一行 import 完成样式接线，业务逻辑与 testid 未触。 */
+[data-testid="apr5-list"] [data-testid^="apr5-row-"] {
+  min-height: var(--table-row-h);
+}
+
+/* 子表面（执行者分桶内的记录行）走 36px 紧凑档。apr-row-* 前缀实为
+ * RowCopy 反馈 span，不是行壳，勿锚。 */
+[data-testid="apv-actor-buckets"] [data-testid^="apr5-row-"] {
+  min-height: var(--table-row-h-compact);
+}
+
+/* 历史页与队列页同形制（同一 apr5-list / apr5-row-* 结构），显式补齐
+ * 40px 档，避免依赖隐式结构复用。 */
+[data-testid="apr5-page-history"] [data-testid^="apr5-row-"] {
+  min-height: var(--table-row-h);
+}
