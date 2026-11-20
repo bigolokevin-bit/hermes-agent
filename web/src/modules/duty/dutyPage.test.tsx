@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, useSearchParams } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api-error";
@@ -130,7 +130,7 @@ describe("DutyPage", () => {
     fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
     await render(<DutyPage />);
     const text = container.textContent ?? "";
-    for (const title of ["可上岗", "今日运行", "今日成本", "近 14 天运行", "24 小时活跃", "阻塞", "待我处理", "最近运行"]) {
+    for (const title of ["可上岗", "今日运行", "今日成本", "近 14 天运行", "近 14 天活跃", "阻塞", "待我处理", "最近运行"]) {
       expect(text).toContain(title);
     }
     expect(container.querySelectorAll('[data-card="duty"]')).toHaveLength(8);
@@ -587,5 +587,117 @@ describe("DutyPage trend accessibility", () => {
     expect(title).toContain("req-trend-1");
     expect(title).toContain("不把缺数当 0");
     expect(q('[data-testid="ov6-kpi-runs"]')?.textContent).toContain("2");
+  });
+});
+
+function RangeProbe() {
+  const [params] = useSearchParams();
+  return <span data-testid="duty-range-loc">{params.toString()}</span>;
+}
+
+describe("DutyPage time range", () => {
+  const q = (sel: string) => container.querySelector(sel);
+
+  it("writes the chosen range to the address and restores it from a pasted link", async () => {
+    fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
+    await act(async () => {
+      root.render(
+        <MemoryRouter initialEntries={["/?range=30d"]}>
+          <DutyPage />
+          <RangeProbe />
+        </MemoryRouter>,
+      );
+    });
+    await act(async () => {});
+    expect(q('[data-testid="duty-range-30d"]')?.getAttribute("aria-pressed")).toBe("true");
+    expect(container.textContent).toContain("近 30 天运行");
+    expect(q('[data-testid="duty-range-loc"]')?.textContent).toBe("range=30d");
+    await act(async () => {
+      (q('[data-testid="duty-range-14d"]') as HTMLButtonElement).click();
+    });
+    await act(async () => {});
+    expect(q('[data-testid="duty-range-loc"]')?.textContent).toBe("");
+  });
+
+  it("offers four real range buttons and the default 14d window drives both time reads", async () => {
+    const urls: string[] = [];
+    fetchJSON.mockImplementation((url: string) => {
+      urls.push(url);
+      return Promise.resolve(ok(url));
+    });
+    await render(<DutyPage />);
+    for (const id of ["24h", "7d", "14d", "30d"]) {
+      expect(q(`[data-testid="duty-range-${id}"]`)).toBeTruthy();
+    }
+    expect(q('[data-testid="duty-range-14d"]')?.getAttribute("aria-pressed")).toBe("true");
+    expect(q('[data-testid="duty-range-7d"]')?.getAttribute("aria-pressed")).toBe("false");
+    expect(urls.filter((u) => u.includes("/workbench/timeseries")).length).toBe(1);
+    expect(urls.some((u) => u.includes("/workbench/timeseries") && u.includes("range=14d"))).toBe(true);
+    expect(urls.some((u) => u.includes("/run-activity") && u.includes("weeks=2"))).toBe(true);
+  });
+
+  it("switching to 7d re-reads only the two time-dependent readers, once each", async () => {
+    const urls: string[] = [];
+    fetchJSON.mockImplementation((url: string) => {
+      urls.push(url);
+      return Promise.resolve(ok(url));
+    });
+    await render(<DutyPage />);
+    const initial = urls.length;
+    await act(async () => {
+      (q('[data-testid="duty-range-7d"]') as HTMLButtonElement).click();
+    });
+    await act(async () => {});
+    const added = urls.slice(initial);
+    expect(added.filter((u) => u.includes("/workbench/timeseries")).length).toBe(1);
+    expect(added.find((u) => u.includes("/workbench/timeseries"))).toContain("range=7d");
+    expect(added.filter((u) => u.includes("/run-activity")).length).toBe(1);
+    expect(added.find((u) => u.includes("/run-activity"))).toContain("weeks=1");
+    for (const path of ["/employees", "/employee-stats", "/workbench/queue", "/budget-usage", "/tasks"]) {
+      expect(added.some((u) => u.includes(path))).toBe(false);
+    }
+    expect(q('[data-testid="duty-range-7d"]')?.getAttribute("aria-pressed")).toBe("true");
+    expect(q('[data-testid="duty-range-14d"]')?.getAttribute("aria-pressed")).toBe("false");
+    expect(container.textContent).toContain("近 7 天运行");
+  });
+
+  it("drops a late answer from the previous window", async () => {
+    const pending: { range: string; resolve: () => void }[] = [];
+    fetchJSON.mockImplementation((url: string) => {
+      if (url.includes("/workbench/timeseries")) {
+        const range = /range=([^&]+)/.exec(url)?.[1] ?? "";
+        if (range === "7d" || range === "30d") {
+          const value = range === "7d" ? 7 : 30;
+          return new Promise((resolve) => {
+            pending.push({
+              range,
+              resolve: () =>
+                resolve({
+                  asOf: WB_ASOF,
+                  points: [{ ts: "2026-11-18T00:00:00.000Z", label: "11-18", value }],
+                  totals: { metric: "runs", value },
+                }),
+            });
+          });
+        }
+      }
+      return Promise.resolve(ok(url));
+    });
+    await render(<DutyPage />);
+    await act(async () => {
+      (q('[data-testid="duty-range-7d"]') as HTMLButtonElement).click();
+    });
+    await act(async () => {
+      (q('[data-testid="duty-range-30d"]') as HTMLButtonElement).click();
+    });
+    // Resolve the stale 7d batch first: it must not paint over the 30d window.
+    await act(async () => {
+      pending.find((p) => p.range === "7d")?.resolve();
+    });
+    await act(async () => {
+      pending.find((p) => p.range === "30d")?.resolve();
+    });
+    expect(q('[data-testid="duty-trend-total"]')?.textContent).toBe("30");
+    expect(container.textContent).toContain("近 30 天运行");
   });
 });

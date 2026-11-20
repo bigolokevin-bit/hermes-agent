@@ -615,3 +615,23 @@
 .duty-trend-table td:last-child {
   text-align: right;
 }
+
+/* Time range switch: four real buttons, the selected one pressed. */
+.duty-ranges { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.duty-range {
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-muted-foreground);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 12px;
+  line-height: 1.6;
+  cursor: pointer;
+}
+.duty-range[aria-pressed="true"] {
+  color: var(--color-foreground);
+  border-color: var(--color-ring);
+  background: var(--color-muted);
+}
+.duty-range:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 1px; }
+@media (max-width: 480px) { .duty-ranges { width: 100%; } .duty-range { flex: 1 1 auto; } }

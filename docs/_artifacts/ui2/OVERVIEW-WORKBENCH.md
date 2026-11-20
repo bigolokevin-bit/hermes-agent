@@ -107,3 +107,12 @@
 验证：`vitest run src/modules/duty` 5 files / 82 passed（基线 74）；全量 149 files / 1956 passed（基线 1948）；`tsc` 本域 0；`eslint src/modules/duty` 0 error / 3 既有 warning；build `--outDir /tmp/build-dutyagg` exit 0，entry `assets/index-DfKOIw-B.js` sha256 `f57cc84c2c6df1a74f95a9cf0a74e9fa3d613638b67dd0fa46c36084943bd62e`，entry 内 `duty-trend-table-toggle`=0，chunk `DutyPage-tloxPclH.js`=1。
 
 未测：真实 BFF null 点/全 null 批分布未抽样；375/1440 实机未复核。
+
+## 时间范围切换（duty range，2026-11-20）
+
+- 四个真按钮 `duty-range-24h|7d|14d|30d`，`aria-pressed` 标选中；URL `?range=` 为单一事实源（默认 14d 时省略该键，粘链可复现）。默认沿用页面既有的 14 天口径。
+- 一个范围 id 同时驱动两条时间读口：`workbench/timeseries?range=<1d|7d|14d|30d>` 与 `/run-activity?weeks=<1|1|2|4>`，两卡不会出现不同窗口。趋势卡标题、摘要、图 aria、表 caption 随范围改口（默认「近 14 天运行」），活跃卡标题同步为「近 N 天活跃」。
+- 切换只重取这两条读口各一次；员工目录、员工统计、待审队列、日/月账本、运行明细、任务都不重取。切范围会作废旧的在途批（版本号 +1），迟到的旧窗口响应既不写卡片也不写刷新时刻；切换后两卡先回 loading，避免把旧窗口数字挂在新标签下。
+- 测试：默认 14d 两读口各一次且参数正确；切 7d 仅 timeseries(range=7d)+run-activity(weeks=1) 各一次、其余路径零新增；粘链 `?range=30d` 选中并显示「近 30 天运行」，切回默认后 URL 清空；7d 迟到批不覆盖 30d（终值 30）。
+- 验证：duty 5 files / 86 passed（前 82）；全量 151 files / 2008 passed（前 149/1956，含上游 wave-21 增量）；tsc 本域 0；eslint 0 error / 4 warnings（新增 1 条为既有 `react-hooks/set-state-in-effect` 同款写法：切换范围时把两张卡置回 loading）。
+- 未测：真实浏览器快速连点四个范围的人眼观感、375/1440 实机未复核。

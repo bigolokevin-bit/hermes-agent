@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { ArrowRight, RefreshCw, ShieldCheck } from "lucide-react";
 import { Badge } from "@nous-research/ui/ui/components/badge";
 import { Button } from "@nous-research/ui/ui/components/button";
@@ -33,6 +33,13 @@ import type {
   TaskRow,
 } from "./types";
 import { useDutyData } from "./useDutyData";
+import {
+  DEFAULT_DUTY_RANGE,
+  DUTY_RANGES,
+  DUTY_RANGE_PARAM,
+  dutyRange,
+  parseDutyRange,
+} from "./dutyRange";
 import { DUTY_GATES_OPEN, dutyGates, type DutyGates } from "./dutyGates";
 import "./duty.css";
 
@@ -430,7 +437,7 @@ function CostCard({
   );
 }
 
-function TrendCard({ stats, onRetry }: { stats: Loadable<RunStatsBody>; onRetry: () => void }) {
+function TrendCard({ stats, onRetry, label }: { stats: Loadable<RunStatsBody>; onRetry: () => void; label: string }) {
   const [tableOpen, setTableOpen] = useState(false);
   const totals = stats.k === "ready" ? runTotals(stats.data) : null;
   const buckets = stats.k === "ready" ? dailyBuckets(stats.data) : [];
@@ -440,10 +447,10 @@ function TrendCard({ stats, onRetry }: { stats: Loadable<RunStatsBody>; onRetry:
   const max = Math.max(1, ...buckets.map((b) => b.runs ?? 0));
   const failed = stats.k === "error";
   const summaryTitle = failed
-    ? `这次没能读取近 14 天趋势：${stats.message}${stats.requestId ? `（请求编号 ${stats.requestId}）` : ""}；不把缺数当 0。`
+    ? `这次没能读取${label}趋势：${stats.message}${stats.requestId ? `（请求编号 ${stats.requestId}）` : ""}；不把缺数当 0。`
     : undefined;
   return (
-    <HCard title="近 14 天运行" meta="每日启动" testid="duty-trend" stamp={stampOf(stats.k === "ready" ? asOfOf(stats.data) : null, "近 14 天运行统计", [stats])}>
+    <HCard title={`${label}运行`} meta="每日启动" testid="duty-trend" stamp={stampOf(stats.k === "ready" ? asOfOf(stats.data) : null, `${label}运行统计`, [stats])}>
       <StateLine state={stats} onRetry={onRetry}>
         <p className="duty-num">
           {totals ? totals.runs : "—"}
@@ -460,7 +467,7 @@ function TrendCard({ stats, onRetry }: { stats: Loadable<RunStatsBody>; onRetry:
           className="duty-chart"
           viewBox="0 0 600 120"
           role="img"
-          aria-label="近 14 天每日运行次数"
+          aria-label={`${label}每日运行次数`}
           aria-describedby="duty-trend-summary"
           data-testid="duty-trend-figure"
         >
@@ -486,7 +493,7 @@ function TrendCard({ stats, onRetry }: { stats: Loadable<RunStatsBody>; onRetry:
             </text>
           ) : null}
         </svg>
-        <p className="duty-note">近 14 天 · 按北京时间切日 · 只画有运行的桶</p>
+        <p className="duty-note">{label} · 按北京时间切日 · 只画有运行的桶</p>
       </StateLine>
       <p className="duty-say duty-trend-summary" id="duty-trend-summary" data-testid="duty-trend-summary" title={summaryTitle}>
         {failed ? (
@@ -498,12 +505,12 @@ function TrendCard({ stats, onRetry }: { stats: Loadable<RunStatsBody>; onRetry:
             <span data-testid="duty-trend-total">—</span>
           </>
         ) : stats.k !== "ready" ? (
-          "正在读取近 14 天的运行记录…"
+          `正在读取${label}的运行记录…`
         ) : summary.empty ? (
           "该区间没有运行记录"
         ) : (
           <>
-            近 14 天：首日 {summary.first?.label} <span data-testid="duty-trend-first">{summary.first?.runs ?? "—"}</span> 次 · 末日{" "}
+            {label}：首日 {summary.first?.label} <span data-testid="duty-trend-first">{summary.first?.runs ?? "—"}</span> 次 · 末日{" "}
             {summary.last?.label} <span data-testid="duty-trend-last">{summary.last?.runs ?? "—"}</span> 次 · 峰值{" "}
             {summary.peak?.label} <span data-testid="duty-trend-peak">{summary.peak?.runs ?? "—"}</span> 次 · 最低{" "}
             {summary.low?.label} <span data-testid="duty-trend-low">{summary.low?.runs ?? "—"}</span> 次 · 合计{" "}
@@ -524,7 +531,7 @@ function TrendCard({ stats, onRetry }: { stats: Loadable<RunStatsBody>; onRetry:
       {tableOpen ? (
         <div id="duty-trend-table" data-testid="duty-trend-table">
           <table className="duty-trend-table">
-            <caption>近 14 天每日运行次数（北京时间）</caption>
+            <caption>{`${label}每日运行次数（北京时间）`}</caption>
             <thead>
               <tr>
                 <th scope="col">日期</th>
@@ -557,14 +564,14 @@ function TrendCard({ stats, onRetry }: { stats: Loadable<RunStatsBody>; onRetry:
   );
 }
 
-function ActivityCard({ activity, onRetry }: { activity: Loadable<ActivityBody>; onRetry: () => void }) {
+function ActivityCard({ activity, onRetry, label }: { activity: Loadable<ActivityBody>; onRetry: () => void; label: string }) {
   const view = activity24(
     activity.k === "ready" ? activity.data : null,
     beijingWeekday(),
     beijingHour(),
   );
   return (
-    <HCard title="24 小时活跃" meta="每格 1 小时" testid="duty-activity" stamp={stampOf(activity.k === "ready" ? asOfOf(activity.data) : null, "24 小时活跃统计", [activity])}>
+    <HCard title={`${label}活跃`} meta="每格 1 小时" testid="duty-activity" stamp={stampOf(activity.k === "ready" ? asOfOf(activity.data) : null, `${label}活跃统计`, [activity])}>
       <StateLine state={activity} onRetry={onRetry}>
         <p className="duty-num">
           {view.peakHour === null ? "—" : `${String(view.peakHour).padStart(2, "0")}:00`}
@@ -813,7 +820,16 @@ function HealthStrip({
 }
 
 export default function DutyPage() {
-  const { data, reload, loading, refreshState } = useDutyData();
+  const [params, setParams] = useSearchParams();
+  const rangeId = parseDutyRange(params.get(DUTY_RANGE_PARAM));
+  const range = dutyRange(rangeId);
+  const { data, reload, loading, refreshState } = useDutyData(rangeId);
+  const chooseRange = (next: string) => {
+    const query = new URLSearchParams(params);
+    if (next === DEFAULT_DUTY_RANGE) query.delete(DUTY_RANGE_PARAM);
+    else query.set(DUTY_RANGE_PARAM, next);
+    setParams(query, { replace: true });
+  };
   // One derivation for refresh / retry / copy / links. Every block failed in
   // the same batch only when the first read is done and every loadable errored.
   const loadableValues = Object.values(data);
@@ -877,7 +893,7 @@ export default function DutyPage() {
             const stampLegs: { name: string; leg: { k: string; data?: unknown } }[] = [
               { name: "今日运行统计", leg: data.todayStats },
               { name: "运行窗口统计", leg: data.stats },
-              { name: "近 14 天统计", leg: data.stats14 },
+              { name: `${range.label}统计`, leg: data.stats14 },
               { name: "当日成本账本", leg: data.budgetDay },
               { name: "审批统计", leg: data.approvalStats },
             ];
@@ -907,6 +923,20 @@ export default function DutyPage() {
           })()}
         </div>
         <div className="duty-head-actions">
+          <div className="duty-ranges" role="group" aria-label="时间范围">
+            {DUTY_RANGES.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                className="duty-range"
+                data-testid={`duty-range-${r.id}`}
+                aria-pressed={r.id === rangeId}
+                onClick={() => chooseRange(r.id)}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
           <Button
             size="sm"
             outlined
@@ -971,8 +1001,8 @@ export default function DutyPage() {
       <HealthStrip cost={data.budgetDay} runs={data.todayStats} />
 
       <div className="duty-grid duty-grid-2">
-        <TrendCard stats={data.stats14} onRetry={reload} />
-        <ActivityCard activity={data.activity} onRetry={reload} />
+        <TrendCard stats={data.stats14} onRetry={reload} label={range.label} />
+        <ActivityCard activity={data.activity} onRetry={reload} label={range.label} />
       </div>
 
       <div className="duty-grid duty-grid-3">
