@@ -25,7 +25,7 @@ import {
   joinTitles,
   truncatedView,
 } from "./truncation";
-import { AuditResourceLink, CopyValue, DeniedPanel, ErrorPanel, LoadingPanel, PermalinkCopy, SummaryCopy, TechnicalDisclosure } from "./states";
+import { AuditResourceCell, AuditResourceLink, CopyValue, DeniedPanel, ErrorPanel, LoadingPanel, PermalinkCopy, SummaryCopy, TechnicalDisclosure } from "./states";
 import { copyLinkGate } from "./auditGates";
 import type { FailureCopy } from "./copy";
 import { summaryFromDetail, summaryFromRow } from "./summary";
@@ -270,6 +270,18 @@ export function AuditEventRowCard({
             title={row.resource.raw ?? undefined}
             truncate
           />
+          {/* R106: 关联资源 — the way out of the ledger, as a column. The 对象 line
+           * above says what the event touched; this says where a person can go
+           * read the thing itself, and it asks the same one table the preview and
+           * the record pane ask, so the three faces cannot promise two different
+           * destinations for one resource. The anchor replaces the value cell
+           * rather than dressing up the label, and nothing here is fetched. */}
+          <div className="flex min-w-0 flex-col gap-1" data-testid={`aud01-cell-${row.key}-resource`}>
+            <dt className="shrink-0 text-muted-foreground">关联资源</dt>
+            <dd className="min-w-0">
+              <AuditResourceCell resource={row.resource} />
+            </dd>
+          </div>
           <div className="flex min-w-0 flex-col gap-1" data-testid={`aud01-cell-${row.key}-request-id`}>
             <dt className="shrink-0 text-muted-foreground">请求编号</dt>
             <dd className="min-w-0">

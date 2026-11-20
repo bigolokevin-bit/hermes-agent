@@ -221,3 +221,80 @@ describe("audW - the two faces, the same way out", () => {
     );
   });
 });
+
+describe("audW R106 - the same way out, as a column on the row", () => {
+  /** The cell the list row carries; one testid, three possible contents. */
+  const cell = (kind: string) =>
+    document.querySelector(`[data-testid='aud01-cell-${ID}-resource'] [data-testid='${kind}']`);
+
+  it("links the row to the resource with the very href the two other faces get", async () => {
+    await mountBoth(APPROVAL_EVENT);
+    const listed = cell("aud-resource-link") as HTMLAnchorElement | null;
+    expect(listed).not.toBeNull();
+    expect(listed?.getAttribute("href")).toBe(
+      "/approvals?tab=history&status=all&id=ap_1122334455667788",
+    );
+    // one table, three faces: the column cannot promise a different destination
+    expect(listed?.getAttribute("href")).toBe(linksIn(`aud6-preview-${ID}`)[0].getAttribute("href"));
+    expect(listed?.getAttribute("href")).toBe(linksIn("aud02-detail")[0].getAttribute("href"));
+    expect(listed?.getAttribute("href")).toBe(hrefOf({ type: "approval", id: "ap_1122334455667788" }));
+    expect(listed?.getAttribute("target")).toBe("_blank");
+    expect(listed?.getAttribute("rel")).toContain("noopener");
+    expect(listed?.getAttribute("onclick")).toBeNull();
+  });
+
+  it("says 类型人话 · 短码 and keeps the machine id off the row", async () => {
+    await mountBoth(APPROVAL_EVENT);
+    const listed = cell("aud-resource-link");
+    // the short code is the ledger's own rule (model.ts): the last of the id, not
+    // the whole handle
+    expect(listed?.textContent).toBe("审批单 · 55667788");
+    // the whole handle belongs in the title, the short code on the face
+    expect(listed?.getAttribute("title")).toContain("审批历史");
+    const row = document.querySelector(`[data-testid='aud01-row-${ID}']`);
+    expect(row?.textContent).not.toContain("ap_1122334455667788");
+  });
+
+  it("a resource with no number is the absent-field word, never a dash or a zero", async () => {
+    await mountBoth({ ...APPROVAL_EVENT, resource: { type: "approval" } });
+    expect(cell("aud-resource-link")).toBeNull();
+    const said = cell("aud-resource-missing");
+    expect(said?.textContent).toBe(AUDJ_TIME_MISSING);
+    expect(said?.getAttribute("title")).toContain("审批");
+    const box = document.querySelector(`[data-testid='aud01-cell-${ID}-resource']`);
+    expect(box?.textContent).not.toContain("—");
+    expect(box?.textContent).not.toMatch(/(^|[^\d])0([^\d]|$)/);
+  });
+
+  it("a type with no page here stays plain text and tells why in the title", async () => {
+    await mountBoth({
+      ...APPROVAL_EVENT,
+      resource: { type: "policy_decision", id: "pd_E702438AF75640C794C34E123C" },
+    });
+    expect(cell("aud-resource-link")).toBeNull();
+    const said = cell("aud-resource-nolink");
+    expect(said?.textContent).toBe("策略判定 · C34E123C");
+    expect(said?.getAttribute("title")).toContain("该资源类型暂无页面");
+    expect(said?.getAttribute("title")).toContain("没有对应页面");
+  });
+
+  it("painting the column costs nothing: one list read, and a click is the browser's business", async () => {
+    api.fetchJSON.mockImplementation(async (url) =>
+      String(url).startsWith("/agent-api/api/audit-detail") ? { audit: APPROVAL_EVENT } : { items: [APPROVAL_EVENT] },
+    );
+    await render("/audit?window=7d");
+    await waitFor(
+      () => document.querySelector(`[data-testid='aud01-cell-${ID}-resource']`) !== null,
+      "column painted",
+    );
+    const before = urls();
+    expect(listReads()).toBe(1);
+    expect(detailReads()).toBe(0);
+    const anchor = cell("aud-resource-link") as HTMLAnchorElement | null;
+    expect(anchor).not.toBeNull();
+    await act(async () => {
+      anchor?.click();
+    });
+    expect(urls()).toEqual(before);
+  });
+});
