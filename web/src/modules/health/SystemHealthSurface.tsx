@@ -103,7 +103,7 @@ function tone(state: Sys3State): "success" | "warning" | "destructive" | "outlin
 export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Preview; onRetry?: () => void }) {
   const [state, setState] = useState<State>(() => {
     if (preview === "loading") return { k: "loading" };
-    if (preview === "empty") return { k: "empty", read: { rows: [], asOf: null, asOfReason: "预览空态没有采集时刻。", overall: "待核实", overallReason: "预览空态没有整体状态。", sources: 0 } };
+    if (preview === "empty") return { k: "empty", read: { rows: [], asOf: null, asOfReason: "预览空态没有采集时刻。", asOfTitle: "上游没带采集时刻，不用本机时间顶替", overall: "待核实", overallReason: "预览空态没有整体状态。", sources: 0 } };
     if (preview === "error") return { k: "error", message: "预览：健康清单读取失败。", requestId: null };
     return { k: "loading" };
   });
@@ -405,7 +405,7 @@ export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Pre
               <span>整体状态</span>
               <Badge tone={tone(state.read.overall)} data-testid="sys3-overall">{state.read.overall}</Badge>
               <span data-testid="sys3-sources">来源 {state.read.sources ?? "—"} 项</span>
-              <span data-testid="sys3-asof">{state.read.asOf ?? "—"}</span>
+              <span data-testid="sys3-asof" title={state.read.asOfTitle}>{state.read.asOf ?? "—"}</span>
               {state.read.overallReason ? <span className="sys3-reason">{state.read.overallReason}</span> : null}
               {state.read.asOfReason ? <span className="sys3-reason">{state.read.asOfReason}</span> : null}
             </div>

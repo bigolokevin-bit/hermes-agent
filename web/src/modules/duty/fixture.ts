@@ -2,69 +2,13 @@ import type { MatrixCapabilities, MatrixRow } from "./types";
 import { isRecord, num, text } from "./types";
 
 /**
- * Matrix fixture — used only until the BFF exposes /api/matrix (D lane).
- * Every surface that renders these rows must carry data-fixture="true" and a
- * visible 「样例」 badge. Stale real responses must never fall back to this.
+ * Matrix normaliser and the capability-resource catalogue.
+ *
+ * This file used to carry sample rows while the BFF route was missing. The
+ * live read model is now `/api/matrix` (BFF → domain `/v1/matrix/employees`),
+ * so no sample row ships any more: a missing route renders「未接入」and never
+ * falls back to made-up data.
  */
-export const MATRIX_FIXTURE: MatrixRow[] = [
-  {
-    employeeId: "emp_fixture_ops_01",
-    name: "陈可",
-    lifecycleState: "active",
-    versionRef: "empv_fixture_01",
-    title: "内容运营",
-    ownerUserId: "u_fixture_owner_1",
-    capabilities: {
-      skills: ["report_writer", "knowledge_search"],
-      tools: ["feishu_message", "browser"],
-      knowledge: ["product-docs"],
-    },
-    risk: { failedRuns: 1 },
-  },
-  {
-    employeeId: "emp_fixture_ops_02",
-    name: "林一舟",
-    lifecycleState: "active",
-    versionRef: "empv_fixture_02",
-    title: "投放运营",
-    ownerUserId: "u_fixture_owner_2",
-    capabilities: {
-      skills: ["report_writer"],
-      tools: ["feishu_message"],
-      knowledge: [],
-    },
-    risk: { blockedApprovals: 2, budgetOver: true },
-  },
-  {
-    employeeId: "emp_fixture_ops_03",
-    name: "苏禾",
-    lifecycleState: "paused",
-    versionRef: "empv_fixture_03",
-    title: "客服",
-    ownerUserId: undefined,
-    capabilities: {
-      skills: [],
-      tools: ["feishu_message"],
-      knowledge: [],
-    },
-    risk: null,
-  },
-  {
-    employeeId: "emp_fixture_ops_04",
-    name: "周颂",
-    lifecycleState: "active",
-    versionRef: "empv_fixture_04",
-    title: "数据分析",
-    ownerUserId: "u_fixture_owner_4",
-    capabilities: {
-      skills: ["report_writer", "sql_query"],
-      tools: ["browser"],
-      knowledge: ["product-docs", "sales-data"],
-    },
-    risk: { failedRuns: 2 },
-  },
-];
-
 function strings(v: unknown): string[] | undefined {
   if (!Array.isArray(v)) return undefined;
   const out = v

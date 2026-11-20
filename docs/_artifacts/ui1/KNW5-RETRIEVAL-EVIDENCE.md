@@ -1922,3 +1922,58 @@ $ npx vite build --outDir /tmp/knw31-dist → exit 0（产物只落 /tmp）
 边界：只改 `web/src/modules/knowledge/**` 与本证据目录（3 files）；未动 App.tsx / shell / routes /
 registry / package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交
 （无 `git add -A`）；无 force / amend / `--no-verify`；单 commit「feat(console): knowledge drawer permalink」。
+
+# KNW5 追加纠偏：复制条状态句门控（OBS-6）与 kn7 挂载范围声明（2026-11-20 BJT）
+
+安全闸：toplevel 相符、porcelain 空、显式 refspec fetch 后 merge 实到 `5630ffce`
+（wave-20，含既有全部代次），零冲突；merge 对 `web/src/modules/knowledge` 的 delta 为空，
+合后知识套基线 56/56 绿再动工。
+
+## ① OBS-6 — 复制条状态句与兜底锚的门控统一
+
+```text
+改前读数（现码逐字）：禁用态（loading/unwired/login/error/真0/筛0）状态句 = ""（空串），
+  兜底节点 = 不存在。即 OBS-6 的字面矛盾（状态句说可复制、兜底为空/反之）在 R55–R57
+  引入「内容签名作废」后已无可复现通路——状态句只在 copied/failed 两个动作态出字，
+  而这两个态只能由 enabled 时的点击产生。但「禁用态状态句整句沉默」仍不满足
+  「状态与真实可用性一致」的验收口径（用户无从知道为什么不能复制）。
+改后口径（统一 helper copyBlockNotice，四张条共用）：
+  · 能复制（ready 且可见行>0；knL 为行已加载）→ 成功「已复制…」/失败「复制失败，已展开可选文本，
+    可手动复制」+ 兜底 textarea——成功/失败路径文案与行为零改动（既有测试原样绿）。
+  · 禁用 → 状态句一律「当前不可复制：<短原因>」，且兜底锚必然不渲染（同一函数同一门控出两值）。
+改后实测读数（逐字）：
+  knI loading   → 「当前不可复制：列表还在读取」      fallback 无
+  knI unwired   → 「当前不可复制：读口未接入或没有权限」 fallback 无
+  knI 真0       → 「当前不可复制：这份回答里没有空间」  fallback 无（title 仍逐字「当前没有可复制的空间」）
+  knI 筛0       → 「当前不可复制：筛选后没有留下的空间」 fallback 无
+  knG loading/unwired/真0/筛0 → 同型四种短原因句，兜底均无
+  knF loading/error/筛0       → 「列表还在读取」「这次读取没有成功」「筛选后没有留下的文档」，兜底均无
+  knL ghost     → 「当前不可复制：这条文档不在已加载的列表里」 fallback 无
+  正常路径对照  → 成功「已复制 2 行」；失败「复制失败，已展开可选文本，可手动复制」且兜底同现。
+knO（固定链接条）不在本次派工范围，行为与状态句未动（R63 测试原样绿）。
+```
+
+## ② kn7 抽屉挂载范围 — 选 (a) 设计声明
+
+选择：空间行不打开文档抽屉，声明为设计意图。理由：抽屉的每个字段都取自「文档」行
+（文档名/原文位置/类型/大小/更新 + 详情读口），空间行没有这些字段；空间行的既有去处就是
+进入该空间看文档列表（行本身是带 title 的真链接），语义已闭环。空间抽屉若要做，需新造一套
+字段且大半列无读口支撑，超出纠偏最小面。
+实施：`knw5-space-link` 的 title 扩为「看这个空间里的文档——文档预览抽屉只对文档行打开，
+请进入空间后预览文档」；实测点空间行后 `kn7-preview-panel` 不存在、URL 落 space=——
+文档行抽屉的既有七条行为零改动（R49/R59/R60/R63 抽屉测试原样绿）。
+
+knI/kn7 家族零破；三档宽度无新元素入屏（状态句替换同位文本、兜底只减不增）；普通 URL
+`data-fixture` 仍 0；零写入口；四态与 403≡404 探针原样。
+
+## 验证尾行（本次纠偏）
+```text
+$ npx vitest run src/modules/knowledge   → 2 files / 57 tests passed（含新增门控统一测试七段）
+$ npx vitest run                         → 147 files / 1916 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw32-dist → exit 0
+```
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录（3 files）；显式路径提交；
+无 force / amend / `--no-verify` / `git add -A`；未并 main、未重建 9122；
+merge（5630ffce）与单 fix commit 分开。

@@ -300,7 +300,10 @@ describe("pending queue states", () => {
     expect(text()).not.toContain("employee:8812");
     expect(text()).not.toContain("human:1");
     expect(text()).not.toContain("run_77aaee33");
-    expect(text()).not.toContain("pending");
+    // R75：导出文件名契约本就要求 tab/status 段——裸 token 不泄漏断言限定在
+    // 文件名以外的界面文本。
+    const nameEl = document.querySelector('[data-testid="apv-export-name"]')?.textContent ?? "";
+    expect(text().replace(nameEl, "")).not.toContain("pending");
     expect(text()).not.toContain("message_send");
 
     const disclosure = buttonNamed("详情");
@@ -655,5 +658,54 @@ describe("R71 pending column sorting", () => {
     expect(btn.getAttribute("aria-sort")).toBe("ascending");
     expect(api.fetchJSON.mock.calls.length, "sorting never fetches").toBe(before);
     expect(document.querySelector('[data-testid="apv-sort-scope-note"]')?.textContent).toContain("条内排序");
+  });
+});
+
+describe("R73 pending keyboard navigation (apv-nav-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+
+  it("rows rove and Enter opens the preview without fetching", async () => {
+    await mount(queue(), "/approvals?tab=pending");
+    const row = qa("apr5-row-ap_9F3A1111");
+    expect(row, "queue row present").toBeTruthy();
+    expect(row!.getAttribute("tabindex"), "single tabbable row").toBe("0");
+    const before = api.fetchJSON.mock.calls.length;
+    (row as HTMLElement).focus();
+    await act(async () => {
+      row!.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+    });
+    expect(qa("apv9-preview-ap_9F3A1111"), "Enter opens the inline preview").toBeTruthy();
+    expect(row!.getAttribute("aria-expanded")).toBe("true");
+    await act(async () => {
+      row!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+    });
+    expect(qa("apv9-preview-ap_9F3A1111"), "Esc closes").toBeNull();
+    expect(document.activeElement).toBe(row);
+    expect(api.fetchJSON.mock.calls.length, "no keyboard-triggered requests").toBe(before);
+    expect(qa("apv-nav-note"), "nav note present").toBeTruthy();
+  });
+});
+
+describe("R74 pending actor buckets (apv-actor-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+
+  it("the pending tab carries the same rail: local filter, zero new requests", async () => {
+    await mount(queue(), "/approvals?tab=pending");
+    await waitFor(() => !!qa("apv-actor-buckets"), "rail");
+    expect(qa("apv-actor-scope-note")?.textContent).toContain("不是全量");
+    const before = api.fetchJSON.mock.calls.length;
+    const bucket = document.querySelector('[data-testid="apv-actor-bucket-0"]') as HTMLButtonElement | null;
+    if (bucket) {
+      await act(async () => {
+        bucket.click();
+      });
+      expect(api.fetchJSON.mock.calls.length, "bucket click never refetches").toBe(before);
+      await act(async () => {
+        (qa("apv-actor-all") as HTMLButtonElement).click();
+      });
+      expect(api.fetchJSON.mock.calls.length, "clearing never refetches").toBe(before);
+      await waitFor(() => !!qa("apr5-row-ap_9F3A1111"), "row back");
+    }
+    expect(document.body.textContent).not.toContain("human:");
   });
 });

@@ -30,7 +30,58 @@ afterEach(() => {
   fetchJSON.mockReset();
 });
 
+const WB_ASOF = "2026-11-18T06:00:00.000Z";
+
 function ok(url: string): unknown {
+  // Wave-20 read models: statistics, queue and trend come from /workbench/*.
+  if (url.includes("/workbench/summary")) {
+    return {
+      asOf: WB_ASOF,
+      asOfSource: "bff-aggregation-read-time",
+      available: true,
+      degraded: [],
+      kpis: [
+        { key: "runs", label: "运行数", unit: "次", value: 2, available: true },
+        { key: "failed", label: "失败数", unit: "次", value: 1, available: true },
+        { key: "failureRate", label: "失败率", unit: "ratio", value: 0.5, available: true },
+        { key: "costUsd", label: "成本", unit: "USD", value: 1.5, available: true },
+        { key: "activeEmployees", label: "在岗数字员工", unit: "个", value: 1, available: true },
+        { key: "pendingApprovals", label: "待审批", unit: "条", value: 1, available: true },
+      ],
+    };
+  }
+  if (url.includes("/workbench/timeseries")) {
+    return {
+      asOf: WB_ASOF,
+      asOfSource: "bff-read-time",
+      available: true,
+      points: [
+        { ts: "2026-11-17T00:00:00.000Z", label: "11-17", value: 1 },
+        { ts: "2026-11-18T00:00:00.000Z", label: "11-18", value: 2 },
+        { ts: "2026-11-18T23:00:00.000Z", label: "11-18 23", value: null },
+      ],
+      totals: { metric: "runs", value: 3 },
+    };
+  }
+  if (url.includes("/workbench/queue")) {
+    return {
+      asOf: WB_ASOF,
+      asOfSource: "bff-read-time",
+      available: true,
+      degraded: [],
+      items: [
+        {
+          id: "apr_1",
+          type: "approval",
+          title: "供应商报价",
+          status: "pending",
+          createdAt: "2026-11-18T01:00:00.000Z",
+          timeoutAt: null,
+        },
+      ],
+      total: 1,
+    };
+  }
   if (url.includes("/employee-stats")) {
     return { byLifecycle: { active: 1, paused: 0, offboarding: 0 } };
   }
@@ -114,9 +165,11 @@ describe("DutyPage", () => {
   it("R41: ov6-asof takes the newest asOf among all sources", async () => {
     fetchJSON.mockImplementation((url: string) => {
       const body = ok(url) as Record<string, unknown>;
-      if (url.includes("/run-stats")) return Promise.resolve({ ...body, asOf: "2026-11-18T01:00:00Z" });
+      if (url.includes("/workbench/summary"))
+        return Promise.resolve({ ...body, asOf: "2026-11-18T01:00:00Z" });
       if (url.includes("/budget-usage")) return Promise.resolve({ ...body, asOf: "2026-11-20T05:20:00Z" });
-      if (url.includes("/approval-stats")) return Promise.resolve({ ...body, asOf: "2026-11-19T03:00:00Z" });
+      if (url.includes("/workbench/queue"))
+        return Promise.resolve({ ...body, asOf: "2026-11-19T03:00:00Z" });
       return Promise.resolve(body);
     });
     await render(<DutyPage />);
@@ -126,7 +179,16 @@ describe("DutyPage", () => {
   });
 
   it("R41: when every source lacks asOf the line falls back to the em-dash naming the sources", async () => {
-    fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
+    fetchJSON.mockImplementation((url: string) => {
+      const body = ok(url) as Record<string, unknown>;
+      // Read models that do send a collection time: strip it for this case.
+      if (url.includes("/workbench/")) {
+        const rest = { ...body };
+        delete rest.asOf;
+        return Promise.resolve(rest);
+      }
+      return Promise.resolve(body);
+    });
     await render(<DutyPage />);
     const asof = container.querySelector('[data-testid="ov6-asof"]');
     expect(asof?.textContent).toContain("采集时刻 —（北京时间）");
@@ -134,9 +196,38 @@ describe("DutyPage", () => {
     expect(asof?.getAttribute("title")).toContain("今日运行统计");
   });
 
+  it("reads statistics, queue and trend from the workbench models and stops calling the old endpoints", async () => {
+    const seen: string[] = [];
+    fetchJSON.mockImplementation((url: string) => {
+      seen.push(url);
+      return Promise.resolve(ok(url));
+    });
+    await render(<DutyPage />);
+    expect(seen.some((u) => u.includes("/workbench/summary"))).toBe(true);
+    expect(seen.some((u) => u.includes("/workbench/timeseries"))).toBe(true);
+    expect(seen.filter((u) => u.includes("/workbench/queue"))).toHaveLength(1);
+    expect(seen.some((u) => u.includes("/run-stats"))).toBe(false);
+    expect(seen.some((u) => u.includes("/approval-stats"))).toBe(false);
+    expect(seen.some((u) => u.includes("/approvals"))).toBe(false);
+    const asof = container.querySelector('[data-testid="ov6-asof"]');
+    expect(asof?.textContent).toContain("采集时刻 北京时间 2026-11-18 14:00");
+    expect(container.querySelector('[data-testid="ov6-pending-value"]')?.textContent ?? container.textContent).toBeTruthy();
+  });
+
+  it("keeps the other cards alive when one workbench read is missing", async () => {
+    fetchJSON.mockImplementation((url: string) =>
+      url.includes("/workbench/timeseries")
+        ? Promise.reject(new ApiError("missing", { status: 404, body: "{}", url }))
+        : Promise.resolve(ok(url)),
+    );
+    await render(<DutyPage />);
+    expect(container.querySelector('[data-testid="ov6-trend"]')?.textContent).toContain("—");
+    expect(container.querySelector('[data-testid="ov6-today-runs"]')?.textContent).toContain("2");
+  });
+
   it("shows a request id and retry on an error card", async () => {
     fetchJSON.mockImplementation((url: string) =>
-      url.includes("/run-stats")
+      url.includes("/workbench/summary")
         ? Promise.reject(new ApiError("boom", { status: 500, body: "{}", url, requestId: "req-duty" }))
         : Promise.resolve(ok(url)),
     );
@@ -154,6 +245,10 @@ describe("MatrixView", () => {
     await render(<MatrixView />);
     expect(container.querySelector('[data-testid="matrix-unwired"]')).toBeTruthy();
     expect(container.textContent).toContain("能力矩阵未接入");
+    // GAP-06 now names the upstream read port; the BFF relay already exists.
+    expect(container.textContent).toContain("上游的矩阵读口");
+    // No sample data ships with the module: nothing may carry data-fixture.
+    expect(container.querySelector("[data-fixture]")).toBeNull();
     expect(container.textContent).not.toContain("样例");
     expect(container.textContent).not.toContain("陈可");
   });
@@ -166,5 +261,117 @@ describe("MatrixView", () => {
     expect(container.querySelector('[data-testid="matrix-unwired"]')).toBeFalsy();
     expect(container.textContent).toContain("请求编号 req-mx");
     expect(container.textContent).not.toContain("陈可");
+  });
+});
+
+describe("DutyPage refresh", () => {
+  const hits = (urls: string[], path: string) => urls.filter((u) => u.includes(path)).length;
+
+  it("one click re-reads every card exactly once and stamps the read time, not the data time", async () => {
+    const urls: string[] = [];
+    fetchJSON.mockImplementation((url: string) => {
+      urls.push(url);
+      return Promise.resolve(ok(url));
+    });
+    await render(<DutyPage />);
+    const first = [...urls];
+    expect(first.length).toBeGreaterThan(0);
+
+    await act(async () => {
+      (container.querySelector('[data-testid="duty-refresh"]') as HTMLButtonElement).click();
+    });
+    await act(async () => {});
+    const second = urls.slice(first.length);
+    for (const path of [
+      "/employees",
+      "/employee-stats",
+      "/workbench/summary",
+      "/workbench/timeseries",
+      "/workbench/queue",
+      "/run-activity",
+      "/budget-usage",
+      "/runs",
+      "/tasks",
+    ]) {
+      expect(hits(second, path), path).toBe(hits(first, path));
+    }
+    const stamp = container.querySelector('[data-testid="duty-updated-at"]');
+    expect(stamp?.textContent).toContain("刷新完成于 北京时间");
+    expect(stamp?.textContent).toContain("读取时刻，不是数据时刻");
+    expect(container.querySelector('[data-testid="duty-busy-note"]')).toBeNull();
+    expect(container.querySelector('[data-testid="ov6-kpi-runs"]')?.textContent).toContain("2");
+  });
+
+  it("ignores a second click inside the same batch and keeps the old numbers on screen", async () => {
+    const urls: string[] = [];
+    let holdOnce = false;
+    let release: (() => void) | null = null;
+    fetchJSON.mockImplementation((url: string) => {
+      urls.push(url);
+      if (url.includes("/employee-stats") && holdOnce) {
+        holdOnce = false;
+        return new Promise((resolve) => {
+          release = () => resolve(ok(url));
+        });
+      }
+      return Promise.resolve(ok(url));
+    });
+    await render(<DutyPage />);
+    const before = urls.length;
+    const statsBefore = hits(urls, "/employee-stats");
+    holdOnce = true;
+
+    await act(async () => {
+      const button = container.querySelector('[data-testid="duty-refresh"]') as HTMLButtonElement;
+      button.click();
+      button.click();
+    });
+    await act(async () => {});
+    // Exactly one new employee-stats read: the second click was swallowed.
+    expect(hits(urls, "/employee-stats")).toBe(statsBefore + 1);
+    expect(container.querySelector('[data-testid="duty-busy-note"]')?.textContent).toContain("更新中");
+    expect(container.querySelector('[data-testid="ov6-kpi-runs"]')?.textContent).toContain("2");
+
+    await act(async () => {
+      release?.();
+    });
+    await act(async () => {});
+    expect(container.querySelector('[data-testid="duty-busy-note"]')).toBeNull();
+    expect(container.querySelector('[data-testid="duty-updated-at"]')).toBeTruthy();
+    expect(urls.length).toBeGreaterThan(before);
+  });
+
+  it("keeps the previous batch on a failed refresh, names the request id and retries in place", async () => {
+    const urls: string[] = [];
+    let failSummary = false;
+    fetchJSON.mockImplementation((url: string) => {
+      urls.push(url);
+      if (failSummary && url.includes("/workbench/summary")) {
+        return Promise.reject(
+          new ApiError("boom", { status: 500, body: "{}", url, requestId: "req-duty-rf" }),
+        );
+      }
+      return Promise.resolve(ok(url));
+    });
+    await render(<DutyPage />);
+    failSummary = true;
+    await act(async () => {
+      (container.querySelector('[data-testid="duty-refresh"]') as HTMLButtonElement).click();
+    });
+    await act(async () => {});
+    const error = container.querySelector('[data-testid="duty-refresh-error"]');
+    expect(error?.textContent).toContain("这次刷新没成功");
+    expect(error?.textContent).toContain("req-duty-rf");
+    expect(container.querySelector('[data-testid="duty-updated-at"]')).toBeNull();
+    // Only the summary card is hurt; the other cards keep the old batch.
+    expect(container.querySelector('[data-testid="ov6-kpi-cost"]')?.textContent).toBeTruthy();
+
+    failSummary = false;
+    await act(async () => {
+      (container.querySelector('[data-testid="duty-refresh-retry"]') as HTMLButtonElement).click();
+    });
+    await act(async () => {});
+    expect(container.querySelector('[data-testid="duty-refresh-error"]')).toBeNull();
+    expect(container.querySelector('[data-testid="duty-updated-at"]')).toBeTruthy();
   });
 });

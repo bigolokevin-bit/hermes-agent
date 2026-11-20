@@ -3639,4 +3639,113 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(fetchMock.mock.calls.filter((u: unknown[]) => String(u[0]).includes("/api/documents?"))).toHaveLength(8);
     expect(fetchMock.mock.calls.filter((u: unknown[]) => String(u[0]).endsWith("/api/documents/d1"))).toHaveLength(3);
   });
+
+  it("couples copy notices to real usability (OBS-6 fix): disabled says 当前不可复制 with reason and never leaves a fallback anchor", async () => {
+    const LOADED = {
+      asOf: "2026-11-19T08:00:00Z",
+      items: [
+        { spaceId: "sp_hr", name: "人事制度空间", docCount: 2, status: "synced" },
+        { spaceId: "sp_ops", name: "运维手册空间", docCount: 1, status: "synced" },
+      ],
+    };
+    const iStatus = () => (byTestid("knI-copy-status")?.textContent ?? "").trim();
+    const gStatus = () => (byTestid("knG-copy-status")?.textContent ?? "").trim();
+
+    // ---------- A. loading：改前状态句为逐字空串；改后一律「当前不可复制：<原因>」，兜底不渲染 ----------
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES || url === DOCUMENTS_PLAIN) return new Promise(() => {}); // 永挂：稳定停在 loading
+      return fail(404, "这个数据接口还没有接入。", "rid-p-x");
+    });
+    await render("/knowledge?tab=spaces");
+    expect(iStatus()).toBe("当前不可复制：列表还在读取");
+    expect(gStatus()).toBe("当前不可复制：列表还在读取");
+    expect(byTestid("knI-copy-fallback")).toBeNull();
+    expect(byTestid("knG-copy-fallback")).toBeNull();
+
+    // ---------- B. 读口未接入 / 无权限：同一句原因；title 旧口径不动 ----------
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(LOADED);
+      return fail(404, "这个数据接口还没有接入。", "rid-p-gone");
+    });
+    await render("/knowledge?tab=spaces");
+    expect(iStatus()).toBe(""); // spaces 面正常：没有可复制断言
+    expect(gStatus()).toBe("当前不可复制：读口未接入或没有权限");
+    expect((byTestid("knG-copy")?.getAttribute("title") ?? "")).toContain("没有可复制的结果");
+    await act(async () => {});
+
+    // ---------- C. 真空集与筛空：状态句分两种；ready-empty 的逐字 title 保持不动 ----------
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve({ asOf: "2026-11-19T08:00:00Z", items: [] });
+      return Promise.resolve({ asOf: "2026-11-19T08:00:00Z", documents: [] });
+    });
+    await render("/knowledge?tab=spaces");
+    expect(iStatus()).toBe("当前不可复制：这份回答里没有空间");
+    expect((byTestid("knI-copy")?.getAttribute("title") ?? "")).toBe("当前没有可复制的空间");
+    expect(gStatus()).toBe("当前不可复制：这份回答里没有文档");
+
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(LOADED);
+      return Promise.resolve({ asOf: "2026-11-19T08:00:00Z", documents: [] });
+    });
+    await render("/knowledge?tab=spaces");
+    await type("kn8-global-input", "查无此空间");
+    expect(iStatus()).toBe("当前不可复制：筛选后没有留下的空间");
+
+    // ---------- D. 正常路径零改动：能复制时成功句/失败句与兜底照旧成对 ----------
+    const writeOk = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText: writeOk }, configurable: true });
+    await type("kn8-global-input", "");
+    await click("knI-copy");
+    expect(iStatus()).toBe("已复制 2 行");
+    const writeFail = vi.fn().mockRejectedValue(new Error("denied"));
+    Object.defineProperty(navigator, "clipboard", { value: { writeText: writeFail }, configurable: true });
+    await click("knI-copy");
+    expect(iStatus()).toBe("复制失败，已展开可选文本，可手动复制");
+    expect(byTestid("knI-copy-fallback")).toBeTruthy(); // 失败句与兜底锚必然同现
+
+    // ---------- E. knF（详情面）：loading 与失败两种禁用句；筛空第三种 ----------
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve({ asOf: "2026-11-19T08:00:00Z", items: [{ spaceId: "sp_hr", name: "人事制度空间" }] });
+      if (url.includes("spaceId=sp_hr")) return new Promise(() => {}); // 永挂：详情文档面停在 loading
+      return fail(404, "这个数据接口还没有接入。", "rid-p-x");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    expect((byTestid("knF-copy-status")?.textContent ?? "").trim()).toBe("当前不可复制：列表还在读取");
+    expect(byTestid("knF-fallback")).toBeNull();
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve({ asOf: "2026-11-19T08:00:00Z", items: [{ spaceId: "sp_hr", name: "人事制度空间" }] });
+      if (url.includes("spaceId=sp_hr")) return fail(500, "数据服务暂时没有响应，请稍后重试。", "rid-p-500");
+      return fail(404, "这个数据接口还没有接入。", "rid-p-x");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    expect((byTestid("knF-copy-status")?.textContent ?? "").trim()).toBe("当前不可复制：这次读取没有成功");
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve({ asOf: "2026-11-19T08:00:00Z", items: [{ spaceId: "sp_hr", name: "人事制度空间" }] });
+      if (url.includes("spaceId=sp_hr"))
+        return Promise.resolve({ asOf: "2026-11-19T08:00:00Z", documents: [{ documentId: "d1", fileName: "员工手册.pdf" }] });
+      return fail(404, "这个数据接口还没有接入。", "rid-p-x");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    await type("kn3-docs-filter-input", "查无此词");
+    expect((byTestid("knF-copy-status")?.textContent ?? "").trim()).toBe("当前不可复制：筛选后没有留下的文档");
+
+    // ---------- F. knL：ghost（行不在列表）状态句直说，兜底不渲染 ----------
+    await render("/knowledge?tab=spaces&space=sp_hr&doc=zz9");
+    await act(async () => {});
+    expect((byDocTestid("knL-copy-meta-status")?.textContent ?? "").trim()).toBe("当前不可复制：这条文档不在已加载的列表里");
+    expect(byDocTestid("knL-copy-meta-fallback")).toBeNull();
+
+    // ---------- G. 空间行：title 声明抽屉范围；点空间行不打开抽屉（设计口径，非故障） ----------
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(LOADED);
+      return fail(404, "这个数据接口还没有接入。", "rid-p-x");
+    });
+    await render("/knowledge?tab=spaces");
+    const spaceLinkNode = byTestid("knw5-space-link") as HTMLAnchorElement;
+    expect(spaceLinkNode.getAttribute("title")).toContain("请进入空间后预览文档");
+    await click("knw5-space-link");
+    await act(async () => {});
+    expect(byDocTestid("kn7-preview-panel")).toBeNull(); // 空间行下钻的是空间详情，不是文档抽屉
+    expect((byTestid("loc")?.textContent ?? "")).toContain("space=sp_hr");
+  });
 });

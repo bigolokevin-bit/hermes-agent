@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { ArrowRight, RefreshCw, ShieldCheck } from "lucide-react";
 import { Badge } from "@nous-research/ui/ui/components/badge";
@@ -6,6 +6,7 @@ import { Button } from "@nous-research/ui/ui/components/button";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 
 import { cn } from "@/lib/utils";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import {
   activity24,
   bucketPeak,
@@ -35,6 +36,24 @@ import { useDutyData } from "./useDutyData";
 import "./duty.css";
 
 type Tone = "default" | "destructive" | "outline" | "secondary" | "success" | "warning";
+
+function CopyRid({ id, testId = "ov6-rid-copy" }: { id: string; testId?: string }) {
+  const [state, setState] = useState<"idle" | "done" | "failed">("idle");
+  return (
+    <button
+      type="button"
+      className="duty-req-copy"
+      data-testid={testId}
+      aria-label={`复制请求编号 ${id}`}
+      title="把请求编号复制给支持人员"
+      onClick={() => {
+        void copyTextToClipboard(id).then((ok) => setState(ok ? "done" : "failed"));
+      }}
+    >
+      {state === "done" ? "已复制" : state === "failed" ? "复制失败" : "复制"}
+    </button>
+  );
+}
 
 function StateLine({
   state,
@@ -67,7 +86,14 @@ function StateLine({
       <div className="duty-error" role="alert">
         <p>{state.message}</p>
         <p className="duty-req">
-          {state.requestId ? `请求编号 ${state.requestId}` : "本次请求未记录编号，可复制时间与操作路径反馈"}
+          {state.requestId ? (
+            <>
+              请求编号 {state.requestId}
+              <CopyRid id={state.requestId} />
+            </>
+          ) : (
+            "本次请求未记录编号，可复制时间与操作路径反馈"
+          )}
         </p>
         <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
           重试
@@ -98,12 +124,15 @@ function HCard({
   children,
   testid,
   stamp,
+  hint,
 }: {
   title: string;
   meta?: ReactNode;
   action?: ReactNode;
   children: ReactNode;
   testid: string;
+  /** Long explanation for the card frame; tooltip only, never visible copy. */
+  hint?: string;
   stamp?: { shown: string | null; source: string; reason?: string };
 }) {
   return (
@@ -112,6 +141,7 @@ function HCard({
       data-card="duty"
       data-testid={testid.replace(/^duty-/, "ov6-")}
       data-duty-testid={testid}
+      title={hint}
     >
       <CardContent className="duty-card-bd">
         <div className="duty-card-hd">
@@ -126,7 +156,7 @@ function HCard({
             title={
               stamp.shown
                 ? `来源：${stamp.source}；采集时间取自上游响应`
-                : `取不到采集时间：${stamp.reason ?? "上游响应没有带采集时间"}`
+                : `取不到采集时间：${stamp.reason ?? "上游响应没有带采集时间"}；不用本机时间顶替`
             }
           >
             数据截至 {stamp.shown ?? "—（北京时间）"} · 来源 {stamp.source}
@@ -138,13 +168,31 @@ function HCard({
   );
 }
 
-/** R32 item 1: honest per-card collection time — only from upstream payloads. */
+/**
+ * R32 item 1 / duty caliber: honest per-card collection time — only from
+ * upstream payloads. Six aliases are accepted, but the value must be a full
+ * ISO-8601 stamp with a zone; «yesterday» or a bare date is not a collection
+ * time and prints «—». The browser clock is never a fallback.
+ */
+const ASOF_KEYS = [
+  "asOf",
+  "as_of",
+  "collectedAt",
+  "collected_at",
+  "generatedAt",
+  "generated_at",
+] as const;
+const ISO_STAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/;
+
 function asOfOf(x: unknown): string | null {
   if (x && typeof x === "object" && !Array.isArray(x)) {
     const rec = x as Record<string, unknown>;
-    for (const k of ["asOf", "generatedAt", "as_of", "generated_at"]) {
+    for (const k of ASOF_KEYS) {
       const v = rec[k];
-      if (typeof v === "string" && v.trim() !== "") return v;
+      if (typeof v !== "string") continue;
+      const s = v.trim();
+      if (!ISO_STAMP.test(s) || Number.isNaN(Date.parse(s))) continue;
+      return s;
     }
   }
   return null;
@@ -220,7 +268,13 @@ function ReadinessCard({ employees, stats, onRetry }: { employees: Loadable<Empl
   );
   const state = employees.k === "error" ? employees : stats.k === "error" ? stats : employees;
   return (
-    <HCard title="可上岗" meta="各项检查全部通过才计入" testid="duty-ready" stamp={stampOf(rawStamp, "员工目录与运行统计", [employees, stats])}>
+    <HCard
+      title="可上岗"
+      meta="各项检查全部通过才计入"
+      testid="duty-ready"
+      stamp={stampOf(rawStamp, "员工目录与运行统计", [employees, stats])}
+      hint="workbench/agents 缺 byLifecycle 聚合计数（active/paused/offboarding）、缺分页之外的完整名单（翻页时 total 为 null），逐行 today* 也恒为 null；本卡仍取员工目录 + 员工统计，换成该读口会丢掉总分母，故不换。"
+    >
       <StateLine state={state} onRetry={onRetry} loadingText="正在汇总各项检查…">
         <p className="duty-num" data-testid="ov6-ready-value" data-duty-testid="duty-ready-value">
           <span data-testid="ov6-kpi-employees" data-duty-testid="duty-kpi-employees">
@@ -559,7 +613,12 @@ function PendingCard({
           {dashed(view.pending)}
           <em>{view.dueSoon === null ? "待办" : `待办 · ${view.dueSoon} 即将到期`}</em>
         </p>
-        {view.rows.length === 0 ? (
+        {view.pending === null ? (
+          <p className="duty-say">
+            审批数量没有读出来
+            {stats.k === "ready" && stats.data.reason ? `：${stats.data.reason}` : ""}。不当成 0，也不当作空队列。
+          </p>
+        ) : view.rows.length === 0 ? (
           <p className="duty-say">今天没有待你审批的事</p>
         ) : (
           <ul className="duty-list">
@@ -657,7 +716,7 @@ function HealthStrip({
 }
 
 export default function DutyPage() {
-  const { data, reload, loading } = useDutyData();
+  const { data, reload, loading, refreshState } = useDutyData();
 
   const forced = (() => {
     const match = window.location.hash.match(/[?&]state=([^&]+)/);
@@ -667,7 +726,7 @@ export default function DutyPage() {
     return (
       <div className="duty-page" data-testid="ov6-page" data-duty-testid="duty-page">
         <p className="duty-note">正在读取值班数据…</p>
-        <p className="duty-note" data-testid="ov6-asof" title="取不到采集时间：数据还在读取">采集时刻 —（北京时间）</p>
+        <p className="duty-note" data-testid="ov6-asof" title="取不到采集时间：数据还在读取；不用本机时间顶替">采集时刻 —（北京时间）</p>
       </div>
     );
   }
@@ -677,7 +736,7 @@ export default function DutyPage() {
         <div className="duty-empty">
           <p>当前没有可显示的值班数据。</p>
           <p>数据源返回为空，可能尚未接入。</p>
-          <p className="duty-note" data-testid="ov6-asof" title="取不到采集时间：上游响应没有带采集时间">采集时刻 —（北京时间）</p>
+          <p className="duty-note" data-testid="ov6-asof" title="取不到采集时间：上游响应没有带采集时间；不用本机时间顶替">采集时刻 —（北京时间）</p>
           <Link className="duty-link" to="/employees">去员工列表</Link>
         </div>
       </div>
@@ -689,7 +748,7 @@ export default function DutyPage() {
         <div className="duty-empty">
           <p>值班数据暂时不可用。</p>
           <p>请求编号：未提供</p>
-          <p className="duty-note" data-testid="ov6-asof" title="取不到采集时间：本次读取失败">采集时刻 —（北京时间）</p>
+          <p className="duty-note" data-testid="ov6-asof" title="取不到采集时间：本次读取失败；不用本机时间顶替">采集时刻 —（北京时间）</p>
           <Button outlined onClick={reload}>重试</Button>
         </div>
       </div>
@@ -734,7 +793,7 @@ export default function DutyPage() {
                 title={
                   stamp
                     ? "取各来源响应自带的采集时间，最新的一个上屏"
-                    : `取不到采集时间：未返回采集时间的来源：${missing.join("、")}`
+                    : `取不到采集时间：未返回采集时间的来源：${missing.join("、")}；不用本机时间顶替`
                 }
               >
                 {stamp ? `采集时刻 北京时间 ${beijing(stamp)}` : "采集时刻 —（北京时间）"}
@@ -746,15 +805,50 @@ export default function DutyPage() {
           <Button
             size="sm"
             outlined
-            onClick={reload}
+            onClick={refreshState.refresh}
             disabled={loading}
-            aria-busy={loading}
-            prefix={<RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />}
+            aria-busy={refreshState.refreshing}
+            data-testid="duty-refresh"
+            prefix={
+              <RefreshCw className={cn("h-3.5 w-3.5", refreshState.refreshing && "animate-spin")} />
+            }
           >
             刷新
           </Button>
         </div>
       </header>
+
+      <div className="duty-refreshbar" data-testid="duty-refresh-bar">
+        {refreshState.refreshing ? (
+          <p className="duty-note" role="status" data-testid="duty-busy-note">
+            更新中…（区块先保留上一次读到的数据）
+          </p>
+        ) : null}
+        {!refreshState.refreshing && refreshState.refreshAt ? (
+          <p className="duty-note" data-testid="duty-updated-at">
+            刷新完成于 北京时间 {beijing(refreshState.refreshAt)}（读取时刻，不是数据时刻）
+          </p>
+        ) : null}
+        {!refreshState.refreshing && refreshState.refreshError ? (
+          <div className="duty-refresh-error" data-testid="duty-refresh-error">
+            <span>这次刷新没成功：{refreshState.refreshError.message}</span>
+            {refreshState.refreshError.requestId ? (
+              <span className="duty-rid">
+                请求编号 <code>{refreshState.refreshError.requestId}</code>
+                <CopyRid id={refreshState.refreshError.requestId} testId="duty-refresh-rid" />
+              </span>
+            ) : null}
+            <button
+              type="button"
+              className="duty-retry"
+              data-testid="duty-refresh-retry"
+              onClick={refreshState.refresh}
+            >
+              再试
+            </button>
+          </div>
+        ) : null}
+      </div>
 
       <div className="duty-grid duty-grid-3">
         <ReadinessCard employees={data.employees} stats={data.stats} onRetry={reload} />

@@ -779,6 +779,94 @@ export function parseSortDir(raw: string | null, key: ModelCostSort): SortDir {
   return key === 'model' ? 'asc' : 'desc';
 }
 
+// ---- METAQ: URL compatibility matrix ---------------------------------------
+
+/** Canonical keys the page reads; everything else in the address is left alone. */
+export const METRICS_QUERY_KEYS = ['window', 'view', 'groupBy', 'dsort', 'ddir', 'sort', 'dir', 'heat'] as const;
+
+export interface MetricsQueryAnyway {
+  query: string;
+  ignored: string[];
+  changed: boolean;
+}
+
+const MODES = ['employee', 'model'] as const;
+const DETAIL_SORTS = ['runs', 'cost', 'share'] as const;
+const SHARE_SORTS = ['runs', 'cost', 'model'] as const;
+const DIRECTIONS = ['asc', 'desc'] as const;
+
+const oneOf = (value: string | null, allowed: readonly string[]): value is string =>
+  value !== null && allowed.includes(value);
+
+/**
+ * Read every known key, fold the legacy aliases into their canonical spelling
+ * and hand back the address the page wants plus the values it had to ignore.
+ * Unknown keys are never touched: only the metrics keys are ours.
+ */
+export function normalizeMetricsQuery(search: string): MetricsQueryAnyway {
+  const source = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
+  const out = new URLSearchParams(source);
+  const ignored: string[] = [];
+
+  const drop = (key: string, raw: string): void => {
+    out.delete(key);
+    ignored.push(`${key}=${raw}`);
+  };
+
+  const windowRaw = source.get('window');
+  if (windowRaw !== null && !WINDOW_PRESETS.some((preset) => preset.id === windowRaw)) drop('window', windowRaw);
+
+  // `w` is the pre-metAA spelling of the heat window; `heat` wins when both are there.
+  const heatValid = (value: string | null): value is string =>
+    value !== null && WINDOWS.some((window) => String(window.weeks) === value);
+  const heatRaw = source.get('heat');
+  const legacyRaw = source.get('w');
+  let heatValue: string | null = null;
+  if (heatValid(heatRaw)) heatValue = heatRaw;
+  else if (heatRaw !== null) drop('heat', heatRaw);
+  if (heatValid(legacyRaw)) {
+    out.delete('w');
+    if (heatValue === null) heatValue = legacyRaw;
+  } else if (legacyRaw !== null) {
+    drop('w', legacyRaw);
+  }
+  if (heatValue !== null) out.set('heat', heatValue);
+
+  const viewRaw = source.get('view');
+  if (viewRaw !== null && !oneOf(viewRaw, MODES)) drop('view', viewRaw);
+  const groupRaw = source.get('groupBy');
+  if (groupRaw !== null && !oneOf(groupRaw, MODES)) drop('groupBy', groupRaw);
+
+  // `groupBy` is the older spelling of the detail axis, so a link that names it
+  // alone also drives the detail table. The reverse stays one-way on purpose:
+  // the detail view and the share grouping are separate choices on this page
+  // (metS), and filling groupBy from view would silently move the share table.
+  const viewOk = oneOf(out.get('view'), MODES);
+  const groupOk = oneOf(out.get('groupBy'), MODES);
+  if (groupOk && !viewOk) out.set('view', out.get('groupBy') as string);
+
+  const dsortRaw = source.get('dsort');
+  if (dsortRaw !== null && !oneOf(dsortRaw, DETAIL_SORTS)) drop('dsort', dsortRaw);
+  const ddirRaw = source.get('ddir');
+  if (ddirRaw !== null && !oneOf(ddirRaw, DIRECTIONS)) drop('ddir', ddirRaw);
+  const sortRaw = source.get('sort');
+  if (sortRaw !== null && !oneOf(sortRaw, SHARE_SORTS)) drop('sort', sortRaw);
+  const dirRaw = source.get('dir');
+  if (dirRaw !== null && !oneOf(dirRaw, DIRECTIONS)) drop('dir', dirRaw);
+
+  return {
+    query: out.toString(),
+    ignored,
+    changed: out.toString() !== source.toString(),
+  };
+}
+
+/** One line above the page when the address carried values the page could not use. */
+export function ignoredParamsNote(ignored: string[]): string | null {
+  if (ignored.length === 0) return null;
+  return `已忽略无效参数 ${ignored.length} 个`;
+}
+
 // ---- METP: detail table sorting --------------------------------------------
 
 export type DetailSort = 'runs' | 'cost' | 'share';
@@ -1588,4 +1676,104 @@ export function runsCaliberTitle(input: RunsCaliberInput): string {
       : `热力与明细差 ${input.delta}（热力减明细）：两处的筛选与聚合不同，属口径差，不是数据错误。`,
   ];
   return parts.join(' ');
+}
+
+
+// ---------------------------------------------------------------------------
+// metAS — three cost faces side by side: today's budget ledger, this month's
+// budget ledger, and the model aggregate from usage. Every value is taken from
+// the batch already on screen; nothing here issues a read of its own. A face
+// that was not read is «—», never 0.
+// ---------------------------------------------------------------------------
+
+export type CostFaceKey = 'day' | 'month' | 'usage';
+
+export interface CostFace {
+  key: CostFaceKey;
+  label: string;
+  value: number | null;
+  source: string;
+}
+
+export interface CostCaliberInput {
+  day: number | null;
+  month: number | null;
+  usage: number | null;
+  /** Why the usage face is missing, when it is. */
+  usageMissing: string | null;
+}
+
+export interface CostCaliberPair {
+  label: string;
+  diff: number;
+}
+
+export interface CostCaliber {
+  faces: CostFace[];
+  /** How many of the three faces carry a number. */
+  known: number;
+  verdict: string;
+  pairs: CostCaliberPair[];
+  /** The pair with the largest absolute gap, when any pair is computable. */
+  widest: string | null;
+  title: string;
+}
+
+const COST_FACE_META: Record<CostFaceKey, { label: string; source: string }> = {
+  day: { label: '日累计', source: '预算账本 /api/budget-usage?periodKind=day，按条求和的记账金额' },
+  month: { label: '月累计', source: '预算账本 /api/budget-usage?periodKind=month，按条求和的记账金额' },
+  usage: { label: '模型聚合', source: '用量 /api/hermes-usage 各模型 cost_usd 求和，属用量推算' },
+};
+
+export function costCaliber(input: CostCaliberInput): CostCaliber {
+  const faces: CostFace[] = (['day', 'month', 'usage'] as CostFaceKey[]).map((key) => ({
+    key,
+    label: COST_FACE_META[key].label,
+    value: input[key],
+    source: COST_FACE_META[key].source,
+  }));
+  const known = faces.filter((face) => face.value !== null).length;
+
+  const pairs: CostCaliberPair[] = [];
+  for (const [a, b] of [
+    ['day', 'month'],
+    ['day', 'usage'],
+    ['month', 'usage'],
+  ] as [CostFaceKey, CostFaceKey][]) {
+    const left = input[a];
+    const right = input[b];
+    if (left === null || right === null) continue;
+    const diff = Math.round((left - right) * 100) / 100;
+    pairs.push({ label: `${COST_FACE_META[a].label}−${COST_FACE_META[b].label}`, diff });
+  }
+
+  const widestPair =
+    pairs.length > 0
+      ? pairs.reduce((best, pair) => (Math.abs(pair.diff) > Math.abs(best.diff) ? pair : best))
+      : null;
+
+  const allEqual = known === 3 && pairs.every((pair) => pair.diff === 0);
+  const verdict =
+    known < 3 ? `有面缺数（${known}/3）` : allEqual ? '三面一致' : '口径不同，见逐对差值';
+
+  const titleParts = [
+    `日累计来自${COST_FACE_META.day.source}`,
+    `月累计来自${COST_FACE_META.month.source}`,
+    `模型聚合来自${COST_FACE_META.usage.source}`,
+    '记账与用量推算不是同一套账，数值不等属口径差，不是数据错误；三面都取自这一次读取，不发新请求。',
+  ];
+  for (const pair of pairs) {
+    titleParts.push(`${pair.label} ${pair.diff === 0 ? '为 0' : `差 ${pair.diff > 0 ? '+' : ''}${pair.diff.toFixed(2)} USD`}`);
+  }
+  if (widestPair && widestPair.diff !== 0) titleParts.push(`差值绝对值最大的是${widestPair.label}`);
+  if (input.usageMissing) titleParts.push(`模型聚合为「—」：${input.usageMissing}`);
+
+  return {
+    faces,
+    known,
+    verdict,
+    pairs,
+    widest: widestPair ? widestPair.label : null,
+    title: titleParts.join('；') + '。',
+  };
 }
