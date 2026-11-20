@@ -207,7 +207,12 @@ describe("TasksBoardModulePage", () => {
     expect(text).toContain("待处理 — · 阻塞 —");
     expect(text).not.toContain("待处理 0");
     expect(text).not.toContain("阻塞 0");
-    expect(text).toContain("暂时读不到任务数据（接口不可达），数字不作零处理");
+    // 设计车道⑤：主句只讲人话，「接口不可达 / 数字不作零处理」进「详情」折叠（默认关闭）。
+    expect(text).toContain("暂时读不到任务数据，请稍后重试");
+    expect(text).not.toContain("（接口不可达）");
+    const caveatDetail = container.querySelector('[data-testid="tasks-summary-caveat-detail"]');
+    expect(caveatDetail?.textContent).toContain("接口不可达时数字不作零处理");
+    expect(caveatDetail?.hasAttribute("open")).toBe(false);
     // 错误面板真出口。
     const err = container.querySelector('[data-testid="tsk4-error"]');
     expect(err?.querySelector('a[href="/overview"]')?.textContent).toContain("返回控制台");
@@ -223,6 +228,8 @@ describe("TasksBoardModulePage", () => {
     expect(container.textContent).toContain("待处理 0 · 阻塞 0");
     expect(container.querySelector('[data-testid="tsk4-empty"]')).toBeTruthy();
     expect(container.textContent).not.toContain("数字不作零处理");
+    // 读取成功就没有「详情」折叠可展开。
+    expect(container.querySelector('[data-testid="tasks-summary-caveat-detail"]')).toBeNull();
   });
 
   const FILTER_ROWS = {

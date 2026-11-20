@@ -978,7 +978,7 @@ function UsageZone({ empId, nonce, onRetry }: { empId: string; nonce: number; on
           className="px-4 py-2 text-xs text-muted-foreground"
           title="BFF 白名单：budget-usage 必带 employeeId+period（实测缺 period 400 console.missing_param、periodKind=week 400 request.invalid_body）；run-stats 必带 from/to（实测 bucket=month 422）。"
         >
-          只读聚合：实扣认预算账本、运行数认运行统计，两读口均按 employeeId 真过滤；本页不提供任何写入口。
+          只读聚合：实扣认预算账本、运行数认运行统计，两读口均按 employeeId 真过滤；这里只提供查看，操作暂不在本页进行。
         </p>
       </CardContent>
     </Card>
