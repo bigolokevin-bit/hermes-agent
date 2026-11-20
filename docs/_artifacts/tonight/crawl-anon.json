@@ -26,7 +26,7 @@
   "rootShell": {
     "url": "http://127.0.0.1:9122/",
     "hasMainEl": true,
-    "mainChars": 1054,
+    "mainChars": 1072,
     "headSample": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 近 24 小时 近"
   },
   "contentChecked": 51,
@@ -762,7 +762,7 @@
   "routesWithConsoleErrors": 51,
   "parseErrors": [],
   "ok": true,
-  "headHash": "42180cd6",
+  "headHash": "dcac5182",
   "exitCode": 0,
   "counts": {
     "probed": 75,
