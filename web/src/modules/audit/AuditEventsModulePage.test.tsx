@@ -4823,3 +4823,265 @@ describe("audQ - one gate table drives every widget", () => {
     expect(urls()).toEqual(before);
   });
 });
+
+/**
+ * audR — 筛选条的 URL 单一事实源复核。七类参数逐行贴三列：地址里的值 → 控件显示的值
+ * → 实际发出去的请求 query。登记的键名映射（type→action、actor→actorId、
+ * resource→resourceId、cursor 栈→页码、clamp→控件回显）不是漂移；漂移的判据是
+ * 「控件显示 A 而自己发出 B」或「地址有值而冷挂载后控件为空」。
+ * 另附：切换任一参数重取恰一次、组合地址粘进来只读一次、屏上分享行与复制行同源、
+ * href 不含 origin 也不含凭据参数。
+ */
+describe("audR - the address is the only source of truth", () => {
+  const ROW = (id: string, action: string): unknown => ({
+    eventId: id,
+    action,
+    occurredAt: "2026-11-19T01:20:00Z",
+    outcome: "succeeded",
+    actor: { type: "system", id: "employee-api" },
+    resource: { type: "task", id: `ts_${id}` },
+    requestId: `req-${id}`,
+  });
+  const SET = [ROW("evt_r1", "task.created"), ROW("evt_r2", "task.created"), ROW("evt_r3", "run.failed")];
+
+  const answering = async (url: string): Promise<unknown> => {
+    const asked = new URLSearchParams(String(url).split("?")[1] ?? "");
+    const action = asked.get("action");
+    const items = action ? SET.filter((row) => (row as { action: string }).action === action) : [...SET];
+    // 游标那一页也真有行（页码腿要能在第 2、3 页上读数）
+    return { items, nextCursor: null };
+  };
+  const clamping = async (url: string): Promise<unknown> => {
+    const asked = new URLSearchParams(String(url).split("?")[1] ?? "");
+    return asked.get("limit") === "100"
+      ? { items: [...SET], limit: 50, nextCursor: null }
+      : { items: [...SET], nextCursor: null };
+  };
+
+  const widgetWindow = (): string | null => {
+    for (const key of ["24h", "7d", "30d", "custom"]) {
+      if (document.querySelector(`[data-testid='aud01-filter-window-${key}']`)?.getAttribute("aria-pressed") === "true") return key;
+    }
+    return null;
+  };
+  const widget = (testId: string): string => (document.querySelector<HTMLSelectElement>(`[data-testid='${testId}']`)?.value ?? "").trim();
+  const asked = (): URLSearchParams => new URLSearchParams((urls().slice().reverse().find((u) => /^\/agent-api\/api\/audit\?/.test(u)) ?? "").split("?")[1] ?? "");
+  const auditCount = (): number => urls().filter((u) => /^\/agent-api\/api\/audit\?/.test(u)).length;
+  const pageSeat = (): string => document.querySelector("[data-testid='aud2-page']")!.textContent ?? "";
+
+  async function mountWith(entry: string, handler: (url: string) => Promise<unknown>): Promise<void> {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(handler);
+    await render(entry, <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await waitFor(() => !skeleton(), "the address was answered");
+  }
+
+  // ① 七行三列对照（每行都是一次独立冷挂载）
+  const TABLE: Array<{ label: string; entry: string; check: () => void }> = [
+    {
+      label: "①时间窗 window=24h",
+      entry: "/audit?window=24h",
+      check: () => {
+        expect(widgetWindow()).toBe("24h");
+        expect(asked().get("from")).toMatch(/^20\d\d-\d\d-\d\dT/);
+        expect(new Date(asked().get("to")!).getTime() - new Date(asked().get("from")!).getTime()).toBe(86_400_000);
+      },
+    },
+    {
+      label: "②自定义区间 from/to",
+      entry: "/audit?window=custom&from=2026-11-17T01%3A00%3A00.000Z&to=2026-11-17T02%3A30%3A00.000Z",
+      check: () => {
+        expect(widgetWindow()).toBe("custom");
+        expect(widget("aud01-custom-from")).toBe("2026-11-17T09:00");
+        expect(widget("aud01-custom-to")).toBe("2026-11-17T10:30");
+        expect(asked().get("from")).toBe("2026-11-17T01:00:00.000Z");
+        expect(asked().get("to")).toBe("2026-11-17T02:30:00.000Z");
+      },
+    },
+    {
+      label: "③操作者 actor→actorId",
+      entry: "/audit?window=7d&actor=employee-api",
+      check: () => {
+        expect(widget("aud01-filter-operator")).toBe("employee-api");
+        expect(asked().get("actorId")).toBe("employee-api");
+      },
+    },
+    {
+      label: "④资源 resource→resourceId（并本地匹配）",
+      entry: "/audit?window=7d&resource=ts_evt_r1",
+      check: () => {
+        expect(widget("aud8-filter-resource")).toBe("ts_evt_r1");
+        expect(asked().get("resourceId")).toBe("ts_evt_r1");
+        expect(document.querySelectorAll("[data-testid^='aud01-row-']")).toHaveLength(1);
+      },
+    },
+    {
+      label: "⑤动作类型 type→action（键名映射，非漂移）",
+      entry: "/audit?window=7d&type=task.created",
+      check: () => {
+        expect(widget("aud01-filter-type")).toBe("task.created");
+        expect(asked().get("action")).toBe("task.created");
+        expect(asked().get("type")).toBeNull();
+        expect(document.querySelectorAll("[data-testid^='aud01-row-']")).toHaveLength(2);
+      },
+    },
+    {
+      label: "⑥条数 limit=25",
+      entry: "/audit?window=7d&limit=25",
+      check: () => {
+        expect(widget("audH-page-size")).toBe("25");
+        expect(asked().get("limit")).toBe("25");
+      },
+    },
+    {
+      label: "⑦页码：游标栈→第 N 页→发出栈顶",
+      entry: "/audit?window=7d&cursor=cur_page1&cursor=cur_page2",
+      check: () => {
+        expect(pageSeat()).toContain("第 3 页");
+        expect(asked().get("cursor")).toBe("cur_page2");
+        expect(new URLSearchParams(locationText().split("?")[1] ?? "").getAll("cursor")).toEqual(["cur_page1", "cur_page2"]);
+      },
+    },
+  ];
+
+  for (const leg of TABLE) {
+    it(`${leg.label}：地址 → 控件 → 请求`, async () => {
+      await mountWith(leg.entry, answering);
+      leg.check();
+      expect(auditCount()).toBe(1);
+    });
+  }
+
+  it("防「URL 有值而控件空」：未进采样表的类型码照样回填并照样发问", async () => {
+    // audD 给这类值留了「按地址带入的类型」一格；这一行是它作为单一事实源的验收：
+    // 地址 → 控件 → 请求 三列都带着同一个原码，不空、不猜、不改写
+    await mountWith("/audit?window=7d&type=quantum.recalibration", async (url) => {
+      const askedBy = new URLSearchParams(String(url).split("?")[1] ?? "");
+      return askedBy.get("action") === "quantum.recalibration"
+        ? { items: [ROW("evt_r9", "quantum.recalibration")], nextCursor: null }
+        : { items: [], nextCursor: null };
+    });
+    expect(widget("aud01-filter-type")).toBe("quantum.recalibration");
+    expect(asked().get("action")).toBe("quantum.recalibration");
+    expect([...document.querySelectorAll("option")].map((option) => option.text)).toContain("按地址带入的类型");
+    expect(auditCount()).toBe(1);
+    // 同理，句柄不在本页选项里时也照样回填
+    await mountWith("/audit?window=7d&actor=some-other-service", answering);
+    expect(widget("aud01-filter-operator")).toBe("some-other-service");
+    expect(asked().get("actorId")).toBe("some-other-service");
+  });
+
+  it("登记的 clamp 回显：地址 100、控件 50、请求 100，不是漂移", async () => {
+    await mountWith("/audit?window=7d&limit=100", clamping);
+    expect(asked().get("limit")).toBe("100");
+    expect(widget("audH-page-size")).toBe("50");
+    expect(document.querySelector("[data-testid='audH-clamp-note']")).not.toBeNull();
+    // 屏上分享行报的是生效值，与控件一致；复制行两处都写清
+    expect(document.querySelector("[data-testid='aud-source-seats']")!.textContent).toContain("每页 50 条");
+  });
+
+  it("④切换任一类参数，重取恰一次", async () => {
+    const moves: Array<{ label: string; run: () => Promise<void> }> = [
+      { label: "时间窗", run: async () => choose("aud01-filter-window", "30d") },
+      // 采样表里的原码；不在表里的值 select 不会接受（那正是 audD 的兜底选项存在的原因）
+      { label: "动作类型", run: async () => choose("aud01-filter-type", "task.created") },
+      { label: "操作者", run: async () => choose("aud01-filter-operator", "employee-api") },
+      { label: "条数", run: async () => pick("audH-page-size", "25") },
+    ];
+    for (const move of moves) {
+      await mountWith("/audit?window=7d", answering);
+      const before = auditCount();
+      await move.run();
+      await waitFor(() => auditCount() > before, `${move.label} 重取一次`);
+      expect(auditCount()).toBe(before + 1);
+      expect(urls().slice().reverse().find((u) => /^\/agent-api\/api\/audit\?/.test(u)) ?? "").toBeTruthy();
+    }
+    // 区间：应用草稿才算一问，打字不发问
+    await mountWith("/audit?window=7d", answering);
+    await choose("aud01-filter-window", "custom");
+    const before = auditCount();
+    await typeInto("aud01-custom-from", "2026-11-17T09:00");
+    await typeInto("aud01-custom-to", "2026-11-17T10:30");
+    expect(auditCount()).toBe(before);
+    await pick("audB-apply", "");
+    await waitFor(() => auditCount() === before + 1, "应用区间后恰一次");
+    expect(locationText()).toContain("window=custom");
+    // 翻页：栈深一层，也是一读；条目选择器同样是「一切一读」
+    await mountWith("/audit?window=7d", async () => ({ items: [...SET], nextCursor: "cur_page2" }));
+    const pages = auditCount();
+    await pick("aud01-load-more", "");
+    await waitFor(() => auditCount() === pages + 1, "下一页一读");
+    expect(locationText()).toContain("cursor=cur_page2");
+    expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 2 页");
+  });
+
+  it("⑤屏上分享行与复制行同源，href 不带 origin 也不带凭据", async () => {
+    const clip: { calls: string[] } = { calls: [] };
+    Object.defineProperty(window, "isSecureContext", { configurable: true, value: true });
+    Object.defineProperty(window.navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: async (text: string) => void clip.calls.push(text) },
+    });
+    await mountWith(
+      "/audit?window=custom&from=2026-11-17T01%3A00%3A00.000Z&to=2026-11-17T02%3A30%3A00.000Z" +
+        "&type=task.created&actor=employee-api&limit=25&cursor=cur_page1&token=should-not-travel",
+      answering,
+    );
+    const seats = document.querySelector("[data-testid='aud-source-seats']")!.textContent ?? "";
+    const href = document.querySelector<HTMLAnchorElement>("[data-testid='aud-source-href']")!.getAttribute("href") ?? "";
+    // 三列同源：屏上行的时间窗/区间/类型/页码/条数格，与复制进剪贴板的那一行逐字相同
+    const before = auditCount();
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='audG-filter-copy']")?.click();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+    const copied = clip.calls[0];
+    expect(copied).toContain("时间窗：自定义 2026-11-17T09:00 → 2026-11-17T10:30（北京时间）");
+    expect(seats).toContain("时间窗：自定义 2026-11-17T09:00 → 2026-11-17T10:30（北京时间）");
+    expect(copied).toContain("动作类型：task.created（服务端按 action 精确匹配）");
+    expect(seats).toContain(copied.split(" · ")[1]);
+    expect(copied).toContain("第 2 页（游标 ×1） · 每页 25 条");
+    expect(seats).toContain("第 2 页（游标 ×1） · 每页 25 条");
+    // 屏上不上机器句柄（audB/aud9 既有契约），复制行照旧带句柄并说明键名
+    expect(seats).not.toContain("employee-api");
+    expect(copied).toContain("操作者：employee-api（服务端 actorId，机器句柄）");
+    // href：同源相对路径、无 origin、无凭据
+    expect(href.startsWith("/audit?")).toBe(true);
+    expect(href).not.toMatch(/https?:|localhost/);
+    expect(href).not.toContain("token");
+    expect(href).toContain("actor=employee-api");
+    expect(auditCount()).toBe(before);
+    // 复制不发请求；屏上的 href 直接粘回去也能复现同一问
+    const replay = href.replace(/^\/audit/, "/audit");
+    await mountWith(replay, answering);
+    expect(auditCount()).toBe(1);
+    expect(widget("aud01-filter-operator")).toBe("employee-api");
+    expect(widget("audH-page-size")).toBe("25");
+    expect(document.querySelector("[data-testid='aud01-filter-window-custom']")).not.toBeNull();
+  });
+
+  async function pick(testId: string, value: string): Promise<void> {
+    const node = value
+      ? document.querySelector<HTMLSelectElement>(`[data-testid='${testId}']`)
+      : document.querySelector<HTMLButtonElement>(`[data-testid='${testId}']`);
+    if (!node) throw new Error(`${testId} not found`);
+    if (value) {
+      await act(async () => {
+        (node as HTMLSelectElement).value = value;
+        node.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+    } else {
+      await act(async () => {
+        (node as HTMLButtonElement).click();
+      });
+    }
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
+  }
+});

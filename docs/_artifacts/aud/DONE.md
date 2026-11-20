@@ -3218,3 +3218,28 @@ Untested: the four-state body lengths are jsdom readings, not browser pixels; th
 - 三档：新增件只有一个 `aria-hidden` 空 span（镜像），屏幕文本与布局未变；`min-w-0 flex-wrap` 口径沿用，浏览器像素三档仍未实测（活体腿不可用）。
 - 门禁：vitest `src/modules/audit` **exit 0**（19 files/**378**）；`pnpm exec tsc -b . --noEmit` 共 **69** errors（= 本机地板，改动前后同数、增量 0）且 `modules/audit` **0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings。
 - 活体腿沿用不可用（未重跑）：9122 无身份头 **401 `console.unauthenticated`**、8092 **404 `console.not_found`**；矩阵读数全部来自 vitest 腿与 gates 纯函数断言。
+
+## Audit filter URL single source (audR, 2026-11-20, base 8e3d7cbc)
+
+- 写域：`web/src/modules/audit/{filterSummary.ts,AuditEventsModulePage.tsx,AuditEventsModulePage.test.tsx}` + 本节（3 文件 +~340）。App/shell/routes/registry/package·lock/web-scripts/ops 与其它模块未碰；基线 merge = Already up to date，porc=0；单 commit。
+- **① 七类参数三列对照表**（每行都是一次独立 jsdom 冷挂载，控件列取真实 DOM 值，请求列取 `ListApi.askedPath` 同源的最后一条 `/agent-api/api/audit?…`；活体不可用故不用现网 curl，见文末）：
+
+  | # | 参数 | 地址里的值 | 控件显示 | 实际请求 query | 判定 |
+  |---|---|---|---|---|---|
+  | ① | 时间窗 | `window=24h` | `aud01-filter-window-24h` `aria-pressed=true`（其余 false） | `from=…&to=…`，跨度实测恰 `86_400_000ms` | 一致 |
+  | ② | 自定义区间 | `window=custom&from=2026-11-17T01:00:00.000Z&to=2026-11-17T02:30:00.000Z` | `aud01-custom-from=2026-11-17T09:00`、`aud01-custom-to=2026-11-17T10:30`（北京本地输入） | `from/to` 逐字回显 ISO | 一致（换算只发生在输入格显示，发出去的是原瞬间） |
+  | ③ | 操作者 | `actor=employee-api` | `aud01-filter-operator=employee-api` | `actorId=employee-api` | 一致（键名映射，非漂移） |
+  | ④ | 资源 | `resource=ts_evt_r1` | `aud8-filter-resource=ts_evt_r1` | `resourceId=ts_evt_r1` | 一致；屏上 1 行是**本地匹配**，措辞由 audB/audL 的 scope note 明说 |
+  | ⑤ | 动作类型 | `type=task.created` | `aud01-filter-type=task.created` | `action=task.created`，且请求里**不存在** `type=` | 一致（audD 单事实源的键名映射） |
+  | ⑥ | 条数 | `limit=25` | `audH-page-size=25` | `limit=25` | 一致 |
+  | ⑦ | 页码 | `cursor=cur_page1&cursor=cur_page2` | `aud2-page=第 3 页`（无 `page=` 键，页码是游标栈深度） | `cursor=cur_page2`（只发栈顶） | 一致（登记：地址里两个 cursor 逐字仍在） |
+  | 补 A | clamp 回显 | `limit=100` | `audH-page-size=50`（回答 `meta.limit=50` 的生效值） | `limit=100` | **非漂移**：audH 登记的诚实回显，`audH-clamp-note` 在场；屏上分享格也写「每页 50 条」，与控件一致 |
+  | 补 B | 未采样原码 | `type=quantum.recalibration` / `actor=some-other-service` | 下拉显示「按地址带入的类型/操作者」并按该值回填 | `action=quantum.recalibration` / `actorId=some-other-service` | 一致，堵住「URL 有值而控件空」这一类漂移 |
+- **② 漂移判定结果：实修 0 处**。判据按工单：控件显示值≠它自己发出的该参数值，或地址有值而冷挂载后控件为空。本轮逐行实测未发现；表中三处「看起来像」的都属登记的键名映射或 audH/audL 既有设计（①⑤⑦＋补 A），已在上表注明。**测试侧修的是断言而非产品**：审计参数切换腿原先用 `run.failed` 去设类型——该码不在采样选项表里，`<select>` 会拒绝赋值（表现为"没变化"），这不是漂移，是测试写错了；改用表内原码 `task.created` 后同一断言成立（地址→控件→请求三列一致）。
+- **③ `aud-source-*` 上屏（可分享形态）**：筛选条下方一行 `aud-source`，内含 `aud-source-seats`（当前口径的句子）与 `aud-source-href`（原生 `<a>`「分享这一问」）。href 由 `pageShareHref(params)` 生成：**同源相对路径**（`/audit?…`，无 scheme/host/port），并按 audG 已有的七类凭据参数剥离规则删掉 `token/access_token/code/key/secret/session/password`；用例断言 href 以 `/audit?` 开头、不含 `http`/`localhost`/`token`，且把这个 href 原样粘回去冷挂载只发 1 次读、控件与条数全部复现。
+- **⑤ 与 `audG-filter-copy` 同源**：`filterSummary.ts` 现在只有一个 seat 构造器 `seatsOf(input, mode)`；复制行 = `filterSeats(...)`（paste 模式）+ `请求：<safeRequestPath>`（`请求`段仍是 audG 既有逐字同源规则，未回归），屏上行 = `filterSeatsForScreen(...)`（screen 模式）。两种模式**同一字段序、同一批字符串**，唯一差别是屏上模式不许上机器句柄（audB/aud9 契约：「the handle stays off the surface」）——所以只有 `操作者/资源` 两格在屏上换成「已按句柄筛（服务端 actorId）/已按编号本地筛（只在本页已加载的记录里）」，时间窗、自定义区间、动作原码、页码/游标、每页条数五格**逐字相同**。用例把这层关系直接钉住：`aud-source-seats` 包含复制行的 `时间窗/动作类型/第 2 页（游标 ×1） · 每页 25 条` 各段、`seats` 不含 `employee-api`、`copied` 含 `操作者：employee-api（服务端 actorId，机器句柄）`。这一处取舍是本轮唯一的"两处不同文本"，理由与出处写在 `filterSummary.ts` 的注释与本节，供下一轮直接对账。
+- **④ 重取计数矩阵**（每条腿先记下 `audit?` 前缀计数）：切时间窗 +1、切动作类型 +1、切操作者 +1、切条数 +1、应用自定义区间 +1（**打字 0**，草稿不外发）、下一页 +1（游标栈 +1 层、`第 2 页`）；七行对照表每行冷挂载都恰 1 次读；复制屏上行与复制摘要前后 `urls()` **逐字相等**（复制零请求）。
+- **零破**：`aud01*`、`aud2/3/4/5/6/7`、`audB/audC/audE/audF/audG/audI/audJ/audK`、`aud-sort-*`、`aud-gates-*`、`audH-*`、`audL-*`、`audM`(audL-scroll)、`audN-*`、`aud-trunc*`、`aud-limit-restore`、页级 `agent-v2-page-audit*` 未改名未删节点；既有 audG/audH/audB 断言的措辞一个字未改（`filterSummaryLineOf` 的输出串与改前逐字相同，只是内部拆成了 seats + 请求段）。新增 testid：`aud-source`、`aud-source-seats`、`aud-source-href`。
+- 三档：新增件是一行 `min-w-0 break-words` 文本 + 一个 inline `<a>`，无新容器、无固定宽度；浏览器像素三档仍未实测（活体腿不可用），只声明结构口径。四态/403≡404/零写入口沿用 audF/audQ 未回归。
+- 门禁：vitest `src/modules/audit` **exit 0**（**19** files / **389** tests = 起算 19/378 + 11 条 audR 腿）；`pnpm exec tsc -b . --noEmit` 共 **69** errors（= 本机地板，改动前后同数、增量 0）且 `modules/audit` **0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings。
+- 活体腿沿用已知不可用（未重跑，本轮不出示假读数）：9122 无身份头 **401 `console.unauthenticated`**、8092 **404 `console.not_found`**；① 的三列与 ④ 的计数全部由 jsdom 断言取得（控件取 DOM、请求取 `ListApi.askedPath` 与 mock 实收 URL）。

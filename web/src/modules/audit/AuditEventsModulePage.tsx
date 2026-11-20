@@ -49,7 +49,12 @@ import type { VerifyFailure } from "./copy";
 import { eventTypeChoices } from "./model";
 import type { ListFilters } from "./api";
 import { PAGE_LIMIT, PAGE_SIZE_CHOICES, readPageSize } from "./api";
-import { filterSummaryLineOf, hasFilterSummary } from "./filterSummary";
+import {
+  filterSeatsForScreen,
+  filterSummaryLineOf,
+  hasFilterSummary,
+  pageShareHref,
+} from "./filterSummary";
 import { auditGatesOf, gateMirror } from "./auditGates";
 import type { SortColumn, SortState } from "./sorting";
 import { SORT_COLUMNS, ariaSort, nextSort, sortReading, sortRows, sortStateOf } from "./sorting";
@@ -1544,6 +1549,8 @@ function AuditEventsSurface(): ReactNode {
     askedPath: customInvalid ? null : list.askedPath,
   };
   const filterSummary = filterSummaryLineOf(summaryInput);
+  // audR: the same question, as a link. Origin-free by construction.
+  const shareHref = pageShareHref(params);
 
   // audQ: one object decides every entry's availability — the two exports, the
   // two copy controls, the row fold and the retry — with the sentences that
@@ -1694,6 +1701,25 @@ function AuditEventsSurface(): ReactNode {
           line is what a pasted link restores — stated in words, not implied. */}
       <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud8-state-line">
         {restoredLine}
+      </p>
+
+      {/* audR: the address is the single source, and this line is that claim
+          said out loud: the same seats the copied summary is built from, plus
+          the link a person can hand over. The href is same-origin (no host, no
+          port), credential parameters are stripped by the same rule that
+          guards the copied request path, and the text is produced by the very
+          function the clipboard uses — so the sentence on the card and the
+          sentence in the paste cannot be two different sentences. */}
+      <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud-source">
+        <span data-testid="aud-source-seats">{filterSeatsForScreen(summaryInput)}</span>
+        <a
+          className="ml-1 rounded-sm underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+          href={shareHref}
+          data-testid="aud-source-href"
+          title="同源相对路径的可分享形态；不带 origin，也不带任何凭据参数"
+        >
+          分享这一问
+        </a>
       </p>
 
       {/* audM: a probe line, not prose. It carries what was saved when a
