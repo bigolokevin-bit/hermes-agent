@@ -2128,3 +2128,19 @@ built /private/tmp/health-r38/index.html
   - tools `row=tools:网页搜索&q=网页`：detail 1、expanded 1、`aria-current=true`、fetch **4**；关闭后 detail 0、`row` 删除、`q` 保留、fetch **4**。
   - 两边 `row=…:不存在`：`cap-row-missing` 可见、title `GAP-CAPROW-01`、detail 0、行数不变、fetch 不变。
 - 边界：仅 `web/src/modules/{capabilities,skills,tools}/**` + 本 DONE；未碰 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未 install/force/amend/--no-verify。
+
+## R74 — /system 四态统一（2026-11-20）
+
+- 基线：显式 refspec fetch `origin/lane/hermes-console`（章面 `a5832d15` / 代次 `60a4a429`）后 `git merge --no-ff` → Already up to date；未 reset，未并 main，未重建 9122。
+- 新增 `web/src/modules/health/SystemStatePanel.tsx`：loading / empty / empty-filter / error / denied 共用一套文案与组件；锚 `sys-state-state`（`data-state`）、`sys-state-empty`、`sys-state-empty-text`、`sys-state-clear`、`sys-state-error`、`sys-state-rid`（可复制）、`sys-state-retry`、`sys-state-denied`。
+- 列表（`sys3-*`）接线：loading/empty/error/denied 全部改用该面板；403/404 同体 `sys-state-denied`，GAP 只在 `sys3-gap` title；error 带人话 + requestId + 重试；真空调 `sys-state-empty`；筛选无匹配调 `empty-filter` 并给 `sys-state-clear`（保留 `sys5-clear`）。旧 `sys3-loading|gap|login|error|empty|retry|request-id|apply` 均保留。
+- 控件门禁：`sys3-refresh` 只在 ready 可点；empty/error/denied/loading disabled + title；重试不再调用页面探针刷新，只重发失败的 `/api/health` 一次（不影响 `?svc=` 与已展开行状态）。状态计数：error/denied 为「—」+title；真空调仍为真实 0；筛选无匹配保留同一次响应的 0/1 分布。
+- 读源矩阵：导出/复制在无任何可用读口行（全部 failed/unwired/idle）时 disabled，title「当前没有可导出/复制的可用读口行：读口未接入或读取失败。」，`sys7-export-count` 为「—」；有可用行时不受影响。
+- 验证：定向 `npx vitest run src/modules/health` → **5 files / 48 passed**；全量 `npx vitest run` → **151 files / 2006 passed**；`tsc -b . --noEmit` 仅既有基线错误，本域 0。
+- DOM（临时 harness 已删；Vite 5497 / Chrome CDP 9297；1440/1280/375 × error/denied/empty/filter）：
+  - 12 格均 `body=page=视口`，无横溢。
+  - error：`sys-state-state=error`、`sys-state-error`、`sys-state-rid=req-error`、`sys-state-retry`、`sys3-refresh.disabled=true`、计数四项均「—」、矩阵复制 disabled、`sys7-export-count=—`；点重试 fetch **4→5**（只补健康读口一次）。
+  - denied：`data-state=denied`、`sys-state-denied`、rid 可复制、无 retry、refresh disabled、计数「—」、矩阵复制 disabled。
+  - empty：`data-state=empty`、`sys-state-empty-text` 含「不补服务行」、refresh disabled、计数 0（真实空集）、矩阵因探针成功仍可用。
+  - filter：`data-state=empty-filter`、`sys-state-empty`、`sys-state-clear` 可见并清空筛选。
+- 边界：仅 `web/src/modules/health/**` + 本 DONE；未碰 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未 install/force/amend/--no-verify。

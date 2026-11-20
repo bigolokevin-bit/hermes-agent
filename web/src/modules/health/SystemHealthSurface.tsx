@@ -12,6 +12,7 @@ import {
 } from "./systemHealth";
 import { failureRead, publishSourceRead, topLevelIsoAsOf } from "./sourceReads";
 import { SERVICE_GAP, findService, readServiceParam, writeServiceParam } from "./serviceLink";
+import { SystemStatePanel } from "./SystemStatePanel";
 
 type Preview = "loading" | "empty" | "error" | null;
 type CountKey = "normal" | "degraded" | "unreachable" | "unknown";
@@ -30,24 +31,6 @@ type State =
   | { k: "gap"; message: string; requestId: string | null }
   | { k: "error"; message: string; requestId: string | null }
   | { k: "login"; message: string };
-
-function RequestId({ id }: { id: string | null }) {
-  const [copied, setCopied] = useState(false);
-  if (!id) return <p className="sys3-req" data-testid="sys3-request-id">请求编号：未提供</p>;
-  return (
-    <p className="sys3-req" data-testid="sys3-request-id">
-      <span>请求编号：</span>
-      <code title={id}>{id}</code>
-      <button
-        type="button"
-        aria-label="复制请求编号"
-        onClick={() => { void navigator.clipboard?.writeText(id).then(() => setCopied(true), () => setCopied(false)); }}
-      >
-        {copied ? "已复制" : "复制"}
-      </button>
-    </p>
-  );
-}
 
 function RowDetail({ row }: { row: SystemHealthRow }) {
   return (
@@ -248,11 +231,24 @@ export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Pre
   }, [preview, reload]);
 
   const retry = () => {
-    onRetry?.();
-    setFilter(null);
-    setOpenKey(null);
+    // A failed health read retries only that read. The probe list has its own
+    // refresh; firing it here would turn one failure into four requests.
+    // Keep the expanded row, local filter and ?svc= while the read is retried.
+    if (state.k === "ready") onRetry?.();
+    if (state.k !== "error" && state.k !== "gap") {
+      setFilter(null);
+      setOpenKey(null);
+    }
     setReload((n) => n + 1);
   };
+  const refreshEnabled = state.k === "ready";
+  const refreshTitle = refreshEnabled
+    ? "重新读取服务健康清单；不会重发三条探针。"
+    : state.k === "loading"
+      ? "正在读取服务健康清单，完成前刷新不可用。"
+      : state.k === "empty"
+        ? "读口已接入但清单为空；空态下刷新已收起。"
+        : "当前不是可刷新状态；请使用重试或先处理读口。";
 
   const countReason =
     state.k === "loading" ? "正在读取服务健康清单，计数尚未取数。"
@@ -342,7 +338,7 @@ export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Pre
             >
               编辑探针（计划中）
             </button>
-            <Button size="sm" outlined onClick={retry} disabled={state.k === "loading"} data-testid="sys3-refresh">刷新</Button>
+            <Button size="sm" outlined onClick={retry} disabled={!refreshEnabled} aria-disabled={!refreshEnabled ? "true" : undefined} title={refreshTitle} data-testid="sys3-refresh">刷新</Button>
           </div>
         </div>
 
@@ -374,30 +370,42 @@ export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Pre
         ) : null}
 
         {state.k === "loading" ? (
-          <div className="sys3-loading" data-testid="sys3-loading" aria-busy="true">
-            <p>正在读取服务健康清单…</p>
-            {[1, 2, 3].map((n) => <div key={n} className="sys3-skeleton" />)}
+          <div data-testid="sys3-loading" aria-busy="true">
+            <SystemStatePanel kind="loading" title="正在读取服务健康清单…" />
           </div>
         ) : state.k === "gap" ? (
-          <div className="sys3-gap" data-testid="sys3-gap" title={SYS3_GAP}>
-            <p className="sys3-gap-title">健康读口未接入</p>
-            <p className="sys3-gap-body">{state.message}</p>
-            <RequestId id={state.requestId} />
-            <a className="sys3-apply" href="#/approvals" data-testid="sys3-apply">提交开通申请</a>
+          <div data-testid="sys3-gap" title={SYS3_GAP}>
+            <SystemStatePanel
+              kind="denied"
+              title="健康读口未接入"
+              reason={state.message}
+              requestId={state.requestId}
+              legacyRidTestId="sys3-request-id"
+              applyHref="#/approvals"
+              applyTestId="sys3-apply"
+            />
           </div>
         ) : state.k === "login" ? (
           <p className="sys3-gap" data-testid="sys3-login">{state.message}</p>
         ) : state.k === "error" ? (
-          <div className="sys3-gap" data-testid="sys3-error" role="alert">
-            <p className="sys3-gap-title">健康清单暂时读不出来</p>
-            <p className="sys3-gap-body">{state.message}</p>
-            <RequestId id={state.requestId} />
-            <Button size="sm" outlined onClick={retry} data-testid="sys3-retry">重试</Button>
+          <div data-testid="sys3-error">
+            <SystemStatePanel
+              kind="error"
+              title="健康清单暂时读不出来"
+              reason={state.message}
+              requestId={state.requestId}
+              legacyRidTestId="sys3-request-id"
+              onRetry={retry}
+              retryTestId="sys3-retry"
+            />
           </div>
         ) : state.k === "empty" ? (
-          <div className="sys3-gap" data-testid="sys3-empty">
-            <p className="sys3-gap-title">健康接口返回了空清单</p>
-            <p className="sys3-gap-body">这不等于所有服务正常；不补服务行，也不给绿色结论。</p>
+          <div data-testid="sys3-empty">
+            <SystemStatePanel
+              kind="empty"
+              title="健康接口返回了空清单"
+              reason="这不等于所有服务正常；不补服务行，也不给绿色结论。"
+            />
           </div>
         ) : (
           <>
@@ -413,7 +421,7 @@ export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Pre
               {filter
                 ? `已筛：${filter} · ${visibleRows.length} 项。筛选只在本地生效，不改网址；刷新后回到全部服务。`
                 : "点上面的状态计数可只看该状态的服务；筛选只在本地生效，不改网址。"}
-              {filter ? (
+              {filter && visibleRows.length > 0 ? (
                 <button type="button" data-testid="sys5-clear" onClick={() => { setFilter(null); setOpenKey(null); }}>
                   清除筛选
                 </button>
@@ -421,9 +429,15 @@ export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Pre
             </p>
             <p className="sys4-hint">点行或按 Enter 展开详情，Esc 收起；同时只展开一行。</p>
             {visibleRows.length === 0 ? (
-              <p className="sys3-foot" data-testid="sys5-filter-empty">
-                当前筛选下没有服务；计数来自同一次健康响应，这里不补服务行。
-              </p>
+              <div data-testid="sys5-filter-empty">
+                <SystemStatePanel
+                  kind="empty-filter"
+                  title="当前筛选下没有服务"
+                  reason="计数来自同一次健康响应，这里不补服务行。"
+                  onClear={() => { setFilter(null); setOpenKey(null); }}
+                  clearTestId="sys5-clear"
+                />
+              </div>
             ) : (
             <>
             <p className="sys3-scrollhint" data-testid="sys3-scrollhint">左右滑动查看全部列</p>

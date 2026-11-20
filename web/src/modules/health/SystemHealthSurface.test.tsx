@@ -373,3 +373,73 @@ describe("SystemHealthSurface svc deep link", () => {
     expect(api.fetchJSON).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("system state anchors", () => {
+  it("uses one error panel with a copyable request id and disables refresh", async () => {
+    api.fetchJSON.mockRejectedValue(new ApiError("failed", { status: 500, body: "{}", url: "/agent-api/api/health", requestId: "req-state-500" }));
+    await render();
+    await waitFor(() => !!container.querySelector("[data-testid='sys-state-error']"), "state error");
+    expect(container.querySelector("[data-testid='sys-state-state']")?.getAttribute("data-state")).toBe("error");
+    expect(container.querySelector("[data-testid='sys-state-error']")?.textContent).toContain("健康清单暂时读不出来");
+    expect(container.querySelector("[data-testid='sys-state-rid']")?.textContent).toContain("req-state-500");
+    expect(container.querySelector("[data-testid='sys-state-rid-copy']")).toBeTruthy();
+    expect(container.querySelector("[data-testid='sys-state-retry']")).toBeTruthy();
+    const refresh = container.querySelector<HTMLButtonElement>("[data-testid='sys3-refresh']")!;
+    expect(refresh.disabled).toBe(true);
+    expect(refresh.getAttribute("title")).toContain("不是可刷新状态");
+  });
+
+  it("gives 403 and 404 exactly the same denied panel and no retry", async () => {
+    const bodies: string[] = [];
+    for (const status of [403, 404] as const) {
+      api.fetchJSON.mockRejectedValue(new ApiError("failed", { status, body: "{}", url: "/agent-api/api/health", requestId: "req-state-denied" }));
+      await render();
+      await waitFor(() => !!container.querySelector("[data-testid='sys-state-denied']"), `denied ${status}`);
+      const denied = container.querySelector("[data-testid='sys-state-denied']")!;
+      bodies.push(denied.textContent ?? "");
+      expect(container.querySelector("[data-testid='sys-state-state']")?.getAttribute("data-state")).toBe("denied");
+      expect(denied.textContent).toContain("健康读口未接入");
+      expect(denied.textContent).toContain("req-state-denied");
+      expect(container.querySelector("[data-testid='sys-state-rid-copy']")).toBeTruthy();
+      expect(container.querySelector("[data-testid='sys-state-retry']")).toBeNull();
+      expect(container.querySelector<HTMLButtonElement>("[data-testid='sys3-refresh']")?.disabled).toBe(true);
+    }
+    expect(bodies[0]).toBe(bodies[1]);
+  });
+
+  it("separates a true empty list from a filter with no match and offers a clear exit", async () => {
+    api.fetchJSON.mockResolvedValue({ ok: true, asOf: "2026-11-19T15:17:09Z", sources: [] });
+    await render();
+    await waitFor(() => !!container.querySelector("[data-testid='sys-state-empty']"), "state empty");
+    expect(container.querySelector("[data-testid='sys-state-state']")?.getAttribute("data-state")).toBe("empty");
+    expect(container.querySelector("[data-testid='sys-state-empty-text']")?.textContent).toContain("不补服务行");
+    expect(container.querySelector<HTMLButtonElement>("[data-testid='sys3-refresh']")?.disabled).toBe(true);
+
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockResolvedValue(HEALTH);
+    await render();
+    await waitFor(() => !!container.querySelector("[data-testid='sys3-table']"), "table");
+    await act(async () => (container.querySelector<HTMLButtonElement>("[data-testid='sys5-count-unknown']") as HTMLButtonElement).click());
+    expect(container.querySelector("[data-testid='sys-state-state']")?.getAttribute("data-state")).toBe("empty-filter");
+    expect(container.querySelector("[data-testid='sys-state-empty-text']")?.textContent).toContain("这里不补服务行");
+    expect(container.querySelector("[data-testid='sys-state-clear']")).toBeTruthy();
+    await act(async () => (container.querySelector<HTMLButtonElement>("[data-testid='sys-state-clear'] button") as HTMLButtonElement).click());
+    expect(container.querySelectorAll("[data-testid^='sys3-row-']")).toHaveLength(3);
+  });
+
+  it("keeps svc and the expanded row across an error retry and reads health only", async () => {
+    window.history.replaceState({}, "", "/#/system?tab=health&svc=console");
+    api.fetchJSON
+      .mockRejectedValueOnce(new ApiError("failed", { status: 500, body: "{}", url: "/agent-api/api/health", requestId: "req-state-retry" }))
+      .mockResolvedValueOnce(HEALTH);
+    await render();
+    await waitFor(() => !!container.querySelector("[data-testid='sys-state-error']"), "error");
+    expect(window.location.hash).toContain("svc=console");
+    expect(api.fetchJSON).toHaveBeenCalledTimes(1);
+
+    await act(async () => (container.querySelector<HTMLButtonElement>("[data-testid='sys-state-retry'] button") as HTMLButtonElement).click());
+    await waitFor(() => !!container.querySelector("[data-testid='sys4-detail-console']"), "detail after retry");
+    expect(api.fetchJSON).toHaveBeenCalledTimes(2);
+    expect(window.location.hash).toContain("svc=console");
+  });
+});
