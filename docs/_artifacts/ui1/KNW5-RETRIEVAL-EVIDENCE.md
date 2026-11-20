@@ -5204,3 +5204,45 @@ kn-type*/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort*/kn-gates/kn7-preview*/导出
 ```
 未测如实：带登录会话真 51 行屏（mock 代证）；② 的「重开预览后播报复位」未锁（关后
 保持已锁，开→再关循环无新语义）；检索面自身预览/归属（该面无行内预览宿主，名实已注）。
+
+# KNW5 追加 R226：类型/大小人话 × 三载体同源护栏（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `d17c06e2`
+（wave-68）、基线先跑 43/206 全绿 Errors 0、目标文件确认缺席再动笔。零产品文件改动
+（无新缺陷）。新增 knowledge.rowcopy.locale.test.tsx 三例（本体）。
+
+## 名实与查重（引用不重写）
+
+```text
+无真 CSV（源级四件套 0、data-export="absent" ×4——R190/R220 不变量）→「导出 CSV 列」
+映射 knF/knG 数据行；行钮分面（详情 -space- / 检索 -）；人话单点 docTypeLabel（未知→
+「其他类型」knowledge.ts:661/:674）与 formatBytes（:536）未造第二套；两套缺值口径未
+统一。引用：R204①（跨面字段链）、R209（行钮↔knF 整行）、R214②（knG 列↔屏上格、
+行钮 5 列事实）、R223（三面同源）、R218、R200。
+新增维（点名）：
+· ①-a 裸值负向扫描：两表体 section 可见全文对 /application\/[a-z0-9.+-]+/i、
+  ≥4 位裸字节+单位、"987654321"/"2516582" 全 0 命中；未知类型样张屏上「其他类型」、
+  裸 MIME 只进 title（application/x-unknown-9x）——既有皆正锁、负扫无 pin；
+· ①-b 检索面跨载体整行直对：knG 数据行去固定第 2 列（R71 唯一列差口径）== 检索面
+  行钮串 5 列逐元素 toEqual（R214 做过列↔屏上格，行间整链首次）。
+```
+
+## 三例读数与验证尾行（R226）
+
+```text
+① A 行三载体 type/size 逐字互等 = "PDF"/"2.4 MB"；X 行屏上「其他类型」+title=裸 MIME；
+  负向扫描全零；检索面 X 行 [name,...去空间列] == 行钮 5 列、type 位同「其他类型」、
+  size 位 == 屏上格。② M 行三载体 type/size 同「—」（cell/行钮/knF /knG 去列位）、
+  body 无 undefined/null。③ 三连复制 writeText 3、urls 快照逐字 == u0、三值 [3,3,3]。
+$ npx vitest run src/modules/knowledge → 44 files / 209 tests passed（206+3），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0；build /tmp/knw-r226-dist exit 0
+$ 全仓 → 339 files / 3142 passed 全绿（无豁免）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn-row-copy*/kn-row-copy-space*/kn-doc-copy*/kn3*/kn3-page-cap/knE-page-*/
+kn-type*/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort*/kn-gates/kn7-preview*/导出 absent
+标记 + 既有 43 套全绿。三例一次全过、无自纠轮，产品零触碰。
+```
+未测如实：带登录会话真屏；「大小恰好进位边界」样张（999B/1024B 级）取产品既有
+formatBytes 分支（R54 族已锁部分边界）；image/* 等其他 MIME 族的负扫（本轮以
+application/x-unknown-9x 代表，正则族扫描已覆盖前缀）。
