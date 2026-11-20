@@ -47,6 +47,16 @@ function Field({
   );
 }
 
+// R80: 长值单行截断——阈值与字符截断形态集中在这一处；行卡/行内预览/详情主体/
+// trail 全走同一助手，屏上显截断值、title 恒全文（与复制/导出的全文同源同值）。
+// 不超过阈值不加省略号也不加 title；空值走各自既有缺值口径，不进本助手。
+export const TRUNCATE_LIMIT = 60;
+
+export function truncateDisplay(text: string): { shown: string; full: string | null } {
+  if (text.length <= TRUNCATE_LIMIT) return { shown: text, full: null };
+  return { shown: `${text.slice(0, TRUNCATE_LIMIT - 1)}…`, full: text };
+}
+
 const MISSING_TIME = "服务未提供该时间";
 const MISSING_AMOUNT = "服务未提供该数值";
 
@@ -158,7 +168,13 @@ export function ApprovalRowCard({
             title={row.rawId ?? undefined}
             className="min-w-0 flex-1 break-words text-left text-sm hover:underline"
           >
-            <span className={themedBody}>{row.title}</span>
+            <span
+              className={themedBody}
+              data-testid={`apv-trunc-row-title-${row.key}`}
+              title={truncateDisplay(row.title).full ?? undefined}
+            >
+              {truncateDisplay(row.title).shown}
+            </span>
           </button>
           <Badge tone={row.status.tone} title={row.status.raw ?? undefined}>
             {row.status.label}
@@ -189,7 +205,13 @@ export function ApprovalRowCard({
         </dl>
 
         {row.reason ? (
-          <p className="min-w-0 break-words text-xs text-muted-foreground" title={row.reason}>事由：{humanizeHandles(row.reason)}</p>
+          <p
+            className="min-w-0 break-words text-xs text-muted-foreground"
+            data-testid={`apv-trunc-row-reason-${row.key}`}
+            title={truncateDisplay(humanizeHandles(row.reason)).full ?? undefined}
+          >
+            事由：{truncateDisplay(humanizeHandles(row.reason)).shown}
+          </p>
         ) : null}
 
         <div onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
@@ -210,7 +232,13 @@ export function ApprovalRowCard({
               }
             }}
           >
-            <p className={`break-words text-sm ${themedBody}`}>{row.title}</p>
+            <p
+              className={`break-words text-sm ${themedBody}`}
+              data-testid={`apv-trunc-preview-title-${row.key}`}
+              title={truncateDisplay(row.title).full ?? undefined}
+            >
+              {truncateDisplay(row.title).shown}
+            </p>
             <dl className="mt-2 grid min-w-0 gap-1.5 text-xs">
               <Field
                 label="状态"
@@ -231,7 +259,19 @@ export function ApprovalRowCard({
               />
               <Field
                 label="审批人"
-                value={row.approvers.labels.length > 0 ? row.approvers.labels.join("、") : "—"}
+                value={
+                  row.approvers.labels.length > 0
+                    ? (() => {
+                        const joined = row.approvers.labels.join("、");
+                        const t = truncateDisplay(joined);
+                        return (
+                          <span data-testid={`apv-trunc-preview-approvers-${row.key}`} title={t.full ?? undefined}>
+                            {t.shown}
+                          </span>
+                        );
+                      })()
+                    : "—"
+                }
                 reason={
                   row.approvers.labels.length > 0
                     ? row.approvers.raw ?? undefined
@@ -358,7 +398,14 @@ export function DecisionTrail({ detail }: { detail: ApprovalDetail }): ReactNode
               title={entry.whoRaw ?? undefined}
             >
               节点 {index + 1} · {entry.who} · {entry.verdict} ·{" "}
-              <RelativeTime iso={entry.atRaw} testid={`apv-time-detail-node-${index}`} /> · 意见：{entry.note ?? "未填"}
+              <RelativeTime iso={entry.atRaw} testid={`apv-time-detail-node-${index}`} /> · 意见：
+              {entry.note == null ? (
+                "未填"
+              ) : (
+                <span data-testid={`apv-trunc-note-${index}`} title={truncateDisplay(entry.note).full ?? undefined}>
+                  {truncateDisplay(entry.note).shown}
+                </span>
+              )}
             </li>
           ))
         )}
@@ -470,8 +517,12 @@ export function ApprovalDetailBody({
   return (
     <div className="flex min-w-0 flex-col gap-3" data-testid={testId}>
       <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-        <h2 className={`min-w-0 flex-1 break-words text-sm ${themedBody}`} title={detail.rawId ?? undefined}>
-          {detail.title}
+        <h2
+          className={`min-w-0 flex-1 break-words text-sm ${themedBody}`}
+          title={truncateDisplay(detail.title).full ?? detail.rawId ?? undefined}
+          data-testid="apv-trunc-detail-title"
+        >
+          {truncateDisplay(detail.title).shown}
         </h2>
         <Badge tone={detail.status.tone} title={detail.status.raw ?? undefined}>
           {detail.status.label}
@@ -582,7 +633,13 @@ export function ApprovalDetailBody({
       </dl>
 
       {detail.reason ? (
-        <p className="min-w-0 break-words text-xs text-muted-foreground" title={detail.reason ?? undefined}>事由：{humanizeHandles(detail.reason)}</p>
+        <p
+          className="min-w-0 break-words text-xs text-muted-foreground"
+          data-testid="apv-trunc-detail-reason"
+          title={truncateDisplay(humanizeHandles(detail.reason)).full ?? undefined}
+        >
+          事由：{truncateDisplay(humanizeHandles(detail.reason)).shown}
+        </p>
       ) : null}
 
       {/* R28 item 2: the approver slot is always present; empty means a

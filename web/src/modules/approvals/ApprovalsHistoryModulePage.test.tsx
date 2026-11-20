@@ -1857,3 +1857,112 @@ describe("R79 cursor pagination and honest total (apv-page-*)", () => {
     expect(qa("apv-page-count")?.textContent).toBe("总数不可用 · 已显示 1 条");
   });
 });
+
+describe("R80 long value truncation (apv-trunc-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+  const LONG_TITLE = "变".repeat(70);
+  const LONG_REASON = "由".repeat(75);
+  const LONG_NOTE = "备".repeat(85);
+  const TR_ROW = {
+    approvalId: "ap_tr1",
+    title: LONG_TITLE,
+    status: "approved",
+    decidedAt: "2026-11-18T02:00:00Z",
+    reason: LONG_REASON,
+    approvers: [{ userId: "human:7", name: "郑涛" }],
+  };
+  const TR_DETAIL = {
+    approvalId: "ap_tr1",
+    title: LONG_TITLE,
+    status: "approved",
+    requestedBy: { type: "human", id: "human:7" },
+    action: "rotate.secret",
+    reason: LONG_REASON,
+    createdAt: "2026-11-18T01:00:00Z",
+    decidedAt: "2026-11-18T02:00:00Z",
+    approvers: [{ userId: "human:7", name: "郑涛" }],
+    decisions: [{ userId: "human:7", name: "郑涛", decision: "approve", at: "2026-11-18T01:50:00Z", comment: LONG_NOTE }],
+  };
+  const mountTr = () =>
+    mount(
+      async (url: string) => {
+        if (String(url).includes("/api/approval?id=")) return TR_DETAIL;
+        return { items: [TR_ROW] };
+      },
+      "/approvals?tab=history",
+    );
+
+  it("over-long values show the clipped text with the full value in title; short values get neither", async () => {
+    await mountTr();
+    const before = api.fetchJSON.mock.calls.length;
+    const rowTitle = qa("apv-trunc-row-title-ap_tr1") as HTMLElement | null;
+    expect(rowTitle, "row title carrier").toBeTruthy();
+    expect(rowTitle!.textContent).toBe("变".repeat(59) + "…");
+    expect(rowTitle!.getAttribute("title"), "title 恒全文").toBe(LONG_TITLE);
+    const rowReason = qa("apv-trunc-row-reason-ap_tr1") as HTMLElement | null;
+    expect(rowReason!.getAttribute("title")).toBe(LONG_REASON);
+    expect(rowReason!.textContent).toContain("事由：");
+    // 行内预览与行卡同截同 title（同一 helper 单点）
+    await act(async () => {
+      (qa("apv9-toggle-ap_tr1") as HTMLButtonElement).click();
+    });
+    const pvTitle = qa("apv-trunc-preview-title-ap_tr1") as HTMLElement | null;
+    expect(pvTitle, "preview title carrier").toBeTruthy();
+    expect(pvTitle!.textContent).toBe(rowTitle!.textContent);
+    expect(pvTitle!.getAttribute("title")).toBe(rowTitle!.getAttribute("title"));
+    expect(api.fetchJSON.mock.calls.length, "truncation never fetches").toBe(before);
+    // 短值：不加省略号也不加 title
+    await mount(async () => ({ items: [{ approvalId: "ap_short", title: "预算上调", status: "pending", createdAt: "2026-11-19T01:00:00Z" }] }), "/approvals?tab=history");
+    const shortTitle = qa("apv-trunc-row-title-ap_short") as HTMLElement | null;
+    expect(shortTitle!.textContent).toBe("预算上调");
+    expect(shortTitle!.hasAttribute("title"), "short value carries no title").toBe(false);
+    expect(qa("apv-trunc-row-reason-ap_short"), "no reason no carrier").toBeNull();
+  });
+
+  it("copy and CSV keep the FULL value, matching the title attribute verbatim", async () => {
+    await mountTr();
+    await act(async () => {
+      (document.querySelector('[data-testid="apr5-row-ap_tr1"]') as HTMLElement).click();
+    });
+    await waitFor(() => !!qa("apd6-trail"), "trail");
+    const node = qa("apv-trunc-note-0") as HTMLElement | null;
+    expect(node, "trail note carrier").toBeTruthy();
+    expect(node!.textContent).toBe("备".repeat(59) + "…");
+    expect(node!.getAttribute("title")).toBe(LONG_NOTE);
+    const dtTitle = qa("apv-trunc-detail-title") as HTMLElement | null;
+    expect(dtTitle!.getAttribute("title")).toBe(LONG_TITLE);
+    expect(dtTitle!.textContent).toBe("变".repeat(59) + "…");
+    // 复制为纯文本＝全文（不是截断值）
+    const written: string[] = [];
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: async (t: string) => { written.push(t); } },
+    });
+    await act(async () => {
+      (qa("apd8-copy") as HTMLButtonElement).click();
+    });
+    await waitFor(() => (qa("apd8-copy-status")?.textContent ?? "").includes("已复制"), "copied");
+    // 链路文本=提交/节点/终态行（不含标题行），节点意见与 title 逐字同全文
+    expect(written[0]).toContain(LONG_NOTE);
+    expect(written[0]).not.toContain("…");
+    // 导出 CSV 同样全文，并与行卡 title 逐字相等
+    const orig = URL.createObjectURL;
+    const blobs: Blob[] = [];
+    URL.createObjectURL = ((b: Blob) => {
+      blobs.push(b);
+      return "blob:stub";
+    }) as typeof URL.createObjectURL;
+    try {
+      await act(async () => {
+        (qa("apv7-export") as HTMLButtonElement).click();
+      });
+    } finally {
+      URL.createObjectURL = orig;
+    }
+    expect(blobs.length).toBe(1);
+    const csv = await blobs[0].text();
+    // CSV 表头契约（R54）无 reason 列；title 全文与行卡 title 属性同源
+    expect(csv).toContain(LONG_TITLE);
+    expect((qa("apv-trunc-row-title-ap_tr1") as HTMLElement).getAttribute("title")).toBe(LONG_TITLE);
+  });
+});

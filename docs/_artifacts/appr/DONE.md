@@ -1116,3 +1116,13 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 切换重置：status 切换=既有 run(null) 全量重建（rows/游标/total 天然重置，用例锁新请求不带 cursor 且旧行消失）；tab=页面各自独立；q/actor/since/sort=本地维不进请求（R74/R77 契约），游标不受污染；错误态=既有 pageFailure InlineFailure+apv-state（rid/重试/403≡404）零改；非 ready 态分页条随 ready 分支隐藏=gates 既有单点（不渲第二套闸）；行内预览/详情契约零动。
 - 测试 history 2+pending 1（twoPages 夹具=page1{ap_g1,nextCursor:cg2}/page2{ap_g2+重复 ap_g1}无游标）：①「总数不可用 · 已显示 1 条」+title 无 total 键+more 可用→点击→恰一条 cursor=cg2+apr5-row 计=2（重复行被去重）+more disabled+title 到底+apv-page-end+「已显示 2 条」；②翻二页后切 approved 快捷→新请求 every 不含 cursor=+行替换（ap_g3 在 ap_g1 无）+计数重显 1 条；③pending 队列一页装得下=more disabled+「已到末页」在+count 总数不可用。注=切状态快捷钮 testid 族 apv5-filter-status-<v>（8 态主组 testid 不带 status- 前缀，首跑 null 教训）。定向 approvals 4 files/**122 passed**（119+3）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **151 files/1999 passed**（基线 1996+3）。
 - 零破：apv5–9/apd5–7/apr5/actor/nav/gates/state/export-name/since/time/parity 族（既有 119 全绿为证）；行内预览与详情用例全绿；三档=分页条 flex-wrap+truncate 既有形态学报（jsdom 不可测）；9122==60a4a429 禁重建，活体分页读数待并入后代次（本单贴的是 API 面实测）。
+
+## R80 审批长值截断 + title 全文（apv-trunc-*，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @cefc6323（章面 a5832d15），toplevel ✓ porc=0；代次 60a4a429。
+- 选型（回执口径）：**字符截断**（非 CSS ellipsis）——jsdom 无宽度测量，字符法可被 DOM 用例逐字锁定「屏上截断值+title 全文」；三档不横溢由长度上限本身保证（形态学报，无 sw==cw 实测能力如实注）。
+- 单点集中：views.tsx 顶部 `export const TRUNCATE_LIMIT = 60` + `truncateDisplay(text)→{shown,full}`（≤60 原样且 full=null=不加省略号也不加 title；>60 前 59 字符+…，full=原文）。载体六处全走该助手（禁两处各截）：行卡标题 apv-trunc-row-title-<key>、行事由 apv-trunc-row-reason-<key>、行内预览标题 apv-trunc-preview-title-<key>（与行卡同输入同输出=用例 toBe 逐字锁同值）、预览审批人 apv-trunc-preview-approvers-<key>、trail 节点意见 apv-trunc-note-<i>、详情主体 h2/事由 apv-trunc-detail-title/-reason。空值不进助手（缺值走既有「该字段未返回」/「—」/「未填」口径，无 reason 不渲载体）。
+- 文案变更注记：行/详情事由 title 原=服务端原文（可含 human: 裸柄）→改=**掩码后显示全文**（humanizeHandles 再截），敏感句柄不进 title，截断口径与屏上同源；短值不再挂 title（工单新规）。详情 h2 title 优先全文、短标题回落原 rawId title。
+- 全文同源锁：复制（apd8-copy trailToText）含节点意见全文 LONG_NOTE 且不含省略号；导出 CSV（表头契约 R54=id,title,status,risk,updated_at 无 reason 列）含 title 全文==行卡 title 属性逐字相等；截断全程 fetchJSON 计数不变（纯渲染层）。
+- 测试 history 新 describe 2 用例；既有 122 全绿零破（apv5–9/apd5–7/apr5/actor/nav/gates/state/export-name/since/time/parity/page 族）。定向 approvals 4 files/**124 passed**；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **151 files/2001 passed**（基线 1999+2）。
+- 9122==60a4a429 禁重建，活体三档横溢与截断读数待并入后代次。
