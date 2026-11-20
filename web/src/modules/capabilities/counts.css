@@ -310,3 +310,22 @@
   border-top: 1px dashed var(--color-border);
 }
 .cap7-copy .capC-copy-wrap { flex-wrap: wrap; }
+
+/* cap-export-scope-note — the export caliber line; verbatim twin of the CSV
+   trailing `#` note, so a reader of either surface gets the same sentence. */
+.cap6-export-group {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+.cap-export-scope-note {
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--color-muted-foreground);
+  font-size: 11px;
+  line-height: 1.4;
+}

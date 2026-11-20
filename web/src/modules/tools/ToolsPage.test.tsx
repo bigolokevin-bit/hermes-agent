@@ -630,11 +630,15 @@ describe("export order", () => {
     const order = rows().map((row) => row.textContent ?? "");
     const csv = await exportCsv();
     const lines = csv.trim().split("\r\n");
+    const data = lines.filter((line) => !line.startsWith("#"));
     expect(order[0]).toContain("网页搜索");
     expect(order[order.length - 1]).toContain("旧连接");
-    expect(lines[1]).toContain("网页搜索");
-    expect(lines[lines.length - 1]).toContain("旧连接");
-    expect(lines.length - 1).toBe(order.length);
+    expect(data[1]).toContain("网页搜索");
+    expect(data[data.length - 1]).toContain("旧连接");
+    expect(data.length - 1).toBe(order.length);
+    expect(lines[lines.length - 1]).toBe(
+      `#${document.querySelector("[data-testid='cap-export-scope-note']")?.textContent?.trim()}`,
+    );
   });
 });
 
@@ -652,9 +656,17 @@ describe("local name search", () => {
     expect(document.querySelector("[data-testid='capA-export-order-note']")?.textContent).toContain("导出按当前排序与搜索");
     const csv = await exportCsv();
     const lines = csv.trim().split("\r\n");
-    expect(lines).toHaveLength(3);
-    expect(lines.slice(1).every((line) => line.includes("网页"))).toBe(true);
+    expect(lines.filter((line) => !line.startsWith("#"))).toHaveLength(3);
+    expect(lines[lines.length - 1]).toBe("#本次导出为表内全量，共 2 项");
+    expect(lines.slice(1, -1).every((line) => line.includes("网页"))).toBe(true);
     expect(urls()).toHaveLength(6);
+
+    // ④ the same N in three places: CSV data rows, the on-screen note, the table body.
+    const note = document.querySelector("[data-testid='cap-export-scope-note']");
+    expect(note?.textContent?.trim()).toBe("本次导出为表内全量，共 2 项");
+    expect(note?.getAttribute("data-shown")).toBe("2");
+    expect(rows()).toHaveLength(2);
+    expect(document.querySelector("[data-testid='cap6-export']")?.getAttribute("title")).toContain("本次导出为表内全量，共 2 项");
   });
 
   it("shows a no-match state with a clear button, then restores every row", async () => {

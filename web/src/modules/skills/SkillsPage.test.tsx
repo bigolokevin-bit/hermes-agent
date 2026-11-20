@@ -364,9 +364,47 @@ describe("SkillsPage", () => {
     expect(container.querySelector("[data-testid='capA-export-order-note']")?.textContent).toContain("导出按当前排序与搜索");
     const csv = await exportCsv();
     const lines = csv.trim().split("\r\n");
-    expect(lines).toHaveLength(2);
-    expect(lines[0]).toBe("name,type,enabled,updated_at");
-    expect(lines[1]).toMatch(/^资料整理,/);
+    const data = lines.filter((line) => !line.startsWith("#"));
+    expect(data).toHaveLength(2);
+    expect(data[0]).toBe("name,type,enabled,updated_at");
+    expect(data[1]).toMatch(/^资料整理,/);
+    expect(lines[lines.length - 1]).toBe("#本次导出为表内全量，共 1 项");
+
+    // ④ three-way parity on one number: exported data rows == on-screen note == table body.
+    const note = container.querySelector("[data-testid='cap-export-scope-note']");
+    expect(note?.textContent?.trim()).toBe("本次导出为表内全量，共 1 项");
+    expect(note?.getAttribute("data-shown")).toBe("1");
+    expect(note?.getAttribute("data-mode")).toBe("full");
+    const screenN = Number(container.querySelector("[data-testid='cap-page-scope']")?.textContent?.match(/\d+/)?.[0]);
+    expect(screenN).toBe(data.length - 1);
+    expect(container.querySelectorAll("[data-testid^='skl4-row-']")).toHaveLength(data.length - 1);
+    expect(container.querySelector("[data-testid='cap6-export']")?.getAttribute("title")).toContain("本次导出为表内全量，共 1 项");
+  });
+
+  it("says 已加载 and never 全量 when the read口 paginates, in the note and in the CSV alike", async () => {
+    window.history.replaceState({}, "", "/capabilities?tab=skills");
+    fetchJsonStrict.mockResolvedValue({
+      total: 57,
+      nextCursor: "cur_2",
+      items: [
+        { skillId: "s1", name: "资料整理", scope: "tenant-shared", status: "active", updatedAt: "2026-11-19T05:30:00Z" },
+        { skillId: "s2", name: "会议纪要", scope: "builtin", status: "active", updatedAt: "2026-11-19T05:31:00Z" },
+      ],
+    });
+    await render();
+    const note = container.querySelector("[data-testid='cap-export-scope-note']");
+    expect(note?.getAttribute("data-mode")).toBe("capped");
+    expect(note?.getAttribute("data-shown")).toBe("2");
+    expect(note?.textContent?.trim()).toBe("本次导出为当前已加载 2 项，读口回传总数 57 项，不是全量");
+    expect(container.querySelector("[data-testid='cap-page-scope']")?.textContent).toContain("本页按读口单页上限显示 2 项");
+    expect(container.querySelector("[data-testid='cap6-export']")?.getAttribute("title")).toContain("不是全量");
+
+    const csv = await exportCsv();
+    const lines = csv.trim().split("\r\n");
+    expect(lines[lines.length - 1]).toBe("#本次导出为当前已加载 2 项，读口回传总数 57 项，不是全量");
+    expect(lines.filter((line) => !line.startsWith("#"))).toHaveLength(3);
+    expect(container.querySelectorAll("[data-testid^='skl4-row-']")).toHaveLength(2);
+    expect(text()).not.toContain("表内全量渲染");
   });
 
   it("shows a no-match state with a clear exit", async () => {
