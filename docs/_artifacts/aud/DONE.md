@@ -3108,3 +3108,8 @@ Untested: the four-state body lengths are jsdom readings, not browser pixels; th
 - 新增 testid：`audB-presets` `audB-preset-24h` `audB-preset-7d` `audB-preset-30d` `audG-filter-copy-rule`（`audG-filter-copy`/`-status`/`-fallback`/`-block` 原样）。
 - 门禁：vitest `src/modules/audit` **exit 0**（**15** files / **314** tests）；`pnpm exec tsc -b . --noEmit` 共 **69** errors（= wave-20 后本机地板，改动前后同数、增量 0）且 `modules/audit` **0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings。
 - 活体腿沿用已知不可用实测（未重跑）：9122 无身份头 **401 `console.unauthenticated`**、8092 **404 `console.not_found`**；①②两处读数均为 jsdom 腿（present/disabled 分布、aria-pressed 镜像、分前缀请求计数），未假装活体。
+
+## Audit audL addendum: probe readings for the two legs (2026-11-20, same commit)
+
+- ① 常驻后的两档实读（jsdom 逐档断言 present/disabled，`audG-filter-copy`）：`window=7d` 无任何口径 → `{present:true, disabled:true}`，title 首句仍是「当前没有筛选条件可复制」，卡内规则行 `audG-filter-copy-rule` 同时在屏；`window=7d&type=task.created` 在 **加载中 / 已读到 / 空表 / 403 被拒** 四档都是 `{present:true, disabled:false}`。403 那一档点复制，剪贴板收到含 `actorId=employee-api` 与「操作者：employee-api」的一行，`urls()` 长度不变。
+- ② 预设的两档实读：自定义卡里 `audB-preset-24h/7d/30d` 三个都是 `BUTTON` 且此刻 `aria-pressed=false`（按下的是上方「自定义」，组 title 写明同源关系）；点 `audB-preset-24h` → `window=24h`、`from/to` 清除、`type` 保留、上方 `aud01-filter-window-24h` 转 `true`、`-custom` 转 `false`、分前缀计数 `+1`；点 `audB-preset-30d`（带 `cursor=cur_page1&cursor=cur_page2` 的第 3 页）→ 游标栈清空、`aud2-page` 回「第 1 页」、计数 `+1`；已在 `7d` 时再点 `aud01-filter-window-7d` → 计数 `+0`（地址没变就不重问）。
