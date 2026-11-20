@@ -4855,3 +4855,54 @@ kn-gates/kn3-page-cap/kn9-count-docs + 既有 35 套全绿。
 ```
 未测如实：带会话真实屏（命中数抽取链以 mock 代证）；详情面本地名筛×ktype×翻页三重叠加
 的两两组合已各锁，三重同帧未铺；knG 侧命中态数值链同理未重铺（①在检索面已锁本族）。
+
+# KNW5 追加 R219：详情×预览跨面同值扩展（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：从调度方 merge 后状态起做（HEAD `4f2f4e54` wave-61、porcelain 空、目标文件
+确认不存在），基线先跑 36/184 全绿再动笔。零产品文件改动（无新缺陷）。
+新增 knowledge.detail.preview.parity.test.tsx 两例（本体，非 docs-only；派工红线
+「至少 2 条同帧更严组合」达成）。
+
+## 名实七条照落（文件头注释同步）
+
+```text
+无独立详情页（唯一详情面=抽屉 kn7-preview-*）→ 四处=列表格×抽屉 dd×行内预览/kn-doc-copy×
+行钮（详情面 kn-row-copy-space-<i>，检索面族不参与本文件）；kn-doc-copy 单控件非行数；
+?source= 无控件→ktype×q 叠加；kn3-page-cap 属详情面、kn9-count-docs 属检索面不互等；
+缺值两套口径不统一；导出族 absent 未造控件；cursor 组件态；短码尾段大写、全 id 仅 title；
+时间 updatedText；clipboard 桩全 Promise（尾行 Errors 0 达成）。
+```
+
+## 四腿处置与新增维点名
+
+```text
+①六路链=R204 detail.parity:82-125 已锁（干净态）→ 复用 cited；
+②抽屉开 1/关 0/序列不变=R196+R125C:180-207 → 复用 cited；
+③500/404 体+rid+重试=R183:105-157+R206(a)+R217④ → 复用 cited；
+④ktype 深链五值/cap=R218②、叠加换代=R207(a) → 复用 cited。
+新增维（本文件两例，均为「三条件同帧」此前无 pin 的组合）：
+· (a) ktype×q 叠加态内 四处五字段互等 + cap 整句逐字不变（开合/复制全程）+ 钮 id [0]
+  连续 + 详情读=开抽屉次数的当帧复测 + 再开/再关增量恰 [DETAIL_A]/[]；
+· (b) 抽屉 500 窗内 列表格×抽屉 dd 同帧互等（错误不污染行派生字段）+ rid 可复制
+  （writeText 恰收 rid-r219-500，portal 断言走 document.body）+ 关抽屉后行钮/行内预览
+  两串仍与样张互等、cap/钮 id 不动 + 重开(再 500)后重试增量恰 [DETAIL_A]、成功源字段
+  落「全项手册原件.pdf」、四值再同步。
+过程记录：(b) 两处测试自身错（rid 断言查 container 而抽屉是 portal→改 body；行钮取
+calls[0] 撞上 rid 那次→改 at(-1)），产品零触碰。
+```
+
+## 验证尾行（R219）
+```text
+$ npx vitest run src/modules/knowledge   → 37 files / 186 tests passed（基线 184 + 2 ≥186），
+  全输出 grep unhandled|Errors = 0
+$ npx vitest run                         → 315 files / 3075 passed 全绿（无豁免）
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r219-dist → exit 0
+$ 三档：1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn-row-copy*/kn-row-copy-space*/kn-doc-copy*/kn-doc-preview*/kn-space-preview*/
+kn3-page-cap/knE-page-*/kn7-preview-*/kn-type*/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort*/
+kn-gates + 既有 36 套全绿。
+```
+未测如实：带会话真屏（详情 200/500 真信封 mock 代证）；(b) 的 404 变体四处链（R217④ 已锁
+其子集，本轮按派工择 500）；抽屉三态 title 全句（R152③ 族，非本单四腿）。
