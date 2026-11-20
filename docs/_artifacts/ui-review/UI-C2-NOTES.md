@@ -23,6 +23,12 @@
 
 ## 验证
 
-- `cd web && node_modules/.bin/vite build` → exit 0。
-- testid 不变式：`git diff` data-testid 集合前后相等（无增删改名）。
-- 改前/改后 1440/375 截图：见本目录 `uic2-*.png`（取图口径沿用 UI-C：加高视口替代 fullPage）。
+- `cd web && node_modules/.bin/vite build` → exit 0（代码笔 `5ef66ccf`，已推 `lane/console-ui-c`）。
+- `tsc --noEmit`：employee-detail 域 0 红。
+- `vitest run src/modules/employee-detail`：62/62 ✔（字段归组未动 testid/文案契约）。
+- testid 不变式：`git diff -U0` data-testid 增删改名 0。
+
+## 取图卡点（如实）
+
+- 改前/改后 1440/375 截图被现网登录态过期阻塞：`100.117.184.117:8183/agent-api/api/*` 匿名与本地 dashboard token（Bearer/三种 cookie/X-Session-Token 头）全 401 `console.unauthenticated`；ego 会话页面显示「会话已过期，请重新登录」。拍法与脚本已备好（`/tmp/uic2-shots2.mjs`，路由为 path 形 `/employees/<id>` 非 hash；就绪判据 `ed5-overview-wrap`），现网重新登录后可直接重跑，命名 `uic2-{before,after}-employees-{1440,375}.png` 落本目录。
+- 布局验收不受影响：三段两列栅格与锚点条为纯 CSS/DOM 归组，`ui-c-fields--two` 钉 640+ 两列、375 单列。

@@ -45,8 +45,10 @@ export function SinceQuickFilter({
   onPick: (value: SinceValue | null) => void;
 }) {
   const ready = phase === "ready";
+  // P1-375-2: 同 RiskQuickFilter——时间窗 chip（含「近 24 小时」这类带空格的
+  // 标签）不许在 375 被挤压折行，换行交给整条 rail 的 flex-wrap。
   const chip =
-    "h-6 min-w-0 rounded-md border px-2 focus-visible:outline focus-visible:outline-1 focus-visible:outline-primary/40 " +
+    "h-6 shrink-0 whitespace-nowrap rounded-md border px-2 focus-visible:outline focus-visible:outline-1 focus-visible:outline-primary/40 " +
     (ready ? "hover:bg-muted/40" : "cursor-not-allowed opacity-60");
   const onClass = "border-primary/60 text-foreground";
   const offClass = "border-border text-muted-foreground";

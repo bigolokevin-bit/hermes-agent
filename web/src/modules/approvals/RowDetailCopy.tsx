@@ -53,6 +53,7 @@ export function RowDetailCopy({ row }: { row: ApprovalRow | null }) {
       <Button
         size="sm"
         outlined
+        className="shrink-0 whitespace-nowrap"
         data-testid="apd11-copy"
         disabled={text === null}
         title={
