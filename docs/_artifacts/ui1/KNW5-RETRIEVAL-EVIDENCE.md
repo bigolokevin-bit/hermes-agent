@@ -2281,3 +2281,71 @@ $ npx vite build --outDir /tmp/knw-sp-dist → exit 0
 边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
 package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
 无 force / amend / `--no-verify`；单 commit「feat(console): knowledge space row preview」。
+
+# KNW5 追加 R70：检索 ↔ 详情文档的跨面同值 parity（测试波 + 两处真缺陷收口）（2026-11-20 BJT）
+
+安全闸：toplevel 相符、porcelain 空、显式 refspec fetch 后 merge 实到 `9813d7af`
+（比交接章面 `a5832d15` 更新，含既有全部代次；如实记录）。merge 对本知识面 delta 为空；
+合后基线 62/62 先绿再动工。新增 `kn.parity.test.ts`（纯测试），产品改动仅限测出的真缺陷收口。
+
+## 一、映射（派工名 → 实际面，与文件头注释一致）
+
+```text
+「全库检索结果行」  = kn6-search-*（DocumentNameSearch 表）+ 行内展开 kn6-search-detail（?sdoc=）
+「空间内文档行」    = kn3-docs-*（SpaceDetailSurface 表）+ 行内预览 kn-doc-preview-*
+「空间侧预览」kn-space-preview-* 属空间列表面、对象是空间不是文档，与详情面路由互斥不同屏；
+互斥矩阵按「同屏可达」锁定（sdoc/详情预览/抽屉三面同屏，四对全测）。
+设计性差异（不改动，只断言+记录）：检索表有「所属空间」列、详情表无；详情预览有「短码」列、
+检索展开有「原文位置」列而无短码；表格单元格缺值仍是屏上「—」口径（预览句式不适用）。
+```
+
+## 二、测出的真缺陷与收口（同单修，逐字改前/改后）
+
+```text
+缺陷①  同一 MISSING 记录在两个「预览类表面」缺值话术分裂：
+  改前  检索展开 d_m：类型格 文本「—」title「上游没有给出文档类型」；
+        详情预览 d_m：类型格 文本「该字段未返回」title「类型：上游没有给出」；
+        （大小/更新同状）——同一条记录、两种呈现不一致。
+  改后  两面同走共享 helper previewField(label, present, value, reason, shownTitle)：
+        类型格 文本「该字段未返回」title「类型：上游没有给出文档类型」，两面逐字相等
+        （parity 测试 1/2 段断言；在场字段的原始 MIME 仍只进 title，两面同值）。
+        表格单元格未动（「—」口径属表，不属预览——exclusion 3）。
+缺陷②  详情行内预览（kn-doc-preview）与检索行内展开（?sdoc=）没有互斥：
+  改前  预览开着点检索命中：sdoc 展开、预览仍展开——三面互斥承诺只锁了两面。
+  改后  SpaceDetailSurface 接 sdocOpen/onCloseOverlays：开 sdoc 时预览作废（state 比较的
+        渲染期调整，同 R68 形态）；开预览时 doc=/sdoc= 一并静默删除。
+缺陷③  互斥删除的双重 setSp 覆盖（实现缺陷②时暴露、如实记）：
+  改前  onCloseDocQuietly()+onCloseSdoc() 连调各建一份 URLSearchParams(sp 同一陈旧基)，
+        后者覆盖前者——实测 sdoc 删了 doc= 还在。
+  改后  页面合并为一次 closeOverlaysQuietly({doc,sdoc}) 构造删除；测试锁 URL 双清。
+        （备注：setSearchParams 不支持函数式 updater，第一次修复尝试因此无效。）
+```
+
+## 三、断言读数（新增 3 例，全绿）
+
+```text
+表对表   同一记录在 kn6-search-* 与 kn3-docs-* 的 name/type/size/updated 文本+title、
+         行 title 全 id 逐字相等；缺值行两面表格都是「—」；行序两面同为 d_p 前、d_m 末。
+预览对   kn-doc-preview 与 kn6-search-detail 对同一记录四项（文档名/类型/大小/更新）
+         文本+title 逐字相等（分两轮读数：互斥使两者不能同时在场——这本身由矩阵段锁定）。
+互斥矩阵 预览→抽屉（+仅 R49 既有详情一读 1）；命中→sdoc（抽屉保留=现状如实：doc/sdoc 可共存，
+         预览不复活）；sdoc+抽屉→开预览（doc=/sdoc= 双清、两面卸载、0 新请求）；
+         预览开→关 URL 逐字不变；详情屏无 kn-space-toggle（路由互斥）。
+零请求   全 parity 读数段 fetchMock 计数与快照逐字相等；唯一 +1 是开抽屉既有详情一读（断言锁定）。
+```
+
+## 验证尾行（R70）
+```text
+$ npx vitest run src/modules/knowledge   → 3 files / 65 tests passed（基线 62 + parity 3；原 62 例零改全绿）
+$ npx vitest run                         → 160 files / 2174 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-parity-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+```
+未测如实：带行态数据的三档真实屏（静态预览无登录会话）；真机鼠标聚焦与剪贴板路径（本波无新增
+可交互可见布局，仅措辞与状态机收口）。
+边界：只改 `web/src/modules/knowledge/**`（新增 kn.parity.test.ts）与本证据目录；未动
+App.tsx / shell / routes / registry / package·lock / web-scripts / ops；未并 main、未重建 9122；
+显式路径提交（无 `git add -A`）；无 force / amend / `--no-verify`；merge（9813d7af）与
+test commit 分开。

@@ -466,6 +466,24 @@ export function shortId(value: string | null | undefined): string | null {
   return shortCode(value ?? null);
 }
 
+/**
+ * R70 — 预览类表面对「屏上没有这个字段」的统一句式：「该字段未返回」，title 点名是哪个字段、
+ * 为什么没回；值在场时原样给屏上字符串。列表格子的「—」屏面口径不属于本 helper（两套口径，
+ * 边界见证据）。两处行内预览（检索命中展开 kn6-search-detail 与文档行预览 kn-doc-preview）
+ * 必须走这同一个函数：同一条记录、两种呈现，缺值话术逐字一致，不允许各写各的。
+ */
+export function previewField(
+  label: string,
+  present: boolean,
+  value: string,
+  reason?: string | null,
+  shownTitle?: string | undefined,
+): { text: string; title: string | undefined } {
+  return present
+    ? { text: value, title: shownTitle }
+    : { text: "该字段未返回", title: `${label}：${reason ?? "上游没有给出"}` };
+}
+
 export function beijing(value: string | null): string | null {
   if (!value) return null;
   const ms = Date.parse(value);
