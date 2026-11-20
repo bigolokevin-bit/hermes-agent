@@ -167,16 +167,31 @@ export function EmptyPanel({
   nextStep,
   onRefresh,
   testId = "apr5-empty",
-}: Marked & { reason: string; nextStep: string; onRefresh: () => void; testId?: string }): ReactNode {
+  clear,
+}: Marked & {
+  reason: string;
+  nextStep: string;
+  onRefresh: () => void;
+  testId?: string;
+  /** R70: 有服务器筛选时的清空出口（无筛选的真集空不给假出口）。 */
+  clear?: { label: string; onClear: () => void };
+}): ReactNode {
   return (
     <Card className="border-border bg-card" data-testid={testId} >
-      <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
+      <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center" data-testid="apv-state-empty">
         <Inbox className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
-        <p className={`min-w-0 break-words text-sm ${themedBody}`}>{reason}</p>
+        <p className={`min-w-0 break-words text-sm ${themedBody}`} data-testid="apv-state-empty-text">{reason}</p>
         <p className="max-w-prose break-words text-xs text-muted-foreground">{nextStep}</p>
-        <Button size="sm" outlined onClick={onRefresh} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
-          刷新
-        </Button>
+        <div className="flex min-w-0 flex-wrap items-center justify-center gap-2">
+          <Button size="sm" outlined onClick={onRefresh} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
+            刷新
+          </Button>
+          {clear ? (
+            <Button size="sm" outlined data-testid="apv-state-clear" onClick={clear.onClear}>
+              {clear.label}
+            </Button>
+          ) : null}
+        </div>
         <PanelExits testId={`${testId}-exits`} />
       </CardContent>
     </Card>
@@ -198,17 +213,19 @@ export function ErrorPanel({
       data-testid={testId}
       
     >
-      <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-6">
+      <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-6" data-testid="apv-state-error">
         <div className="flex min-w-0 items-center gap-2 text-sm text-destructive">
           <TriangleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span className="min-w-0 break-words">{title}</span>
         </div>
         <p className="max-w-prose break-words text-xs text-muted-foreground">{failure.sentence}</p>
-        <p className="min-w-0 break-words text-xs text-muted-foreground"><RequestIdCopyField requestId={failure.requestId} fallback="本次请求未记录编号，可复制时间与操作路径反馈" /></p>
+        <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="apv-state-rid"><RequestIdCopyField requestId={failure.requestId} fallback="本次请求未记录编号，可复制时间与操作路径反馈" /></p>
         {failure.technical ? <DetailsDisclosure lines={[failure.technical]} testId={`${testId}-details`} /> : null}
-        <Button size="sm" outlined onClick={onRetry} data-testid={retryTestId ?? `${testId}-retry`} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
-          重试
-        </Button>
+        <span data-testid="apv-state-retry">
+          <Button size="sm" outlined onClick={onRetry} data-testid={retryTestId ?? `${testId}-retry`} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
+            重试
+          </Button>
+        </span>
       </CardContent>
     </Card>
   );
@@ -224,14 +241,14 @@ export function DeniedPanel({ failure }: Marked & { failure: FailureCopy | null 
       data-testid="apr5-denied"
       
     >
-      <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
+      <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center" data-testid="apv-state-denied">
         <ShieldAlert className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
         <p className={`min-w-0 break-words text-sm ${themedBody}`}>暂时无法查看审批申请</p>
         <p className="max-w-prose break-words text-xs text-muted-foreground">
           这块内容要么尚未对你开放，要么当前环境还没有提供它。这里不会显示任何猜测的内容。
           需要处理审批时，请联系工作区管理员为你开通。
         </p>
-        <p className="min-w-0 break-words text-xs text-muted-foreground"><RequestIdCopyField requestId={failure?.requestId ?? null} fallback="本次请求未记录编号，可复制时间与操作路径反馈" /></p>
+        <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="apv-state-rid"><RequestIdCopyField requestId={failure?.requestId ?? null} fallback="本次请求未记录编号，可复制时间与操作路径反馈" /></p>
         <PanelExits testId="apr5-denied-exits" />
       </CardContent>
     </Card>

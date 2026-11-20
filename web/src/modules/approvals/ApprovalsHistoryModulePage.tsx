@@ -104,6 +104,17 @@ export function ApprovalsHistoryModulePage(): ReactNode {
     [params, setParams],
   );
 
+  // R70: 空态「有筛选」分支的清空出口——一次写回，status 与 q 同删，
+  // 其余参数不动。
+  const clearFilters = useCallback(() => {
+    const draft = new URLSearchParams(params);
+    draft.delete("status");
+    draft.delete("q");
+    setSelected(null);
+    setUnaddressable(false);
+    setParams(draft, { replace: true });
+  }, [params, setParams]);
+
   const openRow = useCallback(
     (row: { rawId: string | null }) => {
       // R55: remember where the list was, so 返回列表 can put us back there.
@@ -235,7 +246,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
       </div>
 
       <QueueSummaryBar phase={list.phase} rows={visibleRows} scope="history" singleStatus={status} />
-      <QueueCsvExport rows={list.rows} tab="history" status={status} />
+      <QueueCsvExport rows={list.rows} tab="history" status={status} phase={list.phase} />
       <div className="flex min-w-0 flex-wrap items-center gap-1.5" role="group" data-testid="apv8-search-group" aria-label="搜索审批">
         <input
           type="search"
@@ -333,7 +344,11 @@ export function ApprovalsHistoryModulePage(): ReactNode {
         </p>
       ) : null}
 
-      <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
+      <div
+        className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]"
+        data-testid="apv-state"
+        data-phase={list.phase}
+      >
         <section className="flex min-w-0 flex-col gap-2" data-testid="apr5-list" aria-label="历史决策列表">
           {list.phase === "loading" ? <LoadingPanel /> : null}
 
@@ -349,6 +364,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
               nextStep="换一个结果看看，或点「全部」把所有历史决策列出来。"
               onRefresh={list.reload}
               testId="apr5-empty-history"
+              clear={status !== null ? { label: "清空筛选", onClear: clearFilters } : undefined}
             />
           ) : null}
 

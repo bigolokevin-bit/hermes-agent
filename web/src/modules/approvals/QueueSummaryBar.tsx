@@ -30,6 +30,9 @@ function unavailable(phase: Phase): string | null {
   if (phase === "loading") return "数据还在读取，计数不作 0 处理";
   if (phase === "error") return "本次列表读取失败，取不到计数";
   if (phase === "denied") return "没有读取权限，计数不可得";
+  // R70: empty 也走「—」+原因——计数位不得用 0 冒充「读到了空集」这件事本身；
+  // 空与缺数的区分由本句与面板文案共同承担。
+  if (phase === "empty") return "读口如实返回空结果（真实空集，不是缺数）；计数位按约定显「—」。";
   return null;
 }
 
@@ -58,14 +61,15 @@ export function QueueSummaryBar({
       {STATUS_BUCKETS.map((bucket) => {
         let count: number | null = null;
         let missingReason: string | null = down;
-        if (count === null && scope === "queue") {
+        // R70: 非 ready 态（含 empty）不数行——计数位走「—」+原因。
+        if (down === null && scope === "queue") {
           count = bucket.value === "pending" ? rows.length : null;
           if (count === null) {
             missingReason =
               "本视图只读取待处理队列，该状态的计数与这份结果不同源；请到决策历史查看（那里计数与列表同源）。";
           }
         }
-        if (count === null && scope === "history") {
+        if (count === null && down === null && scope === "history") {
           if (singleStatus !== null && singleStatus !== bucket.value) {
             missingReason = `当前列表只包含「${singleStatus}」结果，该状态计数与这份结果不同源；切回「全部」后可见。`;
           } else {

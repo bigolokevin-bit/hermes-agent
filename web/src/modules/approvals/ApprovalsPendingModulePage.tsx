@@ -228,7 +228,7 @@ export function ApprovalsPendingModulePage(): ReactNode {
   return (
     <div className="flex min-w-0 w-full max-w-full flex-col gap-3" data-testid="apr5-page-pending">
       <QueueSummaryBar phase={list.phase} rows={visibleRows} scope="queue" />
-      <QueueCsvExport rows={list.rows} tab="pending" status="pending" />
+      <QueueCsvExport rows={list.rows} tab="pending" status="pending" phase={list.phase} />
       <div className="flex min-w-0 flex-wrap items-center gap-1.5" role="group" data-testid="apv8-search-group" aria-label="搜索审批">
         <input
           type="search"
@@ -293,7 +293,11 @@ export function ApprovalsPendingModulePage(): ReactNode {
         </p>
       ) : null}
 
-      <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
+      <div
+        className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]"
+        data-testid="apv-state"
+        data-phase={list.phase}
+      >
         <section className="flex min-w-0 flex-col gap-2" data-testid="apr5-list" aria-label="待处理审批队列">
           {list.phase === "loading" ? <LoadingPanel /> : null}
 

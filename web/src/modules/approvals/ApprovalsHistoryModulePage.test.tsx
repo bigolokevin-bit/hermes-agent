@@ -1086,3 +1086,109 @@ describe("R65 preview-detail parity (apv9 vs apd5/apd6)", () => {
     expect(dtText).toContain("该段无记录");
   });
 });
+
+describe("R70 queue state consistency (apv-state-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+
+  it("loading shows the equal-height skeleton and gates every action", async () => {
+    api.fetchJSON.mockImplementation(() => new Promise(() => {}));
+    await render("/approvals?tab=history", <ApprovalsHistoryModulePage />);
+    await waitFor(() => !!qa("apv-state"), "state container");
+    expect(qa("apv-state")?.getAttribute("data-phase")).toBe("loading");
+    expect(document.querySelectorAll('[data-testid="apr5-loading"] .animate-pulse').length).toBe(4);
+    const btn = qa("apv7-export") as HTMLButtonElement | null;
+    expect(btn, "export button present").toBeTruthy();
+    expect(btn!.disabled, "export gated while loading").toBe(true);
+    expect(btn!.title).toContain("不能导出");
+    expect(qa("apv7-export-count")?.textContent).toBe("—");
+    expect(qa("apv6-summary-pending")?.textContent).toContain("—");
+    expect(qa("apv6-summary-pending")?.getAttribute("title")).toContain("计数不作 0");
+  });
+
+  it("error: human sentence, copyable rid, retry, gated actions, URL kept", async () => {
+    await mount(
+      async (url: string) => {
+        if (String(url).includes("/api/approval?id=")) return Promise.resolve({});
+        throw new ApiError("boom", { status: 500, body: "", url: "/agent-api/api/approvals", requestId: "req-r70-500" });
+      },
+      "/approvals?tab=history&status=pending&q=zz",
+    );
+    await waitFor(() => !!qa("apv-state-error"), "error panel");
+    expect(qa("apv-state")?.getAttribute("data-phase")).toBe("error");
+    expect(qa("apv-state-rid")?.textContent).toContain("req-r70-500");
+    expect(qa("apv-state-rid")?.querySelector('[data-testid="apr5-copy-request-id"]'), "copyable rid").toBeTruthy();
+    expect(qa("apv-state-retry"), "retry carrier").toBeTruthy();
+    expect(qa("apr5-retry"), "existing retry testid kept").toBeTruthy();
+    const btn = qa("apv7-export") as HTMLButtonElement;
+    expect(btn.disabled, "export gated on error").toBe(true);
+    expect(btn.title).toContain("不能导出：列表没能加载");
+    expect(qa("apv7-export-count")?.textContent).toBe("—");
+    expect(qa("apv6-summary-risk-high")?.getAttribute("title"), "risk bucket title").toContain("列表读取失败");
+    // denied/error 面不画行：预览入口不存在
+    expect(qa("apr5-list")?.querySelector('[data-testid^="apv9-toggle-"]')).toBeNull();
+    // URL 筛选态原样保留（MemoryRouter 下以受控输入值为准，面板不改写）
+    expect(qa("apv8-search")?.getAttribute("value")).toBe("zz");
+    expect(qa("apv8-search-group")).toBeTruthy();
+  });
+
+  it("empty with a filter offers the clear exit; clearing restores the full list", async () => {
+    await mount(
+      async (url: string) => {
+        const u = String(url);
+        if (u.includes("/api/approval?id=")) return Promise.resolve({});
+        if (u.includes("status=pending")) return { items: [] };
+        return { items: ALL };
+      },
+      "/approvals?tab=history&status=pending",
+    );
+    await waitFor(() => !!qa("apv-state-empty"), "empty panel");
+    expect(qa("apv-state")?.getAttribute("data-phase")).toBe("empty");
+    expect(qa("apv-state-empty-text")?.textContent).toContain("该条件下无审批");
+    // 汇总条计数位不显 0 冒充空集
+    expect(qa("apv6-summary-pending")?.textContent).toContain("—");
+    expect(qa("apv6-summary-pending")?.getAttribute("title")).toContain("真实空集");
+    const clear = qa("apv-state-clear") as HTMLButtonElement | null;
+    expect(clear, "clear exit for filtered empty").toBeTruthy();
+    await act(async () => {
+      clear!.click();
+    });
+    await waitFor(() => !!qa("apr5-row-ap_p"), "restored list");
+    expect(qa("apv-state-clear"), "empty panel gone").toBeNull();
+  });
+
+  it("empty without any filter has no fake clear exit", async () => {
+    await mount(
+      async (url: string) => {
+        if (String(url).includes("/api/approval?id=")) return Promise.resolve({});
+        return { items: [] };
+      },
+      "/approvals?tab=history",
+    );
+    await waitFor(() => !!qa("apv-state-empty"), "empty panel");
+    expect(qa("apv-state-clear"), "no filter nothing to clear").toBeNull();
+  });
+
+  it("403 and 404 are one body: same panel, same sentence, rid kept, URL kept", async () => {
+    const deniedText = async (status: number): Promise<string> => {
+      await mount(
+        async (url: string) => {
+          if (String(url).includes("/api/approval?id=")) return Promise.resolve({});
+          throw new ApiError("nope", { status, body: "", url: "/agent-api/api/approvals", requestId: `req-r70-${status}` });
+        },
+        "/approvals?tab=history&status=pending",
+      );
+      await waitFor(() => !!qa("apv-state-denied"), `denied ${status}`);
+      // 同句=面板首行人话（请求编号每请求不同，不属于「同体」比对面）。
+      return qa("apv-state-denied")?.querySelector("p")?.textContent ?? "";
+    };
+    const a = await deniedText(403);
+    expect(a).toContain("暂时无法查看审批申请");
+    const b = await deniedText(404);
+    expect(b).toBe(a);
+    expect(qa("apv-state-error"), "denied is not an error panel").toBeNull();
+    const btn = qa("apv7-export") as HTMLButtonElement;
+    expect(btn.disabled, "export gated on denied").toBe(true);
+    expect(btn.title).toContain("不能导出：没有读取权限");
+  });
+});
+

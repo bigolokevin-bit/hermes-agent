@@ -56,27 +56,43 @@ export function downloadCsv(name: string, csv: string): void {
   URL.revokeObjectURL?.(url);
 }
 
+type Phase = "loading" | "empty" | "ready" | "error" | "denied";
+
+/** R70: 非 ready 态的导出闸——原因句与汇总条同一族口径。 */
+function csvPhaseReason(phase: Phase): string {
+  if (phase === "loading") return "数据还在读取";
+  if (phase === "error") return "列表没能加载";
+  if (phase === "denied") return "没有读取权限";
+  if (phase === "empty") return "读口返回的是真实空集，没有可导出的行";
+  return "";
+}
+
 export function QueueCsvExport({
   rows,
   tab,
   status,
+  phase = "ready",
 }: {
   rows: readonly ApprovalRow[];
   tab: "pending" | "history";
   status: string | null;
+  phase?: Phase;
 }) {
   const count = rows.length;
+  const blocked = phase !== "ready";
   return (
     <span className="flex min-w-0 items-center gap-1.5" data-testid="apv7-export-group">
       <Button
         size="sm"
         outlined
         data-testid="apv7-export"
-        disabled={count === 0}
+        disabled={blocked || count === 0}
         title={
-          count === 0
-            ? "当前筛选下没有可导出的行，导出暂不可用。"
-            : `导出当前已显示的 ${count} 行为 CSV（纯前端 Blob，零新后端端点；updated_at 用屏上同一值）。文件名时间=导出时刻（北京时间）。`
+          blocked
+            ? `不能导出：${csvPhaseReason(phase)}；恢复列表后自动可用。`
+            : count === 0
+              ? "当前筛选下没有可导出的行，导出暂不可用。"
+              : `导出当前已显示的 ${count} 行为 CSV（纯前端 Blob，零新后端端点；updated_at 用屏上同一值）。文件名时间=导出时刻（北京时间）。`
         }
         onClick={() => downloadCsv(approvalsCsvName(tab, status), buildApprovalsCsv(rows))}
       >
@@ -87,7 +103,7 @@ export function QueueCsvExport({
         data-testid="apv7-export-count"
         title="导出行数与屏上列表同源：同一份服务端返回、同一份渲染对象"
       >
-        共 {count} 行
+        {blocked ? "—" : `共 ${count} 行`}
       </span>
     </span>
   );
