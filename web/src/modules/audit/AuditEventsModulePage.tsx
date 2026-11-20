@@ -39,7 +39,7 @@ import { Button } from "@nous-research/ui/ui/components/button";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { Spinner } from "@nous-research/ui/ui/components/spinner";
 
-import { AuditFilterChips, AuditUrlFilterChips, DeniedPanel, EmptyPanel, ErrorPanel, FilterSummaryCopy, InlineFailure, LoadingPanel, RequestIdLine, TechnicalDisclosure, VerifyUnavailablePanel } from "./states";
+import { AuditFilterChips, AuditUrlFilterChips, DeniedPanel, DetailCopy, EmptyPanel, ErrorPanel, FilterSummaryCopy, InlineFailure, LoadingPanel, RequestIdLine, TechnicalDisclosure, VerifyUnavailablePanel } from "./states";
 import { AuditEventDetailBody, AuditEventRowCard, VerifyResultBody, AuditRowPreview, AuditTypeSummary } from "./views";
 import RetentionModulePage from "./RetentionModulePage";
 import { useAuditDetail, useAuditList, useAuditVerify } from "./useAuditData";
@@ -1395,7 +1395,10 @@ function AuditEventsSurface(): ReactNode {
         <Card className="border-border bg-card" data-testid="aud02-detail-pick">
           <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
             <ReceiptText className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
-            <p className="text-sm text-muted-foreground">还没有选中事件</p>
+            {/* R121: nothing is selected, so there is nothing to copy — the control
+             * is still here, disabled, and says why. A hidden control teaches the
+             * person to hunt; a disabled one with a reason answers the question. */}
+            <DetailCopy event={null} />
             <p className="max-w-prose break-words text-xs text-muted-foreground">
               点开左侧任意一条可以看到它当时的操作者、对象、结果与原因。要核对整段时间的链是否接得上，请用「完整性校验」。
             </p>

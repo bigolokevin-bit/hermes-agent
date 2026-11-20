@@ -40,6 +40,8 @@ import { useEnsureTabParam } from "../capabilities/tabParam";
 import { captureTabView, focusTabButton, noteTabMount, restoreTabView } from "../capabilities/tabView";
 import { RowMissingNotice, listHref, rowHref, rowTargetFor, withRowTarget, withoutRowTarget } from "../capabilities/rowLink";
 import { CapStateAnchor, stateAnchor } from "../capabilities/stateAnchor";
+import { CapabilityRowCopyButton, type CapRowCopyResult } from "../capabilities/rowCopyButton";
+import { capRowCopyText } from "../capabilities/rowCopyText";
 import "./tools.css";
 
 
@@ -93,6 +95,7 @@ function Row({
   linkHref,
   onLink,
   onClose,
+  copy,
 }: {
   row: ToolRow;
   open: boolean;
@@ -105,6 +108,8 @@ function Row({
   linkHref: string;
   onLink: () => void;
   onClose: () => void;
+  /** Pre-built row-copy slot; the parent owns the single result state. */
+  copy: ReactNode;
 }): ReactNode {
   const dimmed = row.status !== "enabled";
   return (
@@ -188,6 +193,7 @@ function Row({
             </span>
           ) : null}
         </span>
+        {copy}
       </div>
     </div>
     {open ? (
@@ -280,6 +286,9 @@ export function ToolsPage(): ReactNode {
   useEnsureTabParam("tools");
   const [openTool, setOpenTool] = useState<string | null>(() => readOpenTool());
   const [rovingKey, setRovingKey] = useState<string | null>(null);
+  // One result for the whole list (both sections): only the last-copied row
+  // shows its status node, and it follows the row key, not the position.
+  const [rowCopyResult, setRowCopyResult] = useState<CapRowCopyResult | null>(null);
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const rootRef = useRef<HTMLElement | null>(null);
 
@@ -559,6 +568,22 @@ export function ToolsPage(): ReactNode {
                 linkHref={rowHref("tools", row.name, params)}
                 onLink={() => openToolRow(row)}
                 onClose={closeToolRow}
+                copy={
+                  <CapabilityRowCopyButton
+                    index={index}
+                    rowKey={row.key}
+                    name={row.name}
+                    text={capRowCopyText({
+                      name: row.name,
+                      type: kindLabel(row),
+                      status: STATUS_LABEL[row.status],
+                      calls: null,
+                      id: row.rawId,
+                    })}
+                    result={rowCopyResult}
+                    onResult={setRowCopyResult}
+                  />
+                }
               />
             )) : (
               <p className="px-4 py-4 text-xs text-muted-foreground" data-testid="tol5-tools-empty">
@@ -587,6 +612,22 @@ export function ToolsPage(): ReactNode {
                 linkHref={rowHref("tools", row.name, params)}
                 onLink={() => openToolRow(row)}
                 onClose={closeToolRow}
+                copy={
+                  <CapabilityRowCopyButton
+                    index={toolRows.length + index}
+                    rowKey={row.key}
+                    name={row.name}
+                    text={capRowCopyText({
+                      name: row.name,
+                      type: kindLabel(row),
+                      status: STATUS_LABEL[row.status],
+                      calls: null,
+                      id: row.rawId,
+                    })}
+                    result={rowCopyResult}
+                    onResult={setRowCopyResult}
+                  />
+                }
               />
             )) : (
               <p className="px-4 py-4 text-xs text-muted-foreground" data-testid="tol5-mcp-empty">

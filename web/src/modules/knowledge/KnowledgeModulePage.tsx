@@ -1859,6 +1859,77 @@ function DocHeadStrip({
 }
 
 /**
+ * R132 — 列表级行复制：每行一枚按钮，状态与兜底条整表共享一具（testid 由调用方给，
+ * 两表同屏不撞名）。文本只出 docSingleCopy（与行预览/命中展开的 kn-doc-copy 同一串，
+ * 禁另拼列）。纯屏上数据：复制/拒绝/排序切换零请求。
+ */
+function useRowCopyBar(statusTestid: string, fallbackTestid: string) {
+  const [state, setState] = useState<{ kind: "copied" | "failed"; text: string } | null>(null);
+  const copy = (doc: DocRow) => {
+    const text = docSingleCopy(doc);
+    if (!navigator.clipboard?.writeText) {
+      setState({ kind: "failed", text });
+      return;
+    }
+    navigator.clipboard
+      .writeText(text)
+      .then(() => setState({ kind: "copied", text }))
+      .catch(() => setState({ kind: "failed", text }));
+  };
+  const bar = (
+    <>
+      <p className="knw5-sub" data-testid={statusTestid} role="status" aria-live="polite">
+        {state === null ? "" : state.kind === "copied" ? "已复制" : "剪贴板没接受：文本在下方，可手动选取。"}
+      </p>
+      {state?.kind === "failed" ? (
+        <textarea
+          className="knF-fallback"
+          data-testid={fallbackTestid}
+          aria-label="手动复制这一行文档的文本"
+          readOnly
+          rows={2}
+          value={state.text}
+        />
+      ) : null}
+    </>
+  );
+  return { copy, bar };
+}
+
+/** 行末复制按钮：空行（名与标识都没给）不可复制，如实 title；i 随可见行序（0 起）。 */
+function RowCopyButton({
+  doc,
+  index,
+  testidPrefix,
+  onCopy,
+}: {
+  doc: DocRow;
+  index: number;
+  testidPrefix: string;
+  onCopy: (doc: DocRow) => void;
+}) {
+  const emptyRow = doc.name === "—" && doc.id === "";
+  return (
+    <td data-label="操作" className="kn-row-copy-cell">
+      <button
+        type="button"
+        className="knw5-drill"
+        data-testid={`${testidPrefix}-${index}`}
+        disabled={emptyRow}
+        title={
+          emptyRow
+            ? "这一行没有可复制的文档内容：文档名与标识都没给出。"
+            : "复制这一行为一行表头 + 单行文本（与清单、预览复制同一派生）。"
+        }
+        onClick={() => onCopy(doc)}
+      >
+        复制这一行
+      </button>
+    </td>
+  );
+}
+
+/**
  * R114 — 两处落点共用的「行复制」控件（行预览与检索命中展开块）：文本只出 docSingleCopy
  * （一行表头 + 该文档一行，逐字同清单复制的行派生）。剪贴板拒 → 只读 textarea 兜底
  * （value 与目标串逐字同）；成功「已复制」走 aria-live；空行（无名无标识）disabled + 如实
@@ -1947,6 +2018,8 @@ function DocTable({
   /** R70 — 检索命中展开在场时本面预览不显示（双向互斥的渲染侧）。 */
   sdocOpen: boolean;
 }): ReactNode {
+  // R132 — 列表级行复制：状态/兜底整表一具；与检索表同屏，testid 带 -space- 后缀分族。
+  const rowCopy = useRowCopyBar("kn-row-copy-space-status", "kn-row-copy-space-fallback");
   return (
     <div
       className="kn3-docs-wrap"
@@ -1961,6 +2034,7 @@ function DocTable({
             <SortableHead col="type" label="类型" sort={sort} dir={dir} onSort={onSort} />
             <SortableHead col="size" label="大小" sort={sort} dir={dir} onSort={onSort} />
             <SortableHead col="updated" label="更新" sort={sort} dir={dir} onSort={onSort} />
+            <th scope="col">操作</th>
           </tr>
         </thead>
         <tbody>
@@ -2035,10 +2109,11 @@ function DocTable({
                       {updatedText(row.atRaw).value}
                     </span>
                   </td>
+                  <RowCopyButton doc={row} index={index} testidPrefix="kn-row-copy-space" onCopy={rowCopy.copy} />
                 </tr>
                 {previewOpen ? (
                   <tr data-testid="kn-doc-preview-row">
-                    <td colSpan={4}>
+                    <td colSpan={5}>
                       <dl id={previewId} className="kn-doc-preview" data-testid="kn-doc-preview">
                         <div>
                           <dt>文档名</dt>
@@ -2092,6 +2167,7 @@ function DocTable({
           })}
         </tbody>
       </table>
+      {rowCopy.bar}
     </div>
   );
 }
@@ -2673,6 +2749,8 @@ function SearchDocTable({
   needle: string;
   tabIndexFor: (index: number) => number;
 }): ReactNode {
+  // R132 — 列表级行复制（主 tab 检索表）：持有派工原名 id；空间详情侧带 -space- 后缀。
+  const rowCopy = useRowCopyBar("kn-row-copy-status", "kn-row-copy-fallback");
   return (
     <div className="k3-docs-wrap">
       <table className="knw5-table" data-testid="kn6-search-table">
@@ -2683,6 +2761,7 @@ function SearchDocTable({
             <th scope="col">类型</th>
             <th scope="col">大小</th>
             <th scope="col">更新</th>
+            <th scope="col">操作</th>
           </tr>
         </thead>
         <tbody>
@@ -2727,11 +2806,13 @@ function SearchDocTable({
                     {updatedText(row.atRaw).value}
                   </span>
                 </td>
+                <RowCopyButton doc={row} index={index} testidPrefix="kn-row-copy" onCopy={rowCopy.copy} />
               </tr>
             );
           })}
         </tbody>
       </table>
+      {rowCopy.bar}
     </div>
   );
 }

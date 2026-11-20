@@ -115,7 +115,8 @@ describe("SkillsPage", () => {
     await render();
 
     const headers = [...container.querySelectorAll("th")].map((node) => node.textContent);
-    expect(headers).toEqual(["技能名↕", "来源/类型↕", "启用态", "最近更新↕", "共享范围"]);
+    // R128 added the trailing copy column; the pinned header list grows with it.
+    expect(headers).toEqual(["技能名↕", "来源/类型↕", "启用态", "最近更新↕", "共享范围", "复制"]);
     expect(text()).toContain("资料整理");
     expect(text()).toContain("团队共享");
     expect(text()).toContain("类型：团队共享");
