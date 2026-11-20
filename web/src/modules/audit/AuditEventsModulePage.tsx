@@ -50,6 +50,7 @@ import { eventTypeChoices } from "./model";
 import type { ListFilters } from "./api";
 import { PAGE_LIMIT, PAGE_SIZE_CHOICES, readPageSize } from "./api";
 import { filterSummaryLineOf, hasFilterSummary } from "./filterSummary";
+import { applyScroll, clearScrollMark, readScrollMark, readScrollY, saveScrollMark, scrollFingerprint } from "./scrollMemory";
 import type { AuditRow } from "./model";
 import { downloadCsv, downloadText, exportName, filteredCsvText, filterSnapshotExportName } from "./csv";
 import {
@@ -910,9 +911,30 @@ function AuditEventsSurface(): ReactNode {
     null,
   );
 
+  // audM: the question being read, as one string. Navigation state is not in
+  // it, so opening a record is not a new question and the place the list stood
+  // still belongs to the question being read.
+  const fingerprint = scrollFingerprint(params);
+  const lastFingerprint = useRef(fingerprint);
+  const scrollProbe = useRef<HTMLSpanElement | null>(null);
+  // The mark is spent once: applied, then dropped, so a later return to the
+  // same question does not yank the window back to a place nobody left it at.
+  const restoreArmed = useRef(false);
+
+  const say = (name: string, value: string): void => {
+    scrollProbe.current?.setAttribute(name, value);
+  };
+
   const openRow = useCallback(
     (rawId: string | null) => {
       setUnaddressable(rawId === null);
+      // audM: remember where the list stood, and which row was walked into.
+      // A row without an identifier opens no record, so there is no way back
+      // to remember — and a mark nobody can spend is just a stale promise.
+      // audM: the mark is saved by the effect below, on the way INTO any
+      // record — this row, the preview's own link, or a pasted record address.
+      // A row without an identifier opens no record, so nothing is remembered.
+      if (rawId === null) say("data-audl-saved", "这一行没有标识，没有可回去的详情");
       const draft = new URLSearchParams(params);
       draft.delete("id");
       if (rawId === null) draft.delete("detail");
@@ -923,6 +945,80 @@ function AuditEventsSurface(): ReactNode {
     },
     [params, setParams],
   );
+
+  // audM: the way in and the way back, for every path into a record — this
+  // row's own handle, the preview's 「打开详情」 link, or a pasted record
+  // address. The mark is saved when a record becomes the thing being read, and
+  // spent when the list is the thing being read again.
+  const previousSelected = useRef<string | null>(selected);
+  const mountedWithRecord = useRef(selected !== null);
+  useEffect(() => {
+    if (lastFingerprint.current !== fingerprint) {
+      // A different question is a different place. The mark left behind is
+      // dropped, never applied here: 「换个筛选还回到刚才的滚动条」 is how a
+      // list starts lying about where a record is.
+      clearScrollMark(lastFingerprint.current);
+      say("data-audl-cleared", lastFingerprint.current);
+      lastFingerprint.current = fingerprint;
+      restoreArmed.current = false;
+    }
+    if (mountedWithRecord.current) {
+      // This load started inside a record — a pasted address or a full page
+      // navigation from the preview's link. The list was never on screen in
+      // this load, so any mark is somebody else's position: drop it and say
+      // so instead of pretending a return has a place to go back to.
+      mountedWithRecord.current = false;
+      clearScrollMark(fingerprint);
+      restoreArmed.current = false;
+      say("data-audl-cleared", "整页加载直接落在记录上，这一页没有离开过列表");
+      return;
+    }
+    const was = previousSelected.current;
+    previousSelected.current = selected;
+    if (selected && !was) {
+      const standing = readScrollY();
+      saveScrollMark(fingerprint, { y: standing, rowKey: selected });
+      restoreArmed.current = true;
+      say("data-audl-saved", `${standing}|${selected}`);
+      return;
+    }
+    const wentBack = was !== null && selected === null;
+    if (!wentBack) return;
+    if (params.get("event")) {
+      // The deep link owns its own arrival: it locates a row, and a window
+      // thrown back to an old offset would fight that.
+      clearScrollMark(fingerprint);
+      restoreArmed.current = false;
+      say("data-audl-restored", "深链定位优先，不回到旧位置");
+      return;
+    }
+    if (!restoreArmed.current) return;
+    // The rows have to be on screen before a position or a focus means
+    // anything; an empty or failed answer keeps the person where they are.
+    if (list.phase !== "ready" || visibleRows.length === 0) return;
+    const mark = readScrollMark(fingerprint);
+    restoreArmed.current = false;
+    if (!mark) {
+      say("data-audl-restored", "没有留下可回去的位置");
+      return;
+    }
+    clearScrollMark(fingerprint);
+    applyScroll(mark.y);
+    say("data-audl-restored", String(mark.y));
+    if (!mark.rowKey) {
+      say("data-audl-focus", "留下的行标识为空，焦点留在原处");
+      return;
+    }
+    const node = document.querySelector<HTMLElement>(`[data-audk-row='${mark.rowKey}']`);
+    if (node) {
+      // The focus is what moves the roving stop (the row answers it with its
+      // own onFocus), so there is no second copy of that state to keep in step.
+      node.focus();
+      say("data-audl-focus", mark.rowKey);
+    } else {
+      say("data-audl-focus", `${mark.rowKey} 不在这一页`);
+    }
+  }, [fingerprint, list.phase, params, selected, visibleRows.length]);
 
   const closeDetail = useCallback(() => {
     setUnaddressable(false);
@@ -1452,6 +1548,18 @@ function AuditEventsSurface(): ReactNode {
       <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud8-state-line">
         {restoredLine}
       </p>
+
+      {/* audM: a probe line, not prose. It carries what was saved when a
+          record was opened, what the way back restored, which row got the
+          focus, and which question's mark was dropped for being another
+          question's place. Empty attributes mean nothing happened — the
+          restore never claims a position it did not apply. */}
+      <span
+        aria-hidden="true"
+        data-testid="audL-scroll"
+        ref={scrollProbe}
+        data-audl-fingerprint={fingerprint}
+      />
 
       <AuditUrlFilterChips actor={actor} resource={resource} onClear={clearUrlFilter} />
 
