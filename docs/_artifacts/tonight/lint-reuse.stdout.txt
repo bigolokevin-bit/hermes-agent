@@ -4,7 +4,7 @@ exempted=1
 {
   "script": "lint-reuse",
   "root": "web/src/modules",
-  "scanned": 333,
+  "scanned": 348,
   "reuseMarkers": 28,
   "chatHostFiles": [
     {
