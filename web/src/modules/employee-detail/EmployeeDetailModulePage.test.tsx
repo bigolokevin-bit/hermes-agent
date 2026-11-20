@@ -300,8 +300,9 @@ describe("EmployeeDetailModulePage — approvals / runs / audit", () => {
     expect(link?.getAttribute("href")).toBe("/approvals?status=pending");
     expect(link?.getAttribute("title")).toBe("task_9F3A1B2C3D");
     expect(card?.textContent).not.toContain("task_9F3A1B2C3D");
-    expect(card?.textContent).toContain("待审批");
-    expect(card?.textContent).toContain("2026-11-18 12:00");
+    expect(card?.textContent).toContain("待处理");
+    // R78: 缺更新时间→与队列同款「该字段未返回」（不回退提交时间）。
+    expect(card?.textContent).toContain("该字段未返回");
   });
 
   it("runs: USD money, Beijing minute time, zero tokens stay 0", async () => {
@@ -429,15 +430,15 @@ describe("EmployeeDetailModulePage — approvals zone R49", () => {
     const card = container.querySelector('[data-testid="ed5-approvals"]');
     expect(container.querySelector('[data-testid="ed8-appr-title-0"]')?.textContent).toBe("密钥轮换");
     expect(container.querySelector('[data-testid="ed8-appr-risk-0"]')?.textContent).toBe("高风险");
-    expect(container.querySelector('[data-testid="ed8-appr-time-0"]')?.textContent).toBe("2026-11-19 10:30");
+    expect(container.querySelector('[data-testid="ed8-appr-time-0"]')?.getAttribute("title")).toContain("2026-11-19 10:30:00（北京时间）");
     const link0 = container.querySelector('[data-testid="ed8-appr-link-0"]') as HTMLAnchorElement;
     expect(link0?.getAttribute("href")).toBe("/approvals?status=expired");
-    expect(container.querySelector('[data-testid="ed8-appr-status-1"]')?.textContent).toBe("待核实");
+    expect(container.querySelector('[data-testid="ed8-appr-status-1"]')?.textContent).toBe("状态未识别");
     const risk1 = container.querySelector('[data-testid="ed8-appr-risk-1"]');
-    expect(risk1?.textContent).toBe("待核实");
+    expect(risk1?.textContent).toBe("未标注风险");
     expect(risk1?.getAttribute("title")).toContain("purple");
-    expect(container.querySelector('[data-testid="ed8-appr-time-1"]')?.textContent).toBe("—");
-    expect(container.querySelector('[data-testid="ed8-appr-time-1"]')?.getAttribute("title")).toContain("更新时间");
+    expect(container.querySelector('[data-testid="ed8-appr-time-1"]')?.textContent).toBe("该字段未返回");
+    expect(container.querySelector('[data-testid="ed8-appr-time-1"]')?.getAttribute("title")).toContain("不补当前时间");
     expect(card?.textContent).not.toContain("apr_R49A");
     expect(card?.textContent).not.toContain("ap_R49B");
     expect(card?.textContent).not.toContain("apr_");

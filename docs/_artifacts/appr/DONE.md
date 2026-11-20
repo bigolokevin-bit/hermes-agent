@@ -1091,3 +1091,19 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 测试 history 4+pending 1：本地双向（24h→1 行/7d→2 行/同钮再点=关，全程 fetchJSON 计数不变）；粘链 ?since=7d 复现+切 status 后 fresh 请求带 status= 且 every 不含 since=（R74 断言坑反面教材=本地参数不上服务端）且 since 活在组件；空窗卡+清空回列表；error 态四钮 disabled+title「不能按时间范围筛选：列表读取失败」；pending 轨在+点/清零请求。定向 approvals 3 files/**117 passed**（112+5）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **150 files/1994 passed**（基线 1989+5）。
 - 零破：apv5–9/apd5–7/apr5/actor/nav/gates/state/export-name/time 族（既有 112 全绿为证，含 R74 actor 用例改链后仍绿）；三档=rail flex-wrap+truncate 既有形态学报（jsdom 不可测）；9122==60a4a429 禁重建，活体四态读数待并入后代次。
 - 决定（DONE 记录）：缺 submittedAt 的行不属于任何时间窗（诚实排除，禁当 0 或当 now）；「分桶与列表同源」按 q/时间窗联动实现，actor 维除外=防选中即锁死（交互正确性优先，DONE 明示供复核）。
+
+## R78 员工审批区 vs 审批队列 同值一致（2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @e5dd8c7b（a5832d15 章面已含），toplevel ✓ porc=0；代次 60a4a429。
+- 两处取数路径现查：ed8=EmployeeDetailModulePage L1027 leg=/api/approvals?status=all&limit=20（R49 诚实聚合）+模块内自研 readApprovals（keys：status[status,state]/title[title,type,name,category]/updatedAt[updatedAt,updated_at,decidedAt,changedAt]/risk[riskLevel,risk_level,risk]）+本地 riskLabel/approvalStatusLabel/beijing() 三套映射；apv=modules/approvals/model.ts rowFrom（TITLE_KEYS/statusView/riskView）+apv9 preview（R65/R76 形态）。
+- 改前→改后（同一 mock 记录两组实际值）：
+  1. 状态人话 expired/pending/weird：改前 ed8「待审批（pending）/…/待核实」 vs 队列「已过期/待处理/状态未识别」→改后 ed8 吃 statusView：两处同「已过期」「待处理」「状态未识别」；status title 同形制=原始值 ??「原始状态值未返回」。
+  2. 风险档：改前 ed8 缺值「—」+title「上游没有回传风险等级」、medium→中风险、无 critical、未知→待核实 vs 队列 riskView 缺/未知→「未标注风险」+中等风险/严重风险→改后 ed8 吃 riskView（两处同「未标注风险/中等风险/高风险/严重风险」）；title 形状两处统一=raw ??「该字段未返回」（队列 preview 原 raw 有值时 title=undefined，本单补上原值——views.tsx 一处 reason={row.risk.raw ?? 「该字段未返回」}）。
+  3. 更新时间：改前 ed8 beijing(updatedAt ?? at) 绝对到分+回退提交时间 vs 队列 RelativeTime 相对/绝对 title→改后 ed8 吃 RelativeTime（iso=row.updatedAt，**不再回退提交时间**）；timeTitle 逐字等用例锁：两处同=「绝对 2026-11-19 11:00:00（北京时间） · ISO 2026-11-19T03:00:00Z」；缺值两处同「该字段未返回」+「不补当前时间」句。
+  4. 标题键序：ed8 pickString 队列 TITLE_KEYS 头键全收（title/summary/subject/actionLabel/action/name/tool/request）+尾部保留 type/category 扩展。
+  5. rid 缺值句：ed8 列无 rid 展示位（四列版面不动），队列句族「请求编号：该字段未返回」单点=RequestIdCopyField；无对照面=DONE 记录（禁为对齐造第五列）。
+- 单一 helper 方向：重复映射删除（ed8 本地 riskLabel/approvalStatusLabel 函数删、beijing 保留它区仍用），employee-detail import { riskView, statusView } from "@/modules/approvals/model" + { RelativeTime } from "@/modules/approvals/RelativeTime"（R43 跨模块只读 import 先例同向）；队列侧行为零改（仅 preview 风险 title 形状补原值）。
+- parity 新用例：src/modules/approvals/ApprovalParity.test.tsx 2 用例=同一 mock record 两 surface 先后渲染逐字段对照（title/status/statusTitle/risk/riskTitle/timeTitle toBe 逐字 + /api/approvals 每 surface 恰 1 次、parity 渲染零额外请求）与「字段缺失」态（未标注风险/状态未识别/该字段未返回 三句两处同）；坑=文件头需 `// @vitest-environment jsdom` pragma（本仓非默认 jsdom）+ 双 container 生命周期（afterEach 全 unmount+remove，勿模块级复用）。
+- 既有断言同步 5 处（语义等价）：ed8「待审批」→「待处理」、缺 updatedAt 行「—/2026-11-18 12:00」→「该字段未返回」、time-0 文本→timeTitle 含「2026-11-19 10:30:00（北京时间）」、status-1「待核实」→「状态未识别」、risk-1「待核实」→「未标注风险」。
+- 验证：定向 approvals+employee-detail 5 files/**169 passed**（167+2）；tsc 两域 0 红；assert-ia 两模式 exit0；全量 **151 files/1996 passed**（基线 1994+2）。
+- 零破：ed1/ed5/ed7/ed8/edz/edx/emp-list* 与 apv5–9/apd5–7/apr5/actor/nav/gates/state/sort/export-name/time/since（既有 167 全绿为证）；三档=ed8 四列 minmax(0)+truncate 与 RelativeTime break-all 既有形态学报（jsdom 不可测）；9122==60a4a429 禁重建，活体两屏对照读数待并入后代次。

@@ -223,7 +223,7 @@ export function ApprovalRowCard({
               <Field
                 label="风险档"
                 value={row.risk.label}
-                reason={row.risk.raw ? undefined : "该字段未返回"}
+                reason={row.risk.raw ?? "该字段未返回"}
               />
               <Field
                 label="更新时间"
