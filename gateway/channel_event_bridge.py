@@ -142,45 +142,52 @@ def _sender_ids(event: Any, source: Any) -> dict:
     }
 
 
+def _field(obj: Any, name: str) -> Any:
+    """Read ``name`` from a dict *or* an SDK model object; ``None`` when absent.
+
+    The Feishu adapter hands the raw event through two shapes: plain dicts on the
+    HTTP webhook path and lark SDK model objects on the websocket path (the
+    dispatcher callback stores the SDK event itself in ``raw_message``). Both must
+    map identically.
+    """
+    if isinstance(obj, dict):
+        return obj.get(name)
+    return getattr(obj, name, None)
+
+
 def _mentions(event: Any) -> list:
     """Map Feishu ``mentions`` from the raw event to the C1 ``content.mentions`` shape.
 
-    Reads ``raw["event"]["message"]["mentions"]`` first, then the flat
-    ``raw["message"]["mentions"]``. Per entry ``externalId`` is the first non-empty
-    of ``id.open_id`` / ``id.union_id`` / ``id.user_id`` (entries without one are
-    dropped: the C1 contract requires externalId); ``name`` passes through only
-    when non-empty. Never raises: any missing or odd-shaped input yields ``[]``.
+    Reads ``raw.event.message.mentions`` first, then the flat
+    ``raw.message.mentions``, from either dicts or SDK model objects. Per entry
+    ``externalId`` is the first non-empty of ``id.open_id`` / ``id.union_id`` /
+    ``id.user_id`` (entries without one are dropped: the C1 contract requires
+    externalId); ``name`` passes through only when non-empty. Never raises: any
+    missing or odd-shaped input yields ``[]``.
     """
     out: list = []
     try:
         raw = getattr(event, "raw_message", None)
-        if not isinstance(raw, dict):
+        if raw is None:
             return []
-        items = None
-        inner = raw.get("event")
-        if isinstance(inner, dict):
-            msg = inner.get("message")
-            if isinstance(msg, dict) and "mentions" in msg:
-                items = msg.get("mentions")
+        items = _field(_field(_field(raw, "event"), "message"), "mentions")
         if items is None:
-            msg = raw.get("message")
-            if isinstance(msg, dict):
-                items = msg.get("mentions")
+            items = _field(_field(raw, "message"), "mentions")
         if not isinstance(items, list):
             return []
         for item in items:
-            if not isinstance(item, dict):
-                continue
-            ident = item.get("id")
-            if not isinstance(ident, dict):
+            ident = _field(item, "id")
+            if ident is None:
                 continue
             external_id = (
-                ident.get("open_id") or ident.get("union_id") or ident.get("user_id")
+                _field(ident, "open_id")
+                or _field(ident, "union_id")
+                or _field(ident, "user_id")
             )
             if not external_id:
                 continue
             entry: dict = {"externalId": external_id}
-            name = item.get("name")
+            name = _field(item, "name")
             if name:
                 entry["name"] = name
             out.append(entry)
