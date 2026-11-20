@@ -1269,3 +1269,13 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - ②apv9-toggle 序号化：ApprovalRowCard 新 prop index（两页 visibleRows.map((row, i)) 传位）；toggle testid=apv9-toggle-<0..n> + **data-record=row.key（全 id 进属性不进锚名）**；preview 保持 apv9-preview-<key>（工单②只点名 toggle；preview 引用面 R60/R65/R73/R88/R92 数十处，改动面与收益不称，成对约束由 toggle data-record+aria-expanded 双载体锁——DONE 记裁决）。屏上 textContent 裸 ap_ 既有禁保持（用例扫 toggle 文本）。
 - ③测试同步=引用重写 31+处走组合选择器 `[data-testid^="apv9-toggle-"][data-record="<key>"]`（key→index 知识零迁移，防手改错位）；activeElement 回焦断言改判 data-record；R76 单引号形态与 parity q() 形态逐一收口（正则两轮+反引号修复=坑记：全局 re.sub 生成串需 grep 结果形防引号嵌套/反引号丢失）。新断言 2+1 用例：toggle 数==行数、逐钮 testid=apv9-toggle-<i>+data-record 序==行卡 key 序、toggle 文本不含 ap_；五 scope 对逐值；ed8 属性逐值。
 - 验证：定向 approvals+employee-detail 6 files/**223 passed**（220+3）；tsc 两域 0 红；assert-ia 两模式 exit0；全量 **166 files/2308 passed**（merge 他人 wave 后实跑，本域净增 3 用例）。零破：apv5–9/apd5–7/apr5/ed8/state/sort/export/live（既有 162 全绿为证）；三档=载体行/钮组既有形态学（jsdom 不可测 sw==cw）。9122==fa7c2155 系禁重建，活体属性读数待并入后代次。
+
+## R93b 待办 tab 吞 ?status= 显式化（A 分支，2026-11-20；与 R93 播报单无关）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console → 带入他人 wave（gateway test）→ merge commit 309478a1，toplevel ✓ porc=0；重发三件套 grep apv-status-note=0=全新单；页面代次 fa7c2155。
+- 活体三组（ego 9122==fa7c2155）：status=expired&limit=50→200 n=3 statuses=expired ids=23DE4,A8BC8,49D1C（读口真过滤）；status=all→200 n=8；status=pending→200 n=0 ⇒ 吞参非读口丢参=纯前端 pending tab 语义（数据腿恒 useApprovalsList("pending")）⇒ 选 A 分支。B 不取理由=pending 页吃 status 会把过期/已批单混进待办队列，语义更坏且与「待办=只看待办」既有口径冲突。
+- 实现（ApprovalsPendingModulePage.tsx）：①clearFilters 后新 useEffect：params.has("status") 时 draft.delete("status")+setParams replace（react-router 的 replace 与原生 replaceState 等效不新增历史，DONE 记选型；status 删后重跑即 return 不循环；首帧 paint 前收敛=浏览器无闪烁）；②apv-reset-row 与 QueueSummaryBar 之间常驻 p data-testid=apv-status-note 逐字「待办视图只列待办，status 筛选在历史 tab 生效。」+title 带数据腿事实与实测句（status=pending&limit=50 → 200/0）。
+- 同源复核：status 移除后 chipsFor 无 status 维（用例断 apv-chip-status 消失=投影）；risk/actor/since 桶与 apv6 scope=queue 均吃 visibleRows（pending 队列行）=无「地址有 status、chip 显示、列表没过滤」半生效残留。
+- 测试 pending 2 用例：深链 status=expired→note 在+chip 消失+list 请求恰 1 条含 status=pending 不含 expired（删参不触 fetch）；干净入口→note 常驻+无 chip+无额外请求。定向 approvals 5 files/**166 passed**（164+2 一次全绿）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **166 files/2310 passed**（基线 2308+2）。
+- 零破：apv5–9/apd5–7/apr5/state/sort/export/live/parity（既有 164 全绿为证）；三档=note p break-words+flex-col 既有形态学报（jsdom 不可测）；9122==fa7c2155 禁重建，活体地址栏收敛读数待并入后代次。
+- 交付拆笔教训（DONE 记）：R93b 段 append 因 `assert "## R93 " not in s` 误匹配早前 R93 播报单段而中止（文件未写），commit 已先行且只含代码 2 文件=push 460bcbe5；DONE 单独 docs 尾笔补交。教训=查重锚用**本单唯一节名**（R93b），不用前缀子串（"## R93 " 命中历史 R93）。
