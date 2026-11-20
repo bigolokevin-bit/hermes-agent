@@ -24,7 +24,7 @@ import {
 import { Button, Card, CardContent } from "@nous-research/ui";
 
 import { fetchJSON } from "@/lib/api";
-import { API_UNREACHABLE_MESSAGE, ApiError } from "@/lib/api-error";
+import { API_UNREACHABLE_MESSAGE, ApiError, SESSION_REQUIRED_GUIDANCE } from "@/lib/api-error";
 
 import "./org.css";
 
@@ -233,7 +233,7 @@ const ORG_ENDPOINTS = [
 
 function errorMessage(status: number | null | undefined): string {
   if (status === 0) return "当前网络不可达，请检查网络后重试。";
-  if (status === 401) return "需要登录：登录状态已经失效，请重新登录后重试。";
+  if (status === 401) return SESSION_REQUIRED_GUIDANCE;
   if (status === 429) return "请求太频繁，请稍后重试。";
   if (status && status >= 500) return API_UNREACHABLE_MESSAGE;
   return "本次数据读取失败，请重试。";

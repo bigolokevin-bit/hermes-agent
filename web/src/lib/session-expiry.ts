@@ -12,6 +12,10 @@
  *
  * 不依赖 React：api.ts（非组件）与横幅组件（`useSyncExternalStore`）共用同一份状态。
  * 快照是一个布尔（`isSessionExpired`），所以 store 的引用天然稳定。
+ *
+ * 收敛口径：四个历史状态源（横幅 / 页内 401 句 / AuthWidget / Auth5Session）已收敛
+ * ——横幅 = 唯一状态句，页内 = 纯引导（`api-error` 的 `SESSION_REQUIRED_GUIDANCE`），
+ * 两个侧栏件在横幅在场时静默（订阅同一快照）。
  */
 
 /** 这一次失活是否还在（由 401 置位、由业务请求的 2xx 结案）。 */

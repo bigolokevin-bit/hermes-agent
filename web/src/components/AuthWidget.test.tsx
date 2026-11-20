@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AuthWidget } from "./AuthWidget";
 import { shouldHideAuthWidget } from "./auth-widget-visibility";
+import { clearSessionExpired, markSessionExpired } from "@/lib/session-expiry";
 
 // --- Unit tests for the visibility helper ---
 
@@ -59,6 +60,7 @@ describe("AuthWidget integration (real getAuthMe)", () => {
   let container: HTMLDivElement;
 
   afterEach(() => {
+    clearSessionExpired();
     if (root) {
       root.unmount();
     }
@@ -67,10 +69,25 @@ describe("AuthWidget integration (real getAuthMe)", () => {
   });
 
   function setupWindow(overrides: Partial<Window> = {}) {
+    // The widget mounts a permanent `auth5:verified` listener (UI-QA P1);
+    // the stubbed window carries a minimal event target so mount/unmount
+    // and dispatch all work against this same registry.
+    const listeners = new Map<string, Set<(event: Event) => void>>();
     vi.stubGlobal("window", {
       __HERMES_SESSION_TOKEN__: undefined,
       __HERMES_BASE_PATH__: "",
       location: { assign: vi.fn(), pathname: "/", search: "" },
+      addEventListener: (type: string, fn: (event: Event) => void) => {
+        if (!listeners.has(type)) listeners.set(type, new Set());
+        listeners.get(type)!.add(fn);
+      },
+      removeEventListener: (type: string, fn: (event: Event) => void) => {
+        listeners.get(type)?.delete(fn);
+      },
+      dispatchEvent: (event: Event) => {
+        for (const fn of listeners.get(event.type) ?? []) fn(event);
+        return true;
+      },
       ...overrides,
     });
   }
@@ -157,5 +174,48 @@ describe("AuthWidget integration (real getAuthMe)", () => {
     // Widget should hide on 401.
     expect(container.innerHTML).toBe("");
     expect(container.querySelector('[aria-label="Log out"]')).toBeNull();
+  });
+
+  // 设计车道 ①（P0-①）：横幅在场时，侧栏不再重复播报不确定态。
+  it("stays silent in the error state while the session banner shows", async () => {
+    markSessionExpired();
+    setupWindow({ __HERMES_SESSION_TOKEN__: "tok" });
+    // 500 → ApiError(status 500) → error 分支（非 401/403 的隐藏路径）。
+    vi.stubGlobal("fetch", jsonFetchMock({}, 500));
+
+    render();
+    await flush();
+    expect(container.innerHTML).toBe("");
+
+    // 横幅退场（结案），error 行恢复——静默只在横幅在场时生效。
+    act(() => clearSessionExpired());
+    await flush();
+    expect(container.textContent).toContain("暂时确认不到登录状态");
+  });
+
+  // UI-QA P1 保底：既无横幅、也无登录证据时，错误行行为不回归。
+  it("shows the error line when neither the banner nor verified evidence is present", async () => {
+    setupWindow({ __HERMES_SESSION_TOKEN__: "tok" });
+    vi.stubGlobal("fetch", jsonFetchMock({}, 500));
+
+    render();
+    await flush();
+    expect(container.textContent).toContain("暂时确认不到登录状态");
+  });
+
+  // UI-QA P1：Auth5Session whoami 2xx 广播 auth5:verified 后，这句话必须收回。
+  it("retracts the error line when auth5:verified arrives", async () => {
+    setupWindow({ __HERMES_SESSION_TOKEN__: "tok" });
+    vi.stubGlobal("fetch", jsonFetchMock({}, 500));
+
+    render();
+    await flush();
+    expect(container.textContent).toContain("暂时确认不到登录状态");
+
+    // 监听常驻：事件到达即重渲染隐藏（本件可能先于 whoami 完成挂载）。
+    act(() => {
+      window.dispatchEvent(new CustomEvent("auth5:verified"));
+    });
+    expect(container.innerHTML).toBe("");
   });
 });
