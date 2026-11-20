@@ -30,7 +30,13 @@ vi.mock("@/lib/api", () => ({
   fetchJSON: (...args: unknown[]) => fetchJSON(...args),
 }));
 
-import { EmployeesModulePage, FIELD_MISSING, FIELD_MISSING_TITLE } from "./EmployeesModulePage";
+import {
+  EmployeesModulePage,
+  DEPT_UNLABELED_LABEL,
+  FIELD_MISSING,
+  FIELD_MISSING_TITLE,
+  departmentView,
+} from "./EmployeesModulePage";
 
 let container: HTMLDivElement;
 let root: Root | null = null;
@@ -136,8 +142,8 @@ describe("EmployeesModulePage list depth", () => {
     // Unknown lifecycle states never get invented words.
     expect(link.textContent).toContain("待核实");
     const dept = document.querySelector('[data-label="部门"]');
-    expect(dept?.textContent).toBe("—");
-    expect(dept?.getAttribute("title")).toContain("上游响应没有带部门信息");
+    expect(dept?.textContent).toBe("未标注部门"); // R96：部门键在值为空=未标注口径（不再显 —）
+    expect(dept?.getAttribute("title")).toContain("值为空");
     expect(document.querySelector('[data-label="最近活跃"]')?.textContent).toBe("2026-11-17 13:52");
   });
 
@@ -1020,5 +1026,38 @@ describe("R81 department filter (emp-list-dept-*)", () => {
     expect(all!.disabled).toBe(true);
     expect(all!.getAttribute("title")).toContain("不能按部门筛选");
     expect(q("emp-list-dept-scope-note")?.textContent).toContain("按当前已加载 0 人");
+  });
+});
+
+describe("R96 department caliber parity (emp-list-dept-*)", () => {
+  const deptRows = {
+    items: [
+      { employeeId: "emp_217A91BA995044DFBB3E2E940B", name: "小鲤", lifecycleState: "active", updatedAt: "2026-11-17T05:52:48.030Z", department: "增长组" },
+      { employeeId: "emp_2B2C2D2E4F506172", name: "阿朝", lifecycleState: "active", updatedAt: "2026-11-18T05:52:48.030Z", department: null },
+      { employeeId: "emp_3C3D3E3F40414243", name: "阿象", lifecycleState: "paused", updatedAt: "2026-11-18T01:10:00.030Z" },
+    ],
+  };
+  const cell = (id: string) =>
+    document.querySelector(`[data-testid="emp-l-row-${id}"] [data-label="部门"]`);
+
+  it("row cells and rail buckets read the same three-state helper output", async () => {
+    fetchJSON.mockImplementation(async () => deptRows);
+    await render("/employees");
+    await flushTimers();
+    // 有值 / 空值 / 缺键三态逐字走 departmentView（与详情身份卡同一 helper=同源）
+    expect(cell("emp_217A91BA995044DFBB3E2E940B")?.textContent).toBe(
+      departmentView(true, "增长组").label,
+    );
+    expect(cell("emp_2B2C2D2E4F506172")?.textContent).toBe(DEPT_UNLABELED_LABEL);
+    expect(cell("emp_2B2C2D2E4F506172")?.getAttribute("title")).toContain("值为空");
+    expect(cell("emp_3C3D3E3F40414243")?.textContent).toBe(FIELD_MISSING);
+    expect(cell("emp_3C3D3E3F40414243")?.getAttribute("title")).toBe(FIELD_MISSING_TITLE);
+    // 桶名与文案共用判据：null 与缺键都归「未标注部门」桶（2 人）
+    const unlabeled = Array.from(document.querySelectorAll('[data-testid^="emp-list-dept-"]')).find(
+      (b) => (b.textContent ?? "").startsWith(DEPT_UNLABELED_LABEL),
+    );
+    expect(unlabeled, "unlabeled bucket").toBeTruthy();
+    expect(unlabeled?.textContent).toContain("2");
+    expect(unlabeled?.getAttribute("title")).toContain("只看没有部门信息的行");
   });
 });

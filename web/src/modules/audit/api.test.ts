@@ -508,7 +508,7 @@ describe("live-sampled answer shapes", () => {
     // resource creation_attempt · 021810, the id masked to its short tail
     expect(row.resource.label).toBe("建号申请 · 021810");
     expect(row.occurredAt).toBe("2026-11-18 02:18");
-    // no requestId key on the wire: the line stays 「未提供」, and the correlation
+    // no requestId key on the wire: the line stays 「该字段未返回」, and the correlation
     // handle is carried as 同一次操作 (masked on screen, raw only in the fold)
     expect(row.requestId).toBeNull();
     expect(row.correlation).toBe("l6-shape2-H-021810");

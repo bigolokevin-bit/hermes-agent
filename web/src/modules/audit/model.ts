@@ -534,7 +534,7 @@ const PAGE_SIZE_KEYS = ["limit", "pageSize", "page_size", "effectiveLimit", "eff
 const ERROR_KEYS = ["error", "failure", "errorInfo", "error_info"] as const;
 /**
  * 请求编号 — the number a person quotes when something went wrong. Request-shaped
- * keys win over correlation/trace ones; an answer with neither shows 「未提供」.
+ * keys win over correlation/trace ones; an answer with neither shows 「该字段未返回」.
  */
 const REQUEST_ID_KEYS = ["requestId", "request_id", "reqId", "req_id", "requestNo", "request_no"] as const;
 const TRACE_ID_KEYS = ["correlationId", "correlation_id", "traceId", "trace_id"] as const;
@@ -668,7 +668,7 @@ function reasonOf(rec: Record<string, unknown>): string | null {
  * The request number on the surface: a real identifier a person quotes to
  * support, so a genuine one (a short hex code from the BFF) is shown in full,
  * breakable, and paired with 「技术编号」 in the `title`. `null` = the answer
- * carried none, and the screen says 「未提供」 with the reason — it never
+ * carried none, and the screen says 「该字段未返回」 with the reason — it never
  * borrows a business handle to fill the line.
  */
 function requestIdOf(rec: Record<string, unknown>): string | null {
@@ -896,7 +896,7 @@ export interface AuditDetail {
   /** The service's own payload when it sent one; null when it only sent differences. */
   rawPayload: unknown;
   sourceSystem: string | null;
-  /** 请求编号 shown on the human layer (copyable); null renders 「未提供」 + reason. */
+  /** 请求编号 shown on the human layer (copyable); null renders 「该字段未返回」 + reason. */
   requestId: string | null;
   /** The correlation handle; the 关联 row shows it as 同一次操作 · 短码. */
   correlation: string | null;
