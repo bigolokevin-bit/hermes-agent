@@ -2307,3 +2307,11 @@ built /private/tmp/health-r38/index.html
 - 验证：定向 `src/modules/{capabilities,skills,tools}` → **10 files / 103 passed**；全量 → **166 files / 2314 passed**（0 failed，approvals 那条上游串扰本轮未复现）；`tsc -b . --noEmit` exit 2，错误只在 approvals/employee-detail/employees 基线，本域 0 条。
 - 诚实披露：派工单引用的「已加载 N 项」不是 `cap-page-scope` 的实际文案 —— 屏上真实字符串是「表内全量渲染，共 N 项」/「本页按读口单页上限显示 N 项，总数以读口回传为准」，「仅在当前已加载 N 项内搜索」属于 `cap5-scope-note`（搜索作用域）。本轮按真实 mode 出措辞，没有为贴合派工单而改列表既有文案。另外注记在**空列表**时仍然渲染并写「共 0 项」（与 `cap-page-scope` 的 0 口径一致），只有按钮 title 不加注记（保持门控空态句逐字）。
 - 边界：写域只有 `web/src/modules/{capabilities,skills,tools}/**` + `docs/_artifacts/gov/DONE.md`（11 文件）；未碰 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未 install、未并 main、未重建 9122；禁 force/amend/--no-verify。
+
+## R87 / capabilities rowparity guards — wave-29 三面 parity 纯测试护栏
+
+- 基线：显式 refspec fetch + `git merge --no-ff origin/lane/hermes-console`（上游 tip `54f3dcfc` 账本章笔并入）；HEAD merge `591f7777`；禁 reset 未用；工作树开工前干净。
+- 交付：新增 `web/src/modules/capabilities/capabilities.rowparity.test.tsx`（jsdom，11 tests），零产品码改动。①行详情 vs 列表行：`cap7-detail-{name,type,enabled,updated}` 与 `skl4-row-*` 四格逐字相等（s1 全值行 + s2 全缺行）；未知态两处同「待核实」，列表格 title=原值 `mystery`、详情 title 含 `mystery`；endpoint `/agent-api/api/skills`，asOf `2026-11-19 14:00` 且 title 含 UTC 原文。②`capC-copy`：复制行 == 表体行序 == 四格值 join(',')，缺值「—」且正则断言无 `,0` 伪造；空集 disabled、title === `cap-gates-copy` title === 「当前没有可导出的条目。」，点击零剪贴板调用。③条数范围：`cap-page-scope` N == 表体行数 == 导出数据行数（注记除外），`cap-export-scope-note` `data-shown`==N 且 CSV 末行 == `#`+注记逐字；capped 分支（total 57+nextCursor）注记「已加载 2 项…不是全量」且全页无「表内全量渲染」。④采集时刻：`vi.useFakeTimers({now:2031, toFake:["Date"]})` 冻结假时钟，`generated_at` 别名 → 屏上/行复制/列表复制均 `2026-11-19 14:00` 且无「2031」；无别名/非法 `asOf`/非 ISO `collectedAt` 三例 → 「—」+title 含「不用本机时间顶替」且不含 2031。
+- 诚实边界：2031 断言范围是采集时刻相关节点（`cap7-detail-asof`/`skl4-source`/`cap-page-scope`/两份复制文本）；`cap-export-name` 的导出时刻戳按既定契约合法取本机时钟（文件名契约，非数据时刻），故不纳入 2031 断言。护栏首跑全绿：未测出真缺陷，零产品码改动。
+- 验证：新文件 11/11 定向通过；`src/modules/capabilities` 8 files/45；三面定向 11 files/114；全量 **170 files / 2362 passed 0 failed**；`tsc -b . --noEmit` exit 2 仅 approvals/employee-detail/employees 基线，本文件 0 错（修过 2 类 TS 报错：`querySelector` 泛型与未使用变量，均为测试自身，非行为）。
+- 纪律：写域仅 `modules/capabilities/**` + DONE；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未 install、未并 main、未 force/amend/--no-verify。
