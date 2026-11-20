@@ -25,6 +25,7 @@ import { fetchJSON } from "@/lib/api";
 import { ApiError, errorMessage } from "@/lib/api-error";
 import { cn, themedBody } from "@/lib/utils";
 import { ConsoleButton } from "@/shell/ConsoleButton";
+import { StatePlaceholder } from "@/shell/StatePlaceholder";
 
 /** Same union the kit's Badge accepts (its own type is not exported). */
 type Tone = "default" | "destructive" | "outline" | "secondary" | "success" | "warning";
@@ -407,6 +408,8 @@ function EmptyPanel({ onRefresh }: { onRefresh: () => void }) {
           <RefreshCw className="h-3.5 w-3.5" />
           刷新
         </ConsoleButton>
+        {/* 设计车道 ④：空态下面铺占位条，375 不再是一屏一句 + 大片空白。 */}
+        <StatePlaceholder />
       </CardContent>
     </Card>
   );

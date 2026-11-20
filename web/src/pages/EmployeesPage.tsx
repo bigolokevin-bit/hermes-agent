@@ -15,6 +15,7 @@ import { fetchJSON } from "@/lib/api";
 import { ApiError } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
 import { ConsoleButton } from "@/shell/ConsoleButton";
+import { StatePlaceholder } from "@/shell/StatePlaceholder";
 
 /**
  * 数字员工列表页（只读）。
@@ -613,6 +614,8 @@ export function EmptyBlock({ text, hint }: { text: string; hint: string }) {
         <Inbox className="h-6 w-6 text-muted-foreground" />
         <p className="text-sm font-medium">{text}</p>
         <p className="max-w-sm text-xs text-muted-foreground">{hint}</p>
+        {/* 设计车道 ④：空态文案之下铺占位条，375 不再是一屏一句 + 大片空白。 */}
+        <StatePlaceholder />
       </CardContent>
     </Card>
   );
