@@ -1180,3 +1180,19 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 代次现查：LOCAL=ls-remote=608148d38380（ANCH=0）、porc 0 脏；磁盘 entry assets/index-BabNMdVV.js 167490B sha256 dccf2eaa…a91ad2 ✓、CSS 未变；9122 served 同值；21/21 路由 200。卡面『f1b509b9 未推』不实：merge-base --is-ancestor f1b509b9 FETCH_HEAD ANCE=0，该笔在 608148d3 祖先链（早先 push+ls-remote 双证在案）。
 - 九腿全 exit=0（/tmp/wave31-exits.txt）、九件 9/9 ok=true 盖 608148d3（两已知毛边按配方修）。读数与上代 1683d467 全等：ia {51,23,1,8}；lint-fake v=[]；lint-reuse v=0 exempt=1；state-quad 20/20；crawl-anon DL0/CE0/PE0 routesCE=51（401 归因）；crawl-auth 同判据 routesCE=26（持平）；redirects=24 notes；shots auth 102/102 failures=[] obs=0 obsR=[] distinct=23 envOnly=26；anon aux=true 102/102 obs=0 distinct=23 envOnly=51；三键两 summary 全值、served 前后同值未漂。
 - 环境：9122/caddy/BFF(58224@b3b0f16) 未动；web/src 未碰；1683d467 已盖不重做、无 amend/force；五口裸 404 单按卡留待下拍（现查四件齐证据在 l7-20261120-163012）。
+
+## 一〇九轮 · 波次代次九件重章 @ bbb13340（entry -5QIE39w，2026-11-20 18:1x-18:3x）
+
+- 代次现查：LOCAL=ls-remote=bbb133404e4d（ANCH=0）、porc 4=他车 untracked（default/fixture/owned/target/，未 add）。entry assets/index--5QIE39w.js（双连字符正名）167498B sha256 9be3cba8…6827f6 == 9122 == 磁盘；CSS index-C8_UHqSf.css 133688B 未换代。
+- 九腿全 exit=0（/tmp/wave32-exits.txt），九件全 ok=true 盖 bbb13340；两毛边按配方修（lint-reuse 盘直注、state-quad 补 ok）。
+- 读数（与上代 608148d3 差如实）：ia {51,23,1,8}；lint-fake v=[]；lint-reuse v=0 exempt=1；state-quad 20/20；crawl-anon DL0/CE0/PE0 routesCE=51(401 归因)；crawl-auth DL0/CE0/PE0 **routesCE=24（上代 26，-2 好转）**；redirects=24 notes 归因。shots auth 102/102 failures=[] obs=0 distinct=23 envOnly=25；anon aux=true 102/102 obs=1（#/work?tab=board&view=cron 上代同型如实）distinct=23 envOnly=51；三键全值 servedBefore==After=index--5QIE39w.js、ceAuthority=login-state。
+- 并案：wave-32 五线（appr d4c98fae/gov dff01eed/ui1 ba529cc4/ui2 411287d5/aud 79997534）；608148d3 已盖不重做、无 amend/force。
+- BFF 侧本轮另有 R52 单件（bff-v4-serve，/api/tools 活体探测件），与九件判据无关，注记于 R52 回执。
+
+## 一一〇轮 · 波次代次九件重章 @ d7965c2a（entry 未换代 --5QIE39w，2026-11-20 18:3x-18:4x）
+
+- 代次现查：LOCAL=ls-remote=d7965c2abd78（ANCH=0，wave-33 两笔 gov e8398391 R117/ui1 3dd6956d R118 纯测试并入）、porc 0 脏。卡面口径坐实：**代次换了而入口产物未变**——entry assets/index--5QIE39w.js 167498B sha 9be3cba8ec181eca… == 9122 == 磁盘，CSS index-C8_UHqSf.css 133688B；账本 headHash 全写 d7965c2a（非 bbb13340）。
+- 九腿全 exit=0（/tmp/wave33-exits.txt），served before==after=index--5QIE39w.js 未漂；九件 9/9 ok=true 盖 d7965c2a（stamp 盘现算 git rev-parse 形，天然新章）。
+- 读数（与上代 bbb13340 差如实）：ia {51,23,1,8}；fake v=[]；reuse v=0 exempt=1；quad 20/20；crawl-anon 0/0/0 routesCE=51(401 归因)；crawl-auth 0/0/0 **routesCE=26（上代 24，+2 环境/auth-state 窗观测项，产物未变不判红）**；redirects=24 notes 归因；shots auth 102/102 failures=[] **obs=1（#/capabilities?tab=tools 单条，上代 0；方向与 R52 /api/tools 诚实 502 信封上屏一致，如实登记不入判据）** distinct=23 envOnly=25；anon aux=true 102/102 **obs=1（#/work?tab=board&view=cron 同型）** distinct=23 envOnly=51；三键两 summary 全值 servedEntryBefore==After 同值。
+- R52 并注：bff-v4-serve lane/L7-r32-models-pricing 远端 tip=603a23e9cfb4（live-probe+console.upstream_unavailable 信封+test_bff_r52_tools.py），8092 pid 12048（lstart 18:16:51）在跑该代次；pytest 复跑『388 passed in 9.17s』exit=0。
+- 环境：9122 v4_proxy 95667 未动；caddy 8183 28034 未动；web/src 未碰；零凭据明文；bbb13340 已盖不重做、无 amend/force。
