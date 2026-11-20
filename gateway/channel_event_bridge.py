@@ -512,7 +512,8 @@ def _resolve_first_result(first_result: Any, verdict: dict) -> None:
             return
         first_result.set_result(verdict)
     except Exception:
-        pass
+        # Best-effort waiter: a dead future must never disturb the retry/spool path.
+        logger.debug("channel_event_gate: first-result resolve failed", exc_info=True)
 
 
 async def _post_with_retry(
@@ -664,11 +665,11 @@ async def forward_and_await_verdict(event: Any, source: Any) -> tuple[str, dict]
     fut = loop.create_future()
     try:
         forward_inbound_event(event, source, first_result=fut)
-    except Exception as exc:
+    except Exception:
         logger.warning(
-            "channel_event_gate_failed: message_id=%s error=%s",
+            "channel_event_gate_failed: message_id=%s",
             getattr(event, "message_id", None),
-            type(exc).__name__,
+            exc_info=True,
         )
         return "fallback", {}
     try:
@@ -678,6 +679,7 @@ async def forward_and_await_verdict(event: Any, source: Any) -> tuple[str, dict]
     except asyncio.CancelledError:
         raise
     except Exception:
+        logger.debug("channel_event_gate: waiter failed", exc_info=True)
         return "fallback", {}
     if verdict.get("ok"):
         return "suppressed", verdict
