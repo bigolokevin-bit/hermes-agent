@@ -279,3 +279,92 @@ describe("EmployeesModulePage list depth", () => {
     expect(q("emp-copy-rid") || document.body.textContent?.includes("req-empl-9")).toBe(true);
   });
 });
+
+describe("R62 column sorting (emp-list-sort-*)", () => {
+  const sortBody = {
+    items: [
+      { employeeId: "emp_CCCC3333DDDD4444", name: null, lifecycleState: "active", updatedAt: "2026-11-17T01:00:00Z" },
+      { employeeId: "emp_AAAA1111BBBB2222", name: "小鲤", lifecycleState: "active", updatedAt: "2026-11-18T01:00:00Z" },
+      { employeeId: "emp_BBBB2222CCCC3333", name: "阿朝", lifecycleState: "paused", updatedAt: "2026-11-16T01:00:00Z" },
+    ],
+  };
+
+  const rowOrder = () =>
+    Array.from(document.querySelectorAll('[data-testid^="emp-l-row-emp_"]')).map((el) =>
+      String(el.getAttribute("data-testid")).replace("emp-l-row-", ""),
+    );
+
+  it("four sortable headers are real buttons; sorting is local, missing values sort last", async () => {
+    fetchJSON.mockImplementation(() => Promise.resolve(sortBody));
+    await render("/employees");
+    const callsBefore = fetchJSON.mock.calls.length;
+    for (const key of ["name", "code", "state", "time"]) {
+      const el = q(`emp-list-sort-${key}`);
+      expect(el?.tagName).toBe("BUTTON");
+      expect(el?.getAttribute("type")).toBe("button");
+      expect(el?.closest('[role="columnheader"]')?.getAttribute("aria-sort")).toBe("none");
+    }
+    // 口径注脚在表下，写明仅当前已加载行。
+    const note = q("emp-list-sort-scope-note");
+    expect(note?.textContent).toContain("排序仅在当前已加载 3 条内生效");
+    expect(String(note?.getAttribute("title"))).toContain("200");
+
+    const nameBtn = q("emp-list-sort-name") as HTMLButtonElement;
+    await act(async () => {
+      nameBtn.click();
+    });
+    await act(async () => {});
+    expect(fetchJSON.mock.calls.length).toBe(callsBefore); // 本地排序：零新请求
+    expect(lastSearch()).toContain("sort=name");
+    expect(lastSearch()).toContain("dir=asc");
+    expect(nameBtn.closest('[role="columnheader"]')?.getAttribute("aria-sort")).toBe("ascending");
+    // zh 升序：阿朝 < 小鲤；缺姓名的行永远排末，不当作 0 排前。
+    expect(rowOrder()).toEqual(["emp_BBBB2222CCCC3333", "emp_AAAA1111BBBB2222", "emp_CCCC3333DDDD4444"]);
+  });
+
+  it("third click on the same column clears the sort back to the server order", async () => {
+    fetchJSON.mockImplementation(() => Promise.resolve(sortBody));
+    await render("/employees?sort=time&dir=asc");
+    const timeBtn = q("emp-list-sort-time") as HTMLButtonElement;
+    expect(timeBtn.closest('[role="columnheader"]')?.getAttribute("aria-sort")).toBe("ascending");
+    // 粘 URL 直达：time asc = 16 < 17 < 18。
+    expect(rowOrder()).toEqual(["emp_BBBB2222CCCC3333", "emp_CCCC3333DDDD4444", "emp_AAAA1111BBBB2222"]);
+    await act(async () => {
+      timeBtn.click(); // asc → desc
+    });
+    await act(async () => {});
+    expect(lastSearch()).toContain("dir=desc");
+    expect(rowOrder()[0]).toBe("emp_AAAA1111BBBB2222");
+    await act(async () => {
+      timeBtn.click(); // desc → 清除
+    });
+    await act(async () => {});
+    expect(lastSearch()).not.toContain("sort=");
+    expect(timeBtn.closest('[role="columnheader"]')?.getAttribute("aria-sort")).toBe("none");
+    // 回服务端原序（fixture 顺序）。
+    expect(rowOrder()).toEqual(["emp_CCCC3333DDDD4444", "emp_AAAA1111BBBB2222", "emp_BBBB2222CCCC3333"]);
+  });
+
+  it("sort rides alongside ?q=&lifecycle= without dropping either, and never refetches", async () => {
+    fetchJSON.mockImplementation(() => Promise.resolve(sortBody));
+    await render("/employees?q=%E5%B0%8F%E9%B2%A4&lifecycle=active&sort=name&dir=desc");
+    expect(fetchJSON).toHaveBeenCalledTimes(1); // 排序不触发新请求
+    const url = String(fetchJSON.mock.calls[0][0]);
+    expect(url).toContain("keyword=%E5%B0%8F%E9%B2%A4");
+    expect(url).toContain("lifecycleState=active");
+    expect(lastSearch()).toContain("q=%E5%B0%8F%E9%B2%A4");
+    expect(rowOrder()).toEqual(["emp_AAAA1111BBBB2222", "emp_BBBB2222CCCC3333", "emp_CCCC3333DDDD4444"]);
+    // 换排另一列：q/lifecycle 原样保留（组合共存）。
+    const stateBtn = q("emp-list-sort-state") as HTMLButtonElement;
+    await act(async () => {
+      stateBtn.click();
+    });
+    await act(async () => {});
+    expect(lastSearch()).toContain("q=%E5%B0%8F%E9%B2%A4");
+    expect(lastSearch()).toContain("lifecycle=active");
+    expect(lastSearch()).toContain("sort=state");
+    expect(fetchJSON).toHaveBeenCalledTimes(1); // 依旧零新请求
+    // paused > active（原始值升序），缺值行（无 lifecycleState 的行没有）不参与。
+    expect(rowOrder()).toEqual(["emp_CCCC3333DDDD4444", "emp_AAAA1111BBBB2222", "emp_BBBB2222CCCC3333"]);
+  });
+});

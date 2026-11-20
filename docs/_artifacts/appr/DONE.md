@@ -900,3 +900,17 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 实测读数（jsdom，夹具 TRAIL_SAMPLE）：提交 · 成员 · 9 · 2026-11-19 09:00 / 节点 1 · 郑涛 · 通过 · 2026-11-19 09:50 · 意见：可以，按计划轮换。/ 节点 2 · 人员 · 通过 · 2026-11-19 09:55 · 意见：未填（裸 human:8 无姓名=屏上同口径「人员」）/ 阿朝 · 待办 · 该段无记录 · 意见：未填 / 终态 · 已通过 · 2026-11-19 10:00；文本无 human:/emp_/ap_t8 裸值断言在。
 - 测试：history 3 用例（真值复制成功+计数锁/拒绝→fallback readOnly+value+status/空链路 disabled+title）+ pending 1 用例（queue() 详情抽屉 trail 在、apd8-copy/status 存在）。定向 approvals 3 files/80 passed（76+4）；全量 137 files/1598 passed（基线 1594+4）；assert-ia 两模式 exit0 51/22/1/8；tsc 本域零红。坑记：requestedBy={type,id} 的 human:9 屏上 label=「成员 · 9」（personFrom 名词=成员，非「人员」——人员=decisionEntries maskHandle 口径）；pending.test 无 openTicket 助手=直接 click apr5-row-ap_9F3A1111。
 - testid：apd8-copy/apd8-copy-status/apd8-fallback 新增；apd6/apd7/apv5–apv9/apr5/ed*/emp-list* 零破（定向全绿为证）。三档横溢=形态学报（copy 行在既有 min-w-0 flex-wrap，textarea w-full min-w-0）。9122==7173b7c6 禁重建：活体复制读数待并入后代次；本轮 jsdom clipboard 回环为权威。
+
+## R62 · 员工列表列排序与筛选组合（emp-list-sort-*）— feat(console): employees list column sorting
+
+基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @b1d52a0d（38793c9a/代次 7173b7c6），toplevel ✓ porc=0。
+
+- **服务端排序实测被丢（ego 9122==7173b7c6）**：GET /api/employees?limit=50 基线 200 n=3 顺序 [217A91:QA2契约验证, 86A81C:AgentOS产品助理, 016685:AgentOS产品助理]；带 sort=name&order=desc / sortBy=lifecycleState / sort=createdAt&dir=asc 三组均 200 同序同集合 ⇒ 读口白名单（keyword,lifecycleState,limit,cursor,expand）无排序参数 ⇒ **本地排序分支确定**，表下 `emp-list-sort-scope-note` 明写「排序仅在当前已加载 N 条内生效（本地排序；后台排序参数实测被忽略，不是全量排序）」+ title 带三组实测（EmployeesModulePage.tsx）。
+- **四列真按钮**：员工(姓名)/短码(工号)/状态(在职态原始值)/最近活跃(时间) = SortHeader（role=columnheader 上 aria-sort 三态 none/ascending/descending、内 button type=button、lucide ArrowUp/ArrowDown/ArrowUpDown、focus-visible outline、原生 Enter/Space）。三态循环：列首点 asc → 再点 desc → 三击清除回服务端原序。
+- **创建时间口径诚实**：列表读口行字段实测无 createdAt（R53 读数），屏上无该列 ⇒ 不造假列；时间排序落在既有「最近活跃」（updatedAt）列，列头 title 注明。
+- **null/缺失排末不当 0**：sortValue 缺值→null，比较器 null 恒排末（升降序皆然）；用例锁缺姓名行 asc 末位。
+- **与 ?q=&lifecycle= 组合**：sort/dir 经既有 patchParams（URLSearchParams(params) 差分）读写 ⇒ 点排序保留 q/lifecycle，切筛选/清空钮只删 q/lifecycle 保留 sort；粘 URL ?q=…&lifecycle=active&sort=name&dir=desc 直达复现（fetch 恰 1 条带 keyword+lifecycleState，行序=desc+首行对照断言）。
+- **禁假排序/零新请求**：排序为纯本地 useMemo（sortedItems），行 map 换 sortedItems；用例锁点击前后 fetchJSON 计数不变。
+- **分页游标重置**：R58 分页从未交付（页面无 cursor/loadMore 形态，单页 limit=50）⇒ 无游标可重置，排序不触发重取，天然无跨序拼接；如实记此决定。
+- testid：emp-list-sort-{name,code,state,time} + emp-list-sort-scope-note 新增；emp-list-*/emp-l-*/employees-* 与 ed*/apd*/apv*/apr5 零破（定向 employees 16 passed=13+3；全量 137 files/1601 passed=基线 1598+3；assert-ia 两模式 exit0；tsc 本域零红）。
+- 三档横溢=形态学报（列头 button 在既有 grid 模板 span 位内 inline-flex min-w-0，无新增宽度）；jsdom 不测三档。9122==7173b7c6 禁重建，活体排序读数待并入后代次（读口实测已贴）。
