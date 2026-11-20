@@ -1232,3 +1232,24 @@
   color: var(--color-foreground);
   overflow-wrap: anywhere;
 }
+
+/* UI-A table density 补完（2026-11-21）：数字列表头与已右对齐的 met6-num 单元格同向。
+   锚点全部来自既有 data-testid / thead 类名 / 固定列位，未触组件与 testid。 */
+[data-testid="metO-fmt-th-spend"],
+[data-testid="metO-fmt-th-count"],
+[data-testid="metO-fmt-th-pct"],
+[data-testid="met6-budget-table"] thead th:nth-child(2),
+[data-testid="met6-budget-table"] thead th:nth-child(3),
+[data-testid="met6-budget-table"] thead th:nth-child(4),
+[data-testid="met6-budget-table"] thead th:nth-child(5),
+[data-testid="met6-budget-table"] thead th:nth-child(6),
+[data-testid="met6-cmp-table"] thead th:nth-child(2),
+[data-testid="met6-cmp-table"] thead th:nth-child(3),
+[data-testid="met6-cmp-table"] thead th:nth-child(4),
+[data-testid="met6-cmp-table"] thead th:nth-child(5),
+thead.metAF-sticky-share th:nth-child(5),
+#metK-table thead th:nth-child(2),
+#metK-table tbody td:nth-child(2) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
