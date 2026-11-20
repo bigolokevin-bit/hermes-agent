@@ -109,6 +109,7 @@ export function QueueCsvExport({
       <Button
         size="sm"
         outlined
+        className="shrink-0 whitespace-nowrap"
         data-testid="apv7-export"
         disabled={!gate.enabled}
         aria-disabled={!gate.enabled}
@@ -118,7 +119,7 @@ export function QueueCsvExport({
         导出 CSV
       </Button>
       <span
-        className="font-mono text-xs text-muted-foreground"
+        className="shrink-0 whitespace-nowrap font-mono text-xs text-muted-foreground"
         data-testid="apv7-export-count"
         title="导出行数与屏上列表同源：同一份服务端返回、同一份渲染对象"
       >

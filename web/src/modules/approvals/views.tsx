@@ -484,6 +484,7 @@ export function DecisionTrail({ detail }: { detail: ApprovalDetail }): ReactNode
         <Button
           size="sm"
           outlined
+          className="shrink-0 whitespace-nowrap"
           data-testid="apd8-copy"
           disabled={emptyTrail}
           title={
