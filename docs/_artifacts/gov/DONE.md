@@ -1990,3 +1990,15 @@ built /private/tmp/health-r38/index.html
   - tools empty → `data-cap-state=empty`、`capF-state-empty`；tools error → `data-cap-state=error`、`capF-state-error`、`capF-retry`。
   - 单元测试覆盖 live 403/404 同体、generic 500 计数 `—`、q/sort/dir 在错误与重试后保留、重试只重发当前 tab（tools 仅 tools/mcp 候选）。
 - 边界：仅 `web/src/modules/{skills,tools}/**` + 本 DONE；未改 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未并 main；未重建 9122；未 install/force/amend/--no-verify。
+
+## R66 / capG — /capabilities 导出与复制的失败态一致性（2026-11-20）
+
+- 基线：先显式 refspec fetch `origin/lane/hermes-console`（tip `cca9cf7e`），再 `git merge --no-ff` 得 `331b80c3`；未 reset，未并 main，未重建 9122。
+- 变更：新增 `web/src/modules/capabilities/outputState.ts`，把列表读取态映射为导出/复制的可用性：loading/unavailable/error 禁用，ready/empty 按当前可见行数决定；禁用原因只进 `title`（未接入含去处与 GAP，500/网络含请求编号），可见计数在失败态为 `—`，真空仍为 `0 条` + 有源（空）。
+- `csvExport.tsx` / `listCopy.tsx` 接受 `state`，默认行为保持原独立用例；skills/tools 两页把各自的加载、空、未接入（403/404）、错误（500/网络）映射后传入，重试成功自动恢复。
+- 读数（临时 harness 已删除；Vite 5483 / Chrome CDP 9283）：1440/1280/375 × skills/tools × ready/empty/404/500 共 24 组，`bodySW=bodyCW=pageSW=pageCW=viewport`，无横溢。
+  - ready：导出/复制可用，计数 `2 条`；empty：两者禁用，计数 `0 条`，标题「当前视图没有可导出的行」。
+  - 404/403：两者禁用，标题含「读口未接入」「审批中心」「GAP-SKL4-01 / GAP-04」，计数 `—`，计数条 `—/无源`。
+  - 500：两者禁用，标题含「请求编号：req-capg-9」「重试成功后才能导出/复制」，计数 `—`；单元测试覆盖重试后恢复为 `1 条` / `6 条`。
+- 验证：定向 `npx vitest run src/modules/capabilities src/modules/skills src/modules/tools` → **6 files / 68 passed**；全量 `npx vitest run` → **144 files / 1795 passed**；`tsc -b . --noEmit` 仅剩基线 approvals/employee-detail/employees 错误，本域 0 行。
+- 边界：仅 `web/src/modules/{capabilities,skills,tools}/**` + 本 DONE；未改 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未 install/force/amend/--no-verify。

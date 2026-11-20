@@ -32,6 +32,7 @@ import { CapabilityCounts, publishCapabilityCount } from "../capabilities/counts
 import { CapabilitySearch } from "../capabilities/search";
 import { CapabilityExport } from "../capabilities/csvExport";
 import { CapabilityCopy } from "../capabilities/listCopy";
+import type { CapabilityOutputState } from "../capabilities/outputState";
 import { applySort, ariaSort, cycleSort, readSort, sortRows, type SortKey } from "../capabilities/sorting";
 import { CapabilityRowDetail } from "../capabilities/rowDetail";
 import { useEnsureTabParam } from "../capabilities/tabParam";
@@ -488,6 +489,30 @@ export function ToolsPage(): ReactNode {
     enabled: STATUS_LABEL[row.status],
     updated_at: row.updatedAt,
   }));
+  const outputState: CapabilityOutputState =
+    phase === "loading"
+      ? { kind: "loading" }
+      : phase === "empty"
+        ? { kind: "empty" }
+        : phase === "denied"
+          ? {
+              kind: "unavailable",
+              reason: tools.failure?.sentence ?? "这块内容要么尚未接入本控制台，要么当前账号无权查看。",
+              gap: GAP,
+            }
+          : phase === "login"
+            ? {
+                kind: "error",
+                reason: "登录状态已经失效，请刷新页面重新登录后再看这份清单。",
+                requestId: tools.failure?.requestId ?? null,
+              }
+            : phase === "error"
+              ? {
+                  kind: "error",
+                  reason: tools.failure?.sentence ?? "读取工具与 MCP 清单时出了问题，请稍后重试。",
+                  requestId: tools.failure?.requestId ?? null,
+                }
+              : { kind: "ready" };
 
   return (
     <section className="flex min-w-0 w-full max-w-full flex-col" data-testid="tl3-page">
@@ -507,8 +532,8 @@ export function ToolsPage(): ReactNode {
           </p>
         </div>
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <CapabilityExport tab="tools" rows={exportRows} />
-          <CapabilityCopy rows={copyRows} />
+          <CapabilityExport tab="tools" rows={exportRows} state={outputState} />
+          <CapabilityCopy rows={copyRows} state={outputState} />
           <span className="capA-export-note" data-testid="capA-export-order-note">导出按当前排序与搜索</span>
           <Button
             size="sm"
