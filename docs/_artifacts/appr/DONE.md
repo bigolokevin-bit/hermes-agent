@@ -1223,3 +1223,10 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 移除动作=removeFilterKeys(draft 差分 delete+replace)，与 choose/pickX 同一管道；计数/导出/汇总条/分桶沿 visibleRows 链同源重算（用例贴改前改后：apv5-count 1→2、apv7-export-count 共 1→共 2 行随 status chip 移除联动）。
 - 测试 history 3+pending 1：全参 chips 人话+移除 status=恰 +1 且新 url 无 status=/cursor=+chip 消失+全删后 summary=null；移除 sort/purple risk/pending q=+0 请求（本地维锁）；unknown purple 原文上屏+title 识别句；零筛选无行。定向 approvals 4 files/**149 passed**（145+4 一次全绿）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **159 files/2199 passed**（基线 2195+4）。
 - 零破：apv5–9/apd6–apd10/apr5/state/sort/export/toggle/live/reset/risk/since（既有 145 全绿为证）；三档=chip 行 flex-wrap+truncate 形态学报；9122==9813d7af 活体读数待并入后代次。
+
+## R92 审批面口径回归护栏（纯测试，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console → merge 带入代次 94076a05（wave-22，runs/runNotes.ts 等他人笔，本域零冲突），toplevel ✓ porc=0；重发三件套=caliber.test 不存在，全新。
+- 交付：新 web/src/modules/approvals/approvals.caliber.test.tsx（5 用例，一次全绿，零产品改动）。①ed8 聚合口径行上屏「本区按聚合口径读取，单页最多 20 条」+title 含「nextCursor 恒 null」实测句、ed8-appr-more 不存在+全页无「加载更多」、ed8-appr-scope-queue href 逐字=/approvals?status=all。②chipsFor(全参) 的 remove 摊平与 FILTER_PARAM_KEYS 集合 toEqual（非子集判法=七参恰齐；DONE 说明 chip.key 是六枚因 asort+adir 合成 sort 一枚）；sortChip.remove=[asort,adir]；purple 未知值原文上屏+chip 容器 title 含「该值未被识别」；行为=actor/since/risk/sort 四本地维移除各 +0 fetch、status 维移除恰 +1 且新请求无 status=/cursor=；末 chip 移除后 apv-filter-summary 整条消失、reset title 回到 RESET_NONE_TITLE。③无筛选页=apv-filter-summary null+apv-reset-filters disabled+title toBe(RESET_NONE_TITLE)（import 值非硬编码=单点锁）+hasActiveFilters 纯函数同判。
+- 形态注记（工单口径 vs 本仓 DOM）：①工单写 `data-ed8-appr-scope`——本仓载体实形=data-testid="ed8-appr-scope"（无该同名属性；ed 模块不在本单写域=未补属性，按 testid 判等义，若后续单要属性化再改）；工单文件名 .ts——含 JSX 落 .tsx（vitest 收集同路）。
+- 验证：定向 approvals+employee-detail 6 files/209 passed（149+55+新 5）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **162 files/2246 passed**（merge wave-22 后实跑基线+5，0 失败）；零产品文件改动。
