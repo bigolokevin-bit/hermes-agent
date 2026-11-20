@@ -868,3 +868,4 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 坑：**模块内本就有局部 money()（line 94），从 tasksBoard import money 触发 Babel Duplicate declaration 整文件收集失败**；tsc grep 因缓存未报——撤 import 用局部函数（语义相同 $0.00/—）。
 - 测试：R57 describe 6 用例（3 请求计数+全带 employeeId+period 断言、month 行 13/$0.12/asof 2026-11-20 07:58+title bff-read-time、day 双缺值「—」+title、屏上无裸 0.121198、真 0 vs 缺失可区分、空集句、error 冒号 rid+req-copy+重试、403 与 404 两个 it 同体+不回显路径）。定向 employee-detail 46 passed；全量 132 files/1476 passed；assert-ia 两模式 exit0（headHash 3f40f615）；tsc 本域零红。
 - 三档横溢=jsdom 不可测，形态学报：grid 全 minmax(0)+min-w-0 truncate、375 档 grid-cols-1 堆叠（ed8/ed9 同构已验）。9122==6a02ed58 禁重建：页面活体读数待并入后代次，本轮 jsdom 挂载链为权威。
+- 坑补记（lefthook 实拦）：react-hooks/purity 把 render 体内的 Date.now() 判 error 拦下 commit——BJT 今日字符串改在 effect 里算好随 ready state 携带（state.today）；effect 体 setState(loading) 只是 warning 可过。修后复测 46 passed，commit aa651e8e 推送 3f40f615..aa651e8e。
