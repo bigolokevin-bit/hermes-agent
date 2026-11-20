@@ -44,6 +44,7 @@ import { APPROVAL_EMPTY_SENTENCE } from "./stateCopy";
 import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
 import { ApprovalDetailBody, ApprovalRowCard } from "./views";
 import { ConsoleSelect } from "@/shell/ConsoleSelect";
+import "./approvals-density.css";
 
 const FORCED_STATES: readonly string[] = ["loading", "empty", "error", "denied"];
 
