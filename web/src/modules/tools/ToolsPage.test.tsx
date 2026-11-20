@@ -18,6 +18,7 @@ vi.mock("@/lib/clipboard", () => ({ copyTextToClipboard: clipboard.copyTextToCli
 import { ToolsPage } from "./ToolsPage";
 import { resetToolsTabState } from "./useToolsData";
 import { publishCapabilityCount, resetCapabilityCounts } from "../capabilities/counts";
+import { resetTabView } from "../capabilities/tabView";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -117,6 +118,7 @@ beforeEach(() => {
   api.fetchJsonStrict.mockReset();
   resetCapabilityCounts();
   resetToolsTabState();
+  resetTabView();
   clipboard.copyTextToClipboard.mockReset();
   clipboard.copyTextToClipboard.mockResolvedValue(true);
 });
@@ -223,6 +225,7 @@ describe("failures and gaps", () => {
     expect(document.querySelector("[data-testid='cap9-state-denied']")).toBeTruthy();
     expect(document.querySelector("[data-testid='cap9-state-unavailable']")).toBeNull();
     expect(document.querySelector("[data-testid='capF-state-unavailable']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='capF-state-unavailable']")?.textContent).toContain("工具读口未接入");
     expect(document.querySelector("[data-testid='tol5-page']")?.getAttribute("data-cap-state")).toBe("unavailable");
     const count = document.querySelector("[data-testid='cap4-count-tools']")!;
     expect(count.textContent).toContain("—");
@@ -252,6 +255,7 @@ describe("failures and gaps", () => {
     expect(document.querySelector("[data-testid='cap9-state-unavailable']")).toBeTruthy();
     expect(document.querySelector("[data-testid='cap9-state-denied']")).toBeNull();
     expect(document.querySelector("[data-testid='capF-state-unavailable']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='capF-state-unavailable']")?.textContent).toContain("工具读口未接入");
     const copy = document.querySelector<HTMLButtonElement>('[data-testid="capC-copy"]')!;
     const csv = document.querySelector<HTMLButtonElement>('[data-testid="cap6-export"]')!;
     expect(copy.disabled).toBe(true);
@@ -275,6 +279,8 @@ describe("failures and gaps", () => {
     expect(document.querySelector("[data-testid='tol5-empty']")).toBeTruthy();
     expect(document.querySelector("[data-testid='cap9-state-empty']")).toBeTruthy();
     expect(document.querySelector("[data-testid='capF-state-empty']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='capF-state-empty']")?.textContent).toContain("读口已接入，本次返回 0 条");
+    expect(document.querySelector("[data-testid='capF-state-empty-text']")?.textContent).toBe("读口已接入，本次返回 0 条；不补样例。");
     expect(document.querySelector("[data-testid='tol5-page']")?.getAttribute("data-cap-state")).toBe("empty");
     expect(document.querySelector("[data-testid='tol5-denied']")).toBeNull();
     const count = document.querySelector("[data-testid='cap4-count-tools']")!;
@@ -348,6 +354,7 @@ describe("failures and gaps", () => {
     });
     expect(document.querySelector("[data-testid='tol5-error']")).toBeTruthy();
     expect(document.querySelector("[data-testid='capF-state-error']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='capF-state-error']")?.textContent).toContain("工具与 MCP 清单没能加载出来");
     expect(document.querySelector("[data-testid='tol5-page']")?.getAttribute("data-cap-state")).toBe("error");
     expect(text()).toContain("请求编号：req-tol5");
     expect(text()).toContain("处理时出了错");
@@ -394,6 +401,10 @@ describe("four states and repro legs", () => {
       expect(document.querySelector("[data-testid='tol5-page']")?.getAttribute("data-fixture")).toBe(state);
       const capState = state === "denied" ? "unavailable" : state;
       expect(document.querySelector(`[data-testid='capF-state-${capState}']`)).toBeTruthy();
+      expect(document.querySelector(`[data-testid='capF-state-${capState}']`)?.textContent?.trim().length).toBeGreaterThan(0);
+      if (capState === "empty") {
+        expect(document.querySelector("[data-testid='capF-state-empty-text']")?.textContent?.trim().length).toBeGreaterThan(0);
+      }
       expect(document.querySelector("[data-testid='tol5-page']")?.getAttribute("data-cap-state")).toBe(capState);
       expect(api.fetchJsonStrict).not.toHaveBeenCalled();
     }
@@ -418,7 +429,7 @@ describe("row detail", () => {
     expect(details[0]!.textContent).toContain("网页搜索");
     expect(details[0]!.textContent).toContain("/api/tools/toolsets");
     expect(document.querySelector("[data-testid='cap7-detail-asof']")?.textContent).toContain("—");
-    expect(document.querySelector("[data-testid='cap7-detail-asof']")?.getAttribute("title")).toContain("没有顶层采集时刻");
+    expect(document.querySelector("[data-testid='cap7-detail-asof']")?.getAttribute("title")).toContain("上游没带采集时刻，不用本机时间顶替");
     expect(document.querySelector("[data-testid='cap7-detail-updated']")?.textContent).toContain("—");
 
     await act(async () => toggles[5]!.click());
@@ -458,7 +469,7 @@ describe("row detail", () => {
     expect(document.querySelector("[data-testid='cap7-detail-updated']")?.textContent).toBe("—");
     expect(document.querySelector("[data-testid='cap7-detail-updated']")?.getAttribute("title")).toContain("没有提供最近更新时间");
     expect(document.querySelector("[data-testid='cap7-detail-asof']")?.textContent).toBe("—");
-    expect(document.querySelector("[data-testid='cap7-detail-asof']")?.getAttribute("title")).toContain("没有顶层采集时刻");
+    expect(document.querySelector("[data-testid='cap7-detail-asof']")?.getAttribute("title")).toContain("上游没带采集时刻，不用本机时间顶替");
     expect(document.querySelector("[data-testid='cap7-detail-endpoint']")?.textContent).toBe("/api/tools/toolsets");
 
     const beforeCopy = api.fetchJsonStrict.mock.calls.length;
@@ -484,7 +495,7 @@ describe("row detail", () => {
     await act(async () => document.querySelector<HTMLButtonElement>("[data-testid='cap7-detail-toggle']")!.click());
     const asof = document.querySelector("[data-testid='cap7-detail-asof']");
     expect(asof?.textContent).toBe("2026-11-19 14:00");
-    expect(asof?.getAttribute("title")).toContain("asOfSource：清单快照");
+    expect(asof?.getAttribute("title")).toContain("UTC 原文：2026-11-19T06:00:00Z · 北京时间：2026-11-19 14:00 · 来源：清单快照");
     expect(document.body.textContent).not.toContain("asOfSource");
   });
 

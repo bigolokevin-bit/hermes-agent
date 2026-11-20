@@ -221,3 +221,19 @@
   .capC-copy-wrap { width: 100%; flex-wrap: wrap; }
   .capC-copy-status { white-space: normal; }
 }
+
+/* capH — per-tab scroll retention. The shell pane normally lets the page grow
+   past the viewport; only pages that opt in get their own vertical scroller. */
+.capH-scroll { min-width: 0; }
+@media (min-width: 769px) {
+  div:has(> section > .pane > .capH-scroll) {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .pane:has(> .capH-scroll) {
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+}

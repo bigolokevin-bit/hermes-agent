@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { ApiError } from "@/lib/api-error";
-import { SYS3_PATH, beijingMinute } from "./systemHealth";
+import { readTopAsOf, SYS3_PATH } from "./systemHealth";
 
 /**
  * The /system page reads four endpoints in total: the health list on this page
@@ -32,6 +32,8 @@ export interface SourceRead {
   /** Optional top-level `asOfSource` label supplied by the payload. */
   asOfSource?: string | null;
   asOfReason: string | null;
+  /** Unified tooltip: raw UTC, Beijing display and optional source. */
+  asOfTitle?: string | null;
   requestId: string | null;
   /** Raw upstream failure text; only ever rendered as a title. */
   statusDetail?: string | null;
@@ -146,31 +148,22 @@ export function useSourceMatrix(): SourceMatrixSnapshot {
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
 
-/** Only `payload.asOf` at the top level counts, and it must be an ISO timestamp. */
+/** Unified top-level asOf reader shared by every console surface. */
 export function topLevelIsoAsOf(payload: unknown): {
   asOf: string | null;
   asOfIso: string | null;
   asOfSource: string | null;
   asOfReason: string | null;
+  asOfTitle: string;
 } {
-  if (typeof payload !== "object" || payload === null || Array.isArray(payload)) {
-    return { asOf: null, asOfIso: null, asOfSource: null, asOfReason: "响应不是对象，读不到顶层 asOf，采集时刻未知。" };
-  }
-  const record = payload as Record<string, unknown>;
-  const rawSource = record.asOfSource;
-  const asOfSource = typeof rawSource === "string" && rawSource.trim() ? rawSource.trim() : null;
-  const raw = record.asOf;
-  if (typeof raw !== "string" || !raw.trim()) {
-    return { asOf: null, asOfIso: null, asOfSource, asOfReason: "响应顶层没有 asOf，采集时刻未知。" };
-  }
-  const value = raw.trim();
-  const iso = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?$/.test(value);
-  if (!iso || Number.isNaN(new Date(value).getTime())) {
-    return { asOf: null, asOfIso: null, asOfSource, asOfReason: "响应顶层 asOf 不是 ISO 时间，采集时刻未知。" };
-  }
-  const shown = beijingMinute(value);
-  if (!shown) return { asOf: null, asOfIso: null, asOfSource, asOfReason: "响应顶层 asOf 无法解析，采集时刻未知。" };
-  return { asOf: shown, asOfIso: value, asOfSource, asOfReason: null };
+  const stamp = readTopAsOf(payload);
+  return {
+    asOf: stamp.shown,
+    asOfIso: stamp.raw,
+    asOfSource: stamp.source,
+    asOfReason: stamp.reason,
+    asOfTitle: stamp.title,
+  };
 }
 
 export function failureRead(error: unknown): SourceRead {
