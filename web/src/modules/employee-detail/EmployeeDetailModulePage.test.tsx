@@ -36,6 +36,7 @@ vi.mock("@nous-research/ui", () => ({
 
 import { fetchJSON } from "@/lib/api";
 import { ApiError } from "@/lib/api-error";
+import { DEPT_UNLABELED_LABEL, FIELD_MISSING, departmentView } from "@/modules/employees/EmployeesModulePage";
 import {
   APPROVAL_DENIED_BODY,
   APPROVAL_DENIED_TITLE,
@@ -1184,5 +1185,47 @@ describe("R52-obs employee approvals scope carrier", () => {
     const scope = container.querySelector('[data-testid="ed8-appr-scope"]');
     expect(scope, "cap sentence").toBeTruthy();
     expect(scope!.getAttribute("data-ed8-appr-scope")).toBe("aggregate-cap-20");
+  });
+});
+
+describe("R96 department caliber parity (ed1-identity-department)", () => {
+  const qid = (t: string) => container.querySelector(`[data-testid="${t}"]`);
+  const body = (dept: unknown) => ({
+    id: EMP,
+    name: "AgentOS 产品助理",
+    title: "产品助理",
+    lifecycleState: "active",
+    ownerUserId: "1",
+    createdAt: "2026-11-13T22:15:30Z",
+    asOf: "2026-11-20T07:00:00Z",
+    ...(dept === "MISSING" ? {} : { department: dept }),
+  });
+  // R43 老坑复证：同 it 内换 mock 再 render 不重发（useResourceList deps=[url,nonce]），三态各拆一个 it。
+  const serve = (dept: unknown) =>
+    mockApi((url) =>
+      url.includes(`/api/employees/${encodeURIComponent(EMP)}`)
+        ? Promise.resolve(body(dept))
+        : silent502(url),
+    );
+
+  it("identity department: a real value renders verbatim without a title", async () => {
+    serve("增长组");
+    await renderAt(page, at());
+    expect(qid("ed1-identity-department")?.textContent).toBe(departmentView(true, "增长组").label);
+    expect(qid("ed1-identity-department")?.getAttribute("title")).toBeNull();
+  });
+
+  it("identity department: an empty value reads 未标注部门 like the list bucket", async () => {
+    serve(null);
+    await renderAt(page, at());
+    expect(qid("ed1-identity-department")?.textContent).toBe(DEPT_UNLABELED_LABEL);
+    expect(qid("ed1-identity-department")?.getAttribute("title")).toContain("值为空");
+  });
+
+  it("identity department: a missing key reads 该字段未返回, never faking a bucket", async () => {
+    serve("MISSING");
+    await renderAt(page, at());
+    expect(qid("ed1-identity-department")?.textContent).toBe(FIELD_MISSING);
+    expect(qid("ed1-identity-department")?.getAttribute("title")).toContain("读口没有回传");
   });
 });

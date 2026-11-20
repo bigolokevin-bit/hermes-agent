@@ -641,7 +641,7 @@ export function ApprovalDetailBody({
                 </button>
               </>
             ) : (
-              <span data-testid="apd5-request-id-missing" title="这条记录没有带回请求编号">—</span>
+              <span data-testid="apd5-request-id-missing" title="这条记录没有带回请求编号">该字段未返回</span>
             )}
           </dd>
         </div>
