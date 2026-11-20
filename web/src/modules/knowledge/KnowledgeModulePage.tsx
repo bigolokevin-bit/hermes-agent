@@ -1510,6 +1510,15 @@ function DocPreviewDrawer({
 
   if (typeof document === "undefined") return null;
 
+  // R125 — 抽屉四字段缺值句式收口：与两处行内预览同走 previewField（R70 单点），
+  // 在场值的文本与 title 与改前逐字一致；缺值/未载入统一「该字段未返回」+「<字段>：<原因>」，
+  // 不再允许抽屉自带第二套缺值文案。
+  const offList = "这条不在当前已加载的列表里";
+  const fName = previewField("文档名", row !== null && row.nameHint === null, row?.name ?? "—", row?.nameHint ?? offList);
+  const fType = previewField("类型", row !== null && row.typeHint === null, row?.type ?? "—", row?.typeHint ?? offList, row?.typeRaw ?? undefined);
+  const fSize = previewField("大小", row !== null && row.sizeHint === null, row?.size ?? "—", row?.sizeHint ?? offList);
+  const fUpdated = previewField("更新", row !== null && row.atHint === null, row?.at ?? "—", row?.atHint ?? offList);
+
   return createPortal(
     <div className="kn7-preview-scrim" data-testid="kn7-preview-backdrop" onClick={onClose}>
       <div
@@ -1539,11 +1548,8 @@ function DocPreviewDrawer({
         <dl className="knw5-ref-detail" data-testid="kn3-docs-detail" title={row?.id || undefined}>
           <div>
             <dt>文档名</dt>
-            <dd
-              data-testid="kn7-preview-field-name"
-              title={row?.nameHint ?? (row ? undefined : "这条不在当前已加载的列表里")}
-            >
-              <span data-testid="kn3-docs-detail-name">{row?.name ?? "—"}</span>
+            <dd data-testid="kn7-preview-field-name" title={fName.title}>
+              <span data-testid="kn3-docs-detail-name">{fName.text}</span>
             </dd>
           </div>
           <div>
@@ -1562,20 +1568,20 @@ function DocPreviewDrawer({
           </div>
           <div>
             <dt>类型</dt>
-            <dd data-testid="kn7-preview-field-type" title={row ? (row.typeHint ?? (row.typeRaw ?? undefined)) : "这条不在当前已加载的列表里"}>
-              {row?.type ?? "—"}
+            <dd data-testid="kn7-preview-field-type" title={fType.title}>
+              {fType.text}
             </dd>
           </div>
           <div>
             <dt>大小</dt>
-            <dd data-testid="kn7-preview-field-size" title={row ? (row.sizeHint ?? undefined) : "这条不在当前已加载的列表里"}>
-              {row?.size ?? "—"}
+            <dd data-testid="kn7-preview-field-size" title={fSize.title}>
+              {fSize.text}
             </dd>
           </div>
           <div>
             <dt>更新时间</dt>
-            <dd data-testid="kn7-preview-field-updated" title={row ? (row.atHint ?? undefined) : "这条不在当前已加载的列表里"}>
-              {row?.at ?? "—"}
+            <dd data-testid="kn7-preview-field-updated" title={fUpdated.title}>
+              {fUpdated.text}
             </dd>
           </div>
         </dl>
