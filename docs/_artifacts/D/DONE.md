@@ -1430,3 +1430,5 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - tally 原文 {'9a410487': 9} count 9 BAD []（glob+isinstance，无 None 无混入）。
 - 读数对照上代 e2ef3793：ia-html{51,22,tabsAll:23,1,8}/react{51,22,1,8} 全等；fake v=[]；reuse v0 e1；quad 20/20；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）redirects=24 notes；shots auth 102/102 failures=[] obs=0 obsR=[] **distinct=23（上代 24，-1 与 UI-B 知识页单源化方向一致如实）** envOnly=51；anon aux=true 102/102 obs=0 distinct=23（持平）envOnly=51；双腿三键全值（6g0IMx1G/4407188f…d686b/172175）、ceAuthority=login-state、servedEntryBefore==After。
 - 环境：b36d1a1e 章不重做；无 amend/force；web/src/9122(v4_proxy 95667)/BFF(12048@603a23e9)/caddy(28034)/qa-verify(33c2b838 ACC 判词节) 未动。
+
+- 2026-11-21 06:5x 章笔 cafd2d81：本代 state-quad 未刷新，沿用上代 9a410487 读数（carriedFrom=9a410487, carried=true），见 state-quad.json 字段。

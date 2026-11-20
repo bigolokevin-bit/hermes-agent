@@ -1,7 +1,7 @@
 {
   "base": "http://127.0.0.1:9122",
   "method": "playwright hash-form /#/<route>?state=<s>; hook=[data-fixture]+[data-testid=shell-fixture-badge] (web/src/shell/fixtures.ts)",
-  "headHash": "9a410487",
+  "headHash": "cafd2d81",
   "sampled": 20,
   "passed": 20,
   "rows": [
@@ -187,5 +187,8 @@
     }
   ],
   "exitCode": 0,
-  "ok": true
+  "ok": true,
+  "carriedFrom": "9a410487",
+  "carried": true,
+  "stampNote": "本代 state-quad 未刷新，沿用上代读数（carriedFrom 见字段）"
 }
