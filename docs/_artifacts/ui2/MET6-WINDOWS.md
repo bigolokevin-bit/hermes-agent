@@ -408,3 +408,15 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 - 实测：默认（员工视图）窗口 332 / 热力 332 / 明细「—」/ 差「—」；`?view=model` 时 332 / 332 / 9 / −323；明细切到 7 天后 332 / 332 / 5 / −327（`run-activity` 请求数不变）；热力 500 时 —/—/9/—。
 - 验证：定向 `src/modules/metrics` 2 files / **142 passed**（基线 138，+4）；全量 **137 files / 1614 passed**（基线 1610）；`tsc -b . --noEmit` 全仓 55 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metX` → entry `assets/index-CNSuFeS2.js` sha256 `62be097d41c967bf2769d0392ff967427913495c76680508d606923f6d66cc12`，entry 内 `metX-consistency-note` 命中 0，chunk `assets/MetricsModulePage-iEZjDXbZ.js` 命中 1。
 - 未测项：真实后端在热力与明细窗口不同时返回的数值差异未联调（用 fixture 构造）；375 下这一行的换行未人工走查。
+
+## 跳过链接（metY，2026-11-20）
+
+键盘用户不必先走完整个页头或逐行穿过两张宽表。
+
+- 页首：`metY-skiplink`（`<a href="#metY-main">跳到主要内容</a>`）是页面第一个 Tab 落点；`<main id="metY-main" tabIndex={-1}>` 可接收焦点，链过去后焦点落到主内容而非页面顶部。
+- 表前：`metY-skip-detail`（`href="#metY-after-detail"`，落点是明细表下方的来源/合计行 `met6-cat-source`）与 `metY-skip-share`（`href="#metY-after-share"`，落点 `met7-source`）。两个落点都带 `tabIndex={-1}`，链接只在对应表格真的渲染时才出现，因此不会有指向不存在锚点的死链接。
+- 形态：原生 `<a href>`，不用按钮伪装；未聚焦时用 clip 技术完全移出视觉流（不占位、不改变既有布局与 tab 序其余部分），聚焦时 `position: static` 呈现为一行描边胶囊并带 `outline: 2px solid var(--color-ring)`。
+- 不改其余 tab 序：metQ 的落点顺序只多出这一个页首链接（`metY-skiplink → metL-copy → met5-refresh → …`），其余原样；没有新增正数 `tabindex`。
+- 零新请求：链接只做页内跳转，测试断言聚焦前后 `urls()` 长度不变。
+- 验证：定向 `src/modules/metrics` 2 files / **146 passed**（基线 142，+4）；全量 **137 files / 1618 passed**（基线 1614）；`tsc -b . --noEmit` 全仓 55 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metY` → entry `assets/index-BIvWvNTC.js` sha256 `4be1529960f738edbbf6b7054e0ce5daaabc41b3e155ed634065705c1cd102e1`，entry 内 `metY-skiplink` 命中 0，chunk `assets/MetricsModulePage-CcfclHKN.js`：`metY-skiplink`=1、`metY-main`=1。
+- 未测项：真浏览器里按 Tab 后链接的可见样式与跳转后的滚动定位未人工走查；Safari 对 `:focus-visible` 与 clip 组合的表现未复核。

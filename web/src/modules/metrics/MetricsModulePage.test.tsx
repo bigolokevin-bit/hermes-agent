@@ -2609,8 +2609,10 @@ describe('metQ — keyboard access and status announcements', () => {
     );
     expect(positive).toHaveLength(0);
 
-    // Keyboard walk: the first eight landings in DOM order.
-    expect(focusableTestIds().slice(0, 8)).toEqual([
+    // Keyboard walk: the first nine landings in DOM order. The skip link is
+    // first on purpose (metY); everything after it keeps its old place.
+    expect(focusableTestIds().slice(0, 9)).toEqual([
+      'metY-skiplink',
       'metL-copy',
       'met5-refresh',
       'met6-window-24h',
@@ -3377,5 +3379,66 @@ describe('metX — one window, three readings of the run count', () => {
     // The detail total is still readable; the difference is not.
     expect(q('metX-detail-runs')?.textContent).toBe('9');
     expect(q('metX-delta')?.textContent).toBe('—');
+  });
+});
+
+describe('metY — skip links around the page and the two wide tables', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+
+  it('opens with a skip link that lands on a focusable main region', async () => {
+    await mount(usageRouter());
+
+    const link = q('metY-skiplink') as HTMLAnchorElement;
+    expect(link.tagName).toBe('A');
+    expect(link.getAttribute('href')).toBe('#metY-main');
+    expect(link.textContent).toBe('跳到主要内容');
+    expect(link.className).toContain('metY-skip');
+
+    const main = document.getElementById('metY-main');
+    expect(main).toBe(q('met5-page'));
+    expect(main?.getAttribute('tabindex')).toBe('-1');
+
+    // The target takes focus when the link is followed.
+    main?.focus();
+    expect(document.activeElement).toBe(main);
+  });
+
+  it('offers a jump past the detail table, landing after its rows', async () => {
+    await mount(usageRouter());
+
+    const link = q('metY-skip-detail') as HTMLAnchorElement;
+    expect(link.getAttribute('href')).toBe('#metY-after-detail');
+    expect(link.tagName).toBe('A');
+
+    const target = document.getElementById('metY-after-detail');
+    expect(target).toBe(q('met6-cat-source'));
+    expect(target?.getAttribute('tabindex')).toBe('-1');
+
+    const table = q('met6-table') as HTMLElement;
+    expect(table.compareDocumentPosition(target as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    target?.focus();
+    expect(document.activeElement).toBe(target);
+  });
+
+  it('offers the same jump past the share table', async () => {
+    await mountShare(SHARE_USAGE);
+
+    const link = q('metY-skip-share') as HTMLAnchorElement;
+    expect(link.getAttribute('href')).toBe('#metY-after-share');
+
+    const target = document.getElementById('metY-after-share');
+    expect(target).toBe(q('met7-source'));
+    expect(target?.getAttribute('tabindex')).toBe('-1');
+
+    const table = q('met7-table') as HTMLElement;
+    expect(table.compareDocumentPosition(target as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('adds no read of its own', async () => {
+    await mount(usageRouter());
+    const before = urls().length;
+    (q('metY-skiplink') as HTMLAnchorElement).focus();
+    (q('metY-skip-detail') as HTMLAnchorElement).focus();
+    expect(urls().length).toBe(before);
   });
 });

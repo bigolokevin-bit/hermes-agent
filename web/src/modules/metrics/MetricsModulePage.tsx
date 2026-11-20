@@ -1480,7 +1480,10 @@ export function MetricsModulePage() {
   };
 
   return (
-    <main className="met5-page" data-testid="met5-page">
+    <main className="met5-page" id="metY-main" tabIndex={-1} data-testid="met5-page">
+      <a className="metY-skip" href="#metY-main" data-testid="metY-skiplink">
+        跳到主要内容
+      </a>
       <p className="sr-only" role="status" aria-live="polite" data-testid="metQ-live">
         {liveMessage}
       </p>
@@ -1965,6 +1968,9 @@ export function MetricsModulePage() {
                 <p className="metW-scroll-hint" data-testid="metW-scroll-hint">
                   左右滑动查看全部列
                 </p>
+                <a className="metY-skip" href="#metY-after-detail" data-testid="metY-skip-detail">
+                  跳到明细表后面的说明
+                </a>
                 <div
                   className="met6-table-scroll metW-table"
                   role="region"
@@ -2040,7 +2046,7 @@ export function MetricsModulePage() {
                 <p className="met6-hint" data-testid="metT-rounding-note-detail">
                   占比逐行按一位小数四舍五入，合计按未舍入的原值相加，因此合计恰好是全部可读部分之和（占满时即 100%），不会因为逐行进位变成 99.9% 或 100.1%；合计行不参与排序。导出文件的行仍是逐行明细，合计不写进数据行。
                 </p>
-                <p className="met6-source" data-testid="met6-cat-source">
+                <p className="met6-source" id="metY-after-detail" tabIndex={-1} data-testid="met6-cat-source">
                   来源：{breakdownView.source} · 截至{' '}
                   {breakdownView.asOf ? formatBeijing(breakdownView.asOf) : '—'}
                   {' · 合计 '}
@@ -2440,6 +2446,9 @@ export function MetricsModulePage() {
                 <p className="metW-scroll-hint" data-testid="metW-scroll-hint-share">
                   左右滑动查看全部列
                 </p>
+                <a className="metY-skip" href="#metY-after-share" data-testid="metY-skip-share">
+                  跳到分摊表后面的说明
+                </a>
                 <div
                   className="met6-table-scroll metW-table"
                   role="region"
@@ -2539,7 +2548,7 @@ export function MetricsModulePage() {
                     </tfoot>
                   </table>
                 </div>
-                <p className="met6-source" data-testid={`${sharePrefix}-source`}>
+                <p className="met6-source" id="metY-after-share" tabIndex={-1} data-testid={`${sharePrefix}-source`}>
                   来源：{groupBy === 'employee' ? '员工账本' : '模型用量'} · 截至{' '}
                   {shareView.value.asOf ? formatBeijing(shareView.value.asOf) : '—'} · 窗口 {shareView.value.days} 天 · 可读实扣合计{' '}
                   <span className="font-mono">{formatUsd(shareTotal)}</span>
