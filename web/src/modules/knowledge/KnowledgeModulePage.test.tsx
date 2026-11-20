@@ -2188,8 +2188,8 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     const nameOf = (tr: Element) => (tr.querySelector('[data-testid="kn3-docs-name"]')?.textContent ?? "").trim();
     const order = () => [...container.querySelectorAll('[data-testid="kn3-docs-row"]')].map(nameOf);
     const ariaSort = (col: string) =>
-      container.querySelector(`[data-testid="knC-sort-${col}"]`)?.closest("th")?.getAttribute("aria-sort") ?? null;
-    const head = (col: string) => container.querySelector(`[data-testid="knC-sort-${col}"]`) as HTMLButtonElement | null;
+      container.querySelector(`[data-testid="kn-sort-${col}"]`)?.closest("th")?.getAttribute("aria-sort") ?? null;
+    const head = (col: string) => container.querySelector(`[data-testid="kn-sort-${col}"]`) as HTMLButtonElement | null;
 
     // 三列表头都是真 button[type=button]（Enter/Space 由浏览器原生触发，focus-visible 实测在浏览器侧）
     for (const col of ["name", "size", "updated"]) {
@@ -2206,20 +2206,20 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     const callsAfterLoad = fetchMock.mock.calls.length;
 
     // 点名称 → 升序并落 URL
-    await click("knC-sort-name");
+    await click("kn-sort-name");
     expect(byTestid("loc")?.textContent ?? "").toContain("sort=name");
     expect(byTestid("loc")?.textContent ?? "").toContain("dir=asc");
     expect(ariaSort("name")).toBe("ascending");
     expect(order()).toEqual(["A 手册.pdf", "B 表.xlsx", "C 说明.txt", "D 无元数据"]);
 
     // 再点名称 → 翻转降序
-    await click("knC-sort-name");
+    await click("kn-sort-name");
     expect(byTestid("loc")?.textContent ?? "").toContain("dir=desc");
     expect(ariaSort("name")).toBe("descending");
     expect(order()).toEqual(["D 无元数据", "C 说明.txt", "B 表.xlsx", "A 手册.pdf"]);
 
     // 点大小 → 该列首点落降序（大在前），无大小的 D 仍末位
-    await click("knC-sort-size");
+    await click("kn-sort-size");
     expect(byTestid("loc")?.textContent ?? "").toContain("sort=size");
     expect(byTestid("loc")?.textContent ?? "").toContain("dir=desc");
     expect(ariaSort("size")).toBe("descending");
@@ -2228,13 +2228,13 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(order()).toEqual(["B 表.xlsx", "C 说明.txt", "A 手册.pdf", "D 无元数据"]);
 
     // 大小升序 → 小在前，缺大小仍末位（不当 0、不占首位）
-    await click("knC-sort-size");
+    await click("kn-sort-size");
     expect(byTestid("loc")?.textContent ?? "").toContain("dir=asc");
     expect(order()).toEqual(["A 手册.pdf", "C 说明.txt", "B 表.xlsx", "D 无元数据"]);
 
     // 更新时间首点落降序、再点升序：旧在前，缺时间仍末位
-    await click("knC-sort-updated");
-    await click("knC-sort-updated");
+    await click("kn-sort-updated");
+    await click("kn-sort-updated");
     expect(byTestid("loc")?.textContent ?? "").toContain("sort=updated");
     expect(byTestid("loc")?.textContent ?? "").toContain("dir=asc");
     expect(ariaSort("updated")).toBe("ascending");
@@ -2544,7 +2544,7 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
 
     // ---------- B. 排序/筛选变化：列表与游标重置回第一页，0 新请求；再翻是新的 cursor 读取 ----
     const callsBeforeSort = fetchMock.mock.calls.length;
-    await click("knC-sort-name");
+    await click("kn-sort-name");
     expect(fetchMock.mock.calls.length).toBe(callsBeforeSort); // 重置不重新问服务（R52 口径）
     expect(rowCount()).toBe(2);
     expect(countText()).toBe("共 3 篇 / 已显示 2 篇");
@@ -2712,8 +2712,8 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
 
     // ---------- 2. 列表文本一变，旧「已复制」作废（不再冒充当前清单复制过） ----------
     // name/asc 与 updated/desc 在这份夹具里同序（文本没变，「已复制」仍属实）；再点成 name/desc 才真变了
-    await click("knC-sort-name");
-    await click("knC-sort-name"); // name/desc：B·A·—，与已复制的文本不同序
+    await click("kn-sort-name");
+    await click("kn-sort-name"); // name/desc：B·A·—，与已复制的文本不同序
     expect(statusText()).toBe("");
 
     // ---------- 3. 筛选后复制的是筛后行 ----------
@@ -2736,7 +2736,7 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
 
     // ---------- 5. 剪贴板拒绝：给只读 textarea，内容与屏上文本一致；再成功即收起 ----------
     await type("kn3-docs-filter-input", "");
-    await click("knC-sort-updated"); // 回到 updated/desc：A·B·缺值末位，文本可按行断言
+    await click("kn-sort-updated"); // 回到 updated/desc：A·B·缺值末位，文本可按行断言
     const writeFail = vi.fn().mockRejectedValue(new Error("denied"));
     stubClipboard(writeFail);
     await click("knF-copy");
@@ -3874,7 +3874,7 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(STATUS("knL")).toBe("已复制");
     expect(fetchMock.mock.calls.length).toBe(urlsGates); // gates 计算与复制全程 0 新请求
     const gateToggle = fetchMock.mock.calls.length;
-    await click("knC-sort-name"); // 排序切换（六格之外的状态翻面）也不追加请求
+    await click("kn-sort-name"); // 排序切换（六格之外的状态翻面）也不追加请求
     expect(fetchMock.mock.calls.length).toBe(gateToggle);
     await type("kn3-docs-filter-input", "查无此词");
     expect(MARK("knF")).toBe("false");
@@ -3990,5 +3990,137 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(hitsSurface?.querySelectorAll('[data-testid="kn-group-toggle"], .kn6-group')).toHaveLength(0);
     // 该面读口今天未接入：走既有「检索未接入」诚实态，没有被分组改造波及
     expect(byTestid("knw5-search-unwired")).toBeTruthy();
+  });
+
+  it("sorts the space document table by four columns with one header set in every state (kn-sort-*): three-state URL, missing-last, keyboard, disabled strip", async () => {
+    const SPACE = { asOf: "2026-11-19T07:00:00Z", items: [{ spaceId: "sp_hr", name: "人事制度空间" }] };
+    const LIST = {
+      asOf: "2026-11-19T07:00:00Z",
+      documents: [
+        { documentId: "a1", fileName: "A 手册.pdf", mimeType: "pdf", sizeBytes: 300, updatedAt: "2026-11-19T07:00:00Z" },
+        { documentId: "a2", fileName: "B 手册.pdf", mimeType: "pdf", sizeBytes: 300, updatedAt: "2026-11-19T06:00:00Z" },
+        { documentId: "a3", fileName: "C 表.xlsx", docType: "xlsx", sizeBytes: 100, updatedAt: "2026-11-19T05:00:00Z" },
+        { documentId: "a4", fileName: "D 只有名字" },
+      ],
+    };
+    fetchMock.mockClear();
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SPACE);
+      if (url.startsWith("/agent-api/api/documents?") && url.includes("spaceId=sp_hr")) return Promise.resolve(LIST);
+      return fail(404, "这个数据接口还没有接入。", "rid-s-x");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    const head = (col: string) => container.querySelector(`[data-testid="kn-sort-${col}"]`) as HTMLButtonElement | null;
+    const strip = () => container.querySelector('[data-testid="kn3-docs-head-strip"]');
+    const order = () =>
+      [...container.querySelectorAll('[data-testid="kn3-docs-row"]')].map(
+        (tr) => (tr.querySelector('[data-testid="kn3-docs-name"]')?.textContent ?? "").trim(),
+      );
+    const ariaSort = (col: string) =>
+      container.querySelector(`[data-testid="kn-sort-${col}"]`)?.closest("th")?.getAttribute("aria-sort") ?? null;
+    const loc = () => byTestid("loc")?.textContent ?? "";
+    const urls = () => fetchMock.mock.calls.length;
+
+    // 四列都是真 BUTTON[type=button]；默认口径 updated/desc；表头只有一套、口径注在表下
+    for (const col of ["name", "type", "size", "updated"]) {
+      expect(head(col)?.tagName).toBe("BUTTON");
+      expect(head(col)?.getAttribute("type")).toBe("button");
+      expect(head(col)?.disabled).toBe(false);
+    }
+    expect(strip()).toBeNull();
+    expect(ariaSort("updated")).toBe("descending");
+    expect((byTestid("kn-sort-scope-note")?.textContent ?? "")).toContain("仅在当前已加载 4 篇内排序");
+
+    // ---------- 三态周期落 ksort/kdir：落向→翻转→清除；整周期零新请求 ----------
+    const urlsBefore = urls();
+    await click("kn-sort-name");
+    expect(loc()).toContain("ksort=name");
+    expect(loc()).toContain("kdir=asc");
+    await click("kn-sort-name");
+    expect(loc()).toContain("kdir=desc");
+    await click("kn-sort-name");
+    expect(loc()).not.toContain("ksort"); // 第三点：清除，地址不残留
+    expect(loc()).not.toContain("kdir");
+    expect(ariaSort("updated")).toBe("descending"); // 清除后回默认口径
+    expect(urls()).toBe(urlsBefore);
+
+    // ---------- 键盘 Enter/Space 各自显式触发（扣住原生事件，一次按键一次翻态） ----------
+    const nameBtn = head("name") as HTMLButtonElement;
+    await act(async () => {
+      nameBtn.focus();
+    });
+    const enter = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
+    await act(async () => {
+      nameBtn.dispatchEvent(enter);
+    });
+    await act(async () => {});
+    expect(enter.defaultPrevented).toBe(true);
+    expect(loc()).toContain("ksort=name");
+    const spaceKey = new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true });
+    await act(async () => {
+      nameBtn.dispatchEvent(spaceKey);
+    });
+    await act(async () => {});
+    expect(spaceKey.defaultPrevented).toBe(true);
+    expect(loc()).toContain("kdir=desc");
+    expect(urls()).toBe(urlsBefore);
+
+    // ---------- 类型列：缺类型行两种方向恒末位；同值稳定（保持读入序） ----------
+    await click("kn-sort-type"); // 首点=落向（类型正序）
+    const typeAsc = order();
+    expect(typeAsc[typeAsc.length - 1]).toBe("D 只有名字");
+    expect(typeAsc.indexOf("A 手册.pdf")).toBeLessThan(typeAsc.indexOf("B 手册.pdf"));
+    await click("kn-sort-type"); // 翻转：降序
+    const typeDesc = order();
+    expect(typeDesc[typeDesc.length - 1]).toBe("D 只有名字"); // 降序也沉底，不当空串排前
+    expect(typeDesc.indexOf("A 手册.pdf")).toBeLessThan(typeDesc.indexOf("B 手册.pdf")); // 同值仍读入序
+    // 大小同值（300）两行：升/降都保持彼此相对序；缺大小不当 0
+    await click("kn-sort-type"); // 清除 type
+    await click("kn-sort-size"); // size 落向 desc
+    const sizeDesc = order();
+    expect(sizeDesc.indexOf("A 手册.pdf")).toBeLessThan(sizeDesc.indexOf("B 手册.pdf"));
+    await click("kn-sort-size"); // asc
+    const sizeAsc = order();
+    expect(sizeAsc.indexOf("A 手册.pdf")).toBeLessThan(sizeAsc.indexOf("B 手册.pdf"));
+    expect(sizeAsc[sizeAsc.length - 1]).toBe("D 只有名字");
+
+    // ---------- 复制文本与表体同序：贴 name-asc 的首末行对照 ----------
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    await click("kn-sort-size"); // size 清除（翻转态再点=清除）
+    await click("kn-sort-name"); // name/asc
+    await click("knF-copy");
+    const lines = String(writeText.mock.calls[writeText.mock.calls.length - 1][0]).trimEnd().split("\n").slice(1);
+    const table = order();
+    expect(lines[0].startsWith(table[0])).toBe(true);
+    expect(lines[lines.length - 1].startsWith(table[table.length - 1])).toBe(true);
+    await click("kn-sort-name");
+    await click("kn-sort-name"); // 清除回默认 updated/desc
+    await click("knF-copy");
+    const linesDefault = String(writeText.mock.calls[writeText.mock.calls.length - 1][0]).trimEnd().split("\n").slice(1);
+    const tableDefault = order();
+    expect(linesDefault[0].startsWith(tableDefault[0])).toBe(true);
+    expect(linesDefault[linesDefault.length - 1].startsWith(tableDefault[tableDefault.length - 1])).toBe(true);
+
+    // ---------- 非 ready：表头条四列全 disabled + 逐字原因；URL 原样、零请求；口径注不出现 ----------
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SPACE);
+      return fail(404, "这个数据接口还没有接入。", "rid-s-gone");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr&ksort=name&kdir=asc&q=%E6%89%8B%E5%86%8C");
+    await act(async () => {});
+    expect(strip()).toBeTruthy();
+    const stripHead = container.querySelector('[data-testid="kn-sort-type"]') as HTMLButtonElement;
+    expect(stripHead.disabled).toBe(true);
+    expect(stripHead.getAttribute("title")).toBe("这份列表没读到（读口未接入或没有权限），现在不能排序。");
+    expect(byTestid("kn-sort-scope-note")).toBeNull();
+    const urlsStrip = urls();
+    await act(async () => {
+      stripHead.click();
+    });
+    await act(async () => {});
+    expect(loc()).toContain("ksort=name"); // 点禁用表头：URL 与 q 都原样不动
+    expect(loc()).toContain("q=%E6%89%8B%E5%86%8C");
+    expect(urls()).toBe(urlsStrip);
   });
 });

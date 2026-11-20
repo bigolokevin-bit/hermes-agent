@@ -1619,12 +1619,17 @@ function SortableHead({
   sort,
   dir,
   onSort,
+  disabled,
+  disabledTitle,
 }: {
   col: DocSortCol;
   label: string;
   sort: DocSortCol;
   dir: DocSortDir;
   onSort: (col: DocSortCol) => void;
+  /** R66：非 ready/无可见行时表头仍在但整排禁用，title 逐字说原因。 */
+  disabled?: boolean;
+  disabledTitle?: string;
 }): ReactNode {
   const active = sort === col;
   return (
@@ -1632,9 +1637,20 @@ function SortableHead({
       <button
         type="button"
         className="knC-sort"
-        data-testid={`knC-sort-${col}`}
-        onClick={() => onSort(col)}
+        disabled={disabled}
+        data-testid={`kn-sort-${col}`}
+        onClick={() => {
+          if (disabled) return;
+          onSort(col);
+        }}
+        onKeyDown={(event) => {
+          // Enter/Space 显式接管并 preventDefault：浏览器不再叠加原生激活，一次按键一次翻态。
+          if (disabled || (event.key !== "Enter" && event.key !== " ")) return;
+          event.preventDefault();
+          onSort(col);
+        }}
         aria-label={`按${label}排序`}
+        title={disabled ? (disabledTitle ?? "现在不能排序") : "点一次按本列默认方向排，再点翻向，第三点清除回默认口径"}
       >
         <span className="knC-sort-label">{label}</span>
         <span className="knC-mark" aria-hidden="true">
@@ -1642,6 +1658,35 @@ function SortableHead({
         </span>
       </button>
     </th>
+  );
+}
+
+/** 非 ready（或无可见行）时的表头条：四列还在、整排 disabled 说原因；与真表头互斥出现，全页始终只有一套。 */
+function DocHeadStrip({
+  sort,
+  dir,
+  onSort,
+  disabledTitle,
+}: {
+  sort: DocSortCol;
+  dir: DocSortDir;
+  onSort: (col: DocSortCol) => void;
+  disabledTitle: string;
+}): ReactNode {
+  return (
+    <div className="kn3-docs-wrap">
+      <table className="knw5-table kn3-docs-table" data-testid="kn3-docs-head-strip">
+        <thead>
+          <tr>
+            <SortableHead col="name" label="文档名" sort={sort} dir={dir} onSort={onSort} disabled disabledTitle={disabledTitle} />
+            <SortableHead col="type" label="类型" sort={sort} dir={dir} onSort={onSort} disabled disabledTitle={disabledTitle} />
+            <SortableHead col="size" label="大小" sort={sort} dir={dir} onSort={onSort} disabled disabledTitle={disabledTitle} />
+            <SortableHead col="updated" label="更新" sort={sort} dir={dir} onSort={onSort} disabled disabledTitle={disabledTitle} />
+          </tr>
+        </thead>
+        <tbody />
+      </table>
+    </div>
   );
 }
 
@@ -1679,7 +1724,7 @@ function DocTable({
         <thead>
           <tr>
             <SortableHead col="name" label="文档名" sort={sort} dir={dir} onSort={onSort} />
-            <th scope="col">类型</th>
+            <SortableHead col="type" label="类型" sort={sort} dir={dir} onSort={onSort} />
             <SortableHead col="size" label="大小" sort={sort} dir={dir} onSort={onSort} />
             <SortableHead col="updated" label="更新" sort={sort} dir={dir} onSort={onSort} />
           </tr>
@@ -2076,6 +2121,33 @@ function SpaceDetailSurface({
           </>
         )}
       />
+      {/* R66 — 表头四列在一切状态下都在且只有一套：真表头（有可见行）或禁用表头条。 */}
+      {surface.state.kind === "ready" && shown.length > 0 ? null : (
+        <DocHeadStrip
+          sort={sort}
+          dir={dir}
+          onSort={onSort}
+          disabledTitle={
+            surface.state.kind === "loading"
+              ? "空间文档列表还在读取，行读到了才能排。"
+              : surface.state.kind === "unwired"
+                ? "这份列表没读到（读口未接入或没有权限），现在不能排序。"
+                : surface.state.kind === "login"
+                  ? "登录状态已经失效，重新登录后才能排序。"
+                  : surface.state.kind === "error"
+                    ? "这次没有读到这份列表，现在不能排序。"
+                    : filterKey !== ""
+                      ? "本地筛选没有留下可见行，现在没有可排的行。"
+                      : "这份列表里没有行，没有可排的内容。"
+          }
+        />
+      )}
+      {surface.state.kind === "ready" && baseRows.length > 0 ? (
+        <p className="knw5-sub" data-testid="kn-sort-scope-note">
+          仅在当前已加载 {baseRows.length} 篇内排序：文档读口实测不接受 sort/order/orderBy，
+          点表头只改地址与本行序，不会再发请求。
+        </p>
+      ) : null}
       {/* 复制条四态常在；enabled/title/状态句/计数位/兜底全读 knfGates（单点，无本地措辞）。 */}
       <div className="knF-row" data-testid="knF-row">
         <Button
@@ -2807,9 +2879,13 @@ export default function KnowledgeModulePage() {
   const spaceId = sp.get("space") ?? "";
   const openDoc = sp.get("doc") ?? "";
   const openSearchDoc = sp.get("sdoc") ?? "";
-  // 文档列表排序也只在地址里：刷新、粘贴 URL、前进后退都能复现，且换排序不再问服务。
-  const sortCol = docSortCol(sp.get("sort"));
-  const sortDir = docSortDir(sp.get("dir"));
+  // 文档列表排序只在地址里：刷新、粘贴 URL、前进后退都能复现，且换排序不再问服务。
+  // R66：本面自己的参数是 ksort/kdir；旧链里的 sort/dir 只读兜底（老地址继续生效），
+  // 清除只删 ksort/kdir、不动 sort/dir——两套键互不清除。
+  const sortCol = docSortCol(sp.get("ksort") ?? sp.get("sort"));
+  const sortDirRaw = sp.get("kdir") ?? sp.get("dir");
+  const sortDir: DocSortDir =
+    sortDirRaw !== null ? docSortDir(sortDirRaw) : sortCol === "updated" ? "desc" : docSortLandDir(sortCol);
   const [nonce, setNonce] = useState("0");
   const [deepCrumb, setDeepCrumb] = useState<DeepCrumb | null>(null);
   const reportCrumb = useCallback((next: DeepCrumb | null) => {
@@ -2840,6 +2916,8 @@ export default function KnowledgeModulePage() {
     // 排序只属于某个空间的文档列表；换页签就清掉，避免地址里残留用不上的排序参数。
     next.delete("sort");
     next.delete("dir");
+    next.delete("ksort");
+    next.delete("kdir");
     setSp(next);
   };
 
@@ -2894,12 +2972,22 @@ function containerQuery(key: string): HTMLElement | null {
     setSp(next);
   };
 
-  // 点同一列在升/降间翻转，点别的列落到它各自的默认方向；只改地址，不触发任何读取。
+  // 四态周期：点新列落到它的默认方向（落向）；同列再点翻向（翻转）；第三次点清除回默认口径。
+  // 默认态不写参数；清除只删 ksort/kdir，旧地址里带进来的 sort/dir 原样保留；q/面包屑等其余参数全程不动。
+  // 只改地址，不触发任何读取。
   const applySort = (col: DocSortCol) => {
     const next = new URLSearchParams(sp);
-    const dir: DocSortDir = col === sortCol ? (sortDir === "asc" ? "desc" : "asc") : docSortLandDir(col);
-    next.set("sort", col);
-    next.set("dir", dir);
+    if (col === sortCol && sortDir !== docSortLandDir(col)) {
+      // 已经翻过一次：第三点 = 清除
+      next.delete("ksort");
+      next.delete("kdir");
+    } else if (col === sortCol) {
+      next.set("ksort", col);
+      next.set("kdir", sortDir === "asc" ? "desc" : "asc");
+    } else {
+      next.set("ksort", col);
+      next.set("kdir", docSortLandDir(col));
+    }
     setSp(next);
   };
 

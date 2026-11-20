@@ -1616,15 +1616,17 @@ export function spaceCopyText(rows: SpaceRow[], loadedTotal: number, keyword: st
  * 文档列表本地排序：只排已经读到的行，点表头绝不再问服务。
  * ------------------------------------------------------------------ */
 
-export type DocSortCol = "name" | "size" | "updated";
+export type DocSortCol = "name" | "type" | "size" | "updated";
 export type DocSortDir = "asc" | "desc";
 
 /** 默认口径：更新时间、新在前。 */
 export const DOC_SORT_DEFAULT: { col: DocSortCol; dir: DocSortDir } = { col: "updated", dir: "desc" };
 
-/** URL 只认这三个列名，其余一律回落默认（排序不靠记忆，靠地址可复现）。 */
+/** URL 只认这四个列名，其余一律回落默认（排序不靠记忆，靠地址可复现）。 */
 export function docSortCol(value: string | null | undefined): DocSortCol {
-  return value === "name" || value === "size" || value === "updated" ? value : DOC_SORT_DEFAULT.col;
+  return value === "name" || value === "type" || value === "size" || value === "updated"
+    ? value
+    : DOC_SORT_DEFAULT.col;
 }
 
 /** URL 只认 asc/desc，其余回落默认方向。 */
@@ -1632,9 +1634,11 @@ export function docSortDir(value: string | null | undefined): DocSortDir {
   return value === "asc" || value === "desc" ? value : DOC_SORT_DEFAULT.dir;
 }
 
-/** 第一次按某列排序时落在哪个方向：名称正序，大小与时间新/大在前。 */
+/**
+ * 第一次按某列排序时落在哪个方向：名称与类型正序，大小与时间新/大在前。
+ */
 export function docSortLandDir(col: DocSortCol): DocSortDir {
-  return col === "name" ? "asc" : "desc";
+  return col === "name" || col === "type" ? "asc" : "desc";
 }
 
 /** 三态 aria-sort：只有当前生效列是 ascending/descending，其余列是 none。 */
@@ -1649,6 +1653,7 @@ export function ariaSort(
 /** 这一列这一行的可排值；缺值是 null（不当 0），按列只看该看的那个原始字段。 */
 function docSortKey(row: DocRow, col: DocSortCol): number | string | null {
   if (col === "name") return row.nameHint === null ? row.name : null;
+  if (col === "type") return row.typeRaw === null || row.typeRaw === "" ? null : row.type;
   if (col === "size") return row.sizeBytes;
   const ms = row.atRaw === null ? Number.NaN : Date.parse(row.atRaw);
   return Number.isFinite(ms) ? ms : null;

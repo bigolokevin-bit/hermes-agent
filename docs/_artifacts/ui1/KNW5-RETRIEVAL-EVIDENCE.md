@@ -2098,3 +2098,68 @@ $ npx vite build --outDir /tmp/knw-group-dist → exit 0（产物只落 /tmp，p
 边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
 package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
 无 force / amend / `--no-verify`；merge 与单 feature commit 分开。
+
+# KNW5 追加 R66：空间文档列表四列排序与单一表头（testid `kn-sort-*`）（2026-11-20 BJT）
+
+安全闸：toplevel 相符、porcelain 空、显式 refspec fetch；上游 tip 即派工章面 `a5832d15`
+（代码代次 `60a4a429`），merge 为 Already up to date——本笔只有 feature commit。
+
+## 一、后端探针（cookie 只在 curl 命令内拼 Header，值零回显；9122 只读、未重启、未重建）
+
+```text
+HTTP 404  rid f9ced4ad  /agent-api/api/documents?limit=50&spaceId=sp_hr                    documents.read_not_wired  行数 0
+HTTP 404  rid ac606a3c  …&sort=name                                                          同上  行数 0  顺序无差别（无行可差）
+HTTP 404  rid 78c18c10  …&sort=name&order=asc                                               同上  行数 0
+HTTP 404  rid 2ac23a99  …&orderBy=name&order=desc                                           同上  行数 0
+```
+读口今天 fail-closed，sort/order/orderBy 带与不带回答逐字一致 → **声明本地排序**，
+表下 `kn-sort-scope-note` 逐字「仅在当前已加载 N 篇内排序…不会再发请求」（N=筛前行数实测）。
+
+## 二、与 R52 的收口（改名路线，侦察属实）
+
+```text
+testid：表头按钮由 `knC-sort-<col>` 改名为派工指定的 `kn-sort-<col>`（模块外零引用，
+  grep 全仓核实）；既有测试引用同步改名，断言语义未动。knC-sort/knC-th 的 CSS 类名保留
+  （focus-visible 走现成 token，未新增样式面）。类型列从纯 th 升级为第四可排列。
+  派工零破清单 knB–knN 若按字面含 knC：本轮未破的是 knC 的行为与断言，改名仅动 testid
+  字符串——两处既有 knC 相关测试（R52 排序、R54/R55 翻页重置点表头）全部原语义通过。
+URL：本面真值改走 `?ksort=&kdir=`；`?sort=&dir=` 只作读兜底（旧粘贴链继续生效，实测
+  sort=size&dir=asc 复现同序），默认态与清除态都不写参数。清除（同列第三点）只删
+  ksort/kdir，地址里原有 sort/dir 原样保留（如实后果：无 ksort 时旧 sort/dir 兜底重新生效）；
+  q/面包屑/panel 等全程不动。切页签把四键一并清掉（R52 口径延伸）。
+周期：四列统一「首点落本列默认方向 → 再点翻向 → 第三点清除」；R52 的两击断言
+  （name asc→desc、size desc→asc、updated desc→asc）逐条兼容，全绿。
+```
+
+## 三、行为读数（定向测试逐字断言）
+
+```text
+缺值恒末位：类型缺（D 行）asc/desc 都末位；大小缺同（不当 0）；时间缺同（R52 既有）。
+稳定序：同值行（两 PDF、同 300B）在 asc 与 desc 里都保持读入相对序（A 前 B 后实测）。
+键盘：四按钮都是 BUTTON[type=button]；Enter/Space 由 onKeyDown 显式接管并 preventDefault
+  （一次按键一次翻态，浏览器不再叠加原生激活），defaultPrevented=true 实测；focus-visible
+  走 .knC-sort:focus-visible 现成 token。
+零请求：三态整周期 + 键盘段 + 复制段 fetchMock 计数全程不变（urlsBefore 快照逐段核对）。
+复制同序：knF-copy 首行/末行 == 表体首/末行——name/asc 与默认 updated/desc 两组各贴。
+单一表头：ready 且有可见行 = 真表头四按钮 enabled、表头条不渲染；
+  loading/error/unwired/denied/login/真空/筛空 = 表头条四按钮全 disabled + 逐字原因 title
+  （未接入句对 403/404 同一句），点它不改 URL 零请求，口径注此时不出现——全页任何状态
+  表头恰好一套（真实 Chrome 复核：strip=1、heads 四枚皆 d）。
+```
+
+三档：vite preview(/tmp/knw-sort-dist，用毕即杀)+headless Chrome CDP 实测详情屏（无后端
+恰为表头条形态）1440/1280/375 `vw==bodySW==docSW` 全等。未测如实：真浏览器 Enter/Space
+原生激活链（jsdom 以显式 keydown 断言替代）、ready 行态三档（preview 无会话读不到行）、
+真机剪贴板权限弹窗。kn3/kn6–knN/knw5 零破：60 例（基线 59 + 本轮 1）全绿。
+
+## 验证尾行（R66）
+```text
+$ npx vitest run src/modules/knowledge   → 2 files / 60 tests passed
+$ npx vitest run                         → 150 files / 1990 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-sort-dist → exit 0（preview/CDP 进程已清理）
+```
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
+无 force / amend / `--no-verify`；单 commit「feat(console): knowledge document list sorting」。
