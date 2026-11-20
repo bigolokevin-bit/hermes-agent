@@ -914,3 +914,15 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - **分页游标重置**：R58 分页从未交付（页面无 cursor/loadMore 形态，单页 limit=50）⇒ 无游标可重置，排序不触发重取，天然无跨序拼接；如实记此决定。
 - testid：emp-list-sort-{name,code,state,time} + emp-list-sort-scope-note 新增；emp-list-*/emp-l-*/employees-* 与 ed*/apd*/apv*/apr5 零破（定向 employees 16 passed=13+3；全量 137 files/1601 passed=基线 1598+3；assert-ia 两模式 exit0；tsc 本域零红）。
 - 三档横溢=形态学报（列头 button 在既有 grid 模板 span 位内 inline-flex min-w-0，无新增宽度）；jsdom 不测三档。9122==7173b7c6 禁重建，活体排序读数待并入后代次（读口实测已贴）。
+
+## R45-P0 · 员工成本区 run-stats ISO 窗口修复（fix(console): employee usage run-stats iso range）
+
+- 根因（R45 终判 FAIL 单点）：EmployeeDetailModulePage.tsx UsageZone effect 把 monthPeriod=dayPeriod.slice(0,7)（"2026-11"）直接当 run-stats 的 from 传出去；BFF 要完整 ISO-8601 → 422 Invalid isoformat string（rid c77c1b03030e4092bee2c59eafeaa666）→ Promise.all 恒 reject → ed10-usage 永停 error。
+- 修法（最小面）：from/to 一律 Date.UTC 拼完整 UTC ISO——day 腿=当日 00:00:00.000Z→次日 00:00:00.000Z；month 腿=当月首日→次月首日（Date.UTC(y,mo,1) 在 12 月自动翻次年）。run-stats 拆两腿（今日行读今日窗 totals.runs、本月行读本月窗 totals.runs），旧「桶列表匹配今天桶」逻辑删除；budget-usage period=YYYY-MM-DD/YYYY-MM 两 URL 一字未动；bucket=day 不变；testid/路由/其它模块零改动。ready 形态 stats→statsDay/statsMonth。
+- 活体复测（ego 只读 9122==7173b7c6，未截断原文）：
+  - /agent-api/api/run-stats?employeeId=emp_86A81CE8FF6F42E187BCF2B540&from=2026-11-20T00:00:00.000Z&to=2026-11-21T00:00:00.000Z&bucket=day → **200** totals={runs:0,costUsd:0}（今日窗真 0）
+  - /agent-api/api/run-stats?employeeId=emp_86A81CE8FF6F42E187BCF2B540&from=2026-11-01T00:00:00.000Z&to=2026-12-01T00:00:00.000Z&bucket=day → **200** totals={runs:13,costUsd:0.121198}
+  - 冒号在 query 中原样发送（合法字符，服务端 datetime 正常解析——以上 200 即实证）。
+- 测试：usageApi 替身按 from/to 窗长（==86400000→day 腿）分腿；既有用例腿数 3→4；新 2 用例=①两条 run-stats URL from/to 匹配完整 ISO 正则且不含 from=YYYY-MM&（月末跨月边界另测）②vi.spyOn(Date,"now") 固定到 2026-12-31T20:00Z（BJT 2027-01-01 04:00）→month 腿 from=2027-01-01T00:00:00.000Z to=2027-02-01T00:00:00.000Z（12 月翻年边界）。定向 employee-detail 48 passed；tsc --noEmit 本模块 0 error；全量 **137 files/1603 passed**（基线 1601+2）。
+- 口径修正（本域事实）：今日运行数与本月运行数各取自己窗口 totals.runs（原桶匹配语义废除）；runsTitle 缺值句同步改「今日窗/本月窗没有返回 runs 合计：缺值不作 0」；asOf/成本列口径零改动。
+- 未测项：9122 禁重建（R45 取证代次），页面活体四态读数待修复合入后代次；本轮权威=活体 API 双腿 200 + jsdom 48 用例。
