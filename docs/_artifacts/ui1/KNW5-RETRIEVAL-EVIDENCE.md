@@ -5865,3 +5865,51 @@ kn-doc-copy*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent 
 未测如实：带登录会话真屏；② 过渡态抽屉体内容形制（panel 在场已锁，标题回退文案/
 字段区状态未钉——R233③ knL 地盘不扩）；① data-len 在抽屉开态的独立性（四值同帧已含）；
 切桶回「全部」后抽屉源行回归的再挂载（R237② 弃页位外推未实锁）。
+
+# KNW5 追加 R240：排序链导出三帧（旧键兜底整序/分页态切排序裁决/抽屉字段级）（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 `Already up to date`
+（上游 tip `c1063feb` = 预期）、基线先跑 55/246 全绿 Errors 0、目标文件确认缺席再动笔。
+零产品文件改动。新增 knowledge.export.order.chain.test.tsx 三例（本体）。
+
+## 名实换算与现场裁决（引用不重写）
+
+```text
+排序真实键 ?ksort/?kdir、旧 ?sort/?dir 只读兜底（:3545-3546 实读）；**派工腿②「列表
+腿恰 +1」不成立**——:2344 归位依赖列含 sort/dir，实测 M=51 帧切 size 排序：**归位弃页
+（51→50、卷 51 出局、回 cap M=50）且零新请求**（R52 口径「第一页已在内存」）——裁决
+写进测试注释与本节；「旧 Blob 不残留」换算为 createObjectURL spy 全程 0 + 导出换代
+不含弃置行（无真 CSV——R190①）；腿③抽屉开 +1 详情读关 0（引 R49/R196/R236①），
+「零额外列表请求」只断言列表集合逐字。三腿全落详情面 -space- 族；51 行跨页夹具；
+cursor 从请求 URL 断言；cap 50/M 位引 R108。
+引用：R235①②（默认降序三方首行/叠加翻序 sorted-set——旧键深链与 51 帧未测）、
+R237②（切桶弃页——排序弃页同族首次）、R238/R239、R236①（三帧全文互等——同文档行
+**字段级**未显式）、R229①/R230/R232/R216①/R131①/R152/R172/R179/R142/R223/R164①:142。
+新增维（点名）：A 旧键深链三载体整序同帧（屏上名链==导出行名链==逐钮首段逐位）+
+  写侧负断言（ksort 不落、旧键原样——「只读兜底」的负半首次入锁）；
+B 分页态切排序的归位弃页裁决帧（钮 0..49 重建+cap M 回落+ksort=size 入 URL+urls
+  逐字+卷 51 不入导出）；C 抽屉开/关两帧同一文档行五列逐字段 toEqual + 格层 3 值==
+  列 1..3（30720→"30.0 KB"）+ 列表集合逐字。
+```
+
+## 三例读数与验证尾行（R240）
+
+```text
+① [小,大,中] 插入 → 屏上 [大档,中档,小档]、ksort null、loc 原样含 sort=size&dir=desc、
+  导出链==屏上、钮 0/1/2 首段逐位==names。② append P2 恰 1 → 切 size：ksort=size、
+  50 行、钮 [0..49]、cap「已加载 50 篇」、导出链==新屏上、无卷 51、urls join 逐字。
+  ③ 开帧大档行 [列1,2,3]==[type,size,updated 格]、size=="30.0 KB"、列 4 /^[A-Z0-9]+$/；
+  关帧同行五列 toEqual 开帧；listUrls 逐字。
+$ npx vitest run src/modules/knowledge → 56 files / 249 tests passed（246+3），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0；build /tmp/knw-r240-dist exit 0
+$ 全仓 → 382 files / 3260 passed 全绿（无已知红需点名）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knE-page-*/knF/knG/knI/knL*/kn-row-copy*/kn-row-copy-space*/
+kn-doc-copy*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent 标记 +
+既有 55 套全绿。过程自纠一处（③ mockClear 后索引错位→calls[0]，跑前发现于首测尾行），
+产品零触碰。
+```
+未测如实：带登录会话真屏；旧 dir 非法值兜底态（R118④ 地盘）；size 列首点落向方向
+（land-dir 具体值未钉——只锁链==屏上，方向由排序族 R172/R179 地盘）；切桶×切排序
+双动作叠加弃页链（R237② 单动作位外推）。
