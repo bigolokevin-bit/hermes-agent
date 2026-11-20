@@ -568,3 +568,14 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 - tab 序：`metAL-reset` 落在第 4 位（`metY-skiplink → metL-copy → met5-refresh → metAL-reset → metAK-refresh → …`），metQ 的落点断言已同步。
 - 验证：定向 `src/modules/metrics` **4 files / 198 passed**（原 195，+3）；全量 **145 files / 1813 passed**（原 1810）；`tsc -b . --noEmit` 全仓 67 条既存、`modules/metrics` 0；build `--outDir /tmp/build-metAL` → entry `assets/index-B1ZZIqPO.js` sha256 `f7ef98d9ff6a3cdce7aa6b50c8165d00ef19a2805c333bc671c0c2359b353fc4`，entry 内 `metAL-scope` 命中 0，chunk `assets/MetricsModulePage-iD1kX6Cz.js` 命中 1。
 - 未测项：375 下范围条多段换行的实际断点未人工走查；中文排序词在窄屏是否截断未走查。
+
+## 可用性矩阵（metAM，2026-11-20）
+
+把刷新、视图范围条与复位、两处导出、摘要复制、单卡重试收进同一张矩阵，由页面一处 `gates` 对象统一给出 `{enabled, title}`，各钮只读它，不再各自计算判据。
+
+- 整页失败（全部读口 down）：`metAK-refresh` 可点（唯一回退路）、`metAL-reset` 与视图切换可点；`met6-export`、`metA-export`、`metL-copy` 全 disabled，title 同为「整页读取失败…先重试上面的读取」。
+- 单块降级：刷新可点；明细导出按 metR 现口径仍可导（title 含「账本逐行」）、摘要可复制；出事那张卡的「重试这一项」可点。
+- 空窗：刷新、两处导出（header-only，计数「可导出 0 行」）、摘要复制都可用。
+- 刷新进行中：`metAK-refresh` 保持可点但 `aria-busy=true`，二次点击被闸门忽略、不叠加请求；导出、复制、复位、单卡重试统一 disabled，title 含「这一批」。
+
+屏上说明为 `metAM-matrix-note`（一行话覆盖四格）。验证：定向 `src/modules/metrics` **4 files / 202 passed**（原 198，+4）；全量 **145 files / 1817 passed**（原 1813）；`tsc` 全仓 67 条既存、`modules/metrics` 0；build entry `assets/index-dI2moWxe.js` sha256 `ebae4f11cb1e57aa55029db838fc6d61aebeb94d079fa259d97f63c130ebc255`（entry 内 metAM=0），chunk `MetricsModulePage-iw5R3p63.js` 命中 1。零额外请求：矩阵只读既有派生值，回显不触发取数。未测项：真浏览器 375 下说明行换行未走查。

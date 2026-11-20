@@ -4200,3 +4200,94 @@ describe('metAL — the scope line and one-click reset', () => {
     expect(urls().length - before).toBeLessThan(before);
   });
 });
+
+describe('metAM — one availability matrix for every action', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+  const btn = (id: string): HTMLButtonElement => q(id) as HTMLButtonElement;
+  const titleOf = (id: string): string => btn(id).getAttribute('title') ?? '';
+
+  async function clickRefresh(): Promise<void> {
+    await act(async () => {
+      btn('metAK-refresh').click();
+    });
+  }
+
+  const waitIdle = (): Promise<void> =>
+    waitFor(() => btn('metAK-refresh')?.getAttribute('aria-busy') !== 'true', 'refresh idle');
+
+  it('cell 1 — a page-wide failure leaves only the refresh reachable', async () => {
+    const down = (): Promise<never> => Promise.reject(new ApiError('down', { status: 500, body: '', url: 'down', requestId: 'req-metAM-down' }));
+    await mount(() => down());
+
+    expect(q('metAM-matrix-note')?.textContent).toContain('只留「刷新」可用');
+    // Refresh: reachable, because it is the way back.
+    expect(btn('metAK-refresh').disabled).toBe(false);
+    // Scope switching keeps working; only the batch is gone.
+    expect(btn('metAL-reset').disabled).toBe(false);
+    expect(q('metAL-scope')?.textContent).toContain('当前视图：');
+    // Exports and the summary stop together, with one shared reason.
+    expect(btn('met6-export').disabled).toBe(true);
+    expect(btn('metA-export').disabled).toBe(true);
+    expect(btn('metL-copy').disabled).toBe(true);
+    for (const id of ['met6-export', 'metA-export', 'metL-copy']) {
+      expect(titleOf(id)).toContain('整页读取失败');
+    }
+  });
+
+  it('cell 2 — one degraded block only stops the actions that use it', async () => {
+    await mount(usageRouter({ pricing: () => Promise.reject(new ApiError('down', { status: 500, body: '', url: 'price', requestId: 'req-metAM-price' })) }));
+
+    expect(btn('metAK-refresh').disabled).toBe(false);
+    expect(btn('met6-export').disabled).toBe(false);
+    expect(btn('metL-copy').disabled).toBe(false);
+    expect(q('metH-card-retry-price')).not.toBeNull();
+    expect(btn('metH-card-retry-price').disabled).toBe(false);
+    expect(titleOf('met6-export')).toContain('账本逐行');
+  });
+
+  it('cell 3 — an empty window still refreshes, exports a header and copies', async () => {
+    const emptyLedger = { items: [], missingEmployeeIds: [] };
+    await mount(usageRouter({ ledger: () => Promise.resolve(emptyLedger) }), '/metrics?window=7d');
+
+    expect(btn('metAK-refresh').disabled).toBe(false);
+    expect(btn('met6-export').disabled).toBe(false);
+    expect(btn('metA-export').disabled).toBe(false);
+    expect(btn('metL-copy').disabled).toBe(false);
+    expect(q('metA-export-count')?.textContent).toBe('可导出 0 行');
+  });
+
+  it('cell 4 — while a refresh runs every other action stands down', async () => {
+    let hold = false;
+    const pending: Array<() => void> = [];
+    const handler = usageRouter();
+    await mount((url: string) => {
+      if (!hold || !url.includes('run-stats')) return handler(url);
+      return new Promise<unknown>((resolve) => {
+        pending.push(() => resolve(handler(url)));
+      });
+    });
+
+    hold = true;
+    await clickRefresh();
+    await waitFor(() => btn('metAK-refresh').getAttribute('aria-busy') === 'true', 'busy');
+
+    expect(btn('metAK-refresh').disabled).toBe(false);
+    for (const id of ['met6-export', 'metA-export', 'metL-copy', 'metAL-reset']) {
+      expect(btn(id).disabled).toBe(true);
+      expect(titleOf(id)).toContain('这一批');
+    }
+
+    const before = urls().length;
+    await clickRefresh();
+    expect(urls().length).toBe(before);
+
+    for (let wave = 0; wave < 20 && pending.length > 0; wave += 1) {
+      await act(async () => {
+        pending.splice(0).forEach((fn) => fn());
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      });
+    }
+    await waitIdle();
+    expect(btn('met6-export').disabled).toBe(false);
+  });
+});

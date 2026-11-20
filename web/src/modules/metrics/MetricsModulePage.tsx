@@ -1651,6 +1651,61 @@ export function MetricsModulePage() {
     void copyTextToClipboard(text).then((ok) => setSummaryStatus(ok ? 'done' : 'failed'));
   };
 
+  // metAM — every action on this page asks one object for its availability, so a
+  // single failing batch can never leave one button dead and its twin alive.
+  type Gate = { enabled: boolean; title: string | null };
+  const gates: {
+    refresh: Gate;
+    scope: Gate;
+    detailExport: Gate;
+    shareExport: Gate;
+    copySummary: Gate;
+    cardRetry: Gate;
+  } = {
+    // The refresh button stays reachable while it runs: it is the one control
+    // that ignores a second click instead of going dim.
+    refresh: { enabled: true, title: refreshBusy ? '这一批还在读，按钮不会重复发请求。' : '重新读取当前窗口与当前分组的全部读口。' },
+    scope: { enabled: !refreshBusy, title: refreshBusy ? '刷新进行中，视图切换等这一批结束。' : null },
+    detailExport: {
+      enabled: !refreshBusy && !pageFailed,
+      title: refreshBusy
+        ? '刷新进行中，导出等这一批结束。'
+        : pageFailed
+          ? '整页读取失败，这份导出暂时不生成；先重试上面的读取，读到数据再导。'
+          : exportable
+            ? '导出明细 CSV：当前窗口与当前分类下账本逐行的实扣明细，不是分摊汇总。'
+            : '当前窗口没有明细行：导出的文件只写表头，缺块会在末尾注明。',
+    },
+    shareExport: {
+      enabled: !refreshBusy && !pageFailed && shareView.kind === 'ready',
+      title: refreshBusy
+        ? '刷新进行中，导出等这一批结束。'
+        : pageFailed
+          ? '整页读取失败，这份导出暂时不生成；先重试上面的读取，读到数据再导。'
+          : shareView.kind === 'loading'
+            ? '分摊数据还在读取，读到之后才能导出。'
+            : shareView.kind === 'unavailable'
+              ? `这份分摊现在读不到，导出暂不生成：${shareView.reason}`
+              : shareRows.length === 0
+                ? '当前视图没有分摊行：导出的文件只写表头，计数仍显示 0 行。'
+                : '导出分摊 CSV：当前窗口、分组与排序下的聚合行，含成本与占比，不是账本逐行明细。',
+    },
+    copySummary: {
+      enabled: !refreshBusy && !pageFailed && usageView.kind === 'ready',
+      title: refreshBusy
+        ? '刷新进行中，摘要等这一批结束。'
+        : pageFailed
+          ? '整页读取失败，摘要里的数字不完整，先重试上面的读取。'
+          : usageView.kind !== 'ready'
+            ? '还没读到运行数据，读到之后才能复制摘要。'
+            : '把当前窗口的关键数字复制成纯文本。',
+    },
+    cardRetry: {
+      enabled: !refreshBusy,
+      title: refreshBusy ? '刷新进行中，单卡重试等这一批结束。' : null,
+    },
+  };
+
   return (
     <main className="met5-page" id="metY-main" tabIndex={-1} data-testid="met5-page">
       <a className="metY-skip" href="#metY-main" data-testid="metY-skiplink">
@@ -1675,14 +1730,8 @@ export function MetricsModulePage() {
           <Button
             size="sm"
             outlined
-            disabled={pageFailed || usageView.kind !== 'ready'}
-            title={
-              pageFailed
-                ? '整页读取失败，摘要里的数字不完整，先重试上面的读取。'
-                : usageView.kind !== 'ready'
-                  ? '还没读到运行数据，读到之后才能复制摘要。'
-                  : '把当前窗口的关键数字复制成纯文本。'
-            }
+            disabled={!gates.copySummary.enabled}
+            title={gates.copySummary.title ?? undefined}
             onClick={copySummary}
             data-testid="metL-copy"
           >
@@ -1719,10 +1768,21 @@ export function MetricsModulePage() {
         <p className="metAL-scope" data-testid="metAL-scope">
           {scopeLine}
         </p>
-        <Button size="sm" outlined onClick={resetScope} data-testid="metAL-reset">
+        <Button
+            size="sm"
+            outlined
+            disabled={!gates.scope.enabled}
+            title={gates.scope.title ?? undefined}
+            onClick={resetScope}
+            data-testid="metAL-reset"
+          >
           回到默认视图
         </Button>
       </div>
+
+      <p className="metAM-note" data-testid="metAM-matrix-note">
+        可用性一句话：整页都读不出来的时候，只留「刷新」可用，导出与复制一起停下；只有某一块读不出来的时候，用到它的导出与复制停下，单卡重试照常；时间窗没有数据时，导出只写表头、复制照常；刷新进行中，除刷新本身外都不点，刷新也不会重复发请求。
+      </p>
 
       <div className="metAK-bar" data-testid="metAK-bar">
         <Button
@@ -1900,7 +1960,7 @@ export function MetricsModulePage() {
                       <GapRid id={usageReady.stats.requestId} testId="metD-gap-rid-runs" />
                     </p>
                     <CardRetryButton
-                      busy={retryingBlock === 'stats'}
+                      busy={refreshBusy || retryingBlock === 'stats'}
                       onClick={() => void retryUsageBlock('stats')}
                       testId="metH-card-retry-runs"
                     />
@@ -1951,7 +2011,7 @@ export function MetricsModulePage() {
                       <GapRid id={usageReady.day.requestId} testId="metD-gap-rid-cost" />
                     </p>
                     <CardRetryButton
-                      busy={retryingBlock === 'day'}
+                      busy={refreshBusy || retryingBlock === 'day'}
                       onClick={() => void retryUsageBlock('day')}
                       testId="metH-card-retry-cost"
                     />
@@ -1964,7 +2024,7 @@ export function MetricsModulePage() {
                       <GapRid id={usageReady.month.requestId} testId="metH-gap-rid-month" />
                     </p>
                     <CardRetryButton
-                      busy={retryingBlock === 'month'}
+                      busy={refreshBusy || retryingBlock === 'month'}
                       onClick={() => void retryUsageBlock('month')}
                       testId="metH-card-retry-month"
                     />
@@ -2056,7 +2116,7 @@ export function MetricsModulePage() {
                       <GapRid id={usageReady.stats.requestId} testId="metD-gap-rid-trend" />
                     </p>
                     <CardRetryButton
-                      busy={retryingBlock === 'stats'}
+                      busy={refreshBusy || retryingBlock === 'stats'}
                       onClick={() => void retryUsageBlock('stats')}
                       testId="metH-card-retry-trend"
                     />
@@ -2103,7 +2163,7 @@ export function MetricsModulePage() {
                       <GapRid id={usageReady.pricing.requestId} testId="metD-gap-rid-price" />
                     </p>
                     <CardRetryButton
-                      busy={retryingBlock === 'pricing'}
+                      busy={refreshBusy || retryingBlock === 'pricing'}
                       onClick={() => void retryUsageBlock('pricing')}
                       testId="metH-card-retry-price"
                     />
@@ -2138,14 +2198,8 @@ export function MetricsModulePage() {
                 <Button
                   size="sm"
                   outlined
-                  disabled={pageFailed}
-                  title={
-                    pageFailed
-                      ? '整页读取失败，这份导出暂时不生成；先重试上面的读取，读到数据再导。'
-                      : exportable
-                        ? '导出明细 CSV：当前窗口与当前分类下账本逐行的实扣明细，不是分摊汇总。'
-                        : '当前窗口没有明细行：导出的文件只写表头，缺块会在末尾注明。'
-                  }
+                  disabled={!gates.detailExport.enabled}
+                  title={gates.detailExport.title ?? undefined}
                   onClick={exportCsv}
                   data-testid="met6-export"
                 >
@@ -2656,18 +2710,8 @@ export function MetricsModulePage() {
               <Button
                 size="sm"
                 outlined
-                disabled={pageFailed || shareView.kind !== 'ready'}
-                title={
-                  pageFailed
-                    ? '整页读取失败，这份导出暂时不生成；先重试上面的读取，读到数据再导。'
-                    : shareView.kind === 'loading'
-                      ? '分摊数据还在读取，读到之后才能导出。'
-                      : shareView.kind === 'unavailable'
-                        ? `这份分摊现在读不到，导出暂不生成：${shareView.reason}`
-                        : shareRows.length === 0
-                          ? '当前视图没有分摊行：导出的文件只写表头，计数仍显示 0 行。'
-                          : '导出分摊 CSV：当前窗口、分组与排序下的聚合行，含成本与占比，不是账本逐行明细。'
-                }
+                disabled={!gates.shareExport.enabled}
+                title={gates.shareExport.title ?? undefined}
                 onClick={exportShare}
                 data-testid="metA-export"
               >
@@ -2946,7 +2990,7 @@ export function MetricsModulePage() {
               <RequestId id={view.requestId} />
             </div>
             <div className="metH-card-acts">
-              <CardRetryButton busy={false} onClick={retryHeat} testId="metH-card-retry-heat" />
+              <CardRetryButton busy={refreshBusy} onClick={retryHeat} testId="metH-card-retry-heat" />
               <Button size="sm" outlined onClick={() => setAttempt((value) => value + 1)} data-testid="met5-retry">
                 全部重试
               </Button>
