@@ -455,7 +455,10 @@ describe("decision writes", () => {
     expect(text()).toContain("决定没有提交");
     expect(text()).toContain("这张单据不归你审批");
     expect(text()).toContain("请求编号：wr-7791");
-    expect(text()).not.toContain("403");
+    // 时钟竞态修复（R231 全量抓到）：导出文件名预览的北京时间 HHmm
+    // 恰在 04:03/04:04/14:03/14:03 分时含「403/404」子串——剥掉文件名
+    // token 再断言，语义不变（状态码不上屏），不再按分钟翻红。
+    expect(text().replace(/-\d{8}-\d{4}\.csv/g, "")).not.toContain("403");
     // No optimistic move: the ticket still reads 待处理 and the queue was not rewritten.
     expect(text()).toContain("待处理");
     expect(urls().filter((u) => u.startsWith("/agent-api/api/approvals"))).toHaveLength(listBefore);
