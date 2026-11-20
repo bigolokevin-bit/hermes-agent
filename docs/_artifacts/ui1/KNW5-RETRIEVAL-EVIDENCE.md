@@ -3275,3 +3275,62 @@ kn-space-preview/knE-page-*/kn3-page-cap/kn-type 全族通过。
 边界：只新增 web/src/modules/knowledge/knowledge.type.filter.test.tsx 与本证据；
 显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
 「test(console): knowledge type filter guards」。
+
+# KNW5 追加 R149：预览与列表两条链的请求契约护栏（纯测试单）（2026-11-20 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `c37e6d49`
+（wave-36 并入）。零产品文件改动。
+
+## 查重判定（先 git grep 后写，锁过的不重写）
+
+```text
+已覆盖（贴行）：
+· ①首屏恰 1 次 documents?…spaceId 且不带 cursor —— 主测 knE 段
+  KnowledgeModulePage.test.tsx:2531「第一页绝不带 cursor：还是那一次 documentsUrl 读取」；
+· ②cursor 原值 URL 与「翻页恰 1 次」——主测 :2510/:2554（P2URL 字面 cursor=c2、
+  filter 后 urls===1）；行追加非替换——主测 B 段 rowCount 2→3；
+· ③行内预览开/关列表快照 toEqual、抽屉打开 +1（R49 详情读）/开着零追加/关闭零增量/
+  同文档开关不叠加——knowledge.parity.test.tsx:176-207（R125 C 段）已逐档锁。
+真缺口（本文件 2 例补）：
+· ②跨页「部分重叠」的 id 去重并回（loadMore seen/fresh：主测 E 段只锁整页重复落 stale，
+  正常部分重叠零 pin）+ 去重后 行数==cap-M==data-len==knF 数据行 的三元相等；
+  末页 disabled 点击零请求（R131② 只锁 disabled 态与文案，未锁点击行为面）；
+· ④抽屉 doc=a↔doc=b 跨文档切换（R125 只测同文档开关）：列表集合逐字不变、
+  两文档详情读各恰 1 次且 URL 指向自身、行数不动、关闭零增量。
+```
+
+## 关键读数
+
+```text
+②翻页增量恰 ["…limit=50&spaceId=sp_x&cursor=pg2"]（上一页 nextCursor 原值逐字）；
+  page2 [d_b 重叠, d_c 新] → 3 行、B 表单份；cap 句逐字「本页最多显示 50 篇
+  （当前已加载 3 篇；复制清单也只含这些篇）」（50 为常量位）、data-len "3"、
+  knF 数据行 3——四读互等；末页 more disabled=true，点击 urls 计数不动。
+④开 A：urls 增量恰 ["/agent-api/api/documents/d_a"]；切 B：增量恰 ["…/d_b"]、
+  d_a 读计数保持 1（不重发）、行数 2 不变、列表三 URL 集合逐字等；关抽屉零增量。
+四处名实映射照派工落：cap 的 N=50 常量位/M 可变位；抽屉链非零（+1 详情读为 R49
+既有设计，行内预览链 0）；翻页控件全族 knE-page-*；cursor 只从请求 URL 断言（不落
+URL 参数，R118 已锁）。
+```
+
+## 验证尾行（R149）
+```text
+$ npx vitest run src/modules/knowledge   → 11 files / 113 tests passed（基线 111 + 2）
+$ npx vitest run                         → 216 files / 2666 passed | 7 failed
+  ⚠️ 7 失败全在 audit.filters.test.tsx(4)+runs.filters.test.tsx(3)——两文件由本次并入的
+  上游 wave（代次 `5c28f5d3` 等）自带，audit 单跑独立复现失败；与本单零耦合（本单写域
+  仅 knowledge 一个测试文件 + 证据，audit 不 import knowledge）。按纪律如实记录、不追
+  非本域修复。knowledge 域 11/113 全绿。
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning；本单曾有
+  1 条 unused(urlsSnapshot) error 提交前清零）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r149-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn3*/kn6*/kn-row-copy*/kn-doc-copy*/knB/knD/knF/knG/knI/knL/kn-sort/kn-gates/
+kn-space-preview/knE-page-*/kn3-page-cap/kn-type 全族通过。
+```
+未测如实：带登录会话真实翻页屏（重叠页/末页以 mock 信封代证）；抽屉链真实 200 详情信封
+（本夹具详情 404 未接入态——读次数与 URL 指向的契约与信封形状无关）。
+边界：只新增 web/src/modules/knowledge/knowledge.requests.test.tsx 与本证据；显式路径 add；
+无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「test(console): knowledge request contract guards」。
