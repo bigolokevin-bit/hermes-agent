@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useLocation } from "react-router";
 import { PageHeaderContext } from "./page-header-context";
-import { resolvePageTitle } from "@/lib/resolve-page-title";
+import { isConsoleShellPath, resolvePageTitle } from "@/lib/resolve-page-title";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n";
 
@@ -38,6 +38,14 @@ export function PageHeaderProvider({
   /** Env jump-nav is wide — stack below title on small screens so KEYS stays readable. */
   const isEnvRoute =
     pathname === "/env" || pathname.startsWith("/env/");
+  /** Design lane ③: console-shell pages carry their own Chinese breadcrumb
+   * (shell/console.tsx) — the global header drops the English/duplicate
+   * title <h1> there. A page-set title still wins; the bar, its actions and
+   * layout stay untouched. */
+  const hideTitle = useMemo(
+    () => isConsoleShellPath(pathname) && titleOverride === null,
+    [pathname, titleOverride],
+  );
 
   const value = useMemo(
     () => ({
@@ -79,18 +87,20 @@ export function PageHeaderProvider({
                     : "flex-row items-center",
               )}
             >
-              <h1
-                className={cn(
-                  "font-expanded min-w-0 text-sm font-bold tracking-[0.08em] text-midground",
-                  afterTitle && isEnvRoute
-                    ? "max-w-full sm:min-w-0 sm:shrink sm:truncate"
-                    : afterTitle
-                      ? "shrink truncate"
-                      : "truncate",
-                )}
-              >
-                {displayTitle}
-              </h1>
+              {hideTitle ? null : (
+                <h1
+                  className={cn(
+                    "font-expanded min-w-0 text-sm font-bold tracking-[0.08em] text-midground",
+                    afterTitle && isEnvRoute
+                      ? "max-w-full sm:min-w-0 sm:shrink sm:truncate"
+                      : afterTitle
+                        ? "shrink truncate"
+                        : "truncate",
+                  )}
+                >
+                  {displayTitle}
+                </h1>
+              )}
               {afterTitle ? (
                 <div
                   className={cn(

@@ -62,6 +62,7 @@ import {
   useFixtureState,
 } from "./fixtures";
 import EmployeeDetailWorkbench from "../modules/employee-detail/EmployeeDetailWorkbench";
+import { ConsoleButton } from "./ConsoleButton";
 import { copyTextToClipboard } from "@/lib/clipboard";
 
 /* ------------------------------------------------------------------ *
@@ -145,31 +146,30 @@ const shellStyle = {
 const NO_TRACE_COPY = "本次请求未记录编号，可复制时间与操作路径反馈";
 
 /* T42 item 1: every forced-state block must offer a real exit — 重试 reloads
- * the page, 返回 walks the history back. Native buttons keep the shell's
- * zero-UI-import idiom (R7.1 discipline). */
+ * the page, 返回 walks the history back. The exits are shell-local
+ * ConsoleButtons (二级 描边), keeping the R7.1 zero-UI-import discipline and
+ * dropping the display-face tracking the DS button would have added. */
 function StateActions({ retry }: { retry: boolean }) {
   return (
     <span className="mt-2 flex flex-wrap items-center justify-center gap-2">
       {retry ? (
-        <button
-          type="button"
+        <ConsoleButton
+          variant="secondary"
+          size="sm"
           data-testid="state-retry"
           onClick={() => window.location.reload()}
-          className="rounded-sm px-3 py-1 text-xs"
-          style={{ background: "var(--panel)", border: "1px solid var(--line)", color: "var(--fg)" }}
         >
           重试
-        </button>
+        </ConsoleButton>
       ) : null}
-      <button
-        type="button"
+      <ConsoleButton
+        variant="secondary"
+        size="sm"
         data-testid="state-back"
         onClick={() => window.history.back()}
-        className="rounded-sm px-3 py-1 text-xs"
-        style={{ background: "var(--panel)", border: "1px solid var(--line)", color: "var(--fg)" }}
       >
         返回
-      </button>
+      </ConsoleButton>
     </span>
   );
 }
@@ -189,17 +189,17 @@ function StateRid({ rid }: { rid: string | null }) {
       <code data-testid="state-rid" className="font-mono" style={{ color: "var(--fg)" }}>
         {rid}
       </code>
-      <button
-        type="button"
+      <ConsoleButton
+        variant="ghost"
+        size="sm"
         data-testid="state-rid-copy"
         onClick={() => {
           void copyTextToClipboard(rid).then(setCopied);
         }}
-        className="rounded-sm px-1.5 py-0.5 text-[11px]"
-        style={{ background: "var(--panel)", border: "1px solid var(--line)", color: "var(--fg-2)" }}
+        className="px-1.5 py-0.5 text-[11px]"
       >
         {copied ? "已复制" : "复制"}
-      </button>
+      </ConsoleButton>
     </span>
   );
 }

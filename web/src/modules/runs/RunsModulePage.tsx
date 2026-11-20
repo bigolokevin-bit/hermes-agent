@@ -115,6 +115,7 @@ import { forcedStateOf, useRunsData } from "./useRunsData";
 import { useRunDetail, type DetailOutcome } from "./useRunDetail";
 import { COST_CALIBER_TEXT, costCaliberTitle } from "../metrics/costCaliberNote";
 import { RUN_NOTES_TITLE, RUN_NOTE_ROWS } from "./runNotes";
+import { ConsoleSelect } from "@/shell/ConsoleSelect";
 
 /** 「—」 with the reason in its title: a gap reads as a gap, never as a zero. */
 function Dashed({ reason }: { reason: string }): ReactNode {
@@ -500,7 +501,7 @@ function SortHeader({
       <button
         type="button"
         data-testid={`run-sort-${sortKey}`}
-        className="min-w-0 break-words text-left uppercase tracking-wide underline-offset-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-60"
+        className="min-w-0 break-words text-left underline-offset-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-60"
         aria-label={`按${label}排序${isActive ? (dir === "asc" ? "（当前升序）" : "（当前降序）") : ""}`}
         title={disabled ? "这一页还没有读出行，暂时不能排序。" : isActive ? "再点一次换方向；只在已加载的行内排序。" : "在这一页已加载的行内排序。"}
         disabled={disabled}
@@ -566,7 +567,7 @@ function ListRows({
   return (
     <Card className="min-w-0 border-border bg-card" data-testid="run5-table">
       <CardContent className="p-0">
-        <div className={`hidden ${GRID} border-b border-border px-4 py-2 text-xs uppercase tracking-wide text-muted-foreground sm:grid`}>
+        <div className={`hidden ${GRID} border-b border-border px-4 py-2 text-xs text-muted-foreground sm:grid`}>
           <span>运行</span>
           <SortHeader label="状态" sortKey="status" active={sortKey} dir={sortDir} onSort={onSort} disabled={sortDisabled} />
           <SortHeader label="开始" sortKey="started" active={sortKey} dir={sortDir} onSort={onSort} disabled={sortDisabled} />
@@ -1275,22 +1276,21 @@ export function RunsModulePage() {
           </div>
           <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="run5-filter-status">
             <span className="text-muted-foreground">状态</span>
-            <select
+            <ConsoleSelect
               id="run5-filter-status"
               data-testid="run5-filter-status"
               className="h-8 min-w-0 max-w-40 rounded-md border border-border bg-transparent px-2 text-sm"
               value={status ?? ""}
               title={isForced ? forcedTitle : "换状态会重新向服务要一次数据"}
-              onChange={(event) => {
+              onChange={(next) => {
                 refreshState.cancel();
-                setParam("status", event.target.value || null);
+                setParam("status", next || null);
               }}
-            >
-              <option value="">全部状态</option>
-              {STATUS_KEYS.map((key) => (
-                <option key={key} value={key}>{statusLabel(key)}</option>
-              ))}
-            </select>
+              options={[
+                { value: "", label: "全部状态" },
+                ...STATUS_KEYS.map((key) => ({ value: key, label: statusLabel(key) })),
+              ]}
+            />
           </label>
           <Button
             size="sm"

@@ -45,6 +45,7 @@ import {
   type MoneyCell,
   type UsageWindowKey,
 } from "./usage";
+import { ConsoleSelect } from "@/shell/ConsoleSelect";
 
 /** 请求编号's own honest word when the answer carried none. */
 const NO_REQUEST_ID = "未提供";
@@ -292,21 +293,16 @@ export function UsagePage() {
       <h1 className="min-w-0 break-words font-mondwest text-xl">用量与成本</h1>
       <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="usg4-window">
         <span className="text-white/50">统计窗口</span>
-        <select
+        <ConsoleSelect
           id="usg4-window"
           data-testid="usg4-window"
           className="h-8 min-w-0 max-w-40 rounded-md border border-white/15 bg-transparent px-2 text-sm"
           value={windowKey}
           disabled={isForced}
           title={isForced ? FORCED_TITLE : undefined}
-          onChange={(event) => setWindowKey(event.target.value as UsageWindowKey)}
-        >
-          {USAGE_WINDOWS.map((item) => (
-            <option key={item.key} value={item.key}>
-              {item.label}
-            </option>
-          ))}
-        </select>
+          onChange={(next) => setWindowKey(next as UsageWindowKey)}
+          options={USAGE_WINDOWS.map((item) => ({ value: item.key, label: item.label }))}
+        />
       </label>
       <Button
         size="sm"

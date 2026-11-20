@@ -295,7 +295,7 @@ export function MatrixModulePage() {
             <div className="overflow-x-auto" data-testid="mtx5-scroll">
               <div className="min-w-[720px]">
                 <div
-                  className="grid items-center gap-2 border-b border-white/10 pb-2 text-[11px] uppercase tracking-wide text-white/40"
+                  className="grid items-center gap-2 border-b border-white/10 pb-2 text-[11px] text-white/40"
                   style={{ gridTemplateColumns: `minmax(180px, 1.4fr) repeat(${data.columns.length}, minmax(96px, 1fr))` }}
                 >
                   <span>{view === "people" ? "员工" : "能力"}</span>

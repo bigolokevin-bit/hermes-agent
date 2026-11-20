@@ -32,6 +32,7 @@ vi.mock("@/lib/api", () => ({
 }));
 
 import { EmployeesModulePage } from "./EmployeesModulePage";
+import { pickOption, selectValue } from "@/shell/selectHarness";
 
 let container: HTMLDivElement;
 let root: Root | null = null;
@@ -148,9 +149,8 @@ describe("R115 employees filter URL contract", () => {
       flushTimers();
     });
     await act(async () => {});
-    const select = q("employees-lifecycle") as HTMLSelectElement;
     const input = q("employees-search") as HTMLInputElement;
-    expect(select.value, "lifecycle deep link backfills the select").toBe("paused");
+    expect(selectValue("employees-lifecycle"), "lifecycle deep link backfills the select").toBe("paused");
     expect(input.value, "q deep link backfills the search box").toBe("小鲤");
     const calls = urls.employees();
     expect(calls, "exactly one query on entry").toHaveLength(1);
@@ -179,11 +179,8 @@ describe("R115 employees filter URL contract", () => {
     expect(urls.employees().some((u) => u.includes("cursor=c-page-2")), "the cursor was used").toBe(true);
     expect(document.querySelectorAll('[data-testid^="emp-l-row-"]')).toHaveLength(3);
     urls.all.length = 0;
-    const select = q("employees-lifecycle") as HTMLSelectElement;
-    const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set;
+    await pickOption("employees-lifecycle", "在岗");
     await act(async () => {
-      setter?.call(select, "active");
-      select.dispatchEvent(new Event("change", { bubbles: true }));
       flushTimers();
     });
     await act(async () => {});

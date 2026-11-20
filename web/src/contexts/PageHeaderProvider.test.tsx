@@ -9,7 +9,10 @@ import ChannelsPage from "@/pages/ChannelsPage";
 import FilesPage from "@/pages/FilesPage";
 
 vi.mock("@/i18n", () => ({ useI18n: () => ({ t: { common: { cancel: "Cancel", delete: "Delete" } } }) }));
-vi.mock("@/lib/resolve-page-title", () => ({ resolvePageTitle: (path: string) => path }));
+vi.mock("@/lib/resolve-page-title", () => ({
+  resolvePageTitle: (path: string) => path,
+  isConsoleShellPath: () => false,
+}));
 vi.mock("@/lib/api", () => ({
   api: {
     getMessagingPlatforms: vi.fn(async () => ({ platforms: [] })),
