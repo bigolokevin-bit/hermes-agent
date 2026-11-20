@@ -3973,3 +3973,56 @@ kn3-page-cap/knE-page-*/导出标记 全族通过。
 边界：只新增 web/src/modules/knowledge/knowledge.export.escape.test.tsx 与本证据；
 显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
 「test(console): knowledge export csv escaping guards」。
+
+# KNW5 追加 R196：预览请求契约余量护栏（纯测试单）（2026-11-20 BJT）
+
+安全门：porcelain 空起做（HEAD 即 R190 链）、显式 refspec fetch 后 merge 实测 tip
+即预期 `cecbd1f1`（知识面 delta 空）。零产品文件改动（无新缺陷可修——R149/R125C/
+R183/R187 的既有断言全绿，未暴露真缺陷）。
+
+## 分面查重（brief 对齐 #1/#2/#3/#5 的引用行号）
+
+```text
+①首屏恰 1 次 spaceId 读、无 cursor= —— 主测 knE 段 :2531 已锁 → 引用。
+②分面陈述：行内预览 kn-doc-preview-* 与检索展开 kn6-search-detail = **0 请求**
+  （knowledge.requests.test.tsx ③ R149 快照逐字 + R125B）；遮罩抽屉 kn7-preview-*
+  （?doc=）= 打开**恰 +1** 详情读、开着零追加、关闭零增量、重开不叠加
+  （knowledge.parity.test.tsx:180-199 R125C）——绝不把行内报成 +1。
+③doc=a↔b 列表集合逐字不变 + 详情各 1 —— knowledge.requests.test.tsx ④:149-166
+  （R149）已锁 → 引用；抽屉标题跟随 = 真缺口，新写。
+④关闭零请求已锁（R125C/R149）；「开关一轮后行序与 kn-row-copy-space id 序列
+  原样」= 真缺口（indexBase 全局序在交互间稳定的消费侧），新写。
+⑤失败路径（可读句+rid+重试恰 +1 且指向本文档 URL）—— knowledge.detail.error.test.tsx ③
+  （R183）已锁 → 引用。
+```
+
+## 新写两例读数（knowledge.preview.requests.test.tsx）
+
+```text
+③开 A：kn7-preview-title 逐字「A 手册.pdf」（标题源=row?.name，非 id）；切 B：
+  逐字变「B 表.xlsx」；detailUrl("d_a")/("d_b") 各恰 1 次。
+④行内开 A→关→开 B→关 全轮：urls() 排序快照与开前逐字相等（零新请求、全程无
+  cursor=、无详情读）、kn3-docs-name 行序数组开前=开后、行钮 testid 序列
+  [space-0, space-1] 前后逐字等；且行内预览全程 kn7-preview-title 为 null
+  （行内面不冒充抽屉标题——分面口径）。
+```
+
+## 验证尾行（R196）
+```text
+$ npx vitest run src/modules/knowledge   → 22 files / 145 tests passed（基线 143 + 2）
+$ npx vitest run                         → 255 files / 2857 tests passed 全绿（无豁免项）
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r196-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn-doc-preview*/kn-space-preview*/kn3*/kn-row-copy*/kn-doc-copy*/kn6-search-detail*/
+kn7-preview-*/kn3-page-cap/knE-page-* 与既有 21 套知识面全绿。
+请求口径：本轮两例全程增量仅 render 期既有读取（③每文档详情 +1 为 R49 既有设计）；
+④整轮零新增（快照逐字）。
+```
+未测如实：带登录会话真实屏（详情 200 真实信封未接——与 R183/R187 同法 mock 代证）；
+「预览内切换」若指行内预览在两行间的直接互切（产品为单开互斥、点击另一行 toggle 即换）
+已由 ④ 的开合两轮覆盖同族路径。
+边界：只新增 web/src/modules/knowledge/knowledge.preview.requests.test.tsx 与本证据；
+显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「test(console): knowledge preview request guards」。
