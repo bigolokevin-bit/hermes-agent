@@ -1554,6 +1554,14 @@ export function docLine(doc: DocRow): string {
 
 export const DOC_COPY_HEADER = DOC_LINE_HEADER;
 
+/**
+ * R114 — 单文档行复制（行预览 kn-doc-preview / 检索命中展开块 kn6-search-detail 两处共用）：
+ * 一行表头 + 该文档一行，行体逐字走 docLine——与清单复制同派生，禁第二套格式。
+ */
+export function docSingleCopy(doc: DocRow): string {
+  return `${DOC_LINE_HEADER.join(" | ")}\n${docLine(doc)}\n`;
+}
+
 export function docCopyText(rows: DocRow[]): string {
   const lines = [DOC_COPY_HEADER.join(" | "), ...rows.map(docLine)];
   return `${lines.join("\n")}\n`;

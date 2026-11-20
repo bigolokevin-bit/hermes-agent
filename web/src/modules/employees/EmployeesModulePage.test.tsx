@@ -487,7 +487,7 @@ describe("R64 employees list copy as text (emp-list-copy)", () => {
     expect(fetchJSON.mock.calls.length, "copy never fetches").toBe(callsBefore);
     expect(written.length).toBe(1);
     const lines = written[0].split("\n");
-    expect(lines[0]).toBe("name,employee_no,lifecycle,last_active");
+    expect(lines[0]).toBe("name,employee_no,lifecycle,last_active,department");
     expect(lines).toHaveLength(3); // 表头 + 屏上 2 人
     expect(lines[1]).toContain("小鲤");
     expect(lines[1]).toContain("员工 · 217A91BA");
@@ -728,10 +728,10 @@ describe("R66 employees list CSV export (emp-list-export)", () => {
     expect(fetchJSON.mock.calls.length, "export never fetches").toBe(callsBefore);
     const lines = raw.replace(/^\uFEFF/, "").split("\r\n").filter((l) => l !== "");
     expect(lines).toHaveLength(3); // 表头 + 屏上 2 人
-    expect(lines[0]).toBe("name,employee_no,lifecycle,last_active");
+    expect(lines[0]).toBe("name,employee_no,lifecycle,last_active,department");
     expect(lines[1]).toContain('"小鲤, 带头"'); // RFC4180 逗号转义
     expect(lines[1]).toContain("员工 · 217A91BA");
-    expect(lines[2].endsWith(",")).toBe(true); // last_active 缺=空字段（非「—」非 0）
+    expect(lines[2].endsWith(",增长组")).toBe(true); // R110：末列=部门真值；last_active 缺=空字段（非「—」非 0）
     expect(lines[2]).toContain("待核实"); // weird_state 人话
     // Blob.text() 按规范剥离前导 BOM，字节级验证 Excel 兼容头
     expect(Array.from(await stub.head())).toEqual([0xef, 0xbb, 0xbf]);
@@ -1059,5 +1059,68 @@ describe("R96 department caliber parity (emp-list-dept-*)", () => {
     expect(unlabeled, "unlabeled bucket").toBeTruthy();
     expect(unlabeled?.textContent).toContain("2");
     expect(unlabeled?.getAttribute("title")).toContain("只看没有部门信息的行");
+  });
+});
+
+describe("R110 copy and export department column", () => {
+  const deptRows = {
+    items: [
+      { employeeId: "emp_DDD11122223333", name: "甲", lifecycleState: "active", updatedAt: "2026-11-18T05:52:48.030Z", department: "增长组" },
+      { employeeId: "emp_DDD11122223334", name: "乙", lifecycleState: "active", updatedAt: "2026-11-18T05:52:48.030Z", department: null },
+      { employeeId: "emp_DDD11122223335", name: "丙", lifecycleState: "active", updatedAt: "2026-11-18T05:52:48.030Z" },
+    ],
+  };
+  const DEPT_STATES = ["增长组", "未标注部门", "该字段未返回"];
+
+  it("copy and CSV carry the same departmentView three-state string per row with zero requests", async () => {
+    fetchJSON.mockImplementation(() => Promise.resolve(deptRows));
+    await render("/employees");
+    await act(async () => {
+      flushTimers();
+    });
+    const before = fetchJSON.mock.calls.length;
+
+    const written: string[] = [];
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async (text: string) => {
+          written.push(text);
+        },
+      },
+    });
+    await act(async () => {
+      (q("emp-list-copy") as HTMLButtonElement).click();
+    });
+    const copyLines = written[0].split("\n");
+    expect(copyLines[0]).toBe("name,employee_no,lifecycle,last_active,department");
+    expect(copyLines.slice(1).map((line) => line.split(",").at(-1))).toEqual(DEPT_STATES);
+
+    let captured: Blob | null = null;
+    const saved = URL.createObjectURL;
+    const savedRevoke = URL.revokeObjectURL;
+    URL.createObjectURL = ((b: Blob) => {
+      captured = b;
+      return "blob:mock";
+    }) as typeof URL.createObjectURL;
+    URL.revokeObjectURL = (() => undefined) as typeof URL.revokeObjectURL;
+    try {
+      await act(async () => {
+        (q("emp-list-export") as HTMLButtonElement).click();
+      });
+      const csvText = await (captured as Blob).text();
+      const csvLines = csvText.replace(/^\uFEFF/, "").split("\r\n").filter((line) => line !== "");
+      expect(csvLines[0]).toBe(copyLines[0]);
+      expect(csvLines.slice(1).map((line) => line.split(",").at(-1))).toEqual(DEPT_STATES);
+      // 逐行 department 列：复制与 CSV 同串。
+      for (let i = 1; i <= 3; i += 1) {
+        expect(csvLines[i].split(",").at(-1)).toBe(copyLines[i].split(",").at(-1));
+      }
+      expect(csvLines.length).toBe(4); // header + 屏上 3 行=同源
+    } finally {
+      URL.createObjectURL = saved;
+      URL.revokeObjectURL = savedRevoke;
+    }
+    expect(fetchJSON.mock.calls.length).toBe(before);
   });
 });
