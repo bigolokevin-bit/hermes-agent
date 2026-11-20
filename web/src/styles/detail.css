@@ -289,6 +289,17 @@
   padding: 0 0 var(--space-2);
 }
 
+/* 头部右侧带按钮时按顶对齐，不让按钮坐在标题基线上 */
+.ui-c-head--start {
+  align-items: flex-start;
+}
+
+/* 跨满整行的字段（长文本、上游引用这类），不跟列数较劲 */
+.ui-c-field--span {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
 /* 区块之间一条令牌分隔线；标题在左，复制/导出入口收到同排右上 */
 .ui-c-section {
   display: flex;
