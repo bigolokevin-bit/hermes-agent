@@ -3382,3 +3382,70 @@ kn-space-preview/knE-page-*/kn3-page-cap/kn-type 全族通过。
 边界：只新增 web/src/modules/knowledge/knowledge.space.paging.test.tsx 与本证据；
 显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
 「test(console): knowledge space paging guards」。
+
+# KNW5 追加 R157：空间详情 搜索×类型 组合护栏（纯测试单）（2026-11-20 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `c37e6d49`
+（Already up to date）。零产品文件改动。
+
+## 名实冲突清单（按实测落，产品未动）
+
+```text
+①「输入搜索词 → 请求带关键词」不成立：本模块两个读口都不吃 q
+  （DOCUMENTS_URL 头注：实测 ?q/?query 无差；列表面自述「键入不会再请求一次」）。
+  实锁：URL q 只收敛命中面（本地过滤）；详情表的「搜索」是组件本地名筛框
+  （kn3-docs-filter-input，不落 URL、重挂不复现——如实记录为设计现状）；键入/提交
+  全程零 fetch 增量、任何请求无 cursor=。
+② 类型键实名 ktype（typeKey = sp.get("ktype") ?? sp.get("type") :3486；清除双删
+  :3479-3480）。实锁：清 q 后 ktype 逐字在场、清 ktype 后 q 已清也不复活、零请求。
+③ 非法枚举两路不改写+kn-type-empty：R118 ④ 已锁 → 引用；本单补该态
+  **kn3-page-cap 不渲染**（派工写「cap 仍在」——实测筛空走空态分支 cap 缺席，与
+  R108 空集三态一致，属名实不符第二处，断言真实行为）。
+④ cap 句 N=50 为常量位、M 可变位；「可复制行数」= knF-copy 数据行（kn-doc-copy 是
+  单个控件非行数）。四读互等按 ktype×本地名筛组合态锁。
+⑤「切空间后搜索与类型全部重置」与实测不符：spaceLink :3402-3406 / backLink
+  :3598-3603 keepBase 只删 space/doc——q/ktype 全程逐字保留（列表→详情→返回→另一
+  空间整链复证）；唯一重置是 SpaceDetailSurface 组件本地名筛框（:2143-2150
+  setFilter("")）。按真实行为断言，未改产品。
+```
+
+## 查重判定与新增读数
+
+```text
+引用不重写：①本地零请求+q 收敛=data-len —— R118 ①⑤；② 共存回填 —— R146 ①尾段；
+③ loc 逐字/空态/锚 —— R118 ④；④ 重挂增量逐字 —— R146 ④；翻页/合并态三值 —— R131/R149。
+新写（knowledge.space.filters.test.tsx 3 例）：
+· ② 互不清除动线：q 提交空词 → has(q)=false、ktype 仍 PDF；再点「全部」→
+  has(ktype)=has(type)=false；urls 计数全程不变。
+· ⑤ 全链：列表(q=空间,ktype=PDF)→进 sp_x（q/ktype 随下钻保留、详情 2 行=PDF 桶）
+  →本地名筛「人事」→1 行→返回（q/ktype 在场、列表两空间行都在）→进 sp_y
+  （q/ktype 逐字仍 空间/PDF；本地筛框 value 回空——组件重置；可见 1 行=A）；
+  增量请求无 cursor=、docs(sp_y) 恰 1。
+· ③④ 组合：ktype=PDF 详情 2 行 → 本地名筛「人事」1 行；四读互等 1==cap-M==data-len
+  ==knF 行（cap 句逐字含「本页最多显示 50 篇（当前已加载 1 篇；复制清单也只含这些篇）」）；
+  同 URL 下命中面独立 data-len "2"（q=人事 命中 A、B——面间口径分开）；重挂增量集合
+  逐字相等且 ktype 复现、本地筛不复现（visible 回 2）；ktype/type=__nope__ 两路：
+  loc 保留原值、kn-type-empty 在场、cap null、0 行。
+```
+
+## 验证尾行（R157）
+```text
+$ npx vitest run src/modules/knowledge   → 13 files / 118 tests passed（基线 115 + 3）
+$ npx vitest run                         → 218 files：7 failed 全为已知上游
+  audit.filters×4 / runs.filters×3（与 R149/R152 时点一致，非本域，记录不追）；
+  其余全绿（passed 2671）。
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错（过程中 1 条 clickNode 参数
+  null 收窄 error 提交前清零）
+$ npx vite build --outDir /tmp/knw-r157-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn3*/kn-row-copy*/kn-doc-copy*/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort/kn-gates/
+kn-space-preview/knE-page-*/kn3-page-cap/kn-type 全族通过。
+请求口径：本地筛选/清空/提交全程零增量；切空间链新增仅各面既有读取（documents(sp_y) 恰 1、
+无 cursor= 请求）；重挂第二轮增量集合逐字等于第一轮。
+```
+未测如实：带登录会话真实屏（q 不吃服务端过滤为既有实测口径，引用 R118/读口注释）；
+sdoc/doc 参数在 ⑤ 链上的存留未单独断（spaceSelfLink 删 sdoc 由 R67 互斥族已锁）。
+边界：只新增 web/src/modules/knowledge/knowledge.space.filters.test.tsx 与本证据；
+显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「test(console): knowledge space filter combination guards」。
