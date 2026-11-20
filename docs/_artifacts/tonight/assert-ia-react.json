@@ -18,7 +18,7 @@
       "web/src/modules/system/manifest.ts",
       "web/src/modules/work/manifest.ts"
     ],
-    "scannedFiles": 118,
+    "scannedFiles": 129,
     "chatHostMarkers": [
       "web/src/modules/chat/ChatModulePage.tsx attrs=1 mounts=1"
     ]
@@ -64,6 +64,6 @@
     }
   ],
   "ok": true,
-  "headHash": "6a02ed58",
+  "headHash": "7173b7c6",
   "exitCode": 0
 }
