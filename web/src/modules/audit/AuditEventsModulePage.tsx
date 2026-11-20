@@ -100,6 +100,10 @@ export function AuditFilterBar({
   onWindowChange,
   onCustomFrom,
   onCustomTo,
+  onApplyCustom,
+  onClearCustom,
+  draftError,
+  draftInvalid,
   onEventTypeChange,
   onActorChange,
   onResourceChange,
@@ -123,56 +127,103 @@ export function AuditFilterBar({
   onEventTypeChange: (next: string) => void;
   onActorChange: (next: string) => void;
   onResourceChange: (next: string) => void;
+  /** audB: commit the typed range into the address (one read), or drop it. */
+  onApplyCustom: () => void;
+  onClearCustom: () => void;
+  /** audB: why the typed range cannot be applied yet, in words. */
+  draftError: string | null;
+  /** True while the draft range is not a question the service can answer. */
+  draftInvalid: boolean;
 }): ReactNode {
   const choices = useMemo(() => eventTypeChoices(), []);
   return (
     <div className="flex min-w-0 flex-wrap items-end gap-2" role="group" aria-label="审计事件筛选" data-testid="aud01-filters">
-      <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="aud01-filter-window">
-        <span className="text-muted-foreground">时间窗</span>
-        <select
-          id="aud01-filter-window"
-          data-testid="aud01-filter-window"
-          className="h-8 min-w-0 max-w-40 rounded-md border border-border bg-transparent px-2 text-sm"
-          value={windowChoice}
-          onChange={(event) => onWindowChange(event.target.value as FilterWindowKey)}
-        >
-          {WINDOW_FILTER_CHOICES.map((item) => (
-            <option key={item.value} value={item.value}>
-              {`时间窗：${item.label}`}
-            </option>
-          ))}
-        </select>
-      </label>
+      {/* audB: the quick windows are a pressed-state group, so 「当前是哪一档」
+          is readable by a keyboard probe, and choosing 自定义 visibly un-presses
+          the three quick ones. The container keeps the aud01 id; each choice is
+          `aud01-filter-window-<key>`. */}
+      <div className="flex min-w-0 flex-wrap items-end gap-2" role="group" aria-label="时间窗" data-testid="aud01-filter-window">
+        <span className="min-w-0 text-xs text-muted-foreground">时间窗</span>
+        {WINDOW_FILTER_CHOICES.map((item) => (
+          <button
+            key={item.value}
+            type="button"
+            data-testid={`aud01-filter-window-${item.value}`}
+            aria-pressed={windowChoice === item.value}
+            className={`h-8 min-w-0 rounded-md border px-2 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
+              windowChoice === item.value ? "border-primary text-foreground" : "border-border text-muted-foreground hover:bg-muted/40"
+            }`}
+            onClick={() => onWindowChange(item.value)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
 
       {windowChoice === "custom" ? (
         <div className="flex min-w-0 flex-wrap items-end gap-2" data-testid="aud01-custom-window">
-          <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="aud01-custom-from">
-            <span className="text-muted-foreground">开始（北京时间）</span>
-            <input
-              id="aud01-custom-from"
-              data-testid="aud01-custom-from"
-              type="datetime-local"
-              className="h-8 min-w-0 rounded-md border border-border bg-transparent px-2 text-sm"
-              value={customFrom}
-              onChange={(event) => onCustomFrom(event.target.value)}
-            />
-          </label>
-          <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="aud01-custom-to">
-            <span className="text-muted-foreground">结束（北京时间）</span>
-            <input
-              id="aud01-custom-to"
-              data-testid="aud01-custom-to"
-              type="datetime-local"
-              className="h-8 min-w-0 rounded-md border border-border bg-transparent px-2 text-sm"
-              value={customTo}
-              onChange={(event) => onCustomTo(event.target.value)}
-            />
-          </label>
+          <div className="flex min-w-0 flex-col gap-1" data-testid="audB-from">
+            <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="aud01-custom-from">
+              <span className="text-muted-foreground">开始（北京时间）</span>
+              <input
+                id="aud01-custom-from"
+                data-testid="aud01-custom-from"
+                type="datetime-local"
+                className="h-8 min-w-0 rounded-md border border-border bg-transparent px-2 text-sm"
+                value={customFrom}
+                onChange={(event) => onCustomFrom(event.target.value)}
+              />
+            </label>
+          </div>
+          <div className="flex min-w-0 flex-col gap-1" data-testid="audB-to">
+            <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="aud01-custom-to">
+              <span className="text-muted-foreground">结束（北京时间）</span>
+              <input
+                id="aud01-custom-to"
+                data-testid="aud01-custom-to"
+                type="datetime-local"
+                className="h-8 min-w-0 rounded-md border border-border bg-transparent px-2 text-sm"
+                value={customTo}
+                onChange={(event) => onCustomTo(event.target.value)}
+              />
+            </label>
+          </div>
+          {/* audB: the range is a draft until it is applied. Typing two
+              instants must not fire a read per keystroke — the question the
+              service answers is the one that is applied. */}
+          <Button
+            size="sm"
+            outlined
+            onClick={onApplyCustom}
+            disabled={draftInvalid}
+            aria-disabled={draftInvalid}
+            title={draftInvalid ? "两栏都填好、且开始早于结束，才能应用这个区间" : "用这个起止时间去读（一次读取）"}
+            data-testid="audB-apply"
+          >
+            应用这个区间
+          </Button>
+          <Button size="sm" outlined onClick={onClearCustom} data-testid="audB-clear" title="丢掉自定义区间，回到最近 7 天">
+            清空区间
+          </Button>
+          {draftError ? (
+            <p className="min-w-0 break-words text-xs text-warning" data-testid="audB-range-error">
+              {draftError}
+            </p>
+          ) : null}
           {customInvalid ? (
             <p className="min-w-0 break-words text-xs text-warning" data-testid="aud01-custom-error">
               自定义时间窗需要两栏都填好，且开始早于结束；在那之前不会去读。
             </p>
           ) : null}
+          {/* audB: what this range actually filters. The service honours the
+              two instants itself (probed live: each window answers its own
+              span, an inverted pair is refused with 400 request.invalid_query),
+              so the note says 服务端整窗过滤 and NOT 「只在已加载的行里挑」. */}
+          <p className="min-w-0 basis-full break-words text-xs text-muted-foreground" data-testid="audB-scope-note">
+            {customInvalid
+              ? "这一段还没应用：应用后由服务端按起止时间过滤整个时间窗，不是在本页已加载的行里挑。"
+              : "这一段由服务端按起止时间过滤（from/to 直接进请求），筛的是整个区间的账本，不是只在这页已加载的行里挑；输入框里的时间是北京时间，落到地址栏是 ISO 瞬间。"}
+          </p>
         </div>
       ) : null}
 
@@ -524,8 +575,32 @@ function AuditEventsSurface(): ReactNode {
   // screen says what is missing and no request is issued (the route rejects an
   // unbounded or inverted scan).
   const customInvalid = windowChoice === "custom" && bounds === null;
-  const customFrom = windowChoice === "custom" ? beijingInputValue(params.get("from")) : "";
-  const customTo = windowChoice === "custom" ? beijingInputValue(params.get("to")) : "";
+
+  // audB: the custom range is a DRAFT. Typing two instants asks nothing; the
+  // read happens when 应用 puts them into the address. `null` means the inputs
+  // still say what the address says, so a pasted or refreshed link paints its
+  // own range without any local copy to keep in step.
+  const [range, setRange] = useState<{ from: string; to: string } | null>(null);
+  const rangeDraftFrom = range?.from ?? beijingInputValue(customFromParam);
+  const rangeDraftTo = range?.to ?? beijingInputValue(customToParam);
+  const rangeFromIso = parseBeijingInput(rangeDraftFrom);
+  const rangeToIso = parseBeijingInput(rangeDraftTo);
+  // The applied range is what the screen shows on the wire; the draft only
+  // blocks 应用 while it is not a question the service could answer.
+  const rangePending = useMemo(
+    () => (rangeFromIso && rangeToIso ? { from: rangeFromIso, to: rangeToIso } : null),
+    [rangeFromIso, rangeToIso],
+  );
+  const rangeError =
+    range === null
+      ? customInvalid
+        ? "开始和结束都要填上，这一区间才能应用；在那之前本页不去读它，也不会退化成全表扫描。"
+        : null
+      : !rangeFromIso || !rangeToIso
+        ? "开始和结束都要填，这一区间才能应用；在应用之前本页不去读它。"
+        : rangeFromIso > rangeToIso
+          ? "开始时间不能晚于结束时间；把两头调对再应用，本页不会拿倒置的区间去问服务。"
+          : null;
 
   const filters = useMemo<ListFilters>(() => {
     // The window is never unbounded (see AuditFilterBar); each choice carries a
@@ -718,6 +793,7 @@ function AuditEventsSurface(): ReactNode {
 
   const setWindow = useCallback(
     (next: FilterWindowKey) => {
+      setRange(null); // audB: a quick window replaces any typed draft
       const draft = new URLSearchParams(params);
       draft.set("window", next);
       if (next !== "custom") {
@@ -731,30 +807,37 @@ function AuditEventsSurface(): ReactNode {
   );
 
   const setCustomFrom = useCallback(
-    (next: string) => {
-      const draft = new URLSearchParams(params);
-      resetPagingAndFolds(draft);
-      draft.set("window", "custom");
-      const iso = parseBeijingInput(next);
-      if (iso) draft.set("from", iso);
-      else draft.delete("from");
-      setParams(draft, { replace: true, state: locationState ?? null });
-    },
-    [locationState, params, setParams],
+    (next: string) => setRange({ from: next, to: range?.to ?? beijingInputValue(customToParam) }),
+    [range, customToParam],
   );
 
   const setCustomTo = useCallback(
-    (next: string) => {
-      const draft = new URLSearchParams(params);
-      resetPagingAndFolds(draft);
-      draft.set("window", "custom");
-      const iso = parseBeijingInput(next);
-      if (iso) draft.set("to", iso);
-      else draft.delete("to");
-      setParams(draft, { replace: true, state: locationState ?? null });
-    },
-    [locationState, params, setParams],
+    (next: string) => setRange({ from: range?.from ?? beijingInputValue(customFromParam), to: next }),
+    [range, customFromParam],
   );
+
+  /**
+   * audB: the typed range is a draft. Typing asks nothing; 应用 writes the two
+   * instants into the address once, and one read follows. An inverted or
+   * half-filled range is not a question the service can answer (it 400s
+   * `request.invalid_query`), so 应用 is refused and the reason is on screen.
+   */
+  const applyCustom = useCallback(() => {
+    if (rangeError !== null || rangePending === null) return;
+    const draftUrl = new URLSearchParams(params);
+    resetPagingAndFolds(draftUrl);
+    draftUrl.set("window", "custom");
+    draftUrl.set("from", rangePending.from);
+    draftUrl.set("to", rangePending.to);
+    setRange(null);
+    setParams(draftUrl, { replace: true, state: locationState ?? null });
+  }, [locationState, params, rangeError, rangePending, setParams]);
+
+  /** audB: 清空区间 — drop the custom range, go back to the 7-day quick window. */
+  const clearCustom = useCallback(() => {
+    setRange(null);
+    setWindow("7d");
+  }, [setWindow]);
 
   const goNext = useCallback(() => {
     if (!list.next) return;
@@ -901,7 +984,9 @@ function AuditEventsSurface(): ReactNode {
   // aud8: one line that states the restored state in words, so 「恢复后的界面
   // 值」 is readable on the screen and assertable from the DOM.
   const restoredLine = [
-    `时间窗：${windowLabel}`,
+    windowChoice === "custom"
+      ? `时间窗：自定义（${beijingInputValue(customFromParam) || "未填"} → ${beijingInputValue(customToParam) || "未填"}）`
+      : `时间窗：${windowLabel}`,
     eventType ? `类型：${eventType}` : "类型：全部",
     actor ? "操作者：按句柄筛（服务端）" : "操作者：未筛",
     resource ? `资源：按编号本地筛（${visibleRows.length}/${list.rows.length}）` : "资源：未筛",
@@ -991,8 +1076,10 @@ function AuditEventsSurface(): ReactNode {
 
       <AuditFilterBar
         windowChoice={windowChoice}
-        customFrom={customFrom}
-        customTo={customTo}
+        customFrom={rangeDraftFrom}
+        customTo={rangeDraftTo}
+        draftError={rangeError}
+        draftInvalid={rangeError !== null || rangePending === null}
         customInvalid={customInvalid}
         eventType={eventType}
         actor={actor}
@@ -1002,6 +1089,8 @@ function AuditEventsSurface(): ReactNode {
         onWindowChange={setWindow}
         onCustomFrom={setCustomFrom}
         onCustomTo={setCustomTo}
+        onApplyCustom={applyCustom}
+        onClearCustom={clearCustom}
         onEventTypeChange={setType}
         onActorChange={setActor}
         onResourceChange={setResource}
@@ -1158,12 +1247,32 @@ function AuditEventsSurface(): ReactNode {
           ) : null}
 
           {!customInvalid && list.phase === "empty" ? (
-            <EmptyPanel
-              reason="按现在的筛选条件，这个时间窗里没有审计事件"
-              nextStep="把时间窗放宽一格，或换一种事件类型再看。这个窗口确实没有记录，本身就是筛选后的真实答案——服务不接受不带任何筛选条件的全表扫描，所以这里始终有一个时间窗。"
-              onRefresh={list.reload}
-              testId="aud01-empty"
-            />
+            <>
+              <EmptyPanel
+                reason={
+                  windowChoice === "custom"
+                    ? "该时间段内无事件——这个起止区间里没有审计事件"
+                    : "按现在的筛选条件，这个时间窗里没有审计事件"
+                }
+                nextStep="把时间窗放宽一格，或换一种事件类型再看。这个窗口确实没有记录，本身就是筛选后的真实答案——服务不接受不带任何筛选条件的全表扫描，所以这里始终有一个时间窗。"
+                onRefresh={list.reload}
+                testId="aud01-empty"
+              />
+              {/* audB: the empty answer carries its own way out, named for the
+                  window that produced it. 清空区间 drops the custom range and
+                  re-reads the 7-day quick window (once). */}
+              <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="audB-empty-exit">
+                {windowChoice === "custom" ? "这一段里没有记录。" : "这一档里没有记录。"}
+                <button
+                  type="button"
+                  className="ml-1 underline underline-offset-2"
+                  onClick={clearCustom}
+                  data-testid="audB-empty-clear"
+                >
+                  清空区间，回到最近 7 天
+                </button>
+              </p>
+            </>
           ) : null}
 
           {/* aud9: the deep-link verdict sits with the list it speaks about. */}
