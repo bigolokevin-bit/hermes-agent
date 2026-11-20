@@ -391,6 +391,8 @@ export interface ApprovalRow {
   clockLabel: string;
   amount: number | null;
   reason: string | null;
+  /** R50 summary bar: parsed risk of this row (label 人话, raw for titles). */
+  risk: { label: string; tone: string; raw: string | null };
 }
 
 const ID_KEYS = ["approvalId", "approval_id", "id", "uuid"] as const;
@@ -427,6 +429,7 @@ function rowFrom(item: unknown, index: number): ApprovalRow | null {
     clockLabel: status.pending ? "处理期限" : "处理于",
     amount: pickNumber(rec, AMOUNT_KEYS),
     reason: humanSentence(pickText(rec, REASON_KEYS)),
+    risk: riskView(pickText(rec, ["riskLevel", "risk_level", "risk"])),
   };
 }
 

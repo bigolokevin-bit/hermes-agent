@@ -649,3 +649,237 @@
     font-weight: 600;
   }
 }
+
+/* MET-C: the status cell keeps the three words and, when a source is down,
+   the request id becomes something the reader can copy without boxing it. */
+.metB-state {
+  display: inline-block;
+}
+
+.metB-rid {
+  display: inline-block;
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--color-muted-foreground);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}
+
+.metB-rid:hover {
+  color: var(--color-foreground);
+}
+
+/* metD — one failure sentence and one request id for a read, in both places. */
+.metD-gap-rid {
+  color: var(--color-muted-foreground);
+  overflow-wrap: anywhere;
+}
+.metD-empty-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 4px;
+}
+.metB-reason {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--color-muted-foreground);
+}
+
+/* METG — table semantics: a caption that names window, grouping and order,
+   header cells that carry the sort state, and rows that take focus. */
+.metG-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.met7-row:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: -2px;
+}
+
+/* Partial failure: a card that could not read keeps its own retry, and the
+   cards that did read keep their numbers. */
+.metH-card-error {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.metH-card-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+@media (max-width: 375px) {
+  .metH-card-acts > * {
+    min-width: 0;
+  }
+}
+
+/* metI — exports say what they could not carry. */
+.metI-gap {
+  color: var(--color-muted-foreground);
+  font-size: 12px;
+  line-height: 1.5;
+  max-width: 42ch;
+}
+
+/* metK — table alternative for the heat grid */
+.metK-table-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+.metK-tablewrap {
+  width: 100%;
+  overflow-x: auto;
+}
+.metK-table {
+  width: 100%;
+  max-width: 420px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.metK-table caption {
+  padding-bottom: 6px;
+  text-align: left;
+  font-size: 12px;
+  color: var(--color-muted-foreground);
+}
+.metK-table th,
+.metK-table td {
+  padding: 6px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+.metK-table thead th {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-muted-foreground);
+}
+.metK-table td:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* metL — copy the current view as plain text */
+.met5-acts {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.metL-status {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-muted-foreground);
+}
+
+.metL-fallback {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--color-muted) 40%, transparent);
+  padding: 10px 12px;
+}
+
+.metL-fallback p {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--color-muted-foreground);
+}
+
+.metL-fallback textarea {
+  width: 100%;
+  min-height: 132px;
+  resize: vertical;
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--radius) - 4px);
+  background: var(--color-background);
+  color: var(--color-foreground);
+  padding: 8px 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+/* metM — a source whose collection time trails this read */
+.metM-stale {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border: 1px solid color-mix(in srgb, var(--color-warning, #d97706) 45%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-warning, #d97706) 14%, transparent);
+  color: var(--color-warning-foreground, inherit);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+/* metP — sortable detail headers: a real button, keyboard reachable, focus ring */
+.met6-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  font: inherit;
+  font-weight: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.met6-sort:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.met6-sort::after {
+  content: '↕';
+  font-size: 10px;
+  color: var(--color-muted-foreground);
+}
+
+.met6-table th[aria-sort='ascending'] .met6-sort::after { content: '↑'; color: var(--color-foreground); }
+.met6-table th[aria-sort='descending'] .met6-sort::after { content: '↓'; color: var(--color-foreground); }
+
+/* metQ — keyboard reachable cards and a calmer reduced-motion mode */
+.metQ-card:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .met5-page *,
+  .met5-page *::before,
+  .met5-page *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

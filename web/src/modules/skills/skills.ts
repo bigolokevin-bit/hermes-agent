@@ -24,7 +24,30 @@ export type SkillRow = {
 export type SkillsRead = {
   rows: SkillRow[];
   asOf: string | null;
+  asOfReason: string | null;
+  /** `asOfSource` is engineering context: it may only be rendered as a title. */
+  asOfTitle: string | null;
 };
+
+const ISO_STAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?$/;
+
+function topLevelAsOf(root: Record<string, unknown>): { asOf: string | null; asOfReason: string | null; asOfTitle: string | null } {
+  const sourceRaw = root.asOfSource ?? root.as_of_source;
+  const source = typeof sourceRaw === "string" && sourceRaw.trim() ? sourceRaw.trim() : null;
+  const asOfTitle = source ? `asOfSource：${source}` : null;
+  const raw = root.asOf;
+  if (typeof raw !== "string" || !raw.trim()) {
+    return { asOf: null, asOfReason: "响应顶层没有 asOf，采集时刻未知。", asOfTitle };
+  }
+  const value = raw.trim();
+  if (!ISO_STAMP.test(value) || Number.isNaN(new Date(value).getTime())) {
+    return { asOf: null, asOfReason: "响应顶层 asOf 不是 ISO 时间，采集时刻未知。", asOfTitle };
+  }
+  const shown = formatBeijingTime(value);
+  return shown
+    ? { asOf: shown, asOfReason: null, asOfTitle }
+    : { asOf: null, asOfReason: "响应顶层 asOf 无法解析，采集时刻未知。", asOfTitle };
+}
 
 const SCOPE_LABELS: Record<string, string> = {
   "tenant-shared": "团队共享",
@@ -84,7 +107,7 @@ export function formatBeijingTime(value: unknown): string | null {
 export function readSkills(body: unknown): SkillsRead {
   const root = record(body);
   const items = Array.isArray(body) ? body : Array.isArray(root.items) ? root.items : [];
-  const asOf = formatBeijingTime(root.asOf ?? root.as_of ?? root.generatedAt ?? root.generated_at ?? null);
+  const { asOf, asOfReason, asOfTitle } = topLevelAsOf(root);
 
   const rows = items.map((item, index) => {
     const row = record(item);
@@ -131,7 +154,7 @@ export function readSkills(body: unknown): SkillsRead {
     };
   });
 
-  return { rows, asOf };
+  return { rows, asOf, asOfReason, asOfTitle };
 }
 
 /** Semver key for the detail versions; invalid forms fall back to row order. */

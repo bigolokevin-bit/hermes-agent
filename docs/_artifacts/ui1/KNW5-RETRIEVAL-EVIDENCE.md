@@ -1095,3 +1095,262 @@ empty-clear），`kn3-docs-*` 与 `knw5-*` 一字未改。
 边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
 package·lock / web-scripts / ops；无 force / amend / `--no-verify` / `git add -A`；
 非本域 `pnpm build` 阻塞未追。
+
+---
+
+# KNW5 追加 R48：空间列表页顶部跨空间搜索 `kn8-global`（2026-11-20 BJT）
+
+安全闸：toplevel 相符；porcelain 曾为 4 个本域文件（上一轮 R49 抽屉实现完但未落笔）→
+按“脏先提交，不丢改动”先补交 `8831b934 feat(console): knowledge document preview drawer`
+（其中修掉一处真实缺陷：遮罩 z-index 40 与壳层移动头同层、低于侧栏 z=50，
+实测 `elementFromPoint(6,6)` 命中的是页头而不是遮罩，点顶栏区域关不掉抽屉；
+提到 60 后 1440/375 均命中 `kn7-preview-backdrop`，点击即关且焦点回到原行）。
+随后显式 refspec fetch + `git merge`（**未用 reset --hard**）：来路 tip = `5d91f22d`
+（预期 `6a02ed58` 之后又多一枚 gate 戳记，已核 `6a02ed58` 为其祖先），零冲突，
+来路未改动本模块。未并 main、未重建 9122。
+
+## 一、后端是否吃 `q`：不吃（cookie 只在 curl 命令内拼 Header，值零回显；筛前/筛后条数）
+
+```text
+HTTP 404 rid 2d1c31a157 /api/knowledge/spaces                    筛前 0 条
+HTTP 404 rid 5ee17e9c79 /api/knowledge/spaces?q=人事              筛后 0 条（信封逐字一致）
+HTTP 404 rid 1d642de41d /api/knowledge/spaces?limit=20&q=人事      筛后 0 条
+HTTP 404 rid 062fdadca8 /api/knowledge/sources?limit=20&q=人事     筛后 0 条
+HTTP 404 rid 69404ccd43 /api/knowledge/search?q=人事&limit=50      筛后 0 条（console.unknown_route）
+HTTP 404 rid 80ada150e6 /api/documents?limit=50&q=员工             筛后 0 条（documents.read_not_wired）
+HTTP 200 rid c0826216dc /api/console-sessions?limit=20&q=人事      200 items=0（q 被忽略）
+HTTP 200 rid ea545738dc /api/audit?action=kb.read&limit=50&q=人事  200 events=0（q 被忽略）
+```
+
+带不带 `q` 回答**逐字一致**（路由在 query 解析前就被 fail-closed 拦掉），两个 200 的读口
+则直接忽略 `q`——所以没有任何可声称的服务端过滤：`kn8-global` 只做**本地筛选**，
+并在 `kn8-scope-note` 里把口径写死，绝不假装服务端搜索。
+
+## 二、口径与实测读数
+
+- 注脚（有数据时）：「仅在当前已加载 3 个空间内搜索：空间读口今天不接受关键词参数
+  （实测带 q 与不带 q 回答一致），所以这里不叫全库搜索，键入也不会再请求一次。命中 1 个。」
+- **回答为空时不写条数**：改成「这一份空间回答里没有可筛的空间……」，
+  免得「已加载 0 个」看起来像本页到处禁止的假 0（文档框注脚同口径同步修好）。
+- 命中数与展示同源：注脚的「命中 N 个」与表格行数都取自同一个筛选后的数组；
+  实测输入「财务」→ rows=1、`data-len=1`、注脚「命中 1 个」。
+- 键入零请求：实测 `/agent-api/` 资源计数 **2→2**（输入、筛选、清屏都不发请求）；
+  提交才写 `?q=财务`，仍是 2；带 `?q=` 刷新复现（输入框回填「财务」、rows=1，计数仍 2）。
+- 结果行是真 a[href] 到空间：三行 href 形如
+  `/knowledge?tab=spaces&panel=spaces&space=sp_hr|sp_fin|sp_ops`，`focus()` 后 activeElement 命中第一行。
+- 名字与来源都参与本地筛选（输入 `mirror` 也能命中只有来源没有名字的那条）。
+- 无匹配：「没有匹配的空间：已加载的 3 个空间里没有名字或来源含「查无此空间」的空间。
+  这是本地筛选的结果，不代表库里没有这样的空间。」+ 就地「清空」，
+  清空同时收回框内文本与 `?q=`（实测 len 回 3、URL 干净）。
+
+## 三、状态（Chromium 无头，wired / today / denied / empty / boom × 1440 / 1280 / 375）
+
+```text
+ready   → 3 行 / len=3 / 3 条空间链接 / 注脚带条数
+404     → 「知识空间未接入」正文 + 人话原因 + 去处（先看「证据与引用」；去审批中心申请），
+           title=GAP-03，请求编号可复制 + 重试 + 申请入口；注脚自动退成无条数版本
+403     → 正文与 404 逐字相等（403 body === 404 body: true），只有请求编号不同
+500     → data-state=error 换内容：「这次没能读到知识数据 / 数据服务暂时没有响应，请稍后重试。」
+           + 可复制 rid + 重试；未接入正文不存在
+200 空  → data-state=ready len=0，空态说「这不等于「没有空间」，也不写 0 个」
+挂起中  → data-state=loading + 骨架（vitest 覆盖）
+```
+
+其余复核：`[data-fixture]` 三档视口全部 0；写入口 0（两个框都只是 `type=search` 的读侧控件）；
+`docSW == vw == bodySW`、页容器无溢出元素；屏面泄漏（裸 `sp_*`、`sourceName`、`docCount`、
+`lastSyncAt`、`/api/`、`not_wired`、状态码、`GAP-03`、假 0）全部 false；页面报错 none；
+四 tab 与详情位互不破坏：`?tab=spaces&space=sp_hr&doc=d1` 深链下抽屉/文档列表/文档名框都在
+（`kn7-preview-field-status=已完成`），而 `kn8-global` 只在空间列表页顶部出现，进了详情位就收起。
+
+testid 家族计数（本面板空间列表页）：`kn8-*` 4 个（form/input/submit/scope-note，有关键词时再加 clear /
+empty-clear），`kn6-*` 8 个，`knw5-*` 19 个；`kn3-*`/`kn7-*` 在详情位仍各 12/13 个（上轮实测），
+本轮未改名未删除。`assert-ia --source=react` 仍 51 / 22 / 1 / 8。
+
+## 四、验证尾行（本轮）
+
+```text
+$ npx vitest run src/modules/knowledge
+ Test Files  2 passed (2)
+      Tests  42 passed (42)
+
+$ npx vitest run
+ Test Files  132 passed (132)
+      Tests  1456 passed (1456)
+
+$ npx eslint src/modules/knowledge
+（无输出，exit 0）
+
+$ npx tsc -b . --noEmit | grep modules/knowledge
+（无输出，本模块 0 错）
+
+$ npx vite build --outDir /tmp/knw17-dist --emptyOutDir
+✓ built in 4.05s   （产物只落 /tmp）
+```
+
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；禁 `git add -A`（按显式路径提交）；无 force / amend / `--no-verify`；
+非本域 `pnpm build` 阻塞未追。
+
+---
+
+# KNW5 追加 R50：搜索命中的可读性与键盘（testid `kn9-*`）（2026-11-20 BJT）
+
+安全闸：toplevel 相符、porcelain 空、显式 refspec fetch → tip 仍是 `5d91f22d`
+（代码代次 `6a02ed58`），`git merge` 回「Already up to date」，零冲突；按要求未用 reset --hard。
+未并 main、未重建 9122。
+
+## 一、高亮 `<mark>`：只包住宿命那一段，不改文本语义
+
+```text
+输入「空间」→ 4 个 kn9-mark-space，第一个 mark 文本 ==「空间」
+同一单元格整体文本仍是「人事制度空间」（读口给什么字，屏面就是什么字）
+无关键词 → mark 数量 0（不会把整行涂成命中）
+文档名同理：输入「员工」→ 2 个 kn9-mark-doc，mark 文本 ==「员工」
+样式只上底色（color-mix 主题色 26%）与圆角，文字颜色继承，不改行高与列宽
+```
+
+## 二、`kn9-count`：与列表同一份筛选结果，本地模式明写口径
+
+```text
+无关键词：当前已加载 4 项，全部列出（还没输入关键词）：命中的行与这个数取自同一份筛选结果。
+有关键词：当前已加载 4 项内命中 4 项……（`data-len` 同为 4，两处数字都来自同一个 shown 数组）
+文档腿：  kn9-count-docs「当前已加载 2 项内命中 2 项」，与 kn6-search 的 data-len=2 同源
+读口未通：两个计数元素直接不渲染（实测 counts=0），因此不会出现「已加载 0 项」这种
+           看着像假 0 的句子；`fakeZero` 扫描（0 项 / 0 个 / 0 条）false
+服务端模式：本环境没有任何读口吃 q（R47/R48 已逐条实测），所以这里只有本地口径；
+           接线后应改为贴 total 或回显 q，本轮把这句话写进代码注释与本页说明
+```
+
+## 三、键盘（真实按键实测，roving tabindex 方案，与 aria-activedescendant 二选一）
+
+```text
+起点：焦点在 kn8-global-input（输入框带 aria-describedby="kn9-count"）
+框内 ArrowDown → 焦点落到第一行链接 knw5-space-link，tabindex 变为 ["0","-1","-1","-1"]
+  :focus-visible == true（轮廓 2px 主题色 + outline-offset 2px 可见）
+列表内 ArrowDown → 第二行「财务口径空间」，:focus-visible == true
+Home / End → 首行 / 末行（vitest 覆盖）
+ArrowUp → 回上一行
+Escape → 焦点交还搜索框，tabindex 全部回到 ["0","0","0","0"]（自然 tab 顺序恢复）
+Enter → 走的就是该行真 a[href]：/knowledge?tab=spaces&panel=spaces&space=sp_fin
+        实测落地后面板换成该空间的文档列表（kn3-docs 在、空间列表已收起）
+文档腿：框内输入「员工」→ ArrowDown → 焦点到 kn6-search-name（href ?sdoc=d1，
+        :focus-visible == true），Escape 同样交还焦点
+未开始 roving 前所有行链接都可 Tab（tabindex 0），不会把行从 tab 序列里藏起来
+```
+
+## 四、没有退化的部分
+
+- 空结果仍是「没有匹配的文档」/「没有匹配的空间」+ 就地清空出口（实测文本与按钮都在）。
+- 四态与 403≡404：单测断言 403 正文与 404 正文逐字相等（spaces 与文档腿各自一条），
+  错误态仍是人话 + 可复制请求编号 + 重试；挂起出骨架；本轮只是加高亮/计数/键盘，
+  状态分支没动（today 模式实测 unwired head 仍为「文档登记读口未接入」「知识空间未接入」）。
+- 1440 / 1280 / 375：`documentElement.scrollWidth == innerWidth == body.scrollWidth`
+  （mark 与计数行都不加宽列），无 OVERFLOW 元素；`[data-fixture]` 三档实测 0；零写入口。
+- 家族零破：`kn8-*`（4）、`kn7-*`（详情位 11）、`kn6-*`、`kn3-*`、`knw5-*` 全部保留，
+  本轮新增 `kn9-space-list / kn9-doc-list / kn9-count / kn9-count-docs / kn9-mark-space / kn9-mark-doc`；
+  抽屉与详情位深链复测正常（`?space=sp_hr&doc=d1` 抽屉打开、`kn7-preview-field-status` 读数在）。
+
+## 五、验证尾行（本轮）
+
+```text
+$ npx vitest run src/modules/knowledge
+ Test Files  2 passed (2)
+      Tests  43 passed (43)
+
+$ npx vitest run
+ Test Files  132 passed (132)
+      Tests  1457 passed (1457)
+
+$ npx eslint src/modules/knowledge
+（无输出，exit 0）
+
+$ npx tsc -b . --noEmit | grep modules/knowledge
+（无输出，本模块 0 错）
+
+$ npx vite build --outDir /tmp/knw18-dist --emptyOutDir
+✓ built in 4.15s   （产物只落 /tmp）
+
+$ node scripts/assert-ia.mjs --source=react
+（只读复核：51 / 22 / 1 / 8，ok=true）
+```
+
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；按显式路径提交（无 `git add -A`）；无 force / amend / `--no-verify`；
+非本域 `pnpm build` 阻塞未追。
+
+---
+
+# KNW5 追加 R51：空间详情 ↔ 全库检索的返回保态与面包屑（testid `knB-*`）（2026-11-20 BJT）
+
+安全闸：toplevel 相符、porcelain 空、显式 refspec fetch → tip 仍是 `5d91f22d`（代码代次 `6a02ed58`，
+按要求不把 `02a7385c` 当现网）、`git merge` 回 Already up to date、零冲突；未用 reset --hard，
+未并 main、未重建 9122。
+
+## 一、返回保态（Chromium 真实导航与后退，实测 URL）
+
+```text
+列表无关键词  url=/knowledge                              面包屑：知识[current]（不出空检索层级）
+输入并回车    url=/knowledge?q=人事                        面包屑：知识(链→?tab=spaces) / 检索「人事」[current]
+进入空间      url=/knowledge?q=人事&tab=spaces&panel=spaces&space=sp_hr
+              面包屑：知识 / 检索「人事」(链，带 q) / 人事制度空间[current]
+进入文档      url=…&space=sp_hr&doc=d_manual               面包屑：知识 / 检索「人事」 / 人事制度空间(链→去掉 doc) / 员工手册.pdf[current]
+连退两级回列表 url=/knowledge?q=%E4%BA%BA%E4%BA%8B  输入框回填「人事」  rows=1
+              kn9-count「当前已加载 2 项内命中 1 项…」  mark 数=1
+点面包屑「检索「人事」」回列表：q 与命中态同样复原（rows=1、count 同句）
+```
+
+`?q=` 全程留在地址里：进详情不清词，返回（浏览器后退或面包屑）都有同一份关键词与命中态，
+命中数、行数与高亮都取同一个筛选后数组，不复算也不二次请求。
+
+## 二、面包屑
+
+```text
+nav：role=navigate（<nav aria-label="位置">），层级 = 知识 /〔检索「q」〕/〔空间名〕/〔文档名〕
+所有中间层都是页内真链（Link，客户端跳转，focus 可见）；末级是 <span aria-current="page">，不可点
+键盘实测（1280）：knB-crumb-list:fv → knB-crumb-search:fv → knB-crumb-space:fv → knw5-tab-spaces:fv
+空间名不靠 URL 回显：来自指定空间读口那一次请求（每层一次，不为每行文档重复问）
+  读口通：  title=「名字取自空间读口」
+  读口不通：文本退成「空间 · <标识尾段>」，title=「sp_hr｜空间名没读到（读口未接入、无权限，
+            或这个标识不在已加载的空间里），这里只显示标识尾段。」——原始标识只在 title
+文档名同理（「文档 · <尾段>」）；关键词为空时不渲染空的检索段
+```
+
+## 三、没有退化的门禁
+
+```text
+403 与 404 逐字同体：detail 视图下面包屑与各级正文在 today / denied 两种回答里完全一致，
+  只有请求编号不同；kn3-docs 与抽屉都仍给可复制 rid + 重试（实测 rid-today-b7c1 / rid-denied-b7c1）
+四态：未接入 / 空态 / 错误（可复制 rid + 重试）/ 骨架，均按面各自换内容
+零写入口：form[method=post]、textarea、select、checkbox、number 计数 0
+1440 / 1280 / 375：docSW == vw == bodySW；面包屑 flex-wrap + overflow-wrap，不撑宽
+[data-fixture] 普通 URL 为 0；屏面无 GAP-03 / 状态码 / 路由 / 裸 id / 字段名
+家族零破：kn8-*、kn9-*、kn6-search-detail*、kn3-docs-*、kn7-*、knw5-* 都在
+  （实测 wired 详情：kn8=0（详情位不收关键词框）、kn9=2、kn7=11、kn6=10、kn3=20、knw5=8）
+本轮顺手修掉一处真实结构缺陷：面包屑原先由三个面各自渲染，同一页出现两份同名 testid
+  （byTestid 会先命中文档框那一份）；改为「面把最深一级的名字上报给页面，页面只渲染一条
+  面包屑」，id 唯一、层级顺序也固定为 知识 / 检索 / 空间 / 文档。
+```
+
+## 四、验证尾行
+
+```text
+$ npx vitest run src/modules/knowledge
+ Test Files  2 passed (2)
+      Tests  44 passed (44)
+
+$ npx vitest run
+ Test Files  132 passed (132)
+      Tests  1458 passed (1458)
+
+$ npx eslint src/modules/knowledge
+（无输出，exit 0）
+
+$ npx tsc -b . --noEmit | grep modules/knowledge
+（无输出，本模块 0 错）
+
+$ npx vite build --outDir /tmp/knw19-dist --emptyOutDir
+✓ built in 6.17s   （产物只落 /tmp）
+```
+
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；显式路径提交（无 `git add -A`）；无 force / amend / `--no-verify`。

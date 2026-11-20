@@ -767,3 +767,105 @@ L0 判 /runs/<id> 无路由=死链（routes.ts 只有 /runs）。禁碰 shell/Ap
 活体实证（ego 只读，9122==02a7385c）：无参 /runs → 「本页 13 次…」且 run5-detail=false；带 ?run=rn_01M7D7421P5PA27TEXMT9YVDZ8 → **run5-detail=true 且卡文=「运行 · VDZ8运行中 · 开始 2026-11-14 22:24 · 耗时 128 小时 33 分钟」**（VDZ8=该 id 尾码=确为参数对应运行）→ 参数生效，无需退 span。testid 不变；两处用例断言同步（=/runs?run=run_X1Y2Z3 与 =/runs?run=rn_01M7…）；屏上无裸 id 断言保持（href 属性不计 textContent）。
 
 验证：定向 employee-detail 33 passed；全量 131 files/1410 passed；assert-ia 两模式 exit0 51/22/1/8（未动壳层）。commit fix(console): employee runs rows link to supported run param。
+
+## R49 员工详情「审批」区（2026-11-20，lane/console-appr）
+
+活体实测（ego 只读，9122==02a7385c）：/api/approvals?employeeId=emp_86A8…&limit=50→200 n=8；employeeId=emp_217A…→200 n=8 同首行 ap_123DE49B…（expired/high）=**employeeId 不过滤**；bare→200 n=8 同集合；assignee=employee%3A…→200 n=8 同（BFF inject_assignee：客户端值一律忽略，按登录者注入）；status=pending→200 n=0（status 真参数有效）。server.py passthrough=(status,limit,cursor)+all_statuses。
+
+实现（EmployeeDetailModulePage.tsx）：①区腿 line667 由假筛选 `?employeeId=` 改诚实聚合 `?status=all&limit=20`（同请求出计数，无重复腿）。②说明行 ed8-appr-note「审批读口暂不支持按员工筛选：以下为当前登录身份的全部状态审批。」title 带白名单+注入口径实证（GAP 仅 title）。③四列表=事项标题｜状态人话（approvalStatusLabel default→「待核实」）｜风险档（riskLabel：high/medium/low→高/中/低风险，缺「—」+title，未知值「待核实」+title 原值不猜）｜更新时间 BJT 到分（updatedAt 多键 decidedAt/changedAt，缺→回退提交时间+cell title 注明）。④行出口真链 href=/approvals?status=<行状态>（既有可达落点保筛选；无详情路由不为造链而发明）；ed8-appr-row/link/title/status/risk/time-<i> 族新增，ed5-approvals-* 现名全保留；金额列按四列规格移除（解析器字段留）。⑤空集=「当前没有审批事项」+「按你的登录身份返回（全部状态）下的空集，不是把缺失当 0」——工单句「该员工暂无审批事项」在不支持筛选实证下不诚实，按工单诚实条款取代。⑥四态/可复制 rid/403≡404=Zone* 既有（R47 线）。
+
+测试：既有两断言同步（href 带 status、金额断言删、空态新句）+R49 新用例（恰 1 fetch 无 employeeId、note 上屏、行 0/行 1 四列读数、待核实×2、无裸 apr_/emp_/human:）。定向 34 passed；全量与 assert-ia 读数见回执。⑦三档横溢=jsdom 不可测，形态学报（grid 全 minmax(0)+truncate+flex-wrap 说明行）。9122 禁重建：页面活体读数待并入后代次；API 面五组实证已贴。
+
+## R50 审批队列汇总条 apv6-*（2026-11-20，lane/console-appr）
+
+基线：显式 refspec fetch + merge origin/lane/hermes-console（wave-16 6a02ed58）→ merge tip 5cea8f7e，toplevel ✓ porc=0。
+
+实现：新文件 modules/approvals/QueueSummaryBar.tsx（只读，计数全部由**列表同一请求结果** rows 现算，零重复请求）。①状态桶=待办/已批/已拒：history 视图 status 缺省(聚合)时按 row.status.raw 真计数（夹具 8 态各 1 行→待办1/已批1/已拒1 实测）；单选状态时其余桶=「—」+title「与这份结果不同源；切回全部可见」（禁假 0）；queue 视图只读 pending 集合→待办=rows.length、已批/已拒=「—」+title 指向决策历史。②风险档桶=高/中/低：row.risk（model.ts ApprovalRow 新增 risk=riskView(pickText(riskLevel/risk_level/risk))，行解析增量、既有字段零动）现算；读口不支持 risk 参数（R44 实证被丢）⇒风险桶只读 span 不建链（禁假筛选），title 写明。③点状态计数=Link /approvals?tab=history&status=<值>（写既有 ?status= 筛选，history 消费，URL 同源刷新/分享可复现）。④phase loading/error/denied → 全桶「—」+人话原因 title（不作 0）。⑤挂载=两页顶部（pending 页 aria-live 读数行前、history 页读数行与 apr5-filter 组之间），flex-wrap gap 无横溢（形态学报）。testid：apv6-summary / apv6-summary-<status> / apv6-summary-risk-<level>；apv5-*/apr5-*/apd6-*/ed* 零破坏（既有 59 用例先绿后加 2 新用例）。
+
+验证：定向 approvals 3 files/61 passed exit0；tsc 本域零红；assert-ia 两模式 exit0（51/22/1/8）；全量 **132 files/1456 passed**（≥基线，含 wave-16 合入用例）。9122==6a02ed58 代次未重建（L0 取证窗）：活体汇总条读数待并入后代次；本轮以 jsdom 实测为权威。
+
+## R51 员工详情区导航条 edz-nav-*（2026-11-20，lane/console-appr）
+
+基线：957bba3e 上续交（wave-17 持窗核可，现网代次 6a02ed58/章 5d91f22d/entry CpeSWPtM——回执引用已更正）。写域=modules/employee-detail/**+DONE；App/shell/routes/registry 零动。
+
+实现（EmployeeDetailModulePage.tsx）：在既有五区条（ed5-tabs 原样保留=深区条）之上新增四区直达条 `edz-nav`：总览/任务/运行/审批，NAV_ZONES 词表；每项=真 Link role=tab → `/employees/<id>`（总览裸路径）或 `?zone=tasks|runs|approvals`（mapShellZone 既有映射，任务区=?zone=tasks→tasklist 视图），当前区 aria-selected=true+panel 高亮；直达/粘贴 URL=同一 zone 派生链路（sp.get("zone") 既有）；reachable 判定防御分支=不在接线词表时渲 aria-disabled span+title「尚未接线，不提供假入口」（本四区实测全部可达=分支未触发，DONE 如实）。键盘=Link 原生 tab 序+focus-visible outline 类（焦点可见）。请求面：各区腿本就 `zone === X` 条件挂载，无预取。
+
+自证读数（jsdom 实测）：切区只取该区数据=?zone=runs 挂载 urls 中 /api/runs=1 条、/api/tasks|/api/approvals|/api/audit|/api/console-sessions=0；?zone=tasks 挂载 /api/tasks=1 条、/api/runs=0。四 tab 全为 A 标签、aria-disabled=null、href 真值、tasks 高亮时 overview=false。既有「five tabs」用例断言**作用域收窄到 ed5-tabs 容器内**（语义保持：五区词表原样），非删断言。
+
+验证：定向 employee-detail 36 passed exit0（+2 新用例，其余零改绿）；assert-ia 两模式 exit0 51/22/1/8；全量 **132 files/1458 passed**（基线 1456+2）；tsc 本域零红。ed1/ed5/ed7/ed8/edx/apd6/apv5/apr5/apv6 全族零破坏（既有用例全绿为证）。
+
+未测项：9122 活体导航读数（禁重建，待下代次）；三档横溢=jsdom 不可测，形态学报（flex-wrap gap-1 容器+文本短标签，与 ed5-tabs 同构）。坑记：R50 回执曾出现「4s 超时后 ls 截断看不到落盘行→误判未投→重投」=同单双落盘（070630/070817），教训=超时后必须完整 ls 或按内容 grep receipts 目录再判，禁止凭截断输出重发。
+
+## R52 员工详情会话区（2026-11-20，lane/console-appr）
+
+基线：显式 refspec fetch + merge origin/lane/hermes-console → 97df94a0（代码代次 6a02ed58/章 5d91f22d），toplevel ✓ porc=0。
+
+活体实测（ego 四组，9122==6a02ed58 仅访问）：/api/console-sessions?employeeId=emp_86A8…&limit=20→200 n=0；employeeId=emp_217A…→200 n=0；bare→200 n=0；employee=…（非白名单键）→200 n=0。server.py passthrough=(employeeId,limit,cursor)=**employeeId 是白名单参数被接受**；当前部署面对所有员工均 0 会话（筛前筛后无行可对照）⇒工单「暂不支持按员工筛选」条款不触发，区头与空态写诚实句：请求带了该员工的 employeeId（白名单参数），这是服务端真实空集，不是加载失败；GAP 现状仅 title。
+
+实现（EmployeeDetailModulePage.tsx）：①ZoneId/mapShellZone 加 "sessions"（chat 区 ed5-zone-chat-* 全不动=零破坏）；reload 加 sessions。②sessions leg=`/agent-api/api/console-sessions?employeeId=${enc}&limit=20` 条件挂载（zone 进入才取数）；复用 readSessions 并扩展 channel 多键（channel|source|platform|channelType）。③channelLabel 人话=飞书/企业微信/网页/控制台/接口；缺「—」+title「上游没有回传该会话的渠道信息。」；未知「待核实」+title 原值禁猜。④SessionsZone 四态内容面（ed9-sessions-loading/denied(403≡404 同体+可复制 rid+重试 Zone* 既有)/error/empty）+ready 四列表=会话短码（禁裸 cs_ 全值，完整 ref 进 title）｜渠道｜消息数（缺「—」+title）｜最近活动 beijing BJT 到分；行真 a[href]=/chat（App.tsx:299 全站唯一对话承载=既有可达落点，chatHosts=1 语义不破）；空集「该员工暂无可查会话。」；尾注只读+指路。⑤修 shortCode 剥前缀缺陷：补 cs|session（否则 cs_AAAA1111… 显示 CSAAAA11）。⑥三档横溢=形态学报（grid 全 minmax(0)+truncate+flex-wrap）；jsdom 不测三档。
+
+测试：新 describe 2 用例（恰 1 fetch 带 employeeId+limit=20、四列读数、href=/chat、缺值—+title、无裸 cs_、无 data-chat-host；空集双句）。定向 employee-detail 38 passed exit0；tsc 本域零红；assert-ia 两模式 exit0 51/22/1/8；全量 **132 files/1460 passed**（基线 1458+2）。ed1/ed5/ed7/ed8/edz/edx/apd6/apv5/apv6/apr5 零破（既有用例全绿为证）。9122 禁重建：活体页面读数待并入后代次；API 面四组实证已贴。回执代次引用统一 6a02ed58。
+
+## R53 /employees 列表搜索与筛选（2026-11-20，lane/console-appr）
+
+基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @31e4292b（代码代次 6a02ed58），toplevel ✓ porc=0。冲突预警处理：modules/employees/EmployeesModulePage.tsx 已有 6e7f16ac 系「服务端 keyword/lifecycleState 真过滤+URL ?q=&lifecycle=」完整交付（测试 8 用例+真 href+空集出口）⇒本单=最小增量补 emp-list-* 锚点与语义注脚，不推翻重写、不新建本地过滤。
+
+活体实测（ego 六组，9122==6a02ed58 仅访问）：/api/employees?limit=50 bare→200 n=3；q=QA2→200 n=3、query=QA2→200 n=3、name=QA2→200 n=3（三键均非白名单=丢参返全量）；keyword=QA2→200 n=1（真过滤）；lifecycleState=active→200 n=2（真过滤）。⇒工单「不吃则本地过滤+仅已加载 N 人内搜索」分支不触发：现实现本就走白名单键服务端过滤，零额外请求；scope note 写明真实语义并把三键实测均返全量的事实嵌进 title。
+
+增量（EmployeesModulePage.tsx）：①header 计数 span→emp-list-count+title「计数与列表同源：同一份服务端返回的行数」。②筛选卡后 emp-list-scope-note（服务端真参数说明，禁本地假过滤语义）。③空集卡 data-emp-list-empty 别名+emp-list-empty-text（「没有匹配的员工」文案既有）；清空出口 employees-clear 既有。④ul data-emp-list-rows。emp-l-*/employees-* 现名零改动；其余各族 testid 零破（定向全绿为证）。
+
+测试：新用例断言 scope-note+title 三键事实、emp-list-count=2 同源、setter 输入后 /api/employees 恰 1 次带 keyword=（请求计数实测锁，无本地额外请求）、空集双锚+清空回空。定向 employees 2 files/13 passed exit0；assert-ia 两模式 exit0 51/22/1/8；tsc 本域零红；全量 **132 files/1461 passed**（基线 1460+1）。三档横溢=形态学报（既有 flex-wrap+min-w-0 结构未改布局语义）；9122 活体页面读数待下代次。代次引用统一 6a02ed58。
+
+## R54 审批队列 CSV 导出 apv7-*（2026-11-20，lane/console-appr）
+
+基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @bfb38c5a，toplevel ✓ porc=0。
+
+实现：新文件 modules/approvals/QueueCsvExport.tsx=纯前端导出，**零新后端端点**（测试实证=点击导出后 fetchJSON 调用计数不变）。①表头固定 `id,title,status,risk,updated_at`；行值全部取**屏上同一渲染口径**：id=row.rawId（缺空）、status=row.status.label（未知态=屏上「状态未识别/待核实」同源）、risk=row.risk.label（读口丢参的只读态照屏上值写，缺=「未标注风险」空串处理）、updated_at=row.clock（屏上同一 BJT 到分值；缺=空，禁补 0）。②RFC4180 转义实测：含逗号/引号标题→`「"预算, 含""引号"""」` 形态断言。③文件名 approvals-<tab>-<status|all>-YYYYMMDD-HHmm.csv，时间=**导出时刻北京时间**（+480min 纯格式化；两用例锁含跨日 16:05Z→次日 0005；屏上数据时间不受本机时钟影响——本机时钟仅命名文件名）。④Blob+a.download（URL.createObjectURL guard+revoke）。⑤同源计数锁=apv7-export-count「共 N 行」与列表 rows 同一变量；blob 断言 filter 非空后 9 段=header+8 行=屏上 8 行（pending tab=共 1 行同锁）。⑥空集=按钮 disabled+title「当前筛选下没有可导出的行」；输出带 \uFEFF BOM+\r\n（Excel 兼容，尾 CRLF split 空段坑已记测试断言 filter 处理）。⑦挂载=pending 与 history 两 tab 通用（QueueSummaryBar 之下/读数行后）。
+
+apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/employees 零破（定向 approvals 3 files/64 passed 全绿为证）。横溢=flex-wrap 形态学报（jsdom 不测三档）。9122==6a02ed58 禁重建：活体下载待下代次。验证：定向 64 passed；assert-ia 两模式 exit0 51/22/1/8；tsc 本域零红；全量 **132 files/1464 passed**（基线 1461+3）。
+
+## R55 审批详情与队列双向保态（apd7-back）— 2026-11-20
+
+工单：/approvals 列表→详情→返回，状态筛选/页码/滚动位置复原；详情给真「返回列表」出口；同一 URL 可分享直达；apv5/apv6/apv7/apr5 零破；testid apd7-* 新增。
+
+实现（写域内最小增量，不改路由与注册表）：
+- 新 `web/src/modules/approvals/BackToList.tsx`：`apd7-back` 按钮（「返回列表」，title 说明复原口径）+ `saveListScroll/restoreListScroll`（sessionStorage 键 `approvals-history-scroll|approvals-pending-scroll`，`window.scrollY/scrollTo`，try/catch 静默）。
+- 两页（History/Pending ModulePage）：`openRow` 首行存滚动；`backToList` = setSelected(null)+setUnaddressable(false)+URL 仅删 `id`（保留 tab/status/其余参数，replace）+还原滚动；aside 详情区顶部在 `selected` 时渲染 `<BackToList>`。列表与 aside 并排、列表组件不 remount ⇒ 筛选、已加载分页游标（useApprovalsList nextRef 内存链）、时间窗原样保留。
+- 粘 URL 直达：`selected=useState(()=>params.get("id"))` 既有（R17），本轮用例锁死。
+- 取不到的诚实态：沿用 DeniedPanel/shapeFailure 既有同体句+可复制 rid（工单例句「该审批不存在或已过期」视为语义描述；不另改文案=不破 403≡404 同体既有断言）。
+
+测试读数（定向 approvals 3 files/68 passed exit0）：
+- case1 open→back：scrollY=123 存→back 后 `scrollTo` 收到 [0,123]、sessionStorage=123、`apv5-filter-status-pending` aria-pressed 仍 true、`apr5-row-ap_p` 在、`apr5-detail`=null。
+- case2 粘 `/approvals?tab=history&id=ap_p`：直达渲 `apr5-detail`+`apd7-back`。
+- case3 页码：加载更多入页2→开详情→返回→两行卡仍在且 `/api/approvals` 列表请求计数不变（零重取）。
+- pending：队列点开→sessionStorage=66→`apd7-back`→回到 `apr5-detail-empty`。
+- 全量 132 files/1468 passed（基线 1464+4）；assert-ia 两模式 exit0（51/22/1/8）。
+
+坑（本单内修）：case1 初版 FAIL=自定义 handler 把 `ROWS_BY_STATE[state]`（本已是数组）再包 `[...]` →行解析失败无卡；改 `(ROWS_BY_STATE[state] ?? []) as unknown[]`。
+
+挂账（非本单引入、本单写域外）：全量尾行带 `Errors 2`——`EmployeeDetailModulePage.tsx:1003/1028` 的 `api?.requestId` 是 71870656（R47 跨区一致性）在 useOverview 作用域引入的 ReferenceError（该 catch 形参名是 `err`，无 `api` 变量；tsc 因 ambient 未拦）。处置=403/404 分支应写 `err instanceof ApiError ? (err.requestId ?? null) : null`（1028 处可用 `r.requestId`）。employee-detail 不在 R55 写域，留待独立小单，勿并入本笔。
+
+未测项：9122（==6a02ed58 代次，禁重建）活体滚动/返回读数待并入后代次；三档横溢=aside 既有 flex+min-w-0 形态学报（jsdom 不可测）。
+
+## R56 P0 修单：useOverview catch 的自由变量 api（ReferenceError）— 2026-11-20
+
+工单：`api?.requestId` 在 useOverview 两个 catch 中引用未声明的 `api`（该形参名是 err/err2），403/404 时 setState 抛 ReferenceError→unhandled rejection、档案态停在 loading。随 71870656（R47）进入 wave-16=6a02ed58 现网。
+
+修法（仅两处，语义不变：403→denied、404/401→notfound/denied、其它→error）：
+- L1003（detail 腿 403 分支）→ `requestId: err instanceof ApiError ? (err.requestId ?? null) : null`。
+- L1028（matrix 回落腿 denied 且 status===404）→ `requestId: r.requestId ?? null`（r=toResourceError(err2) 已在作用域）。
+- toResourceError 内部 L226/227/229 三处 `api?.requestId` 是其局部形参，合法不动。
+
+验收读数：`git grep -n "api?\.requestId" -- web/src/modules/employee-detail` 修后仅剩 226/227/229；`npx tsc --noEmit -p tsconfig.json` 本模块 0 error；定向 employee-detail 1 file/40 passed（新增 R56 两用例=①ApiError.requestId=req-r56-403 时 ed5-overview-denied 上屏含该 rid+req-copy 可复制 ②无 rid 时显「本次请求没有带回编号」fallback，禁编造）；全量 132 files/1470 passed 且尾行不再报 Errors（原 2 条 unhandled rejection 即这两个旧用例打到坏 setState 所致，本笔清零）。
+
+未动项：文案、testid、路由、其它模块零改动（本笔仅两行产品码+两用例）。9122==6a02ed58 现网仍带病（禁重建），修后活体读数待并入后代次。
+
+## R57 — 员工详情成本区（ed10-usage-*，zone=usage）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @3f40f615；toplevel ✓ porc=0。代次引用 6a02ed58（章 5d91f22d）。
+- 读口实测（ego 只读，9122==6a02ed58，八组）：/api/budget-usage required=(employeeId,period)，periodKind=day&period=2026-11-20→200 keys=[items,missingEmployeeIds,asOf,asOfSource]（当无行时 items=[] missing=[该 id]，asOf=2026-11-19T23:58:08Z source=bff-read-time）；month&period=2026-11→200 items=[{…,costUsd:0.121198…,tokensUsed:0,updatedAt}]；另一员工 emp_217A→items=[] missing 同形=employeeId 真过滤实证；缺 period→400 console.missing_param；periodKind=week→400 request.invalid_body。/api/run-stats passthrough=(from,to,employeeId,bucket)：无 from/to→400 request.missing_filter；bucket=month→422；from=2026-11-01&to=2026-11-21&bucket=day→200 keys=[from,to,bucket,buckets,totals,asOf,asOfSource]，totals={runs:13,costUsd:0.121198,…}；emp_217A 同窗→buckets=[] totals.runs=0（真 0 对照）。from/to date 参数按 BJT 日界解释（返 UTC 边界 10-31T16:00Z）。
+- 实现（EmployeeDetailModulePage.tsx）：ZoneId+mapShellZone case "usage"+reload.usage；UsageZone 组件 Promise.all 恰 3 请求（day 账本/month 账本/run-stats 月窗 bucket=day）。**BJT period 只用本机时钟选查询哪一期**（同 R54 文件名先例），屏上采集时刻一律 payload：asOf 过 ISO 正则+Date.parse → beijing() 到分，缺/非法=「—」+title「不用本机时钟补时」，asOfSource 只进 title。列=周期｜运行数（今日桶缺=「—」+title 不作 0；本月=totals.runs 真 0 照写）｜实扣成本（只认 items[0].costUsd，money(0)=$0.00 money(缺)=「—」+title missingEmployeeIds 实证句；禁 ?? 0）｜采集时刻。行出口=纯文本+title（周期聚合行无专属深链，单条运行看运行区）——工单允许形态。空集判定=!dayRow&&!monthRow&&monthRuns===0（真 0 才空，缺值不算）→ed10-usage-empty「该员工暂无成本记录。」+真实回答句。四态 testid=ed10-usage-loading/denied/error/empty，denied=403≡404 同体 DENIED_COPY+RequestIdCopy+重试（Zone* 组件既有）。零写入口；NAV_ZONES 四区条不动（无死控件）。
+- 坑：**模块内本就有局部 money()（line 94），从 tasksBoard import money 触发 Babel Duplicate declaration 整文件收集失败**；tsc grep 因缓存未报——撤 import 用局部函数（语义相同 $0.00/—）。
+- 测试：R57 describe 6 用例（3 请求计数+全带 employeeId+period 断言、month 行 13/$0.12/asof 2026-11-20 07:58+title bff-read-time、day 双缺值「—」+title、屏上无裸 0.121198、真 0 vs 缺失可区分、空集句、error 冒号 rid+req-copy+重试、403 与 404 两个 it 同体+不回显路径）。定向 employee-detail 46 passed；全量 132 files/1476 passed；assert-ia 两模式 exit0（headHash 3f40f615）；tsc 本域零红。
+- 三档横溢=jsdom 不可测，形态学报：grid 全 minmax(0)+min-w-0 truncate、375 档 grid-cols-1 堆叠（ed8/ed9 同构已验）。9122==6a02ed58 禁重建：页面活体读数待并入后代次，本轮 jsdom 挂载链为权威。
+- 坑补记（lefthook 实拦）：react-hooks/purity 把 render 体内的 Date.now() 判 error 拦下 commit——BJT 今日字符串改在 effect 里算好随 ready state 携带（state.today）；effect 体 setState(loading) 只是 warning 可过。修后复测 46 passed，commit aa651e8e 推送 3f40f615..aa651e8e。

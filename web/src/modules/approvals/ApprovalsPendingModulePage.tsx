@@ -30,6 +30,9 @@ import { writeFailure, type FailureCopy } from "./copy";
 import type { ApprovalRow } from "./model";
 import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel } from "./states";
 import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
+import { QueueSummaryBar } from "./QueueSummaryBar";
+import { BackToList, restoreListScroll, saveListScroll } from "./BackToList";
+import { QueueCsvExport } from "./QueueCsvExport";
 import { ApprovalDetailBody, ApprovalRowCard } from "./views";
 
 const VERDICT_LABEL: Record<Verdict, string> = { approve: "批准", reject: "驳回" };
@@ -63,6 +66,8 @@ export function ApprovalsPendingModulePage(): ReactNode {
       setRefused(null);
       setComment("");
       setConfirming(null);
+      // R55: stash the list scroll so 返回列表 restores it.
+      saveListScroll("approvals-pending-scroll");
       setUnaddressable(row.rawId === null);
       setSelected(row.rawId);
       // R17 apd5 item 1: selection lives in the URL, so refresh keeps it open.
@@ -100,6 +105,15 @@ export function ApprovalsPendingModulePage(): ReactNode {
     },
     [comment, detail, list, selected],
   );
+
+  const backToList = useCallback(() => {
+    setSelected(null);
+    setUnaddressable(false);
+    const draft = new URLSearchParams(params);
+    draft.delete("id");
+    setParams(draft, { replace: true });
+    restoreListScroll("approvals-pending-scroll");
+  }, [params, setParams]);
 
   const drawer = (() => {
     if (unaddressable) {
@@ -190,6 +204,9 @@ export function ApprovalsPendingModulePage(): ReactNode {
 
   return (
     <div className="flex min-w-0 w-full max-w-full flex-col gap-3" data-testid="apr5-page-pending">
+      <QueueSummaryBar phase={list.phase} rows={list.rows} scope="queue" />
+      <QueueCsvExport rows={list.rows} tab="pending" status="pending" />
+
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
         <p className="min-w-0 break-words text-xs text-muted-foreground" aria-live="polite">
           {list.phase === "loading"
@@ -290,6 +307,7 @@ export function ApprovalsPendingModulePage(): ReactNode {
         </section>
 
         <aside className="flex min-w-0 flex-col gap-3 lg:sticky lg:top-4 lg:self-start" aria-label="申请详情">
+          {selected ? <BackToList onBack={backToList} /> : null}
           {drawer}
         </aside>
       </div>

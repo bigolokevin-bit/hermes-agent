@@ -186,6 +186,48 @@ describe("EmployeesModulePage list depth", () => {
     expect(q("employees-error")?.textContent).toContain("fs-88");
   });
 
+  it("R53: emp-list-* scope note, same-source count, and empty exit are on screen", async () => {
+    const urls: string[] = [];
+    const twoRows = {
+      items: [
+        ...rowsBody.items,
+        { employeeId: "emp_2B2C2D2E4F506172", name: "阿朝", title: "增长", lifecycleState: "active", updatedAt: "2026-11-18T05:52:48.030Z", department: "增长组" },
+      ],
+    };
+    fetchJSON.mockImplementation((url: string) => {
+      urls.push(url);
+      if (String(url).includes("keyword=nomatch")) return Promise.resolve({ items: [] });
+      return Promise.resolve(twoRows);
+    });
+    await render("/employees");
+    const note = q("emp-list-scope-note");
+    expect(note?.textContent).toContain("服务端真参数");
+    expect(note?.getAttribute("title")).toContain("q/query/name");
+    expect(q("emp-list-count")?.textContent).toBe("2");
+    // typing a non-matching keyword re-queries exactly once more (server mode,
+    // no extra local request).
+    const input = q("employees-search") as HTMLInputElement;
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    urls.length = 0;
+    await act(async () => {
+      setter?.call(input, "nomatch");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      flushTimers();
+    });
+    await act(async () => {});
+    const calls = urls.filter((u) => String(u).includes("/api/employees"));
+    expect(calls).toHaveLength(1);
+    expect(String(calls[0])).toContain("keyword=nomatch");
+    expect(q("emp-list-empty-text")?.textContent).toBe("没有匹配的员工");
+    expect(document.querySelector('[data-emp-list-empty="true"]')).toBeTruthy();
+    const clear = q("employees-clear") as HTMLButtonElement;
+    await act(async () => {
+      clear.click();
+    });
+    await act(async () => {});
+    expect((q("employees-search") as HTMLInputElement).value).toBe("");
+  });
+
   it("R40: rid is read live when the router snapshot lost it, and the copy round-trips", async () => {
     // Mirror the shell override: the window URL carries the rid, but the
     // route entry the module mounts with has only the state. The module must

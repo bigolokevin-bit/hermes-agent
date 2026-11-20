@@ -81,7 +81,7 @@ function itemsOf(body: unknown): Rec[] {
 
 /** emp_A3F1B2C4D5… → "A3F1B2C4"; non-id-looking values pass through. */
 function shortCode(value: string): string {
-  const tail = value.replace(/^(emp|run|rn|task|apr|aud)_/i, "").replace(/[^0-9a-z]/gi, "").slice(0, 8).toUpperCase();
+  const tail = value.replace(/^(emp|run|rn|task|apr|aud|cs|session)_/i, "").replace(/[^0-9a-z]/gi, "").slice(0, 8).toUpperCase();
   return tail || "—";
 }
 
@@ -133,6 +133,22 @@ function lifecycleTone(value?: string | null): "success" | "warning" | undefined
   return undefined;
 }
 
+/** 风险档人话：只认上游回传的已知档；缺值「—」+原因，未知值「待核实」。 */
+function riskLabel(value: string | null): { text: string; title?: string } {
+  switch (value) {
+    case "high":
+      return { text: "高风险" };
+    case "medium":
+      return { text: "中风险" };
+    case "low":
+      return { text: "低风险" };
+    case null:
+      return { text: "—", title: "上游没有回传风险等级" };
+    default:
+      return { text: "待核实", title: `未识别的风险等级「${value}」，不猜测` };
+  }
+}
+
 function approvalStatusLabel(value: string | null): string {
   switch (value) {
     case "pending":
@@ -146,7 +162,8 @@ function approvalStatusLabel(value: string | null): string {
     case "processing":
       return "流转中";
     default:
-      return "状态未知";
+      // 未识别的审批状态不猜：与全站一致标「待核实」。
+      return "待核实";
   }
 }
 
@@ -275,7 +292,7 @@ function readMatrix(body: unknown): CapabilityRow[] {
   return rows;
 }
 
-type ApprovalRow = { ref: string | null; status: string | null; title: string | null; at: string | null; amount: number | null };
+type ApprovalRow = { ref: string | null; status: string | null; title: string | null; at: string | null; updatedAt: string | null; risk: string | null; amount: number | null };
 
 function readApprovals(body: unknown): ApprovalRow[] {
   return itemsOf(body).map((item) => ({
@@ -283,6 +300,8 @@ function readApprovals(body: unknown): ApprovalRow[] {
     status: pickString(item.status, item.state),
     title: pickString(item.title, item.type, item.name, item.category),
     at: pickString(item.createdAt, item.created_at, item.submittedAt, item.applyTime),
+    updatedAt: pickString(item.updatedAt, item.updated_at, item.decidedAt, item.changedAt),
+    risk: pickString(item.riskLevel, item.risk_level, item.risk),
     amount: pickNumber(item.amountUsd, item.amount, item.monthlyCostUsd),
   }));
 }
@@ -324,6 +343,14 @@ function readAudit(body: unknown): AuditRow[] {
  * zone ids ↔ shell `?zone=` spellings
  * ------------------------------------------------------------------ */
 
+/** R51: 四区直达条的词表（任务区走 ?zone=tasks → tasklist 视图）。 */
+const NAV_ZONES = [
+  { id: "overview", label: "总览" },
+  { id: "tasks", label: "任务" },
+  { id: "runs", label: "运行" },
+  { id: "approvals", label: "审批" },
+] as const;
+
 const ZONES = [
   { id: "overview", label: "概览" },
   { id: "capability", label: "能力与权限" },
@@ -332,10 +359,16 @@ const ZONES = [
   { id: "audit", label: "审计" },
 ] as const;
 
-type ZoneId = (typeof ZONES)[number]["id"] | "chat" | "tasklist";
+type ZoneId = (typeof ZONES)[number]["id"] | "chat" | "tasklist" | "sessions" | "usage";
 
 function mapShellZone(raw: string): ZoneId {
   switch (raw) {
+    case "usage":
+      // R57: 成本区（预算账本 + 运行统计两读口聚合，只读）。
+      return "usage";
+    case "sessions":
+      // R52: 会话区（结构化会话列表，只读）；与 chat 摘要区并存、互不动。
+      return "sessions";
     case "chat":
       // PRD 聊天区：只读会话摘要，深链 ?zone=chat 可达；导航条保持五区不变。
       return "chat";
@@ -460,6 +493,8 @@ type ChatRow = {
   messages: number | null;
   status: string | null;
   ref: string | null;
+  /** R52: channel of the session when the runtime returns one. */
+  channel?: string | null;
 };
 
 function readSessions(body: unknown): ChatRow[] {
@@ -473,6 +508,7 @@ function readSessions(body: unknown): ChatRow[] {
       messages: num === undefined ? null : num,
       status: pickString(item.status, item.state),
       ref: pickString(item.sessionId, item.session_id, item.id),
+      channel: pickString(item.channel, item.source, item.platform, item.channelType),
     });
   }
   return rows;
@@ -484,6 +520,18 @@ function chatStatusLabel(raw: string | null): string {
   if (s0 === "active" || s0 === "open") return "进行中";
   if (s0 === "archived" || s0 === "closed" || s0 === "ended") return "已结束";
   return "待核实";
+}
+
+/** R52: 渠道人话；未知值「待核实」，缺值「—」+原因，绝不猜。 */
+function channelLabel(raw: string | null | undefined): { text: string; title?: string } {
+  if (!raw) return { text: "—", title: "上游没有回传该会话的渠道信息。" };
+  const c = raw.trim().toLowerCase();
+  if (c === "feishu" || c === "lark") return { text: "飞书" };
+  if (c === "wecom" || c === "wechatwork") return { text: "企业微信" };
+  if (c === "web") return { text: "网页" };
+  if (c === "console") return { text: "控制台" };
+  if (c === "api") return { text: "接口" };
+  return { text: "待核实", title: `渠道原值：${raw}（未识别，不猜）` };
 }
 
 function TasksZone({ resource, empId, onRetry }: { resource: Resource<TaskZoneRow[]>; empId: string; onRetry: () => void }) {
@@ -644,6 +692,299 @@ function ChatZone({ resource, empId, onRetry }: { resource: Resource<ChatRow[]>;
   );
 }
 
+function SessionsZone({ resource, empId, onRetry }: { resource: Resource<ChatRow[]>; empId: string; onRetry: () => void }) {
+  if (!empId) {
+    return (
+      <ZoneEmpty
+        testid="ed9-sessions-empty"
+        title="缺少员工编号，无法确定会话归属。"
+        hint="本页只按该员工读取会话列表，不展示猜测内容。"
+      />
+    );
+  }
+  if (resource.phase === "loading") return <ZoneLoading testid="ed9-sessions-loading" />;
+  if (resource.phase === "denied") {
+    return <ZoneDenied title="会话列表" message={resource.message} requestId={resource.requestId} onRetry={onRetry} testid="ed9-sessions-denied" />;
+  }
+  if (resource.phase === "error") {
+    return <ZoneError title="会话列表" message={resource.message} requestId={resource.requestId} onRetry={onRetry} testid="ed9-sessions-error" />;
+  }
+  if (resource.phase === "empty") {
+    return (
+      <Card data-testid="ed9-sessions-empty">
+        <CardContent className="flex flex-col items-center gap-3 p-8 text-center">
+          <Inbox className="h-6 w-6 text-white/40" />
+          <p className="text-sm">该员工暂无可查会话。</p>
+          <p className="text-xs text-white/50">
+            请求带了该员工的 employeeId（读口白名单参数），这是服务端的真实空集；不是加载失败，也不在这里造会话。
+          </p>
+          <p
+            className="font-mono text-xs text-white/40"
+            title="GAP：console-sessions 上游形状由 L2 车道文档化（排序 updated_at DESC）；本代次部署面整体返回 200/0，筛前筛后都没有行可对照。"
+          >
+            数据面现状见悬停。
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+  return (
+    <Card data-testid="ed9-sessions">
+      <CardContent className="p-0">
+        <div className="hidden grid-cols-[minmax(0,1.3fr)_minmax(0,0.8fr)_minmax(0,0.6fr)_minmax(0,0.9fr)] gap-2 border-b border-white/10 px-4 py-2 text-xs text-white/45 md:grid">
+          <span>会话</span>
+          <span>渠道</span>
+          <span>消息数</span>
+          <span title="口径：updated_at（北京时间切到分）">最近活动</span>
+        </div>
+        <ul className="divide-y divide-white/5" data-testid="ed9-sessions-list">
+          {resource.data.map((row, i) => {
+            const ch = channelLabel(row.channel);
+            return (
+              <li
+                key={`${row.ref ?? "session"}-${i}`}
+                data-testid={`ed9-sessions-row-${i}`}
+                className="grid grid-cols-1 gap-1 px-4 py-3 md:grid-cols-[minmax(0,1.3fr)_minmax(0,0.8fr)_minmax(0,0.6fr)_minmax(0,0.9fr)] md:items-center md:gap-2"
+              >
+                <Link
+                  to="/chat"
+                  data-testid={`ed9-sessions-link-${i}`}
+                  title={row.ref ?? undefined}
+                  className="min-w-0 truncate text-sm no-underline hover:underline focus-visible:underline"
+                >
+                  {row.title ?? `会话 · ${row.ref ? shortCode(row.ref) : "待核实"}`}
+                </Link>
+                <span className="text-xs text-white/55" data-testid={`ed9-sessions-channel-${i}`} title={ch.title}>
+                  {ch.text}
+                </span>
+                <span
+                  className="text-xs text-white/55"
+                  data-testid={`ed9-sessions-count-${i}`}
+                  title={row.messages === null ? "上游没有回传该会话的消息数或轮次。" : undefined}
+                >
+                  {row.messages === null ? "—" : `${row.messages} 条`}
+                </span>
+                <span className="font-mono text-xs text-white/55" data-testid={`ed9-sessions-time-${i}`}>
+                  {beijing(row.lastAt)}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+        <p className="px-4 py-2 text-xs text-white/45">
+          只读列表 · 本页不提供会话创建或消息写入；要继续聊天请前往“对话”页（全站唯一承载）。
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * R57: usage / cost zone — budget ledger + run stats, real data only
+ * ------------------------------------------------------------------ */
+
+type UsageState =
+  | { phase: "loading" }
+  | { phase: "error"; message: string; requestId: string | null }
+  | { phase: "denied"; requestId: string | null }
+  | { phase: "ready"; day: unknown; month: unknown; stats: unknown; today: string };
+
+function usageRows(body: unknown): Record<string, unknown>[] {
+  if (!body || typeof body !== "object") return [];
+  const items = (body as Record<string, unknown>).items;
+  if (!Array.isArray(items)) return [];
+  return items.filter((x): x is Record<string, unknown> => Boolean(x) && typeof x === "object");
+}
+
+function usageNum(obj: Record<string, unknown> | undefined, keys: string[]): number | null {
+  if (!obj) return null;
+  for (const key of keys) {
+    const v = obj[key];
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+  }
+  return null;
+}
+
+/** ISO only (YYYY-MM-DDTHH:mm…); missing or malformed → null. Never the
+ * local clock — the on-screen collection minute must come from the payload. */
+function usageIso(body: unknown): string | null {
+  if (!body || typeof body !== "object") return null;
+  const v = (body as Record<string, unknown>).asOf;
+  if (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v)) return null;
+  return Number.isNaN(Date.parse(v)) ? null : v;
+}
+
+function usageSource(body: unknown): string {
+  if (!body || typeof body !== "object") return "—";
+  const v = (body as Record<string, unknown>).asOfSource;
+  return typeof v === "string" && v ? v : "—";
+}
+
+function UsageZone({ empId, nonce, onRetry }: { empId: string; nonce: number; onRetry: () => void }) {
+  const [state, setState] = useState<UsageState>({ phase: "loading" });
+
+  useEffect(() => {
+    if (!empId) return;
+    let alive = true;
+    setState({ phase: "loading" });
+    const enc = encodeURIComponent(empId);
+    // The BJT period strings only choose WHICH day/month to ask the server
+    // about (same precedent as the R54 export filename); every timestamp
+    // rendered below comes from server payloads.
+    const bjNow = new Date(Date.now() + 480 * 60000);
+    const dayPeriod = bjNow.toISOString().slice(0, 10);
+    const monthPeriod = dayPeriod.slice(0, 7);
+    const tomorrow = new Date(bjNow.getTime() + 86400000).toISOString().slice(0, 10);
+    Promise.all([
+      fetchJSON<unknown>(`/agent-api/api/budget-usage?employeeId=${enc}&periodKind=day&period=${dayPeriod}`),
+      fetchJSON<unknown>(`/agent-api/api/budget-usage?employeeId=${enc}&periodKind=month&period=${monthPeriod}`),
+      fetchJSON<unknown>(`/agent-api/api/run-stats?employeeId=${enc}&from=${monthPeriod}&to=${tomorrow}&bucket=day`),
+    ])
+      .then(([day, month, stats]) => {
+        if (alive) setState({ phase: "ready", day, month, stats, today: dayPeriod });
+      })
+      .catch((err: unknown) => {
+        if (!alive) return;
+        const r = toResourceError(err);
+        if (r.phase === "denied") setState({ phase: "denied", requestId: r.requestId ?? null });
+        else setState({ phase: "error", message: r.message ?? "成本数据没能加载出来。", requestId: r.requestId ?? null });
+      });
+    return () => { alive = false; };
+  }, [empId, nonce]);
+
+  if (!empId) {
+    return (
+      <ZoneEmpty
+        testid="ed10-usage-empty"
+        title="缺少员工编号，无法确定成本归属。"
+        hint="本页只按该员工读取预算账本与运行统计，不展示猜测内容。"
+      />
+    );
+  }
+  if (state.phase === "loading") return <ZoneLoading testid="ed10-usage-loading" />;
+  if (state.phase === "denied") {
+    return (
+      <ZoneDenied
+        testid="ed10-usage-denied"
+        title="成本"
+        message={DENIED_COPY}
+        requestId={state.requestId}
+        onRetry={onRetry}
+      />
+    );
+  }
+  if (state.phase === "error") {
+    return (
+      <ZoneError
+        testid="ed10-usage-error"
+        title="成本数据没能加载出来"
+        message={state.message}
+        requestId={state.requestId}
+        onRetry={onRetry}
+      />
+    );
+  }
+
+  const statsObj = state.stats && typeof state.stats === "object" ? (state.stats as Record<string, unknown>) : {};
+  const totalsObj = statsObj.totals && typeof statsObj.totals === "object" ? (statsObj.totals as Record<string, unknown>) : undefined;
+  const buckets = Array.isArray(statsObj.buckets) ? statsObj.buckets : [];
+  const monthRuns = usageNum(totalsObj, ["runs"]);
+  const bjToday = state.today;
+  const dayBucket = buckets.find(
+    (b) => b && typeof b === "object" && beijing(String((b as Record<string, unknown>).bucketStart ?? "")).slice(0, 10) === bjToday,
+  ) as Record<string, unknown> | undefined;
+  const dayRuns = usageNum(dayBucket, ["runs"]);
+
+  const dayRow = usageRows(state.day)[0];
+  const monthRow = usageRows(state.month)[0];
+  const dayCost = usageNum(dayRow, ["costUsd", "cost_usd"]);
+  const monthCost = usageNum(monthRow, ["costUsd", "cost_usd"]);
+
+  // 全局空集=两条账本腿都没有该员工行，且运行统计的真实合计为 0（不是缺值）。
+  if (!dayRow && !monthRow && monthRuns === 0) {
+    return (
+      <ZoneEmpty
+        testid="ed10-usage-empty"
+        title="该员工暂无成本记录。"
+        hint="预算账本与运行统计都按该员工的 employeeId 查询（读口白名单参数，实测真过滤）；两边一致为空是服务端的真实回答，不是加载失败，也没有放宽窗口凑数。"
+      />
+    );
+  }
+
+  const legs = [
+    {
+      key: "day" as const,
+      label: "今日",
+      runs: dayRuns,
+      runsTitle: dayRuns === null
+        ? "运行统计返回的桶列表里没有今天的桶行（或桶行缺 runs）：缺值不作 0 处理。"
+        : "来自运行统计的今日桶（bucket=day，employeeId 真过滤）。",
+      cost: dayCost,
+      costTitle: dayRow ? "预算账本该日行的实扣金额（只认真实扣费）。" : "账本在该日没有这位员工的行（missingEmployeeIds 实证）：缺失不作 $0.00。",
+      body: state.day,
+    },
+    {
+      key: "month" as const,
+      label: "本月",
+      runs: monthRuns,
+      runsTitle: monthRuns === null
+        ? "运行统计没有返回本月合计 runs：缺值不作 0。"
+        : "来自运行统计本月窗口的合计（服务端真实数值，0 照写）。",
+      cost: monthCost,
+      costTitle: monthRow ? "预算账本本月行的实扣金额（只认真实扣费）。" : "账本在本月没有这位员工的行（missingEmployeeIds 实证）：缺失不作 $0.00。",
+      body: state.month,
+    },
+  ];
+
+  return (
+    <Card data-testid="ed10-usage">
+      <CardContent className="p-0">
+        <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,0.9fr)_minmax(0,1.1fr)] gap-2 border-b border-border px-4 py-2 text-xs uppercase tracking-wide text-muted-foreground sm:grid">
+          <span>周期</span>
+          <span title="运行数取 /api/run-stats（employeeId 白名单参数，实测真过滤）。">运行数</span>
+          <span title="实扣成本只认真实扣费账本 /api/budget-usage 的 costUsd：真 0 写 $0.00，缺行写「—」。">实扣成本 USD</span>
+          <span title="采集时刻只取 payload 顶层 ISO asOf，绝不取本机时钟；asOfSource 见悬停。">采集时刻</span>
+        </div>
+        <ul className="divide-y divide-border">
+          {legs.map((leg) => {
+            const iso = usageIso(leg.body);
+            return (
+              <li
+                key={leg.key}
+                data-testid={`ed10-usage-row-${leg.key}`}
+                className="grid grid-cols-1 gap-1 px-4 py-3 text-sm sm:grid-cols-[minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,0.9fr)_minmax(0,1.1fr)] sm:items-center sm:gap-2"
+              >
+                <span className="min-w-0 truncate" title="周期聚合行：本页没有按成本行的专属深链；单条运行请看「运行」区。">
+                  {leg.label}
+                </span>
+                <span className="font-mono text-xs" data-testid={`ed10-usage-runs-${leg.key}`} title={leg.runsTitle}>
+                  {leg.runs === null ? "—" : leg.runs}
+                </span>
+                <span className="font-mono text-xs" data-testid={`ed10-usage-cost-${leg.key}`} title={leg.costTitle}>
+                  {money(leg.cost ?? undefined)}
+                </span>
+                <span
+                  className="font-mono text-xs text-muted-foreground"
+                  data-testid={`ed10-usage-asof-${leg.key}`}
+                  title={iso ? `payload asOf=${iso} · 来源 ${usageSource(leg.body)}` : "payload 顶层没有 ISO 格式的 asOf（或形态非法）：不用本机时钟补时。"}
+                >
+                  {iso ? beijing(iso) : "—"}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+        <p
+          className="px-4 py-2 text-xs text-muted-foreground"
+          title="BFF 白名单：budget-usage 必带 employeeId+period（实测缺 period 400 console.missing_param、periodKind=week 400 request.invalid_body）；run-stats 必带 from/to（实测 bucket=month 422）。"
+        >
+          只读聚合：实扣认预算账本、运行数认运行统计，两读口均按 employeeId 真过滤；本页不提供任何写入口。
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
 /* ------------------------------------------------------------------ *
  * page
  * ------------------------------------------------------------------ */
@@ -659,18 +1000,33 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
   const enc = encodeURIComponent(empId);
   const zone = mapShellZone(sp.get("zone") ?? "");
 
-  const [reload, setReload] = useState<Record<ZoneId, number>>({ overview: 0, capability: 0, approvals: 0, runs: 0, audit: 0, chat: 0, tasklist: 0 });
+  const [reload, setReload] = useState<Record<ZoneId, number>>({ overview: 0, capability: 0, approvals: 0, runs: 0, audit: 0, chat: 0, tasklist: 0, sessions: 0, usage: 0 });
   const retry = (z: ZoneId) => setReload((prev) => ({ ...prev, [z]: prev[z] + 1 }));
 
   const overview = useOverview(empId, reload.overview);
   const capability = useResourceList(zone === "capability" ? `/agent-api/api/matrix?employee=${enc}` : "", reload.capability, readMatrix);
-  const approvals = useResourceList(zone === "approvals" ? `/agent-api/api/approvals?employeeId=${enc}` : "", reload.approvals, readApprovals);
+  // R49 measured on this generation: employeeId/assignee do NOT filter the
+  // approvals read surface (same 200/8 set for two different employees and
+  // for the bare call; the BFF whitelist is status/limit/cursor and the
+  // assignee is injected from the logged-in identity). Sending a per-employee
+  // parameter would therefore be a fake filter — instead the zone reads the
+  // real aggregate and states the scope honestly on screen.
+  const approvals = useResourceList(zone === "approvals" ? "/agent-api/api/approvals?status=all&limit=20" : "", reload.approvals, readApprovals);
   const runs = useResourceList(zone === "runs" ? `/agent-api/api/runs?employeeId=${enc}` : "", reload.runs, readRuns);
   const audit = useResourceList(zone === "audit" ? `/agent-api/api/audit?resourceId=${enc}&limit=50` : "", reload.audit, readAudit);
   const tasklist = useResourceList(
     zone === "tasklist" && empId ? `/agent-api/api/tasks?assignee=${encodeURIComponent(`employee:${empId}`)}&limit=20` : "",
     reload.tasklist,
     readTasks,
+  );
+  // R52: employeeId IS whitelisted on the console-sessions read port
+  // (server.py passthrough=(employeeId,limit,cursor); measured this generation:
+  // the whitelist call answers 200 and the deploy scope currently holds zero
+  // sessions for every employee, so filtering stays stated, not faked).
+  const sessions = useResourceList(
+    zone === "sessions" && empId ? `/agent-api/api/console-sessions?employeeId=${enc}&limit=20` : "",
+    reload.sessions,
+    readSessions,
   );
   const chat = useResourceList(
     zone === "chat" && empId ? `/agent-api/api/console-sessions?employeeId=${enc}&limit=5` : "",
@@ -710,6 +1066,55 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
   return (
     <section className="min-w-0 space-y-4" data-testid="ed5-module">
       {header}
+
+      {/* R51: 四区直达导航。每个条目都映射到本版本真实接线的分区；
+          万一某区不在，渲 aria-disabled+原因，绝不假装可点。键盘走
+          tab 序即可达（Link 原生），焦点样式显式给 outline。 */}
+      <div
+        role="tablist"
+        aria-label="分区直达（总览 / 任务 / 运行 / 审批）"
+        className="flex min-w-0 flex-wrap gap-1"
+        data-testid="edz-nav"
+      >
+        {NAV_ZONES.map((n) => {
+          const reachable = (["overview", "tasks", "runs", "approvals"] as const).includes(
+            n.id as "overview" | "tasks" | "runs" | "approvals",
+          );
+          const active = mapShellZone(n.id) === zone;
+          if (!reachable) {
+            return (
+              <span
+                key={n.id}
+                role="tab"
+                aria-disabled="true"
+                aria-selected={false}
+                data-testid={`edz-nav-${n.id}`}
+                title="该分区在本版本尚未接线，不提供假入口。"
+                className="cursor-not-allowed rounded px-3 py-1.5 text-sm"
+                style={{ color: "var(--fg-3)" }}
+              >
+                {n.label}
+              </span>
+            );
+          }
+          return (
+            <Link
+              key={n.id}
+              to={`/employees/${empId ? encodeURIComponent(empId) : ""}${n.id === "overview" ? "" : `?zone=${n.id}`}`}
+              role="tab"
+              aria-selected={active}
+              data-testid={`edz-nav-${n.id}`}
+              className="rounded px-3 py-1.5 text-sm no-underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+              style={{
+                background: active ? "var(--panel-2)" : "transparent",
+                color: active ? "var(--fg)" : "var(--fg-3)",
+              }}
+            >
+              {n.label}
+            </Link>
+          );
+        })}
+      </div>
 
       <div
         role="tablist"
@@ -751,6 +1156,8 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
       {zone === "audit" ? <AuditZone resource={audit} onRetry={() => retry("audit")} /> : null}
       {zone === "chat" ? <ChatZone resource={chat} empId={empId} onRetry={() => retry("chat")} /> : null}
       {zone === "tasklist" ? <TasksZone resource={tasklist} empId={empId} onRetry={() => retry("tasklist")} /> : null}
+      {zone === "sessions" ? <SessionsZone resource={sessions} empId={empId} onRetry={() => retry("sessions")} /> : null}
+      {zone === "usage" ? <UsageZone empId={empId} nonce={reload.usage} onRetry={() => retry("usage")} /> : null}
     </section>
   );
 }
@@ -803,7 +1210,7 @@ function useOverview(empId: string, nonce: number): OverviewState {
         // the capability zone reuses — see file header).
         const status = err instanceof ApiError ? err.status : undefined;
         if (status === 403) {
-          setState({ phase: "denied", message: DENIED_COPY, requestId: api?.requestId ?? null });
+          setState({ phase: "denied", message: DENIED_COPY, requestId: err instanceof ApiError ? (err.requestId ?? null) : null });
           return;
         }
         try {
@@ -828,7 +1235,7 @@ function useOverview(empId: string, nonce: number): OverviewState {
           if (cancelled) return;
           const r = toResourceError(err2);
           if (r.phase === "denied" && status === 404) {
-            setState({ phase: "denied", message: DENIED_COPY, requestId: api?.requestId ?? null });
+            setState({ phase: "denied", message: DENIED_COPY, requestId: r.requestId ?? null });
           } else if (r.phase === "error") {
             setState({ phase: "error", message: r.message, requestId: r.requestId });
           } else {
@@ -1045,8 +1452,8 @@ function ApprovalsZone({ resource, onRetry }: { resource: Resource<ApprovalRow[]
   if (resource.phase === "empty") {
     return (
       <ZoneEmpty
-        title="这位员工还没有审批事项"
-        hint="有新的申请或待办审批时，会出现在这里。"
+        title="当前没有审批事项"
+        hint="审批读口暂不支持按员工筛选；这是按你的登录身份返回（全部状态）下的空集，不是把缺失当 0。"
         testid="ed5-approvals-empty"
       />
     );
@@ -1068,37 +1475,49 @@ function ApprovalsZone({ resource, onRetry }: { resource: Resource<ApprovalRow[]
   return (
     <Card data-testid="ed5-approvals">
       <CardContent className="p-0">
-        <div className="hidden grid-cols-[minmax(0,1.4fr)_minmax(0,0.7fr)_minmax(0,0.8fr)_minmax(0,0.6fr)] gap-2 border-b border-white/10 px-4 py-2 text-xs text-white/45 md:grid">
+        <p
+          className="px-4 pt-3 text-xs text-white/45"
+          data-testid="ed8-appr-note"
+          title="实测（本代次）：employeeId/assignee 参数不改变返回集合；BFF /api/approvals 白名单只透传 status/limit/cursor，审批归属按登录者注入。为避免把「全量」伪装成「该员工的」，此处按真实口径展示并保留队列跳转。"
+        >
+          审批读口暂不支持按员工筛选：以下为当前登录身份的全部状态审批。
+        </p>
+        <div className="hidden grid-cols-[minmax(0,1.4fr)_minmax(0,0.7fr)_minmax(0,0.6fr)_minmax(0,0.8fr)] gap-2 border-b border-white/10 px-4 py-2 text-xs text-white/45 md:grid">
           <span>事项</span>
           <span>状态</span>
-          <span>提交时间</span>
-          <span>涉及金额</span>
+          <span>风险档</span>
+          <span title="口径：更新时间 updatedAt（缺则回退提交时间），按北京时间到分">更新时间</span>
         </div>
         <ul className="divide-y divide-white/5">
           {resource.data.map((row, i) => {
             const label = row.title ?? (row.ref ? `审批单 · ${shortCode(row.ref)}` : "审批事项");
+            const risk = riskLabel(row.risk);
+            const updated = row.updatedAt ?? row.at;
             const inner = (
               <>
-                <span className="min-w-0 truncate text-sm">{label}</span>
-                <span title={row.status ?? undefined}>
+                <span className="min-w-0 truncate text-sm" data-testid={`ed8-appr-title-${i}`}>{label}</span>
+                <span data-testid={`ed8-appr-status-${i}`} title={row.status ?? undefined}>
                   <Badge tone={approvalStatusTone(row.status)}>{approvalStatusLabel(row.status)}</Badge>
                 </span>
-                <span className="font-mono text-xs text-white/55">{beijing(row.at)}</span>
-                <span className="text-xs text-white/55">{money(row.amount)}</span>
+                <span className="text-xs text-white/55" data-testid={`ed8-appr-risk-${i}`} title={risk.title}>
+                  {risk.text}
+                </span>
+                <span className="font-mono text-xs text-white/55" data-testid={`ed8-appr-time-${i}`} title={row.updatedAt === null ? "上游没有回传更新时间，此处显示提交时间" : undefined}>
+                  {beijing(updated)}
+                </span>
               </>
             );
+            const grid = "grid grid-cols-1 gap-1 px-4 py-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,0.7fr)_minmax(0,0.6fr)_minmax(0,0.8fr)] md:items-center md:gap-2";
+            // 行出口：既有可达落点 = 审批队列并保留该行状态筛选（本代次无 /approvals/:id 详情路由）。
+            const href = row.status ? `/approvals?status=${encodeURIComponent(row.status)}` : "/approvals";
             return row.ref ? (
-              <li key={`${row.ref}-${i}`}>
-                <Link
-                  to="/approvals"
-                  title={row.ref}
-                  className="grid grid-cols-1 gap-1 px-4 py-3 hover:bg-white/5 md:grid-cols-[minmax(0,1.4fr)_minmax(0,0.7fr)_minmax(0,0.8fr)_minmax(0,0.6fr)] md:items-center md:gap-2"
-                >
+              <li key={`${row.ref}-${i}`} data-testid={`ed8-appr-row-${i}`}>
+                <Link to={href} title={row.ref} className={grid} data-testid={`ed8-appr-link-${i}`}>
                   {inner}
                 </Link>
               </li>
             ) : (
-              <li key={`row-${i}`} className="grid grid-cols-1 gap-1 px-4 py-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,0.7fr)_minmax(0,0.8fr)_minmax(0,0.6fr)] md:items-center md:gap-2">
+              <li key={`row-${i}`} className={grid} data-testid={`ed8-appr-row-${i}`}>
                 {inner}
               </li>
             );
