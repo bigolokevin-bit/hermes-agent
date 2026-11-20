@@ -949,7 +949,7 @@ describe("R40 — per-event status and duration", () => {
 
 /* ── runs row preview ────────────────────────────────────────────────
  * The preview is a reading of the row the list already has: no second read,
- * no client clock, one open at a time, Escape hands focus back to its toggle.
+ * no client clock, one open at a time, Escape hands focus back to its row.
  */
 describe("runs row preview", () => {
   const RUN_C = {
@@ -1016,7 +1016,7 @@ describe("runs row preview", () => {
     expect(urls().filter((url) => url.includes("/api/runs"))).toHaveLength(1);
   });
 
-  it("closes on Escape and hands focus back to the toggle", async () => {
+  it("closes on Escape and hands focus back to the row", async () => {
     api.fetchJSON.mockImplementation(okList([RUN_C]));
     await render("/runs");
     await waitFor(() => rowNodes() === 1, "one row");
@@ -1027,7 +1027,7 @@ describe("runs row preview", () => {
       preview(0)?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     });
     expect(preview(0)).toBeNull();
-    expect(document.activeElement).toBe(toggle(0));
+    expect(document.activeElement).toBe(document.querySelector("[data-testid='run5-row-0']"));
   });
 
   it("names missing fields instead of filling them in", async () => {
@@ -1871,5 +1871,326 @@ describe("run filter reset", () => {
     await waitFor(() => probe() === "/runs", "address cleared");
     expect(runsReads()).toBe(before);
     expect((document.querySelector("[data-testid='run-reset-filters']") as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+/* ── one row, copied in the words the preview already shows ───────── */
+
+describe("run row copy", () => {
+  const RUN_C = {
+    runId: "rn_01M7822COPYROW000000001",
+    status: "completed",
+    costStatus: "upstream",
+    costUsd: 0,
+    startedAt: "2026-11-18T02:00:00Z",
+    endedAt: "2026-11-18T02:11:00Z",
+    employeeId: "emp_aaaabbbbcccc",
+  };
+  const RUN_D = { runId: "rn_01M7822COPYROW000000002", costStatus: "unknown", costUsd: null };
+  const open = (index: number) =>
+    act(async () => {
+      (document.querySelector(`[data-testid='run-row-toggle-${index}']`) as HTMLButtonElement).click();
+    });
+  const copyRow = () =>
+    act(async () => {
+      (document.querySelector("[data-testid='run-row-copy']") as HTMLButtonElement).click();
+    });
+  const rowFields = (index: number): string[] => [
+    document.querySelector(`[data-testid='run5-row-${index}-code']`)?.textContent ?? "",
+    ...["status", "started", "ended", "elapsed", "cost", "employee"].map(
+      (key) => document.querySelector(`[data-testid='run-row-preview-${index}-${key}'] dd`)?.textContent ?? "",
+    ),
+  ];
+
+  it("copies the seven rendered fields and the list copy reads the same ones", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_C]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 1, "one row");
+    const reads = api.fetchJSON.mock.calls.filter((call) => String(call[0]).includes("/api/runs")).length;
+    expect(document.querySelector("[data-testid='run-row-copy']")).toBeNull(); // 预览没开就没有这个钮
+    await open(0);
+    const expected = rowFields(0).join(" · ");
+    expect(expected.startsWith("运行 · 0001")).toBe(true);
+    await copyRow();
+    expect(clip.copyTextToClipboard.mock.calls.at(-1)?.[0]).toBe(expected);
+    expect(document.querySelector("[data-testid='run-row-copy-status']")?.textContent).toBe("已复制");
+    // 列表复制用同一组字段，只是分隔符不同
+    await act(async () => {
+      (document.querySelector("[data-testid='run-list-copy']") as HTMLButtonElement).click();
+    });
+    const listLine = String(clip.copyTextToClipboard.mock.calls.at(-1)?.[0] ?? "").split("\n")[1] ?? "";
+    expect(listLine).toBe(rowFields(0).join(","));
+    expect(api.fetchJSON.mock.calls.filter((call) => String(call[0]).includes("/api/runs")).length).toBe(reads);
+  });
+
+  it("says 该字段未返回 instead of leaving a hole, and keeps the zero and the dash apart", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_D]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 1, "one row");
+    await open(0);
+    await copyRow();
+    const text = String(clip.copyTextToClipboard.mock.calls.at(-1)?.[0] ?? "");
+    expect(text).toContain("该字段未返回");
+    expect(text).toContain("未指派");
+    expect(text).not.toContain("$0.00");
+    // 状态/开始/结束三处写「该字段未返回」，耗时与成本仍是「—」：两种缺值不混写
+    expect(text.split(" · ").filter((part) => part === "—").length).toBe(2);
+  });
+
+  it("offers the text in a read-only box when the clipboard refuses", async () => {
+    clip.copyTextToClipboard.mockImplementationOnce(() => Promise.resolve(false));
+    api.fetchJSON.mockImplementation(okList([RUN_C]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 1, "one row");
+    await open(0);
+    const expected = rowFields(0).join(" · ");
+    await copyRow();
+    await waitFor(() => document.querySelector("[data-testid='run-row-copy-fallback-text']") !== null, "fallback");
+    const box = document.querySelector("[data-testid='run-row-copy-fallback-text']") as HTMLTextAreaElement;
+    expect(box.value).toBe(expected);
+    expect(box.readOnly).toBe(true);
+    expect(document.querySelector("[data-testid='run-row-copy-status']")?.textContent).toContain("复制没成功");
+  });
+});
+
+/* ── roving tabindex over the list rows ───────────────────────────── */
+
+describe("runs list keyboard navigation", () => {
+  const rowEl = (i: number): HTMLLIElement =>
+    document.querySelector(`[data-testid='run5-row-${i}']`) as HTMLLIElement;
+  const toggleEl = (i: number): HTMLButtonElement =>
+    document.querySelector(`[data-testid='run-row-toggle-${i}']`) as HTMLButtonElement;
+  const press = async (el: Element, key: string): Promise<void> => {
+    await act(async () => {
+      el.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+    });
+  };
+
+  it("keeps one tab stop and moves it with arrows, Home and End", async () => {
+    const RUN_K = {
+      runId: "rn_01M7822KEYBOARD0000000003",
+      status: "running",
+      costStatus: "missing",
+      startedAt: "2026-11-18T05:00:00Z",
+    };
+    api.fetchJSON.mockImplementation(okList([RUN_A, RUN_B, RUN_K]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 3, "three rows");
+    const before = urls().length;
+
+    expect(rowEl(0).tabIndex).toBe(0);
+    expect(rowEl(1).tabIndex).toBe(-1);
+    expect(rowEl(2).tabIndex).toBe(-1);
+    expect(rowEl(0).getAttribute("role")).toBe("group");
+    expect(rowEl(0).getAttribute("aria-expanded")).toBe("false");
+
+    rowEl(0).focus();
+    await press(rowEl(0), "ArrowDown");
+    expect(document.activeElement).toBe(rowEl(1));
+    expect(rowEl(1).tabIndex).toBe(0);
+    expect(rowEl(0).tabIndex).toBe(-1);
+
+    await press(rowEl(1), "End");
+    expect(document.activeElement).toBe(rowEl(2));
+    await press(rowEl(2), "ArrowDown"); // already last: stays put
+    expect(document.activeElement).toBe(rowEl(2));
+    await press(rowEl(2), "Home");
+    expect(document.activeElement).toBe(rowEl(0));
+    await press(rowEl(0), "ArrowUp"); // already first: stays put
+    expect(document.activeElement).toBe(rowEl(0));
+
+    // Keys pressed inside the row's own controls do not move the row focus.
+    toggleEl(0).focus();
+    await press(toggleEl(0), "ArrowDown");
+    expect(document.activeElement).toBe(toggleEl(0));
+    expect(urls().length).toBe(before);
+  });
+
+  it("toggles the preview with Enter and keeps both aria-expanded in step", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A, RUN_B]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 2, "two rows");
+    const before = urls().length;
+
+    rowEl(0).focus();
+    await press(rowEl(0), "Enter");
+    expect(document.querySelector("[data-testid='run-row-preview-0']")).not.toBeNull();
+    expect(rowEl(0).getAttribute("aria-expanded")).toBe("true");
+    expect(toggleEl(0).getAttribute("aria-expanded")).toBe("true");
+    expect(rowEl(0).getAttribute("aria-controls")).toBe("run-row-preview-0");
+
+    await press(rowEl(1), " "); // space opens the second row, the first closes
+    expect(document.querySelector("[data-testid='run-row-preview-0']")).toBeNull();
+    expect(document.querySelector("[data-testid='run-row-preview-1']")).not.toBeNull();
+    expect(rowEl(1).getAttribute("aria-expanded")).toBe("true");
+    expect(toggleEl(1).getAttribute("aria-expanded")).toBe("true");
+    expect(rowEl(0).getAttribute("aria-expanded")).toBe("false");
+
+    await press(rowEl(1), "Escape");
+    expect(document.querySelector("[data-testid='run-row-preview-1']")).toBeNull();
+    expect(document.activeElement).toBe(rowEl(1));
+    expect(urls().length).toBe(before); // no extra read, and the URL never moved
+    expect(document.querySelector("[data-testid='probe-location']")).toBeNull();
+  });
+
+  it("does not attach row navigation outside the ready list", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs?state=error");
+    await waitFor(
+      () => document.querySelector("[data-testid='run-state']")?.getAttribute("data-phase") === "error",
+      "error state",
+    );
+    expect(document.querySelector("[data-testid='run5-row-0']")).toBeNull();
+    // Only real controls remain in the tab order; no row carrier is focusable.
+    const retry = document.querySelector("[data-testid='run5-error-retry']") as HTMLElement | null;
+    expect(retry?.tabIndex).toBe(0);
+    expect(document.querySelector("[data-testid='run-list-copy']")).not.toBeNull();
+  });
+});
+
+/* ── the chips that name every filter still in force ─────────────── */
+
+describe("run filter chips", () => {
+  const chips = (): string[] =>
+    Array.from(document.querySelectorAll("[data-testid^='run-chip-']"))
+      .filter((node) => !node.getAttribute("data-testid")?.endsWith("-remove"))
+      .map((node) => node.getAttribute("data-testid") ?? "");
+  const probe = (): string => document.querySelector("[data-testid='probe-location']")?.textContent ?? "";
+  const runsReads = (): number =>
+    api.fetchJSON.mock.calls.filter((call) => String(call[0]).includes("/api/runs")).length;
+  const rowCodes = (): string[] =>
+    Array.from(document.querySelectorAll("[data-testid^='run5-row-'][data-status]")).map(
+      (row) => row.querySelector("[data-testid$='-code']")?.textContent ?? "",
+    );
+
+  it("names every filter once, merges the two sort keys, and removes one at a time", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A, RUN_B]));
+    await render(
+      "/runs?window=30d&status=failed&employee=emp_aaaabbbbcccc&rsort=started&rdir=desc&keep=1",
+      <><RunsModulePage /><HistoryProbe /></>,
+    );
+    await waitFor(() => rowNodes() === 2, "two rows");
+    expect(chips()).toEqual(["run-chip-window", "run-chip-status", "run-chip-employee", "run-chip-sort"]);
+    const text = (id: string) => document.querySelector(`[data-testid='${id}']`)?.textContent ?? "";
+    expect(text("run-chip-window")).toContain("近 30 天");
+    expect(text("run-chip-status")).toContain("失败");
+    expect(text("run-chip-employee")).toContain("员工 · AAAABBBB");
+    expect(text("run-chip-sort")).toContain("按开始时间 降序");
+    expect(document.querySelector("[data-testid='run-chip-window']")?.getAttribute("title")).toContain("30d");
+    expect(document.querySelector("[data-testid='run-chip-sort']")?.getAttribute("title")).toContain("started");
+    expect(document.querySelector("[data-testid='run-chip-sort']")?.getAttribute("title")).toContain("desc");
+
+    // Drop status: one new list read, the other filters and keep=1 stay.
+    const beforeStatus = runsReads();
+    const beforeCodes = rowCodes();
+    await act(async () => {
+      (document.querySelector("[data-testid='run-chip-status-remove']") as HTMLButtonElement).click();
+    });
+    await waitFor(() => !chips().includes("run-chip-status"), "status chip gone");
+    expect(runsReads()).toBe(beforeStatus + 1);
+    expect(probe()).toContain("window=30d");
+    expect(probe()).toContain("employee=emp_aaaabbbbcccc");
+    expect(probe()).toContain("rsort=started");
+    expect(probe()).toContain("keep=1");
+    // Table, count and copy text all move with the same batch.
+    expect(document.querySelector("[data-testid='run5-counts']")?.textContent ?? "").toContain(`本页 ${rowNodes()} 次`);
+    await act(async () => {
+      (document.querySelector("[data-testid='run-list-copy']") as HTMLButtonElement).click();
+    });
+    const lines = String(clip.copyTextToClipboard.mock.calls.at(-1)?.[0] ?? "").split("\n");
+    expect(lines[1]?.startsWith(rowCodes()[0] ?? "____")).toBe(true);
+    expect(beforeCodes.length).toBe(2);
+
+    // Drop employee: the next read carries no employeeId.
+    const beforeEmployee = runsReads();
+    await act(async () => {
+      (document.querySelector("[data-testid='run-chip-employee-remove']") as HTMLButtonElement).click();
+    });
+    await waitFor(() => !chips().includes("run-chip-employee"), "employee chip gone");
+    expect(runsReads()).toBe(beforeEmployee + 1);
+    const lastRunUrl = String(api.fetchJSON.mock.calls.filter((call) => String(call[0]).includes("/api/runs")).at(-1)?.[0] ?? "");
+    expect(lastRunUrl).not.toContain("employeeId=");
+
+    // Drop sort: both keys leave and nothing is read again.
+    const beforeSort = runsReads();
+    await act(async () => {
+      (document.querySelector("[data-testid='run-chip-sort-remove']") as HTMLButtonElement).click();
+    });
+    await waitFor(() => !chips().includes("run-chip-sort"), "sort chip gone");
+    expect(runsReads()).toBe(beforeSort);
+    expect(probe()).not.toContain("rsort=");
+    expect(probe()).not.toContain("rdir=");
+  });
+
+  it("shows an unreadable value verbatim and says it was not recognised", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs?status=zz", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => rowNodes() === 1, "one row");
+    expect(chips()).toEqual(["run-chip-status"]);
+    const chip = document.querySelector("[data-testid='run-chip-status']");
+    expect(chip?.textContent).toContain("zz");
+    expect(chip?.getAttribute("title")).toContain("未被识别");
+    expect(document.querySelector("[data-testid='run-chip-status-remove']")).not.toBeNull();
+  });
+
+  it("renders no strip when nothing is set, and can drop the preview state", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => rowNodes() === 1, "one row");
+    expect(document.querySelector("[data-testid='run-filter-chips']")).toBeNull();
+
+    await render("/runs?state=empty", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => chips().length === 1, "state chip");
+    expect(document.querySelector("[data-testid='run-chip-state']")?.textContent).toContain("空列表");
+    await act(async () => {
+      (document.querySelector("[data-testid='run-chip-state-remove']") as HTMLButtonElement).click();
+    });
+    await waitFor(() => probe() === "/runs", "state cleared");
+  });
+});
+
+describe("runs empty state guide", () => {
+  const guide = () => document.querySelector("[data-testid='run-empty-guide']");
+
+  it("offers two real places to go when nothing has run yet", async () => {
+    api.fetchJSON.mockImplementation(okList([]));
+    await render("/runs");
+    await waitFor(() => document.querySelector("[data-testid='run-state-empty']") !== null, "empty panel");
+    expect(guide()).not.toBeNull();
+    const work = document.querySelector("[data-testid='run-empty-guide-work']") as HTMLAnchorElement;
+    const metrics = document.querySelector("[data-testid='run-empty-guide-metrics']") as HTMLAnchorElement;
+    expect(work.tagName).toBe("A");
+    expect(work.getAttribute("href")).toBe("/work?tab=board");
+    expect(metrics.tagName).toBe("A");
+    expect(metrics.getAttribute("href")).toBe("/metrics");
+    expect(guide()?.textContent).toContain("清空筛选");
+    // No summary 0 and no filtered-only exit on the unfiltered leg.
+    expect(document.querySelector("[data-testid='run-state-clear']")).toBeNull();
+    expect(text()).not.toContain("$0.00");
+    // The guide asks for nothing.
+    const before = urls().length;
+    await act(async () => {
+      work.click();
+      metrics.click();
+    });
+    expect(urls().length).toBe(before);
+  });
+
+  it("stays out of the way when a filter is what emptied the page", async () => {
+    api.fetchJSON.mockImplementation(okList([]));
+    await render("/runs?status=failed");
+    await waitFor(() => document.querySelector("[data-testid='run-state-empty']") !== null, "empty panel");
+    expect(guide()).toBeNull();
+    expect(document.querySelector("[data-testid='run-state-clear']")).not.toBeNull();
+    expect(text()).toContain("当前筛选下没有运行记录");
+  });
+
+  it("does not read as empty when the read itself failed", async () => {
+    api.fetchJSON.mockRejectedValue(new ApiError("down", { status: 500, body: "", url: "/api/runs", requestId: "req-empty-1" }));
+    await render("/runs");
+    await waitFor(() => document.querySelector("[data-testid='run-state-error']") !== null, "error panel");
+    expect(guide()).toBeNull();
+    expect(document.querySelector("[data-testid='run-state-empty']")).toBeNull();
+    expect(text()).toContain("req-empty-1");
   });
 });

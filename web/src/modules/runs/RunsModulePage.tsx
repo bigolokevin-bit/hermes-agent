@@ -62,7 +62,9 @@ import {
   runCsvFileName,
   runListCsv,
   runListText,
+  RUN_PARAM_TABLE,
   runSource,
+  sinceLabel,
   SINCE_OPTIONS,
   STATUS_KEYS,
   askedLine,
@@ -92,6 +94,7 @@ import {
   resultRefHref,
   runCode,
   runPreview,
+  runRowText,
   shortId,
   sinceKeyOf,
   statusFilterOf,
@@ -215,6 +218,8 @@ function CostCell({ row, testId }: { row: RunRow; testId: string }): ReactNode {
  */
 function RunPreviewPanel({ row, names, index }: { row: RunRow; names: Map<string, string>; index: number }): ReactNode {
   const view = runPreview(row, names);
+  const [copyState, setCopyState] = useState<"idle" | "done" | "failed">("idle");
+  const [copyBody, setCopyBody] = useState("");
   const fields: Array<{ key: string; label: string; field: { text: string; title: string } }> = [
     { key: "status", label: "状态", field: view.status },
     { key: "started", label: "开始", field: view.started },
@@ -240,6 +245,43 @@ function RunPreviewPanel({ row, names, index }: { row: RunRow; names: Map<string
       <p className="mt-2 min-w-0 break-words text-[11px] leading-tight text-muted-foreground">
         预览只读：六项都取自这一行已读到的数据，打开或收起都不会再发一次请求。
       </p>
+      <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+        <Button
+          size="sm"
+          outlined
+          data-testid="run-row-copy"
+          onClick={() => {
+            const text = runRowText(row, names);
+            setCopyBody(text);
+            copyTextToClipboard(text).then((ok) => setCopyState(ok ? "done" : "failed"));
+          }}
+        >
+          复制这一行
+        </Button>
+        <span
+          role="status"
+          aria-live="polite"
+          className="min-w-0 break-words text-xs text-muted-foreground"
+          data-testid="run-row-copy-status"
+        >
+          {copyState === "done"
+            ? "已复制"
+            : copyState === "failed"
+              ? "复制没成功：下面的文本可以自己选中复制"
+              : "复制的是这一行屏上已渲染的七个字段。"}
+        </span>
+      </div>
+      {copyState === "failed" ? (
+        <div className="mt-2 min-w-0" data-testid="run-row-copy-fallback">
+          <textarea
+            readOnly
+            value={copyBody}
+            aria-label="这一行的纯文本"
+            data-testid="run-row-copy-fallback-text"
+            className="min-h-16 w-full resize-y rounded-md border border-border bg-transparent p-2 font-mono text-xs"
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -494,10 +536,25 @@ function ListRows({
 }): ReactNode {
   const [openId, setOpenId] = useState<string | null>(null);
   const toggleRefs = useRef(new Map<string, HTMLButtonElement>());
+  // Roving tabindex: exactly one row is in the tab order, arrows move focus
+  // between rows, Enter/Space toggles that row's preview. Inner links and
+  // buttons keep their native Tab stops, so nothing becomes unreachable.
+  const [activeIndex, setActiveIndex] = useState(0);
+  const rowRefs = useRef<Array<HTMLLIElement | null>>([]);
+  const lastIndex = Math.max(0, rows.length - 1);
+  const tabStop = Math.min(activeIndex, lastIndex);
+  const focusRow = (next: number) => {
+    const target = Math.max(0, Math.min(next, lastIndex));
+    setActiveIndex(target);
+    rowRefs.current[target]?.focus();
+  };
   const close = useCallback((rowId: string) => {
     setOpenId(null);
-    toggleRefs.current.get(rowId)?.focus();
-  }, []);
+    const index = rows.findIndex((row) => row.runId === rowId);
+    const row = index >= 0 ? rowRefs.current[index] : null;
+    if (row) row.focus();
+    else toggleRefs.current.get(rowId)?.focus();
+  }, [rows]);
   return (
     <Card className="min-w-0 border-border bg-card" data-testid="run5-table">
       <CardContent className="p-0">
@@ -520,15 +577,46 @@ function ListRows({
             return (
               <li
                 key={row.runId}
-                className={`min-w-0${isSelected ? " bg-muted/40" : ""}`}
+                ref={(node) => {
+                  rowRefs.current[index] = node;
+                }}
+                role="group"
+                tabIndex={index === tabStop ? 0 : -1}
+                aria-expanded={open}
+                aria-controls={open ? `run-row-preview-${index}` : undefined}
+                aria-label={`${runCode(row.runId)}：${statusLabel(row.status)}`}
+                className={`min-w-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2${isSelected ? " bg-muted/40" : ""}`}
                 data-testid={base}
                 data-status={row.status ?? "unknown"}
                 data-selected={isSelected ? "1" : undefined}
                 aria-current={isSelected ? "true" : undefined}
                 onKeyDown={(event) => {
-                  if (!open || event.key !== "Escape") return;
-                  event.stopPropagation();
-                  close(row.runId);
+                  if (event.key === "Escape") {
+                    if (!open) return;
+                    event.stopPropagation();
+                    close(row.runId);
+                    return;
+                  }
+                  // Keys pressed inside the row's own controls keep their native
+                  // behaviour; only the row carrier itself drives arrow navigation.
+                  if (event.target !== event.currentTarget) return;
+                  if (event.key === "ArrowDown") {
+                    event.preventDefault();
+                    focusRow(index + 1);
+                  } else if (event.key === "ArrowUp") {
+                    event.preventDefault();
+                    focusRow(index - 1);
+                  } else if (event.key === "Home") {
+                    event.preventDefault();
+                    focusRow(0);
+                  } else if (event.key === "End") {
+                    event.preventDefault();
+                    focusRow(lastIndex);
+                  } else if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    if (previewGate.disabled) return;
+                    setOpenId(open ? null : row.runId);
+                  }
                 }}
               >
                 <div className={GRID}>
@@ -728,6 +816,20 @@ function DetailField({ label, children }: { label: string; children: ReactNode }
 }
 
 
+const RUN_SORT_LABEL: Record<RunSortKey, string> = {
+  status: "状态",
+  started: "开始时间",
+  elapsed: "耗时",
+  cost: "成本",
+};
+
+const RUN_STATE_LABEL: Record<string, string> = {
+  loading: "加载中",
+  empty: "空列表",
+  error: "读取失败",
+  denied: "无权限",
+};
+
 function RunSourceBar({ source }: { source: ReturnType<typeof runSource> }) {
   const [status, setStatus] = useState<"idle" | "done" | "failed">("idle");
   const body = source.path;
@@ -867,7 +969,6 @@ export function RunsModulePage() {
     if (filterReset.removed.length === 0) return;
     setParams(filterReset.next, { replace: true, state: locationState ?? null });
   };
-
   const data = useRunsData(forced, { status, sinceKey, employeeId: employee });
   const { phase, rows, cursor, answeredBy, unreadable, failure, forced: isForced } = data;
 
@@ -893,6 +994,54 @@ export function RunsModulePage() {
   const detail = useRunDetail(selected, readTick);
 
   const [names, setNames] = useState<Map<string, string>>(new Map());
+  const removeChip = (keys: readonly string[]) => {
+    const next = new URLSearchParams(params);
+    for (const key of keys) next.delete(key);
+    setParams(next, { replace: true, state: locationState ?? null });
+  };
+  // One chip per entry of the shared table; the two sort parameters are one
+  // chip because the address always carries them together.
+  const filterChips: { key: string; label: string; value: string; title: string; params: string[] }[] = [];
+  for (const spec of RUN_PARAM_TABLE) {
+    if (spec.key === "rdir") continue;
+    if (spec.key === "rsort") {
+      if (!params.has("rsort") && !params.has("rdir")) continue;
+      const raw = [params.get("rsort"), params.get("rdir")].filter(Boolean).join(" / ");
+      filterChips.push({
+        key: "sort",
+        label: "排序",
+        value: `按${RUN_SORT_LABEL[rsort ?? "cost"]} ${rdir === "asc" ? "升序" : "降序"}`,
+        title: `地址原值：${raw}；排序只在已加载的行内生效，移除后回到默认的成本降序。`,
+        params: ["rsort", "rdir"],
+      });
+      continue;
+    }
+    const raw = params.get(spec.key);
+    if (raw === null) continue;
+    let value = raw;
+    let note = "";
+    if (spec.key === "window") {
+      value = sinceLabel(sinceKey);
+      if (raw !== sinceKey) note = "该值未被识别，按近 7 天读取";
+    } else if (spec.key === "status") {
+      const parsed = statusFilterOf(raw);
+      value = parsed ? statusLabel(parsed) : raw;
+      if (!parsed) note = "该值未被识别，按全部状态读取";
+    } else if (spec.key === "employee") {
+      value = employeeLabel(employee, names);
+    } else if (spec.key === "state") {
+      value = forced ? RUN_STATE_LABEL[forced] : raw;
+      if (!forced) note = "该值未被识别，按正常读取";
+    }
+    filterChips.push({
+      key: spec.key,
+      label: spec.label,
+      value,
+      title: note ? `地址原值：${raw}；${note}` : `地址原值：${raw}`,
+      params: [spec.key],
+    });
+  }
+
   // Employee names decorate the list as well as the detail line. The directory
   // is a side-read for labels only: if it fails, the 8-character code stays as
   // the honest fallback and the run answer is untouched.
@@ -1078,6 +1227,34 @@ export function RunsModulePage() {
             清除筛选
           </Button>
         </div>
+        {filterChips.length > 0 ? (
+          <div
+            className="flex min-w-0 flex-wrap items-center gap-2"
+            data-testid="run-filter-chips"
+            aria-label="生效筛选"
+          >
+            <span className="text-xs text-muted-foreground">当前筛选</span>
+            {filterChips.map((chip) => (
+              <span
+                key={chip.key}
+                className="inline-flex min-w-0 items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs"
+                data-testid={`run-chip-${chip.key}`}
+                title={chip.title}
+              >
+                <span className="min-w-0 truncate">{chip.label}：{chip.value}</span>
+                <button
+                  type="button"
+                  className="shrink-0 rounded-full px-1 text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                  aria-label={`移除${chip.label}筛选`}
+                  data-testid={`run-chip-${chip.key}-remove`}
+                  onClick={() => removeChip(chip.params)}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       {forced !== null ? <ReproNote state={forced} /> : null}
@@ -1236,6 +1413,24 @@ export function RunsModulePage() {
           onClear={clearFilters}
           kind={filtersNarrow ? "filter" : "window"}
           fixture={forced ?? undefined}
+          guide={
+            <>
+              <p className="max-w-prose break-words text-xs text-muted-foreground">
+                想先有东西可看：去任务板挑一件来跑，或到指标页看这段时间的钱花在哪。
+              </p>
+              <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs">
+                <Link className="underline underline-offset-2" to="/work?tab=board" data-testid="run-empty-guide-work">
+                  去任务板
+                </Link>
+                <Link className="underline underline-offset-2" to="/metrics" data-testid="run-empty-guide-metrics">
+                  看运行分析
+                </Link>
+              </p>
+              <p className="max-w-prose break-words text-xs text-muted-foreground">
+                若你刚收窄过条件，清空筛选就能看全部；这里没有汇总数字，也不把空当 0。
+              </p>
+            </>
+          }
         />
       ) : null}
       {phase === "error" ? (

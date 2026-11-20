@@ -776,27 +776,42 @@ export const RUN_LIST_HEADER = ["run", "status", "started", "ended", "elapsed", 
  * Renders the rows the list already holds as plain text. Nothing is re-read:
  * no clock, no request, no page beyond what is on screen.
  */
+/**
+ * How a missing value reads on a surface. The preview panel and the row copy
+ * say "该字段未返回"; the list copy and its CSV keep "—"/empty, a published
+ * contract of its own.
+ */
+export type RowFieldMode = "dash" | "label";
+
+/**
+ * One row's seven fields. The list copy, the CSV row and the row copy all read
+ * this, so a field can never read differently on two surfaces by accident.
+ */
+export function runRowFields(row: RunRow, names: Map<string, string>, mode: RowFieldMode = "dash"): string[] {
+  const missing = mode === "label" ? FIELD_MISSING : "—";
+  const start = beijingMinute(row.startedAt);
+  const end = beijingMinute(row.endedAt);
+  // Two ends or nothing: a half-known span is never closed with `Date.now()`.
+  const elapsed = start.text && end.text ? elapsedMinute(row.startedAt, row.endedAt).text ?? "—" : "—";
+  return [
+    runCode(row.runId),
+    row.status ? statusLabel(row.status) : missing,
+    start.text ?? missing,
+    end.text ?? missing,
+    elapsed,
+    costState(row) === "known" ? costText(row) : "—",
+    employeeLabel(row.employeeId, names),
+  ];
+}
+
+/** One line for one row, in the words the preview panel already shows. */
+export function runRowText(row: RunRow, names: Map<string, string>): string {
+  return runRowFields(row, names, "label").join(" · ");
+}
+
 export function runListText(rows: RunRow[], names: Map<string, string>): string {
   const lines: string[] = [RUN_LIST_HEADER.join(",")];
-  for (const row of rows) {
-    const start = beijingMinute(row.startedAt);
-    const end = beijingMinute(row.endedAt);
-    // Two ends or nothing: a half-known span is never closed with `Date.now()`.
-    const elapsed = start.text && end.text ? elapsedMinute(row.startedAt, row.endedAt).text ?? "—" : "—";
-    const cost = costState(row) === "known" ? costText(row) : "—";
-    const status = row.status ? statusLabel(row.status) : "—";
-    lines.push(
-      [
-        runCode(row.runId),
-        status,
-        start.text ?? "—",
-        end.text ?? "—",
-        elapsed,
-        cost,
-        employeeLabel(row.employeeId, names),
-      ].join(","),
-    );
-  }
+  for (const row of rows) lines.push(runRowFields(row, names, "dash").join(","));
   return lines.join("\n");
 }
 
