@@ -16,7 +16,7 @@ vi.mock('@/lib/clipboard', () => ({ copyTextToClipboard: clip.copyTextToClipboar
 
 import { MetricsModulePage } from './MetricsModulePage';
 import { CALIBER_NOTES } from './metrics';
-import { csvFileName, shareCsvFileName } from './metrics';
+import { costCaliber, csvFileName, shareCsvFileName } from './metrics';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -4656,5 +4656,65 @@ describe('metAQ — the address compatibility matrix', () => {
     await render('/metrics?heat=4&window=7d', page);
     await waitFor(() => q('metAP-heat') !== null, 'canonical settled');
     expect(urls().length - beforeCanonical).toBe(aliasCount);
+  });
+});
+
+describe('metAS — three cost faces on one line', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+
+  it('says the three faces agree only when all three are known and equal', () => {
+    const same = costCaliber({ day: 4, month: 4, usage: 4, usageMissing: null });
+    expect(same.verdict).toBe('三面一致');
+    expect(same.known).toBe(3);
+    expect(same.pairs.every((pair) => pair.diff === 0)).toBe(true);
+
+    const apart = costCaliber({ day: 0, month: 0.132696, usage: 4, usageMissing: null });
+    expect(apart.verdict).toBe('口径不同，见逐对差值');
+    expect(apart.pairs.map((pair) => pair.label)).toEqual(['日累计−月累计', '日累计−模型聚合', '月累计−模型聚合']);
+    expect(apart.widest).toBe('日累计−模型聚合');
+    expect(apart.title).toContain('/api/budget-usage');
+    expect(apart.title).toContain('/api/hermes-usage');
+  });
+
+  it('reads day and month from the ledger and shows «—» for an unread usage face', async () => {
+    await mount(usageRouter());
+
+    expect(q('metAS-cost-caliber')).not.toBeNull();
+    expect(q('metAS-day')?.textContent).toBe(q('met6-cost-value')?.textContent);
+    expect(q('metAS-day')?.textContent).toBe('$0.00');
+    expect(q('metAS-month')?.textContent).toBe('$0.13');
+    // Nothing read the model aggregate in this batch: «—», not $0.00.
+    expect(q('metAS-usage')?.textContent).toBe('—');
+    expect(q('metAS-verdict')?.textContent).toBe('有面缺数（2/3）');
+    expect(q('metAS-cost-caliber')?.getAttribute('title')).toContain('不按 0 记');
+    expect(q('metAS-cost-caliber')?.getAttribute('title')).toContain('不发新请求');
+  });
+
+  it('prints every pair difference and names the widest when the faces disagree', async () => {
+    await mountShare(SHARE_USAGE);
+
+    expect(q('metAS-usage')?.textContent).toBe('$4.00');
+    expect(q('metAS-verdict')?.textContent).toBe('口径不同，见逐对差值');
+    const delta = q('metAS-cost-delta')?.textContent ?? '';
+    expect(delta).toContain('日累计−月累计');
+    expect(delta).toContain('日累计−模型聚合 -$4.00');
+    expect(delta).toContain('月累计−模型聚合 -$3.87');
+    expect(q('metAS-cost-caliber')?.textContent).toContain('差值最大：日累计−模型聚合');
+  });
+
+  it('explains the usage face in employee grouping instead of inventing a number', async () => {
+    await mountShare(SHARE_USAGE, '/metrics?groupBy=employee');
+
+    expect(q('metAS-usage')?.textContent).toBe('—');
+    const title = q('metAS-cost-caliber')?.getAttribute('title') ?? '';
+    expect(title).toContain('按员工');
+    expect(title).toContain('模型聚合');
+  });
+
+  it('adds no read of its own', async () => {
+    await mount(usageRouter());
+    const before = urls().length;
+    expect(q('metAS-cost-caliber')).not.toBeNull();
+    expect(urls().length).toBe(before);
   });
 });

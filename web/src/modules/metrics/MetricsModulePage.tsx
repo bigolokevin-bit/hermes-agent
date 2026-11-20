@@ -16,6 +16,7 @@ import { ApiError } from '@/lib/api-error';
 import { fetchJsonStrict } from '@/modules/models/fetchJson';
 
 import {
+  costCaliber,
   METRICS_GAP,
   USAGE_GAP,
   WEEKDAY_LABELS,
@@ -1486,6 +1487,28 @@ export function MetricsModulePage() {
   const heatWindowTotal = grid && grid.presentCells > 0 ? grid.total : null;
   const detailCountSum = detailCountTotal;
   const countDelta = heatCountSum !== null && detailCountSum !== null ? detailCountSum - heatCountSum : null;
+
+  // metAS — the three cost faces, all read from this batch. The usage face only
+  // exists when the model grouping read /api/hermes-usage; otherwise it is «—»
+  // with the reason in its title, never a silent 0.
+  const costDayTotal = usageReady && usageReady.day.kind === 'ready' ? usageReady.day.value.total : null;
+  const costMonthTotal = usageReady && usageReady.month.kind === 'ready' ? usageReady.month.value.total : null;
+  const costUsageTotal =
+    groupBy === 'model' && shareView.kind === 'ready'
+      ? sumOrNull(shareView.value.rows.map((row) => row.costUsd))
+      : null;
+  const costUsageMissing =
+    costUsageTotal !== null
+      ? null
+      : groupBy === 'model'
+        ? '模型聚合这次没读出来，不按 0 记。'
+        : '当前按员工分组，这一批没有读取模型聚合；切到「按模型」就能三面一起看。';
+  const costCaliberView = costCaliber({
+    day: costDayTotal,
+    month: costMonthTotal,
+    usage: costUsageTotal,
+    usageMissing: costUsageMissing,
+  });
   const heatGapReason =
     view.kind === 'error'
       ? '热力这次没读出来，不按 0 记'
@@ -3087,6 +3110,37 @@ export function MetricsModulePage() {
               : '口径不同，见 title'
             : '有面缺数，见 title'}
         </span>
+      </p>
+
+      <p className="met6-hint metAS-line" data-testid="metAS-cost-caliber" title={costCaliberView.title}>
+        <span className="metAS-face">
+          日累计 <span data-testid="metAS-day">{formatUsd(costCaliberView.faces[0].value)}</span>
+        </span>
+        {' · '}
+        <span className="metAS-face">
+          月累计 <span data-testid="metAS-month">{formatUsd(costCaliberView.faces[1].value)}</span>
+        </span>
+        {' · '}
+        <span className="metAS-face">
+          模型聚合 <span data-testid="metAS-usage">{formatUsd(costCaliberView.faces[2].value)}</span>
+        </span>
+        {'｜'}
+        <span data-testid="metAS-verdict">{costCaliberView.verdict}</span>
+        {costCaliberView.pairs.length > 0 ? (
+          <>
+            {'：'}
+            <span data-testid="metAS-cost-delta">
+              {costCaliberView.pairs.map((pair, index) => (
+                <span key={pair.label}>
+                  {index > 0 ? '；' : ''}
+                  {pair.label} {pair.diff === 0 ? '$0.00' : formatUsd(pair.diff)}
+                </span>
+              ))}
+            </span>
+            {costCaliberView.widest ? <span>{`｜差值最大：${costCaliberView.widest}`}</span> : null}
+          </>
+        ) : null}
+        。三面都取自这一次读取，不发新请求；记账与用量推算不是同一套账。
       </p>
 
       {view.kind === 'loading' ? (

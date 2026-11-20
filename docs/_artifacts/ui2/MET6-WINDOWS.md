@@ -665,3 +665,14 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 零额外请求（注记与兜底纯派生，`urls()` 不变）。验证：定向 `src/modules/metrics` 4 files / 221 passed（原 220）；全量 1921 passed（基线 1835，上游本轮已涨）；`tsc` 本域 0（全仓 69 条既存）。
 
 未测项：真浏览器下快照/价目两卡的注记换行未目视走查。
+
+## 成本口径三面对照（metAS，2026-11-20）
+
+- 位置：`met6` 区、`metAP-runs-caliber` 下一行，`metAS-cost-caliber`（同一批数据的纯派生，零额外请求）。
+- 三面：日累计（`/api/budget-usage?periodKind=day` 的 `total`，记账）、月累计（`periodKind=month`，记账）、模型聚合（`/api/hermes-usage` 各模型 `cost_usd` 求和，用量推算）。`metrics.ts` 新导出 `costCaliber({day,month,usage,usageMissing})`，返回 `faces / known / verdict / pairs / widest / title`。
+- 规则：只读现有 payload；面缺失或未读一律「—」并在整行 title 写原因（按员工分组未读模型聚合 / 模型聚合这次没读出来），禁缺值当 0；真 0 仍 `$0.00`。三面已知且相等写「三面一致（3/3）」→ 实为「三面一致」；已知不足三面写「有面缺数（N/3）」；不等写「口径不同，见逐对差值」并逐对给 `日累计−月累计`、`日累计−模型聚合`、`月累计−模型聚合` 的有符号 USD 差（负数按 `-$x.xx`），另标「差值最大：<对名>」。
+- title 写明三条数据源路径与「记账 vs 用量推算不是同一套账，数值不等属口径差，不是数据错误」，以及每对差值、最大差值对、缺失面原因。
+- 切窗/切分组随批重算（三面都从 `usageReady.day/month` 与 `shareView` 现算，无新 state）。
+- 测试（`MetricsModulePage.test.tsx` describe「metAS」5 例）：纯函数三面相等/不等与 pairs 顺序、widest；默认路由下 `metAS-day === met6-cost-value`（`$0.00`）、`metAS-month = $0.13`、`metAS-usage = —`、verdict「有面缺数（2/3）」、title 含「不按 0 记」「不发新请求」；`mountShare(SHARE_USAGE)` 三面齐全 → `metAS-usage = $4.00`、verdict 口径不同、delta 含三对且 `日累计−模型聚合 -$4.00`、正文含「差值最大：日累计−模型聚合」；`?groupBy=employee` 时 usage 为「—」且 title 说明按员工未读模型聚合；挂载后 `urls()` 计数不变（零额外请求）。
+- 验证：定向 `src/modules/metrics` 4 files / 226 passed（原 221）；全量 147 files / 1926 passed（原 1921）；tsc 全仓 69 条既存、`modules/metrics` 0。build `--outDir /tmp/build-metAS`：entry `assets/index-u67lQpLo.js` sha256 `289a35532c5b6f9b426f0d7d7b43e9ec7d3c2272bc07f798d0c3ce58491dce12`，entry 内 `metAS-cost-delta`=0，chunk `MetricsModulePage-CJGRiM0y.js`=1。
+- 未测项：真实 BFF 三面的实际数值未联调（本页只做现算）；切窗后三面随批重算仅由单测覆盖，未在真浏览器逐窗核对；模型聚合在本批未读时只能给「—」，不会自动补读。

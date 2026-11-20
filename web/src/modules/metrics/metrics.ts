@@ -1677,3 +1677,103 @@ export function runsCaliberTitle(input: RunsCaliberInput): string {
   ];
   return parts.join(' ');
 }
+
+
+// ---------------------------------------------------------------------------
+// metAS — three cost faces side by side: today's budget ledger, this month's
+// budget ledger, and the model aggregate from usage. Every value is taken from
+// the batch already on screen; nothing here issues a read of its own. A face
+// that was not read is «—», never 0.
+// ---------------------------------------------------------------------------
+
+export type CostFaceKey = 'day' | 'month' | 'usage';
+
+export interface CostFace {
+  key: CostFaceKey;
+  label: string;
+  value: number | null;
+  source: string;
+}
+
+export interface CostCaliberInput {
+  day: number | null;
+  month: number | null;
+  usage: number | null;
+  /** Why the usage face is missing, when it is. */
+  usageMissing: string | null;
+}
+
+export interface CostCaliberPair {
+  label: string;
+  diff: number;
+}
+
+export interface CostCaliber {
+  faces: CostFace[];
+  /** How many of the three faces carry a number. */
+  known: number;
+  verdict: string;
+  pairs: CostCaliberPair[];
+  /** The pair with the largest absolute gap, when any pair is computable. */
+  widest: string | null;
+  title: string;
+}
+
+const COST_FACE_META: Record<CostFaceKey, { label: string; source: string }> = {
+  day: { label: '日累计', source: '预算账本 /api/budget-usage?periodKind=day，按条求和的记账金额' },
+  month: { label: '月累计', source: '预算账本 /api/budget-usage?periodKind=month，按条求和的记账金额' },
+  usage: { label: '模型聚合', source: '用量 /api/hermes-usage 各模型 cost_usd 求和，属用量推算' },
+};
+
+export function costCaliber(input: CostCaliberInput): CostCaliber {
+  const faces: CostFace[] = (['day', 'month', 'usage'] as CostFaceKey[]).map((key) => ({
+    key,
+    label: COST_FACE_META[key].label,
+    value: input[key],
+    source: COST_FACE_META[key].source,
+  }));
+  const known = faces.filter((face) => face.value !== null).length;
+
+  const pairs: CostCaliberPair[] = [];
+  for (const [a, b] of [
+    ['day', 'month'],
+    ['day', 'usage'],
+    ['month', 'usage'],
+  ] as [CostFaceKey, CostFaceKey][]) {
+    const left = input[a];
+    const right = input[b];
+    if (left === null || right === null) continue;
+    const diff = Math.round((left - right) * 100) / 100;
+    pairs.push({ label: `${COST_FACE_META[a].label}−${COST_FACE_META[b].label}`, diff });
+  }
+
+  const widestPair =
+    pairs.length > 0
+      ? pairs.reduce((best, pair) => (Math.abs(pair.diff) > Math.abs(best.diff) ? pair : best))
+      : null;
+
+  const allEqual = known === 3 && pairs.every((pair) => pair.diff === 0);
+  const verdict =
+    known < 3 ? `有面缺数（${known}/3）` : allEqual ? '三面一致' : '口径不同，见逐对差值';
+
+  const titleParts = [
+    `日累计来自${COST_FACE_META.day.source}`,
+    `月累计来自${COST_FACE_META.month.source}`,
+    `模型聚合来自${COST_FACE_META.usage.source}`,
+    '记账与用量推算不是同一套账，数值不等属口径差，不是数据错误；三面都取自这一次读取，不发新请求。',
+  ];
+  for (const pair of pairs) {
+    titleParts.push(`${pair.label} ${pair.diff === 0 ? '为 0' : `差 ${pair.diff > 0 ? '+' : ''}${pair.diff.toFixed(2)} USD`}`);
+  }
+  if (widestPair && widestPair.diff !== 0) titleParts.push(`差值绝对值最大的是${widestPair.label}`);
+  if (input.usageMissing) titleParts.push(`模型聚合为「—」：${input.usageMissing}`);
+
+  return {
+    faces,
+    known,
+    verdict,
+    pairs,
+    widest: widestPair ? widestPair.label : null,
+    title: titleParts.join('；') + '。',
+  };
+}
