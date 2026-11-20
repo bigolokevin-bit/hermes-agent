@@ -18,6 +18,49 @@ export function toListText(rows: readonly CsvRow[]): string {
   return lines.join("\n");
 }
 
+export type CopyField = { label: string; value: string | null };
+
+/** The detail panel's plain text: one labelled field per line, missing → —. */
+export function toFieldText(fields: readonly CopyField[]): string {
+  return fields.map((field) => `${field.label}：${field.value ?? "—"}`).join("\n");
+}
+
+export function CapabilityFieldCopy({ fields }: { fields: readonly CopyField[] }): ReactNode {
+  const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
+  const text = toFieldText(fields);
+  const copy = async () => {
+    setState((await copyTextToClipboard(text)) ? "copied" : "failed");
+  };
+  return (
+    <div className="cap7-copy">
+      <span className="capC-copy-wrap">
+        <Button
+          size="sm"
+          outlined
+          title="复制这一行详情；只读屏上已显示的值，不会再发请求。"
+          data-testid="cap-row-copy"
+          onClick={() => void copy()}
+        >
+          <Copy className="mr-1 size-3.5" aria-hidden="true" />复制该行
+        </Button>
+        <span className="capC-copy-status" data-testid="cap-row-copy-status" role="status" aria-live="polite">
+          {state === "copied" ? "已复制" : state === "failed" ? "复制失败，已展开手动复制" : ""}
+        </span>
+      </span>
+      {state === "failed" ? (
+        <textarea
+          className="capC-copy-fallback"
+          data-testid="cap-row-copy-fallback"
+          aria-label="手动复制这一行详情"
+          readOnly
+          rows={fields.length + 1}
+          value={text}
+        />
+      ) : null}
+    </div>
+  );
+}
+
 export function CapabilityCopy({
   rows,
   gate = rowsGate(rows.length, "复制"),

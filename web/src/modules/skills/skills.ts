@@ -30,6 +30,9 @@ export type SkillsRead = {
   asOfReason: string | null;
   /** `asOfSource` is engineering context: it may only be rendered as a title. */
   asOfTitle: string | null;
+  /** Upstream page-size metadata, when the read port sends it. */
+  total: number | null;
+  nextCursor: string | null;
 };
 
 function topLevelAsOf(root: Record<string, unknown>): { asOf: string | null; asOfReason: string | null; asOfTitle: string | null } {
@@ -143,7 +146,14 @@ export function readSkills(body: unknown): SkillsRead {
     };
   });
 
-  return { rows, asOf, asOfReason, asOfTitle };
+  const totalRaw = root.total;
+  const total = typeof totalRaw === "number" && Number.isFinite(totalRaw)
+    ? totalRaw
+    : typeof totalRaw === "string" && /^\d+$/.test(totalRaw.trim())
+      ? Number(totalRaw.trim())
+      : null;
+  const nextCursor = text(root.nextCursor) ?? text(root.next_cursor) ?? null;
+  return { rows, asOf, asOfReason, asOfTitle, total, nextCursor };
 }
 
 /** Semver key for the detail versions; invalid forms fall back to row order. */

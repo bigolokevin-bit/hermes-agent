@@ -8,7 +8,7 @@ import {
   toggleSourceMatrix,
   useSourceMatrix,
 } from "./sourceReads";
-import { csvRows, downloadCsv, exportFilename, toCsv, toPlainText } from "./sourceMatrixCsv";
+import { csvRows, downloadCsv, exportFilename, toCsv, toMatrixText, toPlainText } from "./sourceMatrixCsv";
 import {
   ariaSourceSort,
   nextSourceSort,
@@ -18,6 +18,7 @@ import {
   type SourceSortKey,
   type SourceSortState,
 } from "./sourceSort";
+import { matchesServiceSearch, readServiceQuery, writeServiceQuery } from "./serviceSearch";
 
 const ASOF_CRITERION = "判据：只取 payload 顶层 ISO，缺失或非 ISO 显示「—」，不使用本机时钟";
 
@@ -71,9 +72,13 @@ function SortButton({ sort, sortKey, onSort }: { sort: SourceSortState; sortKey:
 export function SourceMatrix() {
   const { rows, expanded } = useSourceMatrix();
   const [sort, setSort] = useState<SourceSortState>(() => readSourceSort(window.location.search, window.location.hash));
+  const [q, setQ] = useState(() => readServiceQuery(window.location.search, window.location.hash));
   const [openRow, setOpenRow] = useState<string | null>(null);
   useEffect(() => {
-    const sync = () => setSort(readSourceSort(window.location.search, window.location.hash));
+    const sync = () => {
+      setSort(readSourceSort(window.location.search, window.location.hash));
+      setQ(readServiceQuery(window.location.search, window.location.hash));
+    };
     window.addEventListener("popstate", sync);
     window.addEventListener("hashchange", sync);
     return () => {
@@ -81,30 +86,36 @@ export function SourceMatrix() {
       window.removeEventListener("hashchange", sync);
     };
   }, []);
-  const sortedRows = sortSourceRows(rows, sort);
+  const searchedRows = q
+    ? rows.filter((row) => matchesServiceSearch(row.label, row.id, row.path, q))
+    : rows;
+  const sortedRows = sortSourceRows(searchedRows, sort);
   const onSort = (key: Exclude<SourceSortKey, "name">) => {
     const next = nextSourceSort(sort, key);
     setSort(next);
     writeSourceSort(next);
   };
-  const counts = rows.reduce<Record<string, number>>((out, row) => {
+  const counts = searchedRows.reduce<Record<string, number>>((out, row) => {
     out[row.status] = (out[row.status] ?? 0) + 1;
     return out;
   }, {});
   const summary = [
-    `${rows.length} 个读口`,
+    q ? `搜索命中 ${searchedRows.length} / ${rows.length} 个读口` : `${searchedRows.length} 个读口`,
     `成功 ${counts.ok ?? 0}`,
     `失败 ${counts.failed ?? 0}`,
     `读口未接入 ${counts.unwired ?? 0}`,
   ].join(" · ");
 
   const exportRows = csvRows(sortedRows);
-  const usableRows = rows.filter((row) => row.status === "ok" || row.status === "degraded");
+  const usableRows = searchedRows.filter((row) => row.status === "ok" || row.status === "degraded");
   const matrixBlocked = usableRows.length === 0;
   const exportDisabled = exportRows.length === 0 || matrixBlocked;
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
+  const [matrixCopyState, setMatrixCopyState] = useState<"idle" | "copied" | "failed">("idle");
+  const [matrixCopiedRows, setMatrixCopiedRows] = useState(0);
   const copyText = toPlainText(sortedRows);
-  const copyDisabled = rows.length === 0 || matrixBlocked;
+  const matrixText = toMatrixText(sortedRows);
+  const copyDisabled = searchedRows.length === 0 || matrixBlocked;
   const matrixBlockTitle = matrixBlocked
     ? "当前没有可导出/复制的可用读口行：读口未接入或读取失败。"
     : null;
@@ -120,6 +131,21 @@ export function SourceMatrix() {
       setCopyState("copied");
     } catch {
       setCopyState("failed");
+    }
+  }
+
+  async function copyMatrixTable() {
+    if (copyDisabled) return;
+    if (!navigator.clipboard?.writeText) {
+      setMatrixCopyState("failed");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(matrixText);
+      setMatrixCopiedRows(sortedRows.length);
+      setMatrixCopyState("copied");
+    } catch {
+      setMatrixCopyState("failed");
     }
   }
 
@@ -164,6 +190,19 @@ export function SourceMatrix() {
           <span className="sys10-status" data-testid="sys10-copy-status" aria-live="polite">
             {copyState === "copied" ? "已复制" : copyState === "failed" ? "复制失败，已展开手动复制" : ""}
           </span>
+          <button
+            type="button"
+            className="sys7-export"
+            data-testid="sys-matrix-copy"
+            disabled={copyDisabled}
+            title={withCopyScope(copyDisabled ? matrixBlockTitle ?? "当前没有可复制的读口行" : "复制当前矩阵表格为制表符分隔文本；不会再发请求")}
+            onClick={() => { void copyMatrixTable(); }}
+          >
+            复制本表
+          </button>
+          <span className="sys10-status" data-testid="sys-matrix-copy-status" aria-live="polite">
+            {matrixCopyState === "copied" ? `已复制 ${matrixCopiedRows} 行` : matrixCopyState === "failed" ? "复制失败，已展开手动复制" : ""}
+          </span>
           <span className="sys7-count" data-testid="sys7-export-count">{exportDisabled ? "—" : `${exportRows.length} 行`}</span>
           <span className="sys7-note">导出与屏上矩阵同源：姓名、路径、人话状态、耗时、响应顶层 ISO 采集时刻；缺失留空，不补 0，也不用本机时钟。</span>
         </div>
@@ -174,14 +213,32 @@ export function SourceMatrix() {
             data-testid="sys10-fallback"
             aria-label="手动复制矩阵文本"
             readOnly
-            rows={Math.min(8, rows.length + 2)}
+            rows={Math.min(8, searchedRows.length + 2)}
             value={copyText}
+          />
+        ) : null}
+        {matrixCopyState === "failed" ? (
+          <textarea
+            className="sys10-fallback"
+            data-testid="sys-matrix-copy-fallback"
+            aria-label="手动复制矩阵表格文本"
+            readOnly
+            rows={Math.min(8, sortedRows.length + 2)}
+            value={matrixText}
           />
         ) : null}
         <p className="sys13-sort-note" data-testid="sys13-sort-note" hidden={!expanded}>
           点「本次状态 / 响应耗时 / 采集时刻」可排序；排序只改屏上与复制文本的行序，不会重新取数。默认按口径名升序，缺失值排在最后。
         </p>
-        <div className="sys6-scroll" data-testid="sys6-scroll" hidden={!expanded}>
+        {q && searchedRows.length === 0 ? (
+          <div className="sys-search-empty" data-testid="sys-search-source-empty" hidden={!expanded}>
+            <p>当前搜索下没有匹配的读口</p>
+            <button type="button" className="sys-search-clear" data-testid="sys-search-clear" onClick={() => { setQ(""); writeServiceQuery(null); }}>
+              清空搜索
+            </button>
+          </div>
+        ) : null}
+        <div className="sys6-scroll" data-testid="sys6-scroll" hidden={!expanded || (q !== "" && searchedRows.length === 0)}>
             <table className="sys6-table" data-testid="sys6-table">
               <thead>
                 <tr>

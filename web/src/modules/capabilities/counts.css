@@ -283,3 +283,30 @@
   font-size: 11px;
   line-height: 1.4;
 }
+
+/* cap-page-scope — one honest line for page-size/full-render scope */
+.cap-page-scope {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0;
+  color: var(--color-muted-foreground);
+  font-size: 0.6875rem;
+  line-height: 1.5;
+}
+.cap-page-scope > span { min-width: 0; overflow-wrap: anywhere; }
+.cap-page-scope-detail { opacity: 0.86; }
+
+/* cap-row-copy — one detail row's plain-text projection */
+.cap7-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--color-border);
+}
+.cap7-copy .capC-copy-wrap { flex-wrap: wrap; }

@@ -32,6 +32,7 @@ import { CapabilityCounts, publishCapabilityCount } from "../capabilities/counts
 import { CapabilitySearch } from "../capabilities/search";
 import { CapabilityExport } from "../capabilities/csvExport";
 import { CapabilityCopy } from "../capabilities/listCopy";
+import { CapabilityPageScope, derivePageScope } from "../capabilities/pageScope";
 import { deriveGates, type ActionGate, type GatePhase } from "../capabilities/gates";
 import { applySort, ariaSort, cycleSort, readSort, sortRows, type SortKey } from "../capabilities/sorting";
 import { CapabilityRowDetail } from "../capabilities/rowDetail";
@@ -607,6 +608,16 @@ export function ToolsPage(): ReactNode {
     enabled: STATUS_LABEL[row.status],
     updated_at: row.updatedAt,
   }));
+  const pageScope = derivePageScope({
+    shown: visibleRows.length,
+    loading: phase === "loading",
+    unavailableReason:
+      phase === "denied" || phase === "login" || phase === "error"
+        ? tools.failure?.sentence ?? "这个读口当前不可用。"
+        : tools.issues.length > 0
+          ? `${tools.issues.length} 个来源未接入，无法判断总数。`
+          : null,
+  });
 
   return (
     <section ref={rootRef} className="capH-scroll flex min-w-0 w-full max-w-full flex-col" data-testid="tl3-page">
@@ -674,6 +685,7 @@ export function ToolsPage(): ReactNode {
       </p>
 
       <CapabilitySearch value={q} total={rows.length} onChange={setQ} gate={gates.search} />
+      <CapabilityPageScope scope={pageScope} />
 
       {rowMissing ? (
         <RowMissingNotice reason={rowMissingReason} href={listHref(params)} onClear={clearRowLookup} />

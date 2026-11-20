@@ -59,6 +59,21 @@ export function toPlainText(rows: SourceRow[]): string {
   return `${lines.join("\n")}\n`;
 }
 
+/** Tab-separated mirror of the current matrix table; no request, no clock. */
+export function toMatrixText(rows: SourceRow[]): string {
+  const lines = [
+    SYS10_HEADER.join("\t"),
+    ...rows.map((row) => [
+      row.label,
+      row.path,
+      SOURCE_STATUS_LABEL[row.status],
+      row.durationMs === null ? "—" : `${row.durationMs} ms`,
+      row.asOf ?? "—",
+    ].join("\t")),
+  ];
+  return `${lines.join("\n")}\n`;
+}
+
 /** Beijing time to the minute, e.g. system-sources-20261120-0615.csv. */
 export function exportFilename(now: Date = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-CA", {

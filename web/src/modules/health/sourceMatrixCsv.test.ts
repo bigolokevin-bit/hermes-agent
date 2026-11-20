@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
-import { csvRows, exportFilename, SYS7_HEADER, SYS10_HEADER, toCsv, toPlainText } from "./sourceMatrixCsv";
+import { csvRows, exportFilename, SYS7_HEADER, SYS10_HEADER, toCsv, toMatrixText, toPlainText } from "./sourceMatrixCsv";
 import type { SourceRow } from "./sourceReads";
 
 function row(patch: Partial<SourceRow>): SourceRow {
@@ -60,5 +60,18 @@ describe("source matrix CSV", () => {
 
   it("names the file in Beijing time to the minute", () => {
     expect(exportFilename(new Date("2026-11-19T22:15:30Z"))).toBe("system-sources-20261120-0615.csv");
+  });
+});
+describe("source matrix table copy", () => {
+  it("uses tab separators, screen order and keeps missing values as —", () => {
+    const text = toMatrixText([
+      row({}),
+      row({ id: "domain", label: "域服务探针", path: "/agent-api/api/skills", status: "unwired", durationMs: null, asOf: null, asOfIso: null }),
+    ]);
+    const lines = text.trimEnd().split("\n");
+    expect(lines[0]).toBe(SYS10_HEADER.join("\t"));
+    expect(lines[1]).toBe("系统健康清单\t/agent-api/api/health\t成功\t42 ms\t2026-11-19 23:17");
+    expect(lines[2]).toBe("域服务探针\t/agent-api/api/skills\t读口未接入\t—\t—");
+    expect(text.endsWith("\n")).toBe(true);
   });
 });

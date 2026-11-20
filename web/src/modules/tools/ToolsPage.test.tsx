@@ -519,7 +519,9 @@ describe("row detail", () => {
       return Promise.reject(new ApiError("missing", { status: 404, body: "{}", url }));
     };
     await mount(handler);
+    expect(document.querySelector("[data-testid='cap-row-copy']")).toBeNull();
     await act(async () => document.querySelector<HTMLButtonElement>("[data-testid='cap7-detail-toggle']")!.click());
+    expect(document.querySelector("[data-testid='cap-row-copy']")).toBeTruthy();
     const asof = document.querySelector("[data-testid='cap7-detail-asof']");
     expect(asof?.textContent).toBe("2026-11-19 14:00");
     expect(asof?.getAttribute("title")).toContain("UTC 原文：2026-11-19T06:00:00Z · 北京时间：2026-11-19 14:00 · 来源：清单快照");
@@ -530,10 +532,12 @@ describe("row detail", () => {
     await mount(answer, "/capabilities?tab=tools&q=%E7%BD%91%E9%A1%B5");
     await act(async () => document.querySelector<HTMLButtonElement>("[data-testid='cap7-detail-toggle']")!.click());
     expect(document.querySelectorAll("[data-testid='cap7-detail-tools']")).toHaveLength(1);
+    expect(document.querySelector("[data-testid='cap-row-copy']")).toBeTruthy();
     expect(document.querySelector<HTMLInputElement>("[data-testid='cap5-search']")?.value).toBe("网页");
     expect(rows()).toHaveLength(2);
     await act(async () => { window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })); });
     expect(document.querySelectorAll("[data-testid='cap7-detail-tools']")).toHaveLength(0);
+    expect(document.querySelector("[data-testid='cap-row-copy']")).toBeNull();
     expect(document.querySelector<HTMLInputElement>("[data-testid='cap5-search']")?.value).toBe("网页");
     expect(rows()).toHaveLength(2);
   });
@@ -642,6 +646,7 @@ describe("local name search", () => {
     expect(text()).toContain("网页内容提取");
     expect(text()).not.toContain("创建看板");
     expect(text()).toContain("仅在当前已加载 6 项内搜索");
+    expect(document.querySelector("[data-testid='cap-page-scope']")?.textContent).toContain("表内全量渲染，共 2 项");
     expect(document.querySelector("[data-testid='cap6-export-count']")?.textContent).toContain("2 条");
     expect(document.querySelector<HTMLButtonElement>("[data-testid='cap6-export']")?.disabled).toBe(false);
     expect(document.querySelector("[data-testid='capA-export-order-note']")?.textContent).toContain("导出按当前排序与搜索");
