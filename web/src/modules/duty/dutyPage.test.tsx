@@ -30,7 +30,58 @@ afterEach(() => {
   fetchJSON.mockReset();
 });
 
+const WB_ASOF = "2026-11-18T06:00:00.000Z";
+
 function ok(url: string): unknown {
+  // Wave-20 read models: statistics, queue and trend come from /workbench/*.
+  if (url.includes("/workbench/summary")) {
+    return {
+      asOf: WB_ASOF,
+      asOfSource: "bff-aggregation-read-time",
+      available: true,
+      degraded: [],
+      kpis: [
+        { key: "runs", label: "运行数", unit: "次", value: 2, available: true },
+        { key: "failed", label: "失败数", unit: "次", value: 1, available: true },
+        { key: "failureRate", label: "失败率", unit: "ratio", value: 0.5, available: true },
+        { key: "costUsd", label: "成本", unit: "USD", value: 1.5, available: true },
+        { key: "activeEmployees", label: "在岗数字员工", unit: "个", value: 1, available: true },
+        { key: "pendingApprovals", label: "待审批", unit: "条", value: 1, available: true },
+      ],
+    };
+  }
+  if (url.includes("/workbench/timeseries")) {
+    return {
+      asOf: WB_ASOF,
+      asOfSource: "bff-read-time",
+      available: true,
+      points: [
+        { ts: "2026-11-17T00:00:00.000Z", label: "11-17", value: 1 },
+        { ts: "2026-11-18T00:00:00.000Z", label: "11-18", value: 2 },
+        { ts: "2026-11-18T23:00:00.000Z", label: "11-18 23", value: null },
+      ],
+      totals: { metric: "runs", value: 3 },
+    };
+  }
+  if (url.includes("/workbench/queue")) {
+    return {
+      asOf: WB_ASOF,
+      asOfSource: "bff-read-time",
+      available: true,
+      degraded: [],
+      items: [
+        {
+          id: "apr_1",
+          type: "approval",
+          title: "供应商报价",
+          status: "pending",
+          createdAt: "2026-11-18T01:00:00.000Z",
+          timeoutAt: null,
+        },
+      ],
+      total: 1,
+    };
+  }
   if (url.includes("/employee-stats")) {
     return { byLifecycle: { active: 1, paused: 0, offboarding: 0 } };
   }
@@ -114,9 +165,11 @@ describe("DutyPage", () => {
   it("R41: ov6-asof takes the newest asOf among all sources", async () => {
     fetchJSON.mockImplementation((url: string) => {
       const body = ok(url) as Record<string, unknown>;
-      if (url.includes("/run-stats")) return Promise.resolve({ ...body, asOf: "2026-11-18T01:00:00Z" });
+      if (url.includes("/workbench/summary"))
+        return Promise.resolve({ ...body, asOf: "2026-11-18T01:00:00Z" });
       if (url.includes("/budget-usage")) return Promise.resolve({ ...body, asOf: "2026-11-20T05:20:00Z" });
-      if (url.includes("/approval-stats")) return Promise.resolve({ ...body, asOf: "2026-11-19T03:00:00Z" });
+      if (url.includes("/workbench/queue"))
+        return Promise.resolve({ ...body, asOf: "2026-11-19T03:00:00Z" });
       return Promise.resolve(body);
     });
     await render(<DutyPage />);
@@ -126,7 +179,16 @@ describe("DutyPage", () => {
   });
 
   it("R41: when every source lacks asOf the line falls back to the em-dash naming the sources", async () => {
-    fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
+    fetchJSON.mockImplementation((url: string) => {
+      const body = ok(url) as Record<string, unknown>;
+      // Read models that do send a collection time: strip it for this case.
+      if (url.includes("/workbench/")) {
+        const rest = { ...body };
+        delete rest.asOf;
+        return Promise.resolve(rest);
+      }
+      return Promise.resolve(body);
+    });
     await render(<DutyPage />);
     const asof = container.querySelector('[data-testid="ov6-asof"]');
     expect(asof?.textContent).toContain("采集时刻 —（北京时间）");
@@ -134,9 +196,38 @@ describe("DutyPage", () => {
     expect(asof?.getAttribute("title")).toContain("今日运行统计");
   });
 
+  it("reads statistics, queue and trend from the workbench models and stops calling the old endpoints", async () => {
+    const seen: string[] = [];
+    fetchJSON.mockImplementation((url: string) => {
+      seen.push(url);
+      return Promise.resolve(ok(url));
+    });
+    await render(<DutyPage />);
+    expect(seen.some((u) => u.includes("/workbench/summary"))).toBe(true);
+    expect(seen.some((u) => u.includes("/workbench/timeseries"))).toBe(true);
+    expect(seen.filter((u) => u.includes("/workbench/queue"))).toHaveLength(1);
+    expect(seen.some((u) => u.includes("/run-stats"))).toBe(false);
+    expect(seen.some((u) => u.includes("/approval-stats"))).toBe(false);
+    expect(seen.some((u) => u.includes("/approvals"))).toBe(false);
+    const asof = container.querySelector('[data-testid="ov6-asof"]');
+    expect(asof?.textContent).toContain("采集时刻 北京时间 2026-11-18 14:00");
+    expect(container.querySelector('[data-testid="ov6-pending-value"]')?.textContent ?? container.textContent).toBeTruthy();
+  });
+
+  it("keeps the other cards alive when one workbench read is missing", async () => {
+    fetchJSON.mockImplementation((url: string) =>
+      url.includes("/workbench/timeseries")
+        ? Promise.reject(new ApiError("missing", { status: 404, body: "{}", url }))
+        : Promise.resolve(ok(url)),
+    );
+    await render(<DutyPage />);
+    expect(container.querySelector('[data-testid="ov6-trend"]')?.textContent).toContain("—");
+    expect(container.querySelector('[data-testid="ov6-today-runs"]')?.textContent).toContain("2");
+  });
+
   it("shows a request id and retry on an error card", async () => {
     fetchJSON.mockImplementation((url: string) =>
-      url.includes("/run-stats")
+      url.includes("/workbench/summary")
         ? Promise.reject(new ApiError("boom", { status: 500, body: "{}", url, requestId: "req-duty" }))
         : Promise.resolve(ok(url)),
     );

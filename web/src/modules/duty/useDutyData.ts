@@ -1,16 +1,22 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   fetchActivity,
-  fetchApprovalStats,
-  fetchApprovals,
   fetchBlockedTasks,
   fetchBudget,
   fetchEmployeeStats,
   fetchEmployees,
-  fetchRunStats,
   fetchRuns,
   load,
 } from "./api";
+import {
+  fetchWorkbenchQueue,
+  fetchWorkbenchSummary,
+  fetchWorkbenchTimeseries,
+  queueApprovals,
+  queueStats,
+  summaryStats,
+  timeseriesStats,
+} from "./workbench";
 import { beijingDayWindow, daysAgoWindow } from "./format";
 import type {
   ActivityBody,
@@ -73,7 +79,6 @@ export function useDutyData(): { data: DutyData; reload: () => void; loading: bo
     setData(initial());
     const day = beijingDayWindow();
     const month = day.date.slice(0, 7);
-    const w14 = daysAgoWindow(14);
     const w7 = daysAgoWindow(7);
     const w1 = daysAgoWindow(1);
 
@@ -103,21 +108,27 @@ export function useDutyData(): { data: DutyData; reload: () => void; loading: bo
         })();
       }),
       load(fetchEmployeeStats).then((v) => alive && setData((d) => ({ ...d, stats: v }))),
-      load(() => fetchRunStats(day.from, day.to)).then(
+      // 统计与趋势改吃 workbench 读模型：KPI 与时间序列由 BFF 聚合，
+      // 页面不再自己拼 /run-stats 的两个窗口。
+      load(async () => summaryStats(await fetchWorkbenchSummary("1d"))).then(
         (v) => alive && setData((d) => ({ ...d, todayStats: v })),
       ),
-      load(() => fetchRunStats(w14.from, w14.to)).then(
-        (v) => alive && setData((d) => ({ ...d, stats14: v })),
-      ),
+      load(async () =>
+        timeseriesStats(await fetchWorkbenchTimeseries({ range: "14d", bucket: "day" })),
+      ).then((v) => alive && setData((d) => ({ ...d, stats14: v }))),
       load(() => fetchActivity(1)).then(
         (v) => alive && setData((d) => ({ ...d, activity: v })),
       ),
-      load(fetchApprovalStats).then(
-        (v) => alive && setData((d) => ({ ...d, approvalStats: v })),
-      ),
-      load(() => fetchApprovals(3)).then(
-        (v) => alive && setData((d) => ({ ...d, approvals: v })),
-      ),
+      // 待审队列一次取数给两张卡：计数与前三行同源，避免两处数字打架。
+      (() => {
+        const queue = fetchWorkbenchQueue();
+        load(() => queue.then(queueStats)).then(
+          (v) => alive && setData((d) => ({ ...d, approvalStats: v })),
+        );
+        load(() => queue.then(queueApprovals)).then(
+          (v) => alive && setData((d) => ({ ...d, approvals: v })),
+        );
+      })(),
       load(() => fetchRuns(3, day.from)).then(
         (v) => alive && setData((d) => ({ ...d, todayRuns: v })),
       ),
