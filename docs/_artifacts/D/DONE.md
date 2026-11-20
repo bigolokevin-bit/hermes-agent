@@ -1407,3 +1407,11 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - tally 原文 {'f399482f': 9} count 9 BAD []（glob 含 shots-login 面，_stale 不递归=合规；lint-reuse-exemptions.json 列表形 isinstance 跳过留存）。
 - 读数：ia-html{51,22,tabsAll:23,1,8}/react{51,22,1,8}；fake v=[]；reuse v0 e1（chat→T40）；quad 20/20 真跑非 carried；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）redirects=24 notes；shots auth 102/102 failures=[] **obs=0（上代 #/capabilities?tab=channels 本代不复现=收敛；卡面记上代 0/0 与实际 1/0 有差，以自产原值为准）** distinct=24 envOnly=51；anon aux obs=0 distinct=23 envOnly=51。
 - 环境：67d839fd/32885928 章不重做；9122 v4_proxy 95667、caddy 28034、BFF 12048@603a23e9、qa-verify 33c2b838 未动；web/src 未碰；无 amend/force；R60 仅引用。
+
+## 一五八轮 · 波次代次九件重章 @ da5c815e（entry C3gNfEdn 未换代，2026-11-21 06:0x）
+
+- 代次现查：ls-remote=LOCAL=da5c815e1828（merge(lane): 7a7b3977，wave-72 三笔全纯测试并入）、porc 0 脏；盘 entry C3gNfEdn 172175B sha256 40628e15…e9cb 逐字==卡面（未换代证实）、CSS IyhtleuY 145872/6af1066f 未变、9122 served 同值。
+- 驱动 /tmp/restamp_wave72.sh 九腿全 exit=0（DONE 行坐实后注章），served 拍前后同值 index-C3gNfEdn.js；stamp_wave72.py 盘现算 headHash=da5c815e（HEAD=锚尚未 commit 安全形）；两毛边按固化形修（lint-reuse 盘直注 v0 e1、state-quad 补 ok 20/20 真跑非 carried）。
+- tally 原文：{'da5c815e': 9} count 9 BAD []（glob+isinstance dict 过滤，_stale/shots-login 无混入，无 None）。
+- 读数与上代 f399482f 全等：ia-html{51,22,tabsAll:23,1,8}/react{51,22,1,8}；lint-fake v=[]；lint-reuse v0 e1（chat→T40）；quad 20/20；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）；redirects=24 notes；shots auth 102/102 failures=[] obs=0 obsR=[] distinct=24 envOnly=51；anon aux=true 102/102 obs=0 distinct=23 envOnly=51；三键两 summary 全值、servedEntryBefore==After、ceAuthority=login-state。
+- 环境：a17aaa36/67d839fd 等已盖章不重做；无 amend/force；R60 结案仅引用未动 ACC 判词节；web/src/9122(v4_proxy 95667)/BFF(12048@603a23e9)/caddy(28034)/qa-verify 未动；零凭据明文。
