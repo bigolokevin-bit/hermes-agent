@@ -3528,3 +3528,86 @@ describe('metZ — copy the heat summary', () => {
     expect(body).not.toMatch(/\d{4}-\d{2}-\d{2}/);
   });
 });
+
+describe('metAA — the heat window lives in the address', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+  const loc = (): string => q('met7-loc')?.textContent ?? '';
+
+  const countOf = (from: number, needle: string): number =>
+    urls().slice(from).filter((url) => url.includes(needle)).length;
+
+  it('shows which window the address holds and keeps it off the other keys', async () => {
+    await mountShare(SHARE_USAGE, '/metrics?window=7d&view=model&sort=model&dsort=runs');
+
+    expect(q('metAA-heat-window')?.textContent).toContain('heat=1');
+    expect(q('met5-window-1')?.getAttribute('aria-pressed')).toBe('true');
+    // The unrelated keys are untouched.
+    expect(loc()).toContain('window=7d');
+    expect(loc()).toContain('view=model');
+    expect(loc()).toContain('sort=model');
+    expect(loc()).toContain('dsort=runs');
+  });
+
+  it('writes heat= and rereads only the heat endpoint once per switch', async () => {
+    await mountShare(SHARE_USAGE, '/metrics?window=7d&view=model&sort=model');
+    const before = urls().length;
+
+    await act(async () => {
+      (q('met5-window-4') as HTMLButtonElement).click();
+    });
+    await waitFor(() => (q('met5-window-4')?.getAttribute('aria-pressed') ?? '') === 'true', '4w selected');
+
+    expect(loc()).toContain('heat=4');
+    expect(loc()).not.toContain('w=4');
+    expect(loc()).toContain('window=7d');
+    expect(loc()).toContain('view=model');
+    expect(loc()).toContain('sort=model');
+    expect(q('metAA-heat-window')?.textContent).toContain('heat=4');
+    expect(countOf(before, 'run-activity')).toBe(1);
+    expect(countOf(before, 'run-stats')).toBe(0);
+    expect(countOf(before, 'employees')).toBe(0);
+    expect(countOf(before, 'budget-usage')).toBe(0);
+    expect(countOf(before, 'hermes-usage')).toBe(0);
+
+    const mid = urls().length;
+    await act(async () => {
+      (q('met5-window-1') as HTMLButtonElement).click();
+    });
+    await waitFor(() => (q('met5-window-1')?.getAttribute('aria-pressed') ?? '') === 'true', 'back to 1w');
+
+    expect(loc()).toContain('heat=1');
+    expect(countOf(mid, 'run-activity')).toBe(1);
+    expect(countOf(mid, 'run-stats')).toBe(0);
+  });
+
+  it('leaves the other cards holding their data when the heat window changes', async () => {
+    const base = usageRouter();
+    await mount((url) =>
+      url.includes('run-stats')
+        ? Promise.resolve({ ...(statsFor(url) as Record<string, unknown>), asOf: '2026-11-19T20:12:00.000Z', asOfSource: 'bff' })
+        : base(url),
+    );
+    const runsBefore = q('met6-runs-value')?.textContent;
+    const shareRowBefore = q('met7-row-zeta')?.textContent;
+
+    await act(async () => {
+      (q('met5-window-4') as HTMLButtonElement).click();
+    });
+    await waitFor(() => (q('met5-window-4')?.getAttribute('aria-pressed') ?? '') === 'true', '4w selected');
+
+    expect(q('met6-runs-value')?.textContent).toBe(runsBefore);
+    expect(q('met7-row-zeta')?.textContent).toBe(shareRowBefore);
+    // The freshness block keeps the stamps of the reads it already had.
+    await openSources();
+    expect(q('metB-source-asof-run-stats')?.textContent).not.toBe('—');
+  });
+
+  it('restores the window from a pasted link and still honours the old w key', async () => {
+    await mount(usageRouter(), '/metrics?heat=12');
+    expect(q('met5-window-12')?.getAttribute('aria-pressed')).toBe('true');
+    expect(q('metAA-heat-window')?.textContent).toContain('heat=12');
+
+    await mount(usageRouter(), '/metrics?w=4');
+    expect(q('met5-window-4')?.getAttribute('aria-pressed')).toBe('true');
+  });
+});

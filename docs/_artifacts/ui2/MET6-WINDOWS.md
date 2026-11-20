@@ -431,3 +431,15 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 - 反馈与回退：成功 `metZ-copy-status`（role=status, aria-live=polite）显示「已复制」；剪贴板被拒时显示「复制没成功」并给出 `metZ-copy-fallback` 里的只读 textarea（`metZ-copy-fallback-text`），内容与要复制的文本逐字相同。
 - 验证：定向 `src/modules/metrics` 2 files / **150 passed**（基线 146，+4）；全量 **137 files / 1673 passed**（基线 1618，含 wave-18 上游新增用例）；`tsc -b . --noEmit` 全仓 58 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metZ` → entry `assets/index-C5TeO2dY.js` sha256 `5034df0fd828c5916aa979aba4e4ba483c822bd95aa36d1704381219d44bfaaa`，entry 内 `metZ-copy-heat` 命中 0，chunk `assets/MetricsModulePage-BoK0nIJN.js` 命中 1。
 - 未测项：真浏览器剪贴板权限弹窗下的回退路径未走查；375 下按钮与说明的换行未人工走查。
+
+## 热力窗写进地址（metAA，2026-11-20）
+
+热力卡的周窗从 `?w=` 迁到自己的键 `?heat=`，刷新、前进后退、粘链接都能回到同一个窗口。
+
+- 读：`windowOf(params.get('heat') ?? params.get('w'))`——旧链接里的 `w` 仍被接受（向后兼容），但新写入只用 `heat`。
+- 写：`chooseWindow(next)` 复制现有参数后 `set('heat', …)` 并 `delete('w')`，因此 `?window/?view/?sort/?dsort/?ddir` 一律保留，切换热力窗不会重置明细视图或排序。
+- 只重取一个读口：切换（含切回）各只发一次 `run-activity`，`run-stats`、`employees`、`budget-usage`、`hermes-usage` 新增请求数均为 0（测试按批次计数断言）。
+- 不清其它卡片：原先 `weeks` 变化会清空整个新鲜度记录，现改为只删 `run-activity` 那一条；其它读口的采集时刻、各卡片数字与分摊表行都留在屏上。实测切换后 `met6-runs-value` 与 `met7-row-zeta` 文本不变，`metB-source-asof-run-stats` 仍显示原采集时刻。
+- 提示：`metAA-heat-window` 一行写明「热力窗口写在地址里：最近 7 天（heat=1）。刷新、前进后退和分享链接都会回到同一个窗口，其它卡片与筛选保持原样。」
+- 验证：定向 `src/modules/metrics` 2 files / **154 passed**（基线 150，+4）；全量 **137 files / 1677 passed**（基线 1673）；`tsc -b . --noEmit` 全仓 59 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metAA` → entry `assets/index-qaYHscOn.js` sha256 `9a84a59c07d79cfd2c16848d9f44e2d5d63a8cf2f79acc78ab218b6e23e3d12c`，entry 内 `metAA-heat-window` 命中 0，chunk `assets/MetricsModulePage-BXXjPOcY.js` 命中 1。
+- 未测项：真浏览器前进/后退时的滚动位置与热力格选中态恢复未走查（选中格在切换时按设计清空）；375 下这一行的换行未人工走查。

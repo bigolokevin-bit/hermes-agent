@@ -370,7 +370,9 @@ export function MetricsModulePage() {
   const groupBy: 'model' | 'employee' = params.get('groupBy') === 'employee' ? 'employee' : 'model';
   const sortKey = parseSortKey(params.get('sort'));
   const sortDir = parseSortDir(params.get('dir'), sortKey);
-  const activeWindow = windowOf(params.get('w'));
+  // metAA — the heat window lives in its own `heat` key; `w` is only read as a
+  // fallback for links copied before this change.
+  const activeWindow = windowOf(params.get('heat') ?? params.get('w'));
   const weeks = activeWindow.weeks;
   const [state, setState] = useState<PageState>({ kind: 'loading' });
   const [usage, setUsage] = useState<UsageState>({ kind: 'loading' });
@@ -659,7 +661,18 @@ export function MetricsModulePage() {
   useEffect(() => {
     sourceEpoch.current += 1;
     setSources((prev) => (Object.keys(prev).length === 0 ? prev : {}));
-  }, [attempt, usageWindow.id, viewMode, groupBy, weeks]);
+  }, [attempt, usageWindow.id, viewMode, groupBy]);
+
+  // metAA — switching the heat window only invalidates the heat read. The other
+  // blocks keep the stamps they already had, so their cards are not emptied.
+  useEffect(() => {
+    setSources((prev) => {
+      if (prev['run-activity'] === undefined) return prev;
+      const next = { ...prev };
+      delete next['run-activity'];
+      return next;
+    });
+  }, [weeks]);
 
   const loadBreakdown = useCallback(
     async (signal: { live: boolean }, windowId: UsageWindowId, view: 'employee' | 'model') => {
@@ -1465,7 +1478,8 @@ export function MetricsModulePage() {
   const chooseWindow = (nextWeeks: number) => {
     setSelected(null);
     const next = new URLSearchParams(params);
-    next.set('w', String(nextWeeks));
+    next.set('heat', String(nextWeeks));
+    next.delete('w');
     setParams(next, { replace: true });
   };
 
@@ -2621,6 +2635,9 @@ export function MetricsModulePage() {
         ))}
       </div>
       <p className="met5-note">这个读取口按整周汇总，24 小时窗口不单独提供；最近 30 天按 4 周展示。</p>
+      <p className="met6-hint" data-testid="metAA-heat-window">
+        热力窗口写在地址里：{activeWindow.label}（heat={weeks}）。刷新、前进后退和分享链接都会回到同一个窗口，其它卡片与筛选保持原样。
+      </p>
 
       <div className="metZ-heat-copy">
         <Button size="sm" outlined onClick={copyHeatSummary} data-testid="metZ-copy-heat">
