@@ -956,3 +956,133 @@ describe("R61 trail copy (apd8-*)", () => {
     expect(document.querySelector("[data-testid='apd8-fallback']")).toBeNull();
   });
 });
+
+describe("R65 preview-detail parity (apv9 vs apd5/apd6)", () => {
+  const PARITY_ROW = {
+    approvalId: "ap_p65",
+    status: "pending",
+    action: "rotate.secret",
+    riskLevel: "high",
+    expiresAt: "2026-11-21T02:00:00Z",
+    consoleRequestId: "req-cr-65",
+    createdAt: "2026-11-19T01:00:00Z",
+    approvers: [{ userId: "human:7", name: "郑涛" }],
+    decisions: [],
+  };
+  const SETTLED_ROW = {
+    approvalId: "ap_s65",
+    status: "approved",
+    action: "publish.weekly",
+    decidedAt: "2026-11-19T02:00:00Z",
+    requestId: "req-plain-65",
+    approvers: [{ userId: "human:8", name: "阿朝" }],
+    decisions: [{ userId: "human:8", name: "阿朝", verdict: "approve", decidedAt: "2026-11-19T02:00:00Z" }],
+  };
+  const parityHandler = (url: string) => {
+    if (url.includes("/api/approval?id=")) {
+      return Promise.resolve(url.includes("ap_s65") ? SETTLED_ROW : PARITY_ROW);
+    }
+    return Promise.resolve({ items: [PARITY_ROW, SETTLED_ROW] });
+  };
+  const previewOf = (key: string) =>
+    document.querySelector(`[data-testid='apv9-preview-${key}']`);
+  const detailOf = () => document.querySelector("[data-testid='apr5-detail']");
+  const toggleOf = (key: string) =>
+    document.querySelector(`[data-testid='apv9-toggle-${key}']`) as HTMLButtonElement | null;
+
+  it("pending ticket: same title/risk/rid/approver on both surfaces; preview never uses 「该段无记录」", async () => {
+    await mount(parityHandler);
+    const toggle = toggleOf("ap_p65");
+    expect(toggle, "toggle").toBeTruthy();
+    const before = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      toggle!.click();
+    });
+    expect(api.fetchJSON.mock.calls.length, "preview fetches nothing").toBe(before);
+    // 打开同一单的详情（openRow 会收起预览，随后再展开一次=两屏同存）
+    const card = document.querySelector("[data-testid='apr5-row-ap_p65']") as HTMLElement | null;
+    expect(card, "row card").toBeTruthy();
+    await act(async () => {
+      card!.click();
+    });
+    await waitFor(() => !!detailOf(), "detail open");
+    const mid = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      toggleOf("ap_p65")!.click();
+    });
+    expect(api.fetchJSON.mock.calls.length, "re-expanding still fetches nothing").toBe(mid);
+    const pvText = previewOf("ap_p65")?.textContent ?? "";
+    const dtText = detailOf()?.textContent ?? "";
+    expect(pvText).toContain("rotate.secret");
+    expect(dtText).toContain("rotate.secret");
+    expect(pvText).toContain("高风险");
+    expect(dtText).toContain("高风险");
+    // 行体只带 consoleRequestId：键序对齐后两处都读到它
+    expect(pvText).toContain("req-cr-65");
+    expect(dtText).toContain("req-cr-65");
+    expect(pvText).toContain("郑涛");
+    expect(dtText).toContain("郑涛");
+    // pending 无决定时间：详情「决定时间」为破折号，预览同值；缺字段口径写在
+    // Field 的 title（不混入正文），且「该字段未返回/该段无记录」两处不互混。
+    expect(pvText).not.toContain("该段无记录");
+    expect(
+      document.querySelector("[data-testid='apv9-preview-ap_p65'] [title='该字段未返回']"),
+    ).toBeTruthy();
+    const decided = document.querySelector("[data-testid='apd5-field-decided-at']");
+    expect(decided?.textContent).toContain("—");
+    // 预览「更新时间」不再拿处理期限冒充：expiresAt 的时间不得上屏
+    expect(pvText).not.toContain("2026-11-21");
+  });
+
+  it("settled ticket: preview 更新时间 equals detail 决定时间 to the minute", async () => {
+    await mount(parityHandler);
+    const toggle = toggleOf("ap_s65");
+    expect(toggle, "toggle").toBeTruthy();
+    await act(async () => {
+      toggle!.click();
+    });
+    const pvText = previewOf("ap_s65")?.textContent ?? "";
+    expect(pvText).toContain("2026-11-19 10:00");
+    const card = document.querySelector("[data-testid='apr5-row-ap_s65']") as HTMLElement | null;
+    await act(async () => {
+      card!.click();
+    });
+    await waitFor(() => !!detailOf(), "detail open");
+    const decided = document.querySelector("[data-testid='apd5-field-decided-at']");
+    expect(decided?.textContent).toContain("2026-11-19 10:00");
+  });
+
+  it("missing risk reads 「未标注风险」 on both sides — same value, distinct honesty labels", async () => {
+    await mount((url: string) => {
+      const bare = {
+        approvalId: "ap_m65",
+        status: "pending",
+        action: "run.tool",
+        createdAt: "2026-11-19T01:00:00Z",
+        approvers: [],
+      };
+      if (url.includes("/api/approval?id=")) return Promise.resolve(bare);
+      return Promise.resolve({ items: [bare] });
+    });
+    const toggle = toggleOf("ap_m65");
+    expect(toggle, "toggle").toBeTruthy();
+    await act(async () => {
+      toggle!.click();
+    });
+    const card = document.querySelector("[data-testid='apr5-row-ap_m65']") as HTMLElement | null;
+    await act(async () => {
+      card!.click();
+    });
+    await waitFor(() => !!detailOf(), "detail open");
+    await act(async () => {
+      toggleOf("ap_m65")!.click();
+    });
+    const pvText = previewOf("ap_m65")?.textContent ?? "";
+    const dtText = detailOf()?.textContent ?? "";
+    expect(pvText).toContain("未标注风险");
+    expect(dtText).toContain("未标注风险");
+    expect(pvText).toContain("该字段未返回");
+    expect(pvText).not.toContain("该段无记录");
+    expect(dtText).toContain("该段无记录");
+  });
+});

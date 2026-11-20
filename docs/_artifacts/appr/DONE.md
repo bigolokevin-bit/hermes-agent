@@ -933,3 +933,17 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 测试（EmployeesModulePage.test.tsx 新 describe 2 用例）：①展开读数+fetchJSON 计数前后不变锁+aria-expanded false→true+Escape（先 toggle.focus()——jsdom click 不移动焦点，键盘场景焦点本在钮上）→收起+activeElement=toggle；②同时仅一行+URL data-last-search 不变+缺 title 行「该字段未返回」。定向 employees 2 files/18 passed。
 - 坑（本笔实证）：python rfind("});") 追加 describe 会把新块插进最后一个 describe 内部并吞掉其收尾——插入点必须在文件最末 `});` 之后，或补回被吞的 describe 收尾（本次修复=anchor `});\n\nconst twoRows` 处补一行 `});`）。
 - 验证：定向 18 passed；tsc 本域零红；assert-ia 两模式 exit 0；全量 1671 passed 0 失败（merge 后基线含他人用例）。三档横溢=形态学报（toggle shrink-0 在 flex 行外列、preview dl grid minmax(0)+truncate，jsdom 不可测三档）。9122==053da5c4 代次活体展开读数待并入后代次（禁重建）。
+
+## R65 审批行内预览与详情字段一致性（apv9 vs apd5/apd6，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @c65d8ce0（b797bc98 已含），toplevel ✓ porc=0；代次 053da5c4。
+- 逐字段对照结论（改前→改后，同单两屏取值）：
+  1. 风险档缺值：预览「—」 vs 详情徽标「未标注风险」（model.ts riskView(null).label）→ 预览改直读 row.risk.label（riskView 同源），缺字段口径=该 Field title「该字段未返回」；有值两处同词（活体 ap_123DE49B：两处 riskLevel=high 同值）。
+  2. 更新时间：预览原 row.clock（pending 行=处理期限 expiresAt、settled=decidedAt??deadline）与详情「决定时间」(decidedAt 键序无 deadline 兜底) 异值 → rowFrom 新出 `decided: beijing(pick(rec, DECIDED_KEYS))`（与 detailFrom.decided 同键序同助手）；预览更新时间=decided??「—」；行主体 dl 的「处理期限/处理于」既有形态未动（不属重叠字段）。活体同单 decidedAt=2026-11-17T13:09:04.322Z 两读口一致 ✓。
+  3. rid 键序：row 原 [requestId,request_id] vs 详情 [requestId,request_id,consoleRequestId] → row 对齐三键（仅带 consoleRequestId 的行不再误显「该字段未返回」；用例 req-cr-65 两屏同显）。
+  4. 标题/状态/审批人：两处本就同助手（humanSentence(TITLE_KEYS)/statusView(STATUS_KEYS)/approverLabels），零改动。
+- 活体差异如实报（非前端可修）：本代次上游详情体 keys 无 requestId/consoleRequestId（GET /api/approval?id= 实测 keys=action…tenantId,ttl），列表行 requestId=审批单号本身；两屏各读自各自 payload，前端不跨读口拼数（禁编造）。
+- 口径锁：预览缺字段=「该字段未返回」（值/题头 textContent 或 title），详情缺段=「该段无记录」（DecisionTrail NoSeg）；新用例断言两串不互混（pv 不含「该段无记录」、trail 缺段仍「该段无记录」）。
+- 测试：ApprovalsHistoryModulePage.test.tsx 新 describe "R65 preview-detail parity (apv9 vs apd5/apd6)" 3 用例（pending 同值+展开两次 fetchJSON 计数不变零请求锁 / settled decidedAt 两屏同「2026-11-19 10:00」==apd5-field-decided-at / 缺风险行两处「未标注风险」同词+「请求编号：该字段未返回」）。定向 approvals 3 files/83 passed；tsc 本域 0 红；assert-ia 两模式 exit0；全量尾行见下条（基线 137 files/1671，+3）。
+- 零破：apv9-*/apd6-*/apd7-*/apv5–8/apr5/ed*/emp-list*（既有 80 用例全绿为证）；三档=Field dl grid min-w-0 既有形态学报（jsdom 不可测）；9122==053da5c4 活体两屏 DOM 读数待并入后代次。
+- 队列注记：R64（employees 复制为纯文本）与 R58（employees 分页）仍未交付。
