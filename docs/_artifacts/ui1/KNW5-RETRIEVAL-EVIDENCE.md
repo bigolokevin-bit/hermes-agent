@@ -4412,3 +4412,57 @@ kn7-preview-*/kn-type* + 既有 27 套全绿。
 边界：只新增 web/src/modules/knowledge/knowledge.rowcopy.filter.test.tsx 与本证据；
 显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
 「test(console): knowledge row copy filter parity guards」。
+
+# KNW5 追加 R209：导出 × 行复制全行直对护栏（纯测试单）（2026-11-21 BJT）
+
+安全门：porcelain 空起做（HEAD 即 R208 链）、显式 refspec fetch 后 merge 实测 tip
+即预期 `916b943b`（知识面 delta 空；目标文件确认原不存在）。零产品文件改动（无新缺陷）。
+
+## 名实映射与查重（引用不重写）
+
+```text
+· 无真 CSV（createObjectURL/text/csv/download= 0 命中、data-export="absent" 4 处，
+  R190 不变量在位）→「导出」= knF 数据行；未造控件。
+· 无 ?source= 控件 → 叠加键 = ?ktype= × 本地名筛 × ?q=；类型桶/名筛在空间详情面 →
+  本文件测的族 = kn-row-copy-space-<i>（检索面 R207/R208 已锁其归属面，不复跑）。
+· 派工 ③「导出空字段 vs 复制『—』」名实不成立：两产物同一实现（docLine），缺值两处
+  都是「—」，无可分别观测的第二口径——按产品现状断言单一实现（全行级互等），差异
+  记录于此与回执，未造数据未改产品。
+已锁引用：R207(a)（knF col1 元素级换代+三值+快照）、R208（行钮级逐行链+零漂移==
+docSingleCopy+换代缺席）、R200①②（表头差集+逐单元格）、R190③④（缺值两处逐字+空集
+disabled/title/writeText 0/spy 0）、R142②（三值降数复原）、R169/R132（编号连续/重编）。
+真缺口（本文件 1 例）：**两个产物之间的全行直对**——行钮 i 串的 data 行与 knF 数据行 i
+整行 toBe（此前两产物各自只与屏上过，传递闭包从未直接落钉），覆盖首/中/末三行，
+末行恰为缺值行（「—」全行级互等），叠加 ktype=PDF 态再走短链 + 当态三值。
+```
+
+## 关键读数
+
+```text
+三行 [A 手册.pdf, B 表.xlsx, M 缺项档]（updated/desc、缺时垫底）：
+  i=0/1/2 行钮整行 toBe knF 行 i，且 col1 == 屏上第 i 行名（三点直接链）；
+  末行两产物均逐字「M 缺项档 | — | — | — | DM」，无 undefined/null/空字段（\|\s+\| 零命中）。
+叠加 ktype=PDF：[A 手册.pdf]，行钮 0 整行 == knF 行 0；三值 [1,1,1]。
+首屏后 urls 排序快照逐字不变（含 8 次点钮复制与切桶）；createObjectURL spy 全程 0。
+```
+
+## 验证尾行（R209）
+```text
+$ npx vitest run src/modules/knowledge   → 29 files / 159 tests passed（基线 158 + 1）
+$ npx vitest run                         → 286 files / 2976 tests passed 全绿（无豁免项；
+  +5 文件为 merge 带入他模块 wave，非本域）
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning；本单曾有
+  1 条 unused(spaceBtn) 提交前清零）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r209-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn3*/kn6–kn9/knB/knD/knF/knG/knI/knL-copy*/kn-sort*/kn-gates/kn-row-copy*/
+kn-row-copy-space*/kn-doc-copy*/kn-doc-preview*/kn-space-preview*/kn3-page-cap/knE-page-*/
+kn7-preview-*/kn-type* + 既有 28 套全绿。
+```
+未测如实：带登录会话真实屏；空态 disabled/title/spy 腿按派工引用 R190④（本轮仅在同一
+用例内复跑 spy-0 与零请求两项，未重跑空集 disabled——避免重复断言）；检索面两产物直对
+（该面 knG vs kn-row-copy-<i> 同理由 R207/R208 各自单边锁过，直对差异面同族，未铺）。
+边界：只新增 web/src/modules/knowledge/knowledge.export.rows.test.tsx 与本证据；
+显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「test(console): knowledge export rows parity guards」。
