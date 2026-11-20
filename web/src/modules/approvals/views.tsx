@@ -433,7 +433,7 @@ export function DecisionTrail({ detail }: { detail: ApprovalDetail }): ReactNode
           {detail.runId ? (
             <Link
               className="underline underline-offset-2"
-              to={`/runs/${encodeURIComponent(detail.runId)}`}
+              to={`/runs?run=${encodeURIComponent(detail.runId)}`}
               title={detail.runId}
               data-testid="apd6-link-run"
             >
@@ -446,7 +446,7 @@ export function DecisionTrail({ detail }: { detail: ApprovalDetail }): ReactNode
           {detail.taskId ? (
             <Link
               className="underline underline-offset-2"
-              to={`/tasks/${encodeURIComponent(detail.taskId)}`}
+              to={`/work?tab=board&task=${encodeURIComponent(detail.taskId)}`}
               title={detail.taskId}
               data-testid="apd6-link-task"
             >
@@ -683,6 +683,36 @@ export function ApprovalDetailBody({
       </section>
 
       <DecisionTrail detail={detail} />
+
+      {/* R82: 审计台账真链——audit 读口按 resourceId=审批单号真过滤
+        * （活体实测：resourceId=ap_… → 200 n=1 命中 approval.expired；
+        * resourceId=资源路径 → 200 n=0；limit 单参 → 400 需过滤）。
+        * 页级消费 ?resource= → 线上 resourceId=（aud8 契约），并带默认时间窗。
+        * ?event= 需要审计事件 id——审批对象不带该字段，禁编造：这里给的是
+        * 过滤真链，不是假事件定位链。 */}
+      <section className="flex min-w-0 flex-col gap-1 text-xs" data-testid="apd9-correlation" aria-label="相关记录">
+        <h3 className="text-xs font-medium text-muted-foreground">相关记录 · 只读</h3>
+        {detail.rawId ? (
+          <Link
+            className="min-w-0 break-words underline underline-offset-2"
+            to={`/audit?resource=${encodeURIComponent(detail.rawId)}`}
+            title="打开审计台账并按该审批单号过滤（服务端 resourceId 真过滤，默认时间窗；审批对象不带审计事件 id，故这不是按事件行的定位链）。"
+            data-testid="apd9-audit-link"
+          >
+            在审计中查看相关记录
+          </Link>
+        ) : (
+          <p className="min-w-0 break-words" data-testid="apd9-audit-note">
+            审计跳转
+            <NoSeg reason="该字段未返回（审批单号没有回传，无法拼出过滤链接，禁编造 id）。" />
+          </p>
+        )}
+        <p className="min-w-0 break-words">
+          <RequestIdCopyField requestId={detail.requestId} fallback="请求编号：该字段未返回" />
+          {" "}
+          <span className="text-muted-foreground">审计页没找到对应事件时，可用上面的单号/请求编号在台账里人工检索。</span>
+        </p>
+      </section>
 
       <DetailsDisclosure testId={`${testId}-details`} lines={details} />
 

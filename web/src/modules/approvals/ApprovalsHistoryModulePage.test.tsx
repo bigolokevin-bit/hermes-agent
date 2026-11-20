@@ -516,9 +516,9 @@ describe("history whole-panel states", () => {
     });
     await waitFor(() => document.querySelector("[data-testid='apd6-trail']") !== null, "trail mounted");
     const run = document.querySelector("[data-testid='apd6-link-run']") as HTMLAnchorElement | null;
-    expect(run?.getAttribute("href")).toBe("/runs/run_217A91BA995044DF");
+    expect(run?.getAttribute("href")).toBe("/runs?run=run_217A91BA995044DF");
     const task = document.querySelector("[data-testid='apd6-link-task']") as HTMLAnchorElement | null;
-    expect(task?.getAttribute("href")).toBe("/tasks/tk_217A91BA995044DF");
+    expect(task?.getAttribute("href")).toBe("/work?tab=board&task=tk_217A91BA995044DF");
     expect(document.querySelector("[data-testid='apd6-step-node-0']")?.textContent).toContain("意见：可以");
   });
 
@@ -1964,5 +1964,59 @@ describe("R80 long value truncation (apv-trunc-*)", () => {
     // CSV 表头契约（R54）无 reason 列；title 全文与行卡 title 属性同源
     expect(csv).toContain(LONG_TITLE);
     expect((qa("apv-trunc-row-title-ap_tr1") as HTMLElement).getAttribute("title")).toBe(LONG_TITLE);
+  });
+});
+
+describe("R82 approval audit correlation (apd9-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+  const C82_DETAIL = {
+    approvalId: "ap_c82",
+    tenantId: "t_seakoi_pilot",
+    title: "轮换部署密钥",
+    status: "approved",
+    action: "rotate.secret",
+    requestId: "req-c82-1",
+    runId: "rn_c82run",
+    taskId: "tk_c82task",
+    createdAt: "2026-11-19T01:00:00Z",
+    decidedAt: "2026-11-19T02:00:00Z",
+    approvers: [{ userId: "human:7", name: "郑涛" }],
+    decisions: [{ userId: "human:7", decision: "approve", at: "2026-11-19T02:00:00Z" }],
+  };
+  const handlerFor = (detailBody: Record<string, unknown>) => async (url: string) => {
+    if (String(url).includes("/api/approval?id=")) return detailBody;
+    return { items: [] };
+  };
+
+  it("gives a real audit filter link derived from the approval id, with the rid as a search lead", async () => {
+    await mount(handlerFor(C82_DETAIL), "/approvals?tab=history&id=ap_c82");
+    await waitFor(() => !!qa("apr5-detail"), "detail open");
+    const after = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+    expect(api.fetchJSON.mock.calls.length, "correlation block fetches nothing").toBe(after);
+    const link = qa("apd9-audit-link") as HTMLAnchorElement | null;
+    expect(link, "audit link present").toBeTruthy();
+    expect(link!.getAttribute("href")).toBe("/audit?resource=ap_c82");
+    expect(link!.getAttribute("title")).toContain("resourceId 真过滤");
+    const detailText = qa("apr5-detail")?.textContent ?? "";
+    expect(detailText).toContain("req-c82-1");
+    expect(qa("apr5-copy-request-id"), "rid copyable").toBeTruthy();
+    // R48b 口径的 run 真链 + /tasks 重定向不再是目标
+    expect((qa("apd6-link-run") as HTMLAnchorElement).getAttribute("href")).toBe("/runs?run=rn_c82run");
+    expect((qa("apd6-link-task") as HTMLAnchorElement).getAttribute("href")).toBe("/work?tab=board&task=tk_c82task");
+    expect(detailText).not.toContain("human:");
+  });
+
+  it("without run/task the honest none branches stay; the audit link still rides the id", async () => {
+    const MIN = { ...C82_DETAIL, approvalId: "ap_c82min" };
+    delete (MIN as Record<string, unknown>).runId;
+    delete (MIN as Record<string, unknown>).taskId;
+    await mount(handlerFor(MIN), "/approvals?tab=history&id=ap_c82min");
+    await waitFor(() => !!qa("apr5-detail"), "detail open");
+    expect(qa("apd6-link-run-none")).toBeTruthy();
+    expect(qa("apd6-link-task-none")).toBeTruthy();
+    expect((qa("apd9-audit-link") as HTMLAnchorElement).getAttribute("href")).toBe("/audit?resource=ap_c82min");
   });
 });
