@@ -2272,3 +2272,11 @@ built /private/tmp/health-r38/index.html
 - 行序/零请求：整表默认 name asc 复制 4 行，首末与表体一致；`?q=探针&ssort=state&sdir=desc` 复制 3 行，首末与表体一致；两次 `fetchJSON` 均 4→4，无新增请求。
 - 验证：定向 `src/modules/health` 8 files / 68 passed；全量 162 files / 2247 passed；`tsc -b . --noEmit` 仅基线 approvals/employee-detail/employees 错误，本域 0；DOM 1440/1280/375 `vw=bodySW=bodyCW`（375 内容 364），无横溢。
 - 边界：仅 `modules/health/**` + DONE；未改 App/shell/routes/registry/package·lock/web-scripts/ops；未 install、未并 main、未重建 9122；禁 force/amend/--no-verify。
+
+## R84 / cap-row-copy — /capabilities 行详情「复制该行」
+
+- 基线：显式 refspec fetch + `git merge origin/lane/hermes-console` 已是 up to date；HEAD `3000f052`；wave-23 代码 `94076a05` / 章面 `74c1e3b3`。
+- 实现：`capabilities/listCopy.tsx` 新增 `CopyField`/`toFieldText`（每行 `label：value`，缺失 `—`）与 `CapabilityFieldCopy`（`cap-row-copy`、`cap-row-copy-status` aria-live、`cap-row-copy-fallback`）；`rowDetail.tsx` 在 `</dl>` 后按屏上六字段顺序渲染：口径名 / 类型或来源 / 启用态 / 最近更新 / 读口路径 / 采集时刻；skills/tools 共用。折叠行不挂载详情，按钮不存在而非 disabled。样式 `.cap7-copy` 追加 `counts.css`。
+- 测试：新增 `RowCopy.test.tsx`（六行文本、缺失 `—`、成功「已复制」、剪贴板拒绝 fallback 逐字同）；skills/tools 详情测试补「展开前无按钮 / 展开后有 / Esc 收起后无」；定向 10 files / 96 passed；全量 163 files / 2249 passed；tsc 仅基线错误，本域 0。
+- DOM（临时 harness，已删除）：1440/1280/375 `vw=bodySW=bodyCW`；skills 复制 6 行（采集 `2026-11-19 14:00`，fetch 1→1）；tools 复制 6 行（最近更新/采集均 `—`，fetch 5→5）；两 tab 均无 fallback、无横溢。
+- 边界：仅 `modules/{capabilities,skills,tools}/**` + DONE；未改 App/shell/routes/registry/package·lock/web-scripts/ops；未 install、未并 main、未重建 9122；禁 force/amend/--no-verify。

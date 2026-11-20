@@ -499,7 +499,9 @@ describe("SkillsPage", () => {
     });
     await render();
     const searchBefore = window.location.search;
+    expect(container.querySelector("[data-testid='cap-row-copy']")).toBeNull();
     await act(async () => container.querySelector<HTMLButtonElement>("[data-testid='cap7-detail-toggle']")!.click());
+    expect(container.querySelector("[data-testid='cap-row-copy']")).toBeTruthy();
     const asof = container.querySelector("[data-testid='cap7-detail-asof']");
     expect(asof?.textContent).toBe("2026-11-19 14:00");
     expect(asof?.getAttribute("title")).toBe("UTC 原文：2026-11-19T06:00:00Z · 北京时间：2026-11-19 14:00 · 来源：台账快照");
@@ -510,6 +512,7 @@ describe("SkillsPage", () => {
 
     await act(async () => { window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })); });
     expect(container.querySelectorAll("[data-testid='cap7-detail-skills']")).toHaveLength(0);
+    expect(container.querySelector("[data-testid='cap-row-copy']")).toBeNull();
   });
 
   it("shows a dash and a title reason for a non-ISO asOf instead of the browser clock", async () => {

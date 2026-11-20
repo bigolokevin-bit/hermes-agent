@@ -298,3 +298,15 @@
 }
 .cap-page-scope > span { min-width: 0; overflow-wrap: anywhere; }
 .cap-page-scope-detail { opacity: 0.86; }
+
+/* cap-row-copy — one detail row's plain-text projection */
+.cap7-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--color-border);
+}
+.cap7-copy .capC-copy-wrap { flex-wrap: wrap; }
