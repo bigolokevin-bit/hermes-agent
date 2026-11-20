@@ -3195,4 +3195,98 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(document.activeElement).toBe(rowLink()); // 遮罩不丢焦点
     expect((byTestid("loc")?.textContent ?? "")).not.toContain("doc=");
   });
+
+  it("copies the drawer's on-screen metadata (knL-*): exact lines, zero reads, unmount, focus back both close paths, fallback", async () => {
+    const SPACE = { asOf: "2026-11-19T07:00:00Z", items: [{ spaceId: "sp_hr", name: "人事制度空间" }] };
+    const LIST = {
+      asOf: "2026-11-19T07:00:00Z",
+      documents: [
+        { documentId: "d1", fileName: "员工手册.pdf", mimeType: "pdf", sizeBytes: 2048, updatedAt: "2026-11-19T07:00:00Z", spaceId: "sp_hr", spaceName: "人事制度空间" },
+        { documentId: "d2", fileName: "薪酬表.xlsx", docType: "xlsx", sizeBytes: 40960, updatedAt: "2026-11-19T05:30:00Z", spaceId: "sp_fin" },
+      ],
+    };
+    const EXPECTED_D1 =
+      "文档名：员工手册.pdf\n所属空间：人事制度空间\n类型：PDF\n大小：2.0 KB\n更新：2026-11-19 15:00\n文档短码：D1\n";
+    const EXPECTED_D2 =
+      "文档名：薪酬表.xlsx\n所属空间：空间 · SPFIN\n类型：表格\n大小：40.0 KB\n更新：2026-11-19 13:30\n文档短码：D2\n";
+    const EXPECTED_GHOST =
+      "文档名：—\n所属空间：—\n类型：—\n大小：—\n更新：—\n文档短码：ZZ9\n";
+    fetchMock.mockClear();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SPACE);
+      if (url.startsWith("/agent-api/api/documents?") && url.includes("spaceId=sp_hr")) return Promise.resolve(LIST);
+      if (url === "/agent-api/api/documents/d1" || url === "/agent-api/api/documents/d2")
+        return Promise.resolve({ sourceName: "原件", status: "indexed" });
+      return fail(404, "这个数据接口还没有接入。", "rid-l-x");
+    });
+    // 刷新直开抽屉（?doc=d1 复现路径）
+    await render("/knowledge?tab=spaces&space=sp_hr&doc=d1");
+    await act(async () => {});
+    expect(byDocTestid("kn7-preview-panel")).toBeTruthy();
+    const urlsSettled = fetchMock.mock.calls.length;
+
+    const lBtn = () => byDocTestid("knL-copy-meta") as HTMLButtonElement | null;
+    expect(lBtn()?.tagName).toBe("BUTTON");
+    expect((byDocTestid("knL-copy-meta-status")?.getAttribute("aria-live") ?? "")).toBe("polite");
+    await click("knL-copy-meta");
+    expect(writeText).toHaveBeenCalledTimes(1);
+    expect(writeText.mock.calls[0][0]).toBe(EXPECTED_D1);
+    expect((byDocTestid("knL-copy-meta-status")?.textContent ?? "").trim()).toBe("已复制");
+    expect(fetchMock.mock.calls.length).toBe(urlsSettled); // 复制流程 0 新请求
+
+    // Esc 关闭：按钮随抽屉卸载；焦点回触发行（读数取 activeElement 的 testid）
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+    });
+    await act(async () => {});
+    expect(byDocTestid("knL-copy-meta")).toBeNull();
+    expect(document.activeElement?.getAttribute("data-testid")).toBe("kn3-docs-name");
+
+    // 遮罩关闭：同样卸载 + 焦点回触发行
+    await clickNth("kn3-docs-name", 1); // 打开 d2
+    await act(async () => {});
+    const urlsD2 = fetchMock.mock.calls.length;
+    expect(byDocTestid("knL-row")).toBeTruthy();
+    await act(async () => {
+      (byDocTestid("kn7-preview-backdrop") as HTMLElement).dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => {});
+    expect(byDocTestid("knL-copy-meta")).toBeNull();
+    expect(document.activeElement?.getAttribute("data-testid")).toBe("kn3-docs-name");
+    // 打开 d2 只有既有的详情一读（+1），复制前基线稳定
+    expect(urlsD2).toBe(urlsSettled + 1);
+
+    // 剪贴板拒绝 / 不可用：只读 textarea，内容逐字同；仍在模态 Tab 环内
+    await clickNth("kn3-docs-name", 1);
+    await act(async () => {});
+    const writeFail = vi.fn().mockRejectedValue(new Error("denied"));
+    Object.defineProperty(navigator, "clipboard", { value: { writeText: writeFail }, configurable: true });
+    await click("knL-copy-meta");
+    expect((byDocTestid("knL-copy-meta-status")?.textContent ?? "")).toContain("复制失败");
+    const fallback = byDocTestid("knL-copy-meta-fallback") as HTMLTextAreaElement | null;
+    expect(fallback).toBeTruthy();
+    expect(fallback?.readOnly).toBe(true);
+    expect(fallback?.value).toBe(EXPECTED_D2);
+    Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true });
+    await click("knL-copy-meta");
+    expect(byDocTestid("knL-copy-meta-fallback")).toBeTruthy();
+    const ring = (byDocTestid("kn7-preview-panel") as HTMLElement).querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input, textarea, [tabindex]:not([tabindex="-1"])',
+    );
+    expect(Array.from(ring).includes(fallback as HTMLElement)).toBe(true); // 失败态焦点不外穿
+    expect(fetchMock.mock.calls.length).toBe(urlsD2 + 1); // 本次打开的详情一读，此外 0 增量
+
+    // URL 复现但行不在已加载列表：全「—」，短码仍给人话尾段大写，裸 id 不进文本
+    await render("/knowledge?tab=spaces&space=sp_hr&doc=zz9");
+    await act(async () => {});
+    const urlsGhost = fetchMock.mock.calls.length;
+    const writeGhost = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText: writeGhost }, configurable: true });
+    await click("knL-copy-meta");
+    expect(writeGhost.mock.calls[0][0]).toBe(EXPECTED_GHOST);
+    expect(String(writeGhost.mock.calls[0][0])).not.toContain("zz9");
+    expect(fetchMock.mock.calls.length).toBe(urlsGhost); // 复制动作本身 0 新请求
+  });
 });

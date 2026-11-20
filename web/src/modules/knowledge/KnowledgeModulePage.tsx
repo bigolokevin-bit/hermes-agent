@@ -68,6 +68,7 @@ import {
   INGEST_STATUS_URL,
   docCopyText,
   docHitCopyText,
+  docMetaCopyText,
   documentDetailUrl,
   documentsUrl,
   documentsPageUrl,
@@ -1097,6 +1098,22 @@ function DocPreviewDrawer({
   );
   const detail = surface.state.kind === "ready" ? surface.state.value.rows[0] ?? null : null;
 
+  // R60 — 复制元信息：文本只取抽屉已持有的屏上数据（列表行 + 地址里的文档标识），此路不发请求。
+  // 与 knF/knG/knI 同一手法：内容签名守卫，行或文档一变，旧的「已复制」立即作废。
+  const copyText = docMetaCopyText(row, docId);
+  const [copyState, setCopyState] = useState<{ kind: "copied" | "failed"; sig: string } | null>(null);
+  const copyAct = copyState !== null && copyState.sig === copyText ? copyState.kind : "idle";
+  const copyMeta = () => {
+    if (!navigator.clipboard?.writeText) {
+      setCopyState({ kind: "failed", sig: copyText });
+      return;
+    }
+    void navigator.clipboard.writeText(copyText).then(
+      () => setCopyState({ kind: "copied", sig: copyText }),
+      () => setCopyState({ kind: "failed", sig: copyText }),
+    );
+  };
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -1106,7 +1123,7 @@ function DocPreviewDrawer({
       }
       if (event.key !== "Tab") return;
       const nodes = panelRef.current?.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), input, [tabindex]:not([tabindex="-1"])',
+        'a[href], button:not([disabled]), input, textarea, [tabindex]:not([tabindex="-1"])',
       );
       if (!nodes || nodes.length === 0) return;
       const first = nodes[0];
@@ -1231,6 +1248,32 @@ function DocPreviewDrawer({
             </dd>
           </div>
         </dl>
+
+        <div className="knL-row" data-testid="knL-row">
+          <Button
+            size="sm"
+            outlined
+            className="knL-copy-meta"
+            onClick={copyMeta}
+            title="复制这份文档在抽屉里的元信息：文档名、所属空间、类型、大小、更新、文档短码。屏上数据，不会再发请求。"
+            data-testid="knL-copy-meta"
+          >
+            复制元信息
+          </Button>
+          <span className="knL-status" data-testid="knL-copy-meta-status" aria-live="polite">
+            {copyAct === "copied" ? "已复制" : copyAct === "failed" ? "复制失败，已展开可选文本，可手动复制" : ""}
+          </span>
+          {copyAct === "failed" ? (
+            <textarea
+              className="knL-fallback"
+              data-testid="knL-copy-meta-fallback"
+              aria-label="手动复制文档元信息文本"
+              readOnly
+              rows={7}
+              value={copyText}
+            />
+          ) : null}
+        </div>
 
         {surface.state.kind === "loading" ? <Skeleton testid="kn7-preview-loading" /> : null}
 

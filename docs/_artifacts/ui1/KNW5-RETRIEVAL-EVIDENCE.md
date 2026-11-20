@@ -1710,3 +1710,48 @@ $ npx vite build --outDir /tmp/knw27-dist → exit 0（产物只落 /tmp）
 package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
 无 force / amend / `--no-verify`；单 commit「feat(console): knowledge drawer accessibility」。
 kn3 / kn6–knI / knw5 既有断言零改零破（含 R49 抽屉回归测试全绿）；无布局改动，三宽度维持既有读数。
+
+# KNW5 追加 R60：文档预览抽屉的元信息复制（testid `knL-*`）（2026-11-20 BJT）
+
+基线安全闸：toplevel 相符、porcelain 空、显式 refspec fetch 后 merge `origin/lane/hermes-console`
+实到 tip `cca9cf7e`（wave-19，代码代次同名），零冲突；`git diff HEAD^1..HEAD -- web/src/modules/knowledge`
+为空——wave 不动知识面，合并后知识套基线 52/52 绿再动工。不引用更早代次。
+
+## 一、口径
+
+```text
+位置       控件在抽屉面板内（两条 dl 字段块之后）；抽屉卸载即随 portal 一起消失——
+           Esc 与遮罩两条路径关闭后实测 knL-copy-meta 均查无节点。
+文本       一条字段一行：文档名 / 所属空间 / 类型 / 大小 / 更新（BJT 到分）/ 文档短码。
+           值全是抽屉已持有的屏上数据（列表行 + 地址里的文档标识），缺值「—」不补 0；
+           所属空间缺名字时用人话短码行「空间 · SPFIN」（行数据自带），全空间 id 只在 title；
+           文档短码取人话尾段大写（D1/D2/ZZ9），裸 id 实测不进文本；
+           地址可复现但行不在已加载列表：前五字段全「—」、短码仍给——不编值。
+零请求     复制动作本身实测 fetchMock 前后计数不变。如实记录既有设计（R49，本轮未动）：
+           打开抽屉会读一次「文档详情」读口（来源与读取状态等它），重开即再读一次，
+           测试按 open=+1、close/copy=+0 分别断言。
+状态       knL-copy-meta-status 常驻 aria-live=polite：成功「已复制」；拒绝（writeText reject）
+           与不可用（无 writeText）两路分别实测 →「复制失败…」+ knL-copy-meta-fallback
+           只读 textarea，value 与文本逐字一致。
+模态不破   Tab 环选择器补入 textarea（原样会漏掉失败态的手动文本框、焦点可从它穿出模态）——
+           本轮第二个代码增量；实测 fallback 在环内（ring.includes(fallback)=true）。
+焦点并核   Esc 关闭：activeElement 的 data-testid === "kn3-docs-name"（触发行）；
+           遮罩点关：同一读数，两条路径焦点都不丢；?doc= 关闭即从 URL 移除（R59 口径）。
+```
+
+testid 新增 `knL-row` / `knL-copy-meta` / `knL-copy-meta-status` / `knL-copy-meta-fallback`。
+kn3 / kn6–knI / knw5 既有断言零改零破（含 R59 模态收口测试全绿）；抽屉内 flex-wrap 行、
+textarea 100% 盒宽，本轮未重建 9122，三宽度未做浏览器复测。
+
+## 验证尾行（R60）
+```text
+$ npx vitest run src/modules/knowledge   → 2 files / 53 tests passed（含新增抽屉元信息复制测试）
+$ npx vitest run                         → 144 files / 1796 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 set-state-in-effect warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw28-dist → exit 0（产物只落 /tmp）
+```
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
+无 force / amend / `--no-verify`；merge（cca9cf7e）与单 feature commit
+「feat(console): knowledge drawer metadata copy」分开。
