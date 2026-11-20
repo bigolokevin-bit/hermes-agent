@@ -14,7 +14,7 @@
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 24,
+  "distinctMainHeads": 23,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -117,25 +117,25 @@
     {
       "route": "#/audit",
       "viewport": "1440",
-      "chars": 445,
+      "chars": 454,
       "hasMainEl": true
     },
     {
       "route": "#/audit",
       "viewport": "375",
-      "chars": 445,
+      "chars": 454,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities",
       "viewport": "1440",
-      "chars": 200,
+      "chars": 205,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities",
       "viewport": "375",
-      "chars": 200,
+      "chars": 205,
       "hasMainEl": true
     },
     {
@@ -165,25 +165,25 @@
     {
       "route": "#/capabilities?tab=tools",
       "viewport": "1440",
-      "chars": 234,
+      "chars": 239,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=tools",
       "viewport": "375",
-      "chars": 234,
+      "chars": 239,
       "hasMainEl": true
     },
     {
       "route": "#/employees",
       "viewport": "1440",
-      "chars": 241,
+      "chars": 246,
       "hasMainEl": true
     },
     {
       "route": "#/employees",
       "viewport": "375",
-      "chars": 241,
+      "chars": 246,
       "hasMainEl": true
     },
     {
@@ -243,7 +243,7 @@
     {
       "route": "#/employees/:employeeId?zone=runs",
       "viewport": "375",
-      "chars": 66,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -525,37 +525,37 @@
     {
       "route": "#/system?tab=events",
       "viewport": "1440",
-      "chars": 445,
+      "chars": 454,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events",
       "viewport": "375",
-      "chars": 445,
+      "chars": 454,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "1440",
-      "chars": 445,
+      "chars": 454,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "375",
-      "chars": 445,
+      "chars": 454,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=retention",
       "viewport": "1440",
-      "chars": 445,
+      "chars": 454,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=retention",
       "viewport": "375",
-      "chars": 445,
+      "chars": 454,
       "hasMainEl": true
     },
     {
@@ -585,13 +585,13 @@
     {
       "route": "#/work",
       "viewport": "1440",
-      "chars": 299,
+      "chars": 319,
       "hasMainEl": true
     },
     {
       "route": "#/work",
       "viewport": "375",
-      "chars": 299,
+      "chars": 319,
       "hasMainEl": true
     },
     {
@@ -631,12 +631,10 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 1,
-  "consoleErrorRoutesObservedByShots": [
-    "#/work"
-  ],
+  "consoleErrorsObservedByShots": 0,
+  "consoleErrorRoutesObservedByShots": [],
   "ceAuthority": "login-state",
-  "routesWithEnvOnlyConsoleErrors": 50,
+  "routesWithEnvOnlyConsoleErrors": 51,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
   "overflowing": [],
   "driver": {
@@ -644,12 +642,12 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "053da5c4",
+  "headHash": "cca9cf7e",
   "exitCode": 0,
-  "entry": "assets/index-BlRBSB7R.js",
-  "entrySha256": "aab063e1530d582d88315c55c9e41c98afcc647a0fc937f736b86ce0e4f91bcc",
-  "entryBytes": 166881,
-  "servedEntryBefore": "index-BlRBSB7R.js",
-  "servedEntryAfter": "index-BlRBSB7R.js",
+  "entry": "assets/index-uXCQm6a7.js",
+  "entrySha256": "7f1187f68d6e631640d0ae5c46e74f6b07b8e6f31a5107ec49461a7d236daced",
+  "entryBytes": 166877,
+  "servedEntryBefore": "index-uXCQm6a7.js",
+  "servedEntryAfter": "index-uXCQm6a7.js",
   "auxiliary": true
 }
