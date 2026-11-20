@@ -477,12 +477,12 @@
 }
 
 .met6-budget-pct.is-over {
-  color: #f4737a;
+  color: var(--color-danger);
   font-weight: 650;
 }
 
 .met6-budget-pct.is-warn {
-  color: #f2b155;
+  color: var(--color-warning);
   font-weight: 650;
 }
 
@@ -498,29 +498,29 @@
 }
 
 .met6-budget-badge.is-ok {
-  color: #36bc84;
-  background: color-mix(in srgb, #36bc84 14%, transparent);
-  border-color: color-mix(in srgb, #36bc84 40%, transparent);
+  color: var(--color-success);
+  background: color-mix(in srgb, var(--color-success) 14%, transparent);
+  border-color: color-mix(in srgb, var(--color-success) 40%, transparent);
 }
 
 .met6-budget-badge.is-warn {
-  color: #f2b155;
-  background: color-mix(in srgb, #f2b155 14%, transparent);
-  border-color: color-mix(in srgb, #f2b155 40%, transparent);
+  color: var(--color-warning);
+  background: color-mix(in srgb, var(--color-warning) 14%, transparent);
+  border-color: color-mix(in srgb, var(--color-warning) 40%, transparent);
 }
 
 .met6-budget-badge.is-over {
-  color: #f4737a;
-  background: color-mix(in srgb, #f4737a 14%, transparent);
-  border-color: color-mix(in srgb, #f4737a 40%, transparent);
+  color: var(--color-danger);
+  background: color-mix(in srgb, var(--color-danger) 14%, transparent);
+  border-color: color-mix(in srgb, var(--color-danger) 40%, transparent);
 }
 
 .met6-budget-variance.is-deficit {
-  color: #f4737a;
+  color: var(--color-danger);
 }
 
 .met6-budget-variance.is-surplus {
-  color: #36bc84;
+  color: var(--color-success);
 }
 
 /* MET7 — cost share by model */
@@ -828,9 +828,9 @@
   display: inline-block;
   margin-left: 6px;
   padding: 1px 6px;
-  border: 1px solid color-mix(in srgb, var(--color-warning, #d97706) 45%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 45%, transparent);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--color-warning, #d97706) 14%, transparent);
+  background: color-mix(in srgb, var(--color-warning) 14%, transparent);
   color: var(--color-warning-foreground, inherit);
   font-size: 11px;
   line-height: 1.5;

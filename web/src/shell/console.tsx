@@ -188,7 +188,7 @@ function StateRid({ rid }: { rid: string | null }) {
     );
   }
   return (
-    <span className="flex flex-wrap items-center justify-center gap-1.5 text-xs" data-testid="state-rid-line">
+    <span className="flex flex-wrap items-center justify-center gap-2 text-xs" data-testid="state-rid-line">
       <span style={{ color: "var(--color-text-muted)" }}>请求编号：</span>
       <code data-testid="state-rid" className="font-mono" style={{ color: "var(--color-text)" }}>
         {rid}
@@ -686,7 +686,7 @@ export function ConsoleNav({ onNavigate }: { onNavigate?: () => void }) {
     >
       <span
         id="hermes-console-nav-heading"
-        className="console-nav-group px-5 pt-2.5 pb-1 font-sans text-display text-xs tracking-[0.12em] text-text-tertiary"
+        className="console-nav-group px-4 pt-3 pb-1 font-sans text-display text-xs tracking-[0.12em] text-text-tertiary"
       >
         控制台
       </span>
@@ -696,7 +696,7 @@ export function ConsoleNav({ onNavigate }: { onNavigate?: () => void }) {
         return (
           <div key={group} role="group" aria-label={group}>
             <span
-              className="console-nav-group px-5 pt-2 pb-1 font-sans text-xs tracking-[0.1em]"
+              className="console-nav-group px-4 pt-2 pb-1 font-sans text-xs tracking-[0.1em]"
             >
               {group}
             </span>
@@ -709,7 +709,7 @@ export function ConsoleNav({ onNavigate }: { onNavigate?: () => void }) {
                     data-mod={meta.module}
                     className={({ isActive }) =>
                       [
-                        "console-nav-link relative flex items-center gap-3 px-5 py-2",
+                        "console-nav-link relative flex items-center gap-3 px-4 py-2",
                         "font-sans text-display text-sm tracking-[0.08em] whitespace-nowrap no-underline",
                         "focus-visible:[outline:var(--focus-ring)] focus-visible:outline-offset-2",
                         isActive
@@ -733,7 +733,7 @@ export function ConsoleNav({ onNavigate }: { onNavigate?: () => void }) {
         onClick={onNavigate}
         className={({ isActive }) =>
           [
-            "console-nav-link relative flex items-center gap-3 px-5 py-2",
+            "console-nav-link relative flex items-center gap-3 px-4 py-2",
             "font-sans text-display text-sm tracking-[0.08em] whitespace-nowrap no-underline",
             "focus-visible:[outline:var(--focus-ring)] focus-visible:outline-offset-2",
             isActive ? "text-midground" : "text-text-secondary hover:text-midground",

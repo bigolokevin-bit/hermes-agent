@@ -94,7 +94,7 @@ export function ParkedPage(): ReactNode {
           <Link
             key={item.key}
             to={item.path}
-            className="flex min-w-0 flex-col gap-1 rounded-md border border-border bg-card px-3 py-2.5 text-left transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/60"
+            className="flex min-w-0 flex-col gap-1 rounded-md border border-border bg-card px-3 py-2 text-left transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/60"
             data-testid={`parked-item-${item.key}`}
           >
             <span className="min-w-0 break-words text-sm font-medium text-foreground">{item.name}</span>
