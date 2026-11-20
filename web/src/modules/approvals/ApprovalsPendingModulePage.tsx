@@ -113,6 +113,18 @@ export function ApprovalsPendingModulePage(): ReactNode {
     setUnaddressable(false);
     setParams(draft, { replace: true });
   }, [params, setParams]);
+
+  // R93: ?status= has no effect in the pending tab — this tab always reads
+  // the pending queue. Drop it from the address once on entry (replace, no
+  // new history entry) instead of leaving a filter that never applied; the
+  // persistent note below states where status actually works.
+  useEffect(() => {
+    if (!params.has("status")) return;
+    const draft = new URLSearchParams(params);
+    draft.delete("status");
+    setParams(draft, { replace: true });
+  }, [params, setParams]);
+
   const [comment, setComment] = useState("");
   const [confirming, setConfirming] = useState<Verdict | null>(null);
   const [inFlight, setInFlight] = useState(false);
@@ -418,6 +430,13 @@ export function ApprovalsPendingModulePage(): ReactNode {
         </button>
         <FilterSummary params={params} onRemove={removeFilterKeys} />
       </div>
+      <p
+        className="min-w-0 break-words text-xs text-muted-foreground"
+        data-testid="apv-status-note"
+        title="待处理页的数据腿固定读取 pending 队列（实测 status=pending&limit=50 → 200/0）；status 参数在本页不生效，切到「决策历史」页签后按状态筛选。"
+      >
+        待办视图只列待办，status 筛选在历史 tab 生效。
+      </p>
       <QueueSummaryBar phase={list.phase} rows={visibleRows} scope="queue" />
       <QueueCsvExport rows={visibleRows} tab="pending" status="pending" phase={list.phase} sort={asort} dir={asort ? adir : null} />
       <div className="flex min-w-0 flex-wrap items-center gap-1.5" role="group" data-testid="apv8-search-group" aria-label="搜索审批">

@@ -845,3 +845,28 @@ describe("R94 pending correlation return", () => {
     expect(rawCorrelationReturn()).toBeNull();
   });
 });
+
+describe("R93 pending tab status semantics (apv-status-note)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+
+  it("a pasted ?status= is dropped from the address and the note explains where it applies", async () => {
+    await mount(queue(), "/approvals?tab=pending&status=expired");
+    await waitFor(() => !!qa("apv-status-note"), "note");
+    expect(qa("apv-status-note")?.textContent).toContain("待办视图只列待办");
+    expect(qa("apv-status-note")?.getAttribute("title")).toContain("pending");
+    // chip 投影：status 参已从地址移除后不再渲染「状态」chip（列表本就没按它过滤）
+    await waitFor(() => !qa("apv-chip-status"), "status chip gone");
+    const listUrls = api.fetchJSON.mock.calls.map((c) => String(c[0])).filter((u) => u.includes("/api/approvals"));
+    expect(listUrls.length, "dropping the dead param never refetches the queue").toBe(1);
+    expect(listUrls[0]).toContain("status=pending");
+    expect(listUrls[0]).not.toContain("status=expired");
+  });
+
+  it("a clean pending entry keeps the note and touches nothing extra", async () => {
+    await mount(queue(), "/approvals?tab=pending");
+    await waitFor(() => !!qa("apv-status-note"), "note resident");
+    expect(qa("apv-chip-status")).toBeNull();
+    const listUrls = api.fetchJSON.mock.calls.map((c) => String(c[0])).filter((u) => u.includes("/api/approvals"));
+    expect(listUrls.length).toBe(1);
+  });
+});
