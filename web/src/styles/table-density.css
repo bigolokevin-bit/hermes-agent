@@ -89,3 +89,19 @@
 :is([data-audj-value], [data-testid$="-request-value"]) {
   font-variant-numeric: tabular-nums;
 }
+
+/* UI-A 2026-11-21 /matrix：能力矩阵无 HTML table（div grid 行壳 mtx5-row-*）。
+ * 行壳 min-height 40；表头行（含 mtx5-col- 的 grid）同 40 档并把 11px/40%
+ * 白归一到令牌 12px 次级色（压 text-[11px] utility 需 !important）。
+ * 数字右对齐不适用（单元格是能力态标记非计数）；无子表面，36 档不适用；
+ * 375 由既有 mtx5-scroll overflow-x-auto + min-w-[720px] 承载，不撑破；
+ * 斑马纹无源（divide-y 分隔线）。 */
+[data-testid^="mtx5-row-"] {
+  min-height: var(--table-row-h);
+}
+
+[data-testid="mtx5-scroll"] div:has(> span[data-testid^="mtx5-col-"]) {
+  min-height: var(--table-row-h);
+  font-size: var(--font-size-1) !important;
+  color: var(--color-text-muted) !important;
+}
