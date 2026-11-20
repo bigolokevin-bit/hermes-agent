@@ -504,3 +504,85 @@ describe("DutyPage action gates", () => {
     expect(urls.length).toBeGreaterThan(before);
   });
 });
+
+describe("DutyPage trend accessibility", () => {
+  const q = (sel: string) => container.querySelector(sel);
+  const click = async (el: Element | null) => {
+    await act(async () => {
+      (el as HTMLElement).click();
+    });
+  };
+
+  it("summarises the very buckets the chart draws, with a described figure", async () => {
+    fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
+    await render(<DutyPage />);
+    const figure = q('[data-testid="duty-trend-figure"]');
+    expect(figure?.getAttribute("role")).toBe("img");
+    expect(figure?.getAttribute("aria-describedby")).toBe("duty-trend-summary");
+    const summary = q('[data-testid="duty-trend-summary"]')?.textContent ?? "";
+    expect(summary).toContain("首日 11/17 1 次");
+    expect(summary).toContain("末日 11/18 2 次");
+    expect(summary).toContain("峰值 11/18 2 次");
+    expect(summary).toContain("最低 11/17 1 次");
+    expect(q('[data-testid="duty-trend-total"]')?.textContent).toBe("3");
+    expect(q('[data-testid="ov6-trend"] .duty-num')?.textContent).toContain("3");
+  });
+
+  it("opens and closes the table on a native button without a single new request", async () => {
+    const urls: string[] = [];
+    fetchJSON.mockImplementation((url: string) => {
+      urls.push(url);
+      return Promise.resolve(ok(url));
+    });
+    await render(<DutyPage />);
+    const before = urls.length;
+    const toggle = q('[data-testid="duty-trend-table-toggle"]');
+    expect(toggle?.tagName).toBe("BUTTON");
+    expect(toggle?.getAttribute("aria-expanded")).toBe("false");
+    expect(toggle?.getAttribute("aria-controls")).toBe("duty-trend-table");
+    expect(q('[data-testid="duty-trend-table"]')).toBeNull();
+    await click(toggle);
+    expect(toggle?.getAttribute("aria-expanded")).toBe("true");
+    const table = q('[data-testid="duty-trend-table"]');
+    expect(table).not.toBeNull();
+    expect(table?.querySelector("caption")?.textContent).toContain("北京时间");
+    expect([...table!.querySelectorAll("th")].map((th) => th.getAttribute("scope"))).toEqual(["col", "col"]);
+    expect(table!.querySelectorAll("tbody tr")).toHaveLength(2);
+    expect(urls.length).toBe(before);
+    await click(toggle);
+    expect(toggle?.getAttribute("aria-expanded")).toBe("false");
+    expect(q('[data-testid="duty-trend-table"]')).toBeNull();
+  });
+
+  it("says the window is empty and still offers an empty table instead of summing to zero", async () => {
+    fetchJSON.mockImplementation((url: string) => {
+      if (url.includes("/workbench/timeseries")) {
+        return Promise.resolve({ asOf: WB_ASOF, available: true, points: [], totals: null });
+      }
+      return Promise.resolve(ok(url));
+    });
+    await render(<DutyPage />);
+    expect(q('[data-testid="duty-trend-summary"]')?.textContent).toContain("该区间没有运行记录");
+    await click(q('[data-testid="duty-trend-table-toggle"]'));
+    const table = q('[data-testid="duty-trend-table"]');
+    expect(table?.querySelectorAll("tbody tr")).toHaveLength(0);
+    expect(q('[data-testid="duty-trend-table-empty"]')?.textContent).toContain("没有可列出的行");
+  });
+
+  it("shows four dashes with the failure reason when the trend source is down", async () => {
+    fetchJSON.mockImplementation((url: string) => {
+      if (url.includes("/workbench/timeseries")) {
+        return Promise.reject(new ApiError("trend down", { status: 500, body: "{}", url, requestId: "req-trend-1" }));
+      }
+      return Promise.resolve(ok(url));
+    });
+    await render(<DutyPage />);
+    for (const id of ["first", "last", "peak", "low", "total"]) {
+      expect(q(`[data-testid="duty-trend-${id}"]`)?.textContent).toBe("—");
+    }
+    const title = q('[data-testid="duty-trend-summary"]')?.getAttribute("title") ?? "";
+    expect(title).toContain("req-trend-1");
+    expect(title).toContain("不把缺数当 0");
+    expect(q('[data-testid="ov6-kpi-runs"]')?.textContent).toContain("2");
+  });
+});

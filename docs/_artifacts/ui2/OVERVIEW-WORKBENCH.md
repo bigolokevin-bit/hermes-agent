@@ -84,3 +84,12 @@
 - 链接只做导航，恒可用（`link.enabled` 恒 true），不因失败或忙态阻断。空集不当不可用：复制只在有请求编号时可点，0 行数据不参与闸门。
 - 测试：`dutyPage.test.tsx` 新增 describe 5 例（纯函数四态矩阵 + 首读中刷新可点 + 单口失败局部可用 + 全失败复制禁用 + busy 二次点击被吞且 retry/copy 带同一原因）。定向 4 files / 70 passed；全量 148 files / 1944 passed；tsc 本域 0；eslint 0 error / 3 既有 warning；build entry `assets/index-B2ll4AVq.js` sha256 `df60d45b7922ab73daaafe7f78cb828cee2ac8e2d0e108d52290961ddc0fd140`，entry 内 `duty-gates-scope`=0，`DutyPage-*.js` 命中 1。
 - 未测：真实浏览器 busy 期间键盘操作未走查；375/1440 未实机。
+
+## 趋势卡可访问性替代（duty trend，2026-11-20）
+
+- 图：`duty-trend-figure`（svg）加 `role="img"` 与 `aria-describedby="duty-trend-summary"`；摘要与图同源，全部由当前 `timeseries` 批次派生：首日/末日/峰值/最低/合计，逐值等于表体与卡上总数。
+- 表：`duty-trend-table-toggle` 为原生 button（`aria-expanded`/`aria-controls="duty-trend-table"`），展开后表格带 caption「近 14 天每日运行次数（北京时间）」与两个 `th scope="col"`；展开与收起不发任何请求（测试断言 urls() 不变）。
+- 空窗：摘要逐字「该区间没有运行记录」，仍可展开表格，表体零行并写「该区间没有运行记录，表体没有可列出的行。」——不把空集合当 0 相加。
+- 单口失败：摘要五项全「—」，title 写失败原因与请求编号，并声明「不把缺数当 0」；其余卡片不受影响。
+- 测试：新增 4 例（摘要同源、键盘展开零请求、空窗、单口失败）；定向 4 files/74 passed，全量 148 files/1948 passed；tsc 本域 0；eslint 0 error/3 既有 warning。
+- 未测：真实浏览器 Tab/Enter 走查与 375/1440 视觉未实机。

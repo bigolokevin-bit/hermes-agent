@@ -9,7 +9,6 @@ import { cn } from "@/lib/utils";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import {
   activity24,
-  bucketPeak,
   buildBlockers,
   buildCost,
   buildReadiness,
@@ -17,6 +16,7 @@ import {
   lifecycleTotal,
   pendingView,
   runTotals,
+  trendSummary,
 } from "./aggregate";
 import { beijing, beijingHour, beijingWeekday, dashed, duration, shortId, usd } from "./format";
 import type {
@@ -431,10 +431,16 @@ function CostCard({
 }
 
 function TrendCard({ stats, onRetry }: { stats: Loadable<RunStatsBody>; onRetry: () => void }) {
+  const [tableOpen, setTableOpen] = useState(false);
   const totals = stats.k === "ready" ? runTotals(stats.data) : null;
   const buckets = stats.k === "ready" ? dailyBuckets(stats.data) : [];
-  const peak = bucketPeak(buckets);
+  const summary = trendSummary(buckets);
+  const peak = summary.peak;
   const max = Math.max(1, ...buckets.map((b) => b.runs));
+  const failed = stats.k === "error";
+  const summaryTitle = failed
+    ? `这次没能读取近 14 天趋势：${stats.message}${stats.requestId ? `（请求编号 ${stats.requestId}）` : ""}；不把缺数当 0。`
+    : undefined;
   return (
     <HCard title="近 14 天运行" meta="每日启动" testid="duty-trend" stamp={stampOf(stats.k === "ready" ? asOfOf(stats.data) : null, "近 14 天运行统计", [stats])}>
       <StateLine state={stats} onRetry={onRetry}>
@@ -443,11 +449,18 @@ function TrendCard({ stats, onRetry }: { stats: Loadable<RunStatsBody>; onRetry:
           <em>{peak ? `次 · 峰值 ${peak.runs}` : "次"}</em>
         </p>
         <p className="duty-say">
-          {buckets.length === 0
+          {summary.empty
             ? "所选窗口没有运行记录"
-            : `日均 ${(buckets.reduce((n, b) => n + b.runs, 0) / buckets.length).toFixed(1)} 次${peak ? `；峰值在 ${peak.label}` : ""}`}
+            : `日均 ${(summary.total === null ? 0 : summary.total / buckets.length).toFixed(1)} 次${peak ? `；峰值在 ${peak.label}` : ""}`}
         </p>
-        <svg className="duty-chart" viewBox="0 0 600 120" role="img" aria-label="近 14 天每日运行次数">
+        <svg
+          className="duty-chart"
+          viewBox="0 0 600 120"
+          role="img"
+          aria-label="近 14 天每日运行次数"
+          aria-describedby="duty-trend-summary"
+          data-testid="duty-trend-figure"
+        >
           <line x1="4" y1="108" x2="596" y2="108" className="duty-axis" />
           <polyline
             className="duty-line"
@@ -472,6 +485,71 @@ function TrendCard({ stats, onRetry }: { stats: Loadable<RunStatsBody>; onRetry:
         </svg>
         <p className="duty-note">近 14 天 · 按北京时间切日 · 只画有运行的桶</p>
       </StateLine>
+      <p className="duty-say duty-trend-summary" id="duty-trend-summary" data-testid="duty-trend-summary" title={summaryTitle}>
+        {failed ? (
+          <>
+            近 14 天摘要：首日 <span data-testid="duty-trend-first">—</span> · 末日{" "}
+            <span data-testid="duty-trend-last">—</span> · 峰值{" "}
+            <span data-testid="duty-trend-peak">—</span> · 最低{" "}
+            <span data-testid="duty-trend-low">—</span> · 合计{" "}
+            <span data-testid="duty-trend-total">—</span>
+          </>
+        ) : stats.k !== "ready" ? (
+          "正在读取近 14 天的运行记录…"
+        ) : summary.empty ? (
+          "该区间没有运行记录"
+        ) : (
+          <>
+            近 14 天：首日 {summary.first?.label} <span data-testid="duty-trend-first">{summary.first?.runs}</span> 次 · 末日{" "}
+            {summary.last?.label} <span data-testid="duty-trend-last">{summary.last?.runs}</span> 次 · 峰值{" "}
+            {summary.peak?.label} <span data-testid="duty-trend-peak">{summary.peak?.runs}</span> 次 · 最低{" "}
+            {summary.low?.label} <span data-testid="duty-trend-low">{summary.low?.runs}</span> 次 · 合计{" "}
+            <span data-testid="duty-trend-total">{summary.total}</span> 次
+          </>
+        )}
+      </p>
+      <Button
+        size="sm"
+        outlined
+        aria-expanded={tableOpen}
+        aria-controls="duty-trend-table"
+        data-testid="duty-trend-table-toggle"
+        onClick={() => setTableOpen((v) => !v)}
+      >
+        {tableOpen ? "收起表格" : "以表格查看"}
+      </Button>
+      {tableOpen ? (
+        <div id="duty-trend-table" data-testid="duty-trend-table">
+          <table className="duty-trend-table">
+            <caption>近 14 天每日运行次数（北京时间）</caption>
+            <thead>
+              <tr>
+                <th scope="col">日期</th>
+                <th scope="col">运行数</th>
+              </tr>
+            </thead>
+            <tbody>
+              {!failed
+                ? buckets.map((b) => (
+                    <tr key={b.label}>
+                      <td>{b.label}</td>
+                      <td>{b.runs}</td>
+                    </tr>
+                  ))
+                : null}
+            </tbody>
+          </table>
+          {failed ? (
+            <p className="duty-note" data-testid="duty-trend-table-empty">
+              这次没有读到趋势数据，表格不补 0。
+            </p>
+          ) : summary.empty ? (
+            <p className="duty-note" data-testid="duty-trend-table-empty">
+              该区间没有运行记录，表体没有可列出的行。
+            </p>
+          ) : null}
+        </div>
+      ) : null}
     </HCard>
   );
 }
