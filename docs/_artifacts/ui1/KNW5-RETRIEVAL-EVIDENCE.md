@@ -4673,3 +4673,42 @@ knE-page-*/kn7-preview-*/kn-type* + 既有 31 套全绿。
 边界：只新增 web/src/modules/knowledge/knowledge.space.parity.test.tsx 与本证据；
 显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
 「test(console): knowledge space and global parity guards」。
+
+# KNW5 追加 R215：空态 × 清筛选出口护栏（纯测试单）（2026-11-21 BJT）
+
+安全门：porcelain 空起做（R213 落地后）、merge 实测 tip 即预期 `024bb79e`（知识面 delta 空）。
+零产品文件改动（无真缺陷）。新增 knowledge.empty.export.test.tsx 3 例。
+
+## 名实换算与查重（引用不重写）
+
+```text
+①「导出 disabled+title+零请求+spy 0」——kn-list-copy 不存在、导出族仅 data-export="absent"：
+  已由 R214④（两面 knF/knG disabled+「没有可复制」+点击零写零请求+createObjectURL 0）与
+  R187④/R138 锁死 → 本文件仅真 0 态复跑在场性，不重铺全矩阵。
+②「空态不显裸 0」：kn3-page-cap 在真 0/error/denied/非法枚举实测**不渲染**（R108⑥/R157/
+  R187 已锁，差异写入注释与回执，不为凑 brief 改产品）；**新锁缺口=计数位**——
+  ready-0 行时 knF-lines/knG-lines 实测逐字「—」（grep 此前零命中；R138 只锁过 error 态），
+  全文无 /(^|[^0-9.])0\s*(条|篇|个)/ 裸数。
+③「清筛选恰 1 次取数」名实不成立：读口不吃 q/sort/ktype——实测**零次**增量（u0 快照逐字），
+  不制造也不宣称重取；清后钮数==行数（详情 -space- 族、检索面族双测，indexBase 连续性
+  引 R169/R207）。
+④错误↔空态互斥：详情面 R187②、双败 rid 复制 R210④ 已锁 → 引用；**新锁缺口=检索面**
+  kn6-search-error 的 rid 逐字（「请求编号：rid-r215-search」）+ 复制钮点击 writeText
+  恰收该 rid、零额外请求、错误锚不因复制而变。
+过程记录：初稿一处「同帧另一面」断言错位（列表态路由不渲染详情表）——按真实结构改为
+「该路由 kn3-docs 不挂载 + 复制后错误锚独立在场」，非产品缺陷；isSecureContext 注记沿用 R210。
+```
+
+## 验证尾行（R215）
+```text
+$ npx vitest run src/modules/knowledge   → 33 files / 172 passed（基线 169 + 3），尾行无 Errors
+$ npx vitest run                         → 299+ files / 3019 passed 全绿（0 Errors，无豁免）
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r215-dist → exit 0
+$ 三档：1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD–knL*/kn-sort*/kn-gates/kn-row-copy*/kn-row-copy-space*/
+kn-doc-copy*/kn-doc-preview*/kn-space-preview*/kn3-page-cap/knE-page-*/kn7-preview-*/kn-type*。
+```
+未测如实：带登录会话真实空态屏；knF-lines 在「筛后 0 行」与「读回 0 行」两变体只测后者
+（前者族由 R142② 行钮侧锁过）。
