@@ -115,6 +115,10 @@ export default function MatrixView() {
           <span>{activeCount} 在岗 · 按员工或按资源看覆盖</span>
         </div>
         <div className="duty-head-actions">
+          <Link className="duty-link" to="/capabilities" data-testid="duty-route-matrix">
+            去技能与能力页
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
           <Button
             size="sm"
             outlined

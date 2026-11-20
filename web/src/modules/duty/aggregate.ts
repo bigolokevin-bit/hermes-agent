@@ -166,7 +166,8 @@ export function buildCost(
 
 export interface DayBucketView {
   label: string;
-  runs: number;
+  /** null means the bucket came back without a value; it is not summed as 0. */
+  runs: number | null;
   failed: number;
 }
 
@@ -181,15 +182,57 @@ export function dailyBuckets(stats: RunStatsBody | null): DayBucketView[] {
           day: "2-digit",
         }).format(date)
       : "—";
-    return { label, runs: num(b.runs) ?? 0, failed: num(b.failed) ?? 0 };
+    return { label, runs: num(b.runs), failed: num(b.failed) ?? 0 };
   });
 }
 
+export interface TrendSummaryView {
+  first: DayBucketView | null;
+  last: DayBucketView | null;
+  peak: DayBucketView | null;
+  low: DayBucketView | null;
+  total: number | null;
+  /** True when there is nothing to report: no buckets at all, or every bucket is a real zero. */
+  empty: boolean;
+}
+
+/**
+ * The five readings the trend card's text alternative reports. They come from
+ * the very buckets the chart draws, so the summary and the picture can never
+ * disagree. An empty window totals to null — never to 0 by summation.
+ */
+export function trendSummary(buckets: DayBucketView[]): TrendSummaryView {
+  if (buckets.length === 0) {
+    return { first: null, last: null, peak: null, low: null, total: null, empty: true };
+  }
+  const known = buckets.filter((b): b is DayBucketView & { runs: number } => b.runs !== null);
+  const total = known.length === 0 ? null : known.reduce((n, b) => n + b.runs, 0);
+  const peak = bucketPeak(buckets);
+  const low =
+    known.length === 0
+      ? null
+      : known.reduce<DayBucketView & { runs: number }>(
+          (best, b) => (b.runs < best.runs ? b : best),
+          known[0],
+        );
+  return {
+    first: buckets[0],
+    last: buckets[buckets.length - 1],
+    peak,
+    low,
+    total,
+    // An all-missing batch has nothing to report, just like an empty one; it is
+    // not a sum of zeros.
+    empty: buckets.length === 0 || known.length === 0 || total === 0,
+  };
+}
+
 export function bucketPeak(buckets: DayBucketView[]): DayBucketView | null {
-  return buckets.reduce<DayBucketView | null>(
-    (best, b) => (best === null || b.runs > best.runs ? b : best),
-    null,
-  );
+  return buckets.reduce<DayBucketView | null>((best, b) => {
+    if (b.runs === null) return best;
+    if (best === null || best.runs === null || b.runs > best.runs) return b;
+    return best;
+  }, null);
 }
 
 export interface ActivityCellView {

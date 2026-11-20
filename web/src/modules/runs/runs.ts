@@ -705,3 +705,312 @@ export const NO_REQUEST_ID = "未提供";
 export function askedLine(): string {
   return `routes: ${LIST_ROUTES.join(", ")}`;
 }
+
+/** A field the answer did not carry; the gap is named, never filled in. */
+export interface PreviewField {
+  text: string;
+  title: string;
+}
+
+export interface RunPreview {
+  status: PreviewField;
+  started: PreviewField;
+  ended: PreviewField;
+  elapsed: PreviewField;
+  cost: PreviewField;
+  employee: PreviewField;
+}
+
+const FIELD_MISSING = "该字段未返回";
+
+/**
+ * The inline preview reads ONLY the row the list already has: no second read,
+ * no client clock. Elapsed time needs both ends; without them it stays a dash
+ * with the reason, never an "open run" estimate.
+ */
+export function runPreview(row: RunRow, names: Map<string, string>): RunPreview {
+  const rawStatus = typeof row.status === "string" ? row.status.trim() : "";
+  const status: PreviewField = rawStatus
+    ? { text: statusLabel(row.status), title: `服务返回的原始状态：${rawStatus}` }
+    : { text: FIELD_MISSING, title: "服务没有返回运行状态；不代填、不猜" };
+
+  const start = beijingMinute(row.startedAt);
+  const started: PreviewField = start.text
+    ? { text: start.text, title: String(row.startedAt) }
+    : { text: FIELD_MISSING, title: `开始时间${start.reason}` };
+
+  const end = beijingMinute(row.endedAt);
+  const ended: PreviewField = end.text
+    ? { text: end.text, title: String(row.endedAt) }
+    : { text: FIELD_MISSING, title: `结束时间${end.reason}` };
+
+  let elapsed: PreviewField;
+  if (!start.text || !end.text) {
+    elapsed = { text: "—", title: "开始与结束时间不齐，耗时不计算；不拿本机时间补一端" };
+  } else {
+    const span = elapsedMinute(row.startedAt, row.endedAt);
+    elapsed = span.text
+      ? { text: span.text, title: `${String(row.startedAt)} → ${String(row.endedAt)}` }
+      : { text: "—", title: span.reason || "这段耗时读不出来" };
+  }
+
+  const state = costState(row);
+  const cost: PreviewField =
+    state === "known"
+      ? { text: costText(row), title: "已计价，金额单位：美元（USD）" }
+      : { text: "—", title: costReason(row) };
+
+  const employee: PreviewField = row.employeeId
+    ? { text: employeeLabel(row.employeeId, names), title: row.employeeId }
+    : { text: employeeLabel(row.employeeId, names), title: "这条运行没有带回负责人；不代填、不猜" };
+
+  return { status, started, ended, elapsed, cost, employee };
+}
+
+/* ── list copy: the same rows, as plain text ─────────────────────────────── */
+
+/** Column names of the copied text; the header row is exactly this. */
+export const RUN_LIST_HEADER = ["run", "status", "started", "ended", "elapsed", "cost", "employee"] as const;
+
+/**
+ * Renders the rows the list already holds as plain text. Nothing is re-read:
+ * no clock, no request, no page beyond what is on screen.
+ */
+export function runListText(rows: RunRow[], names: Map<string, string>): string {
+  const lines: string[] = [RUN_LIST_HEADER.join(",")];
+  for (const row of rows) {
+    const start = beijingMinute(row.startedAt);
+    const end = beijingMinute(row.endedAt);
+    // Two ends or nothing: a half-known span is never closed with `Date.now()`.
+    const elapsed = start.text && end.text ? elapsedMinute(row.startedAt, row.endedAt).text ?? "—" : "—";
+    const cost = costState(row) === "known" ? costText(row) : "—";
+    const status = row.status ? statusLabel(row.status) : "—";
+    lines.push(
+      [
+        runCode(row.runId),
+        status,
+        start.text ?? "—",
+        end.text ?? "—",
+        elapsed,
+        cost,
+        employeeLabel(row.employeeId, names),
+      ].join(","),
+    );
+  }
+  return lines.join("\n");
+}
+
+/* ── CSV export: the same rows, in a file ───────────────────────────────── */
+
+/** CSV cells carry no placeholder glyph: a missing value is an empty field. */
+function csvField(value: string): string {
+  return /[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+}
+
+function csvCost(row: RunRow): string {
+  const state = costState(row);
+  if (state !== "known") return "";
+  const value = row.costUsd;
+  return typeof value === "number" && Number.isFinite(value) ? value.toFixed(2) : "";
+}
+
+/**
+ * Renders the rows the list already holds as RFC 4180 CSV. Order and values
+ * come from the same reading the table shows; nothing is re-read or re-sorted.
+ */
+export function runListCsv(rows: RunRow[], names: Map<string, string>): string {
+  const lines = [RUN_LIST_HEADER.join(",")];
+  for (const row of rows) {
+    const start = beijingMinute(row.startedAt);
+    const end = beijingMinute(row.endedAt);
+    const elapsed = start.text && end.text ? elapsedMinute(row.startedAt, row.endedAt).text ?? "" : "";
+    const cells = [
+      runCode(row.runId),
+      row.status ? statusLabel(row.status) : "",
+      start.text ?? "",
+      end.text ?? "",
+      elapsed,
+      csvCost(row),
+      employeeLabel(row.employeeId, names),
+    ];
+    lines.push(cells.map(csvField).join(","));
+  }
+  return lines.join("\n");
+}
+
+function filePart(value: string | null, fallback: string): string {
+  if (!value) return fallback;
+  const safe = value.toLowerCase().replace(/[^a-z0-9.-]+/g, "-").replace(/^-+|-+$/g, "");
+  return safe || fallback;
+}
+
+/** `runs-<window|all>-<status|all>-YYYYMMDD-HHmm.csv`, Beijing time to the minute. */
+export function runCsvFileName(windowKey: string | null, statusKey: string | null, now: Date): string {
+  const stamp = beijingMinute(now.toISOString()).text;
+  const compact = stamp ? stamp.replace(/[-:]/g, "").replace(" ", "-") : "unknown";
+  return `runs-${filePart(windowKey, "all")}-${filePart(statusKey, "all")}-${compact}.csv`;
+}
+
+/** One decision per phase, so no two entries on the pane disagree about whether the list is usable. */
+export interface ListGate {
+  disabled: boolean;
+  title: string;
+}
+
+export function listActionGate(
+  phase: ListState["phase"],
+): { copy: ListGate; preview: ListGate; export: ListGate } {
+  switch (phase) {
+    case "loading":
+      return {
+        copy: { disabled: true, title: "还在读取运行记录：等这一页读完再复制。" },
+        preview: { disabled: true, title: "还在读取运行记录：等这一页读完再展开。" },
+        export: { disabled: true, title: "还在读取运行记录：等这一页读完再导出。" },
+      };
+    case "empty":
+      return {
+        copy: { disabled: true, title: "这一页没有行：没有可复制的文本。" },
+        preview: { disabled: true, title: "这一页没有行：没有可展开的预览。" },
+        export: { disabled: true, title: "这一页没有行：没有可导出的 CSV。" },
+      };
+    case "error":
+      return {
+        copy: { disabled: true, title: "这次读取没有成功：先重试，读到数据再复制。" },
+        preview: { disabled: true, title: "这次读取没有成功：先重试，读到数据再展开。" },
+        export: { disabled: true, title: "这次读取没有成功：先重试，读到数据再导出。" },
+      };
+    case "denied":
+      return {
+        copy: { disabled: true, title: "当前看不到运行记录：没有可复制的文本。" },
+        preview: { disabled: true, title: "当前看不到运行记录：没有可展开的预览。" },
+        export: { disabled: true, title: "当前看不到运行记录：没有可导出的 CSV。" },
+      };
+    default:
+      return {
+        copy: { disabled: false, title: "复制当前列表为纯文本" },
+        preview: { disabled: false, title: "展开这一行的预览" },
+        export: { disabled: false, title: "导出当前列表为 CSV" },
+      };
+  }
+}
+
+/* ── shareable filter source ───────────────────────────────────────── */
+
+export interface RunSourceInput {
+  windowRaw: string | null;
+  window: SinceKey;
+  statusRaw: string | null;
+  status: string | null;
+  employee: string | null;
+  stateRaw: string | null;
+  state: string | null;
+}
+
+export interface RunSource {
+  /** Canonical query built from the effective values, no origin, no token. */
+  query: string;
+  /** Same-origin relative path a person can share. */
+  path: string;
+  /** True when the address carried at least one filter of its own. */
+  active: boolean;
+  /** One line per value the address carried but the page could not honour. */
+  notes: string[];
+}
+
+const has = (value: string | null): boolean => value !== null && value !== "";
+
+/**
+ * The shareable form of what this page is actually reading. Values are the
+ * effective ones (a bad window reads as the default), and anything the
+ * address carried that could not be honoured is named instead of being
+ * silently rewritten.
+ */
+export function runSource(input: RunSourceInput): RunSource {
+  const params = new URLSearchParams();
+  if (has(input.windowRaw)) params.set("window", input.window);
+  if (input.status) params.set("status", input.status);
+  if (input.employee) params.set("employee", input.employee);
+  if (input.state) params.set("state", input.state);
+  const query = params.toString();
+  const notes: string[] = [];
+  if (has(input.windowRaw) && input.windowRaw !== input.window) {
+    notes.push(`时间范围「${input.windowRaw}」未识别，按${sinceLabel(input.window)}读取`);
+  }
+  if (has(input.statusRaw) && input.status !== input.statusRaw) {
+    notes.push(`状态「${input.statusRaw}」未识别，按全部状态读取`);
+  }
+  if (has(input.stateRaw) && input.state === null) {
+    notes.push(`预览参数「${input.stateRaw}」未识别，按正常读取`);
+  }
+  return {
+    query,
+    path: query ? `/runs?${query}` : "/runs",
+    active: has(input.windowRaw) || has(input.statusRaw) || has(input.employee) || has(input.stateRaw),
+    notes,
+  };
+}
+
+/* ── column sorting (client-side; the read route takes no sort key) ── */
+
+export type RunSortKey = "status" | "started" | "elapsed" | "cost";
+export type RunSortDir = "asc" | "desc";
+
+export const RUN_SORT_KEYS: readonly RunSortKey[] = ["status", "started", "elapsed", "cost"];
+
+export function parseRunSort(raw: string | null | undefined): RunSortKey | null {
+  return RUN_SORT_KEYS.includes(raw as RunSortKey) ? (raw as RunSortKey) : null;
+}
+
+export function parseRunDir(raw: string | null | undefined, key: RunSortKey | null): RunSortDir {
+  if (raw === "asc" || raw === "desc") return raw;
+  return key === "status" ? "asc" : "desc";
+}
+
+/** The direction a first click on a column starts with. */
+export function defaultRunDir(key: RunSortKey): RunSortDir {
+  return key === "status" ? "asc" : "desc";
+}
+
+function sortValue(row: RunRow, key: RunSortKey): number | string | null {
+  switch (key) {
+    case "status":
+      return row.status ? statusLabel(row.status) : null;
+    case "started": {
+      const ms = row.startedAt ? Date.parse(row.startedAt) : Number.NaN;
+      return Number.isNaN(ms) ? null : ms;
+    }
+    case "elapsed": {
+      const start = row.startedAt ? Date.parse(row.startedAt) : Number.NaN;
+      const end = row.endedAt ? Date.parse(row.endedAt) : Number.NaN;
+      if (Number.isNaN(start) || Number.isNaN(end)) return null;
+      return end - start;
+    }
+    case "cost":
+      return costState(row) === "known" && typeof row.costUsd === "number" && Number.isFinite(row.costUsd)
+        ? row.costUsd
+        : null;
+    default:
+      return null;
+  }
+}
+
+/**
+ * Sorts the rows already on screen. Missing readings sink to the bottom in
+ * both directions: a row without a start time is not "before everything".
+ */
+export function sortRunRows(rows: RunRow[], key: RunSortKey, dir: RunSortDir): RunRow[] {
+  const sign = dir === "asc" ? 1 : -1;
+  return rows
+    .map((row, index) => ({ row, index, value: sortValue(row, key) }))
+    .sort((a, b) => {
+      if (a.value === null && b.value === null) return a.index - b.index;
+      if (a.value === null) return 1;
+      if (b.value === null) return -1;
+      const order =
+        typeof a.value === "number" && typeof b.value === "number"
+          ? a.value - b.value
+          : String(a.value).localeCompare(String(b.value), "zh-Hans");
+      return order === 0 ? a.index - b.index : order * sign;
+    })
+    .map((entry) => entry.row);
+}

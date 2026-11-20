@@ -589,3 +589,118 @@
   cursor: pointer;
 }
 .duty-refresh-error .duty-retry:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+
+.duty-trend-summary {
+  margin: 2px 0 0;
+}
+.duty-trend-table {
+  width: 100%;
+  margin-top: 8px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.duty-trend-table caption {
+  text-align: left;
+  color: var(--color-muted-foreground, #6b7280);
+  padding-bottom: 4px;
+}
+.duty-trend-table th,
+.duty-trend-table td {
+  border-bottom: 1px solid var(--color-border, rgba(0, 0, 0, 0.08));
+  padding: 4px 8px;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+.duty-trend-table th:last-child,
+.duty-trend-table td:last-child {
+  text-align: right;
+}
+
+/* Time range switch: four real buttons, the selected one pressed. */
+.duty-ranges { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.duty-range {
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-muted-foreground);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 12px;
+  line-height: 1.6;
+  cursor: pointer;
+}
+.duty-range[aria-pressed="true"] {
+  color: var(--color-foreground);
+  border-color: var(--color-ring);
+  background: var(--color-muted);
+}
+.duty-range:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 1px; }
+@media (max-width: 480px) { .duty-ranges { width: 100%; } .duty-range { flex: 1 1 auto; } }
+
+/* 跨页运行数口径对照（duty-runs-caliber） */
+.duty-runs-caliber {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--color-muted-foreground);
+  overflow-wrap: anywhere;
+}
+
+/* 口径说明折叠块（duty-notes） */
+.duty-notes {
+  border-top: 1px solid var(--color-border);
+  padding-top: 10px;
+}
+.duty-notes-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-foreground);
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.duty-notes-toggle span {
+  color: var(--color-muted-foreground);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.duty-notes-toggle:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+.duty-notes-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 0 2px;
+}
+.duty-note-row {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--color-muted-foreground);
+  overflow-wrap: anywhere;
+}
+.duty-note-row code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  color: var(--color-foreground);
+}
+.duty-notes-foot {
+  margin: 4px 0 0;
+  font-size: 11.5px;
+  color: var(--color-muted-foreground);
+}
+@media (max-width: 480px) {
+  .duty-notes-toggle {
+    flex-wrap: wrap;
+  }
+}
+
+.duty-changed {
+  color: var(--color-foreground);
+}

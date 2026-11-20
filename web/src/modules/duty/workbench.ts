@@ -38,14 +38,17 @@ export function isoOrNull(v: unknown): string | null {
   return Number.isFinite(Date.parse(v)) ? v : null;
 }
 
+const ASOF_KEYS = ["asOf", "as_of", "collectedAt", "collected_at", "generatedAt", "generated_at"] as const;
+
 export function readStamp(body: unknown): WorkbenchStamp {
   const b = isRecord(body) ? body : {};
+  const stamp = ASOF_KEYS.map((key) => isoOrNull(b[key])).find((value) => value !== null) ?? null;
   const degradedRaw = Array.isArray(b.degraded) ? b.degraded : [];
   const degraded = degradedRaw
     .map((d) => (isRecord(d) ? text(d.error) ?? text(d.source) : null))
     .filter((x): x is string => x !== null);
   return {
-    asOf: isoOrNull(b.asOf),
+    asOf: stamp,
     asOfSource: text(b.asOfSource),
     available: typeof b.available === "boolean" ? b.available : null,
     degraded,
@@ -56,11 +59,26 @@ export async function fetchWorkbenchSummary(range = "1d"): Promise<unknown> {
   return fetchJSON<unknown>(`${WB}/summary?range=${encodeURIComponent(range)}`);
 }
 
+/** The ranges the workbench timeseries accepts; anything else is a 400. */
+export const WB_TS_RANGES = ["24h", "1d", "7d", "30d"] as const;
+export const WB_TS_METRICS = ["runs", "failed", "costUsd"] as const;
+
+/**
+ * The reader only serves 24h/1d/7d/30d, so a 14 day window asks for 30d and
+ * keeps the last 14 day buckets. Totals are dropped: they describe the wider
+ * window and must be recomputed from the kept points.
+ */
+export function trimTimeseries(body: unknown, days: number): unknown {
+  if (!isRecord(body) || !Array.isArray(body.points)) return body;
+  const points = body.points.slice(-Math.max(1, Math.trunc(days)));
+  return { ...body, points, totals: null };
+}
+
 export async function fetchWorkbenchTimeseries(
   params: { range?: string; bucket?: string; metric?: string } = {},
 ): Promise<unknown> {
   const q = new URLSearchParams({
-    range: params.range ?? "14d",
+    range: params.range ?? "7d",
     bucket: params.bucket ?? "day",
     metric: params.metric ?? "runs",
   });
@@ -117,16 +135,17 @@ export function timeseriesStats(body: unknown): RunStatsBody {
   const buckets: RunBucket[] = [];
   for (const point of points) {
     if (!isRecord(point)) continue;
-    const runs = num(point.value);
     const bucketStart = text(point.ts);
-    if (runs === null || bucketStart === null) continue;
-    buckets.push({ bucketStart, runs });
+    if (bucketStart === null) continue;
+    // A null value is «no reading for this bucket», not 0: keep the point so the
+    // axis keeps its length, and let the trend summary skip it.
+    buckets.push({ bucketStart, runs: num(point.value) });
   }
   const totalsValue =
     isRecord(body) && isRecord(body.totals) ? num(body.totals.value) : null;
+  const known = buckets.filter((b): b is typeof b & { runs: number } => b.runs !== null);
   const runs =
-    totalsValue ??
-    (buckets.length > 0 ? buckets.reduce((sum, b) => sum + (b.runs ?? 0), 0) : null);
+    totalsValue ?? (known.length > 0 ? known.reduce((sum, b) => sum + b.runs, 0) : null);
   return {
     asOf: stamp.asOf ?? undefined,
     totals: runs === null ? undefined : ({ runs } as RunStatsBody["totals"]),
