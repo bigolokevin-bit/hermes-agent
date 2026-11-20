@@ -10,7 +10,7 @@
  *
  */
 import { useState, type ReactNode } from "react";
-import { Check, ChevronDown, ChevronUp, Copy, Inbox, Link, RefreshCw, ShieldAlert, TriangleAlert } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Copy, Filter, Inbox, Link, RefreshCw, ShieldAlert, TriangleAlert } from "lucide-react";
 
 import { Button } from "@nous-research/ui/ui/components/button";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
@@ -21,6 +21,7 @@ import { requestIdLine, type FailureCopy } from "./copy";
 import { STATE_LABEL, stateMark, unwiredReasonFor, type StatePhase, type StateSlot } from "./stateCopy";
 import { SUMMARY_COPY_LABEL } from "./summary";
 import { PERMALINK_COPY_LABEL, PERMALINK_MISSING_TITLE, permalinkFromEvent } from "./permalink";
+import { FILTER_SUMMARY_COPY_LABEL, FILTER_SUMMARY_EMPTY_TITLE } from "./filterSummary";
 
 /**
  * audC: the 结论行 copy control, rendered by BOTH legs (the inline row preview
@@ -108,6 +109,58 @@ export function PermalinkCopy({ eventId }: { eventId: string | null }): ReactNod
           value={link}
           aria-label="事件固定链接（可手动选中复制）"
           data-testid="audE-link-fallback"
+          className="min-h-[3rem] w-full min-w-0 break-all rounded-md border border-border bg-muted/40 px-2 py-1 font-mono text-xs"
+          onFocus={(event) => event.currentTarget.select()}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * audG: the current reading question, in one shareable line — plus the path
+ * this page really asked. Same three states as the other copy controls, and
+ * the same rule that nothing here sends a request: the line is made of the
+ * address and of the question already asked.
+ */
+export function FilterSummaryCopy({ line, available }: { line: string | null; available: boolean }): ReactNode {
+  const [state, setState] = useState<"idle" | "copied" | "manual">("idle");
+  const ready = available && line !== null;
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="audG-filter-copy-block">
+      <Button
+        size="sm"
+        outlined
+        aria-label={FILTER_SUMMARY_COPY_LABEL}
+        title={ready ? "复制现在的筛选口径与这一页实际请求的相对路径（不含地址前缀与任何凭据），不再向服务发任何请求" : FILTER_SUMMARY_EMPTY_TITLE}
+        data-testid="audG-filter-copy"
+        disabled={!ready}
+        aria-disabled={!ready}
+        prefix={
+          state === "copied" ? (
+            <Check className="h-3.5 w-3.5" aria-hidden="true" />
+          ) : (
+            <Filter className="h-3.5 w-3.5" aria-hidden="true" />
+          )
+        }
+        onClick={() => {
+          if (!line) return;
+          void copyTextToClipboard(line).then((ok) => {
+            setState(ok ? "copied" : "manual");
+          });
+        }}
+      >
+        {FILTER_SUMMARY_COPY_LABEL}
+      </Button>
+      <span className="min-w-0 break-words text-xs text-muted-foreground" aria-live="polite" data-testid="audG-filter-copy-status">
+        {state === "copied" ? "筛选条件已复制" : state === "manual" ? "剪贴板不可用，这一行可以直接选中复制" : ""}
+      </span>
+      {state === "manual" && line ? (
+        <textarea
+          readOnly
+          value={line}
+          aria-label="筛选条件摘要（可手动选中复制）"
+          data-testid="audG-filter-copy-fallback"
           className="min-h-[3rem] w-full min-w-0 break-all rounded-md border border-border bg-muted/40 px-2 py-1 font-mono text-xs"
           onFocus={(event) => event.currentTarget.select()}
         />

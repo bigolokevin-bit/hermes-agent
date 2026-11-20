@@ -39,7 +39,7 @@ import { Button } from "@nous-research/ui/ui/components/button";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { Spinner } from "@nous-research/ui/ui/components/spinner";
 
-import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel, RequestIdLine, TechnicalDisclosure, VerifyUnavailablePanel } from "./states";
+import { DeniedPanel, EmptyPanel, ErrorPanel, FilterSummaryCopy, InlineFailure, LoadingPanel, RequestIdLine, TechnicalDisclosure, VerifyUnavailablePanel } from "./states";
 import { AuditEventDetailBody, AuditEventRowCard, VerifyResultBody, AuditRowPreview, AuditTypeSummary } from "./views";
 import RetentionModulePage from "./RetentionModulePage";
 import { useAuditDetail, useAuditList, useAuditVerify } from "./useAuditData";
@@ -48,6 +48,7 @@ import type { FailureCopy } from "./copy";
 import type { VerifyFailure } from "./copy";
 import { eventTypeChoices } from "./model";
 import type { ListFilters } from "./api";
+import { filterSummaryLineOf, hasFilterSummary } from "./filterSummary";
 import type { AuditRow } from "./model";
 import { downloadCsv, downloadText, exportName, filteredCsvText, filteredExportName } from "./csv";
 import {
@@ -1056,6 +1057,41 @@ function AuditEventsSurface(): ReactNode {
       />
     );
 
+  // audG: one line describing HOW the ledger is being read right now, quoting
+  // the path this page actually asked (relative, credential-free). Built from
+  // the address and the data layer's own builder: reading it copies nothing new.
+  const filterSummary = useMemo(
+    () =>
+      filterSummaryLineOf({
+        windowLabel,
+        custom: windowChoice === "custom",
+        fromBeijing: beijingInputValue(customFromParam),
+        toBeijing: beijingInputValue(customToParam),
+        type: eventType,
+        actor,
+        resource,
+        resourceNote: "本页已加载的记录里本地匹配，服务端 resourceId 效果未单独实测",
+        page: pageNo,
+        cursorCount: cursors.length,
+        // audG: an incomplete custom range is never asked, so the summary has
+        // no request to quote — 「未设置」, not the last valid window's path.
+        askedPath: customInvalid ? null : list.askedPath,
+      }),
+    [
+      customInvalid,
+      actor,
+      customFromParam,
+      customToParam,
+      cursors,
+      eventType,
+      list.askedPath,
+      pageNo,
+      resource,
+      windowChoice,
+      windowLabel,
+    ],
+  );
+
   return (
     <div className="flex min-w-0 w-full max-w-full flex-col gap-3" data-testid="agent-v2-page-audit" data-page="audit">
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
@@ -1170,6 +1206,28 @@ function AuditEventsSurface(): ReactNode {
       </p>
 
       <AuditUrlFilterChips actor={actor} resource={resource} onClear={clearUrlFilter} />
+
+      {/* audG: the question itself, shareable. Hidden while nothing has been
+          read yet (loading) and while the ledger is closed (denied): a summary
+          of a question nobody was able to answer would be a claim about it. */}
+      {customInvalid || list.phase === "ready" || list.phase === "empty" || list.phase === "error" ? (
+        <FilterSummaryCopy
+          line={filterSummary}
+          available={hasFilterSummary({
+            windowLabel,
+            custom: windowChoice === "custom",
+            fromBeijing: beijingInputValue(customFromParam),
+            toBeijing: beijingInputValue(customToParam),
+            type: eventType,
+            actor,
+            resource,
+            resourceNote: "本页已加载的记录里本地匹配，服务端 resourceId 效果未单独实测",
+            page: pageNo,
+            cursorCount: cursors.length,
+            askedPath: customInvalid ? null : list.askedPath,
+          })}
+        />
+      ) : null}
 
       {/* The window check lives on the list too, and it says exactly one of
           four things: asking, the real counts, 本环境未启用 + why + where, or a

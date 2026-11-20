@@ -2625,3 +2625,173 @@ describe("audF - the four states say the same thing everywhere", () => {
     expect(document.querySelector("[data-testid='aud01-verify-not-enabled-request-id']")!.textContent).toContain("rid-v");
   });
 });
+
+/**
+ * audG — 筛选条件可分享摘要。断言的是：摘要里写的是地址上真正生效的口径，
+ * 附的是这一页实际发出的那条相对路径（逐字与 mock 收到的请求一致，不含 origin、
+ * 不含凭据）；打开/复制/兜底全程零额外请求；没有可分享口径时 disabled 并说明原因；
+ * 加载中与被拒时不给摘要控件。
+ */
+describe("audG - the shareable filter summary", () => {
+  const listReads = (): number => urls().filter((u) => /^\/agent-api\/api\/audit\?/.test(u)).length;
+  const detailReads = (): number => urls().filter((u) => u.startsWith("/agent-api/api/audit-detail")).length;
+  const verifyReads = (): number => urls().filter((u) => u.startsWith("/agent-api/api/audit-verify")).length;
+
+  function stubClipboard(ok: boolean): { calls: string[] } {
+    const box: { calls: string[] } = { calls: [] };
+    Object.defineProperty(window, "isSecureContext", { configurable: true, value: true });
+    Object.defineProperty(window.navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async (text: string) => {
+          box.calls.push(text);
+          if (!ok) throw new Error("denied");
+        },
+      },
+    });
+    return box;
+  }
+
+  async function mountProbed(entry: string): Promise<void> {
+    api.fetchJSON.mockReset();
+    answer(EVENTS);
+    await render(entry, <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await waitFor(() => !skeleton(), "first page settled");
+  }
+
+  async function copy(): Promise<void> {
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='audG-filter-copy']")?.click();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+  }
+
+  it("copies the address-borne question and the path this page really asked", async () => {
+    const clip = stubClipboard(true);
+    await mountProbed(
+      "/audit?window=24h&type=task.created&actor=employee-api&resource=ap_1122334455667788&cursor=cur_page1&cursor=cur_page2",
+    );
+    const reads = listReads();
+    const details = detailReads();
+    const verifies = verifyReads();
+    const button = document.querySelector<HTMLButtonElement>("[data-testid='audG-filter-copy']")!;
+    expect(button.disabled).toBe(false);
+    await copy();
+    expect(clip.calls).toHaveLength(1);
+    const line = clip.calls[0];
+    expect(line).toContain("时间窗：最近 24 小时");
+    expect(line).toContain("动作类型：task.created（服务端按 action 精确匹配）");
+    expect(line).toContain("操作者：employee-api（服务端 actorId，机器句柄）");
+    expect(line).toContain("资源：ap_1122334455667788（本页已加载的记录里本地匹配");
+    expect(line).toContain("第 3 页（游标 ×2）");
+    // 同源性：摘要里的请求就是实收的那一条，逐字相同
+    const asked = urls().filter((u) => /^\/agent-api\/api\/audit\?/.test(u)).pop() ?? "";
+    expect(line).toContain(`请求：${asked}`);
+    expect(line).toContain("cursor=cur_page2");
+    expect(asked).toContain("action=task.created");
+    expect(asked).toContain("actorId=employee-api");
+    // 零额外请求：复制前后三个读口的计数都没动
+    expect(listReads()).toBe(reads);
+    expect(detailReads()).toBe(details);
+    expect(verifyReads()).toBe(verifies);
+    expect(document.querySelector("[data-testid='audG-filter-copy-status']")!.textContent).toBe("筛选条件已复制");
+    expect(document.querySelector("[data-testid='audG-filter-copy-status']")!.getAttribute("aria-live")).toBe("polite");
+  });
+
+  it("the summary never carries an origin and never carries a credential", async () => {
+    const clip = stubClipboard(true);
+    await mountProbed("/audit?window=7d&actor=employee-api");
+    await copy();
+    const line = clip.calls[0];
+    expect(line).not.toMatch(/https?:\/\//);
+    expect(line).not.toContain("localhost");
+    expect(line).not.toContain("token");
+    expect(line).not.toContain("session");
+    expect(line.split("请求：")[1]!.startsWith("/agent-api/api/audit?")).toBe(true);
+  });
+
+  it("with nothing but the default window there is nothing to share, and it says why", async () => {
+    const clip = stubClipboard(true);
+    await mountProbed("/audit?window=7d");
+    const reads = listReads();
+    const button = document.querySelector<HTMLButtonElement>("[data-testid='audG-filter-copy']")!;
+    expect(button.disabled).toBe(true);
+    expect(button.getAttribute("aria-disabled")).toBe("true");
+    expect(button.getAttribute("title")).toBe("当前没有筛选条件可复制");
+    await copy();
+    expect(clip.calls).toHaveLength(0);
+    expect(listReads()).toBe(reads);
+    expect(document.querySelector("[data-testid='audG-filter-copy-fallback']")).toBeNull();
+    // and the moment a filter exists, the same control is live
+    await choose("aud01-filter-type", "task.created");
+    await waitFor(() => document.querySelector<HTMLButtonElement>("[data-testid='audG-filter-copy']")?.disabled === false, "live once filtered");
+    const after = listReads();
+    await copy();
+    expect(clip.calls).toHaveLength(1);
+    expect(listReads()).toBe(after);
+    expect(clip.calls[0]).toContain("动作类型：task.created");
+    expect(clip.calls[0]).toContain(`操作者：${"未设置"}`);
+  });
+
+  it("a custom range is quoted in Beijing words, a half-filled one says 未设置", async () => {
+    const clip = stubClipboard(true);
+    await mountProbed(
+      "/audit?window=custom&from=2026-11-17T01%3A00%3A00.000Z&to=2026-11-17T02%3A30%3A00.000Z&type=task.created",
+    );
+    await copy();
+    expect(clip.calls[0]).toContain("时间窗：自定义 2026-11-17T09:00 → 2026-11-17T10:30（北京时间）");
+    clip.calls.length = 0;
+    await mountProbed("/audit?window=custom&from=2026-11-17T01%3A00%3A00.000Z&type=task.created");
+    await copy();
+    expect(clip.calls[0]).toContain("自定义 2026-11-17T09:00 → 未设置（北京时间）");
+    // that half of the question was never asked, so the path seat stays honest
+    expect(clip.calls[0]).toContain("请求：未设置");
+    expect(clip.calls[0]).not.toContain("agent-api");
+  });
+
+  it("a refused clipboard hands the same line back as selectable text, still asking nothing", async () => {
+    const clip = stubClipboard(false);
+    await mountProbed("/audit?window=7d&type=task.created");
+    const reads = listReads();
+    await copy();
+    const box = document.querySelector<HTMLTextAreaElement>("[data-testid='audG-filter-copy-fallback']")!;
+    expect(box.getAttribute("readonly")).not.toBeNull();
+    expect(box.value).toBe(clip.calls[0]);
+    expect(box.value).toContain("动作类型：task.created");
+    expect(listReads()).toBe(reads);
+    expect(document.querySelector("[data-testid='audG-filter-copy-status']")!.textContent).toContain("选中复制");
+  });
+
+  it("loading offers no summary, an empty answer still does, and a denied ledger does not", async () => {
+    let release: ((value: unknown) => void) | null = null;
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(() => new Promise((resolve) => { release = resolve; }));
+    await render("/audit?window=7d&type=task.created", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud01-loading']") !== null, "loading");
+    expect(document.querySelector("[data-testid='audG-filter-copy-block']")).toBeNull();
+    await act(async () => {
+      release?.({ items: EVENTS.items, nextCursor: null });
+    });
+    await waitFor(() => !skeleton(), "ready");
+    expect(document.querySelector("[data-testid='audG-filter-copy-block']")).not.toBeNull();
+    // an empty answer is still a real question worth handing over
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async () => ({ items: [], nextCursor: null }));
+    await render("/audit?window=7d&type=task.created", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud01-empty']") !== null, "empty answer");
+    expect(document.querySelector("[data-testid='audG-filter-copy']")).not.toBeNull();
+    // a closed ledger has no question to describe
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockRejectedValue(
+      new ApiError("no", { status: 403, body: '{"code":"console.forbidden"}', url: "/agent-api/api/audit", requestId: "rid-g" }),
+    );
+    await render("/audit?window=7d&type=task.created", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud01-denied']") !== null, "denied");
+    expect(document.querySelector("[data-testid='audG-filter-copy-block']")).toBeNull();
+  });
+});

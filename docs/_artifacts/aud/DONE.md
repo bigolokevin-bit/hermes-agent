@@ -3012,3 +3012,22 @@ Untested: the four-state body lengths are jsdom readings, not browser pixels; th
 - 三档：状态面板全是既有 `Card/CardContent` + `min-w-0 flex-wrap`/`break-words`，新增出口按钮走同一 `Button size="sm"`；本轮未做浏览器像素走查（活体腿不可用，见下），不声称已验三档无横溢。
 - 门禁：vitest `src/modules/audit` **exit 0**（**13** files / **256** tests = 基线 12/242 + 14：`stateCopy.test.ts` 4 条 + 列表页 audF 6 条 + 详情屏 audF 3 条 + 预览共句 1 组内含）；`pnpm exec tsc -b . --noEmit` 共 **58** errors（= 本机地板，改动前后同数、增量 0）且 `modules/audit` **0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings。
 - 活体腿沿用不可用实测（一行带过，未重跑）：9122 无身份头 **401 `console.unauthenticated`**、8092 **404 `console.not_found`**；本车道无会话凭据且禁重建 9122，故四态与重试计数证据均为 vitest 腿（分读口 mock 计数），未假装活体。
+
+## Audit filter summary copy (audG, 2026-11-20, base 37c6b8b4)
+
+- 写域：`web/src/modules/audit/{filterSummary.ts,filterSummary.test.ts,states.tsx,useAuditData.ts,AuditEventsModulePage.tsx,AuditEventsModulePage.test.tsx}` + 本节。App.tsx / shell / routes / registry / package·lock / web scripts / ops 未碰。基线复测：显式 refspec fetch + `git merge origin/lane/hermes-console` → Already up to date（tip b797bc98 已在 HEAD 内），porc=0。
+- **控件**：筛选条与地址状态下方一行 `audG-filter-copy-block`，按钮 `audG-filter-copy`（「复制当前筛选条件」）、播报 `audG-filter-copy-status`（`aria-live="polite"`，成功文案「筛选条件已复制」）、拒绝兜底 `audG-filter-copy-fallback`（只读 textarea，`value` 与写进剪贴板的串逐字相等，聚焦全选）。套路与 audC 结论行 / audE 固定链接同族（同一个 `copyTextToClipboard` 路径，独立件 `filterSummary.ts` 一处构造）。
+- **摘要口径（字段序=筛选条顺序）**：`时间窗 → 动作类型 → 操作者 → 资源 → 页码 → 这一页实际请求的相对路径`。样例（用例逐字钉住前后半段）：
+  `时间窗：最近 24 小时 · 动作类型：task.created（服务端按 action 精确匹配） · 操作者：employee-api（服务端 actorId，机器句柄） · 资源：ap_1122334455667788（本页已加载的记录里本地匹配，服务端 resourceId 效果未单独实测） · 第 3 页（游标 ×2） · 请求：/agent-api/api/audit?limit=50&action=task.created&from=…&to=…&actorId=employee-api&resourceId=…&cursor=cur_page2`
+  措辞与既有事实一一对应：URL 侧键 `type=` 上线即 `action=`（audD 单一事实源）；`?actor=` 上线即 `actorId=` 且服务端生效（探针 #11：200/50 行命中）；资源仍只在本页已加载记录里本地匹配（audB 口径），摘要文本直接把这条例说出来，不让人误以为是服务端整窗筛选。
+- **缺项一律「未设置」**：`动作类型/操作者/资源` 没选 → 「未设置」，且不带后面的解释括号（没选就没什么可解释）；自定义区间只填一头 → `自定义 2026-11-17T09:00 → 未设置（北京时间）`。
+- **默认窗口的口径（本单裁定，如实登记）**：只有默认「最近 7 天」、`type/actor/resource` 都空、且 cursor 栈为空时＝没有可分享的口径 → 按钮 `disabled` + `aria-disabled=true` + `title=「当前没有筛选条件可复制」`，点击不写剪贴板（spy 计数 0）。默认窗口是任何人没碰页面时的初始态，粘它给同事等于没说话；而 `window=24h/30d/custom`、任一筛选、或已在第 2 页以后（游标栈非空）都算有口径。用例还断言：选一个类型后同一按钮立刻可用。
+- **页码/游标**：写成 `第 N 页（游标 ×K）`，K=URL 里 cursor 参数个数；不裸贴游标值（游标在服务端是 opaque token，粘进工单没人能读，贴它只会误导）。
+- **附带的相对路径＝真发过的那条**：`useAuditList` 现在把发出路径记进 state（`ListApi.askedPath`，经 `listUrl()` 同一个构造器，非页面自拼）；`safeRequestPath()` 再剥 origin（`^[a-z][a-z0-9+.-]*://…` 正则）并丢弃 `token/access_token/code/key/secret/session/password` 形状的参数。用例两路证明同源性：① `line` 里 `请求：` 之后一段与 mock 实收的最后一条 `/agent-api/api/audit?…` 逐字相等（含 `action/actorId/cursor`）；② 摘要不含 `http(s)://`、不含 `localhost`、不含 `token/session` 字样，且以 `/agent-api/api/audit?` 开头。自定义区间不完整或倒置时那一问根本没发过：`askedPath` 强制置空 → 摘要写 `请求：未设置`，用例断言该腿里连 `agent-api` 都不出现（不拿上一个合法窗口的旧路径冒充）。
+- **零额外请求**：构造、复制、兜底开合都不发请求。用例分读口计数（`/agent-api/api/audit?`、`audit-detail`、`audit-verify` 三个前缀各自计数）：复制前后三个数全不变；默认窗口 disabled 腿点击后仍不变；剪贴板被拒腿（textarea 出现）计数不变；摘要控件本身不触发任何读。
+- **三档口径**：loading 与 denied（403/404）都不出摘要块——问题还没答上来时没有可分享的口径，被拒的台账也不配一句「你的筛选是……」；ready 出；empty 也出（空表是真回答，口径值得转给别人，用例锁 `aud01-empty` 与 `audG-filter-copy` 同时在屏上）。既有四态与 403≡404 同体、每态 rid、零写入口均未动。
+- **零破**：`aud01*`/`aud2*`–`aud6*`/`aud7*`/`aud8*`/`aud9*`/`audA*`/`audB*`/`audC*`/`audD*`/`audE*`/`audF-state-*` 与页级 `agent-v2-page-audit*` 原样；本轮只新增文件、新增可选 state 字段与新增控件。既有 256 条一条未红（改动中一度把 `askedPath` 记在 ref 里读于 render，触发 eslint「Cannot access refs during render」两条新警告，已改为随读态存储，警告回到 4 条既有值）。
+- 新增 testid：`audG-filter-copy` `audG-filter-copy-status` `audG-filter-copy-fallback` `audG-filter-copy-block`。
+- 三档视口：摘要行沿用既有 `min-w-0 flex-wrap` + `break-words`，兜底 textarea `w-full min-w-0 break-all`；未做浏览器像素走查（活体腿不可用），不声称已验。
+- 门禁：vitest `src/modules/audit` **exit 0**（**14** files / **266** tests = 基线 13/256 + 10：`filterSummary.test.ts` 4 条 + 页面 audG 6 条）；`tsc -b . --noEmit` 共 **58** errors（= 本机地板，改动前后同数、增量 0）且 `modules/audit` **0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings。
+- 活体腿沿用不可用实测（未重跑）：9122 无身份头 **401 `console.unauthenticated`**、8092 **404 `console.not_found`**；摘要与路径同源性证据为 vitest 腿（同一 mock 实收 URL 逐字比对）。
