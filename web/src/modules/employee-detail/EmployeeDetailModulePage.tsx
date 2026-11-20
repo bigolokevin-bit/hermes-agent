@@ -1466,11 +1466,13 @@ function OverviewZone({ state, onRetry, empId }: { state: OverviewState; onRetry
           <div className="ui-c-head">
             <h3 className="ui-c-head-title">在岗与最近活跃</h3>
           </div>
-          <dl className="ui-c-rows">
+          {/* UI-C2 在岗区：行式改两列标签值栅格（RUBRIC 同族），
+              行序/dd 的 title 契约逐字保留，缺值仍「—」，375 单列。 */}
+          <dl className="ui-c-fields ui-c-fields--two">
             {rows.map((r) => (
-              <div key={r.label} className="ui-c-row">
-                <dt className="ui-c-row-label">{r.label}</dt>
-                <dd className={r.num ? "ui-c-row-value ui-c-num" : "ui-c-row-value"} title={r.raw ?? undefined}>
+              <div key={r.label} className="ui-c-field">
+                <dt className="ui-c-field-label">{r.label}</dt>
+                <dd className={r.num ? "ui-c-field-value ui-c-num" : "ui-c-field-value"} title={r.raw ?? undefined}>
                   {r.value}
                 </dd>
               </div>
