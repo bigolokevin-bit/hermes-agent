@@ -292,3 +292,16 @@
 - 新增 testid：`run-permalink`/`run-permalink-bar`/`run-permalink-status`/`run-permalink-fallback`/`run-permalink-fallback-text`；既有 `run-*` 全族零破。
 - 验证：runs 3 files / 119 passed（基线 115）；全量 159 files / 2191 passed（基线 2187）；`tsc` 本域 0（全仓既存 79）；`eslint src/modules/runs` exit 0；build exit 0，entry 内 `run-permalink`=0，`RunsModulePage-*.js` 命中 1。
 - 未测：真实浏览器 375/1440 下按钮与状态句折行；跨页粘贴到新标签的实际跳转（jsdom 只验 URL 形状与选中态）。
+
+## 筛选一键重置（runs filter reset，2026-11-20）
+
+- 单表：`runs.ts` 的 `RUN_PARAM_TABLE` 列出页面认作筛选的六个参数（时间范围 / 状态 / 负责人 / 复现状态 / 排序字段 / 排序方向）；分享路径的拼装与本次重置都读这一张表，不再各写一份名单。
+- 按钮 `run-reset-filters`：一次删除上表里所有存在的键（`window/status/employee/state/rsort/rdir`），地址里其它键原样保留；无筛选时 `disabled`，title 逐字「当前没有可清除的筛选条件」。
+- 非法值也算筛选：`?window=zz&status=zz` 两个键存在即计入可清除项，title 写「未识别的值（zz、zz）也占着筛选位，一并清掉」。
+- 实测（jsdom，`?window=30d&status=failed&rsort=started&rdir=desc&keep=1`）：
+  - 改前：地址含四参、表体按开始时间降序 `运行 · 9XYZ` → `运行 · X1XZ`、源条含 `window=30d&status=failed`、计数「本页 2 次」。
+  - 改后：地址 `?keep=1`、表体回服务顺序 `运行 · X1XZ` → `运行 · 9XYZ`、源条 `/runs`（只回显它自己那四个可分享参数）、导出计数 `data-rows=2`、复制首行同为 `运行 · X1XZ`。
+  - 请求计数：`/api/runs` 恰 +1（时间窗与状态同时变化，只重读一次）；仅排序参数（`?rsort=cost&rdir=asc`）重置时 **0** 次新请求——排序是本地行为。
+- 复位写 `{replace:true}`，不新增历史条目；`run-notes`、`run-sort-*`、`run-list-*`、`run-row-preview-*`、`run5-*` 全部保留。
+- 测试：describe「run filter reset」4 例；runs 3 files / 123 passed（基线 119）。
+- 未测：真实浏览器 375/1440 下按钮与下拉同一行的折行。

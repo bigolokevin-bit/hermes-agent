@@ -1783,3 +1783,93 @@ describe("run permalink", () => {
     expect(document.querySelector("[data-testid='run-permalink']")).toBeNull();
   });
 });
+
+/* ── one reset for every filter in the shared table ───────────────── */
+
+describe("run filter reset", () => {
+  const codes = (): string[] =>
+    Array.from(document.querySelectorAll("[data-testid^='run5-row-'][data-status]")).map(
+      (row) => row.querySelector("[data-testid$='-code']")?.textContent ?? "",
+    );
+  const sourcePath = (): string =>
+    document.querySelector("[data-testid='run-source-path']")?.textContent ?? "";
+  const probe = (): string => document.querySelector("[data-testid='probe-location']")?.textContent ?? "";
+  const runsReads = (): number =>
+    api.fetchJSON.mock.calls.filter((call) => String(call[0]).includes("/api/runs")).length;
+
+  it("clears the six parameters, keeps unrelated ones, and reads once more", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A, RUN_B]));
+    await render(
+      "/runs?window=30d&status=failed&rsort=started&rdir=desc&keep=1",
+      <><RunsModulePage /><HistoryProbe /></>,
+    );
+    await waitFor(() => rowNodes() === 2, "two rows");
+    const beforeCodes = codes();
+    const beforeSource = sourcePath();
+    const beforeCounts = document.querySelector("[data-testid='run5-counts']")?.textContent ?? "";
+    expect(beforeCodes).toEqual(["运行 · 9XYZ", "运行 · X1XZ"]); // 按开始时间降序，本地排序
+    expect(beforeSource).toContain("window=30d");
+    expect(beforeSource).toContain("status=failed");
+    expect(beforeCounts).toContain("本页 2 次");
+
+    const beforeReads = runsReads();
+    await act(async () => {
+      (document.querySelector("[data-testid='run-reset-filters']") as HTMLButtonElement).click();
+    });
+    await waitFor(() => probe() === "/runs?keep=1", "address back to defaults");
+    await waitFor(() => rowNodes() === 2, "rows after reset");
+
+    // URL before/after, and exactly one new list read.
+    expect(probe()).toBe("/runs?keep=1");
+    expect(runsReads()).toBe(beforeReads + 1);
+    // The source bar, the table, the copy text, the export count and the
+    // counters all come from the same batch, so they move together.
+    expect(sourcePath()).toBe("/runs"); // 源条只回显它自己那四个可分享参数，keep=1 留在地址里但不冒充筛选
+    expect(codes()).toEqual(["运行 · X1XZ", "运行 · 9XYZ"]); // 回到服务顺序
+    expect(document.querySelector("[data-testid='run-list-export-count']")?.getAttribute("data-rows")).toBe("2");
+    expect(document.querySelector("[data-testid='run5-counts']")?.textContent ?? "").toContain("本页 2 次");
+    await act(async () => {
+      (document.querySelector("[data-testid='run-list-copy']") as HTMLButtonElement).click();
+    });
+    const lines = String(clip.copyTextToClipboard.mock.calls.at(-1)?.[0] ?? "").split("\n");
+    expect(lines[1]?.startsWith("运行 · X1XZ")).toBe(true);
+    expect(lines[2]?.startsWith("运行 · 9XYZ")).toBe(true);
+  });
+
+  it("is disabled with a reason when nothing is set", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 1, "one row");
+    const button = document.querySelector("[data-testid='run-reset-filters']") as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(button.getAttribute("title")).toBe("当前没有可清除的筛选条件");
+  });
+
+  it("counts an unreadable value as a filter and says so", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs?window=zz&status=zz&keep=1", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => rowNodes() === 1, "one row");
+    const button = document.querySelector("[data-testid='run-reset-filters']") as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
+    expect(button.getAttribute("title")).toContain("未识别");
+    expect(button.getAttribute("title")).toContain("zz");
+    await act(async () => {
+      button.click();
+    });
+    await waitFor(() => probe() === "/runs?keep=1", "kept unrelated key");
+    expect(button.disabled).toBe(true);
+  });
+
+  it("clears a sort-only address without asking for data again", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A, RUN_B]));
+    await render("/runs?rsort=cost&rdir=asc", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => rowNodes() === 2, "two rows");
+    const before = runsReads();
+    await act(async () => {
+      (document.querySelector("[data-testid='run-reset-filters']") as HTMLButtonElement).click();
+    });
+    await waitFor(() => probe() === "/runs", "address cleared");
+    expect(runsReads()).toBe(before);
+    expect((document.querySelector("[data-testid='run-reset-filters']") as HTMLButtonElement).disabled).toBe(true);
+  });
+});

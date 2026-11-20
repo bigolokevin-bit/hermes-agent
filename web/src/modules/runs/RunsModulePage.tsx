@@ -77,6 +77,8 @@ import {
   listActionGate,
   parseRunDir,
   parseRunSort,
+  resetFiltersTitle,
+  resetRunFilters,
   sortRunRows,
   type ListGate,
   type RunSortDir,
@@ -847,6 +849,25 @@ export function RunsModulePage() {
     state: forced,
   });
 
+  // One table drives both the shareable path and this reset; a raw value the
+  // page could not parse still occupies a filter slot, so it is cleared too.
+  const filterReset = resetRunFilters(new URLSearchParams(params));
+  const unrecognizedFilters = (() => {
+    const raws: string[] = [];
+    const windowRaw = params.get("window");
+    if (windowRaw !== null && windowRaw !== sinceKeyOf(windowRaw)) raws.push(windowRaw);
+    const statusRaw = params.get("status");
+    if (statusRaw !== null && statusFilterOf(statusRaw) !== statusRaw) raws.push(statusRaw);
+    const stateRaw = params.get("state");
+    if (stateRaw !== null && forced === null) raws.push(stateRaw);
+    return raws;
+  })();
+  const resetTitle = resetFiltersTitle(filterReset.removed, unrecognizedFilters);
+  const resetFilters = () => {
+    if (filterReset.removed.length === 0) return;
+    setParams(filterReset.next, { replace: true, state: locationState ?? null });
+  };
+
   const data = useRunsData(forced, { status, sinceKey, employeeId: employee });
   const { phase, rows, cursor, answeredBy, unreadable, failure, forced: isForced } = data;
 
@@ -1045,6 +1066,16 @@ export function RunsModulePage() {
             prefix={phase === "loading" ? <Spinner className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" />}
           >
             重新读取
+          </Button>
+          <Button
+            size="sm"
+            outlined
+            onClick={resetFilters}
+            disabled={filterReset.removed.length === 0}
+            data-testid="run-reset-filters"
+            title={resetTitle ?? "当前没有可清除的筛选条件"}
+          >
+            清除筛选
           </Button>
         </div>
       </div>
