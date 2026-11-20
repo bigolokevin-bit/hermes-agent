@@ -236,3 +236,41 @@ launchd 循环启动的就在 27175，L0 在终端/会话 shell 里重启的就�
 - 回退一行：`cd /Users/kevin_studio/Projects/seakoi-agent-os-l0-board && (set -a; . ~/.seakoi/sekoi.env; . ~/.seakoi/hermes.env; . ~/.seakoi/c1.env; set +a; export SEAKOI_RUNTIME_DB_PATH="$HOME/.local/state/seakoi-ops/runtime-dev.db" HERMES_API_KEY="$API_SERVER_KEY" SEAKOI_CHANNELS_BASE_URL="$SEAKOI_C1_BASE_URL" SEAKOI_CHANNELS_INTERNAL_TOKEN="$SEAKOI_C1_INTERNAL_TOKEN" SEAKOI_WORKER_SEND_GATE=1 UV_OFFLINE=1; exec /opt/homebrew/bin/uvx --offline --with httpx --with pydantic python -m services.runtime.scheduler)`（旧 pid 9568→9570）。
 - 三项自检（125ef0af / main 594120e3，19:06:59 入运行树）：① 运行树 HEAD `5f0db708` == `origin/main`，porc=0，`merge-base --is-ancestor 594120e3|125ef0af HEAD` 均真；② 新 pid 96899/96901 lstart **19:10:03 > 19:06:59**；③ `runtime_http.cpython-314.pyc` mtime **19:10:03**（由新进程从 19:06:59 源码重编），新进程 19:10:04 起 `POST :8101/v1/policy/budget/ledger/entries → 200`，重启后 `409 / request.idempotency_conflict` 计数 **0**（当日最后一次 18:26:57,947 属旧 pid 9570）。
 - 未收口之处（据实）：`policy:{event_id}:{digest[:16]}` 所在的 **P1 `/v1/policy/check`** 路径重启后尚无真实事件触发（轮次持续空批），故 P1 的 200 仍缺一次线上读数；观察一行：`tail -f ~/.local/state/seakoi-ops/dispatch-worker.err.log | grep -E "policy/check|实得 HTTP"`。运行树 `grep -c "_canonical_body_digest" services/runtime/runtime_http.py` = **2**（定义 :208 + 调用 :709），非任务书预期的 1。
+
+## 9. 第③项取证：新幂等键线上生效（2026-11-20 19:26，L7 执行，非代码变更）
+
+用户裁定第③项任选 (a)/(b)/(c)。**(a) 不可得**：19:10:03 起 `/v1/policy/check` 调用数为 0（空批），且 worker 日志从不打印键本身（`grep -c "policy:ce_"` = 0）。故走 **(b)+(c)**。
+
+载体核实：8101 = pid 13742（lstart 18:17:59，PGID 27175）跑 `ops/domain-dev-server.py`，该脚本只是 bootstrap，真正 `app = create_app(repository.Repository(conn), …)` ⇒ 服务的是生产路由 `services/domain/http_app.py:241 POST /v1/policy/check` → `services/domain/policy.py:check()`（`request_hash = util.digest(body)`，`find_idempotency(tenant, endpoint, key)` 命中即 `_cached_result`）。DB = `~/.local/state/seakoi-ops/domain-dev.db`。
+
+探针（`/private/var/folders/…/item3_probe.py`，键由**运行树自己的** `_canonical_body_digest`/`_stable_requested_at` 计算，`uv run --offline` 复用缓存，未装任何依赖，未打印任何凭据）：
+
+```
+action        = run.execute
+requestedAt   = 1970-01-01T00:00:57Z
+body_sha256   = 59376b2fcb1981fc61ae37fd802c514dfb0b548affe394a173f930aa0dc4876f
+IDEMPOTENCY-KEY = policy:ce_L7ITEM3PROOF20261120A1:59376b2fcb1981fc
+segments      = 3
+--- call 1: HTTP 200
+{"decidedAt": "2026-11-20T11:26:29.373Z", "decision": "deny", "decisionId": "pd_6CC8C3D8EEA9472BB3B0227AB3", "reasonCode": "policy.denied_by_budget", "reasonText": "今日额度不存在，按拒绝处理。", "versionNo": 2}
+--- call 2: HTTP 200
+{"decidedAt": "2026-11-20T11:26:29.373Z", "decision": "deny", "decisionId": "pd_6CC8C3D8EEA9472BB3B0227AB3", "reasonCode": "policy.denied_by_budget", "reasonText": "今日额度不存在，按拒绝处理。", "versionNo": 2}
+```
+
+同体同键两次 ⇒ 200/200 且 `decisionId`/`decidedAt` 完全一致 = 缓存命中回放路径（正是修复要打通的那条）。deny 属 fail-closed 预算（今日无 `budget_ledger` 行），不涉及额度变更。
+
+(c) DB 原文（只读 `mode=ro`）：
+
+```
+policy:ce_L7ITEM3PROOF20261120A1:59376b2fcb1981fc|POST /v1/policy/check|200|59376b2fcb1981fc61ae37fd802c514dfb0b548affe394a173f930aa0dc4876f|2026-11-20T11:26:29.374Z
+policy:ce_01M7W7WKK0Y8T13D62BF03ZYG3|POST /v1/policy/check|200|89a8fcad…|2026-11-20T10:26:29.756Z
+policy:ce_01M7VXG30J9DWJFYVSK62DNHDY|POST /v1/policy/check|200|58f2d6f9…|2026-11-20T07:24:54.513Z
+```
+
+键形制直方图：`NEW-3seg 1 条（19:26:29）` vs `OLD-2seg 10 条（最晚 18:26:29，全部在 19:10 重启之前）`；库内 `request_hash` 与探针算得的 body 指纹逐位相同，且键后缀 = 其前 16 hex ⇒ 「同键必同体」按设计成立。旧代码只可能产出两段键（`git show 125ef0af`：`-idempotency_key=f"policy:{event.event_id}"`）。
+
+写面已界定（调用前先 `.backup` 到 `/var/folders/…/domain-dev.pre-1918.db`，712704 B 只读副本）：employee 3→3、**policy_decision 81→82**、**idempotency_key 238→239**、budget_ledger 8→8、approval 10→10、approval_decision 6→6、grant 6→6、employee_version 6→6、audit_event 175→175。探针行（事件 id `ce_L7ITEM3PROOF20261120A1`）**保留**供审计，不删除。
+
+计数口径更正：上一版用 `awk '$2>"19:10:03"'` 只比时间戳段，会误匹配 11-17 的行；改用日期+时间双条件后重算，19:10:03 至今真 409 = **0**，当日最后一次 409 = `18:26:57,947`（旧 pid 9570）。结论未变，口径已修正。
+
+未动 8100/8101/8642，未重启网关。三项自检：①已推 commit（运行树 HEAD 5f0db708 == origin/main）②进程 lstart 19:10:03 > 19:06:59 ③本条 §9 读数 ⇒ **第③项已取证**；按纪律仍不写「已修复」（P1 真实事件流尚未在新进程上自然发生）。
