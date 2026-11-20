@@ -1354,3 +1354,77 @@ $ npx vite build --outDir /tmp/knw19-dist --emptyOutDir
 
 边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
 package·lock / web-scripts / ops；显式路径提交（无 `git add -A`）；无 force / amend / `--no-verify`。
+
+---
+
+# KNW5 追加 R52：文档列表本地排序（testid `knC-sort-*`）（2026-11-20 BJT）
+
+基线：安全闸 toplevel 相符、porcelain 先为空、显式 refspec fetch。本车道先前已把基线 fast-forward
+到 origin tip `7173b7c6`（现网代次 entry `index-B6GI2nKC.js`；未用 reset --hard）。`38793c9a`
+（gate ledger，仍 stamped at 7173b7c6 / B6GI2nKC）合并进本域时经核 `git diff 7173b7c6..origin --
+web/src/modules/knowledge` 为空——wave 不动知识面，R52 代码与合并后字节一致。
+
+排序只在已经读到的行上本地排（点表头绝不再问服务）：
+```text
+默认口径  无参数 → updated/desc：新在前，缺更新时间那行恒末位
+/knowledge?tab=spaces&space=sp_hr                       顺序 B·C·A·D（D 缺时间末位）
+点名称    ?…&sort=name&dir=asc                          A·B·C·D
+再点名称  ?…&sort=name&dir=desc                         D·C·B·A
+点大小    ?…&sort=size&dir=desc（首点落大在前）          B·C·A·D（无大小 D 末位）
+再点大小  ?…&sort=size&dir=asc                          A·C·B·D（缺大小仍末位、不当 0）
+点时间    ?…&sort=updated&dir=asc（旧在前）             A·C·B·D（缺时间仍末位）
+粘 URL/刷新复现：直接带 sort=size&dir=asc 进来即同一顺序，且 spaceId 读口只发那一次
+```
+Chromium 实测：表头三列都是 `BUTTON[type=button]`；Enter（大小）与 Space（时间）原生触发；
+排序前后 `spaceId` 文档读口计数 1→1（0 次新请求）；`aria-sort` 三态挂在 th：
+```text
+unwired/有数据默认：name=none size=none updated=descending；点某列后该列 ascending/descending，其余 none
+键盘：focus-visible 命中表头，Tab 在 knC-sort-name → knC-sort-size 间走
+1440/1280/375 实测 docSW==vw==bodySW，无横溢（窄屏 thead 本就被 .knw5-table 隐藏）
+```
+排序前先按读入顺序定死每行 key（`row.id` 或 `row-<idx>`），再本地排，故抽屉/行链接落点不漂移。
+testid 新增 `knC-sort-name|size|updated`；kn3-docs/kn6-search/kn7/kn8/kn9/knB 零破。
+
+# KNW5 追加 R53：诚实不可用态收口（testid `knD-state-*`）（2026-11-20 BJT）
+
+读口失败一律整块诚实态，绝不冒充空集（不出现「0 个空间 / 0 篇文档」这种把缺失当真的数量）：
+```text
+状态          可见正文                        机器标记（唯一）           屏面不泄露
+404 not_wired  「…未接入」+原因+去处(审批)     knD-state-unavailable     无 403/404/GAP 字样
+403 forbidden  与 404 逐字同体（同一段说明）    knD-state-denied          同上
+200 空集       「接口已响应…不等于没有」         knD-state-empty           同上
+有数据         正常表格                         （无 knD 标记）
+```
+GAP-03 只在块的 `title`；屏面全文只命中「不写「0 篇」」这一句免责声明（实测 hits 仅此一处），
+不存在把 0 当数量的标签。
+
+403≡404 沿用：同一读口的 403 与 404 可见正文逐字相同（Chromium 实测 LIST/DETAIL `equal=true`），
+只靠 `knD-state-denied` / `knD-state-unavailable` 让自动化可分二者；`toSurf` 把状态记在 `denied`
+布尔里、不改任何一个可见字符。
+
+重试只重发该读口：点 `kn3-docs-retry` → 文档读口计数 1→2，空间读口（名字那一次）1→1（不连带）。
+切空间不残留：`sp_hr`(筛「员工」rows=1) → `sp_fin` → rows=0、筛选框清空、块走 unavailable（不是空集）；
+行与错误本随读口键 `space-docs|nonce|spaceId` 更换回骨架，本地筛选另加 useEffect 清零。
+
+四态与可复制 rid、`kn3-docs-*`/`kn6-search*`/`kn7`/`kn8`/`kn9`/`knB`/`knC` 零破，1440/1280/375 无横溢、
+普通 URL `[data-fixture]=0`。每个面在同一屏只挂一个 `knD-state-*`（按面 opt-in，仅空间列表与空间文档
+两个面开），不撞名。
+
+## 验证尾行（R52+R53 合并跑）
+```text
+$ npx vitest run src/modules/knowledge
+ Test Files  2 passed (2)
+      Tests  46 passed (46)
+
+$ npx vitest run
+ Test Files  137 passed (137)
+      Tests  1588 passed (1588)
+
+$ npx eslint src/modules/knowledge        → exit 0
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw20-dist → exit 0（R52）
+$ npx vite build --outDir /tmp/knw21-dist → exit 0（R53，产物只落 /tmp）
+```
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；显式路径提交（无 `git add -A`）；无 force / amend / `--no-verify`；
+两笔 commit 分开（先 R52 后 R53），未混写。
