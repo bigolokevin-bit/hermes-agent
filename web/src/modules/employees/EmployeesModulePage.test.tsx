@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api-error";
+import { csvTimestamp } from "@/modules/employees/EmployeesModulePage";
 
 // The ui barrel pulls in .webp assets that node cannot load; stub the four
 // primitives the page uses (deep-path imports would change product code).
@@ -659,5 +660,85 @@ describe("R58 pagination and honest total (emp-list-page-*)", () => {
     });
     expect(urls.filter((u) => u.includes("cursor="))).toHaveLength(0);
     expect((q("emp-list-copy") as HTMLButtonElement | null)?.disabled, "copy still on screen").toBe(false);
+  });
+});
+
+describe("R66 employees list CSV export (emp-list-export)", () => {
+  const twoRowsCsv = {
+    items: [
+      { ...rowsBody.items[0], name: "小鲤, 带头" },
+      { employeeId: "emp_2B2C2D2E4F506172", name: "阿朝", title: "增长", lifecycleState: "weird_state", updatedAt: null, department: "增长组" },
+    ],
+  };
+
+  const stubObjectUrl = () => {
+    let captured: Blob | null = null;
+    const saved = URL.createObjectURL;
+    const savedRevoke = URL.revokeObjectURL;
+    URL.createObjectURL = ((b: Blob) => {
+      captured = b;
+      return "blob:mock";
+    }) as typeof URL.createObjectURL;
+    URL.revokeObjectURL = (() => undefined) as typeof URL.revokeObjectURL;
+    return {
+      async text() {
+        return captured ? captured.text() : "";
+      },
+      async head() {
+        if (!captured) return new Uint8Array();
+        return new Uint8Array(await captured.slice(0, 3).arrayBuffer());
+      },
+      restore() {
+        URL.createObjectURL = saved;
+        URL.revokeObjectURL = savedRevoke;
+      },
+    };
+  };
+
+  it("names the file with the Beijing export minute, day-crossing included", () => {
+    expect(csvTimestamp(new Date("2026-11-20T02:00:00Z"))).toBe("employees-20261120-1000.csv");
+    expect(csvTimestamp(new Date("2026-11-20T16:05:00Z"))).toBe("employees-20261121-0005.csv");
+  });
+
+  it("exports the on-screen rows verbatim with zero extra requests", async () => {
+    fetchJSON.mockImplementation(() => Promise.resolve(twoRowsCsv));
+    await render("/employees");
+    await act(async () => {
+      flushTimers();
+    });
+    const callsBefore = fetchJSON.mock.calls.length;
+    const btn = q("emp-list-export") as HTMLButtonElement | null;
+    expect(btn, "export button on screen").toBeTruthy();
+    expect(btn!.disabled).toBe(false);
+    expect(btn!.title).toContain("导出当前已加载 2 人，不是全量");
+    expect(q("emp-list-export-count")?.textContent).toContain("共 2 行");
+    const stub = stubObjectUrl();
+    await act(async () => {
+      btn!.click();
+    });
+    const raw = await stub.text();
+    stub.restore();
+    expect(fetchJSON.mock.calls.length, "export never fetches").toBe(callsBefore);
+    const lines = raw.replace(/^\uFEFF/, "").split("\r\n").filter((l) => l !== "");
+    expect(lines).toHaveLength(3); // 表头 + 屏上 2 人
+    expect(lines[0]).toBe("name,employee_no,lifecycle,last_active");
+    expect(lines[1]).toContain('"小鲤, 带头"'); // RFC4180 逗号转义
+    expect(lines[1]).toContain("员工 · 217A91BA");
+    expect(lines[2].endsWith(",")).toBe(true); // last_active 缺=空字段（非「—」非 0）
+    expect(lines[2]).toContain("待核实"); // weird_state 人话
+    // Blob.text() 按规范剥离前导 BOM，字节级验证 Excel 兼容头
+    expect(Array.from(await stub.head())).toEqual([0xef, 0xbb, 0xbf]);
+  });
+
+  it("disables with a stated reason when nothing is loaded", async () => {
+    fetchJSON.mockImplementation(() => Promise.resolve({ items: [] }));
+    await render("/employees");
+    await act(async () => {
+      flushTimers();
+    });
+    const btn = q("emp-list-export") as HTMLButtonElement | null;
+    expect(btn, "button still rendered in empty state").toBeTruthy();
+    expect(btn!.disabled).toBe(true);
+    expect(btn!.title).toContain("当前已加载 0 人");
   });
 });

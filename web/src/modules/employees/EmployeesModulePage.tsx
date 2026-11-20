@@ -367,6 +367,70 @@ function ListCopyButton({ rows, totalLoaded }: { rows: EmployeeRow[]; totalLoade
   );
 }
 
+/* ------------------------------------------------------------------ *
+ * R66: 导出 CSV。纯前端 Blob + a.download，零新端点；行与 emp-list-copy
+ * 同一屏上来源（sortedItems）；last_active 缺值=空字段（禁「—」禁 0）；
+ * 口径写明「导出当前已加载 N 人，不是全量」。
+ * ------------------------------------------------------------------ */
+
+/** 文件名时刻=导出时刻的北京时间（本机时钟只进文件名，不进数据列）。 */
+export function csvTimestamp(now: Date): string {
+  const bj = new Date(now.getTime() + 480 * 60000);
+  const iso = bj.toISOString();
+  return `employees-${iso.slice(0, 10).replace(/-/g, "")}-${iso.slice(11, 16).replace(":", "")}.csv`;
+}
+
+export function buildEmployeesCsv(rows: EmployeeRow[]): string {
+  const lines = rows.map(
+    (row) =>
+      [
+        csvCell(displayName(row)),
+        csvCell(`员工 · ${shortCode(row.employeeId)}`),
+        csvCell(lifecycleLabel(row.lifecycleState)),
+        csvCell(beijingMinute(row.updatedAt) ?? ""),
+      ].join(","),
+  );
+  // BOM 让 Excel 认中文；RFC4180 行尾 CRLF。
+  return `\uFEFF${[COPY_HEADER, ...lines].join("\r\n")}\r\n`;
+}
+
+function ListExportButton({ rows, totalLoaded }: { rows: EmployeeRow[]; totalLoaded: number }) {
+  const empty = rows.length === 0;
+  const exportCsv = () => {
+    if (typeof URL.createObjectURL !== "function") return;
+    const blob = new Blob([buildEmployeesCsv(rows)], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = csvTimestamp(new Date());
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+  return (
+    <span className="flex min-w-0 flex-wrap items-center gap-2" role="group" aria-label="导出 CSV">
+      <Button
+        size="sm"
+        outlined
+        data-testid="emp-list-export"
+        disabled={empty}
+        onClick={exportCsv}
+        title={
+          empty
+            ? "当前已加载 0 人：没有可导出的行。"
+            : `导出当前已加载 ${totalLoaded} 人，不是全量；行序与屏上一致，纯前端生成零新端点。`
+        }
+      >
+        导出 CSV
+      </Button>
+      <span data-testid="emp-list-export-count" className="text-xs text-white/55" title="行数与屏上列表同源">
+        共 {rows.length} 行
+      </span>
+    </span>
+  );
+}
+
 export function EmployeesModulePage() {
   const [params, setParams] = useSearchParams();
   const forced = params.get("state");
@@ -536,6 +600,7 @@ export function EmployeesModulePage() {
         </div>
         <span className="flex min-w-0 flex-wrap items-center gap-2">
           <ListCopyButton rows={sortedItems} totalLoaded={state.items.length} />
+          <ListExportButton rows={sortedItems} totalLoaded={state.items.length} />
           <Button size="sm" outlined onClick={retry} data-testid="employees-refresh">
           <RefreshCw className="mr-2 h-4 w-4" />
           刷新

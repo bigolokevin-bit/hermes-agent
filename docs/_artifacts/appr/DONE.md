@@ -966,3 +966,11 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 教训（幻影落地）：前窗压缩块声称本单「已落地」，本窗现查 grep loadMore/emp-list-page=0=从未落盘——**压缩块声称已编辑≠已落盘，续做前必现查**；本段代码为本窗从零落地。
 - 验证：定向 employees 2 files/26 passed（22+4 新）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **138 files/1682 passed**（基线 1678+4）；emp-list-copy/emp-row-preview/ed*/apv*/apd*/apr5 零破（既有用例全绿为证）。
 - 未测项：9122==053da5c4 禁重建，翻页活体读数待并入后代次；三档=分页条 flex-wrap+min-w-0 形态学报（jsdom 不可测）。
+
+## R66 员工列表导出 CSV（emp-list-export，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console → tip **f98fd430**（含 cca9cf7e wave-19），toplevel ✓ porc=0；回执代次引用=cca9cf7e（禁引 b797bc98/053da5c4 及更早）。
+- 队列现状澄清（教训=现查为准）：R58=5e7665d4 已交（工单「仍欠」系滞后信息）；R64 copy=**a890e0c1 实际早已交付**（本窗 grep emp-list-copy/csvCell=在库，前窗「R64 未落地」判断为误）；本笔只补 R66。
+- 实现（modules/employees/EmployeesModulePage.tsx）：export csvTimestamp(now)=`employees-YYYYMMDD-HHmm.csv`（BJT +480min 纯格式化，new Date() 仅在点击回调内=render 体 purity 合规；用例锁跨日 2026-11-20T16:05Z→20261121-0005）；export buildEmployeesCsv(rows)=\uFEFF BOM+CRLF+尾行 CRLF（RFC4180，csvCell 与 copy 同源复用）；表头固定 name,employee_no,lifecycle,last_active；行=与 emp-list-copy 同一 sortedItems（禁第二套取值）；值=displayName/「员工 · shortCode」（禁裸 emp_）/lifecycleLabel（未知=待核实既有 default）/beijingMinute；**缺值口径差**：CSV last_active 缺=空字段（工单「缺“—”→空字段禁 0」，与 copy 的「—」不同，独立取值函数实现非参数化复制）。ListExportButton 挂 ListCopyButton 旁（role=group）：emp-list-export 钮（empty disabled+title「当前已加载 0 人：没有可导出的行。」/启用 title「导出当前已加载 N 人，不是全量；行序与屏上一致，纯前端生成零新端点」）+emp-list-export-count「共 N 行」（与列表同源）。Blob+a.download 纯前端，零新端点；URL.createObjectURL 缺失=no-op guard（jsdom/SSR）。
+- 测试 3 用例 append 最末（tail guard ✓；本窗一次 NameError 未落盘重贴成功）：①csvTimestamp 两值含跨日②两行 fixture（逗号名「小鲤, 带头」+updatedAt null+weird_state）点导出→fetchJSON 计数前后不变（零新端点锁）+拦 URL.createObjectURL 收 blob→行=表头+2（CRLF split filter 非空=3）+`"小鲤, 带头"` RFC4180 转义+「员工 · 217A91BA」+末行 endsWith(",")=缺值空字段+「待核实」+**BOM 字节级断言 [0xef,0xbb,0xbf]**（坑=Blob.text() 按 WHATWG UTF-8 decode 规范剥离前导 BOM，text 层断 startsWith 必假，须 arrayBuffer/slice 验字节）③空列表 disabled+title。定向 employees 2 files/29 passed（26+3）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **144 files/1802 passed**（merge wave-19 基线）。
+- 零破：emp-list-*/emp-row-preview-*/emp-list-copy*/emp-list-page*/ed*/apv*/apd*/apr5（既有用例全绿为证）；三档=header flex-wrap+min-w-0 形态学报（jsdom 不可测）；9122==cca9cf7e 禁重建，活体下载读数待并入后代次。
