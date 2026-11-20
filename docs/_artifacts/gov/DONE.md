@@ -2065,3 +2065,17 @@ built /private/tmp/health-r38/index.html
   - 切 tab 的 `href` 保留 `q=%E6%8A%80%E8%83%BD&sort=name&dir=asc`。
 - 验证：定向 `npx vitest run src/modules/capabilities src/modules/skills src/modules/tools` → **7 files / 72 passed**；全量 → **146 files / 1811 passed**；`tsc -b . --noEmit` exit 2，21 行均既有基线，本域 0。
 - 边界：仅 `web/src/modules/{capabilities,skills,tools}/**` + 本 DONE；共 7 文件；未碰 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未 install/force/amend/--no-verify。
+
+## R71 / R47 OBS — capF 锚可读 + 读源矩阵锚常驻（2026-11-20）
+
+- 基线：显式 refspec fetch `origin/lane/hermes-console`（tip `5630ffce`）后 `git merge --no-ff` → merge `d2ddf7ed`；未 reset，未并 main，未重建 9122。
+- OBS-4（capF 锚无文字）：`SkillsPage` / `ToolsPage` 的 `capF-state-loading|empty|unavailable|login|error` 锚改为带可读文本（`aria-live="polite"`）；空态同时保留可见 `capF-state-empty-text`，内容与锚一致；工具/技能错误锚带状态标题 + 原因，修正技能重复标题。
+  - 同一次 mount 的 `textContent` 长度：skills loading 7、empty 34、error 49；tools loading 15、empty 20、error 50。空态文案「读口已接入，本次返回 0 条；…不补样例」。
+- OBS（sys9/sys8 两轮不挂载）：根因是 `SourceMatrix` 用 `{expanded ? ... : null}` 条件渲染整块矩阵。改为**常驻 DOM**，仅在收起时 `hidden`：
+  - `sys13-sort-note`、`sys6-scroll`（新增 testid）带 `hidden={!expanded}`；展开只改 hidden，不重新取数。
+  - 同一 mount 收起态实测：`sys9-src-link-*` **3** 个、`sys9-src-nolink-*` **1** 个（无链接行有文本节点 + title 原因）、`sys8-asof-*` **4** 个；`sys8-asof-health` title 含 `asOf 原文` / 换算北京时间 / 来源 / 判据。展开后仍为 3/1/4，`hidden=false`。
+  - 缺失 asOf 仍为「—」且 title 给原因；错误摘要仍走 `redactError`，不泄漏。
+- 请求计数：整改前后均 **4**（一次健康读 + 三探针），展开/收起矩阵与锚可见性变化**零新增请求**。
+- 三档：1440/1280/375 均 `vw=bodySW=bodyCW=1440/1280/375`，无横溢。
+- 验证：定向 `src/modules/health src/modules/skills src/modules/tools` → **8 files / 98 passed**；全量 `npx vitest run` → **148 files / 1919 passed**；`tsc -b . --noEmit` → exit 2，23 行均为既有基线（approvals/employee-detail/employees），本域 0 行。
+- 边界：仅 `web/src/modules/{health,skills,tools}/**` + 本 DONE；未改 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未 install/force/amend/--no-verify。

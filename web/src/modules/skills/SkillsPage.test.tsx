@@ -130,6 +130,7 @@ describe("SkillsPage", () => {
     expect(text()).toContain("req-skills-1");
     expect(container.querySelector('[data-testid="capF-state-error"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="capF-state-unavailable"]')).toBeNull();
+    expect(container.querySelector('[data-testid="capF-state-error"]')?.textContent).toContain("技能列表暂时无法读取");
     expect(text()).toContain("技能列表暂时无法读取");
     const count = container.querySelector('[data-testid="cap4-count-skills"]')!;
     expect(count.textContent).toContain("—");
@@ -181,6 +182,8 @@ describe("SkillsPage", () => {
     expect(container.querySelector('[data-testid="skl4-empty"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="cap9-state-empty"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="capF-state-empty"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="capF-state-empty"]')?.textContent).toContain("读口已接入，本次返回 0 条");
+    expect(container.querySelector('[data-testid="capF-state-empty-text"]')?.textContent).toBe("读口已接入，本次返回 0 条；台账没有返回任何技能，这里不补样例行。");
     expect(container.querySelector('[data-testid="skl4-page"]')?.getAttribute("data-cap-state")).toBe("empty");
     expect(container.querySelector('[data-testid="skl4-error"]')).toBeNull();
     const count = container.querySelector('[data-testid="cap4-count-skills"]')!;
@@ -208,6 +211,7 @@ describe("SkillsPage", () => {
     expect(container.querySelector('[data-testid="cap9-state-unavailable"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="cap9-state-denied"]')).toBeNull();
     expect(container.querySelector('[data-testid="capF-state-unavailable"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="capF-state-unavailable"]')?.textContent).toContain("技能读口未接入");
     expect(container.querySelector('[data-testid="skl4-page"]')?.getAttribute("data-cap-state")).toBe("unavailable");
     const count = container.querySelector('[data-testid="cap4-count-skills"]')!;
     expect(count.textContent).toContain("—");
@@ -236,6 +240,7 @@ describe("SkillsPage", () => {
     expect(container.querySelector('[data-testid="cap9-state-denied"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="cap9-state-unavailable"]')).toBeNull();
     expect(container.querySelector('[data-testid="capF-state-unavailable"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="capF-state-unavailable"]')?.textContent).toContain("技能读口未接入");
     const count = container.querySelector('[data-testid="cap4-count-skills"]')!;
     expect(count.textContent).toContain("—");
     expect(count.textContent).not.toContain("0");
@@ -282,6 +287,7 @@ describe("SkillsPage", () => {
       expect(fetchJsonStrict).not.toHaveBeenCalled();
       expect(container.querySelector(`[data-testid="skl4-${state}"]`)).toBeTruthy();
       expect(container.querySelector(`[data-testid="capF-state-${state}"]`)).toBeTruthy();
+      expect(container.querySelector(`[data-testid="capF-state-${state}"]`)?.textContent?.trim().length).toBeGreaterThan(0);
       expect(container.querySelector('[data-testid="skl4-page"]')?.getAttribute("data-cap-state")).toBe(state);
       expect(text()).toContain(state === "loading" ? "正在读取技能" : "还没有已登记的技能");
       act(() => root.unmount());

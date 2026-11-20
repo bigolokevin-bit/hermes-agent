@@ -225,6 +225,7 @@ describe("failures and gaps", () => {
     expect(document.querySelector("[data-testid='cap9-state-denied']")).toBeTruthy();
     expect(document.querySelector("[data-testid='cap9-state-unavailable']")).toBeNull();
     expect(document.querySelector("[data-testid='capF-state-unavailable']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='capF-state-unavailable']")?.textContent).toContain("工具读口未接入");
     expect(document.querySelector("[data-testid='tol5-page']")?.getAttribute("data-cap-state")).toBe("unavailable");
     const count = document.querySelector("[data-testid='cap4-count-tools']")!;
     expect(count.textContent).toContain("—");
@@ -254,6 +255,7 @@ describe("failures and gaps", () => {
     expect(document.querySelector("[data-testid='cap9-state-unavailable']")).toBeTruthy();
     expect(document.querySelector("[data-testid='cap9-state-denied']")).toBeNull();
     expect(document.querySelector("[data-testid='capF-state-unavailable']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='capF-state-unavailable']")?.textContent).toContain("工具读口未接入");
     const copy = document.querySelector<HTMLButtonElement>('[data-testid="capC-copy"]')!;
     const csv = document.querySelector<HTMLButtonElement>('[data-testid="cap6-export"]')!;
     expect(copy.disabled).toBe(true);
@@ -277,6 +279,8 @@ describe("failures and gaps", () => {
     expect(document.querySelector("[data-testid='tol5-empty']")).toBeTruthy();
     expect(document.querySelector("[data-testid='cap9-state-empty']")).toBeTruthy();
     expect(document.querySelector("[data-testid='capF-state-empty']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='capF-state-empty']")?.textContent).toContain("读口已接入，本次返回 0 条");
+    expect(document.querySelector("[data-testid='capF-state-empty-text']")?.textContent).toBe("读口已接入，本次返回 0 条；不补样例。");
     expect(document.querySelector("[data-testid='tol5-page']")?.getAttribute("data-cap-state")).toBe("empty");
     expect(document.querySelector("[data-testid='tol5-denied']")).toBeNull();
     const count = document.querySelector("[data-testid='cap4-count-tools']")!;
@@ -350,6 +354,7 @@ describe("failures and gaps", () => {
     });
     expect(document.querySelector("[data-testid='tol5-error']")).toBeTruthy();
     expect(document.querySelector("[data-testid='capF-state-error']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='capF-state-error']")?.textContent).toContain("工具与 MCP 清单没能加载出来");
     expect(document.querySelector("[data-testid='tol5-page']")?.getAttribute("data-cap-state")).toBe("error");
     expect(text()).toContain("请求编号：req-tol5");
     expect(text()).toContain("处理时出了错");
@@ -396,6 +401,10 @@ describe("four states and repro legs", () => {
       expect(document.querySelector("[data-testid='tol5-page']")?.getAttribute("data-fixture")).toBe(state);
       const capState = state === "denied" ? "unavailable" : state;
       expect(document.querySelector(`[data-testid='capF-state-${capState}']`)).toBeTruthy();
+      expect(document.querySelector(`[data-testid='capF-state-${capState}']`)?.textContent?.trim().length).toBeGreaterThan(0);
+      if (capState === "empty") {
+        expect(document.querySelector("[data-testid='capF-state-empty-text']")?.textContent?.trim().length).toBeGreaterThan(0);
+      }
       expect(document.querySelector("[data-testid='tol5-page']")?.getAttribute("data-cap-state")).toBe(capState);
       expect(api.fetchJsonStrict).not.toHaveBeenCalled();
     }

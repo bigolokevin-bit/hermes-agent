@@ -190,6 +190,12 @@ function FailurePanel({
 }): ReactNode {
   const denied = kind === "denied";
   const login = kind === "login";
+  const heading = denied ? "工具读口未接入" : login ? "需要重新登录" : "工具与 MCP 清单没能加载出来";
+  const sentence = denied
+    ? failure?.sentence ?? "这块内容要么尚未接入本控制台，要么当前账号无权查看；这里不显示猜测的行，也不展示样例。"
+    : login
+      ? "登录状态已经失效，请刷新页面重新登录后再看这份清单。"
+      : failure?.sentence ?? "读取工具与 MCP 清单时出了问题，请稍后重试。";
   return (
     <Card
       role="alert"
@@ -199,23 +205,17 @@ function FailurePanel({
     >
       <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-6">
         <span className="sr-only" data-testid={denied ? "tl3-denied" : login ? "tl3-login" : "tl3-error"} />
-        <span className="sr-only" data-testid={denied ? "capF-state-unavailable" : login ? "capF-state-login" : "capF-state-error"} />
+        <span className="sr-only" data-testid={denied ? "capF-state-unavailable" : login ? "capF-state-login" : "capF-state-error"} aria-live="polite">
+          {`${heading}：${sentence}`}
+        </span>
         {denied ? (
           <span className="sr-only" data-testid={failure?.status === 403 ? "cap9-state-denied" : "cap9-state-unavailable"} />
         ) : null}
         <div className="flex min-w-0 items-center gap-2 text-sm">
           {denied ? <ShieldAlert className="h-4 w-4 shrink-0" aria-hidden /> : <TriangleAlert className="h-4 w-4 shrink-0" aria-hidden />}
-          <span className="min-w-0 break-words">
-            {denied ? "工具读口未接入" : login ? "需要重新登录" : "工具与 MCP 清单没能加载出来"}
-          </span>
+          <span className="min-w-0 break-words">{heading}</span>
         </div>
-        <p className="max-w-prose break-words text-xs text-muted-foreground">
-          {denied
-            ? failure?.sentence ?? "这块内容要么尚未接入本控制台，要么当前账号无权查看；这里不显示猜测的行，也不展示样例。"
-            : login
-              ? "登录状态已经失效，请刷新页面重新登录后再看这份清单。"
-              : failure?.sentence ?? "读取工具与 MCP 清单时出了问题，请稍后重试。"}
-        </p>
+        <p className="max-w-prose break-words text-xs text-muted-foreground">{sentence}</p>
         {denied ? (
           <a href="#/approvals" className="text-xs underline underline-offset-2" data-testid="tl3-apply">
             提交开通申请
@@ -381,7 +381,7 @@ export function ToolsPage(): ReactNode {
       return (
         <div className="capF-state flex min-w-0 flex-col gap-2" data-testid="tol5-loading" aria-busy="true" data-fixture={forced ?? undefined}>
           <span className="sr-only" data-testid="tl3-loading" />
-          <span className="sr-only" data-testid="capF-state-loading" />
+          <span className="sr-only" data-testid="capF-state-loading" aria-live="polite">正在读取工具与 MCP 清单…</span>
           {[0, 1, 2, 3].map((row) => (
             <div key={row} className="animate-pulse rounded-md border border-border bg-card px-4 py-4" aria-hidden="true">
               <div className="h-3 w-1/3 rounded-sm bg-muted" />
@@ -400,10 +400,10 @@ export function ToolsPage(): ReactNode {
           <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
             <span className="sr-only" data-testid="tl3-empty" />
             <span className="sr-only" data-testid="cap9-state-empty" />
-            <span className="sr-only" data-testid="capF-state-empty" />
+            <span className="sr-only" data-testid="capF-state-empty" aria-live="polite">读口已接入，本次返回 0 条；不补样例。</span>
             <Inbox className="h-6 w-6 text-muted-foreground" aria-hidden />
             <p className={`min-w-0 break-words text-sm ${themedBody}`}>服务已响应，清单里没有工具或 MCP 连接</p>
-            <p className="min-w-0 break-words text-xs text-muted-foreground">读口已接入，本次返回 0 条；不补样例。</p>
+            <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="capF-state-empty-text">读口已接入，本次返回 0 条；不补样例。</p>
             <p className="max-w-prose break-words text-xs text-muted-foreground">
               这不是加载失败，也不显示样例；在原生工具与 MCP 管理页登记后回到这里重新读取。
             </p>

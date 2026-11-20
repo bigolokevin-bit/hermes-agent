@@ -79,9 +79,16 @@ afterEach(() => {
 describe("source matrix", () => {
   it("reuses the four reads, shows paths, status, duration and top-level ISO asOf", async () => {
     await render();
-    expect(q("sys6-table")).toBeNull();
+    const scroll = q("sys6-scroll") as HTMLElement;
+    expect(scroll).not.toBeNull();
+    expect(scroll.hidden).toBe(true);
+    expect(q("sys6-table")).not.toBeNull();
+    expect(q("sys9-src-link-health")?.getAttribute("href")).toBe("#/system?tab=health");
+    expect(q("sys9-src-nolink-console")).not.toBeNull();
+    expect(q("sys8-asof-health")?.getAttribute("title")).toContain("asOf 原文");
     await act(async () => { (q("sys6-toggle") as HTMLButtonElement).click(); });
     expect(q("sys6-table")).not.toBeNull();
+    expect((q("sys6-scroll") as HTMLElement).hidden).toBe(false);
     await waitFor(() => q("sys6-status-health")?.textContent?.includes("成功") ?? false, "health row");
     expect(api.fetchJSON).toHaveBeenCalledTimes(4);
     expect(container.querySelectorAll("[data-testid^='sys6-row-']")).toHaveLength(4);
