@@ -461,3 +461,67 @@
 @media (max-width: 720px) {
   .sys6-table { min-width: 760px; }
 }
+
+/* sys7 — source matrix CSV export */
+.sys7-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.sys7-export {
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  color: var(--color-foreground);
+  background: var(--color-background);
+}
+.sys7-export:hover:not(:disabled) { background: var(--color-muted); }
+.sys7-export:disabled { opacity: 0.5; cursor: not-allowed; }
+.sys7-count { font-size: 0.6875rem; color: var(--color-muted-foreground); white-space: nowrap; }
+.sys7-note { flex: 1 1 260px; min-width: 0; font-size: 0.6875rem; color: var(--color-muted-foreground); }
+.sys10-status { font-size: 0.6875rem; color: var(--color-muted-foreground); white-space: nowrap; }
+.sys10-fallback {
+  width: 100%;
+  min-height: 5.5rem;
+  margin-top: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-muted);
+  color: var(--color-foreground);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.6875rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+@media (max-width: 560px) {
+  .sys7-actions { align-items: flex-start; }
+  .sys7-export { width: 100%; }
+  .sys7-note { flex-basis: 100%; }
+}
+
+/* sys8 — same-source check-time note */
+.sys8-same-source-note {
+  margin-top: 4px;
+  font-size: 0.6875rem;
+  line-height: 1.5;
+  color: var(--color-muted-foreground);
+}
+.sys8-same-source-note code { font-size: 0.6875rem; }
+
+
+/* sys9 — source row landing links and asOf transparency */
+.sys9-src-link,
+.sys9-src-nolink {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.sys9-src-link { color: var(--color-primary); text-decoration: underline; text-underline-offset: 2px; }
+.sys9-src-link:hover { text-decoration-thickness: 2px; }
+.sys9-src-link:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; border-radius: 2px; }
+.sys9-src-nolink { color: var(--color-muted-foreground); }

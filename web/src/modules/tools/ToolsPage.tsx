@@ -169,6 +169,9 @@ function FailurePanel({
     >
       <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-6">
         <span className="sr-only" data-testid={denied ? "tl3-denied" : login ? "tl3-login" : "tl3-error"} />
+        {denied ? (
+          <span className="sr-only" data-testid={failure?.status === 403 ? "cap9-state-denied" : "cap9-state-unavailable"} />
+        ) : null}
         <div className="flex min-w-0 items-center gap-2 text-sm">
           {denied ? <ShieldAlert className="h-4 w-4 shrink-0" aria-hidden /> : <TriangleAlert className="h-4 w-4 shrink-0" aria-hidden />}
           <span className="min-w-0 break-words">
@@ -236,7 +239,11 @@ export function ToolsPage(): ReactNode {
     setParams(search, { replace: true });
   };
   useEffect(() => {
-    if (forced !== null || phase === "loading") return;
+    if (forced !== null) return;
+    if (phase === "loading") {
+      publishCapabilityCount("tools", { value: null, source: "loading", reason: null, gap: null });
+      return;
+    }
     if (phase === "ready") {
       if (tools.issues.length > 0) {
         publishCapabilityCount("tools", {
@@ -296,8 +303,10 @@ export function ToolsPage(): ReactNode {
         <Card className="border-border bg-card" data-testid="tol5-empty" data-fixture={forced ?? undefined}>
           <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
             <span className="sr-only" data-testid="tl3-empty" />
+            <span className="sr-only" data-testid="cap9-state-empty" />
             <Inbox className="h-6 w-6 text-muted-foreground" aria-hidden />
             <p className={`min-w-0 break-words text-sm ${themedBody}`}>服务已响应，清单里没有工具或 MCP 连接</p>
+            <p className="min-w-0 break-words text-xs text-muted-foreground">读口已接入，本次返回 0 条；不补样例。</p>
             <p className="max-w-prose break-words text-xs text-muted-foreground">
               这不是加载失败，也不显示样例；在原生工具与 MCP 管理页登记后回到这里重新读取。
             </p>
@@ -394,6 +403,7 @@ export function ToolsPage(): ReactNode {
               updated_at: row.updatedAt,
             }))}
           />
+          <span className="capA-export-note" data-testid="capA-export-order-note">导出按当前排序与搜索</span>
           <Button
             size="sm"
             outlined

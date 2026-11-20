@@ -35,19 +35,20 @@ import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { ArrowLeft, Download, ReceiptText, RefreshCw, ShieldCheck } from "lucide-react";
 
-import { Badge } from "@nous-research/ui/ui/components/badge";
 import { Button } from "@nous-research/ui/ui/components/button";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { Spinner } from "@nous-research/ui/ui/components/spinner";
 
-import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel, TechnicalDisclosure, VerifyUnavailablePanel } from "./states";
+import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel, RequestIdLine, TechnicalDisclosure, VerifyUnavailablePanel } from "./states";
 import { AuditEventDetailBody, AuditEventRowCard, VerifyResultBody, AuditRowPreview, AuditTypeSummary } from "./views";
 import RetentionModulePage from "./RetentionModulePage";
 import { useAuditDetail, useAuditList, useAuditVerify } from "./useAuditData";
+import type { DetailPhase } from "./useAuditData";
 import type { FailureCopy } from "./copy";
 import type { VerifyFailure } from "./copy";
 import { eventTypeChoices } from "./model";
 import type { ListFilters } from "./api";
+import type { AuditRow } from "./model";
 import { downloadCsv, downloadText, exportName, filteredCsvText, filteredExportName } from "./csv";
 import {
   FILTER_WINDOW_CHOICES,
@@ -82,6 +83,7 @@ const WINDOW_FILTER_CHOICES = FILTER_WINDOW_CHOICES;
 function resetPagingAndFolds(draft: URLSearchParams): void {
   draft.delete("cursor");
   draft.delete("preview");
+  draft.delete("event");
   draft.delete("tech");
 }
 
@@ -91,70 +93,137 @@ export function AuditFilterBar({
   customTo,
   customInvalid,
   eventType,
+  actor,
+  resource,
+  actorChoices,
+  resourceChoices,
   onWindowChange,
   onCustomFrom,
   onCustomTo,
+  onApplyCustom,
+  onClearCustom,
+  draftError,
+  draftInvalid,
   onEventTypeChange,
+  onActorChange,
+  onResourceChange,
 }: {
   windowChoice: FilterWindowKey;
   customFrom: string;
   customTo: string;
   customInvalid: boolean;
   eventType: string;
+  /** aud9: the chosen operator handle, straight from `?actor=`. */
+  actor: string;
+  /** aud9: the chosen resource value, straight from `?resource=`. */
+  resource: string;
+  /** The operators this page read back — the only ones offered. */
+  actorChoices: { handle: string; label: string }[];
+  /** The resources this page read back — the only ones offered. */
+  resourceChoices: { handle: string; label: string }[];
   onWindowChange: (next: FilterWindowKey) => void;
   onCustomFrom: (next: string) => void;
   onCustomTo: (next: string) => void;
   onEventTypeChange: (next: string) => void;
+  onActorChange: (next: string) => void;
+  onResourceChange: (next: string) => void;
+  /** audB: commit the typed range into the address (one read), or drop it. */
+  onApplyCustom: () => void;
+  onClearCustom: () => void;
+  /** audB: why the typed range cannot be applied yet, in words. */
+  draftError: string | null;
+  /** True while the draft range is not a question the service can answer. */
+  draftInvalid: boolean;
 }): ReactNode {
   const choices = useMemo(() => eventTypeChoices(), []);
   return (
     <div className="flex min-w-0 flex-wrap items-end gap-2" role="group" aria-label="审计事件筛选" data-testid="aud01-filters">
-      <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="aud01-filter-window">
-        <span className="text-muted-foreground">时间窗</span>
-        <select
-          id="aud01-filter-window"
-          data-testid="aud01-filter-window"
-          className="h-8 min-w-0 max-w-40 rounded-md border border-border bg-transparent px-2 text-sm"
-          value={windowChoice}
-          onChange={(event) => onWindowChange(event.target.value as FilterWindowKey)}
-        >
-          {WINDOW_FILTER_CHOICES.map((item) => (
-            <option key={item.value} value={item.value}>
-              {`时间窗：${item.label}`}
-            </option>
-          ))}
-        </select>
-      </label>
+      {/* audB: the quick windows are a pressed-state group, so 「当前是哪一档」
+          is readable by a keyboard probe, and choosing 自定义 visibly un-presses
+          the three quick ones. The container keeps the aud01 id; each choice is
+          `aud01-filter-window-<key>`. */}
+      <div className="flex min-w-0 flex-wrap items-end gap-2" role="group" aria-label="时间窗" data-testid="aud01-filter-window">
+        <span className="min-w-0 text-xs text-muted-foreground">时间窗</span>
+        {WINDOW_FILTER_CHOICES.map((item) => (
+          <button
+            key={item.value}
+            type="button"
+            data-testid={`aud01-filter-window-${item.value}`}
+            aria-pressed={windowChoice === item.value}
+            className={`h-8 min-w-0 rounded-md border px-2 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
+              windowChoice === item.value ? "border-primary text-foreground" : "border-border text-muted-foreground hover:bg-muted/40"
+            }`}
+            onClick={() => onWindowChange(item.value)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
 
       {windowChoice === "custom" ? (
         <div className="flex min-w-0 flex-wrap items-end gap-2" data-testid="aud01-custom-window">
-          <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="aud01-custom-from">
-            <span className="text-muted-foreground">开始（北京时间）</span>
-            <input
-              id="aud01-custom-from"
-              data-testid="aud01-custom-from"
-              type="datetime-local"
-              className="h-8 min-w-0 rounded-md border border-border bg-transparent px-2 text-sm"
-              value={customFrom}
-              onChange={(event) => onCustomFrom(event.target.value)}
-            />
-          </label>
-          <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="aud01-custom-to">
-            <span className="text-muted-foreground">结束（北京时间）</span>
-            <input
-              id="aud01-custom-to"
-              data-testid="aud01-custom-to"
-              type="datetime-local"
-              className="h-8 min-w-0 rounded-md border border-border bg-transparent px-2 text-sm"
-              value={customTo}
-              onChange={(event) => onCustomTo(event.target.value)}
-            />
-          </label>
+          <div className="flex min-w-0 flex-col gap-1" data-testid="audB-from">
+            <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="aud01-custom-from">
+              <span className="text-muted-foreground">开始（北京时间）</span>
+              <input
+                id="aud01-custom-from"
+                data-testid="aud01-custom-from"
+                type="datetime-local"
+                className="h-8 min-w-0 rounded-md border border-border bg-transparent px-2 text-sm"
+                value={customFrom}
+                onChange={(event) => onCustomFrom(event.target.value)}
+              />
+            </label>
+          </div>
+          <div className="flex min-w-0 flex-col gap-1" data-testid="audB-to">
+            <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="aud01-custom-to">
+              <span className="text-muted-foreground">结束（北京时间）</span>
+              <input
+                id="aud01-custom-to"
+                data-testid="aud01-custom-to"
+                type="datetime-local"
+                className="h-8 min-w-0 rounded-md border border-border bg-transparent px-2 text-sm"
+                value={customTo}
+                onChange={(event) => onCustomTo(event.target.value)}
+              />
+            </label>
+          </div>
+          {/* audB: the range is a draft until it is applied. Typing two
+              instants must not fire a read per keystroke — the question the
+              service answers is the one that is applied. */}
+          <Button
+            size="sm"
+            outlined
+            onClick={onApplyCustom}
+            disabled={draftInvalid}
+            aria-disabled={draftInvalid}
+            title={draftInvalid ? "两栏都填好、且开始早于结束，才能应用这个区间" : "用这个起止时间去读（一次读取）"}
+            data-testid="audB-apply"
+          >
+            应用这个区间
+          </Button>
+          <Button size="sm" outlined onClick={onClearCustom} data-testid="audB-clear" title="丢掉自定义区间，回到最近 7 天">
+            清空区间
+          </Button>
+          {draftError ? (
+            <p className="min-w-0 break-words text-xs text-warning" data-testid="audB-range-error">
+              {draftError}
+            </p>
+          ) : null}
           {customInvalid ? (
             <p className="min-w-0 break-words text-xs text-warning" data-testid="aud01-custom-error">
               自定义时间窗需要两栏都填好，且开始早于结束；在那之前不会去读。
             </p>
           ) : null}
+          {/* audB: what this range actually filters. The service honours the
+              two instants itself (probed live: each window answers its own
+              span, an inverted pair is refused with 400 request.invalid_query),
+              so the note says 服务端整窗过滤 and NOT 「只在已加载的行里挑」. */}
+          <p className="min-w-0 basis-full break-words text-xs text-muted-foreground" data-testid="audB-scope-note">
+            {customInvalid
+              ? "这一段还没应用：应用后由服务端按起止时间过滤整个时间窗，不是在本页已加载的行里挑。"
+              : "这一段由服务端按起止时间过滤（from/to 直接进请求），筛的是整个区间的账本，不是只在这页已加载的行里挑；输入框里的时间是北京时间，落到地址栏是 ISO 瞬间。"}
+          </p>
         </div>
       ) : null}
 
@@ -176,59 +245,186 @@ export function AuditFilterBar({
         </select>
       </label>
 
-      {/* A control we cannot make real WITHOUT showing engineering language:
-          the live probe found `actorId` filters correctly, but it only accepts
-          machine handles (`employee-api`), and there is no named-operator
-          directory to build a person-readable picker from. A free-text handle
-          box would put raw ids on the human layer (against the zero-engineering
-          rule), so it stays 未接入 until a named-operator source exists. */}
-      <span
-        className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground"
-        title="GAP-06：操作者筛选参数 actorId 实测存在且生效，但只接受机器句柄（如 employee-api），本环境没有可展示真名的操作者目录，故不做原始句柄输入框"
-      >
+      {/* aud9: 操作者与资源都是可用控件，但可用范围写在控件下方明说。
+          操作者走服务端：探针 #11（2026-11-19）`actorId=employee-api` → 200，
+          50/50 行 actor.id 全等于该句柄，故筛选值上线（?actor= → actorId=）。
+          选项来自本页读到的操作者：本环境没有可展示真名的目录（GAP-06），
+          人话标签上屏，机器句柄只进 option 的 value 与地址栏。 */}
+      <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="aud01-filter-operator">
+        <span className="text-muted-foreground">操作者</span>
         <select
-          aria-label="操作者筛选（未接入）"
-          className="h-8 min-w-0 max-w-40 rounded-md border border-border bg-transparent px-2 text-sm"
-          disabled
+          id="aud01-filter-operator"
           data-testid="aud01-filter-operator"
+          className="h-8 min-w-0 max-w-44 rounded-md border border-border bg-transparent px-2 text-sm"
+          value={actor}
+          onChange={(event) => onActorChange(event.target.value)}
+          title="GAP-06：服务端参数 actorId 实测生效（2026-11-19 探针 #11：200，50/50 行命中），但它只吃机器句柄，本环境没有可展示真名的操作者目录，故选项取自本页已读到的操作者"
         >
-          <option>操作者</option>
+          <option value="">全部操作者</option>
+          {actor && !actorChoices.some((item) => item.handle === actor) ? (
+            // an address-borne handle nothing on this page answers is still a
+            // handle the service was asked about — the select must not silently
+            // drop it, or the address and the screen would disagree.
+            <option value={actor}>按地址带入的操作者</option>
+          ) : null}
+          {actorChoices.map((item) => (
+            <option key={item.handle} value={item.handle}>
+              {item.label}
+            </option>
+          ))}
         </select>
-        <Badge tone="secondary" title="GAP-06：操作者筛选未接入（缺真名目录，非缺参数）">
-          未接入
-        </Badge>
-      </span>
+      </label>
 
-      {/* aud8: same honesty for 资源. The route names `resourceId` as one of
-          its seven accepted filters, but this environment never probed what it
-          filters by (DONE.md gap list) and there is no resource directory to
-          pick a real id from — so no picker is offered, while a `?resource=`
-          handed over in the address is passed through verbatim below. */}
-      <span
-        className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground"
-        title="resourceId 由该路由的 400 体点名为可接受筛选，但本环境未单独验证其过滤效果，也没有可挑选的资源目录；不做假下拉"
-      >
+      {/* aud9: 资源也做成可用控件。`resourceId` 只被该路由的 400 体点名为七个
+          可接受筛选之一，过滤效果本环境未单独实测，所以这一条既上线（值来自
+          地址栏，可分享），也在本地按已加载的行再筛一遍 —— 范围写在下面的
+          aud9-scope-note 上，不假装它是服务端整窗筛选。 */}
+      <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="aud8-filter-resource">
+        <span className="text-muted-foreground">资源</span>
         <select
-          aria-label="资源筛选（未接入）"
-          className="h-8 min-w-0 max-w-40 rounded-md border border-border bg-transparent px-2 text-sm"
-          disabled
+          id="aud8-filter-resource"
           data-testid="aud8-filter-resource"
+          className="h-8 min-w-0 max-w-44 rounded-md border border-border bg-transparent px-2 text-sm"
+          value={resource}
+          onChange={(event) => onResourceChange(event.target.value)}
+          title="resourceId 由该路由的 400 体点名为可接受筛选，但本环境未单独实测其过滤效果，故同时在本页已加载的行里本地匹配"
         >
-          <option>资源</option>
+          <option value="">全部资源</option>
+          {resource && !resourceChoices.some((item) => item.handle === resource) ? (
+            <option value={resource}>按地址带入的资源</option>
+          ) : null}
+          {resourceChoices.map((item) => (
+            <option key={item.handle} value={item.handle}>
+              {item.label}
+            </option>
+          ))}
         </select>
-        <Badge tone="secondary" title="资源筛选未接入：缺资源目录，且过滤效果未单独实测">
-          未接入
-        </Badge>
-      </span>
+      </label>
     </div>
   );
 }
 
 /**
- * aud8: the two filters that arrive through the address instead of a picker.
- * A handle the person pasted is honoured on the wire — and shown in human
- * words, the raw handle living in the `title` like every other id on this
- * surface. Clearing drops the parameter and re-reads without it.
+ * aud9: how wide each filter really reaches. Stated under the controls, in
+ * words, because 操作者 is answered by the service for the whole window while
+ * 资源 is only proven against the rows this page already loaded.
+ */
+function AuditFilterScope({
+  actor,
+  resource,
+  loaded,
+  matched,
+}: {
+  actor: string;
+  resource: string;
+  loaded: number;
+  matched: number;
+}): ReactNode {
+  if (!actor && !resource) return null;
+  return (
+    <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud9-scope-note">
+      {actor && resource
+        ? `操作者这一条由服务端在整个时间窗里筛（实测生效）；资源这一条只在本页已加载的 ${loaded} 条里本地匹配，筛出 ${matched} 条——服务端的资源筛选效果本环境没有单独实测过。`
+        : actor
+          ? "操作者这一条由服务端在整个时间窗里筛（实测生效）；本环境没有真名操作者目录，下拉里的选项来自本页读到的操作者。"
+          : `资源这一条只在本页已加载的 ${loaded} 条里本地匹配，筛出 ${matched} 条——服务端的资源筛选效果本环境没有单独实测过，所以这里不做整窗保证。`}
+    </p>
+  );
+}
+
+/**
+ * aud9: what `?event=<id>` got. Three honest legs and nothing in between:
+ * the row is on this page, the service said this event is not reachable
+ * (403 and 404 are the same body, 「该事件不存在或已过期」 with a copyable
+ * request id from that very answer), or the event exists but sits outside
+ * the rows this page loaded. No invented id, no silent nothing.
+ */
+function AuditEventDeepLink({
+  found,
+  phase,
+  failure,
+  onClear,
+  onRetry,
+  onOpen,
+}: {
+  /** The address-borne event id is among the rows on screen. */
+  found: boolean;
+  /** The detail read that settles whether the event exists at all. */
+  phase: DetailPhase;
+  failure: FailureCopy | null;
+  onClear: () => void;
+  onRetry: () => void;
+  onOpen: () => void;
+}): ReactNode {
+  if (found) {
+    return (
+      <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud9-deeplink-found">
+        已按链接定位到这条事件并展开
+        <button type="button" className="ml-2 underline underline-offset-2" onClick={onClear} data-testid="aud9-deeplink-close">
+          收起定位
+        </button>
+      </p>
+    );
+  }
+  if (phase === "loading" || phase === "idle") {
+    return (
+      <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud9-deeplink-checking">
+        这一条不在当前页里，正在向服务确认它还在不在…
+      </p>
+    );
+  }
+  if (phase === "denied") {
+    return (
+      <div
+        role="alert"
+        className="flex min-w-0 flex-col items-start gap-1 rounded-md border border-border bg-card px-3 py-2"
+        data-testid="aud9-event-missing"
+      >
+        <p className="max-w-prose break-words text-xs">该事件不存在或已过期</p>
+        <p className="max-w-prose break-words text-xs text-muted-foreground">
+          服务对这个标识给了「读不到」的回答；链接可能记错了编号，也可能记录已经离开这个窗口。清除定位就回到当前筛选与页码。
+        </p>
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <RequestIdLine requestId={failure?.requestId ?? null} testId="aud9-event-rid" />
+          <Button size="sm" outlined onClick={onRetry}>
+            再确认一次
+          </Button>
+          <Button size="sm" outlined onClick={onClear}>
+            清除定位
+          </Button>
+        </div>
+      </div>
+    );
+  }
+  if (phase === "error") {
+    return (
+      <ErrorPanel
+        failure={failure ?? { sentence: "这条事件没能确认。", requestId: null, technical: null }}
+        onRetry={onRetry}
+        title="这条事件没能确认"
+        testId="aud9-event-error"
+      />
+    );
+  }
+  return (
+    <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud9-event-elsewhere">
+      这条事件在服务端还在，只是不在当前页或当前筛选里。
+      <button type="button" className="ml-1 underline underline-offset-2" onClick={onOpen} data-testid="aud9-event-open">
+        直接打开它
+      </button>
+      <button type="button" className="ml-2 underline underline-offset-2" onClick={onClear} data-testid="aud9-event-clear">
+        清除定位
+      </button>
+    </p>
+  );
+}
+
+/**
+ * aud8: the chips for the two handle filters. aud9 kept them (same ids) and
+ * made the handles selectable: the chip is what a pasted `?actor=` /
+ * `?resource=` looks like when no option in the pickers matches it, and its
+ * 取消 is still the way out. The raw handle stays in the `title`, like every
+ * other id on this surface.
  */
 function AuditUrlFilterChips({
   actor,
@@ -280,6 +476,58 @@ function AuditUrlFilterChips({
   );
 }
 
+/**
+ * audA: the row wrapper owns the keyboard loop for its own preview, so a
+ * person who never touches the mouse can open it, close it, and land back on
+ * the control they closed. Focus returns to the row's toggle because that is
+ * the handle the row is read through; leaving it on a vanished panel would
+ * dump the next Tab into the middle of the page.
+ */
+function AuditRowKeyboard({
+  row,
+  open,
+  deepLink,
+  onToggle,
+  onClose,
+  children,
+}: {
+  row: AuditRow;
+  /** The preview of this row is the open fold. */
+  open: boolean;
+  /** `?event=` landed on this row. */
+  deepLink: boolean;
+  onToggle: () => void;
+  onClose: () => void;
+  children: ReactNode;
+}): ReactNode {
+  return (
+    <div
+      className="flex min-w-0 flex-col gap-1"
+      data-testid={`audA-row-shell-${row.key}`}
+      data-aud9-deeplink={deepLink ? "true" : undefined}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" && event.target === event.currentTarget) {
+          // The row itself is not a Tab stop; Enter here is for a row that was
+          // focused programmatically. Inside the row the real buttons already
+          // answer Enter, so this never double-fires.
+          event.preventDefault();
+          onToggle();
+          return;
+        }
+        if (event.key !== "Escape" || !open) return;
+        event.preventDefault();
+        onClose();
+        const toggle = (event.currentTarget as HTMLElement).querySelector<HTMLButtonElement>(
+          `[data-testid='aud6-toggle-${row.key}']`,
+        );
+        toggle?.focus();
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function AuditEventsModulePage(): ReactNode {
   const [params] = useSearchParams();
   // `?tab=retention` resolves to the events live slot in shell/routes.ts;
@@ -327,8 +575,32 @@ function AuditEventsSurface(): ReactNode {
   // screen says what is missing and no request is issued (the route rejects an
   // unbounded or inverted scan).
   const customInvalid = windowChoice === "custom" && bounds === null;
-  const customFrom = windowChoice === "custom" ? beijingInputValue(params.get("from")) : "";
-  const customTo = windowChoice === "custom" ? beijingInputValue(params.get("to")) : "";
+
+  // audB: the custom range is a DRAFT. Typing two instants asks nothing; the
+  // read happens when 应用 puts them into the address. `null` means the inputs
+  // still say what the address says, so a pasted or refreshed link paints its
+  // own range without any local copy to keep in step.
+  const [range, setRange] = useState<{ from: string; to: string } | null>(null);
+  const rangeDraftFrom = range?.from ?? beijingInputValue(customFromParam);
+  const rangeDraftTo = range?.to ?? beijingInputValue(customToParam);
+  const rangeFromIso = parseBeijingInput(rangeDraftFrom);
+  const rangeToIso = parseBeijingInput(rangeDraftTo);
+  // The applied range is what the screen shows on the wire; the draft only
+  // blocks 应用 while it is not a question the service could answer.
+  const rangePending = useMemo(
+    () => (rangeFromIso && rangeToIso ? { from: rangeFromIso, to: rangeToIso } : null),
+    [rangeFromIso, rangeToIso],
+  );
+  const rangeError =
+    range === null
+      ? customInvalid
+        ? "开始和结束都要填上，这一区间才能应用；在那之前本页不去读它，也不会退化成全表扫描。"
+        : null
+      : !rangeFromIso || !rangeToIso
+        ? "开始和结束都要填，这一区间才能应用；在应用之前本页不去读它。"
+        : rangeFromIso > rangeToIso
+          ? "开始时间不能晚于结束时间；把两头调对再应用，本页不会拿倒置的区间去问服务。"
+          : null;
 
   const filters = useMemo<ListFilters>(() => {
     // The window is never unbounded (see AuditFilterBar); each choice carries a
@@ -357,12 +629,62 @@ function AuditEventsSurface(): ReactNode {
   // address. One row owns each fold at a time, so the panel ids stay unique.
   // Changing the question (window / type / cursor) drops them: rows that were
   // read under a wider filter must not stay unfolded on a narrowed screen.
+  // aud9: `?event=<id>` is the deep link onto one row. It is NOT a third fold:
+  // on read it is the same opened preview, and touching either spelling drops
+  // the other, so a row is never unfolded twice from two sources of truth.
+  const deepLinkId = params.get("event");
   const openTech = params.get("tech");
-  const openPreview = params.get("preview");
+  const openPreview = params.get("preview") ?? deepLinkId;
   const [typesOpen, setTypesOpen] = useState(false);
   // The window check is a read the person asks for; it never runs on load and
   // it is not driven by `?state=` (that repro belongs to the aud03 pane).
   const verify = useAuditVerify(null);
+
+  // aud9: the two handle filters only have real values to offer from what this
+  // page actually read back — there is no operator or resource directory, so
+  // nothing is invented and an address-borne handle is honoured regardless.
+  const actorChoices = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const row of list.rows) {
+      const handle = row.actor.raw;
+      if (handle && !seen.has(handle)) seen.set(handle, row.actor.label);
+    }
+    return [...seen].map(([handle, label]) => ({ handle, label }));
+  }, [list.rows]);
+
+  const resourceChoices = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const row of list.rows) {
+      const handle = row.resource.raw;
+      if (handle && !seen.has(handle)) seen.set(handle, row.resource.label);
+    }
+    return [...seen].map(([handle, label]) => ({ handle, label }));
+  }, [list.rows]);
+
+  // aud9: 资源的本地匹配。服务端 resourceId 的过滤效果本环境未单独实测（只有该
+  // 路由 400 体点名它可接受），所以地址里的值既原样上线，也在已加载的行上再筛
+  // 一遍：屏幕上留下的行一定符合选择，范围由 aud9-scope-note 明说。
+  const visibleRows = useMemo(
+    () =>
+      resource
+        ? list.rows.filter((row) =>
+            (row.resource.raw ?? row.resource.label).toLowerCase().includes(resource.toLowerCase()),
+          )
+        : list.rows,
+    [list.rows, resource],
+  );
+
+  // aud9: the deep link. A row that is on this page IS the opened fold; a link
+  // no loaded row answers is a question for the service, and whatever it
+  // answers — denied, an unreadable body, a record that lives on another page
+  // — is what the screen says, with the request id it came back with.
+  const deepLinkRow = deepLinkId
+    ? visibleRows.find((row) => row.key === deepLinkId || row.rawId === deepLinkId)
+    : undefined;
+  const existence = useAuditDetail(
+    deepLinkId && !deepLinkRow && (list.phase === "ready" || list.phase === "empty") ? deepLinkId : null,
+    null,
+  );
 
   const openRow = useCallback(
     (rawId: string | null) => {
@@ -393,23 +715,58 @@ function AuditEventsSurface(): ReactNode {
     setParams(draft, { replace: true, state: locationState ?? null });
   }, [locationState, navigate, params, setParams]);
 
-  /** aud8: writes one address-owned state key in place, keeping the rest. */
-  const writeParam = useCallback(
-    (key: string, value: string | null) => {
+  /** One row at a time owns each fold, so the panel ids stay unique. */
+  const setFold = useCallback(
+    (key: "tech" | "preview", rowKey: string) => {
       const draft = new URLSearchParams(params);
-      if (value === null || value === "") draft.delete(key);
-      else draft.set(key, value);
+      const open = key === "preview" ? openPreview : params.get("tech");
+      // aud9: `?event=` is the same fold reached from a link, so touching
+      // either spelling clears the other — one row, one source of truth.
+      draft.delete("event");
+      if (open === rowKey) draft.delete(key);
+      else draft.set(key, rowKey);
+      setParams(draft, { replace: true, state: locationState ?? null });
+    },
+    [locationState, openPreview, params, setParams],
+  );
+
+  /** aud9: closing a deep link drops the定位 and keeps filters and page. */
+  const clearFold = useCallback(
+    (key: "preview" | "tech") => {
+      const draft = new URLSearchParams(params);
+      draft.delete(key);
+      draft.delete("event");
       setParams(draft, { replace: true, state: locationState ?? null });
     },
     [locationState, params, setParams],
   );
 
-  /** One row at a time owns each fold, so the panel ids stay unique. */
-  const setFold = useCallback(
-    (key: "tech" | "preview", rowKey: string) => {
-      writeParam(key, params.get(key) === rowKey ? null : rowKey);
+  /**
+   * aud9: the operator filter is a real control now. Choosing one rewrites the
+   * address (`?actor=`), drops the paging stack and the folds, and asks the
+   * service exactly once — the same rule the window and the type follow.
+   */
+  const setActor = useCallback(
+    (next: string) => {
+      const draft = new URLSearchParams(params);
+      if (next) draft.set("actor", next);
+      else draft.delete("actor");
+      resetPagingAndFolds(draft);
+      setParams(draft, { replace: true, state: locationState ?? null });
     },
-    [params, writeParam],
+    [locationState, params, setParams],
+  );
+
+  /** aud9: 资源同理落 `?resource=`（本地匹配 + 上线透传）。 */
+  const setResource = useCallback(
+    (next: string) => {
+      const draft = new URLSearchParams(params);
+      if (next) draft.set("resource", next);
+      else draft.delete("resource");
+      resetPagingAndFolds(draft);
+      setParams(draft, { replace: true, state: locationState ?? null });
+    },
+    [locationState, params, setParams],
   );
 
   const setType = useCallback(
@@ -436,6 +793,7 @@ function AuditEventsSurface(): ReactNode {
 
   const setWindow = useCallback(
     (next: FilterWindowKey) => {
+      setRange(null); // audB: a quick window replaces any typed draft
       const draft = new URLSearchParams(params);
       draft.set("window", next);
       if (next !== "custom") {
@@ -449,30 +807,37 @@ function AuditEventsSurface(): ReactNode {
   );
 
   const setCustomFrom = useCallback(
-    (next: string) => {
-      const draft = new URLSearchParams(params);
-      resetPagingAndFolds(draft);
-      draft.set("window", "custom");
-      const iso = parseBeijingInput(next);
-      if (iso) draft.set("from", iso);
-      else draft.delete("from");
-      setParams(draft, { replace: true, state: locationState ?? null });
-    },
-    [locationState, params, setParams],
+    (next: string) => setRange({ from: next, to: range?.to ?? beijingInputValue(customToParam) }),
+    [range, customToParam],
   );
 
   const setCustomTo = useCallback(
-    (next: string) => {
-      const draft = new URLSearchParams(params);
-      resetPagingAndFolds(draft);
-      draft.set("window", "custom");
-      const iso = parseBeijingInput(next);
-      if (iso) draft.set("to", iso);
-      else draft.delete("to");
-      setParams(draft, { replace: true, state: locationState ?? null });
-    },
-    [locationState, params, setParams],
+    (next: string) => setRange({ from: range?.from ?? beijingInputValue(customFromParam), to: next }),
+    [range, customFromParam],
   );
+
+  /**
+   * audB: the typed range is a draft. Typing asks nothing; 应用 writes the two
+   * instants into the address once, and one read follows. An inverted or
+   * half-filled range is not a question the service can answer (it 400s
+   * `request.invalid_query`), so 应用 is refused and the reason is on screen.
+   */
+  const applyCustom = useCallback(() => {
+    if (rangeError !== null || rangePending === null) return;
+    const draftUrl = new URLSearchParams(params);
+    resetPagingAndFolds(draftUrl);
+    draftUrl.set("window", "custom");
+    draftUrl.set("from", rangePending.from);
+    draftUrl.set("to", rangePending.to);
+    setRange(null);
+    setParams(draftUrl, { replace: true, state: locationState ?? null });
+  }, [locationState, params, rangeError, rangePending, setParams]);
+
+  /** audB: 清空区间 — drop the custom range, go back to the 7-day quick window. */
+  const clearCustom = useCallback(() => {
+    setRange(null);
+    setWindow("7d");
+  }, [setWindow]);
 
   const goNext = useCallback(() => {
     if (!list.next) return;
@@ -492,9 +857,9 @@ function AuditEventsSurface(): ReactNode {
   }, [params, setParams]);
 
   const typeGroups = (() => {
-    if (list.phase !== "ready" || list.rows.length === 0) return [];
+    if (list.phase !== "ready" || visibleRows.length === 0) return [];
     const counted = new Map<string, { key: string; label: string; count: number }>();
-    for (const row of list.rows) {
+    for (const row of visibleRows) {
       const key = row.action.raw ?? row.action.label;
       const found = counted.get(key);
       if (found) found.count += 1;
@@ -503,11 +868,13 @@ function AuditEventsSurface(): ReactNode {
     return [...counted.values()].sort((a, b) => b.count - a.count).slice(0, 8);
   })();
 
-  const canExport = list.phase === "ready" && list.rows.length > 0;
+  // aud9: everything on screen and everything exported follows the rows the
+  // person is actually looking at, not the raw page the service returned.
+  const canExport = list.phase === "ready" && visibleRows.length > 0;
 
   const windowLabel = WINDOW_FILTER_CHOICES.find((item) => item.value === windowChoice)?.label ?? "最近 7 天";
 
-  const exportOff = customInvalid || list.phase !== "ready" || list.rows.length === 0;
+  const exportOff = customInvalid || list.phase !== "ready" || visibleRows.length === 0;
   const exportTitle = exportOff
     ? customInvalid
       ? "自定义时间窗不完整，没有可导出的记录"
@@ -520,7 +887,7 @@ function AuditEventsSurface(): ReactNode {
     if (list.phase === "empty") return "这个筛选条件里没有审计事件";
     if (list.phase === "denied") return "审计事件暂不可用";
     if (list.phase === "error") return "审计事件读取失败";
-    return `已显示 ${list.rows.length} 条审计事件（${windowLabel}）${list.next ? "，下面还有更多" : ""}`;
+    return `已显示 ${visibleRows.length} 条审计事件（${windowLabel}）${list.next ? "，下面还有更多" : ""}`;
   })();
 
   const drawer = (() => {
@@ -617,13 +984,28 @@ function AuditEventsSurface(): ReactNode {
   // aud8: one line that states the restored state in words, so 「恢复后的界面
   // 值」 is readable on the screen and assertable from the DOM.
   const restoredLine = [
-    `时间窗：${windowLabel}`,
+    windowChoice === "custom"
+      ? `时间窗：自定义（${beijingInputValue(customFromParam) || "未填"} → ${beijingInputValue(customToParam) || "未填"}）`
+      : `时间窗：${windowLabel}`,
     eventType ? `类型：${eventType}` : "类型：全部",
-    actor ? "操作者：按地址句柄" : "操作者：未筛",
-    resource ? "资源：按地址编号" : "资源：未筛",
+    actor ? "操作者：按句柄筛（服务端）" : "操作者：未筛",
+    resource ? `资源：按编号本地筛（${visibleRows.length}/${list.rows.length}）` : "资源：未筛",
     `第 ${pageNo} 页`,
-    openPreview ? "有一行预览展开" : "无展开行",
+    openPreview ? "有一行展开" : "无展开行",
   ].join(" · ");
+
+  /** aud9: 与 `?detail=`（右侧整条详情）分开的地址语义，映射表在 DONE.md。 */
+  const deepLinkBlock =
+    deepLinkId === null || (list.phase !== "ready" && list.phase !== "empty") ? null : (
+      <AuditEventDeepLink
+        found={deepLinkRow !== undefined}
+        phase={existence.phase}
+        failure={existence.failure}
+        onClear={() => clearFold("preview")}
+        onRetry={existence.reload}
+        onOpen={() => openRow(deepLinkId)}
+      />
+    );
 
   return (
     <div className="flex min-w-0 w-full max-w-full flex-col gap-3" data-testid="agent-v2-page-audit" data-page="audit">
@@ -636,7 +1018,7 @@ function AuditEventsSurface(): ReactNode {
           <Button
             size="sm"
             outlined
-            onClick={() => downloadCsv(list.rows, exportName(windowLabel))}
+            onClick={() => downloadCsv(visibleRows, exportName(windowLabel))}
             disabled={exportOff}
             aria-disabled={exportOff}
             title={exportTitle}
@@ -676,7 +1058,9 @@ function AuditEventsSurface(): ReactNode {
         <Button
           size="sm"
           outlined
-          onClick={() => downloadText(filteredCsvText(list.rows), filteredExportName(windowChoice, "all", "all"))}
+          onClick={() =>
+            downloadText(filteredCsvText(visibleRows), filteredExportName(windowChoice, actor || "all", resource || "all"))
+          }
           disabled={!canExport}
           aria-disabled={!canExport}
           title={canExport ? "导出当前筛选为 CSV（北京时间）" : "当前筛选无事件可导出"}
@@ -685,21 +1069,39 @@ function AuditEventsSurface(): ReactNode {
         >
           导出当前筛选 CSV
         </Button>
-        <span className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud5-export-count">将导出 {list.rows.length} 条</span>
+        <span className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud5-export-count">将导出 {visibleRows.length} 条</span>
       </div>
 
       <AuditTypeSummary open={typesOpen} onToggle={() => setTypesOpen((value) => !value)} groups={typeGroups} total={list.rows.length} />
 
       <AuditFilterBar
         windowChoice={windowChoice}
-        customFrom={customFrom}
-        customTo={customTo}
+        customFrom={rangeDraftFrom}
+        customTo={rangeDraftTo}
+        draftError={rangeError}
+        draftInvalid={rangeError !== null || rangePending === null}
         customInvalid={customInvalid}
         eventType={eventType}
+        actor={actor}
+        resource={resource}
+        actorChoices={actorChoices}
+        resourceChoices={resourceChoices}
         onWindowChange={setWindow}
         onCustomFrom={setCustomFrom}
         onCustomTo={setCustomTo}
+        onApplyCustom={applyCustom}
+        onClearCustom={clearCustom}
         onEventTypeChange={setType}
+        onActorChange={setActor}
+        onResourceChange={setResource}
+      />
+
+      {/* aud9: how far each filter really reaches, right under the controls. */}
+      <AuditFilterScope
+        actor={actor}
+        resource={resource}
+        loaded={list.rows.length}
+        matched={visibleRows.length}
       />
 
       {/* aud8: every piece of reading state above is in the address, so this
@@ -845,21 +1247,53 @@ function AuditEventsSurface(): ReactNode {
           ) : null}
 
           {!customInvalid && list.phase === "empty" ? (
-            <EmptyPanel
-              reason="按现在的筛选条件，这个时间窗里没有审计事件"
-              nextStep="把时间窗放宽一格，或换一种事件类型再看。这个窗口确实没有记录，本身就是筛选后的真实答案——服务不接受不带任何筛选条件的全表扫描，所以这里始终有一个时间窗。"
-              onRefresh={list.reload}
-              testId="aud01-empty"
-            />
+            <>
+              <EmptyPanel
+                reason={
+                  windowChoice === "custom"
+                    ? "该时间段内无事件——这个起止区间里没有审计事件"
+                    : "按现在的筛选条件，这个时间窗里没有审计事件"
+                }
+                nextStep="把时间窗放宽一格，或换一种事件类型再看。这个窗口确实没有记录，本身就是筛选后的真实答案——服务不接受不带任何筛选条件的全表扫描，所以这里始终有一个时间窗。"
+                onRefresh={list.reload}
+                testId="aud01-empty"
+              />
+              {/* audB: the empty answer carries its own way out, named for the
+                  window that produced it. 清空区间 drops the custom range and
+                  re-reads the 7-day quick window (once). */}
+              <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="audB-empty-exit">
+                {windowChoice === "custom" ? "这一段里没有记录。" : "这一档里没有记录。"}
+                <button
+                  type="button"
+                  className="ml-1 underline underline-offset-2"
+                  onClick={clearCustom}
+                  data-testid="audB-empty-clear"
+                >
+                  清空区间，回到最近 7 天
+                </button>
+              </p>
+            </>
           ) : null}
+
+          {/* aud9: the deep-link verdict sits with the list it speaks about. */}
+          {!customInvalid ? deepLinkBlock : null}
 
           {!customInvalid && list.phase === "ready" ? (
             <>
-              {list.rows.map((row) => (
-                <div
-                  className="flex min-w-0 flex-col gap-1"
+              {resource && list.rows.length > 0 && visibleRows.length === 0 ? (
+                <p className="min-w-0 break-words text-xs text-warning" data-testid="aud9-local-empty">
+                  这一页里没有对得上的记录；本页只在已加载的 {list.rows.length} 条里做本地匹配。把时间窗放宽、换一页，或清除资源这一条再看。
+                </p>
+              ) : null}
+
+              {visibleRows.map((row) => (
+                <AuditRowKeyboard
                   key={row.key}
-                  onKeyDown={(event) => { if (event.key === "Escape") writeParam("preview", null); }}
+                  row={row}
+                  open={openPreview === row.key}
+                  deepLink={row.key === deepLinkId || row.rawId === deepLinkId}
+                  onToggle={() => setFold("preview", row.key)}
+                  onClose={() => clearFold("preview")}
                 >
                   <button
                     type="button"
@@ -868,6 +1302,14 @@ function AuditEventsSurface(): ReactNode {
                     aria-controls={"aud6-preview-" + row.key}
                     data-testid={"aud6-toggle-" + row.key}
                     onClick={() => setFold("preview", row.key)}
+                    // audA: Enter on the row's own handle opens the preview.
+                    // preventDefault keeps the browser's synthesized click from
+                    // toggling the same fold a second time.
+                    onKeyDown={(event) => {
+                      if (event.key !== "Enter") return;
+                      event.preventDefault();
+                      setFold("preview", row.key);
+                    }}
                   >
                     {openPreview === row.key ? "收起预览" : "预览这一条"}
                   </button>
@@ -882,7 +1324,7 @@ function AuditEventsSurface(): ReactNode {
                   {openPreview === row.key ? (
                     <AuditRowPreview row={row} testId={"aud6-preview-" + row.key} detailHref={detailHref} />
                   ) : null}
-                </div>
+                </AuditRowKeyboard>
               ))}
 
               {list.unreadable > 0 ? (

@@ -326,7 +326,7 @@ describe("pending queue states", () => {
 
 describe("decision writes", () => {
   const openTicket = async () => {
-    const opener = document.querySelector("[data-testid='apr5-row-ap_9F3A1111'] button") as HTMLButtonElement;
+    const opener = document.querySelector("[data-testid='apr5-row-ap_9F3A1111'] button:not([data-testid^='apv9'])") as HTMLButtonElement;
     await act(async () => {
       opener.click();
     });
@@ -543,5 +543,63 @@ describe("paging", () => {
     expect(text()).toContain("后续记录没有加载成功");
     expect(text()).toContain("请求编号：pg-502");
     expect(text()).toContain("对外发送本周报表");
+  });
+});
+
+describe("R59 pending queue search (apv8-*)", () => {
+  it("carries the same local search box with a stated scope and no extra fetches", async () => {
+    await mount(queue(), "/approvals?tab=pending");
+    expect(document.querySelector('[data-testid="apv8-search"]')).toBeTruthy();
+    expect(document.querySelector('[data-testid="apv8-scope-note"]')?.textContent).toContain("条内搜索");
+    const box = document.querySelector('[data-testid="apv8-search"]') as HTMLInputElement;
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+    const before = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      setter.call(box, "本周");
+      box.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(api.fetchJSON.mock.calls.length).toBe(before);
+    expect(document.querySelectorAll('[data-testid^="apr5-row-ap"]').length).toBeGreaterThan(0);
+    await act(async () => {
+      setter.call(box, "nomatch-xyz");
+      box.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(api.fetchJSON.mock.calls.length).toBe(before);
+    expect(document.querySelector('[data-testid="apv8-search-empty"]')?.textContent).toContain("没有匹配的审批");
+    const urls = api.fetchJSON.mock.calls.map((c) => String(c[0]));
+    expect(urls.some((u) => u.includes("q=nomatch"))).toBe(false); // 关键字从不进请求
+  });
+
+  // R60: 行内预览与历史页同构——展开只读已加载行，不发请求、不改 URL。
+  it("R60: pending rows expand an inline preview without any extra request", async () => {
+    await mount(queue());
+    const calls = api.fetchJSON.mock.calls.length;
+    const toggle = document.querySelector<HTMLButtonElement>('[data-testid="apv9-toggle-ap_9F3A1111"]');
+    expect(toggle).toBeTruthy();
+    await act(async () => {
+      toggle.click();
+    });
+    expect(api.fetchJSON.mock.calls.length).toBe(calls);
+    const preview = document.querySelector('[data-testid="apv9-preview-ap_9F3A1111"]');
+    expect(preview?.textContent).toContain("对外发送本周报表");
+    expect(preview?.textContent).not.toContain("human:");
+    expect(preview?.textContent).not.toContain("emp_");
+  });
+
+})
+
+describe("R61 trail copy on the pending drawer", () => {
+  it("mounts apd8-copy in the shared trail without touching data", async () => {
+    await mount(queue());
+    const before = api.fetchJSON.mock.calls.length;
+    const card = document.querySelector("[data-testid='apr5-row-ap_9F3A1111']") as HTMLElement | null;
+    expect(card, "row card").toBeTruthy();
+    await act(async () => {
+      card!.click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='apd6-trail']") !== null, "trail mounted");
+    expect(document.querySelector("[data-testid='apd8-copy']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='apd8-copy-status']")).toBeTruthy();
+    expect(api.fetchJSON.mock.calls.length).toBeGreaterThanOrEqual(before);
   });
 });

@@ -1,21 +1,19 @@
 import { useState } from "react";
 import { Card, CardContent } from "@nous-research/ui";
 import {
+  SOURCE_STATUS_LABEL as STATUS_LABEL,
   SYS6_GAP,
   toggleSourceMatrix,
   useSourceMatrix,
-  type SourceStatus,
 } from "./sourceReads";
+import { csvRows, downloadCsv, exportFilename, toCsv, toPlainText } from "./sourceMatrixCsv";
 
-const STATUS_LABEL: Record<SourceStatus, string> = {
-  idle: "未读取",
-  loading: "读取中",
-  ok: "成功",
-  degraded: "降级",
-  failed: "失败",
-  unwired: "读口未接入",
-  skipped: "预览未读取",
-};
+const ASOF_CRITERION = "判据：只取 payload 顶层 ISO，缺失或非 ISO 显示「—」，不使用本机时钟";
+
+function asOfTitle(row: { asOf: string | null; asOfIso: string | null; asOfSource?: string | null; asOfReason: string | null }): string {
+  if (!row.asOfIso) return `${row.asOfReason ?? "采集时刻未知"}；${ASOF_CRITERION}`;
+  return `asOf 原文：${row.asOfIso} · 换算北京时间：${row.asOf ?? "—"} · 来源：${row.asOfSource ?? "未提供"} · ${ASOF_CRITERION}`;
+}
 
 function CopyRid({ id, testid }: { id: string; testid: string }) {
   const [copied, setCopied] = useState(false);
@@ -48,6 +46,26 @@ export function SourceMatrix() {
     `读口未接入 ${counts.unwired ?? 0}`,
   ].join(" · ");
 
+  const exportRows = csvRows(rows);
+  const exportDisabled = exportRows.length === 0;
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
+  const copyText = toPlainText(rows);
+  const copyDisabled = rows.length === 0;
+
+  async function copyMatrix() {
+    if (copyDisabled) return;
+    if (!navigator.clipboard?.writeText) {
+      setCopyState("failed");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(copyText);
+      setCopyState("copied");
+    } catch {
+      setCopyState("failed");
+    }
+  }
+
   return (
     <Card data-testid="sys6-sources">
       <CardContent className="space-y-2 p-4">
@@ -65,12 +83,53 @@ export function SourceMatrix() {
           </button>
         </div>
         <p className="sys6-note">数值来自本页已经发生的读取，展开或收起不会再发请求；展开状态不写进网址。</p>
+        <div className="sys7-actions">
+          <button
+            type="button"
+            className="sys7-export"
+            data-testid="sys7-export"
+            disabled={exportDisabled}
+            title={exportDisabled ? "当前没有可导出的读口行" : "导出当前矩阵；不会再发请求"}
+            onClick={() => { downloadCsv(exportFilename(), toCsv(exportRows)); }}
+          >
+            导出 CSV
+          </button>
+          <button
+            type="button"
+            className="sys7-export sys10-copy"
+            data-testid="sys10-copy"
+            disabled={copyDisabled}
+            title={copyDisabled ? "当前没有可复制的读口行" : "复制当前矩阵为纯文本；不会再发请求"}
+            onClick={() => { void copyMatrix(); }}
+          >
+            复制矩阵
+          </button>
+          <span className="sys10-status" data-testid="sys10-copy-status" aria-live="polite">
+            {copyState === "copied" ? "已复制" : copyState === "failed" ? "复制失败，已展开手动复制" : ""}
+          </span>
+          <span className="sys7-count" data-testid="sys7-export-count">{exportRows.length} 行</span>
+          <span className="sys7-note">导出与屏上矩阵同源：姓名、路径、人话状态、耗时、响应顶层 ISO 采集时刻；缺失留空，不补 0，也不用本机时钟。</span>
+        </div>
+        {copyState === "failed" ? (
+          <textarea
+            className="sys10-fallback"
+            data-testid="sys10-fallback"
+            aria-label="手动复制矩阵文本"
+            readOnly
+            rows={Math.min(8, rows.length + 2)}
+            value={copyText}
+          />
+        ) : null}
         {expanded ? (
           <div className="sys6-scroll">
             <table className="sys6-table" data-testid="sys6-table">
               <thead>
                 <tr>
-                  <th>口径名</th><th>实际请求路径</th><th>本次状态</th><th>响应耗时</th><th>采集时刻</th>
+                  <th title="读口的中文口径名">口径名</th>
+                  <th title="本次实际发出的请求路径">实际请求路径</th>
+                  <th title="本次读取的结果；读口未接入时给出申请入口">本次状态</th>
+                  <th title="本次请求耗时；失败或未读取时留空">响应耗时</th>
+                  <th title="健康清单行取 /api/health 响应顶层 asOf，与服务列表的“最近检查时刻”同值；其余三行各取自己探针响应的顶层 asOf，互不替代。">采集时刻</th>
                 </tr>
               </thead>
               <tbody>
@@ -78,7 +137,26 @@ export function SourceMatrix() {
                   const rid = row.status === "failed" ? row.requestId : null;
                   return (
                     <tr key={row.id} data-testid={`sys6-row-${row.id}`} data-status={row.status}>
-                      <td data-testid={`sys6-name-${row.id}`}>{row.label}</td>
+                      <td>
+                        <span data-testid={`sys6-name-${row.id}`}>{row.label}</span>
+                        {row.href ? (
+                          <a
+                            className="sys9-src-link"
+                            href={row.href}
+                            data-testid={`sys9-src-link-${row.id}`}
+                          >
+                            打开对应页面
+                          </a>
+                        ) : (
+                          <span
+                            className="sys9-src-nolink"
+                            data-testid={`sys9-src-nolink-${row.id}`}
+                            title="这个探针只在本页内运行，没有独立页面可跳转；不造死链。"
+                          >
+                            该读口无对应页面
+                          </span>
+                        )}
+                      </td>
                       <td data-testid={`sys6-path-${row.id}`} title={row.path}>{row.path}</td>
                       <td
                         data-testid={`sys6-status-${row.id}`}
@@ -99,9 +177,9 @@ export function SourceMatrix() {
                       </td>
                       <td
                         data-testid={`sys6-asof-${row.id}`}
-                        title={row.asOfReason ?? undefined}
+                        title={asOfTitle(row)}
                       >
-                        {row.asOf ?? "—"}
+                        <span data-testid={`sys8-asof-${row.id}`}>{row.asOf ?? "—"}</span>
                       </td>
                     </tr>
                   );
@@ -110,6 +188,9 @@ export function SourceMatrix() {
             </table>
           </div>
         ) : null}
+        <p className="sys8-same-source-note" data-testid="sys8-same-source-note">
+          「最近检查时刻」与「采集时刻」：健康清单行和矩阵第一行同源，都取 <code>/api/health</code> 响应顶层 asOf（同一 ISO 值，同一北京时间到分呈现）；其余三行是各自探针响应的顶层 asOf，不与健康清单互相代替。
+        </p>
         <p className="sys6-foot">
           采集时刻只取响应顶层 ISO 的 asOf；缺失或格式不符显示「—」，原因在悬停说明里，绝不用本机时钟补。
         </p>
