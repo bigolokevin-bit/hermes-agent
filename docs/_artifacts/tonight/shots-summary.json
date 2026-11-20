@@ -9,193 +9,197 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 1797,
-    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 北京时间 2026-11-20 19:03 近 24 小时 近 7 天 近",
+    "textLen": 1109,
+    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 近 24 小时 近 7 天 近 14 天 近 30 天 刷",
     "hasMainEl": true,
     "ok": true
   },
   "distinctMainHeads": 24,
-  "routesWithEmptyMain": [],
-  "routesWithoutMainEl": [],
+  "routesWithEmptyMain": [
+    "#/capabilities?tab=channels"
+  ],
+  "routesWithoutMainEl": [
+    "#/capabilities?tab=channels"
+  ],
   "mainCharsByRoute": [
     {
       "route": "#/access",
       "viewport": "1440",
-      "chars": 194,
+      "chars": 213,
       "hasMainEl": true
     },
     {
       "route": "#/access",
       "viewport": "375",
-      "chars": 194,
+      "chars": 213,
       "hasMainEl": true
     },
     {
       "route": "#/approvals",
       "viewport": "1440",
-      "chars": 889,
+      "chars": 721,
       "hasMainEl": true
     },
     {
       "route": "#/approvals",
       "viewport": "375",
-      "chars": 889,
+      "chars": 721,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=history",
       "viewport": "1440",
-      "chars": 2021,
+      "chars": 753,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=history",
       "viewport": "375",
-      "chars": 2021,
+      "chars": 753,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=mine",
       "viewport": "1440",
-      "chars": 889,
+      "chars": 721,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=mine",
       "viewport": "375",
-      "chars": 889,
+      "chars": 721,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=mine",
       "viewport": "1440",
-      "chars": 889,
+      "chars": 721,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=mine",
       "viewport": "375",
-      "chars": 889,
+      "chars": 721,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=release",
       "viewport": "1440",
-      "chars": 889,
+      "chars": 721,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=release",
       "viewport": "375",
-      "chars": 889,
+      "chars": 721,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=policy",
       "viewport": "1440",
-      "chars": 889,
+      "chars": 721,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=policy",
       "viewport": "375",
-      "chars": 889,
+      "chars": 721,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=release",
       "viewport": "1440",
-      "chars": 889,
+      "chars": 721,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=release",
       "viewport": "375",
-      "chars": 889,
+      "chars": 721,
       "hasMainEl": true
     },
     {
       "route": "#/audit",
       "viewport": "1440",
-      "chars": 7644,
+      "chars": 673,
       "hasMainEl": true
     },
     {
       "route": "#/audit",
       "viewport": "375",
-      "chars": 7644,
+      "chars": 673,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities",
       "viewport": "1440",
-      "chars": 339,
+      "chars": 364,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities",
       "viewport": "375",
-      "chars": 339,
+      "chars": 364,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "1440",
-      "chars": 1032,
+      "chars": 113,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "375",
-      "chars": 1032,
-      "hasMainEl": true
+      "chars": 0,
+      "hasMainEl": false
     },
     {
       "route": "#/capabilities?tab=models",
       "viewport": "1440",
-      "chars": 104,
+      "chars": 178,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=models",
       "viewport": "375",
-      "chars": 517,
+      "chars": 178,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=tools",
       "viewport": "1440",
-      "chars": 405,
+      "chars": 390,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=tools",
       "viewport": "375",
-      "chars": 405,
+      "chars": 390,
       "hasMainEl": true
     },
     {
       "route": "#/employees",
       "viewport": "1440",
-      "chars": 570,
+      "chars": 318,
       "hasMainEl": true
     },
     {
       "route": "#/employees",
       "viewport": "375",
-      "chars": 544,
+      "chars": 318,
       "hasMainEl": true
     },
     {
       "route": "#/employees?tab=matrix",
       "viewport": "1440",
-      "chars": 191,
+      "chars": 210,
       "hasMainEl": true
     },
     {
       "route": "#/employees?tab=matrix",
       "viewport": "375",
-      "chars": 191,
+      "chars": 210,
       "hasMainEl": true
     },
     {
@@ -243,7 +247,7 @@
     {
       "route": "#/employees/:employeeId?zone=runs",
       "viewport": "375",
-      "chars": 66,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -261,181 +265,181 @@
     {
       "route": "#/identity",
       "viewport": "1440",
-      "chars": 394,
+      "chars": 163,
       "hasMainEl": true
     },
     {
       "route": "#/identity",
       "viewport": "375",
-      "chars": 377,
+      "chars": 163,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=admins",
       "viewport": "1440",
-      "chars": 394,
+      "chars": 163,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=admins",
       "viewport": "375",
-      "chars": 377,
+      "chars": 163,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=binding",
       "viewport": "1440",
-      "chars": 394,
+      "chars": 163,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=binding",
       "viewport": "375",
-      "chars": 377,
+      "chars": 163,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=checks",
       "viewport": "1440",
-      "chars": 394,
+      "chars": 163,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=checks",
       "viewport": "375",
-      "chars": 377,
+      "chars": 163,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=departments",
       "viewport": "1440",
-      "chars": 151,
+      "chars": 147,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=departments",
       "viewport": "375",
-      "chars": 151,
+      "chars": 147,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=people&view=admins",
       "viewport": "1440",
-      "chars": 394,
+      "chars": 163,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=people&view=admins",
       "viewport": "375",
-      "chars": 377,
+      "chars": 163,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=roles",
       "viewport": "1440",
-      "chars": 194,
+      "chars": 213,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=roles",
       "viewport": "375",
-      "chars": 194,
+      "chars": 213,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=tenant",
       "viewport": "1440",
-      "chars": 394,
+      "chars": 163,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=tenant",
       "viewport": "375",
-      "chars": 377,
+      "chars": 163,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge",
       "viewport": "1440",
-      "chars": 618,
+      "chars": 549,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge",
       "viewport": "375",
-      "chars": 597,
+      "chars": 549,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=citations",
       "viewport": "1440",
-      "chars": 717,
+      "chars": 477,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=citations",
       "viewport": "375",
-      "chars": 696,
+      "chars": 477,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=evidence",
       "viewport": "1440",
-      "chars": 717,
+      "chars": 477,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=evidence",
       "viewport": "375",
-      "chars": 696,
+      "chars": 477,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=ingest",
       "viewport": "1440",
-      "chars": 396,
+      "chars": 553,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=ingest",
       "viewport": "375",
-      "chars": 910,
+      "chars": 553,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=retrieval",
       "viewport": "1440",
-      "chars": 766,
+      "chars": 508,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=retrieval",
       "viewport": "375",
-      "chars": 745,
+      "chars": 508,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=scope",
       "viewport": "1440",
-      "chars": 618,
+      "chars": 549,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=scope",
       "viewport": "375",
-      "chars": 597,
+      "chars": 549,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=sources",
       "viewport": "1440",
-      "chars": 949,
+      "chars": 553,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=sources",
       "viewport": "375",
-      "chars": 910,
+      "chars": 553,
       "hasMainEl": true
     },
     {
@@ -453,190 +457,188 @@
     {
       "route": "#/org",
       "viewport": "1440",
-      "chars": 394,
+      "chars": 163,
       "hasMainEl": true
     },
     {
       "route": "#/org",
       "viewport": "375",
-      "chars": 377,
+      "chars": 163,
       "hasMainEl": true
     },
     {
       "route": "#/overview",
       "viewport": "1440",
-      "chars": 1797,
+      "chars": 1109,
       "hasMainEl": true
     },
     {
       "route": "#/overview",
       "viewport": "375",
-      "chars": 1797,
+      "chars": 1109,
       "hasMainEl": true
     },
     {
       "route": "#/overview?tab=usage",
       "viewport": "1440",
-      "chars": 369,
+      "chars": 136,
       "hasMainEl": true
     },
     {
       "route": "#/overview?tab=usage",
       "viewport": "375",
-      "chars": 369,
+      "chars": 136,
       "hasMainEl": true
     },
     {
       "route": "#/sessions",
       "viewport": "1440",
-      "chars": 106,
+      "chars": 1,
       "hasMainEl": true
     },
     {
       "route": "#/sessions",
       "viewport": "375",
-      "chars": 106,
+      "chars": 1,
       "hasMainEl": true
     },
     {
       "route": "#/system",
       "viewport": "1440",
-      "chars": 1186,
+      "chars": 948,
       "hasMainEl": true
     },
     {
       "route": "#/system",
       "viewport": "375",
-      "chars": 1197,
+      "chars": 948,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=defaults",
       "viewport": "1440",
-      "chars": 236,
+      "chars": 125,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=defaults",
       "viewport": "375",
-      "chars": 236,
+      "chars": 125,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events",
       "viewport": "1440",
-      "chars": 7644,
+      "chars": 673,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events",
       "viewport": "375",
-      "chars": 7644,
+      "chars": 673,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "1440",
-      "chars": 7644,
+      "chars": 673,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "375",
-      "chars": 7644,
+      "chars": 673,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=retention",
       "viewport": "1440",
-      "chars": 7644,
+      "chars": 673,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=retention",
       "viewport": "375",
-      "chars": 7644,
+      "chars": 673,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=security",
       "viewport": "1440",
-      "chars": 857,
+      "chars": 317,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=security",
       "viewport": "375",
-      "chars": 837,
+      "chars": 317,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=version",
       "viewport": "1440",
-      "chars": 651,
+      "chars": 596,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=version",
       "viewport": "375",
-      "chars": 651,
+      "chars": 596,
       "hasMainEl": true
     },
     {
       "route": "#/work",
       "viewport": "1440",
-      "chars": 1956,
+      "chars": 281,
       "hasMainEl": true
     },
     {
       "route": "#/work",
       "viewport": "375",
-      "chars": 1956,
+      "chars": 281,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=board&view=cron",
       "viewport": "1440",
-      "chars": 1956,
+      "chars": 281,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=board&view=cron",
       "viewport": "375",
-      "chars": 1956,
+      "chars": 281,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=cron",
       "viewport": "1440",
-      "chars": 1956,
+      "chars": 281,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=cron",
       "viewport": "375",
-      "chars": 1956,
+      "chars": 281,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=runs",
       "viewport": "1440",
-      "chars": 1767,
+      "chars": 483,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=runs",
       "viewport": "375",
-      "chars": 1739,
+      "chars": 483,
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 1,
-  "consoleErrorRoutesObservedByShots": [
-    "#/capabilities?tab=tools"
-  ],
+  "consoleErrorsObservedByShots": 0,
+  "consoleErrorRoutesObservedByShots": [],
   "ceAuthority": "login-state",
-  "routesWithEnvOnlyConsoleErrors": 25,
+  "routesWithEnvOnlyConsoleErrors": 51,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
   "overflowing": [],
   "driver": {
@@ -644,11 +646,12 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "18ec9cfb",
+  "headHash": "1bc3a760",
   "exitCode": 0,
-  "entry": "assets/index-Boj2h4Jf.js",
-  "entrySha256": "4c2b53eac434b6424d8433bfd8def5d410c30d6fdc9fbf1c2ffa9b6d6b8cd40e",
-  "entryBytes": 167498,
-  "servedEntryBefore": "index-Boj2h4Jf.js",
-  "servedEntryAfter": "index-Boj2h4Jf.js"
+  "entry": "assets/index-DGa9lwCA.js",
+  "entrySha256": "491634556c9faf2d517ec314b26c3cf8ef3148e3f60f00e906ff5edb66d8f993",
+  "entryBytes": 170969,
+  "servedEntryBefore": "index-DGa9lwCA.js",
+  "servedEntryAfter": "index-DGa9lwCA.js",
+  "note": "首跑 exit=1（1 条 fonts 等待超时）；取证脚本复位后同代次重跑 exit=0 / 102-102 / failures=[]（/tmp/wave37-exits.txt SHOTS-R2-exit=0）"
 }

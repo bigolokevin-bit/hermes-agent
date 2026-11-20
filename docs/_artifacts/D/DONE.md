@@ -1212,3 +1212,11 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 读数（与上代 76090480 差如实）：ia {51,23,1,8}；fake v=[]；reuse v=0 exempt=1；quad 20/20；crawl-anon 0/0/0 routesCE=51(401 归因)；crawl-auth 0/0/0 **routesCE=23（上代 26，-3 好转）**；redirects=24 notes；shots auth 102/102 failures=[] obs=1（#/capabilities?tab=tools 与前两代同型，R52 信封方向如实不入判据）**distinct=24（上代 23，+1 与 CSS 换代样式面一致）** envOnly=25；anon aux=true 102/102 obs=0 distinct=23 envOnly=51；三键两 summary 全值（4c2b53ea…/167498，servedEntryBefore==After=index-Boj2h4Jf.js，ceAuthority=login-state）。
 - R52 附件复交：远端 lane/L7-r32-models-pricing tip=603a23e9cfb4（ls-remote 现证）；pytest『388 passed in 9.17s』exit=0。
 - 环境：9122 v4_proxy 95667/caddy 28034/BFF 12048 未动；web/src 未碰；零凭据明文；76090480 已盖不重做、无 amend/force。
+
+## 一一四轮 · 波次代次九件重章 @ 1bc3a760（entry DGa9lwCA + CSS 换代，2026-11-20 20:5x-21:2x）
+
+- 代次：wave-37 六笔并入（appr d418e555/gov 703af36d/ui1 4da22655/ui2 b8d85cc2/aud 35ccae4e/design e3c95a25），LOCAL=ls-remote=1bc3a760eef9 ANCH=0。双换代：entry assets/index-DGa9lwCA.js 170969B sha256 491634556c9faf2d…d8f993 == 磁盘 == 9122 served；CSS assets/index-B-ayPYtL.css 135416B。R60 骨架原判 c37e6d49 已由 ACC 追加「### R60 代次更正」改锚本代（qa-verify 859b982d，signer=unsigned 保持）。
+- **shots 复位过程如实**：c37e6d49 与 1bc3a760 首轮主腿均 1 条 `#/capabilities?tab=channels`@1440 `waiting for fonts` 截图超时（CDP 兜底在死 target 上再报 Not attached）。取证脚本经三轮复位（只改 docs/_artifacts/tonight/shots.mjs，不碰产品）：fonts.ready+45s → +重试 → snapCdp 改**新 context+新 page 复导再截（screenshot 20s 失败即 CDP captureScreenshot）**后 `SHOTS-R2-exit=0`，主腿 **ok=true 102/102 failures=[]**（summary.exitCode 由 stamp 从首跑 exits 表回填 1，已手动纠 0 并留注记）。
+- 九件 9/9 ok=true exit=0 盖 1bc3a760：ia {51,23,1,8}；fake v=[]；reuse v=0 exempt=1；quad 20/20；crawl-anon 0/0/0 routesCE=51(401 归因)；**crawl-auth 0/0/0 routesCE=51（上代 26/29 区间，本代 auth 腿观测面变化大——design 车道新样式页 auth 态 console 错误方向，如实登记不入判据，ok 按三判据不受影响）**；redirects=24 notes；shots auth obs=0 obsR=[] distinct=24 envOnly=51（envOnly 25→51 同因）；anon aux=true obs=0 distinct=23 envOnly=51；三键两 summary 全值 49163455…/170969，served before==after 未漂。
+- R52 附件复交：远端 tip=603a23e9cfb4、pytest『388 passed in 9.17s』exit=0。
+- 环境：9122 v4_proxy 95667/caddy 28034/BFF 12048 未动；web/src 未碰；零凭据明文；c37e6d49 未盖章系卡面代次更正所致的正常留档，禁项全守。

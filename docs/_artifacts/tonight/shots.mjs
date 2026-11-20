@@ -346,9 +346,51 @@ for (const row of target) {
 
     const file = path.join(SHOTS, `${slugOf(row.hash)}-${vp.name}.png`);
     let bytes = 0;
+    // R60/wave-37 复位腿（卡面允许只改脚本、不碰产品）：
+    // snapOnce = 等 document.fonts.ready（失败不阻塞）+ screenshot 45s；
+    // 失败重试一次；仍失败走 CDP Page.captureScreenshot 兜底——先回灌一次
+    // 导航让 target 复活跃，再做 CDP 捕获（跳过 Playwright 的 waiting-for-fonts
+    // 前置等待，直取当前渲染帧；font-display:swap 下与实时所见一致）。
+    const snapOnce = async () => {
+      try {
+        await page.evaluate(() => document.fonts.ready.then(() => true)).catch(() => false);
+      } catch {}
+      await page.screenshot({ path: file, fullPage: false, timeout: 45_000 });
+      return statSync(file).size;
+    };
+    const snapCdp = async () => {
+      // 同 context 的 target 可能已崩死：整腿换新 context + 新 page 复导再截，
+      // screenshot 20s 失败即 CDP captureScreenshot 兜底（无 fonts 前置等待）。
+      const h = row.hash.startsWith('#') ? row.hash : `#${row.hash}`;
+      const ctx2 = await browser.newContext({ viewport: { width: vp.width, height: vp.height }, ...(AUTH_STATE ? { storageState: AUTH_STATE } : {}) });
+      if (!AUTH_STATE) await ctx2.addInitScript(GATED_FLAG_INIT);
+      const p2 = await ctx2.newPage();
+      try {
+        await p2.goto(`${BASE}/${h}`, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+        await p2.waitForTimeout(2_000);
+        try {
+          await p2.screenshot({ path: file, fullPage: false, timeout: 20_000 });
+        } catch {
+          const cdp = await p2.context().newCDPSession(p2);
+          const { data } = await cdp.send('Page.captureScreenshot', { format: 'png' });
+          await cdp.detach().catch(() => {});
+          writeFileSync(file, Buffer.from(data, 'base64'));
+        }
+        return statSync(file).size;
+      } finally {
+        await ctx2.close().catch(() => {});
+      }
+    };
     try {
-      await page.screenshot({ path: file, fullPage: false });
-      bytes = statSync(file).size;
+      try {
+        bytes = await snapOnce();
+      } catch (e1) {
+        try {
+          bytes = await snapOnce();
+        } catch (e2) {
+          bytes = await snapCdp();
+        }
+      }
       pngCount += 1;
       if (bytes > MAX_BYTES) oversize.push({ file: path.relative(OUT_DIR, file), bytes });
     } catch (e) {
