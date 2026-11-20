@@ -3103,3 +3103,60 @@ tab 序在场）。
 边界：只改 web/src/modules/knowledge/**（页面两表+控件、测试追加）与本证据；显式路径 add；
 无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
 「feat(console): knowledge row copy in lists」（父 = merge `db945fc5`）。
+
+# KNW5 追加 R138：空态与清筛选出口护栏（纯测试单）（2026-11-20 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `6e6ebf32`
+（Already up to date，R132 链上）。零产品文件改动。
+
+## 复用边界（先 grep 后写）
+
+```text
+主测 knN 段（KnowledgeModulePage.test.tsx:3395-3449）已锁：space-docs 404 的
+unavailable 态/rid/knF-copy disabled/knF-lines「—」/返回出口；kn-gates 段已锁六面
+marker data-enabled/data-reason 与在场句；R76/R108/R131 已锁 doc-search no-match 句、
+cap 三态不渲染与三值。派工两名实不符照录：kn-list-copy 不存在（详情=knF-copy、
+检索面=knG-copy）；导出族不存在，仅 data-export="absent"（:1297/:1630/:2630 +
+copyGates NO_EXPORT），本单只复证缺席不新增控件。
+本文件新增：①无匹配空态的「无裸 0 计数」全文正则 + data-knn-empty 属性 + 检索面
+cap 不渲染（按实结构，不搬句）；②knF-copy 四态 disabled 的完整禁用句逐字锁 +
+「点击不进剪贴板、fetch 零增量」行为面 + 真实 0 行与读口故障句区分 + gate absent 复证；
+③清空出口恢复后 kn-row-copy-<i> 数量==可见行==knG-copy 数据行（R132 新控件的行数
+同源首锁，编号 0 起断言）；④ghost space 深链两路（200 空/404）：地址字节不变、
+kn-space-preview*/kn-doc-preview*/kn-row-copy-space* 全 0、cap 不渲染、复制锁死。
+```
+
+## 关键读数
+
+```text
+②四态 title 逐字：error=「这次没有读到文档列表，没有可复制的内容。」；
+  unwired≡denied=「文档列表没读到（读口未接入或没有权限），没有可复制的内容。」；
+  ready-0 行=「接口回答里没有文档：这份列表是空的。不编行，也就没有可复制的清单。」
+  （zeroTitle 句，经 disabled+空态句在场复证）；三态 disabled 点击 writeText 0 调用、
+  fetch 计数不动。
+①doc-search no-match：句含「没有匹配的文档」「2 条」「不代表全库没有」语境在场，
+  全文无 /0\s*(条|个|篇)/；清空出口在场。
+③清空后 visible=2 == kn-row-copy 按钮数 2 == knG 复制数据行 2（首钮 testid kn-row-copy-0）。
+④两路 loc 逐字 "?tab=spaces&panel=spaces&space=sp_ghost"；预览/行复制/上限句全不渲染；
+  SPACES 读取全程 ≤2（每路 render 一次，深链不额外多发）。
+过程记录：测试自身两处错（q() 误传全选择器、②初猜「当前不可复制」前缀与实句不符——
+  用必败断言逼出三态真值后逐字锁），产品零改动。
+```
+
+## 验证尾行（R138）
+```text
+$ npx vitest run src/modules/knowledge   → 8 files / 105 tests passed（基线 101 + 护栏 4）
+$ npx vitest run                         → 197 files / 2547 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r138-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn3/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort/kn-gates/kn-doc-copy*/kn-row-copy*/
+kn3-page-cap/knE-page-* 全族通过。
+```
+未测如实：带登录会话真实空态屏（ghost space 真实读口返回形状未知——mock 只出 200 空与
+404 两态，均地址不改写、族不渲染）；ready-0 行态 knF-copy 的完整禁用句未在断言中逐字锁
+（该态走 zeroTitle 分支，断言以 disabled+空态句+点击零写代证）。
+边界：只新增 web/src/modules/knowledge/knowledge.empty.test.tsx 与本证据；显式路径 add；
+无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「test(console): knowledge empty state guards」。
