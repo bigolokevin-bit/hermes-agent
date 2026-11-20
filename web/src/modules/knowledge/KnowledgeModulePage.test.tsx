@@ -3289,4 +3289,111 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(String(writeGhost.mock.calls[0][0])).not.toContain("zz9");
     expect(fetchMock.mock.calls.length).toBe(urlsGhost); // 复制动作本身 0 新请求
   });
+
+  it("keeps a shared source-and-freshness ledger (knM-source-*): collapsed by default, zero extra reads, six-alias asOf only", async () => {
+    const { resetKnwSources } = await import("./sourceReads");
+    resetKnwSources();
+    const SPACES_BODY = {
+      asOf: "2026-11-19T08:00:00Z",
+      items: [{ spaceId: "sp_hr", name: "人事制度空间", docCount: 2, status: "synced" }],
+    };
+    const SEARCH_NO_STAMP = {
+      items: [{ documentId: "d1", fileName: "员工手册.pdf" }],
+    };
+    const docsPath = docsUrlFor("sp_hr");
+    fetchMock.mockClear();
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SPACES_BODY);
+      if (url === DOCUMENTS_PLAIN) return Promise.resolve(SEARCH_NO_STAMP);
+      return fail(404, "这个数据接口还没有接入。", "rid-knm-gone");
+    });
+    await render("/knowledge?tab=spaces");
+    await act(async () => {});
+    const urlsSettled = fetchMock.mock.calls.length;
+
+    // 默认收起：台账在，表不在；展开态不进 URL
+    expect(byTestid("knM-source-panel")).toBeTruthy();
+    expect(byTestid("knM-source-table")).toBeNull();
+    expect(attr("knM-source-toggle", "aria-expanded")).toBe("false");
+
+    // 展开：零新请求
+    await click("knM-source-toggle");
+    expect(byTestid("knM-source-table")).toBeTruthy();
+    expect(attr("knM-source-toggle", "aria-expanded")).toBe("true");
+    expect(fetchMock.mock.calls.length).toBe(urlsSettled);
+    expect((byTestid("loc")?.textContent ?? "")).not.toContain("expand");
+
+    // spaces 行：正常 + 顶层 ISO 换算北京时间（08:00Z → 16:00，只由 payload 推出，非本机时钟）；原文与别名只进 title
+    expect(attr("knM-source-row-spaces", "data-knm-status")).toBe("ok");
+    expect((byTestid("knM-source-asof-spaces")?.textContent ?? "")).toBe("2026-11-19 16:00");
+    const spacesTitle = byTestid("knM-source-asof-spaces")?.getAttribute("title") ?? "";
+    expect(spacesTitle).toContain("asOf 原文：2026-11-19T08:00:00Z");
+    expect(spacesTitle).toContain("字段：asOf");
+    expect((byTestid("knM-source-status-spaces")?.textContent ?? "").trim()).toBe("正常");
+    expect((byTestid("knM-source-path-spaces")?.textContent ?? "")).toBe(SPACES);
+
+    // doc-search 行：读到数据但没有顶层 ISO → 降级，「—」+六别名原因在 title（行内时间不算顶层事实）
+    expect(attr("knM-source-row-doc-search", "data-knm-status")).toBe("degraded");
+    expect((byTestid("knM-source-asof-doc-search")?.textContent ?? "")).toBe("—");
+    expect((byTestid("knM-source-asof-doc-search")?.getAttribute("title") ?? "")).toContain("六个别名");
+    expect((byTestid("knM-source-status-doc-search")?.textContent ?? "").trim()).toBe("降级");
+    expect((byTestid("knM-source-reason-doc-search")?.textContent ?? "")).toContain("新鲜度只能降级标注");
+
+    // space-docs 行：还没下钻 → 未读取
+    expect(attr("knM-source-row-space-docs", "data-knm-status")).toBe("idle");
+    expect((byTestid("knM-source-status-space-docs")?.textContent ?? "").trim()).toBe("未读取");
+
+    // 下钻：台账仍展开（切面不丢）、路径换成实际读口、404 → 读口未接入 + 去处
+    await click("knw5-space-link");
+    await act(async () => {});
+    expect(byTestid("knM-source-table")).toBeTruthy();
+    expect((byTestid("loc")?.textContent ?? "")).toContain("space=sp_hr");
+    expect(attr("knM-source-row-space-docs", "data-knm-status")).toBe("unwired");
+    expect((byTestid("knM-source-path-space-docs")?.textContent ?? "")).toBe(docsPath);
+    const unwiredVisible =
+      (byTestid("knM-source-status-space-docs")?.textContent ?? "").trim() +
+      (byTestid("knM-source-reason-space-docs")?.textContent ?? "").trim();
+    expect(unwiredVisible).toContain("读口未接入");
+    expect(byTestid("knM-source-apply-space-docs")).toBeTruthy();
+    // GAP 与 rid 只在 title，屏面不见
+    const ledgerText = (byTestid("knM-source-panel")?.textContent ?? "").replace(/\s+/g, " ");
+    expect(ledgerText).not.toContain("GAP");
+    expect(ledgerText).not.toContain("rid-knm-gone");
+    const unwiredTitle = byTestid("knM-source-status-space-docs")?.getAttribute("title") ?? "";
+    expect(unwiredTitle).toContain("GAP-03");
+    expect(unwiredTitle).toContain("请求编号 rid-knm-gone");
+
+    // 退回列表：展开态仍在；收起再展开全程 0 新请求
+    await click("kn3-docs-back");
+    await act(async () => {});
+    expect(byTestid("knM-source-table")).toBeTruthy();
+    const urlsToggles = fetchMock.mock.calls.length;
+    await click("knM-source-toggle");
+    await click("knM-source-toggle");
+    expect(fetchMock.mock.calls.length).toBe(urlsToggles);
+    expect(byTestid("knM-source-table")).toBeTruthy();
+
+    // 403≡404：同一可见说法（逐字）；六别名按序命中 generated_at → 正常上屏
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SPACES_BODY);
+      if (url === DOCUMENTS_PLAIN) return Promise.resolve({ generated_at: "2026-11-19T06:30:00Z", items: [] });
+      return fail(403, "没有查看这项数据的权限。", "rid-knm-denied");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr"); // 新渲染默认回到收起（store 仍记着上次的展开态——展开态在模块不在 URL）
+    await act(async () => {});
+    if (byTestid("knM-source-table") === null) await click("knM-source-toggle");
+    expect((byTestid("knM-source-status-space-docs")?.textContent ?? "").trim()).toBe("读口未接入");
+    expect(
+      (byTestid("knM-source-status-space-docs")?.textContent ?? "").trim() +
+        (byTestid("knM-source-reason-space-docs")?.textContent ?? "").trim(),
+    ).toBe(unwiredVisible);
+    expect((byTestid("knM-source-asof-doc-search")?.textContent ?? "")).toBe("2026-11-19 14:30");
+    expect((byTestid("knM-source-asof-doc-search")?.getAttribute("title") ?? "")).toContain("字段：generated_at");
+    expect(attr("knM-source-row-doc-search", "data-knm-status")).toBe("ok");
+    const urlsLast = fetchMock.mock.calls.length;
+    await click("knM-source-toggle");
+    expect(fetchMock.mock.calls.length).toBe(urlsLast); // 台账最后一次也不发请求
+
+    resetKnwSources();
+  });
 });

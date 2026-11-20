@@ -1755,3 +1755,51 @@ $ npx vite build --outDir /tmp/knw28-dist → exit 0（产物只落 /tmp）
 package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
 无 force / amend / `--no-verify`；merge（cca9cf7e）与单 feature commit
 「feat(console): knowledge drawer metadata copy」分开。
+
+# KNW5 追加 R61：数据来源与新鲜度台账（testid `knM-source-*`）（2026-11-20 BJT）
+
+基线安全闸：toplevel 相符、porcelain 空、显式 refspec fetch 后 merge 实到章面 `3c7f70f6`
+（代码代次 `cca9cf7e`），零冲突；`git diff HEAD^1..HEAD -- web/src/modules/knowledge` 为空，
+合并后知识套基线 53/53 绿再动工。
+
+## 一、口径
+
+```text
+形态       模块内 sourceReads.ts：module store + useSyncExternalStore，与 health 车道 sys6
+           同构但不跨模块 import（上游改动波及不到知识面）。台账自身从不发请求：三个面
+           在各自本来的读取落点上报（spaces / documents?spaceId=<id> / documents?limit=50；
+           详情面为空间名读的那次 SPACES_URL 也归位到空间列表行，同一实际路径）。
+逐行       口径名 | 实际路径 | 采集时刻 | 状态（正常·降级·读口未接入·读不到；下钻前该面
+           「未读取」，不冒充读过）。
+采集时刻   只认响应顶层 ISO，严格六别名顺序 asOf/as_of/collectedAt/collected_at/
+           generatedAt/generated_at（独立提取口 knAsOfFacts；页面上「数据截至」行的
+           stampOf 口径保持未动，二者职责不同）。缺失或非 ISO → 「—」+title 点名缺什么；
+           行内时间不参与台账（fixture：列表有行内时间但顶层无别名 → 降级）。
+           换算只由 payload 字符串推出（08:00Z→16:00 实测），本机时钟零参与；
+           asOf 原文、命中别名、asOfSource 全部只进 title。
+状态映射   顶层 ISO 在 → 正常；读到但顶层无可用 ISO → 降级（读到≠新鲜）；
+           403/404 → 「读口未接入」+同一句原因+去处（申请入口），逐字同体实测（403 段
+           与 404 段可见读数相等）；其它失败 → 「读不到」；GAP-03 与请求编号只在 title。
+展开态     默认收起；URL 不落（实测 loc 无 expand 类参数）；存在模块 store——列表↔详情
+           切面、收起再展开都不丢（实测跨 knw5-space-link 下钻与返回仍展开）。
+零请求     展开、收起、切面、返回全程 fetchMock 计数增量 0（多段实测）；重渲染页面的
+           读取是页面既有行为，台账不追加。
+```
+
+testid 新增 `knM-source-panel/toggle/note/list/table` + 行级 `knM-source-row|path|asof|status|reason|apply-<id>`；
+行挂 `data-knm-status`（machine 可判 ok/degraded/unwired/failed/idle/loading）。
+kn3 / kn6–knL / knw5 既有断言零改零破（含 404/403/GAP 泄露巡检、四态与 knD 标记全绿）；
+路径格 overflow-wrap:anywhere、表格走既有 knw5-scroll，本轮未重建 9122，三宽度未做浏览器复测。
+
+## 验证尾行（R61）
+```text
+$ npx vitest run src/modules/knowledge   → 2 files / 54 tests passed（含新增台账测试）
+$ npx vitest run                         → 144 files / 1797 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 set-state-in-effect warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw29-dist → exit 0（产物只落 /tmp）
+```
+边界：只改 `web/src/modules/knowledge/**`（新增 sourceReads.ts）与本证据目录；未动 App.tsx /
+shell / routes / registry / package·lock / web-scripts / ops；未并 main、未重启或重建 9122；
+显式路径提交（无 `git add -A`）；无 force / amend / `--no-verify`；merge（3c7f70f6/cca9cf7e）
+与单 feature commit「feat(console): knowledge source freshness block」分开。

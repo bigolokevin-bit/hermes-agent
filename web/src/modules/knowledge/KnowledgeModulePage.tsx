@@ -31,6 +31,16 @@ import { fetchJsonStrict } from "@/modules/models/fetchJson";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import { ApiError } from "@/lib/api-error";
 import {
+  KNM_STATUS_LABEL,
+  knmAsOfTitle,
+  markKnwLoading,
+  settleKnwFail,
+  settleKnwOk,
+  toggleKnwSources,
+  useKnwSources,
+  type KnmRow,
+} from "./sourceReads";
+import {
   CITATIONS_URL,
   DOCUMENTS_URL,
   KNOWLEDGE_GAP,
@@ -921,7 +931,19 @@ function SpacesSurface({
   onClearKeyword: () => void;
 }): ReactNode {
   const surface = useSurface<SpaceRow>(
-    () => fetchJsonStrict(SPACES_URL).then(readSpaces),
+    () => {
+      markKnwLoading("spaces", SPACES_URL);
+      return fetchJsonStrict(SPACES_URL).then(
+        (body: unknown) => {
+          settleKnwOk("spaces", SPACES_URL, body);
+          return readSpaces(body);
+        },
+        (cause: unknown) => {
+          settleKnwFail("spaces", SPACES_URL, cause);
+          throw cause;
+        },
+      );
+    },
     `spaces|${nonce}`,
   );
   // Typed text is local; the URL keyword wins on refresh, back/forward and share.
@@ -1069,6 +1091,84 @@ function SpacesSurface({
         </div>
       ) : null}
     </>
+  );
+}
+
+/** R61 — 「数据来源与新鲜度」：三面共用的读台账，默认收起，状态存模块外不落 URL。 */
+function SourceFreshness(): ReactNode {
+  const { rows, expanded } = useKnwSources();
+  return (
+    <section className="knM-sources" data-testid="knM-source-panel">
+      <button
+        type="button"
+        className="knM-toggle"
+        aria-expanded={expanded}
+        onClick={toggleKnwSources}
+        data-testid="knM-source-toggle"
+      >
+        数据来源与新鲜度
+        <span className="knM-action">{expanded ? "收起" : "展开"}</span>
+      </button>
+      <p className="knw5-sub" data-testid="knM-source-note">
+        台账只复用本页已经发过的读取：展开、收起、切面都不新增请求；采集时刻只取响应顶层的 ISO 时间，
+        不使用本机时钟，缺就「—」。
+      </p>
+      {expanded ? (
+        <div className="knw5-scroll" data-testid="knM-source-list">
+          <table className="knw5-table" data-testid="knM-source-table">
+            <thead>
+              <tr>
+                <th scope="col">口径名</th>
+                <th scope="col">实际路径</th>
+                <th scope="col">采集时刻</th>
+                <th scope="col">状态</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row: KnmRow) => (
+                <tr key={row.id} data-testid={`knM-source-row-${row.id}`} data-knm-status={row.status}>
+                  <td data-label="口径名">
+                    <span className="knw5-name">{row.label}</span>
+                  </td>
+                  <td data-label="实际路径">
+                    <span className="knM-path" data-testid={`knM-source-path-${row.id}`} title={row.path}>
+                      {row.path}
+                    </span>
+                  </td>
+                  <td data-label="采集时刻">
+                    <span data-testid={`knM-source-asof-${row.id}`} title={knmAsOfTitle(row)}>
+                      {row.asOf ?? "—"}
+                    </span>
+                  </td>
+                  <td data-label="状态">
+                    <span
+                      data-testid={`knM-source-status-${row.id}`}
+                      title={
+                        [
+                          row.requestId ? `请求编号 ${row.requestId}` : null,
+                          row.statusDetail,
+                          row.status === "unwired" ? KNOWLEDGE_GAP : null,
+                        ]
+                          .filter((part): part is string => part !== null && part !== "")
+                          .join(" · ") || undefined
+                      }
+                    >
+                      {KNM_STATUS_LABEL[row.status]}
+                    </span>
+                    {row.statusReason ? (
+                      <span className="knw5-sub" data-testid={`knM-source-reason-${row.id}`}>
+                        {row.statusReason}
+                      </span>
+                    ) : null}
+                    {row.status === "unwired" ? <ApplyLink testid={`knM-source-apply-${row.id}`} /> : null}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -1483,7 +1583,19 @@ function SpaceDetailSurface({
   }, [spaceId]);
   // 空间名不靠 URL 回显：它来自指定空间读口。读不到就用短码，原因放 title。
   const names = useSurface<SpaceRow>(
-    () => fetchJsonStrict(SPACES_URL).then(readSpaces),
+    () => {
+      markKnwLoading("spaces", SPACES_URL);
+      return fetchJsonStrict(SPACES_URL).then(
+        (body: unknown) => {
+          settleKnwOk("spaces", SPACES_URL, body);
+          return readSpaces(body);
+        },
+        (cause: unknown) => {
+          settleKnwFail("spaces", SPACES_URL, cause);
+          throw cause;
+        },
+      );
+    },
     `space-name|${nonce}`,
   );
   const knownSpace =
@@ -1494,7 +1606,20 @@ function SpaceDetailSurface({
     ? "名字取自空间读口"
     : `${spaceId}｜空间名没读到（读口未接入、无权限，或这个标识不在已加载的空间里），这里只显示标识尾段。`;
   const surface = useSurface<DocRow>(
-    () => fetchJsonStrict(documentsUrl(spaceId)).then(readSpaceDocuments),
+    () => {
+      const path = documentsUrl(spaceId);
+      markKnwLoading("space-docs", path);
+      return fetchJsonStrict(path).then(
+        (body: unknown) => {
+          settleKnwOk("space-docs", path, body);
+          return readSpaceDocuments(body);
+        },
+        (cause: unknown) => {
+          settleKnwFail("space-docs", path, cause);
+          throw cause;
+        },
+      );
+    },
     `space-docs|${nonce}|${spaceId}`,
   );
   // R58 — 空间详情文档列表的 roving tabindex：与空间卡片（kn8）、检索命中（kn6）同一套钩子。
@@ -1903,7 +2028,19 @@ function DocumentNameSearch({
   // The read happens once per refresh only: the keyword never re-triggers it,
   // because there is no server-side keyword filter to ask for.
   const surface = useSurface<DocRow>(
-    () => fetchJsonStrict(DOCUMENTS_URL).then(readSpaceDocuments),
+    () => {
+      markKnwLoading("doc-search", DOCUMENTS_URL);
+      return fetchJsonStrict(DOCUMENTS_URL).then(
+        (body: unknown) => {
+          settleKnwOk("doc-search", DOCUMENTS_URL, body);
+          return readSpaceDocuments(body);
+        },
+        (cause: unknown) => {
+          settleKnwFail("doc-search", DOCUMENTS_URL, cause);
+          throw cause;
+        },
+      );
+    },
     `doc-search|${nonce}`,
   );
   const loaded = surface.state.kind === "ready" ? surface.state.value.rows : [];
@@ -2651,28 +2788,31 @@ function containerQuery(key: string): HTMLElement | null {
             <CrumbReport.Provider value={reportCrumb}>
             <RefDrill.Provider value={{ open: drilled, toggle: toggleDrill }}>
               {tab === "spaces" ? (
-                spaceId === "" ? (
-                  <SpacesSurface
-                    nonce={nonce}
-                    spaceLink={spaceLink}
-                    keyword={query}
-                    onCommitKeyword={commitKeyword}
-                    onClearKeyword={clearKeyword}
-                  />
-                ) : (
-                  <SpaceDetailSurface
-                    nonce={nonce}
-                    spaceId={spaceId}
-                    openDoc={openDoc}
-                    docLink={docLink}
-                    backLink={backLink}
-                    spaceSelfLink={spaceSelfLink}
-                    sort={sortCol}
-                    dir={sortDir}
-                    onSort={applySort}
-                    onCloseDoc={closeDocDrawer}
-                  />
-                )
+                <>
+                  {spaceId === "" ? (
+                    <SpacesSurface
+                      nonce={nonce}
+                      spaceLink={spaceLink}
+                      keyword={query}
+                      onCommitKeyword={commitKeyword}
+                      onClearKeyword={clearKeyword}
+                    />
+                  ) : (
+                    <SpaceDetailSurface
+                      nonce={nonce}
+                      spaceId={spaceId}
+                      openDoc={openDoc}
+                      docLink={docLink}
+                      backLink={backLink}
+                      spaceSelfLink={spaceSelfLink}
+                      sort={sortCol}
+                      dir={sortDir}
+                      onSort={applySort}
+                      onCloseDoc={closeDocDrawer}
+                    />
+                  )}
+                  <SourceFreshness />
+                </>
               ) : null}
               {tab === "ingest" ? (
                 <>
