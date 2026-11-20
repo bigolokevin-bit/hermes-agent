@@ -642,6 +642,7 @@ describe("local name search", () => {
     expect(text()).toContain("网页内容提取");
     expect(text()).not.toContain("创建看板");
     expect(text()).toContain("仅在当前已加载 6 项内搜索");
+    expect(document.querySelector("[data-testid='cap-page-scope']")?.textContent).toContain("表内全量渲染，共 2 项");
     expect(document.querySelector("[data-testid='cap6-export-count']")?.textContent).toContain("2 条");
     expect(document.querySelector<HTMLButtonElement>("[data-testid='cap6-export']")?.disabled).toBe(false);
     expect(document.querySelector("[data-testid='capA-export-order-note']")?.textContent).toContain("导出按当前排序与搜索");

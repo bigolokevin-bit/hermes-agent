@@ -358,6 +358,7 @@ describe("SkillsPage", () => {
     expect(text()).not.toContain("质检");
     expect(container.querySelector("[data-testid='cap5-scope-note']")?.textContent).toContain("仅在当前已加载 2 项内搜索");
     expect(container.querySelector("[data-testid='cap4-count-skills']")?.textContent).toContain("1");
+    expect(container.querySelector("[data-testid='cap-page-scope']")?.textContent).toContain("表内全量渲染，共 1 项");
     expect(container.querySelector("[data-testid='cap6-export-count']")?.textContent).toContain("1 条");
     expect(container.querySelector<HTMLButtonElement>("[data-testid='cap6-export']")?.disabled).toBe(false);
     expect(container.querySelector("[data-testid='capA-export-order-note']")?.textContent).toContain("导出按当前排序与搜索");
@@ -740,5 +741,22 @@ describe("row deep link", () => {
     expect(container.querySelectorAll("[data-testid='cap7-detail-skills']")).toHaveLength(0);
     expect(container.querySelectorAll("[data-testid^='skl4-row-']")).toHaveLength(2);
     expect(fetchJsonStrict).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("capability page size scope", () => {
+  it("shows the read-port cap and total without inferring from loaded rows", async () => {
+    fetchJsonStrict.mockResolvedValue({
+      asOf: "2026-11-19T06:00:00Z",
+      items: [{ skillId: "s1", name: "资料整理", scope: "tenant-shared" }],
+      total: 57,
+      nextCursor: "cursor-2",
+    });
+    await render();
+    const scope = container.querySelector("[data-testid='cap-page-scope']");
+    expect(scope?.getAttribute("data-mode")).toBe("capped");
+    expect(scope?.textContent).toContain("本页按读口单页上限显示 1 项，总数以读口回传为准");
+    expect(container.querySelector("[data-testid='cap-page-scope-detail']")?.textContent).toBe("共 57 项 / 已显示 1 项");
+    expect(scope?.getAttribute("title")).toContain("不按已加载条数推算");
   });
 });

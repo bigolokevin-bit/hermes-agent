@@ -20,6 +20,7 @@ import { CapabilityRowDetail } from "../capabilities/rowDetail";
 import { CapabilitySearch } from "../capabilities/search";
 import { CapabilityExport } from "../capabilities/csvExport";
 import { CapabilityCopy } from "../capabilities/listCopy";
+import { CapabilityPageScope, derivePageScope } from "../capabilities/pageScope";
 import { deriveGates, type GatePhase } from "../capabilities/gates";
 import { applySort, ariaSort, cycleSort, readSort, sortRows, type SortKey } from "../capabilities/sorting";
 import { useEnsureTabParam } from "../capabilities/tabParam";
@@ -31,7 +32,7 @@ type State =
   | { k: "loading" }
   | { k: "empty" }
   | { k: "error"; message: string; requestId: string | null; gap: string | null; status: number | null }
-  | { k: "ready"; rows: SkillRow[]; asOf: string | null; asOfReason: string | null; asOfTitle: string | null };
+  | { k: "ready"; rows: SkillRow[]; asOf: string | null; asOfReason: string | null; asOfTitle: string | null; total: number | null; nextCursor: string | null };
 
 // The capabilities tab strip unmounts the inactive page. Keep the last settled
 // read and the expanded row in module memory so switching back shows the same
@@ -200,7 +201,7 @@ export function SkillsPage() {
     try {
       const body = await fetchJsonStrict("/agent-api/api/skills");
       if (!signal.live) return;
-      const { rows, asOf, asOfReason, asOfTitle } = readSkills(body);
+      const { rows, asOf, asOfReason, asOfTitle, total, nextCursor } = readSkills(body);
       publishCapabilityCount("skills", {
         value: rows.length,
         source: rows.length ? "ready" : "empty",
@@ -208,7 +209,7 @@ export function SkillsPage() {
         gap: null,
       });
       const next: State = rows.length
-        ? { k: "ready", rows, asOf, asOfReason, asOfTitle }
+        ? { k: "ready", rows, asOf, asOfReason, asOfTitle, total, nextCursor }
         : { k: "empty" };
       cachedSkillsState = next;
       setState(next);
@@ -250,6 +251,13 @@ export function SkillsPage() {
     : page.k === "ready" ? page.rows : [];
   const sortedRows = sortRows(visibleRows, sort, (row: SkillRow, key) =>
     key === "name" ? row.name : key === "type" ? row.source : row.updatedAt);
+  const pageScope = derivePageScope({
+    shown: sortedRows.length,
+    total: page.k === "ready" ? page.total : null,
+    nextCursor: page.k === "ready" ? page.nextCursor : null,
+    loading: page.k === "loading",
+    unavailableReason: page.k === "error" ? page.message : null,
+  });
   const activeSkillKey =
     rovingKey && sortedRows.some((row) => row.id === rovingKey)
       ? rovingKey
@@ -374,6 +382,7 @@ export function SkillsPage() {
       <span className="sr-only" data-testid="cap-gates-detail" data-enabled={gates.rowDetail.enabled ? "true" : "false"} title={gates.rowDetail.title} />
       <CapabilityCounts />
       <CapabilitySearch value={q} total={page.k === "ready" ? page.rows.length : 0} onChange={setQ} gate={gates.search} />
+      <CapabilityPageScope scope={pageScope} />
       {rowMissing ? (
         <RowMissingNotice reason={rowMissingReason} href={listHref(sp)} onClear={clearRowLookup} />
       ) : null}

@@ -2254,3 +2254,13 @@ built /private/tmp/health-r38/index.html
 - 验证：`cd web && npx vitest run src/modules/health` → 8 files / 65 passed；全量 `npx vitest run` → 160 files / 2182 passed；`tsc -b . --noEmit` 仅基线 approvals/employee-detail/employees 错误，本域 0。
 - DOM（临时 Vite harness，已删除）：1440/1280/375 `vw=bodySW=bodyCW`（375 内容 364）；`?q=runtime` 服务列表 1 行、矩阵 1 行、摘要「搜索命中 1 / 4 个读口」；`?q=zzz` 服务 `sys-search-empty`、矩阵 `sys-search-source-empty`；`__searchFetch` 首载/展开后均 4，零新增请求。
 - 边界：仅 `web/src/modules/health/**` + 本 DONE；未改 App/shell/routes/registry/package·lock/web-scripts/ops；未 install、未并 main、未重建 9122；禁 force/amend/--no-verify。
+
+## R83 / cap-page-scope — /capabilities 列表条数诚实化
+
+- 基线：显式 refspec fetch + `git merge origin/lane/hermes-console`，merge `96ab3954`；上游 `94076a05..74c1e3b3`。
+- 截断实测：`git grep -n "slice\|page_size\|limit" -- web/src/modules/capabilities web/src/modules/skills web/src/modules/tools` 仅命中 `rowLink.tsx` 的字符串切分、`sorting.ts` 的数组复制、`tools.ts` 的错误摘要截断与测试断言；列表代码无 slice/page_size/limit。
+- 读口回包：`/agent-api/api/skills` 200，`items` 长度 0，键仅 `items`/`asOf`，`total`/`nextCursor` 均 ABSENT；`/agent-api/api/tools`、`/api/tools/toolsets`、`/api/mcp/servers` 均 404 `console.unknown_route`，同源 `/api/*` 为 200 HTML。故 skills 走「全量渲染」分支，tools 走「读口未接入，无法判断总数」。
+- 实现：新增共享 `modules/capabilities/pageScope.tsx`（`derivePageScope` + `CapabilityPageScope`）；skills 读取上游 `total`/`nextCursor`，有分页信号时显示「本页按读口单页上限显示 N 项，总数以读口回传为准」+「共 N 项 / 已显示 M 项」或「总数不可用」；无信号时显示「表内全量渲染，共 M 项」+ title 判据；tools 依据 phase/issues 显示全量或未接入。两 tab 均常驻 `cap-page-scope`，随搜索/排序后当前视图重算；导出/复制/排序行为未改。
+- 验证：定向 capabilities+skills+tools 9 files / 94 passed；全量 162 files / 2244 passed；`tsc -b . --noEmit` 仅基线 approvals/employee-detail/employees 错误，本域 0。
+- DOM（临时 Vite harness，已删除）：1440/1280/375 `vw=bodySW=bodyCW`（1440/1280/375）；skills 2 行、tools 2 行均显示 `表内全量渲染，共 2 项` + 判据 title，无横溢。
+- 边界：仅 `modules/{capabilities,skills,tools}/**` + DONE；未改 App/shell/routes/registry/package·lock/web-scripts/ops；未 install、未并 main、未重建 9122；禁 force/amend/--no-verify。
