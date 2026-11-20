@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight, Inbox, RefreshCw, Search, ShieldAlert, TriangleAlert, Users } from "lucide-react";
 import { Badge, Button, Card, CardContent } from "@nous-research/ui";
@@ -446,6 +446,15 @@ export function EmployeesModulePage() {
   // R63: at most one row carries the inline preview (page-local state:
   // the URL is untouched and a reload collapses everything back).
   const [previewKey, setPreviewKey] = useState<string | null>(null);
+  // R67: roving tabindex — 行级只有一个 tab 位；↑/↓/Home/End 移焦，
+  // Enter 展开该行预览（拦截跳转），Esc 收起并把焦点还给该行。
+  const [activeRowKey, setActiveRowKey] = useState<string | null>(null);
+  const rowRefs = useRef(new Map<string, HTMLAnchorElement>());
+  const focusRow = (id: string | undefined) => {
+    if (!id) return;
+    rowRefs.current.get(id)?.focus();
+    setActiveRowKey(id);
+  };
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebounced(keyword.trim()), 300);
@@ -776,6 +785,7 @@ export function EmployeesModulePage() {
             >
               排序仅在当前已加载 {state.items.length} 条内生效（本地排序；后台排序参数实测被忽略，不是全量排序）。
             </p>
+            <div data-testid="emp-list-nav" role="grid" aria-label="员工列表（方向键浏览行，Enter 展开预览）">
             <ul className="divide-y divide-white/5" data-testid="emp-l-list" data-emp-list-rows="true">
               {sortedItems.map((row) => (
                 <li key={row.employeeId} data-testid={`employees-row-${row.employeeId}`}>
@@ -801,6 +811,38 @@ export function EmployeesModulePage() {
                   <Link
                     to={`/employees/${encodeURIComponent(row.employeeId)}`}
                     data-testid={`emp-l-name-link-${row.employeeId}`}
+                    ref={(el) => {
+                      if (el) rowRefs.current.set(row.employeeId, el);
+                      else rowRefs.current.delete(row.employeeId);
+                    }}
+                    tabIndex={(activeRowKey ?? sortedItems[0]?.employeeId) === row.employeeId ? 0 : -1}
+                    aria-expanded={previewKey === row.employeeId}
+                    onFocus={() => setActiveRowKey(row.employeeId)}
+                    onKeyDown={(e) => {
+                      const ids = sortedItems.map((r) => r.employeeId);
+                      const i = ids.indexOf(row.employeeId);
+                      if (e.key === "ArrowDown") {
+                        e.preventDefault();
+                        focusRow(ids[Math.min(i + 1, ids.length - 1)]);
+                      } else if (e.key === "ArrowUp") {
+                        e.preventDefault();
+                        focusRow(ids[Math.max(i - 1, 0)]);
+                      } else if (e.key === "Home") {
+                        e.preventDefault();
+                        focusRow(ids[0]);
+                      } else if (e.key === "End") {
+                        e.preventDefault();
+                        focusRow(ids[ids.length - 1]);
+                      } else if (e.key === "Enter") {
+                        // Enter 展开/收起预览，不跳详情（行内预览是本区语义）。
+                        e.preventDefault();
+                        setPreviewKey((k) => (k === row.employeeId ? null : row.employeeId));
+                      } else if (e.key === "Escape" && previewKey !== null) {
+                        e.preventDefault();
+                        setPreviewKey(null);
+                        e.currentTarget.focus();
+                      }
+                    }}
                     className="grid min-w-0 flex-1 grid-cols-1 gap-1 px-4 py-3 hover:bg-white/5 md:grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)_minmax(0,0.7fr)_minmax(0,0.7fr)_minmax(0,1fr)_minmax(0,0.6fr)_minmax(0,0.8fr)] md:items-center md:gap-2"
                   >
                     <span className="min-w-0">
@@ -844,6 +886,7 @@ export function EmployeesModulePage() {
                 </li>
               ))}
             </ul>
+            </div>
             <div className="flex min-w-0 flex-wrap items-center gap-2 border-t border-white/5 px-4 py-3 text-xs" data-testid="emp-list-page">
               <span
                 data-testid="emp-list-page-count"

@@ -742,3 +742,96 @@ describe("R66 employees list CSV export (emp-list-export)", () => {
     expect(btn!.title).toContain("当前已加载 0 人");
   });
 });
+
+describe("R67 keyboard navigation (emp-list-nav)", () => {
+  const navRows = {
+    items: [
+      { employeeId: "emp_217A91BA995044DFBB3E2E940B", name: "小鲤", title: "内容编辑", lifecycleState: "weird_state", updatedAt: "2026-11-17T05:52:48.030Z" },
+      { employeeId: "emp_2B2C2D2E4F506172", name: "阿朝", title: "增长", lifecycleState: "active", updatedAt: "2026-11-18T05:52:48.030Z" },
+      { employeeId: "emp_3C3D3E3F40414243", name: "三丁", title: null, lifecycleState: "paused", updatedAt: null },
+    ],
+  };
+  const link = (id: string) => q(`emp-l-name-link-${id}`) as HTMLAnchorElement | null;
+  const key = (el: Element, k: string) => {
+    el.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true }));
+  };
+
+  it("roves focus with arrows/Home/End — one row holds the tab stop", async () => {
+    fetchJSON.mockImplementation(() => Promise.resolve(navRows));
+    await render("/employees");
+    await act(async () => {
+      flushTimers();
+    });
+    expect(q("emp-list-nav"), "roving container").toBeTruthy();
+    const a = link("emp_217A91BA995044DFBB3E2E940B");
+    const b = link("emp_2B2C2D2E4F506172");
+    const c = link("emp_3C3D3E3F40414243");
+    expect(a && b && c, "three rows").toBeTruthy();
+    expect(a!.tabIndex, "first row holds the tab stop").toBe(0);
+    expect(b!.tabIndex).toBe(-1);
+    a!.focus();
+    await act(async () => {
+      key(a, "ArrowDown");
+    });
+    expect(document.activeElement).toBe(b);
+    expect(b!.tabIndex, "tab stop follows focus").toBe(0);
+    expect(a!.tabIndex).toBe(-1);
+    await act(async () => {
+      key(b!, "End");
+    });
+    expect(document.activeElement).toBe(c);
+    await act(async () => {
+      key(c!, "Home");
+    });
+    expect(document.activeElement).toBe(a);
+  });
+
+  it("Enter expands the row preview without navigating; Esc collapses and refocuses the row", async () => {
+    fetchJSON.mockImplementation(() => Promise.resolve(navRows));
+    await render("/employees");
+    await act(async () => {
+      flushTimers();
+    });
+    const calls = fetchJSON.mock.calls.length;
+    const a = link("emp_217A91BA995044DFBB3E2E940B")!;
+    a.focus();
+    await act(async () => {
+      key(a, "Enter");
+    });
+    expect(q("emp-row-preview-emp_217A91BA995044DFBB3E2E940B"), "preview open").toBeTruthy();
+    expect(a.getAttribute("aria-expanded"), "aria-expanded syncs").toBe("true");
+    expect(q("emp-l-list"), "list still on screen — Enter did not navigate").toBeTruthy();
+    await act(async () => {
+      key(a, "Enter");
+    });
+    expect(q("emp-row-preview-emp_217A91BA995044DFBB3E2E940B"), "second Enter collapses").toBeNull();
+    await act(async () => {
+      key(a, "Enter");
+    });
+    const b = link("emp_2B2C2D2E4F506172")!;
+    await act(async () => {
+      key(b, "Enter");
+    });
+    expect(q("emp-row-preview-emp_217A91BA995044DFBB3E2E940B"), "at most one open").toBeNull();
+    expect(q("emp-row-preview-emp_2B2C2D2E4F506172")).toBeTruthy();
+    await act(async () => {
+      key(b, "Escape");
+    });
+    expect(q("emp-row-preview-emp_2B2C2D2E4F506172"), "Esc collapses").toBeNull();
+    expect(document.activeElement, "focus returns to the row").toBe(b);
+    expect(fetchJSON.mock.calls.length, "keyboard never fetches").toBe(calls);
+  });
+
+  it("never hijacks keys in error/loading states — no rows, no handlers", async () => {
+    fetchJSON.mockImplementation(() => Promise.resolve(navRows));
+    await render("/employees?state=error");
+    await act(async () => {
+      flushTimers();
+    });
+    expect(q("emp-list-nav"), "no roving container in error state").toBeNull();
+    expect(() => {
+      key(document.body, "ArrowDown");
+      key(document.body, "Enter");
+    }).not.toThrow();
+  });
+});
