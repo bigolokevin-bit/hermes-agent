@@ -131,3 +131,24 @@
 - `DutyPage` 页尾新增 `DutyNotes`：原生 button `duty-notes-toggle`（`aria-expanded` / `aria-controls="duty-notes-body"`），默认收起、body 与八行都不渲染；展开后每行 `duty-note-<key>`。文案全部来自同一个常量，不另写第二套。
 - 展开/收起零新请求（测试断言 `fetchJSON` 调用数前后相等）；版式不动，仅页尾一节折叠块。
 - 测试：duty 新增 2 例（默认收起且零请求、展开八行与收起）。定向 9 files / 317 passed。
+
+## 卡片下钻真链（duty drill links，2026-11-20）
+
+每张区块卡一个真 `<a>`，先按 `web/src/shell/routes.ts` 与 `web/src/App.tsx` 现查路径：
+
+| 卡 | testid | 去处 | 依据 |
+|---|---|---|---|
+| 可上岗 | `duty-route-readiness` | `/employees` | App.tsx:1231 |
+| 今日运行 | `duty-route-today-runs` | `/runs` | App.tsx:1399 |
+| 近 N 天运行（趋势） | `duty-route-trend` | `/runs` | App.tsx:1399 |
+| 今日成本 | `duty-route-cost` | `/metrics` | App.tsx:1301 |
+| 待我处理 | `duty-route-pending` | `/approvals` | App.tsx:1242 |
+| 阻塞 | `duty-route-blockers` | `/work` | App.tsx:1192 |
+| 能力与权限（矩阵页） | `duty-route-matrix` | `/capabilities` | App.tsx:1216 |
+
+- 阻塞卡原写 `/tasks`：`App.tsx:1328` 的 `/tasks` 是 `Navigate to="/work?tab=board" replace`，且任务板不读 `status`，深链带 `?status=blocked` 会被丢掉 → 改指 `/work`，并在该链 title 写明「任务页不接受 status 筛选参数，这里去任务板；阻塞项已在本卡逐条列出」。
+- 全部用 `Link`（渲染为 `<a href>`），不挂 onClick：右键/中键/Cmd 新标签可用；空态与失败态下 `action` 仍渲染，读者能去处理而不是停在错误页。
+- 不新增取数：链接只是导航，挂载前后 `fetchJSON` 调用数不变（测试断言）。
+- 零改动各卡既有取数、`ov6-*` 24 枚与 duty-refresh/gates/range/trend/notes 全族未动。
+- 验证：duty 5 files / 94 passed（基线 90）；全量 151 files / 2017 passed（基线 2013）；tsc 本域 0；eslint 0 error / 4 既有 warning。
+- 未测：真实浏览器用中键/Cmd 打开新标签的焦点行为；375 下链接与标题同行的折行（样式沿用既有 `.duty-link`）。

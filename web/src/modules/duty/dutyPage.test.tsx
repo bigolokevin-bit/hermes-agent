@@ -796,3 +796,59 @@ describe("DutyPage caliber notes", () => {
     expect(fetchJSON.mock.calls.length).toBe(before);
   });
 });
+
+describe("DutyPage card drill links", () => {
+  it("gives every card a real anchor to a route that exists", async () => {
+    fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
+    await render(<DutyPage />);
+    const expected: Array<[string, string]> = [
+      ["duty-route-readiness", "/employees"],
+      ["duty-route-today-runs", "/runs"],
+      ["duty-route-trend", "/runs"],
+      ["duty-route-cost", "/metrics"],
+      ["duty-route-pending", "/approvals"],
+      ["duty-route-blockers", "/work"],
+    ];
+    for (const [testid, href] of expected) {
+      const el = container.querySelector(`[data-testid="${testid}"]`) as HTMLAnchorElement | null;
+      expect(el, testid).not.toBeNull();
+      expect(el!.tagName).toBe("A");
+      expect(el!.getAttribute("href")).toBe(href);
+      expect(el!.getAttribute("onclick")).toBeNull();
+    }
+    const blockers = container.querySelector('[data-testid="duty-route-blockers"]') as HTMLAnchorElement;
+    expect(blockers.getAttribute("title")).toContain("不接受 status 筛选");
+  });
+
+  it("keeps the drill links when the card data fails and never strands the reader", async () => {
+    fetchJSON.mockImplementation((url: string) => {
+      if (url.includes("/workbench/summary")) {
+        return Promise.reject(new ApiError("boom", { status: 500, body: "", url, requestId: "req-drill-1" }));
+      }
+      return Promise.resolve(ok(url));
+    });
+    await render(<DutyPage />);
+    expect(container.textContent).toContain("请求编号");
+    const link = container.querySelector('[data-testid="duty-route-today-runs"]') as HTMLAnchorElement | null;
+    expect(link).not.toBeNull();
+    expect(link!.getAttribute("href")).toBe("/runs");
+  });
+
+  it("adds no request of its own", async () => {
+    fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
+    await render(<DutyPage />);
+    const calls = fetchJSON.mock.calls.length;
+    await act(async () => {});
+    await new Promise((r) => setTimeout(r, 30));
+    expect(fetchJSON.mock.calls.length).toBe(calls);
+  });
+
+  it("links the matrix view to the capabilities page", async () => {
+    fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
+    await render(<MatrixView />);
+    const link = container.querySelector('[data-testid="duty-route-matrix"]') as HTMLAnchorElement | null;
+    expect(link).not.toBeNull();
+    expect(link!.tagName).toBe("A");
+    expect(link!.getAttribute("href")).toBe("/capabilities");
+  });
+});

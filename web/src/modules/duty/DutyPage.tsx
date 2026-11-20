@@ -298,6 +298,12 @@ function ReadinessCard({ employees, stats, onRetry }: { employees: Loadable<Empl
       meta="各项检查全部通过才计入"
       testid="duty-ready"
       stamp={stampOf(rawStamp, "员工目录与运行统计", [employees, stats])}
+      action={
+        <Link className="duty-link" to="/employees" data-testid="duty-route-readiness">
+          去员工列表
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      }
       hint="workbench/agents 缺 byLifecycle 聚合计数（active/paused/offboarding）、缺分页之外的完整名单（翻页时 total 为 null），逐行 today* 也恒为 null；本卡仍取员工目录 + 员工统计，换成该读口会丢掉总分母，故不换。"
     >
       <StateLine state={state} onRetry={onRetry} loadingText="正在汇总各项检查…">
@@ -353,7 +359,7 @@ function TodayRunsCard({ stats, runs, onRetry }: { stats: Loadable<RunStatsBody>
       title="今日运行"
       testid="duty-today-runs" stamp={stampOf(stats.k === "ready" ? asOfOf(stats.data) : null, "运行窗口统计", [stats, runs])}
       action={
-        <Link className="duty-link" to="/runs">
+        <Link className="duty-link" to="/runs" data-testid="duty-route-today-runs">
           运行记录
           <ArrowRight className="h-3.5 w-3.5" />
         </Link>
@@ -417,7 +423,13 @@ function CostCard({
   );
   const state = day.k === "error" ? day : month.k === "error" ? month : day;
   return (
-    <HCard title="今日成本" meta="成本账本" testid="duty-today-cost" stamp={stampOf(day.k === "ready" ? asOfOf(day.data) : null, "当日成本账本", [day, month])}>
+    <HCard title="今日成本" meta="成本账本" testid="duty-today-cost"
+      action={
+        <Link className="duty-link" to="/metrics" data-testid="duty-route-cost">
+          去指标页看成本
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      } stamp={stampOf(day.k === "ready" ? asOfOf(day.data) : null, "当日成本账本", [day, month])}>
       <StateLine state={state} onRetry={onRetry}>
         <p className="duty-num" data-testid="ov6-kpi-cost" data-duty-testid="duty-kpi-cost">
           {usd(cost.dayUsd)}
@@ -465,7 +477,14 @@ function TrendCard({ stats, onRetry, label }: { stats: Loadable<RunStatsBody>; o
     ? `这次没能读取${label}趋势：${stats.message}${stats.requestId ? `（请求编号 ${stats.requestId}）` : ""}；不把缺数当 0。`
     : undefined;
   return (
-    <HCard title={`${label}运行`} meta="每日启动" testid="duty-trend" stamp={stampOf(stats.k === "ready" ? asOfOf(stats.data) : null, `${label}运行统计`, [stats])}>
+    <HCard title={`${label}运行`} meta="每日启动" testid="duty-trend" stamp={stampOf(stats.k === "ready" ? asOfOf(stats.data) : null, `${label}运行统计`, [stats])}
+      action={
+        <Link className="duty-link" to="/runs" data-testid="duty-route-trend">
+          运行记录
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      }
+    >
       <StateLine state={stats} onRetry={onRetry}>
         <p className="duty-num">
           {totals ? totals.runs : "—"}
@@ -675,7 +694,7 @@ function BlockersCard({
       title="阻塞"
       testid="duty-blockers" stamp={stampOf(null, "运行·任务·审批明细", [runs, tasks, approvals])}
       action={
-        <Link className="duty-link" to="/tasks">
+        <Link className="duty-link" to="/work" data-testid="duty-route-blockers" title="任务页不接受 status 筛选参数，这里去任务板；阻塞项已在本卡逐条列出。">
           查看全部
           <ArrowRight className="h-3.5 w-3.5" />
         </Link>
@@ -721,7 +740,7 @@ function PendingCard({
       title="待我处理"
       testid="duty-pending" stamp={stampOf(stats.k === "ready" ? asOfOf(stats.data) : null, "审批统计", [stats, approvals])}
       action={
-        <Link className="duty-link" to="/approvals">
+        <Link className="duty-link" to="/approvals" data-testid="duty-route-pending">
           查看全部
           <ArrowRight className="h-3.5 w-3.5" />
         </Link>
