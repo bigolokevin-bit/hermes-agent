@@ -32,3 +32,9 @@
 
 - 改前/改后 1440/375 截图被现网登录态过期阻塞：`100.117.184.117:8183/agent-api/api/*` 匿名与本地 dashboard token（Bearer/三种 cookie/X-Session-Token 头）全 401 `console.unauthenticated`；ego 会话页面显示「会话已过期，请重新登录」。拍法与脚本已备好（`/tmp/uic2-shots2.mjs`，路由为 path 形 `/employees/<id>` 非 hash；就绪判据 `ed5-overview-wrap`），现网重新登录后可直接重跑，命名 `uic2-{before,after}-employees-{1440,375}.png` 落本目录。
 - 布局验收不受影响：三段两列栅格与锚点条为纯 CSS/DOM 归组，`ui-c-fields--two` 钉 640+ 两列、375 单列。
+
+## 追加一区：权限区回条（本笔）
+
+- 问题：锚点条「权限」跳入 `?zone=capability` 后无回程，四区回不去。
+  改法：权限区顶部加分区回条（当前区高亮 `aria-current`，其余四区如实回链总览顶部，不造本页假锚）；未动 testid/路由/取数。
+  文件：`EmployeeDetailModulePage.tsx`（page return）、`detail.css`（`.ui-c-anchor--active`）。
