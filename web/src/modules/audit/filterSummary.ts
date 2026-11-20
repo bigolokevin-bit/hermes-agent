@@ -46,6 +46,13 @@ export interface FilterSummaryInput {
   cursorCount: number;
   /** The path this page actually asked for, straight from the data layer. */
   askedPath: string | null;
+  /**
+   * audH: the size in force. A non-default size is part of the question worth
+   * handing over, so it opens the summary the same way a filter does.
+   */
+  limit?: number;
+  /** The size the page asks with when the address says nothing. */
+  defaultLimit?: number;
 }
 
 /**
@@ -75,6 +82,7 @@ export function safeRequestPath(asked: string | null): string | null {
 /** Nothing on the address but the default window → nothing worth sharing. */
 export function hasFilterSummary(input: FilterSummaryInput): boolean {
   return (
+    (input.limit !== undefined && input.limit !== (input.defaultLimit ?? 50)) ||
     input.custom ||
     input.type !== "" ||
     input.actor !== "" ||
@@ -94,7 +102,7 @@ export function filterSummaryLineOf(input: FilterSummaryInput): string {
   const type = `动作类型：${input.type || FILTER_SUMMARY_MISSING}${input.type ? "（服务端按 action 精确匹配）" : ""}`;
   const actor = `操作者：${input.actor || FILTER_SUMMARY_MISSING}${input.actor ? "（服务端 actorId，机器句柄）" : ""}`;
   const resource = `资源：${input.resource || FILTER_SUMMARY_MISSING}${input.resource ? `（${input.resourceNote}）` : ""}`;
-  const paging = `第 ${input.page} 页（游标 ×${input.cursorCount}）`;
+  const paging = `第 ${input.page} 页（游标 ×${input.cursorCount}） · 每页 ${input.limit ?? input.defaultLimit ?? 50} 条`;
   const path = `请求：${safeRequestPath(input.askedPath) ?? FILTER_SUMMARY_MISSING}`;
   return [window, type, actor, resource, paging, path].join(" · ");
 }

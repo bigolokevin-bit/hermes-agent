@@ -396,6 +396,8 @@ export interface ApprovalRow {
   /** R60: inline preview fields, parsed from the list row payload itself. */
   approvers: { labels: string[]; raw: string | null };
   requestId: string | null;
+  /** R71: raw ISO 决定时间（排序键用；屏上仍走 decided 人话）。 */
+  decidedAt: string | null;
   /** R65 parity: exactly what the detail reads as 「决定时间」 — same keys,
    * same helper, so the preview and the detail can never disagree. */
   decided: string | null;
@@ -441,6 +443,7 @@ function rowFrom(item: unknown, index: number): ApprovalRow | null {
     // carries consoleRequestId must not read missing here and present there.
     requestId: pickText(rec, ["requestId", "request_id", "consoleRequestId"]),
     decided: beijing(pick(rec, DECIDED_KEYS)),
+    decidedAt: pickText(rec, DECIDED_KEYS),
   };
 }
 
@@ -608,4 +611,62 @@ export function approvalsRowSearchText(row: ApprovalRow): string {
   return [row.title, row.reason ?? "", row.rawId ?? "", row.status.label, row.risk.label]
     .join(" ")
     .toLowerCase();
+}
+
+/* ------------------------------------------------------------------ *
+ * R71: 列排序（本地）。读口实测忽略 sort/order/orderBy/dir（200 同序同集合），
+ * 因此这里只做「当前已加载行」的排序，并在界面上如实标注范围。
+ * ------------------------------------------------------------------ */
+
+export type ApprovalSortKey = "title" | "status" | "risk" | "time";
+export type ApprovalSortDir = "asc" | "desc";
+
+const RISK_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+
+/** 排序键；缺值（null）恒排末，不当 0 参与比较。 */
+function approvalSortValue(row: ApprovalRow, key: ApprovalSortKey): string | number | null {
+  switch (key) {
+    case "title": {
+      const t = row.title.trim().toLowerCase();
+      return t ? t : null;
+    }
+    case "status": {
+      const raw = row.status.raw?.trim().toLowerCase();
+      return raw ? raw : null;
+    }
+    case "risk": {
+      const raw = row.risk.raw?.trim().toLowerCase();
+      return raw && raw in RISK_RANK ? RISK_RANK[raw] : null;
+    }
+    case "time": {
+      if (!row.decidedAt) return null;
+      const ms = Date.parse(row.decidedAt);
+      return Number.isFinite(ms) ? ms : null;
+    }
+  }
+}
+
+export function sortApprovalRows(
+  rows: readonly ApprovalRow[],
+  key: ApprovalSortKey | null,
+  dir: ApprovalSortDir,
+): ApprovalRow[] {
+  if (!key) return [...rows];
+  const withValue: ApprovalRow[] = [];
+  const missing: ApprovalRow[] = [];
+  for (const row of rows) {
+    (approvalSortValue(row, key) === null ? missing : withValue).push(row);
+  }
+  const sign = dir === "asc" ? 1 : -1;
+  withValue.sort((a, b) => {
+    const va = approvalSortValue(a, key);
+    const vb = approvalSortValue(b, key);
+    if (typeof va === "number" && typeof vb === "number") return (va - vb) * sign;
+    return String(va).localeCompare(String(vb), "zh-Hans-CN") * sign;
+  });
+  return [...withValue, ...missing];
+}
+
+export function approvalSortKeyOf(value: string | null): ApprovalSortKey | null {
+  return value === "title" || value === "status" || value === "risk" || value === "time" ? value : null;
 }

@@ -952,3 +952,103 @@
 @media (max-width: 560px) {
   .knI-copy { width: 100%; }
 }
+
+/* R60 — 抽屉内复制元信息条：在 dialog 面板内换行排布，375 下面板自身有界，不横溢。 */
+.knL-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  min-width: 0;
+  gap: 8px 12px;
+  margin-top: 10px;
+}
+.knL-fallback {
+  flex-basis: 100%;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-muted);
+  color: var(--color-foreground);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.6875rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+@media (max-width: 560px) {
+  .knL-copy-meta { width: 100%; }
+}
+
+/* R63 — 固定链接条：地址文本单行省略号（全文在 title 与剪贴板），窄屏靠 min-width:0 收缩，不横溢。 */
+.knO-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  min-width: 0;
+  gap: 8px 12px;
+  margin-top: 8px;
+}
+.knO-url {
+  flex: 1 1 12rem;
+  min-width: 0;
+  max-width: 100%;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.6875rem;
+  color: var(--color-muted-foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.knO-fallback {
+  flex-basis: 100%;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-muted);
+  color: var(--color-foreground);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.6875rem;
+  resize: vertical;
+}
+@media (max-width: 560px) {
+  .knO-copy { width: 100%; }
+}
+
+/* R61 — 数据来源与新鲜度台账：默认收起；长路径在窄屏断词，表格走既有 knw5-scroll，不新增横溢。 */
+.knM-sources {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+}
+.knM-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--color-foreground);
+  cursor: pointer;
+}
+.knM-toggle:focus-visible {
+  outline: 2px solid var(--color-ring, var(--color-border));
+  outline-offset: 2px;
+}
+.knM-action {
+  font-weight: 400;
+  color: var(--color-muted-foreground);
+}
+.knM-path {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.6875rem;
+  overflow-wrap: anywhere;
+}

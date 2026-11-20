@@ -956,3 +956,74 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 测试：新 describe 4 用例 append 文件最末（tail-safe）——2 行逐字读数（员工 · 217A91BA/待核实/2026-11-17 13:52/在岗/无裸 emp_/已复制 2 行/无 fallback）；逗号名转义「"小鲤, 带头"」+屏上姓名列同源；reject→textarea readOnly 3 段；空列表 disabled+title「当前已加载 0 人」。定向 employees 2 files/22 passed；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **138 files/1678 passed**（基线 1674+4）。
 - 零破：emp-list-*/emp-row-preview-*/ed*/apv5–9/apd6/apd7/apr5（既有用例全绿为证）；三档=header flex-wrap+span.contents 既有形态学报（jsdom 不可测）；9122==053da5c4 禁重建，活体复制读数待并入后代次。
 - 队列注记：R58（employees 分页）仍未交付。
+
+## R58 员工列表游标分页与总数诚实化（emp-list-page-*，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @a890e0c1（b797bc98 已含），toplevel ✓ porc=0；代码代次 053da5c4。
+- 活体游标实测（ego 只读 9122==053da5c4）：`?limit=2` 页1 200 ids=[emp_217A91,emp_86A81C] nextCursor=eyJjcmVhdGVkQXQ6…；带 cursor 页2 200 n=1 ids=[emp_016685] 重复=0 nextCursor=null（末页不带键）；`lifecycleState=active&limit=2` 200 n=2、该筛选腿页2 200 n=0；顶层 keys=[items,nextCursor] **无 total/count**；`cursor=非法`→400 request.invalid_query（前端只在有 nextCursor 时才发 cursor，不踩）。
+- 实现（EmployeesModulePage.tsx）：readRows→{rows,nextCursor,total}（多键 next_cursor/total/count 兼容）；State 加 nextCursor/total/loadingMore；loadMore=ready 且有游标才发 `cursor=` 续取，按 employeeId Set 去重后 append（防重复行，用例锁 emp_2B2C 计数=1）；分页条 emp-list-page-more（到底/加载中 disabled）、emp-list-page-end「已到末页」、emp-list-page-count=无 total→「总数不可用 · 已显示 N 人」+title「读口顶层只有 items/nextCursor（实测 200，无 total 键）；按已加载条数推算会撒谎，故不推算。」；employees-error Card 加 data-emp-list-page-error 别名（现名 employees-error 保留）。
+- 切换重置：q/lifecycle 变更=主 effect 整体 setState 替换=游标/items 天然重置（用例：lifecycle 切换后恰 1 条新 fetch 且无 cursor）；sort/dir 属 R62 本地排序契约（作用于全部已加载行、不 refetch、不丢已加载），URL 四参 ?q=&lifecycle=&sort=&dir= 共存保态。
+- 教训（幻影落地）：前窗压缩块声称本单「已落地」，本窗现查 grep loadMore/emp-list-page=0=从未落盘——**压缩块声称已编辑≠已落盘，续做前必现查**；本段代码为本窗从零落地。
+- 验证：定向 employees 2 files/26 passed（22+4 新）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **138 files/1682 passed**（基线 1678+4）；emp-list-copy/emp-row-preview/ed*/apv*/apd*/apr5 零破（既有用例全绿为证）。
+- 未测项：9122==053da5c4 禁重建，翻页活体读数待并入后代次；三档=分页条 flex-wrap+min-w-0 形态学报（jsdom 不可测）。
+
+## R66 员工列表导出 CSV（emp-list-export，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console → tip **f98fd430**（含 cca9cf7e wave-19），toplevel ✓ porc=0；回执代次引用=cca9cf7e（禁引 b797bc98/053da5c4 及更早）。
+- 队列现状澄清（教训=现查为准）：R58=5e7665d4 已交（工单「仍欠」系滞后信息）；R64 copy=**a890e0c1 实际早已交付**（本窗 grep emp-list-copy/csvCell=在库，前窗「R64 未落地」判断为误）；本笔只补 R66。
+- 实现（modules/employees/EmployeesModulePage.tsx）：export csvTimestamp(now)=`employees-YYYYMMDD-HHmm.csv`（BJT +480min 纯格式化，new Date() 仅在点击回调内=render 体 purity 合规；用例锁跨日 2026-11-20T16:05Z→20261121-0005）；export buildEmployeesCsv(rows)=\uFEFF BOM+CRLF+尾行 CRLF（RFC4180，csvCell 与 copy 同源复用）；表头固定 name,employee_no,lifecycle,last_active；行=与 emp-list-copy 同一 sortedItems（禁第二套取值）；值=displayName/「员工 · shortCode」（禁裸 emp_）/lifecycleLabel（未知=待核实既有 default）/beijingMinute；**缺值口径差**：CSV last_active 缺=空字段（工单「缺“—”→空字段禁 0」，与 copy 的「—」不同，独立取值函数实现非参数化复制）。ListExportButton 挂 ListCopyButton 旁（role=group）：emp-list-export 钮（empty disabled+title「当前已加载 0 人：没有可导出的行。」/启用 title「导出当前已加载 N 人，不是全量；行序与屏上一致，纯前端生成零新端点」）+emp-list-export-count「共 N 行」（与列表同源）。Blob+a.download 纯前端，零新端点；URL.createObjectURL 缺失=no-op guard（jsdom/SSR）。
+- 测试 3 用例 append 最末（tail guard ✓；本窗一次 NameError 未落盘重贴成功）：①csvTimestamp 两值含跨日②两行 fixture（逗号名「小鲤, 带头」+updatedAt null+weird_state）点导出→fetchJSON 计数前后不变（零新端点锁）+拦 URL.createObjectURL 收 blob→行=表头+2（CRLF split filter 非空=3）+`"小鲤, 带头"` RFC4180 转义+「员工 · 217A91BA」+末行 endsWith(",")=缺值空字段+「待核实」+**BOM 字节级断言 [0xef,0xbb,0xbf]**（坑=Blob.text() 按 WHATWG UTF-8 decode 规范剥离前导 BOM，text 层断 startsWith 必假，须 arrayBuffer/slice 验字节）③空列表 disabled+title。定向 employees 2 files/29 passed（26+3）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **144 files/1802 passed**（merge wave-19 基线）。
+- 零破：emp-list-*/emp-row-preview-*/emp-list-copy*/emp-list-page*/ed*/apv*/apd*/apr5（既有用例全绿为证）；三档=header flex-wrap+min-w-0 形态学报（jsdom 不可测）；9122==cca9cf7e 禁重建，活体下载读数待并入后代次。
+
+## R67 员工列表键盘导航与行预览焦点闭环（emp-list-nav，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console → tip 80cab047（含 cca9cf7e 全门 ledger 3c7f70f6；employees 模块 diff=零他人改动），toplevel ✓ porc=0。
+- 实现（EmployeesModulePage.tsx）：roving tabindex 锚=行 Link（每行唯一行级 tab 位）——`activeRowKey` useState + `rowRefs` useRef Map；Link 加 ref 注册/注销、`tabIndex=(activeRowKey ?? 首行)===本行?0:-1`、`aria-expanded={previewKey===本行}`（与 toggle 同步、双载体同值）、onFocus 同步 activeRowKey、onKeyDown：ArrowDown/ArrowUp 邻行移焦（sortedItems 序，越界钉首末）、Home/End 首末、**Enter=preventDefault 拦截跳转+展开既有 emp-row-preview-<id>**（工单 Enter 语义=展开非导航；详情直达仍走鼠标点击/MouseDown 既有链）、Escape 仅在有展开时 preventDefault+收起+currentTarget.focus()（焦点还该行）。容器 `<div data-testid="emp-list-nav" role="grid" aria-label>` 包 ul（emp-l-list 现名零改）。toggle 钮/SortHeader/复制导出钮原生 Tab 序不动；focus-visible 沿用现有 token outline-white/60 不自造色。
+- 不劫持处置=结构性：loading/error/denied/empty 早退分支无行可渲→无方向键接收体；用例 Ⅲ 断 [data-testid=emp-list-nav]=null+body dispatch ArrowDown/Enter 无异常。
+- 零新请求：键盘路径只动本地 state（行数据已在 items）；用例 Ⅱ 全程锁 fetchJSON.mock.calls 计数不变。URL ?q/&lifecycle=&sort=&dir= 零触碰（用例 Ⅰ 不写 URL 即证）。
+- 测试 3 用例 append 最末（tail guard ✓）：Ⅰ 首行 tabStop=0 其余 -1→ArrowDown 移焦+tabStop 跟随→End/Home 首末；Ⅱ Enter 展开+aria-expanded=true+列表仍在屏（未导航）+再 Enter 收起+B 行 Enter 互斥（同时仅一行，与 R63 previewKey 单值一致）+Esc 收起+activeElement=该行+计数锁；Ⅲ state=error 无容器+body 按键无异常。定向 employees 2 files/32 passed（29+3）；tsc 本域 0 红；assert-ia 两模式 exit0；全量尾行见回执（基线 144 files/1802）。
+- 零破：emp-list-*/emp-row-preview-*/emp-list-page-*/ed*/apv*/apd*/apr5（既有 29 用例全绿为证）；三档=Link className 未动、包 div 无布局属性（形态学报，jsdom 不可测）。9122==cca9cf7e 禁重建，活体键盘读数待并入后代次。
+
+## R68 员工行预览 ↔ 详情身份卡逐字段同值（2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @e870677c（章面 3c7f70f6，代次 cca9cf7e），toplevel ✓ porc=0。
+- 改前→改后（六字段对照，preview=emp-row-preview-* / identity=ed1-identity-*）：
+  · 姓名缺值：preview「该字段未返回」vs identity「—」→ 两处同 FIELD_MISSING；hover 两处异句（「列表读口没有回传该字段。」/「后台没有回传这位员工的姓名。」）→ 同 FIELD_MISSING_TITLE「读口没有回传该字段。」
+  · 工号形制：preview「员工 · 短码」vs identity 纯短码 → identity 改「员工 · A3F1B2C4」（title 仍全 id，禁裸 emp_ 保持）
+  · 在职态：两处词表本就同（在岗/入职中/已暂停/已停用/离职中/草稿/已归档），未知同落「待核实」；title 统一「原始值：X」/缺值 FIELD_MISSING_TITLE；identity 的「状态未知」二次包装删除（统一走 rosterLifecycleLabel=employees lifecycleLabel 唯一词表）
+  · 角色/创建时间缺值：同 FIELD_MISSING 处置
+  · 请求编号：identity 原无此行 → 新增 ed1-identity-rid=RequestIdCopy（fallback「请求编号：该字段未返回」与 preview 逐字同；活体两读口均无 requestId 键→实盘显该句）
+- 同一 helper（禁各写一份）：FIELD_MISSING / FIELD_MISSING_TITLE / fieldMissing(label) / lifecycleLabel 由 employees 模块 export，employee-detail IdentityCard import 消费（R43 跨模块只读 import 先例同方向）；一致性用例两侧断言同一常量值。
+- 活体只读对照（ego 9122==cca9cf7e，emp_217A91BA）：LIST 200 vs DETAIL 200 —— name/title/lifecycleState(draft)/updatedAt 逐字同值；createdAt 仅详情读口有（2026-11-17T05:52:48.030Z→卡上 2026-11-17 13:52 BJT）；requestId 两读口均 absent。preview 最近活跃=updatedAt、identity 创建时间=createdAt 属不同语义字段，各自 BJT 到分（工单口径允许「最近活跃或创建时间」）。
+- 测试：detail R45 既有断言同步（code 形制/state title/缺值句）+新 describe "R68 preview↔identity parity (edx-parity)" 2 用例（全字段记录逐词对照+404 读口不渲身份卡禁造字段）；employees 新 describe 1 用例（RowPreview 缺值全走共享常量、屏上不再出现第二套「—」写法）。定向 employees+employee-detail 3 files/83 passed；tsc 两域 0 红；assert-ia 两模式 exit0；全量尾行见回执（基线 144 files/1805）。
+- 零破：emp-row-preview-*/emp-list-*/ed1-identity-*/ed5-* testid 名全保留（ed1-identity-rid 为新增）；汇报对象不在六字段口径内维持「—」+原 title（如实注明非本轮范围）；三档=IdentityField dl grid 既有形态学报。9122 禁重建，活体 DOM 对照待并入后代次。
+
+## R69 员工列表空/错态统一（emp-list-state-*，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @0d1fd326（章面 3c7f70f6，代次 cca9cf7e），toplevel ✓ porc=0。
+- 现状已满足项（本单只加锁定不重做）：empty 两种区分（filtered=「没有匹配的员工」+清除筛选出口 vs「还没有数字员工」）既有；error=人话+RequestIdCopy+重试既有；403≡404 同体=errorState denied 分支既有；loading=5×h-10 固定高骨架（不跳动，jsdom 不可测形态学报+用例断 5 根等高条）。
+- 本单增量（EmployeesModulePage.tsx）：①phaseReason(phase) 统一原因句（loading/denied/error/empty 四句）；②计数位 emp-list-count 常驻——非 ready 显「—」+title=phaseReason（禁 0 冒充；empty=「真实空集」句），ready 原值原句不动；③三钮 phase 化=ListCopyButton/ListExportButton 加 phase prop，disabled=phase!=="ready"||空，title 非 ready=「不能复制/导出：原因」；分页条 emp-list-page 从 ready Card 内移出为常驻（more 非 ready disabled+「不能续取：原因」；count 非 ready=「总数不可读 · 已显示 — 人」；end 加 phase==="ready" 前缀防 denied 保留行误显已到末页）；④error/denied setState 保留已加载行（catch prev.items；forced 分支不动；表区仍 ready 才渲）；URL 四参不碰=denied 保 ?q=&lifecycle=&sort=&dir= 用例锁；⑤emp-list-state 族新 testid（现名全保留）：容器 div data-phase、-loading/-denied/-error/-empty=CardContent 位、-rid=RequestIdCopy 所在 p、-retry=error 重试外包 span、-empty-text=p 内 span、-clear=清除筛选钮。
+- 测试：新 describe R69 4 用例=error（phase 属性+state 三件+count「—」+三钮 disabled 原因+end=null+URL 四参保）/empty 两种（filtered 文案+clear 在 vs 无 clear；count title「真实空集」）/403≡404 同体（denied textContent 相等+more 锁）/loading（data-phase+骨架+三钮锁+5 等高条）。既有 R64/R66 空态 title 断言随 phase 化同步（「当前已加载 0 人」→统一原因句，语义等价）。定向 employees 2 files/37 passed；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **144 files/1812 passed**（基线 1808+4）。
+- 零破：emp-list-*/emp-row-preview-*/emp-list-page-*/emp-list-nav-*/ed*/apv*/apd*/apr5（既有 33 用例全绿为证）；三档=分页条外移后仍 flex-wrap+px-1（无 Card 内边距），计数/钮均 min-w-0 truncate 形态学报；9122==cca9cf7e 禁重建，四态活体读数待并入后代次。
+
+## R70 审批队列四态统一（apv-state-*，两 tab，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @e1ac6174（章面 3c7f70f6），toplevel ✓ porc=0；代次 cca9cf7e。
+- 原因句族（与 R69 employees 同构）：QueueSummaryBar unavailable() 新增 empty 句「读口如实返回空结果（真实空集，不是缺数）；计数位按约定显「—」」；QueueCsvExport csvPhaseReason()（loading=数据还在读取/error=列表没能加载/denied=没有读取权限/empty=真实空集）——非 ready 一律 disabled+title「不能导出：<原因>；恢复列表后自动可用。」+apv7-export-count 显「—」。
+- 修出的真缺陷：QueueSummaryBar 状态桶此前不查 down（loading/error/denied/empty 显 0 冒充）→ 两分支加 `down === null` 前置（R50 遗留漏洞本单暴露）。
+- 四态载体：LoadingPanel 既有 4 行等高固定骨架（不动）；EmptyPanel 新 `clear?: {label,onClear}` prop+CardContent apv-state-empty+文案 p apv-state-empty-text+出口钮 apv-state-clear；ErrorPanel CardContent=apv-state-error、rid p=apv-state-rid（RequestIdCopyField 可复制）、重试外包 span=apv-state-retry（apr5-retry 现名保留）；DeniedPanel CardContent=apv-state-denied（403/404 同体同 testid 既有+用例锁文字相等）；两页 grid 容器=data-testid=apv-state data-phase={list.phase}。
+- empty 分两种：history status 筛选中=「该条件下无审批…+清空筛选（apv-state-clear：一次写回同删 status+q，其余参数不动）」；无筛选=读口真空（无假出口，沿用 PanelExits）。pending 无服务器筛选维=只有第一种真空文案「现在没有需要你处理的申请」（DONE 注明工单第二维在 pending 不适用）。
+- denied/error 保留已加载行=useApprovalsData catch 改 `rows: prev.rows, unreadable: prev.unreadable`（状态层数据不丢、URL 参数天然不动；渲染层仍只显面板不画旧行——沿用该文件「nothing may sit above the panel」安全语义，注释更新）。
+- apv9-toggle/apd6 入口：非 ready 态列表不渲行=入口不存在，恢复 ready 自动可点（DOM 用例锁 apr5-list 内无 toggle）。
+- 测试：history 新 describe 5 用例 + pending 2 用例（await mount 形态；error req-r70-500 可复制 rid+重试+三闸；clear 点击后全量恢复；403≡404 首行人话相等且 apv-state-error=null；loading 4 骨架+钮闸+计数「—」）。定向 approvals 3 files/90 passed（83+7）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **144 files/1819 passed**（基线 1812+7）。
+- 坑（本单实证）：①history/pending 测试的 mount(handler?,entry) 会把默认 mock 覆盖到调用方 mockImplementation 之上=必须先设入 mount 参数；②mount 不 await 时依赖 waitFor 轮询推 act 队列=时序不稳，本单统一 await mount；③risk 桶 testid=apv6-summary-risk-<v>；④denied 面板 textContent 含每请求 rid=「同体」比对取首行人话 p。
+- 零破：apv5/apv6/apv7/apv8/apv9/apd5/apd6/apd7/apr5/ed*/emp-*（既有 83 用例全绿为证）；三档=grid/data-phase 容器与面板 flex-col 既有形态学报（jsdom 不可测）；9122==cca9cf7e 禁重建，活体四态读数待并入后代次。
+
+## R71 审批队列列排序（apv-sort-*，本地+诚实口径，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @7d360b9b（章面 3c7f70f6），toplevel ✓ porc=0；代次 cca9cf7e。
+- 活体实测（ego 9122==cca9cf7e）：/api/approvals?status=all&limit=50 基线 200 n=8 first=123DE4 last=449D1C；`&sort=title&order=asc`、`&sort=decidedAt&order=desc`、`&orderBy=status&dir=asc` 三组全部 **200 同序同集合** = 读口忽略排序参数 → 本地排序分支确定（禁假装服务端排序）。
+- 实现：model.ts 新 `ApprovalSortKey/Dir + approvalSortValue + sortApprovalRows + approvalSortKeyOf`（risk=严重度 rank critical0/high1/medium2/low3；time=新行字段 `decidedAt` raw ISO epoch（屏上仍走 decided 人话）；**缺值 partition 恒排末**不当 0；title localeCompare zh）；新 QueueSortBar.tsx（四列真 button[type=button]：apv-sort-{title,status,risk,time}，aria-sort 三态循环 asc→desc→清除（button 上属性可读），active 图标 ArrowUp/Down，disabled=phase!=="ready"+title「不能排序：<原因>；恢复列表后自动可用」；apv-sort-scope-note「仅在当前已加载 N 条内排序；不是服务端排序（实测同序同集合），缺值恒排末」+title 三组实测细节；blocked 态注脚不渲）；两页接线=asort/adir 从 params 派生+cycleSort 差分 set/delete（**tab/status/q 互不动**，replace 写回）、visibleRows=过滤后 sortApprovalRows（与 apv8 本地过滤同链）。
+- 同源联动：QueueCsvExport rows 由 list.rows 改 **visibleRows**（默认态首末=c9,b9 服务端序；?asort=status&adir=asc 组 blob 首行 ap_a9 末行 ap_c9=表体同序，用例双组锁）；QueueSummaryBar 桶计数与排序无关（approved=1 两态相等锁）。
+- 测试：history 3 用例（三态循环+缺时间行恒末+计数不变零请求锁 / 粘 asort&adir URL 复现+CSV 逐行对照+汇总不变 / error 态控件 disabled+原因 title+注脚隐藏）+pending 1 用例（ready 启用+点击零 refetch+注脚）。定向 approvals 3 files/94 passed（90+4）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **144 files/1823 passed**（基线 1819+4）。
+- 零破：apv5–apv9/apd5–apd7/apr5/ed*/emp-*（既有 90 用例全绿为证）；Enter/Space=原生 button 语义（jsdom dispatch Enter 不经 onClick 的框架差异在断言中如实注记，键盘可达由 type=button+可聚焦保证）；三档=控件 flex-wrap+note min-w-0 形态学报；9122==cca9cf7e 禁重建，活体排序 DOM 读数待并入后代次。

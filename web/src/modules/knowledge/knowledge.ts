@@ -525,6 +525,51 @@ interface Stamp {
   stampReason: string | null;
 }
 
+/**
+ * R61 — 「数据来源与新鲜度」块的采集时刻提取口：只认 payload 顶层 ISO，
+ * 严格按六别名顺序 asOf / as_of / collectedAt / collected_at / generatedAt / generated_at；
+ * 缺失或非 ISO 一律给「—」+原因；本机时钟不参与，asOfSource 只供 title。
+ * 与屏上「数据截至」行的 stampOf 分开：那一行还允许回落行内最新时间，这一行只认顶层事实。
+ */
+export interface KnAsOfFacts {
+  asOf: string | null;
+  asOfIso: string | null;
+  asOfAlias: string | null;
+  asOfSource: string | null;
+  asOfReason: string | null;
+}
+
+const KN_AS_OF_KEYS = ["asOf", "as_of", "collectedAt", "collected_at", "generatedAt", "generated_at"] as const;
+const ISO_LIKE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?$/;
+
+export function knAsOfFacts(body: unknown): KnAsOfFacts {
+  const rec = isRecord(body) ? body : null;
+  const source = rec ? pickString(rec.asOfSource, rec.as_of_source) : null;
+  if (rec === null) {
+    return { asOf: null, asOfIso: null, asOfAlias: null, asOfSource: source, asOfReason: "响应不是对象，读不到顶层采集时间。" };
+  }
+  for (const key of KN_AS_OF_KEYS) {
+    const raw = pickString(rec[key]);
+    if (raw === null) continue;
+    const iso = ISO_LIKE.test(raw) ? beijing(raw) : null;
+    if (iso) return { asOf: iso, asOfIso: raw, asOfAlias: key, asOfSource: source, asOfReason: null };
+    return {
+      asOf: null,
+      asOfIso: raw,
+      asOfAlias: key,
+      asOfSource: source,
+      asOfReason: "顶层采集时间不是可解析的 ISO 时刻，按缺失处理。",
+    };
+  }
+  return {
+    asOf: null,
+    asOfIso: null,
+    asOfAlias: null,
+    asOfSource: source,
+    asOfReason: "响应顶层没有给出六个别名之一（asOf/as_of/collectedAt/collected_at/generatedAt/generated_at）。",
+  };
+}
+
 function stampOf(body: unknown): Stamp {
   if (!isRecord(body)) {
     return { stamp: null, stampReason: "上游响应没有带采集时间，数据截至时间未知。" };
@@ -1482,6 +1527,26 @@ export function docHitCopyText(rows: DocRow[]): string {
   const lines = [
     DOC_HIT_COPY_HEADER.join(" | "),
     ...rows.map((row) => [row.name, row.spaceLabel ?? "—", row.type, row.size, row.at].join(" | ")),
+  ];
+  return `${lines.join("\n")}\n`;
+}
+
+/* ------------------------------------------------------------------ *
+ * R60 — 抽屉「复制元信息」的文本：一条字段一行，值就是抽屉拿在手里的屏上
+ * 数据（列表行 + 地址里的文档标识），此路不发任何请求。缺值「—」不补 0；
+ * 所属空间缺名字时用行上的人话短码行（「空间 · XXX」），全空间 id 只留在
+ * 屏上 title；文档短码取标识的人话尾段（大写），裸 id 不进文本，全 id 在
+ * 字段块的 title 里（屏上口径不变）。
+ * ------------------------------------------------------------------ */
+
+export function docMetaCopyText(row: DocRow | null, docId: string): string {
+  const lines = [
+    `文档名：${row?.name ?? "—"}`,
+    `所属空间：${row?.spaceLabel ?? "—"}`,
+    `类型：${row?.type ?? "—"}`,
+    `大小：${row?.size ?? "—"}`,
+    `更新：${row?.at ?? "—"}`,
+    `文档短码：${shortId(row?.id || docId) ?? "—"}`,
   ];
   return `${lines.join("\n")}\n`;
 }

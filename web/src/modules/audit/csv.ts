@@ -98,7 +98,43 @@ function asciiToken(value: string, fallback: string): string {
   return cleaned || fallback;
 }
 
-export function filteredExportName(windowToken: string, actorToken: string, resourceToken: string, now: Date = new Date()): string {
+/** The filter snapshot a file name should hand back later. */
+export interface ExportSnapshot {
+  /** The quick window or 「custom」. */
+  window: string;
+  /** The operator handle, or 「all」. */
+  actor: string;
+  /** The resource value, or 「all」. */
+  resource: string;
+  /** The event type (its dotted code), or 「all」 when every type is on screen. */
+  action?: string;
+  /** How many rows the file carries; omitted until the set is known. */
+  rows?: number | null;
+}
+
+/**
+ * audI: the name carries the WHOLE question the rows came from — window,
+ * operator, resource, event type and how many rows are inside — so a file on a
+ * desk says what it answers instead of being renamed by memory. Dotted codes
+ * collapse to `-` with the same rule as every other token, and the stamp is
+ * the Beijing minute, the clock the rows are read in.
+ */
+export function filterSnapshotExportName(snapshot: ExportSnapshot, now: Date = new Date()): string {
+  return buildSnapshotName(
+    [snapshot.window, snapshot.actor, snapshot.resource, snapshot.action ?? "all"],
+    snapshot.rows,
+    now,
+  );
+}
+
+function buildSnapshotName(tokens: string[], rows: number | null | undefined, now: Date): string {
+  const seats = tokens
+    .map(snapshotToken)
+    .concat(rows === null || rows === undefined ? [] : ["n" + String(Math.max(0, Math.trunc(rows)))]);
+  return "audit-" + seats.join("-") + "-" + beijingMinute(now) + ".csv";
+}
+
+function beijingMinute(now: Date): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Shanghai",
     year: "numeric",
@@ -107,12 +143,36 @@ export function filteredExportName(windowToken: string, actorToken: string, reso
     hour: "2-digit",
     minute: "2-digit",
     hourCycle: "h23",
-  }).formatToParts(now).reduce<Record<string, string>>((acc, part) => {
-    acc[part.type] = part.value;
-    return acc;
-  }, {});
-  const stamp = parts.year + parts.month + parts.day + "-" + parts.hour + parts.minute;
-  return "audit-" + asciiToken(windowToken, "7d") + "-" + asciiToken(actorToken, "all") + "-" + asciiToken(resourceToken, "all") + "-" + stamp + ".csv";
+  })
+    .formatToParts(now)
+    .reduce<Record<string, string>>((acc, part) => {
+      acc[part.type] = part.value;
+      return acc;
+    }, {});
+  return parts.year + parts.month + parts.day + "-" + parts.hour + parts.minute;
+}
+
+/**
+ * audI: a snapshot seat. An absent filter says 「all」; a value that survives no
+ * ASCII at all says 「x」 instead, because folding it away and calling the file
+ * 「all」 would claim a filter nobody removed.
+ */
+function snapshotToken(value: string | null | undefined): string {
+  const raw = (value ?? "").trim();
+  if (raw === "" || raw === "all") return "all";
+  return asciiToken(raw, "") || "x";
+}
+
+function buildName(tokens: string[], rows: number | null | undefined, now: Date): string {
+  const seats = tokens
+    .map((token) => asciiToken(token, "all"))
+    .concat(rows === null || rows === undefined ? [] : ["n" + String(Math.max(0, Math.trunc(rows)))]);
+  return "audit-" + seats.join("-") + "-" + beijingMinute(now) + ".csv";
+}
+
+/** The three-token spelling the earlier rounds pinned. */
+export function filteredExportName(windowToken: string, actorToken: string, resourceToken: string, now: Date = new Date()): string {
+  return buildName([windowToken, actorToken, resourceToken], null, now);
 }
 
 export function downloadText(name: string, text: string): void {

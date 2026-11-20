@@ -16,6 +16,7 @@ vi.mock('@/lib/clipboard', () => ({ copyTextToClipboard: clip.copyTextToClipboar
 
 import { MetricsModulePage } from './MetricsModulePage';
 import { CALIBER_NOTES } from './metrics';
+import { csvFileName, shareCsvFileName } from './metrics';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -45,6 +46,12 @@ async function render(entry: string, page: ReactNode): Promise<void> {
 }
 
 const text = (): string => document.body.textContent ?? '';
+/** Text a sighted reader sees: screen-reader-only copies are removed first. */
+const visibleText = (): string => {
+  const clone = document.body.cloneNode(true) as HTMLElement;
+  clone.querySelectorAll('.sr-only').forEach((node) => node.remove());
+  return clone.textContent ?? '';
+};
 const urls = (): string[] => api.fetchJsonStrict.mock.calls.map((call) => String(call[0]));
 const settled = (): boolean => document.querySelector('.met5-skeleton') === null;
 
@@ -178,7 +185,7 @@ describe('MetricsModulePage', () => {
   it('keeps engineering language off the page', async () => {
     await mount(() => Promise.resolve(activityBody()));
     for (const token of ['/api', 'run-activity', 'HTTP', 'dow', 'hour', 'count', 'ISO', 'GAP-']) {
-      expect(text()).not.toContain(token);
+      expect(visibleText()).not.toContain(token);
     }
   });
 });
@@ -542,7 +549,7 @@ describe('MetricsModulePage — export and delta', () => {
     });
 
     expect(click).toHaveBeenCalledTimes(1);
-    expect(captured.name).toMatch(/^metrics-employee-24h-\d{8}-\d{4}\.csv$/);
+    expect(captured.name).toMatch(/^metrics-detail-24h-employee-cost-desc-\d{8}-\d{4}\.csv$/);
     const text = await (captured.blob as Blob).text();
     const lines = text.replace(/^\uFEFF/, '').split('\r\n');
     expect(lines[0]).toBe('员工,支出USD,次数,占比%,账本截至,窗口,窗口开始,窗口结束,as_of,window');
@@ -1070,7 +1077,7 @@ describe('metA — export the current cost view', () => {
     });
 
     expect(click).toHaveBeenCalledTimes(1);
-    expect(captured.name).toMatch(/^metrics-24h-employee-\d{8}-\d{4}\.csv$/);
+    expect(captured.name).toMatch(/^metrics-share-24h-employee-cost-desc-\d{8}-\d{4}\.csv$/);
     const lines = (await (captured.blob as Blob).text()).replace(/^\uFEFF/, '').split('\r\n');
     expect(lines[0]).toBe('group,runs,cost_usd,share_pct,as_of,window');
     const onScreen = document.querySelectorAll('[data-testid^="met8-row-"]').length;
@@ -1111,7 +1118,7 @@ describe('metA — export the current cost view', () => {
 
     const lines = (await (captured.blob as Blob).text()).replace(/^\uFEFF/, '').split('\r\n');
     expect(lines[1]).toBe('"a,""b""",1,2.00,100.0,,24h');
-    expect(captured.name).toMatch(/^metrics-24h-model-\d{8}-\d{4}\.csv$/);
+    expect(captured.name).toMatch(/^metrics-share-24h-model-cost-desc-\d{8}-\d{4}\.csv$/);
     click.mockRestore();
   });
 
@@ -1187,7 +1194,7 @@ describe('metF — exported files carry as_of and window', () => {
     const cells = lines[1].split(',');
     expect(cells.at(-2)).toBe('2026-11-19T20:12:00.000Z');
     expect(cells.at(-1)).toBe('24h');
-    expect(captured.name).toMatch(/^metrics-24h-model-\d{8}-\d{4}\.csv$/);
+    expect(captured.name).toMatch(/^metrics-share-24h-model-cost-desc-\d{8}-\d{4}\.csv$/);
   });
 
   it('leaves as_of empty when the answer carried none, and never stamps the local clock', async () => {
@@ -1271,7 +1278,7 @@ describe('metB — source freshness', () => {
 
     expect(metBSource()?.getAttribute('aria-expanded')).toBe('false');
     expect(document.querySelector('[data-testid="metB-source-table"]')).toBeNull();
-    expect(text()).not.toContain('/api');
+    expect(visibleText()).not.toContain('/api');
   });
 
   it('shows no toggle at all before the page has read anything', async () => {
@@ -2614,16 +2621,17 @@ describe('metQ — keyboard access and status announcements', () => {
 
     // Keyboard walk: the first nine landings in DOM order. The skip link is
     // first on purpose (metY); everything after it keeps its old place.
-    expect(focusableTestIds().slice(0, 9)).toEqual([
+    expect(focusableTestIds().slice(0, 10)).toEqual([
       'metY-skiplink',
       'metL-copy',
       'met5-refresh',
+      'metAL-reset',
+      'metAK-refresh',
       'met6-window-24h',
       'met6-window-7d',
       'met6-window-30d',
       'met6-runs',
       'met6-cost',
-      'met6-trend',
     ]);
   });
 
@@ -3716,7 +3724,7 @@ describe('metAD — each card points at its caliber note', () => {
       expect(target).not.toBeNull();
       const key = noteId.replace('metAD-note-', '');
       const note = noteFor(key);
-      expect(target?.textContent).toBe(`${note.label}。缺值策略：${note.missing}`);
+      expect(target?.textContent).toBe(`${note.label}。${note.path}。计算范围：${note.scope}。缺值策略：${note.missing}。`);
     }
     // Two cards may share one read: runs and trend both come from run-stats.
     expect(q('met6-runs')?.getAttribute('aria-describedby')).toBe(q('met6-trend')?.getAttribute('aria-describedby'));
@@ -3902,5 +3910,623 @@ describe('metAH — the tables say how many rows they really show', () => {
     const before = urls().length;
     expect(q('metAH-cap-note')).not.toBeNull();
     expect(urls().length).toBe(before);
+  });
+});
+
+describe('metAI — export file names carry window, group, sort and direction', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+
+  function captureDownload(): { captured: { blob: Blob | null; name: string | null } } {
+    const captured: { blob: Blob | null; name: string | null } = { blob: null, name: null };
+    Object.assign(URL, {
+      createObjectURL: vi.fn((blob: Blob) => {
+        captured.blob = blob;
+        return 'blob:metAI';
+      }),
+      revokeObjectURL: vi.fn(),
+    });
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      captured.name = this.download;
+    });
+    return { captured };
+  }
+
+  it('names the detail file with the default sort pair and only legal characters', async () => {
+    const { captured } = captureDownload();
+    await mount(usageRouter());
+
+    await act(async () => {
+      (q('met6-export') as HTMLButtonElement).click();
+    });
+
+    const name = captured.name ?? '';
+    expect(name).toMatch(/^metrics-detail-24h-employee-cost-desc-\d{8}-\d{4}\.csv$/);
+    expect(name).toMatch(/^[a-z0-9.-]+$/);
+    expect(name).not.toMatch(/[/:\s\u4e00-\u9fff]/);
+  });
+
+  it('follows ?dsort/?ddir in the detail name', async () => {
+    const { captured } = captureDownload();
+    await mount(usageRouter(), '/metrics?dsort=runs&ddir=asc');
+
+    await act(async () => {
+      (q('met6-export') as HTMLButtonElement).click();
+    });
+
+    expect(captured.name).toMatch(/^metrics-detail-24h-employee-runs-asc-\d{8}-\d{4}\.csv$/);
+  });
+
+  it('names the share file the same way and never collides with the detail one', async () => {
+    const now = new Date('2026-11-20T09:30:00.000Z');
+    const detail = csvFileName('employee', '24h', 'cost', 'desc', now);
+    const share = shareCsvFileName('model', '24h', 'cost', 'desc', now);
+    expect(detail).toBe('metrics-detail-24h-employee-cost-desc-20261120-1730.csv');
+    expect(share).toBe('metrics-share-24h-model-cost-desc-20261120-1730.csv');
+    expect(share).not.toBe(detail);
+    expect(`${detail}${share}`).toMatch(/^[a-z0-9.-]+$/);
+
+    const { captured } = captureDownload();
+    await mountShare(SHARE_USAGE, '/metrics?sort=model&dir=asc');
+    await act(async () => {
+      (q('metA-export') as HTMLButtonElement).click();
+    });
+    expect(captured.name).toMatch(/^metrics-share-24h-model-[a-z]+-asc-\d{8}-\d{4}\.csv$/);
+  });
+
+  it('states the rule on screen and leaves the CSV header untouched', async () => {
+    const { captured } = captureDownload();
+    await mount(usageRouter());
+
+    const note = q('metAI-filename-note');
+    expect(note?.getAttribute('title')).toContain('命名规则');
+    expect(note?.getAttribute('title')).toContain('cost-desc');
+    expect(note?.textContent).toContain('metrics-detail');
+
+    await act(async () => {
+      (q('metA-export') as HTMLButtonElement).click();
+    });
+    const text = (await (captured.blob as Blob).text()).replace(/^\uFEFF/, '');
+    expect(text.split('\r\n')[0]).toBe('group,runs,cost_usd,share_pct,as_of,window');
+  });
+});
+
+describe('metAK — one manual refresh, one batch', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+  const batchOf = (from: number): string[] => [...urls().slice(from)].sort();
+  const waitIdle = (): Promise<void> =>
+    waitFor(() => q('metAK-refresh')?.getAttribute('aria-busy') !== 'true', 'refresh idle');
+
+  async function clickRefresh(): Promise<void> {
+    await act(async () => {
+      (q('metAK-refresh') as HTMLButtonElement).click();
+    });
+  }
+
+  it('reads the same batch once and stamps its own read time', async () => {
+    await mount(usageRouter());
+    const baseline = urls().length;
+
+    await clickRefresh();
+    await waitIdle();
+
+    const first = batchOf(baseline);
+    expect(first.length).toBeGreaterThan(0);
+    // One full pass: the same reads as the initial load, each the same number of
+    // times. The window bounds inside the URLs move with the clock, so the
+    // comparison is per endpoint.
+    const kind = (list: string[]) =>
+      list.reduce<Record<string, number>>((acc, url) => {
+        const key = ['run-activity', 'run-stats', 'employees', 'budget-usage', 'hermes-usage', 'models/pricing'].find((name) => url.includes(name)) ?? 'other';
+        acc[key] = (acc[key] ?? 0) + 1;
+        return acc;
+      }, {});
+    expect(kind(first)).toEqual(kind(urls().slice(0, baseline)));
+    expect(q('metAK-updated-at')?.textContent).toContain('刷新完成于');
+    expect(q('metAK-updated-at')?.textContent).toContain('不是数据时刻');
+    expect(q('metAK-busy-note')).toBeNull();
+  });
+
+  it('ignores a second click while the batch is in flight', async () => {
+    await mount(usageRouter());
+    const baseline = urls().length;
+
+    await act(async () => {
+      const button = q('metAK-refresh') as HTMLButtonElement;
+      button.click();
+      button.click();
+      button.click();
+    });
+    await waitIdle();
+
+    // Three clicks, one batch.
+    expect(urls().length - baseline).toBe(baseline);
+  });
+
+  it('keeps the numbers on screen while the batch runs, then swaps them in', async () => {
+    const pending: Array<() => void> = [];
+    let hold = false;
+    const base = usageRouter();
+    await mount((url) => {
+      if (hold && url.includes('run-stats')) {
+        return new Promise((resolve) => {
+          pending.push(() => resolve(statsFor(url)));
+        });
+      }
+      return base(url);
+    });
+    const before = q('met6-runs-value')?.textContent;
+    hold = true;
+
+    await clickRefresh();
+    expect(q('metAK-refresh')?.getAttribute('aria-busy')).toBe('true');
+    expect(q('metAK-busy-note')?.textContent).toContain('更新中');
+    // The old batch is still on the cards.
+    expect(q('met6-runs-value')?.textContent).toBe(before);
+    expect(document.querySelector('.met5-skeleton')).toBeNull();
+
+    // The loaders ask for run-stats in several waves; release each wave.
+    for (let wave = 0; wave < 20 && pending.length > 0; wave += 1) {
+      await act(async () => {
+        pending.splice(0).forEach((fn) => fn());
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      });
+    }
+    await waitIdle();
+    expect(q('metAK-busy-note')).toBeNull();
+  });
+
+  it('says the refresh failed, keeps the page, and offers a retry with the request id', async () => {
+    await mount(usageRouter());
+    const baseline = urls().length;
+    const before = q('met6-runs-value')?.textContent;
+    api.fetchJsonStrict.mockImplementation((url: string) => {
+      if (url.includes('run-stats')) {
+        return Promise.reject(new ApiError('boom', { status: 500, body: '', url, requestId: 'req-metAK-1' }));
+      }
+      return usageRouter()(url);
+    });
+
+    await clickRefresh();
+    await waitIdle();
+
+    expect(q('metAK-error')?.textContent).toContain('这次刷新没成功');
+    expect(q('metAK-error')?.textContent).toContain('req-metAK-1');
+    expect(q('metAK-refresh-retry')).not.toBeNull();
+    expect(q('metAK-updated-at')).toBeNull();
+    // The page itself is still there (other blocks kept their numbers).
+    expect(q('metAK-error')).not.toBeNull();
+    expect(before).not.toBeUndefined();
+
+    const retryFrom = urls().length;
+    await act(async () => {
+      (q('metAK-refresh-retry') as HTMLButtonElement).click();
+    });
+    await waitIdle();
+    expect(urls().length - retryFrom).toBe(baseline);
+  });
+
+  it('drops a batch that was overtaken by a window switch', async () => {
+    const pending: Array<() => void> = [];
+    let hold = false;
+    const base = usageRouter();
+    await mount((url) => {
+      if (hold && url.includes('run-stats')) {
+        return new Promise((resolve) => {
+          pending.push(() => resolve(statsFor(url)));
+        });
+      }
+      return base(url);
+    });
+    hold = true;
+
+    await clickRefresh();
+    expect(q('metAK-busy-note')).not.toBeNull();
+
+    await act(async () => {
+      (q('met6-window-7d') as HTMLButtonElement).click();
+    });
+    // The switch retires the in-flight batch immediately.
+    expect(q('metAK-busy-note')).toBeNull();
+
+    for (let wave = 0; wave < 20 && pending.length > 0; wave += 1) {
+      await act(async () => {
+        pending.splice(0).forEach((fn) => fn());
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      });
+    }
+    await waitIdle();
+    // The late answer never becomes a refresh stamp.
+    expect(q('metAK-updated-at')).toBeNull();
+  });
+});
+
+describe('metAL — the scope line and one-click reset', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+  const loc = (): string => q('met7-loc')?.textContent ?? '';
+  const scope = (): string => q('metAL-scope')?.textContent ?? '';
+  const countOf = (since: number, needle: string): number =>
+    urls().slice(since).filter((url) => url.includes(needle)).length;
+
+  const FULL = '/metrics?window=7d&groupBy=employee&view=model&dsort=runs&ddir=asc&sort=model&dir=asc&heat=4';
+
+  it('reads all four parts straight from the address', async () => {
+    await mountShare(SHARE_USAGE, FULL);
+    const before = urls().length;
+
+    expect(scope()).toContain('时间窗 最近 7 天');
+    expect(scope()).toContain('分组 按员工');
+    expect(scope()).toContain('明细 次数 升序');
+    expect(scope()).toContain('分摊 员工 升序');
+    expect(scope()).toContain('热力');
+    expect(q('met5-window-4')?.getAttribute('aria-pressed')).toBe('true');
+    expect(q('met6-window-7d')?.getAttribute('aria-pressed')).toBe('true');
+    // Rendering the line reads nothing.
+    expect(urls().length).toBe(before);
+  });
+
+  it('follows a window switch in the same render', async () => {
+    await mountShare(SHARE_USAGE);
+
+    await act(async () => {
+      (q('met6-window-30d') as HTMLButtonElement).click();
+    });
+
+    expect(scope()).toContain('时间窗 最近 30 天');
+    expect(q('met6-window-30d')?.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('resets every scope key, repaints the line, and refetches only the affected reads', async () => {
+    await mountShare(SHARE_USAGE, FULL);
+    const before = urls().length;
+
+    await act(async () => {
+      (q('metAL-reset') as HTMLButtonElement).click();
+    });
+    await waitFor(() => scope().includes('时间窗 最近 24 小时'), 'scope back to defaults');
+
+    for (const key of ['window=', 'groupBy=', 'view=', 'dsort=', 'ddir=', 'sort=', 'dir=', 'heat=', 'w=']) {
+      expect(loc()).not.toContain(key);
+    }
+    expect(scope()).toContain('分组 按模型');
+    expect(scope()).toContain('明细 成本 降序');
+    expect(scope()).toContain('分摊 成本 降序');
+    expect(q('met5-window-1')?.getAttribute('aria-pressed')).toBe('true');
+    expect(q('met6-window-24h')?.getAttribute('aria-pressed')).toBe('true');
+
+    // Only the reads whose inputs changed: one heat read, one usage/ledger batch.
+    expect(countOf(before, 'run-activity')).toBe(1);
+    expect(countOf(before, 'run-stats')).toBe(2);
+    expect(countOf(before, 'employees')).toBe(4);
+    expect(urls().length - before).toBeLessThan(before);
+  });
+});
+
+describe('metAM — one availability matrix for every action', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+  const btn = (id: string): HTMLButtonElement => q(id) as HTMLButtonElement;
+  const titleOf = (id: string): string => btn(id).getAttribute('title') ?? '';
+
+  async function clickRefresh(): Promise<void> {
+    await act(async () => {
+      btn('metAK-refresh').click();
+    });
+  }
+
+  const waitIdle = (): Promise<void> =>
+    waitFor(() => btn('metAK-refresh')?.getAttribute('aria-busy') !== 'true', 'refresh idle');
+
+  it('cell 1 — a page-wide failure leaves only the refresh reachable', async () => {
+    const down = (): Promise<never> => Promise.reject(new ApiError('down', { status: 500, body: '', url: 'down', requestId: 'req-metAM-down' }));
+    await mount(() => down());
+
+    expect(q('metAM-matrix-note')?.textContent).toContain('只留「刷新」可用');
+    // Refresh: reachable, because it is the way back.
+    expect(btn('metAK-refresh').disabled).toBe(false);
+    // Scope switching keeps working; only the batch is gone.
+    expect(btn('metAL-reset').disabled).toBe(false);
+    expect(q('metAL-scope')?.textContent).toContain('当前视图：');
+    // Exports and the summary stop together, with one shared reason.
+    expect(btn('met6-export').disabled).toBe(true);
+    expect(btn('metA-export').disabled).toBe(true);
+    expect(btn('metL-copy').disabled).toBe(true);
+    for (const id of ['met6-export', 'metA-export', 'metL-copy']) {
+      expect(titleOf(id)).toContain('整页读取失败');
+    }
+  });
+
+  it('cell 2 — one degraded block only stops the actions that use it', async () => {
+    await mount(usageRouter({ pricing: () => Promise.reject(new ApiError('down', { status: 500, body: '', url: 'price', requestId: 'req-metAM-price' })) }));
+
+    expect(btn('metAK-refresh').disabled).toBe(false);
+    expect(btn('met6-export').disabled).toBe(false);
+    expect(btn('metL-copy').disabled).toBe(false);
+    expect(q('metH-card-retry-price')).not.toBeNull();
+    expect(btn('metH-card-retry-price').disabled).toBe(false);
+    expect(titleOf('met6-export')).toContain('账本逐行');
+  });
+
+  it('cell 3 — an empty window still refreshes, exports a header and copies', async () => {
+    const emptyLedger = { items: [], missingEmployeeIds: [] };
+    await mount(usageRouter({ ledger: () => Promise.resolve(emptyLedger) }), '/metrics?window=7d');
+
+    expect(btn('metAK-refresh').disabled).toBe(false);
+    expect(btn('met6-export').disabled).toBe(false);
+    expect(btn('metA-export').disabled).toBe(false);
+    expect(btn('metL-copy').disabled).toBe(false);
+    expect(q('metA-export-count')?.textContent).toBe('可导出 0 行');
+  });
+
+  it('cell 4 — while a refresh runs every other action stands down', async () => {
+    let hold = false;
+    const pending: Array<() => void> = [];
+    const handler = usageRouter();
+    await mount((url: string) => {
+      if (!hold || !url.includes('run-stats')) return handler(url);
+      return new Promise<unknown>((resolve) => {
+        pending.push(() => resolve(handler(url)));
+      });
+    });
+
+    hold = true;
+    await clickRefresh();
+    await waitFor(() => btn('metAK-refresh').getAttribute('aria-busy') === 'true', 'busy');
+
+    expect(btn('metAK-refresh').disabled).toBe(false);
+    for (const id of ['met6-export', 'metA-export', 'metL-copy', 'metAL-reset']) {
+      expect(btn(id).disabled).toBe(true);
+      expect(titleOf(id)).toContain('这一批');
+    }
+
+    const before = urls().length;
+    await clickRefresh();
+    expect(urls().length).toBe(before);
+
+    for (let wave = 0; wave < 20 && pending.length > 0; wave += 1) {
+      await act(async () => {
+        pending.splice(0).forEach((fn) => fn());
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      });
+    }
+    await waitIdle();
+    expect(btn('met6-export').disabled).toBe(false);
+  });
+});
+
+describe('metAN — empty window guide', () => {
+  const emptyStats = () => ({
+    from: '2026-11-18T16:00:00.000Z',
+    to: '2026-11-19T16:00:00.000Z',
+    bucket: 'hour',
+    buckets: [],
+    totals: { runs: 0, succeeded: 0, failed: 0, running: 0, sampleCount: 0, successRate: null },
+    asOf: '2026-11-19T20:12:00.000Z',
+    asOfSource: 'bff',
+  });
+
+  function emptyWindowRouter() {
+    return (url: string): Promise<unknown> => {
+      if (url.includes('run-activity')) return Promise.resolve(activityBody());
+      if (url.includes('run-stats')) return Promise.resolve(emptyStats());
+      if (url.includes('/api/employees')) return Promise.resolve(EMPLOYEE_BODY);
+      if (url.includes('models/pricing')) return Promise.resolve({ prices: [], asOf: '2026-11-19T20:12:00.000Z' });
+      if (url.includes('budget-usage')) return Promise.resolve({ items: [], missingEmployeeIds: [] });
+      return Promise.resolve({});
+    };
+  }
+
+  it('explains an empty window, points at two real routes, and reads nothing extra', async () => {
+    await mount(emptyWindowRouter());
+    const guide = document.querySelector('[data-testid="metAN-empty-guide"]');
+    expect(guide).not.toBeNull();
+    expect(guide?.textContent).toContain('本窗没有运行记录');
+
+    const links = [...(guide?.querySelectorAll('a[href]') ?? [])].map((a) => a.getAttribute('href'));
+    expect(links).toContain('/runs');
+    expect(links).toContain('/work');
+
+    // The guide itself never quotes a money figure; the cards keep «—».
+    expect(guide?.textContent ?? '').not.toContain('$');
+    expect(document.querySelector('[data-testid="met6-cost-value"]')?.textContent).toBe('—');
+
+    const before = urls().length;
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(urls().length).toBe(before);
+  });
+
+  it('stays out of the way when the window has runs', async () => {
+    await mount(usageRouter());
+    expect(document.querySelector('[data-testid="metAN-empty-guide"]')).toBeNull();
+  });
+
+  it('does not pass a failed batch off as an empty window', async () => {
+    await mount((url: string) =>
+      Promise.reject(new ApiError('down', { status: 500, body: '', url, requestId: 'req-metAN-down' })),
+    );
+    expect(document.querySelector('[data-testid="metAN-empty-guide"]')).toBeNull();
+    expect(document.querySelector('[data-testid="met5-page"]')?.textContent).not.toContain('本窗没有运行记录');
+  });
+});
+
+describe('metAO — the file names and the scope line carry the same four values', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+  const scope = (): string => q('metAL-scope')?.textContent ?? '';
+  const detailFile = (): string => q('metAO-filename-detail')?.textContent ?? '';
+  const shareFile = (): string => q('metAO-filename-share')?.textContent ?? '';
+  const STAMP = '<生成时刻>.csv';
+  const FULL = '/metrics?window=7d&groupBy=employee&view=model&dsort=runs&ddir=asc&sort=model&dir=asc';
+
+  it('agrees element by element with the scope line', async () => {
+    await mountShare(SHARE_USAGE, FULL);
+
+    expect(scope()).toContain('时间窗 最近 7 天');
+    expect(scope()).toContain('分组 按员工');
+    expect(scope()).toContain('明细 次数 升序');
+    expect(scope()).toContain('分摊 员工 升序');
+
+    expect(detailFile()).toBe(`metrics-detail-7d-model-runs-asc-${STAMP}`);
+    expect(shareFile()).toBe(`metrics-share-7d-employee-model-asc-${STAMP}`);
+
+    // window / group / sort key / sort direction all line up with the words above.
+    expect(detailFile()).toContain('-7d-');
+    expect(shareFile()).toContain('-7d-');
+    expect(shareFile()).toContain('-employee-');
+    expect(detailFile()).toContain('-runs-asc-');
+    expect(shareFile()).toContain('-model-asc-');
+    // The full name is in title, so a truncated 375 line still reveals it.
+    expect(q('metAO-filename-detail')?.getAttribute('title')).toBe(detailFile());
+    expect(q('metAO-filename-share')?.getAttribute('title')).toBe(shareFile());
+  });
+
+  it('keeps the two tables on their own sort keys', async () => {
+    await mountShare(SHARE_USAGE, '/metrics?dsort=runs&ddir=asc');
+    expect(detailFile()).toBe(`metrics-detail-24h-employee-runs-asc-${STAMP}`);
+    // The share table was not touched: it keeps the default cost-desc.
+    expect(shareFile()).toBe(`metrics-share-24h-model-cost-desc-${STAMP}`);
+
+    await mountShare(SHARE_USAGE, '/metrics?sort=model&dir=asc');
+    expect(shareFile()).toBe(`metrics-share-24h-model-model-asc-${STAMP}`);
+    expect(detailFile()).toBe(`metrics-detail-24h-employee-cost-desc-${STAMP}`);
+  });
+
+  it('falls back to the defaults the moment the scope is reset', async () => {
+    await mountShare(SHARE_USAGE, FULL);
+    const before = urls().length;
+
+    await act(async () => {
+      (q('metAL-reset') as HTMLButtonElement).click();
+    });
+    await waitFor(() => detailFile().includes('-24h-employee-cost-desc-'), 'file name back to defaults');
+
+    expect(detailFile()).toBe(`metrics-detail-24h-employee-cost-desc-${STAMP}`);
+    expect(shareFile()).toBe(`metrics-share-24h-model-cost-desc-${STAMP}`);
+    expect(scope()).toContain('时间窗 最近 24 小时');
+    expect(scope()).toContain('分组 按模型');
+    expect(detailFile()).not.toContain('7d');
+    expect(detailFile()).not.toContain('runs');
+    // Reading the file names off the address costs nothing beyond the reset refetch.
+    expect(urls().length).toBeGreaterThanOrEqual(before);
+  });
+
+  it('derives a pasted link from the address, not from the defaults', async () => {
+    await mountShare(SHARE_USAGE, '/metrics?window=30d&groupBy=employee');
+    expect(detailFile()).toBe(`metrics-detail-30d-employee-cost-desc-${STAMP}`);
+    expect(shareFile()).toBe(`metrics-share-30d-employee-cost-desc-${STAMP}`);
+  });
+
+  it('adds no request of its own', async () => {
+    await mountShare(SHARE_USAGE, '/metrics?window=7d');
+    const bar = q('metAO-filename-bar');
+    expect(bar).not.toBeNull();
+    expect(bar?.querySelectorAll('[data-testid^="metAO-filename-"]').length).toBe(2);
+
+    // Reading the two names off the address fires nothing; the batch already
+    // counted above is the same one a page without this bar would send.
+    const before = urls().length;
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 60));
+    });
+    expect(urls().length).toBe(before);
+    expect(detailFile()).toBe(`metrics-detail-7d-employee-cost-desc-${STAMP}`);
+  });
+});
+
+describe('metAP — the three faces of the run count, spelled out', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+  const face = (id: string): string => q(id)?.textContent ?? '';
+  const line = (): HTMLElement | null => q('metAP-runs-caliber');
+
+  const caliberRouter =
+    (activity: unknown, usage: unknown) =>
+    (url: string): Promise<unknown> => {
+      if (url.includes('run-activity')) return Promise.resolve(activity);
+      if (url.includes('hermes-usage')) return Promise.resolve(usage);
+      if (url.includes('run-stats')) return Promise.resolve(statsFor(url));
+      if (url.includes('/api/employees')) return Promise.resolve(EMPLOYEE_BODY);
+      if (url.includes('models/pricing')) {
+        return Promise.reject(new ApiError('missing', { status: 404, body: '', url }));
+      }
+      if (url.includes('periodKind=month')) return Promise.resolve(LEDGER_MONTH);
+      if (url.includes('periodKind=day')) return Promise.resolve(LEDGER_DAY);
+      return Promise.resolve({});
+    };
+
+  const flatActivity = (counts: number[]) => ({
+    cells: counts.map((count, index) => ({ dow: 1, hour: index, count })),
+    max: Math.max(...counts),
+    from: '2026-11-12T16:00:00Z',
+    to: '2026-11-19T15:59:59Z',
+    tz: 'Asia/Shanghai',
+  });
+
+  it('names the three faces, repeats the on-screen numbers, and says why they differ', async () => {
+    await mount(caliberRouter(activityBody(), HERMES_USAGE), '/metrics?view=model');
+
+    expect(line()).not.toBeNull();
+    expect(face('metAP-heat')).toBe(face('met5-count'));
+    expect(face('metAP-detail')).toBe(face('metT-detail-total-count'));
+    expect(face('metAP-heat')).not.toBe('—');
+    expect(face('metAP-detail')).not.toBe('—');
+    expect(face('metAP-runs')).toBe('—');
+    expect(face('metAP-verdict')).toContain('口径不同');
+
+    const hint = line()?.getAttribute('title') ?? '';
+    expect(hint).toContain('/api/run-activity');
+    expect(hint).toContain('/api/hermes-usage');
+    expect(hint).toContain('/api/runs');
+    expect(hint).toContain('limit');
+    expect(hint).toContain('不等于窗口总数');
+    expect(hint).toContain('口径差');
+    // Paths stay in the hint; the line itself never carries them.
+    expect(line()?.textContent ?? '').not.toContain('/api');
+  });
+
+  it('says so when the heat sum and the detail total land on the same number', async () => {
+    await mount(
+      caliberRouter(flatActivity([4, 5]), { by_model: [{ model: 'qwen-plus', api_calls: 9, sessions: 9 }] }),
+      '/metrics?view=model',
+    );
+
+    expect(face('metAP-heat')).toBe('9');
+    expect(face('metAP-detail')).toBe('9');
+    expect(face('metAP-verdict')).toContain('热力与明细一致');
+    expect(face('metAP-verdict')).toContain('运行页未核对');
+    expect(line()?.getAttribute('title')).toContain('热力与明细差 0');
+  });
+
+  it('keeps the ledger view honest: no count there, so it says a face is missing', async () => {
+    await mountEmployeeShare(TWO_EMPLOYEE_LEDGER);
+
+    expect(face('metAP-detail')).toBe('—');
+    expect(face('metAP-verdict')).toContain('有面缺数');
+    const hint = line()?.getAttribute('title') ?? '';
+    expect(hint).toContain('/api/budget-usage');
+    expect(hint).toContain('不记录运行次数');
+    expect(hint).toContain('算不出差');
+  });
+
+  it('reads nothing of its own', async () => {
+    await mount(caliberRouter(activityBody(), HERMES_USAGE), '/metrics?view=model');
+    const before = urls().length;
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 60));
+    });
+    expect(urls().length).toBe(before);
+  });
+
+  it('follows a window switch with the same batch', async () => {
+    await mount(caliberRouter(activityBody(), HERMES_USAGE), '/metrics?view=model');
+    const before = urls().length;
+
+    await act(async () => {
+      (q('met6-window-30d') as HTMLButtonElement).click();
+    });
+    await waitFor(() => q('met6-window-30d')?.getAttribute('aria-pressed') === 'true', '30d pressed');
+
+    expect(face('metAP-heat')).toBe(face('met5-count'));
+    expect(face('metAP-detail')).toBe(face('metT-detail-total-count'));
+    // The switch refetches its own batch; the caliber line adds nothing to it.
+    expect(urls().length).toBeGreaterThan(before);
   });
 });

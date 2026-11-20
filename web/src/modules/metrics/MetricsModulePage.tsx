@@ -28,6 +28,7 @@ import {
   cellRangeLabel,
   chunkIds,
   csvFileName,
+  csvFileStem,
   deltaOf,
   formatDeltaCount,
   formatDeltaUsd,
@@ -41,6 +42,7 @@ import {
   heatCellLabel,
   heatCopyText,
   CALIBER_NOTES,
+  caliberNoteText,
   heatSummaryParts,
   heatDayRows,
   heatFromStats,
@@ -68,6 +70,7 @@ import {
   sortDetailLines,
   shareCsv,
   shareCsvFileName,
+  shareCsvStem,
   shareOfCosts,
   shareOfWhole,
   runsDrill,
@@ -104,6 +107,7 @@ import {
   type SortDir,
   type SourceStamp,
   type UsageWindowId,
+  runsCaliberTitle,
 } from './metrics';
 import './metrics.css';
 
@@ -396,6 +400,21 @@ export function MetricsModulePage() {
   const [heatCopyStatus, setHeatCopyStatus] = useState<'idle' | 'done' | 'failed'>('idle');
   const [heatCopyBody, setHeatCopyBody] = useState('');
   const [notesOpen, setNotesOpen] = useState(false);
+  const [refreshBusy, setRefreshBusy] = useState(false);
+  const [refreshSnapshot, setRefreshSnapshot] = useState<null | {
+    state: PageState;
+    usage: UsageState;
+    breakdown: BreakdownState;
+    heat: HeatState;
+    budget: BudgetState;
+    cmp: CmpState;
+    share: ShareState;
+  }>(null);
+  const [refreshAt, setRefreshAt] = useState<string | null>(null);
+  const [refreshError, setRefreshError] = useState<{ message: string; requestId: string | null } | null>(null);
+  const refreshBusyRef = useRef(false);
+  const refreshSignalRef = useRef<{ live: boolean } | null>(null);
+  const sourcesRef = useRef<Record<string, SourceStamp>>({});
   const [sourceCopyStatus, setSourceCopyStatus] = useState<'idle' | 'done' | 'failed'>('idle');
   const [sourceCopyBody, setSourceCopyBody] = useState('');
   const [summaryText, setSummaryText] = useState('');
@@ -1047,13 +1066,84 @@ export function MetricsModulePage() {
     };
   }, [attempt, forced, groupBy, loadShare, usageWindow.id]);
 
+
+  // metAK — one manual refresh reads the whole page once: the seven loaders run
+  // together with a single signal. A second click while busy is ignored, and a
+  // window or group switch retires the batch instead of letting it land late.
+  const cancelRefresh = () => {
+    if (refreshSignalRef.current) refreshSignalRef.current.live = false;
+    refreshSignalRef.current = null;
+    refreshBusyRef.current = false;
+    setRefreshBusy(false);
+    setRefreshSnapshot(null);
+  };
+
+  const refreshAll = async () => {
+    if (refreshBusyRef.current) return;
+    const signal = { live: true };
+    refreshSignalRef.current = signal;
+    refreshBusyRef.current = true;
+    setRefreshSnapshot({ state, usage, breakdown, heat, budget, cmp, share });
+    setRefreshBusy(true);
+    setRefreshError(null);
+
+    const errorsBefore = new Map(
+      Object.entries(sourcesRef.current).map(([key, stamp]) => [key, stamp.error ?? '']),
+    );
+
+    await Promise.allSettled([
+      load(signal),
+      loadUsage(signal, usageWindow.id),
+      loadBreakdown(signal, usageWindow.id, viewMode),
+      loadHeat(signal),
+      loadBudget(signal, usageWindow.id),
+      loadCmp(signal),
+      loadShare(signal, usageWindow.id, groupBy),
+    ]);
+
+    if (!signal.live) return;
+
+    // Let the last state writes land before judging the batch.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    if (!signal.live) return;
+
+    const failures = Object.entries(sourcesRef.current).filter(([key, stamp]) => {
+      if (!stamp.error) return false;
+      return (errorsBefore.get(key) ?? '') !== stamp.error;
+    });
+    refreshSignalRef.current = null;
+    refreshBusyRef.current = false;
+    setRefreshSnapshot(null);
+    setRefreshBusy(false);
+    if (failures.length > 0) {
+      const first = failures[0][1];
+      setRefreshError({
+        message: first.error ?? '这次刷新没成功',
+        requestId: first.requestId,
+      });
+      return;
+    }
+    setRefreshError(null);
+    setRefreshAt(new Date().toISOString());
+  };
+
+  // metAK — while a manual refresh is in flight the cards keep the batch they
+  // already had; the new numbers replace them only when the batch settles.
+  const shownState = refreshBusy && refreshSnapshot ? refreshSnapshot.state : state;
+  const shownUsage = refreshBusy && refreshSnapshot ? refreshSnapshot.usage : usage;
+  const shownBreakdown = refreshBusy && refreshSnapshot ? refreshSnapshot.breakdown : breakdown;
+  const shownHeat = refreshBusy && refreshSnapshot ? refreshSnapshot.heat : heat;
+  const shownBudget = refreshBusy && refreshSnapshot ? refreshSnapshot.budget : budget;
+  const shownCmp = refreshBusy && refreshSnapshot ? refreshSnapshot.cmp : cmp;
+  const shownShare = refreshBusy && refreshSnapshot ? refreshSnapshot.share : share;
+
   const view: PageState = forced
     ? forced === 'loading'
       ? { kind: 'loading' }
       : forced === 'empty'
         ? { kind: 'empty', activity: EMPTY_ACTIVITY, loadedAt: new Date().toISOString(), weeks }
         : { kind: 'error', message: '预览状态：这次没能读取运行活动，请稍后重试。', requestId: null, gap: null }
-    : state;
+    : shownState;
 
   const grid = view.kind === 'ready' ? buildHeatGrid(view.activity) : null;
   const heatDays = grid ? heatDayRows(grid) : [];
@@ -1118,7 +1208,7 @@ export function MetricsModulePage() {
           prevRuns: forced === 'empty' ? { kind: 'ready', value: 0 } : forcedDown,
           loadedAt: new Date().toISOString(),
         }
-    : usage;
+    : shownUsage;
 
   const usageReady = usageView.kind === 'ready' ? usageView : null;
   const usageBlocks = usageReady ? [usageReady.stats, usageReady.day, usageReady.pricing] : [];
@@ -1164,7 +1254,7 @@ export function MetricsModulePage() {
             gap: forced === 'denied' ? USAGE_GAP : null,
             requestId: null,
           }
-    : cmp;
+    : shownCmp;
 
   const budgetView: BudgetState = forced
     ? forced === 'loading'
@@ -1180,7 +1270,7 @@ export function MetricsModulePage() {
             gap: forced === 'denied' ? USAGE_GAP : null,
             requestId: null,
           }
-    : budget;
+    : shownBudget;
 
   const heatView: HeatState = forced
     ? forced === 'loading'
@@ -1196,7 +1286,7 @@ export function MetricsModulePage() {
             gap: forced === 'denied' ? USAGE_GAP : null,
             requestId: null,
           }
-    : heat;
+    : shownHeat;
 
   const breakdownView: BreakdownState = forced
     ? forced === 'loading'
@@ -1212,7 +1302,7 @@ export function MetricsModulePage() {
             gap: forced === 'denied' ? USAGE_GAP : null,
             requestId: null,
           }
-    : breakdown;
+    : shownBreakdown;
 
   const shareView: ShareState = forced
     ? forced === 'loading'
@@ -1228,7 +1318,7 @@ export function MetricsModulePage() {
             gap: forced === 'denied' ? USAGE_GAP : null,
             requestId: null,
           }
-    : share;
+    : shownShare;
 
   const shareRows =
     shareView.kind === 'ready'
@@ -1280,7 +1370,8 @@ export function MetricsModulePage() {
     return had;
   };
   const chooseGroupBy = (next: 'model' | 'employee') => {
-    if (next === groupBy) return;
+    if (next === groupBy) return;    cancelRefresh();
+
     const query = new URLSearchParams(params);
     if (next === 'employee') query.set('groupBy', 'employee');
     else query.delete('groupBy');
@@ -1331,6 +1422,32 @@ export function MetricsModulePage() {
   const detailLines = breakdownView.kind === 'ready' ? breakdownView.lines : [];
   const detailSort: DetailSort = parseDetailSort(params.get('dsort')) ?? 'cost';
   const detailDir: SortDir = params.get('ddir') === 'asc' ? 'asc' : 'desc';
+
+  // metAL — the four things that decide what this page is showing, read straight
+  // from the address so a pasted link reproduces the same line.
+  const detailSortLabel = detailSort === 'cost' ? '成本' : detailSort === 'runs' ? '次数' : '占比';
+  const shareSortLabel = sortKey === 'runs' ? '运行数' : sortKey === 'cost' ? '成本' : groupBy === 'employee' ? '员工' : '模型';
+  const scopeLine =
+    `当前视图：时间窗 ${usageWindow.label} · 分组 ${groupBy === 'employee' ? '按员工' : '按模型'}` +
+    ` · 明细 ${detailSortLabel} ${detailDir === 'asc' ? '升序' : '降序'}` +
+    ` · 分摊 ${shareSortLabel} ${sortDir === 'asc' ? '升序' : '降序'}` +
+    ` · 热力 ${activeWindow.label}`;
+
+  // metAO — the two export file names, derived from the very same URL values the
+  // scope line reads, so the four tokens can never drift apart.
+  const detailFilePreview = `${csvFileStem(viewMode, usageWindow.id, detailSort, detailDir)}-<生成时刻>.csv`;
+  const shareFilePreview = `${shareCsvStem(groupBy, usageWindow.id, sortKey, sortDir)}-<生成时刻>.csv`;
+
+  const resetScope = () => {
+    cancelRefresh();
+    const query = new URLSearchParams(params);
+    for (const key of ['window', 'groupBy', 'view', 'dsort', 'ddir', 'sort', 'dir', 'heat', 'w']) {
+      query.delete(key);
+    }
+    setGroupResetNote(false);
+    setParams(query, { replace: true });
+  };
+
   const detailRows = sortDetailLines(detailLines, detailSort, detailDir);
   // metT — the totals row is summed from the very rows the body renders, so a
   // reader can add them up and land on the same numbers. Sorting never moves it
@@ -1368,6 +1485,20 @@ export function MetricsModulePage() {
           ? '成本明细这次没有读出来'
           : '明细没有可求和的次数';
   const deltaReason = countDelta === null ? '三处没有同时读到数，算不出差' : undefined;
+  // metAP — the one sentence that spells out how the three «run count» faces
+  // differ. It reads only what this batch already returned.
+  const runsCaliber = {
+    heat: heatWindowTotal,
+    heatRange: view.kind === 'ready' ? windowRangeLabel(view.activity) : '本期',
+    detail: detailCountSum,
+    detailRange: `${usageWindow.label} · ${groupBy === 'employee' ? '按员工' : '按模型'}`,
+    detailSource:
+      viewMode === 'employee'
+        ? '/api/budget-usage 账本（只记金额与用量，不记录运行次数）'
+        : '/api/hermes-usage 按模型的调用次数',
+    delta: countDelta,
+  };
+  const runsCaliberHint = runsCaliberTitle(runsCaliber);
 
   const detailTotals = {
     cost: formatUsd(detailCostTotal),
@@ -1430,7 +1561,7 @@ export function MetricsModulePage() {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = csvFileName(viewMode, usageWindow.id, new Date());
+    anchor.download = csvFileName(viewMode, usageWindow.id, detailSort, detailDir, new Date());
     document.body.append(anchor);
     anchor.click();
     anchor.remove();
@@ -1461,7 +1592,7 @@ export function MetricsModulePage() {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = shareCsvFileName(groupBy, usageWindow.id, new Date());
+    anchor.download = shareCsvFileName(groupBy, usageWindow.id, sortKey, sortDir, new Date());
     document.body.append(anchor);
     anchor.click();
     anchor.remove();
@@ -1469,7 +1600,8 @@ export function MetricsModulePage() {
   };
 
   const chooseView = (next: 'employee' | 'model') => {
-    if (next === viewMode) return;
+    if (next === viewMode) return;    cancelRefresh();
+
     const query = new URLSearchParams(params);
     if (next === 'employee') query.delete('view');
     else query.set('view', next);
@@ -1478,6 +1610,7 @@ export function MetricsModulePage() {
   };
 
   const chooseUsageWindow = (next: UsageWindowId) => {
+    cancelRefresh();
     const query = new URLSearchParams(params);
     if (next === '24h') query.delete('window');
     else query.set('window', next);
@@ -1485,12 +1618,17 @@ export function MetricsModulePage() {
   };
 
   const chooseWindow = (nextWeeks: number) => {
+    cancelRefresh();
     setSelected(null);
     const next = new URLSearchParams(params);
     next.set('heat', String(nextWeeks));
     next.delete('w');
     setParams(next, { replace: true });
   };
+
+  useEffect(() => {
+    sourcesRef.current = sources;
+  }, [sources]);
 
   const sourceList = sourceRows(sources);
   const newestSource = latestSourceAsOf(sourceList);
@@ -1535,6 +1673,61 @@ export function MetricsModulePage() {
     void copyTextToClipboard(text).then((ok) => setSummaryStatus(ok ? 'done' : 'failed'));
   };
 
+  // metAM — every action on this page asks one object for its availability, so a
+  // single failing batch can never leave one button dead and its twin alive.
+  type Gate = { enabled: boolean; title: string | null };
+  const gates: {
+    refresh: Gate;
+    scope: Gate;
+    detailExport: Gate;
+    shareExport: Gate;
+    copySummary: Gate;
+    cardRetry: Gate;
+  } = {
+    // The refresh button stays reachable while it runs: it is the one control
+    // that ignores a second click instead of going dim.
+    refresh: { enabled: true, title: refreshBusy ? '这一批还在读，按钮不会重复发请求。' : '重新读取当前窗口与当前分组的全部读口。' },
+    scope: { enabled: !refreshBusy, title: refreshBusy ? '刷新进行中，视图切换等这一批结束。' : null },
+    detailExport: {
+      enabled: !refreshBusy && !pageFailed,
+      title: refreshBusy
+        ? '刷新进行中，导出等这一批结束。'
+        : pageFailed
+          ? '整页读取失败，这份导出暂时不生成；先重试上面的读取，读到数据再导。'
+          : exportable
+            ? '导出明细 CSV：当前窗口与当前分类下账本逐行的实扣明细，不是分摊汇总。'
+            : '当前窗口没有明细行：导出的文件只写表头，缺块会在末尾注明。',
+    },
+    shareExport: {
+      enabled: !refreshBusy && !pageFailed && shareView.kind === 'ready',
+      title: refreshBusy
+        ? '刷新进行中，导出等这一批结束。'
+        : pageFailed
+          ? '整页读取失败，这份导出暂时不生成；先重试上面的读取，读到数据再导。'
+          : shareView.kind === 'loading'
+            ? '分摊数据还在读取，读到之后才能导出。'
+            : shareView.kind === 'unavailable'
+              ? `这份分摊现在读不到，导出暂不生成：${shareView.reason}`
+              : shareRows.length === 0
+                ? '当前视图没有分摊行：导出的文件只写表头，计数仍显示 0 行。'
+                : '导出分摊 CSV：当前窗口、分组与排序下的聚合行，含成本与占比，不是账本逐行明细。',
+    },
+    copySummary: {
+      enabled: !refreshBusy && !pageFailed && usageView.kind === 'ready',
+      title: refreshBusy
+        ? '刷新进行中，摘要等这一批结束。'
+        : pageFailed
+          ? '整页读取失败，摘要里的数字不完整，先重试上面的读取。'
+          : usageView.kind !== 'ready'
+            ? '还没读到运行数据，读到之后才能复制摘要。'
+            : '把当前窗口的关键数字复制成纯文本。',
+    },
+    cardRetry: {
+      enabled: !refreshBusy,
+      title: refreshBusy ? '刷新进行中，单卡重试等这一批结束。' : null,
+    },
+  };
+
   return (
     <main className="met5-page" id="metY-main" tabIndex={-1} data-testid="met5-page">
       <a className="metY-skip" href="#metY-main" data-testid="metY-skiplink">
@@ -1543,7 +1736,7 @@ export function MetricsModulePage() {
       <div className="sr-only">
         {CALIBER_NOTES.filter((note) => CARD_NOTE_KEYS.includes(note.key)).map((note) => (
           <p key={note.key} id={`metAD-note-${note.key}`} data-testid={`metAD-note-${note.key}`}>
-            {note.label}。缺值策略：{note.missing}
+            {caliberNoteText(note)}
           </p>
         ))}
       </div>
@@ -1559,14 +1752,8 @@ export function MetricsModulePage() {
           <Button
             size="sm"
             outlined
-            disabled={pageFailed || usageView.kind !== 'ready'}
-            title={
-              pageFailed
-                ? '整页读取失败，摘要里的数字不完整，先重试上面的读取。'
-                : usageView.kind !== 'ready'
-                  ? '还没读到运行数据，读到之后才能复制摘要。'
-                  : '把当前窗口的关键数字复制成纯文本。'
-            }
+            disabled={!gates.copySummary.enabled}
+            title={gates.copySummary.title ?? undefined}
             onClick={copySummary}
             data-testid="metL-copy"
           >
@@ -1598,6 +1785,95 @@ export function MetricsModulePage() {
           </span>
         </div>
       </div>
+
+      <div className="metAL-bar">
+        <p className="metAL-scope" data-testid="metAL-scope">
+          {scopeLine}
+        </p>
+        <Button
+            size="sm"
+            outlined
+            disabled={!gates.scope.enabled}
+            title={gates.scope.title ?? undefined}
+            onClick={resetScope}
+            data-testid="metAL-reset"
+          >
+          回到默认视图
+        </Button>
+      </div>
+
+      <div className="metAO-bar" data-testid="metAO-filename-bar">
+        <span className="metAO-file">
+          <span className="metAO-file-label">明细导出文件</span>
+          <code className="metAO-file-code" data-testid="metAO-filename-detail" title={detailFilePreview}>
+            {detailFilePreview}
+          </code>
+        </span>
+        <span className="metAO-file">
+          <span className="metAO-file-label">分摊导出文件</span>
+          <code className="metAO-file-code" data-testid="metAO-filename-share" title={shareFilePreview}>
+            {shareFilePreview}
+          </code>
+        </span>
+      </div>
+
+      <p className="metAM-note" data-testid="metAM-matrix-note">
+        可用性一句话：整页都读不出来的时候，只留「刷新」可用，导出与复制一起停下；只有某一块读不出来的时候，用到它的导出与复制停下，单卡重试照常；时间窗没有数据时，导出只写表头、复制照常；刷新进行中，除刷新本身外都不点，刷新也不会重复发请求。
+      </p>
+
+      {usageQuiet ? (
+        <div className="metAN-guide" data-testid="metAN-empty-guide">
+          <p className="metAN-title">本窗没有运行记录</p>
+          <p className="metAN-body">
+            这一段时间没有运行，也没有产生实扣。卡片上的数字保留「—」，不拿空当 0 求和，也不编一个零元汇总出来。
+          </p>
+          <p className="metAN-body">
+            想换个去处：去看 <Link to="/runs">运行列表</Link>，或者回 <Link to="/work">工作台</Link>；也可以点上面的时间窗，换一段再看看。
+          </p>
+        </div>
+      ) : null}
+
+      <div className="metAK-bar" data-testid="metAK-bar">
+        <Button
+          size="sm"
+          outlined
+          aria-busy={refreshBusy}
+          onClick={() => {
+            void refreshAll();
+          }}
+          data-testid="metAK-refresh"
+        >
+          <RefreshCw className="size-3.5" aria-hidden="true" />
+          刷新
+        </Button>
+        {refreshBusy ? (
+          <span className="metAK-busy" role="status" aria-live="polite" data-testid="metAK-busy-note">
+            更新中…（卡片先保留上一次读到的数据）
+          </span>
+        ) : null}
+        {!refreshBusy && refreshAt ? (
+          <span className="metAK-stamp" data-testid="metAK-updated-at">
+            刷新完成于 {formatBeijing(refreshAt)}（读取时刻，不是数据时刻）
+          </span>
+        ) : null}
+      </div>
+
+      {refreshError ? (
+        <div className="metAK-error" data-testid="metAK-error" role="status">
+          <p>这次刷新没成功，页面保留上一次读到的数据。</p>
+          <RequestId id={refreshError.requestId} />
+          <Button
+            size="sm"
+            outlined
+            onClick={() => {
+              void refreshAll();
+            }}
+            data-testid="metAK-refresh-retry"
+          >
+            再试
+          </Button>
+        </div>
+      ) : null}
 
       {summaryStatus === 'failed' ? (
         <div className="metL-fallback" data-testid="metL-fallback">
@@ -1733,7 +2009,7 @@ export function MetricsModulePage() {
                       <GapRid id={usageReady.stats.requestId} testId="metD-gap-rid-runs" />
                     </p>
                     <CardRetryButton
-                      busy={retryingBlock === 'stats'}
+                      busy={refreshBusy || retryingBlock === 'stats'}
                       onClick={() => void retryUsageBlock('stats')}
                       testId="metH-card-retry-runs"
                     />
@@ -1784,7 +2060,7 @@ export function MetricsModulePage() {
                       <GapRid id={usageReady.day.requestId} testId="metD-gap-rid-cost" />
                     </p>
                     <CardRetryButton
-                      busy={retryingBlock === 'day'}
+                      busy={refreshBusy || retryingBlock === 'day'}
                       onClick={() => void retryUsageBlock('day')}
                       testId="metH-card-retry-cost"
                     />
@@ -1797,7 +2073,7 @@ export function MetricsModulePage() {
                       <GapRid id={usageReady.month.requestId} testId="metH-gap-rid-month" />
                     </p>
                     <CardRetryButton
-                      busy={retryingBlock === 'month'}
+                      busy={refreshBusy || retryingBlock === 'month'}
                       onClick={() => void retryUsageBlock('month')}
                       testId="metH-card-retry-month"
                     />
@@ -1889,7 +2165,7 @@ export function MetricsModulePage() {
                       <GapRid id={usageReady.stats.requestId} testId="metD-gap-rid-trend" />
                     </p>
                     <CardRetryButton
-                      busy={retryingBlock === 'stats'}
+                      busy={refreshBusy || retryingBlock === 'stats'}
                       onClick={() => void retryUsageBlock('stats')}
                       testId="metH-card-retry-trend"
                     />
@@ -1936,7 +2212,7 @@ export function MetricsModulePage() {
                       <GapRid id={usageReady.pricing.requestId} testId="metD-gap-rid-price" />
                     </p>
                     <CardRetryButton
-                      busy={retryingBlock === 'pricing'}
+                      busy={refreshBusy || retryingBlock === 'pricing'}
                       onClick={() => void retryUsageBlock('pricing')}
                       testId="metH-card-retry-price"
                     />
@@ -1971,14 +2247,8 @@ export function MetricsModulePage() {
                 <Button
                   size="sm"
                   outlined
-                  disabled={pageFailed}
-                  title={
-                    pageFailed
-                      ? '整页读取失败，这份导出暂时不生成；先重试上面的读取，读到数据再导。'
-                      : exportable
-                        ? '导出明细 CSV：当前窗口与当前分类下账本逐行的实扣明细，不是分摊汇总。'
-                        : '当前窗口没有明细行：导出的文件只写表头，缺块会在末尾注明。'
-                  }
+                  disabled={!gates.detailExport.enabled}
+                  title={gates.detailExport.title ?? undefined}
                   onClick={exportCsv}
                   data-testid="met6-export"
                 >
@@ -2004,6 +2274,13 @@ export function MetricsModulePage() {
                             ? '读取中'
                             : '暂不可用'
                       }`}
+                </span>
+                <span
+                  className="metI-gap"
+                  data-testid="metAI-filename-note"
+                  title="命名规则：metrics-detail-<窗口>-<分组>-<排序>-<方向>-<YYYYMMDD-HHmm>.csv 与 metrics-share-<窗口>-<分组>-<排序>-<方向>-<YYYYMMDD-HHmm>.csv；没动过排序时按 cost-desc 写；文件名只用小写字母、数字、短横与点，同一时刻两份文件名必然不同。"
+                >
+                  导出文件名：明细 metrics-detail-…、分摊 metrics-share-…，含窗口、分组、排序与生成时刻。
                 </span>
                 <span className="metI-gap" data-testid="metV-export-total-note">
                   两份导出都会在数据行之后、缺块注记之前附一条以「#」开头的合计注释行：它的数字与屏上合计行逐字相同，不计入「可导出 N 行」，也不进数据行。
@@ -2482,18 +2759,8 @@ export function MetricsModulePage() {
               <Button
                 size="sm"
                 outlined
-                disabled={pageFailed || shareView.kind !== 'ready'}
-                title={
-                  pageFailed
-                    ? '整页读取失败，这份导出暂时不生成；先重试上面的读取，读到数据再导。'
-                    : shareView.kind === 'loading'
-                      ? '分摊数据还在读取，读到之后才能导出。'
-                      : shareView.kind === 'unavailable'
-                        ? `这份分摊现在读不到，导出暂不生成：${shareView.reason}`
-                        : shareRows.length === 0
-                          ? '当前视图没有分摊行：导出的文件只写表头，计数仍显示 0 行。'
-                          : '导出分摊 CSV：当前窗口、分组与排序下的聚合行，含成本与占比，不是账本逐行明细。'
-                }
+                disabled={!gates.shareExport.enabled}
+                title={gates.shareExport.title ?? undefined}
                 onClick={exportShare}
                 data-testid="metA-export"
               >
@@ -2753,6 +3020,29 @@ export function MetricsModulePage() {
         ，口径不同，数值不一致时以各自卡片为准。
       </p>
 
+      <p className="met6-hint metAP-line" data-testid="metAP-runs-caliber" title={runsCaliberHint}>
+        <span className="metAP-face">
+          运行数口径：热力{' '}
+          <span data-testid="metAP-heat">{runsCaliber.heat ?? '—'}</span>
+        </span>
+        {' · '}
+        <span className="metAP-face">
+          明细 <span data-testid="metAP-detail">{runsCaliber.detail ?? '—'}</span>
+        </span>
+        {' · '}
+        <span className="metAP-face">
+          运行页 <span data-testid="metAP-runs">—</span>
+        </span>
+        {'｜'}
+        <span data-testid="metAP-verdict">
+          {runsCaliber.heat !== null && runsCaliber.detail !== null
+            ? runsCaliber.heat === runsCaliber.detail
+              ? '热力与明细一致；运行页未核对，见 title'
+              : '口径不同，见 title'
+            : '有面缺数，见 title'}
+        </span>
+      </p>
+
       {view.kind === 'loading' ? (
         <Card data-testid="met5-loading">
           <CardContent className="space-y-2 p-6">
@@ -2772,7 +3062,7 @@ export function MetricsModulePage() {
               <RequestId id={view.requestId} />
             </div>
             <div className="metH-card-acts">
-              <CardRetryButton busy={false} onClick={retryHeat} testId="metH-card-retry-heat" />
+              <CardRetryButton busy={refreshBusy} onClick={retryHeat} testId="metH-card-retry-heat" />
               <Button size="sm" outlined onClick={() => setAttempt((value) => value + 1)} data-testid="met5-retry">
                 全部重试
               </Button>
@@ -3094,10 +3384,10 @@ export function MetricsModulePage() {
             <ul className="metAB-list">
               {CALIBER_NOTES.map((note) => (
                 <li key={note.key} className="metAB-item" data-testid={`metAB-note-${note.key}`}>
-                  <p className="metAB-name">{note.label}</p>
-                  <p className="metAB-path">{note.path}</p>
-                  <p>计算范围：{note.scope}</p>
-                  <p>缺值策略：{note.missing}</p>
+                  <p className="metAB-name">{note.label}。</p>
+                  <p className="metAB-path">{note.path}。</p>
+                  <p>计算范围：{note.scope}。</p>
+                  <p>缺值策略：{note.missing}。</p>
                 </li>
               ))}
             </ul>

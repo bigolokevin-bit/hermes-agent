@@ -27,6 +27,9 @@ import { Badge, Button, Card, CardContent } from "@nous-research/ui";
 
 import { RequestIdCopy } from "@/components/RequestIdCopy";
 import { priorityLabel, short8, statusLabel } from "@/modules/tasks/tasksBoard";
+// R68 parity: the list row preview and this identity card share ONE
+// missing-field wording source and ONE lifecycle vocabulary.
+import { FIELD_MISSING, FIELD_MISSING_TITLE, fieldMissing, lifecycleLabel as rosterLifecycleLabel } from "@/modules/employees/EmployeesModulePage";
 import { fetchJSON } from "@/lib/api";
 import { API_UNREACHABLE_MESSAGE, ApiError, humanizeStatus } from "@/lib/api-error";
 
@@ -1281,8 +1284,9 @@ function IdentityField({ id, label, children, title }: { id: string; label: stri
 function IdentityCard({ d, empId }: { d: Rec; empId: string }) {
   const name = pickString(d.name);
   const role = pickString(d.title, d.role, d.position);
-  const stateRaw = lifecycleLabel(pickString(d.lifecycleState, d.lifecycle));
-  const stateLabel = stateRaw === "状态未知" ? "待核实" : stateRaw;
+  const stateRaw = pickString(d.lifecycleState, d.lifecycle);
+  const stateLabel = rosterLifecycleLabel(stateRaw);
+  const ridRaw = pickString(d.requestId, d.request_id);
   const reportsTo = pickString(d.reportsTo, d.reports_to, d.managerEmployeeId, d.manager);
   const reportsName = pickString(d.reportsToName, d.managerName);
   const created = pickString(d.createdAt, d.created_at);
@@ -1301,23 +1305,26 @@ function IdentityCard({ d, empId }: { d: Rec; empId: string }) {
     <Card className="min-w-0" data-testid="ed1-identity">
       <CardContent className="p-0">
         <dl className="grid gap-x-6 gap-y-3 px-4 py-3 sm:grid-cols-2 xl:grid-cols-3">
-          <IdentityField id="name" label="姓名" title={name ? undefined : "后台没有回传这位员工的姓名。"}>
-            {name ?? "—"}
+          <IdentityField id="name" label="姓名" title={name ? undefined : FIELD_MISSING_TITLE}>
+            {name ?? FIELD_MISSING}
           </IdentityField>
           <IdentityField id="code" label="工号" title={empId}>
-            {shortCode(empId)}
+            员工 · {shortCode(empId)}
           </IdentityField>
-          <IdentityField id="role" label="角色" title={role ? undefined : "后台没有回传这位员工的角色。"}>
-            {role ?? "—"}
+          <IdentityField id="role" label="角色" title={role ? undefined : FIELD_MISSING_TITLE}>
+            {role ?? FIELD_MISSING}
           </IdentityField>
-          <IdentityField id="state" label="在职态" title={pickString(d.lifecycleState, d.lifecycle) ?? "后台没有回传在职状态。"}>
+          <IdentityField id="state" label="在职态" title={stateRaw ? `原始值：${stateRaw}` : FIELD_MISSING_TITLE}>
             {stateLabel}
           </IdentityField>
           <IdentityField id="reports" label="汇报对象" title={reportsTo ? undefined : "后台没有回传这位员工的汇报对象。"}>
             {reportsValue}
           </IdentityField>
-          <IdentityField id="created" label="创建时间" title={created ? "北京时间，精确到分" : "后台没有回传创建时间。"}>
-            {created ? beijing(created) : "—"}
+          <IdentityField id="created" label="创建时间" title={created ? "北京时间，精确到分" : FIELD_MISSING_TITLE}>
+            {created ? beijing(created) : FIELD_MISSING}
+          </IdentityField>
+          <IdentityField id="rid" label="请求编号" title={ridRaw ? undefined : FIELD_MISSING_TITLE}>
+            <RequestIdCopy requestId={ridRaw ?? null} fallback={fieldMissing("请求编号")} />
           </IdentityField>
         </dl>
       </CardContent>

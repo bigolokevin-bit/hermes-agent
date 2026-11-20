@@ -523,6 +523,14 @@ const CURSOR_KEYS = ["nextCursor", "next_cursor", "next", "cursor", "nextPage", 
  * show.
  */
 const PAGE_TOTAL_KEYS = ["total", "totalCount", "total_count", "totalSize", "total_size"] as const;
+
+/**
+ * audH: spellings of the page size the answer says it actually served. The BFF
+ * forwards upstream shapes, so a clamped size can arrive at the top level, on
+ * the page body, or inside a `meta`/`pageInfo` wrapper. Absent means absent —
+ * the screen then reports the rows it received, never a claimed effective size.
+ */
+const PAGE_SIZE_KEYS = ["limit", "pageSize", "page_size", "effectiveLimit", "effective_limit"] as const;
 const ERROR_KEYS = ["error", "failure", "errorInfo", "error_info"] as const;
 /**
  * 请求编号 — the number a person quotes when something went wrong. Request-shaped
@@ -714,6 +722,12 @@ export interface AuditPage {
    * loaded row count is never dressed up as a total.
    */
   total: number | null;
+  /**
+   * audH: the page size THIS answer says it served, when it says one. That is
+   * the number the size selector echoes back after a clamp; `null` means the
+   * answer never stated one, and the screen must not invent it.
+   */
+  pageSize: number | null;
 }
 
 /** null = the answer is not a list at all, which is a failure, not an empty ledger. */
@@ -721,6 +735,7 @@ export function auditPageFrom(payload: unknown): AuditPage | null {
   let items: unknown[] | null = null;
   let next: string | null = null;
   let total: number | null = null;
+  let pageSize: number | null = null;
   if (Array.isArray(payload)) {
     items = payload;
   } else {
@@ -747,6 +762,12 @@ export function auditPageFrom(payload: unknown): AuditPage | null {
     // non-numeric answer is not a total, so it stays absent.
     const stated = pickNumber(rec, PAGE_TOTAL_KEYS) ?? pickNumber(outer, PAGE_TOTAL_KEYS);
     total = stated !== null && stated >= 0 ? stated : null;
+    // audH: the served size, looked for on the page body, its wrapper and a
+    // `meta`-shaped block; a negative or fractional answer is not a size.
+    const meta = pickRecord(rec, ["meta", "pageInfo", "page_info", "pagination"]) ?? pickRecord(outer, ["meta", "pageInfo", "page_info", "pagination"]);
+    const sizeCandidates = [pickNumber(rec, PAGE_SIZE_KEYS), pickNumber(outer, PAGE_SIZE_KEYS), meta ? pickNumber(meta, PAGE_SIZE_KEYS) : null];
+    const sized = sizeCandidates.find((value) => value !== null && Number.isInteger(value) && value > 0);
+    pageSize = sized ?? null;
     if (!items) return null;
   }
   const rows: AuditRow[] = [];
@@ -756,7 +777,7 @@ export function auditPageFrom(payload: unknown): AuditPage | null {
     if (row) rows.push(row);
     else unreadable += 1;
   });
-  return { rows, unreadable, next, total };
+  return { rows, unreadable, next, total, pageSize };
 }
 
 // ── Detail model ─────────────────────────────────────────────────────

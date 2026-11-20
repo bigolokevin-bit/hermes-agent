@@ -603,3 +603,57 @@ describe("R61 trail copy on the pending drawer", () => {
     expect(api.fetchJSON.mock.calls.length).toBeGreaterThanOrEqual(before);
   });
 });
+
+describe("R70 pending queue state consistency (apv-state-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+
+  it("true empty reads as a queue with nothing pending, without a fake clear exit", async () => {
+    await mount(
+      async (url: string) => {
+        if (String(url).includes("/api/approval?id=")) return Promise.resolve({});
+        return { items: [] };
+      },
+      "/approvals?tab=pending",
+    );
+    await waitFor(() => !!qa("apv-state-empty"), "empty panel");
+    expect(qa("apv-state")?.getAttribute("data-phase")).toBe("empty");
+    expect(qa("apv-state-empty-text")?.textContent).toContain("现在没有需要你处理的申请");
+    expect(qa("apv-state-clear"), "no server filter on this pane").toBeNull();
+    expect(qa("apv6-summary-pending")?.textContent, "summary never fakes 0").toContain("—");
+    const btn = qa("apv7-export") as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
+    expect(btn.title).toContain("真实空集");
+  });
+
+  it("error gates export and offers a copyable rid with retry", async () => {
+    await mount(
+      async (url: string) => {
+        if (String(url).includes("/api/approval?id=")) return Promise.resolve({});
+        throw new ApiError("boom", { status: 500, body: "", url: "/agent-api/api/approvals", requestId: "req-r70-p500" });
+      },
+      "/approvals?tab=pending",
+    );
+    await waitFor(() => !!qa("apv-state-error"), "error panel");
+    expect(qa("apv-state-rid")?.textContent).toContain("req-r70-p500");
+    expect(qa("apv-state-retry")).toBeTruthy();
+    expect((qa("apv7-export") as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+describe("R71 pending column sorting", () => {
+  it("gates on phase and sorts loaded rows without any refetch", async () => {
+    await mount(queue(), "/approvals?tab=pending");
+    await waitFor(() => !!document.querySelector('[data-testid^="apr5-row-ap"]'), "queue rows");
+    const btn = document.querySelector('[data-testid="apv-sort-title"]') as HTMLButtonElement | null;
+    expect(btn, "sort bar on pending too").toBeTruthy();
+    expect(btn!.disabled, "ready pane enables sorting").toBe(false);
+    const before = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      btn!.click();
+    });
+    await act(async () => {});
+    expect(btn.getAttribute("aria-sort")).toBe("ascending");
+    expect(api.fetchJSON.mock.calls.length, "sorting never fetches").toBe(before);
+    expect(document.querySelector('[data-testid="apv-sort-scope-note"]')?.textContent).toContain("条内排序");
+  });
+});

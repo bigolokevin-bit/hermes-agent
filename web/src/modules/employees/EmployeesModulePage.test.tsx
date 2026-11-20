@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api-error";
+import { csvTimestamp } from "@/modules/employees/EmployeesModulePage";
 
 // The ui barrel pulls in .webp assets that node cannot load; stub the four
 // primitives the page uses (deep-path imports would change product code).
@@ -29,7 +30,7 @@ vi.mock("@/lib/api", () => ({
   fetchJSON: (...args: unknown[]) => fetchJSON(...args),
 }));
 
-import { EmployeesModulePage } from "./EmployeesModulePage";
+import { EmployeesModulePage, FIELD_MISSING, FIELD_MISSING_TITLE } from "./EmployeesModulePage";
 
 let container: HTMLDivElement;
 let root: Root | null = null;
@@ -546,6 +547,399 @@ describe("R64 employees list copy as text (emp-list-copy)", () => {
     const btn = q("emp-list-copy") as HTMLButtonElement | null;
     expect(btn, "button still rendered in empty state").toBeTruthy();
     expect(btn!.disabled).toBe(true);
-    expect(btn!.title).toContain("当前已加载 0 人");
+    // R69: 空集态的 title 走统一的 phase 原因句。
+    expect(btn!.title).toContain("不能复制");
+  });
+});
+
+describe("R58 pagination and honest total (emp-list-page-*)", () => {
+  const page1 = {
+    items: [
+      ...rowsBody.items,
+      { employeeId: "emp_2B2C2D2E4F506172", name: "阿朝", title: "增长", lifecycleState: "active", updatedAt: "2026-11-18T05:52:48.030Z", department: "增长组" },
+    ],
+    nextCursor: "c-page-2",
+  };
+  const page2 = {
+    items: [
+      { employeeId: "emp_3C3D3E3F40414243", name: "新工", title: "数据", lifecycleState: "active", updatedAt: "2026-11-19T01:00:00Z", department: null },
+      // 服务端窗口重叠时重复返回阿朝：前端必须去重，禁重复行。
+      { employeeId: "emp_2B2C2D2E4F506172", name: "阿朝", title: "增长", lifecycleState: "active", updatedAt: "2026-11-18T05:52:48.030Z", department: "增长组" },
+    ],
+  };
+
+  const stubPages = (urls: string[]) => {
+    fetchJSON.mockImplementation((url: string) => {
+      urls.push(String(url));
+      return Promise.resolve(String(url).includes("cursor=") ? page2 : page1);
+    });
+  };
+
+  it("states the missing total honestly and pages with the real cursor, deduping appended rows", async () => {
+    const urls: string[] = [];
+    stubPages(urls);
+    await render("/employees");
+    await act(async () => {
+      flushTimers();
+    });
+    const count = q("emp-list-page-count");
+    expect(count?.textContent).toContain("总数不可用 · 已显示 2 人");
+    expect(count?.getAttribute("title")).toContain("无 total 键");
+    const more = q("emp-list-page-more") as HTMLButtonElement | null;
+    expect(more, "more button").toBeTruthy();
+    expect(more!.disabled, "cursor present enables more").toBe(false);
+    expect(q("emp-list-page-end")).toBeNull();
+    await act(async () => {
+      more!.click();
+    });
+    await act(async () => {});
+    const paged = urls.filter((u) => u.includes("cursor=c-page-2"));
+    expect(paged, "exactly one cursor query").toHaveLength(1);
+    expect(document.querySelectorAll('[data-testid^="emp-l-row-"]')).toHaveLength(3);
+    expect(document.querySelectorAll('[data-testid="emp-l-row-emp_2B2C2D2E4F506172"]')).toHaveLength(1);
+    expect((q("emp-list-page-more") as HTMLButtonElement).disabled, "last page disables more").toBe(true);
+    expect(q("emp-list-page-end")?.textContent).toContain("已到末页");
+    expect(q("emp-list-page-count")?.textContent).toContain("已显示 3 人");
+  });
+
+  it("switching lifecycle resets the cursor and replaces (never appends) rows, keeping the URL", async () => {
+    const urls: string[] = [];
+    stubPages(urls);
+    await render("/employees?sort=name&dir=desc");
+    await act(async () => {
+      flushTimers();
+    });
+    // 先翻到第二页（游标已消费）
+    const more = q("emp-list-page-more") as HTMLButtonElement;
+    await act(async () => {
+      more.click();
+    });
+    await act(async () => {});
+    urls.length = 0;
+    const select = q("employees-lifecycle") as HTMLSelectElement;
+    const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set;
+    await act(async () => {
+      setter?.call(select, "active");
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      flushTimers();
+    });
+    await act(async () => {});
+    const fresh = urls.filter((u) => u.includes("/api/employees"));
+    expect(fresh.length, "filter change refetches once").toBe(1);
+    expect(fresh[0]).not.toContain("cursor=");
+    expect(fresh[0]).toContain("lifecycleState=active");
+    expect(document.querySelectorAll('[data-testid^="emp-l-row-"]')).toHaveLength(2);
+    expect(lastSearch()).toContain("lifecycle=active");
+    expect(lastSearch()).toContain("sort=name");
+    expect(lastSearch()).toContain("dir=desc");
+  });
+
+  it("a failed load keeps the copyable rid under the page-error alias with retry", async () => {
+    fetchJSON.mockImplementation(() =>
+      Promise.reject(
+        new ApiError("boom", { status: 502, body: "{}", url: "/agent-api/api/employees", requestId: "req-r58-502" }),
+      ),
+    );
+    await render("/employees");
+    await act(async () => {
+      flushTimers();
+    });
+    await act(async () => {});
+    expect(document.querySelector('[data-emp-list-page-error="true"]')).toBeTruthy();
+    const card = q("employees-error");
+    expect(card?.textContent).toContain("请求编号：req-r58-502");
+    expect(q("req-copy")).toBeTruthy();
+    expect(q("employees-error-retry")).toBeTruthy();
+  });
+
+  it("the first page carries no cursor param at all", async () => {
+    const urls: string[] = [];
+    stubPages(urls);
+    await render("/employees");
+    await act(async () => {
+      flushTimers();
+    });
+    expect(urls.filter((u) => u.includes("cursor="))).toHaveLength(0);
+    expect((q("emp-list-copy") as HTMLButtonElement | null)?.disabled, "copy still on screen").toBe(false);
+  });
+});
+
+describe("R66 employees list CSV export (emp-list-export)", () => {
+  const twoRowsCsv = {
+    items: [
+      { ...rowsBody.items[0], name: "小鲤, 带头" },
+      { employeeId: "emp_2B2C2D2E4F506172", name: "阿朝", title: "增长", lifecycleState: "weird_state", updatedAt: null, department: "增长组" },
+    ],
+  };
+
+  const stubObjectUrl = () => {
+    let captured: Blob | null = null;
+    const saved = URL.createObjectURL;
+    const savedRevoke = URL.revokeObjectURL;
+    URL.createObjectURL = ((b: Blob) => {
+      captured = b;
+      return "blob:mock";
+    }) as typeof URL.createObjectURL;
+    URL.revokeObjectURL = (() => undefined) as typeof URL.revokeObjectURL;
+    return {
+      async text() {
+        return captured ? captured.text() : "";
+      },
+      async head() {
+        if (!captured) return new Uint8Array();
+        return new Uint8Array(await captured.slice(0, 3).arrayBuffer());
+      },
+      restore() {
+        URL.createObjectURL = saved;
+        URL.revokeObjectURL = savedRevoke;
+      },
+    };
+  };
+
+  it("names the file with the Beijing export minute, day-crossing included", () => {
+    expect(csvTimestamp(new Date("2026-11-20T02:00:00Z"))).toBe("employees-20261120-1000.csv");
+    expect(csvTimestamp(new Date("2026-11-20T16:05:00Z"))).toBe("employees-20261121-0005.csv");
+  });
+
+  it("exports the on-screen rows verbatim with zero extra requests", async () => {
+    fetchJSON.mockImplementation(() => Promise.resolve(twoRowsCsv));
+    await render("/employees");
+    await act(async () => {
+      flushTimers();
+    });
+    const callsBefore = fetchJSON.mock.calls.length;
+    const btn = q("emp-list-export") as HTMLButtonElement | null;
+    expect(btn, "export button on screen").toBeTruthy();
+    expect(btn!.disabled).toBe(false);
+    expect(btn!.title).toContain("导出当前已加载 2 人，不是全量");
+    expect(q("emp-list-export-count")?.textContent).toContain("共 2 行");
+    const stub = stubObjectUrl();
+    await act(async () => {
+      btn!.click();
+    });
+    const raw = await stub.text();
+    stub.restore();
+    expect(fetchJSON.mock.calls.length, "export never fetches").toBe(callsBefore);
+    const lines = raw.replace(/^\uFEFF/, "").split("\r\n").filter((l) => l !== "");
+    expect(lines).toHaveLength(3); // 表头 + 屏上 2 人
+    expect(lines[0]).toBe("name,employee_no,lifecycle,last_active");
+    expect(lines[1]).toContain('"小鲤, 带头"'); // RFC4180 逗号转义
+    expect(lines[1]).toContain("员工 · 217A91BA");
+    expect(lines[2].endsWith(",")).toBe(true); // last_active 缺=空字段（非「—」非 0）
+    expect(lines[2]).toContain("待核实"); // weird_state 人话
+    // Blob.text() 按规范剥离前导 BOM，字节级验证 Excel 兼容头
+    expect(Array.from(await stub.head())).toEqual([0xef, 0xbb, 0xbf]);
+  });
+
+  it("disables with a stated reason when nothing is loaded", async () => {
+    fetchJSON.mockImplementation(() => Promise.resolve({ items: [] }));
+    await render("/employees");
+    await act(async () => {
+      flushTimers();
+    });
+    const btn = q("emp-list-export") as HTMLButtonElement | null;
+    expect(btn, "button still rendered in empty state").toBeTruthy();
+    expect(btn!.disabled).toBe(true);
+    // R69: 空集态的 title 走统一的 phase 原因句。
+    expect(btn!.title).toContain("不能导出");
+  });
+});
+
+describe("R67 keyboard navigation (emp-list-nav)", () => {
+  const navRows = {
+    items: [
+      { employeeId: "emp_217A91BA995044DFBB3E2E940B", name: "小鲤", title: "内容编辑", lifecycleState: "weird_state", updatedAt: "2026-11-17T05:52:48.030Z" },
+      { employeeId: "emp_2B2C2D2E4F506172", name: "阿朝", title: "增长", lifecycleState: "active", updatedAt: "2026-11-18T05:52:48.030Z" },
+      { employeeId: "emp_3C3D3E3F40414243", name: "三丁", title: null, lifecycleState: "paused", updatedAt: null },
+    ],
+  };
+  const link = (id: string) => q(`emp-l-name-link-${id}`) as HTMLAnchorElement | null;
+  const key = (el: Element, k: string) => {
+    el.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true }));
+  };
+
+  it("roves focus with arrows/Home/End — one row holds the tab stop", async () => {
+    fetchJSON.mockImplementation(() => Promise.resolve(navRows));
+    await render("/employees");
+    await act(async () => {
+      flushTimers();
+    });
+    expect(q("emp-list-nav"), "roving container").toBeTruthy();
+    const a = link("emp_217A91BA995044DFBB3E2E940B");
+    const b = link("emp_2B2C2D2E4F506172");
+    const c = link("emp_3C3D3E3F40414243");
+    expect(a && b && c, "three rows").toBeTruthy();
+    expect(a!.tabIndex, "first row holds the tab stop").toBe(0);
+    expect(b!.tabIndex).toBe(-1);
+    a!.focus();
+    await act(async () => {
+      key(a, "ArrowDown");
+    });
+    expect(document.activeElement).toBe(b);
+    expect(b!.tabIndex, "tab stop follows focus").toBe(0);
+    expect(a!.tabIndex).toBe(-1);
+    await act(async () => {
+      key(b!, "End");
+    });
+    expect(document.activeElement).toBe(c);
+    await act(async () => {
+      key(c!, "Home");
+    });
+    expect(document.activeElement).toBe(a);
+  });
+
+  it("Enter expands the row preview without navigating; Esc collapses and refocuses the row", async () => {
+    fetchJSON.mockImplementation(() => Promise.resolve(navRows));
+    await render("/employees");
+    await act(async () => {
+      flushTimers();
+    });
+    const calls = fetchJSON.mock.calls.length;
+    const a = link("emp_217A91BA995044DFBB3E2E940B")!;
+    a.focus();
+    await act(async () => {
+      key(a, "Enter");
+    });
+    expect(q("emp-row-preview-emp_217A91BA995044DFBB3E2E940B"), "preview open").toBeTruthy();
+    expect(a.getAttribute("aria-expanded"), "aria-expanded syncs").toBe("true");
+    expect(q("emp-l-list"), "list still on screen — Enter did not navigate").toBeTruthy();
+    await act(async () => {
+      key(a, "Enter");
+    });
+    expect(q("emp-row-preview-emp_217A91BA995044DFBB3E2E940B"), "second Enter collapses").toBeNull();
+    await act(async () => {
+      key(a, "Enter");
+    });
+    const b = link("emp_2B2C2D2E4F506172")!;
+    await act(async () => {
+      key(b, "Enter");
+    });
+    expect(q("emp-row-preview-emp_217A91BA995044DFBB3E2E940B"), "at most one open").toBeNull();
+    expect(q("emp-row-preview-emp_2B2C2D2E4F506172")).toBeTruthy();
+    await act(async () => {
+      key(b, "Escape");
+    });
+    expect(q("emp-row-preview-emp_2B2C2D2E4F506172"), "Esc collapses").toBeNull();
+    expect(document.activeElement, "focus returns to the row").toBe(b);
+    expect(fetchJSON.mock.calls.length, "keyboard never fetches").toBe(calls);
+  });
+
+  it("never hijacks keys in error/loading states — no rows, no handlers", async () => {
+    fetchJSON.mockImplementation(() => Promise.resolve(navRows));
+    await render("/employees?state=error");
+    await act(async () => {
+      flushTimers();
+    });
+    expect(q("emp-list-nav"), "no roving container in error state").toBeNull();
+    expect(() => {
+      key(document.body, "ArrowDown");
+      key(document.body, "Enter");
+    }).not.toThrow();
+  });
+});
+
+describe("R68 preview wording parity", () => {
+  it("RowPreview missing fields use the shared FIELD_MISSING wording", async () => {
+    fetchJSON.mockImplementation(() =>
+      Promise.resolve({ items: [{ employeeId: "emp_5E5F606162636465", lifecycleState: null, name: null, title: null, updatedAt: null }] }),
+    );
+    await render("/employees");
+    await act(async () => {
+      flushTimers();
+    });
+    const toggle = q("emp-row-preview-toggle-emp_5E5F606162636465") as HTMLButtonElement;
+    await act(async () => {
+      toggle.click();
+    });
+    const pv = q("emp-row-preview-emp_5E5F606162636465");
+    expect(pv?.textContent).toContain(FIELD_MISSING);
+    expect(pv?.textContent).toContain("请求编号：该字段未返回");
+    expect(pv?.getAttribute("aria-label"), "preview region").toBe("行内预览");
+    expect(pv?.innerHTML).toContain(FIELD_MISSING_TITLE); // 缺值 title 走同一句（属性，不在 textContent）
+    expect(pv?.textContent).not.toContain("—"); // 不再有第二套缺值写法
+  });
+});
+
+describe("R69 list state consistency (emp-list-state-*)", () => {
+  const failWith = (init: { status: number; requestId?: string }) => {
+    fetchJSON.mockImplementation(() =>
+      Promise.reject(
+        new ApiError("boom", {
+          status: init.status,
+          body: "{}",
+          url: "/agent-api/api/employees",
+          requestId: init.requestId,
+        }),
+      ),
+    );
+  };
+  const disabledTitle = (id: string) => {
+    const el = q(id) as HTMLButtonElement | null;
+    expect(el, `${id} present`).toBeTruthy();
+    expect(el!.disabled, `${id} disabled`).toBe(true);
+    return el!.title;
+  };
+
+  it("error state: plain reason + copyable rid + retry, three controls disabled with stated causes, no fake 0", async () => {
+    failWith({ status: 502, requestId: "req-r69" });
+    await render("/employees?q=zz&lifecycle=active&sort=name&dir=desc");
+    expect(q("emp-list-state")?.getAttribute("data-phase")).toBe("error");
+    expect(q("emp-list-state-error"), "state card").toBeTruthy();
+    expect(q("emp-list-state-rid")?.textContent).toContain("req-r69");
+    expect(q("req-copy"), "rid is copyable").toBeTruthy();
+    expect(q("emp-list-state-retry")?.textContent).toContain("重试");
+    expect(q("emp-list-count")?.textContent).toBe("—");
+    expect(q("emp-list-count")?.getAttribute("title")).toContain("没能加载");
+    expect(disabledTitle("emp-list-copy")).toContain("不能复制");
+    expect(disabledTitle("emp-list-export")).toContain("不能导出");
+    expect(disabledTitle("emp-list-page-more")).toContain("不能续取");
+    expect(q("emp-list-page-end")).toBeNull();
+    expect(q("emp-list-page-count")?.textContent).toContain("总数不可读");
+    // 错误态不吞 URL：筛选/排序参数原样保留。
+    expect(document.body.getAttribute("data-last-search")).toBe(
+      "?q=zz&lifecycle=active&sort=name&dir=desc",
+    );
+  });
+
+  it("empty splits into two honest messages with the clear exit only for the filtered one", async () => {
+    fetchJSON.mockImplementation(() => Promise.resolve({ items: [] }));
+    await render("/employees?q=nomatch");
+    expect(q("emp-list-state-empty"), "state card").toBeTruthy();
+    expect(q("emp-list-state-empty-text")?.textContent).toBe("没有匹配的员工");
+    expect(q("emp-list-state-clear"), "filtered empty offers the clear exit").toBeTruthy();
+    expect(q("emp-list-count")?.textContent).toBe("—");
+    expect(q("emp-list-count")?.getAttribute("title")).toContain("真实空集");
+    expect(disabledTitle("emp-list-copy")).toContain("不能复制");
+
+    await render("/employees");
+    expect(q("emp-list-state-empty-text")?.textContent).toBe("还没有数字员工");
+    expect(q("emp-list-state-clear"), "plain empty has no filter to clear").toBeNull();
+  });
+
+  it("403 and 404 keep one identical denied body and lock the controls", async () => {
+    failWith({ status: 403 });
+    await render("/employees");
+    expect(q("emp-list-state-denied"), "denied card").toBeTruthy();
+    expect(q("emp-list-state-error"), "denied is not an error card").toBeNull();
+    const deniedText = q("employees-denied")?.textContent ?? "";
+    expect(deniedText).toContain("没有查看权限");
+    expect(disabledTitle("emp-list-page-more")).toContain("没有查看权限");
+
+    failWith({ status: 404 });
+    await render("/employees");
+    expect(q("employees-denied")?.textContent).toBe(deniedText);
+  });
+
+  it("loading keeps the state container honest: skeleton phase, no controls live, no count", async () => {
+    fetchJSON.mockImplementation(() => new Promise(() => {}));
+    await render("/employees");
+    expect(q("emp-list-state")?.getAttribute("data-phase")).toBe("loading");
+    expect(q("emp-list-state-loading"), "skeleton card").toBeTruthy();
+    expect(q("emp-list-count")?.textContent).toBe("—");
+    expect(disabledTitle("emp-list-copy")).toContain("加载中");
+    expect(disabledTitle("emp-list-page-more")).toContain("加载中");
+    // 骨架固定 5 行等高（不跳动的形态学断言）：行高一致。
+    const bars = document.querySelectorAll('[data-testid="emp-list-state-loading"] .animate-pulse');
+    expect(bars).toHaveLength(5);
   });
 });

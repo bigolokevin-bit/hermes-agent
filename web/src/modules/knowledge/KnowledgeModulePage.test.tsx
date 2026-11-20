@@ -2730,7 +2730,7 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     await type("kn3-docs-filter-input", "查无此词");
     expect(copyBtn()?.disabled).toBe(true);
     expect((copyBtn()?.getAttribute("title") ?? "")).toContain("本地筛选没有留下行");
-    expect((byTestid("knF-lines")?.textContent ?? "")).toBe("0 行");
+    expect((byTestid("knF-lines")?.textContent ?? "")).toBe("—"); // R62：不写 0 冒充空集
     await click("knF-copy"); // 守卫兜底：即便被触发也不写剪贴板
     expect(writeText2).toHaveBeenCalledTimes(1);
 
@@ -2768,7 +2768,7 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(byTestid("knF-row")).toBeTruthy();
     expect(copyBtn()?.disabled).toBe(true);
     expect((copyBtn()?.getAttribute("title") ?? "")).toContain("这份列表是空的");
-    expect((byTestid("knF-lines")?.textContent ?? "")).toBe("0 行");
+    expect((byTestid("knF-lines")?.textContent ?? "")).toBe("—"); // R62：真空集也不写 0
   });
 
   it("copies the global document-name search hits as on-screen text (knG-*): hit order, zero refetch, empty guard, fallback", async () => {
@@ -2832,7 +2832,7 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     await type("kn6-search-input", "查无此词");
     expect(gBtn()?.disabled).toBe(true);
     expect(gBtn()?.getAttribute("title")).toBe("当前没有可复制的结果");
-    expect((byTestid("knG-lines")?.textContent ?? "")).toBe("0 条");
+    expect((byTestid("knG-lines")?.textContent ?? "")).toBe("—"); // R62：不写 0 冒充空集
     await click("knG-copy");
     expect(writeText2).toHaveBeenCalledTimes(1); // 守卫兜底
     expect(fetchMock.mock.calls.length).toBe(urlsBefore);
@@ -2938,7 +2938,7 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     await type("kn8-global-input", "查无此空间");
     expect(iBtn()?.disabled).toBe(true);
     expect(iBtn()?.getAttribute("title")).toBe("当前没有可复制的空间");
-    expect((byTestid("knI-lines")?.textContent ?? "")).toBe("0 行");
+    expect((byTestid("knI-lines")?.textContent ?? "")).toBe("—"); // R62：不写 0 冒充空集
     await click("knI-copy");
     expect(writeText2).toHaveBeenCalledTimes(1);
 
@@ -3194,5 +3194,449 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(fetchMock.mock.calls.length).toBe(urlsSecond); // 关闭流程 0 增量
     expect(document.activeElement).toBe(rowLink()); // 遮罩不丢焦点
     expect((byTestid("loc")?.textContent ?? "")).not.toContain("doc=");
+  });
+
+  it("copies the drawer's on-screen metadata (knL-*): exact lines, zero reads, unmount, focus back both close paths, fallback", async () => {
+    const SPACE = { asOf: "2026-11-19T07:00:00Z", items: [{ spaceId: "sp_hr", name: "人事制度空间" }] };
+    const LIST = {
+      asOf: "2026-11-19T07:00:00Z",
+      documents: [
+        { documentId: "d1", fileName: "员工手册.pdf", mimeType: "pdf", sizeBytes: 2048, updatedAt: "2026-11-19T07:00:00Z", spaceId: "sp_hr", spaceName: "人事制度空间" },
+        { documentId: "d2", fileName: "薪酬表.xlsx", docType: "xlsx", sizeBytes: 40960, updatedAt: "2026-11-19T05:30:00Z", spaceId: "sp_fin" },
+      ],
+    };
+    const EXPECTED_D1 =
+      "文档名：员工手册.pdf\n所属空间：人事制度空间\n类型：PDF\n大小：2.0 KB\n更新：2026-11-19 15:00\n文档短码：D1\n";
+    const EXPECTED_D2 =
+      "文档名：薪酬表.xlsx\n所属空间：空间 · SPFIN\n类型：表格\n大小：40.0 KB\n更新：2026-11-19 13:30\n文档短码：D2\n";
+    fetchMock.mockClear();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SPACE);
+      if (url.startsWith("/agent-api/api/documents?") && url.includes("spaceId=sp_hr")) return Promise.resolve(LIST);
+      if (url === "/agent-api/api/documents/d1" || url === "/agent-api/api/documents/d2")
+        return Promise.resolve({ sourceName: "原件", status: "indexed" });
+      return fail(404, "这个数据接口还没有接入。", "rid-l-x");
+    });
+    // 刷新直开抽屉（?doc=d1 复现路径）
+    await render("/knowledge?tab=spaces&space=sp_hr&doc=d1");
+    await act(async () => {});
+    expect(byDocTestid("kn7-preview-panel")).toBeTruthy();
+    const urlsSettled = fetchMock.mock.calls.length;
+
+    const lBtn = () => byDocTestid("knL-copy-meta") as HTMLButtonElement | null;
+    expect(lBtn()?.tagName).toBe("BUTTON");
+    expect((byDocTestid("knL-copy-meta-status")?.getAttribute("aria-live") ?? "")).toBe("polite");
+    await click("knL-copy-meta");
+    expect(writeText).toHaveBeenCalledTimes(1);
+    expect(writeText.mock.calls[0][0]).toBe(EXPECTED_D1);
+    expect((byDocTestid("knL-copy-meta-status")?.textContent ?? "").trim()).toBe("已复制");
+    expect(fetchMock.mock.calls.length).toBe(urlsSettled); // 复制流程 0 新请求
+
+    // Esc 关闭：按钮随抽屉卸载；焦点回触发行（读数取 activeElement 的 testid）
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+    });
+    await act(async () => {});
+    expect(byDocTestid("knL-copy-meta")).toBeNull();
+    expect(document.activeElement?.getAttribute("data-testid")).toBe("kn3-docs-name");
+
+    // 遮罩关闭：同样卸载 + 焦点回触发行
+    await clickNth("kn3-docs-name", 1); // 打开 d2
+    await act(async () => {});
+    const urlsD2 = fetchMock.mock.calls.length;
+    expect(byDocTestid("knL-row")).toBeTruthy();
+    await act(async () => {
+      (byDocTestid("kn7-preview-backdrop") as HTMLElement).dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => {});
+    expect(byDocTestid("knL-copy-meta")).toBeNull();
+    expect(document.activeElement?.getAttribute("data-testid")).toBe("kn3-docs-name");
+    // 打开 d2 只有既有的详情一读（+1），复制前基线稳定
+    expect(urlsD2).toBe(urlsSettled + 1);
+
+    // 剪贴板拒绝 / 不可用：只读 textarea，内容逐字同；仍在模态 Tab 环内
+    await clickNth("kn3-docs-name", 1);
+    await act(async () => {});
+    const writeFail = vi.fn().mockRejectedValue(new Error("denied"));
+    Object.defineProperty(navigator, "clipboard", { value: { writeText: writeFail }, configurable: true });
+    await click("knL-copy-meta");
+    expect((byDocTestid("knL-copy-meta-status")?.textContent ?? "")).toContain("复制失败");
+    const fallback = byDocTestid("knL-copy-meta-fallback") as HTMLTextAreaElement | null;
+    expect(fallback).toBeTruthy();
+    expect(fallback?.readOnly).toBe(true);
+    expect(fallback?.value).toBe(EXPECTED_D2);
+    Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true });
+    await click("knL-copy-meta");
+    expect(byDocTestid("knL-copy-meta-fallback")).toBeTruthy();
+    const ring = (byDocTestid("kn7-preview-panel") as HTMLElement).querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input, textarea, [tabindex]:not([tabindex="-1"])',
+    );
+    expect(Array.from(ring).includes(fallback as HTMLElement)).toBe(true); // 失败态焦点不外穿
+    expect(fetchMock.mock.calls.length).toBe(urlsD2 + 1); // 本次打开的详情一读，此外 0 增量
+
+    // URL 复现但行不在已加载列表（R62 收口）：元信息没读到 → 按钮 disabled，不给一串「—」冒充内容
+    await render("/knowledge?tab=spaces&space=sp_hr&doc=zz9");
+    await act(async () => {});
+    const writeGhost = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText: writeGhost }, configurable: true });
+    expect((byDocTestid("knL-copy-meta") as HTMLButtonElement).disabled).toBe(true);
+    expect((byDocTestid("knL-copy-meta")?.getAttribute("title") ?? "")).toContain("不在已加载的列表里");
+    const urlsGhost = fetchMock.mock.calls.length;
+    await click("knL-copy-meta");
+    expect(writeGhost).toHaveBeenCalledTimes(0); // 守卫：disabled 且被触发也不写剪贴板
+    expect(fetchMock.mock.calls.length).toBe(urlsGhost); // 点击前后 0 新请求
+  });
+
+  it("unifies the four states across the three list faces (knN-state-*): loading, real-empty vs no-match, rid probes, denied keeps context", async () => {
+    const state = (id: string) => attr(`knN-state-${id}`, "data-knn-state");
+
+    // ---------- A. loading：骨架在、复制条已在（disabled+原因+「—」），落定后同一条不重新出现——不跳 ----------
+    let releaseSpaces: (value: unknown) => void = () => {};
+    let releaseSearch: (value: unknown) => void = () => {};
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return new Promise((resolve) => { releaseSpaces = resolve; });
+      if (url === DOCUMENTS_PLAIN) return new Promise((resolve) => { releaseSearch = resolve; });
+      return fail(404, "这个数据接口还没有接入。", "rid-n-x");
+    });
+    await render("/knowledge?tab=spaces");
+    expect(state("spaces")).toBe("loading");
+    expect(state("doc-search")).toBe("loading");
+    expect(byTestid("knw5-spaces-loading")).toBeTruthy();
+    expect(byTestid("kn6-search-loading")).toBeTruthy();
+    expect(byTestid("knI-row")).toBeTruthy();
+    expect(byTestid("knG-row")).toBeTruthy();
+    expect((byTestid("knI-copy") as HTMLButtonElement).disabled).toBe(true);
+    expect((byTestid("knI-copy")?.getAttribute("title") ?? "")).toContain("还在读取");
+    expect((byTestid("knI-lines")?.textContent ?? "")).toBe("—");
+    expect((byTestid("knG-lines")?.textContent ?? "")).toBe("—");
+    const rowNode = byTestid("knI-row");
+    releaseSpaces({
+      asOf: "2026-11-19T08:00:00Z",
+      items: [
+        { spaceId: "sp_hr", name: "人事制度空间", docCount: 2, status: "synced" },
+        { spaceId: "sp_ops", name: "运维手册空间", docCount: 1, status: "synced" },
+      ],
+    });
+    releaseSearch({ asOf: "2026-11-19T08:00:00Z", documents: [{ documentId: "d1", fileName: "员工手册.pdf", spaceId: "sp_hr" }] });
+    await act(async () => {});
+    expect(byTestid("knI-row")).toBe(rowNode); // 同一个节点跨 loading→ready：条不消失不重挂
+    expect(state("spaces")).toBe("ready");
+    expect(state("doc-search")).toBe("ready");
+    expect((byTestid("knI-lines")?.textContent ?? "")).toBe("2 行");
+
+    // ---------- B. spaces：真 0 与筛空两种 empty，文案与出口都分开 ----------
+    const realEmpty = { asOf: "2026-11-19T08:00:00Z", items: [] };
+    const loaded = {
+      asOf: "2026-11-19T08:00:00Z",
+      items: [
+        { spaceId: "sp_hr", name: "人事制度空间", docCount: 2, status: "synced" },
+        { spaceId: "sp_ops", name: "运维手册空间", docCount: 1, status: "synced" },
+      ],
+    };
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(realEmpty);
+      if (url === DOCUMENTS_PLAIN) return Promise.resolve(realEmpty);
+      return fail(404, "这个数据接口还没有接入。", "rid-n-x");
+    });
+    await render("/knowledge?tab=spaces");
+    expect(state("spaces")).toBe("empty");
+    expect(attr("knN-empty-text-spaces", "data-knn-empty")).toBe("empty");
+    expect((byTestid("knN-empty-text-spaces")?.textContent ?? "")).toContain("这不等于");
+    expect(byTestid("kn8-global-empty-clear")).toBeNull(); // 真 0 没有「清空」出口（没东西可清）
+    expect((byTestid("knI-copy") as HTMLButtonElement).disabled).toBe(true);
+    expect((byTestid("knI-copy")?.getAttribute("title") ?? "")).toBe("当前没有可复制的空间");
+
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(loaded);
+      if (url === DOCUMENTS_PLAIN) return Promise.resolve(realEmpty);
+      return fail(404, "这个数据接口还没有接入。", "rid-n-x");
+    });
+    await render("/knowledge?tab=spaces");
+    await type("kn8-global-input", "查无此空间");
+    expect(state("spaces")).toBe("no-match");
+    expect(attr("knN-empty-text-spaces", "data-knn-empty")).toBe("no-match");
+    expect(byTestid("kn8-global-empty-clear")).toBeTruthy(); // 筛空带清空出口
+    await click("kn8-global-empty-clear");
+    expect(state("spaces")).toBe("ready");
+
+    // ---------- C. 错误族探针：404→unavailable、403→denied、500→error；rid/retry 探针齐 ----------
+    const probe404 = async () => {
+      fetchMock.mockImplementation((url: string) => {
+        if (url === SPACES) return Promise.resolve(loaded);
+        return fail(404, "这个数据接口还没有接入。", "rid-n-404");
+      });
+      await render("/knowledge?tab=spaces");
+      expect(state("doc-search")).toBe("unavailable");
+      expect(attr("knN-error-doc-search", "data-knn-kind")).toBe("unwired");
+      expect(attr("knN-rid-doc-search", "data-knn-rid")).toBe("rid-n-404");
+      expect(byTestid("knN-retry-doc-search")).toBeTruthy();
+      expect((byTestid("knG-copy") as HTMLButtonElement).disabled).toBe(true);
+      expect((byTestid("knG-copy")?.getAttribute("title") ?? "")).toContain("读口未接入或没有权限");
+      expect((byTestid("knG-lines")?.textContent ?? "")).toBe("—");
+      return byTestid("kn6-search-unwired");
+    };
+    const goneNode = await probe404();
+    const goneVisible = Array.from(goneNode?.querySelectorAll("b, .knw5-wrap") ?? [])
+      .map((p) => p.textContent ?? "")
+      .join(" ")
+      .replace(/\s+/g, " ");
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(loaded);
+      return fail(403, "没有查看这项数据的权限。", "rid-n-403");
+    });
+    await render("/knowledge?tab=spaces");
+    expect(state("doc-search")).toBe("denied");
+    const deniedVisible = Array.from(byTestid("kn6-search-unwired")?.querySelectorAll("b, .knw5-wrap") ?? [])
+      .map((p) => p.textContent ?? "")
+      .join(" ")
+      .replace(/\s+/g, " ");
+    expect(deniedVisible).toBe(goneVisible); // 403≡404 同体（三面共用 Surface，一处即全路）
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(loaded);
+      return fail(500, "数据服务暂时没有响应，请稍后重试。", "rid-n-500");
+    });
+    await render("/knowledge?tab=spaces");
+    expect(state("doc-search")).toBe("error");
+    expect(attr("knN-error-doc-search", "data-knn-kind")).toBe("error");
+    expect(attr("knN-rid-doc-search", "data-knn-rid")).toBe("rid-n-500");
+
+    // ---------- D. denied 不丢上下文：?q= 与已加载的面都在；详情位 ?sort/?dir= 同理 ----------
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(loaded);
+      if (url === DOCUMENTS_PLAIN) return fail(403, "没有查看这项数据的权限。", "rid-n-denied");
+      return fail(404, "这个数据接口还没有接入。", "rid-n-x");
+    });
+    await render("/knowledge?tab=spaces&q=%E7%A9%BA%E9%97%B4"); // 关键词=「空间」，筛后两个空间都命中
+    await act(async () => {});
+    expect((byTestid("loc")?.textContent ?? "")).toContain("q=%E7%A9%BA%E9%97%B4"); // URL 保留
+    expect((byTestid("kn8-global-input") as HTMLInputElement | null)?.value).toBe("空间"); // 输入保留
+    expect(attr("knw5-spaces", "data-state")).toBe("ready"); // 别的面已加载状态不丢
+    expect(container.querySelectorAll('[data-testid="knw5-spaces-row"]')).toHaveLength(2);
+
+    // 详情面 404 时 sort/dir 与返回上下文原样在地址里；space-docs 探针 unavailable + 复制条 disabled
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(loaded);
+      return fail(404, "这个数据接口还没有接入。", "rid-n-gone");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr&sort=name&dir=asc&q=%E5%91%98%E5%B7%A5");
+    await act(async () => {});
+    const locText = byTestid("loc")?.textContent ?? "";
+    expect(locText).toContain("sort=name");
+    expect(locText).toContain("dir=asc");
+    expect(locText).toContain("q=%E5%91%98%E5%B7%A5");
+    expect(state("space-docs")).toBe("unavailable");
+    expect(attr("knN-rid-space-docs", "data-knn-rid")).toBe("rid-n-gone");
+    expect((byTestid("knF-copy") as HTMLButtonElement).disabled).toBe(true);
+    expect((byTestid("knF-lines")?.textContent ?? "")).toBe("—");
+    expect(byTestid("kn3-docs-back")).toBeTruthy(); // 返回出口还在：上下文没被错误态拆掉
+
+    // ---------- E. space-docs 筛空带清空出口 ----------
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(loaded);
+      if (url.startsWith("/agent-api/api/documents?") && url.includes("spaceId=sp_hr"))
+        return Promise.resolve({ asOf: "2026-11-19T08:00:00Z", documents: [{ documentId: "d1", fileName: "员工手册.pdf" }, { documentId: "d2", fileName: "考勤表.xlsx" }] });
+      return fail(404, "这个数据接口还没有接入。", "rid-n-x");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    await type("kn3-docs-filter-input", "查无此词");
+    expect(state("space-docs")).toBe("no-match");
+    expect(byTestid("kn3-docs-empty-clear")).toBeTruthy();
+    await click("kn3-docs-empty-clear");
+    expect(state("space-docs")).toBe("ready");
+    expect((byTestid("kn3-docs-filter-input") as HTMLInputElement).value).toBe("");
+  });
+
+  it("keeps a shared source-and-freshness ledger (knM-source-*): collapsed by default, zero extra reads, six-alias asOf only", async () => {
+    const { resetKnwSources } = await import("./sourceReads");
+    resetKnwSources();
+    const SPACES_BODY = {
+      asOf: "2026-11-19T08:00:00Z",
+      items: [{ spaceId: "sp_hr", name: "人事制度空间", docCount: 2, status: "synced" }],
+    };
+    const SEARCH_NO_STAMP = {
+      items: [{ documentId: "d1", fileName: "员工手册.pdf" }],
+    };
+    const docsPath = docsUrlFor("sp_hr");
+    fetchMock.mockClear();
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SPACES_BODY);
+      if (url === DOCUMENTS_PLAIN) return Promise.resolve(SEARCH_NO_STAMP);
+      return fail(404, "这个数据接口还没有接入。", "rid-knm-gone");
+    });
+    await render("/knowledge?tab=spaces");
+    await act(async () => {});
+    const urlsSettled = fetchMock.mock.calls.length;
+
+    // 默认收起：台账在，表不在；展开态不进 URL
+    expect(byTestid("knM-source-panel")).toBeTruthy();
+    expect(byTestid("knM-source-table")).toBeNull();
+    expect(attr("knM-source-toggle", "aria-expanded")).toBe("false");
+
+    // 展开：零新请求
+    await click("knM-source-toggle");
+    expect(byTestid("knM-source-table")).toBeTruthy();
+    expect(attr("knM-source-toggle", "aria-expanded")).toBe("true");
+    expect(fetchMock.mock.calls.length).toBe(urlsSettled);
+    expect((byTestid("loc")?.textContent ?? "")).not.toContain("expand");
+
+    // spaces 行：正常 + 顶层 ISO 换算北京时间（08:00Z → 16:00，只由 payload 推出，非本机时钟）；原文与别名只进 title
+    expect(attr("knM-source-row-spaces", "data-knm-status")).toBe("ok");
+    expect((byTestid("knM-source-asof-spaces")?.textContent ?? "")).toBe("2026-11-19 16:00");
+    const spacesTitle = byTestid("knM-source-asof-spaces")?.getAttribute("title") ?? "";
+    expect(spacesTitle).toContain("asOf 原文：2026-11-19T08:00:00Z");
+    expect(spacesTitle).toContain("字段：asOf");
+    expect((byTestid("knM-source-status-spaces")?.textContent ?? "").trim()).toBe("正常");
+    expect((byTestid("knM-source-path-spaces")?.textContent ?? "")).toBe(SPACES);
+
+    // doc-search 行：读到数据但没有顶层 ISO → 降级，「—」+六别名原因在 title（行内时间不算顶层事实）
+    expect(attr("knM-source-row-doc-search", "data-knm-status")).toBe("degraded");
+    expect((byTestid("knM-source-asof-doc-search")?.textContent ?? "")).toBe("—");
+    expect((byTestid("knM-source-asof-doc-search")?.getAttribute("title") ?? "")).toContain("六个别名");
+    expect((byTestid("knM-source-status-doc-search")?.textContent ?? "").trim()).toBe("降级");
+    expect((byTestid("knM-source-reason-doc-search")?.textContent ?? "")).toContain("新鲜度只能降级标注");
+
+    // space-docs 行：还没下钻 → 未读取
+    expect(attr("knM-source-row-space-docs", "data-knm-status")).toBe("idle");
+    expect((byTestid("knM-source-status-space-docs")?.textContent ?? "").trim()).toBe("未读取");
+
+    // 下钻：台账仍展开（切面不丢）、路径换成实际读口、404 → 读口未接入 + 去处
+    await click("knw5-space-link");
+    await act(async () => {});
+    expect(byTestid("knM-source-table")).toBeTruthy();
+    expect((byTestid("loc")?.textContent ?? "")).toContain("space=sp_hr");
+    expect(attr("knM-source-row-space-docs", "data-knm-status")).toBe("unwired");
+    expect((byTestid("knM-source-path-space-docs")?.textContent ?? "")).toBe(docsPath);
+    const unwiredVisible =
+      (byTestid("knM-source-status-space-docs")?.textContent ?? "").trim() +
+      (byTestid("knM-source-reason-space-docs")?.textContent ?? "").trim();
+    expect(unwiredVisible).toContain("读口未接入");
+    expect(byTestid("knM-source-apply-space-docs")).toBeTruthy();
+    // GAP 与 rid 只在 title，屏面不见
+    const ledgerText = (byTestid("knM-source-panel")?.textContent ?? "").replace(/\s+/g, " ");
+    expect(ledgerText).not.toContain("GAP");
+    expect(ledgerText).not.toContain("rid-knm-gone");
+    const unwiredTitle = byTestid("knM-source-status-space-docs")?.getAttribute("title") ?? "";
+    expect(unwiredTitle).toContain("GAP-03");
+    expect(unwiredTitle).toContain("请求编号 rid-knm-gone");
+
+    // 退回列表：展开态仍在；收起再展开全程 0 新请求
+    await click("kn3-docs-back");
+    await act(async () => {});
+    expect(byTestid("knM-source-table")).toBeTruthy();
+    const urlsToggles = fetchMock.mock.calls.length;
+    await click("knM-source-toggle");
+    await click("knM-source-toggle");
+    expect(fetchMock.mock.calls.length).toBe(urlsToggles);
+    expect(byTestid("knM-source-table")).toBeTruthy();
+
+    // 403≡404：同一可见说法（逐字）；六别名按序命中 generated_at → 正常上屏
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SPACES_BODY);
+      if (url === DOCUMENTS_PLAIN) return Promise.resolve({ generated_at: "2026-11-19T06:30:00Z", items: [] });
+      return fail(403, "没有查看这项数据的权限。", "rid-knm-denied");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr"); // 新渲染默认回到收起（store 仍记着上次的展开态——展开态在模块不在 URL）
+    await act(async () => {});
+    if (byTestid("knM-source-table") === null) await click("knM-source-toggle");
+    expect((byTestid("knM-source-status-space-docs")?.textContent ?? "").trim()).toBe("读口未接入");
+    expect(
+      (byTestid("knM-source-status-space-docs")?.textContent ?? "").trim() +
+        (byTestid("knM-source-reason-space-docs")?.textContent ?? "").trim(),
+    ).toBe(unwiredVisible);
+    expect((byTestid("knM-source-asof-doc-search")?.textContent ?? "")).toBe("2026-11-19 14:30");
+    expect((byTestid("knM-source-asof-doc-search")?.getAttribute("title") ?? "")).toContain("字段：generated_at");
+    expect(attr("knM-source-row-doc-search", "data-knm-status")).toBe("ok");
+    const urlsLast = fetchMock.mock.calls.length;
+    await click("knM-source-toggle");
+    expect(fetchMock.mock.calls.length).toBe(urlsLast); // 台账最后一次也不发请求
+
+    resetKnwSources();
+  });
+
+  it("copies a working permalink from the drawer (knO-*): paste-and-refresh opens the same doc, no-id rows refuse, fallback honest", async () => {
+    const SPACE = { asOf: "2026-11-19T07:00:00Z", items: [{ spaceId: "sp_hr", name: "人事制度空间" }] };
+    const LIST = {
+      asOf: "2026-11-19T07:00:00Z",
+      documents: [
+        { documentId: "d1", fileName: "员工手册.pdf", sizeBytes: 2048, updatedAt: "2026-11-19T07:00:00Z" },
+        { fileName: "没有标识的草稿.txt", sizeBytes: 128, updatedAt: "2026-11-19T06:00:00Z" },
+      ],
+    };
+    const stub = (writeText: ReturnType<typeof vi.fn>) =>
+      Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    fetchMock.mockClear();
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SPACE);
+      if (url.startsWith("/agent-api/api/documents?") && url.includes("spaceId=sp_hr")) return Promise.resolve(LIST);
+      return fail(404, "这个数据接口还没有接入。", "rid-o-x");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr&doc=d1");
+    await act(async () => {});
+    expect(byDocTestid("kn7-preview-panel")).toBeTruthy();
+    const urlsOpen = fetchMock.mock.calls.length;
+
+    // ---------- A. 可链接行：复制的是 origin + 现有深链参数（git grep 实证 tab/panel/space/doc） ----------
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    stub(writeText);
+    await click("knO-permalink");
+    expect(writeText).toHaveBeenCalledTimes(1);
+    const pasted = String(writeText.mock.calls[0][0]);
+    expect(pasted.startsWith(window.location.origin)).toBe(true);
+    const params = new URLSearchParams(pasted.slice(window.location.origin.length).split("?")[1] ?? "");
+    expect(params.get("space")).toBe("sp_hr");
+    expect(params.get("doc")).toBe("d1");
+    expect(pasted).toContain("tab=spaces");
+    expect(pasted).toContain("panel=spaces");
+    expect((byDocTestid("knO-permalink-status")?.textContent ?? "").trim()).toBe("链接已复制");
+    const urlSpan = byDocTestid("knO-permalink-url") as HTMLElement;
+    expect(urlSpan.getAttribute("title")).toContain("doc=d1"); // 全文在 title
+    expect(fetchMock.mock.calls.length).toBe(urlsOpen); // 复制零新请求
+
+    // ---------- B. 粘贴链接 + 刷新直达同一文档抽屉，标识同值 ----------
+    await render(pasted.slice(window.location.origin.length));
+    await act(async () => {});
+    expect(byDocTestid("kn7-preview-panel")).toBeTruthy(); // 深链直接开抽屉（缺口不存在：设计本就支持）
+    expect((byTestid("loc")?.textContent ?? "")).toContain("doc=d1");
+    expect(byDocTestid("kn3-docs-detail")?.getAttribute("title")).toBe("d1"); // 抽屉里的文档标识 = 参数值
+    expect((byDocTestid("kn7-preview-title")?.textContent ?? "")).toContain("员工手册.pdf");
+
+    // ---------- C. 无标识行：disabled + 逐字 title，不拿位置键冒充链接 ----------
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    await clickNth("kn3-docs-name", 1); // 无 id 行：页面内部键是 row-1，位置不是标识
+    await act(async () => {});
+    const oBtn = byDocTestid("knO-permalink") as HTMLButtonElement;
+    expect(oBtn.disabled).toBe(true);
+    expect(oBtn.getAttribute("title")).toBe("该文档没有可用的固定标识");
+    const writeGhost = vi.fn().mockResolvedValue(undefined);
+    stub(writeGhost);
+    await click("knO-permalink");
+    expect(writeGhost).toHaveBeenCalledTimes(0); // 守卫：也不写任何东西
+    expect((byDocTestid("knO-permalink-status")?.textContent ?? "").trim()).toBe("");
+
+    // ---------- D. 拒绝/不可用：只读 textarea，内容逐字同绝对地址 ----------
+    await render("/knowledge?tab=spaces&space=sp_hr&doc=d1");
+    await act(async () => {});
+    const writeFail = vi.fn().mockRejectedValue(new Error("denied"));
+    stub(writeFail);
+    await click("knO-permalink");
+    expect((byDocTestid("knO-permalink-status")?.textContent ?? "")).toContain("复制失败");
+    const fallback = byDocTestid("knO-permalink-fallback") as HTMLTextAreaElement | null;
+    expect(fallback).toBeTruthy();
+    expect(fallback?.readOnly).toBe(true);
+    expect(fallback?.value).toBe(pasted); // 与成功路径写入的绝对地址逐字一致（参数顺序同源）
+    Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true });
+    await click("knO-permalink");
+    expect(byDocTestid("knO-permalink-fallback")).toBeTruthy();
+    const writeOk = vi.fn().mockResolvedValue(undefined);
+    stub(writeOk);
+    await click("knO-permalink");
+    expect((byDocTestid("knO-permalink-status")?.textContent ?? "").trim()).toBe("链接已复制");
+    expect(byDocTestid("knO-permalink-fallback")).toBeNull();
+
+    // 全程无额外请求：列表读=四次渲染 × 两个列表面（space 列表 + 全库搜索面）；d1 详情读=打开抽屉的 A/B/D 各一次。
+    expect(fetchMock.mock.calls.filter((u: unknown[]) => String(u[0]).includes("/api/documents?"))).toHaveLength(8);
+    expect(fetchMock.mock.calls.filter((u: unknown[]) => String(u[0]).endsWith("/api/documents/d1"))).toHaveLength(3);
   });
 });
