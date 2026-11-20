@@ -3156,3 +3156,23 @@ Untested: the four-state body lengths are jsdom readings, not browser pixels; th
 - 新增 testid：`aud-sort-bar-block` `aud-sort-bar` `aud-sort-row` `aud-sort-head-<time|actor|action|resource>` `aud-sort-button-<col>` `aud-sort-status` `aud-sort-scope-note`。
 - 门禁：vitest `src/modules/audit` **exit 0**（**17** files / **343** tests）；`pnpm exec tsc -b . --noEmit` 共 **69** errors（= 本机地板，改动前后同数、增量 0）且 `modules/audit` **0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings（一度因 `useMemo` 依赖新建对象多出 1 条 exhaustive-deps 提示，已改为与类型分布同款的直接派生并消除）。
 - 活体腿状态：仅上述排序参数探针（401/404，未获得任何生效读数），其余证据为 vitest 腿 + URL 构造复现。
+
+## Audit long value truncation and full text (audO, 2026-11-20, base 577d95e0)
+
+- **来源更正（先写这一条，避免下一轮误读地基）**：本节的实现**不是上游带进来的**。上游 88ea9881「feat(console): system long value truncation and full view」改的是 `web/src/modules/health/**` 与 `docs/_artifacts/gov/**`，一处没碰 `web/src/modules/audit`；`git show HEAD:web/src/modules/audit/views.tsx | grep -c aud-trunc` = **0**，HEAD 里也不存在 `web/src/modules/audit/truncation.ts`。本车道 `truncation.ts` 与三处接线是 audO 上一轮**中断时留下的未提交工作区**（本轮开工时 `git status` 为 4 项：views.tsx 与页面用例已改、truncation.ts/truncation.test.ts 未跟踪），本轮没有"找回"任何东西，只做核对、补接线、把失败用例修到通过。若下一轮把这套代码当成"上游已实现、只缺测试"，那是错的。
+- 写域：`web/src/modules/audit/{truncation.ts,truncation.test.ts,views.tsx,AuditEventsModulePage.test.tsx}` + 本节。App/shell/routes/registry/package·lock/web-scripts/ops 与其它模块未碰；单 commit（代码+测试+文档一笔）。
+- **一个 helper，三处接线**（工单的「同一 truncation helper」核对结果）：`truncation.ts` 是唯一构造口——`truncatedView(value, limit)` 返回 `{truncated, shown, omitted, title}`，`omitted = 原文长 − 预算`（按实际字符串算，注释里写明不许猜）；`title = 完整值：<原文>（已省略 N 字符，完整值见此处）`；`joinTitles()` 把已有 title（原始标识、缺失原因）**并列而非顶掉**。视图侧只有一个呈现件 `LongValue`：
+  - 列表单元格（`AuditEventRowCard`）：操作者格、对象格走 `Field truncate`（预算 `TRUNC_CELL=24`，CSS `truncate` 单行 + `data-testid="aud-trunc"` + `data-aud-trunc-omitted=N` + title），动作说明行同样接 `LongValue`；事件类型格的按钮 title 只在真被截时补完整值，短值一个属性都不加。列表**不给展开按钮**（行内把手已经够多，完整值在 title 与详情里）。
+  - 行内预览 `aud6-preview-*`：事件类型 / 操作者 / 资源三行走 `LongValue`（预算 `TRUNC_LINE=40`）+ 原生 `<button type="button">` `aud-trunc-toggle-preview-<field>`（`aria-expanded`、`aria-label`、`focus-visible:outline-2`）。
+  - 详情 `aud3`/抽屉（`AuditEventDetailBody`）：谁 / 被操作的对象 / 结果 / 原因 → `aud-trunc-toggle-detail-<field>`，同一组件同一算法，`audA-detail-*` 与 `audJ-*-detail` 探针 id 未动。
+  - 三处都真正走同一个 helper，本轮修掉两处"看着接了其实没接"的缺口：详情资源格（`audA-detail-resource`）此前漏了 `expandName`；列表动作说明行还是整段 `break-words`。另外把 toggle 命名加surface 前缀（`preview-`/`detail-`），否则预览与详情同屏时同一个 id 会出现两次、探针点到的不是要测的那一个。
+- **短值不加装饰**：`truncated=false` 时 `LongValue` 只渲染原文——无省略号、无 `aud-trunc` 标记、无按钮（用例断言短值页面上 `aud-trunc` 数为 0 且正文里不出现「展开全文」）。
+- **展开只改本地态**：`aria-expanded` false→true、面板内正文由头部变成完整原文；`locationText()` 逐字不变、`urls()` 数组逐字相等（预览腿与详情腿各自断言，含收起后再次相等）。不改筛选/页码/`window/type/actor/resource/limit/cursor/preview/event` 任一键。
+- **N 实算读数（用例逐格重算，不是抄常量）**：从 title 里回取「完整值：X（已省略 N 字符…）」的 X 与 N，断言 `X.length − N` ∈ {24, 40}（即预算）、行显示的头部是 X 的前缀、`N>0`。实例：48 字的 actor 全名在格上 `omitted=24`（预算 24）、在预览/详情行上 `omitted=8`（预算 40）；79 字资源路径与 55 字动作说明同法各自成立。
+- **敏感字段不回显**（既有规则不破）：原始载荷仍按 `maskSensitive` 隐去（用例仍见 `"password": "***"` 与「已隐去 N 项」），全页 HTML 不含明文口令；所有 `aud-trunc` 的 title 不含 `***`，截断只作用于显示层标签，从不把掩码前的值搬到 title。
+- **三档无横溢（声明口径）**：实现方式是 `min-w-0` + Tailwind `truncate`（overflow-hidden/ellipsis）+ 外层 `flex-wrap`，展开态切回 `break-words`；**jsdom 没有布局宽度，故本轮是结构口径而非 1280/768/375 实测**——没有真浏览器量宽证据，不声称量过（活体腿本车道不可用，见下）。
+- **四态**：加载中 / 空集 / 403 被拒三档页面上没有任何截断件与「展开全文」，就绪后才有（用例逐档）；403≡404 同体、每态 rid、零写入口沿用 audF/audL 口径未退化。
+- 新增 testid：`aud-trunc`（可多枚，逐格）、`aud-trunc-toggle-preview-{action,actor,resource}`、`aud-trunc-toggle-detail-{actor,resource,outcome,reason}`，属性口径 `data-aud-trunc-omitted` / `data-aud-trunc-expanded`。
+- 零破：`aud01*`、`aud2*`–`audN*`（含 audA 逐字段对照与 `audA-*-time/-actor/-resource`、audJ `data-audj-value/-title`、audN 排序与 CSV 同源、audL 摘要与预设、audK 漫游）与页级 `agent-v2-page-audit*` 未改名未删节点；起算 17 files/**343** 一条未红，现 **18 files / 355** = 343 + 12（`truncation.test.ts` 5 条算术与话术 + 页面 audO 7 条接线/展开/短值/敏感/四态）。
+- 门禁：vitest `src/modules/audit` **exit 0**；`pnpm exec tsc -b . --noEmit` 共 **69** errors（= 本机地板，改动前后同数、增量 0）且 `modules/audit` **0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings。
+- 活体腿沿用已知不可用（未重跑）：9122 无身份头 **401 `console.unauthenticated`**、8092 **404 `console.not_found`**；本轮全部证据为 vitest 腿与 title/attribute 算术核对，宽度类断言为结构口径。

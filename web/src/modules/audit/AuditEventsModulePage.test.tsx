@@ -4233,3 +4233,220 @@ describe("audN - the columns sort locally, and say so", () => {
     expect(stop.getAttribute("data-audk-row")).toBe(rowOrder()[0]);
   });
 });
+
+/**
+ * audO — 长值截断与全文（三处接线：列表单元格 / aud6 预览 / aud3 详情）。
+ * 断言的是：一行只显示头部若干字符并以「…」收尾，title 带完整原文与按实际字符串
+ * 算出的「已省略 N 字符」（N = 原文长 − 预算，逐格重算而不是抄常量）；预览与详情有
+ * 原生 button「展开全文」，aria-expanded 随展开切换，展开只改本地态——地址逐字不变、
+ * urls() 一条不多；短值不加省略号也不给按钮；敏感字段仍走既有无回显；加载中/空集/
+ * 被拒三档没有截断件。jsdom 无量宽，宽度口径见 DONE 的声明。
+ */
+describe("audO - long values get one line and the whole text", () => {
+  // 长到必须截：actor 全名、resource 路径（散文形态，不被当机器句柄掩码）、动作说明
+  // 48 个字符：比行的预算(40)与格的预算(24)都长，两处都得省略
+  const LONG_NAME = "司马光·阿卜杜拉·尼古拉斯·亚历山德拉·费奥多罗维奇·冯·布劳恩施魏格·冯·德梅尔德";
+  // 路径形态、非机器句柄：资源格按既有口径原样上屏，因此会长
+  const LONG_PATH = "workstations/工位 0001/agents/employee api/sessions/42/tenants/t seakoi pilot/x";
+  const LONG_REASON =
+    "策略不允许在这台环境上提权，需要工作区管理员在审批单里确认目标工位与有效期限，否则本次操作会被系统直接中止并记账。";
+  const LONG = {
+    eventId: "evt_long_0000000001",
+    action: "task.created",
+    occurredAt: "2026-11-19T01:20:00Z",
+    outcome: "error",
+    actor: { type: "human", id: "user:2f3a4b5c6d7e8f90", displayName: LONG_NAME },
+    resource: { type: "approval", id: LONG_PATH },
+    requestId: "req-long-01",
+    error: { code: "policy.denied", messageRedacted: LONG_REASON },
+  };
+  const SHORT = {
+    eventId: "evt_short_0000000001",
+    action: "task.created",
+    occurredAt: "2026-11-19T01:20:00Z",
+    outcome: "succeeded",
+    actor: { type: "human", id: "user:2f3a4b5c6d7e8f90", displayName: "李思" },
+    resource: { type: "approval", id: "ap_1122334455667788" },
+    requestId: "req-short-01",
+  };
+
+  const marks = (): Element[] => [...document.querySelectorAll("[data-testid='aud-trunc']")];
+  const limitOf = (node: Element): number => {
+    const omitted = Number(node.getAttribute("data-aud-trunc-omitted"));
+    const full = fullOf(node);
+    return full.length - omitted;
+  };
+  const fullOf = (node: Element): string => {
+    const title = node.getAttribute("title") ?? "";
+    const inner = title.slice(title.indexOf("完整值：") + "完整值：".length);
+    return inner.slice(0, inner.lastIndexOf("（已省略"));
+  };
+
+  async function mountAudit(body: unknown, entry: string): Promise<void> {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url) =>
+      String(url).startsWith("/agent-api/api/audit-detail") ? { audit: body } : { items: [body] },
+    );
+    await render(entry, <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await waitFor(() => !skeleton(), "the page settled");
+  }
+
+  it("every truncated cell states the whole value and the counted omission", async () => {
+    await mountAudit(LONG, "/audit?window=7d&preview=evt_long_0000000001&detail=evt_long_0000000001");
+    await waitFor(() => document.querySelector("[data-testid='aud02-detail']") !== null, "the record painted");
+    const nodes = marks();
+    // 列表两处（操作者、原因）+ 预览两处（操作者、资源、说明…）+ 详情若干
+    expect(nodes.length).toBeGreaterThanOrEqual(6);
+    for (const node of nodes) {
+      const title = node.getAttribute("title") ?? "";
+      const omitted = Number(node.getAttribute("data-aud-trunc-omitted"));
+      const full = fullOf(node);
+      expect(title).toContain("完整值：");
+      expect(title).toContain(`已省略 ${omitted} 字符`);
+      // N 是按实际字符串算的：原文长 − 预算 = 省略数
+      expect(omitted).toBeGreaterThan(0);
+      expect(limitOf(node)).toBeLessThan(full.length);
+      // 行上显示的是原文的头部，不是别处的碎片
+      const head = full.slice(0, limitOf(node));
+      expect(node.textContent).toContain(head.slice(0, 8));
+      expect(node.className).toContain("min-w-0");
+    }
+    // 每格显示的头部与省略数互相自洽：预算 = 原文长 − 省略数
+    const budgets = new Set(nodes.map((node) => limitOf(node)));
+    for (const budget of budgets) expect([24, 40]).toContain(budget);
+  });
+
+  it("the list cell is one line with no second handle", async () => {
+    await mountAudit(LONG, "/audit?window=7d");
+    const cell = document.querySelector("[data-testid='aud01-cell-evt_long_0000000001-actor']")!;
+    const node = cell.querySelector("[data-testid='aud-trunc']")!;
+    expect(node.className).toContain("truncate");
+    expect(node.getAttribute("data-aud-trunc-expanded")).toBe("false");
+    // 列表口径不给展开按钮：行已经够多把手，完整值在 title 与详情里
+    expect(cell.querySelector("[data^='aud-trunc-toggle']")).toBeNull();
+    expect(document.querySelector("[data-testid='aud-trunc-toggle-actor']")).toBeNull();
+    // 动作说明同样只一行，且 counted
+    const reason = document.querySelector("[data-testid='aud01-cell-evt_long_0000000001-details']")
+      ? marks().find((one) => (one.getAttribute("title") ?? "").includes("策略不允许"))!
+      : null;
+    expect(reason).not.toBeNull();
+    expect(reason!.getAttribute("data-aud-trunc-omitted")).not.toBe("0");
+  });
+
+  it("the preview expands in place, changing no key and asking for nothing", async () => {
+    await mountAudit(LONG, "/audit?window=7d&preview=evt_long_0000000001");
+    const toggle = document.querySelector<HTMLButtonElement>("[data-testid='aud-trunc-toggle-preview-actor']")!;
+    expect(toggle.tagName).toBe("BUTTON");
+    expect(toggle.type).toBe("button");
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    const panel = document.querySelector("[data-testid='aud6-preview-evt_long_0000000001']")!;
+    const head = LONG_NAME.slice(0, 20);
+    expect(panel.textContent).toContain(head);
+    expect(panel.textContent).not.toContain(LONG_NAME);
+    const before = urls();
+    const address = locationText();
+    await act(async () => {
+      toggle.click();
+    });
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(panel.textContent).toContain(LONG_NAME);
+    // 展开只切本地态
+    expect(locationText()).toBe(address);
+    expect(urls()).toEqual(before);
+    await act(async () => {
+      toggle.click();
+    });
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(panel.textContent).not.toContain(LONG_NAME);
+    expect(urls()).toEqual(before);
+    expect(locationText()).toBe(address);
+  });
+
+  it("the record pane has the same handles for the same three fields", async () => {
+    await mountAudit(LONG, "/audit?window=7d&detail=evt_long_0000000001");
+    await waitFor(() => document.querySelector("[data-testid='aud02-detail']") !== null, "the record painted");
+    for (const name of ["detail-actor", "detail-resource", "detail-reason"]) {
+      const node = document.querySelector<HTMLButtonElement>(`[data-testid='aud-trunc-toggle-${name}']`);
+      expect(node, name).not.toBeNull();
+      expect(node!.getAttribute("aria-expanded"), name).toBe("false");
+      expect(node!.className).toContain("focus-visible:outline-2");
+    }
+    // 短到不用截的值没有按钮：结果格是「失败（被拒）」，没有第二套装饰
+    expect(document.querySelector("[data-testid='aud-trunc-toggle-detail-outcome']")).toBeNull();
+    const resource = document.querySelector<HTMLButtonElement>("[data-testid='aud-trunc-toggle-detail-resource']")!;
+    const before = urls();
+    const address = locationText();
+    await act(async () => {
+      resource.click();
+    });
+    expect(resource.getAttribute("aria-expanded")).toBe("true");
+    expect(document.querySelector("[data-testid='aud02-detail']")!.textContent).toContain(LONG_PATH);
+    expect(urls()).toEqual(before);
+    expect(locationText()).toBe(address);
+    // title 里原有的东西没被顶掉：完整值与原始标识并列
+    const marked = marks().find((one) => (one.getAttribute("title") ?? "").includes("已省略"))!;
+    expect(marked.getAttribute("title")).toContain("完整值：");
+  });
+
+  it("a value short enough to fit gets no ellipsis, no count and no button", async () => {
+    await mountAudit(SHORT, "/audit?window=7d&preview=evt_short_0000000001&detail=evt_short_0000000001");
+    await waitFor(() => document.querySelector("[data-testid='aud02-detail']") !== null, "the record painted");
+    expect(marks()).toHaveLength(0);
+    expect(document.querySelectorAll("[data-testid^='aud-trunc-toggle-']")).toHaveLength(0);
+    expect(document.querySelector("[data-testid='aud01-cell-evt_short_0000000001-actor']")!.textContent).toContain(
+      "李思 · 6d7e8f90",
+    );
+    expect(document.body.textContent).not.toContain("展开全文");
+  });
+
+  it("truncation never hands back what masking took away", async () => {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url) =>
+      String(url).startsWith("/agent-api/api/audit-detail")
+        ? { audit: { ...LONG, payload: { password: "abc123", note: LONG_PATH } } }
+        : { items: [LONG] },
+    );
+    await render("/audit?window=7d&preview=evt_long_0000000001&detail=evt_long_0000000001", <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await waitFor(() => document.querySelector("[data-testid='aud3-payload']") !== null, "payload painted");
+    expect(document.querySelector("[data-testid='aud3-payload-masked']")!.textContent).toContain("已隐去");
+    const html = document.body.innerHTML;
+    expect(html).not.toContain("abc123");
+    expect(html).toContain('"password": "***"');
+    for (const node of marks()) {
+      expect(node.getAttribute("title") ?? "").not.toContain("***");
+    }
+  });
+
+  it("the states without rows carry no truncation widget", async () => {
+    let release: ((value: unknown) => void) | null = null;
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(() => new Promise((resolve) => { release = resolve; }));
+    await render("/audit?window=7d", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud01-loading']") !== null, "loading");
+    expect(marks()).toHaveLength(0);
+    await act(async () => {
+      release?.({ items: [LONG], nextCursor: null });
+    });
+    await waitFor(() => !skeleton(), "ready");
+    expect(marks().length).toBeGreaterThan(0);
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async () => ({ items: [], nextCursor: null }));
+    await render("/audit?window=7d", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud01-empty']") !== null, "empty");
+    expect(marks()).toHaveLength(0);
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockRejectedValue(
+      new ApiError("no", { status: 403, body: '{"code":"console.forbidden"}', url: "/agent-api/api/audit", requestId: "rid-o" }),
+    );
+    await render("/audit?window=7d", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud01-denied']") !== null, "denied");
+    expect(marks()).toHaveLength(0);
+    expect(text()).not.toContain("展开全文");
+  });
+});
