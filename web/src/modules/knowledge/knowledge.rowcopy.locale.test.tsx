@@ -181,6 +181,60 @@ describe("knowledge type/size label parity across three carriers (R226)", () => 
     expect(document.body.textContent ?? "").not.toMatch(/\bundefined\b|\bnull\b/);
   });
 
+  // R227 追加（同文件，不新建）——R227 三腿经逐条比对已由本文件 ①②③ 锁死（见上），
+  // 唯二未锁子维在此落地：④ image/* MIME 族（① 负扫正则仅覆盖 application/ 前缀）：
+  //    人话「图片」三载体互等、屏上无 image/png 裸值；⑤ formatBytes 进位边界样张
+  //    （999→"999 B"、1000-1023→"1.0 KB" 型）三载体互等且无裸字节。
+  it("④ 新增维(R227)：image/* 族——屏上人话「图片」三载体逐字、裸 image/png 零出现", async () => {
+    const writeText = clipStub();
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SP);
+      const png = { documentId: "d_img", fileName: "P 截图.png", mimeType: "image/png", sizeBytes: 51200, updatedAt: "2026-11-19T04:10:00Z", spaceId: "sp_x", spaceName: "人事空间" };
+      if (url === DOCUMENTS_PLAIN || url === P1URL) return Promise.resolve({ asOf: SP.asOf, documents: [png] });
+      return fail(404, "这个数据接口还没有接入。", "rid-r227");
+    });
+    await render(BASE);
+    const row = detailRow("P 截图.png")!;
+    expect(txt(row.querySelector('[data-testid="kn3-docs-type"]'))).toBe("图片");
+    expect(row.querySelector('[data-testid="kn3-docs-type"]')?.getAttribute("title")).toBe("image/png");
+    await clickNode(row.querySelector('button[data-testid^="kn-row-copy-space-"]'), "row img");
+    const cols = String(writeText.mock.calls[0][0]).split("\n")[1].split(" | ");
+    expect(cols[1]).toBe("图片");
+    writeText.mockClear();
+    await clickNode(q("knG-copy"), "knG img");
+    const gLine = dataLines(String(writeText.mock.calls[0][0]))[0].split(" | ");
+    expect(gLine[2]).toBe(cols[1]); // 清单列 == 行钮列
+    const bodies = `${txt(q("kn3-docs"))}${txt(q("kn6-search"))}`;
+    expect(bodies).not.toMatch(/image\/[a-z0-9.+-]+/i); // image 族裸 MIME 不上屏
+    expect(bodies).not.toContain("51200"); // 大小已人话化（50.0 KB 型）
+    expect(cols[2]).toBe("50.0 KB");
+  });
+
+  it("⑤ 新增维(R227)：formatBytes 进位边界样张——999B 与 1.0KB 两侧三载体逐字互等、无裸字节", async () => {
+    const writeText = clipStub();
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SP);
+      const small = { documentId: "d_s", fileName: "S 小档.txt", mimeType: "text/plain", sizeBytes: 999, updatedAt: "2026-11-19T03:10:00Z", spaceId: "sp_x", spaceName: "人事空间" };
+      const edge = { documentId: "d_e", fileName: "E 边界档.txt", mimeType: "text/plain", sizeBytes: 1024, updatedAt: "2026-11-19T02:10:00Z", spaceId: "sp_x", spaceName: "人事空间" };
+      if (url === DOCUMENTS_PLAIN || url === P1URL) return Promise.resolve({ asOf: SP.asOf, documents: [small, edge] });
+      return fail(404, "这个数据接口还没有接入。", "rid-r227");
+    });
+    await render(BASE);
+    expect(txt(detailRow("S 小档.txt")!.querySelector('[data-testid="kn3-docs-size"]'))).toBe("999 B");
+    await clickNode(detailRow("E 边界档.txt")!.querySelector('button[data-testid^="kn-row-copy-space-"]'), "row edge");
+    const eCols = String(writeText.mock.calls[0][0]).split("\n")[1].split(" | ");
+    expect(eCols[1]).toBe("其他类型"); // 现状：text/plain 的后缀 "plain" 不在人话映射表（映射键是 text）
+    expect(detailRow("E 边界档.txt")!.querySelector('[data-testid="kn3-docs-type"]')?.getAttribute("title")).toBe("text/plain"); // 裸 MIME 只进 title
+    expect(eCols[2]).toBe(txt(detailRow("E 边界档.txt")!.querySelector('[data-testid="kn3-docs-size"]')));
+    writeText.mockClear();
+    await clickNode(q("knF-copy"), "knF edges");
+    const fLines = dataLines(String(writeText.mock.calls[0][0]));
+    expect(fLines.some((l) => l.includes("999 B")) && fLines.some((l) => l.split(" | ")[0] === "E 边界档.txt")).toBe(true);
+    const bodies = txt(q("kn3-docs"));
+    expect(bodies).not.toContain("1024"); // 1024 已进位为 "1.0 KB"，裸值不上屏
+    expect(eCols[2]).toBe("1.0 KB"); // 进位边界样张逐字
+  });
+
   it("③ 复制链前后 urls 快照逐字不变；三值：-space- 钮数 == 表体行 == knF 数据行", async () => {
     const writeText = clipStub();
     wire();

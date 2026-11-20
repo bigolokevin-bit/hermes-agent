@@ -5246,3 +5246,42 @@ kn-type*/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort*/kn-gates/kn7-preview*/导出
 未测如实：带登录会话真屏；「大小恰好进位边界」样张（999B/1024B 级）取产品既有
 formatBytes 分支（R54 族已锁部分边界）；image/* 等其他 MIME 族的负扫（本轮以
 application/x-unknown-9x 代表，正则族扫描已覆盖前缀）。
+
+# KNW5 追加 R227：行复制本地化标签护栏（判定 R227≡R226 主腿已锁，同文件追加两条新维）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `c4542fdb`
+（wave-69）、基线先跑 44/209 全绿 Errors 0。零产品文件改动。**不新建文件**——按派工
+纪律在既有 knowledge.rowcopy.locale.test.tsx（R226 本体）内追加。
+
+## R227 三腿比对结论（逐条引用）
+
+```text
+①类型/大小人话三载体逐字 + 裸 MIME/裸字节负扫 —— R226 ①（本文件 :96-141）已锁
+  （PDF/2.4 MB 样张三载体 toBe、application/* 与 ≥4 位裸字节负向扫描）；
+②缺值三处同句「—」、无 undefined/null —— R226 ②（:143-172）已锁；
+③复制/导出前后 urls 不变 + 三值 —— R226 ③（:209-220）已锁。
+主腿全锁 → 仅补派工点名的未锁子维，两条新用例：
+④ 新增维：image/* MIME 族（R226 负扫正则仅 application/ 前缀）——P 截图.png 屏上
+  「图片」、title 落裸 image/png、三载体（格/行钮/knG 去列位）逐字互等、51200→"50.0 KB"、
+  两表体全文 image/* 与裸字节 0 命中；
+⑤ 新增维：text/plain 现状样张（后缀 "plain" 不在人话映射表——「其他类型」+title 裸
+  MIME，非缺陷按现状锁）+ formatBytes 进位边界 999→"999 B"（未进位合法人话）、
+  1024→"1.0 KB"（裸值不上屏）。
+```
+
+## 验证尾行（R227）
+```text
+$ npx vitest run src/modules/knowledge   → 44 files / 211 tests passed（基线 209 + 2），
+  grep unhandled = 0
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r227-dist → exit 0
+$ npx vitest run（全仓）                  → 342 files / 3154 passed 全绿（无已知红需点名）
+$ 三档：1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn-row-copy*/kn-row-copy-space*/kn-doc-copy*/kn3*/kn3-page-cap/knE-page-*/
+kn-type*/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort*/kn-gates/kn7-preview*/导出 absent
+标记 + 既有 44 套全绿（R226 三例复跑同绿）。过程自纠两处（残缺正则行删除、1023B 系
+合法人话非裸字节——改 1024 进位样张），产品零触碰。
+```
+未测如实：带登录会话真屏；映射表全量 MIME 族（image/png 与 application/* 两代表已锁，
+其余映射键同源单点）；1023 这类「未达进位」人话与裸字节之界由⑤注释钉义。
