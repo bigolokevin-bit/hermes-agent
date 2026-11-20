@@ -1151,3 +1151,11 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 九腿全 exit=0（/tmp/wave24-exits.txt），九件全 ok=true、heads 9/9==fa7c2155：ia-html/react {51,22,1,8}；lint-fake v=[]；lint-reuse v=0 exempt=1（chat→T40）；state-quad 20/20；crawl-anon DL0/CE0/PE0 routesCE=51（401 归因）；crawl-auth DL0/CE0/PE0 **routesCE=22（上代 26，-4 好转，与 wave-24 修向一致）**。redirects=24 归因 notes 不判红。
 - shots auth 102/102 failures=[] obs=0 obsR=[] distinct=24（上代 25，-1）envOnly=27（-1）；anon auxiliary=true 102/102 **obs=0（上代 1，cron 视图噪音消失）** distinct=23 envOnly=51；三键两 summary 全值，served before==after 未漂，ceAuthority=login-state。
 - 环境：9122 v4_proxy 95667、caddy 8183 28034、BFF 8092（a7bccdf@81892）均未动；web/src 未碰；零凭据明文。94076a05 已盖不重做、无 amend。
+
+## 一〇五轮 · 波次代次九件重章 @ 2ab2d218（entry BANGt8ne 代次未变，2026-11-20 14:3x-14:4x）
+
+- 代次现查：LOCAL=ls-remote=2ab2d2188f60（ANCH=0）、porc 0 脏；wave-26=wave-25 五笔 docs 并入，**页面代次仍 fa7c2155**：entry assets/index-BANGt8ne.js 167490B sha256 1dc7d2c4…fa2da5 未变、9122 served 同值、served before==after 未漂。
+- 九腿全 exit=0（/tmp/wave26-exits.txt），九件全 ok=true 盖 headHash=2ab2d218：ia-html/react routes=51/tabsAll=23/chatHosts=1/modules=8；lint-fake v=[]；lint-reuse v=0 exempt=1（chat→T40）；state-quad 20/20；crawl-anon DL0/CE0/PE0 routesCE=51（401 归因）；crawl-auth DL0/CE0/PE0 **routesCE=26（上代 22，+4 如实——docs-only 波次，判据仅 DL/CE/PE 三项，routesCE 为 401 归因观测项不判红）**；redirects=24 归因 notes 不判红。
+- shots auth 102/102 failures=[] obs=0 obsR=[] distinct=23（上代 24，-1）envOnly=25（上代 27，-2）；anon auxiliary=true 102/102 obs=0 distinct=23 envOnly=51（持平）。三键两 summary 全值 entry='assets/index-BANGt8ne.js'/167490/1dc7d2c4…、ceAuthority=login-state。
+- 脚本复用形：盘现算 stamp 版对代次不敏感（HEAD rev-parse 现算、entry 名同代未变），本轮 sed 仅 wave24→wave26 文件名两处生效，验证配方免改头成立。
+- 环境：BFF 8092 pid 58224（b3b0f16）未动；9122 v4_proxy 95667 未动；caddy 28034 未动；web/src 未碰；fa7c2155 已盖不重做、无 amend/force。
