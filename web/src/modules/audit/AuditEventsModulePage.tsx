@@ -968,7 +968,7 @@ function AuditEventsSurface(): ReactNode {
       );
     }
     if (detail.phase === "loading") {
-      return <LoadingPanel testId="aud02-detail-loading" />;
+      return <LoadingPanel testId="aud02-detail-loading" slot="detail" />;
     }
     if (detail.phase === "denied") {
       return <DeniedPanel failure={detail.failure} testId="aud02-detail-denied" />;
@@ -980,6 +980,7 @@ function AuditEventsSurface(): ReactNode {
           onRetry={detail.reload}
           title="这条事件没能加载出来"
           testId="aud02-detail-error"
+          slot="detail"
         />
       );
     }
@@ -1290,10 +1291,10 @@ function AuditEventsSurface(): ReactNode {
             </p>
           ) : null}
 
-          {!customInvalid && list.phase === "loading" ? <LoadingPanel testId="aud01-loading" /> : null}
+          {!customInvalid && list.phase === "loading" ? <LoadingPanel testId="aud01-loading" slot="list" /> : null}
 
           {!customInvalid && list.phase === "denied" ? (
-            <DeniedPanel failure={list.failure} testId="aud01-denied" />
+            <DeniedPanel failure={list.failure} testId="aud01-denied" slot="list" onRetry={list.reload} />
           ) : null}
 
           {!customInvalid && list.phase === "error" && list.failure ? (
@@ -1301,12 +1302,14 @@ function AuditEventsSurface(): ReactNode {
               failure={list.failure}
               onRetry={list.reload}
               testId="aud01-error"
+              slot="list"
             />
           ) : null}
 
           {!customInvalid && list.phase === "empty" ? (
             <>
               <EmptyPanel
+                slot="list"
                 reason={
                   windowChoice === "custom"
                     ? "该时间段内无事件——这个起止区间里没有审计事件"
@@ -1396,7 +1399,20 @@ function AuditEventsSurface(): ReactNode {
                     testId={`aud01-row-${row.key}`}
                   />
                   {openPreview === row.key ? (
-                    <AuditRowPreview row={row} testId={"aud6-preview-" + row.key} detailHref={detailHref} />
+                    <AuditRowPreview
+                      row={row}
+                      testId={"aud6-preview-" + row.key}
+                      detailHref={detailHref}
+                      // audF: the preview is not a fourth reading. When this row
+                      // is the record that is open, its in-flight / failed / denied
+                      // answer is shown here with the SAME sentence the record pane
+                      // uses, so one failure cannot be named two ways on one screen.
+                      record={
+                        row.rawId !== null && row.rawId === selected
+                          ? { phase: detail.phase, failure: detail.failure, onRetry: detail.reload }
+                          : null
+                      }
+                    />
                   ) : null}
                 </AuditRowKeyboard>
               ))}

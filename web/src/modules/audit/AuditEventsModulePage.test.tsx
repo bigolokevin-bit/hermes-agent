@@ -2428,3 +2428,200 @@ describe("audE - the event permalink", () => {
     expect(text()).not.toContain("复制事件链接");
   });
 });
+
+/**
+ * audF — 三处四态同一套话。断言的是：同一种失败在列表、行内预览、事件详情里
+ * 说的是同一句原因（不是「一处加载失败、一处读取错误」），三处都带上可复制的
+ * rid 与重试；重试只重发它自己那个读口、恰一次；被拒时筛选/页码/地址原样还在，
+ * 恢复后回到原位；「该条件下无事件」与「读口未接入」是两句话，未接入不显 0。
+ */
+describe("audF - the four states say the same thing everywhere", () => {
+  const listReads = (): number => urls().filter((u) => /^\/agent-api\/api\/audit\?/.test(u)).length;
+  const detailReads = (): number => urls().filter((u) => u.startsWith("/agent-api/api/audit-detail")).length;
+  const verifyReads = (): number => urls().filter((u) => u.startsWith("/agent-api/api/audit-verify")).length;
+  const sentence = (testId: string): string =>
+    document.querySelector(`[data-testid='${testId}-sentence']`)?.textContent?.trim() ?? "";
+  const mark = (slot: string, phase: string): string | null =>
+    document.querySelector(`[data-testid='audF-state-${slot}-${phase}']`)?.getAttribute("data-audf-label") ?? null;
+
+  /** The retry button of one state panel, found by the word on it. */
+  async function clickRetry(testId: string): Promise<void> {
+    const panel = document.querySelector(`[data-testid='${testId}']`);
+    const button = [...(panel?.querySelectorAll<HTMLButtonElement>("button") ?? [])].find((node) => {
+      const words = node.textContent ?? "";
+      return words.includes("重试") || words.includes("再读一次");
+    });
+    if (!button) throw new Error(`no retry button in ${testId}`);
+    await act(async () => {
+      button.click();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
+  }
+
+  const serviceDown = (url: string, rid: string): ApiError =>
+    new ApiError("down", { status: 503, body: '{"code":"console.unavailable"}', url, requestId: rid });
+
+  it("one failure, three surfaces, one sentence — each with its rid and its retry", async () => {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url) => {
+      throw serviceDown(String(url), "rid-shared");
+    });
+    await render("/audit?window=7d", <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await waitFor(() => document.querySelector("[data-testid='aud01-error']") !== null, "the list failed");
+    const listLine = sentence("aud01-error");
+    expect(listLine).toContain("审计服务在处理时出了错");
+    expect(mark("list", "error")).toBe("读取没有完成");
+    expect(document.querySelector("[data-testid='aud01-error-request-id']")!.textContent).toContain("rid-shared");
+
+    // the same answer on the record read: the preview and the record pane
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url) => {
+      if (String(url).startsWith("/agent-api/api/audit-detail")) throw serviceDown(String(url), "rid-shared");
+      return EVENTS;
+    });
+    await render("/audit?window=7d&preview=evt_7c1f2a3b4d5e6f70&detail=evt_7c1f2a3b4d5e6f70", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud02-detail-error']") !== null, "the record failed");
+    await waitFor(() => document.querySelector("[data-testid='audF-preview-error']") !== null, "the preview says so too");
+    expect(sentence("aud02-detail-error")).toBe(listLine);
+    expect(sentence("audF-preview-error")).toBe(listLine);
+    expect(mark("detail", "error")).toBe("读取没有完成");
+    expect(mark("preview", "error")).toBe("读取没有完成");
+    // both record legs carry the copyable rid and a retry, in the same words
+    for (const id of ["aud02-detail-error", "audF-preview-error"]) {
+      expect(document.querySelector(`[data-testid='${id}-request-id-value']`)?.textContent).toContain("rid-shared");
+    }
+    expect(document.querySelectorAll("[data-testid='audF-preview-error'] button").length).toBeGreaterThan(0);
+    expect(text()).toContain("重试");
+  });
+
+  it("each retry re-asks exactly its own read口, once", async () => {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url) => {
+      if (String(url).startsWith("/agent-api/api/audit-detail")) throw serviceDown(String(url), "rid-d");
+      return EVENTS;
+    });
+    await render("/audit?window=7d&preview=evt_7c1f2a3b4d5e6f70&detail=evt_7c1f2a3b4d5e6f70", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='audF-preview-error']") !== null, "preview failed");
+    const lists = listReads();
+    const details = detailReads();
+    const verifies = verifyReads();
+    // the preview's retry and the record pane's retry are the SAME read口
+    await clickRetry("audF-preview-error");
+    expect(detailReads()).toBe(details + 1);
+    expect(listReads()).toBe(lists);
+    expect(verifyReads()).toBe(verifies);
+  });
+
+  it("the list retry re-reads the ledger once and touches no other read口", async () => {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url) => {
+      throw serviceDown(String(url), "rid-l");
+    });
+    await render("/audit?window=7d&type=task.created", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud01-error']") !== null, "list failed");
+    const before = listReads();
+    const details = detailReads();
+    await clickRetry("aud01-error");
+    expect(listReads()).toBe(before + 1);
+    expect(detailReads()).toBe(details);
+  });
+
+  it("a denied ledger keeps the filters, the page and the address, and lands back where it was", async () => {
+    const entry = "/audit?window=24h&type=task.created&actor=employee-api&cursor=cur_page2&preview=evt_7c1f2a3b4d5e6f70";
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url) => {
+      throw new ApiError("closed", { status: 403, body: '{"code":"console.forbidden"}', url, requestId: "rid-403" });
+    });
+    await render(entry, <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await waitFor(() => document.querySelector("[data-testid='aud01-denied']") !== null, "denied");
+    expect(locationText()).toContain("window=24h");
+    expect(locationText()).toContain("type=task.created");
+    expect(locationText()).toContain("cursor=cur_page2");
+    expect(locationText()).toContain("preview=evt_7c1f2a3b4d5e6f70");
+    expect(document.querySelectorAll("[data-testid^='aud01-row-']")).toHaveLength(0);
+    expect(mark("list", "denied")).toBe("暂时无法查看审计事件");
+    // recovery: the denied body carries its own way back to THIS read口
+    expect(document.querySelector("[data-testid='aud01-denied-retry-block']")).not.toBeNull();
+    const reads = listReads();
+    api.fetchJSON.mockImplementation(async () => EVENTS);
+    await clickRetry("aud01-denied");
+    expect(listReads()).toBe(reads + 1);
+    await waitFor(() => document.querySelector("[data-testid='aud01-row-evt_7c1f2a3b4d5e6f70']") !== null, "rows back");
+    expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 2 页");
+    expect(document.querySelector("[data-testid='aud6-preview-evt_7c1f2a3b4d5e6f70']")).not.toBeNull();
+    expect(locationText()).toContain("actor=employee-api");
+  });
+
+  it("403 and 404 stay one body, and only a missing route is 未接入", async () => {
+    const leg = async (status: number, code: string): Promise<string> => {
+      api.fetchJSON.mockReset();
+      api.fetchJSON.mockImplementation(async (url) => {
+        throw new ApiError("no", { status, body: `{"code":"${code}"}`, url, requestId: "rid-x" });
+      });
+      await render("/audit?window=7d", <AuditEventsModulePage />);
+      await waitFor(() => document.querySelector("[data-testid='aud01-denied']") !== null, `denied ${status}`);
+      return document.querySelector("[data-testid='aud01-denied']")!.textContent ?? "";
+    };
+    const closed = await leg(403, "console.forbidden");
+    expect(document.querySelector("[data-testid='audF-state-list-unwired']")).toBeNull();
+    const missing = await leg(404, "console.unknown_route");
+    // one body for both codes — the state text does not split them
+    expect(missing).toBe(closed);
+    // and only the route that is not here is called 未接入, in the title
+    expect(document.querySelector("[data-testid='audF-state-list-unwired']")!.getAttribute("data-audf-label")).toBe(
+      "这个读口在本环境未接入",
+    );
+    expect(document.querySelector("[data-testid='aud01-denied']")!.getAttribute("title")).toContain("读口未接入");
+    // never dressed up as zero records
+    expect(document.querySelector("[data-testid='aud01-empty']")).toBeNull();
+    expect(missing).not.toContain("无事件");
+    expect(missing).not.toMatch(/0 条/);
+  });
+
+  it("the two empties are two different statements", async () => {
+    // ① a real answer of no records under these filters
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async () => ({ items: [], nextCursor: null }));
+    await render("/audit?window=custom&from=2026-11-01T01%3A00%3A00.000Z&to=2026-11-01T02%3A00%3A00.000Z", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud01-empty']") !== null, "filtered empty");
+    expect(mark("list", "empty")).toBe("该条件下无事件");
+    expect(document.querySelector("[data-testid='audF-state-list-unwired']")).toBeNull();
+    expect(document.querySelector("[data-testid='aud01-empty']")!.textContent).toContain("该时间段内无事件");
+    // ② a read口 that is not here at all
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url) => {
+      throw new ApiError("no route", { status: 404, body: '{"code":"console.unknown_route"}', url, requestId: "rid-route" });
+    });
+    await render("/audit?window=7d", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='audF-state-list-unwired']") !== null, "unwired");
+    expect(mark("list", "empty")).toBeNull();
+    expect(document.querySelector("[data-testid='aud01-empty']")).toBeNull();
+  });
+
+  it("a chain check that cannot run is the same 未接入 statement", async () => {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url) => {
+      if (String(url).startsWith("/agent-api/api/audit-verify")) {
+        throw new ApiError("no route", { status: 404, body: '{"code":"console.unknown_route"}', url, requestId: "rid-v" });
+      }
+      return EVENTS;
+    });
+    await render("/audit?window=7d", <AuditEventsModulePage />);
+    await waitFor(() => !skeleton(), "list settled");
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud01-verify']")?.click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='aud01-verify-not-enabled']") !== null, "check could not run");
+    expect(mark("verify", "unwired")).toBe("这个读口在本环境未接入");
+    expect(sentence("aud01-verify-not-enabled")).toContain("没有提供完整性校验");
+    expect(document.querySelector("[data-testid='aud01-verify-not-enabled-request-id']")!.textContent).toContain("rid-v");
+  });
+});

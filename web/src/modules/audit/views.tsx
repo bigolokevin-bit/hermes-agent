@@ -16,7 +16,8 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { themedBody, themedChrome } from "@/lib/utils";
 import type { AuditChange, AuditDetail, AuditRow, VerifyResult } from "./model";
 import { beijingSeconds, maskSensitive } from "./model";
-import { CopyValue, PermalinkCopy, SummaryCopy, TechnicalDisclosure } from "./states";
+import { CopyValue, DeniedPanel, ErrorPanel, LoadingPanel, PermalinkCopy, SummaryCopy, TechnicalDisclosure } from "./states";
+import type { FailureCopy } from "./copy";
 import { summaryFromDetail, summaryFromRow } from "./summary";
 
 const MISSING_TIME = "服务未提供该时间";
@@ -439,9 +440,20 @@ export function AuditRowPreview({
   row,
   testId,
   detailHref,
+  record,
 }: {
   row: AuditRow;
   testId: string;
+  /**
+   * audF: the record read this row's own 「打开详情」 answers, when it is the
+   * record that is open. `null` means no read is attached to this preview, so
+   * the preview says nothing about states it does not have.
+   */
+  record?: {
+    phase: "idle" | "loading" | "ready" | "error" | "denied";
+    failure: FailureCopy | null;
+    onRetry: () => void;
+  } | null;
   /**
    * aud8: where 「打开详情」 goes. The list passes a link that carries its own
    * reading state (window, type, cursor stack, folds) so returning lands back
@@ -518,6 +530,23 @@ export function AuditRowPreview({
       <SummaryCopy line={summaryFromRow(row, at)} />
       {/* audE: and the same fixed link for the same record. */}
       <PermalinkCopy eventId={row.rawId} />
+      {/* audF: the state of the record read this row points at, in the same
+          panels and the same sentences the record pane uses. */}
+      {record && record.phase !== "idle" && record.phase !== "ready" ? (
+        record.phase === "loading" ? (
+          <LoadingPanel testId="audF-preview-loading" slot="preview" />
+        ) : record.phase === "denied" ? (
+          <DeniedPanel failure={record.failure} testId="audF-preview-denied" slot="preview" />
+        ) : (
+          <ErrorPanel
+            failure={record.failure ?? { sentence: "这条事件的详情没能加载出来。", requestId: null, technical: null }}
+            onRetry={record.onRetry}
+            title="这条事件没能加载出来"
+            testId="audF-preview-error"
+            slot="preview"
+          />
+        )
+      ) : null}
     </div>
   );
 }

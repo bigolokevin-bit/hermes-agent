@@ -18,6 +18,7 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { themedBody } from "@/lib/utils";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import { requestIdLine, type FailureCopy } from "./copy";
+import { STATE_LABEL, stateMark, unwiredReasonFor, type StatePhase, type StateSlot } from "./stateCopy";
 import { SUMMARY_COPY_LABEL } from "./summary";
 import { PERMALINK_COPY_LABEL, PERMALINK_MISSING_TITLE, permalinkFromEvent } from "./permalink";
 
@@ -231,9 +232,39 @@ export function TechnicalDisclosure({
   );
 }
 
-export function LoadingPanel({ testId = "audit-loading" }: { testId?: string }): ReactNode {
+/**
+ * audF: the state marker every panel carries. One label per phase, the same
+ * words in all three surfaces, so 「列表说没能加载、预览说读取错误」 cannot
+ * happen again, and a probe can pin one surface in one state without reading
+ * source. It is visually hidden on purpose: the panel's own text already says
+ * what is happening, and a second visible line would be noise.
+ */
+function StateMark({ slot, phase }: { slot: StateSlot; phase: StatePhase }): ReactNode {
+  // An empty node on purpose: the label lives in attributes so a state marker
+  // can never change a panel's visible words — 403 and 404 must stay ONE body,
+  // and a marker is not a sentence.
+  return (
+    <span
+      aria-hidden="true"
+      data-testid={stateMark(slot, phase)}
+      data-audf-phase={phase}
+      data-audf-slot={slot}
+      data-audf-label={STATE_LABEL[phase]}
+    />
+  );
+}
+
+export function LoadingPanel({
+  testId = "audit-loading",
+  slot,
+}: {
+  testId?: string;
+  /** audF: which surface is reading, for the shared state label. */
+  slot?: StateSlot;
+}): ReactNode {
   return (
     <div className="flex min-w-0 flex-col gap-2" data-testid={testId}>
+      {slot ? <StateMark slot={slot} phase="loading" /> : null}
       {[0, 1, 2, 3].map((row) => (
         <div key={row} className="animate-pulse rounded-md border border-border bg-card px-4 py-4" aria-hidden="true">
           <div className="h-3 w-1/2 rounded-sm bg-muted" />
@@ -249,10 +280,24 @@ export function EmptyPanel({
   nextStep,
   onRefresh,
   testId = "audit-empty",
-}: { reason: string; nextStep: string; onRefresh: () => void; testId?: string }): ReactNode {
+  slot,
+}: {
+  reason: string;
+  nextStep: string;
+  onRefresh: () => void;
+  testId?: string;
+  /**
+   * audF: which surface is answering. This panel is ONLY the filtered empty —
+   * a real answer of zero records to a real question. A read route that is not
+   * here does not come through this panel at all (it is the denied/unwired
+   * body), because zero records and no route are not the same statement.
+   */
+  slot?: StateSlot;
+}): ReactNode {
   return (
     <Card className="border-border bg-card" data-testid={testId}>
       <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
+        {slot ? <StateMark slot={slot} phase="empty" /> : null}
         <Inbox className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
         <p className={`min-w-0 break-words text-sm ${themedBody}`}>{reason}</p>
         <p className="max-w-prose break-words text-xs text-muted-foreground">{nextStep}</p>
@@ -269,7 +314,15 @@ export function ErrorPanel({
   onRetry,
   title = "审计事件没能加载出来",
   testId = "audit-error",
-}: { failure: FailureCopy; onRetry: () => void; title?: string; testId?: string }): ReactNode {
+  slot,
+}: {
+  failure: FailureCopy;
+  onRetry: () => void;
+  title?: string;
+  testId?: string;
+  /** audF: which surface failed, for the shared state label. */
+  slot?: StateSlot;
+}): ReactNode {
   return (
     <Card
       role="alert"
@@ -278,11 +331,14 @@ export function ErrorPanel({
       data-testid={testId}
     >
       <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-6">
+        {slot ? <StateMark slot={slot} phase="error" /> : null}
         <div className="flex min-w-0 items-center gap-2 text-sm text-destructive">
           <TriangleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span className="min-w-0 break-words">{title}</span>
         </div>
-        <p className="max-w-prose break-words text-xs text-muted-foreground">{failure.sentence}</p>
+        <p className="max-w-prose break-words text-xs text-muted-foreground" data-testid={`${testId}-sentence`}>
+          {failure.sentence}
+        </p>
         <RequestIdLine requestId={failure.requestId} testId={`${testId}-request-id`} />
         {failure.technical ? <TechnicalDisclosure lines={[failure.technical]} testId={`${testId}-details`} /> : null}
         <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
@@ -297,15 +353,40 @@ export function ErrorPanel({
 export function DeniedPanel({
   failure,
   testId = "audit-denied",
-}: { failure: FailureCopy | null; testId?: string }): ReactNode {
+  slot = "list",
+  onRetry,
+  retryLabel = "再读一次",
+}: {
+  failure: FailureCopy | null;
+  testId?: string;
+  /** audF: which surface was denied, for the shared state label. */
+  slot?: StateSlot;
+  /**
+   * audF: a closed door is not a locked screen. The way out is one more read
+   * of THIS read口 at the SAME address — the filters, the page and the folds
+   * are all still in the URL — so a session that came back can be seen coming
+   * back without reloading the app.
+   */
+  onRetry?: () => void;
+  retryLabel?: string;
+}): ReactNode {
+  // audF: 403 and 404 stay ONE body. A 404 that names a missing route also
+  // says the honest reason — without splitting the two codes apart.
+  const unwired = unwiredReasonFor(failure?.status ?? null, failure?.technical ?? null);
   return (
     <Card
       role="alert"
       aria-label="审计事件不可用"
+      title={unwired ?? undefined}
       className="border-border bg-card"
       data-testid={testId}
     >
       <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
+        <StateMark slot={slot} phase="denied" />
+        {/* audF: a missing route is also marked as 未接入, WITHOUT painting a
+            number: 403 and 404 keep one body, and 「0 条」 never appears for a
+            read口 that simply is not here. */}
+        {unwired ? <StateMark slot={slot} phase="unwired" /> : null}
         <ShieldAlert className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
         <p className={`min-w-0 break-words text-sm ${themedBody}`}>暂时无法查看审计事件</p>
         <p className="max-w-prose break-words text-xs text-muted-foreground">
@@ -313,6 +394,14 @@ export function DeniedPanel({
           需要查看审计记录时，请联系工作区管理员为你开通。
         </p>
         <RequestIdLine requestId={failure?.requestId ?? null} testId={`${testId}-request-id`} />
+        {onRetry ? (
+          <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid={`${testId}-retry-block`}>
+            <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
+              {retryLabel}
+            </Button>
+            <span className="min-w-0 break-words text-xs text-muted-foreground">筛选、页码与地址都还在原处</span>
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );
@@ -326,7 +415,14 @@ export function VerifyUnavailablePanel({
   failure,
   onRetry,
   testId = "aud03-unavailable",
-}: { failure: FailureCopy; onRetry: () => void; testId?: string }): ReactNode {
+  slot = "verify",
+}: {
+  failure: FailureCopy;
+  onRetry: () => void;
+  testId?: string;
+  /** audF: which surface could not run its read. */
+  slot?: StateSlot;
+}): ReactNode {
   return (
     // No `title` here on purpose: the raw answer differs between a 403 and a
     // 404, and this body must not. The technical line is reachable collapsed.
@@ -336,11 +432,14 @@ export function VerifyUnavailablePanel({
       data-testid={testId}
     >
       <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-8">
+        <StateMark slot={slot} phase="unwired" />
         <div className="flex min-w-0 items-center gap-2 text-sm">
           <ShieldAlert className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           <span className={`min-w-0 break-words ${themedBody}`}>本环境未启用</span>
         </div>
-        <p className="max-w-prose break-words text-xs text-muted-foreground">{failure.sentence}</p>
+        <p className="max-w-prose break-words text-xs text-muted-foreground" data-testid={`${testId}-sentence`}>
+          {failure.sentence}
+        </p>
         <p className="max-w-prose break-words text-xs text-muted-foreground">
           下一步：让工作区管理员在审计服务里开通时间窗完整性校验，开通后回到这一页重新运行即可；这里不会先给一个「已通过」的结论。
         </p>
