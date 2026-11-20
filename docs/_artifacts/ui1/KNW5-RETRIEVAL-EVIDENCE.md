@@ -1977,3 +1977,68 @@ $ npx vite build --outDir /tmp/knw32-dist → exit 0
 边界：只改 `web/src/modules/knowledge/**` 与本证据目录（3 files）；显式路径提交；
 无 force / amend / `--no-verify` / `git add -A`；未并 main、未重建 9122；
 merge（5630ffce）与单 fix commit 分开。
+
+# KNW5 追加 R64：复制/导出族收成单点 gates（testid `kn-gates-*`）（2026-11-20 BJT）
+
+安全闸：toplevel 相符、porcelain 空、显式 refspec fetch 后 merge 实到章面 `957704be`
+（含既有全部代次），零冲突；merge 对 `web/src/modules/knowledge` 的 delta 为空；
+合后基线先跑一遍再动工。
+
+## 一、结构
+
+```text
+新文件 copyGates.ts = 唯一的「能不能/为什么/怎么说」出处：
+  faceGates(input{face,state,rows,filterText,loadedTotal}, act) →
+    copy {enabled,title,reason} · retry {enabled,title} · exportEntry(恒 absent)
+    · status(aria-live 句) · fallback(兜底锚渲染与否) · lines{text,title}
+  四入口 knI/knF/knG/knL 各读各面；Surface 与各重试按钮的 title 走同一 retryTitle()。
+删除：R62 落地的页内 copyBlockNotice/blockedCopyReason/COPY_BLOCKED_BY_KIND——页面
+  不再持有第二套文案分支（grep 页文件无「还在读取，还没有可复制」等本地句式）。
+markers：kn-gates-kn{I,F,G,L}（data-enabled/data-reason/data-retry-enabled/
+  data-export="absent"），display:none，零可见变化（knD-marker 同手法）。
+导出族：本模块无导出入口（git grep 核实），gates 表显式 absent 句，不造新功能。
+```
+
+## 二、六格 × 四入口读数（定向测试逐字断言摘要）
+
+```text
+格        knI 空间列表                 knG 全库检索                 knF 详情文档                 knL 抽屉
+loading   disabled·「列表还在读取」    同左·尾词「结果」句           同 knG 句式                 （不适用：抽屉开必有行/无行）
+ready     enabled·面用途句·计数N行/条  enabled·计数N条               enabled·计数N行              enabled·「已复制」
+empty真0  disabled·「这份回答里没有空间」title 逐字「当前没有可复制的空间」不变  「…没有文档」  title 逐字「当前没有可复制的结果」不变  不适用        rows0·「这条文档不在已加载的列表里」
+筛空      disabled·「筛选后没有留下的空间」                        动态逐字句(带份数与词)·「筛选后没有留下的文档」      同型        （不适用）
+error     disabled·「这次读取没有成功」=三入口同句同灭              同左                          同左                    （详情错不碍行复制——gates 明写）
+denied403 与 unwired404 同句同权「读口未接入或没有权限」；retry title「重试这一次读取：<原因>」同源
+一致性    同一面失败时 copy/retry/计数/兜底四读同一函数一次判出；非 ready 兜底必不渲染（OBS-6 由结构保证，
+          不再靠各处自觉）。ready-0 时复制 disabled + 面句式 title（R55/56/57 逐字句原样保留在表内）。
+```
+
+## 三、真实浏览器三档（不重建 9122 的替代路径，如实记录）
+
+```text
+方式：vite preview 服务构建产物（输出仅 /tmp/knw33-dist，端口 4180，用完即杀）+ headless
+Chrome(CDP) 实测 http://localhost:4180/knowledge?tab=spaces（该环境无 agent-api，三面落
+error 态——正是 disabled 条形态的测量对象）。读数：
+  1440 vw=1440 bodySW=1440 docSW=1440 · 1280 全等 · 375 全等 → 无横溢
+  同页 DOM 复核：knw5-page 在、markers=「kn-gates-knG:false:这次读取没有成功」等与按钮
+  disabled=true 逐项一致（真实 Chrome 下 gates 读数与结构一致）。
+既有 jsdom 定向测试另覆盖六格×四入口全表。
+```
+
+零额外请求：gates 为纯函数；测试在 loading/ready/empty/筛空/denied/error/复制/排序切换
+各段断言 fetchMock 计数前后不变；真实浏览器测量用的静态产物无任何后端可打，行为同源。
+kn3/kn6–knN/knw5 零破：既有 57 例逐字断言（含 R55/56/57 面句式 title、OBS-6 状态句、
+R59 焦点、R63 链接）全绿；本轮新增 1 例（58/58）。零写入口、四态与 403≡404 不退化。
+
+## 验证尾行（R64）
+```text
+$ npx vitest run src/modules/knowledge   → 2 files / 58 tests passed
+$ npx vitest run                         → 147 files / 1917 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw33-dist → exit 0；preview 4180 + CDP 测量后进程已清理
+```
+边界：只改 `web/src/modules/knowledge/**`（含新增 copyGates.ts）与本证据目录；未动 App.tsx /
+shell / routes / registry / package·lock / web-scripts / ops；未并 main、未重启或重建 9122；
+显式路径提交（无 `git add -A`）；无 force / amend / `--no-verify`；merge（957704be）与单
+feature commit「feat(console): knowledge copy action gates」分开。

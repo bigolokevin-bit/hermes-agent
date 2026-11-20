@@ -3748,4 +3748,144 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(byDocTestid("kn7-preview-panel")).toBeNull(); // 空间行下钻的是空间详情，不是文档抽屉
     expect((byTestid("loc")?.textContent ?? "")).toContain("space=sp_hr");
   });
+
+  it("derives every copy/export/retry entry from one gate table (copyGates): six cells per face, markers honest, zero extra reads", async () => {
+    const find = (testid: string) =>
+      (byTestid(testid) ?? document.querySelector(`[data-testid="${testid}"]`)) as HTMLElement | null;
+    const MARK = (id: string) => find(`kn-gates-${id}`)?.getAttribute("data-enabled");
+    const REASON = (id: string) => find(`kn-gates-${id}`)?.getAttribute("data-reason") ?? "";
+    const RETRY_ON = (id: string) => find(`kn-gates-${id}`)?.getAttribute("data-retry-enabled");
+    const TITLE = (id: string) =>
+      find(id === "knL" ? "knL-copy-meta" : `${id}-copy`)?.getAttribute("title") ?? "";
+    const STATUS = (id: string) =>
+      (find(id === "knL" ? "knL-copy-meta-status" : `${id}-copy-status`)?.textContent ?? "").trim();
+    const SP = { asOf: "2026-11-19T08:00:00Z", items: [{ spaceId: "sp_hr", name: "人事制度空间", docCount: 2, status: "synced" }] };
+    const SD = {
+      asOf: "2026-11-19T08:00:00Z",
+      documents: [
+        { documentId: "d1", fileName: "员工手册.pdf", sizeBytes: 2048, updatedAt: "2026-11-19T07:00:00Z" },
+        { documentId: "d2", fileName: "考勤表.xlsx", sizeBytes: 4096, updatedAt: "2026-11-19T06:00:00Z" },
+      ],
+    };
+    const stub = (writeText: ReturnType<typeof vi.fn>) =>
+      Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+
+    // ---------- 1. loading：三面全 disabled、状态句同源、计数「—」、兜底不渲染、export absent ----------
+    fetchMock.mockImplementation(() => new Promise(() => {})); // 全永挂
+    await render("/knowledge?tab=spaces");
+    for (const id of ["knI", "knG"]) {
+      expect(MARK(id)).toBe("false");
+      expect(REASON(id)).toBe("列表还在读取");
+      expect(STATUS(id)).toBe("当前不可复制：列表还在读取");
+      expect(TITLE(id)).toContain("还在读取");
+      expect(byTestid(`${id}-copy-fallback`)).toBeNull();
+      expect(RETRY_ON(id)).toBe("false"); // 还没结束，不摆重试
+      expect(find(`kn-gates-${id}`)?.getAttribute("data-export")).toBe("absent");
+    }
+    expect((byTestid("knI-lines")?.textContent ?? "").trim()).toBe("—");
+    expect((byTestid("knG-lines")?.textContent ?? "").trim()).toBe("—");
+
+    // ---------- 2. ready 六格对照（spaces 面）：能复制才写可复制句，计数恢复 N 行 ----------
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SP);
+      if (url === DOCUMENTS_PLAIN) return Promise.resolve(SD);
+      return fail(404, "这个数据接口还没有接入。", "rid-g-x");
+    });
+    await render("/knowledge?tab=spaces");
+    expect(MARK("knI")).toBe("true");
+    expect(REASON("knI")).toBe("");
+    expect(STATUS("knI")).toBe("");
+    expect(TITLE("knI")).toContain("复制当前屏上的可见行");
+    expect((byTestid("knI-lines")?.textContent ?? "")).toBe("1 行");
+    expect((byTestid("knG-lines")?.textContent ?? "")).toBe("2 条");
+    expect(MARK("knG")).toBe("true");
+
+    // ---------- 3. empty-真空集（200+0）：disabled + 面句式 title + 状态句同源 ----------
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve({ asOf: "2026-11-19T08:00:00Z", items: [] });
+      if (url === DOCUMENTS_PLAIN) return Promise.resolve({ asOf: "2026-11-19T08:00:00Z", documents: [] });
+      return fail(404, "x", "rid-g-x");
+    });
+    await render("/knowledge?tab=spaces");
+    expect(MARK("knI")).toBe("false");
+    expect(REASON("knI")).toBe("这份回答里没有空间");
+    expect(STATUS("knI")).toBe("当前不可复制：这份回答里没有空间");
+    expect(TITLE("knI")).toBe("当前没有可复制的空间"); // 面句式保留在 title，由 gates 表出
+    expect(STATUS("knG")).toBe("当前不可复制：这份回答里没有文档");
+    expect(TITLE("knG")).toBe("当前没有可复制的结果");
+
+    // ---------- 4. empty-筛选无匹配：第三句同源；两入口一起灭，绝无「一处可点」 ----------
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SP);
+      if (url === DOCUMENTS_PLAIN) return Promise.resolve(SD);
+      return fail(404, "x", "rid-g-x");
+    });
+    await render("/knowledge?tab=spaces");
+    await type("kn8-global-input", "查无此空间");
+    expect(MARK("knI")).toBe("false");
+    expect(STATUS("knI")).toBe("当前不可复制：筛选后没有留下的空间");
+    expect(byTestid("knI-copy-fallback")).toBeNull();
+
+    // ---------- 5. denied（403）：原因句与 404 同权；重试 enabled 且 title 同源 ----------
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return fail(403, "没有查看这项数据的权限。", "rid-g-403");
+      return fail(404, "这个数据接口还没有接入。", "rid-g-404");
+    });
+    await render("/knowledge?tab=spaces");
+    expect(MARK("knI")).toBe("false");
+    expect(REASON("knI")).toBe("读口未接入或没有权限");
+    expect(STATUS("knI")).toBe("当前不可复制：读口未接入或没有权限");
+    expect(TITLE("knI")).toBe("空间列表没读到（读口未接入或没有权限），没有可复制的内容。");
+    expect(TITLE("knG")).toBe("文档列表没读到（读口未接入或没有权限），没有可复制的结果。"); // 403/404 同句同权
+    expect(RETRY_ON("knI")).toBe("true");
+    expect((byTestid("knw5-spaces-retry")?.getAttribute("title") ?? "")).toBe("重试这一次读取：读口未接入或没有权限");
+
+    // ---------- 6. error（500）：一处灭全灭；计数「—」；兜底不渲染；重试同源 ----------
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return fail(500, "数据服务暂时没有响应，请稍后重试。", "rid-g-500");
+      return fail(500, "数据服务暂时没有响应，请稍后重试。", "rid-g-500b");
+    });
+    await render("/knowledge?tab=spaces");
+    expect(REASON("knI")).toBe("这次读取没有成功");
+    expect(STATUS("knI")).toBe("当前不可复制：这次读取没有成功");
+    expect(STATUS("knG")).toBe("当前不可复制：这次读取没有成功");
+    expect((byTestid("knI-lines")?.textContent ?? "")).toBe("—");
+    expect((byTestid("knw5-spaces-retry")?.getAttribute("title") ?? "")).toBe("重试这一次读取：这次读取没有成功");
+
+    // ---------- 7. knF/knL 的六格抽样（详情 ready + 抽屉 ready/ghost）+ 复制成功路径仍同源 ----------
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    stub(writeText);
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SP);
+      if (url.startsWith("/agent-api/api/documents?") && url.includes("spaceId=sp_hr")) return Promise.resolve(SD);
+      if (url === DOCUMENTS_PLAIN) return Promise.resolve(SD);
+      if (url === "/agent-api/api/documents/d1") return Promise.resolve({ sourceName: "原件", status: "indexed" });
+      return fail(404, "x", "rid-g-x");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr&doc=d1");
+    await act(async () => {});
+    expect(MARK("knF")).toBe("true");
+    expect((byTestid("knF-lines")?.textContent ?? "")).toBe("2 行");
+    expect(MARK("knL")).toBe("true");
+    const urlsGates = fetchMock.mock.calls.length;
+    await click("knF-copy");
+    expect(STATUS("knF")).toBe("已复制");
+    await click("knL-copy-meta");
+    expect(STATUS("knL")).toBe("已复制");
+    expect(fetchMock.mock.calls.length).toBe(urlsGates); // gates 计算与复制全程 0 新请求
+    const gateToggle = fetchMock.mock.calls.length;
+    await click("knC-sort-name"); // 排序切换（六格之外的状态翻面）也不追加请求
+    expect(fetchMock.mock.calls.length).toBe(gateToggle);
+    await type("kn3-docs-filter-input", "查无此词");
+    expect(MARK("knF")).toBe("false");
+    expect(STATUS("knF")).toBe("当前不可复制：筛选后没有留下的文档");
+    expect((byTestid("knF-copy")?.getAttribute("title") ?? "")).toContain("本地筛选没有留下行：这份列表里有 2 份文档");
+
+    // ghost 抽屉：knL disabled 句同源，且详情 500 不妨碍已加载行被复制（gates 规则明写）
+    await render("/knowledge?tab=spaces&space=sp_hr&doc=zz9");
+    await act(async () => {});
+    expect(MARK("knL")).toBe("false");
+    expect(STATUS("knL")).toBe("当前不可复制：这条文档不在已加载的列表里");
+    expect(byDocTestid("knL-copy-meta-fallback")).toBeNull();
+  });
 });

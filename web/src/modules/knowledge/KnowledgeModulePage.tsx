@@ -40,6 +40,7 @@ import {
   useKnwSources,
   type KnmRow,
 } from "./sourceReads";
+import { faceGates, retryTitle, type GateSurfaceState } from "./copyGates";
 import {
   CITATIONS_URL,
   DOCUMENTS_URL,
@@ -263,30 +264,11 @@ function ApplyLink({ testid }: { testid: string }): ReactNode {
  * 禁用时状态句一律「当前不可复制：<原因>」，且兜底 textarea 不渲染。
  * 状态句与可用性同一个门控判出，不可能再各说各话。
  */
-const COPY_BLOCKED_BY_KIND: Record<string, string> = {
-  loading: "列表还在读取",
-  unwired: "读口未接入或没有权限",
-  login: "登录状态已经失效",
-  error: "这次读取没有成功",
-};
-
-function copyBlockNotice(
-  canCopy: boolean,
-  blockedReason: string,
-  act: "idle" | "copied" | "failed",
-  copiedText: string,
-): { status: string; fallback: boolean } {
-  if (!canCopy) return { status: `当前不可复制：${blockedReason}`, fallback: false };
-  return {
-    status: act === "copied" ? copiedText : act === "failed" ? "复制失败，已展开可选文本，可手动复制" : "",
-    fallback: act === "failed",
-  };
-}
-
-function blockedCopyReason(kind: string, noMatch: boolean, noun: string): string {
-  const byKind = COPY_BLOCKED_BY_KIND[kind];
-  if (byKind) return byKind;
-  return noMatch ? `筛选后没有留下的${noun}` : `这份回答里没有${noun}`;
+/**
+ * Surf 状态 → gates 状态（结构映射，非文案）：403/404 分别成 denied/unwired，句面上同权。
+ */
+function gateStateOf(kind: "loading" | "ready" | "unwired" | "login" | "error", denied: boolean): GateSurfaceState {
+  return kind === "unwired" ? (denied ? "denied" : "unwired") : kind;
 }
 
 interface SurfaceProps<T> {
@@ -416,7 +398,13 @@ function Surface<T>({
           <span className="knw5-wrap">{unwiredHuman}</span>
           <RequestId id={state.requestId} testid={`${testid}-request-id`} />
           <span className="knw5-actions">
-            <Button size="sm" outlined onClick={onRetry} data-testid={`${testid}-retry`}>
+            <Button
+              size="sm"
+              outlined
+              onClick={onRetry}
+              title={retryTitle(state.denied ? "denied" : "unwired")}
+              data-testid={`${testid}-retry`}
+            >
               重试
             </Button>
             <ApplyLink testid={`${testid}-apply`} />
@@ -428,7 +416,7 @@ function Surface<T>({
         <div className="knw5-empty" data-testid={`${testid}-login`} role="status">
           <b>需要登录</b>
           <span className="knw5-wrap">登录状态已经失效，重新登录后就能再看这块知识数据。</span>
-          <Button size="sm" outlined onClick={onRetry} data-testid={`${testid}-retry`}>
+          <Button size="sm" outlined onClick={onRetry} title={retryTitle("login")} data-testid={`${testid}-retry`}>
             重试
           </Button>
         </div>
@@ -439,7 +427,7 @@ function Surface<T>({
           <b>这次没能读到知识数据</b>
           <span className="knw5-wrap">{state.message}</span>
           <RequestId id={state.requestId} testid={`${testid}-request-id`} />
-          <Button size="sm" outlined onClick={onRetry} data-testid={`${testid}-retry`}>
+          <Button size="sm" outlined onClick={onRetry} title={retryTitle("error")} data-testid={`${testid}-retry`}>
             重试
           </Button>
         </div>
@@ -1059,12 +1047,15 @@ function SpacesSurface({
     );
   };
 
-  // 纠偏 OBS-6 — 状态句与兜底锚同门控于「真的能复制」：禁用时只说「当前不可复制：<原因>」。
-  const kniNotice = copyBlockNotice(
-    surface.state.kind === "ready" && shown.length > 0,
-    blockedCopyReason(surface.state.kind, needle !== "", "空间"),
+  // 收成单点 gates — enabled/title/状态句/计数位/兜底/重试可用性由 faceGates 一次判出。
+  const kniGates = faceGates(
+    {
+      face: "knI",
+      state: gateStateOf(surface.state.kind, surface.state.kind === "unwired" && surface.state.denied),
+      rows: shown.length,
+      filterText: text.trim(),
+    },
     copyAct,
-    `已复制 ${shown.length} 行`,
   );
 
   return (
@@ -1152,42 +1143,35 @@ function SpacesSurface({
         )}
       />
       </div>
-      {/* R62 — 复制条四态常在：disabled + 原因 title，不再随状态出现/消失（这也让骨架切换不跳条）。 */}
+      {/* 复制条四态常在；enabled/title/状态句/计数位/兜底全读 kniGates（copyGates.ts 单点，无本地措辞）。 */}
       <div className="knI-row" data-testid="knI-row">
         <Button
           size="sm"
           outlined
           className="knI-copy"
           onClick={copySpaces}
-          disabled={surface.state.kind !== "ready" || shown.length === 0}
-          title={
-            surface.state.kind !== "ready"
-              ? surface.state.kind === "loading"
-                ? "空间列表还在读取，还没有可复制的内容。"
-                : surface.state.kind === "unwired"
-                  ? "空间列表没读到（读口未接入或没有权限），没有可复制的内容。"
-                  : surface.state.kind === "login"
-                    ? "登录状态已经失效，这次没有读到空间列表，没有可复制的内容。"
-                    : "这次没有读到空间列表，没有可复制的内容。"
-              : shown.length === 0
-                ? "当前没有可复制的空间"
-                : "复制当前屏上的可见行：空间名 | 文档数 | 最近更新 | 短码。文本首行写明这份清单只覆盖已加载的空间，不冒充全库；屏上数据，不会再发请求。"
-          }
+          disabled={!kniGates.copy.enabled}
+          title={kniGates.copy.title}
           data-testid="knI-copy"
         >
           复制清单
         </Button>
+        <span className="knw5-sub" data-testid="knI-lines" title={kniGates.lines?.title}>
+          {kniGates.lines?.text ?? "—"}
+        </span>
         <span
-          className="knw5-sub"
-          data-testid="knI-lines"
-          title={shown.length > 0 ? undefined : "没有可数的行时给「—」，不写 0 冒充空集。"}
-        >
-          {surface.state.kind === "ready" && shown.length > 0 ? `${shown.length} 行` : "—"}
-        </span>
+          data-testid="kn-gates-knI"
+          data-enabled={String(kniGates.copy.enabled)}
+          data-reason={kniGates.copy.reason ?? ""}
+          data-retry-enabled={String(kniGates.retry.enabled)}
+          data-export="absent"
+          className="knD-marker"
+          aria-hidden="true"
+        />
         <span className="knI-status" data-testid="knI-copy-status" aria-live="polite">
-          {kniNotice.status}
+          {kniGates.status}
         </span>
-        {kniNotice.fallback ? (
+        {kniGates.fallback ? (
           <textarea
             className="knI-fallback"
             data-testid="knI-copy-fallback"
@@ -1325,8 +1309,16 @@ function DocPreviewDrawer({
     );
   };
 
-  // 纠偏 OBS-6 — 抽屉同理：行没加载到就没有可复制的元信息，状态句直说，兜底锚不渲染。
-  const knlNotice = copyBlockNotice(row !== null, "这条文档不在已加载的列表里", copyAct, "已复制");
+  // 收成单点 gates — knL 的复制只看「文档行是否已加载」；重试可用性由详情读态同源判出。
+  const knlGates = faceGates(
+    {
+      face: "knL",
+      state: gateStateOf(surface.state.kind, surface.state.kind === "unwired" && surface.state.denied),
+      rows: row === null ? 0 : 1,
+      filterText: "",
+    },
+    copyAct,
+  );
 
   // ---- R63 — 固定链接：地址 = 本页 origin + 现有深链参数（tab/panel/space/doc），
   // 参数串由页面一直在用的 docLink 生成，这里不手拼、不猜参数名；只读屏上已有标识，零请求。
@@ -1488,20 +1480,25 @@ function DocPreviewDrawer({
             outlined
             className="knL-copy-meta"
             onClick={copyMeta}
-            disabled={row === null}
-            title={
-              row === null
-                ? "这条文档不在已加载的列表里，抽屉里没有读到的元信息，没有可复制的内容。"
-                : "复制这份文档在抽屉里的元信息：文档名、所属空间、类型、大小、更新、文档短码。屏上数据，不会再发请求。"
-            }
+            disabled={!knlGates.copy.enabled}
+            title={knlGates.copy.title}
             data-testid="knL-copy-meta"
           >
             复制元信息
           </Button>
+          <span
+            data-testid="kn-gates-knL"
+            data-enabled={String(knlGates.copy.enabled)}
+            data-reason={knlGates.copy.reason ?? ""}
+            data-retry-enabled={String(knlGates.retry.enabled)}
+            data-export="absent"
+            className="knD-marker"
+            aria-hidden="true"
+          />
           <span className="knL-status" data-testid="knL-copy-meta-status" aria-live="polite">
-            {knlNotice.status}
+            {knlGates.status}
           </span>
-          {knlNotice.fallback ? (
+          {knlGates.fallback ? (
             <textarea
               className="knL-fallback"
               data-testid="knL-copy-meta-fallback"
@@ -1557,7 +1554,13 @@ function DocPreviewDrawer({
             <span className="knw5-wrap">{DOC_DETAIL_UNWIRED_HUMAN}</span>
             <RequestId id={surface.state.requestId} testid="kn7-preview-request-id" />
             <span className="knw5-actions">
-              <Button size="sm" outlined onClick={surface.retry} data-testid="kn7-preview-retry">
+              <Button
+                size="sm"
+                outlined
+                onClick={surface.retry}
+                title={retryTitle(surface.state.denied ? "denied" : "unwired")}
+                data-testid="kn7-preview-retry"
+              >
                 重试
               </Button>
               <ApplyLink testid="kn7-preview-apply" />
@@ -1569,7 +1572,7 @@ function DocPreviewDrawer({
           <div className="knw5-empty" data-testid="kn7-preview-login" role="status">
             <b>需要登录</b>
             <span className="knw5-wrap">登录状态已经失效，重新登录后再打开这份文档的详情。</span>
-            <Button size="sm" outlined onClick={surface.retry} data-testid="kn7-preview-retry">
+            <Button size="sm" outlined onClick={surface.retry} title={retryTitle("login")} data-testid="kn7-preview-retry">
               重试
             </Button>
           </div>
@@ -1580,7 +1583,7 @@ function DocPreviewDrawer({
             <b>这次没能读到这份文档的详情</b>
             <span className="knw5-wrap">{surface.state.message}</span>
             <RequestId id={surface.state.requestId} testid="kn7-preview-request-id" />
-            <Button size="sm" outlined onClick={surface.retry} data-testid="kn7-preview-retry">
+            <Button size="sm" outlined onClick={surface.retry} title={retryTitle("error")} data-testid="kn7-preview-retry">
               重试
             </Button>
           </div>
@@ -1901,12 +1904,16 @@ function SpaceDetailSurface({
     );
   };
 
-  // 纠偏 OBS-6 — 状态句与兜底锚同门控于「真的能复制」。
-  const knfNotice = copyBlockNotice(
-    surface.state.kind === "ready" && shown.length > 0,
-    blockedCopyReason(surface.state.kind, filterKey !== "", "文档"),
+  // 收成单点 gates — knF 的 enabled/title/状态句/计数位/兜底由 faceGates 一次判出。
+  const knfGates = faceGates(
+    {
+      face: "knF",
+      state: gateStateOf(surface.state.kind, surface.state.kind === "unwired" && surface.state.denied),
+      rows: shown.length,
+      filterText: filter.trim(),
+      loadedTotal: loaded,
+    },
     copyAct,
-    "已复制",
   );
 
   const openKeyCode = shortId(openDoc);
@@ -2068,44 +2075,35 @@ function SpaceDetailSurface({
           </>
         )}
       />
-      {/* R62 — 复制条四态常在：disabled + 原因 title；计数格无行可数时给「—」。 */}
+      {/* 复制条四态常在；enabled/title/状态句/计数位/兜底全读 knfGates（单点，无本地措辞）。 */}
       <div className="knF-row" data-testid="knF-row">
         <Button
           size="sm"
           outlined
           className="knF-copy"
           onClick={copyList}
-          disabled={surface.state.kind !== "ready" || shown.length === 0}
-          title={
-            surface.state.kind !== "ready"
-              ? surface.state.kind === "loading"
-                ? "文档列表还在读取，还没有可复制的内容。"
-                : surface.state.kind === "unwired"
-                  ? "文档列表没读到（读口未接入或没有权限），没有可复制的内容。"
-                  : surface.state.kind === "login"
-                    ? "登录状态已经失效，这次没有读到文档列表，没有可复制的内容。"
-                    : "这次没有读到文档列表，没有可复制的内容。"
-              : shown.length === 0
-                ? filterKey !== ""
-                  ? `本地筛选没有留下行：这份列表里有 ${loaded} 份文档，按「${filter.trim()}」一条都没留下。不编行，也就没有可复制的清单。`
-                  : "接口回答里没有文档：这份列表是空的。不编行，也就没有可复制的清单。"
-                : "复制当前排序与筛选后在屏幕上的这些行：文档名 | 类型 | 大小 | 更新。屏上数据，不会再发请求。"
-          }
+          disabled={!knfGates.copy.enabled}
+          title={knfGates.copy.title}
           data-testid="knF-copy"
         >
           复制清单
         </Button>
+        <span className="knw5-sub" data-testid="knF-lines" title={knfGates.lines?.title}>
+          {knfGates.lines?.text ?? "—"}
+        </span>
         <span
-          className="knw5-sub"
-          data-testid="knF-lines"
-          title={shown.length > 0 ? undefined : "没有可见行时给「—」，不写 0 冒充空集。"}
-        >
-          {surface.state.kind === "ready" && shown.length > 0 ? `${shown.length} 行` : "—"}
-        </span>
+          data-testid="kn-gates-knF"
+          data-enabled={String(knfGates.copy.enabled)}
+          data-reason={knfGates.copy.reason ?? ""}
+          data-retry-enabled={String(knfGates.retry.enabled)}
+          data-export="absent"
+          className="knD-marker"
+          aria-hidden="true"
+        />
         <span className="knF-status" data-testid="knF-copy-status" aria-live="polite">
-          {knfNotice.status}
+          {knfGates.status}
         </span>
-        {knfNotice.fallback ? (
+        {knfGates.fallback ? (
           <textarea
             className="knF-fallback"
             data-testid="knF-fallback"
@@ -2274,12 +2272,15 @@ function DocumentNameSearch({
     );
   };
 
-  // 纠偏 OBS-6 — 状态句与兜底锚同门控于「真的能复制」。
-  const kngNotice = copyBlockNotice(
-    surface.state.kind === "ready" && shown.length > 0,
-    blockedCopyReason(surface.state.kind, needle !== "", "文档"),
+  // 收成单点 gates — knG 的 enabled/title/状态句/计数位/兜底由 faceGates 一次判出。
+  const kngGates = faceGates(
+    {
+      face: "knG",
+      state: gateStateOf(surface.state.kind, surface.state.kind === "unwired" && surface.state.denied),
+      rows: shown.length,
+      filterText: text.trim(),
+    },
     copyAct,
-    `已复制 ${shown.length} 条`,
   );
 
   return (
@@ -2417,42 +2418,35 @@ function DocumentNameSearch({
         )}
       />
       </div>
-      {/* R62 — 复制条四态常在：disabled + 原因 title；计数格无行可数时给「—」。 */}
+      {/* 复制条四态常在；enabled/title/状态句/计数位/兜底全读 kngGates（单点，无本地措辞）。 */}
       <div className="knG-row" data-testid="knG-row">
         <Button
           size="sm"
           outlined
           className="knG-copy"
           onClick={copyHits}
-          disabled={surface.state.kind !== "ready" || shown.length === 0}
-          title={
-            surface.state.kind !== "ready"
-              ? surface.state.kind === "loading"
-                ? "文档列表还在读取，还没有可复制的结果。"
-                : surface.state.kind === "unwired"
-                  ? "文档列表没读到（读口未接入或没有权限），没有可复制的结果。"
-                  : surface.state.kind === "login"
-                    ? "登录状态已经失效，这次没有读到文档列表，没有可复制的结果。"
-                    : "这次没有读到文档列表，没有可复制的结果。"
-              : shown.length === 0
-                ? "当前没有可复制的结果"
-                : "复制当前检索词下的命中行：文档名 | 所属空间 | 类型 | 大小 | 更新。屏上数据，不会再发请求。"
-          }
+          disabled={!kngGates.copy.enabled}
+          title={kngGates.copy.title}
           data-testid="knG-copy"
         >
           复制结果
         </Button>
+        <span className="knw5-sub" data-testid="knG-lines" title={kngGates.lines?.title}>
+          {kngGates.lines?.text ?? "—"}
+        </span>
         <span
-          className="knw5-sub"
-          data-testid="knG-lines"
-          title={shown.length > 0 ? undefined : "没有命中可数时给「—」，不写 0 冒充空集。"}
-        >
-          {surface.state.kind === "ready" && shown.length > 0 ? `${shown.length} 条` : "—"}
-        </span>
+          data-testid="kn-gates-knG"
+          data-enabled={String(kngGates.copy.enabled)}
+          data-reason={kngGates.copy.reason ?? ""}
+          data-retry-enabled={String(kngGates.retry.enabled)}
+          data-export="absent"
+          className="knD-marker"
+          aria-hidden="true"
+        />
         <span className="knG-status" data-testid="knG-copy-status" aria-live="polite">
-          {kngNotice.status}
+          {kngGates.status}
         </span>
-        {kngNotice.fallback ? (
+        {kngGates.fallback ? (
           <textarea
             className="knG-fallback"
             data-testid="knG-copy-fallback"
