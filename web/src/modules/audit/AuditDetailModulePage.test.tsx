@@ -291,3 +291,75 @@ describe("R41 — seconds and the raw payload", () => {
     expect(document.querySelector("[data-testid='aud3-payload-masked']")?.textContent).toContain("已隐去 2 项");
   });
 });
+
+/**
+ * audC — 详情这一屏的「复制结论行」。断言的是：控件在真详情回答之后出现、
+ * 复制不发任何第二次请求、复制出的一行与预览那侧同一口径（时间 BJT 到秒 ·
+ * 操作者 · 动作 · 资源 · rid），剪贴板拒绝时给只读 textarea 兜底。
+ */
+describe("audC - the copyable conclusion line on the detail screen", () => {
+  function stubClipboard(ok: boolean): { calls: string[] } {
+    const box: { calls: string[] } = { calls: [] };
+    Object.defineProperty(window, "isSecureContext", { configurable: true, value: true });
+    Object.defineProperty(window.navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async (text: string) => {
+          box.calls.push(text);
+          if (!ok) throw new Error("denied");
+        },
+      },
+    });
+    return box;
+  }
+
+  it("copies the painted line and asks the service nothing more", async () => {
+    const clip = stubClipboard(true);
+    await openDetail();
+    const node = document.querySelector<HTMLButtonElement>("[data-testid='audC-copy']")!;
+    expect(node).not.toBeNull();
+    expect(node.getAttribute("aria-label")).toBe("复制结论行");
+    const before = urls().length;
+    await act(async () => {
+      node.click();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+    expect(urls()).toHaveLength(before);
+    // 2026-11-18 11:00:00 · 郑涛 · 11223344 · 权限提权被拒 · 权限 · ddeeff00 · req-20261118-77aa
+    expect(clip.calls).toHaveLength(1);
+    expect(clip.calls[0].startsWith("2026-11-18 11:00:00 · ")).toBe(true);
+    expect(clip.calls[0].endsWith(" · req-20261118-77aa")).toBe(true);
+    expect(clip.calls[0]).not.toMatch(/undefined|null|Z\b/);
+    expect(document.querySelector("[data-testid='audC-copy-status']")!.textContent).toBe("已复制");
+    expect(document.querySelector("[data-testid='audC-copy-status']")!.getAttribute("aria-live")).toBe("polite");
+  });
+
+  it("a refused clipboard still leaves the sentence selectable", async () => {
+    const clip = stubClipboard(false);
+    await openDetail();
+    const before = urls().length;
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='audC-copy']")!.click();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+    const box = document.querySelector<HTMLTextAreaElement>("[data-testid='audC-fallback']")!;
+    expect(box.getAttribute("readonly")).not.toBeNull();
+    expect(box.value).toBe(clip.calls[0]);
+    expect(urls()).toHaveLength(before);
+  });
+
+  it("no denial panel, no copy control: a line is only copied from a real answer", async () => {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async () => {
+      throw new ApiError("gone", { status: 404, body: '{"code":"audit.event_not_found"}', url: "/agent-api/api/audit-detail" });
+    });
+    await render("/audit/detail?id=evt_nope");
+    await waitFor(() => document.querySelector("[data-testid='aud02-detail-denied']") !== null, "denied painted");
+    expect(document.querySelector("[data-testid='audC-copy']")).toBeNull();
+    expect(text()).not.toContain("复制结论行");
+  });
+});

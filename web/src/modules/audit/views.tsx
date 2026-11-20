@@ -16,7 +16,8 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { themedBody, themedChrome } from "@/lib/utils";
 import type { AuditChange, AuditDetail, AuditRow, VerifyResult } from "./model";
 import { beijingSeconds, maskSensitive } from "./model";
-import { CopyValue, TechnicalDisclosure } from "./states";
+import { CopyValue, SummaryCopy, TechnicalDisclosure } from "./states";
+import { summaryFromDetail, summaryFromRow } from "./summary";
 
 const MISSING_TIME = "服务未提供该时间";
 const MISSING_VALUE = "服务未提供该信息";
@@ -236,6 +237,8 @@ export function AuditEventDetailBody({
           />
         </div>
         <p className="min-w-0 break-words text-xs text-muted-foreground">以上时间均为北京时间，精确到秒。</p>
+        {/* audC: the 结论行, from the same builder the inline preview uses. */}
+        <SummaryCopy line={summaryFromDetail(detail, beijingSeconds(detail.occurredAtRaw) ?? detail.occurredAt)} />
       </Section>
 
       <Section title="操作者">
@@ -507,6 +510,9 @@ export function AuditRowPreview({
           </a>
         ) : null}
       </div>
+      {/* audC: the same 结论行 the detail offers, built by the same function,
+          so both legs copy one sentence for one event. */}
+      <SummaryCopy line={summaryFromRow(row, at)} />
     </div>
   );
 }

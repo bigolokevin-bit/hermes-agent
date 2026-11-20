@@ -1840,3 +1840,159 @@ describe("audB - custom time range", () => {
     expect(document.querySelector("[data-testid='aud2-total']")!.getAttribute("title")).toContain("游标分页不能自算总数");
   });
 });
+
+/**
+ * audC — 事件摘要复制。断言的是：预览与详情两处都有「复制结论行」，同一事件
+ * 两处复制出的一模一样；复制不向服务发任何请求；成功走 aria-live「已复制」，
+ * 剪贴板拒绝时给只读 textarea 兜底；缺字段在结论行里写「该字段未返回」。
+ */
+describe("audC - the copyable conclusion line", () => {
+  const PARITY_EVENT = {
+    eventId: "evt_copy_0000000001",
+    action: "task.created",
+    occurredAt: "2026-11-19T01:20:00Z",
+    recordedAt: "2026-11-19T01:20:01Z",
+    outcome: "succeeded",
+    actor: { type: "human", id: "user:2f3a4b5c6d7e8f90", displayName: "李思" },
+    resource: { type: "approval", id: "ap_1122334455667788" },
+    requestId: "req-20261119-0a7b3c",
+  };
+
+  /**
+   * jsdom gives a clipboard only if we say the context is secure. Both legs of
+   * the probe go through the real path the page takes: 已复制 when writeText
+   * answers, and the read-only textarea when it refuses (jsdom has no
+   * execCommand either, so the fallback is what a person actually gets).
+   */
+  function stubClipboard(ok: boolean): { calls: string[] } {
+    const box: { calls: string[] } = { calls: [] };
+    Object.defineProperty(window, "isSecureContext", { configurable: true, value: true });
+    Object.defineProperty(window.navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async (text: string) => {
+          box.calls.push(text);
+          if (!ok) throw new Error("denied");
+        },
+      },
+    });
+    return box;
+  }
+
+  async function mountParity(body: unknown = PARITY_EVENT): Promise<void> {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url: string) =>
+      String(url).startsWith("/agent-api/api/audit-detail") ? { audit: body } : { items: [body] },
+    );
+    await render("/audit?window=7d&preview=evt_copy_0000000001&detail=evt_copy_0000000001", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud02-detail']") !== null, "detail painted");
+    await waitFor(() => document.querySelector("[data-testid='aud6-preview-evt_copy_0000000001']") !== null, "preview painted");
+  }
+
+  const clickCopy = async (root: Element): Promise<void> => {
+    const node = root.querySelector<HTMLButtonElement>("[data-testid='audC-copy']")!;
+    await act(async () => {
+      node.click();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+  };
+
+  it("both legs offer 复制结论行, and one event copies one identical sentence", async () => {
+    const clip = stubClipboard(true);
+    await mountParity();
+    const preview = document.querySelector("[data-testid='aud6-preview-evt_copy_0000000001']")!;
+    const detail = document.querySelector("[data-testid='aud02-detail']")!;
+    expect(preview.querySelector("[data-testid='audC-copy']")).not.toBeNull();
+    expect(detail.querySelector("[data-testid='audC-copy']")).not.toBeNull();
+    const reads = urls().length;
+    await clickCopy(preview);
+    await clickCopy(detail);
+    expect(clip.calls).toHaveLength(2);
+    expect(clip.calls[0]).toBe(clip.calls[1]);
+    // 时间 BJT 到秒 · 操作者 · 动作 · 资源 · rid
+    expect(clip.calls[0]).toBe("2026-11-19 09:20:00 · 李思 · 6d7e8f90 · 创建任务 · 审批单 · 55667788 · req-20261119-0a7b3c");
+    expect(clip.calls[0]).not.toMatch(/undefined|null|NaN/);
+    // copying is a read of the screen: no second question to the service
+    expect(urls()).toHaveLength(reads);
+  });
+
+  it("a successful copy is announced, not silently done", async () => {
+    stubClipboard(true);
+    await mountParity();
+    const preview = document.querySelector("[data-testid='aud6-preview-evt_copy_0000000001']")!;
+    expect(preview.querySelector("[data-testid='audC-copy-status']")!.getAttribute("aria-live")).toBe("polite");
+    expect(preview.querySelector("[data-testid='audC-copy-status']")!.textContent).toBe("");
+    await clickCopy(preview);
+    expect(preview.querySelector("[data-testid='audC-copy-status']")!.textContent).toBe("已复制");
+    expect(preview.querySelector("[data-testid='audC-fallback']")).toBeNull();
+  });
+
+  it("a refused clipboard hands back a read-only line, with the same words", async () => {
+    const clip = stubClipboard(false);
+    await mountParity();
+    const detail = document.querySelector("[data-testid='aud02-detail']")!;
+    await clickCopy(detail);
+    const box = detail.querySelector<HTMLTextAreaElement>("[data-testid='audC-fallback']")!;
+    expect(box.getAttribute("readonly")).not.toBeNull();
+    expect(box.value).toBe(clip.calls[0]);
+    expect(box.value).toContain("req-20261119-0a7b3c");
+    expect(detail.querySelector("[data-testid='audC-copy-status']")!.textContent).toContain("选中复制");
+  });
+
+  it("fields the service did not send read 该字段未返回 in the copied line", async () => {
+    const clip = stubClipboard(true);
+    await mountParity({
+      eventId: "evt_copy_0000000001",
+      action: "dispatch.event",
+      outcome: "succeeded",
+      actor: { type: "system", id: "employee-api" },
+    });
+    const preview = document.querySelector("[data-testid='aud6-preview-evt_copy_0000000001']")!;
+    await clickCopy(preview);
+    expect(clip.calls[0]).toContain("该字段未返回");
+    expect(clip.calls[0].endsWith("· 该字段未返回")).toBe(true);
+    expect(clip.calls[0]).not.toMatch(/· ·|— · $/);
+    const detail = document.querySelector("[data-testid='aud02-detail']")!;
+    await clickCopy(detail);
+    expect(clip.calls[1]).toBe(clip.calls[0]);
+  });
+
+  it("the three field tiers all copy a line that says what is absent", async () => {
+    const clip = stubClipboard(true);
+    // ① 有 rid：完整一行
+    await mountParity();
+    const preview = document.querySelector("[data-testid='aud6-preview-evt_copy_0000000001']")!;
+    await clickCopy(preview);
+    const full = clip.calls[0];
+    expect(full).toContain("req-20261119-0a7b3c");
+    expect(full).not.toContain("该字段未返回");
+    // ② 无 rid：rid 那一格写「该字段未返回」
+    await mountParity({ ...PARITY_EVENT, requestId: undefined });
+    await clickCopy(document.querySelector("[data-testid='aud6-preview-evt_copy_0000000001']")!);
+    expect(clip.calls[1].endsWith("· 该字段未返回")).toBe(true);
+    expect(clip.calls[1].startsWith(full.slice(0, full.lastIndexOf(" · ")+3))).toBe(true);
+    // ③ 时间缺：第一格写「该字段未返回」，其余照旧
+    await mountParity({ ...PARITY_EVENT, occurredAt: undefined });
+    await clickCopy(document.querySelector("[data-testid='aud6-preview-evt_copy_0000000001']")!);
+    expect(clip.calls[2].startsWith("该字段未返回 · ")).toBe(true);
+    expect(clip.calls[2]).toContain("req-20261119-0a7b3c");
+    // and the detail leg says the same thing for the same sparse answer
+    await clickCopy(document.querySelector("[data-testid='aud02-detail']")!);
+    expect(clip.calls[3]).toBe(clip.calls[2]);
+  });
+
+  it("a copy needs no open detail and no open preview beyond its own leg", async () => {
+    const clip = stubClipboard(true);
+    await mountParity();
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud02-detail-close']")?.click();
+    });
+    const preview = document.querySelector("[data-testid='aud6-preview-evt_copy_0000000001']")!;
+    await clickCopy(preview);
+    expect(clip.calls).toHaveLength(1);
+    expect(clip.calls[0]).toContain("2026-11-19 09:20:00");
+    expect(document.querySelector("[data-testid='aud02-detail']")).toBeNull();
+  });
+});

@@ -18,6 +18,51 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { themedBody } from "@/lib/utils";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import { requestIdLine, type FailureCopy } from "./copy";
+import { SUMMARY_COPY_LABEL } from "./summary";
+
+/**
+ * audC: the 结论行 copy control, rendered by BOTH legs (the inline row preview
+ * and the event detail) from the same built line. Three honest states only:
+ * nothing asked yet, 已复制 (announced through `aria-live`), and the clipboard
+ * refusing — in which case a read-only textarea appears so the text can still
+ * be selected by hand. It never sends a request: the line is made of what is
+ * already on this screen.
+ */
+export function SummaryCopy({ line }: { line: string }): ReactNode {
+  const [state, setState] = useState<"idle" | "copied" | "manual">("idle");
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="audC-copy-block">
+      <Button
+        size="sm"
+        outlined
+        aria-label={SUMMARY_COPY_LABEL}
+        title="复制这一条的结论行（时间·操作者·动作·资源·请求编号），不再向服务发任何请求"
+        data-testid="audC-copy"
+        prefix={state === "copied" ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
+        onClick={() => {
+          void copyTextToClipboard(line).then((ok) => {
+            setState(ok ? "copied" : "manual");
+          });
+        }}
+      >
+        {SUMMARY_COPY_LABEL}
+      </Button>
+      <span className="min-w-0 break-words text-xs text-muted-foreground" aria-live="polite" data-testid="audC-copy-status">
+        {state === "copied" ? "已复制" : state === "manual" ? "剪贴板不可用，这一行可以直接选中复制" : ""}
+      </span>
+      {state === "manual" ? (
+        <textarea
+          readOnly
+          value={line}
+          aria-label="结论行（可手动选中复制）"
+          data-testid="audC-fallback"
+          className="min-h-[3rem] w-full min-w-0 break-words rounded-md border border-border bg-muted/40 px-2 py-1 font-mono text-xs"
+          onFocus={(event) => event.currentTarget.select()}
+        />
+      ) : null}
+    </div>
+  );
+}
 
 /** 请求编号 has its own honest word: the answer simply did not carry one. */
 export const NO_REQUEST_ID = "未提供";
