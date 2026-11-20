@@ -1027,3 +1027,46 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 同源联动：QueueCsvExport rows 由 list.rows 改 **visibleRows**（默认态首末=c9,b9 服务端序；?asort=status&adir=asc 组 blob 首行 ap_a9 末行 ap_c9=表体同序，用例双组锁）；QueueSummaryBar 桶计数与排序无关（approved=1 两态相等锁）。
 - 测试：history 3 用例（三态循环+缺时间行恒末+计数不变零请求锁 / 粘 asort&adir URL 复现+CSV 逐行对照+汇总不变 / error 态控件 disabled+原因 title+注脚隐藏）+pending 1 用例（ready 启用+点击零 refetch+注脚）。定向 approvals 3 files/94 passed（90+4）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **144 files/1823 passed**（基线 1819+4）。
 - 零破：apv5–apv9/apd5–apd7/apr5/ed*/emp-*（既有 90 用例全绿为证）；Enter/Space=原生 button 语义（jsdom dispatch Enter 不经 onClick 的框架差异在断言中如实注记，键盘可达由 type=button+可聚焦保证）；三档=控件 flex-wrap+note min-w-0 形态学报；9122==cca9cf7e 禁重建，活体排序 DOM 读数待并入后代次。
+
+## R72 审批面动作可用性矩阵（apv-gates-*，单点集中，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @9d9bd874（章面 3c7f70f6），toplevel ✓ porc=0；代次 cca9cf7e。
+- 新文件 gates.ts（98 行）=六入口唯一派生：`gateReason(phase)` 一套措辞（loading=「正在读取列表」/error=「列表读取失败」/denied=「没有读取权限（或该面尚未开放）」/empty=「读口返回的是真实空集」）+ `actionGates(phase, rowCount)` 返回 {export,sort,toggle,detail,summary,retry} 各 {enabled,title}。
+- 接线（禁再各钮自算）：QueueCsvExport 删 csvPhaseReason→吃 gates.export（ready 且 0 行=「该条件下没有可导出的审批。」逐字）；QueueSortBar 删 phaseReason→吃 gates.sort（**矩阵②修正：empty 下排序改可用**，此前 disabled=phase!==ready 违例本单收掉）+组件尾新增 apv-gates-note 一行（矩阵口径说明，title 列六入口）；QueueSummaryBar unavailable() 改拼 gateReason（前/后缀不动语义，「计数不作 0」「真实空集」等 R70 断言保过）；两页刷新钮=apv-gates-refresh + disabled/title 均派生 gates.retry。
+- apv9-toggle/apd6/apd7 入口=非 ready 列表不渲行/aside 不选中（入口不存在=最强 gating，用例锁 loading 无 toggle）；apv6 桶非 ready 显「—」span 无链接（现状已派生自 down，本单收措辞）。
+- 矩阵逐格断言（新 describe 5 用例）：loading=export/sort/refresh 全 disabled 且 title 同含「正在读取」+summary 桶 title 同句+无行无 toggle；empty=export disabled(真实空集)/sort enabled/apr5-retry 与 apv-state-retry 不出现/refresh enabled；error=apr5-retry 在+export/sort disabled 含「读取失败」+risk 桶同句；denied=refresh 钮本身不渲（phase!=="denied" 既有）+apr5-retry 不出现+export/sort disabled 含「没有读取权限」+无「批准」写路径钮；ready+apv8 过滤 0 行=export disabled 标题逐字=「该条件下没有可导出的审批。」+键入前后 fetchJSON 计数不变（gates 零请求）。
+- 既有措辞断言同步 2 处（R70 1124/1288「列表没能加载」→「列表读取失败」，语义等价=gates 单点句）。
+- 测试坑：qa(id) 助手会包 `[data-testid="…"]`，前缀选择器需直调 document.querySelector（SyntaxError Invalid selector 一次即修）。
+- 验证：定向 approvals 3 files/99 passed（94+5）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **144 files/1828 passed**（基线 1823+5）。
+- 零破：apv5–apv9/apd5–apd7/apr5/apv-state-* 既有族（94→99 全绿为证）；文件数=8（gates.ts+三组件+两页+两测…=7+DONE）≤15 ✓；三档=note/p 在既有 flex-col 内形态学报；9122==cca9cf7e 禁重建，活体矩阵读数待并入后代次。
+
+## R73 审批两 tab 列表键盘导航（apv-nav-*，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console=957704be 成功并入（本地 b43b49f6 之上），toplevel ✓ porc=0；现网代次 5630ffce（章面 957704be/entry xSbhqEWR），回执不引 cca9cf7e 及更早。
+- 锚=行自身（Card role=button，与 R26 F1 既有 affordance 统一一种，未引入第二锚）：roving tabindex=`(activeRowKey ?? 首行key)===row.key ? 0 : -1`；onFocus 同步锚；Card 加 aria-expanded={previewOpen}（与 apv9-toggle 双载体同值，用例锁两值相等）。
+- 键位裁决（工单明文优先）：Enter=展开/收起该行 apv9-preview（复用既有 onTogglePreview 单键翻转，无新取数）；**Space 保留 R26 F1「键盘打开详情」通道**（既有测试全走 card.click()，零破，DONE 记此裁决）；Escape=preview 开着时收起并把焦点还给该行（未开不劫持直接放行）；↑/↓/Home/End=navigateRows(action, fromKey)。
+- 真缺陷修出（非测试巧合）：navigateRows 若只读页级 activeRowKey，focus() 触发的 setState 未提交同帧 keydown 会用旧闭包值原地不动（本窗实测 FAIL 复现）→ 改「锚=事件所在行（fromKey），再退页级锚」，实现级修正后全绿。
+- 排序/筛选/搜索后焦点回第一行=firstRowKey useEffect 重置锚（纯本地）；?tab/?status/?q/?asort/?adir= 一律不写（无 setParams 调用）；四态不劫持=非 ready 无行卡（DOM 锁+error 态 body dispatch 无害）。
+- apv-nav-* 新增：apv-nav-note（挂 QueueSortBar 组件尾，两 tab 共用同口径行：↑/↓、Home/End、Enter 预览、空格详情、Esc 收起回焦）+ section apr5-list 加 data-apv-nav="true" 别名（现名不动）。
+- 测试：history 4 用例（roving 三键+tabindex 翻转/Enter 预览+双载体 aria-expanded 同值+互斥+Esc 回焦+fetchJSON 计数锁/Space 开详情/error 无行不劫持）+pending 1 用例（单行 roving+Enter/Esc+计数）；定向 approvals 3 files/104 passed（99+5）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **147 files/1925 passed**（merge 957704be 后基线之上）。
+- 坑（本窗实证）：①第一轮插入把 state 块留在 previewKey 后=visibleRows TDZ ReferenceError（relocate 后手工补的 state 行造成重复声明——两连 Babel/tsc 前坑，教训=移动代码块时抽取范围必须含全部新插行且勿再手补）；②history/pending 页原 import 无 useEffect，插入 effect 必须同步 import（tsc 缓存 -p 曾漏报，vitest 现形）。
+- 零破：apv5–apv9/apd5–apd7/apr5/apv-state-*/apv-gates-*（既有 99 全绿为证）；三档=行卡/grid 既有 min-w-0 形态学报（jsdom 不可测）；9122==5630ffce 禁重建，活体键盘读数待并入后代次。
+
+## R74 审批人分桶统计（apv-actor-*，两 tab，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @aafac98f（章面 957704be），toplevel ✓ porc=0；代次 5630ffce。
+- 活体三组（ego 9122==5630ffce）：/api/approvals?status=all&limit=50→200 n=8 first=ap_123DE49B9；&actor=human:9→200 n=8 同集合；&approver=human:9→200 n=8 同集合 ⇒ 读口忽略 actor 参=**本地分桶分支**（工单「读口若已支持则走服务端」条件不成立）；行 approvers 实形=[{userId:human:1,role:owner}]×8 全同。
+- 实现：①model.ts approverLabels 返回扩 ids:string[]（逐原始项对齐的审批人键：string 项=自身、rec2=userId||name；「需要 N 人审批」计数特例与无名单=空 ids）——坑=labels 经 filter 掉空后下标错位，改 pairs 对齐产出；ApprovalRow 加 approverIds（rowFrom 一次解析复用）；detail 侧类型兼容未动。②新 ActorBuckets.tsx：桶=真 button[type=button]（apv-actor-bucket-{i} 下标定址避冒号、title=全 id、aria-pressed、disabled=phase!=="ready"）从已加载行现算 Map 聚合（count desc→key 字典序）；桶标签=行 labels 对齐值，maskHandle 对短 id 落纯「人员」时升级 `人员 · 码`（actorCode 不设 4 位门槛，禁裸 human:/emp_ 上屏）；全部钮 apv-actor-all；非 ready 计数显「—」禁 0，title=「不能按审批人筛选：{gateReason(phase)}；恢复列表后自动可用。」（gates 单点措辞复用）；apv-actor-scope-note=「按当前已加载 N 条统计，不是全量；点击桶＝本地过滤，不发新请求。」+title 带活体三组实证；ready 且无带审批人行=apv-actor-none 诚实句。③两页接线：actor=params.get("actor") URL 唯一状态源；pickActor=draft 差分 set/delete+replace（与 ?status/?q/?asort/?adir= 互不清除；不重置选中详情——DONE 注：桶过滤只作用列表面）；visibleRows=q 过滤后排序前加 actor 过滤（计数 apv5-count/导出行集同链=同源）；无匹配卡 apv-actor-empty「该审批人下没有审批。」+真实结果句+apv-actor-clear 出口；q 空态卡条件收窄为 `q && !actor`（两卡互斥，R59 用例无 actor 不受影响）。
+- 测试 history 3+pending 1（用例锁：桶计数读数 郑涛/人员 · 9；点桶→1 行+apv5-count=1+fetchJSON 计数前后不变（点与清都零请求）；再点同桶=清空；粘链 &actor=human%3A9 直达高亮；status=approved 快捷组合→新请求带 status 且 actor 活在组件→apv-actor-empty→清空回列表；error 态全部钮 disabled+title 闸句+scope-note 0 条如实；pending 轨在+点击零请求+无裸 human:）。定向 approvals 3 files/**108 passed**（104+4）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **147 files/1929 passed**（基线 1925+4）。
+- 零破：apv5–apv9/apd5–apd7/apr5/apv-state-*/apv-gates-*/apv-nav-*（既有用例全绿为证）；三档=桶区 flex-wrap+truncate 既有形态学报（jsdom 不可测）；9122==5630ffce 禁重建，活体分桶读数待并入后代次。
+- 断言坑（教训）：本地过滤参数不应出现在服务端请求里——组合用例初版断「新请求同含 actor=&status=」错，正确语义=浏览器 URL 复现靠组件参数读取，请求只带服务端白名单参；空集构造走 handler 按 status 分支返回不含该审批人的行。
+
+## R75 审批导出文件名契约（apv-export-name，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @68eeb307，toplevel ✓ porc=0；代次 5630ffce。
+- 契约：`approvals-<tab>-<status|-all>-<asort|-default>-<adir|-default>-YYYYMMDD-HHmm.csv`；csvNamePart 清洗=小写+非法字符折叠 `-`+前后剥边+空段 default（只许 [a-z0-9.-]，无中文/空格/裸冒号；revise_requested→revise-requested 用例锁）；时刻=导出瞬间 BJT +480min 纯格式化。
+- 预览行 `apv-export-name`=组内 `<p>` 实时显完整名，title 写四要素来源；**purity 处置**=render 体不取时钟，useEffect([tab,status,sort,dir]) 算预览名（effect setState=warning 可过）；导出 onClick 瞬间重算，同一分钟=与预览逐字一致（用例拦 HTMLAnchorElement.prototype.click 断 downloads[0]===预览文本）。
+- 真缺陷修复：adir 在未排序时仍派生 "asc"（page adir=params.get("adir")==="desc"?"desc":"asc"）→ 传参改 `dir={asort ? adir : null}`（两页），未排序四要素后两段=default-default（初版预览名 all-default-asc 暴露此坑）。
+- 同源：导出行集=visibleRows（R71 起）+用例双值锁 apv7-export-count「共 8 行」==apv5-count「8」；排序循环三次点击预览 pending-title-asc→desc→default 且 fetchJSON 计数不变（⑤零新请求）；空集 title=gates ready-0 句改「当前没有可导出的审批：该条件下没有可导出的审批。」（含工单④句，R72 逐字断言同步改新句）。
+- 测试：R54 纯函数两用例新五参签名同步（契约本单更新，语义等价）+sanitize 两用；R75 新 describe 2 用例；pending 「state tokens 不上屏」用例限定文件名区域（契约本就含 tab/status 段——语义等价修正）。定向 approvals 3 files/110 passed（108+2）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **147 files/1931 passed**（基线 1929+2）。
+- 零破：apv7-export/apv7-export-count 语义保留、apv5–9/apd5–7/apr5/actor/nav/gates/state 全绿；三档=组容器 flex-wrap+预览 p basis-full break-all 既有形态学报；9122==5630ffce 禁重建，活体文件名读数待并入后代次。

@@ -626,3 +626,53 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 验证：定向 `src/modules/metrics` 4 files / 215 passed（原 210，+5）；全量 145 files / 1830 passed（原 1825）；`tsc -b . --noEmit` 全仓 67 条既存、`modules/metrics` 0。
 
 未测项：真实后端上三面的实际数值差未用线上数据复算（历史上 run-stats 与 `/runs` 条数差 1 的先例仍在记忆里），本单只保证每面读数与它自己的来源一致、并在差存在时如实标出。
+
+## URL 兼容矩阵与归一（metAQ，2026-11-20）
+
+挂载时对地址做一次归一，之后不再改写（用户后续每次点击各写自己的键）：
+
+| 规范键 | 别名 / 兼容 | 合法值 | 非法时 |
+|---|---|---|---|
+| `window` | — | `24h` `7d` `30d` | 丢弃并记入忽略清单 |
+| `heat` | 旧键 `w`（`heat` 优先，`w` 并归为 `heat`） | `1` `4` `12` | 丢弃并记入忽略清单 |
+| `groupBy` | 写入 `view`（`groupBy` 是明细轴的旧拼法） | `employee` `model` | 丢弃并记入忽略清单 |
+| `view` | — | `employee` `model` | 丢弃并记入忽略清单 |
+| `dsort` / `ddir` | — | `runs` `cost` `share` / `asc` `desc` | 丢弃并记入忽略清单 |
+| `sort` / `dir` | — | `runs` `cost` `model` / `asc` `desc` | 丢弃并记入忽略清单 |
+
+- 别名直达等价：`?w=4` 归一为 `?heat=4`，与直接 `?heat=4` 渲染同一热力窗；`?w=12&view=model` 与 `?heat=12&view=model&groupBy=model` 的 `metAL-scope` 与 `metAP-heat` 逐字相等。
+- **单向兼容（知情契约）**：`?groupBy=employee` 会补写 `view=employee`（明细面同值）；反向 `?view=employee` 不补 `groupBy`——明细视角与分摊分组是两个独立选择（metS 契约为准），自动回填会把分摊表静默切组。
+- 未知/非法值不崩：回落默认，并在 `metAQ-url-note` 写「已忽略无效参数 N 个」，`title` 列出每对 `key=原值`；与页面无关的参数原样保留。
+- 归一用 `setParams(..., { replace: true })`：`useNavigationType()` 实测为 `REPLACE`，`window.history.length` 前后不变，不新增历史条目。
+- 归一不额外取数：别名链接与规范链接的请求增量逐项相等（同一批读口，只差参数值）。
+- `metAL-scope` 与 `metAO-filename-*` 读的是归一后的参数，故回显与地址一致。
+
+验证：定向 `src/modules/metrics` 4 files / 220 passed（原 215，+5）；全量 145 files / 1835 passed（原 1830）；`tsc -b . --noEmit` 全仓 67 条既存、`modules/metrics` 0。
+
+未测项：真浏览器前进/后退在多次切参后的历史栈形态未逐项走查（已用 `useNavigationType` 与 `history.length` 覆盖归一瞬间）。
+
+## R47 纠偏：截断注记分表说明与兜底复制同源（2026-11-20）
+
+### OBS-11 截断注记（改前 → 改后）
+- 改前：三处注记笼统写「表内全量渲染 / 没有截断」，而页面另有两处确实 `slice`（月度快照前 8 行、价目表前 5 行）——注记与页面事实互相打脸。
+- 改后分表说：`metAH-cap-note`「宽表逐行全量渲染，共 N 行；导出与屏上逐行一致。」、`metAH-cap-note-share`「宽表逐行全量渲染，共 N 行；导出含同一批行。」；新增 `metAH-cap-note-snapshot`「这张快照只显示前 8 行（按金额从高到低）；完整数据用「导出明细 CSV」，或在下方分摊表按员工逐行看。」（title 写 `monthSnapshot.rows` 先按金额降序取前 8 行、完整账本行两个去处、本卡不分页）；新增 `metAH-cap-note-pricing`「价目表只显示前 5 行；本页不导出价目，完整价目以模型价目表为准。」（title 写按服务返回顺序取前 5 行、本次共 N 行、其余不展示也不导出，仅 pricing ready 且有行时渲染）。
+- 「没有截断」字样在页面可见文本中为 0（测试用 `visibleText()` 断言）。
+
+### OBS-5 兜底复制同源
+- 改前：兜底 textarea 取 `sourceCopyBody` state（由点击时 set），曾出现空串。
+- 改后：删除该 state，`sourceCopyValue = sourceList.length ? sourceSummaryText(sourceList) : ''` 一处派生，剪贴板参数与 textarea `value` 同读它——不可能不一致，非空列表下也不可能为空。测试断言：`fallback.value === body`、`!== ''`、`clip.copyTextToClipboard` 最后一次调用参数 === `fallback.value`、6 行。
+
+零额外请求（注记与兜底纯派生，`urls()` 不变）。验证：定向 `src/modules/metrics` 4 files / 221 passed（原 220）；全量 1921 passed（基线 1835，上游本轮已涨）；`tsc` 本域 0（全仓 69 条既存）。
+
+未测项：真浏览器下快照/价目两卡的注记换行未目视走查。
+
+## 成本口径三面对照（metAS，2026-11-20）
+
+- 位置：`met6` 区、`metAP-runs-caliber` 下一行，`metAS-cost-caliber`（同一批数据的纯派生，零额外请求）。
+- 三面：日累计（`/api/budget-usage?periodKind=day` 的 `total`，记账）、月累计（`periodKind=month`，记账）、模型聚合（`/api/hermes-usage` 各模型 `cost_usd` 求和，用量推算）。`metrics.ts` 新导出 `costCaliber({day,month,usage,usageMissing})`，返回 `faces / known / verdict / pairs / widest / title`。
+- 规则：只读现有 payload；面缺失或未读一律「—」并在整行 title 写原因（按员工分组未读模型聚合 / 模型聚合这次没读出来），禁缺值当 0；真 0 仍 `$0.00`。三面已知且相等写「三面一致（3/3）」→ 实为「三面一致」；已知不足三面写「有面缺数（N/3）」；不等写「口径不同，见逐对差值」并逐对给 `日累计−月累计`、`日累计−模型聚合`、`月累计−模型聚合` 的有符号 USD 差（负数按 `-$x.xx`），另标「差值最大：<对名>」。
+- title 写明三条数据源路径与「记账 vs 用量推算不是同一套账，数值不等属口径差，不是数据错误」，以及每对差值、最大差值对、缺失面原因。
+- 切窗/切分组随批重算（三面都从 `usageReady.day/month` 与 `shareView` 现算，无新 state）。
+- 测试（`MetricsModulePage.test.tsx` describe「metAS」5 例）：纯函数三面相等/不等与 pairs 顺序、widest；默认路由下 `metAS-day === met6-cost-value`（`$0.00`）、`metAS-month = $0.13`、`metAS-usage = —`、verdict「有面缺数（2/3）」、title 含「不按 0 记」「不发新请求」；`mountShare(SHARE_USAGE)` 三面齐全 → `metAS-usage = $4.00`、verdict 口径不同、delta 含三对且 `日累计−模型聚合 -$4.00`、正文含「差值最大：日累计−模型聚合」；`?groupBy=employee` 时 usage 为「—」且 title 说明按员工未读模型聚合；挂载后 `urls()` 计数不变（零额外请求）。
+- 验证：定向 `src/modules/metrics` 4 files / 226 passed（原 221）；全量 147 files / 1926 passed（原 1921）；tsc 全仓 69 条既存、`modules/metrics` 0。build `--outDir /tmp/build-metAS`：entry `assets/index-u67lQpLo.js` sha256 `289a35532c5b6f9b426f0d7d7b43e9ec7d3c2272bc07f798d0c3ce58491dce12`，entry 内 `metAS-cost-delta`=0，chunk `MetricsModulePage-CJGRiM0y.js`=1。
+- 未测项：真实 BFF 三面的实际数值未联调（本页只做现算）；切窗后三面随批重算仅由单测覆盖，未在真浏览器逐窗核对；模型聚合在本批未读时只能给「—」，不会自动补读。

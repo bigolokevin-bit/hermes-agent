@@ -90,6 +90,8 @@ export interface RunBucket {
 export interface RunStatsBody {
   buckets?: RunBucket[];
   totals?: RunTotals;
+  /** Top-level collection time from the read model, when it sends one. */
+  asOf?: string;
 }
 
 export interface RunRow {
@@ -131,6 +133,10 @@ export interface BudgetBody {
 export interface ApprovalStatsBody {
   pending?: number;
   dueSoon?: number;
+  /** Top-level collection time from the read model, when it sends one. */
+  asOf?: string;
+  /** Why the count is missing (failed source), human wording from the BFF. */
+  reason?: string;
 }
 
 export interface ApprovalRow {

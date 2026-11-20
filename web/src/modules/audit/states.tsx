@@ -117,13 +117,35 @@ export function PermalinkCopy({ eventId }: { eventId: string | null }): ReactNod
   );
 }
 
+/** What each ledger state is called on the copy control's own title. */
+const PHASE_WORDS: Record<"loading" | "ready" | "empty" | "error" | "denied", string> = {
+  loading: "正在读取",
+  ready: "已读到记录",
+  empty: "该条件下无事件",
+  error: "读取没有完成",
+  denied: "暂时无法查看审计事件",
+};
+
 /**
  * audG: the current reading question, in one shareable line — plus the path
  * this page really asked. Same three states as the other copy controls, and
  * the same rule that nothing here sends a request: the line is made of the
  * address and of the question already asked.
  */
-export function FilterSummaryCopy({ line, available }: { line: string | null; available: boolean }): ReactNode {
+export function FilterSummaryCopy({
+  line,
+  available,
+  phase,
+  pending,
+}: {
+  line: string | null;
+  /** The address carries at least one reading question. */
+  available: boolean;
+  /** The ledger's own state, named on the control so the rule is legible. */
+  phase?: "loading" | "ready" | "empty" | "error" | "denied";
+  /** A half-filled custom range: nothing has been asked with it yet. */
+  pending?: boolean;
+}): ReactNode {
   const [state, setState] = useState<"idle" | "copied" | "manual">("idle");
   const ready = available && line !== null;
   return (
@@ -132,7 +154,12 @@ export function FilterSummaryCopy({ line, available }: { line: string | null; av
         size="sm"
         outlined
         aria-label={FILTER_SUMMARY_COPY_LABEL}
-        title={ready ? "复制现在的筛选口径与这一页实际请求的相对路径（不含地址前缀与任何凭据），不再向服务发任何请求" : FILTER_SUMMARY_EMPTY_TITLE}
+        title={
+          ready
+            ? // audL: the mount rule, in the button's own words.
+              `常驻控件，现在可以复制：这一页带着${phase ? `「${PHASE_WORDS[phase]}」` : "某种"}读法与至少一个筛选口径（时间窗、自定义区间、类型、操作者、资源、每页条数或页码）。复制的是口径与这一页实际请求的相对路径，不含地址前缀与任何凭据，也不再向服务发一次请求。`
+            : `${FILTER_SUMMARY_EMPTY_TITLE}：这一页只有默认时间窗，没有自定义区间、类型、操作者、资源、每页条数或页码可交代。控件常驻，只是没内容可给。${pending ? "（自定义区间还没应用）" : ""}`
+        }
         data-testid="audG-filter-copy"
         disabled={!ready}
         aria-disabled={!ready}
@@ -154,6 +181,12 @@ export function FilterSummaryCopy({ line, available }: { line: string | null; av
       </Button>
       <span className="min-w-0 break-words text-xs text-muted-foreground" aria-live="polite" data-testid="audG-filter-copy-status">
         {state === "copied" ? "筛选条件已复制" : state === "manual" ? "剪贴板不可用，这一行可以直接选中复制" : ""}
+      </span>
+      {/* audL: the mount rule is also said out loud, not only when the button
+          is already off. A permanent control that explains itself once is
+          cheaper than a probe wondering why nothing is there. */}
+      <span className="min-w-0 basis-full break-words text-xs text-muted-foreground" data-testid="audG-filter-copy-rule">
+        这个控件常驻。地址里带着任一读法（自定义区间、事件类型、操作者、资源、每页条数或页码）时就能复制；只有默认时间窗时它在这里但按不动，原因写在按钮上。
       </span>
       {state === "manual" && line ? (
         <textarea

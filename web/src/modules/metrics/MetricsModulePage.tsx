@@ -16,6 +16,7 @@ import { ApiError } from '@/lib/api-error';
 import { fetchJsonStrict } from '@/modules/models/fetchJson';
 
 import {
+  costCaliber,
   METRICS_GAP,
   USAGE_GAP,
   WEEKDAY_LABELS,
@@ -108,6 +109,8 @@ import {
   type SourceStamp,
   type UsageWindowId,
   runsCaliberTitle,
+  normalizeMetricsQuery,
+  ignoredParamsNote,
 } from './metrics';
 import './metrics.css';
 
@@ -384,6 +387,13 @@ export function MetricsModulePage() {
   // fallback for links copied before this change.
   const activeWindow = windowOf(params.get('heat') ?? params.get('w'));
   const weeks = activeWindow.weeks;
+  const urlNormalization = normalizeMetricsQuery(params.toString());
+  // The unusable values are folded away from the address; keep the first list so
+  // the note does not blink out in the render that follows the rewrite.
+  const [ignoredParams] = useState<string[]>(() =>
+    normalizeMetricsQuery(params.toString()).ignored,
+  );
+  const ignoredNote = ignoredParamsNote(ignoredParams);
   const [state, setState] = useState<PageState>({ kind: 'loading' });
   const [usage, setUsage] = useState<UsageState>({ kind: 'loading' });
   const [breakdown, setBreakdown] = useState<BreakdownState>({ kind: 'loading' });
@@ -393,6 +403,16 @@ export function MetricsModulePage() {
   const [share, setShare] = useState<ShareState>({ kind: 'loading' });
   const [heatAt, setHeatAt] = useState<string>(new Date().toISOString());
   const [attempt, setAttempt] = useState(0);
+  // Fold aliases and unusable values into the canonical spelling once, on the
+  // link the page was opened with. Later view/groupBy choices stay independent,
+  // so this must not run again after the first rewrite.
+  const normalizedOnce = useRef(false);
+  useEffect(() => {
+    if (normalizedOnce.current) return;
+    normalizedOnce.current = true;
+    if (!urlNormalization.changed) return;
+    setParams(new URLSearchParams(urlNormalization.query), { replace: true });
+  }, [urlNormalization, setParams]);
   const [retryingBlock, setRetryingBlock] = useState<UsageBlockKind | null>(null);
   const [selected, setSelected] = useState<{ dow: number; hour: number } | null>(null);
   const [heatTableOpen, setHeatTableOpen] = useState(false);
@@ -416,7 +436,6 @@ export function MetricsModulePage() {
   const refreshSignalRef = useRef<{ live: boolean } | null>(null);
   const sourcesRef = useRef<Record<string, SourceStamp>>({});
   const [sourceCopyStatus, setSourceCopyStatus] = useState<'idle' | 'done' | 'failed'>('idle');
-  const [sourceCopyBody, setSourceCopyBody] = useState('');
   const [summaryText, setSummaryText] = useState('');
   const [sources, setSources] = useState<Record<string, SourceStamp>>({});
   const [sourcesOpen, setSourcesOpen] = useState(false);
@@ -1468,6 +1487,28 @@ export function MetricsModulePage() {
   const heatWindowTotal = grid && grid.presentCells > 0 ? grid.total : null;
   const detailCountSum = detailCountTotal;
   const countDelta = heatCountSum !== null && detailCountSum !== null ? detailCountSum - heatCountSum : null;
+
+  // metAS — the three cost faces, all read from this batch. The usage face only
+  // exists when the model grouping read /api/hermes-usage; otherwise it is «—»
+  // with the reason in its title, never a silent 0.
+  const costDayTotal = usageReady && usageReady.day.kind === 'ready' ? usageReady.day.value.total : null;
+  const costMonthTotal = usageReady && usageReady.month.kind === 'ready' ? usageReady.month.value.total : null;
+  const costUsageTotal =
+    groupBy === 'model' && shareView.kind === 'ready'
+      ? sumOrNull(shareView.value.rows.map((row) => row.costUsd))
+      : null;
+  const costUsageMissing =
+    costUsageTotal !== null
+      ? null
+      : groupBy === 'model'
+        ? '模型聚合这次没读出来，不按 0 记。'
+        : '当前按员工分组，这一批没有读取模型聚合；切到「按模型」就能三面一起看。';
+  const costCaliberView = costCaliber({
+    day: costDayTotal,
+    month: costMonthTotal,
+    usage: costUsageTotal,
+    usageMissing: costUsageMissing,
+  });
   const heatGapReason =
     view.kind === 'error'
       ? '热力这次没读出来，不按 0 记'
@@ -1639,11 +1680,12 @@ export function MetricsModulePage() {
   // yet is «degraded», not a failure, and must not flip the button either way.
   const sourceCopyDisabled =
     sourceList.length > 0 && sourceList.filter((row) => sources[row.key] !== undefined).every((row) => row.state === 'down');
+  const sourceCopyValue = sourceList.length > 0 ? sourceSummaryText(sourceList) : '';
   const copySourceSummary = () => {
     if (sourceCopyDisabled || sourceList.length === 0) return;
-    const text = sourceSummaryText(sourceList);
-    setSourceCopyBody(text);
-    void copyTextToClipboard(text).then((ok) => setSourceCopyStatus(ok ? 'done' : 'failed'));
+    // One value feeds both the clipboard call and the fallback box, so the box
+    // can never show something other than what was handed to the clipboard.
+    void copyTextToClipboard(sourceCopyValue).then((ok) => setSourceCopyStatus(ok ? 'done' : 'failed'));
   };
 
   // metL — the plain-text summary repeats what this page already shows. Both
@@ -1801,6 +1843,15 @@ export function MetricsModulePage() {
           回到默认视图
         </Button>
       </div>
+      {ignoredNote ? (
+        <p
+          className="met6-hint metAQ-note"
+          data-testid="metAQ-url-note"
+          title={ignoredParams.join('、')}
+        >
+          {ignoredNote}
+        </p>
+      ) : null}
 
       <div className="metAO-bar" data-testid="metAO-filename-bar">
         <span className="metAO-file">
@@ -2101,7 +2152,16 @@ export function MetricsModulePage() {
                   </ul>
                 ) : null}
                 {monthSnapshot && monthSnapshot.rows.length > 0 ? (
-                  <p className="met6-hint">明细只列账本行；金额原样来自账本，不做换算。</p>
+                  <>
+                    <p className="met6-hint">明细只列账本行；金额原样来自账本，不做换算。</p>
+                    <p
+                      className="met6-hint"
+                      data-testid="metAH-cap-note-snapshot"
+                      title="判据：monthSnapshot.rows 先按金额降序，只取前 8 行渲染；完整账本行在下方「导出明细 CSV」与员工分摊表里，本卡片不做分页。"
+                    >
+                      这张快照只显示前 8 行（按金额从高到低）；完整数据用「导出明细 CSV」，或在下方分摊表按员工逐行看。
+                    </p>
+                  </>
                 ) : null}
               </CardContent>
             </Card>
@@ -2199,6 +2259,15 @@ export function MetricsModulePage() {
                   </p>
                 )}
                 <p className="met6-hint">单价是标价，不是扣费；本页不拿单价乘用量。缺失的单价显示「—」。</p>
+                {usageReady && usageReady.pricing.kind === 'ready' && usageReady.pricing.value.rows.length > 0 ? (
+                  <p
+                    className="met6-hint"
+                    data-testid="metAH-cap-note-pricing"
+                    title={`判据：价目表按服务返回顺序只取前 5 行渲染；本次共 ${usageReady.pricing.value.rows.length} 行，其余行本页不展示也不导出，完整价目以模型价目表读口为准。`}
+                  >
+                    价目表只显示前 5 行；本页不导出价目，完整价目以模型价目表为准。
+                  </p>
+                ) : null}
                 <p className="met6-source" data-testid="met6-price-source">
                   来源：模型价目表 · 截至{' '}
                   {usageReady && usageReady.pricing.kind === 'ready' && usageReady.pricing.value.asOf
@@ -2422,9 +2491,9 @@ export function MetricsModulePage() {
                 <p
                   className="met6-hint"
                   data-testid="metAH-cap-note"
-                  title={`判据：明细行取自当前批次，组件里没有 slice 或行数上限；这里的 ${detailRows.length} 行与上方来源行的计数同源。`}
+                  title={`判据：这张宽表的行取自当前批次，组件里没有 slice 或行数上限；这里的 ${detailRows.length} 行与上方来源行的计数同源。页面另有两处卡片式短列表（月度快照、价目表）确有截断，各自单独标注。`}
                 >
-                  表内全量渲染，共 {detailRows.length} 行；导出与屏上一致，没有截断。
+                  宽表逐行全量渲染，共 {detailRows.length} 行；导出与屏上逐行一致。
                 </p>
                 {breakdownView.note ? <p className="met6-hint">{breakdownView.note}</p> : null}
               </>
@@ -2917,9 +2986,9 @@ export function MetricsModulePage() {
                 <p
                   className="met6-hint"
                   data-testid="metAH-cap-note-share"
-                  title={`判据：分摊行取自当前批次，只做排序，没有 slice 或行数上限；这里的 ${shareRows.length} 行与 metA-export-count 同源。`}
+                  title={`判据：这张宽表的行取自当前批次，只做排序，没有 slice 或行数上限；这里的 ${shareRows.length} 行与 metA-export-count 同源。页面另有两处卡片式短列表（月度快照、价目表）确有截断，各自单独标注。`}
                 >
-                  表内全量渲染，共 {shareRows.length} 行；导出含同一批行，没有截断。
+                  宽表逐行全量渲染，共 {shareRows.length} 行；导出含同一批行。
                 </p>
                 <p className="met6-hint" data-testid={`${sharePrefix}-hint`}>
                   占比按可读到的实扣金额归一，合计 100%；缺金额的行不参与分摊，显示「—」。排序写在地址里，刷新与前进后退都保留。
@@ -3041,6 +3110,37 @@ export function MetricsModulePage() {
               : '口径不同，见 title'
             : '有面缺数，见 title'}
         </span>
+      </p>
+
+      <p className="met6-hint metAS-line" data-testid="metAS-cost-caliber" title={costCaliberView.title}>
+        <span className="metAS-face">
+          日累计 <span data-testid="metAS-day">{formatUsd(costCaliberView.faces[0].value)}</span>
+        </span>
+        {' · '}
+        <span className="metAS-face">
+          月累计 <span data-testid="metAS-month">{formatUsd(costCaliberView.faces[1].value)}</span>
+        </span>
+        {' · '}
+        <span className="metAS-face">
+          模型聚合 <span data-testid="metAS-usage">{formatUsd(costCaliberView.faces[2].value)}</span>
+        </span>
+        {'｜'}
+        <span data-testid="metAS-verdict">{costCaliberView.verdict}</span>
+        {costCaliberView.pairs.length > 0 ? (
+          <>
+            {'：'}
+            <span data-testid="metAS-cost-delta">
+              {costCaliberView.pairs.map((pair, index) => (
+                <span key={pair.label}>
+                  {index > 0 ? '；' : ''}
+                  {pair.label} {pair.diff === 0 ? '$0.00' : formatUsd(pair.diff)}
+                </span>
+              ))}
+            </span>
+            {costCaliberView.widest ? <span>{`｜差值最大：${costCaliberView.widest}`}</span> : null}
+          </>
+        ) : null}
+        。三面都取自这一次读取，不发新请求；记账与用量推算不是同一套账。
       </p>
 
       {view.kind === 'loading' ? (
@@ -3268,7 +3368,7 @@ export function MetricsModulePage() {
                 </p>
                 <textarea
                   readOnly
-                  value={sourceCopyBody}
+                  value={sourceCopyValue}
                   aria-label="数据来源摘要文本"
                   data-testid="metAG-copy-fallback-text"
                   onFocus={(event) => event.currentTarget.select()}

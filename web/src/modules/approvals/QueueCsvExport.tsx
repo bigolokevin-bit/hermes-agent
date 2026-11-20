@@ -7,8 +7,11 @@
  * machine's clock. The filename timestamp is the export moment (Beijing),
  * which is a property of the file, not of the data.
  */
+import { useEffect, useState } from "react";
+
 import { Button } from "@nous-research/ui/ui/components/button";
 
+import { actionGates } from "./gates";
 import type { ApprovalRow } from "./model";
 
 const CSV_HEADER = ["id", "title", "status", "risk", "updated_at"] as const;
@@ -36,11 +39,23 @@ export function buildApprovalsCsv(rows: readonly ApprovalRow[]): string {
   return `\uFEFF${lines.join("\r\n")}\r\n`;
 }
 
-export function approvalsCsvName(tab: string, status: string | null, now: Date = new Date()): string {
+/** R75: 文件名只许 [a-z0-9.-]；其它字符折叠为 -，空段写 default。 */
+export function csvNamePart(value: string | null | undefined): string {
+  const cleaned = (value ?? "").toLowerCase().replace(/[^a-z0-9.-]+/g, "-").replace(/^-+|-+$/g, "");
+  return cleaned || "default";
+}
+
+export function approvalsCsvName(
+  tab: string,
+  status: string | null,
+  sort: string | null,
+  dir: string | null,
+  now: Date = new Date(),
+): string {
   const d = new Date(now.getTime() + 480 * 60_000);
   const pad = (n: number) => (n < 10 ? `0${n}` : String(n));
   const stamp = `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}-${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}`;
-  return `approvals-${tab}-${status ?? "all"}-${stamp}.csv`;
+  return `approvals-${csvNamePart(tab)}-${csvNamePart(status ?? "all")}-${csvNamePart(sort)}-${csvNamePart(dir)}-${stamp}.csv`;
 }
 
 export function downloadCsv(name: string, csv: string): void {
@@ -58,27 +73,30 @@ export function downloadCsv(name: string, csv: string): void {
 
 type Phase = "loading" | "empty" | "ready" | "error" | "denied";
 
-/** R70: 非 ready 态的导出闸——原因句与汇总条同一族口径。 */
-function csvPhaseReason(phase: Phase): string {
-  if (phase === "loading") return "数据还在读取";
-  if (phase === "error") return "列表没能加载";
-  if (phase === "denied") return "没有读取权限";
-  if (phase === "empty") return "读口返回的是真实空集，没有可导出的行";
-  return "";
-}
-
 export function QueueCsvExport({
   rows,
   tab,
   status,
   phase = "ready",
+  sort = null,
+  dir = null,
 }: {
   rows: readonly ApprovalRow[];
   tab: "pending" | "history";
   status: string | null;
   phase?: Phase;
+  sort?: string | null;
+  dir?: string | null;
 }) {
   const count = rows.length;
+  // R75: 预览名在 effect 里算（render 体不取时钟=purity 纪律）；四要素来自
+  // URL（tab/status/asort/adir），导出瞬间重算同一分钟=与预览逐字一致。
+  const [previewName, setPreviewName] = useState("");
+  useEffect(() => {
+    setPreviewName(approvalsCsvName(tab, status, sort, dir));
+  }, [tab, status, sort, dir]);
+  // R72: 可用性矩阵单点派生（不再各钮自算措辞）。
+  const gate = actionGates(phase, count).export;
   const blocked = phase !== "ready";
   return (
     <span className="flex min-w-0 items-center gap-1.5" data-testid="apv7-export-group">
@@ -86,15 +104,9 @@ export function QueueCsvExport({
         size="sm"
         outlined
         data-testid="apv7-export"
-        disabled={blocked || count === 0}
-        title={
-          blocked
-            ? `不能导出：${csvPhaseReason(phase)}；恢复列表后自动可用。`
-            : count === 0
-              ? "当前筛选下没有可导出的行，导出暂不可用。"
-              : `导出当前已显示的 ${count} 行为 CSV（纯前端 Blob，零新后端端点；updated_at 用屏上同一值）。文件名时间=导出时刻（北京时间）。`
-        }
-        onClick={() => downloadCsv(approvalsCsvName(tab, status), buildApprovalsCsv(rows))}
+        disabled={!gate.enabled}
+        title={gate.enabled ? `${gate.title}文件名时间=导出时刻（北京时间）。` : gate.title}
+        onClick={() => downloadCsv(approvalsCsvName(tab, status, sort, dir), buildApprovalsCsv(rows))}
       >
         导出 CSV
       </Button>
@@ -105,6 +117,13 @@ export function QueueCsvExport({
       >
         {blocked ? "—" : `共 ${count} 行`}
       </span>
+      <p
+        className="min-w-0 basis-full break-all font-mono text-xs text-muted-foreground"
+        data-testid="apv-export-name"
+        title={`完整文件名：${previewName}；四要素来源：tab=当前页签、status=当前 ?status=（无=all）、排序=当前列与方向（未排序=default）、时间=导出瞬间（北京时间到分）。文件名只含 [a-z0-9.-]。`}
+      >
+        {previewName}
+      </p>
     </span>
   );
 }

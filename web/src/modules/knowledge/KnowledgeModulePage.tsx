@@ -257,6 +257,38 @@ function ApplyLink({ testid }: { testid: string }): ReactNode {
   );
 }
 
+/**
+ * 纠偏 OBS-6 — 四张复制条（knF/knG/knI/knL）统一一条口径：
+ * 按钮真的能复制，才允许说复制类的话（已复制… / 复制失败，已展开可选文本…）；
+ * 禁用时状态句一律「当前不可复制：<原因>」，且兜底 textarea 不渲染。
+ * 状态句与可用性同一个门控判出，不可能再各说各话。
+ */
+const COPY_BLOCKED_BY_KIND: Record<string, string> = {
+  loading: "列表还在读取",
+  unwired: "读口未接入或没有权限",
+  login: "登录状态已经失效",
+  error: "这次读取没有成功",
+};
+
+function copyBlockNotice(
+  canCopy: boolean,
+  blockedReason: string,
+  act: "idle" | "copied" | "failed",
+  copiedText: string,
+): { status: string; fallback: boolean } {
+  if (!canCopy) return { status: `当前不可复制：${blockedReason}`, fallback: false };
+  return {
+    status: act === "copied" ? copiedText : act === "failed" ? "复制失败，已展开可选文本，可手动复制" : "",
+    fallback: act === "failed",
+  };
+}
+
+function blockedCopyReason(kind: string, noMatch: boolean, noun: string): string {
+  const byKind = COPY_BLOCKED_BY_KIND[kind];
+  if (byKind) return byKind;
+  return noMatch ? `筛选后没有留下的${noun}` : `这份回答里没有${noun}`;
+}
+
 interface SurfaceProps<T> {
   testid: string;
   source: SurfaceKey;
@@ -886,7 +918,7 @@ function SpaceTable({
                     to={spaceLink(row.id)}
                     tabIndex={tabIndexFor(index)}
                     aria-current={active === index ? "true" : undefined}
-                    title="看这个空间里的文档"
+                    title="看这个空间里的文档——文档预览抽屉只对文档行打开，请进入空间后预览文档"
                   >
                     <Highlight text={row.name} needle={needle} testid="kn9-mark-space" />
                   </Link>
@@ -1027,6 +1059,14 @@ function SpacesSurface({
     );
   };
 
+  // 纠偏 OBS-6 — 状态句与兜底锚同门控于「真的能复制」：禁用时只说「当前不可复制：<原因>」。
+  const kniNotice = copyBlockNotice(
+    surface.state.kind === "ready" && shown.length > 0,
+    blockedCopyReason(surface.state.kind, needle !== "", "空间"),
+    copyAct,
+    `已复制 ${shown.length} 行`,
+  );
+
   return (
     <>
       <form
@@ -1145,9 +1185,9 @@ function SpacesSurface({
           {surface.state.kind === "ready" && shown.length > 0 ? `${shown.length} 行` : "—"}
         </span>
         <span className="knI-status" data-testid="knI-copy-status" aria-live="polite">
-          {copyAct === "copied" ? `已复制 ${shown.length} 行` : copyAct === "failed" ? "复制失败，已展开可选文本，可手动复制" : ""}
+          {kniNotice.status}
         </span>
-        {copyAct === "failed" ? (
+        {kniNotice.fallback ? (
           <textarea
             className="knI-fallback"
             data-testid="knI-copy-fallback"
@@ -1284,6 +1324,9 @@ function DocPreviewDrawer({
       () => setCopyState({ kind: "failed", sig: copyText }),
     );
   };
+
+  // 纠偏 OBS-6 — 抽屉同理：行没加载到就没有可复制的元信息，状态句直说，兜底锚不渲染。
+  const knlNotice = copyBlockNotice(row !== null, "这条文档不在已加载的列表里", copyAct, "已复制");
 
   // ---- R63 — 固定链接：地址 = 本页 origin + 现有深链参数（tab/panel/space/doc），
   // 参数串由页面一直在用的 docLink 生成，这里不手拼、不猜参数名；只读屏上已有标识，零请求。
@@ -1456,9 +1499,9 @@ function DocPreviewDrawer({
             复制元信息
           </Button>
           <span className="knL-status" data-testid="knL-copy-meta-status" aria-live="polite">
-            {copyAct === "copied" ? "已复制" : copyAct === "failed" ? "复制失败，已展开可选文本，可手动复制" : ""}
+            {knlNotice.status}
           </span>
-          {copyAct === "failed" ? (
+          {knlNotice.fallback ? (
             <textarea
               className="knL-fallback"
               data-testid="knL-copy-meta-fallback"
@@ -1858,6 +1901,14 @@ function SpaceDetailSurface({
     );
   };
 
+  // 纠偏 OBS-6 — 状态句与兜底锚同门控于「真的能复制」。
+  const knfNotice = copyBlockNotice(
+    surface.state.kind === "ready" && shown.length > 0,
+    blockedCopyReason(surface.state.kind, filterKey !== "", "文档"),
+    copyAct,
+    "已复制",
+  );
+
   const openKeyCode = shortId(openDoc);
   const docLabel = openRow?.name ?? (openKeyCode ? `文档 · ${openKeyCode}` : "");
   const docTitle = openRow
@@ -2052,9 +2103,9 @@ function SpaceDetailSurface({
           {surface.state.kind === "ready" && shown.length > 0 ? `${shown.length} 行` : "—"}
         </span>
         <span className="knF-status" data-testid="knF-copy-status" aria-live="polite">
-          {copyAct === "copied" ? "已复制" : copyAct === "failed" ? "复制失败，已展开可选文本，可手动复制" : ""}
+          {knfNotice.status}
         </span>
-        {copyAct === "failed" ? (
+        {knfNotice.fallback ? (
           <textarea
             className="knF-fallback"
             data-testid="knF-fallback"
@@ -2222,6 +2273,14 @@ function DocumentNameSearch({
       () => setCopyState({ kind: "failed", sig: copyText }),
     );
   };
+
+  // 纠偏 OBS-6 — 状态句与兜底锚同门控于「真的能复制」。
+  const kngNotice = copyBlockNotice(
+    surface.state.kind === "ready" && shown.length > 0,
+    blockedCopyReason(surface.state.kind, needle !== "", "文档"),
+    copyAct,
+    `已复制 ${shown.length} 条`,
+  );
 
   return (
     <section className="kn6-search" data-testid="kn6-search-panel">
@@ -2391,9 +2450,9 @@ function DocumentNameSearch({
           {surface.state.kind === "ready" && shown.length > 0 ? `${shown.length} 条` : "—"}
         </span>
         <span className="knG-status" data-testid="knG-copy-status" aria-live="polite">
-          {copyAct === "copied" ? `已复制 ${shown.length} 条` : copyAct === "failed" ? "复制失败，已展开可选文本，可手动复制" : ""}
+          {kngNotice.status}
         </span>
-        {copyAct === "failed" ? (
+        {kngNotice.fallback ? (
           <textarea
             className="knG-fallback"
             data-testid="knG-copy-fallback"
