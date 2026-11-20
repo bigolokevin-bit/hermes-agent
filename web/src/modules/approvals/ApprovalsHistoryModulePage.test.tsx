@@ -1710,3 +1710,93 @@ describe("R76 relative time presentation (apv-time-*)", () => {
     expect(api.fetchJSON.mock.calls.length, "still no extra request").toBeGreaterThan(before - 1);
   });
 });
+
+describe("R77 time-range quick filter (apv-since-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+  const isoAgo = (ms: number) => new Date(Date.now() - ms).toISOString();
+  const DAY = 24 * 3_600_000;
+  const TIME_ROWS = {
+    items: [
+      { approvalId: "ap_t24", title: "刚提的变更", status: "pending", createdAt: isoAgo(2 * 3_600_000) },
+      { approvalId: "ap_t7", title: "三天前的变更", status: "pending", createdAt: isoAgo(3 * DAY) },
+      { approvalId: "ap_t60", title: "两月前的变更", status: "pending", createdAt: isoAgo(60 * DAY) },
+      { approvalId: "ap_tn", title: "没带时间的变更", status: "pending" },
+    ],
+  };
+  const listOnly = async (url: string) => {
+    if (String(url).includes("/api/approval?id=")) return {};
+    return TIME_ROWS;
+  };
+  const rowCount = () => document.querySelectorAll('[data-testid^="apr5-row-ap_t"]').length;
+
+  it("chips filter the loaded rows locally with zero new requests, both ways", async () => {
+    await mount(listOnly, "/approvals?tab=history");
+    await waitFor(() => rowCount() === 4, "four rows first");
+    expect(qa("apv-since-all")?.getAttribute("aria-pressed")).toBe("true");
+    expect(qa("apv-since-scope-note")?.textContent).toContain("按当前已加载 4 条统计，不是全量");
+    const before = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      (qa("apv-since-24h") as HTMLButtonElement).click();
+    });
+    await waitFor(() => rowCount() === 1, "24h window");
+    expect(qa("apr5-row-ap_t24"), "only the fresh ticket stays").toBeTruthy();
+    expect(api.fetchJSON.mock.calls.length, "chip click never refetches").toBe(before);
+    expect(qa("apv-since-24h")?.getAttribute("aria-pressed")).toBe("true");
+    await act(async () => {
+      (qa("apv-since-7d") as HTMLButtonElement).click();
+    });
+    await waitFor(() => rowCount() === 2, "7d window");
+    await act(async () => {
+      (qa("apv-since-7d") as HTMLButtonElement).click();
+    });
+    await waitFor(() => rowCount() === 4, "same chip toggles off");
+    expect(api.fetchJSON.mock.calls.length, "still zero extra requests end to end").toBe(before);
+  });
+
+  it("a pasted ?since= replays; the server request never carries it", async () => {
+    await mount(listOnly, "/approvals?tab=history&since=7d");
+    await waitFor(() => rowCount() === 2, "replay 7d");
+    expect(qa("apv-since-7d")?.getAttribute("aria-pressed")).toBe("true");
+    const prev = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      (document.querySelector('[data-testid="apv5-filter-status-pending"]') as HTMLButtonElement).click();
+    });
+    await waitFor(() => api.fetchJSON.mock.calls.length > prev, "status refetch");
+    const fresh = api.fetchJSON.mock.calls.slice(prev).map((c) => String(c[0]));
+    expect(fresh.some((u) => u.includes("status=pending")), fresh.join("|")).toBe(true);
+    expect(fresh.every((u) => !u.includes("since=")), "本地参数不上服务端请求").toBe(true);
+    // since 活在组件里：返回的行仍按 7d 窗过滤
+    await waitFor(() => rowCount() === 2, "since survives the queue filter");
+  });
+
+  it("no row in the window gets its own card and clear exit", async () => {
+    await mount(
+      async (url: string) => {
+        if (String(url).includes("/api/approval?id=")) return {};
+        return { items: [TIME_ROWS.items[2]] };
+      },
+      "/approvals?tab=history&since=24h",
+    );
+    await waitFor(() => !!qa("apv-since-empty"), "no-match card");
+    expect(qa("apv-since-empty")?.textContent).toContain("该时间范围内没有审批");
+    await act(async () => {
+      (qa("apv-since-clear") as HTMLButtonElement).click();
+    });
+    await waitFor(() => !!qa("apr5-row-ap_t60"), "row back after clear");
+    expect(qa("apv-since-empty"), "card gone").toBeNull();
+  });
+
+  it("non-ready phases disable all four chips with the gates sentence", async () => {
+    await mount(async (url: string) => {
+      if (String(url).includes("/api/approval?id=")) return {};
+      throw new ApiError("boom", { status: 500, body: "", url: "/agent-api/api/approvals", requestId: "req-r77-500" });
+    }, "/approvals?tab=history");
+    await waitFor(() => !!qa("apv-state-error"), "error panel");
+    for (const id of ["apv-since-24h", "apv-since-7d", "apv-since-30d", "apv-since-all"]) {
+      const btn = qa(id) as HTMLButtonElement | null;
+      expect(btn, id).toBeTruthy();
+      expect((btn as HTMLButtonElement).disabled, `${id} gated`).toBe(true);
+      expect(btn.getAttribute("title")).toContain("不能按时间范围筛选：列表读取失败");
+    }
+  });
+});

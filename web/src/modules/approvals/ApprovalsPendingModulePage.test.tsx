@@ -710,3 +710,22 @@ describe("R74 pending actor buckets (apv-actor-*)", () => {
     expect(document.body.textContent).not.toContain("human:");
   });
 });
+
+describe("R77 pending time range (apv-since-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+
+  it("the pending tab carries the same rail with zero new requests", async () => {
+    await mount(queue(), "/approvals?tab=pending");
+    await waitFor(() => !!qa("apv-since-rail"), "rail");
+    const before = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      (qa("apv-since-24h") as HTMLButtonElement).click();
+    });
+    expect(api.fetchJSON.mock.calls.length, "chip never refetches").toBe(before);
+    await act(async () => {
+      (qa("apv-since-all") as HTMLButtonElement).click();
+    });
+    expect(api.fetchJSON.mock.calls.length, "clearing never refetches").toBe(before);
+    expect(qa("apv-since-scope-note")?.textContent).toContain("不是全量");
+  });
+});

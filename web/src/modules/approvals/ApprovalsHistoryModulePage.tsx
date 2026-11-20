@@ -32,6 +32,7 @@ import { BackToList, restoreListScroll, saveListScroll } from "./BackToList";
 import { QueueCsvExport } from "./QueueCsvExport";
 import { QueueSortBar } from "./QueueSortBar";
 import { ActorBuckets } from "./ActorBuckets";
+import { SinceQuickFilter, isSinceValue, withinSince } from "./SinceQuickFilter";
 import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel } from "./states";
 import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
 import { ApprovalDetailBody, ApprovalRowCard } from "./views";
@@ -116,14 +117,40 @@ export function ApprovalsHistoryModulePage(): ReactNode {
     },
     [params, setParams],
   );
-  const visibleRows = useMemo(() => {
+  // R77: ?since= rides the same local-filter contract (read port ignores
+  // since=/window=, measured 四组同集合). The comparison instant is captured
+  // in state once per entry — never in the URL, never during render.
+  const rawSince = params.get("since");
+  const since = isSinceValue(rawSince) ? rawSince : null;
+  const [sinceNow, setSinceNow] = useState<number | null>(null);
+  useEffect(() => {
+    if (since) setSinceNow(Date.now());
+  }, [since]);
+  const pickSince = useCallback(
+    (value: string | null) => {
+      const draft = new URLSearchParams(params);
+      if (value === null) draft.delete("since");
+      else draft.set("since", value);
+      setParams(draft, { replace: true });
+      if (value !== null) setSinceNow(Date.now());
+    },
+    [params, setParams],
+  );
+  // R77: 计数/导出/分桶与列表同源——共同基底=q+时间窗过滤后的已加载行；
+  // actor 维不锁分桶轨（否则选中一位后无法切到另一位）。
+  const actorBaseRows = useMemo(() => {
     const needle = q.trim().toLowerCase();
     const filtered = needle
       ? list.rows.filter((row) => approvalsRowSearchText(row).includes(needle))
       : list.rows;
-    const byActor = actor ? filtered.filter((row) => row.approverIds.includes(actor)) : filtered;
+    return since && sinceNow !== null
+      ? filtered.filter((row) => withinSince(row.submittedAt, since, sinceNow))
+      : filtered;
+  }, [list.rows, q, since, sinceNow]);
+  const visibleRows = useMemo(() => {
+    const byActor = actor ? actorBaseRows.filter((row) => row.approverIds.includes(actor)) : actorBaseRows;
     return sortApprovalRows(byActor, asort, adir);
-  }, [list.rows, q, actor, asort, adir]);
+  }, [actorBaseRows, actor, asort, adir]);
   const [selected, setSelected] = useState<string | null>(() => params.get("id"));
   const [unaddressable, setUnaddressable] = useState(false);
   // R60: at most one row shows its inline preview; it never touches URL/filters.
@@ -356,7 +383,8 @@ export function ApprovalsHistoryModulePage(): ReactNode {
       </p>
 
       <QueueSortBar phase={list.phase} sort={asort} dir={adir} loadedCount={list.rows.length} onCycle={cycleSort} />
-      <ActorBuckets rows={list.rows} phase={list.phase} actor={actor} onPick={pickActor} />
+      <ActorBuckets rows={actorBaseRows} phase={list.phase} actor={actor} onPick={pickActor} />
+      <SinceQuickFilter phase={list.phase} since={since} loadedCount={list.rows.length} onPick={pickSince} />
 
 
       <div className="flex min-w-0 flex-wrap gap-1.5" role="group" data-testid="apr5-filter" aria-label="按处理结果筛选">
@@ -457,7 +485,20 @@ export function ApprovalsHistoryModulePage(): ReactNode {
 
           {list.phase === "ready" ? (
             <>
-              {actor && visibleRows.length === 0 ? (
+              {since && visibleRows.length === 0 ? (
+                <Card className="border-border bg-card" data-testid="apv-since-empty">
+                  <CardContent className="min-w-0 space-y-2 p-4 text-sm">
+                    <p>该时间范围内没有审批。</p>
+                    <p className="text-xs text-muted-foreground">
+                      这是当前已加载 {list.rows.length} 条里的真实结果：没有提交时间落在该时间窗内的行（缺提交时间的行不属于任何窗口）；可放宽范围或清空时间筛选。
+                    </p>
+                    <Button size="sm" outlined data-testid="apv-since-clear" onClick={() => pickSince(null)}>
+                      清空时间范围
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : null}
+              {!since && actor && visibleRows.length === 0 ? (
                 <Card className="border-border bg-card" data-testid="apv-actor-empty">
                   <CardContent className="min-w-0 space-y-2 p-4 text-sm">
                     <p>该审批人下没有审批。</p>
@@ -470,7 +511,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
                   </CardContent>
                 </Card>
               ) : null}
-              {q && !actor && visibleRows.length === 0 ? (
+              {q && !actor && !since && visibleRows.length === 0 ? (
                 <Card className="border-border bg-card" data-testid="apv8-search-empty">
                   <CardContent className="min-w-0 space-y-2 p-4 text-sm">
                     <p>没有匹配的审批。</p>
