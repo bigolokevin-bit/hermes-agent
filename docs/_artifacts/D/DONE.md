@@ -1247,3 +1247,10 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - shots auth 102/102 failures=[] obs=0 obsR=[] distinct=23 envOnly=51；anon aux=true 102/102 obs=1（#/work?tab=cron 单条如实）obsR 如上 distinct=24 envOnly=51；三键两 summary 全值、ceAuthority=login-state。上代 shots 挂死未复现（本次首跑即成，僵尸干扰进程已清）。
 - stamp 脚本坑固化：wave43 版 sed 未含 entry 名替换（彼代未换代省了），本代双换代致 L6 硬编码 k52YwKjs 引用坏——sed 补 entry 名即修。下波若换代必须连 entry 名一起 sed 三处。
 - R60 unsigned 结案照卡：未写 PASS/已验收、未动 ACC 判词节。9122 v4_proxy/caddy/BFF/web/src 未动、零凭据明文、无 amend/force。
+
+## 一一一轮 · 波次代次九件重章 @ e901fabb（entry B2obRC-_ 双换代，2026-11-21 23:5x-00:0x）
+
+- 代次现查：LOCAL=FETCH=ls-remote=e901fabb（ANCH=0）、porc 0 脏；wave-45 六线并入（appr/ui1/ui2/aud/gov/ui-a）entry/CSS 双换代：assets/index-B2obRC-_.js 171507B sha256 80400aa1…f331（==磁盘==9122，拍前后同值未漂）、CSS index-D5E8gF20.css 137743B sha a845cde2…。
+- 九腿全 exit=0，九件 9/9 头==e901fabb bad=[]：ia-html/react {51,22,1,8}；lint-fake v=[]；lint-reuse v=0 exempt=1；state-quad 20/20；crawl-anon/auth DL0/CE0/PE0 routesCE 51/51（401 归因）；redirects=24 notes 归因。
+- shots auth 102/102 failures=[] obs=0 obsR=[] distinct=23 envOnly=51；anon aux=true 102/102 obs=0（上代 cron 1 条消失，好转）distinct=23（上代 24，-1 如实）envOnly=51；ceAuthority=login-state 双腿。
+- 环境：9122 v4_proxy 95667 / caddy 8183 28034 / BFF 8092 12048@603a23e9 未动；web/src 未碰；零凭据明文。R60 结案引用不变，本单只做账本。
