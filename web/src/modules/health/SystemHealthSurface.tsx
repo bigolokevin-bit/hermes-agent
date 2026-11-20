@@ -55,11 +55,15 @@ function RowDetail({ row }: { row: SystemHealthRow }) {
       <dl className="sys4-grid">
         <div className="sys4-field">
           <dt>服务名</dt>
-          <dd data-testid="sys4-service">{row.name ?? "该字段未返回"}</dd>
+          <dd data-testid="sys4-service" title={row.nameReason ?? row.name ?? undefined}>
+            <span className="sys15-full" data-testid="sys15-full-service">{row.name ?? "该字段未返回"}</span>
+          </dd>
         </div>
         <div className="sys4-field">
           <dt>口径（读口路径）</dt>
-          <dd data-testid="sys4-endpoint" title={row.endpoint ?? undefined}>{row.endpoint ?? "该字段未返回"}</dd>
+          <dd data-testid="sys4-endpoint" title={row.endpoint ?? undefined}>
+            <span className="sys15-full" data-testid="sys15-full-endpoint">{row.endpoint ?? "该字段未返回"}</span>
+          </dd>
         </div>
         <div className="sys4-field sys4-wide">
           <dt>状态依据</dt>
@@ -78,7 +82,7 @@ function RowDetail({ row }: { row: SystemHealthRow }) {
         <div className="sys4-field sys4-wide">
           <dt>最近一次错误摘要</dt>
           <dd data-testid="sys4-error" title={row.lastErrorReason ?? undefined}>
-            {row.lastError ?? "该字段未返回"}
+            <span className="sys15-full" data-testid="sys15-full-error">{row.lastError ?? "该字段未返回"}</span>
             {row.lastErrorRedactions > 0 ? <span className="sys4-redacted" data-testid="sys4-redacted">已脱敏 {row.lastErrorRedactions} 处</span> : null}
             {row.lastErrorTruncated ? <span className="sys4-redacted">摘要已截断</span> : null}
           </dd>
@@ -450,11 +454,15 @@ export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Pre
                           }
                         }}
                       >
-                        <td data-testid="sys3-name" title={row.nameReason ?? undefined}>{row.name ?? "—"}</td>
+                        <td data-testid="sys3-name" title={[row.name, row.nameReason].filter(Boolean).join(" · ") || undefined}>
+                          <span className="sys15-trunc" data-testid="sys15-trunc-name">{row.name ?? "—"}</span>
+                        </td>
                         <td data-testid="sys3-state" title={row.stateReason ?? row.stateRaw ?? undefined}>
                           <Badge tone={tone(row.state)}>{row.state}</Badge>
                         </td>
-                        <td data-testid="sys3-version" title={row.versionReason ?? undefined}>{row.version ?? "—"}</td>
+                        <td data-testid="sys3-version" title={[row.version, row.versionReason].filter(Boolean).join(" · ") || undefined}>
+                          <span className="sys15-trunc" data-testid="sys15-trunc-version">{row.version ?? "—"}</span>
+                        </td>
                         <td data-testid="sys3-checked" title={row.checkedReason ?? undefined}>{row.checkedAt ?? "—"}</td>
                         <td data-testid="sys3-latency" title={row.latencyReason ?? undefined}>{row.latency ?? "—"}</td>
                       </tr>

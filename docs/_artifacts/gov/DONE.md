@@ -2031,3 +2031,19 @@ built /private/tmp/health-r38/index.html
   - `?svc=ghost&ssort=ms&sdir=asc`：3 行不增，`sys14-link-missing` 含「该服务不在当前清单里」「没有匹配」「不补行」，title `GAP-SYS14-01`，无 `aria-current`，请求 **4**；点提示去处后仅去 `svc`，保留 `ssort/sdir`。
 - 验证：`npx vitest run src/modules/health` → **5 files / 36 passed**；全量 `npx vitest run` → **145 files / 1804 passed**；`tsc -b . --noEmit` → exit 2，20 行均为既有基线（approvals/employee-detail/employees），本域 0 行。
 - 边界：仅 `web/src/modules/health/{SystemHealthSurface.tsx,serviceLink.ts,SystemHealthSurface.test.tsx,health.css}` + 本 DONE；未改 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未 install/force/amend/--no-verify。
+
+## R69 / sys15 — /system 长值折叠与全文可见（2026-11-20）
+
+- 基线：显式 refspec fetch `origin/lane/hermes-console`（tip `3c7f70f6`）后 `git merge --no-ff` → Already up to date；未 reset，未并 main，未重建 9122。
+- 变更：
+  - `systemHealth.ts` 导出既有 `redactError`（保留 token/cookie/secret/password 等打码与 200 字截断），供矩阵错误摘要复用。
+  - 服务列表：`sys3-name` / `sys3-version` 单元格原值给 `title`，内层 `.sys15-trunc`（`sys15-trunc-name` / `sys15-trunc-version`）单行省略；展开 `sys4` 详情内 `.sys15-full`（`sys15-full-service` / `sys15-full-endpoint` / `sys15-full-error`）全文换行，原 sys4 脱敏计数/截断提示保留。
+  - 读源矩阵：列宽固定，名称/路径/状态/原因均 `.sys15-trunc` + 原值 title；新增行内 `sys15-row-toggle-*`「全文/收起」，展开 `sys15-detail-*` 显示 `sys15-full-name/path/status/asof-*` 全文；错误摘要先 `redactError`，title 与全文均只含 `***` 与「已脱敏 N 处」，原值不上屏。
+  - CSS：`.sys15-trunc` 省略号、`.sys15-full` `white-space:normal;word-break:break-word`、`table-layout:fixed` 与各列百分比；三档无页面横溢。
+- DOM（临时 harness 已删；Vite 5487 / Chrome CDP 9287；截图 `docs/_artifacts/gov/shots/sys15-{1440,1280,375}.png`）：
+  - 1440/1280/375：`vw=bodySW=bodyCW=1440/1280/375`；3 行；截断元素 6 个；长名称 `clientWidth 314/276/139`、`scrollWidth 603`，省略生效。
+  - 展开服务行：全文元素 `display:block`、`white-space:normal`；错误摘要显示 `***`，`已脱敏 3 处`，无 `long-secret`；请求 **4**。
+  - 展开矩阵 + runtime 行：全文状态含 `失败`、`***`、`已脱敏 2 处`，无 `matrix-secret`；请求 **4**（展开/收起零新增请求）。
+  - 375：页面 375，服务表仍只在自身容器内滚动（680/343），详情全文在表宽内换行。
+- 验证：`npx vitest run src/modules/health` → **5 files / 39 passed**；全量 `npx vitest run` → **145 files / 1807 passed**；`tsc -b . --noEmit` → exit 2，20 行均为既有基线，本域 0。
+- 边界：仅 `web/src/modules/health/**`（实现/测试/CSS）+ 本 DONE + 3 张截图；共 10 文件；未碰 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未 install/force/amend/--no-verify。

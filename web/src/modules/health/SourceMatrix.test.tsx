@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act } from "react";
+import { readFileSync } from "node:fs";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -270,6 +271,59 @@ describe("source matrix", () => {
     expect(lines[1].startsWith(`${firstLabel} | `)).toBe(true);
     expect(lines[4].startsWith(`${lastLabel} | `)).toBe(true);
     expect(api.fetchJSON).toHaveBeenCalledTimes(4);
+  });
+
+  it("truncates long matrix values with full titles and reveals them in the row detail without another request", async () => {
+    api.fetchJSON.mockImplementation((url: string) => {
+      if (url.includes("hermes-summary")) {
+        return Promise.reject(new ApiError("token=matrix-secret-very-long upstream failure with a long diagnostic suffix", {
+          status: 500,
+          body: "",
+          url,
+          requestId: "req-runtime-long",
+        }));
+      }
+      return answer(url);
+    });
+    await render();
+    await act(async () => { (q("sys6-toggle") as HTMLButtonElement).click(); });
+    await waitFor(() => q("sys6-status-health")?.textContent?.includes("成功") ?? false, "health row");
+    expect(api.fetchJSON).toHaveBeenCalledTimes(4);
+
+    const path = q("sys15-trunc-path-health") as HTMLElement;
+    expect(path.className).toContain("sys15-trunc");
+    expect(path.textContent).toBe("/agent-api/api/health");
+    expect(q("sys6-path-health")?.getAttribute("title")).toBe("/agent-api/api/health");
+    expect(q("sys6-status-runtime")?.getAttribute("title")).toContain("***");
+    expect(q("sys6-status-runtime")?.getAttribute("title")).not.toContain("matrix-secret");
+
+    await act(async () => { (q("sys15-row-toggle-health") as HTMLButtonElement).click(); });
+    expect(q("sys15-detail-health")).not.toBeNull();
+    const fullPath = q("sys15-full-path-health") as HTMLElement;
+    expect(fullPath.className).toContain("sys15-full");
+    expect(fullPath.textContent).toBe("/agent-api/api/health");
+    expect(q("sys15-full-name-health")?.textContent).toBe("系统健康清单");
+    expect(api.fetchJSON).toHaveBeenCalledTimes(4);
+
+    await act(async () => { (q("sys15-row-toggle-runtime") as HTMLButtonElement).click(); });
+    expect(q("sys15-detail-runtime")).not.toBeNull();
+    expect(q("sys15-full-status-runtime")?.textContent).toContain("失败");
+    expect(q("sys15-full-status-runtime")?.textContent).toContain("***");
+    expect(q("sys15-full-status-runtime")?.textContent).not.toContain("matrix-secret");
+    expect(q("sys15-redacted-runtime")?.textContent).toContain("已脱敏 1 处");
+    expect(api.fetchJSON).toHaveBeenCalledTimes(4);
+  });
+
+  it("ships truncation and full-value CSS and keeps the table layout fixed", () => {
+    const css = readFileSync(`${process.cwd()}/src/modules/health/health.css`, "utf8");
+    expect(css).toContain(".sys15-trunc");
+    expect(css).toContain("text-overflow: ellipsis");
+    expect(css).toContain("white-space: nowrap");
+    expect(css).toContain(".sys15-full");
+    expect(css).toContain("white-space: normal");
+    expect(css).toContain("word-break: break-word");
+    expect(css).toContain(".sys3-table,");
+    expect(css).toContain("table-layout: fixed");
   });
 
   it("shows preview rows without issuing a read when a forced state is active", async () => {

@@ -239,6 +239,48 @@ describe("SystemHealthSurface row detail", () => {
     expect(container.querySelector("[data-testid='sys4-detail-runtime'] [data-testid='sys4-error']")?.getAttribute("title")).toContain("没有给出最近一次错误摘要");
   });
 
+  it("truncates long list values with the full title and shows the full value in the expanded row", async () => {
+    const longName = "控制台服务（BFF）生产环境主接入网关与健康探针聚合节点";
+    const longVersion = "2026.11.20-build-very-long-commit-abcdef1234567890";
+    api.fetchJSON.mockResolvedValue({
+      ok: true,
+      asOf: "2026-11-19T15:17:09Z",
+      sources: [
+        {
+          id: "long",
+          name: longName,
+          state: "ok",
+          version: longVersion,
+          lastError: "token=long-secret request failed",
+        },
+      ],
+    });
+    await render();
+    await waitFor(() => !!container.querySelector("[data-testid='sys3-table']"), "table");
+
+    const name = container.querySelector<HTMLElement>("[data-testid='sys15-trunc-name']")!;
+    expect(name.className).toContain("sys15-trunc");
+    expect(name.textContent).toBe(longName);
+    expect(name.closest("[data-testid='sys3-name']")?.getAttribute("title")).toBe(longName);
+    const version = container.querySelector<HTMLElement>("[data-testid='sys15-trunc-version']")!;
+    expect(version.className).toContain("sys15-trunc");
+    expect(version.textContent).toBe(longVersion);
+    expect(version.closest("[data-testid='sys3-version']")?.getAttribute("title")).toBe(longVersion);
+
+    await act(async () => { (container.querySelector("[data-testid='sys3-row-long']") as HTMLElement).click(); });
+    const fullService = container.querySelector<HTMLElement>("[data-testid='sys15-full-service']")!;
+    expect(fullService.className).toContain("sys15-full");
+    expect(fullService.textContent).toBe(longName);
+    expect(container.querySelector<HTMLElement>("[data-testid='sys15-full-endpoint']")?.className).toContain("sys15-full");
+    expect(container.querySelector("[data-testid='sys15-full-endpoint']")?.textContent).toBe("/agent-api/api/health");
+    const error = container.querySelector<HTMLElement>("[data-testid='sys15-full-error']")!;
+    expect(error.className).toContain("sys15-full");
+    expect(error.textContent).toContain("***");
+    expect(error.textContent).not.toContain("long-secret");
+    expect(container.querySelector("[data-testid='sys4-redacted']")?.textContent).toContain("已脱敏 1 处");
+    expect(api.fetchJSON).toHaveBeenCalledTimes(1);
+  });
+
   it("opens with Enter, closes with Escape and leaves the URL untouched", async () => {
     api.fetchJSON.mockResolvedValue(DETAIL);
     await render();

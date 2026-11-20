@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Card, CardContent } from "@nous-research/ui";
+import { redactError } from "./systemHealth";
 import {
   SOURCE_STATUS_LABEL as STATUS_LABEL,
   SYS6_GAP,
@@ -68,6 +69,7 @@ function SortButton({ sort, sortKey, onSort }: { sort: SourceSortState; sortKey:
 export function SourceMatrix() {
   const { rows, expanded } = useSourceMatrix();
   const [sort, setSort] = useState<SourceSortState>(() => readSourceSort(window.location.search, window.location.hash));
+  const [openRow, setOpenRow] = useState<string | null>(null);
   useEffect(() => {
     const sync = () => setSort(readSourceSort(window.location.search, window.location.hash));
     window.addEventListener("popstate", sync);
@@ -197,53 +199,106 @@ export function SourceMatrix() {
               <tbody>
                 {sortedRows.map((row) => {
                   const rid = row.status === "failed" ? row.requestId : null;
+                  const detail = row.statusDetail ? redactError(row.statusDetail) : null;
+                  const statusTitle = row.status === "unwired"
+                    ? SYS6_GAP
+                    : [row.statusReason, detail?.text, detail?.count ? `已脱敏 ${detail.count} 处` : null]
+                      .filter(Boolean)
+                      .join(" · ") || undefined;
+                  const open = openRow === row.id;
                   return (
-                    <tr key={row.id} data-testid={`sys6-row-${row.id}`} data-status={row.status}>
-                      <td>
-                        <span data-testid={`sys6-name-${row.id}`}>{row.label}</span>
-                        {row.href ? (
-                          <a
-                            className="sys9-src-link"
-                            href={row.href}
-                            data-testid={`sys9-src-link-${row.id}`}
-                          >
-                            打开对应页面
-                          </a>
-                        ) : (
-                          <span
-                            className="sys9-src-nolink"
-                            data-testid={`sys9-src-nolink-${row.id}`}
-                            title="这个探针只在本页内运行，没有独立页面可跳转；不造死链。"
-                          >
-                            该读口无对应页面
+                    <Fragment key={row.id}>
+                      <tr data-testid={`sys6-row-${row.id}`} data-status={row.status}>
+                        <td>
+                          <span className="sys15-trunc" data-testid={`sys6-name-${row.id}`} data-sys15="trunc" title={row.label}>
+                            {row.label}
                           </span>
-                        )}
-                      </td>
-                      <td data-testid={`sys6-path-${row.id}`} title={row.path}>{row.path}</td>
-                      <td
-                        data-testid={`sys6-status-${row.id}`}
-                        title={row.status === "unwired" ? SYS6_GAP : row.statusDetail ?? undefined}
-                      >
-                        <span className="sys6-status">{STATUS_LABEL[row.status]}</span>
-                        {row.statusReason ? <span className="sys6-reason">{row.statusReason}</span> : null}
-                        {row.status === "unwired" ? (
-                          <a className="sys6-apply" href="#/approvals" data-testid={`sys6-apply-${row.id}`}>去申请开通</a>
-                        ) : null}
-                        {rid ? <CopyRid id={rid} testid={`sys6-rid-${row.id}`} /> : null}
-                      </td>
-                      <td
-                        data-testid={`sys6-duration-${row.id}`}
-                        title={row.durationReason ?? undefined}
-                      >
-                        {row.durationMs === null ? "—" : `${row.durationMs} ms`}
-                      </td>
-                      <td
-                        data-testid={`sys6-asof-${row.id}`}
-                        title={asOfTitle(row)}
-                      >
-                        <span data-testid={`sys8-asof-${row.id}`}>{row.asOf ?? "—"}</span>
-                      </td>
-                    </tr>
+                          {row.href ? (
+                            <a
+                              className="sys9-src-link"
+                              href={row.href}
+                              data-testid={`sys9-src-link-${row.id}`}
+                            >
+                              打开对应页面
+                            </a>
+                          ) : (
+                            <span
+                              className="sys9-src-nolink"
+                              data-testid={`sys9-src-nolink-${row.id}`}
+                              title="这个探针只在本页内运行，没有独立页面可跳转；不造死链。"
+                            >
+                              该读口无对应页面
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            className="sys15-row-toggle"
+                            data-testid={`sys15-row-toggle-${row.id}`}
+                            aria-expanded={open}
+                            onClick={() => setOpenRow(open ? null : row.id)}
+                          >
+                            {open ? "收起" : "全文"}
+                          </button>
+                        </td>
+                        <td data-testid={`sys6-path-${row.id}`} title={row.path}>
+                          <span className="sys15-trunc" data-testid={`sys15-trunc-path-${row.id}`} data-sys15="trunc">{row.path}</span>
+                        </td>
+                        <td data-testid={`sys6-status-${row.id}`} title={statusTitle}>
+                          <span className="sys6-status sys15-trunc" data-testid={`sys15-trunc-status-${row.id}`}>{STATUS_LABEL[row.status]}</span>
+                          {row.statusReason ? (
+                            <span className="sys6-reason sys15-trunc" data-testid={`sys15-trunc-reason-${row.id}`}>{row.statusReason}</span>
+                          ) : null}
+                          {row.status === "unwired" ? (
+                            <a className="sys6-apply" href="#/approvals" data-testid={`sys6-apply-${row.id}`}>去申请开通</a>
+                          ) : null}
+                          {rid ? <CopyRid id={rid} testid={`sys6-rid-${row.id}`} /> : null}
+                        </td>
+                        <td
+                          data-testid={`sys6-duration-${row.id}`}
+                          title={row.durationReason ?? undefined}
+                        >
+                          {row.durationMs === null ? "—" : `${row.durationMs} ms`}
+                        </td>
+                        <td
+                          data-testid={`sys6-asof-${row.id}`}
+                          title={asOfTitle(row)}
+                        >
+                          <span data-testid={`sys8-asof-${row.id}`}>{row.asOf ?? "—"}</span>
+                        </td>
+                      </tr>
+                      {open ? (
+                        <tr data-testid={`sys15-detail-${row.id}`} className="sys15-detail-row">
+                          <td colSpan={5}>
+                            <dl className="sys4-grid sys15-matrix-detail">
+                              <div className="sys4-field">
+                                <dt>口径名</dt>
+                                <dd className="sys15-full" data-testid={`sys15-full-name-${row.id}`}>{row.label}</dd>
+                              </div>
+                              <div className="sys4-field">
+                                <dt>实际请求路径</dt>
+                                <dd className="sys15-full" data-testid={`sys15-full-path-${row.id}`}>{row.path}</dd>
+                              </div>
+                              <div className="sys4-field sys4-wide">
+                                <dt>状态与原因</dt>
+                                <dd className="sys15-full" data-testid={`sys15-full-status-${row.id}`}>
+                                  {STATUS_LABEL[row.status]}
+                                  {row.statusReason ? ` · ${row.statusReason}` : ""}
+                                  {detail ? ` · ${detail.text}` : ""}
+                                  {detail && detail.count > 0 ? (
+                                    <span className="sys4-redacted" data-testid={`sys15-redacted-${row.id}`}>已脱敏 {detail.count} 处</span>
+                                  ) : null}
+                                  {detail?.truncated ? <span className="sys4-redacted">摘要已截断</span> : null}
+                                </dd>
+                              </div>
+                              <div className="sys4-field">
+                                <dt>采集时刻</dt>
+                                <dd className="sys15-full" data-testid={`sys15-full-asof-${row.id}`}>{row.asOf ?? "—"}</dd>
+                              </div>
+                            </dl>
+                          </td>
+                        </tr>
+                      ) : null}
+                    </Fragment>
                   );
                 })}
               </tbody>
