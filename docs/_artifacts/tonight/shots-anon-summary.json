@@ -603,7 +603,7 @@
     {
       "route": "#/work?tab=board&view=cron",
       "viewport": "375",
-      "chars": 319,
+      "chars": 299,
       "hasMainEl": true
     },
     {
@@ -644,7 +644,7 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "bbb13340",
+  "headHash": "d7965c2a",
   "exitCode": 0,
   "entry": "assets/index--5QIE39w.js",
   "entrySha256": "9be3cba8ec181eca5316e34f41d7074d638d0054277982177ea4bd490a6827f6",
