@@ -1425,3 +1425,124 @@ describe("runs filter source", () => {
     expect(fallback.readOnly).toBe(true);
   });
 });
+
+/* ── column sorting (client-side) ──────────────────────────────────── */
+describe("runs list column sorting", () => {
+  const S_EARLY = {
+    runId: "rn_01M7822SORT0000000001",
+    status: "failed",
+    costStatus: "upstream",
+    costUsd: 0.5,
+    startedAt: "2026-11-18T02:00:00Z",
+    endedAt: "2026-11-18T04:00:00Z",
+    employeeId: "emp_aaaabbbbcccc",
+  };
+  const S_LATE = {
+    runId: "rn_01M7822SORT0000000002",
+    status: "completed",
+    costStatus: "upstream",
+    costUsd: 2,
+    startedAt: "2026-11-18T03:00:00Z",
+    endedAt: "2026-11-18T03:10:00Z",
+    employeeId: "emp_ddddeeeeffff",
+  };
+  const S_OPEN = {
+    runId: "rn_01M7822SORT0000000003",
+    status: "running",
+    costStatus: "unknown",
+    costUsd: null,
+    startedAt: "2026-11-18T04:00:00Z",
+  };
+  const ALL = [S_EARLY, S_LATE, S_OPEN];
+
+  const sortBtn = (key: string): HTMLButtonElement =>
+    document.querySelector(`[data-testid='run-sort-${key}']`) as HTMLButtonElement;
+  const header = (key: string): HTMLElement =>
+    sortBtn(key).parentElement as HTMLElement;
+  const codesInBody = (): string[] =>
+    Array.from(document.querySelectorAll("[data-testid^='run5-row-'][data-status]"))
+      .map((el) => el.querySelector("[data-testid$='-code']")?.textContent ?? "");
+
+  it("sorts inside the loaded page and writes rsort/rdir without dropping the filters", async () => {
+    api.fetchJSON.mockImplementation(okList(ALL));
+    await render("/runs?window=30d&status=failed&employee=emp_aaaabbbbcccc", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => rowNodes() === 3, "three rows");
+    expect(sortBtn("started").tagName).toBe("BUTTON");
+    expect((sortBtn("started") as HTMLButtonElement).type).toBe("button");
+    expect(header("started").getAttribute("aria-sort")).toBe("none");
+    const calls = api.fetchJSON.mock.calls.length;
+
+    await act(async () => {
+      sortBtn("started").click();
+    });
+    expect(header("started").getAttribute("aria-sort")).toBe("descending");
+    expect(header("status").getAttribute("aria-sort")).toBe("none");
+    const loc = document.querySelector("[data-testid='probe-location']")?.textContent ?? "";
+    expect(loc).toContain("rsort=started");
+    expect(loc).toContain("rdir=desc");
+    expect(loc).toContain("window=30d");
+    expect(loc).toContain("status=failed");
+    expect(loc).toContain("employee=emp_aaaabbbbcccc");
+    expect(codesInBody()[0]).toContain("0003");
+
+    await act(async () => {
+      sortBtn("started").click();
+    });
+    expect(header("started").getAttribute("aria-sort")).toBe("ascending");
+    expect(codesInBody()[0]).toContain("0001");
+    expect(api.fetchJSON.mock.calls.length).toBe(calls);
+    expect(document.querySelector("[data-testid='run-sort-scope-note']")?.textContent).toContain(
+      "仅在当前已加载 3 行内排序",
+    );
+  });
+
+  it("keeps rows without a reading at the bottom in both directions", async () => {
+    api.fetchJSON.mockImplementation(okList(ALL));
+    await render("/runs?rsort=cost&rdir=asc");
+    await waitFor(() => rowNodes() === 3, "three rows");
+    expect(codesInBody().at(-1)).toContain("0003");
+    await act(async () => {
+      sortBtn("cost").click();
+    });
+    expect(header("cost").getAttribute("aria-sort")).toBe("descending");
+    expect(codesInBody()[0]).toContain("0002");
+    expect(codesInBody().at(-1)).toContain("0003");
+  });
+
+  it("has no sorting control outside the ready phase", async () => {
+    api.fetchJSON.mockImplementation(() =>
+      Promise.reject(new ApiError("down", { status: 500, body: "", url: "/api/runs", requestId: "req-sort" })),
+    );
+    await render("/runs");
+    await waitFor(() => document.querySelector("[data-testid='run-state']")?.getAttribute("data-phase") === "error", "error state");
+    expect(document.querySelector("[data-testid='run-sort-started']")).toBeNull();
+    expect(document.querySelector("[data-testid='run-sort-scope-note']")).toBeNull();
+  });
+
+  it("keeps copy and CSV in the same order as the sorted table", async () => {
+    api.fetchJSON.mockImplementation(okList(ALL));
+    await render("/runs?rsort=cost&rdir=desc");
+    await waitFor(() => rowNodes() === 3, "three rows");
+    const body = codesInBody();
+    await act(async () => {
+      (document.querySelector("[data-testid='run-list-copy']") as HTMLButtonElement).click();
+    });
+    const copied = clip.copyTextToClipboard.mock.calls.at(-1)?.[0] ?? "";
+    const copyLines = copied.split("\n").slice(1).map((line: string) => line.split(",")[0]);
+    expect(copyLines).toEqual(body);
+    const blobs: Blob[] = [];
+    const original = URL.createObjectURL;
+    (URL as unknown as { createObjectURL: (b: Blob) => string }).createObjectURL = (blob: Blob) => {
+      blobs.push(blob);
+      return "blob:sort";
+    };
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    await act(async () => {
+      (document.querySelector("[data-testid='run-list-export']") as HTMLButtonElement).click();
+    });
+    const csv = (await blobs[0].text()).replace(/^\uFEFF/, "").split("\n");
+    expect(csv.slice(1).map((line) => line.split(",")[0])).toEqual(body);
+    clickSpy.mockRestore();
+    URL.createObjectURL = original;
+  });
+});

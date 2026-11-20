@@ -71,10 +71,16 @@ import {
   costReason,
   costState,
   costText,
+  defaultRunDir,
   elapsedMinute,
   employeeLabel,
   listActionGate,
+  parseRunDir,
+  parseRunSort,
+  sortRunRows,
   type ListGate,
+  type RunSortDir,
+  type RunSortKey,
   eventLabel,
   failureSummary,
   isToolEvent,
@@ -359,14 +365,61 @@ function RunListCopy({
   );
 }
 
+/**
+ * A sortable column header: the wrapper carries aria-sort, the control is a
+ * real button so Enter and Space work without extra key handling.
+ */
+function SortHeader({
+  label,
+  sortKey,
+  active,
+  dir,
+  onSort,
+  disabled,
+}: {
+  label: string;
+  sortKey: RunSortKey;
+  active: RunSortKey | null;
+  dir: RunSortDir;
+  onSort: (key: RunSortKey) => void;
+  disabled: boolean;
+}): ReactNode {
+  const isActive = active === sortKey;
+  const ariaSort = isActive ? (dir === "asc" ? "ascending" : "descending") : "none";
+  return (
+    <span role="columnheader" aria-sort={ariaSort} className="min-w-0">
+      <button
+        type="button"
+        data-testid={`run-sort-${sortKey}`}
+        className="min-w-0 break-words text-left uppercase tracking-wide underline-offset-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-60"
+        aria-label={`按${label}排序${isActive ? (dir === "asc" ? "（当前升序）" : "（当前降序）") : ""}`}
+        title={disabled ? "这一页还没有读出行，暂时不能排序。" : isActive ? "再点一次换方向；只在已加载的行内排序。" : "在这一页已加载的行内排序。"}
+        disabled={disabled}
+        onClick={() => onSort(sortKey)}
+      >
+        {label}
+        {isActive ? <span aria-hidden="true">{dir === "asc" ? " ↑" : " ↓"}</span> : null}
+      </button>
+    </span>
+  );
+}
+
 function ListRows({
   rows,
   names,
   hrefOf,
   previewGate,
+  sortKey,
+  sortDir,
+  onSort,
+  sortDisabled,
 }: {
   rows: RunRow[];
   names: Map<string, string>;
+  sortKey: RunSortKey | null;
+  sortDir: RunSortDir;
+  onSort: (key: RunSortKey) => void;
+  sortDisabled: boolean;
   /**
    * R29: a row is a real anchor whose href keeps the path shape QA counts
    * (`a[href*="/runs/"]`) without inventing a route. The address is
@@ -387,7 +440,12 @@ function ListRows({
     <Card className="min-w-0 border-border bg-card" data-testid="run5-table">
       <CardContent className="p-0">
         <div className={`hidden ${GRID} border-b border-border px-4 py-2 text-xs uppercase tracking-wide text-muted-foreground sm:grid`}>
-          <span>运行</span><span>状态</span><span>开始</span><span>耗时</span><span>成本（美元）</span><span>负责人</span><span>失败原因</span><span aria-hidden="true"></span>
+          <span>运行</span>
+          <SortHeader label="状态" sortKey="status" active={sortKey} dir={sortDir} onSort={onSort} disabled={sortDisabled} />
+          <SortHeader label="开始" sortKey="started" active={sortKey} dir={sortDir} onSort={onSort} disabled={sortDisabled} />
+          <SortHeader label="耗时" sortKey="elapsed" active={sortKey} dir={sortDir} onSort={onSort} disabled={sortDisabled} />
+          <SortHeader label="成本（美元）" sortKey="cost" active={sortKey} dir={sortDir} onSort={onSort} disabled={sortDisabled} />
+          <span>负责人</span><span>失败原因</span><span aria-hidden="true"></span>
         </div>
         <ul className="divide-y divide-border">
           {rows.map((row, index) => {
@@ -684,6 +742,24 @@ export function RunsModulePage() {
 
   const data = useRunsData(forced, { status, sinceKey, employeeId: employee });
   const { phase, rows, cursor, answeredBy, unreadable, failure, forced: isForced } = data;
+
+  // Sorting is local: the list route accepts no sort parameter (see runs.ts
+  // askListRoute), so this only reorders the rows already on screen.
+  const rsort = parseRunSort(params.get("rsort"));
+  const rdir = parseRunDir(params.get("rdir"), rsort);
+  const sortedRows = useMemo(
+    () => (rsort ? sortRunRows(rows, rsort, rdir) : rows),
+    [rows, rsort, rdir],
+  );
+  const chooseSort = (key: RunSortKey) => {
+    // One write for both keys: two setParam calls would both start from the
+    // same params snapshot and the second would drop the first.
+    const next = new URLSearchParams(params);
+    const dir = rsort === key ? (rdir === "asc" ? "desc" : "asc") : defaultRunDir(key);
+    next.set("rsort", key);
+    next.set("rdir", dir);
+    setParams(next, { replace: true, state: locationState ?? null });
+  };
 
   const [readTick, setReadTick] = useState(0);
   const detail = useRunDetail(selected, readTick);
@@ -1028,10 +1104,26 @@ export function RunsModulePage() {
       {phase === "denied" ? (
         <DeniedPanel requestId={failure?.requestId ?? null} fixture={forced ?? undefined} />
       ) : null}
-      {phase === "ready" ? <ListRows rows={rows} names={names} hrefOf={hrefOf} previewGate={listGate.preview} /> : null}
+      {phase === "ready" ? (
+        <ListRows
+          rows={sortedRows}
+          names={names}
+          hrefOf={hrefOf}
+          previewGate={listGate.preview}
+          sortKey={rsort}
+          sortDir={rdir}
+          onSort={chooseSort}
+          sortDisabled={false}
+        />
+      ) : null}
+      {rsort !== null && phase === "ready" ? (
+        <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="run-sort-scope-note">
+          仅在当前已加载 {sortedRows.length} 行内排序；服务端读口不接受排序参数，点表头不会重新读取。
+        </p>
+      ) : null}
       {phase !== "loading" ? (
         <RunListCopy
-          rows={rows}
+          rows={sortedRows}
           names={names}
           copyGate={listGate.copy}
           exportGate={listGate.export}

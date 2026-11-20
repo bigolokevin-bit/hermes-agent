@@ -227,3 +227,13 @@
 - 非法值不静默改写地址：notes 说明回落口径（时间范围按近 7 天、状态按全部、预览参数按正常读取），select 与请求用回落值；`run-source-path` 只输出有效值（固定顺序 window→status→employee→state），所以地址里的 `window=zz` 不会写进分享串。
 - 5 例：全参路径与复制同串 + 实发 URL 带 status/employeeId；无参；三非法值三条 notes 且地址保留原文；切 24h 只 +1 请求；剪贴板拒走只读回退。
 - 验证：runs 3 files / 104 passed；全量 151 files / 2050 passed；tsc 本域 0；eslint 本域 exit 0；build exit 0，chunk `RunsModulePage-*.js` 内 `run-source-path`=1（entry 0）。未测：真实浏览器 375 折行与 select 键盘操作。
+
+## 列表列排序（runs sort，2026-11-20）
+
+- 读口不吃排序（实证）：`runs.ts` 的 `askListRoute` 对 `/api/runs` 只拼 `since&limit=30[&status][&employeeId][&cursor]`、对 `/api/run-stats` 只送 `from/to`，客户端从不发送 `sort/order/orderBy`；活体三组探测（无参 / `&sort=status&order=asc` / `&orderBy=started&order=desc`）均 HTTP 401 `console.unauthenticated`（rid 5e3c1449 / f331cb0e / 8ae397c3，cookie 已过期，鉴权层先拦），无法比较服务端顺序。→ 采用**本地排序**。
+- 四列表头（状态/开始/耗时/成本）为原生 `button[type=button]`（`run-sort-status|-started|-elapsed|-cost`），包在 `role="columnheader"` 且带 `aria-sort` 三态（none/ascending/descending）的容器里；Enter/Space 由原生按钮承担；`focus-visible` 有外描边。首次点按：状态升序、其余降序；同列再点翻转方向。
+- 排序落 `?rsort=&rdir=`（单次 `setParams` 同时写两键），`window/status/employee/state` 四参保留；粘链复现。表体不渲染（加载/空/错/无权）时无排序控件（口径说明，非 disabled 按钮）。
+- 缺值恒排末、不乘方向：无状态、无开始时间、无结束时间（耗时为 null）、成本非 known 的行在升/降序都沉底，不当 0 参与比较；相等值保持原序（稳定）。
+- 行序同源：`sortedRows` 同时喂表体、复制清单与 CSV 导出，三面首列顺序一致。
+- 点表头零新请求（`fetchJSON` 计数不变）；`run-sort-scope-note` 写明「仅在当前已加载 N 行内排序；服务端读口不接受排序参数，点表头不会重新读取。」。
+- 验证：runs 3 files / 108 passed（基线 104）；全量 151 files / 2054 passed（基线 2050）；tsc 本域 0；eslint 本域 exit 0；build exit 0（chunk `RunsModulePage-*.js` 内 `run-sort-status`=1，entry 0）。未测：真实浏览器 375（表头在窄屏隐藏）与键盘 Tab 实机走查。

@@ -949,3 +949,68 @@ export function runSource(input: RunSourceInput): RunSource {
     notes,
   };
 }
+
+/* ── column sorting (client-side; the read route takes no sort key) ── */
+
+export type RunSortKey = "status" | "started" | "elapsed" | "cost";
+export type RunSortDir = "asc" | "desc";
+
+export const RUN_SORT_KEYS: readonly RunSortKey[] = ["status", "started", "elapsed", "cost"];
+
+export function parseRunSort(raw: string | null | undefined): RunSortKey | null {
+  return RUN_SORT_KEYS.includes(raw as RunSortKey) ? (raw as RunSortKey) : null;
+}
+
+export function parseRunDir(raw: string | null | undefined, key: RunSortKey | null): RunSortDir {
+  if (raw === "asc" || raw === "desc") return raw;
+  return key === "status" ? "asc" : "desc";
+}
+
+/** The direction a first click on a column starts with. */
+export function defaultRunDir(key: RunSortKey): RunSortDir {
+  return key === "status" ? "asc" : "desc";
+}
+
+function sortValue(row: RunRow, key: RunSortKey): number | string | null {
+  switch (key) {
+    case "status":
+      return row.status ? statusLabel(row.status) : null;
+    case "started": {
+      const ms = row.startedAt ? Date.parse(row.startedAt) : Number.NaN;
+      return Number.isNaN(ms) ? null : ms;
+    }
+    case "elapsed": {
+      const start = row.startedAt ? Date.parse(row.startedAt) : Number.NaN;
+      const end = row.endedAt ? Date.parse(row.endedAt) : Number.NaN;
+      if (Number.isNaN(start) || Number.isNaN(end)) return null;
+      return end - start;
+    }
+    case "cost":
+      return costState(row) === "known" && typeof row.costUsd === "number" && Number.isFinite(row.costUsd)
+        ? row.costUsd
+        : null;
+    default:
+      return null;
+  }
+}
+
+/**
+ * Sorts the rows already on screen. Missing readings sink to the bottom in
+ * both directions: a row without a start time is not "before everything".
+ */
+export function sortRunRows(rows: RunRow[], key: RunSortKey, dir: RunSortDir): RunRow[] {
+  const sign = dir === "asc" ? 1 : -1;
+  return rows
+    .map((row, index) => ({ row, index, value: sortValue(row, key) }))
+    .sort((a, b) => {
+      if (a.value === null && b.value === null) return a.index - b.index;
+      if (a.value === null) return 1;
+      if (b.value === null) return -1;
+      const order =
+        typeof a.value === "number" && typeof b.value === "number"
+          ? a.value - b.value
+          : String(a.value).localeCompare(String(b.value), "zh-Hans");
+      return order === 0 ? a.index - b.index : order * sign;
+    })
+    .map((entry) => entry.row);
+}
