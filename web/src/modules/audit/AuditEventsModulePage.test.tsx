@@ -552,16 +552,26 @@ describe("the filters change the request (aud01)", () => {
     }
   });
 
-  it("the operator filter is disabled-by-design with its GAP number, not a dead control", async () => {
+  it("the operator filter is a real control whose limits ride the title", async () => {
     await mount();
     const node = document.querySelector<HTMLSelectElement>("[data-testid='aud01-filter-operator']")!;
-    expect(node.disabled).toBe(true);
-    expect(text()).toContain("未接入");
+    // aud9: the read口 answers actorId (live probe #11: 200, 50/50 rows), so
+    // the control is wired instead of 未接入. What it cannot do — name people —
+    // is stated in words under it and in the title, never by a dead select.
+    expect(node.disabled).toBe(false);
+    const options = [...node.options].map((option) => option.value);
+    expect(options[0]).toBe("");
+    expect(options).toContain("user:2f3a4b5c6d7e8f90");
+    // the option text is the human label; the handle stays in the value
+    const labels = [...node.options].map((option) => option.text);
+    expect(labels.join(" ")).toContain("李思");
+    expect(node.selectedOptions[0]!.text).toBe("全部操作者");
     expect(text()).not.toContain("GAP-06");
-    // the GAP number rides the title only — and the title states the REAL
-    // reason since the probe: actorId exists, the named-operator picker does not
     const titled = document.querySelector("[title*='GAP-06']")!;
     expect(titled.getAttribute("title")).toContain("actorId");
+    // no filter chosen yet → no scope note, no handle on the wire
+    expect(document.querySelector("[data-testid='aud9-scope-note']")).toBeNull();
+    expect(lastUrl()).not.toMatch(/actorId=/);
   });
 
   it("a live-sampled record reads in human words, codes and handles stay hidden", async () => {
@@ -1213,5 +1223,225 @@ describe("aud8 - cross-page evidence continuity", () => {
     await waitFor(() => !locationText().includes("cursor="), "paging stack dropped with the window");
     expect(locationText()).not.toContain("preview=");
     expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 1 页");
+  });
+});
+
+/**
+ * aud9 — actor 联动筛选的组合、切条件重取恰一次（请求计数）、`?event=<id>` 深链
+ * 定位展开与关闭保态、事件不存在的诚实文案 + 可复制 rid。
+ * 断言的是地址栏与服务回答：筛选值上线（actorId），本地匹配写明范围，
+ * 没有一次重复请求风暴，也没有一句服务没说过的话。
+ */
+describe("aud9 - actor filter, request count and the event deep link", () => {
+  async function mountProbed(entry: string): Promise<void> {
+    api.fetchJSON.mockReset();
+    answer(EVENTS);
+    await render(
+      entry,
+      <>
+        <AuditEventsModulePage />
+        <LocationProbe />
+      </>,
+    );
+    await waitFor(() => !skeleton(), "first page settled");
+  }
+
+  /** Only the list reads, so a detail or verify leg never moves the count. */
+  const listReads = (): string[] => urls().filter((u) => /^\/agent-api\/api\/audit\?/.test(u));
+
+  /** Let the pane settle, then report how many reads the last action caused. */
+  async function readsAfter(action: () => Promise<void> | void): Promise<number> {
+    const before = listReads().length;
+    await action();
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 40));
+    });
+    return listReads().length - before;
+  }
+
+  it("choosing an operator writes ?actor=, goes on the wire, and asks exactly once", async () => {
+    await mountProbed("/audit?window=7d");
+    const first = lastUrl();
+    const asked = await readsAfter(() => choose("aud01-filter-operator", "user:2f3a4b5c6d7e8f90"));
+    expect(asked).toBe(1);
+    expect(locationText()).toContain("actor=user%3A2f3a4b5c6d7e8f90");
+    expect(lastUrl()).toContain("actorId=user%3A2f3a4b5c6d7e8f90");
+    expect(lastUrl()).not.toBe(first);
+    // the scope of the filter is stated in words, not implied
+    const note = document.querySelector("[data-testid='aud9-scope-note']")!.textContent ?? "";
+    expect(note).toContain("服务端");
+    expect(note).toContain("时间窗");
+    expect(document.querySelector("[data-testid='aud8-actor-chip']")).not.toBeNull();
+  });
+
+  it("the operator choice survives 详情→返回列表 with the paging stack", async () => {
+    await mountProbed("/audit?window=7d");
+    await choose("aud01-filter-operator", "employee:9f8e7d6c5b4a3f21");
+    await waitFor(() => locationText().includes("actor="), "actor written");
+    await act(async () => {
+      (document.querySelector("[data-testid='aud01-load-more']") as HTMLButtonElement).click();
+    });
+    await waitFor(() => urls().some((u) => u.includes("cursor=cur_page2")), "second page asked");
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud01-row-evt_8d2e3f4051627384'] button")?.click();
+    });
+    await waitFor(() => locationText().includes("detail="), "detail opened");
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud8-back-to-list']")?.click();
+    });
+    await waitFor(() => !locationText().includes("detail="), "back on the list");
+    expect(locationText()).toContain("actor=employee%3A9f8e7d6c5b4a3f21");
+    expect(locationText()).toContain("cursor=cur_page2");
+    expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 2 页");
+    expect(document.querySelector<HTMLInputElement>("[data-testid='aud01-filter-operator']")!.value).toBe(
+      "employee:9f8e7d6c5b4a3f21",
+    );
+  });
+
+  it("every filter, the page and the deep link live in one address that replays cold", async () => {
+    const entry =
+      "/audit?window=custom" +
+      "&from=2026-11-17T01%3A00%3A00.000Z&to=2026-11-17T02%3A30%3A00.000Z" +
+      "&type=task.created&actor=employee-api&resource=ap_1122334455667788" +
+      "&cursor=cur_page1&cursor=cur_page2&event=evt_7c1f2a3b4d5e6f70";
+    await mount(async (url) =>
+      String(url).startsWith("/agent-api/api/audit-detail") ? DETAIL : { items: EVENTS.items, total: 137 },
+    );
+    await render(entry, <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await waitFor(() => !skeleton(), "cold replay settled");
+    const asked = lastUrl();
+    expect(asked).toContain("action=task.created");
+    expect(asked).toContain("from=2026-11-17T01");
+    expect(asked).toContain("actorId=employee-api");
+    expect(asked).toContain("resourceId=ap_1122334455667788");
+    expect(asked).toContain("cursor=cur_page2");
+    expect(document.querySelector<HTMLInputElement>("[data-testid='aud01-filter-window']")!.value).toBe("custom");
+    expect(document.querySelector<HTMLInputElement>("[data-testid='aud01-filter-type']")!.value).toBe("task.created");
+    expect(document.querySelector<HTMLInputElement>("[data-testid='aud01-filter-operator']")!.value).toBe("employee-api");
+    expect(document.querySelector<HTMLInputElement>("[data-testid='aud8-filter-resource']")!.value).toBe("ap_1122334455667788");
+    expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 3 页");
+    expect(document.querySelector("[data-testid='aud2-total']")!.textContent).toBe("共 137 条");
+    // the deep link opened that row's preview on the cold load
+    expect(document.querySelector("[data-testid='aud6-preview-evt_7c1f2a3b4d5e6f70']")).not.toBeNull();
+    expect(document.querySelector("[data-testid='aud9-deeplink-found']")).not.toBeNull();
+    expect(document.querySelector("[data-testid='aud9-scope-note']")!.textContent).toContain("本地匹配");
+  });
+
+  it("a resource choice matches locally, says so, and asks exactly once", async () => {
+    await mountProbed("/audit?window=7d");
+    const before = listReads().length;
+    await act(async () => {
+      const node = document.querySelector<HTMLSelectElement>("[data-testid='aud8-filter-resource']")!;
+      node.value = "ap_1122334455667788";
+      node.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await waitFor(() => locationText().includes("resource="), "resource written to the address");
+    expect(listReads().length).toBe(before + 1);
+    expect(document.querySelectorAll("[data-testid^='aud01-row-']")).toHaveLength(1);
+    expect(document.querySelector("[data-testid='aud5-export-count']")!.textContent).toBe("将导出 1 条");
+    const note = document.querySelector("[data-testid='aud9-scope-note']")!.textContent ?? "";
+    expect(note).toContain("本地匹配");
+    expect(note).toContain("2 条");
+    expect(note).toContain("1 条");
+    // the handle stays off the surface itself (the probe prints the address,
+    // so the assertion is scoped to the page, not to the whole document)
+    expect(document.querySelector("[data-testid='agent-v2-page-audit']")!.textContent).not.toContain("ap_1122334455667788");
+  });
+
+  it("a resource nothing on this page matches says so, and does not blame the service", async () => {
+    await mountProbed("/audit?window=7d&resource=no_such_thing_at_all");
+    await waitFor(() => !skeleton(), "settled");
+    const empty = document.querySelector("[data-testid='aud9-local-empty']");
+    expect(empty).not.toBeNull();
+    expect(empty!.textContent).toContain("本地匹配");
+    expect(document.querySelectorAll("[data-testid^='aud01-row-']")).toHaveLength(0);
+    // the ledger itself is not called empty: the service did answer two rows
+    expect(document.querySelector("[data-testid='aud01-empty']")).toBeNull();
+    expect(document.querySelector("[data-testid='aud9-scope-note']")!.textContent).toContain("筛出 0 条");
+  });
+
+  it("switching window, type, operator or page asks exactly once each", async () => {
+    await mountProbed("/audit?window=7d");
+    expect(await readsAfter(() => choose("aud01-filter-window", "30d"))).toBe(1);
+    expect(await readsAfter(() => choose("aud01-filter-type", "task.created"))).toBe(1);
+    expect(await readsAfter(() => choose("aud01-filter-operator", "user:2f3a4b5c6d7e8f90"))).toBe(1);
+    expect(await readsAfter(() => (document.querySelector("[data-testid='aud01-load-more']") as HTMLButtonElement).click())).toBe(1);
+    expect(await readsAfter(() => (document.querySelector("[data-testid='aud2-prev'] button") as HTMLButtonElement).click())).toBe(1);
+  });
+
+  it("opening a fold and closing the deep link ask nothing at all", async () => {
+    await mountProbed("/audit?window=7d&event=evt_7c1f2a3b4d5e6f70");
+    const before = listReads().length;
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud9-deeplink-close']")?.click();
+    });
+    expect(listReads().length).toBe(before);
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud6-toggle-evt_8d2e3f4051627384']")?.click();
+    });
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud01-cell-evt_8d2e3f4051627384-details']")?.click();
+    });
+    expect(listReads().length).toBe(before);
+    // and no existence check was ever needed: the row is right here
+    expect(urls().filter((u) => u.startsWith("/agent-api/api/audit-detail"))).toHaveLength(0);
+  });
+
+  it("?event= on a row of this page locates and opens it, and closing keeps the filters and page", async () => {
+    await mountProbed("/audit?window=24h&type=task.created&cursor=cur_page2&event=evt_8d2e3f4051627384");
+    expect(document.querySelector("[data-testid='aud9-deeplink-found']")).not.toBeNull();
+    expect(document.querySelector("[data-testid='aud6-preview-evt_8d2e3f4051627384']")).not.toBeNull();
+    expect(document.querySelector("[data-testid='aud01-row-evt_8d2e3f4051627384']")).not.toBeNull();
+    expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 2 页");
+    expect(document.querySelector("[data-aud9-deeplink='true']")).not.toBeNull();
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud9-deeplink-close']")?.click();
+    });
+    expect(locationText()).not.toContain("event=");
+    expect(locationText()).not.toContain("preview=");
+    expect(locationText()).toContain("window=24h");
+    expect(locationText()).toContain("type=task.created");
+    expect(locationText()).toContain("cursor=cur_page2");
+    expect(document.querySelector("[data-testid='aud6-preview-evt_8d2e3f4051627384']")).toBeNull();
+    expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 2 页");
+  });
+
+  it("?event= the service cannot answer reads 该事件不存在或已过期 with its own copyable rid", async () => {
+    const once = async (status: number): Promise<string> => {
+      api.fetchJSON.mockReset();
+      api.fetchJSON.mockImplementation(async (url: string) => {
+        if (String(url).startsWith("/agent-api/api/audit-detail")) {
+          throw new ApiError("gone", { status, body: '{"code":"console.unknown_event"}', url, requestId: "req-gone-01" });
+        }
+        return EVENTS;
+      });
+      await render("/audit?window=7d&event=evt_0000000000000000", <AuditEventsModulePage />);
+      await waitFor(() => document.querySelector("[data-testid='aud9-event-missing']") !== null, `missing ${status}`);
+      return document.querySelector("[data-testid='aud9-event-missing']")!.outerHTML;
+    };
+    const notFound = await once(404);
+    expect(notFound).toContain("该事件不存在或已过期");
+    expect(notFound).not.toContain("console.unknown_event");
+    expect(document.querySelector("[data-testid='aud9-event-rid']")!.textContent).toContain("req-gone-01");
+    expect(document.querySelector("[data-testid='aud9-event-rid-value']")).not.toBeNull();
+    expect(urls().filter((u) => u.startsWith("/agent-api/api/audit-detail")).length).toBe(1);
+    // 403 answers with the very same body: one sentence, one rid control
+    expect(await once(403)).toBe(notFound);
+  });
+
+  it("a deep link that fails as a plain error is not called 不存在", async () => {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url: string) => {
+      if (String(url).startsWith("/agent-api/api/audit-detail")) {
+        throw new ApiError("boom", { status: 500, body: "{}", url, requestId: "req-500" });
+      }
+      return EVENTS;
+    });
+    await render("/audit?window=7d&event=evt_0000000000000000", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud9-event-error']") !== null, "error leg");
+    expect(text()).not.toContain("该事件不存在或已过期");
   });
 });
