@@ -9,9 +9,9 @@
   },
   "violations": [],
   "ok": true,
-  "headHash": "78bf2ccd",
+  "headHash": "69c858af",
   "exitCode": 0,
-  "carriedFrom": "415e1869",
+  "carriedFrom": "78bf2ccd",
   "carried": true,
-  "stampNote": "wave-77 三笔全纯测试，entry sha 与 CSS 逐字节未变；本件未重跑，证据沿用 415e1869 代"
+  "stampNote": "wave-78 四笔全纯测试，entry sha 与 CSS 逐字节未变；本件未重跑，证据沿用 78bf2ccd 代"
 }
