@@ -31,7 +31,7 @@
  * `?state=` — every list/detail state below comes from a real read, so there is
  * no fixture badge to mistake for an answer.
  */
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { ArrowLeft, Download, ReceiptText, RefreshCw, ShieldCheck } from "lucide-react";
 
@@ -39,7 +39,7 @@ import { Button } from "@nous-research/ui/ui/components/button";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { Spinner } from "@nous-research/ui/ui/components/spinner";
 
-import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel, RequestIdLine, TechnicalDisclosure, VerifyUnavailablePanel } from "./states";
+import { DeniedPanel, EmptyPanel, ErrorPanel, FilterSummaryCopy, InlineFailure, LoadingPanel, RequestIdLine, TechnicalDisclosure, VerifyUnavailablePanel } from "./states";
 import { AuditEventDetailBody, AuditEventRowCard, VerifyResultBody, AuditRowPreview, AuditTypeSummary } from "./views";
 import RetentionModulePage from "./RetentionModulePage";
 import { useAuditDetail, useAuditList, useAuditVerify } from "./useAuditData";
@@ -48,6 +48,7 @@ import type { FailureCopy } from "./copy";
 import type { VerifyFailure } from "./copy";
 import { eventTypeChoices } from "./model";
 import type { ListFilters } from "./api";
+import { filterSummaryLineOf, hasFilterSummary } from "./filterSummary";
 import type { AuditRow } from "./model";
 import { downloadCsv, downloadText, exportName, filteredCsvText, filteredExportName } from "./csv";
 import {
@@ -237,6 +238,12 @@ export function AuditFilterBar({
           onChange={(event) => onEventTypeChange(event.target.value)}
         >
           <option value="">全部事件类型</option>
+          {eventType && !choices.some((item) => item.value === eventType) ? (
+            // audD: a bucket hands over the code it counted under, which may
+            // be one the sampled list never carried. The select must show it
+            // instead of pretending the filter is off.
+            <option value={eventType}>按地址带入的类型</option>
+          ) : null}
           {choices.map((item) => (
             <option key={item.value} value={item.value}>
               {item.label}
@@ -780,6 +787,48 @@ function AuditEventsSurface(): ReactNode {
     [locationState, params, setParams],
   );
 
+  /**
+   * audD: a bucket click is the type filter, so it goes through the SAME
+   * setter the 事件类型 dropdown uses — one key (`?type=`), one wire parameter
+   * (`action`), never two filters answering each other. Pressed again → 全部类型.
+   */
+  const pendingBucketFocus = useRef<string | null>(null);
+  // The answer to the pick has to arrive before the focus is handed back: the
+  // rows on screen are still the old ones until then, and the pressed button
+  // is replaced by the new distribution right after.
+  const bucketSettled = useRef(false);
+  const pickType = useCallback(
+    (code: string) => {
+      pendingBucketFocus.current = code;
+      bucketSettled.current = false;
+      setType(eventType === code ? "" : code);
+    },
+    [eventType, setType],
+  );
+
+  // audD: a pick replaces the very rows the buckets were counted from, so the
+  // button that answered Enter is unmounted while the new page is outstanding.
+  // Once the answer lands, focus goes back to the pressed bucket — and if that
+  // type turned out to have no records, to the way out of the empty answer.
+  // Without this, every Enter would dump the keyboard person at the top.
+  useEffect(() => {
+    const code = pendingBucketFocus.current;
+    if (code === null) return;
+    if (list.phase === "loading") {
+      bucketSettled.current = true;
+      return;
+    }
+    if (!bucketSettled.current) return;
+    pendingBucketFocus.current = null;
+    bucketSettled.current = false;
+    const pressed = document.querySelector<HTMLButtonElement>(`[data-testid="audD-bucket-${code}"]`);
+    if (pressed) {
+      pressed.focus();
+      return;
+    }
+    document.querySelector<HTMLButtonElement>("[data-testid='audD-empty-clear']")?.focus();
+  }, [list.phase, eventType, typesOpen]);
+
   /** aud8: the address-borne filters are cleared the same way they arrive. */
   const clearUrlFilter = useCallback(
     (key: "actor" | "resource") => {
@@ -920,7 +969,7 @@ function AuditEventsSurface(): ReactNode {
       );
     }
     if (detail.phase === "loading") {
-      return <LoadingPanel testId="aud02-detail-loading" />;
+      return <LoadingPanel testId="aud02-detail-loading" slot="detail" />;
     }
     if (detail.phase === "denied") {
       return <DeniedPanel failure={detail.failure} testId="aud02-detail-denied" />;
@@ -932,6 +981,7 @@ function AuditEventsSurface(): ReactNode {
           onRetry={detail.reload}
           title="这条事件没能加载出来"
           testId="aud02-detail-error"
+          slot="detail"
         />
       );
     }
@@ -1007,6 +1057,41 @@ function AuditEventsSurface(): ReactNode {
       />
     );
 
+  // audG: one line describing HOW the ledger is being read right now, quoting
+  // the path this page actually asked (relative, credential-free). Built from
+  // the address and the data layer's own builder: reading it copies nothing new.
+  const filterSummary = useMemo(
+    () =>
+      filterSummaryLineOf({
+        windowLabel,
+        custom: windowChoice === "custom",
+        fromBeijing: beijingInputValue(customFromParam),
+        toBeijing: beijingInputValue(customToParam),
+        type: eventType,
+        actor,
+        resource,
+        resourceNote: "本页已加载的记录里本地匹配，服务端 resourceId 效果未单独实测",
+        page: pageNo,
+        cursorCount: cursors.length,
+        // audG: an incomplete custom range is never asked, so the summary has
+        // no request to quote — 「未设置」, not the last valid window's path.
+        askedPath: customInvalid ? null : list.askedPath,
+      }),
+    [
+      customInvalid,
+      actor,
+      customFromParam,
+      customToParam,
+      cursors,
+      eventType,
+      list.askedPath,
+      pageNo,
+      resource,
+      windowChoice,
+      windowLabel,
+    ],
+  );
+
   return (
     <div className="flex min-w-0 w-full max-w-full flex-col gap-3" data-testid="agent-v2-page-audit" data-page="audit">
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
@@ -1072,7 +1157,17 @@ function AuditEventsSurface(): ReactNode {
         <span className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud5-export-count">将导出 {visibleRows.length} 条</span>
       </div>
 
-      <AuditTypeSummary open={typesOpen} onToggle={() => setTypesOpen((value) => !value)} groups={typeGroups} total={list.rows.length} />
+      {/* audD: the distribution is the filter. Picking a bucket writes the
+          type into the address (and asks once); picking the pressed one again
+          goes back to all types. */}
+      <AuditTypeSummary
+        open={typesOpen}
+        onToggle={() => setTypesOpen((value) => !value)}
+        groups={typeGroups}
+        total={visibleRows.length}
+        selected={eventType}
+        onPick={pickType}
+      />
 
       <AuditFilterBar
         windowChoice={windowChoice}
@@ -1111,6 +1206,28 @@ function AuditEventsSurface(): ReactNode {
       </p>
 
       <AuditUrlFilterChips actor={actor} resource={resource} onClear={clearUrlFilter} />
+
+      {/* audG: the question itself, shareable. Hidden while nothing has been
+          read yet (loading) and while the ledger is closed (denied): a summary
+          of a question nobody was able to answer would be a claim about it. */}
+      {customInvalid || list.phase === "ready" || list.phase === "empty" || list.phase === "error" ? (
+        <FilterSummaryCopy
+          line={filterSummary}
+          available={hasFilterSummary({
+            windowLabel,
+            custom: windowChoice === "custom",
+            fromBeijing: beijingInputValue(customFromParam),
+            toBeijing: beijingInputValue(customToParam),
+            type: eventType,
+            actor,
+            resource,
+            resourceNote: "本页已加载的记录里本地匹配，服务端 resourceId 效果未单独实测",
+            page: pageNo,
+            cursorCount: cursors.length,
+            askedPath: customInvalid ? null : list.askedPath,
+          })}
+        />
+      ) : null}
 
       {/* The window check lives on the list too, and it says exactly one of
           four things: asking, the real counts, 本环境未启用 + why + where, or a
@@ -1232,10 +1349,10 @@ function AuditEventsSurface(): ReactNode {
             </p>
           ) : null}
 
-          {!customInvalid && list.phase === "loading" ? <LoadingPanel testId="aud01-loading" /> : null}
+          {!customInvalid && list.phase === "loading" ? <LoadingPanel testId="aud01-loading" slot="list" /> : null}
 
           {!customInvalid && list.phase === "denied" ? (
-            <DeniedPanel failure={list.failure} testId="aud01-denied" />
+            <DeniedPanel failure={list.failure} testId="aud01-denied" slot="list" onRetry={list.reload} />
           ) : null}
 
           {!customInvalid && list.phase === "error" && list.failure ? (
@@ -1243,12 +1360,14 @@ function AuditEventsSurface(): ReactNode {
               failure={list.failure}
               onRetry={list.reload}
               testId="aud01-error"
+              slot="list"
             />
           ) : null}
 
           {!customInvalid && list.phase === "empty" ? (
             <>
               <EmptyPanel
+                slot="list"
                 reason={
                   windowChoice === "custom"
                     ? "该时间段内无事件——这个起止区间里没有审计事件"
@@ -1261,6 +1380,22 @@ function AuditEventsSurface(): ReactNode {
               {/* audB: the empty answer carries its own way out, named for the
                   window that produced it. 清空区间 drops the custom range and
                   re-reads the 7-day quick window (once). */}
+              {eventType ? (
+                <p
+                  className="min-w-0 break-words text-xs text-muted-foreground"
+                  data-testid="audD-empty-exit"
+                >
+                  该条件下无事件——这个类型在当前的时间窗与页里没有记录。
+                  <button
+                    type="button"
+                    className="ml-1 underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                    onClick={() => setType("")}
+                    data-testid="audD-empty-clear"
+                  >
+                    清掉类型筛选，回到全部类型
+                  </button>
+                </p>
+              ) : null}
               <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="audB-empty-exit">
                 {windowChoice === "custom" ? "这一段里没有记录。" : "这一档里没有记录。"}
                 <button
@@ -1322,7 +1457,20 @@ function AuditEventsSurface(): ReactNode {
                     testId={`aud01-row-${row.key}`}
                   />
                   {openPreview === row.key ? (
-                    <AuditRowPreview row={row} testId={"aud6-preview-" + row.key} detailHref={detailHref} />
+                    <AuditRowPreview
+                      row={row}
+                      testId={"aud6-preview-" + row.key}
+                      detailHref={detailHref}
+                      // audF: the preview is not a fourth reading. When this row
+                      // is the record that is open, its in-flight / failed / denied
+                      // answer is shown here with the SAME sentence the record pane
+                      // uses, so one failure cannot be named two ways on one screen.
+                      record={
+                        row.rawId !== null && row.rawId === selected
+                          ? { phase: detail.phase, failure: detail.failure, onRetry: detail.reload }
+                          : null
+                      }
+                    />
                   ) : null}
                 </AuditRowKeyboard>
               ))}

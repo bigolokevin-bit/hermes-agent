@@ -164,6 +164,18 @@ export function documentsUrl(spaceId: string): string {
   params.set("spaceId", spaceId);
   return `/agent-api/api/documents?${params.toString()}`;
 }
+/**
+ * The same document read, one page at a time. The first page has no cursor (identical to
+ * documentsUrl's query order); a later page carries the server's `cursor`. We ask the
+ * server to page — we never slice a locally loaded array to fake "more".
+ */
+export function documentsPageUrl(spaceId: string, cursor: string | null): string {
+  const params = new URLSearchParams();
+  params.set("limit", "50");
+  params.set("spaceId", spaceId);
+  if (cursor) params.set("cursor", cursor);
+  return `/agent-api/api/documents?${params.toString()}`;
+}
 export const RECORDS_URL = "/agent-api/api/audit?action=kb.read&limit=50";
 /**
  * The session list the citation scan reads. The canonical console-session collection is
@@ -386,6 +398,32 @@ export interface SurfaceValue<T> {
   stampReason: string | null;
   /** Sessions actually read, for a surface that had to read sessions to find rows. */
   scanned: number | null;
+  /** 游标分页信封（只有文档读口给）。缺字段时 hasMore/totalKnown 皆 false——不猜下一页，也不猜总数。 */
+  page?: DocPage;
+}
+
+/**
+ * Cursor pagination facts read off the envelope. The live contract does NOT return a
+ * total, so `totalKnown` is only true when the answer actually carried one — we never
+ * derive a total from the number of rows loaded. `cursorFieldPresent` separates「nextCursor
+ * was null (last page)」from「the field was absent (pagination unknown)」.
+ */
+export interface DocPage {
+  nextCursor: string | null;
+  cursorFieldPresent: boolean;
+  hasMore: boolean;
+  total: number | null;
+  totalKnown: boolean;
+}
+
+function pageOf(body: unknown): DocPage {
+  const rec = isRecord(body) ? body : null;
+  const cursorFieldPresent = !!rec && ("nextCursor" in rec || "next_cursor" in rec);
+  const nextCursor = rec ? pickString(rec.nextCursor, rec.next_cursor) : null;
+  const hasMore = cursorFieldPresent && nextCursor !== null;
+  const totalKnown = !!rec && ("total" in rec || "totalCount" in rec || "total_count" in rec);
+  const total = totalKnown ? pickNumber(rec?.total, rec?.totalCount, rec?.total_count) : null;
+  return { nextCursor, cursorFieldPresent, hasMore, total, totalKnown };
 }
 
 const BJT = new Intl.DateTimeFormat("sv-SE", {
@@ -1402,14 +1440,79 @@ function docOf(row: Rec): DocRow {
 export function readSpaceDocuments(body: unknown): SurfaceValue<DocRow> {
   const envelope = stampOf(body);
   const rows = rowsOf(body);
-  if (rows === null) return { rows: [], ...envelope, scanned: null };
+  const page = pageOf(body);
+  if (rows === null) return { rows: [], ...envelope, scanned: null, page };
   const mapped = rows.map(docOf);
   const newest = newestOf(
     mapped.map((row) => row.atRaw),
     envelope,
     "上游响应没有带采集时间，文档也没有给出可用时间，数据截至时间未知。",
   );
-  return { rows: mapped, ...newest, scanned: null };
+  return { rows: mapped, ...newest, scanned: null, page };
+}
+
+/* ------------------------------------------------------------------ *
+ * R55 — 「复制清单」的文本：纯屏上数据，一行一条可见文档，
+ * 列序与屏幕一致（文档名 | 类型 | 大小 | 更新）。缺失就是「—」，
+ * 不当 0、不补值、不再问服务；调用方传入的就是当前排序与筛选后的可见行。
+ * ------------------------------------------------------------------ */
+
+/** 表头与表内列名逐字一致。 */
+export const DOC_COPY_HEADER = ["文档名", "类型", "大小", "更新"];
+
+export function docCopyText(rows: DocRow[]): string {
+  const lines = [
+    DOC_COPY_HEADER.join(" | "),
+    ...rows.map((row) => [row.name, row.type, row.size, row.at].join(" | ")),
+  ];
+  return `${lines.join("\n")}\n`;
+}
+
+/* ------------------------------------------------------------------ *
+ * R56 — 「复制结果」的文本（全局文档名搜索的命中行）：同样是纯屏上数据，
+ * 列序与命中表五列一致（文档名 | 所属空间 | 类型 | 大小 | 更新），顺序=当前
+ * 检索词下的命中顺序（本地筛选不改序）。所属空间取屏上那格的人话标签，缺就
+ * 「—」，不落裸标识符；不补值、不再问服务。
+ * ------------------------------------------------------------------ */
+
+/** 表头与命中表列名逐字一致。 */
+export const DOC_HIT_COPY_HEADER = ["文档名", "所属空间", "类型", "大小", "更新"];
+
+export function docHitCopyText(rows: DocRow[]): string {
+  const lines = [
+    DOC_HIT_COPY_HEADER.join(" | "),
+    ...rows.map((row) => [row.name, row.spaceLabel ?? "—", row.type, row.size, row.at].join(" | ")),
+  ];
+  return `${lines.join("\n")}\n`;
+}
+
+/* ------------------------------------------------------------------ *
+ * R57 — 空间清单「复制清单」的文本：同样是纯屏上数据。首行明写这份清单只
+ * 覆盖已加载的空间（读口 limit=20、没有分页游标），绝不冒充全库；有检索词时
+ * 第二行写明是筛后行。列值取屏上原样：文档数缺「—」（原因仍在屏上，不另编），
+ * 时间带屏上同款前缀（「最近同步：…」），短码用屏上人话（全 id 只在行的
+ * title 里，不进文本，裸 sp_ 不上屏）。
+ * ------------------------------------------------------------------ */
+
+/** 清单列头。 */
+export const SPACE_COPY_HEADER = ["空间名", "文档数", "最近更新", "短码"];
+
+export function spaceCopyText(rows: SpaceRow[], loadedTotal: number, keyword: string): string {
+  const trimmed = keyword.trim();
+  const lines = [
+    `当前已加载 ${loadedTotal} 个空间；本清单只覆盖这份回答，不冒充全库。`,
+    ...(trimmed === "" ? [] : [`以下为检索词「${trimmed}」筛后的可见行。`]),
+    SPACE_COPY_HEADER.join(" | "),
+    ...rows.map((row) =>
+      [
+        row.name,
+        row.docs,
+        row.at === "—" ? "—" : row.timeLabel ? `${row.timeLabel}：${row.at}` : row.at,
+        shortId(row.id) ?? "—",
+      ].join(" | "),
+    ),
+  ];
+  return `${lines.join("\n")}\n`;
 }
 
 /* ------------------------------------------------------------------ *

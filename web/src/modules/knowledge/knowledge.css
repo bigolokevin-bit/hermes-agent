@@ -842,3 +842,113 @@
 .knD-marker {
   display: none;
 }
+
+/* R54 — 游标分页条：一行放不下就换行，375 下不出横向溢出；计数与按钮都不给固定宽。 */
+.knE-page-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  min-width: 0;
+  gap: 8px 12px;
+  margin-top: 10px;
+}
+.knE-page-bar .knw5-empty,
+.knE-page-bar .knw5-error {
+  flex-basis: 100%;
+}
+.knE-marker {
+  display: none;
+}
+
+/* R55 — 复制清单行：随屏换行，375 下不出横向溢出；fallback 文本框与 house sys10 同规格。 */
+.knF-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  min-width: 0;
+  gap: 8px 12px;
+  margin-top: 10px;
+}
+.knF-fallback {
+  flex-basis: 100%;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  min-height: 5.5rem;
+  margin-top: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-muted);
+  color: var(--color-foreground);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.6875rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+@media (max-width: 560px) {
+  .knF-copy { width: 100%; }
+}
+
+/* R56 — 复制结果行与 fallback：同 knF 规格，随屏换行、无固定宽，不横溢。 */
+.knG-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  min-width: 0;
+  gap: 8px 12px;
+  margin-top: 10px;
+}
+.knG-fallback {
+  flex-basis: 100%;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  min-height: 5.5rem;
+  margin-top: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-muted);
+  color: var(--color-foreground);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.6875rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+@media (max-width: 560px) {
+  .knG-copy { width: 100%; }
+}
+
+/* R57 — 空间清单复制条：同 knF/knG 规格，随屏换行、无固定宽，不横溢。 */
+.knI-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  min-width: 0;
+  gap: 8px 12px;
+  margin-top: 10px;
+}
+.knI-fallback {
+  flex-basis: 100%;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  min-height: 5.5rem;
+  margin-top: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-muted);
+  color: var(--color-foreground);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.6875rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+@media (max-width: 560px) {
+  .knI-copy { width: 100%; }
+}
