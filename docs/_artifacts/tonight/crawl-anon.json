@@ -762,7 +762,7 @@
   "routesWithConsoleErrors": 51,
   "parseErrors": [],
   "ok": true,
-  "headHash": "9a410487",
+  "headHash": "78bf2ccd",
   "exitCode": 0,
   "counts": {
     "probed": 75,
@@ -773,5 +773,8 @@
       "spa-hash": 75
     }
   },
-  "ceAuthority": "login-state"
+  "ceAuthority": "login-state",
+  "carriedFrom": "415e1869",
+  "carried": true,
+  "stampNote": "wave-77 三笔全纯测试，entry sha 与 CSS 逐字节未变；本件未重跑，证据沿用 415e1869 代"
 }

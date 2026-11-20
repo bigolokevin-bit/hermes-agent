@@ -14,9 +14,13 @@
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 23,
-  "routesWithEmptyMain": [],
-  "routesWithoutMainEl": [],
+  "distinctMainHeads": 26,
+  "routesWithEmptyMain": [
+    "#/sessions"
+  ],
+  "routesWithoutMainEl": [
+    "#/sessions"
+  ],
   "mainCharsByRoute": [
     {
       "route": "#/access",
@@ -141,7 +145,7 @@
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "1440",
-      "chars": 113,
+      "chars": 10,
       "hasMainEl": true
     },
     {
@@ -201,7 +205,7 @@
     {
       "route": "#/employees/:employeeId",
       "viewport": "1440",
-      "chars": 42,
+      "chars": 66,
       "hasMainEl": true
     },
     {
@@ -489,8 +493,8 @@
     {
       "route": "#/sessions",
       "viewport": "1440",
-      "chars": 1,
-      "hasMainEl": true
+      "chars": 0,
+      "hasMainEl": false
     },
     {
       "route": "#/sessions",
@@ -642,11 +646,11 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "9a410487",
-  "exitCode": 0,
+  "headHash": "78bf2ccd",
   "entry": "assets/index-6g0IMx1G.js",
-  "entrySha256": "4407188fca95d1468ac3d2344108398303ac5d824c4c1f9c620f57fdc11d686b",
   "entryBytes": 172175,
-  "servedEntryBefore": "index-6g0IMx1G.js",
-  "servedEntryAfter": "index-6g0IMx1G.js"
+  "entrySha256": "4407188fca95d1468ac3d2344108398303ac5d824c4c1f9c620f57fdc11d686b",
+  "carriedFrom": "415e1869",
+  "carried": true,
+  "stampNote": "wave-77 三笔全纯测试，entry sha 与 CSS 逐字节未变；本件未重跑，证据沿用 415e1869 代"
 }

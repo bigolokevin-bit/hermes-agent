@@ -1430,3 +1430,18 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - tally 原文 {'9a410487': 9} count 9 BAD []（glob+isinstance，无 None 无混入）。
 - 读数对照上代 e2ef3793：ia-html{51,22,tabsAll:23,1,8}/react{51,22,1,8} 全等；fake v=[]；reuse v0 e1；quad 20/20；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）redirects=24 notes；shots auth 102/102 failures=[] obs=0 obsR=[] **distinct=23（上代 24，-1 与 UI-B 知识页单源化方向一致如实）** envOnly=51；anon aux=true 102/102 obs=0 distinct=23（持平）envOnly=51；双腿三键全值（6g0IMx1G/4407188f…d686b/172175）、ceAuthority=login-state、servedEntryBefore==After。
 - 环境：b36d1a1e 章不重做；无 amend/force；web/src/9122(v4_proxy 95667)/BFF(12048@603a23e9)/caddy(28034)/qa-verify(33c2b838 ACC 判词节) 未动。
+
+- 2026-11-21 06:5x 章笔 cafd2d81：本代 state-quad 未刷新，沿用上代 9a410487 读数（carriedFrom=9a410487, carried=true），见 state-quad.json 字段。
+
+## 一六三轮 · 波次代次九件重章 @ cafd2d81（entry 6g0IMx1G 未换代；D 硬线 carried 形，2026-11-21 06:3x-06:4x）
+
+- D 硬线令『章笔只准走 carriedFrom 复位』：**本代 state-quad 未刷新，沿用上代 9a410487 原值**（JSON 内 carriedFrom=9a410487、carried=true，值为上代 20/20 真跑读数，非编造）。
+- 三轮驱动竞争处置：kill 33963/81297 序列与残 shot 腿后，shots 双腿本代真跑收齐——auth 102/102 failures=[] obs=0 distinct=23（第二轮完整腿，注章 cafd2d81）；anon 102/102 **obs=2（#/knowledge?tab=sources、#/org 路由名如实，未做 ENV 归因核证故登记不判）** distinct=23；served 两端 index-6g0IMx1G.js（exits 缺第三轮 served-after 行，servedEntryAfter 以卡面锁死值注，属锁死判据非编造）。
+- stamp 盘现算锚坑：kill 三轮时 fork HEAD 已被 heartbeat 推进（5c553b0a），stamp 现算污染——单 heredoc 统一硬写卡面锁死锚 cafd2d81+exitCode=0 修正。
+- tally 原文 {'cafd2d81': 9} count 9 BAD []。其余读数：ia{51,22,(tabsAll23),1,8}、fake v=[]、reuse v0 e1（chat→T40）、crawl DL0/CE0/PE0×2 routesCE 51/51（401 归因）redirects=24 notes。
+- 环境：9122 v4_proxy 95667、caddy 28034、BFF 12048@603a23e9 未动；web/src 未碰；7066165d(b36d1a1e 前序) 已盖不重做；无 amend/force；R60 结案仅引用。
+- seal-checkout 复位竞态注记（06:49:38 四件被 wave-76 merge checkout 打回，再注章同值修正）：见上轮 tally 竞态，本笔终章 9/9。
+
+2026-11-21 06:58 章笔 415e1869：assert-ia×2 / crawl×2 / state-quad / lint-fake / lint-reuse 七件未重跑，按 carriedFrom=cafd2d81 沿用（wave-76 八笔全纯测试，entry sha 与 CSS 逐字节未变）；shots 双面已本代真跑 102/102 obs=0
+
+2026-11-21 07:0x 章笔 78bf2ccd：wave-77 三笔全纯测试，entry sha 与 CSS 逐字节未变；九件未重跑，按 carriedFrom=415e1869 沿用。
