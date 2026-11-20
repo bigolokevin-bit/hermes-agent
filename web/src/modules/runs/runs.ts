@@ -58,7 +58,7 @@ export const PAGE_LIMIT = 30;
  * honest sentence is「最多 30 条」rather than an implied total.
  */
 export function pageCapText(): string {
-  return `本页最多显示 ${PAGE_LIMIT} 条`;
+  return `每页 ${PAGE_LIMIT} 条`;
 }
 
 export function pageCapMoreText(): string {
@@ -66,7 +66,7 @@ export function pageCapMoreText(): string {
 }
 
 export function pageCapTitle(): string {
-  return `运行列表读口按 since + limit=${PAGE_LIMIT} 取数（可带 status / employeeId / cursor）。读口用 nextCursor 表示这一页之外还有更多，但本页只读第一页，暂不提供翻页；读满 ${PAGE_LIMIT} 行不代表全部运行，复制与导出的行数也只算这一页。`;
+  return `运行列表读口按 since + limit=${PAGE_LIMIT} 取数（可带 status / employeeId / cursor）。读口用 nextCursor 表示这一页之外还有更多，本页的「加载更多」就按这个游标继续取；已加载的行数是已经取到的所有页之和，复制与导出也用同一个行数，不报全量。`;
 }
 
 /** Time-window filter. The ISO instant is computed when the ask happens. */

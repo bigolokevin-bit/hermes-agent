@@ -981,7 +981,7 @@ export function RunsModulePage() {
   const data = useRunsData(forced, { status, sinceKey, employeeId: employee });
   const { phase, rows, cursor, asOf, asOfSource, answeredBy, unreadable, failure, forced: isForced } =
     data;
-  const { refreshState } = data;
+  const { refreshState, paging } = data;
   useEffect(() => {
     cancelRefreshRef.current = refreshState.cancel;
   }, [refreshState.cancel]);
@@ -996,6 +996,9 @@ export function RunsModulePage() {
     [rows, rsort, rdir],
   );
   const chooseSort = (key: RunSortKey) => {
+    // A new order starts again from page one: the cursor that fetched the
+    // appended pages belongs to the old order, not this one.
+    paging.resetPages();
     // One write for both keys: two setParam calls would both start from the
     // same params snapshot and the second would drop the first.
     const next = new URLSearchParams(params);
@@ -1373,8 +1376,8 @@ export function RunsModulePage() {
         data-testid="run-page-cap"
         title={pageCapTitle()}
       >
-        {pageCapText()}（当前已加载 {countsKnown ? rows.length : "—"} 行；这一页的复制与导出也用同一个行数，不报全量）
-        {phase === "ready" && rows.length === PAGE_LIMIT ? (
+        已加载 {countsKnown ? rows.length : "—"} 行（{pageCapText()}；复制与导出也只含这些行，不报全量）
+        {phase === "ready" && cursor ? (
           <span className="ml-2" data-testid="run-page-cap-more">
             {pageCapMoreText()}
           </span>
@@ -1561,6 +1564,77 @@ export function RunsModulePage() {
           onSort={chooseSort}
           sortDisabled={false}
         />
+      ) : null}
+      {phase === "ready" ? (
+        <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="run-more-bar">
+          <Button
+            size="sm"
+            outlined
+            type="button"
+            data-testid="run-more"
+            aria-busy={paging.busy}
+            disabled={paging.busy || !paging.hasMore}
+            title={
+              paging.hasMore
+                ? `按当前筛选、排序继续取下一页；每页最多 ${PAGE_LIMIT} 条。`
+                : "服务没有给出下一页，列表已经到底了。"
+            }
+            onClick={paging.loadMore}
+          >
+            加载更多
+          </Button>
+          {paging.busy ? (
+            <span className="text-xs text-muted-foreground" role="status" aria-live="polite" data-testid="run-more-busy">
+              正在取下一页…（已加载的行先保留）
+            </span>
+          ) : null}
+          {!paging.hasMore ? (
+            <span className="text-xs text-muted-foreground" data-testid="run-more-end">
+              已到末页
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+      {paging.error ? (
+        <div
+          className="min-w-0 space-y-1 rounded-md border border-border bg-card p-3 text-xs text-muted-foreground"
+          role="status"
+          data-testid="run-more-error"
+        >
+          <p className="min-w-0 break-words">
+            这一页没有取到更多运行记录，已加载的行仍然保留。{paging.error.sentence}
+          </p>
+          <p className="flex min-w-0 flex-wrap items-center gap-2">
+            <span>请求编号</span>
+            {paging.error.requestId ? (
+              <code className="min-w-0 break-all" data-testid="run-more-rid">
+                {paging.error.requestId}
+              </code>
+            ) : (
+              <span data-testid="run-more-rid-absent">本次请求未记录编号</span>
+            )}
+            {paging.error.requestId ? (
+              <button
+                type="button"
+                className="underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                data-testid="run-more-copy"
+                onClick={() => {
+                  if (paging.error?.requestId) void copyTextToClipboard(paging.error.requestId);
+                }}
+              >
+                复制编号
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              data-testid="run-more-retry"
+              onClick={paging.loadMore}
+            >
+              重试
+            </button>
+          </p>
+        </div>
       ) : null}
       {phase === "ready" ? (
         <p

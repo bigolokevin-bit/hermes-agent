@@ -436,3 +436,15 @@ R52 OBS 整改：`disabled` 与 `aria-disabled` 说同一句话，与 `title` �
 - 原有 `run5-counts`「仅本页已加载，最多 30 条，不是全量统计」与 `run5-status` 的服务端「还有更多」提示均保留，未改文案。
 - 验证：`runs.pagecap.test.tsx` 3 例（30 行→常驻句 + 满页提示 + 导出/复制同数；2 行→无常驻提示、数仍同源；500→「当前已加载 — 行」且无满页提示）。定向 runs 7 files / 161 passed；全量 176 files / 2401 passed；`tsc` 本域 0；`eslint src/modules/runs` exit 0（1 条既存 unused-disable warning）；build exit 0（entry 内 `run-page-cap`=0，`RunsModulePage-CczfD3ZM.js`=1）。
 - 未测：真实浏览器 375 下常驻句与满页提示同行折行；读口真的给出 `nextCursor` 时（本页不跟进，只影响 `run5-status` 的「还有更多」尾句）。
+
+## 加载更多（runs load more，2026-11-20）
+
+上一轮写的是「暂不提供翻页」；这一轮把游标接上，那句话必须同时改掉，否则同一页两处口径互相打脸。
+
+- 现查：`runs.ts:51 PAGE_LIMIT=30`；`askListRoute` 行 223 拼 `since + limit`，行 249 仅在 `q.cursor` 存在时写 `cursor`；`loadRuns` 把响应 `nextCursor` 读进 `ListState.cursor`。之前页面不消费它。
+- 数据层 `useRunsData`：新增 `paging: { busy, hasMore, error, loadMore, resetPages }`。追加页放在 `extra` 状态里、以 `key`（attempt|status|employee|window）分区，渲染时只合并当前 key 的那份——旧窗口的迟到页落在旧 key 上，永远不显示。合并时按 `runId` 去重（先到先留），`cursor`/`asOf` 取最新一页；`cancel()` 与 `resetPages()` 都丢弃追加页与它们的错误；刷新成功后也清掉追加页（重读的就是第一页）。
+- 页面：`run-more-bar` 内 `run-more`（原生 button，`aria-busy`，无下一页时 disabled）＋忙碌时 `run-more-busy`＋`hasMore=false` 时 `run-more-end`「已到末页」；失败渲染 `run-more-error`：「这一页没有取到更多运行记录，已加载的行仍然保留。」+ `run-more-rid`（无号写「本次请求未记录编号」）+ `run-more-copy` + `run-more-retry`。
+- 排序是本地动作、过去零请求，所以改排序不重新取数：`chooseSort` 先 `paging.resetPages()`，行数回到第一页、旧游标不再续用，`urls()` 不变。切窗口/切状态/清筛选走参数变化，key 变了自然回第一页，且旧 `cursor` 不会带上（`loadMore` 只在 `read.key === key` 时出手）。
+- 口径统一：`run-page-cap` 改为「已加载 N 行（每页 30 条；复制与导出也只含这些行，不报全量）」，N 与 `run-list-export-count` 的文案/`data-rows`、复制 title 的「当前已加载 N 行」同源；`run-page-cap-more` 的显示条件从「行数满 30」改为「服务确实给了 `nextCursor`」——满页但服务说没有下一页时不再暗示还有。
+- 验证：单文件 `runs.more.test.tsx` 5 例全绿（追加+去重+同源 N、末页 disabled、失败保行+可复制 rid+重试、改排序回第一页且零请求、切窗口不带旧 cursor）；定向 runs 8 files / 166 passed；全量 177 files / 2406 passed；`tsc` 本域 0；`eslint src/modules/runs` exit 0；build exit 0（entry 内 `run-more`=0，`RunsModulePage-BySzOfBO.js`=1）。
+- 未测：真实浏览器 375 下 `run-more-bar` 与错误行折行；读口在游标失效时若静默回首页（本页按追加页处理、靠 runId 去重，不额外探测）。

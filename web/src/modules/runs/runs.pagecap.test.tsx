@@ -31,10 +31,10 @@ function runRow(n: number) {
   };
 }
 
-function okList(items: unknown[]) {
+function okList(items: unknown[], nextCursor: string | null = null) {
   return () => {
     const url = String(api.fetchJSON.mock.calls.at(-1)?.[0] ?? "");
-    if (url.includes("/api/runs")) return Promise.resolve({ items, nextCursor: null });
+    if (url.includes("/api/runs")) return Promise.resolve({ items, nextCursor });
     if (url.includes("/api/run-stats")) return Promise.resolve({ items: [] });
     return Promise.resolve({ items: [] });
   };
@@ -89,7 +89,7 @@ afterEach(() => {
 describe("runs page cap honesty", () => {
   it("states the page cap once and warns when the page is full", async () => {
     const rows = Array.from({ length: PAGE_LIMIT }, (_, i) => runRow(i + 1));
-    api.fetchJSON.mockImplementation(okList(rows));
+    api.fetchJSON.mockImplementation(okList(rows, "cursor-2"));
     await mount("/runs");
     await waitFor(() => bodyRows() === PAGE_LIMIT, "30 rows");
 
@@ -97,11 +97,11 @@ describe("runs page cap honesty", () => {
     expect(cap).not.toBeNull();
     expect(cap?.tagName).toBe("P");
     expect(textOf("run-page-cap")).toContain(pageCapText());
-    expect(textOf("run-page-cap")).toContain(`当前已加载 ${PAGE_LIMIT} 行`);
+    expect(textOf("run-page-cap")).toContain(`已加载 ${PAGE_LIMIT} 行`);
     expect(cap?.getAttribute("title")).toBe(pageCapTitle());
     expect(cap?.getAttribute("title")).toContain(`limit=${PAGE_LIMIT}`);
     expect(cap?.getAttribute("title")).toContain("nextCursor");
-    expect(cap?.getAttribute("title")).toContain("暂不提供翻页");
+    expect(cap?.getAttribute("title")).toContain("「加载更多」");
 
     expect(textOf("run-page-cap-more")).toBe(pageCapMoreText());
 
@@ -119,7 +119,7 @@ describe("runs page cap honesty", () => {
     await waitFor(() => bodyRows() === 2, "2 rows");
 
     expect(textOf("run-page-cap")).toContain(pageCapText());
-    expect(textOf("run-page-cap")).toContain("当前已加载 2 行");
+    expect(textOf("run-page-cap")).toContain("已加载 2 行");
     expect(node("run-page-cap-more")).toBeNull();
     expect(textOf("run-list-export-count")).toContain("可导出 2 行");
     expect(node("run-list-export-count")?.getAttribute("data-rows")).toBe("2");
@@ -137,7 +137,7 @@ describe("runs page cap honesty", () => {
     await waitFor(() => node("run-state-error") !== null, "error state");
 
     expect(textOf("run-page-cap")).toContain(pageCapText());
-    expect(textOf("run-page-cap")).toContain("当前已加载 — 行");
+    expect(textOf("run-page-cap")).toContain("已加载 — 行");
     expect(node("run-page-cap-more")).toBeNull();
   });
 });
