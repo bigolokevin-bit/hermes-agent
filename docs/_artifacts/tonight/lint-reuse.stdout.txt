@@ -4,7 +4,7 @@ exempted=1
 {
   "script": "lint-reuse",
   "root": "web/src/modules",
-  "scanned": 252,
+  "scanned": 256,
   "reuseMarkers": 28,
   "chatHostFiles": [
     {
@@ -57,7 +57,7 @@ exempted=1
       "owner": "work",
       "declaredWhere": "web/src/modules/work/manifest.ts（row 6 runs tab）",
       "declared": true,
-      "codeMentions": 4,
+      "codeMentions": 6,
       "via": "marker web/src/modules/work/manifest.ts:32"
     },
     {
