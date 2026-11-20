@@ -349,7 +349,7 @@ describe("R203 - the window and the exported file", () => {
 });
 
 /** The screen's own Beijing reading for one row's time cell. */
-function markTime(eventId: string): string | null {
+function markTime(eventId: string): string | null | undefined {
   return document.querySelector(`[data-testid='audJ-time-list-${eventId}']`)?.getAttribute(
     "data-audj-value",
   );
