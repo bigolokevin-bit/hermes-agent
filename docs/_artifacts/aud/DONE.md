@@ -3079,3 +3079,17 @@ Untested: the four-state body lengths are jsdom readings, not browser pixels; th
 - 新增 testid：`audJ-time-list-<key>` `audJ-actor-list-<key>` `audJ-time-preview` `audJ-actor-preview` `audJ-time-detail` `audJ-actor-detail`（值与 title 分别挂在 `data-audj-value` / `data-audj-title`，对照用；屏幕上的字仍是那一格本身，标记不复制可见文本）。
 - 门禁：vitest `src/modules/audit` **exit 0**（**15** files / **299** tests = 基线 14/286 + 13：`timeActor.test.ts` 6 条 + 列表页 audJ 5 条 + 独立详情屏 audJ 2 条）；`pnpm exec tsc -b . --noEmit` 共 **67** errors（= 本机当前地板，改动前后同数、增量 0）且 `modules/audit` **0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings。
 - 活体腿沿用已知不可用实测（未重跑）：9122 无身份头 **401 `console.unauthenticated`**、8092 **404 `console.not_found`**；三处对照与缺失态证据为 vitest 腿（同一 mock 喂两条读口后逐字段比读数），未假装活体。
+
+## Audit list keyboard navigation (audK, 2026-11-20, base 869e49ab)
+
+- 写域：`web/src/modules/audit/{AuditEventsModulePage.tsx,AuditEventsModulePage.test.tsx}` + 本节（2 个源文件 + 证据文档，≤15 文件/≤1500 行）。App.tsx / shell / routes / registry / package·lock / web scripts / ops 未碰。基线：`git merge origin/lane/hermes-console` → Already up to date（章面已在 HEAD 祖先链），porc=0。
+- **roving tabIndex**：列表外层 `audK-list`（`role="list"` + aria-label 把键位讲明），每行壳 `data-audk-row=<key>`、`role="listitem"`、`tabIndex = 当前行 0 / 其余 -1`；整表只占一个 Tab 停靠点。停靠点由页内 `rovingKey` 持有：`null`（还没进过表）→ 第一行接住，`onFocus` 随人移动；行不在本份数据里（换页、收窄筛选）时自动回落给新的第一行，不悬空。`audK-row-<key>` 标记镜像 `data-audk-roving` / `data-audk-open`，供探针读停靠点分布与展开态。
+- **键位**：↑ ↓ 逐行移焦（`event.target !== currentTarget` 时让路：控件里的方向键仍是控件自己的，用例在 `aud01-filter-type` 上验证不被接管）、Home / End 到首末（越界不动、不发请求）、Enter 展开/收起**既有** `aud6-preview-*`（复用 audA 的 `setFold("preview")` 单开语义，一次按键只翻一行；shell 层 Enter 只在行本身被聚焦时生效，行内真按钮的原生 Enter 仍走原路径，无双翻）、Esc 收起并把焦点送回该行（实测 `document.activeElement === aud6-toggle-<key>`，且仍在该行的行壳内）。焦点环沿用现成 token `focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`，未新增颜色。
+- **aria-expanded 与可见性同步**：`aud6-toggle-*` 的 `aria-expanded` 继续由 `?preview=` 计算（aud8 落 URL 的口径），键盘链路里逐拍断言：Enter 后 `true` 且面板出现、再 Enter 后 `false` 且面板消失；其余行的面板根本不存在（单开）。
+- **口径写明**：漫游停靠点与展开的行是两件事——↑↓ 移动不打开任何东西（用例断言移动后 `preview=` 仍是先前那一行、目标行 `data-audk-open=false`），Enter 才把折叠挪到新行；粘贴/刷新带 `?preview=` 回来时该行照旧展开、停靠点仍从第一行起（用例锁这一点）。这样键盘入口与展开态不会因上一次操作残留而互相抢。
+- **展开不改筛选/页码/URL**：一整套 Enter/↑↓/Esc 之后，`window/type/actor/limit/cursor` 逐项与操作前相等，只有折叠自己的键在动（aud8 起折叠落 URL，故刷新可复现，沿用既有口径不拆）。
+- **零额外请求（键盘全链路）**：`urls()` 在整套键盘操作前后**逐字相等**（用例 `expect(urls()).toEqual(before)`），且这一份里 `/agent-api/api/audit?` 恰 1 条、`audit-detail` 0 条、`audit-verify` 0 条。加载中 / 空集 / 403 拒绝 / 503 失败四档：`audK-list` 与 `[data-audk-row]` 都不存在，向 document 派发 ArrowDown 后 `document.activeElement` 不动（不劫持方向键），四档各自最多一条读请求。
+- **零破**：`aud01*`、`aud2*`–`audJ*`（含 audA 的 `audA-row-shell-*` 与焦点回 toggle 断言、`aud6-toggle/preview-*`、`aud8-*`、`aud9-deeplink-*`、`audB-*`、`audD-bucket-*`、`audF-state-*`、`audG-*`、`audH-page-size`、`audJ-*-list/preview/detail`）与页级 `agent-v2-page-audit*` 未改名未删节点；起算 299 条一条未红。三档视口：行壳新增属性不带可见内容，容器 `flex min-w-0 flex-col`，未做浏览器像素走查（活体腿不可用），不声称已验。
+- 新增 testid：`audK-list` `audK-row-<key>`（另用 `data-audk-row` / `data-audk-roving` / `data-audk-open` 承载停靠点与展开态）。
+- 门禁：vitest `src/modules/audit` **exit 0**（**15** files / **307** tests = 基线 15/299 + 8 条键盘全链路用例）；`pnpm exec tsc -b . --noEmit` 共 **67** errors（= 本机当前地板，改动前后同数、增量 0）且 `modules/audit` **0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings。
+- 活体腿沿用已知不可用实测（未重跑）：9122 无身份头 **401 `console.unauthenticated`**、8092 **404 `console.not_found`**；键盘链路与请求计数证据全部为 jsdom 用例（fireEvent keydown + activeElement + tabIndex 分布），不依赖浏览器、未假装活体。

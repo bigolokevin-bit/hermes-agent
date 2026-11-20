@@ -3272,3 +3272,260 @@ describe("audJ - one reading of the time and the operator everywhere", () => {
     expect(urls().filter((u) => /^\/agent-api\/api\/audit\?/.test(u))).toHaveLength(1);
   });
 });
+
+/**
+ * audK — 列表键盘漫游（roving tabIndex）。断言全部走 jsdom 的 keydown/focus，
+ * 不依赖浏览器：整表一个 Tab 停靠点（当前行 tabIndex=0、其余 −1），↑↓ 逐行移焦、
+ * Home/End 到首末、Enter 展开/收起既有 aud6-preview、Esc 收起并把焦点送回该行；
+ * aud6-toggle 的 aria-expanded 与预览可见性同步；筛选、页码与其它地址键不动；
+ * 一整套键盘操作前后 urls() 逐字相等（零额外请求）；加载中/空集/被拒不接管方向键。
+ */
+describe("audK - the list is one roving tab stop", () => {
+  const KEYS = [
+    "evt_7c1f2a3b4d5e6f70",
+    "evt_8d2e3f4051627384",
+    "evt_k3",
+    "evt_k4",
+  ];
+  const FOUR = {
+    items: KEYS.map((id, index) => ({
+      eventId: id,
+      action: index % 2 === 0 ? "task.created" : "run.failed",
+      occurredAt: "2026-11-19T01:20:00Z",
+      outcome: index % 2 === 0 ? "succeeded" : "error",
+      actor: { type: "human", id: `user:000000000000000${index}`, displayName: `同行${index}` },
+      requestId: `req-${id}`,
+    })),
+    nextCursor: null,
+  };
+
+  const shell = (key: string): HTMLDivElement =>
+    document.querySelector(`[data-audk-row='${key}']`) as HTMLDivElement;
+  const stop = (key: string): string | null => shell(key)?.getAttribute("tabIndex") ?? null;
+  const rovingMark = (key: string): string | null =>
+    document.querySelector(`[data-testid='audK-row-${key}']`)?.getAttribute("data-audk-roving") ?? null;
+  const openMark = (key: string): string | null =>
+    document.querySelector(`[data-testid='audK-row-${key}']`)?.getAttribute("data-audk-open") ?? null;
+  const active = (): string | null => (document.activeElement as HTMLElement)?.getAttribute("data-audk-row") ?? null;
+
+  async function press(key: string, on: Element | null = document.activeElement): Promise<void> {
+    if (!on) throw new Error("nothing is focused");
+    await act(async () => {
+      on.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+    });
+  }
+
+  async function mountFour(entry = "/audit?window=7d"): Promise<void> {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async () => FOUR);
+    await render(entry, <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await waitFor(() => !skeleton(), "first page settled");
+  }
+
+  it("the whole list is one tab stop, held by the first row until it is moved", async () => {
+    await mountFour();
+    expect(document.querySelector("[data-testid='audK-list']")).not.toBeNull();
+    expect(stop(KEYS[0]!)).toBe("0");
+    expect(KEYS.slice(1).map(stop)).toEqual(["-1", "-1", "-1"]);
+    expect(rovingMark(KEYS[0]!)).toBe("true");
+    expect(rovingMark(KEYS[3]!)).toBe("false");
+    // the ring is the existing focus-visible token, not a new colour
+    expect(shell(KEYS[0]!).className).toContain("focus-visible:outline-2");
+  });
+
+  it("arrows walk the rows, Home and End jump to the ends, and the stop follows", async () => {
+    await mountFour();
+    await act(async () => {
+      shell(KEYS[0]!)?.focus();
+    });
+    expect(active()).toBe(KEYS[0]);
+    await press("ArrowDown");
+    expect(active()).toBe(KEYS[1]);
+    expect(stop(KEYS[1]!)).toBe("0");
+    expect(stop(KEYS[0]!)).toBe("-1");
+    await press("ArrowDown");
+    await press("ArrowDown");
+    expect(active()).toBe(KEYS[3]);
+    // past the last row there is nowhere to go, and nothing is asked
+    await press("ArrowDown");
+    expect(active()).toBe(KEYS[3]);
+    await press("ArrowUp");
+    expect(active()).toBe(KEYS[2]);
+    await press("Home");
+    expect(active()).toBe(KEYS[0]);
+    await press("End");
+    expect(active()).toBe(KEYS[3]);
+    expect(rovingMark(KEYS[3]!)).toBe("true");
+  });
+
+  it("Enter opens the row's own preview, aria-expanded follows, Enter again closes it", async () => {
+    await mountFour();
+    const row = shell(KEYS[2]!);
+    await act(async () => {
+      row.focus();
+    });
+    const toggle = document.querySelector<HTMLButtonElement>(`[data-testid='aud6-toggle-${KEYS[2]}']`)!;
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(document.querySelector(`[data-testid='aud6-preview-${KEYS[2]}']`)).toBeNull();
+    await press("Enter");
+    expect(document.querySelector(`[data-testid='aud6-preview-${KEYS[2]}']`)).not.toBeNull();
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(openMark(KEYS[2]!)).toBe("true");
+    expect(locationText()).toContain(`preview=${KEYS[2]}`);
+    // one row, one fold: the other rows have no panel of their own at all
+    for (const key of KEYS.filter((one) => one !== KEYS[2])) {
+      expect(document.querySelector(`[data-testid='aud6-preview-${key}']`), key).toBeNull();
+    }
+    await press("Enter");
+    expect(document.querySelector(`[data-testid='aud6-preview-${KEYS[2]}']`)).toBeNull();
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(locationText()).not.toContain("preview=");
+  });
+
+  it("Esc closes the fold and the focus comes back into that same row", async () => {
+    await mountFour();
+    const row = shell(KEYS[1]!);
+    await act(async () => {
+      row.focus();
+    });
+    await press("Enter");
+    // the person has tabbed into the row's own handle: Esc goes back to it
+    const toggle = document.querySelector<HTMLButtonElement>(`[data-testid='aud6-toggle-${KEYS[1]}']`)!;
+    await act(async () => {
+      toggle.focus();
+    });
+    await press("Escape");
+    expect(document.querySelector(`[data-testid='aud6-preview-${KEYS[1]}']`)).toBeNull();
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(row.contains(document.activeElement as globalThis.Node)).toBe(true);
+    expect(document.activeElement).toBe(toggle);
+    expect(rovingMark(KEYS[1]!)).toBe("true");
+  });
+
+  it("the keyboard reading touches nothing else: filters, page and the address stay put", async () => {
+    await mountFour("/audit?window=24h&type=task.created&actor=employee-api&cursor=cur_page1&cursor=cur_page2");
+    const held = () => {
+      const p = new URLSearchParams(locationText().split("?")[1] ?? "");
+      return [p.get("window"), p.get("type"), p.get("actor"), p.get("limit"), p.getAll("cursor").join(",")];
+    };
+    const before = urls();
+    const state = held();
+    await act(async () => {
+      shell(KEYS[0]!)?.focus();
+    });
+    await press("ArrowDown");
+    await press("Enter");
+    expect(held()).toEqual(state);
+    expect(locationText()).toContain(`preview=${KEYS[1]}`);
+    // moving is not opening: the stop walks, the fold stays where it was
+    await press("ArrowDown");
+    expect(held()).toEqual(state);
+    expect(active()).toBe(KEYS[2]);
+    expect(locationText()).toContain(`preview=${KEYS[1]}`);
+    expect(openMark(KEYS[2]!)).toBe("false");
+    // Enter on the row now under focus is the one keystroke that moves the fold
+    await press("Enter");
+    expect(locationText()).toContain(`preview=${KEYS[2]}`);
+    await press("Escape");
+    expect(held()).toEqual(state);
+    expect(locationText()).not.toContain("preview=");
+    // 整套键盘操作：一条请求都没多发
+    expect(urls()).toEqual(before);
+    expect(before.filter((u) => /^\/agent-api\/api\/audit\?/.test(u))).toHaveLength(1);
+    expect(before.filter((u) => u.startsWith("/agent-api/api/audit-detail"))).toHaveLength(0);
+    expect(before.filter((u) => u.startsWith("/agent-api/api/audit-verify"))).toHaveLength(0);
+  });
+
+  it("inside a control the arrows are not stolen, and a row without a name still walks", async () => {
+    // 缺 actor 的那一档：服务只给了机器句柄，行照样可读、可漫游
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async () => ({
+      items: [
+        { eventId: "evt_n1", action: "task.created", occurredAt: "2026-11-19T01:20:00Z", outcome: "succeeded" },
+        { eventId: "evt_n2", action: "run.failed", occurredAt: "2026-11-19T02:05:00Z", outcome: "error" },
+      ],
+      nextCursor: null,
+    }));
+    await render("/audit?window=7d", <AuditEventsModulePage />);
+    await waitFor(() => !skeleton(), "rows settled");
+    const first = shell("evt_n1")!;
+    await act(async () => {
+      first.focus();
+    });
+    // focus is on the row, so arrows move; the export control is a select whose
+    // own keys must keep working — dispatch from inside it and assert no move
+    await press("ArrowDown");
+    expect(active()).toBe("evt_n2");
+    const typeSelect = document.querySelector("[data-testid='aud01-filter-type']")!;
+    await act(async () => {
+      typeSelect.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, cancelable: true }));
+    });
+    expect(active()).toBe("evt_n2");
+    expect(document.querySelector("[data-testid='aud01-filter-type']")).toBe(typeSelect);
+    // a row nobody attributed is still a row: text and roving both work
+    expect(first.textContent).toContain("操作者");
+    expect(first.textContent).not.toMatch(/undefined|null/);
+  });
+
+  it("a pasted address with an open fold replays it, and the stop starts at the first row", async () => {
+    // audK 口径：漫游停靠点与展开的行是两件事。刷新或粘贴地址带 `?preview=`
+    // 回来时，那一行照旧展开，键盘停靠点仍从第一行起——不因为上一次展开过
+    // 就把整表焦点抢到一个可能已经不在本页的行上。
+    await mountFour("/audit?window=7d&preview=evt_k4");
+    expect(document.querySelector(`[data-testid='aud6-preview-${KEYS[3]}']`)).not.toBeNull();
+    expect(document.querySelector<HTMLButtonElement>(`[data-testid='aud6-toggle-${KEYS[3]}']`)!.getAttribute("aria-expanded")).toBe("true");
+    expect(openMark(KEYS[3]!)).toBe("true");
+    expect(stop(KEYS[0]!)).toBe("0");
+    expect(stop(KEYS[3]!)).toBe("-1");
+    // and the stop can be walked to the open row without touching the fold
+    await act(async () => {
+      shell(KEYS[0]!)?.focus();
+    });
+    await press("End");
+    expect(active()).toBe(KEYS[3]);
+    expect(locationText()).toContain(`preview=${KEYS[3]}`);
+    await press("Enter");
+    expect(locationText()).not.toContain("preview=");
+  });
+
+  it("no rows means no hijacked arrows, in every state that has none", async () => {
+    const legs: Array<{ label: string; entry: string; handler: (url: string) => Promise<unknown> }> = [
+      { label: "loading", entry: "/audit?window=7d", handler: () => new Promise(() => undefined) },
+      { label: "empty", entry: "/audit?window=7d", handler: async () => ({ items: [], nextCursor: null }) },
+      {
+        label: "denied",
+        entry: "/audit?window=7d",
+        handler: async () => {
+          throw new ApiError("no", { status: 403, body: '{"code":"console.forbidden"}', url: "/agent-api/api/audit", requestId: "rid-k" });
+        },
+      },
+      {
+        label: "error",
+        entry: "/audit?window=7d",
+        handler: async () => {
+          throw new ApiError("down", { status: 503, body: "{}", url: "/agent-api/api/audit", requestId: "rid-k2" });
+        },
+      },
+    ];
+    for (const leg of legs) {
+      api.fetchJSON.mockReset();
+      api.fetchJSON.mockImplementation(leg.handler);
+      await render(leg.entry, <AuditEventsModulePage />);
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      });
+      expect(document.querySelector("[data-testid='audK-list']"), leg.label).toBeNull();
+      expect(document.querySelector("[data-audk-row]"), leg.label).toBeNull();
+      const before = document.activeElement;
+      await act(async () => {
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, cancelable: true }));
+      });
+      // nothing moved, nothing was asked beyond that state's own read
+      expect(document.activeElement, leg.label).toBe(before);
+      expect(urls().filter((u) => /^\/agent-api\/api\/audit\?/.test(u)).length).toBeLessThanOrEqual(1);
+    }
+  });
+});

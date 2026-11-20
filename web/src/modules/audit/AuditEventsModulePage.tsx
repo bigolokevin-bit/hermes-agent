@@ -491,12 +491,30 @@ function AuditUrlFilterChips({
  * the handle the row is read through; leaving it on a vanished panel would
  * dump the next Tab into the middle of the page.
  */
+/**
+ * audK — one row inside a roving tab stop.
+ *
+ * A keyboard person reads this ledger row by row: the list is ONE Tab stop, and
+ * ↑ ↓ Home End move inside it. The row that holds the stop is the one the
+ * person last reached (the first row before that), so Tab into the list lands
+ * where the reading is, not at the bottom of the page.
+ *
+ * Enter opens or closes that row's preview — the same fold `aud6-toggle-*` and
+ * the mouse use, so one keystroke cannot flip two rows. Esc closes it and hands
+ * the focus back to the row, because the next keystroke is a question about
+ * that row. Nothing here sends a request or touches a filter, a page or the
+ * address beyond the fold's own key.
+ */
 function AuditRowKeyboard({
   row,
   open,
   deepLink,
+  isRoving,
   onToggle,
   onClose,
+  onRoving,
+  onMove,
+  onEdge,
   children,
 }: {
   row: AuditRow;
@@ -504,15 +522,40 @@ function AuditRowKeyboard({
   open: boolean;
   /** `?event=` landed on this row. */
   deepLink: boolean;
+  /** audK: this row holds the list's single tab stop right now. */
+  isRoving: boolean;
   onToggle: () => void;
   onClose: () => void;
+  /** audK: the person reached this row by keyboard, so it takes the stop. */
+  onRoving: (key: string) => void;
+  /** audK: ↑ ↓ — the row to land on, or null when the edge was reached. */
+  onMove: (key: string, delta: number) => string | null;
+  /** audK: Home / End. */
+  onEdge: (edge: "first" | "last") => string | null;
   children: ReactNode;
 }): ReactNode {
+  const focusBy = (key: string | null): void => {
+    if (!key) return;
+    const node = document.querySelector<HTMLElement>(`[data-audk-row='${key}']`);
+    if (node) {
+      onRoving(key);
+      node.focus();
+    }
+  };
+
   return (
     <div
-      className="flex min-w-0 flex-col gap-1"
+      className="flex min-w-0 flex-col gap-1 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
       data-testid={`audA-row-shell-${row.key}`}
       data-aud9-deeplink={deepLink ? "true" : undefined}
+      // audK: roving tabIndex — the whole list is one Tab stop, and this is the
+      // row that holds it. `data-audk-row` is how the list finds a row to move
+      // focus to without reaching for a test id.
+      data-audk-row={row.key}
+      data-audk-roving={isRoving ? "true" : "false"}
+      role="listitem"
+      tabIndex={isRoving ? 0 : -1}
+      onFocus={() => onRoving(row.key)}
       onKeyDown={(event) => {
         if (event.key === "Enter" && event.target === event.currentTarget) {
           // The row itself is not a Tab stop; Enter here is for a row that was
@@ -520,6 +563,15 @@ function AuditRowKeyboard({
           // answer Enter, so this never double-fires.
           event.preventDefault();
           onToggle();
+          return;
+        }
+        if (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Home" || event.key === "End") {
+          // The arrow keys belong to the list only while the row itself is the
+          // thing under focus; inside a control they keep their own behaviour.
+          if (event.target !== event.currentTarget) return;
+          event.preventDefault();
+          if (event.key === "Home" || event.key === "End") focusBy(onEdge(event.key === "Home" ? "first" : "last"));
+          else focusBy(onMove(row.key, event.key === "ArrowDown" ? 1 : -1));
           return;
         }
         if (event.key !== "Escape" || !open) return;
@@ -531,6 +583,14 @@ function AuditRowKeyboard({
         toggle?.focus();
       }}
     >
+      {/* audK: the probe handle for this row — where it sits in the list and
+          whether it is the one holding the tab stop right now. */}
+      <span
+        aria-hidden="true"
+        data-testid={`audK-row-${row.key}`}
+        data-audk-roving={isRoving ? "true" : "false"}
+        data-audk-open={open ? "true" : "false"}
+      />
       {children}
     </div>
   );
@@ -775,6 +835,34 @@ function AuditEventsSurface(): ReactNode {
           )
         : list.rows,
     [list.rows, resource],
+  );
+
+  // audK: the list's single tab stop. `null` means the person has not moved
+  // inside the list yet, so the first row holds the stop — Tab into the ledger
+  // lands where the reading starts, not past the last row. A row that is no
+  // longer on screen (a new page, a narrowed filter) hands the stop back to the
+  // first row of what came instead.
+  const [rovingKey, setRovingKey] = useState<string | null>(null);
+  const roving = (rovingKey !== null && visibleRows.some((row) => row.key === rovingKey)
+    ? rovingKey
+    : visibleRows[0]?.key) ?? null;
+
+  const moveRowFocus = useCallback(
+    (key: string, delta: number): string | null => {
+      const index = visibleRows.findIndex((row) => row.key === key);
+      if (index === -1) return null;
+      const next = visibleRows[Math.min(visibleRows.length - 1, Math.max(0, index + delta))];
+      return next?.key ?? null;
+    },
+    [visibleRows],
+  );
+
+  const edgeRowFocus = useCallback(
+    (edge: "first" | "last"): string | null => {
+      if (!visibleRows.length) return null;
+      return (edge === "first" ? visibleRows[0] : visibleRows[visibleRows.length - 1])?.key ?? null;
+    },
+    [visibleRows],
   );
 
   // aud9: the deep link. A row that is on this page IS the opened fold; a link
@@ -1542,14 +1630,29 @@ function AuditEventsSurface(): ReactNode {
                 </p>
               ) : null}
 
-              {visibleRows.map((row) => (
+              {/* audK: one Tab stop for the whole list; ↑ ↓ Home End move inside
+                  it, Enter opens the row's preview, Esc closes it and comes
+                  back. The list only exists while rows exist, so the loading,
+                  error and empty answers keep their own arrow keys — nothing
+                  here is listening when there is nothing to move through. */}
+              <div
+                className="flex min-w-0 flex-col gap-1"
+                data-testid="audK-list"
+                role="list"
+                aria-label="审计事件行：用上下方向键逐行移动，Home 与 End 到首尾，Enter 展开或收起这一条的预览，Esc 收起"
+              >
+                {visibleRows.map((row) => (
                 <AuditRowKeyboard
                   key={row.key}
                   row={row}
                   open={openPreview === row.key}
                   deepLink={row.key === deepLinkId || row.rawId === deepLinkId}
+                  isRoving={row.key === roving}
                   onToggle={() => setFold("preview", row.key)}
                   onClose={() => clearFold("preview")}
+                  onRoving={setRovingKey}
+                  onMove={moveRowFocus}
+                  onEdge={edgeRowFocus}
                 >
                   <button
                     type="button"
@@ -1594,7 +1697,8 @@ function AuditEventsSurface(): ReactNode {
                     />
                   ) : null}
                 </AuditRowKeyboard>
-              ))}
+                ))}
+              </div>
 
               {list.unreadable > 0 ? (
                 <p className="min-w-0 break-words text-xs text-warning">
