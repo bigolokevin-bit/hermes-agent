@@ -1929,7 +1929,7 @@ describe("audC - the copyable conclusion line", () => {
     expect(preview.querySelector("[data-testid='audC-copy-status']")!.textContent).toBe("");
     await clickCopy(preview);
     expect(preview.querySelector("[data-testid='audC-copy-status']")!.textContent).toBe("已复制");
-    expect(preview.querySelector("[data-testid='audC-fallback']")).toBeNull();
+    expect(preview.querySelector("[data-testid='audC-copy-fallback']")).toBeNull();
   });
 
   it("a refused clipboard hands back a read-only line, with the same words", async () => {
@@ -1937,11 +1937,18 @@ describe("audC - the copyable conclusion line", () => {
     await mountParity();
     const detail = document.querySelector("[data-testid='aud02-detail']")!;
     await clickCopy(detail);
-    const box = detail.querySelector<HTMLTextAreaElement>("[data-testid='audC-fallback']")!;
+    const box = detail.querySelector<HTMLTextAreaElement>("[data-testid='audC-copy-fallback']")!;
     expect(box.getAttribute("readonly")).not.toBeNull();
     expect(box.value).toBe(clip.calls[0]);
     expect(box.value).toContain("req-20261119-0a7b3c");
     expect(detail.querySelector("[data-testid='audC-copy-status']")!.textContent).toContain("选中复制");
+    // the preview leg is the same control, so the hand-copy box is its own node
+    const preview = document.querySelector("[data-testid='aud6-preview-evt_copy_0000000001']")!;
+    await clickCopy(preview);
+    const previewBox = preview.querySelector<HTMLTextAreaElement>("[data-testid='audC-copy-fallback']")!;
+    expect(previewBox.getAttribute("readonly")).not.toBeNull();
+    expect(previewBox.value).toBe(box.value);
+    expect(preview.querySelector("[data-testid='audC-copy-status']")!.textContent).toContain("选中复制");
   });
 
   it("fields the service did not send read 该字段未返回 in the copied line", async () => {

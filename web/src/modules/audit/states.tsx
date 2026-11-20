@@ -67,7 +67,7 @@ export function SummaryCopy({ line }: { line: string }): ReactNode {
           readOnly
           value={line}
           aria-label="结论行（可手动选中复制）"
-          data-testid="audC-fallback"
+          data-testid="audC-copy-fallback"
           className="min-h-[3rem] w-full min-w-0 break-words rounded-md border border-border bg-muted/40 px-2 py-1 font-mono text-xs"
           onFocus={(event) => event.currentTarget.select()}
         />

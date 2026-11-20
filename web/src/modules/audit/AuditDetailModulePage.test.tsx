@@ -346,7 +346,7 @@ describe("audC - the copyable conclusion line on the detail screen", () => {
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
     });
-    const box = document.querySelector<HTMLTextAreaElement>("[data-testid='audC-fallback']")!;
+    const box = document.querySelector<HTMLTextAreaElement>("[data-testid='audC-copy-fallback']")!;
     expect(box.getAttribute("readonly")).not.toBeNull();
     expect(box.value).toBe(clip.calls[0]);
     expect(urls()).toHaveLength(before);
