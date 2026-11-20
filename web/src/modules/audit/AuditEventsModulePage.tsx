@@ -198,7 +198,7 @@ export function AuditFilterBar({
 
       {windowChoice === "custom" ? (
         <div className="flex min-w-0 flex-wrap items-end gap-2" data-testid="aud01-custom-window">
-          <div className="flex min-w-0 flex-col gap-1" data-testid="audB-from">
+          <div className="flex min-w-0 flex-col gap-1 max-md:w-full" data-testid="audB-from">
             <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="aud01-custom-from">
               <span className="text-muted-foreground">开始（北京时间）</span>
               <input
@@ -211,7 +211,7 @@ export function AuditFilterBar({
               />
             </label>
           </div>
-          <div className="flex min-w-0 flex-col gap-1" data-testid="audB-to">
+          <div className="flex min-w-0 flex-col gap-1 max-md:w-full" data-testid="audB-to">
             <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="aud01-custom-to">
               <span className="text-muted-foreground">结束（北京时间）</span>
               <input
@@ -293,7 +293,7 @@ export function AuditFilterBar({
         </div>
       ) : null}
 
-      <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="aud01-filter-type">
+      <label className="flex min-w-0 flex-col gap-1 text-xs max-md:basis-full" htmlFor="aud01-filter-type">
         <span className="text-muted-foreground">事件类型</span>
         <ConsoleSelect
           id="aud01-filter-type"
@@ -319,7 +319,7 @@ export function AuditFilterBar({
           50/50 行 actor.id 全等于该句柄，故筛选值上线（?actor= → actorId=）。
           选项来自本页读到的操作者：本环境没有可展示真名的目录（GAP-06），
           人话标签上屏，机器句柄只进 option 的 value 与地址栏。 */}
-      <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="aud01-filter-operator">
+      <label className="flex min-w-0 flex-col gap-1 text-xs max-md:basis-full" htmlFor="aud01-filter-operator">
         <span className="text-muted-foreground">操作者</span>
         <ConsoleSelect
           id="aud01-filter-operator"
@@ -345,7 +345,7 @@ export function AuditFilterBar({
           可接受筛选之一，过滤效果本环境未单独实测，所以这一条既上线（值来自
           地址栏，可分享），也在本地按已加载的行再筛一遍 —— 范围写在下面的
           aud9-scope-note 上，不假装它是服务端整窗筛选。 */}
-      <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="aud8-filter-resource">
+      <label className="flex min-w-0 flex-col gap-1 text-xs max-md:basis-full" htmlFor="aud8-filter-resource">
         <span className="text-muted-foreground">资源</span>
         <ConsoleSelect
           id="aud8-filter-resource"

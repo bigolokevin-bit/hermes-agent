@@ -720,7 +720,7 @@ export function AuditRowPreview({
         </div>
         {row.rawId ? (
           <a
-            className="rounded-sm underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            className="rounded-sm underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary max-md:flex max-md:w-full max-md:min-h-[44px] max-md:items-center max-md:justify-center max-md:rounded-md max-md:border max-md:border-border"
             href={detailHref ? detailHref(row.rawId) : `/audit?detail=${encodeURIComponent(row.rawId)}`}
             data-testid={testId + "-open"}
           >
