@@ -495,3 +495,18 @@
   color: var(--color-muted-foreground);
 }
 .sys8-same-source-note code { font-size: 0.6875rem; }
+
+
+/* sys9 — source row landing links and asOf transparency */
+.sys9-src-link,
+.sys9-src-nolink {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.sys9-src-link { color: var(--color-primary); text-decoration: underline; text-underline-offset: 2px; }
+.sys9-src-link:hover { text-decoration-thickness: 2px; }
+.sys9-src-link:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; border-radius: 2px; }
+.sys9-src-nolink { color: var(--color-muted-foreground); }

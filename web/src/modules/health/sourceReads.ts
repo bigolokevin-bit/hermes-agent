@@ -29,6 +29,8 @@ export interface SourceRead {
   asOf: string | null;
   /** Raw top-level ISO from the payload; the only value the CSV may export. */
   asOfIso: string | null;
+  /** Optional top-level `asOfSource` label supplied by the payload. */
+  asOfSource?: string | null;
   asOfReason: string | null;
   requestId: string | null;
   /** Raw upstream failure text; only ever rendered as a title. */
@@ -39,6 +41,8 @@ export interface SourceRow extends SourceRead {
   id: string;
   label: string;
   path: string;
+  /** Real in-app route for this read point, or null when it has no page. */
+  href?: string | null;
 }
 
 export interface SourceMatrixSnapshot {
@@ -46,11 +50,11 @@ export interface SourceMatrixSnapshot {
   expanded: boolean;
 }
 
-const SOURCE_DEFS: Array<{ id: string; label: string; path: string }> = [
-  { id: "health", label: "系统健康清单", path: SYS3_PATH },
-  { id: "console", label: "控制台服务探针", path: "/agent-api/api/__health-probe__" },
-  { id: "runtime", label: "Hermes 运行时探针", path: "/agent-api/api/hermes-summary" },
-  { id: "domain", label: "域服务探针", path: "/agent-api/api/skills" },
+const SOURCE_DEFS: Array<{ id: string; label: string; path: string; href: string | null }> = [
+  { id: "health", label: "系统健康清单", path: SYS3_PATH, href: "#/system?tab=health" },
+  { id: "console", label: "控制台服务探针", path: "/agent-api/api/__health-probe__", href: null },
+  { id: "runtime", label: "Hermes 运行时探针", path: "/agent-api/api/hermes-summary", href: "#/capabilities?tab=channels" },
+  { id: "domain", label: "域服务探针", path: "/agent-api/api/skills", href: "#/capabilities?tab=skills" },
 ];
 
 const IDLE: SourceRead = {
@@ -143,22 +147,30 @@ export function useSourceMatrix(): SourceMatrixSnapshot {
 }
 
 /** Only `payload.asOf` at the top level counts, and it must be an ISO timestamp. */
-export function topLevelIsoAsOf(payload: unknown): { asOf: string | null; asOfIso: string | null; asOfReason: string | null } {
+export function topLevelIsoAsOf(payload: unknown): {
+  asOf: string | null;
+  asOfIso: string | null;
+  asOfSource: string | null;
+  asOfReason: string | null;
+} {
   if (typeof payload !== "object" || payload === null || Array.isArray(payload)) {
-    return { asOf: null, asOfIso: null, asOfReason: "响应不是对象，读不到顶层 asOf，采集时刻未知。" };
+    return { asOf: null, asOfIso: null, asOfSource: null, asOfReason: "响应不是对象，读不到顶层 asOf，采集时刻未知。" };
   }
-  const raw = (payload as Record<string, unknown>).asOf;
+  const record = payload as Record<string, unknown>;
+  const rawSource = record.asOfSource;
+  const asOfSource = typeof rawSource === "string" && rawSource.trim() ? rawSource.trim() : null;
+  const raw = record.asOf;
   if (typeof raw !== "string" || !raw.trim()) {
-    return { asOf: null, asOfIso: null, asOfReason: "响应顶层没有 asOf，采集时刻未知。" };
+    return { asOf: null, asOfIso: null, asOfSource, asOfReason: "响应顶层没有 asOf，采集时刻未知。" };
   }
   const value = raw.trim();
   const iso = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?$/.test(value);
   if (!iso || Number.isNaN(new Date(value).getTime())) {
-    return { asOf: null, asOfIso: null, asOfReason: "响应顶层 asOf 不是 ISO 时间，采集时刻未知。" };
+    return { asOf: null, asOfIso: null, asOfSource, asOfReason: "响应顶层 asOf 不是 ISO 时间，采集时刻未知。" };
   }
   const shown = beijingMinute(value);
-  if (!shown) return { asOf: null, asOfIso: null, asOfReason: "响应顶层 asOf 无法解析，采集时刻未知。" };
-  return { asOf: shown, asOfIso: value, asOfReason: null };
+  if (!shown) return { asOf: null, asOfIso: null, asOfSource, asOfReason: "响应顶层 asOf 无法解析，采集时刻未知。" };
+  return { asOf: shown, asOfIso: value, asOfSource, asOfReason: null };
 }
 
 export function failureRead(error: unknown): SourceRead {
@@ -190,6 +202,6 @@ export function failureRead(error: unknown): SourceRead {
   };
 }
 
-export function sourceDefinitions(): Array<{ id: string; label: string; path: string }> {
+export function sourceDefinitions(): Array<{ id: string; label: string; path: string; href: string | null }> {
   return SOURCE_DEFS.map((def) => ({ ...def }));
 }

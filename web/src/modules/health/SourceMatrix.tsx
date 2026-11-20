@@ -8,6 +8,13 @@ import {
 } from "./sourceReads";
 import { csvRows, downloadCsv, exportFilename, toCsv } from "./sourceMatrixCsv";
 
+const ASOF_CRITERION = "判据：只取 payload 顶层 ISO，缺失或非 ISO 显示「—」，不使用本机时钟";
+
+function asOfTitle(row: { asOf: string | null; asOfIso: string | null; asOfSource?: string | null; asOfReason: string | null }): string {
+  if (!row.asOfIso) return `${row.asOfReason ?? "采集时刻未知"}；${ASOF_CRITERION}`;
+  return `asOf 原文：${row.asOfIso} · 换算北京时间：${row.asOf ?? "—"} · 来源：${row.asOfSource ?? "未提供"} · ${ASOF_CRITERION}`;
+}
+
 function CopyRid({ id, testid }: { id: string; testid: string }) {
   const [copied, setCopied] = useState(false);
   const short = id.length > 8 ? id.slice(0, 8) : id;
@@ -90,7 +97,26 @@ export function SourceMatrix() {
                   const rid = row.status === "failed" ? row.requestId : null;
                   return (
                     <tr key={row.id} data-testid={`sys6-row-${row.id}`} data-status={row.status}>
-                      <td data-testid={`sys6-name-${row.id}`}>{row.label}</td>
+                      <td>
+                        <span data-testid={`sys6-name-${row.id}`}>{row.label}</span>
+                        {row.href ? (
+                          <a
+                            className="sys9-src-link"
+                            href={row.href}
+                            data-testid={`sys9-src-link-${row.id}`}
+                          >
+                            打开对应页面
+                          </a>
+                        ) : (
+                          <span
+                            className="sys9-src-nolink"
+                            data-testid={`sys9-src-nolink-${row.id}`}
+                            title="这个探针只在本页内运行，没有独立页面可跳转；不造死链。"
+                          >
+                            该读口无对应页面
+                          </span>
+                        )}
+                      </td>
                       <td data-testid={`sys6-path-${row.id}`} title={row.path}>{row.path}</td>
                       <td
                         data-testid={`sys6-status-${row.id}`}
@@ -111,7 +137,7 @@ export function SourceMatrix() {
                       </td>
                       <td
                         data-testid={`sys6-asof-${row.id}`}
-                        title={row.asOfReason ?? row.asOfIso ?? undefined}
+                        title={asOfTitle(row)}
                       >
                         <span data-testid={`sys8-asof-${row.id}`}>{row.asOf ?? "—"}</span>
                       </td>

@@ -1889,3 +1889,19 @@ built /private/tmp/health-r38/index.html
 - 验证：`src/modules/health` → 4 files / 24 passed；全量 **138 files / 1591 passed**；tsc 基线 8 行（employee-detail/employees），本域 0。
 - DOM（临时 harness，已删除；Vite 5474 / Chrome 9274）：1440/1280/375 均 `vw=bodySW=bodyCW=pageSW=pageCW`；列表检查时刻与矩阵健康行均为 `2026-11-19 23:17`；探针行「—」；说明可见（375 高 46px 正常换行）；失败探针保留可复制 rid。
 - 边界：仅改 `web/src/modules/health/**` + DONE；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未并 main、未重建 9122。
+
+## R59 — /system 读源矩阵行跳转与时刻透明（sys9）
+
+- 基线：显式 refspec fetch 后 `git merge origin/lane/hermes-console`（tip `38793c9a`，代码代次 `7173b7c6`）→ Already up to date；未 reset。
+- 行落点（先 `git grep` 确认仓内真实路由，未造死链）：
+  - 系统健康清单 → `#/system?tab=health`（`sys9-src-link-health`）
+  - Hermes 运行时探针 → `#/capabilities?tab=channels`（该页消费 `/api/hermes-summary`，`sys9-src-link-runtime`）
+  - 域服务探针 → `#/capabilities?tab=skills`（该页消费 `/api/skills`，`sys9-src-link-domain`）
+  - 控制台服务探针 → 无独立页面，`sys9-src-nolink-console`「该读口无对应页面」+title，未渲染空 href。
+  - 路由证据：`web/src/shell/routes.ts:181`（capabilities/channels）、App `/capabilities` 与 `?tab=skills` 重定向、App `/system` health live 槽；四值均在仓内。
+- 采集时刻 title 全量口径：`asOf 原文（ISO UTC）· 换算北京时间 · 来源（asOfSource，未提供则写未提供）· 判据：只取 payload 顶层 ISO，缺失或非 ISO 显示「—」，不使用本机时钟`；缺失行仍显示「—」，title 保留原因 + 同一判据。
+- 交互：矩阵展开状态仍不写 URL、不新增 `?svc=`；跳转用真实 `a[href]`，不在本页改 tab。链接原生键盘可达，`sys9-src-link:focus-visible` 提供 2px 可见焦点环。
+- 取数：矩阵继续复用本页 4 次读取，展开/收起、读 title 均不发新请求；单测断言请求计数 **4 → 4**。
+- 验证：`src/modules/health` → 4 files / 24 passed；全量 **138 files / 1591 passed**；tsc 本域 0。
+- DOM（临时 harness，已删除；Vite 5475 / Chrome 9275）：1440/1280/375 均 `vw=bodySW=bodyCW=docSW=视口`；3 个 `a.sys9-src-link` + 1 个 `sys9-src-nolink`；三档 href 一致；健康行 title 含 `2026-11-19T15:17:09Z` / `2026-11-19 23:17` / 来源 / 判据；focus 实测 `outline: solid 2px`。
+- 边界：仅改 `web/src/modules/health/**` + DONE；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未并 main、未重建 9122。

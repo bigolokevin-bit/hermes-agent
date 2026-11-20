@@ -25,6 +25,7 @@ const HEALTH = {
   schema: "console.health.sources.v1",
   ok: true,
   asOf: "2026-11-19T15:17:09Z",
+  asOfSource: "health.payload.asOf",
   sources: [
     { id: "console", name: "控制台服务(BFF)", state: "ok", version: "4.2.1" },
     { id: "runtime", name: "Hermes 运行时", state: "ok", version: "0.9.1" },
@@ -96,6 +97,12 @@ describe("source matrix", () => {
     clickSpy.mockRestore();
 
     expect(q("sys6-name-health")?.textContent).toBe("系统健康清单");
+    expect(q("sys9-src-link-health")?.getAttribute("href")).toBe("#/system?tab=health");
+    expect(q("sys9-src-link-runtime")?.getAttribute("href")).toBe("#/capabilities?tab=channels");
+    expect(q("sys9-src-link-domain")?.getAttribute("href")).toBe("#/capabilities?tab=skills");
+    expect(q("sys9-src-link-console")).toBeNull();
+    expect(q("sys9-src-nolink-console")?.textContent).toBe("该读口无对应页面");
+    expect(q("sys9-src-nolink-console")?.getAttribute("title")).toContain("不造死链");
     expect(q("sys6-path-health")?.textContent).toBe("/agent-api/api/health");
     expect(q("sys6-status-health")?.textContent).toContain("成功");
     expect(q("sys6-asof-health")?.textContent).toBe("2026-11-19 23:17");
@@ -119,7 +126,12 @@ describe("source matrix", () => {
     // Same read, same ISO, same Beijing minute: the health list column and the matrix row.
     expect(q("sys3-checked")?.textContent).toBe("2026-11-19 23:17");
     expect(q("sys8-asof-health")?.textContent).toBe(q("sys3-checked")?.textContent);
-    expect(q("sys6-asof-health")?.getAttribute("title")).toBe("2026-11-19T15:17:09Z");
+    const healthAsOfTitle = q("sys6-asof-health")?.getAttribute("title") ?? "";
+    expect(healthAsOfTitle).toContain("asOf 原文：2026-11-19T15:17:09Z");
+    expect(healthAsOfTitle).toContain("换算北京时间：2026-11-19 23:17");
+    expect(healthAsOfTitle).toContain("来源：health.payload.asOf");
+    expect(healthAsOfTitle).toContain("判据：只取 payload 顶层 ISO");
+    expect(healthAsOfTitle).toContain("不使用本机时钟");
     expect(q("sys8-same-source-note")?.textContent).toContain("同源");
     expect(q("sys8-same-source-note")?.textContent).toContain("同一 ISO 值");
     // Probe rows keep their own asOf and never borrow the health list time.
@@ -139,6 +151,8 @@ describe("source matrix", () => {
     expect(q("sys6-asof-health")?.textContent).toBe("—");
     expect(q("sys3-checked")?.textContent).toBe("—");
     expect(q("sys6-asof-health")?.getAttribute("title")).toContain("不是 ISO");
+    expect(q("sys6-asof-health")?.getAttribute("title")).toContain("判据：只取 payload 顶层 ISO");
+    expect(q("sys9-src-link-health")?.getAttribute("href")).toBe("#/system?tab=health");
     expect(q("sys6-asof-console")?.textContent).toBe("—");
     expect(q("sys6-asof-runtime")?.textContent).toBe("—");
   });
