@@ -2044,7 +2044,9 @@ describe("runs list keyboard navigation", () => {
     // Only real controls remain in the tab order; no row carrier is focusable.
     const retry = document.querySelector("[data-testid='run5-error-retry']") as HTMLElement | null;
     expect(retry?.tabIndex).toBe(0);
-    expect(document.querySelector("[data-testid='run-list-copy']")).not.toBeNull();
+    // Reproduction legs render no real entry points at all, so nothing can be
+    // half-disabled there.
+    expect(document.querySelector("[data-testid='run-list-copy']")).toBeNull();
   });
 });
 
@@ -2192,5 +2194,100 @@ describe("runs empty state guide", () => {
     expect(guide()).toBeNull();
     expect(document.querySelector("[data-testid='run-state-empty']")).toBeNull();
     expect(text()).toContain("req-empty-1");
+  });
+});
+
+/* ── aria-disabled always says what disabled says, with one reason ── */
+
+describe("runs export aria parity", () => {
+  const btn = (id: string): HTMLButtonElement | null =>
+    document.querySelector(`[data-testid='${id}']`) as HTMLButtonElement | null;
+  const state = (id: string) => {
+    const node = btn(id);
+    return {
+      disabled: node?.disabled ?? null,
+      aria: node?.getAttribute("aria-disabled") ?? null,
+      title: node?.getAttribute("title") ?? "",
+    };
+  };
+
+  it("keeps aria-disabled, disabled and the reason in step for every phase", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A, RUN_B]));
+    await render("/runs", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => rowNodes() === 2, "two rows");
+    for (const id of ["run-list-copy", "run-list-export"]) {
+      const s = state(id);
+      expect(s.disabled).toBe(false);
+      expect(s.aria).toBe("false");
+      expect(s.title.length).toBeGreaterThan(0);
+    }
+
+    // Loading renders no entry points at all: nothing can be half-disabled.
+    api.fetchJSON.mockImplementation(() => new Promise(() => {}));
+    await render("/runs", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => document.querySelector("[data-testid='run5-loading']") !== null, "skeleton");
+    expect(btn("run-list-copy")).toBeNull();
+    expect(btn("run-list-export")).toBeNull();
+
+    // A real failure keeps the bar, disabled, with one sentence and a matching aria.
+    api.fetchJSON.mockImplementation(() =>
+      Promise.reject(new ApiError("down", { status: 500, body: "", url: "/api/runs", requestId: "req-aria-1" })),
+    );
+    await render("/runs", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => document.querySelector("[data-testid='run-state-error']") !== null, "error panel");
+    for (const id of ["run-list-copy", "run-list-export"]) {
+      const s = state(id);
+      expect(s.disabled).toBe(true);
+      expect(s.aria).toBe("true");
+      expect(s.title).toContain("先重试");
+    }
+
+    // Real empty: disabled, aria true, and the reason names the empty page.
+    api.fetchJSON.mockImplementation(okList([]));
+    await render("/runs", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => document.querySelector("[data-testid='run-state-empty']") !== null, "empty panel");
+    for (const id of ["run-list-copy", "run-list-export"]) {
+      const s = state(id);
+      expect(s.disabled).toBe(true);
+      expect(s.aria).toBe("true");
+      expect(s.title).toContain("没有行");
+    }
+
+    // Reproduction legs render no real buttons: nothing can disagree there either.
+    for (const entry of ["/runs?state=error", "/runs?state=denied", "/runs?state=empty"]) {
+      await render(entry, <><RunsModulePage /><HistoryProbe /></>);
+      expect(btn("run-list-copy")).toBeNull();
+      expect(btn("run-list-export")).toBeNull();
+      expect(document.querySelector("[data-testid^='run-state']")).not.toBeNull();
+    }
+  });
+
+  it("marks the per-row copy as enabled and answers zero requests", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A, RUN_B]));
+    await render("/runs", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => rowNodes() === 2, "two rows");
+    const reads = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      (document.querySelector("[data-testid='run-row-toggle-0']") as HTMLButtonElement).click();
+    });
+    await waitFor(() => btn("run-row-copy") !== null, "preview copy");
+    const s = state("run-row-copy");
+    expect(s.disabled).toBe(false);
+    expect(s.aria).toBe("false");
+    expect(s.title).toContain("复制这一行");
+    expect(api.fetchJSON.mock.calls.length).toBe(reads);
+  });
+
+  it("keeps a real empty list disabled with the empty-row reason", async () => {
+    api.fetchJSON.mockImplementation(okList([]));
+    await render("/runs", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => document.querySelector("[data-testid='run-state-empty']") !== null, "empty");
+    for (const id of ["run-list-copy", "run-list-export"]) {
+      const s = state(id);
+      expect(s.disabled).toBe(true);
+      expect(s.aria).toBe("true");
+      expect(s.title).toContain("没有行");
+    }
+    expect(document.querySelector("[data-testid='run-empty-guide']")).not.toBeNull();
   });
 });

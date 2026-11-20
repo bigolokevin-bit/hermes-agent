@@ -909,6 +909,16 @@ export function listActionGate(
   }
 }
 
+/**
+ * Fold "this page has no rows" into the phase gate, so `disabled`, `aria-disabled`
+ * and the sentence in `title` are always one decision. Callers render all three
+ * attributes from the returned value and never recompute the reason.
+ */
+export function effectiveListGate(gate: ListGate, empty: boolean, reason: string): ListGate {
+  if (gate.disabled || !empty) return gate;
+  return { disabled: true, title: reason };
+}
+
 /* ── shareable filter source ───────────────────────────────────────── */
 
 export interface RunSourceInput {

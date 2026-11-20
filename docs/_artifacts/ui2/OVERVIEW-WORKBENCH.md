@@ -351,3 +351,15 @@
 - 零额外请求：引导渲染与点两个链接后 `urls()` 长度不变（点击只是路由跳转，`/runs` 不发新读）。
 - 验证：定向 runs 3 files / 135 passed（基线 132）；全量 162 files / **2248 passed**（基线 2245）；`tsc` 本域 0；`eslint src/modules/runs` exit 0；build exit 0（entry 内 `run-empty-guide` = 0，`RunsModulePage-*.js` = 1）。
 - 未测：真实浏览器 375 下引导三段文字折行与两个链接的触控间距。
+
+## 导出/复制按钮的 aria 同步（runs export aria parity，2026-11-20）
+
+R52 OBS 整改：`disabled` 与 `aria-disabled` 说同一句话，与 `title` 里的原因同源。
+
+- 单点：`runs.ts` 新增 `effectiveListGate(gate, empty, reason)`，把「这一页没有行」折进阶段闸门；返回的 `ListGate` 同时喂 `disabled`、`aria-disabled` 与 `title`，按钮不再各自拼条件。
+- 覆盖：`run-list-copy`、`run-list-export`（条内两钮）、`run-row-copy`（预览内，`aria-disabled={false}` + `title="复制这一行屏上已渲染的七个字段"`，只在预览展开时存在）。
+- 四态实测（jsdom）：ready → `disabled=false` / `aria-disabled="false"` / title 为可操作说明；真实 500 → `true` / `"true"` /「…先重试…」；真实空列表（200 + `items: []`）→ `true` / `"true"` /「…没有行…」；loading → 条整体不渲染。
+- `?state=` 复现腿：不再渲染 `run-list-copy-bar`（真实入口零渲染，因此不存在半禁用的按钮）；`run-empty-guide`、`run-state-*` 与既有无障碍标记照旧。既有「复现腿仍有复制钮」的断言随契约改写为「必须不存在」。
+- 零额外请求：展开预览、读属性、断言前后 `fetchJSON` 调用数不变。
+- 验证：定向 runs 3 files / 138 passed（基线 135）；全量 166 files / **2308 passed**（上游本波抬高）；`tsc` 本域 0；`eslint src/modules/runs` exit 0；build exit 0（entry 内 `run-list-export`=0，chunk `RunsModulePage-*.js` 内 `aria-disabled`=1）。
+- 未测：真实浏览器读屏软件对 `aria-disabled` 的播报顺序；375 下条内两钮折行。

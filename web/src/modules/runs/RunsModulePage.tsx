@@ -76,6 +76,7 @@ import {
   defaultRunDir,
   elapsedMinute,
   employeeLabel,
+  effectiveListGate,
   listActionGate,
   parseRunDir,
   parseRunSort,
@@ -250,6 +251,8 @@ function RunPreviewPanel({ row, names, index }: { row: RunRow; names: Map<string
           size="sm"
           outlined
           data-testid="run-row-copy"
+          aria-disabled={false}
+          title="复制这一行屏上已渲染的七个字段"
           onClick={() => {
             const text = runRowText(row, names);
             setCopyBody(text);
@@ -308,6 +311,9 @@ function RunListCopy({
   const [body, setBody] = useState("");
   const [exportStatus, setExportStatus] = useState<"idle" | "done" | "failed">("idle");
   const empty = rows.length === 0;
+  // One object per action: disabled, aria-disabled and the reason come from it.
+  const copyState = effectiveListGate(copyGate, empty, "当前列表没有行，没有可复制的文本");
+  const exportState = effectiveListGate(exportGate, empty, "当前列表没有行，没有可导出的 CSV");
   // One name, computed when the filter changes: the preview and the download
   // both read this string, so they cannot disagree about the minute.
   const fileName = useMemo(
@@ -339,15 +345,14 @@ function RunListCopy({
       <Button
         size="sm"
         outlined
-        disabled={copyGate.disabled || empty}
+        disabled={copyState.disabled}
+        aria-disabled={copyState.disabled}
         onClick={copy}
         data-testid="run-list-copy"
         title={
-          copyGate.disabled
-            ? copyGate.title
-            : empty
-              ? "当前列表没有行，没有可复制的文本"
-              : `复制当前列表为纯文本：表头加 ${rows.length} 行；当前已加载 ${rows.length} 行，不是全量（每页最多 ${PAGE_LIMIT} 条）`
+          copyState.disabled
+            ? copyState.title
+            : `复制当前列表为纯文本：表头加 ${rows.length} 行；当前已加载 ${rows.length} 行，不是全量（每页最多 ${PAGE_LIMIT} 条）`
         }
       >
         <Copy className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
@@ -356,15 +361,14 @@ function RunListCopy({
       <Button
         size="sm"
         outlined
-        disabled={exportGate.disabled || empty}
+        disabled={exportState.disabled}
+        aria-disabled={exportState.disabled}
         onClick={exportCsv}
         data-testid="run-list-export"
         title={
-          exportGate.disabled
-            ? exportGate.title
-            : empty
-              ? "当前列表没有行，没有可导出的 CSV"
-              : `导出当前列表为 CSV：表头加 ${rows.length} 行；当前已加载 ${rows.length} 行，不是全量（每页最多 ${PAGE_LIMIT} 条）`
+          exportState.disabled
+            ? exportState.title
+            : `导出当前列表为 CSV：表头加 ${rows.length} 行；当前已加载 ${rows.length} 行，不是全量（每页最多 ${PAGE_LIMIT} 条）`
         }
       >
         <Download className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
@@ -1470,7 +1474,7 @@ export function RunsModulePage() {
           仅在当前已加载 {sortedRows.length} 行内排序；服务端读口不接受排序参数，点表头不会重新读取。
         </p>
       ) : null}
-      {phase !== "loading" ? (
+      {forced === null && phase !== "loading" ? (
         <RunListCopy
           rows={sortedRows}
           names={names}
