@@ -2666,4 +2666,108 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(rowCount()).toBe(3);
     expect(countText()).toBe("已显示 3 篇 · 总数不可用");
   });
+
+  it("copies the visible document list as on-screen text (knF-*): zero refetch, stale guard, empty disabled, fallback", async () => {
+    const SPACE = { asOf: "2026-11-19T07:00:00Z", items: [{ spaceId: "sp_hr", name: "人事制度空间" }] };
+    const DOCS = {
+      asOf: "2026-11-19T07:00:00Z",
+      documents: [
+        { documentId: "d_a", fileName: "A 手册.pdf", mimeType: "pdf", sizeBytes: 2457600, updatedAt: "2026-11-19T07:10:00Z" },
+        { documentId: "d_b", fileName: "B 表.xlsx", mimeType: "xlsx", sizeBytes: 40960, updatedAt: "2026-11-19T05:30:00Z" },
+        { documentId: "d_c" },
+      ],
+    };
+    // 屏上口径：默认 updated/desc → A(15:10)·B(13:30)·缺值末位；缺值「—」，BJT 到分
+    const EXPECTED_FULL =
+      "文档名 | 类型 | 大小 | 更新\n" +
+      "A 手册.pdf | PDF | 2.3 MB | 2026-11-19 15:10\n" +
+      "B 表.xlsx | 表格 | 40.0 KB | 2026-11-19 13:30\n" +
+      "— | — | — | —\n";
+    const copyBtn = () => byTestid("knF-copy") as HTMLButtonElement | null;
+    const statusText = () => (byTestid("knF-copy-status")?.textContent ?? "").trim();
+    const stubClipboard = (writeText: ReturnType<typeof vi.fn>) =>
+      Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+
+    // ---------- 1. 成功复制：文本=屏上行，且 0 新请求 ----------
+    fetchMock.mockClear();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    stubClipboard(writeText);
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SPACE);
+      if (url.startsWith("/agent-api/api/documents?") && url.includes("spaceId=sp_hr")) return Promise.resolve(DOCS);
+      return fail(404, "这个数据接口还没有接入。", "rid-f-x");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    const urlsBefore = fetchMock.mock.calls.length;
+    expect(copyBtn()?.disabled).toBe(false);
+    expect((copyBtn()?.textContent ?? "")).toContain("复制清单");
+    expect(copyBtn()?.tagName).toBe("BUTTON");
+    expect(statusText()).toBe("");
+    await click("knF-copy");
+    expect(writeText).toHaveBeenCalledTimes(1);
+    expect(writeText.mock.calls[0][0]).toBe(EXPECTED_FULL); // 头行 + 3 条可见行，顺序=屏上排序
+    expect(statusText()).toBe("已复制");
+    expect(fetchMock.mock.calls.length).toBe(urlsBefore); // 纯屏上数据：urls() 前后计数不变
+    expect(byTestid("knF-fallback")).toBeNull();
+
+    // ---------- 2. 列表文本一变，旧「已复制」作废（不再冒充当前清单复制过） ----------
+    // name/asc 与 updated/desc 在这份夹具里同序（文本没变，「已复制」仍属实）；再点成 name/desc 才真变了
+    await click("knC-sort-name");
+    await click("knC-sort-name"); // name/desc：B·A·—，与已复制的文本不同序
+    expect(statusText()).toBe("");
+
+    // ---------- 3. 筛选后复制的是筛后行 ----------
+    const writeText2 = vi.fn().mockResolvedValue(undefined);
+    stubClipboard(writeText2);
+    await type("kn3-docs-filter-input", "B 表");
+    await click("knF-copy");
+    expect(writeText2).toHaveBeenCalledTimes(1);
+    expect(writeText2.mock.calls[0][0]).toBe("文档名 | 类型 | 大小 | 更新\nB 表.xlsx | 表格 | 40.0 KB | 2026-11-19 13:30\n");
+    expect(statusText()).toBe("已复制");
+    expect(fetchMock.mock.calls.length).toBe(urlsBefore); // 筛选与复制都零新请求
+
+    // ---------- 4. 筛到 0 行：disabled + title 原因，不伪造行 ----------
+    await type("kn3-docs-filter-input", "查无此词");
+    expect(copyBtn()?.disabled).toBe(true);
+    expect((copyBtn()?.getAttribute("title") ?? "")).toContain("本地筛选没有留下行");
+    expect((byTestid("knF-lines")?.textContent ?? "")).toBe("0 行");
+    await click("knF-copy"); // 守卫兜底：即便被触发也不写剪贴板
+    expect(writeText2).toHaveBeenCalledTimes(1);
+
+    // ---------- 5. 剪贴板拒绝：给只读 textarea，内容与屏上文本一致；再成功即收起 ----------
+    await type("kn3-docs-filter-input", "");
+    await click("knC-sort-updated"); // 回到 updated/desc：A·B·缺值末位，文本可按行断言
+    const writeFail = vi.fn().mockRejectedValue(new Error("denied"));
+    stubClipboard(writeFail);
+    await click("knF-copy");
+    expect(statusText()).toContain("复制失败");
+    const fallback = byTestid("knF-fallback") as HTMLTextAreaElement | null;
+    expect(fallback).toBeTruthy();
+    expect(fallback?.readOnly).toBe(true);
+    expect(fallback?.value).toBe(EXPECTED_FULL);
+    const writeOk = vi.fn().mockResolvedValue(undefined);
+    stubClipboard(writeOk);
+    await click("knF-copy");
+    expect(statusText()).toBe("已复制");
+    expect(byTestid("knF-fallback")).toBeNull();
+
+    // ---------- 6. 剪贴板不可用：同样进 fallback ----------
+    Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true });
+    await click("knF-copy");
+    expect(statusText()).toContain("复制失败");
+    expect(byTestid("knF-fallback")).toBeTruthy();
+
+    // ---------- 7. 真空集：按钮 disabled + title，不编行（空集文案仍在） ----------
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SPACE);
+      if (url.includes("spaceId=sp_hr")) return Promise.resolve({ asOf: "2026-11-19T07:00:00Z", documents: [] });
+      return fail(404, "这个数据接口还没有接入。", "rid-f-x");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    expect(byTestid("kn3-docs-empty")).toBeTruthy();
+    expect(byTestid("knF-row")).toBeTruthy();
+    expect(copyBtn()?.disabled).toBe(true);
+    expect((copyBtn()?.getAttribute("title") ?? "")).toContain("这份列表是空的");
+    expect((byTestid("knF-lines")?.textContent ?? "")).toBe("0 行");
+  });
 });

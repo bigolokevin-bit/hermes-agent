@@ -65,6 +65,7 @@ import {
   INGEST_STATUS_UNWIRED_HEAD,
   INGEST_STATUS_UNWIRED_HUMAN,
   INGEST_STATUS_URL,
+  docCopyText,
   documentDetailUrl,
   documentsUrl,
   documentsPageUrl,
@@ -1447,6 +1448,23 @@ function SpaceDetailSurface({
   // 到末页只认信封明说（有 cursor 字段且 nextCursor 为 null）；字段缺失=无法判断，不谎称末页。
   const atEnd = baseRows.length > 0 && cursorOffered && !hasMore && !stale && moreErr === null;
 
+  // ---- R55 — 复制清单：文本只取当前排序与筛选后的可见行（屏上那四个字段原样），此路不发任何请求。
+  // 回执签名比对：条件一变，旧的「已复制」就作废，不再冒充当前清单复制过。
+  const copyText = docCopyText(shown.map((entry) => entry.row));
+  const [copyState, setCopyState] = useState<{ kind: "copied" | "failed"; sig: string } | null>(null);
+  const copyAct = copyState !== null && copyState.sig === copyText ? copyState.kind : "idle";
+  const copyList = () => {
+    if (shown.length === 0) return;
+    if (!navigator.clipboard?.writeText) {
+      setCopyState({ kind: "failed", sig: copyText });
+      return;
+    }
+    void navigator.clipboard.writeText(copyText).then(
+      () => setCopyState({ kind: "copied", sig: copyText }),
+      () => setCopyState({ kind: "failed", sig: copyText }),
+    );
+  };
+
   const openKeyCode = shortId(openDoc);
   const docLabel = openRow?.name ?? (openKeyCode ? `文档 · ${openKeyCode}` : "");
   const docTitle = openRow
@@ -1595,6 +1613,41 @@ function SpaceDetailSurface({
           </>
         )}
       />
+      {surface.state.kind === "ready" ? (
+        <div className="knF-row" data-testid="knF-row">
+          <Button
+            size="sm"
+            outlined
+            className="knF-copy"
+            onClick={copyList}
+            disabled={shown.length === 0}
+            title={
+              shown.length === 0
+                ? filterKey !== ""
+                  ? `本地筛选没有留下行：这份列表里有 ${loaded} 份文档，按「${filter.trim()}」一条都没留下。不编行，也就没有可复制的清单。`
+                  : "接口回答里没有文档：这份列表是空的。不编行，也就没有可复制的清单。"
+                : "复制当前排序与筛选后在屏幕上的这些行：文档名 | 类型 | 大小 | 更新。屏上数据，不会再发请求。"
+            }
+            data-testid="knF-copy"
+          >
+            复制清单
+          </Button>
+          <span className="knw5-sub" data-testid="knF-lines">{shown.length} 行</span>
+          <span className="knF-status" data-testid="knF-copy-status" aria-live="polite">
+            {copyAct === "copied" ? "已复制" : copyAct === "failed" ? "复制失败，已展开可选文本，可手动复制" : ""}
+          </span>
+          {copyAct === "failed" ? (
+            <textarea
+              className="knF-fallback"
+              data-testid="knF-fallback"
+              aria-label="手动复制文档清单文本"
+              readOnly
+              rows={Math.min(8, shown.length + 2)}
+              value={copyText}
+            />
+          ) : null}
+        </div>
+      ) : null}
       {openDoc !== "" ? (
         <DocPreviewDrawer nonce={nonce} docId={openDoc} row={openRow} onClose={onCloseDoc} />
       ) : null}

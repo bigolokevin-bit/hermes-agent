@@ -1490,3 +1490,48 @@ $ npx vite build --outDir /tmp/knw22-dist → exit 0（产物只落 /tmp）
 边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
 package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
 无 force / amend / `--no-verify`；单 commit「feat(console): knowledge documents pagination」。
+
+# KNW5 追加 R55：文档列表复制清单（testid `knF-*`）（2026-11-20 BJT）
+
+基线安全闸：toplevel 相符、porcelain 先为空、显式 refspec fetch；交接写的上游 tip `053da5c4`
+在合入时已前进到 `b797bc98`（gate ledger stamped at 053da5c4，代次一致），按最新 tip 合并，
+无冲突。`git diff 053da5c4..b797bc98 -- web/src/modules/knowledge` 为空——wave 不动知识面，
+R54/R55 代码与合并后字节一致。
+
+## 一、口径
+
+```text
+取数       零新请求：复制文本只由当前排序与筛选后的可见行的屏上字符串拼成
+           （测试实测：点复制前后 fetchMock 调用计数逐次相等，含筛选、排序、空态守卫各段）。
+文本       「文档名 | 类型 | 大小 | 更新」头行 + 每可见行一条，顺序=屏上顺序；
+           类型/大小人话与屏上逐字一致（PDF、表格、2.3 MB、40.0 KB），
+           更新北京时间到分（07:10Z → 15:10）；缺值「—」，不当 0、不补值、不编行。
+状态       knF-copy-status 常驻挂载（aria-live=polite）：成功「已复制」；
+           回执带内容签名——列表文本一变（排序/筛选/翻页），旧「已复制」立即作废，
+           不冒充当前清单复制过；文本没变的同序切换不作废（仍属实）。
+失败       navigator.clipboard 拒绝或不可用（jsdom 实测两路）：状态「复制失败，已展开可选文本」
+           + knF-fallback 只读 textarea（readOnly=true，value 与屏上文本逐字一致，可手动选取）；
+           再点成功即收起。未走真浏览器权限弹窗路径（9122 禁重建，本机未能复测）。
+空集       筛到 0 行或真 0 行：按钮 disabled + title 点名原因（「本地筛选没有留下行：这份列表里有
+           N 份文档…」/「接口回答里没有文档…」），行计数「0 行」，不伪造任何行；
+           读口未接入/失败/加载中不出复制条（没有列表可复制，不摆空控件）。
+键盘       控件是真 BUTTON[type=button]（Tab 可达、Enter 原生触发）；fallback 是原生 textarea 可聚焦。
+```
+
+testid 新增 `knF-row` / `knF-copy` / `knF-lines` / `knF-copy-status` / `knF-fallback`。
+kn3 / kn6 / kn7 / kn8 / kn9 / knB / knC / knD / knE / knw5 全套既有断言零改零破。
+复制条为 flex-wrap 行、textarea 100% 盒宽，无固定宽；本轮未重建 9122，
+三宽度横溢未做浏览器复测（构建产物只落 /tmp）。
+
+## 验证尾行（R55）
+```text
+$ npx vitest run src/modules/knowledge   → 2 files / 48 tests passed（含新增复制清单七段测试）
+$ npx vitest run                         → 全部通过（合并 wave 后 1671 tests passed）
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 set-state-in-effect warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw23-dist → exit 0（产物只落 /tmp）
+```
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
+无 force / amend / `--no-verify`；merge commit（053da5c4..b797bc98 代次）与单 feature commit
+「feat(console): knowledge document list copy」分开。
