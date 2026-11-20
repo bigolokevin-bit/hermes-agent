@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight, Inbox, RefreshCw, Search, ShieldAlert, TriangleAlert, Users } from "lucide-react";
 import { Badge, Button, Card, CardContent } from "@nous-research/ui";
@@ -37,6 +37,11 @@ type State = {
   status: number;
   message?: string;
   requestId?: string;
+  /** R58: cursor/total read from the payload top level (no total key -> stated
+    * honestly; never extrapolated from loaded rows). */
+  nextCursor: string | null;
+  total: number | null;
+  loadingMore: boolean;
 };
 
 const PAGE_SIZE = 50;
@@ -53,8 +58,8 @@ function pickNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
-function readRows(body: unknown): EmployeeRow[] {
-  if (!isRecord(body) || !Array.isArray(body.items)) return [];
+function readRows(body: unknown): { rows: EmployeeRow[]; nextCursor: string | null; total: number | null } {
+  if (!isRecord(body) || !Array.isArray(body.items)) return { rows: [], nextCursor: null, total: null };
   const rows: EmployeeRow[] = [];
   for (const raw of body.items) {
     if (!isRecord(raw)) continue;
@@ -79,7 +84,10 @@ function readRows(body: unknown): EmployeeRow[] {
         : null,
     });
   }
-  return rows;
+  const nextRaw = body.nextCursor ?? body.next_cursor;
+  const nextCursor = typeof nextRaw === "string" && nextRaw.trim() ? nextRaw : null;
+  const total = pickNumber(body.total ?? body.count);
+  return { rows, nextCursor, total };
 }
 
 function shortCode(id: string): string {
@@ -145,7 +153,7 @@ function displayName(row: EmployeeRow): string {
   return row.name?.trim() || "未命名员工";
 }
 
-function lifecycleLabel(value?: string | null): string {
+export function lifecycleLabel(value?: string | null): string {
   switch (value) {
     case "active":
       return "在岗";
@@ -222,11 +230,21 @@ function errorState(err: unknown): State {
     status,
     message: api?.message || (status ? humanizeStatus(status) : API_UNREACHABLE_MESSAGE),
     requestId: (api as unknown as { requestId?: string } | null)?.requestId,
+    nextCursor: null,
+    total: null,
+    loadingMore: false,
   };
 }
 
-/** R63: a missing field is stated, never invented. */
-const FIELD_MISSING = "该字段未返回";
+/** R63/R68: a missing field is stated, never invented. Shared with the
+ * detail identity card so both surfaces use ONE wording source (parity). */
+export const FIELD_MISSING = "该字段未返回";
+/** R68: the hover reason for any missing field, list or detail alike. */
+export const FIELD_MISSING_TITLE = "读口没有回传该字段。";
+/** R68: 「label：该字段未返回」 one-line form. */
+export function fieldMissing(label: string): string {
+  return `${label}：${FIELD_MISSING}`;
+}
 
 /** R63: inline row preview — built only from the list row already loaded,
  * so expanding never fires a request. Same shape as apv9's preview. */
@@ -242,7 +260,7 @@ function RowPreview({ row }: { row: EmployeeRow }) {
       <dl className="grid min-w-0 grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2 xl:grid-cols-3">
         <div className="flex min-w-0 gap-1.5">
           <dt className="shrink-0 text-white/40">姓名</dt>
-          <dd className="min-w-0 truncate" title={row.name?.trim() ? undefined : "列表读口没有回传该字段。"}>
+          <dd className="min-w-0 truncate" title={row.name?.trim() ? undefined : FIELD_MISSING_TITLE}>
             {row.name?.trim() ?? FIELD_MISSING}
           </dd>
         </div>
@@ -254,19 +272,19 @@ function RowPreview({ row }: { row: EmployeeRow }) {
         </div>
         <div className="flex min-w-0 gap-1.5">
           <dt className="shrink-0 text-white/40">在职态</dt>
-          <dd className="min-w-0 truncate" title={row.lifecycleState?.trim() ? `原始值：${row.lifecycleState}` : "列表读口没有回传该字段。"}>
+          <dd className="min-w-0 truncate" title={row.lifecycleState?.trim() ? `原始值：${row.lifecycleState}` : FIELD_MISSING_TITLE}>
             {lifecycleLabel(row.lifecycleState)}
           </dd>
         </div>
         <div className="flex min-w-0 gap-1.5">
           <dt className="shrink-0 text-white/40">角色/职称</dt>
-          <dd className="min-w-0 truncate" title={row.title?.trim() ? undefined : "列表读口没有回传该字段。"}>
+          <dd className="min-w-0 truncate" title={row.title?.trim() ? undefined : FIELD_MISSING_TITLE}>
             {row.title?.trim() ?? FIELD_MISSING}
           </dd>
         </div>
         <div className="flex min-w-0 gap-1.5">
           <dt className="shrink-0 text-white/40">最近活跃</dt>
-          <dd className="min-w-0 truncate font-mono" title={beijingMinute(row.updatedAt) ? "口径：updatedAt，北京时间到分。" : "列表读口没有回传该字段。"}>
+          <dd className="min-w-0 truncate font-mono" title={beijingMinute(row.updatedAt) ? "口径：updatedAt，北京时间到分。" : FIELD_MISSING_TITLE}>
             {beijingMinute(row.updatedAt) ?? FIELD_MISSING}
           </dd>
         </div>
@@ -306,7 +324,23 @@ function buildEmployeesCopyText(rows: EmployeeRow[]): { text: string; count: num
   return { text: [COPY_HEADER, ...lines].join("\n"), count: lines.length };
 }
 
-function ListCopyButton({ rows, totalLoaded }: { rows: EmployeeRow[]; totalLoaded: number }) {
+/** R69: 非 ready 态下计数位与复制/导出/加载更多统一的原因句。 */
+function phaseReason(phase: Phase): string | null {
+  switch (phase) {
+    case "loading":
+      return "加载中：没有可计数的行，这里以「—」占位而不是 0。";
+    case "denied":
+      return "没有查看权限（或读口未接入）：计数不作 0 处理，也不提供复制/导出/续取。";
+    case "error":
+      return "列表没能加载：计数不作 0 处理，也不提供复制/导出/续取。";
+    case "empty":
+      return "读口如实返回 0 人（真实空集）：计数位沿用「—」约定，不是缺数。";
+    default:
+      return null;
+  }
+}
+
+function ListCopyButton({ rows, totalLoaded, phase }: { rows: EmployeeRow[]; totalLoaded: number; phase: Phase }) {
   const [status, setStatus] = useState<"idle" | "done" | "failed">("idle");
   const { text, count } = useMemo(() => buildEmployeesCopyText(rows), [rows]);
   const empty = rows.length === 0;
@@ -327,12 +361,14 @@ function ListCopyButton({ rows, totalLoaded }: { rows: EmployeeRow[]; totalLoade
         size="sm"
         outlined
         data-testid="emp-list-copy"
-        disabled={empty}
+        disabled={empty || phase !== "ready"}
         onClick={copy}
         title={
-          empty
-            ? "当前已加载 0 人：没有可复制的行。"
-            : `按当前排序与筛选后的屏上行序复制；范围=当前已加载 ${totalLoaded} 人，不是全量；零额外请求。`
+          phase !== "ready"
+            ? `不能复制：${phaseReason(phase)}`
+            : empty
+              ? "当前已加载 0 人：没有可复制的行。"
+              : `按当前排序与筛选后的屏上行序复制；范围=当前已加载 ${totalLoaded} 人，不是全量；零额外请求。`
         }
       >
         复制列表
@@ -356,6 +392,72 @@ function ListCopyButton({ rows, totalLoaded }: { rows: EmployeeRow[]; totalLoade
   );
 }
 
+/* ------------------------------------------------------------------ *
+ * R66: 导出 CSV。纯前端 Blob + a.download，零新端点；行与 emp-list-copy
+ * 同一屏上来源（sortedItems）；last_active 缺值=空字段（禁「—」禁 0）；
+ * 口径写明「导出当前已加载 N 人，不是全量」。
+ * ------------------------------------------------------------------ */
+
+/** 文件名时刻=导出时刻的北京时间（本机时钟只进文件名，不进数据列）。 */
+export function csvTimestamp(now: Date): string {
+  const bj = new Date(now.getTime() + 480 * 60000);
+  const iso = bj.toISOString();
+  return `employees-${iso.slice(0, 10).replace(/-/g, "")}-${iso.slice(11, 16).replace(":", "")}.csv`;
+}
+
+export function buildEmployeesCsv(rows: EmployeeRow[]): string {
+  const lines = rows.map(
+    (row) =>
+      [
+        csvCell(displayName(row)),
+        csvCell(`员工 · ${shortCode(row.employeeId)}`),
+        csvCell(lifecycleLabel(row.lifecycleState)),
+        csvCell(beijingMinute(row.updatedAt) ?? ""),
+      ].join(","),
+  );
+  // BOM 让 Excel 认中文；RFC4180 行尾 CRLF。
+  return `\uFEFF${[COPY_HEADER, ...lines].join("\r\n")}\r\n`;
+}
+
+function ListExportButton({ rows, totalLoaded, phase }: { rows: EmployeeRow[]; totalLoaded: number; phase: Phase }) {
+  const empty = rows.length === 0;
+  const exportCsv = () => {
+    if (typeof URL.createObjectURL !== "function") return;
+    const blob = new Blob([buildEmployeesCsv(rows)], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = csvTimestamp(new Date());
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+  return (
+    <span className="flex min-w-0 flex-wrap items-center gap-2" role="group" aria-label="导出 CSV">
+      <Button
+        size="sm"
+        outlined
+        data-testid="emp-list-export"
+        disabled={empty || phase !== "ready"}
+        onClick={exportCsv}
+        title={
+          phase !== "ready"
+            ? `不能导出：${phaseReason(phase)}`
+            : empty
+              ? "当前已加载 0 人：没有可导出的行。"
+              : `导出当前已加载 ${totalLoaded} 人，不是全量；行序与屏上一致，纯前端生成零新端点。`
+        }
+      >
+        导出 CSV
+      </Button>
+      <span data-testid="emp-list-export-count" className="text-xs text-white/55" title="行数与屏上列表同源">
+        共 {rows.length} 行
+      </span>
+    </span>
+  );
+}
+
 export function EmployeesModulePage() {
   const [params, setParams] = useSearchParams();
   const forced = params.get("state");
@@ -367,10 +469,19 @@ export function EmployeesModulePage() {
   const [keyword, setKeyword] = useState(q);
   const [debounced, setDebounced] = useState(q);
   const [reload, setReload] = useState(0);
-  const [state, setState] = useState<State>({ phase: "loading", items: [], status: 0 });
+  const [state, setState] = useState<State>({ phase: "loading", items: [], status: 0, nextCursor: null, total: null, loadingMore: false });
   // R63: at most one row carries the inline preview (page-local state:
   // the URL is untouched and a reload collapses everything back).
   const [previewKey, setPreviewKey] = useState<string | null>(null);
+  // R67: roving tabindex — 行级只有一个 tab 位；↑/↓/Home/End 移焦，
+  // Enter 展开该行预览（拦截跳转），Esc 收起并把焦点还给该行。
+  const [activeRowKey, setActiveRowKey] = useState<string | null>(null);
+  const rowRefs = useRef(new Map<string, HTMLAnchorElement>());
+  const focusRow = (id: string | undefined) => {
+    if (!id) return;
+    rowRefs.current.get(id)?.focus();
+    setActiveRowKey(id);
+  };
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebounced(keyword.trim()), 300);
@@ -405,6 +516,9 @@ export function EmployeesModulePage() {
         message: forced === "error" ? humanizeStatus(502) : undefined,
         // state 与 rid 同源读取（同一 params 快照），见下方 forcedRid 依赖。
         requestId: forced === "error" ? (forcedRid ?? "preview-request") : undefined,
+        nextCursor: null,
+        total: null,
+        loadingMore: false,
       });
       return;
     }
@@ -418,11 +532,18 @@ export function EmployeesModulePage() {
     fetchJSON<unknown>(`/agent-api/api/employees?${query.toString()}`)
       .then((body) => {
         if (cancelled) return;
-        const items = readRows(body);
-        setState({ phase: items.length ? "ready" : "empty", items, status: 200 });
+        const parsed = readRows(body);
+        setState({
+          phase: parsed.rows.length ? "ready" : "empty",
+          items: parsed.rows,
+          status: 200,
+          nextCursor: parsed.nextCursor,
+          total: parsed.total,
+          loadingMore: false,
+        });
       })
       .catch((err: unknown) => {
-        if (!cancelled) setState(errorState(err));
+        if (!cancelled) setState((prev) => ({ ...errorState(err), items: prev.items }));
       });
     return () => {
       cancelled = true;
@@ -471,20 +592,57 @@ export function EmployeesModulePage() {
   }, [state.items, sort, sortActive, dir]);
   const retry = () => setReload((n) => n + 1);
 
+  // R58: real cursor paging. Same filter query plus the server's nextCursor;
+  // appended rows are deduplicated by employeeId (never repeat a row).
+  const loadMore = () => {
+    if (state.phase !== "ready" || !state.nextCursor || state.loadingMore) return;
+    const query = new URLSearchParams();
+    query.set("limit", String(PAGE_SIZE));
+    query.set("expand", "version,knowledge");
+    if (q) query.set("keyword", q);
+    if (lifecycle) query.set("lifecycleState", lifecycle);
+    query.set("cursor", state.nextCursor);
+    setState((prev) => ({ ...prev, loadingMore: true }));
+    fetchJSON<unknown>(`/agent-api/api/employees?${query.toString()}`)
+      .then((body) => {
+        const parsed = readRows(body);
+        setState((prev) => {
+          const seen = new Set(prev.items.map((row) => row.employeeId));
+          const fresh = parsed.rows.filter((row) => !seen.has(row.employeeId));
+          return {
+            ...prev,
+            phase: "ready",
+            items: [...prev.items, ...fresh],
+            nextCursor: parsed.nextCursor,
+            total: parsed.total ?? prev.total,
+            loadingMore: false,
+          };
+        });
+      })
+      .catch((err: unknown) => setState((prev) => ({ ...errorState(err), items: prev.items })));
+  };
+
   return (
     <section className="space-y-4" data-testid="employees-module">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Users className="h-5 w-5 text-white/70" />
           <h1 className="font-mondwest text-xl">数字员工</h1>
-          {state.phase === "ready" ? (
-            <span className="text-sm text-white/50" data-testid="emp-list-count" title="计数与列表同源：同一份服务端返回的行数">
-              {state.items.length}
-            </span>
-          ) : null}
+          <span
+            className="text-sm text-white/50"
+            data-testid="emp-list-count"
+            title={
+              state.phase === "ready"
+                ? "计数与列表同源：同一份服务端返回的行数"
+                : phaseReason(state.phase) ?? undefined
+            }
+          >
+            {state.phase === "ready" ? state.items.length : "—"}
+          </span>
         </div>
         <span className="flex min-w-0 flex-wrap items-center gap-2">
-          <ListCopyButton rows={sortedItems} totalLoaded={state.items.length} />
+          <ListCopyButton rows={sortedItems} totalLoaded={state.items.length} phase={state.phase} />
+          <ListExportButton rows={sortedItems} totalLoaded={state.items.length} phase={state.phase} />
           <Button size="sm" outlined onClick={retry} data-testid="employees-refresh">
           <RefreshCw className="mr-2 h-4 w-4" />
           刷新
@@ -570,9 +728,11 @@ export function EmployeesModulePage() {
         关键字与在职态筛选走服务端真参数（命中数与本页计数同源）；不是「仅在当前已加载 N 人内搜索」的本地过滤。
       </p>
 
+      {/* R69: 四态+分页条统一容器，data-phase 供自动化锁定当前态。 */}
+      <div className="space-y-4" data-testid="emp-list-state" data-phase={state.phase}>
       {state.phase === "loading" ? (
         <Card data-testid="employees-loading">
-          <CardContent className="space-y-2 p-4">
+          <CardContent className="space-y-2 p-4" data-testid="emp-list-state-loading">
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="h-10 animate-pulse rounded bg-white/5" />
             ))}
@@ -582,7 +742,7 @@ export function EmployeesModulePage() {
 
       {state.phase === "denied" ? (
         <Card data-testid="employees-denied">
-          <CardContent className="flex flex-col items-start gap-3 p-5">
+          <CardContent className="flex flex-col items-start gap-3 p-5" data-testid="emp-list-state-denied">
             <ShieldAlert className="h-5 w-5 text-amber-400" />
             <p className="text-sm">员工列表暂不可见</p>
             <p className="text-xs text-white/55">
@@ -597,30 +757,32 @@ export function EmployeesModulePage() {
       ) : null}
 
       {state.phase === "error" ? (
-        <Card data-testid="employees-error">
-          <CardContent className="flex flex-col items-start gap-3 p-5">
+        <Card data-testid="employees-error" data-emp-list-page-error="true">
+          <CardContent className="flex flex-col items-start gap-3 p-5" data-testid="emp-list-state-error">
             <TriangleAlert className="h-5 w-5 text-amber-400" />
             <p className="text-sm">员工列表没能加载出来</p>
             <p className="text-xs text-white/55">{state.message || humanizeStatus(state.status)}</p>
-            <p className="font-mono text-xs text-white/45">
+            <p className="font-mono text-xs text-white/45" data-testid="emp-list-state-rid">
               <RequestIdCopy
                 requestId={state.requestId}
                 fallback="本次请求未记录编号，可复制时间与操作路径反馈"
               />
             </p>
-            <Button size="sm" outlined onClick={retry} data-testid="employees-error-retry">
-              <RefreshCw className="mr-2 h-4 w-4" />
-              重试
-            </Button>
+            <span data-testid="emp-list-state-retry">
+              <Button size="sm" outlined onClick={retry} data-testid="employees-error-retry">
+                <RefreshCw className="mr-2 h-4 w-4" />
+                重试
+              </Button>
+            </span>
           </CardContent>
         </Card>
       ) : null}
 
       {state.phase === "empty" ? (
         <Card data-testid="employees-empty" data-emp-list-empty="true">
-          <CardContent className="flex flex-col items-center gap-3 p-8 text-center">
+          <CardContent className="flex flex-col items-center gap-3 p-8 text-center" data-testid="emp-list-state-empty">
             <Inbox className="h-6 w-6 text-white/40" />
-            <p className="text-sm" data-testid="emp-list-empty-text">{filtered ? "没有匹配的员工" : "还没有数字员工"}</p>
+            <p className="text-sm" data-testid="emp-list-empty-text"><span data-testid="emp-list-state-empty-text">{filtered ? "没有匹配的员工" : "还没有数字员工"}</span></p>
             <p className="text-xs text-white/50">
               {filtered ? "换个关键词或放宽筛选条件后再试。" : "员工创建后会出现在这里。"}
             </p>
@@ -628,6 +790,7 @@ export function EmployeesModulePage() {
               <Button
                 size="sm"
                 outlined
+                data-testid="emp-list-state-clear"
                 onClick={() => {
                   setKeyword("");
                   setDebounced("");
@@ -660,6 +823,7 @@ export function EmployeesModulePage() {
             >
               排序仅在当前已加载 {state.items.length} 条内生效（本地排序；后台排序参数实测被忽略，不是全量排序）。
             </p>
+            <div data-testid="emp-list-nav" role="grid" aria-label="员工列表（方向键浏览行，Enter 展开预览）">
             <ul className="divide-y divide-white/5" data-testid="emp-l-list" data-emp-list-rows="true">
               {sortedItems.map((row) => (
                 <li key={row.employeeId} data-testid={`employees-row-${row.employeeId}`}>
@@ -685,6 +849,38 @@ export function EmployeesModulePage() {
                   <Link
                     to={`/employees/${encodeURIComponent(row.employeeId)}`}
                     data-testid={`emp-l-name-link-${row.employeeId}`}
+                    ref={(el) => {
+                      if (el) rowRefs.current.set(row.employeeId, el);
+                      else rowRefs.current.delete(row.employeeId);
+                    }}
+                    tabIndex={(activeRowKey ?? sortedItems[0]?.employeeId) === row.employeeId ? 0 : -1}
+                    aria-expanded={previewKey === row.employeeId}
+                    onFocus={() => setActiveRowKey(row.employeeId)}
+                    onKeyDown={(e) => {
+                      const ids = sortedItems.map((r) => r.employeeId);
+                      const i = ids.indexOf(row.employeeId);
+                      if (e.key === "ArrowDown") {
+                        e.preventDefault();
+                        focusRow(ids[Math.min(i + 1, ids.length - 1)]);
+                      } else if (e.key === "ArrowUp") {
+                        e.preventDefault();
+                        focusRow(ids[Math.max(i - 1, 0)]);
+                      } else if (e.key === "Home") {
+                        e.preventDefault();
+                        focusRow(ids[0]);
+                      } else if (e.key === "End") {
+                        e.preventDefault();
+                        focusRow(ids[ids.length - 1]);
+                      } else if (e.key === "Enter") {
+                        // Enter 展开/收起预览，不跳详情（行内预览是本区语义）。
+                        e.preventDefault();
+                        setPreviewKey((k) => (k === row.employeeId ? null : row.employeeId));
+                      } else if (e.key === "Escape" && previewKey !== null) {
+                        e.preventDefault();
+                        setPreviewKey(null);
+                        e.currentTarget.focus();
+                      }
+                    }}
                     className="grid min-w-0 flex-1 grid-cols-1 gap-1 px-4 py-3 hover:bg-white/5 md:grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)_minmax(0,0.7fr)_minmax(0,0.7fr)_minmax(0,1fr)_minmax(0,0.6fr)_minmax(0,0.8fr)] md:items-center md:gap-2"
                   >
                     <span className="min-w-0">
@@ -728,9 +924,51 @@ export function EmployeesModulePage() {
                 </li>
               ))}
             </ul>
+            </div>
           </CardContent>
         </Card>
       ) : null}
+
+      {/* R69: 分页条常驻——非 ready 态下「加载更多」以 disabled+原因存在，不隐身。 */}
+      <div className="flex min-w-0 flex-wrap items-center gap-2 px-1 text-xs" data-testid="emp-list-page">
+        <span
+          data-testid="emp-list-page-count"
+          className="text-white/55"
+          title={
+            state.phase !== "ready"
+              ? phaseReason(state.phase) ?? undefined
+              : state.total === null
+                ? "读口顶层只有 items/nextCursor（实测 200，无 total 键）；按已加载条数推算会撒谎，故不推算。"
+                : undefined
+          }
+        >
+          {state.phase !== "ready"
+            ? "总数不可读 · 已显示 — 人"
+            : state.total === null
+              ? `总数不可用 · 已显示 ${state.items.length} 人`
+              : `共 ${state.total} 人 / 已显示 ${state.items.length} 人`}
+        </span>
+        <Button
+          size="sm"
+          outlined
+          data-testid="emp-list-page-more"
+          disabled={state.phase !== "ready" || !state.nextCursor || state.loadingMore}
+          onClick={loadMore}
+          title={
+            state.phase !== "ready"
+              ? `不能续取：${phaseReason(state.phase)}`
+              : state.nextCursor
+                ? "带服务端游标续取下一页（追加按工号去重）"
+                : "服务端没有给出下一页游标：已到末页。"
+          }
+        >
+          {state.loadingMore ? "加载中…" : "加载更多"}
+        </Button>
+        {state.phase === "ready" && state.nextCursor === null && state.items.length > 0 ? (
+          <span data-testid="emp-list-page-end" className="text-white/45">已到末页</span>
+        ) : null}
+      </div>
+      </div>
     </section>
   );
 }

@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { Badge, Button, Card, CardContent } from "@nous-research/ui";
 import { fetchJSON } from "@/lib/api";
 import {
@@ -11,6 +11,7 @@ import {
   type Sys3State,
 } from "./systemHealth";
 import { failureRead, publishSourceRead, topLevelIsoAsOf } from "./sourceReads";
+import { SERVICE_GAP, findService, readServiceParam, writeServiceParam } from "./serviceLink";
 
 type Preview = "loading" | "empty" | "error" | null;
 type CountKey = "normal" | "degraded" | "unreachable" | "unknown";
@@ -54,11 +55,15 @@ function RowDetail({ row }: { row: SystemHealthRow }) {
       <dl className="sys4-grid">
         <div className="sys4-field">
           <dt>服务名</dt>
-          <dd data-testid="sys4-service">{row.name ?? "该字段未返回"}</dd>
+          <dd data-testid="sys4-service" title={row.nameReason ?? row.name ?? undefined}>
+            <span className="sys15-full" data-testid="sys15-full-service">{row.name ?? "该字段未返回"}</span>
+          </dd>
         </div>
         <div className="sys4-field">
           <dt>口径（读口路径）</dt>
-          <dd data-testid="sys4-endpoint" title={row.endpoint ?? undefined}>{row.endpoint ?? "该字段未返回"}</dd>
+          <dd data-testid="sys4-endpoint" title={row.endpoint ?? undefined}>
+            <span className="sys15-full" data-testid="sys15-full-endpoint">{row.endpoint ?? "该字段未返回"}</span>
+          </dd>
         </div>
         <div className="sys4-field sys4-wide">
           <dt>状态依据</dt>
@@ -77,7 +82,7 @@ function RowDetail({ row }: { row: SystemHealthRow }) {
         <div className="sys4-field sys4-wide">
           <dt>最近一次错误摘要</dt>
           <dd data-testid="sys4-error" title={row.lastErrorReason ?? undefined}>
-            {row.lastError ?? "该字段未返回"}
+            <span className="sys15-full" data-testid="sys15-full-error">{row.lastError ?? "该字段未返回"}</span>
             {row.lastErrorRedactions > 0 ? <span className="sys4-redacted" data-testid="sys4-redacted">已脱敏 {row.lastErrorRedactions} 处</span> : null}
             {row.lastErrorTruncated ? <span className="sys4-redacted">摘要已截断</span> : null}
           </dd>
@@ -105,15 +110,76 @@ export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Pre
   const [reload, setReload] = useState(0);
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [filter, setFilter] = useState<Sys3State | null>(null);
+  const [svc, setSvc] = useState<string | null>(() => readServiceParam(window.location.search, window.location.hash));
+  const [targetKey, setTargetKey] = useState<string | null>(null);
+  const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
+
+  const dropService = () => {
+    setSvc(null);
+    setTargetKey(null);
+    writeServiceParam(null);
+  };
+
+  const clearService = () => {
+    setOpenKey(null);
+    dropService();
+  };
+
+  useEffect(() => {
+    const sync = () => setSvc(readServiceParam(window.location.search, window.location.hash));
+    window.addEventListener("popstate", sync);
+    window.addEventListener("hashchange", sync);
+    return () => {
+      window.removeEventListener("popstate", sync);
+      window.removeEventListener("hashchange", sync);
+    };
+  }, []);
+
+  const linkedRow = state.k === "ready" ? findService(state.read.rows, svc) : null;
+
+  useEffect(() => {
+    if (!svc || state.k !== "ready") {
+      setTargetKey(null);
+      return;
+    }
+    const match = findService(state.read.rows, svc);
+    if (!match) {
+      setTargetKey(null);
+      setOpenKey(null);
+      return;
+    }
+    setTargetKey(match.key);
+    setOpenKey(match.key);
+    setFilter(null);
+  }, [svc, state]);
+
+  useEffect(() => {
+    if (!targetKey) return;
+    const timer = window.setTimeout(() => {
+      rowRefs.current[targetKey]?.scrollIntoView?.({ block: "center" });
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [targetKey, openKey]);
+
+  const toggleRow = (key: string) => {
+    setOpenKey((current) => (current === key ? null : key));
+    if (svc) dropService();
+  };
 
   useEffect(() => {
     if (!openKey) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpenKey(null);
+      if (event.key !== "Escape") return;
+      setOpenKey(null);
+      if (svc) {
+        setSvc(null);
+        setTargetKey(null);
+        writeServiceParam(null);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [openKey]);
+  }, [openKey, svc]);
 
   useEffect(() => {
     if (preview !== null) {
@@ -206,6 +272,14 @@ export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Pre
     ? state.read.rows.filter((row) => row.state === filter)
     : state.k === "ready" ? state.read.rows : [];
 
+  const linkReason =
+    state.k === "gap" ? `健康读口未接入，无法把「${svc ?? ""}」定位到服务行。`
+      : state.k === "login" ? `需要登录后才能把「${svc ?? ""}」定位到服务行。`
+        : state.k === "error" ? `健康清单读取失败，无法定位「${svc ?? ""}」。`
+          : state.k === "empty" ? `健康接口返回了空清单，无法定位「${svc ?? ""}」。`
+            : state.k === "ready" ? `本次健康清单里没有匹配「${svc ?? ""}」的服务；清单来自一次真实响应，不补行。`
+              : "";
+
   return (
     <Card data-testid="sys3-page">
       <CardContent className="space-y-3 p-4" data-fixture={preview ?? undefined}>
@@ -231,6 +305,7 @@ export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Pre
                 onClick={() => {
                   setOpenKey(null);
                   setFilter((current) => (current === bucket.state ? null : bucket.state));
+                  if (svc) clearService();
                 }}
               >
                 <span className="sys5-count-label">{bucket.label}</span>
@@ -270,6 +345,33 @@ export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Pre
             <Button size="sm" outlined onClick={retry} disabled={state.k === "loading"} data-testid="sys3-refresh">刷新</Button>
           </div>
         </div>
+
+        {svc && state.k !== "loading" ? (
+          linkedRow ? (
+            <p className="sys14-link-note" data-testid="sys14-link-target" role="status">
+              已定位到「{linkedRow.name ?? linkedRow.key}」。
+              <a
+                href="#/system?tab=health"
+                data-testid="sys14-link-clear"
+                onClick={(event) => { event.preventDefault(); clearService(); }}
+              >
+                清除定位
+              </a>
+            </p>
+          ) : (
+            <div className="sys14-link-missing" data-testid="sys14-link-missing" title={SERVICE_GAP} role="status">
+              <b>该服务不在当前清单里</b>
+              <span>{linkReason}</span>
+              <a
+                href="#/system?tab=health"
+                data-testid="sys14-link-clear"
+                onClick={(event) => { event.preventDefault(); clearService(); }}
+              >
+                回到全部服务
+              </a>
+            </div>
+          )
+        ) : null}
 
         {state.k === "loading" ? (
           <div className="sys3-loading" data-testid="sys3-loading" aria-busy="true">
@@ -336,25 +438,31 @@ export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Pre
                   {visibleRows.map((row) => (
                     <Fragment key={row.key}>
                       <tr
+                        ref={(node) => { rowRefs.current[row.key] = node; }}
                         data-testid={`sys3-row-${row.key}`}
                         data-open={openKey === row.key ? "1" : undefined}
                         tabIndex={0}
                         aria-expanded={openKey === row.key}
+                        aria-current={targetKey === row.key ? "true" : undefined}
                         aria-controls={`sys4-detail-row-${row.key}`}
-                        className="sys3-row"
-                        onClick={() => setOpenKey((current) => (current === row.key ? null : row.key))}
+                        className={`sys3-row${targetKey === row.key ? " is-svc-target" : ""}`}
+                        onClick={() => toggleRow(row.key)}
                         onKeyDown={(event) => {
                           if (event.key === "Enter" || event.key === " ") {
                             event.preventDefault();
-                            setOpenKey((current) => (current === row.key ? null : row.key));
+                            toggleRow(row.key);
                           }
                         }}
                       >
-                        <td data-testid="sys3-name" title={row.nameReason ?? undefined}>{row.name ?? "—"}</td>
+                        <td data-testid="sys3-name" title={[row.name, row.nameReason].filter(Boolean).join(" · ") || undefined}>
+                          <span className="sys15-trunc" data-testid="sys15-trunc-name">{row.name ?? "—"}</span>
+                        </td>
                         <td data-testid="sys3-state" title={row.stateReason ?? row.stateRaw ?? undefined}>
                           <Badge tone={tone(row.state)}>{row.state}</Badge>
                         </td>
-                        <td data-testid="sys3-version" title={row.versionReason ?? undefined}>{row.version ?? "—"}</td>
+                        <td data-testid="sys3-version" title={[row.version, row.versionReason].filter(Boolean).join(" · ") || undefined}>
+                          <span className="sys15-trunc" data-testid="sys15-trunc-version">{row.version ?? "—"}</span>
+                        </td>
                         <td data-testid="sys3-checked" title={row.checkedReason ?? undefined}>{row.checkedAt ?? "—"}</td>
                         <td data-testid="sys3-latency" title={row.latencyReason ?? undefined}>{row.latency ?? "—"}</td>
                       </tr>

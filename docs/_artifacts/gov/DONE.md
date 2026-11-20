@@ -1990,3 +1990,60 @@ built /private/tmp/health-r38/index.html
   - tools empty → `data-cap-state=empty`、`capF-state-empty`；tools error → `data-cap-state=error`、`capF-state-error`、`capF-retry`。
   - 单元测试覆盖 live 403/404 同体、generic 500 计数 `—`、q/sort/dir 在错误与重试后保留、重试只重发当前 tab（tools 仅 tools/mcp 候选）。
 - 边界：仅 `web/src/modules/{skills,tools}/**` + 本 DONE；未改 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未并 main；未重建 9122；未 install/force/amend/--no-verify。
+
+## R66 / capG — /capabilities 导出与复制的失败态一致性（2026-11-20）
+
+- 基线：先显式 refspec fetch `origin/lane/hermes-console`（tip `cca9cf7e`），再 `git merge --no-ff` 得 `331b80c3`；未 reset，未并 main，未重建 9122。
+- 变更：新增 `web/src/modules/capabilities/outputState.ts`，把列表读取态映射为导出/复制的可用性：loading/unavailable/error 禁用，ready/empty 按当前可见行数决定；禁用原因只进 `title`（未接入含去处与 GAP，500/网络含请求编号），可见计数在失败态为 `—`，真空仍为 `0 条` + 有源（空）。
+- `csvExport.tsx` / `listCopy.tsx` 接受 `state`，默认行为保持原独立用例；skills/tools 两页把各自的加载、空、未接入（403/404）、错误（500/网络）映射后传入，重试成功自动恢复。
+- 读数（临时 harness 已删除；Vite 5483 / Chrome CDP 9283）：1440/1280/375 × skills/tools × ready/empty/404/500 共 24 组，`bodySW=bodyCW=pageSW=pageCW=viewport`，无横溢。
+  - ready：导出/复制可用，计数 `2 条`；empty：两者禁用，计数 `0 条`，标题「当前视图没有可导出的行」。
+  - 404/403：两者禁用，标题含「读口未接入」「审批中心」「GAP-SKL4-01 / GAP-04」，计数 `—`，计数条 `—/无源`。
+  - 500：两者禁用，标题含「请求编号：req-capg-9」「重试成功后才能导出/复制」，计数 `—`；单元测试覆盖重试后恢复为 `1 条` / `6 条`。
+- 验证：定向 `npx vitest run src/modules/capabilities src/modules/skills src/modules/tools` → **6 files / 68 passed**；全量 `npx vitest run` → **144 files / 1795 passed**；`tsc -b . --noEmit` 仅剩基线 approvals/employee-detail/employees 错误，本域 0 行。
+- 边界：仅 `web/src/modules/{capabilities,skills,tools}/**` + 本 DONE；未改 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未 install/force/amend/--no-verify。
+
+## R67 / sys13 — /system 读源矩阵可排序列（2026-11-20）
+
+- 基线：先显式 refspec fetch `origin/lane/hermes-console`（tip `3c7f70f6`，代码代次 `cca9cf7e`），再 `git merge --no-ff` 得 `f811cfaa`；未 reset，未并 main，未重建 9122。
+- 变更：新增 `web/src/modules/health/sourceSort.ts`；`SourceMatrix.tsx` 的状态/耗时/采集时刻三列表头改为真 `button[type=button]`，`aria-sort` 三态；默认口径名升序（URL 不带 `ssort/sdir`），其余列按 升→降→默认 三态循环，URL 写 `?ssort=state|ms|asof&sdir=asc|desc`，刷新/粘 URL 可复现；排序只改屏上与复制/导出顺序，不发请求。缺值/非 ISO 采集时刻排末；采集时刻按 ISO 原值比较；表体、`sys10-copy`、导出共用同一排序结果。
+- 读数（临时 harness 已删除；Vite 5484 / Chrome CDP 9284；真实 `HealthPage` + 四个读口 stub）：
+  - 默认：`initialAria=ascending`（口径名），行序 `console,health,domain,runtime`，URL `#/system?tab=health`。
+  - 状态升序：`console,health,runtime,domain`，URL `#/system?tab=health&ssort=state&sdir=asc`，`aria-sort=ascending`；降序：`domain,runtime,health,console`，URL `...&sdir=desc`，`aria-sort=descending`；第三次点击回默认，URL 清回 `#/system?tab=health`，`aria-sort` 回 `ascending/none`。
+  - 采集时刻升序：`health,console,runtime,domain`（runtime/domain 无 asOf 排末），URL `...&ssort=asof&sdir=asc`；降序：`console,health,runtime,domain`。
+  - 请求计数：排序点击前后 **4 → 4**，无新请求。
+  - 复制对照（asof 降序）：表体首/末 `console` / `domain`；`sys10-copy` 文本首数据行「控制台服务探针 | /agent-api/api/__health-probe__ | 成功 | 2 ms | 2026-11-20 10:31」，末行「域服务探针 | /agent-api/api/skills | 读口未接入 | 2 ms | —」，与表体一致；表头为「口径名 | 路径 | 状态 | 耗时 | 采集时刻」。
+  - 三档：1440 `vw=bodySW=bodyCW=1440`，page 1438/1438，table 1408/1408；1280 全部 1280，page 1278/1278，table 1248/1248；375 `body 375/375`，page 373/373，table 及 `.sys6-scroll` **760/343**（仅表内滚动）；无页面横溢。
+- 验证：`npx vitest run src/modules/health` → **5 files / 32 passed**；全量 `npx vitest run` → **145 files / 1800 passed**；`tsc -b . --noEmit` → exit 2，20 行均为既有基线（approvals/employee-detail/employees），`modules/health|sourceSort|SourceMatrix` 0 行。
+- 边界：仅 `web/src/modules/health/{SourceMatrix.tsx,sourceSort.ts,sourceSort.test.ts,SourceMatrix.test.tsx,health.css}` + 本 DONE；未改 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未 install/force/amend/--no-verify。
+
+## R68 / sys14 — /system 服务深链定位（2026-11-20）
+
+- 基线：显式 refspec fetch `origin/lane/hermes-console`（tip `3c7f70f6`，代码代次 `cca9cf7e`）后 `git merge --no-ff` → Already up to date；未 reset，未并 main，未重建 9122。
+- 变更：新增 `web/src/modules/health/serviceLink.ts`（读/写 `svc`、键名与显示名归一匹配、GAP-SYS14-01）；`SystemHealthSurface.tsx` 支持 `?svc=<key|name>`：
+  - 命中后自动展开 `sys4-detail-*`、置 `aria-current=true` 与 `is-svc-target` 高亮，`scrollIntoView({block:'center'})`；刷新/粘 URL 可复现。
+  - 未命中或读口失败时显示 `sys14-link-missing`「该服务不在当前清单里」+ 人话原因 + 去处，`GAP-SYS14-01` 仅在 title；真实清单行数不变，不补行。
+  - 清除定位/关闭详情只删除 `svc`，保留 `tab/ssort/sdir` 等参数；Esc、行切换与“清除定位”都能撤掉深链；无 `?svc=` 时点行展开行为不变。
+- 读数（临时 harness 已删除；Vite 5486 / Chrome CDP 9286；真实 `HealthPage` + 健康/三探针 stub）：
+  - 1440/1280/375 均 `vw=bodySW=bodyCW=pageSW=pageCW=1440/1280/375`，无横溢。
+  - `?svc=runtime&ssort=state&sdir=desc`：3 行，`sys4-detail-runtime=1`，目标行 `aria-current=true`、`is-svc-target`，提示「已定位到「Hermes 运行时」」，URL 原样；请求 **4**（一次原有健康 + 三探针），排序不新增请求。
+  - 点“清除定位”：URL 变为 `#/system?tab=health&ssort=state&sdir=desc`（仅去 `svc`），详情关闭，请求仍 **4**。
+  - `?svc=ghost&ssort=ms&sdir=asc`：3 行不增，`sys14-link-missing` 含「该服务不在当前清单里」「没有匹配」「不补行」，title `GAP-SYS14-01`，无 `aria-current`，请求 **4**；点提示去处后仅去 `svc`，保留 `ssort/sdir`。
+- 验证：`npx vitest run src/modules/health` → **5 files / 36 passed**；全量 `npx vitest run` → **145 files / 1804 passed**；`tsc -b . --noEmit` → exit 2，20 行均为既有基线（approvals/employee-detail/employees），本域 0 行。
+- 边界：仅 `web/src/modules/health/{SystemHealthSurface.tsx,serviceLink.ts,SystemHealthSurface.test.tsx,health.css}` + 本 DONE；未改 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未 install/force/amend/--no-verify。
+
+## R69 / sys15 — /system 长值折叠与全文可见（2026-11-20）
+
+- 基线：显式 refspec fetch `origin/lane/hermes-console`（tip `3c7f70f6`）后 `git merge --no-ff` → Already up to date；未 reset，未并 main，未重建 9122。
+- 变更：
+  - `systemHealth.ts` 导出既有 `redactError`（保留 token/cookie/secret/password 等打码与 200 字截断），供矩阵错误摘要复用。
+  - 服务列表：`sys3-name` / `sys3-version` 单元格原值给 `title`，内层 `.sys15-trunc`（`sys15-trunc-name` / `sys15-trunc-version`）单行省略；展开 `sys4` 详情内 `.sys15-full`（`sys15-full-service` / `sys15-full-endpoint` / `sys15-full-error`）全文换行，原 sys4 脱敏计数/截断提示保留。
+  - 读源矩阵：列宽固定，名称/路径/状态/原因均 `.sys15-trunc` + 原值 title；新增行内 `sys15-row-toggle-*`「全文/收起」，展开 `sys15-detail-*` 显示 `sys15-full-name/path/status/asof-*` 全文；错误摘要先 `redactError`，title 与全文均只含 `***` 与「已脱敏 N 处」，原值不上屏。
+  - CSS：`.sys15-trunc` 省略号、`.sys15-full` `white-space:normal;word-break:break-word`、`table-layout:fixed` 与各列百分比；三档无页面横溢。
+- DOM（临时 harness 已删；Vite 5487 / Chrome CDP 9287；截图 `docs/_artifacts/gov/shots/sys15-{1440,1280,375}.png`）：
+  - 1440/1280/375：`vw=bodySW=bodyCW=1440/1280/375`；3 行；截断元素 6 个；长名称 `clientWidth 314/276/139`、`scrollWidth 603`，省略生效。
+  - 展开服务行：全文元素 `display:block`、`white-space:normal`；错误摘要显示 `***`，`已脱敏 3 处`，无 `long-secret`；请求 **4**。
+  - 展开矩阵 + runtime 行：全文状态含 `失败`、`***`、`已脱敏 2 处`，无 `matrix-secret`；请求 **4**（展开/收起零新增请求）。
+  - 375：页面 375，服务表仍只在自身容器内滚动（680/343），详情全文在表宽内换行。
+- 验证：`npx vitest run src/modules/health` → **5 files / 39 passed**；全量 `npx vitest run` → **145 files / 1807 passed**；`tsc -b . --noEmit` → exit 2，20 行均为既有基线，本域 0。
+- 边界：仅 `web/src/modules/health/**`（实现/测试/CSS）+ 本 DONE + 3 张截图；共 10 文件；未碰 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未 install/force/amend/--no-verify。

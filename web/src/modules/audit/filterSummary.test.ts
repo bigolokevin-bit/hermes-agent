@@ -43,7 +43,8 @@ describe("audG - the filter summary line", () => {
     expect(line).toBe(
       "时间窗：最近 24 小时 · 动作类型：task.created（服务端按 action 精确匹配） · 操作者：employee-api（服务端 actorId，机器句柄）" +
         " · 资源：ap_1122334455667788（本页已加载的记录里本地匹配，服务端 resourceId 效果未单独实测） · 第 3 页（游标 ×2）" +
-        " · 请求：/agent-api/api/audit?limit=50&action=task.created&actorId=employee-api&cursor=cur_page2",
+        // audH added one seat: the size in force, next to the page it counts
+        " · 每页 50 条 · 请求：/agent-api/api/audit?limit=50&action=task.created&actorId=employee-api&cursor=cur_page2",
     );
     // no bare cursor token, no origin, no http
     expect(line).not.toMatch(/https?:/);
@@ -77,6 +78,13 @@ describe("audG - the filter summary line", () => {
     expect(line).not.toContain("secret-value");
     expect(line).not.toContain("127.0.0.1");
     expect(line).not.toContain("token");
+  });
+
+  it("a non-default page size is part of the question worth handing over", () => {
+    // audH: 「每页 25 条」 is a choice a person made, so the summary opens for it
+    expect(hasFilterSummary({ ...BASE, limit: 25, defaultLimit: 50 })).toBe(true);
+    expect(hasFilterSummary({ ...BASE, limit: 50, defaultLimit: 50 })).toBe(false);
+    expect(filterSummaryLineOf({ ...BASE, limit: 25, defaultLimit: 50 })).toContain("每页 25 条");
   });
 
   it("the default window alone is not a question worth handing over", () => {

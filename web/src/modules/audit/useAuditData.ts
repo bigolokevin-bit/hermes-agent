@@ -17,7 +17,17 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { failureInfo, fetchDetail, fetchList, fetchVerify, isDenied, isVerifyUnavailable, listUrl, type ListFilters } from "./api";
+import {
+  PAGE_LIMIT,
+  failureInfo,
+  fetchDetail,
+  fetchList,
+  fetchVerify,
+  isDenied,
+  isVerifyUnavailable,
+  listUrl,
+  type ListFilters,
+} from "./api";
 import { detailShapeFailure, readFailure, shapeFailure, verifyFailure, type FailureCopy, type VerifyFailure } from "./copy";
 import type { AuditDetail, AuditRow, VerifyResult } from "./model";
 
@@ -50,12 +60,20 @@ export interface ListApi {
   forced: boolean;
   /** The filters the current rows were read with, echoed back so the screen can say what it asked. */
   filters: ListFilters;
+  /** audH: the size this page is asking with (the address's, or the default). */
+  askedLimit: number;
   /**
    * audG: the path THIS page actually sent for the rows on screen, from the
    * data layer's own builder — relative, no origin, nothing invented. A shared
    * summary quotes the real question instead of a description of it.
    */
   askedPath: string | null;
+  /**
+   * audH: the size the answer says it served, when it says one — the number
+   * the selector echoes after a clamp. `null` = the answer said nothing, and
+   * the screen reports the rows it got instead of claiming an effective size.
+   */
+  servedLimit: number | null;
   reload: () => void;
   loadMore: () => void;
 }
@@ -72,6 +90,8 @@ interface ListState {
   forced: boolean;
   /** audG: the path the rows on screen were asked with (state, not a ref). */
   askedPath: string | null;
+  /** audH: the size the answer itself said it served, when it said one. */
+  servedLimit: number | null;
 }
 
 const INITIAL: ListState = {
@@ -85,6 +105,7 @@ const INITIAL: ListState = {
   loadingMore: false,
   forced: false,
   askedPath: null,
+  servedLimit: null,
 };
 
 function listCopy(err: unknown): FailureCopy {
@@ -116,6 +137,8 @@ export function useAuditList(
   asked: ListFilters,
   enabled: boolean = true,
   startCursor: string | null = null,
+  /** audH: the size this page asks with, from `?limit=`. */
+  limit: number = PAGE_LIMIT,
 ): ListApi {
   const [state, setState] = useState<ListState>(INITIAL);
   const seq = useRef(0);
@@ -126,10 +149,10 @@ export function useAuditList(
       const ticket = ++seq.current;
       // audG: the path recorded is the one `fetchList` is about to build from
       // the same inputs, so a shared summary quotes the real question.
-      const askedPath = listUrl(cursor, asked);
+      const askedPath = listUrl(cursor, asked, limit);
       void (async () => {
         try {
-          const page = await fetchList(cursor, asked);
+          const page = await fetchList(cursor, asked, limit);
           if (ticket !== seq.current) return;
           if (!page) throw new Error("audit: answer is not a list");
           nextRef.current = page.next && page.next !== cursor ? page.next : null;
@@ -147,6 +170,9 @@ export function useAuditList(
             loadingMore: false,
             forced: false,
             askedPath,
+            // audH: a later page states its own size; keep the first stated one
+            // only while nothing was said, so a silent answer never overwrites.
+            servedLimit: page.pageSize ?? (append ? prev.servedLimit : null),
           }));
         } catch (err) {
           if (ticket !== seq.current) return;
@@ -166,7 +192,7 @@ export function useAuditList(
         }
       })();
     },
-    [asked],
+    [asked, limit],
   );
 
   useEffect(() => {
@@ -207,7 +233,7 @@ export function useAuditList(
     run(cursor, true);
   }, [run]);
 
-  return { ...state, filters: asked, reload, loadMore };
+  return { ...state, filters: asked, askedLimit: limit, reload, loadMore };
 }
 
 export type DetailPhase = "idle" | "loading" | "ready" | "error" | "denied";

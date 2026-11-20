@@ -38,6 +38,51 @@ export const VERIFY_PATH = "/agent-api/api/audit-verify";
 /** The BFF's own cursor page size; kept explicit so both panes ask the same thing. */
 export const PAGE_LIMIT = 50;
 
+/**
+ * audH: the page sizes this surface offers. They are the values the page is
+ * willing to put on the wire, so an address carrying anything else is reported
+ * rather than smuggled through as a request nobody chose.
+ */
+export const PAGE_SIZE_CHOICES = [25, 50, 100] as const;
+
+/** What `?limit=` asked, and whether the page may send it. */
+export interface PageSizeReading {
+  /** The value the page asks with: an offered size, or the default. */
+  asked: number;
+  /** The value the address carried, exactly as written; null when absent. */
+  written: string | null;
+  /** True when `asked` came from the address rather than the default. */
+  fromAddress: boolean;
+  /** True when the address carried something the page will not send. */
+  rejected: boolean;
+  /** The honest sentence about what happened, or null when nothing did. */
+  note: string | null;
+}
+
+/**
+ * audH: read `?limit=` honestly.
+ *
+ * `abc`/`0`/`-5` are not sizes at all, and 999 is not one this page offers —
+ * none of them becomes a request. The page falls back to the default size and
+ * SAYS what the address asked, instead of pretending the service agreed.
+ */
+export function readPageSize(raw: string | null): PageSizeReading {
+  const written = raw;
+  const text = (raw ?? "").trim();
+  if (text === "") {
+    return { asked: PAGE_LIMIT, written: null, fromAddress: false, rejected: false, note: null };
+  }
+  const value = Number(text);
+  const offered = (PAGE_SIZE_CHOICES as readonly number[]).includes(value);
+  if (offered) {
+    return { asked: value, written, fromAddress: true, rejected: false, note: null };
+  }
+  const note = Number.isInteger(value) && value > 0
+    ? `地址里写的是每页 ${text} 条，这一档不在本面板可请求的档位（${PAGE_SIZE_CHOICES.join("/")}）里，所以没有把它发出去，当前按每页 ${PAGE_LIMIT} 条读。`
+    : `地址里写的「${text}」不是一个每页条数，所以没有把它发出去，当前按每页 ${PAGE_LIMIT} 条读。`;
+  return { asked: PAGE_LIMIT, written, fromAddress: false, rejected: true, note };
+}
+
 function appendQuery(url: string, key: string, value: string | null | undefined): string {
   if (value === null || value === undefined || value === "") return url;
   const sep = url.includes("?") ? "&" : "?";
@@ -88,7 +133,8 @@ export const NO_FILTERS: ListFilters = { action: null, from: null, to: null, act
 /**
  * One page of the ledger. `cursor` is the opaque value the previous answer
  * carried; without it the request asks for the newest page only. `limit` is
- * always sent so the denominator on screen matches what was asked for.
+ * always sent so the denominator on screen matches what was asked for — audH
+ * made it the size the person chose, not a constant.
  */
 export function listUrl(cursor: string | null = null, filters: ListFilters = NO_FILTERS, limit = PAGE_LIMIT): string {
   let url = LIST_PATH;
@@ -121,8 +167,12 @@ export function verifyUrl(from: string | null, to: string | null): string {
 }
 
 /** One page of events. `null` page = the answer is not a list at all (a failure). */
-export async function fetchList(cursor: string | null, filters: ListFilters = NO_FILTERS): Promise<AuditPage | null> {
-  const payload = await fetchJSON<unknown>(listUrl(cursor, filters));
+export async function fetchList(
+  cursor: string | null,
+  filters: ListFilters = NO_FILTERS,
+  limit = PAGE_LIMIT,
+): Promise<AuditPage | null> {
+  const payload = await fetchJSON<unknown>(listUrl(cursor, filters, limit));
   return auditPageFrom(payload);
 }
 
