@@ -183,7 +183,9 @@ describe("knowledge export column dual-standard guards (R214, executable body)",
   });
 
   it("④ export/copy adds zero requests; empty set disables both copiers with honest titles; createObjectURL never called", async () => {
-    const writeText = vi.fn();
+    // writeText 必须返回 Promise：产品 copyList/copyHits 对 writeText(...) 直接 .then，
+    // 裸 vi.fn() 返回 undefined 会在 unhandled 里炸出 2 条 error（复核归因，修桩不修产品）
+    const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
     // 有数据：导出动作零请求
     wire(DOCS);
