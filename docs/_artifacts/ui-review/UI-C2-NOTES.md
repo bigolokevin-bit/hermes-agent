@@ -44,3 +44,9 @@
 - 问题：`?zone=usage` 预算区无区块头、运行数/实扣/采集时刻数字非等宽（ui-c 数字口径缺口）。
   改法：加 `.ui-c-head`「预算与成本」；三个数值腿挂 `.ui-c-num`（tabular）；文案/title/测试值零改动。
   文件：`EmployeeDetailModulePage.tsx`（UsageZone）。testid 集合前后逐行相等。
+
+## 追加一区：考勤/在岗区（本笔，基线并入 4f2f4e54）
+
+- 问题：`在岗与最近活跃` 卡为行式单列（`.ui-c-rows`），与五区两列栅格口径不一致。
+  改法：同卡行族换 `.ui-c-fields .ui-c-fields--two`（≥640 两列、375 单列、缺值仍「—」）；行序、`dd` 的 title（首行=employeeId 的 parity 契约）与文案逐字保留；testid/路由/取数零改动。
+  文件：`EmployeeDetailModulePage.tsx`（OverviewZone rows）。

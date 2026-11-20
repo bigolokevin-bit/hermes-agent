@@ -36,6 +36,7 @@ import {
 } from "./tasksBoard";
 import { TaskCreateForm } from "./TaskCreateForm";
 import { ConsoleSelect } from "@/shell/ConsoleSelect";
+import "./tasks-density.css";
 
 /** 组内排序键：优先级高→低，同级按更新时间新→旧；未知按最后。 */
 const PRIORITY_RANK: Record<string, number> = { high: 0, urgent: 0, normal: 1, low: 2 };
