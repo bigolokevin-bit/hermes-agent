@@ -296,7 +296,8 @@ describe("EmployeeDetailModulePage — approvals / runs / audit", () => {
     );
     await renderAt(page, at("approvals"));
     const card = container.querySelector('[data-testid="ed5-approvals"]');
-    const link = card?.querySelector("a");
+    // R89 起卡内第一个 a 是口径行的队列去处，行链按 testid 精确取。
+    const link = card?.querySelector('[data-testid="ed8-appr-link-0"]');
     expect(link?.getAttribute("href")).toBe("/approvals?status=pending");
     expect(link?.getAttribute("title")).toBe("task_9F3A1B2C3D");
     expect(card?.textContent).not.toContain("task_9F3A1B2C3D");
@@ -1066,5 +1067,48 @@ describe("R87 cost caliber note (ed10-cost-caliber)", () => {
     // 两处关键短语同族（ui2 不跨模块 import，源码级比对）。
     expect(metricsSource).toContain("实扣");
     expect(metricsSource).toContain("平台扣费账本");
+  });
+});
+
+describe("R89 approvals zone honest scope (ed8-appr-scope)", () => {
+  const APPROVALS_BODY = {
+    items: [
+      { approvalId: "ap_r89", status: "pending", action: "rotate.secret", riskLevel: "high", updatedAt: "2026-11-19T02:30:00Z" },
+    ],
+    nextCursor: null,
+  };
+  const urls = () => vi.mocked(fetchJSON).mock.calls.map((c) => String(c[0]));
+  const approvalsHandler = async (url: string) => {
+    if (String(url).includes("/api/approvals")) return APPROVALS_BODY;
+    return {};
+  };
+
+  it("states the page cap instead of faking paging, with a real queue exit", async () => {
+    mockApi(approvalsHandler);
+    await renderAt(page, at("approvals"));
+    const scope = container.querySelector('[data-testid="ed8-appr-scope"]');
+    expect(scope?.textContent).toContain("本区按聚合口径读取，单页最多 20 条，超出部分请到");
+    expect(scope?.textContent).toContain("审批队列");
+    expect(scope?.getAttribute("title")).toContain("nextCursor 恒 null");
+    const link = container.querySelector('[data-testid="ed8-appr-scope-queue"]') as HTMLAnchorElement | null;
+    expect(link?.getAttribute("href")).toBe("/approvals?status=all");
+    expect(container.querySelector('[data-testid="ed8-appr-row-0"]')).toBeTruthy();
+    expect(urls().filter((u) => u.includes("/api/approvals")).every((u) => !u.includes("cursor="))).toBe(true);
+  });
+
+  it("re-entering the zone re-queries without a stale cursor and keeps no rows across zones", async () => {
+    mockApi(approvalsHandler);
+    await renderAt(page, at("approvals"));
+    expect(container.querySelector('[data-testid="ed8-appr-row-0"]')).toBeTruthy();
+    const before = urls().length;
+    mockApi(async () => ({ items: [] }));
+    await renderAt(page, at("tasks"));
+    expect(container.querySelector('[data-testid="ed8-appr-row-0"]')).toBeNull();
+    mockApi(approvalsHandler);
+    await renderAt(page, at("approvals"));
+    expect(container.querySelector('[data-testid="ed8-appr-row-0"]')).toBeTruthy();
+    const fresh = urls().slice(before);
+    expect(fresh.some((u) => u.includes("/api/approvals"))).toBe(true);
+    expect(fresh.every((u) => !u.includes("cursor="))).toBe(true);
   });
 });

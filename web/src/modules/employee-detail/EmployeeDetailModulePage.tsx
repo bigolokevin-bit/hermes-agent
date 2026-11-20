@@ -1503,6 +1503,19 @@ function ApprovalsZone({ resource, onRetry }: { resource: Resource<ApprovalRow[]
         >
           审批读口暂不支持按员工筛选：以下为当前登录身份的全部状态审批。
         </p>
+        {/* R89: 聚合读口没有续页游标（实测四组 nextCursor 恒 null），
+            与其静默截断不如把上限说死，并给真去处。 */}
+        <p
+          className="border-t border-white/5 px-4 pb-3 pt-2 text-xs text-muted-foreground"
+          data-testid="ed8-appr-scope"
+          title="实测（本代次）：status=all&limit=20/50/100 均 200 n=8 且 nextCursor 恒 null；带无效 cursor 也原样返回——聚合口径没有游标分页能力，故这里不伪造「加载更多」。单页上限按请求口径为 20 条；本代次全量 8 条未满页。"
+        >
+          本区按聚合口径读取，单页最多 20 条，超出部分请到
+          <Link to="/approvals?status=all" className="mx-1 underline underline-offset-2" data-testid="ed8-appr-scope-queue">
+            审批队列
+          </Link>
+          按状态筛选查看。
+        </p>
         <div className="hidden grid-cols-[minmax(0,1.4fr)_minmax(0,0.7fr)_minmax(0,0.6fr)_minmax(0,0.8fr)] gap-2 border-b border-white/10 px-4 py-2 text-xs text-white/45 md:grid">
           <span>事项</span>
           <span>状态</span>

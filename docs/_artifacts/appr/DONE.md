@@ -1196,3 +1196,12 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 测试 history 4+pending 1：aside 钮逐字+status+无 fallback+计数不变+[aria-live=polite]===1+粘贴复现；未打开 disabled+title；reject→fallback readOnly 逐字；预览内钮 written 含 id+计数不变；pending 同款。坑=entry 带 q=zz 时 apv8 本地过滤会滤掉字段不含 zz 的夹具行→waitFor 超时，夹具 reasonText 须可命中。
 - 验证：定向 approvals 4 files/**142 passed**（137+5）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **159 files/2190 passed**（基线 2185+5）。
 - 零破：apv5–9/apd6/apd7/apd8/apd9/apr5/state/sort/export/toggle/live 族（既有用例全绿为证）；三档=aside flex 与预览 min-w-0 既有形态学报（jsdom 不可测）；9122==9813d7af 禁重建，活体粘链读数待并入后代次。
+
+## R89 员工审批区条数诚实化（ed8-appr-scope 分支②，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @6c1dc7ef（HEAD ee64b4f0 仅 gateway/代码代次 9813d7af/章面 0c1b94c3），toplevel ✓ porc=0；重发三件套 grep ed8-appr-scope/-more=0。
+- 实测五组（ego 9122==9813d7af）：status=all&limit=20→200 n=8 keys=[items,nextCursor] nextCursor=**null**；limit=50→200 n=8 next=null；limit=100→200 n=8 next=null；&cursor=abc→200 n=8 next=null（无效 cursor 不报错=聚合腿无游标语义）；status=pending&limit=50→200 n=0 keys=items（单状态腿无行不带键）⇒**分支②固定上限口径行**（聚合无续页能力，不伪造「加载更多」；提 limit 不解决上限声明缺失，limit=20 保持）。
+- 实现：ready 分支 ed8-appr-note 后新常驻 p data-testid=ed8-appr-scope=「本区按聚合口径读取，单页最多 20 条，超出部分请到 [审批队列](/approvals?status=all 真 Link ed8-appr-scope-queue) 按状态筛选查看。」+title 逐字贴四组实测（nextCursor 恒 null+无效 cursor 原样返回=聚合无游标，故不伪造分页；本代次全量 8 条未满页）。空集句现文「当前没有审批事项」逐字不变（工单背景句与现场文案差异以现场为准，本决定记录于此）；不新增 cursor 参数⇒「新请求不带旧 cursor」天然成立（用例锁 urls 无 cursor=）；切区/重进区 renderAt 重挂载=旧行不残留（用例锁）。错误态/403≡404/rid 沿用 R47/R49 既有分支零改。
+- 测试：新 describe 2 用例（口径行逐字+href=/approvals?status=all+title 含「nextCursor 恒 null」+行在+无 cursor；切 tasks 再回 approvals=行清+新请求无 cursor）；既有用例 1 处选择器钉正=「approval rows link…」原取卡内首个 a，被口径行队列链抢占（用例意图=行链，改按 ed8-appr-link-0 精确取，语义等价）。定向 employee-detail 1 file/**55 passed**（53+2）；tsc 两域 0 红；assert-ia 两模式 exit0；全量 **159 files/2192 passed**（基线 2190+2）。
+- 零破：ed8-appr-*/ed1/ed5/ed7/ed9/ed10/edz/edx/apd6/apd7/apv5–9/apr5（既有用例全绿为证）；三档=口径行 px-4+内联链既有形态学报（jsdom 不可测）；9122==9813d7af 禁重建，活体读数待并入后代次。
+- 习语坑（本窗实证）：ed 测试文件=mockApi(handler) 与 renderAt(element,entry) 两步式（handler 不是 renderAt 第三参）；卡内插新链必须 grep 「querySelector("a")」形态的既有用例防抢占。
