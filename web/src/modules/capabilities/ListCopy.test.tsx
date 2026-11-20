@@ -70,6 +70,6 @@ describe("capability list copy", () => {
     await render([]);
     const button = container.querySelector<HTMLButtonElement>("[data-testid='capC-copy']")!;
     expect(button.disabled).toBe(true);
-    expect(button.title).toBe("当前视图没有可复制的行");
+    expect(button.title).toBe("当前没有可导出的条目。");
   });
 });

@@ -18,8 +18,19 @@ describe("capabilities CSV", () => {
     expect(csv.endsWith("\r\n")).toBe(true);
   });
 
-  it("builds a Beijing-time filename", () => {
-    expect(exportFilename("skills", new Date("2026-11-19T22:15:00Z"))).toBe("capabilities-skills-20261120-0615.csv");
-    expect(exportFilename("tools", new Date("2026-11-19T22:15:00Z"))).toBe("capabilities-tools-20261120-0615.csv");
+  it("builds the tab, query, sort, direction and Beijing-time contract", () => {
+    const now = new Date("2026-11-19T22:15:00Z");
+    expect(exportFilename({ tab: "skills" }, now)).toBe("capabilities-skills-all-default-default-20261120-0615.csv");
+    expect(exportFilename({ tab: "tools", q: "web.search-2", sort: "name", dir: "asc" }, now)).toBe(
+      "capabilities-tools-web.search-2-name-asc-20261120-0615.csv",
+    );
+  });
+
+  it("folds Chinese, spaces and colons in a fragment to default and lowercases allowed text", () => {
+    const now = new Date("2026-11-19T22:15:00Z");
+    expect(exportFilename({ tab: "skills", q: "资料", sort: "name", dir: "asc" }, now)).toContain("-skills-default-name-asc-");
+    expect(exportFilename({ tab: "skills", q: "web search", sort: "name", dir: "asc" }, now)).toContain("-skills-default-name-asc-");
+    expect(exportFilename({ tab: "skills", q: "web:search", sort: "name", dir: "asc" }, now)).toContain("-skills-default-name-asc-");
+    expect(exportFilename({ tab: "skills", q: "Web.Search", sort: "type", dir: "DESC" }, now)).toContain("-skills-web.search-type-desc-");
   });
 });

@@ -1,4 +1,5 @@
 import { ApiError } from "@/lib/api-error";
+import { VERSION_MISSING_REASON, versionIdentity } from "./versionIdentity";
 
 export const SYS3_PATH = "/agent-api/api/health";
 export const SYS3_GAP = "GAP-SYS3-01";
@@ -174,7 +175,7 @@ export function readSystemHealth(body: unknown): SystemHealthRead | null {
     const name = pickString(row, ["name", "label", "id"]);
     const rawState = pickString(row, ["state", "status", "health", "result"]);
     const state = stateOf(rawState);
-    const version = pickString(row, ["version", "build", "buildId", "build_id", "revision", "commit"]);
+    const version = versionIdentity(row);
     const latencyMs = pickNumber(row, ["latencyMs", "latency_ms", "durationMs", "duration_ms", "responseTimeMs", "response_time_ms", "elapsedMs", "elapsed_ms"]);
     const key = (pickString(row, ["id"]) ?? name ?? `source-${index}`).replace(/[^a-zA-Z0-9_-]+/g, "-");
     const endpoint = pickString(row, ["path", "endpoint", "readPath", "read_path", "url"]) ?? SYS3_PATH;
@@ -189,7 +190,7 @@ export function readSystemHealth(body: unknown): SystemHealthRead | null {
         ? state === "待核实" ? "上游状态值暂无法归类。" : null
         : "健康接口没有给出服务状态。",
       version,
-      versionReason: version ? null : "健康接口没有给出该服务的版本或构建标识。",
+      versionReason: version ? null : VERSION_MISSING_REASON,
       checkedAt: asOf,
       checkedReason: asOfReason,
       latency: latencyMs === null ? null : `${Math.round(latencyMs)} ms`,

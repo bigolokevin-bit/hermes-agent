@@ -20,10 +20,11 @@ import { CapabilityRowDetail } from "../capabilities/rowDetail";
 import { CapabilitySearch } from "../capabilities/search";
 import { CapabilityExport } from "../capabilities/csvExport";
 import { CapabilityCopy } from "../capabilities/listCopy";
-import type { CapabilityOutputState } from "../capabilities/outputState";
+import { deriveGates, type GatePhase } from "../capabilities/gates";
 import { applySort, ariaSort, cycleSort, readSort, sortRows, type SortKey } from "../capabilities/sorting";
 import { useEnsureTabParam } from "../capabilities/tabParam";
 import { captureTabView, focusTabButton, noteTabMount, restoreTabView } from "../capabilities/tabView";
+import { RowMissingNotice, listHref, rowHref, rowTargetFor, withRowTarget, withoutRowTarget } from "../capabilities/rowLink";
 import "./skills.css";
 
 type State =
@@ -138,6 +139,27 @@ export function SkillsPage() {
     setAttempt((value) => value + 1);
   };
 
+  const setRowParam = (row: SkillRow | null) => {
+    setSp(row ? withRowTarget(sp, "skills", row.name) : withoutRowTarget(sp), { replace: true });
+  };
+  const openSkillRow = (row: SkillRow) => {
+    setOpenSkill(row.id);
+    setRowParam(row);
+  };
+  const closeSkillRow = () => {
+    setOpenSkill(null);
+    setRowParam(null);
+  };
+  const toggleSkillRow = (row: SkillRow) => {
+    if (openSkill === row.id) closeSkillRow();
+    else openSkillRow(row);
+  };
+  const clearRowLookup = () => {
+    const next = withoutRowTarget(sp);
+    next.delete("q");
+    setSp(next, { replace: true });
+  };
+
   useEffect(() => {
     cachedSkillsOpen = openSkill;
   }, [openSkill]);
@@ -164,13 +186,13 @@ export function SkillsPage() {
     if (!openSkill) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setOpenSkill(null);
+        closeSkillRow();
         rowRefs.current[openSkill]?.focus();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [openSkill]);
+  }, [openSkill, sp]);
 
   const load = useCallback(async (signal: { live: boolean }) => {
     setState({ k: "loading" });
@@ -232,6 +254,14 @@ export function SkillsPage() {
     rovingKey && sortedRows.some((row) => row.id === rovingKey)
       ? rovingKey
       : sortedRows[0]?.id ?? null;
+  const linkTarget = rowTargetFor(sp, "skills");
+  const linkedRow = linkTarget ? sortedRows.find((row) => row.name === linkTarget.name) ?? null : null;
+  const rowMissing = Boolean(linkTarget && (page.k === "ready" || page.k === "empty") && !linkedRow);
+  const rowMissingReason = linkTarget
+    ? q
+      ? `当前搜索词「${q}」把这个条目隐藏了，或它已不在台账里。`
+      : "当前台账里没有这个条目；它可能已被删除或改名。"
+    : "";
   const onRowKeyDown = (
     event: ReactKeyboardEvent<HTMLTableRowElement>,
     row: SkillRow,
@@ -251,11 +281,11 @@ export function SkillsPage() {
     else if (event.key === "End") move(sortedRows.length - 1);
     else if (event.key === "Enter") {
       event.preventDefault();
-      setOpenSkill((current) => (current === row.id ? null : row.id));
+      toggleSkillRow(row);
     } else if (event.key === "Escape") {
       if (openSkill === row.id) {
         event.preventDefault();
-        setOpenSkill(null);
+        closeSkillRow();
       }
       rowRefs.current[row.id]?.focus();
     }
@@ -272,16 +302,6 @@ export function SkillsPage() {
     setSp(params, { replace: true });
   };
 
-  useEffect(() => {
-    if (page.k !== "ready") return;
-    publishCapabilityCount("skills", {
-      value: visibleRows.length,
-      source: visibleRows.length ? "ready" : "empty",
-      reason: null,
-      gap: null,
-    });
-  }, [page.k, visibleRows.length]);
-
   const exportRows = sortedRows.map((row) => ({
     name: row.name === "—" ? null : row.name,
     type: row.source,
@@ -296,30 +316,75 @@ export function SkillsPage() {
   }));
   const unavailable = page.k === "error" && (page.status === 403 || page.status === 404);
   const capState = page.k === "error" ? (unavailable ? "unavailable" : "error") : page.k;
-  const outputState: CapabilityOutputState =
-    page.k === "loading"
-      ? { kind: "loading" }
-      : page.k === "empty"
-        ? { kind: "empty" }
-        : page.k === "error"
-          ? unavailable
-            ? { kind: "unavailable", reason: page.message.replace(/^技能读口未接入：/, ""), gap: page.gap ?? SKILLS_GAP }
-            : { kind: "error", reason: page.message, requestId: page.requestId }
-          : { kind: "ready" };
+  const gatePhase: GatePhase =
+    page.k === "error"
+      ? unavailable ? "denied" : "error"
+      : page.k === "ready" && q && visibleRows.length === 0
+        ? "no-match"
+        : page.k;
+  const gates = deriveGates({
+    phase: gatePhase,
+    reason: page.k === "error" ? page.message : null,
+    requestId: page.k === "error" ? page.requestId : null,
+    gap: page.k === "error" ? page.gap : null,
+    rowsLoaded: page.k === "ready" ? page.rows.length : 0,
+    rowsVisible: visibleRows.length,
+    hasQuery: Boolean(q),
+  });
+
+  useEffect(() => {
+    if (page.k === "ready") {
+      publishCapabilityCount("skills", {
+        value: visibleRows.length,
+        source: visibleRows.length ? "ready" : "empty",
+        reason: gates.counts.title,
+        gap: null,
+      });
+      return;
+    }
+    if (page.k === "empty") {
+      publishCapabilityCount("skills", { value: 0, source: "empty", reason: gates.counts.title, gap: null });
+      return;
+    }
+    publishCapabilityCount("skills", {
+      value: null,
+      source: page.k === "loading" ? "loading" : "missing",
+      reason: gates.counts.title,
+      gap: null,
+    });
+  }, [page.k, gates.counts.title, visibleRows.length]);
+
+  useEffect(() => {
+    if (!linkTarget) return;
+    if (linkedRow) {
+      setOpenSkill(linkedRow.id);
+      const timer = window.setTimeout(() => {
+        rowRefs.current[linkedRow.id]?.scrollIntoView?.({ block: "center" });
+      }, 0);
+      return () => window.clearTimeout(timer);
+    }
+    if (page.k === "ready" || page.k === "empty") setOpenSkill(null);
+  }, [linkTarget?.tab, linkTarget?.name, linkedRow?.id, page.k]);
 
   return (
     <section ref={rootRef} className="skl4-page capH-scroll" data-testid="skl4-page" data-fixture={fixture ?? undefined} data-cap-state={capState}>
       <span className="sr-only" data-testid="capH-page-skills" />
+      <span className="sr-only" data-testid="cap-gates-counts" data-enabled={gates.counts.enabled ? "true" : "false"} title={gates.counts.title} />
+      <span className="sr-only" data-testid="cap-gates-sort" data-enabled={gates.sort.enabled ? "true" : "false"} title={gates.sort.title} />
+      <span className="sr-only" data-testid="cap-gates-detail" data-enabled={gates.rowDetail.enabled ? "true" : "false"} title={gates.rowDetail.title} />
       <CapabilityCounts />
-      {page.k === "ready" ? <CapabilitySearch value={q} total={page.rows.length} onChange={setQ} /> : null}
+      <CapabilitySearch value={q} total={page.k === "ready" ? page.rows.length : 0} onChange={setQ} gate={gates.search} />
+      {rowMissing ? (
+        <RowMissingNotice reason={rowMissingReason} href={listHref(sp)} onClear={clearRowLookup} />
+      ) : null}
       <header className="skl4-head">
         <div className="min-w-0">
           <h1>技能</h1>
           <p className="skl4-sub">已登记的技能、共享范围与版本状态。只读。</p>
         </div>
         <div className="skl4-actions">
-          <CapabilityExport tab="skills" rows={exportRows} state={outputState} />
-          <CapabilityCopy rows={copyRows} state={outputState} />
+          <CapabilityExport tab="skills" rows={exportRows} gate={gates.export} q={q} sort={sort.key} dir={sort.key ? sort.dir : null} />
+          <CapabilityCopy rows={copyRows} gate={gates.copy} />
           <span className="capA-export-note" data-testid="capA-export-order-note">导出按当前排序与搜索</span>
           <Button
             size="sm"
@@ -392,18 +457,18 @@ export function SkillsPage() {
                 <thead>
                   <tr>
                     <th scope="col" aria-sort={ariaSort(sort, "name")}>
-                      <button type="button" className="cap8-sort" data-testid="cap8-sort-name" onClick={() => onSort("name")}>
+                      <button type="button" className="cap8-sort" data-testid="cap8-sort-name" disabled={!gates.sort.enabled} title={gates.sort.title} onClick={() => onSort("name")}>
                         技能名<span className="cap8-indicator" data-testid="cap8-indicator-name">{ariaSort(sort, "name") === "ascending" ? "↑" : ariaSort(sort, "name") === "descending" ? "↓" : "↕"}</span>
                       </button>
                     </th>
                     <th scope="col" aria-sort={ariaSort(sort, "type")}>
-                      <button type="button" className="cap8-sort" data-testid="cap8-sort-type" onClick={() => onSort("type")}>
+                      <button type="button" className="cap8-sort" data-testid="cap8-sort-type" disabled={!gates.sort.enabled} title={gates.sort.title} onClick={() => onSort("type")}>
                         来源/类型<span className="cap8-indicator" data-testid="cap8-indicator-type">{ariaSort(sort, "type") === "ascending" ? "↑" : ariaSort(sort, "type") === "descending" ? "↓" : "↕"}</span>
                       </button>
                     </th>
                     <th scope="col">启用态</th>
                     <th scope="col" aria-sort={ariaSort(sort, "updated")}>
-                      <button type="button" className="cap8-sort" data-testid="cap8-sort-updated" onClick={() => onSort("updated")}>
+                      <button type="button" className="cap8-sort" data-testid="cap8-sort-updated" disabled={!gates.sort.enabled} title={gates.sort.title} onClick={() => onSort("updated")}>
                         最近更新<span className="cap8-indicator" data-testid="cap8-indicator-updated">{ariaSort(sort, "updated") === "ascending" ? "↑" : ariaSort(sort, "updated") === "descending" ? "↓" : "↕"}</span>
                       </button>
                     </th>
@@ -419,6 +484,7 @@ export function SkillsPage() {
                       ref={(node) => { rowRefs.current[row.id] = node; }}
                       tabIndex={row.id === activeSkillKey ? 0 : -1}
                       aria-expanded={openSkill === row.id}
+                      aria-current={openSkill === row.id ? "true" : undefined}
                       onFocus={() => setRovingKey(row.id)}
                       onKeyDown={(event) => onRowKeyDown(event, row, index)}
                     >
@@ -427,15 +493,40 @@ export function SkillsPage() {
                           <span className={row.name === "—" ? "skl4-missing" : ""} title={row.nameReason ?? undefined}>{row.name}</span>
                           {row.nameReason ? <span className="skl4-reason">{row.nameReason}</span> : null}
                           {row.version ? <span className="skl4-reason">版本 {row.version}</span> : null}
-                          <button
-                            type="button"
-                            className="cap7-toggle"
-                            aria-expanded={openSkill === row.id}
-                            onClick={() => setOpenSkill((current) => (current === row.id ? null : row.id))}
-                            data-testid="cap7-detail-toggle"
-                          >
-                            {openSkill === row.id ? "收起" : "详情"}
-                          </button>
+                          <span className="inline-flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              className="cap7-toggle"
+                              aria-expanded={openSkill === row.id}
+                              disabled={!gates.rowDetail.enabled}
+                              title={gates.rowDetail.title}
+                              onClick={() => toggleSkillRow(row)}
+                              data-testid="cap7-detail-toggle"
+                            >
+                              {openSkill === row.id ? "收起" : "详情"}
+                            </button>
+                            <a
+                              className="cap-row-link"
+                              href={rowHref("skills", row.name, sp)}
+                              data-testid="cap-row-link"
+                              onClick={(event) => {
+                                event.preventDefault();
+                                openSkillRow(row);
+                              }}
+                            >
+                              链接
+                            </a>
+                            {openSkill === row.id ? (
+                              <button
+                                type="button"
+                                className="cap-row-close"
+                                onClick={closeSkillRow}
+                                data-testid="cap-row-close"
+                              >
+                                关闭
+                              </button>
+                            ) : null}
+                          </span>
                         </span>
                       </td>
                       <td><Cell value={row.source} reason={row.sourceReason} /></td>
@@ -446,6 +537,7 @@ export function SkillsPage() {
                     {openSkill === row.id ? (
                       <tr data-testid="cap7-detail-row-skills">
                         <td colSpan={5}>
+                          <span className="sr-only" data-testid="cap-row-expanded" />
                           <CapabilityRowDetail
                             name={row.name === "—" ? null : row.name}
                             nameReason={row.nameReason}

@@ -47,8 +47,9 @@ describe("VersionPage", () => {
     expect(container.textContent).toContain("构建时没有写入这项信息；请让发布流程补齐构建标识");
     expect(container.textContent).not.toContain("0.0.0");
     const controls = [...container.querySelectorAll("button, input, select, textarea")];
-    // The only control is the planned diagnostic export: disabled by contract.
-    expect(controls.every((el) => el.getAttribute("data-planned") === "1" && el.getAttribute("aria-disabled") === "true")).toBe(true);
+    // The real copy control is read-only; every write-shaped control stays planned.
+    const planned = controls.filter((el) => el.getAttribute("data-testid") !== "ver-copy");
+    expect(planned.every((el) => el.getAttribute("data-planned") === "1" && el.getAttribute("aria-disabled") === "true")).toBe(true);
     expect(container.querySelector('[data-testid="ver4-planned-export"]')?.getAttribute("title")).toContain("还没有接上");
   });
 

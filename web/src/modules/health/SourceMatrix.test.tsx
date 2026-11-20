@@ -388,3 +388,20 @@ describe("readTopAsOf", () => {
     }
   });
 });
+
+describe("source matrix state gates", () => {
+  it("disables export and copy when no read point is usable and never shows a row count", async () => {
+    api.fetchJSON.mockImplementation((url: string) => Promise.reject(
+      new ApiError("failed", { status: 500, body: "{}", url, requestId: "req-matrix-500" }),
+    ));
+    await render();
+    await waitFor(() => !!q("sys6-row-domain"), "matrix rows");
+    const exportButton = q("sys7-export") as HTMLButtonElement;
+    const copyButton = q("sys10-copy") as HTMLButtonElement;
+    expect(exportButton.disabled).toBe(true);
+    expect(copyButton.disabled).toBe(true);
+    expect(exportButton.getAttribute("title")).toContain("没有可导出/复制");
+    expect(copyButton.getAttribute("title")).toContain("没有可导出/复制");
+    expect(q("sys7-export-count")?.textContent).toBe("—");
+  });
+});

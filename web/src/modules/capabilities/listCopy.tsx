@@ -6,7 +6,7 @@ import { Copy } from "lucide-react";
 import { Button } from "@nous-research/ui/ui/components/button";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import type { CsvRow } from "./csv";
-import { outputBlocked, outputTitle, type CapabilityOutputState } from "./outputState";
+import { rowsGate, type ActionGate } from "./gates";
 
 export const COPY_HEADER = "name,type,enabled,updated_at";
 
@@ -20,15 +20,15 @@ export function toListText(rows: readonly CsvRow[]): string {
 
 export function CapabilityCopy({
   rows,
-  state: outputState = rows.length ? { kind: "ready" } : { kind: "empty" },
+  gate = rowsGate(rows.length, "复制"),
 }: {
   rows: readonly CsvRow[];
-  state?: CapabilityOutputState;
+  gate?: ActionGate;
 }): ReactNode {
   const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
   const [count, setCount] = useState(0);
   const text = toListText(rows);
-  const disabled = outputBlocked(outputState) || rows.length === 0;
+  const disabled = !gate.enabled;
 
   const copy = async () => {
     if (disabled) return;
@@ -48,7 +48,7 @@ export function CapabilityCopy({
           outlined
           disabled={disabled}
           aria-disabled={disabled ? "true" : undefined}
-          title={outputTitle(outputState, "复制", rows.length)}
+          title={gate.title}
           data-testid="capC-copy"
           onClick={() => void copy()}
         >
@@ -57,6 +57,7 @@ export function CapabilityCopy({
         <span className="capC-copy-status" data-testid="capC-copy-status" role="status" aria-live="polite">
           {state === "copied" ? `已复制 ${count} 行` : state === "failed" ? "复制失败，已展开手动复制" : ""}
         </span>
+        <span className="sr-only" data-testid="cap-gates-copy" data-enabled={gate.enabled ? "true" : "false"} title={gate.title} />
       </span>
       {state === "failed" ? (
         <textarea
