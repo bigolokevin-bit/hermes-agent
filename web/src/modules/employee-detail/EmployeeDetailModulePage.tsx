@@ -957,6 +957,15 @@ function UsageZone({ empId, nonce, onRetry }: { empId: string; nonce: number; on
             );
           })}
         </ul>
+        {/* R87: 成本口径互指。ui2 的 COST_CALIBER_TEXT 语义相同但各写常量
+            （用例以 ?raw 断言两处关键短语同族），不做跨模块 import。 */}
+        <p
+          className="px-4 pb-1 text-xs text-muted-foreground"
+          data-testid="ed10-cost-caliber"
+          title="口径互指：/metrics 的成本视图同样只认平台扣费账本的实扣金额（「实扣」「平台扣费账本」句族）；运行次数来自运行统计，与成本不同口径。"
+        >
+          成本为账本实扣金额；与 /metrics 的成本视图口径一致，与运行次数口径不同
+        </p>
         <p
           className="px-4 py-2 text-xs text-muted-foreground"
           title="BFF 白名单：budget-usage 必带 employeeId+period（实测缺 period 400 console.missing_param、periodKind=week 400 request.invalid_body）；run-stats 必带 from/to（实测 bucket=month 422）。"

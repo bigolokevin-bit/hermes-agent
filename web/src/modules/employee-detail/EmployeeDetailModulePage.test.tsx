@@ -1039,3 +1039,32 @@ describe("R86 approvals zone announcement (apv-live)", () => {
     expect(container.textContent).toContain("req-e86-502");
   });
 });
+
+// R87: 成本口径互指——本页常量与 metrics（ui2）句族的「实扣」关键短语同侧断言。
+import metricsSource from "@/modules/metrics/MetricsModulePage.tsx?raw";
+
+describe("R87 cost caliber note (ed10-cost-caliber)", () => {
+  it("states the caliber under the cost column and cross-points /metrics in the title", async () => {
+    mockApi(async (url: string) => {
+      const u = String(url);
+      if (u.includes("periodKind=day")) return { items: [], missingEmployeeIds: [EMP], asOf: null };
+      if (u.includes("periodKind=month"))
+        return { items: [{ employeeId: EMP, costUsd: 0, period: "2026-11" }], asOf: null };
+      if (u.includes("/api/run-stats")) return { totals: { runs: 3 }, buckets: [], asOf: null };
+      return {};
+    });
+    await renderAt(page, at("usage"));
+    const note = container.querySelector('[data-testid="ed10-cost-caliber"]');
+    expect(note?.textContent).toBe(
+      "成本为账本实扣金额；与 /metrics 的成本视图口径一致，与运行次数口径不同",
+    );
+    expect(note?.getAttribute("title")).toContain("/metrics");
+    expect(note?.getAttribute("title")).toContain("实扣");
+    // 真 0 写 $0.00、缺行写「—」（未知/缺失永不显示 0）。
+    expect(container.querySelector('[data-testid="ed10-usage-cost-month"]')?.textContent).toBe("$0.00");
+    expect(container.querySelector('[data-testid="ed10-usage-cost-day"]')?.textContent).toBe("—");
+    // 两处关键短语同族（ui2 不跨模块 import，源码级比对）。
+    expect(metricsSource).toContain("实扣");
+    expect(metricsSource).toContain("平台扣费账本");
+  });
+});
