@@ -4956,3 +4956,56 @@ kn-gates + 既有 37 套全绿。
 未测如实：带登录会话真屏（缺席不变量与信封无关）；absent 标记全 4 处中 knI/knL 两面
 未逐个点开（同构造、knF/knG 两面已代表性锁定）；真落 CSV 时的正向命名/编码断言
 （本单只锁现状缺席）。
+
+# KNW5 追加 R221：详情错误隔离扩展·跨面交互与恢复过渡（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做（HEAD = 调度方 merge `43d83d65` wave-62）、目标文件确认不存在，
+基线先跑 38/189 全绿无 Unhandled 再动笔。零产品文件改动（无新缺陷）。
+新增 knowledge.detail.error.isolation.test.tsx 四例（本体，非 docs-only）。
+
+## 名实换算与查重（文件头注释同步）
+
+```text
+· 唯一详情面 = 抽屉 kn7-preview-*（无独立详情页）；派工①「kn-row-copy-*」按实测面换算
+  为详情面族 kn-row-copy-space-<i>；两套缺值口径未统一；导出/?source= 不存在；
+  ④ 的「恢复后 cap」按现测（不假设）：列表失败期 cap 缺席（R108/R157/R187 口径）、
+  恢复后逐字整句复原。
+引用不重写：腿① = R183 detail.error:105-132（锚互斥/不卸载/rid 上屏）+ R219(b)（500 窗
+  行钮可用）→ ① 仅当帧最小复跑；腿③ = R210/R211 knowledge.error.isolation.test.tsx
+  ③④（双重试各 +1 与双 rid 独立复制钮）→ ③ 仅复跑列表腿半段并声明。
+新增维（此前 grep 零命中）：
+· 腿② = 抽屉 500 错误窗内**列表交互全功能**：排序表头 disabled=false、点后翻序且
+  零新请求；knE-page-more 照常翻页（增量恰 [P2URL]、3 行、错误锚不被列表动作吞）；
+· 腿④ = **双失败恢复过渡**：cap「缺席 → 逐字整句复原」（两态各自锁过、过渡位首次）+
+  两锚各自随其重试消失、互不牵连、恢复列表不遮抽屉错误锚（与 R210 同调、cap 位为补）。
+```
+
+## 四例读数
+
+```text
+① kn7-preview-error 在场、unwired null、knN-empty-text-space-docs null、body 含
+  「请求编号：rid-r221-d」、列表 2 行不卸载、错误窗内点第 2 行钮 writeText 恰 1。
+② 表头 kn-sort-updated disabled=false → 点击 rowNames 翻转、urls 零增量；再点
+  knE-page-more 增量恰 [documents?limit=50&spaceId=sp_x&cursor=cw62]、行 3、锚仍在。
+③ 列表重试增量恰 [P1URL]、详情读零连带、抽屉错误锚 standing（R210 当帧位复跑）。
+④ 双败帧：两锚在场 + cap null；listOk 重试 → 列表锚 null、cap 逐字「本页最多显示 50
+  篇（当前已加载 2 篇；复制清单也只含这些篇）」复原、抽屉锚不误清；detailOk 重试 →
+  抽屉锚 null、field-source 落「A 原件.pdf」、列表锚保持 null。
+```
+
+## 验证尾行（R221）
+```text
+$ npx vitest run src/modules/knowledge   → 39 files / 193 tests passed（基线 189 + 4 ≥190），
+  全输出 grep unhandled = 0（clipboard 桩全 Promise，R214 教训守住）
+$ npx vitest run                         → 321 files / 3093 passed 全绿（无豁免）
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r221-dist → exit 0
+$ 三档：1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn-row-copy*/kn-row-copy-space*/kn-doc-copy*/kn-doc-preview*/kn-space-preview*/
+kn3-page-cap/knE-page-*/kn7-preview-*/kn-type*/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort*/
+kn-gates + 既有 38 套全绿。四例一次全过，无测试自纠轮。
+```
+未测如实：带登录会话真双失败屏（mock 代证）；② 的错误窗内「切 ktype 桶」交互（排序/
+翻页已锁，桶与详情错误同窗无新维需求）；恢复过渡中 skeleton 帧的瞬时态（异步中间态
+不在护栏范围）。
