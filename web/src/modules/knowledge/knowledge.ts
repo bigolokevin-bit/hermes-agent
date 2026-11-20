@@ -135,7 +135,10 @@ export const SPACES_URL = "/agent-api/api/knowledge/spaces?limit=20";
  * There is therefore NO server-side keyword filter to claim: the box filters the
  * rows this read already returned, and says so on screen.
  */
-export const DOCUMENTS_URL = "/agent-api/api/documents?limit=50";
+/** R108 — 文档读口的单页上限：唯一的 limit 常量，取数 URL 与屏上「本页最多显示 N 篇」同源于此。 */
+export const DOCUMENTS_LIMIT = 50;
+
+export const DOCUMENTS_URL = `/agent-api/api/documents?limit=${DOCUMENTS_LIMIT}`;
 
 /**
  * The document list of one space. `/api/documents` is the designated document read:
@@ -161,7 +164,7 @@ export function documentDetailUrl(documentId: string): string {
 
 export function documentsUrl(spaceId: string): string {
   const params = new URLSearchParams();
-  params.set("limit", "50");
+  params.set("limit", String(DOCUMENTS_LIMIT));
   params.set("spaceId", spaceId);
   return `/agent-api/api/documents?${params.toString()}`;
 }
@@ -172,7 +175,7 @@ export function documentsUrl(spaceId: string): string {
  */
 export function documentsPageUrl(spaceId: string, cursor: string | null): string {
   const params = new URLSearchParams();
-  params.set("limit", "50");
+  params.set("limit", String(DOCUMENTS_LIMIT));
   params.set("spaceId", spaceId);
   if (cursor) params.set("cursor", cursor);
   return `/agent-api/api/documents?${params.toString()}`;

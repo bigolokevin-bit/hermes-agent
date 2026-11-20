@@ -576,7 +576,7 @@ export interface AuditRow {
   action: ActionView;
   outcome: OutcomeView;
   actor: Person;
-  resource: { label: string; raw: string | null };
+  resource: ResourceView;
   occurredAt: string | null;
   /** Raw instant when the service sent one; the inline preview needs seconds. */
   occurredAtRaw?: string | null;
@@ -589,17 +589,33 @@ export interface AuditRow {
   reason: string | null;
 }
 
-function resourceOf(rec: Record<string, unknown>): { label: string; raw: string | null } {
+/**
+ * audW: the object keeps three answers, not one. `label` and `raw` are what the
+ * surface has always shown; `type` and `id` are what a deep link needs, kept
+ * because a link is built from the machine's own words, never from a sentence
+ * written for a person. Nothing here re-reads the wire: the same two picks that
+ * chose the noun also carry the link.
+ */
+export interface ResourceView {
+  label: string;
+  raw: string | null;
+  /** The type token exactly as the record spelled it, or null. */
+  type: string | null;
+  /** The unmasked id, or null when the record did not carry one. */
+  id: string | null;
+}
+
+function resourceOf(rec: Record<string, unknown>): ResourceView {
   const nested = pickRecord(rec, RESOURCE_KEYS);
   const rawId = (nested ? pickText(nested, RESOURCE_ID_KEYS) : null) ?? pickText(rec, ["resourceId", "resource_id", "targetId", "target_id"]);
   const type = (nested ? pickText(nested, RESOURCE_TYPE_KEYS) : null) ?? pickText(rec, ["resourceType", "resource_type"]);
   const noun = type ? resourceNoun(type) : "对象";
-  if (!rawId) return type ? { label: noun, raw: null } : { label: "—", raw: null };
+  if (!rawId) return type ? { label: noun, raw: null, type, id: null } : { label: "—", raw: null, type: type ?? null, id: null };
   // 「资源类型 · 短码」 — the type is a domain word, the id stays masked.
   const code = shortCode(rawId);
-  if (code) return { label: `${noun} · ${code}`, raw: rawId };
-  if (!isMachineHandle(rawId)) return { label: rawId, raw: rawId };
-  return { label: noun, raw: rawId };
+  if (code) return { label: `${noun} · ${code}`, raw: rawId, type, id: rawId };
+  if (!isMachineHandle(rawId)) return { label: rawId, raw: rawId, type, id: rawId };
+  return { label: noun, raw: rawId, type, id: rawId };
 }
 
 const RESOURCE_NOUN: Record<string, string> = {
@@ -886,7 +902,7 @@ export interface AuditDetail {
   action: ActionView;
   outcome: OutcomeView;
   actor: Person;
-  resource: { label: string; raw: string | null };
+  resource: ResourceView;
   /** The event's own time and the time the ledger recorded it. */
   occurredAt: string | null;
   recordedAt: string | null;

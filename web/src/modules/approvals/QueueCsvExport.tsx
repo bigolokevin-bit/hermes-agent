@@ -14,7 +14,8 @@ import { Button } from "@nous-research/ui/ui/components/button";
 import { actionGates } from "./gates";
 import type { ApprovalRow } from "./model";
 
-const CSV_HEADER = ["id", "title", "status", "risk", "updated_at"] as const;
+// R107: 表头固定顺序不变、只追加不重排；correlation/rid 与 apd9/apd11 同源。
+const CSV_HEADER = ["id", "title", "status", "risk", "updated_at", "correlation", "rid"] as const;
 
 /** RFC4180: quote when the value contains a comma, quote, CR or LF. */
 export function csvEscape(value: string): string {
@@ -33,6 +34,11 @@ export function buildApprovalsCsv(rows: readonly ApprovalRow[]): string {
         csvEscape(row.risk.label),
         // 屏上同一值（null 时留空；缺值不补 0，也不取本机时钟）。
         csvEscape(row.clock ?? ""),
+        // R107: correlation=审批单号，与 apd9-correlation 的审计 resource 同源；缺=空字段。
+        csvEscape(row.rawId ?? ""),
+        // R107: rid=服务端请求编号，与 apd11-copy 同一来源行；屏上缺值仍是
+        // 「该字段未返回」，CSV 里留空——禁把「—」/缺值句写进数据。
+        csvEscape(row.requestId ?? ""),
       ].join(","),
     );
   }
@@ -106,7 +112,7 @@ export function QueueCsvExport({
         data-testid="apv7-export"
         disabled={!gate.enabled}
         aria-disabled={!gate.enabled}
-        title={gate.enabled ? `${gate.title}文件名时间=导出时刻（北京时间）。` : gate.title}
+        title={gate.enabled ? `${gate.title}文件名时间=导出时刻（北京时间）。列头=id,title,status,risk,updated_at,correlation,rid：correlation=审批单号（与审计 resource 同源）、rid=服务端请求编号；缺值为空字段。` : gate.title}
         onClick={() => downloadCsv(approvalsCsvName(tab, status, sort, dir), buildApprovalsCsv(rows))}
       >
         导出 CSV

@@ -724,7 +724,7 @@
 
 /* Every keyboard-reachable row link must show where it is, at any width. */
 .knw5-page a[data-testid$="-name"]:focus-visible,
-.knw5-page a[data-testid="knw5-space-link"]:focus-visible {
+.knw5-page a[data-testid="kn-space-open"]:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
   border-radius: 4px;

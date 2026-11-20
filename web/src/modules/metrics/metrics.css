@@ -1203,3 +1203,28 @@
 .met-output[data-tone='fail'] {
   border-color: var(--color-destructive, var(--color-border));
 }
+
+/* met-rowcopy — one row of the cost detail table copied as a single line */
+.met-rowcopy {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--color-muted-foreground);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}
+.met-rowcopy:hover { color: var(--color-foreground); }
+.met-rowcopy:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; }
+.met-rowcopy-bar { display: flex; flex-direction: column; gap: 4px; margin: 4px 0; min-width: 0; }
+.met-rowcopy-text {
+  width: 100%;
+  min-height: 44px;
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  padding: 6px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-card);
+  color: var(--color-foreground);
+  overflow-wrap: anywhere;
+}
