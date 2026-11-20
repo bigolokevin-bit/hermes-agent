@@ -5333,3 +5333,144 @@ absent 标记 + 既有 44 套全绿。过程自纠一处（③ 期望串 q= 前�
 ```
 未测如实：带登录会话真屏；检索面自身无类型桶控件（名实注记，跨面对齐不可测处按实记录）；
 非法枚举下 knE-page-more 交互（cap 不渲染已由 R157 锁）；双路互等仅锁同夹具同 q 态。
+
+# KNW5 追加 R229：分页态导出换代/三值直对/空筛归位文案（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `f399482f`
+（wave-71）、基线先跑 45/214 全绿 Errors 0、目标文件确认缺席再动笔。零产品文件改动
+（③ 的「数字位 50」实测为归位语义的忠实报告，非缺陷，未改产品）。
+新增 knowledge.export.paged.test.tsx 三例（本体）。
+
+## 名实与查重（引用不重写）
+
+```text
+无真 CSV（createObjectURL/text/csv/a.download/new Blob 源级 0，R190①:113-119 不变量）
+→「导出行」映射 knF-copy 数据行；分页只属详情面（knE-page-*）、行钮 -space- 族、
+cursor 仅组件态——全部从请求 URL 断言（①实测 P2 请求恰 1 次且 loc 无 cursor）；
+ktype 真实键、无 ?source= 控件未造；本地动作零请求。51 行跨页夹具（R216 先例：P1
+恰 50 + 3 笔 xlsx 使「表格」桶在场）。
+引用：R216① :134-148（四值计数+cap）、R216② :150-169（第 2 页态清全部代证——真换桶
++导出侧其时未测）、R216③ :171-183、R131① :115-125（切筛选归页 1）、R197① :135-155
+（名链系单页小夹具）、R142① :124（单页三值）、R190（spy 形状 :35）、主套件 :3885
+（空筛文案单页 2 笔版）、R114/R142 剪贴板拒绝（主套件 :2741 等）。
+新增维（点名）：① 分页态 knF 首行/末行逐字直对（末行=追加行「卷 51」入链）+ 51 笔
+全名链==表体名链（R216① 只数行数、R197 名链非分页）；② 第 2 页态**真换桶**（表格
+3 笔）：导出集换新集、旧行「卷 51/卷 01」按标识从导出串出局、全程零新请求（「不带
+cursor」现实=无新请求）——R216② 代证未看导出侧；③ 名筛筛空**同时归位页 1**：门句
+数字位实测回落到 50（moreRows 被弃，与归位语义同帧；比派工预期「51」更贴产品事实，
+按实锁），knF disabled + spy 0 + writeText 0 + urls 快照逐字不变。
+```
+
+## 三例读数与验证尾行（R229）
+
+```text
+① append 后 urls 含 cursor=cpg2 请求恰 1、loc 无 cursor；三值 [表体 51, 钮 51, knF 51]、
+  首行名 toBe 屏上首行、末行 toBe「卷 51.pdf」、全名链 toEqual。② 切表格桶：屏上 3 笔
+  全 xlsx、导出名链 toEqual 屏上集、text 不含 卷 51.pdf/卷 01.pdf、urls.join 逐字==u0、
+  loc 含 ktype=。③ 筛空前 51 行在场；筛空后 disabled=true、title 含「有 50 份文档」
+  （归位实态）、空点击 writeText 0、createObjectURL 0、urls 快照不变。
+$ npx vitest run src/modules/knowledge → 46 files / 217 tests passed（214+3），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0；build /tmp/knw-r229-dist exit 0
+$ 全仓 → 349 files / 3175 passed 全绿（无豁免、无已知红需点名）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort*/kn-gates/kn-row-copy*/
+kn-row-copy-space*/kn-doc-copy*/kn3-page-cap/knE-page-*/kn-type*/kn7-preview*/导出
+absent 标记 + 既有 45 套全绿。过程自纠一处（③ 数字位按派工预期写 51 首跑红，查实
+combined/门句同源归位语义后按实测 50 锁并补「筛空前 51 在场」哨兵防代证空转）。
+```
+未测如实：带登录会话真屏；名筛归位后 nextCursor 是否仍可从 -more 续第 2 页（R216②
+只锁清全部路径，本轮未扩）；kn3-page-cap 在「筛空」帧的渲染与否未查（不在本单腿内）。
+
+# KNW5 追加 R230：抽屉打开态 × 导出数据行同帧护栏（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `e2ef3793`
+（wave-73）、基线先跑 46/217 全绿 Errors 0、目标文件确认缺席再动笔。零产品文件改动。
+新增 knowledge.preview.export.parity.test.tsx 三例（本体）。
+
+## 名实换算与查重（引用不重写）
+
+```text
+无真 CSV（源级四件套 0、data-export="absent" ×4——R190①:113-119）→「导出行」= knF-copy
+数据行；「预览打开态」= kn7 抽屉（?doc=，行名点击开；详情读失败抽屉仍开——R196③ 夹具
+同法，导出侧只依赖列表数据，已注记）；行钮 -space- 族（详情面）；kn-doc-copy 非行数。
+**第③腿换算（红线④）**：kn3-page-cap 在 true-0/error 态不渲染（R108/R157/R187 锁）→
+派工「cap 仍如实」不成立，按产品断言两态当帧 cap null 并在此记录。
+引用：R216①/R197①（五读链）、R229①（分页首末行）、R142①:124（单页三值·非预览帧）、
+R190④:190-205（空集内容面 disabled+title+零写+零请求+spy 0）、R196③:104-124（标题随换
++详情读各恰 1+列表集合引 R149④）、R222/R223/R200/R214②。
+新增维（点名）：① 抽屉打开帧三值同帧 + knF 首行逐字==屏上首行 + 导出文本与开抽屉前
+快照逐字互等（R142① 非预览帧）；② a→b 换档**导出内容级逐字不变** + 请求按现实非零：
+换档增量实测恰 1（d_b×1，不重读 d_a——比 R196③ 各恰 1 更精的增量口径）+ 列表读集合
+逐字不动；③ 错误站（列表 500）复制侧 disabled+title+点击零写/零 blob/零请求（R190④
+仅空集站，错误站复制钮模块套件此前无 pin）+ 双态 cap 缺席当帧复跑（换算位）。
+```
+
+## 三例读数与验证尾行（R230）
+
+```text
+① 抽屉开（loc 含 doc=d_a、kn7-preview-title 在场）：三值 [表体 2, 钮 2, knF 2]、
+  首行 toBe 屏上首行、knF 全文 toBe 开抽屉前快照。② 换 B：标题在场、knF 全文逐字==
+  textA、表体名序 toEqual、urls 4→5（恰 +1 全为 d_b）、列表读 join 逐字==基线。
+  ③ true-0：cap null、knF disabled、title 含「没有可复制」、点击 writeText 0、urls 不变；
+  error 站：cap null、disabled、title 非空（原因句在位，逐字句不扩）、点击零写零请求、
+  createObjectURL 全帧 0。
+$ npx vitest run src/modules/knowledge → 47 files / 220 tests passed（217+3），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0；build /tmp/knw-r230-dist exit 0
+$ 全仓 → 353 files / 3185 passed 全绿（无豁免、无已知红需点名）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort*/kn-gates/kn-row-copy*/
+kn-row-copy-space*/kn-doc-copy*/kn3-page-cap/knE-page-*/kn-type*/kn7-preview*/
+kn-doc-preview* + 既有 46 套全绿。过程自纠两处（误写重复 globalThis 行删除；② 预期
+「+2」首跑红，实测换档只重读新档 +1，按实锁并补强注释），产品零触碰。
+```
+未测如实：带登录会话真屏；详情读**成功**时的抽屉体字段链（R125/R196 族已锁，本轮导出
+侧不依赖详情体，按 404 夹具开抽屉并注记）；error 站 title 的具体整句逐字（只锁非空+
+在场性，全句属 R138 族地盘不扩）。
+
+# KNW5 追加 R231：空/错态导出复制同帧收紧 + 筛空恢复三值链（同文件追加·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `9a410487`、
+基线先跑 47/220 全绿 Errors 0。**目标文件已存在（R215 193 行 3 例）→ 按派工纪律同文件
+追加，不重建不覆盖不另起同名文件**；最终 273 行 5 例（+80 行）。零产品文件改动。
+
+## 三腿比对与名实换算（引用不重写）
+
+```text
+① 空面：cap null/双 disabled/title/零请求/spy 0/计数位「—」——R215②:98-123 全覆盖 →
+  引用；本轮只补未锁位：knG-copy title 在场（R215② 只锁 knG disabled）+ 空态点击**零
+  写**（R215② 未桩剪贴板）。
+② rid 复制（检索面 R215④:125-155、详情面 R210）与错误站 knF disabled+title 帧
+  （R230③）→ 引用；本轮新增：**同面锚互斥**（空帧 kn3-docs-error null / 错帧
+  knN-empty-text-space-docs null——R187② 锁的是跨面不卸载，同面互斥此前无 pin）+
+  错误帧 -space- 钮族 **0 节点**（红线④「非 disabled 是不渲染」的详情面当帧实锁）+
+  空帧双族钮 0。
+③ 清筛选：R215③:157-192 只链到「钮==行」两值 → 本轮**第三值 knF 导出行数入链**
+  （三值 toEqual [2,2,2]）+ 恢复后首行==屏上首行（序无关，证全量非筛中残留）。
+换算（红线②）：派工「createObjectURL 只在恢复后调用」**不可兑现**——无导出机制
+（R190① 不变量），按现状断言**全程 0 次**并在此记录；换算（红线③）：cap「显 0 不显
+—」不可兑现——空/错态不渲染（R108/R157/R187），禁假 0 落点换成计数位「—」（R215 已
+锁位引用）+ 裸 0 扫描（R215②:111 引用）。红线⑦收紧一处：文件级 afterEach 补
+vi.unstubAllGlobals()（纪律位，不动任何既有断言）。
+```
+
+## 验证尾行（R231）
+
+```text
+⑤ 空帧：空锚在场、错锚 null、-space- 钮 0、检索族钮 0、knG title 含「没有可复制」、
+  双击 writeText 0、urls 不变；错帧：错锚在场、空锚 null、-space- 钮 0 节点、spy 0。
+  ⑥ 筛中 1 行→清空复原：三值 [2,2,2]、首行逐字==屏上首行、spy 0、urls 快照逐字==u0。
+$ npx vitest run src/modules/knowledge → 47 files / 222 tests passed（220+2），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0；build /tmp/knw-r231-dist exit 0
+$ 全仓 → 355 files / 3191 passed 全绿（无豁免、无已知红需点名）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort*/kn-gates/kn-row-copy*/
+kn-row-copy-space*/kn-doc-copy*/kn3-page-cap/knE-page-*/kn-type*/kn7-preview*/
+kn-doc-preview*/导出 absent 标记 + R215 既有三例复跑同绿（断言零改动，仅 afterEach
++1 行纪律位）。两例一次全过；产品零触碰。
+```
+未测如实：带登录会话真屏；denied 帧锚互斥（本轮只打 empty/error 两帧，denied 与
+error 同族由 R187 口径外推、未实锁）；⑤(b) 错误帧 sort 头禁用整句（红线④点名引用
+R210/R187，不扩）。

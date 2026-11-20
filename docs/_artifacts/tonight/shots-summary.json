@@ -14,7 +14,7 @@
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 24,
+  "distinctMainHeads": 23,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -141,7 +141,7 @@
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "1440",
-      "chars": 10,
+      "chars": 113,
       "hasMainEl": true
     },
     {
@@ -642,11 +642,11 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "f399482f",
+  "headHash": "9a410487",
   "exitCode": 0,
-  "entry": "assets/index-C3gNfEdn.js",
-  "entrySha256": "40628e155a318c5da2a661fd0adabd7035c10b9575a8274d18511c9b7578e9cb",
+  "entry": "assets/index-6g0IMx1G.js",
+  "entrySha256": "4407188fca95d1468ac3d2344108398303ac5d824c4c1f9c620f57fdc11d686b",
   "entryBytes": 172175,
-  "servedEntryBefore": "index-C3gNfEdn.js",
-  "servedEntryAfter": "index-C3gNfEdn.js"
+  "servedEntryBefore": "index-6g0IMx1G.js",
+  "servedEntryAfter": "index-6g0IMx1G.js"
 }
