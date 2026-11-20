@@ -14,7 +14,7 @@ function row(over: Partial<AuditRow> = {}): AuditRow {
     action: { label: "审批通过", raw: "approval.approved", known: true },
     outcome: { label: "成功", kind: "success" as never, tone: "success" as never, raw: "succeeded" },
     actor: { label: "李思 · 6d7e8f90", raw: "user:2f3a4b5c6d7e8f90", kind: "human", kindLabel: "成员" },
-    resource: { label: "审批单 · 55667788", raw: "ap_1122334455667788" },
+    resource: { label: "审批单 · 55667788", raw: "ap_1122334455667788", type: "approval", id: "ap_1122334455667788" },
     occurredAt: "2026-11-19 09:20",
     recordedAt: "2026-11-19 09:21",
     requestId: null,

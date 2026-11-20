@@ -31,7 +31,108 @@ import { SUMMARY_COPY_LABEL } from "./summary";
 import { PERMALINK_COPY_LABEL, permalinkFromEvent } from "./permalink";
 import type { Gate } from "./auditGates";
 import { FILTER_SUMMARY_COPY_LABEL } from "./filterSummary";
+import { AUDIT_RESOURCE_NO_LINK_TEXT, resourceLinkOf } from "./resourceLinks";
+import { AUDJ_TIME_MISSING } from "./timeActor";
+import type { ResourceView } from "./model";
 import type { AuditChip } from "./filterChips";
+
+/**
+ * audW — 「打开资源」, rendered by BOTH legs (the inline preview and the event
+ * detail) from the ONE table in resourceLinks.ts.
+ *
+ * A real anchor: focusable, openable in a new tab, and its `href` is the address
+ * the landing page itself reads. Never an onClick that only looks like a link.
+ * A type with no page, or a record whose id never came back, is said in words
+ * instead — a dead link reads as a defect in the ledger rather than in the
+ * mapping, and the ledger has done nothing wrong.
+ */
+export function AuditResourceLink({ resource }: { resource: ResourceView }): ReactNode {
+  const link = resourceLinkOf(resource);
+  const shell =
+    "flex min-w-0 items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-xs text-muted-foreground";
+  if (link.kind === "link") {
+    return (
+      <a
+        href={link.href}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="min-w-0 max-w-full break-words rounded-md border border-border bg-card px-2 py-1 text-xs underline underline-offset-2"
+        data-testid="aud-resource-link"
+        data-aud-resource={resource.type ?? undefined}
+        title={link.title}
+      >
+        {link.label}
+      </a>
+    );
+  }
+  if (link.kind === "missing") {
+    return (
+      <span className={shell} data-testid="aud-resource-missing" title={link.title}>
+        {AUDJ_TIME_MISSING}
+      </span>
+    );
+  }
+  return (
+    <span className={shell} data-testid="aud-resource-nolink" title={link.title}>
+      {AUDIT_RESOURCE_NO_LINK_TEXT}
+    </span>
+  );
+}
+
+/**
+ * R106 — the 关联资源 column on a list row. The href comes from the SAME one
+ * table the preview and the record pane ask (`resourceLinkOf`), and so does the
+ * text: the 类型人话 · 短码 the ledger already built in `model.ts`, never a bare
+ * machine id. One event therefore cannot offer two different ways out depending
+ * on which face of the page a person happened to land on.
+ *
+ * Three states, no fourth:
+ * - a reachable type is a real `<a>` over the whole value — focusable, openable
+ *   in a new tab, with no click handler standing in for navigation;
+ * - nothing to point at (no identifier came back) is the module's one absent-field
+ *   word 「该字段未返回」, never 「—」 and never 0, because this column is a claim
+ *   about what the service sent;
+ * - a type with no page here keeps the value as plain text and puts the reason —
+ *   and the fact that there is no destination — in `title`.
+ */
+export function AuditResourceCell({ resource }: { resource: ResourceView }): ReactNode {
+  const link = resourceLinkOf(resource);
+  const plain = "min-w-0 break-words text-xs text-muted-foreground";
+  if (link.kind === "link") {
+    return (
+      <a
+        href={link.href}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="min-w-0 max-w-full break-words text-xs underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+        data-testid="aud-resource-link"
+        data-aud-resource={resource.type ?? undefined}
+        title={link.title}
+      >
+        {resource.label}
+      </a>
+    );
+  }
+  // The absence wins over the type sentence: a row with no identifier has nothing
+  // to link even when its type has a page, and saying 「暂无页面」 would hide the
+  // real reason.
+  if (resource.id === null || resource.id === "") {
+    const title =
+      link.kind === "missing"
+        ? link.title
+        : `${AUDIT_RESOURCE_NO_LINK_TEXT}：${AUDJ_TIME_MISSING}，这一行没有可定位的资源编号`;
+    return (
+      <span className={plain} data-testid="aud-resource-missing" title={title}>
+        {AUDJ_TIME_MISSING}
+      </span>
+    );
+  }
+  return (
+    <span className={plain} data-testid="aud-resource-nolink" title={`${AUDIT_RESOURCE_NO_LINK_TEXT}：${link.title}`}>
+      {resource.label}
+    </span>
+  );
+}
 
 /**
  * audC: the 结论行 copy control, rendered by BOTH legs (the inline row preview
