@@ -4291,3 +4291,60 @@ describe('metAM — one availability matrix for every action', () => {
     expect(btn('met6-export').disabled).toBe(false);
   });
 });
+
+describe('metAN — empty window guide', () => {
+  const emptyStats = () => ({
+    from: '2026-11-18T16:00:00.000Z',
+    to: '2026-11-19T16:00:00.000Z',
+    bucket: 'hour',
+    buckets: [],
+    totals: { runs: 0, succeeded: 0, failed: 0, running: 0, sampleCount: 0, successRate: null },
+    asOf: '2026-11-19T20:12:00.000Z',
+    asOfSource: 'bff',
+  });
+
+  function emptyWindowRouter() {
+    return (url: string): Promise<unknown> => {
+      if (url.includes('run-activity')) return Promise.resolve(activityBody());
+      if (url.includes('run-stats')) return Promise.resolve(emptyStats());
+      if (url.includes('/api/employees')) return Promise.resolve(EMPLOYEE_BODY);
+      if (url.includes('models/pricing')) return Promise.resolve({ prices: [], asOf: '2026-11-19T20:12:00.000Z' });
+      if (url.includes('budget-usage')) return Promise.resolve({ items: [], missingEmployeeIds: [] });
+      return Promise.resolve({});
+    };
+  }
+
+  it('explains an empty window, points at two real routes, and reads nothing extra', async () => {
+    await mount(emptyWindowRouter());
+    const guide = document.querySelector('[data-testid="metAN-empty-guide"]');
+    expect(guide).not.toBeNull();
+    expect(guide?.textContent).toContain('本窗没有运行记录');
+
+    const links = [...(guide?.querySelectorAll('a[href]') ?? [])].map((a) => a.getAttribute('href'));
+    expect(links).toContain('/runs');
+    expect(links).toContain('/work');
+
+    // The guide itself never quotes a money figure; the cards keep «—».
+    expect(guide?.textContent ?? '').not.toContain('$');
+    expect(document.querySelector('[data-testid="met6-cost-value"]')?.textContent).toBe('—');
+
+    const before = urls().length;
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(urls().length).toBe(before);
+  });
+
+  it('stays out of the way when the window has runs', async () => {
+    await mount(usageRouter());
+    expect(document.querySelector('[data-testid="metAN-empty-guide"]')).toBeNull();
+  });
+
+  it('does not pass a failed batch off as an empty window', async () => {
+    await mount((url: string) =>
+      Promise.reject(new ApiError('down', { status: 500, body: '', url, requestId: 'req-metAN-down' })),
+    );
+    expect(document.querySelector('[data-testid="metAN-empty-guide"]')).toBeNull();
+    expect(document.querySelector('[data-testid="met5-page"]')?.textContent).not.toContain('本窗没有运行记录');
+  });
+});

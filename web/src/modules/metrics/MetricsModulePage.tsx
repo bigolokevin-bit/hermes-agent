@@ -1784,6 +1784,18 @@ export function MetricsModulePage() {
         可用性一句话：整页都读不出来的时候，只留「刷新」可用，导出与复制一起停下；只有某一块读不出来的时候，用到它的导出与复制停下，单卡重试照常；时间窗没有数据时，导出只写表头、复制照常；刷新进行中，除刷新本身外都不点，刷新也不会重复发请求。
       </p>
 
+      {usageQuiet ? (
+        <div className="metAN-guide" data-testid="metAN-empty-guide">
+          <p className="metAN-title">本窗没有运行记录</p>
+          <p className="metAN-body">
+            这一段时间没有运行，也没有产生实扣。卡片上的数字保留「—」，不拿空当 0 求和，也不编一个零元汇总出来。
+          </p>
+          <p className="metAN-body">
+            想换个去处：去看 <Link to="/runs">运行列表</Link>，或者回 <Link to="/work">工作台</Link>；也可以点上面的时间窗，换一段再看看。
+          </p>
+        </div>
+      ) : null}
+
       <div className="metAK-bar" data-testid="metAK-bar">
         <Button
           size="sm"

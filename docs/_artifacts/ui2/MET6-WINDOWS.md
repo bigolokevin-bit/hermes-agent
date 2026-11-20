@@ -579,3 +579,15 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 - 刷新进行中：`metAK-refresh` 保持可点但 `aria-busy=true`，二次点击被闸门忽略、不叠加请求；导出、复制、复位、单卡重试统一 disabled，title 含「这一批」。
 
 屏上说明为 `metAM-matrix-note`（一行话覆盖四格）。验证：定向 `src/modules/metrics` **4 files / 202 passed**（原 198，+4）；全量 **145 files / 1817 passed**（原 1813）；`tsc` 全仓 67 条既存、`modules/metrics` 0；build entry `assets/index-dI2moWxe.js` sha256 `ebae4f11cb1e57aa55029db838fc6d61aebeb94d079fa259d97f63c130ebc255`（entry 内 metAM=0），chunk `MetricsModulePage-iw5R3p63.js` 命中 1。零额外请求：矩阵只读既有派生值，回显不触发取数。未测项：真浏览器 375 下说明行换行未走查。
+
+## 全空页引导（metAN，2026-11-20）
+
+- 判据复用既有 `usageQuiet`：运行统计与账本两个读口都成功，且运行数为 0、分桶为空、账本行为空——即「本窗真的没有运行，也没有实扣」。读口失败不走这里（`usageDown` 为真时 `usageQuiet` 必为假），错误仍由 metH/metD 的既有错误态承担。
+- 页首 `metAN-empty-guide`：标题「本窗没有运行记录」；两句人话说明卡片保留「—」、不拿空当 0 求和、不编零元汇总；给两个真实路由链接 `/runs`（运行列表）与 `/work`（工作台）——两条路由已 `git grep` 核实注册在 `web/src/App.tsx`（`/runs` 340/392 行、`/work` 379/1192 行），并在 `web/src/shell/routes.ts:151/153` 有 `#/work` 条目，不是死链；末句指路既有时间窗控件。
+- 零额外请求：引导完全由已有状态派生，挂载后 50ms 内 `urls()` 计数不变。
+- 引导正文不提金额符号，空窗时 `met6-cost-value` 仍是「—」。
+- 样式：`.metAN-guide`（边框+圆角+`--color-muted` 底，flex column）、`.metAN-title` 13px 600、`.metAN-body` 12px muted + `overflow-wrap:anywhere`，375 下自然换行。
+- 测试：新增 describe「metAN — empty window guide」3 例（空窗显引导+两个 href+零请求+无金额符号；正常窗口无引导；全失败无引导）。
+- 验证：定向 `src/modules/metrics` 4 files / **205 passed**（原 202，+3）；全量 **145 files / 1820 passed**（原 1817）；`tsc` 全仓 67 条既存、`modules/metrics` 0。
+- build `--outDir /tmp/build-metAN` → entry `assets/index-BXi0_KhO.js` sha256 `fae63b3721dd787f2e85adec8bbd68df995289ee3bcd96e913b4ddc8ad2932ec`（entry 内 `metAN-empty-guide`=0），chunk `assets/MetricsModulePage-D5dXb8_c.js` 命中 1。
+- 未测项：真浏览器 375 换行与粘链首屏视觉未走查；空窗与「账本有行但金额为 0」的边界（真 0 数据）仍按数据展示，不触发引导。

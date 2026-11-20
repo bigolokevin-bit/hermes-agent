@@ -1102,3 +1102,29 @@
   line-height: 1.6;
   overflow-wrap: anywhere;
 }
+
+.metAN-guide {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--color-muted);
+}
+.metAN-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.metAN-body {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--color-muted-foreground);
+  overflow-wrap: anywhere;
+}
+.metAN-body a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
