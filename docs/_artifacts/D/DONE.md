@@ -1167,3 +1167,10 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - shots auth 102/102 failures=[] obs=0 obsR=[] distinct=23 envOnly=25（持平）；anon auxiliary=true 102/102 failures=[] **obs=1（#/work 单条，上代 0，+1 如实登记不入判据）** distinct=23 envOnly=51。obs 两枚分开记：auth=0 / anon=1。
 - 三键两 summary 全值 entry='assets/index-ncYAf9bW.js'/167490/d02a166b…、servedEntryBefore==After='index-ncYAf9bW.js'、ceAuthority=login-state（anon 亦带）。
 - 环境：BFF 8092 pid 58224（b3b0f16）未动；9122 v4_proxy 未动；caddy 28034 未动；web/src 未碰；2ab2d218 已盖不重做、无 amend/force。
+
+## 一〇七轮 · 波次代次九件重章 @ 1683d467（entry B5UGOr-b，wave-29+30 并窗，2026-11-20 16:5x-17:0x）
+
+- 代次现查：LOCAL=ls-remote=1683d4678e4e（ANCH=0，7 笔：appr e6604241+89a9e1d7/gov f8be6bdf/ui1 af8c536b/ui2 600a1b72/aud dcb4d737）、porc 0 脏；磁盘 entry assets/index-B5UGOr-b.js 167490B sha256 75c655dc…46953b ✓、CSS 仍 index-C8_UHqSf.css 133688B（未变，卡面记实读）；9122 served 同值、21/21 路由 200。
+- 九腿全 exit=0（/tmp/wave30-exits.txt），九件全 ok=true 盖 headHash=1683d467（含两已知毛边按配方修复）。读数：ia-html/react {51,23,1,8}；lint-fake v=[]；lint-reuse v=0 exempt=1（chat→T40）；state-quad 20/20；crawl-anon DL0/CE0/PE0 routesCE=51（401 归因）；crawl-auth DL0/CE0/PE0 **routesCE=26（上代 23，+3——wave-29+30 并窗 7 笔含 org/departments 面，观测项不判红，如实）**；redirects=24 notes 归因。
+- shots auth 102/102 failures=[] **obs=0** obsR=[] distinct=23 envOnly=26；anon aux=true 102/102 **obs=0（上代 1，好转）** distinct=23 envOnly=51；三键两 summary 全值、servedEntryBefore==After=index-B5UGOr-b.js、ceAuthority=login-state。
+- 环境：9122 v4_proxy 95667 未动、caddy 8183 28034 未动、BFF 8092 pid 58224（b3b0f16+wave-30 修单现查坐实五口四件齐，无新 commit）未动；web/src 未碰；54f3dcfc 已盖不重做、无 amend/force；零凭据明文。
