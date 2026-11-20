@@ -41,27 +41,58 @@ export const UNWIRED_HUMAN =
  * missing. A 403 and a 404 still draw this same pair — only the request id differs.
  */
 /**
+ * 两个关键词框共用的那半句骨架：「某读口今天不接受关键词参数（实测…），所以这里不叫
+ * 全库搜索…」。括号里的实测与结尾的补充只由调用方填词，骨架与标点归这一处。
+ */
+function scopeClause(subject: string, probe = "", tail = ""): string {
+  return `${subject}今天不接受关键词参数${probe === "" ? "" : `（${probe}）`}，所以这里不叫全库搜索${tail}。`;
+}
+
+const SPACE_SCOPE_SUBJECT = "空间读口";
+const SPACE_SCOPE_PROBE = "实测带 q 与不带 q 回答一致";
+const SPACE_SCOPE_TAIL = "，键入也不会再请求一次";
+const DOC_SCOPE_SUBJECT = "这份文档读口";
+const DOC_SCOPE_PROBE = "实测 q 与 query 回答一致";
+const DOC_SCOPE_TAIL = "；换关键词不会再请求一次";
+
+/**
  * Scope sentences for the two keyword boxes. A loaded count is only stated when the
  * read really returned rows: saying 「已加载 0 个」 would look exactly like the fake
  * zero this page refuses everywhere else.
  */
 export function spaceScopeNote(loaded: number | null): string {
-  const head = "仅在当前已加载的空间内搜索：空间读口今天不接受关键词参数（实测带 q 与不带 q 回答一致），所以这里不叫全库搜索，键入也不会再请求一次。";
   return loaded === null
-    ? "只在已加载的空间里搜索：空间读口今天不接受关键词参数，所以这里不叫全库搜索。"
+    ? `只在已加载的空间里搜索：${scopeClause(SPACE_SCOPE_SUBJECT)}`
     : loaded > 0
-      ? `仅在当前已加载 ${loaded} 个空间内搜索：空间读口今天不接受关键词参数（实测带 q 与不带 q 回答一致），所以这里不叫全库搜索，键入也不会再请求一次。`
-      : `这一份空间回答里没有可筛的空间：${head.slice(head.indexOf("：") + 1)}`;
+      ? `仅在当前已加载 ${loaded} 个空间内搜索：${scopeClause(SPACE_SCOPE_SUBJECT, SPACE_SCOPE_PROBE, SPACE_SCOPE_TAIL)}`
+      : `这一份空间回答里没有可筛的空间：${scopeClause(SPACE_SCOPE_SUBJECT, SPACE_SCOPE_PROBE, SPACE_SCOPE_TAIL)}`;
 }
 
 export function docScopeNote(loaded: number | null): string {
-  if (loaded === null) {
-    return "只在已加载的文档里搜索：这份文档读口今天不接受关键词参数，所以这里不叫全库搜索。";
-  }
-  if (loaded > 0) {
-    return `仅在当前已加载 ${loaded} 条内搜索：这份文档读口今天不接受关键词参数（实测 q 与 query 回答一致），所以这里不叫全库搜索；换关键词不会再请求一次。`;
-  }
-  return "这一份文档回答里没有可筛的文档：这份文档读口今天不接受关键词参数（实测 q 与 query 回答一致），所以这里不叫全库搜索。";
+  return loaded === null
+    ? `只在已加载的文档里搜索：${scopeClause(DOC_SCOPE_SUBJECT)}`
+    : loaded > 0
+      ? `仅在当前已加载 ${loaded} 条内搜索：${scopeClause(DOC_SCOPE_SUBJECT, DOC_SCOPE_PROBE, DOC_SCOPE_TAIL)}`
+      : `这一份文档回答里没有可筛的文档：${scopeClause(DOC_SCOPE_SUBJECT, DOC_SCOPE_PROBE)}`;
+}
+
+/**
+ * 「接口已响应」空态家族的单一骨架：「〔lead〕接口已响应，〔read〕；〔aside〕，〔also〕」。
+ * 各面只交出自己那半句（read 是这份回答说了什么，aside 是它不等于什么，also 是不写什么），
+ * 连接词与标点归这一处；产出的字符串与逐面写死的版本逐字相同。
+ */
+export function respondedEmptyNote({
+  lead = "",
+  read,
+  aside = "",
+  also,
+}: {
+  lead?: string;
+  read: string;
+  aside?: string;
+  also: string;
+}): string {
+  return `${lead}接口已响应，${read}；${aside === "" ? "" : `${aside}，`}${also}`;
 }
 
 /**
