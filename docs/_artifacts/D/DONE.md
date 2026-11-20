@@ -1422,3 +1422,11 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 驱动 /tmp/restamp_wave73.sh 九腿全 exit=0（DONE 行坐实后注章）、served 拍前后同值 index-C3gNfEdn.js 未漂；stamp_wave73.py 全绿（本轮无 STDOUT-PARSE 毛边，两毛边修复以盘直注幂等形照跑保险）。
 - tally 原文 {'e2ef3793': 9} count 9 BAD []。读数与上代 da5c815e 全等：ia-html/react{51,22,(tabsAll23),1,8}；lint-fake v=[]；lint-reuse v0 e1（chat→T40）；state-quad 20/20 真跑非 carried；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）redirects=24 notes；shots auth 102/102 failures=[] obs=0 obsR=[] distinct=24 envOnly=51；anon aux=true 102/102 obs=0 distinct=23 envOnly=51；三键两 summary 全值 servedEntryBefore==After、ceAuthority=login-state。obs 两枚均零无需引 R-OBS1。
 - 9122 v4_proxy 95667、caddy 28034、BFF 12048@603a23e9、qa-verify 33c2b838 未动；web/src 未碰；上一代 9c8ac7e3(da5c815e) 不重章；无 amend/force。
+
+## 一六〇轮 · 波次代次九件重章 @ 9a410487（entry 6g0IMx1G 换代 / CSS IyhtleuY 未换代，2026-11-21 06:1x-06:2x）
+
+- 代次现查：ls-remote/LOCAL=9a410487186c（merge(lane): 90b4c220，三笔并入 appr b4691c2b R245 历史页分页 / ui1 c56806d0 R230 预览导出一致性 / ui-b 90b4c220 知识页空错态取证 docs）、porc 0 脏；盘 entry assets/index-6g0IMx1G.js 172175B sha256 4407188fca95d146…d686b 逐字==卡面（UI-B 改动进包换代）、CSS IyhtleuY 145872 未变、9122 served 同值、21/21。
+- 驱动九腿全 exit=0（exits DONE 行坐实后方注章）、served 拍前后同值 index-6g0IMx1G.js 未漂；stamp_wave74.py 盘现算 headHash=9a410487 全绿；一毛边（state-quad ok=None→补 True 20/20 真跑非 carried；lint-reuse 盘直注幂等保险 v0 e1 chat→T40）。
+- tally 原文 {'9a410487': 9} count 9 BAD []（glob+isinstance，无 None 无混入）。
+- 读数对照上代 e2ef3793：ia-html{51,22,tabsAll:23,1,8}/react{51,22,1,8} 全等；fake v=[]；reuse v0 e1；quad 20/20；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）redirects=24 notes；shots auth 102/102 failures=[] obs=0 obsR=[] **distinct=23（上代 24，-1 与 UI-B 知识页单源化方向一致如实）** envOnly=51；anon aux=true 102/102 obs=0 distinct=23（持平）envOnly=51；双腿三键全值（6g0IMx1G/4407188f…d686b/172175）、ceAuthority=login-state、servedEntryBefore==After。
+- 环境：b36d1a1e 章不重做；无 amend/force；web/src/9122(v4_proxy 95667)/BFF(12048@603a23e9)/caddy(28034)/qa-verify(33c2b838 ACC 判词节) 未动。
