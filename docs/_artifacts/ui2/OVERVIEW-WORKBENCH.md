@@ -237,3 +237,12 @@
 - 行序同源：`sortedRows` 同时喂表体、复制清单与 CSV 导出，三面首列顺序一致。
 - 点表头零新请求（`fetchJSON` 计数不变）；`run-sort-scope-note` 写明「仅在当前已加载 N 行内排序；服务端读口不接受排序参数，点表头不会重新读取。」。
 - 验证：runs 3 files / 108 passed（基线 104）；全量 151 files / 2054 passed（基线 2050）；tsc 本域 0；eslint 本域 exit 0；build exit 0（chunk `RunsModulePage-*.js` 内 `run-sort-status`=1，entry 0）。未测：真实浏览器 375（表头在窄屏隐藏）与键盘 Tab 实机走查。
+
+## 趋势窗口口径说明（duty trend window note，2026-11-20）
+
+- 背景：BFF timeseries 只接受 `range∈[24h,1d,7d,30d]`，14 天视图实际请求 `range=30d` 再前端裁到最近 14 桶；R49 要求屏上说明这一点。
+- 新增常驻句 `duty-trend-window-note`：「数据取近 30 天，本卡只显示最近 14 天」；仅 14d 视图渲染，7d/24h/30d 不渲染。
+- 四处口径现值（同一 `range.label` 派生）：卡片标题「近 14 天运行」；图 `aria-label`「近 14 天每日运行次数」；表 caption「近 14 天每日运行次数（北京时间）」；摘要「近 14 天：首日…末日…峰值…最低…合计…」。卡片不再出现「近 30 天运行」字样，窗口差异只由说明句交代。
+- 同单修掉一处硬编码：失败分支摘要原写「近 14 天摘要：…」，切 7d/30d 时口径混用 → 改为 `${label}摘要：…`；loading 分支同样使用 `label`（「正在读取近 7 天的运行记录」）。
+- 测试 4 例：14d + 注入 30 点 → 说明句逐字、四处口径一致、表体 14 行；切 7d/30d 说明消失且各自 aria 正确；挂起读口验证 loading 文案随范围；说明句渲染后 40ms 内 `fetchJSON` 计数不变（零额外请求）。
+- 验证：duty 5 files / 104 passed（基线 100）；全量 2175 passed；tsc 本域 0；eslint 本域 exit 0（4 既有 warning）；build exit 0，chunk `DutyPage-*.js` 内 `duty-trend-window-note`=1（entry 0）。未测：真实浏览器 375 说明句折行。

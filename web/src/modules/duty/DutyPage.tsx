@@ -464,7 +464,17 @@ function CostCard({
   );
 }
 
-function TrendCard({ stats, onRetry, label }: { stats: Loadable<RunStatsBody>; onRetry: () => void; label: string }) {
+function TrendCard({
+  stats,
+  onRetry,
+  label,
+  windowNote,
+}: {
+  stats: Loadable<RunStatsBody>;
+  onRetry: () => void;
+  label: string;
+  windowNote: string | null;
+}) {
   const [tableOpen, setTableOpen] = useState(false);
   const totals = stats.k === "ready" ? runTotals(stats.data) : null;
   const buckets = stats.k === "ready" ? dailyBuckets(stats.data) : [];
@@ -485,6 +495,11 @@ function TrendCard({ stats, onRetry, label }: { stats: Loadable<RunStatsBody>; o
         </Link>
       }
     >
+      {windowNote ? (
+        <p className="duty-note" data-testid="duty-trend-window-note">
+          {windowNote}
+        </p>
+      ) : null}
       <StateLine state={stats} onRetry={onRetry}>
         <p className="duty-num">
           {totals ? totals.runs : "—"}
@@ -532,7 +547,7 @@ function TrendCard({ stats, onRetry, label }: { stats: Loadable<RunStatsBody>; o
       <p className="duty-say duty-trend-summary" id="duty-trend-summary" data-testid="duty-trend-summary" title={summaryTitle}>
         {failed ? (
           <>
-            近 14 天摘要：首日 <span data-testid="duty-trend-first">—</span> · 末日{" "}
+            {label}摘要：首日 <span data-testid="duty-trend-first">—</span> · 末日{" "}
             <span data-testid="duty-trend-last">—</span> · 峰值{" "}
             <span data-testid="duty-trend-peak">—</span> · 最低{" "}
             <span data-testid="duty-trend-low">—</span> · 合计{" "}
@@ -1087,7 +1102,16 @@ export default function DutyPage() {
       <HealthStrip cost={data.budgetDay} runs={data.todayStats} />
 
       <div className="duty-grid duty-grid-2">
-        <TrendCard stats={data.stats14} onRetry={reload} label={range.label} />
+        <TrendCard
+          stats={data.stats14}
+          onRetry={reload}
+          label={range.label}
+          windowNote={
+            range.tsRange === "30d" && range.days < 30
+              ? `数据取近 30 天，本卡只显示最近 ${range.days} 天`
+              : null
+          }
+        />
         <ActivityCard activity={data.activity} onRetry={reload} label={range.label} />
       </div>
 
