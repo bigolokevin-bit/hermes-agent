@@ -972,11 +972,16 @@ export function RunsModulePage() {
   const resetTitle = resetFiltersTitle(filterReset.removed, unrecognizedFilters);
   const resetFilters = () => {
     if (filterReset.removed.length === 0) return;
+    cancelRefreshRef.current();
     setParams(filterReset.next, { replace: true, state: locationState ?? null });
   };
   const data = useRunsData(forced, { status, sinceKey, employeeId: employee });
   const { phase, rows, cursor, asOf, asOfSource, answeredBy, unreadable, failure, forced: isForced } =
     data;
+  const { refreshState } = data;
+  useEffect(() => {
+    cancelRefreshRef.current = refreshState.cancel;
+  }, [refreshState.cancel]);
   const asof = asOfCell(asOf, asOfSource);
 
   // Sorting is local: the list route accepts no sort parameter (see runs.ts
@@ -1000,8 +1005,10 @@ export function RunsModulePage() {
   const [readTick, setReadTick] = useState(0);
   const detail = useRunDetail(selected, readTick);
 
+  const cancelRefreshRef = useRef<() => void>(() => {});
   const [names, setNames] = useState<Map<string, string>>(new Map());
   const removeChip = (keys: readonly string[]) => {
+    cancelRefreshRef.current();
     const next = new URLSearchParams(params);
     for (const key of keys) next.delete(key);
     setParams(next, { replace: true, state: locationState ?? null });
@@ -1138,6 +1145,7 @@ export function RunsModulePage() {
   const listGate = listActionGate(phase);
   const filtersNarrow = Boolean(status) || Boolean(employee);
   const clearFilters = () => {
+    refreshState.cancel();
     const next = new URLSearchParams(params);
     next.delete("status");
     next.delete("employee");
@@ -1168,6 +1176,54 @@ export function RunsModulePage() {
       data-page="runs"
       data-fixture={forced ?? undefined}
     >
+      <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="run-refresh-bar">
+        <Button
+          size="sm"
+          outlined
+          onClick={refreshState.refresh}
+          aria-busy={refreshState.busy}
+          disabled={isForced}
+          title={forcedTitle ?? "按当前窗口、状态、负责人与排序再要一次运行记录；只读，不改任何运行"}
+          data-testid="run-refresh"
+          prefix={<RefreshCw className="h-3.5 w-3.5" />}
+        >
+          刷新
+        </Button>
+        {refreshState.busy ? (
+          <span className="min-w-0 break-words text-xs text-muted-foreground" role="status" aria-live="polite" data-testid="run-busy-note">
+            更新中…（先保留上一次读到的数据）
+          </span>
+        ) : null}
+        {!refreshState.busy && refreshState.updatedAt !== null ? (
+          <span className="min-w-0 break-words text-xs text-muted-foreground" data-testid="run-updated-at">
+            {`刷新完成于 ${beijingMinute(refreshState.updatedAt).text ?? "—"}（读取时刻，不是数据时刻）`}
+          </span>
+        ) : null}
+      </div>
+      {refreshState.error !== null ? (
+        <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-md border border-border px-2 py-1 text-xs" data-testid="run-refresh-error">
+          <span className="min-w-0 break-words">这次刷新没成功：{refreshState.error.sentence}</span>
+          {refreshState.error.requestId !== null ? (
+            <>
+              <span className="text-muted-foreground">请求编号</span>
+              <code className="min-w-0 break-all text-[11px]" data-testid="run-refresh-rid">{refreshState.error.requestId}</code>
+              <Button
+                size="sm"
+                outlined
+                onClick={() => void copyTextToClipboard(refreshState.error?.requestId ?? "")}
+                data-testid="run-refresh-copy"
+              >
+                复制编号
+              </Button>
+            </>
+          ) : (
+            <span className="text-muted-foreground" data-testid="run-refresh-rid-absent">本次请求未记录编号</span>
+          )}
+          <Button size="sm" outlined onClick={refreshState.refresh} data-testid="run-refresh-retry">
+            再试
+          </Button>
+        </div>
+      ) : null}
       <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-2">
         <div className="min-w-0">
           <nav aria-label="面包屑" className="min-w-0 break-words text-xs text-muted-foreground" data-testid="run5-breadcrumb">
@@ -1201,7 +1257,10 @@ export function RunsModulePage() {
                       ? "rounded-md border border-border bg-muted px-2.5 py-1 text-xs font-medium"
                       : "rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground"
                   }
-                  onClick={() => setParam("window", option.key)}
+                  onClick={() => {
+                    refreshState.cancel();
+                    setParam("window", option.key);
+                  }}
                 >
                   {option.label}
                 </button>
@@ -1216,7 +1275,10 @@ export function RunsModulePage() {
               className="h-8 min-w-0 max-w-40 rounded-md border border-border bg-transparent px-2 text-sm"
               value={status ?? ""}
               title={isForced ? forcedTitle : "换状态会重新向服务要一次数据"}
-              onChange={(event) => setParam("status", event.target.value || null)}
+              onChange={(event) => {
+                refreshState.cancel();
+                setParam("status", event.target.value || null);
+              }}
             >
               <option value="">全部状态</option>
               {STATUS_KEYS.map((key) => (

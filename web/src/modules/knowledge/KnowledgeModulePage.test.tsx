@@ -657,8 +657,8 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     const r1 = rows[1] as Element;
     expect((r1.querySelector('[data-testid="kn6-search-type"]')?.textContent ?? "")).toBe("表格");
     expect((r1.querySelector('[data-testid="kn6-search-updated"]')?.textContent ?? "")).toContain("2026-11-19 13:30");
-    expect(r1.querySelector('[data-testid="kn6-search-updated"]')?.getAttribute("title")).toBeNull();
-    expect(r2.querySelector('[data-testid="kn6-search-updated"]')?.getAttribute("title")).toBe("上游没有给出更新时间");
+    expect(r1.querySelector('[data-testid="kn6-search-updated"]')?.getAttribute("title")).toBe("时间 2026-11-19T05:30:00Z（UTC）"); // R75 统一在场句
+    expect(r2.querySelector('[data-testid="kn6-search-updated"]')?.getAttribute("title")).toBe("上游未返回时间；不用本机时间顶替。"); // R75 统一缺失句
 
     // 本地筛选：不再请求
     const before = fetchMock.mock.calls.length;
@@ -790,7 +790,7 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     const sizeHint = bare.querySelector('[data-testid="kn3-docs-size"]')?.getAttribute("title") ?? "";
     expect(sizeHint).toBe("上游没有给出文件大小");
     expect(bare.querySelector('[data-testid="kn3-docs-type"]')?.getAttribute("title")).toBe("上游没有给出文档类型");
-    expect(bare.querySelector('[data-testid="kn3-docs-updated"]')?.getAttribute("title")).toBe("上游没有给出更新时间");
+    expect(bare.querySelector('[data-testid="kn3-docs-updated"]')?.getAttribute("title")).toBe("上游未返回时间；不用本机时间顶替。"); // R75 统一缺失句
     expect(bare.querySelector('[data-testid="kn3-docs-name"]')?.getAttribute("title")).toBe("上游没有给出这份文档叫什么");
 
     // 每一行都是真实可聚焦的 a[href]

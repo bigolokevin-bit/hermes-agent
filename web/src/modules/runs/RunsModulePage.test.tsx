@@ -2369,3 +2369,115 @@ describe("runs time window selector", () => {
     expect(reads("/api/runs").length).toBe(2);
   });
 });
+
+/* ── one page-level refresh keeps the rows it already has ─────────── */
+
+describe("runs manual refresh", () => {
+  const runsCalls = (): number =>
+    api.fetchJSON.mock.calls.filter((call) => String(call[0]).includes("/api/runs")).length;
+  const node = (id: string) => document.querySelector(`[data-testid='${id}']`);
+
+  it("asks exactly once, keeps the rows, and stamps the read time", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A, RUN_B]));
+    await render("/runs?window=7d");
+    await waitFor(() => rowNodes() === 2, "two rows");
+    const before = runsCalls();
+    await act(async () => {
+      (node("run-refresh") as HTMLButtonElement).click();
+    });
+    await waitFor(() => node("run-updated-at") !== null, "stamp");
+    expect(runsCalls()).toBe(before + 1);
+    expect(rowNodes()).toBe(2);
+    expect(node("run-busy-note")).toBeNull();
+    const stamp = node("run-updated-at")?.textContent ?? "";
+    expect(stamp).toContain("刷新完成于");
+    expect(stamp).toContain("不是数据时刻");
+    // The collected instant is a separate line and was not rewritten.
+    expect(node("run-asof")).not.toBeNull();
+  });
+
+  it("swallows a second click and leaves the old rows on screen", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A, RUN_B]));
+    await render("/runs?window=7d");
+    await waitFor(() => rowNodes() === 2, "two rows");
+
+    let hold = false;
+    const pending: Array<(value: unknown) => void> = [];
+    api.fetchJSON.mockImplementation((url: string) => {
+      if (hold && String(url).includes("/api/runs")) {
+        return new Promise((resolve) => pending.push(resolve));
+      }
+      return okList([RUN_A, RUN_B])(url);
+    });
+    hold = true;
+    const before = runsCalls();
+    await act(async () => {
+      (node("run-refresh") as HTMLButtonElement).click();
+      (node("run-refresh") as HTMLButtonElement).click();
+    });
+    expect(runsCalls()).toBe(before + 1);
+    expect(node("run-busy-note")?.textContent ?? "").toContain("更新中");
+    expect(rowNodes()).toBe(2);
+    await act(async () => {
+      pending.splice(0).forEach((resolve) => resolve(okList([RUN_A, RUN_B])("/api/runs")));
+      await new Promise((r) => setTimeout(r, 10));
+    });
+    await waitFor(() => node("run-busy-note") === null, "busy note gone");
+  });
+
+  it("keeps the rows and names the request when the refresh fails", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs?window=7d");
+    await waitFor(() => rowNodes() === 1, "one row");
+    api.fetchJSON.mockImplementation((url: string) => {
+      if (String(url).includes("/api/runs")) {
+        throw new ApiError("down", { status: 500, body: "{}", url: String(url), requestId: "req-run-refresh" });
+      }
+      return okList([RUN_A])(url);
+    });
+    await act(async () => {
+      (node("run-refresh") as HTMLButtonElement).click();
+    });
+    await waitFor(() => node("run-refresh-error") !== null, "refresh error");
+    expect(node("run-refresh-error")?.textContent ?? "").toContain("req-run-refresh");
+    expect(node("run-refresh-rid")).not.toBeNull();
+    expect(node("run-updated-at")).toBeNull();
+    expect(rowNodes()).toBe(1);
+
+    const before = runsCalls();
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await act(async () => {
+      (node("run-refresh-retry") as HTMLButtonElement).click();
+    });
+    await waitFor(() => node("run-updated-at") !== null, "stamp after retry");
+    expect(runsCalls()).toBe(before + 1);
+  });
+
+  it("drops an in-flight refresh when the window changes", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs?window=7d");
+    await waitFor(() => rowNodes() === 1, "one row");
+
+    const pending: Array<(value: unknown) => void> = [];
+    api.fetchJSON.mockImplementation((url: string) => {
+      if (String(url).includes("/api/runs")) {
+        return new Promise((resolve) => pending.push(resolve));
+      }
+      return okList([RUN_A])(url);
+    });
+    await act(async () => {
+      (node("run-refresh") as HTMLButtonElement).click();
+    });
+    expect(node("run-busy-note")).not.toBeNull();
+    await act(async () => {
+      (node("run-window-30d") as HTMLButtonElement).click();
+    });
+    expect(node("run-busy-note")).toBeNull();
+    await act(async () => {
+      pending.splice(0).forEach((resolve) => resolve(okList([RUN_A])("/api/runs")));
+      await new Promise((r) => setTimeout(r, 15));
+    });
+    // The late answer must not stamp a read the reader already left.
+    expect(node("run-updated-at")).toBeNull();
+  });
+});

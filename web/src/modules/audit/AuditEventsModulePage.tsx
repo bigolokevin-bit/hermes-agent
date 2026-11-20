@@ -22,7 +22,7 @@
  *            `emp_…` / `human:1` / UUID 只做 `title`
  *   类型     已知动作给中文；不认识的按原样显示，绝不机翻成我们没得到的说法
  *   结果     成功 / 失败（被拒）/ 待完成，失败再带一句人话原因
- *   请求编号 可复制；服务没给就写「未提供」，不留空、不写 0
+ *   请求编号 可复制；服务没给就写「该字段未返回」，不留空、不写 0
  *
  * The detail body has zero raw field names on screen; every technical value
  * collapses into 「技术详情」, closed by default (closed means those strings are

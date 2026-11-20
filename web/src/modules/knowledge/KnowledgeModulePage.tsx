@@ -42,6 +42,7 @@ import {
   type KnmRow,
 } from "./sourceReads";
 import { blockedReasonByState, faceGates, retryTitle, type GateSurfaceState } from "./copyGates";
+import { updatedText } from "./updated";
 import {
   CITATIONS_URL,
   DOCUMENTS_URL,
@@ -987,8 +988,10 @@ function SpaceTable({
                     <Reason>{row.docsReason}</Reason>
                   </td>
                   <td data-label="最近同步">
-                    <span data-testid="knw5-space-time">
-                      {row.timeLabel ? `${row.timeLabel}：${row.at}` : row.at}
+                    <span data-testid="knw5-space-time" title={updatedText(row.atRaw).title}>
+                      {row.timeLabel
+                        ? `${row.timeLabel}：${updatedText(row.atRaw).value}`
+                        : updatedText(row.atRaw).value}
                     </span>
                     <Reason>{row.atReason}</Reason>
                   </td>
@@ -1965,8 +1968,9 @@ function DocTable({
                     </span>
                   </td>
                   <td data-label="更新">
-                    <span data-testid="kn3-docs-updated" title={row.atHint ?? undefined}>
-                      {row.at}
+                    {/* R75 — 值与 title 单点判出；旧 hint 句不再作本列 title（仍服务预览/复制）。 */}
+                    <span data-testid="kn3-docs-updated" title={updatedText(row.atRaw).title}>
+                      {updatedText(row.atRaw).value}
                     </span>
                   </td>
                 </tr>
@@ -2639,8 +2643,8 @@ function SearchDocTable({
                   </span>
                 </td>
                 <td data-label="更新">
-                  <span data-testid="kn6-search-updated" title={row.atHint ?? undefined}>
-                    {row.at}
+                  <span data-testid="kn6-search-updated" title={updatedText(row.atRaw).title}>
+                    {updatedText(row.atRaw).value}
                   </span>
                 </td>
               </tr>
