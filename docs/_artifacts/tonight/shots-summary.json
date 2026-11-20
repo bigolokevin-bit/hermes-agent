@@ -650,5 +650,8 @@
   "entrySha256": "4407188fca95d1468ac3d2344108398303ac5d824c4c1f9c620f57fdc11d686b",
   "entryBytes": 172175,
   "servedEntryBefore": "index-6g0IMx1G.js",
-  "servedEntryAfter": "index-6g0IMx1G.js"
+  "servedEntryAfter": "index-6g0IMx1G.js",
+  "routesWithConsoleErrors": [
+    "#/capabilities?tab=channels"
+  ]
 }

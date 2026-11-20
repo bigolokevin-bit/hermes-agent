@@ -651,5 +651,8 @@
   "entryBytes": 172175,
   "servedEntryBefore": "index-6g0IMx1G.js",
   "servedEntryAfter": "index-6g0IMx1G.js",
-  "auxiliary": true
+  "auxiliary": true,
+  "routesWithConsoleErrors": [
+    "#/audit"
+  ]
 }
