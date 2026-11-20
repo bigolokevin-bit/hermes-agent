@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { Inbox, RefreshCw, Search, ShieldAlert, TriangleAlert, Users } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Inbox, RefreshCw, Search, ShieldAlert, TriangleAlert, Users } from "lucide-react";
 import { Badge, Button, Card, CardContent } from "@nous-research/ui";
 
 import { RequestIdCopy } from "@/components/RequestIdCopy";
@@ -85,6 +85,60 @@ function readRows(body: unknown): EmployeeRow[] {
 function shortCode(id: string): string {
   const tail = id.replace(/^emp_/i, "").replace(/[^0-9a-z]/gi, "").slice(0, 8).toUpperCase();
   return tail || "—";
+}
+
+/** R62: the four sortable columns, keyed by what the screen actually shows. */
+type SortKey = "name" | "code" | "state" | "time";
+
+/** Sort value for a row. Missing/blank yields null so it sorts last — a
+ * missing value is never coerced into 0 or an empty-first position. */
+function sortValue(row: EmployeeRow, key: SortKey): string | null {
+  if (key === "name") return row.name?.trim() || null;
+  if (key === "code") return shortCode(row.employeeId);
+  if (key === "state") return row.lifecycleState?.trim() || null;
+  return row.updatedAt?.trim() || null;
+}
+
+/** R62: one header cell — a real button (Enter/Space native), aria-sort on
+ * the columnheader, focus ring visible. */
+function SortHeader({
+  label,
+  sortKey,
+  active,
+  dir,
+  onCycle,
+  tip,
+}: {
+  label: string;
+  sortKey: SortKey;
+  active: string | null;
+  dir: "asc" | "desc";
+  onCycle: (key: SortKey) => void;
+  tip: string;
+}) {
+  const isActive = active === sortKey;
+  return (
+    <span
+      role="columnheader"
+      aria-sort={isActive ? (dir === "asc" ? "ascending" : "descending") : "none"}
+      className="min-w-0"
+    >
+      <button
+        type="button"
+        data-testid={`emp-list-sort-${sortKey}`}
+        onClick={() => onCycle(sortKey)}
+        title={tip}
+        className="inline-flex min-w-0 items-center gap-1 rounded-sm hover:text-white/75 focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/50"
+      >
+        {label}
+        {isActive ? (
+          dir === "asc" ? <ArrowUp className="h-3 w-3" aria-hidden="true" /> : <ArrowDown className="h-3 w-3" aria-hidden="true" />
+        ) : (
+          <ArrowUpDown className="h-3 w-3 opacity-40" aria-hidden="true" />
+        )}
+      </button>
+    </span>
+  );
 }
 
 function displayName(row: EmployeeRow): string {
@@ -254,6 +308,33 @@ export function EmployeesModulePage() {
   }, [state.items]);
 
   const filtered = Boolean(q || lifecycle);
+
+  // R62: column sorting. Measured GET /api/employees with sort=name&order=desc,
+  // sortBy=lifecycleState or sort=createdAt&dir=asc all return the same order
+  // (200, same 3 rows) — the read port ignores sort parameters. To avoid
+  // pretending a server sort, only the loaded rows are ordered locally and the
+  // scope is stated above the table.
+  const sort = params.get("sort");
+  const dir: "asc" | "desc" = params.get("dir") === "desc" ? "desc" : "asc";
+  const sortActive = sort === "name" || sort === "code" || sort === "state" || sort === "time";
+  const cycleSort = (key: SortKey) => {
+    if (sort !== key) patchParams({ sort: key, dir: "asc" });
+    else if (dir === "asc") patchParams({ sort: key, dir: "desc" });
+    else patchParams({ sort: null, dir: null });
+  };
+  const sortedItems = useMemo(() => {
+    if (!sortActive) return state.items;
+    const key = sort as SortKey;
+    const factor = dir === "desc" ? -1 : 1;
+    return [...state.items].sort((a, b) => {
+      const va = sortValue(a, key);
+      const vb = sortValue(b, key);
+      if (va === null && vb === null) return 0;
+      if (va === null) return 1;
+      if (vb === null) return -1;
+      return va.localeCompare(vb, "zh-Hans-CN") * factor;
+    });
+  }, [state.items, sort, sortActive, dir]);
   const retry = () => setReload((n) => n + 1);
 
   return (
@@ -427,16 +508,23 @@ export function EmployeesModulePage() {
         <Card data-testid="employees-table">
           <CardContent className="p-0">
             <div className="hidden grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)_minmax(0,0.7fr)_minmax(0,0.7fr)_minmax(0,1fr)_minmax(0,0.6fr)_minmax(0,0.8fr)] gap-2 border-b border-white/10 px-4 py-2 text-xs text-white/45 md:grid">
-              <span>员工</span>
-              <span>短码</span>
-              <span>状态</span>
+              <SortHeader label="员工" sortKey="name" active={sort} dir={dir} onCycle={cycleSort} tip="按姓名排序（本地：仅当前已加载行）" />
+              <SortHeader label="短码" sortKey="code" active={sort} dir={dir} onCycle={cycleSort} tip="按工号短码排序（本地：仅当前已加载行）" />
+              <SortHeader label="状态" sortKey="state" active={sort} dir={dir} onCycle={cycleSort} tip="按在职态原始值排序（本地：仅当前已加载行）" />
               <span>部门</span>
-              <span title="口径：上游只返回记录更新时间 updatedAt，按北京时间切到分">最近活跃</span>
+              <SortHeader label="最近活跃" sortKey="time" active={sort} dir={dir} onCycle={cycleSort} tip="口径：上游只返回记录更新时间 updatedAt，按北京时间切到分；排序为本地，仅当前已加载行。列表读口不回传创建时间，故不提供“创建时间”假列。" />
               <span>知识</span>
               <span>月度预算</span>
             </div>
+            <p
+              className="border-b border-white/5 px-4 py-1.5 text-xs text-white/45"
+              data-testid="emp-list-sort-scope-note"
+              title="实测：GET /api/employees 带 sort=name&order=desc、sortBy=lifecycleState、sort=createdAt&dir=asc 任一参数，均返回同一顺序的同一全量（200，3 条）——后台读口不支持排序参数。为避免假的服务端排序，这里只对已加载行做本地排序。"
+            >
+              排序仅在当前已加载 {state.items.length} 条内生效（本地排序；后台排序参数实测被忽略，不是全量排序）。
+            </p>
             <ul className="divide-y divide-white/5" data-testid="emp-l-list" data-emp-list-rows="true">
-              {state.items.map((row) => (
+              {sortedItems.map((row) => (
                 <li key={row.employeeId} data-testid={`employees-row-${row.employeeId}`}>
                   <span data-testid={`emp-l-row-${row.employeeId}`} className="contents">
                   <Link

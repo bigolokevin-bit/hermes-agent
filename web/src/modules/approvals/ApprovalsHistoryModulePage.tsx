@@ -25,7 +25,7 @@ import { Button } from "@nous-research/ui/ui/components/button";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { Spinner } from "@nous-research/ui/ui/components/spinner";
 
-import { STATUS_FILTERS, isKnownStatus } from "./model";
+import { approvalsRowSearchText, STATUS_FILTERS, isKnownStatus } from "./model";
 import { QueueSummaryBar } from "./QueueSummaryBar";
 import { BackToList, restoreListScroll, saveListScroll } from "./BackToList";
 import { QueueCsvExport } from "./QueueCsvExport";
@@ -68,8 +68,27 @@ export function ApprovalsHistoryModulePage(): ReactNode {
   const activeValue = status === null ? "all" : status;
 
   const list = useApprovalsList(status, forced);
+  // R59: keyword search is a local filter over the loaded rows (the read
+  // port ignores q/keyword/title — measured), so typing never fetches.
+  const q = params.get("q") ?? "";
+  const setQ = useCallback(
+    (value: string) => {
+      const draft = new URLSearchParams(params);
+      if (value) draft.set("q", value);
+      else draft.delete("q");
+      setParams(draft, { replace: true });
+    },
+    [params, setParams],
+  );
+  const visibleRows = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    if (!needle) return list.rows;
+    return list.rows.filter((row) => approvalsRowSearchText(row).includes(needle));
+  }, [list.rows, q]);
   const [selected, setSelected] = useState<string | null>(() => params.get("id"));
   const [unaddressable, setUnaddressable] = useState(false);
+  // R60: at most one row shows its inline preview; it never touches URL/filters.
+  const [previewKey, setPreviewKey] = useState<string | null>(null);
   const detail = useApprovalDetail(selected, forced);
 
   const choose = useCallback(
@@ -88,6 +107,8 @@ export function ApprovalsHistoryModulePage(): ReactNode {
   const openRow = useCallback(
     (row: { rawId: string | null }) => {
       // R55: remember where the list was, so 返回列表 can put us back there.
+      // R60: 打开详情与行内预览互斥，收起所有预览。
+      setPreviewKey(null);
       saveListScroll("approvals-history-scroll");
       setUnaddressable(row.rawId === null);
       setSelected(row.rawId);
@@ -185,11 +206,13 @@ export function ApprovalsHistoryModulePage(): ReactNode {
                 ? "审批历史暂不可用"
                 : list.phase === "error"
                   ? "审批历史读取失败"
-                  : `已显示 ${list.rows.length} 条「${summary}」记录${list.next ? "，下面还有更多" : ""}`}
+                  : q
+                    ? `已显示 ${visibleRows.length} / ${list.rows.length} 条「${summary}」记录（关键字过滤中）`
+                    : `已显示 ${list.rows.length} 条「${summary}」记录${list.next ? "，下面还有更多" : ""}`}
         </p>
         {list.phase === "ready" ? (
-          <span className="font-mono text-xs text-muted-foreground" data-testid="apv5-count" title="计数与下方列表同源：同一份服务端返回的行数">
-            {list.rows.length}
+          <span className="font-mono text-xs text-muted-foreground" data-testid="apv5-count" title={q ? "计数与下方列表同源（关键字过滤后）" : "计数与下方列表同源：同一份服务端返回的行数"}>
+            {visibleRows.length}
           </span>
         ) : null}
         {list.phase !== "denied" ? (
@@ -211,8 +234,32 @@ export function ApprovalsHistoryModulePage(): ReactNode {
         ) : null}
       </div>
 
-      <QueueSummaryBar phase={list.phase} rows={list.rows} scope="history" singleStatus={status} />
+      <QueueSummaryBar phase={list.phase} rows={visibleRows} scope="history" singleStatus={status} />
       <QueueCsvExport rows={list.rows} tab="history" status={status} />
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5" role="group" data-testid="apv8-search-group" aria-label="搜索审批">
+        <input
+          type="search"
+          aria-label="搜索审批"
+          data-testid="apv8-search"
+          className="min-w-0 flex-1 rounded-sm border border-border bg-transparent px-2 py-1 text-xs"
+          placeholder="关键字（标题/理由/编号）"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+        {q ? (
+          <Button size="sm" outlined data-testid="apv8-search-clear" onClick={() => setQ("")}>
+            清空搜索
+          </Button>
+        ) : null}
+      </div>
+      <p
+        className="min-w-0 break-words text-xs text-muted-foreground"
+        data-testid="apv8-scope-note"
+        title="实测：GET /api/approvals 带 q/keyword/title 任一参数都返回同一全量（200，8 条同集合），后台不做关键字过滤；为避免「假服务端搜索」，这里只做前端本地过滤。"
+      >
+        仅在当前已加载 {list.rows.length} 条内搜索；关键字是前端本地过滤，不产生新请求（实测后台 q/keyword/title 参数被忽略）。
+      </p>
+
 
       <div className="flex min-w-0 flex-wrap gap-1.5" role="group" data-testid="apr5-filter" aria-label="按处理结果筛选">
         {CHOICES.map((choice) => {
@@ -307,18 +354,37 @@ export function ApprovalsHistoryModulePage(): ReactNode {
 
           {list.phase === "ready" ? (
             <>
-              {list.rows.map((row) => (
+              {q && visibleRows.length === 0 ? (
+                <Card className="border-border bg-card" data-testid="apv8-search-empty">
+                  <CardContent className="min-w-0 space-y-2 p-4 text-sm">
+                    <p>没有匹配的审批。</p>
+                    <p className="text-xs text-muted-foreground">
+                      这是前端本地过滤的真实结果：当前已加载 {list.rows.length} 条里没有包含「{q.trim()}」的行；可清空搜索或换服务器筛选条件。
+                    </p>
+                    <Button size="sm" outlined onClick={() => setQ("")}>
+                      清空搜索
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : null}
+              {visibleRows.map((row) => (
                 <ApprovalRowCard
                   key={row.key}
                   row={row}
                   selected={row.rawId !== null && row.rawId === selected}
                   onOpen={() => openRow(row)}
+                  previewOpen={previewKey === row.key}
+                  onTogglePreview={() =>
+                    setPreviewKey((current) => (current === row.key ? null : row.key))
+                  }
                 />
               ))}
 
               {list.unreadable > 0 ? (
                 <p className="min-w-0 break-words text-xs text-warning">
-                  有 {list.unreadable} / {list.rows.length + list.unreadable} 条记录缺少可显示的内容，未列在上面。
+                  {q
+                    ? `另有 ${list.unreadable} 条缺少可显示内容的记录，不参与关键字搜索。`
+                    : `有 ${list.unreadable} / ${list.rows.length + list.unreadable} 条记录缺少可显示的内容，未列在上面。`}
                 </p>
               ) : null}
 

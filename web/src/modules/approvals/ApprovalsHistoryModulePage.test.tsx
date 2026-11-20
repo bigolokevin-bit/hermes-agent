@@ -733,3 +733,226 @@ describe("R50 queue summary bar", () => {
   });
 });
 
+describe("R59 approvals queue search (apv8-*)", () => {
+  const typeInto = async (value: string) => {
+    const box = document.querySelector('[data-testid="apv8-search"]') as HTMLInputElement;
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+    await act(async () => {
+      setter.call(box, value);
+      box.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  };
+  const rowCards = () => document.querySelectorAll('[data-testid^="apr5-row-ap"]');
+
+  it("typing filters the loaded rows locally with zero new requests and mirrors in the counts", async () => {
+    await mount();
+    expect(document.querySelector('[data-testid="apv8-search"]')).toBeTruthy();
+    expect(document.querySelector('[data-testid="apv8-scope-note"]')?.textContent).toContain("仅在当前已加载 8 条内搜索");
+    expect(document.querySelector('[data-testid="apv8-scope-note"]')?.getAttribute("title")).toContain("q/keyword/title");
+    expect(rowCards()).toHaveLength(8);
+    const before = api.fetchJSON.mock.calls.length;
+    await typeInto("预算");
+    expect(api.fetchJSON.mock.calls.length).toBe(before); // 本地过滤=零新请求
+    expect(rowCards()).toHaveLength(1);
+    expect((document.querySelector('[data-testid="apv5-count"]') as HTMLElement).textContent).toBe("1");
+    expect(document.body.textContent).toContain("关键字过滤中");
+    expect(document.querySelector('[data-testid="apv6-summary"]')).toBeTruthy();
+  });
+
+  it("no match states the honest local result and the clear button restores the list", async () => {
+    await mount(undefined, "/approvals?tab=history&q=nomatch-xyz");
+    const empty = document.querySelector('[data-testid="apv8-search-empty"]');
+    expect(empty).toBeTruthy();
+    expect(empty?.textContent).toContain("没有匹配的审批");
+    expect(empty?.textContent).toContain("nomatch-xyz");
+    const clear = Array.from(document.querySelectorAll("button")).find((b) => (b.textContent ?? "").includes("清空搜索"))!;
+    await act(async () => {
+      clear.click();
+    });
+    expect(document.querySelector('[data-testid="apv8-search-empty"]')).toBeNull();
+    expect(rowCards()).toHaveLength(8);
+    expect((document.querySelector('[data-testid="apv8-search"]') as HTMLInputElement).value).toBe("");
+  });
+
+  it("a pasted ?q= deep link reopens straight into the filtered view", async () => {
+    await mount(undefined, "/approvals?tab=history&q=预算");
+    expect(rowCards()).toHaveLength(1);
+    expect((document.querySelector('[data-testid="apv8-search"]') as HTMLInputElement).value).toBe("预算");
+    expect((document.querySelector('[data-testid="apv5-count"]') as HTMLElement).textContent).toBe("1");
+  });
+
+  describe("R60 inline row preview (apv9-*)", () => {
+    const ROWS_META = {
+      items: [
+        {
+          approvalId: "ap_v1",
+          type: "policy_update",
+          status: "approved",
+          requestedBy: "human:5",
+          action: "rotate.secret",
+          riskLevel: "high",
+          approvers: [{ userId: "human:7", name: "郑涛" }],
+          requestId: "req-v1-9",
+          createdAt: "2026-11-19T01:00:00Z",
+          decidedAt: "2026-11-19T02:00:00Z",
+        },
+      ],
+    };
+
+    it("expands in place from the row payload only — no new request, honest missing fields", async () => {
+      await mount(async (url) =>
+        url.includes("/api/approvals") ? ROWS_META : { items: [] },
+      );
+      const calls = api.fetchJSON.mock.calls.length;
+      const toggle = (document.querySelector as (sel: string) => HTMLButtonElement | null)('[data-testid="apv9-toggle-ap_v1"]');
+      expect(toggle).toBeTruthy();
+      expect(toggle.getAttribute("aria-expanded")).toBe("false");
+      await act(async () => {
+        toggle.click();
+      });
+      expect(api.fetchJSON.mock.calls.length).toBe(calls); // 禁额外请求：数据全来自已加载行
+      const preview = (document.querySelector as (sel: string) => HTMLElement | null)('[data-testid="apv9-preview-ap_v1"]');
+      expect(preview?.textContent).toContain("rotate.secret");
+      expect(preview?.textContent).toContain("郑涛");
+      expect(preview?.textContent).toContain("req-v1-9");
+      expect(preview?.textContent).toContain("2026-11-19 10:00"); // BJT 到分
+      expect(preview?.textContent).toContain("高");
+      expect((document.querySelector as (sel: string) => HTMLButtonElement | null)('[data-testid="apv9-toggle-ap_v1"]')?.getAttribute("aria-expanded")).toBe("true");
+      // 展开不是打开详情：详情抽屉没被唤起。
+      expect(document.querySelector("[data-testid='apr5-detail']")).toBeNull();
+      // Esc 收起且焦点回到行内开关。
+      await act(async () => {
+        (document.querySelector as (sel: string) => HTMLButtonElement | null)('[data-testid="apv9-toggle-ap_v1"]')?.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
+        );
+      });
+      expect(document.querySelector('[data-testid="apv9-preview-ap_v1"]')).toBeNull();
+      expect(document.activeElement?.getAttribute("data-testid")).toBe("apv9-toggle-ap_v1");
+    });
+
+    it("falls back to 该字段未返回 when the row carries no approvers or request id", async () => {
+      await mount(); // 默认 8 态夹具：无 approvers/requestId 键
+      const toggle = (document.querySelector as (sel: string) => HTMLButtonElement | null)('[data-testid="apv9-toggle-ap_p"]');
+      await act(async () => {
+        toggle?.click();
+      });
+      const preview = (document.querySelector as (sel: string) => HTMLElement | null)('[data-testid="apv9-preview-ap_p"]');
+      expect(preview?.textContent).toContain("该字段未返回");
+      expect(preview?.textContent).toContain("请求编号");
+      expect(preview?.textContent).not.toContain("human:");
+    });
+
+    it("keeps at most one preview open", async () => {
+      await mount();
+      const first = (document.querySelector as (sel: string) => HTMLButtonElement | null)('[data-testid="apv9-toggle-ap_p"]');
+      await act(async () => {
+        first?.click();
+      });
+      expect(document.querySelector('[data-testid="apv9-preview-ap_p"]')).toBeTruthy();
+      const second = (document.querySelector as (sel: string) => HTMLButtonElement | null)('[data-testid="apv9-toggle-ap_a"]');
+      await act(async () => {
+        second?.click();
+      });
+      expect(document.querySelector('[data-testid="apv9-preview-ap_p"]')).toBeNull();
+      expect(document.querySelector('[data-testid="apv9-preview-ap_a"]')).toBeTruthy();
+    });
+  });
+
+})
+
+describe("R61 trail copy (apd8-*)", () => {
+  const TRAIL_SAMPLE = {
+    approvalId: "ap_t8",
+    status: "approved",
+    requestedBy: { type: "human", id: "human:9" },
+    action: "rotate.secret",
+    createdAt: "2026-11-19T01:00:00Z",
+    decidedAt: "2026-11-19T02:00:00Z",
+    approvers: [
+      { userId: "human:7", name: "郑涛" },
+      { userId: "human:8", name: "阿朝" },
+    ],
+    decisions: [
+      { userId: "human:7", name: "郑涛", verdict: "approve", decidedAt: "2026-11-19T01:50:00Z", comment: "可以，按计划轮换。" },
+      { userId: "human:8", verdict: "approve", decidedAt: "2026-11-19T01:55:00Z" },
+    ],
+  };
+  const EMPTY_TRAIL_SAMPLE = {
+    approvalId: "ap_e8",
+    status: "pending",
+    requestedBy: { type: "human", id: "human:9" },
+    action: "keepalive",
+    createdAt: "2026-11-19T01:00:00Z",
+    approvers: [],
+    decisions: [],
+  };
+
+  async function openTrail(sample: unknown) {
+    await mount(async (url) => {
+      if (url.includes("/api/approval?id=")) return sample;
+      return { items: [sample] };
+    });
+    const card = document.querySelector("[data-testid^='apr5-row-']") as HTMLElement | null;
+    expect(card, "row card").toBeTruthy();
+    await act(async () => {
+      card!.click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='apr5-detail']") !== null, "detail opened");
+    await waitFor(() => document.querySelector("[data-testid='apd6-trail']") !== null, "trail mounted");
+  }
+
+  it("copies the on-screen trail in order, with no extra request", async () => {
+    const written: string[] = [];
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: (t: string) => { written.push(t); return Promise.resolve(); } },
+    });
+    await openTrail(TRAIL_SAMPLE);
+    const callsBefore = api.fetchJSON.mock.calls.length;
+    const btn = document.querySelector("[data-testid='apd8-copy']") as HTMLButtonElement | null;
+    expect(btn, "copy button").toBeTruthy();
+    expect(btn!.disabled).toBe(false);
+    await act(async () => {
+      btn!.click();
+    });
+    await waitFor(() => (document.querySelector("[data-testid='apd8-copy-status']")?.textContent ?? "").includes("已复制"), "copied feedback");
+    expect(api.fetchJSON.mock.calls.length, "copying never fetches").toBe(callsBefore);
+    const text = written[0] ?? "";
+    expect(text).toContain("提交 · 成员 · 9 · 2026-11-19 09:00");
+    expect(text).toContain("节点 1 · 郑涛 · 通过 · 2026-11-19 09:50 · 意见：可以，按计划轮换。");
+    // 裸 human:8 没有姓名 → 屏上口径「人员」；缺意见 → 「未填」。
+    expect(text).toContain("节点 2 · 人员 · 通过 · 2026-11-19 09:55 · 意见：未填");
+    expect(text).toContain("阿朝 · 待办 · 该段无记录 · 意见：未填");
+    expect(text).toContain("终态 ·");
+    expect(text).not.toContain("human:");
+    expect(text).not.toContain("emp_");
+    expect(text).not.toContain("ap_t8");
+    expect(document.querySelector("[data-testid='apd8-fallback']")).toBeNull();
+  });
+
+  it("falls back to a read-only textarea when the clipboard refuses", async () => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: () => Promise.reject(new Error("denied")) },
+    });
+    await openTrail(TRAIL_SAMPLE);
+    const btn = document.querySelector("[data-testid='apd8-copy']") as HTMLButtonElement | null;
+    await act(async () => {
+      btn!.click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='apd8-fallback']") !== null, "fallback textarea");
+    const box = document.querySelector("[data-testid='apd8-fallback']") as HTMLTextAreaElement;
+    expect(box.readOnly).toBe(true);
+    expect(box.value).toContain("节点 1 · 郑涛");
+    expect((document.querySelector("[data-testid='apd8-copy-status']")?.textContent ?? "")).toContain("手动复制");
+  });
+
+  it("disables the copy for an empty trail, with the reason in the title", async () => {
+    await openTrail(EMPTY_TRAIL_SAMPLE);
+    const btn = document.querySelector("[data-testid='apd8-copy']") as HTMLButtonElement | null;
+    expect(btn, "copy button").toBeTruthy();
+    expect(btn!.disabled).toBe(true);
+    expect(btn!.title).toContain("没有可复制的链路");
+    expect(document.querySelector("[data-testid='apd8-fallback']")).toBeNull();
+  });
+});
