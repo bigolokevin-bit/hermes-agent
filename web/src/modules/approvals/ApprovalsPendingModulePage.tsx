@@ -419,10 +419,12 @@ export function ApprovalsPendingModulePage(): ReactNode {
           />
         </label>
         <div className="flex min-w-0 flex-wrap items-center gap-2">
+          {/* P1-375-1: 同屏主按钮唯一——批准是这张单的最主操作，保持实心；
+              驳回降为次级（既有 outlined×destructive 组合样式），文案与 testid 不动。 */}
           <Button size="sm" onClick={() => setConfirming("approve")} disabled={inFlight}>
             批准
           </Button>
-          <Button size="sm" destructive onClick={() => setConfirming("reject")} disabled={inFlight}>
+          <Button size="sm" destructive outlined onClick={() => setConfirming("reject")} disabled={inFlight}>
             驳回
           </Button>
           {inFlight ? (
