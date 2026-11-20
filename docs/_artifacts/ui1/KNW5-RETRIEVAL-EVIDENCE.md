@@ -4359,3 +4359,56 @@ kn7-preview-* + 既有 26 套全绿。
 边界：只新增 web/src/modules/knowledge/knowledge.export.filter.test.tsx 与本证据；
 显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
 「test(console): knowledge export filter parity guards」。
+
+# KNW5 追加 R208：行复制 × 筛选叠加护栏（纯测试单）（2026-11-21 BJT）
+
+安全门：porcelain 空起做（HEAD 即 R207 链）、显式 refspec fetch 后 merge 实测 tip
+即预期 `42180cd6`（知识面 delta 空）。零产品文件改动（无新缺陷）。
+
+## 名实映射与查重（引用不重写）
+
+```text
+· 无 ?source= 控件（仅空间行「来源」列标签）→ 叠加键 = ?ktype=（旧 type 兜底
+  :3359/:3479-3480）× 本地名筛 × ?q=；类型桶与名筛活在空间详情面 → 本文件锁的族 =
+  `kn-row-copy-space-<i>`（检索面 kn-row-copy-<i> 不持这两类筛选，R207/R169 已锁该面）。
+· 已锁引用：④空集/错误/ghost 行钮 0 —— knowledge.empty.test.tsx:213/:225 +
+  knowledge.space.error.test.tsx:149；①id 连续 0..M-1 —— knowledge.space.filters.test.tsx
+  :262-267（R176 动线终态）；排序重编 —— R132/R169；清单复制元素级换代 —— R207 (a)
+  （export.filter.test.tsx）；单文档六路链 —— R204 ①；文本单点 —— R71/R75/R114。
+真缺口（本文件 1 例，覆盖①②③的行钮级）：逐行文本链——每步筛选态下「按可见行序逐个
+点钮，所得串第 1 列数组逐元素 toEqual 屏上行名」（R207 走清单、R204 只走一行，行钮级
+全链此前零 pin）；②同一文档跨态（ktype=PDF → 清类型+名筛「人事」）首钮整串 toBe
+自身且 == docSingleCopy(readSpaceDocuments(...)) 直出（字段不随筛选漂移）；③切「表格」
+桶后首钮串 == 新集首行直出且 != 旧首行样张（换代缺席，行钮级）。
+```
+
+## 关键读数
+
+```text
+态 1 ktype=PDF：行 [A 人事手册.pdf, C 运维手册.pdf]；逐行链 [A…, C…] == 行名；
+  钮 [space-0, space-1]；space-0 整串 === docSingleCopy(d_a) 直出。
+态 2 清类型+名筛「人事」：行 [A, B 人事表.xlsx]；逐行链等；A 串 toBe 态 1 样张（零漂移）。
+态 3 切「表格」：行 [B]；首钮串 === docSingleCopy(d_b) 且 != A 样张。
+请求：首屏快照 u0 之后（3 次逐行点钮 + 清类型 + 键入 + 3 次点钮）urls() 排序快照逐字
+  == u0——本地动作全程零 fetch 增量；首屏自身读取次数如实（多 surface 各 1，不锁数）。
+```
+
+## 验证尾行（R208）
+```text
+$ npx vitest run src/modules/knowledge   → 28 files / 158 tests passed（基线 157 + 1）
+$ npx vitest run                         → 281 files / 2963 tests passed 全绿（无豁免项；
+  较 R207 时点 +7 文件为 merge 带入的 wave 他模块内容，全绿非退化）
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning；本单曾有
+  unused(q) 与 urls 漏定义两次自纠，提交前清零）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r208-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn3*/kn6–kn9/knB/knD/knF/knG/knI/knL-copy*/kn-sort*/kn-gates/kn-row-copy*/
+kn-row-copy-space*/kn-doc-copy*/kn-doc-preview*/kn-space-preview*/kn3-page-cap/knE-page-*/
+kn7-preview-*/kn-type* + 既有 27 套全绿。
+```
+未测如实：带登录会话真实屏；检索面行钮级逐行链（该面无此叠加筛选，族链 R200/R207 已锁
+其列格与清单换代）；跨页签保持筛选再回切的多跳转链（单页态内三步已锁）。
+边界：只新增 web/src/modules/knowledge/knowledge.rowcopy.filter.test.tsx 与本证据；
+显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「test(console): knowledge row copy filter parity guards」。
