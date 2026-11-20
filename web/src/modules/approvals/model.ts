@@ -477,6 +477,8 @@ export interface ApprovalPage {
   unreadable: number;
   next: string | null;
 }
+  /* R79: 读口顶层无 total 键（实测 keys=[items,nextCursor]）——解析 total/count
+   * 以备契约升级，缺省恒 null；UI 禁按已加载条数推算。 */
 
 /** null = the answer is not a list at all, which is a failure, not an empty queue. */
 export function approvalsPageFrom(payload: unknown): ApprovalPage | null {
@@ -504,7 +506,9 @@ export function approvalsPageFrom(payload: unknown): ApprovalPage | null {
     if (row) rows.push(row);
     else unreadable += 1;
   });
-  return { rows, unreadable, next };
+  const totalRaw = (payload as Record<string, unknown>).total ?? (payload as Record<string, unknown>).count;
+  const total = typeof totalRaw === "number" && Number.isFinite(totalRaw) ? totalRaw : null;
+  return { rows, unreadable, next, total };
 }
 
 export interface DecisionEntry {

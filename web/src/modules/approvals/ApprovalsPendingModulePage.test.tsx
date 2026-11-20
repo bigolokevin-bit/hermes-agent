@@ -729,3 +729,17 @@ describe("R77 pending time range (apv-since-*)", () => {
     expect(qa("apv-since-scope-note")?.textContent).toContain("不是全量");
   });
 });
+
+describe("R79 pending pagination rail (apv-page-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+
+  it("the pending tab shows the same rail: no-total sentence, end state disabled", async () => {
+    await mount(queue(), "/approvals?tab=pending");
+    await waitFor(() => !!qa("apv-page"), "rail");
+    expect(qa("apv-page-count")?.textContent).toContain("总数不可用");
+    const more = qa("apv-page-more") as HTMLButtonElement;
+    expect(more.disabled, "queue fits one page — no cursor").toBe(true);
+    expect(more.getAttribute("title")).toContain("已到末页");
+    expect(qa("apv-page-end")?.textContent).toBe("已到末页");
+  });
+});

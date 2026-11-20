@@ -314,7 +314,8 @@ export function ApprovalsHistoryModulePage(): ReactNode {
     );
   })();
 
-  return (
+  // R79: 聚合（全部状态）=扇出取齐无统一游标，到底原因要分开说。
+  const singleAgg = status === null;  return (
     <div className="flex min-w-0 w-full max-w-full flex-col gap-3" data-testid="apr5-page-history">
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
         <p className="min-w-0 break-words text-xs text-muted-foreground" aria-live="polite">
@@ -551,21 +552,42 @@ export function ApprovalsHistoryModulePage(): ReactNode {
 
               {list.pageFailure ? <InlineFailure failure={list.pageFailure} action="后续记录没有加载成功" onRetry={list.loadMore} /> : null}
 
-              {list.next ? (
-                <div>
-                  <Button
-                    size="sm"
-                    outlined
-                    disabled={list.loadingMore}
-                    onClick={list.loadMore}
-                    prefix={list.loadingMore ? <Spinner className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                  >
-                    加载更多
-                  </Button>
-                </div>
-              ) : list.rows.length > 0 ? (
-                <p className="text-xs text-muted-foreground">这个状态下就这些了。</p>
-              ) : null}
+              <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs" data-testid="apv-page">
+                <Button
+                  size="sm"
+                  outlined
+                  data-testid="apv-page-more"
+                  disabled={!list.next || list.loadingMore}
+                  onClick={list.loadMore}
+                  title={
+                    list.next
+                      ? "带服务端游标续取下一页（追加时按单号去重，重复行不上屏）。"
+                      : singleAgg
+                        ? "聚合视图按状态扇出取齐，没有续页游标：已到末页。切到单一状态可按游标续取。"
+                        : "服务端没有给出下一页游标：已到末页。"
+                  }
+                  prefix={list.loadingMore ? <Spinner className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                >
+                  {list.loadingMore ? "加载中…" : "加载更多"}
+                </Button>
+                <span
+                  data-testid="apv-page-count"
+                  title={
+                    list.total === null
+                      ? "读口顶层只有 items/nextCursor（实测 200，无 total 键）；按已加载条数推算会撒谎，故不推算。"
+                      : "总数来自读口 total 键；已显示=当前已加载行数"
+                  }
+                >
+                  {list.total !== null
+                    ? `共 ${list.total} 条 / 已显示 ${list.rows.length} 条`
+                    : `总数不可用 · 已显示 ${list.rows.length} 条`}
+                </span>
+                {!list.next && list.rows.length > 0 ? (
+                  <span className="text-muted-foreground" data-testid="apv-page-end">
+                    已到末页
+                  </span>
+                ) : null}
+              </div>
             </>
           ) : null}
         </section>

@@ -1800,3 +1800,60 @@ describe("R77 time-range quick filter (apv-since-*)", () => {
     }
   });
 });
+
+describe("R79 cursor pagination and honest total (apv-page-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+  const rows = (n: number, from = 1) =>
+    Array.from({ length: n }, (_, i) => ({
+      approvalId: `ap_g${from + i}`,
+      title: `变更 ${from + i}`,
+      status: "pending",
+      createdAt: "2026-11-19T02:00:00Z",
+    }));
+  const twoPages = async (url: string) => {
+    const u = String(url);
+    if (u.includes("/api/approval?id=")) return {};
+    if (u.includes("status=approved")) return { items: rows(1, 3) };
+    if (u.includes("cursor=cg2")) return { items: [...rows(1, 2), ...rows(1, 1)] }; // 新行+重复行
+    return { items: rows(1, 1), nextCursor: "cg2" };
+  };
+
+  it("states 「总数不可用」, pages with the real cursor and dedupes appended rows", async () => {
+    await mount(twoPages, "/approvals?tab=history");
+    await waitFor(() => !!qa("apr5-row-ap_g1"), "page one");
+    expect(qa("apv-page-count")?.textContent).toBe("总数不可用 · 已显示 1 条");
+    expect(qa("apv-page-count")?.getAttribute("title")).toContain("无 total 键");
+    const more = qa("apv-page-more") as HTMLButtonElement;
+    expect(more.disabled).toBe(false);
+    expect(qa("apv-page-end"), "not at end yet").toBeNull();
+    await act(async () => {
+      more.click();
+    });
+    await waitFor(() => !!qa("apv-page-end"), "end chip");
+    const calls = api.fetchJSON.mock.calls.map((c) => String(c[0])).filter((u) => u.includes("/api/approvals"));
+    expect(calls.some((u) => u.includes("cursor=cg2")), calls.join("|")).toBe(true);
+    expect(document.querySelectorAll('[data-testid^="apr5-row-ap_g"]').length, "duplicate row suppressed").toBe(2);
+    expect((qa("apv-page-more") as HTMLButtonElement).disabled, "more disabled at end").toBe(true);
+    expect(qa("apv-page-more")?.getAttribute("title")).toContain("已到末页");
+    expect(qa("apv-page-count")?.textContent).toBe("总数不可用 · 已显示 2 条");
+  });
+
+  it("a status switch resets the list and never carries the stale cursor", async () => {
+    await mount(twoPages, "/approvals?tab=history");
+    await waitFor(() => !!qa("apr5-row-ap_g1"), "page one");
+    await act(async () => {
+      (qa("apv-page-more") as HTMLButtonElement).click();
+    });
+    await waitFor(() => !!qa("apv-page-end"), "loaded page two");
+    const prev = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      (document.querySelector('[data-testid="apv5-filter-status-approved"]') as HTMLButtonElement).click();
+    });
+    await waitFor(() => api.fetchJSON.mock.calls.length > prev, "refetch");
+    const fresh = api.fetchJSON.mock.calls.slice(prev).map((c) => String(c[0])).filter((u) => u.includes("/api/approvals"));
+    expect(fresh.every((u) => !u.includes("cursor=")), fresh.join("|")).toBe(true);
+    await waitFor(() => !!qa("apr5-row-ap_g3"), "rows replaced");
+    expect(qa("apr5-row-ap_g1"), "stale page gone").toBeNull();
+    expect(qa("apv-page-count")?.textContent).toBe("总数不可用 · 已显示 1 条");
+  });
+});
