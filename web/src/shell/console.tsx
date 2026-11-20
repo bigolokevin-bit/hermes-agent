@@ -64,6 +64,7 @@ import {
 import EmployeeDetailWorkbench from "../modules/employee-detail/EmployeeDetailWorkbench";
 import { ConsoleButton } from "./ConsoleButton";
 import { StatePlaceholder } from "./StatePlaceholder";
+import "./console-nav.css";
 import { copyTextToClipboard } from "@/lib/clipboard";
 
 /* ------------------------------------------------------------------ *
@@ -136,9 +137,9 @@ function registryPlanned(tabId: string): string | null {
  * ------------------------------------------------------------------ */
 
 const shellStyle = {
-  background: "var(--panel)",
-  borderColor: "var(--line)",
-  color: "var(--fg)",
+  background: "var(--color-surface)",
+  borderColor: "var(--color-border-subtle)",
+  color: "var(--color-text)",
 } as const;
 
 /* R4 item 5: the shell has no backend trace id to show in forced states —
@@ -179,15 +180,15 @@ function StateRid({ rid }: { rid: string | null }) {
   const [copied, setCopied] = useState(false);
   if (rid === null) {
     return (
-      <span data-testid="state-rid-fallback" className="text-xs" style={{ color: "var(--fg-3)" }}>
+      <span data-testid="state-rid-fallback" className="text-xs" style={{ color: "var(--color-text-muted)" }}>
         {NO_TRACE_COPY}
       </span>
     );
   }
   return (
     <span className="flex flex-wrap items-center justify-center gap-1.5 text-xs" data-testid="state-rid-line">
-      <span style={{ color: "var(--fg-3)" }}>请求编号：</span>
-      <code data-testid="state-rid" className="font-mono" style={{ color: "var(--fg)" }}>
+      <span style={{ color: "var(--color-text-muted)" }}>请求编号：</span>
+      <code data-testid="state-rid" className="font-mono" style={{ color: "var(--color-text)" }}>
         {rid}
       </code>
       <ConsoleButton
@@ -197,7 +198,7 @@ function StateRid({ rid }: { rid: string | null }) {
         onClick={() => {
           void copyTextToClipboard(rid).then(setCopied);
         }}
-        className="px-1.5 py-0.5 text-[11px]"
+        className="px-2 py-1 text-xs"
       >
         {copied ? "已复制" : "复制"}
       </ConsoleButton>
@@ -207,14 +208,14 @@ function StateRid({ rid }: { rid: string | null }) {
 
 function StateBlock({ state, rid }: { state: PaneForced; rid?: string | null }) {
   const frame = {
-    className: "flex min-h-[12rem] flex-col items-center justify-center gap-2 p-5 text-sm",
+    className: "flex min-h-[12rem] flex-col items-center justify-center gap-2 p-6 text-sm",
     style: shellStyle,
   };
   if (state === "loading") {
     return (
       <div role="status" aria-live="polite" {...frame}>
         <span>加载中…</span>
-        <span className="text-xs" style={{ color: "var(--fg-3)" }}>
+        <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>
           强制态：?state=loading
         </span>
         {/* 设计车道 ④：loading 帧给骨架，Suspense 落点不再是一屏一句话。 */}
@@ -227,7 +228,7 @@ function StateBlock({ state, rid }: { state: PaneForced; rid?: string | null }) 
     return (
       <div role="status" aria-live="polite" {...frame}>
         <span>暂无数据</span>
-        <span className="text-xs" style={{ color: "var(--fg-3)" }}>
+        <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>
           强制态：?state=empty（不伪造样例数据）
         </span>
         {/* 设计车道 ④：空帧的占位条只说「这里本该有行」，不伪造内容。 */}
@@ -239,9 +240,9 @@ function StateBlock({ state, rid }: { state: PaneForced; rid?: string | null }) 
   if (state === "error") {
     return (
       <div role="status" aria-live="polite" {...frame}>
-        <span style={{ color: "var(--bad)" }}>加载失败</span>
+        <span style={{ color: "var(--color-danger)" }}>加载失败</span>
         <StateRid rid={rid ?? null} />
-        <span className="text-xs" style={{ color: "var(--fg-3)" }}>
+        <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>
           强制态：?state=error
         </span>
         {/* 设计车道 ④：错帧也留骨架位，重试后画面不跳版。 */}
@@ -255,7 +256,7 @@ function StateBlock({ state, rid }: { state: PaneForced; rid?: string | null }) 
       <span className="font-mono text-lg">403</span>
       <span>无权限或未开放（403 与 404 同一整页文案）</span>
       <StateRid rid={rid ?? null} />
-      <span className="text-xs" style={{ color: "var(--fg-3)" }}>
+      <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>
         强制态：?state=denied
       </span>
       {/* 设计车道 ④：denied 帧同样留占位条，画面不是一屏一句话。 */}
@@ -278,10 +279,10 @@ function AuditorDeniedBlock() {
     >
       <span className="font-mono text-2xl">403</span>
       <span>无权访问 · 只读审计员视角</span>
-      <span className="text-xs" style={{ color: "var(--fg-3)" }}>
+      <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>
         {NO_TRACE_COPY} · 只读审计员视角
       </span>
-      <span className="text-xs" style={{ color: "var(--fg-3)" }}>
+      <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>
         审计员（roView）不可进入 defaults/models 的写入面；退出视角请移除 ?roview=1。
       </span>
       {/* 设计车道 ④：整页 403 也铺占位条（min-h-16rem 不该空到一屏一句）。 */}
@@ -305,19 +306,19 @@ function PlannedBlock({ entry }: { entry: ConsoleRoute }) {
       aria-disabled="true"
       role="status"
       aria-live="polite"
-      className="flex min-h-[12rem] flex-col items-start justify-center gap-2 rounded-[var(--r)] border p-5 text-sm"
+      className="flex min-h-[12rem] flex-col items-start justify-center gap-2 rounded-[var(--radius-2)] border p-6 text-sm"
       style={{ ...shellStyle, cursor: "not-allowed" }}
     >
       <span className="text-base">{entry.label} · 规划中</span>
-      <span style={{ color: "var(--fg-2)" }} title={gapRef}>{gapNote}</span>
-      <span className="font-mono text-xs" style={{ color: "var(--fg-3)" }}>
+      <span style={{ color: "var(--color-text-muted)" }} title={gapRef}>{gapNote}</span>
+      <span className="font-mono text-xs" style={{ color: "var(--color-text-muted)" }}>
         数据来源：{source}
       </span>
       {/* R13 item 2: a real exit so the honest placeholder is never a dead end. */}
       <Link
         to="/overview"
         className="text-xs underline underline-offset-2"
-        style={{ color: "var(--fg-2)", cursor: "pointer" }}
+        style={{ color: "var(--color-text-muted)", cursor: "pointer" }}
       >
         返回值班台
       </Link>
@@ -423,7 +424,7 @@ function ConsoleTabStrip({
       role="tablist"
       aria-label={`${module} 控制台 Tab`}
       className="flex min-w-0 flex-wrap gap-1 border-b pb-1"
-      style={{ borderColor: "var(--line-2)" }}
+      style={{ borderColor: "var(--color-border)" }}
     >
       {tabs.map((tab) => {
         const to = {
@@ -438,11 +439,11 @@ function ConsoleTabStrip({
             role="tab"
             aria-selected={active}
             data-tab={tab.tabId}
-            className="rounded-t-[var(--r-sm)] border border-b-0 px-3 py-1.5 text-sm no-underline"
+            className="rounded-t-[var(--radius-1)] border border-b-0 px-3 py-2 text-sm no-underline"
             style={{
               ...shellStyle,
-              background: active ? "var(--panel-2)" : "transparent",
-              color: active ? "var(--fg)" : "var(--fg-3)",
+              background: active ? "var(--color-surface-raised)" : "transparent",
+              color: active ? "var(--color-text)" : "var(--color-text-muted)",
             }}
           >
             {tab.label}
@@ -500,7 +501,7 @@ export function ConsoleModulePage({ module, live }: ConsoleModulePageProps) {
       <header className="flex min-w-0 flex-col gap-1">
         <span
           className="text-xs tracking-[0.12em]"
-          style={{ color: "var(--fg-3)" }}
+          style={{ color: "var(--color-text-muted)" }}
         >
           {meta.group} · 控制台
         </span>
@@ -601,7 +602,7 @@ export function ConsoleEmployeeDetailPage({
         role="tablist"
         aria-label="员工详情分区"
         className="flex min-w-0 flex-wrap gap-1 border-b pb-1"
-        style={{ borderColor: "var(--line-2)" }}
+        style={{ borderColor: "var(--color-border)" }}
       >
         {ZONE_ORDER.map((z) => {
           const activeZone = normalized !== "" && z === normalized;
@@ -612,11 +613,11 @@ export function ConsoleEmployeeDetailPage({
               role="tab"
               aria-selected={activeZone}
               data-zone={z}
-              className="rounded-t-[var(--r-sm)] border border-b-0 px-3 py-1.5 text-sm no-underline"
+              className="rounded-t-[var(--radius-1)] border border-b-0 px-3 py-2 text-sm no-underline"
               style={{
                 ...shellStyle,
-                background: activeZone ? "var(--panel-2)" : "transparent",
-                color: activeZone ? "var(--fg)" : "var(--fg-3)",
+                background: activeZone ? "var(--color-surface-raised)" : "transparent",
+                color: activeZone ? "var(--color-text)" : "var(--color-text-muted)",
               }}
             >
               {ZONE_LABELS[z]}
@@ -683,7 +684,7 @@ export function ConsoleNav({ onNavigate }: { onNavigate?: () => void }) {
     >
       <span
         id="hermes-console-nav-heading"
-        className="px-5 pt-2.5 pb-1 font-sans text-display text-xs tracking-[0.12em] text-text-tertiary"
+        className="console-nav-group px-5 pt-2.5 pb-1 font-sans text-display text-xs tracking-[0.12em] text-text-tertiary"
       >
         控制台
       </span>
@@ -693,8 +694,7 @@ export function ConsoleNav({ onNavigate }: { onNavigate?: () => void }) {
         return (
           <div key={group} role="group" aria-label={group}>
             <span
-              className="px-5 pt-2 pb-1 font-sans text-xs tracking-[0.1em]"
-              style={{ color: "var(--fg-4)" }}
+              className="console-nav-group px-5 pt-2 pb-1 font-sans text-xs tracking-[0.1em]"
             >
               {group}
             </span>
@@ -707,9 +707,9 @@ export function ConsoleNav({ onNavigate }: { onNavigate?: () => void }) {
                     data-mod={meta.module}
                     className={({ isActive }) =>
                       [
-                        "relative flex items-center gap-3 px-5 py-2",
+                        "console-nav-link relative flex items-center gap-3 px-5 py-2",
                         "font-sans text-display text-sm tracking-[0.08em] whitespace-nowrap no-underline",
-                        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-midground",
+                        "focus-visible:[outline:var(--focus-ring)] focus-visible:outline-offset-2",
                         isActive
                           ? "text-midground"
                           : "text-text-secondary hover:text-midground",
@@ -731,9 +731,9 @@ export function ConsoleNav({ onNavigate }: { onNavigate?: () => void }) {
         onClick={onNavigate}
         className={({ isActive }) =>
           [
-            "relative flex items-center gap-3 px-5 py-2",
+            "console-nav-link relative flex items-center gap-3 px-5 py-2",
             "font-sans text-display text-sm tracking-[0.08em] whitespace-nowrap no-underline",
-            "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-midground",
+            "focus-visible:[outline:var(--focus-ring)] focus-visible:outline-offset-2",
             isActive ? "text-midground" : "text-text-secondary hover:text-midground",
           ].join(" ")
         }

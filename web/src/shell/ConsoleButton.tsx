@@ -16,7 +16,7 @@
  *   primary   — solid emphasis: the palette's strongest fill, foreground
  *               reversed onto it (the shell has no `--accent-solid`; 值班台
  *               hierarchy is carried by fill vs. outline, not by hue)
- *   secondary — outline: `var(--panel)` fill with `var(--line)` border, which
+ *   secondary — outline: `var(--color-surface)` fill with `var(--color-border-subtle)` border, which
  *               is what the shell's forced-state buttons already looked like
  *   ghost     — no fill, no border; a tinted background only on hover
  *
@@ -66,26 +66,26 @@ export function ConsoleButton({
   const tier = {
     primary: {
       style: {
-        background: "var(--fg)",
+        background: "var(--color-text)",
         borderColor: "transparent",
-        color: "var(--bg)",
+        color: "var(--color-bg)",
         fontWeight: 600,
       },
       hover: "hover:opacity-90",
     },
     secondary: {
       style: {
-        background: "var(--panel)",
-        borderColor: "var(--line)",
-        color: "var(--fg)",
+        background: "var(--color-surface)",
+        borderColor: "var(--color-border-subtle)",
+        color: "var(--color-text)",
       },
-      hover: "hover:bg-[var(--panel-2)]",
+      hover: "hover:bg-[var(--color-surface-raised)]",
     },
     ghost: {
       style: {
         background: "transparent",
         borderColor: "transparent",
-        color: "var(--fg-2)",
+        color: "var(--color-text-muted)",
       },
       hover: "hover:bg-accent/60",
     },

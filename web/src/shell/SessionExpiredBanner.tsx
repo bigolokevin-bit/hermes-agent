@@ -55,7 +55,7 @@ export function SessionExpiredBanner() {
       role="alert"
       aria-live="assertive"
       data-testid="session-expired-banner"
-      className="flex shrink-0 items-center gap-2 border-b border-destructive/40 bg-destructive/10 px-4 py-1.5 text-xs text-destructive outline-none focus:ring-2 focus:ring-inset focus:ring-ring"
+      className="flex shrink-0 items-center gap-2 border-b border-destructive/40 bg-destructive/10 px-4 py-2 text-xs text-destructive outline-none focus:ring-2 focus:ring-inset focus:ring-ring"
     >
       <TriangleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
       <span className="min-w-0 flex-1">会话已过期，请重新登录后继续。</span>

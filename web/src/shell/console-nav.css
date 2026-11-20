@@ -1,0 +1,33 @@
+/* UI-A · shell 层级（docs/design/UI-RUBRIC.md §6）。
+ * 只覆盖 ConsoleShell 骨架（侧栏导航 / 全局侧栏列），不触碰 modules 页面。
+ * 值全部走 tokens.css 语义层。由 shell/console.tsx 引入。
+ *
+ * 顶栏英文模块名一项不在这里：本分支 resolve-page-title.ts（设计车道③
+ * 「删顶栏英文模块名，统一中文面包屑」）已让 console-shell 路径的全局
+ * 标题栏不再渲染重复标题，中文面包屑由 console.tsx 页头提供，无需 CSS。 */
+
+/* 侧栏分组标题（控制台 / 审计 / 运营 / 治理 / 平台 / 系统）：
+ * 比菜单项降一级字号 + 次级色。 */
+.console-nav-group {
+  font-size: var(--font-size-1);
+  color: var(--color-text-muted);
+}
+
+/* 菜单项选中态：浅底 + 左侧 2px 主色条（NavLink 激活时自带
+ * aria-current="page"，替换原先仅换文字色的弱选中态）。 */
+.console-nav-link[aria-current="page"] {
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: inset 2px 0 0 var(--color-primary);
+}
+
+/* 侧栏定宽 208px：宽视口（≥1440 目标，1100 起生效避开窄屏折叠交互）锁定，
+ * 不再随 256px 内容宽伸缩。两个守卫：
+ *   :has(#hermes-console-nav-heading) —— 只作用于渲染了 ConsoleShell 导航的侧栏；
+ *   :not([class*="lg:w-14"])          —— App 折叠态（lg:w-14）不覆盖。 */
+@media (min-width: 1100px) {
+  #app-sidebar:has(#hermes-console-nav-heading):not([class*="lg:w-14"]) {
+    width: var(--side);
+    flex-basis: var(--side);
+  }
+}
