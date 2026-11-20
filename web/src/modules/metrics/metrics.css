@@ -901,3 +901,36 @@
 .metT-total > th {
   text-align: left;
 }
+
+/* ---- metW: wide tables scroll by keyboard, first column sticks ---------- */
+.metW-scroll-hint {
+  display: none;
+}
+
+.met6-table-scroll.metW-table:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+/* The first column stays put while the rest of the table slides under it. The
+   opaque background is what keeps the moving cells from showing through. */
+.metW-table th:first-child,
+.metW-table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--color-card);
+}
+
+.metW-table thead th:first-child {
+  z-index: 2;
+}
+
+@media (max-width: 767px) {
+  .metW-scroll-hint {
+    display: block;
+    margin: 0 0 4px;
+    font-size: 12px;
+    color: var(--color-muted-foreground);
+  }
+}

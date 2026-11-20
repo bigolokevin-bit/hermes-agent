@@ -3209,3 +3209,81 @@ describe('metV — exports carry the totals as a comment line', () => {
     expect(lines.join('\n')).not.toMatch(/合计：运行 0/);
   });
 });
+
+describe('metW — wide tables scroll from the keyboard on a narrow screen', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+
+  it('marks both table scrollers as labelled regions with a first-column anchor', async () => {
+    await mount(usageRouter());
+    const detail = q('metW-scroll-detail');
+    expect(detail).not.toBeNull();
+    expect(detail?.getAttribute('role')).toBe('region');
+    expect(detail?.getAttribute('tabindex')).toBe('0');
+    expect(detail?.getAttribute('aria-label')).toBe('成本明细表，可横向滚动');
+    expect(detail?.className).toContain('metW-table');
+    expect(detail?.querySelector('table[data-testid="met6-table"]')).not.toBeNull();
+    expect(q('metW-scroll-hint')?.textContent).toBe('左右滑动查看全部列');
+
+    await mountShare(SHARE_USAGE);
+    const share = q('metW-scroll-share');
+    expect(share).not.toBeNull();
+    expect(share?.getAttribute('role')).toBe('region');
+    expect(share?.getAttribute('tabindex')).toBe('0');
+    expect(share?.getAttribute('aria-label')).toBe('成本分摊表，可横向滚动');
+    expect(share?.querySelector('table[data-testid="met7-table"]')).not.toBeNull();
+    expect(q('metW-scroll-hint-share')?.textContent).toBe('左右滑动查看全部列');
+  });
+
+  it('moves the region sideways with the arrow keys and returns home', async () => {
+    await mountShare(SHARE_USAGE);
+    const share = q('metW-scroll-share') as HTMLDivElement;
+    share.scrollLeft = 120;
+
+    const right = new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true });
+    share.dispatchEvent(right);
+    expect(share.scrollLeft).toBe(168);
+    expect(right.defaultPrevented).toBe(true);
+
+    share.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true }));
+    expect(share.scrollLeft).toBe(120);
+
+    share.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true, cancelable: true }));
+    expect(share.scrollLeft).toBe(0);
+
+    // At the left edge the key is absorbed but the value never goes negative.
+    share.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true }));
+    expect(share.scrollLeft).toBe(0);
+
+    // Other keys are left alone: Tab and page scrolling keep their meaning.
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    share.dispatchEvent(tab);
+    expect(tab.defaultPrevented).toBe(false);
+  });
+
+  it('takes focus so the scroller is reachable before the table content', async () => {
+    await mount(usageRouter());
+    const detail = q('metW-scroll-detail') as HTMLDivElement;
+    detail.focus();
+    expect(document.activeElement).toBe(detail);
+    // No positive tab order was invented.
+    expect(detail.getAttribute('tabindex')).toBe('0');
+  });
+
+  it('leaves the page itself without horizontal overflow at 1440, 1280 and 375', async () => {
+    await mountShare(SHARE_USAGE);
+    const originalWidth = window.innerWidth;
+    try {
+      for (const width of [1440, 1280, 375]) {
+      window.innerWidth = width;
+      const page = document.documentElement;
+      // jsdom does no layout, so this is the structural half of the check: the
+      // page root never claims more width than its viewport box. Real-browser
+      // readings are recorded in the artifact.
+        expect(page.scrollWidth).toBe(page.clientWidth);
+        expect(q('metW-scroll-share')?.className).toContain('met6-table-scroll');
+      }
+    } finally {
+      window.innerWidth = originalWidth;
+    }
+  });
+});

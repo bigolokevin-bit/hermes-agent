@@ -382,3 +382,15 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 - 验证：定向 `src/modules/metrics` 2 files / **134 passed**（基线 130，+4）；全量 **137 files / 1606 passed**（基线 1602）；`tsc -b . --noEmit` 全仓 55 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metV` → entry `assets/index-q40dkrMb.js` sha256 `56d5613ec507f1b4bf39d31a336902c523f854cd57fe6d98fd7d8b593f73087b`，entry 内 `metV-export-total-note` 命中 0，chunk `assets/MetricsModulePage-Bj3YiHg-.js` 命中 1。
 - 既有断言的处理：十处「CSV 总行数」原先等于表头+数据（+注记），现按语义改为「数据行数」口径（测试内 `dataOnly()` 过滤 `#` 注释行），未放宽任何数值断言；metN R4 的列序断言同样只比较数据行。
 - 未测项：Excel/Numbers 打开时对 `#` 开头行的呈现未人工走查；真浏览器 375 下导出按钮旁的说明换行未走查。
+
+## 窄屏宽表：滚动区域与首列锚定（metW，2026-11-20）
+
+375 宽下两张宽表（成本明细、成本分摊）都能不丢列地读完：横滚仍在表内，键盘也能滚。
+
+- 滚动区域：明细表 `metW-scroll-detail`（`aria-label="成本明细表，可横向滚动"`）、分摊表 `metW-scroll-share`（`aria-label="成本分摊表，可横向滚动"`），两者都是 `role="region"` + `tabIndex=0`，在既有的 `.met6-table-scroll`（`overflow-x: auto`）之上只加语义与键盘行为，不改列数、列宽与数值格式。
+- 键盘：`handleTableScrollKeys` 只接管 `ArrowRight`/`ArrowLeft`（步长 48px，左边界钳到 0）与 `Home`（回到 0），调用 `preventDefault`；其它键原样放行（Tab 仍按阅读顺序走）。焦点环 `.met6-table-scroll.metW-table:focus-visible { outline: 2px solid var(--color-ring) }`。
+- 首列锚定：`.metW-table th:first-child, .metW-table td:first-child { position: sticky; left: 0; z-index: 1; background: var(--color-card) }`，表头首格 `z-index: 2`；不透明底色是防止滑动的单元格透出来，z-index 只在首格上，不盖住滚动内容。
+- 提示：375 以下显示 `metW-scroll-hint`（明细）与 `metW-scroll-hint-share`（分摊），文案「左右滑动查看全部列」；`.metW-scroll-hint{display:none}` + `@media (max-width:767px){display:block}` 纯 CSS 断点，无 JS resize 监听。
+- 三档读数：本车道没有浏览器探针（`web/node_modules` 无 playwright/puppeteer），jsdom 不做布局，实测 `document.documentElement.scrollWidth === clientWidth`（两者均为 0）在 1440/1280/375 三档均成立，属结构性检查；真实像素级的 `scrollWidth/clientWidth` 与 375 手势滚动未在浏览器复测，列为未测项。可确定的是页面根节点不新增任何宽度来源：表格宽度仍受 `.met6-table-scroll` 包裹，`min-width` 只在表内。
+- 验证：定向 `src/modules/metrics` 2 files / **138 passed**（基线 134，+4）；全量 **137 files / 1610 passed**（基线 1606）；`tsc -b . --noEmit` 全仓 55 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metW` → entry `assets/index-Q54c6DAE.js` sha256 `112c4e46c9534c34f593d2246202ec875c197a726b434a6739063f16a8df1db1`，entry 内 `metW-scroll-detail` 命中 0，chunk `assets/MetricsModulePage-BK5QTTPx.js` 命中 1（提示文案同 chunk 命中 1）。
+- 未测项：真浏览器 375 手势横滚、焦点环可见性与 sticky 首列在滑动中的遮挡关系未人工走查；Safari 的 sticky + border-collapse 组合未复核。

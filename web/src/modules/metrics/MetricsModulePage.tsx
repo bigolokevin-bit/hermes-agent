@@ -4,7 +4,7 @@
 // aggregates whole weeks, so there is no 24-hour window here. Absent cells stay
 // absent (—); only a returned count of 0 is a real zero. No count is inferred
 // from another endpoint, and no raw field name or HTTP status reaches the page.
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { Copy, RefreshCw } from 'lucide-react';
 
@@ -112,6 +112,27 @@ type PageState =
 type Forced = 'loading' | 'empty' | 'error' | 'denied';
 
 const EMPTY_ACTIVITY: Activity = { cells: [], max: null, from: null, to: null, tz: 'Asia/Shanghai' };
+
+const TABLE_SCROLL_STEP = 48;
+
+/**
+ * metW — a wide table is a scroll region first: arrow keys move it sideways the
+ * same way a drag does, and Home returns to the first column. Nothing else is
+ * intercepted, so Tab and the page's own scrolling keep working.
+ */
+function handleTableScrollKeys(event: KeyboardEvent<HTMLDivElement>): void {
+  const node = event.currentTarget;
+  if (event.key === 'ArrowRight') {
+    node.scrollLeft = Math.max(0, node.scrollLeft + TABLE_SCROLL_STEP);
+    event.preventDefault();
+  } else if (event.key === 'ArrowLeft') {
+    node.scrollLeft = Math.max(0, node.scrollLeft - TABLE_SCROLL_STEP);
+    event.preventDefault();
+  } else if (event.key === 'Home') {
+    node.scrollLeft = 0;
+    event.preventDefault();
+  }
+}
 
 function readForced(params: URLSearchParams): Forced | null {
   const raw = params.get('state');
@@ -1914,7 +1935,17 @@ export function MetricsModulePage() {
 
             {breakdownView.kind === 'ready' && breakdownView.lines.length > 0 ? (
               <>
-                <div className="met6-table-scroll">
+                <p className="metW-scroll-hint" data-testid="metW-scroll-hint">
+                  左右滑动查看全部列
+                </p>
+                <div
+                  className="met6-table-scroll metW-table"
+                  role="region"
+                  tabIndex={0}
+                  aria-label="成本明细表，可横向滚动"
+                  data-testid="metW-scroll-detail"
+                  onKeyDown={handleTableScrollKeys}
+                >
                   <table className="met6-table" data-testid="met6-table">
                     <thead>
                       <tr>
@@ -2379,7 +2410,17 @@ export function MetricsModulePage() {
             ) : null}
             {shareView.kind === 'ready' && shareRows.length > 0 ? (
               <>
-                <div className="met6-table-scroll">
+                <p className="metW-scroll-hint" data-testid="metW-scroll-hint-share">
+                  左右滑动查看全部列
+                </p>
+                <div
+                  className="met6-table-scroll metW-table"
+                  role="region"
+                  tabIndex={0}
+                  aria-label="成本分摊表，可横向滚动"
+                  data-testid="metW-scroll-share"
+                  onKeyDown={handleTableScrollKeys}
+                >
                   <table className="met6-table" data-testid={`${sharePrefix}-table`}>
                     <caption className="metG-caption" data-testid="metG-a11y-caption">{`成本分摊：${usageWindow.label} · ${groupBy === 'employee' ? '按员工' : '按模型'} · 按${sortColumnLabel}${sortDir === 'asc' ? '升序' : '降序'}排列`}</caption>
                     <thead>
