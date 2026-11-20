@@ -1,13 +1,16 @@
 /* UI-A · 表格密度（docs/design/UI-RUBRIC.md §4）。
- * 纯 CSS 落地，不改 modules/**/*.tsx：作用域锚在 shell 的 [data-tab] 面板契约
+ * 纯 CSS 落地，不改 modules 下的任何 tsx：作用域锚在 shell 的 [data-tab] 面板契约
  * （console.tsx ConsolePane）。值全部走 tokens.css 语义层。由 shell/console.tsx 引入。 */
 
 /* 单元格：左右内边距 --space-3；垂直留白交给行高（tr height 是下限，
- * 内容垂直居中），line-height 收一档避免多行内容把行顶高。 */
+ * 内容垂直居中），line-height 收一档避免多行内容把行顶高。
+ * 垂直 padding 与 line-height 必须带 !important：DS/页面自带 utility 类
+ * 压过普通元素规则（UI-RUBRIC 实测：无 !important 时 th 计算高 50px），
+ * 只有 !important 才命中 40/36 契约。 */
 [data-tab] :is(th, td) {
   padding-inline: var(--space-3);
-  padding-block: 0;
-  line-height: var(--line-height-2);
+  padding-block: 0 !important;
+  line-height: var(--line-height-2) !important;
   vertical-align: middle;
 }
 
@@ -32,11 +35,12 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* 子表紧凑档 36px：duty 趋势小表（可折叠展开）与任何嵌套表兜底。 */
+/* 子表紧凑档 36px：duty 趋势小表（可折叠展开）与任何嵌套表兜底。
+ * 同样需要 !important 命中 36 档（理由见上）。 */
 .duty-trend-table tbody > tr,
 [data-tab] table table :is(th, td) {
-  padding-block: 0;
-  line-height: var(--line-height-1);
+  padding-block: 0 !important;
+  line-height: var(--line-height-1) !important;
 }
 
 .duty-trend-table tbody > tr,
