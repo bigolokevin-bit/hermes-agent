@@ -4566,3 +4566,56 @@ $ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 
 本证据；显式路径 add；无 force/amend/--no-verify/git add -A；单增量 commit
 「test(console): knowledge error isolation guards」；随 merge `3626e607`（并入 `5f1b7428`）
 一并推送。
+
+# KNW5 追加 R212：导出列「双口径」护栏 —— evidence-only（四腿全被既有套件锁死）（2026-11-21 BJT）
+
+安全门：porcelain 空起做（HEAD 即 R210/R211 链 `bd2f02b8`）、显式 refspec fetch 后
+merge 实测 tip 即预期 `5f1b7428`（Already up to date——R211 已并入该章）。本轮按派工
+预留的 evidence-only 通道收尾（先例 R204/R205）：**零测试文件新增、零产品改动**，
+只本证据一节。不建 knowledge.export.columns2.test.tsx 的理由与判定书如下。
+
+## 四腿逐条查重结论（行号 grep 核对）
+
+```text
+① 列头与列序逐字 —— 已锁：R200① knowledge.export.columns.test.tsx:125（共有列逐位同
+   + 差集 {复制独有:短码}/{屏上独有:操作}）+ R190② knowledge.export.escape.test.tsx
+   :151-157（屏上表头 [文档名,类型,大小,更新,操作]、DOC_LINE_HEADER 5 列、复制表头
+   join 逐字、knG 空间列第 2 位）。列名口径照实现为「更新」（非「更新时间」）——
+   R190/R200 均按实测锁。→ 引用不重写。
+② 同一行「导出」单元格 == 屏上同列 —— 已锁：R200②（columns :149-152 逐格 toBe 含
+   类型人话/大小人话/updatedText 时间/短码列，检索面 :172-176 五格含所属空间）+
+   R209（rows :137 首/中/末整行直对）。→ 引用不重写。
+③ 缺值两处逐字 —— 已锁：R190③（escape :171-180 屏上三「—」==复制三「—」、无
+   undefined/null/空字段）+ R200② 缺值对 + R209 末行全行级「M 缺项档 | — | — | — | DM」
+   两产物互等。**名实红线判定**：两产物共用同一 docLine 实现（R71 单点），「CSV 空字段」
+   第二口径实测不存在——本轮未造数据、未伪称两口径，按单一实现断言已由上述套件完成。
+④ 三值 + 零额外请求 —— 已锁：R142（space.export :164-176 三值筛选联动降数复原）+
+   R209（rows :155 三值当态 + :158 urls 快照逐字 + spy 0）+ R207（filter :161 快照）+
+   R190④（空态 disabled+title+writeText 0+createObjectURL 0）+ R164①（请求参集合恰
+   {limit,spaceId}）。→ 引用不重写。
+```
+
+## 残留观察（不属四腿，留待后续裁量，未硬造）
+
+```text
+检索面 knG 数据行 ↔ 行钮 kn-row-copy-<i> 串的「变换形」对账（knG 行 = 行钮行在第 2 列
+插入所属空间）：两产物列集不同、非 toBe 关系，R200 只锁了表头级差集与各自对屏上；
+如需落钉应作为独立口径单派，本轮四腿不含、不为凑文件名铺例。
+```
+
+## 验证尾行（R212，evidence-only）
+```text
+$ npx vitest run src/modules/knowledge   → 30 files / 162 tests passed（基线不降 = 通过口径）
+$ npx vitest run                         → 290 files / 2989 tests passed 全绿（无豁免项）
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r212-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：本轮零代码改动，既有 30 套与零破清单全族原样绿。
+```
+未测如实：无新增断言故无新未测项；既有个案的未测面（带会话真屏、检索面变换形对账）
+已在各轮证据登记，此处不重复展开。
+边界：只改 docs/_artifacts/ui1/KNW5-RETRIEVAL-EVIDENCE.md 一个文件；显式路径 add；
+无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「test(console): knowledge export column dual-standard guards」（evidence-only 实质，
+message 照派工原文）。
