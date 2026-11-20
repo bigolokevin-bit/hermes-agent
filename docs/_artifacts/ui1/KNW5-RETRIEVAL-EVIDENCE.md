@@ -1858,3 +1858,67 @@ $ npx vite build --outDir /tmp/knw30-dist → exit 0（产物只落 /tmp）
 边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
 package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
 无 force / amend / `--no-verify`；单 commit「feat(console): knowledge state consistency」。
+
+# KNW5 追加 R63：文档预览抽屉的固定链接（testid `knO-*`）（2026-11-20 BJT）
+
+基线安全闸：toplevel 相符、porcelain 空、显式 refspec fetch；上游仍章面 `3c7f70f6`
+（generation `cca9cf7e`），merge 为 Already up to date——本笔只有 feature commit。
+
+## 一、深链参数名（git grep 实证，非猜测）
+
+```text
+KnowledgeModulePage.tsx:2653  const spaceId = sp.get("space")
+KnowledgeModulePage.tsx:2654  const openDoc = sp.get("doc")
+KnowledgeModulePage.tsx:2702/2703  keepBase: next.set("tab"…) / next.set("panel", "spaces")
+KnowledgeModulePage.tsx:2716/2717  docLink: next.set("space", spaceId); next.set("doc", key)
+```
+
+深链形状 = `/knowledge?tab=spaces&…&space=<空间标识>&doc=<文档标识>`；复制链接的值就是
+`window.location.origin + docLink(当前 openDoc)`——参数串由页面一直在用的 docLink 生成，
+本轮不手拼、不猜名。派工所写族名 `kn6-search-detail*` 仍是检索面板的内联展开块（无遮罩、
+URL 用 `?sdoc=`）；带 `?doc=` 的预览抽屉是 `kn7-preview-*` 族，本轮按七条判据在该族上实施
+（与 R59 同一澄清）。
+
+## 二、直达实测（缺口不存在，如实报可达）
+
+```text
+复制得到的 URL（jsdom origin 下逐字）：
+  http://localhost:3000/knowledge?tab=spaces&space=sp_hr&doc=d1&panel=spaces
+用该串直接渲染（等价于粘贴+刷新）：
+  kn7-preview-panel 命中 ✓；loc 含 doc=d1 ✓；抽屉字段块 title（文档标识）="d1" 与参数同值 ✓；
+  抽屉标题 = 员工手册.pdf ✓。
+```
+
+## 三、口径
+
+```text
+无标识     行没有 documentId（页面内部只能按位置键 row-N 开抽屉）→ 按钮 disabled +
+           逐字 title「该文档没有可用的固定标识」，守卫不写剪贴板：位置键不是标识，不冒充。
+           地址直达复现的 ghost（?doc=zz9 行不在列表）仍可复制：标识本就来自地址，
+           再粘贴仍直达同一地址态——复制的是地址，不编内容。
+上屏形态   可见 span 按 R49 不变量掩掉参数值（space=… doc=…），全文在 title、剪贴板与
+           失败态 textarea；单行省略号（flex min-width:0），375 无横溢、原始标识不上屏
+           （R49 泄露巡检实测不破）。
+状态       knO-permalink-status（aria-live=polite）：成功「链接已复制」；拒绝/不可用 →
+           「复制失败…」+ knO-permalink-fallback 只读 textarea，value 与写入地址逐字一致；
+           内容签名守卫：换文档后旧「链接已复制」作废。
+零请求     复制/失败/重试点击全程 0 增量；台账断言：列表读=4 渲染 × 2 面，详情读=3 次开抽屉
+           （R49 既有设计），与复制动作无关的页面读取计数前后吻合。
+```
+
+testid 新增 `knO-row` / `knO-permalink` / `knO-permalink-status` / `knO-permalink-url` /
+`knO-permalink-fallback`。kn3 / kn6–knN / knw5 既有断言零破（R49 抽屉回归全绿）。
+本轮未重建 9122，三宽度未做浏览器复测；jsdom 下 origin 为 http://localhost:3000，
+线上形态为部署域同名路径。
+
+## 验证尾行（R63）
+```text
+$ npx vitest run src/modules/knowledge   → 2 files / 56 tests passed（含新增固定链接测试四段）
+$ npx vitest run                         → 144 files / 1799 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 set-state-in-effect warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw31-dist → exit 0（产物只落 /tmp）
+```
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录（3 files）；未动 App.tsx / shell / routes /
+registry / package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交
+（无 `git add -A`）；无 force / amend / `--no-verify`；单 commit「feat(console): knowledge drawer permalink」。

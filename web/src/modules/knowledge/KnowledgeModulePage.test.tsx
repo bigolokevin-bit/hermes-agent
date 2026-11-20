@@ -3554,4 +3554,89 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
 
     resetKnwSources();
   });
+
+  it("copies a working permalink from the drawer (knO-*): paste-and-refresh opens the same doc, no-id rows refuse, fallback honest", async () => {
+    const SPACE = { asOf: "2026-11-19T07:00:00Z", items: [{ spaceId: "sp_hr", name: "人事制度空间" }] };
+    const LIST = {
+      asOf: "2026-11-19T07:00:00Z",
+      documents: [
+        { documentId: "d1", fileName: "员工手册.pdf", sizeBytes: 2048, updatedAt: "2026-11-19T07:00:00Z" },
+        { fileName: "没有标识的草稿.txt", sizeBytes: 128, updatedAt: "2026-11-19T06:00:00Z" },
+      ],
+    };
+    const stub = (writeText: ReturnType<typeof vi.fn>) =>
+      Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    fetchMock.mockClear();
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SPACE);
+      if (url.startsWith("/agent-api/api/documents?") && url.includes("spaceId=sp_hr")) return Promise.resolve(LIST);
+      return fail(404, "这个数据接口还没有接入。", "rid-o-x");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr&doc=d1");
+    await act(async () => {});
+    expect(byDocTestid("kn7-preview-panel")).toBeTruthy();
+    const urlsOpen = fetchMock.mock.calls.length;
+
+    // ---------- A. 可链接行：复制的是 origin + 现有深链参数（git grep 实证 tab/panel/space/doc） ----------
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    stub(writeText);
+    await click("knO-permalink");
+    expect(writeText).toHaveBeenCalledTimes(1);
+    const pasted = String(writeText.mock.calls[0][0]);
+    expect(pasted.startsWith(window.location.origin)).toBe(true);
+    const params = new URLSearchParams(pasted.slice(window.location.origin.length).split("?")[1] ?? "");
+    expect(params.get("space")).toBe("sp_hr");
+    expect(params.get("doc")).toBe("d1");
+    expect(pasted).toContain("tab=spaces");
+    expect(pasted).toContain("panel=spaces");
+    expect((byDocTestid("knO-permalink-status")?.textContent ?? "").trim()).toBe("链接已复制");
+    const urlSpan = byDocTestid("knO-permalink-url") as HTMLElement;
+    expect(urlSpan.getAttribute("title")).toContain("doc=d1"); // 全文在 title
+    expect(fetchMock.mock.calls.length).toBe(urlsOpen); // 复制零新请求
+
+    // ---------- B. 粘贴链接 + 刷新直达同一文档抽屉，标识同值 ----------
+    await render(pasted.slice(window.location.origin.length));
+    await act(async () => {});
+    expect(byDocTestid("kn7-preview-panel")).toBeTruthy(); // 深链直接开抽屉（缺口不存在：设计本就支持）
+    expect((byTestid("loc")?.textContent ?? "")).toContain("doc=d1");
+    expect(byDocTestid("kn3-docs-detail")?.getAttribute("title")).toBe("d1"); // 抽屉里的文档标识 = 参数值
+    expect((byDocTestid("kn7-preview-title")?.textContent ?? "")).toContain("员工手册.pdf");
+
+    // ---------- C. 无标识行：disabled + 逐字 title，不拿位置键冒充链接 ----------
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    await clickNth("kn3-docs-name", 1); // 无 id 行：页面内部键是 row-1，位置不是标识
+    await act(async () => {});
+    const oBtn = byDocTestid("knO-permalink") as HTMLButtonElement;
+    expect(oBtn.disabled).toBe(true);
+    expect(oBtn.getAttribute("title")).toBe("该文档没有可用的固定标识");
+    const writeGhost = vi.fn().mockResolvedValue(undefined);
+    stub(writeGhost);
+    await click("knO-permalink");
+    expect(writeGhost).toHaveBeenCalledTimes(0); // 守卫：也不写任何东西
+    expect((byDocTestid("knO-permalink-status")?.textContent ?? "").trim()).toBe("");
+
+    // ---------- D. 拒绝/不可用：只读 textarea，内容逐字同绝对地址 ----------
+    await render("/knowledge?tab=spaces&space=sp_hr&doc=d1");
+    await act(async () => {});
+    const writeFail = vi.fn().mockRejectedValue(new Error("denied"));
+    stub(writeFail);
+    await click("knO-permalink");
+    expect((byDocTestid("knO-permalink-status")?.textContent ?? "")).toContain("复制失败");
+    const fallback = byDocTestid("knO-permalink-fallback") as HTMLTextAreaElement | null;
+    expect(fallback).toBeTruthy();
+    expect(fallback?.readOnly).toBe(true);
+    expect(fallback?.value).toBe(pasted); // 与成功路径写入的绝对地址逐字一致（参数顺序同源）
+    Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true });
+    await click("knO-permalink");
+    expect(byDocTestid("knO-permalink-fallback")).toBeTruthy();
+    const writeOk = vi.fn().mockResolvedValue(undefined);
+    stub(writeOk);
+    await click("knO-permalink");
+    expect((byDocTestid("knO-permalink-status")?.textContent ?? "").trim()).toBe("链接已复制");
+    expect(byDocTestid("knO-permalink-fallback")).toBeNull();
+
+    // 全程无额外请求：列表读=四次渲染 × 两个列表面（space 列表 + 全库搜索面）；d1 详情读=打开抽屉的 A/B/D 各一次。
+    expect(fetchMock.mock.calls.filter((u: unknown[]) => String(u[0]).includes("/api/documents?"))).toHaveLength(8);
+    expect(fetchMock.mock.calls.filter((u: unknown[]) => String(u[0]).endsWith("/api/documents/d1"))).toHaveLength(3);
+  });
 });

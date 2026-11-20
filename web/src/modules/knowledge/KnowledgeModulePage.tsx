@@ -1252,11 +1252,13 @@ function DocPreviewDrawer({
   docId,
   row,
   onClose,
+  linkHref,
 }: {
   nonce: string;
   docId: string;
   row: DocRow | null;
   onClose: () => void;
+  linkHref: string;
 }): ReactNode {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const closeRef = useRef<HTMLButtonElement | null>(null);
@@ -1280,6 +1282,25 @@ function DocPreviewDrawer({
     void navigator.clipboard.writeText(copyText).then(
       () => setCopyState({ kind: "copied", sig: copyText }),
       () => setCopyState({ kind: "failed", sig: copyText }),
+    );
+  };
+
+  // ---- R63 — 固定链接：地址 = 本页 origin + 现有深链参数（tab/panel/space/doc），
+  // 参数串由页面一直在用的 docLink 生成，这里不手拼、不猜参数名；只读屏上已有标识，零请求。
+  // 行没有真标识（上游没给 documentId、列表只能按位置给它键）时不做链接——位置键不是标识。
+  const linkText = `${typeof window === "undefined" ? "" : window.location.origin}${linkHref}`;
+  const linkUsable = row === null || row.id !== "";
+  const [linkState, setLinkState] = useState<{ kind: "copied" | "failed"; sig: string } | null>(null);
+  const linkAct = linkState !== null && linkState.sig === linkText ? linkState.kind : "idle";
+  const copyLink = () => {
+    if (!linkUsable) return;
+    if (!navigator.clipboard?.writeText) {
+      setLinkState({ kind: "failed", sig: linkText });
+      return;
+    }
+    void navigator.clipboard.writeText(linkText).then(
+      () => setLinkState({ kind: "copied", sig: linkText }),
+      () => setLinkState({ kind: "failed", sig: linkText }),
     );
   };
 
@@ -1445,6 +1466,42 @@ function DocPreviewDrawer({
               readOnly
               rows={7}
               value={copyText}
+            />
+          ) : null}
+        </div>
+
+        {/* R63 — 固定链接：复制 origin+现有深链参数；长地址省略号显示、全文在 title 与剪贴板。 */}
+        <div className="knO-row" data-testid="knO-row">
+          <Button
+            size="sm"
+            outlined
+            className="knO-copy"
+            onClick={copyLink}
+            disabled={!linkUsable}
+            title={
+              linkUsable
+                ? "复制这篇文档的固定链接（含 space/doc 深链参数）：粘贴可直达同一抽屉，刷新不丢。链接由现地址拼出，不会再发请求。"
+                : "该文档没有可用的固定标识"
+            }
+            data-testid="knO-permalink"
+          >
+            复制固定链接
+          </Button>
+          <span className="knO-status" data-testid="knO-permalink-status" aria-live="polite">
+            {linkAct === "copied" ? "链接已复制" : linkAct === "failed" ? "复制失败，已展开可选文本，可手动复制" : ""}
+          </span>
+          <span className="knO-url" data-testid="knO-permalink-url" title={linkHref}>
+            {/* R49 不变量：原始标识不上屏。可见部分掩掉参数值，全文在 title、剪贴板与失败态 textarea。 */}
+            {linkHref.replace(/(space|doc|sdoc)=([^&]+)/g, "$1=…")}
+          </span>
+          {linkAct === "failed" ? (
+            <textarea
+              className="knO-fallback"
+              data-testid="knO-permalink-fallback"
+              aria-label="手动复制固定链接"
+              readOnly
+              rows={2}
+              value={linkText}
             />
           ) : null}
         </div>
@@ -2009,7 +2066,7 @@ function SpaceDetailSurface({
         ) : null}
       </div>
       {openDoc !== "" ? (
-        <DocPreviewDrawer nonce={nonce} docId={openDoc} row={openRow} onClose={onCloseDoc} />
+        <DocPreviewDrawer nonce={nonce} docId={openDoc} row={openRow} onClose={onCloseDoc} linkHref={docLink(openDoc)} />
       ) : null}
     </>
   );

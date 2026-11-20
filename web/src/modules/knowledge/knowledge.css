@@ -982,6 +982,45 @@
   .knL-copy-meta { width: 100%; }
 }
 
+/* R63 — 固定链接条：地址文本单行省略号（全文在 title 与剪贴板），窄屏靠 min-width:0 收缩，不横溢。 */
+.knO-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  min-width: 0;
+  gap: 8px 12px;
+  margin-top: 8px;
+}
+.knO-url {
+  flex: 1 1 12rem;
+  min-width: 0;
+  max-width: 100%;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.6875rem;
+  color: var(--color-muted-foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.knO-fallback {
+  flex-basis: 100%;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-muted);
+  color: var(--color-foreground);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.6875rem;
+  resize: vertical;
+}
+@media (max-width: 560px) {
+  .knO-copy { width: 100%; }
+}
+
 /* R61 — 数据来源与新鲜度台账：默认收起；长路径在窄屏断词，表格走既有 knw5-scroll，不新增横溢。 */
 .knM-sources {
   margin-top: 14px;
