@@ -231,8 +231,14 @@ export function ErrorPanel({
       data-testid={testId}
       
     >
-      <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-6" data-testid="apv-state-error">
-        <div className="flex min-w-0 items-center gap-2 text-sm text-destructive">
+      {/* 错误态层级（本笔工单）：标题为主（字号台阶 13.125→15px，Mondwest 无字重可依赖）、
+        * 说明与 rid 为辅助色小一号；技术信息折叠进「详情」；复制入口为次级小描边。
+        * 主操作 = 重试且唯一（实心），错误区内不再有第二枚实心按钮；空态/错误态由
+        * phase 单值枚举互斥（同屏不会同时出现空态文案与错误卡），测试已锁。
+        * 375 横溢防线：ui-c-id 自带 overflow-wrap:anywhere（layer 外压 break-all），
+        * 长 rid 自动折行；本面板全列 min-w-0/break-words。 */}
+      <CardContent className="flex min-w-0 flex-col items-start gap-[var(--space-2)] px-[var(--space-4)] py-[var(--space-6)]" data-testid="apv-state-error">
+        <div className="flex min-w-0 items-center gap-[var(--space-2)] text-base text-destructive">
           <TriangleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span className="min-w-0 break-words">{title}</span>
         </div>
@@ -240,7 +246,7 @@ export function ErrorPanel({
         <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="apv-state-rid"><RequestIdCopyField requestId={failure.requestId} fallback={APPROVAL_RID_FALLBACK} /></p>
         {failure.technical ? <DetailsDisclosure lines={[failure.technical]} testId={`${testId}-details`} /> : null}
         <span data-testid="apv-state-retry">
-          <Button size="sm" outlined className="shrink-0 whitespace-nowrap" onClick={onRetry} data-testid={retryTestId ?? `${testId}-retry`} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
+          <Button size="sm" className="shrink-0 whitespace-nowrap" onClick={onRetry} data-testid={retryTestId ?? `${testId}-retry`} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
             {APPROVAL_RETRY_LABEL}
           </Button>
         </span>
