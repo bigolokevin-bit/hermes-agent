@@ -2054,6 +2054,119 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(container.querySelectorAll('[data-testid="knw5-ingest-status-row"]')).toHaveLength(0);
   });
 
+  it("separates real-empty from unreadable with knD-state-* on spaces and space docs, keeps 403≡404 bodies, retries only that read", async () => {
+    const bodyOf = (node: Element | null) =>
+      Array.from(node?.querySelectorAll("b, .knw5-wrap") ?? [])
+        .map((part) => part.textContent ?? "")
+        .join(" ");
+
+    // ---------- 空间列表：/knowledge ----------
+    // 404：整块诚实态 + knD-state-unavailable，绝不冒充空集，GAP 只在 title
+    fetchMock.mockImplementation(() => fail(404, "这个数据接口还没有接入。", "rid-sp-nw"));
+    await render("/knowledge?tab=spaces");
+    const gone404 = byTestid("knw5-spaces-unwired");
+    expect(gone404).toBeTruthy();
+    expect(byTestid("knD-state-unavailable")).toBeTruthy();
+    expect(byTestid("knD-state-empty")).toBeNull();
+    expect(byTestid("knD-state-denied")).toBeNull();
+    expect(gone404?.getAttribute("title")).toBe("GAP-03");
+    expect(container.textContent ?? "").not.toContain("0 个空间");
+    const text404 = bodyOf(gone404);
+
+    // 403：换一次读口，可见正文与 404 逐字相同，只多一个 denied 标记；屏面不泄露状态码
+    fetchMock.mockImplementation(() => fail(403, "没有查看这项数据的权限。", "rid-sp-dn"));
+    await render("/knowledge?tab=spaces");
+    expect(byTestid("knD-state-denied")).toBeTruthy();
+    expect(byTestid("knD-state-unavailable")).toBeNull();
+    expect(bodyOf(byTestid("knw5-spaces-unwired"))).toBe(text404);
+    expect(container.textContent ?? "").not.toContain("404");
+    expect(container.textContent ?? "").not.toContain("403");
+
+    // 真 0：200 + 空集 → knD-state-empty，走空态块，不出未接入块，也不写 0 个空间
+    fetchMock.mockImplementation((url: string) =>
+      url === SPACES ? Promise.resolve({ asOf: "2026-11-19T07:00:00Z", items: [] }) : fail(404, "没接上", "rid-x"),
+    );
+    await render("/knowledge?tab=spaces");
+    expect(byTestid("knD-state-empty")).toBeTruthy();
+    expect(byTestid("knD-state-unavailable")).toBeNull();
+    expect(byTestid("knw5-spaces-unwired")).toBeNull();
+    expect(byTestid("knw5-spaces-empty")).toBeTruthy();
+    expect((byTestid("knw5-spaces-empty")?.textContent ?? "")).not.toContain("0 个空间");
+
+    // 有数据：不挂任何 knD 标记
+    fetchMock.mockImplementation((url: string) =>
+      url === SPACES
+        ? Promise.resolve({ asOf: "2026-11-19T07:00:00Z", items: [{ spaceId: "sp_hr", name: "人事制度空间", docCount: 2 }] })
+        : fail(404, "没接上", "rid-x"),
+    );
+    await render("/knowledge?tab=spaces");
+    expect(container.querySelectorAll('[data-testid^="knD-state-"]')).toHaveLength(0);
+
+    // ---------- 文档列表：/knowledge/:spaceId ----------
+    const HR_SPACE = () => Promise.resolve({ asOf: "2026-11-19T07:00:00Z", items: [{ spaceId: "sp_hr", name: "人事制度空间" }] });
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return HR_SPACE();
+      return fail(404, "这个数据接口还没有接入。", "rid-doc-nw");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    expect(byTestid("kn3-docs-unwired")).toBeTruthy();
+    expect(byTestid("knD-state-unavailable")).toBeTruthy();
+    const docText404 = bodyOf(byTestid("kn3-docs-unwired"));
+
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return HR_SPACE();
+      return fail(403, "没有查看这项数据的权限。", "rid-doc-dn");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    expect(byTestid("knD-state-denied")).toBeTruthy();
+    expect(byTestid("knD-state-unavailable")).toBeNull();
+    expect(bodyOf(byTestid("kn3-docs-unwired"))).toBe(docText404);
+
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve({ asOf: "2026-11-19T07:00:00Z", items: [{ spaceId: "sp_hr", name: "人事制度空间" }] });
+      if (url.includes("spaceId=sp_hr")) return Promise.resolve({ asOf: "2026-11-19T07:00:00Z", documents: [] });
+      return fail(404, "没接上", "rid-x");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    expect(byTestid("knD-state-empty")).toBeTruthy();
+    expect(byTestid("kn3-docs-unwired")).toBeNull();
+    expect((byTestid("kn3-docs-empty")?.textContent ?? "")).not.toContain("0 篇");
+
+    // ---------- 切空间不残留：sp_hr 有文档 → sp_fin 读不到，筛选也清空 ----------
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve({ asOf: "2026-11-19T07:00:00Z", items: [] });
+      if (url.includes("spaceId=sp_hr"))
+        return Promise.resolve({ asOf: "2026-11-19T07:00:00Z", documents: [{ documentId: "d_1", fileName: "员工手册.pdf" }, { documentId: "d_2", fileName: "考勤说明.docx" }] });
+      if (url.includes("spaceId=sp_fin")) return fail(404, "这个数据接口还没有接入。", "rid-fin");
+      return fail(404, "没接上", "rid-x");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    expect(container.querySelectorAll('[data-testid="kn3-docs-row"]')).toHaveLength(2);
+    await type("kn3-docs-filter-input", "手册");
+    expect(container.querySelectorAll('[data-testid="kn3-docs-row"]')).toHaveLength(1);
+    await render("/knowledge?tab=spaces&space=sp_fin");
+    expect(container.querySelectorAll('[data-testid="kn3-docs-row"]')).toHaveLength(0);
+    expect(byTestid("knD-state-unavailable")).toBeTruthy();
+    expect((byTestid("kn3-docs-filter-input") as HTMLInputElement | null)?.value).toBe("");
+
+    // ---------- 重试只重发文档读口，不连带重发空间读口 ----------
+    fetchMock.mockClear();
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve({ asOf: "2026-11-19T07:00:00Z", items: [] });
+      if (url.includes("spaceId=sp_fin")) return fail(404, "这个数据接口还没有接入。", "rid-fin");
+      return fail(404, "没接上", "rid-x");
+    });
+    await render("/knowledge?tab=spaces&space=sp_fin");
+    const docsBefore = urlsCalled().filter((u: string) => u.includes("spaceId=sp_fin")).length;
+    const spacesBefore = urlsCalled().filter((u: string) => u === SPACES).length;
+    expect(docsBefore).toBe(1);
+    await click("kn3-docs-retry");
+    const docsAfter = urlsCalled().filter((u: string) => u.includes("spaceId=sp_fin")).length;
+    const spacesAfter = urlsCalled().filter((u: string) => u === SPACES).length;
+    expect(docsAfter).toBe(docsBefore + 1);
+    expect(spacesAfter).toBe(spacesBefore);
+  });
+
   it("sorts the space document list locally (name/size/updated): aria-sort, URL state, missing-last, zero refetch", async () => {
     const SPACE = { asOf: "2026-11-19T07:00:00Z", items: [{ spaceId: "sp_hr", name: "人事制度空间" }] };
     const DOC_LIST = {

@@ -125,18 +125,24 @@ const CrumbReport = createContext<(crumb: DeepCrumb | null) => void>(() => {});
 type Surf<T> =
   | { kind: "loading" }
   | { kind: "ready"; value: SurfaceValue<T> }
-  | { kind: "unwired"; requestId: string | null }
+  | { kind: "unwired"; requestId: string | null; denied: boolean }
   | { kind: "login" }
   | { kind: "error"; message: string; requestId: string | null };
 
 const GENERIC_FAILURE = "这次没能读到知识数据，请稍后重试。";
 
-/** 401 is its own body; 403 and 404 share one; everything else is a failure. */
+/**
+ * 401 is its own body. 403 and 404 share ONE identical honest body (anti-enumeration:
+ * the readable text never reveals which), but the read still remembers whether it was a
+ * permission denial or a missing read, so a machine-checkable `knD-state-*` marker can be
+ * attached without changing a single visible character.
+ */
 function toSurf(cause: unknown): Surf<never> {
   const api = cause instanceof ApiError ? cause : null;
   const status = api?.status ?? null;
   if (status === 401) return { kind: "login" };
-  if (status === 403 || status === 404) return { kind: "unwired", requestId: api?.requestId ?? null };
+  if (status === 403 || status === 404)
+    return { kind: "unwired", requestId: api?.requestId ?? null, denied: status === 403 };
   const message = api?.message?.trim();
   // A message the service wrote for people is safe to show; anything else is not.
   return { kind: "error", message: message && !/\d{3}/.test(message) ? message : GENERIC_FAILURE, requestId: api?.requestId ?? null };
@@ -245,6 +251,11 @@ interface SurfaceProps<T> {
   /** 未接入正文的说法；每个面点名自己的读口，403 与 404 仍共用同一份。 */
   unwiredHead?: string;
   unwiredHuman?: string;
+  /**
+   * 只对 `/knowledge` 的空间列表与 `/knowledge/:spaceId` 的文档列表打开：给「读不到」
+   * 与「真 0」各挂一个机器可判的 knD-state-* 标记（可见正文一字不改，403 与 404 同体）。
+   */
+  honestState?: boolean;
 }
 
 /** The four states, once, for every surface on the page. */
@@ -257,9 +268,20 @@ function Surface<T>({
   render,
   unwiredHead = "未接入",
   unwiredHuman = UNWIRED_HUMAN,
+  honestState = false,
 }: SurfaceProps<T>): ReactNode {
   const value = state.kind === "ready" ? state.value : null;
   const stamp = value?.stamp ?? null;
+  // 机器可判的诚实态标记：不可用 / 无权 / 真 0，各一个 testid；不渲染任何可见文字。
+  const honestMarker = !honestState
+    ? null
+    : state.kind === "unwired"
+      ? state.denied
+        ? "knD-state-denied"
+        : "knD-state-unavailable"
+      : value && value.rows.length === 0
+        ? "knD-state-empty"
+        : null;
   // A read that DID give a collection time says nothing else about time: the reason
   // line only appears when the time is genuinely missing.
   const stampReason = value
@@ -283,6 +305,8 @@ function Surface<T>({
         来源：{SURFACE_SOURCE[source]} · 数据截至 {stamp ?? "未知"}
         <Reason>{stampReason}</Reason>
       </p>
+
+      {honestMarker ? <span data-testid={honestMarker} className="knD-marker" aria-hidden="true" /> : null}
 
       {state.kind === "loading" ? <Skeleton testid={`${testid}-loading`} /> : null}
 
@@ -954,6 +978,7 @@ function SpacesSurface({
       <Surface
         testid="knw5-spaces"
         source="spaces"
+        honestState
         state={surface.state.kind === "ready" ? { kind: "ready", value: { ...surface.state.value, rows: shown } } : surface.state}
         onRetry={surface.retry}
         unwiredHead={SPACES_UNWIRED_HEAD}
@@ -1309,6 +1334,15 @@ function SpaceDetailSurface({
   onCloseDoc: () => void;
 }): ReactNode {
   const [filter, setFilter] = useState("");
+  // 换一个空间：本地筛选要清掉，别把上一个空间的筛选结果当成这个空间的现状。
+  // 行与错误本就随读口键（含 spaceId）更换而回到骨架，不会残留。
+  const prevSpace = useRef(spaceId);
+  useEffect(() => {
+    if (prevSpace.current !== spaceId) {
+      prevSpace.current = spaceId;
+      setFilter("");
+    }
+  }, [spaceId]);
   // 空间名不靠 URL 回显：它来自指定空间读口。读不到就用短码，原因放 title。
   const names = useSurface<SpaceRow>(
     () => fetchJsonStrict(SPACES_URL).then(readSpaces),
@@ -1382,6 +1416,7 @@ function SpaceDetailSurface({
       <Surface
         testid="kn3-docs"
         source="space-docs"
+        honestState
         state={
           surface.state.kind === "ready" && shownValue ? { kind: "ready", value: shownValue } : surface.state
         }

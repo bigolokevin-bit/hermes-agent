@@ -837,3 +837,8 @@
 .knC-sort[aria-label] .knC-mark {
   flex: none;
 }
+
+/* R53 — 诚实态的机器可判标记：只为测试/自动化存在，不参与布局、不出字、不影响横溢。 */
+.knD-marker {
+  display: none;
+}
