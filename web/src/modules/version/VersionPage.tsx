@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Badge, Button, Card, CardContent } from "@nous-research/ui";
 import { ApiError } from "@/lib/api-error";
 import { fetchJsonStrict } from "../models/fetchJson";
@@ -6,6 +6,8 @@ import { MODELS_GAP, fmtStamp, fmtUnitPrice, readPrices, type ModelPriceRow } fr
 import { currentFixtureState, fixtureView } from "../../shell/fixtures";
 import { readBuildRows, readDependencyRows, type BuildEnv, type BuildRow, type DependencyRow } from "./version";
 import { VersionHealthSurface } from "./VersionHealthSurface";
+import { SystemCaliberNotes } from "../health/SystemCaliberNotes";
+import { SystemRefreshBar, useRefreshCoordinator } from "../health/systemRefresh";
 
 type State = { k: "loading" } | { k: "empty" } | { k: "error"; requestId: string | null } | { k: "ready"; build: BuildRow[]; dependencies: DependencyRow[] };
 type PriceState =
@@ -89,6 +91,9 @@ export function VersionPage() {
   const view = preview ?? liveState;
   const [prices, setPrices] = useState<PriceState>({ k: "loading" });
   const [priceReload, setPriceReload] = useState(0);
+  const refresh = useRefreshCoordinator(2);
+  const pricesRef = useRef<PriceState>(prices);
+  pricesRef.current = prices;
   const [, setPreviewTick] = useState(0);
   const leaveForLive = () => { leavePreview(); setPreviewTick((n) => n + 1); };
 
@@ -100,30 +105,33 @@ export function VersionPage() {
         if (!live) return;
         const parsed = readPrices(payload);
         setPrices(parsed.rows.length === 0 ? { k: "empty" } : { k: "ready", rows: parsed.rows, asOf: parsed.asOf });
+        if (refresh.tick > 0) refresh.finish(null);
       })
       .catch((error: unknown) => {
         if (!live) return;
         const apiError = error instanceof ApiError ? error : null;
-        setPrices({
-          k: "error",
+        const failure = {
           message:
             apiError?.status === 403 || apiError?.status === 404
               ? "单价表未接入，或当前账号无权读取；这里不显示猜测的单价。"
               : apiError?.message ?? "单价表暂时读不出来，请稍后重试。",
           requestId: apiError?.requestId ?? null,
-          status: apiError?.status ?? 0,
-        });
+        };
+        if (refresh.tick > 0) refresh.finish(failure);
+        if (pricesRef.current.k === "ready" || pricesRef.current.k === "empty") return;
+        setPrices({ k: "error", ...failure, status: apiError?.status ?? 0 });
       });
     return () => {
       live = false;
     };
-  }, [forced, priceReload]);
+  }, [forced, priceReload, refresh.tick, refresh.finish]);
 
   return (
     <section className="space-y-4" data-testid="ver4-page">
       <header>
         <h1 className="font-mondwest text-xl">版本</h1>
         <p className="mt-1 text-sm text-white/55">构建与依赖信息</p>
+        <div className="mt-3"><SystemRefreshBar coordinator={refresh} disabled={forced !== null} /></div>
         <button
           type="button"
           className="mt-3 rounded-md border border-white/15 px-2.5 py-1 text-xs text-white/45"
@@ -137,7 +145,7 @@ export function VersionPage() {
         </button>
       </header>
 
-      <VersionHealthSurface preview={forced && forced !== "ready" ? forced : null} />
+      <VersionHealthSurface preview={forced && forced !== "ready" ? forced : null} refreshTick={refresh.tick} onRefreshResult={refresh.finish} />
 
       {view.k === "loading" ? (
         <Card><CardContent className="space-y-3 p-4" data-testid="ver4-loading" aria-busy="true">
@@ -232,6 +240,7 @@ export function VersionPage() {
           <p className="text-xs text-white/40">单价是价目表标价；实际扣费在「模型与单价」页的账本卡，不用单价乘次数推算。</p>
         </CardContent>
       </Card> : null}
+      <SystemCaliberNotes />
     </section>
   );
 }

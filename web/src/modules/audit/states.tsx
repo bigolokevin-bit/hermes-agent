@@ -18,7 +18,15 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { themedBody } from "@/lib/utils";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import { requestIdLine, type FailureCopy } from "./copy";
-import { STATE_LABEL, stateMark, unwiredReasonFor, type StatePhase, type StateSlot } from "./stateCopy";
+import {
+  DENIED_BODY_SENTENCE,
+  STATE_LABEL,
+  stateMark,
+  stateSentenceFor,
+  unwiredReasonFor,
+  type StatePhase,
+  type StateSlot,
+} from "./stateCopy";
 import { SUMMARY_COPY_LABEL } from "./summary";
 import { PERMALINK_COPY_LABEL, permalinkFromEvent } from "./permalink";
 import type { Gate } from "./auditGates";
@@ -321,7 +329,7 @@ export function TechnicalDisclosure({
  * source. It is visually hidden on purpose: the panel's own text already says
  * what is happening, and a second visible line would be noise.
  */
-function StateMark({ slot, phase }: { slot: StateSlot; phase: StatePhase }): ReactNode {
+function StateMark({ slot, phase, sentence }: { slot: StateSlot; phase: StatePhase; sentence?: string | null }): ReactNode {
   // An empty node on purpose: the label lives in attributes so a state marker
   // can never change a panel's visible words — 403 and 404 must stay ONE body,
   // and a marker is not a sentence.
@@ -332,6 +340,8 @@ function StateMark({ slot, phase }: { slot: StateSlot; phase: StatePhase }): Rea
       data-audf-phase={phase}
       data-audf-slot={slot}
       data-audf-label={STATE_LABEL[phase]}
+      data-aud-face={slot}
+      data-aud-sentence={stateSentenceFor(phase, sentence)}
     />
   );
 }
@@ -413,7 +423,7 @@ export function ErrorPanel({
       data-testid={testId}
     >
       <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-6">
-        {slot ? <StateMark slot={slot} phase="error" /> : null}
+        {slot ? <StateMark slot={slot} phase="error" sentence={failure.sentence} /> : null}
         <div className="flex min-w-0 items-center gap-2 text-sm text-destructive">
           <TriangleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span className="min-w-0 break-words">{title}</span>
@@ -464,16 +474,15 @@ export function DeniedPanel({
       data-testid={testId}
     >
       <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
-        <StateMark slot={slot} phase="denied" />
+        <StateMark slot={slot} phase="denied" sentence={DENIED_BODY_SENTENCE} />
         {/* audF: a missing route is also marked as 未接入, WITHOUT painting a
             number: 403 and 404 keep one body, and 「0 条」 never appears for a
             read口 that simply is not here. */}
-        {unwired ? <StateMark slot={slot} phase="unwired" /> : null}
+        {unwired ? <StateMark slot={slot} phase="unwired" sentence={unwired} /> : null}
         <ShieldAlert className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
         <p className={`min-w-0 break-words text-sm ${themedBody}`}>暂时无法查看审计事件</p>
         <p className="max-w-prose break-words text-xs text-muted-foreground">
-          这块内容要么尚未对你开放，要么当前环境还没有提供它。这里不会显示任何猜测的内容。
-          需要查看审计记录时，请联系工作区管理员为你开通。
+          {DENIED_BODY_SENTENCE}
         </p>
         <RequestIdLine requestId={failure?.requestId ?? null} testId={`${testId}-request-id`} />
         {onRetry ? (

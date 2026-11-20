@@ -3243,3 +3243,31 @@ Untested: the four-state body lengths are jsdom readings, not browser pixels; th
 - 三档：新增件是一行 `min-w-0 break-words` 文本 + 一个 inline `<a>`，无新容器、无固定宽度；浏览器像素三档仍未实测（活体腿不可用），只声明结构口径。四态/403≡404/零写入口沿用 audF/audQ 未回归。
 - 门禁：vitest `src/modules/audit` **exit 0**（**19** files / **389** tests = 起算 19/378 + 11 条 audR 腿）；`pnpm exec tsc -b . --noEmit` 共 **69** errors（= 本机地板，改动前后同数、增量 0）且 `modules/audit` **0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings。
 - 活体腿沿用已知不可用（未重跑，本轮不出示假读数）：9122 无身份头 **401 `console.unauthenticated`**、8092 **404 `console.not_found`**；① 的三列与 ④ 的计数全部由 jsdom 断言取得（控件取 DOM、请求取 `ListApi.askedPath` 与 mock 实收 URL）。
+
+## Audit filter copy mount and state parity (audS, 2026-11-20, base 0c1b94c3)
+
+- 写域：`web/src/modules/audit/{filterSummary.ts,filterSummary.test.ts,auditGates.ts,auditGates.test.ts,stateCopy.ts,states.tsx,AuditEventsModulePage.tsx,AuditEventsModulePage.test.tsx,AuditDetailModulePage.test.tsx}` + 本节（10 文件，diff ≈ +520/−20，≤15 文件/≤1500 行）。App/shell/routes/registry/package·lock/web-scripts/ops 与其它模块未碰；基线 merge 已由总控完成，porc=0；单 commit；禁 amend/force 本轮全程未用（上一轮自报的那次本地 amend 不复存在，本轮也无）。
+- **任务 A：QA 取不到 `audG-filter-copy` 的真因定位**（先探针后动手，逐档在场表实测如下）：
+  | 落点/状态 | 控件在场 | enabled | title 开头 |
+  |---|---|---|---|
+  | 列表 加载中（无口径） | 在 | disabled | 当前没有可复制的筛选条件… |
+  | 列表 加载中（带 type） | 在 | live | 常驻控件，现在可以复制… |
+  | 列表 有记录（无口径） | 在 | disabled | 同上 disabled 句 |
+  | 列表 空表（无口径） | 在 | disabled | 同上 disabled 句 |
+  | 列表 读取失败 503（带 type） | 在 | live | live 句 |
+  | 列表 403（带 actor） | 在 | live | live 句 |
+  | 列表 404 unknown_route（带 actor） | 在 | live | live 句 |
+  | **详情屏 `/audit/detail?id=…`** | **不在** | — | 该屏没有筛选条，也就没有「当前筛选口径」可抄 |
+  | **`/audit?tab=retention`（保留策略页）** | **不在** | — | 另一面，读的是策略读口 |
+  结论：在 `/audit` 台账面上它**本就常驻**（audL 起），R49 取不到的可复核原因是两点——(1) **措辞**：工单要「当前没有可复制的筛选条件」，现码是「当前没有筛选条件可复制」（同一句话换了语序，按 title 精确匹配取的探针就落空）；(2) **落点**：详情屏与保留策略页确实没有这个控件（工单未点名，本轮如实登记，不硬造挂载点）。
+  已做：`FILTER_SUMMARY_EMPTY_TITLE` 与 gates 的 disabled 句统一改为工单语序并把该句钉在 title 开头（`auditGates.ts:119`、`filterSummary.ts:27`）；措辞相关的三处既有用例同步更新（`AuditEventsModulePage.test.tsx` 的 toContain、`auditGates.test.ts` 的 toContain、`filterSummary.test.ts` 的 toBe），理由均为「工单口径优先」，控件与行为未动。
+- **任务 B：三面（列表 / 行内预览 / 事件详情）四态同句的行样本**
+  - 单点：`stateCopy.ts` 的 `STATE_LABEL`（五档标签）+ 新增 `DENIED_BODY_SENTENCE`（被拒那一句，此前是 DeniedPanel 里的私有段落）+ `stateSentenceFor(phase, failureSentence)`；`readFailure()` 仍是失败原因句的唯一出口。
+  - 探针：`StateMark` 现在除 `data-audf-label` 外还带 `data-aud-face`（list/preview/detail/verify）与 `data-aud-sentence`（该面该状态下印的那句话），面板可见文本与探针同源。
+  - 实测发现的真实缺口并修：**抽屉的被拒面此前没有 face 标记**（`DeniedPanel testId="aud02-detail-denied"` 漏 `slot="detail"`）——「三面同体」在那一格其实只有两面可证；补上后 `audF-state-detail-denied` 在场。
+  - 新行样本（同 fetch 桩、逐字 `toBe`）：① 503 三处 `data-aud-sentence` 全等且等于「审计服务在处理时出了错，请稍后重试。」，面板可见 `-sentence` 文本也全等，标签三处全等「读取没有完成」；② 403 vs 404：列表面 `aud01-denied` textContent 逐字相等、原因句相等、无「0 条」、导出仍 disabled；详情面同一断言；③ 预览面与被拒记录：`audF-preview-denied` 与 `aud02-detail-denied` textContent 全等、句标签全等；④ 详情屏 loading 面在场标记与标签「正在读取」，读到后面板消失（不残留状态）。
+- **复制内容口径未变**：人类可读一行仍由 `seatsOf`（audR）产生 + 「请求：」段 = `ListApi.askedPath` 剥 origin 与凭据参数；被拒那一档抄 `操作者：employee-api` 那段可用，抄完 `urls()` 数组与抄前**逐字相等**（零额外请求，用例断言）；href/文本均不含 `http(s)://`、`token`。
+- **零破**：`aud01*`、`aud2*`/`aud3*`/`aud4*`/`aud5*`/`aud6*`/`aud7*`、`audA*`–`audK*`、`aud-sort-*`、`aud-gates-*`、`audL-*`、`audM`(audL-scroll)、`audN-*`、`aud-trunc*`、`aud-limit-restore`、`audE-*`、`audF-*`（只增属性，id 未动）、`audG-*`、`audH-*`、`audI-*`、`audJ-*`、`audR` 的 `aud-source*` 与页级 `agent-v2-page-audit*`/`-detail*` 未改名未删节点；起算 19 files/**389** 全绿，现 **19 files / 396**（+7：audS 列表面 4 条 + 详情屏 3 条），其中 3 处措辞断言按工单口径改写（见上，逐条理由已登记）。
+- 三档：本轮新增的都是 `aria-hidden` 空 span 的属性与一句 title，无新增可见块、无宽度改动；浏览器像素三档仍未实测（活体腿不可用），只声明结构口径。
+- 门禁：vitest `src/modules/audit` **exit 0**（19 files/**396**）；`pnpm exec tsc -b . --noEmit` 共 **79** errors（= 总控所记本机当前地板，改动前后同数、增量 0）且 `modules/audit` **0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings。
+- 活体腿沿用不可用（未重跑，只探针 jsdom）：9122 无身份头 **401 `console.unauthenticated`**、8092 **404 `console.not_found`**；在场表与同句断言均为 jsdom 读数，QA 复跑请按 `data-testid='audG-filter-copy'`（列表六档在场），不要按 title 精确匹配取数。

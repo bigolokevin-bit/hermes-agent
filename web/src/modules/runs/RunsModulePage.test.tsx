@@ -20,6 +20,7 @@ vi.mock("@/lib/clipboard", () => ({ copyTextToClipboard: clip.copyTextToClipboar
 
 import { RunsModulePage } from "./RunsModulePage";
 import { runCsvFileName, runListCsv } from "./runs";
+import { COST_CALIBER_TEXT } from "../metrics/costCaliberNote";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -1544,5 +1545,331 @@ describe("runs list column sorting", () => {
     expect(csv.slice(1).map((line) => line.split(",")[0])).toEqual(body);
     clickSpy.mockRestore();
     URL.createObjectURL = original;
+  });
+});
+
+/* ── preview ↔ detail parity ─────────────────────────────────────────── */
+describe("runs preview and detail parity", () => {
+  const PAR = {
+    runId: "rn_01M7822PARITY000000001",
+    status: "completed",
+    costStatus: "upstream",
+    costUsd: 2.5,
+    startedAt: "2026-11-18T02:00:00Z",
+    endedAt: "2026-11-18T02:11:00Z",
+    employeeId: "emp_aaaabbbbcccc",
+  };
+  const PAR_BARE = {
+    runId: "rn_01M7822PARITY000000002",
+    startedAt: "2026-11-18T04:00:00Z",
+  };
+
+  const parityMock = (row: unknown) => async (url: string): Promise<unknown> => {
+    if (url.includes("/api/run-detail")) return { ...(row as object) };
+    if (url.includes("/api/run-events")) return { items: [], hasMore: false };
+    if (url.includes("/api/employees")) return { items: [] };
+    if (url.includes("/api/run-stats")) return { items: [] };
+    if (url.includes("/api/runs")) return { items: [row] };
+    return { items: [] };
+  };
+
+  const previewText = (index: number, key: string): string =>
+    document.querySelector(`[data-testid='run-row-preview-${index}-${key}'] dd`)?.textContent ?? "";
+  const detailText = (): string =>
+    document.querySelector("[data-testid='run5-detail']")?.textContent ?? "";
+
+  async function openBoth(): Promise<void> {
+    await waitFor(() => rowNodes() === 1, "row ready");
+    await waitFor(() => document.querySelector("[data-testid='run5-detail']") !== null, "detail ready");
+    await act(async () => {
+      (document.querySelector("[data-testid='run-row-toggle-0']") as HTMLButtonElement).click();
+    });
+  }
+
+  it("reads the same six values on the row preview and in the detail", async () => {
+    api.fetchJSON.mockImplementation(parityMock(PAR));
+    await render(`/runs?run=${encodeURIComponent(PAR.runId)}`);
+    await openBoth();
+    const detail = detailText();
+    const fields = ["status", "started", "ended", "elapsed", "cost", "employee"];
+    for (const key of fields) {
+      const value = previewText(0, key);
+      expect(value.length).toBeGreaterThan(0);
+      expect(detail).toContain(value);
+    }
+    expect(previewText(0, "started")).toBe("2026-11-18 10:00");
+    expect(previewText(0, "ended")).toBe("2026-11-18 10:11");
+    expect(previewText(0, "elapsed")).toBe("11 分钟");
+    expect(previewText(0, "employee")).toBe("员工 · AAAABBBB");
+    expect(document.querySelector("[data-testid='run5-detail-ended']")?.textContent).toBe("2026-11-18 10:11");
+    expect(document.querySelector("[data-testid='run5-detail-employee']")?.textContent).toBe("员工 · AAAABBBB");
+  });
+
+  it("says the same sentence when a field is missing, and never fills the gap", async () => {
+    api.fetchJSON.mockImplementation(parityMock(PAR_BARE));
+    await render(`/runs?run=${encodeURIComponent(PAR_BARE.runId)}`);
+    await openBoth();
+    expect(previewText(0, "status")).toBe("该字段未返回");
+    expect(previewText(0, "ended")).toBe("该字段未返回");
+    expect(document.querySelector("[data-testid='run5-detail-ended']")?.textContent).toBe("该字段未返回");
+    expect(detailText()).toContain("该字段未返回");
+    expect(previewText(0, "elapsed")).toBe("—");
+    expect(document.querySelector("[data-testid='run5-detail-summary']")?.textContent).toContain("耗时 —");
+    expect(previewText(0, "employee")).toBe("未指派");
+    expect(document.querySelector("[data-testid='run5-detail-employee']")?.textContent).toBe("未指派");
+    expect(detailText()).not.toContain("$0.00");
+  });
+
+  it("the preview adds no read while the detail is read exactly once", async () => {
+    api.fetchJSON.mockImplementation(parityMock(PAR));
+    await render(`/runs?run=${encodeURIComponent(PAR.runId)}`);
+    await openBoth();
+    const urls = (): string[] => api.fetchJSON.mock.calls.map((call) => String(call[0]));
+    const before = urls().length;
+    await act(async () => {
+      (document.querySelector("[data-testid='run-row-toggle-0']") as HTMLButtonElement).click();
+    });
+    await act(async () => {
+      (document.querySelector("[data-testid='run-row-toggle-0']") as HTMLButtonElement).click();
+    });
+    expect(urls()).toHaveLength(before);
+    expect(urls().filter((u) => u.includes("/api/run-detail"))).toHaveLength(1);
+    expect(urls().filter((u) => u.includes("/api/run-events"))).toHaveLength(1);
+  });
+});
+
+describe("run-cost-caliber-note — cross-page cost caliber", () => {
+  it("prints the one shared sentence and points at the metrics page", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs");
+    const note = document.querySelector("[data-testid='run-cost-caliber-note']");
+    expect(note).not.toBeNull();
+    expect(note?.textContent).toBe(COST_CALIBER_TEXT);
+    const title = note?.getAttribute("title") ?? "";
+    expect(title).toContain("/runs");
+    expect(title).toContain("/metrics");
+    // 静态说明：挂上页面不再追加任何读口。
+    const reads = api.fetchJSON.mock.calls.filter((call) => String(call[0]).includes("/api/runs"));
+    expect(reads).toHaveLength(1);
+  });
+});
+
+describe("run-notes — footer caliber block", () => {
+  it("starts collapsed and opens seven rows of one sentence each", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs");
+    const toggle = document.querySelector("[data-testid='run-notes-toggle']") as HTMLButtonElement | null;
+    expect(toggle).not.toBeNull();
+    expect(toggle?.tagName).toBe("BUTTON");
+    expect(toggle?.getAttribute("aria-expanded")).toBe("false");
+    expect(toggle?.getAttribute("aria-controls")).toBe("run-notes-body");
+    expect(document.querySelector("[data-testid='run-notes-body']")).toBeNull();
+    expect(document.querySelector("[data-testid='run-note-window']")).toBeNull();
+
+    await act(async () => {
+      toggle?.click();
+    });
+    expect(toggle?.getAttribute("aria-expanded")).toBe("true");
+    expect(document.querySelectorAll("[data-testid^='run-note-']").length).toBe(7);
+    const cost = document.querySelector("[data-testid='run-note-cost']")?.textContent ?? "";
+    // 成本行与屏上的成本口径说明共用同一常量，不存在第二套措辞。
+    expect(cost).toContain(COST_CALIBER_TEXT);
+    expect(document.querySelector("[data-testid='run-note-elapsed']")?.textContent ?? "").toContain("不拿本机时间补");
+    expect(document.querySelector("[data-testid='run-note-asOf']")?.textContent ?? "").toContain("不拿本机时间顶替");
+    expect(document.querySelector("[data-testid='run-note-window']")?.textContent ?? "").toContain("/api/runs");
+    expect(document.querySelector("[data-testid='run-note-state']")?.textContent ?? "").toContain("不读写口");
+
+    await act(async () => {
+      toggle?.click();
+    });
+    expect(toggle?.getAttribute("aria-expanded")).toBe("false");
+    expect(document.querySelector("[data-testid='run-notes-body']")).toBeNull();
+  });
+
+  it("asks the service for nothing when opened or closed", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs");
+    const before = urls().length;
+    const readsBefore = api.fetchJSON.mock.calls.filter((call) => String(call[0]).includes("/api/runs")).length;
+    const toggle = document.querySelector("[data-testid='run-notes-toggle']") as HTMLButtonElement;
+    await act(async () => {
+      toggle.click();
+    });
+    await act(async () => {
+      toggle.click();
+    });
+    expect(urls().length).toBe(before);
+    expect(api.fetchJSON.mock.calls.filter((call) => String(call[0]).includes("/api/runs")).length).toBe(readsBefore);
+  });
+
+  it("is absent on the repro legs, which read nothing", async () => {
+    api.fetchJSON.mockImplementation(async () => {
+      throw new Error("repro legs ask nothing");
+    });
+    await render("/runs?state=error");
+    expect(document.querySelector("[data-testid='run-notes']")).toBeNull();
+  });
+});
+
+/* ── the row permalink (frozen URL shape, no extra read) ──────────── */
+
+describe("run permalink", () => {
+  it("copies the open run's link with every current parameter kept", async () => {
+    api.fetchJSON.mockImplementation(detailOk({}));
+    const entry = `/runs/?window=7d&status=failed&rsort=started&rdir=desc&run=${encodeURIComponent(DETAIL.runId)}`;
+    await render(entry);
+    await waitFor(() => document.querySelector("[data-testid='run5-detail']") !== null, "detail");
+    await waitFor(() => rowNodes() === 1, "one row");
+    // The address reproduces this page: the same row is marked and its detail is open.
+    const row = document.querySelector("[data-testid='run5-row-0']");
+    expect(row?.getAttribute("data-selected")).toBe("1");
+    expect(row?.getAttribute("aria-current")).toBe("true");
+    const before = urls().length;
+    const reads = api.fetchJSON.mock.calls.filter((call) => String(call[0]).includes("/api/runs")).length;
+    const button = document.querySelector("[data-testid='run-permalink']") as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
+    await act(async () => {
+      button.click();
+    });
+    const copied = clip.copyTextToClipboard.mock.calls.at(-1)?.[0] as string;
+    expect(copied).toBe(
+      `/runs/?window=7d&status=failed&rsort=started&rdir=desc&run=${encodeURIComponent(DETAIL.runId)}`,
+    );
+    expect(copied.startsWith("/runs/?")).toBe(true);
+    expect(document.querySelector("[data-testid='run-permalink-status']")?.textContent).toContain("链接已复制");
+    expect(urls().length).toBe(before);
+    expect(api.fetchJSON.mock.calls.filter((call) => String(call[0]).includes("/api/runs")).length).toBe(reads);
+  });
+
+  it("is disabled with a reason until a run is selected", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs?window=7d");
+    await waitFor(() => rowNodes() === 1, "one row");
+    const button = document.querySelector("[data-testid='run-permalink']") as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(button.getAttribute("title")).toBe("先选中一条运行再复制");
+    const before = urls().length;
+    const copies = clip.copyTextToClipboard.mock.calls.length;
+    await act(async () => {
+      button.click();
+    });
+    expect(clip.copyTextToClipboard.mock.calls.length).toBe(copies);
+    expect(urls().length).toBe(before);
+  });
+
+  it("hands the same string to a read-only field when the clipboard refuses", async () => {
+    clip.copyTextToClipboard.mockImplementationOnce(() => Promise.resolve(false));
+    api.fetchJSON.mockImplementation(detailOk({}));
+    await render(`/runs/?window=7d&run=${encodeURIComponent(DETAIL.runId)}`);
+    await waitFor(() => document.querySelector("[data-testid='run5-detail']") !== null, "detail");
+    const button = document.querySelector("[data-testid='run-permalink']") as HTMLButtonElement;
+    await act(async () => {
+      button.click();
+    });
+    const fallback = document.querySelector("[data-testid='run-permalink-fallback-text']") as HTMLTextAreaElement;
+    expect(fallback).toBeTruthy();
+    expect(fallback.readOnly).toBe(true);
+    expect(fallback.value).toBe(
+      `/runs/?window=7d&run=${encodeURIComponent(DETAIL.runId)}`,
+    );
+    expect(document.querySelector("[data-testid='run-permalink-status']")?.textContent).toContain("没复制成功");
+  });
+
+  it("stays off the repro legs, which read nothing", async () => {
+    api.fetchJSON.mockImplementation(async () => {
+      throw new Error("repro legs ask nothing");
+    });
+    await render("/runs?state=empty");
+    expect(document.querySelector("[data-testid='run-permalink']")).toBeNull();
+  });
+});
+
+/* ── one reset for every filter in the shared table ───────────────── */
+
+describe("run filter reset", () => {
+  const codes = (): string[] =>
+    Array.from(document.querySelectorAll("[data-testid^='run5-row-'][data-status]")).map(
+      (row) => row.querySelector("[data-testid$='-code']")?.textContent ?? "",
+    );
+  const sourcePath = (): string =>
+    document.querySelector("[data-testid='run-source-path']")?.textContent ?? "";
+  const probe = (): string => document.querySelector("[data-testid='probe-location']")?.textContent ?? "";
+  const runsReads = (): number =>
+    api.fetchJSON.mock.calls.filter((call) => String(call[0]).includes("/api/runs")).length;
+
+  it("clears the six parameters, keeps unrelated ones, and reads once more", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A, RUN_B]));
+    await render(
+      "/runs?window=30d&status=failed&rsort=started&rdir=desc&keep=1",
+      <><RunsModulePage /><HistoryProbe /></>,
+    );
+    await waitFor(() => rowNodes() === 2, "two rows");
+    const beforeCodes = codes();
+    const beforeSource = sourcePath();
+    const beforeCounts = document.querySelector("[data-testid='run5-counts']")?.textContent ?? "";
+    expect(beforeCodes).toEqual(["运行 · 9XYZ", "运行 · X1XZ"]); // 按开始时间降序，本地排序
+    expect(beforeSource).toContain("window=30d");
+    expect(beforeSource).toContain("status=failed");
+    expect(beforeCounts).toContain("本页 2 次");
+
+    const beforeReads = runsReads();
+    await act(async () => {
+      (document.querySelector("[data-testid='run-reset-filters']") as HTMLButtonElement).click();
+    });
+    await waitFor(() => probe() === "/runs?keep=1", "address back to defaults");
+    await waitFor(() => rowNodes() === 2, "rows after reset");
+
+    // URL before/after, and exactly one new list read.
+    expect(probe()).toBe("/runs?keep=1");
+    expect(runsReads()).toBe(beforeReads + 1);
+    // The source bar, the table, the copy text, the export count and the
+    // counters all come from the same batch, so they move together.
+    expect(sourcePath()).toBe("/runs"); // 源条只回显它自己那四个可分享参数，keep=1 留在地址里但不冒充筛选
+    expect(codes()).toEqual(["运行 · X1XZ", "运行 · 9XYZ"]); // 回到服务顺序
+    expect(document.querySelector("[data-testid='run-list-export-count']")?.getAttribute("data-rows")).toBe("2");
+    expect(document.querySelector("[data-testid='run5-counts']")?.textContent ?? "").toContain("本页 2 次");
+    await act(async () => {
+      (document.querySelector("[data-testid='run-list-copy']") as HTMLButtonElement).click();
+    });
+    const lines = String(clip.copyTextToClipboard.mock.calls.at(-1)?.[0] ?? "").split("\n");
+    expect(lines[1]?.startsWith("运行 · X1XZ")).toBe(true);
+    expect(lines[2]?.startsWith("运行 · 9XYZ")).toBe(true);
+  });
+
+  it("is disabled with a reason when nothing is set", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 1, "one row");
+    const button = document.querySelector("[data-testid='run-reset-filters']") as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(button.getAttribute("title")).toBe("当前没有可清除的筛选条件");
+  });
+
+  it("counts an unreadable value as a filter and says so", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs?window=zz&status=zz&keep=1", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => rowNodes() === 1, "one row");
+    const button = document.querySelector("[data-testid='run-reset-filters']") as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
+    expect(button.getAttribute("title")).toContain("未识别");
+    expect(button.getAttribute("title")).toContain("zz");
+    await act(async () => {
+      button.click();
+    });
+    await waitFor(() => probe() === "/runs?keep=1", "kept unrelated key");
+    expect(button.disabled).toBe(true);
+  });
+
+  it("clears a sort-only address without asking for data again", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A, RUN_B]));
+    await render("/runs?rsort=cost&rdir=asc", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => rowNodes() === 2, "two rows");
+    const before = runsReads();
+    await act(async () => {
+      (document.querySelector("[data-testid='run-reset-filters']") as HTMLButtonElement).click();
+    });
+    await waitFor(() => probe() === "/runs", "address cleared");
+    expect(runsReads()).toBe(before);
+    expect((document.querySelector("[data-testid='run-reset-filters']") as HTMLButtonElement).disabled).toBe(true);
   });
 });

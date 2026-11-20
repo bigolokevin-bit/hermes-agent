@@ -687,3 +687,13 @@
 .sys-state-rid button { text-decoration: underline; text-underline-offset: 2px; }
 .sys-state-rid button:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; }
 .sys-state-clear { display: inline-flex; }
+/* system unified refresh */
+.sys-refresh-bar { display: flex; min-width: 0; flex-direction: column; gap: 6px; }
+.sys-refresh-actions { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.sys-refresh-note { min-width: 0; font-size: 0.6875rem; color: var(--color-muted-foreground); overflow-wrap: anywhere; }
+.sys-refresh-error { display: flex; min-width: 0; flex-direction: column; align-items: flex-start; gap: 4px; border: 1px solid var(--color-border); border-radius: 8px; padding: 8px 10px; font-size: 0.75rem; }
+.sys-refresh-error p { min-width: 0; margin: 0; overflow-wrap: anywhere; }
+.sys-refresh-retry { border: 0; background: transparent; padding: 0; color: var(--color-primary); font-size: 0.6875rem; text-decoration: underline; text-underline-offset: 2px; }
+.sys-refresh-retry:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; }
+.sys-refresh-spin { animation: sys-refresh-spin 1s linear infinite; }
+@keyframes sys-refresh-spin { to { transform: rotate(360deg); } }

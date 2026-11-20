@@ -2281,3 +2281,189 @@ $ npx vite build --outDir /tmp/knw-sp-dist → exit 0
 边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
 package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
 无 force / amend / `--no-verify`；单 commit「feat(console): knowledge space row preview」。
+
+# KNW5 追加 R70：检索 ↔ 详情文档的跨面同值 parity（测试波 + 两处真缺陷收口）（2026-11-20 BJT）
+
+安全闸：toplevel 相符、porcelain 空、显式 refspec fetch 后 merge 实到 `9813d7af`
+（比交接章面 `a5832d15` 更新，含既有全部代次；如实记录）。merge 对本知识面 delta 为空；
+合后基线 62/62 先绿再动工。新增 `kn.parity.test.ts`（纯测试），产品改动仅限测出的真缺陷收口。
+
+## 一、映射（派工名 → 实际面，与文件头注释一致）
+
+```text
+「全库检索结果行」  = kn6-search-*（DocumentNameSearch 表）+ 行内展开 kn6-search-detail（?sdoc=）
+「空间内文档行」    = kn3-docs-*（SpaceDetailSurface 表）+ 行内预览 kn-doc-preview-*
+「空间侧预览」kn-space-preview-* 属空间列表面、对象是空间不是文档，与详情面路由互斥不同屏；
+互斥矩阵按「同屏可达」锁定（sdoc/详情预览/抽屉三面同屏，四对全测）。
+设计性差异（不改动，只断言+记录）：检索表有「所属空间」列、详情表无；详情预览有「短码」列、
+检索展开有「原文位置」列而无短码；表格单元格缺值仍是屏上「—」口径（预览句式不适用）。
+```
+
+## 二、测出的真缺陷与收口（同单修，逐字改前/改后）
+
+```text
+缺陷①  同一 MISSING 记录在两个「预览类表面」缺值话术分裂：
+  改前  检索展开 d_m：类型格 文本「—」title「上游没有给出文档类型」；
+        详情预览 d_m：类型格 文本「该字段未返回」title「类型：上游没有给出」；
+        （大小/更新同状）——同一条记录、两种呈现不一致。
+  改后  两面同走共享 helper previewField(label, present, value, reason, shownTitle)：
+        类型格 文本「该字段未返回」title「类型：上游没有给出文档类型」，两面逐字相等
+        （parity 测试 1/2 段断言；在场字段的原始 MIME 仍只进 title，两面同值）。
+        表格单元格未动（「—」口径属表，不属预览——exclusion 3）。
+缺陷②  详情行内预览（kn-doc-preview）与检索行内展开（?sdoc=）没有互斥：
+  改前  预览开着点检索命中：sdoc 展开、预览仍展开——三面互斥承诺只锁了两面。
+  改后  SpaceDetailSurface 接 sdocOpen/onCloseOverlays：开 sdoc 时预览作废（state 比较的
+        渲染期调整，同 R68 形态）；开预览时 doc=/sdoc= 一并静默删除。
+缺陷③  互斥删除的双重 setSp 覆盖（实现缺陷②时暴露、如实记）：
+  改前  onCloseDocQuietly()+onCloseSdoc() 连调各建一份 URLSearchParams(sp 同一陈旧基)，
+        后者覆盖前者——实测 sdoc 删了 doc= 还在。
+  改后  页面合并为一次 closeOverlaysQuietly({doc,sdoc}) 构造删除；测试锁 URL 双清。
+        （备注：setSearchParams 不支持函数式 updater，第一次修复尝试因此无效。）
+```
+
+## 三、断言读数（新增 3 例，全绿）
+
+```text
+表对表   同一记录在 kn6-search-* 与 kn3-docs-* 的 name/type/size/updated 文本+title、
+         行 title 全 id 逐字相等；缺值行两面表格都是「—」；行序两面同为 d_p 前、d_m 末。
+预览对   kn-doc-preview 与 kn6-search-detail 对同一记录四项（文档名/类型/大小/更新）
+         文本+title 逐字相等（分两轮读数：互斥使两者不能同时在场——这本身由矩阵段锁定）。
+互斥矩阵 预览→抽屉（+仅 R49 既有详情一读 1）；命中→sdoc（抽屉保留=现状如实：doc/sdoc 可共存，
+         预览不复活）；sdoc+抽屉→开预览（doc=/sdoc= 双清、两面卸载、0 新请求）；
+         预览开→关 URL 逐字不变；详情屏无 kn-space-toggle（路由互斥）。
+零请求   全 parity 读数段 fetchMock 计数与快照逐字相等；唯一 +1 是开抽屉既有详情一读（断言锁定）。
+```
+
+## 验证尾行（R70）
+```text
+$ npx vitest run src/modules/knowledge   → 3 files / 65 tests passed（基线 62 + parity 3；原 62 例零改全绿）
+$ npx vitest run                         → 160 files / 2174 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-parity-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+```
+未测如实：带行态数据的三档真实屏（静态预览无登录会话）；真机鼠标聚焦与剪贴板路径（本波无新增
+可交互可见布局，仅措辞与状态机收口）。
+边界：只改 `web/src/modules/knowledge/**`（新增 kn.parity.test.ts）与本证据目录；未动
+App.tsx / shell / routes / registry / package·lock / web-scripts / ops；未并 main、未重建 9122；
+显式路径提交（无 `git add -A`）；无 force / amend / `--no-verify`；merge（9813d7af）与
+test commit 分开。
+
+# KNW5 追加 R71：复制行单点派生 docLine（knF/knG 字段与口径统一）（2026-11-20 BJT）
+
+安全闸：toplevel 相符、porcelain 空、显式 refspec fetch 后 merge 实到 `ee64b4f0`——
+**比派工章面更新**（章面 `0c1b94c3`/HEAD `3e94876c`/代次 `9813d7af` 的下游），如实记录。
+merge 对本知识面 delta 为空；合后基线 65/65 先绿再动工。
+
+## 一、单点派生
+
+```text
+新函数集（knowledge.ts）：
+  DOC_LINE_HEADER = 文档名 | 类型 | 大小 | 更新 | 短码
+  docLineFields(doc) = [name, type, size, at, shortId(id) ?? "—"]   ← 唯一一份字段序与缺值规则
+  docLine(doc) = fields.join(" | ")
+调用方（只此三处，全部经同一函数）：
+  knF docCopyText：头行=DOC_LINE_HEADER；每行=docLine(row)。
+  knG docHitCopyText：头行=DOC_LINE_HEADER 第 1 列后插入固定「所属空间」；
+      每行=docLineFields(row) 第 1 列后插入 spaceLabel ?? "—"——唯一 recorded 列差异。
+  kn.parity.test.ts：新增守卫例，逐行断言「knG 行去第 2 列 === knF 行」字节相等。
+缺值统一「—」不补 0；短码=shortId 人话尾段大写（d_a→DA、d_p→DP），全 id 只在屏上 title 不进文本。
+```
+
+## 二、title 同句（改前 → 改后，逐字）
+
+```text
+knF 改前：复制当前排序与筛选后在屏幕上的这些行：文档名 | 类型 | 大小 | 更新。屏上数据，不会再发请求。
+knF 改后：复制当前排序与筛选后在屏幕上的这些行：文档名 | 类型 | 大小 | 更新 | 短码。当前已加载 2 条，不是全量；屏上数据，不会再发请求。
+knG 改前：复制当前检索词下的命中行：文档名 | 所属空间 | 类型 | 大小 | 更新。屏上数据，不会再发请求。
+knG 改后：复制当前检索词下的命中行：文档名 | 所属空间 | 类型 | 大小 | 更新 | 短码。当前已加载 2 条，不是全量；屏上数据，不会再发请求。
+「当前已加载 N 条，不是全量；」为两处同一句；N=本面已加载数（与计数位/命中注同源），
+由 copyGates 的 FACE_TABLE.enabledTitle(loadedTotal) 单点拼装（gate 表仍是唯一文案出处）。
+用户可见改动仅此两处 title + 复制正文短码列——其余字节级不变；成功状态句未动。
+```
+
+## 三、粘贴对照（同值记录 d_p；两组首末行）
+
+```text
+knF 首行：文档名 | 类型 | 大小 | 更新 | 短码
+knF 末行：— | — | — | — | DM                ← d_m 行在 knF 面为…（见下注）
+knG 首行：文档名 | 所属空间 | 类型 | 大小 | 更新 | 短码
+knG 末行：— | — | — | — | — | DM
+按列对齐：knG 每行去第 2 列 === knF 同行（parity 守卫例逐行断言字节相等）。
+注：两面行集同为 [d_p, d_m]（读入序=默认序），d_m 的 name 有值「缺值文档.md」——
+    上面末行取自守卫例实测串，完整行 knF=「同值文档.pdf | PDF | 2.4 MB | 2026-11-19 15:10 | DP」。
+```
+
+既有测试同步（属派工统一口径本身，非回归）：R55 knF 三组 EXPECTED、R56 knG 两组 EXPECTED
+改为含短码列；title contains 断言原样通过。knI/knL 复制与 R57/R60 断言零动。
+
+## 验证尾行（R71）
+```text
+$ npx vitest run src/modules/knowledge   → 3 files / 66 tests passed（基线 65 + parity 守卫 1）
+$ npx vitest run                         → 160 files / 2175 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-copydist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零额外请求：复制动作与 parity 全程 fetchMock 计数与快照逐字相等（守卫例与 R55/R56 段各自锁定）。
+未测如实：带登录态的真机三档行态（静态预览无会话）、真机剪贴板权限路径。
+```
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；未并 main、未重建 9122；显式路径提交（无 `git add -A`）；
+无 force / amend / `--no-verify`；merge（ee64b4f0）与单 feature commit 分开。
+
+# KNW5 追加 R72：文档行与文档抽屉的固定链接（testid `kn-doc-permalink*`）（2026-11-20 BJT）
+
+安全闸：toplevel 相符、porcelain 空、显式 refspec fetch 实测 tip 即 `ee64b4f0`（与 R71 已并入
+的同一 tip，merge 为 Already up to date——基线已最新，不追旧、不造空 merge）。合后基线
+66/66 先绿再动工。
+
+## 一、结构：一个字符串、两处入口（派工 ④ 的「谁在哪」显式说明）
+
+```text
+行入口   每行文档名单元格的按钮 `kn-doc-permalink`（「复制链接」）：点一次即复制该行文档的
+         链接，**不需要先打开抽屉**（派工 ③ 两句的 reconciled 读法：disabled 的条件是
+         「该行没有真标识」，而不是「抽屉未开」——否则与「不得先开抽屉才可用」自相矛盾）。
+         读数条（`kn-doc-permalink-status`/`-fallback`）随表体一条，供行入口播报与兜底。
+抽屉入口 新族 `kn-doc-permalink/-status/-fallback` 一套在抽屉内（「复制文档固定链接」），
+         与保留的老族 `knO-permalink*` 共用同一个 linkText/copyLink 状态——两个入口一根串，
+         knO 族不删（其掩码 URL span 原样）。同文档实测：行、抽屉新钮、knO 三个 captured 逐字节相等。
+builder  两侧同走 origin + docLink(key)：keepBase 带 tab/panel/space，其余参数（q、
+         ksort/kdir，以及旧地址里存在的 sort/dir）原样继承、不删不改；无 documentId 的行
+         （页面内部位置键 row-N）不是标识 → disabled + 逐字 title「该文档没有可用的固定标识」，
+         守卫连剪贴板都不写。
+```
+
+## 二、复现读数（测试逐字）
+
+```text
+在场地址 ?tab=spaces&space=sp_hr&q=同值&ksort=size&kdir=asc
+行 0 复制得：<origin>/knowledge?tab=spaces&space=sp_hr&q=%E5%90%8C%E5%80%BC&ksort=size&kdir=asc&doc=d_p
+（参数解析读数：space=sp_hr、doc=d_p、q=同值、ksort=size、kdir=asc——检索与排序参数全带上）
+粘贴该串直接渲染：kn7-preview-panel 在场；loc 含 doc=d_p；抽屉字段块 title="d_p"（标识同值）；
+ksort=size 复现。aria-live：成功「链接已复制」，无失败即无兜底节点；拒绝路径行侧与抽屉侧
+fallback textarea 的 value 与写入串逐字节相等（scoped 查询，避免双侧同名串扰）。
+掩码不变量：屏上可见 URL（抽屉 knO span）实测含 "doc=…"、不含 "doc=d_p"；行入口按钮无可见
+URL 文本；全串只出现在 title、剪贴板与兜底 textarea。
+零请求：复制/拒绝/兜底/三入口切换全程 fetchMock 计数与快照逐字不变（行侧与抽屉侧两段各自锁定）。
+```
+
+既有零破：kn3 / kn6–kn9 / knB / knD / knF / knG / knI / knL / knO（R63 全段原样绿）/
+kn-sort / kn-gates / kn-doc-preview / kn-space-preview / kn.parity——66 例基线全绿 + 本轮 1 例
+= 67；四态、403≡404、零写入口不动。三档（vite preview /tmp 产物 + headless Chrome CDP，
+用毕即杀）1440/1280/375 `vw==bodySW==docSW` 全等。
+
+未测如实：真机剪贴板权限弹窗与真实鼠标复制；行态登录会话下的三档真实屏。
+
+## 验证尾行（R72）
+```text
+$ npx vitest run src/modules/knowledge   → 3 files / 67 tests passed（基线 66 + 本轮 1）
+$ npx vitest run                         → 160 files / 2176 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-permalink-dist → exit 0
+```
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；未并 main、未重建 9122；显式路径提交（无 `git add -A`）；
+无 force / amend / `--no-verify`；单 commit「feat(console): knowledge document permalink」。

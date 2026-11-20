@@ -77,6 +77,8 @@ import {
   listActionGate,
   parseRunDir,
   parseRunSort,
+  resetFiltersTitle,
+  resetRunFilters,
   sortRunRows,
   type ListGate,
   type RunSortDir,
@@ -103,6 +105,8 @@ import {
 } from "./runs";
 import { forcedStateOf, useRunsData } from "./useRunsData";
 import { useRunDetail, type DetailOutcome } from "./useRunDetail";
+import { COST_CALIBER_TEXT, costCaliberTitle } from "../metrics/costCaliberNote";
+import { RUN_NOTES_TITLE, RUN_NOTE_ROWS } from "./runNotes";
 
 /** 「—」 with the reason in its title: a gap reads as a gap, never as a zero. */
 function Dashed({ reason }: { reason: string }): ReactNode {
@@ -366,6 +370,61 @@ function RunListCopy({
 }
 
 /**
+ * The permalink for the run currently selected in the address bar (`?run=`).
+ * It only re-strings parameters that are already on screen, so copying adds no
+ * request; pasting it back lands on the same filters and the same record.
+ */
+function RunPermalink({ href }: { href: string | null }): ReactNode {
+  const [status, setStatus] = useState<"idle" | "done" | "failed">("idle");
+  const [body, setBody] = useState("");
+  const disabled = href === null;
+  const copy = () => {
+    if (href === null) return;
+    setBody(href);
+    copyTextToClipboard(href).then((ok) => setStatus(ok ? "done" : "failed"));
+  };
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="run-permalink-bar">
+      <Button
+        size="sm"
+        outlined
+        onClick={copy}
+        disabled={disabled}
+        data-testid="run-permalink"
+        title={
+          disabled
+            ? "先选中一条运行再复制"
+            : "复制这条运行的链接：保留当前筛选、排序与运行标识，粘到地址栏会回到同一页并选中它。"
+        }
+      >
+        <Copy className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+        复制运行链接
+      </Button>
+      <span className="min-w-0 text-xs text-muted-foreground" role="status" aria-live="polite" data-testid="run-permalink-status">
+        {status === "done"
+          ? "链接已复制"
+          : status === "failed"
+            ? "链接没复制成功：下面的文本可以自己选中复制"
+            : disabled
+              ? "选中一条运行（展开或打开详情）之后才能复制它的链接。"
+              : "只拼地址栏已有参数，复制或粘贴都不会再读一次服务。"}
+      </span>
+      {status === "failed" ? (
+        <div className="w-full min-w-0" data-testid="run-permalink-fallback">
+          <textarea
+            readOnly
+            value={body}
+            aria-label="运行链接"
+            data-testid="run-permalink-fallback-text"
+            className="h-16 w-full resize-y rounded-md border border-border bg-card p-2 font-mono text-xs text-foreground"
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/**
  * A sortable column header: the wrapper carries aria-sort, the control is a
  * real button so Enter and Space work without extra key handling.
  */
@@ -413,6 +472,7 @@ function ListRows({
   sortDir,
   onSort,
   sortDisabled,
+  selectedId,
 }: {
   rows: RunRow[];
   names: Map<string, string>;
@@ -420,6 +480,8 @@ function ListRows({
   sortDir: RunSortDir;
   onSort: (key: RunSortKey) => void;
   sortDisabled: boolean;
+  /** The run the address bar points at (`?run=`); that row is marked, not expanded. */
+  selectedId: string | null;
   /**
    * R29: a row is a real anchor whose href keeps the path shape QA counts
    * (`a[href*="/runs/"]`) without inventing a route. The address is
@@ -454,12 +516,15 @@ function ListRows({
             const reason = failureSummary(row);
             const base = `run5-row-${index}`;
             const open = openId === row.runId;
+            const isSelected = selectedId !== null && selectedId === row.runId;
             return (
               <li
                 key={row.runId}
-                className="min-w-0"
+                className={`min-w-0${isSelected ? " bg-muted/40" : ""}`}
                 data-testid={base}
                 data-status={row.status ?? "unknown"}
+                data-selected={isSelected ? "1" : undefined}
+                aria-current={isSelected ? "true" : undefined}
                 onKeyDown={(event) => {
                   if (!open || event.key !== "Escape") return;
                   event.stopPropagation();
@@ -706,6 +771,50 @@ function RunSourceBar({ source }: { source: ReturnType<typeof runSource> }) {
   );
 }
 
+/**
+ * The footer notes: seven rows of 「口径名 · 实际路径 · 计算范围 · 缺值策略」.
+ * Collapsed by default — the body is not rendered while closed, so a reader
+ * meets a button, not a wall. Opening or closing asks the service for nothing.
+ */
+function RunNotes(): ReactNode {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="min-w-0" data-testid="run-notes">
+      <Button
+        size="sm"
+        outlined
+        type="button"
+        aria-expanded={open}
+        aria-controls="run-notes-body"
+        data-testid="run-notes-toggle"
+        onClick={() => setOpen((value) => !value)}
+      >
+        {open ? "收起口径说明" : RUN_NOTES_TITLE}
+      </Button>
+      {open ? (
+        <div id="run-notes-body" className="mt-2 flex flex-col gap-1" data-testid="run-notes-body">
+          {RUN_NOTE_ROWS.map((note) => (
+            <p
+              key={note.key}
+              className="min-w-0 break-words text-xs leading-5 text-muted-foreground"
+              data-testid={`run-note-${note.key}`}
+              title={`${note.path}｜${note.scope}｜${note.missing}`}
+            >
+              <span className="font-medium text-foreground">{note.area}</span>
+              <span aria-hidden="true"> · </span>
+              <span>{note.path}</span>
+              <span aria-hidden="true"> · </span>
+              <span>{note.scope}</span>
+              <span aria-hidden="true"> · </span>
+              <span>{note.missing}</span>
+            </p>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function RunsModulePage() {
   const [params, setParams] = useSearchParams();
   const { pathname, state: locationState } = useLocation();
@@ -740,6 +849,25 @@ export function RunsModulePage() {
     state: forced,
   });
 
+  // One table drives both the shareable path and this reset; a raw value the
+  // page could not parse still occupies a filter slot, so it is cleared too.
+  const filterReset = resetRunFilters(new URLSearchParams(params));
+  const unrecognizedFilters = (() => {
+    const raws: string[] = [];
+    const windowRaw = params.get("window");
+    if (windowRaw !== null && windowRaw !== sinceKeyOf(windowRaw)) raws.push(windowRaw);
+    const statusRaw = params.get("status");
+    if (statusRaw !== null && statusFilterOf(statusRaw) !== statusRaw) raws.push(statusRaw);
+    const stateRaw = params.get("state");
+    if (stateRaw !== null && forced === null) raws.push(stateRaw);
+    return raws;
+  })();
+  const resetTitle = resetFiltersTitle(filterReset.removed, unrecognizedFilters);
+  const resetFilters = () => {
+    if (filterReset.removed.length === 0) return;
+    setParams(filterReset.next, { replace: true, state: locationState ?? null });
+  };
+
   const data = useRunsData(forced, { status, sinceKey, employeeId: employee });
   const { phase, rows, cursor, answeredBy, unreadable, failure, forced: isForced } = data;
 
@@ -768,6 +896,10 @@ export function RunsModulePage() {
   // Employee names decorate the list as well as the detail line. The directory
   // is a side-read for labels only: if it fails, the 8-character code stays as
   // the honest fallback and the run answer is untouched.
+  // Preview and detail read the same six fields through one helper, so the two
+  // renderings cannot drift apart (missing values say the same sentence).
+  const detailView = detail.k === "ready" ? runPreview(detail.run, names) : null;
+
   useEffect(() => {
     if (forced !== null) return;
     let alive = true;
@@ -935,6 +1067,16 @@ export function RunsModulePage() {
           >
             重新读取
           </Button>
+          <Button
+            size="sm"
+            outlined
+            onClick={resetFilters}
+            disabled={filterReset.removed.length === 0}
+            data-testid="run-reset-filters"
+            title={resetTitle ?? "当前没有可清除的筛选条件"}
+          >
+            清除筛选
+          </Button>
         </div>
       </div>
 
@@ -995,8 +1137,8 @@ export function RunsModulePage() {
                 <h2 className="min-w-0 break-words text-base font-semibold" title={detail.run.runId}>
                   {runCode(detail.run.runId)}
                 </h2>
-                <p className="mt-0.5 min-w-0 break-words text-xs text-muted-foreground">
-                  {`${statusLabel(detail.run.status)} · 开始 ${beijingMinute(detail.run.startedAt).text ?? "—"} · 耗时 ${elapsedMinute(detail.run.startedAt, detail.run.endedAt).text ?? "—"}`}
+                <p className="mt-0.5 min-w-0 break-words text-xs text-muted-foreground" data-testid="run5-detail-summary">
+                  {`${detailView?.status.text ?? "—"} · 开始 ${detailView?.started.text ?? "—"} · 耗时 ${detailView?.elapsed.text ?? "—"}`}
                 </p>
               </div>
               <Button size="sm" outlined onClick={closeRun} prefix={<X className="h-3.5 w-3.5" />} data-testid="run5-detail-close">
@@ -1006,7 +1148,9 @@ export function RunsModulePage() {
 
             <div className="grid min-w-0 gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
               <DetailField label="状态">
-                <Badge tone={statusTone(detail.run.status)} data-testid="run5-detail-status">{statusLabel(detail.run.status)}</Badge>
+                <span title={detailView?.status.title}>
+                  <Badge tone={statusTone(detail.run.status)} data-testid="run5-detail-status">{detailView?.status.text ?? "—"}</Badge>
+                </span>
               </DetailField>
               <DetailField label="成本">
                 <CostCell row={detail.run} testId="run5-detail-cost" />
@@ -1022,9 +1166,9 @@ export function RunsModulePage() {
                 {detail.run.attemptNo === undefined ? <Dashed reason="服务没有给出尝试次数" /> : `第 ${detail.run.attemptNo} 次`}
               </DetailField>
               <DetailField label="结束">
-                {beijingMinute(detail.run.endedAt).text ?? (
-                  <Dashed reason="还没有结束时间：这条运行可能仍在进行，或服务未记录结束" />
-                )}
+                <span data-testid="run5-detail-ended" title={detailView?.ended.title}>
+                  {detailView?.ended.text ?? "—"}
+                </span>
               </DetailField>
               <DetailField label="失败原因">
                 <span title={failureSummary(detail.run).reason || undefined}>
@@ -1035,8 +1179,8 @@ export function RunsModulePage() {
                 <span title={detail.run.taskId ?? undefined}>{taskLabel(detail.run.taskId)}</span>
               </DetailField>
               <DetailField label="员工">
-                <span title={detail.run.employeeId ?? undefined}>
-                  {employeeLabel(detail.run.employeeId, names)}
+                <span data-testid="run5-detail-employee" title={detailView?.employee.title}>
+                  {detailView?.employee.text ?? "—"}
                 </span>
               </DetailField>
               <DetailField label="事件">
@@ -1110,11 +1254,21 @@ export function RunsModulePage() {
           names={names}
           hrefOf={hrefOf}
           previewGate={listGate.preview}
+          selectedId={selected}
           sortKey={rsort}
           sortDir={rdir}
           onSort={chooseSort}
           sortDisabled={false}
         />
+      ) : null}
+      {phase === "ready" ? (
+        <p
+          className="min-w-0 break-words text-xs text-muted-foreground"
+          data-testid="run-cost-caliber-note"
+          title={costCaliberTitle("runs")}
+        >
+          {COST_CALIBER_TEXT}
+        </p>
       ) : null}
       {rsort !== null && phase === "ready" ? (
         <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="run-sort-scope-note">
@@ -1132,9 +1286,13 @@ export function RunsModulePage() {
         />
       ) : null}
 
+      {forced === null ? <RunPermalink href={selected ? hrefOf(selected) : null} /> : null}
+
       {phase === "ready" && rows.length > 0 ? (
         <TechnicalDisclosure lines={technical} testId="run5-list-details" />
       ) : null}
+
+      {forced === null && (phase === "ready" || phase === "empty") ? <RunNotes /> : null}
     </div>
   );
 }

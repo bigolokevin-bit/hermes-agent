@@ -1031,3 +1031,109 @@ describe("DutyPage timeseries range contract", () => {
     expect(rows[0].textContent).toContain("11/17");
   });
 });
+
+describe("DutyPage trend window caliber note", () => {
+  const q = (sel: string) => container.querySelector(sel);
+  async function until(cond: () => boolean, label: string) {
+    for (let i = 0; i < 120; i += 1) {
+      if (cond()) return;
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 10));
+      });
+    }
+    throw new Error(`timeout: ${label}`);
+  }
+  const points30 = Array.from({ length: 30 }, (_, i) => ({
+    ts: `2026-11-${String(i + 1).padStart(2, "0")}T00:00:00.000Z`,
+    label: `11/${i + 1}`,
+    value: 1,
+  }));
+  function wire30() {
+    fetchJSON.mockImplementation((url: string) => {
+      if (url.includes("/workbench/timeseries")) {
+        return Promise.resolve({ asOf: WB_ASOF, available: true, points: points30, totals: { metric: "runs", value: 30 } });
+      }
+      return Promise.resolve(ok(url));
+    });
+  }
+  const text = (sel: string) => q(sel)?.textContent ?? "";
+
+  it("explains the trimmed window and keeps the four labels on the same 14 days", async () => {
+    wire30();
+    await render(<DutyPage />);
+    await until(() => text('[data-testid="duty-trend-total"]') === "14", "trimmed total");
+    expect(text('[data-testid="duty-trend-window-note"]')).toBe("数据取近 30 天，本卡只显示最近 14 天");
+    const card = q('[data-testid="ov6-trend"]') ?? q('[data-testid="duty-trend"]');
+    expect(card?.textContent).toContain("近 14 天运行");
+    expect(text('[data-testid="duty-trend-summary"]').startsWith("近 14 天：")).toBe(true);
+    expect(q('[data-testid="duty-trend-figure"]')?.getAttribute("aria-label")).toBe("近 14 天每日运行次数");
+    expect(card?.textContent).not.toContain("近 30 天运行");
+    const toggle = q('[data-testid="duty-trend-table-toggle"]') as HTMLButtonElement;
+    await act(async () => {
+      toggle.click();
+    });
+    await act(async () => {});
+    expect(q('[data-testid="duty-trend-table"] caption')?.textContent).toBe("近 14 天每日运行次数（北京时间）");
+    const rows = q('[data-testid="duty-trend-table"]')?.querySelectorAll("tbody tr") ?? [];
+    expect(rows.length).toBe(14);
+  });
+
+  it("drops the 30 day sentence for 7d and 30d, and labels them by their own window", async () => {
+    wire30();
+    await render(<DutyPage />);
+    await until(() => text('[data-testid="duty-trend-total"]') !== "—", "initial summary");
+    const seven = q('[data-testid="duty-range-7d"]') as HTMLButtonElement;
+    await act(async () => {
+      seven.click();
+    });
+    await until(
+      () => q('[data-testid="duty-trend-figure"]')?.getAttribute("aria-label") === "近 7 天每日运行次数",
+      "7d label",
+    );
+    expect(q('[data-testid="duty-trend-window-note"]')).toBeNull();
+    expect(text('[data-testid="duty-trend-summary"]')).not.toContain("近 14 天");
+    const thirty = q('[data-testid="duty-range-30d"]') as HTMLButtonElement;
+    await act(async () => {
+      thirty.click();
+    });
+    await until(
+      () => q('[data-testid="duty-trend-figure"]')?.getAttribute("aria-label") === "近 30 天每日运行次数",
+      "30d label",
+    );
+    expect(q('[data-testid="duty-trend-window-note"]')).toBeNull();
+  });
+
+  it("uses the current range in the loading summary instead of a hardcoded 14", async () => {
+    fetchJSON.mockImplementation((url: string) => {
+      if (url.includes("/workbench/timeseries")) return new Promise(() => {});
+      return Promise.resolve(ok(url));
+    });
+    await render(<DutyPage />);
+    await until(
+      () => text('[data-testid="duty-trend-summary"]').includes("近 14 天"),
+      "default loading summary",
+    );
+    const seven = q('[data-testid="duty-range-7d"]') as HTMLButtonElement;
+    await act(async () => {
+      seven.click();
+    });
+    await until(
+      () => text('[data-testid="duty-trend-summary"]').includes("近 7 天"),
+      "7d loading summary",
+    );
+    expect(text('[data-testid="duty-trend-summary"]')).toContain("正在读取近 7 天的运行记录");
+    expect(text('[data-testid="duty-trend-summary"]')).not.toContain("近 14 天");
+  });
+
+  it("adds no request of its own", async () => {
+    wire30();
+    await render(<DutyPage />);
+    await until(() => text('[data-testid="duty-trend-total"]') === "14", "trimmed total");
+    const calls = fetchJSON.mock.calls.length;
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 40));
+    });
+    expect(fetchJSON.mock.calls.length).toBe(calls);
+    expect(q('[data-testid="duty-trend-window-note"]')).not.toBeNull();
+  });
+});

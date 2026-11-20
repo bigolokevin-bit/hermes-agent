@@ -16,6 +16,7 @@ vi.mock("../models/fetchJson", () => ({ fetchJsonStrict: api.fetchJsonStrict }))
 const clip = vi.hoisted(() => ({ copyTextToClipboard: vi.fn() }));
 vi.mock("@/lib/clipboard", () => ({ copyTextToClipboard: clip.copyTextToClipboard }));
 import { VersionHealthSurface } from "./VersionHealthSurface";
+import { COPY_SCOPE_TEXT } from "../health/copyScope";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -166,6 +167,8 @@ describe("VersionHealthSurface", () => {
     await render();
     await waitFor(() => !!container.querySelector("[data-testid='ver5-table']"), "table");
     const before = api.fetchJsonStrict.mock.calls.length;
+    expect(container.querySelector("[data-testid='sys-copy-scope']")?.textContent).toBe(COPY_SCOPE_TEXT);
+    expect(container.querySelector("[data-testid='ver-copy']")?.getAttribute("title")).toContain(COPY_SCOPE_TEXT);
     expect(text()).not.toContain("bff-read-time");
     expect(container.querySelector("[data-testid='ver5-health-asof']")?.getAttribute("title")).toContain("bff-read-time");
 
@@ -215,6 +218,7 @@ describe("VersionHealthSurface", () => {
     expect(button.disabled).toBe(true);
     expect(button.getAttribute("title")).toContain("版本读口未接入");
     expect(button.getAttribute("title")).toContain("GAP-VER5-01");
+    expect(button.getAttribute("title")).toContain(COPY_SCOPE_TEXT);
     expect(text()).not.toContain("GAP-VER5-01");
   });
 

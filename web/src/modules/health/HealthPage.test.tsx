@@ -135,6 +135,62 @@ describe("HealthPage", () => {
     expect(container.querySelector('[data-testid="hlt5-list"]')).toBeTruthy();
   });
 
+
+  it("refreshes the service list and all probes once, keeping old data while busy", async () => {
+    let phase: "init" | "refresh" = "init";
+    const counts = { health: 0, console: 0, runtime: 0, domain: 0 };
+    const pending: Array<() => void> = [];
+    const payload = (key: keyof typeof counts) => {
+      if (key === "health") return { ok: true, asOf: "2026-11-19T06:00:00Z", sources: [{ id: "console", name: "控制台服务", status: "ok" }] };
+      if (key === "console") return { status: "healthy", asOf: "2026-11-19T06:00:00Z" };
+      if (key === "runtime") return { status: "healthy", asOf: "2026-11-19T06:00:00Z" };
+      return { items: [], asOf: "2026-11-19T06:00:00Z" };
+    };
+    fetchJSON.mockImplementation((url: string) => {
+      const key = url.includes("/api/health") ? "health" : url.includes("__health-probe__") ? "console" : url.includes("hermes-summary") ? "runtime" : "domain";
+      counts[key] += 1;
+      if (phase === "init") return Promise.resolve(payload(key));
+      return new Promise((resolve) => { pending.push(() => resolve(payload(key))); });
+    });
+    await render();
+    expect(counts).toEqual({ health: 1, console: 1, runtime: 1, domain: 1 });
+    phase = "refresh";
+    await act(async () => { (container.querySelector("[data-testid='sys-refresh']") as HTMLButtonElement).click(); });
+    expect(container.querySelector("[data-testid='sys-busy-note']")?.textContent).toContain("更新中");
+    expect(container.querySelector("[data-testid='sys-refresh']")?.getAttribute("aria-busy")).toBe("true");
+    expect(container.querySelector("[data-testid='hlt5-list']")).toBeTruthy();
+    expect(container.querySelector("[data-testid='sys3-table']")).toBeTruthy();
+    await act(async () => { pending.splice(0).forEach((resolve) => resolve()); await Promise.resolve(); });
+    await act(async () => { await Promise.resolve(); });
+    expect(counts).toEqual({ health: 2, console: 2, runtime: 2, domain: 2 });
+    expect(container.querySelector("[data-testid='sys-updated-at']")?.textContent).toContain("刷新完成于");
+    expect(container.querySelector("[data-testid='sys-updated-at']")?.textContent).toContain("读取时刻");
+  });
+
+  it("keeps the old batch and shows a copyable refresh error when the health read fails", async () => {
+    let phase: "init" | "refresh" = "init";
+    const pending: Array<() => void> = [];
+    fetchJSON.mockImplementation((url: string) => {
+      if (phase === "init") {
+        if (url.includes("/api/health")) return Promise.resolve({ ok: true, asOf: "2026-11-19T06:00:00Z", sources: [{ id: "console", name: "控制台服务", status: "ok" }] });
+        return Promise.resolve({ status: "healthy", asOf: "2026-11-19T06:00:00Z" });
+      }
+      if (url.includes("/api/health")) return Promise.reject(new ApiError("boom", { status: 500, body: "", url, requestId: "req-refresh-500" }));
+      return new Promise((resolve) => { pending.push(() => resolve({ status: "healthy", asOf: "2026-11-19T06:00:00Z" })); });
+    });
+    await render();
+    phase = "refresh";
+    await act(async () => { (container.querySelector("[data-testid='sys-refresh']") as HTMLButtonElement).click(); });
+    await act(async () => { pending.splice(0).forEach((resolve) => resolve()); await Promise.resolve(); });
+    await act(async () => { await Promise.resolve(); });
+    expect(container.querySelector("[data-testid='sys-refresh-error']")?.textContent).toContain("请求编号");
+    expect(container.querySelector("[data-testid='sys-refresh-request-id']")?.textContent).toContain("req-refresh-500");
+    expect(container.querySelector("[data-testid='sys-refresh-copy']")).toBeTruthy();
+    expect(container.querySelector("[data-testid='sys-updated-at']")).toBeNull();
+    expect(container.querySelector("[data-testid='sys3-table']")).toBeTruthy();
+    expect(container.querySelector("[data-testid='hlt5-list']")).toBeTruthy();
+  });
+
   it("previews loading and empty without fetching", async () => {
     window.history.replaceState({}, "", "/?state=empty");
     await render();

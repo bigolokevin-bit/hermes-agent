@@ -2727,7 +2727,7 @@ describe("audG - the shareable filter summary", () => {
     expect(button.getAttribute("aria-disabled")).toBe("true");
     // audL made the control permanent: the empty-state sentence is now the
     // first part of a title that also says why there is nothing to hand over.
-    expect(button.getAttribute("title")).toContain("当前没有筛选条件可复制");
+    expect(button.getAttribute("title")).toContain("当前没有可复制的筛选条件");
     expect(button.getAttribute("title")).toContain("控件常驻");
     // audL: the rule is on the card, not only inside the button
     const rule = document.querySelector("[data-testid='audG-filter-copy-rule']")!.textContent ?? "";
@@ -5084,4 +5084,188 @@ describe("audR - the address is the only source of truth", () => {
       await new Promise((resolve) => setTimeout(resolve, 30));
     });
   }
+});
+
+/**
+ * audS — R49 ①②整改：`audG-filter-copy` 常驻挂载 + 三面（列表 / 行内预览 / 事件详情）
+ * 四态同句的行样本。
+ *
+ * ① 逐档在场表：加载中、有记录、空表、读取失败、403 被拒、404 路由缺失六档下，
+ *   控件都在 DOM 里（R49 报「未挂载」时，实测的差别在 title 措辞而不是在场与否），
+ *   无筛选口径那几档 disabled 且 title 以工单口径「当前没有可复制的筛选条件」开头。
+ * ② 同一 fetch 桩、同一失败：三处渲染出的原因句逐字 `toBe` 相等（403≡404 同体也按
+ *   三面各自断言），状态标签与原因句同时取——差异只剩「哪一格在说话」，不是「有几种说法」。
+ */
+describe("audS - the copy control is resident and the three faces say one thing", () => {
+  const rows = (n: number): unknown[] =>
+    Array.from({ length: n }, (_u, i) => ({
+      eventId: `evt_s${i + 1}`,
+      action: "task.created",
+      occurredAt: "2026-11-19T01:20:00Z",
+      outcome: "succeeded",
+      actor: { type: "system", id: "employee-api" },
+      requestId: `req-s${i + 1}`,
+    }));
+
+  const copyButton = (): HTMLButtonElement | null =>
+    document.querySelector<HTMLButtonElement>("[data-testid='audG-filter-copy']");
+  const faceSentence = (face: string, phase: string): string | null =>
+    document
+      .querySelector(`[data-testid='audF-state-${face}-${phase}']`)
+      ?.getAttribute("data-aud-sentence") ?? null;
+  const faceLabel = (face: string, phase: string): string | null =>
+    document.querySelector(`[data-testid='audF-state-${face}-${phase}']`)?.getAttribute("data-audf-label") ?? null;
+
+  async function mount(entry: string, handler: (url: string) => Promise<unknown>): Promise<void> {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(handler);
+    await render(entry, <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 40));
+    });
+  }
+
+  it("① 在场表：六档都挂着这个控件，无口径那几档按工单句子说明原因", async () => {
+    const table: Record<string, string> = {};
+    let release: ((value: unknown) => void) | null = null;
+    await mount("/audit?window=7d", () => new Promise((resolve) => { release = resolve; }));
+    table.loading = `${copyButton() ? "present" : "ABSENT"}/${copyButton()?.disabled ? "off" : "live"}`;
+    await act(async () => {
+      release?.({ items: rows(2), nextCursor: null });
+    });
+    await waitFor(() => !skeleton(), "ready");
+    table.ready_noFilter = `${copyButton() ? "present" : "ABSENT"}/${copyButton()?.disabled ? "off" : "live"}`;
+    expect(copyButton()!.getAttribute("title")).toContain("当前没有可复制的筛选条件");
+    expect(copyButton()!.getAttribute("title")).toContain("控件常驻");
+    // 加载中带着口径：控件不仅在，还按得动（它抄的是地址，不是行集）
+    let hold: ((value: unknown) => void) | null = null;
+    await mount("/audit?window=7d&type=task.created", () => new Promise((resolve) => { hold = resolve; }));
+    table.loading_withFilter = `${copyButton() ? "present" : "ABSENT"}/${copyButton()?.disabled ? "off" : "live"}`;
+    await act(async () => {
+      hold?.({ items: rows(2), nextCursor: null });
+    });
+    await waitFor(() => !skeleton(), "the held leg settled");
+
+    await mount("/audit?window=7d", async () => ({ items: [], nextCursor: null }));
+    await waitFor(() => document.querySelector("[data-testid='aud01-empty']") !== null, "empty");
+    table.empty_noFilter = `${copyButton() ? "present" : "ABSENT"}/${copyButton()?.disabled ? "off" : "live"}`;
+
+    await mount("/audit?window=7d&type=task.created", async (url) => {
+      throw new ApiError("down", { status: 503, body: "{}", url: String(url), requestId: "rid-s1" });
+    });
+    await waitFor(() => document.querySelector("[data-testid='aud01-error']") !== null, "error");
+    table.error_withFilter = `${copyButton() ? "present" : "ABSENT"}/${copyButton()?.disabled ? "off" : "live"}`;
+
+    await mount("/audit?window=7d&actor=employee-api", async (url) => {
+      throw new ApiError("closed", { status: 403, body: '{"code":"console.forbidden"}', url: String(url), requestId: "rid-s2" });
+    });
+    await waitFor(() => document.querySelector("[data-testid='aud01-denied']") !== null, "denied 403");
+    table.denied403_withFilter = `${copyButton() ? "present" : "ABSENT"}/${copyButton()?.disabled ? "off" : "live"}`;
+
+    await mount("/audit?window=7d&actor=employee-api", async (url) => {
+      throw new ApiError("gone", { status: 404, body: '{"code":"console.unknown_route"}', url: String(url), requestId: "rid-s3" });
+    });
+    await waitFor(() => document.querySelector("[data-testid='aud01-denied']") !== null, "denied 404");
+    table.denied404_withFilter = `${copyButton() ? "present" : "ABSENT"}/${copyButton()?.disabled ? "off" : "live"}`;
+
+    expect(Object.values(table).every((cell) => cell.startsWith("present/"))).toBe(true);
+    // 无口径那几档：挂着、按不动、并用工单那句话说明原因
+    expect(table.loading).toBe("present/off");
+    expect(table.ready_noFilter).toBe("present/off");
+    expect(table.empty_noFilter).toBe("present/off");
+    expect(table.loading_withFilter).toBe("present/live");
+    expect(table.error_withFilter).toBe("present/live");
+    expect(table.denied403_withFilter).toBe("present/live");
+    expect(table.denied404_withFilter).toBe("present/live");
+    // 抄的是问题本身：被拒那一档也能抄，且抄完不多发一次请求
+    const clip: { calls: string[] } = { calls: [] };
+    Object.defineProperty(window, "isSecureContext", { configurable: true, value: true });
+    Object.defineProperty(window.navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: async (text: string) => void clip.calls.push(text) },
+    });
+    const before = urls();
+    await act(async () => {
+      copyButton()!.click();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+    expect(clip.calls[0]).toContain("操作者：employee-api");
+    expect(clip.calls[0]).toContain("请求：/agent-api/api/audit?");
+    expect(clip.calls[0]).not.toMatch(/https?:|token/);
+    expect(urls()).toEqual(before);
+  });
+
+  it("② 三面同句（503）：列表、行内预览、事件详情的原因句与状态标签逐字相等", async () => {
+    await mount("/audit?window=7d&preview=evt_s1&detail=evt_s1", async (url) => {
+      if (String(url).startsWith("/agent-api/api/audit-detail")) {
+        throw new ApiError("down", { status: 503, body: "{}", url: String(url), requestId: "rid-shared" });
+      }
+      return { items: rows(2), nextCursor: null };
+    });
+    await waitFor(() => document.querySelector("[data-testid='audF-preview-error']") !== null, "the preview leg");
+    await waitFor(() => document.querySelector("[data-testid='aud02-detail-error']") !== null, "the record leg");
+    const preview = faceSentence("preview", "error");
+    const record = faceSentence("detail", "error");
+    expect(preview).toBe(record);
+    expect(preview).toBe("审计服务在处理时出了错，请稍后重试。");
+    expect(faceLabel("preview", "error")).toBe(faceLabel("detail", "error"));
+    expect(faceLabel("detail", "error")).toBe("读取没有完成");
+    // 面板上印的话也一致（不是只有探针一致）
+    expect(document.querySelector("[data-testid='audF-preview-error-sentence']")!.textContent)
+      .toBe(document.querySelector("[data-testid='aud02-detail-error-sentence']")!.textContent);
+    // 列表侧同一状态码走的是同一句原因（那一面此刻读成功了，另起一腿单独看）
+    const listLeg = await (async () => {
+      await mount("/audit?window=7d", async (url) => {
+        throw new ApiError("down", { status: 503, body: "{}", url: String(url), requestId: "rid-shared" });
+      });
+      await waitFor(() => document.querySelector("[data-testid='aud01-error']") !== null, "the list leg");
+      return faceSentence("list", "error");
+    })();
+    expect(listLeg).toBe(preview);
+    expect(document.querySelector("[data-testid='aud01-error-sentence']")!.textContent).toBe(preview);
+  });
+
+  it("② 三面同体（403≡404）：三种面板对两种状态码给同一份话", async () => {
+    const leg = async (status: number): Promise<Record<string, string | null>> => {
+      await mount("/audit?window=7d&preview=evt_s1&detail=evt_s1", async (url) => {
+        throw new ApiError("closed", { status, body: '{"code":"console.forbidden"}', url: String(url), requestId: "rid-equal" });
+      });
+      await waitFor(() => document.querySelector("[data-testid='aud01-denied']") !== null, `denied ${status}`);
+      return {
+        list: document.querySelector("[data-testid='aud01-denied']")?.textContent ?? null,
+        listSentence: faceSentence("list", "denied"),
+        label: faceLabel("list", "denied"),
+      };
+    };
+    const closed = await leg(403);
+    const gone = await leg(404);
+    expect(gone.list).toBe(closed.list);
+    expect(gone.listSentence).toBe(closed.listSentence);
+    expect(gone.label).toBe(closed.label);
+    expect(closed.listSentence).toBe("暂时无法查看审计事件");
+    // 被拒时不冒充 0 条，也不给可点的导出
+    expect(closed.list).not.toMatch(/0 条/);
+    expect(document.querySelector<HTMLButtonElement>("[data-testid='aud01-export']")!.disabled).toBe(true);
+  });
+
+  it("② 三面同句（行内预览与被拒的记录）：预览里的记录态与详情面板同一句话", async () => {
+    await mount("/audit?window=7d&preview=evt_s1&detail=evt_s1", async (url) => {
+      if (String(url).startsWith("/agent-api/api/audit-detail")) {
+        throw new ApiError("closed", { status: 403, body: '{"code":"console.forbidden"}', url: String(url), requestId: "rid-pair" });
+      }
+      return { items: rows(2), nextCursor: null };
+    });
+    await waitFor(() => document.querySelector("[data-testid='audF-preview-denied']") !== null, "the preview denied leg");
+    const preview = faceSentence("preview", "denied");
+    const record = faceSentence("detail", "denied");
+    expect(preview).toBe(record);
+    expect(preview).toBe("暂时无法查看审计事件");
+    expect(document.querySelector("[data-testid='audF-preview-denied']")!.textContent)
+      .toBe(document.querySelector("[data-testid='aud02-detail-denied']")!.textContent);
+  });
 });

@@ -13,6 +13,7 @@ import {
 import { failureRead, publishSourceRead, topLevelIsoAsOf } from "./sourceReads";
 import { SERVICE_GAP, findService, readServiceParam, writeServiceParam } from "./serviceLink";
 import { SystemStatePanel } from "./SystemStatePanel";
+import type { RefreshFailure } from "./systemRefresh";
 
 type Preview = "loading" | "empty" | "error" | null;
 type CountKey = "normal" | "degraded" | "unreachable" | "unknown";
@@ -83,7 +84,7 @@ function tone(state: Sys3State): "success" | "warning" | "destructive" | "outlin
   return "outline";
 }
 
-export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Preview; onRetry?: () => void }) {
+export function SystemHealthSurface({ preview = null, onRetry, refreshTick = 0, onRefreshResult, hideRefresh = false }: { preview?: Preview; onRetry?: () => void; refreshTick?: number; onRefreshResult?: (failure: RefreshFailure | null) => void; hideRefresh?: boolean }) {
   const [state, setState] = useState<State>(() => {
     if (preview === "loading") return { k: "loading" };
     if (preview === "empty") return { k: "empty", read: { rows: [], asOf: null, asOfReason: "预览空态没有采集时刻。", asOfTitle: "上游没带采集时刻，不用本机时间顶替", overall: "待核实", overallReason: "预览空态没有整体状态。", sources: 0 } };
@@ -96,6 +97,9 @@ export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Pre
   const [svc, setSvc] = useState<string | null>(() => readServiceParam(window.location.search, window.location.hash));
   const [targetKey, setTargetKey] = useState<string | null>(null);
   const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
+  const hasDataRef = useRef(false);
+  const onResultRef = useRef(onRefreshResult);
+  useEffect(() => { onResultRef.current = onRefreshResult; }, [onRefreshResult]);
 
   const dropService = () => {
     setSvc(null);
@@ -178,8 +182,8 @@ export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Pre
       return;
     }
     let live = true;
-    setState({ k: "loading" });
-    publishSourceRead("health", {
+    if (!hasDataRef.current) setState({ k: "loading" });
+    if (!hasDataRef.current) publishSourceRead("health", {
       status: "loading",
       statusReason: null,
       durationMs: null,
@@ -195,7 +199,8 @@ export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Pre
         if (!live) return;
         const read = readSystemHealth(payload);
         if (read === null) {
-          setState({ k: "error", message: "健康接口返回的内容无法解析为服务清单。", requestId: null });
+          if (!hasDataRef.current) setState({ k: "error", message: "健康接口返回的内容无法解析为服务清单。", requestId: null });
+          if (refreshTick > 0) onResultRef.current?.({ message: "健康接口返回的内容无法解析为服务清单。", requestId: null });
           publishSourceRead("health", {
             status: "failed",
             statusReason: "健康接口返回的内容无法解析为服务清单。",
@@ -215,7 +220,9 @@ export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Pre
           ...topLevelIsoAsOf(payload),
           requestId: null,
         });
+        hasDataRef.current = true;
         setState(read.rows.length === 0 ? { k: "empty", read } : { k: "ready", read });
+        if (refreshTick > 0) onResultRef.current?.(null);
       })
       .catch((error: unknown) => {
         const durationMs = Math.round(performance.now() - started);
@@ -223,12 +230,15 @@ export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Pre
         const info = sys3Failure(error);
         const read = failureRead(error);
         publishSourceRead("health", { ...read, durationMs, durationReason: null });
+        const failure = { message: info.text, requestId: info.requestId };
+        if (refreshTick > 0) onResultRef.current?.(failure);
+        if (hasDataRef.current) return;
         if (info.status === 401) setState({ k: "login", message: info.text });
         else if (info.status === 403 || info.status === 404) setState({ k: "gap", message: info.text, requestId: info.requestId });
         else setState({ k: "error", message: info.text, requestId: info.requestId });
       });
     return () => { live = false; };
-  }, [preview, reload]);
+  }, [preview, reload, refreshTick]);
 
   const retry = () => {
     // A failed health read retries only that read. The probe list has its own
@@ -338,35 +348,51 @@ export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Pre
             >
               编辑探针（计划中）
             </button>
-            <Button size="sm" outlined onClick={retry} disabled={!refreshEnabled} aria-disabled={!refreshEnabled ? "true" : undefined} title={refreshTitle} data-testid="sys3-refresh">刷新</Button>
+            {hideRefresh ? null : <Button size="sm" outlined onClick={retry} disabled={!refreshEnabled} aria-disabled={!refreshEnabled ? "true" : undefined} title={refreshTitle} data-testid="sys3-refresh">刷新</Button>}
           </div>
         </div>
 
-        {svc && state.k !== "loading" ? (
-          linkedRow ? (
-            <p className="sys14-link-note" data-testid="sys14-link-target" role="status">
-              已定位到「{linkedRow.name ?? linkedRow.key}」。
-              <a
-                href="#/system?tab=health"
-                data-testid="sys14-link-clear"
-                onClick={(event) => { event.preventDefault(); clearService(); }}
-              >
-                清除定位
-              </a>
-            </p>
-          ) : (
-            <div className="sys14-link-missing" data-testid="sys14-link-missing" title={SERVICE_GAP} role="status">
-              <b>该服务不在当前清单里</b>
-              <span>{linkReason}</span>
-              <a
-                href="#/system?tab=health"
-                data-testid="sys14-link-clear"
-                onClick={(event) => { event.preventDefault(); clearService(); }}
-              >
-                回到全部服务
-              </a>
-            </div>
-          )
+        {svc ? (
+          <div
+            data-testid="sys14-link"
+            data-state={state.k === "loading" ? "loading" : linkedRow ? "target" : "missing"}
+          >
+            {state.k === "loading" ? (
+              <p className="sys14-link-note" data-testid="sys14-link-loading" role="status">
+                正在定位「{svc}」…
+                <a
+                  href="#/system?tab=health"
+                  data-testid="sys14-link-clear"
+                  onClick={(event) => { event.preventDefault(); clearService(); }}
+                >
+                  取消定位
+                </a>
+              </p>
+            ) : linkedRow ? (
+              <p className="sys14-link-note" data-testid="sys14-link-target" role="status">
+                已定位到「{linkedRow.name ?? linkedRow.key}」。
+                <a
+                  href="#/system?tab=health"
+                  data-testid="sys14-link-clear"
+                  onClick={(event) => { event.preventDefault(); clearService(); }}
+                >
+                  清除定位
+                </a>
+              </p>
+            ) : (
+              <div className="sys14-link-missing" data-testid="sys14-link-missing" title={SERVICE_GAP} role="status">
+                <b>该服务不在当前清单里</b>
+                <span>{linkReason}</span>
+                <a
+                  href="#/system?tab=health"
+                  data-testid="sys14-link-clear"
+                  onClick={(event) => { event.preventDefault(); clearService(); }}
+                >
+                  回到全部服务
+                </a>
+              </div>
+            )}
+          </div>
         ) : null}
 
         {state.k === "loading" ? (

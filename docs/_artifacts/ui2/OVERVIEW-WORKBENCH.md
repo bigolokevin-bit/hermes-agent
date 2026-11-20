@@ -237,3 +237,71 @@
 - 行序同源：`sortedRows` 同时喂表体、复制清单与 CSV 导出，三面首列顺序一致。
 - 点表头零新请求（`fetchJSON` 计数不变）；`run-sort-scope-note` 写明「仅在当前已加载 N 行内排序；服务端读口不接受排序参数，点表头不会重新读取。」。
 - 验证：runs 3 files / 108 passed（基线 104）；全量 151 files / 2054 passed（基线 2050）；tsc 本域 0；eslint 本域 exit 0；build exit 0（chunk `RunsModulePage-*.js` 内 `run-sort-status`=1，entry 0）。未测：真实浏览器 375（表头在窄屏隐藏）与键盘 Tab 实机走查。
+
+## 趋势窗口口径说明（duty trend window note，2026-11-20）
+
+- 背景：BFF timeseries 只接受 `range∈[24h,1d,7d,30d]`，14 天视图实际请求 `range=30d` 再前端裁到最近 14 桶；R49 要求屏上说明这一点。
+- 新增常驻句 `duty-trend-window-note`：「数据取近 30 天，本卡只显示最近 14 天」；仅 14d 视图渲染，7d/24h/30d 不渲染。
+- 四处口径现值（同一 `range.label` 派生）：卡片标题「近 14 天运行」；图 `aria-label`「近 14 天每日运行次数」；表 caption「近 14 天每日运行次数（北京时间）」；摘要「近 14 天：首日…末日…峰值…最低…合计…」。卡片不再出现「近 30 天运行」字样，窗口差异只由说明句交代。
+- 同单修掉一处硬编码：失败分支摘要原写「近 14 天摘要：…」，切 7d/30d 时口径混用 → 改为 `${label}摘要：…`；loading 分支同样使用 `label`（「正在读取近 7 天的运行记录」）。
+- 测试 4 例：14d + 注入 30 点 → 说明句逐字、四处口径一致、表体 14 行；切 7d/30d 说明消失且各自 aria 正确；挂起读口验证 loading 文案随范围；说明句渲染后 40ms 内 `fetchJSON` 计数不变（零额外请求）。
+- 验证：duty 5 files / 104 passed（基线 100）；全量 2175 passed；tsc 本域 0；eslint 本域 exit 0（4 既有 warning）；build exit 0，chunk `DutyPage-*.js` 内 `duty-trend-window-note`=1（entry 0）。未测：真实浏览器 375 说明句折行。
+
+## 预览与详情同值（runs preview/detail parity，2026-11-20）
+
+- 两条渲染路径收成一个 helper：行内预览（`runPreview()` → `RunPreviewPanel`）与 `?run=<id>` 详情卡（`detailView = runPreview(detail.run, names)`）现在读同一份六字段派生；详情卡新增 `run5-detail-summary`、`run5-detail-ended`、`run5-detail-employee` 锚点。
+- 改前/改后（同一缺字段 run：只有 startedAt，无 status / 无 endedAt / 无 employee / 成本未知）：
+  - 改前：详情结束位渲染长句「还没有结束时间…」、耗时可能拿本机时钟算（`elapsedMinute` 未判两端）、状态缺值渲染空 Badge、员工 title 用裸 id。
+  - 改后：两处一律「该字段未返回」；耗时两处「—」且 title 含「不拿本机时间补一端」；成本两处「—」（详情正文不出现 `$0.00`）；员工两处「未指派」、有 id 时两处都显 8 位短码、原始 id 只进 title。
+- 测试 3 例：完整 run 六字段逐项两处同值（`2026-11-18 10:00` / `10:11` / `11 分钟` / `员工 · AAAABBBB` 逐字相等）；缺失 run 同句；预览开关两次后 `fetchJSON` 计数不变，`/api/run-detail` 与 `/api/run-events` 各恰 1 次。
+- 口径：预览是纯渲染，不新增读；详情仍只读一次明细与一次事件流；`该字段未返回`/`—`/`未指派` 与列表、复制、CSV 三面保持一致。
+- 验证：runs 3 files / 111 passed（基线 108）；全量 2178 passed；tsc 本域 0；eslint 本域 exit 0。未测：真实浏览器 375 详情长文案折行。
+
+## 跨页成本口径说明（cost caliber notes，2026-11-20）
+
+`/runs` 与 `/metrics` 都展示成本，但口径不同：运行列表只有账本实扣，指标页把调用次数与账本金额分列。两页各加一行只读说明，指向对方。
+
+- 单一文案源：`web/src/modules/metrics/costCaliberNote.ts` 导出 `COST_CALIBER_TEXT`、`RUNS_PAGE_PATH`、`METRICS_PAGE_PATH`、`costCaliberTitle(audience)`；两页引用同一常量，禁止各写一版措辞。
+- `/runs`：表体下方 `run-cost-caliber-note`（ready 时渲染），title = `costCaliberTitle('runs')`，含 `/runs` 与 `/metrics` 两条路径。
+- `/metrics`：明细表下方（`metAH-cap-note` 之后）`met-cost-caliber-note`，title = `costCaliberTitle('metrics')`，互指 `/metrics` → `/runs`。
+- 脚本 `react-router` 无关：两处都是静态 `<p>`，不新增读口（`/api/runs` 仍恰 1 次；metrics 读口计数与首载一致）。路径只进 title，可见文案不含 `/api`、不含工程字段名。
+- 可见文案（逐字，两页相同）：成本按账本实扣显示：真实的零写 $0.00，没有记账写「—」，不把读不到当成 0。账本实扣与「调用次数」不是同一套口径，两边数字各以本页卡片为准。
+- 验证：`vitest run src/modules/runs` 3 files / 112 passed；`vitest run src/modules/metrics` 4 files / 228 passed；全量 159 files / 2180 passed；`tsc` 本域 0（全仓既存 79）；`eslint` exit 0；build exit 0，entry 内 marker 0，`RunsModulePage-*.js` / `MetricsModulePage-*.js` 各 1。
+- 未测：真实浏览器三档换行；两页并排人工对照。
+
+## 页尾口径说明块（runs notes，2026-11-20）
+- 位置：`/runs` 页尾、`run5-list-details` 之后；`run-notes-toggle` 是原生 button（`aria-expanded` / `aria-controls="run-notes-body"`），默认收起且**收起时 body 不渲染**；展开后 7 行 `run-note-<key>`（window / status / employee / state / elapsed / cost / asOf），每行四段：口径名 · 实际路径 · 计算范围 · 缺值策略（同一段文字另进该行 title）。
+- 表驱动单一常量：`modules/runs/runNotes.ts` 的 `RUN_NOTE_ROWS` + `RUN_NOTES_TITLE`；成本行缺值策略直接复用 `modules/metrics/costCaliberNote.ts` 的 `COST_CALIBER_TEXT`——与屏上 `run-cost-caliber-note` 同一常量，无第二套措辞。
+- 实际路径按 `askListRoute` 现查：`/api/runs?since=…&limit=30[&status][&employeeId][&cursor]`；`/api/run-stats?from=…&to=…` 只在主路由 404 时兜底，且不带 status/employeeId。`?state=` 复现腿不读任何读口，notes 在复现腿整块不渲染（避免把没读到的口径写成已发生）。
+- 成本行口径：账本实扣、真 0 `$0.00`、未知不显示 0、与 `/metrics` 调用次数不是同一套口径；耗时行写「起止两端齐才计算，缺一端显示—，不拿本机时间补」；采集时刻行写「只取顶层 ISO，缺失显示—，不拿本机时间顶替」（本版页面不在屏上展示采集时刻）。
+- 零额外请求：展开/收起前后 `urls()` 长度与 `/api/runs` 调用次数均不变（用例实测）。
+- 三条用例：收起态与展开七行（含成本行逐字等于 COST_CALIBER_TEXT）、开合零请求、复现腿不渲染。
+- 验证：runs 3 files / 115 passed（基线 112）；全量 159 files / 2187 passed（基线 2184）；tsc 本域 0（全仓既存 79 条）；eslint exit 0（0 error / 9 既有 warning）。
+- 未测：真实浏览器 375/1440 展开后七行的折行与长路径断行。
+
+## 行固定链接（runs permalink，2026-11-20）
+
+`/runs` 复制控件 `run-permalink` 只把地址栏已有参数与当前 `run` 标识串成一条链接，不新增读口。
+
+- **链接形状**：`/runs/?window=…&status=…&employee=…&state=…&rsort=…&rdir=…&run=<id>`；页面既有 `hrefOf()` 同一函数产出，与每行「查看」锚点同源（`?run=` 是运行详情页消费的参数，先 `git grep "run="` 现查确认，非路径式 `/runs/<id>`）。
+- **复现读数**（jsdom，订单要求的 URL → 行 → 是否展开）：入口 `/runs/?window=7d&status=failed&rsort=started&rdir=desc&run=rn_01M7822XN781D2S9JASH5TX1XZ` → 命中 `run5-row-0` 且 `data-selected="1"` / `aria-current="true"`，`run5-detail` 详情卡自动打开；行内预览抽屉**不**自动展开（`openId` 起始为 null，需点「展开预览」）。即：链接复现同一筛选/排序并选中该运行，展开的是详情而非预览。
+- **零额外请求**：复制前后 `urls()` 长度不变、`/api/runs` 调用次数不变（测试断言）。状态区 `run-permalink-status`（role=status aria-live=polite）成功写「链接已复制」。
+- **无选中运行**：`run-permalink` disabled，title 逐字「先选中一条运行再复制」；点击不发任何请求，也不调剪贴板。
+- **剪贴板拒绝**：`run-permalink-fallback` 内只读 `run-permalink-fallback-text`，值与尝试复制的链接逐字相同。
+- **复现腿**：`?state=` 四态下整块不渲染（复现腿不读写口）。
+- 新增 testid：`run-permalink`/`run-permalink-bar`/`run-permalink-status`/`run-permalink-fallback`/`run-permalink-fallback-text`；既有 `run-*` 全族零破。
+- 验证：runs 3 files / 119 passed（基线 115）；全量 159 files / 2191 passed（基线 2187）；`tsc` 本域 0（全仓既存 79）；`eslint src/modules/runs` exit 0；build exit 0，entry 内 `run-permalink`=0，`RunsModulePage-*.js` 命中 1。
+- 未测：真实浏览器 375/1440 下按钮与状态句折行；跨页粘贴到新标签的实际跳转（jsdom 只验 URL 形状与选中态）。
+
+## 筛选一键重置（runs filter reset，2026-11-20）
+
+- 单表：`runs.ts` 的 `RUN_PARAM_TABLE` 列出页面认作筛选的六个参数（时间范围 / 状态 / 负责人 / 复现状态 / 排序字段 / 排序方向）；分享路径的拼装与本次重置都读这一张表，不再各写一份名单。
+- 按钮 `run-reset-filters`：一次删除上表里所有存在的键（`window/status/employee/state/rsort/rdir`），地址里其它键原样保留；无筛选时 `disabled`，title 逐字「当前没有可清除的筛选条件」。
+- 非法值也算筛选：`?window=zz&status=zz` 两个键存在即计入可清除项，title 写「未识别的值（zz、zz）也占着筛选位，一并清掉」。
+- 实测（jsdom，`?window=30d&status=failed&rsort=started&rdir=desc&keep=1`）：
+  - 改前：地址含四参、表体按开始时间降序 `运行 · 9XYZ` → `运行 · X1XZ`、源条含 `window=30d&status=failed`、计数「本页 2 次」。
+  - 改后：地址 `?keep=1`、表体回服务顺序 `运行 · X1XZ` → `运行 · 9XYZ`、源条 `/runs`（只回显它自己那四个可分享参数）、导出计数 `data-rows=2`、复制首行同为 `运行 · X1XZ`。
+  - 请求计数：`/api/runs` 恰 +1（时间窗与状态同时变化，只重读一次）；仅排序参数（`?rsort=cost&rdir=asc`）重置时 **0** 次新请求——排序是本地行为。
+- 复位写 `{replace:true}`，不新增历史条目；`run-notes`、`run-sort-*`、`run-list-*`、`run-row-preview-*`、`run5-*` 全部保留。
+- 测试：describe「run filter reset」4 例；runs 3 files / 123 passed（基线 119）。
+- 未测：真实浏览器 375/1440 下按钮与下拉同一行的折行。

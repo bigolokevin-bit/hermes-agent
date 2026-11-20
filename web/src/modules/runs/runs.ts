@@ -927,10 +927,19 @@ const has = (value: string | null): boolean => value !== null && value !== "";
  */
 export function runSource(input: RunSourceInput): RunSource {
   const params = new URLSearchParams();
-  if (has(input.windowRaw)) params.set("window", input.window);
-  if (input.status) params.set("status", input.status);
-  if (input.employee) params.set("employee", input.employee);
-  if (input.state) params.set("state", input.state);
+  // Keys and their order come from RUN_PARAM_TABLE, the same table the reset
+  // reads, so the shareable path and the "clear filters" list cannot diverge.
+  const emitted: Record<string, string | null> = {
+    window: has(input.windowRaw) ? input.window : null,
+    status: input.status,
+    employee: input.employee,
+    state: input.state,
+  };
+  for (const spec of RUN_PARAM_TABLE) {
+    if (!(spec.key in emitted)) continue;
+    const value = emitted[spec.key];
+    if (value) params.set(spec.key, value);
+  }
   const query = params.toString();
   const notes: string[] = [];
   if (has(input.windowRaw) && input.windowRaw !== input.window) {
@@ -948,6 +957,55 @@ export function runSource(input: RunSourceInput): RunSource {
     active: has(input.windowRaw) || has(input.statusRaw) || has(input.employee) || has(input.stateRaw),
     notes,
   };
+}
+
+/* ── the one parameter table shared by the source bar and the reset ── */
+
+export interface RunParamSpec {
+  key: string;
+  label: string;
+}
+
+/**
+ * Everything the page treats as a filter. The shareable path emits the first
+ * four; sorting rides in the last two. The reset clears exactly this list, so
+ * adding a parameter in one place is enough.
+ */
+export const RUN_PARAM_TABLE: readonly RunParamSpec[] = [
+  { key: "window", label: "时间范围" },
+  { key: "status", label: "状态" },
+  { key: "employee", label: "负责人" },
+  { key: "state", label: "复现状态" },
+  { key: "rsort", label: "排序字段" },
+  { key: "rdir", label: "排序方向" },
+];
+
+/** Drop every filter the table names, keeping unrelated address parameters. */
+export function resetRunFilters(params: URLSearchParams): {
+  next: URLSearchParams;
+  removed: RunParamSpec[];
+} {
+  const next = new URLSearchParams(params);
+  const removed = RUN_PARAM_TABLE.filter((spec) => next.has(spec.key));
+  for (const spec of removed) next.delete(spec.key);
+  return { next, removed };
+}
+
+/**
+ * The reset title. A value the page could not parse is still a parameter that
+ * is present, so it is named here as something the reset will clear.
+ */
+export function resetFiltersTitle(
+  removed: readonly RunParamSpec[],
+  unrecognized: readonly string[],
+): string | null {
+  if (removed.length === 0) return null;
+  const labels = removed.map((spec) => spec.label).join("、");
+  const tail =
+    unrecognized.length > 0
+      ? `；未识别的值（${unrecognized.join("、")}）也占着筛选位，一并清掉`
+      : "";
+  return `清除这 ${removed.length} 项筛选（${labels}），排序回到默认，读取回到第一页${tail}。`;
 }
 
 /* ── column sorting (client-side; the read route takes no sort key) ── */
