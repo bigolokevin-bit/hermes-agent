@@ -463,6 +463,65 @@ describe("matrix table copy", () => {
     expect(healthLine).toContain("系统健康清单\t/agent-api/api/health\t成功");
     expect(healthLine).toContain("2026-11-19 23:17");
     expect(api.fetchJSON).toHaveBeenCalledTimes(4);
+    await act(async () => { (q("sys13-sort-state") as HTMLButtonElement).click(); });
+    await waitFor(() => rowIds()[0] === "health", "sorted by state");
+    await act(async () => { (q("sys-matrix-copy") as HTMLButtonElement).click(); await Promise.resolve(); });
+    const sorted = (writeText.mock.calls[1][0] as string).trimEnd().split("\n");
+    expect(sorted.slice(1).map((line) => line.split("\t")[0]))
+      .toEqual(rowIds().map((id) => q(`sys6-name-${id}`)?.textContent ?? ""));
+    expect(api.fetchJSON).toHaveBeenCalledTimes(4);
+  });
+
+  it("announces the copy result with visible text in both states and never refetches", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    await render();
+    await act(async () => { (q("sys6-toggle") as HTMLButtonElement).click(); });
+    await waitFor(() => q("sys6-status-health")?.textContent?.includes("成功") ?? false, "health row");
+    const status = q("sys-matrix-copy-status")!;
+    const calls = api.fetchJSON.mock.calls.length;
+    expect(status.getAttribute("role")).toBe("status");
+    expect(status.getAttribute("aria-live")).toBe("polite");
+    expect(status.textContent).toBe("");
+
+    await act(async () => { (q("sys-matrix-copy") as HTMLButtonElement).click(); await Promise.resolve(); });
+    await waitFor(() => (status.textContent ?? "") !== "", "success wording");
+    const success = status.textContent ?? "";
+    expect(success).toBe(`已复制 ${rowIds().length} 行`);
+    expect(api.fetchJSON).toHaveBeenCalledTimes(calls);
+
+    Object.defineProperty(navigator, "clipboard", { value: { writeText: vi.fn().mockRejectedValue(new Error("denied")) }, configurable: true });
+    await act(async () => { (q("sys-matrix-copy") as HTMLButtonElement).click(); await Promise.resolve(); });
+    await waitFor(() => (status.textContent ?? "") !== success, "failure wording");
+    const failure = status.textContent ?? "";
+    expect(failure).toBe("复制失败，可手动选择文本");
+    expect(failure).not.toBe(success);
+    expect(q("sys-matrix-copy-fallback")).not.toBeNull();
+    expect(api.fetchJSON).toHaveBeenCalledTimes(calls);
+  });
+
+  it("copies the current search plus sort state, in table-body order", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    window.history.replaceState({}, "", "/#/system?tab=health&q=%E6%8E%A2%E9%92%88");
+    await render();
+    await act(async () => { (q("sys6-toggle") as HTMLButtonElement).click(); });
+    await waitFor(() => !!q("sys6-table"), "matrix table");
+    await act(async () => { (q("sys13-sort-asof") as HTMLButtonElement).click(); });
+    await waitFor(() => rowIds().length === 3, "three probed rows");
+    const calls = api.fetchJSON.mock.calls.length;
+    await act(async () => { (q("sys-matrix-copy") as HTMLButtonElement).click(); await Promise.resolve(); });
+    await waitFor(() => (q("sys-matrix-copy-status")?.textContent ?? "") !== "", "copied under search+sort");
+    const lines = (writeText.mock.calls[0][0] as string).trimEnd().split("\n");
+    const names = lines.slice(1).map((line) => line.split("\t")[0]);
+    const tableNames = rowIds().map((id) => q(`sys6-name-${id}`)?.textContent ?? "");
+    expect(names).toEqual(tableNames);
+    expect(lines).toHaveLength(tableNames.length + 1);
+    expect(lines[1].startsWith(`${tableNames[0]}\t`)).toBe(true);
+    expect(lines[lines.length - 1].startsWith(`${tableNames[tableNames.length - 1]}\t`)).toBe(true);
+    expect(lines.some((line) => line.startsWith("系统健康清单\t"))).toBe(false);
+    expect(q("sys-matrix-copy-status")?.textContent).toBe(`已复制 ${tableNames.length} 行`);
+    expect(api.fetchJSON).toHaveBeenCalledTimes(calls);
   });
 
   it("offers a read-only textarea with the same tab-separated text when the clipboard rejects", async () => {

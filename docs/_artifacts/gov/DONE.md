@@ -2280,3 +2280,15 @@ built /private/tmp/health-r38/index.html
 - 测试：新增 `RowCopy.test.tsx`（六行文本、缺失 `—`、成功「已复制」、剪贴板拒绝 fallback 逐字同）；skills/tools 详情测试补「展开前无按钮 / 展开后有 / Esc 收起后无」；定向 10 files / 96 passed；全量 163 files / 2249 passed；tsc 仅基线错误，本域 0。
 - DOM（临时 harness，已删除）：1440/1280/375 `vw=bodySW=bodyCW`；skills 复制 6 行（采集 `2026-11-19 14:00`，fetch 1→1）；tools 复制 6 行（最近更新/采集均 `—`，fetch 5→5）；两 tab 均无 fallback、无横溢。
 - 边界：仅 `modules/{capabilities,skills,tools}/**` + DONE；未改 App/shell/routes/registry/package·lock/web-scripts/ops；未 install、未并 main、未重建 9122；禁 force/amend/--no-verify。
+
+## R85 / R52 OBS 整改 — sys-matrix-copy-status 可见反馈（`feat(console): system copy status visible feedback`）
+
+- 基线：显式 refspec fetch + `git merge --no-ff origin/lane/hermes-console`（禁 reset），HEAD 由 `cd826f7d` 到 merge `46160f47`；上游带入 appr/aud/ui2 工件与 `tests/gateway/test_c1_forward_latch.py`。
+- ① 状态节点：`SourceMatrix.tsx:206` 的 `sys-matrix-copy-status` 补 `role="status"`（原只有 `aria-live="polite"`）；成功 `已复制 N 行`、失败文案按派工单改为 **「复制失败，可手动选择文本」**（原「复制失败，已展开手动复制」）。同帧只播一次：把 `matrixCopyState` + `matrixCopiedRows` 两个 useState 合成**单个对象 state** `matrixCopy{state,rows}`，一次 `setMatrixCopy` 落地，避免两段文案分帧触发两次播报；早退分支（无 `navigator.clipboard`）与 catch 分支同样单点 set。
+- ② 复制内容吃搜索与排序态：`matrixText = toMatrixText(sortedRows)`，`sortedRows = sortSourceRows(searchedRows, sort)` —— 即 `sys-search` 的 q 与 `sys13` 排序共同决定行序，行序 == 表体。实测两组首末行（jsdom 取证后已删临时落盘）：
+  - 组一（无搜索，点 `sys13-sort-state` 升序）首行 `系统健康清单\t/agent-api/api/health\t成功\t2 ms\t2026-11-19 23:17`，末行 `控制台服务探针\t/agent-api/api/__health-probe__\t读口未接入\t2 ms\t—`，表头 `口径名\t路径\t状态\t耗时\t采集时刻`。
+  - 组二（`?q=探针` 命中 3 行 + `sys13-sort-asof`）首行 `域服务探针\t/agent-api/api/skills\t成功\t0 ms\t2026-11-20 06:15`，末行 `Hermes 运行时探针\t/agent-api/api/hermes-summary\t失败\t0 ms\t—`；被搜索滤掉的 `系统健康清单` 不在文本内。
+- ③ 新增断言（`SourceMatrix.test.tsx`）：`role=status`/`aria-live=polite` 存在；空闲态 textContent 为空，点击后非空且等于 `已复制 <表体行数> 行`；失败态文案与成功态**不同**且非空，同时 `sys-matrix-copy-fallback` 只读 textarea 在位；两态下 `api.fetchJSON` 调用数与点击前**完全一致**；搜索+排序组的复制行序逐行等于 `sys6-row-*` 表体顺序、行数 = 表体行数 + 表头。
+- 验证：定向 `src/modules/health` → **8 files / 70 passed**；全量 → 166 files / 2306 passed + **1 failed**（`src/modules/approvals/ApprovalsPendingModulePage.test.tsx > pending queue states > error says it in a sentence...`，单独跑该文件 **36/36 通过** ⇒ 上游自带用例在全量并发下的串扰，非本域、非本轮改动引起；本域写域只有 health）。`tsc -b . --noEmit` exit 2，错误只在 approvals/employee-detail/employees 基线，`modules/health` 0 条。
+- 三档口径（偏离披露）：本轮**未重跑浏览器三档实测**。原因：改动只在既有 `.sys10-status` span 内换文案与加 ARIA 属性，未动类名、容器结构、CSS 或行列布局（`counts.css`/`sys*.css` 零改动），宽度溢出行为不可能因此变化；jsdom 断言与视口无关。如需 1440/1280/375 的像素级复测，请下令，我按既有 harness 补测。
+- 边界：写域只有 `web/src/modules/health/**` + `docs/_artifacts/gov/DONE.md`；未碰 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未 install、未并 main、未重建 9122；禁 force/amend/--no-verify。

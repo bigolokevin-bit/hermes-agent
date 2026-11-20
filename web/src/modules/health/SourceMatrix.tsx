@@ -111,8 +111,12 @@ export function SourceMatrix() {
   const matrixBlocked = usableRows.length === 0;
   const exportDisabled = exportRows.length === 0 || matrixBlocked;
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
-  const [matrixCopyState, setMatrixCopyState] = useState<"idle" | "copied" | "failed">("idle");
-  const [matrixCopiedRows, setMatrixCopiedRows] = useState(0);
+  // One state object so the wording and the row count land in the same render —
+  // a screen reader then announces the pair once, not twice.
+  const [matrixCopy, setMatrixCopy] = useState<{ state: "idle" | "copied" | "failed"; rows: number }>({
+    state: "idle",
+    rows: 0,
+  });
   const copyText = toPlainText(sortedRows);
   const matrixText = toMatrixText(sortedRows);
   const copyDisabled = searchedRows.length === 0 || matrixBlocked;
@@ -137,15 +141,14 @@ export function SourceMatrix() {
   async function copyMatrixTable() {
     if (copyDisabled) return;
     if (!navigator.clipboard?.writeText) {
-      setMatrixCopyState("failed");
+      setMatrixCopy({ state: "failed", rows: 0 });
       return;
     }
     try {
       await navigator.clipboard.writeText(matrixText);
-      setMatrixCopiedRows(sortedRows.length);
-      setMatrixCopyState("copied");
+      setMatrixCopy({ state: "copied", rows: sortedRows.length });
     } catch {
-      setMatrixCopyState("failed");
+      setMatrixCopy({ state: "failed", rows: 0 });
     }
   }
 
@@ -200,8 +203,8 @@ export function SourceMatrix() {
           >
             复制本表
           </button>
-          <span className="sys10-status" data-testid="sys-matrix-copy-status" aria-live="polite">
-            {matrixCopyState === "copied" ? `已复制 ${matrixCopiedRows} 行` : matrixCopyState === "failed" ? "复制失败，已展开手动复制" : ""}
+          <span className="sys10-status" data-testid="sys-matrix-copy-status" role="status" aria-live="polite">
+            {matrixCopy.state === "copied" ? `已复制 ${matrixCopy.rows} 行` : matrixCopy.state === "failed" ? "复制失败，可手动选择文本" : ""}
           </span>
           <span className="sys7-count" data-testid="sys7-export-count">{exportDisabled ? "—" : `${exportRows.length} 行`}</span>
           <span className="sys7-note">导出与屏上矩阵同源：姓名、路径、人话状态、耗时、响应顶层 ISO 采集时刻；缺失留空，不补 0，也不用本机时钟。</span>
@@ -217,7 +220,7 @@ export function SourceMatrix() {
             value={copyText}
           />
         ) : null}
-        {matrixCopyState === "failed" ? (
+        {matrixCopy.state === "failed" ? (
           <textarea
             className="sys10-fallback"
             data-testid="sys-matrix-copy-fallback"
