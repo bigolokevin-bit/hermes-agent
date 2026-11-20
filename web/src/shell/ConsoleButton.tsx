@@ -47,7 +47,7 @@ export interface ConsoleButtonProps {
  * registered as exception E4 in docs/design/UI-RUBRIC.md. */
 const SIZES: Record<"sm" | "md" | "lg", { cls: string; h: string }> = {
   sm: { cls: "px-3 text-xs", h: "var(--btn-h-inline)" },
-  md: { cls: "px-3.5 text-sm", h: "var(--btn-h)" },
+  md: { cls: "px-3 text-sm", h: "var(--btn-h)" },
   lg: { cls: "px-4 text-sm", h: "var(--btn-h-dialog)" },
 };
 

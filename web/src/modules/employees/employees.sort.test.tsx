@@ -141,7 +141,7 @@ const sortOf = (key: string) =>
   q(`emp-list-sort-${key}`)?.parentElement?.getAttribute("aria-sort") ?? "";
 
 /** 同屏拦复制文本与导出 Blob（employees.export.test.tsx 形制），返回三方行序。 */
-async function threeOrders(): Promise<{ body: string[]; copy: string[]; csv: string[] }> {
+async function threeOrders(): Promise<{ body: string[]; copy: string[]; csv: string[]; raw: string[] }> {
   const written: string[] = [];
   Object.defineProperty(navigator, "clipboard", {
     configurable: true,

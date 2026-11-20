@@ -223,12 +223,12 @@ export function useFixtureStateValue(): FixtureState {
   return resolveFixtureState(useFixtureOverride());
 }
 
-/** tokens.css accents with literal fallbacks (never edit tokens.css). */
+/** Semantic token accents (UI-RUBRIC layer); no literal colors here. */
 const FIXTURE_ACCENTS: Readonly<Record<FixtureState, string>> = {
-  loading: 'var(--info, #7fb3c8)',
-  empty: 'var(--fg-3, #9aa49e)',
-  error: 'var(--bad, #fb2c36)',
-  ready: 'var(--ok, #4ade80)',
+  loading: 'var(--color-info)',
+  empty: 'var(--color-text-muted)',
+  error: 'var(--color-danger)',
+  ready: 'var(--color-success)',
 };
 
 /**
@@ -255,18 +255,18 @@ export function FixtureBadge({
     zIndex: 9999,
     display: 'inline-flex',
     alignItems: 'center',
-    gap: '6px',
+    gap: '8px',
     padding: '4px 8px',
-    borderRadius: 'var(--r-sm, 4px)',
-    background: 'var(--panel-2, #082424)',
-    border: '1px solid var(--line-2, rgba(255,230,203,0.30))',
-    color: 'var(--fg, #ffe6cb)',
+    borderRadius: 'var(--radius-1)',
+    background: 'var(--color-surface-raised)',
+    border: '1px solid var(--color-border)',
+    color: 'var(--color-text)',
     fontFamily: 'var(--mono, ui-monospace, Menlo, Consolas, monospace)',
-    fontSize: '11px',
+    fontSize: '12px',
     lineHeight: '16px',
     pointerEvents: 'none' as const,
   };
-  const tagStyle = { color: 'var(--fg-3, #9aa49e)', letterSpacing: '0.08em' };
+  const tagStyle = { color: 'var(--color-text-muted)', letterSpacing: '0.08em' };
   const labelStyle = { color: FIXTURE_ACCENTS[active], fontWeight: 600 };
   return createElement(
     'div',
