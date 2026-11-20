@@ -1665,3 +1665,48 @@ $ npx vite build --outDir /tmp/knw26-dist → exit 0（产物只落 /tmp）
 边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
 package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
 无 force / amend / `--no-verify`；单 commit「feat(console): knowledge keyboard navigation」。
+
+# KNW5 追加 R59：文档预览抽屉可访问性收口（kn7-preview-* 族）（2026-11-20 BJT）
+
+基线安全闸：toplevel 相符、porcelain 空、显式 refspec fetch；上游仍 `b797bc98`
+（generation 053da5c4），merge 为 Already up to date——本笔只有 feature commit。
+
+## 一、对象澄清（派工写的族名与代码实况）
+
+派工指向「文档预览抽屉（现有 `kn6-search-detail*` 族）」。代码实况：带遮罩、`role=dialog`、
+`Esc`、URL `?doc=` 的预览抽屉是 **`kn7-preview-*` 族（DocPreviewDrawer）**，本轮按派工七条
+在其上补齐并实测；`kn6-search-detail*` 是检索面板的**就地展开块**（内联 `<dl>`，无遮罩、
+URL 用 `?sdoc=`、再点同一行收回）——它不是模态，不套 dialog 语义，保持原设计不破。
+`?doc=` 在抽屉关闭时从 URL 移除（`closeDocDrawer` 删参），派工所问「若现设计保留」不适用：
+实况是移除，Esc 与遮罩两条关闭路径同走这个出口。
+
+## 二、七条判据的实测读数（jsdom 定向测试）
+
+```text
+焦点进抽屉   打开后 activeElement === 关钮（就是面板内第一个可聚焦元素，nodes[0] 序号实测 0）；
+             全程无正数 tabindex。
+模态三件套   role="dialog" + aria-modal="true" + aria-labelledby="kn7-preview-title"，
+             标题文本=文档名（缺行时回落「这份文档」，原因进 title）。
+Tab 闭环     末位 Tab → 首位（defaultPrevented=true 实测）；首位 Shift+Tab → 末位；
+             补漏收口：焦点漏到面板外（blur 后 body）时 Tab 不再穿出模态，被拉回面板内——
+             本轮唯一的代码增量（原先只环绕首尾两端，中间态焦点在外会穿）。
+Esc          关抽屉、焦点还给触发行（activeElement === 该行 a[href] 实测）、loc 不含 doc=。
+遮罩点关     同一出口：焦点同样回触发行、URL 清、不丢焦点（本轮补断言）。
+字段缺失     仍屏上「—」+原因进 title；详情读口不可用仍「文档详情未接入」诚实态（R49 未动）。
+零请求       键盘环绕/拉回/Esc/遮罩各段实测 fetchMock 计数 0 增量。**如实说明**：打开抽屉
+             本身会读一次「文档详情」读口（R49 既有设计：来源与读取状态等这个口，接不上时
+             显示未接入）；本轮未改该行为，重开抽屉即再读一次（测试计数 1→2 属实记录）。
+```
+
+## 验证尾行（R59）
+```text
+$ npx vitest run src/modules/knowledge   → 2 files / 52 tests passed（含新增模态收口测试）
+$ npx vitest run                         → 138 files / 1675 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 set-state-in-effect warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw27-dist → exit 0（产物只落 /tmp）
+```
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
+无 force / amend / `--no-verify`；单 commit「feat(console): knowledge drawer accessibility」。
+kn3 / kn6–knI / knw5 既有断言零改零破（含 R49 抽屉回归测试全绿）；无布局改动，三宽度维持既有读数。

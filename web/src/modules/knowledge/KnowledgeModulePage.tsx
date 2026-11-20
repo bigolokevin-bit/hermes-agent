@@ -1112,6 +1112,14 @@ function DocPreviewDrawer({
       const first = nodes[0];
       const last = nodes[nodes.length - 1];
       const active = document.activeElement;
+      // 闭环补漏：焦点一旦不在面板内（点遮罩后落到 body、动态内容换掉焦点等），
+      // Tab 必须把它拉回来，而不是让模态被原生 Tab 穿出去；方向决定拉首还是拉尾。
+      const inside = active instanceof HTMLElement && panelRef.current?.contains(active);
+      if (!inside) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+        return;
+      }
       if (event.shiftKey && active === first) {
         event.preventDefault();
         last.focus();

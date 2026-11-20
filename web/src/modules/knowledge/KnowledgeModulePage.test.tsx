@@ -3107,4 +3107,92 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(spaceLinks().every((x) => !x.hasAttribute("aria-current"))).toBe(true);
     expect(fetchMock.mock.calls.length).toBe(urlsSpaces);
   });
+
+  it("keeps the document preview drawer modal-complete: focus in on open, closed Tab ring, Esc/scrim return focus, reads unchanged", async () => {
+    const SPACE = { asOf: "2026-11-19T07:00:00Z", items: [{ spaceId: "sp_hr", name: "人事制度空间" }] };
+    const LIST = {
+      asOf: "2026-11-19T07:00:00Z",
+      documents: [
+        { documentId: "d1", fileName: "员工手册.pdf", mimeType: "pdf", sizeBytes: 100, updatedAt: "2026-11-19T07:00:00Z", url: "/documents/d1" },
+        { documentId: "d2", fileName: "考勤说明.txt", mimeType: "txt", sizeBytes: 200, updatedAt: "2026-11-19T06:00:00Z" },
+      ],
+    };
+    const DETAIL = "/agent-api/api/documents/d1";
+    fetchMock.mockClear();
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SPACE);
+      if (url.startsWith("/agent-api/api/documents?") && url.includes("spaceId=sp_hr")) return Promise.resolve(LIST);
+      if (url === DETAIL) return Promise.resolve({ sourceName: "员工手册原件.pdf", status: "indexed" });
+      return fail(404, "这个数据接口还没有接入。", "rid-d-x");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr");
+
+    const rowLink = () => [...container.querySelectorAll('a[data-testid="kn3-docs-name"]')][0] as HTMLAnchorElement;
+    const kd = (shift: boolean): KeyboardEvent => {
+      const event = new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true, shiftKey: shift });
+      document.dispatchEvent(event);
+      return event;
+    };
+
+    // ---------- 打开：焦点进入抽屉第一个可聚焦元素；三件套齐 ----------
+    await click("kn3-docs-name");
+    await act(async () => {}); // 详情读口落定（打开即读一次，R49 设计）
+    const panel = byDocTestid("kn7-preview-panel") as HTMLElement;
+    expect(panel.getAttribute("role")).toBe("dialog");
+    expect(panel.getAttribute("aria-modal")).toBe("true");
+    expect(panel.getAttribute("aria-labelledby")).toBe("kn7-preview-title");
+    expect(byDocTestid("kn7-preview-title")?.textContent).toContain("员工手册.pdf");
+    const nodes = Array.from(
+      panel.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input, [tabindex]:not([tabindex="-1"])'),
+    );
+    expect(nodes.length).toBeGreaterThan(1);
+    expect(document.activeElement).toBe(byDocTestid("kn7-preview-close"));
+    expect(nodes.indexOf(document.activeElement as HTMLElement)).toBe(0); // 关钮就是第一个可聚焦元素
+    expect(nodes.some((x) => x.getAttribute("tabindex") === "1")).toBe(false); // 无正数 tabindex
+
+    const urlsOpen = fetchMock.mock.calls.length; // 打开后的基线：此后键盘与关闭流程必须 0 增量
+
+    // ---------- Tab 环：末→首、首→末双向环绕，都扣住事件 ----------
+    nodes[nodes.length - 1].focus();
+    expect(kd(false).defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(nodes[0]);
+    expect(kd(true).defaultPrevented).toBe(true); // 在首个上 Shift+Tab → 拉回末位
+    expect(document.activeElement).toBe(nodes[nodes.length - 1]);
+
+    // ---------- 焦点漏到面板外：Tab 把它拉回来，不让模态被穿出 ----------
+    (document.activeElement as HTMLElement).blur();
+    expect(document.activeElement).toBe(document.body);
+    expect(kd(false).defaultPrevented).toBe(true);
+    expect(panel.contains(document.activeElement as Node)).toBe(true);
+    expect(fetchMock.mock.calls.length).toBe(urlsOpen); // 全程 0 请求
+
+    // ---------- Esc：关闭、焦点还给触发行、URL 去掉 ?doc=、0 新请求 ----------
+    const esc = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+    await act(async () => {
+      document.dispatchEvent(esc);
+    });
+    await act(async () => {});
+    expect(byDocTestid("kn7-preview-panel")).toBeNull();
+    expect(document.activeElement).toBe(rowLink());
+    expect((byTestid("loc")?.textContent ?? "")).not.toContain("doc=");
+    expect(fetchMock.mock.calls.length).toBe(urlsOpen);
+
+    // ---------- 遮罩点关：同一出口——焦点同样回到触发行、URL 清、0 新请求 ----------
+    await act(async () => {
+      rowLink().focus();
+    });
+    await click("kn3-docs-name");
+    await act(async () => {}); // 再次打开：设计内再读一次详情（计数 +1，属 R49 既有读口）
+    expect(fetchMock.mock.calls.filter((u: string[]) => String(u[0]) === DETAIL)).toHaveLength(2);
+    const urlsSecond = fetchMock.mock.calls.length;
+    const backdrop = byDocTestid("kn7-preview-backdrop") as HTMLElement;
+    await act(async () => {
+      backdrop.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => {});
+    expect(byDocTestid("kn7-preview-panel")).toBeNull();
+    expect(fetchMock.mock.calls.length).toBe(urlsSecond); // 关闭流程 0 增量
+    expect(document.activeElement).toBe(rowLink()); // 遮罩不丢焦点
+    expect((byTestid("loc")?.textContent ?? "")).not.toContain("doc=");
+  });
 });
