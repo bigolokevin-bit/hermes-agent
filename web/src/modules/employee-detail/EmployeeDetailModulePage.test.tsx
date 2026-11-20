@@ -1013,3 +1013,29 @@ describe("R68 preview↔identity parity (edx-parity)", () => {
     expect(qid("ed1-identity"), "no card on 404").toBeNull();
   });
 });
+
+describe("R86 approvals zone announcement (apv-live)", () => {
+  it("the zone speaks through one derived status node, empty and error share the sentences", async () => {
+    mockApi(async (url: string) => {
+      if (String(url).includes("/api/approvals"))
+        return { items: [{ approvalId: "ap_e86", status: "pending", title: "播报单" }] };
+      return {};
+    });
+    await renderAt(page, at("approvals"));
+    await act(async () => {});
+    const live = container.querySelector('[data-testid="apv-live"]');
+    expect(live?.textContent, "ready announces the loaded count").toBe("已加载 1 条");
+    expect(live?.getAttribute("role")).toBe("status");
+    expect(live?.getAttribute("aria-live")).toBe("polite");
+  });
+
+  it("error sentence carries no request id; the card keeps the copyable one", async () => {
+    mockApi(async (url: string) => silent502(url, "req-e86-502"));
+    await renderAt(page, at("approvals"));
+    await act(async () => {});
+    const live = container.querySelector('[data-testid="apv-live"]');
+    expect(live?.textContent).toBe("列表读取失败，可复制请求编号重试");
+    expect(live?.textContent).not.toContain("req-e86-502");
+    expect(container.textContent).toContain("req-e86-502");
+  });
+});

@@ -29,6 +29,7 @@ import { RequestIdCopy } from "@/components/RequestIdCopy";
 import { priorityLabel, short8, statusLabel } from "@/modules/tasks/tasksBoard";
 import { riskView, statusView } from "@/modules/approvals/model";
 import { RelativeTime } from "@/modules/approvals/RelativeTime";
+import { announcement } from "@/modules/approvals/gates";
 // R68 parity: the list row preview and this identity card share ONE
 // missing-field wording source and ONE lifecycle vocabulary.
 import { FIELD_MISSING, FIELD_MISSING_TITLE, fieldMissing, lifecycleLabel as rosterLifecycleLabel } from "@/modules/employees/EmployeesModulePage";
@@ -1434,31 +1435,56 @@ function CapabilityZone({ resource, onRetry }: { resource: Resource<CapabilityRo
  * ------------------------------------------------------------------ */
 
 function ApprovalsZone({ resource, onRetry }: { resource: Resource<ApprovalRow[]>; onRetry: () => void }) {
-  if (resource.phase === "loading") return <ZoneLoading testid="ed5-approvals-loading" />;
+  // R86: 单一播报节点（签名派生句）——每相都挂同一个 apv-live。
+  const live = (
+    <p className="sr-only" role="status" aria-live="polite" data-testid="apv-live">
+      {announcement(resource.phase, resource.phase === "ready" ? resource.data.length : 0)}
+    </p>
+  );
+  if (resource.phase === "loading")
+    return (
+      <>
+        {live}
+        <ZoneLoading testid="ed5-approvals-loading" />
+      </>
+    );
   if (resource.phase === "empty") {
     return (
-      <ZoneEmpty
+      <>
+        {live}
+        <ZoneEmpty
         title="当前没有审批事项"
         hint="审批读口暂不支持按员工筛选；这是按你的登录身份返回（全部状态）下的空集，不是把缺失当 0。"
         testid="ed5-approvals-empty"
-      />
+        />
+      </>
     );
   }
   if (resource.phase === "denied") {
-    return <ZoneDenied title="审批" message={resource.message} requestId={resource.requestId} onRetry={onRetry} testid="ed5-approvals-denied" />;
+    return (
+      <>
+        {live}
+        <ZoneDenied title="审批" message={resource.message} requestId={resource.requestId} onRetry={onRetry} testid="ed5-approvals-denied" />
+      </>
+    );
   }
   if (resource.phase !== "ready") {
     return (
-      <ZoneError
+      <>
+        {live}
+        <ZoneError
         title="审批"
         message={resource.phase === "error" ? resource.message : ""}
         requestId={resource.phase === "error" ? resource.requestId : null}
         onRetry={onRetry}
         testid="ed5-approvals-error"
-      />
+        />
+      </>
     );
   }
   return (
+    <>
+      {live}
     <Card data-testid="ed5-approvals">
       <CardContent className="p-0">
         <p
@@ -1515,6 +1541,7 @@ function ApprovalsZone({ resource, onRetry }: { resource: Resource<ApprovalRow[]
         </ul>
       </CardContent>
     </Card>
+    </>
   );
 }
 

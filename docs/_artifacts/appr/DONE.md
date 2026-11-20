@@ -1170,3 +1170,11 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 用例（history 新 describe 3）：error 态 5 入口 title 不含 \b200\b/「自报」且含「不能」+「列表读取失败」+aria-disabled=true，refresh 例外（enabled，title「重试读取」）；loading 态 export aria-disabled=true+「正在读取列表」；ready 全页 [title] 扫描零他方数字（>20 条 title 扫，offenders 列表必空）。首跑 1 FAIL=RiskQuickFilter 钮组漏补 aria-disabled 锚（rep 函数 pairs 只写 title 项），补后全绿。
 - 验证：定向 approvals 4 files/**134 passed**（131+3）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **159 files/2179 passed**（merge 带入他人文件后的实跑基线，0 失败）。
 - 零破：apv-state-*/apv-sort-*/apv7-export/apv9-toggle/apd6 行为与文案除被删数字外未动（既有用例含 R74「actor=」子串断言全绿）；views.tsx 代码注释内保留一处历史实测读数（非屏上 DOM，工单范围=title 属性）；三档=title 属性无布局影响；9122==9813d7af 系活体待并入后代次。
+
+## R86 审批面状态播报统一（apv-live，两 tab + 员工审批区，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @206aa4c6（章面 0c1b94c3；其后 3e94876c 仅 gateway=web/src 零变，页面代次仍 9813d7af），toplevel ✓ porc=0；重发三件套 grep apv-live=0。
+- metQ 范式（现场读自 modules/metrics/MetricsModulePage.tsx L1426-1440/1785）=播报文本**由状态派生而非存储**：同状态→同文本→DOM 不变→不二次播报；「只播最后一条」为派生天然属性。本单按该范式单点实现。
+- 实现：①gates.ts 新 export announcement(phase, count)——loading=「」（起止双播报规避）、ready=「已加载 N 条」（N=visibleRows.length 与列表同源）、empty=「该条件下无审批」、error=「列表读取失败，可复制请求编号重试」（gateReason 拼接=同套措辞单点）、denied=「没有读取权限（或该面尚未开放），暂时看不到审批列表。」；rid 恒不进文本。②两页（history/pending）：新 sr-only `<p role=status aria-live=polite data-testid=apv-live>` 为唯一播报节点；**原屏上读数行去掉自带 aria-live**（文本原样保留=R44/R59 等断言零破，仅播报职责收拢；用例锁全页 [aria-live=polite] 计数=1）。③员工审批区 ApprovalsZone（employee-detail）：五相 return 统一 fragment 包同一 apv-live（count=ready 时 resource.data.length）；跨模块 import announcement from @/modules/approvals/gates（R78 同方向先例）。
+- 测试 history 3+employee-detail 2：loading→ready 首帧「已加载 2 条」+MutationObserver 计数——同计数切状态 seen=0（不重播）、计数变化恰 ≤1；empty/error 句逐字+error 播报不含 req-r86-500 而卡上 apv-state-rid 含（rid 留卡上实证）；单播报节点扫描=1。ed 用例=ready「已加载 1 条」+role/aria-live 属性+502 句无 rid 卡有 rid（坑=renderAt 为 async 必须 await，首跑漏 await 两 FAIL）。定向 approvals 4 files/**137 passed**（134+3）+employee-detail 52 passed（50+2）；tsc 两域 0 红；assert-ia 两模式 exit0；全量 **159 files/2184 passed**（基线 2179+5）。
+- 零破：apv-state/apv-sort/apv5–9/apv7-export/apv9-toggle/apv6/apd6/apd7/apr5/actor/nav/gates/state/export-name/since/time/parity/trunc/page/correlation（既有用例全绿为证；aria-live 移除只动属性不动文本）。三档=sr-only 节点零布局影响（形态学报）；9122==9813d7af 禁重建，屏幕阅读器实播待并入后代次人工验证。

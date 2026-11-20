@@ -2150,3 +2150,82 @@ describe("R85 gate titles without foreign readings", () => {
     expect(offenders.join(" | "), "zero foreign readings").toBe("");
   });
 });
+
+describe("R86 status announcements (apv-live)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+  const rowsN = (n: number, status: string) => ({
+    items: Array.from({ length: n }, (_, i) => ({
+      approvalId: `ap_r86_${status}_${i}`,
+      title: `播报行 ${i}`,
+      status,
+      decidedAt: "2026-11-18T02:00:00Z",
+    })),
+  });
+
+  it("announces loading→ready once, then only on real changes", async () => {
+    await mount(
+      async (url: string) => {
+        const u = String(url);
+        if (u.includes("/api/approval?id=")) return {};
+        if (u.includes("status=pending")) return rowsN(2, "p");
+        if (u.includes("status=rejected")) return { items: [] };
+        return rowsN(2, "a");
+      },
+      "/approvals?tab=history&status=pending",
+    );
+    await waitFor(() => qa("apv-live")?.textContent === "已加载 2 条", "first announce");
+    const el = qa("apv-live") as HTMLElement;
+    const seen: string[] = [];
+    const mo = new MutationObserver(() => seen.push(el.textContent ?? ""));
+    mo.observe(el, { childList: true, subtree: true, characterData: true });
+    const before = api.fetchJSON.mock.calls.length;
+    // 同计数切状态：播报文本未变 → 不重复播。
+    await act(async () => {
+      (document.querySelector('[data-testid="apv5-filter-status-approved"]') as HTMLButtonElement).click();
+    });
+    await waitFor(() => api.fetchJSON.mock.calls.length > before, "refetch settled");
+    await new Promise((res) => setTimeout(res, 30));
+    expect(seen, "same sentence never re-announces").toHaveLength(0);
+    // 计数变化才播一次。
+    await act(async () => {
+      (document.querySelector('[data-testid="apv5-filter-status-rejected"]') as HTMLButtonElement).click();
+    });
+    await waitFor(() => el.textContent === "已加载 0 条" || el.textContent === "该条件下无审批", "count change");
+    await new Promise((res) => setTimeout(res, 30));
+    mo.disconnect();
+    expect(seen.length, "exactly one announcement for the one change").toBeLessThanOrEqual(1);
+  });
+
+  it("empty and error get their exact sentences; rid stays on the card, out of the live text", async () => {
+    await mount(
+      async (url: string) => {
+        if (String(url).includes("/api/approval?id=")) return {};
+        return { items: [] };
+      },
+      "/approvals?tab=history&status=pending",
+    );
+    await waitFor(() => qa("apv-live")?.textContent === "该条件下无审批", "empty announce");
+    await mount(
+      async (url: string) => {
+        if (String(url).includes("/api/approval?id=")) return {};
+        throw new ApiError("boom", { status: 500, body: "", url: "/agent-api/api/approvals", requestId: "req-r86-500" });
+      },
+      "/approvals?tab=history",
+    );
+    await waitFor(() => qa("apv-live")?.textContent === "列表读取失败，可复制请求编号重试", "error announce");
+    expect(qa("apv-live")?.textContent).not.toContain("req-r86-500");
+    expect(qa("apv-state-rid")?.textContent, "copyable rid lives on the card").toContain("req-r86-500");
+  });
+
+  it("the on-screen reading line no longer carries a second live region", async () => {
+    await mount(
+      async (url: string) => {
+        if (String(url).includes("/api/approval?id=")) return {};
+        return rowsN(2, "p");
+      },
+      "/approvals?tab=history",
+    );
+    expect(document.querySelectorAll('[aria-live="polite"]').length, "one announcer per page").toBe(1);
+    expect(qa("apv-live")?.getAttribute("role")).toBe("status");
+  });
+});

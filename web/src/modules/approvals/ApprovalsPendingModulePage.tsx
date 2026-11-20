@@ -31,7 +31,7 @@ import type { ApprovalRow } from "./model";
 import { approvalSortKeyOf, approvalsRowSearchText, sortApprovalRows, type ApprovalSortDir, type ApprovalSortKey } from "./model";
 import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel } from "./states";
 import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
-import { actionGates } from "./gates";
+import { actionGates, announcement } from "./gates";
 import { QueueSummaryBar } from "./QueueSummaryBar";
 import { BackToList, restoreListScroll, saveListScroll } from "./BackToList";
 import { QueueCsvExport } from "./QueueCsvExport";
@@ -386,7 +386,12 @@ export function ApprovalsPendingModulePage(): ReactNode {
 
 
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-        <p className="min-w-0 break-words text-xs text-muted-foreground" aria-live="polite">
+        {/* R86: 播报单点=下方 sr-only apv-live；这行只是屏上读数，不再自带
+            aria-live（同一变化只播一次）。 */}
+        <p className="sr-only" role="status" aria-live="polite" data-testid="apv-live">
+          {announcement(list.phase, visibleRows.length)}
+        </p>
+        <p className="min-w-0 break-words text-xs text-muted-foreground">
           {list.phase === "loading"
             ? "正在读取待处理审批…"
             : list.phase === "empty"

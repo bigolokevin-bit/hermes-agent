@@ -26,7 +26,7 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { Spinner } from "@nous-research/ui/ui/components/spinner";
 
 import { STATUS_FILTERS, approvalSortKeyOf, approvalsRowSearchText, isKnownStatus, sortApprovalRows, type ApprovalSortDir, type ApprovalSortKey } from "./model";
-import { actionGates } from "./gates";
+import { actionGates, announcement } from "./gates";
 import { QueueSummaryBar } from "./QueueSummaryBar";
 import { BackToList, restoreListScroll, saveListScroll } from "./BackToList";
 import { QueueCsvExport } from "./QueueCsvExport";
@@ -336,7 +336,12 @@ export function ApprovalsHistoryModulePage(): ReactNode {
   const singleAgg = status === null;  return (
     <div className="flex min-w-0 w-full max-w-full flex-col gap-3" data-testid="apr5-page-history">
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-        <p className="min-w-0 break-words text-xs text-muted-foreground" aria-live="polite">
+        {/* R86: 播报单点=下方 sr-only apv-live；这行只是屏上读数，不再自带
+            aria-live（同一变化只播一次）。 */}
+        <p className="sr-only" role="status" aria-live="polite" data-testid="apv-live">
+          {announcement(list.phase, visibleRows.length)}
+        </p>
+        <p className="min-w-0 break-words text-xs text-muted-foreground">
           {list.phase === "loading"
             ? `正在按「${summary}」读取历史决策…`
             : list.phase === "empty"
