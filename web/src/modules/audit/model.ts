@@ -515,6 +515,14 @@ const HASH_KEYS = ["hash", "eventHash", "event_hash", "digest", "checksum", "sig
 const PREV_HASH_KEYS = ["prevHash", "prev_hash", "previousHash", "previous_hash", "parentHash", "parent_hash"] as const;
 const LIST_KEYS = ["items", "events", "audit", "entries", "results", "records", "data", "list"] as const;
 const CURSOR_KEYS = ["nextCursor", "next_cursor", "next", "cursor", "nextPage", "next_page"] as const;
+
+/**
+ * aud8: spellings of a stated total. Deliberately excludes `count`, `size` and
+ * `events`: those name THIS page or the rows themselves, not the window, and a
+ * page length printed as 总数 is exactly the fake number this pane refuses to
+ * show.
+ */
+const PAGE_TOTAL_KEYS = ["total", "totalCount", "total_count", "totalSize", "total_size"] as const;
 const ERROR_KEYS = ["error", "failure", "errorInfo", "error_info"] as const;
 /**
  * 请求编号 — the number a person quotes when something went wrong. Request-shaped
@@ -699,12 +707,20 @@ export interface AuditPage {
   /** Records the answer carried but that could not be read — counted, never dressed up. */
   unreadable: number;
   next: string | null;
+  /**
+   * aud8: the whole-window denominator, ONLY when the answer states one. The
+   * BFF added a top-level `total` (f1cd0ab / 5e233a4); a cursor page that
+   * carries no such field stays `null` and the screen says 总数不可用 — the
+   * loaded row count is never dressed up as a total.
+   */
+  total: number | null;
 }
 
 /** null = the answer is not a list at all, which is a failure, not an empty ledger. */
 export function auditPageFrom(payload: unknown): AuditPage | null {
   let items: unknown[] | null = null;
   let next: string | null = null;
+  let total: number | null = null;
   if (Array.isArray(payload)) {
     items = payload;
   } else {
@@ -727,6 +743,10 @@ export function auditPageFrom(payload: unknown): AuditPage | null {
       }
     }
     next = pickText(rec, CURSOR_KEYS);
+    // The stated denominator, from the page body or its wrapper; a negative or
+    // non-numeric answer is not a total, so it stays absent.
+    const stated = pickNumber(rec, PAGE_TOTAL_KEYS) ?? pickNumber(outer, PAGE_TOTAL_KEYS);
+    total = stated !== null && stated >= 0 ? stated : null;
     if (!items) return null;
   }
   const rows: AuditRow[] = [];
@@ -736,7 +756,7 @@ export function auditPageFrom(payload: unknown): AuditPage | null {
     if (row) rows.push(row);
     else unreadable += 1;
   });
-  return { rows, unreadable, next };
+  return { rows, unreadable, next, total };
 }
 
 // ── Detail model ─────────────────────────────────────────────────────

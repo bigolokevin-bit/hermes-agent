@@ -561,3 +561,31 @@ describe("live-sampled answer shapes", () => {
     expect(v.technical.join(" ")).toContain("anchorCheckpointId：cp_t_seakoi_pilot_2026111300");
   });
 });
+
+/**
+ * aud8 — 地址栏带入的两个句柄筛选，只有值存在才上线路；服务端带回的 total 才被
+ * 解析成分母，页面自身的条数字段（count/size）不算总数。
+ */
+describe("aud8 - address-borne filters and a stated total", () => {
+  it("carries actorId and resourceId only when the URL handed them over", () => {
+    expect(listUrl(null, { action: null, from: "a", to: "b" })).not.toMatch(/(actorId|resourceId)=/);
+    expect(listUrl("c1", { action: null, from: null, to: null, actor: "employee-api" })).toBe(
+      `/agent-api/api/audit?limit=${PAGE_LIMIT}&actorId=employee-api&cursor=c1`,
+    );
+    expect(listUrl(null, { action: null, from: null, to: null, resource: "ap_1" })).toContain("&resourceId=ap_1");
+    expect(listUrl(null, { action: null, from: null, to: null, actor: "", resource: "" })).not.toMatch(
+      /(actorId|resourceId)=/,
+    );
+  });
+
+  it("reads a stated total, and refuses to invent one from a page count", () => {
+    expect(auditPageFrom({ items: [{}], total: 137 })!.total).toBe(137);
+    expect(auditPageFrom({ items: [{}], total: "137" })!.total).toBe(137);
+    expect(auditPageFrom({ items: [{}], total: 0 })!.total).toBe(0);
+    expect(auditPageFrom({ audit: { items: [{}] }, total: 42 })!.total).toBe(42);
+    expect(auditPageFrom({ items: [{}], count: 1 })!.total).toBeNull();
+    expect(auditPageFrom({ items: [{}], events: 999 })!.total).toBeNull();
+    expect(auditPageFrom({ items: [{}], total: -3 })!.total).toBeNull();
+    expect(auditPageFrom({ items: [{}] })!.total).toBeNull();
+  });
+});
