@@ -163,3 +163,10 @@ Every former god file is a **facade** (public entry points + the names other pac
 | `providers/` | `providers/README.md` | `ProviderProfile` registry and ABC |
 
 PR workflow: `CONTRIBUTING.md` (maintainers: the `hermes-agent-dev` skill, not shipped here).
+
+## Web gate in symlinked console worktrees (`web/node_modules` -> `../hermes-agent/web/node_modules`)
+
+- **`pnpm --filter web build` cannot run in such a worktree**: pnpm refuses to execute a task script whose package dir is reached through a symlink (`ERR_PNPM_UNSAFE_TASK_RUN_STATE_PATH`). Use the script directly instead: `cd web && node_modules/.bin/vite build` — that is the bundling gate, and it is the only web command that reaches exit 0 here.
+- **`cd web && pnpm run build` exits 1 on a clean checkout.** Its first step is `tsc -b . --noEmit`, which fails repo-wide on pre-existing errors (approval `total` contract drift in `model.ts` / `useApprovalsData.ts` plus `views.tsx` / `employee-detail`); the count is the same before and after a change, so a non-zero exit there is not evidence about your diff. Judge typecheck by *delta*, never by exit code.
+- Full suite baseline: `cd web && node_modules/.bin/vitest run src` — 258 files / ~2870 tests. Expect `Not implemented: navigation ...` noise from jsdom; it is not a failure.
+- **Never `pnpm install` in these worktrees.** The root `node_modules` is a symlink into the sibling checkout and install aborts on `ERR_PNPM_PACKAGE_MANAGER_SYMLINK_FAILED`, leaving a real `node_modules` tree behind where the symlink was. Deps are valid if root and `web/` share one `pnpm-lock.yaml` hash — check that instead of installing.
