@@ -57,6 +57,7 @@ import {
   ReproNote,
   TechnicalDisclosure,
 } from "./states";
+import "./runs-density.css";
 import {
   PAGE_LIMIT,
   pageCapMoreText,

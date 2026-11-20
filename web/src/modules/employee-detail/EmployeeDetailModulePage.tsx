@@ -930,6 +930,10 @@ function UsageZone({ empId, nonce, onRetry }: { empId: string; nonce: number; on
   return (
     <Card data-testid="ed10-usage">
       <CardContent className="p-0">
+        {/* UI-C2 预算区：区块头 + 数值等宽（与其余 ui-c 族同口径）。 */}
+        <div className="ui-c-head">
+          <h3 className="ui-c-head-title">预算与成本</h3>
+        </div>
         <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,0.9fr)_minmax(0,1.1fr)] gap-2 border-b border-border px-4 py-2 text-xs text-muted-foreground sm:grid">
           <span>周期</span>
           <span title="运行数取 /api/run-stats（employeeId 白名单参数，实测真过滤）。">运行数</span>
@@ -948,14 +952,14 @@ function UsageZone({ empId, nonce, onRetry }: { empId: string; nonce: number; on
                 <span className="min-w-0 truncate" title="周期聚合行：本页没有按成本行的专属深链；单条运行请看「运行」区。">
                   {leg.label}
                 </span>
-                <span className="font-mono text-xs" data-testid={`ed10-usage-runs-${leg.key}`} title={leg.runsTitle}>
+                <span className="font-mono ui-c-num text-xs" data-testid={`ed10-usage-runs-${leg.key}`} title={leg.runsTitle}>
                   {leg.runs === null ? "—" : leg.runs}
                 </span>
-                <span className="font-mono text-xs" data-testid={`ed10-usage-cost-${leg.key}`} title={leg.costTitle}>
+                <span className="font-mono ui-c-num text-xs" data-testid={`ed10-usage-cost-${leg.key}`} title={leg.costTitle}>
                   {money(leg.cost ?? undefined)}
                 </span>
                 <span
-                  className="font-mono text-xs text-muted-foreground"
+                  className="font-mono ui-c-num text-xs text-muted-foreground"
                   data-testid={`ed10-usage-asof-${leg.key}`}
                   title={iso ? `payload asOf=${iso} · 来源 ${usageSource(leg.body)}` : "payload 顶层没有 ISO 格式的 asOf（或形态非法）：不用本机时钟补时。"}
                 >
