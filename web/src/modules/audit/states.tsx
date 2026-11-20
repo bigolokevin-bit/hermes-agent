@@ -315,11 +315,13 @@ export function AuditUrlFilterChips({
   );
 }
 
-/** 请求编号 has its own honest word: the answer simply did not carry one. */
-export const NO_REQUEST_ID = "未提供";
+/** 请求编号 has its own honest word: the answer simply did not carry one — the
+ * same word the missing 时间 and the copied 结论行 use, so one absent field
+ * never reads two different things on three surfaces. */
+export const NO_REQUEST_ID = "该字段未返回";
 
 /**
- * 请求编号 on the surface, copyable, and honest when it is missing: 「未提供」
+ * 请求编号 on the surface, copyable, and honest when it is missing: 「该字段未返回」
  * with the reason in its `title`. An id is quoted to support, so it is shown in
  * full and allowed to wrap — `break-all` keeps a 32-character hex inside a
  * 375px column instead of pushing the page sideways. `failure` switches the

@@ -40,7 +40,7 @@ import {
 } from "@/modules/approvals/stateCopy";
 // R68 parity: the list row preview and this identity card share ONE
 // missing-field wording source and ONE lifecycle vocabulary.
-import { FIELD_MISSING, FIELD_MISSING_TITLE, fieldMissing, lifecycleLabel as rosterLifecycleLabel } from "@/modules/employees/EmployeesModulePage";
+import { departmentView, FIELD_MISSING, FIELD_MISSING_TITLE, fieldMissing, lifecycleLabel as rosterLifecycleLabel } from "@/modules/employees/EmployeesModulePage";
 import { fetchJSON } from "@/lib/api";
 import { API_UNREACHABLE_MESSAGE, ApiError, humanizeStatus } from "@/lib/api-error";
 
@@ -1274,6 +1274,8 @@ function IdentityCard({ d, empId }: { d: Rec; empId: string }) {
   const stateRaw = pickString(d.lifecycleState, d.lifecycle);
   const stateLabel = rosterLifecycleLabel(stateRaw);
   const ridRaw = pickString(d.requestId, d.request_id);
+  // R96: 部门三态与列表桶同一 helper（禁第二套判据）。
+  const dept = departmentView("department" in d, typeof d.department === "string" ? d.department : null);
   const reportsTo = pickString(d.reportsTo, d.reports_to, d.managerEmployeeId, d.manager);
   const reportsName = pickString(d.reportsToName, d.managerName);
   const created = pickString(d.createdAt, d.created_at);
@@ -1300,6 +1302,9 @@ function IdentityCard({ d, empId }: { d: Rec; empId: string }) {
           </IdentityField>
           <IdentityField id="role" label="角色" title={role ? undefined : FIELD_MISSING_TITLE}>
             {role ?? FIELD_MISSING}
+          </IdentityField>
+          <IdentityField id="department" label="部门" title={dept.title ?? undefined}>
+            {dept.label}
           </IdentityField>
           <IdentityField id="state" label="在职态" title={stateRaw ? `原始值：${stateRaw}` : FIELD_MISSING_TITLE}>
             {stateLabel}

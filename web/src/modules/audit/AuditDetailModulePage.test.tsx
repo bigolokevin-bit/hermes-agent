@@ -166,13 +166,13 @@ describe("the human layer speaks human", () => {
     expect(cell.querySelector("button")).toBeTruthy();
   });
 
-  it("an answer with no request number says 未提供 with its reason", async () => {
+  it("an answer with no request number says 该字段未返回 with its reason", async () => {
     api.fetchJSON.mockReset();
     api.fetchJSON.mockImplementation(async () => ({ audit: { eventId: "evt_1", action: "task_created", outcome: "success" } }));
     await render("/audit/detail?id=evt_1");
     await waitFor(() => text().includes("结果与原因"), "bare detail painted");
     const cell = document.querySelector("[data-testid='aud02-detail-request-id']")!;
-    expect(cell.textContent).toContain("未提供");
+    expect(cell.textContent).toContain("该字段未返回");
     expect(cell.textContent).not.toMatch(/\b0\b/);
   });
 });
