@@ -109,6 +109,50 @@ def test_entries_without_usable_id_dropped():
     assert _content(raw)["mentions"] == [{"externalId": "ou_real"}]
 
 
+def _sdk_raw(raw_mentions):
+    """SDK-model shape as the websocket dispatcher delivers it: the adapter stores
+    the lark event object itself in ``raw_message`` (adapter ``_on_message_event``
+    -> ``_handle_message_event_data``), attribute access, not dicts. Mirrors
+    im.v1.event models via SimpleNamespace — the production read is getattr."""
+    return SimpleNamespace(
+        event=SimpleNamespace(message=SimpleNamespace(mentions=raw_mentions))
+    )
+
+
+def test_sdk_object_shape_nested():
+    """The V1 bug: over websocket ``raw_message`` is an SDK object, the old
+    dict-only read returned ``[]`` and C1 never saw the group @. Entries mix
+    id priorities; the id-less entry is dropped exactly like the dict path."""
+    raw = _sdk_raw(
+        [
+            SimpleNamespace(
+                key="@_user_1",
+                id=SimpleNamespace(
+                    open_id="ou_alice", union_id="on_alice", user_id="alice"
+                ),
+                name="Alice",
+            ),
+            SimpleNamespace(key="@_user_2", id=SimpleNamespace(user_id="bob"), name="Bob"),
+            SimpleNamespace(key="@_user_3", name="NoId"),
+        ]
+    )
+    assert _content(raw)["mentions"] == [
+        {"externalId": "ou_alice", "name": "Alice"},
+        {"externalId": "bob", "name": "Bob"},
+    ]
+
+
+def test_sdk_object_shape_flat_and_empty():
+    """Flat ``raw.message.mentions`` works on objects too; None/empty yields no
+    mentions key (legacy body stays byte-identical)."""
+    raw = SimpleNamespace(message=SimpleNamespace(mentions=[
+        SimpleNamespace(id=SimpleNamespace(union_id="on_carol"), name="Carol")
+    ]))
+    assert _content(raw)["mentions"] == [{"externalId": "on_carol", "name": "Carol"}]
+    assert "mentions" not in _content(_sdk_raw(None))
+    assert "mentions" not in _content(_sdk_raw([]))
+
+
 def test_odd_shapes_never_raise():
     """mentions non-list / None / malformed containers => [] from _mentions, and
     the payload still builds without the mentions key."""
