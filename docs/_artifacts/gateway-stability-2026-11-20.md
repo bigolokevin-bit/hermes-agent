@@ -216,3 +216,23 @@ launchd 循环启动的就在 27175，L0 在终端/会话 shell 里重启的就�
 - 判定：**外部 SIGKILL（组清扫为首要嫌疑，见 §5.5），非 keepalive 误杀、非 OOM、非 /health 阻塞**；L0 的 15:24/15:34 两次受管重启不是凶手，board `24a4bd06` 的「14th attributed (SIGKILL of 69401, not L0)」与本报告一致。
 - 代码修改：**无**（`gateway/**`、`hermes_cli/**`、`ops/**`、`web/src` 均未动）。
 - 需要重启网关：**不需要**。本报告与取证建议不涉及任何重启动作。
+
+## 7. 本车道收口清单（19:05 系统级交付纪律，用户裁定，逐字收录）
+
+> 从这拍起，「后端修复的完成」= ①commit pushed ②运行时进程启动时间晚于该 commit ③一条能证明新逻辑生效的读数（日志/接口/DB）。少一项不算完成，也不许在回执里写「已修复」。
+
+每条后端类交付按此三项自检，缺一即写「未收口」：
+
+| 项 | 取证口径 |
+|---|---|
+| ① commit pushed | `git ls-remote` 对端 sha == 本地 HEAD，且运行树 `merge-base --is-ancestor` 含该 commit |
+| ② 运行晚于 commit | `ps -o pid,lstart` 的 lstart 晚于该 commit 的时间戳（不是 etime 估算） |
+| ③ 新逻辑生效读数 | 日志/接口/DB 任一条能指向新代码；无真实流量时以「进程启动后重新编译的 `__pycache__/*.pyc` mtime」+「新代码路径上的真实 200」佐证，并明写哪一段尚未被触发 |
+
+## 8. 派发 worker 受管重启（2026-11-20 19:10，L7 执行，非代码变更）
+
+- 载体：launchd `cn.seakoi.dispatch-worker`（**不是** `ops/dispatch-worker.sh` 的 `com.seakoi.dispatch-worker`，标签漂移即 `.sh stop` 报 `no pid record` 的原因；属 ops 写域，本车道未改）。
+- 动作：`launchctl kickstart -k gui/$UID/cn.seakoi.dispatch-worker`，rc=0，19:10:03 完成，空窗 ≈1s；旧 9568/9570（lstart Nov 17 14:19:57）双双消失，`dispatch-worker.lock` 由新 pid **96901** 以 FD 3u 持有（单实例锁未被残留进程占死）。
+- 回退一行：`cd /Users/kevin_studio/Projects/seakoi-agent-os-l0-board && (set -a; . ~/.seakoi/sekoi.env; . ~/.seakoi/hermes.env; . ~/.seakoi/c1.env; set +a; export SEAKOI_RUNTIME_DB_PATH="$HOME/.local/state/seakoi-ops/runtime-dev.db" HERMES_API_KEY="$API_SERVER_KEY" SEAKOI_CHANNELS_BASE_URL="$SEAKOI_C1_BASE_URL" SEAKOI_CHANNELS_INTERNAL_TOKEN="$SEAKOI_C1_INTERNAL_TOKEN" SEAKOI_WORKER_SEND_GATE=1 UV_OFFLINE=1; exec /opt/homebrew/bin/uvx --offline --with httpx --with pydantic python -m services.runtime.scheduler)`（旧 pid 9568→9570）。
+- 三项自检（125ef0af / main 594120e3，19:06:59 入运行树）：① 运行树 HEAD `5f0db708` == `origin/main`，porc=0，`merge-base --is-ancestor 594120e3|125ef0af HEAD` 均真；② 新 pid 96899/96901 lstart **19:10:03 > 19:06:59**；③ `runtime_http.cpython-314.pyc` mtime **19:10:03**（由新进程从 19:06:59 源码重编），新进程 19:10:04 起 `POST :8101/v1/policy/budget/ledger/entries → 200`，重启后 `409 / request.idempotency_conflict` 计数 **0**（当日最后一次 18:26:57,947 属旧 pid 9570）。
+- 未收口之处（据实）：`policy:{event_id}:{digest[:16]}` 所在的 **P1 `/v1/policy/check`** 路径重启后尚无真实事件触发（轮次持续空批），故 P1 的 200 仍缺一次线上读数；观察一行：`tail -f ~/.local/state/seakoi-ops/dispatch-worker.err.log | grep -E "policy/check|实得 HTTP"`。运行树 `grep -c "_canonical_body_digest" services/runtime/runtime_http.py` = **2**（定义 :208 + 调用 :709），非任务书预期的 1。
