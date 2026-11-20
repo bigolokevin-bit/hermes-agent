@@ -176,3 +176,15 @@
 @media (max-width: 560px) {
   .cap8-sortbar { gap: 4px 8px; }
 }
+
+.capA-export-note {
+  color: var(--color-muted-foreground);
+  font-size: 0.6875rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .capA-export-note {
+    white-space: normal;
+  }
+}

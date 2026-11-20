@@ -453,6 +453,11 @@ describe("local name search", () => {
     expect(text()).toContain("仅在当前已加载 6 项内搜索");
     expect(document.querySelector("[data-testid='cap6-export-count']")?.textContent).toContain("2 条");
     expect(document.querySelector<HTMLButtonElement>("[data-testid='cap6-export']")?.disabled).toBe(false);
+    expect(document.querySelector("[data-testid='capA-export-order-note']")?.textContent).toContain("导出按当前排序与搜索");
+    const csv = await exportCsv();
+    const lines = csv.trim().split("\r\n");
+    expect(lines).toHaveLength(3);
+    expect(lines.slice(1).every((line) => line.includes("网页"))).toBe(true);
     expect(urls()).toHaveLength(6);
   });
 

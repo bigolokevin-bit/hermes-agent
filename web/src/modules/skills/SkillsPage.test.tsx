@@ -240,6 +240,12 @@ describe("SkillsPage", () => {
     expect(container.querySelector("[data-testid='cap4-count-skills']")?.textContent).toContain("1");
     expect(container.querySelector("[data-testid='cap6-export-count']")?.textContent).toContain("1 条");
     expect(container.querySelector<HTMLButtonElement>("[data-testid='cap6-export']")?.disabled).toBe(false);
+    expect(container.querySelector("[data-testid='capA-export-order-note']")?.textContent).toContain("导出按当前排序与搜索");
+    const csv = await exportCsv();
+    const lines = csv.trim().split("\r\n");
+    expect(lines).toHaveLength(2);
+    expect(lines[0]).toBe("name,type,enabled,updated_at");
+    expect(lines[1]).toMatch(/^资料整理,/);
   });
 
   it("shows a no-match state with a clear exit", async () => {

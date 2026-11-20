@@ -403,6 +403,7 @@ export function ToolsPage(): ReactNode {
               updated_at: row.updatedAt,
             }))}
           />
+          <span className="capA-export-note" data-testid="capA-export-order-note">导出按当前排序与搜索</span>
           <Button
             size="sm"
             outlined

@@ -1853,3 +1853,19 @@ built /private/tmp/health-r38/index.html
 - 验证：`npx vitest run src/modules/skills src/modules/tools` → **3 files / 49 tests passed**；全量 `npx vitest run` → **136 files / 1485 passed**（2 个基线 employee-detail unhandled 不变）；`tsc -b . --noEmit` 本域 0。
 - DOM（临时 harness 已删；Vite 5471 / Chrome 9271）：1440/1280/375 两 tab `bodySW=bodyCW=pageSW=pageCW=视口`；skills ready 2 行/`技能2有源`，empty `技能0有源（空）`+cap9-empty，404 count `—无源`+unavailable，403 count `—无源`+denied；tools ready 3 行/`工具3有源`，empty `工具0有源（空）`，404 unavailable，403 denied。
 - 边界：只改 `web/src/modules/{capabilities,skills,tools}/**`；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；无独立观察者。
+
+## R56 /capabilities 导出行序与排序一致（capA，2026-11-20）
+
+- 基线：显式 refspec fetch 后 `git merge --no-ff origin/lane/hermes-console` 得新 tip `7173b7c6`（wave-17），合入本 lane 为 merge `d39fdb61`，未 reset。
+- 现状核对：cap8 起导出已传 `sortedRows`（技能）与 `[...toolRows, ...mcpRows]`（工具，表体两段拼接），实际行序已与屏上排序一致；此前“依赖数组顺序”的风险点补成显式语义并在屏上标注。
+- 新增 `capA-export-order-note`「导出按当前排序与搜索」（技能/工具页头导出按钮旁）；导出列仍为 `name,type,enabled,updated_at`，缺值留空不变；空集 disabled+title 沿用。
+- DOM 实测（临时 harness 已删；Vite 5472 / Chrome 9272，1440）：
+  - 技能默认序：屏上首 `B2 汇总` / 末 `C3 清理`；CSV 首 `B2 汇总,平台内置,正常,2026-11-18 14:00` / 末 `C3 清理,外部集成,停用,2026-11-17 14:00`。
+  - 技能 `sort=name&dir=asc`：屏上首 `A1 检索` / 末 `C3 清理`；CSV 首 `A1 检索,…` / 末 `C3 清理,…`。
+  - 工具默认序：屏上首 `网页搜索` / 末 `mcp-old`；CSV 首 `网页搜索,…` / 末 `mcp-old,…`。
+  - 工具 `sort=name&dir=asc`：屏上首 `网页内容提取` / 末 `mcp-old`；CSV 首 `网页内容提取,…` / 末 `mcp-old,…`。
+  - 筛选联动：技能 `?q=检索` 1 行 → CSV 1 条数据行；工具 `?q=网页` 2 行 → CSV 2 条数据行；切 tab 后导出集随该 tab 变化。
+  - 三档宽度：1440/1280/375 两页 `bodySW=bodyCW=视口`，导出说明可见。
+- 断言：技能/工具各补「导出说明 + CSV 行数与名称随 q 变化」，原有排序测试继续比对屏上首末与 CSV 首末。
+- 验证：`npx vitest run src/modules/skills src/modules/tools src/modules/capabilities` → **5 files / 54 tests passed**；全量 `npx vitest run` → **137 files / 1588 passed**；`tsc -b . --noEmit` 本域 0。
+- 边界：只改 `web/src/modules/{capabilities,skills,tools}/**` 与 DONE；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；无独立观察者。
