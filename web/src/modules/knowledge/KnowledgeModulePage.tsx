@@ -82,6 +82,7 @@ import {
   docHitCopyText,
   docMetaCopyText,
   groupRowsBySpace,
+  previewField,
   documentDetailUrl,
   documentsUrl,
   documentsPageUrl,
@@ -1667,6 +1668,39 @@ function DocPreviewDrawer({
           ) : null}
         </div>
 
+        {/* R72 — 抽屉侧 kn-doc 族：与上方 knO 共用同一 linkText/copyLink（一个字符串，
+            两处入口）；与行上入口同 builder，同文档必同串。knO 族按派工保留不删。 */}
+        <div className="knO-row" data-testid="kn-doc-link-drawer">
+          <Button
+            size="sm"
+            outlined
+            className="knO-copy"
+            onClick={copyLink}
+            disabled={!linkUsable}
+            title={
+              linkUsable
+                ? "复制这篇文档的固定链接（与行上入口同串）：保留当前检索与排序参数，粘贴或刷新直达同一抽屉。屏上数据，不会再发请求。"
+                : "该文档没有可用的固定标识"
+            }
+            data-testid="kn-doc-permalink"
+          >
+            复制文档固定链接
+          </Button>
+          <span className="knO-status" data-testid="kn-doc-permalink-status" aria-live="polite">
+            {linkAct === "copied" ? "链接已复制" : linkAct === "failed" ? "复制失败，已展开可选文本，可手动复制" : ""}
+          </span>
+          {linkAct === "failed" ? (
+            <textarea
+              className="knO-fallback"
+              data-testid="kn-doc-permalink-fallback"
+              aria-label="手动复制文档固定链接"
+              readOnly
+              rows={2}
+              value={linkText}
+            />
+          ) : null}
+        </div>
+
         {surface.state.kind === "loading" ? <Skeleton testid="kn7-preview-loading" /> : null}
 
         {surface.state.kind === "unwired" ? (
@@ -1824,6 +1858,8 @@ function DocTable({
   previewKey,
   onPreview,
   onDrawerClick,
+  onPermalink,
+  sdocOpen,
 }: {
   entries: DocEntry[];
   docLink: (key: string) => string;
@@ -1839,6 +1875,10 @@ function DocTable({
   previewKey: string | null;
   onPreview: (key: string) => void;
   onDrawerClick: () => void;
+  /** R72 — 行上固定链接：与抽屉同一 builder（origin + docLink(key)），点一次即复制该行文档的链接。 */
+  onPermalink: (key: string) => void;
+  /** R70 — 检索命中展开在场时本面预览不显示（双向互斥的渲染侧）。 */
+  sdocOpen: boolean;
 }): ReactNode {
   return (
     <div
@@ -1859,7 +1899,7 @@ function DocTable({
         <tbody>
           {entries.map(({ row, key }, index) => {
             const isOpen = openKey !== "" && openKey === key;
-            const previewOpen = previewKey === key;
+            const previewOpen = !sdocOpen && previewKey === key; // R70：检索命中展开在场时，本面预览不独占
             const previewId = `kn-doc-preview-${key}`;
             return (
               <Fragment key={key}>
@@ -1896,6 +1936,21 @@ function DocTable({
                     >
                       {previewOpen ? "收起预览" : "预览"}
                     </button>
+                    {/* R72 — 行上固定链接入口：不用先打开抽屉；无真标识即 disabled。 */}
+                    <button
+                      type="button"
+                      className="kn-doc-preview-toggle kn-doc-permalink-btn"
+                      data-testid="kn-doc-permalink"
+                      disabled={row.id === ""}
+                      onClick={() => onPermalink(key)}
+                      title={
+                        row.id !== ""
+                          ? "复制这篇文档的固定链接：保留当前检索与排序参数，粘贴或刷新直达同一文档；不用先打开抽屉。与抽屉入口同 builder，不会再发请求。"
+                          : "该文档没有可用的固定标识"
+                      }
+                    >
+                      复制链接
+                    </button>
                   </td>
                   <td data-label="类型">
                     <span data-testid="kn3-docs-type" title={row.typeHint ?? (row.typeRaw ?? undefined)}>
@@ -1921,27 +1976,36 @@ function DocTable({
                           <dt>文档名</dt>
                           <dd
                             data-testid="kn-doc-preview-name"
-                            title={row.nameHint !== null ? `文档名：${row.nameHint}` : (row.nameHint ?? undefined)}
+                            title={previewField("文档名", row.nameHint === null, row.name, row.nameHint).title}
                           >
-                            {row.nameHint === null ? row.name : "该字段未返回"}
+                            {previewField("文档名", row.nameHint === null, row.name, row.nameHint).text}
                           </dd>
                         </div>
                         <div>
                           <dt>类型</dt>
-                          <dd data-testid="kn-doc-preview-type" title={row.typeRaw === null ? "类型：上游没有给出" : (row.typeRaw ?? undefined)}>
-                            {row.typeRaw === null ? "该字段未返回" : row.type}
+                          <dd
+                            data-testid="kn-doc-preview-type"
+                            title={previewField("类型", row.typeHint === null, row.type, row.typeHint, row.typeRaw ?? undefined).title}
+                          >
+                            {previewField("类型", row.typeHint === null, row.type, row.typeHint, row.typeRaw ?? undefined).text}
                           </dd>
                         </div>
                         <div>
                           <dt>大小</dt>
-                          <dd data-testid="kn-doc-preview-size" title={row.sizeHint !== null ? `大小：${row.sizeHint}` : undefined}>
-                            {row.sizeHint === null ? row.size : "该字段未返回"}
+                          <dd
+                            data-testid="kn-doc-preview-size"
+                            title={previewField("大小", row.sizeHint === null, row.size, row.sizeHint).title}
+                          >
+                            {previewField("大小", row.sizeHint === null, row.size, row.sizeHint).text}
                           </dd>
                         </div>
                         <div>
                           <dt>更新</dt>
-                          <dd data-testid="kn-doc-preview-updated" title={row.atHint !== null ? `更新：${row.atHint}` : undefined}>
-                            {row.atHint === null ? row.at : "该字段未返回"}
+                          <dd
+                            data-testid="kn-doc-preview-updated"
+                            title={previewField("更新", row.atHint === null, row.at, row.atHint).title}
+                          >
+                            {previewField("更新", row.atHint === null, row.at, row.atHint).text}
                           </dd>
                         </div>
                         <div>
@@ -1974,7 +2038,8 @@ function SpaceDetailSurface({
   dir,
   onSort,
   onCloseDoc,
-  onCloseDocQuietly,
+  onCloseOverlays,
+  sdocOpen,
 }: {
   nonce: string;
   spaceId: string;
@@ -1986,12 +2051,22 @@ function SpaceDetailSurface({
   dir: DocSortDir;
   onSort: (col: DocSortCol) => void;
   onCloseDoc: () => void;
-  /** R67 — 开预览时静默关抽屉：只删 doc=，不抢焦点（焦点该留在被点的预览钮上）。 */
-  onCloseDocQuietly: () => void;
+  /** R67/R70 — 开预览时静默关其他详情面（抽屉 doc=/检索展开 sdoc=），一次合并写、不抢焦点。 */
+  onCloseOverlays: (flags: { doc: boolean; sdoc: boolean }) => void;
+  /** R70 — 三面互斥补齐：与检索命中行内展开（?sdoc=）双向互斥，同 R68 空间列表的接法。 */
+  sdocOpen: boolean;
 }): ReactNode {
   const [filter, setFilter] = useState("");
   // R67 — 行内预览是本面的视图态：不进 URL（刷新/粘贴一律收起），同时至多一行。
   const [previewKey, setPreviewKey] = useState<string | null>(null);
+  // R70 — 检索命中展开在场时预览作废；sdoc 一关也不自行复活（state 比较的渲染期调整，不发请求）。
+  const [wasSdocOpen, setWasSdocOpen] = useState(sdocOpen);
+  if (sdocOpen !== wasSdocOpen) {
+    setWasSdocOpen(sdocOpen);
+    if (sdocOpen) {
+      setPreviewKey(null);
+    }
+  }
   // 换一个空间：本地筛选要清掉，别把上一个空间的筛选结果当成这个空间的现状。
   // 行与错误本就随读口键（含 spaceId）更换而回到骨架，不会残留。
   const prevSpace = useRef(spaceId);
@@ -2092,20 +2167,36 @@ function SpaceDetailSurface({
     surface.state.kind === "ready" ? { ...surface.state.value, rows: shown.map((entry) => entry.row) } : null;
   const openRow = shown.find((entry) => entry.key === openDoc)?.row ?? null;
 
-  // R67 — 开合行内预览：收起与展开都不动 URL；抽屉开着时开预览 = 静默关抽屉（只删 doc=、不抢焦点）。
+  // R67 — 开合行内预览：收起与展开都不动 URL；抽屉/检索展开开着时开预览 = 静默关它（只删参数、不抢焦点）。
   const handlePreview = (key: string) => {
     if (previewKey === key) {
       setPreviewKey(null);
       return;
     }
     setPreviewKey(key);
-    if (openDoc !== "") {
-      onCloseDocQuietly();
+    if (openDoc !== "" || sdocOpen) {
+      onCloseOverlays({ doc: openDoc !== "", sdoc: sdocOpen });
     }
   };
   // 点行名开抽屉时收起预览：两者互斥，同屏至多一个详情面。
   const handleDrawerClick = () => {
     setPreviewKey(null);
+  };
+
+  // R72 — 行上固定链接：与抽屉 knO/kn-doc 入口同一 builder（origin + docLink(key)），
+  // 同文档必同串；q/ksort/kdir（含旧 sort/dir 若在地址里）由 docLink 随现地址整体带过。
+  // 复制本身零请求：只读地址与行标识。
+  const [rowLink, setRowLink] = useState<{ url: string; kind: "copied" | "failed" } | null>(null);
+  const handlePermalink = (key: string) => {
+    const url = `${typeof window === "undefined" ? "" : window.location.origin}${docLink(key)}`;
+    if (!navigator.clipboard?.writeText) {
+      setRowLink({ url, kind: "failed" });
+      return;
+    }
+    void navigator.clipboard.writeText(url).then(
+      () => setRowLink({ url, kind: "copied" }),
+      () => setRowLink({ url, kind: "failed" }),
+    );
   };
 
   // 下一页只由按钮显式触发，绝不做滚动自动加载；失败后按钮仍是这个入口（重试=再点）。
@@ -2263,6 +2354,8 @@ function SpaceDetailSurface({
               previewKey={previewKey}
               onPreview={handlePreview}
               onDrawerClick={handleDrawerClick}
+              onPermalink={handlePermalink}
+              sdocOpen={sdocOpen}
             />
 
             {/* R54 — 游标分页条：读数只来自信封给的字段；缺什么就说什么不可用，一律不推算。 */}
@@ -2333,6 +2426,22 @@ function SpaceDetailSurface({
                     重试
                   </Button>
                 </div>
+              ) : null}
+            </div>
+            {/* R72 — 行侧固定链接的读数与兜底：aria-live 成功句；剪贴板失败给只读 textarea（全串在此与 title，不上屏正文）。 */}
+            <div className="knO-row" data-testid="kn-doc-link-bar">
+              <span className="knO-status" data-testid="kn-doc-permalink-status" aria-live="polite">
+                {rowLink?.kind === "copied" ? "链接已复制" : rowLink?.kind === "failed" ? "复制失败，已展开可选文本，可手动复制" : ""}
+              </span>
+              {rowLink?.kind === "failed" ? (
+                <textarea
+                  className="knO-fallback"
+                  data-testid="kn-doc-permalink-fallback"
+                  aria-label="手动复制文档固定链接"
+                  readOnly
+                  rows={2}
+                  value={rowLink.url}
+                />
               ) : null}
             </div>
           </>
@@ -2571,6 +2680,7 @@ function DocumentNameSearch({
       state: gateStateOf(surface.state.kind, surface.state.kind === "unwired" && surface.state.denied),
       rows: shown.length,
       filterText: text.trim(),
+      loadedTotal: loaded.length,
     },
     copyAct,
   );
@@ -2714,7 +2824,11 @@ function DocumentNameSearch({
               <dl className="knw5-ref-detail" data-testid="kn6-search-detail" title={openRow.id || undefined}>
                 <div>
                   <dt>文档</dt>
-                  <dd title={openRow.nameHint ?? undefined}>{openRow.name}</dd>
+                  <dd
+                    title={previewField("文档名", openRow.nameHint === null, openRow.name, openRow.nameHint).title}
+                  >
+                    {previewField("文档名", openRow.nameHint === null, openRow.name, openRow.nameHint).text}
+                  </dd>
                 </div>
                 <div>
                   <dt>所属空间</dt>
@@ -2734,15 +2848,23 @@ function DocumentNameSearch({
                 </div>
                 <div>
                   <dt>类型</dt>
-                  <dd title={openRow.typeHint ?? (openRow.typeRaw ?? undefined)}>{openRow.type}</dd>
+                  <dd
+                    title={previewField("类型", openRow.typeHint === null, openRow.type, openRow.typeHint, openRow.typeRaw ?? undefined).title}
+                  >
+                    {previewField("类型", openRow.typeHint === null, openRow.type, openRow.typeHint, openRow.typeRaw ?? undefined).text}
+                  </dd>
                 </div>
                 <div>
                   <dt>大小</dt>
-                  <dd title={openRow.sizeHint ?? undefined}>{openRow.size}</dd>
+                  <dd title={previewField("大小", openRow.sizeHint === null, openRow.size, openRow.sizeHint).title}>
+                    {previewField("大小", openRow.sizeHint === null, openRow.size, openRow.sizeHint).text}
+                  </dd>
                 </div>
                 <div>
                   <dt>更新</dt>
-                  <dd title={openRow.atHint ?? undefined}>{openRow.at}</dd>
+                  <dd title={previewField("更新", openRow.atHint === null, openRow.at, openRow.atHint).title}>
+                    {previewField("更新", openRow.atHint === null, openRow.at, openRow.atHint).text}
+                  </dd>
                 </div>
               </dl>
               ) : null}
@@ -3218,17 +3340,23 @@ function containerQuery(key: string): HTMLElement | null {
     anchor?.focus();
   };
 
-  // R67 — 静默版：开行内预览时用它关抽屉——只删 doc=，焦点留在预览钮，不抢回行。
-  const closeDocQuietly = () => {
-    const next = new URLSearchParams(sp);
-    next.delete("doc");
-    setSp(next);
-  };
-
   // R68 — 开空间行内预览时静默收掉检索行内展开：只删 sdoc=，不抢焦点。
   const closeSdocQuietly = () => {
     const next = new URLSearchParams(sp);
     next.delete("sdoc");
+    setSp(next);
+  };
+
+  // R70 — 详情面预览可能与 doc= 与 sdoc= 同时为敌：一次构造删两项。
+  //（setSearchParams 不支持函数式 updater，两次连调会以同一陈旧基互相覆盖——parity 测试抓出的真缺陷。）
+  const closeOverlaysQuietly = (flags: { doc: boolean; sdoc: boolean }) => {
+    const next = new URLSearchParams(sp);
+    if (flags.doc) {
+      next.delete("doc");
+    }
+    if (flags.sdoc) {
+      next.delete("sdoc");
+    }
     setSp(next);
   };
 
@@ -3393,7 +3521,8 @@ function containerQuery(key: string): HTMLElement | null {
                       dir={sortDir}
                       onSort={applySort}
                       onCloseDoc={closeDocDrawer}
-                    onCloseDocQuietly={closeDocQuietly}
+                      onCloseOverlays={closeOverlaysQuietly}
+                      sdocOpen={openSearchDoc !== ""}
                     />
                   )}
                   <SourceFreshness />
