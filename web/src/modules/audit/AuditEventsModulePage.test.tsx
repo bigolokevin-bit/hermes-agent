@@ -2795,3 +2795,185 @@ describe("audG - the shareable filter summary", () => {
     expect(document.querySelector("[data-testid='audG-filter-copy-block']")).toBeNull();
   });
 });
+
+/**
+ * audH — 每页条数选择器。断言的是：选择落 `?limit=`、切条数重取恰一次并回到第 1 页
+ * 清掉游标栈、与时间窗/类型/操作者/资源组合冷挂载可复现；服务带回生效值时按生效值
+ * 回显并说明，服务没带回时只报「请求值 + 实收条数」两个数；地址里的非法/超大值
+ * 一律不发出去并如实说明；空集控件 disabled+title；加载中与被拒时没有该控件；
+ * total 仍走服务端字段，缺则「总数不可用」。
+ */
+describe("audH - the page size selector", () => {
+  const many = (n: number): unknown[] =>
+    Array.from({ length: n }, (_unused, index) => ({
+      eventId: `evt_size_${String(index).padStart(4, "0")}`,
+      action: "task.created",
+      occurredAt: "2026-11-19T01:20:00Z",
+      outcome: "succeeded",
+      actor: { type: "system", id: "employee-api" },
+    }));
+
+  const listReads = (): string[] => urls().filter((u) => /^\/agent-api\/api\/audit\?/.test(u));
+  const sizeValue = (): string =>
+    (document.querySelector<HTMLSelectElement>("[data-testid='audH-page-size']")?.value ?? "").trim();
+
+  async function pickSize(size: string): Promise<void> {
+    const node = document.querySelector<HTMLSelectElement>("[data-testid='audH-page-size']")!;
+    await act(async () => {
+      node.value = size;
+      node.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+  }
+
+  async function mountProbed(entry: string, handler?: (url: string) => Promise<unknown>): Promise<void> {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(
+      handler ??
+        (async (url: string) => {
+          const asked = Number(new URLSearchParams(String(url).split("?")[1] ?? "").get("limit") ?? "50");
+          return { items: many(asked), nextCursor: "cur_page2" };
+        }),
+    );
+    await render(entry, <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await waitFor(() => !skeleton(), "first page settled");
+  }
+
+  it("changing the size asks once, at that size, and starts the page over", async () => {
+    await mountProbed("/audit?window=7d&cursor=cur_page1&cursor=cur_page2");
+    expect(sizeValue()).toBe("50");
+    expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 3 页");
+    const before = listReads().length;
+    await pickSize("100");
+    await waitFor(() => listReads().length === before + 1, "one read at the new size");
+    expect(listReads().length).toBe(before + 1);
+    expect(locationText()).toContain("limit=100");
+    expect(locationText()).not.toContain("cursor=");
+    expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 1 页");
+    expect(listReads().pop()).toContain("limit=100");
+    expect(sizeValue()).toBe("100");
+    expect(document.querySelector("[data-testid='audH-clamp-note']")).toBeNull();
+  });
+
+  it("a pasted size replays cold: control filled, first read at that size", async () => {
+    await mountProbed(
+      "/audit?window=custom&from=2026-11-17T01%3A00%3A00.000Z&to=2026-11-17T02%3A30%3A00.000Z" +
+        "&type=task.created&actor=employee-api&resource=ap_1&limit=25",
+    );
+    expect(sizeValue()).toBe("25");
+    const asked = listReads().pop() ?? "";
+    expect(asked).toContain("limit=25");
+    expect(asked).toContain("action=task.created");
+    expect(asked).toContain("actorId=employee-api");
+    expect(asked).toContain("from=2026-11-17T01");
+    expect(listReads()).toHaveLength(1);
+    // audG 的摘要同源：请求路径就是这条，limit 已在里面
+    const clip = stubClipboardForSummary();
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='audG-filter-copy']")?.click();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+    expect(clip.calls[0]).toContain(`请求：${asked}`);
+  });
+
+  function stubClipboardForSummary(): { calls: string[] } {
+    const box: { calls: string[] } = { calls: [] };
+    Object.defineProperty(window, "isSecureContext", { configurable: true, value: true });
+    Object.defineProperty(window.navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: async (text: string) => void box.calls.push(text) },
+    });
+    return box;
+  }
+
+  it("a size the service clamped is echoed as the size in force", async () => {
+    await mountProbed("/audit?window=7d", async (url) => {
+      const asked = new URLSearchParams(String(url).split("?")[1] ?? "");
+      if (asked.get("limit") === "100") return { items: many(50), limit: 50, nextCursor: null };
+      return { items: many(50), nextCursor: null };
+    });
+    await pickSize("100");
+    await waitFor(() => sizeValue() === "50", "the served size is what the control shows");
+    const note = document.querySelector("[data-testid='audH-clamp-note']");
+    expect(note).not.toBeNull();
+    expect(note!.textContent).toContain("请求按每页 100 条发出");
+    expect(note!.textContent).toContain("服务这一页带回的是每页 50 条");
+    // the control does not offer 100 as if it were in force
+    expect(document.querySelector<HTMLSelectElement>("[data-testid='audH-page-size']")!.selectedOptions[0]!.text).toBe("50 条");
+    expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("已加载 50 条");
+  });
+
+  it("a service that states no size gets only the two numbers the screen has", async () => {
+    await mountProbed("/audit?window=7d", async () => ({ items: many(30), nextCursor: null }));
+    const note = document.querySelector("[data-testid='audH-clamp-note']");
+    expect(note).not.toBeNull();
+    expect(note!.textContent).toContain("服务没有带回这一页按多少条读");
+    expect(note!.textContent).toContain("limit=50");
+    expect(note!.textContent).toContain("实收 30 条");
+    expect(sizeValue()).toBe("50");
+    expect(document.querySelector("[data-testid='aud2-total']")!.textContent).toBe("总数不可用");
+    expect(document.querySelector("[data-testid='aud2-total']")!.getAttribute("title")).toContain("游标分页不能自算总数");
+  });
+
+  it("an address size nobody offered is reported, not requested", async () => {
+    for (const written of ["999", "abc", "0"]) {
+      await mountProbed(`/audit?window=7d&limit=${written}`);
+      expect(listReads().pop()).toContain("limit=50");
+      expect(listReads().pop()).not.toContain(`limit=${written}`);
+      expect(sizeValue()).toBe("50");
+      const note = document.querySelector("[data-testid='audH-clamp-note']");
+      expect(note).not.toBeNull();
+      expect(note!.textContent).toContain("没有把它发出去");
+      expect(document.querySelector<HTMLSelectElement>("[data-testid='audH-page-size']")!.getAttribute("title")).toContain(
+        "没有把它发出去",
+      );
+    }
+  });
+
+  it("an empty answer leaves the size selector on screen but unusable", async () => {
+    await mountProbed("/audit?window=24h", async () => ({ items: [], nextCursor: null }));
+    const node = document.querySelector<HTMLSelectElement>("[data-testid='audH-page-size']")!;
+    expect(node.disabled).toBe(true);
+    expect(node.getAttribute("title")).toContain("没有事件");
+    expect(document.querySelector("[data-testid='aud01-empty']")).not.toBeNull();
+    // the empty answer keeps the SAME control (one widget, not a second one) and
+    // marks it unusable with its reason. jsdom dispatches change even on a
+    // disabled node, so the contract proven here is the disabled state and its
+    // title, not a click-through request count.
+    expect(document.querySelectorAll("[data-testid='audH-page-size']")).toHaveLength(1);
+    expect(document.querySelectorAll("[data-testid='audH-clamp-note']")).toHaveLength(0);
+  });
+
+  it("loading and denied offer no size to choose", async () => {
+    let release: ((value: unknown) => void) | null = null;
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(() => new Promise((resolve) => { release = resolve; }));
+    await render("/audit?window=7d", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud01-loading']") !== null, "loading");
+    expect(document.querySelector("[data-testid='audH-page-size']")).toBeNull();
+    await act(async () => {
+      release?.({ items: many(2), nextCursor: null });
+    });
+    await waitFor(() => !skeleton(), "ready");
+    expect(document.querySelector("[data-testid='audH-page-size']")).not.toBeNull();
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockRejectedValue(
+      new ApiError("no", { status: 403, body: '{"code":"console.forbidden"}', url: "/agent-api/api/audit", requestId: "rid-h" }),
+    );
+    await render("/audit?window=7d", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud01-denied']") !== null, "denied");
+    expect(document.querySelector("[data-testid='audH-page-size']")).toBeNull();
+  });
+
+  it("a stated total still reads as the service's own number", async () => {
+    await mountProbed("/audit?window=7d", async () => ({ items: many(5), total: 137, limit: 25, nextCursor: null }));
+    await pickSize("25");
+    await waitFor(() => document.querySelector("[data-testid='aud2-total']")!.textContent === "共 137 条", "total painted");
+    expect(document.querySelector("[data-testid='aud2-total']")!.getAttribute("title")).toContain("顶层 total");
+    expect(sizeValue()).toBe("25");
+  });
+});
