@@ -712,3 +712,14 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 - 验证：定向 metrics+runs 4+3 files / 386 passed；全量 168 files / **2324 passed**；`tsc` 两域 0；`eslint` 0 error（9 条既存 warning）；build exit 0（entry 内 `run-asof`=0，`RunsModulePage-*.js`=1，`MetricsModulePage-*.js` 内 `metB-source-asof`=1）。
 - 既有断言随统一口径收紧三处：metB 合法 title 由「采集时刻来自 bff」改为完整 ISO+来源；两处缺值 title 补「；不用本机时间顶替。」；`run-note-asOf` 文案改用「不用本机时间顶替」。均属口径统一，非放宽。
 - 未测：真实浏览器 375 下 `run-asof-line` 折行；上游真的给出非 UTC 偏移时的显示（按同一 ISO 解析，理论一致）。
+
+## 跨页时间与窗口护栏（cross-page guards，2026-11-20）
+
+两页的「采集时刻」与 `/runs` 的时间窗，各自单一实现已在测试里钉住；本单只加测试，未改产品行为。
+
+- 同源证据：源码读取断言 `RunsModulePage.tsx` 出现 `"../metrics/asof"`、`MetricsModulePage.tsx` 出现 `"./asof"`（不存在第三套）；同一 payload（`asOf=2026-11-19T20:12:00.000Z`、`asOfSource=bff-aggregation`）下 `run-asof` 与 `metB-source-asof-run-stats` 的文本逐字 `toBe` 相等（`2026-11-20 04:12`），title 亦 `toBe` 相等（`采集时刻 2026-11-19T20:12:00.000Z（UTC） · 来源 bff-aggregation`）。
+- 三态：缺失、`yesterday`、空串三份 payload，两页文本都 `—`、title 都 `上游未返回采集时刻；不用本机时间顶替。`；注入假时钟 2031 后 `run-asof` 仍 `—`（只断言该处文本与 title —— 页面别处的导出文件名含生成时刻，属真实读取时刻，不算本机时钟冒充）。
+- 窗口语义：`run-window-7d` 默认选中；24h/7d/30d 的 `/api/runs` `since` 与现在差落在 ±2 分钟；`run-window-all` 必发 `since=1970-01-01T00:00:00.000Z`，不省略（省略会被读口以 400 `request.missing_filter` 拒收）；`?window=xxx&status=failed` 按下 7 天读取、地址原样保留、`run-source-note` 写「未识别」。
+- 批大小实测：`/runs` 切窗只让 `/api/runs` +1（`run-stats`、`employees` 零增）；`/metrics` 切统计窗只重发 usage 的 2 条 `run-stats`（当前窗 + 上一窗），`run-activity` 不动；第二次切换仍恰 +2。
+- 验证：单文件 5 passed；定向 metrics+runs 10 files / 391 passed；全量 170 files / **2356 passed**；`tsc` 两域 0；`eslint` exit 0（9 条既存 warning）；build exit 0（entry 内 `metB-source-asof`=0，`MetricsModulePage-*.js`=1）。
+- 未测：375 折行；读口在 `since=1970` 极限窗口下的真实响应（只钉请求形状）。
