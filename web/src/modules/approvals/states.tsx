@@ -188,19 +188,27 @@ export function EmptyPanel({
 }): ReactNode {
   return (
     <Card className="border-border bg-card" data-testid={testId} >
-      <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center" data-testid="apv-state-empty">
+      {/* 空态层级（UI-RUBRIC 留白/状态条目）：标题 > 一句说明 > 单一主操作 > 次级出口。
+       * 主操作 = 清筛选（有服务器筛选时唯一实心）；无筛选的真集空时，刷新就是那唯一主操作。
+       * 字号是唯一可靠台阶（Mondwest 只注册 400 face，字重令牌是死杠杆，见 approvals 前案）。 */}
+      <CardContent className="flex min-w-0 flex-col items-center gap-[var(--space-2)] px-[var(--space-4)] py-[var(--space-8)] text-center" data-testid="apv-state-empty">
         <Inbox className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
-        <p className={`min-w-0 break-words text-sm ${themedBody}`} data-testid="apv-state-empty-text">{reason}</p>
+        <p className={`min-w-0 max-w-prose break-words text-base ${themedBody}`} data-testid="apv-state-empty-text">{reason}</p>
         <p className="max-w-prose break-words text-xs text-muted-foreground">{nextStep}</p>
-        <div className="flex min-w-0 flex-wrap items-center justify-center gap-2">
-          <Button size="sm" outlined onClick={onRefresh} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
-            刷新
-          </Button>
+        <div className="flex min-w-0 flex-wrap items-center justify-center gap-[var(--space-2)] pt-[var(--space-2)]">
           {clear ? (
-            <Button size="sm" outlined data-testid="apv-state-clear" onClick={clear.onClear}>
+            <Button size="sm" data-testid="apv-state-clear" onClick={clear.onClear}>
               {clear.label}
             </Button>
           ) : null}
+          <Button
+            size="sm"
+            outlined={clear ? true : undefined}
+            onClick={onRefresh}
+            prefix={<RefreshCw className="h-3.5 w-3.5" />}
+          >
+            刷新
+          </Button>
         </div>
         <PanelExits testId={`${testId}-exits`} />
       </CardContent>
