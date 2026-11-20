@@ -3160,3 +3160,59 @@ kn3-page-cap/knE-page-* 全族通过。
 边界：只新增 web/src/modules/knowledge/knowledge.empty.test.tsx 与本证据；显式路径 add；
 无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
 「test(console): knowledge empty state guards」。
+
+# KNW5 追加 R142：空间详情列表复制三值同源护栏（纯测试单）（2026-11-20 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `862154eb`
+（代码代次 `18ec9cfb` 链；知识面 delta 空）。零产品文件改动。
+
+## 名实核对（派工三处按 grep 现状落，未造控件未改文案）
+
+```text
+①导出族不存在：data-export="absent" 全页标记（KnowledgeModulePage.tsx:1297/:1630/
+  :2630/:3032）+ copyGates NO_EXPORT——「导出」以清单复制 knF-copy 为代表（④位点复证）。
+②kn-doc-copy*（DocLineCopy）只挂行内预览与检索展开块（R114 落点），本面逐行复制是
+  R132 kn-row-copy-space-<i>——三值按「可见行 == 行钮 == knF 数据行」断言，
+  预览对照落为「kn-doc-copy 文本 == 同行钮文本 逐字 toBe」（单行对照，非计数）。
+③本面筛选两维真实存在：kn-type-*（?ktype=）+ kn3-docs-filter-input（本地名筛，非 URL），
+  均零请求（口径 R118/R54 已锁，本单只补三值同步）。
+复用不重写：R108/R131 已锁 cap 三值与合并态三值——本文件不重跑其场景，只在
+「筛选降数、清空复原、预览同行」三个新位点补断言；R138 已锁四态禁用句——本文件 ④
+只复证 error 句逐字与「点击零写零请求」的 disabled 行为面在 ghost/ktype 非法组合位点。
+```
+
+## 关键读数
+
+```text
+①基础态（P/Q/R 三行）：visible 3 == 钮 3 == knF 数据行 3，钮 testid 逐字
+  [space-0, space-1, space-2]（i 连续 0..N-1）；Q 行预览 kn-doc-copy 文本 ==
+  kn-row-copy-space-1 文本 toBe 逐字等，且清单 lines[2] == 单行第二行。
+②类型桶只看 PDF：三值同步降（<3 且互等）；回全部复原 [3,3,3]；名筛「Q 表」
+  [1,1,1] 且清单行含 Q 表.xlsx；清空复原 [3,3,3]、编号重新 0 起；全程 urls 计数不动。
+③缺项行（d_r）单行逐字「R 缺项 | — | — | — | DR」（缺值三列「—」、短码同源），
+  清单同体逐字等；假时钟钉 2031-03-04 渲染整屏无 "2031"（本机时钟零参与复证，
+  updatedText 口径 R75/R76 已锁、此处为行钮+清单双位点）。
+④真 0 行与 500 失败：knF-copy disabled、error 态 title 逐字「这次没有读到文档列表，
+  没有可复制的内容。」；两态点击 writeText 0 调用、urls 计数不变；无行=无钮
+  （spaceBtns 0，不渲染伪造行钮）；ktype=__nope__：kn-type-empty 在场 + 零行零钮；
+  ghost space（200 空）：loc 逐字不改写、零行零钮、cap 不渲染。
+```
+
+## 验证尾行（R142）
+```text
+$ npx vitest run src/modules/knowledge   → 9 files / 109 tests passed（基线 105 + 护栏 4）
+$ npx vitest run                         → 207 files / 2616 tests passed（+10 文件为 merge
+  wave 他模块内容，全绿非退化）
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r142-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn3/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort/kn-gates/kn-doc-copy*/kn-row-copy*/
+kn-space-preview/kn-type/kn3-page-cap/knE-page-* 全族通过。
+```
+未测如实：带登录会话真实屏；ready-0 行态 knF-copy 的完整禁用句（R138 口径，本文件断言
+disabled+行为面不重锁句文本）；类型桶序若上游改名/换序，②以「三值互等+降数」为锁、
+桶标签位点用 kn-type-1 现序（自纠注释在场）。
+边界：只新增 web/src/modules/knowledge/knowledge.space.export.test.tsx 与本证据；
+显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「test(console): knowledge space export parity guards」。
