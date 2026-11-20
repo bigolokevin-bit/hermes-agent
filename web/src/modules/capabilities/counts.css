@@ -329,3 +329,23 @@
   font-size: 11px;
   line-height: 1.4;
 }
+
+/* capF-state-text — the one visible sentence every /capabilities state anchor renders.
+   Same helper produces it for loading / empty / filter-empty / error / denied / login,
+   so a state is never announced twice (the old sr-only anchor plus a duplicate
+   visible paragraph). Small muted type and anywhere-wrapping keep it inside the
+   375px column without a horizontal scrollbar. */
+.capF-state-text {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.capF-state-detail {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
