@@ -1329,3 +1329,99 @@ describe("run-state — one answer per phase", () => {
     expect(copy?.title).toContain("看不到");
   });
 });
+
+/* ── shareable filter source ───────────────────────────────────────── */
+describe("runs filter source", () => {
+  const pathNode = (): HTMLElement => document.querySelector("[data-testid='run-source-path']") as HTMLElement;
+  const copyButton = (): HTMLButtonElement => document.querySelector("[data-testid='run-filter-copy']") as HTMLButtonElement;
+  const copyBody = (): string => {
+    const calls = clip.copyTextToClipboard.mock.calls;
+    return calls.length ? String(calls[calls.length - 1][0]) : "";
+  };
+  const runsCalls = (): number =>
+    api.fetchJSON.mock.calls.filter(([url]) => String(url).includes("/api/runs")).length;
+  const windowSelect = (): HTMLSelectElement =>
+    document.querySelector("[data-testid='run5-filter-window']") as HTMLSelectElement;
+  const statusSelect = (): HTMLSelectElement =>
+    document.querySelector("[data-testid='run5-filter-status']") as HTMLSelectElement;
+
+  afterEach(() => {
+    clip.copyTextToClipboard.mockReset();
+    clip.copyTextToClipboard.mockImplementation((text: string) => Promise.resolve(Boolean(text)));
+  });
+
+  it("shows the effective values and reads them back with the same query", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs?window=30d&status=failed&employee=emp_aaaabbbbcccc");
+    await waitFor(() => pathNode() !== null, "source line");
+    expect(pathNode().textContent).toBe("/runs?window=30d&status=failed&employee=emp_aaaabbbbcccc");
+    expect(windowSelect().value).toBe("30d");
+    expect(statusSelect().value).toBe("failed");
+    const asked = api.fetchJSON.mock.calls.map(([url]) => String(url)).find((url) => url.includes("/api/runs")) ?? "";
+    expect(asked).toContain("status=failed");
+    expect(asked).toContain("employeeId=emp_aaaabbbbcccc");
+    await act(async () => {
+      copyButton().click();
+    });
+    expect(copyBody()).toBe("/runs?window=30d&status=failed&employee=emp_aaaabbbbcccc");
+    expect(document.querySelector("[data-testid='run-filter-copy-status']")?.textContent).toContain("已复制筛选条件");
+  });
+
+  it("says there is no filter instead of inventing one", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs");
+    await waitFor(() => pathNode() !== null, "source line");
+    expect(pathNode().textContent).toBe("/runs");
+    expect(document.querySelector("[data-testid='run-source-none']")?.textContent).toContain("未设置筛选");
+    await act(async () => {
+      copyButton().click();
+    });
+    expect(copyBody()).toBe("/runs");
+  });
+
+  it("names an unrecognised address value instead of rewriting it silently", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render(
+      "/runs?window=zz&status=zz&state=zz",
+      <>
+        <RunsModulePage />
+        <HistoryProbe />
+      </>,
+    );
+    await waitFor(() => pathNode() !== null, "source line");
+    const notes = Array.from(document.querySelectorAll("[data-testid='run-source-note']")).map((n) => n.textContent ?? "");
+    expect(notes.some((n) => n.includes("时间范围「zz」未识别") && n.includes("近 7 天"))).toBe(true);
+    expect(notes.some((n) => n.includes("状态「zz」未识别"))).toBe(true);
+    expect(notes.some((n) => n.includes("预览参数「zz」未识别"))).toBe(true);
+    expect(windowSelect().value).toBe("7d");
+    expect(statusSelect().value).toBe("");
+    expect(document.querySelector("[data-testid='probe-location']")?.textContent).toContain("window=zz");
+  });
+
+  it("asks exactly once when a control changes", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs");
+    await waitFor(() => runsCalls() === 1, "first read");
+    await act(async () => {
+      windowSelect().value = "24h";
+      windowSelect().dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await waitFor(() => runsCalls() === 2, "one more read");
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    expect(runsCalls()).toBe(2);
+  });
+
+  it("falls back to a read-only textarea when the clipboard refuses", async () => {
+    clip.copyTextToClipboard.mockImplementation(() => Promise.resolve(false));
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs?status=running");
+    await waitFor(() => pathNode() !== null, "source line");
+    await act(async () => {
+      copyButton().click();
+    });
+    const fallback = document.querySelector("[data-testid='run-filter-copy-fallback-text']") as HTMLTextAreaElement;
+    expect(fallback).not.toBeNull();
+    expect(fallback.value).toBe("/runs?status=running");
+    expect(fallback.readOnly).toBe(true);
+  });
+});

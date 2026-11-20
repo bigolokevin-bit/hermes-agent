@@ -893,3 +893,59 @@ export function listActionGate(
       };
   }
 }
+
+/* ── shareable filter source ───────────────────────────────────────── */
+
+export interface RunSourceInput {
+  windowRaw: string | null;
+  window: SinceKey;
+  statusRaw: string | null;
+  status: string | null;
+  employee: string | null;
+  stateRaw: string | null;
+  state: string | null;
+}
+
+export interface RunSource {
+  /** Canonical query built from the effective values, no origin, no token. */
+  query: string;
+  /** Same-origin relative path a person can share. */
+  path: string;
+  /** True when the address carried at least one filter of its own. */
+  active: boolean;
+  /** One line per value the address carried but the page could not honour. */
+  notes: string[];
+}
+
+const has = (value: string | null): boolean => value !== null && value !== "";
+
+/**
+ * The shareable form of what this page is actually reading. Values are the
+ * effective ones (a bad window reads as the default), and anything the
+ * address carried that could not be honoured is named instead of being
+ * silently rewritten.
+ */
+export function runSource(input: RunSourceInput): RunSource {
+  const params = new URLSearchParams();
+  if (has(input.windowRaw)) params.set("window", input.window);
+  if (input.status) params.set("status", input.status);
+  if (input.employee) params.set("employee", input.employee);
+  if (input.state) params.set("state", input.state);
+  const query = params.toString();
+  const notes: string[] = [];
+  if (has(input.windowRaw) && input.windowRaw !== input.window) {
+    notes.push(`时间范围「${input.windowRaw}」未识别，按${sinceLabel(input.window)}读取`);
+  }
+  if (has(input.statusRaw) && input.status !== input.statusRaw) {
+    notes.push(`状态「${input.statusRaw}」未识别，按全部状态读取`);
+  }
+  if (has(input.stateRaw) && input.state === null) {
+    notes.push(`预览参数「${input.stateRaw}」未识别，按正常读取`);
+  }
+  return {
+    query,
+    path: query ? `/runs?${query}` : "/runs",
+    active: has(input.windowRaw) || has(input.statusRaw) || has(input.employee) || has(input.stateRaw),
+    notes,
+  };
+}

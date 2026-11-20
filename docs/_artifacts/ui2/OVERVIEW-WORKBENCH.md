@@ -219,3 +219,11 @@
 - ④零额外请求：打开预览 + 复制 + 导出后 `urls()` 与首载逐项相等，`/api/runs` 调用次数不变。
 - 验证：runs 3 files / 99 passed（本单前 94）；全量 151 files / 2045 passed（基线 2040）；tsc 本域 0（修掉测试里未用的 `ReactNode` 导入）；eslint 本域 exit 0；build `--outDir /tmp/build-runspar`。
 - 未测：真实浏览器下载落盘与 375 折行。
+
+## 筛选条 URL 单一事实源（runs filter source，2026-11-20）
+
+- 页面新增 `run-source` 条（`run5-status` 之后）：`run-source-path` 展示「当前筛选可分享形态」，`run-source-none` 在无筛选时写「未设置筛选（按默认近 7 天读取）」，每个未识别值一条 `run-source-note`，`run-filter-copy` 复制同一串（不 origin/token），状态 `run-filter-copy-status` 为 `role=status aria-live=polite`，剪贴板拒绝时 `run-filter-copy-fallback-text` 只读同文。
+- 四参现状：window（控件，白名单 24h/7d/30d）→ `since=…&limit=30`；status（控件，五值）→ `status=`；employee（无控件，仅深链）→ `employeeId=`；state（无控件，QA 复现句柄）→ forced 时零请求。
+- 非法值不静默改写地址：notes 说明回落口径（时间范围按近 7 天、状态按全部、预览参数按正常读取），select 与请求用回落值；`run-source-path` 只输出有效值（固定顺序 window→status→employee→state），所以地址里的 `window=zz` 不会写进分享串。
+- 5 例：全参路径与复制同串 + 实发 URL 带 status/employeeId；无参；三非法值三条 notes 且地址保留原文；切 24h 只 +1 请求；剪贴板拒走只读回退。
+- 验证：runs 3 files / 104 passed；全量 151 files / 2050 passed；tsc 本域 0；eslint 本域 exit 0；build exit 0，chunk `RunsModulePage-*.js` 内 `run-source-path`=1（entry 0）。未测：真实浏览器 375 折行与 select 键盘操作。

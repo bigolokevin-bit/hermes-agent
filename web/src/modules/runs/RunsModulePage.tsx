@@ -62,6 +62,7 @@ import {
   runCsvFileName,
   runListCsv,
   runListText,
+  runSource,
   SINCE_OPTIONS,
   STATUS_KEYS,
   askedLine,
@@ -603,6 +604,50 @@ function DetailField({ label, children }: { label: string; children: ReactNode }
   );
 }
 
+
+function RunSourceBar({ source }: { source: ReturnType<typeof runSource> }) {
+  const [status, setStatus] = useState<"idle" | "done" | "failed">("idle");
+  const body = source.path;
+  const copy = () => {
+    copyTextToClipboard(body).then((ok) => setStatus(ok ? "done" : "failed"));
+  };
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs" data-testid="run-source">
+      <span className="text-muted-foreground">当前筛选可分享形态</span>
+      <code className="min-w-0 break-all text-[11px]" data-testid="run-source-path" title={body}>
+        {body}
+      </code>
+      {source.active ? null : (
+        <span className="text-muted-foreground" data-testid="run-source-none">
+          未设置筛选（按默认近 7 天读取）
+        </span>
+      )}
+      {source.notes.map((note) => (
+        <span className="text-muted-foreground" key={note} data-testid="run-source-note">
+          {note}
+        </span>
+      ))}
+      <Button size="sm" outlined onClick={copy} data-testid="run-filter-copy" title="复制当前地址里的筛选条件，不含主机与凭据">
+        复制筛选条件
+      </Button>
+      <span role="status" aria-live="polite" data-testid="run-filter-copy-status" className="text-muted-foreground">
+        {status === "done" ? "已复制筛选条件" : status === "failed" ? "复制没成功：下面的文本可以自己选中复制" : ""}
+      </span>
+      {status === "failed" ? (
+        <div className="w-full" data-testid="run-filter-copy-fallback">
+          <textarea
+            readOnly
+            value={body}
+            aria-label="筛选条件文本"
+            data-testid="run-filter-copy-fallback-text"
+            className="h-16 w-full resize-none rounded-md border border-border bg-transparent p-2 font-mono text-[11px]"
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function RunsModulePage() {
   const [params, setParams] = useSearchParams();
   const { pathname, state: locationState } = useLocation();
@@ -627,6 +672,15 @@ export function RunsModulePage() {
   // Deep-link only: `?employee=` narrows the list through the accepted employeeId
   // parameter. No filter control exists for it, so no dead control is implied.
   const employee = forced === null ? (params.get("employee")?.trim() || null) : null;
+  const source = runSource({
+    windowRaw: params.get("window"),
+    window: sinceKey,
+    statusRaw: params.get("status"),
+    status,
+    employee,
+    stateRaw: params.get("state"),
+    state: forced,
+  });
 
   const data = useRunsData(forced, { status, sinceKey, employeeId: employee });
   const { phase, rows, cursor, answeredBy, unreadable, failure, forced: isForced } = data;
@@ -813,6 +867,8 @@ export function RunsModulePage() {
       <p className="min-w-0 break-words text-xs text-muted-foreground" aria-live="polite" data-testid="run5-status">
         {statusLine}
       </p>
+
+      <RunSourceBar source={source} />
 
       <span hidden data-testid="run-state" data-phase={phase} />
       <p
