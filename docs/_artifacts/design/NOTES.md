@@ -15,7 +15,7 @@
 | 项 | 内容 | commit | 证据 |
 |---|---|---|---|
 | C6 ⑥ | 产品标题与 favicon（`index.html` title/lang + `public/favicon.svg`） | `6ebc5e05` feat(console): product title and favicon | 构建 exit 0 |
-| C1 ② | 自绘下拉（15 处 select）+ 按钮三级 primary/secondary/ghost + 全站字距（根因：库 Button 基础类 `tracking-[0.2em]` 叠加 CJK；「重 试」「刷 新」空隙） | 进行中 | before 六张已拍 |
+| C1 ② | 自绘下拉（15 处 select）+ 按钮三级 primary/secondary/ghost + 全站字距（根因：库 Button 基础类 `tracking-[0.2em]` 叠加 CJK；「重 试」「刷 新」空隙） | 进行中 | before 六张已拍；更正：作用域规则实测永不命中(lang=en) → 改全站，英文按钮 display 字距一并归零 |
 | C2 ③ | 删顶栏英文模块名 → 中文面包屑（实测靶子：before 页头即 "Overview/Knowledge/System" 英文） | 待做 | |
 | C3 ① | 全局「会话已过期」横幅替换四套 401 错误卡（ApprovalsPage/RunsPage/EmployeesPage/LoginPage 四套文案各异，无全站统一 banner；banner 挂载先例 App.tsx:963–966 族） | 待做 | |
 | C4 ④ | 空/错态骨架与占位，375 不许一屏一句（骨架先例：ApprovalsPage:419/RunsPage:429 SkeletonRows、EmployeesPage:591 RowsSkeleton，均页面手写） | 待做 | |
