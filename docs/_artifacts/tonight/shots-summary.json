@@ -9,8 +9,8 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 1295,
-    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 北京时间 2026-11-20 11:02 刷新 可上岗 各项检查全部通过",
+    "textLen": 1587,
+    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 北京时间 2026-11-20 12:03 近 24 小时 近 7 天 近",
     "hasMainEl": true,
     "ok": true
   },
@@ -33,109 +33,109 @@
     {
       "route": "#/approvals",
       "viewport": "1440",
-      "chars": 559,
+      "chars": 622,
       "hasMainEl": true
     },
     {
       "route": "#/approvals",
       "viewport": "375",
-      "chars": 559,
+      "chars": 622,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=history",
       "viewport": "1440",
-      "chars": 1882,
+      "chars": 1709,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=history",
       "viewport": "375",
-      "chars": 1882,
+      "chars": 1709,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=mine",
       "viewport": "1440",
-      "chars": 559,
+      "chars": 622,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=mine",
       "viewport": "375",
-      "chars": 559,
+      "chars": 622,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=mine",
       "viewport": "1440",
-      "chars": 559,
+      "chars": 622,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=mine",
       "viewport": "375",
-      "chars": 559,
+      "chars": 622,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=release",
       "viewport": "1440",
-      "chars": 559,
+      "chars": 622,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=release",
       "viewport": "375",
-      "chars": 559,
+      "chars": 622,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=policy",
       "viewport": "1440",
-      "chars": 559,
+      "chars": 622,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=policy",
       "viewport": "375",
-      "chars": 559,
+      "chars": 622,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=release",
       "viewport": "1440",
-      "chars": 559,
+      "chars": 622,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=release",
       "viewport": "375",
-      "chars": 559,
+      "chars": 622,
       "hasMainEl": true
     },
     {
       "route": "#/audit",
       "viewport": "1440",
-      "chars": 7474,
+      "chars": 6702,
       "hasMainEl": true
     },
     {
       "route": "#/audit",
       "viewport": "375",
-      "chars": 7474,
+      "chars": 6702,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities",
       "viewport": "1440",
-      "chars": 201,
+      "chars": 276,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities",
       "viewport": "375",
-      "chars": 201,
+      "chars": 276,
       "hasMainEl": true
     },
     {
@@ -165,25 +165,25 @@
     {
       "route": "#/capabilities?tab=tools",
       "viewport": "1440",
-      "chars": 314,
+      "chars": 387,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=tools",
       "viewport": "375",
-      "chars": 314,
+      "chars": 387,
       "hasMainEl": true
     },
     {
       "route": "#/employees",
       "viewport": "1440",
-      "chars": 505,
+      "chars": 558,
       "hasMainEl": true
     },
     {
       "route": "#/employees",
       "viewport": "375",
-      "chars": 479,
+      "chars": 532,
       "hasMainEl": true
     },
     {
@@ -357,7 +357,7 @@
     {
       "route": "#/knowledge",
       "viewport": "1440",
-      "chars": 469,
+      "chars": 625,
       "hasMainEl": true
     },
     {
@@ -417,7 +417,7 @@
     {
       "route": "#/knowledge?tab=scope",
       "viewport": "1440",
-      "chars": 469,
+      "chars": 625,
       "hasMainEl": true
     },
     {
@@ -465,13 +465,13 @@
     {
       "route": "#/overview",
       "viewport": "1440",
-      "chars": 1294,
+      "chars": 1587,
       "hasMainEl": true
     },
     {
       "route": "#/overview",
       "viewport": "375",
-      "chars": 1294,
+      "chars": 1587,
       "hasMainEl": true
     },
     {
@@ -525,37 +525,37 @@
     {
       "route": "#/system?tab=events",
       "viewport": "1440",
-      "chars": 7474,
+      "chars": 6702,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events",
       "viewport": "375",
-      "chars": 7474,
+      "chars": 6702,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "1440",
-      "chars": 7474,
+      "chars": 6702,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "375",
-      "chars": 7474,
+      "chars": 6702,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=retention",
       "viewport": "1440",
-      "chars": 7474,
+      "chars": 6702,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=retention",
       "viewport": "375",
-      "chars": 7474,
+      "chars": 6702,
       "hasMainEl": true
     },
     {
@@ -573,13 +573,13 @@
     {
       "route": "#/system?tab=version",
       "viewport": "1440",
-      "chars": 630,
+      "chars": 611,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=version",
       "viewport": "375",
-      "chars": 630,
+      "chars": 611,
       "hasMainEl": true
     },
     {
@@ -621,22 +621,20 @@
     {
       "route": "#/work?tab=runs",
       "viewport": "1440",
-      "chars": 1286,
+      "chars": 1470,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=runs",
       "viewport": "375",
-      "chars": 1258,
+      "chars": 1442,
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 1,
-  "consoleErrorRoutesObservedByShots": [
-    "#/overview"
-  ],
+  "consoleErrorsObservedByShots": 0,
+  "consoleErrorRoutesObservedByShots": [],
   "ceAuthority": "login-state",
-  "routesWithEnvOnlyConsoleErrors": 26,
+  "routesWithEnvOnlyConsoleErrors": 27,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
   "overflowing": [],
   "driver": {
@@ -644,11 +642,11 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "60a4a429",
+  "headHash": "9813d7af",
   "exitCode": 0,
-  "entry": "assets/index-BjB0lCyb.js",
-  "entrySha256": "7eef231569201cc7a20569fc6ddc4242252c5376a4259715ca8801c8e752e9ce",
-  "entryBytes": 166933,
-  "servedEntryBefore": "index-BjB0lCyb.js",
-  "servedEntryAfter": "index-BjB0lCyb.js"
+  "entry": "assets/index-CCTy6n92.js",
+  "entrySha256": "ee9ca79e582fb45086de9ee5f885b1763623a2d80aff76a4cdb044e60bea588d",
+  "entryBytes": 166991,
+  "servedEntryBefore": "index-CCTy6n92.js",
+  "servedEntryAfter": "index-CCTy6n92.js"
 }
