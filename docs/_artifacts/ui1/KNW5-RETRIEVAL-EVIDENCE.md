@@ -5009,3 +5009,111 @@ kn-gates + 既有 38 套全绿。四例一次全过，无测试自纠轮。
 未测如实：带登录会话真双失败屏（mock 代证）；② 的错误窗内「切 ktype 桶」交互（排序/
 翻页已锁，桶与详情错误同窗无新维需求）；恢复过渡中 skeleton 帧的瞬时态（异步中间态
 不在护栏范围）。
+
+# KNW5 追加 R222：行复制与批量入口可见性护栏（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做（HEAD `741c46e7` 含 wave-62 链，merge Already up to date）、
+目标文件确认不存在，基线先跑 39/193 全绿无 Unhandled 再动笔。零产品文件改动。
+新增 knowledge.copy.visibility.test.tsx 四例（本体，非 docs-only）。
+
+## 名实与查重（引用不重写）
+
+```text
+kn-list-copy 不存在→knF/knG；导出族 absent SPAN（R190/R220）未造；无 ?source=；行钮分面
+族照 R132/R169；唯一详情面=抽屉；两套缺值口径未统一；cap empty/error 态不渲染（R108/R157/
+R187）；clipboard 桩全 Promise。①空态族 0+disabled+title+零写零请求=R138④/R190④；
+②分面族渲染=R210/R211+R219(b)；③三值=R142②/R176；④行内预览开合序列=R196④——均为当帧
+最小复跑并声明。
+新增维（文件头点名，grep 此前零命中）：
+· (a) 空/错误态下**整表 kn3-docs-table 含「操作」列头随体不渲染**——列可见性与行钮
+  同源缺席（非仅按钮消失）；错误态同时证明分面隔离：详情面族 0 而检索面（另一读口
+  成功）行钮照常 2——「哪个读口失败决定哪面归零」的可见性直证；
+· (b) **抽屉开(?doc=)→关(只删 doc)路径**后行名序列、钮序列 [0,1] 与 cap 整句
+  「本页最多显示 50 篇（当前已加载 2 篇；复制清单也只含这些篇）」逐字不变——R196④
+  锁的是行内预览路径，抽屉路径首次。
+```
+
+## 四例读数
+
+```text
+① 空列表：两族行钮 0、kn3-docs-table null、cap null、空态句在场、knF disabled+
+  title 含「没有可复制」、knG disabled、点击双钮 writeText 0 + urls 计数不变。
+② 路 A（列表 500）：kn3-docs-error+rid 钮点击 writeText 恰 'rid-r222-list'、整表 null、
+  详情面族 0/检索面族 2（分面隔离）；路 B（仅抽屉 500）：列表 2 行钮 [0,1] 照常、
+  点行钮 writeText 1、抽屉错误锚 rid 钮点击恰收 'rid-r222-d'——两枚 rid 独立。
+③ ktype=PDF 深链：行 1==钮 [0]==knF 数据行 1（三值同帧）。
+④ 开→关抽屉：rowNames/btnSeq/cap 三项与开前逐字等，URL 开含 doc=d_a 关后回原。
+过程记录：②初版把「族渲染 0」写成两族合并计数（检索面读口正常应有 2），按分面真相
+  修正断言——修正本身即新增维(a)的隔离证据，产品零触碰。
+```
+
+## 验证尾行（R222）
+```text
+$ npx vitest run src/modules/knowledge   → 40 files / 197 tests passed（基线 193 + 4 ≥195），
+  全输出 grep unhandled = 0
+$ npx vitest run                         → 322 files / 3097 passed 全绿（无豁免）
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r222-dist → exit 0
+$ 三档：1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/knE-page-*/kn-row-copy*/kn-row-copy-space*/kn-doc-copy*/kn-doc-preview*/
+kn-space-preview*/kn7-preview-*/kn-type*/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort*/
+kn-gates/kn3-page-cap + 既有 39 套全绿。
+```
+未测如实：带登录会话真实屏；空态下「操作」列头在检索面的同源缺席（该面空态整表随体
+逻辑同族，仅详情面两态已锁）；② 路 B 关抽屉后钮序列再验（④ 独立覆盖同语义）。
+
+# KNW5 追加 R223：复制文本跨三面直对护栏（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做（HEAD = 调度方 merge `32ede37e`，含预期上游 tip `3c3150d1`
+wave-63；该并入对 knowledge 仅 css +15 无行为变更）、基线先跑 40/197 全绿 Errors 0、
+目标文件确认缺席再动笔。零产品文件改动（无新缺陷）。新增 knowledge.copy.parity.test.tsx
+三例（本体）。
+
+## 名实换算（文件头同步逐条）
+
+```text
+· kn-doc-copy 不在 kn7 抽屉——grep 命中 KnowledgeModulePage.tsx:1992-2007：它是
+  DocLineCopy 单控件，宿主=行内预览（kn-doc-preview-*）与检索命中内联展开
+  （kn6-search-detail，?sdoc=）；派工「预览面」按实落此两处（抽屉复制件为
+  kn-doc-permalink/knL-copy-meta，未参与本轮断言）。
+· 「导出/清单行」按 R142/R190 先例映射 knF-copy/knG-copy 数据行（源码 createObjectURL/
+  text/csv/a.download/new Blob 0 命中，仅 data-export="absent" ×4——未造控件）。
+· 短码非固定 8 位：产品=大写人话尾段——② 锁「三处逐字等、非空、全大写自等」（实测
+  样张 "DM"），位数断言不成立已按实替换。
+· 三面互斥（R67/R68）：取证拆「同屏对同帧 + 互斥对顺序采集再比对」，未假装同帧。
+· 裸 id 口径：?sdoc=/&doc= 地址参数是合法复现机制——「正文无裸 id」圈定两表体 section，
+  不含地址探针（与主测 drawerText 口径同）。
+```
+
+## 查重与新增维（不声称全新增）
+
+```text
+引用：R209 export.rows:131-155（行钮↔knF 整行）、R204①（行钮↔kn-doc-copy 整串）、
+R200②（knG 列↔屏上格、行钮 5 列事实）、R142①②（三值）、R132/R169（编号连续）、
+R196④（预览开合行序/钮 id）、R207/R214④（复制零请求）。
+新增维：① 两处「kn-doc-copy ↔ 清单对应行」整行直对（详情面直对 knF 行；检索面
+  展开串 ↔ knG 行以「去固定第 2 列所属空间」口径拼接对——R71 唯一列差）——此前只经
+  行钮传递锁过，直接 toBe 无 pin；② 缺 updatedAt 文档在三产物的短码/缺值列三处互等
+  （"DM" 全大写自等、[3] 列「—」）；③ 复制四连动作（行钮+预览开+doc-copy+关）urls
+  快照逐字 + **行内预览开合期间 kn3-page-cap 整句逐字不变**（cap×预览同帧首锁，行序位
+  引 R196④ 不重写）。
+过程记录：② 一处初版把「正文无裸 id」误圈整页（loc 探针含合法 sdoc=d_m）→ 按主测
+  drawerText 口径圈定表体 section；两处 TS 收窄修正。产品零触碰。
+```
+
+## 验证尾行（R223）
+```text
+$ npx vitest run src/modules/knowledge   → 41 files / 200 tests passed（基线 197 + 3），
+  全输出 grep unhandled = 0
+$ npx vitest run                         → 325 files / 3105 passed 全绿（无豁免）
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r223-dist → exit 0
+$ 三档：1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn-row-copy*/kn-row-copy-space*/kn-doc-copy*/kn3*/kn3-page-cap/knE-page-*/
+kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort*/kn-gates/kn7-preview*/导出 absent 标记 +
+既有 40 套全绿。
+```
+未测如实：带登录会话真屏（mock 代证）；knL-copy-meta/permalink 与清单行对（抽屉区非
+本派工三面范围）；① 检索面 knG 行「所属空间」列与屏上格的对账（R200② 已锁，未重铺）。
