@@ -134,7 +134,8 @@ describe("pending queue states", () => {
     expect(text()).toContain("待处理");
     expect(text()).toContain("李思");
     expect(text()).toContain("员工 · 8812");
-    expect(text()).toContain("2026-11-19 09:20");
+    // R76: 提交时间的绝对到秒在 title。
+    expect(document.querySelector("[data-testid='apv-time-row-submitted-ap_9F3A1111']")?.getAttribute("title") ?? "").toContain("2026-11-19 09:20:00");
     expect(text()).toContain("$25.00");
     expect(text()).toContain("已显示 1 条申请，其中 1 条待处理");
   });

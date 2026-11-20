@@ -18,6 +18,7 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { themedBody } from "@/lib/utils";
 import { humanizeHandles, money, type ApprovalDetail, type ApprovalRow } from "./model";
 import { DetailsDisclosure, RequestIdCopyField } from "./states";
+import { RelativeTime } from "./RelativeTime";
 import { shortRef } from "@/modules/tasks/tasksBoard";
 
 /** A label/value pair that never overflows its column at 375px. */
@@ -29,7 +30,7 @@ function Field({
   testId,
 }: {
   label: string;
-  value: string;
+  value: ReactNode;
   /** Why the value is missing; shown as the `title` so the gap is explainable. */
   reason?: string;
   tone?: ReactNode;
@@ -175,11 +176,14 @@ export function ApprovalRowCard({
             value={row.worker.label}
             reason={row.worker.raw ?? (row.worker.label === "—" ? "服务未提供执行员工。" : undefined)}
           />
-          <Field label="提交" value={row.submitted ?? "—"} reason={row.submitted ? undefined : MISSING_TIME} />
+          {/* R76: 相对时间+title 绝对/ISO——与预览、决策链路同一 helper 同一输入。 */}
+          <Field
+            label="提交"
+            value={<RelativeTime iso={row.submittedAt} testid={`apv-time-row-submitted-${row.key}`} />}
+          />
           <Field
             label={row.clockLabel}
-            value={row.clock ?? "—"}
-            reason={row.clock ? undefined : MISSING_TIME}
+            value={<RelativeTime iso={row.clockAt} testid={`apv-time-row-${row.key}`} />}
           />
           <Field label="涉及金额" value={money(row.amount)} reason={row.amount === null ? MISSING_AMOUNT : undefined} />
         </dl>
@@ -223,8 +227,7 @@ export function ApprovalRowCard({
               />
               <Field
                 label="更新时间"
-                value={row.decided ?? "—"}
-                reason={row.decided ? "北京时间，精确到分" : "该字段未返回"}
+                value={<RelativeTime iso={row.decidedAt} testid={`apv-time-preview-${row.key}`} />}
               />
               <Field
                 label="审批人"
@@ -340,7 +343,7 @@ export function DecisionTrail({ detail }: { detail: ApprovalDetail }): ReactNode
       <ol className="flex min-w-0 flex-col gap-1 text-xs">
         <li className="min-w-0 break-words" data-testid="apd6-step-submitted" title={detail.requester.raw ?? undefined}>
           提交 · {detail.requester.label} ·{" "}
-          {detail.submitted ?? <NoSeg reason={MISSING_TIME} />}
+          <RelativeTime iso={detail.submittedAt} testid="apv-time-detail-submitted" />
         </li>
         {acted.length === 0 ? (
           <li className="min-w-0 break-words" data-testid="apd6-step-nodes-none">
@@ -355,7 +358,7 @@ export function DecisionTrail({ detail }: { detail: ApprovalDetail }): ReactNode
               title={entry.whoRaw ?? undefined}
             >
               节点 {index + 1} · {entry.who} · {entry.verdict} ·{" "}
-              {entry.at ?? <NoSeg reason="这个节点没有带回决策时间。" />} · 意见：{entry.note ?? "未填"}
+              <RelativeTime iso={entry.atRaw} testid={`apv-time-detail-node-${index}`} /> · 意见：{entry.note ?? "未填"}
             </li>
           ))
         )}
@@ -371,7 +374,12 @@ export function DecisionTrail({ detail }: { detail: ApprovalDetail }): ReactNode
         ))}
         <li className="min-w-0 break-words" data-testid="apd6-step-final" title={detail.status.raw ?? undefined}>
           终态 · {detail.status.label}
-          {detail.decided ? ` · ${detail.decided}` : ""}
+          {detail.decidedAt ? (
+            <>
+              {" · "}
+              <RelativeTime iso={detail.decidedAt} testid="apv-time-detail-final" />
+            </>
+          ) : ""}
         </li>
         <li className="min-w-0 break-words" data-testid="apd6-step-links">
           关联：{" "}

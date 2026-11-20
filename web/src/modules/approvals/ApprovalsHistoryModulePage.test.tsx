@@ -14,6 +14,7 @@ const api = vi.hoisted(() => ({ fetchJSON: vi.fn() }));
 vi.mock("@/lib/api", () => ({ fetchJSON: api.fetchJSON }));
 
 import ApprovalsHistoryModulePage from "@/modules/approvals/ApprovalsHistoryModulePage";
+import { epochOf, relativeBeijing, timeTitle } from "@/modules/approvals/RelativeTime";
 import { STATUS_FILTERS } from "@/modules/approvals/model";
 import { approvalsCsvName, buildApprovalsCsv, csvEscape, csvNamePart } from "@/modules/approvals/QueueCsvExport";
 import { riskView, statusView, type ApprovalRow } from "@/modules/approvals/model";
@@ -269,7 +270,8 @@ describe("the eight states", () => {
     await mount();
     await pick("approved");
     expect(text()).toContain("处理于");
-    expect(text()).toContain("2026-11-17 10:00");
+    // R76: 屏上是相对读数，绝对时间恒在 title（到秒）里。
+    expect(document.querySelector("[data-testid='apv-time-row-ap_a']")?.getAttribute("title") ?? "").toContain("2026-11-17 10:00:00");
     expect(text()).not.toContain("处理期限");
   });
 });
@@ -473,10 +475,12 @@ describe("history whole-panel states", () => {
     });
     await waitFor(() => document.querySelector("[data-testid='apd6-trail']") !== null, "trail mounted");
     const trail = document.querySelector("[data-testid='apd6-trail']");
-    expect(trail?.textContent).toContain("提交 · 张三 · 2026-11-18 10:30");
+    expect(trail?.textContent).toContain("提交 · 张三 ·");
+    expect(document.querySelector("[data-testid='apv-time-detail-submitted']")?.getAttribute("title") ?? "").toContain("2026-11-18 10:30:00");
     expect(document.querySelector("[data-testid='apd6-step-node-0']")?.textContent).toContain(
-      "节点 1 · 张三 · 通过 · 2026-11-18 11:00 · 意见：未填",
+      "节点 1 · 张三 · 通过 ·",
     );
+    expect(document.querySelector("[data-testid='apv-time-detail-node-0']")?.getAttribute("title") ?? "").toContain("2026-11-18 11:00:00");
     expect(document.querySelector("[data-testid='apd6-step-node-1']")).toBeNull();
     const pending = document.querySelector("[data-testid='apd6-step-pending-0']");
     expect(pending?.textContent).toContain("小鲤");
@@ -821,7 +825,8 @@ describe("R59 approvals queue search (apv8-*)", () => {
       expect(preview?.textContent).toContain("rotate.secret");
       expect(preview?.textContent).toContain("郑涛");
       expect(preview?.textContent).toContain("req-v1-9");
-      expect(preview?.textContent).toContain("2026-11-19 10:00"); // BJT 到分
+      // R76: 相对读数；绝对到秒与 ISO 原文在 title。
+      expect(document.querySelector("[data-testid='apv-time-preview-ap_v1']")?.getAttribute("title") ?? "").toContain("2026-11-19 10:00:00");
       expect(preview?.textContent).toContain("高");
       expect((document.querySelector as (sel: string) => HTMLButtonElement | null)('[data-testid="apv9-toggle-ap_v1"]')?.getAttribute("aria-expanded")).toBe("true");
       // 展开不是打开详情：详情抽屉没被唤起。
@@ -1032,8 +1037,8 @@ describe("R65 preview-detail parity (apv9 vs apd5/apd6)", () => {
     // Field 的 title（不混入正文），且「该字段未返回/该段无记录」两处不互混。
     expect(pvText).not.toContain("该段无记录");
     expect(
-      document.querySelector("[data-testid='apv9-preview-ap_p65'] [title='该字段未返回']"),
-    ).toBeTruthy();
+      document.querySelector("[data-testid='apv-time-preview-ap_p65']")?.textContent,
+    ).toBe("该字段未返回");
     const decided = document.querySelector("[data-testid='apd5-field-decided-at']");
     expect(decided?.textContent).toContain("—");
     // 预览「更新时间」不再拿处理期限冒充：expiresAt 的时间不得上屏
@@ -1047,8 +1052,9 @@ describe("R65 preview-detail parity (apv9 vs apd5/apd6)", () => {
     await act(async () => {
       toggle!.click();
     });
-    const pvText = previewOf("ap_s65")?.textContent ?? "";
-    expect(pvText).toContain("2026-11-19 10:00");
+    previewOf("ap_s65");
+    const pvTitle = document.querySelector("[data-testid='apv-time-preview-ap_s65']")?.getAttribute("title") ?? "";
+    expect(pvTitle).toContain("2026-11-19 10:00:00");
     const card = document.querySelector("[data-testid='apr5-row-ap_s65']") as HTMLElement | null;
     await act(async () => {
       card!.click();
@@ -1635,5 +1641,72 @@ describe("R75 export filename contract (apv-export-name)", () => {
     });
     await waitFor(() => (qa("apv-export-name")!.textContent ?? "").includes("-pending-default-default-"), "default name");
     expect(api.fetchJSON.mock.calls.length, "still zero extra fetches").toBe(before);
+  });
+});
+
+describe("R76 relative time presentation (apv-time-*)", () => {
+  it("pure helpers: five relative bands, future fallback and strict parsing", () => {
+    const base = Date.UTC(2026, 10, 20, 2, 0, 0); // 02:00Z = 10:00 BJT
+    expect(relativeBeijing(base - 30_000, base)).toBe("刚刚");
+    expect(relativeBeijing(base - 5 * 60_000, base)).toBe("5 分钟前");
+    expect(relativeBeijing(base - 3 * 3_600_000, base)).toBe("3 小时前");
+    expect(relativeBeijing(base - 2 * 86_400_000, base)).toBe("2 天前");
+    // >7 天退回绝对到分（北京，不依赖本机 TZ）
+    expect(relativeBeijing(base - 8 * 86_400_000, base)).toBe("2026-11-12 10:00");
+    // 未来时间（处理期限常见）不编「N 后」，退回绝对
+    expect(relativeBeijing(base + 86_400_000, base)).toBe("2026-11-21 10:00");
+    expect(epochOf("not a date")).toBeNull();
+    expect(epochOf(null)).toBeNull();
+    expect(timeTitle(base, "2026-11-20T02:00:00Z")).toBe(
+      "绝对 2026-11-20 10:00:00（北京时间） · ISO 2026-11-20T02:00:00Z",
+    );
+  });
+
+  it("one record, one verbatim title across row / preview / trail", async () => {
+    const ROW76 = {
+      approvalId: "ap_t76",
+      title: "轮换窗口",
+      status: "approved",
+      createdAt: "2026-11-18T01:00:00Z",
+      decidedAt: "2026-11-18T02:00:00Z",
+      approvers: [{ userId: "human:7", name: "郑涛" }],
+      decisions: [{ userId: "human:7", name: "郑涛", verdict: "approve", decidedAt: "2026-11-18T02:00:00Z" }],
+    };
+    await mount(
+      async (url: string) => {
+        if (String(url).includes("/api/approval?id=")) return ROW76;
+        return { items: [ROW76] };
+      },
+      "/approvals?tab=history",
+    );
+    const toggle = document.querySelector("[data-testid='apv9-toggle-ap_t76']") as HTMLButtonElement | null;
+    expect(toggle, "row rendered").toBeTruthy();
+    const before = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      toggle!.click();
+    });
+    expect(api.fetchJSON.mock.calls.length, "time rendering fetches nothing").toBe(before);
+    // 打开详情会收起预览（R60 互斥），先把预览侧读数存下来。
+    const pvTitle = document.querySelector("[data-testid='apv-time-preview-ap_t76']")?.getAttribute("title") ?? "";
+    expect(pvTitle).toContain("2026-11-18 10:00:00");
+    const card = document.querySelector("[data-testid='apr5-row-ap_t76']") as HTMLElement | null;
+    await act(async () => {
+      card!.click();
+    });
+    await waitFor(() => !!document.querySelector("[data-testid='apd6-trail']"), "trail");
+    const title = (sel: string) => document.querySelector(sel)?.getAttribute("title") ?? "";
+    const rowClock = title("[data-testid='apv-time-row-ap_t76']");
+    const pv = pvTitle;
+    const final = title("[data-testid='apv-time-detail-final']");
+    const node = title("[data-testid='apv-time-detail-node-0']");
+    expect(rowClock).toContain("2026-11-18 10:00:00");
+    expect(pv).toBe(rowClock);
+    expect(final).toBe(rowClock);
+    expect(node).toBe(rowClock);
+    const subRow = title("[data-testid='apv-time-row-submitted-ap_t76']");
+    const subTrail = title("[data-testid='apv-time-detail-submitted']");
+    expect(subRow).toContain("2026-11-18 09:00:00");
+    expect(subTrail).toBe(subRow);
+    expect(api.fetchJSON.mock.calls.length, "still no extra request").toBeGreaterThan(before - 1);
   });
 });

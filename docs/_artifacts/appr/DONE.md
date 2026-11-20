@@ -1070,3 +1070,15 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 同源：导出行集=visibleRows（R71 起）+用例双值锁 apv7-export-count「共 8 行」==apv5-count「8」；排序循环三次点击预览 pending-title-asc→desc→default 且 fetchJSON 计数不变（⑤零新请求）；空集 title=gates ready-0 句改「当前没有可导出的审批：该条件下没有可导出的审批。」（含工单④句，R72 逐字断言同步改新句）。
 - 测试：R54 纯函数两用例新五参签名同步（契约本单更新，语义等价）+sanitize 两用；R75 新 describe 2 用例；pending 「state tokens 不上屏」用例限定文件名区域（契约本就含 tab/status 段——语义等价修正）。定向 approvals 3 files/110 passed（108+2）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **147 files/1931 passed**（基线 1929+2）。
 - 零破：apv7-export/apv7-export-count 语义保留、apv5–9/apd5–7/apr5/actor/nav/gates/state 全绿；三档=组容器 flex-wrap+预览 p basis-full break-all 既有形态学报；9122==5630ffce 禁重建，活体文件名读数待并入后代次。
+
+## R76 审批时间相对显示统一（apv-time-*，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = 带入他人笔（duty/workbench.ts 等），toplevel ✓ porc=0；代次 60a4a429（章面 957704be）。
+- 单一 helper=新 RelativeTime.tsx：屏上相对档 <60s 刚刚 / <60m N 分钟前 / <24h N 小时前 / <=7d N 天前 / >7d 与未来时间（处理期限常见）退绝对 `YYYY-MM-DD HH:mm`；title 恒 `绝对 YYYY-MM-DD HH:mm:ss（北京时间） · ISO <raw 原文>`（en-CA 逗号剥除=plain()，与 beijing() 同形制）；时区=Intl timeZone Asia/Shanghai 固定，epochOf 兼容秒/毫秒/ISO 字符串（free text 永不算时间戳）。
+- purity=渲染时点组件内 useState(now=null)+useEffect setNow(Date.now()) 一次（render 体禁读时钟；now=null 先渲绝对=无跳动）；相对值只作显示，不写 URL/不持久化。
+- 缺失/非法=span「该字段未返回」+title「读口没有回传这个时间字段，或它不是合法时间；这里不补当前时间。」（行 dl 原 MISSING_TIME「服务未提供该时间」两处随替换退役；trail 非时间的「该段无记录」段级口径不动=两口径不互混）。
+- raw 输入链（model.ts）：rowFrom 新 submittedAt/clockAt（clockAt 与 clock 同一 pending 选择逻辑）；approvalDetailFrom 新 submittedAt/deadlineAt/decidedAt；DecisionEntry 新 atRaw（与 at 同键序）。Row.decidedAt（R71 排序键）复用为预览输入=四处同一 ISO。
+- 替换六载体（views.tsx，pending/history 行卡共用=两 tab 四处全覆盖）：行 dl 提交=apv-time-row-submitted-<key>、行 dl 处理于/处理期限=apv-time-row-<key>、预览更新时间=apv-time-preview-<key>、apd6-step-submitted=apv-time-detail-submitted、节点 i=apv-time-detail-node-<i>、终态=apv-time-detail-final；Field value 放宽 ReactNode（testId 既有）。详情 apd5-field-decided-at 冻结字段（PRD §4.2）未动=绝对到分人话保留。
+- 用例：既有六处时间文本断言同步为 title 读数（L272 行 clock/R46 trail 提交+节点/R60 预览/R65 case1 缺值文案改 data-testid 文本/R65 case2 预览 title/pending 行提交）——语义等价（断言更强：到秒+ISO 逐字）。新 describe R76 2 用例：①纯函数五档+未来退绝对+epochOf 非法+timeTitle 逐字；②同一记录行/预览/终态/节点四 title toBe 逐字相同 + 行提交==trail 提交 title；开预览前后 fetchJSON 计数不变（零额外请求）；**R60 互斥坑**=开详情收预览→pv title 先读存变量。
+- 验证：定向 approvals 3 files/**112 passed**（110+2）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **150 files/1989 passed**（merge 带入他人新文件后基线）。
+- 零破：apv5–9/apd5–7/apr5/actor/nav/gates/state/export-name（既有用例全绿为证）；三档=长绝对在 title 非屏上、屏上相对短句+break-all，无新增横溢面（形态学报）；9122==60a4a429 禁重建，活体四态时间读数待并入后代次。
