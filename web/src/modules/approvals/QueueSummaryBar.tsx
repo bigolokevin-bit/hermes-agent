@@ -10,6 +10,7 @@
  */
 import { Link } from "react-router";
 
+import { gateReason } from "./gates";
 import type { ApprovalRow } from "./model";
 
 type Phase = "loading" | "empty" | "ready" | "error" | "denied";
@@ -27,12 +28,12 @@ const RISK_BUCKETS: readonly { value: string; label: string }[] = [
 ];
 
 function unavailable(phase: Phase): string | null {
-  if (phase === "loading") return "数据还在读取，计数不作 0 处理";
-  if (phase === "error") return "本次列表读取失败，取不到计数";
-  if (phase === "denied") return "没有读取权限，计数不可得";
-  // R70: empty 也走「—」+原因——计数位不得用 0 冒充「读到了空集」这件事本身；
-  // 空与缺数的区分由本句与面板文案共同承担。
-  if (phase === "empty") return "读口如实返回空结果（真实空集，不是缺数）；计数位按约定显「—」。";
+  // R72: 原因句取自 gateReason 单点；这里只拼「计数」这一动作的后缀。
+  if (phase === "loading") return `${gateReason(phase)}，计数不作 0 处理`;
+  if (phase === "error") return `本次${gateReason(phase)}，取不到计数`;
+  if (phase === "denied") return `${gateReason(phase)}，计数不可得`;
+  // empty 走「—」+原因——计数位不得用 0 冒充「读到了空集」这件事本身。
+  if (phase === "empty") return `${gateReason(phase)}（不是缺数）；计数位按约定显「—」。`;
   return null;
 }
 

@@ -5,6 +5,8 @@
 // an update timestamp. Those cells stay "—" with a visible reason instead of
 // being inferred from another field or replaced by sample data.
 
+import { readTopAsOf } from "../health/systemHealth";
+
 export const SKILLS_GAP = "GAP-SKL4-01";
 
 export type SkillRow = {
@@ -30,24 +32,9 @@ export type SkillsRead = {
   asOfTitle: string | null;
 };
 
-const ISO_STAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?$/;
-
 function topLevelAsOf(root: Record<string, unknown>): { asOf: string | null; asOfReason: string | null; asOfTitle: string | null } {
-  const sourceRaw = root.asOfSource ?? root.as_of_source;
-  const source = typeof sourceRaw === "string" && sourceRaw.trim() ? sourceRaw.trim() : null;
-  const asOfTitle = source ? `asOfSource：${source}` : null;
-  const raw = root.asOf;
-  if (typeof raw !== "string" || !raw.trim()) {
-    return { asOf: null, asOfReason: "响应顶层没有 asOf，采集时刻未知。", asOfTitle };
-  }
-  const value = raw.trim();
-  if (!ISO_STAMP.test(value) || Number.isNaN(new Date(value).getTime())) {
-    return { asOf: null, asOfReason: "响应顶层 asOf 不是 ISO 时间，采集时刻未知。", asOfTitle };
-  }
-  const shown = formatBeijingTime(value);
-  return shown
-    ? { asOf: shown, asOfReason: null, asOfTitle }
-    : { asOf: null, asOfReason: "响应顶层 asOf 无法解析，采集时刻未知。", asOfTitle };
+  const stamp = readTopAsOf(root);
+  return { asOf: stamp.shown, asOfReason: stamp.reason, asOfTitle: stamp.title };
 }
 
 const SCOPE_LABELS: Record<string, string> = {
