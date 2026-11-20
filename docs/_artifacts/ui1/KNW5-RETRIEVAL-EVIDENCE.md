@@ -4195,3 +4195,60 @@ kn3-page-cap/knE-page-*/kn6-search-*/knF/knG/knI/knL-copy*/kn7-preview-* + 既�
 边界：只新增 web/src/modules/knowledge/knowledge.detail.parity.test.tsx 与本证据；
 显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
 「test(console): knowledge detail field parity guards」。
+
+# KNW5 追加 R205：详情与预览跨面同值 —— evidence-only（四腿全覆盖，零新用例）（2026-11-20 BJT）
+
+安全门：porcelain 空起做（HEAD 即 R204 链）、显式 refspec fetch 后 merge 实测 tip
+即预期 `e901fabb`（知识面 delta 空；目标文件 knowledge.preview.parity.test.tsx 确认
+不存在）。本轮**零产品文件改动、零测试用例新增**——四腿逐条 grep 对账后全部已有
+单一断言锁死，按派工 dedupe 纪律（「已覆盖只引用 file:line，不重写；evidence-only
+为合法交付」）不硬凑重复用例、不建空文件。
+
+## 四腿判定书（引用行号 = 锁的所在）
+
+```text
+①同文档 名称/类型人话/大小/更新(updatedText)/短码 跨面逐字 toBe——
+  R204 knowledge.detail.parity.test.tsx ①：列表四格==抽屉四 dd 逐格 toBe、
+  行钮复制行五列==屏上四格+shortId、kn-doc-copy 串===行钮串（整串 toBe），
+  样张 ["全项手册.pdf","PDF","2.4 MB","2026-11-19 15:10","DFULL1"] 逐字锁；
+  R70/R125 kn.parity/knowledge.parity A：两表+两预览+抽屉 DOM 四字段链。三面 ⊂ 六面 → 引用。
+②缺值同句 + 无 undefined/null/裸全 id——R204 ②：表格/复制「—」两式 == 预览/抽屉
+  「该字段未返回」+逐字段 title（「类型：上游没有给出文档类型」逐字），body 正则禁
+  undefined|null|d_miss9、全 id 仅在 dl[title]；主测 :216-219 抽屉不伪造正文
+  （pending 句+field-status「—」+excerpt null）。
+③开 +1 详情读/列表腿不重取/关 0/行序与钮 id 原样——R196 knowledge.preview.requests.test.tsx
+  ③（标题随换、d_a/d_b 各恰 1）④（开合一轮 urls 快照逐字、行名数组与 [space-0,space-1]
+  序列原样、行内面 kn7-preview-title null 分面）+ R125C knowledge.parity:176-207
+  （afterOpen=base+[DETAIL_URL]、开着零追加、关 0、重开不叠加）。
+④详情读失败（抽屉）：可读句+rid+重试恰 +1+列表/cap 不卸载+不伪造 body——
+  R183 knowledge.detail.error.test.tsx：①句「这次没能读到这份文档的详情」+message 透传
+  +「请求编号：rid-r183-busy」+禁裸 404/500/undefined+列表 2 行与 kn3-page-cap 在场；
+  ③重试整段增量恰 [+DETAIL_URL_A]×1、SPACES 不连带、成功后错误锚 null、field-source
+  落值、行全程未卸载；主测 :263-298：unwired≠error 互斥、403≡404 同体、抽屉零写控件、
+  裸 id 不上屏。派工预言的「真缺口（抽屉失败重试计数）」实测已被 R183 ③ 覆盖。
+```
+
+## 面/族名实（复测同前轮）
+
+```text
+分页面行钮族 kn-row-copy-space-<i>（检索面 kn-row-copy-<i>）；kn-doc-copy=DocLineCopy
+单控件（行内预览/命中展开，非行级）；抽屉 kn7-preview-*（?doc=）；列表/cap=
+kn3-docs-*/kn3-page-cap；缺值两式为产品定版（表格「—」、预览/抽屉 previewField
+「该字段未返回」+「<字段>：<原因>」），未改。
+```
+
+## 验证尾行（R205，evidence-only）
+```text
+$ npx vitest run src/modules/knowledge   → 25 files / 153 tests passed（基线不变——零新增判定）
+$ npx vitest run                         → 269 files / 2916 tests passed 全绿（无豁免项）
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r205-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn3*/kn-row-copy*/kn-row-copy-space*/kn-doc-copy*/kn-doc-preview*/kn-space-preview*/
+kn3-page-cap/knE-page-*/kn6-search-*/knF/knG/knI/knL-copy*/kn7-preview-* + 既有 25 套全绿。
+```
+若验收坚持「必须新增文件」，可执行的真实残差仅剩两处窄面（本轮按纪律不扩写，供下一轮
+参考）：a) 抽屉 error 窗口内「行钮文本==开抽屉前快照」的复制串级不变量（行序/钮 id 已由
+R196④ 锁，复制串未单锁）；b) 「详情 404 时抽屉 dl title 仍=全 id」的 404 变体（R204 只在
+成功链锁过 title）。
