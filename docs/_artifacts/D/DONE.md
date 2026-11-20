@@ -1456,3 +1456,11 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 七件 carried 值：ia{51,22,(tabsAll23),1,8}、fake v=[]、reuse v0 e1、quad 20/20、crawl DL0/CE0/PE0×2 routesCE=51/51（401 归因）redirects=24 notes。
 - TALLY 原文 {'ec12d3e7': 9} count 9 BAD []（glob+isinstance 形）。硬写锁死锚不走 stamp rev-parse（wave-75 盘现算污染坑）；commit 后 FINAL 盘上复读（seal-checkout 竞态坑）。
 - 环境：9122 v4_proxy 95667、caddy 28034、BFF 12048@603a23e9、qa-verify 33c2b838 均未动；web/src 未碰；禁写 PASS 照守。
+
+## 一六五轮 · 波次代次九件重章 @ c1063feb（entry 6g0IMx1G 未换代；七件 carried + shots 本代真跑，2026-11-21 07:5x）
+
+- wave-80 并入 c1063feb（remote c1063feb73df 现查一致；appr 95c9ed86 R254 + 6faeda4b R255 两笔纯测试）；entry sha 4407188f…/172175B 逐字节未变（盘现算复核）、CSS 未换代、9122 served 同值。
+- 七件（ia×2/fake/reuse/crawl×2/quad）未重跑：headHash=c1063feb + carriedFrom="ec12d3e7" + carried=true + stampNote『wave-80 两笔纯测试，entry sha 与 CSS 逐字节未变；本件未重跑，证据沿用 ec12d3e7 代』。
+- shots 双腿本代真跑（AUTH-RC=0/ANON-RC=0）：auth 102/102 failures=[] obs=0 routes=[] distinct=24；anon 102/102 obs=1 routes=["#/identity?tab=roles"]（=自产 consoleErrorRoutesObservedByShots 原值）distinct=23 auxiliary=true；三键+served 两端+ceAuthority=login-state 已注。口径注记：硬线卡点名 anon "#/audit"、auth "#/capabilities?tab=channels" 系上代 ec12d3e7 章读数；本代盘上自产即上值，遵『禁编造』按自产写。
+- 首拍 heredoc 写 shots 两件未落盘（mtime 未动）——二次 heredoc 注章+**写后立即回读**坐实（新固化：注章必回读）。TALLY {'c1063feb': 9} count 9 BAD=[]。
+- 8a1a814f/ba7ee3d5（ec12d3e7 章）不重做；无 amend/force；web/src/9122/BFF/caddy/ACC 判词节未动。

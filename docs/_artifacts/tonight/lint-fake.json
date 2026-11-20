@@ -9,9 +9,9 @@
   },
   "violations": [],
   "ok": true,
-  "headHash": "ec12d3e7",
+  "headHash": "c1063feb",
   "exitCode": 0,
-  "carriedFrom": "69c858af",
+  "carriedFrom": "ec12d3e7",
   "carried": true,
-  "stampNote": "wave-79 三笔全纯测试，entry sha 与 CSS 逐字节未变"
+  "stampNote": "wave-80 两笔纯测试，entry sha 与 CSS 逐字节未变；本件未重跑，证据沿用 ec12d3e7 代"
 }
