@@ -126,7 +126,21 @@ export function filterSeatsForScreen(input: FilterSummaryInput): string {
   return seatsOf(input, "screen");
 }
 
-function seatsOf(input: FilterSummaryInput, mode: "paste" | "screen"): string {
+/**
+ * audT: the seats one at a time, in the order the filter bar shows them.
+ * `seatsOf` is this map joined, and the chip row reads the same map — so a chip
+ * and the copied line cannot become two different claims about one question.
+ */
+export interface FilterSeatMap {
+  window: string;
+  type: string;
+  actor: string;
+  resource: string;
+  page: string;
+  limit: string;
+}
+
+export function filterSeatMap(input: FilterSummaryInput, mode: "paste" | "screen"): FilterSeatMap {
   const window = input.custom
     ? `时间窗：自定义 ${input.fromBeijing || FILTER_SUMMARY_MISSING} → ${input.toBeijing || FILTER_SUMMARY_MISSING}（北京时间）`
     : `时间窗：${input.windowLabel || FILTER_SUMMARY_MISSING}`;
@@ -139,8 +153,17 @@ function seatsOf(input: FilterSummaryInput, mode: "paste" | "screen"): string {
     mode === "paste"
       ? `资源：${input.resource || FILTER_SUMMARY_MISSING}${input.resource ? `（${input.resourceNote}）` : ""}`
       : `资源：${input.resource ? "已按编号本地筛（只在本页已加载的记录里）" : FILTER_SUMMARY_MISSING}`;
-  const paging = `第 ${input.page} 页（游标 ×${input.cursorCount}） · 每页 ${input.limit ?? input.defaultLimit ?? 50} 条`;
-  return [window, type, actor, resource, paging].join(" · ");
+  // The paging seat is two answers, and audT needs them apart: which page this
+  // is, and how big a page is. Joined with the same separator it is the
+  // sentence this module has always printed, byte for byte.
+  const page = `第 ${input.page} 页（游标 ×${input.cursorCount}）`;
+  const limit = `每页 ${input.limit ?? input.defaultLimit ?? 50} 条`;
+  return { window, type, actor, resource, page, limit };
+}
+
+function seatsOf(input: FilterSummaryInput, mode: "paste" | "screen"): string {
+  const seats = filterSeatMap(input, mode);
+  return [seats.window, seats.type, seats.actor, seats.resource, seats.page, seats.limit].join(" · ");
 }
 
 /**

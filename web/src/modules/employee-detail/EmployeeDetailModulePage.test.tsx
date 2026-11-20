@@ -36,6 +36,13 @@ vi.mock("@nous-research/ui", () => ({
 
 import { fetchJSON } from "@/lib/api";
 import { ApiError } from "@/lib/api-error";
+import {
+  APPROVAL_DENIED_BODY,
+  APPROVAL_DENIED_TITLE,
+  APPROVAL_EMPTY_SENTENCE,
+  APPROVAL_FAILED_TITLE,
+  APPROVAL_RETRY_LABEL,
+} from "@/modules/approvals/stateCopy";
 import EmployeeDetailModulePage from "@/modules/employee-detail/EmployeeDetailModulePage";
 
 let container: HTMLDivElement;
@@ -399,7 +406,9 @@ describe("EmployeeDetailModulePage — approvals / runs / audit", () => {
     mockApi(() => Promise.resolve({ items: [] }));
     await renderAt(page, at("approvals"));
     const card = container.querySelector('[data-testid="ed5-approvals-empty"]');
-    expect(card?.textContent).toContain("当前没有审批事项");
+    // R93: 空集主句与队列 apv-state 单点同值（该条件下无审批），
+    // hint 保留本区范围说明（登录身份、全部状态、不是把缺失当 0）。
+    expect(card?.textContent).toContain("该条件下无审批");
     expect(card?.textContent).toContain("暂不支持按员工筛选");
   });
 });
@@ -1110,5 +1119,54 @@ describe("R89 approvals zone honest scope (ed8-appr-scope)", () => {
     const fresh = urls().slice(before);
     expect(fresh.some((u) => u.includes("/api/approvals"))).toBe(true);
     expect(fresh.every((u) => !u.includes("cursor="))).toBe(true);
+  });
+});
+
+describe("R93 approvals zone state parity with the queue", () => {
+
+
+  it("error reads the queue's failure sentence and retry refires exactly once", async () => {
+    let hits = 0;
+    mockApi((url: string) => {
+      if (String(url).includes("/api/approvals")) {
+        hits += 1;
+        return Promise.reject(new ApiError("boom", { status: 500, body: "{}", url: String(url), requestId: "req-r93-500" }));
+      }
+      return Promise.resolve({ items: [] });
+    });
+    await renderAt(page, at("approvals"));
+    const card = container.querySelector('[data-testid="ed5-approvals-error"]');
+    expect(card?.querySelector("p")?.textContent).toBe(APPROVAL_FAILED_TITLE);
+    expect(card?.textContent).toContain("req-r93-500");
+    const btn = Array.from((card ?? document.createElement("div")).querySelectorAll("button")).find(
+      (b) => (b.textContent ?? "").trim() === APPROVAL_RETRY_LABEL,
+    ) as HTMLButtonElement | undefined;
+    expect(btn, "retry button with the shared label").toBeTruthy();
+    const before = hits;
+    await act(async () => {
+      btn!.click();
+    });
+    expect(hits, "retry refires exactly once").toBe(before + 1);
+  });
+
+  it("403 and 404 render one body with the queue's denied sentences", async () => {
+    mockApi((url: string) => forbidden(String(url)));
+    await renderAt(page, at("approvals"));
+    const denied = container.querySelector('[data-testid="ed5-approvals-denied"]');
+    const ps = Array.from(denied?.querySelectorAll("p") ?? []);
+    expect(ps[0]?.textContent).toBe(APPROVAL_DENIED_TITLE);
+    expect(ps[1]?.textContent).toBe(APPROVAL_DENIED_BODY);
+    const asForbidden = denied?.textContent ?? "";
+    mockApi((url: string) => missing(String(url)));
+    await renderAt(page, at("approvals"));
+    const denied404 = container.querySelector('[data-testid="ed5-approvals-denied"]');
+    expect(denied404?.textContent).toBe(asForbidden);
+  });
+
+  it("the empty card opens with the queue's empty sentence", async () => {
+    mockApi(() => Promise.resolve({ items: [] }));
+    await renderAt(page, at("approvals"));
+    const card = container.querySelector('[data-testid="ed5-approvals-empty"]');
+    expect(card?.querySelector("p")?.textContent).toBe(APPROVAL_EMPTY_SENTENCE);
   });
 });

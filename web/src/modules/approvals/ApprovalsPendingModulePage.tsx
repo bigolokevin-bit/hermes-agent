@@ -33,7 +33,10 @@ import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel } from
 import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
 import { actionGates, announcement } from "./gates";
 import { QueueSummaryBar } from "./QueueSummaryBar";
+import { clearFilterParams, hasActiveFilters, resetTitle } from "./FilterReset";
+import { FilterSummary } from "./FilterSummary";
 import { PermalinkCopy } from "./PermalinkCopy";
+import { dropCorrelationReturn, peekCorrelationReturn } from "./correlationReturn";
 import { BackToList, restoreListScroll, saveListScroll } from "./BackToList";
 import { QueueCsvExport } from "./QueueCsvExport";
 import { QueueSortBar } from "./QueueSortBar";
@@ -62,6 +65,54 @@ export function ApprovalsPendingModulePage(): ReactNode {
   // A row that carries no id can be listed but never opened; saying so beats
   // guessing an identifier for it.
   const [unaddressable, setUnaddressable] = useState(false);
+  // R90: same single-source reset as the history pane; the pending queue has
+  // no status URL dimension, so clearing the rest never refetches (measured
+  // in tests: local params never reach the server query).
+  // R94: 从关联 run/task 跳走再回来时，一次性还原筛选视图、打开项与滚动位。
+  // 仅当快照属于本页 tab 且当前 URL 是裸视图才还原；筛选不同=用户自选视图，不抢。
+  useEffect(() => {
+    const snap = peekCorrelationReturn();
+    if (!snap) return;
+    const saved = new URLSearchParams(snap.search);
+    if (saved.get("tab") !== "pending") return;
+    const cur = new URLSearchParams(params);
+    cur.delete("tab");
+    if ([...cur.entries()].length > 0) return;
+    dropCorrelationReturn();
+    const id = saved.get("id");
+    saved.delete("id");
+    const draft = new URLSearchParams(saved);
+    if (id) {
+      draft.set("id", id);
+      setSelected(id);
+    }
+    setParams(draft, { replace: true });
+    try {
+      window.scrollTo(0, snap.scrollY);
+    } catch {
+      /* jsdom/无滚动环境忽略 */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const filterState = hasActiveFilters(params);
+  // R91: one chip per active filter; removal reuses the same diff plumbing.
+  const removeFilterKeys = useCallback(
+    (keys: readonly string[]) => {
+      const draft = new URLSearchParams(params);
+      for (const key of keys) draft.delete(key);
+      setParams(draft, { replace: true });
+    },
+    [params, setParams],
+  );
+
+  const clearFilters = useCallback(() => {
+    const draft = new URLSearchParams(params);
+    clearFilterParams(draft);
+    setSelected(null);
+    setUnaddressable(false);
+    setParams(draft, { replace: true });
+  }, [params, setParams]);
   const [comment, setComment] = useState("");
   const [confirming, setConfirming] = useState<Verdict | null>(null);
   const [inFlight, setInFlight] = useState(false);
@@ -354,6 +405,19 @@ export function ApprovalsPendingModulePage(): ReactNode {
 
   return (
     <div className="flex min-w-0 w-full max-w-full flex-col gap-3" data-testid="apr5-page-pending">
+      <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="apv-reset-row">
+        <button
+          type="button"
+          data-testid="apv-reset-filters"
+          disabled={!filterState.active}
+          title={resetTitle(filterState.count)}
+          onClick={clearFilters}
+          className="h-6 rounded-md border border-white/15 px-2 text-xs text-muted-foreground hover:bg-white/5 focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/60 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          重置筛选{filterState.active ? `（${filterState.count}）` : ""}
+        </button>
+        <FilterSummary params={params} onRemove={removeFilterKeys} />
+      </div>
       <QueueSummaryBar phase={list.phase} rows={visibleRows} scope="queue" />
       <QueueCsvExport rows={visibleRows} tab="pending" status="pending" phase={list.phase} sort={asort} dir={asort ? adir : null} />
       <div className="flex min-w-0 flex-wrap items-center gap-1.5" role="group" data-testid="apv8-search-group" aria-label="搜索审批">

@@ -9,9 +9,10 @@
  */
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 
 import { PermalinkCopy } from "./PermalinkCopy";
+import { saveCorrelationReturn } from "./correlationReturn";
 
 import { Badge } from "@nous-research/ui/ui/components/badge";
 import { Button } from "@nous-research/ui/ui/components/button";
@@ -353,6 +354,9 @@ function trailToText(detail: ApprovalDetail): string {
 }
 
 export function DecisionTrail({ detail }: { detail: ApprovalDetail }): ReactNode {
+  // R94: 点关联链离开前记下当前视图（完整 search+滚动位），返回时同页还原。
+  const location = useLocation();
+  const leaveWithSnapshot = () => saveCorrelationReturn(location.search, window.scrollY ?? 0);
   const acted = detail.decisions;
   const pending = detail.approvers.labels.filter((label) => !acted.some((entry) => entry.who === label));
   const copyText = useMemo(() => trailToText(detail), [detail]);
@@ -440,6 +444,7 @@ export function DecisionTrail({ detail }: { detail: ApprovalDetail }): ReactNode
               to={`/runs?run=${encodeURIComponent(detail.runId)}`}
               title={detail.runId}
               data-testid="apd6-link-run"
+              onClick={leaveWithSnapshot}
             >
               运行 · {shortRef(detail.runId)}
             </Link>
@@ -453,6 +458,7 @@ export function DecisionTrail({ detail }: { detail: ApprovalDetail }): ReactNode
               to={`/work?tab=board&task=${encodeURIComponent(detail.taskId)}`}
               title={detail.taskId}
               data-testid="apd6-link-task"
+              onClick={leaveWithSnapshot}
             >
               任务 · {shortRef(detail.taskId)}
             </Link>

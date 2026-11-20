@@ -4,7 +4,7 @@ exempted=1
 {
   "script": "lint-reuse",
   "root": "web/src/modules",
-  "scanned": 239,
+  "scanned": 252,
   "reuseMarkers": 28,
   "chatHostFiles": [
     {
@@ -82,7 +82,7 @@ exempted=1
       "declaredWhere": "web/src/modules/employees/manifest.ts（matrix tab）",
       "declared": true,
       "codeMentions": 3,
-      "via": "marker web/src/modules/employee-detail/EmployeeDetailModulePage.test.tsx:233"
+      "via": "marker web/src/modules/employee-detail/EmployeeDetailModulePage.test.tsx:240"
     }
   ],
   "violations": [],

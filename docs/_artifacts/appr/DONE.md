@@ -1205,3 +1205,53 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 测试：新 describe 2 用例（口径行逐字+href=/approvals?status=all+title 含「nextCursor 恒 null」+行在+无 cursor；切 tasks 再回 approvals=行清+新请求无 cursor）；既有用例 1 处选择器钉正=「approval rows link…」原取卡内首个 a，被口径行队列链抢占（用例意图=行链，改按 ed8-appr-link-0 精确取，语义等价）。定向 employee-detail 1 file/**55 passed**（53+2）；tsc 两域 0 红；assert-ia 两模式 exit0；全量 **159 files/2192 passed**（基线 2190+2）。
 - 零破：ed8-appr-*/ed1/ed5/ed7/ed9/ed10/edz/edx/apd6/apd7/apv5–9/apr5（既有用例全绿为证）；三档=口径行 px-4+内联链既有形态学报（jsdom 不可测）；9122==9813d7af 禁重建，活体读数待并入后代次。
 - 习语坑（本窗实证）：ed 测试文件=mockApi(handler) 与 renderAt(element,entry) 两步式（handler 不是 renderAt 第三参）；卡内插新链必须 grep 「querySelector("a")」形态的既有用例防抢占。
+
+## R90 审批筛选重置单点（apv-reset-filters，2026-11-20）
+
+- 基线：显式 refspec fetch + merge = Already up to date @58308a50（章面 0c1b94c3/代次 9813d7af，HEAD ee64b4f0 仅 gateway），toplevel ✓ porc=0；重发三件套 grep apv-reset-filters=0。
+- 单点 helper=新 FilterReset.ts：FILTER_PARAM_KEYS=[status,q,actor,since,risk,asort,adir] 唯一参数表；hasActiveFilters(params)→{active,count}；RESET_NONE_TITLE=「当前没有可清除的筛选条件」；resetTitle(count)（0→该句；否则「一次清除 N 项筛选（状态/搜索/审批人/时间/风险/排序），保留页签；回到第一页。」）；clearFilterParams(draft) 差分删七参——tab/id/state/rid 永不动（页签保持+详情打开态归 apd7-back 管，DONE 注：工单七参未点名 id）。
+- 两 tab：钮=原生 button apv-reset-filters（div apv-reset-row 挂 QueueSummaryBar 前），disabled=!active、title=resetTitle(count)、文案「重置筛选（N）」；history clearFilters 升级走 clearFilterParams（原只删 status+q——能力替代授权，R70 契约用例「恢复全列表」仍绿）且 apv-state-clear 可用性判定同源改 filterState.active（禁第二套）；pending 新 handleReset 同构（无 status URL 维=其清除全本地）。
+- cursor 裁决（DONE 记录）：清 status→listUrl 变→hook 重建恰 1 次新取数且天然无 cursor（第一页）；纯本地参（q/actor/since/risk/asort/adir）清除不触 fetch、服务端游标属已加载基底的续页状态不被污染=不强制 reload。用例锁两形态：history 全参一点=恰 +1 且 fresh url 无 status=/cursor=；pending 双本地参一点=+0 请求。
+- 测试 history 2+pending 1（全参 7 项 enabled→点后回归 disabled+title 逐字 RESET_NONE=URL 清空等效断言法——history 测试无 LocProbe，DONE 注明；apv5–9/apd5–10/apr5/actor/nav/gates/state/sort/export/toggle/live/page 零破=既有 142 全绿为证）。定向 approvals 4 files/**145 passed**（142+3）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **159 files/2195 passed**（基线 2192+3）。
+- 三档=apv-reset-row flex-wrap 形态学报；9122==9813d7af 禁重建，活体读数待并入后代次。R91 摘要条与本单共用 FILTER_PARAM_KEYS/hasActiveFilters（禁两套已立约）。
+
+## R91 审批筛选摘要条 chips（apv-chip-*，2026-11-20）
+
+- 基线：显式 refspec fetch + merge = Already up to date @656dbdb6（章面 0c1b94c3/代次 9813d7af），toplevel ✓ porc=0；重发三件套 grep apv-filter-summary=0。
+- 实现=新 FilterSummary.tsx：chipsFor(params) 按 R90 FILTER_PARAM_KEYS 同源派生 chip——status→statusView 人话（未知=原值+title「该值未被识别：X（仍可移除）」）/q→搜索原文/actor→审批人 人员·短码（title=全 handle，与 R74 分桶轨同形制不裸 human:）/since→SINCE_OPTIONS label（未知=原值+title）/risk→RISK_KNOWN（high/medium/low/critical/none；未知值如 purple=原值上屏+title）/asort+adir=合成一枚「排序：标题降序」移除同删两参。chip 容器=apv-chip-<key>，×=真 button apv-chip-remove-<key>（aria-label=移除筛选：X，focus-visible token）。无可移除项=整条不渲染（选择「不渲染」而非空占位行——顶部只留重置钮，DONE 说明此选择）。
+- 「分页游标」维不渲 chip：游标=服务端已加载基底的续页状态非筛选选择，移除筛选/重置的回第一页语义已由 R90 cursor 裁决承担（status 维删=refetch 天然无 cursor；本地维=+0 请求）。与 apv-reset-filters 共用同一参数表与 helper（chipsFor 只读 FILTER_PARAM_KEYS 同源参数集，无第二套）。
+- 移除动作=removeFilterKeys(draft 差分 delete+replace)，与 choose/pickX 同一管道；计数/导出/汇总条/分桶沿 visibleRows 链同源重算（用例贴改前改后：apv5-count 1→2、apv7-export-count 共 1→共 2 行随 status chip 移除联动）。
+- 测试 history 3+pending 1：全参 chips 人话+移除 status=恰 +1 且新 url 无 status=/cursor=+chip 消失+全删后 summary=null；移除 sort/purple risk/pending q=+0 请求（本地维锁）；unknown purple 原文上屏+title 识别句；零筛选无行。定向 approvals 4 files/**149 passed**（145+4 一次全绿）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **159 files/2199 passed**（基线 2195+4）。
+- 零破：apv5–9/apd6–apd10/apr5/state/sort/export/toggle/live/reset/risk/since（既有 145 全绿为证）；三档=chip 行 flex-wrap+truncate 形态学报；9122==9813d7af 活体读数待并入后代次。
+
+## R92 审批面口径回归护栏（纯测试，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console → merge 带入代次 94076a05（wave-22，runs/runNotes.ts 等他人笔，本域零冲突），toplevel ✓ porc=0；重发三件套=caliber.test 不存在，全新。
+- 交付：新 web/src/modules/approvals/approvals.caliber.test.tsx（5 用例，一次全绿，零产品改动）。①ed8 聚合口径行上屏「本区按聚合口径读取，单页最多 20 条」+title 含「nextCursor 恒 null」实测句、ed8-appr-more 不存在+全页无「加载更多」、ed8-appr-scope-queue href 逐字=/approvals?status=all。②chipsFor(全参) 的 remove 摊平与 FILTER_PARAM_KEYS 集合 toEqual（非子集判法=七参恰齐；DONE 说明 chip.key 是六枚因 asort+adir 合成 sort 一枚）；sortChip.remove=[asort,adir]；purple 未知值原文上屏+chip 容器 title 含「该值未被识别」；行为=actor/since/risk/sort 四本地维移除各 +0 fetch、status 维移除恰 +1 且新请求无 status=/cursor=；末 chip 移除后 apv-filter-summary 整条消失、reset title 回到 RESET_NONE_TITLE。③无筛选页=apv-filter-summary null+apv-reset-filters disabled+title toBe(RESET_NONE_TITLE)（import 值非硬编码=单点锁）+hasActiveFilters 纯函数同判。
+- 形态注记（工单口径 vs 本仓 DOM）：①工单写 `data-ed8-appr-scope`——本仓载体实形=data-testid="ed8-appr-scope"（无该同名属性；ed 模块不在本单写域=未补属性，按 testid 判等义，若后续单要属性化再改）；工单文件名 .ts——含 JSX 落 .tsx（vitest 收集同路）。
+- 验证：定向 approvals+employee-detail 6 files/209 passed（149+55+新 5）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **162 files/2246 passed**（merge wave-22 后实跑基线+5，0 失败）；零产品文件改动。
+
+## R93 员工审批区四态与队列同句同形（stateCopy 单点，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console → merge commit 4b56f29f（带入 74c1e3b3 纯账本；代码代次 94076a05），toplevel ✓ porc=0。回执引用一律不写工作树 entry/sha。
+- 单点=新 web/src/modules/approvals/stateCopy.ts（APPROVAL_EMPTY_SENTENCE「该条件下无审批」/APPROVAL_FAILED_TITLE「审批申请没能加载出来」/APPROVAL_DENIED_TITLE「暂时无法查看审批申请」/APPROVAL_DENIED_BODY 单行常量/RETRY「重试」/RID_FALLBACK「本次请求未记录编号，可复制时间与操作路径反馈」）。approvals 侧引用改造：states.tsx ErrorPanel title 默认值、DeniedPanel 首句+正文（原 JSX 多行改常量单行=渲染字节稳定）、3 处 rid fallback、重试钮文字、InlineFailure retryLabel 默认；history 页 EmptyPanel reason 前缀改常量模板拼接（逐字不变）。
+- ed8 侧改前→改后（逐字对照）：
+  · empty 主句：「当前没有审批事项」→「该条件下无审批」（hint 范围说明保留——工单空集主句对齐；R89 的「现文逐字保持」决定被本单口径取代，先例=工单后单优先，L402 断言同步）。
+  · denied 首句：「审批暂不可见」→「暂时无法查看审批申请」；正文：DENIED_COPY+「请确认后台已接入…」后缀 → 队列 APPROVAL_DENIED_BODY 同句（403≡404 同体保持 toResourceError 单点）。
+  · error 首句：「审批没能加载出来」→「审批申请没能加载出来」；动态原因句（humanizeStatus）与队列 failure.sentence 同形制各读口自出，DONE 注明非同一字符串来源。
+  · 重试文字=APPROVAL_RETRY_LABEL、rid 位 fallback=APPROVAL_RID_FALLBACK（本就同句，改锁 import）。
+  形制=Card testid（ed5-approvals-{error,denied,empty,loading} 现名保留）+图标+主句 p+详句 p+RequestIdCopy+重试钮——与 Zone* 同构；loading 两侧均等高骨架无文字（ZoneLoading 4 行不动）。
+- 跨模块 import：employee-detail 引用 approvals/stateCopy（R78/R86 先例同方向）；禁第三套=ed 测试也 import 常量断言（无字面量复读）。pending 队列空集句「现在没有需要你处理的申请」为 R70 两种空集之真空集句，不属本单对齐面（DONE 注明）。
+- 测试：ed 新 describe 3 用例（error 首句 toBe 常量+重试点击 approvals 命中 +1 恰一次计数锁；403 vs 404 两 mount 整卡 textContent 相等+首句/正文 toBe 常量；empty 主句 toBe）；caliber 新 describe 3 用例（同屏跨模块：500 队列 apv-state-error span 句===ed p 句 toBe 互等；403 denied 首句+正文两处 p 逐字互等；空集主句队列 apv-state-empty-text contains 常量===ed toBe）。定向 approvals+employee-detail 6 files/**215 passed**（+6）；tsc 两域 0 红；assert-ia 两模式 exit0；全量 **162 files/2252 passed**（基线 2246+6）。
+- 零破：ed8-appr-scope/-scope-queue/ed1/ed5/ed7/ed9/ed10/edz/edx/apd*/apv*/apr5（既有 209 用例全绿为证）；三档=Card flex-col+break-words 既有形态学报；9122 活体两处同屏读数待并入后代次。
+
+## R94 审批详情关联资源 → 返回保态（appr-corr，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @c969f7b9（代码代次 94076a05/章面 74c1e3b3），toplevel ✓；重发三件套 grep correlationReturn/appr-corr=0=全新单。
+- 机制：①新 correlationReturn.ts 单键 sessionStorage=appr-corr-restore（saveCorrelationReturn(search,scrollY)/peekCorrelationReturn 解析不删/dropCorrelationReturn/rawCorrelationReturn 测试读形，全 try/catch 静默）。②views.tsx DecisionTrail useLocation+leaveWithSnapshot=saveCorrelationReturn(location.search, window.scrollY ?? 0) 挂 apd6-link-run/apd6-link-task 两真 Link onClick——跳走前存视图快照（零新请求，onClick 只写存储）。③两页挂载 restore effect（deps []）：peek→saved.get("tab")!==本页字面 tab 则不消费（留给对的页=tab 串页防抢）→当前 URL 去 tab 后仍有参数=用户自选视图不抢（防串页语义二）→drop→id=saved.get("id")→draft 带 id 则 draft.set("id",id)+setSelected(id) 重开详情→setParams(draft,{replace:true}) 一次还原八参→window.scrollTo(0,snap.scrollY)（try/catch）。
+- 游标不持久化裁决：内存续页态（list.next/已加载分页链）序列化回灌=假数据；还 URL+打开项+滚动=工单括号「或至少列表滚动位与筛选」最低要求满足，DONE 记录供复核。
+- 存还两组读数（用例逐字）：hist=灌 "?tab=history&status=pending&q=%E5%8F%91%E5%B8%83&id=ap_p"+scrollY 578→mount 裸 /approvals?tab=history→apr5-detail 重开（rotate.secret）+apv8-search value=发布+scrollTo(0,578)+rawCorrelationReturn()=null（consumed）；pend=灌 "?tab=pending&q=本周&id=ap_9F3A1111"→apd5-detail 重开+value=本周+scrollTo(0,321)+快照 consumed。另 case1 真链点击存快照断 search 八参逐字+scrollY；case3/4=筛选不同不抢、tab 不同不消费。
+- 零额外请求：除页面正常 list+detail 取数外无新请求；apd6 落点可达=R82 href 锁（/runs?run=、/work?tab=board&task=）零回归、无 /runs/<id> /tasks 直链。
+- 坑五连记：①q 夹具字段必含检索词（R88 复证——ap_p 真值 title=「等待你点头的发布」，用「预算」仍滤空，改「发布」绿）；②python 插入模板 %s 占位未替换=恒 return 静默早退假绿（修后 case3/4 曾侥幸绿=教训：模板占位符落盘后必 grep 残留）；③re.sub 换串造出 "?tab=tab=history" 双前缀损坏（全局替换后必 grep 结果形态）；④手灌快照 search 必须与 location.search 同形（?tab=… 起头、无 pathname——URLSearchParams 会把 "/approvals?tab" 当键）；⑤pending 详情体 testid=apd5-detail（ApprovalDetailBody 默认）≠history 页级覆写 apr5-detail——跨页 waitFor testid 必先读调用点。
+- 验证：定向 approvals 5 files/**162 passed**（既有 157 零破+R94 5 新）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **162 files/2257 passed**（基线 2252+5）。
+- 零破：apv5–9/apd6–apd10/apr5/state/sort/export/toggle/live/reset/risk/since/chip 与 ed8-appr-*（既有用例全绿为证）；三档=aside/列表既有形态学报（jsdom 不可测）；9122==94076a05 禁重建，活体跳转读数待并入后代次。

@@ -33,85 +33,85 @@
     {
       "route": "#/approvals",
       "viewport": "1440",
-      "chars": 677,
+      "chars": 682,
       "hasMainEl": true
     },
     {
       "route": "#/approvals",
       "viewport": "375",
-      "chars": 677,
+      "chars": 682,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=history",
       "viewport": "1440",
-      "chars": 741,
+      "chars": 746,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=history",
       "viewport": "375",
-      "chars": 741,
+      "chars": 746,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=mine",
       "viewport": "1440",
-      "chars": 677,
+      "chars": 682,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=mine",
       "viewport": "375",
-      "chars": 677,
+      "chars": 682,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=mine",
       "viewport": "1440",
-      "chars": 677,
+      "chars": 682,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=mine",
       "viewport": "375",
-      "chars": 677,
+      "chars": 682,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=release",
       "viewport": "1440",
-      "chars": 677,
+      "chars": 682,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=release",
       "viewport": "375",
-      "chars": 677,
+      "chars": 682,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=policy",
       "viewport": "1440",
-      "chars": 677,
+      "chars": 682,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=policy",
       "viewport": "375",
-      "chars": 677,
+      "chars": 682,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=release",
       "viewport": "1440",
-      "chars": 677,
+      "chars": 682,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=release",
       "viewport": "375",
-      "chars": 677,
+      "chars": 682,
       "hasMainEl": true
     },
     {
@@ -129,13 +129,13 @@
     {
       "route": "#/capabilities",
       "viewport": "1440",
-      "chars": 318,
+      "chars": 359,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities",
       "viewport": "375",
-      "chars": 318,
+      "chars": 359,
       "hasMainEl": true
     },
     {
@@ -165,13 +165,13 @@
     {
       "route": "#/capabilities?tab=tools",
       "viewport": "1440",
-      "chars": 344,
+      "chars": 385,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=tools",
       "viewport": "375",
-      "chars": 344,
+      "chars": 385,
       "hasMainEl": true
     },
     {
@@ -501,13 +501,13 @@
     {
       "route": "#/system",
       "viewport": "1440",
-      "chars": 928,
+      "chars": 948,
       "hasMainEl": true
     },
     {
       "route": "#/system",
       "viewport": "375",
-      "chars": 928,
+      "chars": 948,
       "hasMainEl": true
     },
     {
@@ -631,10 +631,8 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 1,
-  "consoleErrorRoutesObservedByShots": [
-    "#/work?tab=cron"
-  ],
+  "consoleErrorsObservedByShots": 0,
+  "consoleErrorRoutesObservedByShots": [],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
@@ -644,12 +642,12 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "94076a05",
+  "headHash": "fa7c2155",
   "exitCode": 0,
-  "entry": "assets/index-BBJ7Gpsw.js",
-  "entrySha256": "cf419ed0c683d154ff8f3fc066e77e9858d4d00317bb872a3ad1e70bc0ffe4b3",
-  "entryBytes": 167089,
-  "servedEntryBefore": "index-BBJ7Gpsw.js",
-  "servedEntryAfter": "index-BBJ7Gpsw.js",
+  "entry": "assets/index-BANGt8ne.js",
+  "entrySha256": "1dc7d2c4f3e883c748b054e41846c27a0673a421b6e5e4f9d71a6ec5f5fa2da5",
+  "entryBytes": 167490,
+  "servedEntryBefore": "index-BANGt8ne.js",
+  "servedEntryAfter": "index-BANGt8ne.js",
   "auxiliary": true
 }

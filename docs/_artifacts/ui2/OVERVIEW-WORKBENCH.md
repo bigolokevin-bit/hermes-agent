@@ -305,3 +305,49 @@
 - 复位写 `{replace:true}`，不新增历史条目；`run-notes`、`run-sort-*`、`run-list-*`、`run-row-preview-*`、`run5-*` 全部保留。
 - 测试：describe「run filter reset」4 例；runs 3 files / 123 passed（基线 119）。
 - 未测：真实浏览器 375/1440 下按钮与下拉同一行的折行。
+
+## 行内预览复制该行（run row copy，2026-11-20）
+
+`/runs` 的展开行里多了一个「复制这一行」：把该行**屏上已渲染**的七个字段拼成一行纯文本，走剪贴板。
+
+- 单一格式函数：`runs.ts` 的 `runRowFields(row, names, mode)` 输出七字段（运行短码 / 状态 / 开始 / 结束 / 耗时 / 成本 / 员工）。`runRowText()` 用 `label` 模式拼 ` · `，供预览内复制；`runListText()` 用 `dash` 模式拼逗号，即列表复制与 CSV 行——两个表面同源，不会各写一套措辞。`label` 模式下状态/开始/结束缺失写「该字段未返回」，耗时与成本仍写「—」；`dash` 模式保持列表复制既有契约（「—」）。
+- testid：`run-row-copy`、`run-row-copy-status`（`role=status` + `aria-live=polite`，「已复制」）、失败时 `run-row-copy-fallback` + 只读 `run-row-copy-fallback-text`（内容与剪贴板参数逐字相同）。
+- 按钮只在展开预览里渲染（订单给了二选一）：没打开预览时 DOM 里没有这个钮，不存在「点了没反应」的死控件。
+- 零额外请求：复制只读当前行的 `row` 与员工目录映射；打开预览、复制、再复制前后 `urls()` 与 `/api/runs` 次数均不变（用例断言）。
+- 验证：runs 3 files / 126 passed（基线 123，+3）；全量 161 files / 2237 passed（基线 2195，上游本波抬高）；`tsc` 本域 0（全仓既存 79）；`eslint src/modules/runs` exit 0；build exit 0，entry 内 `run-row-copy`=0，`RunsModulePage-*.js` 内 =1。
+- 未测：真实浏览器 375 下复制条与脚注的折行、系统剪贴板权限弹窗路径。
+
+## 列表键盘导航（runs keyboard navigation，2026-11-20）
+
+- 行载体 `li` 持 roving tabindex：当前行 `0`、其余 `-1`；`↑/↓/Home/End` 在行间移焦（首尾夹紧），只在焦点落在行本身时处理，行内「查看」链接与预览开关保留原生 Tab 与按键行为。
+- `Enter`/`Space` 展开或收起该行预览（与既有「同时只开一行」一致）；`Esc` 收起并把焦点还给触发行。
+- `aria-expanded` 在行载体与 `run-row-toggle-*` 两处同值；展开时行载体同时给 `aria-controls=run-row-preview-<i>`，行有 `aria-label`（运行短码 + 状态）与 `role="group"`；焦点环沿用既有 outline token。
+- 加载/错误/空态不渲染行列表，因此不挂任何方向键监听；URL 不写、刷新即收起（`openId` 只在组件 state）。
+- 零新增请求（三例均断言 `urls()` 与 `/api/runs` 次数不变）。
+- 契约变更：旧用例曾断言 Esc 后焦点在预览开关上，本版按新契约改为「焦点回触发行」，断言随之更新。
+- 验证：`vitest run src/modules/runs` 3 files / 129 passed（基线 126）；全量 162 files / 2242 passed（基线 2239）；`tsc` 本域 0；`eslint` exit 0；build 通过，entry 内 `run-row-toggle` 命中 0、`RunsModulePage-*.js` 命中 1。
+
+## 生效筛选 chip 摘要（runs filter chips，2026-11-20）
+
+一次把地址里还在生效的筛选摆到条上，每枚只有一个 × 出口。
+
+- 位置与 testid：`run5-filters` 之下、`run5-status` 之上，仅在「至少一项筛选在地址里」时渲染 `run-filter-chips`（`aria-label="生效筛选"`）；每枚 `run-chip-<key>`，× 为真 `<button>`（`run-chip-<key>-remove`，`aria-label="移除<label>筛选"`）。
+- 单表：chip 的键、顺序、中文名全部来自 `RUN_PARAM_TABLE`（与 `run-reset-filters` 同一张表），`rdir` 不单独成枚，与 `rsort` 合成 `run-chip-sort`（「按开始时间 降序」），× 一次删两键——排序只在已加载行内生效，移除后回到默认的成本降序。
+- 值：时间窗用 `sinceLabel`（近 30 天），状态用 `statusLabel`（失败），负责人用 `employeeLabel`（员工 · AAAABBBB / 配到名字时「小鲤 · AAAABBBB」），复现态用页面既有四态词（加载中/空列表/读取失败/无权限），排序用列名 + 升/降序。地址原值只进 `title`（`地址原值：30d`），不上屏。
+- 未知值：如 `?status=zz` 仍显示原文 `zz`，`title` 追加「该值未被识别，按全部状态读取」；它依旧是可移除项。
+- 请求行为（实测）：移除 `status` → `/api/runs` 恰 +1，`window/employee/rsort/rdir/keep=1` 原地保留；移除 `employee` → 下一次读不带 `employeeId=`，+1；移除排序 chip → 0 次新请求（纯前端排序）。移除后源条、表体、复制文本、导出计数同批重算（复制首行 == 表体首行）。
+- 无筛选时整条不渲染；`run-notes`/`run-sort-*`/`run-list-*`/`run-row-preview-*`/`run-row-copy*`/`run-export-*`/`run-source-*`/`run5-*`/`run-reset-filters` 全部未改名。
+- 验证：定向 runs 3 files / 132 passed（基线 129）；全量 162 files / **2245 passed**；`tsc` 本域 0；`eslint src/modules/runs` exit 0；build exit 0（entry 内 `run-filter-chips` = 0，`RunsModulePage-*.js` = 1）。
+- 未测：真实浏览器 375 下 chips 折行与 × 触控目标尺寸。
+
+## 空窗引导（runs empty state guide，2026-11-20）
+
+只在「读取成功、没有筛选、这个时间窗确实没有运行」时出现，与筛选筛空、读取失败三者互不冒充。
+
+- 判据与位置：沿用既有 `phase === "empty"` + `filtersNarrow === false`；引导块渲染在 `EmptyPanel` 卡内（`run-empty-guide`），筛选筛空时该块**不渲染**，仍走既有 `run-state-clear`「清空筛选」。
+- 内容：一句人话（去任务板挑一件来跑，或看这段时间的钱花在哪）+ 两个真链接 `run-empty-guide-work` → `/work?tab=board`、`run-empty-guide-metrics` → `/metrics` + 一句「若你刚收窄过条件，清空筛选就能看全部；这里没有汇总数字，也不把空当 0」。
+- 可达性现查：`/work` 在 `web/src/App.tsx:1193` 注册，`board` 是 `web/src/modules/work/manifest.ts:16` 记载的合法 tab；`/metrics` 在 `web/src/App.tsx:1302` 注册。两条都渲染成 `<a href>`，无 onClick。
+- 读口失败不出现引导：`?state=` 之外的真实 500 → 既有 `run-state-error` 面板 + 可复制请求编号；`run-state-empty` 不存在。
+- 零额外请求：引导渲染与点两个链接后 `urls()` 长度不变（点击只是路由跳转，`/runs` 不发新读）。
+- 验证：定向 runs 3 files / 135 passed（基线 132）；全量 162 files / **2248 passed**（基线 2245）；`tsc` 本域 0；`eslint src/modules/runs` exit 0；build exit 0（entry 内 `run-empty-guide` = 0，`RunsModulePage-*.js` = 1）。
+- 未测：真实浏览器 375 下引导三段文字折行与两个链接的触控间距。

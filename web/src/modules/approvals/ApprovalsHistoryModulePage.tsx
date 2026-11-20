@@ -28,7 +28,10 @@ import { Spinner } from "@nous-research/ui/ui/components/spinner";
 import { STATUS_FILTERS, approvalSortKeyOf, approvalsRowSearchText, isKnownStatus, sortApprovalRows, type ApprovalSortDir, type ApprovalSortKey } from "./model";
 import { actionGates, announcement } from "./gates";
 import { QueueSummaryBar } from "./QueueSummaryBar";
+import { clearFilterParams, hasActiveFilters, resetTitle } from "./FilterReset";
+import { FilterSummary } from "./FilterSummary";
 import { PermalinkCopy } from "./PermalinkCopy";
+import { dropCorrelationReturn, peekCorrelationReturn } from "./correlationReturn";
 import { BackToList, restoreListScroll, saveListScroll } from "./BackToList";
 import { QueueCsvExport } from "./QueueCsvExport";
 import { QueueSortBar } from "./QueueSortBar";
@@ -36,6 +39,7 @@ import { ActorBuckets } from "./ActorBuckets";
 import { SinceQuickFilter, isSinceValue, withinSince } from "./SinceQuickFilter";
 import { RiskQuickFilter, isRiskValue, withinRisk, type RiskValue } from "./RiskQuickFilter";
 import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel } from "./states";
+import { APPROVAL_EMPTY_SENTENCE } from "./stateCopy";
 import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
 import { ApprovalDetailBody, ApprovalRowCard } from "./views";
 
@@ -236,12 +240,50 @@ export function ApprovalsHistoryModulePage(): ReactNode {
   // 其余参数不动。
   const clearFilters = useCallback(() => {
     const draft = new URLSearchParams(params);
-    draft.delete("status");
-    draft.delete("q");
+    // R90: one parameter table for every reset entry (FilterReset.ts).
+    clearFilterParams(draft);
     setSelected(null);
     setUnaddressable(false);
     setParams(draft, { replace: true });
   }, [params, setParams]);
+  // R94: 从关联 run/task 跳走再回来时，一次性还原筛选视图、打开项与滚动位。
+  // 仅当快照属于本页 tab 且当前 URL 是裸视图才还原；筛选不同=用户自选视图，不抢。
+  useEffect(() => {
+    const snap = peekCorrelationReturn();
+    if (!snap) return;
+    const saved = new URLSearchParams(snap.search);
+    if (saved.get("tab") !== "history") return;
+    const cur = new URLSearchParams(params);
+    cur.delete("tab");
+    if ([...cur.entries()].length > 0) return;
+    dropCorrelationReturn();
+    const id = saved.get("id");
+    saved.delete("id");
+    const draft = new URLSearchParams(saved);
+    if (id) {
+      draft.set("id", id);
+      setSelected(id);
+    }
+    setParams(draft, { replace: true });
+    try {
+      window.scrollTo(0, snap.scrollY);
+    } catch {
+      /* jsdom/无滚动环境忽略 */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const filterState = hasActiveFilters(params);
+  // R91: one chip per active filter; removal reuses the same diff plumbing.
+  const removeFilterKeys = useCallback(
+    (keys: readonly string[]) => {
+      const draft = new URLSearchParams(params);
+      for (const key of keys) draft.delete(key);
+      setParams(draft, { replace: true });
+    },
+    [params, setParams],
+  );
+
 
   const openRow = useCallback(
     (row: { rawId: string | null }) => {
@@ -382,6 +424,19 @@ export function ApprovalsHistoryModulePage(): ReactNode {
         ) : null}
       </div>
 
+      <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="apv-reset-row">
+        <button
+          type="button"
+          data-testid="apv-reset-filters"
+          disabled={!filterState.active}
+          title={resetTitle(filterState.count)}
+          onClick={clearFilters}
+          className="h-6 rounded-md border border-white/15 px-2 text-xs text-muted-foreground hover:bg-white/5 focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/60 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          重置筛选{filterState.active ? `（${filterState.count}）` : ""}
+        </button>
+        <FilterSummary params={params} onRemove={removeFilterKeys} />
+      </div>
       <QueueSummaryBar phase={list.phase} rows={visibleRows} scope="history" singleStatus={status} />
       <QueueCsvExport rows={visibleRows} tab="history" status={status} phase={list.phase} sort={asort} dir={asort ? adir : null} />
       <div className="flex min-w-0 flex-wrap items-center gap-1.5" role="group" data-testid="apv8-search-group" aria-label="搜索审批">
@@ -493,11 +548,11 @@ export function ApprovalsHistoryModulePage(): ReactNode {
 
           {list.phase === "empty" ? (
             <EmptyPanel
-              reason={`该条件下无审批：「${summary}」结果下没有记录`}
+              reason={`${APPROVAL_EMPTY_SENTENCE}：「${summary}」结果下没有记录`}
               nextStep="换一个结果看看，或点「全部」把所有历史决策列出来。"
               onRefresh={list.reload}
               testId="apr5-empty-history"
-              clear={status !== null ? { label: "清空筛选", onClear: clearFilters } : undefined}
+              clear={filterState.active ? { label: "清空筛选", onClear: clearFilters } : undefined}
             />
           ) : null}
 

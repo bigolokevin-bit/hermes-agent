@@ -1929,7 +1929,7 @@ describe("audC - the copyable conclusion line", () => {
     expect(preview.querySelector("[data-testid='audC-copy-status']")!.textContent).toBe("");
     await clickCopy(preview);
     expect(preview.querySelector("[data-testid='audC-copy-status']")!.textContent).toBe("已复制");
-    expect(preview.querySelector("[data-testid='audC-fallback']")).toBeNull();
+    expect(preview.querySelector("[data-testid='audC-copy-fallback']")).toBeNull();
   });
 
   it("a refused clipboard hands back a read-only line, with the same words", async () => {
@@ -1937,11 +1937,18 @@ describe("audC - the copyable conclusion line", () => {
     await mountParity();
     const detail = document.querySelector("[data-testid='aud02-detail']")!;
     await clickCopy(detail);
-    const box = detail.querySelector<HTMLTextAreaElement>("[data-testid='audC-fallback']")!;
+    const box = detail.querySelector<HTMLTextAreaElement>("[data-testid='audC-copy-fallback']")!;
     expect(box.getAttribute("readonly")).not.toBeNull();
     expect(box.value).toBe(clip.calls[0]);
     expect(box.value).toContain("req-20261119-0a7b3c");
     expect(detail.querySelector("[data-testid='audC-copy-status']")!.textContent).toContain("选中复制");
+    // the preview leg is the same control, so the hand-copy box is its own node
+    const preview = document.querySelector("[data-testid='aud6-preview-evt_copy_0000000001']")!;
+    await clickCopy(preview);
+    const previewBox = preview.querySelector<HTMLTextAreaElement>("[data-testid='audC-copy-fallback']")!;
+    expect(previewBox.getAttribute("readonly")).not.toBeNull();
+    expect(previewBox.value).toBe(box.value);
+    expect(preview.querySelector("[data-testid='audC-copy-status']")!.textContent).toContain("选中复制");
   });
 
   it("fields the service did not send read 该字段未返回 in the copied line", async () => {
@@ -5267,5 +5274,195 @@ describe("audS - the copy control is resident and the three faces say one thing"
     expect(preview).toBe("暂时无法查看审计事件");
     expect(document.querySelector("[data-testid='audF-preview-denied']")!.textContent)
       .toBe(document.querySelector("[data-testid='aud02-detail-denied']")!.textContent);
+  });
+});
+
+/**
+ * audT — 生效筛选 chip 摘要。断言的是地址栏、服务请求与同一份行集：一枚 chip
+ * 对应一项生效筛选，× 是真 button；移除只重取一次、回第 1 页并清游标；
+ * from+to 一枚同删两参；本面板不认的值原文上屏并写明「该值未被识别」；没有
+ * 生效筛选时整条不渲染；导出计数与 chip 同源（chip 改问句，计数随行集一起改）；
+ * 被拒时问句照样在屏上，三面四态句子不受影响。
+ */
+describe("audT - the chips for the filters that are on", () => {
+  async function mountProbed(entry: string, handler?: (url: string) => Promise<unknown>): Promise<void> {
+    api.fetchJSON.mockReset();
+    if (handler) api.fetchJSON.mockImplementation(handler);
+    else answer(EVENTS);
+    await render(
+      entry,
+      <>
+        <AuditEventsModulePage />
+        <LocationProbe />
+      </>,
+    );
+    await waitFor(() => !skeleton(), "first page settled");
+  }
+
+  /** Only the list reads, so a detail or verify leg never moves the count. */
+  const listReads = (): string[] => urls().filter((u) => /^\/agent-api\/api\/audit\?/.test(u));
+  const lastListRead = (): string => listReads()[listReads().length - 1] ?? "";
+
+  const chipOf = (key: string): HTMLElement | null =>
+    document.querySelector(`[data-testid='aud-chip-${key}']`);
+  /** The chip's face: its own words, without the x the remove button adds. */
+  const words = (key: string): string => (chipOf(key)?.textContent ?? "").replace("×", "").trim();
+  const chipKeys = (): (string | null)[] =>
+    Array.from(document.querySelectorAll("[data-testid^='aud-chip-']:not([data-testid*='-clear'])")).map(
+      (node) => node.getAttribute("data-testid"),
+    );
+  const titleOf = (key: string): string => chipOf(key)?.getAttribute("title") ?? "";
+  const exportCount = (): string =>
+    document.querySelector("[data-testid='aud5-export-count']")?.textContent ?? "";
+  const rowIds = (): string[] =>
+    Array.from(document.querySelectorAll("[data-testid^='aud01-row-']")).map((node) =>
+      String(node.getAttribute("data-testid")),
+    );
+  const seatLine = (): string =>
+    document.querySelector("[data-testid='aud-source-seats']")?.textContent ?? "";
+
+  /** Press a chip's x and report how many list reads it caused. */
+  async function removeChip(key: string): Promise<number> {
+    const button = document.querySelector<HTMLButtonElement>(`[data-testid='aud-chip-${key}-clear']`);
+    expect(button, `chip ${key} carries a remove button`).not.toBeNull();
+    const before = listReads().length;
+    await act(async () => {
+      button!.click();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 40));
+    });
+    return listReads().length - before;
+  }
+
+  it("一枚 chip 一项生效筛选，措辞就是摘要行自己的措辞", async () => {
+    await mountProbed(
+      "/audit?window=30d&type=approval_approved&actor=user:2f3a4b5c6d7e8f90&resource=ap_1122334455667788&limit=25",
+    );
+    const row = document.querySelector("[data-testid='aud-filter-chips']");
+    expect(row).not.toBeNull();
+    expect(row!.getAttribute("role")).toBe("group");
+    const keys = ["window", "action", "actor", "resource", "limit"];
+    expect(chipKeys()).toEqual(keys.map((key) => `aud-chip-${key}`));
+    for (const key of keys) {
+      expect(chipOf(key), `chip ${key}`).not.toBeNull();
+      // x 是真 button（键盘可达），不是一枚写着 × 的字。
+      expect(document.querySelector(`[data-testid='aud-chip-${key}-clear']`)?.tagName).toBe("BUTTON");
+      // 同一张参数表：chip 的话就在摘要行的 seat 句里，不是第二套说法。
+      expect(seatLine(), key).toContain(words(key));
+    }
+    // 机器句柄不上脸，只在 title 里（aud8/aud9 既有口径）。
+    expect(words("actor")).not.toContain("user:2f3a4b5c6d7e8f90");
+    expect(titleOf("actor")).toContain("user:2f3a4b5c6d7e8f90");
+    expect(words("resource")).not.toContain("ap_1122334455667788");
+    expect(titleOf("resource")).toContain("ap_1122334455667788");
+  });
+
+  it("默认档、默认每页、第 1 页不算筛选：整条不渲染", async () => {
+    await mountProbed("/audit");
+    expect(document.querySelector("[data-testid='aud-filter-chips']")).toBeNull();
+    await mountProbed("/audit?window=7d&limit=50");
+    expect(document.querySelector("[data-testid='aud-filter-chips']")).toBeNull();
+    await mountProbed("/audit?window=24h");
+    expect(document.querySelector("[data-testid='aud-filter-chips']")).not.toBeNull();
+    expect(chipOf("window")).not.toBeNull();
+  });
+
+  it("移除操作者 chip：只重取一次，地址与线上同去 actorId，游标清零回第 1 页，资源留下", async () => {
+    await mountProbed(
+      "/audit?window=7d&actor=user:2f3a4b5c6d7e8f90&resource=ap_1122334455667788&cursor=cur_page1",
+    );
+    expect(chipOf("actor")).not.toBeNull();
+    expect(chipOf("page")).not.toBeNull();
+    expect(document.querySelector("[data-testid='aud2-page']")?.textContent).toContain("第 2 页");
+    expect(lastListRead()).toContain("actorId=");
+
+    expect(await removeChip("actor")).toBe(1);
+
+    expect(locationText()).not.toContain("actor=");
+    expect(locationText()).toContain("resource=ap_1122334455667788");
+    expect(locationText()).not.toContain("cursor=");
+    const url = lastListRead();
+    expect(url).not.toContain("actorId=");
+    expect(url).toContain("resourceId=");
+    expect(chipOf("actor")).toBeNull();
+    expect(chipOf("resource")).not.toBeNull();
+    expect(chipOf("page")).toBeNull();
+    expect(document.querySelector("[data-testid='aud2-page']")?.textContent).toContain("第 1 页");
+  });
+
+  it("from + to 是一枚 chip：一次移除同删两端，回默认档仍只重取一次", async () => {
+    await mountProbed("/audit?window=custom&from=2026-11-01T00:00&to=2026-11-02T00:00");
+    expect(chipOf("from-to")).not.toBeNull();
+    expect(chipOf("window")).toBeNull();
+    expect(words("from-to")).toContain("自定义");
+    expect(words("from-to")).toContain("2026-11-01");
+    expect(words("from-to")).toContain("2026-11-02");
+    expect(spanOf(lastListRead())).toBe(24 * 3600 * 1000);
+
+    expect(await removeChip("from-to")).toBe(1);
+
+    expect(locationText()).not.toContain("from=");
+    expect(locationText()).not.toContain("to=");
+    expect(locationText()).not.toContain("window=");
+    expect(chipOf("from-to")).toBeNull();
+    expect(pressedWindow()).toBe("7d");
+    expect(spanOf(lastListRead())).toBe(7 * 24 * 3600 * 1000);
+  });
+
+  it("地址写了本面板不认的值：原文上屏并写明该值未被识别", async () => {
+    await mountProbed("/audit?window=14d");
+    expect(words("window")).toBe("时间窗：14d");
+    expect(titleOf("window")).toContain("该值未被识别");
+    // 没上线的值不假装生效：这一页读的还是默认档。
+    expect(spanOf(lastListRead())).toBe(7 * 24 * 3600 * 1000);
+    // 也没上线的值不因为删掉而多问一次（问句本来就没变）。
+    expect(await removeChip("window")).toBe(0);
+    expect(locationText()).not.toContain("window=");
+
+    await mountProbed("/audit?type=not_a_code");
+    expect(words("action")).toBe("动作类型：not_a_code");
+    expect(titleOf("action")).toContain("该值未被识别");
+    // 类型代码是按原样上线的：它确实在问句里，所以移除要重取一次。
+    expect(lastListRead()).toContain("action=not_a_code");
+    expect(await removeChip("action")).toBe(1);
+    expect(lastListRead()).not.toContain("action=");
+  });
+
+  it("导出计数与 chip 同源：问句一改，行集与首末行一起改", async () => {
+    await mountProbed("/audit?window=7d&resource=ap_1122334455667788");
+    const beforeCount = exportCount();
+    const beforeIds = rowIds();
+    expect(beforeCount).toContain("将导出 1 条");
+    expect(beforeIds).toHaveLength(1);
+
+    expect(await removeChip("resource")).toBe(1);
+
+    const afterCount = exportCount();
+    const afterIds = rowIds();
+    expect(afterCount).toContain("将导出 2 条");
+    expect(afterCount).not.toBe(beforeCount);
+    expect(afterIds).toHaveLength(2);
+    expect(afterIds[0]).toBe(beforeIds[0]);
+    expect(afterIds[afterIds.length - 1]).not.toBe(beforeIds[beforeIds.length - 1]);
+  });
+
+  it("chip 常驻：被拒时问句照样在屏上，四态句子不受影响", async () => {
+    await mountProbed("/audit?window=7d&type=approval_approved", async (url) => {
+      throw new ApiError("closed", {
+        status: 403,
+        body: '{"code":"console.forbidden"}',
+        url: String(url),
+        requestId: "rid-audT",
+      });
+    });
+    await waitFor(() => document.querySelector("[data-testid='aud01-denied']") !== null, "denied leg");
+    // 问句是地址的事实，不是行集的事实：读被拒也看得到、也去得掉。
+    expect(document.querySelector("[data-testid='aud-filter-chips']")).not.toBeNull();
+    expect(chipOf("action")).not.toBeNull();
+    expect(chipOf("window")).toBeNull();
+    expect(document.querySelector("[data-testid='aud01-denied']")?.textContent).toContain("暂时无法查看审计事件");
+    expect(await removeChip("action")).toBe(1);
+    expect(chipOf("action")).toBeNull();
   });
 });

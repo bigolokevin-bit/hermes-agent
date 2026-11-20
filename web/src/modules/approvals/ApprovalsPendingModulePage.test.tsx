@@ -10,6 +10,7 @@ import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api-error";
+import { rawCorrelationReturn, saveCorrelationReturn } from "@/modules/approvals/correlationReturn";
 
 const api = vi.hoisted(() => ({ fetchJSON: vi.fn() }));
 vi.mock("@/lib/api", () => ({ fetchJSON: api.fetchJSON }));
@@ -790,5 +791,57 @@ describe("R88 pending permalink (apd10-*)", () => {
     expect(written[0]).toBe("/approvals?tab=pending&id=ap_9F3A1111");
     expect(qa("apd10-status")?.textContent).toContain("链接已复制");
     expect(api.fetchJSON.mock.calls.length, "copy never fetches").toBe(before);
+  });
+});
+
+describe("R90 pending filter reset (apv-reset-filters)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+
+  it("clearing local-only params never refetches on the pending queue", async () => {
+    await mount(queue(), "/approvals?tab=pending&risk=high&q=zz");
+    const btn = qa("apv-reset-filters") as HTMLButtonElement | null;
+    expect(btn, "reset button present").toBeTruthy();
+    expect(btn!.disabled, "two active filters").toBe(false);
+    expect(btn!.title).toContain("一次清除 2 项筛选");
+    const before = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      btn!.click();
+    });
+    await act(async () => {});
+    expect(api.fetchJSON.mock.calls.length, "local params never hit the server").toBe(before);
+    expect((qa("apv-reset-filters") as HTMLButtonElement).disabled, "reset after reset").toBe(true);
+    expect(qa("apv-reset-filters")?.getAttribute("title")).toBe("当前没有可清除的筛选条件");
+  });
+});
+
+describe("R91 pending filter chips (apv-chip-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+
+  it("removing the search chip on the pending queue never refetches", async () => {
+    await mount(queue(), "/approvals?tab=pending&q=9F3A");
+    expect(qa("apv-chip-q")?.textContent).toContain("搜索：9F3A");
+    const before = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      (qa("apv-chip-remove-q") as HTMLButtonElement).click();
+    });
+    await act(async () => {});
+    expect(api.fetchJSON.mock.calls.length, "q is local on the queue too").toBe(before);
+    expect(qa("apv-filter-summary")).toBeNull();
+  });
+});
+
+describe("R94 pending correlation return", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+
+  it("the pending tab restores its own snapshot on a bare re-entry", async () => {
+    sessionStorage.clear();
+    saveCorrelationReturn("?tab=pending&q=本周&id=ap_9F3A1111", 321);
+    Object.defineProperty(window, "scrollY", { configurable: true, value: 321 });
+    const scrolled = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+    await mount(queue(), "/approvals?tab=pending");
+    await waitFor(() => !!qa("apd5-detail"), "detail reopened");
+    expect(qa("apv8-search")?.getAttribute("value")).toBe("本周");
+    expect(scrolled.mock.calls.some((c) => c[1] === 321)).toBe(true);
+    expect(rawCorrelationReturn()).toBeNull();
   });
 });
