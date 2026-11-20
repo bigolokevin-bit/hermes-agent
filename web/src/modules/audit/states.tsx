@@ -31,7 +31,53 @@ import { SUMMARY_COPY_LABEL } from "./summary";
 import { PERMALINK_COPY_LABEL, permalinkFromEvent } from "./permalink";
 import type { Gate } from "./auditGates";
 import { FILTER_SUMMARY_COPY_LABEL } from "./filterSummary";
+import { AUDIT_RESOURCE_NO_LINK_TEXT, resourceLinkOf } from "./resourceLinks";
+import { AUDJ_TIME_MISSING } from "./timeActor";
+import type { ResourceView } from "./model";
 import type { AuditChip } from "./filterChips";
+
+/**
+ * audW — 「打开资源」, rendered by BOTH legs (the inline preview and the event
+ * detail) from the ONE table in resourceLinks.ts.
+ *
+ * A real anchor: focusable, openable in a new tab, and its `href` is the address
+ * the landing page itself reads. Never an onClick that only looks like a link.
+ * A type with no page, or a record whose id never came back, is said in words
+ * instead — a dead link reads as a defect in the ledger rather than in the
+ * mapping, and the ledger has done nothing wrong.
+ */
+export function AuditResourceLink({ resource }: { resource: ResourceView }): ReactNode {
+  const link = resourceLinkOf(resource);
+  const shell =
+    "flex min-w-0 items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-xs text-muted-foreground";
+  if (link.kind === "link") {
+    return (
+      <a
+        href={link.href}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="min-w-0 max-w-full break-words rounded-md border border-border bg-card px-2 py-1 text-xs underline underline-offset-2"
+        data-testid="aud-resource-link"
+        data-aud-resource={resource.type ?? undefined}
+        title={link.title}
+      >
+        {link.label}
+      </a>
+    );
+  }
+  if (link.kind === "missing") {
+    return (
+      <span className={shell} data-testid="aud-resource-missing" title={link.title}>
+        {AUDJ_TIME_MISSING}
+      </span>
+    );
+  }
+  return (
+    <span className={shell} data-testid="aud-resource-nolink" title={link.title}>
+      {AUDIT_RESOURCE_NO_LINK_TEXT}
+    </span>
+  );
+}
 
 /**
  * audC: the 结论行 copy control, rendered by BOTH legs (the inline row preview

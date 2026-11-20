@@ -25,7 +25,7 @@ import {
   joinTitles,
   truncatedView,
 } from "./truncation";
-import { CopyValue, DeniedPanel, ErrorPanel, LoadingPanel, PermalinkCopy, SummaryCopy, TechnicalDisclosure } from "./states";
+import { AuditResourceLink, CopyValue, DeniedPanel, ErrorPanel, LoadingPanel, PermalinkCopy, SummaryCopy, TechnicalDisclosure } from "./states";
 import { copyLinkGate } from "./auditGates";
 import type { FailureCopy } from "./copy";
 import { summaryFromDetail, summaryFromRow } from "./summary";
@@ -416,6 +416,14 @@ export function AuditEventDetailBody({
             expandName="detail-resource"
           />
         </dl>
+        {/* audW: the way out of the ledger to the resource itself. One table
+         * (resourceLinks.ts) decides the href for both this pane and the inline
+         * preview, and a type with no page says so instead of linking nowhere.
+         * Read off the screen only: a link is never worth a request. Outside the
+         * `dl` because a definition list holds terms and definitions, not anchors. */}
+        <p className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs">
+          <AuditResourceLink resource={detail.resource} />
+        </p>
       </Section>
 
       <Section title="结果与原因">
@@ -700,6 +708,14 @@ export function AuditRowPreview({
             打开详情
           </a>
         ) : null}
+        {/* audW: the way out, next to the other way out. 打开详情 is the record
+         * itself and 打开资源 is the thing the record acted on — both are exits
+         * from the ledger, so they sit in one row, while the row above stays what
+         * the event says. One table (resourceLinks.ts) decides the href for this
+         * face and the record pane, so the two cannot promise different places; a
+         * type with no page says so instead of linking nowhere. Nothing here is
+         * worth a request: it is read off the row already on screen. */}
+        <AuditResourceLink resource={row.resource} />
       </div>
       {/* audC: the same 结论行 the detail offers, built by the same function,
           so both legs copy one sentence for one event. */}

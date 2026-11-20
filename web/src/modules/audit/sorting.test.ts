@@ -13,7 +13,7 @@ const row = (over: Partial<AuditRow> & { key: string }): AuditRow => ({
   action: (over.action ?? { label: "创建任务", raw: "task.created", known: true, tone: "info" }) as AuditRow["action"],
   outcome: (over.outcome ?? { label: "成功", raw: "succeeded", kind: "success", tone: "success" }) as AuditRow["outcome"],
   actor: over.actor ?? { label: "未指派", raw: null, kind: null, kindLabel: null },
-  resource: over.resource ?? { label: "—", raw: null },
+  resource: over.resource ?? { label: "—", raw: null, type: null, id: null },
   occurredAt: over.occurredAt ?? null,
   occurredAtRaw: over.occurredAtRaw ?? null,
   recordedAt: null,
