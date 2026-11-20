@@ -1051,3 +1051,30 @@
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+
+/* ---- metAK: manual refresh -------------------------------------------- */
+.metAK-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.metAK-busy,
+.metAK-stamp {
+  font-size: 12px;
+  color: var(--color-muted-foreground);
+}
+
+.metAK-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 12px;
+  color: var(--color-muted-foreground);
+  overflow-wrap: anywhere;
+}

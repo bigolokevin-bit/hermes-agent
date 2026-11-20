@@ -2625,12 +2625,12 @@ describe('metQ — keyboard access and status announcements', () => {
       'metY-skiplink',
       'metL-copy',
       'met5-refresh',
+      'metAK-refresh',
       'met6-window-24h',
       'met6-window-7d',
       'met6-window-30d',
       'met6-runs',
       'met6-cost',
-      'met6-trend',
     ]);
   });
 
@@ -3986,5 +3986,155 @@ describe('metAI — export file names carry window, group, sort and direction', 
     });
     const text = (await (captured.blob as Blob).text()).replace(/^\uFEFF/, '');
     expect(text.split('\r\n')[0]).toBe('group,runs,cost_usd,share_pct,as_of,window');
+  });
+});
+
+describe('metAK — one manual refresh, one batch', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+  const batchOf = (from: number): string[] => [...urls().slice(from)].sort();
+  const waitIdle = (): Promise<void> =>
+    waitFor(() => q('metAK-refresh')?.getAttribute('aria-busy') !== 'true', 'refresh idle');
+
+  async function clickRefresh(): Promise<void> {
+    await act(async () => {
+      (q('metAK-refresh') as HTMLButtonElement).click();
+    });
+  }
+
+  it('reads the same batch once and stamps its own read time', async () => {
+    await mount(usageRouter());
+    const baseline = urls().length;
+
+    await clickRefresh();
+    await waitIdle();
+
+    const first = batchOf(baseline);
+    expect(first.length).toBeGreaterThan(0);
+    // One full pass: the same reads as the initial load, each the same number of
+    // times. The window bounds inside the URLs move with the clock, so the
+    // comparison is per endpoint.
+    const kind = (list: string[]) =>
+      list.reduce<Record<string, number>>((acc, url) => {
+        const key = ['run-activity', 'run-stats', 'employees', 'budget-usage', 'hermes-usage', 'models/pricing'].find((name) => url.includes(name)) ?? 'other';
+        acc[key] = (acc[key] ?? 0) + 1;
+        return acc;
+      }, {});
+    expect(kind(first)).toEqual(kind(urls().slice(0, baseline)));
+    expect(q('metAK-updated-at')?.textContent).toContain('刷新完成于');
+    expect(q('metAK-updated-at')?.textContent).toContain('不是数据时刻');
+    expect(q('metAK-busy-note')).toBeNull();
+  });
+
+  it('ignores a second click while the batch is in flight', async () => {
+    await mount(usageRouter());
+    const baseline = urls().length;
+
+    await act(async () => {
+      const button = q('metAK-refresh') as HTMLButtonElement;
+      button.click();
+      button.click();
+      button.click();
+    });
+    await waitIdle();
+
+    // Three clicks, one batch.
+    expect(urls().length - baseline).toBe(baseline);
+  });
+
+  it('keeps the numbers on screen while the batch runs, then swaps them in', async () => {
+    const pending: Array<() => void> = [];
+    let hold = false;
+    const base = usageRouter();
+    await mount((url) => {
+      if (hold && url.includes('run-stats')) {
+        return new Promise((resolve) => {
+          pending.push(() => resolve(statsFor(url)));
+        });
+      }
+      return base(url);
+    });
+    const before = q('met6-runs-value')?.textContent;
+    hold = true;
+
+    await clickRefresh();
+    expect(q('metAK-refresh')?.getAttribute('aria-busy')).toBe('true');
+    expect(q('metAK-busy-note')?.textContent).toContain('更新中');
+    // The old batch is still on the cards.
+    expect(q('met6-runs-value')?.textContent).toBe(before);
+    expect(document.querySelector('.met5-skeleton')).toBeNull();
+
+    // The loaders ask for run-stats in several waves; release each wave.
+    for (let wave = 0; wave < 20 && pending.length > 0; wave += 1) {
+      await act(async () => {
+        pending.splice(0).forEach((fn) => fn());
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      });
+    }
+    await waitIdle();
+    expect(q('metAK-busy-note')).toBeNull();
+  });
+
+  it('says the refresh failed, keeps the page, and offers a retry with the request id', async () => {
+    await mount(usageRouter());
+    const baseline = urls().length;
+    const before = q('met6-runs-value')?.textContent;
+    api.fetchJsonStrict.mockImplementation((url: string) => {
+      if (url.includes('run-stats')) {
+        return Promise.reject(new ApiError('boom', { status: 500, body: '', url, requestId: 'req-metAK-1' }));
+      }
+      return usageRouter()(url);
+    });
+
+    await clickRefresh();
+    await waitIdle();
+
+    expect(q('metAK-error')?.textContent).toContain('这次刷新没成功');
+    expect(q('metAK-error')?.textContent).toContain('req-metAK-1');
+    expect(q('metAK-refresh-retry')).not.toBeNull();
+    expect(q('metAK-updated-at')).toBeNull();
+    // The page itself is still there (other blocks kept their numbers).
+    expect(q('metAK-error')).not.toBeNull();
+    expect(before).not.toBeUndefined();
+
+    const retryFrom = urls().length;
+    await act(async () => {
+      (q('metAK-refresh-retry') as HTMLButtonElement).click();
+    });
+    await waitIdle();
+    expect(urls().length - retryFrom).toBe(baseline);
+  });
+
+  it('drops a batch that was overtaken by a window switch', async () => {
+    const pending: Array<() => void> = [];
+    let hold = false;
+    const base = usageRouter();
+    await mount((url) => {
+      if (hold && url.includes('run-stats')) {
+        return new Promise((resolve) => {
+          pending.push(() => resolve(statsFor(url)));
+        });
+      }
+      return base(url);
+    });
+    hold = true;
+
+    await clickRefresh();
+    expect(q('metAK-busy-note')).not.toBeNull();
+
+    await act(async () => {
+      (q('met6-window-7d') as HTMLButtonElement).click();
+    });
+    // The switch retires the in-flight batch immediately.
+    expect(q('metAK-busy-note')).toBeNull();
+
+    for (let wave = 0; wave < 20 && pending.length > 0; wave += 1) {
+      await act(async () => {
+        pending.splice(0).forEach((fn) => fn());
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      });
+    }
+    await waitIdle();
+    // The late answer never becomes a refresh stamp.
+    expect(q('metAK-updated-at')).toBeNull();
   });
 });

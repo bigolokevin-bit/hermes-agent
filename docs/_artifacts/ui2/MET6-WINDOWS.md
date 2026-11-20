@@ -543,3 +543,16 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 - 验证：定向 `src/modules/metrics` **4 files / 190 passed**（原 184，+6）；全量 **137 files / 1805 passed**（原 1799）；`tsc -b . --noEmit` 全仓 67 条既存、`modules/metrics` 0。
 - build `--outDir /tmp/build-metAJ` → entry `assets/index-BOZO53Tv.js` sha256 `61300afc5168e388899985604363f06b8150eb4df4c988de0de5ee2433a856fc`（较 metAI 的 `index-CQVVvpbM.js` 有变化，原因是本单的口径修正，不是测试文件）、entry 内无 metAJ 标记、chunk `assets/MetricsModulePage-CPDNiCwU.js` 命中「计算范围：」2 处。
 - 未测项：真实读屏下的朗读停顿未走查；剪贴板权限弹窗路径沿用既有未测项。
+
+## 手动刷新语义（metAK，2026-11-20）
+
+页首新增「刷新」`metAK-refresh`：点一次，把当前窗口与当前分组整批重取一遍，卡片不会先被清空。
+
+- 一次点击 = 一批：`refreshAll()` 用新的 `signal` 同时跑七个 loader（运行活动、用量与成本、明细、热力、预算、窗口对比、分摊），`Promise.allSettled` 收口。实测按读口种类计数与首次加载完全相同（`run-stats` 仍是当前窗+上一窗两条，其余按窗口与分组而定），没有重复触发。二次点击由 `refreshBusyRef` 闸门直接返回：三连点只发出一批（`urls()` 增量等于一批）。
+- busy 期间：按钮 `aria-busy=true`，页首 `metAK-busy-note` 显示「更新中…（卡片先保留上一次读到的数据）」，role=status aria-live；`shownState/shownUsage/...` 在 busy 且有快照时取快照，七个派生视图全部走同一层，所以数字与表格不闪空、不出现骨架。
+- 成功：`metAK-updated-at` 写「刷新完成于 <北京时间到分>（读取时刻，不是数据时刻）」——与各卡片的采集时刻 asOf 分开标注，绝不把读取时刻当数据时刻。
+- 失败：整批里只要有一个读口记了新的错误，就显示 `metAK-error`「这次刷新没成功，页面保留上一次读到的数据。」+ 可复制的请求编号 + `metAK-refresh-retry`「再试」；失败的卡片仍按 metD/metH 既有语义显示自己的原因与单卡重试，不改那两处。
+- 切窗/切分组：`chooseGroupBy`、`chooseView`、`chooseUsageWindow`、`chooseWindow`（热力窗）都会 `cancelRefresh()`（把在途 signal 置 `live=false` 并清 busy/快照），晚到的批被丢弃——测试用挂起 promise 验证切窗后 `metAK-updated-at` 仍为空。
+- 既有 `met5-refresh`「刷新」按钮保留未动（它是整页 attempt 递增的老入口）；`metAK-*` 为新增。
+- 验证：定向 `src/modules/metrics` **4 files / 195 passed**（原 190，+5）；全量 **137 files / 1810 passed**（原 1805）；`tsc -b . --noEmit` 全仓 67 条既存、`modules/metrics` 0；build `--outDir /tmp/build-metAK` → entry `assets/index-KvAaJzx0.js` sha256 `8f0de8c69b29c734edc42e8b6262d2b72983800d2239f7c35ef86d764ad39892`，entry 内 `metAK-refresh` 命中 0，chunk `assets/MetricsModulePage-sDZlo_Yl.js` 命中 1。
+- 未测项：真浏览器里长网络下「更新中…」的持续时长与快速连点手感未走查；刷新期间切窗后滚动位置未复核。

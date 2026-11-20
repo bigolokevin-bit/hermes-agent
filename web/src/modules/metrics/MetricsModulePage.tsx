@@ -397,6 +397,21 @@ export function MetricsModulePage() {
   const [heatCopyStatus, setHeatCopyStatus] = useState<'idle' | 'done' | 'failed'>('idle');
   const [heatCopyBody, setHeatCopyBody] = useState('');
   const [notesOpen, setNotesOpen] = useState(false);
+  const [refreshBusy, setRefreshBusy] = useState(false);
+  const [refreshSnapshot, setRefreshSnapshot] = useState<null | {
+    state: PageState;
+    usage: UsageState;
+    breakdown: BreakdownState;
+    heat: HeatState;
+    budget: BudgetState;
+    cmp: CmpState;
+    share: ShareState;
+  }>(null);
+  const [refreshAt, setRefreshAt] = useState<string | null>(null);
+  const [refreshError, setRefreshError] = useState<{ message: string; requestId: string | null } | null>(null);
+  const refreshBusyRef = useRef(false);
+  const refreshSignalRef = useRef<{ live: boolean } | null>(null);
+  const sourcesRef = useRef<Record<string, SourceStamp>>({});
   const [sourceCopyStatus, setSourceCopyStatus] = useState<'idle' | 'done' | 'failed'>('idle');
   const [sourceCopyBody, setSourceCopyBody] = useState('');
   const [summaryText, setSummaryText] = useState('');
@@ -1048,13 +1063,84 @@ export function MetricsModulePage() {
     };
   }, [attempt, forced, groupBy, loadShare, usageWindow.id]);
 
+
+  // metAK — one manual refresh reads the whole page once: the seven loaders run
+  // together with a single signal. A second click while busy is ignored, and a
+  // window or group switch retires the batch instead of letting it land late.
+  const cancelRefresh = () => {
+    if (refreshSignalRef.current) refreshSignalRef.current.live = false;
+    refreshSignalRef.current = null;
+    refreshBusyRef.current = false;
+    setRefreshBusy(false);
+    setRefreshSnapshot(null);
+  };
+
+  const refreshAll = async () => {
+    if (refreshBusyRef.current) return;
+    const signal = { live: true };
+    refreshSignalRef.current = signal;
+    refreshBusyRef.current = true;
+    setRefreshSnapshot({ state, usage, breakdown, heat, budget, cmp, share });
+    setRefreshBusy(true);
+    setRefreshError(null);
+
+    const errorsBefore = new Map(
+      Object.entries(sourcesRef.current).map(([key, stamp]) => [key, stamp.error ?? '']),
+    );
+
+    await Promise.allSettled([
+      load(signal),
+      loadUsage(signal, usageWindow.id),
+      loadBreakdown(signal, usageWindow.id, viewMode),
+      loadHeat(signal),
+      loadBudget(signal, usageWindow.id),
+      loadCmp(signal),
+      loadShare(signal, usageWindow.id, groupBy),
+    ]);
+
+    if (!signal.live) return;
+
+    // Let the last state writes land before judging the batch.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    if (!signal.live) return;
+
+    const failures = Object.entries(sourcesRef.current).filter(([key, stamp]) => {
+      if (!stamp.error) return false;
+      return (errorsBefore.get(key) ?? '') !== stamp.error;
+    });
+    refreshSignalRef.current = null;
+    refreshBusyRef.current = false;
+    setRefreshSnapshot(null);
+    setRefreshBusy(false);
+    if (failures.length > 0) {
+      const first = failures[0][1];
+      setRefreshError({
+        message: first.error ?? '这次刷新没成功',
+        requestId: first.requestId,
+      });
+      return;
+    }
+    setRefreshError(null);
+    setRefreshAt(new Date().toISOString());
+  };
+
+  // metAK — while a manual refresh is in flight the cards keep the batch they
+  // already had; the new numbers replace them only when the batch settles.
+  const shownState = refreshBusy && refreshSnapshot ? refreshSnapshot.state : state;
+  const shownUsage = refreshBusy && refreshSnapshot ? refreshSnapshot.usage : usage;
+  const shownBreakdown = refreshBusy && refreshSnapshot ? refreshSnapshot.breakdown : breakdown;
+  const shownHeat = refreshBusy && refreshSnapshot ? refreshSnapshot.heat : heat;
+  const shownBudget = refreshBusy && refreshSnapshot ? refreshSnapshot.budget : budget;
+  const shownCmp = refreshBusy && refreshSnapshot ? refreshSnapshot.cmp : cmp;
+  const shownShare = refreshBusy && refreshSnapshot ? refreshSnapshot.share : share;
+
   const view: PageState = forced
     ? forced === 'loading'
       ? { kind: 'loading' }
       : forced === 'empty'
         ? { kind: 'empty', activity: EMPTY_ACTIVITY, loadedAt: new Date().toISOString(), weeks }
         : { kind: 'error', message: '预览状态：这次没能读取运行活动，请稍后重试。', requestId: null, gap: null }
-    : state;
+    : shownState;
 
   const grid = view.kind === 'ready' ? buildHeatGrid(view.activity) : null;
   const heatDays = grid ? heatDayRows(grid) : [];
@@ -1119,7 +1205,7 @@ export function MetricsModulePage() {
           prevRuns: forced === 'empty' ? { kind: 'ready', value: 0 } : forcedDown,
           loadedAt: new Date().toISOString(),
         }
-    : usage;
+    : shownUsage;
 
   const usageReady = usageView.kind === 'ready' ? usageView : null;
   const usageBlocks = usageReady ? [usageReady.stats, usageReady.day, usageReady.pricing] : [];
@@ -1165,7 +1251,7 @@ export function MetricsModulePage() {
             gap: forced === 'denied' ? USAGE_GAP : null,
             requestId: null,
           }
-    : cmp;
+    : shownCmp;
 
   const budgetView: BudgetState = forced
     ? forced === 'loading'
@@ -1181,7 +1267,7 @@ export function MetricsModulePage() {
             gap: forced === 'denied' ? USAGE_GAP : null,
             requestId: null,
           }
-    : budget;
+    : shownBudget;
 
   const heatView: HeatState = forced
     ? forced === 'loading'
@@ -1197,7 +1283,7 @@ export function MetricsModulePage() {
             gap: forced === 'denied' ? USAGE_GAP : null,
             requestId: null,
           }
-    : heat;
+    : shownHeat;
 
   const breakdownView: BreakdownState = forced
     ? forced === 'loading'
@@ -1213,7 +1299,7 @@ export function MetricsModulePage() {
             gap: forced === 'denied' ? USAGE_GAP : null,
             requestId: null,
           }
-    : breakdown;
+    : shownBreakdown;
 
   const shareView: ShareState = forced
     ? forced === 'loading'
@@ -1229,7 +1315,7 @@ export function MetricsModulePage() {
             gap: forced === 'denied' ? USAGE_GAP : null,
             requestId: null,
           }
-    : share;
+    : shownShare;
 
   const shareRows =
     shareView.kind === 'ready'
@@ -1281,7 +1367,8 @@ export function MetricsModulePage() {
     return had;
   };
   const chooseGroupBy = (next: 'model' | 'employee') => {
-    if (next === groupBy) return;
+    if (next === groupBy) return;    cancelRefresh();
+
     const query = new URLSearchParams(params);
     if (next === 'employee') query.set('groupBy', 'employee');
     else query.delete('groupBy');
@@ -1470,7 +1557,8 @@ export function MetricsModulePage() {
   };
 
   const chooseView = (next: 'employee' | 'model') => {
-    if (next === viewMode) return;
+    if (next === viewMode) return;    cancelRefresh();
+
     const query = new URLSearchParams(params);
     if (next === 'employee') query.delete('view');
     else query.set('view', next);
@@ -1479,6 +1567,7 @@ export function MetricsModulePage() {
   };
 
   const chooseUsageWindow = (next: UsageWindowId) => {
+    cancelRefresh();
     const query = new URLSearchParams(params);
     if (next === '24h') query.delete('window');
     else query.set('window', next);
@@ -1486,12 +1575,17 @@ export function MetricsModulePage() {
   };
 
   const chooseWindow = (nextWeeks: number) => {
+    cancelRefresh();
     setSelected(null);
     const next = new URLSearchParams(params);
     next.set('heat', String(nextWeeks));
     next.delete('w');
     setParams(next, { replace: true });
   };
+
+  useEffect(() => {
+    sourcesRef.current = sources;
+  }, [sources]);
 
   const sourceList = sourceRows(sources);
   const newestSource = latestSourceAsOf(sourceList);
@@ -1599,6 +1693,48 @@ export function MetricsModulePage() {
           </span>
         </div>
       </div>
+
+      <div className="metAK-bar" data-testid="metAK-bar">
+        <Button
+          size="sm"
+          outlined
+          aria-busy={refreshBusy}
+          onClick={() => {
+            void refreshAll();
+          }}
+          data-testid="metAK-refresh"
+        >
+          <RefreshCw className="size-3.5" aria-hidden="true" />
+          刷新
+        </Button>
+        {refreshBusy ? (
+          <span className="metAK-busy" role="status" aria-live="polite" data-testid="metAK-busy-note">
+            更新中…（卡片先保留上一次读到的数据）
+          </span>
+        ) : null}
+        {!refreshBusy && refreshAt ? (
+          <span className="metAK-stamp" data-testid="metAK-updated-at">
+            刷新完成于 {formatBeijing(refreshAt)}（读取时刻，不是数据时刻）
+          </span>
+        ) : null}
+      </div>
+
+      {refreshError ? (
+        <div className="metAK-error" data-testid="metAK-error" role="status">
+          <p>这次刷新没成功，页面保留上一次读到的数据。</p>
+          <RequestId id={refreshError.requestId} />
+          <Button
+            size="sm"
+            outlined
+            onClick={() => {
+              void refreshAll();
+            }}
+            data-testid="metAK-refresh-retry"
+          >
+            再试
+          </Button>
+        </div>
+      ) : null}
 
       {summaryStatus === 'failed' ? (
         <div className="metL-fallback" data-testid="metL-fallback">
