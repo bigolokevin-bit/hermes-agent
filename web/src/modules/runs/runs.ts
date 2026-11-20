@@ -53,6 +53,9 @@ export const SINCE_OPTIONS = [
   { key: "24h", label: "近 24 小时", hours: 24 },
   { key: "7d", label: "近 7 天", hours: 24 * 7 },
   { key: "30d", label: "近 30 天", hours: 24 * 30 },
+  // 「全部时间」是一条真实的时间范围：不设下界。读口只认 since（起点），
+  // 所以这里用纪元起点，而不是省略参数——省略会让 BFF 按 request.missing_filter 拒绝。
+  { key: "all", label: "全部时间", hours: null },
 ] as const;
 
 export type SinceKey = (typeof SINCE_OPTIONS)[number]["key"];
@@ -64,7 +67,11 @@ export function sinceKeyOf(raw: string | null): SinceKey {
 }
 
 export function sinceIso(key: SinceKey): string {
-  const hours = SINCE_OPTIONS.find((option) => option.key === key)?.hours ?? 24;
+  const option = SINCE_OPTIONS.find((entry) => entry.key === key);
+  // 「全部时间」: no lower bound at all — the epoch, never `undefined`/omitted,
+  // because the read route rejects a call without a usable window.
+  if (option && option.hours === null) return new Date(0).toISOString();
+  const hours = option?.hours ?? 24;
   return new Date(Date.now() - hours * 3600_000).toISOString();
 }
 

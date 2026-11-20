@@ -1178,21 +1178,33 @@ export function RunsModulePage() {
           </p>
         </div>
         <div className="flex min-w-0 flex-wrap items-end gap-2" role="group" aria-label="运行筛选" data-testid="run5-filters">
-          <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="run5-filter-window">
+          <div
+            className="flex min-w-0 flex-col gap-1 text-xs"
+            role="group"
+            aria-label="时间范围"
+            data-testid="run5-filter-window"
+            title={isForced ? forcedTitle : "换时间范围会重新向服务要一次数据，其余筛选保持不变"}
+          >
             <span className="text-muted-foreground">时间范围</span>
-            <select
-              id="run5-filter-window"
-              data-testid="run5-filter-window"
-              className="h-8 min-w-0 max-w-40 rounded-md border border-border bg-transparent px-2 text-sm"
-              value={sinceKey}
-              title={isForced ? forcedTitle : "换时间范围会重新向服务要一次数据"}
-              onChange={(event) => setParam("window", event.target.value)}
-            >
+            <div className="flex min-w-0 flex-wrap gap-1">
               {SINCE_OPTIONS.map((option) => (
-                <option key={option.key} value={option.key}>{option.label}</option>
+                <button
+                  key={option.key}
+                  type="button"
+                  data-testid={`run-window-${option.key}`}
+                  aria-pressed={option.key === sinceKey}
+                  className={
+                    option.key === sinceKey
+                      ? "rounded-md border border-border bg-muted px-2.5 py-1 text-xs font-medium"
+                      : "rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground"
+                  }
+                  onClick={() => setParam("window", option.key)}
+                >
+                  {option.label}
+                </button>
               ))}
-            </select>
-          </label>
+            </div>
+          </div>
           <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="run5-filter-status">
             <span className="text-muted-foreground">状态</span>
             <select
@@ -1449,6 +1461,7 @@ export function RunsModulePage() {
       ) : null}
       {phase === "ready" ? (
         <ListRows
+          key={sinceKey}
           rows={sortedRows}
           names={names}
           hrefOf={hrefOf}

@@ -1341,8 +1341,8 @@ describe("runs filter source", () => {
   };
   const runsCalls = (): number =>
     api.fetchJSON.mock.calls.filter(([url]) => String(url).includes("/api/runs")).length;
-  const windowSelect = (): HTMLSelectElement =>
-    document.querySelector("[data-testid='run5-filter-window']") as HTMLSelectElement;
+  const pressedWindow = (): string =>
+    document.querySelector("[data-testid^='run-window-'][aria-pressed='true']")?.getAttribute("data-testid") ?? "";
   const statusSelect = (): HTMLSelectElement =>
     document.querySelector("[data-testid='run5-filter-status']") as HTMLSelectElement;
 
@@ -1356,7 +1356,7 @@ describe("runs filter source", () => {
     await render("/runs?window=30d&status=failed&employee=emp_aaaabbbbcccc");
     await waitFor(() => pathNode() !== null, "source line");
     expect(pathNode().textContent).toBe("/runs?window=30d&status=failed&employee=emp_aaaabbbbcccc");
-    expect(windowSelect().value).toBe("30d");
+    expect(pressedWindow()).toBe("run-window-30d");
     expect(statusSelect().value).toBe("failed");
     const asked = api.fetchJSON.mock.calls.map(([url]) => String(url)).find((url) => url.includes("/api/runs")) ?? "";
     expect(asked).toContain("status=failed");
@@ -1394,7 +1394,7 @@ describe("runs filter source", () => {
     expect(notes.some((n) => n.includes("时间范围「zz」未识别") && n.includes("近 7 天"))).toBe(true);
     expect(notes.some((n) => n.includes("状态「zz」未识别"))).toBe(true);
     expect(notes.some((n) => n.includes("预览参数「zz」未识别"))).toBe(true);
-    expect(windowSelect().value).toBe("7d");
+    expect(pressedWindow()).toBe("run-window-7d");
     expect(statusSelect().value).toBe("");
     expect(document.querySelector("[data-testid='probe-location']")?.textContent).toContain("window=zz");
   });
@@ -1404,8 +1404,7 @@ describe("runs filter source", () => {
     await render("/runs");
     await waitFor(() => runsCalls() === 1, "first read");
     await act(async () => {
-      windowSelect().value = "24h";
-      windowSelect().dispatchEvent(new Event("change", { bubbles: true }));
+      (document.querySelector("[data-testid='run-window-24h']") as HTMLButtonElement).click();
     });
     await waitFor(() => runsCalls() === 2, "one more read");
     await new Promise((resolve) => setTimeout(resolve, 40));
@@ -2289,5 +2288,84 @@ describe("runs export aria parity", () => {
       expect(s.title).toContain("没有行");
     }
     expect(document.querySelector("[data-testid='run-empty-guide']")).not.toBeNull();
+  });
+});
+
+/* ── one window control, four real choices ───────────────────────── */
+describe("runs time window selector", () => {
+  const probe = (): string => document.querySelector("[data-testid='probe-location']")?.textContent ?? "";
+  const btn = (key: string): HTMLButtonElement =>
+    document.querySelector(`[data-testid='run-window-${key}']`) as HTMLButtonElement;
+  const pressed = (): string[] =>
+    Array.from(document.querySelectorAll("[data-testid^='run-window-']"))
+      .filter((node) => node.getAttribute("aria-pressed") === "true")
+      .map((node) => node.getAttribute("data-testid") ?? "");
+  const reads = (route: string): string[] =>
+    api.fetchJSON.mock.calls.map(([url]) => String(url)).filter((url) => url.includes(route));
+
+  it("offers four native buttons, defaults to 7d, and writes only the window key", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A, RUN_B]));
+    await render("/runs?status=failed&employee=emp_aaaabbbbcccc&rsort=started&rdir=desc&keep=1", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => rowNodes() === 2, "two rows");
+    for (const key of ["24h", "7d", "30d", "all"]) {
+      expect(btn(key).tagName).toBe("BUTTON");
+      expect(btn(key).getAttribute("type")).toBe("button");
+    }
+    expect(pressed()).toEqual(["run-window-7d"]);
+
+    const before = reads("/api/runs").length;
+    const otherBefore = api.fetchJSON.mock.calls.length - before;
+    await act(async () => {
+      btn("30d").click();
+    });
+    await waitFor(() => probe().includes("window=30d"), "window in url");
+    expect(pressed()).toEqual(["run-window-30d"]);
+    expect(probe()).toContain("status=failed");
+    expect(probe()).toContain("employee=emp_aaaabbbbcccc");
+    expect(probe()).toContain("rsort=started");
+    expect(probe()).toContain("keep=1");
+    // exactly one new list read; nothing else is asked again
+    expect(reads("/api/runs").length).toBe(before + 1);
+    expect(api.fetchJSON.mock.calls.length - reads("/api/runs").length).toBe(otherBefore);
+    expect(reads("/api/runs").at(-1)).toContain("since=");
+  });
+
+  it("sends an unbounded since when 全部时间 is picked", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => rowNodes() === 1, "one row");
+    await act(async () => {
+      btn("all").click();
+    });
+    await waitFor(() => probe().includes("window=all"), "all in url");
+    expect(reads("/api/runs").at(-1)).toContain("since=1970-01-01T00%3A00%3A00.000Z");
+    expect(pressed()).toEqual(["run-window-all"]);
+  });
+
+  it("falls back to 7d on an unknown value without rewriting the address", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs?window=xxx&status=failed", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => rowNodes() === 1, "one row");
+    expect(pressed()).toEqual(["run-window-7d"]);
+    expect(probe()).toContain("window=xxx");
+    const note = document.querySelector("[data-testid='run-source-note']")?.textContent ?? "";
+    expect(note).toContain("未识别");
+    expect(reads("/api/runs").at(-1)).toContain("since=");
+  });
+
+  it("collapses an open preview when the window changes", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A, RUN_B]));
+    await render("/runs", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => rowNodes() === 2, "two rows");
+    await act(async () => {
+      (document.querySelector("[data-testid='run-row-toggle-0']") as HTMLButtonElement).click();
+    });
+    expect(document.querySelector("[data-testid='run-row-preview-0']")).not.toBeNull();
+    await act(async () => {
+      btn("24h").click();
+    });
+    await waitFor(() => rowNodes() === 2, "rows back");
+    expect(document.querySelector("[data-testid='run-row-preview-0']")).toBeNull();
+    expect(reads("/api/runs").length).toBe(2);
   });
 });

@@ -363,3 +363,17 @@ R52 OBS 整改：`disabled` 与 `aria-disabled` 说同一句话，与 `title` �
 - 零额外请求：展开预览、读属性、断言前后 `fetchJSON` 调用数不变。
 - 验证：定向 runs 3 files / 138 passed（基线 135）；全量 166 files / **2308 passed**（上游本波抬高）；`tsc` 本域 0；`eslint src/modules/runs` exit 0；build exit 0（entry 内 `run-list-export`=0，chunk `RunsModulePage-*.js` 内 `aria-disabled`=1）。
 - 未测：真实浏览器读屏软件对 `aria-disabled` 的播报顺序；375 下条内两钮折行。
+
+## 时间窗选择器（runs time window，2026-11-20）
+
+`?window=` 以前只在深链里被读；现在页头有四个真按钮，地址仍是唯一事实源。
+
+- testid：容器沿用 `run5-filter-window`（原 `<select>` 换成 `role="group" aria-label="时间范围"` 的分段组），选项为 `run-window-24h` / `run-window-7d` / `run-window-30d` / `run-window-all`，全部 `button[type="button"]` + `aria-pressed`；默认 `7d`，与既有读取口径一致。既有 `run5-filter-window` 之一处测试由「设 select 值」改为「点按钮」，属契约随 UI 形态改写。
+- 落地址：点击写 `?window=<key>`，与 `status/employee/state/rsort/rdir` 互不清除；默认 7d 仍可显式写 `window=7d`（不清键，保持用户意图可分享）。
+- 全部时间：`all` 是一条真实范围——`sinceIso('all')` 返回纪元起点 `1970-01-01T00:00:00.000Z`，而不是省略 `since`（读口缺窗口会 400 `request.missing_filter`），实测 `/api/runs since=1970-01-01…`。
+- 重取范围：切换恰 +1 次 `/api/runs`，`/api/run-stats` 等其它读口零新增（测试按路由分别计数）。
+- 行内预览：`ListRows` 以 `key={sinceKey}` 重挂，切窗后展开态自然收起（不用 effect 里 setState），`run-row-copy` 等出口按新批 gates 重算。
+- 非法值：`?window=xxx` 回落 7d、`aria-pressed` 在 7d，**不静默改写地址**（地址仍是 `window=xxx`），`run-source-note` 写「时间范围「xxx」未识别，按近 7 天读取」（沿用 `runSource()` 既有语义）。
+- 四态：loading 骨架、真实空（`run-empty-guide`）、筛选空（`run-state-clear`）、error（rid + 重试）都只随新批刷新，不因切窗错乱。
+- 验证：定向 runs 3 files / 142 passed（基线 138）；全量 **2316 passed**；`tsc` 本域 0；`eslint src/modules/runs` exit 0；build exit 0（entry 内「全部时间」=0，`RunsModulePage-*.js` 内 =1；testid 为模板拼接故不入 bundle 字面量）。
+- 未测：真实浏览器 375 下四个按钮与状态下拉的换行密度；键盘 Tab 顺序的人工走查。
