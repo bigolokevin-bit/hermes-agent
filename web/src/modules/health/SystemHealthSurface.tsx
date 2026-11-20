@@ -12,6 +12,7 @@ import {
 } from "./systemHealth";
 import { failureRead, publishSourceRead, topLevelIsoAsOf } from "./sourceReads";
 import { SERVICE_GAP, findService, readServiceParam, writeServiceParam } from "./serviceLink";
+import { matchesServiceSearch, readServiceQuery, writeServiceQuery } from "./serviceSearch";
 import { SystemStatePanel } from "./SystemStatePanel";
 import type { RefreshFailure } from "./systemRefresh";
 
@@ -94,6 +95,7 @@ export function SystemHealthSurface({ preview = null, onRetry, refreshTick = 0, 
   const [reload, setReload] = useState(0);
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [filter, setFilter] = useState<Sys3State | null>(null);
+  const [q, setQ] = useState(() => readServiceQuery(window.location.search, window.location.hash));
   const [svc, setSvc] = useState<string | null>(() => readServiceParam(window.location.search, window.location.hash));
   const [targetKey, setTargetKey] = useState<string | null>(null);
   const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
@@ -114,6 +116,16 @@ export function SystemHealthSurface({ preview = null, onRetry, refreshTick = 0, 
 
   useEffect(() => {
     const sync = () => setSvc(readServiceParam(window.location.search, window.location.hash));
+    window.addEventListener("popstate", sync);
+    window.addEventListener("hashchange", sync);
+    return () => {
+      window.removeEventListener("popstate", sync);
+      window.removeEventListener("hashchange", sync);
+    };
+  }, []);
+
+  useEffect(() => {
+    const sync = () => setQ(readServiceQuery(window.location.search, window.location.hash));
     window.addEventListener("popstate", sync);
     window.addEventListener("hashchange", sync);
     return () => {
@@ -267,16 +279,19 @@ export function SystemHealthSurface({ preview = null, onRetry, refreshTick = 0, 
           : state.k === "error" ? `读取失败：${state.message}`
             : state.k === "empty" ? "健康接口返回了空清单，计数为 0；这不等于所有服务正常。"
               : null;
+  const searchRows = state.k === "ready" && q
+    ? state.read.rows.filter((row) => matchesServiceSearch(row.name ?? row.key, row.key, row.endpoint, q))
+    : state.k === "ready" ? state.read.rows : [];
   const counts = COUNT_BUCKETS.map((bucket) => ({
     ...bucket,
     count: state.k === "ready" || state.k === "empty"
-      ? state.read.rows.filter((row) => row.state === bucket.state).length
+      ? searchRows.filter((row) => row.state === bucket.state).length
       : null,
   }));
   const filterable = state.k === "ready";
   const visibleRows = state.k === "ready" && filter
-    ? state.read.rows.filter((row) => row.state === filter)
-    : state.k === "ready" ? state.read.rows : [];
+    ? searchRows.filter((row) => row.state === filter)
+    : searchRows;
 
   const linkReason =
     state.k === "gap" ? `健康读口未接入，无法把「${svc ?? ""}」定位到服务行。`
@@ -330,6 +345,32 @@ export function SystemHealthSurface({ preview = null, onRetry, refreshTick = 0, 
               </span>
             );
           })}
+        </div>
+        <div className="sys-search-bar" data-testid="sys-search-bar">
+          <input
+            type="search"
+            className="sys-search-input"
+            data-testid="sys-search"
+            value={q}
+            disabled={!filterable}
+            aria-disabled={!filterable ? "true" : undefined}
+            title={!filterable ? countReason ?? "当前不是可搜索状态。" : "按服务名或口径 key 过滤下面的服务表与读源矩阵；只在已加载行内搜索。"}
+            placeholder="按服务名或口径 key 搜索"
+            aria-label="按服务名或口径 key 搜索"
+            onChange={(event) => {
+              const value = event.target.value;
+              setQ(value);
+              writeServiceQuery(value || null);
+            }}
+          />
+          <span className="sys-search-scope-note" data-testid="sys-search-scope-note">
+            仅在当前已加载 {state.k === "ready" ? state.read.rows.length : 0} 行内搜索
+          </span>
+          {q ? (
+            <button type="button" className="sys-search-clear" data-testid="sys-search-clear" onClick={() => { setQ(""); writeServiceQuery(null); }}>
+              清空搜索
+            </button>
+          ) : null}
         </div>
         <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
           <div className="min-w-0">
@@ -454,7 +495,14 @@ export function SystemHealthSurface({ preview = null, onRetry, refreshTick = 0, 
               ) : null}
             </p>
             <p className="sys4-hint">点行或按 Enter 展开详情，Esc 收起；同时只展开一行。</p>
-            {visibleRows.length === 0 ? (
+            {q && searchRows.length === 0 ? (
+              <div className="sys-search-empty" data-testid="sys-search-empty">
+                <p>没有匹配的服务</p>
+                <button type="button" className="sys-search-clear" data-testid="sys-search-clear" onClick={() => { setQ(""); writeServiceQuery(null); }}>
+                  清空搜索
+                </button>
+              </div>
+            ) : visibleRows.length === 0 ? (
               <div data-testid="sys5-filter-empty">
                 <SystemStatePanel
                   kind="empty-filter"

@@ -697,3 +697,56 @@
 .sys-refresh-retry:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; }
 .sys-refresh-spin { animation: sys-refresh-spin 1s linear infinite; }
 @keyframes sys-refresh-spin { to { transform: rotate(360deg); } }
+
+/* sys-search — local service/key filter shared by the list and source matrix */
+.sys-search-bar {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.sys-search-input {
+  min-width: 0;
+  flex: 1 1 220px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-background);
+  padding: 6px 10px;
+  color: var(--color-foreground);
+  font-size: 0.75rem;
+}
+.sys-search-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.sys-search-scope-note {
+  min-width: 0;
+  color: var(--color-muted-foreground);
+  font-size: 0.6875rem;
+  overflow-wrap: anywhere;
+}
+.sys-search-clear {
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 3px 8px;
+  color: var(--color-foreground);
+  font-size: 0.6875rem;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.sys-search-empty {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  border: 1px dashed var(--color-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+}
+@media (max-width: 720px) {
+  .sys-search-input { flex-basis: 100%; }
+}

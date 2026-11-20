@@ -460,3 +460,55 @@ describe("system state anchors", () => {
     expect(window.location.hash).toContain("svc=console");
   });
 });
+
+describe("local service search", () => {
+  function setInput(value: string) {
+    const input = container.querySelector<HTMLInputElement>("[data-testid='sys-search']")!;
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+    setter.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+
+  it("filters rows and counts from the loaded list, keeps q in the hash and never refetches", async () => {
+    window.history.replaceState({}, "", "/#/system?tab=health&q=hermes");
+    api.fetchJSON.mockResolvedValue(HEALTH);
+    await render();
+    await waitFor(() => !!container.querySelector("[data-testid='sys3-table']"), "table");
+    expect(container.querySelector<HTMLInputElement>("[data-testid='sys-search']")?.value).toBe("hermes");
+    expect(container.querySelectorAll("[data-testid^='sys3-row-']")).toHaveLength(1);
+    expect(container.querySelector("[data-testid='sys3-row-runtime']")).toBeTruthy();
+    expect(container.querySelector("[data-testid='sys5-count-degraded']")?.textContent).toContain("1");
+    expect(container.querySelector("[data-testid='sys5-count-normal']")?.textContent).toContain("0");
+    expect(container.querySelector("[data-testid='sys-search-scope-note']")?.textContent).toContain("仅在当前已加载 3 行内搜索");
+    const calls = api.fetchJSON.mock.calls.length;
+    await act(async () => setInput("bisheng"));
+    await waitFor(() => !!container.querySelector("[data-testid='sys3-row-bisheng']"), "bisheng row");
+    expect(container.querySelectorAll("[data-testid^='sys3-row-']")).toHaveLength(1);
+    expect(container.querySelector("[data-testid='sys3-row-runtime']")).toBeNull();
+    expect(window.location.hash).toContain("q=bisheng");
+    expect(api.fetchJSON).toHaveBeenCalledTimes(calls);
+  });
+
+  it("shows a search-specific empty state and a clear exit without a fake count", async () => {
+    window.history.replaceState({}, "", "/#/system?tab=health&q=zzz");
+    api.fetchJSON.mockResolvedValue(HEALTH);
+    await render();
+    await waitFor(() => !!container.querySelector("[data-testid='sys-search-empty']"), "search empty");
+    expect(container.querySelector("[data-testid='sys3-table']")).toBeNull();
+    expect(container.querySelector("[data-testid='sys-search-empty']")?.textContent).toContain("没有匹配的服务");
+    await act(async () => (container.querySelector<HTMLButtonElement>("[data-testid='sys-search-empty'] [data-testid='sys-search-clear']") as HTMLButtonElement).click());
+    await waitFor(() => !!container.querySelector("[data-testid='sys3-table']"), "table after clear");
+    expect(container.querySelectorAll("[data-testid^='sys3-row-']")).toHaveLength(3);
+    expect(window.location.hash).not.toContain("q=");
+  });
+
+  it("disables the input with a reason when the read port is not wired", async () => {
+    api.fetchJSON.mockRejectedValue(new ApiError("failed", { status: 403, body: "{}", url: "/agent-api/api/health", requestId: "req-search-403" }));
+    await render();
+    await waitFor(() => !!container.querySelector("[data-testid='sys3-gap']"), "gap");
+    const input = container.querySelector<HTMLInputElement>("[data-testid='sys-search']")!;
+    expect(input.disabled).toBe(true);
+    expect(input.getAttribute("title")).toContain("读口未接入");
+    expect(container.querySelector("[data-testid='sys-search-scope-note']")?.textContent).toContain("仅在当前已加载 0 行内搜索");
+  });
+});

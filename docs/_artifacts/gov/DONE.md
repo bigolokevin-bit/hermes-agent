@@ -2245,3 +2245,12 @@ built /private/tmp/health-r38/index.html
 - 挂载：`HealthPage.tsx` 在 `<SourceMatrix />` 后；`VersionPage.tsx` 在价格卡后（两 tab 每次只挂一个，testid 不重复）。展开/收起零新请求。
 - 验证：定向 `SystemCaliberNotes.test.tsx + health + version` → 10 files / 78 passed；全量 `160 files / 2177 passed`；tsc 仅基线 approvals/employee-detail/employees 错误，health/version 0。DOM（临时 harness，已删）1440/1280/375 两 tab：收起 `sys-notes-body=false`；展开 `aria-expanded=true`、6 行、策略两短语命中；请求计数 health 4→4、version 2→2；body 无横溢（375 bodySW/CW 364，视口 375）。
 - 写域仅 `modules/health/**`、`modules/version/**` + `docs/_artifacts/gov/**`；未改 App/shell/routes/registry/package·lock/web-scripts/ops；未安装、未并 main、未重建 9122。
+
+## R82 / sys-search — /system 服务列表与读源矩阵名称搜索
+
+- 基线：显式 refspec fetch + `git merge origin/lane/hermes-console`，merge `6d519d91`；章面 `0c1b94c3` / 代码代次 `9813d7af`；工作树干净。
+- 读口实测：`git grep -n "filter\|search" -- web/src/modules/health` 仅命中既有 sys5 状态桶本地筛选、`leavePreview` 的 URLSearchParams、`serviceLink.ts` 查询工具与测试/CSS，无服务端搜索参数支持；因此采用本地过滤。
+- 实现：新增 `web/src/modules/health/serviceSearch.ts`（hash/window 查询读写 `q`，保留其它参数；大小写不敏感匹配 label/key/path）；`SystemHealthSurface` 增加 `sys-search`、`sys-search-scope-note`（`仅在当前已加载 N 行内搜索`）、`sys-search-clear`、`sys-search-empty`，列表与 sys5 计数改为基于同一 `searchRows`；`SourceMatrix` 读取同一 `q`，过滤矩阵行、计数、排序、导出、复制与表体，并增加 `sys-search-source-empty`。零新增请求，q 落网址可复现。
+- 验证：`cd web && npx vitest run src/modules/health` → 8 files / 65 passed；全量 `npx vitest run` → 160 files / 2182 passed；`tsc -b . --noEmit` 仅基线 approvals/employee-detail/employees 错误，本域 0。
+- DOM（临时 Vite harness，已删除）：1440/1280/375 `vw=bodySW=bodyCW`（375 内容 364）；`?q=runtime` 服务列表 1 行、矩阵 1 行、摘要「搜索命中 1 / 4 个读口」；`?q=zzz` 服务 `sys-search-empty`、矩阵 `sys-search-source-empty`；`__searchFetch` 首载/展开后均 4，零新增请求。
+- 边界：仅 `web/src/modules/health/**` + 本 DONE；未改 App/shell/routes/registry/package·lock/web-scripts/ops；未 install、未并 main、未重建 9122；禁 force/amend/--no-verify。

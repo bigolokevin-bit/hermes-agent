@@ -412,3 +412,30 @@ describe("source matrix state gates", () => {
     expect(q("sys7-export-count")?.textContent).toBe("—");
   });
 });
+
+describe("local source search", () => {
+  it("filters matrix rows and copy order from the shared q without another request", async () => {
+    window.history.replaceState({}, "", "/#/system?tab=health&q=runtime");
+    await render();
+    await waitFor(() => !!q("sys6-toggle"), "matrix toggle");
+    await act(async () => (q("sys6-toggle") as HTMLButtonElement).click());
+    await waitFor(() => !!q("sys6-table"), "matrix table");
+    expect(rowIds()).toEqual(["runtime"]);
+    expect(q("sys6-summary")?.textContent).toContain("搜索命中 1 / 4 个读口");
+    const calls = api.fetchJSON.mock.calls.length;
+    await act(async () => (q("sys10-copy") as HTMLButtonElement).click());
+    expect(api.fetchJSON).toHaveBeenCalledTimes(calls);
+  });
+
+  it("shows a matrix no-match state and clears the shared q", async () => {
+    window.history.replaceState({}, "", "/#/system?tab=health&q=zzz");
+    await render();
+    await waitFor(() => !!q("sys6-toggle"), "matrix toggle");
+    await act(async () => (q("sys6-toggle") as HTMLButtonElement).click());
+    await waitFor(() => !!q("sys-search-source-empty"), "source search empty");
+    expect(q("sys-search-source-empty")?.textContent).toContain("没有匹配的读口");
+    await act(async () => (q("sys-search-source-empty")?.querySelector("[data-testid='sys-search-clear']") as HTMLButtonElement).click());
+    await waitFor(() => rowIds().length === 4, "four rows after clear");
+    expect(window.location.hash).not.toContain("q=");
+  });
+});
