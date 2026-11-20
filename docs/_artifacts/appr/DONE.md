@@ -1302,3 +1302,9 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 读数：history 夹具 ap_r100（高/郑涛/req-r100-1/createdAt 02:00Z→绝对 10:00:00，无 decided 键→更新时间该字段未返回）written 七行逐字+计数锁；pending 队列行 ap_9F3A1111（未标注风险/提交 09:20:00 绝对句/审批人与 rid 均该字段未返回）同款；未展开 disabled+title 逐字「先展开一行审批再复制」；剪贴板拒→readOnly textarea value 逐字同。
 - 坑（必记）：新钮文案含「详情」二字 ⇒ pending 既有用例 buttonNamed("详情")（includes 查找）被「复制预览详情」抢占致详情没打开=1 FAIL；修法=该用例改 textContent.trim()==="详情" 精确查找（DetailsDisclosure states.tsx L147 钮文本本就精确）。教训=页级加钮必 grep 短文案钮查找函数（buttonNamed/text() 抢占族）。
 - 验证=定向 approvals 8 files/185 passed；tsc 本域 0 红；assert-ia 两模式 exit0；全量 175 files/2404 passed。三档=既有 flex-wrap gap-2+break-words 形态学报（jsdom 不可测）；9122==1683d467 系禁重建，活体复制读数待并入后代次。
+
+## R107 审批 CSV 补 correlation/rid 列
+- 交付=QueueCsvExport.tsx：CSV_HEADER 追加为 id,title,status,risk,updated_at,correlation,rid（固定前序、只追加不重排）；行值 correlation=csvEscape(row.rawId ?? "")（与 apd9-correlation 审计 resource 同源=审批单号）、rid=csvEscape(row.requestId ?? "")（与 apd11-copy 同一来源行）；缺值=空字段，禁「—」/缺值句进 CSV（屏上渲染层仍是「该字段未返回」零改动）。Button enabled title 追加列头说明一句。基线=Already up to date @c3cbff32（章笔 f1b509b9/代次 1683d467），toplevel ✓ porc=0；grep correlation=0=全新。
+- 同源三数=apv7-export-count「共 8 行」==blob 非空段 9（header+8）==表体行（R91 crosssurface/9 段断言在列数变更后仍绿）；空集 disabled+title 与零新端点计数锁既有断言零破；RFC4180 csvEscape 复用。
+- 测试同步=R54 纯函数用例加第三行夹具（ap_Z+requestId=req-z-1）断 lines[0] 新表头、缺 rid 行尾 `,ap_X,`、updated_at 缺行 `,高风险,,ap_Y,`（教训=7 列时 updated_at 空列夹在 risk 与 correlation 之间，endsWith 需含空列逗号——首跑即此 FAIL 实打实读 lines[2] 后修正）、带 rid 行 `,ap_Z,req-z-1`；mkRow 默认补 requestId:null。
+- 验证=定向 approvals 8 files/185 passed；tsc 本域 0 红；assert-ia 两模式 exit0；全量 175 files/2404 passed。三档=导出行为无版面新增（title 文案变长不换行载体）形态学报；9122==1683d467 系活体下载读数待并入后代次。

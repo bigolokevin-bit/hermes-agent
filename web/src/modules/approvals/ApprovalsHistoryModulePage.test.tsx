@@ -580,6 +580,7 @@ describe("R54 CSV export", () => {
       amount: null,
       reason: null,
       risk: riskView(null),
+      requestId: null,
       ...over,
     } as unknown as ApprovalRow);
 
@@ -587,12 +588,16 @@ describe("R54 CSV export", () => {
     const csv = buildApprovalsCsv([
       mkRow({ title: '预算, 含"引号"' }),
       mkRow({ rawId: "ap_Y", title: "无时间", clock: null, risk: riskView("high") }),
+      // R107: 带 rid 的行——correlation 恒=审批单号，rid 有值原样、缺=空字段。
+      mkRow({ rawId: "ap_Z", title: "带编号", requestId: "req-z-1" }),
     ]);
     const lines = csv.replace(/^\uFEFF/, "").split("\r\n");
-    expect(lines[0]).toBe("id,title,status,risk,updated_at");
+    expect(lines[0]).toBe("id,title,status,risk,updated_at,correlation,rid");
     expect(lines[1]).toContain('"预算, 含""引号"""');
-    expect(lines[1].endsWith(",2026-11-19 09:20")).toBe(true);
-    expect(lines[2].endsWith(",高风险,")).toBe(true); // risk 屏上值；updated_at 缺=空，不补 0
+    // R107: 末尾两列=correlation(单号),rid(缺=空)。
+    expect(lines[1].endsWith(",2026-11-19 09:20,ap_X,")).toBe(true);
+    expect(lines[2].endsWith(",高风险,,ap_Y,")).toBe(true); // risk 屏上值；updated_at 缺=空不补 0，rid 缺=空
+    expect(lines[3].endsWith(",ap_Z,req-z-1")).toBe(true);
     expect(csvEscape("plain")).toBe("plain");
     // R75 契约：五段名（tab/status/sort/dir/时刻），未排序=default。
     expect(
