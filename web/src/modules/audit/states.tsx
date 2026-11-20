@@ -32,6 +32,12 @@ import { PERMALINK_COPY_LABEL, permalinkFromEvent } from "./permalink";
 import type { Gate } from "./auditGates";
 import { FILTER_SUMMARY_COPY_LABEL } from "./filterSummary";
 import { AUDIT_RESOURCE_NO_LINK_TEXT, resourceLinkOf } from "./resourceLinks";
+import {
+  DETAIL_COPY_DISABLED_TITLE,
+  DETAIL_COPY_LABEL,
+  auditCopyText,
+  type CopyableEvent,
+} from "./detailCopy";
 import { AUDJ_TIME_MISSING } from "./timeActor";
 import type { ResourceView } from "./model";
 import type { AuditChip } from "./filterChips";
@@ -172,6 +178,65 @@ export function SummaryCopy({ line }: { line: string }): ReactNode {
           data-testid="audC-copy-fallback"
           className="min-h-[3rem] w-full min-w-0 break-words rounded-md border border-border bg-muted/40 px-2 py-1 font-mono text-xs"
           onFocus={(event) => event.currentTarget.select()}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * R121 — the same row, copied from the record pane, built by ONE helper.
+ *
+ * audC's 结论行 (`summary.ts`) ends with 请求编号 and says 「该字段未返回」 for an
+ * absent field; this line (`detailCopy.ts`) ends with 同一次操作 and says 「—」。Two
+ * different promises about two different uses, so they keep two wordings — and
+ * ONE widget implementation, because a second copy widget is how two faces start
+ * promising different things. Nothing here sends a request: the text is read off
+ * what is already on the screen.
+ */
+export function DetailCopy({ event }: { event: CopyableEvent | null }): ReactNode {
+  const [state, setState] = useState<"idle" | "copied" | "manual">("idle");
+  const line = event === null ? "" : auditCopyText(event);
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="aud-detail-copy-block">
+      {/* A real button, focusable, and disabled with a reason when there is nothing
+          selected — a control that copies silence is worse than no control. */}
+      <button
+        type="button"
+        aria-label={DETAIL_COPY_LABEL}
+        disabled={event === null}
+        title={
+          event === null
+            ? DETAIL_COPY_DISABLED_TITLE
+            : "复制这一行（时间·操作者·动作·资源·同一次操作），不再向服务发任何请求"
+        }
+        className="min-w-0 rounded-md border border-border px-2 py-1 text-xs hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        data-testid="aud-detail-copy"
+        onClick={() => {
+          if (event === null) return;
+          void copyTextToClipboard(line).then((ok) => {
+            setState(ok ? "copied" : "manual");
+          });
+        }}
+      >
+        {DETAIL_COPY_LABEL}
+      </button>
+      <span
+        className="min-w-0 break-words text-xs text-muted-foreground"
+        role="status"
+        aria-live="polite"
+        data-testid="aud-detail-copy-status"
+      >
+        {state === "copied" ? "已复制" : state === "manual" ? "剪贴板不可用，这一行可以直接选中复制" : ""}
+      </span>
+      {state === "manual" ? (
+        <textarea
+          readOnly
+          value={line}
+          aria-label="该事件（可手动选中复制）"
+          data-testid="aud-detail-copy-fallback"
+          className="min-h-[3rem] w-full min-w-0 break-words rounded-md border border-border bg-muted/40 px-2 py-1 font-mono text-xs"
+          onFocus={(event2) => event2.currentTarget.select()}
         />
       ) : null}
     </div>
