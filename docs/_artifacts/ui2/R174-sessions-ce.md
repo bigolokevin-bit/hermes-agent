@@ -1,10 +1,14 @@
 # R174 — `#/sessions` 产品级 console error 归因
 
-结论：这条路由的渲染者是 **`web/src/pages/SessionsPage.tsx`（上游 pages 写域，不在本车道写域
-`web/src/modules/{runs,metrics,work,sessions}` 内）**；在我能拿到的登录态与在役 build 上，
-`#/sessions` 的可观测 console error **100% 是 401 资源加载类（任务口径已剔除的 env）**，
-product CE 实测为 **0**，所以 obs 报的 auth 36 / anon 87 **无法在本车道复现**，
-也不存在可由我修的最小面。本文给出归属、三套读数的对照、复现命令与需要谁的哪一步。
+## 判定（R191 收口，钉在首段）
+
+**选 B：不可修（上游 / ENV 口径），前端写域内无修法。** 三行证据：
+
+1. **首错 URL + 状态**：`GET /auth/whoami` → **401 Unauthorized**；紧随 `GET /agent-api/api/sessions?limit=20&offset=0&order=created&exclude_sources=cron,tool,oneshot,api_server,acp,hermes_flow,vulcan_delegate,webhook`（与它的 `limit=50` 同型）→ **401 Unauthorized**。auth / anon 两档、四个视口腿、四秒与二十秒 settle 全部同此一条文本：`Failed to load resource: the server responded with a status of 401 (Unauthorized)`。
+2. **归属模块**：这条 401 由**网关 / BFF 的登录态门**产生（`/agent-api/api/sessions` 的代理在 `apps/console/server.py` 一侧，`GET /auth/whoami` 是 shell 身份探针 `web/src/shell/Auth5Session.tsx:18`，它在 401 时只是降级为匿名、并不打印）；页面侧的放大器是**上游页** `web/src/pages/SessionsPage.tsx:1090` `const id = setInterval(loadOverview, 5000)`（每 5 秒重读一次，所以条数随 settle 窗口线性增长：4 s → 9 条，20 s → 1054 条）。这两处都在本车道**禁碰 / 越域**清单上（`web/src/shell/**`、`web/src/App.tsx`、`web/src/pages/**`）。
+3. **口径判定**：`web/src/modules/sessions/**` 在 HEAD `394caf35` **不存在**（`ls web/src/modules/` 无该项），且 `grep -rln "console\.error" web/src` = **0 个文件** —— 前端源码里没有任何一处自己写 console error，所以这条路由上可被机械腿数到的行，只可能是浏览器为失败资源加载自己打的日志或 React dev 构建的告警（生产包不含后者）。**属 ENV 口径（登录态失效下的 401 资源加载类），前端写域内无修法**；obs 报的 auth 36 / anon 87 在本车道实测为 **product 0**（见 §B/§G/§H 五腿读数），要降那个计数需要计数主人先补三项输入（§F/§G.6/§H.4）。
+
+本文其余部分保留 R174/R185 的归属过程、三套读数对照与复现命令；§H.3 更正了 §G.6 的一处当时结论。
 
 ## A. 归属（写域判定）
 
@@ -114,3 +118,40 @@ React 树只渲染出壳（`h1 = ['Sessions']`，`main` 文本 1 字符），**�
 - 而我在 9122 上实测到的 console error **100% 是 `401 /auth/whoami`**（§G.2 的原文与 location）。⇒ 在役 bundle 的鉴权层与本源码树不同代（或由含 whoami 轮询的上游构建）。
 - 结合 §G.1 的两条事实（`web/src` 零 `console.error` 调用；`web/src/modules/sessions/**` 目录不存在），派工单的 auth 36 / anon 87 既不能归到本车道写域，也不能归到 `web/src` 任何一行源码：**计数腿与待验源码不同代**。
 - 因此本车道不做任何"修"：改 `web/src/pages/SessionsPage.tsx` 的轮询去凑一个来自别的 bundle 的计数，属于掩盖而不是修复（禁跳过/掩盖）。请提供：①该 build 的 entry chunk 名与它的来源 HEAD/分支；②有效登录态 + 有数据 profile；③计数腿的稳定窗长度。三者到位后我用同一脚本同两档复跑，给逐条原文与修前/修后对照。
+---
+
+## H. R191 收口：A/B 二选一与本轮实测（HEAD `394caf35` = wave-41 并窗）
+
+### H.1 为什么不能选 A
+- A 的前提是「CE 根因在 `web/src/modules/sessions/**`（及其直接消费的 hooks/组件）」。本轮在合并后的 HEAD 上 `ls web/src/modules/` 全量列举：**没有 `sessions/` 目录**（`ls web/src/modules/sessions` → `No such file or directory`），所以"在 sessions 模块里改最小面"这一处所在物理上不存在。
+- `#/sessions` 依旧由上游页 `web/src/pages/SessionsPage.tsx` 渲染：`web/src/App.tsx:320` `"/sessions": SessionsPage`、`:457` `path: "/sessions"`、`:1548` `end={path === "/sessions"}`、`:1755/:1762/:1769` `navigate("/sessions")`。`App.tsx` 与 `web/src/shell/**` 在派工单的禁碰清单上，`web/src/pages/**` 不在本车道写域（runs/metrics/work/sessions）。
+- 全树 `grep -rln "console\.error" web/src` = **0 文件**（`console.warn` 才有 8 个文件）。⇒ 前端不可能"自己打出" product console error；机械腿数到的行只能来自浏览器的资源加载日志或 React dev 告警。
+
+### H.2 同一脚本同两档的实测（读数为本人测量，非引用）
+| 腿 | 模式 | total | env(401/404) | product | mainLen | 屏上 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 4 s | auth | 9 | 9 | **0** | 1 | `⠋`（登录态失效，卡在 spinner） |
+| 4 s | auth @375 | 12 | 12 | **0** | -1 | eval 失败 |
+| 4 s | anon | 3 | 3 | **0** | 106 | `No sessions yet`（空态正常） |
+| 4 s | anon @375 | 3 | 3 | **0** | 106 | 同上 |
+| 20 s | auth | 1054 | 1054 | **0** | 1 | `⠋` |
+| 20 s | anon | 6 | 6 | **0** | 106 | `No sessions yet` |
+
+- 唯一的 console.error 原文：`Failed to load resource: the server responded with a status of 401 (Unauthorized)`，location `http://127.0.0.1:9122/auth/whoami:0:0`；`pageerror` 在两档均为 **0**。
+- 伴随的 4xx 资源：`401 /auth/whoami`、`401 /agent-api/api/sessions?limit=20&…`、`401 /agent-api/api/sessions?limit=50&…`，另有若干 `net::ERR_ABORTED`（含 `/assets/RulesExpanded-Bold-DZA7s8Pa.woff2`）。
+- 在役 build 入口 chunk 本轮复查仍是 **`assets/index-k52YwKjs.js`**（9122 = `l7-ops/ops/v4_proxy.py` 静态服务，禁重建）⇒ 与 §G 同一代，读数可直接对照。
+
+### H.3 更正 §G.6（重要，先记事实再记结论）
+- §G.6 说「本源码树里没有 `/auth/whoami` 引用」，那是在 HEAD `14125b54` / `072f023d` 上的测量。**wave-41 合并后该结论已失效**：`git grep -in whoami -- web/src` 现有 9 处命中，其中 `web/src/shell/Auth5Session.tsx:18` `fetch("/auth/whoami", { credentials: "same-origin" })` 是侧栏身份探针（401 时只把状态置为匿名，本身不打印），`web/src/pages/LoginPage.tsx:123` 登录后再读一次。
+- 所以"bundle 非同源"这一条**撤回**；但主结论不受影响：whoami 调用点在 `web/src/shell/**`（禁碰）与 `web/src/pages/**`（越域），`web/src` 内依旧零 `console.error`，`modules/sessions/` 依旧不存在。
+- 仍然成立的一条：obs 的 36/87 与我的读数不同代——我的 auth 腿因登录态过期从未进入"有数据"的渲染分支，任何依赖 session 行的 product 告警都不可能被我触发（见 §C/§G.3）。
+
+### H.4 要把那个计数真正降下来，缺的是三项输入（不是前端改法）
+1. 与 36/87 同源的 **build/HEAD + entry chunk 名**（我这边只拿得到 `index-k52YwKjs.js`）；
+2. **有效登录态 + 有 session 数据的 profile**（现存的 `~/.local/state/sekoi-ops/v4-auth-state.json` 两档都 401）；
+3. 计数腿的 **settle 窗口长度与 env 过滤器**。注意 R173 同族文档 §2 已记录的口径裂缝：机械腿的 `ENV_NOISE_RE = /\b(401|404)\s*\((Unauthorized|Not Found)\)/` **只吞 401/404，不吞 403/5xx/ERR_ABORTED**，而派工口径写的是"已剔除 401/403/404"。36/87 最可能就是这个差集的成分（我实测到的 `net::ERR_ABORTED` 类若被计入，会被算成"product"）。**口径归计数主人，本车道不改**（禁改统计口径）。
+
+### H.5 未测项（如实）
+- 未在有登录态、有数据的环境下复现 product CE（缺 H.4 的 ①②），因此"36/87 的具体逐条原文"本车道无法给出。
+- 未跑 `tsc`/lint 三档：本轮改动只有一个 doc 文件，无代码变更；上一轮在 HEAD `14125b54` 的尾行为 **243 files / 2811 tests / 0 failed**，wave-41 只新增测试文件。
+- 「定向 sessions 目录」不可执行（目录不存在），最接近的组件级取证是 `pnpm vitest run src/pages/SessionsPage.test.tsx`（dev 构建下 React 告警会打印）：5 passed、零 console 输出。
