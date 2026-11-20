@@ -429,7 +429,7 @@ describe("row detail", () => {
     expect(details[0]!.textContent).toContain("网页搜索");
     expect(details[0]!.textContent).toContain("/api/tools/toolsets");
     expect(document.querySelector("[data-testid='cap7-detail-asof']")?.textContent).toContain("—");
-    expect(document.querySelector("[data-testid='cap7-detail-asof']")?.getAttribute("title")).toContain("没有顶层采集时刻");
+    expect(document.querySelector("[data-testid='cap7-detail-asof']")?.getAttribute("title")).toContain("上游没带采集时刻，不用本机时间顶替");
     expect(document.querySelector("[data-testid='cap7-detail-updated']")?.textContent).toContain("—");
 
     await act(async () => toggles[5]!.click());
@@ -469,7 +469,7 @@ describe("row detail", () => {
     expect(document.querySelector("[data-testid='cap7-detail-updated']")?.textContent).toBe("—");
     expect(document.querySelector("[data-testid='cap7-detail-updated']")?.getAttribute("title")).toContain("没有提供最近更新时间");
     expect(document.querySelector("[data-testid='cap7-detail-asof']")?.textContent).toBe("—");
-    expect(document.querySelector("[data-testid='cap7-detail-asof']")?.getAttribute("title")).toContain("没有顶层采集时刻");
+    expect(document.querySelector("[data-testid='cap7-detail-asof']")?.getAttribute("title")).toContain("上游没带采集时刻，不用本机时间顶替");
     expect(document.querySelector("[data-testid='cap7-detail-endpoint']")?.textContent).toBe("/api/tools/toolsets");
 
     const beforeCopy = api.fetchJsonStrict.mock.calls.length;
@@ -495,7 +495,7 @@ describe("row detail", () => {
     await act(async () => document.querySelector<HTMLButtonElement>("[data-testid='cap7-detail-toggle']")!.click());
     const asof = document.querySelector("[data-testid='cap7-detail-asof']");
     expect(asof?.textContent).toBe("2026-11-19 14:00");
-    expect(asof?.getAttribute("title")).toContain("asOfSource：清单快照");
+    expect(asof?.getAttribute("title")).toContain("UTC 原文：2026-11-19T06:00:00Z · 北京时间：2026-11-19 14:00 · 来源：清单快照");
     expect(document.body.textContent).not.toContain("asOfSource");
   });
 

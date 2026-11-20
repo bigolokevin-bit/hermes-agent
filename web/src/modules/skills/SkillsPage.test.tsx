@@ -362,7 +362,7 @@ describe("SkillsPage", () => {
     expect(details[0]!.textContent).toContain("资料整理");
     expect(details[0]!.textContent).toContain("/agent-api/api/skills");
     expect(container.querySelector("[data-testid='cap7-detail-asof']")?.textContent).toContain("—");
-    expect(container.querySelector("[data-testid='cap7-detail-asof']")?.getAttribute("title")).toContain("没有 asOf");
+    expect(container.querySelector("[data-testid='cap7-detail-asof']")?.getAttribute("title")).toContain("上游没带采集时刻，不用本机时间顶替");
     expect(window.location.search).toBe(searchBefore);
 
     await act(async () => toggles[1]!.click());
@@ -441,7 +441,7 @@ describe("SkillsPage", () => {
     await act(async () => container.querySelector<HTMLButtonElement>("[data-testid='cap7-detail-toggle']")!.click());
     const asof = container.querySelector("[data-testid='cap7-detail-asof']");
     expect(asof?.textContent).toBe("2026-11-19 14:00");
-    expect(asof?.getAttribute("title")).toBe("asOfSource：台账快照");
+    expect(asof?.getAttribute("title")).toBe("UTC 原文：2026-11-19T06:00:00Z · 北京时间：2026-11-19 14:00 · 来源：台账快照");
     expect(container.textContent).not.toContain("asOfSource");
     expect(window.location.search).toBe(searchBefore);
     expect(searchBefore).toContain("tab=skills");
@@ -461,7 +461,7 @@ describe("SkillsPage", () => {
     await act(async () => container.querySelector<HTMLButtonElement>("[data-testid='cap7-detail-toggle']")!.click());
     const asof = container.querySelector("[data-testid='cap7-detail-asof']");
     expect(asof?.textContent).toBe("—");
-    expect(asof?.getAttribute("title")).toContain("不是 ISO");
+    expect(asof?.getAttribute("title")).toContain("上游没带采集时刻");
     expect(container.textContent).not.toContain("2026/11/19");
   });
 
@@ -488,7 +488,7 @@ describe("SkillsPage", () => {
     expect(container.querySelector("[data-testid='cap7-detail-updated']")?.textContent).toBe("—");
     expect(container.querySelector("[data-testid='cap7-detail-updated']")?.getAttribute("title")).toContain("无法识别");
     expect(container.querySelector("[data-testid='cap7-detail-asof']")?.textContent).toBe("—");
-    expect(container.querySelector("[data-testid='cap7-detail-asof']")?.getAttribute("title")).toContain("没有 asOf");
+    expect(container.querySelector("[data-testid='cap7-detail-asof']")?.getAttribute("title")).toContain("上游没带采集时刻，不用本机时间顶替");
     expect(container.querySelector("[data-testid='cap7-detail-endpoint']")?.textContent).toBe("/agent-api/api/skills");
     expect(detail.textContent).toContain("资料整理");
 

@@ -20,9 +20,10 @@ import {
 
 const ASOF_CRITERION = "判据：只取 payload 顶层 ISO，缺失或非 ISO 显示「—」，不使用本机时钟";
 
-function asOfTitle(row: { asOf: string | null; asOfIso: string | null; asOfSource?: string | null; asOfReason: string | null }): string {
+function asOfTitle(row: { asOf: string | null; asOfIso: string | null; asOfSource?: string | null; asOfReason: string | null; asOfTitle?: string | null }): string {
+  if (row.asOfTitle) return `${row.asOfTitle} · ${ASOF_CRITERION}`;
   if (!row.asOfIso) return `${row.asOfReason ?? "采集时刻未知"}；${ASOF_CRITERION}`;
-  return `asOf 原文：${row.asOfIso} · 换算北京时间：${row.asOf ?? "—"} · 来源：${row.asOfSource ?? "未提供"} · ${ASOF_CRITERION}`;
+  return `UTC 原文：${row.asOfIso} · 北京时间：${row.asOf ?? "—"}${row.asOfSource ? ` · 来源：${row.asOfSource}` : ""} · ${ASOF_CRITERION}`;
 }
 
 function CopyRid({ id, testid }: { id: string; testid: string }) {
@@ -302,6 +303,9 @@ export function SourceMatrix() {
               </tbody>
             </table>
             </div>
+        <p className="sys8-same-source-note" data-testid="gov-asof-note">
+          采集时刻只取接口响应顶层时间（asOf / collectedAt / generatedAt 及其下划线写法）；缺失或非法显示「—」，不用本机时间顶替。
+        </p>
         <p className="sys8-same-source-note" data-testid="sys8-same-source-note">
           「最近检查时刻」与「采集时刻」：健康清单行和矩阵第一行同源，都取 <code>/api/health</code> 响应顶层 asOf（同一 ISO 值，同一北京时间到分呈现）；其余三行是各自探针响应的顶层 asOf，不与健康清单互相代替。
         </p>

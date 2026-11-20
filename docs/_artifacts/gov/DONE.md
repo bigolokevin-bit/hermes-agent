@@ -2079,3 +2079,17 @@ built /private/tmp/health-r38/index.html
 - 三档：1440/1280/375 均 `vw=bodySW=bodyCW=1440/1280/375`，无横溢。
 - 验证：定向 `src/modules/health src/modules/skills src/modules/tools` → **8 files / 98 passed**；全量 `npx vitest run` → **148 files / 1919 passed**；`tsc -b . --noEmit` → exit 2，23 行均为既有基线（approvals/employee-detail/employees），本域 0 行。
 - 边界：仅 `web/src/modules/{health,skills,tools}/**` + 本 DONE；未改 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未 install/force/amend/--no-verify。
+
+## R72 — asOf 呈现统一（2026-11-20）
+
+- 基线：显式 refspec fetch `origin/lane/hermes-console`（tip `957704be`，代码代次 `5630ffce`）后 `git merge --no-ff` → merge `2a07b710`；未 reset，未并 main，未重建 9122。
+- 单一 helper `readTopAsOf` 落在 `web/src/modules/health/systemHealth.ts`：只认顶层 ISO 六别名 `asOf/as_of/collectedAt/collected_at/generatedAt/generated_at`；合法 → 北京时间到分（`sv-SE`/Asia/Shanghai），title 为 `UTC 原文：… · 北京时间：…[ · 来源：…]`；缺失或非法 → 「—」+ title「上游没带采集时刻，不用本机时间顶替」；不使用本机时钟，`asOfSource` 仅进 title。
+- 接线：`version/versionHealth.ts`（`ver5-health-asof` title）、`health/sourceReads.ts`+`SourceMatrix.tsx`（`sys6-asof-*`/`sys8-asof-*` title）、`health/systemHealth.ts`+`SystemHealthSurface.tsx`（`sys3-asof` title）、`skills/skills.ts`（cap7 详情 `asOfTitle`）、`tools/tools.ts`+`ToolsPage.tsx`（cap7 详情 `asOfTitle`）；`cap7-detail-asof` 键名未变。`gov-asof-note` 在读源矩阵上屏一次。
+- 改前/改后（同一 payload，旧逻辑只读 `asOf` vs 新 helper）：
+  - `collectedAt: 2026-11-19T06:00:00Z` → 旧 `—`；新 `2026-11-19 14:00`，title 含 UTC 原文/北京时间。
+  - `as_of` / `generatedAt` 同值 → 旧 `—`；新 `2026-11-19 14:00`。
+  - `asOf: 2026-11-19T06:00:00Z` → 旧/新均 `2026-11-19 14:00`。
+  - `asOf: not-a-date` / 缺失 → 旧 `—`；新 `—`，title「上游没带采集时刻，不用本机时间顶替」。
+- 验证：定向 `src/modules/{version,health,capabilities,skills,tools}` → **14 files / 127 passed**；全量 **148 files / 1923 passed**；`tsc -b . --noEmit` → exit 2，23 行均为既有基线（approvals/employee-detail/employees），本域 0。
+- DOM（临时 harness 已删除；Vite 5492 / Chrome CDP 9292）：1440/1280/375 均 `vw=bodySW=bodyCW=1440/1280/375`；`gov-asof-note` 可见；`sys3-asof`/`sys6-asof-health`/`sys8-asof-health`/`ver5-health-asof`/`cap7-detail-asof` 均 `2026-11-19 14:00` 且 title 为统一口径；系统页请求 **4**（健康+三探针），展开矩阵前后 4→4；版本面 2、cap7 0。
+- 边界：仅上述 14 个模块文件 + 本 DONE；未改 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未 install/force/amend/--no-verify。

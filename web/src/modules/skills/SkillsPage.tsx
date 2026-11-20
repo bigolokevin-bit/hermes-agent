@@ -458,7 +458,7 @@ export function SkillsPage() {
                             updatedReason={row.updatedAtReason}
                             endpoint="/agent-api/api/skills"
                             asOf={page.asOf}
-                            asOfReason={page.asOfReason ?? ""}
+                            asOfReason=""
                             asOfTitle={page.asOfTitle}
                             testid="cap7-detail-skills"
                           />

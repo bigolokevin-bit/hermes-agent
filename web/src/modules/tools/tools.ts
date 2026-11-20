@@ -14,6 +14,7 @@
  */
 import { ApiError, errorMessage } from "@/lib/api-error";
 import { fetchJsonStrict } from "@/modules/models/fetchJson";
+import { readTopAsOf } from "../health/systemHealth";
 
 export const TOOLS_PATH = "/agent-api/api/tools";
 export const TOOLSETS_PATH = "/agent-api/api/tools/toolsets";
@@ -45,6 +46,7 @@ export interface ToolRow {
   /** Top-level ISO asOf of the payload that produced this row. */
   asOf: string | null;
   asOfReason: string | null;
+  asOfTitle: string | null;
   /** Actual route that answered this row, filled by fetchFirst. */
   endpoint: string;
   rawId: string | null;
@@ -265,28 +267,11 @@ function updatedAtOf(rec: Record<string, unknown>): { value: string | null; reas
   return { value: null, reason: "接口给出的最近更新时间无法解析。" };
 }
 
-type RowStamp = { asOf: string | null; asOfReason: string | null };
-
-const ISO_STAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?$/;
+type RowStamp = { asOf: string | null; asOfReason: string | null; asOfTitle: string | null };
 
 function stampOf(payload: unknown): RowStamp {
-  if (Array.isArray(payload)) {
-    return { asOf: null, asOfReason: "清单接口返回的是数组，没有顶层采集时刻。" };
-  }
-  const rec = record(payload);
-  if (!rec) return { asOf: null, asOfReason: "响应不是对象，读不到顶层 asOf。" };
-  const raw = rec.asOf;
-  if (typeof raw !== "string" || !raw.trim()) {
-    return { asOf: null, asOfReason: "响应顶层没有 asOf，采集时刻未知。" };
-  }
-  const value = raw.trim();
-  if (!ISO_STAMP.test(value) || Number.isNaN(new Date(value).getTime())) {
-    return { asOf: null, asOfReason: "响应顶层 asOf 不是 ISO 时间，采集时刻未知。" };
-  }
-  const shown = beijingMinute(value);
-  return shown
-    ? { asOf: shown, asOfReason: rec.asOfSource ? `asOfSource：${String(rec.asOfSource)}` : null }
-    : { asOf: null, asOfReason: "响应顶层 asOf 无法解析，采集时刻未知。" };
+  const stamp = readTopAsOf(payload);
+  return { asOf: stamp.shown, asOfReason: stamp.reason, asOfTitle: stamp.title };
 }
 
 function toolsetRows(value: unknown, index: number, stamp: RowStamp): ToolRow[] {
@@ -324,6 +309,7 @@ function toolsetRows(value: unknown, index: number, stamp: RowStamp): ToolRow[] 
     updatedAtReason: updated.reason,
     asOf: stamp.asOf,
     asOfReason: stamp.asOfReason,
+    asOfTitle: stamp.asOfTitle,
     endpoint: "",
     ...failureOf(rec),
     source: "toolset" as const,
@@ -397,6 +383,7 @@ function serverRow(value: unknown, index: number, stamp: RowStamp): ToolRow | nu
     updatedAtReason: updated.reason,
     asOf: stamp.asOf,
     asOfReason: stamp.asOfReason,
+    asOfTitle: stamp.asOfTitle,
     endpoint: "",
     ...failureOf(rec),
     rawId: rawName,
@@ -438,6 +425,7 @@ function flatToolRow(value: unknown, index: number, stamp: RowStamp): ToolRow | 
     updatedAtReason: updated.reason,
     asOf: stamp.asOf,
     asOfReason: stamp.asOfReason,
+    asOfTitle: stamp.asOfTitle,
     endpoint: "",
     ...failureOf(rec),
     rawId: rawName,

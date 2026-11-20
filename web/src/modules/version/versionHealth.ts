@@ -1,4 +1,5 @@
 import { ApiError } from "@/lib/api-error";
+import { readTopAsOf } from "../health/systemHealth";
 
 export const VERSION_API_PATH = "/agent-api/api/version";
 export const HEALTH_API_PATH = "/agent-api/api/health";
@@ -25,6 +26,7 @@ export interface HealthView {
   reason: string | null;
   asOf: string | null;
   asOfReason: string | null;
+  asOfTitle: string;
   sources: number | null;
 }
 
@@ -108,8 +110,7 @@ export function readVersionRows(body: unknown): VersionRow[] | null {
 export function readHealth(body: unknown): HealthView | null {
   if (!isRecord(body)) return null;
   const ok = typeof body.ok === "boolean" ? body.ok : null;
-  const rawAsOf = pickString(body, ["asOf", "as_of", "generatedAt", "generated_at", "updatedAt", "updated_at"]);
-  const asOf = beijingMinute(rawAsOf);
+  const stamp = readTopAsOf(body);
   const sourcesValue = body.sources;
   const sources = Array.isArray(sourcesValue)
     ? sourcesValue.length
@@ -119,8 +120,9 @@ export function readHealth(body: unknown): HealthView | null {
   return {
     state: ok === true ? "正常" : ok === false ? "降级" : "待核实",
     reason: ok === null ? "健康接口没有给出整体状态。" : null,
-    asOf,
-    asOfReason: rawAsOf ? (asOf ? null : "上游给出的采集时刻无法解析。") : "健康接口没有给出采集时刻。",
+    asOf: stamp.shown,
+    asOfReason: stamp.reason,
+    asOfTitle: stamp.title,
     sources,
   };
 }

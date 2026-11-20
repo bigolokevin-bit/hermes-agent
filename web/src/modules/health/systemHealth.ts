@@ -3,6 +3,26 @@ import { ApiError } from "@/lib/api-error";
 export const SYS3_PATH = "/agent-api/api/health";
 export const SYS3_GAP = "GAP-SYS3-01";
 
+export const ASOF_KEYS = [
+  "asOf",
+  "as_of",
+  "collectedAt",
+  "collected_at",
+  "generatedAt",
+  "generated_at",
+] as const;
+
+export const ASOF_MISSING_TITLE = "上游没带采集时刻，不用本机时间顶替";
+
+export interface TopAsOf {
+  shown: string | null;
+  raw: string | null;
+  source: string | null;
+  reason: string | null;
+  valid: boolean;
+  title: string;
+}
+
 export type Sys3State = "正常" | "降级" | "不可达" | "待核实";
 
 export interface SystemHealthRow {
@@ -30,6 +50,7 @@ export interface SystemHealthRead {
   rows: SystemHealthRow[];
   asOf: string | null;
   asOfReason: string | null;
+  asOfTitle: string;
   overall: Sys3State;
   overallReason: string | null;
   sources: number | null;
@@ -57,6 +78,30 @@ function pickNumber(rec: Rec, keys: string[]): number | null {
     if (typeof value === "string" && value.trim() && Number.isFinite(Number(value))) return Number(value);
   }
   return null;
+}
+
+const ASOF_ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?$/;
+
+function asOfText(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function missingAsOf(source: string | null): TopAsOf {
+  return { shown: null, raw: null, source, reason: ASOF_MISSING_TITLE, valid: false, title: ASOF_MISSING_TITLE };
+}
+
+/** One top-level ISO reader for every console surface; never uses the browser clock. */
+export function readTopAsOf(payload: unknown): TopAsOf {
+  if (!isRecord(payload)) return missingAsOf(null);
+  const source = asOfText(payload.asOfSource) ?? asOfText(payload.as_of_source);
+  const raw = ASOF_KEYS.map((key) => asOfText(payload[key])).find((value) => value !== null) ?? null;
+  if (!raw) return missingAsOf(source);
+  const shown = beijingMinute(raw);
+  if (!ASOF_ISO.test(raw) || !shown) return missingAsOf(source);
+  const title = `UTC 原文：${raw} · 北京时间：${shown}${source ? ` · 来源：${source}` : ""}`;
+  return { shown, raw, source, reason: null, valid: true, title };
 }
 
 export function beijingMinute(value: string | null): string | null {
@@ -119,11 +164,10 @@ function stateOf(raw: string | null): Sys3State {
 
 export function readSystemHealth(body: unknown): SystemHealthRead | null {
   if (!isRecord(body) || !Array.isArray(body.sources)) return null;
-  const rawAsOf = pickString(body, ["asOf", "as_of"]);
-  const asOf = beijingMinute(rawAsOf);
-  const asOfReason = rawAsOf
-    ? asOf ? null : "健康接口给出的顶层采集时刻无法解析。"
-    : "健康接口没有给出顶层采集时刻。";
+  const stamp = readTopAsOf(body);
+  const asOf = stamp.shown;
+  const asOfReason = stamp.reason;
+  const asOfTitle = stamp.title;
   const sources = body.sources;
   const rows: SystemHealthRow[] = sources.map((entry, index) => {
     const row = isRecord(entry) ? entry : {};
@@ -178,6 +222,7 @@ export function readSystemHealth(body: unknown): SystemHealthRead | null {
     rows,
     asOf,
     asOfReason,
+    asOfTitle,
     overall,
     overallReason,
     sources: rows.length,

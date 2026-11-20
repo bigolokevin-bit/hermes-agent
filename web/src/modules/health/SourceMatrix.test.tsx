@@ -15,6 +15,7 @@ vi.mock("@nous-research/ui", () => ({
   CardContent: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => <div {...props}>{children}</div>,
 }));
 import { ApiError } from "@/lib/api-error";
+import { ASOF_KEYS, ASOF_MISSING_TITLE, readTopAsOf } from "./systemHealth";
 import { HealthPage } from "./HealthPage";
 import { resetSourceMatrix } from "./sourceReads";
 
@@ -85,7 +86,7 @@ describe("source matrix", () => {
     expect(q("sys6-table")).not.toBeNull();
     expect(q("sys9-src-link-health")?.getAttribute("href")).toBe("#/system?tab=health");
     expect(q("sys9-src-nolink-console")).not.toBeNull();
-    expect(q("sys8-asof-health")?.getAttribute("title")).toContain("asOf 原文");
+    expect(q("sys8-asof-health")?.getAttribute("title")).toContain("UTC 原文");
     await act(async () => { (q("sys6-toggle") as HTMLButtonElement).click(); });
     expect(q("sys6-table")).not.toBeNull();
     expect((q("sys6-scroll") as HTMLElement).hidden).toBe(false);
@@ -137,13 +138,15 @@ describe("source matrix", () => {
     expect(q("sys3-checked")?.textContent).toBe("2026-11-19 23:17");
     expect(q("sys8-asof-health")?.textContent).toBe(q("sys3-checked")?.textContent);
     const healthAsOfTitle = q("sys6-asof-health")?.getAttribute("title") ?? "";
-    expect(healthAsOfTitle).toContain("asOf 原文：2026-11-19T15:17:09Z");
-    expect(healthAsOfTitle).toContain("换算北京时间：2026-11-19 23:17");
+    expect(healthAsOfTitle).toContain("UTC 原文：2026-11-19T15:17:09Z");
+    expect(healthAsOfTitle).toContain("北京时间：2026-11-19 23:17");
     expect(healthAsOfTitle).toContain("来源：health.payload.asOf");
     expect(healthAsOfTitle).toContain("判据：只取 payload 顶层 ISO");
     expect(healthAsOfTitle).toContain("不使用本机时钟");
     expect(q("sys8-same-source-note")?.textContent).toContain("同源");
     expect(q("sys8-same-source-note")?.textContent).toContain("同一 ISO 值");
+    expect(q("gov-asof-note")?.textContent).toContain("采集时刻只取接口响应顶层时间");
+    expect(q("gov-asof-note")?.textContent).toContain("不用本机时间顶替");
     // Probe rows keep their own asOf and never borrow the health list time.
     expect(q("sys8-asof-console")?.textContent).toBe("—");
     expect(q("sys8-asof-runtime")?.textContent).toBe("—");
@@ -204,7 +207,7 @@ describe("source matrix", () => {
     await waitFor(() => q("sys6-status-health")?.textContent?.includes("成功") ?? false, "health row");
     expect(q("sys6-asof-health")?.textContent).toBe("—");
     expect(q("sys3-checked")?.textContent).toBe("—");
-    expect(q("sys6-asof-health")?.getAttribute("title")).toContain("不是 ISO");
+    expect(q("sys6-asof-health")?.getAttribute("title")).toContain("上游没带采集时刻");
     expect(q("sys6-asof-health")?.getAttribute("title")).toContain("判据：只取 payload 顶层 ISO");
     expect(q("sys9-src-link-health")?.getAttribute("href")).toBe("#/system?tab=health");
     expect(q("sys6-asof-console")?.textContent).toBe("—");
@@ -342,5 +345,46 @@ describe("source matrix", () => {
     expect(q("sys6-status-health")?.textContent).toContain("预览未读取");
     expect(q("sys6-status-console")?.textContent).toContain("预览未读取");
     expect(q("sys6-duration-health")?.textContent).toBe("—");
+  });
+});
+describe("readTopAsOf", () => {
+  const RAW = "2026-11-20T02:34:56Z";
+  const BJT = "2026-11-20 10:34";
+
+  it("matches all six top-level aliases to the same Beijing minute", () => {
+    for (const key of ASOF_KEYS) {
+      const out = readTopAsOf({ [key]: RAW });
+      expect(out.valid, key).toBe(true);
+      expect(out.shown, key).toBe(BJT);
+      expect(out.raw, key).toBe(RAW);
+      expect(out.title, key).toBe(`UTC 原文：${RAW} · 北京时间：${BJT}`);
+    }
+  });
+
+  it("keeps the raw UTC value and source in the title", () => {
+    const out = readTopAsOf({ collectedAt: RAW, asOfSource: "health.payload.collectedAt" });
+    expect(out.shown).toBe(BJT);
+    expect(out.source).toBe("health.payload.collectedAt");
+    expect(out.title).toBe(`UTC 原文：${RAW} · 北京时间：${BJT} · 来源：health.payload.collectedAt`);
+  });
+
+  it("shows a dash and the shared reason for an invalid timestamp", () => {
+    for (const value of ["not-a-date", "2026-11-20 10:34", 1790000000]) {
+      const out = readTopAsOf({ asOf: value });
+      expect(out.valid).toBe(false);
+      expect(out.shown).toBeNull();
+      expect(out.raw).toBeNull();
+      expect(out.reason).toBe(ASOF_MISSING_TITLE);
+      expect(out.title).toBe(ASOF_MISSING_TITLE);
+    }
+  });
+
+  it("treats a missing key, an array and a non-object as missing without a browser clock", () => {
+    for (const payload of [{}, [], null, "2026-11-20T02:34:56Z", 42]) {
+      const out = readTopAsOf(payload);
+      expect(out.valid).toBe(false);
+      expect(out.shown).toBeNull();
+      expect(out.reason).toBe(ASOF_MISSING_TITLE);
+    }
   });
 });

@@ -171,7 +171,8 @@ function Row({
         updatedReason={row.updatedAtReason}
         endpoint={row.endpoint || (row.source === "mcp" ? "/api/mcp/servers" : "/api/tools/toolsets")}
         asOf={row.asOf}
-        asOfReason={row.asOfReason ?? "这次读数没有带采集时刻。"}
+        asOfReason=""
+        asOfTitle={row.asOfTitle}
         testid="cap7-detail-tools"
       />
     ) : null}
