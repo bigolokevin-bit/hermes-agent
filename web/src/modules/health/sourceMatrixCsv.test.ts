@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
-import { csvRows, exportFilename, SYS7_HEADER, toCsv } from "./sourceMatrixCsv";
+import { csvRows, exportFilename, SYS7_HEADER, SYS10_HEADER, toCsv, toPlainText } from "./sourceMatrixCsv";
 import type { SourceRow } from "./sourceReads";
 
 function row(patch: Partial<SourceRow>): SourceRow {
@@ -21,6 +21,18 @@ function row(patch: Partial<SourceRow>): SourceRow {
 }
 
 describe("source matrix CSV", () => {
+
+  it("builds header plus rows in screen order and keeps missing values as —", () => {
+    const text = toPlainText([
+      row({}),
+      row({ id: "domain", label: "域服务探针", path: "/agent-api/api/skills", status: "unwired", durationMs: null, asOf: null, asOfIso: null }),
+    ]);
+    const lines = text.trimEnd().split("\n");
+    expect(lines[0]).toBe(SYS10_HEADER.join(" | "));
+    expect(lines[1]).toBe("系统健康清单 | /agent-api/api/health | 成功 | 42 ms | 2026-11-19 23:17");
+    expect(lines[2]).toBe("域服务探针 | /agent-api/api/skills | 读口未接入 | — | —");
+    expect(text.endsWith("\n")).toBe(true);
+  });
   it("uses the fixed header and keeps missing values empty", () => {
     const csv = toCsv(csvRows([
       row({}),

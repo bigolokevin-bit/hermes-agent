@@ -42,6 +42,23 @@ export function toCsv(rows: SourceCsvRow[]): string {
   return `${lines.join("\r\n")}\r\n`;
 }
 
+export const SYS10_HEADER = ["口径名", "路径", "状态", "耗时", "采集时刻"] as const;
+
+/** Plain text mirrors exactly what is on screen; no request, no clock. */
+export function toPlainText(rows: SourceRow[]): string {
+  const lines = [
+    SYS10_HEADER.join(" | "),
+    ...rows.map((row) => [
+      row.label,
+      row.path,
+      SOURCE_STATUS_LABEL[row.status],
+      row.durationMs === null ? "—" : `${row.durationMs} ms`,
+      row.asOf ?? "—",
+    ].join(" | ")),
+  ];
+  return `${lines.join("\n")}\n`;
+}
+
 /** Beijing time to the minute, e.g. system-sources-20261120-0615.csv. */
 export function exportFilename(now: Date = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-CA", {

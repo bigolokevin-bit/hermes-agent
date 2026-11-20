@@ -1905,3 +1905,12 @@ built /private/tmp/health-r38/index.html
 - 验证：`src/modules/health` → 4 files / 24 passed；全量 **138 files / 1591 passed**；tsc 本域 0。
 - DOM（临时 harness，已删除；Vite 5475 / Chrome 9275）：1440/1280/375 均 `vw=bodySW=bodyCW=docSW=视口`；3 个 `a.sys9-src-link` + 1 个 `sys9-src-nolink`；三档 href 一致；健康行 title 含 `2026-11-19T15:17:09Z` / `2026-11-19 23:17` / 来源 / 判据；focus 实测 `outline: solid 2px`。
 - 边界：仅改 `web/src/modules/health/**` + DONE；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未并 main、未重建 9122。
+
+## R60 — /system 读源矩阵复制为纯文本（sys10）
+
+- 基线：显式 refspec fetch 后 `git merge origin/lane/hermes-console`（tip `38793c9a`，代码代次 `7173b7c6`）→ 无新提交，未 reset。
+- 新增「复制矩阵」`sys10-copy`：把矩阵当前行按 `口径名 | 路径 | 状态 | 耗时 | 采集时刻` 表头加行序拼成多行纯文本；耗时缺失「—」、采集时刻缺失「—」，不补 0，不取本机时钟。只读既有行，无新增请求。
+- 复制成功 `sys10-copy-status`（`aria-live="polite"`）显示「已复制」；剪贴板拒或不可用时显示「复制失败，已展开手动复制」，并出现只读 `sys10-fallback` textarea 供手动选择。空矩阵时按钮 disabled，title 说明原因。
+- 验证：health **4 files / 27 passed**；全量 **138 files / 1594 passed**；tsc 本域 0（仅基线 employee-detail/employees 错误）。
+- DOM（临时 harness，已删除；Vite 5476 / Chrome 9276）：1440/1280/375 均 `vw=docSW=bodySW=bodyCW`；矩阵 4 行；复制按钮可用、title「复制当前矩阵为纯文本；不会再发请求」；点击后状态「已复制」且无 fallback；请求计数 **4 → 4**。截图 `docs/_artifacts/gov/shots/sys10-{1440,1280,375}.png`。
+- 边界：仅改 `web/src/modules/health/**` + DONE/截图；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未并 main、未重建 9122。

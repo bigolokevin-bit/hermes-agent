@@ -140,6 +140,49 @@ describe("source matrix", () => {
     expect(api.fetchJSON).toHaveBeenCalledTimes(4);
   });
 
+  it("copies the on-screen matrix as plain text without another request", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    await render();
+    await act(async () => { (q("sys6-toggle") as HTMLButtonElement).click(); });
+    await waitFor(() => q("sys6-status-health")?.textContent?.includes("成功") ?? false, "health row");
+    expect(api.fetchJSON).toHaveBeenCalledTimes(4);
+    const copyButton = q("sys10-copy") as HTMLButtonElement;
+    expect(copyButton.disabled).toBe(false);
+    expect(copyButton.getAttribute("title")).toContain("不会再发请求");
+    await act(async () => { copyButton.click(); await Promise.resolve(); });
+    await waitFor(() => q("sys10-copy-status")?.textContent === "已复制", "copied");
+
+    expect(writeText).toHaveBeenCalledTimes(1);
+    const text = writeText.mock.calls[0][0] as string;
+    const lines = text.trimEnd().split("\n");
+    expect(lines[0]).toBe("口径名 | 路径 | 状态 | 耗时 | 采集时刻");
+    expect(lines).toHaveLength(5);
+    expect(lines[1]).toContain("系统健康清单 | /agent-api/api/health | 成功 | ");
+    expect(lines[1]).toMatch(/\| \d+ ms \| 2026-11-19 23:17$/);
+    const consoleLine = lines.find((line) => line.includes("控制台服务探针"));
+    expect(consoleLine).toContain("| 读口未接入 |");
+    expect(consoleLine?.endsWith("| —")).toBe(true);
+    expect(api.fetchJSON).toHaveBeenCalledTimes(4);
+    expect(q("sys10-fallback")).toBeNull();
+  });
+
+  it("offers a read-only textarea when the clipboard rejects", async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error("denied"));
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    await render();
+    await act(async () => { (q("sys6-toggle") as HTMLButtonElement).click(); });
+    await waitFor(() => q("sys6-status-health")?.textContent?.includes("成功") ?? false, "health row");
+    await act(async () => { (q("sys10-copy") as HTMLButtonElement).click(); await Promise.resolve(); });
+    await waitFor(() => q("sys10-fallback") !== null, "fallback");
+    expect(q("sys10-copy-status")?.textContent).toContain("复制失败");
+    const fallback = q("sys10-fallback") as HTMLTextAreaElement;
+    expect(fallback.readOnly).toBe(true);
+    expect(fallback.value).toContain("口径名 | 路径 | 状态 | 耗时 | 采集时刻");
+    expect(fallback.value).toContain("系统健康清单 | /agent-api/api/health | 成功 | ");
+    expect(api.fetchJSON).toHaveBeenCalledTimes(4);
+  });
+
   it("only accepts a top-level ISO asOf and never substitutes the browser clock", async () => {
     api.fetchJSON.mockImplementation((url: string) => {
       if (url === "/agent-api/api/health") return Promise.resolve({ ...HEALTH, asOf: "昨天" });

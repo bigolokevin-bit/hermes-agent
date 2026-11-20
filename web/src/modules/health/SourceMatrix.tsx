@@ -6,7 +6,7 @@ import {
   toggleSourceMatrix,
   useSourceMatrix,
 } from "./sourceReads";
-import { csvRows, downloadCsv, exportFilename, toCsv } from "./sourceMatrixCsv";
+import { csvRows, downloadCsv, exportFilename, toCsv, toPlainText } from "./sourceMatrixCsv";
 
 const ASOF_CRITERION = "判据：只取 payload 顶层 ISO，缺失或非 ISO 显示「—」，不使用本机时钟";
 
@@ -48,6 +48,23 @@ export function SourceMatrix() {
 
   const exportRows = csvRows(rows);
   const exportDisabled = exportRows.length === 0;
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
+  const copyText = toPlainText(rows);
+  const copyDisabled = rows.length === 0;
+
+  async function copyMatrix() {
+    if (copyDisabled) return;
+    if (!navigator.clipboard?.writeText) {
+      setCopyState("failed");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(copyText);
+      setCopyState("copied");
+    } catch {
+      setCopyState("failed");
+    }
+  }
 
   return (
     <Card data-testid="sys6-sources">
@@ -77,9 +94,32 @@ export function SourceMatrix() {
           >
             导出 CSV
           </button>
+          <button
+            type="button"
+            className="sys7-export sys10-copy"
+            data-testid="sys10-copy"
+            disabled={copyDisabled}
+            title={copyDisabled ? "当前没有可复制的读口行" : "复制当前矩阵为纯文本；不会再发请求"}
+            onClick={() => { void copyMatrix(); }}
+          >
+            复制矩阵
+          </button>
+          <span className="sys10-status" data-testid="sys10-copy-status" aria-live="polite">
+            {copyState === "copied" ? "已复制" : copyState === "failed" ? "复制失败，已展开手动复制" : ""}
+          </span>
           <span className="sys7-count" data-testid="sys7-export-count">{exportRows.length} 行</span>
           <span className="sys7-note">导出与屏上矩阵同源：姓名、路径、人话状态、耗时、响应顶层 ISO 采集时刻；缺失留空，不补 0，也不用本机时钟。</span>
         </div>
+        {copyState === "failed" ? (
+          <textarea
+            className="sys10-fallback"
+            data-testid="sys10-fallback"
+            aria-label="手动复制矩阵文本"
+            readOnly
+            rows={Math.min(8, rows.length + 2)}
+            value={copyText}
+          />
+        ) : null}
         {expanded ? (
           <div className="sys6-scroll">
             <table className="sys6-table" data-testid="sys6-table">
