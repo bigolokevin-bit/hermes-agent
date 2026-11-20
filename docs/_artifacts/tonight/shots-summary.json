@@ -9,8 +9,8 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 752,
-    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 北京时间 2026-11-20 08:52 刷新 可上岗 各项检查全部通过",
+    "textLen": 483,
+    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 刷新 可上岗 各项检查全部通过才计入 数据截至 —（北京",
     "hasMainEl": true,
     "ok": true
   },
@@ -117,25 +117,25 @@
     {
       "route": "#/audit",
       "viewport": "1440",
-      "chars": 7104,
+      "chars": 7122,
       "hasMainEl": true
     },
     {
       "route": "#/audit",
       "viewport": "375",
-      "chars": 7104,
+      "chars": 7122,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities",
       "viewport": "1440",
-      "chars": 161,
+      "chars": 166,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities",
       "viewport": "375",
-      "chars": 161,
+      "chars": 166,
       "hasMainEl": true
     },
     {
@@ -147,7 +147,7 @@
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "375",
-      "chars": 128,
+      "chars": 1032,
       "hasMainEl": true
     },
     {
@@ -165,25 +165,25 @@
     {
       "route": "#/capabilities?tab=tools",
       "viewport": "1440",
-      "chars": 259,
+      "chars": 264,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=tools",
       "viewport": "375",
-      "chars": 259,
+      "chars": 264,
       "hasMainEl": true
     },
     {
       "route": "#/employees",
       "viewport": "1440",
-      "chars": 461,
+      "chars": 466,
       "hasMainEl": true
     },
     {
       "route": "#/employees",
       "viewport": "375",
-      "chars": 435,
+      "chars": 440,
       "hasMainEl": true
     },
     {
@@ -363,7 +363,7 @@
     {
       "route": "#/knowledge",
       "viewport": "375",
-      "chars": 500,
+      "chars": 348,
       "hasMainEl": true
     },
     {
@@ -393,7 +393,7 @@
     {
       "route": "#/knowledge?tab=ingest",
       "viewport": "1440",
-      "chars": 375,
+      "chars": 998,
       "hasMainEl": true
     },
     {
@@ -417,7 +417,7 @@
     {
       "route": "#/knowledge?tab=scope",
       "viewport": "1440",
-      "chars": 500,
+      "chars": 348,
       "hasMainEl": true
     },
     {
@@ -525,37 +525,37 @@
     {
       "route": "#/system?tab=events",
       "viewport": "1440",
-      "chars": 7104,
+      "chars": 7122,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events",
       "viewport": "375",
-      "chars": 7104,
+      "chars": 7122,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "1440",
-      "chars": 7104,
+      "chars": 7122,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "375",
-      "chars": 7104,
+      "chars": 7122,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=retention",
       "viewport": "1440",
-      "chars": 7104,
+      "chars": 7122,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=retention",
       "viewport": "375",
-      "chars": 7104,
+      "chars": 7122,
       "hasMainEl": true
     },
     {
@@ -579,7 +579,7 @@
     {
       "route": "#/system?tab=version",
       "viewport": "375",
-      "chars": 452,
+      "chars": 630,
       "hasMainEl": true
     },
     {
@@ -597,7 +597,7 @@
     {
       "route": "#/work?tab=board&view=cron",
       "viewport": "1440",
-      "chars": 1956,
+      "chars": 205,
       "hasMainEl": true
     },
     {
@@ -642,11 +642,11 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "053da5c4",
+  "headHash": "cca9cf7e",
   "exitCode": 0,
-  "entry": "assets/index-BlRBSB7R.js",
-  "entrySha256": "aab063e1530d582d88315c55c9e41c98afcc647a0fc937f736b86ce0e4f91bcc",
-  "entryBytes": 166881,
-  "servedEntryBefore": "index-BlRBSB7R.js",
-  "servedEntryAfter": "index-BlRBSB7R.js"
+  "entry": "assets/index-uXCQm6a7.js",
+  "entrySha256": "7f1187f68d6e631640d0ae5c46e74f6b07b8e6f31a5107ec49461a7d236daced",
+  "entryBytes": 166877,
+  "servedEntryBefore": "index-uXCQm6a7.js",
+  "servedEntryAfter": "index-uXCQm6a7.js"
 }
