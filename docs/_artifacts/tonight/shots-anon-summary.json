@@ -9,12 +9,12 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 1085,
+    "textLen": 1109,
     "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 近 24 小时 近 7 天 近 14 天 近 30 天 刷",
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 24,
+  "distinctMainHeads": 23,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -33,85 +33,85 @@
     {
       "route": "#/approvals",
       "viewport": "1440",
-      "chars": 592,
+      "chars": 677,
       "hasMainEl": true
     },
     {
       "route": "#/approvals",
       "viewport": "375",
-      "chars": 592,
+      "chars": 677,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=history",
       "viewport": "1440",
-      "chars": 665,
+      "chars": 741,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=history",
       "viewport": "375",
-      "chars": 665,
+      "chars": 741,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=mine",
       "viewport": "1440",
-      "chars": 592,
+      "chars": 677,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=mine",
       "viewport": "375",
-      "chars": 592,
+      "chars": 677,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=mine",
       "viewport": "1440",
-      "chars": 592,
+      "chars": 677,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=mine",
       "viewport": "375",
-      "chars": 592,
+      "chars": 677,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=release",
       "viewport": "1440",
-      "chars": 592,
+      "chars": 677,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=release",
       "viewport": "375",
-      "chars": 592,
+      "chars": 677,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=policy",
       "viewport": "1440",
-      "chars": 592,
+      "chars": 677,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=policy",
       "viewport": "375",
-      "chars": 592,
+      "chars": 677,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=release",
       "viewport": "1440",
-      "chars": 592,
+      "chars": 677,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=release",
       "viewport": "375",
-      "chars": 592,
+      "chars": 677,
       "hasMainEl": true
     },
     {
@@ -219,7 +219,7 @@
     {
       "route": "#/employees/:employeeId?zone=config",
       "viewport": "375",
-      "chars": 66,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -465,13 +465,13 @@
     {
       "route": "#/overview",
       "viewport": "1440",
-      "chars": 1085,
+      "chars": 1109,
       "hasMainEl": true
     },
     {
       "route": "#/overview",
       "viewport": "375",
-      "chars": 1085,
+      "chars": 1109,
       "hasMainEl": true
     },
     {
@@ -501,13 +501,13 @@
     {
       "route": "#/system",
       "viewport": "1440",
-      "chars": 895,
+      "chars": 928,
       "hasMainEl": true
     },
     {
       "route": "#/system",
       "viewport": "375",
-      "chars": 895,
+      "chars": 928,
       "hasMainEl": true
     },
     {
@@ -573,13 +573,13 @@
     {
       "route": "#/system?tab=version",
       "viewport": "1440",
-      "chars": 556,
+      "chars": 596,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=version",
       "viewport": "375",
-      "chars": 556,
+      "chars": 596,
       "hasMainEl": true
     },
     {
@@ -603,7 +603,7 @@
     {
       "route": "#/work?tab=board&view=cron",
       "viewport": "375",
-      "chars": 299,
+      "chars": 319,
       "hasMainEl": true
     },
     {
@@ -621,19 +621,19 @@
     {
       "route": "#/work?tab=runs",
       "viewport": "1440",
-      "chars": 383,
+      "chars": 422,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=runs",
       "viewport": "375",
-      "chars": 383,
+      "chars": 422,
       "hasMainEl": true
     }
   ],
   "consoleErrorsObservedByShots": 1,
   "consoleErrorRoutesObservedByShots": [
-    "#/work?tab=board&view=cron"
+    "#/work?tab=cron"
   ],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
@@ -644,12 +644,12 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "9813d7af",
+  "headHash": "94076a05",
   "exitCode": 0,
-  "entry": "assets/index-CCTy6n92.js",
-  "entrySha256": "ee9ca79e582fb45086de9ee5f885b1763623a2d80aff76a4cdb044e60bea588d",
-  "entryBytes": 166991,
-  "servedEntryBefore": "index-CCTy6n92.js",
-  "servedEntryAfter": "index-CCTy6n92.js",
+  "entry": "assets/index-BBJ7Gpsw.js",
+  "entrySha256": "cf419ed0c683d154ff8f3fc066e77e9858d4d00317bb872a3ad1e70bc0ffe4b3",
+  "entryBytes": 167089,
+  "servedEntryBefore": "index-BBJ7Gpsw.js",
+  "servedEntryAfter": "index-BBJ7Gpsw.js",
   "auxiliary": true
 }
