@@ -403,3 +403,15 @@ R52 OBS 整改：`disabled` 与 `aria-disabled` 说同一句话，与 `title` �
 - `run-state-*`、`effectiveListGate` 的导出门、`run-list-*`、`run-sort-*`、`run-window-*`、`run-asof`、`run-row-*`、`run-notes` 零改。
 - 验证：定向 runs 4 files / 151 passed（基线 147）；全量 171 files / **2360 passed**（基线 2356）；`tsc` 本域 0；`eslint` exit 0；build exit 0（entry 内 `run-refresh-bar`=0，`RunsModulePage-*.js`=1）。
 - 未测：真实浏览器挂起批的交错时序（用 jsdom 的挂起 promise 替代）；375 下刷新条与错误行折行。
+
+## 刷新一致性护栏（refresh parity，2026-11-20）
+
+`/runs` 的 `run-refresh` 与 `/metrics` 的 `metAK-refresh` 现在由同一份测试口径盯住；本单只加测试，未改产品行为，产物 chunk 名与上一单一致即可佐证。
+
+- 同形制：两处都是原生 `button`，`aria-busy` 从 `false` 切到 `true`；busy 期间连点三次，请求数与点一次相同（runs 只 +1 次 `/api/runs`；metrics 只多发一批）。行数用 `[data-testid^="run5-row-"][data-status]` 数——`run5-row-` 前缀也会匹配单元格 testid，漏掉属性会把 2 行数成 18。
+- 失败：两页都保留旧数据、给可复制的请求编号位与「再试」，且都不写 updated-at（runs 行数不变；metrics 的失败块自身会转不可用，故只断言计数位非空，不假装数字没变）。
+- 在途批丢弃：`run-window-*` / `met6-window-*` 切换后 busy 立即消失，迟到响应回来也不写 updated-at。
+- 成功只写读取时刻：`run-updated-at` / `metAK-updated-at` 出现，而 `run-asof` 与 `metB-source-asof-run-stats` 的文本、title 原样不动。
+- **登记一处时序依赖**：`/metrics` 判定刷新失败靠 `sourcesRef` 在 `Promise.allSettled` 后 0ms 内被 React flush；测试里给非 run-stats 请求加 40ms 延迟（“keep one slow sibling in flight”）把该时序固定住，否则失败会被误判为成功。这是测试手法，产品代码未动。
+- 验证：单文件 4 passed；定向 runs+metrics 11 files / 399 passed；全量 171 files / **2364 passed**（基线 2360）；`tsc` 两域 0；`eslint` exit 0（0 error / 10 warning，多出的 1 条来自新测试文件）；build exit 0（entry 内 `run-refresh-bar`=0，`RunsModulePage-*.js`=1）。
+- 未测：真实浏览器下两页刷新按钮的视觉同步；移除 chip 触发取消的路径（与切窗共用 `cancel()`，本单只覆盖切窗）。
