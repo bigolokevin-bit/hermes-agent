@@ -2163,3 +2163,63 @@ $ npx vite build --outDir /tmp/knw-sort-dist → exit 0（preview/CDP 进程已�
 边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
 package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
 无 force / amend / `--no-verify`；单 commit「feat(console): knowledge document list sorting」。
+
+# KNW5 追加 R67：空间文档列表的行内预览（testid `kn-doc-preview-*`）（2026-11-20 BJT）
+
+安全闸：toplevel 相符、porcelain 空、显式 refspec fetch；上游 tip 仍 `a5832d15`（章面即此，
+代次 60a4a429），merge 为 Already up to date——本笔只有 feature commit。
+
+## 一、路径选择（派工要求显式写明）
+
+**选「专用控件」路线**：行名 `kn3-docs-name` 保持为抽屉入口（真 `a[href]`→`?doc=`，R49/R58
+语义零动）；行内预览由每行文档名单元格里的专用真 BUTTON `kn-doc-preview-toggle` 开合，
+携 `aria-expanded` + `aria-controls` 指向该行的预览容器（id `kn-doc-preview-<key>`，收起时
+容器不挂载、展开时 id 必在场）。没有把行本身改成 toggle，也没有第二套表头/入口。
+
+## 二、口径与实测读数
+
+```text
+内容     预览只取该行已有数据，五行逐字：文档名（人话名）/ 类型人话 / 大小人话 /
+         更新 BJT 到分 / 短码。缺字段给「该字段未返回」+ title 点名哪个字段没回
+         （实测缺字段行 d_b2：类型/大小/更新三格「该字段未返回」，title 各含字段名），
+         不编、不借别行、不写 0。短码 = 标识人话尾段大写（d_b2→「DB2」），全 id 只在
+         title（实测 title="d_b2"）；预览容器可见文本实测不含 "doc_"、不含裸 id。
+视图态   previewKey 存组件本地：不进 URL——展开/收起/Esc 全程 loc 逐字不变（实测）；
+         刷新同址回来全部收起（实测）。切空间即清（带上的预览不带进下个空间）。
+单行     同时至多一行展开：换行展开自动收起前一行（aria-expanded 逐钮实测 true→false）。
+Esc      展开态 Esc = 收起且焦点守在原钮（activeElement data-testid=kn-doc-preview-toggle
+         实测），事件 stopPropagation 不再触到 roving 的「Esc 回搜索框」；收起态 Esc
+         保持既有 roving 语义（交还列表原行为）。
+互斥     B→A 双向锁死：抽屉开着点预览钮 = 静默关抽屉（只删 doc=，不抢焦点——焦点留在钮上，
+         实测 panel 消失 + loc 无 doc= + 预览在场 + activeElement=该钮）；预览开着点行名 =
+         开抽屉并收起预览（实测 panel 在场 + 容器 0 + aria-expanded=false）。同屏至多一个
+         详情面。
+roving   toggle 与行名同行同权（共用 tabIndexFor）：未进 roving 两者都无显式属性；进入后
+         活动行的名+钮=0、其余行两者=-1（实测）。↑/↓/Home/End/Esc(框) 语义零动，
+         ArrowDown 仍走行序列（实测焦点链）。focus-visible 走现成 token（钮自带 outline 规则）。
+零请求   展开/收起/Esc/单行切换/互斥两向全程 fetchMock 计数不变（各段快照实测）；预览不发
+         详情读、不动列表读；互斥关抽屉只是删参。
+```
+
+testid 新增恰为 `kn-doc-preview-*` 一家：toggle / 容器（kn-doc-preview）/ 字段
+（-name/-type/-size/-updated/-code）/ 预览行（-row）；行加 `data-preview` 读数。
+kn3 / kn6 / kn7 / kn8 / kn9 / knB / knD / knF / knG / knI / knL / kn-sort / kn-gates 零破
+（61 例 = 基线 60 + 本轮 1，全绿；含 R49 抽屉回归、R58 roving、R66 排序、R64 gates）。
+
+## 三档
+
+静态产物 + headless Chrome CDP：详情屏 1440/1280/375 `vw==bodySW==docSW` 全等（构建输出仅
+/tmp，测量进程用毕即杀）。未测如实：行内预览的行态真实屏三档（无登录会话时列表落诚实
+错误态；预览仅在组件级 jsdom 断言覆盖）；真机鼠标焦点落焦行为以显式 focus 合成断言替代。
+
+## 验证尾行（R67）
+```text
+$ npx vitest run src/modules/knowledge   → 2 files / 61 tests passed
+$ npx vitest run                         → 150 files / 1991 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-rowprev-dist → exit 0
+```
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
+无 force / amend / `--no-verify`；单 commit「feat(console): knowledge document row preview」。

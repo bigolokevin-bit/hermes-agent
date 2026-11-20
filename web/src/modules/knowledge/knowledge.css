@@ -1021,6 +1021,44 @@
   .knL-copy-meta { width: 100%; }
 }
 
+/* R67 — 行内预览：展开行只铺既有单元格宽度；toggle 随行名走位，窄屏换行不横溢。 */
+.kn-doc-preview-toggle {
+  margin-left: 8px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-muted-foreground);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.kn-doc-preview-toggle:focus-visible {
+  outline: 2px solid var(--color-ring, var(--color-border));
+  outline-offset: 2px;
+}
+.kn-doc-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 4px 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--color-muted);
+}
+.kn-doc-preview div {
+  min-width: 0;
+}
+.kn-doc-preview dt {
+  font-size: 0.6875rem;
+  color: var(--color-muted-foreground);
+}
+.kn-doc-preview dd {
+  margin: 0;
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
 /* R63 — 固定链接条：地址文本单行省略号（全文在 title 与剪贴板），窄屏靠 min-width:0 收缩，不横溢。 */
 .knO-row {
   display: flex;

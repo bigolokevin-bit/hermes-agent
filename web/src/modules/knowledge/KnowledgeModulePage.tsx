@@ -15,6 +15,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  Fragment,
   useRef,
   useState,
   type ReactNode,
@@ -1701,6 +1702,9 @@ function DocTable({
   tabIndexFor,
   active,
   onListKeyDown,
+  previewKey,
+  onPreview,
+  onDrawerClick,
 }: {
   entries: DocEntry[];
   docLink: (key: string) => string;
@@ -1712,6 +1716,10 @@ function DocTable({
   tabIndexFor: (index: number) => number | undefined;
   active: number;
   onListKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) => void;
+  /** R67 — 行内预览：本地视图态（不进 URL），同时至多一行；toggle 携 aria-expanded/aria-controls。 */
+  previewKey: string | null;
+  onPreview: (key: string) => void;
+  onDrawerClick: () => void;
 }): ReactNode {
   return (
     <div
@@ -1732,37 +1740,102 @@ function DocTable({
         <tbody>
           {entries.map(({ row, key }, index) => {
             const isOpen = openKey !== "" && openKey === key;
+            const previewOpen = previewKey === key;
+            const previewId = `kn-doc-preview-${key}`;
             return (
-              <tr key={key} data-testid="kn3-docs-row" data-open={isOpen ? "1" : "0"} data-active={index} title={row.id || undefined}>
-                <td data-label="文档名">
-                  <Link
-                    className="kn3-docs-name"
-                    data-testid="kn3-docs-name"
-                    to={docLink(key)}
-                    // 未进 roving 前不上显式 tabindex（保持无属性=原生序）；进入后同时只有一个 0。
-                    tabIndex={active === -1 ? undefined : tabIndexFor(index)}
-                    aria-current={active === index ? "true" : undefined}
-                    title={row.nameHint ?? undefined}
-                  >
-                    <Highlight text={row.name} needle={needle} testid="kn9-mark-doc" />
-                  </Link>
-                </td>
-                <td data-label="类型">
-                  <span data-testid="kn3-docs-type" title={row.typeHint ?? (row.typeRaw ?? undefined)}>
-                    {row.type}
-                  </span>
-                </td>
-                <td data-label="大小">
-                  <span data-testid="kn3-docs-size" title={row.sizeHint ?? undefined}>
-                    {row.size}
-                  </span>
-                </td>
-                <td data-label="更新">
-                  <span data-testid="kn3-docs-updated" title={row.atHint ?? undefined}>
-                    {row.at}
-                  </span>
-                </td>
-              </tr>
+              <Fragment key={key}>
+                <tr data-testid="kn3-docs-row" data-open={isOpen ? "1" : "0"} data-preview={previewOpen ? "1" : "0"} data-active={index} title={row.id || undefined}>
+                  <td data-label="文档名">
+                    <Link
+                      className="kn3-docs-name"
+                      data-testid="kn3-docs-name"
+                      to={docLink(key)}
+                      onClick={onDrawerClick}
+                      // 未进 roving 前不上显式 tabindex（保持无属性=原生序）；进入后同时只有一个 0。
+                      tabIndex={active === -1 ? undefined : tabIndexFor(index)}
+                      aria-current={active === index ? "true" : undefined}
+                      title={row.nameHint ?? undefined}
+                    >
+                      <Highlight text={row.name} needle={needle} testid="kn9-mark-doc" />
+                    </Link>
+                    <button
+                      type="button"
+                      className="kn-doc-preview-toggle"
+                      data-testid="kn-doc-preview-toggle"
+                      aria-expanded={previewOpen}
+                      aria-controls={previewId}
+                      tabIndex={active === -1 ? undefined : tabIndexFor(index)}
+                      onClick={() => onPreview(key)}
+                      onKeyDown={(event) => {
+                        // 展开态里 Esc=收起并守住焦点在本钮；收起态的 Esc 交还行列表原语义（回搜索框）。
+                        if (!previewOpen || event.key !== "Escape") return;
+                        event.preventDefault();
+                        event.stopPropagation();
+                        onPreview(key);
+                      }}
+                      title={previewOpen ? "收起这条的行内预览" : "行内预览这条文档的已读到字段：不发任何新请求"}
+                    >
+                      {previewOpen ? "收起预览" : "预览"}
+                    </button>
+                  </td>
+                  <td data-label="类型">
+                    <span data-testid="kn3-docs-type" title={row.typeHint ?? (row.typeRaw ?? undefined)}>
+                      {row.type}
+                    </span>
+                  </td>
+                  <td data-label="大小">
+                    <span data-testid="kn3-docs-size" title={row.sizeHint ?? undefined}>
+                      {row.size}
+                    </span>
+                  </td>
+                  <td data-label="更新">
+                    <span data-testid="kn3-docs-updated" title={row.atHint ?? undefined}>
+                      {row.at}
+                    </span>
+                  </td>
+                </tr>
+                {previewOpen ? (
+                  <tr data-testid="kn-doc-preview-row">
+                    <td colSpan={4}>
+                      <dl id={previewId} className="kn-doc-preview" data-testid="kn-doc-preview">
+                        <div>
+                          <dt>文档名</dt>
+                          <dd
+                            data-testid="kn-doc-preview-name"
+                            title={row.nameHint !== null ? `文档名：${row.nameHint}` : (row.nameHint ?? undefined)}
+                          >
+                            {row.nameHint === null ? row.name : "该字段未返回"}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>类型</dt>
+                          <dd data-testid="kn-doc-preview-type" title={row.typeRaw === null ? "类型：上游没有给出" : (row.typeRaw ?? undefined)}>
+                            {row.typeRaw === null ? "该字段未返回" : row.type}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>大小</dt>
+                          <dd data-testid="kn-doc-preview-size" title={row.sizeHint !== null ? `大小：${row.sizeHint}` : undefined}>
+                            {row.sizeHint === null ? row.size : "该字段未返回"}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>更新</dt>
+                          <dd data-testid="kn-doc-preview-updated" title={row.atHint !== null ? `更新：${row.atHint}` : undefined}>
+                            {row.atHint === null ? row.at : "该字段未返回"}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>短码</dt>
+                          <dd data-testid="kn-doc-preview-code" title={row.id !== "" ? row.id : "短码：上游没有给出文档标识"}>
+                            {row.id !== "" ? shortId(row.id) ?? "该字段未返回" : "该字段未返回"}
+                          </dd>
+                        </div>
+                      </dl>
+                    </td>
+                  </tr>
+                ) : null}
+              </Fragment>
             );
           })}
         </tbody>
@@ -1782,6 +1855,7 @@ function SpaceDetailSurface({
   dir,
   onSort,
   onCloseDoc,
+  onCloseDocQuietly,
 }: {
   nonce: string;
   spaceId: string;
@@ -1793,8 +1867,12 @@ function SpaceDetailSurface({
   dir: DocSortDir;
   onSort: (col: DocSortCol) => void;
   onCloseDoc: () => void;
+  /** R67 — 开预览时静默关抽屉：只删 doc=，不抢焦点（焦点该留在被点的预览钮上）。 */
+  onCloseDocQuietly: () => void;
 }): ReactNode {
   const [filter, setFilter] = useState("");
+  // R67 — 行内预览是本面的视图态：不进 URL（刷新/粘贴一律收起），同时至多一行。
+  const [previewKey, setPreviewKey] = useState<string | null>(null);
   // 换一个空间：本地筛选要清掉，别把上一个空间的筛选结果当成这个空间的现状。
   // 行与错误本就随读口键（含 spaceId）更换而回到骨架，不会残留。
   const prevSpace = useRef(spaceId);
@@ -1802,6 +1880,7 @@ function SpaceDetailSurface({
     if (prevSpace.current !== spaceId) {
       prevSpace.current = spaceId;
       setFilter("");
+      setPreviewKey(null); // 上一空间的预览不带进下一个空间
     }
   }, [spaceId]);
   // 空间名不靠 URL 回显：它来自指定空间读口。读不到就用短码，原因放 title。
@@ -1893,6 +1972,22 @@ function SpaceDetailSurface({
   const shownValue =
     surface.state.kind === "ready" ? { ...surface.state.value, rows: shown.map((entry) => entry.row) } : null;
   const openRow = shown.find((entry) => entry.key === openDoc)?.row ?? null;
+
+  // R67 — 开合行内预览：收起与展开都不动 URL；抽屉开着时开预览 = 静默关抽屉（只删 doc=、不抢焦点）。
+  const handlePreview = (key: string) => {
+    if (previewKey === key) {
+      setPreviewKey(null);
+      return;
+    }
+    setPreviewKey(key);
+    if (openDoc !== "") {
+      onCloseDocQuietly();
+    }
+  };
+  // 点行名开抽屉时收起预览：两者互斥，同屏至多一个详情面。
+  const handleDrawerClick = () => {
+    setPreviewKey(null);
+  };
 
   // 下一页只由按钮显式触发，绝不做滚动自动加载；失败后按钮仍是这个入口（重试=再点）。
   const loadMore = () => {
@@ -2046,6 +2141,9 @@ function SpaceDetailSurface({
               tabIndexFor={roving.tabIndexFor}
               active={roving.active}
               onListKeyDown={roving.onKeyDown}
+              previewKey={previewKey}
+              onPreview={handlePreview}
+              onDrawerClick={handleDrawerClick}
             />
 
             {/* R54 — 游标分页条：读数只来自信封给的字段；缺什么就说什么不可用，一律不推算。 */}
@@ -3001,6 +3099,13 @@ function containerQuery(key: string): HTMLElement | null {
     anchor?.focus();
   };
 
+  // R67 — 静默版：开行内预览时用它关抽屉——只删 doc=，焦点留在预览钮，不抢回行。
+  const closeDocQuietly = () => {
+    const next = new URLSearchParams(sp);
+    next.delete("doc");
+    setSp(next);
+  };
+
   const backLink = (() => {
     const next = keepBase();
     next.delete("space");
@@ -3160,6 +3265,7 @@ function containerQuery(key: string): HTMLElement | null {
                       dir={sortDir}
                       onSort={applySort}
                       onCloseDoc={closeDocDrawer}
+                    onCloseDocQuietly={closeDocQuietly}
                     />
                   )}
                   <SourceFreshness />
