@@ -37,6 +37,11 @@ type State = {
   status: number;
   message?: string;
   requestId?: string;
+  /** R58: cursor/total read from the payload top level (no total key -> stated
+    * honestly; never extrapolated from loaded rows). */
+  nextCursor: string | null;
+  total: number | null;
+  loadingMore: boolean;
 };
 
 const PAGE_SIZE = 50;
@@ -53,8 +58,8 @@ function pickNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
-function readRows(body: unknown): EmployeeRow[] {
-  if (!isRecord(body) || !Array.isArray(body.items)) return [];
+function readRows(body: unknown): { rows: EmployeeRow[]; nextCursor: string | null; total: number | null } {
+  if (!isRecord(body) || !Array.isArray(body.items)) return { rows: [], nextCursor: null, total: null };
   const rows: EmployeeRow[] = [];
   for (const raw of body.items) {
     if (!isRecord(raw)) continue;
@@ -79,7 +84,10 @@ function readRows(body: unknown): EmployeeRow[] {
         : null,
     });
   }
-  return rows;
+  const nextRaw = body.nextCursor ?? body.next_cursor;
+  const nextCursor = typeof nextRaw === "string" && nextRaw.trim() ? nextRaw : null;
+  const total = pickNumber(body.total ?? body.count);
+  return { rows, nextCursor, total };
 }
 
 function shortCode(id: string): string {
@@ -222,6 +230,9 @@ function errorState(err: unknown): State {
     status,
     message: api?.message || (status ? humanizeStatus(status) : API_UNREACHABLE_MESSAGE),
     requestId: (api as unknown as { requestId?: string } | null)?.requestId,
+    nextCursor: null,
+    total: null,
+    loadingMore: false,
   };
 }
 
@@ -367,7 +378,7 @@ export function EmployeesModulePage() {
   const [keyword, setKeyword] = useState(q);
   const [debounced, setDebounced] = useState(q);
   const [reload, setReload] = useState(0);
-  const [state, setState] = useState<State>({ phase: "loading", items: [], status: 0 });
+  const [state, setState] = useState<State>({ phase: "loading", items: [], status: 0, nextCursor: null, total: null, loadingMore: false });
   // R63: at most one row carries the inline preview (page-local state:
   // the URL is untouched and a reload collapses everything back).
   const [previewKey, setPreviewKey] = useState<string | null>(null);
@@ -405,6 +416,9 @@ export function EmployeesModulePage() {
         message: forced === "error" ? humanizeStatus(502) : undefined,
         // state 与 rid 同源读取（同一 params 快照），见下方 forcedRid 依赖。
         requestId: forced === "error" ? (forcedRid ?? "preview-request") : undefined,
+        nextCursor: null,
+        total: null,
+        loadingMore: false,
       });
       return;
     }
@@ -418,8 +432,15 @@ export function EmployeesModulePage() {
     fetchJSON<unknown>(`/agent-api/api/employees?${query.toString()}`)
       .then((body) => {
         if (cancelled) return;
-        const items = readRows(body);
-        setState({ phase: items.length ? "ready" : "empty", items, status: 200 });
+        const parsed = readRows(body);
+        setState({
+          phase: parsed.rows.length ? "ready" : "empty",
+          items: parsed.rows,
+          status: 200,
+          nextCursor: parsed.nextCursor,
+          total: parsed.total,
+          loadingMore: false,
+        });
       })
       .catch((err: unknown) => {
         if (!cancelled) setState(errorState(err));
@@ -470,6 +491,36 @@ export function EmployeesModulePage() {
     });
   }, [state.items, sort, sortActive, dir]);
   const retry = () => setReload((n) => n + 1);
+
+  // R58: real cursor paging. Same filter query plus the server's nextCursor;
+  // appended rows are deduplicated by employeeId (never repeat a row).
+  const loadMore = () => {
+    if (state.phase !== "ready" || !state.nextCursor || state.loadingMore) return;
+    const query = new URLSearchParams();
+    query.set("limit", String(PAGE_SIZE));
+    query.set("expand", "version,knowledge");
+    if (q) query.set("keyword", q);
+    if (lifecycle) query.set("lifecycleState", lifecycle);
+    query.set("cursor", state.nextCursor);
+    setState((prev) => ({ ...prev, loadingMore: true }));
+    fetchJSON<unknown>(`/agent-api/api/employees?${query.toString()}`)
+      .then((body) => {
+        const parsed = readRows(body);
+        setState((prev) => {
+          const seen = new Set(prev.items.map((row) => row.employeeId));
+          const fresh = parsed.rows.filter((row) => !seen.has(row.employeeId));
+          return {
+            ...prev,
+            phase: "ready",
+            items: [...prev.items, ...fresh],
+            nextCursor: parsed.nextCursor,
+            total: parsed.total ?? prev.total,
+            loadingMore: false,
+          };
+        });
+      })
+      .catch((err: unknown) => setState(errorState(err)));
+  };
 
   return (
     <section className="space-y-4" data-testid="employees-module">
@@ -597,7 +648,7 @@ export function EmployeesModulePage() {
       ) : null}
 
       {state.phase === "error" ? (
-        <Card data-testid="employees-error">
+        <Card data-testid="employees-error" data-emp-list-page-error="true">
           <CardContent className="flex flex-col items-start gap-3 p-5">
             <TriangleAlert className="h-5 w-5 text-amber-400" />
             <p className="text-sm">员工列表没能加载出来</p>
@@ -728,6 +779,30 @@ export function EmployeesModulePage() {
                 </li>
               ))}
             </ul>
+            <div className="flex min-w-0 flex-wrap items-center gap-2 border-t border-white/5 px-4 py-3 text-xs" data-testid="emp-list-page">
+              <span
+                data-testid="emp-list-page-count"
+                className="text-white/55"
+                title={state.total === null ? "读口顶层只有 items/nextCursor（实测 200，无 total 键）；按已加载条数推算会撒谎，故不推算。" : undefined}
+              >
+                {state.total === null
+                  ? `总数不可用 · 已显示 ${state.items.length} 人`
+                  : `共 ${state.total} 人 / 已显示 ${state.items.length} 人`}
+              </span>
+              <Button
+                size="sm"
+                outlined
+                data-testid="emp-list-page-more"
+                disabled={!state.nextCursor || state.loadingMore}
+                onClick={loadMore}
+                title={state.nextCursor ? "带服务端游标续取下一页（追加按工号去重）" : "服务端没有给出下一页游标：已到末页。"}
+              >
+                {state.loadingMore ? "加载中…" : "加载更多"}
+              </Button>
+              {state.nextCursor === null && state.items.length > 0 ? (
+                <span data-testid="emp-list-page-end" className="text-white/45">已到末页</span>
+              ) : null}
+            </div>
           </CardContent>
         </Card>
       ) : null}

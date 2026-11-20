@@ -956,3 +956,13 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 测试：新 describe 4 用例 append 文件最末（tail-safe）——2 行逐字读数（员工 · 217A91BA/待核实/2026-11-17 13:52/在岗/无裸 emp_/已复制 2 行/无 fallback）；逗号名转义「"小鲤, 带头"」+屏上姓名列同源；reject→textarea readOnly 3 段；空列表 disabled+title「当前已加载 0 人」。定向 employees 2 files/22 passed；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **138 files/1678 passed**（基线 1674+4）。
 - 零破：emp-list-*/emp-row-preview-*/ed*/apv5–9/apd6/apd7/apr5（既有用例全绿为证）；三档=header flex-wrap+span.contents 既有形态学报（jsdom 不可测）；9122==053da5c4 禁重建，活体复制读数待并入后代次。
 - 队列注记：R58（employees 分页）仍未交付。
+
+## R58 员工列表游标分页与总数诚实化（emp-list-page-*，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @a890e0c1（b797bc98 已含），toplevel ✓ porc=0；代码代次 053da5c4。
+- 活体游标实测（ego 只读 9122==053da5c4）：`?limit=2` 页1 200 ids=[emp_217A91,emp_86A81C] nextCursor=eyJjcmVhdGVkQXQ6…；带 cursor 页2 200 n=1 ids=[emp_016685] 重复=0 nextCursor=null（末页不带键）；`lifecycleState=active&limit=2` 200 n=2、该筛选腿页2 200 n=0；顶层 keys=[items,nextCursor] **无 total/count**；`cursor=非法`→400 request.invalid_query（前端只在有 nextCursor 时才发 cursor，不踩）。
+- 实现（EmployeesModulePage.tsx）：readRows→{rows,nextCursor,total}（多键 next_cursor/total/count 兼容）；State 加 nextCursor/total/loadingMore；loadMore=ready 且有游标才发 `cursor=` 续取，按 employeeId Set 去重后 append（防重复行，用例锁 emp_2B2C 计数=1）；分页条 emp-list-page-more（到底/加载中 disabled）、emp-list-page-end「已到末页」、emp-list-page-count=无 total→「总数不可用 · 已显示 N 人」+title「读口顶层只有 items/nextCursor（实测 200，无 total 键）；按已加载条数推算会撒谎，故不推算。」；employees-error Card 加 data-emp-list-page-error 别名（现名 employees-error 保留）。
+- 切换重置：q/lifecycle 变更=主 effect 整体 setState 替换=游标/items 天然重置（用例：lifecycle 切换后恰 1 条新 fetch 且无 cursor）；sort/dir 属 R62 本地排序契约（作用于全部已加载行、不 refetch、不丢已加载），URL 四参 ?q=&lifecycle=&sort=&dir= 共存保态。
+- 教训（幻影落地）：前窗压缩块声称本单「已落地」，本窗现查 grep loadMore/emp-list-page=0=从未落盘——**压缩块声称已编辑≠已落盘，续做前必现查**；本段代码为本窗从零落地。
+- 验证：定向 employees 2 files/26 passed（22+4 新）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **138 files/1682 passed**（基线 1678+4）；emp-list-copy/emp-row-preview/ed*/apv*/apd*/apr5 零破（既有用例全绿为证）。
+- 未测项：9122==053da5c4 禁重建，翻页活体读数待并入后代次；三档=分页条 flex-wrap+min-w-0 形态学报（jsdom 不可测）。

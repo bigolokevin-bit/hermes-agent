@@ -549,3 +549,115 @@ describe("R64 employees list copy as text (emp-list-copy)", () => {
     expect(btn!.title).toContain("当前已加载 0 人");
   });
 });
+
+describe("R58 pagination and honest total (emp-list-page-*)", () => {
+  const page1 = {
+    items: [
+      ...rowsBody.items,
+      { employeeId: "emp_2B2C2D2E4F506172", name: "阿朝", title: "增长", lifecycleState: "active", updatedAt: "2026-11-18T05:52:48.030Z", department: "增长组" },
+    ],
+    nextCursor: "c-page-2",
+  };
+  const page2 = {
+    items: [
+      { employeeId: "emp_3C3D3E3F40414243", name: "新工", title: "数据", lifecycleState: "active", updatedAt: "2026-11-19T01:00:00Z", department: null },
+      // 服务端窗口重叠时重复返回阿朝：前端必须去重，禁重复行。
+      { employeeId: "emp_2B2C2D2E4F506172", name: "阿朝", title: "增长", lifecycleState: "active", updatedAt: "2026-11-18T05:52:48.030Z", department: "增长组" },
+    ],
+  };
+
+  const stubPages = (urls: string[]) => {
+    fetchJSON.mockImplementation((url: string) => {
+      urls.push(String(url));
+      return Promise.resolve(String(url).includes("cursor=") ? page2 : page1);
+    });
+  };
+
+  it("states the missing total honestly and pages with the real cursor, deduping appended rows", async () => {
+    const urls: string[] = [];
+    stubPages(urls);
+    await render("/employees");
+    await act(async () => {
+      flushTimers();
+    });
+    const count = q("emp-list-page-count");
+    expect(count?.textContent).toContain("总数不可用 · 已显示 2 人");
+    expect(count?.getAttribute("title")).toContain("无 total 键");
+    const more = q("emp-list-page-more") as HTMLButtonElement | null;
+    expect(more, "more button").toBeTruthy();
+    expect(more!.disabled, "cursor present enables more").toBe(false);
+    expect(q("emp-list-page-end")).toBeNull();
+    await act(async () => {
+      more!.click();
+    });
+    await act(async () => {});
+    const paged = urls.filter((u) => u.includes("cursor=c-page-2"));
+    expect(paged, "exactly one cursor query").toHaveLength(1);
+    expect(document.querySelectorAll('[data-testid^="emp-l-row-"]')).toHaveLength(3);
+    expect(document.querySelectorAll('[data-testid="emp-l-row-emp_2B2C2D2E4F506172"]')).toHaveLength(1);
+    expect((q("emp-list-page-more") as HTMLButtonElement).disabled, "last page disables more").toBe(true);
+    expect(q("emp-list-page-end")?.textContent).toContain("已到末页");
+    expect(q("emp-list-page-count")?.textContent).toContain("已显示 3 人");
+  });
+
+  it("switching lifecycle resets the cursor and replaces (never appends) rows, keeping the URL", async () => {
+    const urls: string[] = [];
+    stubPages(urls);
+    await render("/employees?sort=name&dir=desc");
+    await act(async () => {
+      flushTimers();
+    });
+    // 先翻到第二页（游标已消费）
+    const more = q("emp-list-page-more") as HTMLButtonElement;
+    await act(async () => {
+      more.click();
+    });
+    await act(async () => {});
+    urls.length = 0;
+    const select = q("employees-lifecycle") as HTMLSelectElement;
+    const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set;
+    await act(async () => {
+      setter?.call(select, "active");
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      flushTimers();
+    });
+    await act(async () => {});
+    const fresh = urls.filter((u) => u.includes("/api/employees"));
+    expect(fresh.length, "filter change refetches once").toBe(1);
+    expect(fresh[0]).not.toContain("cursor=");
+    expect(fresh[0]).toContain("lifecycleState=active");
+    expect(document.querySelectorAll('[data-testid^="emp-l-row-"]')).toHaveLength(2);
+    expect(lastSearch()).toContain("lifecycle=active");
+    expect(lastSearch()).toContain("sort=name");
+    expect(lastSearch()).toContain("dir=desc");
+  });
+
+  it("a failed load keeps the copyable rid under the page-error alias with retry", async () => {
+    fetchJSON.mockImplementation(() =>
+      Promise.reject(
+        new ApiError("boom", { status: 502, body: "{}", url: "/agent-api/api/employees", requestId: "req-r58-502" }),
+      ),
+    );
+    await render("/employees");
+    await act(async () => {
+      flushTimers();
+    });
+    await act(async () => {});
+    expect(document.querySelector('[data-emp-list-page-error="true"]')).toBeTruthy();
+    const card = q("employees-error");
+    expect(card?.textContent).toContain("请求编号：req-r58-502");
+    expect(q("req-copy")).toBeTruthy();
+    expect(q("employees-error-retry")).toBeTruthy();
+  });
+
+  it("the first page carries no cursor param at all", async () => {
+    const urls: string[] = [];
+    stubPages(urls);
+    await render("/employees");
+    await act(async () => {
+      flushTimers();
+    });
+    expect(urls.filter((u) => u.includes("cursor="))).toHaveLength(0);
+    expect((q("emp-list-copy") as HTMLButtonElement | null)?.disabled, "copy still on screen").toBe(false);
+  });
+});
