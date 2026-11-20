@@ -13,6 +13,8 @@ vi.mock("@nous-research/ui", () => ({
 
 const api = vi.hoisted(() => ({ fetchJsonStrict: vi.fn() }));
 vi.mock("../models/fetchJson", () => ({ fetchJsonStrict: api.fetchJsonStrict }));
+const clip = vi.hoisted(() => ({ copyTextToClipboard: vi.fn() }));
+vi.mock("@/lib/clipboard", () => ({ copyTextToClipboard: clip.copyTextToClipboard }));
 import { VersionHealthSurface } from "./VersionHealthSurface";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -43,6 +45,8 @@ const reject = (status: number, requestId?: string) => () =>
 
 beforeEach(() => {
   api.fetchJsonStrict.mockReset();
+  clip.copyTextToClipboard.mockReset();
+  clip.copyTextToClipboard.mockResolvedValue(true);
 });
 afterEach(() => {
   act(() => root?.unmount());
@@ -54,7 +58,7 @@ describe("VersionHealthSurface", () => {
   it("shows the version gap honestly and still renders the health row", async () => {
     api.fetchJsonStrict.mockImplementation((url: string) => {
       if (url.includes("/version")) return reject(404, "req-ver-404")();
-      return Promise.resolve({ ok: true, asOf: "2026-11-19T15:17:09Z", sources: [{ id: "console" }, { id: "runtime" }] });
+      return Promise.resolve({ ok: true, asOf: "2026-11-19T15:17:09Z", sources: [] });
     });
     await render();
     await waitFor(() => !!container.querySelector("[data-testid='ver5-gap']"), "gap");
@@ -114,6 +118,104 @@ describe("VersionHealthSurface", () => {
     expect(container.querySelector("[data-testid='ver5-health-state']")?.textContent).toBe("待核实");
     expect(container.querySelector("[data-testid='ver5-health']")?.textContent).toContain("不影响上方版本表");
     expect(container.querySelector("[data-testid='ver5-table']")?.textContent).toContain("BFF");
+  });
+
+  it("takes the version identifier from health so /system and ver5 agree", async () => {
+    api.fetchJsonStrict.mockImplementation((url: string) => {
+      if (url.includes("/health")) return Promise.resolve({
+        ok: true,
+        asOf: "2026-11-19T15:17:09Z",
+        sources: [{ id: "console", name: "控制台", state: "ok", version: "9.9.9", build: "ignored-fallback" }],
+      });
+      if (url.includes("/version")) return Promise.resolve({ components: [{ name: "控制台", version: "1.1.1" }] });
+      return Promise.reject(new Error("unexpected"));
+    });
+    await render();
+    await waitFor(() => !!container.querySelector("[data-testid='ver5-table']"), "table");
+    expect(container.querySelector("[data-testid='ver5-version']")?.textContent).toBe("9.9.9");
+    expect(api.fetchJsonStrict).toHaveBeenCalledTimes(1);
+    expect(String(api.fetchJsonStrict.mock.calls[0]?.[0])).toContain("/health");
+  });
+
+  it("keeps a missing health version as a dash with a reason, never inventing one", async () => {
+    api.fetchJsonStrict.mockImplementation((url: string) => {
+      if (url.includes("/health")) return Promise.resolve({
+        ok: true,
+        asOf: "2026-11-19T15:17:09Z",
+        sources: [{ id: "console", name: "控制台", state: "ok" }],
+      });
+      return Promise.reject(new Error("unexpected"));
+    });
+    await render();
+    await waitFor(() => !!container.querySelector("[data-testid='ver5-table']"), "table");
+    const version = container.querySelector("[data-testid='ver5-version']")!;
+    expect(version.textContent).toBe("—");
+    expect(version.getAttribute("title")).toContain("不编造版本号");
+  });
+
+  it("copies the on-screen version rows without another request and keeps asOfSource in the title only", async () => {
+    api.fetchJsonStrict.mockImplementation(() => Promise.resolve({
+      ok: true,
+      asOf: "2026-11-19T15:17:09Z",
+      asOfSource: "bff-read-time",
+      sources: [
+        { id: "console", name: "控制台", state: "ok", version: "9.9.9" },
+        { id: "worker", name: "工作进程", state: "degraded" },
+      ],
+    }));
+    await render();
+    await waitFor(() => !!container.querySelector("[data-testid='ver5-table']"), "table");
+    const before = api.fetchJsonStrict.mock.calls.length;
+    expect(text()).not.toContain("bff-read-time");
+    expect(container.querySelector("[data-testid='ver5-health-asof']")?.getAttribute("title")).toContain("bff-read-time");
+
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>("[data-testid='ver-copy']")!.click();
+    });
+    await waitFor(() => container.querySelector("[data-testid='ver-copy-status']")?.textContent === "已复制 2 行", "copied");
+    const copied = clip.copyTextToClipboard.mock.calls[0]?.[0];
+    expect(copied).toBe([
+      "服务名 | 版本或构建标识 | 健康态 | 采集时刻",
+      "控制台 | 9.9.9 | 正常 | 2026-11-19 23:17",
+      "工作进程 | — | 降级 | 2026-11-19 23:17",
+    ].join("\n"));
+    expect(copied).not.toContain("bff-read-time");
+    expect(container.querySelector("[data-testid='ver-copy-fallback']")).toBeNull();
+    expect(api.fetchJsonStrict.mock.calls.length).toBe(before);
+  });
+
+  it("shows the identical read-only textarea when the clipboard rejects", async () => {
+    clip.copyTextToClipboard.mockResolvedValue(false);
+    api.fetchJsonStrict.mockImplementation(() => Promise.resolve({
+      ok: true,
+      asOf: "2026-11-19T15:17:09Z",
+      sources: [{ id: "console", name: "控制台", state: "ok", version: "9.9.9" }],
+    }));
+    await render();
+    await waitFor(() => !!container.querySelector("[data-testid='ver5-table']"), "table");
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>("[data-testid='ver-copy']")!.click();
+    });
+    await waitFor(() => !!container.querySelector("[data-testid='ver-copy-fallback']"), "fallback");
+    const fallback = container.querySelector<HTMLTextAreaElement>("[data-testid='ver-copy-fallback']")!;
+    expect(fallback.readOnly).toBe(true);
+    expect(container.querySelector("[data-testid='ver-copy-status']")?.textContent).toContain("复制失败");
+    expect(fallback.value).toBe(clip.copyTextToClipboard.mock.calls[0]?.[0]);
+    expect(fallback.value).toContain("控制台 | 9.9.9 | 正常 | 2026-11-19 23:17");
+  });
+
+  it("disables copy with a reason when the whole version surface is unreadable", async () => {
+    api.fetchJsonStrict.mockImplementation((url: string) => {
+      if (url.includes("/version")) return reject(404, "req-ver-copy")();
+      return Promise.resolve({ ok: true, asOf: "2026-11-19T15:17:09Z", sources: [] });
+    });
+    await render();
+    await waitFor(() => !!container.querySelector("[data-testid='ver5-gap']"), "gap");
+    const button = container.querySelector<HTMLButtonElement>("[data-testid='ver-copy']")!;
+    expect(button.disabled).toBe(true);
+    expect(button.getAttribute("title")).toContain("版本读口未接入");
+    expect(button.getAttribute("title")).toContain("GAP-VER5-01");
+    expect(text()).not.toContain("GAP-VER5-01");
   });
 
   it("previews empty and error states without any request", async () => {

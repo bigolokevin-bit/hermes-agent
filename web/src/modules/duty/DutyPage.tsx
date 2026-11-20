@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from "react";
-import { Link } from "react-router";
+import { createContext, useContext, useState, type ReactNode } from "react";
+import { Link, useSearchParams } from "react-router";
 import { ArrowRight, RefreshCw, ShieldCheck } from "lucide-react";
 import { Badge } from "@nous-research/ui/ui/components/badge";
 import { Button } from "@nous-research/ui/ui/components/button";
@@ -9,7 +9,6 @@ import { cn } from "@/lib/utils";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import {
   activity24,
-  bucketPeak,
   buildBlockers,
   buildCost,
   buildReadiness,
@@ -17,8 +16,11 @@ import {
   lifecycleTotal,
   pendingView,
   runTotals,
+  trendSummary,
 } from "./aggregate";
 import { beijing, beijingHour, beijingWeekday, dashed, duration, shortId, usd } from "./format";
+import { runsCaliber } from "./runsCaliber";
+import { DUTY_NOTES } from "./dutyNotes";
 import type {
   ActivityBody,
   ApprovalRow,
@@ -33,20 +35,35 @@ import type {
   TaskRow,
 } from "./types";
 import { useDutyData } from "./useDutyData";
+import {
+  DEFAULT_DUTY_RANGE,
+  DUTY_RANGES,
+  DUTY_RANGE_PARAM,
+  dutyRange,
+  parseDutyRange,
+} from "./dutyRange";
+import { DUTY_GATES_OPEN, dutyGates, type DutyGates } from "./dutyGates";
 import "./duty.css";
 
 type Tone = "default" | "destructive" | "outline" | "secondary" | "success" | "warning";
 
+/** One gate set for every action on the page; see dutyGates.ts. */
+const DutyGatesContext = createContext<DutyGates>(DUTY_GATES_OPEN);
+const useDutyGates = () => useContext(DutyGatesContext);
+
 function CopyRid({ id, testId = "ov6-rid-copy" }: { id: string; testId?: string }) {
   const [state, setState] = useState<"idle" | "done" | "failed">("idle");
+  const gate = useDutyGates().copy;
   return (
     <button
       type="button"
       className="duty-req-copy"
       data-testid={testId}
       aria-label={`复制请求编号 ${id}`}
-      title="把请求编号复制给支持人员"
+      title={gate.title ?? "把请求编号复制给支持人员"}
+      disabled={!gate.enabled}
       onClick={() => {
+        if (!gate.enabled) return;
         void copyTextToClipboard(id).then((ok) => setState(ok ? "done" : "failed"));
       }}
     >
@@ -72,6 +89,7 @@ function StateLine({
   emptyLink?: string;
   children: ReactNode;
 }) {
+  const retryGate = useDutyGates().retry;
   if (state.k === "loading") {
     return (
       <div className="duty-skeleton" aria-busy="true" aria-label={loadingText}>
@@ -95,7 +113,14 @@ function StateLine({
             "本次请求未记录编号，可复制时间与操作路径反馈"
           )}
         </p>
-        <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
+        <Button
+          size="sm"
+          outlined
+          onClick={onRetry}
+          disabled={!retryGate.enabled}
+          title={retryGate.title ?? undefined}
+          prefix={<RefreshCw className="h-3.5 w-3.5" />}
+        >
           重试
         </Button>
       </div>
@@ -273,6 +298,12 @@ function ReadinessCard({ employees, stats, onRetry }: { employees: Loadable<Empl
       meta="各项检查全部通过才计入"
       testid="duty-ready"
       stamp={stampOf(rawStamp, "员工目录与运行统计", [employees, stats])}
+      action={
+        <Link className="duty-link" to="/employees" data-testid="duty-route-readiness">
+          去员工列表
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      }
       hint="workbench/agents 缺 byLifecycle 聚合计数（active/paused/offboarding）、缺分页之外的完整名单（翻页时 total 为 null），逐行 today* 也恒为 null；本卡仍取员工目录 + 员工统计，换成该读口会丢掉总分母，故不换。"
     >
       <StateLine state={state} onRetry={onRetry} loadingText="正在汇总各项检查…">
@@ -317,12 +348,18 @@ function RunStatusBadge({ status }: { status?: string }) {
 
 function TodayRunsCard({ stats, runs, onRetry }: { stats: Loadable<RunStatsBody>; runs: Loadable<RunRow[]>; onRetry: () => void }) {
   const totals = stats.k === "ready" ? runTotals(stats.data) : null;
+  const caliberAsOf = stats.k === "ready" ? asOfOf(stats.data) : null;
+  const caliber = runsCaliber({
+    duty: totals ? totals.runs : null,
+    metrics: null,
+    dutyAsOfText: beijing(caliberAsOf),
+  });
   return (
     <HCard
       title="今日运行"
       testid="duty-today-runs" stamp={stampOf(stats.k === "ready" ? asOfOf(stats.data) : null, "运行窗口统计", [stats, runs])}
       action={
-        <Link className="duty-link" to="/runs">
+        <Link className="duty-link" to="/runs" data-testid="duty-route-today-runs">
           运行记录
           <ArrowRight className="h-3.5 w-3.5" />
         </Link>
@@ -354,6 +391,13 @@ function TodayRunsCard({ stats, runs, onRetry }: { stats: Loadable<RunStatsBody>
           <p className="duty-note">最近运行明细尚未返回，合计仍以服务端为准。</p>
         )}
         <p className="duty-note">今日 00:00 起 · 北京时间 · 合计来自服务端窗口统计</p>
+        <p className="duty-runs-caliber" data-testid="duty-runs-caliber" title={caliber.title}>
+          运行数口径：本卡{" "}
+          <span data-testid="duty-runs-value">{totals ? totals.runs : "—"}</span> 次 · 读口
+          workbench/summary?range=1d · /metrics 读 /api/run-stats 当前窗 · 采集时刻{" "}
+          <span data-testid="duty-runs-asof">{beijing(caliberAsOf)}</span>｜
+          <span data-testid="duty-runs-verdict">{caliber.compare}</span>
+        </p>
       </StateLine>
     </HCard>
   );
@@ -379,7 +423,13 @@ function CostCard({
   );
   const state = day.k === "error" ? day : month.k === "error" ? month : day;
   return (
-    <HCard title="今日成本" meta="成本账本" testid="duty-today-cost" stamp={stampOf(day.k === "ready" ? asOfOf(day.data) : null, "当日成本账本", [day, month])}>
+    <HCard title="今日成本" meta="成本账本" testid="duty-today-cost"
+      action={
+        <Link className="duty-link" to="/metrics" data-testid="duty-route-cost">
+          去指标页看成本
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      } stamp={stampOf(day.k === "ready" ? asOfOf(day.data) : null, "当日成本账本", [day, month])}>
       <StateLine state={state} onRetry={onRetry}>
         <p className="duty-num" data-testid="ov6-kpi-cost" data-duty-testid="duty-kpi-cost">
           {usd(cost.dayUsd)}
@@ -414,31 +464,54 @@ function CostCard({
   );
 }
 
-function TrendCard({ stats, onRetry }: { stats: Loadable<RunStatsBody>; onRetry: () => void }) {
+function TrendCard({ stats, onRetry, label }: { stats: Loadable<RunStatsBody>; onRetry: () => void; label: string }) {
+  const [tableOpen, setTableOpen] = useState(false);
   const totals = stats.k === "ready" ? runTotals(stats.data) : null;
   const buckets = stats.k === "ready" ? dailyBuckets(stats.data) : [];
-  const peak = bucketPeak(buckets);
-  const max = Math.max(1, ...buckets.map((b) => b.runs));
+  const summary = trendSummary(buckets);
+  const peak = summary.peak;
+  // A bucket without a reading keeps its slot on the axis but never counts as 0.
+  const max = Math.max(1, ...buckets.map((b) => b.runs ?? 0));
+  const failed = stats.k === "error";
+  const summaryTitle = failed
+    ? `这次没能读取${label}趋势：${stats.message}${stats.requestId ? `（请求编号 ${stats.requestId}）` : ""}；不把缺数当 0。`
+    : undefined;
   return (
-    <HCard title="近 14 天运行" meta="每日启动" testid="duty-trend" stamp={stampOf(stats.k === "ready" ? asOfOf(stats.data) : null, "近 14 天运行统计", [stats])}>
+    <HCard title={`${label}运行`} meta="每日启动" testid="duty-trend" stamp={stampOf(stats.k === "ready" ? asOfOf(stats.data) : null, `${label}运行统计`, [stats])}
+      action={
+        <Link className="duty-link" to="/runs" data-testid="duty-route-trend">
+          运行记录
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      }
+    >
       <StateLine state={stats} onRetry={onRetry}>
         <p className="duty-num">
           {totals ? totals.runs : "—"}
-          <em>{peak ? `次 · 峰值 ${peak.runs}` : "次"}</em>
+          <em>{peak ? `次 · 峰值 ${peak.runs ?? "—"}` : "次"}</em>
         </p>
         <p className="duty-say">
-          {buckets.length === 0
+          {summary.empty
             ? "所选窗口没有运行记录"
-            : `日均 ${(buckets.reduce((n, b) => n + b.runs, 0) / buckets.length).toFixed(1)} 次${peak ? `；峰值在 ${peak.label}` : ""}`}
+            : summary.total === null
+              ? "日均 — 次；这一批有日期没有读数"
+              : `日均 ${(summary.total / buckets.length).toFixed(1)} 次${peak ? `；峰值在 ${peak.label}` : ""}`}
         </p>
-        <svg className="duty-chart" viewBox="0 0 600 120" role="img" aria-label="近 14 天每日运行次数">
+        <svg
+          className="duty-chart"
+          viewBox="0 0 600 120"
+          role="img"
+          aria-label={`${label}每日运行次数`}
+          aria-describedby="duty-trend-summary"
+          data-testid="duty-trend-figure"
+        >
           <line x1="4" y1="108" x2="596" y2="108" className="duty-axis" />
           <polyline
             className="duty-line"
             points={buckets
               .map((b, i) => {
                 const x = buckets.length === 1 ? 300 : 8 + (i * 584) / (buckets.length - 1);
-                const y = 100 - (b.runs / max) * 84;
+                const y = 100 - ((b.runs ?? 0) / max) * 84;
                 return `${x},${y}`;
               })
               .join(" ")}
@@ -454,20 +527,85 @@ function TrendCard({ stats, onRetry }: { stats: Loadable<RunStatsBody>; onRetry:
             </text>
           ) : null}
         </svg>
-        <p className="duty-note">近 14 天 · 按北京时间切日 · 只画有运行的桶</p>
+        <p className="duty-note">{label} · 按北京时间切日 · 只画有运行的桶</p>
       </StateLine>
+      <p className="duty-say duty-trend-summary" id="duty-trend-summary" data-testid="duty-trend-summary" title={summaryTitle}>
+        {failed ? (
+          <>
+            近 14 天摘要：首日 <span data-testid="duty-trend-first">—</span> · 末日{" "}
+            <span data-testid="duty-trend-last">—</span> · 峰值{" "}
+            <span data-testid="duty-trend-peak">—</span> · 最低{" "}
+            <span data-testid="duty-trend-low">—</span> · 合计{" "}
+            <span data-testid="duty-trend-total">—</span>
+          </>
+        ) : stats.k !== "ready" ? (
+          `正在读取${label}的运行记录…`
+        ) : summary.empty ? (
+          "该区间没有运行记录"
+        ) : (
+          <>
+            {label}：首日 {summary.first?.label} <span data-testid="duty-trend-first">{summary.first?.runs ?? "—"}</span> 次 · 末日{" "}
+            {summary.last?.label} <span data-testid="duty-trend-last">{summary.last?.runs ?? "—"}</span> 次 · 峰值{" "}
+            {summary.peak?.label} <span data-testid="duty-trend-peak">{summary.peak?.runs ?? "—"}</span> 次 · 最低{" "}
+            {summary.low?.label} <span data-testid="duty-trend-low">{summary.low?.runs ?? "—"}</span> 次 · 合计{" "}
+            <span data-testid="duty-trend-total">{summary.total ?? "—"}</span> 次
+          </>
+        )}
+      </p>
+      <Button
+        size="sm"
+        outlined
+        aria-expanded={tableOpen}
+        aria-controls="duty-trend-table"
+        data-testid="duty-trend-table-toggle"
+        onClick={() => setTableOpen((v) => !v)}
+      >
+        {tableOpen ? "收起表格" : "以表格查看"}
+      </Button>
+      {tableOpen ? (
+        <div id="duty-trend-table" data-testid="duty-trend-table">
+          <table className="duty-trend-table">
+            <caption>{`${label}每日运行次数（北京时间）`}</caption>
+            <thead>
+              <tr>
+                <th scope="col">日期</th>
+                <th scope="col">运行数</th>
+              </tr>
+            </thead>
+            <tbody>
+              {!failed && !summary.empty
+                ? buckets.map((b) => (
+                    <tr key={b.label}>
+                      <td>{b.label}</td>
+                      <td>{b.runs ?? "—"}</td>
+                    </tr>
+                  ))
+                : null}
+            </tbody>
+          </table>
+          {failed ? (
+            <p className="duty-note" data-testid="duty-trend-table-empty">
+              这次没有读到趋势数据，表格不补 0。
+            </p>
+          ) : summary.empty ? (
+            <p className="duty-note" data-testid="duty-trend-table-empty">
+              该区间没有运行记录，表体没有可列出的行。
+            </p>
+          ) : null}
+        </div>
+      ) : null}
     </HCard>
   );
 }
 
-function ActivityCard({ activity, onRetry }: { activity: Loadable<ActivityBody>; onRetry: () => void }) {
+function ActivityCard({ activity, onRetry, label }: { activity: Loadable<ActivityBody>; onRetry: () => void; label: string }) {
   const view = activity24(
     activity.k === "ready" ? activity.data : null,
     beijingWeekday(),
     beijingHour(),
   );
   return (
-    <HCard title="24 小时活跃" meta="每格 1 小时" testid="duty-activity" stamp={stampOf(activity.k === "ready" ? asOfOf(activity.data) : null, "24 小时活跃统计", [activity])}>
+    <HCard title={`${label}活跃`} meta="每格 1 小时" testid="duty-activity" stamp={stampOf(activity.k === "ready" ? asOfOf(activity.data) : null, `${label}活跃统计`, [activity])}>
       <StateLine state={activity} onRetry={onRetry}>
         <p className="duty-num">
           {view.peakHour === null ? "—" : `${String(view.peakHour).padStart(2, "0")}:00`}
@@ -556,7 +694,7 @@ function BlockersCard({
       title="阻塞"
       testid="duty-blockers" stamp={stampOf(null, "运行·任务·审批明细", [runs, tasks, approvals])}
       action={
-        <Link className="duty-link" to="/tasks">
+        <Link className="duty-link" to="/work" data-testid="duty-route-blockers" title="任务页不接受 status 筛选参数，这里去任务板；阻塞项已在本卡逐条列出。">
           查看全部
           <ArrowRight className="h-3.5 w-3.5" />
         </Link>
@@ -602,7 +740,7 @@ function PendingCard({
       title="待我处理"
       testid="duty-pending" stamp={stampOf(stats.k === "ready" ? asOfOf(stats.data) : null, "审批统计", [stats, approvals])}
       action={
-        <Link className="duty-link" to="/approvals">
+        <Link className="duty-link" to="/approvals" data-testid="duty-route-pending">
           查看全部
           <ArrowRight className="h-3.5 w-3.5" />
         </Link>
@@ -715,8 +853,60 @@ function HealthStrip({
   );
 }
 
+function DutyNotes() {
+  const [open, setOpen] = useState(false);
+  return (
+    <section className="duty-notes" data-testid="duty-notes">
+      <button
+        type="button"
+        className="duty-notes-toggle"
+        data-testid="duty-notes-toggle"
+        aria-expanded={open}
+        aria-controls="duty-notes-body"
+        onClick={() => setOpen((value) => !value)}
+      >
+        口径说明：每个区块读哪个口、算哪一段、缺值怎么显示
+        <span aria-hidden="true">{open ? "收起" : "展开"}</span>
+      </button>
+      {open ? (
+        <div className="duty-notes-body" id="duty-notes-body" data-testid="duty-notes-body">
+          {DUTY_NOTES.map((note) => (
+            <p key={note.key} className="duty-note-row" data-testid={`duty-note-${note.key}`}>
+              <b>{note.area}</b>
+              {" · "}
+              <code>{note.path}</code>
+              {" · "}
+              {note.scope}
+              {" · "}
+              {note.missing}
+            </p>
+          ))}
+          <p className="duty-notes-foot">
+            展开与收起不发请求：这里写的都是各卡已经在用的读口，折叠块本身不取数。
+          </p>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 export default function DutyPage() {
-  const { data, reload, loading, refreshState } = useDutyData();
+  const [params, setParams] = useSearchParams();
+  const rangeId = parseDutyRange(params.get(DUTY_RANGE_PARAM));
+  const range = dutyRange(rangeId);
+  const { data, reload, loading, refreshState } = useDutyData(rangeId);
+  const chooseRange = (next: string) => {
+    const query = new URLSearchParams(params);
+    if (next === DEFAULT_DUTY_RANGE) query.delete(DUTY_RANGE_PARAM);
+    else query.set(DUTY_RANGE_PARAM, next);
+    setParams(query, { replace: true });
+  };
+  // One derivation for refresh / retry / copy / links. Every block failed in
+  // the same batch only when the first read is done and every loadable errored.
+  const loadableValues = Object.values(data);
+  const allFailed =
+    !loading && loadableValues.length > 0 && loadableValues.every((v) => v.k === "error");
+  const gates = dutyGates({ loading, refreshing: refreshState.refreshing, allFailed });
 
   const forced = (() => {
     const match = window.location.hash.match(/[?&]state=([^&]+)/);
@@ -758,7 +948,9 @@ export default function DutyPage() {
     data.stats.k === "ready" ? lifecycleTotal(data.stats.data) : null;
 
   return (
+    <DutyGatesContext.Provider value={gates}>
     <div className="duty-page" data-testid="ov6-page" data-duty-testid="duty-page">
+      <span data-testid="duty-gates-scope" data-gates="refresh,retry,copy,link" hidden />
       <header className="duty-head">
         <div className="duty-title">
           <ShieldCheck className="h-5 w-5" aria-hidden />
@@ -772,7 +964,7 @@ export default function DutyPage() {
             const stampLegs: { name: string; leg: { k: string; data?: unknown } }[] = [
               { name: "今日运行统计", leg: data.todayStats },
               { name: "运行窗口统计", leg: data.stats },
-              { name: "近 14 天统计", leg: data.stats14 },
+              { name: `${range.label}统计`, leg: data.stats14 },
               { name: "当日成本账本", leg: data.budgetDay },
               { name: "审批统计", leg: data.approvalStats },
             ];
@@ -802,11 +994,26 @@ export default function DutyPage() {
           })()}
         </div>
         <div className="duty-head-actions">
+          <div className="duty-ranges" role="group" aria-label="时间范围">
+            {DUTY_RANGES.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                className="duty-range"
+                data-testid={`duty-range-${r.id}`}
+                aria-pressed={r.id === rangeId}
+                onClick={() => chooseRange(r.id)}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
           <Button
             size="sm"
             outlined
             onClick={refreshState.refresh}
-            disabled={loading}
+            disabled={!gates.refresh.enabled}
+            title={gates.refresh.title ?? undefined}
             aria-busy={refreshState.refreshing}
             data-testid="duty-refresh"
             prefix={
@@ -827,6 +1034,21 @@ export default function DutyPage() {
         {!refreshState.refreshing && refreshState.refreshAt ? (
           <p className="duty-note" data-testid="duty-updated-at">
             刷新完成于 北京时间 {beijing(refreshState.refreshAt)}（读取时刻，不是数据时刻）
+          </p>
+        ) : null}
+        {!refreshState.refreshing &&
+        refreshState.refreshDelta &&
+        refreshState.refreshDelta.items.length > 0 ? (
+          <p className="duty-note duty-changed" data-testid="duty-changed" aria-live="polite">
+            {refreshState.refreshDelta.items.map((item, index) => (
+              <span key={item.key} data-testid={`duty-changed-${item.key}`}>
+                {index > 0 ? "；" : ""}
+                {item.text}
+              </span>
+            ))}
+            {refreshState.refreshDelta.more > 0 ? (
+              <span data-testid="duty-changed-more">；另有 {refreshState.refreshDelta.more} 项变化</span>
+            ) : null}
           </p>
         ) : null}
         {!refreshState.refreshing && refreshState.refreshError ? (
@@ -865,8 +1087,8 @@ export default function DutyPage() {
       <HealthStrip cost={data.budgetDay} runs={data.todayStats} />
 
       <div className="duty-grid duty-grid-2">
-        <TrendCard stats={data.stats14} onRetry={reload} />
-        <ActivityCard activity={data.activity} onRetry={reload} />
+        <TrendCard stats={data.stats14} onRetry={reload} label={range.label} />
+        <ActivityCard activity={data.activity} onRetry={reload} label={range.label} />
       </div>
 
       <div className="duty-grid duty-grid-3">
@@ -874,6 +1096,9 @@ export default function DutyPage() {
         <PendingCard stats={data.approvalStats} approvals={data.approvals} onRetry={reload} />
         <RecentCard runs={data.recentRuns} onRetry={reload} />
       </div>
+
+      <DutyNotes />
     </div>
+    </DutyGatesContext.Provider>
   );
 }

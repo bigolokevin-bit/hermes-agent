@@ -14,9 +14,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api-error";
 
 const api = vi.hoisted(() => ({ fetchJSON: vi.fn() }));
+const clip = vi.hoisted(() => ({ copyTextToClipboard: vi.fn((text: string) => Promise.resolve(Boolean(text))) }));
 vi.mock("@/lib/api", () => ({ fetchJSON: api.fetchJSON }));
+vi.mock("@/lib/clipboard", () => ({ copyTextToClipboard: clip.copyTextToClipboard }));
 
 import { RunsModulePage } from "./RunsModulePage";
+import { runCsvFileName, runListCsv } from "./runs";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -940,5 +943,606 @@ describe("R40 — per-event status and duration", () => {
     expect(cell("run5-duration-2")?.textContent).toBe("40s");
     expect(cell("run5-duration-3")?.textContent).toBe("1m 24s");
     expect(cell("run5-duration-4")?.textContent).toBe("6s");
+  });
+});
+
+/* ── runs row preview ────────────────────────────────────────────────
+ * The preview is a reading of the row the list already has: no second read,
+ * no client clock, one open at a time, Escape hands focus back to its toggle.
+ */
+describe("runs row preview", () => {
+  const RUN_C = {
+    runId: "rn_01M7822PREVIEW0000000001",
+    status: "completed",
+    costStatus: "upstream",
+    costUsd: 0,
+    startedAt: "2026-11-18T02:00:00Z",
+    endedAt: "2026-11-18T02:11:00Z",
+    employeeId: "emp_aaaabbbbcccc",
+  };
+  const RUN_D = {
+    runId: "rn_01M7822PREVIEW0000000002",
+    costStatus: "unknown",
+    costUsd: null,
+  };
+
+  const toggle = (index: number): HTMLButtonElement =>
+    document.querySelector(`[data-testid='run-row-toggle-${index}']`) as HTMLButtonElement;
+  const preview = (index: number): HTMLElement | null =>
+    document.querySelector(`[data-testid='run-row-preview-${index}']`);
+  const field = (index: number, key: string): HTMLElement | null =>
+    document.querySelector(`[data-testid='run-row-preview-${index}-${key}']`);
+
+  it("expands with values from the row alone and asks nothing more", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_C]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 1, "one row");
+    const asked = urls().length;
+    expect(toggle(0).getAttribute("aria-expanded")).toBe("false");
+    expect(preview(0)).toBeNull();
+    await act(async () => {
+      toggle(0).click();
+    });
+    expect(toggle(0).getAttribute("aria-expanded")).toBe("true");
+    expect(toggle(0).getAttribute("aria-controls")).toBe("run-row-preview-0");
+    expect(preview(0)).not.toBeNull();
+    expect(field(0, "status")?.textContent).toContain("成功");
+    expect(field(0, "started")?.textContent).toContain("2026-11-18 10:00");
+    expect(field(0, "ended")?.textContent).toContain("2026-11-18 10:11");
+    expect(field(0, "elapsed")?.textContent).toContain("11 分钟");
+    expect(field(0, "cost")?.textContent).toContain("$0.00");
+    expect(field(0, "employee")?.textContent).toContain("员工 · AAAABBBB");
+    expect(field(0, "employee")?.getAttribute("title")).toBe("emp_aaaabbbbcccc");
+    expect(urls().length).toBe(asked);
+  });
+
+  it("keeps one row open at a time and leaves the address alone", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_C, RUN_D]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 2, "two rows");
+    const address = document.querySelector("[data-testid='probe-location']")?.textContent;
+    if (address !== undefined) expect(address).toBe("/runs");
+    await act(async () => {
+      toggle(0).click();
+    });
+    await act(async () => {
+      toggle(1).click();
+    });
+    expect(preview(0)).toBeNull();
+    expect(preview(1)).not.toBeNull();
+    expect(toggle(0).getAttribute("aria-expanded")).toBe("false");
+    expect(toggle(1).getAttribute("aria-expanded")).toBe("true");
+    expect(urls().filter((url) => url.includes("/api/runs"))).toHaveLength(1);
+  });
+
+  it("closes on Escape and hands focus back to the toggle", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_C]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 1, "one row");
+    await act(async () => {
+      toggle(0).click();
+    });
+    await act(async () => {
+      preview(0)?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    expect(preview(0)).toBeNull();
+    expect(document.activeElement).toBe(toggle(0));
+  });
+
+  it("names missing fields instead of filling them in", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_D]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 1, "one row");
+    await act(async () => {
+      toggle(0).click();
+    });
+    expect(field(0, "status")?.textContent).toContain("该字段未返回");
+    expect(field(0, "started")?.textContent).toContain("该字段未返回");
+    expect(field(0, "ended")?.textContent).toContain("该字段未返回");
+    expect(field(0, "elapsed")?.textContent).toContain("—");
+    expect(field(0, "elapsed")?.getAttribute("title")).toContain("不拿本机时间补一端");
+    expect(field(0, "cost")?.textContent).toContain("—");
+    expect(preview(0)?.textContent).not.toContain("$0.00");
+    expect(field(0, "employee")?.textContent).toContain("未指派");
+  });
+});
+
+/* ── list copy as plain text ───────────────────────────────────────── */
+describe("runs list copy", () => {
+  const COPY_A = {
+    runId: "rn_01M7822COPY0000000001",
+    status: "completed",
+    costStatus: "upstream",
+    costUsd: 0,
+    startedAt: "2026-11-18T02:00:00Z",
+    endedAt: "2026-11-18T02:11:00Z",
+    employeeId: "emp_aaaabbbbcccc",
+  };
+  const COPY_B = {
+    runId: "rn_01M7822COPY0000000002",
+    status: "running",
+    costStatus: "unknown",
+    costUsd: null,
+    startedAt: "2026-11-18T03:30:00Z",
+  };
+  const HEADER = "run,status,started,ended,elapsed,cost,employee";
+  const LINE_A = "运行 · 0001,成功,2026-11-18 10:00,2026-11-18 10:11,11 分钟,$0.00,员工 · AAAABBBB";
+  const LINE_B = "运行 · 0002,运行中,2026-11-18 11:30,—,—,—,未指派";
+
+  const copyButton = (): HTMLButtonElement =>
+    document.querySelector("[data-testid='run-list-copy']") as HTMLButtonElement;
+  const statusText = (): string =>
+    document.querySelector("[data-testid='run-list-copy-status']")?.textContent ?? "";
+
+  afterEach(() => {
+    clip.copyTextToClipboard.mockReset();
+    clip.copyTextToClipboard.mockImplementation((text: string) => Promise.resolve(Boolean(text)));
+  });
+
+  it("copies the rows on screen with a header, and asks the service nothing", async () => {
+    api.fetchJSON.mockImplementation(okList([COPY_A, COPY_B]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 2, "two rows");
+    const asked = urls().length;
+    await act(async () => {
+      copyButton().click();
+    });
+    await waitFor(() => statusText().includes("已复制"), "copy done");
+    expect(clip.copyTextToClipboard).toHaveBeenCalledTimes(1);
+    expect(clip.copyTextToClipboard.mock.calls[0][0]).toBe([HEADER, LINE_A, LINE_B].join("\n"));
+    expect(statusText()).toContain("已复制 2 行");
+    expect(document.querySelector("[data-testid='run-list-copy-status']")?.getAttribute("aria-live")).toBe("polite");
+    expect(urls().length).toBe(asked);
+    expect(urls().filter((url) => url.includes("/api/runs"))).toHaveLength(1);
+    const text = clip.copyTextToClipboard.mock.calls[0][0] as string;
+    expect(text).not.toContain("rn_01M7822COPY");
+    expect(text).not.toContain("emp_aaaabbbbcccc");
+  });
+
+  it("falls back to a read-only textarea with the same text when the clipboard refuses", async () => {
+    clip.copyTextToClipboard.mockImplementation(() => Promise.resolve(false));
+    api.fetchJSON.mockImplementation(okList([COPY_A]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 1, "one row");
+    await act(async () => {
+      copyButton().click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='run-list-copy-fallback-text']") !== null, "fallback");
+    const area = document.querySelector("[data-testid='run-list-copy-fallback-text']") as HTMLTextAreaElement;
+    expect(area.value).toBe([HEADER, LINE_A].join("\n"));
+    expect(area.readOnly).toBe(true);
+    expect(statusText()).toContain("复制没成功");
+    expect(statusText()).not.toContain("已复制");
+  });
+
+  it("disables the button when the list has no rows", async () => {
+    api.fetchJSON.mockImplementation(okList([]));
+    await render("/runs");
+    await waitFor(() => document.querySelector("[data-testid='run-list-copy']") !== null, "copy bar");
+    expect(copyButton().disabled).toBe(true);
+    expect(copyButton().getAttribute("title")).toContain("没有可复制的文本");
+    expect(statusText()).not.toContain("已复制");
+  });
+});
+
+
+/* ── list CSV export ───────────────────────────────────────────────── */
+describe("runs list CSV export", () => {
+  const EXP_A = {
+    runId: "rn_01M7822EXPT0000000001",
+    status: "completed",
+    costStatus: "upstream",
+    costUsd: 0,
+    startedAt: "2026-11-18T02:00:00Z",
+    endedAt: "2026-11-18T02:11:00Z",
+    employeeId: "emp_aaaabbbbcccc",
+  };
+  const EXP_B = {
+    runId: "rn_01M7822EXPT0000000002",
+    status: "running",
+    costStatus: "unknown",
+    costUsd: null,
+    startedAt: "2026-11-18T03:30:00Z",
+  };
+  let blobs: Blob[] = [];
+  let names: string[] = [];
+  const originalCreate = URL.createObjectURL;
+  const originalRevoke = URL.revokeObjectURL;
+
+  beforeEach(() => {
+    blobs = [];
+    names = [];
+    (URL as unknown as { createObjectURL: (b: Blob) => string }).createObjectURL = (blob: Blob) => {
+      blobs.push(blob);
+      return "blob:runs-export";
+    };
+    (URL as unknown as { revokeObjectURL: (u: string) => void }).revokeObjectURL = () => {};
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      names.push(this.download);
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    URL.createObjectURL = originalCreate;
+    URL.revokeObjectURL = originalRevoke;
+  });
+
+  const exportButton = (): HTMLButtonElement =>
+    document.querySelector("[data-testid='run-list-export']") as HTMLButtonElement;
+  const countNode = (): HTMLElement =>
+    document.querySelector("[data-testid='run-list-export-count']") as HTMLElement;
+  const nameNode = (): HTMLElement =>
+    document.querySelector("[data-testid='run-export-name']") as HTMLElement;
+
+  it("exports the same rows, in the same order, and names the file what the preview says", async () => {
+    api.fetchJSON.mockImplementation(okList([EXP_A, EXP_B]));
+    await render("/runs?window=7d&status=failed");
+    await waitFor(() => rowNodes() === 2, "two rows");
+    const before = api.fetchJSON.mock.calls.length;
+    const preview = nameNode().textContent ?? "";
+    expect(preview).toMatch(/^runs-7d-failed-\d{8}-\d{4}\.csv$/);
+    expect(countNode().textContent).toContain("2");
+    expect(countNode().getAttribute("data-rows")).toBe("2");
+    await act(async () => {
+      exportButton().click();
+    });
+    expect(names).toEqual([preview]);
+    const text = (await blobs[0].text()).replace(/^\uFEFF/, "");
+    expect(text.split("\n")).toEqual([
+      "run,status,started,ended,elapsed,cost,employee",
+      "运行 · 0001,成功,2026-11-18 10:00,2026-11-18 10:11,11 分钟,0.00,员工 · AAAABBBB",
+      "运行 · 0002,运行中,2026-11-18 11:30,,,,未指派",
+    ]);
+    expect(api.fetchJSON.mock.calls.length).toBe(before);
+    expect(document.body.textContent).not.toContain("rn_01M7822EXPT");
+  });
+
+  it("quotes a field that carries a comma or a quote", () => {
+    const names = new Map([["emp_aaaabbbbcccc", '小鲤, "运营"']]);
+    const csv = runListCsv([EXP_A] as never, names);
+    const line = csv.split("\n")[1];
+    expect(line).toContain('"小鲤, ""运营"" · AAAABBBB"');
+  });
+
+  it("uses all when neither window nor status is in the address", () => {
+    const name = runCsvFileName(null, null, new Date("2026-11-20T09:30:00Z"));
+    expect(name).toBe("runs-all-all-20261120-1730.csv");
+    expect(name).toMatch(/^[a-z0-9.-]+$/);
+  });
+
+  it("disables the export on an empty list", async () => {
+    api.fetchJSON.mockImplementation(okList([]));
+    await render("/runs");
+    await waitFor(() => exportButton() !== null, "export bar");
+    expect(exportButton().disabled).toBe(true);
+    expect(exportButton().getAttribute("title")).toContain("没有可导出的 CSV");
+  });
+
+  it("disables the export on a failed read with the shared reason", async () => {
+    api.fetchJSON.mockImplementation(() =>
+      Promise.reject(new ApiError("down", { status: 500, body: "", url: "/api/runs", requestId: "req-exp" })),
+    );
+    await render("/runs");
+    await waitFor(() => exportButton() !== null, "export bar after failure");
+    expect(exportButton().disabled).toBe(true);
+    expect(exportButton().getAttribute("title")).toContain("先重试");
+  });
+});
+
+describe("run-state — one answer per phase", () => {
+  const q = (id: string): Element | null => document.querySelector(`[data-testid='${id}']`);
+  const qs = <T extends Element>(id: string): T | null => document.querySelector(`[data-testid='${id}']`) as T | null;
+
+  it("loading draws the fixed skeleton and the state marker", async () => {
+    api.fetchJSON.mockImplementation(() => new Promise(() => undefined));
+    await render("/runs");
+    await waitFor(() => q("run-state-loading") !== null, "loading marker");
+    expect(q("run-state")?.getAttribute("data-phase")).toBe("loading");
+    const skeleton = q("run5-loading");
+    expect(skeleton?.children.length).toBe(5);
+    expect(q("run-list-copy")).toBeNull();
+  });
+
+  it("an unfiltered empty answer says the window really was empty", async () => {
+    api.fetchJSON.mockImplementation(okList([]));
+    await render("/runs");
+    await waitFor(() => q("run5-empty") !== null, "empty");
+    expect(q("run-state")?.getAttribute("data-phase")).toBe("empty");
+    expect(q("run-state-empty-text")?.textContent).toContain("服务回答了");
+    expect(q("run-state-clear")).toBeNull();
+    const copy = qs<HTMLButtonElement>("run-list-copy");
+    expect(copy?.disabled).toBe(true);
+    expect(copy?.title).toContain("没有行");
+  });
+
+  it("a filtered empty answer explains the filter and clears it", async () => {
+    api.fetchJSON.mockImplementation(okList([]));
+    await render("/runs?status=failed&window=7d", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => q("run5-empty") !== null, "filtered empty");
+    expect(q("run-state-empty-text")?.textContent).toContain("当前筛选下没有运行记录");
+    const clear = qs<HTMLButtonElement>("run-state-clear");
+    expect(clear).not.toBeNull();
+    const before = urls().length;
+    await act(async () => {
+      clear?.click();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(document.querySelector("[data-testid='probe-location']")?.textContent ?? "").not.toContain("status=");
+    const after = urls().slice(before);
+    expect(after.every((url) => !url.includes("status="))).toBe(true);
+    expect(after.every((url) => url.includes("since="))).toBe(true);
+  });
+
+  it("error keeps one retry, copies the request id and asks exactly once more", async () => {
+    api.fetchJSON.mockImplementation(async (url: string) => {
+      throw new ApiError("no", { status: 500, body: "{}", url, requestId: "req-run-state" });
+    });
+    await render("/runs?status=failed");
+    await waitFor(() => q("run-state-error") !== null, "error");
+    expect(q("run-state")?.getAttribute("data-phase")).toBe("error");
+    expect(q("run-state-rid")?.textContent).toContain("req-run-state");
+    expect(q("run5-counts")?.textContent).toContain("—");
+    expect(q("run5-counts")?.getAttribute("title")).toContain("不把读不到当成 0");
+    const copy = qs<HTMLButtonElement>("run-list-copy");
+    expect(copy?.disabled).toBe(true);
+    expect(copy?.title).toContain("先重试");
+    const retry = qs<HTMLButtonElement>("run5-error-retry");
+    expect(q("run-state-retry")?.getAttribute("data-disabled")).toBe("0");
+    const before = urls().length;
+    await act(async () => {
+      retry?.click();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(urls().length - before).toBe(1);
+    expect(q("run5-error")).not.toBeNull();
+  });
+
+  it("denied is one body for 403 and 404 and keeps the four filters in the address", async () => {
+    const bodyFor = async (status: number): Promise<string> => {
+      api.fetchJSON.mockReset();
+      api.fetchJSON.mockImplementation(async (url: string) => {
+        throw new ApiError("no", { status, body: "{}", url, requestId: "req-denied" });
+      });
+      await render(
+        "/runs?status=failed&window=7d&employee=emp_aaaabbbbcccc",
+        <><RunsModulePage /><HistoryProbe /></>,
+      );
+      await waitFor(() => q("run5-denied") !== null, `denied ${status}`);
+      return q("run5-denied")?.textContent ?? "";
+    };
+    const first = await bodyFor(403);
+    const second = await bodyFor(404);
+    expect(first).toBe(second);
+    expect(q("run-state")?.getAttribute("data-phase")).toBe("denied");
+    expect(q("run-state-denied")).not.toBeNull();
+    const loc = document.querySelector("[data-testid='probe-location']")?.textContent ?? "";
+    expect(loc).toContain("status=failed");
+    expect(loc).toContain("window=7d");
+    expect(loc).toContain("employee=emp_aaaabbbbcccc");
+    const copy = qs<HTMLButtonElement>("run-list-copy");
+    expect(copy?.disabled).toBe(true);
+    expect(copy?.title).toContain("看不到");
+  });
+});
+
+/* ── shareable filter source ───────────────────────────────────────── */
+describe("runs filter source", () => {
+  const pathNode = (): HTMLElement => document.querySelector("[data-testid='run-source-path']") as HTMLElement;
+  const copyButton = (): HTMLButtonElement => document.querySelector("[data-testid='run-filter-copy']") as HTMLButtonElement;
+  const copyBody = (): string => {
+    const calls = clip.copyTextToClipboard.mock.calls;
+    return calls.length ? String(calls[calls.length - 1][0]) : "";
+  };
+  const runsCalls = (): number =>
+    api.fetchJSON.mock.calls.filter(([url]) => String(url).includes("/api/runs")).length;
+  const windowSelect = (): HTMLSelectElement =>
+    document.querySelector("[data-testid='run5-filter-window']") as HTMLSelectElement;
+  const statusSelect = (): HTMLSelectElement =>
+    document.querySelector("[data-testid='run5-filter-status']") as HTMLSelectElement;
+
+  afterEach(() => {
+    clip.copyTextToClipboard.mockReset();
+    clip.copyTextToClipboard.mockImplementation((text: string) => Promise.resolve(Boolean(text)));
+  });
+
+  it("shows the effective values and reads them back with the same query", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs?window=30d&status=failed&employee=emp_aaaabbbbcccc");
+    await waitFor(() => pathNode() !== null, "source line");
+    expect(pathNode().textContent).toBe("/runs?window=30d&status=failed&employee=emp_aaaabbbbcccc");
+    expect(windowSelect().value).toBe("30d");
+    expect(statusSelect().value).toBe("failed");
+    const asked = api.fetchJSON.mock.calls.map(([url]) => String(url)).find((url) => url.includes("/api/runs")) ?? "";
+    expect(asked).toContain("status=failed");
+    expect(asked).toContain("employeeId=emp_aaaabbbbcccc");
+    await act(async () => {
+      copyButton().click();
+    });
+    expect(copyBody()).toBe("/runs?window=30d&status=failed&employee=emp_aaaabbbbcccc");
+    expect(document.querySelector("[data-testid='run-filter-copy-status']")?.textContent).toContain("已复制筛选条件");
+  });
+
+  it("says there is no filter instead of inventing one", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs");
+    await waitFor(() => pathNode() !== null, "source line");
+    expect(pathNode().textContent).toBe("/runs");
+    expect(document.querySelector("[data-testid='run-source-none']")?.textContent).toContain("未设置筛选");
+    await act(async () => {
+      copyButton().click();
+    });
+    expect(copyBody()).toBe("/runs");
+  });
+
+  it("names an unrecognised address value instead of rewriting it silently", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render(
+      "/runs?window=zz&status=zz&state=zz",
+      <>
+        <RunsModulePage />
+        <HistoryProbe />
+      </>,
+    );
+    await waitFor(() => pathNode() !== null, "source line");
+    const notes = Array.from(document.querySelectorAll("[data-testid='run-source-note']")).map((n) => n.textContent ?? "");
+    expect(notes.some((n) => n.includes("时间范围「zz」未识别") && n.includes("近 7 天"))).toBe(true);
+    expect(notes.some((n) => n.includes("状态「zz」未识别"))).toBe(true);
+    expect(notes.some((n) => n.includes("预览参数「zz」未识别"))).toBe(true);
+    expect(windowSelect().value).toBe("7d");
+    expect(statusSelect().value).toBe("");
+    expect(document.querySelector("[data-testid='probe-location']")?.textContent).toContain("window=zz");
+  });
+
+  it("asks exactly once when a control changes", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs");
+    await waitFor(() => runsCalls() === 1, "first read");
+    await act(async () => {
+      windowSelect().value = "24h";
+      windowSelect().dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await waitFor(() => runsCalls() === 2, "one more read");
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    expect(runsCalls()).toBe(2);
+  });
+
+  it("falls back to a read-only textarea when the clipboard refuses", async () => {
+    clip.copyTextToClipboard.mockImplementation(() => Promise.resolve(false));
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs?status=running");
+    await waitFor(() => pathNode() !== null, "source line");
+    await act(async () => {
+      copyButton().click();
+    });
+    const fallback = document.querySelector("[data-testid='run-filter-copy-fallback-text']") as HTMLTextAreaElement;
+    expect(fallback).not.toBeNull();
+    expect(fallback.value).toBe("/runs?status=running");
+    expect(fallback.readOnly).toBe(true);
+  });
+});
+
+/* ── column sorting (client-side) ──────────────────────────────────── */
+describe("runs list column sorting", () => {
+  const S_EARLY = {
+    runId: "rn_01M7822SORT0000000001",
+    status: "failed",
+    costStatus: "upstream",
+    costUsd: 0.5,
+    startedAt: "2026-11-18T02:00:00Z",
+    endedAt: "2026-11-18T04:00:00Z",
+    employeeId: "emp_aaaabbbbcccc",
+  };
+  const S_LATE = {
+    runId: "rn_01M7822SORT0000000002",
+    status: "completed",
+    costStatus: "upstream",
+    costUsd: 2,
+    startedAt: "2026-11-18T03:00:00Z",
+    endedAt: "2026-11-18T03:10:00Z",
+    employeeId: "emp_ddddeeeeffff",
+  };
+  const S_OPEN = {
+    runId: "rn_01M7822SORT0000000003",
+    status: "running",
+    costStatus: "unknown",
+    costUsd: null,
+    startedAt: "2026-11-18T04:00:00Z",
+  };
+  const ALL = [S_EARLY, S_LATE, S_OPEN];
+
+  const sortBtn = (key: string): HTMLButtonElement =>
+    document.querySelector(`[data-testid='run-sort-${key}']`) as HTMLButtonElement;
+  const header = (key: string): HTMLElement =>
+    sortBtn(key).parentElement as HTMLElement;
+  const codesInBody = (): string[] =>
+    Array.from(document.querySelectorAll("[data-testid^='run5-row-'][data-status]"))
+      .map((el) => el.querySelector("[data-testid$='-code']")?.textContent ?? "");
+
+  it("sorts inside the loaded page and writes rsort/rdir without dropping the filters", async () => {
+    api.fetchJSON.mockImplementation(okList(ALL));
+    await render("/runs?window=30d&status=failed&employee=emp_aaaabbbbcccc", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => rowNodes() === 3, "three rows");
+    expect(sortBtn("started").tagName).toBe("BUTTON");
+    expect((sortBtn("started") as HTMLButtonElement).type).toBe("button");
+    expect(header("started").getAttribute("aria-sort")).toBe("none");
+    const calls = api.fetchJSON.mock.calls.length;
+
+    await act(async () => {
+      sortBtn("started").click();
+    });
+    expect(header("started").getAttribute("aria-sort")).toBe("descending");
+    expect(header("status").getAttribute("aria-sort")).toBe("none");
+    const loc = document.querySelector("[data-testid='probe-location']")?.textContent ?? "";
+    expect(loc).toContain("rsort=started");
+    expect(loc).toContain("rdir=desc");
+    expect(loc).toContain("window=30d");
+    expect(loc).toContain("status=failed");
+    expect(loc).toContain("employee=emp_aaaabbbbcccc");
+    expect(codesInBody()[0]).toContain("0003");
+
+    await act(async () => {
+      sortBtn("started").click();
+    });
+    expect(header("started").getAttribute("aria-sort")).toBe("ascending");
+    expect(codesInBody()[0]).toContain("0001");
+    expect(api.fetchJSON.mock.calls.length).toBe(calls);
+    expect(document.querySelector("[data-testid='run-sort-scope-note']")?.textContent).toContain(
+      "仅在当前已加载 3 行内排序",
+    );
+  });
+
+  it("keeps rows without a reading at the bottom in both directions", async () => {
+    api.fetchJSON.mockImplementation(okList(ALL));
+    await render("/runs?rsort=cost&rdir=asc");
+    await waitFor(() => rowNodes() === 3, "three rows");
+    expect(codesInBody().at(-1)).toContain("0003");
+    await act(async () => {
+      sortBtn("cost").click();
+    });
+    expect(header("cost").getAttribute("aria-sort")).toBe("descending");
+    expect(codesInBody()[0]).toContain("0002");
+    expect(codesInBody().at(-1)).toContain("0003");
+  });
+
+  it("has no sorting control outside the ready phase", async () => {
+    api.fetchJSON.mockImplementation(() =>
+      Promise.reject(new ApiError("down", { status: 500, body: "", url: "/api/runs", requestId: "req-sort" })),
+    );
+    await render("/runs");
+    await waitFor(() => document.querySelector("[data-testid='run-state']")?.getAttribute("data-phase") === "error", "error state");
+    expect(document.querySelector("[data-testid='run-sort-started']")).toBeNull();
+    expect(document.querySelector("[data-testid='run-sort-scope-note']")).toBeNull();
+  });
+
+  it("keeps copy and CSV in the same order as the sorted table", async () => {
+    api.fetchJSON.mockImplementation(okList(ALL));
+    await render("/runs?rsort=cost&rdir=desc");
+    await waitFor(() => rowNodes() === 3, "three rows");
+    const body = codesInBody();
+    await act(async () => {
+      (document.querySelector("[data-testid='run-list-copy']") as HTMLButtonElement).click();
+    });
+    const copied = clip.copyTextToClipboard.mock.calls.at(-1)?.[0] ?? "";
+    const copyLines = copied.split("\n").slice(1).map((line: string) => line.split(",")[0]);
+    expect(copyLines).toEqual(body);
+    const blobs: Blob[] = [];
+    const original = URL.createObjectURL;
+    (URL as unknown as { createObjectURL: (b: Blob) => string }).createObjectURL = (blob: Blob) => {
+      blobs.push(blob);
+      return "blob:sort";
+    };
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    await act(async () => {
+      (document.querySelector("[data-testid='run-list-export']") as HTMLButtonElement).click();
+    });
+    const csv = (await blobs[0].text()).replace(/^\uFEFF/, "").split("\n");
+    expect(csv.slice(1).map((line) => line.split(",")[0])).toEqual(body);
+    clickSpy.mockRestore();
+    URL.createObjectURL = original;
   });
 });

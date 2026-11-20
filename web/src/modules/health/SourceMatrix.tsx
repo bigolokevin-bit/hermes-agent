@@ -98,10 +98,15 @@ export function SourceMatrix() {
   ].join(" · ");
 
   const exportRows = csvRows(sortedRows);
-  const exportDisabled = exportRows.length === 0;
+  const usableRows = rows.filter((row) => row.status === "ok" || row.status === "degraded");
+  const matrixBlocked = usableRows.length === 0;
+  const exportDisabled = exportRows.length === 0 || matrixBlocked;
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const copyText = toPlainText(sortedRows);
-  const copyDisabled = rows.length === 0;
+  const copyDisabled = rows.length === 0 || matrixBlocked;
+  const matrixBlockTitle = matrixBlocked
+    ? "当前没有可导出/复制的可用读口行：读口未接入或读取失败。"
+    : null;
 
   async function copyMatrix() {
     if (copyDisabled) return;
@@ -140,7 +145,7 @@ export function SourceMatrix() {
             className="sys7-export"
             data-testid="sys7-export"
             disabled={exportDisabled}
-            title={exportDisabled ? "当前没有可导出的读口行" : "导出当前矩阵；不会再发请求"}
+            title={exportDisabled ? matrixBlockTitle ?? "当前没有可导出的读口行" : "导出当前矩阵；不会再发请求"}
             onClick={() => { downloadCsv(exportFilename(), toCsv(exportRows)); }}
           >
             导出 CSV
@@ -150,7 +155,7 @@ export function SourceMatrix() {
             className="sys7-export sys10-copy"
             data-testid="sys10-copy"
             disabled={copyDisabled}
-            title={copyDisabled ? "当前没有可复制的读口行" : "复制当前矩阵为纯文本；不会再发请求"}
+            title={copyDisabled ? matrixBlockTitle ?? "当前没有可复制的读口行" : "复制当前矩阵为纯文本；不会再发请求"}
             onClick={() => { void copyMatrix(); }}
           >
             复制矩阵
@@ -158,7 +163,7 @@ export function SourceMatrix() {
           <span className="sys10-status" data-testid="sys10-copy-status" aria-live="polite">
             {copyState === "copied" ? "已复制" : copyState === "failed" ? "复制失败，已展开手动复制" : ""}
           </span>
-          <span className="sys7-count" data-testid="sys7-export-count">{exportRows.length} 行</span>
+          <span className="sys7-count" data-testid="sys7-export-count">{exportDisabled ? "—" : `${exportRows.length} 行`}</span>
           <span className="sys7-note">导出与屏上矩阵同源：姓名、路径、人话状态、耗时、响应顶层 ISO 采集时刻；缺失留空，不补 0，也不用本机时钟。</span>
         </div>
         {copyState === "failed" ? (

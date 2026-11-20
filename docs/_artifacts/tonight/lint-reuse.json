@@ -1,7 +1,7 @@
 {
   "script": "lint-reuse",
   "root": "web/src/modules",
-  "scanned": 206,
+  "scanned": 230,
   "reuseMarkers": 28,
   "chatHostFiles": [
     {
@@ -54,7 +54,7 @@
       "owner": "work",
       "declaredWhere": "web/src/modules/work/manifest.ts（row 6 runs tab）",
       "declared": true,
-      "codeMentions": 3,
+      "codeMentions": 4,
       "via": "marker web/src/modules/work/manifest.ts:32"
     },
     {
@@ -78,13 +78,13 @@
       "owner": "employees",
       "declaredWhere": "web/src/modules/employees/manifest.ts（matrix tab）",
       "declared": true,
-      "codeMentions": 2,
+      "codeMentions": 3,
       "via": "marker web/src/modules/employee-detail/EmployeeDetailModulePage.test.tsx:233"
     }
   ],
   "violations": [],
   "count": 0,
   "ok": true,
-  "headHash": "60a4a429",
+  "headHash": "9813d7af",
   "exitCode": 0
 }

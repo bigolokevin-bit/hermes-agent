@@ -15,6 +15,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  Fragment,
   useRef,
   useState,
   type ReactNode,
@@ -40,6 +41,7 @@ import {
   useKnwSources,
   type KnmRow,
 } from "./sourceReads";
+import { faceGates, retryTitle, type GateSurfaceState } from "./copyGates";
 import {
   CITATIONS_URL,
   DOCUMENTS_URL,
@@ -79,6 +81,7 @@ import {
   docCopyText,
   docHitCopyText,
   docMetaCopyText,
+  groupRowsBySpace,
   documentDetailUrl,
   documentsUrl,
   documentsPageUrl,
@@ -263,30 +266,11 @@ function ApplyLink({ testid }: { testid: string }): ReactNode {
  * 禁用时状态句一律「当前不可复制：<原因>」，且兜底 textarea 不渲染。
  * 状态句与可用性同一个门控判出，不可能再各说各话。
  */
-const COPY_BLOCKED_BY_KIND: Record<string, string> = {
-  loading: "列表还在读取",
-  unwired: "读口未接入或没有权限",
-  login: "登录状态已经失效",
-  error: "这次读取没有成功",
-};
-
-function copyBlockNotice(
-  canCopy: boolean,
-  blockedReason: string,
-  act: "idle" | "copied" | "failed",
-  copiedText: string,
-): { status: string; fallback: boolean } {
-  if (!canCopy) return { status: `当前不可复制：${blockedReason}`, fallback: false };
-  return {
-    status: act === "copied" ? copiedText : act === "failed" ? "复制失败，已展开可选文本，可手动复制" : "",
-    fallback: act === "failed",
-  };
-}
-
-function blockedCopyReason(kind: string, noMatch: boolean, noun: string): string {
-  const byKind = COPY_BLOCKED_BY_KIND[kind];
-  if (byKind) return byKind;
-  return noMatch ? `筛选后没有留下的${noun}` : `这份回答里没有${noun}`;
+/**
+ * Surf 状态 → gates 状态（结构映射，非文案）：403/404 分别成 denied/unwired，句面上同权。
+ */
+function gateStateOf(kind: "loading" | "ready" | "unwired" | "login" | "error", denied: boolean): GateSurfaceState {
+  return kind === "unwired" ? (denied ? "denied" : "unwired") : kind;
 }
 
 interface SurfaceProps<T> {
@@ -416,7 +400,13 @@ function Surface<T>({
           <span className="knw5-wrap">{unwiredHuman}</span>
           <RequestId id={state.requestId} testid={`${testid}-request-id`} />
           <span className="knw5-actions">
-            <Button size="sm" outlined onClick={onRetry} data-testid={`${testid}-retry`}>
+            <Button
+              size="sm"
+              outlined
+              onClick={onRetry}
+              title={retryTitle(state.denied ? "denied" : "unwired")}
+              data-testid={`${testid}-retry`}
+            >
               重试
             </Button>
             <ApplyLink testid={`${testid}-apply`} />
@@ -428,7 +418,7 @@ function Surface<T>({
         <div className="knw5-empty" data-testid={`${testid}-login`} role="status">
           <b>需要登录</b>
           <span className="knw5-wrap">登录状态已经失效，重新登录后就能再看这块知识数据。</span>
-          <Button size="sm" outlined onClick={onRetry} data-testid={`${testid}-retry`}>
+          <Button size="sm" outlined onClick={onRetry} title={retryTitle("login")} data-testid={`${testid}-retry`}>
             重试
           </Button>
         </div>
@@ -439,7 +429,7 @@ function Surface<T>({
           <b>这次没能读到知识数据</b>
           <span className="knw5-wrap">{state.message}</span>
           <RequestId id={state.requestId} testid={`${testid}-request-id`} />
-          <Button size="sm" outlined onClick={onRetry} data-testid={`${testid}-retry`}>
+          <Button size="sm" outlined onClick={onRetry} title={retryTitle("error")} data-testid={`${testid}-retry`}>
             重试
           </Button>
         </div>
@@ -888,12 +878,19 @@ function SpaceTable({
   needle,
   tabIndexFor,
   active,
+  previewKey,
+  sdocOpen,
+  onPreview,
 }: {
   rows: SpaceRow[];
   spaceLink: (id: string) => string;
   needle: string;
   tabIndexFor: (index: number) => number;
   active: number;
+  /** R68 — 行内预览：本地视图态；检索面板的行内展开（?sdoc=）在场时互斥收起。 */
+  previewKey: string | null;
+  sdocOpen: boolean;
+  onPreview: (key: string) => void;
 }): ReactNode {
   return (
     <div className="knw5-scroll">
@@ -908,82 +905,162 @@ function SpaceTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, index) => (
-            <tr key={row.id || `space-${index}`} data-testid="knw5-spaces-row" data-active={index} title={row.id || undefined}>
-              <td data-label="空间名称">
-                {row.id ? (
-                  <Link
-                    className="knw5-name knw5-rowlink"
-                    data-testid="knw5-space-link"
-                    to={spaceLink(row.id)}
-                    tabIndex={tabIndexFor(index)}
-                    aria-current={active === index ? "true" : undefined}
-                    title="看这个空间里的文档——文档预览抽屉只对文档行打开，请进入空间后预览文档"
-                  >
-                    <Highlight text={row.name} needle={needle} testid="kn9-mark-space" />
-                  </Link>
-                ) : (
-                  <>
-                    <span className="knw5-name" data-testid="knw5-space-name">
-                      <Highlight text={row.name} needle={needle} testid="kn9-mark-space" />
+          {rows.map((row, index) => {
+            const rowKey = row.id !== "" ? row.id : `space-${index}`;
+            const previewActive = !sdocOpen && previewKey === rowKey;
+            const previewId = `kn-space-preview-${index}`;
+            const nameText =
+              row.nameReason === null
+                ? row.name
+                : shortId(row.id) !== null
+                  ? `空间 · ${shortId(row.id)}`
+                  : "该字段未返回";
+            const nameTitle =
+              row.nameReason === null
+                ? undefined
+                : shortId(row.id) !== null
+                  ? row.id
+                  : `空间名：${row.nameReason}`;
+            return (
+              <Fragment key={rowKey}>
+                <tr data-testid="knw5-spaces-row" data-active={index} data-preview={previewActive ? "1" : "0"} title={row.id || undefined}>
+                  <td data-label="空间名称">
+                    {row.id ? (
+                      <Link
+                        className="knw5-name knw5-rowlink"
+                        data-testid="knw5-space-link"
+                        to={spaceLink(row.id)}
+                        tabIndex={tabIndexFor(index)}
+                        aria-current={active === index ? "true" : undefined}
+                        title="看这个空间里的文档——文档预览抽屉只对文档行打开，请进入空间后预览文档"
+                      >
+                        <Highlight text={row.name} needle={needle} testid="kn9-mark-space" />
+                      </Link>
+                    ) : (
+                      <>
+                        <span className="knw5-name" data-testid="knw5-space-name">
+                          <Highlight text={row.name} needle={needle} testid="kn9-mark-space" />
+                        </span>
+                        <span className="knw5-sub" title="上游没有给出这个空间的标识">
+                          — 点不进文档列表
+                        </span>
+                      </>
+                    )}
+                    <button
+                      type="button"
+                      className="kn-space-toggle"
+                      data-testid={`kn-space-toggle-${index}`}
+                      aria-expanded={previewActive ? "true" : "false"}
+                      aria-controls={previewId}
+                      tabIndex={tabIndexFor(index)}
+                      onClick={() => onPreview(rowKey)}
+                      onKeyDown={(event) => {
+                        // 展开态 Esc=收起、焦点守本钮；收起态的 Esc 交还 roving 原语义（回搜索框）。
+                        if (!previewActive || event.key !== "Escape") return;
+                        event.preventDefault();
+                        event.stopPropagation();
+                        onPreview(rowKey);
+                      }}
+                      title={previewActive ? "收起这个空间的行内预览" : "行内预览这个空间已读到的字段：不会再发任何请求"}
+                    >
+                      {previewActive ? "收起预览" : "预览"}
+                    </button>
+                    <Reason>{row.nameReason}</Reason>
+                    {row.kind ? (
+                      <span className="knw5-sub" data-testid="knw5-space-scope" title={row.kindRaw ?? undefined}>
+                        {row.kind}
+                      </span>
+                    ) : null}
+                  </td>
+                  <td data-label="来源">
+                    <span data-testid="knw5-space-source" title={row.sourceRaw ?? undefined}>
+                      {row.source}
                     </span>
-                    <span className="knw5-sub" title="上游没有给出这个空间的标识">
-                      — 点不进文档列表
+                    <Reason>{row.sourceReason}</Reason>
+                  </td>
+                  <td data-label="文档数">
+                    <span data-testid="knw5-space-docs">{row.docs}</span>
+                    {row.docsExtra ? <span className="knw5-sub" data-testid="knw5-space-docs-extra">{row.docsExtra}</span> : null}
+                    <Reason>{row.docsReason}</Reason>
+                  </td>
+                  <td data-label="最近同步">
+                    <span data-testid="knw5-space-time">
+                      {row.timeLabel ? `${row.timeLabel}：${row.at}` : row.at}
                     </span>
-                  </>
-                )}
-                <Reason>{row.nameReason}</Reason>
-                {row.kind ? (
-                  <span className="knw5-sub" data-testid="knw5-space-scope" title={row.kindRaw ?? undefined}>
-                    {row.kind}
-                  </span>
-                ) : null}
-              </td>
-              <td data-label="来源">
-                <span data-testid="knw5-space-source" title={row.sourceRaw ?? undefined}>
-                  {row.source}
-                </span>
-                <Reason>{row.sourceReason}</Reason>
-              </td>
-              <td data-label="文档数">
-                <span data-testid="knw5-space-docs">{row.docs}</span>
-                {row.docsExtra ? <span className="knw5-sub" data-testid="knw5-space-docs-extra">{row.docsExtra}</span> : null}
-                <Reason>{row.docsReason}</Reason>
-              </td>
-              <td data-label="最近同步">
-                <span data-testid="knw5-space-time">
-                  {row.timeLabel ? `${row.timeLabel}：${row.at}` : row.at}
-                </span>
-                <Reason>{row.atReason}</Reason>
-              </td>
-              <td data-label="状态">
-                <span data-testid="knw5-space-status">
-                  <Badge
-                    tone={
-                      row.status === "已同步" || row.status === "可用"
-                        ? "success"
-                        : row.status === "失败" || row.status === "部分可用"
-                          ? "destructive"
-                          : "outline"
-                    }
-                  >
-                    {row.status}
-                  </Badge>
-                </span>
-                <Reason>{row.statusReason}</Reason>
-                {row.failure ? (
-                  <span className="knw5-sub" data-testid="knw5-space-failure" title={row.failureRaw ?? undefined}>
-                    {row.failure}
-                  </span>
-                ) : null}
-                {row.failure === null && row.failureRaw ? (
-                  <span className="knw5-sub" data-testid="knw5-space-failure" title={row.failureRaw}>
-                    上游记的原因偏技术，这里不原样上屏；悬停可看原文。
-                  </span>
-                ) : null}
-              </td>
-            </tr>
-          ))}
+                    <Reason>{row.atReason}</Reason>
+                  </td>
+                  <td data-label="状态">
+                    <span data-testid="knw5-space-status">
+                      <Badge
+                        tone={
+                          row.status === "已同步" || row.status === "可用"
+                            ? "success"
+                            : row.status === "失败" || row.status === "部分可用"
+                              ? "destructive"
+                              : "outline"
+                        }
+                      >
+                        {row.status}
+                      </Badge>
+                    </span>
+                    <Reason>{row.statusReason}</Reason>
+                    {row.failure ? (
+                      <span className="knw5-sub" data-testid="knw5-space-failure" title={row.failureRaw ?? undefined}>
+                        {row.failure}
+                      </span>
+                    ) : null}
+                    {row.failure === null && row.failureRaw ? (
+                      <span className="knw5-sub" data-testid="knw5-space-failure" title={row.failureRaw}>
+                        上游记的原因偏技术，这里不原样上屏；悬停可看原文。
+                      </span>
+                    ) : null}
+                  </td>
+                </tr>
+                <tr data-testid={`kn-space-preview-row-${index}`}>
+                  <td colSpan={5}>
+                    {/* 容器常在（收起=hidden 不卸载）：aria-controls 永远指得到真节点。 */}
+                    <dl
+                      id={previewId}
+                      className="kn-space-preview"
+                      data-testid={`kn-space-preview-${index}`}
+                      hidden={!previewActive}
+                    >
+                      <div>
+                        <dt>空间名</dt>
+                        <dd data-testid={`kn-space-name-${index}`} title={nameTitle}>
+                          {nameText}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>文档数</dt>
+                        <dd
+                          data-testid={`kn-space-docs-${index}`}
+                          title={row.docsReason !== null ? `文档数：${row.docsReason}` : undefined}
+                        >
+                          {row.docsReason === null ? row.docs : "—"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>最近更新</dt>
+                        <dd data-testid={`kn-space-at-${index}`} title={row.at !== "—" ? undefined : `更新：${row.atReason ?? "上游没有给出时间"}`}>
+                          {row.at === "—" ? "该字段未返回" : row.timeLabel ? `${row.timeLabel}：${row.at}` : row.at}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>短码</dt>
+                        <dd
+                          data-testid={`kn-space-code-${index}`}
+                          title={row.id !== "" ? row.id : "短码：上游没有给出空间标识"}
+                        >
+                          {row.id !== "" ? shortId(row.id) ?? "该字段未返回" : "该字段未返回"}
+                        </dd>
+                      </div>
+                    </dl>
+                  </td>
+                </tr>
+              </Fragment>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -1007,13 +1084,20 @@ function SpacesSurface({
   keyword,
   onCommitKeyword,
   onClearKeyword,
+  sdocOpen,
+  onCloseSdoc,
 }: {
   nonce: string;
   spaceLink: (id: string) => string;
   keyword: string;
   onCommitKeyword: (value: string) => void;
   onClearKeyword: () => void;
+  /** R68 — 与检索行内展开互斥：?sdoc= 在场即收起空间预览，开空间预览即静默删 sdoc=。 */
+  sdocOpen: boolean;
+  onCloseSdoc: () => void;
 }): ReactNode {
+  // 行内预览是本面视图态：不进 URL；刷新、切面、切页签都随组件重挂自然回收起。
+  const [previewKey, setPreviewKey] = useState<string | null>(null);
   const surface = useSurface<SpaceRow>(
     () => {
       markKnwLoading("spaces", SPACES_URL);
@@ -1042,6 +1126,28 @@ function SpacesSurface({
     onClearKeyword();
   };
 
+  // R68 — 开合行内预览：本身不写 URL；检索行内展开（?sdoc=）在场时开预览 = 静默关它（只删 sdoc=，不抢焦点）。
+  const handlePreview = (key: string) => {
+    if (previewKey === key) {
+      setPreviewKey(null);
+      return;
+    }
+    setPreviewKey(key);
+    if (sdocOpen) {
+      onCloseSdoc();
+    }
+  };
+  // 反向互斥：用户点了检索命中（?sdoc= 被写入）时，上一行的预览作废——
+  // 不靠派生遮蔽后「sdoc 一关预览自己复活」。官方「渲染期按输入变化调整 state」形态（比较值用 state，不碰 ref），
+  // 同组件重渲染即刻收敛，不发任何请求。
+  const [wasSdocOpen, setWasSdocOpen] = useState(sdocOpen);
+  if (sdocOpen !== wasSdocOpen) {
+    setWasSdocOpen(sdocOpen);
+    if (sdocOpen) {
+      setPreviewKey(null);
+    }
+  }
+
   // ---- R57 — 复制空间清单：文本只取当前屏上可见行（含「已加载 N 个空间」的口径行），此路不发任何请求。
   // 与 knF/knG 同一手法：回执带内容签名，检索词或列表一变，旧的「已复制 N 行」立即作废。
   const copyText = spaceCopyText(shown, loaded.length, text);
@@ -1059,12 +1165,15 @@ function SpacesSurface({
     );
   };
 
-  // 纠偏 OBS-6 — 状态句与兜底锚同门控于「真的能复制」：禁用时只说「当前不可复制：<原因>」。
-  const kniNotice = copyBlockNotice(
-    surface.state.kind === "ready" && shown.length > 0,
-    blockedCopyReason(surface.state.kind, needle !== "", "空间"),
+  // 收成单点 gates — enabled/title/状态句/计数位/兜底/重试可用性由 faceGates 一次判出。
+  const kniGates = faceGates(
+    {
+      face: "knI",
+      state: gateStateOf(surface.state.kind, surface.state.kind === "unwired" && surface.state.denied),
+      rows: shown.length,
+      filterText: text.trim(),
+    },
     copyAct,
-    `已复制 ${shown.length} 行`,
   );
 
   return (
@@ -1148,46 +1257,42 @@ function SpacesSurface({
             needle={text}
             tabIndexFor={roving.tabIndexFor}
             active={roving.active}
+            previewKey={previewKey}
+            sdocOpen={sdocOpen}
+            onPreview={handlePreview}
           />
         )}
       />
       </div>
-      {/* R62 — 复制条四态常在：disabled + 原因 title，不再随状态出现/消失（这也让骨架切换不跳条）。 */}
+      {/* 复制条四态常在；enabled/title/状态句/计数位/兜底全读 kniGates（copyGates.ts 单点，无本地措辞）。 */}
       <div className="knI-row" data-testid="knI-row">
         <Button
           size="sm"
           outlined
           className="knI-copy"
           onClick={copySpaces}
-          disabled={surface.state.kind !== "ready" || shown.length === 0}
-          title={
-            surface.state.kind !== "ready"
-              ? surface.state.kind === "loading"
-                ? "空间列表还在读取，还没有可复制的内容。"
-                : surface.state.kind === "unwired"
-                  ? "空间列表没读到（读口未接入或没有权限），没有可复制的内容。"
-                  : surface.state.kind === "login"
-                    ? "登录状态已经失效，这次没有读到空间列表，没有可复制的内容。"
-                    : "这次没有读到空间列表，没有可复制的内容。"
-              : shown.length === 0
-                ? "当前没有可复制的空间"
-                : "复制当前屏上的可见行：空间名 | 文档数 | 最近更新 | 短码。文本首行写明这份清单只覆盖已加载的空间，不冒充全库；屏上数据，不会再发请求。"
-          }
+          disabled={!kniGates.copy.enabled}
+          title={kniGates.copy.title}
           data-testid="knI-copy"
         >
           复制清单
         </Button>
+        <span className="knw5-sub" data-testid="knI-lines" title={kniGates.lines?.title}>
+          {kniGates.lines?.text ?? "—"}
+        </span>
         <span
-          className="knw5-sub"
-          data-testid="knI-lines"
-          title={shown.length > 0 ? undefined : "没有可数的行时给「—」，不写 0 冒充空集。"}
-        >
-          {surface.state.kind === "ready" && shown.length > 0 ? `${shown.length} 行` : "—"}
-        </span>
+          data-testid="kn-gates-knI"
+          data-enabled={String(kniGates.copy.enabled)}
+          data-reason={kniGates.copy.reason ?? ""}
+          data-retry-enabled={String(kniGates.retry.enabled)}
+          data-export="absent"
+          className="knD-marker"
+          aria-hidden="true"
+        />
         <span className="knI-status" data-testid="knI-copy-status" aria-live="polite">
-          {kniNotice.status}
+          {kniGates.status}
         </span>
-        {kniNotice.fallback ? (
+        {kniGates.fallback ? (
           <textarea
             className="knI-fallback"
             data-testid="knI-copy-fallback"
@@ -1325,8 +1430,16 @@ function DocPreviewDrawer({
     );
   };
 
-  // 纠偏 OBS-6 — 抽屉同理：行没加载到就没有可复制的元信息，状态句直说，兜底锚不渲染。
-  const knlNotice = copyBlockNotice(row !== null, "这条文档不在已加载的列表里", copyAct, "已复制");
+  // 收成单点 gates — knL 的复制只看「文档行是否已加载」；重试可用性由详情读态同源判出。
+  const knlGates = faceGates(
+    {
+      face: "knL",
+      state: gateStateOf(surface.state.kind, surface.state.kind === "unwired" && surface.state.denied),
+      rows: row === null ? 0 : 1,
+      filterText: "",
+    },
+    copyAct,
+  );
 
   // ---- R63 — 固定链接：地址 = 本页 origin + 现有深链参数（tab/panel/space/doc），
   // 参数串由页面一直在用的 docLink 生成，这里不手拼、不猜参数名；只读屏上已有标识，零请求。
@@ -1488,20 +1601,25 @@ function DocPreviewDrawer({
             outlined
             className="knL-copy-meta"
             onClick={copyMeta}
-            disabled={row === null}
-            title={
-              row === null
-                ? "这条文档不在已加载的列表里，抽屉里没有读到的元信息，没有可复制的内容。"
-                : "复制这份文档在抽屉里的元信息：文档名、所属空间、类型、大小、更新、文档短码。屏上数据，不会再发请求。"
-            }
+            disabled={!knlGates.copy.enabled}
+            title={knlGates.copy.title}
             data-testid="knL-copy-meta"
           >
             复制元信息
           </Button>
+          <span
+            data-testid="kn-gates-knL"
+            data-enabled={String(knlGates.copy.enabled)}
+            data-reason={knlGates.copy.reason ?? ""}
+            data-retry-enabled={String(knlGates.retry.enabled)}
+            data-export="absent"
+            className="knD-marker"
+            aria-hidden="true"
+          />
           <span className="knL-status" data-testid="knL-copy-meta-status" aria-live="polite">
-            {knlNotice.status}
+            {knlGates.status}
           </span>
-          {knlNotice.fallback ? (
+          {knlGates.fallback ? (
             <textarea
               className="knL-fallback"
               data-testid="knL-copy-meta-fallback"
@@ -1557,7 +1675,13 @@ function DocPreviewDrawer({
             <span className="knw5-wrap">{DOC_DETAIL_UNWIRED_HUMAN}</span>
             <RequestId id={surface.state.requestId} testid="kn7-preview-request-id" />
             <span className="knw5-actions">
-              <Button size="sm" outlined onClick={surface.retry} data-testid="kn7-preview-retry">
+              <Button
+                size="sm"
+                outlined
+                onClick={surface.retry}
+                title={retryTitle(surface.state.denied ? "denied" : "unwired")}
+                data-testid="kn7-preview-retry"
+              >
                 重试
               </Button>
               <ApplyLink testid="kn7-preview-apply" />
@@ -1569,7 +1693,7 @@ function DocPreviewDrawer({
           <div className="knw5-empty" data-testid="kn7-preview-login" role="status">
             <b>需要登录</b>
             <span className="knw5-wrap">登录状态已经失效，重新登录后再打开这份文档的详情。</span>
-            <Button size="sm" outlined onClick={surface.retry} data-testid="kn7-preview-retry">
+            <Button size="sm" outlined onClick={surface.retry} title={retryTitle("login")} data-testid="kn7-preview-retry">
               重试
             </Button>
           </div>
@@ -1580,7 +1704,7 @@ function DocPreviewDrawer({
             <b>这次没能读到这份文档的详情</b>
             <span className="knw5-wrap">{surface.state.message}</span>
             <RequestId id={surface.state.requestId} testid="kn7-preview-request-id" />
-            <Button size="sm" outlined onClick={surface.retry} data-testid="kn7-preview-retry">
+            <Button size="sm" outlined onClick={surface.retry} title={retryTitle("error")} data-testid="kn7-preview-retry">
               重试
             </Button>
           </div>
@@ -1615,12 +1739,17 @@ function SortableHead({
   sort,
   dir,
   onSort,
+  disabled,
+  disabledTitle,
 }: {
   col: DocSortCol;
   label: string;
   sort: DocSortCol;
   dir: DocSortDir;
   onSort: (col: DocSortCol) => void;
+  /** R66：非 ready/无可见行时表头仍在但整排禁用，title 逐字说原因。 */
+  disabled?: boolean;
+  disabledTitle?: string;
 }): ReactNode {
   const active = sort === col;
   return (
@@ -1628,9 +1757,20 @@ function SortableHead({
       <button
         type="button"
         className="knC-sort"
-        data-testid={`knC-sort-${col}`}
-        onClick={() => onSort(col)}
+        disabled={disabled}
+        data-testid={`kn-sort-${col}`}
+        onClick={() => {
+          if (disabled) return;
+          onSort(col);
+        }}
+        onKeyDown={(event) => {
+          // Enter/Space 显式接管并 preventDefault：浏览器不再叠加原生激活，一次按键一次翻态。
+          if (disabled || (event.key !== "Enter" && event.key !== " ")) return;
+          event.preventDefault();
+          onSort(col);
+        }}
         aria-label={`按${label}排序`}
+        title={disabled ? (disabledTitle ?? "现在不能排序") : "点一次按本列默认方向排，再点翻向，第三点清除回默认口径"}
       >
         <span className="knC-sort-label">{label}</span>
         <span className="knC-mark" aria-hidden="true">
@@ -1638,6 +1778,35 @@ function SortableHead({
         </span>
       </button>
     </th>
+  );
+}
+
+/** 非 ready（或无可见行）时的表头条：四列还在、整排 disabled 说原因；与真表头互斥出现，全页始终只有一套。 */
+function DocHeadStrip({
+  sort,
+  dir,
+  onSort,
+  disabledTitle,
+}: {
+  sort: DocSortCol;
+  dir: DocSortDir;
+  onSort: (col: DocSortCol) => void;
+  disabledTitle: string;
+}): ReactNode {
+  return (
+    <div className="kn3-docs-wrap">
+      <table className="knw5-table kn3-docs-table" data-testid="kn3-docs-head-strip">
+        <thead>
+          <tr>
+            <SortableHead col="name" label="文档名" sort={sort} dir={dir} onSort={onSort} disabled disabledTitle={disabledTitle} />
+            <SortableHead col="type" label="类型" sort={sort} dir={dir} onSort={onSort} disabled disabledTitle={disabledTitle} />
+            <SortableHead col="size" label="大小" sort={sort} dir={dir} onSort={onSort} disabled disabledTitle={disabledTitle} />
+            <SortableHead col="updated" label="更新" sort={sort} dir={dir} onSort={onSort} disabled disabledTitle={disabledTitle} />
+          </tr>
+        </thead>
+        <tbody />
+      </table>
+    </div>
   );
 }
 
@@ -1652,6 +1821,9 @@ function DocTable({
   tabIndexFor,
   active,
   onListKeyDown,
+  previewKey,
+  onPreview,
+  onDrawerClick,
 }: {
   entries: DocEntry[];
   docLink: (key: string) => string;
@@ -1663,6 +1835,10 @@ function DocTable({
   tabIndexFor: (index: number) => number | undefined;
   active: number;
   onListKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) => void;
+  /** R67 — 行内预览：本地视图态（不进 URL），同时至多一行；toggle 携 aria-expanded/aria-controls。 */
+  previewKey: string | null;
+  onPreview: (key: string) => void;
+  onDrawerClick: () => void;
 }): ReactNode {
   return (
     <div
@@ -1675,7 +1851,7 @@ function DocTable({
         <thead>
           <tr>
             <SortableHead col="name" label="文档名" sort={sort} dir={dir} onSort={onSort} />
-            <th scope="col">类型</th>
+            <SortableHead col="type" label="类型" sort={sort} dir={dir} onSort={onSort} />
             <SortableHead col="size" label="大小" sort={sort} dir={dir} onSort={onSort} />
             <SortableHead col="updated" label="更新" sort={sort} dir={dir} onSort={onSort} />
           </tr>
@@ -1683,37 +1859,102 @@ function DocTable({
         <tbody>
           {entries.map(({ row, key }, index) => {
             const isOpen = openKey !== "" && openKey === key;
+            const previewOpen = previewKey === key;
+            const previewId = `kn-doc-preview-${key}`;
             return (
-              <tr key={key} data-testid="kn3-docs-row" data-open={isOpen ? "1" : "0"} data-active={index} title={row.id || undefined}>
-                <td data-label="文档名">
-                  <Link
-                    className="kn3-docs-name"
-                    data-testid="kn3-docs-name"
-                    to={docLink(key)}
-                    // 未进 roving 前不上显式 tabindex（保持无属性=原生序）；进入后同时只有一个 0。
-                    tabIndex={active === -1 ? undefined : tabIndexFor(index)}
-                    aria-current={active === index ? "true" : undefined}
-                    title={row.nameHint ?? undefined}
-                  >
-                    <Highlight text={row.name} needle={needle} testid="kn9-mark-doc" />
-                  </Link>
-                </td>
-                <td data-label="类型">
-                  <span data-testid="kn3-docs-type" title={row.typeHint ?? (row.typeRaw ?? undefined)}>
-                    {row.type}
-                  </span>
-                </td>
-                <td data-label="大小">
-                  <span data-testid="kn3-docs-size" title={row.sizeHint ?? undefined}>
-                    {row.size}
-                  </span>
-                </td>
-                <td data-label="更新">
-                  <span data-testid="kn3-docs-updated" title={row.atHint ?? undefined}>
-                    {row.at}
-                  </span>
-                </td>
-              </tr>
+              <Fragment key={key}>
+                <tr data-testid="kn3-docs-row" data-open={isOpen ? "1" : "0"} data-preview={previewOpen ? "1" : "0"} data-active={index} title={row.id || undefined}>
+                  <td data-label="文档名">
+                    <Link
+                      className="kn3-docs-name"
+                      data-testid="kn3-docs-name"
+                      to={docLink(key)}
+                      onClick={onDrawerClick}
+                      // 未进 roving 前不上显式 tabindex（保持无属性=原生序）；进入后同时只有一个 0。
+                      tabIndex={active === -1 ? undefined : tabIndexFor(index)}
+                      aria-current={active === index ? "true" : undefined}
+                      title={row.nameHint ?? undefined}
+                    >
+                      <Highlight text={row.name} needle={needle} testid="kn9-mark-doc" />
+                    </Link>
+                    <button
+                      type="button"
+                      className="kn-doc-preview-toggle"
+                      data-testid="kn-doc-preview-toggle"
+                      aria-expanded={previewOpen}
+                      aria-controls={previewId}
+                      tabIndex={active === -1 ? undefined : tabIndexFor(index)}
+                      onClick={() => onPreview(key)}
+                      onKeyDown={(event) => {
+                        // 展开态里 Esc=收起并守住焦点在本钮；收起态的 Esc 交还行列表原语义（回搜索框）。
+                        if (!previewOpen || event.key !== "Escape") return;
+                        event.preventDefault();
+                        event.stopPropagation();
+                        onPreview(key);
+                      }}
+                      title={previewOpen ? "收起这条的行内预览" : "行内预览这条文档的已读到字段：不发任何新请求"}
+                    >
+                      {previewOpen ? "收起预览" : "预览"}
+                    </button>
+                  </td>
+                  <td data-label="类型">
+                    <span data-testid="kn3-docs-type" title={row.typeHint ?? (row.typeRaw ?? undefined)}>
+                      {row.type}
+                    </span>
+                  </td>
+                  <td data-label="大小">
+                    <span data-testid="kn3-docs-size" title={row.sizeHint ?? undefined}>
+                      {row.size}
+                    </span>
+                  </td>
+                  <td data-label="更新">
+                    <span data-testid="kn3-docs-updated" title={row.atHint ?? undefined}>
+                      {row.at}
+                    </span>
+                  </td>
+                </tr>
+                {previewOpen ? (
+                  <tr data-testid="kn-doc-preview-row">
+                    <td colSpan={4}>
+                      <dl id={previewId} className="kn-doc-preview" data-testid="kn-doc-preview">
+                        <div>
+                          <dt>文档名</dt>
+                          <dd
+                            data-testid="kn-doc-preview-name"
+                            title={row.nameHint !== null ? `文档名：${row.nameHint}` : (row.nameHint ?? undefined)}
+                          >
+                            {row.nameHint === null ? row.name : "该字段未返回"}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>类型</dt>
+                          <dd data-testid="kn-doc-preview-type" title={row.typeRaw === null ? "类型：上游没有给出" : (row.typeRaw ?? undefined)}>
+                            {row.typeRaw === null ? "该字段未返回" : row.type}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>大小</dt>
+                          <dd data-testid="kn-doc-preview-size" title={row.sizeHint !== null ? `大小：${row.sizeHint}` : undefined}>
+                            {row.sizeHint === null ? row.size : "该字段未返回"}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>更新</dt>
+                          <dd data-testid="kn-doc-preview-updated" title={row.atHint !== null ? `更新：${row.atHint}` : undefined}>
+                            {row.atHint === null ? row.at : "该字段未返回"}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>短码</dt>
+                          <dd data-testid="kn-doc-preview-code" title={row.id !== "" ? row.id : "短码：上游没有给出文档标识"}>
+                            {row.id !== "" ? shortId(row.id) ?? "该字段未返回" : "该字段未返回"}
+                          </dd>
+                        </div>
+                      </dl>
+                    </td>
+                  </tr>
+                ) : null}
+              </Fragment>
             );
           })}
         </tbody>
@@ -1733,6 +1974,7 @@ function SpaceDetailSurface({
   dir,
   onSort,
   onCloseDoc,
+  onCloseDocQuietly,
 }: {
   nonce: string;
   spaceId: string;
@@ -1744,8 +1986,12 @@ function SpaceDetailSurface({
   dir: DocSortDir;
   onSort: (col: DocSortCol) => void;
   onCloseDoc: () => void;
+  /** R67 — 开预览时静默关抽屉：只删 doc=，不抢焦点（焦点该留在被点的预览钮上）。 */
+  onCloseDocQuietly: () => void;
 }): ReactNode {
   const [filter, setFilter] = useState("");
+  // R67 — 行内预览是本面的视图态：不进 URL（刷新/粘贴一律收起），同时至多一行。
+  const [previewKey, setPreviewKey] = useState<string | null>(null);
   // 换一个空间：本地筛选要清掉，别把上一个空间的筛选结果当成这个空间的现状。
   // 行与错误本就随读口键（含 spaceId）更换而回到骨架，不会残留。
   const prevSpace = useRef(spaceId);
@@ -1753,6 +1999,7 @@ function SpaceDetailSurface({
     if (prevSpace.current !== spaceId) {
       prevSpace.current = spaceId;
       setFilter("");
+      setPreviewKey(null); // 上一空间的预览不带进下一个空间
     }
   }, [spaceId]);
   // 空间名不靠 URL 回显：它来自指定空间读口。读不到就用短码，原因放 title。
@@ -1845,6 +2092,22 @@ function SpaceDetailSurface({
     surface.state.kind === "ready" ? { ...surface.state.value, rows: shown.map((entry) => entry.row) } : null;
   const openRow = shown.find((entry) => entry.key === openDoc)?.row ?? null;
 
+  // R67 — 开合行内预览：收起与展开都不动 URL；抽屉开着时开预览 = 静默关抽屉（只删 doc=、不抢焦点）。
+  const handlePreview = (key: string) => {
+    if (previewKey === key) {
+      setPreviewKey(null);
+      return;
+    }
+    setPreviewKey(key);
+    if (openDoc !== "") {
+      onCloseDocQuietly();
+    }
+  };
+  // 点行名开抽屉时收起预览：两者互斥，同屏至多一个详情面。
+  const handleDrawerClick = () => {
+    setPreviewKey(null);
+  };
+
   // 下一页只由按钮显式触发，绝不做滚动自动加载；失败后按钮仍是这个入口（重试=再点）。
   const loadMore = () => {
     if (!hasMore || moreState === "loading" || cursor === null) return;
@@ -1901,12 +2164,16 @@ function SpaceDetailSurface({
     );
   };
 
-  // 纠偏 OBS-6 — 状态句与兜底锚同门控于「真的能复制」。
-  const knfNotice = copyBlockNotice(
-    surface.state.kind === "ready" && shown.length > 0,
-    blockedCopyReason(surface.state.kind, filterKey !== "", "文档"),
+  // 收成单点 gates — knF 的 enabled/title/状态句/计数位/兜底由 faceGates 一次判出。
+  const knfGates = faceGates(
+    {
+      face: "knF",
+      state: gateStateOf(surface.state.kind, surface.state.kind === "unwired" && surface.state.denied),
+      rows: shown.length,
+      filterText: filter.trim(),
+      loadedTotal: loaded,
+    },
     copyAct,
-    "已复制",
   );
 
   const openKeyCode = shortId(openDoc);
@@ -1993,6 +2260,9 @@ function SpaceDetailSurface({
               tabIndexFor={roving.tabIndexFor}
               active={roving.active}
               onListKeyDown={roving.onKeyDown}
+              previewKey={previewKey}
+              onPreview={handlePreview}
+              onDrawerClick={handleDrawerClick}
             />
 
             {/* R54 — 游标分页条：读数只来自信封给的字段；缺什么就说什么不可用，一律不推算。 */}
@@ -2068,44 +2338,62 @@ function SpaceDetailSurface({
           </>
         )}
       />
-      {/* R62 — 复制条四态常在：disabled + 原因 title；计数格无行可数时给「—」。 */}
+      {/* R66 — 表头四列在一切状态下都在且只有一套：真表头（有可见行）或禁用表头条。 */}
+      {surface.state.kind === "ready" && shown.length > 0 ? null : (
+        <DocHeadStrip
+          sort={sort}
+          dir={dir}
+          onSort={onSort}
+          disabledTitle={
+            surface.state.kind === "loading"
+              ? "空间文档列表还在读取，行读到了才能排。"
+              : surface.state.kind === "unwired"
+                ? "这份列表没读到（读口未接入或没有权限），现在不能排序。"
+                : surface.state.kind === "login"
+                  ? "登录状态已经失效，重新登录后才能排序。"
+                  : surface.state.kind === "error"
+                    ? "这次没有读到这份列表，现在不能排序。"
+                    : filterKey !== ""
+                      ? "本地筛选没有留下可见行，现在没有可排的行。"
+                      : "这份列表里没有行，没有可排的内容。"
+          }
+        />
+      )}
+      {surface.state.kind === "ready" && baseRows.length > 0 ? (
+        <p className="knw5-sub" data-testid="kn-sort-scope-note">
+          仅在当前已加载 {baseRows.length} 篇内排序：文档读口实测不接受 sort/order/orderBy，
+          点表头只改地址与本行序，不会再发请求。
+        </p>
+      ) : null}
+      {/* 复制条四态常在；enabled/title/状态句/计数位/兜底全读 knfGates（单点，无本地措辞）。 */}
       <div className="knF-row" data-testid="knF-row">
         <Button
           size="sm"
           outlined
           className="knF-copy"
           onClick={copyList}
-          disabled={surface.state.kind !== "ready" || shown.length === 0}
-          title={
-            surface.state.kind !== "ready"
-              ? surface.state.kind === "loading"
-                ? "文档列表还在读取，还没有可复制的内容。"
-                : surface.state.kind === "unwired"
-                  ? "文档列表没读到（读口未接入或没有权限），没有可复制的内容。"
-                  : surface.state.kind === "login"
-                    ? "登录状态已经失效，这次没有读到文档列表，没有可复制的内容。"
-                    : "这次没有读到文档列表，没有可复制的内容。"
-              : shown.length === 0
-                ? filterKey !== ""
-                  ? `本地筛选没有留下行：这份列表里有 ${loaded} 份文档，按「${filter.trim()}」一条都没留下。不编行，也就没有可复制的清单。`
-                  : "接口回答里没有文档：这份列表是空的。不编行，也就没有可复制的清单。"
-                : "复制当前排序与筛选后在屏幕上的这些行：文档名 | 类型 | 大小 | 更新。屏上数据，不会再发请求。"
-          }
+          disabled={!knfGates.copy.enabled}
+          title={knfGates.copy.title}
           data-testid="knF-copy"
         >
           复制清单
         </Button>
+        <span className="knw5-sub" data-testid="knF-lines" title={knfGates.lines?.title}>
+          {knfGates.lines?.text ?? "—"}
+        </span>
         <span
-          className="knw5-sub"
-          data-testid="knF-lines"
-          title={shown.length > 0 ? undefined : "没有可见行时给「—」，不写 0 冒充空集。"}
-        >
-          {surface.state.kind === "ready" && shown.length > 0 ? `${shown.length} 行` : "—"}
-        </span>
+          data-testid="kn-gates-knF"
+          data-enabled={String(knfGates.copy.enabled)}
+          data-reason={knfGates.copy.reason ?? ""}
+          data-retry-enabled={String(knfGates.retry.enabled)}
+          data-export="absent"
+          className="knD-marker"
+          aria-hidden="true"
+        />
         <span className="knF-status" data-testid="knF-copy-status" aria-live="polite">
-          {knfNotice.status}
+          {knfGates.status}
         </span>
-        {knfNotice.fallback ? (
+        {knfGates.fallback ? (
           <textarea
             className="knF-fallback"
             data-testid="knF-fallback"
@@ -2226,6 +2514,8 @@ function DocumentNameSearch({
 }): ReactNode {
   const [draft, setDraft] = useState<{ from: string; text: string }>({ from: keyword, text: keyword });
   const text = draft.from === keyword ? draft.text : keyword;
+  // R65 — 折叠位是纯本地视图态：按组键存，不进 URL、不触发任何读取。
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   // The read happens once per refresh only: the keyword never re-triggers it,
   // because there is no server-side keyword filter to ask for.
   const surface = useSurface<DocRow>(
@@ -2274,12 +2564,15 @@ function DocumentNameSearch({
     );
   };
 
-  // 纠偏 OBS-6 — 状态句与兜底锚同门控于「真的能复制」。
-  const kngNotice = copyBlockNotice(
-    surface.state.kind === "ready" && shown.length > 0,
-    blockedCopyReason(surface.state.kind, needle !== "", "文档"),
+  // 收成单点 gates — knG 的 enabled/title/状态句/计数位/兜底由 faceGates 一次判出。
+  const kngGates = faceGates(
+    {
+      face: "knG",
+      state: gateStateOf(surface.state.kind, surface.state.kind === "unwired" && surface.state.denied),
+      rows: shown.length,
+      filterText: text.trim(),
+    },
     copyAct,
-    `已复制 ${shown.length} 条`,
   );
 
   return (
@@ -2368,16 +2661,56 @@ function DocumentNameSearch({
             </p>
           )
         }
-        render={(value) => (
-          <>
-            <SearchDocTable
-              rows={value.rows}
-              docLink={sdocLink}
-              openKey={openKey}
-              needle={text}
-              tabIndexFor={roving.tabIndexFor}
-            />
-            {openRow ? (
+        render={(value) => {
+          // R65 — 按所属空间分组：纯派生、组序=首现序、组内保持既有序；折叠的组不挂行，
+          // roving 的 tab 序始终等于可见行的 DOM 序。
+          const groups = groupRowsBySpace(value.rows);
+          let visibleBefore = 0;
+          return (
+            <>
+              {groups.map((group, gi) => {
+                const isCollapsed = collapsedGroups[group.key] === true;
+                const start = visibleBefore;
+                if (!isCollapsed) visibleBefore += group.rows.length;
+                const rowsId = `kn-group-rows-${gi + 1}`;
+                return (
+                  <div className="kn6-group" key={group.key} data-testid="kn6-group">
+                    <button
+                      type="button"
+                      className="kn-group-toggle"
+                      aria-expanded={!isCollapsed}
+                      aria-controls={rowsId}
+                      onClick={() =>
+                        setCollapsedGroups((cur) => ({ ...cur, [group.key]: !(cur[group.key] === true) }))
+                      }
+                      title={group.raw !== null ? `空间标识：${group.raw}` : "上游没有给出这个空间的标识"}
+                      data-testid="kn-group-toggle"
+                    >
+                      <span className="kn-group-header" data-testid="kn-group-header">
+                        {group.label ?? "—"}
+                      </span>
+                      <span className="kn-group-count" data-testid="kn-group-count">
+                        {group.rows.length} 项
+                      </span>
+                      <span className="kn-group-action" aria-hidden="true">
+                        {isCollapsed ? "展开" : "折叠"}
+                      </span>
+                    </button>
+                    <div id={rowsId} data-testid="kn-group-rows">
+                      {isCollapsed ? null : (
+                        <SearchDocTable
+                          rows={group.rows}
+                          docLink={sdocLink}
+                          openKey={openKey}
+                          needle={text}
+                          tabIndexFor={(index) => roving.tabIndexFor(start + index)}
+                        />
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              {openRow ? (
               <dl className="knw5-ref-detail" data-testid="kn6-search-detail" title={openRow.id || undefined}>
                 <div>
                   <dt>文档</dt>
@@ -2412,47 +2745,41 @@ function DocumentNameSearch({
                   <dd title={openRow.atHint ?? undefined}>{openRow.at}</dd>
                 </div>
               </dl>
-            ) : null}
-          </>
-        )}
+              ) : null}
+            </>
+          );
+        }}
       />
       </div>
-      {/* R62 — 复制条四态常在：disabled + 原因 title；计数格无行可数时给「—」。 */}
+      {/* 复制条四态常在；enabled/title/状态句/计数位/兜底全读 kngGates（单点，无本地措辞）。 */}
       <div className="knG-row" data-testid="knG-row">
         <Button
           size="sm"
           outlined
           className="knG-copy"
           onClick={copyHits}
-          disabled={surface.state.kind !== "ready" || shown.length === 0}
-          title={
-            surface.state.kind !== "ready"
-              ? surface.state.kind === "loading"
-                ? "文档列表还在读取，还没有可复制的结果。"
-                : surface.state.kind === "unwired"
-                  ? "文档列表没读到（读口未接入或没有权限），没有可复制的结果。"
-                  : surface.state.kind === "login"
-                    ? "登录状态已经失效，这次没有读到文档列表，没有可复制的结果。"
-                    : "这次没有读到文档列表，没有可复制的结果。"
-              : shown.length === 0
-                ? "当前没有可复制的结果"
-                : "复制当前检索词下的命中行：文档名 | 所属空间 | 类型 | 大小 | 更新。屏上数据，不会再发请求。"
-          }
+          disabled={!kngGates.copy.enabled}
+          title={kngGates.copy.title}
           data-testid="knG-copy"
         >
           复制结果
         </Button>
+        <span className="knw5-sub" data-testid="knG-lines" title={kngGates.lines?.title}>
+          {kngGates.lines?.text ?? "—"}
+        </span>
         <span
-          className="knw5-sub"
-          data-testid="knG-lines"
-          title={shown.length > 0 ? undefined : "没有命中可数时给「—」，不写 0 冒充空集。"}
-        >
-          {surface.state.kind === "ready" && shown.length > 0 ? `${shown.length} 条` : "—"}
-        </span>
+          data-testid="kn-gates-knG"
+          data-enabled={String(kngGates.copy.enabled)}
+          data-reason={kngGates.copy.reason ?? ""}
+          data-retry-enabled={String(kngGates.retry.enabled)}
+          data-export="absent"
+          className="knD-marker"
+          aria-hidden="true"
+        />
         <span className="knG-status" data-testid="knG-copy-status" aria-live="polite">
-          {kngNotice.status}
+          {kngGates.status}
         </span>
-        {kngNotice.fallback ? (
+        {kngGates.fallback ? (
           <textarea
             className="knG-fallback"
             data-testid="knG-copy-fallback"
@@ -2769,9 +3096,13 @@ export default function KnowledgeModulePage() {
   const spaceId = sp.get("space") ?? "";
   const openDoc = sp.get("doc") ?? "";
   const openSearchDoc = sp.get("sdoc") ?? "";
-  // 文档列表排序也只在地址里：刷新、粘贴 URL、前进后退都能复现，且换排序不再问服务。
-  const sortCol = docSortCol(sp.get("sort"));
-  const sortDir = docSortDir(sp.get("dir"));
+  // 文档列表排序只在地址里：刷新、粘贴 URL、前进后退都能复现，且换排序不再问服务。
+  // R66：本面自己的参数是 ksort/kdir；旧链里的 sort/dir 只读兜底（老地址继续生效），
+  // 清除只删 ksort/kdir、不动 sort/dir——两套键互不清除。
+  const sortCol = docSortCol(sp.get("ksort") ?? sp.get("sort"));
+  const sortDirRaw = sp.get("kdir") ?? sp.get("dir");
+  const sortDir: DocSortDir =
+    sortDirRaw !== null ? docSortDir(sortDirRaw) : sortCol === "updated" ? "desc" : docSortLandDir(sortCol);
   const [nonce, setNonce] = useState("0");
   const [deepCrumb, setDeepCrumb] = useState<DeepCrumb | null>(null);
   const reportCrumb = useCallback((next: DeepCrumb | null) => {
@@ -2802,6 +3133,8 @@ export default function KnowledgeModulePage() {
     // 排序只属于某个空间的文档列表；换页签就清掉，避免地址里残留用不上的排序参数。
     next.delete("sort");
     next.delete("dir");
+    next.delete("ksort");
+    next.delete("kdir");
     setSp(next);
   };
 
@@ -2856,12 +3189,22 @@ function containerQuery(key: string): HTMLElement | null {
     setSp(next);
   };
 
-  // 点同一列在升/降间翻转，点别的列落到它各自的默认方向；只改地址，不触发任何读取。
+  // 四态周期：点新列落到它的默认方向（落向）；同列再点翻向（翻转）；第三次点清除回默认口径。
+  // 默认态不写参数；清除只删 ksort/kdir，旧地址里带进来的 sort/dir 原样保留；q/面包屑等其余参数全程不动。
+  // 只改地址，不触发任何读取。
   const applySort = (col: DocSortCol) => {
     const next = new URLSearchParams(sp);
-    const dir: DocSortDir = col === sortCol ? (sortDir === "asc" ? "desc" : "asc") : docSortLandDir(col);
-    next.set("sort", col);
-    next.set("dir", dir);
+    if (col === sortCol && sortDir !== docSortLandDir(col)) {
+      // 已经翻过一次：第三点 = 清除
+      next.delete("ksort");
+      next.delete("kdir");
+    } else if (col === sortCol) {
+      next.set("ksort", col);
+      next.set("kdir", sortDir === "asc" ? "desc" : "asc");
+    } else {
+      next.set("ksort", col);
+      next.set("kdir", docSortLandDir(col));
+    }
     setSp(next);
   };
 
@@ -2873,6 +3216,20 @@ function containerQuery(key: string): HTMLElement | null {
     // Rows stay mounted while the drawer closes, so focus can go back in this tick.
     const anchor = containerQuery(key);
     anchor?.focus();
+  };
+
+  // R67 — 静默版：开行内预览时用它关抽屉——只删 doc=，焦点留在预览钮，不抢回行。
+  const closeDocQuietly = () => {
+    const next = new URLSearchParams(sp);
+    next.delete("doc");
+    setSp(next);
+  };
+
+  // R68 — 开空间行内预览时静默收掉检索行内展开：只删 sdoc=，不抢焦点。
+  const closeSdocQuietly = () => {
+    const next = new URLSearchParams(sp);
+    next.delete("sdoc");
+    setSp(next);
   };
 
   const backLink = (() => {
@@ -3021,6 +3378,8 @@ function containerQuery(key: string): HTMLElement | null {
                       keyword={query}
                       onCommitKeyword={commitKeyword}
                       onClearKeyword={clearKeyword}
+                      sdocOpen={openSearchDoc !== ""}
+                      onCloseSdoc={closeSdocQuietly}
                     />
                   ) : (
                     <SpaceDetailSurface
@@ -3034,6 +3393,7 @@ function containerQuery(key: string): HTMLElement | null {
                       dir={sortDir}
                       onSort={applySort}
                       onCloseDoc={closeDocDrawer}
+                    onCloseDocQuietly={closeDocQuietly}
                     />
                   )}
                   <SourceFreshness />

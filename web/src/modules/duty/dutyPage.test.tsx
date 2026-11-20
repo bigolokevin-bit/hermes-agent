@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, useSearchParams } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api-error";
@@ -12,6 +12,8 @@ vi.mock("@/lib/api", () => ({
 }));
 
 import DutyPage from "./DutyPage";
+import { dutyGates } from "./dutyGates";
+import { runsCaliber } from "./runsCaliber";
 import MatrixView from "./MatrixView";
 
 let container: HTMLDivElement;
@@ -129,7 +131,7 @@ describe("DutyPage", () => {
     fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
     await render(<DutyPage />);
     const text = container.textContent ?? "";
-    for (const title of ["可上岗", "今日运行", "今日成本", "近 14 天运行", "24 小时活跃", "阻塞", "待我处理", "最近运行"]) {
+    for (const title of ["可上岗", "今日运行", "今日成本", "近 14 天运行", "近 14 天活跃", "阻塞", "待我处理", "最近运行"]) {
       expect(text).toContain(title);
     }
     expect(container.querySelectorAll('[data-card="duty"]')).toHaveLength(8);
@@ -373,5 +375,659 @@ describe("DutyPage refresh", () => {
     await act(async () => {});
     expect(container.querySelector('[data-testid="duty-refresh-error"]')).toBeNull();
     expect(container.querySelector('[data-testid="duty-updated-at"]')).toBeTruthy();
+  });
+});
+
+describe("DutyPage action gates", () => {
+  const btn = (sel: string) => container.querySelector(sel) as HTMLButtonElement | null;
+
+  it("derives one matrix for refresh, retry, copy and links", () => {
+    const loading = dutyGates({ loading: true, refreshing: false, allFailed: false });
+    expect(loading.refresh.enabled).toBe(true);
+    expect(loading.retry.enabled).toBe(true);
+    expect(loading.copy.enabled).toBe(false);
+    expect(loading.copy.title).toContain("还在读取");
+    expect(loading.link.enabled).toBe(true);
+
+    const ready = dutyGates({ loading: false, refreshing: false, allFailed: false });
+    expect(ready.retry.enabled && ready.copy.enabled && ready.refresh.enabled).toBe(true);
+
+    const busy = dutyGates({ loading: false, refreshing: true, allFailed: false });
+    expect(busy.refresh.enabled).toBe(true);
+    expect(busy.retry.enabled).toBe(false);
+    expect(busy.copy.enabled).toBe(false);
+    expect(busy.retry.title).toContain("更新中");
+
+    const down = dutyGates({ loading: false, refreshing: false, allFailed: true });
+    expect(down.refresh.enabled).toBe(true);
+    expect(down.copy.enabled).toBe(false);
+    expect(down.copy.title).toContain("整页");
+  });
+
+  it("keeps refresh clickable while the first read is still running", async () => {
+    let release: (() => void) | null = null;
+    fetchJSON.mockImplementation(
+      (url: string) =>
+        new Promise((resolve) => {
+          if (url.includes("/employees?") && !release) {
+            release = () => resolve(ok(url));
+            return;
+          }
+          resolve(ok(url));
+        }),
+    );
+    await act(async () => {
+      root.render(<MemoryRouter><DutyPage /></MemoryRouter>);
+    });
+    await act(async () => {});
+    const refresh = btn('[data-testid="duty-refresh"]');
+    expect(refresh).toBeTruthy();
+    expect(refresh?.disabled).toBe(false);
+    expect(container.querySelector('[data-testid="ov6-rid-copy"]')).toBeNull();
+    await act(async () => {
+      release?.();
+    });
+    await act(async () => {});
+  });
+
+  it("leaves a single failed card retryable and copyable while other cards keep their numbers", async () => {
+    fetchJSON.mockImplementation((url: string) => {
+      if (url.includes("/budget-usage")) {
+        return Promise.reject(new ApiError("budget source down", { status: 500, body: "", url, requestId: "req-gate-1" }));
+      }
+      return Promise.resolve(ok(url));
+    });
+    await render(<DutyPage />);
+    const refresh = btn('[data-testid="duty-refresh"]');
+    expect(refresh?.disabled).toBe(false);
+    const retries = [...container.querySelectorAll("button")].filter((b) => b.textContent?.includes("重试"));
+    expect(retries.length).toBeGreaterThan(0);
+    expect(retries.every((b) => !(b as HTMLButtonElement).disabled)).toBe(true);
+    const copy = btn('[data-testid="ov6-rid-copy"]');
+    expect(copy).toBeTruthy();
+    expect(copy?.disabled).toBe(false);
+    expect(container.querySelector('[data-testid="ov6-kpi-runs"]')?.textContent).toContain("2");
+  });
+
+  it("keeps refresh as the way back when every block failed, and holds the copies", async () => {
+    fetchJSON.mockImplementation((url: string) =>
+      Promise.reject(new ApiError("all down", { status: 502, body: "", url, requestId: "req-gate-all" })),
+    );
+    await render(<DutyPage />);
+    expect(btn('[data-testid="duty-refresh"]')?.disabled).toBe(false);
+    const copies = [...container.querySelectorAll('[data-testid="ov6-rid-copy"]')] as HTMLButtonElement[];
+    expect(copies.length).toBeGreaterThan(0);
+    expect(copies.every((c) => c.disabled)).toBe(true);
+    expect(copies[0].title).toContain("整页");
+  });
+
+  it("while a refresh is in flight, retry and copy are held with one reason and a second press is swallowed", async () => {
+    let hold = false;
+    let release: (() => void) | null = null;
+    const urls: string[] = [];
+    fetchJSON.mockImplementation((url: string) => {
+      urls.push(url);
+      if (url.includes("/budget-usage")) {
+        return Promise.reject(new ApiError("budget source down", { status: 500, body: "", url, requestId: "req-gate-2" }));
+      }
+      if (hold && url.includes("/workbench/summary")) {
+        hold = false;
+        return new Promise((resolve) => {
+          release = () => resolve(ok(url));
+        });
+      }
+      return Promise.resolve(ok(url));
+    });
+    await render(<DutyPage />);
+    const before = urls.length;
+    hold = true;
+    await act(async () => {
+      btn('[data-testid="duty-refresh"]')?.click();
+    });
+    await act(async () => {});
+    expect(btn('[data-testid="duty-refresh"]')?.getAttribute("aria-busy")).toBe("true");
+    const mid = urls.length;
+    await act(async () => {
+      btn('[data-testid="duty-refresh"]')?.click();
+    });
+    await act(async () => {});
+    expect(urls.length).toBe(mid);
+    const retry = [...container.querySelectorAll("button")].find((b) => b.textContent?.includes("重试"));
+    expect((retry as HTMLButtonElement).disabled).toBe(true);
+    expect(retry?.getAttribute("title")).toContain("更新中");
+    const copy = btn('[data-testid="ov6-rid-copy"]');
+    expect(copy?.disabled).toBe(true);
+    expect(copy?.getAttribute("title")).toContain("更新中");
+    await act(async () => {
+      release?.();
+    });
+    await act(async () => {});
+    expect(urls.length).toBeGreaterThan(before);
+  });
+});
+
+describe("DutyPage trend accessibility", () => {
+  const q = (sel: string) => container.querySelector(sel);
+  const click = async (el: Element | null) => {
+    await act(async () => {
+      (el as HTMLElement).click();
+    });
+  };
+
+  it("summarises the very buckets the chart draws, with a described figure", async () => {
+    fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
+    await render(<DutyPage />);
+    const figure = q('[data-testid="duty-trend-figure"]');
+    expect(figure?.getAttribute("role")).toBe("img");
+    expect(figure?.getAttribute("aria-describedby")).toBe("duty-trend-summary");
+    const summary = q('[data-testid="duty-trend-summary"]')?.textContent ?? "";
+    expect(summary).toContain("首日 11/17 1 次");
+    // metAG-style caliber: the third day came back without a value, so it keeps
+    // its slot on the axis and its reading is «—», not 0 or the previous day.
+    expect(summary).toContain("末日 11/19");
+    expect(q('[data-testid="duty-trend-last"]')?.textContent).toBe("—");
+    expect(summary).toContain("峰值 11/18 2 次");
+    expect(summary).toContain("最低 11/17 1 次");
+    expect(q('[data-testid="duty-trend-total"]')?.textContent).toBe("3");
+    expect(q('[data-testid="ov6-trend"] .duty-num')?.textContent).toContain("3");
+  });
+
+  it("opens and closes the table on a native button without a single new request", async () => {
+    const urls: string[] = [];
+    fetchJSON.mockImplementation((url: string) => {
+      urls.push(url);
+      return Promise.resolve(ok(url));
+    });
+    await render(<DutyPage />);
+    const before = urls.length;
+    const toggle = q('[data-testid="duty-trend-table-toggle"]');
+    expect(toggle?.tagName).toBe("BUTTON");
+    expect(toggle?.getAttribute("aria-expanded")).toBe("false");
+    expect(toggle?.getAttribute("aria-controls")).toBe("duty-trend-table");
+    expect(q('[data-testid="duty-trend-table"]')).toBeNull();
+    await click(toggle);
+    expect(toggle?.getAttribute("aria-expanded")).toBe("true");
+    const table = q('[data-testid="duty-trend-table"]');
+    expect(table).not.toBeNull();
+    expect(table?.querySelector("caption")?.textContent).toContain("北京时间");
+    expect([...table!.querySelectorAll("th")].map((th) => th.getAttribute("scope"))).toEqual(["col", "col"]);
+    expect(table!.querySelectorAll("tbody tr")).toHaveLength(3);
+    expect(urls.length).toBe(before);
+    await click(toggle);
+    expect(toggle?.getAttribute("aria-expanded")).toBe("false");
+    expect(q('[data-testid="duty-trend-table"]')).toBeNull();
+  });
+
+  it("says the window is empty and still offers an empty table instead of summing to zero", async () => {
+    fetchJSON.mockImplementation((url: string) => {
+      if (url.includes("/workbench/timeseries")) {
+        return Promise.resolve({ asOf: WB_ASOF, available: true, points: [], totals: null });
+      }
+      return Promise.resolve(ok(url));
+    });
+    await render(<DutyPage />);
+    expect(q('[data-testid="duty-trend-summary"]')?.textContent).toContain("该区间没有运行记录");
+    await click(q('[data-testid="duty-trend-table-toggle"]'));
+    const table = q('[data-testid="duty-trend-table"]');
+    expect(table?.querySelectorAll("tbody tr")).toHaveLength(0);
+    expect(q('[data-testid="duty-trend-table-empty"]')?.textContent).toContain("没有可列出的行");
+  });
+
+  it("shows four dashes with the failure reason when the trend source is down", async () => {
+    fetchJSON.mockImplementation((url: string) => {
+      if (url.includes("/workbench/timeseries")) {
+        return Promise.reject(new ApiError("trend down", { status: 500, body: "{}", url, requestId: "req-trend-1" }));
+      }
+      return Promise.resolve(ok(url));
+    });
+    await render(<DutyPage />);
+    for (const id of ["first", "last", "peak", "low", "total"]) {
+      expect(q(`[data-testid="duty-trend-${id}"]`)?.textContent).toBe("—");
+    }
+    const title = q('[data-testid="duty-trend-summary"]')?.getAttribute("title") ?? "";
+    expect(title).toContain("req-trend-1");
+    expect(title).toContain("不把缺数当 0");
+    expect(q('[data-testid="ov6-kpi-runs"]')?.textContent).toContain("2");
+  });
+});
+
+function RangeProbe() {
+  const [params] = useSearchParams();
+  return <span data-testid="duty-range-loc">{params.toString()}</span>;
+}
+
+describe("DutyPage time range", () => {
+  const q = (sel: string) => container.querySelector(sel);
+
+  it("writes the chosen range to the address and restores it from a pasted link", async () => {
+    fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
+    await act(async () => {
+      root.render(
+        <MemoryRouter initialEntries={["/?range=30d"]}>
+          <DutyPage />
+          <RangeProbe />
+        </MemoryRouter>,
+      );
+    });
+    await act(async () => {});
+    expect(q('[data-testid="duty-range-30d"]')?.getAttribute("aria-pressed")).toBe("true");
+    expect(container.textContent).toContain("近 30 天运行");
+    expect(q('[data-testid="duty-range-loc"]')?.textContent).toBe("range=30d");
+    await act(async () => {
+      (q('[data-testid="duty-range-14d"]') as HTMLButtonElement).click();
+    });
+    await act(async () => {});
+    expect(q('[data-testid="duty-range-loc"]')?.textContent).toBe("");
+  });
+
+  it("offers four real range buttons and the default 14d window drives both time reads", async () => {
+    const urls: string[] = [];
+    fetchJSON.mockImplementation((url: string) => {
+      urls.push(url);
+      return Promise.resolve(ok(url));
+    });
+    await render(<DutyPage />);
+    for (const id of ["24h", "7d", "14d", "30d"]) {
+      expect(q(`[data-testid="duty-range-${id}"]`)).toBeTruthy();
+    }
+    expect(q('[data-testid="duty-range-14d"]')?.getAttribute("aria-pressed")).toBe("true");
+    expect(q('[data-testid="duty-range-7d"]')?.getAttribute("aria-pressed")).toBe("false");
+    expect(urls.filter((u) => u.includes("/workbench/timeseries")).length).toBe(1);
+    expect(urls.some((u) => u.includes("/workbench/timeseries") && u.includes("range=30d"))).toBe(true);
+    expect(urls.some((u) => u.includes("/run-activity") && u.includes("weeks=2"))).toBe(true);
+  });
+
+  it("switching to 7d re-reads only the two time-dependent readers, once each", async () => {
+    const urls: string[] = [];
+    fetchJSON.mockImplementation((url: string) => {
+      urls.push(url);
+      return Promise.resolve(ok(url));
+    });
+    await render(<DutyPage />);
+    const initial = urls.length;
+    await act(async () => {
+      (q('[data-testid="duty-range-7d"]') as HTMLButtonElement).click();
+    });
+    await act(async () => {});
+    const added = urls.slice(initial);
+    expect(added.filter((u) => u.includes("/workbench/timeseries")).length).toBe(1);
+    expect(added.find((u) => u.includes("/workbench/timeseries"))).toContain("range=7d");
+    expect(added.filter((u) => u.includes("/run-activity")).length).toBe(1);
+    expect(added.find((u) => u.includes("/run-activity"))).toContain("weeks=1");
+    for (const path of ["/employees", "/employee-stats", "/workbench/queue", "/budget-usage", "/tasks"]) {
+      expect(added.some((u) => u.includes(path))).toBe(false);
+    }
+    expect(q('[data-testid="duty-range-7d"]')?.getAttribute("aria-pressed")).toBe("true");
+    expect(q('[data-testid="duty-range-14d"]')?.getAttribute("aria-pressed")).toBe("false");
+    expect(container.textContent).toContain("近 7 天运行");
+  });
+
+  it("drops a late answer from the previous window", async () => {
+    const pending: { range: string; resolve: () => void }[] = [];
+    fetchJSON.mockImplementation((url: string) => {
+      if (url.includes("/workbench/timeseries")) {
+        const range = /range=([^&]+)/.exec(url)?.[1] ?? "";
+        if (range === "7d" || range === "30d") {
+          const value = range === "7d" ? 7 : 30;
+          return new Promise((resolve) => {
+            pending.push({
+              range,
+              resolve: () =>
+                resolve({
+                  asOf: WB_ASOF,
+                  points: [{ ts: "2026-11-18T00:00:00.000Z", label: "11-18", value }],
+                  totals: { metric: "runs", value },
+                }),
+            });
+          });
+        }
+      }
+      return Promise.resolve(ok(url));
+    });
+    await render(<DutyPage />);
+    await act(async () => {
+      (q('[data-testid="duty-range-7d"]') as HTMLButtonElement).click();
+    });
+    await act(async () => {
+      (q('[data-testid="duty-range-30d"]') as HTMLButtonElement).click();
+    });
+    // Resolve the stale 7d batch first: it must not paint over the 30d window.
+    await act(async () => {
+      pending.find((p) => p.range === "7d")?.resolve();
+    });
+    await act(async () => {
+      pending.find((p) => p.range === "30d")?.resolve();
+    });
+    expect(q('[data-testid="duty-trend-total"]')?.textContent).toBe("30");
+    expect(container.textContent).toContain("近 30 天运行");
+  });
+});
+
+describe("DutyPage runs caliber", () => {
+  const q = (sel: string) => container.querySelector(sel);
+
+  it("shows this card's value, both read paths and the batch stamp without extra requests", async () => {
+    fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
+    await render(<DutyPage />);
+    const before = fetchJSON.mock.calls.length;
+    const line = q('[data-testid="duty-runs-caliber"]');
+    expect(line).not.toBeNull();
+    expect(q('[data-testid="duty-runs-value"]')?.textContent).toBe("2");
+    expect(q('[data-testid="ov6-kpi-runs"]')?.textContent).toContain("2");
+    expect(q('[data-testid="duty-runs-asof"]')?.textContent).toBe("2026-11-18 14:00");
+    const text = line?.textContent ?? "";
+    expect(text).toContain("workbench/summary?range=1d");
+    expect(text).toContain("/api/run-stats");
+    expect(q('[data-testid="duty-runs-verdict"]')?.textContent).toContain("不在本页取");
+    const title = line?.getAttribute("title") ?? "";
+    expect(title).toContain("workbench/summary?range=1d");
+    expect(title).toContain("/api/run-stats");
+    expect(title).toContain("不另发请求");
+    expect(fetchJSON.mock.calls.length).toBe(before);
+  });
+
+  it("keeps the three verdicts apart in the pure helper", () => {
+    const equal = runsCaliber({ duty: 3, metrics: 3, dutyAsOfText: "2026-11-18 14:00" });
+    expect(equal.verdict).toBe("equal");
+    expect(equal.compare).toBe("与 /metrics 同源一致（3）");
+
+    const diff = runsCaliber({ duty: 3, metrics: 5, dutyAsOfText: "2026-11-18 14:00" });
+    expect(diff.verdict).toBe("different");
+    expect(diff.compare).toBe("本卡 3 · /metrics 5｜口径不同，见 title");
+
+    const missing = runsCaliber({ duty: null, metrics: null, dutyAsOfText: "—" });
+    expect(missing.verdict).toBe("missing");
+    expect(missing.compare).toContain("没读到运行数");
+    expect(missing.title).toContain("不当作 0");
+  });
+});
+
+describe("DutyPage caliber notes", () => {
+  const q = (sel: string) => container.querySelector(sel);
+
+  it("stays collapsed by default and does not fire a request", async () => {
+    fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
+    await render(<DutyPage />);
+    const before = fetchJSON.mock.calls.length;
+    const toggle = q('[data-testid="duty-notes-toggle"]') as HTMLButtonElement | null;
+    expect(toggle).not.toBeNull();
+    expect(toggle?.getAttribute("aria-expanded")).toBe("false");
+    expect(toggle?.getAttribute("aria-controls")).toBe("duty-notes-body");
+    expect(q('[data-testid="duty-notes-body"]')).toBeNull();
+    expect(q('[data-testid="duty-note-today-runs"]')).toBeNull();
+    expect(fetchJSON.mock.calls.length).toBe(before);
+  });
+
+  it("opens eight rows of area · path · scope · missing and closes again for free", async () => {
+    fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
+    await render(<DutyPage />);
+    const before = fetchJSON.mock.calls.length;
+    await act(async () => {
+      (q('[data-testid="duty-notes-toggle"]') as HTMLButtonElement).click();
+    });
+    const toggle = q('[data-testid="duty-notes-toggle"]');
+    expect(toggle?.getAttribute("aria-expanded")).toBe("true");
+    const keys = [
+      "today-runs",
+      "trend",
+      "readiness",
+      "cost",
+      "recent-runs",
+      "pending",
+      "blockers",
+      "matrix",
+    ];
+    for (const key of keys) {
+      const row = q(`[data-testid="duty-note-${key}"]`);
+      expect(row).not.toBeNull();
+      const text = row?.textContent ?? "";
+      expect(text).toContain("·");
+      expect(text).toMatch(/「—」|「待核实」|「该区间没有运行记录」/);
+    }
+    expect(q('[data-testid="duty-note-today-runs"]')?.textContent).toContain(
+      "workbench/summary?range=1d",
+    );
+    expect(q('[data-testid="duty-note-matrix"]')?.textContent).toContain("待核实");
+    expect(fetchJSON.mock.calls.length).toBe(before);
+    await act(async () => {
+      (q('[data-testid="duty-notes-toggle"]') as HTMLButtonElement).click();
+    });
+    expect(q('[data-testid="duty-notes-body"]')).toBeNull();
+    expect(fetchJSON.mock.calls.length).toBe(before);
+  });
+});
+
+describe("DutyPage card drill links", () => {
+  it("gives every card a real anchor to a route that exists", async () => {
+    fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
+    await render(<DutyPage />);
+    const expected: Array<[string, string]> = [
+      ["duty-route-readiness", "/employees"],
+      ["duty-route-today-runs", "/runs"],
+      ["duty-route-trend", "/runs"],
+      ["duty-route-cost", "/metrics"],
+      ["duty-route-pending", "/approvals"],
+      ["duty-route-blockers", "/work"],
+    ];
+    for (const [testid, href] of expected) {
+      const el = container.querySelector(`[data-testid="${testid}"]`) as HTMLAnchorElement | null;
+      expect(el, testid).not.toBeNull();
+      expect(el!.tagName).toBe("A");
+      expect(el!.getAttribute("href")).toBe(href);
+      expect(el!.getAttribute("onclick")).toBeNull();
+    }
+    const blockers = container.querySelector('[data-testid="duty-route-blockers"]') as HTMLAnchorElement;
+    expect(blockers.getAttribute("title")).toContain("不接受 status 筛选");
+  });
+
+  it("keeps the drill links when the card data fails and never strands the reader", async () => {
+    fetchJSON.mockImplementation((url: string) => {
+      if (url.includes("/workbench/summary")) {
+        return Promise.reject(new ApiError("boom", { status: 500, body: "", url, requestId: "req-drill-1" }));
+      }
+      return Promise.resolve(ok(url));
+    });
+    await render(<DutyPage />);
+    expect(container.textContent).toContain("请求编号");
+    const link = container.querySelector('[data-testid="duty-route-today-runs"]') as HTMLAnchorElement | null;
+    expect(link).not.toBeNull();
+    expect(link!.getAttribute("href")).toBe("/runs");
+  });
+
+  it("adds no request of its own", async () => {
+    fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
+    await render(<DutyPage />);
+    const calls = fetchJSON.mock.calls.length;
+    await act(async () => {});
+    await new Promise((r) => setTimeout(r, 30));
+    expect(fetchJSON.mock.calls.length).toBe(calls);
+  });
+
+  it("links the matrix view to the capabilities page", async () => {
+    fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
+    await render(<MatrixView />);
+    const link = container.querySelector('[data-testid="duty-route-matrix"]') as HTMLAnchorElement | null;
+    expect(link).not.toBeNull();
+    expect(link!.tagName).toBe("A");
+    expect(link!.getAttribute("href")).toBe("/capabilities");
+  });
+});
+
+describe("DutyPage refresh delta summary", () => {
+  type Phase = { runs: number; cost: number; pending: number; trend: number; blocked: number; costFail?: boolean };
+  const basePhase: Phase = { runs: 2, cost: 1.5, pending: 1, trend: 3, blocked: 1 };
+
+  function wire(phase: Phase) {
+    fetchJSON.mockImplementation((url: string) => {
+      if (url.includes("/budget-usage")) {
+        if (phase.costFail) {
+          return Promise.reject(new ApiError("boom", { status: 500, body: "", url, requestId: "req-delta-1" }));
+        }
+        return Promise.resolve({ items: [{ employeeId: "emp_1", costUsd: phase.cost }], missingEmployeeIds: [] });
+      }
+      if (url.includes("/workbench/summary")) {
+        return Promise.resolve({
+          asOf: WB_ASOF,
+          asOfSource: "bff-aggregation-read-time",
+          available: true,
+          degraded: [],
+          kpis: [
+            { key: "runs", label: "运行数", unit: "次", value: phase.runs, available: true },
+            { key: "costUsd", label: "成本", unit: "USD", value: phase.cost, available: true },
+            { key: "pendingApprovals", label: "待审批", unit: "条", value: phase.pending, available: true },
+          ],
+        });
+      }
+      if (url.includes("/workbench/queue")) {
+        return Promise.resolve({
+          asOf: WB_ASOF,
+          asOfSource: "bff-read-time",
+          available: true,
+          total: phase.pending,
+          items: [],
+          degraded: [],
+        });
+      }
+      if (url.includes("/workbench/timeseries")) {
+        return Promise.resolve({
+          asOf: WB_ASOF,
+          asOfSource: "bff-read-time",
+          available: true,
+          points: [{ ts: "2026-11-18T00:00:00.000Z", label: "11-18", value: phase.trend }],
+          totals: { metric: "runs", value: phase.trend },
+        });
+      }
+      if (url.includes("/approval-stats")) return Promise.resolve({ pending: phase.pending, dueSoon: 0 });
+      if (url.includes("/tasks")) {
+        return Promise.resolve({
+          items: Array.from({ length: phase.blocked }, (_, i) => ({ taskId: `tsk_${i}`, title: "整理周报", status: "blocked" })),
+        });
+      }
+      return Promise.resolve(ok(url));
+    });
+  }
+
+  async function clickRefresh() {
+    const button = container.querySelector('[data-testid="duty-refresh"]') as HTMLButtonElement;
+    await act(async () => {
+      button.click();
+    });
+    await act(async () => {});
+    await new Promise((r) => setTimeout(r, 20));
+    await act(async () => {});
+  }
+
+  it("lists at most three changed cards and counts the rest", async () => {
+    const phase: Phase = { ...basePhase };
+    wire(phase);
+    await render(<DutyPage />);
+    expect(container.querySelector('[data-testid="duty-changed"]')).toBeNull();
+    phase.runs = 5;
+    phase.cost = 4;
+    phase.pending = 0;
+    phase.trend = 9;
+    phase.blocked = 3;
+    await clickRefresh();
+    const line = container.querySelector('[data-testid="duty-changed"]') as HTMLParagraphElement;
+    expect(line).not.toBeNull();
+    expect(line.getAttribute("aria-live")).toBe("polite");
+    expect(line.textContent).toContain("今日运行 2 → 5");
+    expect(line.textContent).toContain("今日成本 $1.50 → $4.00");
+    expect(line.textContent).toContain("待我处理 1 → 0");
+    expect(line.querySelectorAll("[data-testid^='duty-changed-']")).toHaveLength(4);
+    expect(container.querySelector('[data-testid="duty-changed-more"]')?.textContent).toContain("另有 2 项变化");
+    expect(line.textContent).not.toContain("区间运行");
+  });
+
+  it("renders nothing when a refresh brings the same readings", async () => {
+    wire({ ...basePhase });
+    await render(<DutyPage />);
+    await clickRefresh();
+    expect(container.querySelector('[data-testid="duty-changed"]')).toBeNull();
+  });
+
+  it("leaves a failed card out instead of reporting a drop to zero", async () => {
+    const phase: Phase = { ...basePhase };
+    wire(phase);
+    await render(<DutyPage />);
+    phase.runs = 5;
+    phase.costFail = true;
+    await clickRefresh();
+    expect(container.querySelector('[data-testid="duty-changed-cost"]')).toBeNull();
+    expect(container.querySelector('[data-testid="duty-changed-today-runs"]')?.textContent).toContain("2 → 5");
+    expect(container.querySelector('[data-testid="duty-changed"]')?.textContent).not.toContain("$0.00");
+  });
+
+  it("resets the baseline when the time range changes", async () => {
+    const phase: Phase = { ...basePhase };
+    wire(phase);
+    await render(<DutyPage />);
+    phase.runs = 5;
+    await clickRefresh();
+    expect(container.querySelector('[data-testid="duty-changed"]')).not.toBeNull();
+    const range = container.querySelector('[data-testid="duty-range-7d"]') as HTMLButtonElement;
+    await act(async () => {
+      range.click();
+    });
+    await act(async () => {});
+    await new Promise((r) => setTimeout(r, 20));
+    await act(async () => {});
+    expect(container.querySelector('[data-testid="duty-changed"]')).toBeNull();
+  });
+});
+
+describe("DutyPage timeseries range contract", () => {
+  const q = (sel: string) => container.querySelector(sel);
+  async function until(cond: () => boolean, label: string) {
+    for (let i = 0; i < 120; i += 1) {
+      if (cond()) return;
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 10));
+      });
+    }
+    throw new Error(`timeout: ${label}`);
+  }
+
+  it("only ever asks the workbench reader for a range it accepts", async () => {
+    const calls: string[] = [];
+    fetchJSON.mockImplementation((url: string) => {
+      calls.push(url);
+      return Promise.resolve(ok(url));
+    });
+    await render(<DutyPage />);
+    await until(() => calls.length > 0, "requests");
+    const series = calls.filter((u) => u.includes("/workbench/timeseries"));
+    expect(series.length).toBeGreaterThan(0);
+    for (const url of series) {
+      const qs = new URLSearchParams(url.split("?")[1] ?? "");
+      expect(["24h", "1d", "7d", "30d"]).toContain(qs.get("range"));
+      expect(qs.get("bucket")).toBe("day");
+      expect(["runs", "failed", "costUsd"]).toContain(qs.get("metric"));
+    }
+  });
+
+  it("keeps the last 14 buckets of the 30 day answer and recomputes the total", async () => {
+    const points = Array.from({ length: 30 }, (_, i) => ({
+      ts: `2026-11-${String(i + 1).padStart(2, "0")}T00:00:00.000Z`,
+      label: `11/${i + 1}`,
+      value: 1,
+    }));
+    fetchJSON.mockImplementation((url: string) => {
+      if (url.includes("/workbench/timeseries")) {
+        return Promise.resolve({ asOf: WB_ASOF, available: true, points, totals: { metric: "runs", value: 30 } });
+      }
+      return Promise.resolve(ok(url));
+    });
+    await render(<DutyPage />);
+    await until(() => q('[data-testid="duty-trend-total"]') !== null, "summary");
+    expect(q('[data-testid="duty-trend-total"]')?.textContent).toBe("14");
+    const toggle = q('[data-testid="duty-trend-table-toggle"]') as HTMLButtonElement;
+    await act(async () => {
+      toggle.click();
+    });
+    await act(async () => {});
+    const rows = q('[data-testid="duty-trend-table"]')?.querySelectorAll("tbody tr") ?? [];
+    expect(rows.length).toBe(14);
+    expect(rows[0].textContent).toContain("11/17");
   });
 });

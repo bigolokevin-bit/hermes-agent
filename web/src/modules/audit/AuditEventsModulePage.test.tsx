@@ -3929,3 +3929,1159 @@ describe("audM - the way back keeps the place and the row", () => {
     expect(spy.scrollTo).toHaveLength(0);
   });
 });
+
+/**
+ * audN — 列排序（本地）。断言的是：三态循环（升→降→清除）与地址键 `?asort`/`?adir`、
+ * 键盘 Enter/Space 可触发、aria-sort 三态、缺值恒排末、排序与其它地址键组合可复现、
+ * 点表头零新请求、游标栈与页码不因排序变动、导出行序与表体逐行一致（两组对照），
+ * 以及四态下控件 disabled 并写明原因。
+ */
+describe("audN - the columns sort locally, and say so", () => {
+  const ROW = (id: string, displayName: string, handle: string, occurredAt: string, rid: string): unknown => ({
+    eventId: id,
+    action: "task.created",
+    occurredAt,
+    outcome: "succeeded",
+    actor: { type: "human", id: handle, displayName },
+    resource: { type: "task", id: `ts_${id}` },
+    requestId: rid,
+  });
+  const SET = {
+    items: [
+      ROW("evt_n1", "阿朱", "user:aaa0000000000001", "2026-11-19T01:20:00Z", "req-n1"),
+      ROW("evt_n2", "李思", "user:bbb0000000000002", "2026-11-18T01:20:00Z", "req-n2"),
+      // no actor at all: must stay last in both directions
+      { eventId: "evt_n3", action: "run.failed", occurredAt: "2026-11-17T01:20:00Z", outcome: "error" },
+      ROW("evt_n4", "白一", "user:ccc0000000000004", "2026-11-20T01:20:00Z", "req-n4"),
+    ],
+    nextCursor: "cur_page2",
+  };
+
+  const head = (col: string): Element | null => document.querySelector(`[data-testid='aud-sort-head-${col}']`);
+  const sortStateOf = (): Array<string | null> =>
+    ["time", "actor", "action", "resource"].map((col) => head(col)?.getAttribute("aria-sort") ?? null);
+  const rowOrder = (): string[] =>
+    [...document.querySelectorAll("[data-testid^='aud01-row-']")].map(
+      (node) => (node.getAttribute("data-testid") ?? "").replace("aud01-row-", ""),
+    );
+
+  function stubDownload(): { name: () => string; lines: () => string[] } {
+    const bodies: string[] = [];
+    const realBlob = window.Blob;
+    const realCreate = URL.createObjectURL;
+    const realRevoke = URL.revokeObjectURL;
+    let fileName = "";
+    const spy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      fileName = this.download;
+    });
+    class SpyBlob extends realBlob {
+      constructor(parts: BlobPart[], options?: BlobPropertyBag) {
+        super(parts, options);
+        bodies.push(String(parts[0] ?? ""));
+      }
+    }
+    window.Blob = SpyBlob as unknown as typeof Blob;
+    URL.createObjectURL = vi.fn(() => "blob:aud-n") as unknown as typeof URL.createObjectURL;
+    URL.revokeObjectURL = vi.fn() as unknown as typeof URL.revokeObjectURL;
+    downloadCleanups.push(() => {
+      window.Blob = realBlob;
+      URL.createObjectURL = realCreate;
+      URL.revokeObjectURL = realRevoke;
+      spy.mockRestore();
+    });
+    return {
+      name: () => fileName,
+      lines: () => (bodies[bodies.length - 1] ?? "").replace(/^\uFEFF/, "").split("\r\n").filter((line) => line !== ""),
+    };
+  }
+  const downloadCleanups: Array<() => void> = [];
+  afterEach(() => {
+    for (const restore of downloadCleanups.splice(0)) restore();
+  });
+
+  async function mountSorted(entry: string): Promise<void> {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async () => SET);
+    await render(entry, <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await waitFor(() => !skeleton(), "first page settled");
+  }
+
+  async function pickHeader(col: string): Promise<void> {
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>(`[data-testid='aud-sort-button-${col}']`)?.click();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+  }
+
+  it("the cycle is ascending, descending, then cleared — in the address and in aria-sort", async () => {
+    await mountSorted("/audit?window=7d");
+    expect(sortStateOf()).toEqual(["none", "none", "none", "none"]);
+    expect(rowOrder()).toEqual(["evt_n1", "evt_n2", "evt_n3", "evt_n4"]);
+    expect(document.querySelector("[data-testid='aud-sort-status']")!.textContent).toContain("服务给的回行顺序");
+
+    await pickHeader("time");
+    expect(locationText()).toContain("asort=time");
+    expect(locationText()).toContain("adir=asc");
+    expect(sortStateOf()).toEqual(["ascending", "none", "none", "none"]);
+    expect(rowOrder()).toEqual(["evt_n3", "evt_n2", "evt_n1", "evt_n4"]);
+
+    await pickHeader("time");
+    expect(locationText()).toContain("adir=desc");
+    expect(sortStateOf()).toEqual(["descending", "none", "none", "none"]);
+    expect(rowOrder()).toEqual(["evt_n4", "evt_n1", "evt_n2", "evt_n3"]);
+
+    await pickHeader("time");
+    expect(locationText()).not.toContain("asort=");
+    expect(locationText()).not.toContain("adir=");
+    expect(sortStateOf()).toEqual(["none", "none", "none", "none"]);
+    expect(rowOrder()).toEqual(["evt_n1", "evt_n2", "evt_n3", "evt_n4"]);
+  });
+
+  it("an absent value keeps the last seat in both directions, and never reads as zero", async () => {
+    await mountSorted("/audit?window=7d");
+    await pickHeader("actor");
+    const asc = rowOrder();
+    expect(asc[asc.length - 1]).toBe("evt_n3");
+    await pickHeader("actor");
+    const desc = rowOrder();
+    expect(desc[desc.length - 1]).toBe("evt_n3");
+    // the row with no operator is still on screen, counted, not hidden
+    expect(document.querySelectorAll("[data-testid^='aud01-row-']")).toHaveLength(4);
+    expect(document.querySelector("[data-testid='aud-sort-scope-note']")!.textContent).toContain("仅在当前已加载的 4 条内排序");
+    // the note and the status never carry a path or a status code onto the screen
+    const said = document.querySelector("[data-testid='aud-sort-bar-block']")!.textContent ?? "";
+    expect(said).not.toMatch(/\/agent-api|console\.|\b40[134]\b/);
+  });
+
+  it("Enter and Space on a header sort, with the focus ring on the existing token", async () => {
+    await mountSorted("/audit?window=7d");
+    const button = document.querySelector<HTMLButtonElement>("[data-testid='aud-sort-button-resource']")!;
+    expect(button.type).toBe("button");
+    expect(button.className).toContain("focus-visible:outline-2");
+    const before = urls().length;
+    await act(async () => {
+      button.focus();
+      button.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+    });
+    expect(locationText()).toContain("asort=resource");
+    expect(urls()).toHaveLength(before);
+    await act(async () => {
+      button.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true }));
+    });
+    expect(locationText()).toContain("adir=desc");
+    expect(urls()).toHaveLength(before);
+  });
+
+  it("a pasted sorted address replays cold, next to every other key", async () => {
+    await mountSorted(
+      "/audit?window=custom&from=2026-11-12T01%3A00%3A00.000Z&to=2026-11-20T02%3A30%3A00.000Z" +
+        "&actor=user%3Abbb0000000000002&type=task.created&limit=25&cursor=cur_page1&asort=actor&adir=asc",
+    );
+    expect(head("actor")!.getAttribute("aria-sort")).toBe("ascending");
+    expect(document.querySelector<HTMLInputElement>("[data-testid='aud01-filter-operator']")!.value).toBe(
+      "user:bbb0000000000002",
+    );
+    expect(document.querySelector<HTMLInputElement>("[data-testid='audH-page-size']")!.value).toBe("25");
+    expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 2 页");
+    expect(locationText()).toContain("asort=actor");
+    expect(lastUrl()).toContain("from=2026-11-12T01");
+    expect(lastUrl()).toContain("actorId=user%3Abbb0000000000002");
+    // the row order on arrival is the sorted one: the operator with no name
+    // (the row the service never attributed) sits last, ascending or not
+    const order = rowOrder();
+    expect(order[order.length - 1]).toBe("evt_n3");
+    expect(order).toHaveLength(4);
+    expect(order).not.toEqual(["evt_n1", "evt_n2", "evt_n3", "evt_n4"]);
+  });
+
+  it("sorting costs no request and does not move the page", async () => {
+    await mountSorted("/audit?window=7d&type=task.created");
+    await act(async () => {
+      (document.querySelector("[data-testid='aud01-load-more']") as HTMLButtonElement).click();
+    });
+    await waitFor(() => locationText().includes("cursor=cur_page2"), "page 2 in the address");
+    expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 2 页");
+    const before = urls();
+    await pickHeader("actor");
+    await pickHeader("actor");
+    await pickHeader("time");
+    // 每一次点表头都没有多发一条请求
+    expect(urls()).toEqual(before);
+    expect(locationText()).toContain("cursor=cur_page2");
+    expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 2 页");
+  });
+
+  it("the export carries the rows in the order the table shows them", async () => {
+    const download = stubDownload();
+    const exportNow = async (): Promise<string[]> => {
+      await act(async () => {
+        document
+          .querySelector<HTMLElement>("[data-testid='aud5-export']")!
+          .dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      });
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      });
+      return download.lines().slice(1);
+    };
+    // the CSV has no event id column, so the rows are matched on what both
+    // sides actually show: 操作者 · 动作 · 资源
+    const cellOf = (key: string, column: string): string => {
+      const node = document.querySelector(`[data-testid='aud01-cell-${key}-${column}']`);
+      return (node?.textContent ?? "").replace("操作者", "").replace("对象", "").replace("时间（北京时间）", "").trim();
+    };
+    const tableSignature = (): string[] => rowOrder().map((key) => `${cellOf(key, "actor")}|${cellOf(key, "object")}`);
+    const csvSignature = (lines: string[]): string[] => lines.map((line) => {
+      const cells = line.split(",");
+      return `${cells[1]}|${cells[3]}`;
+    });
+
+    // ① no sort: the order the service gave, row for row
+    await mountSorted("/audit?window=7d");
+    const defaultLines = await exportNow();
+    expect(csvSignature(defaultLines)).toEqual(tableSignature());
+    expect(defaultLines).toHaveLength(4);
+    expect(defaultLines[0]).toContain("阿朱");
+    expect(defaultLines[3]).toContain("白一");
+
+    // ② ?asort=actor&adir=asc: the same four rows, in the order on screen
+    await mountSorted("/audit?window=7d&asort=actor&adir=asc");
+    const sortedLines = await exportNow();
+    expect(csvSignature(sortedLines)).toEqual(tableSignature());
+    expect(rowOrder()).toEqual(["evt_n1", "evt_n4", "evt_n2", "evt_n3"]);
+    // 首末行对照：表体第一行 = CSV 第一条数据行；缺操作者那条恒排末
+    expect(sortedLines[0]).toContain("阿朱");
+    expect(sortedLines[sortedLines.length - 1]).toContain("未指派");
+    expect(rowOrder()[rowOrder().length - 1]).toBe("evt_n3");
+    // and the file name still says which set it is
+    expect(download.name()).toContain("-all-n4-");
+  });
+
+  it("every state without rows says why the headers are off", async () => {
+    const legs: Array<{ label: string; entry: string; handler: (url: string) => Promise<unknown>; words: string }> = [
+      {
+        label: "loading",
+        entry: "/audit?window=7d",
+        handler: () => new Promise(() => undefined),
+        words: "正在读取这一页",
+      },
+      {
+        label: "empty",
+        entry: "/audit?window=7d",
+        handler: async () => ({ items: [], nextCursor: null }),
+        words: "这一页没有记录可排",
+      },
+      {
+        label: "error",
+        entry: "/audit?window=7d",
+        handler: async () => {
+          throw new ApiError("down", { status: 503, body: "{}", url: "/agent-api/api/audit", requestId: "rid-n" });
+        },
+        words: "这一页没能读到",
+      },
+      {
+        label: "denied",
+        entry: "/audit?window=7d",
+        handler: async () => {
+          throw new ApiError("closed", { status: 403, body: '{"code":"console.forbidden"}', url: "/agent-api/api/audit", requestId: "rid-n" });
+        },
+        words: "审计事件暂不可读",
+      },
+    ];
+    for (const leg of legs) {
+      api.fetchJSON.mockReset();
+      api.fetchJSON.mockImplementation(leg.handler);
+      await render(leg.entry, <>
+        <AuditEventsModulePage />
+        <LocationProbe />
+      </>);
+      await waitFor(() => !document.querySelector("[data-testid='aud01-loading']") || leg.label === "loading", "settled");
+      const button = document.querySelector<HTMLButtonElement>("[data-testid='aud-sort-button-time']")!;
+      expect(button.disabled, leg.label).toBe(true);
+      expect(button.getAttribute("title"), leg.label).toContain(leg.words);
+      const before = urls().length;
+      await pickHeader("time");
+      expect(urls()).toHaveLength(before);
+      expect(locationText(), leg.label).not.toContain("asort=");
+    }
+  });
+
+  it("the arrow keys walk the displayed order, and sorting leaves the scroll mark alone", async () => {
+    window.sessionStorage.setItem(
+      "audm-scroll:window=7d|from=|to=|type=|actor=|resource=|limit=|cursor=",
+      JSON.stringify({ y: 333, rowKey: "evt_n2" }),
+    );
+    await mountSorted("/audit?window=7d&preview=evt_n1");
+    // 排序不是翻页也不是换问法： audM 留下的位置记号原样还在
+    expect(document.querySelector("[data-testid='audL-scroll']")!.getAttribute("data-audl-cleared")).toBeNull();
+    expect(
+      window.sessionStorage.getItem("audm-scroll:window=7d|from=|to=|type=|actor=|resource=|limit=|cursor="),
+    ).toContain("333");
+    // audN: sorting is not a page turn — the mark audM left is not dropped for it
+    const first = document.querySelector<HTMLButtonElement>("[data-testid='aud6-toggle-evt_n1']")!;
+    expect(first.getAttribute("aria-expanded")).toBe("true");
+    await pickHeader("time");
+    expect(document.querySelector("[data-testid='aud6-preview-evt_n1']")).not.toBeNull();
+    expect(head("time")!.getAttribute("aria-sort")).toBe("ascending");
+    // the roving stop follows what is on screen now (阿朱 sorts last by time asc here)
+    const stop = document.querySelector("[data-audk-roving='true']")!;
+    expect(stop.getAttribute("data-audk-row")).toBe(rowOrder()[0]);
+  });
+});
+
+/**
+ * audO — 长值截断与全文（三处接线：列表单元格 / aud6 预览 / aud3 详情）。
+ * 断言的是：一行只显示头部若干字符并以「…」收尾，title 带完整原文与按实际字符串
+ * 算出的「已省略 N 字符」（N = 原文长 − 预算，逐格重算而不是抄常量）；预览与详情有
+ * 原生 button「展开全文」，aria-expanded 随展开切换，展开只改本地态——地址逐字不变、
+ * urls() 一条不多；短值不加省略号也不给按钮；敏感字段仍走既有无回显；加载中/空集/
+ * 被拒三档没有截断件。jsdom 无量宽，宽度口径见 DONE 的声明。
+ */
+describe("audO - long values get one line and the whole text", () => {
+  // 长到必须截：actor 全名、resource 路径（散文形态，不被当机器句柄掩码）、动作说明
+  // 48 个字符：比行的预算(40)与格的预算(24)都长，两处都得省略
+  const LONG_NAME = "司马光·阿卜杜拉·尼古拉斯·亚历山德拉·费奥多罗维奇·冯·布劳恩施魏格·冯·德梅尔德";
+  // 路径形态、非机器句柄：资源格按既有口径原样上屏，因此会长
+  const LONG_PATH = "workstations/工位 0001/agents/employee api/sessions/42/tenants/t seakoi pilot/x";
+  const LONG_REASON =
+    "策略不允许在这台环境上提权，需要工作区管理员在审批单里确认目标工位与有效期限，否则本次操作会被系统直接中止并记账。";
+  const LONG = {
+    eventId: "evt_long_0000000001",
+    action: "task.created",
+    occurredAt: "2026-11-19T01:20:00Z",
+    outcome: "error",
+    actor: { type: "human", id: "user:2f3a4b5c6d7e8f90", displayName: LONG_NAME },
+    resource: { type: "approval", id: LONG_PATH },
+    requestId: "req-long-01",
+    error: { code: "policy.denied", messageRedacted: LONG_REASON },
+  };
+  const SHORT = {
+    eventId: "evt_short_0000000001",
+    action: "task.created",
+    occurredAt: "2026-11-19T01:20:00Z",
+    outcome: "succeeded",
+    actor: { type: "human", id: "user:2f3a4b5c6d7e8f90", displayName: "李思" },
+    resource: { type: "approval", id: "ap_1122334455667788" },
+    requestId: "req-short-01",
+  };
+
+  const marks = (): Element[] => [...document.querySelectorAll("[data-testid='aud-trunc']")];
+  const limitOf = (node: Element): number => {
+    const omitted = Number(node.getAttribute("data-aud-trunc-omitted"));
+    const full = fullOf(node);
+    return full.length - omitted;
+  };
+  const fullOf = (node: Element): string => {
+    const title = node.getAttribute("title") ?? "";
+    const inner = title.slice(title.indexOf("完整值：") + "完整值：".length);
+    return inner.slice(0, inner.lastIndexOf("（已省略"));
+  };
+
+  async function mountAudit(body: unknown, entry: string): Promise<void> {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url) =>
+      String(url).startsWith("/agent-api/api/audit-detail") ? { audit: body } : { items: [body] },
+    );
+    await render(entry, <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await waitFor(() => !skeleton(), "the page settled");
+  }
+
+  it("every truncated cell states the whole value and the counted omission", async () => {
+    await mountAudit(LONG, "/audit?window=7d&preview=evt_long_0000000001&detail=evt_long_0000000001");
+    await waitFor(() => document.querySelector("[data-testid='aud02-detail']") !== null, "the record painted");
+    const nodes = marks();
+    // 列表两处（操作者、原因）+ 预览两处（操作者、资源、说明…）+ 详情若干
+    expect(nodes.length).toBeGreaterThanOrEqual(6);
+    for (const node of nodes) {
+      const title = node.getAttribute("title") ?? "";
+      const omitted = Number(node.getAttribute("data-aud-trunc-omitted"));
+      const full = fullOf(node);
+      expect(title).toContain("完整值：");
+      expect(title).toContain(`已省略 ${omitted} 字符`);
+      // N 是按实际字符串算的：原文长 − 预算 = 省略数
+      expect(omitted).toBeGreaterThan(0);
+      expect(limitOf(node)).toBeLessThan(full.length);
+      // 行上显示的是原文的头部，不是别处的碎片
+      const head = full.slice(0, limitOf(node));
+      expect(node.textContent).toContain(head.slice(0, 8));
+      expect(node.className).toContain("min-w-0");
+    }
+    // 每格显示的头部与省略数互相自洽：预算 = 原文长 − 省略数
+    const budgets = new Set(nodes.map((node) => limitOf(node)));
+    for (const budget of budgets) expect([24, 40]).toContain(budget);
+  });
+
+  it("the list cell is one line with no second handle", async () => {
+    await mountAudit(LONG, "/audit?window=7d");
+    const cell = document.querySelector("[data-testid='aud01-cell-evt_long_0000000001-actor']")!;
+    const node = cell.querySelector("[data-testid='aud-trunc']")!;
+    expect(node.className).toContain("truncate");
+    expect(node.getAttribute("data-aud-trunc-expanded")).toBe("false");
+    // 列表口径不给展开按钮：行已经够多把手，完整值在 title 与详情里
+    expect(cell.querySelector("[data^='aud-trunc-toggle']")).toBeNull();
+    expect(document.querySelector("[data-testid='aud-trunc-toggle-actor']")).toBeNull();
+    // 动作说明同样只一行，且 counted
+    const reason = document.querySelector("[data-testid='aud01-cell-evt_long_0000000001-details']")
+      ? marks().find((one) => (one.getAttribute("title") ?? "").includes("策略不允许"))!
+      : null;
+    expect(reason).not.toBeNull();
+    expect(reason!.getAttribute("data-aud-trunc-omitted")).not.toBe("0");
+  });
+
+  it("the preview expands in place, changing no key and asking for nothing", async () => {
+    await mountAudit(LONG, "/audit?window=7d&preview=evt_long_0000000001");
+    const toggle = document.querySelector<HTMLButtonElement>("[data-testid='aud-trunc-toggle-preview-actor']")!;
+    expect(toggle.tagName).toBe("BUTTON");
+    expect(toggle.type).toBe("button");
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    const panel = document.querySelector("[data-testid='aud6-preview-evt_long_0000000001']")!;
+    const head = LONG_NAME.slice(0, 20);
+    expect(panel.textContent).toContain(head);
+    expect(panel.textContent).not.toContain(LONG_NAME);
+    const before = urls();
+    const address = locationText();
+    await act(async () => {
+      toggle.click();
+    });
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(panel.textContent).toContain(LONG_NAME);
+    // 展开只切本地态
+    expect(locationText()).toBe(address);
+    expect(urls()).toEqual(before);
+    await act(async () => {
+      toggle.click();
+    });
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(panel.textContent).not.toContain(LONG_NAME);
+    expect(urls()).toEqual(before);
+    expect(locationText()).toBe(address);
+  });
+
+  it("the record pane has the same handles for the same three fields", async () => {
+    await mountAudit(LONG, "/audit?window=7d&detail=evt_long_0000000001");
+    await waitFor(() => document.querySelector("[data-testid='aud02-detail']") !== null, "the record painted");
+    for (const name of ["detail-actor", "detail-resource", "detail-reason"]) {
+      const node = document.querySelector<HTMLButtonElement>(`[data-testid='aud-trunc-toggle-${name}']`);
+      expect(node, name).not.toBeNull();
+      expect(node!.getAttribute("aria-expanded"), name).toBe("false");
+      expect(node!.className).toContain("focus-visible:outline-2");
+    }
+    // 短到不用截的值没有按钮：结果格是「失败（被拒）」，没有第二套装饰
+    expect(document.querySelector("[data-testid='aud-trunc-toggle-detail-outcome']")).toBeNull();
+    const resource = document.querySelector<HTMLButtonElement>("[data-testid='aud-trunc-toggle-detail-resource']")!;
+    const before = urls();
+    const address = locationText();
+    await act(async () => {
+      resource.click();
+    });
+    expect(resource.getAttribute("aria-expanded")).toBe("true");
+    expect(document.querySelector("[data-testid='aud02-detail']")!.textContent).toContain(LONG_PATH);
+    expect(urls()).toEqual(before);
+    expect(locationText()).toBe(address);
+    // title 里原有的东西没被顶掉：完整值与原始标识并列
+    const marked = marks().find((one) => (one.getAttribute("title") ?? "").includes("已省略"))!;
+    expect(marked.getAttribute("title")).toContain("完整值：");
+  });
+
+  it("a value short enough to fit gets no ellipsis, no count and no button", async () => {
+    await mountAudit(SHORT, "/audit?window=7d&preview=evt_short_0000000001&detail=evt_short_0000000001");
+    await waitFor(() => document.querySelector("[data-testid='aud02-detail']") !== null, "the record painted");
+    expect(marks()).toHaveLength(0);
+    expect(document.querySelectorAll("[data-testid^='aud-trunc-toggle-']")).toHaveLength(0);
+    expect(document.querySelector("[data-testid='aud01-cell-evt_short_0000000001-actor']")!.textContent).toContain(
+      "李思 · 6d7e8f90",
+    );
+    expect(document.body.textContent).not.toContain("展开全文");
+  });
+
+  it("truncation never hands back what masking took away", async () => {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url) =>
+      String(url).startsWith("/agent-api/api/audit-detail")
+        ? { audit: { ...LONG, payload: { password: "abc123", note: LONG_PATH } } }
+        : { items: [LONG] },
+    );
+    await render("/audit?window=7d&preview=evt_long_0000000001&detail=evt_long_0000000001", <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await waitFor(() => document.querySelector("[data-testid='aud3-payload']") !== null, "payload painted");
+    expect(document.querySelector("[data-testid='aud3-payload-masked']")!.textContent).toContain("已隐去");
+    const html = document.body.innerHTML;
+    expect(html).not.toContain("abc123");
+    expect(html).toContain('"password": "***"');
+    for (const node of marks()) {
+      expect(node.getAttribute("title") ?? "").not.toContain("***");
+    }
+  });
+
+  it("the states without rows carry no truncation widget", async () => {
+    let release: ((value: unknown) => void) | null = null;
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(() => new Promise((resolve) => { release = resolve; }));
+    await render("/audit?window=7d", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud01-loading']") !== null, "loading");
+    expect(marks()).toHaveLength(0);
+    await act(async () => {
+      release?.({ items: [LONG], nextCursor: null });
+    });
+    await waitFor(() => !skeleton(), "ready");
+    expect(marks().length).toBeGreaterThan(0);
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async () => ({ items: [], nextCursor: null }));
+    await render("/audit?window=7d", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud01-empty']") !== null, "empty");
+    expect(marks()).toHaveLength(0);
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockRejectedValue(
+      new ApiError("no", { status: 403, body: '{"code":"console.forbidden"}', url: "/agent-api/api/audit", requestId: "rid-o" }),
+    );
+    await render("/audit?window=7d", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud01-denied']") !== null, "denied");
+    expect(marks()).toHaveLength(0);
+    expect(text()).not.toContain("展开全文");
+  });
+});
+
+/**
+ * audP — 深链 `?event=` 与每页条数 `?limit=` 的组合复原。
+ * 断言的是：limit=25/50/100 各自与深链共存时选择器与定位的复原值；进入详情再从
+ * 「返回列表」出口回来后，条数、时间窗、操作者/资源/动作、页码与游标原样复原；
+ * 深链不存在时说「该事件不存在或已过期」并给可复制 rid，且一个筛选键都不掉；
+ * 切条数回第 1 页、清游标、重取恰一次，并且**不清掉 arrival 带的 ?event=**；
+ * 服务把条数 clamp 到更小时选择器显示生效值，深链仍在。
+ * 每条腿都贴 urls() 分前缀计数。
+ */
+describe("audP - the deep link survives the page size", () => {
+  const ITEM = (id: string): unknown => ({
+    eventId: id,
+    action: "task.created",
+    occurredAt: "2026-11-19T01:20:00Z",
+    outcome: "succeeded",
+    actor: { type: "system", id: "employee-api" },
+    resource: { type: "task", id: `ts_${id}` },
+    requestId: `req-${id}`,
+  });
+  const P = (n: number): unknown[] => Array.from({ length: n }, (_u, i) => ITEM(`evt_p${i + 1}`));
+
+  const auditReads = (): number => urls().filter((u) => /^\/agent-api\/api\/audit\?/.test(u)).length;
+  const detailReads = (): number => urls().filter((u) => u.startsWith("/agent-api/api/audit-detail")).length;
+  const probe = (name: string): string | null =>
+    document.querySelector("[data-testid='aud-limit-restore']")?.getAttribute(name) ?? null;
+  const sizeShown = (): string => document.querySelector<HTMLSelectElement>("[data-testid='audH-page-size']")!.value;
+
+  /** A service that honours `limit` the way the ledger does: it answers n rows. */
+  function honoringLimit(n: number): (url: string) => Promise<unknown> {
+    return async (url: string) => {
+      const asked = new URLSearchParams(String(url).split("?")[1] ?? "");
+      const size = Number(asked.get("limit") ?? "50");
+      const first = asked.get("cursor") === null;
+      // 第二页也真有行（游标腿要能打开一条记录），只是不再往后翻
+      return { items: first ? P(Math.min(size, n)) : P(2), nextCursor: first && n > size ? "cur_page2" : null };
+    };
+  }
+
+  async function mountProbed(entry: string, handler: (url: string) => Promise<unknown>): Promise<void> {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(handler);
+    await render(entry, <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await waitFor(() => !skeleton(), "first page settled");
+  }
+
+  async function pickSize(size: string): Promise<void> {
+    const node = document.querySelector<HTMLSelectElement>("[data-testid='audH-page-size']")!;
+    await act(async () => {
+      node.value = size;
+      node.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
+  }
+
+  async function openRecord(id = "evt_p1"): Promise<void> {
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>(`[data-testid='aud01-row-${id}'] button`)?.click();
+    });
+    await waitFor(() => locationText().includes("detail="), "the record opened");
+  }
+
+  async function back(): Promise<void> {
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud8-back-to-list']")?.click();
+    });
+    await waitFor(() => !locationText().includes("detail="), "back on the list");
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+  }
+
+  it.each([
+    ["25", 3, "evt_p1"],
+    ["50", 3, "evt_p1"],
+    ["100", 3, "evt_p2"],
+  ])("limit=%s with a deep link replays: size shown, page 1, the row located", async (size, n, target) => {
+    await mountProbed(`/audit?window=7d&limit=${size}&event=${target}`, honoringLimit(n));
+    expect(sizeShown()).toBe(size);
+    expect(probe("data-aud-limit-asked")).toBe(size);
+    expect(probe("data-aud-limit-page")).toBe("1");
+    expect(probe("data-aud-limit-cursors")).toBe("0");
+    expect(probe("data-aud-limit-event")).toBe(target);
+    expect(probe("data-aud-limit-located")).toBe("在本页已展开");
+    expect(document.querySelector("[data-testid='aud9-deeplink-found']")).not.toBeNull();
+    expect(document.querySelector(`[data-testid='aud6-preview-${target}']`)).not.toBeNull();
+    expect(document.querySelector<HTMLButtonElement>(`[data-testid='aud6-toggle-${target}']`)!.getAttribute("aria-expanded")).toBe("true");
+    expect(lastUrl()).toContain(`limit=${size}`);
+    expect(auditReads()).toBe(1);
+    expect(detailReads()).toBe(0);
+  });
+
+  it("the way back restores the size, the window, the filters and the cursor stack", async () => {
+    const entry =
+      "/audit?window=custom&from=2026-11-17T01%3A00%3A00.000Z&to=2026-11-17T02%3A30%3A00.000Z" +
+      "&type=task.created&actor=employee-api&resource=ts_evt_p2&limit=25&cursor=cur_page1&event=evt_p2";
+    const three = [
+      { label: "①25 条+深链+游标", handler: honoringLimit(3) },
+      { label: "②50 条", handler: honoringLimit(4) },
+      { label: "③100 条", handler: honoringLimit(5) },
+    ];
+    for (const leg of three) {
+      await mountProbed(entry, leg.handler);
+      const address = locationText();
+      const sizeBefore = sizeShown();
+      await openRecord("evt_p2");
+      await back();
+      // 逐字回到进去之前那条地址：条数、窗、类型、操作者、资源、游标、深链
+      expect(locationText(), leg.label).toBe(address);
+      expect(sizeShown(), leg.label).toBe(sizeBefore);
+      expect(document.querySelector<HTMLInputElement>("[data-testid='aud01-filter-operator']")!.value).toBe("employee-api");
+      expect(document.querySelector<HTMLInputElement>("[data-testid='aud8-filter-resource']")!.value).toBe("ts_evt_p2");
+      expect(document.querySelector<HTMLInputElement>("[data-testid='aud01-filter-type']")!.value).toBe("task.created");
+      expect(probe("data-aud-limit-cursors"), leg.label).toBe("1");
+      expect(probe("data-aud-limit-page"), leg.label).toBe("2");
+      expect(probe("data-aud-limit-event"), leg.label).toBe("evt_p2");
+      // 列表读口在整趟里只发过第一次那一条；返回不重问
+      expect(auditReads(), leg.label).toBe(1);
+      expect(detailReads(), leg.label).toBe(1);
+      // 深链的展开态也回来了
+      expect(document.querySelector("[data-testid='aud6-preview-evt_p2']"), leg.label).not.toBeNull();
+    }
+  });
+
+  it("switching the size starts page 1, drops the cursor and keeps the arrived link", async () => {
+    await mountProbed("/audit?window=7d&limit=50&cursor=cur_page1&event=evt_p1", honoringLimit(3));
+    expect(probe("data-aud-limit-cursors")).toBe("1");
+    const before = auditReads();
+    await pickSize("100");
+    expect(locationText()).toContain("limit=100");
+    expect(locationText()).not.toContain("cursor=");
+    expect(locationText()).toContain("event=evt_p1");
+    expect(probe("data-aud-limit-cursors")).toBe("0");
+    expect(probe("data-aud-limit-page")).toBe("1");
+    expect(probe("data-aud-limit-event")).toBe("evt_p1");
+    // 恰一次重取，且发出去的就是新条数
+    expect(auditReads()).toBe(before + 1);
+    expect(lastUrl()).toContain("limit=100");
+    // 定位仍在：这一条在新页里，展开态由 ?event= 自己撑着
+    expect(probe("data-aud-limit-located")).toBe("在本页已展开");
+    expect(document.querySelector("[data-testid='aud9-deeplink-found']")).not.toBeNull();
+  });
+
+  it("a clamped size and a deep link stay honest together", async () => {
+    const clamp = async (url: string): Promise<unknown> => {
+      const asked = new URLSearchParams(String(url).split("?")[1] ?? "");
+      if (asked.get("limit") === "100") return { items: P(50), limit: 50, nextCursor: null };
+      return { items: P(50), nextCursor: null };
+    };
+    await mountProbed("/audit?window=7d&limit=100&event=evt_p7", clamp);
+    // 生效值回显，不是愿望值
+    expect(sizeShown()).toBe("50");
+    expect(probe("data-aud-limit-size")).toBe("50");
+    expect(probe("data-aud-limit-asked")).toBe("100");
+    expect(document.querySelector("[data-testid='audH-clamp-note']")!.textContent).toContain("请求按每页 100 条发出");
+    // 地址仍是人带来的那条：limit=100 与 event 都没被动过
+    expect(locationText()).toContain("limit=100");
+    expect(locationText()).toContain("event=evt_p7");
+    expect(probe("data-aud-limit-event")).toBe("evt_p7");
+    expect(auditReads()).toBe(1);
+  });
+
+  it("an event that is not in this page says so without clearing a single filter", async () => {
+    const entry =
+      "/audit?window=24h&type=task.created&actor=employee-api&resource=ts_evt_p1&limit=25&cursor=cur_page1&event=evt_absent_000001";
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url) => {
+      if (String(url).startsWith("/agent-api/api/audit-detail")) {
+        throw new ApiError("gone", { status: 404, body: '{"code":"audit.event_not_found"}', url, requestId: "rid-p-404" });
+      }
+      return { items: P(2), nextCursor: "cur_page2" };
+    });
+    await render(entry, <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await waitFor(() => document.querySelector("[data-testid='aud9-event-missing']") !== null, "the missing leg");
+    expect(text()).toContain("该事件不存在或已过期");
+    expect(document.querySelector("[data-testid='aud9-event-rid']")!.textContent).toContain("rid-p-404");
+    // 一个筛选键都没被顺手清掉
+    for (const key of ["window=24h", "type=task.created", "actor=employee-api", "resource=ts_evt_p1", "limit=25", "cursor=cur_page1"]) {
+      expect(locationText()).toContain(key);
+    }
+    expect(sizeShown()).toBe("25");
+    expect(probe("data-aud-limit-located")).toBe("不在本页");
+    expect(auditReads()).toBe(1);
+    expect(detailReads()).toBe(1);
+  });
+
+  it("the fixed link says out what it does not carry, in both legs", async () => {
+    await mountProbed("/audit?window=7d&limit=25&event=evt_p1", honoringLimit(3));
+    const preview = document.querySelector("[data-testid='aud6-preview-evt_p1']")!;
+    const scope = preview.querySelector("[data-testid='audE-link-scope']")!;
+    expect(scope.textContent).toContain("不带这一页的时间窗、每页条数与筛选");
+    // 复制到的仍然只是那条事件链接（audE 口径未回归）
+    const clip: { calls: string[] } = { calls: [] };
+    Object.defineProperty(window, "isSecureContext", { configurable: true, value: true });
+    Object.defineProperty(window.navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: async (text: string) => void clip.calls.push(text) },
+    });
+    const before = urls();
+    await act(async () => {
+      preview.querySelector<HTMLButtonElement>("[data-testid='audE-link']")!.click();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+    expect(clip.calls[0]).toBe(`${window.location.origin}/audit?event=evt_p1`);
+    expect(urls()).toEqual(before);
+  });
+});
+
+/**
+ * audQ — 动作可用性单点。三处入口（导出、复制筛选摘要、复制固定链接、行内展开、
+ * 重试）的 enabled 与 title 由 `auditGates.ts` 一处派生；这里断言的是矩阵落在
+ * 真实控件上：同一状态里不会一处可点一处 disabled，`aud-gates` 镜像与实际控件
+ * 逐格一致，且整趟断言不发任何请求。
+ */
+describe("audQ - one gate table drives every widget", () => {
+  const mirror = (name: string): string | null =>
+    document.querySelector("[data-testid='aud-gates']")?.getAttribute(name) ?? null;
+
+  const flag = (testId: string): string => {
+    const node = document.querySelector<HTMLButtonElement>(`[data-testid='${testId}']`);
+    if (!node) return "absent";
+    return node.disabled ? "off" : "on";
+  };
+
+  async function mountGates(handler: (url: string) => Promise<unknown>, entry = "/audit?window=7d&type=task.created"): Promise<void> {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(handler);
+    await render(entry, <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await waitFor(() => !skeleton() || document.querySelector("[data-testid='aud01-loading']") !== null, "the state settled");
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+  }
+
+  it("① loading: exports/fold/link off, retry live, mirror agreeing with the widgets", async () => {
+    let release: ((value: unknown) => void) | null = null;
+    await mountGates(() => new Promise((resolve) => { release = resolve; }));
+    expect(mirror("data-aud-gates-phase")).toBe("loading");
+    expect(flag("aud01-export")).toBe("off");
+    expect(flag("aud5-export")).toBe("off");
+    expect(flag("aud01-refresh")).toBe("on");
+    expect(mirror("data-aud-gates-retry")).toBe("on");
+    // audQ 行为变化：loading 期重试可用（工单口径），按下才重发
+    const reads = urls().length;
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud01-refresh']")?.click();
+    });
+    expect(urls().length).toBe(reads + 1);
+    await act(async () => {
+      release?.({ items: EVENTS.items, nextCursor: null });
+    });
+    await waitFor(() => !skeleton(), "ready");
+    expect(mirror("data-aud-gates-phase")).toBe("ready");
+    expect(flag("aud01-export")).toBe("on");
+    expect(flag("aud5-export")).toBe("on");
+    expect(mirror("data-aud-gates-toggle")).toBe("on");
+    expect(document.querySelector("[data-testid='aud6-toggle-evt_7c1f2a3b4d5e6f70']")).not.toBeNull();
+  });
+
+  it("② empty: the export says why, the summary stays copyable, no fold to open", async () => {
+    await mountGates(async () => ({ items: [], nextCursor: null }));
+    expect(mirror("data-aud-gates-phase")).toBe("empty");
+    expect(flag("aud01-export")).toBe("off");
+    expect(flag("aud5-export")).toBe("off");
+    expect(document.querySelector("[data-testid='aud5-export']")!.getAttribute("title")).toBe("当前筛选无事件可导出");
+    expect(document.querySelectorAll("[data-testid^='aud6-toggle-']")).toHaveLength(0);
+    expect(mirror("data-aud-gates-toggle")).toBe("off");
+    expect(mirror("data-aud-gates-copy-link")).toBe("off");
+    // 真空 ≠ 不可用：口径还在地址上，所以摘要仍可复制
+    expect(flag("audG-filter-copy")).toBe("on");
+    expect(mirror("data-aud-gates-copy-filter")).toBe("on");
+  });
+
+  it("③ error: every row-facing entry is off at once, with rid and retry on the panel", async () => {
+    await mountGates(async (url) => {
+      throw new ApiError("down", { status: 503, body: "{}", url: String(url), requestId: "rid-q" });
+    });
+    await waitFor(() => document.querySelector("[data-testid='aud01-error']") !== null, "the error panel");
+    expect(mirror("data-aud-gates-phase")).toBe("error");
+    for (const entry of ["data-aud-gates-export", "data-aud-gates-export-filtered", "data-aud-gates-toggle", "data-aud-gates-copy-link"]) {
+      expect(mirror(entry)).toBe("off");
+    }
+    expect(flag("aud01-export")).toBe("off");
+    expect(flag("aud5-export")).toBe("off");
+    expect(document.querySelector("[data-testid='aud01-error-sentence']")!.textContent).toContain("审计服务在处理时出了错");
+    expect(document.querySelector("[data-testid='aud01-error-request-id']")!.textContent).toContain("rid-q");
+    expect(flag("aud01-refresh")).toBe("on");
+  });
+
+  it("④ denied: the same set of doors closes, and the address keeps every key", async () => {
+    const entry = "/audit?window=24h&type=task.created&actor=employee-api&limit=25&cursor=cur_page1&preview=evt_7c1f2a3b4d5e6f70";
+    await mountGates(async (url) => {
+      throw new ApiError("closed", { status: 403, body: '{"code":"console.forbidden"}', url: String(url), requestId: "rid-q2" });
+    }, entry);
+    await waitFor(() => document.querySelector("[data-testid='aud01-denied']") !== null, "the denied body");
+    const denied403 = document.querySelector("[data-testid='aud01-denied']")!.textContent ?? "";
+    // 保筛选与页码：地址一个键都没掉
+    for (const key of ["window=24h", "type=task.created", "actor=employee-api", "limit=25", "cursor=cur_page1", "preview=evt_7c1f2a3b4d5e6f70"]) {
+      expect(locationText()).toContain(key);
+    }
+    const mirrorAfterDenial = ["data-aud-gates-export", "data-aud-gates-export-filtered", "data-aud-gates-toggle"].map(mirror);
+    const same = await (async () => {
+      api.fetchJSON.mockReset();
+      api.fetchJSON.mockImplementation(async (url) => {
+        throw new ApiError("gone", { status: 404, body: '{"code":"console.unknown_route"}', url: String(url), requestId: "rid-q2" });
+      });
+      await render(entry, <AuditEventsModulePage />);
+      await waitFor(() => document.querySelector("[data-testid='aud01-denied']") !== null, "the 404 body");
+      return document.querySelector("[data-testid='aud01-denied']")!.textContent ?? "";
+    })();
+    // 403≡404 同体：两条状态码给的是同一份话
+    expect(same).toBe(denied403);
+    expect(mirrorAfterDenial).toEqual(["off", "off", "off"]);
+  });
+
+  it("one failed record closes both of its doors, never just one", async () => {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url) => {
+      if (String(url).startsWith("/agent-api/api/audit-detail")) {
+        throw new ApiError("closed", { status: 403, body: '{"code":"console.forbidden"}', url: String(url), requestId: "rid-q3" });
+      }
+      return EVENTS;
+    });
+    await render("/audit?window=7d&preview=evt_7c1f2a3b4d5e6f70&detail=evt_7c1f2a3b4d5e6f70", <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await waitFor(() => document.querySelector("[data-testid='audF-preview-denied']") !== null, "the preview says it was refused");
+    // 预览里那枚固定链接：详情被拒 → 关
+    const link = document.querySelector<HTMLButtonElement>(
+      "[data-testid='aud6-preview-evt_7c1f2a3b4d5e6f70'] [data-testid='audE-link']",
+    )!;
+    expect(link.disabled).toBe(true);
+    expect(link.getAttribute("title")).toContain("这一条现在读不到");
+    // 抽屉那侧同样是拒绝体，没有一处还让人以为能复制
+    expect(document.querySelector("[data-testid='aud02-detail-denied']")).not.toBeNull();
+    expect(document.querySelector("[data-testid='aud02-detail']")).toBeNull();
+    // 台账那一读没被这些判定重发过
+    expect(auditReadUrls()).toHaveLength(1);
+  });
+
+  function auditReadUrls(): string[] {
+    return urls().filter((u) => /^\/agent-api\/api\/audit\?/.test(u));
+  }
+
+  it("reading the gates costs nothing", async () => {
+    await mountGates(async () => ({ items: EVENTS.items, nextCursor: null }));
+    const before = urls();
+    expect(mirror("data-aud-gates-phase")).toBe("ready");
+    expect(flag("aud01-export")).toBe("on");
+    expect(flag("audG-filter-copy")).toBe("on");
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud6-toggle-evt_7c1f2a3b4d5e6f70']")?.click();
+    });
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud6-toggle-evt_7c1f2a3b4d5e6f70']")?.click();
+    });
+    expect(urls()).toEqual(before);
+  });
+});
+
+/**
+ * audR — 筛选条的 URL 单一事实源复核。七类参数逐行贴三列：地址里的值 → 控件显示的值
+ * → 实际发出去的请求 query。登记的键名映射（type→action、actor→actorId、
+ * resource→resourceId、cursor 栈→页码、clamp→控件回显）不是漂移；漂移的判据是
+ * 「控件显示 A 而自己发出 B」或「地址有值而冷挂载后控件为空」。
+ * 另附：切换任一参数重取恰一次、组合地址粘进来只读一次、屏上分享行与复制行同源、
+ * href 不含 origin 也不含凭据参数。
+ */
+describe("audR - the address is the only source of truth", () => {
+  const ROW = (id: string, action: string): unknown => ({
+    eventId: id,
+    action,
+    occurredAt: "2026-11-19T01:20:00Z",
+    outcome: "succeeded",
+    actor: { type: "system", id: "employee-api" },
+    resource: { type: "task", id: `ts_${id}` },
+    requestId: `req-${id}`,
+  });
+  const SET = [ROW("evt_r1", "task.created"), ROW("evt_r2", "task.created"), ROW("evt_r3", "run.failed")];
+
+  const answering = async (url: string): Promise<unknown> => {
+    const asked = new URLSearchParams(String(url).split("?")[1] ?? "");
+    const action = asked.get("action");
+    const items = action ? SET.filter((row) => (row as { action: string }).action === action) : [...SET];
+    // 游标那一页也真有行（页码腿要能在第 2、3 页上读数）
+    return { items, nextCursor: null };
+  };
+  const clamping = async (url: string): Promise<unknown> => {
+    const asked = new URLSearchParams(String(url).split("?")[1] ?? "");
+    return asked.get("limit") === "100"
+      ? { items: [...SET], limit: 50, nextCursor: null }
+      : { items: [...SET], nextCursor: null };
+  };
+
+  const widgetWindow = (): string | null => {
+    for (const key of ["24h", "7d", "30d", "custom"]) {
+      if (document.querySelector(`[data-testid='aud01-filter-window-${key}']`)?.getAttribute("aria-pressed") === "true") return key;
+    }
+    return null;
+  };
+  const widget = (testId: string): string => (document.querySelector<HTMLSelectElement>(`[data-testid='${testId}']`)?.value ?? "").trim();
+  const asked = (): URLSearchParams => new URLSearchParams((urls().slice().reverse().find((u) => /^\/agent-api\/api\/audit\?/.test(u)) ?? "").split("?")[1] ?? "");
+  const auditCount = (): number => urls().filter((u) => /^\/agent-api\/api\/audit\?/.test(u)).length;
+  const pageSeat = (): string => document.querySelector("[data-testid='aud2-page']")!.textContent ?? "";
+
+  async function mountWith(entry: string, handler: (url: string) => Promise<unknown>): Promise<void> {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(handler);
+    await render(entry, <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await waitFor(() => !skeleton(), "the address was answered");
+  }
+
+  // ① 七行三列对照（每行都是一次独立冷挂载）
+  const TABLE: Array<{ label: string; entry: string; check: () => void }> = [
+    {
+      label: "①时间窗 window=24h",
+      entry: "/audit?window=24h",
+      check: () => {
+        expect(widgetWindow()).toBe("24h");
+        expect(asked().get("from")).toMatch(/^20\d\d-\d\d-\d\dT/);
+        expect(new Date(asked().get("to")!).getTime() - new Date(asked().get("from")!).getTime()).toBe(86_400_000);
+      },
+    },
+    {
+      label: "②自定义区间 from/to",
+      entry: "/audit?window=custom&from=2026-11-17T01%3A00%3A00.000Z&to=2026-11-17T02%3A30%3A00.000Z",
+      check: () => {
+        expect(widgetWindow()).toBe("custom");
+        expect(widget("aud01-custom-from")).toBe("2026-11-17T09:00");
+        expect(widget("aud01-custom-to")).toBe("2026-11-17T10:30");
+        expect(asked().get("from")).toBe("2026-11-17T01:00:00.000Z");
+        expect(asked().get("to")).toBe("2026-11-17T02:30:00.000Z");
+      },
+    },
+    {
+      label: "③操作者 actor→actorId",
+      entry: "/audit?window=7d&actor=employee-api",
+      check: () => {
+        expect(widget("aud01-filter-operator")).toBe("employee-api");
+        expect(asked().get("actorId")).toBe("employee-api");
+      },
+    },
+    {
+      label: "④资源 resource→resourceId（并本地匹配）",
+      entry: "/audit?window=7d&resource=ts_evt_r1",
+      check: () => {
+        expect(widget("aud8-filter-resource")).toBe("ts_evt_r1");
+        expect(asked().get("resourceId")).toBe("ts_evt_r1");
+        expect(document.querySelectorAll("[data-testid^='aud01-row-']")).toHaveLength(1);
+      },
+    },
+    {
+      label: "⑤动作类型 type→action（键名映射，非漂移）",
+      entry: "/audit?window=7d&type=task.created",
+      check: () => {
+        expect(widget("aud01-filter-type")).toBe("task.created");
+        expect(asked().get("action")).toBe("task.created");
+        expect(asked().get("type")).toBeNull();
+        expect(document.querySelectorAll("[data-testid^='aud01-row-']")).toHaveLength(2);
+      },
+    },
+    {
+      label: "⑥条数 limit=25",
+      entry: "/audit?window=7d&limit=25",
+      check: () => {
+        expect(widget("audH-page-size")).toBe("25");
+        expect(asked().get("limit")).toBe("25");
+      },
+    },
+    {
+      label: "⑦页码：游标栈→第 N 页→发出栈顶",
+      entry: "/audit?window=7d&cursor=cur_page1&cursor=cur_page2",
+      check: () => {
+        expect(pageSeat()).toContain("第 3 页");
+        expect(asked().get("cursor")).toBe("cur_page2");
+        expect(new URLSearchParams(locationText().split("?")[1] ?? "").getAll("cursor")).toEqual(["cur_page1", "cur_page2"]);
+      },
+    },
+  ];
+
+  for (const leg of TABLE) {
+    it(`${leg.label}：地址 → 控件 → 请求`, async () => {
+      await mountWith(leg.entry, answering);
+      leg.check();
+      expect(auditCount()).toBe(1);
+    });
+  }
+
+  it("防「URL 有值而控件空」：未进采样表的类型码照样回填并照样发问", async () => {
+    // audD 给这类值留了「按地址带入的类型」一格；这一行是它作为单一事实源的验收：
+    // 地址 → 控件 → 请求 三列都带着同一个原码，不空、不猜、不改写
+    await mountWith("/audit?window=7d&type=quantum.recalibration", async (url) => {
+      const askedBy = new URLSearchParams(String(url).split("?")[1] ?? "");
+      return askedBy.get("action") === "quantum.recalibration"
+        ? { items: [ROW("evt_r9", "quantum.recalibration")], nextCursor: null }
+        : { items: [], nextCursor: null };
+    });
+    expect(widget("aud01-filter-type")).toBe("quantum.recalibration");
+    expect(asked().get("action")).toBe("quantum.recalibration");
+    expect([...document.querySelectorAll("option")].map((option) => option.text)).toContain("按地址带入的类型");
+    expect(auditCount()).toBe(1);
+    // 同理，句柄不在本页选项里时也照样回填
+    await mountWith("/audit?window=7d&actor=some-other-service", answering);
+    expect(widget("aud01-filter-operator")).toBe("some-other-service");
+    expect(asked().get("actorId")).toBe("some-other-service");
+  });
+
+  it("登记的 clamp 回显：地址 100、控件 50、请求 100，不是漂移", async () => {
+    await mountWith("/audit?window=7d&limit=100", clamping);
+    expect(asked().get("limit")).toBe("100");
+    expect(widget("audH-page-size")).toBe("50");
+    expect(document.querySelector("[data-testid='audH-clamp-note']")).not.toBeNull();
+    // 屏上分享行报的是生效值，与控件一致；复制行两处都写清
+    expect(document.querySelector("[data-testid='aud-source-seats']")!.textContent).toContain("每页 50 条");
+  });
+
+  it("④切换任一类参数，重取恰一次", async () => {
+    const moves: Array<{ label: string; run: () => Promise<void> }> = [
+      { label: "时间窗", run: async () => choose("aud01-filter-window", "30d") },
+      // 采样表里的原码；不在表里的值 select 不会接受（那正是 audD 的兜底选项存在的原因）
+      { label: "动作类型", run: async () => choose("aud01-filter-type", "task.created") },
+      { label: "操作者", run: async () => choose("aud01-filter-operator", "employee-api") },
+      { label: "条数", run: async () => pick("audH-page-size", "25") },
+    ];
+    for (const move of moves) {
+      await mountWith("/audit?window=7d", answering);
+      const before = auditCount();
+      await move.run();
+      await waitFor(() => auditCount() > before, `${move.label} 重取一次`);
+      expect(auditCount()).toBe(before + 1);
+      expect(urls().slice().reverse().find((u) => /^\/agent-api\/api\/audit\?/.test(u)) ?? "").toBeTruthy();
+    }
+    // 区间：应用草稿才算一问，打字不发问
+    await mountWith("/audit?window=7d", answering);
+    await choose("aud01-filter-window", "custom");
+    const before = auditCount();
+    await typeInto("aud01-custom-from", "2026-11-17T09:00");
+    await typeInto("aud01-custom-to", "2026-11-17T10:30");
+    expect(auditCount()).toBe(before);
+    await pick("audB-apply", "");
+    await waitFor(() => auditCount() === before + 1, "应用区间后恰一次");
+    expect(locationText()).toContain("window=custom");
+    // 翻页：栈深一层，也是一读；条目选择器同样是「一切一读」
+    await mountWith("/audit?window=7d", async () => ({ items: [...SET], nextCursor: "cur_page2" }));
+    const pages = auditCount();
+    await pick("aud01-load-more", "");
+    await waitFor(() => auditCount() === pages + 1, "下一页一读");
+    expect(locationText()).toContain("cursor=cur_page2");
+    expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 2 页");
+  });
+
+  it("⑤屏上分享行与复制行同源，href 不带 origin 也不带凭据", async () => {
+    const clip: { calls: string[] } = { calls: [] };
+    Object.defineProperty(window, "isSecureContext", { configurable: true, value: true });
+    Object.defineProperty(window.navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: async (text: string) => void clip.calls.push(text) },
+    });
+    await mountWith(
+      "/audit?window=custom&from=2026-11-17T01%3A00%3A00.000Z&to=2026-11-17T02%3A30%3A00.000Z" +
+        "&type=task.created&actor=employee-api&limit=25&cursor=cur_page1&token=should-not-travel",
+      answering,
+    );
+    const seats = document.querySelector("[data-testid='aud-source-seats']")!.textContent ?? "";
+    const href = document.querySelector<HTMLAnchorElement>("[data-testid='aud-source-href']")!.getAttribute("href") ?? "";
+    // 三列同源：屏上行的时间窗/区间/类型/页码/条数格，与复制进剪贴板的那一行逐字相同
+    const before = auditCount();
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='audG-filter-copy']")?.click();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+    const copied = clip.calls[0];
+    expect(copied).toContain("时间窗：自定义 2026-11-17T09:00 → 2026-11-17T10:30（北京时间）");
+    expect(seats).toContain("时间窗：自定义 2026-11-17T09:00 → 2026-11-17T10:30（北京时间）");
+    expect(copied).toContain("动作类型：task.created（服务端按 action 精确匹配）");
+    expect(seats).toContain(copied.split(" · ")[1]);
+    expect(copied).toContain("第 2 页（游标 ×1） · 每页 25 条");
+    expect(seats).toContain("第 2 页（游标 ×1） · 每页 25 条");
+    // 屏上不上机器句柄（audB/aud9 既有契约），复制行照旧带句柄并说明键名
+    expect(seats).not.toContain("employee-api");
+    expect(copied).toContain("操作者：employee-api（服务端 actorId，机器句柄）");
+    // href：同源相对路径、无 origin、无凭据
+    expect(href.startsWith("/audit?")).toBe(true);
+    expect(href).not.toMatch(/https?:|localhost/);
+    expect(href).not.toContain("token");
+    expect(href).toContain("actor=employee-api");
+    expect(auditCount()).toBe(before);
+    // 复制不发请求；屏上的 href 直接粘回去也能复现同一问
+    const replay = href.replace(/^\/audit/, "/audit");
+    await mountWith(replay, answering);
+    expect(auditCount()).toBe(1);
+    expect(widget("aud01-filter-operator")).toBe("employee-api");
+    expect(widget("audH-page-size")).toBe("25");
+    expect(document.querySelector("[data-testid='aud01-filter-window-custom']")).not.toBeNull();
+  });
+
+  async function pick(testId: string, value: string): Promise<void> {
+    const node = value
+      ? document.querySelector<HTMLSelectElement>(`[data-testid='${testId}']`)
+      : document.querySelector<HTMLButtonElement>(`[data-testid='${testId}']`);
+    if (!node) throw new Error(`${testId} not found`);
+    if (value) {
+      await act(async () => {
+        (node as HTMLSelectElement).value = value;
+        node.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+    } else {
+      await act(async () => {
+        (node as HTMLButtonElement).click();
+      });
+    }
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
+  }
+});

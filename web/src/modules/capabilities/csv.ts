@@ -21,8 +21,23 @@ export function toCsv(rows: readonly CsvRow[]): string {
   return `${lines.join("\r\n")}\r\n`;
 }
 
-export function exportFilename(tab: "skills" | "tools", now: Date = new Date()): string {
-  const parts = new Intl.DateTimeFormat("sv-SE", {
+export type ExportNameParts = {
+  tab: "skills" | "tools";
+  q?: string | null;
+  sort?: string | null;
+  dir?: string | null;
+};
+
+/** One filename fragment: lowercase letters, digits, dot and hyphen only. */
+export function exportSegment(value: string | null | undefined, fallback = "default"): string {
+  const raw = (value ?? "").trim();
+  if (!raw) return fallback;
+  const lowered = raw.toLowerCase();
+  return /^[a-z0-9.-]+$/.test(lowered) ? lowered : "default";
+}
+
+export function exportFilename(parts: ExportNameParts, now: Date = new Date()): string {
+  const stampParts = new Intl.DateTimeFormat("sv-SE", {
     timeZone: "Asia/Shanghai",
     year: "numeric",
     month: "2-digit",
@@ -31,9 +46,12 @@ export function exportFilename(tab: "skills" | "tools", now: Date = new Date()):
     minute: "2-digit",
     hour12: false,
   }).formatToParts(now);
-  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? "";
+  const part = (type: Intl.DateTimeFormatPartTypes) => stampParts.find((item) => item.type === type)?.value ?? "";
   const stamp = `${part("year")}${part("month")}${part("day")}-${part("hour")}${part("minute")}`;
-  return `capabilities-${tab}-${stamp}.csv`;
+  const q = parts.q?.trim() ? exportSegment(parts.q) : "all";
+  const sort = exportSegment(parts.sort);
+  const dir = parts.sort?.trim() ? exportSegment(parts.dir, "asc") : "default";
+  return `capabilities-${parts.tab}-${q}-${sort}-${dir}-${stamp}.csv`;
 }
 
 export function downloadCsv(filename: string, content: string): void {

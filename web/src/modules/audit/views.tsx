@@ -7,7 +7,7 @@
  * event-type tokens and HTTP codes never reach the text of the page — they live
  * in `title` attributes and the collapsed 「技术详情」 disclosure.
  */
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
 import { Badge } from "@nous-research/ui/ui/components/badge";
@@ -17,7 +17,16 @@ import { themedBody, themedChrome } from "@/lib/utils";
 import type { AuditChange, AuditDetail, AuditRow, VerifyResult } from "./model";
 import { beijingSeconds, maskSensitive } from "./model";
 import { AUDJ_TIME_ZONE, auditActorView, auditTimeView } from "./timeActor";
+import {
+  TRUNC_CELL,
+  TRUNC_COLLAPSE_LABEL,
+  TRUNC_EXPAND_LABEL,
+  TRUNC_LINE,
+  joinTitles,
+  truncatedView,
+} from "./truncation";
 import { CopyValue, DeniedPanel, ErrorPanel, LoadingPanel, PermalinkCopy, SummaryCopy, TechnicalDisclosure } from "./states";
+import { copyLinkGate } from "./auditGates";
 import type { FailureCopy } from "./copy";
 import { summaryFromDetail, summaryFromRow } from "./summary";
 
@@ -43,6 +52,68 @@ function changeSide(change: AuditChange, which: "before" | "after"): { value: st
 }
 
 /** A label/value pair that never overflows its column at 375px. */
+/**
+ * audO: one displayed value that may not fit the line.
+ *
+ * With `truncate` (the list's cells) the line shows a head slice, the full
+ * value plus the honest omission count goes in `title`, and nothing else is
+ * offered — the row already has enough handles. With `expandName` (the preview
+ * and the record pane) the same line also gets a real button, because a
+ * `title` cannot be reached by keyboard or on a touch screen.
+ *
+ * Expansion is local state, nothing more: it changes no filter, no page, no
+ * address key and asks the service nothing. A value short enough to fit gets
+ * no ellipsis and no button — no affordance that promises more than it has.
+ */
+function LongValue({
+  value,
+  limit,
+  expandName,
+  extraTitle,
+  className,
+}: {
+  value: string;
+  limit: number;
+  /** Set when the line offers 展开全文; the button is `aud-trunc-toggle-<name>`. */
+  expandName?: string;
+  /** Anything the field already put in `title` (a raw id, a stated reason). */
+  extraTitle?: string | null;
+  className?: string;
+}): ReactNode {
+  const [open, setOpen] = useState(false);
+  const view = truncatedView(value, limit);
+  if (!view.truncated) {
+    return <span className={`min-w-0 break-words ${className ?? ""}`}>{value}</span>;
+  }
+  const shown = open ? value : view.shown;
+  return (
+    <>
+      <span
+        className={`min-w-0 ${open ? "break-words" : "truncate"} ${className ?? ""}`}
+        data-testid="aud-trunc"
+        data-aud-trunc-omitted={String(view.omitted)}
+        data-aud-trunc-expanded={open ? "true" : "false"}
+        title={joinTitles(view.title, extraTitle)}
+      >
+        {shown}
+      </span>
+      {expandName ? (
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-label={open ? `${TRUNC_COLLAPSE_LABEL}：这一条的完整值` : `${TRUNC_EXPAND_LABEL}：这一条的完整值`}
+          title={open ? "收起这一条的完整值（筛选、页码与地址都不受影响）" : "展开这一条的完整值（筛选、页码与地址都不受影响）"}
+          data-testid={`aud-trunc-toggle-${expandName}`}
+          className="shrink-0 rounded-sm text-xs text-muted-foreground underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+          onClick={() => setOpen((current) => !current)}
+        >
+          {open ? TRUNC_COLLAPSE_LABEL : TRUNC_EXPAND_LABEL}
+        </button>
+      ) : null}
+    </>
+  );
+}
+
 function Field({
   label,
   value,
@@ -51,6 +122,8 @@ function Field({
   tone,
   testId,
   mark,
+  truncate,
+  expandName,
 }: {
   label: string;
   value: string;
@@ -66,12 +139,25 @@ function Field({
    * be able to see what each surface actually printed.
    */
   mark?: string;
+  /** audO: the list口径 — one line, the whole value in `title`. */
+  truncate?: boolean;
+  /** audO: the preview/record口径 — one line, plus 展开全文. */
+  expandName?: string;
 }): ReactNode {
   return (
     <div className="flex min-w-0 items-baseline gap-1.5" data-testid={testId}>
       <dt className="shrink-0 text-muted-foreground">{label}</dt>
-      <dd className="min-w-0 break-words text-foreground" title={title ?? reason}>
-        {value}
+      <dd className="flex min-w-0 flex-wrap items-baseline gap-1.5 text-foreground" title={title ?? reason}>
+        {truncate || expandName ? (
+          <LongValue
+            value={value}
+            limit={expandName ? TRUNC_LINE : TRUNC_CELL}
+            expandName={expandName}
+            extraTitle={title ?? reason}
+          />
+        ) : (
+          value
+        )}
         {tone}
       </dd>
       {mark ? (
@@ -117,6 +203,10 @@ export function AuditEventRowCard({
   // audJ: one presentation for WHEN and WHO, shared by all three surfaces.
   const time = auditTimeView(row.occurredAtRaw, row.occurredAt);
   const actor = auditActorView(row.actor);
+  // audO: one reading of the action label decides three things about this cell:
+  // what it shows, what its title promises, and whether it clips at all.
+  const action = truncatedView(row.action.label, TRUNC_CELL);
+  const rawHandle = [row.action.raw, row.rawId].filter(Boolean).join(" · ") || undefined;
   // Every technical line is present, including the ones the service did not
   // send: a fold that can open onto nothing is indistinguishable from a dead
   // control, and the whole point of this cell is that it really expands.
@@ -137,11 +227,15 @@ export function AuditEventRowCard({
           <button
             type="button"
             onClick={onOpen}
-            title={[row.action.raw, row.rawId].filter(Boolean).join(" · ") || undefined}
-            className="min-w-0 flex-1 break-words text-left text-sm hover:underline"
+            // audO: a short label is left in peace — no note, no count, no
+            // promise of more text than there is. A long one gets one line, the
+            // whole text in `title` and the counted omission next to it.
+            title={joinTitles(action.truncated ? action.title : undefined, rawHandle) ?? rawHandle}
+            className={`min-w-0 flex-1 text-left text-sm hover:underline ${action.truncated ? "truncate" : "break-words"}`}
             data-testid={`aud01-cell-${row.key}-type`}
+            data-aud-trunc-omitted={action.truncated ? String(action.omitted) : undefined}
           >
-            <span className={themedBody}>{row.action.label}</span>
+            <span className={themedBody}>{action.truncated ? action.shown : row.action.label}</span>
           </button>
           <span data-testid={`aud01-cell-${row.key}-result`}>
             <Badge tone={row.outcome.tone} title={row.outcome.raw ?? undefined}>
@@ -167,8 +261,15 @@ export function AuditEventRowCard({
             label="操作者"
             value={actor.text}
             title={actor.title}
+            truncate
           />
-          <Field testId={`aud01-cell-${row.key}-object`} label="对象" value={row.resource.label} title={row.resource.raw ?? undefined} />
+          <Field
+            testId={`aud01-cell-${row.key}-object`}
+            label="对象"
+            value={row.resource.label}
+            title={row.resource.raw ?? undefined}
+            truncate
+          />
           <div className="flex min-w-0 flex-col gap-1" data-testid={`aud01-cell-${row.key}-request-id`}>
             <dt className="shrink-0 text-muted-foreground">请求编号</dt>
             <dd className="min-w-0">
@@ -182,7 +283,15 @@ export function AuditEventRowCard({
           </div>
         </dl>
 
-        {row.reason ? <p className="min-w-0 break-words text-xs text-muted-foreground">原因：{row.reason}</p> : null}
+        {/* audO: the 动作说明 is the value most likely to be a whole sentence.
+            One line, the whole text in `title`, counted — the row is a card,
+            not a document, and the fold already carries the rest. */}
+        {row.reason ? (
+          <p className="flex min-w-0 flex-wrap items-baseline gap-1.5 text-xs text-muted-foreground">
+            <span className="shrink-0">原因：</span>
+            <LongValue value={row.reason} limit={TRUNC_CELL} />
+          </p>
+        ) : null}
 
         {/* The whole cell toggles, not a 12px word inside it: a reviewer who
             clicks the 详情 cell must see the fold open (R19 tail b). */}
@@ -277,12 +386,21 @@ export function AuditEventDetailBody({
         <SummaryCopy line={summaryFromDetail(detail, beijingSeconds(detail.occurredAtRaw) ?? detail.occurredAt)} />
         {/* audE: the fixed link for this record, built from the identifier the
             answer itself carried — never from a guessed one. */}
-        <PermalinkCopy eventId={detail.rawId} />
+        {/* audQ: availability comes from the same gates the ledger uses; a
+            record that is on screen answered, so the link is for real. */}
+        <PermalinkCopy eventId={detail.rawId} gate={copyLinkGate("ready", detail.rawId !== null)} />
       </Section>
 
       <Section title="操作者">
         <dl className="flex min-w-0 flex-wrap gap-x-5 gap-y-1 text-xs">
-          <Field testId="audA-detail-actor" mark="audJ-actor-detail" label="谁" value={who.text} title={who.title} />
+          <Field
+            testId="audA-detail-actor"
+            mark="audJ-actor-detail"
+            label="谁"
+            value={who.text}
+            title={who.title}
+            expandName="detail-actor"
+          />
           {detail.actor.kindLabel ? <Field label="身份" value={detail.actor.kindLabel} /> : null}
           <Field label="所属工作区" value={detail.tenant.label} title={detail.tenant.raw ?? undefined} />
         </dl>
@@ -290,14 +408,26 @@ export function AuditEventDetailBody({
 
       <Section title="资源">
         <dl className="flex min-w-0 flex-wrap gap-x-5 gap-y-1 text-xs">
-          <Field testId="audA-detail-resource" label="被操作的对象" value={detail.resource.label} title={detail.resource.raw ?? undefined} />
+          <Field
+            testId="audA-detail-resource"
+            label="被操作的对象"
+            value={detail.resource.label}
+            title={detail.resource.raw ?? undefined}
+            expandName="detail-resource"
+          />
         </dl>
       </Section>
 
       <Section title="结果与原因">
-        <p className="min-w-0 break-words text-xs">{detail.outcome.label}</p>
-        <p className="min-w-0 break-words text-xs text-muted-foreground">
-          {detail.reason ?? (detail.outcome.kind === "failure" ? "服务没有说明失败原因。" : "这条记录没有额外原因。")}
+        <p className="flex min-w-0 flex-wrap items-baseline gap-1.5 text-xs">
+          <LongValue value={detail.outcome.label} limit={TRUNC_LINE} expandName="detail-outcome" />
+        </p>
+        <p className="flex min-w-0 flex-wrap items-baseline gap-1.5 text-xs text-muted-foreground">
+          <LongValue
+            value={detail.reason ?? (detail.outcome.kind === "failure" ? "服务没有说明失败原因。" : "这条记录没有额外原因。")}
+            limit={TRUNC_LINE}
+            expandName="detail-reason"
+          />
         </p>
       </Section>
 
@@ -514,26 +644,31 @@ export function AuditRowPreview({
       aria-label="行内预览"
     >
       <div className="flex min-w-0 flex-wrap gap-x-4 gap-y-1">
-        <span className="min-w-0 break-words" data-testid="audA-preview-type">
+        <span className="flex min-w-0 flex-wrap items-baseline gap-1.5" data-testid="audA-preview-type">
           <span className="text-muted-foreground">事件类型：</span>
-          {row.action.label}
+          <LongValue value={row.action.label} limit={TRUNC_LINE} expandName="preview-action" />
         </span>
         <span
-          className="min-w-0 break-words"
+          className="flex min-w-0 flex-wrap items-baseline gap-1.5"
           data-testid="audA-preview-actor"
           title={actor.title}
         >
           <span className="text-muted-foreground">操作者：</span>
-          {actor.text}
+          <LongValue value={actor.text} limit={TRUNC_LINE} expandName="preview-actor" extraTitle={actor.title} />
         </span>
         <span aria-hidden="true" data-testid="audJ-actor-preview" data-audj-value={actor.text} data-audj-title={actor.title} />
         <span
-          className="min-w-0 break-words"
+          className="flex min-w-0 flex-wrap items-baseline gap-1.5"
           data-testid="audA-preview-resource"
           title={row.resource.raw ?? undefined}
         >
           <span className="text-muted-foreground">资源：</span>
-          {row.resource.label}
+          <LongValue
+            value={row.resource.label}
+            limit={TRUNC_LINE}
+            expandName="preview-resource"
+            extraTitle={row.resource.raw ?? undefined}
+          />
         </span>
         <span
           className="min-w-0 break-words"
@@ -570,7 +705,13 @@ export function AuditRowPreview({
           so both legs copy one sentence for one event. */}
       <SummaryCopy line={summaryFromRow(row, at)} />
       {/* audE: and the same fixed link for the same record. */}
-      <PermalinkCopy eventId={row.rawId} />
+      {/* audQ: the preview's link follows the record read this row points at —
+          while that read is outstanding, failed or refused the link is off here
+          too, so the two legs can never disagree about one failure. */}
+      <PermalinkCopy
+        eventId={row.rawId}
+        gate={copyLinkGate(record?.phase ?? "idle", row.rawId !== null)}
+      />
       {/* audF: the state of the record read this row points at, in the same
           panels and the same sentences the record pane uses. */}
       {record && record.phase !== "idle" && record.phase !== "ready" ? (

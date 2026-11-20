@@ -1,5 +1,6 @@
 import { ApiError } from "@/lib/api-error";
-import { readTopAsOf } from "../health/systemHealth";
+import { readSystemHealth, readTopAsOf } from "../health/systemHealth";
+import { VERSION_MISSING_REASON, versionIdentity } from "../health/versionIdentity";
 
 export const VERSION_API_PATH = "/agent-api/api/version";
 export const HEALTH_API_PATH = "/agent-api/api/health";
@@ -77,7 +78,7 @@ export function readVersionRows(body: unknown): VersionRow[] | null {
   return list.map((entry, index) => {
     const row = isRecord(entry) ? entry : {};
     const name = pickString(row, ["name", "component", "componentName", "component_name", "label", "id"]);
-    const rawVersion = pickString(row, ["version", "buildVersion", "build_version", "currentVersion", "current_version"]);
+    const rawVersion = versionIdentity(row);
     const builtRaw = pickString(row, ["builtAt", "built_at", "buildTime", "build_time", "createdAt", "created_at"]);
     const builtAt = beijingMinute(builtRaw);
     const rawStatus = pickString(row, ["status", "state", "health", "result"]);
@@ -95,7 +96,7 @@ export function readVersionRows(body: unknown): VersionRow[] | null {
       name,
       nameReason: name ? null : "上游没有提供组件名。",
       version: rawVersion,
-      versionReason: rawVersion ? null : "上游没有提供版本号；不编造版本号。",
+      versionReason: rawVersion ? null : VERSION_MISSING_REASON,
       builtAt,
       builtReason: builtRaw ? (builtAt ? null : "上游给出的构建时刻无法解析。") : "上游没有提供构建时刻。",
       status,
@@ -105,6 +106,25 @@ export function readVersionRows(body: unknown): VersionRow[] | null {
         : "上游没有说明组件状态。",
     };
   });
+}
+
+
+/** The version table prefers the health rows so /system and ver5 read the same value. */
+export function readVersionRowsFromHealth(body: unknown): VersionRow[] | null {
+  const read = readSystemHealth(body);
+  if (read === null) return null;
+  return read.rows.map((row) => ({
+    key: row.key,
+    name: row.name,
+    nameReason: row.nameReason,
+    version: row.version,
+    versionReason: row.versionReason,
+    builtAt: null,
+    builtReason: "健康接口没有提供构建时刻；不把检查时刻当构建时间。",
+    status: row.state === "不可达" ? "降级" : row.state,
+    statusRaw: row.stateRaw,
+    statusReason: row.stateReason,
+  }));
 }
 
 export function readHealth(body: unknown): HealthView | null {
