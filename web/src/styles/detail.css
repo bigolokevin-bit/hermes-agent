@@ -440,3 +440,9 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* UI-C2: 回条当前区高亮（权限区）。 */
+.ui-c-anchor--active {
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
