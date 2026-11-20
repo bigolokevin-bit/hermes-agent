@@ -3505,3 +3505,67 @@ kn-space-preview/knE-page-*/kn3-page-cap/kn-type 全族通过。
 边界：只新增 web/src/modules/knowledge/knowledge.type.source.test.tsx 与本证据；
 显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
 「test(console): knowledge type source cross guards」。
+
+# KNW5 追加 R167：复制控件的键盘与焦点护栏（纯测试单）（2026-11-20 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `d6dac47f`
+（Already up to date）。零产品文件改动。
+
+## 查重与名实
+
+```text
+已锁引用：文本同串/值逐字（R114/R132/R142）、计数契约（R125C/R149）、三值与编号
+  （R131/R142/R152/R157/R164）——本文件不重跑。四例全是新维度：原生标签、按键不双触发、
+  播报器唯一性、fallback 可聚焦、disabled 出列。
+两族实名按实测：检索面 kn-row-copy-<i>/-status/-fallback，详情面带 -space- 后缀
+  （R132 同屏冲突方案）——brief 只写前者，本文件两面都测。
+kn-doc-copy 为单控件（行预览/命中展开），不是行级——已按实落。
+```
+
+## 实测缺口（只记不改）
+
+```text
+G1 kn-doc-copy-status：有 aria-live="polite"、无 role="status"（KnowledgeModulePage.tsx
+   :1980 <span>）；而列表面 useRowCopyBar 的 <p> 两属性齐——同为播报器两套属性。
+   测试以 toBeNull 锁定现状，修复时该断言会红提醒同步。
+G2 行钮是原生 <button type="button">（type 已断言）；kn-doc-copy 走 UI 库 Button，
+   type 属性未断言（渲染归库，只记录）。
+G3 Enter/Space：原生 BUTTON 按键激活为 UA 行为，jsdom 不合成 keydown→click——
+   按 R102 同口径代证：三控件 tagName 全 BUTTON + keydown(Enter/空格) 各 dispatch
+   一次后 writeText 零调用（无第二套按键通路、不双触发）+ click 恰一次生效。
+G4 行复制钮未纳入 roving tab 序（R132/R138 自述）＝原生 tab 流；disabled 出列由
+   UA 原生保证，以 disabled=true 属性代证（tabIndex 数值不变，不断言 -1）。
+```
+
+## 四例读数
+
+```text
+① 三控件全 BUTTON、disabled=false、tabIndex≥0；行钮 type="button" 逐字；
+  聚焦后 Enter/空格 keydown 各一发 writeText 0 调用；click 三次（检索面/详情面/预览）
+  writeText 1→2→3 恰一次/击；全程 urls 计数不变。
+② 每面复制播报器 querySelectorAll 计数恒 1；详情面 status role=status+aria-live=polite、
+  初始空文本；点检索面后其 status=「已复制」而详情面保持空（不跨面重复播报）；
+  再点详情面本面「已复制」。G1 断言在场。
+③ 三族 fallback 全 TEXTAREA、readOnly=true、tabIndex≥0、value 与 writeText 投递串
+  toBe 逐字等（reject 路径，逐面一次点击各自出兜底）。
+④ 检索面第 3 钮（EMPTY 行）与详情面 space-1：disabled=true、title 逐字
+  「这一行没有可复制的文档内容：文档名与标识都没给出。」；点击 writeText 恒 0。
+```
+
+## 验证尾行（R167）
+```text
+$ npx vitest run src/modules/knowledge   → 15 files / 124 tests passed（基线 120 + 4）
+$ npx vitest run                         → 230 files：2750 passed + 4 failed
+  （4 红仍全为已知上游 audit.filters×4，非本域记录不追）
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r167-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn3/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort/kn-gates/kn-doc-copy*/kn-row-copy*/
+kn-space-preview/kn3-page-cap/knE-page-*/kn-type 全族通过。
+```
+未测如实：真实浏览器键盘激活 Enter/Space→click 合成（UA 行为，jsdom 以 BUTTON 在场
++ 无第二通路代证，同 R102 口径）；tab 焦点顺序全链路（roving 未含行钮为已记 G4）。
+边界：只新增 web/src/modules/knowledge/knowledge.copy.a11y.test.tsx 与本证据；
+显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「test(console): knowledge copy keyboard and focus guards」。
