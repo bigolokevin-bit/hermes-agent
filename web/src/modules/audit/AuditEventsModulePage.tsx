@@ -75,6 +75,9 @@ import {
  */
 const WINDOW_FILTER_CHOICES = FILTER_WINDOW_CHOICES;
 
+/** audL: the three quick windows, spelled out again inside the custom card. */
+const WINDOW_PRESET_CHOICES = FILTER_WINDOW_CHOICES.filter((item) => item.value !== "custom");
+
 /**
  * aud8: a new question or a new page is a new answer set, so the cursor stack
  * and the two inline folds are dropped together. The folds survive the trip
@@ -189,6 +192,36 @@ export function AuditFilterBar({
                 onChange={(event) => onCustomTo(event.target.value)}
               />
             </label>
+          </div>
+          {/* audL: the custom card carries its own quick presets, because a
+              person who got here by typing instants should be able to leave by
+              one click. These are NOT a second window control: each button is
+              the same setter the quick group above uses, so `?window=` moves,
+              `from`/`to` drop, and one read follows. Nothing here is pressed
+              while the custom range is open — the pressed one lives in the
+              group above, which is what `aria-pressed` on those mirrors. */}
+          <div
+            className="flex min-w-0 flex-wrap items-center gap-2"
+            role="group"
+            aria-label="自定义区间的快捷预设"
+            data-testid="audB-presets"
+            title="这三个与上方时间窗快捷档同源：点一下就离开自定义区间，重读一次，对应的快捷档随之按下"
+          >
+            <span className="min-w-0 text-xs text-muted-foreground">快捷预设</span>
+            {WINDOW_PRESET_CHOICES.map((item) => (
+              <button
+                key={item.value}
+                type="button"
+                data-testid={`audB-preset-${item.value}`}
+                aria-pressed={windowChoice === item.value}
+                className={`h-8 min-w-0 rounded-md border px-2 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
+                  windowChoice === item.value ? "border-primary text-foreground" : "border-border text-muted-foreground hover:bg-muted/40"
+                }`}
+                onClick={() => onWindowChange(item.value)}
+              >
+                {item.label}
+              </button>
+            ))}
           </div>
           {/* audB: the range is a draft until it is applied. Typing two
               instants must not fire a read per keystroke — the question the
@@ -1422,12 +1455,19 @@ function AuditEventsSurface(): ReactNode {
 
       <AuditUrlFilterChips actor={actor} resource={resource} onClear={clearUrlFilter} />
 
-      {/* audG: the question itself, shareable. Hidden while nothing has been
-          read yet (loading) and while the ledger is closed (denied): a summary
-          of a question nobody was able to answer would be a claim about it. */}
-      {customInvalid || list.phase === "ready" || list.phase === "empty" || list.phase === "error" ? (
-        <FilterSummaryCopy line={filterSummary} available={hasFilterSummary(summaryInput)} />
-      ) : null}
+      {/* audL: the summary control is PERMANENT, and that is its mount
+          condition, written where a person and a probe can both read it. It is
+          off (with the reason on the button) when the address carries no
+          reading question at all — the default quick window alone is nothing to
+          hand over — and it is live in every state of the ledger, including
+          loading and denied: the question this page asked exists before the
+          answer does, and a refused read is exactly what a ticket needs. */}
+      <FilterSummaryCopy
+        line={filterSummary}
+        available={hasFilterSummary(summaryInput)}
+        phase={list.phase}
+        pending={customInvalid}
+      />
 
       {/* The window check lives on the list too, and it says exactly one of
           four things: asking, the real counts, 本环境未启用 + why + where, or a

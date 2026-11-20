@@ -2725,7 +2725,14 @@ describe("audG - the shareable filter summary", () => {
     const button = document.querySelector<HTMLButtonElement>("[data-testid='audG-filter-copy']")!;
     expect(button.disabled).toBe(true);
     expect(button.getAttribute("aria-disabled")).toBe("true");
-    expect(button.getAttribute("title")).toBe("当前没有筛选条件可复制");
+    // audL made the control permanent: the empty-state sentence is now the
+    // first part of a title that also says why there is nothing to hand over.
+    expect(button.getAttribute("title")).toContain("当前没有筛选条件可复制");
+    expect(button.getAttribute("title")).toContain("控件常驻");
+    // audL: the rule is on the card, not only inside the button
+    const rule = document.querySelector("[data-testid='audG-filter-copy-rule']")!.textContent ?? "";
+    expect(rule).toContain("常驻");
+    expect(rule).toContain("只有默认时间窗时");
     await copy();
     expect(clip.calls).toHaveLength(0);
     expect(listReads()).toBe(reads);
@@ -2770,32 +2777,81 @@ describe("audG - the shareable filter summary", () => {
     expect(document.querySelector("[data-testid='audG-filter-copy-status']")!.textContent).toContain("选中复制");
   });
 
-  it("loading offers no summary, an empty answer still does, and a denied ledger does not", async () => {
+  // audL replaced the old mount rule (「读到了才给复制」) with a permanent
+  // control. These two legs are the readings the 总控 asked for: 无筛选 → 常驻但
+  // disabled 并写明原因；有筛选 → 每种台账状态下都可复制，包括加载中与被拒。
+  it("audL: the control is permanent, and its enabled state follows the address", async () => {
+    const seen: Record<string, { present: boolean; disabled: boolean }> = {};
+    const read = (label: string): void => {
+      const node = document.querySelector<HTMLButtonElement>("[data-testid='audG-filter-copy']");
+      seen[label] = { present: node !== null, disabled: node?.disabled ?? true };
+    };
+
+    // ① no filter at all, ready: present, off, with the reason
+    api.fetchJSON.mockReset();
+    answer(EVENTS);
+    await render("/audit?window=7d", <AuditEventsModulePage />);
+    await waitFor(() => !skeleton(), "ready without filters");
+    read("ready-无筛选");
+    // ② loading, with a type chosen: present and ON — the question was asked
     let release: ((value: unknown) => void) | null = null;
     api.fetchJSON.mockReset();
     api.fetchJSON.mockImplementation(() => new Promise((resolve) => { release = resolve; }));
     await render("/audit?window=7d&type=task.created", <AuditEventsModulePage />);
     await waitFor(() => document.querySelector("[data-testid='aud01-loading']") !== null, "loading");
-    expect(document.querySelector("[data-testid='audG-filter-copy-block']")).toBeNull();
+    read("loading-有筛选");
     await act(async () => {
       release?.({ items: EVENTS.items, nextCursor: null });
     });
     await waitFor(() => !skeleton(), "ready");
-    expect(document.querySelector("[data-testid='audG-filter-copy-block']")).not.toBeNull();
-    // an empty answer is still a real question worth handing over
+    read("ready-有筛选");
+    // ③ an empty answer
     api.fetchJSON.mockReset();
     api.fetchJSON.mockImplementation(async () => ({ items: [], nextCursor: null }));
     await render("/audit?window=7d&type=task.created", <AuditEventsModulePage />);
     await waitFor(() => document.querySelector("[data-testid='aud01-empty']") !== null, "empty answer");
-    expect(document.querySelector("[data-testid='audG-filter-copy']")).not.toBeNull();
-    // a closed ledger has no question to describe
+    read("empty-有筛选");
+    // ④ a denied ledger: the refused question is exactly what a ticket needs
     api.fetchJSON.mockReset();
     api.fetchJSON.mockRejectedValue(
       new ApiError("no", { status: 403, body: '{"code":"console.forbidden"}', url: "/agent-api/api/audit", requestId: "rid-g" }),
     );
     await render("/audit?window=7d&type=task.created", <AuditEventsModulePage />);
     await waitFor(() => document.querySelector("[data-testid='aud01-denied']") !== null, "denied");
-    expect(document.querySelector("[data-testid='audG-filter-copy-block']")).toBeNull();
+    read("denied-有筛选");
+
+    expect(Object.values(seen).every((leg) => leg.present)).toBe(true);
+    expect(seen["ready-无筛选"]).toEqual({ present: true, disabled: true });
+    expect(seen["loading-有筛选"]).toEqual({ present: true, disabled: false });
+    expect(seen["ready-有筛选"]).toEqual({ present: true, disabled: false });
+    expect(seen["empty-有筛选"]).toEqual({ present: true, disabled: false });
+    expect(seen["denied-有筛选"]).toEqual({ present: true, disabled: false });
+  });
+
+  it("audL: a denied ledger still hands out the question that was refused", async () => {
+    const clip: { calls: string[] } = { calls: [] };
+    Object.defineProperty(window, "isSecureContext", { configurable: true, value: true });
+    Object.defineProperty(window.navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: async (text: string) => void clip.calls.push(text) },
+    });
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockRejectedValue(
+      new ApiError("no", { status: 403, body: '{"code":"console.forbidden"}', url: "/agent-api/api/audit", requestId: "rid-g2" }),
+    );
+    await render("/audit?window=7d&actor=employee-api", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud01-denied']") !== null, "denied");
+    const before = urls().length;
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='audG-filter-copy']")?.click();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+    expect(clip.calls[0]).toContain("actorId=employee-api");
+    expect(clip.calls[0]).toContain("操作者：employee-api");
+    // copying refused nothing: the ledger still shows the same one read
+    expect(urls()).toHaveLength(before);
   });
 });
 
@@ -3527,5 +3583,116 @@ describe("audK - the list is one roving tab stop", () => {
       expect(document.activeElement, leg.label).toBe(before);
       expect(urls().filter((u) => /^\/agent-api\/api\/audit\?/.test(u)).length).toBeLessThanOrEqual(1);
     }
+  });
+});
+
+/**
+ * audL — 自定义区间卡里的快捷预设。断言的是：24h/7d/30d 三个真按钮与上方快捷档
+ * 同源（同一个 setter、同一个 `?window=`），点击写地址、清掉 from/to、重取恰一次，
+ * 两边的 aria-pressed 镜像一致；`?window=custom` 仍可直达、反向区间的错误锚不变；
+ * 已经在快捷档上时再点同一档不会重复发问（0 次）。
+ */
+describe("audL - the custom card's quick presets", () => {
+  const listReads = (): number => urls().filter((u) => /^\/agent-api\/api\/audit\?/.test(u)).length;
+  const pressed = (testId: string): string | null =>
+    document.querySelector(`[data-testid='${testId}']`)?.getAttribute("aria-pressed") ?? null;
+
+  async function mountProbed(entry: string): Promise<void> {
+    api.fetchJSON.mockReset();
+    answer(EVENTS);
+    await render(entry, <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await waitFor(() => !skeleton(), "first page settled");
+  }
+
+  async function click(testId: string): Promise<void> {
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>(`[data-testid='${testId}']`)?.click();
+    });
+  }
+
+  it("the presets are real buttons that live inside the custom card", async () => {
+    await mountProbed("/audit?window=custom");
+    expect(document.querySelector("[data-testid='audB-presets']")).not.toBeNull();
+    for (const key of ["24h", "7d", "30d"]) {
+      const node = document.querySelector<HTMLButtonElement>(`[data-testid='audB-preset-${key}']`)!;
+      expect(node.tagName).toBe("BUTTON");
+      // nothing in the preset row is pressed while the custom range is what
+      // the address says — the pressed button is 自定义 in the group above
+      expect(node.getAttribute("aria-pressed")).toBe("false");
+    }
+    expect(pressed("aud01-filter-window-custom")).toBe("true");
+    expect(document.querySelector("[data-testid='audB-presets']")!.getAttribute("title")).toContain("同源");
+  });
+
+  it("a preset leaves the custom range with exactly one read", async () => {
+    await mountProbed("/audit?window=custom&from=2026-11-17T01%3A00%3A00.000Z&to=2026-11-17T02%3A30%3A00.000Z&type=task.created");
+    const before = listReads();
+    await click("audB-preset-24h");
+    await waitFor(() => pressed("aud01-filter-window-24h") === "true", "the quick group followed");
+    expect(listReads()).toBe(before + 1);
+    expect(locationText()).toContain("window=24h");
+    expect(locationText()).not.toContain("from=");
+    expect(locationText()).not.toContain("to=");
+    // same source, same state on both sides
+    expect(pressed("aud01-filter-window-24h")).toBe("true");
+    expect(pressed("audB-preset-24h")).toBeNull();
+    expect(pressed("aud01-filter-window-custom")).toBe("false");
+    // and the type the person had chosen is not collateral damage
+    expect(locationText()).toContain("type=task.created");
+    expect(lastUrl()).toContain("action=task.created");
+    expect(document.querySelector("[data-testid='aud01-custom-window']")).toBeNull();
+  });
+
+  it("presets reset the paging stack, because a new window is a new question", async () => {
+    await mountProbed("/audit?window=custom&from=2026-11-17T01%3A00%3A00.000Z&to=2026-11-17T02%3A30%3A00.000Z&cursor=cur_page1&cursor=cur_page2");
+    expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 3 页");
+    const before = listReads();
+    await click("audB-preset-30d");
+    await waitFor(() => !locationText().includes("cursor="), "the cursor stack dropped");
+    expect(listReads()).toBe(before + 1);
+    expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 1 页");
+    expect(locationText()).toContain("window=30d");
+  });
+
+  it("a half-filled or inverted range keeps its own error anchor, and a preset gets out of it", async () => {
+    await mountProbed("/audit?window=custom&from=2026-11-17T01%3A00%3A00.000Z");
+    expect(document.querySelector("[data-testid='aud01-custom-hint']")).not.toBeNull();
+    const before = listReads();
+    await click("audB-preset-7d");
+    await waitFor(() => !locationText().includes("window=custom"), "left the unfinished range");
+    expect(listReads()).toBe(before + 1);
+    // an inverted DRAFT still refuses to be applied, and asks nothing
+    await click("aud01-filter-window-custom");
+    await waitFor(() => document.querySelector("[data-testid='audB-apply']") !== null, "back in the card");
+    const asked = listReads();
+    await typeInto("aud01-custom-from", "2026-11-17T14:00");
+    await typeInto("aud01-custom-to", "2026-11-17T08:00");
+    await click("audB-apply");
+    expect(listReads()).toBe(asked);
+    expect(document.querySelector("[data-testid='audB-range-error']")!.textContent).toContain("开始时间不能晚于结束时间");
+  });
+
+  it("clicking the window that is already on does not ask twice", async () => {
+    await mountProbed("/audit?window=7d");
+    const before = listReads();
+    await click("aud01-filter-window-7d");
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
+    expect(listReads()).toBe(before);
+    expect(pressed("aud01-filter-window-7d")).toBe("true");
+  });
+
+  it("the custom leg is still reachable and replays cold, presets and all", async () => {
+    await mountProbed("/audit?window=custom&from=2026-11-17T01%3A00%3A00.000Z&to=2026-11-17T02%3A30%3A00.000Z");
+    expect(pressed("aud01-filter-window-custom")).toBe("true");
+    expect(document.querySelectorAll("[data-testid^='audB-preset-']")).toHaveLength(3);
+    expect(document.querySelector<HTMLInputElement>("[data-testid='aud01-custom-from']")!.value).toBe("2026-11-17T09:00");
+    expect(listReads()).toBe(1);
+    expect(lastUrl()).toContain("from=2026-11-17T01");
+    expect(lastUrl()).toContain("to=2026-11-17T02");
   });
 });
