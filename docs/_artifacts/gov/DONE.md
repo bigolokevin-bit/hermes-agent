@@ -2047,3 +2047,21 @@ built /private/tmp/health-r38/index.html
   - 375：页面 375，服务表仍只在自身容器内滚动（680/343），详情全文在表宽内换行。
 - 验证：`npx vitest run src/modules/health` → **5 files / 39 passed**；全量 `npx vitest run` → **145 files / 1807 passed**；`tsc -b . --noEmit` → exit 2，20 行均为既有基线，本域 0。
 - 边界：仅 `web/src/modules/health/**`（实现/测试/CSS）+ 本 DONE + 3 张截图；共 10 文件；未碰 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未 install/force/amend/--no-verify。
+
+## R70 / capH — 能力面 tab 切换保滚动与焦点（2026-11-20）
+
+- 基线：显式 refspec fetch `origin/lane/hermes-console`（tip `3c7f70f6`，代次 `cca9cf7e`）后 `git merge --no-ff` → Already up to date；HEAD `88ea9881`；未 reset，未并 main，未重建 9122。
+- 变更：新增 `web/src/modules/capabilities/tabView.ts` + 单测：
+  - 内存 Map 按 tab 存 `{scrollTop, firstRow}`；`sessionStorage` 未用，**刷新后不承诺复原**（已在类型注释与本文写明）。
+  - `findScrollHost` 找最近纵向滚动容器，否则文档滚动；`captureTabView`/`restoreTabView` 双 rAF 复原；`noteTabMount` 仅真实切换时返回 true；`focusTabButton` 聚焦 `[role=tab][data-tab=…]` 并 `preventScroll`。
+  - `SkillsPage`/`ToolsPage` 根加 `capH-scroll` + `capH-page-*`，挂载时复原并聚焦、卸载/滚动时 capture；CSS 让 shell 的 `.pane` 成为仅这两页启用的纵向滚动宿主（桌面 ≥769px）。
+  - 既有数据缓存不改：返回已访问 tab 仍是 0 新请求；首次切到 tools 是一次逻辑读取（4 个候选 URL 的现有回退链），如实登记。
+- DOM 读数（临时 harness 已删；Vite 5490 / Chrome CDP 9291；40 skills + 40 tools，`?q=技能&sort=name&dir=asc`）：
+  - 1440：skills 滚到 `scrollTop=1028`，首行 `skl4-row-s7`；切 tools 后首行 `tl3-row-toolset-web-_0`，滚到 805 并展开 `cap7-detail-tools`；切回 skills → `scrollTop=1028`、首行 `skl4-row-s7`、`cap7-detail-skills` 仍开；再切 tools → `805`、首行同、`cap7-detail-tools` 仍开；每次切换后 `document.activeElement` 为对应 `[role=tab][data-tab=skills|tools]`。差异 0 行。
+  - 1280：同序，skills `1028 / s7`；tools 首行同；focus 与展开行同上；`bodySW=bodyCW=1280`。
+  - 375：走文档滚动，`scrollY=900`、首行 `skl4-row-s3`；切 tools 后 `scrollY=0`（新 tab 首次进入），切回 skills → `scrollY=900`、首行 `skl4-row-s3`、focus skills；`bodySW=bodyCW=375`。
+  - 三档均 `bodySW=bodyCW`，375 只表内横滚（既有）。
+  - 请求计数：skills 首次 1；切 tools 后 5（新增 4 个候选 HTTP，逻辑读取 1 次）；切回 skills / tools 均仍 5（0 新增）。
+  - 切 tab 的 `href` 保留 `q=%E6%8A%80%E8%83%BD&sort=name&dir=asc`。
+- 验证：定向 `npx vitest run src/modules/capabilities src/modules/skills src/modules/tools` → **7 files / 72 passed**；全量 → **146 files / 1811 passed**；`tsc -b . --noEmit` exit 2，21 行均既有基线，本域 0。
+- 边界：仅 `web/src/modules/{capabilities,skills,tools}/**` + 本 DONE；共 7 文件；未碰 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未 install/force/amend/--no-verify。

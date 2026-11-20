@@ -23,6 +23,7 @@ import { CapabilityCopy } from "../capabilities/listCopy";
 import type { CapabilityOutputState } from "../capabilities/outputState";
 import { applySort, ariaSort, cycleSort, readSort, sortRows, type SortKey } from "../capabilities/sorting";
 import { useEnsureTabParam } from "../capabilities/tabParam";
+import { captureTabView, focusTabButton, noteTabMount, restoreTabView } from "../capabilities/tabView";
 import "./skills.css";
 
 type State =
@@ -129,6 +130,7 @@ export function SkillsPage() {
   const [openSkill, setOpenSkill] = useState<string | null>(() => cachedSkillsOpen);
   const [rovingKey, setRovingKey] = useState<string | null>(null);
   const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
+  const rootRef = useRef<HTMLElement | null>(null);
   const fixture = currentFixtureState();
   const forced = forcedState(fixture, currentFixtureRid());
   const retry = () => {
@@ -139,6 +141,24 @@ export function SkillsPage() {
   useEffect(() => {
     cachedSkillsOpen = openSkill;
   }, [openSkill]);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (noteTabMount("skills")) {
+      restoreTabView("skills", root);
+      focusTabButton("skills");
+    }
+    const capture = () => {
+      if (rootRef.current) {
+        captureTabView("skills", rootRef.current, '[data-testid^="skl4-row-"]');
+      }
+    };
+    window.addEventListener("scroll", capture, true);
+    return () => {
+      capture();
+      window.removeEventListener("scroll", capture, true);
+    };
+  }, []);
 
   useEffect(() => {
     if (!openSkill) return;
@@ -288,7 +308,8 @@ export function SkillsPage() {
           : { kind: "ready" };
 
   return (
-    <section className="skl4-page" data-testid="skl4-page" data-fixture={fixture ?? undefined} data-cap-state={capState}>
+    <section ref={rootRef} className="skl4-page capH-scroll" data-testid="skl4-page" data-fixture={fixture ?? undefined} data-cap-state={capState}>
+      <span className="sr-only" data-testid="capH-page-skills" />
       <CapabilityCounts />
       {page.k === "ready" ? <CapabilitySearch value={q} total={page.rows.length} onChange={setQ} /> : null}
       <header className="skl4-head">

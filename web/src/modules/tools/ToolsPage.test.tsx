@@ -18,6 +18,7 @@ vi.mock("@/lib/clipboard", () => ({ copyTextToClipboard: clipboard.copyTextToCli
 import { ToolsPage } from "./ToolsPage";
 import { resetToolsTabState } from "./useToolsData";
 import { publishCapabilityCount, resetCapabilityCounts } from "../capabilities/counts";
+import { resetTabView } from "../capabilities/tabView";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -117,6 +118,7 @@ beforeEach(() => {
   api.fetchJsonStrict.mockReset();
   resetCapabilityCounts();
   resetToolsTabState();
+  resetTabView();
   clipboard.copyTextToClipboard.mockReset();
   clipboard.copyTextToClipboard.mockResolvedValue(true);
 });

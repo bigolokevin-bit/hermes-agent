@@ -36,6 +36,7 @@ import type { CapabilityOutputState } from "../capabilities/outputState";
 import { applySort, ariaSort, cycleSort, readSort, sortRows, type SortKey } from "../capabilities/sorting";
 import { CapabilityRowDetail } from "../capabilities/rowDetail";
 import { useEnsureTabParam } from "../capabilities/tabParam";
+import { captureTabView, focusTabButton, noteTabMount, restoreTabView } from "../capabilities/tabView";
 import "./tools.css";
 
 
@@ -239,10 +240,29 @@ export function ToolsPage(): ReactNode {
   const [openTool, setOpenTool] = useState<string | null>(() => readOpenTool());
   const [rovingKey, setRovingKey] = useState<string | null>(null);
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const rootRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     rememberOpenTool(openTool);
   }, [openTool]);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (noteTabMount("tools")) {
+      restoreTabView("tools", root);
+      focusTabButton("tools");
+    }
+    const capture = () => {
+      if (rootRef.current) {
+        captureTabView("tools", rootRef.current, '[data-testid^="tl3-row-"]');
+      }
+    };
+    window.addEventListener("scroll", capture, true);
+    return () => {
+      capture();
+      window.removeEventListener("scroll", capture, true);
+    };
+  }, []);
 
   useEffect(() => {
     if (!openTool) return;
@@ -515,7 +535,8 @@ export function ToolsPage(): ReactNode {
               : { kind: "ready" };
 
   return (
-    <section className="flex min-w-0 w-full max-w-full flex-col" data-testid="tl3-page">
+    <section ref={rootRef} className="capH-scroll flex min-w-0 w-full max-w-full flex-col" data-testid="tl3-page">
+    <span className="sr-only" data-testid="capH-page-tools" />
     <CapabilityCounts />
     <div
       className="tol5-page flex min-w-0 w-full max-w-full flex-col gap-3"

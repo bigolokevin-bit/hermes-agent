@@ -19,6 +19,7 @@ import { ApiError } from "@/lib/api-error";
 import { SkillsPage } from "./SkillsPage";
 import { resetSkillsTabState } from "./SkillsPage";
 import { resetCapabilityCounts } from "../capabilities/counts";
+import { resetTabView } from "../capabilities/tabView";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -31,6 +32,7 @@ beforeEach(() => {
   fetchJsonStrict.mockReset();
   resetCapabilityCounts();
   resetSkillsTabState();
+  resetTabView();
   clipboard.copyTextToClipboard.mockReset();
   clipboard.copyTextToClipboard.mockResolvedValue(true);
   window.history.replaceState({}, "", "/");
