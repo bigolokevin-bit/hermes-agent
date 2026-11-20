@@ -24,6 +24,7 @@ import { RequestIdCopy } from "@/components/RequestIdCopy";
 import { fetchJSON } from "@/lib/api";
 import { ApiError, errorMessage } from "@/lib/api-error";
 import { cn, themedBody } from "@/lib/utils";
+import { ConsoleButton } from "@/shell/ConsoleButton";
 
 /** Same union the kit's Badge accepts (its own type is not exported). */
 type Tone = "default" | "destructive" | "outline" | "secondary" | "success" | "warning";
@@ -381,9 +382,10 @@ function ErrorPanel({ failure, onRetry }: { failure: Failure; onRetry: () => voi
         <p className="text-xs text-muted-foreground">
           <RequestIdCopy requestId={failure.requestId} fallback="请求编号未记录，可复制时间与操作路径反馈" />
         </p>
-        <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
+        <ConsoleButton variant="secondary" size="sm" onClick={onRetry}>
+          <RefreshCw className="h-3.5 w-3.5" />
           重试
-        </Button>
+        </ConsoleButton>
         {failure.authExpired && (
           <Button
             size="sm"
@@ -408,9 +410,10 @@ function EmptyPanel({ onRefresh }: { onRefresh: () => void }) {
         <p className="max-w-prose text-xs text-muted-foreground">
           员工遇到需要你点头的操作时会提出申请，提出后立刻出现在这里。
         </p>
-        <Button size="sm" outlined onClick={onRefresh} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
+        <ConsoleButton variant="secondary" size="sm" onClick={onRefresh}>
+          <RefreshCw className="h-3.5 w-3.5" />
           刷新
-        </Button>
+        </ConsoleButton>
       </CardContent>
     </Card>
   );
@@ -577,14 +580,10 @@ export default function ApprovalsPage() {
                 : "审批申请读取失败"}
         </p>
         {phase !== "denied" && (
-          <Button
-            size="sm"
-            outlined
-            onClick={reload}
-            prefix={<RefreshCw className={cn("h-3.5 w-3.5", phase === "loading" && "animate-spin")} />}
-          >
+          <ConsoleButton variant="secondary" size="sm" onClick={reload}>
+            <RefreshCw className={cn("h-3.5 w-3.5", phase === "loading" && "animate-spin")} />
             刷新
-          </Button>
+          </ConsoleButton>
         )}
       </div>
 

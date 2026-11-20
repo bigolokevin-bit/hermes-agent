@@ -1,10 +1,10 @@
 import { AlertCircle, RotateCcw } from "lucide-react";
-import { Button } from "@nous-research/ui/ui/components/button";
 import { Card } from "@nous-research/ui/ui/components/card";
 
 import { useI18n } from "@/i18n";
 import { loadErrorCopy } from "@/lib/load-error-copy";
 import { cn } from "@/lib/utils";
+import { ConsoleButton } from "@/shell/ConsoleButton";
 
 interface LoadErrorNoticeProps {
   /** What failed to load, already translated (e.g. `t.cron.loadWhat`). */
@@ -36,15 +36,15 @@ export function LoadErrorNotice({ what, detail, onRetry, className }: LoadErrorN
       <div className="min-w-0 flex-1">
         <div className="text-destructive">{copy.title}</div>
         {copy.details && <div className="mt-0.5 text-muted-foreground">{copy.details}</div>}
-        <Button
+        <ConsoleButton
+          variant="secondary"
           size="sm"
-          outlined
           className="mt-1"
           onClick={onRetry}
-          prefix={<RotateCcw className="h-3.5 w-3.5" />}
         >
+          <RotateCcw className="h-3.5 w-3.5" />
           {t.common.retry}
-        </Button>
+        </ConsoleButton>
       </div>
     </Card>
   );

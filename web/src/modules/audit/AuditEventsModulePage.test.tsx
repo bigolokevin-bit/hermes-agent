@@ -14,6 +14,18 @@ const api = vi.hoisted(() => ({ fetchJSON: vi.fn() }));
 vi.mock("@/lib/api", () => ({ fetchJSON: api.fetchJSON }));
 
 import AuditEventsModulePage from "@/modules/audit/AuditEventsModulePage";
+import {
+  closeSelect,
+  openSelect,
+  optionTexts,
+  optionValues,
+  pickByValue,
+  selectDisabled,
+  selectExpanded,
+  selectText,
+  selectTitle,
+  selectValue,
+} from "@/shell/selectHarness";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -107,17 +119,14 @@ async function mount(handler?: (url: string) => Promise<unknown>, entry = "/syst
 }
 
 /**
- * Choose a filter value the way a person does: a select gets its change event,
- * a pressed-state group (audB: the quick windows) gets a click on its button.
+ * Choose a filter value the way a person does: a listbox control is opened and
+ * its option clicked, a pressed-state group (audB: the quick windows) gets a
+ * click on its button.
  */
 async function choose(testId: string, value: string): Promise<void> {
   const node = document.querySelector<HTMLElement>(`[data-testid='${testId}']`);
-  if (node && node.tagName === "SELECT") {
-    const select = node as HTMLSelectElement;
-    await act(async () => {
-      select.value = value;
-      select.dispatchEvent(new Event("change", { bubbles: true }));
-    });
+  if (node?.getAttribute("role") === "combobox") {
+    await pickByValue(testId, value);
     return;
   }
   const button = document.querySelector<HTMLButtonElement>(`[data-testid='${testId}-${value}']`);
@@ -496,7 +505,9 @@ describe("the filters change the request (aud01)", () => {
 
   it("the dropdown only offers codes the live service was seen using", async () => {
     await mount();
-    const options = Array.from(document.querySelectorAll("[data-testid='aud01-filter-type'] option")).map((o) => o.getAttribute("value"));
+    await openSelect("aud01-filter-type");
+    const options = optionValues();
+    await closeSelect("aud01-filter-type");
     expect(options[0]).toBe(""); // 全部事件类型
     const sent = options.slice(1).filter(Boolean);
     expect(sent.length).toBeGreaterThan(0);
@@ -583,18 +594,22 @@ describe("the filters change the request (aud01)", () => {
 
   it("the operator filter is a real control whose limits ride the title", async () => {
     await mount();
-    const node = document.querySelector<HTMLSelectElement>("[data-testid='aud01-filter-operator']")!;
+    const node = document.querySelector<HTMLElement>("[data-testid='aud01-filter-operator']")!;
     // aud9: the read口 answers actorId (live probe #11: 200, 50/50 rows), so
     // the control is wired instead of 未接入. What it cannot do — name people —
     // is stated in words under it and in the title, never by a dead select.
-    expect(node.disabled).toBe(false);
-    const options = [...node.options].map((option) => option.value);
+    expect(node.hasAttribute("disabled")).toBe(false);
+    // the choice list exists only while the panel is open — the way it is for
+    // a person, who must open it to see what can be chosen
+    await openSelect("aud01-filter-operator");
+    const options = optionValues();
     expect(options[0]).toBe("");
     expect(options).toContain("user:2f3a4b5c6d7e8f90");
     // the option text is the human label; the handle stays in the value
-    const labels = [...node.options].map((option) => option.text);
+    const labels = optionTexts();
     expect(labels.join(" ")).toContain("李思");
-    expect(node.selectedOptions[0]!.text).toBe("全部操作者");
+    await closeSelect("aud01-filter-operator");
+    expect(selectText("aud01-filter-operator")).toBe("全部操作者");
     expect(text()).not.toContain("GAP-06");
     const titled = document.querySelector("[title*='GAP-06']")!;
     expect(titled.getAttribute("title")).toContain("actorId");
@@ -1202,7 +1217,7 @@ describe("aud8 - cross-page evidence continuity", () => {
     expect(lastUrl()).toContain("actorId=employee-api");
     expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 2 页");
     expect(pressedWindow()).toBe("24h");
-    expect(document.querySelector<HTMLInputElement>("[data-testid='aud01-filter-type']")!.value).toBe("task.created");
+    expect(selectValue("aud01-filter-type")).toBe("task.created");
     expect(document.querySelector("[data-testid='aud6-preview-evt_7c1f2a3b4d5e6f70']")).not.toBeNull();
     expect(document.querySelector("[data-testid='aud8-state-line']")!.textContent).toContain("第 2 页");
     // the handle itself stays off the human layer: it is on the wire, not on screen
@@ -1331,7 +1346,7 @@ describe("aud9 - actor filter, request count and the event deep link", () => {
     expect(locationText()).toContain("actor=employee%3A9f8e7d6c5b4a3f21");
     expect(locationText()).toContain("cursor=cur_page2");
     expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 2 页");
-    expect(document.querySelector<HTMLInputElement>("[data-testid='aud01-filter-operator']")!.value).toBe(
+    expect(selectValue("aud01-filter-operator")).toBe(
       "employee:9f8e7d6c5b4a3f21",
     );
   });
@@ -1357,9 +1372,9 @@ describe("aud9 - actor filter, request count and the event deep link", () => {
     expect(asked).toContain("resourceId=ap_1122334455667788");
     expect(asked).toContain("cursor=cur_page2");
     expect(pressedWindow()).toBe("custom");
-    expect(document.querySelector<HTMLInputElement>("[data-testid='aud01-filter-type']")!.value).toBe("task.created");
-    expect(document.querySelector<HTMLInputElement>("[data-testid='aud01-filter-operator']")!.value).toBe("employee-api");
-    expect(document.querySelector<HTMLInputElement>("[data-testid='aud8-filter-resource']")!.value).toBe("ap_1122334455667788");
+    expect(selectValue("aud01-filter-type")).toBe("task.created");
+    expect(selectValue("aud01-filter-operator")).toBe("employee-api");
+    expect(selectValue("aud8-filter-resource")).toBe("ap_1122334455667788");
     expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 3 页");
     expect(document.querySelector("[data-testid='aud2-total']")!.textContent).toBe("共 137 条");
     // the deep link opened that row's preview on the cold load
@@ -1371,11 +1386,7 @@ describe("aud9 - actor filter, request count and the event deep link", () => {
   it("a resource choice matches locally, says so, and asks exactly once", async () => {
     await mountProbed("/audit?window=7d");
     const before = listReads().length;
-    await act(async () => {
-      const node = document.querySelector<HTMLSelectElement>("[data-testid='aud8-filter-resource']")!;
-      node.value = "ap_1122334455667788";
-      node.dispatchEvent(new Event("change", { bubbles: true }));
-    });
+    await pickByValue("aud8-filter-resource", "ap_1122334455667788");
     await waitFor(() => locationText().includes("resource="), "resource written to the address");
     expect(listReads().length).toBe(before + 1);
     expect(document.querySelectorAll("[data-testid^='aud01-row-']")).toHaveLength(1);
@@ -1798,8 +1809,8 @@ describe("audB - custom time range", () => {
     expect(pressed("custom")).toBe("true");
     expect(document.querySelector<HTMLInputElement>("[data-testid='aud01-custom-from']")!.value).toBe("2026-11-17T09:00");
     expect(document.querySelector<HTMLInputElement>("[data-testid='aud01-custom-to']")!.value).toBe("2026-11-17T10:30");
-    expect(document.querySelector<HTMLInputElement>("[data-testid='aud01-filter-type']")!.value).toBe("task.created");
-    expect(document.querySelector<HTMLInputElement>("[data-testid='aud01-filter-operator']")!.value).toBe("employee-api");
+    expect(selectValue("aud01-filter-type")).toBe("task.created");
+    expect(selectValue("aud01-filter-operator")).toBe("employee-api");
     expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 3 页");
     expect(document.querySelector("[data-testid='aud6-preview-evt_7c1f2a3b4d5e6f70']")).not.toBeNull();
     expect(document.querySelector("[data-testid='audB-scope-note']")!.textContent).toContain("服务端");
@@ -2192,7 +2203,7 @@ describe("audD - the type buckets filter the ledger", () => {
     await mountProbed("/audit?window=7d&type=task.created");
     expect(listReads()).toBe(1);
     expect(lastUrl()).toContain("action=task.created");
-    expect(document.querySelector<HTMLInputElement>("[data-testid='aud01-filter-type']")!.value).toBe("task.created");
+    expect(selectValue("aud01-filter-type")).toBe("task.created");
     // the fold is collapsed by default, so open it to see the pressed state
     await expand();
     expect(document.querySelector<HTMLButtonElement>("[data-testid='audD-bucket-task.created']")!.getAttribute("aria-pressed")).toBe("true");
@@ -2205,10 +2216,10 @@ describe("audD - the type buckets filter the ledger", () => {
       if (String(url).includes("action=quantum.recalibration")) return { items: [ROW("evt_c1", "quantum.recalibration")], nextCursor: null };
       return { items: [], nextCursor: null };
     });
-    expect(document.querySelector<HTMLInputElement>("[data-testid='aud01-filter-type']")!.value).toBe("quantum.recalibration");
-    expect([...document.querySelectorAll<HTMLOptionElement>("[data-testid='aud01-filter-type'] option")].map((o) => o.text)).toContain(
-      "按地址带入的类型",
-    );
+    expect(selectValue("aud01-filter-type")).toBe("quantum.recalibration");
+    await openSelect("aud01-filter-type");
+    expect(optionTexts()).toContain("按地址带入的类型");
+    await closeSelect("aud01-filter-type");
   });
 
   it("an empty answer for a picked type says 该条件下无事件 and clears back, once", async () => {
@@ -2880,15 +2891,10 @@ describe("audH - the page size selector", () => {
     }));
 
   const listReads = (): string[] => urls().filter((u) => /^\/agent-api\/api\/audit\?/.test(u));
-  const sizeValue = (): string =>
-    (document.querySelector<HTMLSelectElement>("[data-testid='audH-page-size']")?.value ?? "").trim();
+  const sizeValue = (): string => selectValue("audH-page-size");
 
   async function pickSize(size: string): Promise<void> {
-    const node = document.querySelector<HTMLSelectElement>("[data-testid='audH-page-size']")!;
-    await act(async () => {
-      node.value = size;
-      node.dispatchEvent(new Event("change", { bubbles: true }));
-    });
+    await pickByValue("audH-page-size", size);
   }
 
   async function mountProbed(entry: string, handler?: (url: string) => Promise<unknown>): Promise<void> {
@@ -2969,7 +2975,7 @@ describe("audH - the page size selector", () => {
     expect(note!.textContent).toContain("请求按每页 100 条发出");
     expect(note!.textContent).toContain("服务这一页带回的是每页 50 条");
     // the control does not offer 100 as if it were in force
-    expect(document.querySelector<HTMLSelectElement>("[data-testid='audH-page-size']")!.selectedOptions[0]!.text).toBe("50 条");
+    expect(selectText("audH-page-size")).toBe("50 条");
     expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("已加载 50 条");
   });
 
@@ -2994,17 +3000,14 @@ describe("audH - the page size selector", () => {
       const note = document.querySelector("[data-testid='audH-clamp-note']");
       expect(note).not.toBeNull();
       expect(note!.textContent).toContain("没有把它发出去");
-      expect(document.querySelector<HTMLSelectElement>("[data-testid='audH-page-size']")!.getAttribute("title")).toContain(
-        "没有把它发出去",
-      );
+      expect(selectTitle("audH-page-size")).toContain("没有把它发出去");
     }
   });
 
   it("an empty answer leaves the size selector on screen but unusable", async () => {
     await mountProbed("/audit?window=24h", async () => ({ items: [], nextCursor: null }));
-    const node = document.querySelector<HTMLSelectElement>("[data-testid='audH-page-size']")!;
-    expect(node.disabled).toBe(true);
-    expect(node.getAttribute("title")).toContain("没有事件");
+    expect(selectDisabled("audH-page-size")).toBe(true);
+    expect(selectTitle("audH-page-size")).toContain("没有事件");
     expect(document.querySelector("[data-testid='aud01-empty']")).not.toBeNull();
     // the empty answer keeps the SAME control (one widget, not a second one) and
     // marks it unusable with its reason. jsdom dispatches change even on a
@@ -3518,15 +3521,19 @@ describe("audK - the list is one roving tab stop", () => {
     await act(async () => {
       first.focus();
     });
-    // focus is on the row, so arrows move; the export control is a select whose
-    // own keys must keep working — dispatch from inside it and assert no move
+    // focus is on the row, so arrows move; the type control is a listbox whose
+    // own keys must keep working — dispatch from inside it and assert the row
+    // list did not steal the key: the control opens and keeps the key itself.
     await press("ArrowDown");
     expect(active()).toBe("evt_n2");
     const typeSelect = document.querySelector("[data-testid='aud01-filter-type']")!;
     await act(async () => {
       typeSelect.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, cancelable: true }));
     });
-    expect(active()).toBe("evt_n2");
+    expect(selectExpanded("aud01-filter-type")).toBe(true);
+    expect(document.activeElement?.getAttribute("role")).toBe("option");
+    expect(active()).toBeNull();
+    await closeSelect("aud01-filter-type");
     expect(document.querySelector("[data-testid='aud01-filter-type']")).toBe(typeSelect);
     // a row nobody attributed is still a row: text and roving both work
     expect(first.textContent).toContain("操作者");
@@ -4090,10 +4097,10 @@ describe("audN - the columns sort locally, and say so", () => {
         "&actor=user%3Abbb0000000000002&type=task.created&limit=25&cursor=cur_page1&asort=actor&adir=asc",
     );
     expect(head("actor")!.getAttribute("aria-sort")).toBe("ascending");
-    expect(document.querySelector<HTMLInputElement>("[data-testid='aud01-filter-operator']")!.value).toBe(
+    expect(selectValue("aud01-filter-operator")).toBe(
       "user:bbb0000000000002",
     );
-    expect(document.querySelector<HTMLInputElement>("[data-testid='audH-page-size']")!.value).toBe("25");
+    expect(selectValue("audH-page-size")).toBe("25");
     expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 2 页");
     expect(locationText()).toContain("asort=actor");
     expect(lastUrl()).toContain("from=2026-11-12T01");
@@ -4483,7 +4490,7 @@ describe("audP - the deep link survives the page size", () => {
   const detailReads = (): number => urls().filter((u) => u.startsWith("/agent-api/api/audit-detail")).length;
   const probe = (name: string): string | null =>
     document.querySelector("[data-testid='aud-limit-restore']")?.getAttribute(name) ?? null;
-  const sizeShown = (): string => document.querySelector<HTMLSelectElement>("[data-testid='audH-page-size']")!.value;
+  const sizeShown = (): string => selectValue("audH-page-size");
 
   /** A service that honours `limit` the way the ledger does: it answers n rows. */
   function honoringLimit(n: number): (url: string) => Promise<unknown> {
@@ -4507,11 +4514,7 @@ describe("audP - the deep link survives the page size", () => {
   }
 
   async function pickSize(size: string): Promise<void> {
-    const node = document.querySelector<HTMLSelectElement>("[data-testid='audH-page-size']")!;
-    await act(async () => {
-      node.value = size;
-      node.dispatchEvent(new Event("change", { bubbles: true }));
-    });
+    await pickByValue("audH-page-size", size);
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 30));
     });
@@ -4572,9 +4575,9 @@ describe("audP - the deep link survives the page size", () => {
       // 逐字回到进去之前那条地址：条数、窗、类型、操作者、资源、游标、深链
       expect(locationText(), leg.label).toBe(address);
       expect(sizeShown(), leg.label).toBe(sizeBefore);
-      expect(document.querySelector<HTMLInputElement>("[data-testid='aud01-filter-operator']")!.value).toBe("employee-api");
-      expect(document.querySelector<HTMLInputElement>("[data-testid='aud8-filter-resource']")!.value).toBe("ts_evt_p2");
-      expect(document.querySelector<HTMLInputElement>("[data-testid='aud01-filter-type']")!.value).toBe("task.created");
+      expect(selectValue("aud01-filter-operator")).toBe("employee-api");
+      expect(selectValue("aud8-filter-resource")).toBe("ts_evt_p2");
+      expect(selectValue("aud01-filter-type")).toBe("task.created");
       expect(probe("data-aud-limit-cursors"), leg.label).toBe("1");
       expect(probe("data-aud-limit-page"), leg.label).toBe("2");
       expect(probe("data-aud-limit-event"), leg.label).toBe("evt_p2");
@@ -4871,7 +4874,13 @@ describe("audR - the address is the only source of truth", () => {
     }
     return null;
   };
-  const widget = (testId: string): string => (document.querySelector<HTMLSelectElement>(`[data-testid='${testId}']`)?.value ?? "").trim();
+  const widget = (testId: string): string => {
+    const node = document.querySelector<HTMLElement>(`[data-testid='${testId}']`);
+    if (!node) return "";
+    // A hand-drawn listbox carries its value in `data-value`; a text or
+    // datetime field still carries it in `.value`.
+    return (node.getAttribute("data-value") ?? (node as HTMLInputElement).value ?? "").trim();
+  };
   const asked = (): URLSearchParams => new URLSearchParams((urls().slice().reverse().find((u) => /^\/agent-api\/api\/audit\?/.test(u)) ?? "").split("?")[1] ?? "");
   const auditCount = (): number => urls().filter((u) => /^\/agent-api\/api\/audit\?/.test(u)).length;
   const pageSeat = (): string => document.querySelector("[data-testid='aud2-page']")!.textContent ?? "";
@@ -4973,7 +4982,9 @@ describe("audR - the address is the only source of truth", () => {
     });
     expect(widget("aud01-filter-type")).toBe("quantum.recalibration");
     expect(asked().get("action")).toBe("quantum.recalibration");
-    expect([...document.querySelectorAll("option")].map((option) => option.text)).toContain("按地址带入的类型");
+    await openSelect("aud01-filter-type");
+    expect(optionTexts()).toContain("按地址带入的类型");
+    await closeSelect("aud01-filter-type");
     expect(auditCount()).toBe(1);
     // 同理，句柄不在本页选项里时也照样回填
     await mountWith("/audit?window=7d&actor=some-other-service", answering);
@@ -5073,18 +5084,13 @@ describe("audR - the address is the only source of truth", () => {
   });
 
   async function pick(testId: string, value: string): Promise<void> {
-    const node = value
-      ? document.querySelector<HTMLSelectElement>(`[data-testid='${testId}']`)
-      : document.querySelector<HTMLButtonElement>(`[data-testid='${testId}']`);
-    if (!node) throw new Error(`${testId} not found`);
     if (value) {
-      await act(async () => {
-        (node as HTMLSelectElement).value = value;
-        node.dispatchEvent(new Event("change", { bubbles: true }));
-      });
+      await pickByValue(testId, value);
     } else {
+      const node = document.querySelector<HTMLButtonElement>(`[data-testid='${testId}']`);
+      if (!node) throw new Error(`${testId} not found`);
       await act(async () => {
-        (node as HTMLButtonElement).click();
+        node.click();
       });
     }
     await act(async () => {
