@@ -1914,3 +1914,79 @@ built /private/tmp/health-r38/index.html
 - 验证：health **4 files / 27 passed**；全量 **138 files / 1594 passed**；tsc 本域 0（仅基线 employee-detail/employees 错误）。
 - DOM（临时 harness，已删除；Vite 5476 / Chrome 9276）：1440/1280/375 均 `vw=docSW=bodySW=bodyCW`；矩阵 4 行；复制按钮可用、title「复制当前矩阵为纯文本；不会再发请求」；点击后状态「已复制」且无 fallback；请求计数 **4 → 4**。截图 `docs/_artifacts/gov/shots/sys10-{1440,1280,375}.png`。
 - 边界：仅改 `web/src/modules/health/**` + DONE/截图；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未并 main、未重建 9122。
+
+## R61 — /capabilities tab 切换保态（capTab）
+
+- 基线：显式 refspec fetch 后 `git merge origin/lane/hermes-console`（tip `053da5c4`，代码代次 `053da5c4`）→ merge `2de37223`；未 reset。
+- 行为：skills↔tools 切 tab 时 shell 保留 `q`/`sort`/`dir`；两页新增模块级快照（仅缓存已落定读结果 + 展开行），切回立即复原且**不重复取数**；显式刷新/重试仍重新读取。skills 默认 tab 现在也写 `tab=skills` 进 URL（`useEnsureTabParam`），tools 同理；不覆盖其他 tab 值。
+- 展开行：skills `openSkill`、tools `openTool` 随快照恢复；Escape 仍可收起。计数条由恢复后的可见行重新发布，不闪旧 tab 的数字。
+- 请求计数（真实 shell `ConsoleModulePage`，临时 harness 已删除；Vite 5477 / Chrome 9277）：
+  - 首次 skills：1 次（`/agent-api/api/skills`）。
+  - 首次切 tools：+6 次（两条逻辑读取各走 3 个候选：`/agent-api/api/tools`、`/api/tools`、`/agent-api/api/tools/toolsets`、`/api/tools/toolsets`、`/agent-api/api/mcp/servers`、`/api/mcp/servers`），累计 7。
+  - 切回 skills：+0（累计 7），展开的 skills 详情仍为 1。
+  - 再切 tools：+0（累计 7），展开的 tools 详情仍为 1。
+- URL：skills `?tab=skills&q=资料&sort=name&dir=asc`；tools `?tab=tools&q=资料&sort=name&dir=asc`；切回 skills 时 `tab` 由页面补回，其余参数不变。`aria-sort` 仍只出现在可排序列。
+- 验证：定向 `skills+tools+capabilities` → **5 files / 58 passed**；全量 **138 files / 1673 passed**；tsc 本域 0（仅基线 employee-detail/employees 报错）。DOM 1440/1280/375 `vw=bodySW=bodyCW=1440/1280/375`；截图 `docs/_artifacts/gov/shots/capTab-{1440,1280,375}.png`。
+- 边界：仅改 `web/src/modules/{capabilities,skills,tools}/**` + DONE/截图；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未并 main、未重建 9122。
+
+## R62 — 能力面行复制为纯文本（capC）
+
+- 基线：显式 refspec fetch 后 `git merge origin/lane/hermes-console`（tip `b797bc98`，代码代次 `053da5c4`）→ merge `4e1a9ddb`；未 reset。
+- 行为：skills / tools 两 tab 通用「复制列表」`capC-copy`。文本固定表头 `name,type,enabled,updated_at`，随后按当前 tab + 当前搜索 + 当前排序的屏上行序逐行输出；值逐字取屏上（类型/来源人话、启用态人话、更新北京时间到分），缺值「—」不补 0。纯前端投影，复制不触发任何请求。
+- 成功：`capC-copy-status` 以 `aria-live` 报「已复制 N 行」；剪贴板拒绝：同文案只读 textarea `capC-copy-fallback`，内容与剪贴板文本逐字相同；无行时按钮 disabled，title「当前视图没有可复制的行」。
+- DOM（真实 shell `ConsoleModulePage`，临时 harness 已删除；Vite 5478 / Chrome 9278；`?q=资料&sort=name&dir=asc` / `?q=网页&sort=name&dir=asc`）：
+  - 1440/1280/375 均 `vw=bodySW=bodyCW=pageSW=pageCW=1440/1280/375`。
+  - skills：1 行，复制文本 `name,type,enabled,updated_at\n资料整理,平台内置,正常,2026-11-19 11:00`；请求 **1 → 1**。
+  - tools：1 行，复制文本 `name,type,enabled,updated_at\n网页搜索,内置 · 网页搜索与抓取,正常,—`；请求 **4 → 4**。
+  - 两 tab 复制后状态均为「已复制 1 行」，无 fallback。
+- 验证：定向 `skills+tools+capabilities` → **6 files / 62 passed**；全量 **139 files / 1677 passed**；tsc 本域 0（仅基线 employee-detail/employees 报错）。
+- 边界：仅改 `web/src/modules/{capabilities,skills,tools}/**` + DONE；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未并 main、未重建 9122。
+
+## R63 — /capabilities 行详情与复制字段一致性（cap7/capC/列表行）
+
+- 基线：显式 refspec fetch 后 `git merge origin/lane/hermes-console`（tip `b797bc98`，代码代次 `053da5c4`）→ Already up to date；未 reset。
+- 改前/改后：
+  1. 行详情缺值原显示 `该字段未返回`，与列表/复制的 `—` 不同；现统一为 `—`，原因只进 title。
+  2. 技能未知启用态列表/详情没有原值 title；现 `待核实` + title 显示上游原值（如 `mystery`）。
+  3. 工具集启用值为无法归类的字符串时，statusRaw 丢失、title 只写「没有说明」；现保留原值并写「接口给出的启用值未归类。」。
+  4. 工具详情读口路径原为按来源硬编码；现由 `fetchFirst` 记录实际应答路径（`row.endpoint`），详情显示真实路径。
+- 改后逐字段实测（同一份数据，1440/1280/375 三档一致）：
+  - 技能：列表 `待核实`（title `mystery`）/ 更新 `—`；详情 `资料整理 | 类型：团队共享 | 待核实 | — | /agent-api/api/skills | —`；复制行 `资料整理,类型：团队共享,待核实,—`。
+  - 工具：列表 `待核实`（title `mystery · 接口给出的启用值未归类。`）/ 更新 `—`；详情 `ghost tool | 内置 · Ghost | 待核实 | — | /api/tools/toolsets | —`；复制行 `ghost tool,内置 · Ghost,待核实,—`。
+  - 采集时刻均只取顶层 ISO `asOf`；缺失为 `—`，title 给出原因；`asOfSource` 仅进 title；本机时钟不入。
+- 新增一致性用例：技能/工具各一条，覆盖「未知状态原值 title + 更新缺值 + 缺 asOf」；另在 404 用例断言复制按钮 disabled 且 title 说明原因。
+- 验证：定向 `skills+tools+capabilities` → **6 files / 64 passed**；全量 **139 files / 1679 passed**；tsc 本域 0（仅基线 employee-detail/employees 报错）；三档 `bodySW=bodyCW=视口`。
+- 边界：仅改 `web/src/modules/{capabilities,skills,tools}/**` + DONE；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未并 main、未重建 9122。
+
+## R64 — /capabilities 列表行键盘导航
+
+- 基线：显式 refspec fetch 后 `git merge origin/lane/hermes-console`（tip `b797bc98`，代码代次 `053da5c4`）→ Already up to date；未 reset。
+- 行为：skills 的 `<tr>` 与 tools 的 `.tol5-row` 采用 roving tabindex（可见行中仅一行 `0`，其余 `-1`）；`↑/↓` 移到相邻行、`Home/End` 到首末行并转移焦点；`Enter` 展开/收起该行 `cap7-detail-*`；`Esc` 收起并把焦点送回该行；行上 `aria-expanded` 与详情可见性同步。读口失败/无行时不渲染任何 `tabindex` 行，也不接管方向键，搜索框、重试与复制按钮保持正常 Tab。
+- 焦点可见：行 `:focus-visible` 使用现有 `var(--color-ring)`，2px outline，内侧偏移；未新造颜色。375 不依赖悬停。
+- 三档 DOM（真实 shell `ConsoleModulePage`，临时 harness 已删除；Vite 5481 / Chrome CDP 9281）：
+  - skills 2 行：初始 tabIndex `[0,-1]`；↓ 后焦点 `skl4-row-s2`，tabIndex `[-1,0]`；Enter 后 `cap7-detail-skills=1`、`aria-expanded=true`、`:focus-visible=true`、outline `solid 2px color(srgb 1 0.901961 0.796078)`；Esc 后详情 0、`aria-expanded=false`、焦点回 `skl4-row-s2`。
+  - tools 2 行：初始 `[0,-1]`；End 后 tabIndex `[-1,0]`；Enter 后 `cap7-detail-tools=1`、`aria-expanded=true`、焦点环同上；Esc 后详情 0、`aria-expanded=false`、焦点回到该行。
+  - 请求计数：skills **1 → 1**；tools **6 → 6**；键盘操作未发任何请求。
+  - 三档宽度：skills/tools 均 `vw=bodySW=bodyCW=1440/1280/375`，无横溢。
+- 验证：定向 `skills+tools+capabilities` → **6 files / 66 passed**；全量 **139 files / 1681 passed**；tsc 本域 0 错误（仅基线 approvals/employee-detail/employees 11 行既有错误）。
+- 边界：仅改 `web/src/modules/{skills,tools}/**`（含各自 CSS/测试）+ DONE；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未并 main、未重建 9122。
+
+## R65 / capF — /capabilities 空态与错误态统一（2026-11-20）
+
+- 基线：`lane/console-gov` HEAD `c33bd13f`；远端 `origin/lane/hermes-console` tip `b797bc98`（代码代次 `053da5c4`）；fetch + merge 为 Already up to date，未 reset。
+- 变更：`web/src/modules/skills/SkillsPage.tsx` 与 `web/src/modules/tools/ToolsPage.tsx` 统一四态标记：
+  - 页面根节点 `data-cap-state=loading|empty|unavailable|error|ready`（tools denied 记为 unavailable）。
+  - 新增 `capF-state-loading` / `capF-state-empty` / `capF-state-unavailable` / `capF-state-error` / `capF-state-login`（按状态出现其一），`capF-retry` 包裹重试按钮；保留 `cap9-state-*`、`skl4-*`、`tl3-*`、`tol5-*`。
+  - skills 403/404 标题改为「技能读口未接入」；其他错误仍为「技能列表暂时无法读取」。空态文案保留「读口已接入，本次返回 0 条…」；错误态计数保持 `—` + `无源`，不显示 0。
+  - tools 错误/未接入已有不同标题；empty 与 unavailable testid、文案保持分离。
+  - `skills.css` / `tools.css` 增加 `.capF-state { min-height: 220px; }`，避免 loading/empty/error 切换时内容区高度跳动。
+- 定向验证：
+  - `cd web && npx vitest run src/modules/skills src/modules/tools` → `3 files / 59 tests passed`。
+  - 全量 `npx vitest run` → `139 files / 1683 tests passed`。
+  - `tsc -b . --noEmit` → 仅基线 employee-detail / employees 错误，`modules/(skills|tools|capabilities)` 0 行。
+- DOM（临时 harness `web/capF-preview.html` + `web/src/capF-preview.tsx`，已删除；Vite 5482 / Chrome CDP 9282）：
+  - 1440 / 1280 / 375 三档，skills/tools × empty/error：`bodySW=bodyCW=pageSW=pageCW=viewport`，无横溢。
+  - skills empty → `data-cap-state=empty`、`capF-state-empty`、count `—/未取数`；skills error 预览 → `data-cap-state=unavailable`、`capF-state-unavailable`、`capF-retry`、标题「技能读口未接入」。
+  - tools empty → `data-cap-state=empty`、`capF-state-empty`；tools error → `data-cap-state=error`、`capF-state-error`、`capF-retry`。
+  - 单元测试覆盖 live 403/404 同体、generic 500 计数 `—`、q/sort/dir 在错误与重试后保留、重试只重发当前 tab（tools 仅 tools/mcp 候选）。
+- 边界：仅 `web/src/modules/{skills,tools}/**` + 本 DONE；未改 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未并 main；未重建 9122；未 install/force/amend/--no-verify。

@@ -3,9 +3,12 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 
 const fetchJsonStrict = vi.fn();
 vi.mock("@/modules/models/fetchJson", () => ({ fetchJsonStrict: (...args: unknown[]) => fetchJsonStrict(...args) }));
+const clipboard = vi.hoisted(() => ({ copyTextToClipboard: vi.fn() }));
+vi.mock("@/lib/clipboard", () => ({ copyTextToClipboard: clipboard.copyTextToClipboard }));
 vi.mock("@nous-research/ui", () => ({
   Badge: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
   Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => <button {...props}>{children}</button>,
@@ -14,6 +17,7 @@ vi.mock("@nous-research/ui", () => ({
 }));
 import { ApiError } from "@/lib/api-error";
 import { SkillsPage } from "./SkillsPage";
+import { resetSkillsTabState } from "./SkillsPage";
 import { resetCapabilityCounts } from "../capabilities/counts";
 
 let container: HTMLDivElement;
@@ -26,6 +30,9 @@ beforeEach(() => {
   root = createRoot(container);
   fetchJsonStrict.mockReset();
   resetCapabilityCounts();
+  resetSkillsTabState();
+  clipboard.copyTextToClipboard.mockReset();
+  clipboard.copyTextToClipboard.mockResolvedValue(true);
   window.history.replaceState({}, "", "/");
 });
 afterEach(() => { act(() => root.unmount()); container.remove(); });
@@ -119,6 +126,12 @@ describe("SkillsPage", () => {
     await render();
     expect(text()).toContain("请求编号：");
     expect(text()).toContain("req-skills-1");
+    expect(container.querySelector('[data-testid="capF-state-error"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="capF-state-unavailable"]')).toBeNull();
+    expect(text()).toContain("技能列表暂时无法读取");
+    const count = container.querySelector('[data-testid="cap4-count-skills"]')!;
+    expect(count.textContent).toContain("—");
+    expect(count.textContent).not.toContain("0");
     const before = fetchJsonStrict.mock.calls.length;
     const button = [...container.querySelectorAll("button")].find((node) => node.textContent?.includes("重试"));
     await act(async () => { button?.click(); });
@@ -127,11 +140,34 @@ describe("SkillsPage", () => {
     expect(fetchJsonStrict.mock.calls.length).toBe(before + 1);
   });
 
+  it("keeps q/sort/dir in the URL through error and retry", async () => {
+    window.history.replaceState({}, "", "/capabilities?tab=skills&q=资料&sort=name&dir=asc");
+    fetchJsonStrict
+      .mockRejectedValueOnce(new ApiError("boom", { status: 500, body: "", url: "/agent-api/api/skills", requestId: "req-skills-keep" }))
+      .mockResolvedValueOnce({ items: [{ skillId: "s1", name: "资料整理" }] });
+    await render();
+    const loc = container.querySelector('[data-testid="cap8-location"]')?.textContent ?? "";
+    expect(loc).toContain("tab=skills");
+    expect(loc).toContain("sort=name");
+    expect(loc).toContain("dir=asc");
+    expect(decodeURIComponent(loc)).toContain("q=资料");
+    const retry = container.querySelector<HTMLButtonElement>('[data-testid="skl4-retry"]')!;
+    await act(async () => { retry.click(); });
+    await act(async () => {});
+    expect(container.querySelector('[data-testid="skl4-row-s1"]')).toBeTruthy();
+    const after = container.querySelector('[data-testid="cap8-location"]')?.textContent ?? "";
+    expect(decodeURIComponent(after)).toContain("q=资料");
+    expect(after).toContain("sort=name");
+    expect(after).toContain("dir=asc");
+  });
+
   it("renders the empty state for an empty list without a fake count", async () => {
     fetchJsonStrict.mockResolvedValue({ items: [] });
     await render();
     expect(container.querySelector('[data-testid="skl4-empty"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="cap9-state-empty"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="capF-state-empty"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="skl4-page"]')?.getAttribute("data-cap-state")).toBe("empty");
     expect(container.querySelector('[data-testid="skl4-error"]')).toBeNull();
     const count = container.querySelector('[data-testid="cap4-count-skills"]')!;
     expect(count.textContent).toContain("0");
@@ -147,13 +183,20 @@ describe("SkillsPage", () => {
     expect(text()).not.toContain("GAP-");
     expect(text()).not.toContain("404");
     expect(container.querySelector('[data-testid="skl4-retry"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="capF-retry"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="skl4-apply"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="cap9-state-unavailable"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="cap9-state-denied"]')).toBeNull();
+    expect(container.querySelector('[data-testid="capF-state-unavailable"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="skl4-page"]')?.getAttribute("data-cap-state")).toBe("unavailable");
     const count = container.querySelector('[data-testid="cap4-count-skills"]')!;
     expect(count.textContent).toContain("—");
     expect(count.textContent).not.toContain("0");
     expect(count.getAttribute("title")).toContain("GAP-SKL4-01");
+    const copy = container.querySelector<HTMLButtonElement>('[data-testid="capC-copy"]')!;
+    expect(copy.disabled).toBe(true);
+    expect(container.querySelectorAll("tr[data-testid^='skl4-row-'][tabindex]")).toHaveLength(0);
+    expect(copy.title).toContain("没有可复制");
   });
 
   it("renders 403 and 404 with the same neutral body and no status code", async () => {
@@ -166,6 +209,7 @@ describe("SkillsPage", () => {
     expect(container.querySelector('[data-testid="skl4-apply"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="cap9-state-denied"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="cap9-state-unavailable"]')).toBeNull();
+    expect(container.querySelector('[data-testid="capF-state-unavailable"]')).toBeTruthy();
     const count = container.querySelector('[data-testid="cap4-count-skills"]')!;
     expect(count.textContent).toContain("—");
     expect(count.textContent).not.toContain("0");
@@ -202,6 +246,8 @@ describe("SkillsPage", () => {
       await act(async () => {});
       expect(fetchJsonStrict).not.toHaveBeenCalled();
       expect(container.querySelector(`[data-testid="skl4-${state}"]`)).toBeTruthy();
+      expect(container.querySelector(`[data-testid="capF-state-${state}"]`)).toBeTruthy();
+      expect(container.querySelector('[data-testid="skl4-page"]')?.getAttribute("data-cap-state")).toBe(state);
       expect(text()).toContain(state === "loading" ? "正在读取技能" : "还没有已登记的技能");
       act(() => root.unmount());
       root = createRoot(container);
@@ -274,7 +320,7 @@ describe("SkillsPage", () => {
     expect(details).toHaveLength(1);
     expect(details[0]!.textContent).toContain("资料整理");
     expect(details[0]!.textContent).toContain("/agent-api/api/skills");
-    expect(container.querySelector("[data-testid='cap7-detail-asof']")?.textContent).toContain("该字段未返回");
+    expect(container.querySelector("[data-testid='cap7-detail-asof']")?.textContent).toContain("—");
     expect(container.querySelector("[data-testid='cap7-detail-asof']")?.getAttribute("title")).toContain("没有 asOf");
     expect(window.location.search).toBe(searchBefore);
 
@@ -330,6 +376,15 @@ describe("SkillsPage", () => {
     const defaultLines = csvDefault.trim().split("\r\n");
     expect(defaultLines[1]).toMatch(/^B2,/);
     expect(defaultLines[3]).toMatch(/^C3,/);
+
+    const beforeCopy = fetchJsonStrict.mock.calls.length;
+    await act(async () => container.querySelector<HTMLButtonElement>("[data-testid='capC-copy']")!.click());
+    expect(container.querySelector("[data-testid='capC-copy-status']")!.textContent).toBe("已复制 3 行");
+    const copied = String(clipboard.copyTextToClipboard.mock.calls[0][0]);
+    expect(copied.split("\n")[0]).toBe("name,type,enabled,updated_at");
+    expect(copied.split("\n")[1]).toMatch(/^B2,/);
+    expect(copied.split("\n")[3]).toMatch(/^C3,/);
+    expect(fetchJsonStrict.mock.calls.length).toBe(beforeCopy);
   });
 
   it("reads only a top-level ISO asOf for the detail and keeps asOfSource in the title", async () => {
@@ -364,9 +419,43 @@ describe("SkillsPage", () => {
     await render();
     await act(async () => container.querySelector<HTMLButtonElement>("[data-testid='cap7-detail-toggle']")!.click());
     const asof = container.querySelector("[data-testid='cap7-detail-asof']");
-    expect(asof?.textContent).toBe("该字段未返回");
+    expect(asof?.textContent).toBe("—");
     expect(asof?.getAttribute("title")).toContain("不是 ISO");
     expect(container.textContent).not.toContain("2026/11/19");
+  });
+
+  it("keeps name, source, status and update time identical across row, detail and copy", async () => {
+    window.history.replaceState({}, "", "/capabilities?tab=skills");
+    fetchJsonStrict.mockResolvedValue({
+      items: [{ skillId: "s1", name: "资料整理", scope: "tenant-shared", status: "mystery", updatedAt: "not-a-date" }],
+    });
+    await render();
+
+    const row = container.querySelector('[data-testid="skl4-row-s1"]')!;
+    const cells = row.querySelectorAll("td");
+    expect(cells[2]!.textContent).toContain("待核实");
+    expect(cells[2]!.querySelector("[title]")?.getAttribute("title")).toBe("mystery");
+    expect(cells[3]!.textContent).toContain("—");
+    expect(cells[3]!.querySelector("[title]")?.getAttribute("title")).toContain("无法识别");
+
+    await act(async () => container.querySelector<HTMLButtonElement>("[data-testid='cap7-detail-toggle']")!.click());
+    const detail = container.querySelector("[data-testid='cap7-detail-skills']")!;
+    expect(container.querySelector("[data-testid='cap7-detail-name']")?.textContent).toBe("资料整理");
+    expect(container.querySelector("[data-testid='cap7-detail-type']")?.textContent).toBe("类型：团队共享");
+    expect(container.querySelector("[data-testid='cap7-detail-enabled']")?.textContent).toBe("待核实");
+    expect(container.querySelector("[data-testid='cap7-detail-enabled']")?.getAttribute("title")).toContain("mystery");
+    expect(container.querySelector("[data-testid='cap7-detail-updated']")?.textContent).toBe("—");
+    expect(container.querySelector("[data-testid='cap7-detail-updated']")?.getAttribute("title")).toContain("无法识别");
+    expect(container.querySelector("[data-testid='cap7-detail-asof']")?.textContent).toBe("—");
+    expect(container.querySelector("[data-testid='cap7-detail-asof']")?.getAttribute("title")).toContain("没有 asOf");
+    expect(container.querySelector("[data-testid='cap7-detail-endpoint']")?.textContent).toBe("/agent-api/api/skills");
+    expect(detail.textContent).toContain("资料整理");
+
+    const beforeCopy = fetchJsonStrict.mock.calls.length;
+    await act(async () => container.querySelector<HTMLButtonElement>("[data-testid='capC-copy']")!.click());
+    const copied = String(clipboard.copyTextToClipboard.mock.calls[0][0]).split("\n");
+    expect(copied[1]).toBe("资料整理,类型：团队共享,待核实,—");
+    expect(fetchJsonStrict.mock.calls.length).toBe(beforeCopy);
   });
 
   it("leaks no engineering names or raw ids into the page", async () => {
@@ -382,5 +471,109 @@ describe("SkillsPage", () => {
     expect(text()).not.toContain("HTTP");
     expect(text()).not.toMatch(/\bGAP-/);
     expect(text()).not.toContain("skill-12345678");
+  });
+
+  it("keeps the current tab, query and sort in the URL when the tab is the default", async () => {
+    window.history.replaceState({}, "", "/capabilities?q=%E8%B5%84%E6%96%99&sort=name&dir=asc");
+    fetchJsonStrict.mockResolvedValue({
+      asOf: "2026-11-19T06:00:00Z",
+      items: [
+        { skillId: "s1", name: "资料整理", scope: "tenant-shared" },
+        { skillId: "s2", name: "质检", scope: "unused" },
+      ],
+    });
+    await render();
+    await act(async () => {});
+
+    const params = new URLSearchParams(container.querySelector("[data-testid='cap8-location']")?.textContent ?? "");
+    expect(params.get("tab")).toBe("skills");
+    expect(params.get("q")).toBe("资料");
+    expect(params.get("sort")).toBe("name");
+    expect(params.get("dir")).toBe("asc");
+    expect(container.querySelectorAll("[data-testid^='skl4-row-']")).toHaveLength(1);
+    expect(text()).toContain("资料整理");
+    expect(text()).not.toContain("质检");
+  });
+
+  it("restores the settled rows and the open detail after a remount without another read", async () => {
+    window.history.replaceState({}, "", "/capabilities?tab=skills");
+    fetchJsonStrict.mockResolvedValue({
+      asOf: "2026-11-19T06:00:00Z",
+      items: [
+        { skillId: "s1", name: "资料整理", scope: "tenant-shared", version: "2" },
+        { skillId: "s2", name: "质检", scope: "unused", version: "1" },
+      ],
+    });
+    await render();
+    expect(fetchJsonStrict).toHaveBeenCalledTimes(1);
+
+    await act(async () => container.querySelector<HTMLButtonElement>("[data-testid='cap7-detail-toggle']")!.click());
+    expect(container.querySelectorAll("[data-testid='cap7-detail-skills']")).toHaveLength(1);
+
+    const entry = window.location.pathname + window.location.search;
+    await act(async () => root.unmount());
+    root = createRoot(container);
+    await act(async () => {
+      root.render(<MemoryRouter initialEntries={[entry]}><LocationProbe /><SkillsPage /></MemoryRouter>);
+    });
+    await act(async () => {});
+
+    expect(container.querySelectorAll("[data-testid^='skl4-row-']")).toHaveLength(2);
+    expect(container.querySelectorAll("[data-testid='cap7-detail-skills']")).toHaveLength(1);
+    expect(fetchJsonStrict).toHaveBeenCalledTimes(1);
+  });
+
+  it("moves row focus with arrows, Home and End, and toggles detail with Enter without another read", async () => {
+    window.history.replaceState({}, "", "/capabilities?tab=skills");
+    fetchJsonStrict.mockResolvedValue({
+      asOf: "2026-11-19T06:00:00Z",
+      items: [
+        { skillId: "s1", name: "资料整理", scope: "tenant-shared", version: "2" },
+        { skillId: "s2", name: "质检", scope: "unused", version: "1" },
+      ],
+    });
+    await render();
+    const calls = fetchJsonStrict.mock.calls.length;
+    const rows = [...container.querySelectorAll<HTMLElement>("tr[data-testid^='skl4-row-']")];
+    expect(rows).toHaveLength(2);
+    expect(rows[0].tabIndex).toBe(0);
+    expect(rows[1].tabIndex).toBe(-1);
+
+    const press = async (node: HTMLElement, key: string) => {
+      await act(async () => {
+        node.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+      });
+    };
+
+    await act(async () => rows[0].focus());
+    expect(document.activeElement).toBe(rows[0]);
+
+    await press(rows[0], "ArrowDown");
+    expect(document.activeElement).toBe(rows[1]);
+    expect(rows[1].tabIndex).toBe(0);
+    expect(rows[0].tabIndex).toBe(-1);
+
+    await press(rows[1], "Home");
+    expect(document.activeElement).toBe(rows[0]);
+    await press(rows[0], "End");
+    expect(document.activeElement).toBe(rows[1]);
+    await press(rows[1], "ArrowUp");
+    expect(document.activeElement).toBe(rows[0]);
+    await press(rows[0], "ArrowDown");
+
+    await press(rows[1], "Enter");
+    expect(container.querySelectorAll("[data-testid='cap7-detail-skills']")).toHaveLength(1);
+    expect(rows[1].getAttribute("aria-expanded")).toBe("true");
+
+    await press(rows[1], "Escape");
+    expect(container.querySelectorAll("[data-testid='cap7-detail-skills']")).toHaveLength(0);
+    expect(rows[1].getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).toBe(rows[1]);
+    expect(fetchJsonStrict.mock.calls.length).toBe(calls);
+    const css = readFileSync(`${process.cwd()}/src/modules/skills/skills.css`, "utf8");
+    expect(css).toContain("tr[tabindex]:focus-visible");
+    expect(css).toContain("var(--color-ring)");
+    expect(css).toContain(".capF-state");
+    expect(css).toMatch(/min-height:\s*220px/);
   });
 });

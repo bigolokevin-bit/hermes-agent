@@ -6,13 +6,17 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 
 import { ApiError } from "@/lib/api-error";
 
 const api = vi.hoisted(() => ({ fetchJsonStrict: vi.fn() }));
 vi.mock("@/modules/models/fetchJson", () => ({ fetchJsonStrict: api.fetchJsonStrict }));
+const clipboard = vi.hoisted(() => ({ copyTextToClipboard: vi.fn() }));
+vi.mock("@/lib/clipboard", () => ({ copyTextToClipboard: clipboard.copyTextToClipboard }));
 
 import { ToolsPage } from "./ToolsPage";
+import { resetToolsTabState } from "./useToolsData";
 import { publishCapabilityCount, resetCapabilityCounts } from "../capabilities/counts";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -112,6 +116,9 @@ const failed = (status: number, url: string, requestId?: string) => (called?: st
 beforeEach(() => {
   api.fetchJsonStrict.mockReset();
   resetCapabilityCounts();
+  resetToolsTabState();
+  clipboard.copyTextToClipboard.mockReset();
+  clipboard.copyTextToClipboard.mockResolvedValue(true);
 });
 afterEach(() => {
   act(() => root?.unmount());
@@ -212,8 +219,11 @@ describe("failures and gaps", () => {
     expect(document.querySelector("[data-testid='tl3-apply']")).toBeTruthy();
     expect(document.querySelector("[data-testid='tl3-request-id']")).toBeTruthy();
     expect(document.querySelector("[data-testid='tl3-retry']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='capF-retry']")).toBeTruthy();
     expect(document.querySelector("[data-testid='cap9-state-denied']")).toBeTruthy();
     expect(document.querySelector("[data-testid='cap9-state-unavailable']")).toBeNull();
+    expect(document.querySelector("[data-testid='capF-state-unavailable']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='tol5-page']")?.getAttribute("data-cap-state")).toBe("unavailable");
     const count = document.querySelector("[data-testid='cap4-count-tools']")!;
     expect(count.textContent).toContain("—");
     expect(count.textContent).toContain("无源");
@@ -232,6 +242,11 @@ describe("failures and gaps", () => {
     expect(document.querySelector("[data-testid='tol5-denied']")?.getAttribute("title")).toBe("GAP-04");
     expect(document.querySelector("[data-testid='cap9-state-unavailable']")).toBeTruthy();
     expect(document.querySelector("[data-testid='cap9-state-denied']")).toBeNull();
+    expect(document.querySelector("[data-testid='capF-state-unavailable']")).toBeTruthy();
+    const copy = document.querySelector<HTMLButtonElement>('[data-testid="capC-copy"]')!;
+    expect(copy.disabled).toBe(true);
+    expect(copy.title).toContain("没有可复制");
+    expect(document.querySelectorAll("[data-testid='tol5-row'][tabindex]")).toHaveLength(0);
   });
 
   it("a 200 empty payload is an honest 0, not a not-wired state", async () => {
@@ -244,6 +259,8 @@ describe("failures and gaps", () => {
     });
     expect(document.querySelector("[data-testid='tol5-empty']")).toBeTruthy();
     expect(document.querySelector("[data-testid='cap9-state-empty']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='capF-state-empty']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='tol5-page']")?.getAttribute("data-cap-state")).toBe("empty");
     expect(document.querySelector("[data-testid='tol5-denied']")).toBeNull();
     const count = document.querySelector("[data-testid='cap4-count-tools']")!;
     expect(count.textContent).toContain("0");
@@ -276,6 +293,29 @@ describe("failures and gaps", () => {
     expect(text()).not.toMatch(/token|secret|密钥值/i);
   });
 
+  it("keeps q/sort/dir in the URL through error and retry", async () => {
+    let fail = true;
+    api.fetchJsonStrict.mockImplementation((url: string) => {
+      if (fail) return Promise.reject(new ApiError("boom", { status: 500, body: "{}", url, requestId: "req-tools-keep" }));
+      return url.includes("/api/tools/toolsets") ? Promise.resolve(TOOLSETS) : Promise.resolve({ servers: [] });
+    });
+    await render("/capabilities?tab=tools&q=%E7%BD%91%E9%A1%B5&sort=name&dir=asc");
+    const loc = document.querySelector('[data-testid="cap8-location"]')?.textContent ?? "";
+    expect(loc).toContain("tab=tools");
+    expect(decodeURIComponent(loc)).toContain("q=网页");
+    expect(loc).toContain("sort=name");
+    expect(loc).toContain("dir=asc");
+    const retry = document.querySelector<HTMLButtonElement>("[data-testid='tol5-retry']")!;
+    fail = false;
+    await act(async () => retry.click());
+    await waitFor(() => rows().length > 0, "retry recovered");
+    const after = document.querySelector('[data-testid="cap8-location"]')?.textContent ?? "";
+    expect(after).toContain("tab=tools");
+    expect(decodeURIComponent(after)).toContain("q=网页");
+    expect(after).toContain("sort=name");
+    expect(after).toContain("dir=asc");
+  });
+
   it("500 shows human copy, a copyable request id and a working retry", async () => {
     let fail = true;
     await mount((url) => {
@@ -284,9 +324,14 @@ describe("failures and gaps", () => {
       return answer(url);
     });
     expect(document.querySelector("[data-testid='tol5-error']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='capF-state-error']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='tol5-page']")?.getAttribute("data-cap-state")).toBe("error");
     expect(text()).toContain("请求编号：req-tol5");
     expect(text()).toContain("处理时出了错");
     expect(text()).not.toMatch(/500|boom|\/api\//);
+    const count = document.querySelector("[data-testid='cap4-count-tools']")!;
+    expect(count.textContent).toContain("—");
+    expect(count.textContent).not.toContain("0");
     expect(document.querySelector("[aria-label='复制请求编号']")).toBeTruthy();
     fail = false;
     const before = urls().length;
@@ -314,6 +359,9 @@ describe("four states and repro legs", () => {
       await render(`/capabilities?tab=tools&state=${state}`);
       await waitFor(() => !document.querySelector(".animate-pulse") || state === "loading", `${state} painted`);
       expect(document.querySelector("[data-testid='tol5-page']")?.getAttribute("data-fixture")).toBe(state);
+      const capState = state === "denied" ? "unavailable" : state;
+      expect(document.querySelector(`[data-testid='capF-state-${capState}']`)).toBeTruthy();
+      expect(document.querySelector("[data-testid='tol5-page']")?.getAttribute("data-cap-state")).toBe(capState);
       expect(api.fetchJsonStrict).not.toHaveBeenCalled();
     }
   });
@@ -336,9 +384,9 @@ describe("row detail", () => {
     expect(details).toHaveLength(1);
     expect(details[0]!.textContent).toContain("网页搜索");
     expect(details[0]!.textContent).toContain("/api/tools/toolsets");
-    expect(document.querySelector("[data-testid='cap7-detail-asof']")?.textContent).toContain("该字段未返回");
+    expect(document.querySelector("[data-testid='cap7-detail-asof']")?.textContent).toContain("—");
     expect(document.querySelector("[data-testid='cap7-detail-asof']")?.getAttribute("title")).toContain("没有顶层采集时刻");
-    expect(document.querySelector("[data-testid='cap7-detail-updated']")?.textContent).toContain("该字段未返回");
+    expect(document.querySelector("[data-testid='cap7-detail-updated']")?.textContent).toContain("—");
 
     await act(async () => toggles[5]!.click());
     details = [...document.querySelectorAll("[data-testid='cap7-detail-tools']")];
@@ -350,6 +398,41 @@ describe("row detail", () => {
     await act(async () => toggles[5]!.click());
     expect(document.querySelectorAll("[data-testid='cap7-detail-tools']")).toHaveLength(0);
     expect(rows()).toHaveLength(6);
+  });
+
+  it("keeps name, type, status and update time identical across row, detail and copy", async () => {
+    const handler = (url?: string) => {
+      if (!url) return Promise.resolve({ servers: [] });
+      if (url === "/api/tools/toolsets") {
+        return Promise.resolve([{ name: "ghost", label: "Ghost", enabled: "mystery", tools: ["ghost_tool"] }]);
+      }
+      if (url.includes("/api/mcp/servers")) return Promise.resolve({ servers: [] });
+      return Promise.reject(new ApiError("missing", { status: 404, body: "{}", url }));
+    };
+    await mount(handler);
+    const row = rows()[0]!;
+    expect(row.querySelector("[data-testid='tol5-name']")?.textContent).toBe("ghost tool");
+    expect(row.querySelector("[data-testid='tol5-type']")?.textContent).toBe("内置 · Ghost");
+    expect(row.querySelector("[data-testid='tol5-status']")?.textContent).toBe("待核实");
+    expect(row.querySelector("[data-testid='tol5-status']")?.closest("[title]")?.getAttribute("title")).toContain("mystery");
+    expect(row.querySelector("[data-testid='tl3-updated']")?.textContent).toContain("最近更新：—");
+
+    await act(async () => document.querySelector<HTMLButtonElement>("[data-testid='cap7-detail-toggle']")!.click());
+    expect(document.querySelector("[data-testid='cap7-detail-name']")?.textContent).toBe("ghost tool");
+    expect(document.querySelector("[data-testid='cap7-detail-type']")?.textContent).toBe("内置 · Ghost");
+    expect(document.querySelector("[data-testid='cap7-detail-enabled']")?.textContent).toBe("待核实");
+    expect(document.querySelector("[data-testid='cap7-detail-enabled']")?.getAttribute("title")).toContain("mystery");
+    expect(document.querySelector("[data-testid='cap7-detail-updated']")?.textContent).toBe("—");
+    expect(document.querySelector("[data-testid='cap7-detail-updated']")?.getAttribute("title")).toContain("没有提供最近更新时间");
+    expect(document.querySelector("[data-testid='cap7-detail-asof']")?.textContent).toBe("—");
+    expect(document.querySelector("[data-testid='cap7-detail-asof']")?.getAttribute("title")).toContain("没有顶层采集时刻");
+    expect(document.querySelector("[data-testid='cap7-detail-endpoint']")?.textContent).toBe("/api/tools/toolsets");
+
+    const beforeCopy = api.fetchJsonStrict.mock.calls.length;
+    await act(async () => document.querySelector<HTMLButtonElement>("[data-testid='capC-copy']")!.click());
+    const copied = String(clipboard.copyTextToClipboard.mock.calls[0][0]).split("\n");
+    expect(copied[1]).toBe("ghost tool,内置 · Ghost,待核实,—");
+    expect(api.fetchJsonStrict.mock.calls.length).toBe(beforeCopy);
   });
 
   it("shows only a top-level ISO asOf from the inventory payload", async () => {
@@ -426,6 +509,14 @@ describe("sortable columns", () => {
     expect(document.querySelector("[aria-sort='none']")?.textContent).toContain("名称");
     expect(order()[0]).toContain("B2");
     expect(api.fetchJsonStrict).toHaveBeenCalledTimes(4);
+    await act(async () => document.querySelector<HTMLButtonElement>("[data-testid='capC-copy']")!.click());
+    expect(document.querySelector("[data-testid='capC-copy-status']")!.textContent).toBe("已复制 3 行");
+    const copied = String(clipboard.copyTextToClipboard.mock.calls[0][0]);
+    expect(copied.split("\n")[0]).toBe("name,type,enabled,updated_at");
+    expect(copied.split("\n")[1]).toMatch(/^B2,内置 · /);
+    expect(copied.split("\n")[1]).toContain(",正常,");
+    expect(copied.split("\n")[3]).toMatch(/^C3,/);
+    expect(api.fetchJsonStrict).toHaveBeenCalledTimes(4);
   });
 });
 
@@ -470,5 +561,81 @@ describe("local name search", () => {
     await act(async () => clear?.click());
     await waitFor(() => rows().length === 6, "rows restored");
     expect(urls()).toHaveLength(6);
+  });
+});
+
+describe("tab state memory", () => {
+  it("keeps the current tab, query and sort in the URL when the tab is the default", async () => {
+    await mount(answer, "/capabilities?q=%E7%BD%91%E9%A1%B5&sort=name&dir=asc");
+    const params = new URLSearchParams(document.querySelector("[data-testid='cap8-location']")?.textContent ?? "");
+    expect(params.get("tab")).toBe("tools");
+    expect(params.get("q")).toBe("网页");
+    expect(params.get("sort")).toBe("name");
+    expect(params.get("dir")).toBe("asc");
+    expect(rows()).toHaveLength(2);
+    expect(text()).toContain("网页搜索");
+    expect(text()).not.toContain("创建看板");
+  });
+
+  it("restores the settled rows and the open detail after a remount without another read", async () => {
+    await mount();
+    expect(urls()).toHaveLength(6);
+    const toggle = document.querySelector<HTMLButtonElement>("[data-testid='cap7-detail-toggle']");
+    expect(toggle).toBeTruthy();
+    await act(async () => toggle?.click());
+    expect(document.querySelectorAll("[data-testid='cap7-detail-tools']")).toHaveLength(1);
+
+    await render("/capabilities?tab=tools");
+    await waitFor(() => !document.querySelector(".animate-pulse"), "settled again");
+
+    expect(rows()).toHaveLength(6);
+    expect(document.querySelectorAll("[data-testid='cap7-detail-tools']")).toHaveLength(1);
+    expect(urls()).toHaveLength(6);
+  });
+
+  it("moves row focus with arrows, Home and End, and toggles detail with Enter without another read", async () => {
+    await mount();
+    const calls = api.fetchJsonStrict.mock.calls.length;
+    const list = rows() as HTMLElement[];
+    expect(list).toHaveLength(6);
+    expect(list[0].tabIndex).toBe(0);
+    expect(list[1].tabIndex).toBe(-1);
+
+    const press = async (node: HTMLElement, key: string) => {
+      await act(async () => {
+        node.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+      });
+    };
+
+    await act(async () => list[0].focus());
+    expect(document.activeElement).toBe(list[0]);
+
+    await press(list[0], "ArrowDown");
+    expect(document.activeElement).toBe(list[1]);
+    expect(list[1].tabIndex).toBe(0);
+    expect(list[0].tabIndex).toBe(-1);
+
+    await press(list[1], "Home");
+    expect(document.activeElement).toBe(list[0]);
+    await press(list[0], "End");
+    expect(document.activeElement).toBe(list[5]);
+    await press(list[5], "ArrowUp");
+    expect(document.activeElement).toBe(list[4]);
+    await press(list[4], "ArrowDown");
+
+    await press(list[5], "Enter");
+    expect(document.querySelectorAll("[data-testid='cap7-detail-tools']")).toHaveLength(1);
+    expect(list[5].getAttribute("aria-expanded")).toBe("true");
+
+    await press(list[5], "Escape");
+    expect(document.querySelectorAll("[data-testid='cap7-detail-tools']")).toHaveLength(0);
+    expect(list[5].getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).toBe(list[5]);
+    expect(api.fetchJsonStrict.mock.calls.length).toBe(calls);
+    const css = readFileSync(`${process.cwd()}/src/modules/tools/tools.css`, "utf8");
+    expect(css).toContain(".tol5-row:focus-visible");
+    expect(css).toContain("var(--color-ring)");
+    expect(css).toContain(".capF-state");
+    expect(css).toMatch(/min-height:\s*220px/);
   });
 });
