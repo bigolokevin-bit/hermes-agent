@@ -72,8 +72,8 @@ export function CopyValue({
     );
   }
   return (
-    <span className="flex min-w-0 flex-wrap items-center gap-1.5" data-testid={testId}>
-      <span className={`min-w-0 break-all font-mono text-xs ${themedBody}`}>{value}</span>
+    <span className="ui-c-container flex min-w-0 flex-wrap items-center gap-2" data-testid={testId}>
+      <span className={`ui-c-id ${themedBody}`}>{value}</span>
       <button
         type="button"
         aria-label={`复制${label}`}

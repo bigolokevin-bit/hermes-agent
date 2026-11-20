@@ -1,0 +1,28 @@
+# UI-C2 回执：员工详情首屏（一页一刀）
+
+- 基线：合并 `origin/lane/hermes-console` 至 t=`916b943b` 代次（合并点 `a669a980`）；只动 `web/src` 表现层（`modules/employee-detail/EmployeeDetailModulePage.tsx`、`styles/detail.css`）；未改 testid/路由表/取数逻辑；未新增可见 Tab；未 `npm install`。
+
+## 问题 → 改法 → 文件
+
+1. 问题：详情首屏头部只有 姓名·短码 + 岗位 + 在岗徽标，缺「部门」。
+   改法：头部副行补「部门 · <值>」；三态（真值/未标注/该字段未返回）复用列表与身份卡同一 `departmentView` helper（禁第二套判据），未 ready 不渲不占位。
+   文件：`EmployeeDetailModulePage.tsx`（page header）。
+
+2. 问题：首屏无「身份/组织/生命周期/权限/最近活跃」五区导航；概览字段混在一张「身份与组织」dl 里（1440 三列），扫读不分层。
+   改法：概览区顶部加五区锚点条 `.ui-c-anchors`（非 tab、不改路由：前三区为在页滚动锚 `#uic2-zone-*`；「权限」区 HEAD 无首屏承载，如实落已接线的 `?zone=capability` 真分区 Link；「最近活跃」锚到在岗卡包裹层）。
+   文件：`EmployeeDetailModulePage.tsx`（`AnchorChip` + `OverviewZone`）、`detail.css`（`.ui-c-anchors/.ui-c-anchor/.uic2-target`）。
+
+3. 问题：身份区字段单 dl 混排、无分区小标题、1440 撞三列不符「两列标签值栅格」。
+   改法：同一卡内按区拆三段（身份：姓名/工号/角色/请求编号；组织：部门/汇报对象；生命周期：在职态/创建时间），字段、`data-testid`（`ed1-identity-*`）、缺值话术、`title` 悬停零改动，仅归组；三段各挂锚点 id 与 `.ui-c-subhead`；`.ui-c-fields--two` 在 ≥640 钉两列（1440 不放宽三列，375 单列堆叠）。
+   文件：`EmployeeDetailModulePage.tsx`（`IdentityCard`）、`detail.css`。
+
+## 边界如实
+
+- 五区中「组织」「生命周期」HEAD 承载本就与「身份」同卡（`/agent-api/api/employees/:id` 回包字段），本次只分组不造数；「权限」无首屏独立数据面，锚点跳真分区页而非伪造空段——均已在代码注释与本文件注明。
+- 工号短码沿用 `shortCode(empId)` 单点；徽标沿用既有 `lifecycleTone/lifecycleLabel`。
+
+## 验证
+
+- `cd web && node_modules/.bin/vite build` → exit 0。
+- testid 不变式：`git diff` data-testid 集合前后相等（无增删改名）。
+- 改前/改后 1440/375 截图：见本目录 `uic2-*.png`（取图口径沿用 UI-C：加高视口替代 fullPage）。

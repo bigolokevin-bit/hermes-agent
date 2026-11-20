@@ -126,7 +126,7 @@ export function QueueCsvExport({
         {blocked ? "—" : `共 ${count} 行`}
       </span>
       <p
-        className="min-w-0 basis-full break-all font-mono text-xs text-muted-foreground"
+        className="ui-c-id basis-full min-w-0 text-muted-foreground"
         data-testid="apv-export-name"
         title={`完整文件名：${previewName}；四要素来源：tab=当前页签、status=当前 ?status=（无=all）、排序=当前列与方向（未排序=default）、时间=导出瞬间（北京时间到分）。文件名只含 [a-z0-9.-]。`}
       >
