@@ -4931,3 +4931,111 @@ describe('met-output — one visible line says the export or copy happened', () 
     expect(q('met-output-status')).toBeNull();
   });
 });
+
+// ---- met-rowcopy: copy one cost-detail row as one line ---------------------
+
+describe('met-rowcopy — copy one cost detail row', () => {
+  const TWO_ROW_LEDGER = {
+    items: [
+      {
+        employeeId: 'emp_aaaabbbbcccc',
+        period: '2026-11-19',
+        periodKind: 'day',
+        tokensUsed: 0,
+        costUsd: 0,
+        updatedAt: '2026-11-19T03:20:00.000Z',
+      },
+      {
+        employeeId: 'emp_ddddeeeeffff',
+        period: '2026-11-19',
+        periodKind: 'day',
+        tokensUsed: 0,
+        costUsd: 5,
+        updatedAt: '2026-11-19T03:20:00.000Z',
+      },
+    ],
+    missingEmployeeIds: [],
+  };
+
+  function rowcopyRouter() {
+    return (url: string): Promise<unknown> => {
+      if (url.includes('run-activity')) return Promise.resolve(activityBody());
+      if (url.includes('run-stats')) return Promise.resolve(statsFor(url));
+      if (url.includes('/api/employees')) return Promise.resolve(EMPLOYEE_BODY);
+      if (url.includes('models/pricing')) return Promise.reject(new ApiError('missing', { status: 404, body: '', url }));
+      if (url.includes('periodKind=month')) return Promise.resolve({ items: [], missingEmployeeIds: [] });
+      if (url.includes('periodKind=day')) return Promise.resolve(TWO_ROW_LEDGER);
+      return Promise.resolve({});
+    };
+  }
+
+  async function mountRowCopy(entry = '/metrics'): Promise<void> {
+    api.fetchJsonStrict.mockReset();
+    api.fetchJsonStrict.mockImplementation(rowcopyRouter());
+    await render(entry, <MetricsModulePage />);
+    await waitFor(settled, 'state settled');
+  }
+
+  function statusText(): string {
+    return document.querySelector('[data-testid="met-row-copy-status"]')?.textContent ?? '';
+  }
+
+  async function clickRowCopy(index: number): Promise<void> {
+    await act(async () => {
+      (document.querySelector(`[data-testid="met-row-copy-${index}"]`) as HTMLButtonElement).click();
+    });
+  }
+
+  beforeEach(() => {
+    clip.copyTextToClipboard.mockImplementation(() => Promise.resolve(true));
+  });
+
+  it('copies the row as rendered (real zero kept, missing as —) and sends no extra request', async () => {
+    await mountRowCopy();
+    const afterMount = urls().length;
+    expect(document.querySelectorAll('tr[data-testid^="met6-row-"]')).toHaveLength(2);
+
+    const first = document.querySelector('[data-testid="met-row-copy-0"]') as HTMLButtonElement;
+    expect(first.tagName).toBe('BUTTON');
+    expect(first.getAttribute('type')).toBe('button');
+    expect(first.getAttribute('aria-label')).toBe('复制小满 · DDDDEEEE这一行');
+
+    await clickRowCopy(0);
+    await waitFor(() => statusText().includes('已复制'), 'row copied');
+    expect(clip.copyTextToClipboard).toHaveBeenLastCalledWith('小满 · DDDDEEEE · — · $5.00 · 100.0%');
+
+    await clickRowCopy(1);
+    await waitFor(() => clip.copyTextToClipboard.mock.calls.length >= 2, 'second row copied');
+    expect(clip.copyTextToClipboard).toHaveBeenLastCalledWith('小鲤 · AAAABBBB · — · $0.00 · 0.0%');
+
+    const status = document.querySelector('[data-testid="met-row-copy-status"]');
+    expect(status?.getAttribute('role')).toBe('status');
+    expect(status?.getAttribute('aria-live')).toBe('polite');
+    expect(urls().length).toBe(afterMount);
+  });
+
+  it('falls back to a read-only textarea when the clipboard refuses', async () => {
+    clip.copyTextToClipboard.mockImplementation(() => Promise.resolve(false));
+    await mountRowCopy();
+
+    await clickRowCopy(0);
+    await waitFor(() => statusText().includes('复制没成功'), 'clipboard refused');
+
+    const fallback = document.querySelector('[data-testid="met-row-copy-fallback-text"]') as HTMLTextAreaElement;
+    expect(fallback).not.toBeNull();
+    expect(fallback.value).toBe('小满 · DDDDEEEE · — · $5.00 · 100.0%');
+    expect(fallback.readOnly).toBe(true);
+    expect(statusText()).not.toContain('已复制');
+  });
+
+  it('keeps the button order identical to the sorted table body', async () => {
+    await mountRowCopy('/metrics?dsort=cost&ddir=asc');
+
+    const firstRow = document.querySelector('[data-testid="met6-row-0"]');
+    expect(firstRow?.querySelector('.met6-rowname')?.textContent).toBe('小鲤 · AAAABBBB');
+
+    await clickRowCopy(0);
+    await waitFor(() => statusText().includes('已复制'), 'row copied');
+    expect(clip.copyTextToClipboard).toHaveBeenLastCalledWith('小鲤 · AAAABBBB · — · $0.00 · 0.0%');
+  });
+});

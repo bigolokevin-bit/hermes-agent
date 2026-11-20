@@ -723,3 +723,15 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 - 批大小实测：`/runs` 切窗只让 `/api/runs` +1（`run-stats`、`employees` 零增）；`/metrics` 切统计窗只重发 usage 的 2 条 `run-stats`（当前窗 + 上一窗），`run-activity` 不动；第二次切换仍恰 +2。
 - 验证：单文件 5 passed；定向 metrics+runs 10 files / 391 passed；全量 170 files / **2356 passed**；`tsc` 两域 0；`eslint` exit 0（9 条既存 warning）；build exit 0（entry 内 `metB-source-asof`=0，`MetricsModulePage-*.js`=1）。
 - 未测：375 折行；读口在 `since=1970` 极限窗口下的真实响应（只钉请求形状）。
+
+## 成本明细行复制（met-rowcopy，2026-11-20）
+
+成本明细表每行末尾多一列「复制」，按钮 `met-row-copy-<i>`（原生 `button[type=button]`，可聚焦、有 `aria-label`「复制<分组名>这一行」）。
+
+- 文本由 `metrics.ts` 的 `rowCopyText(line)` 一处拼出：`分组名 · 运行数 · 成本 · 占比`，四段全部走表格同一套格式化函数（`formatCount` / `formatUsd` / `formatSharePct`），所以真 0 仍是 `$0.00` 与 `0`、缺失仍是「—」，不读时钟、不带裸内部 id。
+- 零额外请求：按钮只读该行已渲染的数据；用例断言点击前后 `fetchJsonStrict` 调用数相等。
+- 反馈：成功显示 `met-row-copy-status`（`role=status` + `aria-live=polite`，「已复制」）；剪贴板拒绝时同一块给「复制没成功：下面的文本可以自己选中复制。」并渲染只读 `met-row-copy-fallback-text`，值与投递文本逐字相同。
+- 行序：`met-row-copy-<i>` 的 `i` 与 `met6-row-<i>` 同序，随 `?dsort/?ddir` 变化（`?dsort=cost&ddir=asc` 时第 0 行即最便宜的一行）。
+- 表头与表尾各补一格，合计行仍只加表体的可读数值。
+- 验证：定向 metrics 6 files / 247 passed；全量 177 files / 2409 passed；`tsc` 本域 0；`eslint src/modules/metrics` exit 0（9 条既存 warning）；build exit 0（entry 内 `met-row-copy`=0，`MetricsModulePage-*.js`=1）。
+- 未测：真实浏览器 375 下多一列后的横向滚动宽度；系统剪贴板权限弹窗。
