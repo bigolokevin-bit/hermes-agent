@@ -62,7 +62,7 @@ describe("audQ - one gate table for every entry", () => {
     // the card already promised
     const quiet = auditGatesOf({ phase: "ready", customInvalid: false, rows: 3, question: false });
     expect(quiet.copyFilter.enabled).toBe(false);
-    expect(quiet.copyFilter.title).toContain("当前没有筛选条件可复制");
+    expect(quiet.copyFilter.title).toContain("当前没有可复制的筛选条件");
     expect(quiet.copyFilter.title).toContain("控件常驻");
     expect(quiet.copyFilterRule).toContain("这个控件常驻");
   });

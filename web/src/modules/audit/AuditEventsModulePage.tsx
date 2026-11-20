@@ -1440,7 +1440,9 @@ function AuditEventsSurface(): ReactNode {
       return <LoadingPanel testId="aud02-detail-loading" slot="detail" />;
     }
     if (detail.phase === "denied") {
-      return <DeniedPanel failure={detail.failure} testId="aud02-detail-denied" />;
+      // audS: this leg carried no face mark, so 「三面同体」 was really two faces
+      // and a guess. Same panel, same slot as its loading/error neighbours.
+      return <DeniedPanel failure={detail.failure} testId="aud02-detail-denied" slot="detail" />;
     }
     if (detail.phase === "error" || !detail.detail) {
       return (
