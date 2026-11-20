@@ -1250,3 +1250,18 @@
   max-width: 100%;
   overflow-x: auto;
 }
+
+/* UI-A 2026-11-21 wave-62 补口：表头行高与来源子表密度。
+ * 前笔已交数字/大小/时间列规则（本文件上方）与 .k3-docs-wrap 横滚壳。
+ * 缺口两处：共享域 [data-tab] 的 40px 只锚 tbody>tr，thead 行未定高；
+ * knM-source-table（记录详情的来源证据子表）在共享域吃到 40 档，
+ * 子表应为 36 紧凑档——属性+双元素与共享域同分，按契约纪律加
+ * !important 压过（沿 table-density.css 40/36 的既有做法）。
+ * 斑马纹：本文件无 even/odd 背景源，禁则无需覆写。 */
+.knw5-table thead th {
+  height: var(--table-row-h);
+}
+
+[data-testid="knM-source-table"] tbody > tr {
+  height: var(--table-row-h-compact) !important;
+}
