@@ -2977,3 +2977,185 @@ describe("audH - the page size selector", () => {
     expect(sizeValue()).toBe("25");
   });
 });
+
+/**
+ * audI — 类型分布与导出集合同源。断言的是：点一个类型桶之后，屏上「已显示 N 条」
+ * ＝该桶计数＝导出 CSV 的数据行数（三值对照）；清掉类型后同一口径重算再对照一次；
+ * 分布在游标分页下上屏写明「按已加载 N 条统计」而不是冒充整窗；导出文件名带当前
+ * 筛选快照（时间窗/actor/资源/动作/行数）；导出集合口径上屏（audI-export-scope）；
+ * 空集导出按钮 disabled 并写明原因；展开分布、点导出都不多发一次请求。
+ */
+describe("audI - the distribution and the export answer for one set", () => {
+  const ROW = (id: string, action: string): unknown => ({
+    eventId: id,
+    action,
+    occurredAt: "2026-11-19T01:20:00Z",
+    outcome: "succeeded",
+    actor: { type: "system", id: "employee-api" },
+    resource: { type: "task", id: "ts_" + id },
+    requestId: "req-" + id,
+  });
+  const MIXED = [ROW("evt_i_a1", "task.created"), ROW("evt_i_a2", "task.created"), ROW("evt_i_b1", "run.failed")];
+
+  /** A service that really filters by action, so the three numbers can be compared. */
+  const byAction = async (url: string): Promise<unknown> => {
+    const asked = new URLSearchParams(String(url).split("?")[1] ?? "");
+    const action = asked.get("action");
+    return { items: action ? MIXED.filter((row) => (row as { action: string }).action === action) : [...MIXED], nextCursor: null };
+  };
+
+  const reads = (prefix: RegExp): number => urls().filter((u) => prefix.test(u)).length;
+  const auditReads = (): number => reads(/^\/agent-api\/api\/audit\?/);
+
+  async function expand(): Promise<void> {
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud7-types-toggle']")?.click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='aud7-types-panel']") !== null, "panel open");
+  }
+
+  async function pick(code: string): Promise<void> {
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>(`[data-testid='audD-bucket-${code}']`)?.click();
+    });
+    await waitFor(() => locationText().includes("type=" + code) || !locationText().includes("type="), "the bucket answered");
+  }
+
+  /** Everything the download would have carried, without letting it leave the page. */
+  function captureDownload(): { lines: () => string[]; name: () => string } {
+    const bodies: string[] = [];
+    const realBlob = window.Blob;
+    const realCreate = URL.createObjectURL;
+    const realRevoke = URL.revokeObjectURL;
+    let fileName = "";
+    const spy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      fileName = this.download;
+    });
+    class SpyBlob extends realBlob {
+      constructor(parts: BlobPart[], options?: BlobPropertyBag) {
+        super(parts, options);
+        bodies.push(String(parts[0] ?? ""));
+      }
+    }
+    window.Blob = SpyBlob as unknown as typeof Blob;
+    URL.createObjectURL = vi.fn(() => "blob:audit-i") as unknown as typeof URL.createObjectURL;
+    URL.revokeObjectURL = vi.fn() as unknown as typeof URL.revokeObjectURL;
+    afterEachSpy.push(() => {
+      window.Blob = realBlob;
+      URL.createObjectURL = realCreate;
+      URL.revokeObjectURL = realRevoke;
+      spy.mockRestore();
+    });
+    return {
+      lines: () => (bodies[0] ?? "").replace(/^\uFEFF/, "").split("\r\n").filter((line) => line !== ""),
+      name: () => fileName,
+    };
+  }
+
+  const afterEachSpy: Array<() => void> = [];
+  afterEach(() => {
+    for (const restore of afterEachSpy.splice(0)) restore();
+  });
+
+  async function mountProbed(entry: string): Promise<void> {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(byAction);
+    await render(entry, <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await waitFor(() => !skeleton(), "first page settled");
+  }
+
+  it("one bucket: the count on screen, the bucket and the CSV are the same set", async () => {
+    await mountProbed("/audit?window=7d");
+    await expand();
+    const bucket = Number(
+      document
+        .querySelector("[data-testid='audD-bucket-task.created']")!
+        .closest("li")!
+        .querySelector("[data-testid='aud7-types-count']")!.textContent,
+    );
+    expect(bucket).toBe(2);
+    const download = captureDownload();
+    await pick("task.created");
+    await waitFor(() => document.querySelectorAll("[data-testid^='aud01-row-']").length === bucket, "only this type on screen");
+    expect(document.querySelector("[data-testid='aud01-status']")!.textContent).toContain("已显示 2 条");
+    expect(document.querySelector("[data-testid='aud5-export-count']")!.textContent).toContain("将导出 2 条");
+    // 导出 = 屏上那份集合
+    await act(async () => {
+      document
+        .querySelector<HTMLElement>("[data-testid='aud5-export']")!
+        .dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+    expect(download.lines()).toHaveLength(bucket + 1); // header + rows
+    // audI: the name is a name and the body is the body (they were swapped)
+    expect(download.name()).toMatch(/^audit-[A-Za-z0-9._-]+\.csv$/);
+    expect(download.lines()[0]).toBe("time,actor,action,resource,rid");
+    expect(download.lines().slice(1).every((line) => line.includes("创建任务"))).toBe(true);
+    expect(download.name()).toContain("task-created");
+    expect(download.name()).toContain("n2-");
+    // 口径上屏
+    const scope = document.querySelector("[data-testid='audI-export-scope']")!.textContent ?? "";
+    expect(scope).toContain("只含「创建任务」这一类");
+    expect(scope).toContain("共 2 行");
+    const note = document.querySelector("[data-testid='audI-scope-note']")!.textContent ?? "";
+    expect(note).toContain("按已加载的 2 条统计");
+    expect(note).toContain("已按这一类筛");
+    // 桶点击 + 展开 + 导出：除那一读之外没多发任何请求
+    expect(auditReads()).toBe(2);
+    expect(reads(/^\/agent-api\/api\/audit-detail/)).toBe(0);
+    expect(reads(/^\/agent-api\/api\/audit-verify/)).toBe(0);
+  });
+
+  it("clearing the type recomputes all three under the same rule", async () => {
+    await mountProbed("/audit?window=7d&type=run.failed");
+    await expand();
+    expect(document.querySelectorAll("[data-testid^='aud01-row-']")).toHaveLength(1);
+    const download = captureDownload();
+    await pick("run.failed"); // pressed again → back to every type
+    await waitFor(() => document.querySelectorAll("[data-testid^='aud01-row-']").length === 3, "全量回到屏上");
+    expect(document.querySelector("[data-testid='aud01-status']")!.textContent).toContain("已显示 3 条");
+    expect(document.querySelector("[data-testid='aud5-export-count']")!.textContent).toContain("将导出 3 条");
+    await act(async () => {
+      document.querySelector<HTMLElement>("[data-testid='aud5-export']")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(download.lines()).toHaveLength(4);
+    expect(download.name()).toContain("-all-n3-");
+    expect(download.name()).not.toContain("run-failed");
+    const note = document.querySelector("[data-testid='audI-scope-note']")!.textContent ?? "";
+    expect(note).toContain("按已加载的 3 条统计");
+    expect(note).toContain("不是整窗全量");
+    expect(locationText()).not.toContain("type=");
+    expect(auditReads()).toBe(2);
+  });
+
+  it("a second page keeps saying which denominator was counted", async () => {
+    await mountProbed("/audit?window=7d&cursor=cur_page2");
+    await expand();
+    const note = document.querySelector("[data-testid='audI-scope-note']")!;
+    expect(note.textContent).toContain("按已加载的 3 条统计");
+    expect(note.getAttribute("title")).toContain("服务端没有按类型的聚合读口");
+    expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 2 页");
+  });
+
+  it("an empty set cannot be exported, and says why in the same words", async () => {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async () => ({ items: [], nextCursor: null }));
+    await render("/audit?window=7d&type=dispatch.event", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud01-empty']") !== null, "empty answer");
+    const node = document.querySelector<HTMLElement>("[data-testid='aud5-export']")!;
+    expect(node.getAttribute("aria-disabled")).toBe("true");
+    expect(node.getAttribute("title")).toContain("当前筛选无事件可导出");
+    const before = urls().length;
+    await act(async () => {
+      node.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(urls()).toHaveLength(before);
+    // no set, no distribution to count
+    expect(document.querySelector("[data-testid='aud7-types']")).toBeNull();
+  });
+});

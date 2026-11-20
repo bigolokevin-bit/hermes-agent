@@ -591,9 +591,15 @@ export function AuditTypeSummary({
         </button>
         <span
           className="min-w-0 break-words text-xs text-muted-foreground"
-          title="服务没有给出总数；这一块按当前已加载的这一页统计，不是整窗全量"
+          data-testid="audI-scope-note"
+          title={
+            selected
+              ? "已经按这一类筛选：这一份分布只有这一个桶，它数的是服务端在这一窗里回给本页的记录，不是整窗各类的原样分布"
+              : "服务端没有按类型的聚合读口，也没有带回整窗总数；这一块数的是本页已加载的记录，放宽时间窗或翻页后按同一口径重算"
+          }
         >
           按已加载的 {total} 条统计
+          {selected ? "（已按这一类筛，所以只剩这一个桶）" : "（不是整窗全量：这一页读到几条就数几条）"}
         </span>
       </div>
       {open ? (

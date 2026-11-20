@@ -51,7 +51,7 @@ import type { ListFilters } from "./api";
 import { PAGE_LIMIT, PAGE_SIZE_CHOICES, readPageSize } from "./api";
 import { filterSummaryLineOf, hasFilterSummary } from "./filterSummary";
 import type { AuditRow } from "./model";
-import { downloadCsv, downloadText, exportName, filteredCsvText, filteredExportName } from "./csv";
+import { downloadCsv, downloadText, exportName, filteredCsvText, filterSnapshotExportName } from "./csv";
 import {
   FILTER_WINDOW_CHOICES,
   beijingInputValue,
@@ -1015,6 +1015,14 @@ function AuditEventsSurface(): ReactNode {
     setParams(draft, { replace: true });
   }, [params, setParams]);
 
+  // audI: the type the address chose, spoken the way the picker speaks it, so
+  // the export line can name the set in human words (an unsampled code reads
+  // verbatim, exactly like the 类型 column does).
+  const typeChoices = useMemo(() => eventTypeChoices(), []);
+  const eventTypeLabel = eventType
+    ? typeChoices.find((choice) => choice.value === eventType)?.label ?? eventType
+    : "";
+
   const typeGroups = (() => {
     if (list.phase !== "ready" || visibleRows.length === 0) return [];
     const counted = new Map<string, { key: string; label: string; count: number }>();
@@ -1244,7 +1252,20 @@ function AuditEventsSurface(): ReactNode {
           size="sm"
           outlined
           onClick={() =>
-            downloadText(filteredCsvText(visibleRows), filteredExportName(windowChoice, actor || "all", resource || "all"))
+            // audI: name first, then the body — `downloadText(name, text)`.
+            // The two were swapped here: the file came out named with its own
+            // CSV text and filled with the file name, which no test could see
+            // because nothing compared both sides until now.
+            downloadText(
+              filterSnapshotExportName({
+                window: windowChoice,
+                actor: actor || "all",
+                resource: resource || "all",
+                action: eventType || "all",
+                rows: visibleRows.length,
+              }),
+              filteredCsvText(visibleRows),
+            )
           }
           disabled={!canExport}
           aria-disabled={!canExport}
@@ -1255,6 +1276,12 @@ function AuditEventsSurface(): ReactNode {
           导出当前筛选 CSV
         </Button>
         <span className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud5-export-count">将导出 {visibleRows.length} 条</span>
+        {/* audI: the export set is named out loud, because 「导出当前筛选」 is only
+            honest if the screen says which rows that means: the same rows on
+            screen, with the same type the bucket filter put in the address. */}
+        <span className="min-w-0 basis-full break-words text-xs text-muted-foreground" data-testid="audI-export-scope">
+          导出的就是屏上这一份：{eventType ? `只含「${eventTypeLabel}」这一类` : "当前时间窗与筛选下的全部类型"}，共 {visibleRows.length} 行，与上面「已显示」和类型分布的计数同一个集合；文件名带齐时间窗、操作者、资源、动作与行数，时间为北京时间到分。
+        </span>
       </div>
 
       {/* audD: the distribution is the filter. Picking a bucket writes the
