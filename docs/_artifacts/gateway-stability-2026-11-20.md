@@ -116,3 +116,103 @@ lane: `lane/L7-gateway-stability` ｜ 范围：`~/.hermes/logs/*`、`~/.local/st
 - 复核入口：`gateway.log:1544`、`keepalive.log:30428/30429/30433/30434`、`agent.log:14797`、
   `gateway-exit-diag.log`（`07:14:38.317` start / `07:14:38.922` previous_unclean_exit）、
   采样原文 `/var/folders/…/opencode/health-sample.log`（200 行）。
+
+---
+
+## 5. 第二轮补证：15:41 事件（pid 69401）—— 判定不变，机制收窄
+
+`gateway.log:1702` 的 UNCLEANLY 与前三次同签名，且**新增一条排除性事实：被杀时网关是空载的**。
+
+### 5.1 原始行（前后 2 分钟）
+
+| 时刻 | 证据（文件:行号） | 含义 |
+|---|---|---|
+| 15:34:06,198 | gateway.log:1662-1700 `Received SIGTERM` + `Shutdown context: signal=SIGTERM … loadavg_1m=3.05` | 上一任被 L0 受管重启**正常**送走（0.23s） |
+| 15:34:10,288 | 同上 | 69401 起（L0 于 15:34 的受管重启） |
+| 15:34:20,285 | 69401 最后一行 | **此后 6 分 50 秒零输出**；agent.log 在 15:40 之后无任何 inbound/turn 事件 → 空载 |
+| 15:40:24,492 | agent.log:15398 `"GET /health" 200` | 最后一次成功应答（launchd 探针） |
+| 15:40:44,275 | gateway.log:1702 `last_heartbeat_at=…07:40:44.275188Z` | 心跳戛止 → 死亡窗口起点 |
+| 15:41:09 | keepalive.log:30628-30631 c1/domain/runtime **同秒全 OK** + `WARN gateway probe DOWN port=8642 http=000`（裸形，无 `probe_fail=`/`attempts=`） | 秒拒而非 5s 超时；其它三个服务活着 |
+| 15:41:10,379 / ,911 | gateway-exit-diag.log:128 / :129 `gateway.start pid=76056` / `previous_unclean_exit prior_pid=69401`；errors.log:724 | 新任启动即记账 |
+| 15:41:13 | keepalive.log:30632 `restart recovered port=8642 pid=76056 http=200` | DOWN→recovered = **4 秒** |
+
+- cron 侧 `keepalive-cron.log:6762-6773`：15:38:00 / 15:40:00 / 15:42:00 三次 `gateway probe OK http=200` —— cron runner 全程没看见故障，15:41 属于 launchd 45s 循环。
+- `gateway_faulthandler.log`：0 字节，mtime 仍为 Nov 11 23:40 → 无 Python 级崩溃回溯。
+- OOM 再次排除：`suspected_oom=False`、`last_mem=None`；DiagnosticReports 最新为 Nov 20 10:20 Chrome（15:41 无任何 .ips）；shutdown-diag 的 dmesg-oom 段为空。
+- **69401 在 exit-diag 里没有 `asyncio.run.returned` / `gateway.exit_nonzero`**（对比 31852/49138/56444 都有）→ 退出路径根本没跑，与前三次同一结论。
+
+### 5.2 判定（任务 A 更新一句）
+
+15:41 与 14:36 / 15:01 / 15:14 / 88971 / 21216 / 32185 **同类：外部 SIGKILL，不是 keepalive 判定后杀活的网关，不是 OOM**。
+理由同 §2 的三条算术（4 秒 restart 容不下 30s TERM 等待；同秒四服务证明探针为秒拒；`ops/hermes.sh:107` 端口被占即 FATAL，而 15:41:10 起得干净）。
+并且 69401 死时**空载、无任何 turn**，所以"turn 进行中被杀"这一支彻底没有证据支持。
+
+### 5.3 任务 B：`/health` 第二轮实测（现网关 76056，空载）
+
+`curl -s -m 5 -o /dev/null -w '%{time_total} %{http_code}' --noproxy '*' http://127.0.0.1:8642/health`，1s 一次，150 次，15:54:42→15:57:23
+（原始数据 `…/T/opencode/health-sample2.log`）：
+
+| n | http_code | min | 中位 | p95 | max |
+|---|---|---|---|---|---|
+| 150 | 200 ×150（0 失败） | 0.001032s | **0.002168s** | 0.002989s | **0.003786s** |
+
+第一轮 n=200：中位 0.002129s / max 0.007136s。生产侧自 15:41 起 agent.log 有 **189 次 `GET /health 200`**，
+含 turn 进行中的那一次（agent.log:14797 `15:13:52,396 … 200`，距 15:13:35,706 turn 起点 17 秒）。
+**最慢 3.8ms，与 5s 探针上限相差三个数量级 → keepalive 的 `curl -m 5` 不可能把 /health 判成超时。**
+本轮仍未合成付费 turn（76056 自 15:41 起零 turn，制造 turn 需要花额度）；改以上述生产 turn 内 200 + 代码路径作证。
+代码路径：`api_server.py:2266-2268 _handle_health` 纯同步、零 await、零锁；模型 turn 走
+`run.py:3976-3980 _run_in_executor_with_context` 的线程执行器（`session_runtime_workers.py:136`），本就不占事件循环。
+⇒ **任务 C（把 /health 挪到独立线程/快照）仍是伪需求，本次不改 `gateway/**`、不改 `hermes_cli/**`。**
+
+### 5.4 ops 核实（用户点名的一行；未部署、未重启任何东西）
+
+```
+$ grep -c DOWN_THRESHOLD ops/keepalive.sh      →  6
+$ git merge-base --is-ancestor 7bea9b98 HEAD   →  CR-038 已在 HEAD
+$ git merge-base --is-ancestor dace6a128 HEAD  →  CR-039 已在 HEAD
+$ stat -f '%Sm' ops/keepalive.sh               →  Nov 20 14:48:22 2026
+$ ps -p 27175 -o lstart                        →  Tue Nov 17 13:12:07 2026（etime 03-02:41）
+```
+**修复在仓库里，在跑的那个 launchd 循环里没有**：pid 27175 从 11-17 起就是常驻 loop，shell 早已把脚本读进内存，
+14:48 落盘的 CR-039 不会被它加载 → 15:41:09 仍是裸 `DOWN` + 立即 restart（没有 `held`，没有 `probe_fail=`），
+即"单探针失败即重启"的旧行为。这是上一轮报告 §4.1 的结论，本轮 15:41 事件把它再证了一次。
+
+### 5.5 新发现：网关继承启动者的进程组（结构暴露，签名与全部 14 次完全吻合）
+
+```
+$ ps -o pid,ppid,pgid,stat,lstart -p 27175 -p 76056 -p 46199
+27175     1 27175 S    Tue Nov 17 13:12:07   /bin/sh …/ops/keepalive.sh      ← launchd job cn.seakoi.keepalive
+76056     1 27175 S    Fri Nov 20 15:41:09   .venv/bin/python … gateway run  ← 现网关，pgid = keepalive 的组
+46199     1 46199 SNs  Wed Nov 18 21:36:59   … hermes dashboard              ← 对比组：自成会话 leader
+$ ps -eo pgid | grep -c 27175 → 同组还有 32108/34667/67994（c1、domain、runtime 的 uv run）与其子进程、sleep 45
+```
+
+`ops/hermes.sh:113` 用 `nohup "$BIN" gateway run >>"$LOGFILE" 2>&1 &` + `disown`，**没有 `setsid`**：
+`nohup` 只屏蔽 SIGHUP，进程组与会话照抄启动者。于是网关永远活在"最后一次启动它的那个组"里 ——
+launchd 循环启动的就在 27175，L0 在终端/会话 shell 里重启的就在那条 shell 的组。
+任何对该组的定向清扫（会话 shell 拆除、`launchctl kickstart -k`/bootout、工具侧进程组 kill）都会
+**一次性 SIGKILL 整个组**，留下的痕迹正好是这 14 次的样子：没有 exit path、没有 SIGTERM 行、
+没有 faulthandler 回溯、没有崩溃报告、没有 jetsam、端口瞬间关闭、探针秒拒。
+仓库内自带的 kill 原语已经排除：`agent/deadline.py:447-506 kill_process_tree()` 有
+`pgid=os.getpgid(pid)` + `if pgid == pid` 自检（注释明写避免误伤调用方所在组），
+`tools/code_execution_tool.py:806-825` 是 TERM→等 5s→才 KILL，且 32185/69401 都没有 SIGTERM 痕迹。
+
+**因此修正上一轮 §4.1 的处置顺序**（重要）：直接执行 `launchctl kickstart -k gui/$UID/cn.seakoi.keepalive`
+会顺手 SIGKILL 现网关 76056 —— 它就在 27175 组里。安全顺序：
+先把网关换出该组（`ops/hermes.sh` 的 start 改 `setsid`，属 `ops/**` 写域，留给 L7 的独立 CR），
+或先受管重启网关、再 kickstart keepalive。
+
+### 5.6 下一次 flap 的取证装置（不改代码即可执行，供 L0/L7 决定）
+
+- 常驻 1s 进程表快照：`ps -eo pid,ppid,pgid,sess,stat,lstart,comm` 追加写入 `$STATE_DIR/proc-snapshot.log`
+  （带时间戳、轮转），下次 UNCLEANLY 直接看死亡那一秒**同组还有哪些进程一起消失** —— 一次就能区分
+  组清扫 vs 按 pid 点杀，并暴露发起方的短命父进程。
+- 在 `restart_svc` 侧补上时间戳化的 `TERM <pid> @<ts>` / `SIGKILL <pid> @<ts>` 与按 epoch 命名的
+  `restart-<epoch>.out`（现 `restart-last.out` 每次覆盖，事后无法证明 kill -9 是否真的开火）。
+- 记录每任网关的 `pid/pgid/sess/lstart` 到 lifecycle ledger，把"启动者是谁"变成可查事实。
+
+### 5.7 本轮结论
+
+- 判定：**外部 SIGKILL（组清扫为首要嫌疑，见 §5.5），非 keepalive 误杀、非 OOM、非 /health 阻塞**；L0 的 15:24/15:34 两次受管重启不是凶手，board `24a4bd06` 的「14th attributed (SIGKILL of 69401, not L0)」与本报告一致。
+- 代码修改：**无**（`gateway/**`、`hermes_cli/**`、`ops/**`、`web/src` 均未动）。
+- 需要重启网关：**不需要**。本报告与取证建议不涉及任何重启动作。
