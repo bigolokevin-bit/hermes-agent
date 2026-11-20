@@ -439,6 +439,23 @@ export function MetricsModulePage() {
   const refreshSignalRef = useRef<{ live: boolean } | null>(null);
   const sourcesRef = useRef<Record<string, SourceStamp>>({});
   const [sourceCopyStatus, setSourceCopyStatus] = useState<'idle' | 'done' | 'failed'>('idle');
+
+  // met-output — one visible line says what just happened. The signature gate is
+  // deliberate: pressing the same export twice must not replay the same sentence,
+  // and a disabled control must never announce a success it did not perform.
+  type OutputAction = 'detail-export' | 'share-export' | 'copy-summary' | 'copy-sources';
+  const [output, setOutput] = useState<{ action: OutputAction; text: string; tone: 'ok' | 'fail'; seq: number } | null>(
+    null,
+  );
+  const outputSig = useRef<string | null>(null);
+  const outputSeq = useRef(0);
+  const announceOutput = (action: OutputAction, text: string, tone: 'ok' | 'fail' = 'ok') => {
+    const signature = `${action}|${tone}|${text}`;
+    if (outputSig.current === signature) return;
+    outputSig.current = signature;
+    outputSeq.current += 1;
+    setOutput({ action, text, tone, seq: outputSeq.current });
+  };
   const [summaryText, setSummaryText] = useState('');
   const [sources, setSources] = useState<Record<string, SourceStamp>>({});
   const [sourcesOpen, setSourcesOpen] = useState(false);
@@ -1605,14 +1622,20 @@ export function MetricsModulePage() {
     ]);
     const body = withGapNote(withTotalsNote(toCsv(header, rows), detailTotalLine), detailGaps);
     const blob = new Blob([`\uFEFF${body}`], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = csvFileName(viewMode, usageWindow.id, detailSort, detailDir, new Date());
-    document.body.append(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
+    const fileName = csvFileName(viewMode, usageWindow.id, detailSort, detailDir, new Date());
+    try {
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = fileName;
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      announceOutput('detail-export', `已导出明细 ${detailRows.length} 行：${fileName}。`);
+    } catch {
+      announceOutput('detail-export', '导出没成功：这份明细文件没有生成，重试一次看看。', 'fail');
+    }
   };
 
   const exportShare = () => {
@@ -1636,14 +1659,20 @@ export function MetricsModulePage() {
       shareGaps,
     );
     const blob = new Blob([`\uFEFF${shareBody}`], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = shareCsvFileName(groupBy, usageWindow.id, sortKey, sortDir, new Date());
-    document.body.append(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
+    const fileName = shareCsvFileName(groupBy, usageWindow.id, sortKey, sortDir, new Date());
+    try {
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = fileName;
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      announceOutput('share-export', `已导出分摊 ${shareRows.length} 行：${fileName}。`);
+    } catch {
+      announceOutput('share-export', '导出没成功：这份分摊文件没有生成，重试一次看看。', 'fail');
+    }
   };
 
   const chooseView = (next: 'employee' | 'model') => {
@@ -1691,7 +1720,11 @@ export function MetricsModulePage() {
     if (sourceCopyDisabled || sourceList.length === 0) return;
     // One value feeds both the clipboard call and the fallback box, so the box
     // can never show something other than what was handed to the clipboard.
-    void copyTextToClipboard(sourceCopyValue).then((ok) => setSourceCopyStatus(ok ? 'done' : 'failed'));
+    void copyTextToClipboard(sourceCopyValue).then((ok) => {
+      setSourceCopyStatus(ok ? 'done' : 'failed');
+      if (ok) announceOutput('copy-sources', `已复制数据来源摘要，共 ${sourceList.length} 行。`);
+      else announceOutput('copy-sources', '复制没成功：浏览器没有把来源摘要放进剪贴板，下面的原文可以直接选中。', 'fail');
+    });
   };
 
   // metL — the plain-text summary repeats what this page already shows. Both
@@ -1718,7 +1751,11 @@ export function MetricsModulePage() {
       totalLine: summaryTotalLine,
     });
     setSummaryText(text);
-    void copyTextToClipboard(text).then((ok) => setSummaryStatus(ok ? 'done' : 'failed'));
+    void copyTextToClipboard(text).then((ok) => {
+      setSummaryStatus(ok ? 'done' : 'failed');
+      if (ok) announceOutput('copy-summary', `已复制摘要：${summaryRuns ?? '—'} 次运行 · ${formatUsd(summaryCost)}。`);
+      else announceOutput('copy-summary', '复制没成功：浏览器没有把摘要放进剪贴板，下面的原文可以直接选中。', 'fail');
+    });
   };
 
   // metAM — every action on this page asks one object for its availability, so a
@@ -1877,6 +1914,21 @@ export function MetricsModulePage() {
       <p className="metAM-note" data-testid="metAM-matrix-note">
         可用性一句话：整页都读不出来的时候，只留「刷新」可用，导出与复制一起停下；只有某一块读不出来的时候，用到它的导出与复制停下，单卡重试照常；时间窗没有数据时，导出只写表头、复制照常；刷新进行中，除刷新本身外都不点，刷新也不会重复发请求。
       </p>
+
+      {output ? (
+        <div
+          className="met-output"
+          data-testid="met-output-status"
+          data-action={output.action}
+          data-tone={output.tone}
+          data-seq={output.seq}
+          role="status"
+          aria-live="polite"
+        >
+          <span data-testid={`met-output-${output.action}`}>{output.text}</span>
+          {output.tone === 'fail' ? <RequestId id={null} /> : null}
+        </div>
+      ) : null}
 
       {usageQuiet ? (
         <div className="metAN-guide" data-testid="metAN-empty-guide">

@@ -687,3 +687,15 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 - 测试（describe「met-heat-legend — heat legend and gap note」4 例）：图例常显且零追加请求；缺 1 格 → N=1 且 `met5-count` = `metX-heat-runs` = 有数据格求和；补齐 168 格 → 缺口行消失、真实 0 仍计入；1→4 周切换缺口 2→1，且该批只多一条 `/api/run-activity`。
 - 验证：定向 `src/modules/metrics` 4 files / 232 passed（基线 228）；全量 159 files / 2184 passed（基线 2180）；`tsc` 本域 0（全仓既存 79）；`eslint` exit 0（0 error / 9 既有 warning）；build exit 0，entry `assets/index-CKW2g5do.js` sha256 `c60786e95bce0ffe757da6cb4b237dd6655cafae968a1961acd76962ce2db35f`（仅自查），entry 内 `met-heat-legend`=0，`MetricsModulePage-CGR6VJ4a.js` 内 `met-heat-legend`=1、`met-heat-gap-note`=1。
 - 未测：真实浏览器 375/1440 下图例句折行与色块对齐。
+
+## 导出与复制的可见反馈（met-output，2026-11-20）
+
+`aria-live` 只有在屏幕阅读器里听得见；这一条把同样的句子写到屏上。
+
+- 位置与 testid：页首 `metAM-matrix-note` 之下一条 `met-output-status`（`role="status"` + `aria-live="polite"`，可见文本，非 sr-only），带 `data-action`（`detail-export` / `share-export` / `copy-summary` / `copy-sources`）、`data-tone`（`ok` / `fail`）、`data-seq`（真实播报次数）。每句另有 `met-output-<action>`。
+- 四句互不相同：明细「已导出明细 N 行：<文件名>。」；分摊「已导出分摊 N 行：<文件名>。」；摘要「已复制摘要：N 次运行 · $x.xx。」；来源「已复制数据来源摘要，共 N 行。」
+- 签名门控：`signature = action|tone|text`，与上一次相同则直接返回——连点同一个导出不会重复播；换成另一个动作才递增 `data-seq`。禁用的按钮（`metAM` 矩阵口径）根本不进 handler，因此既不导出也不播报。
+- 失败：导出包在 try/catch 里，异常时播「导出没成功：这份明细/分摊文件没有生成，重试一次看看。」，`data-tone="fail"`，并把请求编号行留在同一块（本地失败无请求号时写「本次请求未记录编号」，不编编号）；复制失败播「复制没成功：…下面的原文可以直接选中。」，既有兜底 textarea 不变。
+- 零额外请求：四条播报全部读屏上已有数据，断言前后 `fetchJsonStrict` 调用数不变；既有按钮 testid、文件名与 CSV 契约一律未动。
+- 验证：定向 metrics 4 files / 236 passed；全量 **2312 passed**；`tsc` 本域 0；`eslint src/modules/metrics` exit 0（9 条既存 warning）；build exit 0（entry 内 `met-output-status`=0，chunk `MetricsModulePage-*.js`=1）。
+- 未测：真实读屏软件对「文本已存在、仅内容变化」的播报节奏；375 下长文件名折行。
