@@ -49,7 +49,15 @@ import type { VerifyFailure } from "./copy";
 import { eventTypeChoices } from "./model";
 import type { ListFilters } from "./api";
 import { PAGE_LIMIT, PAGE_SIZE_CHOICES, readPageSize } from "./api";
-import { filterSummaryLineOf, hasFilterSummary } from "./filterSummary";
+import {
+  filterSeatsForScreen,
+  filterSummaryLineOf,
+  hasFilterSummary,
+  pageShareHref,
+} from "./filterSummary";
+import { auditGatesOf, gateMirror } from "./auditGates";
+import type { SortColumn, SortState } from "./sorting";
+import { SORT_COLUMNS, ariaSort, nextSort, sortReading, sortRows, sortStateOf } from "./sorting";
 import { applyScroll, clearScrollMark, readScrollMark, readScrollY, saveScrollMark, scrollFingerprint } from "./scrollMemory";
 import type { AuditRow } from "./model";
 import { downloadCsv, downloadText, exportName, filteredCsvText, filterSnapshotExportName } from "./csv";
@@ -90,6 +98,26 @@ function resetPagingAndFolds(draft: URLSearchParams): void {
   draft.delete("cursor");
   draft.delete("preview");
   draft.delete("event");
+  draft.delete("tech");
+}
+
+/**
+ * audP: the same reset for a page-size change, EXCEPT the deep link.
+ *
+ * `?event=` is not a fold the person opened on this page — it is the link they
+ * arrived with, a pointer at one record. Changing how many rows a page holds is
+ * a decision about the page, and silently dropping the pointer would mean the
+ * page decided to forget why the person is here. The located row may or may not
+ * be inside the new, larger/smaller set; that is what the 深链档 already says
+ * out loud (「已定位」 / 「在服务端还在，只是不在当前页」 / 「不存在或已过期」),
+ * so keeping the key costs nothing and lying about it costs the link.
+ *
+ * Turning a page (下一页/上一页) still drops the fold and the pointer: aud8/aud9
+ * registered 翻页＝换页, and this round was asked only about the size selector.
+ */
+function resetPagingKeepingLink(draft: URLSearchParams): void {
+  draft.delete("cursor");
+  draft.delete("preview");
   draft.delete("tech");
 }
 
@@ -630,6 +658,90 @@ function AuditRowKeyboard({
   );
 }
 
+/**
+ * audN — the column handles. Four real buttons, one `aria-sort` per column in
+ * three states (ascending → descending → none), keyboard on Enter and Space
+ * like every other control on this page.
+ *
+ * `aria-sort` belongs on a columnheader, so the strip carries the minimal
+ * table shape (table → row → columnheader). That is deliberate and limited:
+ * the ledger rows below are cards with `role=list`/`listitem` (audK/audM
+ * contracts), and turning 50 cards into table rows is not this round's work —
+ * the header describes what the buttons do, nothing more.
+ */
+function AuditSortBar({
+  state,
+  count,
+  disabled,
+  reason,
+  onPick,
+}: {
+  state: SortState;
+  count: number;
+  /** audN: the four states that have no order to speak of. */
+  disabled: boolean;
+  reason: string;
+  onPick: (column: SortColumn) => void;
+}): ReactNode {
+  const reading = sortReading(state, count);
+  return (
+    <div className="flex min-w-0 flex-col gap-1" data-testid="aud-sort-bar-block">
+      <div role="table" aria-label="排序控件（只重排这一页已加载的行）" data-testid="aud-sort-bar" className="min-w-0">
+        <div role="row" data-testid="aud-sort-row" className="flex min-w-0 flex-wrap items-center gap-2">
+          <span className="min-w-0 text-xs text-muted-foreground">排序</span>
+          {SORT_COLUMNS.map((item) => (
+            <span
+              key={item.key}
+              role="columnheader"
+              aria-sort={ariaSort(state, item.key)}
+              data-testid={`aud-sort-head-${item.key}`}
+            >
+              <button
+                type="button"
+                data-testid={`aud-sort-button-${item.key}`}
+                disabled={disabled}
+                title={
+                  disabled
+                    ? reason
+                    : state.column === item.key
+                      ? `${item.label}：${state.direction === "asc" ? "升序，再点变降序" : "降序，再点清除排序"}`
+                      : `按${item.label}排这一页（升序→降序→清除）`
+                }
+                className={`flex min-w-0 items-center gap-1 rounded-md border px-2 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
+                  state.column === item.key
+                    ? "border-primary text-foreground"
+                    : "border-border text-muted-foreground hover:bg-muted/40"
+                } ${disabled ? "opacity-60" : ""}`}
+                onClick={() => onPick(item.key)}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter" && event.key !== " " && event.key !== "Spacebar") return;
+                  event.preventDefault();
+                  onPick(item.key);
+                }}
+              >
+                {item.label}
+                <span aria-hidden="true">
+                  {state.column === item.key ? (state.direction === "asc" ? "↑" : "↓") : "⇅"}
+                </span>
+              </button>
+            </span>
+          ))}
+        </div>
+      </div>
+      <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud-sort-status">
+        {reading}
+      </p>
+      <p
+        className="min-w-0 break-words text-xs text-muted-foreground"
+        data-testid="aud-sort-scope-note"
+        title="为什么只做本地排序：本轮朝活体读口试过排序参数，服务端没有给出可以核对的生效回答（拿不到排序前后台账顺序变化的证据），所以这里只重排已经读到的行。原始探码记在交付文档的 audN 一节，不搬上屏——屏上出现路径或状态码会让人以为在读日志"
+      >
+        仅在当前已加载的 {count} 条内排序——服务端没有可用的排序参数（本轮实测拿不到生效证据），清掉排序就回到服务给的回行顺序。
+      </p>
+    </div>
+  );
+}
+
 export function AuditEventsModulePage(): ReactNode {
   const [params] = useSearchParams();
   // `?tab=retention` resolves to the events live slot in shell/routes.ts;
@@ -871,32 +983,57 @@ function AuditEventsSurface(): ReactNode {
     [list.rows, resource],
   );
 
+  // audN: the order this page shows the rows in. Local, on the rows already
+  // in hand — see sorting.ts for the probe that says why. Sorting is not a new
+  // question, so it touches no cursor, no page and no filter, and asks nothing.
+  const sortState = sortStateOf(params.get("asort"), params.get("adir"));
+  // A plain derivation, the way 类型分布 counts are: the set is at most one
+  // page of rows, and a memo keyed on a freshly built object would only be a
+  // second place for the same truth to drift.
+  const listedRows = sortRows(visibleRows, sortState);
+
+  const pickSort = useCallback(
+    (column: SortColumn) => {
+      const next = nextSort(sortStateOf(params.get("asort"), params.get("adir")), column);
+      const draft = new URLSearchParams(params);
+      // cleared is BOTH keys gone, not a direction hanging on its own
+      draft.delete("asort");
+      draft.delete("adir");
+      if (next.column && next.direction) {
+        draft.set("asort", next.column);
+        draft.set("adir", next.direction);
+      }
+      setParams(draft, { replace: true, state: locationState ?? null });
+    },
+    [locationState, params, setParams],
+  );
+
   // audK: the list's single tab stop. `null` means the person has not moved
   // inside the list yet, so the first row holds the stop — Tab into the ledger
   // lands where the reading starts, not past the last row. A row that is no
   // longer on screen (a new page, a narrowed filter) hands the stop back to the
   // first row of what came instead.
   const [rovingKey, setRovingKey] = useState<string | null>(null);
-  const roving = (rovingKey !== null && visibleRows.some((row) => row.key === rovingKey)
+  const roving = (rovingKey !== null && listedRows.some((row) => row.key === rovingKey)
     ? rovingKey
-    : visibleRows[0]?.key) ?? null;
+    : listedRows[0]?.key) ?? null;
 
   const moveRowFocus = useCallback(
     (key: string, delta: number): string | null => {
-      const index = visibleRows.findIndex((row) => row.key === key);
+      const index = listedRows.findIndex((row) => row.key === key);
       if (index === -1) return null;
-      const next = visibleRows[Math.min(visibleRows.length - 1, Math.max(0, index + delta))];
+      const next = listedRows[Math.min(listedRows.length - 1, Math.max(0, index + delta))];
       return next?.key ?? null;
     },
-    [visibleRows],
+    [listedRows],
   );
 
   const edgeRowFocus = useCallback(
     (edge: "first" | "last"): string | null => {
-      if (!visibleRows.length) return null;
-      return (edge === "first" ? visibleRows[0] : visibleRows[visibleRows.length - 1])?.key ?? null;
+      if (!listedRows.length) return null;
+      return (edge === "first" ? listedRows[0] : listedRows[listedRows.length - 1])?.key ?? null;
     },
-    [visibleRows],
+    [listedRows],
   );
 
   // aud9: the deep link. A row that is on this page IS the opened fold; a link
@@ -904,7 +1041,7 @@ function AuditEventsSurface(): ReactNode {
   // answers — denied, an unreadable body, a record that lives on another page
   // — is what the screen says, with the request id it came back with.
   const deepLinkRow = deepLinkId
-    ? visibleRows.find((row) => row.key === deepLinkId || row.rawId === deepLinkId)
+    ? listedRows.find((row) => row.key === deepLinkId || row.rawId === deepLinkId)
     : undefined;
   const existence = useAuditDetail(
     deepLinkId && !deepLinkRow && (list.phase === "ready" || list.phase === "empty") ? deepLinkId : null,
@@ -1208,7 +1345,10 @@ function AuditEventsSurface(): ReactNode {
   const setPageSize = useCallback(
     (next: number) => {
       const draft = new URLSearchParams(params);
-      resetPagingAndFolds(draft);
+      // audP: a new size is a new page, so the cursor stack goes and page 1
+      // starts — but an arrived-with `?event=` pointer stays. Only the person
+      // closing the定位 (or changing a filter) takes it away.
+      resetPagingKeepingLink(draft);
       draft.set("limit", String(next));
       setParams(draft, { replace: true, state: locationState ?? null });
     },
@@ -1241,9 +1381,9 @@ function AuditEventsSurface(): ReactNode {
     : "";
 
   const typeGroups = (() => {
-    if (list.phase !== "ready" || visibleRows.length === 0) return [];
+    if (list.phase !== "ready" || listedRows.length === 0) return [];
     const counted = new Map<string, { key: string; label: string; count: number }>();
-    for (const row of visibleRows) {
+    for (const row of listedRows) {
       const key = row.action.raw ?? row.action.label;
       const found = counted.get(key);
       if (found) found.count += 1;
@@ -1254,16 +1394,9 @@ function AuditEventsSurface(): ReactNode {
 
   // aud9: everything on screen and everything exported follows the rows the
   // person is actually looking at, not the raw page the service returned.
-  const canExport = list.phase === "ready" && visibleRows.length > 0;
+
 
   const windowLabel = WINDOW_FILTER_CHOICES.find((item) => item.value === windowChoice)?.label ?? "最近 7 天";
-
-  const exportOff = customInvalid || list.phase !== "ready" || visibleRows.length === 0;
-  const exportTitle = exportOff
-    ? customInvalid
-      ? "自定义时间窗不完整，没有可导出的记录"
-      : "当前筛选没有可导出的记录"
-    : "导出当前筛选结果为 CSV（北京时间）";
 
   const statusLine = (() => {
     if (customInvalid) return "自定义时间窗还不完整：两栏都填好且开始早于结束才会去读";
@@ -1271,7 +1404,7 @@ function AuditEventsSurface(): ReactNode {
     if (list.phase === "empty") return "这个筛选条件里没有审计事件";
     if (list.phase === "denied") return "审计事件暂不可用";
     if (list.phase === "error") return "审计事件读取失败";
-    return `已显示 ${visibleRows.length} 条审计事件（${windowLabel}）${list.next ? "，下面还有更多" : ""}`;
+    return `已显示 ${listedRows.length} 条审计事件（${windowLabel}）${list.next ? "，下面还有更多" : ""}`;
   })();
 
   const drawer = (() => {
@@ -1374,7 +1507,7 @@ function AuditEventsSurface(): ReactNode {
       : `时间窗：${windowLabel}`,
     eventType ? `类型：${eventType}` : "类型：全部",
     actor ? "操作者：按句柄筛（服务端）" : "操作者：未筛",
-    resource ? `资源：按编号本地筛（${visibleRows.length}/${list.rows.length}）` : "资源：未筛",
+    resource ? `资源：按编号本地筛（${listedRows.length}/${list.rows.length}）` : "资源：未筛",
     `第 ${pageNo} 页`,
     openPreview ? "有一行展开" : "无展开行",
   ].join(" · ");
@@ -1416,6 +1549,25 @@ function AuditEventsSurface(): ReactNode {
     askedPath: customInvalid ? null : list.askedPath,
   };
   const filterSummary = filterSummaryLineOf(summaryInput);
+  // audR: the same question, as a link. Origin-free by construction.
+  const shareHref = pageShareHref(params);
+
+  // audQ: one object decides every entry's availability — the two exports, the
+  // two copy controls, the row fold and the retry — with the sentences that
+  // used to be written separately in each widget. Derived only from what the
+  // screen already holds: no request, no side effect, no second truth.
+  const gates = auditGatesOf({
+    phase: list.phase,
+    customInvalid,
+    rows: listedRows.length,
+    question: hasFilterSummary(summaryInput),
+    record: detail.phase,
+    hasIdentifier: listedRows.some((row) => row.rawId !== null),
+  });
+  // audQ: the availability and the reason come from the gates, not from a
+  // ternary living next to the button.
+  const exportOff = !gates.exportCsv.enabled;
+  const exportTitle = gates.exportCsv.title;
 
   return (
     <div className="flex min-w-0 w-full max-w-full flex-col gap-3" data-testid="agent-v2-page-audit" data-page="audit">
@@ -1428,7 +1580,7 @@ function AuditEventsSurface(): ReactNode {
           <Button
             size="sm"
             outlined
-            onClick={() => downloadCsv(visibleRows, exportName(windowLabel))}
+            onClick={() => downloadCsv(listedRows, exportName(windowLabel))}
             disabled={exportOff}
             aria-disabled={exportOff}
             title={exportTitle}
@@ -1454,7 +1606,9 @@ function AuditEventsSurface(): ReactNode {
               size="sm"
               outlined
               onClick={list.reload}
-              disabled={list.phase === "loading"}
+              disabled={!gates.retry.enabled}
+              aria-disabled={!gates.retry.enabled}
+              title={gates.retry.title}
               data-testid="aud01-refresh"
               prefix={list.phase === "loading" ? <Spinner className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" />}
             >
@@ -1479,25 +1633,25 @@ function AuditEventsSurface(): ReactNode {
                 actor: actor || "all",
                 resource: resource || "all",
                 action: eventType || "all",
-                rows: visibleRows.length,
+                rows: listedRows.length,
               }),
-              filteredCsvText(visibleRows),
+              filteredCsvText(listedRows),
             )
           }
-          disabled={!canExport}
-          aria-disabled={!canExport}
-          title={canExport ? "导出当前筛选为 CSV（北京时间）" : "当前筛选无事件可导出"}
+          disabled={!gates.exportFiltered.enabled}
+          aria-disabled={!gates.exportFiltered.enabled}
+          title={gates.exportFiltered.title}
           data-testid="aud5-export"
           prefix={<Download className="h-3.5 w-3.5" />}
         >
           导出当前筛选 CSV
         </Button>
-        <span className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud5-export-count">将导出 {visibleRows.length} 条</span>
+        <span className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud5-export-count">将导出 {listedRows.length} 条</span>
         {/* audI: the export set is named out loud, because 「导出当前筛选」 is only
             honest if the screen says which rows that means: the same rows on
             screen, with the same type the bucket filter put in the address. */}
         <span className="min-w-0 basis-full break-words text-xs text-muted-foreground" data-testid="audI-export-scope">
-          导出的就是屏上这一份：{eventType ? `只含「${eventTypeLabel}」这一类` : "当前时间窗与筛选下的全部类型"}，共 {visibleRows.length} 行，与上面「已显示」和类型分布的计数同一个集合；文件名带齐时间窗、操作者、资源、动作与行数，时间为北京时间到分。
+          导出的就是屏上这一份：{eventType ? `只含「${eventTypeLabel}」这一类` : "当前时间窗与筛选下的全部类型"}，共 {listedRows.length} 行，与上面「已显示」和类型分布的计数同一个集合；文件名带齐时间窗、操作者、资源、动作与行数，时间为北京时间到分。
         </span>
       </div>
 
@@ -1508,7 +1662,7 @@ function AuditEventsSurface(): ReactNode {
         open={typesOpen}
         onToggle={() => setTypesOpen((value) => !value)}
         groups={typeGroups}
-        total={visibleRows.length}
+        total={listedRows.length}
         selected={eventType}
         onPick={pickType}
       />
@@ -1540,7 +1694,7 @@ function AuditEventsSurface(): ReactNode {
         actor={actor}
         resource={resource}
         loaded={list.rows.length}
-        matched={visibleRows.length}
+        matched={listedRows.length}
       />
 
       {/* aud8: every piece of reading state above is in the address, so this
@@ -1549,11 +1703,52 @@ function AuditEventsSurface(): ReactNode {
         {restoredLine}
       </p>
 
+      {/* audR: the address is the single source, and this line is that claim
+          said out loud: the same seats the copied summary is built from, plus
+          the link a person can hand over. The href is same-origin (no host, no
+          port), credential parameters are stripped by the same rule that
+          guards the copied request path, and the text is produced by the very
+          function the clipboard uses — so the sentence on the card and the
+          sentence in the paste cannot be two different sentences. */}
+      <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud-source">
+        <span data-testid="aud-source-seats">{filterSeatsForScreen(summaryInput)}</span>
+        <a
+          className="ml-1 rounded-sm underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+          href={shareHref}
+          data-testid="aud-source-href"
+          title="同源相对路径的可分享形态；不带 origin，也不带任何凭据参数"
+        >
+          分享这一问
+        </a>
+      </p>
+
       {/* audM: a probe line, not prose. It carries what was saved when a
           record was opened, what the way back restored, which row got the
           focus, and which question's mark was dropped for being another
           question's place. Empty attributes mean nothing happened — the
           restore never claims a position it did not apply. */}
+      {/* audP: the combination, readable. What the size selector shows, what was
+          asked of the service, which page and cursor stack that implies, and
+          whether an arrived-with deep link is still holding its place. Nothing
+          here is inferred: an empty `data-aud-limit-event` means no pointer was
+          on the address, 「不在本页」 means the pointer survived but the row is
+          not inside what this page loaded. */}
+      {/* audQ: the whole decision, readable at a glance. `on`/`off` per entry,
+          so a probe sees the matrix without poking at five widgets — and can
+          prove one failure is never on in one place and off in another. */}
+      <span aria-hidden="true" data-testid="aud-gates" {...gateMirror(gates)} />
+
+      <span
+        aria-hidden="true"
+        data-testid="aud-limit-restore"
+        data-aud-limit-size={String(effectiveLimit)}
+        data-aud-limit-asked={String(sizeReading.asked)}
+        data-aud-limit-page={String(pageNo)}
+        data-aud-limit-cursors={String(cursors.length)}
+        data-aud-limit-event={deepLinkId ?? ""}
+        data-aud-limit-located={deepLinkId === null ? "" : deepLinkRow ? "在本页已展开" : "不在本页"}
+      />
+
       <span
         aria-hidden="true"
         data-testid="audL-scroll"
@@ -1570,12 +1765,7 @@ function AuditEventsSurface(): ReactNode {
           hand over — and it is live in every state of the ledger, including
           loading and denied: the question this page asked exists before the
           answer does, and a refused read is exactly what a ticket needs. */}
-      <FilterSummaryCopy
-        line={filterSummary}
-        available={hasFilterSummary(summaryInput)}
-        phase={list.phase}
-        pending={customInvalid}
-      />
+      <FilterSummaryCopy line={filterSummary} gate={gates.copyFilter} rule={gates.copyFilterRule} />
 
       {/* The window check lives on the list too, and it says exactly one of
           four things: asking, the real counts, 本环境未启用 + why + where, or a
@@ -1767,6 +1957,27 @@ function AuditEventsSurface(): ReactNode {
             </>
           ) : null}
 
+          {/* audN: the column handles sit with the list they order, and they
+              are honest about the states with nothing to order: disabled, with
+              the reason on the control (the four-state rule from audF). */}
+          <AuditSortBar
+            state={sortState}
+            count={listedRows.length}
+            disabled={customInvalid || list.phase === "loading" || list.phase === "denied" || list.phase === "error" || list.phase === "empty"}
+            reason={
+              customInvalid
+                ? "自定义区间还没应用，这一页没有可读到的行可排"
+                : list.phase === "loading"
+                  ? "正在读取这一页，读到之后才有可排的行"
+                  : list.phase === "denied"
+                    ? "审计事件暂不可读，这一页没有可排的行"
+                    : list.phase === "error"
+                      ? "这一页没能读到；先重试，读到了再排序"
+                      : "这一页没有记录可排"
+            }
+            onPick={pickSort}
+          />
+
           {/* aud9: the deep-link verdict sits with the list it speaks about. */}
           {!customInvalid ? deepLinkBlock : null}
 
@@ -1789,7 +2000,7 @@ function AuditEventsSurface(): ReactNode {
                 role="list"
                 aria-label="审计事件行：用上下方向键逐行移动，Home 与 End 到首尾，Enter 展开或收起这一条的预览，Esc 收起"
               >
-                {visibleRows.map((row) => (
+                {listedRows.map((row) => (
                 <AuditRowKeyboard
                   key={row.key}
                   row={row}
@@ -1807,6 +2018,7 @@ function AuditEventsSurface(): ReactNode {
                     className="w-full rounded-md px-2 py-1 text-left text-xs text-muted-foreground hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
                     aria-expanded={openPreview === row.key}
                     aria-controls={"aud6-preview-" + row.key}
+                    title={gates.toggle.title}
                     data-testid={"aud6-toggle-" + row.key}
                     onClick={() => setFold("preview", row.key)}
                     // audA: Enter on the row's own handle opens the preview.

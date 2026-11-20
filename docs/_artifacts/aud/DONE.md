@@ -3135,3 +3135,111 @@ Untested: the four-state body lengths are jsdom readings, not browser pixels; th
 - 新增 testid：`audL-scroll`（属性 `data-audl-fingerprint/-saved/-restored/-focus/-cleared`）。
 - 门禁：vitest `src/modules/audit` **exit 0**（**16** files / **330** tests）；`pnpm exec tsc -b . --noEmit` 共 **69** errors（= wave-20 后本机地板，改动前后同数、增量 0）且 `modules/audit` **0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings（中途两条新警告已消：effect 里 `setRovingKey` 改为让行的 `onFocus` 自己带走停靠点；`openRow` 依赖里多余的 `fingerprint` 移除）。
 - 活体腿沿用已知不可用实测（未重跑）：9122 无身份头 **401 `console.unauthenticated`**、8092 **404 `console.not_found`**。滚动位读数是 jsdom 替身口径（scrollY 设定值 + scrollTo spy + 探针属性），**不是**真浏览器 scrollY 实测；真浏览器里这两个值要一次带会话的活体腿才能贴，本轮未假装。
+
+## Audit column sorting (audN, 2026-11-20, base b8eccc18)
+
+- 写域：`web/src/modules/audit/{sorting.ts,sorting.test.ts,AuditEventsModulePage.tsx,AuditEventsModulePage.test.tsx}` + 本节（4 文件 +~700 行，≤15 文件/≤1500 行）。App/shell/routes/registry/package·lock/web-scripts/ops 未碰。基线：显式 refspec fetch 后 merge tip 957704be = Already up to date，porc=0。
+- **服务端实测（先探再定性，探码上屏是禁的，只进本文）**：`/agent-api/api/audit-events` 带 `sort=occurredAt&order=asc`、`sort=occurredAt&order=desc`、`orderBy=occurredAt&order=desc`、`sort=actor&order=asc` 四组各打两个端口 →
+  - `127.0.0.1:9122`：**401 `console.unauthenticated`**（本车道没有可用会话凭据，禁重建 9122），四组全同；
+  - `127.0.0.1:8092`：**404 `console.not_found`「static asset not found」**（该实例没挂这条路由），四组全同。
+  即：**没有 200、没有排序前/后的台账顺序可对照**，拿不到任何「服务端吃 sort/order/orderBy」的生效证据。旁证两条：本模块 `api.ts` 的台账读口 `/api/audit` 从来只发 `limit/action/from/to/actorId/resourceId/cursor`；OpenViking 记忆 2026-10-29「审计后端无 sort 参数、固定新→旧」。因此走工单退路：**本地排序**，界面 `aud-sort-scope-note` 明写「仅在当前已加载的 N 条内排序——服务端没有可用的排序参数（本轮实测拿不到生效证据），清掉排序就回到服务给的回行顺序」，title 说明探测结论但**不带路径/状态码**（既有 403≡404 用例禁止屏上 HTML 出现 `/agent-api`、`console.*`、`40[34]`，探码只记在本文）。
+- **控件**：`aud-sort-bar-block` 内 `role=table`→`role=row`→四只 `role=columnheader` 的 `aud-sort-head-<col>`（`aria-sort` 三态 ascending/descending/none），各包一个真 `<button type=button>`（`aud-sort-button-<col>`，`⇅/↑/↓` 图标 + title 说下一步会怎样）。ARIA 取舍登记：账本行是卡片列表（audK 的 `role=list`/`listitem` 与 aud01 的 `aud01-cell-*` 契约），把 50 行改成真表格不在本预算内，故表头用最小 table 语义只覆盖排序控件本身；三态另有一行 `aud-sort-status` 用人话写当前列/方向与它的作用范围，AT 只认 columnheader 的 aria-sort 时也不丢信息。键盘：Enter 与 Space 直接触发（`preventDefault` 防浏览器再合成一次 click 而翻两态），焦点环沿用现有 token `focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`，未新增颜色。
+- **地址与组合**：`?asort=<col>&adir=<asc|desc>`；三态循环 asc→desc→**两键都删**（清除=服务给的回行顺序）。与 `window/custom from-to/type/actor/resource/limit/cursor/event/preview/tech` 全同屏共存，冷挂载一条组合地址即复现（用例：`asort=actor&adir=asc` + `window=custom&from=&to=&actor=&type=&limit=25&cursor=cur_page1` → 表头 `aria-sort=ascending`、操作者下拉回填、每页 25 回填、`第 2 页`、请求带 `from/actorId`，行序按操作者且缺值恒末）。残缺地址（只 `asort` 或只 `adir`、值不认识）一律当作没排序，不猜另一半。
+- **口径同源（不与表体分裂）**：比较值直接取屏上同一显示——时间用 audJ `auditTimeView(raw, minute).text`、操作者用 `auditActorView(actor).text`（「未指派」按缺值处理）、动作/资源用 `row.action.label`/`row.resource.label`；`Intl.Collator("zh-Hans-CN", {numeric:true})` 比较，同值稳定（保持回行次序）。**缺值恒排末**（升序降序都排末，不当 0、不当空串抢首位；用例双向断言 + 行不丢）。
+- **CSV 逐行同源（两组对照）**：导出集合与表体是同一个数组 `listedRows`（排序后的可见集），用例把「表体行的 操作者|对象 序列」与「CSV 数据行的同两列序列」逐行等值断言：
+  - ① 默认排序：CSV 4 条数据行 = 服务回行序，首行含「阿朱」、末行含「白一」（`evt_n3` 在服务序里居第三位）；
+  - ② `?asort=actor&adir=asc`：表体与 CSV 同为 `evt_n1 → evt_n4 → evt_n2 → evt_n3`，首行「阿朱」、末行「未指派」（缺操作者那条恒末），文件名仍带 `-all-n4-`。
+  `aud5-export-count`、`aud01-status` 的「已显示 N 条」、类型分布与 `audI-export-scope` 全部改读同一集合，未另算。
+- **零额外请求 / 不扰分页与保态**：点表头只写地址两个键，`urls()` 在三次循环点击前后**逐字相等**（数组全等断言），`/agent-api/api/audit?` 仍 1 条；已在第 2 页（`cursor=cur_page2`）时排序不改页码、不丢游标（`aud2-page` 仍「第 2 页」）；排序不是换问法：`scrollFingerprint` 不含 `asort/adir`，audM 留下的位置记号原样在 sessionStorage 里（用例断言未被清、`data-audl-cleared` 不出现）。audK 的方向键走的是**当前显示次序**（排序后 ↑↓ 依次落到屏幕上真实的下一行）。
+- **四态**：loading / empty / error / denied 与自定义区间未应用时，四只表头按钮一律 `disabled` + title 说明原因（「正在读取这一页，读到之后才有可排的行」「这一页没有记录可排」「这一页没能读到；先重试，读到了再排序」「审计事件暂不可读，这一页没有可排的行」「自定义区间还没应用…」），点它们不写地址也不发请求（逐档断言 `urls()` 不变、`asort=` 不出现）；403≡404 同体与每态 rid、零写入口沿用 audF 口径未退化。
+- **零破**：`aud01*`、`aud2*`–`audM*`（含 audH 每页条数、audI 导出口径、audJ 时间/操作者 helper 断言、audK 漫游、audL 常驻摘要与滚动记号）与页级 `agent-v2-page-audit*` 未改名未删节点；起算 16 files/**330** 一条未红，现 **17 files / 343** = 330 + 13（`sorting.test.ts` 5 条 + 页面 audN 8 条）。三档视口：排序条是 `flex min-w-0 flex-wrap gap-2`，说明行 `break-words`，未做浏览器像素走查（活体不可用），不声称已验。
+- 新增 testid：`aud-sort-bar-block` `aud-sort-bar` `aud-sort-row` `aud-sort-head-<time|actor|action|resource>` `aud-sort-button-<col>` `aud-sort-status` `aud-sort-scope-note`。
+- 门禁：vitest `src/modules/audit` **exit 0**（**17** files / **343** tests）；`pnpm exec tsc -b . --noEmit` 共 **69** errors（= 本机地板，改动前后同数、增量 0）且 `modules/audit` **0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings（一度因 `useMemo` 依赖新建对象多出 1 条 exhaustive-deps 提示，已改为与类型分布同款的直接派生并消除）。
+- 活体腿状态：仅上述排序参数探针（401/404，未获得任何生效读数），其余证据为 vitest 腿 + URL 构造复现。
+
+## Audit long value truncation and full text (audO, 2026-11-20, base 577d95e0)
+
+- **来源更正（先写这一条，避免下一轮误读地基）**：本节的实现**不是上游带进来的**。上游 88ea9881「feat(console): system long value truncation and full view」改的是 `web/src/modules/health/**` 与 `docs/_artifacts/gov/**`，一处没碰 `web/src/modules/audit`；`git show HEAD:web/src/modules/audit/views.tsx | grep -c aud-trunc` = **0**，HEAD 里也不存在 `web/src/modules/audit/truncation.ts`。本车道 `truncation.ts` 与三处接线是 audO 上一轮**中断时留下的未提交工作区**（本轮开工时 `git status` 为 4 项：views.tsx 与页面用例已改、truncation.ts/truncation.test.ts 未跟踪），本轮没有"找回"任何东西，只做核对、补接线、把失败用例修到通过。若下一轮把这套代码当成"上游已实现、只缺测试"，那是错的。
+- 写域：`web/src/modules/audit/{truncation.ts,truncation.test.ts,views.tsx,AuditEventsModulePage.test.tsx}` + 本节。App/shell/routes/registry/package·lock/web-scripts/ops 与其它模块未碰；单 commit（代码+测试+文档一笔）。
+- **一个 helper，三处接线**（工单的「同一 truncation helper」核对结果）：`truncation.ts` 是唯一构造口——`truncatedView(value, limit)` 返回 `{truncated, shown, omitted, title}`，`omitted = 原文长 − 预算`（按实际字符串算，注释里写明不许猜）；`title = 完整值：<原文>（已省略 N 字符，完整值见此处）`；`joinTitles()` 把已有 title（原始标识、缺失原因）**并列而非顶掉**。视图侧只有一个呈现件 `LongValue`：
+  - 列表单元格（`AuditEventRowCard`）：操作者格、对象格走 `Field truncate`（预算 `TRUNC_CELL=24`，CSS `truncate` 单行 + `data-testid="aud-trunc"` + `data-aud-trunc-omitted=N` + title），动作说明行同样接 `LongValue`；事件类型格的按钮 title 只在真被截时补完整值，短值一个属性都不加。列表**不给展开按钮**（行内把手已经够多，完整值在 title 与详情里）。
+  - 行内预览 `aud6-preview-*`：事件类型 / 操作者 / 资源三行走 `LongValue`（预算 `TRUNC_LINE=40`）+ 原生 `<button type="button">` `aud-trunc-toggle-preview-<field>`（`aria-expanded`、`aria-label`、`focus-visible:outline-2`）。
+  - 详情 `aud3`/抽屉（`AuditEventDetailBody`）：谁 / 被操作的对象 / 结果 / 原因 → `aud-trunc-toggle-detail-<field>`，同一组件同一算法，`audA-detail-*` 与 `audJ-*-detail` 探针 id 未动。
+  - 三处都真正走同一个 helper，本轮修掉两处"看着接了其实没接"的缺口：详情资源格（`audA-detail-resource`）此前漏了 `expandName`；列表动作说明行还是整段 `break-words`。另外把 toggle 命名加surface 前缀（`preview-`/`detail-`），否则预览与详情同屏时同一个 id 会出现两次、探针点到的不是要测的那一个。
+- **短值不加装饰**：`truncated=false` 时 `LongValue` 只渲染原文——无省略号、无 `aud-trunc` 标记、无按钮（用例断言短值页面上 `aud-trunc` 数为 0 且正文里不出现「展开全文」）。
+- **展开只改本地态**：`aria-expanded` false→true、面板内正文由头部变成完整原文；`locationText()` 逐字不变、`urls()` 数组逐字相等（预览腿与详情腿各自断言，含收起后再次相等）。不改筛选/页码/`window/type/actor/resource/limit/cursor/preview/event` 任一键。
+- **N 实算读数（用例逐格重算，不是抄常量）**：从 title 里回取「完整值：X（已省略 N 字符…）」的 X 与 N，断言 `X.length − N` ∈ {24, 40}（即预算）、行显示的头部是 X 的前缀、`N>0`。实例：48 字的 actor 全名在格上 `omitted=24`（预算 24）、在预览/详情行上 `omitted=8`（预算 40）；79 字资源路径与 55 字动作说明同法各自成立。
+- **敏感字段不回显**（既有规则不破）：原始载荷仍按 `maskSensitive` 隐去（用例仍见 `"password": "***"` 与「已隐去 N 项」），全页 HTML 不含明文口令；所有 `aud-trunc` 的 title 不含 `***`，截断只作用于显示层标签，从不把掩码前的值搬到 title。
+- **三档无横溢（声明口径）**：实现方式是 `min-w-0` + Tailwind `truncate`（overflow-hidden/ellipsis）+ 外层 `flex-wrap`，展开态切回 `break-words`；**jsdom 没有布局宽度，故本轮是结构口径而非 1280/768/375 实测**——没有真浏览器量宽证据，不声称量过（活体腿本车道不可用，见下）。
+- **四态**：加载中 / 空集 / 403 被拒三档页面上没有任何截断件与「展开全文」，就绪后才有（用例逐档）；403≡404 同体、每态 rid、零写入口沿用 audF/audL 口径未退化。
+- 新增 testid：`aud-trunc`（可多枚，逐格）、`aud-trunc-toggle-preview-{action,actor,resource}`、`aud-trunc-toggle-detail-{actor,resource,outcome,reason}`，属性口径 `data-aud-trunc-omitted` / `data-aud-trunc-expanded`。
+- 零破：`aud01*`、`aud2*`–`audN*`（含 audA 逐字段对照与 `audA-*-time/-actor/-resource`、audJ `data-audj-value/-title`、audN 排序与 CSV 同源、audL 摘要与预设、audK 漫游）与页级 `agent-v2-page-audit*` 未改名未删节点；起算 17 files/**343** 一条未红，现 **18 files / 355** = 343 + 12（`truncation.test.ts` 5 条算术与话术 + 页面 audO 7 条接线/展开/短值/敏感/四态）。
+- 门禁：vitest `src/modules/audit` **exit 0**；`pnpm exec tsc -b . --noEmit` 共 **69** errors（= 本机地板，改动前后同数、增量 0）且 `modules/audit` **0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings。
+- 活体腿沿用已知不可用（未重跑）：9122 无身份头 **401 `console.unauthenticated`**、8092 **404 `console.not_found`**；本轮全部证据为 vitest 腿与 title/attribute 算术核对，宽度类断言为结构口径。
+
+## Audit permalink and page size restore (audP, 2026-11-20, base c9e2b8a9)
+
+- 写域：`web/src/modules/audit/{AuditEventsModulePage.tsx,states.tsx,AuditEventsModulePage.test.tsx}` + 本节（3 文件）。App/shell/routes/registry/package·lock/web-scripts/ops 与其它模块未碰；基线：显式 refspec fetch 后 merge = Already up to date（章面与代码代次同前一轮），porc=0，单 commit。
+- **零破口径扩展（登记）**：工单写「aud2–audL 零破」，车道实际已到 audO，故按 **aud01*/aud2–audO + 页级 `agent-v2-page-audit*`** 全量执行；起算 18 files/**355** 一条未红，现 **18 files / 363**（+8 条 audP 用例）。
+- **实测发现的真实缺陷（本轮唯一代码行为改动，已修）**：切每页条数走的是 aud8 的 `resetPagingAndFolds`，里面 `draft.delete("event")` —— 探针实测 `/audit?window=7d&limit=100&event=evt_d1` 下把选择器改成 25 后，地址变成 `…&limit=25`，**`?event=` 被静默吃掉**、`aud9-deeplink-found` 消失。这与工单「深链展开中切 limit 不得劫持/清掉 event 参数除非用户主动关定位」直接冲突，且 `?event=` 是人带来的指针而不是本页的展开态。修法：新增 `resetPagingKeepingLink(draft)`（清 cursor/preview/tech，**不清 event**），只给 `setPageSize` 用；筛选变更与翻页维持 aud8/aud9 既有语义（翻页＝换页，定位随页离开——本轮未被要求改，且 aud9/aud8 用例钉着，**如实保留**）。
+- **逐组实测（limit × 深链，三档全贴）**：同一 handler（真按 `limit` 回条数）下 `limit=25/50/100` + `event=evt_p1|evt_p2`：选择器显示值 = 25/50/100、`data-aud-limit-asked` 同值、页码=1、游标数=0、`data-aud-limit-event` 保持、`data-aud-limit-located="在本页已展开"`、`aud9-deeplink-found` 在、`aud6-preview-<id>` 展开、该行 `aria-expanded=true`、实发请求含 `limit=<该值>`、`/agent-api/api/audit?` 计数=1、detail 计数=0。
+- **返回复原（三组读数，逐字地址比对）**：入口 `/audit?window=custom&from=…&to=…&type=task.created&actor=employee-api&resource=ts_evt_p2&limit=25&cursor=cur_page1&event=evt_p2`，分别从 25/50/100 档的 handler 进入记录（`aud01-row-evt_p2` 按钮）再点 `aud8-back-to-list`：三组都断言 `locationText()` 与进去前**逐字相等**（含 window/custom from-to/type/actor/resource/limit/cursor/event 全键），选择器显示值与进前相同（25），操作者/资源/类型控件回填，`data-aud-limit-cursors=1`、`data-aud-limit-page=2`、`data-aud-limit-event=evt_p2`，`aud6-preview-evt_p2` 展开态回来；计数：`audit?`=1（返回不重问）、`audit-detail`=1（打开记录本身该发的那一次）。
+- **切条数腿读数**：`limit=50&cursor=cur_page1&event=evt_p1` → 切 100 ⇒ 地址 `limit=100`、`cursor` 清空、`event=evt_p1` 保留、页码回 1、游标数 0、`audit?` 计数 **+1 恰一次**、实发 URL 含 `limit=100`、定位仍 `在本页已展开`。
+- **clamp × 深链**：请求 100、回答 `meta/limit=50` 时选择器与 `data-aud-limit-size` 显示 **50（生效值）**、`data-aud-limit-asked` 仍 100、`audH-clamp-note`「请求按每页 100 条发出…」在屏，地址不被改写（仍 `limit=100&event=evt_p7`），`audit?` 计数 1。
+- **深链不存在**：`…&limit=25&cursor=cur_page1&event=evt_absent_000001` + detail 读 404 `audit.event_not_found` ⇒ 「该事件不存在或已过期」+ 可复制 rid（`aud9-event-rid` 含 `rid-p-404`），六个筛选键逐条仍在地址上、选择器仍 25、`data-aud-limit-located="不在本页"`、计数 `audit?`=1/detail=1（**不清参数、不重问台账**）。
+- **`audE` 扩展（既有件未改名）**：`audE-link-scope` 一句写明固定链接**不带**时间窗/每页条数/筛选（粘出去的人用默认档读到，命中就展开、读不到就说原因）；用例同时断言复制到的串仍是 `origin/audit?event=<id>`（audE 口径未回归）且复制前后 `urls()` 逐字相等。
+- 新增 testid：`aud-limit-restore`（探针 span，属性 `data-aud-limit-size|-asked|-page|-cursors|-event|-located`）、`audE-link-scope`；`audH-page-size`/`audH-clamp-note`/`aud9-event-*`/`aud8-back-to-list`/`audL-scroll`/`audO` 家族与 `aud01*`/`aud2–audO` 未改名未删节点。
+- 四态与三档：`audit?`/detail 分前缀计数在上述每条腿都贴；深链不存在腿与返回腿都不新增台账读；`aud-limit-restore` 是 `aria-hidden` 空 span，屏幕文本与布局未变（三档无横溢仍为结构口径——`min-w-0`/`flex-wrap`，jsdom 无量宽，未做真浏览器走查）。403≡404 同体、每态 rid、零写入口沿用 audF/audL 未退化。
+- 门禁：vitest `src/modules/audit` **exit 0**（18 files/**363**）；`pnpm exec tsc -b . --noEmit` 共 **69** errors（= 本机地板，改动前后同数、增量 0）且 `modules/audit` **0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings。
+- 活体腿沿用不可用（未重跑）：9122 无身份头 **401 `console.unauthenticated`**、8092 **404 `console.not_found`**；上述全部读数为 vitest 腿 + URL 构造（limit 与 clamp 由真按参数回答的 mock 给出），未假装活体。
+
+## Audit action availability gates (audQ, 2026-11-20, base d34f0572)
+
+- 写域：`web/src/modules/audit/{auditGates.ts,auditGates.test.ts,states.tsx,views.tsx,AuditEventsModulePage.tsx,AuditEventsModulePage.test.tsx}` + 本节（6 文件，diff ≈ +600/−54，≤15 文件/≤1500 行）。App/shell/routes/registry/package·lock/web-scripts/ops 与其它模块未碰；基线：显式 refspec fetch 后 merge = Already up to date，porc=0；单 commit。
+- **收口清单（哪些私有措辞被删、并入哪一处）**：`auditGates.ts` 现在拥有全部「可用/不可用 + 那句话」的判定与字符串——
+  - `aud01-export` 原来在页面里用 `exportOff`/`exportTitle` 两行三元式；`aud5-export` 另有 `canExport` + 自己的一条三元 title；现在两者只读 `gates.exportCsv` / `gates.exportFiltered`（enabled 同源、话术同源，两枚按钮各自保留自己被用例钉住的那句原文）。
+  - `audG-filter-copy`（states.tsx）原先自己算 `ready = available && line!==null`、自己拼「常驻控件…/当前没有筛选条件可复制…」两句话、自己写卡上那句挂载规则；现在只接 `gate`（`{enabled,title}`）与 `rule` 两个来自 gates 的入参，组件内不再有任何可用性判定或相应措辞（`PHASE_WORDS` 常量随之下线，`FILTER_SUMMARY_EMPTY_TITLE`/`PERMALINK_MISSING_TITLE` 的引用也收进 gates——`PERMALINK_MISSING_TITLE` 由 gates 从 permalink.ts 取用，仍是同一字符串）。
+  - `audE-link`（states.tsx `PermalinkCopy`）原来只看 `link===null`；现在看 `gate.enabled`（gate 由 `copyLinkGate(recordPhase, hasIdentifier)` 在预览与详情两处算出）。
+  - `aud6-toggle` 原来没有任何 disabled/title 口径；现在 title 来自 `gates.toggle`。
+  - `aud01-refresh`（重试）原来 `disabled={list.phase==="loading"}`；现在 `!gates.retry.enabled`。
+- **矩阵读数（三处×四态，`aud-gates` 镜像 + 真实控件逐格对齐）**：
+  - ① **loading**：`aud01-export` off、`aud5-export` off、`aud6-toggle-*` 不存在（镜像 toggle=off、copy-link=off）、`aud01-refresh` **on**；按下刷新 → `urls()` +1（用户动作触发，不自动重发）。
+  - ② **empty（真空）**：两枚导出 off 且 title 仍是「当前筛选无事件可导出」；屏上无 `aud6-toggle-*`；`audG-filter-copy` **on**（地址带着 `type=task.created` 的口径，素材仍在）；`data-aud-gates-copy-link`=off（没有一行可以钉）。
+  - ③ **error(503)**：export/export-filtered/toggle/copy-link 四格镜像全 off，实际按钮同样 off；面板侧「审计服务在处理时出了错…」+ 可复制 rid（`aud01-error-request-id` 含 rid-q）+ 重试可用（refresh on）。
+  - ④ **denied(403≡404)**：export/export-filtered/toggle 同样整组 off；`aud01-denied` 在 403 与 404 下 textContent 逐字相等（同体未退化）；地址六键 `window=24h/type/actor/limit=25/cursor=cur_page1/preview=evt_7c1f…` 一个都没掉（denied 不清参，沿用 audF/aud8）。
+  - 追加一致性腿：`?preview=<id>&detail=<id>` 且详情读口 403 时，预览里那枚 `audE-link` **disabled**（title「这一条现在读不到…」）且同侧抽屉是拒绝体、没有可复制的记录 —— 正是工单要点名消灭的「一处 disabled 一处可点」。
+- **行为变化登记**：
+  - 1) loading 期重试由 disabled 改为 **可用**（工单 ① 明确；按下确实重发该读口恰一次，计数已贴）。工具条 `aud01-refresh` 在 denied 时仍不渲染——拒绝体自带「再读一次」出口（audF/audL 既有实现与用例），避免同一状态出现两枚重试。
+  - 2) 固定链接新增「详情读口未完成/失败/被拒即关」的判定；此前只要行上有 id 就可点。这是本单为「同一失败同一可用面」所做的实际收敛，非文案变化。
+  - 3) 空集语义按实况写清：**真空(empty)≠不可用(unwired)**。摘要复制引用的是地址与已发出的请求路径，与行集无关，故 loading/empty/error/denied 四态都仍可复制（`audG` 既有契约与用例保留）；本台账读口没有独立 unwired 档——路由缺失回 404 即进 denied 同体，`未接入` 标记由 audF 那层给（`auditGates.AuditGates.phase` 因此只取五档，注释写明）。工单 ①/④ 的「复制禁」与这条既有契约冲突处，按 orchestrator 授权「按实况定并写清」取此解并在此登记。
+  - 4) 翻页仍清 `preview/event/tech`（aud8/aud9 语义，本单未动）；切条数保留 `?event=`（audP 语义，未回退）。
+- **零副作用**：`auditGates.ts` 是纯派生（无 fetch、无 URL 写、无 storage）；单测里所有话术矩阵都断言不含 `/agent-api`、`console.*`、`audit-events`、状态码数字与 testid 名；页面腿在读写镜像与点开展开后断言 `urls()` 逐字相等（除 ① 中用户主动按重试那一次）。
+- **零破**：新增 `aud-gates`（镜像 span，属性 `data-aud-gates-phase|-export|-export-filtered|-copy-filter|-copy-link|-toggle|-retry`）；`aud01*`、`aud2*`–`audP*`（含 `aud5-export*`、`aud6-toggle/preview-*`、`audE-link*`、`audF-state-*`、`audG-filter-copy*`、`audH-page-size`、`audJ-*`、`audK-list/row`、`audL-scroll`、`audN-*`、`aud-trunc*`、`aud-limit-restore`）与页级 `agent-v2-page-audit*` 未改名未删节点；既有用例的措辞断言未改一处（措辞只是换了产地）。起算 18 files/**363** 全绿 → 现 **19 files / 378**（+15：`auditGates.test.ts` 9 条矩阵与不变式 + 页面 audQ 6 条落控件的矩阵）。
+- 三档：新增件只有一个 `aria-hidden` 空 span（镜像），屏幕文本与布局未变；`min-w-0 flex-wrap` 口径沿用，浏览器像素三档仍未实测（活体腿不可用）。
+- 门禁：vitest `src/modules/audit` **exit 0**（19 files/**378**）；`pnpm exec tsc -b . --noEmit` 共 **69** errors（= 本机地板，改动前后同数、增量 0）且 `modules/audit` **0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings。
+- 活体腿沿用不可用（未重跑）：9122 无身份头 **401 `console.unauthenticated`**、8092 **404 `console.not_found`**；矩阵读数全部来自 vitest 腿与 gates 纯函数断言。
+
+## Audit filter URL single source (audR, 2026-11-20, base 8e3d7cbc)
+
+- 写域：`web/src/modules/audit/{filterSummary.ts,AuditEventsModulePage.tsx,AuditEventsModulePage.test.tsx}` + 本节（3 文件 +~340）。App/shell/routes/registry/package·lock/web-scripts/ops 与其它模块未碰；基线 merge = Already up to date，porc=0；单 commit。
+- **① 七类参数三列对照表**（每行都是一次独立 jsdom 冷挂载，控件列取真实 DOM 值，请求列取 `ListApi.askedPath` 同源的最后一条 `/agent-api/api/audit?…`；活体不可用故不用现网 curl，见文末）：
+
+  | # | 参数 | 地址里的值 | 控件显示 | 实际请求 query | 判定 |
+  |---|---|---|---|---|---|
+  | ① | 时间窗 | `window=24h` | `aud01-filter-window-24h` `aria-pressed=true`（其余 false） | `from=…&to=…`，跨度实测恰 `86_400_000ms` | 一致 |
+  | ② | 自定义区间 | `window=custom&from=2026-11-17T01:00:00.000Z&to=2026-11-17T02:30:00.000Z` | `aud01-custom-from=2026-11-17T09:00`、`aud01-custom-to=2026-11-17T10:30`（北京本地输入） | `from/to` 逐字回显 ISO | 一致（换算只发生在输入格显示，发出去的是原瞬间） |
+  | ③ | 操作者 | `actor=employee-api` | `aud01-filter-operator=employee-api` | `actorId=employee-api` | 一致（键名映射，非漂移） |
+  | ④ | 资源 | `resource=ts_evt_r1` | `aud8-filter-resource=ts_evt_r1` | `resourceId=ts_evt_r1` | 一致；屏上 1 行是**本地匹配**，措辞由 audB/audL 的 scope note 明说 |
+  | ⑤ | 动作类型 | `type=task.created` | `aud01-filter-type=task.created` | `action=task.created`，且请求里**不存在** `type=` | 一致（audD 单事实源的键名映射） |
+  | ⑥ | 条数 | `limit=25` | `audH-page-size=25` | `limit=25` | 一致 |
+  | ⑦ | 页码 | `cursor=cur_page1&cursor=cur_page2` | `aud2-page=第 3 页`（无 `page=` 键，页码是游标栈深度） | `cursor=cur_page2`（只发栈顶） | 一致（登记：地址里两个 cursor 逐字仍在） |
+  | 补 A | clamp 回显 | `limit=100` | `audH-page-size=50`（回答 `meta.limit=50` 的生效值） | `limit=100` | **非漂移**：audH 登记的诚实回显，`audH-clamp-note` 在场；屏上分享格也写「每页 50 条」，与控件一致 |
+  | 补 B | 未采样原码 | `type=quantum.recalibration` / `actor=some-other-service` | 下拉显示「按地址带入的类型/操作者」并按该值回填 | `action=quantum.recalibration` / `actorId=some-other-service` | 一致，堵住「URL 有值而控件空」这一类漂移 |
+- **② 漂移判定结果：实修 0 处**。判据按工单：控件显示值≠它自己发出的该参数值，或地址有值而冷挂载后控件为空。本轮逐行实测未发现；表中三处「看起来像」的都属登记的键名映射或 audH/audL 既有设计（①⑤⑦＋补 A），已在上表注明。**测试侧修的是断言而非产品**：审计参数切换腿原先用 `run.failed` 去设类型——该码不在采样选项表里，`<select>` 会拒绝赋值（表现为"没变化"），这不是漂移，是测试写错了；改用表内原码 `task.created` 后同一断言成立（地址→控件→请求三列一致）。
+- **③ `aud-source-*` 上屏（可分享形态）**：筛选条下方一行 `aud-source`，内含 `aud-source-seats`（当前口径的句子）与 `aud-source-href`（原生 `<a>`「分享这一问」）。href 由 `pageShareHref(params)` 生成：**同源相对路径**（`/audit?…`，无 scheme/host/port），并按 audG 已有的七类凭据参数剥离规则删掉 `token/access_token/code/key/secret/session/password`；用例断言 href 以 `/audit?` 开头、不含 `http`/`localhost`/`token`，且把这个 href 原样粘回去冷挂载只发 1 次读、控件与条数全部复现。
+- **⑤ 与 `audG-filter-copy` 同源**：`filterSummary.ts` 现在只有一个 seat 构造器 `seatsOf(input, mode)`；复制行 = `filterSeats(...)`（paste 模式）+ `请求：<safeRequestPath>`（`请求`段仍是 audG 既有逐字同源规则，未回归），屏上行 = `filterSeatsForScreen(...)`（screen 模式）。两种模式**同一字段序、同一批字符串**，唯一差别是屏上模式不许上机器句柄（audB/aud9 契约：「the handle stays off the surface」）——所以只有 `操作者/资源` 两格在屏上换成「已按句柄筛（服务端 actorId）/已按编号本地筛（只在本页已加载的记录里）」，时间窗、自定义区间、动作原码、页码/游标、每页条数五格**逐字相同**。用例把这层关系直接钉住：`aud-source-seats` 包含复制行的 `时间窗/动作类型/第 2 页（游标 ×1） · 每页 25 条` 各段、`seats` 不含 `employee-api`、`copied` 含 `操作者：employee-api（服务端 actorId，机器句柄）`。这一处取舍是本轮唯一的"两处不同文本"，理由与出处写在 `filterSummary.ts` 的注释与本节，供下一轮直接对账。
+- **④ 重取计数矩阵**（每条腿先记下 `audit?` 前缀计数）：切时间窗 +1、切动作类型 +1、切操作者 +1、切条数 +1、应用自定义区间 +1（**打字 0**，草稿不外发）、下一页 +1（游标栈 +1 层、`第 2 页`）；七行对照表每行冷挂载都恰 1 次读；复制屏上行与复制摘要前后 `urls()` **逐字相等**（复制零请求）。
+- **零破**：`aud01*`、`aud2/3/4/5/6/7`、`audB/audC/audE/audF/audG/audI/audJ/audK`、`aud-sort-*`、`aud-gates-*`、`audH-*`、`audL-*`、`audM`(audL-scroll)、`audN-*`、`aud-trunc*`、`aud-limit-restore`、页级 `agent-v2-page-audit*` 未改名未删节点；既有 audG/audH/audB 断言的措辞一个字未改（`filterSummaryLineOf` 的输出串与改前逐字相同，只是内部拆成了 seats + 请求段）。新增 testid：`aud-source`、`aud-source-seats`、`aud-source-href`。
+- 三档：新增件是一行 `min-w-0 break-words` 文本 + 一个 inline `<a>`，无新容器、无固定宽度；浏览器像素三档仍未实测（活体腿不可用），只声明结构口径。四态/403≡404/零写入口沿用 audF/audQ 未回归。
+- 门禁：vitest `src/modules/audit` **exit 0**（**19** files / **389** tests = 起算 19/378 + 11 条 audR 腿）；`pnpm exec tsc -b . --noEmit` 共 **69** errors（= 本机地板，改动前后同数、增量 0）且 `modules/audit` **0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings。
+- 活体腿沿用已知不可用（未重跑，本轮不出示假读数）：9122 无身份头 **401 `console.unauthenticated`**、8092 **404 `console.not_found`**；① 的三列与 ④ 的计数全部由 jsdom 断言取得（控件取 DOM、请求取 `ListApi.askedPath` 与 mock 实收 URL）。

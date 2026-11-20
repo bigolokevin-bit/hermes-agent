@@ -96,13 +96,58 @@ export function hasFilterSummary(input: FilterSummaryInput): boolean {
  * 时间窗 → 动作类型 → 操作者 → 资源 → 页码 → 这一页实际请求的相对路径.
  */
 export function filterSummaryLineOf(input: FilterSummaryInput): string {
+  return `${filterSeats(input)} · 请求：${safeRequestPath(input.askedPath) ?? FILTER_SUMMARY_MISSING}`;
+}
+
+/**
+ * audR: the seats a shareable question is made of — everything except the
+ * request path. The 可分享形态 on the card and the copied line come from THIS
+ * function, in one field order, so the sentence on the screen and the sentence
+ * in the paste cannot become two different sentences.
+ *
+ * One deliberate difference, and it is an old contract, not a new one: the
+ * screen does not print machine handles (`audB`/`aud9` pin that:
+ * 「the handle stays off the surface」). So in `screen` mode the operator and
+ * resource seats name what was chosen without spelling the identifier, while
+ * every other seat — the window, the custom pair, the type code, the page, the
+ * size — is byte-identical to the `paste` mode that feeds the clipboard. The
+ * identifier is never lost: it is in the href, and in the copied line.
+ */
+export function filterSeats(input: FilterSummaryInput): string {
+  return seatsOf(input, "paste");
+}
+
+/** The same seats, worded for a person reading the card. */
+export function filterSeatsForScreen(input: FilterSummaryInput): string {
+  return seatsOf(input, "screen");
+}
+
+function seatsOf(input: FilterSummaryInput, mode: "paste" | "screen"): string {
   const window = input.custom
     ? `时间窗：自定义 ${input.fromBeijing || FILTER_SUMMARY_MISSING} → ${input.toBeijing || FILTER_SUMMARY_MISSING}（北京时间）`
     : `时间窗：${input.windowLabel || FILTER_SUMMARY_MISSING}`;
   const type = `动作类型：${input.type || FILTER_SUMMARY_MISSING}${input.type ? "（服务端按 action 精确匹配）" : ""}`;
-  const actor = `操作者：${input.actor || FILTER_SUMMARY_MISSING}${input.actor ? "（服务端 actorId，机器句柄）" : ""}`;
-  const resource = `资源：${input.resource || FILTER_SUMMARY_MISSING}${input.resource ? `（${input.resourceNote}）` : ""}`;
+  const actor =
+    mode === "paste"
+      ? `操作者：${input.actor || FILTER_SUMMARY_MISSING}${input.actor ? "（服务端 actorId，机器句柄）" : ""}`
+      : `操作者：${input.actor ? "已按句柄筛（服务端 actorId）" : FILTER_SUMMARY_MISSING}`;
+  const resource =
+    mode === "paste"
+      ? `资源：${input.resource || FILTER_SUMMARY_MISSING}${input.resource ? `（${input.resourceNote}）` : ""}`
+      : `资源：${input.resource ? "已按编号本地筛（只在本页已加载的记录里）" : FILTER_SUMMARY_MISSING}`;
   const paging = `第 ${input.page} 页（游标 ×${input.cursorCount}） · 每页 ${input.limit ?? input.defaultLimit ?? 50} 条`;
-  const path = `请求：${safeRequestPath(input.askedPath) ?? FILTER_SUMMARY_MISSING}`;
-  return [window, type, actor, resource, paging, path].join(" · ");
+  return [window, type, actor, resource, paging].join(" · ");
+}
+
+/**
+ * audR: the same question as a link a person can hand over. Origin-free (the
+ * href is same-origin by construction), and every credential-shaped parameter
+ * is dropped by the same rule that guards the copied request path — a shareable
+ * link that carries a session is not a shareable link.
+ */
+export function pageShareHref(params: URLSearchParams, pathname = "/audit"): string {
+  const kept = new URLSearchParams(params);
+  for (const key of CREDENTIAL_KEYS) kept.delete(key);
+  const search = kept.toString();
+  return search ? `${pathname}?${search}` : pathname;
 }
