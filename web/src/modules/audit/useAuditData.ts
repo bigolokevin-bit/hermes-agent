@@ -17,7 +17,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { failureInfo, fetchDetail, fetchList, fetchVerify, isDenied, isVerifyUnavailable, type ListFilters } from "./api";
+import { failureInfo, fetchDetail, fetchList, fetchVerify, isDenied, isVerifyUnavailable, listUrl, type ListFilters } from "./api";
 import { detailShapeFailure, readFailure, shapeFailure, verifyFailure, type FailureCopy, type VerifyFailure } from "./copy";
 import type { AuditDetail, AuditRow, VerifyResult } from "./model";
 
@@ -50,6 +50,12 @@ export interface ListApi {
   forced: boolean;
   /** The filters the current rows were read with, echoed back so the screen can say what it asked. */
   filters: ListFilters;
+  /**
+   * audG: the path THIS page actually sent for the rows on screen, from the
+   * data layer's own builder — relative, no origin, nothing invented. A shared
+   * summary quotes the real question instead of a description of it.
+   */
+  askedPath: string | null;
   reload: () => void;
   loadMore: () => void;
 }
@@ -64,6 +70,8 @@ interface ListState {
   pageFailure: FailureCopy | null;
   loadingMore: boolean;
   forced: boolean;
+  /** audG: the path the rows on screen were asked with (state, not a ref). */
+  askedPath: string | null;
 }
 
 const INITIAL: ListState = {
@@ -76,6 +84,7 @@ const INITIAL: ListState = {
   pageFailure: null,
   loadingMore: false,
   forced: false,
+  askedPath: null,
 };
 
 function listCopy(err: unknown): FailureCopy {
@@ -115,6 +124,9 @@ export function useAuditList(
   const run = useCallback(
     (cursor: string | null, append: boolean): void => {
       const ticket = ++seq.current;
+      // audG: the path recorded is the one `fetchList` is about to build from
+      // the same inputs, so a shared summary quotes the real question.
+      const askedPath = listUrl(cursor, asked);
       void (async () => {
         try {
           const page = await fetchList(cursor, asked);
@@ -134,6 +146,7 @@ export function useAuditList(
             pageFailure: append ? prev.pageFailure : null,
             loadingMore: false,
             forced: false,
+            askedPath,
           }));
         } catch (err) {
           if (ticket !== seq.current) return;
@@ -148,6 +161,7 @@ export function useAuditList(
             ...INITIAL,
             phase: isDenied(failureInfo(err).status) ? "denied" : "error",
             failure,
+            askedPath,
           });
         }
       })();

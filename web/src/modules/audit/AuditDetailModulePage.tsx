@@ -58,11 +58,11 @@ export function AuditDetailModulePage(): ReactNode {
       );
     }
     if (detail.phase === "loading") {
-      return <LoadingPanel testId="aud02-detail-loading" />;
+      return <LoadingPanel testId="aud02-detail-loading" slot="detail" />;
     }
     if (detail.phase === "denied") {
       return (
-        <DeniedPanel failure={detail.failure} testId="aud02-detail-denied" />
+        <DeniedPanel failure={detail.failure} testId="aud02-detail-denied" slot="detail" onRetry={detail.reload} />
       );
     }
     if (detail.phase === "error" || !detail.detail) {
@@ -72,6 +72,7 @@ export function AuditDetailModulePage(): ReactNode {
           onRetry={detail.reload}
           title="这条事件没能加载出来"
           testId="aud02-detail-error"
+          slot="detail"
         />
       );
     }

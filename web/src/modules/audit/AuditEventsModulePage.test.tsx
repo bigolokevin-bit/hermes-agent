@@ -1840,3 +1840,958 @@ describe("audB - custom time range", () => {
     expect(document.querySelector("[data-testid='aud2-total']")!.getAttribute("title")).toContain("游标分页不能自算总数");
   });
 });
+
+/**
+ * audC — 事件摘要复制。断言的是：预览与详情两处都有「复制结论行」，同一事件
+ * 两处复制出的一模一样；复制不向服务发任何请求；成功走 aria-live「已复制」，
+ * 剪贴板拒绝时给只读 textarea 兜底；缺字段在结论行里写「该字段未返回」。
+ */
+describe("audC - the copyable conclusion line", () => {
+  const PARITY_EVENT = {
+    eventId: "evt_copy_0000000001",
+    action: "task.created",
+    occurredAt: "2026-11-19T01:20:00Z",
+    recordedAt: "2026-11-19T01:20:01Z",
+    outcome: "succeeded",
+    actor: { type: "human", id: "user:2f3a4b5c6d7e8f90", displayName: "李思" },
+    resource: { type: "approval", id: "ap_1122334455667788" },
+    requestId: "req-20261119-0a7b3c",
+  };
+
+  /**
+   * jsdom gives a clipboard only if we say the context is secure. Both legs of
+   * the probe go through the real path the page takes: 已复制 when writeText
+   * answers, and the read-only textarea when it refuses (jsdom has no
+   * execCommand either, so the fallback is what a person actually gets).
+   */
+  function stubClipboard(ok: boolean): { calls: string[] } {
+    const box: { calls: string[] } = { calls: [] };
+    Object.defineProperty(window, "isSecureContext", { configurable: true, value: true });
+    Object.defineProperty(window.navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async (text: string) => {
+          box.calls.push(text);
+          if (!ok) throw new Error("denied");
+        },
+      },
+    });
+    return box;
+  }
+
+  async function mountParity(body: unknown = PARITY_EVENT): Promise<void> {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url: string) =>
+      String(url).startsWith("/agent-api/api/audit-detail") ? { audit: body } : { items: [body] },
+    );
+    await render("/audit?window=7d&preview=evt_copy_0000000001&detail=evt_copy_0000000001", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud02-detail']") !== null, "detail painted");
+    await waitFor(() => document.querySelector("[data-testid='aud6-preview-evt_copy_0000000001']") !== null, "preview painted");
+  }
+
+  const clickCopy = async (root: Element): Promise<void> => {
+    const node = root.querySelector<HTMLButtonElement>("[data-testid='audC-copy']")!;
+    await act(async () => {
+      node.click();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+  };
+
+  it("both legs offer 复制结论行, and one event copies one identical sentence", async () => {
+    const clip = stubClipboard(true);
+    await mountParity();
+    const preview = document.querySelector("[data-testid='aud6-preview-evt_copy_0000000001']")!;
+    const detail = document.querySelector("[data-testid='aud02-detail']")!;
+    expect(preview.querySelector("[data-testid='audC-copy']")).not.toBeNull();
+    expect(detail.querySelector("[data-testid='audC-copy']")).not.toBeNull();
+    const reads = urls().length;
+    await clickCopy(preview);
+    await clickCopy(detail);
+    expect(clip.calls).toHaveLength(2);
+    expect(clip.calls[0]).toBe(clip.calls[1]);
+    // 时间 BJT 到秒 · 操作者 · 动作 · 资源 · rid
+    expect(clip.calls[0]).toBe("2026-11-19 09:20:00 · 李思 · 6d7e8f90 · 创建任务 · 审批单 · 55667788 · req-20261119-0a7b3c");
+    expect(clip.calls[0]).not.toMatch(/undefined|null|NaN/);
+    // copying is a read of the screen: no second question to the service
+    expect(urls()).toHaveLength(reads);
+  });
+
+  it("a successful copy is announced, not silently done", async () => {
+    stubClipboard(true);
+    await mountParity();
+    const preview = document.querySelector("[data-testid='aud6-preview-evt_copy_0000000001']")!;
+    expect(preview.querySelector("[data-testid='audC-copy-status']")!.getAttribute("aria-live")).toBe("polite");
+    expect(preview.querySelector("[data-testid='audC-copy-status']")!.textContent).toBe("");
+    await clickCopy(preview);
+    expect(preview.querySelector("[data-testid='audC-copy-status']")!.textContent).toBe("已复制");
+    expect(preview.querySelector("[data-testid='audC-fallback']")).toBeNull();
+  });
+
+  it("a refused clipboard hands back a read-only line, with the same words", async () => {
+    const clip = stubClipboard(false);
+    await mountParity();
+    const detail = document.querySelector("[data-testid='aud02-detail']")!;
+    await clickCopy(detail);
+    const box = detail.querySelector<HTMLTextAreaElement>("[data-testid='audC-fallback']")!;
+    expect(box.getAttribute("readonly")).not.toBeNull();
+    expect(box.value).toBe(clip.calls[0]);
+    expect(box.value).toContain("req-20261119-0a7b3c");
+    expect(detail.querySelector("[data-testid='audC-copy-status']")!.textContent).toContain("选中复制");
+  });
+
+  it("fields the service did not send read 该字段未返回 in the copied line", async () => {
+    const clip = stubClipboard(true);
+    await mountParity({
+      eventId: "evt_copy_0000000001",
+      action: "dispatch.event",
+      outcome: "succeeded",
+      actor: { type: "system", id: "employee-api" },
+    });
+    const preview = document.querySelector("[data-testid='aud6-preview-evt_copy_0000000001']")!;
+    await clickCopy(preview);
+    expect(clip.calls[0]).toContain("该字段未返回");
+    expect(clip.calls[0].endsWith("· 该字段未返回")).toBe(true);
+    expect(clip.calls[0]).not.toMatch(/· ·|— · $/);
+    const detail = document.querySelector("[data-testid='aud02-detail']")!;
+    await clickCopy(detail);
+    expect(clip.calls[1]).toBe(clip.calls[0]);
+  });
+
+  it("the three field tiers all copy a line that says what is absent", async () => {
+    const clip = stubClipboard(true);
+    // ① 有 rid：完整一行
+    await mountParity();
+    const preview = document.querySelector("[data-testid='aud6-preview-evt_copy_0000000001']")!;
+    await clickCopy(preview);
+    const full = clip.calls[0];
+    expect(full).toContain("req-20261119-0a7b3c");
+    expect(full).not.toContain("该字段未返回");
+    // ② 无 rid：rid 那一格写「该字段未返回」
+    await mountParity({ ...PARITY_EVENT, requestId: undefined });
+    await clickCopy(document.querySelector("[data-testid='aud6-preview-evt_copy_0000000001']")!);
+    expect(clip.calls[1].endsWith("· 该字段未返回")).toBe(true);
+    expect(clip.calls[1].startsWith(full.slice(0, full.lastIndexOf(" · ")+3))).toBe(true);
+    // ③ 时间缺：第一格写「该字段未返回」，其余照旧
+    await mountParity({ ...PARITY_EVENT, occurredAt: undefined });
+    await clickCopy(document.querySelector("[data-testid='aud6-preview-evt_copy_0000000001']")!);
+    expect(clip.calls[2].startsWith("该字段未返回 · ")).toBe(true);
+    expect(clip.calls[2]).toContain("req-20261119-0a7b3c");
+    // and the detail leg says the same thing for the same sparse answer
+    await clickCopy(document.querySelector("[data-testid='aud02-detail']")!);
+    expect(clip.calls[3]).toBe(clip.calls[2]);
+  });
+
+  it("a copy needs no open detail and no open preview beyond its own leg", async () => {
+    const clip = stubClipboard(true);
+    await mountParity();
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud02-detail-close']")?.click();
+    });
+    const preview = document.querySelector("[data-testid='aud6-preview-evt_copy_0000000001']")!;
+    await clickCopy(preview);
+    expect(clip.calls).toHaveLength(1);
+    expect(clip.calls[0]).toContain("2026-11-19 09:20:00");
+    expect(document.querySelector("[data-testid='aud02-detail']")).toBeNull();
+  });
+});
+
+/**
+ * audD — 类型分布桶即筛选。断言的是：桶是真按钮（aria-pressed、键盘可触发、
+ * 焦点可见），点击写入地址的类型键并作为服务端的 action 发出、重取恰一次；
+ * 桶的计数与点完后的列表条数同源；与时间窗/操作者/资源组合时其它参数保留、
+ * 分页回到第 1 页；再点同一个桶回全量；该类型没记录时给「该条件下无事件」与
+ * 清出口；三档（加载中/有记录/空记录）各自的桶态都对。
+ */
+describe("audD - the type buckets filter the ledger", () => {
+  const ROW = (id: string, action: string, outcome = "succeeded") => ({
+    eventId: id,
+    action,
+    occurredAt: "2026-11-19T01:20:00Z",
+    outcome,
+    actor: { type: "system", id: "employee-api" },
+    resource: { type: "task", id: id.replace("evt_", "ts_") },
+    requestId: "req-" + id,
+  });
+  const MIXED = {
+    items: [
+      ROW("evt_a1", "task.created"),
+      ROW("evt_a2", "task.created"),
+      ROW("evt_a3", "task.created"),
+      ROW("evt_b1", "run.failed", "error"),
+    ],
+    nextCursor: "cur_page2",
+  };
+
+  /** A service that really filters: the count claim is only real against one. */
+  function filterByAction(source: { items: unknown[]; nextCursor?: string | null }): (url: string) => Promise<unknown> {
+    return async (url: string) => {
+      const asked = new URLSearchParams(url.split("?")[1] ?? "");
+      const action = asked.get("action");
+      const items = action
+        ? (source.items as { action: string }[]).filter((item) => item.action === action)
+        : [...source.items];
+      // a cursor is the second page: the same rows again, nothing more behind it
+      return { items, nextCursor: asked.get("cursor") || asked.get("action") ? null : source.nextCursor ?? null };
+    };
+  }
+
+  async function mountProbed(entry: string, handler?: (url: string) => Promise<unknown>): Promise<void> {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(handler ?? filterByAction(MIXED));
+    await render(
+      entry,
+      <>
+        <AuditEventsModulePage />
+        <LocationProbe />
+      </>,
+    );
+    await waitFor(() => !skeleton(), "first page settled");
+  }
+
+  const listReads = (): number => urls().filter((u) => /^\/agent-api\/api\/audit\?/.test(u)).length;
+  const bucketCount = (code: string): number =>
+    Number(
+      document
+        .querySelector(`[data-testid='audD-bucket-${code}']`)
+        ?.closest("li")
+        ?.querySelector("[data-testid='aud7-types-count']")?.textContent ?? "-1",
+    );
+  const rowCount = (): number => document.querySelectorAll("[data-testid^='aud01-row-evt_']").length;
+
+  async function expand(): Promise<void> {
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud7-types-toggle']")?.click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='aud7-types-panel']") !== null, "panel open");
+  }
+
+  async function pick(code: string): Promise<void> {
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>(`[data-testid='audD-bucket-${code}']`)?.click();
+    });
+    await waitFor(() => locationText().includes("type="), "type written to the address");
+  }
+
+  it("a bucket is a real pressed button that says how to use it", async () => {
+    await mountProbed("/audit?window=7d");
+    await expand();
+    const node = document.querySelector<HTMLButtonElement>("[data-testid='audD-bucket-task.created']")!;
+    expect(node.tagName).toBe("BUTTON");
+    expect(node.getAttribute("aria-pressed")).toBe("false");
+    expect(node.className).toContain("focus-visible:outline");
+    expect(document.querySelector("[data-testid='audD-filter-hint']")!.textContent).toContain("再点一次回到全部类型");
+    expect(bucketCount("task.created")).toBe(3);
+    // the hint sits with the panel, so a closed fold never hides the contract
+    expect(document.querySelector("[data-testid='aud7-types-toggle']")!.getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("picking a bucket filters for exactly one read and the count was the truth", async () => {
+    await mountProbed("/audit?window=7d");
+    await expand();
+    const counted = bucketCount("task.created");
+    const before = listReads();
+    await pick("task.created");
+    expect(listReads()).toBe(before + 1);
+    expect(locationText()).toContain("type=task.created");
+    expect(lastUrl()).toContain("action=task.created");
+    expect(rowCount()).toBe(counted);
+    expect(document.querySelector<HTMLButtonElement>("[data-testid='audD-bucket-task.created']")!.getAttribute("aria-pressed")).toBe("true");
+    expect(document.querySelector("[data-testid='aud01-status']")!.textContent).toContain("已显示 3 条");
+    // the distribution is counted from the loaded rows, so the type that is no
+    // longer on screen has no bucket any more — and the pressed one is the way
+    // back out (asserted in the next case).
+    expect(document.querySelectorAll("[data-testid^='audD-bucket-']")).toHaveLength(1);
+    expect(bucketCount("task.created")).toBe(3);
+  });
+
+  it("picking the pressed bucket again goes back to every type, once", async () => {
+    await mountProbed("/audit?window=7d&type=run.failed");
+    await expand();
+    expect(document.querySelector<HTMLButtonElement>("[data-testid='audD-bucket-run.failed']")!.getAttribute("aria-pressed")).toBe("true");
+    const before = listReads();
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='audD-bucket-run.failed']")?.click();
+    });
+    await waitFor(() => !locationText().includes("type="), "type dropped from the address");
+    expect(listReads()).toBe(before + 1);
+    expect(lastUrl()).not.toContain("action=");
+    expect(rowCount()).toBe(4);
+  });
+
+  it("Enter and Space on a bucket filter the same way a click does", async () => {
+    await mountProbed("/audit?window=7d");
+    await expand();
+    const node = document.querySelector<HTMLButtonElement>("[data-testid='audD-bucket-task.created']")!;
+    const before = listReads();
+    await act(async () => {
+      node.focus();
+      node.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+    });
+    await waitFor(() => locationText().includes("type=task.created"), "Enter picked the bucket");
+    expect(listReads()).toBe(before + 1);
+    await waitFor(
+      () => document.activeElement?.getAttribute("data-testid") === "audD-bucket-task.created",
+      "focus comes back to the pressed bucket",
+    );
+  });
+
+  it("Space picks without scrolling the page", async () => {
+    await mountProbed("/audit?window=7d");
+    await expand();
+    const node = document.querySelector<HTMLButtonElement>("[data-testid='audD-bucket-run.failed']")!;
+    const before = listReads();
+    await act(async () => {
+      node.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true }));
+    });
+    await waitFor(() => locationText().includes("type=run.failed"), "Space picked the bucket");
+    expect(listReads()).toBe(before + 1);
+    await waitFor(
+      () => document.activeElement?.getAttribute("data-testid") === "audD-bucket-run.failed",
+      "Space leaves the focus on the bucket it pressed",
+    );
+  });
+
+  it("a pick keeps the window, the operator and the resource, and starts the type on page 1", async () => {
+    await mountProbed("/audit?window=24h&actor=employee-api&resource=ts_a1");
+    await act(async () => {
+      (document.querySelector("[data-testid='aud01-load-more']") as HTMLButtonElement).click();
+    });
+    await waitFor(() => locationText().includes("cursor="), "page 2 in the address");
+    expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 2 页");
+    // picking a type is a new question: the paging stack must not carry over
+    const before = listReads();
+    await expand();
+    await pick("task.created");
+    expect(listReads()).toBe(before + 1);
+    const url = locationText();
+    expect(url).toContain("window=24h");
+    expect(url).toContain("actor=employee-api");
+    expect(url).toContain("resource=ts_a1");
+    expect(url).not.toContain("cursor=");
+    expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 1 页");
+    const asked = decodeURIComponent(lastUrl());
+    expect(asked).toContain("from=");
+    expect(asked).toContain("actorId=employee-api");
+    expect(asked).toContain("resourceId=ts_a1");
+    expect(asked).toContain("action=task.created");
+  });
+
+  it("a pasted or refreshed type address replays: bucket pressed, select filled, one read", async () => {
+    await mountProbed("/audit?window=7d&type=task.created");
+    expect(listReads()).toBe(1);
+    expect(lastUrl()).toContain("action=task.created");
+    expect(document.querySelector<HTMLInputElement>("[data-testid='aud01-filter-type']")!.value).toBe("task.created");
+    // the fold is collapsed by default, so open it to see the pressed state
+    await expand();
+    expect(document.querySelector<HTMLButtonElement>("[data-testid='audD-bucket-task.created']")!.getAttribute("aria-pressed")).toBe("true");
+    expect(rowCount()).toBe(3);
+    expect(document.querySelector("[data-testid='aud8-state-line']")!.textContent).toContain("类型：task.created");
+  });
+
+  it("a type the sampled choices never carried still shows which filter is on", async () => {
+    await mountProbed("/audit?window=7d&type=quantum.recalibration", async (url) => {
+      if (String(url).includes("action=quantum.recalibration")) return { items: [ROW("evt_c1", "quantum.recalibration")], nextCursor: null };
+      return { items: [], nextCursor: null };
+    });
+    expect(document.querySelector<HTMLInputElement>("[data-testid='aud01-filter-type']")!.value).toBe("quantum.recalibration");
+    expect([...document.querySelectorAll<HTMLOptionElement>("[data-testid='aud01-filter-type'] option")].map((o) => o.text)).toContain(
+      "按地址带入的类型",
+    );
+  });
+
+  it("an empty answer for a picked type says 该条件下无事件 and clears back, once", async () => {
+    // the ledger shows run.failed on the mixed page, but asking for that type
+    // alone answers empty: the honest outcome is the empty leg with its exit
+    await mountProbed("/audit?window=7d", async (url) => {
+      const asked = new URLSearchParams(String(url).split("?")[1] ?? "");
+      if (asked.get("action") === "run.failed") return { items: [], nextCursor: null };
+      return { items: [...MIXED.items], nextCursor: null };
+    });
+    await expand();
+    await pick("run.failed");
+    await waitFor(() => document.querySelector("[data-testid='audD-empty-exit']") !== null, "the empty leg with its exit");
+    expect(document.querySelector("[data-testid='aud01-empty']")).not.toBeNull();
+    expect(text()).toContain("该条件下无事件");
+    const before = listReads();
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='audD-empty-clear']")?.click();
+    });
+    await waitFor(() => !locationText().includes("type="), "type cleared");
+    expect(listReads()).toBe(before + 1);
+    expect(rowCount()).toBe(4);
+    expect(document.querySelector("[data-testid='audD-empty-exit']")).toBeNull();
+  });
+
+  it("the three legs each get their own bucket state", async () => {
+    // loading: no buckets to press yet
+    let release: ((value: unknown) => void) | null = null;
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(
+      () => new Promise((resolve) => { release = resolve; }),
+    );
+    await render("/audit?window=7d", <AuditEventsModulePage />);
+    expect(document.querySelector("[data-testid='aud7-types']")).toBeNull();
+    expect(document.querySelector("[data-testid^='audD-bucket-']")).toBeNull();
+    await act(async () => {
+      release?.({ items: MIXED.items, nextCursor: null });
+    });
+    await waitFor(() => !skeleton(), "ready");
+    // ready: the section is there, collapsed, with nothing pressed
+    expect(document.querySelector("[data-testid='aud7-types']")).not.toBeNull();
+    expect(document.querySelector("[data-testid^='audD-bucket-']")).toBeNull();
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud7-types-toggle']")?.click();
+    });
+    const buckets = document.querySelectorAll("[data-testid^='audD-bucket-task'], [data-testid^='audD-bucket-run']");
+    expect(buckets).toHaveLength(2);
+    expect(document.querySelectorAll("[data-testid^='audD-bucket'][aria-pressed='true']")).toHaveLength(0);
+    // denied: no rows above the panel, and no buckets either
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockRejectedValue(
+      new ApiError("no", { status: 403, body: '{"code":"console.forbidden"}', url: "/agent-api/api/audit" }),
+    );
+    await render("/audit?window=7d", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud01-denied']") !== null, "denied");
+    expect(document.querySelector("[data-testid^='audD-bucket-']")).toBeNull();
+  });
+});
+
+/**
+ * audE — 事件固定链接复制。两处（行内预览 aud6、记录体 aud3/aud02）各有一个
+ * 「复制事件链接」；链接=当前页 origin + `/audit?event=<eventId>`（`?event=` 是
+ * 本模块实测在读的深链键）；复制不向服务发任何请求；成功走 aria-live「链接已复制」，
+ * 被拒给只读 textarea；行上没有可用标识时 disabled 并说明原因，不编造 id；
+ * 粘这个链接能回到同一事件——回不到时走 aud9 的诚实档，不假称可达。
+ */
+describe("audE - the event permalink", () => {
+  const LINKED = {
+    eventId: "evt_link_0000000001",
+    action: "task.created",
+    occurredAt: "2026-11-19T01:20:00Z",
+    outcome: "succeeded",
+    actor: { type: "human", id: "user:2f3a4b5c6d7e8f90", displayName: "李思" },
+    resource: { type: "task", id: "ts_1122334455667788" },
+    requestId: "req-link-01",
+  };
+
+  function stubClipboard(ok: boolean): { calls: string[] } {
+    const box: { calls: string[] } = { calls: [] };
+    Object.defineProperty(window, "isSecureContext", { configurable: true, value: true });
+    Object.defineProperty(window.navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async (text: string) => {
+          box.calls.push(text);
+          if (!ok) throw new Error("denied");
+        },
+      },
+    });
+    return box;
+  }
+
+  async function mountBoth(entry: string, body: unknown = LINKED): Promise<void> {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url: string) =>
+      String(url).startsWith("/agent-api/api/audit-detail") ? { audit: body } : { items: [body] },
+    );
+    await render(entry, <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    // whichever legs the address asks for: a preview-only link has no record pane
+    await waitFor(
+      () =>
+        (!entry.includes("detail=") || document.querySelector("[data-testid='aud02-detail']") !== null) &&
+        (!entry.includes("preview=") || document.querySelector("[data-testid='aud6-preview-evt_link_0000000001']") !== null),
+      "the legs the address asks for",
+    );
+  }
+
+  async function copyFrom(root: Element | null): Promise<void> {
+    const node = root?.querySelector<HTMLButtonElement>("[data-testid='audE-link']");
+    if (!node) throw new Error("no permalink control");
+    await act(async () => {
+      node.click();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+  }
+
+  it("both legs offer the link and one event gives one identical address", async () => {
+    const clip = stubClipboard(true);
+    await mountBoth("/audit?window=7d&preview=evt_link_0000000001&detail=evt_link_0000000001");
+    const preview = document.querySelector("[data-testid='aud6-preview-evt_link_0000000001']")!;
+    const detail = document.querySelector("[data-testid='aud02-detail']")!;
+    expect(preview.querySelector("[data-testid='audE-link']")).not.toBeNull();
+    expect(detail.querySelector("[data-testid='audE-link']")).not.toBeNull();
+    const reads = urls().length;
+    await copyFrom(preview);
+    await copyFrom(detail);
+    expect(clip.calls).toHaveLength(2);
+    expect(clip.calls[0]).toBe(clip.calls[1]);
+    expect(clip.calls[0]).toBe(`${window.location.origin}/audit?event=evt_link_0000000001`);
+    // 只读屏上已有标识：复制前后一条请求都没多
+    expect(urls()).toHaveLength(reads);
+  });
+
+  it("a copied link is announced, and pasting it lands back on the same event", async () => {
+    stubClipboard(true);
+    await mountBoth("/audit?window=7d&preview=evt_link_0000000001&detail=evt_link_0000000001");
+    const preview = document.querySelector("[data-testid='aud6-preview-evt_link_0000000001']")!;
+    await copyFrom(preview);
+    const status = preview.querySelector("[data-testid='audE-link-status']")!;
+    expect(status.getAttribute("aria-live")).toBe("polite");
+    expect(status.textContent).toBe("链接已复制");
+    expect(preview.querySelector("[data-testid='audE-link-fallback']")).toBeNull();
+    // the link as handed out, cold: /audit?event=<id> with no filter at all
+    const cold = new URL(`${window.location.origin}/audit?event=evt_link_0000000001`);
+    await render(`${cold.pathname}${cold.search}`, <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud9-deeplink-found']") !== null, "the link located the event");
+    expect(document.querySelector("[data-testid='aud6-preview-evt_link_0000000001']")).not.toBeNull();
+    expect(document.querySelector("[data-testid='aud01-row-evt_link_0000000001']")).not.toBeNull();
+  });
+
+  it("a refused clipboard leaves the exact link selectable", async () => {
+    const clip = stubClipboard(false);
+    await mountBoth("/audit?window=7d&preview=evt_link_0000000001&detail=evt_link_0000000001");
+    // the record body carries its own copy control, so the fallback shows there
+    const detail = document.querySelector("[data-testid='audE-link-block']")!;
+    const reads = urls().length;
+    await copyFrom(detail);
+    const box = detail.querySelector<HTMLTextAreaElement>("[data-testid='audE-link-fallback']")!;
+    expect(box.getAttribute("readonly")).not.toBeNull();
+    expect(box.value).toBe(clip.calls[0]);
+    expect(box.value).toContain("/audit?event=evt_link_0000000001");
+    expect(detail.querySelector("[data-testid='audE-link-status']")!.textContent).toContain("选中复制");
+    expect(urls()).toHaveLength(reads);
+  });
+
+  it("a row with no identifier says so instead of inventing one", async () => {
+    const clip = stubClipboard(true);
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async () => ({
+      items: [{ action: "dispatch.event", occurredAt: "2026-11-19T03:00:00Z", outcome: "succeeded" }],
+    }));
+    await render("/audit?window=7d&preview=audit-0", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud6-preview-audit-0']") !== null, "preview of the id-less row");
+    const node = document.querySelector<HTMLButtonElement>("[data-testid='audE-link']")!;
+    expect(node.disabled).toBe(true);
+    expect(node.getAttribute("aria-disabled")).toBe("true");
+    expect(node.getAttribute("title")).toBe("该行没有可用的固定标识");
+    await act(async () => {
+      node.click();
+    });
+    expect(clip.calls).toHaveLength(0);
+    expect(document.querySelector("[data-testid='audE-link-fallback']")).toBeNull();
+    expect(document.querySelector("[data-testid='audE-link-status']")!.textContent).toBe("");
+  });
+
+  it("an event that is not on this page gets the honest leg, not a promise", async () => {
+    // the list answers a different record; the detail read knows the linked one
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url) => {
+      if (String(url).startsWith("/agent-api/api/audit-detail")) return { audit: LINKED };
+      return { items: [{ ...LINKED, eventId: "evt_other_0000000002", requestId: "req-other" }] };
+    });
+    await render("/audit?window=7d&event=evt_link_0000000001", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud9-event-elsewhere']") !== null, "the elsewhere leg");
+    expect(document.querySelector("[data-testid='aud9-event-open']")).not.toBeNull();
+    expect(document.querySelector("[data-testid='aud6-preview-evt_link_0000000001']")).toBeNull();
+    expect(text()).toContain("只是不在当前页");
+  });
+
+  it("an event the service cannot answer says 不存在或已过期", async () => {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url) => {
+      if (String(url).startsWith("/agent-api/api/audit-detail")) {
+        throw new ApiError("gone", { status: 404, body: '{"code":"audit.event_not_found"}', url, requestId: "req-gone-e" });
+      }
+      return { items: [{ ...LINKED, eventId: "evt_other_0000000002" }] };
+    });
+    await render("/audit?window=7d&event=evt_link_0000000001", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud9-event-missing']") !== null, "the missing leg");
+    expect(text()).toContain("该事件不存在或已过期");
+  });
+
+  it("a denied ledger offers no link to copy", async () => {
+    stubClipboard(true);
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockRejectedValue(
+      new ApiError("no", { status: 403, body: '{"code":"console.forbidden"}', url: "/agent-api/api/audit", requestId: "rid-403" }),
+    );
+    await render("/audit?window=7d", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud01-denied']") !== null, "denied");
+    expect(document.querySelector("[data-testid='audE-link']")).toBeNull();
+    expect(text()).not.toContain("复制事件链接");
+  });
+});
+
+/**
+ * audF — 三处四态同一套话。断言的是：同一种失败在列表、行内预览、事件详情里
+ * 说的是同一句原因（不是「一处加载失败、一处读取错误」），三处都带上可复制的
+ * rid 与重试；重试只重发它自己那个读口、恰一次；被拒时筛选/页码/地址原样还在，
+ * 恢复后回到原位；「该条件下无事件」与「读口未接入」是两句话，未接入不显 0。
+ */
+describe("audF - the four states say the same thing everywhere", () => {
+  const listReads = (): number => urls().filter((u) => /^\/agent-api\/api\/audit\?/.test(u)).length;
+  const detailReads = (): number => urls().filter((u) => u.startsWith("/agent-api/api/audit-detail")).length;
+  const verifyReads = (): number => urls().filter((u) => u.startsWith("/agent-api/api/audit-verify")).length;
+  const sentence = (testId: string): string =>
+    document.querySelector(`[data-testid='${testId}-sentence']`)?.textContent?.trim() ?? "";
+  const mark = (slot: string, phase: string): string | null =>
+    document.querySelector(`[data-testid='audF-state-${slot}-${phase}']`)?.getAttribute("data-audf-label") ?? null;
+
+  /** The retry button of one state panel, found by the word on it. */
+  async function clickRetry(testId: string): Promise<void> {
+    const panel = document.querySelector(`[data-testid='${testId}']`);
+    const button = [...(panel?.querySelectorAll<HTMLButtonElement>("button") ?? [])].find((node) => {
+      const words = node.textContent ?? "";
+      return words.includes("重试") || words.includes("再读一次");
+    });
+    if (!button) throw new Error(`no retry button in ${testId}`);
+    await act(async () => {
+      button.click();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
+  }
+
+  const serviceDown = (url: string, rid: string): ApiError =>
+    new ApiError("down", { status: 503, body: '{"code":"console.unavailable"}', url, requestId: rid });
+
+  it("one failure, three surfaces, one sentence — each with its rid and its retry", async () => {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url) => {
+      throw serviceDown(String(url), "rid-shared");
+    });
+    await render("/audit?window=7d", <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await waitFor(() => document.querySelector("[data-testid='aud01-error']") !== null, "the list failed");
+    const listLine = sentence("aud01-error");
+    expect(listLine).toContain("审计服务在处理时出了错");
+    expect(mark("list", "error")).toBe("读取没有完成");
+    expect(document.querySelector("[data-testid='aud01-error-request-id']")!.textContent).toContain("rid-shared");
+
+    // the same answer on the record read: the preview and the record pane
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url) => {
+      if (String(url).startsWith("/agent-api/api/audit-detail")) throw serviceDown(String(url), "rid-shared");
+      return EVENTS;
+    });
+    await render("/audit?window=7d&preview=evt_7c1f2a3b4d5e6f70&detail=evt_7c1f2a3b4d5e6f70", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud02-detail-error']") !== null, "the record failed");
+    await waitFor(() => document.querySelector("[data-testid='audF-preview-error']") !== null, "the preview says so too");
+    expect(sentence("aud02-detail-error")).toBe(listLine);
+    expect(sentence("audF-preview-error")).toBe(listLine);
+    expect(mark("detail", "error")).toBe("读取没有完成");
+    expect(mark("preview", "error")).toBe("读取没有完成");
+    // both record legs carry the copyable rid and a retry, in the same words
+    for (const id of ["aud02-detail-error", "audF-preview-error"]) {
+      expect(document.querySelector(`[data-testid='${id}-request-id-value']`)?.textContent).toContain("rid-shared");
+    }
+    expect(document.querySelectorAll("[data-testid='audF-preview-error'] button").length).toBeGreaterThan(0);
+    expect(text()).toContain("重试");
+  });
+
+  it("each retry re-asks exactly its own read口, once", async () => {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url) => {
+      if (String(url).startsWith("/agent-api/api/audit-detail")) throw serviceDown(String(url), "rid-d");
+      return EVENTS;
+    });
+    await render("/audit?window=7d&preview=evt_7c1f2a3b4d5e6f70&detail=evt_7c1f2a3b4d5e6f70", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='audF-preview-error']") !== null, "preview failed");
+    const lists = listReads();
+    const details = detailReads();
+    const verifies = verifyReads();
+    // the preview's retry and the record pane's retry are the SAME read口
+    await clickRetry("audF-preview-error");
+    expect(detailReads()).toBe(details + 1);
+    expect(listReads()).toBe(lists);
+    expect(verifyReads()).toBe(verifies);
+  });
+
+  it("the list retry re-reads the ledger once and touches no other read口", async () => {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url) => {
+      throw serviceDown(String(url), "rid-l");
+    });
+    await render("/audit?window=7d&type=task.created", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud01-error']") !== null, "list failed");
+    const before = listReads();
+    const details = detailReads();
+    await clickRetry("aud01-error");
+    expect(listReads()).toBe(before + 1);
+    expect(detailReads()).toBe(details);
+  });
+
+  it("a denied ledger keeps the filters, the page and the address, and lands back where it was", async () => {
+    const entry = "/audit?window=24h&type=task.created&actor=employee-api&cursor=cur_page2&preview=evt_7c1f2a3b4d5e6f70";
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url) => {
+      throw new ApiError("closed", { status: 403, body: '{"code":"console.forbidden"}', url, requestId: "rid-403" });
+    });
+    await render(entry, <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await waitFor(() => document.querySelector("[data-testid='aud01-denied']") !== null, "denied");
+    expect(locationText()).toContain("window=24h");
+    expect(locationText()).toContain("type=task.created");
+    expect(locationText()).toContain("cursor=cur_page2");
+    expect(locationText()).toContain("preview=evt_7c1f2a3b4d5e6f70");
+    expect(document.querySelectorAll("[data-testid^='aud01-row-']")).toHaveLength(0);
+    expect(mark("list", "denied")).toBe("暂时无法查看审计事件");
+    // recovery: the denied body carries its own way back to THIS read口
+    expect(document.querySelector("[data-testid='aud01-denied-retry-block']")).not.toBeNull();
+    const reads = listReads();
+    api.fetchJSON.mockImplementation(async () => EVENTS);
+    await clickRetry("aud01-denied");
+    expect(listReads()).toBe(reads + 1);
+    await waitFor(() => document.querySelector("[data-testid='aud01-row-evt_7c1f2a3b4d5e6f70']") !== null, "rows back");
+    expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 2 页");
+    expect(document.querySelector("[data-testid='aud6-preview-evt_7c1f2a3b4d5e6f70']")).not.toBeNull();
+    expect(locationText()).toContain("actor=employee-api");
+  });
+
+  it("403 and 404 stay one body, and only a missing route is 未接入", async () => {
+    const leg = async (status: number, code: string): Promise<string> => {
+      api.fetchJSON.mockReset();
+      api.fetchJSON.mockImplementation(async (url) => {
+        throw new ApiError("no", { status, body: `{"code":"${code}"}`, url, requestId: "rid-x" });
+      });
+      await render("/audit?window=7d", <AuditEventsModulePage />);
+      await waitFor(() => document.querySelector("[data-testid='aud01-denied']") !== null, `denied ${status}`);
+      return document.querySelector("[data-testid='aud01-denied']")!.textContent ?? "";
+    };
+    const closed = await leg(403, "console.forbidden");
+    expect(document.querySelector("[data-testid='audF-state-list-unwired']")).toBeNull();
+    const missing = await leg(404, "console.unknown_route");
+    // one body for both codes — the state text does not split them
+    expect(missing).toBe(closed);
+    // and only the route that is not here is called 未接入, in the title
+    expect(document.querySelector("[data-testid='audF-state-list-unwired']")!.getAttribute("data-audf-label")).toBe(
+      "这个读口在本环境未接入",
+    );
+    expect(document.querySelector("[data-testid='aud01-denied']")!.getAttribute("title")).toContain("读口未接入");
+    // never dressed up as zero records
+    expect(document.querySelector("[data-testid='aud01-empty']")).toBeNull();
+    expect(missing).not.toContain("无事件");
+    expect(missing).not.toMatch(/0 条/);
+  });
+
+  it("the two empties are two different statements", async () => {
+    // ① a real answer of no records under these filters
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async () => ({ items: [], nextCursor: null }));
+    await render("/audit?window=custom&from=2026-11-01T01%3A00%3A00.000Z&to=2026-11-01T02%3A00%3A00.000Z", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud01-empty']") !== null, "filtered empty");
+    expect(mark("list", "empty")).toBe("该条件下无事件");
+    expect(document.querySelector("[data-testid='audF-state-list-unwired']")).toBeNull();
+    expect(document.querySelector("[data-testid='aud01-empty']")!.textContent).toContain("该时间段内无事件");
+    // ② a read口 that is not here at all
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url) => {
+      throw new ApiError("no route", { status: 404, body: '{"code":"console.unknown_route"}', url, requestId: "rid-route" });
+    });
+    await render("/audit?window=7d", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='audF-state-list-unwired']") !== null, "unwired");
+    expect(mark("list", "empty")).toBeNull();
+    expect(document.querySelector("[data-testid='aud01-empty']")).toBeNull();
+  });
+
+  it("a chain check that cannot run is the same 未接入 statement", async () => {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url) => {
+      if (String(url).startsWith("/agent-api/api/audit-verify")) {
+        throw new ApiError("no route", { status: 404, body: '{"code":"console.unknown_route"}', url, requestId: "rid-v" });
+      }
+      return EVENTS;
+    });
+    await render("/audit?window=7d", <AuditEventsModulePage />);
+    await waitFor(() => !skeleton(), "list settled");
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud01-verify']")?.click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='aud01-verify-not-enabled']") !== null, "check could not run");
+    expect(mark("verify", "unwired")).toBe("这个读口在本环境未接入");
+    expect(sentence("aud01-verify-not-enabled")).toContain("没有提供完整性校验");
+    expect(document.querySelector("[data-testid='aud01-verify-not-enabled-request-id']")!.textContent).toContain("rid-v");
+  });
+});
+
+/**
+ * audG — 筛选条件可分享摘要。断言的是：摘要里写的是地址上真正生效的口径，
+ * 附的是这一页实际发出的那条相对路径（逐字与 mock 收到的请求一致，不含 origin、
+ * 不含凭据）；打开/复制/兜底全程零额外请求；没有可分享口径时 disabled 并说明原因；
+ * 加载中与被拒时不给摘要控件。
+ */
+describe("audG - the shareable filter summary", () => {
+  const listReads = (): number => urls().filter((u) => /^\/agent-api\/api\/audit\?/.test(u)).length;
+  const detailReads = (): number => urls().filter((u) => u.startsWith("/agent-api/api/audit-detail")).length;
+  const verifyReads = (): number => urls().filter((u) => u.startsWith("/agent-api/api/audit-verify")).length;
+
+  function stubClipboard(ok: boolean): { calls: string[] } {
+    const box: { calls: string[] } = { calls: [] };
+    Object.defineProperty(window, "isSecureContext", { configurable: true, value: true });
+    Object.defineProperty(window.navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async (text: string) => {
+          box.calls.push(text);
+          if (!ok) throw new Error("denied");
+        },
+      },
+    });
+    return box;
+  }
+
+  async function mountProbed(entry: string): Promise<void> {
+    api.fetchJSON.mockReset();
+    answer(EVENTS);
+    await render(entry, <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await waitFor(() => !skeleton(), "first page settled");
+  }
+
+  async function copy(): Promise<void> {
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='audG-filter-copy']")?.click();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+  }
+
+  it("copies the address-borne question and the path this page really asked", async () => {
+    const clip = stubClipboard(true);
+    await mountProbed(
+      "/audit?window=24h&type=task.created&actor=employee-api&resource=ap_1122334455667788&cursor=cur_page1&cursor=cur_page2",
+    );
+    const reads = listReads();
+    const details = detailReads();
+    const verifies = verifyReads();
+    const button = document.querySelector<HTMLButtonElement>("[data-testid='audG-filter-copy']")!;
+    expect(button.disabled).toBe(false);
+    await copy();
+    expect(clip.calls).toHaveLength(1);
+    const line = clip.calls[0];
+    expect(line).toContain("时间窗：最近 24 小时");
+    expect(line).toContain("动作类型：task.created（服务端按 action 精确匹配）");
+    expect(line).toContain("操作者：employee-api（服务端 actorId，机器句柄）");
+    expect(line).toContain("资源：ap_1122334455667788（本页已加载的记录里本地匹配");
+    expect(line).toContain("第 3 页（游标 ×2）");
+    // 同源性：摘要里的请求就是实收的那一条，逐字相同
+    const asked = urls().filter((u) => /^\/agent-api\/api\/audit\?/.test(u)).pop() ?? "";
+    expect(line).toContain(`请求：${asked}`);
+    expect(line).toContain("cursor=cur_page2");
+    expect(asked).toContain("action=task.created");
+    expect(asked).toContain("actorId=employee-api");
+    // 零额外请求：复制前后三个读口的计数都没动
+    expect(listReads()).toBe(reads);
+    expect(detailReads()).toBe(details);
+    expect(verifyReads()).toBe(verifies);
+    expect(document.querySelector("[data-testid='audG-filter-copy-status']")!.textContent).toBe("筛选条件已复制");
+    expect(document.querySelector("[data-testid='audG-filter-copy-status']")!.getAttribute("aria-live")).toBe("polite");
+  });
+
+  it("the summary never carries an origin and never carries a credential", async () => {
+    const clip = stubClipboard(true);
+    await mountProbed("/audit?window=7d&actor=employee-api");
+    await copy();
+    const line = clip.calls[0];
+    expect(line).not.toMatch(/https?:\/\//);
+    expect(line).not.toContain("localhost");
+    expect(line).not.toContain("token");
+    expect(line).not.toContain("session");
+    expect(line.split("请求：")[1]!.startsWith("/agent-api/api/audit?")).toBe(true);
+  });
+
+  it("with nothing but the default window there is nothing to share, and it says why", async () => {
+    const clip = stubClipboard(true);
+    await mountProbed("/audit?window=7d");
+    const reads = listReads();
+    const button = document.querySelector<HTMLButtonElement>("[data-testid='audG-filter-copy']")!;
+    expect(button.disabled).toBe(true);
+    expect(button.getAttribute("aria-disabled")).toBe("true");
+    expect(button.getAttribute("title")).toBe("当前没有筛选条件可复制");
+    await copy();
+    expect(clip.calls).toHaveLength(0);
+    expect(listReads()).toBe(reads);
+    expect(document.querySelector("[data-testid='audG-filter-copy-fallback']")).toBeNull();
+    // and the moment a filter exists, the same control is live
+    await choose("aud01-filter-type", "task.created");
+    await waitFor(() => document.querySelector<HTMLButtonElement>("[data-testid='audG-filter-copy']")?.disabled === false, "live once filtered");
+    const after = listReads();
+    await copy();
+    expect(clip.calls).toHaveLength(1);
+    expect(listReads()).toBe(after);
+    expect(clip.calls[0]).toContain("动作类型：task.created");
+    expect(clip.calls[0]).toContain(`操作者：${"未设置"}`);
+  });
+
+  it("a custom range is quoted in Beijing words, a half-filled one says 未设置", async () => {
+    const clip = stubClipboard(true);
+    await mountProbed(
+      "/audit?window=custom&from=2026-11-17T01%3A00%3A00.000Z&to=2026-11-17T02%3A30%3A00.000Z&type=task.created",
+    );
+    await copy();
+    expect(clip.calls[0]).toContain("时间窗：自定义 2026-11-17T09:00 → 2026-11-17T10:30（北京时间）");
+    clip.calls.length = 0;
+    await mountProbed("/audit?window=custom&from=2026-11-17T01%3A00%3A00.000Z&type=task.created");
+    await copy();
+    expect(clip.calls[0]).toContain("自定义 2026-11-17T09:00 → 未设置（北京时间）");
+    // that half of the question was never asked, so the path seat stays honest
+    expect(clip.calls[0]).toContain("请求：未设置");
+    expect(clip.calls[0]).not.toContain("agent-api");
+  });
+
+  it("a refused clipboard hands the same line back as selectable text, still asking nothing", async () => {
+    const clip = stubClipboard(false);
+    await mountProbed("/audit?window=7d&type=task.created");
+    const reads = listReads();
+    await copy();
+    const box = document.querySelector<HTMLTextAreaElement>("[data-testid='audG-filter-copy-fallback']")!;
+    expect(box.getAttribute("readonly")).not.toBeNull();
+    expect(box.value).toBe(clip.calls[0]);
+    expect(box.value).toContain("动作类型：task.created");
+    expect(listReads()).toBe(reads);
+    expect(document.querySelector("[data-testid='audG-filter-copy-status']")!.textContent).toContain("选中复制");
+  });
+
+  it("loading offers no summary, an empty answer still does, and a denied ledger does not", async () => {
+    let release: ((value: unknown) => void) | null = null;
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(() => new Promise((resolve) => { release = resolve; }));
+    await render("/audit?window=7d&type=task.created", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud01-loading']") !== null, "loading");
+    expect(document.querySelector("[data-testid='audG-filter-copy-block']")).toBeNull();
+    await act(async () => {
+      release?.({ items: EVENTS.items, nextCursor: null });
+    });
+    await waitFor(() => !skeleton(), "ready");
+    expect(document.querySelector("[data-testid='audG-filter-copy-block']")).not.toBeNull();
+    // an empty answer is still a real question worth handing over
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async () => ({ items: [], nextCursor: null }));
+    await render("/audit?window=7d&type=task.created", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud01-empty']") !== null, "empty answer");
+    expect(document.querySelector("[data-testid='audG-filter-copy']")).not.toBeNull();
+    // a closed ledger has no question to describe
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockRejectedValue(
+      new ApiError("no", { status: 403, body: '{"code":"console.forbidden"}', url: "/agent-api/api/audit", requestId: "rid-g" }),
+    );
+    await render("/audit?window=7d&type=task.created", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud01-denied']") !== null, "denied");
+    expect(document.querySelector("[data-testid='audG-filter-copy-block']")).toBeNull();
+  });
+});
