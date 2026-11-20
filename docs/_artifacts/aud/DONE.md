@@ -2914,3 +2914,27 @@ Untested: the four-state body lengths are jsdom readings, not browser pixels; th
 - 新增 testid：`aud9-scope-note` `aud9-deeplink-found` `aud9-deeplink-close` `aud9-deeplink-checking` `aud9-event-missing` `aud9-event-rid`（内含 `aud9-event-rid-value`）`aud9-event-error` `aud9-event-elsewhere` `aud9-event-open` `aud9-event-clear` `aud9-local-empty`，行定位标记 `data-aud9-deeplink="true"`。aud01-*/aud02-*/aud03-*/aud2-*/aud3-*/aud4-*/aud5-*/aud6-*/aud7-*/aud8-*/agent-v2-page-audit* 未破；两处有意的口径变更（操作者控件由禁用变接通、`aud8-filter-resource` 由禁用变本地过滤）只改行为不改 id。
 - 门禁：vitest `src/modules/audit` **exit 0**（10 files / **189** tests = 基线 179 + 10）；`tsc -b` 共 55 errors（本机地板 55）且 `modules/audit` **0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings。四态+每态 rid+403≡404+零写入口用例全绿；三档视口仍未做浏览器像素走查（新增节点与既有筛选条同为 `min-w-0 flex-wrap`）。
 - 活体未跑通（原因，非未尝试）：2026-11-20 08:0x 实测 `127.0.0.1:8092/agent-api/api/audit?limit=5&…` → **404 `console.not_found`（"static asset not found"）**，带 `actorId=employee-api` 同一形态也未给出事件回答，故本轮拿不到筛前/筛后条数的活体证据；`127.0.0.1:9122/audit` 回 200 但那是旧构建（不含 aud9 代码），拿它做证据等于自欺。结论：actor 的"服务端生效"沿用 DONE.md 探针 #11 的 200 读数，resource 维持"效果未实测"并按上条做本地过滤 + scope-note；组合与计数证据全部来自测试腿。
+
+## Audit preview-detail parity and keyboard loop (audA, 2026-11-20, base 9efaaf16)
+
+- 写域：`web/src/modules/audit/{views.tsx,AuditEventsModulePage.tsx,AuditEventsModulePage.test.tsx}` + 本节。App.tsx / shell / routes / registry / package·lock / web scripts / ops 未碰。
+- ①**字段对照（同一条事件同时挂在两处：`?preview=<id>` 出行内预览 + `?detail=<id>` 出右侧详情；两次读回同一份事件体）**：
+
+  | 字段 | 行内预览（aud6） | 详情（aud3） | 结论 |
+  |---|---|---|---|
+  | 类型 | `audA-preview-type` = `row.action.label`（`actionView`） | `audA-detail-type` = `detail.action.label`（`actionView`） | 同一个 `actionView()` 出口，用例断言两处文本相等 |
+  | 操作者 | `audA-preview-actor` = `row.actor.label`（`actorView`），原句柄进 `title` | `audA-detail-actor`「谁」= `detail.actor.label`（`actorView`），原句柄进 `title` | 同一出口同一值（用例含「李思」） |
+  | 资源 | `audA-preview-resource` = `row.resource.label`（`resourceOf`） | `audA-detail-resource`「被操作的对象」= `detail.resource.label`（`resourceOf`） | 同一出口；标签措辞不同（资源/被操作的对象）是两处版式的名字，值一致 |
+  | 时间（北京） | `[data-auda-parity=time]` = `beijingSeconds(occurredAtRaw) ?? occurredAt ?? "—"` | `audA-detail-time`「发生时间」= 同一表达式 | 本轮统一：预览原来是 `beijingSeconds(...) ?? occurredAt ?? "该字段未返回"`，与详情的 `—` + `title=服务未提供该时间` 两套说法；现在同一个表达式、同一句缺失说明、同一 `title`。用例断言两处都读到 `2026-11-19 09:20:00` 且字符串相等 |
+  | 请求编号 | `audA-preview-rid` = `CopyValue(row.requestId, reason=服务这次没有回传请求编号)` | `aud02-detail-request-value` = 同一 `CopyValue` | 本轮统一的第二处：预览原来直接把 `row.requestId` 原文印在行上，详情用 `CopyValue` 的短码形（`ap_…`/32 位摘要只上 8 位、全值进 `title`）——同一 rid 两处不同值，属红线。现两处同一个控件、同一短码形、同一 `title` 全值、同一缺失句（`audA-preview-rid-absent` 与详情 `-absent` 文本相等，用例断言） |
+  | 列表行「时间」格（aud01） | `aud01-cell-*-time` 到分 | 预览/详情到秒 | 精度差异不是值差异：用例断言秒值的前 16 字与分值相同，且都写明北京时间 |
+  | 集合差异（允许，理由如下） | 只有以上 5 项 | 另有 记账时间 / 身份 / 所属工作区 / 结果与原因 / 变更 / 关联 / 完整性 / 原始载荷 | 详情是「一条记录的完整取证面」，多出来的是链摘要、变更前后与原始载荷——预览只负责不开详情就能核对身份与时刻。用例锁住「详情有记账时间/所属工作区，预览不假装自己有」 |
+- ②**键盘闭环**：行的键盘壳 `audA-row-shell-<key>`（新增，只做容器与键位，`data-aud9-deeplink` 语义照旧）承接
+  - **Enter**：`aud6-toggle-*` 上按 Enter 展开预览；`preventDefault()` 挡住浏览器合成的 click，避免同一次按键翻两次；键盘壳自身被聚焦时 Enter 也展开（`event.target === currentTarget` 判定，不与行内真按钮抢事）。
+  - **Esc**：行内任意位置按 Esc 收起，并把焦点**送回该行的 `aud6-toggle-<key>`**（用例断言 `document.activeElement === toggle`，且地址里 `preview=` 已消失）。
+  - **Tab**：预览里「打开详情」是带 `href` 的真 `<a>`（无 `tabindex` 陷阱、`focus-visible:outline` 可见焦点环），复制请求编号按钮有 `aria-label="复制请求编号"`；用例按 DOM 顺序断言 行的 handle → 复制件 → 详情真链，即一次 Tab 就从展开处走进刚打开的面板，并实测 `focus()` 后 activeElement 落在两者上。
+  - **aria-expanded**：`aud6-toggle-*` 的 `aria-expanded` 直接由 `?preview=` 计算，Enter 后 `true`、Esc 后 `false`；冷挂载 `?preview=` 回来时也是 `true`，`aria-controls` 指向的 id 一定在 DOM 里（用例锁同步，不靠印象）。
+- ③**展开的边界**：开/合只动 `?preview=` 这一个键；`window/type/actor/resource/cursor` 栈与 `第 3 页` 逐项断言不变，列表读请求计数不变（0 次重发）——沿用 aud8 的「落 URL、刷新可复现」口径，未拆。
+- 新增 testid（audA-*）：`audA-preview-type` `audA-preview-actor` `audA-preview-resource` `audA-preview-rid`（内含 `-absent` 形态）`audA-detail-type` `audA-detail-time` `audA-detail-actor` `audA-detail-resource` `audA-row-shell-*`，另有对照标记 `data-auda-parity="time"|"rid"`。aud01-*/aud02-*/aud03-*/aud2-*/aud3-*/aud4-*/aud5-*/aud6-*/aud7-*/aud8-*/aud9-*/agent-v2-page-audit* 未破；R50 的 Esc 用例与新键盘壳共存（同一 div 键位语义）。
+- 门禁：vitest `src/modules/audit` **exit 0**（10 files / **197** tests = 基线 189 + 8）；`tsc -b . --noEmit` 共 55 errors（merge 后实测地板即 55，改动前后同数）且 `modules/audit` **0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings。四态+每态 rid+403≡404+零写入口用例全绿；新增节点仍是 `min-w-0 flex-wrap` 与既有行同构，三档未做浏览器像素走查（见下）。
+- 活体未跑通（如实，本轮实测过）：`127.0.0.1:8092/agent-api/api/audit?limit=5&from=&to=` → **404 `console.not_found`（"static asset not found"）**，该实例没挂审计路由；`127.0.0.1:9122` 上 BFF 在跑，但无身份头时 `/agent-api/api/audit` 与 `/agent-api/api/audit-detail` 都回 **401 `console.unauthenticated`**（rid 例：`7d58ec2b`）。在 5 分钟预算内没有起带会话的 vite dev，所以浏览器里的两处对照未取活体读数——①②③ 全部证据来自测试腿（同一事件体喂两条读路径、逐字段字符串相等、键位与焦点实测），未假装跑过活体。

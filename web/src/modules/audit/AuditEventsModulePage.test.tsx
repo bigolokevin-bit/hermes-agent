@@ -1445,3 +1445,214 @@ describe("aud9 - actor filter, request count and the event deep link", () => {
     expect(text()).not.toContain("该事件不存在或已过期");
   });
 });
+
+/**
+ * audA — 预览与详情的字段一致性，与行内预览的键盘闭环。
+ * 同一条事件同时挂在两处（?preview= 展开行内预览，?detail= 打开右侧详情），
+ * 逐字段比对两处上屏的值：值不同就是红线，只有格式化差异与「详情多出来的
+ * 集合」可以说明理由。键盘腿断 Enter 展开、Esc 收起并把焦点送回该行的控件、
+ * 预览里的「打开详情」是可达且焦点可见的真链、aria-expanded 与实际展开同步。
+ */
+describe("audA - preview/detail field parity and the keyboard loop", () => {
+  // One event, served to both reads, so the two legs can only differ if the
+  // page itself says two different things about it.
+  const EVENT = {
+    eventId: "evt_parity_00000001",
+    action: "task.created",
+    occurredAt: "2026-11-19T01:20:00Z",
+    recordedAt: "2026-11-19T01:20:01Z",
+    outcome: "succeeded",
+    actor: { type: "human", id: "user:2f3a4b5c6d7e8f90", displayName: "李思" },
+    resource: { type: "approval", id: "ap_1122334455667788" },
+    requestId: "req-20261119-0a7b3c",
+  };
+
+  async function mountProbed(entry: string): Promise<void> {
+    api.fetchJSON.mockReset();
+    answer(EVENTS);
+    await render(entry, <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await waitFor(() => !skeleton(), "first page settled");
+  }
+
+  async function mountBoth(entry: string, body: unknown = EVENT): Promise<void> {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url: string) =>
+      String(url).startsWith("/agent-api/api/audit-detail") ? { audit: body } : { items: [body] },
+    );
+    await render(entry, <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await waitFor(() => document.querySelector("[data-testid='aud02-detail']") !== null, "detail painted");
+    await waitFor(() => document.querySelector("[data-testid='aud6-preview-evt_parity_00000001']") !== null, "preview painted");
+  }
+
+  /** The value part of a preview line (the label sits in its own span). */
+  function previewValue(field: string): string {
+    const node = document.querySelector(`[data-testid='audA-preview-${field}']`)!;
+    const label = node.querySelector("span")?.textContent ?? "";
+    return (node.textContent ?? "").replace(label, "").trim();
+  }
+
+  /** The value part of a detail Field (its <dt> is the label, <dd> the value). */
+  function detailValue(field: string): string {
+    const node = document.querySelector(`[data-testid='audA-detail-${field}']`)!;
+    return (node.querySelector("dd")?.textContent ?? node.textContent ?? "").trim();
+  }
+
+  it("the five shared fields read the same words in both legs", async () => {
+    await mountBoth("/audit?window=7d&preview=evt_parity_00000001&detail=evt_parity_00000001");
+    expect(previewValue("type")).toBe(detailValue("type"));
+    expect(previewValue("actor")).toBe(detailValue("actor"));
+    expect(previewValue("resource")).toBe(detailValue("resource"));
+    // time: both legs speak Beijing seconds, off the same raw instant
+    const previewTime = document.querySelector("[data-auda-parity='time']")!.textContent ?? "";
+    expect(previewTime.replace("时间（北京时间）：", "").trim()).toBe(detailValue("time"));
+    expect(previewTime).toContain("2026-11-19 09:20:00");
+    expect(detailValue("time")).toContain("2026-11-19 09:20:00");
+    // rid: the same copyable control, the same shown form, the same full value
+    const ridPreview = document.querySelector("[data-testid='audA-preview-rid']")!;
+    const ridDetail = document.querySelector("[data-auda-parity='rid'] [data-testid='aud02-detail-request-value']")!;
+    expect(ridPreview.textContent).toBe(ridDetail.textContent);
+    expect(ridPreview.querySelector("[title]")?.getAttribute("title")).toBe(
+      ridDetail.querySelector("[title]")?.getAttribute("title"),
+    );
+    expect(previewValue("actor")).toContain("李思");
+  });
+
+  it("a field the service did not send reads the same missing sentence in both legs", async () => {
+    const sparse = {
+      eventId: "evt_parity_00000001",
+      action: "task.created",
+      outcome: "succeeded",
+      actor: { type: "system", id: "employee-api" },
+    };
+    await mountBoth("/audit?window=7d&preview=evt_parity_00000001&detail=evt_parity_00000001", sparse);
+    const previewTime = (document.querySelector("[data-auda-parity='time']")!.textContent ?? "").replace("时间（北京时间）：", "").trim();
+    expect(previewTime).toBe(detailValue("time"));
+    expect(previewTime).toBe("—");
+    expect(document.querySelector("[data-auda-parity='time']")!.getAttribute("title")).toContain("服务未提供该时间");
+    expect(document.querySelector("[data-testid='audA-preview-rid-absent']")).not.toBeNull();
+    expect(document.querySelector("[data-testid='audA-preview-rid-absent']")!.textContent).toBe(
+      document.querySelector("[data-auda-parity='rid'] [data-testid='aud02-detail-request-value-absent']")!.textContent,
+    );
+  });
+
+  it("the detail carries the extra sections and says why they are not in the preview", async () => {
+    await mountBoth("/audit?window=7d&preview=evt_parity_00000001&detail=evt_parity_00000001");
+    // 集合差异是设计，不是不一致：详情有记账时间/工作区/完整性/原始载荷
+    expect(document.querySelector("[data-testid='aud02-detail']")!.textContent).toContain("记账时间");
+    expect(document.querySelector("[data-testid='aud02-detail']")!.textContent).toContain("所属工作区");
+    expect(document.querySelector("[data-testid='aud6-preview-evt_parity_00000001']")!.textContent).not.toContain("记账时间");
+  });
+
+  it("Enter on the row opens the preview, aria-expanded follows, Esc closes and refocuses the row", async () => {
+    await mountProbed("/audit?window=7d");
+    const toggle = document.querySelector<HTMLButtonElement>("[data-testid='aud6-toggle-evt_7c1f2a3b4d5e6f70']")!;
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    await act(async () => {
+      toggle.focus();
+      toggle.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+    });
+    await waitFor(() => document.querySelector("[data-testid='aud6-preview-evt_7c1f2a3b4d5e6f70']") !== null, "Enter opened");
+    expect(document.querySelector("[data-testid='aud6-preview-evt_7c1f2a3b4d5e6f70-open']")).not.toBeNull();
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(locationText()).toContain("preview=evt_7c1f2a3b4d5e6f70");
+    // focus can land on the link inside the panel: it is a real anchor in tab order
+    const link = document.querySelector<HTMLAnchorElement>("[data-testid='aud6-preview-evt_7c1f2a3b4d5e6f70-open']")!;
+    expect(link.tagName).toBe("A");
+    expect(link.getAttribute("href")).toContain("detail=evt_7c1f2a3b4d5e6f70");
+    expect(link.getAttribute("tabindex")).toBeNull();
+    await act(async () => {
+      link.focus();
+    });
+    expect(document.activeElement).toBe(link);
+    // Esc anywhere inside the row closes the fold and hands focus back to the row handle
+    await act(async () => {
+      link.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+    });
+    await waitFor(() => document.querySelector("[data-testid='aud6-preview-evt_7c1f2a3b4d5e6f70']") === null, "Esc closed");
+    expect(document.activeElement).toBe(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(locationText()).not.toContain("preview=");
+  });
+
+  it("a refreshed preview keeps aria-expanded in sync with what is on screen", async () => {
+    await mountProbed("/audit?window=7d&type=task.created&cursor=cur_page2&preview=evt_8d2e3f4051627384");
+    expect(document.querySelector("[data-testid='aud6-preview-evt_8d2e3f4051627384']")).not.toBeNull();
+    expect(document.querySelector("[data-testid='aud6-toggle-evt_8d2e3f4051627384']")!.getAttribute("aria-expanded")).toBe("true");
+    expect(document.querySelector("[data-testid='aud6-toggle-evt_7c1f2a3b4d5e6f70']")!.getAttribute("aria-expanded")).toBe("false");
+    const controls = document.querySelector("[data-testid='aud6-toggle-evt_8d2e3f4051627384']")!.getAttribute("aria-controls");
+    expect(document.querySelector(`[data-testid='${controls}']`)).not.toBeNull();
+  });
+
+  it("the row cell, the preview and the detail are the same instant at two precisions", async () => {
+    await mountBoth("/audit?window=7d&preview=evt_parity_00000001&detail=evt_parity_00000001");
+    const cell = document.querySelector("[data-testid='aud01-cell-evt_parity_00000001-time']")!.textContent ?? "";
+    const preview = (document.querySelector("[data-auda-parity='time']")!.textContent ?? "").replace("时间（北京时间）：", "").trim();
+    const detail = detailValue("time");
+    // 列表行到分、预览与详情到秒：同一个瞬间的两种精度，秒值必须以分值开头
+    const toMin = (value: string): string => value.slice(0, 16);
+    expect(toMin(preview)).toBe(toMin(detail));
+    expect(cell).toContain(toMin(preview));
+    expect(cell).toContain("时间（北京时间）");
+  });
+
+  it("the preview keeps a keyboard path to its own controls", async () => {
+    await mountProbed("/audit?window=7d");
+    const toggle = document.querySelector<HTMLButtonElement>("[data-testid='aud6-toggle-evt_7c1f2a3b4d5e6f70']")!;
+    await act(async () => {
+      toggle.click();
+    });
+    const panel = document.querySelector<HTMLElement>("[data-testid='aud6-preview-evt_7c1f2a3b4d5e6f70']")!;
+    const link = panel.querySelector<HTMLAnchorElement>("[data-testid='aud6-preview-evt_7c1f2a3b4d5e6f70-open']")!;
+    const copy = panel.querySelector<HTMLButtonElement>("[data-testid='audA-preview-rid'] button")!;
+    // focusable, unfaked: real href, no tabindex trap, a visible focus ring
+    expect(link.getAttribute("href")).toContain("detail=evt_7c1f2a3b4d5e6f70");
+    expect(link.getAttribute("tabindex")).toBeNull();
+    expect(link.className).toContain("focus-visible:outline");
+    expect(copy.getAttribute("aria-label")).toBe("复制请求编号");
+    // tab order inside the row: the handle comes first, then the panel's own
+    // controls, so one Tab from the handle walks into what it just opened
+    const row = toggle.closest("[data-testid='audA-row-shell-evt_7c1f2a3b4d5e6f70']")!;
+    const focusables = [...row.querySelectorAll<HTMLElement>("a[href], button:not([disabled])")];
+    expect(focusables[0]).toBe(toggle);
+    expect(focusables).toContain(copy);
+    expect(focusables).toContain(link);
+    expect(focusables.indexOf(toggle)).toBeLessThan(focusables.indexOf(copy));
+    expect(focusables.indexOf(copy)).toBeLessThan(focusables.indexOf(link));
+    await act(async () => {
+      copy.focus();
+    });
+    expect(document.activeElement).toBe(copy);
+    await act(async () => {
+      link.focus();
+    });
+    expect(document.activeElement).toBe(link);
+  });
+
+  it("opening and closing a preview never moves the filters, the page or the address beyond its own key", async () => {
+    await mountProbed("/audit?window=24h&type=task.created&actor=employee-api&cursor=cur_page1&cursor=cur_page2");
+    const before = urls().filter((u) => /^\/agent-api\/api\/audit\?/.test(u)).length;
+    const held = () => {
+      const p = new URLSearchParams(locationText().split("?")[1] ?? "");
+      return [p.get("window"), p.get("type"), p.get("actor"), p.getAll("cursor").join(",")];
+    };
+    const snapshot = held();
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud6-toggle-evt_7c1f2a3b4d5e6f70']")?.click();
+    });
+    expect(held()).toEqual(snapshot);
+    expect(locationText()).toContain("preview=evt_7c1f2a3b4d5e6f70");
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud6-toggle-evt_7c1f2a3b4d5e6f70']")?.click();
+    });
+    expect(held()).toEqual(snapshot);
+    expect(locationText()).not.toContain("preview=");
+    expect(urls().filter((u) => /^\/agent-api\/api\/audit\?/.test(u)).length).toBe(before);
+    expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 3 页");
+  });
+});

@@ -48,6 +48,7 @@ import type { FailureCopy } from "./copy";
 import type { VerifyFailure } from "./copy";
 import { eventTypeChoices } from "./model";
 import type { ListFilters } from "./api";
+import type { AuditRow } from "./model";
 import { downloadCsv, downloadText, exportName, filteredCsvText, filteredExportName } from "./csv";
 import {
   FILTER_WINDOW_CHOICES,
@@ -420,6 +421,58 @@ function AuditUrlFilterChips({
           </button>
         </span>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * audA: the row wrapper owns the keyboard loop for its own preview, so a
+ * person who never touches the mouse can open it, close it, and land back on
+ * the control they closed. Focus returns to the row's toggle because that is
+ * the handle the row is read through; leaving it on a vanished panel would
+ * dump the next Tab into the middle of the page.
+ */
+function AuditRowKeyboard({
+  row,
+  open,
+  deepLink,
+  onToggle,
+  onClose,
+  children,
+}: {
+  row: AuditRow;
+  /** The preview of this row is the open fold. */
+  open: boolean;
+  /** `?event=` landed on this row. */
+  deepLink: boolean;
+  onToggle: () => void;
+  onClose: () => void;
+  children: ReactNode;
+}): ReactNode {
+  return (
+    <div
+      className="flex min-w-0 flex-col gap-1"
+      data-testid={`audA-row-shell-${row.key}`}
+      data-aud9-deeplink={deepLink ? "true" : undefined}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" && event.target === event.currentTarget) {
+          // The row itself is not a Tab stop; Enter here is for a row that was
+          // focused programmatically. Inside the row the real buttons already
+          // answer Enter, so this never double-fires.
+          event.preventDefault();
+          onToggle();
+          return;
+        }
+        if (event.key !== "Escape" || !open) return;
+        event.preventDefault();
+        onClose();
+        const toggle = (event.currentTarget as HTMLElement).querySelector<HTMLButtonElement>(
+          `[data-testid='aud6-toggle-${row.key}']`,
+        );
+        toggle?.focus();
+      }}
+    >
+      {children}
     </div>
   );
 }
@@ -1125,11 +1178,13 @@ function AuditEventsSurface(): ReactNode {
               ) : null}
 
               {visibleRows.map((row) => (
-                <div
-                  className="flex min-w-0 flex-col gap-1"
+                <AuditRowKeyboard
                   key={row.key}
-                  data-aud9-deeplink={row.key === deepLinkId || row.rawId === deepLinkId ? "true" : undefined}
-                  onKeyDown={(event) => { if (event.key === "Escape") clearFold("preview"); }}
+                  row={row}
+                  open={openPreview === row.key}
+                  deepLink={row.key === deepLinkId || row.rawId === deepLinkId}
+                  onToggle={() => setFold("preview", row.key)}
+                  onClose={() => clearFold("preview")}
                 >
                   <button
                     type="button"
@@ -1138,6 +1193,14 @@ function AuditEventsSurface(): ReactNode {
                     aria-controls={"aud6-preview-" + row.key}
                     data-testid={"aud6-toggle-" + row.key}
                     onClick={() => setFold("preview", row.key)}
+                    // audA: Enter on the row's own handle opens the preview.
+                    // preventDefault keeps the browser's synthesized click from
+                    // toggling the same fold a second time.
+                    onKeyDown={(event) => {
+                      if (event.key !== "Enter") return;
+                      event.preventDefault();
+                      setFold("preview", row.key);
+                    }}
                   >
                     {openPreview === row.key ? "收起预览" : "预览这一条"}
                   </button>
@@ -1152,7 +1215,7 @@ function AuditEventsSurface(): ReactNode {
                   {openPreview === row.key ? (
                     <AuditRowPreview row={row} testId={"aud6-preview-" + row.key} detailHref={detailHref} />
                   ) : null}
-                </div>
+                </AuditRowKeyboard>
               ))}
 
               {list.unreadable > 0 ? (
