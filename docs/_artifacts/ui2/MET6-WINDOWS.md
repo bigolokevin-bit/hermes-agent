@@ -295,3 +295,13 @@ metB 的「采集时刻」列内新增滞后徽标，不新增列、不改版式
   - `?dsort=share&ddir=asc`：屏 `阿吉, 小满, 小鲤`（2.0% / 19.6% / 78.4%），首行 2.0% 证明不是按字符串排。
 - 验证：`src/modules/metrics` 2 files / 111 passed（基线 106，新增 metP 5 例）；全量 133 files / 1515 passed（2 条上游 employee-detail 未处理拒绝为既存噪声）；tsc 全仓 55 条既存、`modules/metrics` 0；build entry `assets/index-Btr0ReBT.js` sha256 `6f79263d2f858921b7b9afc31b28d17952261f6b774015170baf1a9c9b735ac6`，entry 内 `metP-sort-cost`=0，chunk `assets/MetricsModulePage-BKuk0soJ.js` 内 1。
 - 未测项：真浏览器 375/1280 下表头按钮与指示符的像素对齐未走查（按钮无 padding，尺寸随字体）；键盘 Enter/Space 仅以原生 button 语义保证，未用真实按键事件回放。
+
+## 卡片键盘可达与状态播报（metQ，2026-11-20）
+
+- 五张主卡可键盘遍历：`met6-runs` / `met6-cost` / `met6-trend` / `met6-price` / `met5-heatmap` 都加了 `tabIndex={0}` 与 `metQ-card`，焦点锚点用 `id="metQ-card-focus-<key>"`（元素本身已有 `data-testid`，不覆盖旧 testid）。`:focus-visible` 用 2px `--color-ring`，offset 2px。
+- 没有正数 tabIndex；卡内按钮/链接保持原生 Tab 序。键盘走查前 8 个落点（DOM 顺序实测）：`metL-copy` → `met5-refresh` → `met6-window-24h` → `met6-window-7d` → `met6-window-30d` → `met6-runs` → `met6-cost` → `met6-trend`。
+- 播报区：`<p class="sr-only" role="status" aria-live="polite" data-testid="metQ-live">`。签名 = 使用块状态 + 空窗判定 + 明细/热力/预算/分摊状态；签名不变不重播。三句文案：全失败「这一页的数据暂时都读不到，卡片上写着原因，可以重试。」；部分失败「有 N 项数据暂时读不到，卡片上写着原因。」；空窗「这个时间窗没有运行记录，也没有实扣。」；有数据「数据已更新，卡片和下方的表格都读到了。」。
+- 可复制的请求编号只留在卡片（`metC-source-rid-*`、`metH-card-retry-*` 旁），live 区文案不含编号（测试断言 `req-metQ-1` 不出现）。
+- `prefers-reduced-motion: reduce` 下对 `.met5-page` 全子树把动画/过渡压到 0.001ms、滚动改 auto；页面本身没有持续动画。
+- 验证：`src/modules/metrics` 2 files / 114 passed（基线 111，新增 3 例）；全量 133 files / 1518 passed（2 条上游 employee-detail 未处理拒绝为既存噪声）；tsc 全仓 55 条既存、`modules/metrics` 0；build entry `assets/index-BoxvT4Tc.js` sha256 `b6eaa53b967e072cc789f99acff0e9b4f27a870ad47563a64afd335de5440c16`，entry 内 `metQ-live`=0，chunk `assets/MetricsModulePage-DSjndMTB.js` 内 `metQ-live`=1、`metQ-card-focus`=1。
+- 未测项：真浏览器 Tab 走查与焦点环像素未人工走查（落点来自 DOM 顺序）；`prefers-reduced-motion` 未在真实 OS 开关下目测。

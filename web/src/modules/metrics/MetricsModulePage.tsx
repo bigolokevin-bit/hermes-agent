@@ -1220,6 +1220,39 @@ export function MetricsModulePage() {
   // One ordered array feeds both the table and its export. The file is written
   // row by row from this array, so it can never disagree with what the table
   // shows — no re-reading, no sorting from a different source, no object keys.
+  // metQ — one polite announcement per status change. The copyable request id
+  // lives in the card, never inside this live region.
+  const liveUnavailable = usageBlocks.filter((block) => block.kind === 'unavailable').length;
+  const liveSignature = [
+    usageView.kind,
+    usageBlocks.map((block) => block.kind).join(','),
+    usageQuiet ? 'quiet' : 'loud',
+    breakdownView.kind,
+    heatView.kind,
+    budgetView.kind,
+    shareView.kind,
+  ].join('|');
+  const [liveMessage, setLiveMessage] = useState('');
+  const liveSeen = useRef('');
+  useEffect(() => {
+    if (liveSeen.current === liveSignature) return;
+    liveSeen.current = liveSignature;
+    if (usageView.kind !== 'ready') return;
+    if (usageDown) {
+      setLiveMessage('这一页的数据暂时都读不到，卡片上写着原因，可以重试。');
+      return;
+    }
+    if (liveUnavailable > 0) {
+      setLiveMessage(`有 ${liveUnavailable} 项数据暂时读不到，卡片上写着原因。`);
+      return;
+    }
+    if (usageQuiet) {
+      setLiveMessage('这个时间窗没有运行记录，也没有实扣。');
+      return;
+    }
+    setLiveMessage('数据已更新，卡片和下方的表格都读到了。');
+  }, [liveSignature, usageView.kind, usageDown, liveUnavailable, usageQuiet]);
+
   const detailLines = breakdownView.kind === 'ready' ? breakdownView.lines : [];
   const detailSort: DetailSort = parseDetailSort(params.get('dsort')) ?? 'cost';
   const detailDir: SortDir = params.get('ddir') === 'asc' ? 'asc' : 'desc';
@@ -1358,6 +1391,9 @@ export function MetricsModulePage() {
 
   return (
     <main className="met5-page" data-testid="met5-page">
+      <p className="sr-only" role="status" aria-live="polite" data-testid="metQ-live">
+        {liveMessage}
+      </p>
       <div className="met5-head">
         <div>
           <h1>运行分析</h1>
@@ -1478,7 +1514,7 @@ export function MetricsModulePage() {
           ) : null}
 
           <div className="met6-grid">
-            <Card className="met6-card" data-testid="met6-runs">
+            <Card className="met6-card metQ-card" tabIndex={0} id="metQ-card-focus-runs" data-testid="met6-runs">
               <CardContent className="space-y-1 p-4">
                 <p className="met6-label">{usageWindow.label}运行</p>
                 <p className="met6-value" data-testid="met6-runs-value">
@@ -1521,7 +1557,7 @@ export function MetricsModulePage() {
               </CardContent>
             </Card>
 
-            <Card className="met6-card" data-testid="met6-cost">
+            <Card className="met6-card metQ-card" tabIndex={0} id="metQ-card-focus-cost" data-testid="met6-cost">
               <CardContent className="space-y-1 p-4">
                 <p className="met6-label">实扣金额（账本）</p>
                 <p className="met6-value" data-testid="met6-cost-value">
@@ -1603,7 +1639,7 @@ export function MetricsModulePage() {
               </CardContent>
             </Card>
 
-            <Card className="met6-card" data-testid="met6-trend">
+            <Card className="met6-card metQ-card" tabIndex={0} id="metQ-card-focus-trend" data-testid="met6-trend">
               <CardContent className="space-y-1 p-4">
                 <p className="met6-label">{usageWindow.label}趋势</p>
                 {spark && spark.observed > 0 ? (
@@ -1665,7 +1701,7 @@ export function MetricsModulePage() {
               </CardContent>
             </Card>
 
-            <Card className="met6-card" data-testid="met6-price">
+            <Card className="met6-card metQ-card" tabIndex={0} id="metQ-card-focus-price" data-testid="met6-price">
               <CardContent className="space-y-1 p-4">
                 <p className="met6-label">单价（价目表）</p>
                 {usageReady && usageReady.pricing.kind === 'ready' && usageReady.pricing.value.rows.length > 0 ? (
@@ -2432,7 +2468,7 @@ export function MetricsModulePage() {
             </Card>
           </div>
 
-          <Card data-testid="met5-heatmap">
+          <Card className="metQ-card" tabIndex={0} id="metQ-card-focus-heatmap" data-testid="met5-heatmap">
             <CardContent className="space-y-3 p-4 md:p-6">
               <div className="met5-legend" data-testid="met5-legend">
                 <span>少</span>

@@ -2570,3 +2570,92 @@ describe('metP — detail table sorting', () => {
     click.mockRestore();
   });
 });
+
+describe('metQ — keyboard access and status announcements', () => {
+  function focusableTestIds(): string[] {
+    return Array.from(
+      document.querySelectorAll<HTMLElement>('[tabindex="0"], button, a[href], input, select, textarea'),
+    )
+      .filter((el) => !el.hasAttribute('disabled'))
+      .map((el) => el.getAttribute('data-testid') ?? el.id ?? el.tagName.toLowerCase());
+  }
+
+  it('makes every card focusable without inventing a positive tab order', async () => {
+    await mount(usageRouter());
+
+    for (const key of ['runs', 'cost', 'trend', 'price', 'heatmap']) {
+      const card = document.getElementById(`metQ-card-focus-${key}`);
+      expect(card).toBeTruthy();
+      expect(card?.getAttribute('tabindex')).toBe('0');
+      expect(card?.className).toContain('metQ-card');
+    }
+
+    const positive = Array.from(document.querySelectorAll('[tabindex]')).filter(
+      (el) => Number(el.getAttribute('tabindex')) > 0,
+    );
+    expect(positive).toHaveLength(0);
+
+    // Keyboard walk: the first eight landings in DOM order.
+    expect(focusableTestIds().slice(0, 8)).toEqual([
+      'metL-copy',
+      'met5-refresh',
+      'met6-window-24h',
+      'met6-window-7d',
+      'met6-window-30d',
+      'met6-runs',
+      'met6-cost',
+      'met6-trend',
+    ]);
+  });
+
+  it('announces a partial read failure once, without carrying the request id into the live region', async () => {
+    const handler = (url: string): Promise<unknown> => {
+      if (url.includes('run-activity')) return Promise.resolve(activityBody());
+      if (url.includes('run-stats')) return Promise.resolve(statsFor(url));
+      if (url.includes('/api/employees')) return Promise.resolve(EMPLOYEE_BODY);
+      if (url.includes('models/pricing')) {
+        return Promise.reject(new ApiError('boom', { status: 500, body: '', url, requestId: 'req-metQ-1' }));
+      }
+      if (url.includes('periodKind=month')) return Promise.resolve(LEDGER_MONTH);
+      if (url.includes('periodKind=day')) return Promise.resolve(LEDGER_DAY);
+      return Promise.resolve({});
+    };
+    await mount(handler);
+
+    const live = document.querySelector('[data-testid="metQ-live"]') as HTMLElement;
+    await waitFor(() => live.textContent?.includes('有 1 项数据暂时读不到') === true, 'live announced');
+    expect(document.querySelectorAll('[data-testid="metQ-live"]')).toHaveLength(1);
+    expect(live.getAttribute('role')).toBe('status');
+    expect(live.getAttribute('aria-live')).toBe('polite');
+    expect(live.textContent).toBe('有 1 项数据暂时读不到，卡片上写着原因。');
+    expect(live.textContent).not.toContain('req-metQ-1');
+
+    const before = live.textContent;
+    await act(async () => {
+      (document.querySelector('[data-testid="metB-source-toggle"]') as HTMLButtonElement).click();
+    });
+    expect(live.textContent).toBe(before);
+  });
+
+  it('says a quiet window is quiet instead of staying silent', async () => {
+    const quietStats = {
+      from: '2026-11-18T16:00:00.000Z',
+      to: '2026-11-19T16:00:00.000Z',
+      bucket: 'day',
+      buckets: [],
+      totals: { runs: 0, succeeded: 0, failed: 0, running: 0, sampleCount: 0, successRate: null },
+    };
+    const handler = (url: string): Promise<unknown> => {
+      if (url.includes('run-activity')) return Promise.resolve(activityBody());
+      if (url.includes('run-stats')) return Promise.resolve(quietStats);
+      if (url.includes('/api/employees')) return Promise.resolve(EMPLOYEE_BODY);
+      if (url.includes('models/pricing')) return Promise.resolve({ prices: [] });
+      if (url.includes('hermes-usage')) return Promise.resolve({ by_model: [] });
+      return Promise.resolve({ items: [], missingEmployeeIds: [] });
+    };
+    await mount(handler);
+
+    const live = document.querySelector('[data-testid="metQ-live"]') as HTMLElement;
+    await waitFor(() => live.textContent === '这个时间窗没有运行记录，也没有实扣。', 'quiet announced');
+  });
+});
