@@ -65,7 +65,7 @@ export function RequestIdCopyField({
 
   return (
     <span className="inline-flex min-w-0 flex-wrap items-center gap-1">
-      请求编号：<code className="break-all" data-testid="apr5-request-id">{requestId}</code>
+      请求编号：<code className="ui-c-id" data-testid="apr5-request-id">{requestId}</code>
       <button
         type="button"
         data-testid="apr5-copy-request-id"

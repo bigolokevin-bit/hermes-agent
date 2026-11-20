@@ -207,52 +207,52 @@
     {
       "route": "#/employees/:employeeId",
       "viewport": "375",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=config",
+      "viewport": "1440",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=config",
+      "viewport": "375",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=evidence",
+      "viewport": "1440",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=evidence",
+      "viewport": "375",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=runs",
+      "viewport": "1440",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=runs",
+      "viewport": "375",
+      "chars": 42,
+      "hasMainEl": true
+    },
+    {
+      "route": "#/employees/:employeeId?zone=tasks",
+      "viewport": "1440",
       "chars": 66,
       "hasMainEl": true
     },
     {
-      "route": "#/employees/:employeeId?zone=config",
-      "viewport": "1440",
-      "chars": 42,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=config",
-      "viewport": "375",
-      "chars": 42,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=evidence",
-      "viewport": "1440",
-      "chars": 42,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=evidence",
-      "viewport": "375",
-      "chars": 42,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=runs",
-      "viewport": "1440",
-      "chars": 42,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=runs",
-      "viewport": "375",
-      "chars": 42,
-      "hasMainEl": true
-    },
-    {
-      "route": "#/employees/:employeeId?zone=tasks",
-      "viewport": "1440",
-      "chars": 42,
-      "hasMainEl": true
-    },
-    {
       "route": "#/employees/:employeeId?zone=tasks",
       "viewport": "375",
       "chars": 42,
@@ -585,13 +585,13 @@
     {
       "route": "#/work",
       "viewport": "1440",
-      "chars": 261,
+      "chars": 281,
       "hasMainEl": true
     },
     {
       "route": "#/work",
       "viewport": "375",
-      "chars": 261,
+      "chars": 281,
       "hasMainEl": true
     },
     {
@@ -631,12 +631,10 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 1,
-  "consoleErrorRoutesObservedByShots": [
-    "#/work"
-  ],
+  "consoleErrorsObservedByShots": 0,
+  "consoleErrorRoutesObservedByShots": [],
   "ceAuthority": "login-state",
-  "routesWithEnvOnlyConsoleErrors": 50,
+  "routesWithEnvOnlyConsoleErrors": 51,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
   "overflowing": [],
   "driver": {
@@ -644,7 +642,7 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "4148ce6a",
+  "headHash": "916b943b",
   "exitCode": 0,
   "entry": "assets/index-Cc6Mpxjk.js",
   "entrySha256": "9d1791851c6cd1fee22aac92aa1823418c57b631ee1ee8f72ae9e707d8e4d954",

@@ -66,6 +66,7 @@ import { ConsoleButton } from "./ConsoleButton";
 import { StatePlaceholder } from "./StatePlaceholder";
 import "./console-nav.css";
 import "../styles/table-density.css";
+import "../styles/detail.css";
 import { copyTextToClipboard } from "@/lib/clipboard";
 
 /* ------------------------------------------------------------------ *
