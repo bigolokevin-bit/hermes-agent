@@ -77,7 +77,7 @@ function readRows(body: unknown): { rows: EmployeeRow[]; nextCursor: string | nu
       lifecycleState: pickString(raw.lifecycleState),
       ownerUserId: pickString(raw.ownerUserId),
       updatedAt: pickString(raw.updatedAt),
-      department: pickString(raw.department),
+      department: raw.department === undefined ? undefined : pickString(raw.department),
       enrichment: enrichment
         ? {
             currentVersionNo: pickNumber(enrichment.currentVersionNo),
@@ -245,6 +245,20 @@ export const FIELD_MISSING = "该字段未返回";
 /** R68: the hover reason for any missing field, list or detail alike. */
 export const FIELD_MISSING_TITLE = "读口没有回传该字段。";
 /** R68: 「label：该字段未返回」 one-line form. */
+/** R96: 部门口径单点——列表桶与详情身份卡共用同一三态判据。 */
+export const DEPT_UNLABELED_LABEL = "未标注部门";
+
+export function departmentView(
+  hasKey: boolean,
+  value: string | null,
+): { label: string; title: string | null } {
+  if (!hasKey) return { label: FIELD_MISSING, title: FIELD_MISSING_TITLE };
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed)
+    return { label: DEPT_UNLABELED_LABEL, title: "读口带了部门键，但值为空：该员工未标注部门。" };
+  return { label: trimmed, title: null };
+}
+
 export function fieldMissing(label: string): string {
   return `${label}：${FIELD_MISSING}`;
 }
@@ -764,7 +778,7 @@ export function EmployeesModulePage() {
                 onClick={() => patchParams({ dept: dept === key ? null : key })}
                 className="h-6 min-w-0 max-w-full truncate rounded-md border border-white/15 px-2 hover:bg-white/5 focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/60 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {key === NONE_DEPT ? "未标注部门" : key}{" "}
+                {key === NONE_DEPT ? DEPT_UNLABELED_LABEL : key}{" "}
                 <b className="font-mono">{state.phase === "ready" ? count : "—"}</b>
               </button>
             ))}
@@ -985,9 +999,12 @@ export function EmployeesModulePage() {
                     <span
                       className="min-w-0 truncate text-xs text-white/55"
                       data-label="部门"
-                      title={row.department ? undefined : "上游响应没有带部门信息"}
+                      title={
+                        departmentView(row.department !== undefined, row.department ?? null).title ??
+                        undefined
+                      }
                     >
-                      {row.department ?? "—"}
+                      {departmentView(row.department !== undefined, row.department ?? null).label}
                     </span>
                     <span
                       className="min-w-0 truncate font-mono text-xs text-white/55"

@@ -1279,3 +1279,12 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 测试 pending 2 用例：深链 status=expired→note 在+chip 消失+list 请求恰 1 条含 status=pending 不含 expired（删参不触 fetch）；干净入口→note 常驻+无 chip+无额外请求。定向 approvals 5 files/**166 passed**（164+2 一次全绿）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **166 files/2310 passed**（基线 2308+2）。
 - 零破：apv5–9/apd5–7/apr5/state/sort/export/live/parity（既有 164 全绿为证）；三档=note p break-words+flex-col 既有形态学报（jsdom 不可测）；9122==fa7c2155 禁重建，活体地址栏收敛读数待并入后代次。
 - 交付拆笔教训（DONE 记）：R93b 段 append 因 `assert "## R93 " not in s` 误匹配早前 R93 播报单段而中止（文件未写），commit 已先行且只含代码 2 文件=push 460bcbe5；DONE 单独 docs 尾笔补交。教训=查重锚用**本单唯一节名**（R93b），不用前缀子串（"## R93 " 命中历史 R93）。
+
+## R96 部门口径一致：列表 ↔ 员工详情身份卡（2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @72161996（页面代次 86cb2ede/fa7c2155 系），toplevel ✓ porc=0；重发三件套 grep ed1-identity-department=0=全新。
+- 实测（ego 9122 只读）：GET /api/employees/emp_86A81CE8FF6F42E187BCF2B540 → **200** keys=asOf,createdAt,currentVersionId,department,duty,id,lifecycleState,name,ownerUserId,revision,tenantId,title,updatedAt，deptVal=**null** ⇒ 详情读口**带 department 键、值为空**=现状真实员工应上「未标注部门」（键不存在才是「该字段未返回」）。
+- 交付=①employees 模块单点 helper：export DEPT_UNLABELED_LABEL=「未标注部门」+departmentView(hasKey,value)三态（缺键→FIELD_MISSING+FIELD_MISSING_TITLE；空/null→未标注部门+title「读口带了部门键，但值为空…」；有值→原值无 title）；readRows 改为 raw.department===undefined?undefined:pickString(…)（键缺失与空值可区分）；行部门格弃「—」改走 helper（「—」冒充空值清除）；rail 桶名接常量。②ed IdentityCard 新格 ed1-identity-department（label=部门，值=departmentView("department" in d, typeof string?…)——跨模块 import helper 自 employees 模块=R68 rosterLifecycleLabel 同方向先例；三态零编造）。③两侧对同一记录同源=同一 helper 调用（用例 toBe departmentView 输出）。
+- 测试：employees 新用例（三态行 fixture：值/null/缺键→cell 逐字=helper 输出+桶名=DEPT_UNLABELED_LABEL 计数 2+title 判据）；ed 新 describe 3 用例（三态各独立 it=**R43 老坑复证：同 it 换 mock 再 render 不重发，useResourceList deps=[url,nonce]**）；既有断言同步两处=mount「—」→未标注部门+title、list depth「—」→同口径（工单②明禁「—」当空=语义更新非破）。定向 employees+employee-detail 3 files/103 passed；approvals 复跑 172 passed 零破；tsc 两域 0 红；assert-ia 两模式 exit0；全量 **170 files/2361 passed**（基线 2357+4）。
+- 零破：ed1-*/ed5-*/emp-list-*/emp-list-dept-* 现名全在（新格=ed1-identity-department 属 ed1-* 族扩展）；三档=IdentityCard dl 三列 grid+格 truncate 既有形态学报（jsdom 不可测）；9122 活体身份卡部门读数待并入后代次。
+- 决定：列表「未标注部门」桶含缺键与空值两种行（桶=筛选能力，聚合从宽）；详情三态严格区分（缺键≠空值≠有值）——桶名与详情文案共用 DEPT_UNLABELED_LABEL/FIELD_MISSING 常量，无第二套措辞。
