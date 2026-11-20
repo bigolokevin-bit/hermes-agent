@@ -609,6 +609,39 @@ export function shareOf(value: number | null, total: number | null): number | nu
   return Math.round((value / total) * 1000) / 10;
 }
 
+/**
+ * The total of a column: unreadable cells are skipped, never counted as 0.
+ * A column where nothing is readable has no total at all — «—», not 0.
+ */
+export function sumOrNull(values: (number | null)[]): number | null {
+  let seen = false;
+  let sum = 0;
+  for (const value of values) {
+    if (value === null || !Number.isFinite(value)) continue;
+    seen = true;
+    sum += value;
+  }
+  return seen ? sum : null;
+}
+
+/**
+ * The share of the whole for a totals row: summed from the unrounded parts, so
+ * the per-row rounding never drags the total off 100.0%. Unreadable parts are
+ * skipped; when there is no denominator or no readable part, there is no share.
+ */
+export function shareOfWhole(values: (number | null)[], total: number | null): number | null {
+  if (total === null || !Number.isFinite(total) || total <= 0) return null;
+  let seen = false;
+  let sum = 0;
+  for (const value of values) {
+    if (value === null || !Number.isFinite(value) || value < 0) continue;
+    seen = true;
+    sum += value;
+  }
+  if (!seen) return null;
+  return Math.round((sum / total) * 1000) / 10;
+}
+
 // ---- MET7: cost share by model ---------------------------------------------
 
 export interface ModelCostRow {
@@ -842,6 +875,15 @@ export function exportGapNote(gaps: ExportGap[]): string | null {
 }
 
 /** The note rides in its own row; RFC 4180 escaping still applies. */
+/**
+ * Append the totals comment line after the data rows. It is written raw, never
+ * as a CSV cell, so a value holding a comma can never turn it into a data row —
+ * and it still reads as a comment to anyone parsing the file.
+ */
+export function withTotalsNote(body: string, totalLine: string): string {
+  return `${body}\r\n# ${totalLine}`;
+}
+
 export function withGapNote(body: string, gaps: ExportGap[]): string {
   const note = exportGapNote(gaps);
   return note === null ? body : `${body}\r\n${csvCell(note)}`;
@@ -1309,6 +1351,8 @@ export type MetricsSummaryInput = {
   asOf: string | null;
   /** When the user asked for the copy, as an ISO stamp. */
   generatedAt: string;
+  /** The totals line, already rendered by the page from the same sums the table footer shows. */
+  totalLine?: string | null;
 };
 
 export function metricsSummaryText(input: MetricsSummaryInput): string {
@@ -1318,6 +1362,7 @@ export function metricsSummaryText(input: MetricsSummaryInput): string {
     `窗口：${input.windowLabel}（${input.windowId}）`,
     `运行数：${formatCount(input.runs)}`,
     `实扣金额：${formatUsd(input.costUsd)}`,
+    ...(input.totalLine === undefined ? [] : [input.totalLine ?? '合计：该窗口无可渲染行']),
     `占比口径：成本分摊按${input.groupBy === 'employee' ? '员工' : '模型'}分组的账本实扣计算，占比合计 100%，保留一位小数`,
     `采集时刻：${asOf ? formatBeijing(asOf) : '—'}`,
     `生成时刻：${formatBeijing(input.generatedAt)}（北京时间）`,

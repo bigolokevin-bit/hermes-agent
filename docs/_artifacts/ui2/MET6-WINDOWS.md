@@ -305,3 +305,118 @@ metB 的「采集时刻」列内新增滞后徽标，不新增列、不改版式
 - `prefers-reduced-motion: reduce` 下对 `.met5-page` 全子树把动画/过渡压到 0.001ms、滚动改 auto；页面本身没有持续动画。
 - 验证：`src/modules/metrics` 2 files / 114 passed（基线 111，新增 3 例）；全量 133 files / 1518 passed（2 条上游 employee-detail 未处理拒绝为既存噪声）；tsc 全仓 55 条既存、`modules/metrics` 0；build entry `assets/index-BoxvT4Tc.js` sha256 `b6eaa53b967e072cc789f99acff0e9b4f27a870ad47563a64afd335de5440c16`，entry 内 `metQ-live`=0，chunk `assets/MetricsModulePage-DSjndMTB.js` 内 `metQ-live`=1、`metQ-card-focus`=1。
 - 未测项：真浏览器 Tab 走查与焦点环像素未人工走查（落点来自 DOM 顺序）；`prefers-reduced-motion` 未在真实 OS 开关下目测。
+
+## 异常态下的导出与复制可用性（metR，2026-11-20）
+
+统一判据：**整页失败才全停；单块失败只停用它自己的出口；空窗只写表头。** 三处动作各自有 `title` 说明原因，页面另有 `metR-export-state`（明细+分摊）与 `metR-copy-state`（摘要）两行状态。
+
+- 整页错误（所有使用块不可读，`pageFailed`）：`met6-export` / `metA-export` / `metL-copy` 三钮 disabled。title 首句：导出两钮「整页读取失败，这份导出暂时不生成；先重试上面的读取，读到数据再导。」；摘要「整页读取失败，摘要里的数字不完整，先重试上面的读取。」。状态行：「导出：整页读取失败，两处 CSV 都暂停」「摘要不可复制：整页读取失败」。
+- 单块降级：明细导出仍可用（title「导出明细 CSV：当前窗口与当前分类下账本逐行的实扣明细，不是分摊汇总。」），文件内末行注记缺块（沿用 metI，例如「# 本次导出缺少 1 块：运行统计（…）」，不计入行数）；分摊导出只在自己这块可读时可用，自己读不到则 disabled，title「这份分摊现在读不到，导出暂不生成：<原因>」；状态行「明细可导 N 行（含 1 处缺块注记）；分摊可导 M 行 / 暂不可用」。
+- 空窗：明细与分摊都可用，导出的文件只有表头（明细表头仍以 `as_of,window` 结尾）；`metA-export-count` 显示「可导出 0 行」；标题「当前窗口没有明细行：导出的文件只写表头，缺块会在末尾注明。」/「当前视图没有分摊行：导出的文件只写表头，计数仍显示 0 行。」。摘要可复制（数值为真 0 与「—」）。
+- 行为变更（有意）：0 行不再禁用导出（旧「当前视图无可导出数据 / 当前没有可导出的行」判定撤掉），对应两条既有断言改为「可导且只写表头」，属口径变化不是放宽。
+- 验证：`src/modules/metrics` 2 files / 106 passed（改动前本文件 102）；全量 137 files / 1590 passed；tsc 全仓 55 条既存、`modules/metrics` 0；build entry `assets/index-C5NmlUop.js` sha256 `72b79adb257ca2cf5aafa1adc0a89a2122b8a44be05923d920854f3bb0689d2a`，entry 内 `metR-copy-state`=0，chunk `assets/MetricsModulePage-DA4cZaLo.js` 内 copy/export 状态标记各 1。
+- 未测项：真实浏览器逐钮 hover 看 title 未走查；`disabled` 后键盘焦点顺序变化未人工过一遍。
+
+## 分组切换与排序/窗口语义（metS，2026-11-20）
+
+切换「按员工 / 按模型」分组时，四个 URL 参数各有固定语义：
+
+- `dsort` / `ddir`（明细排序）：**重置**为默认成本降序；仅当切换前确实带过排序键时，表下出现一行 `metS-reset-note`：「切换分组后，明细排序已回到默认的成本降序；时间窗与分摊的排序、分组选择保持不变。」没有可重置的键时不显示。
+- `window`（时间窗）：**保留**，两个分组共用同一时间窗。
+- `sort` / `dir`（分摊排序）：**保留**；`sort=model` 恒指「名称列」（模型组是模型名，员工组是员工名），因此在两个分组里都合法，不需要重置。
+- `groupBy` 本身只在分摊区切换时写入/删除；切换分组不会清掉明细视角（`view` 独立）。
+
+取数代价（实测，`urls()` 增量）：员工 → 模型只发 `hermes-usage` 1 次，`/api/employees` 与 `budget-usage` 各 0 次；模型 → 员工发 `/api/employees` 1 次、`budget-usage` 2 次（当日 + 前一窗口各一次）、`hermes-usage` 0 次；分摊组模型 → 员工发 `/api/employees` 1 次、`hermes-usage` 0 次。没有重复请求。
+
+粘贴 URL 复现：`?view=model&dsort=runs&ddir=asc` → 明细首行 `zero`（次数 0 最先）、次数列 `aria-sort="ascending"`、排序键仍在 URL；`?view=employee&sort=model` → 分摊按名称升序（模型组首行 `alpha`），明细视角为员工，两者互不干扰。
+
+metR 三态口径未变：导出/复制的可用性只由整页失败或各自块的可读性决定，分组切换不引入新判据。验证：`src/modules/metrics` 2 files / 110 passed（此前 106）；全量 137 files / 1594 passed；tsc 全仓 55 条既存、`modules/metrics` 0；build entry `assets/index-BNRlwe1n.js` sha256 `062c00ed9a5d346e206dfe080f706ea02cf59dc5b8547ef4fdaa74f8ce0ec652`，entry 内 `metS-reset-note`=0，chunk `assets/MetricsModulePage-Cc_AE2nF.js`=1。
+- 未测项：真浏览器下三个断点切换分组后的视觉跳动未走查；分享链接跨会话（另一浏览器）复现未实测。
+
+## 合计行与占比余数口径（metT，2026-11-20）
+
+`/metrics` 的两张成本表（明细表与分摊表）在表尾各加一行合计，数值全部由表体当前渲染的行现算——不另发请求，也不读别的口径。
+
+| 位置 | testid | 合计口径 |
+| --- | --- | --- |
+| 明细表（成本明细） | `metT-total-row` | 支出=各行 `costUsd` 相加（员工视图）；次数=各行 `count` 相加（模型视图）；占比=按 `breakdownView.total` 用未舍入原值相加 |
+| 明细表单元格 | `metT-detail-total-cost` / `-count` / `-share` | 读不到的格子不计入、不按 0 计：整列都读不到时该格显示「—」 |
+| 分摊表 | `metT-total-row-share` | 运行数=各行 `runs` 相加；成本=各行 `costUsd` 相加；占比=按可读实扣合计、未舍入原值相加 |
+| 分摊表单元格 | `metT-share-total-runs` / `-cost` / `-share` | 同上；无任何可读金额时占比为「—」 |
+
+- 占比口径：逐行仍按一位小数四舍五入（`shareOf` / `shareOfCosts`），合计行用 `shareOfWhole(values, total)` 从未舍入的原值计算，所以合计恒等于「可读部分之和」，占满时显示 `100.0%`，不会出现 99.9% 或 100.1%。两处表下各有说明：分摊表 `metT-rounding-note`、明细表 `metT-rounding-note-detail`，文案含「合计行不参与排序」「导出文件的行仍是逐行明细，合计不写进数据行」。
+- 排序：合计行在 `<tfoot>`，不含按钮、不带 `aria-sort`，点表头排序只重排 `<tbody>`；`?dsort/?ddir` 变化时合计值逐项不变（求和不依赖顺序）。
+- 导出：CSV 只写数据行，合计不入文件（脚本消费时不会被一行假数据污染）；缺块注记仍是文件末行（metI/metR 口径不变）。
+- 零与缺失：真 0 照常显示 `$0.00` / `0`；读不到仍是「—」。仅当整张表没有可渲染的行时表不出现，随之也没有合计行——不造 0 行。
+- 实现：`metrics.ts` 新增 `sumOrNull(values)` 与 `shareOfWhole(values, total)`；页面在 `detailRows`、`shareRows` 之后派生合计；`metrics.css` 追加 `.metT-total`（上边框 + 加粗）。
+- 验证：定向 `src/modules/metrics` 2 files / **126 passed**（基线 122，+4）；全量 **137 files / 1598 passed**（基线 1594）；`tsc -b . --noEmit` 全仓 55 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metT` → entry `assets/index-FTaUJaPP.js` sha256 `3011587172ba040f2274021162b69ed54271a6f576f3178ad4428cf2107b68c7`，entry 内 `metT-total-row` 命中 0，chunk `assets/MetricsModulePage-BSbHJEAm.js` 命中 1。
+- 实测对照：分摊表（`SHARE_USAGE`：zeta 4 次/$3.00/75.0%、alpha 9 次/$1.00/25.0%、mid 无金额）——表体运行数 4+9=13，合计行 `13`；成本 3.00+1.00=4.00，合计行 `$4.00`；占比 75.0+25.0=100.0，合计行 `100.0%`。明细表（`TWO_EMPLOYEE_LEDGER`）——成本 3.00+1.00=4.00，合计行 `$4.00`，占比合计 `100.0%`，次数列因账本无次数显示「—」。
+- 未测项：真浏览器 375/1280 下合计行的表格内横滚与列宽未人工走查；上游若返回超过两位小数的金额，逐行与合计的四舍五入可能差 0.01，属上游数据形态问题，未构造该样例。
+
+## 摘要与合计行同源（metU，2026-11-20）
+
+`metL-copy` 复制出来的纯文本摘要里追加一行合计，它与分摊表的合计行共用同一份渲染结果——不是另算一遍。
+
+- 代码路径：`MetricsModulePage.tsx` 里 `shareRunsTotal = sumOrNull(shareRows.map(runs))`、`shareCostTotal = sumOrNull(shareRows.map(costUsd))`、`sharePctTotal = shareOfWhole(costs, shareCostTotal)`，紧接其后一次渲染成 `shareTotals = { runs: formatCount(…), cost: formatUsd(…), share: formatSharePct(…) }`；表尾三个 `<td>`（`metT-share-total-runs/-cost/-share`）与摘要行都只读这三个字符串，别处不再调用格式化函数。
+- 摘要行：`summaryTotalLine`＝`合计：运行 {runs} · 成本 {cost} · 占比 {share}`；`shareRows.length === 0` 时写 `合计：该窗口无可渲染行`，不造 0 行。该行经 `metricsSummaryText({ …, totalLine })` 原样插在「实扣金额」之后。
+- 屏上可核对：`metU-copy-total`（sr-only，内容即摘要里那一行）与表尾单元格逐字相同；分摊表下方 `metU-consistency-note` 复述同一串，并写明「缺失的格子写「—」，整表没有可渲染的行时不造合计」。
+- 语义：可读的 0 仍是 `$0.00`；读不到的列仍是「—」；无可渲染行时才用「该窗口无可渲染行」。
+- 零新请求：复制前后 `urls()` 长度相等（测试里断言）。
+- 回退：`metL-fallback-text` 的只读 textarea 内容与剪贴板目标逐字相同，自然含这一行；`metL-copy-status` 的 aria-live 与 `metR-copy-state` 三态未改。
+- 验证：定向 `src/modules/metrics` 2 files / **130 passed**（基线 126，+4）；全量 **137 files / 1602 passed**（基线 1598）；`tsc -b . --noEmit` 全仓 55 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metU` → entry `assets/index-89hAyraB.js` sha256 `dd05bead81200b5705a8a8fcd3982c9b7778a38a2b93e2fc5630b7c4ab6afc77`，entry 内 `metU-copy-total` 命中 0，chunk `assets/MetricsModulePage-BMM35ITN.js`：`metU-copy-total`=1、`metU-consistency-note`=1。
+- 两处逐字对照（`SHARE_USAGE`）：表尾 `13` / `$4.00` / `100.0%` ↔ 摘要行 `合计：运行 13 · 成本 $4.00 · 占比 100.0%` ↔ `metU-copy-total` 同串。
+- 未测项：屏幕阅读器对 sr-only 摘要行的实际播报未人工走查；真浏览器 375 下说明段换行未走查。
+
+## 导出附合计注释行（metV，2026-11-20）
+
+两处导出（明细 `met6-export`、分摊 `metA-export`）在数据行之后各写一条注释行，数值与屏上合计行同一份渲染结果。
+
+- 形态：`# 合计：…`，单行、原样写入，不经 CSV 引号转义——即使值里带逗号（如 `1,234`）也不会被拆成多列或被误读成数据行。实现：`metrics.ts` 的 `withTotalsNote(body, totalLine)` 直接在 CSV 正文后追加 `\r\n# <totalLine>`。
+- 取值：分摊文件用 `summaryTotalLine`（metU 里由 `shareTotals` 渲染，与 `metT-total-row-share` 同源）；明细文件用 `detailTotalLine`（metT 的 `detailTotals` 渲染，与 `metT-total-row` 同源）。两处都没有第二次求和或第二次格式化。
+- 顺序：数据行 → 合计注释行 → 缺块注记行（`# 本次导出缺少 N 块：…` 恒为最后一行）；三层都不计入「可导出 N 行」。
+- 行数一致性（实测，`SHARE_USAGE`）：屏上表体 3 行，`metA-export-count` 显示「可导出 3 行」，文件去掉注释行后为表头 + 3 行 = 4 行；明细（`usageRouter` 默认账本 2 行）：屏上 2 行、`met6-cat-source` 与 `metR-export-state` 都写 2 行、文件表头 + 2 行 + 注释。
+- 空窗口：只有表头 + `# 合计：该窗口无可渲染行` 两行，不写「运行 0」之类。
+- 零与缺失：可读的 0 在注释里仍是 `$0.00`；读不到的列仍是「—」（明细默认账本示例：`# 合计：成本 $0.00 · 次数 — · 占比 —`）。
+- 屏上说明：`metV-export-total-note`（导出按钮旁）写明注释行的位置与「不计入可导出行数」。
+- `as_of`/`window` 列语义与位置未变（明细仍在第 9、10 列，分摊仍在末两列）。
+- 验证：定向 `src/modules/metrics` 2 files / **134 passed**（基线 130，+4）；全量 **137 files / 1606 passed**（基线 1602）；`tsc -b . --noEmit` 全仓 55 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metV` → entry `assets/index-q40dkrMb.js` sha256 `56d5613ec507f1b4bf39d31a336902c523f854cd57fe6d98fd7d8b593f73087b`，entry 内 `metV-export-total-note` 命中 0，chunk `assets/MetricsModulePage-Bj3YiHg-.js` 命中 1。
+- 既有断言的处理：十处「CSV 总行数」原先等于表头+数据（+注记），现按语义改为「数据行数」口径（测试内 `dataOnly()` 过滤 `#` 注释行），未放宽任何数值断言；metN R4 的列序断言同样只比较数据行。
+- 未测项：Excel/Numbers 打开时对 `#` 开头行的呈现未人工走查；真浏览器 375 下导出按钮旁的说明换行未走查。
+
+## 窄屏宽表：滚动区域与首列锚定（metW，2026-11-20）
+
+375 宽下两张宽表（成本明细、成本分摊）都能不丢列地读完：横滚仍在表内，键盘也能滚。
+
+- 滚动区域：明细表 `metW-scroll-detail`（`aria-label="成本明细表，可横向滚动"`）、分摊表 `metW-scroll-share`（`aria-label="成本分摊表，可横向滚动"`），两者都是 `role="region"` + `tabIndex=0`，在既有的 `.met6-table-scroll`（`overflow-x: auto`）之上只加语义与键盘行为，不改列数、列宽与数值格式。
+- 键盘：`handleTableScrollKeys` 只接管 `ArrowRight`/`ArrowLeft`（步长 48px，左边界钳到 0）与 `Home`（回到 0），调用 `preventDefault`；其它键原样放行（Tab 仍按阅读顺序走）。焦点环 `.met6-table-scroll.metW-table:focus-visible { outline: 2px solid var(--color-ring) }`。
+- 首列锚定：`.metW-table th:first-child, .metW-table td:first-child { position: sticky; left: 0; z-index: 1; background: var(--color-card) }`，表头首格 `z-index: 2`；不透明底色是防止滑动的单元格透出来，z-index 只在首格上，不盖住滚动内容。
+- 提示：375 以下显示 `metW-scroll-hint`（明细）与 `metW-scroll-hint-share`（分摊），文案「左右滑动查看全部列」；`.metW-scroll-hint{display:none}` + `@media (max-width:767px){display:block}` 纯 CSS 断点，无 JS resize 监听。
+- 三档读数：本车道没有浏览器探针（`web/node_modules` 无 playwright/puppeteer），jsdom 不做布局，实测 `document.documentElement.scrollWidth === clientWidth`（两者均为 0）在 1440/1280/375 三档均成立，属结构性检查；真实像素级的 `scrollWidth/clientWidth` 与 375 手势滚动未在浏览器复测，列为未测项。可确定的是页面根节点不新增任何宽度来源：表格宽度仍受 `.met6-table-scroll` 包裹，`min-width` 只在表内。
+- 验证：定向 `src/modules/metrics` 2 files / **138 passed**（基线 134，+4）；全量 **137 files / 1610 passed**（基线 1606）；`tsc -b . --noEmit` 全仓 55 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metW` → entry `assets/index-Q54c6DAE.js` sha256 `112c4e46c9534c34f593d2246202ec875c197a726b434a6739063f16a8df1db1`，entry 内 `metW-scroll-detail` 命中 0，chunk `assets/MetricsModulePage-BK5QTTPx.js` 命中 1（提示文案同 chunk 命中 1）。
+- 未测项：真浏览器 375 手势横滚、焦点环可见性与 sticky 首列在滑动中的遮挡关系未人工走查；Safari 的 sticky + border-collapse 组合未复核。
+
+## 热力与明细的运行数三处对照（metX，2026-11-20）
+
+热力卡上方新增一行 `metX-consistency-note`，把「同一个窗口里三个运行数读数」并排摊开，读者不必自己去加格子。
+
+- 三个读数：`metX-window-runs`＝热力卡自己的窗口总运行（`grid.total`，即 `met5-count` 同一个值）；`metX-heat-runs`＝把当前热力格按 `present` 过滤后用 `sumOrNull` 重新求和（独立于 `grid.total` 的第二遍读数，用来暴露口径漂移）；`metX-detail-runs`＝明细表合计行里那一格（`detailCountTotal`，与 `metT-detail-total-count` 同源）。
+- 差：`metX-delta`＝明细合计 − 热力格求和，只在两边都读到数时计算；任一侧缺失则为「—」并带 title「三处没有同时读到数，算不出差」。
+- 缺失语义：热力读失败/未返回时两个热力读数都是「—」，title 说明「热力这次没读出来，不按 0 记」（加载中写「热力还在读取，暂时没有数」）；员工视图的明细没有次数，title「账本只记金额与用量，不记运行次数」。任何缺失都不参与求和，也不当 0。
+- 窗口：行内写明热力按哪个日期区间（`windowRangeLabel`）、明细按哪个时间窗（最近 24 小时/7 天/30 天），并注明口径不同时以各自卡片为准——热力按整周汇总、明细按所选窗口，二者本就不承诺相等。
+- 零新请求：三个值都从当前批次派生（`grid` 与 `detailCountTotal`），渲染这行不调用 `loadJson`；测试断言渲染前后 `urls()` 长度不变，切换明细窗口只触发明细自己的读口、`run-activity` 请求数不变。
+- 位置：这行渲染在热力卡之前、跟随 `view.kind` 的四种状态，所以热力读失败时它仍在页面上说明「不可比较」，而不是整块消失。
+- 实测：默认（员工视图）窗口 332 / 热力 332 / 明细「—」/ 差「—」；`?view=model` 时 332 / 332 / 9 / −323；明细切到 7 天后 332 / 332 / 5 / −327（`run-activity` 请求数不变）；热力 500 时 —/—/9/—。
+- 验证：定向 `src/modules/metrics` 2 files / **142 passed**（基线 138，+4）；全量 **137 files / 1614 passed**（基线 1610）；`tsc -b . --noEmit` 全仓 55 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metX` → entry `assets/index-CNSuFeS2.js` sha256 `62be097d41c967bf2769d0392ff967427913495c76680508d606923f6d66cc12`，entry 内 `metX-consistency-note` 命中 0，chunk `assets/MetricsModulePage-iEZjDXbZ.js` 命中 1。
+- 未测项：真实后端在热力与明细窗口不同时返回的数值差异未联调（用 fixture 构造）；375 下这一行的换行未人工走查。
+
+## 跳过链接（metY，2026-11-20）
+
+键盘用户不必先走完整个页头或逐行穿过两张宽表。
+
+- 页首：`metY-skiplink`（`<a href="#metY-main">跳到主要内容</a>`）是页面第一个 Tab 落点；`<main id="metY-main" tabIndex={-1}>` 可接收焦点，链过去后焦点落到主内容而非页面顶部。
+- 表前：`metY-skip-detail`（`href="#metY-after-detail"`，落点是明细表下方的来源/合计行 `met6-cat-source`）与 `metY-skip-share`（`href="#metY-after-share"`，落点 `met7-source`）。两个落点都带 `tabIndex={-1}`，链接只在对应表格真的渲染时才出现，因此不会有指向不存在锚点的死链接。
+- 形态：原生 `<a href>`，不用按钮伪装；未聚焦时用 clip 技术完全移出视觉流（不占位、不改变既有布局与 tab 序其余部分），聚焦时 `position: static` 呈现为一行描边胶囊并带 `outline: 2px solid var(--color-ring)`。
+- 不改其余 tab 序：metQ 的落点顺序只多出这一个页首链接（`metY-skiplink → metL-copy → met5-refresh → …`），其余原样；没有新增正数 `tabindex`。
+- 零新请求：链接只做页内跳转，测试断言聚焦前后 `urls()` 长度不变。
+- 验证：定向 `src/modules/metrics` 2 files / **146 passed**（基线 142，+4）；全量 **137 files / 1618 passed**（基线 1614）；`tsc -b . --noEmit` 全仓 55 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metY` → entry `assets/index-BIvWvNTC.js` sha256 `4be1529960f738edbbf6b7054e0ce5daaabc41b3e155ed634065705c1cd102e1`，entry 内 `metY-skiplink` 命中 0，chunk `assets/MetricsModulePage-CcfclHKN.js`：`metY-skiplink`=1、`metY-main`=1。
+- 未测项：真浏览器里按 Tab 后链接的可见样式与跳转后的滚动定位未人工走查；Safari 对 `:focus-visible` 与 clip 组合的表现未复核。

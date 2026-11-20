@@ -1319,6 +1319,8 @@ export interface DocRow {
   typeHint: string | null;
   size: string;
   sizeHint: string | null;
+  /** 原始字节数，只为排序用；缺失是 null（不当 0），屏面仍看 size/sizeHint。 */
+  sizeBytes: number | null;
   at: string;
   atRaw: string | null;
   atHint: string | null;
@@ -1382,6 +1384,7 @@ function docOf(row: Rec): DocRow {
     typeHint: typeRaw ? null : "上游没有给出文档类型",
     size: size ?? "—",
     sizeHint: size ? null : bytes !== null ? "上游给的数值读不出可读大小" : "上游没有给出文件大小",
+    sizeBytes: bytes,
     at: at ?? "—",
     atRaw: moment.atRaw,
     atHint: at ? null : moment.atRaw ? "上游给的时间读不出是哪一刻" : "上游没有给出更新时间",
@@ -1407,6 +1410,75 @@ export function readSpaceDocuments(body: unknown): SurfaceValue<DocRow> {
     "上游响应没有带采集时间，文档也没有给出可用时间，数据截至时间未知。",
   );
   return { rows: mapped, ...newest, scanned: null };
+}
+
+/* ------------------------------------------------------------------ *
+ * 文档列表本地排序：只排已经读到的行，点表头绝不再问服务。
+ * ------------------------------------------------------------------ */
+
+export type DocSortCol = "name" | "size" | "updated";
+export type DocSortDir = "asc" | "desc";
+
+/** 默认口径：更新时间、新在前。 */
+export const DOC_SORT_DEFAULT: { col: DocSortCol; dir: DocSortDir } = { col: "updated", dir: "desc" };
+
+/** URL 只认这三个列名，其余一律回落默认（排序不靠记忆，靠地址可复现）。 */
+export function docSortCol(value: string | null | undefined): DocSortCol {
+  return value === "name" || value === "size" || value === "updated" ? value : DOC_SORT_DEFAULT.col;
+}
+
+/** URL 只认 asc/desc，其余回落默认方向。 */
+export function docSortDir(value: string | null | undefined): DocSortDir {
+  return value === "asc" || value === "desc" ? value : DOC_SORT_DEFAULT.dir;
+}
+
+/** 第一次按某列排序时落在哪个方向：名称正序，大小与时间新/大在前。 */
+export function docSortLandDir(col: DocSortCol): DocSortDir {
+  return col === "name" ? "asc" : "desc";
+}
+
+/** 三态 aria-sort：只有当前生效列是 ascending/descending，其余列是 none。 */
+export function ariaSort(
+  col: DocSortCol,
+  active: DocSortCol,
+  dir: DocSortDir,
+): "ascending" | "descending" | "none" {
+  return col === active ? (dir === "asc" ? "ascending" : "descending") : "none";
+}
+
+/** 这一列这一行的可排值；缺值是 null（不当 0），按列只看该看的那个原始字段。 */
+function docSortKey(row: DocRow, col: DocSortCol): number | string | null {
+  if (col === "name") return row.nameHint === null ? row.name : null;
+  if (col === "size") return row.sizeBytes;
+  const ms = row.atRaw === null ? Number.NaN : Date.parse(row.atRaw);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+/**
+ * 在已经加载的行上本地排序。缺值在升/降两种方向里都沉到最后，彼此保持读到的先后；
+ * 命中数、空态与行都取同一个排好的数组，不复算、也不再请求。
+ */
+export function sortDocs<T>(
+  items: T[],
+  col: DocSortCol,
+  dir: DocSortDir,
+  rowOf: (item: T) => DocRow,
+): T[] {
+  const sign = dir === "asc" ? 1 : -1;
+  return items
+    .map((item, index) => ({ item, index, key: docSortKey(rowOf(item), col) }))
+    .sort((a, b) => {
+      const am = a.key === null;
+      const bm = b.key === null;
+      if (am && bm) return a.index - b.index;
+      if (am) return 1;
+      if (bm) return -1;
+      if (typeof a.key === "string" && typeof b.key === "string") {
+        return sign * a.key.localeCompare(b.key, "zh-Hans-CN");
+      }
+      return sign * ((a.key as number) - (b.key as number));
+    })
+    .map((x) => x.item);
 }
 
 /** Spaces from the designated knowledge-space read. */

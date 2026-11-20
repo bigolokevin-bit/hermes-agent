@@ -1843,3 +1843,74 @@ built /private/tmp/health-r38/index.html
 - 验证：`npx vitest run src/modules/capabilities src/modules/skills src/modules/tools` → **5 files / 52 tests passed**；全量 `npx vitest run` → **136 files / 1483 passed**，另有 2 个基线 employee-detail unhandled。`tsc -b . --noEmit` 本域 0（6 行均为基线 employee-detail/employees）。
 - DOM（临时 harness，已删；Vite 5467 / Chrome 9268）：1440/1280/375 技能与工具 `bodySW=bodyCW=pageSW=pageCW=视口`；`aria-sort` 点击前 `名称↑`、点击后 `最近更新↑`（ascending）；`?q=` 与 `tab` 保持。截图 `docs/_artifacts/gov/shots/cap8-skills-{1440,1280,375}.png`、`cap8-tools-{1440,375}.png`。
 - `cap8-*` 新增；`cap4/5/6/7`、`skl4`、`tl3` 未破。边界：只改 `web/src/modules/{capabilities,skills,tools}/**` 与 DONE/截图；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；无独立观察者。
+
+## R55 /capabilities 空态与未接入诚实化统一（cap9，2026-11-20）
+
+- 基线：显式 refspec fetch 后 `git merge --no-ff origin/lane/hermes-console` 报 Already up to date；从已推 `d3338fd4` 继续，未 reset。
+- 诚实态：技能与工具两 tab 的 403/404 仍同体（同一整页文案），GAP 仅 title；新增 `cap9-state-unavailable`（404）/`cap9-state-denied`（403），403/404 不再显示「0 条」。工具页失败对象补 `status`，避免 403 被记成 404。
+- 真 0 与读不到分开：200 且空集显示 `cap9-state-empty` +「读口已接入，本次返回 0 条」；读不到显示错误体 + 计数「—」。计数条沿用同源 `publishCapabilityCount`：读取中先置「加载中/—」，不再残留上一个 tab 的旧值。
+- 重试只重发当前 tab：技能 +1 次请求；工具重走自身候选链（6 个 tools/mcp 候选），断言不含 `/api/skills`。
+- 验证：`npx vitest run src/modules/skills src/modules/tools` → **3 files / 49 tests passed**；全量 `npx vitest run` → **136 files / 1485 passed**（2 个基线 employee-detail unhandled 不变）；`tsc -b . --noEmit` 本域 0。
+- DOM（临时 harness 已删；Vite 5471 / Chrome 9271）：1440/1280/375 两 tab `bodySW=bodyCW=pageSW=pageCW=视口`；skills ready 2 行/`技能2有源`，empty `技能0有源（空）`+cap9-empty，404 count `—无源`+unavailable，403 count `—无源`+denied；tools ready 3 行/`工具3有源`，empty `工具0有源（空）`，404 unavailable，403 denied。
+- 边界：只改 `web/src/modules/{capabilities,skills,tools}/**`；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；无独立观察者。
+
+## R56 /capabilities 导出行序与排序一致（capA，2026-11-20）
+
+- 基线：显式 refspec fetch 后 `git merge --no-ff origin/lane/hermes-console` 得新 tip `7173b7c6`（wave-17），合入本 lane 为 merge `d39fdb61`，未 reset。
+- 现状核对：cap8 起导出已传 `sortedRows`（技能）与 `[...toolRows, ...mcpRows]`（工具，表体两段拼接），实际行序已与屏上排序一致；此前“依赖数组顺序”的风险点补成显式语义并在屏上标注。
+- 新增 `capA-export-order-note`「导出按当前排序与搜索」（技能/工具页头导出按钮旁）；导出列仍为 `name,type,enabled,updated_at`，缺值留空不变；空集 disabled+title 沿用。
+- DOM 实测（临时 harness 已删；Vite 5472 / Chrome 9272，1440）：
+  - 技能默认序：屏上首 `B2 汇总` / 末 `C3 清理`；CSV 首 `B2 汇总,平台内置,正常,2026-11-18 14:00` / 末 `C3 清理,外部集成,停用,2026-11-17 14:00`。
+  - 技能 `sort=name&dir=asc`：屏上首 `A1 检索` / 末 `C3 清理`；CSV 首 `A1 检索,…` / 末 `C3 清理,…`。
+  - 工具默认序：屏上首 `网页搜索` / 末 `mcp-old`；CSV 首 `网页搜索,…` / 末 `mcp-old,…`。
+  - 工具 `sort=name&dir=asc`：屏上首 `网页内容提取` / 末 `mcp-old`；CSV 首 `网页内容提取,…` / 末 `mcp-old,…`。
+  - 筛选联动：技能 `?q=检索` 1 行 → CSV 1 条数据行；工具 `?q=网页` 2 行 → CSV 2 条数据行；切 tab 后导出集随该 tab 变化。
+  - 三档宽度：1440/1280/375 两页 `bodySW=bodyCW=视口`，导出说明可见。
+- 断言：技能/工具各补「导出说明 + CSV 行数与名称随 q 变化」，原有排序测试继续比对屏上首末与 CSV 首末。
+- 验证：`npx vitest run src/modules/skills src/modules/tools src/modules/capabilities` → **5 files / 54 tests passed**；全量 `npx vitest run` → **137 files / 1588 passed**；`tsc -b . --noEmit` 本域 0。
+- 边界：只改 `web/src/modules/{capabilities,skills,tools}/**` 与 DONE；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；无独立观察者。
+
+## R57 — /system 读口矩阵 CSV 导出（sys7）
+
+- 基线：显式 refspec fetch 后 merge `origin/lane/hermes-console` = `38793c9a`（门禁章面盖在 `7173b7c6`）；merge commit `a64dba13`；未 reset。
+- 实现：`web/src/modules/health/sourceMatrixCsv.ts` 新增纯前端 CSV（Blob + a.download，零新后端端点）；`SourceMatrix.tsx` 加 `sys7-export` / `sys7-export-count`；`sourceReads.ts` 保留 `asOfIso`（只取 payload 顶层 ISO，无效或缺失为 null）。
+- 格式：表头固定 `name,path,state,elapsed_ms,as_of`；文件名 `system-sources-YYYYMMDD-HHmm.csv`（北京时间到分）；状态写人话（成功/降级/失败/读口未接入/…）；耗时缺失留空（不写 0）；`as_of` 缺失或非 ISO 留空（不用本机时钟）；RFC4180 转义；空集按钮 disabled + title。
+- 同源：导出行即屏上矩阵行，`sys7-export-count` = 4 行；导出不发起任何请求。
+- 定向 vitest：`src/modules/health` → 4 files / 24 passed。全量 → **138 files / 1591 passed**。tsc 基线 8 行（employee-detail/employees），本域 0。
+- DOM（临时 harness，已删除；Vite 5473 / Chrome 9273）：1440/1280/375 均 `vw=bodySW=bodyCW=pageSW=pageCW`；行 4；计数 4 行；按钮可用；点击导出前后 fetch 计数 4 → 4；375 仅矩阵内部滚动 760/343。
+- 边界：仅改 `web/src/modules/health/**` + DONE；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未并 main、未重建 9122。
+
+## R58 — /system 检查时刻同源一致性（sys8）
+
+- 基线：显式 refspec fetch 后 `git merge origin/lane/hermes-console`（tip `38793c9a`，代码代次 `7173b7c6`）→ Already up to date；未 reset。
+- 口径：服务列表「最近检查时刻」与矩阵「采集时刻」中健康清单那一行同源——都取 `/api/health` 响应顶层 `asOf` 的同一 ISO 值，按同一北京时间到分呈现；其余三行各取自己探针响应的顶层 `asOf`，不互相代替。矩阵「采集时刻」表头加逐列 title，另增可见说明 `sys8-same-source-note`。
+- 新增锚：`sys8-asof-<key>` 包住矩阵四行的采集时刻；既有 `sys6-asof-<key>` 保留。健康行 title 额外给出原始 ISO；缺失或非 ISO 仍显示「—」+原因，本机时钟不入。
+- 取数：整页一次取 4 个读口；展开/收起矩阵、切换状态筛选前后请求计数 **4 → 4**（实测三档）。
+- 验证：`src/modules/health` → 4 files / 24 passed；全量 **138 files / 1591 passed**；tsc 基线 8 行（employee-detail/employees），本域 0。
+- DOM（临时 harness，已删除；Vite 5474 / Chrome 9274）：1440/1280/375 均 `vw=bodySW=bodyCW=pageSW=pageCW`；列表检查时刻与矩阵健康行均为 `2026-11-19 23:17`；探针行「—」；说明可见（375 高 46px 正常换行）；失败探针保留可复制 rid。
+- 边界：仅改 `web/src/modules/health/**` + DONE；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未并 main、未重建 9122。
+
+## R59 — /system 读源矩阵行跳转与时刻透明（sys9）
+
+- 基线：显式 refspec fetch 后 `git merge origin/lane/hermes-console`（tip `38793c9a`，代码代次 `7173b7c6`）→ Already up to date；未 reset。
+- 行落点（先 `git grep` 确认仓内真实路由，未造死链）：
+  - 系统健康清单 → `#/system?tab=health`（`sys9-src-link-health`）
+  - Hermes 运行时探针 → `#/capabilities?tab=channels`（该页消费 `/api/hermes-summary`，`sys9-src-link-runtime`）
+  - 域服务探针 → `#/capabilities?tab=skills`（该页消费 `/api/skills`，`sys9-src-link-domain`）
+  - 控制台服务探针 → 无独立页面，`sys9-src-nolink-console`「该读口无对应页面」+title，未渲染空 href。
+  - 路由证据：`web/src/shell/routes.ts:181`（capabilities/channels）、App `/capabilities` 与 `?tab=skills` 重定向、App `/system` health live 槽；四值均在仓内。
+- 采集时刻 title 全量口径：`asOf 原文（ISO UTC）· 换算北京时间 · 来源（asOfSource，未提供则写未提供）· 判据：只取 payload 顶层 ISO，缺失或非 ISO 显示「—」，不使用本机时钟`；缺失行仍显示「—」，title 保留原因 + 同一判据。
+- 交互：矩阵展开状态仍不写 URL、不新增 `?svc=`；跳转用真实 `a[href]`，不在本页改 tab。链接原生键盘可达，`sys9-src-link:focus-visible` 提供 2px 可见焦点环。
+- 取数：矩阵继续复用本页 4 次读取，展开/收起、读 title 均不发新请求；单测断言请求计数 **4 → 4**。
+- 验证：`src/modules/health` → 4 files / 24 passed；全量 **138 files / 1591 passed**；tsc 本域 0。
+- DOM（临时 harness，已删除；Vite 5475 / Chrome 9275）：1440/1280/375 均 `vw=bodySW=bodyCW=docSW=视口`；3 个 `a.sys9-src-link` + 1 个 `sys9-src-nolink`；三档 href 一致；健康行 title 含 `2026-11-19T15:17:09Z` / `2026-11-19 23:17` / 来源 / 判据；focus 实测 `outline: solid 2px`。
+- 边界：仅改 `web/src/modules/health/**` + DONE；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未并 main、未重建 9122。
+
+## R60 — /system 读源矩阵复制为纯文本（sys10）
+
+- 基线：显式 refspec fetch 后 `git merge origin/lane/hermes-console`（tip `38793c9a`，代码代次 `7173b7c6`）→ 无新提交，未 reset。
+- 新增「复制矩阵」`sys10-copy`：把矩阵当前行按 `口径名 | 路径 | 状态 | 耗时 | 采集时刻` 表头加行序拼成多行纯文本；耗时缺失「—」、采集时刻缺失「—」，不补 0，不取本机时钟。只读既有行，无新增请求。
+- 复制成功 `sys10-copy-status`（`aria-live="polite"`）显示「已复制」；剪贴板拒或不可用时显示「复制失败，已展开手动复制」，并出现只读 `sys10-fallback` textarea 供手动选择。空矩阵时按钮 disabled，title 说明原因。
+- 验证：health **4 files / 27 passed**；全量 **138 files / 1594 passed**；tsc 本域 0（仅基线 employee-detail/employees 错误）。
+- DOM（临时 harness，已删除；Vite 5476 / Chrome 9276）：1440/1280/375 均 `vw=docSW=bodySW=bodyCW`；矩阵 4 行；复制按钮可用、title「复制当前矩阵为纯文本；不会再发请求」；点击后状态「已复制」且无 fallback；请求计数 **4 → 4**。截图 `docs/_artifacts/gov/shots/sys10-{1440,1280,375}.png`。
+- 边界：仅改 `web/src/modules/health/**` + DONE/截图；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未并 main、未重建 9122。

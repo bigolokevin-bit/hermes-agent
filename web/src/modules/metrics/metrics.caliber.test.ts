@@ -282,7 +282,7 @@ describe('metN — R4: the file keeps the table order', () => {
     expect(screenOrder()).toEqual(['zeta', 'alpha', 'mid']);
     await shareDownload();
     const lines = await csvLines(captured.blob);
-    expect(lines.slice(1).map((line) => line.split(',')[0])).toEqual(['zeta', 'alpha', 'mid']);
+    expect(lines.slice(1).filter((line) => !line.startsWith('#')).map((line) => line.split(',')[0])).toEqual(['zeta', 'alpha', 'mid']);
   });
 
   it('R4 exports the ?sort/?dir order exactly as re-sorted on screen', async () => {
@@ -293,7 +293,7 @@ describe('metN — R4: the file keeps the table order', () => {
     expect(screenOrder()).toEqual(['alpha', 'mid', 'zeta']);
     await shareDownload();
     const lines = await csvLines(captured.blob);
-    expect(lines.slice(1).map((line) => line.split(',')[0])).toEqual(['alpha', 'mid', 'zeta']);
+    expect(lines.slice(1).filter((line) => !line.startsWith('#')).map((line) => line.split(',')[0])).toEqual(['alpha', 'mid', 'zeta']);
   });
 });
 

@@ -536,6 +536,7 @@ export interface FailureCopy {
   sentence: string;
   requestId: string | null;
   technical: string | null;
+  status?: number | null;
 }
 
 export function readFailure(err: unknown, info: FailureInfo): FailureCopy {
@@ -547,7 +548,7 @@ export function readFailure(err: unknown, info: FailureInfo): FailureCopy {
   else if (status === 429) sentence = "请求太频繁了，请稍等一会儿再试。";
   else if (status >= 500) sentence = "工具与 MCP 的服务在处理时出了错，请稍后重试。";
   else sentence = errorMessage(err) ?? "读取工具与 MCP 清单时出了问题，请稍后重试。";
-  return { sentence, requestId: info.requestId, technical: info.technical };
+  return { sentence, requestId: info.requestId, technical: info.technical, status };
 }
 
 export function shapeFailure(): FailureCopy {
@@ -555,6 +556,7 @@ export function shapeFailure(): FailureCopy {
     sentence: "服务回的内容不是工具或 MCP 连接清单，这里没能读出任何一条。",
     requestId: null,
     technical: "unexpected payload shape",
+    status: null,
   };
 }
 

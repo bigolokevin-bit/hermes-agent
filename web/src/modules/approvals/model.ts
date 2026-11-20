@@ -393,6 +393,9 @@ export interface ApprovalRow {
   reason: string | null;
   /** R50 summary bar: parsed risk of this row (label 人话, raw for titles). */
   risk: { label: string; tone: string; raw: string | null };
+  /** R60: inline preview fields, parsed from the list row payload itself. */
+  approvers: { labels: string[]; raw: string | null };
+  requestId: string | null;
 }
 
 const ID_KEYS = ["approvalId", "approval_id", "id", "uuid"] as const;
@@ -430,6 +433,8 @@ function rowFrom(item: unknown, index: number): ApprovalRow | null {
     amount: pickNumber(rec, AMOUNT_KEYS),
     reason: humanSentence(pickText(rec, REASON_KEYS)),
     risk: riskView(pickText(rec, ["riskLevel", "risk_level", "risk"])),
+    approvers: approverLabels(rec),
+    requestId: pickText(rec, ["requestId", "request_id"]),
   };
 }
 
@@ -588,4 +593,13 @@ export function approvalDetailFrom(payload: unknown): ApprovalDetail | null {
     taskId: pickText(body, ["taskId", "task_id"]),
     technical,
   };
+}
+
+/** R59: keyword search is local-only — the read port ignores q/keyword/title
+ * (measured: all three return the same full set). Searching exactly the
+ * fields rendered on screen keeps the filter honest about what it matches. */
+export function approvalsRowSearchText(row: ApprovalRow): string {
+  return [row.title, row.reason ?? "", row.rawId ?? "", row.status.label, row.risk.label]
+    .join(" ")
+    .toLowerCase();
 }

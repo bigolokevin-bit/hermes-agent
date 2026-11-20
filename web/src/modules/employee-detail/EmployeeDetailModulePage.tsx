@@ -787,7 +787,7 @@ type UsageState =
   | { phase: "loading" }
   | { phase: "error"; message: string; requestId: string | null }
   | { phase: "denied"; requestId: string | null }
-  | { phase: "ready"; day: unknown; month: unknown; stats: unknown; today: string };
+  | { phase: "ready"; day: unknown; month: unknown; statsDay: unknown; statsMonth: unknown; today: string };
 
 function usageRows(body: unknown): Record<string, unknown>[] {
   if (!body || typeof body !== "object") return [];
@@ -834,14 +834,25 @@ function UsageZone({ empId, nonce, onRetry }: { empId: string; nonce: number; on
     const bjNow = new Date(Date.now() + 480 * 60000);
     const dayPeriod = bjNow.toISOString().slice(0, 10);
     const monthPeriod = dayPeriod.slice(0, 7);
-    const tomorrow = new Date(bjNow.getTime() + 86400000).toISOString().slice(0, 10);
+    // R45-P0: run-stats demands full ISO-8601 timestamps (measured: a bare
+    // "2026-11" is rejected with 422 Invalid isoformat string), so the day
+    // and month windows are built with Date.UTC — month 12 rolls into next
+    // year on its own. budget-usage keeps its YYYY-MM-DD / YYYY-MM periods.
+    const y = Number(dayPeriod.slice(0, 4));
+    const mo = Number(dayPeriod.slice(5, 7));
+    const d = Number(dayPeriod.slice(8, 10));
+    const statsFromDay = new Date(Date.UTC(y, mo - 1, d)).toISOString();
+    const statsToDay = new Date(Date.UTC(y, mo - 1, d + 1)).toISOString();
+    const statsFromMonth = new Date(Date.UTC(y, mo - 1, 1)).toISOString();
+    const statsToMonth = new Date(Date.UTC(y, mo, 1)).toISOString();
     Promise.all([
       fetchJSON<unknown>(`/agent-api/api/budget-usage?employeeId=${enc}&periodKind=day&period=${dayPeriod}`),
       fetchJSON<unknown>(`/agent-api/api/budget-usage?employeeId=${enc}&periodKind=month&period=${monthPeriod}`),
-      fetchJSON<unknown>(`/agent-api/api/run-stats?employeeId=${enc}&from=${monthPeriod}&to=${tomorrow}&bucket=day`),
+      fetchJSON<unknown>(`/agent-api/api/run-stats?employeeId=${enc}&from=${statsFromDay}&to=${statsToDay}&bucket=day`),
+      fetchJSON<unknown>(`/agent-api/api/run-stats?employeeId=${enc}&from=${statsFromMonth}&to=${statsToMonth}&bucket=day`),
     ])
-      .then(([day, month, stats]) => {
-        if (alive) setState({ phase: "ready", day, month, stats, today: dayPeriod });
+      .then(([day, month, statsDay, statsMonth]) => {
+        if (alive) setState({ phase: "ready", day, month, statsDay, statsMonth, today: dayPeriod });
       })
       .catch((err: unknown) => {
         if (!alive) return;
@@ -885,15 +896,14 @@ function UsageZone({ empId, nonce, onRetry }: { empId: string; nonce: number; on
     );
   }
 
-  const statsObj = state.stats && typeof state.stats === "object" ? (state.stats as Record<string, unknown>) : {};
-  const totalsObj = statsObj.totals && typeof statsObj.totals === "object" ? (statsObj.totals as Record<string, unknown>) : undefined;
-  const buckets = Array.isArray(statsObj.buckets) ? statsObj.buckets : [];
-  const monthRuns = usageNum(totalsObj, ["runs"]);
-  const bjToday = state.today;
-  const dayBucket = buckets.find(
-    (b) => b && typeof b === "object" && beijing(String((b as Record<string, unknown>).bucketStart ?? "")).slice(0, 10) === bjToday,
-  ) as Record<string, unknown> | undefined;
-  const dayRuns = usageNum(dayBucket, ["runs"]);
+  // R45-P0: each window reads its own run-stats leg (full ISO from/to);
+  // the totals of that leg answer for that row — no bucket matching left.
+  const statsDayObj = state.statsDay && typeof state.statsDay === "object" ? (state.statsDay as Record<string, unknown>) : {};
+  const statsMonthObj = state.statsMonth && typeof state.statsMonth === "object" ? (state.statsMonth as Record<string, unknown>) : {};
+  const dayTotals = statsDayObj.totals && typeof statsDayObj.totals === "object" ? (statsDayObj.totals as Record<string, unknown>) : undefined;
+  const monthTotals = statsMonthObj.totals && typeof statsMonthObj.totals === "object" ? (statsMonthObj.totals as Record<string, unknown>) : undefined;
+  const dayRuns = usageNum(dayTotals, ["runs"]);
+  const monthRuns = usageNum(monthTotals, ["runs"]);
 
   const dayRow = usageRows(state.day)[0];
   const monthRow = usageRows(state.month)[0];
@@ -917,8 +927,8 @@ function UsageZone({ empId, nonce, onRetry }: { empId: string; nonce: number; on
       label: "今日",
       runs: dayRuns,
       runsTitle: dayRuns === null
-        ? "运行统计返回的桶列表里没有今天的桶行（或桶行缺 runs）：缺值不作 0 处理。"
-        : "来自运行统计的今日桶（bucket=day，employeeId 真过滤）。",
+        ? "运行统计今日窗（from/to=当日与次日 00:00:00Z）没有返回 runs 合计：缺值不作 0 处理。"
+        : "来自运行统计今日窗的合计（bucket=day，employeeId 真过滤）。",
       cost: dayCost,
       costTitle: dayRow ? "预算账本该日行的实扣金额（只认真实扣费）。" : "账本在该日没有这位员工的行（missingEmployeeIds 实证）：缺失不作 $0.00。",
       body: state.day,

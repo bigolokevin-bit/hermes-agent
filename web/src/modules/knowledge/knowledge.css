@@ -790,3 +790,55 @@
 .knB-sep {
   color: var(--color-muted-foreground);
 }
+
+/* R52 — 文档列表三列排序：真按钮表头，aria-sort 只给屏下读屏，箭头是装饰。
+   按钮不撑宽单元格；窄屏 thead 本就被 .knw5-table 隐藏，不会引入横溢。 */
+.knC-th {
+  padding: 0;
+}
+
+.knC-sort {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 2px 4px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.knC-sort:hover {
+  color: var(--color-primary);
+}
+
+.knC-sort:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.knC-sort-label {
+  overflow-wrap: anywhere;
+}
+
+.knC-mark {
+  color: var(--color-muted-foreground);
+  font-size: 0.7em;
+  line-height: 1;
+}
+
+.knC-sort[aria-label] .knC-mark {
+  flex: none;
+}
+
+/* R53 — 诚实态的机器可判标记：只为测试/自动化存在，不参与布局、不出字、不影响横溢。 */
+.knD-marker {
+  display: none;
+}

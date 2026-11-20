@@ -828,29 +828,34 @@ describe("EmployeeDetailModulePage — usage zone R57", () => {
   const usageApi = (
     day: unknown,
     month: unknown,
-    stats: unknown,
+    statsDay: unknown,
+    statsMonth: unknown,
     urls: string[] = [],
   ) =>
     mockApi((url) => {
       urls.push(url);
       if (url.includes("periodKind=day")) return Promise.resolve(day);
       if (url.includes("periodKind=month")) return Promise.resolve(month);
-      if (url.includes("/api/run-stats")) return Promise.resolve(stats);
+      if (url.includes("/api/run-stats")) {
+        const from = Date.parse(decodeURIComponent(url.split("from=")[1].split("&")[0]));
+        const to = Date.parse(decodeURIComponent(url.split("to=")[1].split("&")[0]));
+        return Promise.resolve(to - from === 86400000 ? statsDay : statsMonth);
+      }
       return Promise.resolve({});
     });
 
   it("sends exactly three whitelisted queries and renders ledger/stats/asOf honestly", async () => {
     const urls: string[] = [];
-    const otherDay = new Date(Date.now() - 5 * 86400000).toISOString().slice(0, 10);
     usageApi(
       { items: [], missingEmployeeIds: [EMP], asOf: "2026-11-19T23:58:08Z", asOfSource: "bff-read-time" },
       { items: [{ employeeId: EMP, period: "2026-11", costUsd: 0.12119800000000001 }], asOf: "2026-11-19T23:58:08Z", asOfSource: "bff-read-time" },
-      { buckets: [{ bucketStart: `${otherDay}T00:00:00.000Z`, runs: 13 }], totals: { runs: 13 }, asOf: "2026-11-19T23:58:08Z" },
+      { totals: {}, asOf: "2026-11-19T23:58:08Z" },
+      { totals: { runs: 13 }, asOf: "2026-11-19T23:58:08Z" },
       urls,
     );
     await renderAt(page, at("usage"));
     const usageCalls = urls.filter((u) => u.includes("/api/budget-usage") || u.includes("/api/run-stats"));
-    expect(usageCalls).toHaveLength(3);
+    expect(usageCalls).toHaveLength(4);
     for (const u of usageCalls) expect(u).toContain(`employeeId=${encodeURIComponent(EMP)}`);
     expect(usageCalls.some((u) => u.includes("periodKind=day") && u.includes("period="))).toBe(true);
     expect(usageCalls.some((u) => u.includes("periodKind=month"))).toBe(true);
@@ -861,7 +866,7 @@ describe("EmployeeDetailModulePage — usage zone R57", () => {
     expect(qid("ed10-usage-cost-month")?.getAttribute("title")).toContain("实扣金额");
     expect(qid("ed10-usage-asof-month")?.textContent).toBe("2026-11-20 07:58");
     expect(qid("ed10-usage-asof-month")?.getAttribute("title")).toContain("bff-read-time");
-    // 今日：账本缺行 + 桶列表没有今天的桶 → 都是缺值，不作 0。
+    // 今日：账本缺行 + 今日窗合计缺值 → 都是缺值，不作 0。
     expect(qid("ed10-usage-runs-day")?.textContent).toBe("—");
     expect(qid("ed10-usage-runs-day")?.getAttribute("title")).toContain("不作 0");
     expect(qid("ed10-usage-cost-day")?.textContent).toBe("—");
@@ -873,7 +878,8 @@ describe("EmployeeDetailModulePage — usage zone R57", () => {
     usageApi(
       { items: [], missingEmployeeIds: [EMP], asOf: null },
       { items: [{ employeeId: EMP, period: "2026-11", costUsd: 0 }], asOf: null },
-      { buckets: [], totals: { runs: 0 }, asOf: null },
+      { totals: { runs: 0 }, asOf: null },
+      { totals: { runs: 0 }, asOf: null },
     );
     await renderAt(page, at("usage"));
     expect(qid("ed10-usage")).toBeTruthy();
@@ -887,7 +893,8 @@ describe("EmployeeDetailModulePage — usage zone R57", () => {
     usageApi(
       { items: [], missingEmployeeIds: [EMP] },
       { items: [], missingEmployeeIds: [EMP] },
-      { buckets: [], totals: { runs: 0 } },
+      { totals: { runs: 0 } },
+      { totals: { runs: 0 } },
     );
     await renderAt(page, at("usage"));
     const empty = qid("ed10-usage-empty");
@@ -932,5 +939,36 @@ describe("EmployeeDetailModulePage — usage zone R57", () => {
     const denied = qid("ed10-usage-denied");
     expect(denied).toBeTruthy();
     expect(denied?.textContent).toContain("这块数据还没接入");
+  });
+
+  it("R45-P0: run-stats from/to are full ISO-8601 timestamps, never YYYY-MM", async () => {
+    const urls: string[] = [];
+    usageApi({ items: [] }, { items: [] }, {}, {}, urls);
+    await renderAt(page, at("usage"));
+    const stats = urls.filter((u) => u.includes("/api/run-stats"));
+    expect(stats).toHaveLength(2);
+    for (const u of stats) {
+      const from = u.split("from=")[1].split("&")[0];
+      const to = u.split("to=")[1].split("&")[0];
+      expect(from).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/);
+      expect(to).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/);
+      expect(u).not.toMatch(/from=\d{4}-\d{2}&/);
+    }
+    const dayLeg = stats.find((u) => Date.parse(decodeURIComponent(u.split("to=")[1].split("&")[0])) - Date.parse(decodeURIComponent(u.split("from=")[1].split("&")[0])) === 86400000);
+    expect(dayLeg).toBeTruthy();
+  });
+
+  it("R45-P0: December rolls the month window into next January (boundary)", async () => {
+    // BJT 2027-01-01 04:00 (= UTC 2026-12-31 20:00): the day window is
+    // 2027-01-01, the month window must be 2027-01-01 .. 2027-02-01.
+    vi.spyOn(Date, "now").mockReturnValue(Date.UTC(2026, 11, 31, 20, 0, 0));
+    const urls: string[] = [];
+    usageApi({ items: [] }, { items: [] }, {}, {}, urls);
+    await renderAt(page, at("usage"));
+    const stats = urls.filter((u) => u.includes("/api/run-stats"));
+    const monthLeg = stats.find((u) => Date.parse(decodeURIComponent(u.split("to=")[1].split("&")[0])) - Date.parse(decodeURIComponent(u.split("from=")[1].split("&")[0])) !== 86400000);
+    expect(monthLeg).toBeTruthy();
+    expect(monthLeg).toContain("from=2027-01-01T00:00:00.000Z");
+    expect(monthLeg).toContain("to=2027-02-01T00:00:00.000Z");
   });
 });
