@@ -523,12 +523,18 @@ export function AuditTypeSummary({
   onToggle,
   groups,
   total,
+  selected,
+  onPick,
   testId = "aud7-types",
 }: {
   open: boolean;
   onToggle: () => void;
   groups: { key: string; label: string; count: number }[];
   total: number;
+  /** audD: the type the ledger is currently filtered by (its raw code). */
+  selected: string;
+  /** audD: picking a bucket is the type filter; picking the pressed one again clears it. */
+  onPick: (code: string) => void;
   testId?: string;
 }): ReactNode {
   if (total === 0) return null;
@@ -557,25 +563,59 @@ export function AuditTypeSummary({
         </span>
       </div>
       {open ? (
-        <ul className="flex min-w-0 flex-col gap-1" id={testId + "-panel"} data-testid={testId + "-panel"}>
-          {groups.map((group) => {
-            const share =
-              group.count >= total
-                ? 100
-                : Math.max(1, Math.min(99, Math.floor((group.count / total) * 100)));
-            return (
-              <li
-                key={group.key}
-                className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-xs"
-                data-testid={testId + "-row"}
-              >
-                <span className="min-w-0 break-words" title={group.key}>{group.label}</span>
-                <span className="shrink-0 font-mono" data-testid={testId + "-count"}>{group.count}</span>
-                <span className="shrink-0 text-muted-foreground" data-testid={testId + "-share"}>{String(share) + "%"}</span>
-              </li>
-            );
-          })}
-        </ul>
+        <>
+          <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="audD-filter-hint">
+            点一个类型就按这个桶的类型去读（与时间窗、操作者、资源、页码一起组合），再点一次回到全部类型。下面的计数只数这一页已加载的记录。
+          </p>
+          <ul className="flex min-w-0 flex-col gap-1" id={testId + "-panel"} data-testid={testId + "-panel"}>
+            {groups.map((group) => {
+              const share =
+                group.count >= total
+                  ? 100
+                  : Math.max(1, Math.min(99, Math.floor((group.count / total) * 100)));
+              const active = group.key === selected;
+              return (
+                <li
+                  key={group.key}
+                  className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-xs"
+                  data-testid={testId + "-row"}
+                >
+                  {/* audD: the bucket IS the filter. A real button, so Enter and
+                      Space do what a click does, and `aria-pressed` says which
+                      type the ledger is answering right now. The code the
+                      button hands over is the same value the row was counted
+                      under, so the count and the filter cannot disagree. */}
+                  <button
+                    type="button"
+                    aria-pressed={active}
+                    title={`按这一类去读（原值 ${group.key}）；再点一次回到全部类型`}
+                    className={`min-w-0 flex-1 rounded-md px-1.5 py-1 text-left hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
+                      active ? "border border-primary/60 text-foreground" : "text-muted-foreground"
+                    }`}
+                    data-testid={`audD-bucket-${group.key}`}
+                    onClick={() => onPick(group.key)}
+                    // audD: the keyboard reaches the same filter. preventDefault
+                    // keeps the browser's own button activation from firing a
+                    // second pick on the same keystroke.
+                    onKeyDown={(event) => {
+                      if (event.key !== "Enter" && event.key !== " " && event.key !== "Spacebar") return;
+                      event.preventDefault();
+                      onPick(group.key);
+                    }}
+                  >
+                    <span className="min-w-0 break-words">{group.label}</span>
+                  </button>
+                  <span className="shrink-0 font-mono" data-testid={testId + "-count"}>
+                    {group.count}
+                  </span>
+                  <span className="shrink-0 text-muted-foreground" data-testid={testId + "-share"}>
+                    {String(share) + "%"}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </>
       ) : null}
     </section>
   );

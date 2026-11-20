@@ -31,7 +31,7 @@
  * `?state=` — every list/detail state below comes from a real read, so there is
  * no fixture badge to mistake for an answer.
  */
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { ArrowLeft, Download, ReceiptText, RefreshCw, ShieldCheck } from "lucide-react";
 
@@ -237,6 +237,12 @@ export function AuditFilterBar({
           onChange={(event) => onEventTypeChange(event.target.value)}
         >
           <option value="">全部事件类型</option>
+          {eventType && !choices.some((item) => item.value === eventType) ? (
+            // audD: a bucket hands over the code it counted under, which may
+            // be one the sampled list never carried. The select must show it
+            // instead of pretending the filter is off.
+            <option value={eventType}>按地址带入的类型</option>
+          ) : null}
           {choices.map((item) => (
             <option key={item.value} value={item.value}>
               {item.label}
@@ -780,6 +786,48 @@ function AuditEventsSurface(): ReactNode {
     [locationState, params, setParams],
   );
 
+  /**
+   * audD: a bucket click is the type filter, so it goes through the SAME
+   * setter the 事件类型 dropdown uses — one key (`?type=`), one wire parameter
+   * (`action`), never two filters answering each other. Pressed again → 全部类型.
+   */
+  const pendingBucketFocus = useRef<string | null>(null);
+  // The answer to the pick has to arrive before the focus is handed back: the
+  // rows on screen are still the old ones until then, and the pressed button
+  // is replaced by the new distribution right after.
+  const bucketSettled = useRef(false);
+  const pickType = useCallback(
+    (code: string) => {
+      pendingBucketFocus.current = code;
+      bucketSettled.current = false;
+      setType(eventType === code ? "" : code);
+    },
+    [eventType, setType],
+  );
+
+  // audD: a pick replaces the very rows the buckets were counted from, so the
+  // button that answered Enter is unmounted while the new page is outstanding.
+  // Once the answer lands, focus goes back to the pressed bucket — and if that
+  // type turned out to have no records, to the way out of the empty answer.
+  // Without this, every Enter would dump the keyboard person at the top.
+  useEffect(() => {
+    const code = pendingBucketFocus.current;
+    if (code === null) return;
+    if (list.phase === "loading") {
+      bucketSettled.current = true;
+      return;
+    }
+    if (!bucketSettled.current) return;
+    pendingBucketFocus.current = null;
+    bucketSettled.current = false;
+    const pressed = document.querySelector<HTMLButtonElement>(`[data-testid="audD-bucket-${code}"]`);
+    if (pressed) {
+      pressed.focus();
+      return;
+    }
+    document.querySelector<HTMLButtonElement>("[data-testid='audD-empty-clear']")?.focus();
+  }, [list.phase, eventType, typesOpen]);
+
   /** aud8: the address-borne filters are cleared the same way they arrive. */
   const clearUrlFilter = useCallback(
     (key: "actor" | "resource") => {
@@ -1072,7 +1120,17 @@ function AuditEventsSurface(): ReactNode {
         <span className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud5-export-count">将导出 {visibleRows.length} 条</span>
       </div>
 
-      <AuditTypeSummary open={typesOpen} onToggle={() => setTypesOpen((value) => !value)} groups={typeGroups} total={list.rows.length} />
+      {/* audD: the distribution is the filter. Picking a bucket writes the
+          type into the address (and asks once); picking the pressed one again
+          goes back to all types. */}
+      <AuditTypeSummary
+        open={typesOpen}
+        onToggle={() => setTypesOpen((value) => !value)}
+        groups={typeGroups}
+        total={visibleRows.length}
+        selected={eventType}
+        onPick={pickType}
+      />
 
       <AuditFilterBar
         windowChoice={windowChoice}
@@ -1261,6 +1319,22 @@ function AuditEventsSurface(): ReactNode {
               {/* audB: the empty answer carries its own way out, named for the
                   window that produced it. 清空区间 drops the custom range and
                   re-reads the 7-day quick window (once). */}
+              {eventType ? (
+                <p
+                  className="min-w-0 break-words text-xs text-muted-foreground"
+                  data-testid="audD-empty-exit"
+                >
+                  该条件下无事件——这个类型在当前的时间窗与页里没有记录。
+                  <button
+                    type="button"
+                    className="ml-1 underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                    onClick={() => setType("")}
+                    data-testid="audD-empty-clear"
+                  >
+                    清掉类型筛选，回到全部类型
+                  </button>
+                </p>
+              ) : null}
               <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="audB-empty-exit">
                 {windowChoice === "custom" ? "这一段里没有记录。" : "这一档里没有记录。"}
                 <button

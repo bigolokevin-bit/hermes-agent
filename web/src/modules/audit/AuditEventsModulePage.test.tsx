@@ -1996,3 +1996,264 @@ describe("audC - the copyable conclusion line", () => {
     expect(document.querySelector("[data-testid='aud02-detail']")).toBeNull();
   });
 });
+
+/**
+ * audD — 类型分布桶即筛选。断言的是：桶是真按钮（aria-pressed、键盘可触发、
+ * 焦点可见），点击写入地址的类型键并作为服务端的 action 发出、重取恰一次；
+ * 桶的计数与点完后的列表条数同源；与时间窗/操作者/资源组合时其它参数保留、
+ * 分页回到第 1 页；再点同一个桶回全量；该类型没记录时给「该条件下无事件」与
+ * 清出口；三档（加载中/有记录/空记录）各自的桶态都对。
+ */
+describe("audD - the type buckets filter the ledger", () => {
+  const ROW = (id: string, action: string, outcome = "succeeded") => ({
+    eventId: id,
+    action,
+    occurredAt: "2026-11-19T01:20:00Z",
+    outcome,
+    actor: { type: "system", id: "employee-api" },
+    resource: { type: "task", id: id.replace("evt_", "ts_") },
+    requestId: "req-" + id,
+  });
+  const MIXED = {
+    items: [
+      ROW("evt_a1", "task.created"),
+      ROW("evt_a2", "task.created"),
+      ROW("evt_a3", "task.created"),
+      ROW("evt_b1", "run.failed", "error"),
+    ],
+    nextCursor: "cur_page2",
+  };
+
+  /** A service that really filters: the count claim is only real against one. */
+  function filterByAction(source: { items: unknown[]; nextCursor?: string | null }): (url: string) => Promise<unknown> {
+    return async (url: string) => {
+      const asked = new URLSearchParams(url.split("?")[1] ?? "");
+      const action = asked.get("action");
+      const items = action
+        ? (source.items as { action: string }[]).filter((item) => item.action === action)
+        : [...source.items];
+      // a cursor is the second page: the same rows again, nothing more behind it
+      return { items, nextCursor: asked.get("cursor") || asked.get("action") ? null : source.nextCursor ?? null };
+    };
+  }
+
+  async function mountProbed(entry: string, handler?: (url: string) => Promise<unknown>): Promise<void> {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(handler ?? filterByAction(MIXED));
+    await render(
+      entry,
+      <>
+        <AuditEventsModulePage />
+        <LocationProbe />
+      </>,
+    );
+    await waitFor(() => !skeleton(), "first page settled");
+  }
+
+  const listReads = (): number => urls().filter((u) => /^\/agent-api\/api\/audit\?/.test(u)).length;
+  const bucketCount = (code: string): number =>
+    Number(
+      document
+        .querySelector(`[data-testid='audD-bucket-${code}']`)
+        ?.closest("li")
+        ?.querySelector("[data-testid='aud7-types-count']")?.textContent ?? "-1",
+    );
+  const rowCount = (): number => document.querySelectorAll("[data-testid^='aud01-row-evt_']").length;
+
+  async function expand(): Promise<void> {
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud7-types-toggle']")?.click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='aud7-types-panel']") !== null, "panel open");
+  }
+
+  async function pick(code: string): Promise<void> {
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>(`[data-testid='audD-bucket-${code}']`)?.click();
+    });
+    await waitFor(() => locationText().includes("type="), "type written to the address");
+  }
+
+  it("a bucket is a real pressed button that says how to use it", async () => {
+    await mountProbed("/audit?window=7d");
+    await expand();
+    const node = document.querySelector<HTMLButtonElement>("[data-testid='audD-bucket-task.created']")!;
+    expect(node.tagName).toBe("BUTTON");
+    expect(node.getAttribute("aria-pressed")).toBe("false");
+    expect(node.className).toContain("focus-visible:outline");
+    expect(document.querySelector("[data-testid='audD-filter-hint']")!.textContent).toContain("再点一次回到全部类型");
+    expect(bucketCount("task.created")).toBe(3);
+    // the hint sits with the panel, so a closed fold never hides the contract
+    expect(document.querySelector("[data-testid='aud7-types-toggle']")!.getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("picking a bucket filters for exactly one read and the count was the truth", async () => {
+    await mountProbed("/audit?window=7d");
+    await expand();
+    const counted = bucketCount("task.created");
+    const before = listReads();
+    await pick("task.created");
+    expect(listReads()).toBe(before + 1);
+    expect(locationText()).toContain("type=task.created");
+    expect(lastUrl()).toContain("action=task.created");
+    expect(rowCount()).toBe(counted);
+    expect(document.querySelector<HTMLButtonElement>("[data-testid='audD-bucket-task.created']")!.getAttribute("aria-pressed")).toBe("true");
+    expect(document.querySelector("[data-testid='aud01-status']")!.textContent).toContain("已显示 3 条");
+    // the distribution is counted from the loaded rows, so the type that is no
+    // longer on screen has no bucket any more — and the pressed one is the way
+    // back out (asserted in the next case).
+    expect(document.querySelectorAll("[data-testid^='audD-bucket-']")).toHaveLength(1);
+    expect(bucketCount("task.created")).toBe(3);
+  });
+
+  it("picking the pressed bucket again goes back to every type, once", async () => {
+    await mountProbed("/audit?window=7d&type=run.failed");
+    await expand();
+    expect(document.querySelector<HTMLButtonElement>("[data-testid='audD-bucket-run.failed']")!.getAttribute("aria-pressed")).toBe("true");
+    const before = listReads();
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='audD-bucket-run.failed']")?.click();
+    });
+    await waitFor(() => !locationText().includes("type="), "type dropped from the address");
+    expect(listReads()).toBe(before + 1);
+    expect(lastUrl()).not.toContain("action=");
+    expect(rowCount()).toBe(4);
+  });
+
+  it("Enter and Space on a bucket filter the same way a click does", async () => {
+    await mountProbed("/audit?window=7d");
+    await expand();
+    const node = document.querySelector<HTMLButtonElement>("[data-testid='audD-bucket-task.created']")!;
+    const before = listReads();
+    await act(async () => {
+      node.focus();
+      node.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+    });
+    await waitFor(() => locationText().includes("type=task.created"), "Enter picked the bucket");
+    expect(listReads()).toBe(before + 1);
+    await waitFor(
+      () => document.activeElement?.getAttribute("data-testid") === "audD-bucket-task.created",
+      "focus comes back to the pressed bucket",
+    );
+  });
+
+  it("Space picks without scrolling the page", async () => {
+    await mountProbed("/audit?window=7d");
+    await expand();
+    const node = document.querySelector<HTMLButtonElement>("[data-testid='audD-bucket-run.failed']")!;
+    const before = listReads();
+    await act(async () => {
+      node.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true }));
+    });
+    await waitFor(() => locationText().includes("type=run.failed"), "Space picked the bucket");
+    expect(listReads()).toBe(before + 1);
+    await waitFor(
+      () => document.activeElement?.getAttribute("data-testid") === "audD-bucket-run.failed",
+      "Space leaves the focus on the bucket it pressed",
+    );
+  });
+
+  it("a pick keeps the window, the operator and the resource, and starts the type on page 1", async () => {
+    await mountProbed("/audit?window=24h&actor=employee-api&resource=ts_a1");
+    await act(async () => {
+      (document.querySelector("[data-testid='aud01-load-more']") as HTMLButtonElement).click();
+    });
+    await waitFor(() => locationText().includes("cursor="), "page 2 in the address");
+    expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 2 页");
+    // picking a type is a new question: the paging stack must not carry over
+    const before = listReads();
+    await expand();
+    await pick("task.created");
+    expect(listReads()).toBe(before + 1);
+    const url = locationText();
+    expect(url).toContain("window=24h");
+    expect(url).toContain("actor=employee-api");
+    expect(url).toContain("resource=ts_a1");
+    expect(url).not.toContain("cursor=");
+    expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 1 页");
+    const asked = decodeURIComponent(lastUrl());
+    expect(asked).toContain("from=");
+    expect(asked).toContain("actorId=employee-api");
+    expect(asked).toContain("resourceId=ts_a1");
+    expect(asked).toContain("action=task.created");
+  });
+
+  it("a pasted or refreshed type address replays: bucket pressed, select filled, one read", async () => {
+    await mountProbed("/audit?window=7d&type=task.created");
+    expect(listReads()).toBe(1);
+    expect(lastUrl()).toContain("action=task.created");
+    expect(document.querySelector<HTMLInputElement>("[data-testid='aud01-filter-type']")!.value).toBe("task.created");
+    // the fold is collapsed by default, so open it to see the pressed state
+    await expand();
+    expect(document.querySelector<HTMLButtonElement>("[data-testid='audD-bucket-task.created']")!.getAttribute("aria-pressed")).toBe("true");
+    expect(rowCount()).toBe(3);
+    expect(document.querySelector("[data-testid='aud8-state-line']")!.textContent).toContain("类型：task.created");
+  });
+
+  it("a type the sampled choices never carried still shows which filter is on", async () => {
+    await mountProbed("/audit?window=7d&type=quantum.recalibration", async (url) => {
+      if (String(url).includes("action=quantum.recalibration")) return { items: [ROW("evt_c1", "quantum.recalibration")], nextCursor: null };
+      return { items: [], nextCursor: null };
+    });
+    expect(document.querySelector<HTMLInputElement>("[data-testid='aud01-filter-type']")!.value).toBe("quantum.recalibration");
+    expect([...document.querySelectorAll<HTMLOptionElement>("[data-testid='aud01-filter-type'] option")].map((o) => o.text)).toContain(
+      "按地址带入的类型",
+    );
+  });
+
+  it("an empty answer for a picked type says 该条件下无事件 and clears back, once", async () => {
+    // the ledger shows run.failed on the mixed page, but asking for that type
+    // alone answers empty: the honest outcome is the empty leg with its exit
+    await mountProbed("/audit?window=7d", async (url) => {
+      const asked = new URLSearchParams(String(url).split("?")[1] ?? "");
+      if (asked.get("action") === "run.failed") return { items: [], nextCursor: null };
+      return { items: [...MIXED.items], nextCursor: null };
+    });
+    await expand();
+    await pick("run.failed");
+    await waitFor(() => document.querySelector("[data-testid='audD-empty-exit']") !== null, "the empty leg with its exit");
+    expect(document.querySelector("[data-testid='aud01-empty']")).not.toBeNull();
+    expect(text()).toContain("该条件下无事件");
+    const before = listReads();
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='audD-empty-clear']")?.click();
+    });
+    await waitFor(() => !locationText().includes("type="), "type cleared");
+    expect(listReads()).toBe(before + 1);
+    expect(rowCount()).toBe(4);
+    expect(document.querySelector("[data-testid='audD-empty-exit']")).toBeNull();
+  });
+
+  it("the three legs each get their own bucket state", async () => {
+    // loading: no buckets to press yet
+    let release: ((value: unknown) => void) | null = null;
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(
+      () => new Promise((resolve) => { release = resolve; }),
+    );
+    await render("/audit?window=7d", <AuditEventsModulePage />);
+    expect(document.querySelector("[data-testid='aud7-types']")).toBeNull();
+    expect(document.querySelector("[data-testid^='audD-bucket-']")).toBeNull();
+    await act(async () => {
+      release?.({ items: MIXED.items, nextCursor: null });
+    });
+    await waitFor(() => !skeleton(), "ready");
+    // ready: the section is there, collapsed, with nothing pressed
+    expect(document.querySelector("[data-testid='aud7-types']")).not.toBeNull();
+    expect(document.querySelector("[data-testid^='audD-bucket-']")).toBeNull();
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud7-types-toggle']")?.click();
+    });
+    const buckets = document.querySelectorAll("[data-testid^='audD-bucket-task'], [data-testid^='audD-bucket-run']");
+    expect(buckets).toHaveLength(2);
+    expect(document.querySelectorAll("[data-testid^='audD-bucket'][aria-pressed='true']")).toHaveLength(0);
+    // denied: no rows above the panel, and no buckets either
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockRejectedValue(
+      new ApiError("no", { status: 403, body: '{"code":"console.forbidden"}', url: "/agent-api/api/audit" }),
+    );
+    await render("/audit?window=7d", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud01-denied']") !== null, "denied");
+    expect(document.querySelector("[data-testid^='audD-bucket-']")).toBeNull();
+  });
+});
