@@ -349,3 +349,11 @@
   line-height: 1.45;
   overflow-wrap: anywhere;
 }
+
+/* cap-row-copy-<i> — one list row's plain-text projection (R128) */
+.cap-row-copy-wrap { display: inline-flex; min-width: 0; max-width: 100%; flex-wrap: wrap; align-items: center; gap: 6px; }
+.cap-row-copy-btn { display: inline-flex; align-items: center; margin-top: 0; white-space: nowrap; }
+.cap-row-copy-btn:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; }
+.cap-row-copy-result { display: inline-flex; min-width: 0; max-width: 100%; flex-wrap: wrap; align-items: center; gap: 6px; }
+.cap-row-copy-status { min-width: 0; color: var(--color-muted-foreground); font-size: 0.6875rem; overflow-wrap: anywhere; }
+.cap-row-copy-fallback { box-sizing: border-box; flex: 1 1 240px; min-width: 0; max-width: 100%; border: 1px solid var(--color-border); border-radius: 6px; padding: 4px 6px; color: var(--color-muted-foreground); font-size: 0.75rem; overflow-wrap: anywhere; }
