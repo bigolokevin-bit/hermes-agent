@@ -11,6 +11,8 @@ import { useMemo, useRef, useState, type ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
 import { Link } from "react-router";
 
+import { PermalinkCopy } from "./PermalinkCopy";
+
 import { Badge } from "@nous-research/ui/ui/components/badge";
 import { Button } from "@nous-research/ui/ui/components/button";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
@@ -287,6 +289,8 @@ export function ApprovalRowCard({
                 fallback="请求编号：该字段未返回"
               />
             </p>
+            {/* R88: 预览内也给出固定链接（同一条审批的直达地址）。 */}
+            <PermalinkCopy target={row.rawId ?? null} />
           </div>
         ) : null}
 
@@ -476,7 +480,8 @@ export function DecisionTrail({ detail }: { detail: ApprovalDetail }): ReactNode
         >
           复制为纯文本
         </Button>
-        <span data-testid="apd8-copy-status" aria-live="polite" className="text-muted-foreground">
+        {/* R88: 动作反馈走 role=status（隐式 polite），显式 aria-live 播报位保持单点（R86 契约）。 */}
+        <span data-testid="apd8-copy-status" role="status" className="text-muted-foreground">
           {copyState === "done"
             ? "已复制"
             : copyState === "failed"

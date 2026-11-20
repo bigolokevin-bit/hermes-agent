@@ -762,3 +762,33 @@ describe("R83 pending risk rail (apv-risk-*)", () => {
     expect(qa("apv-risk-scope-note")?.textContent).toContain("不是全量");
   });
 });
+
+describe("R88 pending permalink (apd10-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+
+  it("the pending tab copies a tab-preserving permalink for the opened ticket", async () => {
+    await mount(queue(), "/approvals?tab=pending");
+    await waitFor(() => !!qa("apr5-row-ap_9F3A1111"), "row");
+    await act(async () => {
+      qa("apr5-row-ap_9F3A1111")!.click();
+    });
+    await waitFor(() => !!qa("apd10-permalink"), "button");
+    const written: string[] = [];
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async (t: string) => {
+          written.push(t);
+        },
+      },
+    });
+    const before = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      (qa("apd10-permalink") as HTMLButtonElement).click();
+    });
+    await act(async () => {});
+    expect(written[0]).toBe("/approvals?tab=pending&id=ap_9F3A1111");
+    expect(qa("apd10-status")?.textContent).toContain("链接已复制");
+    expect(api.fetchJSON.mock.calls.length, "copy never fetches").toBe(before);
+  });
+});

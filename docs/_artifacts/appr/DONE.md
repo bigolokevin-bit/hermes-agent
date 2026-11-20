@@ -1187,3 +1187,12 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 三态核对（现状即符合，未改，工单「若不符即修」不触发）：money()=真 0→$0.00 / null/undefined/非有限→「—」（L100-103）；day 缺行（missingEmployeeIds 实证）cost=null→「—」+costTitle 原因；month costUsd:0→「$0.00」；未知不显示 0。用例逐字锁 $0.00/— 两值。
 - 零额外请求=caliber 为静态行（既有 usage 四腿计数契约不变，R45-P0 用例在位）。测试 1 新用例（ready 三值+双源短语断言）：定向 employee-detail 53 passed（52+1）；tsc 两域 0 红；assert-ia 两模式 exit0；全量 **159 files/2185 passed**（基线 2184+1）。
 - 零破：ed10-usage-* 既有 testid 零改（新行独立 testid）；ed1/ed5/ed7/ed8/ed9/ed10/edz/edx/apd*/apv*/apr5/emp-list*（既有全绿为证）；三档=p 块文本流自然换行零布局影响（形态学报）；9122==9813d7af 禁重建，活体读数待并入后代次。
+
+## R88 审批详情固定链接复制（apd10-*，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @6508c2b5（HEAD ee64b4f0 仅 gateway，代码代次 9813d7af/章面 0c1b94c3），toplevel ✓ porc=0；重发三件套 grep apd10=0=全新单。
+- 实现：①新 PermalinkCopy.tsx（props target:string|null）=useLocation 拼 pathname+URLSearchParams(location.search).set("id",target)——tab/status/q/actor/asort/adir/since/risk 八参经 URLSearchParams 原样保留+打开项 id；Button apd10-permalink（disabled=link===null，title 两态「先打开一条审批再复制」/「复制这条审批的固定链接：保留当前页签/筛选/搜索/排序参数，粘链直达并打开详情；只读拼接，不产生二次请求。」）；反馈 span apd10-status=**role=status 无显式 aria-live**（R86 单播报器契约：显式 [aria-live=polite] 全页仅 apv-live 一个；隐式 polite 等效，DONE 记录此裁决）；done=「链接已复制」；剪贴板缺失/拒→apd10-fallback 只读 textarea（value=目标链接逐字相同，onFocus select）。②三挂载：行内预览 apv9-preview 尾（target=row.rawId??null）+两页 aside 详情（target=selected）。③顺带统一 R61 遗留：apd8-copy-status 显式 aria-live=polite→role=status（否则详情打开态出现第二个显式播报器=R88 首 FAIL 根因；R61 用例只断 textContent 零破）。
+- 粘贴复现读数（用例锁逐字）：history 带筛选打开 ap_p10 → written[0]=「/approvals?tab=history&status=pending&q=zz&id=ap_p10」→ mount(written[0]) → apr5-detail 直开含 rotate.secret；pending=「/approvals?tab=pending&id=ap_9F3A1111」。零二次请求=fetchJSON 计数前后锁（拼链只读 location）。
+- 测试 history 4+pending 1：aside 钮逐字+status+无 fallback+计数不变+[aria-live=polite]===1+粘贴复现；未打开 disabled+title；reject→fallback readOnly 逐字；预览内钮 written 含 id+计数不变；pending 同款。坑=entry 带 q=zz 时 apv8 本地过滤会滤掉字段不含 zz 的夹具行→waitFor 超时，夹具 reasonText 须可命中。
+- 验证：定向 approvals 4 files/**142 passed**（137+5）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **159 files/2190 passed**（基线 2185+5）。
+- 零破：apv5–9/apd6/apd7/apd8/apd9/apr5/state/sort/export/toggle/live 族（既有用例全绿为证）；三档=aside flex 与预览 min-w-0 既有形态学报（jsdom 不可测）；9122==9813d7af 禁重建，活体粘链读数待并入后代次。

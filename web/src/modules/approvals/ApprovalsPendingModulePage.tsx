@@ -33,6 +33,7 @@ import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel } from
 import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
 import { actionGates, announcement } from "./gates";
 import { QueueSummaryBar } from "./QueueSummaryBar";
+import { PermalinkCopy } from "./PermalinkCopy";
 import { BackToList, restoreListScroll, saveListScroll } from "./BackToList";
 import { QueueCsvExport } from "./QueueCsvExport";
 import { QueueSortBar } from "./QueueSortBar";
@@ -581,6 +582,7 @@ export function ApprovalsPendingModulePage(): ReactNode {
 
         <aside className="flex min-w-0 flex-col gap-3 lg:sticky lg:top-4 lg:self-start" aria-label="申请详情">
           {selected ? <BackToList onBack={backToList} /> : null}
+          <PermalinkCopy target={selected} />
           {drawer}
         </aside>
       </div>

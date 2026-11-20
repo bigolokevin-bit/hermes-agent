@@ -2229,3 +2229,103 @@ describe("R86 status announcements (apv-live)", () => {
     expect(qa("apv-live")?.getAttribute("role")).toBe("status");
   });
 });
+
+describe("R88 permalink copy (apd10-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+  const P10 = { approvalId: "ap_p10", title: "rotate.secret", status: "pending", reasonText: "zz 轮换说明", createdAt: "2026-11-19T01:00:00Z", approvers: [{ userId: "human:7", name: "郑涛" }], decisions: [] };
+  const handler = async (url: string) => {
+    if (String(url).includes("/api/approval?id=")) return P10;
+    return { items: [P10] };
+  };
+  const stubClipboard = (impl?: (t: string) => Promise<void>) => {
+    const written: string[] = [];
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: impl
+          ? impl
+          : async (t: string) => {
+              written.push(t);
+            },
+      },
+    });
+    return written;
+  };
+  const openDetail = async () => {
+    await waitFor(() => !!qa("apr5-row-ap_p10"), "row");
+    await act(async () => {
+      qa("apr5-row-ap_p10")!.click();
+    });
+    await waitFor(() => !!qa("apr5-detail"), "detail open");
+  };
+
+  it("copies the current URL plus the opened id, and the pasted link reopens the same detail", async () => {
+    await mount(handler, "/approvals?tab=history&status=pending&q=zz");
+    await openDetail();
+    const before = api.fetchJSON.mock.calls.length;
+    const written = stubClipboard();
+    const btn = qa("apd10-permalink") as HTMLButtonElement | null;
+    expect(btn, "aside permalink button").toBeTruthy();
+    expect(btn!.disabled).toBe(false);
+    await act(async () => {
+      btn!.click();
+    });
+    await act(async () => {});
+    expect(written, "one write").toHaveLength(1);
+    expect(written[0]).toBe("/approvals?tab=history&status=pending&q=zz&id=ap_p10");
+    expect(qa("apd10-status")?.textContent).toContain("链接已复制");
+    expect(qa("apd10-fallback"), "no fallback on success").toBeNull();
+    expect(api.fetchJSON.mock.calls.length, "copying never fetches").toBe(before);
+    // R86 contract holds: apd10 feedback is role=status, the explicit announcer stays single
+    expect(document.querySelectorAll('[aria-live="polite"]').length).toBe(1);
+    // 粘贴复现：拿复制到的地址重开，详情直达同一条
+    await mount(handler, written[0]);
+    await waitFor(() => !!qa("apr5-detail"), "pasted link opens the same detail");
+    expect(qa("apr5-detail")?.textContent).toContain("rotate.secret");
+  });
+
+  it("without an opened ticket the button is disabled with the stated reason", async () => {
+    await mount(handler, "/approvals?tab=history");
+    await waitFor(() => !!qa("apr5-row-ap_p10"), "row");
+    const btn = qa("apd10-permalink") as HTMLButtonElement | null;
+    expect(btn, "button present in the empty aside").toBeTruthy();
+    expect(btn!.disabled).toBe(true);
+    expect(btn!.title).toContain("先打开一条审批再复制");
+    expect(qa("apd10-fallback")).toBeNull();
+  });
+
+  it("a refused clipboard falls back to a textarea with the exact link", async () => {
+    await mount(handler, "/approvals?tab=history&id=ap_p10");
+    await openDetail();
+    stubClipboard(async () => {
+      throw new Error("denied");
+    });
+    await act(async () => {
+      (qa("apd10-permalink") as HTMLButtonElement).click();
+    });
+    await act(async () => {});
+    expect(qa("apd10-status")?.textContent).toContain("手动复制");
+    const area = qa("apd10-fallback") as HTMLTextAreaElement | null;
+    expect(area, "fallback textarea").toBeTruthy();
+    expect(area!.readOnly).toBe(true);
+    expect(area!.value).toBe("/approvals?tab=history&id=ap_p10");
+  });
+
+  it("the inline preview offers the same permalink for its row without extra requests", async () => {
+    await mount(handler, "/approvals?tab=history");
+    await waitFor(() => !!qa("apr5-row-ap_p10"), "row");
+    await act(async () => {
+      (qa("apv9-toggle-ap_p10") as HTMLButtonElement).click();
+    });
+    const inPreview = qa("apv9-preview-ap_p10")?.querySelector('[data-testid="apd10-permalink"]') as HTMLButtonElement | null;
+    expect(inPreview, "permalink inside the preview region").toBeTruthy();
+    const before = api.fetchJSON.mock.calls.length;
+    const written = stubClipboard();
+    await act(async () => {
+      inPreview!.click();
+    });
+    await act(async () => {});
+    expect(written[0]).toContain("id=ap_p10");
+    expect(api.fetchJSON.mock.calls.length, "preview copy never fetches").toBe(before);
+  });
+});
