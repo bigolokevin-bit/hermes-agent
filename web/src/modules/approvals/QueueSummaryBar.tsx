@@ -7,6 +7,10 @@
  * reason in its title — never a fake 0. Clicking a status count lands on the
  * existing `?status=` filter (history pane consumes it), so refresh and a
  * shared copy reproduce the view.
+ *
+ * P0-③: `detail` lets a pane fold its own 「已显示 …」 reading line into this
+ * bar so the screen carries ONE summary instead of two competing counts.
+ * It is plain text, never a second live region (R86 keeps 播报 single).
  */
 import { Link } from "react-router";
 
@@ -42,6 +46,7 @@ export function QueueSummaryBar({
   rows,
   scope,
   singleStatus = null,
+  detail = null,
 }: {
   phase: Phase;
   rows: readonly ApprovalRow[];
@@ -49,6 +54,8 @@ export function QueueSummaryBar({
   scope: "queue" | "history";
   /** 历史视图当前生效的单一状态（null=全部）；其余状态桶因此不同源而显「—」。 */
   singleStatus?: string | null;
+  /** 本页自有的读数句（含「下面还有更多」/「关键字过滤中」提示）；null=不渲染。 */
+  detail?: string | null;
 }) {
   const down = unavailable(phase);
   return (
@@ -112,6 +119,11 @@ export function QueueSummaryBar({
           </span>
         );
       })}
+      {detail ? (
+        <span className="min-w-0 break-words text-muted-foreground" data-testid="apv6-summary-detail">
+          {detail}
+        </span>
+      ) : null}
     </div>
   );
 }

@@ -50,6 +50,19 @@ const mount = async (handler: (url: string, init?: RequestInit) => Promise<unkno
   await waitFor(() => !document.querySelector(".animate-pulse"), "initial load settled");
 };
 
+/** P0-③: 筛选控件默认收起。行为契约＝「默认折叠，展开后全部可达」，所以
+ *  碰面板里的控件（搜索/审批人/时间/风险/status 口径句）前要先点开；
+ *  折叠态本就常显的读数（汇总条、chips、重置钮）不需要展开。 */
+const openFilters = async (): Promise<void> => {
+  const toggle = document.querySelector('[data-testid="apv-filter-toggle"]') as HTMLButtonElement | null;
+  expect(toggle, "filter disclosure present").toBeTruthy();
+  if (toggle!.getAttribute("aria-expanded") === "true") return;
+  await act(async () => {
+    toggle!.click();
+  });
+  await waitFor(() => toggle!.getAttribute("aria-expanded") === "true", "filter panel opened");
+};
+
 const text = (): string => document.body.textContent ?? "";
 const urls = (): string[] => api.fetchJSON.mock.calls.map((call) => String(call[0]));
 const buttonNamed = (label: string): HTMLButtonElement | undefined =>
@@ -557,6 +570,7 @@ describe("paging", () => {
 describe("R59 pending queue search (apv8-*)", () => {
   it("carries the same local search box with a stated scope and no extra fetches", async () => {
     await mount(queue(), "/approvals?tab=pending");
+    await openFilters();
     expect(document.querySelector('[data-testid="apv8-search"]')).toBeTruthy();
     expect(document.querySelector('[data-testid="apv8-scope-note"]')?.textContent).toContain("条内搜索");
     const box = document.querySelector('[data-testid="apv8-search"]') as HTMLInputElement;
@@ -696,6 +710,7 @@ describe("R74 pending actor buckets (apv-actor-*)", () => {
 
   it("the pending tab carries the same rail: local filter, zero new requests", async () => {
     await mount(queue(), "/approvals?tab=pending");
+    await openFilters();
     await waitFor(() => !!qa("apv-actor-buckets"), "rail");
     expect(qa("apv-actor-scope-note")?.textContent).toContain("不是全量");
     const before = api.fetchJSON.mock.calls.length;
@@ -720,6 +735,7 @@ describe("R77 pending time range (apv-since-*)", () => {
 
   it("the pending tab carries the same rail with zero new requests", async () => {
     await mount(queue(), "/approvals?tab=pending");
+    await openFilters();
     await waitFor(() => !!qa("apv-since-rail"), "rail");
     const before = api.fetchJSON.mock.calls.length;
     await act(async () => {
@@ -753,6 +769,7 @@ describe("R83 pending risk rail (apv-risk-*)", () => {
 
   it("the pending tab carries the same rail with zero new requests", async () => {
     await mount(queue(), "/approvals?tab=pending");
+    await openFilters();
     await waitFor(() => !!qa("apv-risk-rail"), "rail");
     const before = api.fetchJSON.mock.calls.length;
     await act(async () => {
@@ -833,6 +850,16 @@ describe("R91 pending filter chips (apv-chip-*)", () => {
   });
 });
 
+describe("P0-③ filter disclosure (apv-filter-toggle)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+
+  it("stays collapsed by default while the active-condition summary keeps reading the URL", async () => {
+    await mount(queue(), "/approvals?tab=pending&risk=high");
+    expect(qa("apv-filter-toggle")?.getAttribute("aria-expanded"), "collapsed by default").toBe("false");
+    expect(qa("apv-filter-summary")?.textContent, "折叠态的生效条件读数").toContain("风险：高风险");
+  });
+});
+
 describe("R94 pending correlation return", () => {
   const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
 
@@ -843,6 +870,7 @@ describe("R94 pending correlation return", () => {
     const scrolled = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
     await mount(queue(), "/approvals?tab=pending");
     await waitFor(() => !!qa("apd5-detail"), "detail reopened");
+    await openFilters();
     expect(qa("apv8-search")?.getAttribute("value")).toBe("本周");
     expect(scrolled.mock.calls.some((c) => c[1] === 321)).toBe(true);
     expect(rawCorrelationReturn()).toBeNull();
@@ -854,6 +882,7 @@ describe("R93 pending tab status semantics (apv-status-note)", () => {
 
   it("a pasted ?status= is dropped from the address and the note explains where it applies", async () => {
     await mount(queue(), "/approvals?tab=pending&status=expired");
+    await openFilters();
     await waitFor(() => !!qa("apv-status-note"), "note");
     expect(qa("apv-status-note")?.textContent).toContain("待办视图只列待办");
     expect(qa("apv-status-note")?.getAttribute("title")).toContain("pending");
@@ -867,6 +896,7 @@ describe("R93 pending tab status semantics (apv-status-note)", () => {
 
   it("a clean pending entry keeps the note and touches nothing extra", async () => {
     await mount(queue(), "/approvals?tab=pending");
+    await openFilters();
     await waitFor(() => !!qa("apv-status-note"), "note resident");
     expect(qa("apv-chip-status")).toBeNull();
     const listUrls = api.fetchJSON.mock.calls.map((c) => String(c[0])).filter((u) => u.includes("/api/approvals"));
