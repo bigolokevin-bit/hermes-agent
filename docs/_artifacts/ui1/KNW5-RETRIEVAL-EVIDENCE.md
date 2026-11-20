@@ -5285,3 +5285,51 @@ kn-type*/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort*/kn-gates/kn7-preview*/导出
 ```
 未测如实：带登录会话真屏；映射表全量 MIME 族（image/png 与 application/* 两代表已锁，
 其余映射键同源单点）；1023 这类「未达进位」人话与裸字节之界由⑤注释钉义。
+
+# KNW5 追加 R228：类型筛选跨面互不污染/非法双路/旧键共存换桶（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `1ee16b61`、
+基线先跑 44/211（R227 后最新）全绿 Errors 0、目标文件确认缺席再动笔。零产品文件改动。
+新增 knowledge.filters.cross.test.tsx 三例（本体）。
+
+## 名实与查重（引用不重写）
+
+```text
+无 ?source= 控件（source 仅空间行列标签）——未造控件；类型真实键 ktype（人话桶名），
+旧 type 只读兜底、清除双删（KnowledgeModulePage :3549-3551/:3660-3670 实读）。
+全局列表=kn6-search 面（行钮 kn-row-copy-<i>，q 本地过滤文件名）；空间详情=
+?space= 查询态（kn3-docs/kn-type-*/-space- 钮族）；仅详情面有 knE-page-*。读口不吃
+q/ktype：本地动作零请求实测（c0→c0）；documents 密钥集 {limit,spaceId} 引 R164①:142
+不重写。引用：R118①②④（回填/一键保余参/单路非法不改写）、R146:111-119（双键共存
+回填+both-keys 起链双删）、R157③④（非法 ktype 空态/cap 不渲染）、R164、R176②⑤
+（churn 下命中面 data-len 计数不串面）、R213/R218。
+新增维（点名）：① churn 下命中面**内容级**三快照逐字（行名数组+钮 id 序列+同一钮
+复制文本重取互等——R176 只锁计数）；② 非法值**双路**（ktype=紫皮蒜桶 vs type=紫皮蒜桶）
+同帧：两路 loc 逐字保留、kn3-docs+kn-type-empty+kn6-search 三锚同帧、kn-row-copy*
+**两族**钮 0、两路空态句 toBe 互等（R118④ 单路单面）；③ **旧单键起链换桶**：
+type=PDF 无 ktype → 点「表格」→ type 残留逐字+ktype 新写+行集随 ktype 优先链+余键
+（含 type=PDF）逐字不动，回全部双删后余键恰 tab/panel/space/q（R146 只测双键起链；
+单键起链写路径旧键残留态首次入锁）+ 面貌差异：type/ktype 全程不触检索面行名。
+```
+
+## 三例读数与验证尾行（R228）
+
+```text
+① ktype=PDF 详情面 [人事手册.pdf, 运维手册.pdf]；命中面 [人事手册.pdf, 人事表.xlsx]、
+  钮 [0,1]、row0 复制文本切桶前后逐字互等；切「表格」后 ktype=表格、余键快照等、
+  详情面换集 [人事表.xlsx]、urls c0→c0。② 双路 loc 均逐字保留（replace 对合成立）、
+  kn-type-empty 在场且两路句 toBe 等、kn6-search 锚 0 命中帧仍渲染、两族钮 0/0、
+  详情行 []。③ type=PDF 兜底回填详情 2 行/命中面 2 行不变；换桶后 type=PDF 残留 +
+  ktype=表格 + 行集 [人事表.xlsx] + locExcept(ktype) 逐字等；全部双删后两键 null、
+  余键恰 tab/panel/space/q、行集全量 3、urls c0→c0。
+$ npx vitest run src/modules/knowledge → 45 files / 214 tests passed（211+3），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0；build /tmp/knw-r228-dist exit 0
+$ 全仓 → 345 files / 3164 passed 全绿（无豁免、无已知红需点名）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort*/kn-gates/kn-row-copy*/
+kn-row-copy-space*/kn-doc-copy*/kn3-page-cap/knE-page-*/kn-type*/kn7-preview*/导出
+absent 标记 + 既有 44 套全绿。过程自纠一处（③ 期望串 q= 前缀笔误，产品侧零失败轮）。
+```
+未测如实：带登录会话真屏；检索面自身无类型桶控件（名实注记，跨面对齐不可测处按实记录）；
+非法枚举下 knE-page-more 交互（cap 不渲染已由 R157 锁）；双路互等仅锁同夹具同 q 态。
