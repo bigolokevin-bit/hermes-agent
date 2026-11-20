@@ -57,3 +57,12 @@
 2. `PendingCard` 原来在计数缺失（读口失败）时仍说「今天没有待你审批的事」；改为「审批数量没有读出来：<原因>。不当成 0，也不当作空队列。」并用 `ApprovalStatsBody.reason`。
 
 另加 `CopyRid`（`ov6-rid-copy`）：失败卡请求编号可一键复制，`copyTextToClipboard` 成功后按钮显示「已复制」。
+
+## workbench/agents 评估：可上岗卡不换源（2026-11-20）
+
+- 现查：`DutyPage.tsx` 的 `ReadinessCard` 只吃两个读口——`/api/employees?limit=100`（逐行 `employeeId/name/lifecycleState/ownerUserId`）与 `/api/employee-stats`（`byLifecycle.{active,paused,offboarding}` 聚合）。`buildReadiness` 用 `lifecycleTotal` 做分母、`ownerUserId` 推 V6；V1–V3 本就是 unknown。
+- `workbench/agents` 实测字段（BFF `server.py` 2366–2396）：`items[{id,name,type,owner,dept,status,lifecycle,lastActive,todayRequests,todayTokens,todayCost}]`、`total`、`available`、`degraded`、顶层 `asOf`。
+- 结论：**覆盖不全，按派工走 ②，不硬换**。缺：①`byLifecycle` 聚合计数（agents 只有逐行 `lifecycleState`，无 active/paused/offboarding 汇总）；②分页之外的完整名单（`page_size` 默认 12，`nextCursor` 非空时 `total=null`，不能跨页求和）；③逐行 `today*` 恒 null（BFF 明写无 per-agent 运行/成本口径）。`owner` 可映射 `ownerUserId`，但只解决 V6 一项，不足以替代分母。
+- 落地：`HCard` 新增 `hint` 属性（仅 `title` 提示，不上屏），可上岗卡写「workbench/agents 缺 byLifecycle 聚合计数…本卡仍取员工目录 + 员工统计，换成该读口会丢掉总分母，故不换」；`ov6-*` testid 全未改。
+- 测试（`duty.caliber.test.ts` 新增 2 例，共 62）：①卡片只打 `/employees` + `/employee-stats`，`/workbench/agents` 零调用，`ov6-ready` 的 title 含「workbench/agents 缺」「本卡仍取」，`data-fixture` 与「样例」零命中；②`/employee-stats` 500（rid `req-ready`）只坏本卡且可重试，今日运行仍 2、待审仍 1。
+- 未测：`workbench/agents` 200 实例体（cookie 过期，按 BFF 源码形状评估）；375/1440 未实机。

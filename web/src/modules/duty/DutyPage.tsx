@@ -124,12 +124,15 @@ function HCard({
   children,
   testid,
   stamp,
+  hint,
 }: {
   title: string;
   meta?: ReactNode;
   action?: ReactNode;
   children: ReactNode;
   testid: string;
+  /** Long explanation for the card frame; tooltip only, never visible copy. */
+  hint?: string;
   stamp?: { shown: string | null; source: string; reason?: string };
 }) {
   return (
@@ -138,6 +141,7 @@ function HCard({
       data-card="duty"
       data-testid={testid.replace(/^duty-/, "ov6-")}
       data-duty-testid={testid}
+      title={hint}
     >
       <CardContent className="duty-card-bd">
         <div className="duty-card-hd">
@@ -264,7 +268,13 @@ function ReadinessCard({ employees, stats, onRetry }: { employees: Loadable<Empl
   );
   const state = employees.k === "error" ? employees : stats.k === "error" ? stats : employees;
   return (
-    <HCard title="可上岗" meta="各项检查全部通过才计入" testid="duty-ready" stamp={stampOf(rawStamp, "员工目录与运行统计", [employees, stats])}>
+    <HCard
+      title="可上岗"
+      meta="各项检查全部通过才计入"
+      testid="duty-ready"
+      stamp={stampOf(rawStamp, "员工目录与运行统计", [employees, stats])}
+      hint="workbench/agents 缺 byLifecycle 聚合计数（active/paused/offboarding）、缺分页之外的完整名单（翻页时 total 为 null），逐行 today* 也恒为 null；本卡仍取员工目录 + 员工统计，换成该读口会丢掉总分母，故不换。"
+    >
       <StateLine state={state} onRetry={onRetry} loadingText="正在汇总各项检查…">
         <p className="duty-num" data-testid="ov6-ready-value" data-duty-testid="duty-ready-value">
           <span data-testid="ov6-kpi-employees" data-duty-testid="duty-kpi-employees">

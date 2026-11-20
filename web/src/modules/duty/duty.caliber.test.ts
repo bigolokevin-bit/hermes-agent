@@ -255,3 +255,38 @@ describe("duty caliber — one failed read breaks one card", () => {
     expect(clip.copyTextToClipboard).toHaveBeenCalledWith("req-duty-500");
   });
 });
+describe("duty caliber — staff card source decision (workbench/agents)", () => {
+  it("keeps the two real employee reads and says why agents does not replace them", async () => {
+    fetchJSON.mockImplementation((url: string) => Promise.resolve(body(url)));
+    await render(createElement(DutyPage));
+    const urls = seen();
+    expect(urls.some((u) => u.includes("/employee-stats"))).toBe(true);
+    expect(urls.some((u) => u.includes("/employees"))).toBe(true);
+    // The card stays on the two sources that carry the lifecycle totals.
+    expect(urls.some((u) => u.includes("/workbench/agents"))).toBe(false);
+    const card = container.querySelector('[data-testid="ov6-ready"]');
+    const hint = card?.getAttribute("title") ?? "";
+    expect(hint).toContain("workbench/agents 缺");
+    expect(hint).toContain("本卡仍取");
+    expect(container.querySelector("[data-fixture]")).toBeNull();
+    expect(container.textContent ?? "").not.toContain("样例");
+  });
+
+  it("breaks only the readiness card when the employee stats leg fails", async () => {
+    fetchJSON.mockImplementation((url: string) => {
+      if (url.includes("/employee-stats")) {
+        return Promise.reject(
+          new ApiError("boom", { status: 500, body: "", url, requestId: "req-ready" }),
+        );
+      }
+      return Promise.resolve(body(url));
+    });
+    await render(createElement(DutyPage));
+    const ready = container.querySelector('[data-testid="ov6-ready"]');
+    expect(ready?.textContent ?? "").toContain("请求编号 req-ready");
+    expect(ready?.textContent ?? "").toContain("重试");
+    // Other cards keep their own real numbers from this batch.
+    expect(container.querySelector('[data-testid="ov6-today-runs"]')?.textContent).toContain("2");
+    expect(container.querySelector('[data-testid="ov6-kpi-pending"]')?.textContent).toContain("1");
+  });
+});
