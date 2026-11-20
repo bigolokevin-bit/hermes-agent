@@ -4712,3 +4712,44 @@ kn-doc-copy*/kn-doc-preview*/kn-space-preview*/kn3-page-cap/knE-page-*/kn7-previ
 ```
 未测如实：带登录会话真实空态屏；knF-lines 在「筛后 0 行」与「读回 0 行」两变体只测后者
 （前者族由 R142② 行钮侧锁过）。
+
+# KNW5 追加 R216：空间详情翻页三值同源护栏 —— evidence-only（四腿全被既有套件锁死）（2026-11-21 BJT）
+
+安全门：porcelain 空起做（HEAD 即 R215 `2683944a` 链）、显式 refspec fetch 后 merge 实测
+tip 即预期 `024bb79e`（Already up to date——R215 时已并入）。本轮走派工明示的
+evidence-only 合法通道：不建 knowledge.space.paging2.test.tsx、零产品改动、只本证据一节。
+
+## 四腿逐条查重结论（file:line，均实测核对）
+
+```text
+① 详情面翻页后三值/五读同源 —— 已锁 R197①（knowledge.counts.paging.test.tsx:138-155）：
+   翻页后 knE-page-count 逐字「已显示 3 篇 · 总数不可用」、可见行 3==data-len "3"==
+   行钮 3==cap 句 M "3"（capM 正则 :97 从「当前已加载 (\d+) 篇」取可变位；50 常量位
+   整句互等锁在 R131②:143-144）、钮 id 跨页连续 [space-0, space-1, space-2]（indexBase，
+   :149）、第五读 knF 数据行数 :153 且逐行==行名 :155。名实换算照旧：kn-space-page-cap
+   不存在（R187 测过缺席）→ 实名 kn3-page-cap；「导出数据行数」= knF-copy（R142/R190 先例）。
+② 切类型归 1 页/不带旧 cursor/行替换 —— 已锁 R131①（knowledge.paging.test.tsx:115-125：
+   「已显示 2 篇 · 总数不可用」、d_c 按标识出局、cursor= 全程恰 1 无重放）+ R197②（复位
+   重算 [2,2,"2","2]）。→ 引用。
+③ 末页提示与 M 一致 + more disabled —— 已锁 R131②（paging:136-144：disabled=true、
+   文案「已到末页」、cap M==count 读数 toBe 互等）+ R152③（两态 title 逐字）。→ 引用。
+④ 第 2 页 500 保旧行 + rid + 重试恰 +1 + 成功三值同步 —— 已锁 R131③（paging:148-163：
+   rid-r131-500、added 恰 [P2URL]、成功并入行身份）+ R197④（counts.paging:窗口期四读
+   [2,2,"2","2"] 不塌、成功后 [3,3,"3","3] 跃迁 + 钮链三连）。→ 引用。
+判定：四腿无一残留，为凑文件名铺重复断言违反查重纪律 → evidence-only。
+```
+
+## 验证尾行（R216，evidence-only）
+```text
+$ npx vitest run src/modules/knowledge   → 33 files / 172 tests passed（基线不降 = 通过口径），尾行无 Errors
+$ npx vitest run                         → 300+ files / 3019 passed 全绿（0 Errors，无豁免）
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r216-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：本轮零代码改动，既有 33 套与全清单原样绿。
+```
+未测如实：无新增项；既有个案的带会话真屏照旧登记于各轮。
+边界：只改 docs/_artifacts/ui1/KNW5-RETRIEVAL-EVIDENCE.md 一个文件；显式路径 add；
+无 force/amend/--no-verify/git add -A；单 commit
+「test(console): knowledge space paging value guards」（evidence-only 实质，message 照派工）。
