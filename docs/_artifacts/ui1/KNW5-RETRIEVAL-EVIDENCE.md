@@ -4806,3 +4806,52 @@ kn-gates/kn3-page-cap 与既有 34 套全绿。
 边界：只新增 web/src/modules/knowledge/knowledge.preview.detail.test.tsx 与本证据；
 显式路径 add；无 force/amend/--no-verify/git add -A；单 commit
 「test(console): knowledge preview detail parity guards」。
+
+# KNW5 追加 R218：筛选 × 计数同源护栏（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：从调度方 merge 后状态起做（HEAD `65882219` wave-60、porcelain 空、目标文件
+确认不存在），基线先跑 35/180 全绿再动笔。零产品文件改动（无新缺陷）。
+新增 knowledge.filters.counts.test.tsx 四例（本体，非 docs-only）。
+
+## 名实四处换算（派工口径全部照落）
+
+```text
+1) ?source= 无控件 → 叠加 = ktype（旧 type 兜底、清除双删）× ?q= × 本地名筛。
+2) 计数锚分面：检索面 kn9-count-docs(HitCount)+kn-row-copy-<i>；详情面 kn3-page-cap+
+   kn-row-copy-space-<i>——两腿各自同帧，未跨面互等。
+3) 「清空 type 恰 1 次取数」实测 **0 次**（读口不吃 ktype）：③ 按 0 断言（urls 快照
+   c0 相等 + 全程无 cursor=），未制造请求，差异在此与回执点名。
+4) 「切 source chip 不动」改测：切桶后 q/ksort/kdir/space/tab/panel 逐字（③当态复跑，
+   引 R118②）；非法两路地址逐字 + 空态不显裸 0 + cap 不渲染（④）。
+```
+
+## 四例读数与新增维（已锁维度只引用：R169①/R157③④/R146①/R118②/R142②/R138/R190④/R197）
+
+```text
+① 新增维=检索面命中态数值链：HitCount 抽「命中 2 项」之 2 == data-len == 可见行 ==
+  命中钮数（四者 toBe；此前只有未筛态四值与文案子串）；no-match 三值同 0、句「没有匹配
+  的文档」在场、全文无裸「0 条/0 篇」、q 全程一次读取。
+② 新增维=详情面 ktype 深链态（非点击态）同帧五值 2==2=="2"==2==cap 整句逐字「本页最多
+  显示 50 篇（当前已加载 2 篇；复制清单也只含这些篇）」+ -more 不在场 + 钮 [0,1] 重编号。
+③ 清桶零新请求 + URL ktype/type 双清、q=手册/ksort=updated/kdir=desc/space 逐字 +
+  五值当帧复原 3 与钮 [0,1,2] 连续。
+④ 非法两路：loc 逐字含 __nope__、句点名非法值、无裸 0、cap null、knF disabled+「没有可
+  复制」句、点击 writeText 0 + urls 不动、createObjectURL 两路全程 0。
+```
+
+## 验证尾行（R218）
+```text
+$ npx vitest run src/modules/knowledge   → 36 files / 184 tests passed（基线 180 + 4 ≥184），
+  全输出 grep unhandled|Errors = 0（clipboard 桩全 Promise，R214 教训守住）
+$ npx vitest run                         → 309 files / 3058 tests passed 全绿（无豁免）
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r218-dist → exit 0
+$ 三档：1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/knE-page-*/kn-row-copy*/kn-row-copy-space*/kn-doc-copy*/kn-doc-preview*/
+kn-space-preview*/kn7-preview-*/kn-type*/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort*/
+kn-gates/kn3-page-cap/kn9-count-docs + 既有 35 套全绿。
+过程记录：一处手误占位 mock 行提交前删除；无产品改动、无真缺陷。
+```
+未测如实：带会话真实屏（命中数抽取链以 mock 代证）；详情面本地名筛×ktype×翻页三重叠加
+的两两组合已各锁，三重同帧未铺；knG 侧命中态数值链同理未重铺（①在检索面已锁本族）。
