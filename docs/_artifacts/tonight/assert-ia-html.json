@@ -42,6 +42,9 @@
     }
   ],
   "ok": true,
-  "headHash": "cafd2d81",
-  "exitCode": 0
+  "headHash": "415e1869",
+  "exitCode": 0,
+  "carriedFrom": "cafd2d81",
+  "carried": true,
+  "stampNote": "wave-76 八笔全纯测试，entry sha 与 CSS 逐字节未变；本件未重跑，证据沿用 cafd2d81 代"
 }

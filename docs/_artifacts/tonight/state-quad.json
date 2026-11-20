@@ -1,7 +1,7 @@
 {
   "base": "http://127.0.0.1:9122",
   "method": "playwright hash-form /#/<route>?state=<s>; hook=[data-fixture]+[data-testid=shell-fixture-badge] (web/src/shell/fixtures.ts)",
-  "headHash": "cafd2d81",
+  "headHash": "415e1869",
   "sampled": 20,
   "passed": 20,
   "rows": [
@@ -188,7 +188,7 @@
   ],
   "exitCode": 0,
   "ok": true,
-  "carriedFrom": "9a410487",
+  "carriedFrom": "cafd2d81",
   "carried": true,
-  "stampNote": "本代 state-quad 未刷新，沿用上代读数（carriedFrom 见字段）"
+  "stampNote": "wave-76 八笔全纯测试，entry sha 与 CSS 逐字节未变；本件未重跑，证据沿用 cafd2d81 代"
 }
