@@ -1552,6 +1552,38 @@ export function docMetaCopyText(row: DocRow | null, docId: string): string {
 }
 
 /* ------------------------------------------------------------------ *
+ * R65 — 全库文档名搜索的按空间分组：对「已筛后的 shown」做纯派生。
+ * 组序 = 首次出现序；组内行保持既有序；组名取组内第一个有人话名的行
+ * （缺名用行上短码标签「空间 · XXX」），全 id 只进 title。计数与总数
+ * 同源：各组 rows.length 之和恒等于传入的 rows 数——不另发任何请求。
+ * ------------------------------------------------------------------ */
+
+export interface SpaceGroup {
+  key: string;
+  label: string | null;
+  raw: string | null;
+  rows: DocRow[];
+}
+
+export function groupRowsBySpace(rows: DocRow[]): SpaceGroup[] {
+  const out: SpaceGroup[] = [];
+  const by = new Map<string, SpaceGroup>();
+  for (const row of rows) {
+    const key = row.spaceRaw ?? row.spaceLabel ?? "—";
+    let group = by.get(key);
+    if (group === undefined) {
+      group = { key, label: null, raw: row.spaceRaw ?? null, rows: [] };
+      by.set(key, group);
+      out.push(group);
+    }
+    if (group.label === null && row.spaceLabel !== null) group.label = row.spaceLabel;
+    if (group.raw === null && row.spaceRaw !== null) group.raw = row.spaceRaw;
+    group.rows.push(row);
+  }
+  return out;
+}
+
+/* ------------------------------------------------------------------ *
  * R57 — 空间清单「复制清单」的文本：同样是纯屏上数据。首行明写这份清单只
  * 覆盖已加载的空间（读口 limit=20、没有分页游标），绝不冒充全库；有检索词时
  * 第二行写明是筛后行。列值取屏上原样：文档数缺「—」（原因仍在屏上，不另编），
@@ -1584,15 +1616,17 @@ export function spaceCopyText(rows: SpaceRow[], loadedTotal: number, keyword: st
  * 文档列表本地排序：只排已经读到的行，点表头绝不再问服务。
  * ------------------------------------------------------------------ */
 
-export type DocSortCol = "name" | "size" | "updated";
+export type DocSortCol = "name" | "type" | "size" | "updated";
 export type DocSortDir = "asc" | "desc";
 
 /** 默认口径：更新时间、新在前。 */
 export const DOC_SORT_DEFAULT: { col: DocSortCol; dir: DocSortDir } = { col: "updated", dir: "desc" };
 
-/** URL 只认这三个列名，其余一律回落默认（排序不靠记忆，靠地址可复现）。 */
+/** URL 只认这四个列名，其余一律回落默认（排序不靠记忆，靠地址可复现）。 */
 export function docSortCol(value: string | null | undefined): DocSortCol {
-  return value === "name" || value === "size" || value === "updated" ? value : DOC_SORT_DEFAULT.col;
+  return value === "name" || value === "type" || value === "size" || value === "updated"
+    ? value
+    : DOC_SORT_DEFAULT.col;
 }
 
 /** URL 只认 asc/desc，其余回落默认方向。 */
@@ -1600,9 +1634,11 @@ export function docSortDir(value: string | null | undefined): DocSortDir {
   return value === "asc" || value === "desc" ? value : DOC_SORT_DEFAULT.dir;
 }
 
-/** 第一次按某列排序时落在哪个方向：名称正序，大小与时间新/大在前。 */
+/**
+ * 第一次按某列排序时落在哪个方向：名称与类型正序，大小与时间新/大在前。
+ */
 export function docSortLandDir(col: DocSortCol): DocSortDir {
-  return col === "name" ? "asc" : "desc";
+  return col === "name" || col === "type" ? "asc" : "desc";
 }
 
 /** 三态 aria-sort：只有当前生效列是 ascending/descending，其余列是 none。 */
@@ -1617,6 +1653,7 @@ export function ariaSort(
 /** 这一列这一行的可排值；缺值是 null（不当 0），按列只看该看的那个原始字段。 */
 function docSortKey(row: DocRow, col: DocSortCol): number | string | null {
   if (col === "name") return row.nameHint === null ? row.name : null;
+  if (col === "type") return row.typeRaw === null || row.typeRaw === "" ? null : row.type;
   if (col === "size") return row.sizeBytes;
   const ms = row.atRaw === null ? Number.NaN : Date.parse(row.atRaw);
   return Number.isFinite(ms) ? ms : null;
