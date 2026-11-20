@@ -330,6 +330,23 @@ describe("SystemHealthSurface svc deep link", () => {
     }
   });
 
+  it("mounts a stable sys14 link while the health read is still loading", async () => {
+    api.fetchJSON.mockReturnValue(new Promise(() => {}));
+    window.history.replaceState({}, "", "/#/system?tab=health&ssort=ms&sdir=asc&svc=console");
+    await render();
+    const link = container.querySelector("[data-testid='sys14-link']")!;
+    expect(link.getAttribute("data-state")).toBe("loading");
+    expect(container.querySelector("[data-testid='sys14-link-loading']")?.textContent).toContain("console");
+    expect(api.fetchJSON).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      (container.querySelector("[data-testid='sys14-link-clear']") as HTMLAnchorElement).click();
+    });
+    expect(container.querySelector("[data-testid='sys14-link']")).toBeNull();
+    expect(window.location.hash).toBe("#/system?tab=health&ssort=ms&sdir=asc");
+    expect(api.fetchJSON).toHaveBeenCalledTimes(1);
+  });
+
   it("matches a service by its human name", async () => {
     api.fetchJSON.mockResolvedValue(HEALTH);
     window.history.replaceState({}, "", `/#/system?tab=health&svc=${encodeURIComponent("Hermes 运行时")}`);

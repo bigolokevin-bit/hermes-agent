@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { RefreshCw } from "lucide-react";
 import { Badge, Button, Card, CardContent } from "@nous-research/ui";
 import { fetchJSON } from "@/lib/api";
 import { ApiError } from "@/lib/api-error";
@@ -7,6 +6,8 @@ import { currentFixtureState, fixtureView, type FixtureState } from "../../shell
 import { PILOT_ROW, PROBE_DEFINITIONS, probeResult, summarize, type ProbeRow, type ProbeStatus } from "./health";
 import { SystemHealthSurface } from "./SystemHealthSurface";
 import { SourceMatrix } from "./SourceMatrix";
+import { SystemCaliberNotes } from "./SystemCaliberNotes";
+import { SystemRefreshBar, useRefreshCoordinator } from "./systemRefresh";
 import {
   failureRead,
   markSourcesLoading,
@@ -100,7 +101,7 @@ function Metric({ label, value, reason, testid }: { label: string; value: string
 
 export function HealthPage() {
   const [state, setState] = useState<State>({ k: "loading" });
-  const [attempt, setAttempt] = useState(0);
+  const refresh = useRefreshCoordinator(2);
   const forced = currentFixtureState();
   const preview = fixtureView<State | null>(forced ?? "ready", {
     loading: () => ({ k: "loading" }), empty: () => ({ k: "empty" }),
@@ -115,7 +116,8 @@ export function HealthPage() {
       markSourcesSkipped(probeIds, "预览态不发起请求。");
       return () => { alive = false; };
     }
-    markSourcesLoading(probeIds);
+    const hadData = state.k === "ready" || state.k === "empty";
+    if (!hadData) markSourcesLoading(probeIds);
     const run = async () => {
       const durations: Array<number | null> = [];
       const timed = PROBE_DEFINITIONS.map(async (probe, index) => {
@@ -154,17 +156,24 @@ export function HealthPage() {
       });
       const returnedAt = Date.now();
       const rows = PROBE_DEFINITIONS.map((probe, index) => probeResult(probe.id, settled[index] as PromiseSettledResult<unknown>, returnedAt));
-      if (settled.every((result) => result.status === "rejected" && result.reason instanceof ApiError && result.reason.status === 0)) setState({ k: "error", requestId: readRequestId(settled) });
-      else setState({ k: "ready", rows: [...rows, PILOT_ROW] });
+      const allDown = settled.every((result) => result.status === "rejected" && result.reason instanceof ApiError && result.reason.status === 0);
+      if (allDown) {
+        const requestId = readRequestId(settled);
+        if (!hadData) setState({ k: "error", requestId });
+        if (refresh.tick > 0) refresh.finish({ message: "所有探针均未收到响应", requestId: requestId.startsWith("—") ? null : requestId });
+      } else {
+        setState({ k: "ready", rows: [...rows, PILOT_ROW] });
+        if (refresh.tick > 0) refresh.finish(null);
+      }
     };
     void run();
     return () => { alive = false; };
-  }, [forced, attempt]);
+  }, [forced, refresh.tick, refresh.finish]);
 
   const view = preview ?? state;
   const retry = () => {
     if (forced) leavePreview();
-    setAttempt((value) => value + 1);
+    refresh.start();
   };
   const counts = view.k === "ready" ? summarize(view.rows) : { healthy: 0, error: 0, unknown: 0 };
 
@@ -178,12 +187,10 @@ export function HealthPage() {
             <span>正常 {counts.healthy}</span><span>异常 {counts.error}</span><span>未知 {counts.unknown}</span>
           </p>
         </div>
-        <Button size="sm" outlined onClick={retry} disabled={view.k === "loading"} data-testid="hlt5-refresh">
-          <RefreshCw className="mr-1 size-3.5" aria-hidden="true" />刷新
-        </Button>
+        <SystemRefreshBar coordinator={refresh} disabled={forced !== null} />
       </header>
 
-      <SystemHealthSurface preview={forced && forced !== "ready" ? forced : null} onRetry={retry} />
+      <SystemHealthSurface preview={forced && forced !== "ready" ? forced : null} onRetry={retry} refreshTick={refresh.tick} onRefreshResult={refresh.finish} hideRefresh />
 
       <div className="hlt5-owner">
         <span>运维负责人</span><span>处理异常探针</span>
@@ -232,6 +239,7 @@ export function HealthPage() {
         </CardContent></Card>
       )}
       <SourceMatrix />
+      <SystemCaliberNotes />
     </section>
   );
 }

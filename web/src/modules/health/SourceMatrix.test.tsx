@@ -18,6 +18,7 @@ import { ApiError } from "@/lib/api-error";
 import { ASOF_KEYS, ASOF_MISSING_TITLE, readTopAsOf } from "./systemHealth";
 import { HealthPage } from "./HealthPage";
 import { resetSourceMatrix } from "./sourceReads";
+import { COPY_SCOPE_TEXT } from "./copyScope";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -163,6 +164,8 @@ describe("source matrix", () => {
     const copyButton = q("sys10-copy") as HTMLButtonElement;
     expect(copyButton.disabled).toBe(false);
     expect(copyButton.getAttribute("title")).toContain("不会再发请求");
+    expect(copyButton.getAttribute("title")).toContain(COPY_SCOPE_TEXT);
+    expect(q("sys-copy-scope")?.textContent).toBe(COPY_SCOPE_TEXT);
     await act(async () => { copyButton.click(); await Promise.resolve(); });
     await waitFor(() => q("sys10-copy-status")?.textContent === "已复制", "copied");
 
@@ -171,6 +174,10 @@ describe("source matrix", () => {
     const lines = text.trimEnd().split("\n");
     expect(lines[0]).toBe("口径名 | 路径 | 状态 | 耗时 | 采集时刻");
     expect(lines).toHaveLength(5);
+    const tableNames = rowIds().map((id) => q(`sys6-name-${id}`)?.textContent ?? "");
+    expect(lines.slice(1).map((line) => line.split(" | ")[0])).toEqual(tableNames);
+    expect(lines[1].startsWith(tableNames[0])).toBe(true);
+    expect(lines[lines.length - 1].startsWith(tableNames[tableNames.length - 1])).toBe(true);
     const healthLine = lines.find((line) => line.includes("系统健康清单"));
     expect(healthLine).toContain("系统健康清单 | /agent-api/api/health | 成功 | ");
     expect(healthLine).toMatch(/\| \d+ ms \| 2026-11-19 23:17$/);
