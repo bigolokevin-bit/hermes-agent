@@ -14,10 +14,15 @@
  *
  * 1440px and up: queue + drawer side by side. Narrower (375px included) the
  * drawer stacks under the queue and nothing scrolls sideways.
+ *
+ * P0-③: the queue is the subject, so the filter controls sit behind one
+ * disclosure (collapsed by default) while the two readouts that answer
+ * 「现在看的是什么」— the summary bar and the active-filter chips — stay
+ * always visible. Filter state is unchanged: it still lives in the URL only.
  */
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
-import { RefreshCw } from "lucide-react";
+import { ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 
 import { Button } from "@nous-research/ui/ui/components/button";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
@@ -61,6 +66,10 @@ export function ApprovalsPendingModulePage(): ReactNode {
   const [selected, setSelected] = useState<string | null>(() => params.get("id"));
   // R60: at most one row shows its inline preview; it never touches URL/filters.
   const [previewKey, setPreviewKey] = useState<string | null>(null);
+  // P0-③: 队列是主角，筛选控件默认收起。折叠只是显示层——筛选状态照旧活在
+  // URL 里（q/actor/since/risk/asort 一个都不动），刷新与粘链仍复现同一视图；
+  // 收起态的读数由常显的汇总条 + 生效筛选 chips 承担。
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
 
   // A row that carries no id can be listed but never opened; saying so beats
@@ -231,6 +240,22 @@ export function ApprovalsPendingModulePage(): ReactNode {
     const byActor = actor ? riskBaseRows.filter((row) => row.approverIds.includes(actor)) : riskBaseRows;
     return sortApprovalRows(byActor, asort, adir);
   }, [riskBaseRows, actor, asort, adir]);
+
+  // P0-③: 汇总只此一处——这行读数过去单列在筛选墙里，与 QueueSummaryBar 各说
+  // 各话；现在作为汇总条的 detail 上屏，文案逐字不动（含「下面还有更多」与
+  // 「关键字过滤中」两个提示）。它不是播报位：apv-live 仍是唯一 live region（R86）。
+  const summaryLine =
+    list.phase === "loading"
+      ? "正在读取待处理审批…"
+      : list.phase === "empty"
+        ? "共 0 条待处理审批"
+        : list.phase === "denied"
+          ? "审批申请暂不可用"
+          : list.phase === "error"
+            ? "审批申请读取失败"
+            : q
+              ? `已显示 ${visibleRows.length} / ${list.rows.length} 条申请，其中 ${visibleRows.filter((row) => row.status.pending).length} 条待处理（关键字过滤中）`
+              : `已显示 ${list.rows.length} 条申请，其中 ${pendingCount} 条待处理${list.next ? "，下面还有更多" : ""}`;
 
   const openRow = useCallback(
     (row: ApprovalRow) => {
@@ -418,6 +443,27 @@ export function ApprovalsPendingModulePage(): ReactNode {
 
   return (
     <div className="flex min-w-0 w-full max-w-full flex-col gap-3" data-testid="apr5-page-pending">
+      {/* P0-③: 一个开关换掉过去 11 块的筛选墙。控件在收起时卸载——本模块
+          Disclosure 的既有方言（见 states.tsx DetailsDisclosure），键盘序里
+          不留空位；生效条件的读数在下一行的汇总条与 chips 行，常显。 */}
+      <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="apv-filter-toggle-row">
+        <button
+          type="button"
+          data-testid="apv-filter-toggle"
+          aria-expanded={filtersOpen}
+          aria-controls="apv-filter-panel"
+          onClick={() => setFiltersOpen((value) => !value)}
+          className="inline-flex h-6 items-center gap-1 rounded-md border border-white/15 px-2 text-xs text-muted-foreground hover:bg-white/5 focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/60"
+        >
+          {filtersOpen ? (
+            <ChevronUp className="h-3 w-3" aria-hidden="true" />
+          ) : (
+            <ChevronDown className="h-3 w-3" aria-hidden="true" />
+          )}
+          筛选条件（{filterState.count > 0 ? filterState.count : "无"}）
+        </button>
+      </div>
+      <QueueSummaryBar phase={list.phase} rows={visibleRows} scope="queue" detail={summaryLine} />
       <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="apv-reset-row">
         <button
           type="button"
@@ -431,65 +477,57 @@ export function ApprovalsPendingModulePage(): ReactNode {
         </button>
         <FilterSummary params={params} onRemove={removeFilterKeys} />
       </div>
-      <p
-        className="min-w-0 break-words text-xs text-muted-foreground"
-        data-testid="apv-status-note"
-        title="待处理页的数据腿固定读取 pending 队列（实测 status=pending&limit=50 → 200/0）；status 参数在本页不生效，切到「决策历史」页签后按状态筛选。"
-      >
-        待办视图只列待办，status 筛选在历史 tab 生效。
-      </p>
-      <QueueSummaryBar phase={list.phase} rows={visibleRows} scope="queue" />
+      {/* 结果集动作（导出/排序/行内预览复制）不进面板：它们作用于当前读数，
+          与筛选控件不同归属，收起时同样可用（工单第 5 条）。 */}
+      {filtersOpen ? (
+        <div className="flex min-w-0 flex-col gap-3" id="apv-filter-panel" data-testid="apv-filter-panel">
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5" role="group" data-testid="apv8-search-group" aria-label="搜索审批">
+            <input
+              type="search"
+              aria-label="搜索审批"
+              data-testid="apv8-search"
+              className="min-w-0 flex-1 rounded-sm border border-border bg-transparent px-2 py-1 text-xs"
+              placeholder="关键字（标题/理由/编号）"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+            {q ? (
+              <Button size="sm" outlined data-testid="apv8-search-clear" onClick={() => setQ("")}>
+                清空搜索
+              </Button>
+            ) : null}
+          </div>
+          <p
+            className="min-w-0 break-words text-xs text-muted-foreground"
+            data-testid="apv8-scope-note"
+            data-apv8-scope-note="local-search"
+            title="实测：本页读口带 q/keyword/title 任一参数都与不带时返回同一全量（同集合），后台不做关键字过滤；为避免「假服务端搜索」，这里只做前端本地过滤。"
+          >
+            仅在当前已加载 {list.rows.length} 条内搜索；关键字是前端本地过滤，不产生新请求（实测后台 q/keyword/title 参数被忽略）。
+          </p>
+          <p
+            className="min-w-0 break-words text-xs text-muted-foreground"
+            data-testid="apv-status-note"
+            title="待处理页的数据腿固定读取 pending 队列（实测 status=pending&limit=50 → 200/0）；status 参数在本页不生效，切到「决策历史」页签后按状态筛选。"
+          >
+            待办视图只列待办，status 筛选在历史 tab 生效。
+          </p>
+          <ActorBuckets rows={riskBaseRows} phase={list.phase} actor={actor} onPick={pickActor} />
+          <SinceQuickFilter phase={list.phase} since={since} loadedCount={list.rows.length} onPick={pickSince} />
+          <RiskQuickFilter rows={actorBaseRows} phase={list.phase} risk={risk} onPick={pickRisk} />
+        </div>
+      ) : null}
+
       <QueueCsvExport rows={visibleRows} tab="pending" status="pending" phase={list.phase} sort={asort} dir={asort ? adir : null} />
-      <div className="flex min-w-0 flex-wrap items-center gap-1.5" role="group" data-testid="apv8-search-group" aria-label="搜索审批">
-        <input
-          type="search"
-          aria-label="搜索审批"
-          data-testid="apv8-search"
-          className="min-w-0 flex-1 rounded-sm border border-border bg-transparent px-2 py-1 text-xs"
-          placeholder="关键字（标题/理由/编号）"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-        {q ? (
-          <Button size="sm" outlined data-testid="apv8-search-clear" onClick={() => setQ("")}>
-            清空搜索
-          </Button>
-        ) : null}
-      </div>
-      <p
-        className="min-w-0 break-words text-xs text-muted-foreground"
-        data-testid="apv8-scope-note"
-        data-apv8-scope-note="local-search"
-        title="实测：本页读口带 q/keyword/title 任一参数都与不带时返回同一全量（同集合），后台不做关键字过滤；为避免「假服务端搜索」，这里只做前端本地过滤。"
-      >
-        仅在当前已加载 {list.rows.length} 条内搜索；关键字是前端本地过滤，不产生新请求（实测后台 q/keyword/title 参数被忽略）。
-      </p>
-
       <QueueSortBar phase={list.phase} sort={asort} dir={adir} loadedCount={list.rows.length} onCycle={cycleSort} />
-      <ActorBuckets rows={riskBaseRows} phase={list.phase} actor={actor} onPick={pickActor} />
       <RowDetailCopy row={visibleRows.find((r) => r.key === previewKey) ?? null} />
-      <SinceQuickFilter phase={list.phase} since={since} loadedCount={list.rows.length} onPick={pickSince} />
-      <RiskQuickFilter rows={actorBaseRows} phase={list.phase} risk={risk} onPick={pickRisk} />
-
 
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-        {/* R86: 播报单点=下方 sr-only apv-live；这行只是屏上读数，不再自带
-            aria-live（同一变化只播一次）。 */}
+        {/* R86: 播报单点=这个 sr-only apv-live；屏上读数已并入上方的
+            QueueSummaryBar（P0-③），所以这里不再自带 aria-live，同一变化
+            仍只播一次。 */}
         <p className="sr-only" role="status" aria-live="polite" data-testid="apv-live">
           {announcement(list.phase, visibleRows.length)}
-        </p>
-        <p className="min-w-0 break-words text-xs text-muted-foreground">
-          {list.phase === "loading"
-            ? "正在读取待处理审批…"
-            : list.phase === "empty"
-              ? "共 0 条待处理审批"
-              : list.phase === "denied"
-                ? "审批申请暂不可用"
-                : list.phase === "error"
-                  ? "审批申请读取失败"
-                  : q
-                    ? `已显示 ${visibleRows.length} / ${list.rows.length} 条申请，其中 ${visibleRows.filter((row) => row.status.pending).length} 条待处理（关键字过滤中）`
-                    : `已显示 ${list.rows.length} 条申请，其中 ${pendingCount} 条待处理${list.next ? "，下面还有更多" : ""}`}
         </p>
         {list.phase !== "denied" ? (
           <Button

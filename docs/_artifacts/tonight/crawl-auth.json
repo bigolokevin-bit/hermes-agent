@@ -270,10 +270,10 @@
       "source": "DETAIL_ZONES_EXTRA",
       "kind": "detail-zone",
       "verdict": "content-ok",
-      "mainChars": 152,
+      "mainChars": 64,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 3,
+      "consoleErrors": 1,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
       "headSample": "工作台 配置 任务 运行 证据 员工 · EMPLOYEE — 返回 总览 任务 运行 审批 概"
@@ -283,13 +283,13 @@
       "source": "DETAIL_ZONES_EXTRA",
       "kind": "detail-zone",
       "verdict": "content-ok",
-      "mainChars": 42,
+      "mainChars": 152,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 1,
+      "consoleErrors": 3,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "工作台 配置 任务 运行 证据 加载中… 强制态：?state=loading 返回"
+      "headSample": "工作台 配置 任务 运行 证据 员工 · EMPLOYEE — 返回 总览 任务 运行 审批 概"
     },
     {
       "route": "#/identity",
@@ -762,7 +762,7 @@
   "routesWithConsoleErrors": 51,
   "parseErrors": [],
   "ok": true,
-  "headHash": "e901fabb",
+  "headHash": "6d20d6f4",
   "exitCode": 0,
   "counts": {
     "probed": 75,
