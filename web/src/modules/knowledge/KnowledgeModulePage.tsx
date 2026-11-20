@@ -1668,6 +1668,39 @@ function DocPreviewDrawer({
           ) : null}
         </div>
 
+        {/* R72 — 抽屉侧 kn-doc 族：与上方 knO 共用同一 linkText/copyLink（一个字符串，
+            两处入口）；与行上入口同 builder，同文档必同串。knO 族按派工保留不删。 */}
+        <div className="knO-row" data-testid="kn-doc-link-drawer">
+          <Button
+            size="sm"
+            outlined
+            className="knO-copy"
+            onClick={copyLink}
+            disabled={!linkUsable}
+            title={
+              linkUsable
+                ? "复制这篇文档的固定链接（与行上入口同串）：保留当前检索与排序参数，粘贴或刷新直达同一抽屉。屏上数据，不会再发请求。"
+                : "该文档没有可用的固定标识"
+            }
+            data-testid="kn-doc-permalink"
+          >
+            复制文档固定链接
+          </Button>
+          <span className="knO-status" data-testid="kn-doc-permalink-status" aria-live="polite">
+            {linkAct === "copied" ? "链接已复制" : linkAct === "failed" ? "复制失败，已展开可选文本，可手动复制" : ""}
+          </span>
+          {linkAct === "failed" ? (
+            <textarea
+              className="knO-fallback"
+              data-testid="kn-doc-permalink-fallback"
+              aria-label="手动复制文档固定链接"
+              readOnly
+              rows={2}
+              value={linkText}
+            />
+          ) : null}
+        </div>
+
         {surface.state.kind === "loading" ? <Skeleton testid="kn7-preview-loading" /> : null}
 
         {surface.state.kind === "unwired" ? (
@@ -1825,6 +1858,7 @@ function DocTable({
   previewKey,
   onPreview,
   onDrawerClick,
+  onPermalink,
   sdocOpen,
 }: {
   entries: DocEntry[];
@@ -1841,6 +1875,8 @@ function DocTable({
   previewKey: string | null;
   onPreview: (key: string) => void;
   onDrawerClick: () => void;
+  /** R72 — 行上固定链接：与抽屉同一 builder（origin + docLink(key)），点一次即复制该行文档的链接。 */
+  onPermalink: (key: string) => void;
   /** R70 — 检索命中展开在场时本面预览不显示（双向互斥的渲染侧）。 */
   sdocOpen: boolean;
 }): ReactNode {
@@ -1899,6 +1935,21 @@ function DocTable({
                       title={previewOpen ? "收起这条的行内预览" : "行内预览这条文档的已读到字段：不发任何新请求"}
                     >
                       {previewOpen ? "收起预览" : "预览"}
+                    </button>
+                    {/* R72 — 行上固定链接入口：不用先打开抽屉；无真标识即 disabled。 */}
+                    <button
+                      type="button"
+                      className="kn-doc-preview-toggle kn-doc-permalink-btn"
+                      data-testid="kn-doc-permalink"
+                      disabled={row.id === ""}
+                      onClick={() => onPermalink(key)}
+                      title={
+                        row.id !== ""
+                          ? "复制这篇文档的固定链接：保留当前检索与排序参数，粘贴或刷新直达同一文档；不用先打开抽屉。与抽屉入口同 builder，不会再发请求。"
+                          : "该文档没有可用的固定标识"
+                      }
+                    >
+                      复制链接
                     </button>
                   </td>
                   <td data-label="类型">
@@ -2132,6 +2183,22 @@ function SpaceDetailSurface({
     setPreviewKey(null);
   };
 
+  // R72 — 行上固定链接：与抽屉 knO/kn-doc 入口同一 builder（origin + docLink(key)），
+  // 同文档必同串；q/ksort/kdir（含旧 sort/dir 若在地址里）由 docLink 随现地址整体带过。
+  // 复制本身零请求：只读地址与行标识。
+  const [rowLink, setRowLink] = useState<{ url: string; kind: "copied" | "failed" } | null>(null);
+  const handlePermalink = (key: string) => {
+    const url = `${typeof window === "undefined" ? "" : window.location.origin}${docLink(key)}`;
+    if (!navigator.clipboard?.writeText) {
+      setRowLink({ url, kind: "failed" });
+      return;
+    }
+    void navigator.clipboard.writeText(url).then(
+      () => setRowLink({ url, kind: "copied" }),
+      () => setRowLink({ url, kind: "failed" }),
+    );
+  };
+
   // 下一页只由按钮显式触发，绝不做滚动自动加载；失败后按钮仍是这个入口（重试=再点）。
   const loadMore = () => {
     if (!hasMore || moreState === "loading" || cursor === null) return;
@@ -2287,6 +2354,7 @@ function SpaceDetailSurface({
               previewKey={previewKey}
               onPreview={handlePreview}
               onDrawerClick={handleDrawerClick}
+              onPermalink={handlePermalink}
               sdocOpen={sdocOpen}
             />
 
@@ -2358,6 +2426,22 @@ function SpaceDetailSurface({
                     重试
                   </Button>
                 </div>
+              ) : null}
+            </div>
+            {/* R72 — 行侧固定链接的读数与兜底：aria-live 成功句；剪贴板失败给只读 textarea（全串在此与 title，不上屏正文）。 */}
+            <div className="knO-row" data-testid="kn-doc-link-bar">
+              <span className="knO-status" data-testid="kn-doc-permalink-status" aria-live="polite">
+                {rowLink?.kind === "copied" ? "链接已复制" : rowLink?.kind === "failed" ? "复制失败，已展开可选文本，可手动复制" : ""}
+              </span>
+              {rowLink?.kind === "failed" ? (
+                <textarea
+                  className="knO-fallback"
+                  data-testid="kn-doc-permalink-fallback"
+                  aria-label="手动复制文档固定链接"
+                  readOnly
+                  rows={2}
+                  value={rowLink.url}
+                />
               ) : null}
             </div>
           </>

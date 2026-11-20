@@ -4373,4 +4373,96 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(byTestid("kn3-docs-table") ?? container.querySelector('[data-testid="kn3-docs-head-strip"]')).toBeTruthy();
     expect(loc()).toContain("space=sp_hr"); // 下钻是加法：不清与本次无关的面参数（sdoc 仍在页顶搜索面）
   });
+
+  it("gives the document row and the drawer one identical permalink (kn-doc-permalink): paste-refresh opens the same doc, no-id rows refuse, fallback byte-equal", async () => {
+    const SPACE = { asOf: "2026-11-19T07:00:00Z", items: [{ spaceId: "sp_hr", name: "人事制度空间" }] };
+    const LIST = {
+      asOf: "2026-11-19T07:00:00Z",
+      documents: [
+        { documentId: "d_p", fileName: "同值文档.pdf", mimeType: "pdf", sizeBytes: 100, updatedAt: "2026-11-19T07:00:00Z" },
+        { fileName: "缺标识文档.md", sizeBytes: 200 },
+      ],
+    };
+    fetchMock.mockClear();
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SPACE);
+      if (url.startsWith("/agent-api/api/documents?")) return Promise.resolve(LIST);
+      return fail(404, "这个数据接口还没有接入。", "rid-pl-x");
+    });
+    const inDrawer = (testid: string) => document.querySelector(`.kn7-preview [data-testid="${testid}"]`);
+    const clickByEl = async (el: Element) => {
+      await act(async () => {
+        el.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      });
+      await act(async () => {});
+    };
+    // 深链参数在场：q + ksort/kdir（ksort=size asc：d_p 在前、缺大小行恒末）
+    await render("/knowledge?tab=spaces&space=sp_hr&q=%E5%90%8C%E5%80%BC&ksort=size&kdir=asc");
+    await act(async () => {});
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    const rowBtns = () => [...document.querySelectorAll('[data-testid="kn-doc-permalink"]')] as HTMLButtonElement[];
+    const urlsBefore = fetchMock.mock.calls.length;
+
+    // ---------- 行上入口：抽屉未开也一次可复制；缺标识行 disabled + 逐字 title ----------
+    expect(rowBtns()).toHaveLength(2);
+    expect(rowBtns()[0]?.disabled).toBe(false);
+    expect(rowBtns()[1]?.disabled).toBe(true);
+    expect(rowBtns()[1]?.getAttribute("title")).toBe("该文档没有可用的固定标识");
+    await clickNth("kn-doc-permalink", 0);
+    expect(writeText).toHaveBeenCalledTimes(1);
+    const rowUrl = String(writeText.mock.calls[0][0]);
+    expect(rowUrl.startsWith(window.location.origin)).toBe(true);
+    const params = new URLSearchParams(rowUrl.slice(rowUrl.indexOf("?") + 1));
+    expect(params.get("space")).toBe("sp_hr");
+    expect(params.get("doc")).toBe("d_p");
+    expect(params.get("q")).toBe("同值"); // 现有检索参数原样带上
+    expect(params.get("ksort")).toBe("size"); // 排序参数原样带上
+    expect(params.get("kdir")).toBe("asc");
+    expect((byTestid("kn-doc-permalink-status")?.textContent ?? "").trim()).toBe("链接已复制");
+    expect(byTestid("kn-doc-permalink-fallback")).toBeNull(); // 成功无兜底
+    await clickNth("kn-doc-permalink", 1);
+    expect(writeText).toHaveBeenCalledTimes(1); // 守卫：无标识不写
+    expect(fetchMock.mock.calls.length).toBe(urlsBefore); // 复制全程零新请求
+
+    // ---------- 复现读数：粘贴 URL → 刷新 → 抽屉 testid 命中 → 文档标识同值 ----------
+    await render(rowUrl.slice(window.location.origin.length));
+    await act(async () => {});
+    expect(byDocTestid("kn7-preview-panel")).toBeTruthy();
+    expect((byTestid("loc")?.textContent ?? "")).toContain("doc=d_p");
+    expect(byDocTestid("kn3-docs-detail")?.getAttribute("title")).toBe("d_p");
+    expect((byTestid("loc")?.textContent ?? "")).toContain("ksort=size");
+
+    // ---------- 抽屉侧：新族入口与 knO 老入口同串（一个字符串、两处入口，knO 保留） ----------
+    const drawerBtn = () => rowBtns().find((b) => b.closest(".kn7-preview") !== null) as HTMLButtonElement;
+    expect(drawerBtn()).toBeTruthy();
+    const urlsRepro = fetchMock.mock.calls.length;
+    await clickByEl(drawerBtn());
+    expect(String(writeText.mock.calls[writeText.mock.calls.length - 1][0])).toBe(rowUrl); // 抽屉=行，逐字节
+    expect((inDrawer("kn-doc-permalink-status")?.textContent ?? "").trim()).toBe("链接已复制");
+    await clickByEl(byDocTestid("knO-permalink") as HTMLElement);
+    expect(String(writeText.mock.calls[writeText.mock.calls.length - 1][0])).toBe(rowUrl); // knO 同串
+    // 掩码不变量：屏上可见 URL 只给 doc=…，全串在 title/剪贴板
+    const visibleUrl = byDocTestid("knO-permalink-url")?.textContent ?? "";
+    expect(visibleUrl).not.toContain("doc=d_p");
+    expect(visibleUrl).toContain("doc=…");
+    expect(fetchMock.mock.calls.length).toBe(urlsRepro);
+
+    // ---------- 拒绝路径：两侧兜底 textarea 与写入串逐字一致 ----------
+    const writeFail = vi.fn().mockRejectedValue(new Error("denied"));
+    Object.defineProperty(navigator, "clipboard", { value: { writeText: writeFail }, configurable: true });
+    await clickByEl(drawerBtn());
+    const drawerFallback = inDrawer("kn-doc-permalink-fallback") as HTMLTextAreaElement | null;
+    expect(drawerFallback).toBeTruthy();
+    expect(drawerFallback?.readOnly).toBe(true);
+    expect(drawerFallback?.value).toBe(rowUrl);
+    expect((inDrawer("kn-doc-permalink-status")?.textContent ?? "")).toContain("复制失败");
+    const rowBtn = () => rowBtns().find((b) => b.closest(".kn7-preview") === null) as HTMLButtonElement;
+    await clickByEl(rowBtn());
+    const rowFallback = byTestid("kn-doc-permalink-fallback") as HTMLTextAreaElement | null;
+    expect(rowFallback).toBeTruthy();
+    expect(rowFallback?.value).toBe(rowUrl);
+    expect((container.querySelector('[data-testid="kn-doc-permalink-status"]')?.textContent ?? "")).toContain("复制失败");
+    expect(fetchMock.mock.calls.length).toBe(urlsRepro);
+  });
 });

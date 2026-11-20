@@ -2412,3 +2412,58 @@ $ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 
 边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
 package·lock / web-scripts / ops；未并 main、未重建 9122；显式路径提交（无 `git add -A`）；
 无 force / amend / `--no-verify`；merge（ee64b4f0）与单 feature commit 分开。
+
+# KNW5 追加 R72：文档行与文档抽屉的固定链接（testid `kn-doc-permalink*`）（2026-11-20 BJT）
+
+安全闸：toplevel 相符、porcelain 空、显式 refspec fetch 实测 tip 即 `ee64b4f0`（与 R71 已并入
+的同一 tip，merge 为 Already up to date——基线已最新，不追旧、不造空 merge）。合后基线
+66/66 先绿再动工。
+
+## 一、结构：一个字符串、两处入口（派工 ④ 的「谁在哪」显式说明）
+
+```text
+行入口   每行文档名单元格的按钮 `kn-doc-permalink`（「复制链接」）：点一次即复制该行文档的
+         链接，**不需要先打开抽屉**（派工 ③ 两句的 reconciled 读法：disabled 的条件是
+         「该行没有真标识」，而不是「抽屉未开」——否则与「不得先开抽屉才可用」自相矛盾）。
+         读数条（`kn-doc-permalink-status`/`-fallback`）随表体一条，供行入口播报与兜底。
+抽屉入口 新族 `kn-doc-permalink/-status/-fallback` 一套在抽屉内（「复制文档固定链接」），
+         与保留的老族 `knO-permalink*` 共用同一个 linkText/copyLink 状态——两个入口一根串，
+         knO 族不删（其掩码 URL span 原样）。同文档实测：行、抽屉新钮、knO 三个 captured 逐字节相等。
+builder  两侧同走 origin + docLink(key)：keepBase 带 tab/panel/space，其余参数（q、
+         ksort/kdir，以及旧地址里存在的 sort/dir）原样继承、不删不改；无 documentId 的行
+         （页面内部位置键 row-N）不是标识 → disabled + 逐字 title「该文档没有可用的固定标识」，
+         守卫连剪贴板都不写。
+```
+
+## 二、复现读数（测试逐字）
+
+```text
+在场地址 ?tab=spaces&space=sp_hr&q=同值&ksort=size&kdir=asc
+行 0 复制得：<origin>/knowledge?tab=spaces&space=sp_hr&q=%E5%90%8C%E5%80%BC&ksort=size&kdir=asc&doc=d_p
+（参数解析读数：space=sp_hr、doc=d_p、q=同值、ksort=size、kdir=asc——检索与排序参数全带上）
+粘贴该串直接渲染：kn7-preview-panel 在场；loc 含 doc=d_p；抽屉字段块 title="d_p"（标识同值）；
+ksort=size 复现。aria-live：成功「链接已复制」，无失败即无兜底节点；拒绝路径行侧与抽屉侧
+fallback textarea 的 value 与写入串逐字节相等（scoped 查询，避免双侧同名串扰）。
+掩码不变量：屏上可见 URL（抽屉 knO span）实测含 "doc=…"、不含 "doc=d_p"；行入口按钮无可见
+URL 文本；全串只出现在 title、剪贴板与兜底 textarea。
+零请求：复制/拒绝/兜底/三入口切换全程 fetchMock 计数与快照逐字不变（行侧与抽屉侧两段各自锁定）。
+```
+
+既有零破：kn3 / kn6–kn9 / knB / knD / knF / knG / knI / knL / knO（R63 全段原样绿）/
+kn-sort / kn-gates / kn-doc-preview / kn-space-preview / kn.parity——66 例基线全绿 + 本轮 1 例
+= 67；四态、403≡404、零写入口不动。三档（vite preview /tmp 产物 + headless Chrome CDP，
+用毕即杀）1440/1280/375 `vw==bodySW==docSW` 全等。
+
+未测如实：真机剪贴板权限弹窗与真实鼠标复制；行态登录会话下的三档真实屏。
+
+## 验证尾行（R72）
+```text
+$ npx vitest run src/modules/knowledge   → 3 files / 67 tests passed（基线 66 + 本轮 1）
+$ npx vitest run                         → 160 files / 2176 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-permalink-dist → exit 0
+```
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；未并 main、未重建 9122；显式路径提交（无 `git add -A`）；
+无 force / amend / `--no-verify`；单 commit「feat(console): knowledge document permalink」。
