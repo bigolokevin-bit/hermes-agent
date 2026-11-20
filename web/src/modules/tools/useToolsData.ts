@@ -97,6 +97,7 @@ function classify(results: PromiseSettledResult<ToolRow[]>[]): Settled {
             "这块内容要么尚未接入本控制台，要么当前账号无权查看；这里不显示猜测的行，也不展示样例。",
           requestId: info.requestId,
           technical: info.technical,
+          status: info.status,
         },
       };
     }

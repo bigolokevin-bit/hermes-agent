@@ -13,7 +13,7 @@ const api = vi.hoisted(() => ({ fetchJsonStrict: vi.fn() }));
 vi.mock("@/modules/models/fetchJson", () => ({ fetchJsonStrict: api.fetchJsonStrict }));
 
 import { ToolsPage } from "./ToolsPage";
-import { resetCapabilityCounts } from "../capabilities/counts";
+import { publishCapabilityCount, resetCapabilityCounts } from "../capabilities/counts";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -212,6 +212,8 @@ describe("failures and gaps", () => {
     expect(document.querySelector("[data-testid='tl3-apply']")).toBeTruthy();
     expect(document.querySelector("[data-testid='tl3-request-id']")).toBeTruthy();
     expect(document.querySelector("[data-testid='tl3-retry']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='cap9-state-denied']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='cap9-state-unavailable']")).toBeNull();
     const count = document.querySelector("[data-testid='cap4-count-tools']")!;
     expect(count.textContent).toContain("—");
     expect(count.textContent).toContain("无源");
@@ -228,6 +230,25 @@ describe("failures and gaps", () => {
     expect(text()).toContain("请求编号：req-deny");
     expect(text()).not.toMatch(/\/api\/|403|404|GAP-04|字段示例/);
     expect(document.querySelector("[data-testid='tol5-denied']")?.getAttribute("title")).toBe("GAP-04");
+    expect(document.querySelector("[data-testid='cap9-state-unavailable']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='cap9-state-denied']")).toBeNull();
+  });
+
+  it("a 200 empty payload is an honest 0, not a not-wired state", async () => {
+    await mount((url) => {
+      if (!url) return Promise.resolve({ servers: [] });
+      if (url.startsWith("/agent-api/")) return Promise.reject(new ApiError("missing", { status: 404, body: "{}", url }));
+      if (url.includes("/api/tools/toolsets")) return Promise.resolve([]);
+      if (url.includes("/api/mcp/servers")) return Promise.resolve({ servers: [] });
+      return Promise.reject(new ApiError("unknown", { status: 404, body: "{}", url }));
+    });
+    expect(document.querySelector("[data-testid='tol5-empty']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='cap9-state-empty']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='tol5-denied']")).toBeNull();
+    const count = document.querySelector("[data-testid='cap4-count-tools']")!;
+    expect(count.textContent).toContain("0");
+    expect(count.textContent).toContain("有源（空）");
+    expect(count.textContent).not.toContain("无源");
   });
 
   it("treats a non-JSON SPA shell as not wired, never as a parser error", async () => {
@@ -268,9 +289,22 @@ describe("failures and gaps", () => {
     expect(text()).not.toMatch(/500|boom|\/api\//);
     expect(document.querySelector("[aria-label='复制请求编号']")).toBeTruthy();
     fail = false;
+    const before = urls().length;
     const retry = document.querySelector<HTMLButtonElement>("[data-testid='tol5-retry']")!;
     await act(async () => retry.click());
     await waitFor(() => rows().length > 0, "retry recovered");
+    const retried = urls().slice(before);
+    expect(retried.length).toBeGreaterThan(0);
+    expect(retried.every((url) => /\/api\/(tools|mcp)(\/|$)/.test(url) && !url.includes("/api/skills"))).toBe(true);
+  });
+
+  it("replaces a stale count with 加载中 while the tab reads again", async () => {
+    publishCapabilityCount("tools", { value: 99, source: "ready", reason: null, gap: null });
+    api.fetchJsonStrict.mockImplementation(() => new Promise(() => undefined));
+    await render("/capabilities?tab=tools");
+    const count = document.querySelector("[data-testid='cap4-count-tools']")!;
+    expect(count.textContent).toContain("加载中");
+    expect(count.textContent).not.toContain("99");
   });
 });
 

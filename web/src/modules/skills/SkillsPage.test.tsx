@@ -119,16 +119,23 @@ describe("SkillsPage", () => {
     await render();
     expect(text()).toContain("请求编号：");
     expect(text()).toContain("req-skills-1");
+    const before = fetchJsonStrict.mock.calls.length;
     const button = [...container.querySelectorAll("button")].find((node) => node.textContent?.includes("重试"));
     await act(async () => { button?.click(); });
     await act(async () => {});
     expect(text()).toContain("恢复后的技能");
+    expect(fetchJsonStrict.mock.calls.length).toBe(before + 1);
   });
 
   it("renders the empty state for an empty list without a fake count", async () => {
     fetchJsonStrict.mockResolvedValue({ items: [] });
     await render();
     expect(container.querySelector('[data-testid="skl4-empty"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="cap9-state-empty"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="skl4-error"]')).toBeNull();
+    const count = container.querySelector('[data-testid="cap4-count-skills"]')!;
+    expect(count.textContent).toContain("0");
+    expect(count.textContent).toContain("有源（空）");
     expect(text()).toContain("不补样例行");
   });
 
@@ -141,6 +148,12 @@ describe("SkillsPage", () => {
     expect(text()).not.toContain("404");
     expect(container.querySelector('[data-testid="skl4-retry"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="skl4-apply"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="cap9-state-unavailable"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="cap9-state-denied"]')).toBeNull();
+    const count = container.querySelector('[data-testid="cap4-count-skills"]')!;
+    expect(count.textContent).toContain("—");
+    expect(count.textContent).not.toContain("0");
+    expect(count.getAttribute("title")).toContain("GAP-SKL4-01");
   });
 
   it("renders 403 and 404 with the same neutral body and no status code", async () => {
@@ -151,6 +164,12 @@ describe("SkillsPage", () => {
     expect(text()).not.toContain("403");
     expect(document.querySelector('[data-testid="skl4-error"] p[title]')?.getAttribute("title")).toBe("GAP-SKL4-01");
     expect(container.querySelector('[data-testid="skl4-apply"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="cap9-state-denied"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="cap9-state-unavailable"]')).toBeNull();
+    const count = container.querySelector('[data-testid="cap4-count-skills"]')!;
+    expect(count.textContent).toContain("—");
+    expect(count.textContent).not.toContain("0");
+    expect(count.getAttribute("title")).toContain("GAP-SKL4-01");
   });
 
   it("keeps the row testid and humanizes source and status", async () => {

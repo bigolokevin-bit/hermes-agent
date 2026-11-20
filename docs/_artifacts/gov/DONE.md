@@ -1843,3 +1843,13 @@ built /private/tmp/health-r38/index.html
 - 验证：`npx vitest run src/modules/capabilities src/modules/skills src/modules/tools` → **5 files / 52 tests passed**；全量 `npx vitest run` → **136 files / 1483 passed**，另有 2 个基线 employee-detail unhandled。`tsc -b . --noEmit` 本域 0（6 行均为基线 employee-detail/employees）。
 - DOM（临时 harness，已删；Vite 5467 / Chrome 9268）：1440/1280/375 技能与工具 `bodySW=bodyCW=pageSW=pageCW=视口`；`aria-sort` 点击前 `名称↑`、点击后 `最近更新↑`（ascending）；`?q=` 与 `tab` 保持。截图 `docs/_artifacts/gov/shots/cap8-skills-{1440,1280,375}.png`、`cap8-tools-{1440,375}.png`。
 - `cap8-*` 新增；`cap4/5/6/7`、`skl4`、`tl3` 未破。边界：只改 `web/src/modules/{capabilities,skills,tools}/**` 与 DONE/截图；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；无独立观察者。
+
+## R55 /capabilities 空态与未接入诚实化统一（cap9，2026-11-20）
+
+- 基线：显式 refspec fetch 后 `git merge --no-ff origin/lane/hermes-console` 报 Already up to date；从已推 `d3338fd4` 继续，未 reset。
+- 诚实态：技能与工具两 tab 的 403/404 仍同体（同一整页文案），GAP 仅 title；新增 `cap9-state-unavailable`（404）/`cap9-state-denied`（403），403/404 不再显示「0 条」。工具页失败对象补 `status`，避免 403 被记成 404。
+- 真 0 与读不到分开：200 且空集显示 `cap9-state-empty` +「读口已接入，本次返回 0 条」；读不到显示错误体 + 计数「—」。计数条沿用同源 `publishCapabilityCount`：读取中先置「加载中/—」，不再残留上一个 tab 的旧值。
+- 重试只重发当前 tab：技能 +1 次请求；工具重走自身候选链（6 个 tools/mcp 候选），断言不含 `/api/skills`。
+- 验证：`npx vitest run src/modules/skills src/modules/tools` → **3 files / 49 tests passed**；全量 `npx vitest run` → **136 files / 1485 passed**（2 个基线 employee-detail unhandled 不变）；`tsc -b . --noEmit` 本域 0。
+- DOM（临时 harness 已删；Vite 5471 / Chrome 9271）：1440/1280/375 两 tab `bodySW=bodyCW=pageSW=pageCW=视口`；skills ready 2 行/`技能2有源`，empty `技能0有源（空）`+cap9-empty，404 count `—无源`+unavailable，403 count `—无源`+denied；tools ready 3 行/`工具3有源`，empty `工具0有源（空）`，404 unavailable，403 denied。
+- 边界：只改 `web/src/modules/{capabilities,skills,tools}/**`；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；无独立观察者。
