@@ -2431,3 +2431,17 @@ built /private/tmp/health-r38/index.html
 - 验证：新文件 4/4；定向三域 **19 files / 170 passed**；全量 **208 files / 2622 passed, 0 failed**（上游并笔抬基线）；`tsc -b . --noEmit` exit 2，本域 grep 0，错误仅限 approvals / employee-detail / employees 基线。零产品码改动。
 - 三档 N/A：纯测试、零 markup/CSS 增量，几何证据沿用 R93 实测（先例 R91/R94/R95）。
 - 边界：只新增 `web/src/modules/capabilities/capabilities.counts.test.tsx` 与本节；未碰 App.tsx / shell / routes / registry / package·lock / web-scripts / ops；未 install、未并 main、未 force/amend/--no-verify。
+
+## R97 / sys-state-isolation — /system 四态与读源失败不互相污染护栏（task @558@ / R145）
+
+- 基线：显式 refspec fetch 后上游 tip 仍是 `862154eb`（与派工单所指一致），`git merge --no-ff origin/lane/hermes-console` 报 Already up to date —— 该代次已由 R140 基线 `88dd4f1b` 带入；起点 HEAD `1a805d13`，工作树 0 脏。未用 reset。
+- 现查既有用例：`system.refresh.test.tsx`（R112）四例已锁「读时刻≠数据时刻」「刷新失败保留旧批 + 不写 `sys-updated-at` + 错误态带 rid 与重试」「busy 连点只发一批（`sys-busy-note` 计数 1、按钮 `.disabled`）」「单探针失败只坏该探针面」；`SystemHealthSurface.test.tsx` 已锁 `sys-state-*` 面板自身（error 带 `sys-state-rid`/`-rid-copy`/`-retry`，denied 无重试，empty / empty-filter 带清除）。本文件只补四处缺口。
+- 缺口 a（文案不变）：按 testid 快照三张表每一行的整段 textContent，失败前后逐行比对 —— R112 只比行数与采集时刻。①例中断言「只有 `hlt5-row-runtime` 与 `sys6-row-runtime` 两行变动」，其余全部逐字相同。
+- 缺口 b（rid 不外渗）：失败请求编号只出现在它自己的面上；①例逐行断言兄弟行不含「请求编号」也不含该 rid，②例逐行断言没有任何数据行吞下列表读的 `req-list-500`（该 rid 只在 `sys-refresh-error` / `sys-refresh-request-id` 里）。
+- 缺口 c（busy 期零污染）：连点后除计数外，还断言无 `sys-refresh-error`、无 `sys-updated-at`、无 `sys-state-state`，且整张快照 `toEqual` 刷新前（一行一字节都没动），释放后 `sys-updated-at` 恰好 1 个、`sys-busy-note` 消失。
+- 缺口 d（恢复即换代）：R112 的重试复用同一份 payload，换代从未被证明。④例用三份数据（2 源 → 探针 500 → 3 源）断言 `sys3-row-*` 变成 a/b/c 三行、`sys3-asof` 落到新时刻、原错误行不再含「异常」与短 rid、`sys6-asof-runtime` 恢复「2026-11-19 10:45」、`sys6-row-runtime` 回到 ok，四读口计数各 3 次。
+- 坑（首轮 2 例因此失败，非产品缺陷）：耗时列是每次读取用 `performance.now()` 实测的，整行 textContent 快照会被 1 ms→0 ms 抖动打穿（首轮 `sys6-row-console/health/domain` 全被判为「漂移」）。快照把 `\d+ ms` 折成 `<n> ms`，比对只针对名称/状态/端点/数据时刻。
+- 如实披露：①派工单零破清单里的 `sys-evt-copy-*` 本代不存在（R124 放弃：health 模块无事件表），无从破起；②`sys-state-*` 确实存在（`SystemStatePanel.tsx`），本例只断言它**不**因单探针失败而出现——这正是不互相污染的判据；③①的「含 rid」按既有口径断言为 8 位短码（`"req-isolate-500".slice(0,8)`），与 R112 一致，不另造口径。
+- 验证：新文件 4/4；`npx vitest run src/modules/health` → 12 files / 89 passed（原 11/85）；`./node_modules/.bin/tsc -b . --noEmit` exit 2，`modules/health` grep 0，错误仅限 approvals / employee-detail / employees 基线；全量 `npx vitest run` → **209 files / 2626 passed, 0 failed**（原 208/2622，+1 文件 +4 例），已知上游 flake 本轮未复现。
+- 三档 N/A：纯测试，零 markup/CSS 改动，几何证据沿 R93（1440/1280/375 无横溢）。
+- 边界：只新增 `web/src/modules/health/system.state.isolation.test.tsx` 与本节；未碰 App.tsx / shell / routes / registry / package·lock / web-scripts / ops，未改任何产品码，未 install，未并 main，未 force / amend / --no-verify。
