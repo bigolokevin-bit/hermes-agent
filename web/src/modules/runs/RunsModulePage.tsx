@@ -244,7 +244,7 @@ function RunPreviewPanel({ row, names, index }: { row: RunRow; names: Map<string
       data-testid={`run-row-preview-${index}`}
     >
       <div className="ui-c-head ui-c-head--plain ui-c-head--start">
-        <div className="min-w-0 flex-1">
+        <div className="ui-c-head-text">
           <h3 className="ui-c-head-title">运行预览</h3>
           <p className="ui-c-head-sub">
             预览只读：六项都取自这一行已读到的数据，打开或收起都不会再发一次请求。
@@ -1449,7 +1449,7 @@ export function RunsModulePage() {
         <Card className="min-w-0 border-border bg-card" data-testid="run5-detail">
           <CardContent className="ui-c-container min-w-0 space-y-4 p-4">
             <div className="ui-c-head ui-c-head--plain ui-c-head--start">
-              <div className="min-w-0 flex-1">
+              <div className="ui-c-head-text">
                 <h2 className="ui-c-head-title ui-c-head-title--lead" title={detail.run.runId}>
                   {runCode(detail.run.runId)}
                 </h2>

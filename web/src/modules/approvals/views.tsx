@@ -540,7 +540,7 @@ export function ApprovalDetailBody({
     <div className="ui-c-container flex min-w-0 flex-col gap-3" data-testid={testId}>
       <div className="ui-c-head ui-c-head--plain">
         <h2
-          className={`ui-c-head-title ui-c-head-title--lead min-w-0 flex-1 ${themedBody}`}
+          className={`ui-c-head-title ui-c-head-title--lead ui-c-head-text ${themedBody}`}
           title={truncateDisplay(detail.title).full ?? detail.rawId ?? undefined}
           data-testid="apv-trunc-detail-title"
         >

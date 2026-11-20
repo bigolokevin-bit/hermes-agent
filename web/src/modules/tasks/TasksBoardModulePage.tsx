@@ -105,7 +105,7 @@ function TaskDetailCard({
     <Card className="min-w-0" data-testid={`tsk4-detail-${state.k}`}>
       <CardContent className="ui-c-container min-w-0 space-y-4 p-4">
         <div className="ui-c-head ui-c-head--plain ui-c-head--start">
-          <div className="min-w-0 flex-1">
+          <div className="ui-c-head-text">
             {state.k === "ready" ? (
               <Link
                 to={`/tasks/${encodeURIComponent(state.data.taskId)}`}

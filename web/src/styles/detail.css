@@ -59,8 +59,18 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--space-2);
   margin-left: auto;
+  /* 入口区不许把标题块压扁：允许自身收缩并换行。 */
+  min-width: 0;
+}
+
+/* 区块头里的标题块：保底 14rem 基准宽，配合 .ui-c-head 的
+   flex-wrap，窄容器下整块换行而不是被挤成一字符一行。 */
+.ui-c-head-text {
+  flex: 1 1 14rem;
+  min-width: 0;
 }
 
 /* ------------------------------------------------------------------ *
@@ -275,9 +285,25 @@
   padding: 0;
 }
 
-@container (min-width: 34rem) {
+@container (min-width: 21rem) {
   .ui-c-fields--compact {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* 抽屉在 1440 下也只有 ~380px：容器到 34rem 直接上三列，
+   不必等整屏 1280。 */
+@container (min-width: 34rem) {
+  .ui-c-fields--compact {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* 手机上详情面板占满整幅（~343px ≈ 21.4rem 会误命中容器两列），
+   硬性回落到纵向单列堆叠。 */
+@media (max-width: 40rem) {
+  .ui-c-fields--compact {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
