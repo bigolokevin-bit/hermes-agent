@@ -30,7 +30,7 @@ vi.mock("@/lib/api", () => ({
   fetchJSON: (...args: unknown[]) => fetchJSON(...args),
 }));
 
-import { EmployeesModulePage } from "./EmployeesModulePage";
+import { EmployeesModulePage, FIELD_MISSING, FIELD_MISSING_TITLE } from "./EmployeesModulePage";
 
 let container: HTMLDivElement;
 let root: Root | null = null;
@@ -833,5 +833,27 @@ describe("R67 keyboard navigation (emp-list-nav)", () => {
       key(document.body, "ArrowDown");
       key(document.body, "Enter");
     }).not.toThrow();
+  });
+});
+
+describe("R68 preview wording parity", () => {
+  it("RowPreview missing fields use the shared FIELD_MISSING wording", async () => {
+    fetchJSON.mockImplementation(() =>
+      Promise.resolve({ items: [{ employeeId: "emp_5E5F606162636465", lifecycleState: null, name: null, title: null, updatedAt: null }] }),
+    );
+    await render("/employees");
+    await act(async () => {
+      flushTimers();
+    });
+    const toggle = q("emp-row-preview-toggle-emp_5E5F606162636465") as HTMLButtonElement;
+    await act(async () => {
+      toggle.click();
+    });
+    const pv = q("emp-row-preview-emp_5E5F606162636465");
+    expect(pv?.textContent).toContain(FIELD_MISSING);
+    expect(pv?.textContent).toContain("请求编号：该字段未返回");
+    expect(pv?.getAttribute("aria-label"), "preview region").toBe("行内预览");
+    expect(pv?.innerHTML).toContain(FIELD_MISSING_TITLE); // 缺值 title 走同一句（属性，不在 textContent）
+    expect(pv?.textContent).not.toContain("—"); // 不再有第二套缺值写法
   });
 });

@@ -983,3 +983,17 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 零新请求：键盘路径只动本地 state（行数据已在 items）；用例 Ⅱ 全程锁 fetchJSON.mock.calls 计数不变。URL ?q/&lifecycle=&sort=&dir= 零触碰（用例 Ⅰ 不写 URL 即证）。
 - 测试 3 用例 append 最末（tail guard ✓）：Ⅰ 首行 tabStop=0 其余 -1→ArrowDown 移焦+tabStop 跟随→End/Home 首末；Ⅱ Enter 展开+aria-expanded=true+列表仍在屏（未导航）+再 Enter 收起+B 行 Enter 互斥（同时仅一行，与 R63 previewKey 单值一致）+Esc 收起+activeElement=该行+计数锁；Ⅲ state=error 无容器+body 按键无异常。定向 employees 2 files/32 passed（29+3）；tsc 本域 0 红；assert-ia 两模式 exit0；全量尾行见回执（基线 144 files/1802）。
 - 零破：emp-list-*/emp-row-preview-*/emp-list-page-*/ed*/apv*/apd*/apr5（既有 29 用例全绿为证）；三档=Link className 未动、包 div 无布局属性（形态学报，jsdom 不可测）。9122==cca9cf7e 禁重建，活体键盘读数待并入后代次。
+
+## R68 员工行预览 ↔ 详情身份卡逐字段同值（2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @e870677c（章面 3c7f70f6，代次 cca9cf7e），toplevel ✓ porc=0。
+- 改前→改后（六字段对照，preview=emp-row-preview-* / identity=ed1-identity-*）：
+  · 姓名缺值：preview「该字段未返回」vs identity「—」→ 两处同 FIELD_MISSING；hover 两处异句（「列表读口没有回传该字段。」/「后台没有回传这位员工的姓名。」）→ 同 FIELD_MISSING_TITLE「读口没有回传该字段。」
+  · 工号形制：preview「员工 · 短码」vs identity 纯短码 → identity 改「员工 · A3F1B2C4」（title 仍全 id，禁裸 emp_ 保持）
+  · 在职态：两处词表本就同（在岗/入职中/已暂停/已停用/离职中/草稿/已归档），未知同落「待核实」；title 统一「原始值：X」/缺值 FIELD_MISSING_TITLE；identity 的「状态未知」二次包装删除（统一走 rosterLifecycleLabel=employees lifecycleLabel 唯一词表）
+  · 角色/创建时间缺值：同 FIELD_MISSING 处置
+  · 请求编号：identity 原无此行 → 新增 ed1-identity-rid=RequestIdCopy（fallback「请求编号：该字段未返回」与 preview 逐字同；活体两读口均无 requestId 键→实盘显该句）
+- 同一 helper（禁各写一份）：FIELD_MISSING / FIELD_MISSING_TITLE / fieldMissing(label) / lifecycleLabel 由 employees 模块 export，employee-detail IdentityCard import 消费（R43 跨模块只读 import 先例同方向）；一致性用例两侧断言同一常量值。
+- 活体只读对照（ego 9122==cca9cf7e，emp_217A91BA）：LIST 200 vs DETAIL 200 —— name/title/lifecycleState(draft)/updatedAt 逐字同值；createdAt 仅详情读口有（2026-11-17T05:52:48.030Z→卡上 2026-11-17 13:52 BJT）；requestId 两读口均 absent。preview 最近活跃=updatedAt、identity 创建时间=createdAt 属不同语义字段，各自 BJT 到分（工单口径允许「最近活跃或创建时间」）。
+- 测试：detail R45 既有断言同步（code 形制/state title/缺值句）+新 describe "R68 preview↔identity parity (edx-parity)" 2 用例（全字段记录逐词对照+404 读口不渲身份卡禁造字段）；employees 新 describe 1 用例（RowPreview 缺值全走共享常量、屏上不再出现第二套「—」写法）。定向 employees+employee-detail 3 files/83 passed；tsc 两域 0 红；assert-ia 两模式 exit0；全量尾行见回执（基线 144 files/1805）。
+- 零破：emp-row-preview-*/emp-list-*/ed1-identity-*/ed5-* testid 名全保留（ed1-identity-rid 为新增）；汇报对象不在六字段口径内维持「—」+原 title（如实注明非本轮范围）；三档=IdentityField dl grid 既有形态学报。9122 禁重建，活体 DOM 对照待并入后代次。

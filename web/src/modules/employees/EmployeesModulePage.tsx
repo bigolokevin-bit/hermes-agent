@@ -153,7 +153,7 @@ function displayName(row: EmployeeRow): string {
   return row.name?.trim() || "未命名员工";
 }
 
-function lifecycleLabel(value?: string | null): string {
+export function lifecycleLabel(value?: string | null): string {
   switch (value) {
     case "active":
       return "在岗";
@@ -236,8 +236,15 @@ function errorState(err: unknown): State {
   };
 }
 
-/** R63: a missing field is stated, never invented. */
-const FIELD_MISSING = "该字段未返回";
+/** R63/R68: a missing field is stated, never invented. Shared with the
+ * detail identity card so both surfaces use ONE wording source (parity). */
+export const FIELD_MISSING = "该字段未返回";
+/** R68: the hover reason for any missing field, list or detail alike. */
+export const FIELD_MISSING_TITLE = "读口没有回传该字段。";
+/** R68: 「label：该字段未返回」 one-line form. */
+export function fieldMissing(label: string): string {
+  return `${label}：${FIELD_MISSING}`;
+}
 
 /** R63: inline row preview — built only from the list row already loaded,
  * so expanding never fires a request. Same shape as apv9's preview. */
@@ -253,7 +260,7 @@ function RowPreview({ row }: { row: EmployeeRow }) {
       <dl className="grid min-w-0 grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2 xl:grid-cols-3">
         <div className="flex min-w-0 gap-1.5">
           <dt className="shrink-0 text-white/40">姓名</dt>
-          <dd className="min-w-0 truncate" title={row.name?.trim() ? undefined : "列表读口没有回传该字段。"}>
+          <dd className="min-w-0 truncate" title={row.name?.trim() ? undefined : FIELD_MISSING_TITLE}>
             {row.name?.trim() ?? FIELD_MISSING}
           </dd>
         </div>
@@ -265,19 +272,19 @@ function RowPreview({ row }: { row: EmployeeRow }) {
         </div>
         <div className="flex min-w-0 gap-1.5">
           <dt className="shrink-0 text-white/40">在职态</dt>
-          <dd className="min-w-0 truncate" title={row.lifecycleState?.trim() ? `原始值：${row.lifecycleState}` : "列表读口没有回传该字段。"}>
+          <dd className="min-w-0 truncate" title={row.lifecycleState?.trim() ? `原始值：${row.lifecycleState}` : FIELD_MISSING_TITLE}>
             {lifecycleLabel(row.lifecycleState)}
           </dd>
         </div>
         <div className="flex min-w-0 gap-1.5">
           <dt className="shrink-0 text-white/40">角色/职称</dt>
-          <dd className="min-w-0 truncate" title={row.title?.trim() ? undefined : "列表读口没有回传该字段。"}>
+          <dd className="min-w-0 truncate" title={row.title?.trim() ? undefined : FIELD_MISSING_TITLE}>
             {row.title?.trim() ?? FIELD_MISSING}
           </dd>
         </div>
         <div className="flex min-w-0 gap-1.5">
           <dt className="shrink-0 text-white/40">最近活跃</dt>
-          <dd className="min-w-0 truncate font-mono" title={beijingMinute(row.updatedAt) ? "口径：updatedAt，北京时间到分。" : "列表读口没有回传该字段。"}>
+          <dd className="min-w-0 truncate font-mono" title={beijingMinute(row.updatedAt) ? "口径：updatedAt，北京时间到分。" : FIELD_MISSING_TITLE}>
             {beijingMinute(row.updatedAt) ?? FIELD_MISSING}
           </dd>
         </div>
