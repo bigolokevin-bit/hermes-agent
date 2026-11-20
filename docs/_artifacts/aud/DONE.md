@@ -3135,3 +3135,24 @@ Untested: the four-state body lengths are jsdom readings, not browser pixels; th
 - 新增 testid：`audL-scroll`（属性 `data-audl-fingerprint/-saved/-restored/-focus/-cleared`）。
 - 门禁：vitest `src/modules/audit` **exit 0**（**16** files / **330** tests）；`pnpm exec tsc -b . --noEmit` 共 **69** errors（= wave-20 后本机地板，改动前后同数、增量 0）且 `modules/audit` **0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings（中途两条新警告已消：effect 里 `setRovingKey` 改为让行的 `onFocus` 自己带走停靠点；`openRow` 依赖里多余的 `fingerprint` 移除）。
 - 活体腿沿用已知不可用实测（未重跑）：9122 无身份头 **401 `console.unauthenticated`**、8092 **404 `console.not_found`**。滚动位读数是 jsdom 替身口径（scrollY 设定值 + scrollTo spy + 探针属性），**不是**真浏览器 scrollY 实测；真浏览器里这两个值要一次带会话的活体腿才能贴，本轮未假装。
+
+## Audit column sorting (audN, 2026-11-20, base b8eccc18)
+
+- 写域：`web/src/modules/audit/{sorting.ts,sorting.test.ts,AuditEventsModulePage.tsx,AuditEventsModulePage.test.tsx}` + 本节（4 文件 +~700 行，≤15 文件/≤1500 行）。App/shell/routes/registry/package·lock/web-scripts/ops 未碰。基线：显式 refspec fetch 后 merge tip 957704be = Already up to date，porc=0。
+- **服务端实测（先探再定性，探码上屏是禁的，只进本文）**：`/agent-api/api/audit-events` 带 `sort=occurredAt&order=asc`、`sort=occurredAt&order=desc`、`orderBy=occurredAt&order=desc`、`sort=actor&order=asc` 四组各打两个端口 →
+  - `127.0.0.1:9122`：**401 `console.unauthenticated`**（本车道没有可用会话凭据，禁重建 9122），四组全同；
+  - `127.0.0.1:8092`：**404 `console.not_found`「static asset not found」**（该实例没挂这条路由），四组全同。
+  即：**没有 200、没有排序前/后的台账顺序可对照**，拿不到任何「服务端吃 sort/order/orderBy」的生效证据。旁证两条：本模块 `api.ts` 的台账读口 `/api/audit` 从来只发 `limit/action/from/to/actorId/resourceId/cursor`；OpenViking 记忆 2026-10-29「审计后端无 sort 参数、固定新→旧」。因此走工单退路：**本地排序**，界面 `aud-sort-scope-note` 明写「仅在当前已加载的 N 条内排序——服务端没有可用的排序参数（本轮实测拿不到生效证据），清掉排序就回到服务给的回行顺序」，title 说明探测结论但**不带路径/状态码**（既有 403≡404 用例禁止屏上 HTML 出现 `/agent-api`、`console.*`、`40[34]`，探码只记在本文）。
+- **控件**：`aud-sort-bar-block` 内 `role=table`→`role=row`→四只 `role=columnheader` 的 `aud-sort-head-<col>`（`aria-sort` 三态 ascending/descending/none），各包一个真 `<button type=button>`（`aud-sort-button-<col>`，`⇅/↑/↓` 图标 + title 说下一步会怎样）。ARIA 取舍登记：账本行是卡片列表（audK 的 `role=list`/`listitem` 与 aud01 的 `aud01-cell-*` 契约），把 50 行改成真表格不在本预算内，故表头用最小 table 语义只覆盖排序控件本身；三态另有一行 `aud-sort-status` 用人话写当前列/方向与它的作用范围，AT 只认 columnheader 的 aria-sort 时也不丢信息。键盘：Enter 与 Space 直接触发（`preventDefault` 防浏览器再合成一次 click 而翻两态），焦点环沿用现有 token `focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`，未新增颜色。
+- **地址与组合**：`?asort=<col>&adir=<asc|desc>`；三态循环 asc→desc→**两键都删**（清除=服务给的回行顺序）。与 `window/custom from-to/type/actor/resource/limit/cursor/event/preview/tech` 全同屏共存，冷挂载一条组合地址即复现（用例：`asort=actor&adir=asc` + `window=custom&from=&to=&actor=&type=&limit=25&cursor=cur_page1` → 表头 `aria-sort=ascending`、操作者下拉回填、每页 25 回填、`第 2 页`、请求带 `from/actorId`，行序按操作者且缺值恒末）。残缺地址（只 `asort` 或只 `adir`、值不认识）一律当作没排序，不猜另一半。
+- **口径同源（不与表体分裂）**：比较值直接取屏上同一显示——时间用 audJ `auditTimeView(raw, minute).text`、操作者用 `auditActorView(actor).text`（「未指派」按缺值处理）、动作/资源用 `row.action.label`/`row.resource.label`；`Intl.Collator("zh-Hans-CN", {numeric:true})` 比较，同值稳定（保持回行次序）。**缺值恒排末**（升序降序都排末，不当 0、不当空串抢首位；用例双向断言 + 行不丢）。
+- **CSV 逐行同源（两组对照）**：导出集合与表体是同一个数组 `listedRows`（排序后的可见集），用例把「表体行的 操作者|对象 序列」与「CSV 数据行的同两列序列」逐行等值断言：
+  - ① 默认排序：CSV 4 条数据行 = 服务回行序，首行含「阿朱」、末行含「白一」（`evt_n3` 在服务序里居第三位）；
+  - ② `?asort=actor&adir=asc`：表体与 CSV 同为 `evt_n1 → evt_n4 → evt_n2 → evt_n3`，首行「阿朱」、末行「未指派」（缺操作者那条恒末），文件名仍带 `-all-n4-`。
+  `aud5-export-count`、`aud01-status` 的「已显示 N 条」、类型分布与 `audI-export-scope` 全部改读同一集合，未另算。
+- **零额外请求 / 不扰分页与保态**：点表头只写地址两个键，`urls()` 在三次循环点击前后**逐字相等**（数组全等断言），`/agent-api/api/audit?` 仍 1 条；已在第 2 页（`cursor=cur_page2`）时排序不改页码、不丢游标（`aud2-page` 仍「第 2 页」）；排序不是换问法：`scrollFingerprint` 不含 `asort/adir`，audM 留下的位置记号原样在 sessionStorage 里（用例断言未被清、`data-audl-cleared` 不出现）。audK 的方向键走的是**当前显示次序**（排序后 ↑↓ 依次落到屏幕上真实的下一行）。
+- **四态**：loading / empty / error / denied 与自定义区间未应用时，四只表头按钮一律 `disabled` + title 说明原因（「正在读取这一页，读到之后才有可排的行」「这一页没有记录可排」「这一页没能读到；先重试，读到了再排序」「审计事件暂不可读，这一页没有可排的行」「自定义区间还没应用…」），点它们不写地址也不发请求（逐档断言 `urls()` 不变、`asort=` 不出现）；403≡404 同体与每态 rid、零写入口沿用 audF 口径未退化。
+- **零破**：`aud01*`、`aud2*`–`audM*`（含 audH 每页条数、audI 导出口径、audJ 时间/操作者 helper 断言、audK 漫游、audL 常驻摘要与滚动记号）与页级 `agent-v2-page-audit*` 未改名未删节点；起算 17 files/330… 更精确说：起算 16 files/**330** 一条未红，现 **17 files / 343** = 330 + 13（`sorting.test.ts` 5 条 + 页面 audN 8 条）。三档视口：排序条是 `flex min-w-0 flex-wrap gap-2`，说明行 `break-words`，未做浏览器像素走查（活体不可用），不声称已验。
+- 新增 testid：`aud-sort-bar-block` `aud-sort-bar` `aud-sort-row` `aud-sort-head-<time|actor|action|resource>` `aud-sort-button-<col>` `aud-sort-status` `aud-sort-scope-note`。
+- 门禁：vitest `src/modules/audit` **exit 0**（**17** files / **343** tests）；`pnpm exec tsc -b . --noEmit` 共 **69** errors（= 本机地板，改动前后同数、增量 0）且 `modules/audit` **0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings（一度因 `useMemo` 依赖新建对象多出 1 条 exhaustive-deps 提示，已改为与类型分布同款的直接派生并消除）。
+- 活体腿状态：仅上述排序参数探针（401/404，未获得任何生效读数），其余证据为 vitest 腿 + URL 构造复现。

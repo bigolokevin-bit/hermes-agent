@@ -3929,3 +3929,307 @@ describe("audM - the way back keeps the place and the row", () => {
     expect(spy.scrollTo).toHaveLength(0);
   });
 });
+
+/**
+ * audN — 列排序（本地）。断言的是：三态循环（升→降→清除）与地址键 `?asort`/`?adir`、
+ * 键盘 Enter/Space 可触发、aria-sort 三态、缺值恒排末、排序与其它地址键组合可复现、
+ * 点表头零新请求、游标栈与页码不因排序变动、导出行序与表体逐行一致（两组对照），
+ * 以及四态下控件 disabled 并写明原因。
+ */
+describe("audN - the columns sort locally, and say so", () => {
+  const ROW = (id: string, displayName: string, handle: string, occurredAt: string, rid: string): unknown => ({
+    eventId: id,
+    action: "task.created",
+    occurredAt,
+    outcome: "succeeded",
+    actor: { type: "human", id: handle, displayName },
+    resource: { type: "task", id: `ts_${id}` },
+    requestId: rid,
+  });
+  const SET = {
+    items: [
+      ROW("evt_n1", "阿朱", "user:aaa0000000000001", "2026-11-19T01:20:00Z", "req-n1"),
+      ROW("evt_n2", "李思", "user:bbb0000000000002", "2026-11-18T01:20:00Z", "req-n2"),
+      // no actor at all: must stay last in both directions
+      { eventId: "evt_n3", action: "run.failed", occurredAt: "2026-11-17T01:20:00Z", outcome: "error" },
+      ROW("evt_n4", "白一", "user:ccc0000000000004", "2026-11-20T01:20:00Z", "req-n4"),
+    ],
+    nextCursor: "cur_page2",
+  };
+
+  const head = (col: string): Element | null => document.querySelector(`[data-testid='aud-sort-head-${col}']`);
+  const sortStateOf = (): Array<string | null> =>
+    ["time", "actor", "action", "resource"].map((col) => head(col)?.getAttribute("aria-sort") ?? null);
+  const rowOrder = (): string[] =>
+    [...document.querySelectorAll("[data-testid^='aud01-row-']")].map(
+      (node) => (node.getAttribute("data-testid") ?? "").replace("aud01-row-", ""),
+    );
+
+  function stubDownload(): { name: () => string; lines: () => string[] } {
+    const bodies: string[] = [];
+    const realBlob = window.Blob;
+    const realCreate = URL.createObjectURL;
+    const realRevoke = URL.revokeObjectURL;
+    let fileName = "";
+    const spy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      fileName = this.download;
+    });
+    class SpyBlob extends realBlob {
+      constructor(parts: BlobPart[], options?: BlobPropertyBag) {
+        super(parts, options);
+        bodies.push(String(parts[0] ?? ""));
+      }
+    }
+    window.Blob = SpyBlob as unknown as typeof Blob;
+    URL.createObjectURL = vi.fn(() => "blob:aud-n") as unknown as typeof URL.createObjectURL;
+    URL.revokeObjectURL = vi.fn() as unknown as typeof URL.revokeObjectURL;
+    downloadCleanups.push(() => {
+      window.Blob = realBlob;
+      URL.createObjectURL = realCreate;
+      URL.revokeObjectURL = realRevoke;
+      spy.mockRestore();
+    });
+    return {
+      name: () => fileName,
+      lines: () => (bodies[bodies.length - 1] ?? "").replace(/^\uFEFF/, "").split("\r\n").filter((line) => line !== ""),
+    };
+  }
+  const downloadCleanups: Array<() => void> = [];
+  afterEach(() => {
+    for (const restore of downloadCleanups.splice(0)) restore();
+  });
+
+  async function mountSorted(entry: string): Promise<void> {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async () => SET);
+    await render(entry, <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await waitFor(() => !skeleton(), "first page settled");
+  }
+
+  async function pickHeader(col: string): Promise<void> {
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>(`[data-testid='aud-sort-button-${col}']`)?.click();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+  }
+
+  it("the cycle is ascending, descending, then cleared — in the address and in aria-sort", async () => {
+    await mountSorted("/audit?window=7d");
+    expect(sortStateOf()).toEqual(["none", "none", "none", "none"]);
+    expect(rowOrder()).toEqual(["evt_n1", "evt_n2", "evt_n3", "evt_n4"]);
+    expect(document.querySelector("[data-testid='aud-sort-status']")!.textContent).toContain("服务给的回行顺序");
+
+    await pickHeader("time");
+    expect(locationText()).toContain("asort=time");
+    expect(locationText()).toContain("adir=asc");
+    expect(sortStateOf()).toEqual(["ascending", "none", "none", "none"]);
+    expect(rowOrder()).toEqual(["evt_n3", "evt_n2", "evt_n1", "evt_n4"]);
+
+    await pickHeader("time");
+    expect(locationText()).toContain("adir=desc");
+    expect(sortStateOf()).toEqual(["descending", "none", "none", "none"]);
+    expect(rowOrder()).toEqual(["evt_n4", "evt_n1", "evt_n2", "evt_n3"]);
+
+    await pickHeader("time");
+    expect(locationText()).not.toContain("asort=");
+    expect(locationText()).not.toContain("adir=");
+    expect(sortStateOf()).toEqual(["none", "none", "none", "none"]);
+    expect(rowOrder()).toEqual(["evt_n1", "evt_n2", "evt_n3", "evt_n4"]);
+  });
+
+  it("an absent value keeps the last seat in both directions, and never reads as zero", async () => {
+    await mountSorted("/audit?window=7d");
+    await pickHeader("actor");
+    const asc = rowOrder();
+    expect(asc[asc.length - 1]).toBe("evt_n3");
+    await pickHeader("actor");
+    const desc = rowOrder();
+    expect(desc[desc.length - 1]).toBe("evt_n3");
+    // the row with no operator is still on screen, counted, not hidden
+    expect(document.querySelectorAll("[data-testid^='aud01-row-']")).toHaveLength(4);
+    expect(document.querySelector("[data-testid='aud-sort-scope-note']")!.textContent).toContain("仅在当前已加载的 4 条内排序");
+    // the note and the status never carry a path or a status code onto the screen
+    const said = document.querySelector("[data-testid='aud-sort-bar-block']")!.textContent ?? "";
+    expect(said).not.toMatch(/\/agent-api|console\.|\b40[134]\b/);
+  });
+
+  it("Enter and Space on a header sort, with the focus ring on the existing token", async () => {
+    await mountSorted("/audit?window=7d");
+    const button = document.querySelector<HTMLButtonElement>("[data-testid='aud-sort-button-resource']")!;
+    expect(button.type).toBe("button");
+    expect(button.className).toContain("focus-visible:outline-2");
+    const before = urls().length;
+    await act(async () => {
+      button.focus();
+      button.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+    });
+    expect(locationText()).toContain("asort=resource");
+    expect(urls()).toHaveLength(before);
+    await act(async () => {
+      button.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true }));
+    });
+    expect(locationText()).toContain("adir=desc");
+    expect(urls()).toHaveLength(before);
+  });
+
+  it("a pasted sorted address replays cold, next to every other key", async () => {
+    await mountSorted(
+      "/audit?window=custom&from=2026-11-12T01%3A00%3A00.000Z&to=2026-11-20T02%3A30%3A00.000Z" +
+        "&actor=user%3Abbb0000000000002&type=task.created&limit=25&cursor=cur_page1&asort=actor&adir=asc",
+    );
+    expect(head("actor")!.getAttribute("aria-sort")).toBe("ascending");
+    expect(document.querySelector<HTMLInputElement>("[data-testid='aud01-filter-operator']")!.value).toBe(
+      "user:bbb0000000000002",
+    );
+    expect(document.querySelector<HTMLInputElement>("[data-testid='audH-page-size']")!.value).toBe("25");
+    expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 2 页");
+    expect(locationText()).toContain("asort=actor");
+    expect(lastUrl()).toContain("from=2026-11-12T01");
+    expect(lastUrl()).toContain("actorId=user%3Abbb0000000000002");
+    // the row order on arrival is the sorted one: the operator with no name
+    // (the row the service never attributed) sits last, ascending or not
+    const order = rowOrder();
+    expect(order[order.length - 1]).toBe("evt_n3");
+    expect(order).toHaveLength(4);
+    expect(order).not.toEqual(["evt_n1", "evt_n2", "evt_n3", "evt_n4"]);
+  });
+
+  it("sorting costs no request and does not move the page", async () => {
+    await mountSorted("/audit?window=7d&type=task.created");
+    await act(async () => {
+      (document.querySelector("[data-testid='aud01-load-more']") as HTMLButtonElement).click();
+    });
+    await waitFor(() => locationText().includes("cursor=cur_page2"), "page 2 in the address");
+    expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 2 页");
+    const before = urls();
+    await pickHeader("actor");
+    await pickHeader("actor");
+    await pickHeader("time");
+    // 每一次点表头都没有多发一条请求
+    expect(urls()).toEqual(before);
+    expect(locationText()).toContain("cursor=cur_page2");
+    expect(document.querySelector("[data-testid='aud2-page']")!.textContent).toContain("第 2 页");
+  });
+
+  it("the export carries the rows in the order the table shows them", async () => {
+    const download = stubDownload();
+    const exportNow = async (): Promise<string[]> => {
+      await act(async () => {
+        document
+          .querySelector<HTMLElement>("[data-testid='aud5-export']")!
+          .dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      });
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      });
+      return download.lines().slice(1);
+    };
+    // the CSV has no event id column, so the rows are matched on what both
+    // sides actually show: 操作者 · 动作 · 资源
+    const cellOf = (key: string, column: string): string => {
+      const node = document.querySelector(`[data-testid='aud01-cell-${key}-${column}']`);
+      return (node?.textContent ?? "").replace("操作者", "").replace("对象", "").replace("时间（北京时间）", "").trim();
+    };
+    const tableSignature = (): string[] => rowOrder().map((key) => `${cellOf(key, "actor")}|${cellOf(key, "object")}`);
+    const csvSignature = (lines: string[]): string[] => lines.map((line) => {
+      const cells = line.split(",");
+      return `${cells[1]}|${cells[3]}`;
+    });
+
+    // ① no sort: the order the service gave, row for row
+    await mountSorted("/audit?window=7d");
+    const defaultLines = await exportNow();
+    expect(csvSignature(defaultLines)).toEqual(tableSignature());
+    expect(defaultLines).toHaveLength(4);
+    expect(defaultLines[0]).toContain("阿朱");
+    expect(defaultLines[3]).toContain("白一");
+
+    // ② ?asort=actor&adir=asc: the same four rows, in the order on screen
+    await mountSorted("/audit?window=7d&asort=actor&adir=asc");
+    const sortedLines = await exportNow();
+    expect(csvSignature(sortedLines)).toEqual(tableSignature());
+    expect(rowOrder()).toEqual(["evt_n1", "evt_n4", "evt_n2", "evt_n3"]);
+    // 首末行对照：表体第一行 = CSV 第一条数据行；缺操作者那条恒排末
+    expect(sortedLines[0]).toContain("阿朱");
+    expect(sortedLines[sortedLines.length - 1]).toContain("未指派");
+    expect(rowOrder()[rowOrder().length - 1]).toBe("evt_n3");
+    // and the file name still says which set it is
+    expect(download.name()).toContain("-all-n4-");
+  });
+
+  it("every state without rows says why the headers are off", async () => {
+    const legs: Array<{ label: string; entry: string; handler: (url: string) => Promise<unknown>; words: string }> = [
+      {
+        label: "loading",
+        entry: "/audit?window=7d",
+        handler: () => new Promise(() => undefined),
+        words: "正在读取这一页",
+      },
+      {
+        label: "empty",
+        entry: "/audit?window=7d",
+        handler: async () => ({ items: [], nextCursor: null }),
+        words: "这一页没有记录可排",
+      },
+      {
+        label: "error",
+        entry: "/audit?window=7d",
+        handler: async () => {
+          throw new ApiError("down", { status: 503, body: "{}", url: "/agent-api/api/audit", requestId: "rid-n" });
+        },
+        words: "这一页没能读到",
+      },
+      {
+        label: "denied",
+        entry: "/audit?window=7d",
+        handler: async () => {
+          throw new ApiError("closed", { status: 403, body: '{"code":"console.forbidden"}', url: "/agent-api/api/audit", requestId: "rid-n" });
+        },
+        words: "审计事件暂不可读",
+      },
+    ];
+    for (const leg of legs) {
+      api.fetchJSON.mockReset();
+      api.fetchJSON.mockImplementation(leg.handler);
+      await render(leg.entry, <>
+        <AuditEventsModulePage />
+        <LocationProbe />
+      </>);
+      await waitFor(() => !document.querySelector("[data-testid='aud01-loading']") || leg.label === "loading", "settled");
+      const button = document.querySelector<HTMLButtonElement>("[data-testid='aud-sort-button-time']")!;
+      expect(button.disabled, leg.label).toBe(true);
+      expect(button.getAttribute("title"), leg.label).toContain(leg.words);
+      const before = urls().length;
+      await pickHeader("time");
+      expect(urls()).toHaveLength(before);
+      expect(locationText(), leg.label).not.toContain("asort=");
+    }
+  });
+
+  it("the arrow keys walk the displayed order, and sorting leaves the scroll mark alone", async () => {
+    window.sessionStorage.setItem(
+      "audm-scroll:window=7d|from=|to=|type=|actor=|resource=|limit=|cursor=",
+      JSON.stringify({ y: 333, rowKey: "evt_n2" }),
+    );
+    await mountSorted("/audit?window=7d&preview=evt_n1");
+    // 排序不是翻页也不是换问法： audM 留下的位置记号原样还在
+    expect(document.querySelector("[data-testid='audL-scroll']")!.getAttribute("data-audl-cleared")).toBeNull();
+    expect(
+      window.sessionStorage.getItem("audm-scroll:window=7d|from=|to=|type=|actor=|resource=|limit=|cursor="),
+    ).toContain("333");
+    // audN: sorting is not a page turn — the mark audM left is not dropped for it
+    const first = document.querySelector<HTMLButtonElement>("[data-testid='aud6-toggle-evt_n1']")!;
+    expect(first.getAttribute("aria-expanded")).toBe("true");
+    await pickHeader("time");
+    expect(document.querySelector("[data-testid='aud6-preview-evt_n1']")).not.toBeNull();
+    expect(head("time")!.getAttribute("aria-sort")).toBe("ascending");
+    // the roving stop follows what is on screen now (阿朱 sorts last by time asc here)
+    const stop = document.querySelector("[data-audk-roving='true']")!;
+    expect(stop.getAttribute("data-audk-row")).toBe(rowOrder()[0]);
+  });
+});
