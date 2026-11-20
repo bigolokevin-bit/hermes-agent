@@ -725,9 +725,12 @@ export function ErrorPanel({
       className="border-destructive/40 bg-destructive/5"
       data-testid={testId}
     >
-      <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-6">
+        <CardContent className="flex min-w-0 flex-col items-start gap-[var(--space-2)] px-[var(--space-4)] py-[var(--space-6)]">
+        {/* 组合口径（UI-B）：与空态锚互斥由 list.phase 单值枚举锁死（R226 护栏）；
+            rid 复制行与技术折叠为既有能力；rid 展示经 CopyValue min-w-0 break-all，
+            375 不横溢。标题走 15px 字号台阶；重试是卡内唯一实心主操作。 */}
         {slot ? <StateMark slot={slot} phase="error" sentence={failure.sentence} /> : null}
-        <div className="flex min-w-0 items-center gap-2 text-sm text-destructive">
+        <div className="flex min-w-0 items-center gap-[var(--space-2)] text-base text-destructive">
           <TriangleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span className="min-w-0 break-words">{title}</span>
         </div>
@@ -736,7 +739,7 @@ export function ErrorPanel({
         </p>
         <RequestIdLine requestId={failure.requestId} testId={`${testId}-request-id`} />
         {failure.technical ? <TechnicalDisclosure lines={[failure.technical]} testId={`${testId}-details`} /> : null}
-        <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
+        <Button size="sm" onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
           重试
         </Button>
       </CardContent>
