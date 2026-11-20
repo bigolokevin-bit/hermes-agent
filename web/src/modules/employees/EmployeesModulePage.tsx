@@ -281,6 +281,81 @@ function RowPreview({ row }: { row: EmployeeRow }) {
   );
 }
 
+/* ------------------------------------------------------------------ *
+ * R64: 复制列表为纯文本。值逐字取屏上（短码/人话/BJT 到分），
+ * 只读已加载行、零额外请求；口径写明「当前已加载 N 人」，禁冒充全量。
+ * ------------------------------------------------------------------ */
+
+const COPY_HEADER = "name,employee_no,lifecycle,last_active";
+
+/** RFC4180：含逗号/引号/换行的值加引号，内部引号双写。 */
+function csvCell(value: string): string {
+  return /[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+}
+
+/** 屏上行序（sortedItems 已含当前排序）逐行拼表；缺值「—」不补 0。 */
+function buildEmployeesCopyText(rows: EmployeeRow[]): { text: string; count: number } {
+  const lines = rows.map((row) =>
+    [
+      csvCell(displayName(row)),
+      csvCell(`员工 · ${shortCode(row.employeeId)}`),
+      csvCell(lifecycleLabel(row.lifecycleState)),
+      csvCell(beijingMinute(row.updatedAt) ?? "—"),
+    ].join(","),
+  );
+  return { text: [COPY_HEADER, ...lines].join("\n"), count: lines.length };
+}
+
+function ListCopyButton({ rows, totalLoaded }: { rows: EmployeeRow[]; totalLoaded: number }) {
+  const [status, setStatus] = useState<"idle" | "done" | "failed">("idle");
+  const { text, count } = useMemo(() => buildEmployeesCopyText(rows), [rows]);
+  const empty = rows.length === 0;
+  const copy = () => {
+    const write = navigator.clipboard?.writeText;
+    if (!write) {
+      setStatus("failed");
+      return;
+    }
+    write.call(navigator.clipboard, text).then(
+      () => setStatus("done"),
+      () => setStatus("failed"),
+    );
+  };
+  return (
+    <span className="flex min-w-0 flex-wrap items-center gap-2" role="group" aria-label="复制列表">
+      <Button
+        size="sm"
+        outlined
+        data-testid="emp-list-copy"
+        disabled={empty}
+        onClick={copy}
+        title={
+          empty
+            ? "当前已加载 0 人：没有可复制的行。"
+            : `按当前排序与筛选后的屏上行序复制；范围=当前已加载 ${totalLoaded} 人，不是全量；零额外请求。`
+        }
+      >
+        复制列表
+      </Button>
+      <span data-testid="emp-list-copy-status" aria-live="polite" className="text-xs text-white/55">
+        {status === "done" ? `已复制 ${count} 行` : status === "failed" ? "剪贴板写入被拒绝，可用下方文本框手动复制。" : ""}
+      </span>
+      {status === "failed" ? (
+        <textarea
+          data-testid="emp-list-copy-fallback"
+          readOnly
+          rows={4}
+          value={text}
+          onFocus={(e) => e.currentTarget.select()}
+          className="w-full min-w-0 rounded-sm border border-white/15 bg-transparent p-2 font-mono text-xs"
+          aria-label="复制内容兜底文本框"
+          title="内容与点击复制的目标逐字相同；手动选择后复制。"
+        />
+      ) : null}
+    </span>
+  );
+}
+
 export function EmployeesModulePage() {
   const [params, setParams] = useSearchParams();
   const forced = params.get("state");
@@ -408,10 +483,13 @@ export function EmployeesModulePage() {
             </span>
           ) : null}
         </div>
-        <Button size="sm" outlined onClick={retry} data-testid="employees-refresh">
+        <span className="flex min-w-0 flex-wrap items-center gap-2">
+          <ListCopyButton rows={sortedItems} totalLoaded={state.items.length} />
+          <Button size="sm" outlined onClick={retry} data-testid="employees-refresh">
           <RefreshCw className="mr-2 h-4 w-4" />
           刷新
         </Button>
+        </span>
       </header>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3" data-testid="employees-summary">

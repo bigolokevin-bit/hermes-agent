@@ -438,3 +438,114 @@ describe("R63 inline row preview (emp-row-preview-*)", () => {
   });
 });
 
+describe("R64 employees list copy as text (emp-list-copy)", () => {
+  const twoRows = {
+    items: [
+      ...rowsBody.items,
+      { employeeId: "emp_2B2C2D2E4F506172", name: "阿朝", title: "增长", lifecycleState: "active", updatedAt: "2026-11-18T05:52:48.030Z", department: "增长组" },
+    ],
+  };
+
+  const stubClipboard = (impl?: (t: string) => Promise<void>) => {
+    const written: string[] = [];
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: impl
+          ? impl
+          : async (t: string) => {
+              written.push(t);
+            },
+      },
+    });
+    return written;
+  };
+
+  it("copies the on-screen rows verbatim without any extra request", async () => {
+    fetchJSON.mockImplementation(() => Promise.resolve(twoRows));
+    await render("/employees");
+    await act(async () => {
+      flushTimers();
+    });
+    const callsBefore = fetchJSON.mock.calls.length;
+    const written = stubClipboard();
+    const btn = q("emp-list-copy") as HTMLButtonElement | null;
+    expect(btn, "copy button on screen").toBeTruthy();
+    expect(btn!.disabled, "ready list enables copy").toBe(false);
+    expect(btn!.title).toContain("当前已加载 2 人");
+    await act(async () => {
+      btn!.click();
+    });
+    await act(async () => {});
+    expect(fetchJSON.mock.calls.length, "copy never fetches").toBe(callsBefore);
+    expect(written.length).toBe(1);
+    const lines = written[0].split("\n");
+    expect(lines[0]).toBe("name,employee_no,lifecycle,last_active");
+    expect(lines).toHaveLength(3); // 表头 + 屏上 2 人
+    expect(lines[1]).toContain("小鲤");
+    expect(lines[1]).toContain("员工 · 217A91BA");
+    expect(lines[1]).toContain("待核实"); // weird_state → 人话 default
+    expect(lines[1]).toContain("2026-11-17 13:52"); // BJT 到分
+    expect(lines[2]).toContain("阿朝");
+    expect(lines[2]).toContain("在岗");
+    expect(written[0]).not.toContain("emp_"); // 禁裸工号全量
+    expect(q("emp-list-copy-status")?.textContent).toContain("已复制 2 行");
+    expect(q("emp-list-copy-fallback")).toBeNull();
+  });
+
+  it("escapes a comma-bearing name and keeps it verbatim on both paths", async () => {
+    fetchJSON.mockImplementation(() =>
+      Promise.resolve({
+        items: [{ ...rowsBody.items[0], name: "小鲤, 带头" }],
+      }),
+    );
+    await render("/employees");
+    await act(async () => {
+      flushTimers();
+    });
+    const written = stubClipboard();
+    const btn = q("emp-list-copy") as HTMLButtonElement;
+    await act(async () => {
+      btn.click();
+    });
+    await act(async () => {});
+    expect(written[0]).toContain('"小鲤, 带头"'); // RFC4180 转义
+    // 屏上姓名列与复制行同源
+    const nameCell = document.querySelector('[data-testid="emp-l-row-emp_217A91BA995044DFBB3E2E940B"]');
+    expect(nameCell?.textContent).toContain("小鲤, 带头");
+  });
+
+  it("falls back to a read-only textarea when the clipboard refuses", async () => {
+    fetchJSON.mockImplementation(() => Promise.resolve(twoRows));
+    await render("/employees");
+    await act(async () => {
+      flushTimers();
+    });
+    stubClipboard(async () => {
+      throw new Error("denied");
+    });
+    const btn = q("emp-list-copy") as HTMLButtonElement;
+    await act(async () => {
+      btn.click();
+    });
+    await act(async () => {});
+    expect(q("emp-list-copy-status")?.textContent).toContain("手动复制");
+    const area = q("emp-list-copy-fallback") as HTMLTextAreaElement | null;
+    expect(area, "fallback textarea").toBeTruthy();
+    expect(area!.readOnly).toBe(true);
+    expect(area!.value.split("\n")).toHaveLength(3);
+    expect(area!.value).toContain("员工 · 217A91BA");
+  });
+
+  it("disables with a stated reason when nothing is loaded", async () => {
+    fetchJSON.mockImplementation(() => Promise.resolve({ items: [] }));
+    await render("/employees");
+    await act(async () => {
+      flushTimers();
+    });
+    const btn = q("emp-list-copy") as HTMLButtonElement | null;
+    expect(btn, "button still rendered in empty state").toBeTruthy();
+    expect(btn!.disabled).toBe(true);
+    expect(btn!.title).toContain("当前已加载 0 人");
+  });
+});

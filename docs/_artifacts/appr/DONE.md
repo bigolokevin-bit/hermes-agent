@@ -947,3 +947,12 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 测试：ApprovalsHistoryModulePage.test.tsx 新 describe "R65 preview-detail parity (apv9 vs apd5/apd6)" 3 用例（pending 同值+展开两次 fetchJSON 计数不变零请求锁 / settled decidedAt 两屏同「2026-11-19 10:00」==apd5-field-decided-at / 缺风险行两处「未标注风险」同词+「请求编号：该字段未返回」）。定向 approvals 3 files/83 passed；tsc 本域 0 红；assert-ia 两模式 exit0；全量尾行见下条（基线 137 files/1671，+3）。
 - 零破：apv9-*/apd6-*/apd7-*/apv5–8/apr5/ed*/emp-list*（既有 80 用例全绿为证）；三档=Field dl grid min-w-0 既有形态学报（jsdom 不可测）；9122==053da5c4 活体两屏 DOM 读数待并入后代次。
 - 队列注记：R64（employees 复制为纯文本）与 R58（employees 分页）仍未交付。
+
+## R64 员工列表复制为纯文本（emp-list-copy，2026-11-20 补交）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @5dd273f3（b797bc98 已含），toplevel ✓ porc=0；代码代次 053da5c4。
+- 实现（modules/employees/EmployeesModulePage.tsx）：纯函数 buildEmployeesCopyText(rows)=表头 `name,employee_no,lifecycle,last_active` + sortedItems 屏上行序逐行 csvCell（RFC4180：含逗号/引号/换行加引号双写）；值逐字取屏上=displayName/`员工 · shortCode`（title 全 id 语义在行卡列，文本只出短码）/lifecycleLabel（default 待核实）/beijingMinute ?? 「—」（缺不补 0）；ListCopyButton 挂 header 刷新钮旁（role=group）：emp-list-copy 钮（disabled=rows 空；title=「范围=当前已加载 N 人，不是全量；零额外请求」/空态「当前已加载 0 人：没有可复制的行。」）+emp-list-copy-status aria-live=「已复制 N 行」（N=数据行数不含表头）/拒→「剪贴板写入被拒绝…」+emp-list-copy-fallback 只读 textarea（value 与目标逐字相同 onFocus select）。clipboard 缺失（无 writeText）也落 failed 分支禁静默。
+- 零额外请求=组件只吃 sortedItems/state.items 现数据；用例锁 fetchJSON.mock.calls 点击前后相等。
+- 测试：新 describe 4 用例 append 文件最末（tail-safe）——2 行逐字读数（员工 · 217A91BA/待核实/2026-11-17 13:52/在岗/无裸 emp_/已复制 2 行/无 fallback）；逗号名转义「"小鲤, 带头"」+屏上姓名列同源；reject→textarea readOnly 3 段；空列表 disabled+title「当前已加载 0 人」。定向 employees 2 files/22 passed；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **138 files/1678 passed**（基线 1674+4）。
+- 零破：emp-list-*/emp-row-preview-*/ed*/apv5–9/apd6/apd7/apr5（既有用例全绿为证）；三档=header flex-wrap+span.contents 既有形态学报（jsdom 不可测）；9122==053da5c4 禁重建，活体复制读数待并入后代次。
+- 队列注记：R58（employees 分页）仍未交付。
