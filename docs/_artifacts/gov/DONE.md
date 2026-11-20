@@ -2419,3 +2419,15 @@ built /private/tmp/health-r38/index.html
 - 附带修复：本文件 `waitFor` 原用 `Date.now()` 做 3000 ms 截止，而 ①②③b④ 冻结 `Date` → 截止永不触发，用例② 空转到 vitest 15 s 强杀并污染后续用例（③/③b/④ 全空白）。改为 600 次 × 5 ms 真实 sleep 的迭代上限，与冻结时钟免疫；隔离跑证实四例各自本可通过，级联是超时副作用。零产品码改动。
 - 验证：新文件 6/6；定向 `src/modules/health src/modules/audit src/shell` **40 files / 584 passed**（`sys-refresh`/`sys-updated-at`/`sys-row-copy-*`/R112 与既有 audit、shell 用例全绿）；全量 `npx vitest run` **199 files / 2561 passed, 0 failed**（基线 198/2555 → +1 file / +6 tests）；`tsc -b . --noEmit` exit 2，health/audit/shell grep **0**，错误仅限 approvals / employee-detail / employees 基线。
 - 边界：只加 `web/src/modules/health/system.filters.test.tsx` + 本节 DONE；未碰 App.tsx/shell/routes/registry/package·lock/web-scripts/ops（shell 与 audit 源码只读、只在测试里挂载）；未 install、未并 main、未 force/amend/--no-verify。
+
+## R96 / cap-count-parity — /capabilities 计数与筛选后行数三值同源护栏（纯测试）
+
+- 基线：显式 refspec fetch + `git merge --no-ff origin/lane/hermes-console` → 合并笔 `88dd4f1b`，上游 tip `862154eb`（派工单点名 `18ec9cfb`，已核为 HEAD 祖先，随 tip 一并并入）。上游 delta 落在 approvals/audit/employees/knowledge/metrics/runs 与 tonight 证据，`git diff --name-only HEAD^1 HEAD -- web/src/modules/{capabilities,skills,tools}` 为空——本写域零重叠。
+- 现查既有用例（派工纪律）：R128 `rowcopybtn` 已钉 q 筛选后按钮与表体同序、空集零按钮；R130 `empty` 已钉无匹配锚逐字、双闸禁用共因句、清空恢复行数与按钮、深链不改 URL；R88 `filterparity` 已钉 `cap-page-scope` N 三方锁步与「0 条」/「—」分支；R87 `rowparity` 已钉 scope==表体==导出。缺口 = `cap4-count-*` 数值进入同一等式、工具侧分区计数、真实 0 的空集计数断言——本轮只补这三处，零重复用例。
+- 三处陈旧前提如实更正：① `capF` 没有计数面（`capF-*` 全是状态锚家族），计数面实名 `cap4-count-skills`/`cap4-count-tools`（值位 `—`/数字，状态位 未取数/加载中/有源/有源（空）/无源）；② capabilities 无类型筛选，只有名称 `cap5-search`，「按类型筛选」按 `?q=` 实现；③ 无子表下钻，唯一下钻是行展开 `cap7-detail-tools`，「返回上层复原」实现为展开/收起往返后全部数值逐字还原。
+- 关键语义（现查非假设）：`publishCapabilityCount` 发布的 value 是 **visibleRows.length**——计数跟随筛选后可见行，不跟已加载行；故 `?q=报` 下 `cap4-count-skills`「2」而 `cap5-scope-note`「仅在当前已加载 3 项内搜索」，两者并存是口径不是矛盾。
+- 用例四例（`capabilities.counts.test.tsx`）：①未筛 技能3==表体3==按钮3==scope 3，未访问 tab 保持「—/未取数」，点击零新请求；②`?q=报` 三者同步到 2 且 ≠3；工具 5==5==5==5 再按首名前两字筛，三者等于筛后数；③分区「工具与工具集：3 条」==`tol5-list` 内行数、MCP 卡文案含「MCP 连接：2 个」、分区和==表体==`cap4`==按钮==scope，展开/收起往返后六值逐字还原；④筛空与真空两条路径同口径：行数 0、按钮 0、`cap4`「0」+「有源（空）」、`cap6-export-count`「0 条」、双闸 disabled 共因句「当前没有可导出的条目。」，点击不触剪贴板、reads 不变。
+- 坑（本轮实测）：`[data-testid^='cap-row-copy-']` 前缀选择器会同时命中行详情复制组件的 `cap-row-copy-status` 节点（展开一行后计数 6≠5）——按行复制按钮计数必须 `button[data-testid^='cap-row-copy-']'` 限定标签；同一文件二次挂载 skills 会吃模块缓存（`cachedSkillsState`），要验真实空 payload 必须先 `resetSkillsTabState()`。
+- 验证：新文件 4/4；定向三域 **19 files / 170 passed**；全量 **208 files / 2622 passed, 0 failed**（上游并笔抬基线）；`tsc -b . --noEmit` exit 2，本域 grep 0，错误仅限 approvals / employee-detail / employees 基线。零产品码改动。
+- 三档 N/A：纯测试、零 markup/CSS 增量，几何证据沿用 R93 实测（先例 R91/R94/R95）。
+- 边界：只新增 `web/src/modules/capabilities/capabilities.counts.test.tsx` 与本节；未碰 App.tsx / shell / routes / registry / package·lock / web-scripts / ops；未 install、未并 main、未 force/amend/--no-verify。
