@@ -1230,3 +1230,17 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 交付：新 web/src/modules/approvals/approvals.caliber.test.tsx（5 用例，一次全绿，零产品改动）。①ed8 聚合口径行上屏「本区按聚合口径读取，单页最多 20 条」+title 含「nextCursor 恒 null」实测句、ed8-appr-more 不存在+全页无「加载更多」、ed8-appr-scope-queue href 逐字=/approvals?status=all。②chipsFor(全参) 的 remove 摊平与 FILTER_PARAM_KEYS 集合 toEqual（非子集判法=七参恰齐；DONE 说明 chip.key 是六枚因 asort+adir 合成 sort 一枚）；sortChip.remove=[asort,adir]；purple 未知值原文上屏+chip 容器 title 含「该值未被识别」；行为=actor/since/risk/sort 四本地维移除各 +0 fetch、status 维移除恰 +1 且新请求无 status=/cursor=；末 chip 移除后 apv-filter-summary 整条消失、reset title 回到 RESET_NONE_TITLE。③无筛选页=apv-filter-summary null+apv-reset-filters disabled+title toBe(RESET_NONE_TITLE)（import 值非硬编码=单点锁）+hasActiveFilters 纯函数同判。
 - 形态注记（工单口径 vs 本仓 DOM）：①工单写 `data-ed8-appr-scope`——本仓载体实形=data-testid="ed8-appr-scope"（无该同名属性；ed 模块不在本单写域=未补属性，按 testid 判等义，若后续单要属性化再改）；工单文件名 .ts——含 JSX 落 .tsx（vitest 收集同路）。
 - 验证：定向 approvals+employee-detail 6 files/209 passed（149+55+新 5）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **162 files/2246 passed**（merge wave-22 后实跑基线+5，0 失败）；零产品文件改动。
+
+## R93 员工审批区四态与队列同句同形（stateCopy 单点，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console → merge commit 4b56f29f（带入 74c1e3b3 纯账本；代码代次 94076a05），toplevel ✓ porc=0。回执引用一律不写工作树 entry/sha。
+- 单点=新 web/src/modules/approvals/stateCopy.ts（APPROVAL_EMPTY_SENTENCE「该条件下无审批」/APPROVAL_FAILED_TITLE「审批申请没能加载出来」/APPROVAL_DENIED_TITLE「暂时无法查看审批申请」/APPROVAL_DENIED_BODY 单行常量/RETRY「重试」/RID_FALLBACK「本次请求未记录编号，可复制时间与操作路径反馈」）。approvals 侧引用改造：states.tsx ErrorPanel title 默认值、DeniedPanel 首句+正文（原 JSX 多行改常量单行=渲染字节稳定）、3 处 rid fallback、重试钮文字、InlineFailure retryLabel 默认；history 页 EmptyPanel reason 前缀改常量模板拼接（逐字不变）。
+- ed8 侧改前→改后（逐字对照）：
+  · empty 主句：「当前没有审批事项」→「该条件下无审批」（hint 范围说明保留——工单空集主句对齐；R89 的「现文逐字保持」决定被本单口径取代，先例=工单后单优先，L402 断言同步）。
+  · denied 首句：「审批暂不可见」→「暂时无法查看审批申请」；正文：DENIED_COPY+「请确认后台已接入…」后缀 → 队列 APPROVAL_DENIED_BODY 同句（403≡404 同体保持 toResourceError 单点）。
+  · error 首句：「审批没能加载出来」→「审批申请没能加载出来」；动态原因句（humanizeStatus）与队列 failure.sentence 同形制各读口自出，DONE 注明非同一字符串来源。
+  · 重试文字=APPROVAL_RETRY_LABEL、rid 位 fallback=APPROVAL_RID_FALLBACK（本就同句，改锁 import）。
+  形制=Card testid（ed5-approvals-{error,denied,empty,loading} 现名保留）+图标+主句 p+详句 p+RequestIdCopy+重试钮——与 Zone* 同构；loading 两侧均等高骨架无文字（ZoneLoading 4 行不动）。
+- 跨模块 import：employee-detail 引用 approvals/stateCopy（R78/R86 先例同方向）；禁第三套=ed 测试也 import 常量断言（无字面量复读）。pending 队列空集句「现在没有需要你处理的申请」为 R70 两种空集之真空集句，不属本单对齐面（DONE 注明）。
+- 测试：ed 新 describe 3 用例（error 首句 toBe 常量+重试点击 approvals 命中 +1 恰一次计数锁；403 vs 404 两 mount 整卡 textContent 相等+首句/正文 toBe 常量；empty 主句 toBe）；caliber 新 describe 3 用例（同屏跨模块：500 队列 apv-state-error span 句===ed p 句 toBe 互等；403 denied 首句+正文两处 p 逐字互等；空集主句队列 apv-state-empty-text contains 常量===ed toBe）。定向 approvals+employee-detail 6 files/**215 passed**（+6）；tsc 两域 0 红；assert-ia 两模式 exit0；全量 **162 files/2252 passed**（基线 2246+6）。
+- 零破：ed8-appr-scope/-scope-queue/ed1/ed5/ed7/ed9/ed10/edz/edx/apd*/apv*/apr5（既有 209 用例全绿为证）；三档=Card flex-col+break-words 既有形态学报；9122 活体两处同屏读数待并入后代次。

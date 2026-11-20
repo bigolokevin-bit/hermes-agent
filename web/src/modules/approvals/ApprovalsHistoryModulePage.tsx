@@ -38,6 +38,7 @@ import { ActorBuckets } from "./ActorBuckets";
 import { SinceQuickFilter, isSinceValue, withinSince } from "./SinceQuickFilter";
 import { RiskQuickFilter, isRiskValue, withinRisk, type RiskValue } from "./RiskQuickFilter";
 import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel } from "./states";
+import { APPROVAL_EMPTY_SENTENCE } from "./stateCopy";
 import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
 import { ApprovalDetailBody, ApprovalRowCard } from "./views";
 
@@ -519,7 +520,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
 
           {list.phase === "empty" ? (
             <EmptyPanel
-              reason={`该条件下无审批：「${summary}」结果下没有记录`}
+              reason={`${APPROVAL_EMPTY_SENTENCE}：「${summary}」结果下没有记录`}
               nextStep="换一个结果看看，或点「全部」把所有历史决策列出来。"
               onRefresh={list.reload}
               testId="apr5-empty-history"

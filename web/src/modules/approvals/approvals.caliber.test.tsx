@@ -53,6 +53,13 @@ import {
   hasActiveFilters,
 } from "@/modules/approvals/FilterReset";
 import { chipsFor } from "@/modules/approvals/FilterSummary";
+import { ApiError } from "@/lib/api-error";
+import {
+  APPROVAL_DENIED_BODY,
+  APPROVAL_DENIED_TITLE,
+  APPROVAL_EMPTY_SENTENCE,
+  APPROVAL_FAILED_TITLE,
+} from "@/modules/approvals/stateCopy";
 
 const mock = vi.mocked(fetchJSON);
 const EMP = "emp_A3F1B2C4D5E6";
@@ -190,5 +197,54 @@ describe("R92 ③ idle state", () => {
     expect(btn!.disabled).toBe(true);
     expect(btn!.getAttribute("title")).toBe(RESET_NONE_TITLE);
     expect(hasActiveFilters(new URLSearchParams("tab=history")).active).toBe(false);
+  });
+});
+
+describe("R93 approvals zone ↔ queue state sentences (same failure, same words)", () => {
+  const q = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+  const down = () => {
+    vi.mocked(fetchJSON).mockImplementation((url: unknown) =>
+      Promise.reject(
+        new ApiError("boom", { status: 500, body: "{}", url: String(url), requestId: "req-r93-caliber" }),
+      ),
+    );
+  };
+  const deniedBoth = () => {
+    vi.mocked(fetchJSON).mockImplementation((url: unknown) =>
+      Promise.reject(new ApiError("forbidden", { status: 403, body: "", url: String(url) })),
+    );
+  };
+
+  it("failure first sentence is byte-equal on both surfaces", async () => {
+    down();
+    await renderInto("/approvals?tab=history", <ApprovalsHistoryModulePage />);
+    const queueSentence = q("apv-state-error")?.querySelector("span")?.textContent ?? "";
+    expect(queueSentence).toBe(APPROVAL_FAILED_TITLE);
+    down();
+    await renderInto(`/employees/${encodeURIComponent(EMP)}?zone=approvals`, <EmployeeDetailModulePage employeeId={EMP} />);
+    const edSentence = q("ed5-approvals-error")?.querySelector("p")?.textContent ?? "";
+    expect(edSentence).toBe(queueSentence);
+  });
+
+  it("denied title and body are byte-equal on both surfaces", async () => {
+    deniedBoth();
+    await renderInto("/approvals?tab=history", <ApprovalsHistoryModulePage />);
+    const queuePs = Array.from(q("apv-state-denied")?.querySelectorAll("p") ?? []);
+    expect(queuePs[0]?.textContent).toBe(APPROVAL_DENIED_TITLE);
+    expect(queuePs[1]?.textContent).toBe(APPROVAL_DENIED_BODY);
+    deniedBoth();
+    await renderInto(`/employees/${encodeURIComponent(EMP)}?zone=approvals`, <EmployeeDetailModulePage employeeId={EMP} />);
+    const edPs = Array.from(q("ed5-approvals-denied")?.querySelectorAll("p") ?? []);
+    expect(edPs[0]?.textContent).toBe(queuePs[0]?.textContent);
+    expect(edPs[1]?.textContent).toBe(queuePs[1]?.textContent);
+  });
+
+  it("the empty sentence is the shared prefix on both surfaces", async () => {
+    vi.mocked(fetchJSON).mockImplementation(async () => ({ items: [] }));
+    await renderInto("/approvals?tab=history&status=cancelled", <ApprovalsHistoryModulePage />);
+    expect(q("apv-state-empty-text")?.textContent).toContain(APPROVAL_EMPTY_SENTENCE);
+    vi.mocked(fetchJSON).mockImplementation(async () => ({ items: [] }));
+    await renderInto(`/employees/${encodeURIComponent(EMP)}?zone=approvals`, <EmployeeDetailModulePage employeeId={EMP} />);
+    expect(q("ed5-approvals-empty")?.querySelector("p")?.textContent).toBe(APPROVAL_EMPTY_SENTENCE);
   });
 });
