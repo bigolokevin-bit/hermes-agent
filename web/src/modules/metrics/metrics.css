@@ -890,3 +890,14 @@
   color: var(--color-muted-foreground);
   white-space: nowrap;
 }
+
+/* metT — totals row: a rule above, bold figures, never sorted. */
+.metT-total > th,
+.metT-total > td {
+  border-top: 1px solid var(--color-border);
+  font-weight: 600;
+}
+
+.metT-total > th {
+  text-align: left;
+}

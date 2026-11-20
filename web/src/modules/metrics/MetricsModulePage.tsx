@@ -64,9 +64,11 @@ import {
   shareCsv,
   shareCsvFileName,
   shareOfCosts,
+  shareOfWhole,
   runsDrill,
   shortCode,
   sortModelCost,
+  sumOrNull,
   toCsv,
   usageTone,
   shareOf,
@@ -1182,6 +1184,9 @@ export function MetricsModulePage() {
         })()
       : [];
   const sharePrefix = groupBy === 'employee' ? 'met8' : 'met7';
+  const shareRunsTotal = sumOrNull(shareRows.map((row) => row.runs));
+  const shareCostTotal = sumOrNull(shareRows.map((row) => row.costUsd));
+  const sharePctTotal = shareOfWhole(shareRows.map((row) => row.costUsd), shareCostTotal);
   const sortColumnLabel = sortKey === 'runs' ? '运行数' : sortKey === 'cost' ? '成本' : groupBy === 'employee' ? '员工' : '模型';
   const shareTotal = shareView.kind === 'ready' ? shareView.value.rows.reduce<number | null>((sum, row) => {
     if (row.costUsd === null) return sum;
@@ -1252,6 +1257,15 @@ export function MetricsModulePage() {
   const detailSort: DetailSort = parseDetailSort(params.get('dsort')) ?? 'cost';
   const detailDir: SortDir = params.get('ddir') === 'asc' ? 'asc' : 'desc';
   const detailRows = sortDetailLines(detailLines, detailSort, detailDir);
+  // metT — the totals row is summed from the very rows the body renders, so a
+  // reader can add them up and land on the same numbers. Sorting never moves it
+  // or changes it, and a column nobody could read totals to «—», not 0.
+  const detailCostTotal = sumOrNull(detailRows.map((line) => line.costUsd));
+  const detailCountTotal = sumOrNull(detailRows.map((line) => line.count));
+  const detailShareTotal = shareOfWhole(
+    detailRows.map((line) => line.costUsd),
+    breakdownView.kind === 'ready' ? breakdownView.total : null,
+  );
   const exportable = detailRows.length > 0;
   const ariaSortFor = (key: DetailSort): 'ascending' | 'descending' | 'none' =>
     detailSort === key ? (detailDir === 'asc' ? 'ascending' : 'descending') : 'none';
@@ -1908,6 +1922,21 @@ export function MetricsModulePage() {
                         </tr>
                       ))}
                     </tbody>
+                    <tfoot>
+                      <tr className="metT-total" data-testid="metT-total-row">
+                        <th scope="row">合计</th>
+                        <td className="met6-num" data-testid="metT-detail-total-cost" title="表体各行支出相加；读不到的格子不计入，也不按 0 算">
+                          {formatUsd(detailCostTotal)}
+                        </td>
+                        <td className="met6-num" data-testid="metT-detail-total-count" title="表体各行次数相加；读不到的格子不计入">
+                          {detailCountTotal ?? '—'}
+                        </td>
+                        <td className="met6-num" data-testid="metT-detail-total-share" title="按未舍入的原值合计，逐行进位不影响这里">
+                          {formatSharePct(detailShareTotal)}
+                        </td>
+                        <td className="met6-num">—</td>
+                      </tr>
+                    </tfoot>
                   </table>
                 </div>
                 {groupResetNote && !pageFailed ? (
@@ -1917,6 +1946,9 @@ export function MetricsModulePage() {
                 ) : null}
                 <p className="met6-hint" data-testid="metP-export-order-note">
                   表头可以点着换排序：默认按支出从高到低；缺数据的行总是排在最后，真实的 0 照常参与排序。导出文件按屏上现在的顺序写，行数与这里列出的行数一致。
+                </p>
+                <p className="met6-hint" data-testid="metT-rounding-note-detail">
+                  占比逐行按一位小数四舍五入，合计按未舍入的原值相加，因此合计恰好是全部可读部分之和（占满时即 100%），不会因为逐行进位变成 99.9% 或 100.1%；合计行不参与排序。导出文件的行仍是逐行明细，合计不写进数据行。
                 </p>
                 <p className="met6-source" data-testid="met6-cat-source">
                   来源：{breakdownView.source} · 截至{' '}
@@ -2390,6 +2422,21 @@ export function MetricsModulePage() {
                         </tr>
                       ))}
                     </tbody>
+                    <tfoot>
+                      <tr className="metT-total" data-testid="metT-total-row-share">
+                        <th scope="row">合计</th>
+                        <td className="met6-num" data-testid="metT-share-total-runs" title="表体各行运行数相加；读不到的格子不计入">
+                          {formatCount(shareRunsTotal)}
+                        </td>
+                        <td className="met6-num" data-testid="metT-share-total-cost" title="表体各行成本相加；读不到的格子不计入，也不按 0 算">
+                          {formatUsd(shareCostTotal)}
+                        </td>
+                        <td className="met6-num" data-testid="metT-share-total-share" title="按未舍入的原值合计，逐行进位不影响这里">
+                          {formatSharePct(sharePctTotal)}
+                        </td>
+                        <td className="met6-num">—</td>
+                      </tr>
+                    </tfoot>
                   </table>
                 </div>
                 <p className="met6-source" data-testid={`${sharePrefix}-source`}>
@@ -2399,6 +2446,9 @@ export function MetricsModulePage() {
                 </p>
                 <p className="met6-hint" data-testid={`${sharePrefix}-hint`}>
                   占比按可读到的实扣金额归一，合计 100%；缺金额的行不参与分摊，显示「—」。排序写在地址里，刷新与前进后退都保留。
+                </p>
+                <p className="met6-hint" data-testid="metT-rounding-note">
+                  占比逐行按一位小数四舍五入，合计按未舍入的原值相加，因此合计恰好是全部可读部分之和（占满时即 100%），不会因为逐行进位变成 99.9% 或 100.1%；合计行不参与排序。导出文件的行仍是逐行明细，合计不写进数据行。
                 </p>
                 <p className="met6-hint" data-testid="metO-fmt-note">
                   数字口径：计数与金额按千分位分组（如 1,234 与 $1,234.56），占比保留一位小数（如 12.3%）；金额只以美元（USD）记，次数只以次记，不再混用别的单位。缺失显示「—」，真实的零显示 0 或 $0.00。导出文件沿用同一套小数位，只去掉符号与千分位，方便程序读取。

@@ -2924,3 +2924,104 @@ describe('metS — group switch semantics', () => {
     expect(batch(before, 'hermes-usage')).toBe(0);
   });
 });
+
+describe('metT — totals row and rounding note', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+  const num = (raw: string | null | undefined): number =>
+    Number((raw ?? '').replace(/[^0-9.-]+/g, ''));
+
+  function captureDownload(): { captured: { blob: Blob | null; name: string | null } } {
+    const captured: { blob: Blob | null; name: string | null } = { blob: null, name: null };
+    Object.assign(URL, {
+      createObjectURL: vi.fn((blob: Blob) => {
+        captured.blob = blob;
+        return 'blob:metT';
+      }),
+      revokeObjectURL: vi.fn(),
+    });
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      captured.name = this.download;
+    });
+    return { captured };
+  }
+
+  it('sums the share table from its own body rows and closes at 100.0%', async () => {
+    await mountShare(SHARE_USAGE);
+
+    const runsInBody = [...document.querySelectorAll('[data-testid^="met7-runs-"]')].map((node) => num(node.textContent));
+    const costsInBody = [...document.querySelectorAll('[data-testid^="met7-cost-"]')].map((node) => num(node.textContent));
+    const sharesInBody = [...document.querySelectorAll('[data-testid^="met7-share-"]')].map((node) => num(node.textContent));
+
+    expect(q('metT-total-row-share')).toBeTruthy();
+    expect(num(q('metT-share-total-runs')?.textContent)).toBe(runsInBody.reduce((a, b) => a + b, 0));
+    expect(num(q('metT-share-total-cost')?.textContent)).toBeCloseTo(costsInBody.reduce((a, b) => a + b, 0), 2);
+    expect(num(q('metT-share-total-share')?.textContent)).toBe(100);
+    // Per-row rounding adds up here too, but the total never relies on it.
+    expect(sharesInBody.reduce((a, b) => a + b, 0)).toBe(100);
+
+    expect(q('met7-runs-zeta')?.textContent).toBe('4');
+    expect(q('metT-share-total-runs')?.textContent).toBe('13');
+    expect(q('metT-share-total-cost')?.textContent).toBe('$4.00');
+    expect(q('metT-share-total-share')?.textContent).toBe('100.0%');
+    expect(q('metT-rounding-note')?.textContent).toContain('未舍入');
+    expect(q('metT-rounding-note')?.textContent).toContain('合计行不参与排序');
+  });
+
+  it('keeps the totals row outside sorting, and the file keeps only data rows', async () => {
+    const { captured } = captureDownload();
+    await mountShare(SHARE_USAGE, '/metrics?sort=model&dir=asc');
+
+    const rows = [...document.querySelectorAll('[data-testid^="met7-row-"]')].map((node) => node.getAttribute('data-testid'));
+    expect(rows).toEqual(['met7-row-alpha', 'met7-row-mid', 'met7-row-zeta']);
+    expect(q('metT-share-total-runs')?.textContent).toBe('13');
+    expect(q('metT-share-total-cost')?.textContent).toBe('$4.00');
+    expect(q('metT-total-row-share')?.querySelectorAll('button').length).toBe(0);
+    expect(q('metT-total-row-share')?.querySelectorAll('[aria-sort]').length).toBe(0);
+
+    await act(async () => {
+      (q('metA-export') as HTMLButtonElement).click();
+    });
+    const lines = (await (captured.blob as Blob).text()).replace(/^\uFEFF/, '').split('\r\n');
+    expect(lines).toHaveLength(rows.length + 1);
+    expect(lines.some((line) => line.startsWith('合计'))).toBe(false);
+  });
+
+  it('sums the detail table from the rendered rows and keeps unreadable columns at —', async () => {
+    await mountEmployeeShare(TWO_EMPLOYEE_LEDGER);
+
+    const costs = [...document.querySelectorAll('[data-testid^="met6-row-"]')].map((row) => num(row.querySelectorAll('td')[1]?.textContent));
+    expect(q('metT-total-row')).toBeTruthy();
+    expect(num(q('metT-detail-total-cost')?.textContent)).toBeCloseTo(costs.reduce((a, b) => a + b, 0), 2);
+    expect(q('metT-detail-total-cost')?.textContent).toBe('$4.00');
+    expect(q('metT-detail-total-share')?.textContent).toBe('100.0%');
+    // The employee ledger holds no run counts: the total is unknown, not 0.
+    expect(q('metT-detail-total-count')?.textContent).toBe('—');
+
+    await mount(breakdownRouter({ usage: () => Promise.resolve(HERMES_USAGE) }), '/metrics?view=model');
+    // The model view has no per-model money at all: both money cells read «—».
+    expect(q('metT-detail-total-cost')?.textContent).toBe('—');
+    expect(q('metT-detail-total-count')?.textContent).toBe('9');
+    expect(q('metT-detail-total-share')?.textContent).toBe('—');
+    expect(document.body.textContent).not.toContain('$0.00$0.00');
+  });
+
+  it('keeps a real zero at $0.00 in the totals and explains the rounding in both tables', async () => {
+    await mountEmployeeShare({
+      items: [
+        { employeeId: 'emp_aaaabbbbcccc', costUsd: 0, runs: 2, updatedAt: '2026-11-19T03:20:00.000Z' },
+        { employeeId: 'emp_ddddeeeeffff', updatedAt: '2026-11-19T02:10:00.000Z' },
+      ],
+      missingEmployeeIds: [],
+    });
+
+    expect(q('metT-detail-total-cost')?.textContent).toBe('$0.00');
+    expect(q('metT-share-total-cost')?.textContent).toBe('$0.00');
+    expect(q('metT-share-total-runs')?.textContent).toBe('2');
+    // No readable money means no share at all — «—», not 0.
+    expect(q('metT-share-total-share')?.textContent).toBe('—');
+    expect(q('metT-detail-total-share')?.textContent).toBe('—');
+
+    expect(q('metT-rounding-note-detail')?.textContent).toContain('合计行不参与排序');
+    expect(q('metT-rounding-note-detail')?.textContent).toContain('导出文件的行仍是逐行明细');
+  });
+});

@@ -609,6 +609,39 @@ export function shareOf(value: number | null, total: number | null): number | nu
   return Math.round((value / total) * 1000) / 10;
 }
 
+/**
+ * The total of a column: unreadable cells are skipped, never counted as 0.
+ * A column where nothing is readable has no total at all — «—», not 0.
+ */
+export function sumOrNull(values: (number | null)[]): number | null {
+  let seen = false;
+  let sum = 0;
+  for (const value of values) {
+    if (value === null || !Number.isFinite(value)) continue;
+    seen = true;
+    sum += value;
+  }
+  return seen ? sum : null;
+}
+
+/**
+ * The share of the whole for a totals row: summed from the unrounded parts, so
+ * the per-row rounding never drags the total off 100.0%. Unreadable parts are
+ * skipped; when there is no denominator or no readable part, there is no share.
+ */
+export function shareOfWhole(values: (number | null)[], total: number | null): number | null {
+  if (total === null || !Number.isFinite(total) || total <= 0) return null;
+  let seen = false;
+  let sum = 0;
+  for (const value of values) {
+    if (value === null || !Number.isFinite(value) || value < 0) continue;
+    seen = true;
+    sum += value;
+  }
+  if (!seen) return null;
+  return Math.round((sum / total) * 1000) / 10;
+}
+
 // ---- MET7: cost share by model ---------------------------------------------
 
 export interface ModelCostRow {

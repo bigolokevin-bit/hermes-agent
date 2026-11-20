@@ -332,3 +332,23 @@ metB 的「采集时刻」列内新增滞后徽标，不新增列、不改版式
 
 metR 三态口径未变：导出/复制的可用性只由整页失败或各自块的可读性决定，分组切换不引入新判据。验证：`src/modules/metrics` 2 files / 110 passed（此前 106）；全量 137 files / 1594 passed；tsc 全仓 55 条既存、`modules/metrics` 0；build entry `assets/index-BNRlwe1n.js` sha256 `062c00ed9a5d346e206dfe080f706ea02cf59dc5b8547ef4fdaa74f8ce0ec652`，entry 内 `metS-reset-note`=0，chunk `assets/MetricsModulePage-Cc_AE2nF.js`=1。
 - 未测项：真浏览器下三个断点切换分组后的视觉跳动未走查；分享链接跨会话（另一浏览器）复现未实测。
+
+## 合计行与占比余数口径（metT，2026-11-20）
+
+`/metrics` 的两张成本表（明细表与分摊表）在表尾各加一行合计，数值全部由表体当前渲染的行现算——不另发请求，也不读别的口径。
+
+| 位置 | testid | 合计口径 |
+| --- | --- | --- |
+| 明细表（成本明细） | `metT-total-row` | 支出=各行 `costUsd` 相加（员工视图）；次数=各行 `count` 相加（模型视图）；占比=按 `breakdownView.total` 用未舍入原值相加 |
+| 明细表单元格 | `metT-detail-total-cost` / `-count` / `-share` | 读不到的格子不计入、不按 0 计：整列都读不到时该格显示「—」 |
+| 分摊表 | `metT-total-row-share` | 运行数=各行 `runs` 相加；成本=各行 `costUsd` 相加；占比=按可读实扣合计、未舍入原值相加 |
+| 分摊表单元格 | `metT-share-total-runs` / `-cost` / `-share` | 同上；无任何可读金额时占比为「—」 |
+
+- 占比口径：逐行仍按一位小数四舍五入（`shareOf` / `shareOfCosts`），合计行用 `shareOfWhole(values, total)` 从未舍入的原值计算，所以合计恒等于「可读部分之和」，占满时显示 `100.0%`，不会出现 99.9% 或 100.1%。两处表下各有说明：分摊表 `metT-rounding-note`、明细表 `metT-rounding-note-detail`，文案含「合计行不参与排序」「导出文件的行仍是逐行明细，合计不写进数据行」。
+- 排序：合计行在 `<tfoot>`，不含按钮、不带 `aria-sort`，点表头排序只重排 `<tbody>`；`?dsort/?ddir` 变化时合计值逐项不变（求和不依赖顺序）。
+- 导出：CSV 只写数据行，合计不入文件（脚本消费时不会被一行假数据污染）；缺块注记仍是文件末行（metI/metR 口径不变）。
+- 零与缺失：真 0 照常显示 `$0.00` / `0`；读不到仍是「—」。仅当整张表没有可渲染的行时表不出现，随之也没有合计行——不造 0 行。
+- 实现：`metrics.ts` 新增 `sumOrNull(values)` 与 `shareOfWhole(values, total)`；页面在 `detailRows`、`shareRows` 之后派生合计；`metrics.css` 追加 `.metT-total`（上边框 + 加粗）。
+- 验证：定向 `src/modules/metrics` 2 files / **126 passed**（基线 122，+4）；全量 **137 files / 1598 passed**（基线 1594）；`tsc -b . --noEmit` 全仓 55 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metT` → entry `assets/index-FTaUJaPP.js` sha256 `3011587172ba040f2274021162b69ed54271a6f576f3178ad4428cf2107b68c7`，entry 内 `metT-total-row` 命中 0，chunk `assets/MetricsModulePage-BSbHJEAm.js` 命中 1。
+- 实测对照：分摊表（`SHARE_USAGE`：zeta 4 次/$3.00/75.0%、alpha 9 次/$1.00/25.0%、mid 无金额）——表体运行数 4+9=13，合计行 `13`；成本 3.00+1.00=4.00，合计行 `$4.00`；占比 75.0+25.0=100.0，合计行 `100.0%`。明细表（`TWO_EMPLOYEE_LEDGER`）——成本 3.00+1.00=4.00，合计行 `$4.00`，占比合计 `100.0%`，次数列因账本无次数显示「—」。
+- 未测项：真浏览器 375/1280 下合计行的表格内横滚与列宽未人工走查；上游若返回超过两位小数的金额，逐行与合计的四舍五入可能差 0.01，属上游数据形态问题，未构造该样例。
