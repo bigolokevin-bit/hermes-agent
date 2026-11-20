@@ -642,8 +642,11 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "415e1869",
+  "headHash": "78bf2ccd",
   "entry": "assets/index-6g0IMx1G.js",
   "entryBytes": 172175,
-  "entrySha256": "4407188fca95d1468ac3d2344108398303ac5d824c4c1f9c620f57fdc11d686b"
+  "entrySha256": "4407188fca95d1468ac3d2344108398303ac5d824c4c1f9c620f57fdc11d686b",
+  "carriedFrom": "415e1869",
+  "carried": true,
+  "stampNote": "wave-77 三笔全纯测试，entry sha 与 CSS 逐字节未变；本件未重跑，证据沿用 415e1869 代"
 }
