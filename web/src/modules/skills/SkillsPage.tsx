@@ -25,7 +25,7 @@ import "./skills.css";
 type State =
   | { k: "loading" }
   | { k: "empty" }
-  | { k: "error"; message: string; requestId: string | null; gap: string | null }
+  | { k: "error"; message: string; requestId: string | null; gap: string | null; status: number | null }
   | { k: "ready"; rows: SkillRow[]; asOf: string | null; asOfReason: string | null; asOfTitle: string | null };
 
 function requestIdOf(error: unknown): string | null {
@@ -75,6 +75,7 @@ function forcedState(state: FixtureState | null, rid: string | null): State | nu
       message: "技能读口未接入：上游技能接口还没有接入本控制台，或当前账号无权查看。接入后这里会自动显示真实技能。",
       requestId: rid,
       gap: SKILLS_GAP,
+      status: 404,
     };
   }
   return null;
@@ -128,6 +129,7 @@ export function SkillsPage() {
 
   const load = useCallback(async (signal: { live: boolean }) => {
     setState({ k: "loading" });
+    publishCapabilityCount("skills", { value: null, source: "loading", reason: null, gap: null });
     try {
       const body = await fetchJsonStrict("/agent-api/api/skills");
       if (!signal.live) return;
@@ -142,7 +144,15 @@ export function SkillsPage() {
     } catch (error) {
       if (!signal.live) return;
       const gap = error instanceof ApiError && (error.status === 403 || error.status === 404) ? SKILLS_GAP : null;
-      setState({ k: "error", message: messageFor(error), requestId: requestIdOf(error), gap });
+      const message = messageFor(error);
+      publishCapabilityCount("skills", { value: null, source: "missing", reason: message, gap });
+      setState({
+        k: "error",
+        message,
+        requestId: requestIdOf(error),
+        gap,
+        status: error instanceof ApiError ? error.status : null,
+      });
     }
   }, []);
 
@@ -207,6 +217,7 @@ export function SkillsPage() {
               updated_at: row.updatedAt,
             }))}
           />
+          <span className="capA-export-note" data-testid="capA-export-order-note">导出按当前排序与搜索</span>
           <Button
             size="sm"
             outlined
@@ -235,13 +246,17 @@ export function SkillsPage() {
 
       {page.k === "empty" ? (
         <Card><CardContent className="space-y-2 p-8 text-center" data-testid="skl4-empty">
+          <span className="sr-only" data-testid="cap9-state-empty" />
           <p className="skl4-empty-title">还没有已登记的技能</p>
-          <p className="skl4-note">台账没有返回任何技能；这里不补样例行。</p>
+          <p className="skl4-note">读口已接入，本次返回 0 条；台账没有返回任何技能，这里不补样例行。</p>
         </CardContent></Card>
       ) : null}
 
       {page.k === "error" ? (
         <Card><CardContent className="space-y-3 p-6" data-testid="skl4-error" role="alert">
+          {(page.status === 403 || page.status === 404) ? (
+            <span className="sr-only" data-testid={page.status === 403 ? "cap9-state-denied" : "cap9-state-unavailable"} />
+          ) : null}
           <p className="skl4-error-title">技能列表暂时无法读取</p>
           <p className="skl4-note" title={page.gap ?? undefined}>{page.message}</p>
           <RequestId id={page.requestId} />
