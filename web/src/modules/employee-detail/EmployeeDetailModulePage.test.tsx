@@ -822,3 +822,115 @@ describe("EmployeeDetailModulePage — zone nav (R51)", () => {
     expect(container.querySelector('[data-testid="edz-nav-tasks"]')?.getAttribute("aria-selected")).toBe("true");
   });
 });
+
+describe("EmployeeDetailModulePage — usage zone R57", () => {
+  const qid = (id: string) => container.querySelector(`[data-testid="${id}"]`);
+  const usageApi = (
+    day: unknown,
+    month: unknown,
+    stats: unknown,
+    urls: string[] = [],
+  ) =>
+    mockApi((url) => {
+      urls.push(url);
+      if (url.includes("periodKind=day")) return Promise.resolve(day);
+      if (url.includes("periodKind=month")) return Promise.resolve(month);
+      if (url.includes("/api/run-stats")) return Promise.resolve(stats);
+      return Promise.resolve({});
+    });
+
+  it("sends exactly three whitelisted queries and renders ledger/stats/asOf honestly", async () => {
+    const urls: string[] = [];
+    const otherDay = new Date(Date.now() - 5 * 86400000).toISOString().slice(0, 10);
+    usageApi(
+      { items: [], missingEmployeeIds: [EMP], asOf: "2026-11-19T23:58:08Z", asOfSource: "bff-read-time" },
+      { items: [{ employeeId: EMP, period: "2026-11", costUsd: 0.12119800000000001 }], asOf: "2026-11-19T23:58:08Z", asOfSource: "bff-read-time" },
+      { buckets: [{ bucketStart: `${otherDay}T00:00:00.000Z`, runs: 13 }], totals: { runs: 13 }, asOf: "2026-11-19T23:58:08Z" },
+      urls,
+    );
+    await renderAt(page, at("usage"));
+    const usageCalls = urls.filter((u) => u.includes("/api/budget-usage") || u.includes("/api/run-stats"));
+    expect(usageCalls).toHaveLength(3);
+    for (const u of usageCalls) expect(u).toContain(`employeeId=${encodeURIComponent(EMP)}`);
+    expect(usageCalls.some((u) => u.includes("periodKind=day") && u.includes("period="))).toBe(true);
+    expect(usageCalls.some((u) => u.includes("periodKind=month"))).toBe(true);
+    expect(usageCalls.some((u) => u.includes("/api/run-stats") && u.includes("bucket=day"))).toBe(true);
+    expect(qid("ed10-usage")).toBeTruthy();
+    expect(qid("ed10-usage-runs-month")?.textContent).toBe("13");
+    expect(qid("ed10-usage-cost-month")?.textContent).toBe("$0.12");
+    expect(qid("ed10-usage-cost-month")?.getAttribute("title")).toContain("实扣金额");
+    expect(qid("ed10-usage-asof-month")?.textContent).toBe("2026-11-20 07:58");
+    expect(qid("ed10-usage-asof-month")?.getAttribute("title")).toContain("bff-read-time");
+    // 今日：账本缺行 + 桶列表没有今天的桶 → 都是缺值，不作 0。
+    expect(qid("ed10-usage-runs-day")?.textContent).toBe("—");
+    expect(qid("ed10-usage-runs-day")?.getAttribute("title")).toContain("不作 0");
+    expect(qid("ed10-usage-cost-day")?.textContent).toBe("—");
+    expect(qid("ed10-usage-cost-day")?.getAttribute("title")).toContain("账本在该日没有这位员工的行");
+    expect(container.textContent).not.toContain("0.121198");
+  });
+
+  it("keeps a real zero distinct from a missing value", async () => {
+    usageApi(
+      { items: [], missingEmployeeIds: [EMP], asOf: null },
+      { items: [{ employeeId: EMP, period: "2026-11", costUsd: 0 }], asOf: null },
+      { buckets: [], totals: { runs: 0 }, asOf: null },
+    );
+    await renderAt(page, at("usage"));
+    expect(qid("ed10-usage")).toBeTruthy();
+    expect(qid("ed10-usage-cost-month")?.textContent).toBe("$0.00");
+    expect(qid("ed10-usage-runs-month")?.textContent).toBe("0");
+    expect(qid("ed10-usage-asof-month")?.textContent).toBe("—");
+    expect(qid("ed10-usage-asof-month")?.getAttribute("title")).toContain("本机时钟");
+  });
+
+  it("empty ledger plus a real zero in stats is stated as an empty answer", async () => {
+    usageApi(
+      { items: [], missingEmployeeIds: [EMP] },
+      { items: [], missingEmployeeIds: [EMP] },
+      { buckets: [], totals: { runs: 0 } },
+    );
+    await renderAt(page, at("usage"));
+    const empty = qid("ed10-usage-empty");
+    expect(empty).toBeTruthy();
+    expect(empty?.textContent).toContain("该员工暂无成本记录");
+    expect(empty?.textContent).toContain("真实回答");
+  });
+
+  it("error keeps the plain sentence, a copyable request id and a retry", async () => {
+    mockApi((url) =>
+      url.includes("/api/budget-usage") || url.includes("/api/run-stats")
+        ? Promise.reject(new ApiError("服务暂时不可用。", { status: 500, body: "", url, requestId: "req-r57-500" }))
+        : Promise.resolve({}),
+    );
+    await renderAt(page, at("usage"));
+    expect(qid("ed10-usage-error")?.textContent).toContain("请求编号：req-r57-500");
+    expect(qid("req-copy")).toBeTruthy();
+    expect(container.textContent).toContain("重试");
+  });
+
+  it("403 and 404 share one denied body without leaking the path", async () => {
+    mockApi((url) =>
+      url.includes("/api/budget-usage") || url.includes("/api/run-stats")
+        ? Promise.reject(new ApiError("forbidden", { status: 403, body: "", url, requestId: "req-r57-403" }))
+        : Promise.resolve({}),
+    );
+    await renderAt(page, at("usage"));
+    const denied = qid("ed10-usage-denied");
+    expect(denied).toBeTruthy();
+    expect(denied?.textContent).toContain("这块数据还没接入");
+    expect(denied?.textContent).not.toContain("budget-usage");
+    expect(qid("req-copy")).toBeTruthy();
+  });
+
+  it("404 denied renders the same body as 403", async () => {
+    mockApi((url) =>
+      url.includes("/api/budget-usage") || url.includes("/api/run-stats")
+        ? Promise.reject(new ApiError("not found", { status: 404, body: "", url }))
+        : Promise.resolve({}),
+    );
+    await renderAt(page, at("usage"));
+    const denied = qid("ed10-usage-denied");
+    expect(denied).toBeTruthy();
+    expect(denied?.textContent).toContain("这块数据还没接入");
+  });
+});

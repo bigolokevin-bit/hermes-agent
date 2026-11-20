@@ -359,10 +359,13 @@ const ZONES = [
   { id: "audit", label: "审计" },
 ] as const;
 
-type ZoneId = (typeof ZONES)[number]["id"] | "chat" | "tasklist" | "sessions";
+type ZoneId = (typeof ZONES)[number]["id"] | "chat" | "tasklist" | "sessions" | "usage";
 
 function mapShellZone(raw: string): ZoneId {
   switch (raw) {
+    case "usage":
+      // R57: 成本区（预算账本 + 运行统计两读口聚合，只读）。
+      return "usage";
     case "sessions":
       // R52: 会话区（结构化会话列表，只读）；与 chat 摘要区并存、互不动。
       return "sessions";
@@ -777,6 +780,212 @@ function SessionsZone({ resource, empId, onRetry }: { resource: Resource<ChatRow
 }
 
 /* ------------------------------------------------------------------ *
+ * R57: usage / cost zone — budget ledger + run stats, real data only
+ * ------------------------------------------------------------------ */
+
+type UsageState =
+  | { phase: "loading" }
+  | { phase: "error"; message: string; requestId: string | null }
+  | { phase: "denied"; requestId: string | null }
+  | { phase: "ready"; day: unknown; month: unknown; stats: unknown; today: string };
+
+function usageRows(body: unknown): Record<string, unknown>[] {
+  if (!body || typeof body !== "object") return [];
+  const items = (body as Record<string, unknown>).items;
+  if (!Array.isArray(items)) return [];
+  return items.filter((x): x is Record<string, unknown> => Boolean(x) && typeof x === "object");
+}
+
+function usageNum(obj: Record<string, unknown> | undefined, keys: string[]): number | null {
+  if (!obj) return null;
+  for (const key of keys) {
+    const v = obj[key];
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+  }
+  return null;
+}
+
+/** ISO only (YYYY-MM-DDTHH:mm…); missing or malformed → null. Never the
+ * local clock — the on-screen collection minute must come from the payload. */
+function usageIso(body: unknown): string | null {
+  if (!body || typeof body !== "object") return null;
+  const v = (body as Record<string, unknown>).asOf;
+  if (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v)) return null;
+  return Number.isNaN(Date.parse(v)) ? null : v;
+}
+
+function usageSource(body: unknown): string {
+  if (!body || typeof body !== "object") return "—";
+  const v = (body as Record<string, unknown>).asOfSource;
+  return typeof v === "string" && v ? v : "—";
+}
+
+function UsageZone({ empId, nonce, onRetry }: { empId: string; nonce: number; onRetry: () => void }) {
+  const [state, setState] = useState<UsageState>({ phase: "loading" });
+
+  useEffect(() => {
+    if (!empId) return;
+    let alive = true;
+    setState({ phase: "loading" });
+    const enc = encodeURIComponent(empId);
+    // The BJT period strings only choose WHICH day/month to ask the server
+    // about (same precedent as the R54 export filename); every timestamp
+    // rendered below comes from server payloads.
+    const bjNow = new Date(Date.now() + 480 * 60000);
+    const dayPeriod = bjNow.toISOString().slice(0, 10);
+    const monthPeriod = dayPeriod.slice(0, 7);
+    const tomorrow = new Date(bjNow.getTime() + 86400000).toISOString().slice(0, 10);
+    Promise.all([
+      fetchJSON<unknown>(`/agent-api/api/budget-usage?employeeId=${enc}&periodKind=day&period=${dayPeriod}`),
+      fetchJSON<unknown>(`/agent-api/api/budget-usage?employeeId=${enc}&periodKind=month&period=${monthPeriod}`),
+      fetchJSON<unknown>(`/agent-api/api/run-stats?employeeId=${enc}&from=${monthPeriod}&to=${tomorrow}&bucket=day`),
+    ])
+      .then(([day, month, stats]) => {
+        if (alive) setState({ phase: "ready", day, month, stats, today: dayPeriod });
+      })
+      .catch((err: unknown) => {
+        if (!alive) return;
+        const r = toResourceError(err);
+        if (r.phase === "denied") setState({ phase: "denied", requestId: r.requestId ?? null });
+        else setState({ phase: "error", message: r.message ?? "成本数据没能加载出来。", requestId: r.requestId ?? null });
+      });
+    return () => { alive = false; };
+  }, [empId, nonce]);
+
+  if (!empId) {
+    return (
+      <ZoneEmpty
+        testid="ed10-usage-empty"
+        title="缺少员工编号，无法确定成本归属。"
+        hint="本页只按该员工读取预算账本与运行统计，不展示猜测内容。"
+      />
+    );
+  }
+  if (state.phase === "loading") return <ZoneLoading testid="ed10-usage-loading" />;
+  if (state.phase === "denied") {
+    return (
+      <ZoneDenied
+        testid="ed10-usage-denied"
+        title="成本"
+        message={DENIED_COPY}
+        requestId={state.requestId}
+        onRetry={onRetry}
+      />
+    );
+  }
+  if (state.phase === "error") {
+    return (
+      <ZoneError
+        testid="ed10-usage-error"
+        title="成本数据没能加载出来"
+        message={state.message}
+        requestId={state.requestId}
+        onRetry={onRetry}
+      />
+    );
+  }
+
+  const statsObj = state.stats && typeof state.stats === "object" ? (state.stats as Record<string, unknown>) : {};
+  const totalsObj = statsObj.totals && typeof statsObj.totals === "object" ? (statsObj.totals as Record<string, unknown>) : undefined;
+  const buckets = Array.isArray(statsObj.buckets) ? statsObj.buckets : [];
+  const monthRuns = usageNum(totalsObj, ["runs"]);
+  const bjToday = state.today;
+  const dayBucket = buckets.find(
+    (b) => b && typeof b === "object" && beijing(String((b as Record<string, unknown>).bucketStart ?? "")).slice(0, 10) === bjToday,
+  ) as Record<string, unknown> | undefined;
+  const dayRuns = usageNum(dayBucket, ["runs"]);
+
+  const dayRow = usageRows(state.day)[0];
+  const monthRow = usageRows(state.month)[0];
+  const dayCost = usageNum(dayRow, ["costUsd", "cost_usd"]);
+  const monthCost = usageNum(monthRow, ["costUsd", "cost_usd"]);
+
+  // 全局空集=两条账本腿都没有该员工行，且运行统计的真实合计为 0（不是缺值）。
+  if (!dayRow && !monthRow && monthRuns === 0) {
+    return (
+      <ZoneEmpty
+        testid="ed10-usage-empty"
+        title="该员工暂无成本记录。"
+        hint="预算账本与运行统计都按该员工的 employeeId 查询（读口白名单参数，实测真过滤）；两边一致为空是服务端的真实回答，不是加载失败，也没有放宽窗口凑数。"
+      />
+    );
+  }
+
+  const legs = [
+    {
+      key: "day" as const,
+      label: "今日",
+      runs: dayRuns,
+      runsTitle: dayRuns === null
+        ? "运行统计返回的桶列表里没有今天的桶行（或桶行缺 runs）：缺值不作 0 处理。"
+        : "来自运行统计的今日桶（bucket=day，employeeId 真过滤）。",
+      cost: dayCost,
+      costTitle: dayRow ? "预算账本该日行的实扣金额（只认真实扣费）。" : "账本在该日没有这位员工的行（missingEmployeeIds 实证）：缺失不作 $0.00。",
+      body: state.day,
+    },
+    {
+      key: "month" as const,
+      label: "本月",
+      runs: monthRuns,
+      runsTitle: monthRuns === null
+        ? "运行统计没有返回本月合计 runs：缺值不作 0。"
+        : "来自运行统计本月窗口的合计（服务端真实数值，0 照写）。",
+      cost: monthCost,
+      costTitle: monthRow ? "预算账本本月行的实扣金额（只认真实扣费）。" : "账本在本月没有这位员工的行（missingEmployeeIds 实证）：缺失不作 $0.00。",
+      body: state.month,
+    },
+  ];
+
+  return (
+    <Card data-testid="ed10-usage">
+      <CardContent className="p-0">
+        <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,0.9fr)_minmax(0,1.1fr)] gap-2 border-b border-border px-4 py-2 text-xs uppercase tracking-wide text-muted-foreground sm:grid">
+          <span>周期</span>
+          <span title="运行数取 /api/run-stats（employeeId 白名单参数，实测真过滤）。">运行数</span>
+          <span title="实扣成本只认真实扣费账本 /api/budget-usage 的 costUsd：真 0 写 $0.00，缺行写「—」。">实扣成本 USD</span>
+          <span title="采集时刻只取 payload 顶层 ISO asOf，绝不取本机时钟；asOfSource 见悬停。">采集时刻</span>
+        </div>
+        <ul className="divide-y divide-border">
+          {legs.map((leg) => {
+            const iso = usageIso(leg.body);
+            return (
+              <li
+                key={leg.key}
+                data-testid={`ed10-usage-row-${leg.key}`}
+                className="grid grid-cols-1 gap-1 px-4 py-3 text-sm sm:grid-cols-[minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,0.9fr)_minmax(0,1.1fr)] sm:items-center sm:gap-2"
+              >
+                <span className="min-w-0 truncate" title="周期聚合行：本页没有按成本行的专属深链；单条运行请看「运行」区。">
+                  {leg.label}
+                </span>
+                <span className="font-mono text-xs" data-testid={`ed10-usage-runs-${leg.key}`} title={leg.runsTitle}>
+                  {leg.runs === null ? "—" : leg.runs}
+                </span>
+                <span className="font-mono text-xs" data-testid={`ed10-usage-cost-${leg.key}`} title={leg.costTitle}>
+                  {money(leg.cost ?? undefined)}
+                </span>
+                <span
+                  className="font-mono text-xs text-muted-foreground"
+                  data-testid={`ed10-usage-asof-${leg.key}`}
+                  title={iso ? `payload asOf=${iso} · 来源 ${usageSource(leg.body)}` : "payload 顶层没有 ISO 格式的 asOf（或形态非法）：不用本机时钟补时。"}
+                >
+                  {iso ? beijing(iso) : "—"}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+        <p
+          className="px-4 py-2 text-xs text-muted-foreground"
+          title="BFF 白名单：budget-usage 必带 employeeId+period（实测缺 period 400 console.missing_param、periodKind=week 400 request.invalid_body）；run-stats 必带 from/to（实测 bucket=month 422）。"
+        >
+          只读聚合：实扣认预算账本、运行数认运行统计，两读口均按 employeeId 真过滤；本页不提供任何写入口。
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ------------------------------------------------------------------ *
  * page
  * ------------------------------------------------------------------ */
 
@@ -791,7 +1000,7 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
   const enc = encodeURIComponent(empId);
   const zone = mapShellZone(sp.get("zone") ?? "");
 
-  const [reload, setReload] = useState<Record<ZoneId, number>>({ overview: 0, capability: 0, approvals: 0, runs: 0, audit: 0, chat: 0, tasklist: 0, sessions: 0 });
+  const [reload, setReload] = useState<Record<ZoneId, number>>({ overview: 0, capability: 0, approvals: 0, runs: 0, audit: 0, chat: 0, tasklist: 0, sessions: 0, usage: 0 });
   const retry = (z: ZoneId) => setReload((prev) => ({ ...prev, [z]: prev[z] + 1 }));
 
   const overview = useOverview(empId, reload.overview);
@@ -948,6 +1157,7 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
       {zone === "chat" ? <ChatZone resource={chat} empId={empId} onRetry={() => retry("chat")} /> : null}
       {zone === "tasklist" ? <TasksZone resource={tasklist} empId={empId} onRetry={() => retry("tasklist")} /> : null}
       {zone === "sessions" ? <SessionsZone resource={sessions} empId={empId} onRetry={() => retry("sessions")} /> : null}
+      {zone === "usage" ? <UsageZone empId={empId} nonce={reload.usage} onRetry={() => retry("usage")} /> : null}
     </section>
   );
 }
