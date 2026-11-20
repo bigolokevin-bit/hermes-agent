@@ -3031,3 +3031,65 @@ Untested: the four-state body lengths are jsdom readings, not browser pixels; th
 - 三档视口：摘要行沿用既有 `min-w-0 flex-wrap` + `break-words`，兜底 textarea `w-full min-w-0 break-all`；未做浏览器像素走查（活体腿不可用），不声称已验。
 - 门禁：vitest `src/modules/audit` **exit 0**（**14** files / **266** tests = 基线 13/256 + 10：`filterSummary.test.ts` 4 条 + 页面 audG 6 条）；`tsc -b . --noEmit` 共 **58** errors（= 本机地板，改动前后同数、增量 0）且 `modules/audit` **0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings。
 - 活体腿沿用不可用实测（未重跑）：9122 无身份头 **401 `console.unauthenticated`**、8092 **404 `console.not_found`**；摘要与路径同源性证据为 vitest 腿（同一 mock 实收 URL 逐字比对）。
+
+## Audit page size selector (audH, 2026-11-20, base cca9cf7e)
+
+- 写域：`web/src/modules/audit/{api.ts,model.ts,useAuditData.ts,AuditEventsModulePage.tsx,filterSummary.ts,AuditEventsModulePage.test.tsx,api.test.ts,filterSummary.test.ts}` + 本节。App.tsx / shell / routes / registry / package·lock / web scripts / ops 未碰。上游本波未触碰本模块（`git diff` 到 `web/src/modules/audit` 为空，已核）。
+- **选择器**：`audH-page-size` = 原生 `<select>`（`aria-label="每页条数"`，选项 25/50/100 条），一个组件两处家：分页条里（可交互）与空答案那一处（disabled + title「这个筛选下没有事件，每页条数暂时用不上」）。加载中与被拒（403/404）两处都不出现该控件（沿用 audF 的统一口径：没答上来的问题没有可分享的读法）。
+- **落 URL 与组合**：`?limit=` 与 `window/custom from-to`、`type`、`actor`、`resource`、`cursor` 栈同屏共存；冷挂载 `/audit?window=custom&from=&to=&type=task.created&actor=employee-api&resource=ap_1&limit=25` 复现：控件回填 25、首读命中 `limit=25`、同一条请求里 `action/actorId/from` 齐、只发 1 次。摘要同源不回归：audG 的 `请求：` 段仍与 mock 实收 URL 逐字相等，并在页码之后多了一格「每页 N 条」（生效值，非愿望值）。
+- **切条数重取恰一次**：`setPageSize` 写 `?limit=` 并走 aud8 的 `resetPagingAndFolds`（游标栈清空 + 两个折叠落回第 1 页）；用例按 `/agent-api/api/audit?` 前缀计数：切 100 后 `before + 1`，`limit=100` 出现在实收请求里，`aud2-page` 从「第 3 页」回到「第 1 页」。
+- **非法/超大值如实回显（不发出去）**：`readPageSize()` 只认 25/50/100；`?limit=999`（不在档位）、`abc`/`0`/`-5`（根本不是条数）一律按默认 50 读，并把真相写在 `audH-clamp-note` 与控件 title 里：「地址里写的是每页 999 条，这一档不在本面板可请求的档位（25/50/100）里，所以没有把它发出去，当前按每页 50 条读。」用例三条（999/abc/0）都断言实收请求 `limit=50`、不含 `limit=<原写值>`、控件显示 50。不 500、不白屏、不假装服务答应了。
+- **服务 clamp 的生效值回显**：`api.PAGE_SIZE_KEYS`（`limit/pageSize/page_size/effectiveLimit/effective_limit`，页体、包裹层与 `meta/pageInfo/pagination` 都找）解析出 `AuditPage.pageSize` → `ListApi.servedLimit`；控件显示的是**回答声明的生效值**，note 写「请求按每页 100 条发出，服务这一页带回的是每页 50 条（回答里写明的生效值），控件已按生效值回显」，`selectedOptions[0].text` 仍是「50 条」。生效值不在档位里时（例如带回 30）追加一个真选项「服务带回 30 条」，不把显示掰回愿望值。
+- **服务没带回生效值时禁假称**：`servedLimit === null` 且实收条数 < 请求条数 → note 只报屏上真有的两个数：「服务没有带回这一页按多少条读；请求路径写的是 limit=50，屏上实收 30 条 —— 这里只报这两个数，不替服务认一个生效值。」控件仍显示请求值（那是唯一事实）。`AuditPage.total` 口径未动：带回 total 用「共 N 条」+ title 说明来源，缺则「总数不可用」+ title「服务没有给出总数；游标分页不能自算总数…」，本轮用例锁住这一条不回归。
+- **零破**：`PAGE_LIMIT=50` 仍是默认与导出（`fetchList` 新增可选 `limit` 形参，默认取它），既有断言 `limit=50` 形态的请求逐字不变；`aud01*`/`aud2*`（含 `aud2-pagination`、`aud2-page`、`aud2-total`、`aud2-prev`、`aud2-next`）/`aud3*`–`aud6*`/`aud7*`–`audG*` 与页级 `agent-v2-page-audit*` 未改名未删节点；基线 266 条一条未红。新增 testid：`audH-page-size` `audH-clamp-note`。
+- 三档视口：选择器与 note 沿用 `min-w-0 flex-wrap` + `break-words`，容器仍是既有分页条；未做浏览器像素走查（活体腿不可用），不声称已验。
+- 门禁：vitest `src/modules/audit` **exit 0**（**14** files / **278** tests = 基线 14/266 + 12：`api.test.ts` audH 3 组 + 页面 audH 8 条 + `filterSummary.test.ts` 1 条）；`pnpm exec tsc -b . --noEmit` 共 **67** errors —— stash 前后实测同为 67（工单所记 58 已随 wave-19 漂移，本波上游把 `employees` 等模块的既有错误带上来了），**modules/audit 0、增量 0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings（中途 `useMemo` 依赖派生值多出 1 条 exhaustive-deps 提示，已把摘要改为渲染内直接构造、去掉 memo，警告回到 4 条；期间还修掉一次「render 里读 ref」的新警告）。
+- 活体腿沿用已知不可用实测（一行带过，未重跑）：9122 无身份头 **401 `console.unauthenticated`**、8092 **404 `console.not_found`**；档位、clamp 回显与「不发出去」的三条证据都是 vitest 腿（按 `limit=` 真过滤/真回 meta 的 mock + 请求计数），未假装活体。
+
+## Audit distribution and export set parity (audI, 2026-11-20, base eb05cbe9)
+
+- 写域：`web/src/modules/audit/{csv.ts,views.tsx,AuditEventsModulePage.tsx,csv.test.ts,AuditEventsModulePage.test.tsx}` + 本节。App.tsx / shell / routes / registry / package·lock / web scripts / ops 未碰。基线：上游章面已并入，`git diff` 到本模块为空（orchestrator 代做，未重复 fetch/merge）。
+- **同源链路本来就在一处，本轮把它钉住**：`typeGroups` 由 `visibleRows` 计数（audD 的可见集合）→ 桶点击走同一个 `setType`（地址键 `?type=`，上线参数 `action=`，与工单写的 `?action=` 是同一件事的两端，对应关系沿用 audD 登记）→ 导出与「已显示 N 条」也读 `visibleRows`。用例用**真按 action 过滤的 mock 服务**做三值对照：桶计数 2 → 点完 `aud01-status`「已显示 2 条」、`aud5-export-count`「将导出 2 条」、CSV 数据行 2（`lines()-1`），且每一行都是那一类（`创建任务`）；清掉桶回全量后三值再对照一次（3 / 3 / 3，文件名从 `task-created` 换成 `all`）。
+- **实测发现并修掉一个真 bug（audI 的对照才暴露出来）**：aud5 导出把 `downloadText(name, text)` 的两个实参写反了（`downloadText(filteredCsvText(...), filteredExportName(...))`），于是**文件名变成整张 CSV 文本、文件内容变成文件名**——此前没有任何用例同时比对两头，所以一直没被发现。修正后用例两头都断言：`name` 匹配 `/^audit-[A-Za-z0-9._-]+\.csv$/`、首行是表头 `time,actor,action,resource,rid`。
+- **`audI-scope-note`（分母诚实，二选一里选了如实的那条）**：分布块右上从「按已加载的 N 条统计」扩成带口径的一句——未筛类型时「按已加载的 N 条统计（不是整窗全量：这一页读到几条就数几条）」，`title` 写明「服务端没有按类型的聚合读口，也没有带回整窗总数；翻页或放宽时间窗后按同一口径重算」；已按某一类筛时改为「按已加载的 N 条统计（已按这一类筛，所以只剩这一个桶）」并在 `title` 说明这份只剩一个桶、不是整窗各类分布。选择「按已加载统计」而非服务端聚合的依据：`api.ts` 三条读口清单里只有台账/单条/校验，没有聚合路由，且活体读口本轮仍取不到凭据（见下），不冒充全量。
+- **`audI-export-scope`（导出集合口径上屏）**：导出条下方一行明说——导出的就是屏上这一份；筛了类型时写「只含「创建任务」这一类，共 N 行」，与「已显示」和类型分布同一个集合；未筛时写「当前时间窗与筛选下的全部类型」；并声明文件名带齐时间窗/操作者/资源/动作/行数、时间为北京时间到分。
+- **文件名快照**：新增 `filterSnapshotExportName(snapshot, now)` → `audit-<窗口>-<actor>-<资源>-<动作>-n<行数>-<YYYYMMDD>-<HHmm>.csv`（例 `audit-7d-all-all-task-created-n2-20261120-0647.csv`）；旧三 token 拼法 `filteredExportName` 保留并改为同一构建器的薄封装，既有断言逐字不变。折叠规则沿用 `asciiToken`（点分码 `task.created` → `task-created`）；本轮补上一条诚实细则：**有值但全非 ASCII（如把中文当句柄）折出空时不再冒充 `all`，写 `x`**，用例锁 `audit-7d-x-all-all-n1-…`；`n0` 也如实写（0 行就是 0 行，不藏）。
+- **空集**：`aud5-export` 在无行时 `aria-disabled=true` + title「当前筛选无事件可导出」，点击不发任何请求（用例贴 `urls()` 前后长度相等），且分布整块不渲染（`total===0` 时 `aud7-types` 为 null）——没有行就没有可数的桶。
+- **零额外请求**：桶点击那一读是唯一的新问题——展开分布、点导出、清掉桶之前，`/agent-api/api/audit?` 计数为 2（首读 + 桶筛选），`audit-detail` 0 次、`audit-verify` 0 次，用例逐条断言；分布展开/收起仍不改地址（audD 口径未动）。
+- **零破**：`aud01*`（含 `aud01-export`/`aud01-status`）、`aud2*`–`aud6*`、`aud7-types*`（`-toggle/-panel/-row/-count/-share` 与桶 id）、`aud8*`/`aud9*`/`audA*`/`audB*`/`audC*`/`audD*`（`audD-bucket-*`/`audD-filter-hint`/`audD-empty-*`）/`audE*`/`audF-state-*`/`audG-*`/`audH-*` 与页级 `agent-v2-page-audit*` 全部原样；`audI-scope-note` 落在既有那只计数 span 上（文案仍含「按已加载的 N 条统计」，既有 aud7 用例照绿）。四态、每态 rid、403≡404 同体、零写入口、三档结构（新增行仍是 `min-w-0 basis-full break-words`）无回退；基线 266→286 条全绿。
+- 新增 testid：`audI-scope-note`（分布口径）、`audI-export-scope`（导出集合口径）。
+- 门禁：vitest `src/modules/audit` **exit 0**（**14** files / **286** tests = 基线 14/278 + 8：`csv.test.ts` audI 4 条 + 页面 audI 4 条）；`pnpm exec tsc -b . --noEmit` 共 **67** errors（= 本机当前地板，改动前后同数、增量 0）且 `modules/audit` **0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings（中途一次把 BOM 写成正则字面量触发 `no-irregular-whitespace` + 一条类型多余属性，已改回 `\uFEFF`）。
+- 活体腿沿用已知不可用实测（未重跑）：9122 无身份头 **401 `console.unauthenticated`**、8092 **404 `console.not_found`**；三值对照、文件名快照与「零额外请求」证据都是 vitest 腿（真按 `action` 过滤的 mock + Blob/anchor 双头捕获），未假装活体。
+
+## Audit time and actor presentation (audJ, 2026-11-20, base e41976d5)
+
+- 写域：`web/src/modules/audit/{timeActor.ts,timeActor.test.ts,views.tsx,AuditEventsModulePage.test.tsx,AuditDetailModulePage.test.tsx}` + 本节。App.tsx / shell / routes / registry / package·lock / web scripts / ops 未碰。基线：`git merge origin/lane/hermes-console` → Already up to date（章面已在 HEAD 内），porc=0。
+- **同一 helper**：新增 `timeActor.ts`，导出 `auditTimeView(raw, minute)` 与 `auditActorView(person)`；三处（列表行 `AuditEventRowCard`、行内预览 `AuditRowPreview`、事件详情 `AuditEventDetailBody`——抽屉与独立详情屏共用同一组件）都改成只调这两个函数，屏幕不再各自拼字符串。views.tsx 里旧的模块内常量 `MISSING_TIME`（「服务未提供该时间」）随之下线，缺失口径由 helper 统一给出。
+- **改前 / 改后（同一条 `evt_parity_00000001`，occurredAt=`2026-11-19T01:20:00Z`，actor=`{human, user:2f3a4b5c6d7e8f90, 李思}`）**：
+
+  | 处 | 改前 时间 | 改后 时间 | 改前 操作者 | 改后 操作者 |
+  |---|---|---|---|---|
+  | 列表行 | `2026-11-19 09:20`（到分，旧代码 `value={row.occurredAt ?? "—"}`） | `2026-11-19 09:20:00` | `李思 · 6d7e8f90`（title=裸 id） | 同左（title 改为「服务标识 user:…（原始值只在这里给出）」） |
+  | 行内预览 | `2026-11-19 09:20:00` | 同左 | `李思 · 6d7e8f90` | 同左 |
+  | 事件详情 | `2026-11-19 09:20:00` | 同左 | `李思 · 6d7e8f90` | 同左 |
+  即：本轮唯一的**值级不一致**是列表行到分、另两处到秒（工单点名的「不一致即修」），现三处逐字相同；用例 `one identical instant` 断言三处文本完全相等且匹配 `^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$`。旧的 audA 精度对照用例（「两种精度」）已改为单精度等值断言，testid 一个未改名。
+- **缺失态对照（同一 helper，同一条无 occurredAt 的记录）**：三处时间全部 `该字段未返回`，title 全部 `服务没有带回这条记录的时间；这里不拿浏览器时间顶替`；用例显式取当天日期串断言它不出现在三处读数里（禁补当前时间）。改前这里是三处 `—` + title「服务未提供该时间」——按工单口径统一为「该字段未返回」，audA 那条 `toBe("—")` 断言同步改为新句（testid `audA-preview-time`/`audA-detail-time`/`data-auda-parity` 保留）。操作者缺失（无名无标识）三处仍 `未指派`（aud01 既有行为契约），title 说明「服务没有带回这条记录的操作者」；只带 id 不带名字时三处一致为 `员工 · 5b4a3f21` 且 title 带完整 `employee:9f8e7d6c5b4a3f21`，用例断言可见文本里不出现 `user:`/`employee:`/`human:` 或完整 32 位 id。
+- **title 的原值与时区标注**：可换算时为 `服务原值 <原文>（UTC）· 屏上为北京时间（UTC+8），精确到秒`；带回的是不可换算的自由文本（如 `yesterday evening`）时不谎称做过 UTC 换算，title 写「服务带回的原文是「…」，不是一个可换算的瞬间…到分钟/秒」。epoch 秒/毫秒字符串统一撑到毫秒再格式化（`1763515200` 与 `1763515200000` 读出同一瞬间），否则按 beijingSeconds 的毫秒解释会落到 1970 年——用例锁这一条。
+- **零额外请求 / 零破**：两个函数纯读模型，不发请求；用例在开→关→开预览后断言 `urls()` 长度不变、`/agent-api/api/audit?` 仍只 1 条。`aud01*`、`aud2*`–`audI*`（含 `aud01-cell-*-time/-actor`、`audA-preview-*`/`audA-detail-*`、`aud6-preview-*`、`aud7-types-*`/`audD-bucket-*`、`audF-state-*`、`audG-*`、`audH-page-size`）与页级 `agent-v2-page-audit*`/`agent-v2-page-audit-detail*` 未改名未删节点；技术折叠里新增一行「发生时间（北京时间（UTC+8））：…」并把原值行改为优先引用带回的原始瞬间（折叠仍默认收起）。四态、403≡404 同体、三档结构（新标记是 `aria-hidden` 空 span，无布局影响）无回退。
+- 新增 testid：`audJ-time-list-<key>` `audJ-actor-list-<key>` `audJ-time-preview` `audJ-actor-preview` `audJ-time-detail` `audJ-actor-detail`（值与 title 分别挂在 `data-audj-value` / `data-audj-title`，对照用；屏幕上的字仍是那一格本身，标记不复制可见文本）。
+- 门禁：vitest `src/modules/audit` **exit 0**（**15** files / **299** tests = 基线 14/286 + 13：`timeActor.test.ts` 6 条 + 列表页 audJ 5 条 + 独立详情屏 audJ 2 条）；`pnpm exec tsc -b . --noEmit` 共 **67** errors（= 本机当前地板，改动前后同数、增量 0）且 `modules/audit` **0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings。
+- 活体腿沿用已知不可用实测（未重跑）：9122 无身份头 **401 `console.unauthenticated`**、8092 **404 `console.not_found`**；三处对照与缺失态证据为 vitest 腿（同一 mock 喂两条读口后逐字段比读数），未假装活体。
+
+## Audit list keyboard navigation (audK, 2026-11-20, base 869e49ab)
+
+- 写域：`web/src/modules/audit/{AuditEventsModulePage.tsx,AuditEventsModulePage.test.tsx}` + 本节（2 个源文件 + 证据文档，≤15 文件/≤1500 行）。App.tsx / shell / routes / registry / package·lock / web scripts / ops 未碰。基线：`git merge origin/lane/hermes-console` → Already up to date（章面已在 HEAD 祖先链），porc=0。
+- **roving tabIndex**：列表外层 `audK-list`（`role="list"` + aria-label 把键位讲明），每行壳 `data-audk-row=<key>`、`role="listitem"`、`tabIndex = 当前行 0 / 其余 -1`；整表只占一个 Tab 停靠点。停靠点由页内 `rovingKey` 持有：`null`（还没进过表）→ 第一行接住，`onFocus` 随人移动；行不在本份数据里（换页、收窄筛选）时自动回落给新的第一行，不悬空。`audK-row-<key>` 标记镜像 `data-audk-roving` / `data-audk-open`，供探针读停靠点分布与展开态。
+- **键位**：↑ ↓ 逐行移焦（`event.target !== currentTarget` 时让路：控件里的方向键仍是控件自己的，用例在 `aud01-filter-type` 上验证不被接管）、Home / End 到首末（越界不动、不发请求）、Enter 展开/收起**既有** `aud6-preview-*`（复用 audA 的 `setFold("preview")` 单开语义，一次按键只翻一行；shell 层 Enter 只在行本身被聚焦时生效，行内真按钮的原生 Enter 仍走原路径，无双翻）、Esc 收起并把焦点送回该行（实测 `document.activeElement === aud6-toggle-<key>`，且仍在该行的行壳内）。焦点环沿用现成 token `focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`，未新增颜色。
+- **aria-expanded 与可见性同步**：`aud6-toggle-*` 的 `aria-expanded` 继续由 `?preview=` 计算（aud8 落 URL 的口径），键盘链路里逐拍断言：Enter 后 `true` 且面板出现、再 Enter 后 `false` 且面板消失；其余行的面板根本不存在（单开）。
+- **口径写明**：漫游停靠点与展开的行是两件事——↑↓ 移动不打开任何东西（用例断言移动后 `preview=` 仍是先前那一行、目标行 `data-audk-open=false`），Enter 才把折叠挪到新行；粘贴/刷新带 `?preview=` 回来时该行照旧展开、停靠点仍从第一行起（用例锁这一点）。这样键盘入口与展开态不会因上一次操作残留而互相抢。
+- **展开不改筛选/页码/URL**：一整套 Enter/↑↓/Esc 之后，`window/type/actor/limit/cursor` 逐项与操作前相等，只有折叠自己的键在动（aud8 起折叠落 URL，故刷新可复现，沿用既有口径不拆）。
+- **零额外请求（键盘全链路）**：`urls()` 在整套键盘操作前后**逐字相等**（用例 `expect(urls()).toEqual(before)`），且这一份里 `/agent-api/api/audit?` 恰 1 条、`audit-detail` 0 条、`audit-verify` 0 条。加载中 / 空集 / 403 拒绝 / 503 失败四档：`audK-list` 与 `[data-audk-row]` 都不存在，向 document 派发 ArrowDown 后 `document.activeElement` 不动（不劫持方向键），四档各自最多一条读请求。
+- **零破**：`aud01*`、`aud2*`–`audJ*`（含 audA 的 `audA-row-shell-*` 与焦点回 toggle 断言、`aud6-toggle/preview-*`、`aud8-*`、`aud9-deeplink-*`、`audB-*`、`audD-bucket-*`、`audF-state-*`、`audG-*`、`audH-page-size`、`audJ-*-list/preview/detail`）与页级 `agent-v2-page-audit*` 未改名未删节点；起算 299 条一条未红。三档视口：行壳新增属性不带可见内容，容器 `flex min-w-0 flex-col`，未做浏览器像素走查（活体腿不可用），不声称已验。
+- 新增 testid：`audK-list` `audK-row-<key>`（另用 `data-audk-row` / `data-audk-roving` / `data-audk-open` 承载停靠点与展开态）。
+- 门禁：vitest `src/modules/audit` **exit 0**（**15** files / **307** tests = 基线 15/299 + 8 条键盘全链路用例）；`pnpm exec tsc -b . --noEmit` 共 **67** errors（= 本机当前地板，改动前后同数、增量 0）且 `modules/audit` **0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings。
+- 活体腿沿用已知不可用实测（未重跑）：9122 无身份头 **401 `console.unauthenticated`**、8092 **404 `console.not_found`**；键盘链路与请求计数证据全部为 jsdom 用例（fireEvent keydown + activeElement + tabIndex 分布），不依赖浏览器、未假装活体。

@@ -1710,3 +1710,215 @@ $ npx vite build --outDir /tmp/knw27-dist → exit 0（产物只落 /tmp）
 package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
 无 force / amend / `--no-verify`；单 commit「feat(console): knowledge drawer accessibility」。
 kn3 / kn6–knI / knw5 既有断言零改零破（含 R49 抽屉回归测试全绿）；无布局改动，三宽度维持既有读数。
+
+# KNW5 追加 R60：文档预览抽屉的元信息复制（testid `knL-*`）（2026-11-20 BJT）
+
+基线安全闸：toplevel 相符、porcelain 空、显式 refspec fetch 后 merge `origin/lane/hermes-console`
+实到 tip `cca9cf7e`（wave-19，代码代次同名），零冲突；`git diff HEAD^1..HEAD -- web/src/modules/knowledge`
+为空——wave 不动知识面，合并后知识套基线 52/52 绿再动工。不引用更早代次。
+
+## 一、口径
+
+```text
+位置       控件在抽屉面板内（两条 dl 字段块之后）；抽屉卸载即随 portal 一起消失——
+           Esc 与遮罩两条路径关闭后实测 knL-copy-meta 均查无节点。
+文本       一条字段一行：文档名 / 所属空间 / 类型 / 大小 / 更新（BJT 到分）/ 文档短码。
+           值全是抽屉已持有的屏上数据（列表行 + 地址里的文档标识），缺值「—」不补 0；
+           所属空间缺名字时用人话短码行「空间 · SPFIN」（行数据自带），全空间 id 只在 title；
+           文档短码取人话尾段大写（D1/D2/ZZ9），裸 id 实测不进文本；
+           地址可复现但行不在已加载列表：前五字段全「—」、短码仍给——不编值。
+零请求     复制动作本身实测 fetchMock 前后计数不变。如实记录既有设计（R49，本轮未动）：
+           打开抽屉会读一次「文档详情」读口（来源与读取状态等它），重开即再读一次，
+           测试按 open=+1、close/copy=+0 分别断言。
+状态       knL-copy-meta-status 常驻 aria-live=polite：成功「已复制」；拒绝（writeText reject）
+           与不可用（无 writeText）两路分别实测 →「复制失败…」+ knL-copy-meta-fallback
+           只读 textarea，value 与文本逐字一致。
+模态不破   Tab 环选择器补入 textarea（原样会漏掉失败态的手动文本框、焦点可从它穿出模态）——
+           本轮第二个代码增量；实测 fallback 在环内（ring.includes(fallback)=true）。
+焦点并核   Esc 关闭：activeElement 的 data-testid === "kn3-docs-name"（触发行）；
+           遮罩点关：同一读数，两条路径焦点都不丢；?doc= 关闭即从 URL 移除（R59 口径）。
+```
+
+testid 新增 `knL-row` / `knL-copy-meta` / `knL-copy-meta-status` / `knL-copy-meta-fallback`。
+kn3 / kn6–knI / knw5 既有断言零改零破（含 R59 模态收口测试全绿）；抽屉内 flex-wrap 行、
+textarea 100% 盒宽，本轮未重建 9122，三宽度未做浏览器复测。
+
+## 验证尾行（R60）
+```text
+$ npx vitest run src/modules/knowledge   → 2 files / 53 tests passed（含新增抽屉元信息复制测试）
+$ npx vitest run                         → 144 files / 1796 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 set-state-in-effect warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw28-dist → exit 0（产物只落 /tmp）
+```
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
+无 force / amend / `--no-verify`；merge（cca9cf7e）与单 feature commit
+「feat(console): knowledge drawer metadata copy」分开。
+
+# KNW5 追加 R61：数据来源与新鲜度台账（testid `knM-source-*`）（2026-11-20 BJT）
+
+基线安全闸：toplevel 相符、porcelain 空、显式 refspec fetch 后 merge 实到章面 `3c7f70f6`
+（代码代次 `cca9cf7e`），零冲突；`git diff HEAD^1..HEAD -- web/src/modules/knowledge` 为空，
+合并后知识套基线 53/53 绿再动工。
+
+## 一、口径
+
+```text
+形态       模块内 sourceReads.ts：module store + useSyncExternalStore，与 health 车道 sys6
+           同构但不跨模块 import（上游改动波及不到知识面）。台账自身从不发请求：三个面
+           在各自本来的读取落点上报（spaces / documents?spaceId=<id> / documents?limit=50；
+           详情面为空间名读的那次 SPACES_URL 也归位到空间列表行，同一实际路径）。
+逐行       口径名 | 实际路径 | 采集时刻 | 状态（正常·降级·读口未接入·读不到；下钻前该面
+           「未读取」，不冒充读过）。
+采集时刻   只认响应顶层 ISO，严格六别名顺序 asOf/as_of/collectedAt/collected_at/
+           generatedAt/generated_at（独立提取口 knAsOfFacts；页面上「数据截至」行的
+           stampOf 口径保持未动，二者职责不同）。缺失或非 ISO → 「—」+title 点名缺什么；
+           行内时间不参与台账（fixture：列表有行内时间但顶层无别名 → 降级）。
+           换算只由 payload 字符串推出（08:00Z→16:00 实测），本机时钟零参与；
+           asOf 原文、命中别名、asOfSource 全部只进 title。
+状态映射   顶层 ISO 在 → 正常；读到但顶层无可用 ISO → 降级（读到≠新鲜）；
+           403/404 → 「读口未接入」+同一句原因+去处（申请入口），逐字同体实测（403 段
+           与 404 段可见读数相等）；其它失败 → 「读不到」；GAP-03 与请求编号只在 title。
+展开态     默认收起；URL 不落（实测 loc 无 expand 类参数）；存在模块 store——列表↔详情
+           切面、收起再展开都不丢（实测跨 knw5-space-link 下钻与返回仍展开）。
+零请求     展开、收起、切面、返回全程 fetchMock 计数增量 0（多段实测）；重渲染页面的
+           读取是页面既有行为，台账不追加。
+```
+
+testid 新增 `knM-source-panel/toggle/note/list/table` + 行级 `knM-source-row|path|asof|status|reason|apply-<id>`；
+行挂 `data-knm-status`（machine 可判 ok/degraded/unwired/failed/idle/loading）。
+kn3 / kn6–knL / knw5 既有断言零改零破（含 404/403/GAP 泄露巡检、四态与 knD 标记全绿）；
+路径格 overflow-wrap:anywhere、表格走既有 knw5-scroll，本轮未重建 9122，三宽度未做浏览器复测。
+
+## 验证尾行（R61）
+```text
+$ npx vitest run src/modules/knowledge   → 2 files / 54 tests passed（含新增台账测试）
+$ npx vitest run                         → 144 files / 1797 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 set-state-in-effect warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw29-dist → exit 0（产物只落 /tmp）
+```
+边界：只改 `web/src/modules/knowledge/**`（新增 sourceReads.ts）与本证据目录；未动 App.tsx /
+shell / routes / registry / package·lock / web-scripts / ops；未并 main、未重启或重建 9122；
+显式路径提交（无 `git add -A`）；无 force / amend / `--no-verify`；merge（3c7f70f6/cca9cf7e）
+与单 feature commit「feat(console): knowledge source freshness block」分开。
+
+# KNW5 追加 R62：三面四态统一（testid `knN-state-*`）（2026-11-20 BJT）
+
+基线安全闸：toplevel 相符、porcelain 空、显式 refspec fetch；上游仍章面 `3c7f70f6`
+（generation `cca9cf7e`），merge 为 Already up to date——本笔只有 feature commit。
+
+## 一、口径
+
+```text
+探针       Surface 加可选 probe，为三面各挂机器可判标记（display:none、零可见变化，
+           knD-marker 同手法）：knN-state-<face>（data-knn-state）、错误族另挂
+           knN-error/rid/retry-<face>（rid 带 data-knn-rid）。面 id 与 knM 台账同名：
+           spaces / space-docs / doc-search。
+state 读数 loading · ready · empty（连通但真 0）· no-match（搜索/筛选筛空）·
+           unavailable（404）· denied（403，与 unavailable 可见正文逐字同体）· error · login。
+           empty 与 no-match 的区分口径 = 该面当前是否有筛选词；空态正文各自带
+           knN-empty-text-<face>（data-knn-empty=empty|no-match）。
+loading    骨架不变；复制条从「ready 才出现」改为四态常在——实测同一条 DOM 节点跨
+           loading→ready 不重挂（节点同一断言），状态切换不再出现条的闪现/跳动。
+空态两分   真 0：正文写「接口已响应但为空，不等于没有，不写 0 个/0 篇」，无清空出口；
+           筛空：正文写「已加载 N 里没有匹配，这是筛完的结果」并带清空出口
+           （spaces=kn8-global-empty-clear 原有；doc-search=kn6-search-empty-clear 原有；
+           space-docs 本轮补 kn3-docs-empty-clear——三面筛空口径从此一致）。点清空即回 ready。
+错误态     Surface 既有人话原因 + 可复制 rid + 重试不动；本轮只是加机器探针。
+           403≡404 同体实测（可见正文逐字相等），403/404 仅探针可分（denied/unavailable）。
+复制按钮   四态常在且 disabled + title 点名原因：loading「还在读取」/未接入「没读到
+           （读口未接入或没有权限）」/login「登录状态已经失效」/error「这次没读到」/
+           真 0 与筛空保持 R55–R57 的逐字口径（「当前没有可复制的结果/空间」、
+           「本地筛选没有留下行…」「这份列表是空的」）。knL 收口：文档行不在已加载列表
+           （ghost ?doc=）时 disabled，不再把一串「—」写进剪贴板（R60 该段断言随之改为
+           disabled+原因+守卫 0 写入，属口径纠正，非退化）。
+计数格     knF/knG/knI-lines 无行可数（含错误/loading/空集/筛空）一律「—」+title
+           「不写 0 冒充空集」；只有 ready 且可见行>0 才报 N。
+denied 保上下文 403/404 只换自己那面的块：?q=、?sort=、?dir= 原样留在地址与输入框，
+           别的面已加载的数据不丢，返回/重试/去处入口都在（实测读数见测试 D/E 段）。
+```
+
+testid 新增 `knN-state-{spaces,space-docs,doc-search}`、`knN-empty-text-*`、
+`knN-error-*`、`knN-rid-*`、`knN-retry-*`、`kn3-docs-empty-clear`。
+kn3 / kn6–knM / knw5 既有断言零破；本轮为统一口径主动改动的既有断言只有三处计数格
+「0 行/0 条」→「—」与 R60 ghost 段（如上，均为派工要求本身）。四态与 knD 标记、
+泄露巡检全绿；无新增宽度元素（探针 display:none），1440/1280/375 维持既有读数，
+本轮未重建 9122，未做浏览器复测。
+
+## 验证尾行（R62）
+```text
+$ npx vitest run src/modules/knowledge   → 2 files / 55 tests passed（含新增四态统一测试五段）
+$ npx vitest run                         → 144 files / 1798 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 set-state-in-effect warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw30-dist → exit 0（产物只落 /tmp）
+```
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
+无 force / amend / `--no-verify`；单 commit「feat(console): knowledge state consistency」。
+
+# KNW5 追加 R63：文档预览抽屉的固定链接（testid `knO-*`）（2026-11-20 BJT）
+
+基线安全闸：toplevel 相符、porcelain 空、显式 refspec fetch；上游仍章面 `3c7f70f6`
+（generation `cca9cf7e`），merge 为 Already up to date——本笔只有 feature commit。
+
+## 一、深链参数名（git grep 实证，非猜测）
+
+```text
+KnowledgeModulePage.tsx:2653  const spaceId = sp.get("space")
+KnowledgeModulePage.tsx:2654  const openDoc = sp.get("doc")
+KnowledgeModulePage.tsx:2702/2703  keepBase: next.set("tab"…) / next.set("panel", "spaces")
+KnowledgeModulePage.tsx:2716/2717  docLink: next.set("space", spaceId); next.set("doc", key)
+```
+
+深链形状 = `/knowledge?tab=spaces&…&space=<空间标识>&doc=<文档标识>`；复制链接的值就是
+`window.location.origin + docLink(当前 openDoc)`——参数串由页面一直在用的 docLink 生成，
+本轮不手拼、不猜名。派工所写族名 `kn6-search-detail*` 仍是检索面板的内联展开块（无遮罩、
+URL 用 `?sdoc=`）；带 `?doc=` 的预览抽屉是 `kn7-preview-*` 族，本轮按七条判据在该族上实施
+（与 R59 同一澄清）。
+
+## 二、直达实测（缺口不存在，如实报可达）
+
+```text
+复制得到的 URL（jsdom origin 下逐字）：
+  http://localhost:3000/knowledge?tab=spaces&space=sp_hr&doc=d1&panel=spaces
+用该串直接渲染（等价于粘贴+刷新）：
+  kn7-preview-panel 命中 ✓；loc 含 doc=d1 ✓；抽屉字段块 title（文档标识）="d1" 与参数同值 ✓；
+  抽屉标题 = 员工手册.pdf ✓。
+```
+
+## 三、口径
+
+```text
+无标识     行没有 documentId（页面内部只能按位置键 row-N 开抽屉）→ 按钮 disabled +
+           逐字 title「该文档没有可用的固定标识」，守卫不写剪贴板：位置键不是标识，不冒充。
+           地址直达复现的 ghost（?doc=zz9 行不在列表）仍可复制：标识本就来自地址，
+           再粘贴仍直达同一地址态——复制的是地址，不编内容。
+上屏形态   可见 span 按 R49 不变量掩掉参数值（space=… doc=…），全文在 title、剪贴板与
+           失败态 textarea；单行省略号（flex min-width:0），375 无横溢、原始标识不上屏
+           （R49 泄露巡检实测不破）。
+状态       knO-permalink-status（aria-live=polite）：成功「链接已复制」；拒绝/不可用 →
+           「复制失败…」+ knO-permalink-fallback 只读 textarea，value 与写入地址逐字一致；
+           内容签名守卫：换文档后旧「链接已复制」作废。
+零请求     复制/失败/重试点击全程 0 增量；台账断言：列表读=4 渲染 × 2 面，详情读=3 次开抽屉
+           （R49 既有设计），与复制动作无关的页面读取计数前后吻合。
+```
+
+testid 新增 `knO-row` / `knO-permalink` / `knO-permalink-status` / `knO-permalink-url` /
+`knO-permalink-fallback`。kn3 / kn6–knN / knw5 既有断言零破（R49 抽屉回归全绿）。
+本轮未重建 9122，三宽度未做浏览器复测；jsdom 下 origin 为 http://localhost:3000，
+线上形态为部署域同名路径。
+
+## 验证尾行（R63）
+```text
+$ npx vitest run src/modules/knowledge   → 2 files / 56 tests passed（含新增固定链接测试四段）
+$ npx vitest run                         → 144 files / 1799 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 set-state-in-effect warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw31-dist → exit 0（产物只落 /tmp）
+```
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录（3 files）；未动 App.tsx / shell / routes /
+registry / package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交
+（无 `git add -A`）；无 force / amend / `--no-verify`；单 commit「feat(console): knowledge drawer permalink」。

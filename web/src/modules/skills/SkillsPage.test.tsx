@@ -132,12 +132,22 @@ describe("SkillsPage", () => {
     const count = container.querySelector('[data-testid="cap4-count-skills"]')!;
     expect(count.textContent).toContain("—");
     expect(count.textContent).not.toContain("0");
+    const csv = container.querySelector<HTMLButtonElement>('[data-testid="cap6-export"]')!;
+    const copy = container.querySelector<HTMLButtonElement>('[data-testid="capC-copy"]')!;
+    expect(csv.disabled).toBe(true);
+    expect(copy.disabled).toBe(true);
+    expect(csv.title).toContain("请求编号：req-skills-1");
+    expect(copy.title).toContain("请求编号：req-skills-1");
+    expect(container.querySelector('[data-testid="cap6-export-count"]')?.textContent).toBe("—");
     const before = fetchJsonStrict.mock.calls.length;
     const button = [...container.querySelectorAll("button")].find((node) => node.textContent?.includes("重试"));
     await act(async () => { button?.click(); });
     await act(async () => {});
     expect(text()).toContain("恢复后的技能");
     expect(fetchJsonStrict.mock.calls.length).toBe(before + 1);
+    expect(csv.disabled).toBe(false);
+    expect(copy.disabled).toBe(false);
+    expect(container.querySelector('[data-testid="cap6-export-count"]')?.textContent).toBe("1 条");
   });
 
   it("keeps q/sort/dir in the URL through error and retry", async () => {
@@ -151,6 +161,8 @@ describe("SkillsPage", () => {
     expect(loc).toContain("sort=name");
     expect(loc).toContain("dir=asc");
     expect(decodeURIComponent(loc)).toContain("q=资料");
+    expect(container.querySelector<HTMLButtonElement>('[data-testid="cap6-export"]')?.disabled).toBe(true);
+    expect(container.querySelector<HTMLButtonElement>('[data-testid="capC-copy"]')?.disabled).toBe(true);
     const retry = container.querySelector<HTMLButtonElement>('[data-testid="skl4-retry"]')!;
     await act(async () => { retry.click(); });
     await act(async () => {});
@@ -173,6 +185,12 @@ describe("SkillsPage", () => {
     expect(count.textContent).toContain("0");
     expect(count.textContent).toContain("有源（空）");
     expect(text()).toContain("不补样例行");
+    const csv = container.querySelector<HTMLButtonElement>('[data-testid="cap6-export"]')!;
+    const copy = container.querySelector<HTMLButtonElement>('[data-testid="capC-copy"]')!;
+    expect(csv.disabled).toBe(true);
+    expect(copy.disabled).toBe(true);
+    expect(csv.title).toContain("没有可导出");
+    expect(container.querySelector('[data-testid="cap6-export-count"]')?.textContent).toBe("0 条");
   });
 
   it("puts the GAP id only in the title when the endpoint is missing", async () => {
@@ -194,9 +212,15 @@ describe("SkillsPage", () => {
     expect(count.textContent).not.toContain("0");
     expect(count.getAttribute("title")).toContain("GAP-SKL4-01");
     const copy = container.querySelector<HTMLButtonElement>('[data-testid="capC-copy"]')!;
+    const csv = container.querySelector<HTMLButtonElement>('[data-testid="cap6-export"]')!;
     expect(copy.disabled).toBe(true);
+    expect(csv.disabled).toBe(true);
     expect(container.querySelectorAll("tr[data-testid^='skl4-row-'][tabindex]")).toHaveLength(0);
-    expect(copy.title).toContain("没有可复制");
+    expect(copy.title).toContain("读口未接入");
+    expect(copy.title).toContain("审批中心");
+    expect(copy.title).toContain("GAP-SKL4-01");
+    expect(csv.title).toContain("读口未接入");
+    expect(container.querySelector('[data-testid="cap6-export-count"]')?.textContent).toBe("—");
   });
 
   it("renders 403 and 404 with the same neutral body and no status code", async () => {
@@ -214,6 +238,15 @@ describe("SkillsPage", () => {
     expect(count.textContent).toContain("—");
     expect(count.textContent).not.toContain("0");
     expect(count.getAttribute("title")).toContain("GAP-SKL4-01");
+    const copy = container.querySelector<HTMLButtonElement>('[data-testid="capC-copy"]')!;
+    const csv = container.querySelector<HTMLButtonElement>('[data-testid="cap6-export"]')!;
+    expect(copy.disabled).toBe(true);
+    expect(csv.disabled).toBe(true);
+    expect(copy.title).toContain("读口未接入");
+    expect(copy.title).toContain("审批中心");
+    expect(copy.title).toContain("GAP-SKL4-01");
+    expect(csv.title).toContain("读口未接入");
+    expect(container.querySelector('[data-testid="cap6-export-count"]')?.textContent).toBe("—");
   });
 
   it("keeps the row testid and humanizes source and status", async () => {

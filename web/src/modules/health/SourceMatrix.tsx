@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Card, CardContent } from "@nous-research/ui";
+import { redactError } from "./systemHealth";
 import {
   SOURCE_STATUS_LABEL as STATUS_LABEL,
   SYS6_GAP,
@@ -7,6 +8,15 @@ import {
   useSourceMatrix,
 } from "./sourceReads";
 import { csvRows, downloadCsv, exportFilename, toCsv, toPlainText } from "./sourceMatrixCsv";
+import {
+  ariaSourceSort,
+  nextSourceSort,
+  readSourceSort,
+  sortSourceRows,
+  writeSourceSort,
+  type SourceSortKey,
+  type SourceSortState,
+} from "./sourceSort";
 
 const ASOF_CRITERION = "判据：只取 payload 顶层 ISO，缺失或非 ISO 显示「—」，不使用本机时钟";
 
@@ -33,8 +43,48 @@ function CopyRid({ id, testid }: { id: string; testid: string }) {
   );
 }
 
+const SORT_LABEL: Record<Exclude<SourceSortKey, "name">, string> = {
+  state: "本次状态",
+  ms: "响应耗时",
+  asof: "采集时刻",
+};
+
+function SortButton({ sort, sortKey, onSort }: { sort: SourceSortState; sortKey: Exclude<SourceSortKey, "name">; onSort: (key: Exclude<SourceSortKey, "name">) => void }) {
+  const active = sort.key === sortKey;
+  const indicator = active ? (sort.dir === "asc" ? "↑" : "↓") : "↕";
+  return (
+    <button
+      type="button"
+      className="sys13-sort"
+      data-testid={`sys13-sort-${sortKey}`}
+      aria-label={`按${SORT_LABEL[sortKey]}排序；当前${active ? (sort.dir === "asc" ? "升序" : "降序") : "未排序"}`}
+      onClick={() => onSort(sortKey)}
+    >
+      {SORT_LABEL[sortKey]}
+      <span className="sys13-indicator" aria-hidden="true">{indicator}</span>
+    </button>
+  );
+}
+
 export function SourceMatrix() {
   const { rows, expanded } = useSourceMatrix();
+  const [sort, setSort] = useState<SourceSortState>(() => readSourceSort(window.location.search, window.location.hash));
+  const [openRow, setOpenRow] = useState<string | null>(null);
+  useEffect(() => {
+    const sync = () => setSort(readSourceSort(window.location.search, window.location.hash));
+    window.addEventListener("popstate", sync);
+    window.addEventListener("hashchange", sync);
+    return () => {
+      window.removeEventListener("popstate", sync);
+      window.removeEventListener("hashchange", sync);
+    };
+  }, []);
+  const sortedRows = sortSourceRows(rows, sort);
+  const onSort = (key: Exclude<SourceSortKey, "name">) => {
+    const next = nextSourceSort(sort, key);
+    setSort(next);
+    writeSourceSort(next);
+  };
   const counts = rows.reduce<Record<string, number>>((out, row) => {
     out[row.status] = (out[row.status] ?? 0) + 1;
     return out;
@@ -46,10 +96,10 @@ export function SourceMatrix() {
     `读口未接入 ${counts.unwired ?? 0}`,
   ].join(" · ");
 
-  const exportRows = csvRows(rows);
+  const exportRows = csvRows(sortedRows);
   const exportDisabled = exportRows.length === 0;
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
-  const copyText = toPlainText(rows);
+  const copyText = toPlainText(sortedRows);
   const copyDisabled = rows.length === 0;
 
   async function copyMatrix() {
@@ -121,72 +171,140 @@ export function SourceMatrix() {
           />
         ) : null}
         {expanded ? (
-          <div className="sys6-scroll">
+          <>
+            <p className="sys13-sort-note" data-testid="sys13-sort-note">
+              点「本次状态 / 响应耗时 / 采集时刻」可排序；排序只改屏上与复制文本的行序，不会重新取数。默认按口径名升序，缺失值排在最后。
+            </p>
+            <div className="sys6-scroll">
             <table className="sys6-table" data-testid="sys6-table">
               <thead>
                 <tr>
-                  <th title="读口的中文口径名">口径名</th>
+                  <th data-testid="sys13-head-name" aria-sort={ariaSourceSort(sort, "name")} title="默认按口径名升序；缺失值排在最后">口径名</th>
                   <th title="本次实际发出的请求路径">实际请求路径</th>
-                  <th title="本次读取的结果；读口未接入时给出申请入口">本次状态</th>
-                  <th title="本次请求耗时；失败或未读取时留空">响应耗时</th>
-                  <th title="健康清单行取 /api/health 响应顶层 asOf，与服务列表的“最近检查时刻”同值；其余三行各取自己探针响应的顶层 asOf，互不替代。">采集时刻</th>
+                  <th data-testid="sys13-head-state" aria-sort={ariaSourceSort(sort, "state")} title="按状态分组排序；缺失值排在最后">
+                    <SortButton sort={sort} sortKey="state" onSort={onSort} />
+                  </th>
+                  <th data-testid="sys13-head-ms" aria-sort={ariaSourceSort(sort, "ms")} title="按本次耗时数值排序；缺失值排在最后">
+                    <SortButton sort={sort} sortKey="ms" onSort={onSort} />
+                  </th>
+                  <th
+                    data-testid="sys13-head-asof"
+                    aria-sort={ariaSourceSort(sort, "asof")}
+                    title="按 payload 顶层 ISO 原值排序；缺失或非 ISO 排在最后"
+                  >
+                    <SortButton sort={sort} sortKey="asof" onSort={onSort} />
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => {
+                {sortedRows.map((row) => {
                   const rid = row.status === "failed" ? row.requestId : null;
+                  const detail = row.statusDetail ? redactError(row.statusDetail) : null;
+                  const statusTitle = row.status === "unwired"
+                    ? SYS6_GAP
+                    : [row.statusReason, detail?.text, detail?.count ? `已脱敏 ${detail.count} 处` : null]
+                      .filter(Boolean)
+                      .join(" · ") || undefined;
+                  const open = openRow === row.id;
                   return (
-                    <tr key={row.id} data-testid={`sys6-row-${row.id}`} data-status={row.status}>
-                      <td>
-                        <span data-testid={`sys6-name-${row.id}`}>{row.label}</span>
-                        {row.href ? (
-                          <a
-                            className="sys9-src-link"
-                            href={row.href}
-                            data-testid={`sys9-src-link-${row.id}`}
-                          >
-                            打开对应页面
-                          </a>
-                        ) : (
-                          <span
-                            className="sys9-src-nolink"
-                            data-testid={`sys9-src-nolink-${row.id}`}
-                            title="这个探针只在本页内运行，没有独立页面可跳转；不造死链。"
-                          >
-                            该读口无对应页面
+                    <Fragment key={row.id}>
+                      <tr data-testid={`sys6-row-${row.id}`} data-status={row.status}>
+                        <td>
+                          <span className="sys15-trunc" data-testid={`sys6-name-${row.id}`} data-sys15="trunc" title={row.label}>
+                            {row.label}
                           </span>
-                        )}
-                      </td>
-                      <td data-testid={`sys6-path-${row.id}`} title={row.path}>{row.path}</td>
-                      <td
-                        data-testid={`sys6-status-${row.id}`}
-                        title={row.status === "unwired" ? SYS6_GAP : row.statusDetail ?? undefined}
-                      >
-                        <span className="sys6-status">{STATUS_LABEL[row.status]}</span>
-                        {row.statusReason ? <span className="sys6-reason">{row.statusReason}</span> : null}
-                        {row.status === "unwired" ? (
-                          <a className="sys6-apply" href="#/approvals" data-testid={`sys6-apply-${row.id}`}>去申请开通</a>
-                        ) : null}
-                        {rid ? <CopyRid id={rid} testid={`sys6-rid-${row.id}`} /> : null}
-                      </td>
-                      <td
-                        data-testid={`sys6-duration-${row.id}`}
-                        title={row.durationReason ?? undefined}
-                      >
-                        {row.durationMs === null ? "—" : `${row.durationMs} ms`}
-                      </td>
-                      <td
-                        data-testid={`sys6-asof-${row.id}`}
-                        title={asOfTitle(row)}
-                      >
-                        <span data-testid={`sys8-asof-${row.id}`}>{row.asOf ?? "—"}</span>
-                      </td>
-                    </tr>
+                          {row.href ? (
+                            <a
+                              className="sys9-src-link"
+                              href={row.href}
+                              data-testid={`sys9-src-link-${row.id}`}
+                            >
+                              打开对应页面
+                            </a>
+                          ) : (
+                            <span
+                              className="sys9-src-nolink"
+                              data-testid={`sys9-src-nolink-${row.id}`}
+                              title="这个探针只在本页内运行，没有独立页面可跳转；不造死链。"
+                            >
+                              该读口无对应页面
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            className="sys15-row-toggle"
+                            data-testid={`sys15-row-toggle-${row.id}`}
+                            aria-expanded={open}
+                            onClick={() => setOpenRow(open ? null : row.id)}
+                          >
+                            {open ? "收起" : "全文"}
+                          </button>
+                        </td>
+                        <td data-testid={`sys6-path-${row.id}`} title={row.path}>
+                          <span className="sys15-trunc" data-testid={`sys15-trunc-path-${row.id}`} data-sys15="trunc">{row.path}</span>
+                        </td>
+                        <td data-testid={`sys6-status-${row.id}`} title={statusTitle}>
+                          <span className="sys6-status sys15-trunc" data-testid={`sys15-trunc-status-${row.id}`}>{STATUS_LABEL[row.status]}</span>
+                          {row.statusReason ? (
+                            <span className="sys6-reason sys15-trunc" data-testid={`sys15-trunc-reason-${row.id}`}>{row.statusReason}</span>
+                          ) : null}
+                          {row.status === "unwired" ? (
+                            <a className="sys6-apply" href="#/approvals" data-testid={`sys6-apply-${row.id}`}>去申请开通</a>
+                          ) : null}
+                          {rid ? <CopyRid id={rid} testid={`sys6-rid-${row.id}`} /> : null}
+                        </td>
+                        <td
+                          data-testid={`sys6-duration-${row.id}`}
+                          title={row.durationReason ?? undefined}
+                        >
+                          {row.durationMs === null ? "—" : `${row.durationMs} ms`}
+                        </td>
+                        <td
+                          data-testid={`sys6-asof-${row.id}`}
+                          title={asOfTitle(row)}
+                        >
+                          <span data-testid={`sys8-asof-${row.id}`}>{row.asOf ?? "—"}</span>
+                        </td>
+                      </tr>
+                      {open ? (
+                        <tr data-testid={`sys15-detail-${row.id}`} className="sys15-detail-row">
+                          <td colSpan={5}>
+                            <dl className="sys4-grid sys15-matrix-detail">
+                              <div className="sys4-field">
+                                <dt>口径名</dt>
+                                <dd className="sys15-full" data-testid={`sys15-full-name-${row.id}`}>{row.label}</dd>
+                              </div>
+                              <div className="sys4-field">
+                                <dt>实际请求路径</dt>
+                                <dd className="sys15-full" data-testid={`sys15-full-path-${row.id}`}>{row.path}</dd>
+                              </div>
+                              <div className="sys4-field sys4-wide">
+                                <dt>状态与原因</dt>
+                                <dd className="sys15-full" data-testid={`sys15-full-status-${row.id}`}>
+                                  {STATUS_LABEL[row.status]}
+                                  {row.statusReason ? ` · ${row.statusReason}` : ""}
+                                  {detail ? ` · ${detail.text}` : ""}
+                                  {detail && detail.count > 0 ? (
+                                    <span className="sys4-redacted" data-testid={`sys15-redacted-${row.id}`}>已脱敏 {detail.count} 处</span>
+                                  ) : null}
+                                  {detail?.truncated ? <span className="sys4-redacted">摘要已截断</span> : null}
+                                </dd>
+                              </div>
+                              <div className="sys4-field">
+                                <dt>采集时刻</dt>
+                                <dd className="sys15-full" data-testid={`sys15-full-asof-${row.id}`}>{row.asOf ?? "—"}</dd>
+                              </div>
+                            </dl>
+                          </td>
+                        </tr>
+                      ) : null}
+                    </Fragment>
                   );
                 })}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         ) : null}
         <p className="sys8-same-source-note" data-testid="sys8-same-source-note">
           「最近检查时刻」与「采集时刻」：健康清单行和矩阵第一行同源，都取 <code>/api/health</code> 响应顶层 asOf（同一 ISO 值，同一北京时间到分呈现）；其余三行是各自探针响应的顶层 asOf，不与健康清单互相代替。

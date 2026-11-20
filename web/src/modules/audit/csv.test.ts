@@ -100,4 +100,50 @@ describe("the filtered export (R43)", () => {
   });
 });
 
-import { filteredCsvText, filteredExportName } from "./csv";
+import { filteredCsvText, filteredExportName, filterSnapshotExportName } from "./csv";
+
+/**
+ * audI — 文件名带当前筛选快照（时间窗/actor/资源/动作/条数），非法字符折叠，
+ * BJT 到分；旧的三 token 拼法不变（既有断言仍成立）。
+ */
+describe("audI - the export name carries the whole filter snapshot", () => {
+  const NOW = new Date("2026-11-19T22:47:00Z"); // 北京时间 2026-11-20 06:47
+
+  it("adds the action type and the row count, in order, before the stamp", () => {
+    expect(
+      filterSnapshotExportName(
+        { window: "7d", actor: "all", resource: "all", action: "task.created", rows: 25 },
+        NOW,
+      ),
+    ).toBe("audit-7d-all-all-task-created-n25-20261120-0647.csv");
+  });
+
+  it("keeps the three-token shape when nothing else was chosen", () => {
+    expect(filterSnapshotExportName({ window: "7d", actor: "all", resource: "all", rows: 2 }, NOW)).toBe(
+      "audit-7d-all-all-all-n2-20261120-0647.csv",
+    );
+    // the older spelling is still exactly what it was
+    expect(filteredExportName("7d", "all", "all", NOW)).toBe("audit-7d-all-all-20261120-0647.csv");
+  });
+
+  it("folds anything that is not a file-name character, including a full width space", () => {
+    const name = filterSnapshotExportName(
+      { window: "custom", actor: "employee api/张三", resource: "ap_1 22", action: "预算.流水 记一笔", rows: 7 },
+      NOW,
+    );
+    // every non [A-Za-z0-9_-] run collapses to one `-`, edges trimmed
+    expect(name).toBe("audit-custom-employee-api-ap_1-22-x-n7-20261120-0647.csv");
+    expect(name).toMatch(/^[A-Za-z0-9._-]+$/);
+    expect(name).not.toMatch(/--/);
+    // a value that folds to nothing is marked, never renamed into 「all」
+    expect(filterSnapshotExportName({ window: "7d", actor: "张三", resource: "all", action: "all", rows: 1 }, NOW)).toBe(
+      "audit-7d-x-all-all-n1-20261120-0647.csv",
+    );
+  });
+
+  it("writes the Beijing minute, not the browser's clock", () => {
+    const name = filterSnapshotExportName({ window: "24h", actor: "all", resource: "all", action: "all", rows: 0 }, NOW);
+    expect(name.endsWith("-20261120-0647.csv")).toBe(true);
+    expect(name).toContain("n0-");
+  });
+});

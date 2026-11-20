@@ -228,6 +228,15 @@ describe("failures and gaps", () => {
     expect(count.textContent).toContain("—");
     expect(count.textContent).toContain("无源");
     expect(count.getAttribute("title")).toContain("GAP-04");
+    const copy = document.querySelector<HTMLButtonElement>('[data-testid="capC-copy"]')!;
+    const csv = document.querySelector<HTMLButtonElement>('[data-testid="cap6-export"]')!;
+    expect(copy.disabled).toBe(true);
+    expect(csv.disabled).toBe(true);
+    expect(copy.title).toContain("读口未接入");
+    expect(copy.title).toContain("审批中心");
+    expect(copy.title).toContain("GAP-04");
+    expect(csv.title).toContain("读口未接入");
+    expect(document.querySelector('[data-testid="cap6-export-count"]')?.textContent).toBe("—");
     expect(text()).not.toMatch(/\/api\/|403|GAP-04/);
   });
 
@@ -244,8 +253,14 @@ describe("failures and gaps", () => {
     expect(document.querySelector("[data-testid='cap9-state-denied']")).toBeNull();
     expect(document.querySelector("[data-testid='capF-state-unavailable']")).toBeTruthy();
     const copy = document.querySelector<HTMLButtonElement>('[data-testid="capC-copy"]')!;
+    const csv = document.querySelector<HTMLButtonElement>('[data-testid="cap6-export"]')!;
     expect(copy.disabled).toBe(true);
-    expect(copy.title).toContain("没有可复制");
+    expect(csv.disabled).toBe(true);
+    expect(copy.title).toContain("读口未接入");
+    expect(copy.title).toContain("审批中心");
+    expect(copy.title).toContain("GAP-04");
+    expect(csv.title).toContain("读口未接入");
+    expect(document.querySelector("[data-testid='cap6-export-count']")?.textContent).toBe("—");
     expect(document.querySelectorAll("[data-testid='tol5-row'][tabindex]")).toHaveLength(0);
   });
 
@@ -266,6 +281,12 @@ describe("failures and gaps", () => {
     expect(count.textContent).toContain("0");
     expect(count.textContent).toContain("有源（空）");
     expect(count.textContent).not.toContain("无源");
+    const csv = document.querySelector<HTMLButtonElement>('[data-testid="cap6-export"]')!;
+    const copy = document.querySelector<HTMLButtonElement>('[data-testid="capC-copy"]')!;
+    expect(csv.disabled).toBe(true);
+    expect(copy.disabled).toBe(true);
+    expect(csv.title).toContain("没有可导出");
+    expect(document.querySelector('[data-testid="cap6-export-count"]')?.textContent).toBe("0 条");
   });
 
   it("treats a non-JSON SPA shell as not wired, never as a parser error", async () => {
@@ -305,6 +326,8 @@ describe("failures and gaps", () => {
     expect(decodeURIComponent(loc)).toContain("q=网页");
     expect(loc).toContain("sort=name");
     expect(loc).toContain("dir=asc");
+    expect(document.querySelector<HTMLButtonElement>('[data-testid="cap6-export"]')?.disabled).toBe(true);
+    expect(document.querySelector<HTMLButtonElement>('[data-testid="capC-copy"]')?.disabled).toBe(true);
     const retry = document.querySelector<HTMLButtonElement>("[data-testid='tol5-retry']")!;
     fail = false;
     await act(async () => retry.click());
@@ -332,6 +355,13 @@ describe("failures and gaps", () => {
     const count = document.querySelector("[data-testid='cap4-count-tools']")!;
     expect(count.textContent).toContain("—");
     expect(count.textContent).not.toContain("0");
+    const csv = document.querySelector<HTMLButtonElement>('[data-testid="cap6-export"]')!;
+    const copy = document.querySelector<HTMLButtonElement>('[data-testid="capC-copy"]')!;
+    expect(csv.disabled).toBe(true);
+    expect(copy.disabled).toBe(true);
+    expect(csv.title).toContain("请求编号：req-tol5");
+    expect(copy.title).toContain("请求编号：req-tol5");
+    expect(document.querySelector('[data-testid="cap6-export-count"]')?.textContent).toBe("—");
     expect(document.querySelector("[aria-label='复制请求编号']")).toBeTruthy();
     fail = false;
     const before = urls().length;
@@ -341,6 +371,9 @@ describe("failures and gaps", () => {
     const retried = urls().slice(before);
     expect(retried.length).toBeGreaterThan(0);
     expect(retried.every((url) => /\/api\/(tools|mcp)(\/|$)/.test(url) && !url.includes("/api/skills"))).toBe(true);
+    expect(csv.disabled).toBe(false);
+    expect(copy.disabled).toBe(false);
+    expect(document.querySelector('[data-testid="cap6-export-count"]')?.textContent).toBe("6 条");
   });
 
   it("replaces a stale count with 加载中 while the tab reads again", async () => {

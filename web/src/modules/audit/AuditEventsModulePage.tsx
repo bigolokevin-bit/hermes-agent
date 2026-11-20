@@ -48,9 +48,10 @@ import type { FailureCopy } from "./copy";
 import type { VerifyFailure } from "./copy";
 import { eventTypeChoices } from "./model";
 import type { ListFilters } from "./api";
+import { PAGE_LIMIT, PAGE_SIZE_CHOICES, readPageSize } from "./api";
 import { filterSummaryLineOf, hasFilterSummary } from "./filterSummary";
 import type { AuditRow } from "./model";
-import { downloadCsv, downloadText, exportName, filteredCsvText, filteredExportName } from "./csv";
+import { downloadCsv, downloadText, exportName, filteredCsvText, filterSnapshotExportName } from "./csv";
 import {
   FILTER_WINDOW_CHOICES,
   beijingInputValue,
@@ -490,12 +491,30 @@ function AuditUrlFilterChips({
  * the handle the row is read through; leaving it on a vanished panel would
  * dump the next Tab into the middle of the page.
  */
+/**
+ * audK — one row inside a roving tab stop.
+ *
+ * A keyboard person reads this ledger row by row: the list is ONE Tab stop, and
+ * ↑ ↓ Home End move inside it. The row that holds the stop is the one the
+ * person last reached (the first row before that), so Tab into the list lands
+ * where the reading is, not at the bottom of the page.
+ *
+ * Enter opens or closes that row's preview — the same fold `aud6-toggle-*` and
+ * the mouse use, so one keystroke cannot flip two rows. Esc closes it and hands
+ * the focus back to the row, because the next keystroke is a question about
+ * that row. Nothing here sends a request or touches a filter, a page or the
+ * address beyond the fold's own key.
+ */
 function AuditRowKeyboard({
   row,
   open,
   deepLink,
+  isRoving,
   onToggle,
   onClose,
+  onRoving,
+  onMove,
+  onEdge,
   children,
 }: {
   row: AuditRow;
@@ -503,15 +522,40 @@ function AuditRowKeyboard({
   open: boolean;
   /** `?event=` landed on this row. */
   deepLink: boolean;
+  /** audK: this row holds the list's single tab stop right now. */
+  isRoving: boolean;
   onToggle: () => void;
   onClose: () => void;
+  /** audK: the person reached this row by keyboard, so it takes the stop. */
+  onRoving: (key: string) => void;
+  /** audK: ↑ ↓ — the row to land on, or null when the edge was reached. */
+  onMove: (key: string, delta: number) => string | null;
+  /** audK: Home / End. */
+  onEdge: (edge: "first" | "last") => string | null;
   children: ReactNode;
 }): ReactNode {
+  const focusBy = (key: string | null): void => {
+    if (!key) return;
+    const node = document.querySelector<HTMLElement>(`[data-audk-row='${key}']`);
+    if (node) {
+      onRoving(key);
+      node.focus();
+    }
+  };
+
   return (
     <div
-      className="flex min-w-0 flex-col gap-1"
+      className="flex min-w-0 flex-col gap-1 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
       data-testid={`audA-row-shell-${row.key}`}
       data-aud9-deeplink={deepLink ? "true" : undefined}
+      // audK: roving tabIndex — the whole list is one Tab stop, and this is the
+      // row that holds it. `data-audk-row` is how the list finds a row to move
+      // focus to without reaching for a test id.
+      data-audk-row={row.key}
+      data-audk-roving={isRoving ? "true" : "false"}
+      role="listitem"
+      tabIndex={isRoving ? 0 : -1}
+      onFocus={() => onRoving(row.key)}
       onKeyDown={(event) => {
         if (event.key === "Enter" && event.target === event.currentTarget) {
           // The row itself is not a Tab stop; Enter here is for a row that was
@@ -519,6 +563,15 @@ function AuditRowKeyboard({
           // answer Enter, so this never double-fires.
           event.preventDefault();
           onToggle();
+          return;
+        }
+        if (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Home" || event.key === "End") {
+          // The arrow keys belong to the list only while the row itself is the
+          // thing under focus; inside a control they keep their own behaviour.
+          if (event.target !== event.currentTarget) return;
+          event.preventDefault();
+          if (event.key === "Home" || event.key === "End") focusBy(onEdge(event.key === "Home" ? "first" : "last"));
+          else focusBy(onMove(row.key, event.key === "ArrowDown" ? 1 : -1));
           return;
         }
         if (event.key !== "Escape" || !open) return;
@@ -530,6 +583,14 @@ function AuditRowKeyboard({
         toggle?.focus();
       }}
     >
+      {/* audK: the probe handle for this row — where it sits in the list and
+          whether it is the one holding the tab stop right now. */}
+      <span
+        aria-hidden="true"
+        data-testid={`audK-row-${row.key}`}
+        data-audk-roving={isRoving ? "true" : "false"}
+        data-audk-open={open ? "true" : "false"}
+      />
       {children}
     </div>
   );
@@ -543,6 +604,81 @@ export function AuditEventsModulePage(): ReactNode {
     return <RetentionModulePage />;
   }
   return <AuditEventsSurface />;
+}
+
+/**
+ * audH — how many records one page asks for.
+ *
+ * One component, two homes: the pagination bar (live) and the empty answer
+ * (disabled, with the reason on the control). The value it shows is the size
+ * the ANSWER said it served when it said one — a page clamped by the service
+ * reports the number that was really in force, not the one that was wished
+ * for. When the answer stated nothing, the note says exactly that and quotes
+ * the two numbers the screen actually has: the requested size and the rows it
+ * received. Nothing here computes an effective size.
+ */
+function AuditPageSizeSelector({
+  effective,
+  asked,
+  disabled,
+  rejectedNote,
+  clampedNote,
+  silentNote,
+  onPick,
+}: {
+  /** The size in force on screen (the answer's, else what was asked). */
+  effective: number;
+  /** The size this page sent. */
+  asked: number;
+  /** The empty answer has nothing to page through. */
+  disabled: boolean;
+  /** The address asked for a size this page will not send. */
+  rejectedNote: string | null;
+  /** The service said it served a different size. */
+  clampedNote: string | null;
+  /** The service said nothing; only the counted rows are quotable. */
+  silentNote: string | null;
+  onPick: (size: number) => void;
+}): ReactNode {
+  const offered = (PAGE_SIZE_CHOICES as readonly number[]).includes(effective);
+  const note = rejectedNote ?? clampedNote ?? silentNote;
+  return (
+    <>
+      <label className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground" htmlFor="audH-page-size">
+        每页
+        <select
+          id="audH-page-size"
+          data-testid="audH-page-size"
+          aria-label="每页条数"
+          className="h-8 min-w-0 rounded-md border border-border bg-transparent px-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+          value={String(effective)}
+          disabled={disabled}
+          title={
+            disabled
+              ? "这个筛选下没有事件，每页条数暂时用不上"
+              : rejectedNote
+                ? rejectedNote
+                : clampedNote
+                  ? clampedNote
+                  : `改每页条数会重新读取一次，并回到第 1 页（当前请求 limit=${asked}）`
+          }
+          onChange={(event) => onPick(Number(event.target.value))}
+        >
+          {PAGE_SIZE_CHOICES.map((size) => (
+            <option key={size} value={String(size)}>
+              {`${size} 条`}
+            </option>
+          ))}
+          {offered ? null : <option value={String(effective)}>{`服务带回 ${effective} 条`}</option>}
+        </select>
+      </label>
+      {note ? (
+        <span className="min-w-0 break-words text-xs text-warning" data-testid="audH-clamp-note">
+          {note}
+        </span>
+      ) : null}
+    </>
+  );
 }
 
 function AuditEventsSurface(): ReactNode {
@@ -628,7 +764,27 @@ function AuditEventsSurface(): ReactNode {
   const cursors = params.getAll("cursor");
   const startCursor = cursors.length ? cursors[cursors.length - 1]! : null;
   const pageNo = cursors.length + 1;
-  const list = useAuditList(null, filters, !customInvalid, startCursor);
+  // audH: the page size lives in the address too. What the address wrote and
+  // what this page is willing to send are kept apart on purpose: an offered
+  // size goes out as asked, anything else is reported and the default is read.
+  const sizeReading = readPageSize(params.get("limit"));
+  const list = useAuditList(null, filters, !customInvalid, startCursor, sizeReading.asked);
+  // The size on screen is the one the ANSWER says it served, when it says one.
+  const servedLimit = list.servedLimit;
+  const effectiveLimit = servedLimit ?? sizeReading.asked;
+  const clamped = servedLimit !== null && servedLimit !== sizeReading.asked;
+  // A silent answer that brought back fewer rows than asked is the same story
+  // told without a number: the screen says what it counted, and never claims
+  // the service agreed to a size it never stated.
+  const silentShortPage =
+    servedLimit === null && list.phase === "ready" && list.rows.length > 0 && list.rows.length < sizeReading.asked;
+  const sizeNote =
+    sizeReading.note ??
+    (clamped
+      ? `请求按每页 ${sizeReading.asked} 条发出，服务这一页带回的是每页 ${servedLimit} 条（回答里写明的生效值），控件已按生效值回显。`
+      : silentShortPage
+        ? `服务没有带回这一页按多少条读；请求路径写的是 limit=${sizeReading.asked}，屏上实收 ${list.rows.length} 条 —— 这里只报这两个数，不替服务认一个生效值。`
+        : null);
   const detail = useAuditDetail(selected, null);
   const [unaddressable, setUnaddressable] = useState(false);
   // aud8: the two inline folds are URL-owned now (they used to be page-local),
@@ -679,6 +835,34 @@ function AuditEventsSurface(): ReactNode {
           )
         : list.rows,
     [list.rows, resource],
+  );
+
+  // audK: the list's single tab stop. `null` means the person has not moved
+  // inside the list yet, so the first row holds the stop — Tab into the ledger
+  // lands where the reading starts, not past the last row. A row that is no
+  // longer on screen (a new page, a narrowed filter) hands the stop back to the
+  // first row of what came instead.
+  const [rovingKey, setRovingKey] = useState<string | null>(null);
+  const roving = (rovingKey !== null && visibleRows.some((row) => row.key === rovingKey)
+    ? rovingKey
+    : visibleRows[0]?.key) ?? null;
+
+  const moveRowFocus = useCallback(
+    (key: string, delta: number): string | null => {
+      const index = visibleRows.findIndex((row) => row.key === key);
+      if (index === -1) return null;
+      const next = visibleRows[Math.min(visibleRows.length - 1, Math.max(0, index + delta))];
+      return next?.key ?? null;
+    },
+    [visibleRows],
+  );
+
+  const edgeRowFocus = useCallback(
+    (edge: "first" | "last"): string | null => {
+      if (!visibleRows.length) return null;
+      return (edge === "first" ? visibleRows[0] : visibleRows[visibleRows.length - 1])?.key ?? null;
+    },
+    [visibleRows],
   );
 
   // aud9: the deep link. A row that is on this page IS the opened fold; a link
@@ -888,6 +1072,20 @@ function AuditEventsSurface(): ReactNode {
     setWindow("7d");
   }, [setWindow]);
 
+  /**
+   * audH: choosing a size rewrites `?limit=`, drops the cursor stack (a new
+   * size is a new question, so page 1 again) and asks exactly once.
+   */
+  const setPageSize = useCallback(
+    (next: number) => {
+      const draft = new URLSearchParams(params);
+      resetPagingAndFolds(draft);
+      draft.set("limit", String(next));
+      setParams(draft, { replace: true, state: locationState ?? null });
+    },
+    [locationState, params, setParams],
+  );
+
   const goNext = useCallback(() => {
     if (!list.next) return;
     const draft = new URLSearchParams(params);
@@ -904,6 +1102,14 @@ function AuditEventsSurface(): ReactNode {
     for (const value of stack.slice(0, -1)) draft.append("cursor", value);
     setParams(draft, { replace: true });
   }, [params, setParams]);
+
+  // audI: the type the address chose, spoken the way the picker speaks it, so
+  // the export line can name the set in human words (an unsampled code reads
+  // verbatim, exactly like the 类型 column does).
+  const typeChoices = useMemo(() => eventTypeChoices(), []);
+  const eventTypeLabel = eventType
+    ? typeChoices.find((choice) => choice.value === eventType)?.label ?? eventType
+    : "";
 
   const typeGroups = (() => {
     if (list.phase !== "ready" || visibleRows.length === 0) return [];
@@ -1059,38 +1265,28 @@ function AuditEventsSurface(): ReactNode {
 
   // audG: one line describing HOW the ledger is being read right now, quoting
   // the path this page actually asked (relative, credential-free). Built from
-  // the address and the data layer's own builder: reading it copies nothing new.
-  const filterSummary = useMemo(
-    () =>
-      filterSummaryLineOf({
-        windowLabel,
-        custom: windowChoice === "custom",
-        fromBeijing: beijingInputValue(customFromParam),
-        toBeijing: beijingInputValue(customToParam),
-        type: eventType,
-        actor,
-        resource,
-        resourceNote: "本页已加载的记录里本地匹配，服务端 resourceId 效果未单独实测",
-        page: pageNo,
-        cursorCount: cursors.length,
-        // audG: an incomplete custom range is never asked, so the summary has
-        // no request to quote — 「未设置」, not the last valid window's path.
-        askedPath: customInvalid ? null : list.askedPath,
-      }),
-    [
-      customInvalid,
-      actor,
-      customFromParam,
-      customToParam,
-      cursors,
-      eventType,
-      list.askedPath,
-      pageNo,
-      resource,
-      windowChoice,
-      windowLabel,
-    ],
-  );
+  // the address and the data layer's own builder — reading it copies nothing
+  // new. No memo on purpose: it is a string built from values this render
+  // already holds, and a shared summary must never be one render stale.
+  const summaryInput = {
+    windowLabel,
+    custom: windowChoice === "custom",
+    fromBeijing: beijingInputValue(customFromParam),
+    toBeijing: beijingInputValue(customToParam),
+    type: eventType,
+    actor,
+    resource,
+    resourceNote: "本页已加载的记录里本地匹配，服务端 resourceId 效果未单独实测",
+    page: pageNo,
+    cursorCount: cursors.length,
+    // audH: the size in force (the answer's stated one when it stated one).
+    limit: servedLimit ?? sizeReading.asked,
+    defaultLimit: PAGE_LIMIT,
+    // An incomplete custom range is never asked, so the summary has no request
+    // to quote — 「未设置」, not the last valid window's path.
+    askedPath: customInvalid ? null : list.askedPath,
+  };
+  const filterSummary = filterSummaryLineOf(summaryInput);
 
   return (
     <div className="flex min-w-0 w-full max-w-full flex-col gap-3" data-testid="agent-v2-page-audit" data-page="audit">
@@ -1144,7 +1340,20 @@ function AuditEventsSurface(): ReactNode {
           size="sm"
           outlined
           onClick={() =>
-            downloadText(filteredCsvText(visibleRows), filteredExportName(windowChoice, actor || "all", resource || "all"))
+            // audI: name first, then the body — `downloadText(name, text)`.
+            // The two were swapped here: the file came out named with its own
+            // CSV text and filled with the file name, which no test could see
+            // because nothing compared both sides until now.
+            downloadText(
+              filterSnapshotExportName({
+                window: windowChoice,
+                actor: actor || "all",
+                resource: resource || "all",
+                action: eventType || "all",
+                rows: visibleRows.length,
+              }),
+              filteredCsvText(visibleRows),
+            )
           }
           disabled={!canExport}
           aria-disabled={!canExport}
@@ -1155,6 +1364,12 @@ function AuditEventsSurface(): ReactNode {
           导出当前筛选 CSV
         </Button>
         <span className="min-w-0 break-words text-xs text-muted-foreground" data-testid="aud5-export-count">将导出 {visibleRows.length} 条</span>
+        {/* audI: the export set is named out loud, because 「导出当前筛选」 is only
+            honest if the screen says which rows that means: the same rows on
+            screen, with the same type the bucket filter put in the address. */}
+        <span className="min-w-0 basis-full break-words text-xs text-muted-foreground" data-testid="audI-export-scope">
+          导出的就是屏上这一份：{eventType ? `只含「${eventTypeLabel}」这一类` : "当前时间窗与筛选下的全部类型"}，共 {visibleRows.length} 行，与上面「已显示」和类型分布的计数同一个集合；文件名带齐时间窗、操作者、资源、动作与行数，时间为北京时间到分。
+        </span>
       </div>
 
       {/* audD: the distribution is the filter. Picking a bucket writes the
@@ -1211,22 +1426,7 @@ function AuditEventsSurface(): ReactNode {
           read yet (loading) and while the ledger is closed (denied): a summary
           of a question nobody was able to answer would be a claim about it. */}
       {customInvalid || list.phase === "ready" || list.phase === "empty" || list.phase === "error" ? (
-        <FilterSummaryCopy
-          line={filterSummary}
-          available={hasFilterSummary({
-            windowLabel,
-            custom: windowChoice === "custom",
-            fromBeijing: beijingInputValue(customFromParam),
-            toBeijing: beijingInputValue(customToParam),
-            type: eventType,
-            actor,
-            resource,
-            resourceNote: "本页已加载的记录里本地匹配，服务端 resourceId 效果未单独实测",
-            page: pageNo,
-            cursorCount: cursors.length,
-            askedPath: customInvalid ? null : list.askedPath,
-          })}
-        />
+        <FilterSummaryCopy line={filterSummary} available={hasFilterSummary(summaryInput)} />
       ) : null}
 
       {/* The window check lives on the list too, and it says exactly one of
@@ -1366,6 +1566,15 @@ function AuditEventsSurface(): ReactNode {
 
           {!customInvalid && list.phase === "empty" ? (
             <>
+              <AuditPageSizeSelector
+                effective={effectiveLimit}
+                asked={sizeReading.asked}
+                disabled
+                rejectedNote={sizeReading.rejected ? sizeReading.note : null}
+                clampedNote={null}
+                silentNote={null}
+                onPick={setPageSize}
+              />
               <EmptyPanel
                 slot="list"
                 reason={
@@ -1421,14 +1630,29 @@ function AuditEventsSurface(): ReactNode {
                 </p>
               ) : null}
 
-              {visibleRows.map((row) => (
+              {/* audK: one Tab stop for the whole list; ↑ ↓ Home End move inside
+                  it, Enter opens the row's preview, Esc closes it and comes
+                  back. The list only exists while rows exist, so the loading,
+                  error and empty answers keep their own arrow keys — nothing
+                  here is listening when there is nothing to move through. */}
+              <div
+                className="flex min-w-0 flex-col gap-1"
+                data-testid="audK-list"
+                role="list"
+                aria-label="审计事件行：用上下方向键逐行移动，Home 与 End 到首尾，Enter 展开或收起这一条的预览，Esc 收起"
+              >
+                {visibleRows.map((row) => (
                 <AuditRowKeyboard
                   key={row.key}
                   row={row}
                   open={openPreview === row.key}
                   deepLink={row.key === deepLinkId || row.rawId === deepLinkId}
+                  isRoving={row.key === roving}
                   onToggle={() => setFold("preview", row.key)}
                   onClose={() => clearFold("preview")}
+                  onRoving={setRovingKey}
+                  onMove={moveRowFocus}
+                  onEdge={edgeRowFocus}
                 >
                   <button
                     type="button"
@@ -1473,7 +1697,8 @@ function AuditEventsSurface(): ReactNode {
                     />
                   ) : null}
                 </AuditRowKeyboard>
-              ))}
+                ))}
+              </div>
 
               {list.unreadable > 0 ? (
                 <p className="min-w-0 break-words text-xs text-warning">
@@ -1506,6 +1731,15 @@ function AuditEventsSurface(): ReactNode {
                     共 {list.total} 条
                   </span>
                 )}
+                <AuditPageSizeSelector
+                  effective={effectiveLimit}
+                  asked={sizeReading.asked}
+                  disabled={false}
+                  rejectedNote={sizeReading.rejected ? sizeReading.note : null}
+                  clampedNote={clamped ? sizeNote : null}
+                  silentNote={silentShortPage ? sizeNote : null}
+                  onPick={setPageSize}
+                />
                 <span className="contents" data-testid="aud2-prev">
                   <Button size="sm" outlined disabled={pageNo === 1} onClick={goPrev}>
                     上一页
