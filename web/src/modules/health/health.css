@@ -228,6 +228,13 @@
   overflow-x: auto;
 }
 
+.sys3-scrollhint {
+  display: none;
+  margin: 0 0 6px;
+  color: var(--color-muted-foreground);
+  font-size: 11px;
+}
+
 .sys3-table {
   width: 100%;
   min-width: 760px;
@@ -341,6 +348,12 @@
 @media (max-width: 720px) {
   .sys3-table {
     min-width: 680px;
+  }
+  .sys3-scrollhint {
+    display: block;
+  }
+  .sys3-scroll {
+    mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 18px), transparent 100%);
   }
 }
 

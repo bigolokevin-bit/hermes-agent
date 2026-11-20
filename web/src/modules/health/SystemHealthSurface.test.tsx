@@ -66,6 +66,7 @@ describe("SystemHealthSurface", () => {
     expect(container.querySelector("[data-testid='sys5-count-degraded']")?.textContent).toContain("1");
     expect(container.querySelector("[data-testid='sys5-count-unreachable']")?.textContent).toContain("1");
     expect(container.querySelector("[data-testid='sys5-count-unknown']")?.textContent).toContain("0");
+    expect(container.querySelector("[data-testid='sys3-scrollhint']")?.textContent).toContain("左右滑动查看全部列");
     expect(text()).toContain("正常");
     expect(text()).toContain("降级");
     expect(text()).toContain("不可达");

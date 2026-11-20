@@ -1800,6 +1800,7 @@ built /private/tmp/health-r38/index.html
 - 验证：`npx vitest run src/modules/health` → **2 files / 17 tests passed**（新增 1 条：同响应计数+本地筛选+零额外请求+清空）。全量 `npx vitest run` → **134 files / 1469 passed**，另有 2 个基线 employee-detail unhandled（非本域）。`tsc -b . --noEmit` → 6 行全为基线 employee-detail/employees，本域 0。`node scripts/build/web.mjs --source . --out /tmp/sys5-build --icons .` → exit 1，仅被同一基线类型错误挡住（employee-detail `api` 未定义、employees TS18047），无本域错误；未重建 9122。
 - DOM（临时 harness，已删；Vite 5460 / Chrome 9260）：1440/1280/375 `vw=bodySW=bodyCW`，`sys3-page` 1440/1280/375，行 4；计数 `正常1/降级1/不可达1/待核实1`；点「正常」后仅 1 行 `控制台服务(BFF)`、`aria-pressed=true`、body 宽不变；375 仅表格卡内滚动（680/343），页面不横溢。截图 `docs/_artifacts/gov/shots/sys5-{1440,1280,375}.png`。
 - 边界：只改 `web/src/modules/health/**` 与 DONE/截图；未改 App/shell/routes/registry/package·lock/web scripts/ops；未并 main、未重建 9122；sys3/sys4/ver5/cap4-7/skl4/tl3 未破；无独立观察者（截图复核未回，未阻塞）。
+- 观察者复核修正（sys5，2026-11-20）：1440/1280 PASS，375 FAIL——sys3 表格第 3 列在卡片内边缘被截断，第 4/5 列完全在屏外且**没有任何横向滚动提示**。修法：`SystemHealthSurface` 表格滚动区前加 `sys3-scrollhint`「左右滑动查看全部列」（≤720px 显示），并为 `.sys3-scroll` 加右缘 18px 渐隐 mask（仅 ≤720px），保留 `overflow-x:auto`。复测 375：`hintDisplay=block`、mask 生效、`scrollSW=680 / scrollCW=311`、`bodySW=bodyCW=375`，页面不横溢；截图 `sys5-375.png` 已重拍。健康单测 21/21（新增 hint 断言）。非阻塞项（计数口径两源并存、全宽带无内边距、两处对比度 ~3.3）本笔未改，如实记录。
 
 ## R52 /system 本页数据来源矩阵（2026-11-20）
 

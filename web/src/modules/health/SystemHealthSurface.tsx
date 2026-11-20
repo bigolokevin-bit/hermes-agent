@@ -323,6 +323,8 @@ export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Pre
                 当前筛选下没有服务；计数来自同一次健康响应，这里不补服务行。
               </p>
             ) : (
+            <>
+            <p className="sys3-scrollhint" data-testid="sys3-scrollhint">左右滑动查看全部列</p>
             <div className="sys3-scroll">
               <table className="sys3-table" data-testid="sys3-table">
                 <thead>
@@ -366,6 +368,7 @@ export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Pre
                 </tbody>
               </table>
             </div>
+            </>
             )}
             <p className="sys3-foot">缺失值显示「—」，原因在悬停说明里；不用本机时钟补采集时刻，也不把未知当正常。</p>
           </>
