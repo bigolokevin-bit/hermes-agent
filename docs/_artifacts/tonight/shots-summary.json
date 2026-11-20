@@ -141,7 +141,7 @@
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "1440",
-      "chars": 10,
+      "chars": 113,
       "hasMainEl": true
     },
     {
@@ -219,7 +219,7 @@
     {
       "route": "#/employees/:employeeId?zone=config",
       "viewport": "375",
-      "chars": 66,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -243,7 +243,7 @@
     {
       "route": "#/employees/:employeeId?zone=runs",
       "viewport": "375",
-      "chars": 66,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -642,7 +642,7 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "072f023d",
+  "headHash": "cecbd1f1",
   "exitCode": 0,
   "entry": "assets/index-k52YwKjs.js",
   "entrySha256": "bb0e0004f14543690789c03f027fba9f94d0cc524b6890c7e73a3582840d349b",
