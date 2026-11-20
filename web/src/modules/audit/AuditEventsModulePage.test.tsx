@@ -2257,3 +2257,174 @@ describe("audD - the type buckets filter the ledger", () => {
     expect(document.querySelector("[data-testid^='audD-bucket-']")).toBeNull();
   });
 });
+
+/**
+ * audE — 事件固定链接复制。两处（行内预览 aud6、记录体 aud3/aud02）各有一个
+ * 「复制事件链接」；链接=当前页 origin + `/audit?event=<eventId>`（`?event=` 是
+ * 本模块实测在读的深链键）；复制不向服务发任何请求；成功走 aria-live「链接已复制」，
+ * 被拒给只读 textarea；行上没有可用标识时 disabled 并说明原因，不编造 id；
+ * 粘这个链接能回到同一事件——回不到时走 aud9 的诚实档，不假称可达。
+ */
+describe("audE - the event permalink", () => {
+  const LINKED = {
+    eventId: "evt_link_0000000001",
+    action: "task.created",
+    occurredAt: "2026-11-19T01:20:00Z",
+    outcome: "succeeded",
+    actor: { type: "human", id: "user:2f3a4b5c6d7e8f90", displayName: "李思" },
+    resource: { type: "task", id: "ts_1122334455667788" },
+    requestId: "req-link-01",
+  };
+
+  function stubClipboard(ok: boolean): { calls: string[] } {
+    const box: { calls: string[] } = { calls: [] };
+    Object.defineProperty(window, "isSecureContext", { configurable: true, value: true });
+    Object.defineProperty(window.navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async (text: string) => {
+          box.calls.push(text);
+          if (!ok) throw new Error("denied");
+        },
+      },
+    });
+    return box;
+  }
+
+  async function mountBoth(entry: string, body: unknown = LINKED): Promise<void> {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url: string) =>
+      String(url).startsWith("/agent-api/api/audit-detail") ? { audit: body } : { items: [body] },
+    );
+    await render(entry, <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    // whichever legs the address asks for: a preview-only link has no record pane
+    await waitFor(
+      () =>
+        (!entry.includes("detail=") || document.querySelector("[data-testid='aud02-detail']") !== null) &&
+        (!entry.includes("preview=") || document.querySelector("[data-testid='aud6-preview-evt_link_0000000001']") !== null),
+      "the legs the address asks for",
+    );
+  }
+
+  async function copyFrom(root: Element | null): Promise<void> {
+    const node = root?.querySelector<HTMLButtonElement>("[data-testid='audE-link']");
+    if (!node) throw new Error("no permalink control");
+    await act(async () => {
+      node.click();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+  }
+
+  it("both legs offer the link and one event gives one identical address", async () => {
+    const clip = stubClipboard(true);
+    await mountBoth("/audit?window=7d&preview=evt_link_0000000001&detail=evt_link_0000000001");
+    const preview = document.querySelector("[data-testid='aud6-preview-evt_link_0000000001']")!;
+    const detail = document.querySelector("[data-testid='aud02-detail']")!;
+    expect(preview.querySelector("[data-testid='audE-link']")).not.toBeNull();
+    expect(detail.querySelector("[data-testid='audE-link']")).not.toBeNull();
+    const reads = urls().length;
+    await copyFrom(preview);
+    await copyFrom(detail);
+    expect(clip.calls).toHaveLength(2);
+    expect(clip.calls[0]).toBe(clip.calls[1]);
+    expect(clip.calls[0]).toBe(`${window.location.origin}/audit?event=evt_link_0000000001`);
+    // 只读屏上已有标识：复制前后一条请求都没多
+    expect(urls()).toHaveLength(reads);
+  });
+
+  it("a copied link is announced, and pasting it lands back on the same event", async () => {
+    stubClipboard(true);
+    await mountBoth("/audit?window=7d&preview=evt_link_0000000001&detail=evt_link_0000000001");
+    const preview = document.querySelector("[data-testid='aud6-preview-evt_link_0000000001']")!;
+    await copyFrom(preview);
+    const status = preview.querySelector("[data-testid='audE-link-status']")!;
+    expect(status.getAttribute("aria-live")).toBe("polite");
+    expect(status.textContent).toBe("链接已复制");
+    expect(preview.querySelector("[data-testid='audE-link-fallback']")).toBeNull();
+    // the link as handed out, cold: /audit?event=<id> with no filter at all
+    const cold = new URL(`${window.location.origin}/audit?event=evt_link_0000000001`);
+    await render(`${cold.pathname}${cold.search}`, <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud9-deeplink-found']") !== null, "the link located the event");
+    expect(document.querySelector("[data-testid='aud6-preview-evt_link_0000000001']")).not.toBeNull();
+    expect(document.querySelector("[data-testid='aud01-row-evt_link_0000000001']")).not.toBeNull();
+  });
+
+  it("a refused clipboard leaves the exact link selectable", async () => {
+    const clip = stubClipboard(false);
+    await mountBoth("/audit?window=7d&preview=evt_link_0000000001&detail=evt_link_0000000001");
+    // the record body carries its own copy control, so the fallback shows there
+    const detail = document.querySelector("[data-testid='audE-link-block']")!;
+    const reads = urls().length;
+    await copyFrom(detail);
+    const box = detail.querySelector<HTMLTextAreaElement>("[data-testid='audE-link-fallback']")!;
+    expect(box.getAttribute("readonly")).not.toBeNull();
+    expect(box.value).toBe(clip.calls[0]);
+    expect(box.value).toContain("/audit?event=evt_link_0000000001");
+    expect(detail.querySelector("[data-testid='audE-link-status']")!.textContent).toContain("选中复制");
+    expect(urls()).toHaveLength(reads);
+  });
+
+  it("a row with no identifier says so instead of inventing one", async () => {
+    const clip = stubClipboard(true);
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async () => ({
+      items: [{ action: "dispatch.event", occurredAt: "2026-11-19T03:00:00Z", outcome: "succeeded" }],
+    }));
+    await render("/audit?window=7d&preview=audit-0", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud6-preview-audit-0']") !== null, "preview of the id-less row");
+    const node = document.querySelector<HTMLButtonElement>("[data-testid='audE-link']")!;
+    expect(node.disabled).toBe(true);
+    expect(node.getAttribute("aria-disabled")).toBe("true");
+    expect(node.getAttribute("title")).toBe("该行没有可用的固定标识");
+    await act(async () => {
+      node.click();
+    });
+    expect(clip.calls).toHaveLength(0);
+    expect(document.querySelector("[data-testid='audE-link-fallback']")).toBeNull();
+    expect(document.querySelector("[data-testid='audE-link-status']")!.textContent).toBe("");
+  });
+
+  it("an event that is not on this page gets the honest leg, not a promise", async () => {
+    // the list answers a different record; the detail read knows the linked one
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url) => {
+      if (String(url).startsWith("/agent-api/api/audit-detail")) return { audit: LINKED };
+      return { items: [{ ...LINKED, eventId: "evt_other_0000000002", requestId: "req-other" }] };
+    });
+    await render("/audit?window=7d&event=evt_link_0000000001", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud9-event-elsewhere']") !== null, "the elsewhere leg");
+    expect(document.querySelector("[data-testid='aud9-event-open']")).not.toBeNull();
+    expect(document.querySelector("[data-testid='aud6-preview-evt_link_0000000001']")).toBeNull();
+    expect(text()).toContain("只是不在当前页");
+  });
+
+  it("an event the service cannot answer says 不存在或已过期", async () => {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url) => {
+      if (String(url).startsWith("/agent-api/api/audit-detail")) {
+        throw new ApiError("gone", { status: 404, body: '{"code":"audit.event_not_found"}', url, requestId: "req-gone-e" });
+      }
+      return { items: [{ ...LINKED, eventId: "evt_other_0000000002" }] };
+    });
+    await render("/audit?window=7d&event=evt_link_0000000001", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud9-event-missing']") !== null, "the missing leg");
+    expect(text()).toContain("该事件不存在或已过期");
+  });
+
+  it("a denied ledger offers no link to copy", async () => {
+    stubClipboard(true);
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockRejectedValue(
+      new ApiError("no", { status: 403, body: '{"code":"console.forbidden"}', url: "/agent-api/api/audit", requestId: "rid-403" }),
+    );
+    await render("/audit?window=7d", <AuditEventsModulePage />);
+    await waitFor(() => document.querySelector("[data-testid='aud01-denied']") !== null, "denied");
+    expect(document.querySelector("[data-testid='audE-link']")).toBeNull();
+    expect(text()).not.toContain("复制事件链接");
+  });
+});

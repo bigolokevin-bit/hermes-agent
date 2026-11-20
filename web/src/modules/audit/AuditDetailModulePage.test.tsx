@@ -363,3 +363,87 @@ describe("audC - the copyable conclusion line on the detail screen", () => {
     expect(text()).not.toContain("复制结论行");
   });
 });
+
+/**
+ * audE — 详情屏（`/audit/detail`，记录体 aud3）的「复制事件链接」。断言的是：
+ * 控件在真回答之后出现、拼的是 origin + `/audit?event=<id>`（列表页在读的深链键，
+ * 粘过去由列表定位展开该事件）、复制前后请求计数不变、剪贴板被拒给只读 textarea、
+ * 403 与 404 同体且都没有可复制的链接。
+ */
+describe("audE - the event permalink on the detail screen", () => {
+  function stubClipboard(ok: boolean): { calls: string[] } {
+    const box: { calls: string[] } = { calls: [] };
+    Object.defineProperty(window, "isSecureContext", { configurable: true, value: true });
+    Object.defineProperty(window.navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async (text: string) => {
+          box.calls.push(text);
+          if (!ok) throw new Error("denied");
+        },
+      },
+    });
+    return box;
+  }
+
+  async function copy(): Promise<void> {
+    const node = document.querySelector<HTMLButtonElement>("[data-testid='audE-link']")!;
+    await act(async () => {
+      node.click();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+  }
+
+  it("copies a link to the event on screen, asking nothing more", async () => {
+    const clip = stubClipboard(true);
+    await openDetail();
+    const before = urls().length;
+    await copy();
+    expect(urls()).toHaveLength(before);
+    expect(clip.calls).toEqual([`${window.location.origin}/audit?event=evt_D6FC9A2B4E6F8012`]);
+    expect(document.querySelector("[data-testid='audE-link-status']")!.textContent).toBe("链接已复制");
+    expect(document.querySelector("[data-testid='audE-link-status']")!.getAttribute("aria-live")).toBe("polite");
+    expect(document.querySelector("[data-testid='audE-link-fallback']")).toBeNull();
+  });
+
+  it("a refused clipboard hands the same link back as selectable text", async () => {
+    const clip = stubClipboard(false);
+    await openDetail();
+    const before = urls().length;
+    await copy();
+    const box = document.querySelector<HTMLTextAreaElement>("[data-testid='audE-link-fallback']")!;
+    expect(box.getAttribute("readonly")).not.toBeNull();
+    expect(box.value).toBe(clip.calls[0]);
+    expect(urls()).toHaveLength(before);
+  });
+
+  it("a denied record has no link to hand out", async () => {
+    const once = async (status: number): Promise<void> => {
+      api.fetchJSON.mockReset();
+      api.fetchJSON.mockImplementation(async (url) => {
+        throw new ApiError("gone", { status, body: '{"code":"console.forbidden"}', url, requestId: "rid-deny-e" });
+      });
+      await render("/audit/detail?id=evt_D6FC9A2B4E6F8012");
+      await waitFor(() => document.querySelector("[data-testid='aud02-detail-denied']") !== null, `denied ${status}`);
+    };
+    await once(403);
+    expect(document.querySelector("[data-testid='audE-link']")).toBeNull();
+    const body403 = document.querySelector("[data-testid='agent-v2-page-audit-detail']")!.textContent ?? "";
+    await once(404);
+    expect(document.querySelector("[data-testid='audE-link']")).toBeNull();
+    // 403 and 404 are one body — including the absence of a link to copy
+    expect(document.querySelector("[data-testid='agent-v2-page-audit-detail']")!.textContent).toBe(body403);
+  });
+
+  it("a record whose answer carries no identifier says the link is not available", async () => {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async () => ({ audit: { action: "task.created", outcome: "succeeded" } }));
+    await render("/audit/detail?id=evt_D6FC9A2B4E6F8012");
+    await waitFor(() => document.querySelector("[data-testid='aud02-detail']") !== null, "record painted");
+    const node = document.querySelector<HTMLButtonElement>("[data-testid='audE-link']")!;
+    expect(node.disabled).toBe(true);
+    expect(node.getAttribute("title")).toBe("该行没有可用的固定标识");
+  });
+});

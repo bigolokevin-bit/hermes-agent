@@ -16,7 +16,7 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { themedBody, themedChrome } from "@/lib/utils";
 import type { AuditChange, AuditDetail, AuditRow, VerifyResult } from "./model";
 import { beijingSeconds, maskSensitive } from "./model";
-import { CopyValue, SummaryCopy, TechnicalDisclosure } from "./states";
+import { CopyValue, PermalinkCopy, SummaryCopy, TechnicalDisclosure } from "./states";
 import { summaryFromDetail, summaryFromRow } from "./summary";
 
 const MISSING_TIME = "服务未提供该时间";
@@ -239,6 +239,9 @@ export function AuditEventDetailBody({
         <p className="min-w-0 break-words text-xs text-muted-foreground">以上时间均为北京时间，精确到秒。</p>
         {/* audC: the 结论行, from the same builder the inline preview uses. */}
         <SummaryCopy line={summaryFromDetail(detail, beijingSeconds(detail.occurredAtRaw) ?? detail.occurredAt)} />
+        {/* audE: the fixed link for this record, built from the identifier the
+            answer itself carried — never from a guessed one. */}
+        <PermalinkCopy eventId={detail.rawId} />
       </Section>
 
       <Section title="操作者">
@@ -513,6 +516,8 @@ export function AuditRowPreview({
       {/* audC: the same 结论行 the detail offers, built by the same function,
           so both legs copy one sentence for one event. */}
       <SummaryCopy line={summaryFromRow(row, at)} />
+      {/* audE: and the same fixed link for the same record. */}
+      <PermalinkCopy eventId={row.rawId} />
     </div>
   );
 }

@@ -10,7 +10,7 @@
  *
  */
 import { useState, type ReactNode } from "react";
-import { Check, ChevronDown, ChevronUp, Copy, Inbox, RefreshCw, ShieldAlert, TriangleAlert } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Copy, Inbox, Link, RefreshCw, ShieldAlert, TriangleAlert } from "lucide-react";
 
 import { Button } from "@nous-research/ui/ui/components/button";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
@@ -19,6 +19,7 @@ import { themedBody } from "@/lib/utils";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import { requestIdLine, type FailureCopy } from "./copy";
 import { SUMMARY_COPY_LABEL } from "./summary";
+import { PERMALINK_COPY_LABEL, PERMALINK_MISSING_TITLE, permalinkFromEvent } from "./permalink";
 
 /**
  * audC: the 结论行 copy control, rendered by BOTH legs (the inline row preview
@@ -57,6 +58,56 @@ export function SummaryCopy({ line }: { line: string }): ReactNode {
           aria-label="结论行（可手动选中复制）"
           data-testid="audC-fallback"
           className="min-h-[3rem] w-full min-w-0 break-words rounded-md border border-border bg-muted/40 px-2 py-1 font-mono text-xs"
+          onFocus={(event) => event.currentTarget.select()}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * audE: the fixed link for one event, offered by BOTH legs (the inline row
+ * preview and the record body). Same three honest states as the 结论行 copy:
+ * nothing asked yet, 链接已复制 (announced), and the clipboard refusing — then
+ * a read-only textarea holds the exact link. No request is made to build it:
+ * the identifier is the one already on screen, and when a row carries none the
+ * control is disabled instead of inventing one.
+ */
+export function PermalinkCopy({ eventId }: { eventId: string | null }): ReactNode {
+  const link = permalinkFromEvent(eventId);
+  const [state, setState] = useState<"idle" | "copied" | "manual">("idle");
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="audE-link-block">
+      <Button
+        size="sm"
+        outlined
+        aria-label={PERMALINK_COPY_LABEL}
+        title={link ? "复制这一条事件的固定链接（粘出去可回到同一事件），不向服务发任何请求" : PERMALINK_MISSING_TITLE}
+        data-testid="audE-link"
+        disabled={link === null}
+        aria-disabled={link === null}
+        prefix={
+          state === "copied" ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Link className="h-3.5 w-3.5" aria-hidden="true" />
+        }
+        onClick={() => {
+          if (!link) return;
+          void copyTextToClipboard(link).then((ok) => {
+            setState(ok ? "copied" : "manual");
+          });
+        }}
+      >
+        {PERMALINK_COPY_LABEL}
+      </Button>
+      <span className="min-w-0 break-words text-xs text-muted-foreground" aria-live="polite" data-testid="audE-link-status">
+        {state === "copied" ? "链接已复制" : state === "manual" ? "剪贴板不可用，这个链接可以直接选中复制" : ""}
+      </span>
+      {state === "manual" && link ? (
+        <textarea
+          readOnly
+          value={link}
+          aria-label="事件固定链接（可手动选中复制）"
+          data-testid="audE-link-fallback"
+          className="min-h-[3rem] w-full min-w-0 break-all rounded-md border border-border bg-muted/40 px-2 py-1 font-mono text-xs"
           onFocus={(event) => event.currentTarget.select()}
         />
       ) : null}
