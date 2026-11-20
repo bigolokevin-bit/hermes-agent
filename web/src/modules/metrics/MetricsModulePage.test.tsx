@@ -3287,3 +3287,95 @@ describe('metW — wide tables scroll from the keyboard on a narrow screen', () 
     }
   });
 });
+
+describe('metX — one window, three readings of the run count', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+  const noteText = (): string => q('metX-consistency-note')?.textContent ?? '';
+
+  it('shows the activity total, the heat sum and the detail total side by side', async () => {
+    await mount(usageRouter());
+    const before = urls().length;
+
+    expect(q('met5-count')?.textContent).toBe('332');
+    expect(q('metX-window-runs')?.textContent).toBe('332');
+    expect(q('metX-heat-runs')?.textContent).toBe('332');
+    // The employee ledger carries money, not run counts: no total, and never 0.
+    expect(q('metX-detail-runs')?.textContent).toBe('—');
+    expect(q('metX-detail-runs')?.getAttribute('title')).toContain('不记运行次数');
+    expect(q('metX-delta')?.textContent).toBe('—');
+    expect(q('metX-delta')?.getAttribute('title')).toContain('算不出差');
+    expect(noteText()).toContain('窗口总运行');
+    expect(noteText()).toContain('热力格求和');
+    expect(noteText()).toContain('明细合计');
+    expect(noteText()).toContain('不发新请求');
+    // Rendering the note reads nothing again.
+    expect(urls().length).toBe(before);
+  });
+
+  it('reports the difference when the detail view does count runs', async () => {
+    const base = usageRouter();
+    await mount(
+      (url) => (url.includes('hermes-usage') ? Promise.resolve(HERMES_USAGE) : base(url)),
+      '/metrics?view=model',
+    );
+
+    expect(q('metX-window-runs')?.textContent).toBe('332');
+    expect(q('metX-heat-runs')?.textContent).toBe('332');
+    expect(q('metX-detail-runs')?.textContent).toBe('9');
+    expect(q('metX-delta')?.textContent).toBe('-323');
+    const shown = Number(q('metX-detail-runs')?.textContent) - Number(q('metX-heat-runs')?.textContent);
+    expect(shown).toBe(-323);
+    expect(noteText()).toContain('以各自卡片为准');
+  });
+
+  it('recomputes all three when the detail window changes, without rereading the heat', async () => {
+    const base = usageRouter();
+    await mount(
+      (url) => {
+        if (url.includes('hermes-usage') && url.includes('days=7')) {
+          return Promise.resolve({
+            by_model: [{ model: 'qwen-plus', sessions: 2, api_calls: 5 }, { model: 'deepseek-v4' }],
+            asOf: '2026-11-19T20:12:00.000Z',
+          });
+        }
+        if (url.includes('hermes-usage')) return Promise.resolve(HERMES_USAGE);
+        return base(url);
+      },
+      '/metrics?view=model',
+    );
+    expect(q('metX-detail-runs')?.textContent).toBe('9');
+
+    const beforeHeat = urls().filter((url) => url.includes('run-activity')).length;
+    await act(async () => {
+      (q('met6-window-7d') as HTMLButtonElement).click();
+    });
+    await waitFor(() => (q('metX-detail-runs')?.textContent ?? '') === '5', 'detail total after switch');
+
+    expect(q('metX-heat-runs')?.textContent).toBe('332');
+    expect(q('metX-delta')?.textContent).toBe('-327');
+    // The heat card keeps its own window: switching the detail window never refetches it.
+    expect(urls().filter((url) => url.includes('run-activity')).length).toBe(beforeHeat);
+  });
+
+  it('marks the readings it cannot compare instead of summing a missing cell as zero', async () => {
+    const base = usageRouter();
+    await mount(
+      (url) =>
+        url.includes('run-activity')
+          ? Promise.reject(new ApiError('boom', { status: 500, body: '', url, requestId: 'req-metX-heat' }))
+          : url.includes('hermes-usage')
+            ? Promise.resolve(HERMES_USAGE)
+            : base(url),
+      '/metrics?view=model',
+    );
+
+    // The heat card failed, so its two readings are «—» with a reason.
+    expect(q('metX-window-runs')?.textContent).toBe('—');
+    expect(q('metX-heat-runs')?.textContent).toBe('—');
+    expect(q('metX-window-runs')?.getAttribute('title')).toContain('不按 0 记');
+    expect(q('metX-heat-runs')?.getAttribute('title')).toContain('不按 0 记');
+    // The detail total is still readable; the difference is not.
+    expect(q('metX-detail-runs')?.textContent).toBe('9');
+    expect(q('metX-delta')?.textContent).toBe('—');
+  });
+});

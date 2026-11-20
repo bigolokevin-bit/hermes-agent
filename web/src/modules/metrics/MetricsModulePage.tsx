@@ -1300,6 +1300,33 @@ export function MetricsModulePage() {
     breakdownView.kind === 'ready' ? breakdownView.total : null,
   );
   // metV — the footer and the exported comment line read one rendering of the totals.
+  // metX — three readings of «how many runs»: the activity window total, the
+  // sum of the heat cells, and the detail table's count total. All three come
+  // from this batch; the note below says where they agree and where they do not.
+  const heatCountSum = grid
+    ? sumOrNull(grid.rows.flatMap((row) => row.cells.filter((cell) => cell.present).map((cell) => cell.count)))
+    : null;
+  const heatWindowTotal = grid && grid.presentCells > 0 ? grid.total : null;
+  const detailCountSum = detailCountTotal;
+  const countDelta = heatCountSum !== null && detailCountSum !== null ? detailCountSum - heatCountSum : null;
+  const heatGapReason =
+    view.kind === 'error'
+      ? '热力这次没读出来，不按 0 记'
+      : view.kind === 'loading'
+        ? '热力还在读取，暂时没有数'
+        : '这次读取没有带回任何可求和的格子，不按 0 记';
+  const windowRunsReason = heatWindowTotal === null ? heatGapReason : undefined;
+  const heatRunsReason = heatCountSum === null ? heatGapReason : undefined;
+  const detailRunsReason =
+    detailCountSum !== null
+      ? undefined
+      : viewMode === 'employee'
+        ? '账本只记金额与用量，不记运行次数'
+        : breakdownView.kind !== 'ready'
+          ? '成本明细这次没有读出来'
+          : '明细没有可求和的次数';
+  const deltaReason = countDelta === null ? '三处没有同时读到数，算不出差' : undefined;
+
   const detailTotals = {
     cost: formatUsd(detailCostTotal),
     count: detailCountTotal === null ? '—' : String(detailCountTotal),
@@ -2565,6 +2592,28 @@ export function MetricsModulePage() {
         ))}
       </div>
       <p className="met5-note">这个读取口按整周汇总，24 小时窗口不单独提供；最近 30 天按 4 周展示。</p>
+
+      <p className="met6-hint" data-testid="metX-consistency-note">
+        运行数三处对照：窗口总运行{' '}
+        <span data-testid="metX-window-runs" title={windowRunsReason}>
+          {heatWindowTotal ?? '—'}
+        </span>
+        {' · '}热力格求和{' '}
+        <span data-testid="metX-heat-runs" title={heatRunsReason}>
+          {heatCountSum ?? '—'}
+        </span>
+        {' · '}明细合计{' '}
+        <span data-testid="metX-detail-runs" title={detailRunsReason}>
+          {detailCountSum ?? '—'}
+        </span>
+        {' · '}差{' '}
+        <span data-testid="metX-delta" title={deltaReason}>
+          {countDelta ?? '—'}
+        </span>
+        。三处都取自这一次读取、不发新请求；热力按{' '}
+        {view.kind === 'ready' ? windowRangeLabel(view.activity) : '本期'}，明细按 {usageWindow.label}
+        ，口径不同，数值不一致时以各自卡片为准。
+      </p>
 
       {view.kind === 'loading' ? (
         <Card data-testid="met5-loading">

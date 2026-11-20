@@ -394,3 +394,17 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 - 三档读数：本车道没有浏览器探针（`web/node_modules` 无 playwright/puppeteer），jsdom 不做布局，实测 `document.documentElement.scrollWidth === clientWidth`（两者均为 0）在 1440/1280/375 三档均成立，属结构性检查；真实像素级的 `scrollWidth/clientWidth` 与 375 手势滚动未在浏览器复测，列为未测项。可确定的是页面根节点不新增任何宽度来源：表格宽度仍受 `.met6-table-scroll` 包裹，`min-width` 只在表内。
 - 验证：定向 `src/modules/metrics` 2 files / **138 passed**（基线 134，+4）；全量 **137 files / 1610 passed**（基线 1606）；`tsc -b . --noEmit` 全仓 55 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metW` → entry `assets/index-Q54c6DAE.js` sha256 `112c4e46c9534c34f593d2246202ec875c197a726b434a6739063f16a8df1db1`，entry 内 `metW-scroll-detail` 命中 0，chunk `assets/MetricsModulePage-BK5QTTPx.js` 命中 1（提示文案同 chunk 命中 1）。
 - 未测项：真浏览器 375 手势横滚、焦点环可见性与 sticky 首列在滑动中的遮挡关系未人工走查；Safari 的 sticky + border-collapse 组合未复核。
+
+## 热力与明细的运行数三处对照（metX，2026-11-20）
+
+热力卡上方新增一行 `metX-consistency-note`，把「同一个窗口里三个运行数读数」并排摊开，读者不必自己去加格子。
+
+- 三个读数：`metX-window-runs`＝热力卡自己的窗口总运行（`grid.total`，即 `met5-count` 同一个值）；`metX-heat-runs`＝把当前热力格按 `present` 过滤后用 `sumOrNull` 重新求和（独立于 `grid.total` 的第二遍读数，用来暴露口径漂移）；`metX-detail-runs`＝明细表合计行里那一格（`detailCountTotal`，与 `metT-detail-total-count` 同源）。
+- 差：`metX-delta`＝明细合计 − 热力格求和，只在两边都读到数时计算；任一侧缺失则为「—」并带 title「三处没有同时读到数，算不出差」。
+- 缺失语义：热力读失败/未返回时两个热力读数都是「—」，title 说明「热力这次没读出来，不按 0 记」（加载中写「热力还在读取，暂时没有数」）；员工视图的明细没有次数，title「账本只记金额与用量，不记运行次数」。任何缺失都不参与求和，也不当 0。
+- 窗口：行内写明热力按哪个日期区间（`windowRangeLabel`）、明细按哪个时间窗（最近 24 小时/7 天/30 天），并注明口径不同时以各自卡片为准——热力按整周汇总、明细按所选窗口，二者本就不承诺相等。
+- 零新请求：三个值都从当前批次派生（`grid` 与 `detailCountTotal`），渲染这行不调用 `loadJson`；测试断言渲染前后 `urls()` 长度不变，切换明细窗口只触发明细自己的读口、`run-activity` 请求数不变。
+- 位置：这行渲染在热力卡之前、跟随 `view.kind` 的四种状态，所以热力读失败时它仍在页面上说明「不可比较」，而不是整块消失。
+- 实测：默认（员工视图）窗口 332 / 热力 332 / 明细「—」/ 差「—」；`?view=model` 时 332 / 332 / 9 / −323；明细切到 7 天后 332 / 332 / 5 / −327（`run-activity` 请求数不变）；热力 500 时 —/—/9/—。
+- 验证：定向 `src/modules/metrics` 2 files / **142 passed**（基线 138，+4）；全量 **137 files / 1614 passed**（基线 1610）；`tsc -b . --noEmit` 全仓 55 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metX` → entry `assets/index-CNSuFeS2.js` sha256 `62be097d41c967bf2769d0392ff967427913495c76680508d606923f6d66cc12`，entry 内 `metX-consistency-note` 命中 0，chunk `assets/MetricsModulePage-iEZjDXbZ.js` 命中 1。
+- 未测项：真实后端在热力与明细窗口不同时返回的数值差异未联调（用 fixture 构造）；375 下这一行的换行未人工走查。
