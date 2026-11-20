@@ -15,6 +15,7 @@ import { RequestIdCopy } from "@/components/RequestIdCopy";
 import { fetchJSON } from "@/lib/api";
 import { ApiError } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
+import { ConsoleButton } from "@/shell/ConsoleButton";
 
 /**
  * 数字员工列表页（只读）。
@@ -439,15 +440,15 @@ export default function EmployeesPage() {
             <span className="text-sm text-muted-foreground">（{state.data.length}）</span>
           )}
         </div>
-        <Button
+        <ConsoleButton
+          variant="secondary"
           size="sm"
-          outlined
           onClick={reload}
           disabled={state.k === "loading"}
-          prefix={<RefreshCw className={cn("h-3.5 w-3.5", state.k === "loading" && "animate-spin")} />}
         >
+          <RefreshCw className={cn("h-3.5 w-3.5", state.k === "loading" && "animate-spin")} />
           刷新
-        </Button>
+        </ConsoleButton>
       </header>
 
       {state.k === "loading" && <RowsSkeleton />}
@@ -666,9 +667,10 @@ export function ErrorStateBlock({
             <RequestIdCopy requestId={requestId} fallback="请求编号未记录，可复制时间与操作路径反馈" />
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
-            <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
+            <ConsoleButton variant="secondary" size="sm" onClick={onRetry}>
+              <RefreshCw className="h-3.5 w-3.5" />
               重试
-            </Button>
+            </ConsoleButton>
             {expired && (
               <Button
                 size="sm"

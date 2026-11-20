@@ -21,6 +21,7 @@ vi.mock("@/lib/clipboard", () => ({ copyTextToClipboard: clip.copyTextToClipboar
 import { RunsModulePage } from "./RunsModulePage";
 import { runCsvFileName, runListCsv } from "./runs";
 import { COST_CALIBER_TEXT } from "../metrics/costCaliberNote";
+import { pickOption, selectValue } from "@/shell/selectHarness";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -286,11 +287,7 @@ describe("the controls change what is asked", () => {
     api.fetchJSON.mockImplementation(okList([RUN_A]));
     await render("/runs");
     await waitFor(() => rowNodes() === 1, "first ask");
-    const select = document.querySelector("[data-testid='run5-filter-status']") as HTMLSelectElement;
-    await act(async () => {
-      select.value = "failed";
-      select.dispatchEvent(new Event("change", { bubbles: true }));
-    });
+    await pickOption("run5-filter-status", "失败");
     await waitFor(() => urls().some((u) => u.includes("status=failed")), "status ask");
   });
 });
@@ -1343,8 +1340,7 @@ describe("runs filter source", () => {
     api.fetchJSON.mock.calls.filter(([url]) => String(url).includes("/api/runs")).length;
   const pressedWindow = (): string =>
     document.querySelector("[data-testid^='run-window-'][aria-pressed='true']")?.getAttribute("data-testid") ?? "";
-  const statusSelect = (): HTMLSelectElement =>
-    document.querySelector("[data-testid='run5-filter-status']") as HTMLSelectElement;
+  const statusSelect = (): string => selectValue("run5-filter-status");
 
   afterEach(() => {
     clip.copyTextToClipboard.mockReset();
@@ -1357,7 +1353,7 @@ describe("runs filter source", () => {
     await waitFor(() => pathNode() !== null, "source line");
     expect(pathNode().textContent).toBe("/runs?window=30d&status=failed&employee=emp_aaaabbbbcccc");
     expect(pressedWindow()).toBe("run-window-30d");
-    expect(statusSelect().value).toBe("failed");
+    expect(statusSelect()).toBe("failed");
     const asked = api.fetchJSON.mock.calls.map(([url]) => String(url)).find((url) => url.includes("/api/runs")) ?? "";
     expect(asked).toContain("status=failed");
     expect(asked).toContain("employeeId=emp_aaaabbbbcccc");
@@ -1395,7 +1391,7 @@ describe("runs filter source", () => {
     expect(notes.some((n) => n.includes("状态「zz」未识别"))).toBe(true);
     expect(notes.some((n) => n.includes("预览参数「zz」未识别"))).toBe(true);
     expect(pressedWindow()).toBe("run-window-7d");
-    expect(statusSelect().value).toBe("");
+    expect(statusSelect()).toBe("");
     expect(document.querySelector("[data-testid='probe-location']")?.textContent).toContain("window=zz");
   });
 

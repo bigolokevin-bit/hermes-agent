@@ -7,6 +7,7 @@ import { RequestIdCopy } from "@/components/RequestIdCopy";
 
 import { fetchJSON } from "@/lib/api";
 import { API_UNREACHABLE_MESSAGE, ApiError, humanizeStatus } from "@/lib/api-error";
+import { ConsoleSelect } from "@/shell/ConsoleSelect";
 
 /** T12 · employee list module (`#/employees`). Read-only. */
 
@@ -741,17 +742,18 @@ export function EmployeesModulePage() {
           </label>
           </span>
           <span data-testid="emp-l-filter-lifecycle" className="contents">
-          <select
+          <ConsoleSelect
             value={lifecycle}
-            onChange={(e) => patchParams({ lifecycle: e.target.value || null })}
+            onChange={(next) => patchParams({ lifecycle: next || null })}
             className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm"
             data-testid="employees-lifecycle"
-          >
-            <option value="">全部</option>
-            <option value="active">在岗</option>
-            <option value="paused">暂停</option>
-            <option value="suspended">停用</option>
-          </select>
+            options={[
+              { value: "", label: "全部" },
+              { value: "active", label: "在岗" },
+              { value: "paused", label: "暂停" },
+              { value: "suspended", label: "停用" },
+            ]}
+          />
           </span>
           <div
             className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs"

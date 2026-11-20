@@ -62,6 +62,7 @@ import {
   type RowStatus,
 } from "./channels";
 import { useChannelsData } from "./useChannelsData";
+import { ConsoleSelect } from "@/shell/ConsoleSelect";
 
 /** The 本次核验 line's own honest word when the read cycle carried no instant. */
 const NO_CHECK_REASON = "这一轮没有记下核验的时刻";
@@ -314,25 +315,20 @@ export function ChannelsPage(): ReactNode {
     <div className="flex min-w-0 flex-wrap items-end gap-2" role="group" aria-label="平台接入筛选" data-testid="chn4-filters">
       <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="chn4-filter-status">
         <span className="text-muted-foreground">接入状态</span>
-        <select
+        <ConsoleSelect
           id="chn4-filter-status"
           data-testid="chn4-filter-status"
           className="h-8 min-w-0 max-w-40 rounded-md border border-border bg-transparent px-2 text-sm"
           value={filter}
           title="换这个条件会重新向服务要一次数据"
-          onChange={(event) => {
-            const next = new URLSearchParams(params);
-            if (event.target.value === "all") next.delete("status");
-            else next.set("status", event.target.value);
-            setParams(next, { replace: true });
+          onChange={(next) => {
+            const search = new URLSearchParams(params);
+            if (next === "all") search.delete("status");
+            else search.set("status", next);
+            setParams(search, { replace: true });
           }}
-        >
-          {FILTERS.map((item) => (
-            <option key={item.key} value={item.key}>
-              {item.label}
-            </option>
-          ))}
-        </select>
+          options={FILTERS.map((item) => ({ value: item.key, label: item.label }))}
+        />
       </label>
       <Button
         size="sm"
