@@ -15,7 +15,7 @@ vi.mock("@/lib/api", () => ({ fetchJSON: api.fetchJSON }));
 
 import ApprovalsHistoryModulePage from "@/modules/approvals/ApprovalsHistoryModulePage";
 import { STATUS_FILTERS } from "@/modules/approvals/model";
-import { approvalsCsvName, buildApprovalsCsv, csvEscape } from "@/modules/approvals/QueueCsvExport";
+import { approvalsCsvName, buildApprovalsCsv, csvEscape, csvNamePart } from "@/modules/approvals/QueueCsvExport";
 import { riskView, statusView, type ApprovalRow } from "@/modules/approvals/model";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -590,12 +590,18 @@ describe("R54 CSV export", () => {
     expect(lines[1].endsWith(",2026-11-19 09:20")).toBe(true);
     expect(lines[2].endsWith(",高风险,")).toBe(true); // risk 屏上值；updated_at 缺=空，不补 0
     expect(csvEscape("plain")).toBe("plain");
-    expect(approvalsCsvName("history", "pending", new Date("2026-11-20T02:00:00Z"))).toBe(
-      "approvals-history-pending-20261120-1000.csv",
-    );
-    expect(approvalsCsvName("history", null, new Date("2026-11-20T16:05:00Z"))).toBe(
-      "approvals-history-all-20261121-0005.csv",
-    );
+    // R75 契约：五段名（tab/status/sort/dir/时刻），未排序=default。
+    expect(
+      approvalsCsvName("history", "pending", null, null, new Date("2026-11-20T02:00:00Z")),
+    ).toBe("approvals-history-pending-default-default-20261120-1000.csv");
+    expect(
+      approvalsCsvName("history", null, null, null, new Date("2026-11-20T16:05:00Z")),
+    ).toBe("approvals-history-all-default-default-20261121-0005.csv");
+    // 非法字符折叠：只许 [a-z0-9.-]，下划线枚举变连字符。
+    expect(
+      approvalsCsvName("history", "revise_requested", "title", "asc", new Date("2026-11-20T02:00:00Z")),
+    ).toBe("approvals-history-revise-requested-title-asc-20261120-1000.csv");
+    expect(csvNamePart("中文 混:入")).toBe("default");
   });
 
   it("button mirrors the rendered rows; empty filters disable it with a reason", async () => {
@@ -1121,7 +1127,7 @@ describe("R70 queue state consistency (apv-state-*)", () => {
     expect(qa("apr5-retry"), "existing retry testid kept").toBeTruthy();
     const btn = qa("apv7-export") as HTMLButtonElement;
     expect(btn.disabled, "export gated on error").toBe(true);
-    expect(btn.title).toContain("不能导出：列表没能加载");
+    expect(btn.title).toContain("不能导出：列表读取失败"); // R72 gateReason 单点
     expect(qa("apv7-export-count")?.textContent).toBe("—");
     expect(qa("apv6-summary-risk-high")?.getAttribute("title"), "risk bucket title").toContain("列表读取失败");
     // denied/error 面不画行：预览入口不存在
@@ -1285,7 +1291,349 @@ describe("R71 queue column sorting (apv-sort-*)", () => {
     const btn = qa("apv-sort-status") as HTMLButtonElement | null;
     expect(btn, "sort bar still visible for disabled semantics").toBeTruthy();
     expect(btn!.disabled).toBe(true);
-    expect(btn!.title).toContain("不能排序：列表没能加载");
+    expect(btn!.title).toContain("不能排序：列表读取失败"); // R72 gateReason 单点
     expect(qa("apv-sort-scope-note"), "no scope note while gated").toBeNull();
+  });
+});
+
+describe("R72 action availability matrix (apv-gates-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+  const dis = (id: string) => (qa(id) as HTMLButtonElement | null)?.disabled;
+  const ttl = (id: string) => (qa(id) as HTMLButtonElement | null)?.title ?? "";
+
+  it("loading: every gated action disabled, one reason family", async () => {
+    api.fetchJSON.mockImplementation(() => new Promise(() => {}));
+    await render("/approvals?tab=history", <ApprovalsHistoryModulePage />);
+    await waitFor(() => !!qa("apv-state"), "state container");
+    expect(qa("apv-gates-note"), "matrix note on screen").toBeTruthy();
+    for (const id of ["apv7-export", "apv-sort-title", "apv-gates-refresh"]) {
+      expect(dis(id), id).toBe(true);
+      expect(ttl(id), `${id} reason`).toContain("正在读取");
+    }
+    expect(qa("apv6-summary-pending")?.getAttribute("title")).toContain("正在读取");
+    expect(document.querySelector('[data-testid^="apv9-toggle-"]'), "no rows while loading").toBeNull();
+  });
+
+  it("empty: export/toggle gated, sort stays alive, no retry control appears", async () => {
+    await mount(
+      async (url: string) => (String(url).includes("/api/approval?id=") ? {} : { items: [] }),
+      "/approvals?tab=history&status=pending",
+    );
+    await waitFor(() => !!qa("apv-state-empty"), "empty panel");
+    expect(dis("apv7-export")).toBe(true);
+    expect(ttl("apv7-export")).toContain("真实空集");
+    expect(dis("apv-sort-title"), "sort remains usable in a true empty set").toBe(false);
+    expect(qa("apr5-retry"), "retry belongs to error only").toBeNull();
+    expect(qa("apv-state-retry")).toBeNull();
+    expect(dis("apv-gates-refresh")).toBe(false);
+  });
+
+  it("error: retry alive, everything else gated with the same reason", async () => {
+    await mount(
+      async (url: string) => {
+        if (String(url).includes("/api/approval?id=")) return {};
+        throw new ApiError("boom", { status: 500, body: "", url: "u", requestId: "req-r72-500" });
+      },
+      "/approvals?tab=history",
+    );
+    await waitFor(() => !!qa("apv-state-error"), "error panel");
+    expect(qa("apr5-retry"), "retry usable on error").toBeTruthy();
+    for (const id of ["apv7-export", "apv-sort-title"]) {
+      expect(dis(id), id).toBe(true);
+      expect(ttl(id), id).toContain("读取失败");
+    }
+    expect(qa("apv6-summary-risk-high")?.getAttribute("title")).toContain("读取失败");
+  });
+
+  it("denied: every action gated and no path beyond retry appears", async () => {
+    await mount(
+      async (url: string) => {
+        if (String(url).includes("/api/approval?id=")) return {};
+        throw new ApiError("nope", { status: 403, body: "", url: "u", requestId: "req-r72-403" });
+      },
+      "/approvals?tab=history",
+    );
+    await waitFor(() => !!qa("apv-state-denied"), "denied panel");
+    expect(qa("apv-gates-refresh"), "denied hides the refresh button").toBeNull();
+    expect(qa("apr5-retry"), "denied offers no retry").toBeNull();
+    expect(dis("apv7-export")).toBe(true);
+    expect(ttl("apv7-export")).toContain("没有读取权限");
+    expect(dis("apv-sort-title")).toBe(true);
+    expect(ttl("apv-sort-title")).toContain("没有读取权限");
+    expect(
+      Array.from(document.querySelectorAll("button")).some((b) => (b.textContent ?? "").includes("批准")),
+      "no write action under denied",
+    ).toBe(false);
+  });
+
+  it("ready with a zero-row filter: export disabled with the exact sentence, gates never fetch", async () => {
+    await mount(
+      async (url: string) =>
+        String(url).includes("/api/approval?id=")
+          ? {}
+          : { items: [{ approvalId: "ap_g1", title: "轮换密钥", status: "pending", createdAt: "2026-11-19T01:00:00Z" }] },
+      "/approvals?tab=history",
+    );
+    await waitFor(() => !!qa("apr5-row-ap_g1"), "row on screen");
+    const calls = api.fetchJSON.mock.calls.length;
+    const input = qa("apv8-search") as HTMLInputElement;
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    await act(async () => {
+      setter?.call(input, "无此内容zz");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await waitFor(() => !!qa("apv8-search-empty"), "zero visible rows");
+    expect(dis("apv7-export")).toBe(true);
+    expect(ttl("apv7-export")).toBe("当前没有可导出的审批：该条件下没有可导出的审批。");
+    expect(api.fetchJSON.mock.calls.length, "gates never fetch").toBe(calls);
+  });
+});
+
+describe("R73 keyboard navigation (apv-nav-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+  const nav = (el: Element | null, key: string) => {
+    (el as HTMLElement).focus();
+    el?.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+  };
+
+  const two = {
+    items: [
+      { approvalId: "ap_n1", title: "轮换密钥", status: "pending", createdAt: "2026-11-19T01:00:00Z" },
+      { approvalId: "ap_n2", title: "发布周知", status: "approved", decidedAt: "2026-11-19T02:00:00Z" },
+    ],
+  };
+  const handler = async (url: string) => {
+    if (String(url).includes("/api/approval?id=")) {
+      return { approvalId: "ap_n1", title: "轮换密钥", status: "pending", requestedBy: { type: "human", id: "human:9" }, createdAt: "2026-11-19T01:00:00Z" };
+    }
+    return two;
+  };
+
+  it("roving tabindex: one anchor, arrows move focus, Home/End jump", async () => {
+    await mount(handler, "/approvals?tab=history");
+    const first = qa("apr5-row-ap_n1");
+    const second = qa("apr5-row-ap_n2");
+    expect(first, "rows on screen").toBeTruthy();
+    expect(first!.getAttribute("tabindex"), "current anchor row is tabbable").toBe("0");
+    expect(second!.getAttribute("tabindex"), "other rows stay out of the tab order").toBe("-1");
+    await act(async () => {
+      nav(first, "ArrowDown");
+    });
+    expect(document.activeElement).toBe(second);
+    expect(second!.getAttribute("tabindex"), "moved anchor is tabbable").toBe("0");
+    expect(first!.getAttribute("tabindex"), "old anchor leaves the tab order").toBe("-1");
+    await act(async () => {
+      nav(second, "ArrowUp");
+    });
+    expect(document.activeElement).toBe(first);
+    await act(async () => {
+      nav(first, "End");
+    });
+    expect(document.activeElement).toBe(second);
+    await act(async () => {
+      nav(second, "Home");
+    });
+    expect(document.activeElement).toBe(first);
+    expect(qa("apv-nav-note")?.textContent).toContain("Enter");
+  });
+
+  it("Enter opens the preview with no request; Esc closes and returns focus", async () => {
+    await mount(handler, "/approvals?tab=history");
+    const before = api.fetchJSON.mock.calls.length;
+    const first = qa("apr5-row-ap_n1");
+    await act(async () => {
+      nav(first, "Enter");
+    });
+    expect(qa("apv9-preview-ap_n1"), "Enter opens the inline preview").toBeTruthy();
+    expect(first!.getAttribute("aria-expanded")).toBe("true");
+    expect(qa("apv9-toggle-ap_n1")?.getAttribute("aria-expanded"), "dual carriers agree").toBe("true");
+    await act(async () => {
+      nav(first, "Enter");
+    });
+    expect(qa("apv9-preview-ap_n1"), "Enter again collapses").toBeNull();
+    await act(async () => {
+      nav(first, "Enter");
+    });
+    const second = qa("apr5-row-ap_n2");
+    await act(async () => {
+      nav(second, "Enter");
+    });
+    expect(qa("apv9-preview-ap_n2"), "second row expands").toBeTruthy();
+    expect(qa("apv9-preview-ap_n1"), "only one row open at a time").toBeNull();
+    await act(async () => {
+      nav(qa("apr5-row-ap_n2"), "Escape");
+    });
+    expect(qa("apv9-preview-ap_n2"), "Esc closes").toBeNull();
+    expect(document.activeElement, "Esc returns focus to the row").toBe(qa("apr5-row-ap_n2"));
+    expect(api.fetchJSON.mock.calls.length, "keyboard navigation never fetches").toBe(before);
+  });
+
+  it("Space keeps the R26 detail channel; 404 state draws no focusable rows", async () => {
+    await mount(handler, "/approvals?tab=history");
+    await act(async () => {
+      nav(qa("apr5-row-ap_n1"), " ");
+    });
+    await waitFor(() => !!qa("apr5-detail"), "space opens the detail");
+    expect(qa("apr5-detail")).toBeTruthy();
+  });
+
+  it("error state draws no rows and the arrow keys are not hijacked", async () => {
+    await mount(async (url: string) => {
+      if (String(url).includes("/api/approval?id=")) return Promise.resolve({});
+      throw new ApiError("boom", { status: 500, body: "", url: "/agent-api/api/approvals", requestId: "req-r73-500" });
+    }, "/approvals?tab=history");
+    await waitFor(() => !!qa("apv-state-error"), "error panel");
+    expect(document.querySelectorAll('[data-testid^="apr5-row-ap_n"]')).toHaveLength(0);
+    const calls = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, cancelable: true }));
+    });
+    expect(api.fetchJSON.mock.calls.length, "direction keys do nothing in error state").toBe(calls);
+  });
+});
+
+describe("R74 actor buckets (apv-actor-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+  const ACTOR_ROWS = {
+    items: [
+      { approvalId: "ap_v74", title: "密钥轮换", status: "approved", decidedAt: "2026-11-18T02:00:00Z", approvers: [{ userId: "human:7", name: "郑涛" }] },
+      { approvalId: "ap_w74", title: "预算上调", status: "pending", expiresAt: "2026-11-21T02:00:00Z", approvers: [{ userId: "human:9" }] },
+    ],
+  };
+  const listOnly = async (url: string) => {
+    if (String(url).includes("/api/approval?id=")) return Promise.resolve({});
+    return ACTOR_ROWS;
+  };
+
+  it("buckets count the loaded rows; picking one filters locally with zero new requests", async () => {
+    await mount(listOnly, "/approvals?tab=history");
+    expect(qa("apv-actor-buckets"), "bucket rail").toBeTruthy();
+    expect(qa("apv-actor-scope-note")?.textContent).toContain("按当前已加载 2 条统计，不是全量");
+    expect(qa("apv-actor-bucket-0")?.textContent).toContain("郑涛");
+    expect(qa("apv-actor-bucket-1")?.textContent).toContain("人员 · 9");
+    expect(qa("apv-actor-scope-note")?.getAttribute("title")).toContain("actor=");
+    const before = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      (qa("apv-actor-bucket-0") as HTMLButtonElement).click();
+    });
+    await waitFor(() => !!qa("apr5-row-ap_v74"), "filtered row");
+    expect(api.fetchJSON.mock.calls.length, "bucket click never refetches").toBe(before);
+    expect(document.querySelectorAll('[data-testid^="apr5-row-ap_"]').length).toBe(1);
+    expect(qa("apv5-count")?.textContent).toBe("1");
+    expect(qa("apv-actor-bucket-0")?.getAttribute("aria-pressed")).toBe("true");
+    expect(document.body.textContent).not.toContain("human:");
+    // 再点同桶＝清空
+    await act(async () => {
+      (qa("apv-actor-bucket-0") as HTMLButtonElement).click();
+    });
+    await waitFor(() => !!qa("apr5-row-ap_w74"), "restored");
+    expect(api.fetchJSON.mock.calls.length, "clearing never refetches either").toBe(before);
+  });
+
+  it("a pasted ?actor= link replays, survives the queue filter and can go empty", async () => {
+    await mount(
+      async (url: string) => {
+        const u = String(url);
+        if (u.includes("/api/approval?id=")) return Promise.resolve({});
+        // 队列快捷切到 approved 后，服务端只回郑涛那行——human:9 便无匹配。
+        if (u.includes("status=approved")) return { items: [ACTOR_ROWS.items[0]] };
+        return ACTOR_ROWS;
+      },
+      "/approvals?tab=history&actor=human%3A9",
+    );
+    await waitFor(() => !!qa("apr5-row-ap_w74"), "actor replay");
+    expect(document.querySelectorAll('[data-testid^="apr5-row-ap_"]').length).toBe(1);
+    expect(qa("apv-actor-bucket-1")?.getAttribute("aria-pressed")).toBe("true");
+    const prev = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      (document.querySelector('[data-testid="apv5-filter-status-approved"]') as HTMLButtonElement).click();
+    });
+    await waitFor(() => api.fetchJSON.mock.calls.length > prev, "status refetch");
+    const fresh = api.fetchJSON.mock.calls.slice(prev).map((c) => String(c[0]));
+    expect(fresh.some((u) => u.includes("status=approved")), fresh.join("|")).toBe(true);
+    // actor 活在组件状态里：新返回没有 human:9 的行 → 无匹配卡 + 清空出口
+    await waitFor(() => !!qa("apv-actor-empty"), "no-match card");
+    expect(qa("apv-actor-empty")?.textContent).toContain("该审批人下没有审批");
+    await act(async () => {
+      (qa("apv-actor-clear") as HTMLButtonElement).click();
+    });
+    await waitFor(() => !!qa("apr5-row-ap_v74"), "row back after clear");
+    expect(qa("apv-actor-empty"), "actor card gone after clear").toBeNull();
+  });
+
+  it("non-ready phases gate the rail and never fake 0 counts", async () => {
+    await mount(async (url: string) => {
+      if (String(url).includes("/api/approval?id=")) return Promise.resolve({});
+      throw new ApiError("boom", { status: 500, body: "", url: "/agent-api/api/approvals", requestId: "req-r74-500" });
+    }, "/approvals?tab=history");
+    await waitFor(() => !!qa("apv-state-error"), "error panel");
+    const btn = qa("apv-actor-bucket-0") as HTMLButtonElement | null;
+    // error 态没有已加载行：桶区只剩全部钮 + 「—」，不显 0
+    expect(qa("apv-actor-all")?.textContent, "rail present").toBe("全部");
+    expect(btn ?? true).toBeTruthy();
+    expect((qa("apv-actor-all") as HTMLButtonElement).disabled, "gated in error").toBe(true);
+    expect(qa("apv-actor-all")?.getAttribute("title")).toContain("不能按审批人筛选：列表读取失败");
+    expect(qa("apv-actor-scope-note")?.textContent).toContain("按当前已加载 0 条统计");
+  });
+});
+
+describe("R75 export filename contract (apv-export-name)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+  const nameRe = /^approvals-history-(all|pending|approved|revise-requested)-default-default-\d{8}-\d{4}\.csv$/;
+
+  it("previews the five-segment name and it matches the downloaded file verbatim", async () => {
+    await mount(undefined, "/approvals?tab=history");
+    await waitFor(() => !!qa("apv-export-name"), "preview line");
+    const preview = qa("apv-export-name")!.textContent ?? "";
+    expect(preview).toMatch(nameRe);
+    expect(qa("apv-export-name")?.getAttribute("title")).toContain("四要素来源");
+    const downloads: string[] = [];
+    const origCreate = URL.createObjectURL;
+    const origRevoke = URL.revokeObjectURL;
+    const origClick = HTMLAnchorElement.prototype.click;
+    (URL as unknown as { createObjectURL: (b: Blob) => string }).createObjectURL = () => "blob:x";
+    (URL as unknown as { revokeObjectURL: (u: string) => void }).revokeObjectURL = () => {};
+    HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
+      downloads.push(this.download);
+    };
+    try {
+      const before = api.fetchJSON.mock.calls.length;
+      await act(async () => {
+        (qa("apv7-export") as HTMLButtonElement).click();
+      });
+      expect(downloads).toHaveLength(1);
+      expect(downloads[0]).toBe(preview);
+      expect(api.fetchJSON.mock.calls.length, "export never fetches").toBe(before);
+      // 导出行数与屏上「已显示」同源（apv5-count 与 apv7-export-count 同值）。
+      expect(qa("apv7-export-count")?.textContent).toBe("共 8 行");
+      expect(qa("apv5-count")?.textContent).toBe("8");
+    } finally {
+      (URL as unknown as { createObjectURL: (b: Blob) => string }).createObjectURL = origCreate;
+      (URL as unknown as { revokeObjectURL: (u: string) => void }).revokeObjectURL = origRevoke;
+      HTMLAnchorElement.prototype.click = origClick;
+    }
+  });
+
+  it("preview rides status/sort from the URL and updates with zero new requests", async () => {
+    await mount(undefined, "/approvals?tab=history&status=pending");
+    await waitFor(() => !!qa("apv-export-name"), "preview");
+    expect(qa("apv-export-name")!.textContent).toContain("-pending-default-default-");
+    // 点列排序（标题）→ 预览随 URL 同步，且排序本身零请求（R71 契约）。
+    const before = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      (document.querySelector('[data-testid="apv-sort-title"]') as HTMLButtonElement).click();
+    });
+    await waitFor(() => (qa("apv-export-name")!.textContent ?? "").includes("-pending-title-asc-"), "sort in name");
+    expect(api.fetchJSON.mock.calls.length, "sorting never refetches").toBe(before);
+    await act(async () => {
+      (document.querySelector('[data-testid="apv-sort-title"]') as HTMLButtonElement).click();
+    });
+    await waitFor(() => (qa("apv-export-name")!.textContent ?? "").includes("-pending-title-desc-"), "desc name");
+    // 第三下清除排序 → default。
+    await act(async () => {
+      (document.querySelector('[data-testid="apv-sort-title"]') as HTMLButtonElement).click();
+    });
+    await waitFor(() => (qa("apv-export-name")!.textContent ?? "").includes("-pending-default-default-"), "default name");
+    expect(api.fetchJSON.mock.calls.length, "still zero extra fetches").toBe(before);
   });
 });
