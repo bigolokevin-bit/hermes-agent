@@ -3752,3 +3752,64 @@ kn6–kn9/knB/knD/knF/knG/knI/knL/kn-space-preview 全族通过（R157 原三例
 边界：只改 web/src/modules/knowledge/knowledge.space.filters.test.tsx（追加一 it）与
 本证据；显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；
 单 commit「test(console): knowledge space filter guards」。
+
+# KNW5 追加 R179：知识排序持久化与深链护栏（纯测试单）（2026-11-20 BJT）
+
+安全门：porcelain 空起做（HEAD 即 R176 `3e45dd7d` 链上）、显式 refspec fetch 后 merge
+实测 tip `072f023d`（Already up to date，知识面 delta 空）。零产品文件改动（无真缺陷）。
+
+## 查重判定（五处引用 / 三处新写）
+
+```text
+已锁引用：
+· ①旧键深链复现——主测 kn-sort 段 :2265-2268（sort=size&dir=asc 直进同序不多发）；
+· 请求参集合恰 {limit,spaceId}——R164 ①（knowledge.type.source.test.tsx）；
+· 切 ktype 不动 ksort/kdir——R118 ②；清排序动线五键零残留——R164 ②；
+· ③重挂增量集合逐字——R146 ④ + R157 ③④；三值 data-len==knF 行==钮数 [0..M-1]——
+  R142 ① + R152 ⑤；cap 50 常量位——R108/R149 → ③整腿全覆盖不重写。
+新写（knowledge.sort.persist.test.tsx 2 例）：
+· ①规范键 ksort/kdir 深链的 aria-sort 回填（主测只测过 legacy 键的回填）+
+  行序按 size/desc + 全程请求无 cursor；
+· ②排序点击的写侧键集合：只动 ksort/kdir、脏 URL 下 q/ktype/space/tab/panel 逐字、
+  legacy sort/dir 不得被新写（R66「写只写 ksort」语义此前无独立 pin）；
+· ④非法排序枚举三查询——零 pin。实测回落语义（knowledge.ts docSortCol/docSortDir
+  :1722-1735 各键独立回落）：ksort 非法→列回默认 updated/desc；dir 非法→同回默认；
+  ksort=size&kdir 非法→列生效 size/desc（首行变大部头）——地址三种查询均逐字不改写、
+  不进空态/错误面（cap 在场）、回落后交互不卡死（点新列正常 asc）。
+```
+
+## 关键读数
+
+```text
+①深链 ?ksort=size&kdir=desc：th[aria-sort]=size→descending（aria-sort 挂 th，按钮带
+  testid——主测同法 closest）、行序逐字 [大部头.pdf, 中册.xlsx, 小抄.pdf]、
+  docs 读参 keys==[limit,spaceId]、无 cursor=。
+②点 name 列后：ksort=name、kdir=asc（落点向）、q=大/ktype=表格/space=sp_x/tab/panel
+  逐字、has(sort)=has(dir)=false。
+④回落：?ksort=__nope__ 与 ?dir=__nope__ 首行「中册.xlsx」（updated/desc）、
+  ?ksort=size&kdir=__nope__ 首行「大部头.pdf」（size 列保留/desc 回落）；三态 loc
+  均逐字含原非法值；收尾点 name → ksort=name&kdir=asc。
+```
+
+## 验证尾行（R179）
+```text
+$ npx vitest run src/modules/knowledge   → 18 files / 133 tests passed（基线 131 + 2）
+$ npx vitest run                         → 240 files / 2802 tests passed 全绿
+  （上游 audit.filters 红在 `072f023d` wave 已修绿，本轮无已知红需要豁免）
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning；本单曾有
+  1 条 unused(u0) error 提交前清零）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r179-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn-sort-*/kn-row-copy*/kn-doc-copy*/kn3*/kn3-page-cap/knE-page-*/kn6–kn9/knB/knD/
+knF/knG/knI/knL/kn-type*/kn-space-preview/导出标记（absent 在场）全族通过。
+过程记录：测试初稿三处自错（aria-sort 误读 button 应 closest("th")、非法查询前缀误用
+  "?"成双问号、④第三态误设列也回落——实测列独立回落），均按产品真实行为修正期望，
+  产品零改动。
+```
+未测如实：带登录会话真实屏；legacy `?sort=` 非法列值（?sort=__nope__）单态（与
+ksort 非法同 helper 同路径，读侧兜底代码共用，未重复铺例）；排序 × 分页合并态
+（归 1 页已由 R118②/R131① 锁）。
+边界：只新增 web/src/modules/knowledge/knowledge.sort.persist.test.tsx 与本证据；
+显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「test(console): knowledge sort persistence guards」。
