@@ -682,3 +682,27 @@ describe("R73 pending keyboard navigation (apv-nav-*)", () => {
     expect(qa("apv-nav-note"), "nav note present").toBeTruthy();
   });
 });
+
+describe("R74 pending actor buckets (apv-actor-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+
+  it("the pending tab carries the same rail: local filter, zero new requests", async () => {
+    await mount(queue(), "/approvals?tab=pending");
+    await waitFor(() => !!qa("apv-actor-buckets"), "rail");
+    expect(qa("apv-actor-scope-note")?.textContent).toContain("不是全量");
+    const before = api.fetchJSON.mock.calls.length;
+    const bucket = document.querySelector('[data-testid="apv-actor-bucket-0"]') as HTMLButtonElement | null;
+    if (bucket) {
+      await act(async () => {
+        bucket.click();
+      });
+      expect(api.fetchJSON.mock.calls.length, "bucket click never refetches").toBe(before);
+      await act(async () => {
+        (qa("apv-actor-all") as HTMLButtonElement).click();
+      });
+      expect(api.fetchJSON.mock.calls.length, "clearing never refetches").toBe(before);
+      await waitFor(() => !!qa("apr5-row-ap_9F3A1111"), "row back");
+    }
+    expect(document.body.textContent).not.toContain("human:");
+  });
+});

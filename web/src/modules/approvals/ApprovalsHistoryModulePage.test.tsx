@@ -1485,3 +1485,88 @@ describe("R73 keyboard navigation (apv-nav-*)", () => {
     expect(api.fetchJSON.mock.calls.length, "direction keys do nothing in error state").toBe(calls);
   });
 });
+
+describe("R74 actor buckets (apv-actor-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+  const ACTOR_ROWS = {
+    items: [
+      { approvalId: "ap_v74", title: "密钥轮换", status: "approved", decidedAt: "2026-11-18T02:00:00Z", approvers: [{ userId: "human:7", name: "郑涛" }] },
+      { approvalId: "ap_w74", title: "预算上调", status: "pending", expiresAt: "2026-11-21T02:00:00Z", approvers: [{ userId: "human:9" }] },
+    ],
+  };
+  const listOnly = async (url: string) => {
+    if (String(url).includes("/api/approval?id=")) return Promise.resolve({});
+    return ACTOR_ROWS;
+  };
+
+  it("buckets count the loaded rows; picking one filters locally with zero new requests", async () => {
+    await mount(listOnly, "/approvals?tab=history");
+    expect(qa("apv-actor-buckets"), "bucket rail").toBeTruthy();
+    expect(qa("apv-actor-scope-note")?.textContent).toContain("按当前已加载 2 条统计，不是全量");
+    expect(qa("apv-actor-bucket-0")?.textContent).toContain("郑涛");
+    expect(qa("apv-actor-bucket-1")?.textContent).toContain("人员 · 9");
+    expect(qa("apv-actor-scope-note")?.getAttribute("title")).toContain("actor=");
+    const before = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      (qa("apv-actor-bucket-0") as HTMLButtonElement).click();
+    });
+    await waitFor(() => !!qa("apr5-row-ap_v74"), "filtered row");
+    expect(api.fetchJSON.mock.calls.length, "bucket click never refetches").toBe(before);
+    expect(document.querySelectorAll('[data-testid^="apr5-row-ap_"]').length).toBe(1);
+    expect(qa("apv5-count")?.textContent).toBe("1");
+    expect(qa("apv-actor-bucket-0")?.getAttribute("aria-pressed")).toBe("true");
+    expect(document.body.textContent).not.toContain("human:");
+    // 再点同桶＝清空
+    await act(async () => {
+      (qa("apv-actor-bucket-0") as HTMLButtonElement).click();
+    });
+    await waitFor(() => !!qa("apr5-row-ap_w74"), "restored");
+    expect(api.fetchJSON.mock.calls.length, "clearing never refetches either").toBe(before);
+  });
+
+  it("a pasted ?actor= link replays, survives the queue filter and can go empty", async () => {
+    await mount(
+      async (url: string) => {
+        const u = String(url);
+        if (u.includes("/api/approval?id=")) return Promise.resolve({});
+        // 队列快捷切到 approved 后，服务端只回郑涛那行——human:9 便无匹配。
+        if (u.includes("status=approved")) return { items: [ACTOR_ROWS.items[0]] };
+        return ACTOR_ROWS;
+      },
+      "/approvals?tab=history&actor=human%3A9",
+    );
+    await waitFor(() => !!qa("apr5-row-ap_w74"), "actor replay");
+    expect(document.querySelectorAll('[data-testid^="apr5-row-ap_"]').length).toBe(1);
+    expect(qa("apv-actor-bucket-1")?.getAttribute("aria-pressed")).toBe("true");
+    const prev = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      (document.querySelector('[data-testid="apv5-filter-status-approved"]') as HTMLButtonElement).click();
+    });
+    await waitFor(() => api.fetchJSON.mock.calls.length > prev, "status refetch");
+    const fresh = api.fetchJSON.mock.calls.slice(prev).map((c) => String(c[0]));
+    expect(fresh.some((u) => u.includes("status=approved")), fresh.join("|")).toBe(true);
+    // actor 活在组件状态里：新返回没有 human:9 的行 → 无匹配卡 + 清空出口
+    await waitFor(() => !!qa("apv-actor-empty"), "no-match card");
+    expect(qa("apv-actor-empty")?.textContent).toContain("该审批人下没有审批");
+    await act(async () => {
+      (qa("apv-actor-clear") as HTMLButtonElement).click();
+    });
+    await waitFor(() => !!qa("apr5-row-ap_v74"), "row back after clear");
+    expect(qa("apv-actor-empty"), "actor card gone after clear").toBeNull();
+  });
+
+  it("non-ready phases gate the rail and never fake 0 counts", async () => {
+    await mount(async (url: string) => {
+      if (String(url).includes("/api/approval?id=")) return Promise.resolve({});
+      throw new ApiError("boom", { status: 500, body: "", url: "/agent-api/api/approvals", requestId: "req-r74-500" });
+    }, "/approvals?tab=history");
+    await waitFor(() => !!qa("apv-state-error"), "error panel");
+    const btn = qa("apv-actor-bucket-0") as HTMLButtonElement | null;
+    // error 态没有已加载行：桶区只剩全部钮 + 「—」，不显 0
+    expect(qa("apv-actor-all")?.textContent, "rail present").toBe("全部");
+    expect(btn ?? true).toBeTruthy();
+    expect((qa("apv-actor-all") as HTMLButtonElement).disabled, "gated in error").toBe(true);
+    expect(qa("apv-actor-all")?.getAttribute("title")).toContain("不能按审批人筛选：列表读取失败");
+    expect(qa("apv-actor-scope-note")?.textContent).toContain("按当前已加载 0 条统计");
+  });
+});

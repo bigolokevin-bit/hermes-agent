@@ -31,6 +31,7 @@ import { QueueSummaryBar } from "./QueueSummaryBar";
 import { BackToList, restoreListScroll, saveListScroll } from "./BackToList";
 import { QueueCsvExport } from "./QueueCsvExport";
 import { QueueSortBar } from "./QueueSortBar";
+import { ActorBuckets } from "./ActorBuckets";
 import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel } from "./states";
 import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
 import { ApprovalDetailBody, ApprovalRowCard } from "./views";
@@ -102,13 +103,27 @@ export function ApprovalsHistoryModulePage(): ReactNode {
     },
     [params, setParams, asort, adir],
   );
+  // R74: ?actor= rides the URL like the other filters; picking a bucket never
+  // refetches — the filter runs over the already-loaded rows (read port
+  // ignores actor=, measured).
+  const actor = params.get("actor");
+  const pickActor = useCallback(
+    (id: string | null) => {
+      const draft = new URLSearchParams(params);
+      if (id === null) draft.delete("actor");
+      else draft.set("actor", id);
+      setParams(draft, { replace: true });
+    },
+    [params, setParams],
+  );
   const visibleRows = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    const base = needle
+    const filtered = needle
       ? list.rows.filter((row) => approvalsRowSearchText(row).includes(needle))
       : list.rows;
-    return sortApprovalRows(base, asort, adir);
-  }, [list.rows, q, asort, adir]);
+    const byActor = actor ? filtered.filter((row) => row.approverIds.includes(actor)) : filtered;
+    return sortApprovalRows(byActor, asort, adir);
+  }, [list.rows, q, actor, asort, adir]);
   const [selected, setSelected] = useState<string | null>(() => params.get("id"));
   const [unaddressable, setUnaddressable] = useState(false);
   // R60: at most one row shows its inline preview; it never touches URL/filters.
@@ -341,6 +356,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
       </p>
 
       <QueueSortBar phase={list.phase} sort={asort} dir={adir} loadedCount={list.rows.length} onCycle={cycleSort} />
+      <ActorBuckets rows={list.rows} phase={list.phase} actor={actor} onPick={pickActor} />
 
 
       <div className="flex min-w-0 flex-wrap gap-1.5" role="group" data-testid="apr5-filter" aria-label="按处理结果筛选">
@@ -441,7 +457,20 @@ export function ApprovalsHistoryModulePage(): ReactNode {
 
           {list.phase === "ready" ? (
             <>
-              {q && visibleRows.length === 0 ? (
+              {actor && visibleRows.length === 0 ? (
+                <Card className="border-border bg-card" data-testid="apv-actor-empty">
+                  <CardContent className="min-w-0 space-y-2 p-4 text-sm">
+                    <p>该审批人下没有审批。</p>
+                    <p className="text-xs text-muted-foreground">
+                      这是当前已加载 {list.rows.length} 条里的真实结果：没有该审批人名下的行；可清空审批人筛选或换条件。
+                    </p>
+                    <Button size="sm" outlined data-testid="apv-actor-clear" onClick={() => pickActor(null)}>
+                      清空审批人筛选
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : null}
+              {q && !actor && visibleRows.length === 0 ? (
                 <Card className="border-border bg-card" data-testid="apv8-search-empty">
                   <CardContent className="min-w-0 space-y-2 p-4 text-sm">
                     <p>没有匹配的审批。</p>
