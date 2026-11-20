@@ -1277,3 +1277,11 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 九腿全 exit=0；heads 9/9=={42180cd6:9} bad=[]：ia-html/react（react counts {51,22,1,8}）、fake v=[]、reuse v=0 exempt=1、quad 20/20、crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）、redirects=24 notes 归因。
 - shots auth 102/102 failures=[] obs=0 obsR=[] distinct=24 envOnly=51；anon auxiliary=true 102/102 **obs=1（#/work?tab=cron，上代 0，+1 与 ui-d 登录失效收敛后 cron 视图回弹方向一致，如实登记不入判据）distinct=23（上代 24，-1 如实）** envOnly=51。三键两 summary 全值（B1CF6bVN/ab3111fe…/171967，servedEntryBefore==After），ceAuthority=login-state。
 - R60 已 unsigned 结案（33c2b838）：本节仅账本引用，禁 PASS/已验收口径、未动 ACC 判词节。cdcffc02 章 77ca6458 已盖不重做；无 amend/force。环境：9122 v4_proxy 95667、caddy 8183 28034、BFF 8092 12048@603a23e9 皆未动；web/src 未碰、零凭据明文。
+
+## 一三五轮 · 波次代次九件重章 @ dcac5182（entry 90TH2F6t，2026-11-21 00:5x-01:0x）
+
+- 代次现查：LOCAL=ls-remote=dcac5182（ANCH=0，卡面 wave-50 两笔 ui-b 6ff1e58d P0-② 知识页重复块单源 / ui-qa 5447067b 基线评审）；entry 换代 assets/index-90TH2F6t.js 171967B sha256 411b1293…ae6e 盘==9122 served 逐字==卡面；CSS 未换代 D5E8gF20 137743；21/21 路由 200。
+- 九腿全 exit=0（/tmp/wave50-exits.txt），heads 9/9=={dcac5182:9} bad=[] 全 ok=true。读数 ia-html/react {51,22,1,8}（tabsAll=23）；lint-fake v=[]；lint-reuse v=0 exempt=1；state-quad 20/20；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）；redirects=24 notes 归因。
+- shots auth 102/102 failures=[] obs=0 distinct=24 envOnly=51（与上代持平）；anon auxiliary=true 102/102 **obs=2（#/work、#/work?tab=cron；上代 1，+1 与知识页单源化无关向，如实登记不入判据）distinct=24（上代 23，回正）envOnly=51**；三键两 summary 全值、servedEntryBefore==After=index-90TH2F6t.js、ceAuthority=login-state。
+- 42180cd6 章 c467fc92 已盖不重做；无 amend/force；R60 已 unsigned 结案（33c2b838），本轮仅账本引用，未写 PASS/已验收、未动 ACC 判词节。
+- 环境：9122 v4_proxy 95667、caddy 8183 28034、BFF 8092 pid 12048@603a23e9 均未动；web/src 未碰；零凭据明文。
