@@ -5580,3 +5580,49 @@ kn-type*/kn-gates/导出 absent 标记 + 既有 48 套全绿。三例一次全�
 未测如实：带登录会话真屏；(A) 原文位置/source/status 与详情体的字段链（非 knF 字段，
 声明不参与）；检索面 knG 六列×抽屉对账（本轮限定详情面双载体，knG 口径引 R71/R200②）；
 短码大小写形制正则未钉（引 R197 位，本轮只锁三方互等+非全 id）。
+
+# KNW5 追加 R234：导出串裸值负扫 × 三叠加同帧三值 × 筛空态现状（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `42cee6dc`、
+基线先跑 49/228 全绿 Errors 0、目标文件确认缺席再动笔。零产品文件改动。新增
+knowledge.export.locale.cross.test.tsx 三例（本体）。
+
+## 名实换算与查重（引用不重写）
+
+```text
+无真 CSV（R190①:113-119 不变量）→「导出 CSV」=knF/knG 复制器数据行；**无 ?source=
+控件**→派工「?type=&source= 叠加」换算为 ?ktype=×本地名筛×?q= 三叠加（未造参数）；
+派工①「缺值 CSV 空字段」第二口径**不存在**（两产物共用 docLine 单源——R214②/R226②/
+R233 已锁互等）→按现状「—」断言并记录；派工③「cap 显 0」不可兑现→true-0/错误等态
+null（R108/R157/R187/R231② 引用），本轮另测**筛空但 loaded>0** 帧现状：实测 cap 在场
+且逐字==筛中帧（M 取已加载位 5，非可见 0）——R229③ 未查位首次入锁。
+引用：R226①（三载体逐字+表体负扫——导出串未扫）、R227④⑤（image 族/text-plain 现状/
+进位边界）、R214②/R220、R157③④（ktype×q 两叠加——名筛三叠加未入链）、R164①②、
+R215②:111（裸 0 扫描）、R229③、R233、R132/R169、R190/R230/R232。
+新增维（点名）：A knF+knG **两份剪贴板全文**对 application/*/image/*/text/* 与裸字节
+1234567 负扫 0 命中 + docx/json/csv 三新族标签「屏上格==导出串」逐字（1.2 MB 人话位）；
+B 三叠加同帧：详情面三值 [2,2,2]+行名恰 ktype∩名筛 交 [A,B]、检索面三值 [3,3]+导出名
+==屏上（只吃 q）、叠加段 urls 快照逐字（首屏恰 3 读后零增）；C 三叠加再筛空：knF
+disabled+「本地筛选没有留下行」（叠加态版）、检索面健康对照 [A,B,json] 且 knG 不 disabled、
+cap 现状（在场+逐字不动）、裸 0 扫描、双点击零写零请求、spy 全程 0。
+```
+
+## 验证尾行（R234）
+
+```text
+$ npx vitest run src/modules/knowledge → 50 files / 231 tests passed（228+3），
+  grep unhandled = 0
+$ npx eslint src/modules/knowledge → 0 errors（1 既有 R54 warning）
+$ 模块 tsc → 0；npx vite build --outDir /tmp/knw-r234-dist → exit 0
+$ 全仓 → 366 files / 3218 passed 全绿（无豁免、无已知红需点名）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knE-page-*/knF/knG/knI/knL*/kn-row-copy*/
+kn-row-copy-space*/kn-doc-copy*/kn-doc-preview*/kn7-preview*/kn3-page-cap/kn-sort*/
+kn-type*/kn-gates/导出 absent 标记 + 既有 49 套全绿。过程自纠两处（族 mimeType 按产品
+映射键形制用裸 token——application/msword→「其他类型」与 R227⑤ 同族现状；② 首屏基线
+快照位应在 render 后），产品零触碰。
+```
+未测如实：带登录会话真屏；真实完整 MIME（application/msword 等）→人话的映射缺口按
+现状不修（R227⑤ 族注在案，本轮夹具取裸 token 与 R164/R216 同形制）；cap 缺席分支
+（③ 双分支写法实走「在场」支，缺席态由 R231② 地盘不重测）；knG 三叠加（q×空间外键）
+组合无对应控件不存在，未造。
