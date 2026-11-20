@@ -2264,3 +2264,11 @@ built /private/tmp/health-r38/index.html
 - 验证：定向 capabilities+skills+tools 9 files / 94 passed；全量 162 files / 2244 passed；`tsc -b . --noEmit` 仅基线 approvals/employee-detail/employees 错误，本域 0。
 - DOM（临时 Vite harness，已删除）：1440/1280/375 `vw=bodySW=bodyCW`（1440/1280/375）；skills 2 行、tools 2 行均显示 `表内全量渲染，共 2 项` + 判据 title，无横溢。
 - 边界：仅 `modules/{capabilities,skills,tools}/**` + DONE；未改 App/shell/routes/registry/package·lock/web-scripts/ops；未 install、未并 main、未重建 9122；禁 force/amend/--no-verify。
+
+## R84 / sys-matrix-copy — /system 读源矩阵「复制本表」
+
+- 基线：显式 refspec fetch + `git merge origin/lane/hermes-console`，Already up to date；HEAD `7c82e3ad`；wave-23 代码 `94076a05` / 章面 `74c1e3b3`。
+- 实现：`sourceMatrixCsv.ts` 新增 `toMatrixText(rows)`，表头固定 `口径名\t路径\t状态\t耗时\t采集时刻`，逐行按 `sortedRows` 取屏上值，缺值 `—`，行尾换行；`SourceMatrix.tsx` 新增 `sys-matrix-copy`、`sys-matrix-copy-status`、只读 `sys-matrix-copy-fallback`。沿用 `copyDisabled`/`matrixBlockTitle`：空表或全失败 disabled + 既有原因句；`withCopyScope` 同一句。原 `sys10-copy` 与 CSV/排序/搜索全保留。
+- 行序/零请求：整表默认 name asc 复制 4 行，首末与表体一致；`?q=探针&ssort=state&sdir=desc` 复制 3 行，首末与表体一致；两次 `fetchJSON` 均 4→4，无新增请求。
+- 验证：定向 `src/modules/health` 8 files / 68 passed；全量 162 files / 2247 passed；`tsc -b . --noEmit` 仅基线 approvals/employee-detail/employees 错误，本域 0；DOM 1440/1280/375 `vw=bodySW=bodyCW`（375 内容 364），无横溢。
+- 边界：仅 `modules/health/**` + DONE；未改 App/shell/routes/registry/package·lock/web-scripts/ops；未 install、未并 main、未重建 9122；禁 force/amend/--no-verify。

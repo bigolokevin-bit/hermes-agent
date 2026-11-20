@@ -439,3 +439,45 @@ describe("local source search", () => {
     expect(window.location.hash).not.toContain("q=");
   });
 });
+
+describe("matrix table copy", () => {
+  it("copies the tab-separated table in the same order as the table body without another request", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    await render();
+    await act(async () => { (q("sys6-toggle") as HTMLButtonElement).click(); });
+    await waitFor(() => q("sys6-status-health")?.textContent?.includes("成功") ?? false, "health row");
+    expect(api.fetchJSON).toHaveBeenCalledTimes(4);
+    const button = q("sys-matrix-copy") as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
+    expect(button.getAttribute("title")).toContain("制表符分隔文本");
+    await act(async () => { button.click(); await Promise.resolve(); });
+    await waitFor(() => q("sys-matrix-copy-status")?.textContent === "已复制 4 行", "copied matrix");
+    const text = writeText.mock.calls[0][0] as string;
+    const lines = text.trimEnd().split("\n");
+    expect(lines[0]).toBe("口径名\t路径\t状态\t耗时\t采集时刻");
+    expect(lines).toHaveLength(5);
+    const tableNames = rowIds().map((id) => q(`sys6-name-${id}`)?.textContent ?? "");
+    expect(lines.slice(1).map((line) => line.split("\t")[0])).toEqual(tableNames);
+    const healthLine = lines.find((line) => line.startsWith("系统健康清单"));
+    expect(healthLine).toContain("系统健康清单\t/agent-api/api/health\t成功");
+    expect(healthLine).toContain("2026-11-19 23:17");
+    expect(api.fetchJSON).toHaveBeenCalledTimes(4);
+  });
+
+  it("offers a read-only textarea with the same tab-separated text when the clipboard rejects", async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error("denied"));
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    await render();
+    await act(async () => { (q("sys6-toggle") as HTMLButtonElement).click(); });
+    await waitFor(() => q("sys6-status-health")?.textContent?.includes("成功") ?? false, "health row");
+    await act(async () => { (q("sys-matrix-copy") as HTMLButtonElement).click(); await Promise.resolve(); });
+    await waitFor(() => q("sys-matrix-copy-fallback") !== null, "matrix fallback");
+    expect(q("sys-matrix-copy-status")?.textContent).toContain("复制失败");
+    const fallback = q("sys-matrix-copy-fallback") as HTMLTextAreaElement;
+    expect(fallback.readOnly).toBe(true);
+    expect(fallback.value).toContain("口径名\t路径\t状态\t耗时\t采集时刻");
+    expect(fallback.value).toContain("系统健康清单\t/agent-api/api/health\t成功");
+    expect(api.fetchJSON).toHaveBeenCalledTimes(4);
+  });
+});

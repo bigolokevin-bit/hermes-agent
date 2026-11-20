@@ -8,7 +8,7 @@ import {
   toggleSourceMatrix,
   useSourceMatrix,
 } from "./sourceReads";
-import { csvRows, downloadCsv, exportFilename, toCsv, toPlainText } from "./sourceMatrixCsv";
+import { csvRows, downloadCsv, exportFilename, toCsv, toMatrixText, toPlainText } from "./sourceMatrixCsv";
 import {
   ariaSourceSort,
   nextSourceSort,
@@ -111,7 +111,10 @@ export function SourceMatrix() {
   const matrixBlocked = usableRows.length === 0;
   const exportDisabled = exportRows.length === 0 || matrixBlocked;
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
+  const [matrixCopyState, setMatrixCopyState] = useState<"idle" | "copied" | "failed">("idle");
+  const [matrixCopiedRows, setMatrixCopiedRows] = useState(0);
   const copyText = toPlainText(sortedRows);
+  const matrixText = toMatrixText(sortedRows);
   const copyDisabled = searchedRows.length === 0 || matrixBlocked;
   const matrixBlockTitle = matrixBlocked
     ? "当前没有可导出/复制的可用读口行：读口未接入或读取失败。"
@@ -128,6 +131,21 @@ export function SourceMatrix() {
       setCopyState("copied");
     } catch {
       setCopyState("failed");
+    }
+  }
+
+  async function copyMatrixTable() {
+    if (copyDisabled) return;
+    if (!navigator.clipboard?.writeText) {
+      setMatrixCopyState("failed");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(matrixText);
+      setMatrixCopiedRows(sortedRows.length);
+      setMatrixCopyState("copied");
+    } catch {
+      setMatrixCopyState("failed");
     }
   }
 
@@ -172,6 +190,19 @@ export function SourceMatrix() {
           <span className="sys10-status" data-testid="sys10-copy-status" aria-live="polite">
             {copyState === "copied" ? "已复制" : copyState === "failed" ? "复制失败，已展开手动复制" : ""}
           </span>
+          <button
+            type="button"
+            className="sys7-export"
+            data-testid="sys-matrix-copy"
+            disabled={copyDisabled}
+            title={withCopyScope(copyDisabled ? matrixBlockTitle ?? "当前没有可复制的读口行" : "复制当前矩阵表格为制表符分隔文本；不会再发请求")}
+            onClick={() => { void copyMatrixTable(); }}
+          >
+            复制本表
+          </button>
+          <span className="sys10-status" data-testid="sys-matrix-copy-status" aria-live="polite">
+            {matrixCopyState === "copied" ? `已复制 ${matrixCopiedRows} 行` : matrixCopyState === "failed" ? "复制失败，已展开手动复制" : ""}
+          </span>
           <span className="sys7-count" data-testid="sys7-export-count">{exportDisabled ? "—" : `${exportRows.length} 行`}</span>
           <span className="sys7-note">导出与屏上矩阵同源：姓名、路径、人话状态、耗时、响应顶层 ISO 采集时刻；缺失留空，不补 0，也不用本机时钟。</span>
         </div>
@@ -184,6 +215,16 @@ export function SourceMatrix() {
             readOnly
             rows={Math.min(8, searchedRows.length + 2)}
             value={copyText}
+          />
+        ) : null}
+        {matrixCopyState === "failed" ? (
+          <textarea
+            className="sys10-fallback"
+            data-testid="sys-matrix-copy-fallback"
+            aria-label="手动复制矩阵表格文本"
+            readOnly
+            rows={Math.min(8, sortedRows.length + 2)}
+            value={matrixText}
           />
         ) : null}
         <p className="sys13-sort-note" data-testid="sys13-sort-note" hidden={!expanded}>
