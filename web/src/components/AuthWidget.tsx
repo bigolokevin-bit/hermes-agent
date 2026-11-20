@@ -20,12 +20,16 @@
  *     redirected us before App.tsx renders, so we won't see this). The
  *     widget renders nothing.
  *   - Network error: shows a minimal "auth status unavailable" message
- *     so the user knows the widget tried.
+ *     so the user knows the widget tried. It is silenced while the app-wide
+ *     session-expiry banner is showing (design lane ①) or once Auth5Session
+ *     has verified a login via `auth5:verified` (UI-QA P1) — in both cases
+ *     the widget would contradict what the screen already says.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { api, type AuthMeResponse } from "@/lib/api";
 import { ApiError } from "@/lib/api-error";
+import { isSessionExpired, subscribeSessionExpired } from "@/lib/session-expiry";
 import { shouldHideAuthWidget } from "./auth-widget-visibility";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n";
@@ -45,9 +49,27 @@ function truncateUserId(id: string): string {
 
 export function AuthWidget({ className }: AuthWidgetProps) {
   const { t } = useI18n();
+  // 设计车道 ①（P0-① 收敛）：会话失效已由全站唯一 SessionExpiredBanner 陈述，
+  // 横幅在场时本件不再重复播报「暂时确认不到登录状态」这个不确定态。
+  const bannerShowing = useSyncExternalStore(
+    subscribeSessionExpired,
+    isSessionExpired,
+    isSessionExpired,
+  );
   const [me, setMe] = useState<AuthMeResponse | null>(null);
   const [hidden, setHidden] = useState(false);
   const [error, setError] = useState(false);
+  // UI-QA P1: Auth5Session 在 whoami 2xx 时广播 `auth5:verified`。同栏已经展示
+  // 登录身份（opsadmin / 角色 / 租户）时，本件的「暂时确认不到登录状态」与它自
+  // 相矛盾，一律不再渲染。监听常驻：本件可能先于 whoami 完成挂载，事件到达即
+  // 重渲染隐藏。
+  const [verified, setVerified] = useState(false);
+
+  useEffect(() => {
+    const onVerified = () => setVerified(true);
+    window.addEventListener("auth5:verified", onVerified);
+    return () => window.removeEventListener("auth5:verified", onVerified);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,6 +104,7 @@ export function AuthWidget({ className }: AuthWidgetProps) {
   if (hidden) return null;
 
   if (error) {
+    if (verified || bannerShowing) return null;
     return (
       <div
         className={cn(

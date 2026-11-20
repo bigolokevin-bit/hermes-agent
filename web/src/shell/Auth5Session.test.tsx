@@ -5,6 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter } from "react-router";
 
 import { Auth5Session } from "./Auth5Session";
+import { clearSessionExpired, markSessionExpired } from "@/lib/session-expiry";
 
 // R19 tail a: logout must clear the client-side identity immediately.
 describe("Auth5Session (R19 tail a)", () => {
@@ -26,6 +27,7 @@ describe("Auth5Session (R19 tail a)", () => {
   });
 
   afterEach(() => {
+    clearSessionExpired();
     act(() => root.unmount());
     container.remove();
     vi.restoreAllMocks();
@@ -83,5 +85,58 @@ describe("Auth5Session (R19 tail a)", () => {
     expect(container.textContent).not.toContain("运维管理员");
     expect(container.textContent).toContain("未登录");
     expect(container.querySelector('[data-testid="auth5-goto-login"]')).toBeTruthy();
+  });
+
+  // 设计车道 ①（P0-①）：横幅在场时侧栏不再重复说「未登录」，出口保留。
+  it("hides 未登录 while the session banner shows, keeps the login exit", async () => {
+    markSessionExpired();
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("", { status: 401 })));
+
+    act(() => {
+      root.render(
+        <MemoryRouter>
+          <Auth5Session />
+        </MemoryRouter>,
+      );
+    });
+    await flush();
+
+    expect(container.querySelector('[data-testid="auth5-widget"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="auth5-goto-login"]')).toBeTruthy();
+    expect(container.textContent).not.toContain("未登录");
+
+    // 横幅退场：「未登录」恢复，默认口径不回归。
+    act(() => clearSessionExpired());
+    await flush();
+    expect(container.textContent).toContain("未登录");
+  });
+
+  // UI-QA P1：whoami 2xx 是登录证据，必须广播 auth5:verified 给同栏 AuthWidget。
+  it("broadcasts auth5:verified when whoami confirms a login", async () => {
+    const onVerified = vi.fn();
+    window.addEventListener("auth5:verified", onVerified);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        jsonResponse(200, {
+          display: "opsadmin",
+          granted: "运维管理员",
+          tenant_id: "t_seakoi_pilot",
+        }),
+      ),
+    );
+
+    act(() => {
+      root.render(
+        <MemoryRouter>
+          <Auth5Session />
+        </MemoryRouter>,
+      );
+    });
+    await flush();
+    window.removeEventListener("auth5:verified", onVerified);
+
+    expect(container.querySelector('[data-testid="auth5-display"]')?.textContent).toContain("opsadmin");
+    expect(onVerified).toHaveBeenCalledTimes(1);
   });
 });

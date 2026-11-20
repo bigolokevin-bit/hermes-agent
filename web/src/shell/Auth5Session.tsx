@@ -3,11 +3,19 @@
  * logout-clears-identity behavior is directly testable. Refreshes on
  * `auth5:session` (login success broadcast); logout drops it to anonymous.
  */
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useNavigate } from "react-router";
+import { isSessionExpired, subscribeSessionExpired } from "@/lib/session-expiry";
 
 export function Auth5Session(): ReactNode {
   const navigate = useNavigate();
+  // 设计车道 ①（P0-① 收敛）：「会话已过期」已由全站唯一 SessionExpiredBanner
+  // 陈述，anon 分支不再在侧栏重复说「未登录」；「去登录」出口保留。
+  const bannerShowing = useSyncExternalStore(
+    subscribeSessionExpired,
+    isSessionExpired,
+    isSessionExpired,
+  );
   const [who, setWho] = useState<
     { k: "loading" } | { k: "anon" } | { k: "ok"; display: string; role: string; tenant: string }
   >({ k: "loading" });
@@ -35,6 +43,10 @@ export function Auth5Session(): ReactNode {
             const tid = typeof body.tenant_id === "string" ? body.tenant_id.trim() : "";
             const tenant = tid && !/^[a-z]+_[0-9A-Za-z]+$/.test(tid) ? tid : "—";
             setWho({ k: "ok", display: disp, role, tenant });
+            // UI-QA P1: whoami 2xx 是本页唯一的「已登录证据」。广播出去，让同栏
+            // AuthWidget 的「暂时确认不到登录状态」不确定态即刻闭嘴——两者同屏
+            // 自相矛盾（下方已显示 opsadmin 身份，上方却说确认不到登录）不能再现。
+            window.dispatchEvent(new CustomEvent("auth5:verified"));
           } else {
             setWho({ k: "anon" });
           }
@@ -67,7 +79,9 @@ export function Auth5Session(): ReactNode {
         className="flex items-center justify-between gap-2 px-3 py-2 text-xs"
         data-testid="auth5-widget"
       >
-        <span className="min-w-0 break-words text-muted-foreground">未登录</span>
+        {!bannerShowing && (
+          <span className="min-w-0 break-words text-muted-foreground">未登录</span>
+        )}
         <button
           type="button"
           onClick={() => navigate("/login")}

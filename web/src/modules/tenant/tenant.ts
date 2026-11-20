@@ -6,6 +6,7 @@
 // A missing number is never replaced by 0.
 
 import { daysAgoWindow } from '../duty/format';
+import { SESSION_REQUIRED_GUIDANCE } from '@/lib/api-error';
 
 export const TENANT_GAP = 'GAP-TEN-01';
 
@@ -135,7 +136,7 @@ export function statusOf(error: unknown): number {
 /** Human sentence, never an HTTP code or upstream body. */
 export function messageFor(error: unknown): string {
   const status = statusOf(error);
-  if (status === 401) return '需要登录：这个页面的登录状态已经失效，重新登录后再看。';
+  if (status === 401) return SESSION_REQUIRED_GUIDANCE;
   if (status === 403) return '当前账号没有查看租户用量的权限。';
   if (status === 404) return '这项数据还没有接入；请联系管理员开通后重试。';
   if (status === 0) return '控制台暂时没有回应，请稍后重试。';
