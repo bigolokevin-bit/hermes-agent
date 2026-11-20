@@ -74,3 +74,18 @@
 [data-tab="events"] [data-testid="aud3-time"] {
   font-variant-numeric: tabular-nums;
 }
+
+/* UI-A 2026-11-21 续：/audit 事件表密度（卡片流形态）。
+ * 本仓 /audit 无 HTML table：账本行是 role="listitem" 卡片（views.tsx
+ * AuditEventRowCard），40/36 行高契约落为行壳 min-height；子级紧凑面
+ * （卡内 dl 明细流）已由上一笔的 space 档收编。时间/编号数字统一
+ * tabular-nums：audJ 同源三 surface（列表、详情、预览）共用
+ * [data-audj-value] 钩子，一次命中。375px：卡片 flex-wrap 自然折行、
+ * 无固定列宽，无需新横滚壳（audK-list 行不撑破，实测见探针）。 */
+[data-testid="audK-list"] > [role="listitem"] {
+  min-height: var(--table-row-h);
+}
+
+:is([data-audj-value], [data-testid$="-request-value"]) {
+  font-variant-numeric: tabular-nums;
+}
