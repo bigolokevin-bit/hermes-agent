@@ -5771,3 +5771,97 @@ kn-doc-copy*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/kn7-preview*/导出 absent 
 未测如实：带登录会话真屏；① 全 51 钮循环为 jsdom 成本上限内全量（真屏性能未测）；
 归位弃页后能否再点 -more 续第 2 页（R216② 清全部路径外推未实锁）；上游闪红体未定位
 （两轮不复现，非知识域）。
+
+# KNW5 追加 R238：导出×分页字节级三链（前缀不变性/换代==直链互等/窗内冻结+尾段合成）（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `ec12d3e7`
+（wave-79）、基线先跑 53/240 全绿 Errors 0、目标文件确认缺席再动笔。零产品文件改动。
+新增 knowledge.export.paging.triple.test.tsx 三例（本体）。
+
+## 重叠判定与名实（红线⑤逐条引用不重写）
+
+```text
+三腿全落详情面（唯一分页；-space- 族）；无真 CSV→导出=knF 数据行、spy 全程 0；
+?type=→?ktype=；cursor 只从请求 URL 断言；51 行夹具（R216/R229 先例）；cap 50/M 位
+引 R108。**派工①「首行非第 1 页首行」不成立**：产品追加保序、屏上首行仍=第 1 页首行
+（R229①:157-171 已锁三方互等）——按实记录不造假。
+重叠引用：①=R229①+R216①:134-148（四值/名链）；②=R229②:173-190+R131①:115-125+
+R237②:168-186（序重建/弃页）；③=R237③:188-220+R216④+R131③/R197④。
+本文件唯一未锁位（按红线⑦落死，导出侧字节级）：
+A 追加**前缀不变性**：post.slice(0,50) toEqual pre（追加前后 50 行逐字节不动、第 51
+  行才新增「卷 51.pdf」——R229① 只数追加后单帧）；
+B 切桶换代态导出全文 **toBe** 全新挂载深链 ?ktype=表格 态（两态归位页 1 同为 2 笔
+  xlsx——R229②/R237② 各查集/序，两态等值未测）；
+C 500 窗内导出全文 **toBe** 失败前快照（文本冻结，R237③ 只数 50 行）且不含卷 51；
+  重试恰 [+P2URL]（末条请求 toBe P2URL）后 51 行=前 50 逐字节==窗前 + 尾行入链
+  （增量合成式对账）。
+```
+
+## 三例读数与验证尾行（R238）
+
+```text
+① pre 50 → append（P2 请求恰 1）→ post 51、post[0..49]==pre、尾行「卷 51.pdf」、
+  首行==屏上首行、四值 [51,51,51(,51 data-len)]。② 追加后切「表格」复制得 switched；
+  直链重挂载复制 toBe switched 且 2 行；切桶段 urls join 逐字==u0（零新请求）。
+  ③ 窗前 textPre →500 窗 textWin toBe textPre 且不含卷 51、错误锚含「请求编号：
+  rid-r238-p2」→重试 urls +1 且末条=P2URL→post 51 行、前缀==textWin、尾行入链。
+$ npx vitest run src/modules/knowledge → 54 files / 243 tests passed（240+3），
+  grep unhandled = 0
+$ npx eslint src/modules/knowledge → 0 errors（1 既有 R54 warning）
+$ 模块 tsc → 0；npx vite build --outDir /tmp/knw-r238-dist → exit 0
+$ 全仓 → 378 files / 3248 passed 全绿（本轮无闪红、无已知红需点名）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knE-page-*/knF/knG/knI/knL*/kn-row-copy*/kn-row-copy-space*/
+kn-doc-copy*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/kn7-preview*/导出 absent 标记 +
+既有 53 套全绿。过程自纠一处（② 首稿复制索引错位与冗余断言，跑前清理），产品零触碰。
+```
+未测如实：带登录会话真屏；直链态与换代态的**钮序**等值（B 只锁导出全文，序位由 R237②
+地盘）；500 窗内 data-len/cap 的逐字节冻结（R237③ 锁 cap 逐字、data-len 窗内在位由
+R197④，本例聚焦导出文本未重复）；追加保序在上游乱序返回时的行为未造样张。
+
+# KNW5 追加 R239：抽屉×分页导出三组合帧（开态四值/切桶过渡态/列表窗反向互斥）（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `c1063feb`、
+基线先跑 54/243 全绿 Errors 0、目标文件确认缺席再动笔。零产品文件改动。新增
+knowledge.export.detail.paging.test.tsx 三例（本体）。
+
+## 名实与查重（引用不重写）
+
+```text
+三腿全落详情面（-space- 族；检索面无分页声明）；「详情」=kn7 抽屉（?doc=，开 +1
+详情读关 0——R49/R196/R236①），「零额外列表请求」一律断言**列表集合逐字**不宣称总量
+全零；无真 CSV→导出=knF 数据行、spy 全程 0、a.download/kn-export-name/Blob.type/BOM
+四缺口维持缺席（R197/R220）；?type=→?ktype=；cursor 从请求 URL 断言（实测 loc 无）；
+51 行夹具；cap 位与 null 态引 R108/R157/R187。
+重叠引用：①主面=R229①（分页三值）+R230①（无分页抽屉快照互等）+R236①（三帧互等）；
+②=R229②/R237②（切桶换代/弃页）+R233③（**出生态**缺席）；③=R237③/R238C（窗冻结合成）
++R221①（详情错窗×列表健康）。
+新增维（点名，三张组合牌从未同帧）：A 抽屉开态×M=51：四值同帧 [51,51,51,51] +
+  首行==屏上首行 + 导出全文逐字==开前快照（51×抽屉首次）；B **切桶中途源行出局的
+  过渡态**：ktype 使抽屉源卷 01 离开 shown——实测 **kn7-preview-panel 不卸载**（列表级
+  动作不改 ?doc=）+ 换代零旧行 + 行数==新表体 2 + 列表集合逐字（R233③ 只测深链出生
+  缺席态）；C **列表 500 窗×抽屉开**（R221① 反向互斥首次）：失败不卸载已开抽屉、
+  窗内导出 toBe 窗前快照且**逐行==屏上**（不产半页）、rid 投递逐字、重试恰 [+P2URL]
+  （末条 toBe P2URL）后四值/导出前缀==窗前+尾行卷 51 合成、抽屉全程在场。
+```
+
+## 三例读数与验证尾行（R239）
+
+```text
+① append（P2 恰 1）→开抽屉→knF 逐字==开前、四值 [51,51,51,51]、首行互等、listUrls
+  逐字。② 抽屉开态切「表格」：panel 在场、新集 [册 04.xlsx, 册 21.xlsx]、导出名链==
+  新表体、不含卷 01/卷 51、列表集合逐字。③ 抽屉开→500 窗：error 锚+「请求编号：
+  rid-r239-p2」、panel 在场（反向互斥）、窗内 toBe 窗前、逐行==屏上、rid 投递 toBe、
+  重试 +1 末条=P2URL、锚消失、[51,51,51]、post 前 50==窗内+尾行卷 51、panel 在场。
+$ npx vitest run src/modules/knowledge → 55 files / 246 tests passed（244+2…按尾行 243+3），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0；build /tmp/knw-r239-dist exit 0
+$ 全仓 → 381 files / 3257 passed 全绿（无已知红需点名）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knE-page-*/knF/knG/knI/knL*/kn-row-copy*/kn-row-copy-space*/
+kn-doc-copy*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent 标记 +
+既有 54 套全绿。三例一次全过、零自纠轮，产品零触碰。
+```
+未测如实：带登录会话真屏；② 过渡态抽屉体内容形制（panel 在场已锁，标题回退文案/
+字段区状态未钉——R233③ knL 地盘不扩）；① data-len 在抽屉开态的独立性（四值同帧已含）；
+切桶回「全部」后抽屉源行回归的再挂载（R237② 弃页位外推未实锁）。
