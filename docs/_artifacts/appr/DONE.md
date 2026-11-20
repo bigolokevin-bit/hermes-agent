@@ -1145,3 +1145,63 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 测试 history 新 describe 2 用例：C82_DETAIL（ap_c82+runId/taskId/requestId）直达 entry &id=ap_c82 → apd9-audit-link href=/audit?resource=ap_c82+title 实证句+req-c82-1 上屏可复制（apr5-copy-request-id）+run/task 新 href 断言+无裸 human:；MIN 无 run/task → none 分支在+审计链仍带单号。定向 approvals 4 files/**126 passed**（124+2）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **151 files/2006 passed**（基线 2004+2）。
 - 零破：apd5–apd8/apv5–9/apr5/actor/nav/gates/state/page/since/time/parity/trunc（既有 124 全绿为证）；三档=链/句 min-w-0 break-words 形态学报；9122==60a4a429 禁重建，活体点击读数待并入后代次。
 - 决定：?event= 不吃=不是读口丢参，而是审批对象本不带审计事件 id（实测详情 keys 无 eventId 类字段），编造 event 值会落 audit 页未命中诚实块=假定位链，故走过滤真链+rid 人工线索（工单「不吃则不给假链」条款以 event 维触发 apd9 说明职责由链接 title+线索句承担，gap 说明在 title 内，DONE 记录此判读）。
+
+## R83 审批风险档本地筛选（apv-risk-*，两 tab，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @7a4964f1（章面 a5832d15/代码代次 60a4a429），toplevel ✓ porc=0；重发三件套 grep apv-risk=0。
+- 读口复证（本单新跑+R44 旧账）：ego（9122==60a4a429）base status=all&limit=50→200 n=8 ids=23DE4,EEC07,D484B,CC7AB,4BFBF,4D72B,A8BC8,49D1C；&risk=high→200 n=8 **同序同集合**=丢参；R44 三键（risk/window/since）同判入 title ⇒ 本地分支确定（白名单=(status,limit,cursor) 现查不变）。
+- 实现：①新 RiskQuickFilter.tsx（仿 SinceQuickFilter 同构）=RISK_OPTIONS high/medium/low/none（label 高/中/低/未标注）+isRiskValue+withinRisk（raw 小写精确匹配，none 桶=raw 空/null）+apv-risk-{all,high,medium,low,none} 五真 button aria-pressed+每钮计数（all=基底行数）+disabled=phase!=="ready" title=「不能按风险档筛选：{gateReason(phase)}；恢复列表后自动可用。」（gates 单点复用）+apv-risk-scope-note「按当前已加载 N 条统计，不是全量」+title 双实证；**critical（严重风险）无独立档位=仅全部态可见**（工单五钮固定，DONE 注明不造桶）。②两页 risk=isRiskValue(params.get("risk"))?值:null；pickRisk=draft 差分 set/delete+replace=七参互不清除粘链复现；链=q→since（actorBaseRows）→riskBaseRows（新增，含 risk 不含 actor）→byActor→sort=visibleRows；ActorBuckets rows 由 actorBaseRows 改 riskBaseRows（审批人桶随风险档联动、actor 仍不锁轨）；汇总条/导出/apv5-count 已吃 visibleRows=同源满足④。③history 删 R44 旧 disabled risk select（能力替代=本单授权），window select 维持；apv5-filter-risk 现名随控件退役（R44 用例同步为 rail 断言，语义等价）。④无匹配卡 apv-risk-empty「该风险档下没有审批。」+真实结果句（critical 说明内嵌）+apv-risk-clear（只删 risk 保 q/status/actor/since/排序）；空卡互斥链序=risk>since>actor>q（各后续卡加 !risk）。
+- 测试 history 3+pending 1+R44 同步：四行夹具（high/medium/缺/critical）——计数读数（高 1/未标注 1/all 4）+点 high→1 行+fetchJSON 计数不变+urls().every(!includes("risk=")) 双锁+全部态 critical 可见；&status=pending&risk=medium 粘链复现+请求带 status 不带 risk；&status&q&risk 三重组合空→apv-risk-empty→清空后 apv8-search-empty 接棒+输入框值=q 保留；error 态五钮 disabled+「不能按风险档筛选：列表读取失败」；pending 轨在+点/清零请求。定向 approvals 4 files/**131 passed**（126+5，一次全绿）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **151 files/2011 passed**（基线 2006+5）。
+- 零破：apv5–9/apd5–7/apr5/actor/nav/gates/state/export-name/since/time/parity/trunc/page/correlation（既有 126 全绿为证；R44 用例改动=被替代控件断言语义迁移非删除）；三档=与 apv-since-rail 同构 flex-wrap+truncate 形态学报；9122==60a4a429 禁重建，活体读数待并入后代次。
+- 判读记录：apv5-filter-risk（disabled select）与 apv-risk-*（真能力）不并存——退役旧 testid 系工单「把 disabled 控件做成真能力」授权；时间窗维仍按 R44 诚实置灰（本单未授权）。
+
+## R85 R49#5 整改：闸门 title 去他方自报数字 + disabled 形制统一（2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console → merge commit ee40933b（带入章面 0c1b94c3/代码代次 9813d7af 系他人 wave 笔，modules/approvals 本域零冲突），toplevel ✓ porc=0；重发三件套=工单为新单（非 R83 重投）。
+- 闸禁措辞单点现状复核（无需迁移）：全部「不能导出/不能排序/不能刷新/不能行内展开/不能按 X 筛选」title 已走 gates.ts gateReason（actionGates 的 deny 模板 + 三 QuickFilter/ActorBuckets rail 复用同句同后缀「；恢复列表后自动可用。」）；apd9-correlation/apd8-copy title 本就无他方数字。本单实际整改=**7 处 DOM title 去他方自报读数** + **闸禁钮统一 disabled+aria-disabled+title（cap6 形制）**。
+- 改前→改后对照（各 3 条代表，其余同法）：
+  1. apv-risk-scope-note title：改前「…带 risk=high 返回与不带它完全相同的集合（200，8 条同 id 序；R44 对 risk/window/since 三键同判：全 200 且同一全量）…」→ 改后「…带 risk=high 与不带时返回完全相同的行集（同 id 序；risk/window/since 三键同判）…」（数字全剥，参数名/同集合判据保留=本页历史自证）。
+  2. apv-since-scope-note title：改前「…since=24h / window=24h / since=<日期> 都返回同一全量（200，8 条同集合）…」→ 改后「…与不带时返回同一全量（同序同行集）…」。
+  3. apv8-scope-note title（两页同句）：改前「…q/keyword/title 任一参数都返回同一全量（200，8 条同集合）…」→ 改后「…都与不带时返回同一全量（同集合）…」。
+  4. apv-actor-scope-note title：「（200，8 条）」→「（即本页已加载的全部行）」。
+  5. apv-sort-scope-note title：「（200，8 条）」→「（即本页已加载行的原序）」并去 GET 绝对化措辞为「本页读口」。
+  6. apv-page-count 非 ready title（两页）：「读口顶层只有 items/nextCursor（实测 200，无 total 键）」→「读口响应顶层只有 items/nextCursor（无 total 键，实测本页响应）」。
+- disabled 形制：apv7-export/apv-sort-<k>/apv-since-<v>/apv-since-all/apv-risk-<v>/apv-risk-all/apv-actor-bucket-<i>/apv-actor-all/apv-gates-refresh 全部 = disabled + aria-disabled（布尔同源表达式，含 pending inFlight 项）+ title；ready 态 aria-disabled="false" 如实声明。
+- 用例（history 新 describe 3）：error 态 5 入口 title 不含 \b200\b/「自报」且含「不能」+「列表读取失败」+aria-disabled=true，refresh 例外（enabled，title「重试读取」）；loading 态 export aria-disabled=true+「正在读取列表」；ready 全页 [title] 扫描零他方数字（>20 条 title 扫，offenders 列表必空）。首跑 1 FAIL=RiskQuickFilter 钮组漏补 aria-disabled 锚（rep 函数 pairs 只写 title 项），补后全绿。
+- 验证：定向 approvals 4 files/**134 passed**（131+3）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **159 files/2179 passed**（merge 带入他人文件后的实跑基线，0 失败）。
+- 零破：apv-state-*/apv-sort-*/apv7-export/apv9-toggle/apd6 行为与文案除被删数字外未动（既有用例含 R74「actor=」子串断言全绿）；views.tsx 代码注释内保留一处历史实测读数（非屏上 DOM，工单范围=title 属性）；三档=title 属性无布局影响；9122==9813d7af 系活体待并入后代次。
+
+## R86 审批面状态播报统一（apv-live，两 tab + 员工审批区，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @206aa4c6（章面 0c1b94c3；其后 3e94876c 仅 gateway=web/src 零变，页面代次仍 9813d7af），toplevel ✓ porc=0；重发三件套 grep apv-live=0。
+- metQ 范式（现场读自 modules/metrics/MetricsModulePage.tsx L1426-1440/1785）=播报文本**由状态派生而非存储**：同状态→同文本→DOM 不变→不二次播报；「只播最后一条」为派生天然属性。本单按该范式单点实现。
+- 实现：①gates.ts 新 export announcement(phase, count)——loading=「」（起止双播报规避）、ready=「已加载 N 条」（N=visibleRows.length 与列表同源）、empty=「该条件下无审批」、error=「列表读取失败，可复制请求编号重试」（gateReason 拼接=同套措辞单点）、denied=「没有读取权限（或该面尚未开放），暂时看不到审批列表。」；rid 恒不进文本。②两页（history/pending）：新 sr-only `<p role=status aria-live=polite data-testid=apv-live>` 为唯一播报节点；**原屏上读数行去掉自带 aria-live**（文本原样保留=R44/R59 等断言零破，仅播报职责收拢；用例锁全页 [aria-live=polite] 计数=1）。③员工审批区 ApprovalsZone（employee-detail）：五相 return 统一 fragment 包同一 apv-live（count=ready 时 resource.data.length）；跨模块 import announcement from @/modules/approvals/gates（R78 同方向先例）。
+- 测试 history 3+employee-detail 2：loading→ready 首帧「已加载 2 条」+MutationObserver 计数——同计数切状态 seen=0（不重播）、计数变化恰 ≤1；empty/error 句逐字+error 播报不含 req-r86-500 而卡上 apv-state-rid 含（rid 留卡上实证）；单播报节点扫描=1。ed 用例=ready「已加载 1 条」+role/aria-live 属性+502 句无 rid 卡有 rid（坑=renderAt 为 async 必须 await，首跑漏 await 两 FAIL）。定向 approvals 4 files/**137 passed**（134+3）+employee-detail 52 passed（50+2）；tsc 两域 0 红；assert-ia 两模式 exit0；全量 **159 files/2184 passed**（基线 2179+5）。
+- 零破：apv-state/apv-sort/apv5–9/apv7-export/apv9-toggle/apv6/apd6/apd7/apr5/actor/nav/gates/state/export-name/since/time/parity/trunc/page/correlation（既有用例全绿为证；aria-live 移除只动属性不动文本）。三档=sr-only 节点零布局影响（形态学报）；9122==9813d7af 禁重建，屏幕阅读器实播待并入后代次人工验证。
+
+## R87 员工成本区↔/metrics 成本口径互指（ed10-cost-caliber，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console → merge commit 4e7c516b（带入他人 2 文件 72/21，本域零冲突；HEAD 3e94876c gateway-only/代码代次 9813d7af/章面 0c1b94c3），toplevel ✓ porc=0；重发三件套 grep ed10-cost-caliber=0。
+- 交付（EmployeeDetailModulePage.tsx UsageZone 表尾、既有只读聚合注脚上方）：常驻 p data-testid=ed10-cost-caliber 文案逐字=「成本为账本实扣金额；与 /metrics 的成本视图口径一致，与运行次数口径不同」；title=口径互指句（/metrics 只认平台扣费账本实扣金额；运行数与成本不同口径）。
+- COST_CALIBER_TEXT 现查=本仓 0 命中（ui2 侧常量未在本分支/不叫此名）⇒ 按工单预案各写常量：本页新常量文案，用例以 `import metricsSource from "@/modules/metrics/MetricsModulePage.tsx?raw"` 源码级断言两处关键短语同族（metrics 源含「实扣」+「平台扣费账本」，本页 caliber/note 含「实扣」）=不跨模块 import、ui2 常量出现后可在同用例升级为常量对常量。
+- 三态核对（现状即符合，未改，工单「若不符即修」不触发）：money()=真 0→$0.00 / null/undefined/非有限→「—」（L100-103）；day 缺行（missingEmployeeIds 实证）cost=null→「—」+costTitle 原因；month costUsd:0→「$0.00」；未知不显示 0。用例逐字锁 $0.00/— 两值。
+- 零额外请求=caliber 为静态行（既有 usage 四腿计数契约不变，R45-P0 用例在位）。测试 1 新用例（ready 三值+双源短语断言）：定向 employee-detail 53 passed（52+1）；tsc 两域 0 红；assert-ia 两模式 exit0；全量 **159 files/2185 passed**（基线 2184+1）。
+- 零破：ed10-usage-* 既有 testid 零改（新行独立 testid）；ed1/ed5/ed7/ed8/ed9/ed10/edz/edx/apd*/apv*/apr5/emp-list*（既有全绿为证）；三档=p 块文本流自然换行零布局影响（形态学报）；9122==9813d7af 禁重建，活体读数待并入后代次。
+
+## R88 审批详情固定链接复制（apd10-*，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @6508c2b5（HEAD ee64b4f0 仅 gateway，代码代次 9813d7af/章面 0c1b94c3），toplevel ✓ porc=0；重发三件套 grep apd10=0=全新单。
+- 实现：①新 PermalinkCopy.tsx（props target:string|null）=useLocation 拼 pathname+URLSearchParams(location.search).set("id",target)——tab/status/q/actor/asort/adir/since/risk 八参经 URLSearchParams 原样保留+打开项 id；Button apd10-permalink（disabled=link===null，title 两态「先打开一条审批再复制」/「复制这条审批的固定链接：保留当前页签/筛选/搜索/排序参数，粘链直达并打开详情；只读拼接，不产生二次请求。」）；反馈 span apd10-status=**role=status 无显式 aria-live**（R86 单播报器契约：显式 [aria-live=polite] 全页仅 apv-live 一个；隐式 polite 等效，DONE 记录此裁决）；done=「链接已复制」；剪贴板缺失/拒→apd10-fallback 只读 textarea（value=目标链接逐字相同，onFocus select）。②三挂载：行内预览 apv9-preview 尾（target=row.rawId??null）+两页 aside 详情（target=selected）。③顺带统一 R61 遗留：apd8-copy-status 显式 aria-live=polite→role=status（否则详情打开态出现第二个显式播报器=R88 首 FAIL 根因；R61 用例只断 textContent 零破）。
+- 粘贴复现读数（用例锁逐字）：history 带筛选打开 ap_p10 → written[0]=「/approvals?tab=history&status=pending&q=zz&id=ap_p10」→ mount(written[0]) → apr5-detail 直开含 rotate.secret；pending=「/approvals?tab=pending&id=ap_9F3A1111」。零二次请求=fetchJSON 计数前后锁（拼链只读 location）。
+- 测试 history 4+pending 1：aside 钮逐字+status+无 fallback+计数不变+[aria-live=polite]===1+粘贴复现；未打开 disabled+title；reject→fallback readOnly 逐字；预览内钮 written 含 id+计数不变；pending 同款。坑=entry 带 q=zz 时 apv8 本地过滤会滤掉字段不含 zz 的夹具行→waitFor 超时，夹具 reasonText 须可命中。
+- 验证：定向 approvals 4 files/**142 passed**（137+5）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **159 files/2190 passed**（基线 2185+5）。
+- 零破：apv5–9/apd6/apd7/apd8/apd9/apr5/state/sort/export/toggle/live 族（既有用例全绿为证）；三档=aside flex 与预览 min-w-0 既有形态学报（jsdom 不可测）；9122==9813d7af 禁重建，活体粘链读数待并入后代次。
+
+## R89 员工审批区条数诚实化（ed8-appr-scope 分支②，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @6c1dc7ef（HEAD ee64b4f0 仅 gateway/代码代次 9813d7af/章面 0c1b94c3），toplevel ✓ porc=0；重发三件套 grep ed8-appr-scope/-more=0。
+- 实测五组（ego 9122==9813d7af）：status=all&limit=20→200 n=8 keys=[items,nextCursor] nextCursor=**null**；limit=50→200 n=8 next=null；limit=100→200 n=8 next=null；&cursor=abc→200 n=8 next=null（无效 cursor 不报错=聚合腿无游标语义）；status=pending&limit=50→200 n=0 keys=items（单状态腿无行不带键）⇒**分支②固定上限口径行**（聚合无续页能力，不伪造「加载更多」；提 limit 不解决上限声明缺失，limit=20 保持）。
+- 实现：ready 分支 ed8-appr-note 后新常驻 p data-testid=ed8-appr-scope=「本区按聚合口径读取，单页最多 20 条，超出部分请到 [审批队列](/approvals?status=all 真 Link ed8-appr-scope-queue) 按状态筛选查看。」+title 逐字贴四组实测（nextCursor 恒 null+无效 cursor 原样返回=聚合无游标，故不伪造分页；本代次全量 8 条未满页）。空集句现文「当前没有审批事项」逐字不变（工单背景句与现场文案差异以现场为准，本决定记录于此）；不新增 cursor 参数⇒「新请求不带旧 cursor」天然成立（用例锁 urls 无 cursor=）；切区/重进区 renderAt 重挂载=旧行不残留（用例锁）。错误态/403≡404/rid 沿用 R47/R49 既有分支零改。
+- 测试：新 describe 2 用例（口径行逐字+href=/approvals?status=all+title 含「nextCursor 恒 null」+行在+无 cursor；切 tasks 再回 approvals=行清+新请求无 cursor）；既有用例 1 处选择器钉正=「approval rows link…」原取卡内首个 a，被口径行队列链抢占（用例意图=行链，改按 ed8-appr-link-0 精确取，语义等价）。定向 employee-detail 1 file/**55 passed**（53+2）；tsc 两域 0 红；assert-ia 两模式 exit0；全量 **159 files/2192 passed**（基线 2190+2）。
+- 零破：ed8-appr-*/ed1/ed5/ed7/ed9/ed10/edz/edx/apd6/apd7/apv5–9/apr5（既有用例全绿为证）；三档=口径行 px-4+内联链既有形态学报（jsdom 不可测）；9122==9813d7af 禁重建，活体读数待并入后代次。
+- 习语坑（本窗实证）：ed 测试文件=mockApi(handler) 与 renderAt(element,entry) 两步式（handler 不是 renderAt 第三参）；卡内插新链必须 grep 「querySelector("a")」形态的既有用例防抢占。

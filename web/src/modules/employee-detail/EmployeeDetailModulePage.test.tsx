@@ -296,7 +296,8 @@ describe("EmployeeDetailModulePage — approvals / runs / audit", () => {
     );
     await renderAt(page, at("approvals"));
     const card = container.querySelector('[data-testid="ed5-approvals"]');
-    const link = card?.querySelector("a");
+    // R89 起卡内第一个 a 是口径行的队列去处，行链按 testid 精确取。
+    const link = card?.querySelector('[data-testid="ed8-appr-link-0"]');
     expect(link?.getAttribute("href")).toBe("/approvals?status=pending");
     expect(link?.getAttribute("title")).toBe("task_9F3A1B2C3D");
     expect(card?.textContent).not.toContain("task_9F3A1B2C3D");
@@ -1011,5 +1012,103 @@ describe("R68 preview↔identity parity (edx-parity)", () => {
     );
     await renderAt(page, at());
     expect(qid("ed1-identity"), "no card on 404").toBeNull();
+  });
+});
+
+describe("R86 approvals zone announcement (apv-live)", () => {
+  it("the zone speaks through one derived status node, empty and error share the sentences", async () => {
+    mockApi(async (url: string) => {
+      if (String(url).includes("/api/approvals"))
+        return { items: [{ approvalId: "ap_e86", status: "pending", title: "播报单" }] };
+      return {};
+    });
+    await renderAt(page, at("approvals"));
+    await act(async () => {});
+    const live = container.querySelector('[data-testid="apv-live"]');
+    expect(live?.textContent, "ready announces the loaded count").toBe("已加载 1 条");
+    expect(live?.getAttribute("role")).toBe("status");
+    expect(live?.getAttribute("aria-live")).toBe("polite");
+  });
+
+  it("error sentence carries no request id; the card keeps the copyable one", async () => {
+    mockApi(async (url: string) => silent502(url, "req-e86-502"));
+    await renderAt(page, at("approvals"));
+    await act(async () => {});
+    const live = container.querySelector('[data-testid="apv-live"]');
+    expect(live?.textContent).toBe("列表读取失败，可复制请求编号重试");
+    expect(live?.textContent).not.toContain("req-e86-502");
+    expect(container.textContent).toContain("req-e86-502");
+  });
+});
+
+// R87: 成本口径互指——本页常量与 metrics（ui2）句族的「实扣」关键短语同侧断言。
+import metricsSource from "@/modules/metrics/MetricsModulePage.tsx?raw";
+
+describe("R87 cost caliber note (ed10-cost-caliber)", () => {
+  it("states the caliber under the cost column and cross-points /metrics in the title", async () => {
+    mockApi(async (url: string) => {
+      const u = String(url);
+      if (u.includes("periodKind=day")) return { items: [], missingEmployeeIds: [EMP], asOf: null };
+      if (u.includes("periodKind=month"))
+        return { items: [{ employeeId: EMP, costUsd: 0, period: "2026-11" }], asOf: null };
+      if (u.includes("/api/run-stats")) return { totals: { runs: 3 }, buckets: [], asOf: null };
+      return {};
+    });
+    await renderAt(page, at("usage"));
+    const note = container.querySelector('[data-testid="ed10-cost-caliber"]');
+    expect(note?.textContent).toBe(
+      "成本为账本实扣金额；与 /metrics 的成本视图口径一致，与运行次数口径不同",
+    );
+    expect(note?.getAttribute("title")).toContain("/metrics");
+    expect(note?.getAttribute("title")).toContain("实扣");
+    // 真 0 写 $0.00、缺行写「—」（未知/缺失永不显示 0）。
+    expect(container.querySelector('[data-testid="ed10-usage-cost-month"]')?.textContent).toBe("$0.00");
+    expect(container.querySelector('[data-testid="ed10-usage-cost-day"]')?.textContent).toBe("—");
+    // 两处关键短语同族（ui2 不跨模块 import，源码级比对）。
+    expect(metricsSource).toContain("实扣");
+    expect(metricsSource).toContain("平台扣费账本");
+  });
+});
+
+describe("R89 approvals zone honest scope (ed8-appr-scope)", () => {
+  const APPROVALS_BODY = {
+    items: [
+      { approvalId: "ap_r89", status: "pending", action: "rotate.secret", riskLevel: "high", updatedAt: "2026-11-19T02:30:00Z" },
+    ],
+    nextCursor: null,
+  };
+  const urls = () => vi.mocked(fetchJSON).mock.calls.map((c) => String(c[0]));
+  const approvalsHandler = async (url: string) => {
+    if (String(url).includes("/api/approvals")) return APPROVALS_BODY;
+    return {};
+  };
+
+  it("states the page cap instead of faking paging, with a real queue exit", async () => {
+    mockApi(approvalsHandler);
+    await renderAt(page, at("approvals"));
+    const scope = container.querySelector('[data-testid="ed8-appr-scope"]');
+    expect(scope?.textContent).toContain("本区按聚合口径读取，单页最多 20 条，超出部分请到");
+    expect(scope?.textContent).toContain("审批队列");
+    expect(scope?.getAttribute("title")).toContain("nextCursor 恒 null");
+    const link = container.querySelector('[data-testid="ed8-appr-scope-queue"]') as HTMLAnchorElement | null;
+    expect(link?.getAttribute("href")).toBe("/approvals?status=all");
+    expect(container.querySelector('[data-testid="ed8-appr-row-0"]')).toBeTruthy();
+    expect(urls().filter((u) => u.includes("/api/approvals")).every((u) => !u.includes("cursor="))).toBe(true);
+  });
+
+  it("re-entering the zone re-queries without a stale cursor and keeps no rows across zones", async () => {
+    mockApi(approvalsHandler);
+    await renderAt(page, at("approvals"));
+    expect(container.querySelector('[data-testid="ed8-appr-row-0"]')).toBeTruthy();
+    const before = urls().length;
+    mockApi(async () => ({ items: [] }));
+    await renderAt(page, at("tasks"));
+    expect(container.querySelector('[data-testid="ed8-appr-row-0"]')).toBeNull();
+    mockApi(approvalsHandler);
+    await renderAt(page, at("approvals"));
+    expect(container.querySelector('[data-testid="ed8-appr-row-0"]')).toBeTruthy();
+    const fresh = urls().slice(before);
+    expect(fresh.some((u) => u.includes("/api/approvals"))).toBe(true);
+    expect(fresh.every((u) => !u.includes("cursor="))).toBe(true);
   });
 });
