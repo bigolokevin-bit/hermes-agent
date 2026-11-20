@@ -1174,3 +1174,9 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 九腿全 exit=0（/tmp/wave30-exits.txt），九件全 ok=true 盖 headHash=1683d467（含两已知毛边按配方修复）。读数：ia-html/react {51,23,1,8}；lint-fake v=[]；lint-reuse v=0 exempt=1（chat→T40）；state-quad 20/20；crawl-anon DL0/CE0/PE0 routesCE=51（401 归因）；crawl-auth DL0/CE0/PE0 **routesCE=26（上代 23，+3——wave-29+30 并窗 7 笔含 org/departments 面，观测项不判红，如实）**；redirects=24 notes 归因。
 - shots auth 102/102 failures=[] **obs=0** obsR=[] distinct=23 envOnly=26；anon aux=true 102/102 **obs=0（上代 1，好转）** distinct=23 envOnly=51；三键两 summary 全值、servedEntryBefore==After=index-B5UGOr-b.js、ceAuthority=login-state。
 - 环境：9122 v4_proxy 95667 未动、caddy 8183 28034 未动、BFF 8092 pid 58224（b3b0f16+wave-30 修单现查坐实五口四件齐，无新 commit）未动；web/src 未碰；54f3dcfc 已盖不重做、无 amend/force；零凭据明文。
+
+## 一〇八轮 · 波次代次九件重章 @ 608148d3（entry BabNMdVV，wave-31 五线并入，2026-11-20 17:2x-17:3x）
+
+- 代次现查：LOCAL=ls-remote=608148d38380（ANCH=0）、porc 0 脏；磁盘 entry assets/index-BabNMdVV.js 167490B sha256 dccf2eaa…a91ad2 ✓、CSS 未变；9122 served 同值；21/21 路由 200。卡面『f1b509b9 未推』不实：merge-base --is-ancestor f1b509b9 FETCH_HEAD ANCE=0，该笔在 608148d3 祖先链（早先 push+ls-remote 双证在案）。
+- 九腿全 exit=0（/tmp/wave31-exits.txt）、九件 9/9 ok=true 盖 608148d3（两已知毛边按配方修）。读数与上代 1683d467 全等：ia {51,23,1,8}；lint-fake v=[]；lint-reuse v=0 exempt=1；state-quad 20/20；crawl-anon DL0/CE0/PE0 routesCE=51（401 归因）；crawl-auth 同判据 routesCE=26（持平）；redirects=24 notes；shots auth 102/102 failures=[] obs=0 obsR=[] distinct=23 envOnly=26；anon aux=true 102/102 obs=0 distinct=23 envOnly=51；三键两 summary 全值、served 前后同值未漂。
+- 环境：9122/caddy/BFF(58224@b3b0f16) 未动；web/src 未碰；1683d467 已盖不重做、无 amend/force；五口裸 404 单按卡留待下拍（现查四件齐证据在 l7-20261120-163012）。

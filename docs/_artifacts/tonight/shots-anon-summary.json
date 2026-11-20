@@ -33,85 +33,85 @@
     {
       "route": "#/approvals",
       "viewport": "1440",
-      "chars": 714,
+      "chars": 721,
       "hasMainEl": true
     },
     {
       "route": "#/approvals",
       "viewport": "375",
-      "chars": 714,
+      "chars": 721,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=history",
       "viewport": "1440",
-      "chars": 746,
+      "chars": 753,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=history",
       "viewport": "375",
-      "chars": 746,
+      "chars": 753,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=mine",
       "viewport": "1440",
-      "chars": 714,
+      "chars": 721,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=mine",
       "viewport": "375",
-      "chars": 714,
+      "chars": 721,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=mine",
       "viewport": "1440",
-      "chars": 714,
+      "chars": 721,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=mine",
       "viewport": "375",
-      "chars": 714,
+      "chars": 721,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=release",
       "viewport": "1440",
-      "chars": 714,
+      "chars": 721,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=release",
       "viewport": "375",
-      "chars": 714,
+      "chars": 721,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=policy",
       "viewport": "1440",
-      "chars": 714,
+      "chars": 721,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=policy",
       "viewport": "375",
-      "chars": 714,
+      "chars": 721,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=release",
       "viewport": "1440",
-      "chars": 714,
+      "chars": 721,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=release",
       "viewport": "375",
-      "chars": 714,
+      "chars": 721,
       "hasMainEl": true
     },
     {
@@ -621,13 +621,13 @@
     {
       "route": "#/work?tab=runs",
       "viewport": "1440",
-      "chars": 464,
+      "chars": 499,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=runs",
       "viewport": "375",
-      "chars": 464,
+      "chars": 499,
       "hasMainEl": true
     }
   ],
@@ -642,12 +642,12 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "1683d467",
+  "headHash": "608148d3",
   "exitCode": 0,
-  "entry": "assets/index-B5UGOr-b.js",
-  "entrySha256": "75c655dce293d35a3b5341c976ead50a9fa0be48c27343dc5acb228f5946953b",
+  "entry": "assets/index-BabNMdVV.js",
+  "entrySha256": "dccf2eaac896d1f91156028dccd2f1409e9cccbad42dddddedee150857a91ad2",
   "entryBytes": 167490,
-  "servedEntryBefore": "index-B5UGOr-b.js",
-  "servedEntryAfter": "index-B5UGOr-b.js",
+  "servedEntryBefore": "index-BabNMdVV.js",
+  "servedEntryAfter": "index-BabNMdVV.js",
   "auxiliary": true
 }
