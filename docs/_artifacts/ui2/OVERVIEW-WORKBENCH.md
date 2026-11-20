@@ -209,3 +209,13 @@
 - `dutyRange.ts`：`tsRange` 收窄为 `1d|7d|30d`，14d 映射到 `30d`（只读合法超集后裁剪）；`workbench.ts` 默认值改 `7d`。
 - 结构性盲区用例（2 例）：断言实际发出的 timeseries URL 的 `range` ∈ `["24h","1d","7d","30d"]`、`bucket=day`、`metric` ∈ `["runs","failed","costUsd"]`；另注入 30 点回包断言 14 天视图只留 14 桶、合计由点重算为 14、表体 14 行。
 - 验证：duty 5 files / 100 passed（基线 98），全量 151 files / 2040 passed（基线 2038），tsc 本域 0，eslint exit 0。
+
+## 运行三面口径回归护栏（runs parity，2026-11-20）
+
+- 新增 `web/src/modules/runs/runs.parity.test.ts`（纯测试，未改产品行为）：同一行在行内预览、列表复制文本、CSV 导出三面逐字段比对。
+- ①三面一致：状态人话（未知「待核实」，缺状态预览「该字段未返回」/复制 `—`/CSV 空）、起止北京时间到分、耗时仅两端齐时给值否则预览/复制 `—`、CSV 空字段、成本真 0 预览/复制 `$0.00` 与 CSV `0.00`（缺失分别为「—」/空）、员工 8 位短码（无负责人「未指派」）。
+- ②行数/行序：CSV 数据行数 == 表体行数 == `run-list-export-count` 的 N；CSV 首列顺序 == 表体 code 顺序；两组地址各验一次（`?window=7d&status=failed` → 文件名 `runs-7d-failed-…`；无筛选 → `runs-all-all-…`）。
+- ③时间口径：假时钟 2031 下，耗时恒「—」/空，预览开始时间、复制文本、CSV 均不含 2031；`run-export-name` 的文件名含 2031 属生成时刻（非数据时刻），按口径保留并显式断言。
+- ④零额外请求：打开预览 + 复制 + 导出后 `urls()` 与首载逐项相等，`/api/runs` 调用次数不变。
+- 验证：runs 3 files / 99 passed（本单前 94）；全量 151 files / 2045 passed（基线 2040）；tsc 本域 0（修掉测试里未用的 `ReactNode` 导入）；eslint 本域 exit 0；build `--outDir /tmp/build-runspar`。
+- 未测：真实浏览器下载落盘与 375 折行。
