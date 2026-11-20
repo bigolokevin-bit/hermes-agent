@@ -202,6 +202,7 @@ export function AuditEventDetailBody({
       <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
         <h2
           className={`min-w-0 flex-1 break-words text-sm ${themedBody}`}
+          data-testid="audA-detail-type"
           title={[detail.action.raw, detail.rawId].filter(Boolean).join(" · ") || undefined}
         >
           {detail.action.label}
@@ -214,6 +215,7 @@ export function AuditEventDetailBody({
       <Section title="事件">
         <dl className="flex min-w-0 flex-wrap gap-x-5 gap-y-1 text-xs" data-testid="aud3-time">
           <Field
+            testId="audA-detail-time"
             label="发生时间"
             value={beijingSeconds(detail.occurredAtRaw) ?? detail.occurredAt ?? "—"}
             reason={beijingSeconds(detail.occurredAtRaw) || detail.occurredAt ? undefined : MISSING_TIME}
@@ -224,7 +226,7 @@ export function AuditEventDetailBody({
             reason={beijingSeconds(detail.recordedAtRaw) || detail.recordedAt ? undefined : MISSING_TIME}
           />
         </dl>
-        <div className="flex min-w-0 flex-col gap-1 text-xs" data-testid={`${testId}-request-id`}>
+        <div className="flex min-w-0 flex-col gap-1 text-xs" data-testid={`${testId}-request-id`} data-auda-parity="rid">
           <span className="shrink-0 text-muted-foreground">请求编号</span>
           <CopyValue
             value={detail.requestId}
@@ -238,7 +240,7 @@ export function AuditEventDetailBody({
 
       <Section title="操作者">
         <dl className="flex min-w-0 flex-wrap gap-x-5 gap-y-1 text-xs">
-          <Field label="谁" value={detail.actor.label} title={detail.actor.raw ?? undefined} />
+          <Field testId="audA-detail-actor" label="谁" value={detail.actor.label} title={detail.actor.raw ?? undefined} />
           {detail.actor.kindLabel ? <Field label="身份" value={detail.actor.kindLabel} /> : null}
           <Field label="所属工作区" value={detail.tenant.label} title={detail.tenant.raw ?? undefined} />
         </dl>
@@ -246,7 +248,7 @@ export function AuditEventDetailBody({
 
       <Section title="资源">
         <dl className="flex min-w-0 flex-wrap gap-x-5 gap-y-1 text-xs">
-          <Field label="被操作的对象" value={detail.resource.label} title={detail.resource.raw ?? undefined} />
+          <Field testId="audA-detail-resource" label="被操作的对象" value={detail.resource.label} title={detail.resource.raw ?? undefined} />
         </dl>
       </Section>
 
@@ -441,6 +443,11 @@ export function AuditRowPreview({
    */
   detailHref?: (rawId: string) => string;
 }): ReactNode {
+  // audA: the preview and the detail must not speak two different values for
+  // one field, so every line here takes its text from the SAME expression the
+  // detail body uses: `beijingSeconds(raw) ?? beijing(raw)` for the instant
+  // (seconds, with 服务未提供该时间 as the stated reason) and the same
+  // CopyValue control, with the same missing-rid sentence, for 请求编号.
   const at = beijingSeconds(row.occurredAtRaw) ?? row.occurredAt;
   return (
     <div
@@ -450,31 +457,49 @@ export function AuditRowPreview({
       aria-label="行内预览"
     >
       <div className="flex min-w-0 flex-wrap gap-x-4 gap-y-1">
-        <span className="min-w-0 break-words">
+        <span className="min-w-0 break-words" data-testid="audA-preview-type">
           <span className="text-muted-foreground">事件类型：</span>
           {row.action.label}
         </span>
-        <span className="min-w-0 break-words">
+        <span
+          className="min-w-0 break-words"
+          data-testid="audA-preview-actor"
+          title={row.actor.raw ?? undefined}
+        >
           <span className="text-muted-foreground">操作者：</span>
           {row.actor.label}
         </span>
-        <span className="min-w-0 break-words">
+        <span
+          className="min-w-0 break-words"
+          data-testid="audA-preview-resource"
+          title={row.resource.raw ?? undefined}
+        >
           <span className="text-muted-foreground">资源：</span>
           {row.resource.label}
         </span>
-        <span className="min-w-0 break-words" data-testid={testId + "-time"} title={row.occurredAtRaw ?? undefined}>
+        <span
+          className="min-w-0 break-words"
+          data-testid={testId + "-time"}
+          data-auda-parity="time"
+          title={at ? (row.occurredAtRaw ?? undefined) : MISSING_TIME}
+        >
           <span className="text-muted-foreground">时间（北京时间）：</span>
-          {at ?? "该字段未返回"}
+          {at ?? "—"}
         </span>
       </div>
       <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <span className="min-w-0 break-words" data-testid={testId + "-rid"} title={row.requestId ?? undefined}>
-          <span className="text-muted-foreground">请求编号：</span>
-          {row.requestId ?? "该字段未返回"}
-        </span>
+        <div className="flex min-w-0 flex-col gap-1" data-testid={testId + "-rid"}>
+          <span className="text-muted-foreground">请求编号</span>
+          <CopyValue
+            value={row.requestId}
+            reason="服务这次没有回传请求编号"
+            label="请求编号"
+            testId="audA-preview-rid"
+          />
+        </div>
         {row.rawId ? (
           <a
-            className="underline"
+            className="rounded-sm underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             href={detailHref ? detailHref(row.rawId) : `/audit?detail=${encodeURIComponent(row.rawId)}`}
             data-testid={testId + "-open"}
           >
