@@ -41,6 +41,7 @@ import {
   heatCellLabel,
   heatCopyText,
   CALIBER_NOTES,
+  caliberNoteText,
   heatSummaryParts,
   heatDayRows,
   heatFromStats,
@@ -1543,7 +1544,7 @@ export function MetricsModulePage() {
       <div className="sr-only">
         {CALIBER_NOTES.filter((note) => CARD_NOTE_KEYS.includes(note.key)).map((note) => (
           <p key={note.key} id={`metAD-note-${note.key}`} data-testid={`metAD-note-${note.key}`}>
-            {note.label}。缺值策略：{note.missing}
+            {caliberNoteText(note)}
           </p>
         ))}
       </div>
@@ -3101,10 +3102,10 @@ export function MetricsModulePage() {
             <ul className="metAB-list">
               {CALIBER_NOTES.map((note) => (
                 <li key={note.key} className="metAB-item" data-testid={`metAB-note-${note.key}`}>
-                  <p className="metAB-name">{note.label}</p>
-                  <p className="metAB-path">{note.path}</p>
-                  <p>计算范围：{note.scope}</p>
-                  <p>缺值策略：{note.missing}</p>
+                  <p className="metAB-name">{note.label}。</p>
+                  <p className="metAB-path">{note.path}。</p>
+                  <p>计算范围：{note.scope}。</p>
+                  <p>缺值策略：{note.missing}。</p>
                 </li>
               ))}
             </ul>

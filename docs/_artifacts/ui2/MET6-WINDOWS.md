@@ -527,3 +527,19 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 - 屏上说明：`metAI-filename-note`（导出按钮旁）给出两个模板与「含窗口、分组、排序与生成时刻」，title 写完整规则；CSV 内容、表头、行数零改动，metAC 的行数/注释/`as_of`/`window` 断言未动。
 - 验证：定向 `src/modules/metrics` 3 files / **184 passed**（原 180，+4）；全量 **137 files / 1799 passed**（wave-19 上游抬高总数，本单前 1703）；`tsc -b . --noEmit` 全仓 67 条既存、`modules/metrics` 0；build `--outDir /tmp/build-metAI` → entry `assets/index-CQVVvpbM.js` sha256 `4c76d28a555065fa517a4ad4e67fc2a6851e228ed19295e48ccf27a6184d8b63`，entry 内 `metAI-filename-note` 命中 0，chunk `assets/MetricsModulePage-Cn2kglU2.js` 命中 1。
 - 未测项：不同浏览器/系统对下载文件名中连字符与大小写的保留未逐端走查；跨日边界（23:59 生成）未构造样例。
+
+## 复制/摘要/文件名契约护栏（metAJ，2026-11-20）
+
+新增 `web/src/modules/metrics/metrics.copy-parity.test.ts`（6 例，C1–C5），把已经交付的复制与命名口径钉住；同时修正了一处真实不一致。
+
+- C1 来源摘要：先展开 metB，再点 `metAG-copy-sources`，复制文本与 `metB-source-row-*` 逐行同序同段——每行由 `口径名 · 路径 · 采集时刻 · 状态词` 四段拼成，采集时刻取 `metB-source-asof-<key>` 的纯时间（滞后徽标不混入），状态词限定在「正常/降级/读不到」三词内。行数与 `已复制 N 行` 一致。
+- C2 两份摘要互不串味：view 摘要含「运行分析摘要」且不含「热力摘要」，热力摘要反之；缺值时分别写「实扣金额：—」「总运行：—」并带「不可比较」，全文不出现 `$0.00` 冒充缺失（真 0 才会写 `$0.00`）。
+- C3 文件名契约：`csvFileName('employee','24h','cost','desc', 2026-11-20T09:30Z)` = `metrics-detail-24h-employee-cost-desc-20261120-1730.csv`；`shareCsvFileName('model','24h','cost','desc', 同一时刻)` = `metrics-share-24h-model-cost-desc-20261120-1730.csv`。同窗同组三种排序三名互不相同；整名匹配 `^[a-z0-9.-]+$`，不含空白、斜杠、冒号与中文。
+- C4 口径说明同文：metAB 展开后逐 key 比较 `metAD-note-<key>` 与 `metAB-note-<key>` 的 textContent，要求逐字相等（`run-stats`、`budget-usage`、`pricing`、`run-activity`）。
+- C5 零新请求：上述四组操作前后 `urls()` 长度均不变。
+
+**发现并修复（同单）**：改前 sr-only 为 `${label}。缺值策略：${missing}`，而页尾 item 的 textContent 是四段无分隔拼接（`${label}${path}计算范围：${scope}缺值策略：${missing}`），二者并不相等。改后新增 `caliberNoteText(note)`＝`${label}。${path}。计算范围：${scope}。缺值策略：${missing}。`，sr-only 直接用它；页尾四项各自补句号（`${label}。` / `${path}。` / `计算范围：${scope}。` / `缺值策略：${missing}。`），使两处 textContent 逐字相同。连带：sr-only 现在含 `/api` 路径，原本两处「页面无 /api」断言改为对 `visibleText()`（剔除 `.sr-only` 的可见文本）断言，意图不变。
+
+- 验证：定向 `src/modules/metrics` **4 files / 190 passed**（原 184，+6）；全量 **137 files / 1805 passed**（原 1799）；`tsc -b . --noEmit` 全仓 67 条既存、`modules/metrics` 0。
+- build `--outDir /tmp/build-metAJ` → entry `assets/index-BOZO53Tv.js` sha256 `61300afc5168e388899985604363f06b8150eb4df4c988de0de5ee2433a856fc`（较 metAI 的 `index-CQVVvpbM.js` 有变化，原因是本单的口径修正，不是测试文件）、entry 内无 metAJ 标记、chunk `assets/MetricsModulePage-CPDNiCwU.js` 命中「计算范围：」2 处。
+- 未测项：真实读屏下的朗读停顿未走查；剪贴板权限弹窗路径沿用既有未测项。

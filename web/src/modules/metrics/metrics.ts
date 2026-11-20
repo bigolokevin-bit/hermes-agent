@@ -1154,6 +1154,12 @@ export type CaliberNote = {
  * The written caliber under the page. It restates what the cards, the freshness
  * block and the two CSV exports already do; it is static text, not a new read.
  */
+/** The one sentence a caliber note reads as, shared by the foot block and the
+ *  screen-reader copies the cards point at — the two must stay verbatim equal. */
+export function caliberNoteText(note: CaliberNote): string {
+  return `${note.label}。${note.path}。计算范围：${note.scope}。缺值策略：${note.missing}。`;
+}
+
 export const CALIBER_NOTES: CaliberNote[] = [
   {
     key: 'run-activity',

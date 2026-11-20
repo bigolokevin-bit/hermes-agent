@@ -46,6 +46,12 @@ async function render(entry: string, page: ReactNode): Promise<void> {
 }
 
 const text = (): string => document.body.textContent ?? '';
+/** Text a sighted reader sees: screen-reader-only copies are removed first. */
+const visibleText = (): string => {
+  const clone = document.body.cloneNode(true) as HTMLElement;
+  clone.querySelectorAll('.sr-only').forEach((node) => node.remove());
+  return clone.textContent ?? '';
+};
 const urls = (): string[] => api.fetchJsonStrict.mock.calls.map((call) => String(call[0]));
 const settled = (): boolean => document.querySelector('.met5-skeleton') === null;
 
@@ -179,7 +185,7 @@ describe('MetricsModulePage', () => {
   it('keeps engineering language off the page', async () => {
     await mount(() => Promise.resolve(activityBody()));
     for (const token of ['/api', 'run-activity', 'HTTP', 'dow', 'hour', 'count', 'ISO', 'GAP-']) {
-      expect(text()).not.toContain(token);
+      expect(visibleText()).not.toContain(token);
     }
   });
 });
@@ -1272,7 +1278,7 @@ describe('metB — source freshness', () => {
 
     expect(metBSource()?.getAttribute('aria-expanded')).toBe('false');
     expect(document.querySelector('[data-testid="metB-source-table"]')).toBeNull();
-    expect(text()).not.toContain('/api');
+    expect(visibleText()).not.toContain('/api');
   });
 
   it('shows no toggle at all before the page has read anything', async () => {
@@ -3717,7 +3723,7 @@ describe('metAD — each card points at its caliber note', () => {
       expect(target).not.toBeNull();
       const key = noteId.replace('metAD-note-', '');
       const note = noteFor(key);
-      expect(target?.textContent).toBe(`${note.label}。缺值策略：${note.missing}`);
+      expect(target?.textContent).toBe(`${note.label}。${note.path}。计算范围：${note.scope}。缺值策略：${note.missing}。`);
     }
     // Two cards may share one read: runs and trend both come from run-stats.
     expect(q('met6-runs')?.getAttribute('aria-describedby')).toBe(q('met6-trend')?.getAttribute('aria-describedby'));
