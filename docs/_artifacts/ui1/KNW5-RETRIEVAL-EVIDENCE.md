@@ -3216,3 +3216,62 @@ disabled+行为面不重锁句文本）；类型桶序若上游改名/换序，�
 边界：只新增 web/src/modules/knowledge/knowledge.space.export.test.tsx 与本证据；
 显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
 「test(console): knowledge space export parity guards」。
+
+# KNW5 追加 R146：类型筛选同源护栏（纯测试单）（2026-11-20 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `862154eb`
+（代次 `18ec9cfb`，Already up to date）。零产品文件改动。
+
+## 名实核对（派工两处按 grep 现状落）
+
+```text
+· ?source= 无控件：实测参数集 KnowledgeModulePage.tsx:3345（q）/:3353-3354
+  （ksort/kdir→sort/dir 兜底）/:3359（ktype→type 兜底）/:3468-3476（写只写 ktype、
+  清除双删）——①映射为「ktype×type 双键共存」+「ktype×q 同屏共存回填」。
+· kn-list-copy 不存在（清单复制实名 knF-copy/knG-copy/knI-copy/knL-copy-meta）；
+  导出族仅 data-export="absent"——④映射为「可见行数 == knF-copy 数据行数」。
+```
+
+## 覆盖判定（先 grep 后写，②③已锁不重写）
+
+```text
+②改 ktype 只写该键+其余不动+游标复位：R118 ②（knowledge.filters.test.tsx:159-186
+  has("type")=false、q/ksort/kdir/space/tab/panel 逐字、末页标记消失、data-len 回 1）
+  + R131 ①（knowledge.paging.test.tsx 第 2 页行按标识出局、旧 cursor 零重放）→ 已覆盖。
+③非法 ktype/type：R118 ④（:203-215 两路 loc 逐字不改 + kn-type-empty 点名原值 +
+  kn-type-all/kn-type-clear 在场）→ 已覆盖。
+真缺口（本文件 2 例）：双键共存生效序 + 清除动线真删双键（R118 只查 clear 在场）；
+重挂的第二轮增量请求集合逐字 + 重挂路径上 可见行==knF 数据行（R118 ③只锁 loc/pressed/
+data-len，未对请求集合；R142 三值只测首轮）。
+```
+
+## 新增读数
+
+```text
+①?ktype=PDF&type=表格 双键：PDF 桶 pressed=true、表格桶 false（旧键被忽略）；
+  loc 逐字 "?tab=spaces&panel=spaces&space=sp_x&q=%E4%BA%BA%E4%BA%8B&ktype=PDF&
+  type=%E8%A1%A8%E6%A0%BC"（不改写、不提升、不偷删）；点「全部」→ has(ktype)=false 且
+  has(type)=false（双删动线），q/space/tab/panel 在场逐字不动；清除零新请求
+  （urls 集合仍为 spaces|documents|documents?spaceId 三条）；ktype=表格×q=人事 共存：
+  桶按下 + kn6-search-input value「人事」各回各的。
+④重挂同 URL：第二轮增量请求集合与第一轮 toBe 逐字相等（各 URL×1，非翻倍误报——
+  断言取 slice(cMid) 增量，过程初稿误比累计当场自纠）；data-len/可见行复原；
+  ktype=PDF 态下 可见 1 == knF 数据行 1（两轮同值）。
+```
+
+## 验证尾行（R146）
+```text
+$ npx vitest run src/modules/knowledge   → 10 files / 111 tests passed（基线 109 + 2）
+$ npx vitest run                         → 208 files / 2618 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r146-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn3*/kn-row-copy*/kn-doc-copy*/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort/kn-gates/
+kn-space-preview/knE-page-*/kn3-page-cap/kn-type 全族通过。
+```
+未测如实：带登录会话真实屏（ktype/type 双键真实深链形态未知——上游不会造双键，本护栏
+锁的是前端读取序 ktype 优先的确定性）；②③按判定未重跑。
+边界：只新增 web/src/modules/knowledge/knowledge.type.filter.test.tsx 与本证据；
+显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「test(console): knowledge type filter guards」。
