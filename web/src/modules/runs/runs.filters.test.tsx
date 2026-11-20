@@ -6,10 +6,11 @@
 // fallback, `runs.paging.test.tsx` for the cursor dropped by a chip removal,
 // `runs.more.test.tsx` for the cursor dropped by a window change,
 // `runs.pagecap.test.tsx` for the cap and export wording). What none of them
-// ever did is the round trip this page actually offers: the status <select>,
-// the 清除筛选 button, and an unrecognised status value. Those are the guards
-// added here — written against the product's real behaviour, mirroring the
-// chip-set and call-count discipline of `approvals.filterurl.test.tsx`.
+// ever did is the round trip this page actually offers: the status combobox
+// (`ConsoleSelect`, driven through `@/shell/selectHarness` since the wave-36
+// control 换代), the 清除筛选 button, and an unrecognised status value. Those are
+// the guards added here — written against the product's real behaviour,
+// mirroring the chip-set and call-count discipline of `approvals.filterurl.test.tsx`.
 //
 // Contract facts these tests lean on, all from the product's single points:
 //   - the filter keys are `RUN_PARAM_TABLE` (window, status, employee, state,
@@ -33,6 +34,7 @@ vi.mock("@/lib/clipboard", () => ({ copyTextToClipboard: clip.copyTextToClipboar
 
 import { RunsModulePage } from "./RunsModulePage";
 import { PAGE_LIMIT, RUN_PARAM_TABLE } from "./runs";
+import { pickByValue, selectValue } from "@/shell/selectHarness";
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -124,11 +126,10 @@ async function click(testid: string) {
 }
 
 async function selectStatus(value: string) {
-  const select = node("run5-filter-status") as HTMLSelectElement;
-  await act(async () => {
-    select.value = value;
-    select.dispatchEvent(new Event("change", { bubbles: true }));
-  });
+  // wave-36 moved this filter off the native <select> onto ConsoleSelect, so the
+  // sanctioned interaction is the harness's: activate the combobox trigger, then
+  // pick the option by its machine value ("" is 全部状态).
+  await pickByValue("run5-filter-status", value);
 }
 
 function urls(): string[] {
@@ -225,7 +226,7 @@ describe("R136 ① deep link paints both controls and asks for the same values",
     await waitFor(() => rows() === PAGE_LIMIT, "deep-link rows");
 
     expect(pressedWindow()).toBe("run-window-7d");
-    expect((node("run5-filter-status") as HTMLSelectElement).value).toBe("failed");
+    expect(selectValue("run5-filter-status")).toBe("failed");
     // One chip per filter key actually in the address — no more, no less.
     expect(chipKeys()).toEqual(["status", "window"]);
     expect(node("run-chip-status")?.getAttribute("title")).toBe("地址原值：failed");
@@ -354,7 +355,7 @@ describe("R136 ③ an unrecognised value is disclosed, never rewritten", () => {
     expect(node("run-chip-status")?.getAttribute("title")).toContain("地址原值：__nope__");
     expect(node("run-chip-status")?.getAttribute("title")).toContain("该值未被识别，按全部状态读取");
     // …and the control shows the state the page really is in, not the link's claim.
-    expect((node("run5-filter-status") as HTMLSelectElement).value).toBe("");
+    expect(selectValue("run5-filter-status")).toBe("");
 
     // Honest finding, asserted as the product behaves: because an unusable
     // status parses to "no filter", the empty panel reports the WINDOW kind,
@@ -458,7 +459,7 @@ describe("R136 ⑤ clearing all filters leaves no filter residue", () => {
     expect(chipKeys()).toEqual([]);
     expect(node("run-filter-chips")).toBeNull();
     expect(pressedWindow()).toBe("run-window-7d");
-    expect((node("run5-filter-status") as HTMLSelectElement).value).toBe("");
+    expect(selectValue("run5-filter-status")).toBe("");
     expect(rows()).toBe(PAGE_LIMIT);
 
     const clean = pairs(lastRunsUrl());
