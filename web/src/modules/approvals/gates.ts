@@ -88,7 +88,7 @@ export function actionGates(phase: Phase, rowCount: number): ApprovalsGates {
     export:
       rowCount > 0
         ? go(`导出当前已显示的 ${rowCount} 行为 CSV（纯前端 Blob，零新后端端点；updated_at 用屏上同一值）。`)
-        : { enabled: false, title: "该条件下没有可导出的审批。" },
+        : { enabled: false, title: "当前没有可导出的审批：该条件下没有可导出的审批。" },
     sort: go(`按当前已加载的 ${rowCount} 条本地排序（非服务端排序，缺值的行恒排末）。`),
     toggle: go("就地展开预览（不跳转、不产生新请求；Esc 或再点收起）。"),
     detail: go("点开行主体打开详情（URL 写入 ?id=，粘贴链接可复现）。"),

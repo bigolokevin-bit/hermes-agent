@@ -15,7 +15,7 @@ vi.mock("@/lib/api", () => ({ fetchJSON: api.fetchJSON }));
 
 import ApprovalsHistoryModulePage from "@/modules/approvals/ApprovalsHistoryModulePage";
 import { STATUS_FILTERS } from "@/modules/approvals/model";
-import { approvalsCsvName, buildApprovalsCsv, csvEscape } from "@/modules/approvals/QueueCsvExport";
+import { approvalsCsvName, buildApprovalsCsv, csvEscape, csvNamePart } from "@/modules/approvals/QueueCsvExport";
 import { riskView, statusView, type ApprovalRow } from "@/modules/approvals/model";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -590,12 +590,18 @@ describe("R54 CSV export", () => {
     expect(lines[1].endsWith(",2026-11-19 09:20")).toBe(true);
     expect(lines[2].endsWith(",高风险,")).toBe(true); // risk 屏上值；updated_at 缺=空，不补 0
     expect(csvEscape("plain")).toBe("plain");
-    expect(approvalsCsvName("history", "pending", new Date("2026-11-20T02:00:00Z"))).toBe(
-      "approvals-history-pending-20261120-1000.csv",
-    );
-    expect(approvalsCsvName("history", null, new Date("2026-11-20T16:05:00Z"))).toBe(
-      "approvals-history-all-20261121-0005.csv",
-    );
+    // R75 契约：五段名（tab/status/sort/dir/时刻），未排序=default。
+    expect(
+      approvalsCsvName("history", "pending", null, null, new Date("2026-11-20T02:00:00Z")),
+    ).toBe("approvals-history-pending-default-default-20261120-1000.csv");
+    expect(
+      approvalsCsvName("history", null, null, null, new Date("2026-11-20T16:05:00Z")),
+    ).toBe("approvals-history-all-default-default-20261121-0005.csv");
+    // 非法字符折叠：只许 [a-z0-9.-]，下划线枚举变连字符。
+    expect(
+      approvalsCsvName("history", "revise_requested", "title", "asc", new Date("2026-11-20T02:00:00Z")),
+    ).toBe("approvals-history-revise-requested-title-asc-20261120-1000.csv");
+    expect(csvNamePart("中文 混:入")).toBe("default");
   });
 
   it("button mirrors the rendered rows; empty filters disable it with a reason", async () => {
@@ -1378,7 +1384,7 @@ describe("R72 action availability matrix (apv-gates-*)", () => {
     });
     await waitFor(() => !!qa("apv8-search-empty"), "zero visible rows");
     expect(dis("apv7-export")).toBe(true);
-    expect(ttl("apv7-export")).toBe("该条件下没有可导出的审批。");
+    expect(ttl("apv7-export")).toBe("当前没有可导出的审批：该条件下没有可导出的审批。");
     expect(api.fetchJSON.mock.calls.length, "gates never fetch").toBe(calls);
   });
 });
@@ -1568,5 +1574,66 @@ describe("R74 actor buckets (apv-actor-*)", () => {
     expect((qa("apv-actor-all") as HTMLButtonElement).disabled, "gated in error").toBe(true);
     expect(qa("apv-actor-all")?.getAttribute("title")).toContain("不能按审批人筛选：列表读取失败");
     expect(qa("apv-actor-scope-note")?.textContent).toContain("按当前已加载 0 条统计");
+  });
+});
+
+describe("R75 export filename contract (apv-export-name)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+  const nameRe = /^approvals-history-(all|pending|approved|revise-requested)-default-default-\d{8}-\d{4}\.csv$/;
+
+  it("previews the five-segment name and it matches the downloaded file verbatim", async () => {
+    await mount(undefined, "/approvals?tab=history");
+    await waitFor(() => !!qa("apv-export-name"), "preview line");
+    const preview = qa("apv-export-name")!.textContent ?? "";
+    expect(preview).toMatch(nameRe);
+    expect(qa("apv-export-name")?.getAttribute("title")).toContain("四要素来源");
+    const downloads: string[] = [];
+    const origCreate = URL.createObjectURL;
+    const origRevoke = URL.revokeObjectURL;
+    const origClick = HTMLAnchorElement.prototype.click;
+    (URL as unknown as { createObjectURL: (b: Blob) => string }).createObjectURL = () => "blob:x";
+    (URL as unknown as { revokeObjectURL: (u: string) => void }).revokeObjectURL = () => {};
+    HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
+      downloads.push(this.download);
+    };
+    try {
+      const before = api.fetchJSON.mock.calls.length;
+      await act(async () => {
+        (qa("apv7-export") as HTMLButtonElement).click();
+      });
+      expect(downloads).toHaveLength(1);
+      expect(downloads[0]).toBe(preview);
+      expect(api.fetchJSON.mock.calls.length, "export never fetches").toBe(before);
+      // 导出行数与屏上「已显示」同源（apv5-count 与 apv7-export-count 同值）。
+      expect(qa("apv7-export-count")?.textContent).toBe("共 8 行");
+      expect(qa("apv5-count")?.textContent).toBe("8");
+    } finally {
+      (URL as unknown as { createObjectURL: (b: Blob) => string }).createObjectURL = origCreate;
+      (URL as unknown as { revokeObjectURL: (u: string) => void }).revokeObjectURL = origRevoke;
+      HTMLAnchorElement.prototype.click = origClick;
+    }
+  });
+
+  it("preview rides status/sort from the URL and updates with zero new requests", async () => {
+    await mount(undefined, "/approvals?tab=history&status=pending");
+    await waitFor(() => !!qa("apv-export-name"), "preview");
+    expect(qa("apv-export-name")!.textContent).toContain("-pending-default-default-");
+    // 点列排序（标题）→ 预览随 URL 同步，且排序本身零请求（R71 契约）。
+    const before = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      (document.querySelector('[data-testid="apv-sort-title"]') as HTMLButtonElement).click();
+    });
+    await waitFor(() => (qa("apv-export-name")!.textContent ?? "").includes("-pending-title-asc-"), "sort in name");
+    expect(api.fetchJSON.mock.calls.length, "sorting never refetches").toBe(before);
+    await act(async () => {
+      (document.querySelector('[data-testid="apv-sort-title"]') as HTMLButtonElement).click();
+    });
+    await waitFor(() => (qa("apv-export-name")!.textContent ?? "").includes("-pending-title-desc-"), "desc name");
+    // 第三下清除排序 → default。
+    await act(async () => {
+      (document.querySelector('[data-testid="apv-sort-title"]') as HTMLButtonElement).click();
+    });
+    await waitFor(() => (qa("apv-export-name")!.textContent ?? "").includes("-pending-default-default-"), "default name");
+    expect(api.fetchJSON.mock.calls.length, "still zero extra fetches").toBe(before);
   });
 });

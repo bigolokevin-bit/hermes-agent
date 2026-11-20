@@ -300,7 +300,10 @@ describe("pending queue states", () => {
     expect(text()).not.toContain("employee:8812");
     expect(text()).not.toContain("human:1");
     expect(text()).not.toContain("run_77aaee33");
-    expect(text()).not.toContain("pending");
+    // R75：导出文件名契约本就要求 tab/status 段——裸 token 不泄漏断言限定在
+    // 文件名以外的界面文本。
+    const nameEl = document.querySelector('[data-testid="apv-export-name"]')?.textContent ?? "";
+    expect(text().replace(nameEl, "")).not.toContain("pending");
     expect(text()).not.toContain("message_send");
 
     const disclosure = buttonNamed("详情");

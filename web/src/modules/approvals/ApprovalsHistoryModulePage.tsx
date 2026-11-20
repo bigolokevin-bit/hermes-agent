@@ -330,7 +330,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
       </div>
 
       <QueueSummaryBar phase={list.phase} rows={visibleRows} scope="history" singleStatus={status} />
-      <QueueCsvExport rows={visibleRows} tab="history" status={status} phase={list.phase} />
+      <QueueCsvExport rows={visibleRows} tab="history" status={status} phase={list.phase} sort={asort} dir={asort ? adir : null} />
       <div className="flex min-w-0 flex-wrap items-center gap-1.5" role="group" data-testid="apv8-search-group" aria-label="搜索审批">
         <input
           type="search"

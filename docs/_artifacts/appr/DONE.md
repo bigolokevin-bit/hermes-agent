@@ -1060,3 +1060,13 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 测试 history 3+pending 1（用例锁：桶计数读数 郑涛/人员 · 9；点桶→1 行+apv5-count=1+fetchJSON 计数前后不变（点与清都零请求）；再点同桶=清空；粘链 &actor=human%3A9 直达高亮；status=approved 快捷组合→新请求带 status 且 actor 活在组件→apv-actor-empty→清空回列表；error 态全部钮 disabled+title 闸句+scope-note 0 条如实；pending 轨在+点击零请求+无裸 human:）。定向 approvals 3 files/**108 passed**（104+4）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **147 files/1929 passed**（基线 1925+4）。
 - 零破：apv5–apv9/apd5–apd7/apr5/apv-state-*/apv-gates-*/apv-nav-*（既有用例全绿为证）；三档=桶区 flex-wrap+truncate 既有形态学报（jsdom 不可测）；9122==5630ffce 禁重建，活体分桶读数待并入后代次。
 - 断言坑（教训）：本地过滤参数不应出现在服务端请求里——组合用例初版断「新请求同含 actor=&status=」错，正确语义=浏览器 URL 复现靠组件参数读取，请求只带服务端白名单参；空集构造走 handler 按 status 分支返回不含该审批人的行。
+
+## R75 审批导出文件名契约（apv-export-name，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @68eeb307，toplevel ✓ porc=0；代次 5630ffce。
+- 契约：`approvals-<tab>-<status|-all>-<asort|-default>-<adir|-default>-YYYYMMDD-HHmm.csv`；csvNamePart 清洗=小写+非法字符折叠 `-`+前后剥边+空段 default（只许 [a-z0-9.-]，无中文/空格/裸冒号；revise_requested→revise-requested 用例锁）；时刻=导出瞬间 BJT +480min 纯格式化。
+- 预览行 `apv-export-name`=组内 `<p>` 实时显完整名，title 写四要素来源；**purity 处置**=render 体不取时钟，useEffect([tab,status,sort,dir]) 算预览名（effect setState=warning 可过）；导出 onClick 瞬间重算，同一分钟=与预览逐字一致（用例拦 HTMLAnchorElement.prototype.click 断 downloads[0]===预览文本）。
+- 真缺陷修复：adir 在未排序时仍派生 "asc"（page adir=params.get("adir")==="desc"?"desc":"asc"）→ 传参改 `dir={asort ? adir : null}`（两页），未排序四要素后两段=default-default（初版预览名 all-default-asc 暴露此坑）。
+- 同源：导出行集=visibleRows（R71 起）+用例双值锁 apv7-export-count「共 8 行」==apv5-count「8」；排序循环三次点击预览 pending-title-asc→desc→default 且 fetchJSON 计数不变（⑤零新请求）；空集 title=gates ready-0 句改「当前没有可导出的审批：该条件下没有可导出的审批。」（含工单④句，R72 逐字断言同步改新句）。
+- 测试：R54 纯函数两用例新五参签名同步（契约本单更新，语义等价）+sanitize 两用；R75 新 describe 2 用例；pending 「state tokens 不上屏」用例限定文件名区域（契约本就含 tab/status 段——语义等价修正）。定向 approvals 3 files/110 passed（108+2）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **147 files/1931 passed**（基线 1929+2）。
+- 零破：apv7-export/apv7-export-count 语义保留、apv5–9/apd5–7/apr5/actor/nav/gates/state 全绿；三档=组容器 flex-wrap+预览 p basis-full break-all 既有形态学报；9122==5630ffce 禁重建，活体文件名读数待并入后代次。

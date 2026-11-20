@@ -309,7 +309,7 @@ export function ApprovalsPendingModulePage(): ReactNode {
   return (
     <div className="flex min-w-0 w-full max-w-full flex-col gap-3" data-testid="apr5-page-pending">
       <QueueSummaryBar phase={list.phase} rows={visibleRows} scope="queue" />
-      <QueueCsvExport rows={visibleRows} tab="pending" status="pending" phase={list.phase} />
+      <QueueCsvExport rows={visibleRows} tab="pending" status="pending" phase={list.phase} sort={asort} dir={asort ? adir : null} />
       <div className="flex min-w-0 flex-wrap items-center gap-1.5" role="group" data-testid="apv8-search-group" aria-label="搜索审批">
         <input
           type="search"
