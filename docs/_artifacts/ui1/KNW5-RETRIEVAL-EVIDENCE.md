@@ -4304,3 +4304,58 @@ kn3-page-cap/knE-page-*/kn6-search-*/knF/knG/knI/knL-copy*/kn7-preview-* + 既�
 边界：只新增 web/src/modules/knowledge/knowledge.preview.requests2.test.tsx 与本证据；
 显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
 「test(console): knowledge preview request contract guards」。
+
+# KNW5 追加 R207：导出 × 筛选叠加护栏（纯测试单）（2026-11-21 BJT）
+
+安全门：porcelain 空起做（HEAD 即 R206 链）、显式 refspec fetch 后 merge 实测 tip
+即预期 `77ca6458`（代次 `cdcffc02` 账本链；知识面 delta 空）。零产品文件改动（无新缺陷）。
+
+## 名实映射与查重（引用不重写）
+
+```text
+· 无真 CSV（createObjectURL/text/csv/download= 全 0，R190 已锁不变量）→「导出」=
+  knF-copy 数据行（详情面 5 列）；未造控件。
+· 无 ?source= 控件 → 叠加键映射为 ?ktype=（旧 type 兜底）× 本地名筛 × ?q=；
+  请求参集合恰 {limit,spaceId}（筛选不入线）——R164 ① 已锁 → 引用。
+· ①三值计数随筛选降/复原 + ②首行换代 + 零请求 —— R142 ②（space.export.test.tsx
+  :164-176）已锁 → 引用；④缺值两侧同「—」不串口径 —— R200 ② 已锁 → 引用；
+  ⑤空集 disabled+title+零写+零请求+spy 0 —— R190 ④ 已锁 → 引用；「cap 仍在」名实不符
+  ——产品定版空集/error/denied/非法枚举**不渲染**（R108/R157 已锁 null）→ 按产品引用，
+  差异记录于此与回执。
+真缺口（本文件 2 例）：(a) 叠加切换后复制内容**元素级换代**——knF 数据行第 1 列集合
+  逐元素 toEqual 屏上行名集合 + 切换前旧行**零残留**（R142② 只锁计数与首行包含）+
+  每步三值链与请求快照同步；(b) 旧 type 兜底键态的三值链（R146① 只锁桶回填，
+  钮==行==复制行未走）。
+```
+
+## 关键读数
+
+```text
+(a) 步 1 ktype=PDF：行 [A 人事手册.pdf, C 运维手册.pdf] == 复制列逐元素等、钮 2；
+  步 2 叠本地名筛「人事」：[A] 且复制串 not.toContain C 与 B（元素级残留验证）；
+  步 3 切「表格」桶：[B] 且复制串无「人事手册」残留；终态三值 [1,1,1]；
+  首屏后 urls 排序快照全程逐字不变（本地动作零请求）；createObjectURL spy 0。
+(b) ?type=表格 兜底：按钮 aria-pressed=true（复证）、行 [B 人事表.xlsx]、
+  钮 1==行 1==复制行 1、复制串含「B 人事表.xlsx | 表格」人话列、无 undefined/null；
+  spy 0。
+```
+
+## 验证尾行（R207）
+```text
+$ npx vitest run src/modules/knowledge   → 27 files / 157 tests passed（基线 155 + 2）
+$ npx vitest run                         → 274 files / 2934 tests passed 全绿（无豁免项）
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning；本单曾有
+  1 条 unused(q) 提交前清零）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r207-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn3*/kn6–kn9/knB/knD/knF/knG/knI/knL-copy*/kn-sort*/kn-gates/kn-row-copy*/
+kn-row-copy-space*/kn-doc-copy*/kn-doc-preview*/kn-space-preview*/kn3-page-cap/knE-page-*/
+kn7-preview-* + 既有 26 套全绿。
+过程记录：测试自纠两处（u0 误在 render 前取快照致空对非空、unused helper），产品零触碰。
+```
+未测如实：带登录会话真实屏（叠加换代以 mock 夹具代证）；检索面 knG-copy 的同类元素级
+残留验证（R142/R169 已锁其计数与四值，元素级残留本轮只走详情面——同派生链，不重复铺）。
+边界：只新增 web/src/modules/knowledge/knowledge.export.filter.test.tsx 与本证据；
+显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「test(console): knowledge export filter parity guards」。
