@@ -47,6 +47,9 @@ const text = (): string => document.body.textContent ?? '';
 const urls = (): string[] => api.fetchJsonStrict.mock.calls.map((call) => String(call[0]));
 const settled = (): boolean => document.querySelector('.met5-skeleton') === null;
 
+/** Data rows only: a «#» comment line (totals, gap note) is never a data row. */
+const dataOnly = (lines: string[]): string[] => lines.filter((line) => !line.startsWith('#'));
+
 function activityBody(): Record<string, unknown> {
   const cells: { dow: number; hour: number; count: number }[] = [];
   for (let dow = 1; dow <= 7; dow += 1) {
@@ -540,8 +543,8 @@ describe('MetricsModulePage — export and delta', () => {
     const text = await (captured.blob as Blob).text();
     const lines = text.replace(/^\uFEFF/, '').split('\r\n');
     expect(lines[0]).toBe('员工,支出USD,次数,占比%,账本截至,窗口,窗口开始,窗口结束,as_of,window');
-    // Two ledger rows on screen → header + two data rows.
-    expect(lines).toHaveLength(3);
+    // Two ledger rows on screen → header + two data rows; the totals line is a comment.
+    expect(dataOnly(lines)).toHaveLength(3);
     expect(lines[1]).toContain('小鲤 · AAAABBBB');
     expect(lines[1]).toContain('0.30');
     expect(lines[1]).toContain('75');
@@ -553,7 +556,7 @@ describe('MetricsModulePage — export and delta', () => {
     click.mockRestore();
   });
 
-  it('uses the model header set and disables export when nothing is on screen', async () => {
+  it('uses the model header set and still exports a header-only file when nothing is on screen', async () => {
     await mount(breakdownRouter(), '/metrics?view=model');
     expect(document.querySelector('[data-testid="met6-export"]')).toBeTruthy();
 
@@ -563,8 +566,8 @@ describe('MetricsModulePage — export and delta', () => {
       }),
     );
     const button = document.querySelector('[data-testid="met6-export"]') as HTMLButtonElement;
-    expect(button.disabled).toBe(true);
-    expect(button.getAttribute('title')).toContain('当前没有可导出的行');
+    expect(button.disabled).toBe(false);
+    expect(button.getAttribute('title')).toContain('只写表头');
   });
 
   it('shows a signed delta per window and keeps a real zero distinct from missing', async () => {
@@ -1069,7 +1072,7 @@ describe('metA — export the current cost view', () => {
     expect(lines[0]).toBe('group,runs,cost_usd,share_pct,as_of,window');
     const onScreen = document.querySelectorAll('[data-testid^="met8-row-"]').length;
     expect(onScreen).toBe(2);
-    expect(lines).toHaveLength(onScreen + 1);
+    expect(dataOnly(lines)).toHaveLength(onScreen + 1);
     expect(lines[1].split(',')).toEqual(['小鲤', '7', '3.00', '75.0', '2026-11-19T03:20:00.000Z', '24h']);
     expect(lines[2].split(',')).toEqual(['小满', '3', '1.00', '25.0', '2026-11-19T03:20:00.000Z', '24h']);
     click.mockRestore();
@@ -1109,13 +1112,22 @@ describe('metA — export the current cost view', () => {
     click.mockRestore();
   });
 
-  it('disables the button and says so when the view has nothing to export', async () => {
+  it('keeps the button usable on an empty view and exports a header-only file', async () => {
+    const { captured, click } = captureDownload();
     await mountShare({ by_model: [] });
 
     const button = document.querySelector('[data-testid="metA-export"]') as HTMLButtonElement;
-    expect(button.disabled).toBe(true);
-    expect(button.getAttribute('title')).toBe('当前视图无可导出数据');
+    expect(button.disabled).toBe(false);
+    expect(button.getAttribute('title')).toContain('只写表头');
     expect(document.querySelector('[data-testid="metA-export-count"]')?.textContent).toBe('可导出 0 行');
+
+    await act(async () => {
+      button.click();
+    });
+    const lines = (await (captured.blob as Blob).text()).replace(/^\uFEFF/, '').split('\r\n').filter(Boolean);
+    expect(dataOnly(lines)).toHaveLength(1);
+    expect(lines[0]).toBe('group,runs,cost_usd,share_pct,as_of,window');
+    click.mockRestore();
   });
 
   it('labels the two export buttons by scope and explains which one is the aggregate', async () => {
@@ -1168,7 +1180,7 @@ describe('metF — exported files carry as_of and window', () => {
 
     const lines = await csvLines(captured.blob);
     expect(lines[0]).toBe('group,runs,cost_usd,share_pct,as_of,window');
-    expect(lines).toHaveLength(onScreen + 1);
+    expect(dataOnly(lines)).toHaveLength(onScreen + 1);
     const cells = lines[1].split(',');
     expect(cells.at(-2)).toBe('2026-11-19T20:12:00.000Z');
     expect(cells.at(-1)).toBe('24h');
@@ -1205,7 +1217,7 @@ describe('metF — exported files carry as_of and window', () => {
     const lines = await csvLines(captured.blob);
     expect(lines[0].split(',').at(-2)).toBe('as_of');
     expect(lines[0].split(',').at(-1)).toBe('window');
-    expect(lines).toHaveLength(onScreen + 1);
+    expect(dataOnly(lines)).toHaveLength(onScreen + 1);
     const cells = lines[1].split(',');
     expect(cells.at(-2)).toBe('2026-11-19T03:20:00.000Z');
     expect(cells.at(-1)).toBe('24h');
@@ -1788,8 +1800,9 @@ describe('metI — exports under partial failure', () => {
     });
     const rows = await lines();
     expect(rows[0].split(',').slice(-2)).toEqual(['as_of', 'window']);
-    // header + the rows already counted on screen + one note line.
-    expect(rows).toHaveLength(onScreen + 2);
+    // header + the rows on screen + one totals comment + one gap note.
+    expect(rows).toHaveLength(onScreen + 3);
+    expect(dataOnly(rows)).toHaveLength(onScreen + 1);
 
     const note = rows.at(-1) ?? '';
     expect(note).toContain('# 本次导出缺少 1 块：运行统计');
@@ -1823,7 +1836,7 @@ describe('metI — exports under partial failure', () => {
       (q('metA-export') as HTMLButtonElement).click();
     });
     const rows = await lines();
-    expect(rows).toHaveLength(shown + 1);
+    expect(dataOnly(rows)).toHaveLength(shown + 1);
     expect(rows[0]).toBe('group,runs,cost_usd,share_pct,as_of,window');
   });
 
@@ -2311,7 +2324,7 @@ describe('metO — number format consistency', () => {
     // Pair 1: $1,234.50 on screen ↔ 1234.50 in the file. Pair 2: 1,234 ↔ 1234.
     expect(big.slice(0, 3)).toEqual(['big', '1234', '1234.50']);
     expect(bulk.slice(0, 3)).toEqual(['bulk', '1200', '1000.00']);
-    expect(lines.every((line) => !line.includes('$'))).toBe(true);
+    expect(dataOnly(lines).every((line) => !line.includes('$'))).toBe(true);
     click.mockRestore();
   });
 
@@ -2566,7 +2579,8 @@ describe('metP — detail table sorting', () => {
       .filter((line) => line.length > 0);
     expect(nonEmpty[0]).toContain('as_of,window');
     expect(nonEmpty[nonEmpty.length - 1].startsWith('# 本次导出缺少 1 块：运行统计（')).toBe(true);
-    expect(nonEmpty.length).toBe(labels.length + 2);
+    expect(dataOnly(nonEmpty)).toHaveLength(labels.length + 1);
+    expect(nonEmpty.length).toBe(labels.length + 3);
     click.mockRestore();
   });
 });
@@ -2595,8 +2609,10 @@ describe('metQ — keyboard access and status announcements', () => {
     );
     expect(positive).toHaveLength(0);
 
-    // Keyboard walk: the first eight landings in DOM order.
-    expect(focusableTestIds().slice(0, 8)).toEqual([
+    // Keyboard walk: the first nine landings in DOM order. The skip link is
+    // first on purpose (metY); everything after it keeps its old place.
+    expect(focusableTestIds().slice(0, 9)).toEqual([
+      'metY-skiplink',
       'metL-copy',
       'met5-refresh',
       'met6-window-24h',
@@ -2657,5 +2673,772 @@ describe('metQ — keyboard access and status announcements', () => {
 
     const live = document.querySelector('[data-testid="metQ-live"]') as HTMLElement;
     await waitFor(() => live.textContent === '这个时间窗没有运行记录，也没有实扣。', 'quiet announced');
+  });
+});
+
+describe('metR — export and copy availability under failure states', () => {
+  const ALL_DOWN = '整页读取失败，这份导出暂时不生成；先重试上面的读取，读到数据再导。';
+
+  function captureDownload(): {
+    captured: { blob: Blob | null; name: string | null };
+    click: ReturnType<typeof vi.spyOn>;
+  } {
+    const captured: { blob: Blob | null; name: string | null } = { blob: null, name: null };
+    Object.assign(URL, {
+      createObjectURL: vi.fn((blob: Blob) => {
+        captured.blob = blob;
+        return 'blob:metR';
+      }),
+      revokeObjectURL: vi.fn(),
+    });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
+      captured.name = this.download;
+    });
+    return { captured, click };
+  }
+
+  const q = (id: string) => document.querySelector(`[data-testid="${id}"]`) as HTMLElement | null;
+
+  it('disables all three actions on a whole-page failure and says why', async () => {
+    await mount((url) =>
+      Promise.reject(new ApiError('boom', { status: 500, body: '', url, requestId: 'req-metR-all' })),
+    );
+
+    const detail = q('met6-export') as HTMLButtonElement;
+    const share = q('metA-export') as HTMLButtonElement;
+    const copy = q('metL-copy') as HTMLButtonElement;
+
+    expect(detail.disabled).toBe(true);
+    expect(share.disabled).toBe(true);
+    expect(copy.disabled).toBe(true);
+    expect(detail.getAttribute('title')).toBe(ALL_DOWN);
+    expect(share.getAttribute('title')).toBe(ALL_DOWN);
+    expect(copy.getAttribute('title')).toBe('整页读取失败，摘要里的数字不完整，先重试上面的读取。');
+    expect(q('metR-copy-state')?.textContent).toBe('摘要不可复制：整页读取失败');
+    expect(q('metR-export-state')?.textContent).toBe('导出：整页读取失败，两处 CSV 都暂停');
+  });
+
+  it('keeps the detail export usable when only another block is down, and notes the gap in the file', async () => {
+    const { captured, click } = captureDownload();
+    await mount((url) =>
+      url.includes('run-stats')
+        ? Promise.reject(new ApiError('boom', { status: 500, body: '', url, requestId: 'req-metR-part' }))
+        : usageRouter()(url),
+    );
+
+    const detail = q('met6-export') as HTMLButtonElement;
+    const share = q('metA-export') as HTMLButtonElement;
+    expect(detail.disabled).toBe(false);
+    expect(detail.getAttribute('title')).toContain('账本逐行');
+    expect(share.disabled).toBe(false);
+    expect(q('metR-export-state')?.textContent).toContain('含 1 处缺块注记');
+    expect(q('metR-copy-state')?.textContent).toBe('摘要可复制');
+
+    await act(async () => {
+      detail.click();
+    });
+    const nonEmpty = (await (captured.blob as Blob).text())
+      .replace(/^\uFEFF/, '')
+      .split('\r\n')
+      .filter(Boolean);
+    expect(nonEmpty[nonEmpty.length - 1].startsWith('# 本次导出缺少 1 块：运行统计（')).toBe(true);
+    click.mockRestore();
+  });
+
+  it('disables the share export when its own block is unreadable, with the reason in the title', async () => {
+    await mount((url) =>
+      url.includes('hermes-usage')
+        ? Promise.reject(new ApiError('boom', { status: 503, body: '', url, requestId: 'req-metR-share' }))
+        : usageRouter()(url),
+    );
+
+    const detail = q('met6-export') as HTMLButtonElement;
+    const share = q('metA-export') as HTMLButtonElement;
+    expect(detail.disabled).toBe(false);
+    expect(share.disabled).toBe(true);
+    expect(share.getAttribute('title')).toContain('这份分摊现在读不到，导出暂不生成：');
+    expect(q('metR-export-state')?.textContent).toContain('分摊暂不可用');
+  });
+
+  it('exports header-only files on an empty window and keeps the count on screen', async () => {
+    const { captured, click } = captureDownload();
+    const quietStats = {
+      from: '2026-11-18T16:00:00.000Z',
+      to: '2026-11-19T16:00:00.000Z',
+      bucket: 'day',
+      buckets: [],
+      totals: { runs: 0, succeeded: 0, failed: 0, running: 0, sampleCount: 0, successRate: null },
+    };
+    const handler = (url: string): Promise<unknown> => {
+      if (url.includes('run-activity')) return Promise.resolve(activityBody());
+      if (url.includes('run-stats')) return Promise.resolve(quietStats);
+      if (url.includes('/api/employees')) return Promise.resolve(EMPLOYEE_BODY);
+      if (url.includes('models/pricing')) return Promise.resolve({ prices: [] });
+      if (url.includes('hermes-usage')) return Promise.resolve({ by_model: [] });
+      if (url.includes('budget-usage')) return Promise.resolve({ items: [], missingEmployeeIds: [] });
+      return Promise.resolve({});
+    };
+    await mount(handler);
+
+    const detail = q('met6-export') as HTMLButtonElement;
+    const share = q('metA-export') as HTMLButtonElement;
+    expect(detail.disabled).toBe(false);
+    expect(share.disabled).toBe(false);
+    expect(q('metA-export-count')?.textContent).toBe('可导出 0 行');
+    expect(q('metL-copy') as HTMLButtonElement).toHaveProperty('disabled', false);
+
+    await act(async () => {
+      detail.click();
+    });
+    const detailLines = (await (captured.blob as Blob).text())
+      .replace(/^\uFEFF/, '')
+      .split('\r\n')
+      .filter(Boolean);
+    expect(dataOnly(detailLines)).toHaveLength(1);
+    expect(detailLines[0]).toContain('as_of,window');
+
+    await act(async () => {
+      share.click();
+    });
+    const shareLines = (await (captured.blob as Blob).text())
+      .replace(/^\uFEFF/, '')
+      .split('\r\n')
+      .filter(Boolean);
+    expect(dataOnly(shareLines)).toHaveLength(1);
+    click.mockRestore();
+  });
+});
+
+describe('metS — group switch semantics', () => {
+  const S_EMP = { items: [{ employeeId: 'emp_aaaabbbbcccc', name: '小鲤' }, { employeeId: 'emp_ddddeeeeffff', name: '小满' }], nextCursor: null };
+  const S_LEDGER = {
+    items: [
+      { employeeId: 'emp_aaaabbbbcccc', period: '2026-11-19', periodKind: 'day', costUsd: 20, updatedAt: '2026-11-19T03:20:00.000Z' },
+      { employeeId: 'emp_ddddeeeeffff', period: '2026-11-19', periodKind: 'day', costUsd: 5, updatedAt: '2026-11-19T03:20:00.000Z' },
+    ],
+    missingEmployeeIds: [],
+  };
+  const S_MODEL = {
+    by_model: [
+      { model: 'alpha', api_calls: 9, input_tokens: 10 },
+      { model: 'zeta', api_calls: 4, input_tokens: 10 },
+      { model: 'zero', api_calls: 0, input_tokens: 10 },
+    ],
+    asOf: '2026-11-19T20:12:00.000Z',
+  };
+
+  function handler(url: string): Promise<unknown> {
+    if (url.includes('run-activity')) return Promise.resolve(activityBody());
+    if (url.includes('run-stats')) return Promise.resolve(statsFor(url));
+    if (url.includes('/api/employees')) return Promise.resolve(S_EMP);
+    if (url.includes('models/pricing')) return Promise.reject(new ApiError('missing', { status: 404, body: '', url }));
+    if (url.includes('hermes-usage')) return Promise.resolve(S_MODEL);
+    if (url.includes('periodKind=month')) return Promise.resolve({ items: [], missingEmployeeIds: [] });
+    if (url.includes('budget-usage')) return Promise.resolve(S_LEDGER);
+    return Promise.resolve({});
+  }
+
+  async function mountS(entry: string): Promise<void> {
+    api.fetchJsonStrict.mockReset();
+    api.fetchJsonStrict.mockImplementation(handler);
+    await render(
+      entry,
+      <>
+        <MetricsModulePage />
+        <LocationProbe />
+      </>,
+    );
+    await waitFor(settled, 'state settled');
+  }
+
+  const q = (id: string) => document.querySelector(`[data-testid="${id}"]`) as HTMLElement | null;
+  const loc = () => q('met7-loc')?.textContent ?? '';
+  const rows = () =>
+    Array.from(document.querySelectorAll('[data-testid="met6-table"] tbody tr')).map(
+      (tr) => (tr.querySelector('.met6-rowname')?.textContent ?? '').split(' · ')[0],
+    );
+  const batch = (from: number, needle: string) => urls().slice(from).filter((url) => url.includes(needle)).length;
+
+  it('restores a pasted detail sort exactly, with the matching aria-sort', async () => {
+    await mountS('/metrics?view=model&dsort=runs&ddir=asc');
+
+    expect(rows()).toEqual(['zero', 'zeta', 'alpha']);
+    expect(q('metO-fmt-th-count')?.getAttribute('aria-sort')).toBe('ascending');
+    expect(loc()).toContain('view=model');
+    expect(loc()).toContain('dsort=runs');
+    expect(q('metS-reset-note')).toBeNull();
+  });
+
+  it('resets the detail sort when the detail group changes and states it once', async () => {
+    await mountS('/metrics?dsort=runs&ddir=asc');
+    expect(rows()).toEqual(['小鲤', '小满']);
+
+    const before = urls().length;
+    await act(async () => {
+      (q('met6-cat-model') as HTMLButtonElement).click();
+    });
+    await waitFor(() => rows()[0] === 'alpha', 'model rows');
+
+    expect(loc()).not.toContain('dsort');
+    expect(loc()).not.toContain('ddir');
+    expect(q('metS-reset-note')?.textContent).toContain('明细排序已回到默认的成本降序');
+    // Only the new group's own reads run: hermes-usage once, no employee/ledger reads.
+    expect(batch(before, 'hermes-usage')).toBe(1);
+    expect(batch(before, '/api/employees')).toBe(0);
+    expect(batch(before, 'budget-usage')).toBe(0);
+
+    const mid = urls().length;
+    await act(async () => {
+      (q('met6-cat-employee') as HTMLButtonElement).click();
+    });
+    await waitFor(() => rows()[0] === '小鲤', 'employee rows');
+    // Sort was already default, so nothing was reset and no note appears.
+    expect(q('metS-reset-note')).toBeNull();
+    expect(batch(mid, '/api/employees')).toBe(1);
+    expect(batch(mid, 'budget-usage')).toBe(2);
+    expect(batch(mid, 'hermes-usage')).toBe(0);
+  });
+
+  it('keeps the share sort valid across groups: sort=model means the name column', async () => {
+    await mountS('/metrics?view=employee&sort=model');
+
+    expect(loc()).toContain('sort=model');
+    // The share table stays on its own group (models) and sorts by the name
+    // column ascending; the detail view is separate and also reproducible.
+    const firstRow = document.querySelector('[data-testid="met7-row-alpha"]');
+    expect(firstRow).toBeTruthy();
+    expect(document.querySelector('[data-testid="met6-cat-employee"]')?.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('keeps window and share sort when the share group changes, and drops a stale detail sort', async () => {
+    await mountS('/metrics?window=7d&sort=runs&dir=asc&dsort=share&ddir=asc');
+    const before = urls().length;
+
+    await act(async () => {
+      (q('met8-view-employee') as HTMLButtonElement).click();
+    });
+    await waitFor(() => (q('met8-view-employee')?.getAttribute('aria-pressed') ?? '') === 'true', 'employee group');
+
+    expect(loc()).toContain('groupBy=employee');
+    expect(loc()).toContain('window=7d');
+    expect(loc()).toContain('sort=runs');
+    expect(loc()).toContain('dir=asc');
+    expect(loc()).not.toContain('dsort');
+    expect(q('metS-reset-note')?.textContent).toContain('时间窗与分摊的排序、分组选择保持不变');
+    expect(batch(before, '/api/employees')).toBe(1);
+    expect(batch(before, 'hermes-usage')).toBe(0);
+  });
+});
+
+describe('metT — totals row and rounding note', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+  const num = (raw: string | null | undefined): number =>
+    Number((raw ?? '').replace(/[^0-9.-]+/g, ''));
+
+  function captureDownload(): { captured: { blob: Blob | null; name: string | null } } {
+    const captured: { blob: Blob | null; name: string | null } = { blob: null, name: null };
+    Object.assign(URL, {
+      createObjectURL: vi.fn((blob: Blob) => {
+        captured.blob = blob;
+        return 'blob:metT';
+      }),
+      revokeObjectURL: vi.fn(),
+    });
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      captured.name = this.download;
+    });
+    return { captured };
+  }
+
+  it('sums the share table from its own body rows and closes at 100.0%', async () => {
+    await mountShare(SHARE_USAGE);
+
+    const runsInBody = [...document.querySelectorAll('[data-testid^="met7-runs-"]')].map((node) => num(node.textContent));
+    const costsInBody = [...document.querySelectorAll('[data-testid^="met7-cost-"]')].map((node) => num(node.textContent));
+    const sharesInBody = [...document.querySelectorAll('[data-testid^="met7-share-"]')].map((node) => num(node.textContent));
+
+    expect(q('metT-total-row-share')).toBeTruthy();
+    expect(num(q('metT-share-total-runs')?.textContent)).toBe(runsInBody.reduce((a, b) => a + b, 0));
+    expect(num(q('metT-share-total-cost')?.textContent)).toBeCloseTo(costsInBody.reduce((a, b) => a + b, 0), 2);
+    expect(num(q('metT-share-total-share')?.textContent)).toBe(100);
+    // Per-row rounding adds up here too, but the total never relies on it.
+    expect(sharesInBody.reduce((a, b) => a + b, 0)).toBe(100);
+
+    expect(q('met7-runs-zeta')?.textContent).toBe('4');
+    expect(q('metT-share-total-runs')?.textContent).toBe('13');
+    expect(q('metT-share-total-cost')?.textContent).toBe('$4.00');
+    expect(q('metT-share-total-share')?.textContent).toBe('100.0%');
+    expect(q('metT-rounding-note')?.textContent).toContain('未舍入');
+    expect(q('metT-rounding-note')?.textContent).toContain('合计行不参与排序');
+  });
+
+  it('keeps the totals row outside sorting, and the file keeps only data rows', async () => {
+    const { captured } = captureDownload();
+    await mountShare(SHARE_USAGE, '/metrics?sort=model&dir=asc');
+
+    const rows = [...document.querySelectorAll('[data-testid^="met7-row-"]')].map((node) => node.getAttribute('data-testid'));
+    expect(rows).toEqual(['met7-row-alpha', 'met7-row-mid', 'met7-row-zeta']);
+    expect(q('metT-share-total-runs')?.textContent).toBe('13');
+    expect(q('metT-share-total-cost')?.textContent).toBe('$4.00');
+    expect(q('metT-total-row-share')?.querySelectorAll('button').length).toBe(0);
+    expect(q('metT-total-row-share')?.querySelectorAll('[aria-sort]').length).toBe(0);
+
+    await act(async () => {
+      (q('metA-export') as HTMLButtonElement).click();
+    });
+    const lines = (await (captured.blob as Blob).text()).replace(/^\uFEFF/, '').split('\r\n');
+    expect(dataOnly(lines)).toHaveLength(rows.length + 1);
+    expect(lines.some((line) => line.startsWith('合计'))).toBe(false);
+    expect(lines.filter((line) => line.startsWith('# 合计：')).length).toBe(1);
+  });
+
+  it('sums the detail table from the rendered rows and keeps unreadable columns at —', async () => {
+    await mountEmployeeShare(TWO_EMPLOYEE_LEDGER);
+
+    const costs = [...document.querySelectorAll('[data-testid^="met6-row-"]')].map((row) => num(row.querySelectorAll('td')[1]?.textContent));
+    expect(q('metT-total-row')).toBeTruthy();
+    expect(num(q('metT-detail-total-cost')?.textContent)).toBeCloseTo(costs.reduce((a, b) => a + b, 0), 2);
+    expect(q('metT-detail-total-cost')?.textContent).toBe('$4.00');
+    expect(q('metT-detail-total-share')?.textContent).toBe('100.0%');
+    // The employee ledger holds no run counts: the total is unknown, not 0.
+    expect(q('metT-detail-total-count')?.textContent).toBe('—');
+
+    await mount(breakdownRouter({ usage: () => Promise.resolve(HERMES_USAGE) }), '/metrics?view=model');
+    // The model view has no per-model money at all: both money cells read «—».
+    expect(q('metT-detail-total-cost')?.textContent).toBe('—');
+    expect(q('metT-detail-total-count')?.textContent).toBe('9');
+    expect(q('metT-detail-total-share')?.textContent).toBe('—');
+    expect(document.body.textContent).not.toContain('$0.00$0.00');
+  });
+
+  it('keeps a real zero at $0.00 in the totals and explains the rounding in both tables', async () => {
+    await mountEmployeeShare({
+      items: [
+        { employeeId: 'emp_aaaabbbbcccc', costUsd: 0, runs: 2, updatedAt: '2026-11-19T03:20:00.000Z' },
+        { employeeId: 'emp_ddddeeeeffff', updatedAt: '2026-11-19T02:10:00.000Z' },
+      ],
+      missingEmployeeIds: [],
+    });
+
+    expect(q('metT-detail-total-cost')?.textContent).toBe('$0.00');
+    expect(q('metT-share-total-cost')?.textContent).toBe('$0.00');
+    expect(q('metT-share-total-runs')?.textContent).toBe('2');
+    // No readable money means no share at all — «—», not 0.
+    expect(q('metT-share-total-share')?.textContent).toBe('—');
+    expect(q('metT-detail-total-share')?.textContent).toBe('—');
+
+    expect(q('metT-rounding-note-detail')?.textContent).toContain('合计行不参与排序');
+    expect(q('metT-rounding-note-detail')?.textContent).toContain('导出文件的行仍是逐行明细');
+  });
+});
+
+describe('metU — the copied summary and the totals row are one number', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+
+  async function copyNow(): Promise<string> {
+    clip.copyTextToClipboard.mockClear();
+    await act(async () => {
+      (q('metL-copy') as HTMLButtonElement).click();
+    });
+    await waitFor(() => (q('metL-copy-status')?.textContent ?? '') !== '', 'copy status');
+    return String(clip.copyTextToClipboard.mock.calls[0][0]);
+  }
+
+  it('writes the same totals the footer shows, without reading anything again', async () => {
+    await mountShare(SHARE_USAGE);
+    const before = urls().length;
+
+    const body = await copyNow();
+
+    expect(urls().length).toBe(before);
+    const line = '合计：运行 13 · 成本 $4.00 · 占比 100.0%';
+    expect(body).toContain(line);
+    expect(q('metU-copy-total')?.textContent).toBe(line);
+    // Footer cells and the copied line hold the very same strings.
+    expect(q('metT-share-total-runs')?.textContent).toBe('13');
+    expect(q('metT-share-total-cost')?.textContent).toBe('$4.00');
+    expect(q('metT-share-total-share')?.textContent).toBe('100.0%');
+    expect(q('metU-consistency-note')?.textContent).toContain(line.replace('合计：', ''));
+    expect(q('metR-copy-state')?.textContent).toBe('摘要可复制');
+    expect(body).not.toContain('emp_');
+  });
+
+  it('keeps the totals line in the fallback textarea when the clipboard refuses', async () => {
+    await mountShare(SHARE_USAGE);
+    clip.copyTextToClipboard.mockImplementationOnce(() => Promise.resolve(false));
+
+    const body = await copyNow();
+
+    expect(q('metL-copy-status')?.textContent).toBe('复制没成功');
+    const fallback = q('metL-fallback-text') as HTMLTextAreaElement;
+    expect(fallback.value).toBe(body);
+    expect(fallback.value).toContain('合计：运行 13 · 成本 $4.00 · 占比 100.0%');
+  });
+
+  it('keeps a readable zero at $0.00 and an unreadable share at — in the summary', async () => {
+    await mountEmployeeShare({
+      items: [
+        { employeeId: 'emp_aaaabbbbcccc', costUsd: 0, runs: 2, updatedAt: '2026-11-19T03:20:00.000Z' },
+        { employeeId: 'emp_ddddeeeeffff', updatedAt: '2026-11-19T02:10:00.000Z' },
+      ],
+      missingEmployeeIds: [],
+    });
+
+    const body = await copyNow();
+
+    expect(body).toContain('合计：运行 2 · 成本 $0.00 · 占比 —');
+    expect(q('metU-copy-total')?.textContent).toBe('合计：运行 2 · 成本 $0.00 · 占比 —');
+    expect(q('metT-share-total-cost')?.textContent).toBe('$0.00');
+    expect(q('metT-share-total-share')?.textContent).toBe('—');
+  });
+
+  it('does not invent a totals line when the table has no renderable row', async () => {
+    await mountShare({ by_model: [], asOf: '2026-11-19T20:12:00.000Z' });
+
+    const body = await copyNow();
+
+    expect(body).toContain('合计：该窗口无可渲染行');
+    expect(q('metU-copy-total')?.textContent).toBe('合计：该窗口无可渲染行');
+    expect(body).not.toContain('合计：运行 0');
+  });
+});
+
+describe('metV — exports carry the totals as a comment line', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+  const dataLines = (lines: string[]): string[] => lines.filter((line) => !line.startsWith('#'));
+
+  function captureDownload(): { captured: { blob: Blob | null; name: string | null } } {
+    const captured: { blob: Blob | null; name: string | null } = { blob: null, name: null };
+    Object.assign(URL, {
+      createObjectURL: vi.fn((blob: Blob) => {
+        captured.blob = blob;
+        return 'blob:metV';
+      }),
+      revokeObjectURL: vi.fn(),
+    });
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      captured.name = this.download;
+    });
+    return { captured };
+  }
+
+  const readLines = async (blob: Blob | null): Promise<string[]> =>
+    (await (blob as Blob).text()).replace(/^\uFEFF/, '').split('\r\n').filter(Boolean);
+
+  it('adds one comment line to the share file, before any gap note and outside the row count', async () => {
+    const { captured } = captureDownload();
+    await mountShare(SHARE_USAGE);
+    const onScreen = document.querySelectorAll('[data-testid^="met7-row-"]').length;
+    const shownCount = q('metA-export-count')?.textContent;
+
+    await act(async () => {
+      (q('metA-export') as HTMLButtonElement).click();
+    });
+
+    const lines = await readLines(captured.blob);
+    expect(dataLines(lines)).toHaveLength(onScreen + 1); // header + rows
+    expect(dataLines(lines).length - 1).toBe(onScreen);
+    expect(shownCount).toBe(`可导出 ${onScreen} 行`);
+
+    const comment = lines.at(-1) ?? '';
+    expect(comment).toBe('# 合计：运行 13 · 成本 $4.00 · 占比 100.0%');
+    expect(comment).toBe(`# ${q('metU-copy-total')?.textContent}`);
+    // Same strings the footer shows.
+    expect(comment).toContain(String(q('metT-share-total-runs')?.textContent));
+    expect(comment).toContain(String(q('metT-share-total-cost')?.textContent));
+    expect(comment).toContain(String(q('metT-share-total-share')?.textContent));
+    expect(q('metV-export-total-note')?.textContent).toContain('合计注释行');
+  });
+
+  it('adds the footer numbers to the detail file and keeps them out of the data rows', async () => {
+    const { captured } = captureDownload();
+    await mount(usageRouter());
+    const onScreen = document.querySelectorAll('[data-testid^="met6-row-"]').length;
+    expect(onScreen).toBeGreaterThan(0);
+
+    await act(async () => {
+      (q('met6-export') as HTMLButtonElement).click();
+    });
+
+    const lines = await readLines(captured.blob);
+    expect(dataLines(lines)).toHaveLength(onScreen + 1);
+    expect(q('met6-cat-source')?.textContent).toContain(`${onScreen} 行`);
+    expect(q('metR-export-state')?.textContent).toContain(`明细可导 ${onScreen} 行`);
+
+    const comment = lines.at(-1) ?? '';
+    expect(comment).toBe(
+      `# 合计：成本 ${q('metT-detail-total-cost')?.textContent} · 次数 ${q('metT-detail-total-count')?.textContent} · 占比 ${q('metT-detail-total-share')?.textContent}`,
+    );
+    // A readable zero stays $0.00 in the comment; an unreadable column stays «—».
+    expect(comment).toContain('成本 $0.00');
+    expect(comment).toContain('次数 —');
+  });
+
+  it('keeps the totals comment above the gap note so the note stays the last line', async () => {
+    const { captured } = captureDownload();
+    const router = usageRouter();
+    await mount((url) =>
+      url.includes('run-stats')
+        ? Promise.reject(new ApiError('boom', { status: 500, body: '', url, requestId: 'req-metV-stats' }))
+        : router(url),
+    );
+
+    await act(async () => {
+      (q('met6-export') as HTMLButtonElement).click();
+    });
+
+    const lines = await readLines(captured.blob);
+    expect(lines.at(-1)).toContain('# 本次导出缺少 1 块：运行统计');
+    expect(lines.at(-2)).toContain('# 合计：成本');
+    expect(dataLines(lines).some((line) => line.includes('本次导出缺少'))).toBe(false);
+  });
+
+  it('writes the empty-window wording instead of a zero when there is no row', async () => {
+    const { captured } = captureDownload();
+    await mountShare({ by_model: [] });
+
+    expect(q('metA-export-count')?.textContent).toBe('可导出 0 行');
+    await act(async () => {
+      (q('metA-export') as HTMLButtonElement).click();
+    });
+
+    const lines = await readLines(captured.blob);
+    expect(lines).toHaveLength(2);
+    expect(lines[0]).toBe('group,runs,cost_usd,share_pct,as_of,window');
+    expect(lines[1]).toBe('# 合计：该窗口无可渲染行');
+    expect(lines.join('\n')).not.toMatch(/合计：运行 0/);
+  });
+});
+
+describe('metW — wide tables scroll from the keyboard on a narrow screen', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+
+  it('marks both table scrollers as labelled regions with a first-column anchor', async () => {
+    await mount(usageRouter());
+    const detail = q('metW-scroll-detail');
+    expect(detail).not.toBeNull();
+    expect(detail?.getAttribute('role')).toBe('region');
+    expect(detail?.getAttribute('tabindex')).toBe('0');
+    expect(detail?.getAttribute('aria-label')).toBe('成本明细表，可横向滚动');
+    expect(detail?.className).toContain('metW-table');
+    expect(detail?.querySelector('table[data-testid="met6-table"]')).not.toBeNull();
+    expect(q('metW-scroll-hint')?.textContent).toBe('左右滑动查看全部列');
+
+    await mountShare(SHARE_USAGE);
+    const share = q('metW-scroll-share');
+    expect(share).not.toBeNull();
+    expect(share?.getAttribute('role')).toBe('region');
+    expect(share?.getAttribute('tabindex')).toBe('0');
+    expect(share?.getAttribute('aria-label')).toBe('成本分摊表，可横向滚动');
+    expect(share?.querySelector('table[data-testid="met7-table"]')).not.toBeNull();
+    expect(q('metW-scroll-hint-share')?.textContent).toBe('左右滑动查看全部列');
+  });
+
+  it('moves the region sideways with the arrow keys and returns home', async () => {
+    await mountShare(SHARE_USAGE);
+    const share = q('metW-scroll-share') as HTMLDivElement;
+    share.scrollLeft = 120;
+
+    const right = new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true });
+    share.dispatchEvent(right);
+    expect(share.scrollLeft).toBe(168);
+    expect(right.defaultPrevented).toBe(true);
+
+    share.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true }));
+    expect(share.scrollLeft).toBe(120);
+
+    share.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true, cancelable: true }));
+    expect(share.scrollLeft).toBe(0);
+
+    // At the left edge the key is absorbed but the value never goes negative.
+    share.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true }));
+    expect(share.scrollLeft).toBe(0);
+
+    // Other keys are left alone: Tab and page scrolling keep their meaning.
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    share.dispatchEvent(tab);
+    expect(tab.defaultPrevented).toBe(false);
+  });
+
+  it('takes focus so the scroller is reachable before the table content', async () => {
+    await mount(usageRouter());
+    const detail = q('metW-scroll-detail') as HTMLDivElement;
+    detail.focus();
+    expect(document.activeElement).toBe(detail);
+    // No positive tab order was invented.
+    expect(detail.getAttribute('tabindex')).toBe('0');
+  });
+
+  it('leaves the page itself without horizontal overflow at 1440, 1280 and 375', async () => {
+    await mountShare(SHARE_USAGE);
+    const originalWidth = window.innerWidth;
+    try {
+      for (const width of [1440, 1280, 375]) {
+      window.innerWidth = width;
+      const page = document.documentElement;
+      // jsdom does no layout, so this is the structural half of the check: the
+      // page root never claims more width than its viewport box. Real-browser
+      // readings are recorded in the artifact.
+        expect(page.scrollWidth).toBe(page.clientWidth);
+        expect(q('metW-scroll-share')?.className).toContain('met6-table-scroll');
+      }
+    } finally {
+      window.innerWidth = originalWidth;
+    }
+  });
+});
+
+describe('metX — one window, three readings of the run count', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+  const noteText = (): string => q('metX-consistency-note')?.textContent ?? '';
+
+  it('shows the activity total, the heat sum and the detail total side by side', async () => {
+    await mount(usageRouter());
+    const before = urls().length;
+
+    expect(q('met5-count')?.textContent).toBe('332');
+    expect(q('metX-window-runs')?.textContent).toBe('332');
+    expect(q('metX-heat-runs')?.textContent).toBe('332');
+    // The employee ledger carries money, not run counts: no total, and never 0.
+    expect(q('metX-detail-runs')?.textContent).toBe('—');
+    expect(q('metX-detail-runs')?.getAttribute('title')).toContain('不记运行次数');
+    expect(q('metX-delta')?.textContent).toBe('—');
+    expect(q('metX-delta')?.getAttribute('title')).toContain('算不出差');
+    expect(noteText()).toContain('窗口总运行');
+    expect(noteText()).toContain('热力格求和');
+    expect(noteText()).toContain('明细合计');
+    expect(noteText()).toContain('不发新请求');
+    // Rendering the note reads nothing again.
+    expect(urls().length).toBe(before);
+  });
+
+  it('reports the difference when the detail view does count runs', async () => {
+    const base = usageRouter();
+    await mount(
+      (url) => (url.includes('hermes-usage') ? Promise.resolve(HERMES_USAGE) : base(url)),
+      '/metrics?view=model',
+    );
+
+    expect(q('metX-window-runs')?.textContent).toBe('332');
+    expect(q('metX-heat-runs')?.textContent).toBe('332');
+    expect(q('metX-detail-runs')?.textContent).toBe('9');
+    expect(q('metX-delta')?.textContent).toBe('-323');
+    const shown = Number(q('metX-detail-runs')?.textContent) - Number(q('metX-heat-runs')?.textContent);
+    expect(shown).toBe(-323);
+    expect(noteText()).toContain('以各自卡片为准');
+  });
+
+  it('recomputes all three when the detail window changes, without rereading the heat', async () => {
+    const base = usageRouter();
+    await mount(
+      (url) => {
+        if (url.includes('hermes-usage') && url.includes('days=7')) {
+          return Promise.resolve({
+            by_model: [{ model: 'qwen-plus', sessions: 2, api_calls: 5 }, { model: 'deepseek-v4' }],
+            asOf: '2026-11-19T20:12:00.000Z',
+          });
+        }
+        if (url.includes('hermes-usage')) return Promise.resolve(HERMES_USAGE);
+        return base(url);
+      },
+      '/metrics?view=model',
+    );
+    expect(q('metX-detail-runs')?.textContent).toBe('9');
+
+    const beforeHeat = urls().filter((url) => url.includes('run-activity')).length;
+    await act(async () => {
+      (q('met6-window-7d') as HTMLButtonElement).click();
+    });
+    await waitFor(() => (q('metX-detail-runs')?.textContent ?? '') === '5', 'detail total after switch');
+
+    expect(q('metX-heat-runs')?.textContent).toBe('332');
+    expect(q('metX-delta')?.textContent).toBe('-327');
+    // The heat card keeps its own window: switching the detail window never refetches it.
+    expect(urls().filter((url) => url.includes('run-activity')).length).toBe(beforeHeat);
+  });
+
+  it('marks the readings it cannot compare instead of summing a missing cell as zero', async () => {
+    const base = usageRouter();
+    await mount(
+      (url) =>
+        url.includes('run-activity')
+          ? Promise.reject(new ApiError('boom', { status: 500, body: '', url, requestId: 'req-metX-heat' }))
+          : url.includes('hermes-usage')
+            ? Promise.resolve(HERMES_USAGE)
+            : base(url),
+      '/metrics?view=model',
+    );
+
+    // The heat card failed, so its two readings are «—» with a reason.
+    expect(q('metX-window-runs')?.textContent).toBe('—');
+    expect(q('metX-heat-runs')?.textContent).toBe('—');
+    expect(q('metX-window-runs')?.getAttribute('title')).toContain('不按 0 记');
+    expect(q('metX-heat-runs')?.getAttribute('title')).toContain('不按 0 记');
+    // The detail total is still readable; the difference is not.
+    expect(q('metX-detail-runs')?.textContent).toBe('9');
+    expect(q('metX-delta')?.textContent).toBe('—');
+  });
+});
+
+describe('metY — skip links around the page and the two wide tables', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+
+  it('opens with a skip link that lands on a focusable main region', async () => {
+    await mount(usageRouter());
+
+    const link = q('metY-skiplink') as HTMLAnchorElement;
+    expect(link.tagName).toBe('A');
+    expect(link.getAttribute('href')).toBe('#metY-main');
+    expect(link.textContent).toBe('跳到主要内容');
+    expect(link.className).toContain('metY-skip');
+
+    const main = document.getElementById('metY-main');
+    expect(main).toBe(q('met5-page'));
+    expect(main?.getAttribute('tabindex')).toBe('-1');
+
+    // The target takes focus when the link is followed.
+    main?.focus();
+    expect(document.activeElement).toBe(main);
+  });
+
+  it('offers a jump past the detail table, landing after its rows', async () => {
+    await mount(usageRouter());
+
+    const link = q('metY-skip-detail') as HTMLAnchorElement;
+    expect(link.getAttribute('href')).toBe('#metY-after-detail');
+    expect(link.tagName).toBe('A');
+
+    const target = document.getElementById('metY-after-detail');
+    expect(target).toBe(q('met6-cat-source'));
+    expect(target?.getAttribute('tabindex')).toBe('-1');
+
+    const table = q('met6-table') as HTMLElement;
+    expect(table.compareDocumentPosition(target as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    target?.focus();
+    expect(document.activeElement).toBe(target);
+  });
+
+  it('offers the same jump past the share table', async () => {
+    await mountShare(SHARE_USAGE);
+
+    const link = q('metY-skip-share') as HTMLAnchorElement;
+    expect(link.getAttribute('href')).toBe('#metY-after-share');
+
+    const target = document.getElementById('metY-after-share');
+    expect(target).toBe(q('met7-source'));
+    expect(target?.getAttribute('tabindex')).toBe('-1');
+
+    const table = q('met7-table') as HTMLElement;
+    expect(table.compareDocumentPosition(target as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('adds no read of its own', async () => {
+    await mount(usageRouter());
+    const before = urls().length;
+    (q('metY-skiplink') as HTMLAnchorElement).focus();
+    (q('metY-skip-detail') as HTMLAnchorElement).focus();
+    expect(urls().length).toBe(before);
   });
 });
