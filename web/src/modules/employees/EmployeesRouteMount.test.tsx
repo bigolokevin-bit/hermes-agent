@@ -96,7 +96,8 @@ describe("/employees mount chain (R38)", () => {
     expect(document.body.textContent).toContain("增长组");
     const depts = document.querySelectorAll('[data-label="部门"]');
     expect(depts[0]?.textContent).toBe("增长组");
-    expect(depts[1]?.textContent).toBe("—"); // 第二行缺部门：— 不假造
+    expect(depts[1]?.textContent).toBe("未标注部门"); // 部门键在而值为空：R96 三态口径，不假造也不显 —
+    expect(depts[1]?.getAttribute("title")).toContain("值为空");
     expect(document.body.textContent).toContain("2026-11-18 09:10");
   });
 

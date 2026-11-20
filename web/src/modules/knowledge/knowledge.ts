@@ -26,6 +26,7 @@
  * no other module's endpoint is borrowed to fill a number.
  */
 
+import { updatedText } from "./updated";
 export const KNOWLEDGE_GAP = "GAP-03";
 
 /**
@@ -1378,7 +1379,7 @@ function spaceOf(row: Rec): SpaceRow {
   const failure = failureOf(row, status);
   const source = spaceSourceOf(row);
   const moment = syncMomentOf(row);
-  const at = beijing(moment.atRaw);
+  const at = updatedText(moment.atRaw).value; // R75 单点（spaceOf）
   const extras: string[] = [];
   if (docs === null && chunks !== null) extras.push(`分块 ${chunks.toLocaleString("zh-CN")} 段`);
   if (docs === null && bytes !== null) {
@@ -1396,9 +1397,9 @@ function spaceOf(row: Rec): SpaceRow {
     docsReason: docs === null ? "上游没有给出这个空间有多少文档" : null,
     docsExtra: extras.length > 0 ? extras.join(" · ") : null,
     timeLabel: moment.timeLabel,
-    at: at ?? "—",
+    at,
     atRaw: moment.atRaw,
-    atReason: at ? null : moment.atRaw ? "上游给的时间读不出是哪一刻" : "上游没有给出时间",
+    atReason: at !== "—" ? null : moment.atRaw ? "上游给的时间读不出是哪一刻" : "上游没有给出时间",
     status,
     statusRaw,
     statusReason: statusRaw ? null : "上游没有给出空间状态",
@@ -1482,7 +1483,7 @@ function docOf(row: Rec): DocRow {
   const bytes = pickNumber(row.sizeBytes, row.size_bytes, row.storageBytes, row.storage_bytes, row.bytes, row.size);
   const size = formatBytes(bytes);
   const moment = syncMomentOf(row);
-  const at = beijing(moment.atRaw);
+  const at = updatedText(moment.atRaw).value; // R75 单点（docOf）
   const link = linkOf(row);
   return {
     id,
@@ -1494,9 +1495,9 @@ function docOf(row: Rec): DocRow {
     size: size ?? "—",
     sizeHint: size ? null : bytes !== null ? "上游给的数值读不出可读大小" : "上游没有给出文件大小",
     sizeBytes: bytes,
-    at: at ?? "—",
+    at,
     atRaw: moment.atRaw,
-    atHint: at ? null : moment.atRaw ? "上游给的时间读不出是哪一刻" : "上游没有给出更新时间",
+    atHint: at !== "—" ? null : moment.atRaw ? "上游给的时间读不出是哪一刻" : "上游没有给出更新时间",
     href: link.href,
     unreachable: link.unreachable,
     spaceLabel: pickString(row.spaceName, row.space_name, row.knowledgeSpaceName, row.knowledge_space_name)

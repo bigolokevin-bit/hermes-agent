@@ -389,3 +389,17 @@ R52 OBS 整改：`disabled` 与 `aria-disabled` 说同一句话，与 `title` �
 - 复现腿：`?state=empty` 下选择器自洽（恰一枚 pressed），真入口（`run-list-copy`）不渲染，零请求；点 `run-window-24h` 只改地址（`state=empty&window=24h`），仍零请求、面板仍为 empty。
 - 验证：定向 runs 4 files / 147 passed（基线 142）；全量 **2321 passed**；`tsc` 本域 0；`eslint src/modules/runs` exit 0；build exit 0（entry 内「全部时间」=0，`RunsModulePage-*.js`=1）。
 - 未测：真实浏览器 375 折行；读口在极限窗口下的服务端行为（1970 起点只由本用例断言请求形状）。
+
+## 手动刷新语义（runs refresh，2026-11-20）
+
+与 `/metrics` 的 metAK 同一套规则：刷新是重取一次，不是把页面打回骨架。
+
+- 页首 `run-refresh`（`aria-busy`）：按当前窗口/状态/负责人/排序重发**一次** `/api/runs`；`?state=` 复现腿禁用该钮。
+- busy：二次点击在同步闸门（`busyRef`）处被吞，`run-busy-note` 写「更新中…（先保留上一次读到的数据）」；旧行、旧计数、旧排序全部原样留在屏上，不出现骨架。
+- 成功：`run-updated-at`「刷新完成于 <北京时间 到分>（读取时刻，不是数据时刻）」，与换行显示的 `run-asof` 采集时刻互不覆盖；失败不写 updated-at。
+- 失败：旧行保留，`run-refresh-error` 一行「这次刷新没成功：<人话>」+ `run-refresh-rid`（复制钮 `run-refresh-copy`；无号时写「本次请求未记录编号」）+ `run-refresh-retry`。`?state=` 的复现腿不参与刷新。
+- 切窗口 / 切状态 / 清除筛选 / 移除 chip / 空态清筛选时，先 `cancel()` 作废在途批（代次号 +1），迟到的响应不写数据也不写 updated-at。
+- 与 `/metrics` 的差异（已核）：`/runs` 只一个读口，因此一次刷新 = 恰 1 次 `/api/runs`（metrics 是一批 9 个读口）；两边都不改各卡既有的错误态与单卡重试语义。
+- `run-state-*`、`effectiveListGate` 的导出门、`run-list-*`、`run-sort-*`、`run-window-*`、`run-asof`、`run-row-*`、`run-notes` 零改。
+- 验证：定向 runs 4 files / 151 passed（基线 147）；全量 171 files / **2360 passed**（基线 2356）；`tsc` 本域 0；`eslint` exit 0；build exit 0（entry 内 `run-refresh-bar`=0，`RunsModulePage-*.js`=1）。
+- 未测：真实浏览器挂起批的交错时序（用 jsdom 的挂起 promise 替代）；375 下刷新条与错误行折行。
