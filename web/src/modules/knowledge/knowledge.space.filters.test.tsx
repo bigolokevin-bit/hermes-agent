@@ -228,4 +228,47 @@ describe("knowledge space-detail search×type combination guards (R157, gap-only
       expect(visibleRows()).toBe(0);
     }
   });
+
+  // R176 追加 —— 本文件原三例（R157）覆盖：②互不清除、⑤切空间真实链、③④组合四读+
+  // 非法 cap 缺席。五腿其余对照已有 pin：①深链回填+请求参逐字=R118①/R164①；
+  // ③非法不改写+空态+锚=R118④+上方 ③④；④重挂集合逐字=R157③④+R146④；
+  // ⑤清全部五键零残留+行回归=R164②。真缺口补此一例：
+  // · ②详情面**切类型桶/本地名筛**时，命中面 kn6-search data-len 逐字不动
+  //   （R172②只锁过排序切换；桶/名筛动作不串面此前零 pin）；
+  // · ⑤拼接位——清/回「全部」后的**动线终态**四值互等（R164②锁五键零残留+行数、
+  //   R142①锁未筛初始态四值；动线终态的四值+钮连续未连起来锁过）。
+  it("R176 ②⑤ bucket/name-filter churn leaves the hit face data-len byte-identical; the walk-back terminal state keeps all four readings equal", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    wire();
+    await render(`/knowledge?tab=spaces&panel=spaces&space=sp_x&q=${K}&ktype=${KTYPE_PDF}`);
+    const hitLenBefore = q("kn6-search")?.getAttribute("data-len"); // q=空间 命中的面级行数
+    expect(hitLenBefore).toBeTruthy();
+    const c0 = urls().length;
+    // 切类型桶：PDF → 全部 → PDF（详情面动作，命中面数据口径与本面无关，不得串面）
+    await click("kn-type-all");
+    expect(q("kn6-search")?.getAttribute("data-len")).toBe(hitLenBefore);
+    await click("kn-type-1"); // 回 PDF 桶（「全部」占 kn-type-all，人话首桶是 1 号）
+    expect(q("kn6-search")?.getAttribute("data-len")).toBe(hitLenBefore);
+    // 本地名筛开合（组件本地态）：同样不串面
+    await type("kn3-docs-filter-input", "手册");
+    expect(q("kn6-search")?.getAttribute("data-len")).toBe(hitLenBefore);
+    await type("kn3-docs-filter-input", "");
+    expect(q("kn6-search")?.getAttribute("data-len")).toBe(hitLenBefore);
+    // 全程本地：零 fetch 增量
+    expect(urls().length).toBe(c0);
+    // 回「全部」的动线终态：四值互等 + 钮 0..M-1 连续 + cap 在场
+    await click("kn-type-all");
+    const btnIds = [...container.querySelectorAll('button[data-testid^="kn-row-copy-space-"]')]
+      .map((b) => b.getAttribute("data-testid"))
+      .sort((a, b) => Number(a!.slice(-1)) - Number(b!.slice(-1)));
+    const rows = visibleRows();
+    expect(btnIds.length).toBe(rows);
+    expect(btnIds).toEqual(Array.from({ length: rows }, (_, i) => `kn-row-copy-space-${i}`));
+    expect(q("kn3-docs")?.getAttribute("data-len")).toBe(String(rows));
+    await click("knF-copy");
+    expect(String(writeText.mock.calls[0][0]).split("\n").length - 2).toBe(rows);
+    expect(capText()).toContain(`当前已加载 ${rows} 篇`);
+    expect(q("kn3-page-cap")).toBeTruthy();
+  });
 });

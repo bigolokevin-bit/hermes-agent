@@ -3700,3 +3700,55 @@ DocHeadStrip 禁用头排序按钮点击行为（禁用态 marker 已在 kn-gate
 边界：只新增 web/src/modules/knowledge/knowledge.sort.parity.test.tsx 与本证据；
 显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
 「test(console): knowledge sort parity guards」。
+
+# KNW5 追加 R176：空间详情内筛选护栏（追加于 R157 文件）（2026-11-20 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `072f023d`
+（知识面 delta 空）。零产品文件改动。本轮不新建文件——派工点明目标文件已存在
+（R157 的 knowledge.space.filters.test.tsx），新用例**追加**入该文件第四例。
+
+## 五腿对照（引用 vs 新写）
+
+```text
+①ktype 深链回填+旧 type 兜底+请求参逐字无 cursor —— 已锁：knowledge.filters.test.tsx ①
+  （R118 :142-152 桶 pressed/旧键兜底/docReq 的 spaceId toBe URL 值）+ R164 ①（参集合
+  恰 {limit,spaceId}）→ 引用。
+②本地零请求/归 1 页 —— R118 ⑤/R131 ①已锁；**新写缺口**：详情面切类型桶/本地名筛开合
+  时命中面 kn6-search data-len 逐字不动（R172②只锁过排序切换，桶/名筛不串面零 pin）。
+③非法枚举：loc 逐字不改+kn-type-empty+**cap 缺席**（名实不符 #2 按产品断言）——
+  R157 ③④ 尾段两路（含 0 行）+R118 ④（锚在场）已锁 → 引用。
+④重挂请求集合逐字+行数逐字同 —— R157 ③④（slice 增量 toBe）+R146 ④ 已锁 → 引用。
+⑤清全部五键零残留+行回归 —— R164 ② 已锁；**新写拼接缺口**：动线终态的四值互等
+  （data-len == knF 数据行 == 行钮数且 testid [0..M-1] 连续 == cap 句 M）——
+  R142① 只锁未筛初始态、R164② 未对四值，动线走到终态后的连锁此前零 pin。
+```
+
+## 新例读数（R157 文件第四例）
+
+```text
+q=空间 态下：hit data-len 基线在场；切「全部」→回「PDF 桶(kn-type-1)」→本地名筛「手册」
+开合——四个动作全程 kn6-search data-len 逐字不动、fetch 计数不变（c0）；
+回「全部」终态：钮 testid 序列 == [space-0, space-1]（连续）、count == 可见行 2
+（ktype 已清但夹具详情面 [A,B,C] 中……终态 rows=3 时 [0,1,2]——实例以 rows 动态生成）
+== data-len == knF 数据行 == cap「当前已加载 {rows} 篇」四读互等、cap 在场。
+```
+
+## 验证尾行（R176）
+```text
+$ npx vitest run src/modules/knowledge   → 17 files / 131 tests passed（基线 130 + 1）
+$ npx vitest run                         → 239 files / 2800 tests passed 全绿——
+  已知上游 audit.filters×4 红已由本次并入的 wave 修绿（非本域修复，如实记录状态变化）
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r176-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn3*/kn-row-copy*/kn-doc-copy*/kn-sort*/kn-type*/导出标记/kn3-page-cap/knE-page-*/
+kn6–kn9/knB/knD/knF/knG/knI/knL/kn-space-preview 全族通过（R157 原三例复跑同绿）。
+过程记录：测试初稿把「回 PDF 桶」写成 kn-type-0——「全部」占 kn-type-all、人话首桶是
+  1 号（产品编号规则既有），当场自纠，非产品缺陷。
+```
+未测如实：带登录会话真实屏；⑤「清 q/清排序后」的完整动线终态四值（R164② 已锁键位、
+本例锁的是类型桶回退路径的四值，两条动线互补不重复）。
+边界：只改 web/src/modules/knowledge/knowledge.space.filters.test.tsx（追加一 it）与
+本证据；显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；
+单 commit「test(console): knowledge space filter guards」。
