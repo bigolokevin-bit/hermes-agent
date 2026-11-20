@@ -4466,3 +4466,61 @@ kn7-preview-*/kn-type* + 既有 28 套全绿。
 边界：只新增 web/src/modules/knowledge/knowledge.export.rows.test.tsx 与本证据；
 显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
 「test(console): knowledge export rows parity guards」。
+
+# KNW5 追加 R210：双错误面隔离护栏（纯测试单）（2026-11-21 BJT）
+
+安全门：porcelain 空起做（HEAD 即 R209 链）、显式 refspec fetch 后 merge **实测 tip
+`cb790a3c` 比预期 `804ad319` 新（如实记录）**，merge 干净、知识面 delta 空。
+零产品文件改动（无新缺陷）。
+
+## 查重（引用不重写）
+
+```text
+①列表 500 面：句「这次没能读到知识数据」+rid、行/行钮/预览族渲染数 0（名实红线：
+  是 0 渲染非 disabled——R187 space.error:149 等已按计数 0 锁）、knF-copy disabled+
+  逐字 title+零写、错误↔空态互斥 —— R187 ①②④ + R183 ① + R138 已锁 → 引用；
+②抽屉失败面：列表与 kn3-page-cap 不卸载（R183 ①）、错误窗内行钮/行内预览可用且
+  复制串不漂移（R206 ④ + R183 ④）→ 引用；R190④（空态 spy/writeText）、
+  R125C/R196（抽屉开 1 关 0）→ 引用。
+真缺口（本文件 2 例 = 派工 ③④ 的隔离维度）：两面**同时**5xx 时两枚 rid 各自独立
+  在场（列表锚 rid-L、抽屉锚 rid-D 互不覆盖）、rid 带可点击复制钮（实测 RequestId
+  有 aria-label="复制请求编号" 的 button，非伪称）、恢复单面时另一面错误锚不被误清、
+  各自重试的增量互不牵连（列表重试只 +1 spaceId 读、抽屉重试只 +1 详情读——R183③/
+  R187③ 各只锁单面，互查对账此前零 pin）、双恢复后两锚同清。
+```
+
+## 关键读数
+
+```text
+④双败：两锚同屏；「请求编号：rid-r210-list」只在列表锚（其文本 not.toContain rid-D）、
+  「请求编号：rid-r210-drawer」只在抽屉锚；点抽屉锚的复制钮 → writeText 恰收
+  'rid-r210-drawer'；列表重试增量恰 [documents?limit=50&spaceId=sp_x]×1（详情零重发）、
+  列表锚 null 而抽屉锚 standing、列表 2 行就位。
+③先修抽屉：增量恰 [/api/documents/d_a]×1、抽屉 field-source 落「A 原件.pdf」、列表锚
+  standing；再修列表：增量恰 [spaceId 读]×1，两锚同时 null、行 2。
+名实补记：jsdom 无 isSecureContext 时 copyTextToClipboard 走 textarea 选抄 fallback
+  ——测试补 window.isSecureContext=true 还原真实 https 控制台的主路径（环境旗标，
+  非产品改动）。
+```
+
+## 验证尾行（R210）
+```text
+$ npx vitest run src/modules/knowledge   → 30 files / 161 tests passed（基线 159 + 2）
+$ npx vitest run                         → 288 files / 2982 tests passed 全绿
+  （首跑报 1 failed 为与 build/CDP 并行的偶发，单独复跑两次均全绿——如实记录）
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning；本单曾有
+  unused(url) 与 wireDead 参数两处自纠，提交前清零）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r210-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn3*/kn6–kn9/knB/knD/knF/knG/knI/knL-copy*/kn-sort*/kn-gates/kn-row-copy*/
+kn-row-copy-space*/kn-doc-copy*/kn-doc-preview*/kn-space-preview*/kn3-page-cap/knE-page-*/
+kn7-preview-*/kn-type* + 既有 29 套全绿。
+请求口径：每面重试严格 +1 且 URL 逐字指自身；两锚并存期间无任何自动重发。
+```
+未测如实：带登录会话真实双败屏；rid 复制钮的 fallback 选抄路径（jsdom execCommand 缺，
+只测 https 主路径——两条路径的分派在 lib/clipboard，非本模块写域）；重试风暴（连点）
+去重（moreState=loading 守卫在 knE 段另有 pin，本轮未铺双败连点）。
+边界：只新增 web/src/modules/knowledge/knowledge.error.isolation.test.tsx 与本证据；
+显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「test(console): knowledge error isolation guards」。
