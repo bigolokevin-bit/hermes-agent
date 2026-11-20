@@ -31,6 +31,7 @@ import { SUMMARY_COPY_LABEL } from "./summary";
 import { PERMALINK_COPY_LABEL, permalinkFromEvent } from "./permalink";
 import type { Gate } from "./auditGates";
 import { FILTER_SUMMARY_COPY_LABEL } from "./filterSummary";
+import type { AuditChip } from "./filterChips";
 
 /**
  * audC: the 结论行 copy control, rendered by BOTH legs (the inline row preview
@@ -67,7 +68,7 @@ export function SummaryCopy({ line }: { line: string }): ReactNode {
           readOnly
           value={line}
           aria-label="结论行（可手动选中复制）"
-          data-testid="audC-fallback"
+          data-testid="audC-copy-fallback"
           className="min-h-[3rem] w-full min-w-0 break-words rounded-md border border-border bg-muted/40 px-2 py-1 font-mono text-xs"
           onFocus={(event) => event.currentTarget.select()}
         />
@@ -201,6 +202,114 @@ export function FilterSummaryCopy({
           className="min-h-[3rem] w-full min-w-0 break-all rounded-md border border-border bg-muted/40 px-2 py-1 font-mono text-xs"
           onFocus={(event) => event.currentTarget.select()}
         />
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * audT — the chips for the filters that are on right now, directly under the
+ * filter bar. The words come from the shared seat map and the keys the × deletes
+ * come from the chip (see filterChips.ts), so this row cannot disagree with the
+ * copied summary above it or with the address below it.
+ *
+ * The row is PERMANENT in the sense that it reads the address and not the
+ * answer: it is there while a read is outstanding and there when a read was
+ * refused, because 「现在按什么在读」 is a fact about the question. It is absent
+ * only when nothing is on — no filter, no non-default size, no page beyond the
+ * first — and then there is nothing to remove.
+ */
+export function AuditFilterChips({
+  chips,
+  onRemove,
+}: {
+  chips: AuditChip[];
+  onRemove: (chip: AuditChip) => void;
+}): ReactNode {
+  if (chips.length === 0) return null;
+  return (
+    <div
+      className="flex min-w-0 flex-wrap items-center gap-2"
+      data-testid="aud-filter-chips"
+      role="group"
+      aria-label="生效筛选"
+    >
+      {chips.map((chip) => (
+        <span
+          key={chip.key}
+          className="flex min-w-0 items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-xs text-muted-foreground"
+          data-testid={`aud-chip-${chip.key}`}
+          title={chip.title}
+        >
+          <span className="min-w-0 break-words">{chip.label}</span>
+          {/* A real button, because a chip a keyboard person cannot remove is a filter they cannot leave. */}
+          <button
+            type="button"
+            className="rounded-sm underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+            aria-label={`移除「${chip.label}」`}
+            onClick={() => onRemove(chip)}
+            data-testid={`aud-chip-${chip.key}-clear`}
+          >
+            ×
+          </button>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * aud8: the chips for the two handle filters. aud9 kept them (same ids) and
+ * made the handles selectable: the chip is what a pasted `?actor=` /
+ * `?resource=` looks like when no option in the pickers matches it, and its
+ * 取消 is still the way out. The raw handle stays in the `title`, like every
+ * other id on this surface.
+ */
+export function AuditUrlFilterChips({
+  actor,
+  resource,
+  onClear,
+}: {
+  actor: string;
+  resource: string;
+  onClear: (key: "actor" | "resource") => void;
+}): ReactNode {
+  if (!actor && !resource) return null;
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="aud8-url-filters">
+      {actor ? (
+        <span
+          className="flex min-w-0 items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-xs text-muted-foreground"
+          data-testid="aud8-actor-chip"
+          title={`地址栏带入的操作者句柄（原值 ${actor}）已作为 actorId 发给服务；实测该参数生效，但它只吃机器句柄，界面上不铺原始值`}
+        >
+          操作者已按句柄筛选
+          <button
+            type="button"
+            className="underline underline-offset-2"
+            onClick={() => onClear("actor")}
+            data-testid="aud8-actor-clear"
+          >
+            取消
+          </button>
+        </span>
+      ) : null}
+      {resource ? (
+        <span
+          className="flex min-w-0 items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-xs text-muted-foreground"
+          data-testid="aud8-resource-chip"
+          title={`地址栏带入的资源编号（原值 ${resource}）已作为 resourceId 发给服务；该参数由路由接受，但其过滤效果本环境未单独实测，条数以服务回答为准`}
+        >
+          资源已按编号筛选
+          <button
+            type="button"
+            className="underline underline-offset-2"
+            onClick={() => onClear("resource")}
+            data-testid="aud8-resource-clear"
+          >
+            取消
+          </button>
+        </span>
       ) : null}
     </div>
   );
