@@ -424,16 +424,17 @@
 }
 
 .met6-table th {
-  padding: 8px 10px;
+  /* 行高/内边距由 styles/table-density.css 的 data-tab 规则统一给 40px 档 */
+  padding-inline: var(--space-3);
   text-align: left;
   white-space: nowrap;
-  font-weight: 550;
+  font-weight: var(--font-weight-medium);
   color: var(--color-muted-foreground);
   border-bottom: 1px solid var(--color-border);
 }
 
 .met6-table td {
-  padding: 8px 10px;
+  padding-inline: var(--space-3);
   vertical-align: top;
   border-bottom: 1px solid var(--color-border);
 }
@@ -455,8 +456,8 @@
 
 .met6-rowsub {
   display: block;
-  margin-top: 2px;
-  font-size: 11px;
+  margin-top: var(--space-1);
+  font-size: var(--font-size-1);
   color: var(--color-muted-foreground);
   overflow-wrap: anywhere;
   white-space: normal;
@@ -757,16 +758,19 @@
   font-size: 13px;
 }
 .metK-table caption {
-  padding-bottom: 6px;
+  padding-bottom: var(--space-2);
   text-align: left;
   font-size: 12px;
   color: var(--color-muted-foreground);
 }
 .metK-table th,
 .metK-table td {
-  padding: 6px 10px;
+  padding-inline: var(--space-3);
   text-align: left;
   border-bottom: 1px solid var(--color-border);
+}
+#metK-table tbody > tr {
+  height: var(--table-row-h-compact);
 }
 .metK-table thead th {
   font-size: 12px;

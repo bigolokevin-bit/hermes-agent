@@ -243,21 +243,30 @@
 }
 
 .sys3-table th {
-  padding: 8px 12px;
+  /* 行高与纵向 padding 由 styles/table-density.css（data-tab 域）统一给档 */
+  padding-inline: var(--space-3);
   border-bottom: 1px solid var(--color-border);
   color: var(--color-muted-foreground);
-  font-size: 11px;
-  font-weight: 500;
+  font-size: var(--font-size-1);
+  font-weight: var(--font-weight-medium);
   letter-spacing: 0.04em;
   text-align: left;
 }
 
 .sys3-table td {
-  padding: 10px 12px;
+  padding-inline: var(--space-3);
   border-bottom: 1px solid var(--color-border);
   color: var(--color-foreground);
   vertical-align: top;
   overflow-wrap: anywhere;
+}
+
+/* 响应耗时列（第 5 列）与 sys3-latency 单元格右对齐 + 等宽数字 */
+.sys3-table td[data-testid="sys3-latency"],
+.sys3-table thead th:nth-child(5) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .sys3-table tr:last-child td {
@@ -448,10 +457,13 @@
 .sys6-scroll { max-width: 100%; overflow-x: auto; }
 .sys6-table { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 12px; }
 .sys6-table th, .sys6-table td {
-  padding: 8px 10px; border-bottom: 1px solid var(--color-border);
+  /* 行高与纵向 padding 由 styles/table-density.css（data-tab 域）统一给档 */
+  padding-inline: var(--space-3); border-bottom: 1px solid var(--color-border);
   text-align: left; vertical-align: top; overflow-wrap: anywhere;
 }
-.sys6-table th { color: var(--color-muted-foreground); font-size: 11px; font-weight: 500; white-space: nowrap; }
+.sys6-table th { color: var(--color-muted-foreground); font-size: var(--font-size-1); font-weight: var(--font-weight-medium); white-space: nowrap; }
+/* 本次耗时列（第 4 列）右对齐 + 等宽数字；仅动表现层，nth-child 对应固定表头 */
+.sys6-table :is(th, td):nth-child(4) { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .sys6-table tr:last-child td { border-bottom: 0; }
 .sys6-status { display: inline-block; font-weight: 500; }
 .sys6-reason { display: block; margin-top: 3px; color: var(--color-muted-foreground); font-size: 11px; }
