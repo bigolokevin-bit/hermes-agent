@@ -83,6 +83,13 @@ export function QueueSortBar({
       >
         动作可用性矩阵：导出 / 展开 / 详情 / 排序 / 汇总 / 重试同源判定（状态 + 行数），禁用时写明原因。
       </p>
+        <p
+          className="min-w-0 break-words text-xs text-muted-foreground"
+          data-testid="apv-nav-note"
+          title="键盘导航只读屏上已加载的行：不产生请求、不改写 URL 参数。"
+        >
+          键盘：↑/↓ 行间移焦，Home/End 首末行，Enter 展开/收起该行预览，空格打开详情，Esc 收起并回到该行。
+        </p>
       {blocked ? null : (
         <p
           className="min-w-0 break-words text-xs text-muted-foreground"

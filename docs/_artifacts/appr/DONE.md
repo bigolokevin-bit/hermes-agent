@@ -1039,3 +1039,15 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 测试坑：qa(id) 助手会包 `[data-testid="…"]`，前缀选择器需直调 document.querySelector（SyntaxError Invalid selector 一次即修）。
 - 验证：定向 approvals 3 files/99 passed（94+5）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **144 files/1828 passed**（基线 1823+5）。
 - 零破：apv5–apv9/apd5–apd7/apr5/apv-state-* 既有族（94→99 全绿为证）；文件数=8（gates.ts+三组件+两页+两测…=7+DONE）≤15 ✓；三档=note/p 在既有 flex-col 内形态学报；9122==cca9cf7e 禁重建，活体矩阵读数待并入后代次。
+
+## R73 审批两 tab 列表键盘导航（apv-nav-*，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console=957704be 成功并入（本地 b43b49f6 之上），toplevel ✓ porc=0；现网代次 5630ffce（章面 957704be/entry xSbhqEWR），回执不引 cca9cf7e 及更早。
+- 锚=行自身（Card role=button，与 R26 F1 既有 affordance 统一一种，未引入第二锚）：roving tabindex=`(activeRowKey ?? 首行key)===row.key ? 0 : -1`；onFocus 同步锚；Card 加 aria-expanded={previewOpen}（与 apv9-toggle 双载体同值，用例锁两值相等）。
+- 键位裁决（工单明文优先）：Enter=展开/收起该行 apv9-preview（复用既有 onTogglePreview 单键翻转，无新取数）；**Space 保留 R26 F1「键盘打开详情」通道**（既有测试全走 card.click()，零破，DONE 记此裁决）；Escape=preview 开着时收起并把焦点还给该行（未开不劫持直接放行）；↑/↓/Home/End=navigateRows(action, fromKey)。
+- 真缺陷修出（非测试巧合）：navigateRows 若只读页级 activeRowKey，focus() 触发的 setState 未提交同帧 keydown 会用旧闭包值原地不动（本窗实测 FAIL 复现）→ 改「锚=事件所在行（fromKey），再退页级锚」，实现级修正后全绿。
+- 排序/筛选/搜索后焦点回第一行=firstRowKey useEffect 重置锚（纯本地）；?tab/?status/?q/?asort/?adir= 一律不写（无 setParams 调用）；四态不劫持=非 ready 无行卡（DOM 锁+error 态 body dispatch 无害）。
+- apv-nav-* 新增：apv-nav-note（挂 QueueSortBar 组件尾，两 tab 共用同口径行：↑/↓、Home/End、Enter 预览、空格详情、Esc 收起回焦）+ section apr5-list 加 data-apv-nav="true" 别名（现名不动）。
+- 测试：history 4 用例（roving 三键+tabindex 翻转/Enter 预览+双载体 aria-expanded 同值+互斥+Esc 回焦+fetchJSON 计数锁/Space 开详情/error 无行不劫持）+pending 1 用例（单行 roving+Enter/Esc+计数）；定向 approvals 3 files/104 passed（99+5）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **147 files/1925 passed**（merge 957704be 后基线之上）。
+- 坑（本窗实证）：①第一轮插入把 state 块留在 previewKey 后=visibleRows TDZ ReferenceError（relocate 后手工补的 state 行造成重复声明——两连 Babel/tsc 前坑，教训=移动代码块时抽取范围必须含全部新插行且勿再手补）；②history/pending 页原 import 无 useEffect，插入 effect 必须同步 import（tsc 缓存 -p 曾漏报，vitest 现形）。
+- 零破：apv5–apv9/apd5–apd7/apr5/apv-state-*/apv-gates-*（既有 99 全绿为证）；三档=行卡/grid 既有 min-w-0 形态学报（jsdom 不可测）；9122==5630ffce 禁重建，活体键盘读数待并入后代次。

@@ -1382,3 +1382,106 @@ describe("R72 action availability matrix (apv-gates-*)", () => {
     expect(api.fetchJSON.mock.calls.length, "gates never fetch").toBe(calls);
   });
 });
+
+describe("R73 keyboard navigation (apv-nav-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+  const nav = (el: Element | null, key: string) => {
+    (el as HTMLElement).focus();
+    el?.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+  };
+
+  const two = {
+    items: [
+      { approvalId: "ap_n1", title: "轮换密钥", status: "pending", createdAt: "2026-11-19T01:00:00Z" },
+      { approvalId: "ap_n2", title: "发布周知", status: "approved", decidedAt: "2026-11-19T02:00:00Z" },
+    ],
+  };
+  const handler = async (url: string) => {
+    if (String(url).includes("/api/approval?id=")) {
+      return { approvalId: "ap_n1", title: "轮换密钥", status: "pending", requestedBy: { type: "human", id: "human:9" }, createdAt: "2026-11-19T01:00:00Z" };
+    }
+    return two;
+  };
+
+  it("roving tabindex: one anchor, arrows move focus, Home/End jump", async () => {
+    await mount(handler, "/approvals?tab=history");
+    const first = qa("apr5-row-ap_n1");
+    const second = qa("apr5-row-ap_n2");
+    expect(first, "rows on screen").toBeTruthy();
+    expect(first!.getAttribute("tabindex"), "current anchor row is tabbable").toBe("0");
+    expect(second!.getAttribute("tabindex"), "other rows stay out of the tab order").toBe("-1");
+    await act(async () => {
+      nav(first, "ArrowDown");
+    });
+    expect(document.activeElement).toBe(second);
+    expect(second!.getAttribute("tabindex"), "moved anchor is tabbable").toBe("0");
+    expect(first!.getAttribute("tabindex"), "old anchor leaves the tab order").toBe("-1");
+    await act(async () => {
+      nav(second, "ArrowUp");
+    });
+    expect(document.activeElement).toBe(first);
+    await act(async () => {
+      nav(first, "End");
+    });
+    expect(document.activeElement).toBe(second);
+    await act(async () => {
+      nav(second, "Home");
+    });
+    expect(document.activeElement).toBe(first);
+    expect(qa("apv-nav-note")?.textContent).toContain("Enter");
+  });
+
+  it("Enter opens the preview with no request; Esc closes and returns focus", async () => {
+    await mount(handler, "/approvals?tab=history");
+    const before = api.fetchJSON.mock.calls.length;
+    const first = qa("apr5-row-ap_n1");
+    await act(async () => {
+      nav(first, "Enter");
+    });
+    expect(qa("apv9-preview-ap_n1"), "Enter opens the inline preview").toBeTruthy();
+    expect(first!.getAttribute("aria-expanded")).toBe("true");
+    expect(qa("apv9-toggle-ap_n1")?.getAttribute("aria-expanded"), "dual carriers agree").toBe("true");
+    await act(async () => {
+      nav(first, "Enter");
+    });
+    expect(qa("apv9-preview-ap_n1"), "Enter again collapses").toBeNull();
+    await act(async () => {
+      nav(first, "Enter");
+    });
+    const second = qa("apr5-row-ap_n2");
+    await act(async () => {
+      nav(second, "Enter");
+    });
+    expect(qa("apv9-preview-ap_n2"), "second row expands").toBeTruthy();
+    expect(qa("apv9-preview-ap_n1"), "only one row open at a time").toBeNull();
+    await act(async () => {
+      nav(qa("apr5-row-ap_n2"), "Escape");
+    });
+    expect(qa("apv9-preview-ap_n2"), "Esc closes").toBeNull();
+    expect(document.activeElement, "Esc returns focus to the row").toBe(qa("apr5-row-ap_n2"));
+    expect(api.fetchJSON.mock.calls.length, "keyboard navigation never fetches").toBe(before);
+  });
+
+  it("Space keeps the R26 detail channel; 404 state draws no focusable rows", async () => {
+    await mount(handler, "/approvals?tab=history");
+    await act(async () => {
+      nav(qa("apr5-row-ap_n1"), " ");
+    });
+    await waitFor(() => !!qa("apr5-detail"), "space opens the detail");
+    expect(qa("apr5-detail")).toBeTruthy();
+  });
+
+  it("error state draws no rows and the arrow keys are not hijacked", async () => {
+    await mount(async (url: string) => {
+      if (String(url).includes("/api/approval?id=")) return Promise.resolve({});
+      throw new ApiError("boom", { status: 500, body: "", url: "/agent-api/api/approvals", requestId: "req-r73-500" });
+    }, "/approvals?tab=history");
+    await waitFor(() => !!qa("apv-state-error"), "error panel");
+    expect(document.querySelectorAll('[data-testid^="apr5-row-ap_n"]')).toHaveLength(0);
+    const calls = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, cancelable: true }));
+    });
+    expect(api.fetchJSON.mock.calls.length, "direction keys do nothing in error state").toBe(calls);
+  });
+});

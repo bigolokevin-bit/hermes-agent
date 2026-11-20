@@ -657,3 +657,28 @@ describe("R71 pending column sorting", () => {
     expect(document.querySelector('[data-testid="apv-sort-scope-note"]')?.textContent).toContain("条内排序");
   });
 });
+
+describe("R73 pending keyboard navigation (apv-nav-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+
+  it("rows rove and Enter opens the preview without fetching", async () => {
+    await mount(queue(), "/approvals?tab=pending");
+    const row = qa("apr5-row-ap_9F3A1111");
+    expect(row, "queue row present").toBeTruthy();
+    expect(row!.getAttribute("tabindex"), "single tabbable row").toBe("0");
+    const before = api.fetchJSON.mock.calls.length;
+    (row as HTMLElement).focus();
+    await act(async () => {
+      row!.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+    });
+    expect(qa("apv9-preview-ap_9F3A1111"), "Enter opens the inline preview").toBeTruthy();
+    expect(row!.getAttribute("aria-expanded")).toBe("true");
+    await act(async () => {
+      row!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+    });
+    expect(qa("apv9-preview-ap_9F3A1111"), "Esc closes").toBeNull();
+    expect(document.activeElement).toBe(row);
+    expect(api.fetchJSON.mock.calls.length, "no keyboard-triggered requests").toBe(before);
+    expect(qa("apv-nav-note"), "nav note present").toBeTruthy();
+  });
+});
