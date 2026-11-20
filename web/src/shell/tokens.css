@@ -44,3 +44,54 @@
   --side:208px;
   --bar:27px;
 }
+
+/*
+ * UI-A semantic token layer — UI-RUBRIC v1 (2026-11-20).
+ * This block is the ONLY token interface for page code: pages consume the
+ * --space, --font-size, --radius, --color, --table, --btn, --border and
+ * --shadow names below. The skeleton block above stays the single value source
+ * (PRD v4.1 B8) — every --color-* here is a var() reference, never a new
+ * literal. Skeleton original names (--bg/--fg/--line/--r/...) remain only
+ * for existing pre-rubric pages; new code must not use them.
+ * Exceptions registered in docs/design/UI-RUBRIC.md §一·例外登记.
+ * A light theme will override THIS layer's mappings, not the names.
+ */
+:root{
+  /* 1 spacing — multiples of 4, the only allowed values */
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-6:24px; --space-8:32px;
+
+  /* 2 type ladder — 6 fixed steps; weights 400/500/600 only (700 banned) */
+  --font-size-1:12px; --font-size-2:13px; --font-size-3:14px;
+  --font-size-4:16px; --font-size-5:20px; --font-size-6:24px;
+  --line-height-1:1.25; --line-height-2:1.4; --line-height-3:1.5;
+  --font-weight-regular:400; --font-weight-medium:500; --font-weight-semibold:600;
+
+  /* 3 table — 40px rows; 36px only for embedded sub-tables */
+  --table-row-h:40px; --table-row-h-compact:36px;
+
+  /* 4 radius / stroke / shadow — two shadow levels, no stacking */
+  --radius-1:4px; --radius-2:8px; --radius-3:12px;
+  --border-1:1px solid var(--color-border-subtle);
+  --border-strong:1px solid var(--color-border);
+  --shadow-1:0 1px 2px rgba(0,0,0,.4);    /* card lift */
+  --shadow-2:0 12px 32px rgba(0,0,0,.55); /* dialog / dropdown */
+
+  /* 5 colour semantics — mapped onto skeleton values, names stable across themes */
+  --color-bg:var(--bg);
+  --color-surface:var(--panel);
+  --color-surface-raised:var(--panel-2);
+  --color-text:var(--fg);
+  --color-text-muted:var(--fg-2);
+  --color-border-subtle:var(--line);
+  --color-border:var(--line-2);
+  --color-primary:var(--fg);   /* exception E1, see rubric registry */
+  --color-success:var(--ok);
+  --color-warning:var(--warn);
+  --color-danger:var(--bad);
+  --color-info:var(--info);
+
+  /* 7 button tiers — heights, hit area, focus ring */
+  --btn-h-inline:28px; --btn-h:32px; --btn-h-dialog:36px;
+  --btn-hit-min:32px;
+  --focus-ring:2px solid var(--color-primary);
+}
