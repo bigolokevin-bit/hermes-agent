@@ -1342,6 +1342,8 @@ export type MetricsSummaryInput = {
   asOf: string | null;
   /** When the user asked for the copy, as an ISO stamp. */
   generatedAt: string;
+  /** The totals line, already rendered by the page from the same sums the table footer shows. */
+  totalLine?: string | null;
 };
 
 export function metricsSummaryText(input: MetricsSummaryInput): string {
@@ -1351,6 +1353,7 @@ export function metricsSummaryText(input: MetricsSummaryInput): string {
     `窗口：${input.windowLabel}（${input.windowId}）`,
     `运行数：${formatCount(input.runs)}`,
     `实扣金额：${formatUsd(input.costUsd)}`,
+    ...(input.totalLine === undefined ? [] : [input.totalLine ?? '合计：该窗口无可渲染行']),
     `占比口径：成本分摊按${input.groupBy === 'employee' ? '员工' : '模型'}分组的账本实扣计算，占比合计 100%，保留一位小数`,
     `采集时刻：${asOf ? formatBeijing(asOf) : '—'}`,
     `生成时刻：${formatBeijing(input.generatedAt)}（北京时间）`,

@@ -352,3 +352,17 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 - 验证：定向 `src/modules/metrics` 2 files / **126 passed**（基线 122，+4）；全量 **137 files / 1598 passed**（基线 1594）；`tsc -b . --noEmit` 全仓 55 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metT` → entry `assets/index-FTaUJaPP.js` sha256 `3011587172ba040f2274021162b69ed54271a6f576f3178ad4428cf2107b68c7`，entry 内 `metT-total-row` 命中 0，chunk `assets/MetricsModulePage-BSbHJEAm.js` 命中 1。
 - 实测对照：分摊表（`SHARE_USAGE`：zeta 4 次/$3.00/75.0%、alpha 9 次/$1.00/25.0%、mid 无金额）——表体运行数 4+9=13，合计行 `13`；成本 3.00+1.00=4.00，合计行 `$4.00`；占比 75.0+25.0=100.0，合计行 `100.0%`。明细表（`TWO_EMPLOYEE_LEDGER`）——成本 3.00+1.00=4.00，合计行 `$4.00`，占比合计 `100.0%`，次数列因账本无次数显示「—」。
 - 未测项：真浏览器 375/1280 下合计行的表格内横滚与列宽未人工走查；上游若返回超过两位小数的金额，逐行与合计的四舍五入可能差 0.01，属上游数据形态问题，未构造该样例。
+
+## 摘要与合计行同源（metU，2026-11-20）
+
+`metL-copy` 复制出来的纯文本摘要里追加一行合计，它与分摊表的合计行共用同一份渲染结果——不是另算一遍。
+
+- 代码路径：`MetricsModulePage.tsx` 里 `shareRunsTotal = sumOrNull(shareRows.map(runs))`、`shareCostTotal = sumOrNull(shareRows.map(costUsd))`、`sharePctTotal = shareOfWhole(costs, shareCostTotal)`，紧接其后一次渲染成 `shareTotals = { runs: formatCount(…), cost: formatUsd(…), share: formatSharePct(…) }`；表尾三个 `<td>`（`metT-share-total-runs/-cost/-share`）与摘要行都只读这三个字符串，别处不再调用格式化函数。
+- 摘要行：`summaryTotalLine`＝`合计：运行 {runs} · 成本 {cost} · 占比 {share}`；`shareRows.length === 0` 时写 `合计：该窗口无可渲染行`，不造 0 行。该行经 `metricsSummaryText({ …, totalLine })` 原样插在「实扣金额」之后。
+- 屏上可核对：`metU-copy-total`（sr-only，内容即摘要里那一行）与表尾单元格逐字相同；分摊表下方 `metU-consistency-note` 复述同一串，并写明「缺失的格子写「—」，整表没有可渲染的行时不造合计」。
+- 语义：可读的 0 仍是 `$0.00`；读不到的列仍是「—」；无可渲染行时才用「该窗口无可渲染行」。
+- 零新请求：复制前后 `urls()` 长度相等（测试里断言）。
+- 回退：`metL-fallback-text` 的只读 textarea 内容与剪贴板目标逐字相同，自然含这一行；`metL-copy-status` 的 aria-live 与 `metR-copy-state` 三态未改。
+- 验证：定向 `src/modules/metrics` 2 files / **130 passed**（基线 126，+4）；全量 **137 files / 1602 passed**（基线 1598）；`tsc -b . --noEmit` 全仓 55 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metU` → entry `assets/index-89hAyraB.js` sha256 `dd05bead81200b5705a8a8fcd3982c9b7778a38a2b93e2fc5630b7c4ab6afc77`，entry 内 `metU-copy-total` 命中 0，chunk `assets/MetricsModulePage-BMM35ITN.js`：`metU-copy-total`=1、`metU-consistency-note`=1。
+- 两处逐字对照（`SHARE_USAGE`）：表尾 `13` / `$4.00` / `100.0%` ↔ 摘要行 `合计：运行 13 · 成本 $4.00 · 占比 100.0%` ↔ `metU-copy-total` 同串。
+- 未测项：屏幕阅读器对 sr-only 摘要行的实际播报未人工走查；真浏览器 375 下说明段换行未走查。

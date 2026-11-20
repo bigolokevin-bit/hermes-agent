@@ -3025,3 +3025,74 @@ describe('metT — totals row and rounding note', () => {
     expect(q('metT-rounding-note-detail')?.textContent).toContain('导出文件的行仍是逐行明细');
   });
 });
+
+describe('metU — the copied summary and the totals row are one number', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+
+  async function copyNow(): Promise<string> {
+    clip.copyTextToClipboard.mockClear();
+    await act(async () => {
+      (q('metL-copy') as HTMLButtonElement).click();
+    });
+    await waitFor(() => (q('metL-copy-status')?.textContent ?? '') !== '', 'copy status');
+    return String(clip.copyTextToClipboard.mock.calls[0][0]);
+  }
+
+  it('writes the same totals the footer shows, without reading anything again', async () => {
+    await mountShare(SHARE_USAGE);
+    const before = urls().length;
+
+    const body = await copyNow();
+
+    expect(urls().length).toBe(before);
+    const line = '合计：运行 13 · 成本 $4.00 · 占比 100.0%';
+    expect(body).toContain(line);
+    expect(q('metU-copy-total')?.textContent).toBe(line);
+    // Footer cells and the copied line hold the very same strings.
+    expect(q('metT-share-total-runs')?.textContent).toBe('13');
+    expect(q('metT-share-total-cost')?.textContent).toBe('$4.00');
+    expect(q('metT-share-total-share')?.textContent).toBe('100.0%');
+    expect(q('metU-consistency-note')?.textContent).toContain(line.replace('合计：', ''));
+    expect(q('metR-copy-state')?.textContent).toBe('摘要可复制');
+    expect(body).not.toContain('emp_');
+  });
+
+  it('keeps the totals line in the fallback textarea when the clipboard refuses', async () => {
+    await mountShare(SHARE_USAGE);
+    clip.copyTextToClipboard.mockImplementationOnce(() => Promise.resolve(false));
+
+    const body = await copyNow();
+
+    expect(q('metL-copy-status')?.textContent).toBe('复制没成功');
+    const fallback = q('metL-fallback-text') as HTMLTextAreaElement;
+    expect(fallback.value).toBe(body);
+    expect(fallback.value).toContain('合计：运行 13 · 成本 $4.00 · 占比 100.0%');
+  });
+
+  it('keeps a readable zero at $0.00 and an unreadable share at — in the summary', async () => {
+    await mountEmployeeShare({
+      items: [
+        { employeeId: 'emp_aaaabbbbcccc', costUsd: 0, runs: 2, updatedAt: '2026-11-19T03:20:00.000Z' },
+        { employeeId: 'emp_ddddeeeeffff', updatedAt: '2026-11-19T02:10:00.000Z' },
+      ],
+      missingEmployeeIds: [],
+    });
+
+    const body = await copyNow();
+
+    expect(body).toContain('合计：运行 2 · 成本 $0.00 · 占比 —');
+    expect(q('metU-copy-total')?.textContent).toBe('合计：运行 2 · 成本 $0.00 · 占比 —');
+    expect(q('metT-share-total-cost')?.textContent).toBe('$0.00');
+    expect(q('metT-share-total-share')?.textContent).toBe('—');
+  });
+
+  it('does not invent a totals line when the table has no renderable row', async () => {
+    await mountShare({ by_model: [], asOf: '2026-11-19T20:12:00.000Z' });
+
+    const body = await copyNow();
+
+    expect(body).toContain('合计：该窗口无可渲染行');
+    expect(q('metU-copy-total')?.textContent).toBe('合计：该窗口无可渲染行');
+    expect(body).not.toContain('合计：运行 0');
+  });
+});

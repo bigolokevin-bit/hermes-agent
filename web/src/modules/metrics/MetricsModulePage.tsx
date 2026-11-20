@@ -1187,6 +1187,17 @@ export function MetricsModulePage() {
   const shareRunsTotal = sumOrNull(shareRows.map((row) => row.runs));
   const shareCostTotal = sumOrNull(shareRows.map((row) => row.costUsd));
   const sharePctTotal = shareOfWhole(shareRows.map((row) => row.costUsd), shareCostTotal);
+  // metU — one rendering of the totals serves both the table footer and the
+  // copied summary, so the two can never drift apart.
+  const shareTotals = {
+    runs: formatCount(shareRunsTotal),
+    cost: formatUsd(shareCostTotal),
+    share: formatSharePct(sharePctTotal),
+  };
+  const summaryTotalLine =
+    shareRows.length > 0
+      ? `合计：运行 ${shareTotals.runs} · 成本 ${shareTotals.cost} · 占比 ${shareTotals.share}`
+      : '合计：该窗口无可渲染行';
   const sortColumnLabel = sortKey === 'runs' ? '运行数' : sortKey === 'cost' ? '成本' : groupBy === 'employee' ? '员工' : '模型';
   const shareTotal = shareView.kind === 'ready' ? shareView.value.rows.reduce<number | null>((sum, row) => {
     if (row.costUsd === null) return sum;
@@ -1400,6 +1411,7 @@ export function MetricsModulePage() {
       groupBy,
       asOf: summaryAsOf,
       generatedAt: new Date().toISOString(),
+      totalLine: summaryTotalLine,
     });
     setSummaryText(text);
     void copyTextToClipboard(text).then((ok) => setSummaryStatus(ok ? 'done' : 'failed'));
@@ -1452,6 +1464,9 @@ export function MetricsModulePage() {
           </Button>
           <span className="metL-status" role="status" aria-live="polite" data-testid="metL-copy-status">
             {summaryStatus === 'done' ? '已复制' : summaryStatus === 'failed' ? '复制没成功' : ''}
+          </span>
+          <span className="sr-only" data-testid="metU-copy-total">
+            {summaryTotalLine}
           </span>
         </div>
       </div>
@@ -2426,13 +2441,13 @@ export function MetricsModulePage() {
                       <tr className="metT-total" data-testid="metT-total-row-share">
                         <th scope="row">合计</th>
                         <td className="met6-num" data-testid="metT-share-total-runs" title="表体各行运行数相加；读不到的格子不计入">
-                          {formatCount(shareRunsTotal)}
+                          {shareTotals.runs}
                         </td>
                         <td className="met6-num" data-testid="metT-share-total-cost" title="表体各行成本相加；读不到的格子不计入，也不按 0 算">
-                          {formatUsd(shareCostTotal)}
+                          {shareTotals.cost}
                         </td>
                         <td className="met6-num" data-testid="metT-share-total-share" title="按未舍入的原值合计，逐行进位不影响这里">
-                          {formatSharePct(sharePctTotal)}
+                          {shareTotals.share}
                         </td>
                         <td className="met6-num">—</td>
                       </tr>
@@ -2446,6 +2461,9 @@ export function MetricsModulePage() {
                 </p>
                 <p className="met6-hint" data-testid={`${sharePrefix}-hint`}>
                   占比按可读到的实扣金额归一，合计 100%；缺金额的行不参与分摊，显示「—」。排序写在地址里，刷新与前进后退都保留。
+                </p>
+                <p className="met6-hint" data-testid="metU-consistency-note">
+                  上面的「复制摘要」里有一行合计，和这张表的合计行是同一处算出来的：{summaryTotalLine.replace(/^合计：/, '')}。缺失的格子写「—」，整表没有可渲染的行时不造合计。
                 </p>
                 <p className="met6-hint" data-testid="metT-rounding-note">
                   占比逐行按一位小数四舍五入，合计按未舍入的原值相加，因此合计恰好是全部可读部分之和（占满时即 100%），不会因为逐行进位变成 99.9% 或 100.1%；合计行不参与排序。导出文件的行仍是逐行明细，合计不写进数据行。
