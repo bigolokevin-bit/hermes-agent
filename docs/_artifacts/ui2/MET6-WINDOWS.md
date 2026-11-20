@@ -305,3 +305,14 @@ metB 的「采集时刻」列内新增滞后徽标，不新增列、不改版式
 - `prefers-reduced-motion: reduce` 下对 `.met5-page` 全子树把动画/过渡压到 0.001ms、滚动改 auto；页面本身没有持续动画。
 - 验证：`src/modules/metrics` 2 files / 114 passed（基线 111，新增 3 例）；全量 133 files / 1518 passed（2 条上游 employee-detail 未处理拒绝为既存噪声）；tsc 全仓 55 条既存、`modules/metrics` 0；build entry `assets/index-BoxvT4Tc.js` sha256 `b6eaa53b967e072cc789f99acff0e9b4f27a870ad47563a64afd335de5440c16`，entry 内 `metQ-live`=0，chunk `assets/MetricsModulePage-DSjndMTB.js` 内 `metQ-live`=1、`metQ-card-focus`=1。
 - 未测项：真浏览器 Tab 走查与焦点环像素未人工走查（落点来自 DOM 顺序）；`prefers-reduced-motion` 未在真实 OS 开关下目测。
+
+## 异常态下的导出与复制可用性（metR，2026-11-20）
+
+统一判据：**整页失败才全停；单块失败只停用它自己的出口；空窗只写表头。** 三处动作各自有 `title` 说明原因，页面另有 `metR-export-state`（明细+分摊）与 `metR-copy-state`（摘要）两行状态。
+
+- 整页错误（所有使用块不可读，`pageFailed`）：`met6-export` / `metA-export` / `metL-copy` 三钮 disabled。title 首句：导出两钮「整页读取失败，这份导出暂时不生成；先重试上面的读取，读到数据再导。」；摘要「整页读取失败，摘要里的数字不完整，先重试上面的读取。」。状态行：「导出：整页读取失败，两处 CSV 都暂停」「摘要不可复制：整页读取失败」。
+- 单块降级：明细导出仍可用（title「导出明细 CSV：当前窗口与当前分类下账本逐行的实扣明细，不是分摊汇总。」），文件内末行注记缺块（沿用 metI，例如「# 本次导出缺少 1 块：运行统计（…）」，不计入行数）；分摊导出只在自己这块可读时可用，自己读不到则 disabled，title「这份分摊现在读不到，导出暂不生成：<原因>」；状态行「明细可导 N 行（含 1 处缺块注记）；分摊可导 M 行 / 暂不可用」。
+- 空窗：明细与分摊都可用，导出的文件只有表头（明细表头仍以 `as_of,window` 结尾）；`metA-export-count` 显示「可导出 0 行」；标题「当前窗口没有明细行：导出的文件只写表头，缺块会在末尾注明。」/「当前视图没有分摊行：导出的文件只写表头，计数仍显示 0 行。」。摘要可复制（数值为真 0 与「—」）。
+- 行为变更（有意）：0 行不再禁用导出（旧「当前视图无可导出数据 / 当前没有可导出的行」判定撤掉），对应两条既有断言改为「可导且只写表头」，属口径变化不是放宽。
+- 验证：`src/modules/metrics` 2 files / 106 passed（改动前本文件 102）；全量 137 files / 1590 passed；tsc 全仓 55 条既存、`modules/metrics` 0；build entry `assets/index-C5NmlUop.js` sha256 `72b79adb257ca2cf5aafa1adc0a89a2122b8a44be05923d920854f3bb0689d2a`，entry 内 `metR-copy-state`=0，chunk `assets/MetricsModulePage-DA4cZaLo.js` 内 copy/export 状态标记各 1。
+- 未测项：真实浏览器逐钮 hover 看 title 未走查；`disabled` 后键盘焦点顺序变化未人工过一遍。

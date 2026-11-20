@@ -1220,38 +1220,20 @@ export function MetricsModulePage() {
   // One ordered array feeds both the table and its export. The file is written
   // row by row from this array, so it can never disagree with what the table
   // shows — no re-reading, no sorting from a different source, no object keys.
-  // metQ — one polite announcement per status change. The copyable request id
-  // lives in the card, never inside this live region.
+  // metQ/metR — one polite sentence per status change. The copyable request id
+  // lives in the card, never inside this live region, and the text is derived
+  // rather than stored so an unchanged status cannot be announced twice.
   const liveUnavailable = usageBlocks.filter((block) => block.kind === 'unavailable').length;
-  const liveSignature = [
-    usageView.kind,
-    usageBlocks.map((block) => block.kind).join(','),
-    usageQuiet ? 'quiet' : 'loud',
-    breakdownView.kind,
-    heatView.kind,
-    budgetView.kind,
-    shareView.kind,
-  ].join('|');
-  const [liveMessage, setLiveMessage] = useState('');
-  const liveSeen = useRef('');
-  useEffect(() => {
-    if (liveSeen.current === liveSignature) return;
-    liveSeen.current = liveSignature;
-    if (usageView.kind !== 'ready') return;
-    if (usageDown) {
-      setLiveMessage('这一页的数据暂时都读不到，卡片上写着原因，可以重试。');
-      return;
-    }
-    if (liveUnavailable > 0) {
-      setLiveMessage(`有 ${liveUnavailable} 项数据暂时读不到，卡片上写着原因。`);
-      return;
-    }
-    if (usageQuiet) {
-      setLiveMessage('这个时间窗没有运行记录，也没有实扣。');
-      return;
-    }
-    setLiveMessage('数据已更新，卡片和下方的表格都读到了。');
-  }, [liveSignature, usageView.kind, usageDown, liveUnavailable, usageQuiet]);
+  const liveMessage =
+    usageView.kind !== 'ready'
+      ? ''
+      : usageDown
+        ? '这一页的数据暂时都读不到，卡片上写着原因，可以重试。'
+        : liveUnavailable > 0
+          ? `有 ${liveUnavailable} 项数据暂时读不到，卡片上写着原因。`
+          : usageQuiet
+            ? '这个时间窗没有运行记录，也没有实扣。'
+            : '数据已更新，卡片和下方的表格都读到了。';
 
   const detailLines = breakdownView.kind === 'ready' ? breakdownView.lines : [];
   const detailSort: DetailSort = parseDetailSort(params.get('dsort')) ?? 'cost';
@@ -1275,19 +1257,23 @@ export function MetricsModulePage() {
   // Only the blocks this file actually pulls columns from are named in its note:
   // a source nobody exported from is not a gap in the file.
   const pageFailed = usageDown;
-  const detailGaps: ExportGap[] =
-    usageReady && usageReady.stats.kind === 'unavailable'
+  const detailGaps: ExportGap[] = [
+    ...(breakdownView.kind === 'unavailable'
+      ? [{ label: '成本明细', reason: breakdownView.reason }]
+      : []),
+    ...(usageReady && usageReady.stats.kind === 'unavailable'
       ? [{ label: '运行统计', reason: usageReady.stats.reason }]
-      : [];
+      : []),
+  ];
   const shareGaps: ExportGap[] = [];
 
   const exportCsv = () => {
-    if (breakdownView.kind !== 'ready' || detailRows.length === 0) return;
+    if (pageFailed) return;
     const header =
       viewMode === 'model'
         ? ['模型', '支出USD', '次数', '占比%', '读取于', '窗口', '窗口开始', '窗口结束', 'as_of', 'window']
         : ['员工', '支出USD', '次数', '占比%', '账本截至', '窗口', '窗口开始', '窗口结束', 'as_of', 'window'];
-    const batchAsOf = isoOrNull(breakdownView.asOf);
+    const batchAsOf = isoOrNull(breakdownView.kind === 'ready' ? breakdownView.asOf : null);
     const rows = detailRows.map((line) => [
       line.label,
       usdDigits(line.costUsd),
@@ -1315,7 +1301,7 @@ export function MetricsModulePage() {
   const exportShare = () => {
     // Same array the share table renders, in the same order (already sorted by
     // ?sort/?dir, default cost descending). The file never re-sorts.
-    if (shareView.kind !== 'ready' || shareRows.length === 0) return;
+    if (pageFailed || shareView.kind !== 'ready') return;
     const shareBody = withGapNote(
       shareCsv(
         shareRows.map((row) => ({
@@ -1376,6 +1362,7 @@ export function MetricsModulePage() {
       .sort()
       .at(-1) ?? null;
   const copySummary = () => {
+    if (pageFailed || usageView.kind !== 'ready') return;
     const text = metricsSummaryText({
       windowId: usageWindow.id,
       windowLabel: usageWindow.label,
@@ -1400,10 +1387,30 @@ export function MetricsModulePage() {
           <p>按星期与小时看运行都落在什么时段。没有记录的格子显示「—」，不补 0。</p>
         </div>
         <div className="met5-acts">
-          <Button size="sm" outlined onClick={copySummary} data-testid="metL-copy">
+          <Button
+            size="sm"
+            outlined
+            disabled={pageFailed || usageView.kind !== 'ready'}
+            title={
+              pageFailed
+                ? '整页读取失败，摘要里的数字不完整，先重试上面的读取。'
+                : usageView.kind !== 'ready'
+                  ? '还没读到运行数据，读到之后才能复制摘要。'
+                  : '把当前窗口的关键数字复制成纯文本。'
+            }
+            onClick={copySummary}
+            data-testid="metL-copy"
+          >
             <Copy className="size-3.5" aria-hidden="true" />
             复制摘要
           </Button>
+          <span className="metR-state" data-testid="metR-copy-state">
+            {pageFailed
+              ? '摘要不可复制：整页读取失败'
+              : usageView.kind !== 'ready'
+                ? '摘要不可复制：还没读到运行数据'
+                : '摘要可复制'}
+          </span>
           <Button
             size="sm"
             outlined
@@ -1768,13 +1775,13 @@ export function MetricsModulePage() {
                 <Button
                   size="sm"
                   outlined
-                  disabled={pageFailed || !exportable}
+                  disabled={pageFailed}
                   title={
                     pageFailed
                       ? '整页读取失败，这份导出暂时不生成；先重试上面的读取，读到数据再导。'
                       : exportable
                         ? '导出明细 CSV：当前窗口与当前分类下账本逐行的实扣明细，不是分摊汇总。'
-                        : '当前没有可导出的行：账本没有实扣行或上游没有给出模型行'
+                        : '当前窗口没有明细行：导出的文件只写表头，缺块会在末尾注明。'
                   }
                   onClick={exportCsv}
                   data-testid="met6-export"
@@ -1783,7 +1790,7 @@ export function MetricsModulePage() {
                 </Button>
                 {breakdownView.kind === 'unavailable' ? (
                   <span className="metI-gap" data-testid="metI-detail-blocked">
-                    成本明细这次没读出来，明细导出暂不生成。
+                    成本明细这次没读出来：导出文件只写表头，并在末尾注明缺这一块。
                   </span>
                 ) : null}
                 {detailGaps.length > 0 ? (
@@ -1791,6 +1798,17 @@ export function MetricsModulePage() {
                     本次导出缺少：{detailGaps.map((gap) => gap.label).join('、')}——文件末尾会写明原因，缺的列留空，不填 0。
                   </span>
                 ) : null}
+                <span className="metR-state" data-testid="metR-export-state">
+                  {pageFailed
+                    ? '导出：整页读取失败，两处 CSV 都暂停'
+                    : `导出：明细可导 ${detailRows.length} 行${detailGaps.length > 0 ? `（含 ${detailGaps.length} 处缺块注记）` : ''}；分摊${
+                        shareView.kind === 'ready'
+                          ? `可导 ${shareRows.length} 行`
+                          : shareView.kind === 'loading'
+                            ? '读取中'
+                            : '暂不可用'
+                      }`}
+                </span>
               </div>
             </div>
 
@@ -2222,13 +2240,17 @@ export function MetricsModulePage() {
               <Button
                 size="sm"
                 outlined
-                disabled={pageFailed || shareRows.length === 0}
+                disabled={pageFailed || shareView.kind !== 'ready'}
                 title={
                   pageFailed
                     ? '整页读取失败，这份导出暂时不生成；先重试上面的读取，读到数据再导。'
-                    : shareRows.length === 0
-                      ? '当前视图无可导出数据'
-                      : '导出分摊 CSV：当前窗口、分组与排序下的聚合行，含成本与占比，不是账本逐行明细。'
+                    : shareView.kind === 'loading'
+                      ? '分摊数据还在读取，读到之后才能导出。'
+                      : shareView.kind === 'unavailable'
+                        ? `这份分摊现在读不到，导出暂不生成：${shareView.reason}`
+                        : shareRows.length === 0
+                          ? '当前视图没有分摊行：导出的文件只写表头，计数仍显示 0 行。'
+                          : '导出分摊 CSV：当前窗口、分组与排序下的聚合行，含成本与占比，不是账本逐行明细。'
                 }
                 onClick={exportShare}
                 data-testid="metA-export"

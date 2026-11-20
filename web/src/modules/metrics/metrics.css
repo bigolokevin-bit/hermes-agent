@@ -883,3 +883,10 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* metR — why the three actions are available or not */
+.metR-state {
+  font-size: 11px;
+  color: var(--color-muted-foreground);
+  white-space: nowrap;
+}

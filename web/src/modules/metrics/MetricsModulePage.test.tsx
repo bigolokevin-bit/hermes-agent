@@ -553,7 +553,7 @@ describe('MetricsModulePage — export and delta', () => {
     click.mockRestore();
   });
 
-  it('uses the model header set and disables export when nothing is on screen', async () => {
+  it('uses the model header set and still exports a header-only file when nothing is on screen', async () => {
     await mount(breakdownRouter(), '/metrics?view=model');
     expect(document.querySelector('[data-testid="met6-export"]')).toBeTruthy();
 
@@ -563,8 +563,8 @@ describe('MetricsModulePage — export and delta', () => {
       }),
     );
     const button = document.querySelector('[data-testid="met6-export"]') as HTMLButtonElement;
-    expect(button.disabled).toBe(true);
-    expect(button.getAttribute('title')).toContain('当前没有可导出的行');
+    expect(button.disabled).toBe(false);
+    expect(button.getAttribute('title')).toContain('只写表头');
   });
 
   it('shows a signed delta per window and keeps a real zero distinct from missing', async () => {
@@ -1109,13 +1109,22 @@ describe('metA — export the current cost view', () => {
     click.mockRestore();
   });
 
-  it('disables the button and says so when the view has nothing to export', async () => {
+  it('keeps the button usable on an empty view and exports a header-only file', async () => {
+    const { captured, click } = captureDownload();
     await mountShare({ by_model: [] });
 
     const button = document.querySelector('[data-testid="metA-export"]') as HTMLButtonElement;
-    expect(button.disabled).toBe(true);
-    expect(button.getAttribute('title')).toBe('当前视图无可导出数据');
+    expect(button.disabled).toBe(false);
+    expect(button.getAttribute('title')).toContain('只写表头');
     expect(document.querySelector('[data-testid="metA-export-count"]')?.textContent).toBe('可导出 0 行');
+
+    await act(async () => {
+      button.click();
+    });
+    const lines = (await (captured.blob as Blob).text()).replace(/^\uFEFF/, '').split('\r\n').filter(Boolean);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toBe('group,runs,cost_usd,share_pct,as_of,window');
+    click.mockRestore();
   });
 
   it('labels the two export buttons by scope and explains which one is the aggregate', async () => {
@@ -2657,5 +2666,140 @@ describe('metQ — keyboard access and status announcements', () => {
 
     const live = document.querySelector('[data-testid="metQ-live"]') as HTMLElement;
     await waitFor(() => live.textContent === '这个时间窗没有运行记录，也没有实扣。', 'quiet announced');
+  });
+});
+
+describe('metR — export and copy availability under failure states', () => {
+  const ALL_DOWN = '整页读取失败，这份导出暂时不生成；先重试上面的读取，读到数据再导。';
+
+  function captureDownload(): {
+    captured: { blob: Blob | null; name: string | null };
+    click: ReturnType<typeof vi.spyOn>;
+  } {
+    const captured: { blob: Blob | null; name: string | null } = { blob: null, name: null };
+    Object.assign(URL, {
+      createObjectURL: vi.fn((blob: Blob) => {
+        captured.blob = blob;
+        return 'blob:metR';
+      }),
+      revokeObjectURL: vi.fn(),
+    });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
+      captured.name = this.download;
+    });
+    return { captured, click };
+  }
+
+  const q = (id: string) => document.querySelector(`[data-testid="${id}"]`) as HTMLElement | null;
+
+  it('disables all three actions on a whole-page failure and says why', async () => {
+    await mount((url) =>
+      Promise.reject(new ApiError('boom', { status: 500, body: '', url, requestId: 'req-metR-all' })),
+    );
+
+    const detail = q('met6-export') as HTMLButtonElement;
+    const share = q('metA-export') as HTMLButtonElement;
+    const copy = q('metL-copy') as HTMLButtonElement;
+
+    expect(detail.disabled).toBe(true);
+    expect(share.disabled).toBe(true);
+    expect(copy.disabled).toBe(true);
+    expect(detail.getAttribute('title')).toBe(ALL_DOWN);
+    expect(share.getAttribute('title')).toBe(ALL_DOWN);
+    expect(copy.getAttribute('title')).toBe('整页读取失败，摘要里的数字不完整，先重试上面的读取。');
+    expect(q('metR-copy-state')?.textContent).toBe('摘要不可复制：整页读取失败');
+    expect(q('metR-export-state')?.textContent).toBe('导出：整页读取失败，两处 CSV 都暂停');
+  });
+
+  it('keeps the detail export usable when only another block is down, and notes the gap in the file', async () => {
+    const { captured, click } = captureDownload();
+    await mount((url) =>
+      url.includes('run-stats')
+        ? Promise.reject(new ApiError('boom', { status: 500, body: '', url, requestId: 'req-metR-part' }))
+        : usageRouter()(url),
+    );
+
+    const detail = q('met6-export') as HTMLButtonElement;
+    const share = q('metA-export') as HTMLButtonElement;
+    expect(detail.disabled).toBe(false);
+    expect(detail.getAttribute('title')).toContain('账本逐行');
+    expect(share.disabled).toBe(false);
+    expect(q('metR-export-state')?.textContent).toContain('含 1 处缺块注记');
+    expect(q('metR-copy-state')?.textContent).toBe('摘要可复制');
+
+    await act(async () => {
+      detail.click();
+    });
+    const nonEmpty = (await (captured.blob as Blob).text())
+      .replace(/^\uFEFF/, '')
+      .split('\r\n')
+      .filter(Boolean);
+    expect(nonEmpty[nonEmpty.length - 1].startsWith('# 本次导出缺少 1 块：运行统计（')).toBe(true);
+    click.mockRestore();
+  });
+
+  it('disables the share export when its own block is unreadable, with the reason in the title', async () => {
+    await mount((url) =>
+      url.includes('hermes-usage')
+        ? Promise.reject(new ApiError('boom', { status: 503, body: '', url, requestId: 'req-metR-share' }))
+        : usageRouter()(url),
+    );
+
+    const detail = q('met6-export') as HTMLButtonElement;
+    const share = q('metA-export') as HTMLButtonElement;
+    expect(detail.disabled).toBe(false);
+    expect(share.disabled).toBe(true);
+    expect(share.getAttribute('title')).toContain('这份分摊现在读不到，导出暂不生成：');
+    expect(q('metR-export-state')?.textContent).toContain('分摊暂不可用');
+  });
+
+  it('exports header-only files on an empty window and keeps the count on screen', async () => {
+    const { captured, click } = captureDownload();
+    const quietStats = {
+      from: '2026-11-18T16:00:00.000Z',
+      to: '2026-11-19T16:00:00.000Z',
+      bucket: 'day',
+      buckets: [],
+      totals: { runs: 0, succeeded: 0, failed: 0, running: 0, sampleCount: 0, successRate: null },
+    };
+    const handler = (url: string): Promise<unknown> => {
+      if (url.includes('run-activity')) return Promise.resolve(activityBody());
+      if (url.includes('run-stats')) return Promise.resolve(quietStats);
+      if (url.includes('/api/employees')) return Promise.resolve(EMPLOYEE_BODY);
+      if (url.includes('models/pricing')) return Promise.resolve({ prices: [] });
+      if (url.includes('hermes-usage')) return Promise.resolve({ by_model: [] });
+      if (url.includes('budget-usage')) return Promise.resolve({ items: [], missingEmployeeIds: [] });
+      return Promise.resolve({});
+    };
+    await mount(handler);
+
+    const detail = q('met6-export') as HTMLButtonElement;
+    const share = q('metA-export') as HTMLButtonElement;
+    expect(detail.disabled).toBe(false);
+    expect(share.disabled).toBe(false);
+    expect(q('metA-export-count')?.textContent).toBe('可导出 0 行');
+    expect(q('metL-copy') as HTMLButtonElement).toHaveProperty('disabled', false);
+
+    await act(async () => {
+      detail.click();
+    });
+    const detailLines = (await (captured.blob as Blob).text())
+      .replace(/^\uFEFF/, '')
+      .split('\r\n')
+      .filter(Boolean);
+    expect(detailLines).toHaveLength(1);
+    expect(detailLines[0]).toContain('as_of,window');
+
+    await act(async () => {
+      share.click();
+    });
+    const shareLines = (await (captured.blob as Blob).text())
+      .replace(/^\uFEFF/, '')
+      .split('\r\n')
+      .filter(Boolean);
+    expect(shareLines).toHaveLength(1);
+    click.mockRestore();
   });
 });
