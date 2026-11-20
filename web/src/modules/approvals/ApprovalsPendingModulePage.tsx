@@ -481,6 +481,7 @@ export function ApprovalsPendingModulePage(): ReactNode {
         <FilterSummary
           params={params}
           onRemove={removeFilterKeys}
+          phase={list.phase}
           disclosure={{
             expanded: filtersOpen,
             onToggle: () => setFiltersOpen((value) => !value),

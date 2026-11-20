@@ -131,15 +131,22 @@ export function FilterSummary({
   params,
   onRemove,
   disclosure,
+  phase,
 }: {
   params: URLSearchParams;
   onRemove: (keys: readonly string[]) => void;
   disclosure?: StripDisclosure;
+  phase?: string;
 }) {
+  /* 错误/无权态下这一行说的「按什么在看」没有对应的屏上数据，读数反而误导
+     ——整条收起；「重置筛选」按钮仍在原位作出口。读取中/空态保留：空态的
+     chips 正是「为什么是空」的解释。 */
+  if (phase === "error" || phase === "denied") return null;
   const chips = chipsFor(params);
   /* 折叠态这一行是「当前按什么看」的唯一读数：有值逐项显示（状态/时间/风险
-     各一枚），空值不能变成「什么都没有」——没有筛选本身也是生效条件，明说
-     「全部」。读数行用独立 testid，chips 行的「空时整条不渲染」契约不变。 */
+     各一枚），空值不能变成「什么都没有」——直接说「无筛选」；超过 3 枚时
+     余下的折叠进「+N 项」，title 给全部折叠项的完整文案。chips 行的「空时
+     整条不渲染」契约不变，折叠只作用于可见性（DOM 与移除腿原样）。 */
   if (chips.length === 0)
     return (
       <span
@@ -158,9 +165,11 @@ export function FilterSummary({
             }
           : {})}
       >
-        生效条件：全部
+        无筛选
       </span>
     );
+  const visibleCount = chips.length > 3 ? 3 : chips.length;
+  const folded = chips.slice(visibleCount);
   return (
     <div
       className={`flex min-w-0 flex-wrap items-center gap-1.5 text-xs ${
@@ -179,9 +188,10 @@ export function FilterSummary({
         : {})}
     >
       <span className="text-muted-foreground">生效筛选：</span>
-      {chips.map((chip) => (
+      {chips.map((chip, index) => (
         <span
           key={chip.key}
+          hidden={index >= visibleCount}
           data-testid={`apv-chip-${chip.key}`}
           title={
             chip.unknownValue !== null
@@ -204,6 +214,15 @@ export function FilterSummary({
           </button>
         </span>
       ))}
+      {folded.length > 0 ? (
+        <span
+          data-testid="apv-summary-more"
+          title={folded.map((chip) => chip.label).join("；")}
+          className="rounded-full border border-white/15 px-2 py-0.5 text-muted-foreground"
+        >
+          +{folded.length} 项
+        </span>
+      ) : null}
     </div>
   );
 }
