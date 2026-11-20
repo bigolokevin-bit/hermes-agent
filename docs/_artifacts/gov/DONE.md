@@ -2394,3 +2394,14 @@ built /private/tmp/health-r38/index.html
 - 验证：新增单元 5 + 集成 7 全绿；定向三域 17 files / 159 passed；全量 **194 files / 2533 passed, 0 failed**；tsc exit 2 仅 approvals/employee-detail/employees 基线，本域 0。R117 深链用例、capF/cap4–capH/capC/sys* 全绿。
 - DOM 三档（临时 harness，已删）：1440/1280/375 × skills/tools 六组，`body.scrollWidth==clientWidth`（375 tools 364/364 为滚动条宽）；按钮 2/2 均为 BUTTON:type=button，aria-label 逐字「复制资料整理这一行」等，`.focus()` 后 activeElement 命中、outline 3px；点击后状态「已复制」role=status aria-live=polite，无 fallback，按钮/状态零溢出；请求数点击前后不变（skills 1→1，tools 4→4）。屏上复制串实测：skills `名称：资料整理 · 类型：平台内置 · 状态：正常 · 调用次数：— · 短码：SKALPHA4`；tools mcp 行 `短码：—`（纯中文服务名折叠，不露裸 id）。
 - 边界：只动 `modules/{capabilities,skills,tools}/**` + DONE；未碰 App/shell/路由/注册表/package·lock/web-scripts/ops；未 install、未并 main、未重建 9122；禁 force/amend/--no-verify 未触。
+
+## R94 / cap-empty-guards — /capabilities 筛选态与空态护栏（纯测试，R130）
+
+- 基线：显式 refspec fetch + `git merge --no-ff origin/lane/hermes-console` → 合并提交 `36b7b23a`（上游 `76090480` = wave-34 代次；落点全在 approvals/knowledge 等，`git diff --name-only HEAD^1 HEAD -- web/src/modules/{capabilities,skills,tools}` 为空，零重叠）。禁 reset --hard 未用。
+- 现查既有用例（先 grep 后写，只补缺口，不写重复用例）：① filterparity 已钉 skills no-match 的双钮 disabled + 同一 gates 原因句 + 剪贴板零调用；deeplink 已钉 tools「缺行 + q 同缺」的 URL 逐字不改写；SkillsPage/ToolsPage 各自的 no-match 用例已钉「没有匹配项」文案与清空钮存在。缺口＝skills 清空钮从未被点过、清空后 `cap-row-copy-*` 计数无人钉、tools 无 q 的缺行深链、skills 缺行的 URL 不改写、空态下「零请求」半边与 R128 索引钮缺席。
+- 新文件 `web/src/modules/capabilities/capabilities.empty.test.tsx`（7 用例）：①skills no-match — `capF-state-filter-empty` 可见文本逐字等于 `stateAnchor`（lead+detail），锚文只报已加载 3 项、不含「0 项」，`cap5-scope-note`「仅在当前已加载 3 项内搜索」，清空钮在 + title「去处：清空搜索词恢复完整列表。」；②skills 空态 — `capC-copy`/`cap6-export` disabled、`cap-gates-copy`==`cap-gates-export`==「当前没有可导出的条目。」、`cap-row-copy-*` 零个，点两个禁用钮后剪贴板零调用且 reads() 恒 1；③skills 清空 — 点 `skl4-clear` 恢复 3 行 3 钮、URL q 消失、零重取，复制钮出 LINE_0；④tools 空态 — 同 ② 形状（reads 恒 6）；⑤tools 清空 — 点 `tl3-clear` 恢复 2 行 2 钮、零重取；⑥tools 无 q 缺行深链 — `cap-row-missing` 文案「当前清单里没有这个条目；它可能已被删除或改名。」+ title `GAP-CAPROW-01`、零详情面板、全列表 2 行保留、URL 逐字 == 粘贴参数；⑦skills 缺行深链 — 同 ⑥ 的 URL 逐字不改写（既有 SkillsPage 用例只钉了文案没钉 URL）。
+- 两处按实际行为落地并披露：派工单说的「换个关键词」类提示不存在——可读出口实际是清空钮 + 锚 title「去处：清空搜索词恢复完整列表。」，按实际断言；「capF 四态不计入 0 行」实现为锚文只报已加载数、不含「0 项」（`cap-page-scope` 的「共 0 项」是筛后真实 0，属既有诚实口径，不动）。
+- 首跑 5 败均为自造：settle 条件没认 no-match 面（skills 加 `skl4-no-match`、tools 加 `tl3-no-match` 后全绿）；零产品码改动。
+- 验证：新文件 7/7；定向 `src/modules/{capabilities,skills,tools}` 18 files / 166 passed；全量 `npx vitest run` **198 files / 2555 passed, 0 failed**；`tsc -b . --noEmit` exit 2，本域 grep 0（基线仅 approvals/employee-detail/employees）。`capF`/`cap-row-copy-*`/`cap-row-*`/stateAnchor/R117 深链既有断言全绿。
+- 三档未重跑：纯测试、零 markup/CSS delta，几何证据沿用 R93 实测（同 ① 纪律披露）。
+- 边界：只加 `capabilities.empty.test.tsx` + 本节 DONE；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未 install、未并 main、未 force/amend/--no-verify。
