@@ -1208,6 +1208,7 @@ export function RunsModulePage() {
       <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="run-refresh-bar">
         <Button
           size="sm"
+          outlined={phase !== "ready" && phase !== "loading" ? true : undefined}
           onClick={refreshState.refresh}
           aria-busy={refreshState.busy}
           disabled={isForced}
