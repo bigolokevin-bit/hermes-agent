@@ -21,6 +21,12 @@
 //    逐字（时间/操作者）、对象与动作同词，地址保住其余参 —— R201 是 7d 档无 event，这一拼新；
 // ④ 详情读 500 时【列表三值不动】：错误面板带可复制 rid，重试恰 +1 一笔（只动详情读口），
 //    成功后三角复原 —— 主测钉了句与每口 +1，没把三值三角摆进来。
+//
+// R223 追加（同文件、同工单口径）：①②③即上列三条，已交付后按工单纪律只回证据；
+// 净新增是工单④ —— 详情开着时导出【仍可用】（两枚按钮 disabled 逐字为 false 从未被钉），
+// 文件【只来自列表】：行数==表体、列头逐字、行行都是列表那三行的词，且详情专属的
+// 「收起这条事件」「同一次操作原值」字样在文件里一次都不出现；导出这一击本身
+// 请求账本逐字不变（R222① 只钉了导出后的行数，没钉点击不发请求）。
 
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -32,6 +38,7 @@ vi.mock("@/lib/api", () => ({ fetchJSON: api.fetchJSON }));
 
 import { ApiError } from "@/lib/api-error";
 import AuditEventsModulePage from "@/modules/audit/AuditEventsModulePage";
+import { CSV_HEADER } from "@/modules/audit/csv";
 import { DETAIL_COPY_DISABLED_TITLE } from "@/modules/audit/detailCopy";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -422,5 +429,36 @@ describe("R222 ④ - a failing detail leaves the list untouched", () => {
     expect(listReads()).toBe(1);
     expect(node("aud02-detail-error")).toBeNull();
     expect(triangle()).toEqual(before);
+  });
+});
+
+// ── R223 ④：详情开着时，文件仍只是列表的文件 ────────────────────────────────
+describe("R223 - the file stays the list's file while a record is open", () => {
+  it("keeps both exports live and hands over nothing the detail added", async () => {
+    await render(FILTERED);
+    await openRecord(ROW_A);
+    // 详情开着：两枚导出口都活着 —— disabled 逐字为 false 这条此前没人钉过
+    const csv = node("aud01-export") as HTMLButtonElement | null;
+    const filtered = node("aud5-export") as HTMLButtonElement | null;
+    expect(csv?.disabled).toBe(false);
+    expect(filtered?.disabled).toBe(false);
+    // 从这一拍起账本必须逐字不动 —— 详情那一笔是开详情花掉的，不是导出花掉的
+    const before = urls();
+    const count = await exportRowCount();
+    // 文件只来自列表：数据行数==表体行数==3，列头与现状逐字
+    expect(count).toBe(paintedRows().length);
+    expect(count).toBe(3);
+    expect(captured.text.replace(/^\uFEFF/, "").split("\r\n")[0]).toBe(CSV_HEADER.join(","));
+    for (const line of dataLines()) {
+      // 每一行都是列表那三行的词：人话动作与同一个操作者，六列不多不少
+      expect(line).toContain(ACTION_WORDS);
+      expect(line).toContain(WHO);
+    }
+    // 详情专属的东西没混进文件：抽屉开关的字样、只活在折页里的技术句，一次都不出现
+    expect(captured.text).not.toContain("收起这条事件");
+    expect(captured.text).not.toContain("同一次操作原值");
+    // 导出这一击不发任何新请求：账本逐字不变，列表仍只读了一次
+    expect(urls()).toEqual(before);
+    expect(listReads()).toBe(1);
   });
 });

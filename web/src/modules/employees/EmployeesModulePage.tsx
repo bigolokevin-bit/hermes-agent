@@ -8,6 +8,7 @@ import { RequestIdCopy } from "@/components/RequestIdCopy";
 import { fetchJSON } from "@/lib/api";
 import { API_UNREACHABLE_MESSAGE, ApiError, humanizeStatus } from "@/lib/api-error";
 import { ConsoleSelect } from "@/shell/ConsoleSelect";
+import "./employees-density.css";
 
 /** T12 · employee list module (`#/employees`). Read-only. */
 

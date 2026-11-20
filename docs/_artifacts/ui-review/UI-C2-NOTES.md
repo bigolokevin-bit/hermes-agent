@@ -38,3 +38,9 @@
 - 问题：锚点条「权限」跳入 `?zone=capability` 后无回程，四区回不去。
   改法：权限区顶部加分区回条（当前区高亮 `aria-current`，其余四区如实回链总览顶部，不造本页假锚）；未动 testid/路由/取数。
   文件：`EmployeeDetailModulePage.tsx`（page return）、`detail.css`（`.ui-c-anchor--active`）。
+
+## 追加一区：预算区（本笔）
+
+- 问题：`?zone=usage` 预算区无区块头、运行数/实扣/采集时刻数字非等宽（ui-c 数字口径缺口）。
+  改法：加 `.ui-c-head`「预算与成本」；三个数值腿挂 `.ui-c-num`（tabular）；文案/title/测试值零改动。
+  文件：`EmployeeDetailModulePage.tsx`（UsageZone）。testid 集合前后逐行相等。
