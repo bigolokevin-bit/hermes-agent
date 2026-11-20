@@ -2355,3 +2355,19 @@ built /private/tmp/health-r38/index.html
 - 如实断言的两条产品语义（非缺陷，按现状写死）：其一，非全批失败的单探针失败**不**触发 `sys-refresh-error`——该批仍算完成，协调器落读取时刻；错误条只属于整体不可达或 health 列表读失败。其二，health 列表读失败时矩阵只撤回**该读口自己的**采集时刻格为「—」并标 failed，sys3 表与其余探针时刻全部保留旧批（`hasDataRef` 语义）。
 - 验证：新文件 4/4；`src/modules/health` 9 files / 74 passed；全量 **186 files / 2487 passed, 0 failed**（新基线，上游并入抬高了文件数）；`tsc -b . --noEmit` exit 2，错误仅限 approvals / employee-detail / employees 基线文件，本域 0。
 - 边界：仅新增该测试文件 + 本节 DONE；未碰 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；纯测试无需浏览器三档；未 install、未并 main、未重建 9122；禁 force/amend/--no-verify 遵守。
+
+## R91 / cap-deeplink-guards — /capabilities 行深链与复原护栏（纯测试）
+
+- 基线：显式 refspec fetch 后 `git merge --no-ff origin/lane/hermes-console`（上游 `dff01eed` 线 → `9014f6ba`）→ 合并提交 `d4f3bcb0`，149 文件全是 `docs/_artifacts/tonight/**` 证据与 `docs/_artifacts/D/DONE.md`，与源码零重叠；未 reset --hard。本轮零产品码改动。
+- **派工前提已过时（如实披露）**：单据要求以 `?toolset=<存在/不存在>` 驱动。实测本代代码**不读 `toolset` 参数**：`web/src` 内 grep `toolset=` / `"toolset"` / `'toolset'` 的命中只有读口路径 `/api/tools/toolsets` 与行字段 `source:"toolset"`，没有任何 `params.get("toolset")`；`ToolsPage` 只读 `state`(:340) / `q`(:343) / `sort`·`dir`(:344 `readSort`) / `row`(:354 `rowTargetFor`)，`SkillsPage` 只读 `q` + sort/dir + row。真实的「工具集定位」面是行深链 `?row=tools:<名称>`（`capabilities/rowLink.tsx`）加本地筛选 `?q=`，故 ①–⑤ 按真实机制落测试，不为迁就字面而新增产品行为。
+- 同样如实：③ 的「页码归 1」**不适用本代** —— 能力面没有任何分页参数（分页只见于 employees / tasks / runs）。测试把它写成缺席守卫：断言 `page` / `pageNum` / `pageNumber` / `page_size` / `cursor` / `nextCursor` / `offset` / `limit` 一个都不出现在切换前后的参数快照里，而不是假装重置了第 1 页。
+- 新增 `web/src/modules/capabilities/capabilities.deeplink.test.tsx`（4 测试）。夹具沿用 tools 既有形状（3 个 toolset 共 4 个工具 + 2 个 MCP ⇒ 6 行），行名一律从 DOM 的 `tl3-name` 派生而不硬编码；读口计数 `reads()` 过滤掉 Vitest 收尾时的无参调用；比对「参数不增加读取」前必须 `resetToolsTabState()`，否则 tools 模块缓存让第二次挂载 0 请求，比对失去意义。
+- ① `?row=tools=<存在>` 打开即展开：`cap7-detail-tools` 恰 1、`cap-row-expanded` 在、目标行 `aria-current="true"`；与 `?q=<前两字>&sort=name&dir=asc` 同挂时筛选生效，且 URL 与粘贴串逐字节相同、参数集恰为粘贴的五项（`tab/q/row/sort/dir`）——深链不改写任何筛选。
+- ② `?row=tools=<不存在>`：`cap-row-missing` 在、title 逐字 `GAP-CAPROW-01`、文案含「该条目不在当前列表里」与「把这个条目隐藏了」；`cap-row-missing-clear` 的 href 是 `listHref`（删 `row` 与 `q`，保留 `tab=tools`）；URL 未被静默改写（逐字节等于粘贴串）；零详情面板、零行、`tl3-no-match` 在。`capF` 锚仍在且同值：`capF-state-filter-empty` 可见（class 含 `capF-state-text`、不含 `sr-only`），其 textContent 与 title 逐字等于单点 `stateAnchor({kind:"filter-empty",subject:"工具与 MCP 清单",reason,loaded})` 的 `lead+detail` 与 `title`。
+- ③ 换深链只动 `row`：点第一行 `cap-row-link` 再点第二行，每次都 `details()===1`、`row === tools:<该行名>`、键集恒为 `[dir,q,row,sort,tab]`，而 `tab/q/sort/dir` 四项逐字与点击前相同；两次点击都不产生新读取。
+- ④ 刷新复原：同 URL 直接重挂（不重置 spy）后 `cap8-location` 逐字相同、行序与行名数组 `toEqual` 刷新前、详情仍恰 1，读取计数不变（`cachedTools`/`cachedOpenTool` 生效）；随后点 `cap-row-close` 只删 `row`，`q/sort/dir` 原位保留。
+- ⑤ 全程读口计数：首载 6 次；深链、换链、重挂、关闭各步之后计数仍是同一个数，没有任何一步为筛选或定位多发请求。
+- 三处作者侧修正（均非产品缺陷）：`cap8-location` 文本自带前导 `?`，比较须写成 `"?" + new URLSearchParams(fields).toString()`；第二次挂载吃到 tools 缓存 ⇒ 先 `resetToolsTabState()`；`q()` 选择器需带泛型默认 `<T extends HTMLElement = HTMLElement>` 才能服务 `q<HTMLButtonElement>("cap-row-close")`。
+- 验证：新文件 4/4；定向 `src/modules/{capabilities,skills,tools}` → **15 files / 147 passed**；全量 → **187 files / 2491 passed, 0 failed**（R90 基线 186/2487 + 本文件 1 file / 4 tests）；`tsc -b . --noEmit` exit 2，错误仅限 approvals / employee-detail / employees 基线文件，本域 0。既有 `ToolsPage.test.tsx`「row deep link」三条与 `capabilities.stateanchor` / `filterparity` / `rowparity` 全绿。
+- 零破坏与三档：`cap*`（含 `cap4–capH`、`capC`、`capF`、`cap-page-scope`、gates）与 `sys*` 族无任何改动；本轮是纯测试，无 markup / CSS 增量，故不重跑浏览器 harness —— 几何证据沿用 R89 的 1440/1280/375 三档实测（同一批渲染产物未被触碰）。
+- 边界：仅新增该测试文件 + 本节 DONE；未碰 App.tsx / shell / routes / registry / package·lock / web-scripts / ops；未 install、未并 main、未重建 9122；无 force / amend / `--no-verify`。
