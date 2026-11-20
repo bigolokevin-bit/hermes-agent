@@ -628,17 +628,19 @@ export function ApprovalDetailBody({
         </div>
         <div className="flex min-w-0 items-baseline gap-1.5" data-testid="apd5-field-request-id">
           <dt className="shrink-0 text-muted-foreground">请求编号</dt>
-          <dd className="min-w-0 break-words text-foreground">
+          {/* P1-375-5: 请求编号是单一无空格长 token——break-all 让它就地折行，
+              复制钮 flex 豁免收缩、永不随折行被挤出可视区；值与 testid 不动。 */}
+          <dd className="flex min-w-0 flex-wrap items-center gap-1 text-foreground">
             {detail.requestId ? (
               <>
-                <code data-testid="apd5-request-id" title={detail.requestId}>
+                <code className="min-w-0 break-all" data-testid="apd5-request-id" title={detail.requestId}>
                   {detail.requestId}
                 </code>
                 <button
                   type="button"
                   aria-label="复制请求编号"
                   data-testid="apd5-copy-detail-request-id"
-                  className="ml-1 text-xs underline underline-offset-2"
+                  className="shrink-0 whitespace-nowrap text-xs underline underline-offset-2"
                   onClick={() => {
                     void navigator.clipboard?.writeText(detail.requestId ?? "");
                   }}

@@ -69,7 +69,7 @@ export function RequestIdCopyField({
       <button
         type="button"
         data-testid="apr5-copy-request-id"
-        className="rounded-sm border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-1 focus-visible:outline-primary/40"
+        className="shrink-0 whitespace-nowrap rounded-sm border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-1 focus-visible:outline-primary/40"
         onClick={copy}
       >
         复制
