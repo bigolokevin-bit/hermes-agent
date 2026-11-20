@@ -48,9 +48,39 @@ describe("VersionPage", () => {
     expect(container.textContent).not.toContain("0.0.0");
     const controls = [...container.querySelectorAll("button, input, select, textarea")];
     // The real copy control is read-only; every write-shaped control stays planned.
-    const planned = controls.filter((el) => el.getAttribute("data-testid") !== "ver-copy");
+    const planned = controls.filter((el) => el.getAttribute("data-testid") !== "ver-copy" && el.getAttribute("data-testid") !== "sys-refresh");
     expect(planned.every((el) => el.getAttribute("data-planned") === "1" && el.getAttribute("aria-disabled") === "true")).toBe(true);
     expect(container.querySelector('[data-testid="ver4-planned-export"]')?.getAttribute("title")).toContain("还没有接上");
+  });
+
+
+  it("refreshes the version surface and price table once each, keeping old data while busy", async () => {
+    let phase: "init" | "refresh" = "init";
+    const calls = { health: 0, pricing: 0 };
+    const pending: Array<() => void> = [];
+    const health = () => json({ ok: true, asOf: "2026-11-19T16:00:00Z", sources: [{ id: "console", name: "控制台服务", status: "ok", version: "9.9.9" }] });
+    const pricing = () => json({ prices: [{ modelId: "m1", label: "模型一", provider: "提供方", inputPerMillion: 1, outputPerMillion: 2, asOf: "2026-11-19T15:00:00Z" }] });
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      const key = url.includes("/api/health") ? "health" : url.includes("/api/models/pricing") ? "pricing" : null;
+      if (!key) return Promise.resolve(json({ components: [] }));
+      calls[key] += 1;
+      if (phase === "init") return Promise.resolve(key === "health" ? health() : pricing());
+      return new Promise((resolve) => { pending.push(() => resolve(key === "health" ? health() : pricing())); });
+    }));
+    await render();
+    expect(calls).toEqual({ health: 1, pricing: 1 });
+    expect(container.querySelector("[data-testid='ver5-table']")).toBeTruthy();
+    expect(container.querySelector("[data-testid='ver4-price-table']")).toBeTruthy();
+    phase = "refresh";
+    await act(async () => { (container.querySelector("[data-testid='sys-refresh']") as HTMLButtonElement).click(); });
+    expect(container.querySelector("[data-testid='sys-busy-note']")?.textContent).toContain("更新中");
+    expect(container.querySelector("[data-testid='ver5-table']")).toBeTruthy();
+    expect(container.querySelector("[data-testid='ver4-price-table']")).toBeTruthy();
+    await act(async () => { pending.splice(0).forEach((resolve) => resolve()); await Promise.resolve(); });
+    await act(async () => { await Promise.resolve(); });
+    expect(calls).toEqual({ health: 2, pricing: 2 });
+    expect(container.querySelector("[data-testid='sys-updated-at']")?.textContent).toContain("刷新完成于");
   });
 
   it("renders injected values and formats the build time in Beijing time", async () => {

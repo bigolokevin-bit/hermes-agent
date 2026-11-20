@@ -2224,3 +2224,15 @@ built /private/tmp/health-r38/index.html
 - Verification: `cd web && npx vitest run src/modules/health src/modules/version` → **9 files / 73 passed**; full `npx vitest run` → **159 files / 2172 passed**; `./node_modules/.bin/tsc -b . --noEmit` → only baseline approvals/employee-detail/employees errors, own domain 0.
 - DOM: temporary Vite/Chrome harness (deleted; Vite 5502 / Chrome 9302) at 1440/1280/375: health and version both `vw=bodySW=bodyCW=1440/1280/375`; `sys-copy-scope` exact text on both; `sys10-copy`/`ver-copy` titles both end with the same scope sentence and are enabled; health matrix default name-asc 4 rows first `控制台服务探针` last `Hermes 运行时探针`; version table 2 rows first `控制台服务（BFF）9.9.9—正常` last `工作进程——降级`; no horizontal overflow.
 - Boundaries: only `modules/health/**` + `modules/version/**` + DONE; no App/shell/routes/registry/package·lock/web-scripts/ops; no install; no main merge; no 9122 rebuild; no force/amend/--no-verify. Working-tree entry/sha not cited.
+
+## R81 /system 统一刷新语义 (sys-refresh)
+
+- Base: merge `affe1006`; chapter `0c1b94c3` / code `9813d7af`; HEAD before commit `3bf19bc9`.
+- New `web/src/modules/health/systemRefresh.tsx`: `useRefreshCoordinator(expected)` derives `busy/updatedAt/error/tick/start/finish`; `SystemRefreshBar` renders `sys-refresh`, busy note, updated-at, error + copyable `sys-refresh-request-id` + `sys-refresh-retry`.
+- `/system?tab=health` (`HealthPage`): header `sys-refresh` replaces `hlt5-refresh`; one action refreshes `/api/health` (service list + matrix health row) and the three probes. Busy keeps old `hlt5-table`/`hlt5-list` and `sys3-table`; second click ignored (`disabled` + `aria-busy`). Failure keeps old batch, shows `sys-refresh-error` with rid, no updated-at.
+- `/system?tab=version` (`VersionPage`): same `sys-refresh` refreshes `VersionHealthSurface` (`/api/health`; `/api/version` only when health has no rows) and the price read (`/api/models/pricing`); old tables remain while busy; failure keeps old batch + error.
+- Request counts: health initial `/api/health` 1 + probes 1 each = 4; refresh = same 4, each path +1. Version initial health 1 + pricing 1 = 2; refresh = same 2.
+- `hlt5-refresh` removed; `sys3-refresh` hidden on the composed page via `hideRefresh` (standalone surface still exposes it for its own tests). No service restart is triggered by refresh; all requests are read-only GETs. 8642 process changes are outside this lane and were not touched.
+- Verification: health/version targeted **9 files / 76 passed**; full **159 files / 2175 passed**; tsc baseline approvals/employee-detail/employees only, own domain 0.
+- DOM 1440/1280/375 health+version: `vw=bodySW=bodyCW`; busy note exact; old rows retained (4 health / 2 version); updated-at `刷新完成于 2026-11-20 12:33（读取时刻，不是数据时刻）`; no error; no overflow.
+- Boundaries: only `modules/health/**`, `modules/version/**`, DONE; no App/shell/routes/registry/package·lock/web-scripts/ops; no install/force/amend/--no-verify; no main merge; no 9122 rebuild.

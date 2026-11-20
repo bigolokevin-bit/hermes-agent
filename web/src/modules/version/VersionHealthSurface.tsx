@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Badge, Button, Card, CardContent } from "@nous-research/ui";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import { fetchJsonStrict } from "../models/fetchJson";
 import { versionCopyText } from "./versionCopy";
 import { COPY_SCOPE_TEXT, withCopyScope } from "../health/copyScope";
+import type { RefreshFailure } from "../health/systemRefresh";
 import {
   HEALTH_API_PATH,
   HEALTH_GAP,
@@ -83,18 +84,20 @@ function HealthLine({ state }: { state: HealthState }) {
   );
 }
 
-export function VersionHealthSurface({ preview = null }: { preview?: Preview }) {
+export function VersionHealthSurface({ preview = null, refreshTick = 0, onRefreshResult }: { preview?: Preview; refreshTick?: number; onRefreshResult?: (failure: RefreshFailure | null) => void }) {
   const [version, setVersion] = useState<VersionState>(preview === "loading" ? { k: "loading" } : preview === "empty" ? { k: "empty" } : preview === "error" ? { k: "error", message: "预览：版本表读取失败。", requestId: null } : { k: "loading" });
   const [health, setHealth] = useState<HealthState>({ k: "loading" });
   const [reload, setReload] = useState(0);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const [copiedRows, setCopiedRows] = useState(0);
+  const hasDataRef = useRef(false);
+  const onResultRef = useRef(onRefreshResult);
+  useEffect(() => { onResultRef.current = onRefreshResult; }, [onRefreshResult]);
 
   useEffect(() => {
     if (preview !== null) return;
     let live = true;
-    setVersion({ k: "loading" });
-    setHealth({ k: "loading" });
+    if (!hasDataRef.current) { setVersion({ k: "loading" }); setHealth({ k: "loading" }); }
 
     const load = async () => {
       // Prefer the health rows: /system reads the same payload and the same
@@ -108,7 +111,9 @@ export function VersionHealthSurface({ preview = null }: { preview?: Preview }) 
         setHealth(view === null ? { k: "unknown", message: "健康接口返回的内容无法解析；不影响版本表。" } : { k: "ready", view });
         const rows = readVersionRowsFromHealth(payload);
         if (rows !== null && rows.length > 0) {
+          hasDataRef.current = true;
           setVersion({ k: "ready", rows });
+          if (refreshTick > 0) onResultRef.current?.(null);
           return;
         }
       } catch (error: unknown) {
@@ -121,23 +126,30 @@ export function VersionHealthSurface({ preview = null }: { preview?: Preview }) 
         if (!live) return;
         const rows = readVersionRows(payload);
         if (rows === null) {
-          setVersion({ k: "error", message: "版本接口返回的内容无法解析为组件清单。", requestId: null });
+          const failure = { message: "版本接口返回的内容无法解析为组件清单。", requestId: null };
+          if (refreshTick > 0) onResultRef.current?.(failure);
+          if (!hasDataRef.current) setVersion({ k: "error", ...failure });
           return;
         }
+        hasDataRef.current = true;
         setVersion(rows.length === 0 ? { k: "empty" } : { k: "ready", rows });
+        if (refreshTick > 0) onResultRef.current?.(null);
       } catch (error: unknown) {
         if (!live) return;
         const info = versionMessage(error);
+        const failure = { message: info.text, requestId: info.requestId };
+        if (refreshTick > 0) onResultRef.current?.(failure);
+        if (hasDataRef.current) return;
         if (info.status === 401) setVersion({ k: "login", message: info.text });
-        else if (info.status === 403 || info.status === 404) setVersion({ k: "gap", message: info.text, requestId: info.requestId });
-        else setVersion({ k: "error", message: info.text, requestId: info.requestId });
+        else if (info.status === 403 || info.status === 404) setVersion({ k: "gap", ...failure });
+        else setVersion({ k: "error", ...failure });
       }
     };
     void load();
     return () => {
       live = false;
     };
-  }, [preview, reload]);
+  }, [preview, reload, refreshTick]);
 
   const copyRows = version.k === "ready" ? version.rows : [];
   const copyText = versionCopyText(copyRows, health.k === "ready" ? health.view.asOf : null);
