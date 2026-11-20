@@ -36,7 +36,7 @@
  * 「技术详情」. The run id reads 「运行 · 后4位」 with a copy affordance;
  * the full value lives in the title and the clipboard, not on the surface.
  */
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 import { Check, Copy, RefreshCw, X } from "lucide-react";
 
@@ -77,6 +77,7 @@ import {
   eventSummary,
   resultRefHref,
   runCode,
+  runPreview,
   shortId,
   sinceKeyOf,
   statusFilterOf,
@@ -191,6 +192,42 @@ function CostCell({ row, testId }: { row: RunRow; testId: string }): ReactNode {
   );
 }
 
+/**
+ * The inline preview of one list row. Every value is derived from the row the
+ * list already read — opening it asks the service nothing. The toggle owns
+ * `aria-expanded`/`aria-controls`; Escape closes and hands focus back.
+ */
+function RunPreviewPanel({ row, names, index }: { row: RunRow; names: Map<string, string>; index: number }): ReactNode {
+  const view = runPreview(row, names);
+  const fields: Array<{ key: string; label: string; field: { text: string; title: string } }> = [
+    { key: "status", label: "状态", field: view.status },
+    { key: "started", label: "开始", field: view.started },
+    { key: "ended", label: "结束", field: view.ended },
+    { key: "elapsed", label: "耗时", field: view.elapsed },
+    { key: "cost", label: "成本（美元）", field: view.cost },
+    { key: "employee", label: "负责人", field: view.employee },
+  ];
+  return (
+    <div
+      id={`run-row-preview-${index}`}
+      className="min-w-0 border-t border-border bg-muted/20 px-4 py-3"
+      data-testid={`run-row-preview-${index}`}
+    >
+      <dl className="grid min-w-0 grid-cols-1 gap-x-4 gap-y-1.5 text-xs sm:grid-cols-2 lg:grid-cols-3">
+        {fields.map(({ key, label, field }) => (
+          <div key={key} className="min-w-0" data-testid={`run-row-preview-${index}-${key}`} title={field.title}>
+            <dt className="text-muted-foreground">{label}</dt>
+            <dd className="m-0 min-w-0 break-words">{field.text}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="mt-2 min-w-0 break-words text-[11px] leading-tight text-muted-foreground">
+        预览只读：六项都取自这一行已读到的数据，打开或收起都不会再发一次请求。
+      </p>
+    </div>
+  );
+}
+
 const GRID =
   "grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,0.7fr)_minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,0.9fr)_minmax(0,1.1fr)_minmax(0,1fr)_auto]";
 
@@ -210,6 +247,12 @@ function ListRows({
    */
   hrefOf: (runId: string) => string;
 }): ReactNode {
+  const [openId, setOpenId] = useState<string | null>(null);
+  const toggleRefs = useRef(new Map<string, HTMLButtonElement>());
+  const close = useCallback((rowId: string) => {
+    setOpenId(null);
+    toggleRefs.current.get(rowId)?.focus();
+  }, []);
   return (
     <Card className="min-w-0 border-border bg-card" data-testid="run5-table">
       <CardContent className="p-0">
@@ -222,8 +265,20 @@ function ListRows({
             const elapsed = elapsedMinute(row.startedAt, row.endedAt);
             const reason = failureSummary(row);
             const base = `run5-row-${index}`;
+            const open = openId === row.runId;
             return (
-              <li key={row.runId} className={GRID} data-testid={base} data-status={row.status ?? "unknown"}>
+              <li
+                key={row.runId}
+                className="min-w-0"
+                data-testid={base}
+                data-status={row.status ?? "unknown"}
+                onKeyDown={(event) => {
+                  if (!open || event.key !== "Escape") return;
+                  event.stopPropagation();
+                  close(row.runId);
+                }}
+              >
+                <div className={GRID}>
                 <RunCodeCell row={row} testId={`${base}-code`} />
                 <span className="min-w-0 self-center">
                   <Badge tone={statusTone(row.status)} data-testid={`${base}-status`}>{statusLabel(row.status)}</Badge>
@@ -249,16 +304,34 @@ function ListRows({
                 <span className="min-w-0 self-center break-words" data-testid={`${base}-reason`} title={reason.reason || undefined}>
                   {reason.text}
                 </span>
-                <Link
-                  className="self-center justify-self-end rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground no-underline hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-                  to={hrefOf(row.runId)}
-                  state={{ fromList: true }}
-                  data-testid={`${base}-open`}
-                  data-run-id={row.runId}
-                  aria-label={`查看 ${runCode(row.runId)} 的详情与事件`}
-                >
-                  查看
-                </Link>
+                <div className="flex min-w-0 flex-col items-end gap-1 self-center">
+                  <Link
+                    className="rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground no-underline hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                    to={hrefOf(row.runId)}
+                    state={{ fromList: true }}
+                    data-testid={`${base}-open`}
+                    data-run-id={row.runId}
+                    aria-label={`查看 ${runCode(row.runId)} 的详情与事件`}
+                  >
+                    查看
+                  </Link>
+                  <button
+                    type="button"
+                    className="rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                    data-testid={`run-row-toggle-${index}`}
+                    aria-expanded={open}
+                    aria-controls={`run-row-preview-${index}`}
+                    ref={(node) => {
+                      if (node) toggleRefs.current.set(row.runId, node);
+                      else toggleRefs.current.delete(row.runId);
+                    }}
+                    onClick={() => setOpenId(open ? null : row.runId)}
+                  >
+                    {open ? "收起预览" : "展开预览"}
+                  </button>
+                </div>
+                </div>
+                {open ? <RunPreviewPanel row={row} names={names} index={index} /> : null}
               </li>
             );
           })}

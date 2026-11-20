@@ -705,3 +705,64 @@ export const NO_REQUEST_ID = "未提供";
 export function askedLine(): string {
   return `routes: ${LIST_ROUTES.join(", ")}`;
 }
+
+/** A field the answer did not carry; the gap is named, never filled in. */
+export interface PreviewField {
+  text: string;
+  title: string;
+}
+
+export interface RunPreview {
+  status: PreviewField;
+  started: PreviewField;
+  ended: PreviewField;
+  elapsed: PreviewField;
+  cost: PreviewField;
+  employee: PreviewField;
+}
+
+const FIELD_MISSING = "该字段未返回";
+
+/**
+ * The inline preview reads ONLY the row the list already has: no second read,
+ * no client clock. Elapsed time needs both ends; without them it stays a dash
+ * with the reason, never an "open run" estimate.
+ */
+export function runPreview(row: RunRow, names: Map<string, string>): RunPreview {
+  const rawStatus = typeof row.status === "string" ? row.status.trim() : "";
+  const status: PreviewField = rawStatus
+    ? { text: statusLabel(row.status), title: `服务返回的原始状态：${rawStatus}` }
+    : { text: FIELD_MISSING, title: "服务没有返回运行状态；不代填、不猜" };
+
+  const start = beijingMinute(row.startedAt);
+  const started: PreviewField = start.text
+    ? { text: start.text, title: String(row.startedAt) }
+    : { text: FIELD_MISSING, title: `开始时间${start.reason}` };
+
+  const end = beijingMinute(row.endedAt);
+  const ended: PreviewField = end.text
+    ? { text: end.text, title: String(row.endedAt) }
+    : { text: FIELD_MISSING, title: `结束时间${end.reason}` };
+
+  let elapsed: PreviewField;
+  if (!start.text || !end.text) {
+    elapsed = { text: "—", title: "开始与结束时间不齐，耗时不计算；不拿本机时间补一端" };
+  } else {
+    const span = elapsedMinute(row.startedAt, row.endedAt);
+    elapsed = span.text
+      ? { text: span.text, title: `${String(row.startedAt)} → ${String(row.endedAt)}` }
+      : { text: "—", title: span.reason || "这段耗时读不出来" };
+  }
+
+  const state = costState(row);
+  const cost: PreviewField =
+    state === "known"
+      ? { text: costText(row), title: "已计价，金额单位：美元（USD）" }
+      : { text: "—", title: costReason(row) };
+
+  const employee: PreviewField = row.employeeId
+    ? { text: employeeLabel(row.employeeId, names), title: row.employeeId }
+    : { text: employeeLabel(row.employeeId, names), title: "这条运行没有带回负责人；不代填、不猜" };
+
+  return { status, started, ended, elapsed, cost, employee };
+}

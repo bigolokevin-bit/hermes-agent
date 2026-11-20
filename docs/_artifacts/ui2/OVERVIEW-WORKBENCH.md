@@ -161,3 +161,11 @@
 - testid：`duty-changed`、`duty-changed-<key>`（today-runs/cost/pending/trend/blocked）、`duty-changed-more`。
 - 测试 4 例：五处变化只列三条 + 另有 2 项；同值不渲染；成本卡 500 时该项缺席且全文无 `$0.00`、其它项照常；切 7d 后该行消失。验证：duty 5 files / 98 passed（基线 94），全量 151 files / 2021 passed（基线 2017），tsc 本域 0，eslint 0 error / 4 既有 warning。
 - 未测：真实浏览器 aria-live 播报节奏、375 折行。
+
+## 运行行内预览（runs row preview，2026-11-20）
+
+- `/runs` 每行新增「展开预览」按钮 `run-row-toggle-<index>`（`aria-expanded`/`aria-controls`），展开后行内渲染 `run-row-preview-<index>`，六项 `run-row-preview-<index>-<status|started|ended|elapsed|cost|employee>`（dl 定义列表）。
+- 口径：状态用 `statusLabel`（未知「待核实」，原始值只进 title）；开始/结束北京时间到分；耗时只在两端时间都在时用 `elapsedMinute` 计算，否则「—」+title「不拿本机时间补一端」；成本只认 `costStatus`（known 用 `usd`，真 0 `$0.00`，其它「—」+原因）；员工短码 8 位、title 放全 id。缺字段统一「该字段未返回」+title「不代填、不猜」。
+- 行为：同时只开一行；Esc 收起并把焦点交回展开按钮；URL 零改动；打开/收起/切换都不发请求（仅读行内已有数据，测试断言 `urls()` 计数不变）。
+- 验证：`vitest run src/modules/runs` 2 files / 81 passed；全量 151 files / 2025 passed（上一单 2021）；tsc 本域 0；eslint 本域 exit 0。build chunk `RunsModulePage-*.js` 命中 1。
+- 未测：真实浏览器 375 折行、键盘 Tab 走查。

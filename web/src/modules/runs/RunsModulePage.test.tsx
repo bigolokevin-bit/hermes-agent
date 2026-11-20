@@ -942,3 +942,104 @@ describe("R40 — per-event status and duration", () => {
     expect(cell("run5-duration-4")?.textContent).toBe("6s");
   });
 });
+
+/* ── runs row preview ────────────────────────────────────────────────
+ * The preview is a reading of the row the list already has: no second read,
+ * no client clock, one open at a time, Escape hands focus back to its toggle.
+ */
+describe("runs row preview", () => {
+  const RUN_C = {
+    runId: "rn_01M7822PREVIEW0000000001",
+    status: "completed",
+    costStatus: "upstream",
+    costUsd: 0,
+    startedAt: "2026-11-18T02:00:00Z",
+    endedAt: "2026-11-18T02:11:00Z",
+    employeeId: "emp_aaaabbbbcccc",
+  };
+  const RUN_D = {
+    runId: "rn_01M7822PREVIEW0000000002",
+    costStatus: "unknown",
+    costUsd: null,
+  };
+
+  const toggle = (index: number): HTMLButtonElement =>
+    document.querySelector(`[data-testid='run-row-toggle-${index}']`) as HTMLButtonElement;
+  const preview = (index: number): HTMLElement | null =>
+    document.querySelector(`[data-testid='run-row-preview-${index}']`);
+  const field = (index: number, key: string): HTMLElement | null =>
+    document.querySelector(`[data-testid='run-row-preview-${index}-${key}']`);
+
+  it("expands with values from the row alone and asks nothing more", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_C]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 1, "one row");
+    const asked = urls().length;
+    expect(toggle(0).getAttribute("aria-expanded")).toBe("false");
+    expect(preview(0)).toBeNull();
+    await act(async () => {
+      toggle(0).click();
+    });
+    expect(toggle(0).getAttribute("aria-expanded")).toBe("true");
+    expect(toggle(0).getAttribute("aria-controls")).toBe("run-row-preview-0");
+    expect(preview(0)).not.toBeNull();
+    expect(field(0, "status")?.textContent).toContain("成功");
+    expect(field(0, "started")?.textContent).toContain("2026-11-18 10:00");
+    expect(field(0, "ended")?.textContent).toContain("2026-11-18 10:11");
+    expect(field(0, "elapsed")?.textContent).toContain("11 分钟");
+    expect(field(0, "cost")?.textContent).toContain("$0.00");
+    expect(field(0, "employee")?.textContent).toContain("员工 · AAAABBBB");
+    expect(field(0, "employee")?.getAttribute("title")).toBe("emp_aaaabbbbcccc");
+    expect(urls().length).toBe(asked);
+  });
+
+  it("keeps one row open at a time and leaves the address alone", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_C, RUN_D]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 2, "two rows");
+    const address = document.querySelector("[data-testid='probe-location']")?.textContent;
+    if (address !== undefined) expect(address).toBe("/runs");
+    await act(async () => {
+      toggle(0).click();
+    });
+    await act(async () => {
+      toggle(1).click();
+    });
+    expect(preview(0)).toBeNull();
+    expect(preview(1)).not.toBeNull();
+    expect(toggle(0).getAttribute("aria-expanded")).toBe("false");
+    expect(toggle(1).getAttribute("aria-expanded")).toBe("true");
+    expect(urls().filter((url) => url.includes("/api/runs"))).toHaveLength(1);
+  });
+
+  it("closes on Escape and hands focus back to the toggle", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_C]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 1, "one row");
+    await act(async () => {
+      toggle(0).click();
+    });
+    await act(async () => {
+      preview(0)?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    expect(preview(0)).toBeNull();
+    expect(document.activeElement).toBe(toggle(0));
+  });
+
+  it("names missing fields instead of filling them in", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_D]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 1, "one row");
+    await act(async () => {
+      toggle(0).click();
+    });
+    expect(field(0, "status")?.textContent).toContain("该字段未返回");
+    expect(field(0, "started")?.textContent).toContain("该字段未返回");
+    expect(field(0, "ended")?.textContent).toContain("该字段未返回");
+    expect(field(0, "elapsed")?.textContent).toContain("—");
+    expect(field(0, "elapsed")?.getAttribute("title")).toContain("不拿本机时间补一端");
+    expect(field(0, "cost")?.textContent).toContain("—");
+    expect(preview(0)?.textContent).not.toContain("$0.00");
+    expect(field(0, "employee")?.textContent).toContain("未指派");
+  });
+});
