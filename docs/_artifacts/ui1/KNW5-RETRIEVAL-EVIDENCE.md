@@ -3053,3 +3053,53 @@ kn-space-preview/kn-type/kn3-page-cap/knE-page-* 全族通过。过程两处测�
 stale/游标过期路径未重复（主测 E 段已锁）。
 边界：只新增本测试与本证据；显式路径 add；无 force/amend/--no-verify/git add -A；
 未并 main、未重建 9122；单 commit「test(console): knowledge paging guards」。
+
+# KNW5 追加 R132：两张文档表的行末复制（列表级 kn-row-copy*）（2026-11-20 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip `6e6ebf32`（预期 `76090480`
+已更新，如实记录；知识面 delta 空）。merge `db945fc5` 与 feature 同链推送。
+
+## 挂载互斥实测与 testid 落法
+
+```text
+DocumentNameSearch（内含 SearchDocTable）在 forced===null 时恒挂页顶（KnowledgeModulePage.tsx
+:3605），与 SpaceDetailSurface（:3667，space= 态）同屏共存——实测确认（详情 URL 下两族按钮
+同屏各在场，测试 ② 断言）。故按派工冲突方案：主 tab 检索表持原名 kn-row-copy-<i>/
+kn-row-copy-status/kn-row-copy-fallback；空间详情表加后缀 kn-row-copy-space-<i>/
+-space-status/-space-fallback。两表各一具共享状态条（每行按钮共用，报最近一次动作）。
+```
+
+## 实现口径
+
+```text
+文本唯一来源 docSingleCopy（与 R114 预览/命中展开 kn-doc-copy 同串）；行末 <th>操作</th>
++ RowCopyButton（原生 button[type=button]），i 随当前排序/筛选后的可见行序（entries=shown
+派生序），详情预览行 colSpan 4→5。空行（名与标识都没给）disabled + 逐字 title。
+状态条 role="status" aria-live="polite"：成功「已复制」、拒写「剪贴板没接受：文本在下方，
+可手动选取。」+ 只读 textarea（value 逐字同目标串）。零请求路径：复制/拒写/排序切换均不触
+fetch（测试快照逐字不变）。kn-doc-copy* 与 DocLineCopy 一律未动。
+用例三条：①两表行复制 == 同文档 kn-doc-copy 文本逐字 toBe（检索行==命中展开、详情行==
+行内预览），骨架「文档名 | 类型 | 大小 | 更新 | 短码」+ 单行 + 尾换行；②updated 三态两拍：
+asc 首行 B、kn-row-copy-space-0 复制行 startsWith("B 表.xlsx")，回 desc 首行 A、0 号文本
+跟到 A——编号不钉死文档；同屏双族 id 不撞；③拒写 fallback 逐字+只读+role/aria-live、
+两表空行 disabled+逐字 title、全程 fetch 计数与 urls() 快照逐字不变。
+过程记录：测试初稿两处自错（updated 默认 desc 两击回原态误期望翻序→改两拍断言；
+querySelectorAll 属性选择器不窄化类型致 tsc 2 错→显式 cast），产品零改动。
+```
+
+## 验证尾行（R132）
+```text
+$ npx vitest run src/modules/knowledge   → 7 files / 101 tests passed（基线 98 + 3）
+$ npx vitest run                         → 196 files / 2543 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r132-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn3/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort/kn-gates/kn-doc-copy*/kn-doc-preview/
+kn-space-preview/kn3-page-cap/knE-page-*/kn-type 全族通过（列新增未动既有单元格断言）。
+```
+未测如实：带登录会话真实屏；键盘 roving 是否把新按钮计入行序链（未显式改 roving，按原生
+tab 序在场）。
+边界：只改 web/src/modules/knowledge/**（页面两表+控件、测试追加）与本证据；显式路径 add；
+无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「feat(console): knowledge row copy in lists」（父 = merge `db945fc5`）。
