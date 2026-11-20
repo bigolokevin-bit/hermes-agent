@@ -254,10 +254,35 @@ class GatewayInboundMixin(GatewayInboundHooksMixin, GatewayInboundTranscriptionM
         # forward a second time per message — the observed double POST (C1 answered the replay
         # with duplicate=true). One POST per admitted message = intake pass only; genuine
         # re-admissions of a message_id still POST and rely on C1's dedupeKey, never skipped.
+        # C1 authoritative gate (SEAKOI_C1_AUTHORITATIVE, default off): on Feishu groups the
+        # intake pass bounded-waits for the first POST verdict; a 2xx means C1 owns the reply
+        # so the local turn is dropped (return None). Everything else keeps the local turn
+        # (fail-open) — a message is never dropped silently. Flag off: the call below is the
+        # same 2-arg fire-and-forget as before.
         if not executing_admission.get():
-            from gateway.channel_event_bridge import forward_inbound_event
+            from gateway.channel_event_bridge import (
+                authoritative_gate_active,
+                forward_and_await_verdict,
+                forward_inbound_event,
+            )
 
-            forward_inbound_event(event, source)
+            if authoritative_gate_active(source):
+                state, verdict = await forward_and_await_verdict(event, source)
+                event._c1_authoritative = state
+                if state == "suppressed":
+                    logger.warning(
+                        "local_reply_suppressed: message_id=%s event_id=%s reason=c1_authoritative",
+                        getattr(event, "message_id", None),
+                        verdict.get("event_id"),
+                    )
+                    return None
+                logger.warning(
+                    "local_reply_fallback: message_id=%s reason=%s",
+                    getattr(event, "message_id", None),
+                    "timeout" if state == "timeout" else "post_failed",
+                )
+            else:
+                forward_inbound_event(event, source)
         return event, source, False
 
     def _hm_estop_turn_allowed(self, event: MessageEvent, source: SessionSource) -> bool:
