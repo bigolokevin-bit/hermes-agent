@@ -1076,3 +1076,14 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 九件全 exit=0 盖 6a02ed58：ia-html/react ok{51,22,1,8}｜lint-fake v=[]｜lint-reuse v=0 exempt=1 chat→T40（stdout 抄件重建 json，tmp+rename）｜crawl-anon DL0/CE0/PE0 routesCE51(401归因)｜crawl-auth routesCE28（auth-state 19日19:12 版窗内有效）｜state-quad 20/20（本轮补 ok=sampled==passed==20 判据键）。redirects=24 vs 门定值 23 归因照旧（notes，门值更新归 L0/A）。
 - shots main(auth) 102/102 failures=[] oversize=[] **obs=0 登录面全干净** ceAuth=login-state distinctMainHeads=23 envOnly=27（九十五轮 28 减 1，如实）；三键全值+拍前后 curl 复证同值未漂（before==after==CpeSWPtM）。shots-anon auxiliary=true 102/102 mode=anon envOnly=51 同前代。
 - 环境：9122 v4_proxy 95667 未动、caddy 8183 28034、8092 **87215**（lstart 06:44:19，f1cd0ab 代次，R39 卡已重启）；web/src 未碰；他人脏零沾染；QA 06:46:38 五源 asOf PASS 与本代次读数同窗。
+
+## 九十七轮 · 波次代次九件重章 @ 7173b7c6（entry B6GI2nKC，2026-11-20 08:0x-08:2x）
+- 代次：wave-17 五线并入 7173b7c6（远端 tip 同值，ANCH=0）；entry assets/index-B6GI2nKC.js 166881B
+  sha256 52d01b4c3e00f4fd…602de43c == 磁盘 == 9122；CSS index-KjxcMNhA.css；21/21 路由 200。
+- 九腿一次性重跑 exit 全 0：ia-html/ia-react {51,22,1,8}；lint-fake violations=[]；lint-reuse v=0 exempt=1(chat→T40)；
+  crawl-anon DL0/CE0/PE0，routesWithConsoleErrors=51（401 环境归因）、redirects=24 归因 notes；
+  crawl-auth DL0/CE0/PE0，routesWithConsoleErrors=26（较 6a02ed58 代 -2，auth-state 窗内有效）；state-quad 20/20 ok=true（补键形制承 wave-16）；
+  shots 102/102 failures=[] envOnly=28（上代 27+1 如实）distinctMainHeads=24（上代 23+1，wave-17 新页形）overflow=0；
+  shots-anon 102/102 auxiliary=true envOnly=51。拍前后 served 同值 index-B6GI2nKC.js 未漂。
+- 九件全部单文件单 JSON + exitCode + headHash=7173b7c6（tmp+os.replace 原子写，读回校验）。
+- BFF 本轮未动：8092 pid 37807 @ 5e233a4（审计 total 卡已收讫）。6a02ed58 已盖不重做。
