@@ -650,3 +650,18 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 验证：定向 `src/modules/metrics` 4 files / 220 passed（原 215，+5）；全量 145 files / 1835 passed（原 1830）；`tsc -b . --noEmit` 全仓 67 条既存、`modules/metrics` 0。
 
 未测项：真浏览器前进/后退在多次切参后的历史栈形态未逐项走查（已用 `useNavigationType` 与 `history.length` 覆盖归一瞬间）。
+
+## R47 纠偏：截断注记分表说明与兜底复制同源（2026-11-20）
+
+### OBS-11 截断注记（改前 → 改后）
+- 改前：三处注记笼统写「表内全量渲染 / 没有截断」，而页面另有两处确实 `slice`（月度快照前 8 行、价目表前 5 行）——注记与页面事实互相打脸。
+- 改后分表说：`metAH-cap-note`「宽表逐行全量渲染，共 N 行；导出与屏上逐行一致。」、`metAH-cap-note-share`「宽表逐行全量渲染，共 N 行；导出含同一批行。」；新增 `metAH-cap-note-snapshot`「这张快照只显示前 8 行（按金额从高到低）；完整数据用「导出明细 CSV」，或在下方分摊表按员工逐行看。」（title 写 `monthSnapshot.rows` 先按金额降序取前 8 行、完整账本行两个去处、本卡不分页）；新增 `metAH-cap-note-pricing`「价目表只显示前 5 行；本页不导出价目，完整价目以模型价目表为准。」（title 写按服务返回顺序取前 5 行、本次共 N 行、其余不展示也不导出，仅 pricing ready 且有行时渲染）。
+- 「没有截断」字样在页面可见文本中为 0（测试用 `visibleText()` 断言）。
+
+### OBS-5 兜底复制同源
+- 改前：兜底 textarea 取 `sourceCopyBody` state（由点击时 set），曾出现空串。
+- 改后：删除该 state，`sourceCopyValue = sourceList.length ? sourceSummaryText(sourceList) : ''` 一处派生，剪贴板参数与 textarea `value` 同读它——不可能不一致，非空列表下也不可能为空。测试断言：`fallback.value === body`、`!== ''`、`clip.copyTextToClipboard` 最后一次调用参数 === `fallback.value`、6 行。
+
+零额外请求（注记与兜底纯派生，`urls()` 不变）。验证：定向 `src/modules/metrics` 4 files / 221 passed（原 220）；全量 1921 passed（基线 1835，上游本轮已涨）；`tsc` 本域 0（全仓 69 条既存）。
+
+未测项：真浏览器下快照/价目两卡的注记换行未目视走查。

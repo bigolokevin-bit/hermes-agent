@@ -3862,7 +3862,10 @@ describe('metAG — copy the source summary', () => {
 
     expect(q('metAG-copy-status')?.textContent).toBe('复制没成功');
     const fallback = q('metAG-copy-fallback-text') as HTMLTextAreaElement;
+    // Same source as the clipboard call, and never an empty box.
     expect(fallback.value).toBe(body);
+    expect(fallback.value).not.toBe('');
+    expect(clip.copyTextToClipboard).toHaveBeenLastCalledWith(fallback.value);
     expect(fallback.value.split('\n')).toHaveLength(6);
   });
 
@@ -3885,8 +3888,8 @@ describe('metAH — the tables say how many rows they really show', () => {
     expect(rows).toBeGreaterThan(0);
 
     const note = q('metAH-cap-note');
-    expect(note?.textContent).toContain(`表内全量渲染，共 ${rows} 行`);
-    expect(note?.textContent).toContain('没有截断');
+    expect(note?.textContent).toContain(`宽表逐行全量渲染，共 ${rows} 行`);
+    expect(note?.textContent).toContain('导出与屏上逐行一致');
     expect(note?.getAttribute('title')).toContain('判据');
     expect(q('met6-cat-source')?.textContent).toContain(`${rows} 行`);
     // No invented truncation wording.
@@ -3899,10 +3902,35 @@ describe('metAH — the tables say how many rows they really show', () => {
     expect(rows).toBe(3);
 
     const note = q('metAH-cap-note-share');
-    expect(note?.textContent).toContain(`表内全量渲染，共 ${rows} 行`);
+    expect(note?.textContent).toContain(`宽表逐行全量渲染，共 ${rows} 行`);
     expect(note?.getAttribute('title')).toContain('metA-export-count');
     expect(q('metA-export-count')?.textContent).toBe(`可导出 ${rows} 行`);
     expect(note?.textContent).not.toMatch(/前\s*\d+\s*行/);
+  });
+
+  it('names the two short lists that do stop early, each with its own reason', async () => {
+    const prices = Array.from({ length: 6 }, (_, index) => ({
+      model: `model-${index}`,
+      provider: 'local',
+      input_per_million: 0.1,
+      output_per_million: 0.2,
+    }));
+    await mount(
+      usageRouter({ pricing: () => Promise.resolve({ prices, asOf: '2026-11-19T20:12:00.000Z' }) }),
+    );
+
+    const snapshot = q('metAH-cap-note-snapshot');
+    expect(snapshot?.textContent).toContain('前 8 行');
+    expect(snapshot?.textContent).toContain('导出明细 CSV');
+    expect(snapshot?.getAttribute('title')).toContain('前 8 行');
+
+    const pricing = q('metAH-cap-note-pricing');
+    expect(pricing?.textContent).toContain('前 5 行');
+    expect(pricing?.textContent).toContain('不导出价目');
+    expect(pricing?.getAttribute('title')).toContain('前 5 行');
+
+    // No blanket claim survives anywhere on the page.
+    expect(visibleText()).not.toContain('没有截断');
   });
 
   it('adds no read of its own', async () => {
