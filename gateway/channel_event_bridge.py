@@ -31,6 +31,13 @@ Behaviour contract (S7b-2 + L7 spool):
   ``content.mentions = [{"externalId", "name"?}]``. When there are none the key is
   omitted entirely, so the legacy body shape stays byte-identical. Dedupe semantics
   are unchanged; only the delivery guarantee changed (retry + spool).
+- C1 authoritative gate (``SEAKOI_C1_AUTHORITATIVE``, default OFF): for Feishu GROUP
+  events only, admission bounded-waits (``_AUTHORITATIVE_TIMEOUT_SECONDS``, 1.5 s,
+  async — the loop is never blocked) for the FIRST POST result of the same forward.
+  A 2xx verdict lets the caller skip the local agent turn (C1 owns the reply); any
+  non-2xx reason, an early skip, or a timeout fails open and the local turn runs.
+  Unset flag / DM / other platforms / FIFO replay: the plain 2-arg fire-and-forget
+  forward, byte-identical to the behaviour above.
 """
 from __future__ import annotations
 
@@ -39,6 +46,7 @@ import json
 import logging
 import os
 from typing import Any, List, Optional, Set, Tuple
+from datetime import UTC
 
 logger = logging.getLogger("gateway.run")
 
@@ -46,7 +54,7 @@ _TIMEOUT_SECONDS = 0.3
 _MAX_TEXT_CHARS = 4000
 _PLACEHOLDER_EVENT_ID = "ce_pending"  # C1 always overrides with a server-side ULID
 
-_RETRY_DELAYS: Tuple[float, ...] = (0.5, 1.0)  # between attempts => 3 attempts max
+_RETRY_DELAYS: tuple[float, ...] = (0.5, 1.0)  # between attempts => 3 attempts max
 _MAX_ATTEMPTS = len(_RETRY_DELAYS) + 1
 _TOTAL_BUDGET_SECONDS = 4.0  # hard cap per event: attempts + sleeps + transport
 _SPOOL_ENV = "SEAKOI_BRIDGE_SPOOL"
@@ -56,12 +64,19 @@ _SPOOL_DEFAULT_PATH = "~/.local/state/seakoi-ops/bridge-spool.jsonl"
 _SPOOL_LEGACY_DEFAULT_PATH = "~/.local/state/sekoi-ops/bridge-spool.jsonl"
 _SPOOL_CAP = 200
 
+# C1 authoritative gate: default OFF. With the flag unset the inbound path stays the
+# plain fire-and-forget forward above; nothing in this section runs.
+_AUTHORITATIVE_ENV = "SEAKOI_C1_AUTHORITATIVE"
+# Bounded wait for the FIRST POST verdict, read from this module attribute at call
+# time so tests can shorten it.
+_AUTHORITATIVE_TIMEOUT_SECONDS = 1.5
+
 _legacy_spool_migrated = False
 
-_background_tasks: Set["asyncio.Task[None]"] = set()
+_background_tasks: set[asyncio.Task[None]] = set()
 _spool_lock: Optional[asyncio.Lock] = None
 _spool_lock_loop: Optional[asyncio.AbstractEventLoop] = None
-_drain_task: Optional["asyncio.Task[None]"] = None
+_drain_task: Optional[asyncio.Task[None]] = None
 
 
 def _base_url(source: Any) -> Optional[str]:
@@ -73,6 +88,26 @@ def _base_url(source: Any) -> Optional[str]:
     return base or None
 
 
+def authoritative_active() -> bool:
+    """Whether the C1 authoritative gate env flag is truthy (``1``/``true``)."""
+    return (os.environ.get(_AUTHORITATIVE_ENV) or "").strip().lower() in ("1", "true")
+
+
+def authoritative_gate_active(source: Any) -> bool:
+    """Whether this event's admission should await the first POST verdict.
+
+    Feishu-only is enforced via ``_base_url``; DM and unconfigured sources never
+    gate, so the flag can only ever change behaviour for Feishu group traffic.
+    """
+    if not authoritative_active():
+        return False
+    if source is None:
+        return False
+    if getattr(source, "chat_type", None) != "group":
+        return False
+    return _base_url(source) is not None
+
+
 def _iso_ms(dt: Any) -> str:
     from datetime import datetime, timezone
 
@@ -80,7 +115,7 @@ def _iso_ms(dt: Any) -> str:
         dt = datetime.now().astimezone()
     if dt.tzinfo is None:
         dt = dt.astimezone()
-    dt = dt.astimezone(timezone.utc)
+    dt = dt.astimezone(UTC)
     return f"{dt.strftime('%Y-%m-%dT%H:%M:%S')}.{dt.microsecond // 1000:03d}Z"
 
 
@@ -96,7 +131,7 @@ def _sender_ids(event: Any, source: Any) -> dict:
                 open_id = sid.get("open_id") or None
                 union_id = sid.get("union_id") or None
                 user_id = sid.get("user_id") or None
-    except Exception:  # noqa: BLE001 - defensive: raw shape varies across event kinds
+    except Exception:
         pass
     return {
         "open_id": open_id,
@@ -149,7 +184,7 @@ def _mentions(event: Any) -> list:
             if name:
                 entry["name"] = name
             out.append(entry)
-    except Exception:  # noqa: BLE001 - defensive: raw shape varies across event kinds
+    except Exception:
         return []
     return out
 
@@ -283,13 +318,13 @@ def _valid_entry(entry: Any) -> bool:
     return payload.get("dedupeKey") == dedupe_key
 
 
-def _spool_read(path: str) -> Tuple[List[dict], int]:
+def _spool_read(path: str) -> tuple[list[dict], int]:
     """Parse the spool file. Returns ``(entries, corrupt_line_count)``.
 
     Never raises: an unreadable file reads as empty, and lines that fail to parse
     or lack a usable dedupeKey are counted (for one count-only warning) and dropped.
     """
-    entries: List[dict] = []
+    entries: list[dict] = []
     corrupt = 0
     try:
         with open(path, "r", encoding="utf-8") as fh:
@@ -314,7 +349,7 @@ def _spool_read(path: str) -> Tuple[List[dict], int]:
     return entries, corrupt
 
 
-def _spool_write(path: str, entries: List[dict]) -> None:
+def _spool_write(path: str, entries: list[dict]) -> None:
     """Atomically replace the spool with ``entries`` (temp file + ``os.replace``)."""
     directory = os.path.dirname(path) or "."
     os.makedirs(directory, exist_ok=True)
@@ -328,7 +363,7 @@ def _spool_write(path: str, entries: List[dict]) -> None:
     os.replace(tmp_path, path)
 
 
-def _spool_write_safe(path: str, entries: List[dict]) -> bool:
+def _spool_write_safe(path: str, entries: list[dict]) -> bool:
     try:
         _spool_write(path, entries)
         return True
@@ -378,7 +413,7 @@ async def _replay_spool_locked(base: str) -> None:
         if corrupt:
             _spool_write_safe(path, [])
         return
-    remaining: List[dict] = []
+    remaining: list[dict] = []
     replayed = 0
     for entry in entries:
         payload = entry["payload"]
@@ -412,15 +447,22 @@ async def drain_spool(base: str) -> None:
             await _replay_spool_locked(base)
         except asyncio.CancelledError:
             raise
-        except Exception as exc:  # noqa: BLE001 - a drain is best effort only
+        except Exception as exc:
             logger.warning("bridge_spool_drain_failed: error=%s", type(exc).__name__)
 
 
 # --- transport ---------------------------------------------------------------
 
 
-async def _post_once(base: str, payload: dict, message_id: str) -> Optional[str]:
-    """One POST attempt. Returns None on success, else a short reason (no content)."""
+async def _post_once(
+    base: str, payload: dict, message_id: str, info: Optional[dict] = None
+) -> Optional[str]:
+    """One POST attempt. Returns None on success, else a short reason (no content).
+
+    ``info`` is an optional caller-owned dict: on a 2xx it is filled with the same
+    ``event_id``/``duplicate`` values the success log line reports, so the
+    authoritative gate can see the first verdict without parsing logs.
+    """
     import aiohttp
 
     headers = {
@@ -436,7 +478,7 @@ async def _post_once(base: str, payload: dict, message_id: str) -> Optional[str]
                 if resp.status < 500:
                     try:
                         body = await resp.json(content_type=None)
-                    except Exception:  # noqa: BLE001
+                    except Exception:
                         body = {}
                 if 200 <= resp.status < 300:
                     logger.info(
@@ -445,22 +487,62 @@ async def _post_once(base: str, payload: dict, message_id: str) -> Optional[str]
                         body.get("eventId"),
                         body.get("duplicate"),
                     )
+                    if info is not None:
+                        event_id = body.get("eventId")
+                        info["event_id"] = (
+                            str(event_id) if event_id is not None else None
+                        )
+                        info["duplicate"] = bool(body.get("duplicate"))
                     return None
                 return f"status={resp.status}"
     except asyncio.CancelledError:
         raise
-    except Exception as exc:  # noqa: BLE001 - forwarding must never surface errors
+    except Exception as exc:
         return type(exc).__name__
 
 
-async def _post_with_retry(base: str, payload: dict, message_id: str) -> bool:
-    """POST with at most ``_MAX_ATTEMPTS`` attempts inside a 4 s budget."""
+def _resolve_first_result(first_result: Any, verdict: dict) -> None:
+    """Settle the gate's waiter with the first POST outcome; never raises.
+
+    No waiter (``None``) or an already-settled future is a no-op, and a future
+    whose loop is gone must never break the retry loop.
+    """
+    try:
+        if first_result is None or first_result.done():
+            return
+        first_result.set_result(verdict)
+    except Exception:
+        # Best-effort waiter: a dead future must never disturb the retry/spool path.
+        logger.debug("channel_event_gate: first-result resolve failed", exc_info=True)
+
+
+async def _post_with_retry(
+    base: str, payload: dict, message_id: str, first_result: Any = None
+) -> bool:
+    """POST with at most ``_MAX_ATTEMPTS`` attempts inside a 4 s budget.
+
+    With ``first_result`` (the authoritative gate) the FIRST attempt reports its
+    verdict to the waiter and the remaining attempts run exactly as before; without
+    it the call shape stays the plain 3-positional fire-and-forget.
+    """
     loop = asyncio.get_running_loop()
     deadline = loop.time() + _TOTAL_BUDGET_SECONDS
     reason = "not_attempted"
     attempt = 0
     for attempt in range(1, _MAX_ATTEMPTS + 1):
-        reason = await _post_once(base, payload, message_id)
+        if first_result is not None and attempt == 1:
+            info: dict = {}
+            reason = await _post_once(base, payload, message_id, info=info)
+            _resolve_first_result(
+                first_result,
+                {
+                    "ok": reason is None,
+                    "event_id": info.get("event_id"),
+                    "duplicate": info.get("duplicate"),
+                },
+            )
+        else:
+            reason = await _post_once(base, payload, message_id)
         if reason is None:
             return True
         if attempt >= _MAX_ATTEMPTS:
@@ -490,10 +572,12 @@ async def _post_with_retry(base: str, payload: dict, message_id: str) -> bool:
     return False
 
 
-async def _forward_task(base: str, payload: dict, message_id: str) -> None:
+async def _forward_task(
+    base: str, payload: dict, message_id: str, first_result: Any = None
+) -> None:
     """Detached per-event task: retry, then spool only on terminal failure."""
     try:
-        if await _post_with_retry(base, payload, message_id):
+        if await _post_with_retry(base, payload, message_id, first_result):
             return
         await _spool_append(
             {
@@ -505,7 +589,7 @@ async def _forward_task(base: str, payload: dict, message_id: str) -> None:
         )
     except asyncio.CancelledError:
         raise
-    except Exception as exc:  # noqa: BLE001 - forwarding must never surface errors
+    except Exception as exc:
         logger.warning(
             "channel_event_post_failed: message_id=%s error=%s",
             message_id,
@@ -524,31 +608,79 @@ def _schedule_drain(loop: asyncio.AbstractEventLoop, base: str) -> None:
     task.add_done_callback(_background_tasks.discard)
 
 
-def forward_inbound_event(event: Any, source: Any) -> None:
-    """Never raises. Schedules the drain and the retrying POST, then returns."""
+def forward_inbound_event(event: Any, source: Any, first_result: Any = None) -> None:
+    """Never raises. Schedules the drain and the retrying POST, then returns.
+
+    ``first_result`` is the authoritative gate's future: every skip that will never
+    POST settles it immediately with a not-ok verdict, so the waiter falls back at
+    once instead of burning its timeout.
+    """
     message_id = "?"
+    skipped = {"ok": False, "event_id": None, "duplicate": False}
     try:
         base = _base_url(source)
         if not base:
+            _resolve_first_result(first_result, skipped)
             return
         message_id = getattr(event, "message_id", None) or "?"
         if getattr(event, "internal", False) or getattr(event, "is_bot", False):
+            _resolve_first_result(first_result, skipped)
             return
         payload = build_payload(event, source)
         if payload is None:
+            _resolve_first_result(first_result, skipped)
             return
         loop = asyncio.get_running_loop()
         _schedule_drain(loop, base)  # spool first; never awaited from this path
-        task = loop.create_task(_forward_task(base, payload, message_id))
+        task = loop.create_task(
+            _forward_task(base, payload, message_id, first_result)
+        )
         _background_tasks.add(task)
         task.add_done_callback(_background_tasks.discard)
     except RuntimeError:
+        # No running loop: the future stays unresolved on purpose — the waiter's
+        # timeout is what fails this message open back to the local reply.
         logger.warning(
             "channel_event_post_failed: message_id=%s error=NoRunningLoop", message_id
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning(
             "channel_event_post_failed: message_id=%s error=%s",
             message_id,
             type(exc).__name__,
         )
+
+
+async def forward_and_await_verdict(event: Any, source: Any) -> tuple[str, dict]:
+    """Forward, then await the FIRST POST result bounded (C1 authoritative gate).
+
+    Returns ``(state, verdict)``: ``"suppressed"`` on a 2xx — the caller must skip
+    the local agent turn because C1 owns the reply; ``"fallback"`` on any non-2xx
+    or skipped forward, and ``"timeout"`` when the first attempt has not answered
+    within ``_AUTHORITATIVE_TIMEOUT_SECONDS`` — in both cases the caller keeps the
+    local reply (fail-open; the detached forward and its spool continue anyway).
+    Awaits without blocking the loop. Never raises to the caller.
+    """
+    loop = asyncio.get_running_loop()
+    fut = loop.create_future()
+    try:
+        forward_inbound_event(event, source, first_result=fut)
+    except Exception:
+        logger.warning(
+            "channel_event_gate_failed: message_id=%s",
+            getattr(event, "message_id", None),
+            exc_info=True,
+        )
+        return "fallback", {}
+    try:
+        verdict = await asyncio.wait_for(fut, _AUTHORITATIVE_TIMEOUT_SECONDS)
+    except TimeoutError:
+        return "timeout", {}
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        logger.debug("channel_event_gate: waiter failed", exc_info=True)
+        return "fallback", {}
+    if verdict.get("ok"):
+        return "suppressed", verdict
+    return "fallback", verdict
