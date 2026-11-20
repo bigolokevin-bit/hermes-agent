@@ -26,13 +26,15 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { Spinner } from "@nous-research/ui/ui/components/spinner";
 
 import { STATUS_FILTERS, approvalSortKeyOf, approvalsRowSearchText, isKnownStatus, sortApprovalRows, type ApprovalSortDir, type ApprovalSortKey } from "./model";
-import { actionGates } from "./gates";
+import { actionGates, announcement } from "./gates";
 import { QueueSummaryBar } from "./QueueSummaryBar";
+import { PermalinkCopy } from "./PermalinkCopy";
 import { BackToList, restoreListScroll, saveListScroll } from "./BackToList";
 import { QueueCsvExport } from "./QueueCsvExport";
 import { QueueSortBar } from "./QueueSortBar";
 import { ActorBuckets } from "./ActorBuckets";
 import { SinceQuickFilter, isSinceValue, withinSince } from "./SinceQuickFilter";
+import { RiskQuickFilter, isRiskValue, withinRisk, type RiskValue } from "./RiskQuickFilter";
 import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel } from "./states";
 import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
 import { ApprovalDetailBody, ApprovalRowCard } from "./views";
@@ -136,6 +138,18 @@ export function ApprovalsHistoryModulePage(): ReactNode {
     },
     [params, setParams],
   );
+  // R83: ?risk= 是本地风险档维（读口丢参实测复证）；七参互不清除、粘链复现。
+  const rawRisk = params.get("risk");
+  const risk = isRiskValue(rawRisk) ? rawRisk : null;
+  const pickRisk = useCallback(
+    (value: RiskValue | null) => {
+      const draft = new URLSearchParams(params);
+      if (value === null) draft.delete("risk");
+      else draft.set("risk", value);
+      setParams(draft, { replace: true });
+    },
+    [params, setParams],
+  );
   // R77: 计数/导出/分桶与列表同源——共同基底=q+时间窗过滤后的已加载行；
   // actor 维不锁分桶轨（否则选中一位后无法切到另一位）。
   const actorBaseRows = useMemo(() => {
@@ -147,10 +161,15 @@ export function ApprovalsHistoryModulePage(): ReactNode {
       ? filtered.filter((row) => withinSince(row.submittedAt, since, sinceNow))
       : filtered;
   }, [list.rows, q, since, sinceNow]);
+  // R83: 风险档过滤与 actor 同级；分桶轨基线含 risk 不含 actor。
+  const riskBaseRows = useMemo(
+    () => (risk ? actorBaseRows.filter((row) => withinRisk(row, risk)) : actorBaseRows),
+    [actorBaseRows, risk],
+  );
   const visibleRows = useMemo(() => {
-    const byActor = actor ? actorBaseRows.filter((row) => row.approverIds.includes(actor)) : actorBaseRows;
+    const byActor = actor ? riskBaseRows.filter((row) => row.approverIds.includes(actor)) : riskBaseRows;
     return sortApprovalRows(byActor, asort, adir);
-  }, [actorBaseRows, actor, asort, adir]);
+  }, [riskBaseRows, actor, asort, adir]);
   const [selected, setSelected] = useState<string | null>(() => params.get("id"));
   const [unaddressable, setUnaddressable] = useState(false);
   // R60: at most one row shows its inline preview; it never touches URL/filters.
@@ -318,7 +337,12 @@ export function ApprovalsHistoryModulePage(): ReactNode {
   const singleAgg = status === null;  return (
     <div className="flex min-w-0 w-full max-w-full flex-col gap-3" data-testid="apr5-page-history">
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-        <p className="min-w-0 break-words text-xs text-muted-foreground" aria-live="polite">
+        {/* R86: 播报单点=下方 sr-only apv-live；这行只是屏上读数，不再自带
+            aria-live（同一变化只播一次）。 */}
+        <p className="sr-only" role="status" aria-live="polite" data-testid="apv-live">
+          {announcement(list.phase, visibleRows.length)}
+        </p>
+        <p className="min-w-0 break-words text-xs text-muted-foreground">
           {list.phase === "loading"
             ? `正在按「${summary}」读取历史决策…`
             : list.phase === "empty"
@@ -343,6 +367,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
             onClick={list.reload}
             data-testid="apv-gates-refresh"
             title={actionGates(list.phase, list.rows.length).retry.title}
+            aria-disabled={!actionGates(list.phase, list.rows.length).retry.enabled}
             disabled={!actionGates(list.phase, list.rows.length).retry.enabled}
             prefix={
               list.phase === "loading" ? (
@@ -378,14 +403,15 @@ export function ApprovalsHistoryModulePage(): ReactNode {
       <p
         className="min-w-0 break-words text-xs text-muted-foreground"
         data-testid="apv8-scope-note"
-        title="实测：GET /api/approvals 带 q/keyword/title 任一参数都返回同一全量（200，8 条同集合），后台不做关键字过滤；为避免「假服务端搜索」，这里只做前端本地过滤。"
+        title="实测：本页读口带 q/keyword/title 任一参数都与不带时返回同一全量（同集合），后台不做关键字过滤；为避免「假服务端搜索」，这里只做前端本地过滤。"
       >
         仅在当前已加载 {list.rows.length} 条内搜索；关键字是前端本地过滤，不产生新请求（实测后台 q/keyword/title 参数被忽略）。
       </p>
 
       <QueueSortBar phase={list.phase} sort={asort} dir={adir} loadedCount={list.rows.length} onCycle={cycleSort} />
-      <ActorBuckets rows={actorBaseRows} phase={list.phase} actor={actor} onPick={pickActor} />
+      <ActorBuckets rows={riskBaseRows} phase={list.phase} actor={actor} onPick={pickActor} />
       <SinceQuickFilter phase={list.phase} since={since} loadedCount={list.rows.length} onPick={pickSince} />
+      <RiskQuickFilter rows={actorBaseRows} phase={list.phase} risk={risk} onPick={pickRisk} />
 
 
       <div className="flex min-w-0 flex-wrap gap-1.5" role="group" data-testid="apr5-filter" aria-label="按处理结果筛选">
@@ -428,15 +454,6 @@ export function ApprovalsHistoryModulePage(): ReactNode {
             </Button>
           );
         })}
-        <select
-          aria-label="按风险档筛选"
-          data-testid="apv5-filter-risk"
-          disabled
-          title="后台尚未开放风险档筛选：带 risk=high 实测仍返回与该参数无关的全量集合（status=all 下 8 条同集），为避免假过滤此项暂不提供。"
-          className="rounded-md border border-white/15 bg-transparent px-2 py-1 text-xs text-muted-foreground opacity-60"
-        >
-          <option value="">风险档：暂不可筛</option>
-        </select>
         <select
           aria-label="按时间窗筛选"
           data-testid="apv5-filter-window"
@@ -486,7 +503,20 @@ export function ApprovalsHistoryModulePage(): ReactNode {
 
           {list.phase === "ready" ? (
             <>
-              {since && visibleRows.length === 0 ? (
+              {risk && visibleRows.length === 0 ? (
+                <Card className="border-border bg-card" data-testid="apv-risk-empty">
+                  <CardContent className="min-w-0 space-y-2 p-4 text-sm">
+                    <p>该风险档下没有审批。</p>
+                    <p className="text-xs text-muted-foreground">
+                      这是当前已加载 {list.rows.length} 条里的真实结果：没有命中该风险档的行（严重风险没有独立档位，在「全部」下照常显示）；可只清空风险档，其余筛选保留。
+                    </p>
+                    <Button size="sm" outlined data-testid="apv-risk-clear" onClick={() => pickRisk(null)}>
+                      清空风险档
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : null}
+              {!risk && since && visibleRows.length === 0 ? (
                 <Card className="border-border bg-card" data-testid="apv-since-empty">
                   <CardContent className="min-w-0 space-y-2 p-4 text-sm">
                     <p>该时间范围内没有审批。</p>
@@ -499,7 +529,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
                   </CardContent>
                 </Card>
               ) : null}
-              {!since && actor && visibleRows.length === 0 ? (
+              {!risk && !since && actor && visibleRows.length === 0 ? (
                 <Card className="border-border bg-card" data-testid="apv-actor-empty">
                   <CardContent className="min-w-0 space-y-2 p-4 text-sm">
                     <p>该审批人下没有审批。</p>
@@ -512,7 +542,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
                   </CardContent>
                 </Card>
               ) : null}
-              {q && !actor && !since && visibleRows.length === 0 ? (
+              {q && !actor && !since && !risk && visibleRows.length === 0 ? (
                 <Card className="border-border bg-card" data-testid="apv8-search-empty">
                   <CardContent className="min-w-0 space-y-2 p-4 text-sm">
                     <p>没有匹配的审批。</p>
@@ -574,7 +604,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
                   data-testid="apv-page-count"
                   title={
                     list.total === null
-                      ? "读口顶层只有 items/nextCursor（实测 200，无 total 键）；按已加载条数推算会撒谎，故不推算。"
+                      ? "读口响应顶层只有 items/nextCursor（无 total 键，实测本页响应）；按已加载条数推算会撒谎，故不推算。"
                       : "总数来自读口 total 键；已显示=当前已加载行数"
                   }
                 >
@@ -594,6 +624,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
 
         <aside className="flex min-w-0 flex-col gap-3 lg:sticky lg:top-4 lg:self-start" aria-label="记录详情">
           {selected ? <BackToList onBack={backToList} /> : null}
+          <PermalinkCopy target={selected} />
           {drawer}
         </aside>
       </div>

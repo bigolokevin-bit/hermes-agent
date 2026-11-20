@@ -51,6 +51,8 @@ export interface HeatGrid {
   peak: HeatCell | null;
   max: number | null;
   presentCells: number;
+  /** Cells the endpoint never returned. Kept separate from a real 0. */
+  missingCells: number;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -138,6 +140,7 @@ export function buildHeatGrid(activity: Activity): HeatGrid {
     peak,
     max,
     presentCells,
+    missingCells: flat.length - presentCells,
   };
 }
 
@@ -1776,4 +1779,16 @@ export function costCaliber(input: CostCaliberInput): CostCaliber {
     widest: widestPair ? widestPair.label : null,
     title: titleParts.join('；') + '。',
   };
+}
+
+// HEAT — one legend sentence and one gap note for the 7×24 card, read from the
+// very grid the cells render. A cell the endpoint never returned stays missing:
+// it is counted, never summed as 0, and never folded into the window total.
+export const HEAT_LEGEND_TEXT =
+  '格内颜色是该时段（星期几×小时）的运行次数；空白格=这一格没有数据，不计入合计。';
+
+/** Null when the batch has no missing cell, so the page renders no sentence. */
+export function heatGapNoteText(missing: number): string | null {
+  if (!Number.isFinite(missing) || missing <= 0) return null;
+  return `本窗有 ${missing} 格空缺，合计只加有数据的格。`;
 }

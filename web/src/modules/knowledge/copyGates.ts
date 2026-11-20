@@ -96,7 +96,8 @@ const FACE_TABLE: Record<
     tail: string;
     /** 计数位单位；null=无计数位。 */
     unit: "行" | "条" | null;
-    enabledTitle: string;
+    /** 可用时的 title；入参=本面已加载条数（不是全量口径句的 N，与计数位同源）。 */
+    enabledTitle: (loadedTotal: number) => string;
     copied: (rows: number) => string;
     zeroTitle: (filterText: string, loadedTotal: number) => string;
     zeroReason: (filterText: string) => string;
@@ -106,7 +107,7 @@ const FACE_TABLE: Record<
     listName: "空间列表",
     tail: "内容",
     unit: "行",
-    enabledTitle:
+    enabledTitle: () =>
       "复制当前屏上的可见行：空间名 | 文档数 | 最近更新 | 短码。文本首行写明这份清单只覆盖已加载的空间，不冒充全库；屏上数据，不会再发请求。",
     copied: (rows) => `已复制 ${rows} 行`,
     zeroTitle: () => "当前没有可复制的空间",
@@ -116,8 +117,8 @@ const FACE_TABLE: Record<
     listName: "文档列表",
     tail: "内容",
     unit: "行",
-    enabledTitle:
-      "复制当前排序与筛选后在屏幕上的这些行：文档名 | 类型 | 大小 | 更新。屏上数据，不会再发请求。",
+    enabledTitle: (loadedTotal) =>
+      `复制当前排序与筛选后在屏幕上的这些行：文档名 | 类型 | 大小 | 更新 | 短码。当前已加载 ${loadedTotal} 条，不是全量；屏上数据，不会再发请求。`,
     copied: () => "已复制",
     zeroTitle: (f, loaded) =>
       f !== ""
@@ -129,7 +130,8 @@ const FACE_TABLE: Record<
     listName: "文档列表",
     tail: "结果",
     unit: "条",
-    enabledTitle: "复制当前检索词下的命中行：文档名 | 所属空间 | 类型 | 大小 | 更新。屏上数据，不会再发请求。",
+    enabledTitle: (loadedTotal) =>
+      `复制当前检索词下的命中行：文档名 | 所属空间 | 类型 | 大小 | 更新 | 短码。当前已加载 ${loadedTotal} 条，不是全量；屏上数据，不会再发请求。`,
     copied: (rows) => `已复制 ${rows} 条`,
     zeroTitle: () => "当前没有可复制的结果",
     zeroReason: (f) => (f !== "" ? "筛选后没有留下的文档" : "这份回答里没有文档"),
@@ -138,7 +140,7 @@ const FACE_TABLE: Record<
     listName: "这条文档",
     tail: "内容",
     unit: null,
-    enabledTitle:
+    enabledTitle: () =>
       "复制这份文档在抽屉里的元信息：文档名、所属空间、类型、大小、更新、文档短码。屏上数据，不会再发请求。",
     copied: () => "已复制",
     zeroTitle: () => "这条文档不在已加载的列表里，抽屉里没有读到的元信息，没有可复制的内容。",
@@ -177,7 +179,7 @@ export function faceGates(input: GateInput, act: GateAct): EntryGates {
       reason: table.zeroReason(input.filterText),
     };
   } else {
-    copy = { enabled: true, title: table.enabledTitle, reason: null };
+    copy = { enabled: true, title: table.enabledTitle(input.loadedTotal ?? input.rows), reason: null };
   }
   const status = !copy.enabled
     ? `当前不可复制：${copy.reason}`

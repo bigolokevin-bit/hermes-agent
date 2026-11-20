@@ -36,6 +36,28 @@ export function gateReason(phase: Phase): string {
   }
 }
 
+/**
+ * R86 — 单点播报句：文本由 (phase, count) 派生而非存储，同一状态未变化时
+ * DOM 文本不变，屏幕阅读器不会二次播报；快速切换只播最后一帧。请求编号
+ * 留在卡片上可复制，不进播报文本。
+ */
+export function announcement(phase: Phase, count: number): string {
+  switch (phase) {
+    case "loading":
+      return "";
+    case "ready":
+      return `已加载 ${count} 条`;
+    case "empty":
+      return "该条件下无审批";
+    case "error":
+      return `${gateReason("error")}，可复制请求编号重试`;
+    case "denied":
+      return `${gateReason("denied")}，暂时看不到审批列表。`;
+    default:
+      return "";
+  }
+}
+
 export function actionGates(phase: Phase, rowCount: number): ApprovalsGates {
   const reason = gateReason(phase);
   const deny = (action: string, suffix = "；恢复列表后自动可用。"): Gate => ({

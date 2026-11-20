@@ -29,6 +29,7 @@ import { RequestIdCopy } from "@/components/RequestIdCopy";
 import { priorityLabel, short8, statusLabel } from "@/modules/tasks/tasksBoard";
 import { riskView, statusView } from "@/modules/approvals/model";
 import { RelativeTime } from "@/modules/approvals/RelativeTime";
+import { announcement } from "@/modules/approvals/gates";
 // R68 parity: the list row preview and this identity card share ONE
 // missing-field wording source and ONE lifecycle vocabulary.
 import { FIELD_MISSING, FIELD_MISSING_TITLE, fieldMissing, lifecycleLabel as rosterLifecycleLabel } from "@/modules/employees/EmployeesModulePage";
@@ -956,6 +957,15 @@ function UsageZone({ empId, nonce, onRetry }: { empId: string; nonce: number; on
             );
           })}
         </ul>
+        {/* R87: 成本口径互指。ui2 的 COST_CALIBER_TEXT 语义相同但各写常量
+            （用例以 ?raw 断言两处关键短语同族），不做跨模块 import。 */}
+        <p
+          className="px-4 pb-1 text-xs text-muted-foreground"
+          data-testid="ed10-cost-caliber"
+          title="口径互指：/metrics 的成本视图同样只认平台扣费账本的实扣金额（「实扣」「平台扣费账本」句族）；运行次数来自运行统计，与成本不同口径。"
+        >
+          成本为账本实扣金额；与 /metrics 的成本视图口径一致，与运行次数口径不同
+        </p>
         <p
           className="px-4 py-2 text-xs text-muted-foreground"
           title="BFF 白名单：budget-usage 必带 employeeId+period（实测缺 period 400 console.missing_param、periodKind=week 400 request.invalid_body）；run-stats 必带 from/to（实测 bucket=month 422）。"
@@ -1434,31 +1444,56 @@ function CapabilityZone({ resource, onRetry }: { resource: Resource<CapabilityRo
  * ------------------------------------------------------------------ */
 
 function ApprovalsZone({ resource, onRetry }: { resource: Resource<ApprovalRow[]>; onRetry: () => void }) {
-  if (resource.phase === "loading") return <ZoneLoading testid="ed5-approvals-loading" />;
+  // R86: 单一播报节点（签名派生句）——每相都挂同一个 apv-live。
+  const live = (
+    <p className="sr-only" role="status" aria-live="polite" data-testid="apv-live">
+      {announcement(resource.phase, resource.phase === "ready" ? resource.data.length : 0)}
+    </p>
+  );
+  if (resource.phase === "loading")
+    return (
+      <>
+        {live}
+        <ZoneLoading testid="ed5-approvals-loading" />
+      </>
+    );
   if (resource.phase === "empty") {
     return (
-      <ZoneEmpty
+      <>
+        {live}
+        <ZoneEmpty
         title="当前没有审批事项"
         hint="审批读口暂不支持按员工筛选；这是按你的登录身份返回（全部状态）下的空集，不是把缺失当 0。"
         testid="ed5-approvals-empty"
-      />
+        />
+      </>
     );
   }
   if (resource.phase === "denied") {
-    return <ZoneDenied title="审批" message={resource.message} requestId={resource.requestId} onRetry={onRetry} testid="ed5-approvals-denied" />;
+    return (
+      <>
+        {live}
+        <ZoneDenied title="审批" message={resource.message} requestId={resource.requestId} onRetry={onRetry} testid="ed5-approvals-denied" />
+      </>
+    );
   }
   if (resource.phase !== "ready") {
     return (
-      <ZoneError
+      <>
+        {live}
+        <ZoneError
         title="审批"
         message={resource.phase === "error" ? resource.message : ""}
         requestId={resource.phase === "error" ? resource.requestId : null}
         onRetry={onRetry}
         testid="ed5-approvals-error"
-      />
+        />
+      </>
     );
   }
   return (
+    <>
+      {live}
     <Card data-testid="ed5-approvals">
       <CardContent className="p-0">
         <p
@@ -1467,6 +1502,19 @@ function ApprovalsZone({ resource, onRetry }: { resource: Resource<ApprovalRow[]
           title="实测（本代次）：employeeId/assignee 参数不改变返回集合；BFF /api/approvals 白名单只透传 status/limit/cursor，审批归属按登录者注入。为避免把「全量」伪装成「该员工的」，此处按真实口径展示并保留队列跳转。"
         >
           审批读口暂不支持按员工筛选：以下为当前登录身份的全部状态审批。
+        </p>
+        {/* R89: 聚合读口没有续页游标（实测四组 nextCursor 恒 null），
+            与其静默截断不如把上限说死，并给真去处。 */}
+        <p
+          className="border-t border-white/5 px-4 pb-3 pt-2 text-xs text-muted-foreground"
+          data-testid="ed8-appr-scope"
+          title="实测（本代次）：status=all&limit=20/50/100 均 200 n=8 且 nextCursor 恒 null；带无效 cursor 也原样返回——聚合口径没有游标分页能力，故这里不伪造「加载更多」。单页上限按请求口径为 20 条；本代次全量 8 条未满页。"
+        >
+          本区按聚合口径读取，单页最多 20 条，超出部分请到
+          <Link to="/approvals?status=all" className="mx-1 underline underline-offset-2" data-testid="ed8-appr-scope-queue">
+            审批队列
+          </Link>
+          按状态筛选查看。
         </p>
         <div className="hidden grid-cols-[minmax(0,1.4fr)_minmax(0,0.7fr)_minmax(0,0.6fr)_minmax(0,0.8fr)] gap-2 border-b border-white/10 px-4 py-2 text-xs text-white/45 md:grid">
           <span>事项</span>
@@ -1515,6 +1563,7 @@ function ApprovalsZone({ resource, onRetry }: { resource: Resource<ApprovalRow[]
         </ul>
       </CardContent>
     </Card>
+    </>
   );
 }
 

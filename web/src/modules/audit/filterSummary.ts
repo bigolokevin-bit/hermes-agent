@@ -24,7 +24,11 @@ export const FILTER_SUMMARY_MISSING = "未设置";
 export const FILTER_SUMMARY_COPY_LABEL = "复制当前筛选条件";
 
 /** Why the control is off when there is nothing to share. */
-export const FILTER_SUMMARY_EMPTY_TITLE = "当前没有筛选条件可复制";
+/**
+ * audS (R49 ①): the wording the 总控 card asks for, anchored at the front of
+ * the disabled title so a probe matches the same sentence the person reads.
+ */
+export const FILTER_SUMMARY_EMPTY_TITLE = "当前没有可复制的筛选条件";
 
 export interface FilterSummaryInput {
   /** The quick window as the filter bar names it, e.g. 「最近 7 天」. */

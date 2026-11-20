@@ -69,6 +69,7 @@ export function ActorBuckets({
           data-testid="apv-actor-all"
           aria-pressed={!actor}
           disabled={!ready}
+          aria-disabled={!ready}
           title={ready ? "显示全部审批人" : `不能按审批人筛选：${gateReason(phase)}；恢复列表后自动可用。`}
           onClick={() => onPick(null)}
           className={`h-6 min-w-0 rounded-md border px-2 focus-visible:outline focus-visible:outline-1 focus-visible:outline-primary/40 ${
@@ -87,6 +88,7 @@ export function ActorBuckets({
             aria-pressed={actor === bucket.id}
             title={bucket.id}
             disabled={!ready}
+            aria-disabled={!ready}
             onClick={() => onPick(actor === bucket.id ? null : bucket.id)}
             className={`h-6 min-w-0 max-w-full truncate rounded-md border px-2 focus-visible:outline focus-visible:outline-1 focus-visible:outline-primary/40 ${
               actor === bucket.id && ready
@@ -107,7 +109,7 @@ export function ActorBuckets({
       <p
         className="min-w-0 break-words text-xs text-muted-foreground"
         data-testid="apv-actor-scope-note"
-        title="实测 GET /api/approvals 带 actor=/approver= 仍返回同一全量（200，8 条），后台不做按审批人过滤；为避免假筛选，这里只做前端本地过滤，点击不产生新请求。"
+        title="实测本页读口带 actor=/approver= 与不带时返回同一全量（即本页已加载的全部行），后台不做按审批人过滤；为避免假筛选，这里只做前端本地过滤，点击不产生新请求。"
       >
         按当前已加载 {rows.length} 条统计，不是全量；点击桶＝本地过滤，不发新请求。
       </p>

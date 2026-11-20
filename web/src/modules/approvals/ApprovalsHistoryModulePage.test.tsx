@@ -222,11 +222,10 @@ describe("the eight states", () => {
     expect(chip("pending").getAttribute("aria-pressed")).toBe("true");
     expect(document.querySelector("[data-testid='apv5-count']")?.textContent).toBe("1");
     expect(text()).toContain("已显示 1 条「待处理」记录");
-    // Risk and window are stated, never faked: disabled with the measured
-    // reason in the title.
-    const risk = document.querySelector("[data-testid='apv5-filter-risk']") as HTMLSelectElement;
-    expect(risk.disabled).toBe(true);
-    expect(risk.title).toContain("假过滤");
+    // R83: 风险档已升级为本地筛选轨（apv-risk-*，五钮带计数与范围句）；
+    // 时间窗 select 仍按 R44 口径 disabled+实测原因，不假过滤。
+    expect(document.querySelector("[data-testid='apv5-filter-risk']"), "stale risk select gone").toBeNull();
+    expect(document.querySelector("[data-testid='apv-risk-rail']"), "risk rail mounted").toBeTruthy();
     const win = document.querySelector("[data-testid='apv5-filter-window']") as HTMLSelectElement;
     expect(win.disabled).toBe(true);
   });
@@ -2018,5 +2017,315 @@ describe("R82 approval audit correlation (apd9-*)", () => {
     expect(qa("apd6-link-run-none")).toBeTruthy();
     expect(qa("apd6-link-task-none")).toBeTruthy();
     expect((qa("apd9-audit-link") as HTMLAnchorElement).getAttribute("href")).toBe("/audit?resource=ap_c82min");
+  });
+});
+
+describe("R83 risk local filter (apv-risk-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+  const RISK_ROWS = {
+    items: [
+      { approvalId: "ap_rh", title: "密钥轮换", status: "pending", riskLevel: "high", createdAt: "2026-11-19T01:00:00Z" },
+      { approvalId: "ap_rm", title: "预算上调", status: "pending", riskLevel: "medium", createdAt: "2026-11-19T02:00:00Z" },
+      { approvalId: "ap_rn", title: "报表导出", status: "pending", createdAt: "2026-11-19T03:00:00Z" },
+      { approvalId: "ap_rc", title: "发布窗口", status: "pending", riskLevel: "critical", createdAt: "2026-11-19T04:00:00Z" },
+    ],
+  };
+  const riskOnly = async (url: string) => {
+    if (String(url).includes("/api/approval?id=")) return {};
+    return RISK_ROWS;
+  };
+  const rowCount = () => document.querySelectorAll('[data-testid^="apr5-row-ap_r"]').length;
+
+  it("chips count the loaded rows and filter locally; critical rides only 全部", async () => {
+    await mount(riskOnly, "/approvals?tab=history");
+    await waitFor(() => rowCount() === 4, "four rows");
+    expect(qa("apv-risk-scope-note")?.textContent).toContain("按当前已加载 4 条统计，不是全量");
+    expect(qa("apv-risk-scope-note")?.getAttribute("title")).toContain("risk=high");
+    expect(qa("apv-risk-high")?.textContent).toContain("高 1");
+    expect(qa("apv-risk-none")?.textContent).toContain("未标注 1");
+    const before = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      (qa("apv-risk-high") as HTMLButtonElement).click();
+    });
+    await waitFor(() => rowCount() === 1, "high window");
+    expect(qa("apr5-row-ap_rh"), "only the high row stays").toBeTruthy();
+    expect(api.fetchJSON.mock.calls.length, "chip click never refetches").toBe(before);
+    expect(urls().every((u) => !u.includes("risk=")), "risk= never reaches the server").toBe(true);
+    expect(qa("apv-risk-all")?.getAttribute("aria-pressed")).toBe("false");
+    await act(async () => {
+      (qa("apv-risk-all") as HTMLButtonElement).click();
+    });
+    await waitFor(() => rowCount() === 4, "back to all");
+    expect(qa("apr5-row-ap_rc"), "critical shows under 全部").toBeTruthy();
+    await act(async () => {
+      (qa("apv-risk-none") as HTMLButtonElement).click();
+    });
+    await waitFor(() => rowCount() === 1, "none bucket");
+    expect(qa("apr5-row-ap_rn")).toBeTruthy();
+    expect(api.fetchJSON.mock.calls.length).toBe(before);
+  });
+
+  it("a pasted ?risk= replays and combines without clearing the other params", async () => {
+    await mount(riskOnly, "/approvals?tab=history&status=pending&risk=medium");
+    await waitFor(() => !!qa("apr5-row-ap_rm"), "risk replay");
+    expect(rowCount()).toBe(1);
+    expect(qa("apv-risk-medium")?.getAttribute("aria-pressed")).toBe("true");
+    // 队列筛选与风险档共存：请求只带 status=，不带 risk=
+    expect(urls().some((u) => u.includes("status=pending") && !u.includes("risk=")), urls().join("|")).toBe(true);
+  });
+
+  it("no hit in the tier gets its own card; clearing keeps q and status", async () => {
+    await mount(riskOnly, "/approvals?tab=history&status=pending&q=不存在检索&risk=high");
+    await waitFor(() => !!qa("apv-risk-empty"), "risk no-match card");
+    expect(qa("apv-risk-empty")?.textContent).toContain("该风险档下没有审批");
+    await act(async () => {
+      (qa("apv-risk-clear") as HTMLButtonElement).click();
+    });
+    // 清空只删 risk：q 与 status 还在 → 换 q 空态卡出场
+    await waitFor(() => !!qa("apv8-search-empty"), "q card takes over");
+    expect((qa("apv8-search") as HTMLInputElement).value).toBe("不存在检索");
+  });
+
+  it("non-ready phases disable all five chips with the gates sentence", async () => {
+    await mount(async (url: string) => {
+      if (String(url).includes("/api/approval?id=")) return {};
+      throw new ApiError("boom", { status: 500, body: "", url: "/agent-api/api/approvals", requestId: "req-r83-500" });
+    }, "/approvals?tab=history");
+    await waitFor(() => !!qa("apv-state-error"), "error panel");
+    for (const id of ["apv-risk-all", "apv-risk-high", "apv-risk-medium", "apv-risk-low", "apv-risk-none"]) {
+      const btn = qa(id) as HTMLButtonElement | null;
+      expect(btn, id).toBeTruthy();
+      expect((btn as HTMLButtonElement).disabled, `${id} gated`).toBe(true);
+      expect(btn.getAttribute("title")).toContain("不能按风险档筛选：列表读取失败");
+    }
+  });
+});
+
+describe("R85 gate titles without foreign readings", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+  const GATED = ["apv7-export", "apv-sort-title", "apv-since-24h", "apv-risk-high", "apv-actor-all"];
+
+  it("error-phase gate titles state only self-evident facts and mark aria-disabled", async () => {
+    await mount(async (url: string) => {
+      if (String(url).includes("/api/approval?id=")) return {};
+      throw new ApiError("boom", { status: 500, body: "", url: "/agent-api/api/approvals", requestId: "req-r85-500" });
+    }, "/approvals?tab=history");
+    await waitFor(() => !!qa("apv-state-error"), "error panel");
+    for (const id of GATED) {
+      const el = qa(id) as HTMLButtonElement | null;
+      expect(el, id).toBeTruthy();
+      const t = el!.getAttribute("title") ?? "";
+      expect(t, `${id} title: ${t}`).not.toMatch(/\b200\b/);
+      expect(t, `${id} title: ${t}`).not.toContain("自报");
+      expect(t, `${id} title: ${t}`).toContain("不能");
+      expect(t, `${id} title: ${t}`).toContain("列表读取失败");
+      expect(el!.getAttribute("aria-disabled"), `${id} aria-disabled`).toBe("true");
+    }
+    const refresh = qa("apv-gates-refresh") as HTMLButtonElement;
+    expect(refresh.disabled, "retry stays usable in error").toBe(false);
+    expect(refresh.getAttribute("aria-disabled")).toBe("false");
+    expect(refresh.getAttribute("title")).toContain("重试读取");
+  });
+
+  it("loading marks gates aria-disabled with the reading sentence", async () => {
+    api.fetchJSON.mockImplementation(() => new Promise(() => {}));
+    await render("/approvals?tab=history", <ApprovalsHistoryModulePage />);
+    await waitFor(() => !!qa("apv7-export"), "export present");
+    const btn = qa("apv7-export") as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
+    expect(btn.getAttribute("aria-disabled")).toBe("true");
+    expect(btn.getAttribute("title")).toContain("正在读取列表");
+    expect(btn.getAttribute("title")).not.toMatch(/\b200\b/);
+  });
+
+  it("no title anywhere on the ready page carries foreign http readings", async () => {
+    await mount(async (url: string) => {
+      if (String(url).includes("/api/approval?id=")) return {};
+      return { items: ALL };
+    }, "/approvals?tab=history");
+    await waitFor(() => !!qa("apv8-search"), "ready page");
+    const titles = Array.from(document.querySelectorAll("[title]")).map((el) => el.getAttribute("title") ?? "");
+    expect(titles.length, "page has titled elements").toBeGreaterThan(20);
+    const offenders = titles.filter((t) => /\b200\b/.test(t) || t.includes("自报") || t.includes("条（接口）"));
+    expect(offenders.join(" | "), "zero foreign readings").toBe("");
+  });
+});
+
+describe("R86 status announcements (apv-live)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+  const rowsN = (n: number, status: string) => ({
+    items: Array.from({ length: n }, (_, i) => ({
+      approvalId: `ap_r86_${status}_${i}`,
+      title: `播报行 ${i}`,
+      status,
+      decidedAt: "2026-11-18T02:00:00Z",
+    })),
+  });
+
+  it("announces loading→ready once, then only on real changes", async () => {
+    await mount(
+      async (url: string) => {
+        const u = String(url);
+        if (u.includes("/api/approval?id=")) return {};
+        if (u.includes("status=pending")) return rowsN(2, "p");
+        if (u.includes("status=rejected")) return { items: [] };
+        return rowsN(2, "a");
+      },
+      "/approvals?tab=history&status=pending",
+    );
+    await waitFor(() => qa("apv-live")?.textContent === "已加载 2 条", "first announce");
+    const el = qa("apv-live") as HTMLElement;
+    const seen: string[] = [];
+    const mo = new MutationObserver(() => seen.push(el.textContent ?? ""));
+    mo.observe(el, { childList: true, subtree: true, characterData: true });
+    const before = api.fetchJSON.mock.calls.length;
+    // 同计数切状态：播报文本未变 → 不重复播。
+    await act(async () => {
+      (document.querySelector('[data-testid="apv5-filter-status-approved"]') as HTMLButtonElement).click();
+    });
+    await waitFor(() => api.fetchJSON.mock.calls.length > before, "refetch settled");
+    await new Promise((res) => setTimeout(res, 30));
+    expect(seen, "same sentence never re-announces").toHaveLength(0);
+    // 计数变化才播一次。
+    await act(async () => {
+      (document.querySelector('[data-testid="apv5-filter-status-rejected"]') as HTMLButtonElement).click();
+    });
+    await waitFor(() => el.textContent === "已加载 0 条" || el.textContent === "该条件下无审批", "count change");
+    await new Promise((res) => setTimeout(res, 30));
+    mo.disconnect();
+    expect(seen.length, "exactly one announcement for the one change").toBeLessThanOrEqual(1);
+  });
+
+  it("empty and error get their exact sentences; rid stays on the card, out of the live text", async () => {
+    await mount(
+      async (url: string) => {
+        if (String(url).includes("/api/approval?id=")) return {};
+        return { items: [] };
+      },
+      "/approvals?tab=history&status=pending",
+    );
+    await waitFor(() => qa("apv-live")?.textContent === "该条件下无审批", "empty announce");
+    await mount(
+      async (url: string) => {
+        if (String(url).includes("/api/approval?id=")) return {};
+        throw new ApiError("boom", { status: 500, body: "", url: "/agent-api/api/approvals", requestId: "req-r86-500" });
+      },
+      "/approvals?tab=history",
+    );
+    await waitFor(() => qa("apv-live")?.textContent === "列表读取失败，可复制请求编号重试", "error announce");
+    expect(qa("apv-live")?.textContent).not.toContain("req-r86-500");
+    expect(qa("apv-state-rid")?.textContent, "copyable rid lives on the card").toContain("req-r86-500");
+  });
+
+  it("the on-screen reading line no longer carries a second live region", async () => {
+    await mount(
+      async (url: string) => {
+        if (String(url).includes("/api/approval?id=")) return {};
+        return rowsN(2, "p");
+      },
+      "/approvals?tab=history",
+    );
+    expect(document.querySelectorAll('[aria-live="polite"]').length, "one announcer per page").toBe(1);
+    expect(qa("apv-live")?.getAttribute("role")).toBe("status");
+  });
+});
+
+describe("R88 permalink copy (apd10-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+  const P10 = { approvalId: "ap_p10", title: "rotate.secret", status: "pending", reasonText: "zz 轮换说明", createdAt: "2026-11-19T01:00:00Z", approvers: [{ userId: "human:7", name: "郑涛" }], decisions: [] };
+  const handler = async (url: string) => {
+    if (String(url).includes("/api/approval?id=")) return P10;
+    return { items: [P10] };
+  };
+  const stubClipboard = (impl?: (t: string) => Promise<void>) => {
+    const written: string[] = [];
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: impl
+          ? impl
+          : async (t: string) => {
+              written.push(t);
+            },
+      },
+    });
+    return written;
+  };
+  const openDetail = async () => {
+    await waitFor(() => !!qa("apr5-row-ap_p10"), "row");
+    await act(async () => {
+      qa("apr5-row-ap_p10")!.click();
+    });
+    await waitFor(() => !!qa("apr5-detail"), "detail open");
+  };
+
+  it("copies the current URL plus the opened id, and the pasted link reopens the same detail", async () => {
+    await mount(handler, "/approvals?tab=history&status=pending&q=zz");
+    await openDetail();
+    const before = api.fetchJSON.mock.calls.length;
+    const written = stubClipboard();
+    const btn = qa("apd10-permalink") as HTMLButtonElement | null;
+    expect(btn, "aside permalink button").toBeTruthy();
+    expect(btn!.disabled).toBe(false);
+    await act(async () => {
+      btn!.click();
+    });
+    await act(async () => {});
+    expect(written, "one write").toHaveLength(1);
+    expect(written[0]).toBe("/approvals?tab=history&status=pending&q=zz&id=ap_p10");
+    expect(qa("apd10-status")?.textContent).toContain("链接已复制");
+    expect(qa("apd10-fallback"), "no fallback on success").toBeNull();
+    expect(api.fetchJSON.mock.calls.length, "copying never fetches").toBe(before);
+    // R86 contract holds: apd10 feedback is role=status, the explicit announcer stays single
+    expect(document.querySelectorAll('[aria-live="polite"]').length).toBe(1);
+    // 粘贴复现：拿复制到的地址重开，详情直达同一条
+    await mount(handler, written[0]);
+    await waitFor(() => !!qa("apr5-detail"), "pasted link opens the same detail");
+    expect(qa("apr5-detail")?.textContent).toContain("rotate.secret");
+  });
+
+  it("without an opened ticket the button is disabled with the stated reason", async () => {
+    await mount(handler, "/approvals?tab=history");
+    await waitFor(() => !!qa("apr5-row-ap_p10"), "row");
+    const btn = qa("apd10-permalink") as HTMLButtonElement | null;
+    expect(btn, "button present in the empty aside").toBeTruthy();
+    expect(btn!.disabled).toBe(true);
+    expect(btn!.title).toContain("先打开一条审批再复制");
+    expect(qa("apd10-fallback")).toBeNull();
+  });
+
+  it("a refused clipboard falls back to a textarea with the exact link", async () => {
+    await mount(handler, "/approvals?tab=history&id=ap_p10");
+    await openDetail();
+    stubClipboard(async () => {
+      throw new Error("denied");
+    });
+    await act(async () => {
+      (qa("apd10-permalink") as HTMLButtonElement).click();
+    });
+    await act(async () => {});
+    expect(qa("apd10-status")?.textContent).toContain("手动复制");
+    const area = qa("apd10-fallback") as HTMLTextAreaElement | null;
+    expect(area, "fallback textarea").toBeTruthy();
+    expect(area!.readOnly).toBe(true);
+    expect(area!.value).toBe("/approvals?tab=history&id=ap_p10");
+  });
+
+  it("the inline preview offers the same permalink for its row without extra requests", async () => {
+    await mount(handler, "/approvals?tab=history");
+    await waitFor(() => !!qa("apr5-row-ap_p10"), "row");
+    await act(async () => {
+      (qa("apv9-toggle-ap_p10") as HTMLButtonElement).click();
+    });
+    const inPreview = qa("apv9-preview-ap_p10")?.querySelector('[data-testid="apd10-permalink"]') as HTMLButtonElement | null;
+    expect(inPreview, "permalink inside the preview region").toBeTruthy();
+    const before = api.fetchJSON.mock.calls.length;
+    const written = stubClipboard();
+    await act(async () => {
+      inPreview!.click();
+    });
+    await act(async () => {});
+    expect(written[0]).toContain("id=ap_p10");
+    expect(api.fetchJSON.mock.calls.length, "preview copy never fetches").toBe(before);
   });
 });
