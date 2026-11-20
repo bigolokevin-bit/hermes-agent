@@ -1188,10 +1188,23 @@ export function MetricsModulePage() {
     return (sum ?? 0) + row.costUsd;
   }, null) : null;
 
+  // metS — a group switch keeps the time window and the share-table sort, but
+  // the detail table's own sort returns to its default (cost, descending) and
+  // says so once. `sort=model` always means the name column, so it stays valid
+  // in both groups.
+  const [groupResetNote, setGroupResetNote] = useState(false);
+  const dropDetailSort = (query: URLSearchParams): boolean => {
+    const had = query.has('dsort') || query.has('ddir');
+    query.delete('dsort');
+    query.delete('ddir');
+    return had;
+  };
   const chooseGroupBy = (next: 'model' | 'employee') => {
+    if (next === groupBy) return;
     const query = new URLSearchParams(params);
     if (next === 'employee') query.set('groupBy', 'employee');
     else query.delete('groupBy');
+    setGroupResetNote(dropDetailSort(query));
     setParams(query, { replace: true });
   };
 
@@ -1327,9 +1340,11 @@ export function MetricsModulePage() {
   };
 
   const chooseView = (next: 'employee' | 'model') => {
+    if (next === viewMode) return;
     const query = new URLSearchParams(params);
     if (next === 'employee') query.delete('view');
     else query.set('view', next);
+    setGroupResetNote(dropDetailSort(query));
     setParams(query, { replace: true });
   };
 
@@ -1895,6 +1910,11 @@ export function MetricsModulePage() {
                     </tbody>
                   </table>
                 </div>
+                {groupResetNote && !pageFailed ? (
+                  <p className="met6-hint" data-testid="metS-reset-note">
+                    切换分组后，明细排序已回到默认的成本降序；时间窗与分摊的排序、分组选择保持不变。
+                  </p>
+                ) : null}
                 <p className="met6-hint" data-testid="metP-export-order-note">
                   表头可以点着换排序：默认按支出从高到低；缺数据的行总是排在最后，真实的 0 照常参与排序。导出文件按屏上现在的顺序写，行数与这里列出的行数一致。
                 </p>

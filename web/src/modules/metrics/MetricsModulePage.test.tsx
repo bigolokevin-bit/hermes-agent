@@ -2803,3 +2803,124 @@ describe('metR — export and copy availability under failure states', () => {
     click.mockRestore();
   });
 });
+
+describe('metS — group switch semantics', () => {
+  const S_EMP = { items: [{ employeeId: 'emp_aaaabbbbcccc', name: '小鲤' }, { employeeId: 'emp_ddddeeeeffff', name: '小满' }], nextCursor: null };
+  const S_LEDGER = {
+    items: [
+      { employeeId: 'emp_aaaabbbbcccc', period: '2026-11-19', periodKind: 'day', costUsd: 20, updatedAt: '2026-11-19T03:20:00.000Z' },
+      { employeeId: 'emp_ddddeeeeffff', period: '2026-11-19', periodKind: 'day', costUsd: 5, updatedAt: '2026-11-19T03:20:00.000Z' },
+    ],
+    missingEmployeeIds: [],
+  };
+  const S_MODEL = {
+    by_model: [
+      { model: 'alpha', api_calls: 9, input_tokens: 10 },
+      { model: 'zeta', api_calls: 4, input_tokens: 10 },
+      { model: 'zero', api_calls: 0, input_tokens: 10 },
+    ],
+    asOf: '2026-11-19T20:12:00.000Z',
+  };
+
+  function handler(url: string): Promise<unknown> {
+    if (url.includes('run-activity')) return Promise.resolve(activityBody());
+    if (url.includes('run-stats')) return Promise.resolve(statsFor(url));
+    if (url.includes('/api/employees')) return Promise.resolve(S_EMP);
+    if (url.includes('models/pricing')) return Promise.reject(new ApiError('missing', { status: 404, body: '', url }));
+    if (url.includes('hermes-usage')) return Promise.resolve(S_MODEL);
+    if (url.includes('periodKind=month')) return Promise.resolve({ items: [], missingEmployeeIds: [] });
+    if (url.includes('budget-usage')) return Promise.resolve(S_LEDGER);
+    return Promise.resolve({});
+  }
+
+  async function mountS(entry: string): Promise<void> {
+    api.fetchJsonStrict.mockReset();
+    api.fetchJsonStrict.mockImplementation(handler);
+    await render(
+      entry,
+      <>
+        <MetricsModulePage />
+        <LocationProbe />
+      </>,
+    );
+    await waitFor(settled, 'state settled');
+  }
+
+  const q = (id: string) => document.querySelector(`[data-testid="${id}"]`) as HTMLElement | null;
+  const loc = () => q('met7-loc')?.textContent ?? '';
+  const rows = () =>
+    Array.from(document.querySelectorAll('[data-testid="met6-table"] tbody tr')).map(
+      (tr) => (tr.querySelector('.met6-rowname')?.textContent ?? '').split(' · ')[0],
+    );
+  const batch = (from: number, needle: string) => urls().slice(from).filter((url) => url.includes(needle)).length;
+
+  it('restores a pasted detail sort exactly, with the matching aria-sort', async () => {
+    await mountS('/metrics?view=model&dsort=runs&ddir=asc');
+
+    expect(rows()).toEqual(['zero', 'zeta', 'alpha']);
+    expect(q('metO-fmt-th-count')?.getAttribute('aria-sort')).toBe('ascending');
+    expect(loc()).toContain('view=model');
+    expect(loc()).toContain('dsort=runs');
+    expect(q('metS-reset-note')).toBeNull();
+  });
+
+  it('resets the detail sort when the detail group changes and states it once', async () => {
+    await mountS('/metrics?dsort=runs&ddir=asc');
+    expect(rows()).toEqual(['小鲤', '小满']);
+
+    const before = urls().length;
+    await act(async () => {
+      (q('met6-cat-model') as HTMLButtonElement).click();
+    });
+    await waitFor(() => rows()[0] === 'alpha', 'model rows');
+
+    expect(loc()).not.toContain('dsort');
+    expect(loc()).not.toContain('ddir');
+    expect(q('metS-reset-note')?.textContent).toContain('明细排序已回到默认的成本降序');
+    // Only the new group's own reads run: hermes-usage once, no employee/ledger reads.
+    expect(batch(before, 'hermes-usage')).toBe(1);
+    expect(batch(before, '/api/employees')).toBe(0);
+    expect(batch(before, 'budget-usage')).toBe(0);
+
+    const mid = urls().length;
+    await act(async () => {
+      (q('met6-cat-employee') as HTMLButtonElement).click();
+    });
+    await waitFor(() => rows()[0] === '小鲤', 'employee rows');
+    // Sort was already default, so nothing was reset and no note appears.
+    expect(q('metS-reset-note')).toBeNull();
+    expect(batch(mid, '/api/employees')).toBe(1);
+    expect(batch(mid, 'budget-usage')).toBe(2);
+    expect(batch(mid, 'hermes-usage')).toBe(0);
+  });
+
+  it('keeps the share sort valid across groups: sort=model means the name column', async () => {
+    await mountS('/metrics?view=employee&sort=model');
+
+    expect(loc()).toContain('sort=model');
+    // The share table stays on its own group (models) and sorts by the name
+    // column ascending; the detail view is separate and also reproducible.
+    const firstRow = document.querySelector('[data-testid="met7-row-alpha"]');
+    expect(firstRow).toBeTruthy();
+    expect(document.querySelector('[data-testid="met6-cat-employee"]')?.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('keeps window and share sort when the share group changes, and drops a stale detail sort', async () => {
+    await mountS('/metrics?window=7d&sort=runs&dir=asc&dsort=share&ddir=asc');
+    const before = urls().length;
+
+    await act(async () => {
+      (q('met8-view-employee') as HTMLButtonElement).click();
+    });
+    await waitFor(() => (q('met8-view-employee')?.getAttribute('aria-pressed') ?? '') === 'true', 'employee group');
+
+    expect(loc()).toContain('groupBy=employee');
+    expect(loc()).toContain('window=7d');
+    expect(loc()).toContain('sort=runs');
+    expect(loc()).toContain('dir=asc');
+    expect(loc()).not.toContain('dsort');
+    expect(q('metS-reset-note')?.textContent).toContain('时间窗与分摊的排序、分组选择保持不变');
+    expect(batch(before, '/api/employees')).toBe(1);
+    expect(batch(before, 'hermes-usage')).toBe(0);
+  });
+});

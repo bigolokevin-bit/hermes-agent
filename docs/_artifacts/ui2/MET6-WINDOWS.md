@@ -316,3 +316,19 @@ metB 的「采集时刻」列内新增滞后徽标，不新增列、不改版式
 - 行为变更（有意）：0 行不再禁用导出（旧「当前视图无可导出数据 / 当前没有可导出的行」判定撤掉），对应两条既有断言改为「可导且只写表头」，属口径变化不是放宽。
 - 验证：`src/modules/metrics` 2 files / 106 passed（改动前本文件 102）；全量 137 files / 1590 passed；tsc 全仓 55 条既存、`modules/metrics` 0；build entry `assets/index-C5NmlUop.js` sha256 `72b79adb257ca2cf5aafa1adc0a89a2122b8a44be05923d920854f3bb0689d2a`，entry 内 `metR-copy-state`=0，chunk `assets/MetricsModulePage-DA4cZaLo.js` 内 copy/export 状态标记各 1。
 - 未测项：真实浏览器逐钮 hover 看 title 未走查；`disabled` 后键盘焦点顺序变化未人工过一遍。
+
+## 分组切换与排序/窗口语义（metS，2026-11-20）
+
+切换「按员工 / 按模型」分组时，四个 URL 参数各有固定语义：
+
+- `dsort` / `ddir`（明细排序）：**重置**为默认成本降序；仅当切换前确实带过排序键时，表下出现一行 `metS-reset-note`：「切换分组后，明细排序已回到默认的成本降序；时间窗与分摊的排序、分组选择保持不变。」没有可重置的键时不显示。
+- `window`（时间窗）：**保留**，两个分组共用同一时间窗。
+- `sort` / `dir`（分摊排序）：**保留**；`sort=model` 恒指「名称列」（模型组是模型名，员工组是员工名），因此在两个分组里都合法，不需要重置。
+- `groupBy` 本身只在分摊区切换时写入/删除；切换分组不会清掉明细视角（`view` 独立）。
+
+取数代价（实测，`urls()` 增量）：员工 → 模型只发 `hermes-usage` 1 次，`/api/employees` 与 `budget-usage` 各 0 次；模型 → 员工发 `/api/employees` 1 次、`budget-usage` 2 次（当日 + 前一窗口各一次）、`hermes-usage` 0 次；分摊组模型 → 员工发 `/api/employees` 1 次、`hermes-usage` 0 次。没有重复请求。
+
+粘贴 URL 复现：`?view=model&dsort=runs&ddir=asc` → 明细首行 `zero`（次数 0 最先）、次数列 `aria-sort="ascending"`、排序键仍在 URL；`?view=employee&sort=model` → 分摊按名称升序（模型组首行 `alpha`），明细视角为员工，两者互不干扰。
+
+metR 三态口径未变：导出/复制的可用性只由整页失败或各自块的可读性决定，分组切换不引入新判据。验证：`src/modules/metrics` 2 files / 110 passed（此前 106）；全量 137 files / 1594 passed；tsc 全仓 55 条既存、`modules/metrics` 0；build entry `assets/index-BNRlwe1n.js` sha256 `062c00ed9a5d346e206dfe080f706ea02cf59dc5b8547ef4fdaa74f8ce0ec652`，entry 内 `metS-reset-note`=0，chunk `assets/MetricsModulePage-Cc_AE2nF.js`=1。
+- 未测项：真浏览器下三个断点切换分组后的视觉跳动未走查；分享链接跨会话（另一浏览器）复现未实测。
