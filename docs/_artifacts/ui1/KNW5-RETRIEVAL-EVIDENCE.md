@@ -3813,3 +3813,109 @@ ksort 非法同 helper 同路径，读侧兜底代码共用，未重复铺例）
 边界：只新增 web/src/modules/knowledge/knowledge.sort.persist.test.tsx 与本证据；
 显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
 「test(console): knowledge sort persistence guards」。
+
+# KNW5 追加 R183：文档抽屉错误态护栏（纯测试单）（2026-11-20 BJT）
+
+安全门：porcelain 空起做（HEAD 即 R179 链）、显式 refspec fetch 后 merge 实测 tip
+即预期 `c1b6ca7d`（wave-38+39，知识面 delta 空）。零产品文件改动（无真缺陷）。
+
+## 查重判定
+
+```text
+已锁引用：主测 :263-298——抽屉 error 锚在场、error≠unwired 互斥、
+  「请求编号：rid-detail-busy/denied」上屏、403≡404 body 逐字同（同体=反枚举设计）、
+  抽屉内零 form/textarea/input、裸 id 不上屏、ready 态 field-source/status 值；
+  R125C/R149——打开 +1 详情读、关 0、跨文档各 1。
+真缺口（本文件 3 例）：①错误态下列表两行与 kn3-page-cap 不卸载 + 屏面禁裸
+  「404/500」数字与「undefined」+②空态锚（knN-empty-text-space-docs）不在场——
+  错误不冒充空结果；③重试的**计数与过渡**（主测只锁 retry 按钮在场）：恰 +1 且
+  新增仅 DETAIL_A、失败→成功错误锚消失 + field-source 落值 + 列表全程未卸载；
+  ④错误态并行内预览可用（名实不符记录，见下）。
+```
+
+## 名实记录（按实测，未迁就派工）
+
+```text
+· 「不存在/已过期」不可区分：产品无文档「已过期」语义（grep「过期」只命中空间凭据
+  lastError 文案），403≡404≡404-not-found 同走 unwired 句「文档详情未接入」——
+  如实记缺口，未造文案。
+· 第④腿：brief 写「kn-doc-copy 错误态 disabled + title」——实测该控件挂在**列表层
+  行内预览**（与详情读口无关），抽屉错误态下在场且 disabled=false、点击复制成功
+  「A 手册.pdf | PDF…」、零新请求；断言真实行为并记差异。「详情复制」控件不存在，
+  抽屉层唯一复制件=kn-doc-permalink 固定链接。
+· 预览/抽屉互斥（R67）实测复证：开 kn-doc-preview-toggle 会静默收起抽屉——④例把
+  抽屉面板断言安排在开预览之前（首跑放后面吃了 undefined 断言，属测试时序自纠）。
+```
+
+## 验证尾行（R183）
+```text
+$ npx vitest run src/modules/knowledge   → 19 files / 136 tests passed（基线 133 + 3）
+$ npx vitest run                         → 243 files / 2812 tests passed 全绿
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r183-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn3*/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-doc-copy*/kn-row-copy*/kn3-page-cap/
+knE-page-*/kn-type*/kn-sort-*/kn-space-preview/kn-doc-preview/导出标记（absent 在场）全族。
+请求口径：①②路 render 各按既有读取集；③重试整段增量恰 [DETAIL_A]×1（spaces/列表读
+零连带）；④复制全程 fetch 计数不动。
+```
+未测如实：带登录会话真实 404/403 屏（同体断言以 mock 信封代证，与主测 :280-289 同法）；
+rid 的剪贴板复制交互（RequestId 组件自带复制件由既有族锁，本文件只锁「请求编号：」上屏）。
+边界：只新增 web/src/modules/knowledge/knowledge.detail.error.test.tsx 与本证据；
+显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「test(console): knowledge detail error guards」。
+
+# KNW5 追加 R187：空间详情错误态护栏（纯测试单）（2026-11-20 BJT）
+
+安全门：porcelain 空起做（HEAD 即 R183 链）、显式 refspec fetch 后 merge 实测 tip
+即预期 `53310d04`（知识面 delta 空）。零产品文件改动（无真缺陷）。
+
+## 名实对齐（实测，不迁就派工）
+
+```text
+· `kn-space-page-cap` 不存在（git grep 零命中）——实名 `kn3-page-cap`（50 常量位、
+  M 可变位），③按实名断言。
+· 403≡404 同体：主测 :861-873 已锁 body 逐字同；且 SPACE_DOC_UNWIRED_HEAD 实测句
+  「空间不存在或未授权」（knowledge.ts:75）——产品把「不存在/无权限/过期」合并为
+  同一反枚举句，这是设计而非缺陷：①逐字锁该句并注记。
+· ④「kn-space-preview/kn-doc-copy disabled」名实不符：错误态零行、无从 disabled——
+  实测这些锚 **0 渲染**（kn-space-preview 族本就是列表面的，详情面 R70 已证零）；
+  断言数量 0 并记录。knF-copy disabled+逐字 title 由 R138 ② 锁 → 只对照在场性。
+· 导出族不存在：④复证 gate data-export="absent"。
+```
+
+## 查重判定
+
+```text
+引用不重写：主测 :855-895（unwired/error 锚在场、403≡404、error↔unwired 互斥、
+  retry 按钮在场、裸 id 不上屏）；R138 ②（三态 knF disabled+逐字句+零写）；
+  R138 ④（ghost 深链预览/行钮零渲染）；R164 ①（参集合 {limit,spaceId}）。
+真缺口（本文件 3 例）：①500 路逐字句「这次没能读到知识数据」+message 透传+rid、
+  两路禁裸 (404|500) 与 undefined/null 上屏、命中面/面板不卸载；②+④错误态双空态锚
+  （kn3-docs-empty、knN-empty-text-space-docs）互斥缺席 + 预览/doc-copy/行钮/preview-toggle
+  全 0 渲染 + gate absent 复证；③Surface 重试计数与过渡：urls 整段 +1 且新增恰
+  docs(sp_x)、SPACES 不重发、错误锚消失、四读互等 3==cap-M==data-len==行钮数。
+```
+
+## 验证尾行（R187）
+```text
+$ npx vitest run src/modules/knowledge   → 20 files / 139 tests passed（基线 136 + 3）
+$ npx vitest run                         → 245 files / 2817 tests passed 全绿
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r187-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn3*/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort/kn-gates/kn-doc-copy*/kn-row-copy*/
+kn3-page-cap/knE-page-*/kn-type*/kn-space-preview/kn-doc-preview/导出标记 全族通过。
+请求口径：①②每路 render 按既有读取集（含命中面 DOCUMENTS_PLAIN 一次）；③重试增量
+恰 1 且 URL 逐字为 docs(sp_x)——spaces 读全程 1 次不连带。
+过程记录：初稿把 unwired 句猜成「文档列表读口未接入」，实测为「空间不存在或未授权」
+  ——失败信息打印真值后按产品修正期望（该合并句正是反枚举语义的体现），产品零改动。
+```
+未测如实：带登录会话真实 403/404 屏（同体句以 mock 代证，与主测 :861-873 同法）；
+登录态（login 分支）空间详情侧未铺（列表面 login 族已有既有断言，本轮四腿不含）；
+rid 复制件点击交互（「请求编号：」上屏已锁，复制行为属 RequestId 既有族）。
+边界：只新增 web/src/modules/knowledge/knowledge.space.error.test.tsx 与本证据；
+显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「test(console): knowledge space error guards」。
