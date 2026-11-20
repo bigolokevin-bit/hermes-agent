@@ -1,9 +1,12 @@
-"""P1-2: one C1 forward POST per admitted Feishu message — intake path only, never the FIFO replay.
+"""P1-2: one C1 forward POST per admitted Feishu message, whichever pass admits it — never a second for the same event.
 
 Root cause (disk-verified): ``_hm_admit_event`` forwarded at intake, then the durable-FIFO
 drain re-entered ``_handle_message`` for the SAME admitted message (with
 ``executing_admission`` set) and forwarded a second time — C1 answered the replay with
-``duplicate=true``. The fix gates the forward on ``not executing_admission.get()``.
+``duplicate=true``. That was fixed by gating on ``not executing_admission.get()``, but the
+drain marker is absent exactly when intake never reached this block (busy session), so V1
+replaced it with a per-event one-shot latch: the same event forwards at most once on any
+path, and a drain-only admission still forwards.
 
 The C1-side dedupeKey remains the backstop for genuine re-admissions (two independent
 deliveries of one message_id still produce two forwards, by design); masking is NOT done
@@ -115,7 +118,7 @@ def test_distinct_messages_each_forward(runner, forwards):
     assert _admit(runner, _event("om_1")) is not None
     assert _admit(runner, _event("om_2")) is not None
     assert _admit_as_replay(runner, _event("om_3")) is not None
-    assert forwards == ["om_1", "om_2"]
+    assert forwards == ["om_1", "om_2", "om_3"]
 
 
 def test_internal_event_never_forwards(runner, forwards):
