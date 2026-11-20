@@ -12,7 +12,7 @@ vi.mock("@/modules/models/fetchJson", () => ({
 }));
 
 import KnowledgeModulePage from "./KnowledgeModulePage";
-import { shortId } from "./knowledge";
+import { DOC_LINE_HEADER, docSingleCopy, readSpaceDocuments, shortId } from "./knowledge";
 
 const SPACES = "/agent-api/api/knowledge/spaces?limit=20";
 const DOCUMENTS = "/agent-api/api/documents?limit=50";
@@ -4900,5 +4900,111 @@ describe("R108 — space docs page cap (kn3-page-cap / -more)", () => {
     expect(byTestid("kn3-page-cap")).toBeTruthy();
     await click("kn3-page-cap");
     expect(urlsCalled().slice().sort()).toEqual(u); // 上限句是纯文字：点它不发请求
+  });
+});
+
+// ---------- R114：预览/命中展开块内的行复制（kn-doc-copy-*，单 helper 复用） ----------
+describe("R114 — per-document row copy in preview surfaces (kn-doc-copy)", () => {
+  const SP1 = {
+    asOf: "2026-11-19T08:00:00Z",
+    items: [{ spaceId: "sp_hr", name: "人事制度空间", docCount: 1, status: "synced" }],
+  };
+  const wireList = (documents: unknown[]) =>
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SP1);
+      if (url === DOCS_SPACE || url === DOCUMENTS_PLAIN) return Promise.resolve({ asOf: "2026-11-19T08:00:00Z", documents });
+      return fail(404, "这个数据接口还没有接入。", "rid-r114");
+    });
+  const expectCopyFlow = async (open: () => Promise<void>) => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    await open();
+    await click("kn-doc-copy");
+    expect(writeText).toHaveBeenCalledTimes(1);
+    return String(writeText.mock.calls[0][0]);
+  };
+
+  it("the same document copies byte-identical text on both surfaces, equal to DOC_LINE_HEADER + docLine direct output", async () => {
+    const RAW = { documentId: "d_manual", fileName: "员工手册.pdf", mimeType: "application/pdf", sizeBytes: 2516582, updatedAt: "2026-11-19T07:10:00Z" };
+    wireList([RAW]);
+    // 落点①：检索命中展开块（kn6-search-detail）
+    await render("/knowledge?tab=spaces");
+    await click("kn6-search-name");
+    expect(byTestid("kn6-search-detail")).toBeTruthy();
+    const fromSearch = await expectCopyFlow(async () => {});
+    expect((byTestid("kn-doc-copy-status")?.textContent ?? "")).toBe("已复制");
+    // 落点②：文档行内预览（kn-doc-preview）
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    await click("kn-doc-preview-toggle");
+    expect(byTestid("kn-doc-preview")).toBeTruthy();
+    const fromPreview = await expectCopyFlow(async () => {});
+    // 两处逐字相等，且等于走同一派生链（readSpaceDocuments→docSingleCopy）的直出
+    expect(fromPreview).toBe(fromSearch);
+    const derived = readSpaceDocuments({ asOf: "2026-11-19T08:00:00Z", documents: [RAW] });
+    expect(fromSearch).toBe(docSingleCopy(derived.rows[0]));
+    expect(fromSearch.split("\n")[0]).toBe(DOC_LINE_HEADER.join(" | "));
+    expect(fromSearch.split("\n")[1].split(" | ")[4]).toBe(shortId("d_manual")); // 短码列同源
+  });
+
+  it("missing size / updated / type: both surfaces copy the same — columns, on-screen dd titles follow the same rules", async () => {
+    const RAW = { documentId: "d_bare2", fileName: "缺项文档.pdf" };
+    wireList([RAW]);
+    await render("/knowledge?tab=spaces");
+    await click("kn6-search-name");
+    const fromSearch = await expectCopyFlow(async () => {});
+    const searchCols = fromSearch.split("\n")[1].split(" | ");
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    await click("kn-doc-preview-toggle");
+    const fromPreview = await expectCopyFlow(async () => {});
+    const previewCols = fromPreview.split("\n")[1].split(" | ");
+    expect(fromPreview).toBe(fromSearch);
+    // 名在场、类型/大小/更新三列皆「—」（缺值不补 0 不猜）
+    expect(previewCols[0]).toBe("缺项文档.pdf");
+    expect(previewCols.slice(1, 4)).toEqual(["—", "—", "—"]);
+    expect(searchCols).toEqual(previewCols);
+    // 屏上 title 同规则：两处「更新」缺值都走 previewField 同一 hint 句式（R70 口径）
+    const previewUpdated = byTestid("kn-doc-preview-updated");
+    expect(previewUpdated?.getAttribute("title") ?? "").toContain("上游没有给出更新时间");
+  });
+
+  it("clipboard rejection: both surfaces fall back to a read-only textarea whose value is byte-equal to the target string", async () => {
+    const RAW = { documentId: "d_rej", fileName: "拒写文档.pdf", mimeType: "pdf", sizeBytes: 10, updatedAt: "2026-11-19T07:00:00Z" };
+    wireList([RAW]);
+    const writeText = vi.fn().mockRejectedValue(new Error("denied"));
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    const texts: string[] = [];
+    await render("/knowledge?tab=spaces");
+    await click("kn6-search-name");
+    await click("kn-doc-copy");
+    await act(async () => {});
+    const ta1 = byTestid("kn-doc-copy-fallback") as HTMLTextAreaElement | null;
+    expect(ta1).toBeTruthy();
+    expect(ta1?.readOnly).toBe(true);
+    texts.push(ta1?.value ?? "");
+    expect((byTestid("kn-doc-copy-status")?.textContent ?? "")).toContain("剪贴板没接受");
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    await click("kn-doc-preview-toggle");
+    await click("kn-doc-copy");
+    await act(async () => {});
+    const ta2 = byTestid("kn-doc-copy-fallback") as HTMLTextAreaElement | null;
+    expect(ta2).toBeTruthy();
+    texts.push(ta2?.value ?? "");
+    expect(texts[0]).toBe(texts[1]); // 两处兜底逐字同
+    expect(texts[0].split("\n")).toHaveLength(3); // 表头 + 行 + 尾换行
+  });
+
+  it("empty row (no name, no id): copy is disabled with an honest title; and the whole flow adds zero requests", async () => {
+    wireList([{ mimeType: "pdf", sizeBytes: 10 }]);
+    await render("/knowledge?tab=spaces");
+    const c0 = fetchMock.mock.calls.length;
+    const u0 = urlsCalled().slice().sort().join("|");
+    await click("kn6-search-name");
+    const btn = byTestid("kn-doc-copy") as HTMLButtonElement | null;
+    expect(btn).toBeTruthy();
+    expect(btn?.disabled).toBe(true);
+    expect(btn?.getAttribute("title")).toBe("这一行没有可复制的文档内容：文档名与标识都没给出。");
+    await click("kn6-search-input"); // 点到无关处也不发请求（输入框自身只读本地）
+    expect(fetchMock.mock.calls.length).toBe(c0);
+    expect(urlsCalled().slice().sort().join("|")).toBe(u0);
   });
 });

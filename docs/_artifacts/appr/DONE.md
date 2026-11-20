@@ -1308,3 +1308,9 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 同源三数=apv7-export-count「共 8 行」==blob 非空段 9（header+8）==表体行（R91 crosssurface/9 段断言在列数变更后仍绿）；空集 disabled+title 与零新端点计数锁既有断言零破；RFC4180 csvEscape 复用。
 - 测试同步=R54 纯函数用例加第三行夹具（ap_Z+requestId=req-z-1）断 lines[0] 新表头、缺 rid 行尾 `,ap_X,`、updated_at 缺行 `,高风险,,ap_Y,`（教训=7 列时 updated_at 空列夹在 risk 与 correlation 之间，endsWith 需含空列逗号——首跑即此 FAIL 实打实读 lines[2] 后修正）、带 rid 行 `,ap_Z,req-z-1`；mkRow 默认补 requestId:null。
 - 验证=定向 approvals 8 files/185 passed；tsc 本域 0 红；assert-ia 两模式 exit0；全量 175 files/2404 passed。三档=导出行为无版面新增（title 文案变长不换行载体）形态学报；9122==1683d467 系活体下载读数待并入后代次。
+
+## R110 员工列表复制/导出 department 列
+- 交付=EmployeesModulePage.tsx：COPY_HEADER（复制与 CSV 共用同一常量=天然同串）追加 department → name,employee_no,lifecycle,last_active,department；新 deptCopyValue(row) 单点=reuse R96 departmentView(row.department !== undefined, row.department ?? null).label（真值原样/键在值空=未标注部门/键缺失=该字段未返回）；buildEmployeesCopyText 与 buildEmployeesCsv 行尾各加 csvCell(deptCopyValue(row))——CSV 缺值写三态句、不写空不写「—」（与 last_active 的 CSV 空字段口径不同=本工单点名语义值非格式字符，DONE 记差异）。
+- 基线=显式 refspec fetch+merge Already up to date @d1fbd294（tip f1b509b9=代次 1683d467 纯账本已含），toplevel ✓ porc=0；grep R110=0 全新。行序=sortedItems 同源零改；RFC4180 csvCell 复用。
+- 测试=新 describe 1 用例：三态夹具（增长组/null/缺键）→复制 written[0] 表头逐字+行末列 toEqual 三态；blob CSV 去 BOM 表头与复制逐字相等、逐行末列 toBe 对应复制行、4 段=header+屏上 3 人同源；两点击后 fetchJSON 计数不变（零额外请求）。既有 R64/R66 两处表头 toBe 与阿朝行尾断言同步（契约追加=语义等价，行尾 ,→,增长组）。
+- 验证=定向 employees 2 files/42 passed；tsc 本域 0 红；assert-ia 两模式 exit0；全量 175 files/2405 passed。emp-list-*/emp-row-preview/emp-list-page-*/ed*/apv* 零破（合跑绿为证）。三档=纯列值追加无新载体形态学报；9122==1683d467 系活体读数待并入后代次。

@@ -2808,3 +2808,126 @@ kn-space-preview 全族 82/82 通过；DOCUMENTS_URL 重构后输出串逐字不
 边界：只改 web/src/modules/knowledge/** 与本证据；显式路径 add；无 force/amend/
 --no-verify/git add -A；未并 main、未重建 9122；单 commit
 「feat(console): knowledge space docs page cap honesty」。
+
+# KNW5 追加 R114：预览/命中展开块内的行复制（kn-doc-copy-*，单 helper 复用）（2026-11-20 BJT）
+
+安全门：toplevel 相符、porcelain 空、显式 refspec fetch 后 merge 实测 tip 即预期 `9014f6ba`
+（代次 `608148d3` 账本链；知识面 delta 空）。
+
+## 一、族名映射（按任务要求写清）
+
+```text
+派工文本的「①检索命中的内联展开块（kn6-search-detail*，URL ?sdoc=）」= 实际族
+  kn6-search-detail（KnowledgeModulePage.tsx:2895 起，?sdoc= 驱动，命中行点文档名展开）✔ 存在。
+「②文档行内预览（kn-doc-preview-*）」= 实际族 kn-doc-preview（同文件 1910 起，DocTable
+  行内预览，previewKey 单开互斥）✔ 存在。
+真正带遮罩的抽屉是 kn7-preview-*（?doc=）——本单未动（任务文本已注明该历史命名差异）。
+testid：kn-doc-copy / kn-doc-copy-status / kn-doc-copy-fallback（+容器 kn-doc-copy-row）
+  全模块 grep 零冲突（knF/knG 是清单级复制，本族是行级复制，前缀天然分族，无需让号）。
+```
+
+## 二、实现（单点复用，禁第二套格式）
+
+```text
+knowledge.ts 新增 docSingleCopy(doc) = `DOC_LINE_HEADER.join(" | ")\n + docLine(doc) + "\n`
+——行体逐字走 R71 单点 docLine（文档名|类型|大小|更新|短码，缺值「—」，短码=shortId 大写尾8、
+全 id 只在 title；时间列值是 spaceOf/docOf 接入的 updatedText，R75 口径自动继承）。
+页面新增共享控件 <DocLineCopy doc>，两处落点各挂一次；控件零请求：只读 navigator.clipboard，
+拒写/无剪贴板 → 只读 textarea（value 与目标串逐字同）；aria-live 状态句
+（成功「已复制」/失败「剪贴板没接受：文本在下方，可手动选取。」）；
+空行（文档名与标识都没给）disabled + title「这一行没有可复制的文档内容：文档名与标识都没给出。」。
+JSX 落点①的 dl+控件包进 Fragment（相邻 JSX 修一次，非行为改动）。
+```
+
+## 三、逐字读数（同一条 d_manual 两处复制）
+
+```text
+表头：文档名 | 类型 | 大小 | 更新 | 短码
+行体：员工手册.pdf | PDF | 2.4 MB | 2026-11-19 15:10 | DMANUAL
+缺项条（d_bare2）：缺项文档.pdf | — | — | — | DBARE2（类型/大小/更新三列皆「—」，不补 0）
+测试断言：两处 writeText 实参 toBe 逐字相等，且 === docSingleCopy(readSpaceDocuments(同夹具).rows[0])
+（走产品同一派生链直出）；两处 fallback textarea value 逐字相等（拒写态，rows=3 含尾换行）。
+屏上 title 规则沿用 R70/R75（预览 dd「更新」=「更新：上游没有给出更新时间」hint 句；
+测试初稿误按 updatedText 缺失句断言，属期望错、产品对，按 R75「预览位点语义保留」证据修正期望）。
+```
+
+## 验证尾行（R114）
+```text
+$ npx vitest run src/modules/knowledge   → 4 files / 86 tests passed（基线 82 + R114 4）
+$ npx vitest run                         → 183 files / 2473 tests passed（较上轮 +9 文件来自
+  merge 的 wave 内容在他模块，全绿非退化）
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r114-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零额外请求：命中展开 + 复制 + 预览开关全程 fetchMock 计数与 urls() 排序快照逐字不变
+  （测试断言 c0/u0 两端相等）。
+零破：kn3、kn6–kn9、knB、knD、knF、knG、knI、knL、kn-sort、kn-gates、kn.parity、
+kn-doc-preview、kn-space-preview、kn-type 全族 86/86 通过。
+```
+未测如实：带登录会话真实数据屏（静态 preview 无会话；两处同值/缺项/fallback 由夹具逐字
+锁定）；浏览器真实剪贴板权限弹窗路径（jsdom 以 writeText reject 代证）。
+边界：只改 web/src/modules/knowledge/** 与本证据；显式路径 add；无 force/amend/
+--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「feat(console): knowledge document copy in preview」。
+
+# KNW5 追加 R118：类型与筛选 URL 保参护栏（纯测试单）（2026-11-20 BJT）
+
+安全门：toplevel 相符、porcelain 空、显式 refspec fetch 后 merge 实测 tip 即预期 `9014f6ba`
+（Already up to date）。本单**零产品文件改动**（提交仅新增 knowledge.filters.test.tsx
+与本证据追加）。
+
+## 一、参数现状核实（grep 命中行）
+
+```text
+KnowledgeModulePage.tsx:3345  const query = sp.get("q") ?? "";
+  :3353-3354  sortCol = docSortCol(sp.get("ksort") ?? sp.get("sort")); sortDirRaw = sp.get("kdir") ?? sp.get("dir")
+  :3359       typeKey = sp.get("ktype") ?? sp.get("type") ?? ""      ← 旧键只读兜底
+  :3468-3476  写只写 ktype；清除时 next.delete("ktype") + next.delete("type") 双删
+  :2215-2222  分页复位 effect：[spaceId,nonce,sort,dir,filter,typeKey,kind,meta1] 变化 →
+              setMoreRows([]); setCursor(meta1?.nextCursor ?? null)（游标只在组件 state，URL 无 cursor 参数）
+  :2401-2402  kn-type-all / kn-type-<i> 真 button + aria-pressed；:2429 kn-type-empty 空态
+派工补正确认：?source= 在本模块无对应控件（source 只是空间行列标签），本单以
+ktype 新键 + type 旧键覆盖，未造参数。
+```
+
+## 二、五项护栏与读数
+
+```text
+① 深链回填：?ktype=表格 → 该桶 aria-pressed="true"、PDF 桶 "false"；旧键 ?type=PDF 同值
+   回填且 ktype 不被静默写入；?space=sp_x → 请求 URL 的 spaceId 与地址参数 toBe 逐字同；
+   ?q=人事 → kn8-global-input 与 kn6-search-input value 均逐字「人事」。
+② 改一不动余：ktype=表格 态下点 PDF 桶 → 只写 ktype=PDF、type 键不冒头，
+   q/ksort/kdir/space/tab/panel 逐字不动；先翻到末页（knE-page-end 在场）再切桶 →
+   end 标记消失、「显示更多」回可点、data-len 回第一页口径（1）——游标复位有行级+状态级
+   双证；URL 全程无 cursor 参数（断言 has("cursor")===false）。
+③ 复原：同 URL 二次 render → loc 逐字同、桶 pressed 同、data-len 同。
+④ 非法枚举：?ktype=__nope__ 与旧键 ?type=__nope__ 两路 → loc 与传入逐字等（不改写）、
+   kn-type-empty「该类型下没有文档…「__nope__」…」在场、kn-type-all/kn-type-clear/
+   kn3-docs 锚全在。
+⑤ 请求计数：ktype 三跳+本地名筛+排序双点后 fetchMock 计数与 urls() 逐字不变（+0）；
+   非法与合法枚举两轮 render 的增量读取 toEqual 逐字同；space= 切换（不重挂、查询态导航）
+   增量恰为 docsUrlFor(sp_y)×1，sp_x 读取与 SPACES 均 +0——如实：这不是零请求，是该空间
+   文档的既有读取。
+过程记录（均测试自身期望错，产品行为无改动）：初稿把「页码归 1」后行集期望成 d1+d3=2，
+实测复位同时弃第二页累加行（combined 退回 baseRows，len=1）——按产品语义（复位即回第一
+页行集）修正期望；初稿合法/非法对照误比累计计数，改为比每轮增量。
+```
+
+## 验证尾行（R118）
+```text
+$ npx vitest run src/modules/knowledge   → 5 files / 91 tests passed（基线 86 + 护栏 5）
+$ npx vitest run                         → 184 files / 2478 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning；本单曾有的
+  1 条 unused(DETAIL_Y) error 提交前已清零）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r118-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn3/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort/kn-gates/kn-doc-copy*/kn-space-preview
+全族在 91/91 与全仓 2478/2478 中通过。
+```
+未测如实：带登录会话真实数据屏（护栏用显式夹具，游标翻页走 mock 信封 nextCursor=c2 代证）；
+`ref=` 参数在场性只做「不动」侧断言未单独回填（本模块 ref 为锚点提示参数，无控件回填语义）。
+边界：只新增 web/src/modules/knowledge/knowledge.filters.test.tsx 与本证据；零产品改动；
+显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「test(console): knowledge filter url guards」。

@@ -81,6 +81,7 @@ import {
   INGEST_STATUS_UNWIRED_HUMAN,
   INGEST_STATUS_URL,
   docCopyText,
+  docSingleCopy,
   docHitCopyText,
   docMetaCopyText,
   docTypeBuckets,
@@ -1851,6 +1852,59 @@ function DocHeadStrip({
   );
 }
 
+/**
+ * R114 — 两处落点共用的「行复制」控件（行预览与检索命中展开块）：文本只出 docSingleCopy
+ * （一行表头 + 该文档一行，逐字同清单复制的行派生）。剪贴板拒 → 只读 textarea 兜底
+ * （value 与目标串逐字同）；成功「已复制」走 aria-live；空行（无名无标识）disabled + 如实
+ * title。纯屏上数据：此路零请求。
+ */
+function DocLineCopy({ doc }: { doc: DocRow }) {
+  const text = docSingleCopy(doc);
+  const emptyRow = doc.name === "—" && doc.id === "";
+  const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
+  const copy = () => {
+    if (!navigator.clipboard?.writeText) {
+      setState("failed");
+      return;
+    }
+    navigator.clipboard
+      .writeText(text)
+      .then(() => setState("copied"))
+      .catch(() => setState("failed"));
+  };
+  return (
+    <div className="knF-row" data-testid="kn-doc-copy-row">
+      <Button
+        size="sm"
+        outlined
+        onClick={copy}
+        disabled={emptyRow}
+        title={
+          emptyRow
+            ? "这一行没有可复制的文档内容：文档名与标识都没给出。"
+            : "复制这一行为一行表头 + 单行文本（与清单复制同一派生）。"
+        }
+        data-testid="kn-doc-copy"
+      >
+        复制这行
+      </Button>
+      <span className="knF-status" data-testid="kn-doc-copy-status" aria-live="polite">
+        {state === "copied" ? "已复制" : state === "failed" ? "剪贴板没接受：文本在下方，可手动选取。" : ""}
+      </span>
+      {state === "failed" ? (
+        <textarea
+          className="knF-fallback"
+          data-testid="kn-doc-copy-fallback"
+          aria-label="手动复制这一行文档的文本"
+          readOnly
+          rows={2}
+          value={text}
+        />
+      ) : null}
+    </div>
+  );
+}
+
 function DocTable({
   entries,
   docLink,
@@ -2023,6 +2077,7 @@ function DocTable({
                           </dd>
                         </div>
                       </dl>
+                      <DocLineCopy doc={row} />
                     </td>
                   </tr>
                 ) : null}
@@ -2892,6 +2947,7 @@ function DocumentNameSearch({
                 );
               })}
               {openRow ? (
+              <>
               <dl className="knw5-ref-detail" data-testid="kn6-search-detail" title={openRow.id || undefined}>
                 <div>
                   <dt>文档</dt>
@@ -2938,6 +2994,8 @@ function DocumentNameSearch({
                   </dd>
                 </div>
               </dl>
+              <DocLineCopy doc={openRow} />
+              </>
               ) : null}
             </>
           );
