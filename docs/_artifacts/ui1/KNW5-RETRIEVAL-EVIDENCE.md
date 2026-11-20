@@ -2646,3 +2646,165 @@ kn-space-preview / knL / knM 零破。
 边界：只改 `web/src/modules/knowledge/**` 与本证据目录；显式路径 add；无 force/amend/
 `--no-verify`/`git add -A`；未并 main、未重建 9122；单 commit
 「feat(console): unify knowledge updated-at presentation」。
+
+# KNW5 追加 R76：「最近更新」口径护栏（纯测试单）（2026-11-20 BJT）
+
+安全门：toplevel 相符、porcelain 空、显式 refspec fetch 后 merge 实测 tip 即预期 `1683d467`
+（wave 内容在他模块，知识面 delta 空）。本单**零产品文件改动**（提交仅新增
+`knowledge.updated.test.tsx` 与本证据追加）。
+
+## 护栏与读数
+
+```text
+① 三面同值：喂同一 ISO `2026-11-14T06:33:18+08:00`——检索命中列与详情文档列渲染逐字相等，
+   且 === updatedText(ISO).value === `2026-11-14 06:33`；空间列剥语义前缀（最近同步）后同值。
+   口径注：+08:00 的原生就是北京时区，到分钟仍 06:33；测试初稿把它当 UTC 期望成 14:33，
+   两处失败全部是**测试期望错、产品正确**，按 helper 实际输出修正期望（改前/改后=期望值，
+   非产品改动）。
+② 三态：非法 `yesterday`、空串 ""、字段缺失——两张表各 3 行落「—」、title 逐字
+   「上游未返回时间；不用本机时间顶替。」×3；列表面同样 3 行同句。假系统时钟
+   vi.useFakeTimers 钉在 2031-03-04 渲染：整页（详情面与列表面两轮）文本均无 "2031"——
+   本机时钟零参与有实证。
+③ title 对应：在场 cell title 逐字 `时间 2026-11-14T06:33:18+08:00（UTC）`（含原样 ISO），
+   值 = 同一时刻北京到分 06:33；三面同一 title 句式。
+④ 零额外请求：三面渲染后，连点排序两下、类型桶开合、行内预览开合、台账展开收起、复制
+   共 9 个只读动作——fetchMock 计数与 urls() 排序快照逐字不变。
+```
+
+## 验证尾行（R76）
+```text
+$ npx vitest run src/modules/knowledge   → 4 files / 74 tests passed（基线 70 + 护栏 4）
+$ npx vitest run                         → 174 files / 2395 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning；本单新增的
+  4 条 unused 变量错误为测试文件自身残留，提交前已清零）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-upd-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+```
+未测如实：带登录会话的真实数据屏（静态 preview 无会话；口径由本护栏的显式 ISO 夹具逐字锁定）。
+边界：只动 `web/src/modules/knowledge/knowledge.updated.test.tsx`（新增）与本证据文件；
+零产品行为改动；显式路径 add；无 force / amend / `--no-verify` / `git add -A`；
+单 commit「test(console): knowledge updated-at caliber guards」。
+
+# KNW5 追加 R102：空间行 → 空间详情真锚点 deep link（kn-space-open / kn-space-nolink）（2026-11-20 BJT）
+
+安全门：toplevel 相符、porcelain 空、显式 refspec fetch 后 merge 实测 tip `f1b509b9`
+（预期章笔；知识面 delta 空——150 文件全在他模块），零冲突。
+
+## 一、入口机制现查（回执贴命中）
+
+```text
+$ git grep -n "panel=spaces" -- web/src/modules/knowledge
+  KnowledgeModulePage.test.tsx:3594:    expect(pasted).toContain("panel=spaces");
+$ grep -n "spaceLink" KnowledgeModulePage.tsx（节选）
+  3334:  const spaceLink = (id: string) => { keepBase() → set panel=spaces → set space=id → delete doc }
+  935:  data-testid="knw5-space-link" to={spaceLink(row.id)}   ← 改前
+结论：空间详情是查询态槽位（无 /knowledge/:spaceId 路由），落点 /knowledge?tab=spaces
+&panel=spaces&space=<id>；行内早已是真 <a href>（react-router Link），kn3-docs-* 由
+?space= 挂载的 SpaceDetailSurface 渲染。
+```
+
+## 二、本轮改动（改名收口，不造第二个链接）
+
+```text
+① testid 更名 knw5-space-link → kn-space-open（页面×2：Link + roving 选择器
+   a[data-testid=…]；CSS focus-visible 选择器×1；测试×13 全同步）。一行一链不重复。
+② 无标识行副文本加 data-testid="kn-space-nolink"，title 改逐字「该空间没有可用标识」
+   （原「上游没有给出这个空间的标识」；2848 行另一处空间组标签不在本单范围，保留）。
+③ 不加 target="_blank"：react-router 对带 target 的 Link 跳过拦截，会砸掉同页 Enter/
+   点击进详情；真 a[href] + 未修饰点击本身即支持 Ctrl/Cmd/中键新标签（等同可新标签方案）。
+```
+
+## 三、R102 新用例（4 条，KnowledgeModulePage.test.tsx 末 describe）
+
+```text
+锚点：2 有标识行各 1 真 A、href 逐字 /knowledge?tab=spaces&panel=spaces&space=sp_hr、
+  roving tabindex 含 0 且全在 {0,-1}、点击后 loc 含 space=sp_hr（Enter 走同一真 href，
+  jsdom 不模拟原生回车激活，按本文件既有口径以 href+click 同源断言）。
+互斥：先开 kn-space-preview-0 再点链接 → 预览节点全树（含 portal）0 个、详情 loc 落定；
+  直接点链接 → 预览从未挂载、kn3-docs-row 在场。反向不互斥成立。
+nolink：无 id 行 0 链接、kn-space-nolink SPAN、title 逐字「该空间没有可用标识」、
+  点击不写剪贴板（writeText 未调用）、行内无伪造 space= 链接、URL 不变。
+零额外请求：列表面渲染后 urls()=[documents?limit=50|spaces?limit=20]（R52 预载口径），
+  预览开合 + 本地关键词键入后逐字不变；点链后新增读取仅详情槽位既有集
+  {spaces 复读给面包屑, 该空间文档表}，未知 URL 零出现。
+```
+
+过程记录（非缺陷）：批量替换 `kn-sort-name` 双点行时误伤两处既有测试（str.replace 全量
+替换），当场被 knF/kn-sort 两条测试抓到并按 HEAD 原文恢复；本单未改动任何产品行为
+（testid/文案/选择器之外零逻辑改动），全仓测试为证。
+
+## 验证尾行（R102）
+```text
+$ npx vitest run src/modules/knowledge   → 4 files / 78 tests passed（基线 74 + R102 4）
+$ npx vitest run                         → 174 files / 2399 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r102-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn3、kn6–kn9、knB–knO、kn-sort、kn-gates、kn.parity、kn-space-preview 全族在
+  78/78 与全仓 2399/2399 中逐条通过（knw5 族测试同步更名后语义原样，非放宽断言）。
+```
+未测如实：带登录会话的真实列表面（静态 preview 无会话落非 ready 态；href/互斥/nolink
+由 jsdom 用例逐字锁定）；浏览器原生「Enter 激活 a[href]」与 Ctrl/Cmd/中键新标签是 UA
+行为，jsdom 不模拟，按 href 在场 + 同源 click 落点断言代替。
+边界：只改 web/src/modules/knowledge/**（页面/CSS/测试）与本证据；显式路径 add；
+无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「feat(console): knowledge space row deep link」。
+
+# KNW5 追加 R108：空间详情文档列表单页上限诚实化（kn3-page-cap）（2026-11-20 BJT）
+
+安全门：toplevel 相符、porcelain 空、显式 refspec fetch 后 merge 实测 tip `f1b509b9`
+（即预期章笔，Already up to date）。
+
+## 一、limit 现查（N 的来源）
+
+```text
+$ git grep -n "limit" -- web/src/modules/knowledge（非测试命中节选）
+  knowledge.ts:138  DOCUMENTS_URL = "/agent-api/api/documents?limit=50"   ← 改前字面量
+  knowledge.ts:164  documentsUrl():      params.set("limit", "50")
+  knowledge.ts:175  documentsPageUrl():  params.set("limit", "50")
+N = 50。本轮把三处收成单一常量 DOCUMENTS_LIMIT=50（knowledge.ts:139），取数 URL 与
+屏上限句同源；URL 输出字符串逐字不变（测试 URL 常量零改动）。
+与 knE-page-*（R54 游标分页条）口径关系：两 bar 并存但语义不同、互不矛盾——
+  knE 说「总数/已显示与游标信封」（total/nextCursor 只认信封字段，缺则「总数不可用/
+  无分页游标」）；kn3-page-cap 说「本次请求的单页上限 N=50 与屏上可见行数 M」。
+  上限句的游标半句直接读同一个 cursorOffered（信封游标字段在场否），措辞跟分页条一致
+  （「暂不支持翻页」），不另起第二套翻页说法。testid 保留双轨不合并：knE-page-count
+  （信封读数）与 kn3-page-cap（请求上限）回答的是两个问题，弃任一都会丢既有 pin。
+```
+
+## 二、常驻句与读数（逐字）
+
+```text
+值：本页最多显示 50 篇（当前已加载 M 篇；复制清单也只含这些篇）
+  ——M=shown.length（屏上可见行，与复制清单同一集合）；M 为 0/未读到渲染「—」，不写 0
+  （实现上 ready-空集走 knN 空态分支，上限句整体不渲染，「—」为防御分支）。
+追加句（M==N 才在场）：可能还有更多，改用全库检索或收窄类型筛选（kn3-page-cap-more）
+title：limit=50；上游回答没给可用的分页游标：暂不支持翻页，本页上限句不假装还有下一页。
+  （cursorOffered 为真时换「翻页走旁边的分页条」句——两句由同一在场判定选出，不编造。）
+三同源实证（测试断言）：复制清单数据行数 == kn3-docs 表 data-len == 屏上
+  kn3-docs-row 计数 == 常驻句里的 M（夹具 3 行：3==3==3==3）。
+三态不渲染：empty（ready 0 行）/ error(500) / denied(403) 下 kn3-page-cap 与
+  -more 均 toBeNull（常驻句在 gate 的 render 分支内，非 ready-非空 即整段缺席）。
+零额外请求：上限句为纯屏上派生——ready 渲染后 DOCS_SPACE 计数 +1 是详情槽位自身
+  既有读取，点常驻句后 urls() 排序快照逐字不变。
+```
+
+## 验证尾行（R108）
+```text
+$ npx vitest run src/modules/knowledge   → 4 files / 82 tests passed（基线 78 + R108 4）
+$ npx vitest run                         → 174 files / 2403 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r108-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn3、kn6–kn9、knB–knO（含 knE-page-*）、kn-sort、kn-gates、kn.parity、
+kn-space-preview 全族 82/82 通过；DOCUMENTS_URL 重构后输出串逐字不变，URL pin 零改动。
+```
+未测如实：带登录会话的真实详情屏（静态 preview 无会话；句文本/三同源/三态由夹具逐字
+锁定）；「读口是否真吃 cursor」本轮仍未实测（R74 只证信封别名错位），故 title 用
+「信封在场判定」的动态措辞而非断言服务端能力。
+边界：只改 web/src/modules/knowledge/** 与本证据；显式路径 add；无 force/amend/
+--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「feat(console): knowledge space docs page cap honesty」。
