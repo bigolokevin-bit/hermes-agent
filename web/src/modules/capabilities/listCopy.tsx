@@ -6,6 +6,7 @@ import { Copy } from "lucide-react";
 import { Button } from "@nous-research/ui/ui/components/button";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import type { CsvRow } from "./csv";
+import { outputBlocked, outputTitle, type CapabilityOutputState } from "./outputState";
 
 export const COPY_HEADER = "name,type,enabled,updated_at";
 
@@ -17,14 +18,20 @@ export function toListText(rows: readonly CsvRow[]): string {
   return lines.join("\n");
 }
 
-export function CapabilityCopy({ rows }: { rows: readonly CsvRow[] }): ReactNode {
+export function CapabilityCopy({
+  rows,
+  state: outputState = rows.length ? { kind: "ready" } : { kind: "empty" },
+}: {
+  rows: readonly CsvRow[];
+  state?: CapabilityOutputState;
+}): ReactNode {
   const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
   const [count, setCount] = useState(0);
   const text = toListText(rows);
-  const empty = rows.length === 0;
+  const disabled = outputBlocked(outputState) || rows.length === 0;
 
   const copy = async () => {
-    if (empty) return;
+    if (disabled) return;
     if (await copyTextToClipboard(text)) {
       setCount(rows.length);
       setState("copied");
@@ -39,9 +46,9 @@ export function CapabilityCopy({ rows }: { rows: readonly CsvRow[] }): ReactNode
         <Button
           size="sm"
           outlined
-          disabled={empty}
-          aria-disabled={empty ? "true" : undefined}
-          title={empty ? "当前视图没有可复制的行" : "复制当前列表为纯文本；不会再发请求"}
+          disabled={disabled}
+          aria-disabled={disabled ? "true" : undefined}
+          title={outputTitle(outputState, "复制", rows.length)}
           data-testid="capC-copy"
           onClick={() => void copy()}
         >

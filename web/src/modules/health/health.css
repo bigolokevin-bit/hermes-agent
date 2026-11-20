@@ -525,3 +525,141 @@
 .sys9-src-link:hover { text-decoration-thickness: 2px; }
 .sys9-src-link:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; border-radius: 2px; }
 .sys9-src-nolink { color: var(--color-muted-foreground); }
+
+/* sys13 — source matrix sortable columns */
+.sys13-sort-note {
+  margin: 0 0 4px;
+  color: var(--color-muted-foreground);
+  font-size: 0.6875rem;
+  line-height: 1.5;
+}
+.sys13-sort {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 500;
+  white-space: nowrap;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.sys13-sort:hover { color: var(--color-foreground); }
+.sys13-sort:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+.sys13-indicator {
+  color: var(--color-muted-foreground);
+  font-size: 0.6875rem;
+  text-decoration: none;
+}
+
+/* sys14 — svc deep link */
+.sys14-link-note,
+.sys14-link-missing {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 8px;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-muted);
+  color: var(--color-foreground);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.sys14-link-note a,
+.sys14-link-missing a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.sys14-link-note a:focus-visible,
+.sys14-link-missing a:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.sys14-link-missing {
+  border-left: 3px solid var(--color-warning);
+}
+
+.sys14-link-missing b {
+  font-weight: 600;
+}
+
+.sys3-row[aria-current="true"] td {
+  background: var(--color-muted);
+  box-shadow: inset 3px 0 var(--color-primary);
+}
+
+/* sys15 — long values: single-line ellipsis with full text in title / row detail */
+.sys15-trunc {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sys15-full {
+  display: block;
+  max-width: 100%;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.sys3-table,
+.sys6-table {
+  table-layout: fixed;
+}
+
+.sys3-table th:nth-child(1) { width: 24%; }
+.sys3-table th:nth-child(2) { width: 12%; }
+.sys3-table th:nth-child(3) { width: 28%; }
+.sys3-table th:nth-child(4) { width: 20%; }
+.sys3-table th:nth-child(5) { width: 16%; }
+
+.sys6-table th:nth-child(1) { width: 19%; }
+.sys6-table th:nth-child(2) { width: 31%; }
+.sys6-table th:nth-child(3) { width: 28%; }
+.sys6-table th:nth-child(4) { width: 10%; }
+.sys6-table th:nth-child(5) { width: 12%; }
+
+.sys15-row-toggle {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 11px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.sys15-row-toggle:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.sys15-detail-row td {
+  background: var(--color-muted);
+}
+
+.sys15-matrix-detail {
+  margin: 2px 0;
+}

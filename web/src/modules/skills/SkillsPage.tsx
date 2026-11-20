@@ -20,6 +20,7 @@ import { CapabilityRowDetail } from "../capabilities/rowDetail";
 import { CapabilitySearch } from "../capabilities/search";
 import { CapabilityExport } from "../capabilities/csvExport";
 import { CapabilityCopy } from "../capabilities/listCopy";
+import type { CapabilityOutputState } from "../capabilities/outputState";
 import { applySort, ariaSort, cycleSort, readSort, sortRows, type SortKey } from "../capabilities/sorting";
 import { useEnsureTabParam } from "../capabilities/tabParam";
 import "./skills.css";
@@ -275,6 +276,16 @@ export function SkillsPage() {
   }));
   const unavailable = page.k === "error" && (page.status === 403 || page.status === 404);
   const capState = page.k === "error" ? (unavailable ? "unavailable" : "error") : page.k;
+  const outputState: CapabilityOutputState =
+    page.k === "loading"
+      ? { kind: "loading" }
+      : page.k === "empty"
+        ? { kind: "empty" }
+        : page.k === "error"
+          ? unavailable
+            ? { kind: "unavailable", reason: page.message.replace(/^技能读口未接入：/, ""), gap: page.gap ?? SKILLS_GAP }
+            : { kind: "error", reason: page.message, requestId: page.requestId }
+          : { kind: "ready" };
 
   return (
     <section className="skl4-page" data-testid="skl4-page" data-fixture={fixture ?? undefined} data-cap-state={capState}>
@@ -286,8 +297,8 @@ export function SkillsPage() {
           <p className="skl4-sub">已登记的技能、共享范围与版本状态。只读。</p>
         </div>
         <div className="skl4-actions">
-          <CapabilityExport tab="skills" rows={exportRows} />
-          <CapabilityCopy rows={copyRows} />
+          <CapabilityExport tab="skills" rows={exportRows} state={outputState} />
+          <CapabilityCopy rows={copyRows} state={outputState} />
           <span className="capA-export-note" data-testid="capA-export-order-note">导出按当前排序与搜索</span>
           <Button
             size="sm"

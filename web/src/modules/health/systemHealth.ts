@@ -74,7 +74,7 @@ export function beijingMinute(value: string | null): string | null {
   }).format(at);
 }
 
-function redactError(value: string): { text: string; count: number; truncated: boolean } {
+export function redactError(value: string): { text: string; count: number; truncated: boolean } {
   let count = 0;
   let text = value.replace(/\bAuthorization\s*:\s*Bearer\s+[^\s,;]+/gi, () => {
     count += 1;
