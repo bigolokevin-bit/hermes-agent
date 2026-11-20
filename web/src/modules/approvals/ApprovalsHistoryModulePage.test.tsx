@@ -9,6 +9,7 @@ import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api-error";
+import { rawCorrelationReturn, saveCorrelationReturn } from "@/modules/approvals/correlationReturn";
 
 const api = vi.hoisted(() => ({ fetchJSON: vi.fn() }));
 vi.mock("@/lib/api", () => ({ fetchJSON: api.fetchJSON }));
@@ -2435,5 +2436,78 @@ describe("R91 filter summary chips (apv-chip-*)", () => {
       return { items: [] };
     }, "/approvals?tab=history");
     expect(qa("apv-filter-summary")).toBeNull();
+  });
+});
+
+describe("R94 correlation return state (appr-corr)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+  const DETAIL94 = {
+    approvalId: "ap_p",
+    status: "pending",
+    action: "rotate.secret",
+    requestedBy: { type: "human", id: "human:9" },
+    createdAt: "2026-11-19T01:00:00Z",
+    approvers: [{ userId: "human:9", name: "郑涛" }],
+    decisions: [],
+    runId: "rn_r94run",
+    taskId: "tk_r94task",
+  };
+  const nineFourHandler = async (url: string) => {
+    const u = String(url);
+    if (u.includes("/api/approval?id=")) return DETAIL94;
+    const m = /[?&]status=([^&]*)/.exec(u);
+    return { items: m && m[1] === "pending" ? ROWS_BY_STATE.pending : ROWS_BY_STATE.pending };
+  };
+
+  beforeEach(() => {
+    sessionStorage.clear();
+    Object.defineProperty(window, "scrollY", { configurable: true, value: 578 });
+  });
+
+  it("clicking a related-run link stashes the full view snapshot", async () => {
+    await mount(nineFourHandler, "/approvals?tab=history&status=pending&q=%E5%8F%91%E5%B8%83");
+    const card = document.querySelector("[data-testid='apr5-row-ap_p']") as HTMLElement | null;
+    expect(card, "row card").toBeTruthy();
+    await act(async () => {
+      card!.click();
+    });
+    await waitFor(() => !!qa("apd6-link-run"), "trail links ready");
+    await act(async () => {
+      (qa("apd6-link-run") as HTMLElement).click();
+    });
+    const raw = rawCorrelationReturn();
+    expect(raw, "snapshot stored").toBeTruthy();
+    const snap = JSON.parse(raw ?? "{}") as { search: string; scrollY: number };
+    expect(snap.search).toContain("tab=history");
+    expect(snap.search).toContain("status=pending");
+    expect(snap.search).toContain("q=%E5%8F%91%E5%B8%83");
+    expect(snap.search).toContain("id=ap_p");
+    expect(snap.scrollY).toBe(578);
+  });
+
+  it("a bare re-entry restores filters, the open detail and the scroll", async () => {
+    saveCorrelationReturn("?tab=history&status=pending&q=%E5%8F%91%E5%B8%83&id=ap_p", 578);
+    const scrolled = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+    await mount(nineFourHandler, "/approvals?tab=history");
+    await waitFor(() => !!qa("apr5-detail"), "detail reopened");
+    expect(qa("apv8-search")?.getAttribute("value")).toBe("发布");
+    expect(scrolled.mock.calls.some((c) => c[0] === 0 && c[1] === 578), scrolled.mock.calls.map(String).join("|")).toBe(true);
+    expect(rawCorrelationReturn(), "snapshot consumed once").toBeNull();
+  });
+
+  it("a filtered re-entry of a different view does not get hijacked", async () => {
+    saveCorrelationReturn("?tab=history&q=%E5%8F%91%E5%B8%83&id=ap_p", 578);
+    await mount(nineFourHandler, "/approvals?tab=history&status=approved");
+    await waitFor(() => !!qa("apv8-search"), "page up");
+    expect(qa("apv8-search")?.getAttribute("value")).toBe("");
+    expect(qa("apr5-detail"), "no auto detail").toBeNull();
+    expect(rawCorrelationReturn(), "left for its own view").toBeTruthy();
+  });
+
+  it("a snapshot from the other tab is ignored here", async () => {
+    saveCorrelationReturn("?tab=pending&q=%E5%8F%91%E5%B8%83", 578);
+    await mount(nineFourHandler, "/approvals?tab=history");
+    await waitFor(() => !!qa("apv8-search"), "page up");
+    expect(rawCorrelationReturn(), "kept for the pending page").toBeTruthy();
   });
 });
