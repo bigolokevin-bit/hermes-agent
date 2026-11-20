@@ -1,191 +1,191 @@
 {
   "base": "http://127.0.0.1:9122",
+  "exitCode": 0,
+  "headHash": "5630ffce",
   "method": "playwright hash-form /#/<route>?state=<s>; hook=[data-fixture]+[data-testid=shell-fixture-badge] (web/src/shell/fixtures.ts)",
-  "headHash": "cca9cf7e",
-  "sampled": 20,
+  "ok": true,
   "passed": 20,
   "rows": [
     {
+      "badge": "FIXTURE加载中",
+      "badgeOk": true,
+      "fixtureAttr": "loading",
+      "ok": true,
       "route": "#/employees",
       "state": "loading",
-      "url": "http://127.0.0.1:9122/#/employees?state=loading",
-      "fixtureAttr": "loading",
-      "badge": "FIXTURE加载中",
-      "ok": true,
-      "badgeOk": true
+      "url": "http://127.0.0.1:9122/#/employees?state=loading"
     },
     {
+      "badge": "FIXTURE空态",
+      "badgeOk": true,
+      "fixtureAttr": "empty",
+      "ok": true,
       "route": "#/employees",
       "state": "empty",
-      "url": "http://127.0.0.1:9122/#/employees?state=empty",
-      "fixtureAttr": "empty",
-      "badge": "FIXTURE空态",
-      "ok": true,
-      "badgeOk": true
+      "url": "http://127.0.0.1:9122/#/employees?state=empty"
     },
     {
+      "badge": "FIXTURE错误",
+      "badgeOk": true,
+      "fixtureAttr": "error",
+      "ok": true,
       "route": "#/employees",
       "state": "error",
-      "url": "http://127.0.0.1:9122/#/employees?state=error",
-      "fixtureAttr": "error",
-      "badge": "FIXTURE错误",
-      "ok": true,
-      "badgeOk": true
+      "url": "http://127.0.0.1:9122/#/employees?state=error"
     },
     {
+      "badge": "FIXTURE就绪",
+      "badgeOk": true,
+      "fixtureAttr": "ready",
+      "ok": true,
       "route": "#/employees",
       "state": "ready",
-      "url": "http://127.0.0.1:9122/#/employees?state=ready",
-      "fixtureAttr": "ready",
-      "badge": "FIXTURE就绪",
-      "ok": true,
-      "badgeOk": true
+      "url": "http://127.0.0.1:9122/#/employees?state=ready"
     },
     {
+      "badge": "FIXTURE加载中",
+      "badgeOk": true,
+      "fixtureAttr": "loading",
+      "ok": true,
       "route": "#/work",
       "state": "loading",
-      "url": "http://127.0.0.1:9122/#/work?state=loading",
-      "fixtureAttr": "loading",
-      "badge": "FIXTURE加载中",
-      "ok": true,
-      "badgeOk": true
+      "url": "http://127.0.0.1:9122/#/work?state=loading"
     },
     {
+      "badge": "FIXTURE空态",
+      "badgeOk": true,
+      "fixtureAttr": "empty",
+      "ok": true,
       "route": "#/work",
       "state": "empty",
-      "url": "http://127.0.0.1:9122/#/work?state=empty",
-      "fixtureAttr": "empty",
-      "badge": "FIXTURE空态",
-      "ok": true,
-      "badgeOk": true
+      "url": "http://127.0.0.1:9122/#/work?state=empty"
     },
     {
+      "badge": "FIXTURE错误",
+      "badgeOk": true,
+      "fixtureAttr": "error",
+      "ok": true,
       "route": "#/work",
       "state": "error",
-      "url": "http://127.0.0.1:9122/#/work?state=error",
-      "fixtureAttr": "error",
-      "badge": "FIXTURE错误",
-      "ok": true,
-      "badgeOk": true
+      "url": "http://127.0.0.1:9122/#/work?state=error"
     },
     {
+      "badge": "FIXTURE就绪",
+      "badgeOk": true,
+      "fixtureAttr": "ready",
+      "ok": true,
       "route": "#/work",
       "state": "ready",
-      "url": "http://127.0.0.1:9122/#/work?state=ready",
-      "fixtureAttr": "ready",
-      "badge": "FIXTURE就绪",
-      "ok": true,
-      "badgeOk": true
+      "url": "http://127.0.0.1:9122/#/work?state=ready"
     },
     {
+      "badge": "FIXTURE加载中",
+      "badgeOk": true,
+      "fixtureAttr": "loading",
+      "ok": true,
       "route": "#/approvals",
       "state": "loading",
-      "url": "http://127.0.0.1:9122/#/approvals?state=loading",
-      "fixtureAttr": "loading",
-      "badge": "FIXTURE加载中",
-      "ok": true,
-      "badgeOk": true
+      "url": "http://127.0.0.1:9122/#/approvals?state=loading"
     },
     {
+      "badge": "FIXTURE空态",
+      "badgeOk": true,
+      "fixtureAttr": "empty",
+      "ok": true,
       "route": "#/approvals",
       "state": "empty",
-      "url": "http://127.0.0.1:9122/#/approvals?state=empty",
-      "fixtureAttr": "empty",
-      "badge": "FIXTURE空态",
-      "ok": true,
-      "badgeOk": true
+      "url": "http://127.0.0.1:9122/#/approvals?state=empty"
     },
     {
+      "badge": "FIXTURE错误",
+      "badgeOk": true,
+      "fixtureAttr": "error",
+      "ok": true,
       "route": "#/approvals",
       "state": "error",
-      "url": "http://127.0.0.1:9122/#/approvals?state=error",
-      "fixtureAttr": "error",
-      "badge": "FIXTURE错误",
-      "ok": true,
-      "badgeOk": true
+      "url": "http://127.0.0.1:9122/#/approvals?state=error"
     },
     {
+      "badge": "FIXTURE就绪",
+      "badgeOk": true,
+      "fixtureAttr": "ready",
+      "ok": true,
       "route": "#/approvals",
       "state": "ready",
-      "url": "http://127.0.0.1:9122/#/approvals?state=ready",
-      "fixtureAttr": "ready",
-      "badge": "FIXTURE就绪",
-      "ok": true,
-      "badgeOk": true
+      "url": "http://127.0.0.1:9122/#/approvals?state=ready"
     },
     {
+      "badge": "FIXTURE加载中",
+      "badgeOk": true,
+      "fixtureAttr": "loading",
+      "ok": true,
       "route": "#/sessions",
       "state": "loading",
-      "url": "http://127.0.0.1:9122/#/sessions?state=loading",
-      "fixtureAttr": "loading",
-      "badge": "FIXTURE加载中",
-      "ok": true,
-      "badgeOk": true
+      "url": "http://127.0.0.1:9122/#/sessions?state=loading"
     },
     {
+      "badge": "FIXTURE空态",
+      "badgeOk": true,
+      "fixtureAttr": "empty",
+      "ok": true,
       "route": "#/sessions",
       "state": "empty",
-      "url": "http://127.0.0.1:9122/#/sessions?state=empty",
-      "fixtureAttr": "empty",
-      "badge": "FIXTURE空态",
-      "ok": true,
-      "badgeOk": true
+      "url": "http://127.0.0.1:9122/#/sessions?state=empty"
     },
     {
+      "badge": "FIXTURE错误",
+      "badgeOk": true,
+      "fixtureAttr": "error",
+      "ok": true,
       "route": "#/sessions",
       "state": "error",
-      "url": "http://127.0.0.1:9122/#/sessions?state=error",
-      "fixtureAttr": "error",
-      "badge": "FIXTURE错误",
-      "ok": true,
-      "badgeOk": true
+      "url": "http://127.0.0.1:9122/#/sessions?state=error"
     },
     {
+      "badge": "FIXTURE就绪",
+      "badgeOk": true,
+      "fixtureAttr": "ready",
+      "ok": true,
       "route": "#/sessions",
       "state": "ready",
-      "url": "http://127.0.0.1:9122/#/sessions?state=ready",
-      "fixtureAttr": "ready",
-      "badge": "FIXTURE就绪",
-      "ok": true,
-      "badgeOk": true
+      "url": "http://127.0.0.1:9122/#/sessions?state=ready"
     },
     {
+      "badge": "FIXTURE加载中",
+      "badgeOk": true,
+      "fixtureAttr": "loading",
+      "ok": true,
       "route": "#/system",
       "state": "loading",
-      "url": "http://127.0.0.1:9122/#/system?state=loading",
-      "fixtureAttr": "loading",
-      "badge": "FIXTURE加载中",
-      "ok": true,
-      "badgeOk": true
+      "url": "http://127.0.0.1:9122/#/system?state=loading"
     },
     {
+      "badge": "FIXTURE空态",
+      "badgeOk": true,
+      "fixtureAttr": "empty",
+      "ok": true,
       "route": "#/system",
       "state": "empty",
-      "url": "http://127.0.0.1:9122/#/system?state=empty",
-      "fixtureAttr": "empty",
-      "badge": "FIXTURE空态",
-      "ok": true,
-      "badgeOk": true
+      "url": "http://127.0.0.1:9122/#/system?state=empty"
     },
     {
+      "badge": "FIXTURE错误",
+      "badgeOk": true,
+      "fixtureAttr": "error",
+      "ok": true,
       "route": "#/system",
       "state": "error",
-      "url": "http://127.0.0.1:9122/#/system?state=error",
-      "fixtureAttr": "error",
-      "badge": "FIXTURE错误",
-      "ok": true,
-      "badgeOk": true
+      "url": "http://127.0.0.1:9122/#/system?state=error"
     },
     {
+      "badge": "FIXTURE就绪",
+      "badgeOk": true,
+      "fixtureAttr": "ready",
+      "ok": true,
       "route": "#/system",
       "state": "ready",
-      "url": "http://127.0.0.1:9122/#/system?state=ready",
-      "fixtureAttr": "ready",
-      "badge": "FIXTURE就绪",
-      "ok": true,
-      "badgeOk": true
+      "url": "http://127.0.0.1:9122/#/system?state=ready"
     }
   ],
-  "exitCode": 0,
-  "ok": true
+  "sampled": 20
 }

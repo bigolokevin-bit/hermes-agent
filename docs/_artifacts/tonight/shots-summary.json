@@ -9,8 +9,8 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 483,
-    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 刷新 可上岗 各项检查全部通过才计入 数据截至 —（北京",
+    "textLen": 1325,
+    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 北京时间 2026-11-20 10:29 刷新 可上岗 各项检查全部通过",
     "hasMainEl": true,
     "ok": true
   },
@@ -33,97 +33,97 @@
     {
       "route": "#/approvals",
       "viewport": "1440",
-      "chars": 265,
+      "chars": 281,
       "hasMainEl": true
     },
     {
       "route": "#/approvals",
       "viewport": "375",
-      "chars": 265,
+      "chars": 281,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=history",
       "viewport": "1440",
-      "chars": 1579,
+      "chars": 1650,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=history",
       "viewport": "375",
-      "chars": 1579,
+      "chars": 1650,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=mine",
       "viewport": "1440",
-      "chars": 265,
+      "chars": 281,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=mine",
       "viewport": "375",
-      "chars": 265,
+      "chars": 281,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=mine",
       "viewport": "1440",
-      "chars": 265,
+      "chars": 281,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=mine",
       "viewport": "375",
-      "chars": 265,
+      "chars": 281,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=release",
       "viewport": "1440",
-      "chars": 265,
+      "chars": 281,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=release",
       "viewport": "375",
-      "chars": 265,
+      "chars": 281,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=policy",
       "viewport": "1440",
-      "chars": 265,
+      "chars": 281,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=policy",
       "viewport": "375",
-      "chars": 265,
+      "chars": 281,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=release",
       "viewport": "1440",
-      "chars": 265,
+      "chars": 281,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=release",
       "viewport": "375",
-      "chars": 265,
+      "chars": 281,
       "hasMainEl": true
     },
     {
       "route": "#/audit",
       "viewport": "1440",
-      "chars": 7122,
+      "chars": 7399,
       "hasMainEl": true
     },
     {
       "route": "#/audit",
       "viewport": "375",
-      "chars": 7122,
+      "chars": 7399,
       "hasMainEl": true
     },
     {
@@ -165,25 +165,25 @@
     {
       "route": "#/capabilities?tab=tools",
       "viewport": "1440",
-      "chars": 264,
+      "chars": 262,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=tools",
       "viewport": "375",
-      "chars": 264,
+      "chars": 262,
       "hasMainEl": true
     },
     {
       "route": "#/employees",
       "viewport": "1440",
-      "chars": 466,
+      "chars": 505,
       "hasMainEl": true
     },
     {
       "route": "#/employees",
       "viewport": "375",
-      "chars": 440,
+      "chars": 479,
       "hasMainEl": true
     },
     {
@@ -357,85 +357,85 @@
     {
       "route": "#/knowledge",
       "viewport": "1440",
-      "chars": 500,
+      "chars": 593,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge",
       "viewport": "375",
-      "chars": 348,
+      "chars": 593,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=citations",
       "viewport": "1440",
-      "chars": 699,
+      "chars": 706,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=citations",
       "viewport": "375",
-      "chars": 699,
+      "chars": 706,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=evidence",
       "viewport": "1440",
-      "chars": 699,
+      "chars": 706,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=evidence",
       "viewport": "375",
-      "chars": 699,
+      "chars": 706,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=ingest",
       "viewport": "1440",
-      "chars": 998,
+      "chars": 1005,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=ingest",
       "viewport": "375",
-      "chars": 998,
+      "chars": 382,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=retrieval",
       "viewport": "1440",
-      "chars": 748,
+      "chars": 755,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=retrieval",
       "viewport": "375",
-      "chars": 748,
+      "chars": 755,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=scope",
       "viewport": "1440",
-      "chars": 348,
+      "chars": 593,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=scope",
       "viewport": "375",
-      "chars": 500,
+      "chars": 593,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=sources",
       "viewport": "1440",
-      "chars": 998,
+      "chars": 1005,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=sources",
       "viewport": "375",
-      "chars": 998,
+      "chars": 1005,
       "hasMainEl": true
     },
     {
@@ -465,13 +465,13 @@
     {
       "route": "#/overview",
       "viewport": "1440",
-      "chars": 1326,
+      "chars": 1325,
       "hasMainEl": true
     },
     {
       "route": "#/overview",
       "viewport": "375",
-      "chars": 1326,
+      "chars": 1325,
       "hasMainEl": true
     },
     {
@@ -501,13 +501,13 @@
     {
       "route": "#/system",
       "viewport": "1440",
-      "chars": 1024,
+      "chars": 1036,
       "hasMainEl": true
     },
     {
       "route": "#/system",
       "viewport": "375",
-      "chars": 1035,
+      "chars": 487,
       "hasMainEl": true
     },
     {
@@ -525,37 +525,37 @@
     {
       "route": "#/system?tab=events",
       "viewport": "1440",
-      "chars": 7122,
+      "chars": 7399,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events",
       "viewport": "375",
-      "chars": 7122,
+      "chars": 7399,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "1440",
-      "chars": 7122,
+      "chars": 7399,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "375",
-      "chars": 7122,
+      "chars": 7399,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=retention",
       "viewport": "1440",
-      "chars": 7122,
+      "chars": 7399,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=retention",
       "viewport": "375",
-      "chars": 7122,
+      "chars": 7399,
       "hasMainEl": true
     },
     {
@@ -585,7 +585,7 @@
     {
       "route": "#/work",
       "viewport": "1440",
-      "chars": 1956,
+      "chars": 205,
       "hasMainEl": true
     },
     {
@@ -597,7 +597,7 @@
     {
       "route": "#/work?tab=board&view=cron",
       "viewport": "1440",
-      "chars": 205,
+      "chars": 1956,
       "hasMainEl": true
     },
     {
@@ -621,13 +621,13 @@
     {
       "route": "#/work?tab=runs",
       "viewport": "1440",
-      "chars": 1286,
+      "chars": 1285,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=runs",
       "viewport": "375",
-      "chars": 1258,
+      "chars": 1257,
       "hasMainEl": true
     }
   ],
@@ -642,11 +642,11 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "cca9cf7e",
+  "headHash": "5630ffce",
   "exitCode": 0,
-  "entry": "assets/index-uXCQm6a7.js",
-  "entrySha256": "7f1187f68d6e631640d0ae5c46e74f6b07b8e6f31a5107ec49461a7d236daced",
-  "entryBytes": 166877,
-  "servedEntryBefore": "index-uXCQm6a7.js",
-  "servedEntryAfter": "index-uXCQm6a7.js"
+  "entry": "assets/index-xSbhqEWR.js",
+  "entrySha256": "d065cd5405f2d1512613013dc654d9e4b666f642d6cfc28b932a6211cd8983fc",
+  "entryBytes": 166880,
+  "servedEntryBefore": "index-xSbhqEWR.js",
+  "servedEntryAfter": "index-xSbhqEWR.js"
 }
