@@ -69,7 +69,7 @@ function HealthLine({ state }: { state: HealthState }) {
     <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs" data-testid="ver5-health">
       <span className="text-white/70">整体健康</span>
       <Badge tone={tone}><span data-testid="ver5-health-state">{view.state}</span></Badge>
-      <span className="text-white/45" data-testid="ver5-health-asof">
+      <span className="text-white/45" data-testid="ver5-health-asof" title={view.asOfTitle}>
         {view.asOf ? `采集于 ${view.asOf}` : "采集时间未知"}
       </span>
       {view.sources !== null ? <span className="text-white/40">来源 {view.sources} 项</span> : null}

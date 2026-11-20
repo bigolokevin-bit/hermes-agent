@@ -166,7 +166,12 @@ export const workerView = (rec: Record<string, unknown>): Person =>
   personView(rec, WORKER_NAME_KEYS, WORKER_ID_KEYS, "员工");
 
 /** A list of approvers, each spoken the same way; the count is honest, not guessed. */
-export function approverLabels(rec: Record<string, unknown>): { labels: string[]; raw: string | null } {
+export function approverLabels(rec: Record<string, unknown>): {
+  labels: string[];
+  raw: string | null;
+  /** R74: 与原始项对齐的审批人 id（本地分桶键）；计数特例与无名单时为空。 */
+  ids: string[];
+} {
   const raw = pickText(rec, ["approvers", "approversJson"]);
   const list = rec.approvers;
   if (Array.isArray(list)) {
@@ -175,26 +180,31 @@ export function approverLabels(rec: Record<string, unknown>): { labels: string[]
     // 人员/人员 · 短码 and the original handle is backfilled into `raw` so
     // the field's title still carries it.
     const handles: string[] = [];
-    const labels = list.map((item) => {
+    const pairs = list.map((item): { label: string; id: string } => {
       if (typeof item === "string") {
         handles.push(item);
-        return maskHandle(item, "人员");
+        return { label: maskHandle(item, "人员"), id: item };
       }
       const rec2 = asRecord(item);
-      if (!rec2) return "";
+      if (!rec2) return { label: "", id: "" };
       const name = pickText(rec2, ["name", "displayName", "label"]);
-      if (name && !isMachineHandle(name)) return name;
       const id = pickText(rec2, ["userId", "user_id", "id"]) ?? "";
+      if (name && !isMachineHandle(name)) return { label: name, id: id || name };
       handles.push(id);
-      return maskHandle(id, "人员");
+      return { label: maskHandle(id, "人员"), id };
     });
-    const clean = labels.filter((x) => x);
+    const clean = pairs.filter((p) => p.label);
     const rawBackfill = raw ?? (handles.length ? handles.join("、") : null);
-    if (clean.length) return { labels: clean, raw: rawBackfill };
+    if (clean.length)
+      return {
+        labels: clean.map((p) => p.label),
+        raw: rawBackfill,
+        ids: clean.map((p) => p.id).filter((x) => x),
+      };
   }
   const count = pickNumber(rec, ["requiredApprovals", "approverCount"]);
-  if (count !== null) return { labels: [`需要 ${count} 人审批`], raw };
-  return { labels: [], raw };
+  if (count !== null) return { labels: [`需要 ${count} 人审批`], raw, ids: [] };
+  return { labels: [], raw, ids: [] };
 }
 
 function maskHandle(handle: string, noun: string): string {
@@ -395,6 +405,8 @@ export interface ApprovalRow {
   risk: { label: string; tone: string; raw: string | null };
   /** R60: inline preview fields, parsed from the list row payload itself. */
   approvers: { labels: string[]; raw: string | null };
+  /** R74: 审批人 id 列表（与原始项对齐），供本地分桶过滤。 */
+  approverIds: string[];
   requestId: string | null;
   /** R71: raw ISO 决定时间（排序键用；屏上仍走 decided 人话）。 */
   decidedAt: string | null;
@@ -425,6 +437,8 @@ function rowFrom(item: unknown, index: number): ApprovalRow | null {
   const clock = status.pending
     ? beijing(pick(rec, DEADLINE_KEYS))
     : beijing(pick(rec, DECIDED_KEYS)) ?? beijing(pick(rec, DEADLINE_KEYS));
+  // R74: 分桶键与 labels 同源一次解析。
+  const ap = approverLabels(rec);
   return {
     key: rawId ?? `approval-${index}`,
     rawId,
@@ -438,7 +452,8 @@ function rowFrom(item: unknown, index: number): ApprovalRow | null {
     amount: pickNumber(rec, AMOUNT_KEYS),
     reason: humanSentence(pickText(rec, REASON_KEYS)),
     risk: riskView(pickText(rec, ["riskLevel", "risk_level", "risk"])),
-    approvers: approverLabels(rec),
+    approvers: { labels: ap.labels, raw: ap.raw },
+    approverIds: ap.ids,
     // R65: same key order as approvalDetailFrom — a ticket that only
     // carries consoleRequestId must not read missing here and present there.
     requestId: pickText(rec, ["requestId", "request_id", "consoleRequestId"]),

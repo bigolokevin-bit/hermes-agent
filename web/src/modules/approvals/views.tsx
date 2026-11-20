@@ -55,6 +55,10 @@ export function ApprovalRowCard({
   onOpen,
   previewOpen,
   onTogglePreview,
+  active,
+  onActivate,
+  onNavKey,
+  onClosePreview,
 }: {
   row: ApprovalRow;
   selected: boolean;
@@ -62,6 +66,12 @@ export function ApprovalRowCard({
   /** R60: 行内就地展开预览 — 纯本地数据，不打开详情抽屉、不发任何请求。 */
   previewOpen: boolean;
   onTogglePreview: () => void;
+  /** R73: roving tabindex — 仅当前行入 tab 序；方向键导航由页层处理。 */
+  active: boolean;
+  onActivate: () => void;
+  onNavKey: (action: "ArrowUp" | "ArrowDown" | "Home" | "End", fromKey: string) => void;
+  /** R73: Esc 收起预览并把焦点还给该行。 */
+  onClosePreview: () => void;
 }): ReactNode {
   const toggleRef = useRef<HTMLButtonElement | null>(null);
   const closeRefocus = (): void => {
@@ -75,12 +85,39 @@ export function ApprovalRowCard({
       // R26 F1: the whole row is the affordance — clicking anywhere (or
       // pressing Enter/Space on it) selects the ticket and opens its detail.
       role="button"
-      tabIndex={0}
+      tabIndex={active ? 0 : -1}
+      aria-expanded={previewOpen}
+      onFocus={onActivate}
       onClick={onOpen}
       onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
+        // R73 裁决：Enter=就地展开预览（工单明文）；Space 保留 R26 F1 的
+        // 「键盘打开详情」通道；方向键只在有行的 ready 态存在（四态无行=
+        // 天然不劫持），Esc 收起预览并把焦点还给本行。
+        if (event.key === "Enter") {
+          event.preventDefault();
+          onTogglePreview();
+          return;
+        }
+        if (event.key === " ") {
           event.preventDefault();
           onOpen();
+          return;
+        }
+        if (event.key === "Escape") {
+          if (previewOpen) {
+            event.preventDefault();
+            onClosePreview();
+          }
+          return;
+        }
+        if (
+          event.key === "ArrowDown" ||
+          event.key === "ArrowUp" ||
+          event.key === "Home" ||
+          event.key === "End"
+        ) {
+          event.preventDefault();
+          onNavKey(event.key, row.key);
         }
       }}
     >

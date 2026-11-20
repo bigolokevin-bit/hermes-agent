@@ -171,7 +171,7 @@ describe("SystemHealthSurface", () => {
     await waitFor(() => !!container.querySelector("[data-testid='sys3-table']"), "table");
     const checked = container.querySelector("[data-testid='sys3-checked']")!;
     expect(checked.textContent).toBe("—");
-    expect(checked.getAttribute("title")).toContain("没有给出顶层采集时刻");
+    expect(checked.getAttribute("title")).toContain("上游没带采集时刻，不用本机时间顶替");
     expect(text()).not.toMatch(/2026-\d\d-\d\d \d\d:\d\d/);
   });
 

@@ -15,7 +15,7 @@
  * 1440px and up: queue + drawer side by side. Narrower (375px included) the
  * drawer stacks under the queue and nothing scrolls sideways.
  */
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
 import { RefreshCw } from "lucide-react";
 
@@ -31,10 +31,12 @@ import type { ApprovalRow } from "./model";
 import { approvalSortKeyOf, approvalsRowSearchText, sortApprovalRows, type ApprovalSortDir, type ApprovalSortKey } from "./model";
 import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel } from "./states";
 import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
+import { actionGates } from "./gates";
 import { QueueSummaryBar } from "./QueueSummaryBar";
 import { BackToList, restoreListScroll, saveListScroll } from "./BackToList";
 import { QueueCsvExport } from "./QueueCsvExport";
 import { QueueSortBar } from "./QueueSortBar";
+import { ActorBuckets } from "./ActorBuckets";
 import { ApprovalDetailBody, ApprovalRowCard } from "./views";
 
 const VERDICT_LABEL: Record<Verdict, string> = { approve: "批准", reject: "驳回" };
@@ -52,6 +54,8 @@ export function ApprovalsPendingModulePage(): ReactNode {
   const [selected, setSelected] = useState<string | null>(() => params.get("id"));
   // R60: at most one row shows its inline preview; it never touches URL/filters.
   const [previewKey, setPreviewKey] = useState<string | null>(null);
+
+
   // A row that carries no id can be listed but never opened; saying so beats
   // guessing an identifier for it.
   const [unaddressable, setUnaddressable] = useState(false);
@@ -96,13 +100,27 @@ export function ApprovalsPendingModulePage(): ReactNode {
     },
     [params, setParams, asort, adir],
   );
+  // R74: ?actor= rides the URL like the other filters; picking a bucket never
+  // refetches — the filter runs over the already-loaded rows (read port
+  // ignores actor=, measured).
+  const actor = params.get("actor");
+  const pickActor = useCallback(
+    (id: string | null) => {
+      const draft = new URLSearchParams(params);
+      if (id === null) draft.delete("actor");
+      else draft.set("actor", id);
+      setParams(draft, { replace: true });
+    },
+    [params, setParams],
+  );
   const visibleRows = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    const base = needle
+    const filtered = needle
       ? list.rows.filter((row) => approvalsRowSearchText(row).includes(needle))
       : list.rows;
-    return sortApprovalRows(base, asort, adir);
-  }, [list.rows, q, asort, adir]);
+    const byActor = actor ? filtered.filter((row) => row.approverIds.includes(actor)) : filtered;
+    return sortApprovalRows(byActor, asort, adir);
+  }, [list.rows, q, actor, asort, adir]);
 
   const openRow = useCallback(
     (row: ApprovalRow) => {
@@ -123,6 +141,47 @@ export function ApprovalsPendingModulePage(): ReactNode {
     },
     [params, setParams],
   );
+
+  // R73: roving tabindex — 焦点锚只活在本地，方向键/排序/筛选变化都不发请求。
+  const [activeRowKey, setActiveRowKey] = useState<string | null>(null);
+
+  const navigateRows = useCallback(
+    (action: "ArrowUp" | "ArrowDown" | "Home" | "End", fromKey: string) => {
+      const keys = visibleRows.map((r) => r.key);
+      if (keys.length === 0) return;
+      // 锚=事件所在行（state 可能还没提交这一帧的 onFocus），再退回页级锚。
+      const cur = keys.includes(fromKey) ? fromKey : activeRowKey;
+      const i = cur ? keys.indexOf(cur) : -1;
+      const next =
+        i < 0
+          ? 0
+          : action === "ArrowDown"
+            ? Math.min(i + 1, keys.length - 1)
+            : action === "ArrowUp"
+              ? Math.max(i - 1, 0)
+              : action === "Home"
+                ? 0
+                : keys.length - 1;
+      const k = keys[next];
+      setActiveRowKey(k);
+      (document.querySelector(`[data-testid="apr5-row-${k}"]`) as HTMLElement | null)?.focus();
+    },
+    [visibleRows, activeRowKey],
+  );
+
+  const closePreviewAndRefocus = useCallback(
+    (key: string) => {
+      setPreviewKey((current) => (current === key ? null : current));
+      (document.querySelector(`[data-testid="apr5-row-${key}"]`) as HTMLElement | null)?.focus();
+    },
+    [],
+  );
+
+  // R73: 排序/筛选/搜索导致首行变化后，焦点锚回退到第一行。
+  const firstRowKey = visibleRows.length > 0 ? visibleRows[0].key : null;
+  useEffect(() => {
+    setActiveRowKey(null);
+  }, [firstRowKey]);
 
   const send = useCallback(
     async (verdict: Verdict) => {
@@ -250,7 +309,7 @@ export function ApprovalsPendingModulePage(): ReactNode {
   return (
     <div className="flex min-w-0 w-full max-w-full flex-col gap-3" data-testid="apr5-page-pending">
       <QueueSummaryBar phase={list.phase} rows={visibleRows} scope="queue" />
-      <QueueCsvExport rows={visibleRows} tab="pending" status="pending" phase={list.phase} />
+      <QueueCsvExport rows={visibleRows} tab="pending" status="pending" phase={list.phase} sort={asort} dir={asort ? adir : null} />
       <div className="flex min-w-0 flex-wrap items-center gap-1.5" role="group" data-testid="apv8-search-group" aria-label="搜索审批">
         <input
           type="search"
@@ -276,6 +335,7 @@ export function ApprovalsPendingModulePage(): ReactNode {
       </p>
 
       <QueueSortBar phase={list.phase} sort={asort} dir={adir} loadedCount={list.rows.length} onCycle={cycleSort} />
+      <ActorBuckets rows={list.rows} phase={list.phase} actor={actor} onPick={pickActor} />
 
 
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
@@ -297,7 +357,9 @@ export function ApprovalsPendingModulePage(): ReactNode {
             size="sm"
             outlined
             onClick={list.reload}
-            disabled={list.phase === "loading" || inFlight}
+            data-testid="apv-gates-refresh"
+            title={actionGates(list.phase, list.rows.length).retry.title}
+            disabled={!actionGates(list.phase, list.rows.length).retry.enabled || inFlight}
             prefix={
               list.phase === "loading" ? (
                 <Spinner className="h-3.5 w-3.5" />
@@ -322,7 +384,7 @@ export function ApprovalsPendingModulePage(): ReactNode {
         data-testid="apv-state"
         data-phase={list.phase}
       >
-        <section className="flex min-w-0 flex-col gap-2" data-testid="apr5-list" aria-label="待处理审批队列">
+        <section className="flex min-w-0 flex-col gap-2" data-testid="apr5-list" data-apv-nav="true" aria-label="待处理审批队列">
           {list.phase === "loading" ? <LoadingPanel /> : null}
 
           {list.phase === "denied" ? <DeniedPanel failure={list.failure} /> : null}
@@ -341,7 +403,20 @@ export function ApprovalsPendingModulePage(): ReactNode {
 
           {list.phase === "ready" ? (
             <>
-              {q && visibleRows.length === 0 ? (
+              {actor && visibleRows.length === 0 ? (
+                <Card className="border-border bg-card" data-testid="apv-actor-empty">
+                  <CardContent className="min-w-0 space-y-2 p-4 text-sm">
+                    <p>该审批人下没有审批。</p>
+                    <p className="text-xs text-muted-foreground">
+                      这是当前已加载 {list.rows.length} 条里的真实结果：没有该审批人名下的行；可清空审批人筛选或换条件。
+                    </p>
+                    <Button size="sm" outlined data-testid="apv-actor-clear" onClick={() => pickActor(null)}>
+                      清空审批人筛选
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : null}
+              {q && !actor && visibleRows.length === 0 ? (
                 <Card className="border-border bg-card" data-testid="apv8-search-empty">
                   <CardContent className="min-w-0 space-y-2 p-4 text-sm">
                     <p>没有匹配的审批。</p>
@@ -364,6 +439,10 @@ export function ApprovalsPendingModulePage(): ReactNode {
                   onTogglePreview={() =>
                     setPreviewKey((current) => (current === row.key ? null : row.key))
                   }
+                  active={(activeRowKey ?? (visibleRows.length > 0 ? visibleRows[0].key : null)) === row.key}
+                  onActivate={() => setActiveRowKey(row.key)}
+                  onNavKey={navigateRows}
+                  onClosePreview={() => closePreviewAndRefocus(row.key)}
                 />
               ))}
 

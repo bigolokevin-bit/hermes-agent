@@ -23,6 +23,7 @@ import { CapabilityCopy } from "../capabilities/listCopy";
 import type { CapabilityOutputState } from "../capabilities/outputState";
 import { applySort, ariaSort, cycleSort, readSort, sortRows, type SortKey } from "../capabilities/sorting";
 import { useEnsureTabParam } from "../capabilities/tabParam";
+import { captureTabView, focusTabButton, noteTabMount, restoreTabView } from "../capabilities/tabView";
 import "./skills.css";
 
 type State =
@@ -129,6 +130,7 @@ export function SkillsPage() {
   const [openSkill, setOpenSkill] = useState<string | null>(() => cachedSkillsOpen);
   const [rovingKey, setRovingKey] = useState<string | null>(null);
   const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
+  const rootRef = useRef<HTMLElement | null>(null);
   const fixture = currentFixtureState();
   const forced = forcedState(fixture, currentFixtureRid());
   const retry = () => {
@@ -139,6 +141,24 @@ export function SkillsPage() {
   useEffect(() => {
     cachedSkillsOpen = openSkill;
   }, [openSkill]);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (noteTabMount("skills")) {
+      restoreTabView("skills", root);
+      focusTabButton("skills");
+    }
+    const capture = () => {
+      if (rootRef.current) {
+        captureTabView("skills", rootRef.current, '[data-testid^="skl4-row-"]');
+      }
+    };
+    window.addEventListener("scroll", capture, true);
+    return () => {
+      capture();
+      window.removeEventListener("scroll", capture, true);
+    };
+  }, []);
 
   useEffect(() => {
     if (!openSkill) return;
@@ -288,7 +308,8 @@ export function SkillsPage() {
           : { kind: "ready" };
 
   return (
-    <section className="skl4-page" data-testid="skl4-page" data-fixture={fixture ?? undefined} data-cap-state={capState}>
+    <section ref={rootRef} className="skl4-page capH-scroll" data-testid="skl4-page" data-fixture={fixture ?? undefined} data-cap-state={capState}>
+      <span className="sr-only" data-testid="capH-page-skills" />
       <CapabilityCounts />
       {page.k === "ready" ? <CapabilitySearch value={q} total={page.rows.length} onChange={setQ} /> : null}
       <header className="skl4-head">
@@ -321,7 +342,7 @@ export function SkillsPage() {
 
       {page.k === "loading" ? (
         <Card className="capF-state"><CardContent className="space-y-3 p-4" data-testid="skl4-loading" aria-busy="true">
-          <span className="sr-only" data-testid="capF-state-loading" />
+          <span className="sr-only" data-testid="capF-state-loading" aria-live="polite">正在读取技能…</span>
           <p className="skl4-note">正在读取技能…</p>
           {[1, 2, 3, 4].map((item) => <div key={item} className="skl4-skeleton" />)}
         </CardContent></Card>
@@ -330,9 +351,9 @@ export function SkillsPage() {
       {page.k === "empty" ? (
         <Card className="capF-state"><CardContent className="space-y-2 p-8 text-center" data-testid="skl4-empty">
           <span className="sr-only" data-testid="cap9-state-empty" />
-          <span className="sr-only" data-testid="capF-state-empty" />
+          <span className="sr-only" data-testid="capF-state-empty" aria-live="polite">读口已接入，本次返回 0 条；台账没有返回任何技能，这里不补样例行。</span>
           <p className="skl4-empty-title">还没有已登记的技能</p>
-          <p className="skl4-note">读口已接入，本次返回 0 条；台账没有返回任何技能，这里不补样例行。</p>
+          <p className="skl4-note" data-testid="capF-state-empty-text">读口已接入，本次返回 0 条；台账没有返回任何技能，这里不补样例行。</p>
         </CardContent></Card>
       ) : null}
 
@@ -341,7 +362,9 @@ export function SkillsPage() {
           {(page.status === 403 || page.status === 404) ? (
             <span className="sr-only" data-testid={page.status === 403 ? "cap9-state-denied" : "cap9-state-unavailable"} />
           ) : null}
-          <span className="sr-only" data-testid={unavailable ? "capF-state-unavailable" : "capF-state-error"} />
+          <span className="sr-only" data-testid={unavailable ? "capF-state-unavailable" : "capF-state-error"} aria-live="polite">
+            {unavailable ? page.message : `技能列表暂时无法读取：${page.message}`}
+          </span>
           <p className="skl4-error-title">{unavailable ? "技能读口未接入" : "技能列表暂时无法读取"}</p>
           <p className="skl4-note" title={page.gap ?? undefined}>{page.message}</p>
           <RequestId id={page.requestId} />
@@ -435,7 +458,7 @@ export function SkillsPage() {
                             updatedReason={row.updatedAtReason}
                             endpoint="/agent-api/api/skills"
                             asOf={page.asOf}
-                            asOfReason={page.asOfReason ?? ""}
+                            asOfReason=""
                             asOfTitle={page.asOfTitle}
                             testid="cap7-detail-skills"
                           />
