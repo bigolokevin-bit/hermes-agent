@@ -9,8 +9,8 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 1612,
-    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 北京时间 2026-11-20 17:44 近 24 小时 近 7 天 近",
+    "textLen": 1611,
+    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 北京时间 2026-11-20 18:12 近 24 小时 近 7 天 近",
     "hasMainEl": true,
     "ok": true
   },
@@ -129,13 +129,13 @@
     {
       "route": "#/capabilities",
       "viewport": "1440",
-      "chars": 357,
+      "chars": 339,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities",
       "viewport": "375",
-      "chars": 357,
+      "chars": 339,
       "hasMainEl": true
     },
     {
@@ -165,13 +165,13 @@
     {
       "route": "#/capabilities?tab=tools",
       "viewport": "1440",
-      "chars": 458,
+      "chars": 417,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=tools",
       "viewport": "375",
-      "chars": 458,
+      "chars": 417,
       "hasMainEl": true
     },
     {
@@ -339,7 +339,7 @@
     {
       "route": "#/identity?tab=roles",
       "viewport": "375",
-      "chars": 194,
+      "chars": 138,
       "hasMainEl": true
     },
     {
@@ -369,7 +369,7 @@
     {
       "route": "#/knowledge?tab=citations",
       "viewport": "1440",
-      "chars": 359,
+      "chars": 707,
       "hasMainEl": true
     },
     {
@@ -393,7 +393,7 @@
     {
       "route": "#/knowledge?tab=ingest",
       "viewport": "1440",
-      "chars": 939,
+      "chars": 396,
       "hasMainEl": true
     },
     {
@@ -585,7 +585,7 @@
     {
       "route": "#/work",
       "viewport": "1440",
-      "chars": 1956,
+      "chars": 205,
       "hasMainEl": true
     },
     {
@@ -597,7 +597,7 @@
     {
       "route": "#/work?tab=board&view=cron",
       "viewport": "1440",
-      "chars": 205,
+      "chars": 1956,
       "hasMainEl": true
     },
     {
@@ -634,7 +634,7 @@
   "consoleErrorsObservedByShots": 0,
   "consoleErrorRoutesObservedByShots": [],
   "ceAuthority": "login-state",
-  "routesWithEnvOnlyConsoleErrors": 26,
+  "routesWithEnvOnlyConsoleErrors": 25,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
   "overflowing": [],
   "driver": {
@@ -642,11 +642,11 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "608148d3",
+  "headHash": "bbb13340",
   "exitCode": 0,
-  "entry": "assets/index-BabNMdVV.js",
-  "entrySha256": "dccf2eaac896d1f91156028dccd2f1409e9cccbad42dddddedee150857a91ad2",
-  "entryBytes": 167490,
-  "servedEntryBefore": "index-BabNMdVV.js",
-  "servedEntryAfter": "index-BabNMdVV.js"
+  "entry": "assets/index--5QIE39w.js",
+  "entrySha256": "9be3cba8ec181eca5316e34f41d7074d638d0054277982177ea4bd490a6827f6",
+  "entryBytes": 167498,
+  "servedEntryBefore": "index--5QIE39w.js",
+  "servedEntryAfter": "index--5QIE39w.js"
 }
