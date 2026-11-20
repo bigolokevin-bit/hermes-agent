@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api-error";
 import { csvTimestamp } from "@/modules/employees/EmployeesModulePage";
+import { pickOption, selectText, selectValue } from "@/shell/selectHarness";
 
 // The ui barrel pulls in .webp assets that node cannot load; stub the four
 // primitives the page uses (deep-path imports would change product code).
@@ -166,18 +167,14 @@ describe("EmployeesModulePage list depth", () => {
   it("the lifecycle select queries and stays in the URL across refresh", async () => {
     fetchJSON.mockImplementation(() => Promise.resolve(rowsBody));
     await render("/employees");
-    const select = q("employees-lifecycle") as HTMLSelectElement;
-    await act(async () => {
-      select.value = "paused";
-      select.dispatchEvent(new Event("change", { bubbles: true }));
-    });
-    await act(async () => {});
+    await pickOption("employees-lifecycle", "暂停");
     expect(lastSearch()).toContain("lifecycle=paused");
     const urls = fetchJSON.mock.calls.map((c) => String(c[0]));
     expect(urls.some((u) => u.includes("lifecycleState=paused"))).toBe(true);
     // A fresh mount of the same URL (refresh) starts from it again.
     await render("/employees?lifecycle=paused");
-    expect((q("employees-lifecycle") as HTMLSelectElement).value).toBe("paused");
+    expect(selectValue("employees-lifecycle")).toBe("paused");
+    expect(selectText("employees-lifecycle")).toContain("暂停");
   });
 
   it("forced ?state=error&rid= shows that request id, copyable, with retry (R39)", async () => {
@@ -622,11 +619,8 @@ describe("R58 pagination and honest total (emp-list-page-*)", () => {
     });
     await act(async () => {});
     urls.length = 0;
-    const select = q("employees-lifecycle") as HTMLSelectElement;
-    const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set;
+    await pickOption("employees-lifecycle", "在岗");
     await act(async () => {
-      setter?.call(select, "active");
-      select.dispatchEvent(new Event("change", { bubbles: true }));
       flushTimers();
     });
     await act(async () => {});

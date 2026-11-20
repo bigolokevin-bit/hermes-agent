@@ -930,7 +930,7 @@ function UsageZone({ empId, nonce, onRetry }: { empId: string; nonce: number; on
   return (
     <Card data-testid="ed10-usage">
       <CardContent className="p-0">
-        <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,0.9fr)_minmax(0,1.1fr)] gap-2 border-b border-border px-4 py-2 text-xs uppercase tracking-wide text-muted-foreground sm:grid">
+        <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,0.9fr)_minmax(0,1.1fr)] gap-2 border-b border-border px-4 py-2 text-xs text-muted-foreground sm:grid">
           <span>周期</span>
           <span title="运行数取 /api/run-stats（employeeId 白名单参数，实测真过滤）。">运行数</span>
           <span title="实扣成本只认真实扣费账本 /api/budget-usage 的 costUsd：真 0 写 $0.00，缺行写「—」。">实扣成本 USD</span>

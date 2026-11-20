@@ -71,6 +71,7 @@ import {
   windowBounds,
   type FilterWindowKey,
 } from "./window";
+import { ConsoleSelect } from "@/shell/ConsoleSelect";
 
 /**
  * The 时间窗 filter is a set of named windows, not two date inputs: the choice
@@ -294,26 +295,23 @@ export function AuditFilterBar({
 
       <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="aud01-filter-type">
         <span className="text-muted-foreground">事件类型</span>
-        <select
+        <ConsoleSelect
           id="aud01-filter-type"
           data-testid="aud01-filter-type"
           className="h-8 min-w-0 max-w-56 rounded-md border border-border bg-transparent px-2 text-sm"
           value={eventType}
-          onChange={(event) => onEventTypeChange(event.target.value)}
-        >
-          <option value="">全部事件类型</option>
-          {eventType && !choices.some((item) => item.value === eventType) ? (
+          onChange={(next) => onEventTypeChange(next)}
+          options={[
+            { value: "", label: "全部事件类型" },
             // audD: a bucket hands over the code it counted under, which may
-            // be one the sampled list never carried. The select must show it
+            // be one the sampled list never carried. The control must show it
             // instead of pretending the filter is off.
-            <option value={eventType}>按地址带入的类型</option>
-          ) : null}
-          {choices.map((item) => (
-            <option key={item.value} value={item.value}>
-              {item.label}
-            </option>
-          ))}
-        </select>
+            ...(eventType && !choices.some((item) => item.value === eventType)
+              ? [{ value: eventType, label: "按地址带入的类型" }]
+              : []),
+            ...choices,
+          ]}
+        />
       </label>
 
       {/* aud9: 操作者与资源都是可用控件，但可用范围写在控件下方明说。
@@ -323,27 +321,24 @@ export function AuditFilterBar({
           人话标签上屏，机器句柄只进 option 的 value 与地址栏。 */}
       <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="aud01-filter-operator">
         <span className="text-muted-foreground">操作者</span>
-        <select
+        <ConsoleSelect
           id="aud01-filter-operator"
           data-testid="aud01-filter-operator"
           className="h-8 min-w-0 max-w-44 rounded-md border border-border bg-transparent px-2 text-sm"
           value={actor}
-          onChange={(event) => onActorChange(event.target.value)}
+          onChange={(next) => onActorChange(next)}
           title="GAP-06：服务端参数 actorId 实测生效（2026-11-19 探针 #11：200，50/50 行命中），但它只吃机器句柄，本环境没有可展示真名的操作者目录，故选项取自本页已读到的操作者"
-        >
-          <option value="">全部操作者</option>
-          {actor && !actorChoices.some((item) => item.handle === actor) ? (
+          options={[
+            { value: "", label: "全部操作者" },
             // an address-borne handle nothing on this page answers is still a
-            // handle the service was asked about — the select must not silently
-            // drop it, or the address and the screen would disagree.
-            <option value={actor}>按地址带入的操作者</option>
-          ) : null}
-          {actorChoices.map((item) => (
-            <option key={item.handle} value={item.handle}>
-              {item.label}
-            </option>
-          ))}
-        </select>
+            // handle the service was asked about — the control must not
+            // silently drop it, or the address and the screen would disagree.
+            ...(actor && !actorChoices.some((item) => item.handle === actor)
+              ? [{ value: actor, label: "按地址带入的操作者" }]
+              : []),
+            ...actorChoices.map((item) => ({ value: item.handle, label: item.label })),
+          ]}
+        />
       </label>
 
       {/* aud9: 资源也做成可用控件。`resourceId` 只被该路由的 400 体点名为七个
@@ -352,24 +347,21 @@ export function AuditFilterBar({
           aud9-scope-note 上，不假装它是服务端整窗筛选。 */}
       <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="aud8-filter-resource">
         <span className="text-muted-foreground">资源</span>
-        <select
+        <ConsoleSelect
           id="aud8-filter-resource"
           data-testid="aud8-filter-resource"
           className="h-8 min-w-0 max-w-44 rounded-md border border-border bg-transparent px-2 text-sm"
           value={resource}
-          onChange={(event) => onResourceChange(event.target.value)}
+          onChange={(next) => onResourceChange(next)}
           title="resourceId 由该路由的 400 体点名为可接受筛选，但本环境未单独实测其过滤效果，故同时在本页已加载的行里本地匹配"
-        >
-          <option value="">全部资源</option>
-          {resource && !resourceChoices.some((item) => item.handle === resource) ? (
-            <option value={resource}>按地址带入的资源</option>
-          ) : null}
-          {resourceChoices.map((item) => (
-            <option key={item.handle} value={item.handle}>
-              {item.label}
-            </option>
-          ))}
-        </select>
+          options={[
+            { value: "", label: "全部资源" },
+            ...(resource && !resourceChoices.some((item) => item.handle === resource)
+              ? [{ value: resource, label: "按地址带入的资源" }]
+              : []),
+            ...resourceChoices.map((item) => ({ value: item.handle, label: item.label })),
+          ]}
+        />
       </label>
     </div>
   );
@@ -736,11 +728,11 @@ function AuditPageSizeSelector({
     <>
       <label className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground" htmlFor="audH-page-size">
         每页
-        <select
+        <ConsoleSelect
           id="audH-page-size"
           data-testid="audH-page-size"
           aria-label="每页条数"
-          className="h-8 min-w-0 rounded-md border border-border bg-transparent px-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+          className="h-8 min-w-0 rounded-md border border-border bg-transparent px-2 text-sm"
           value={String(effective)}
           disabled={disabled}
           title={
@@ -752,15 +744,12 @@ function AuditPageSizeSelector({
                   ? clampedNote
                   : `改每页条数会重新读取一次，并回到第 1 页（当前请求 limit=${asked}）`
           }
-          onChange={(event) => onPick(Number(event.target.value))}
-        >
-          {PAGE_SIZE_CHOICES.map((size) => (
-            <option key={size} value={String(size)}>
-              {`${size} 条`}
-            </option>
-          ))}
-          {offered ? null : <option value={String(effective)}>{`服务带回 ${effective} 条`}</option>}
-        </select>
+          onChange={(next) => onPick(Number(next))}
+          options={[
+            ...PAGE_SIZE_CHOICES.map((size) => ({ value: String(size), label: `${size} 条` })),
+            ...(offered ? [] : [{ value: String(effective), label: `服务带回 ${effective} 条` }]),
+          ]}
+        />
       </label>
       {note ? (
         <span className="min-w-0 break-words text-xs text-warning" data-testid="audH-clamp-note">

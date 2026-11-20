@@ -35,6 +35,7 @@ import {
   type TaskRow,
 } from "./tasksBoard";
 import { TaskCreateForm } from "./TaskCreateForm";
+import { ConsoleSelect } from "@/shell/ConsoleSelect";
 
 /** 组内排序键：优先级高→低，同级按更新时间新→旧；未知按最后。 */
 const PRIORITY_RANK: Record<string, number> = { high: 0, urgent: 0, normal: 1, low: 2 };
@@ -81,7 +82,7 @@ function BoardSkeleton() {
 function DetailField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="min-w-0">
-      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</dt>
+      <dt className="text-[11px] text-muted-foreground">{label}</dt>
       <dd className="mt-0.5 min-w-0 break-words text-sm">{children}</dd>
     </div>
   );
@@ -493,40 +494,39 @@ export function TasksBoardModulePage() {
         * back. Priority is refused until the server accepts it — no fake
         * client-side filtering. */}
       <div className="flex flex-wrap items-center gap-2 text-xs" role="group" aria-label="任务筛选" data-testid="tsk4-filter">
-        <select
+        <ConsoleSelect
           aria-label="按状态筛选"
           data-testid="tsk4-filter-status"
           className="min-w-0 rounded-sm border border-white/15 bg-transparent px-2 py-1 text-xs"
           value={fStatus ?? ""}
-          onChange={(e) => applyFilter({ status: e.target.value === "" ? null : e.target.value })}
-        >
-          <option value="">状态：按看板列展示</option>
-          <option value="all">全部（单查询聚合）</option>
-          {BOARD_STATUSES.map((st) => (
-            <option key={st} value={st}>{statusLabel(st)}</option>
-          ))}
-        </select>
-        <select
+          onChange={(next) => applyFilter({ status: next === "" ? null : next })}
+          options={[
+            { value: "", label: "状态：按看板列展示" },
+            { value: "all", label: "全部（单查询聚合）" },
+            ...BOARD_STATUSES.map((st) => ({ value: st, label: statusLabel(st) })),
+          ]}
+        />
+        <ConsoleSelect
           aria-label="按负责人筛选"
           data-testid="tsk4-filter-assignee"
           className="min-w-0 rounded-sm border border-white/15 bg-transparent px-2 py-1 text-xs"
           value={fAssignee ?? ""}
-          onChange={(e) => applyFilter({ assignee: e.target.value === "" ? null : e.target.value })}
-        >
-          <option value="">负责人：不限</option>
-          {assigneeOptions.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
-        <select
+          onChange={(next) => applyFilter({ assignee: next === "" ? null : next })}
+          options={[
+            { value: "", label: "负责人：不限" },
+            ...assigneeOptions,
+          ]}
+        />
+        <ConsoleSelect
           aria-label="按优先级筛选"
           data-testid="tsk4-filter-priority"
           className="min-w-0 rounded-sm border border-white/15 bg-transparent px-2 py-1 text-xs opacity-60"
+          value=""
+          onChange={() => undefined}
           disabled
           title="服务端优先级筛选尚未开放：带上它后台会返回未过滤的全量，为避免假过滤此处暂不可用"
-        >
-          <option value="">优先级：暂不可筛</option>
-        </select>
+          options={[{ value: "", label: "优先级：暂不可筛" }]}
+        />
         <Button
           size="sm"
           outlined
@@ -578,7 +578,7 @@ export function TasksBoardModulePage() {
           ) : (
             <Card data-testid="tsk4-filter-list">
               <CardContent className="p-0">
-                <div className="hidden grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,0.7fr)_minmax(0,0.9fr)_minmax(0,1.1fr)_minmax(0,0.8fr)] gap-2 border-b border-border px-4 py-2 text-xs uppercase tracking-wide text-muted-foreground sm:grid">
+                <div className="hidden grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,0.7fr)_minmax(0,0.9fr)_minmax(0,1.1fr)_minmax(0,0.8fr)] gap-2 border-b border-border px-4 py-2 text-xs text-muted-foreground sm:grid">
                   <span>任务</span>
                   <span>负责人</span>
                   <span>优先级</span>

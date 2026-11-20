@@ -1,0 +1,112 @@
+/**
+ * ConsoleButton — the console's three-tier button scale, hand-drawn.
+ *
+ * WHY: the design-system `Button` bakes `text-display … tracking-[0.2em]`
+ * (plus `tracking-[0.15em]` at size sm) into its base classes. That is a
+ * display-face letter-spacing meant for short Latin eyebrows; on Chinese
+ * labels it reads as 「重 试」/「刷 新」. Modules keep the library control (the
+ * global rule in `src/index.css` zeroes its letter spacing instead); this is
+ * the replacement for the surfaces where the console owns the chrome: the
+ * shell's forced-state actions, the load-error retry, and the page-level
+ * 刷新/重试 buttons.
+ *
+ * Tiers, mapped onto the shell token system (`src/shell/tokens.css`) so the
+ * component stays inside the zero-UI-import discipline and reads correctly on
+ * both the console shell and the pages:
+ *   primary   — solid emphasis: the palette's strongest fill, foreground
+ *               reversed onto it (the shell has no `--accent-solid`; 值班台
+ *               hierarchy is carried by fill vs. outline, not by hue)
+ *   secondary — outline: `var(--panel)` fill with `var(--line)` border, which
+ *               is what the shell's forced-state buttons already looked like
+ *   ghost     — no fill, no border; a tinted background only on hover
+ *
+ * Presentation only: it owns no state beyond the browser's own button
+ * behaviour, and `letter-spacing: normal` is set inline so no descendant
+ * utility can reintroduce the display tracking on CJK copy.
+ */
+
+import type { ReactNode } from "react";
+
+export type ConsoleButtonVariant = "primary" | "secondary" | "ghost";
+
+export interface ConsoleButtonProps {
+  variant?: ConsoleButtonVariant;
+  size?: "sm" | "md";
+  children: ReactNode;
+  onClick?: () => void;
+  type?: "button" | "submit";
+  disabled?: boolean;
+  title?: string;
+  className?: string;
+  "data-testid"?: string;
+  "aria-label"?: string;
+}
+
+const SIZES: Record<"sm" | "md", string> = {
+  sm: "px-3 py-1 text-xs",
+  md: "px-3.5 py-1.5 text-sm",
+};
+
+export function ConsoleButton({
+  variant = "secondary",
+  size = "sm",
+  children,
+  onClick,
+  type = "button",
+  disabled = false,
+  title,
+  className,
+  "data-testid": testId,
+  "aria-label": ariaLabel,
+}: ConsoleButtonProps) {
+  const tier = {
+    primary: {
+      style: {
+        background: "var(--fg)",
+        borderColor: "transparent",
+        color: "var(--bg)",
+        fontWeight: 600,
+      },
+      hover: "hover:opacity-90",
+    },
+    secondary: {
+      style: {
+        background: "var(--panel)",
+        borderColor: "var(--line)",
+        color: "var(--fg)",
+      },
+      hover: "hover:bg-[var(--panel-2)]",
+    },
+    ghost: {
+      style: {
+        background: "transparent",
+        borderColor: "transparent",
+        color: "var(--fg-2)",
+      },
+      hover: "hover:bg-accent/60",
+    },
+  }[variant];
+
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      data-testid={testId}
+      aria-label={ariaLabel}
+      className={[
+        "inline-flex items-center justify-center gap-1.5 rounded-sm border",
+        "tracking-normal",
+        SIZES[size],
+        tier.hover,
+        "focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2",
+        disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer",
+        className ?? "",
+      ].join(" ")}
+      style={{ ...tier.style, letterSpacing: "normal" }}
+    >
+      {children}
+    </button>
+  );
+}
