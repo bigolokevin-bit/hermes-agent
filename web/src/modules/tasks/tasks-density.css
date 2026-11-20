@@ -1,0 +1,14 @@
+/* UI-A 2026-11-21: table density on /work (board cards - no HTML table).
+ * Kanban rows are div[data-testid^="tsk4-card-"]; main board rhythm 40px.
+ * Sub-surface: filter list rows tsk4-filter-row-* get the compact 36 tier.
+ * Numeric right-align: N/A - board cells are status/next-action/owner text,
+ * no count/money columns (verified by testid scan). No zebra source.
+ * 375px: lanes already scroll inside their column containers; cards have no
+ * fixed px widths, so rows wrap without overflow. */
+[data-testid^="tsk4-card-"] {
+  min-height: var(--table-row-h);
+}
+
+[data-testid="tsk4-filter-list"] [data-testid^="tsk4-filter-row-"] {
+  min-height: var(--table-row-h-compact);
+}
