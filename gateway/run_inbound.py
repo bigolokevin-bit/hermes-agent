@@ -249,17 +249,19 @@ class GatewayInboundMixin(GatewayInboundHooksMixin, GatewayInboundTranscriptionM
                 self._admit_bot_message_for_source(source) and self._admit_bot_chain(event)):
             return None
         # Seakoi patch (S7b-2): fire-and-forget copy of admitted Feishu messages to C1.
-        # P1-2 fix: the durable-FIFO drain re-enters ``_handle_message`` for the SAME admitted
-        # message with ``executing_admission`` set (session_ingress), so this pass re-ran the
-        # forward a second time per message — the observed double POST (C1 answered the replay
-        # with duplicate=true). One POST per admitted message = intake pass only; genuine
-        # re-admissions of a message_id still POST and rely on C1's dedupeKey, never skipped.
+        # V1 fix: a busy session admits only on the durable-FIFO drain re-entry, which arrives
+        # with ``executing_admission`` set — so the old intake-only guard skipped the forward
+        # there and the bridge was never called. One POST per admitted message is now pinned by
+        # a per-event one-shot latch, set before any await: intake and drain paths forward at
+        # most once, a drain-only admission still forwards. Genuine re-admissions carry a fresh
+        # event object and still POST, relying on C1's dedupeKey, never skipped.
         # C1 authoritative gate (SEAKOI_C1_AUTHORITATIVE, default off): on Feishu groups the
-        # intake pass bounded-waits for the first POST verdict; a 2xx means C1 owns the reply
+        # admitting pass bounded-waits for the first POST verdict; a 2xx means C1 owns the reply
         # so the local turn is dropped (return None). Everything else keeps the local turn
         # (fail-open) — a message is never dropped silently. Flag off: the call below is the
         # same 2-arg fire-and-forget as before.
-        if not executing_admission.get():
+        if not getattr(event, "_c1_forwarded", False):
+            event._c1_forwarded = True
             from gateway.channel_event_bridge import (
                 authoritative_gate_active,
                 forward_and_await_verdict,
