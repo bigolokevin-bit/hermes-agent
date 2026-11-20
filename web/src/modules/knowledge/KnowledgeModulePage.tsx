@@ -272,6 +272,11 @@ interface SurfaceProps<T> {
    * 与「真 0」各挂一个机器可判的 knD-state-* 标记（可见正文一字不改，403 与 404 同体）。
    */
   honestState?: boolean;
+  /**
+   * R62 — 三面统一四态的机器可判探针：`knN-state-*`（含 empty 的「真 0」与「筛空」之分）、
+   * `knN-error-*`/`knN-rid-*`/`knN-retry-*`。全部 display:none、零可见变化（knD-marker 同手法）。
+   */
+  probe?: { id: string; noMatch: boolean };
 }
 
 /** The four states, once, for every surface on the page. */
@@ -285,6 +290,7 @@ function Surface<T>({
   unwiredHead = "未接入",
   unwiredHuman = UNWIRED_HUMAN,
   honestState = false,
+  probe,
 }: SurfaceProps<T>): ReactNode {
   const value = state.kind === "ready" ? state.value : null;
   const stamp = value?.stamp ?? null;
@@ -298,6 +304,22 @@ function Surface<T>({
       : value && value.rows.length === 0
         ? "knD-state-empty"
         : null;
+  // R62 — knN 探针读数：empty 分「真 0」与「筛空」；错误族（未接入/无权/登录失效/失败）
+  // 各挂 error/retry 探针，rid 只在真有请求编号时挂。全部零可见变化。
+  const knnState =
+    state.kind === "ready"
+      ? value && value.rows.length === 0
+        ? probe && probe.noMatch
+          ? "no-match"
+          : "empty"
+        : "ready"
+      : state.kind === "unwired"
+        ? state.denied
+          ? "denied"
+          : "unavailable"
+        : state.kind;
+  const knnRid = state.kind === "unwired" || state.kind === "error" ? state.requestId : null;
+  const knnIsError = state.kind === "unwired" || state.kind === "error" || state.kind === "login";
   // A read that DID give a collection time says nothing else about time: the reason
   // line only appears when the time is genuinely missing.
   const stampReason = value
@@ -323,6 +345,36 @@ function Surface<T>({
       </p>
 
       {honestMarker ? <span data-testid={honestMarker} className="knD-marker" aria-hidden="true" /> : null}
+
+      {probe ? (
+        <>
+          <span
+            data-testid={`knN-state-${probe.id}`}
+            data-knn-state={knnState}
+            className="knD-marker"
+            aria-hidden="true"
+          />
+          {knnIsError ? (
+            <>
+              <span
+                data-testid={`knN-error-${probe.id}`}
+                data-knn-kind={state.kind}
+                className="knD-marker"
+                aria-hidden="true"
+              />
+              <span data-testid={`knN-retry-${probe.id}`} className="knD-marker" aria-hidden="true" />
+              {knnRid !== null ? (
+                <span
+                  data-testid={`knN-rid-${probe.id}`}
+                  data-knn-rid={knnRid}
+                  className="knD-marker"
+                  aria-hidden="true"
+                />
+              ) : null}
+            </>
+          ) : null}
+        </>
+      ) : null}
 
       {state.kind === "loading" ? <Skeleton testid={`${testid}-loading`} /> : null}
 
@@ -1029,15 +1081,18 @@ function SpacesSurface({
         testid="knw5-spaces"
         source="spaces"
         honestState
+        probe={{ id: "spaces", noMatch: needle !== "" }}
         state={surface.state.kind === "ready" ? { kind: "ready", value: { ...surface.state.value, rows: shown } } : surface.state}
         onRetry={surface.retry}
         unwiredHead={SPACES_UNWIRED_HEAD}
         unwiredHuman={SPACES_UNWIRED_HUMAN}
         empty={() =>
           needle === "" ? (
-            <p>当前没有读到知识空间。接口已响应，但列表为空；这不等于「没有空间」，也不写 0 个。</p>
+            <p data-testid="knN-empty-text-spaces" data-knn-empty="empty">
+              当前没有读到知识空间。接口已响应，但列表为空；这不等于「没有空间」，也不写 0 个。
+            </p>
           ) : (
-            <p>
+            <p data-testid="knN-empty-text-spaces" data-knn-empty="no-match">
               没有匹配的空间：已加载的 {loaded.length} 个空间里没有名字或来源含「{text.trim()}」的空间。
               这是本地筛选的结果，不代表库里没有这样的空间。
               <button type="button" className="knw5-drill" data-testid="kn8-global-empty-clear" onClick={clear}>
@@ -1057,39 +1112,52 @@ function SpacesSurface({
         )}
       />
       </div>
-      {surface.state.kind === "ready" ? (
-        <div className="knI-row" data-testid="knI-row">
-          <Button
-            size="sm"
-            outlined
-            className="knI-copy"
-            onClick={copySpaces}
-            disabled={shown.length === 0}
-            title={
-              shown.length === 0
+      {/* R62 — 复制条四态常在：disabled + 原因 title，不再随状态出现/消失（这也让骨架切换不跳条）。 */}
+      <div className="knI-row" data-testid="knI-row">
+        <Button
+          size="sm"
+          outlined
+          className="knI-copy"
+          onClick={copySpaces}
+          disabled={surface.state.kind !== "ready" || shown.length === 0}
+          title={
+            surface.state.kind !== "ready"
+              ? surface.state.kind === "loading"
+                ? "空间列表还在读取，还没有可复制的内容。"
+                : surface.state.kind === "unwired"
+                  ? "空间列表没读到（读口未接入或没有权限），没有可复制的内容。"
+                  : surface.state.kind === "login"
+                    ? "登录状态已经失效，这次没有读到空间列表，没有可复制的内容。"
+                    : "这次没有读到空间列表，没有可复制的内容。"
+              : shown.length === 0
                 ? "当前没有可复制的空间"
                 : "复制当前屏上的可见行：空间名 | 文档数 | 最近更新 | 短码。文本首行写明这份清单只覆盖已加载的空间，不冒充全库；屏上数据，不会再发请求。"
-            }
-            data-testid="knI-copy"
-          >
-            复制清单
-          </Button>
-          <span className="knw5-sub" data-testid="knI-lines">{shown.length} 行</span>
-          <span className="knI-status" data-testid="knI-copy-status" aria-live="polite">
-            {copyAct === "copied" ? `已复制 ${shown.length} 行` : copyAct === "failed" ? "复制失败，已展开可选文本，可手动复制" : ""}
-          </span>
-          {copyAct === "failed" ? (
-            <textarea
-              className="knI-fallback"
-              data-testid="knI-copy-fallback"
-              aria-label="手动复制空间清单文本"
-              readOnly
-              rows={Math.min(8, shown.length + 3)}
-              value={copyText}
-            />
-          ) : null}
-        </div>
-      ) : null}
+          }
+          data-testid="knI-copy"
+        >
+          复制清单
+        </Button>
+        <span
+          className="knw5-sub"
+          data-testid="knI-lines"
+          title={shown.length > 0 ? undefined : "没有可数的行时给「—」，不写 0 冒充空集。"}
+        >
+          {surface.state.kind === "ready" && shown.length > 0 ? `${shown.length} 行` : "—"}
+        </span>
+        <span className="knI-status" data-testid="knI-copy-status" aria-live="polite">
+          {copyAct === "copied" ? `已复制 ${shown.length} 行` : copyAct === "failed" ? "复制失败，已展开可选文本，可手动复制" : ""}
+        </span>
+        {copyAct === "failed" ? (
+          <textarea
+            className="knI-fallback"
+            data-testid="knI-copy-fallback"
+            aria-label="手动复制空间清单文本"
+            readOnly
+            rows={Math.min(8, shown.length + 3)}
+            value={copyText}
+          />
+        ) : null}
+      </div>
     </>
   );
 }
@@ -1204,6 +1272,7 @@ function DocPreviewDrawer({
   const [copyState, setCopyState] = useState<{ kind: "copied" | "failed"; sig: string } | null>(null);
   const copyAct = copyState !== null && copyState.sig === copyText ? copyState.kind : "idle";
   const copyMeta = () => {
+    if (row === null) return; // R62 — 元信息没读到就不复制：不给一串「—」冒充内容
     if (!navigator.clipboard?.writeText) {
       setCopyState({ kind: "failed", sig: copyText });
       return;
@@ -1355,7 +1424,12 @@ function DocPreviewDrawer({
             outlined
             className="knL-copy-meta"
             onClick={copyMeta}
-            title="复制这份文档在抽屉里的元信息：文档名、所属空间、类型、大小、更新、文档短码。屏上数据，不会再发请求。"
+            disabled={row === null}
+            title={
+              row === null
+                ? "这条文档不在已加载的列表里，抽屉里没有读到的元信息，没有可复制的内容。"
+                : "复制这份文档在抽屉里的元信息：文档名、所属空间、类型、大小、更新、文档短码。屏上数据，不会再发请求。"
+            }
             data-testid="knL-copy-meta"
           >
             复制元信息
@@ -1776,6 +1850,7 @@ function SpaceDetailSurface({
         testid="kn3-docs"
         source="space-docs"
         honestState
+        probe={{ id: "space-docs", noMatch: filterKey !== "" }}
         state={
           surface.state.kind === "ready" && shownValue ? { kind: "ready", value: shownValue } : surface.state
         }
@@ -1784,11 +1859,16 @@ function SpaceDetailSurface({
         unwiredHuman={SPACE_DOC_UNWIRED_HUMAN}
         empty={() =>
           filterKey === "" ? (
-            <p>该空间暂无文档。接口已响应，这份列表里没有文档；这只说明这份回答是空的，不下别的结论，也不给数量。</p>
+            <p data-testid="knN-empty-text-space-docs" data-knn-empty="empty">
+              该空间暂无文档。接口已响应，这份列表里没有文档；这只说明这份回答是空的，不下别的结论，也不给数量。
+            </p>
           ) : (
-            <p>
+            <p data-testid="knN-empty-text-space-docs" data-knn-empty="no-match">
               本地筛选没有匹配：这份列表里有 {loaded} 份文档，按「{filter.trim()}」一条都没留下。
               这是筛完的结果，不是空间没有文档。
+              <button type="button" className="knw5-drill" data-testid="kn3-docs-empty-clear" onClick={() => setFilter("")}>
+                清空筛选
+              </button>
             </p>
           )
         }
@@ -1880,41 +1960,54 @@ function SpaceDetailSurface({
           </>
         )}
       />
-      {surface.state.kind === "ready" ? (
-        <div className="knF-row" data-testid="knF-row">
-          <Button
-            size="sm"
-            outlined
-            className="knF-copy"
-            onClick={copyList}
-            disabled={shown.length === 0}
-            title={
-              shown.length === 0
+      {/* R62 — 复制条四态常在：disabled + 原因 title；计数格无行可数时给「—」。 */}
+      <div className="knF-row" data-testid="knF-row">
+        <Button
+          size="sm"
+          outlined
+          className="knF-copy"
+          onClick={copyList}
+          disabled={surface.state.kind !== "ready" || shown.length === 0}
+          title={
+            surface.state.kind !== "ready"
+              ? surface.state.kind === "loading"
+                ? "文档列表还在读取，还没有可复制的内容。"
+                : surface.state.kind === "unwired"
+                  ? "文档列表没读到（读口未接入或没有权限），没有可复制的内容。"
+                  : surface.state.kind === "login"
+                    ? "登录状态已经失效，这次没有读到文档列表，没有可复制的内容。"
+                    : "这次没有读到文档列表，没有可复制的内容。"
+              : shown.length === 0
                 ? filterKey !== ""
                   ? `本地筛选没有留下行：这份列表里有 ${loaded} 份文档，按「${filter.trim()}」一条都没留下。不编行，也就没有可复制的清单。`
                   : "接口回答里没有文档：这份列表是空的。不编行，也就没有可复制的清单。"
                 : "复制当前排序与筛选后在屏幕上的这些行：文档名 | 类型 | 大小 | 更新。屏上数据，不会再发请求。"
-            }
-            data-testid="knF-copy"
-          >
-            复制清单
-          </Button>
-          <span className="knw5-sub" data-testid="knF-lines">{shown.length} 行</span>
-          <span className="knF-status" data-testid="knF-copy-status" aria-live="polite">
-            {copyAct === "copied" ? "已复制" : copyAct === "failed" ? "复制失败，已展开可选文本，可手动复制" : ""}
-          </span>
-          {copyAct === "failed" ? (
-            <textarea
-              className="knF-fallback"
-              data-testid="knF-fallback"
-              aria-label="手动复制文档清单文本"
-              readOnly
-              rows={Math.min(8, shown.length + 2)}
-              value={copyText}
-            />
-          ) : null}
-        </div>
-      ) : null}
+          }
+          data-testid="knF-copy"
+        >
+          复制清单
+        </Button>
+        <span
+          className="knw5-sub"
+          data-testid="knF-lines"
+          title={shown.length > 0 ? undefined : "没有可见行时给「—」，不写 0 冒充空集。"}
+        >
+          {surface.state.kind === "ready" && shown.length > 0 ? `${shown.length} 行` : "—"}
+        </span>
+        <span className="knF-status" data-testid="knF-copy-status" aria-live="polite">
+          {copyAct === "copied" ? "已复制" : copyAct === "failed" ? "复制失败，已展开可选文本，可手动复制" : ""}
+        </span>
+        {copyAct === "failed" ? (
+          <textarea
+            className="knF-fallback"
+            data-testid="knF-fallback"
+            aria-label="手动复制文档清单文本"
+            readOnly
+            rows={Math.min(8, shown.length + 2)}
+            value={copyText}
+          />
+        ) : null}
+      </div>
       {openDoc !== "" ? (
         <DocPreviewDrawer nonce={nonce} docId={openDoc} row={openRow} onClose={onCloseDoc} />
       ) : null}
@@ -2137,6 +2230,7 @@ function DocumentNameSearch({
       <Surface
         testid="kn6-search"
         source="doc-search"
+        probe={{ id: "doc-search", noMatch: needle !== "" }}
         state={
           surface.state.kind === "ready" ? { kind: "ready", value: { ...surface.state.value, rows: shown } } : surface.state
         }
@@ -2145,9 +2239,11 @@ function DocumentNameSearch({
         unwiredHuman={DOCUMENTS_UNWIRED_HUMAN}
         empty={() =>
           needle === "" ? (
-            <p>接口已响应，这份文档列表里没有条目；这只说明这份回答是空的，不下别的结论，也不给数量。</p>
+            <p data-testid="knN-empty-text-doc-search" data-knn-empty="empty">
+              接口已响应，这份文档列表里没有条目；这只说明这份回答是空的，不下别的结论，也不给数量。
+            </p>
           ) : (
-            <p>
+            <p data-testid="knN-empty-text-doc-search" data-knn-empty="no-match">
               没有匹配的文档：已加载的 {loaded.length} 条里没有名字含「{text.trim()}」的文档。
               这是本地筛选的结果，不代表全库没有。
               <button type="button" className="knw5-drill" data-testid="kn6-search-empty-clear" onClick={clear}>
@@ -2205,39 +2301,52 @@ function DocumentNameSearch({
         )}
       />
       </div>
-      {surface.state.kind === "ready" ? (
-        <div className="knG-row" data-testid="knG-row">
-          <Button
-            size="sm"
-            outlined
-            className="knG-copy"
-            onClick={copyHits}
-            disabled={shown.length === 0}
-            title={
-              shown.length === 0
+      {/* R62 — 复制条四态常在：disabled + 原因 title；计数格无行可数时给「—」。 */}
+      <div className="knG-row" data-testid="knG-row">
+        <Button
+          size="sm"
+          outlined
+          className="knG-copy"
+          onClick={copyHits}
+          disabled={surface.state.kind !== "ready" || shown.length === 0}
+          title={
+            surface.state.kind !== "ready"
+              ? surface.state.kind === "loading"
+                ? "文档列表还在读取，还没有可复制的结果。"
+                : surface.state.kind === "unwired"
+                  ? "文档列表没读到（读口未接入或没有权限），没有可复制的结果。"
+                  : surface.state.kind === "login"
+                    ? "登录状态已经失效，这次没有读到文档列表，没有可复制的结果。"
+                    : "这次没有读到文档列表，没有可复制的结果。"
+              : shown.length === 0
                 ? "当前没有可复制的结果"
                 : "复制当前检索词下的命中行：文档名 | 所属空间 | 类型 | 大小 | 更新。屏上数据，不会再发请求。"
-            }
-            data-testid="knG-copy"
-          >
-            复制结果
-          </Button>
-          <span className="knw5-sub" data-testid="knG-lines">{shown.length} 条</span>
-          <span className="knG-status" data-testid="knG-copy-status" aria-live="polite">
-            {copyAct === "copied" ? `已复制 ${shown.length} 条` : copyAct === "failed" ? "复制失败，已展开可选文本，可手动复制" : ""}
-          </span>
-          {copyAct === "failed" ? (
-            <textarea
-              className="knG-fallback"
-              data-testid="knG-copy-fallback"
-              aria-label="手动复制检索结果文本"
-              readOnly
-              rows={Math.min(8, shown.length + 2)}
-              value={copyText}
-            />
-          ) : null}
-        </div>
-      ) : null}
+          }
+          data-testid="knG-copy"
+        >
+          复制结果
+        </Button>
+        <span
+          className="knw5-sub"
+          data-testid="knG-lines"
+          title={shown.length > 0 ? undefined : "没有命中可数时给「—」，不写 0 冒充空集。"}
+        >
+          {surface.state.kind === "ready" && shown.length > 0 ? `${shown.length} 条` : "—"}
+        </span>
+        <span className="knG-status" data-testid="knG-copy-status" aria-live="polite">
+          {copyAct === "copied" ? `已复制 ${shown.length} 条` : copyAct === "failed" ? "复制失败，已展开可选文本，可手动复制" : ""}
+        </span>
+        {copyAct === "failed" ? (
+          <textarea
+            className="knG-fallback"
+            data-testid="knG-copy-fallback"
+            aria-label="手动复制检索结果文本"
+            readOnly
+            rows={Math.min(8, shown.length + 2)}
+            value={copyText}
+          />
+        ) : null}
+      </div>
     </section>
   );
 }

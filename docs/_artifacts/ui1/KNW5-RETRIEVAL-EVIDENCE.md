@@ -1803,3 +1803,58 @@ $ npx vite build --outDir /tmp/knw29-dist → exit 0（产物只落 /tmp）
 shell / routes / registry / package·lock / web-scripts / ops；未并 main、未重启或重建 9122；
 显式路径提交（无 `git add -A`）；无 force / amend / `--no-verify`；merge（3c7f70f6/cca9cf7e）
 与单 feature commit「feat(console): knowledge source freshness block」分开。
+
+# KNW5 追加 R62：三面四态统一（testid `knN-state-*`）（2026-11-20 BJT）
+
+基线安全闸：toplevel 相符、porcelain 空、显式 refspec fetch；上游仍章面 `3c7f70f6`
+（generation `cca9cf7e`），merge 为 Already up to date——本笔只有 feature commit。
+
+## 一、口径
+
+```text
+探针       Surface 加可选 probe，为三面各挂机器可判标记（display:none、零可见变化，
+           knD-marker 同手法）：knN-state-<face>（data-knn-state）、错误族另挂
+           knN-error/rid/retry-<face>（rid 带 data-knn-rid）。面 id 与 knM 台账同名：
+           spaces / space-docs / doc-search。
+state 读数 loading · ready · empty（连通但真 0）· no-match（搜索/筛选筛空）·
+           unavailable（404）· denied（403，与 unavailable 可见正文逐字同体）· error · login。
+           empty 与 no-match 的区分口径 = 该面当前是否有筛选词；空态正文各自带
+           knN-empty-text-<face>（data-knn-empty=empty|no-match）。
+loading    骨架不变；复制条从「ready 才出现」改为四态常在——实测同一条 DOM 节点跨
+           loading→ready 不重挂（节点同一断言），状态切换不再出现条的闪现/跳动。
+空态两分   真 0：正文写「接口已响应但为空，不等于没有，不写 0 个/0 篇」，无清空出口；
+           筛空：正文写「已加载 N 里没有匹配，这是筛完的结果」并带清空出口
+           （spaces=kn8-global-empty-clear 原有；doc-search=kn6-search-empty-clear 原有；
+           space-docs 本轮补 kn3-docs-empty-clear——三面筛空口径从此一致）。点清空即回 ready。
+错误态     Surface 既有人话原因 + 可复制 rid + 重试不动；本轮只是加机器探针。
+           403≡404 同体实测（可见正文逐字相等），403/404 仅探针可分（denied/unavailable）。
+复制按钮   四态常在且 disabled + title 点名原因：loading「还在读取」/未接入「没读到
+           （读口未接入或没有权限）」/login「登录状态已经失效」/error「这次没读到」/
+           真 0 与筛空保持 R55–R57 的逐字口径（「当前没有可复制的结果/空间」、
+           「本地筛选没有留下行…」「这份列表是空的」）。knL 收口：文档行不在已加载列表
+           （ghost ?doc=）时 disabled，不再把一串「—」写进剪贴板（R60 该段断言随之改为
+           disabled+原因+守卫 0 写入，属口径纠正，非退化）。
+计数格     knF/knG/knI-lines 无行可数（含错误/loading/空集/筛空）一律「—」+title
+           「不写 0 冒充空集」；只有 ready 且可见行>0 才报 N。
+denied 保上下文 403/404 只换自己那面的块：?q=、?sort=、?dir= 原样留在地址与输入框，
+           别的面已加载的数据不丢，返回/重试/去处入口都在（实测读数见测试 D/E 段）。
+```
+
+testid 新增 `knN-state-{spaces,space-docs,doc-search}`、`knN-empty-text-*`、
+`knN-error-*`、`knN-rid-*`、`knN-retry-*`、`kn3-docs-empty-clear`。
+kn3 / kn6–knM / knw5 既有断言零破；本轮为统一口径主动改动的既有断言只有三处计数格
+「0 行/0 条」→「—」与 R60 ghost 段（如上，均为派工要求本身）。四态与 knD 标记、
+泄露巡检全绿；无新增宽度元素（探针 display:none），1440/1280/375 维持既有读数，
+本轮未重建 9122，未做浏览器复测。
+
+## 验证尾行（R62）
+```text
+$ npx vitest run src/modules/knowledge   → 2 files / 55 tests passed（含新增四态统一测试五段）
+$ npx vitest run                         → 144 files / 1798 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 set-state-in-effect warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw30-dist → exit 0（产物只落 /tmp）
+```
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
+无 force / amend / `--no-verify`；单 commit「feat(console): knowledge state consistency」。
