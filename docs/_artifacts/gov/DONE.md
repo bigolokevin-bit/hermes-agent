@@ -2093,3 +2093,22 @@ built /private/tmp/health-r38/index.html
 - 验证：定向 `src/modules/{version,health,capabilities,skills,tools}` → **14 files / 127 passed**；全量 **148 files / 1923 passed**；`tsc -b . --noEmit` → exit 2，23 行均为既有基线（approvals/employee-detail/employees），本域 0。
 - DOM（临时 harness 已删除；Vite 5492 / Chrome CDP 9292）：1440/1280/375 均 `vw=bodySW=bodyCW=1440/1280/375`；`gov-asof-note` 可见；`sys3-asof`/`sys6-asof-health`/`sys8-asof-health`/`ver5-health-asof`/`cap7-detail-asof` 均 `2026-11-19 14:00` 且 title 为统一口径；系统页请求 **4**（健康+三探针），展开矩阵前后 4→4；版本面 2、cap7 0。
 - 边界：仅上述 14 个模块文件 + 本 DONE；未改 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未 install/force/amend/--no-verify。
+
+## cap gates — /capabilities 六入口统一门禁（2026-11-20）
+
+- 基线：显式 refspec fetch `origin/lane/hermes-console`（章面 `957704be`，代次 `5630ffce`）后 `git merge --no-ff` → Already up to date；未 reset，未并 main，未重建 9122。
+- 新增 `web/src/modules/capabilities/gates.ts`：`deriveGates` 单点返回 `counts / search / export / copy / sort / rowDetail` 的 `{enabled,title,count}`；删除 `outputState.ts` 及其私有措辞。
+  - 失败统一 title：loading「正在读取当前列表；读取完成前这些操作不可用。」；denied「读口未接入：…（GAP-…）；请到审批中心提交开通申请。」；error「读取失败：…；请求编号：…；请重试。」。同一失败六入口全部 disabled，不存在一处可点。
+  - 真空（读口已接入、0 条）：计数 0/有源（空）、搜索 disabled「当前没有可搜索的条目。」、导出/复制 disabled「当前没有可导出的条目。」、排序仍 enabled、行详情无行不渲染。
+  - 搜索无匹配：搜索 enabled、计数 0/有源（空）、导出/复制 disabled、排序 enabled、详情 disabled。
+  - ready：六入口 enabled；导出/复制 count `N 条`；排序/详情可用。
+- 组件接线：`csvExport`/`listCopy`/`search` 接受 `gate`；隐藏空锚 `cap-gates-export|copy|search` 仅带 `data-enabled` 与 `title`，不把 GAP/请求号写成 textContent。Skills/Tools 页计算 `gatePhase` + `gates`，计数 reason 直接取 `gates.counts.title`（gap null）；搜索框常驻，非 ready disabled；排序按钮与详情 toggle 使用 gate；新增隐藏 `cap-gates-counts|sort|detail`。
+- DOM 读数（临时 harness 已删；Vite 5495 / Chrome CDP 9295；skills 2 行、tools 1 组 2 工具、MCP 0；error=500 `req-gates-500`，denied 全 404）：
+  - 1440/1280/375 × skills/tools × ready/empty/无匹配/error/denied 共 30 格：`bodySW=bodyCW=pageSW=pageCW=1440/1280/375`，无横溢。
+  - ready：`counts/search/export/copy/sort/detail=true`，导出 count `2 条`；点排序与详情后 fetch skills `1→1`、tools `4→4`，详情展开 1 行。
+  - empty：`counts=true search=false export=false copy=false sort=true detail=false`；导出 count `0 条`；title 精确「当前没有可导出的条目。」。
+  - 无匹配：`search=true sort=true`，`export/copy/detail=false`，计数 0/有源（空），导出 count `0 条`。
+  - error：六入口全 false，title 同句含 `请求编号：req-gates-500`，导出 count `—`。
+  - denied：六入口全 false，title 同句含 GAP；skills `GAP-SKL4-01`，tools `GAP-04`；导出 count `—`。
+- 验证：定向 `npx vitest run src/modules/skills src/modules/tools src/modules/capabilities` → **8 files / 80 passed**；全量 `npx vitest run` → **149 files / 1931 passed**；`tsc -b . --noEmit` → 23 行均既有基线（approvals/employee-detail/employees），本域 0。
+- 边界：仅 `web/src/modules/{capabilities,skills,tools}/**` + 本 DONE；未碰 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未 install/force/amend/--no-verify。

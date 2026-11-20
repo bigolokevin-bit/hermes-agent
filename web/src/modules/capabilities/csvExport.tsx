@@ -2,18 +2,18 @@ import type { ReactNode } from "react";
 import { Download } from "lucide-react";
 import { Button } from "@nous-research/ui/ui/components/button";
 import { downloadCsv, exportFilename, toCsv, type CsvRow } from "./csv";
-import { outputBlocked, outputCount, outputTitle, type CapabilityOutputState } from "./outputState";
+import { rowsGate, type ActionGate } from "./gates";
 
 export function CapabilityExport({
   tab,
   rows,
-  state = rows.length ? { kind: "ready" } : { kind: "empty" },
+  gate = rowsGate(rows.length),
 }: {
   tab: "skills" | "tools";
   rows: readonly CsvRow[];
-  state?: CapabilityOutputState;
+  gate?: ActionGate;
 }): ReactNode {
-  const disabled = outputBlocked(state) || rows.length === 0;
+  const disabled = !gate.enabled;
   return (
     <span className="cap6-export-wrap">
       <Button
@@ -21,13 +21,14 @@ export function CapabilityExport({
         outlined
         disabled={disabled}
         aria-disabled={disabled ? "true" : undefined}
-        title={outputTitle(state, "导出", rows.length)}
+        title={gate.title}
         data-testid="cap6-export"
         onClick={() => downloadCsv(exportFilename(tab), toCsv(rows))}
       >
         <Download className="mr-1 size-3.5" aria-hidden="true" />导出 CSV
       </Button>
-      <span className="cap6-export-count" data-testid="cap6-export-count">{outputCount(state, rows.length)}</span>
+      <span className="cap6-export-count" data-testid="cap6-export-count">{gate.count}</span>
+      <span className="sr-only" data-testid="cap-gates-export" data-enabled={gate.enabled ? "true" : "false"} title={gate.title} />
     </span>
   );
 }

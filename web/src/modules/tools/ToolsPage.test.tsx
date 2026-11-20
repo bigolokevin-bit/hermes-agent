@@ -240,6 +240,10 @@ describe("failures and gaps", () => {
     expect(copy.title).toContain("GAP-04");
     expect(csv.title).toContain("读口未接入");
     expect(document.querySelector('[data-testid="cap6-export-count"]')?.textContent).toBe("—");
+    expect(document.querySelector<HTMLInputElement>("[data-testid='cap5-search']")?.disabled).toBe(true);
+    expect(document.querySelector("[data-testid='cap-gates-counts']")?.getAttribute("data-enabled")).toBe("false");
+    expect(document.querySelector("[data-testid='cap-gates-sort']")?.getAttribute("data-enabled")).toBe("false");
+    expect(document.querySelector("[data-testid='cap-gates-detail']")?.getAttribute("data-enabled")).toBe("false");
     expect(text()).not.toMatch(/\/api\/|403|GAP-04/);
   });
 
@@ -291,8 +295,13 @@ describe("failures and gaps", () => {
     const copy = document.querySelector<HTMLButtonElement>('[data-testid="capC-copy"]')!;
     expect(csv.disabled).toBe(true);
     expect(copy.disabled).toBe(true);
-    expect(csv.title).toContain("没有可导出");
+    expect(csv.title).toBe("当前没有可导出的条目。");
+    expect(copy.title).toBe("当前没有可导出的条目。");
     expect(document.querySelector('[data-testid="cap6-export-count"]')?.textContent).toBe("0 条");
+    expect(document.querySelector<HTMLInputElement>("[data-testid='cap5-search']")?.disabled).toBe(true);
+    expect(document.querySelector("[data-testid='cap-gates-counts']")?.getAttribute("data-enabled")).toBe("true");
+    expect(document.querySelector("[data-testid='cap-gates-sort']")?.getAttribute("data-enabled")).toBe("true");
+    expect(document.querySelector("[data-testid='cap-gates-detail']")?.getAttribute("data-enabled")).toBe("false");
   });
 
   it("treats a non-JSON SPA shell as not wired, never as a parser error", async () => {
@@ -600,6 +609,9 @@ describe("local name search", () => {
     await mount(answer, "/capabilities?tab=tools&q=zzz");
     const noMatch = document.querySelector("[data-testid='tl3-no-match']");
     expect(noMatch?.textContent).toContain("没有匹配项");
+    expect(document.querySelector<HTMLInputElement>("[data-testid='cap5-search']")?.disabled).toBe(false);
+    expect(document.querySelector("[data-testid='cap-gates-sort']")?.getAttribute("data-enabled")).toBe("true");
+    expect(document.querySelector("[data-testid='cap-gates-detail']")?.getAttribute("data-enabled")).toBe("false");
     const clear = document.querySelector<HTMLButtonElement>("[data-testid='tl3-clear']");
     expect(clear).toBeTruthy();
     await act(async () => clear?.click());

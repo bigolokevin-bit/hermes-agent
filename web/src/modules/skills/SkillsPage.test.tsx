@@ -194,8 +194,16 @@ describe("SkillsPage", () => {
     const copy = container.querySelector<HTMLButtonElement>('[data-testid="capC-copy"]')!;
     expect(csv.disabled).toBe(true);
     expect(copy.disabled).toBe(true);
-    expect(csv.title).toContain("没有可导出");
+    expect(csv.title).toBe("当前没有可导出的条目。");
+    expect(copy.title).toBe("当前没有可导出的条目。");
     expect(container.querySelector('[data-testid="cap6-export-count"]')?.textContent).toBe("0 条");
+    const search = container.querySelector<HTMLInputElement>('[data-testid="cap5-search"]')!;
+    expect(search.disabled).toBe(true);
+    expect(search.title).toBe("当前没有可搜索的条目。");
+    expect(container.querySelector('[data-testid="cap-gates-search"]')?.getAttribute("data-enabled")).toBe("false");
+    expect(container.querySelector('[data-testid="cap-gates-counts"]')?.getAttribute("data-enabled")).toBe("true");
+    expect(container.querySelector('[data-testid="cap-gates-sort"]')?.getAttribute("data-enabled")).toBe("true");
+    expect(container.querySelector('[data-testid="cap-gates-detail"]')?.getAttribute("data-enabled")).toBe("false");
   });
 
   it("puts the GAP id only in the title when the endpoint is missing", async () => {
@@ -213,6 +221,10 @@ describe("SkillsPage", () => {
     expect(container.querySelector('[data-testid="capF-state-unavailable"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="capF-state-unavailable"]')?.textContent).toContain("技能读口未接入");
     expect(container.querySelector('[data-testid="skl4-page"]')?.getAttribute("data-cap-state")).toBe("unavailable");
+    expect(container.querySelector<HTMLInputElement>('[data-testid="cap5-search"]')?.disabled).toBe(true);
+    expect(container.querySelector('[data-testid="cap-gates-counts"]')?.getAttribute("data-enabled")).toBe("false");
+    expect(container.querySelector('[data-testid="cap-gates-sort"]')?.getAttribute("data-enabled")).toBe("false");
+    expect(container.querySelector('[data-testid="cap-gates-detail"]')?.getAttribute("data-enabled")).toBe("false");
     const count = container.querySelector('[data-testid="cap4-count-skills"]')!;
     expect(count.textContent).toContain("—");
     expect(count.textContent).not.toContain("0");
@@ -290,6 +302,9 @@ describe("SkillsPage", () => {
       expect(container.querySelector(`[data-testid="capF-state-${state}"]`)?.textContent?.trim().length).toBeGreaterThan(0);
       expect(container.querySelector('[data-testid="skl4-page"]')?.getAttribute("data-cap-state")).toBe(state);
       expect(text()).toContain(state === "loading" ? "正在读取技能" : "还没有已登记的技能");
+      const search = container.querySelector<HTMLInputElement>('[data-testid="cap5-search"]');
+      expect(search?.disabled).toBe(true);
+      expect(container.querySelector('[data-testid="cap-gates-sort"]')?.getAttribute("data-enabled")).toBe(state === "empty" ? "true" : "false");
       act(() => root.unmount());
       root = createRoot(container);
     }
@@ -341,6 +356,9 @@ describe("SkillsPage", () => {
     await render();
     expect(text()).toContain("没有匹配项");
     expect(container.querySelector("[data-testid='skl4-clear']")).toBeTruthy();
+    expect(container.querySelector<HTMLInputElement>('[data-testid="cap5-search"]')?.disabled).toBe(false);
+    expect(container.querySelector('[data-testid="cap-gates-sort"]')?.getAttribute("data-enabled")).toBe("true");
+    expect(container.querySelector('[data-testid="cap-gates-detail"]')?.getAttribute("data-enabled")).toBe("false");
   });
 
   it("expands one row detail at a time without changing the search state", async () => {

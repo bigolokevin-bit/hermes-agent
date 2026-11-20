@@ -32,7 +32,7 @@ import { CapabilityCounts, publishCapabilityCount } from "../capabilities/counts
 import { CapabilitySearch } from "../capabilities/search";
 import { CapabilityExport } from "../capabilities/csvExport";
 import { CapabilityCopy } from "../capabilities/listCopy";
-import type { CapabilityOutputState } from "../capabilities/outputState";
+import { deriveGates, type ActionGate, type GatePhase } from "../capabilities/gates";
 import { applySort, ariaSort, cycleSort, readSort, sortRows, type SortKey } from "../capabilities/sorting";
 import { CapabilityRowDetail } from "../capabilities/rowDetail";
 import { useEnsureTabParam } from "../capabilities/tabParam";
@@ -86,6 +86,7 @@ function Row({
   setRowRef,
   onFocus,
   onKeyDown,
+  detailGate,
 }: {
   row: ToolRow;
   open: boolean;
@@ -94,6 +95,7 @@ function Row({
   setRowRef: (node: HTMLDivElement | null) => void;
   onFocus: () => void;
   onKeyDown: (event: ReactKeyboardEvent<HTMLDivElement>) => void;
+  detailGate: ActionGate;
 }): ReactNode {
   const dimmed = row.status !== "enabled";
   return (
@@ -134,6 +136,8 @@ function Row({
           type="button"
           className="cap7-toggle"
           aria-expanded={open}
+          disabled={!detailGate.enabled}
+          title={detailGate.title}
           onClick={onToggle}
           data-testid="cap7-detail-toggle"
         >
@@ -290,6 +294,31 @@ export function ToolsPage(): ReactNode {
   const toolRows = sortedRows.filter((row) => row.source === "toolset");
   const mcpRows = sortedRows.filter((row) => row.source === "mcp");
   const keyRows = [...toolRows, ...mcpRows];
+  const gatePhase: GatePhase =
+    phase === "denied"
+      ? "denied"
+      : phase === "login"
+        ? "error"
+        : phase === "ready" && q && visibleRows.length === 0
+          ? "no-match"
+          : phase;
+  const gates = deriveGates({
+    phase: gatePhase,
+    reason:
+      phase === "denied" || phase === "error"
+        ? tools.failure?.sentence ?? null
+        : phase === "login"
+          ? "登录状态已经失效，请刷新页面重新登录后再看这份清单。"
+          : null,
+    requestId: tools.failure?.requestId ?? null,
+    gap: phase === "denied" ? GAP : null,
+    rowsLoaded: rows.length,
+    rowsVisible: visibleRows.length,
+    hasQuery: Boolean(q),
+    partialCounts: phase === "ready" && tools.issues.length > 0
+      ? `${tools.issues.length} 个来源未接入，无法给出完整计数。`
+      : null,
+  });
   const activeToolKey =
     rovingKey && keyRows.some((row) => row.key === rovingKey)
       ? rovingKey
@@ -336,39 +365,26 @@ export function ToolsPage(): ReactNode {
   };
   useEffect(() => {
     if (forced !== null) return;
-    if (phase === "loading") {
-      publishCapabilityCount("tools", { value: null, source: "loading", reason: null, gap: null });
-      return;
-    }
-    if (phase === "ready") {
-      if (tools.issues.length > 0) {
-        publishCapabilityCount("tools", {
-          value: null,
-          source: "missing",
-          reason: `${tools.issues.length} 个来源未接入，无法给出完整计数。`,
-          gap: null,
-        });
-        return;
-      }
+    if (phase === "ready" && tools.issues.length === 0) {
       publishCapabilityCount("tools", {
         value: visibleRows.length,
         source: visibleRows.length ? "ready" : "empty",
-        reason: null,
+        reason: gates.counts.title,
         gap: null,
       });
       return;
     }
     if (phase === "empty") {
-      publishCapabilityCount("tools", { value: 0, source: "empty", reason: null, gap: null });
+      publishCapabilityCount("tools", { value: 0, source: "empty", reason: gates.counts.title, gap: null });
       return;
     }
     publishCapabilityCount("tools", {
       value: null,
-      source: "missing",
-      reason: tools.failure?.sentence ?? "工具读口这次没有返回可用的计数。",
-      gap: phase === "denied" ? GAP : null,
+      source: phase === "loading" ? "loading" : "missing",
+      reason: gates.counts.title,
+      gap: null,
     });
-  }, [forced, phase, visibleRows.length, tools.failure?.sentence, tools.issues.length]);
+  }, [forced, phase, visibleRows.length, gates.counts.title, tools.issues.length]);
   const retry = () => {
     if (forced !== null) {
       const next = new URLSearchParams(params);
@@ -461,6 +477,7 @@ export function ToolsPage(): ReactNode {
                 setRowRef={(node) => { rowRefs.current[row.key] = node; }}
                 onFocus={() => setRovingKey(row.key)}
                 onKeyDown={(event) => onRowKeyDown(event, row, index)}
+                detailGate={gates.rowDetail}
               />
             )) : (
               <p className="px-4 py-4 text-xs text-muted-foreground" data-testid="tol5-tools-empty">
@@ -485,6 +502,7 @@ export function ToolsPage(): ReactNode {
                 setRowRef={(node) => { rowRefs.current[row.key] = node; }}
                 onFocus={() => setRovingKey(row.key)}
                 onKeyDown={(event) => onRowKeyDown(event, row, toolRows.length + index)}
+                detailGate={gates.rowDetail}
               />
             )) : (
               <p className="px-4 py-4 text-xs text-muted-foreground" data-testid="tol5-mcp-empty">
@@ -510,34 +528,13 @@ export function ToolsPage(): ReactNode {
     enabled: STATUS_LABEL[row.status],
     updated_at: row.updatedAt,
   }));
-  const outputState: CapabilityOutputState =
-    phase === "loading"
-      ? { kind: "loading" }
-      : phase === "empty"
-        ? { kind: "empty" }
-        : phase === "denied"
-          ? {
-              kind: "unavailable",
-              reason: tools.failure?.sentence ?? "这块内容要么尚未接入本控制台，要么当前账号无权查看。",
-              gap: GAP,
-            }
-          : phase === "login"
-            ? {
-                kind: "error",
-                reason: "登录状态已经失效，请刷新页面重新登录后再看这份清单。",
-                requestId: tools.failure?.requestId ?? null,
-              }
-            : phase === "error"
-              ? {
-                  kind: "error",
-                  reason: tools.failure?.sentence ?? "读取工具与 MCP 清单时出了问题，请稍后重试。",
-                  requestId: tools.failure?.requestId ?? null,
-                }
-              : { kind: "ready" };
 
   return (
     <section ref={rootRef} className="capH-scroll flex min-w-0 w-full max-w-full flex-col" data-testid="tl3-page">
     <span className="sr-only" data-testid="capH-page-tools" />
+    <span className="sr-only" data-testid="cap-gates-counts" data-enabled={gates.counts.enabled ? "true" : "false"} title={gates.counts.title} />
+    <span className="sr-only" data-testid="cap-gates-sort" data-enabled={gates.sort.enabled ? "true" : "false"} title={gates.sort.title} />
+    <span className="sr-only" data-testid="cap-gates-detail" data-enabled={gates.rowDetail.enabled ? "true" : "false"} title={gates.rowDetail.title} />
     <CapabilityCounts />
     <div
       className="tol5-page flex min-w-0 w-full max-w-full flex-col gap-3"
@@ -554,8 +551,8 @@ export function ToolsPage(): ReactNode {
           </p>
         </div>
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <CapabilityExport tab="tools" rows={exportRows} state={outputState} />
-          <CapabilityCopy rows={copyRows} state={outputState} />
+          <CapabilityExport tab="tools" rows={exportRows} gate={gates.export} />
+          <CapabilityCopy rows={copyRows} gate={gates.copy} />
           <span className="capA-export-note" data-testid="capA-export-order-note">导出按当前排序与搜索</span>
           <Button
             size="sm"
@@ -597,9 +594,7 @@ export function ToolsPage(): ReactNode {
                 : "这次读取没有成功"}
       </p>
 
-      {phase === "ready" ? (
-        <CapabilitySearch value={q} total={rows.length} onChange={setQ} />
-      ) : null}
+      <CapabilitySearch value={q} total={rows.length} onChange={setQ} gate={gates.search} />
 
       {phase === "ready" ? (
         <div className="cap8-sortbar" role="row" data-testid="cap8-sortbar">
@@ -610,7 +605,7 @@ export function ToolsPage(): ReactNode {
             ["updated", "最近更新"],
           ] as Array<[SortKey, string]>).map(([key, label]) => (
             <span key={key} role="columnheader" aria-sort={ariaSort(sort, key)}>
-              <button type="button" className="cap8-sort" data-testid={`cap8-sort-${key}`} onClick={() => onSort(key)}>
+              <button type="button" className="cap8-sort" data-testid={`cap8-sort-${key}`} disabled={!gates.sort.enabled} title={gates.sort.title} onClick={() => onSort(key)}>
                 {label}<span className="cap8-indicator" data-testid={`cap8-indicator-${key}`}>{ariaSort(sort, key) === "ascending" ? "↑" : ariaSort(sort, key) === "descending" ? "↓" : "↕"}</span>
               </button>
             </span>
