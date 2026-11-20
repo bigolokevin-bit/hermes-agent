@@ -141,7 +141,9 @@ export function DetailsDisclosure({
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
-        className="inline-flex items-center gap-1 text-muted-foreground underline underline-offset-2"
+        // P1-375-4: 命中区 ≥44px（1440/375 同修，此前实测只有 15px 高）；
+        // ≤767 独立成行占满一行，md 起恢复行内链接形态，桌面结构不动。
+        className="inline-flex min-h-[44px] w-full items-center gap-1 text-muted-foreground underline underline-offset-2 md:w-auto"
       >
         {open ? <ChevronUp className="h-3 w-3" aria-hidden="true" /> : <ChevronDown className="h-3 w-3" aria-hidden="true" />}
         详情
