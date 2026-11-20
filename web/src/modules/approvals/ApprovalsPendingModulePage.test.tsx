@@ -139,6 +139,43 @@ describe("pending queue states", () => {
     expect(text()).toContain("已显示 1 条申请，其中 1 条待处理");
   });
 
+  it("R54: the pending tab carries the same-source CSV control", async () => {
+    await mount(queue());
+    expect(document.querySelector('[data-testid="apv7-export-count"]')?.textContent).toContain("共 1 行");
+    const btn = document.querySelector('[data-testid="apv7-export"]') as HTMLButtonElement;
+    expect(btn.disabled).toBe(false);
+    expect(btn.getAttribute("title")).toContain("零新后端端点");
+  });
+
+  it("R55: apd7-back closes the drawer over the same URL minus the id", async () => {
+    Object.defineProperty(window, "scrollY", { configurable: true, value: 66 });
+    await mount(queue());
+    const card = document.querySelector("[data-testid='apr5-row-ap_9F3A1111']") as HTMLElement;
+    expect(card).toBeTruthy();
+    await act(async () => {
+      card.click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='apd7-back']") !== null, "back exit appeared");
+    expect(window.sessionStorage.getItem("approvals-pending-scroll")).toBe("66");
+    const back = document.querySelector("[data-testid='apd7-back']") as HTMLButtonElement;
+    await act(async () => {
+      back.click();
+    });
+    expect(document.querySelector("[data-testid='apr5-detail-empty']")).toBeTruthy();
+  });
+
+  it("R50: the queue summary keeps off-scope counts at — with a stated reason", async () => {
+    await mount(queue());
+    const pending = document.querySelector('[data-testid="apv6-summary-pending"]');
+    expect(pending?.getAttribute("href")).toBe("/approvals?tab=history&status=pending");
+    expect(pending?.textContent).toContain("1");
+    const approved = document.querySelector('[data-testid="apv6-summary-approved"]');
+    expect(approved?.tagName).toBe("SPAN");
+    expect(approved?.textContent).toContain("—");
+    expect(approved?.getAttribute("title")).toContain("决策历史");
+    expect(document.querySelector('[data-testid="apv6-summary-risk-low"]')).toBeTruthy();
+  });
+
   it("loading is a skeleton, not an empty queue", async () => {
     let release: (value: unknown) => void = () => {};
     api.fetchJSON.mockImplementation(
