@@ -1369,3 +1369,10 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 九件 9/9=={6c41d271:9} bad=[] 全 ok/exit=0（驱动 /tmp/wave66-exits.txt 九腿全 0，served 拍前后同值未漂）：ia-html{51,22,tabsAll:23,1,8}/react{51,22,1,8}；lint-fake v=[]；lint-reuse v0 e1（chat→T40）；state-quad 20/20 真刷新非 carried；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）redirects=24 notes。
 - shots 本代真跑：auth 102/102 failures=[] **obs=0 obsR=[]（上代 #/capabilities?tab=channels 本代不复现=收敛，ENV 归因见 ui-qa R-OBS1-43d83d65.md）** distinct=25 envOnly=51；anon aux=true 102/102 obs=0 distinct=23 envOnly=51；三键 xok1NNVT/ecb50940…/172175、servedEntryBefore==After、ceAuthority=login-state 双腿。
 - 环境：9122 v4_proxy 95667、caddy 28034、BFF 8092 12048@603a23e9 未动；web/src 未碰；R60 结案仅引用；43d83d65 章 14ec85ec 不重做；无 amend/force。
+
+## 一五三轮 · 波次代次九件重章 @ f7009e21（entry xok1NNVT 未换代；完成章，2026-11-21 04:4x-05:0x）
+
+- wave-67 三笔（appr f0593333 R235 / aud 3be0e7e7 R234 / gov c3c001ce R229，全纯测试）entry/CSS 均未换代；9122==磁盘 xok1NNVT/172175/ecb50940…c15c9。
+- 首笔 56613bc4 系 L0 5 分钟硬线时点章（驱动 shots 双腿未齐，summary headHash/served 缺——不合格判词在案）。本完成章：腿齐后重盖章，tonight 下带 headHash 的 JSON 恰九件、TALLY {f7009e21:9} bad=[]；旧代混入件 docs/_artifacts/tonight/shots-login/login-shot-summary.json（headHash=e3efe15a 残留）移入 tonight/_stale/login-shot-summary.stale.json 隔离，不再污染计数。
+- 读数（本代现测）：ia-html{51,22,tabsAll:23,1,8}/react{51,22,1,8}；fake v=[]；reuse v0 e1（chat→T40）；quad 20/20 真刷新非 carried；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）redirects=24 notes；shots auth 102/102 failures=[] obs=0 distinct=24 envOnly=51；anon aux=true 102/102 obs=0 distinct=24 envOnly=51；servedEntryBefore==After=index-xok1NNVT.js、ceAuthority=login-state。
+- 纪律：无 amend/force；b86999cd 及更早章不重做；web/src/hermes_cli 零沾染；R60 结案仅引用未动 ACC 判词节；禁写 PASS。
