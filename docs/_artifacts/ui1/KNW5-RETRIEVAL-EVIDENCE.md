@@ -5333,3 +5333,51 @@ absent 标记 + 既有 44 套全绿。过程自纠一处（③ 期望串 q= 前�
 ```
 未测如实：带登录会话真屏；检索面自身无类型桶控件（名实注记，跨面对齐不可测处按实记录）；
 非法枚举下 knE-page-more 交互（cap 不渲染已由 R157 锁）；双路互等仅锁同夹具同 q 态。
+
+# KNW5 追加 R229：分页态导出换代/三值直对/空筛归位文案（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `f399482f`
+（wave-71）、基线先跑 45/214 全绿 Errors 0、目标文件确认缺席再动笔。零产品文件改动
+（③ 的「数字位 50」实测为归位语义的忠实报告，非缺陷，未改产品）。
+新增 knowledge.export.paged.test.tsx 三例（本体）。
+
+## 名实与查重（引用不重写）
+
+```text
+无真 CSV（createObjectURL/text/csv/a.download/new Blob 源级 0，R190①:113-119 不变量）
+→「导出行」映射 knF-copy 数据行；分页只属详情面（knE-page-*）、行钮 -space- 族、
+cursor 仅组件态——全部从请求 URL 断言（①实测 P2 请求恰 1 次且 loc 无 cursor）；
+ktype 真实键、无 ?source= 控件未造；本地动作零请求。51 行跨页夹具（R216 先例：P1
+恰 50 + 3 笔 xlsx 使「表格」桶在场）。
+引用：R216① :134-148（四值计数+cap）、R216② :150-169（第 2 页态清全部代证——真换桶
++导出侧其时未测）、R216③ :171-183、R131① :115-125（切筛选归页 1）、R197① :135-155
+（名链系单页小夹具）、R142① :124（单页三值）、R190（spy 形状 :35）、主套件 :3885
+（空筛文案单页 2 笔版）、R114/R142 剪贴板拒绝（主套件 :2741 等）。
+新增维（点名）：① 分页态 knF 首行/末行逐字直对（末行=追加行「卷 51」入链）+ 51 笔
+全名链==表体名链（R216① 只数行数、R197 名链非分页）；② 第 2 页态**真换桶**（表格
+3 笔）：导出集换新集、旧行「卷 51/卷 01」按标识从导出串出局、全程零新请求（「不带
+cursor」现实=无新请求）——R216② 代证未看导出侧；③ 名筛筛空**同时归位页 1**：门句
+数字位实测回落到 50（moreRows 被弃，与归位语义同帧；比派工预期「51」更贴产品事实，
+按实锁），knF disabled + spy 0 + writeText 0 + urls 快照逐字不变。
+```
+
+## 三例读数与验证尾行（R229）
+
+```text
+① append 后 urls 含 cursor=cpg2 请求恰 1、loc 无 cursor；三值 [表体 51, 钮 51, knF 51]、
+  首行名 toBe 屏上首行、末行 toBe「卷 51.pdf」、全名链 toEqual。② 切表格桶：屏上 3 笔
+  全 xlsx、导出名链 toEqual 屏上集、text 不含 卷 51.pdf/卷 01.pdf、urls.join 逐字==u0、
+  loc 含 ktype=。③ 筛空前 51 行在场；筛空后 disabled=true、title 含「有 50 份文档」
+  （归位实态）、空点击 writeText 0、createObjectURL 0、urls 快照不变。
+$ npx vitest run src/modules/knowledge → 46 files / 217 tests passed（214+3），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0；build /tmp/knw-r229-dist exit 0
+$ 全仓 → 349 files / 3175 passed 全绿（无豁免、无已知红需点名）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort*/kn-gates/kn-row-copy*/
+kn-row-copy-space*/kn-doc-copy*/kn3-page-cap/knE-page-*/kn-type*/kn7-preview*/导出
+absent 标记 + 既有 45 套全绿。过程自纠一处（③ 数字位按派工预期写 51 首跑红，查实
+combined/门句同源归位语义后按实测 50 锁并补「筛空前 51 在场」哨兵防代证空转）。
+```
+未测如实：带登录会话真屏；名筛归位后 nextCursor 是否仍可从 -more 续第 2 页（R216②
+只锁清全部路径，本轮未扩）；kn3-page-cap 在「筛空」帧的渲染与否未查（不在本单腿内）。
