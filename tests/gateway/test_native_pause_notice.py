@@ -21,7 +21,7 @@ import pytest
 from tests.gateway.fixtures.local_recovery_probe import Model, child_env, daemon
 from tests.gateway.test_native_telegram_startup_recovery import BotAPI, wait_for
 
-PAUSE_MARKER = 'This conversation is paused'
+PAUSE_MARKER = '这条会话已暂停'
 
 
 @pytest.mark.asyncio
@@ -56,7 +56,7 @@ async def test_paused_fifo_releases_the_messaging_waiter_with_one_notice_per_epi
         from gateway.session_ingress import pause_notice
         authority.sessions['s'].pause_notified = False
         draining = pause_notice(authority, ref, 'runtime_draining')
-        assert 'restarting' in draining and '/reset' not in draining, draining
+        assert '重启' in draining and '/reset' not in draining, draining
         authority.sessions['s'].pause_notified = False
         # The operator resumes the FIFO; the saved followers run, no new notice was owed.
         viewer = AuthorityConnection(authority, Peer(), {'user_id': 'human'})
@@ -143,7 +143,7 @@ def test_crash_mid_turn_then_platform_message_gets_one_pause_notice_and_reset_un
             # and the adapter loop keeps going (the second message is admitted too).
             send('AFTER_CRASH_ONE', 'queued')
             wait_for(lambda: len(notices()) == 1, diagnostic)
-            assert '/reset' in notices()[0], notices()
+            assert '重新开始' in notices()[0], notices()
             send('AFTER_CRASH_TWO', 'queued')
             assert rows()['AFTER_CRASH_TWO']['session'] == paused_session
             # The named escape works from the platform: /reset (confirmed) moves the chat to
