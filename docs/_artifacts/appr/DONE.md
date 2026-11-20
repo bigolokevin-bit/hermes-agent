@@ -890,3 +890,13 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - **三档无横溢**：jsdom 不可测，形态学报——toggle 在既有 flex-wrap gap-x-2 行内，preview dl 全 min-w-0+truncate。
 - **9122==7173b7c6 禁重建**：行内展开活体读数待并入后代次；本轮 jsdom DOM 读数为权威。
 - 坑记：①history/pending 测试文件尾部插入必须核对原文件最外层 `})`（rfind 吃掉致 describe 嵌套+Babel 假象）②history 测试无 q() 助手=用 document.querySelector ③锚点缩进/形态必须先 sed 实读。
+
+
+## R61 · 审批详情决策链路复制为纯文本（apd8-*）— 基线 merge bf0ea98a 上，现网代次 7173b7c6
+
+- 实现（views.tsx DecisionTrail 尾部，pending/history 共享详情体）：`trailToText(detail)` 按屏上同序拼多行纯文本=提交行（requester.label 屏上口径）→ 各决策节点（who·verdict·时间·意见；缺时间「该段无记录」、缺意见「未填」）→ 未行动审批人待办行 → 终态行；**不含关联段**（该段承载 run/task 标识与证据路由说明，工单复制枚举=提交人/时间、节点、终态，纯文本禁内部 id）。文案口径与 NoSeg/屏上完全一致，禁编造顺序（服务顺序权威沿 R46）。
+- 复制钮 `apd8-copy`（Button outlined）：点击 navigator.clipboard.writeText(copyText)；成功 `apd8-copy-status`（aria-live=polite）显「已复制」；剪贴板不可用/拒绝 → status 显「剪贴板写入被拒绝，可用下方文本框手动复制。」+ `apd8-fallback` readOnly textarea（value=同文本，onFocus 全选，title 说明兜底口径）。**空链路**（decisions=0 且无待办审批人）= disabled + title「服务没有返回任何决策节点，也没有待办审批人：没有可复制的链路。」（无 nodes 也无 pending 时文本只剩提交/终态两行，无链路可交）。
+- **禁额外请求实证**：用例锁点击复制前后 `api.fetchJSON.mock.calls.length` 不变（复制只读屏上已渲染 detail 对象，零新请求）。
+- 实测读数（jsdom，夹具 TRAIL_SAMPLE）：提交 · 成员 · 9 · 2026-11-19 09:00 / 节点 1 · 郑涛 · 通过 · 2026-11-19 09:50 · 意见：可以，按计划轮换。/ 节点 2 · 人员 · 通过 · 2026-11-19 09:55 · 意见：未填（裸 human:8 无姓名=屏上同口径「人员」）/ 阿朝 · 待办 · 该段无记录 · 意见：未填 / 终态 · 已通过 · 2026-11-19 10:00；文本无 human:/emp_/ap_t8 裸值断言在。
+- 测试：history 3 用例（真值复制成功+计数锁/拒绝→fallback readOnly+value+status/空链路 disabled+title）+ pending 1 用例（queue() 详情抽屉 trail 在、apd8-copy/status 存在）。定向 approvals 3 files/80 passed（76+4）；全量 137 files/1598 passed（基线 1594+4）；assert-ia 两模式 exit0 51/22/1/8；tsc 本域零红。坑记：requestedBy={type,id} 的 human:9 屏上 label=「成员 · 9」（personFrom 名词=成员，非「人员」——人员=decisionEntries maskHandle 口径）；pending.test 无 openTicket 助手=直接 click apr5-row-ap_9F3A1111。
+- testid：apd8-copy/apd8-copy-status/apd8-fallback 新增；apd6/apd7/apv5–apv9/apr5/ed*/emp-list* 零破（定向全绿为证）。三档横溢=形态学报（copy 行在既有 min-w-0 flex-wrap，textarea w-full min-w-0）。9122==7173b7c6 禁重建：活体复制读数待并入后代次；本轮 jsdom clipboard 回环为权威。

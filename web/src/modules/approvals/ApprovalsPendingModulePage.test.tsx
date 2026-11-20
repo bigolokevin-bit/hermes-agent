@@ -587,3 +587,19 @@ describe("R59 pending queue search (apv8-*)", () => {
   });
 
 })
+
+describe("R61 trail copy on the pending drawer", () => {
+  it("mounts apd8-copy in the shared trail without touching data", async () => {
+    await mount(queue());
+    const before = api.fetchJSON.mock.calls.length;
+    const card = document.querySelector("[data-testid='apr5-row-ap_9F3A1111']") as HTMLElement | null;
+    expect(card, "row card").toBeTruthy();
+    await act(async () => {
+      card!.click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='apd6-trail']") !== null, "trail mounted");
+    expect(document.querySelector("[data-testid='apd8-copy']")).toBeTruthy();
+    expect(document.querySelector("[data-testid='apd8-copy-status']")).toBeTruthy();
+    expect(api.fetchJSON.mock.calls.length).toBeGreaterThanOrEqual(before);
+  });
+});

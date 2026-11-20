@@ -859,3 +859,100 @@ describe("R59 approvals queue search (apv8-*)", () => {
   });
 
 })
+
+describe("R61 trail copy (apd8-*)", () => {
+  const TRAIL_SAMPLE = {
+    approvalId: "ap_t8",
+    status: "approved",
+    requestedBy: { type: "human", id: "human:9" },
+    action: "rotate.secret",
+    createdAt: "2026-11-19T01:00:00Z",
+    decidedAt: "2026-11-19T02:00:00Z",
+    approvers: [
+      { userId: "human:7", name: "郑涛" },
+      { userId: "human:8", name: "阿朝" },
+    ],
+    decisions: [
+      { userId: "human:7", name: "郑涛", verdict: "approve", decidedAt: "2026-11-19T01:50:00Z", comment: "可以，按计划轮换。" },
+      { userId: "human:8", verdict: "approve", decidedAt: "2026-11-19T01:55:00Z" },
+    ],
+  };
+  const EMPTY_TRAIL_SAMPLE = {
+    approvalId: "ap_e8",
+    status: "pending",
+    requestedBy: { type: "human", id: "human:9" },
+    action: "keepalive",
+    createdAt: "2026-11-19T01:00:00Z",
+    approvers: [],
+    decisions: [],
+  };
+
+  async function openTrail(sample: unknown) {
+    await mount(async (url) => {
+      if (url.includes("/api/approval?id=")) return sample;
+      return { items: [sample] };
+    });
+    const card = document.querySelector("[data-testid^='apr5-row-']") as HTMLElement | null;
+    expect(card, "row card").toBeTruthy();
+    await act(async () => {
+      card!.click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='apr5-detail']") !== null, "detail opened");
+    await waitFor(() => document.querySelector("[data-testid='apd6-trail']") !== null, "trail mounted");
+  }
+
+  it("copies the on-screen trail in order, with no extra request", async () => {
+    const written: string[] = [];
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: (t: string) => { written.push(t); return Promise.resolve(); } },
+    });
+    await openTrail(TRAIL_SAMPLE);
+    const callsBefore = api.fetchJSON.mock.calls.length;
+    const btn = document.querySelector("[data-testid='apd8-copy']") as HTMLButtonElement | null;
+    expect(btn, "copy button").toBeTruthy();
+    expect(btn!.disabled).toBe(false);
+    await act(async () => {
+      btn!.click();
+    });
+    await waitFor(() => (document.querySelector("[data-testid='apd8-copy-status']")?.textContent ?? "").includes("已复制"), "copied feedback");
+    expect(api.fetchJSON.mock.calls.length, "copying never fetches").toBe(callsBefore);
+    const text = written[0] ?? "";
+    expect(text).toContain("提交 · 成员 · 9 · 2026-11-19 09:00");
+    expect(text).toContain("节点 1 · 郑涛 · 通过 · 2026-11-19 09:50 · 意见：可以，按计划轮换。");
+    // 裸 human:8 没有姓名 → 屏上口径「人员」；缺意见 → 「未填」。
+    expect(text).toContain("节点 2 · 人员 · 通过 · 2026-11-19 09:55 · 意见：未填");
+    expect(text).toContain("阿朝 · 待办 · 该段无记录 · 意见：未填");
+    expect(text).toContain("终态 ·");
+    expect(text).not.toContain("human:");
+    expect(text).not.toContain("emp_");
+    expect(text).not.toContain("ap_t8");
+    expect(document.querySelector("[data-testid='apd8-fallback']")).toBeNull();
+  });
+
+  it("falls back to a read-only textarea when the clipboard refuses", async () => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: () => Promise.reject(new Error("denied")) },
+    });
+    await openTrail(TRAIL_SAMPLE);
+    const btn = document.querySelector("[data-testid='apd8-copy']") as HTMLButtonElement | null;
+    await act(async () => {
+      btn!.click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='apd8-fallback']") !== null, "fallback textarea");
+    const box = document.querySelector("[data-testid='apd8-fallback']") as HTMLTextAreaElement;
+    expect(box.readOnly).toBe(true);
+    expect(box.value).toContain("节点 1 · 郑涛");
+    expect((document.querySelector("[data-testid='apd8-copy-status']")?.textContent ?? "")).toContain("手动复制");
+  });
+
+  it("disables the copy for an empty trail, with the reason in the title", async () => {
+    await openTrail(EMPTY_TRAIL_SAMPLE);
+    const btn = document.querySelector("[data-testid='apd8-copy']") as HTMLButtonElement | null;
+    expect(btn, "copy button").toBeTruthy();
+    expect(btn!.disabled).toBe(true);
+    expect(btn!.title).toContain("没有可复制的链路");
+    expect(document.querySelector("[data-testid='apd8-fallback']")).toBeNull();
+  });
+});

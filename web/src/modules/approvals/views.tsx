@@ -7,11 +7,12 @@
  * the text of the page — they live in `title` attributes and the 「详情」
  * disclosure, which is collapsed by default.
  */
-import { useRef, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
 import { Link } from "react-router";
 
 import { Badge } from "@nous-research/ui/ui/components/badge";
+import { Button } from "@nous-research/ui/ui/components/button";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 
 import { themedBody } from "@/lib/utils";
@@ -237,9 +238,58 @@ function NoSeg({ reason }: { reason: string }) {
   );
 }
 
+/**
+ * R61 apd8 — the trail as human-readable text, in exactly the order the
+ * screen shows it. Raw ids never enter the copy; missing segments keep the
+ * 「该段无记录」 wording, missing comments keep 「未填」. Nothing new is
+ * asked of the server — this reads only the detail already on screen.
+ */
+function trailToText(detail: ApprovalDetail): string {
+  const lines: string[] = [
+    `提交 · ${detail.requester.label} · ${detail.submitted ?? "该段无记录"}`,
+  ];
+  if (detail.decisions.length === 0) {
+    lines.push("审批节点 · 该段无记录");
+  } else {
+    detail.decisions.forEach((entry, index) => {
+      lines.push(
+        `节点 ${index + 1} · ${entry.who} · ${entry.verdict} · ${entry.at ?? "该段无记录"} · 意见：${entry.note ?? "未填"}`,
+      );
+    });
+  }
+  const pending = detail.approvers.labels.filter(
+    (label) => !detail.decisions.some((entry) => entry.who === label),
+  );
+  for (const label of pending) lines.push(`${label} · 待办 · 该段无记录 · 意见：未填`);
+  lines.push(`终态 · ${detail.status.label}${detail.decided ? ` · ${detail.decided}` : ""}`);
+  return lines.join("\n");
+}
+
 export function DecisionTrail({ detail }: { detail: ApprovalDetail }): ReactNode {
   const acted = detail.decisions;
   const pending = detail.approvers.labels.filter((label) => !acted.some((entry) => entry.who === label));
+  const copyText = useMemo(() => trailToText(detail), [detail]);
+  const emptyTrail = acted.length === 0 && pending.length === 0;
+  const [copyState, setCopyState] = useState<"idle" | "done" | "failed">("idle");
+  const [showFallback, setShowFallback] = useState(false);
+  const copyTrail = () => {
+    const clip = navigator.clipboard;
+    if (!clip?.writeText) {
+      setCopyState("failed");
+      setShowFallback(true);
+      return;
+    }
+    clip.writeText(copyText).then(
+      () => {
+        setCopyState("done");
+        setShowFallback(false);
+      },
+      () => {
+        setCopyState("failed");
+        setShowFallback(true);
+      },
+    );
+  };
   return (
     <section
       className="flex min-w-0 flex-col gap-1"
@@ -316,6 +366,41 @@ export function DecisionTrail({ detail }: { detail: ApprovalDetail }): ReactNode
           </span>
         </li>
       </ol>
+      <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2 text-xs">
+        <Button
+          size="sm"
+          outlined
+          data-testid="apd8-copy"
+          disabled={emptyTrail}
+          title={
+            emptyTrail
+              ? "服务没有返回任何决策节点，也没有待办审批人：没有可复制的链路。"
+              : "按屏上同序复制为纯文本；只读屏上已有数据，不产生新请求。"
+          }
+          onClick={copyTrail}
+        >
+          复制为纯文本
+        </Button>
+        <span data-testid="apd8-copy-status" aria-live="polite" className="text-muted-foreground">
+          {copyState === "done"
+            ? "已复制"
+            : copyState === "failed"
+              ? "剪贴板写入被拒绝，可用下方文本框手动复制。"
+              : ""}
+        </span>
+      </div>
+      {showFallback ? (
+        <textarea
+          data-testid="apd8-fallback"
+          readOnly
+          rows={8}
+          aria-label="决策链路文本（手动复制）"
+          title="剪贴板不可用时的兜底：全选后手动复制；文本与屏上链路同序同口径。"
+          className="w-full min-w-0 rounded-sm border border-border bg-transparent p-2 font-mono text-xs"
+          value={copyText}
+          onFocus={(e) => e.currentTarget.select()}
+        />
+      ) : null}
     </section>
   );
 }
