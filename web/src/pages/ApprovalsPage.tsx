@@ -290,8 +290,6 @@ interface Failure {
   sentence: string;
   requestId: string | null;
   technical: string | null;
-  /** R5 item 1: a 401 gets an explicit re-login exit next to 重试. */
-  authExpired?: boolean;
 }
 
 const REQUEST_ID_KEYS = ["request_id", "requestId", "trace_id", "traceId", "x-request-id", "correlation_id"] as const;
@@ -333,13 +331,18 @@ function failureFrom(err: unknown): Failure {
   const status = err.status;
   const requestId = (err instanceof ApiError && err.requestId ? err.requestId : requestIdFrom(err.body));
   const technical = err.details;
+  // 本页认不出的状态一律回落到这一句通用话术。
+  const generic = "读取审批申请时出现问题，请稍后重试。";
   let sentence: string;
   if (status === 0) sentence = "连不上提供这些数据的服务，请确认它已启动后重试。";
-  else if (status === 401) sentence = "登录状态已失效，请刷新页面重新登录后再看。";
+  // 设计车道 ①：401 不再由本页说「登录状态已失效」——全站只有顶部一条
+  // SessionExpiredBanner 说这件事（`lib/session-expiry` 置位），同一状态不出现两次。
+  // 这里也不把 `lib/api-error` 给 401 的那句人话透上来，只留通用错误 + 请求编号 + 重试。
+  else if (status === 401) sentence = generic;
   else if (status === 429) sentence = "请求太频繁，请稍等一会儿再试。";
   else if (status >= 500) sentence = "服务在处理时出了错，请稍后重试。";
-  else sentence = humanSentence(errorMessage(err)) ?? "读取审批申请时出现问题，请稍后重试。";
-  return { sentence, requestId, technical, authExpired: status === 401 };
+  else sentence = humanSentence(errorMessage(err)) ?? generic;
+  return { sentence, requestId, technical };
 }
 
 function isDenied(err: unknown): boolean {
@@ -386,16 +389,6 @@ function ErrorPanel({ failure, onRetry }: { failure: Failure; onRetry: () => voi
           <RefreshCw className="h-3.5 w-3.5" />
           重试
         </ConsoleButton>
-        {failure.authExpired && (
-          <Button
-            size="sm"
-            outlined
-            data-testid="auth-reload-exit"
-            onClick={() => { window.location.href = "/login"; }}
-          >
-            去登录
-          </Button>
-        )}
       </CardContent>
     </Card>
   );

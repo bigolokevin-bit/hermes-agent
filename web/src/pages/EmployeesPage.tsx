@@ -8,7 +8,6 @@ import {
   Users,
 } from "lucide-react";
 import { Badge } from "@nous-research/ui/ui/components/badge";
-import { Button } from "@nous-research/ui/ui/components/button";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 
 import { RequestIdCopy } from "@/components/RequestIdCopy";
@@ -622,6 +621,8 @@ export function EmptyBlock({ text, hint }: { text: string; hint: string }) {
 /**
  * 错误块。403/404 合并成同一套「无权限或未开放」话术——既诚实又不泄露资源是否
  * 存在，且整块替换、不先渲染数据。其它（5xx/断网/超时）显示后端的人话 + 请求编号。
+ * 401 不再有自己的话术（设计车道 ①）：登录失效由全站唯一的 SessionExpiredBanner
+ * 说一次，这里只留通用错误块 + 请求编号 + 重试。
  */
 export function ErrorStateBlock({
   status,
@@ -639,30 +640,30 @@ export function ErrorStateBlock({
   onRetry: () => void;
 }) {
   const denied = status === 403 || status === 404;
-  // R5 item 1: 401 gets its own honest block — plain sentence, copyable
-  // request id, and two exits (retry in place, reload to sign in again).
-  const expired = status === 401;
-  const title = expired ? "需要登录" : denied ? deniedTitle : errorTitle;
-  const body = expired
-    ? "这个页面的登录状态已经失效。重新登录后就能继续查看，这些内容不会丢失。"
+  // 设计车道 ①：401 不再自绘「登录失效」卡。全站只有顶部一条 SessionExpiredBanner
+  // 说这件事（`lib/session-expiry` 置位），页面回落到既有的通用错误呈现。
+  // 这里连正文也不重复那句话：`lib/api-error` 给 401 的人话就是「登录状态已经失效」，
+  // 再显示一遍等于同一状态出现两次；去掉它，本页只留「没能加载出来」+ 请求编号 + 重试。
+  const authExpired = status === 401;
+  const title = denied ? deniedTitle : errorTitle;
+  const body = authExpired
+    ? null
     : denied
       ? "该数据源尚未开放，或你没有查看权限。请确认后台已接入对应服务，或联系管理员开通权限。"
       : message;
   return (
-    <Card role="alert" className={denied && !expired ? "border-border" : "border-destructive/40 bg-destructive/5"}>
+    <Card role="alert" className={denied ? "border-border" : "border-destructive/40 bg-destructive/5"}>
       <CardContent className="flex items-start gap-3 py-4">
-        {expired ? (
-          <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
-        ) : denied ? (
+        {denied ? (
           <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
         ) : (
           <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0 text-destructive" aria-hidden />
         )}
         <div className="min-w-0 flex-1">
-          <p className={cn("text-sm font-medium", !denied && !expired && "text-destructive")} title={status ? String(status) : undefined}>
+          <p className={cn("text-sm font-medium", !denied && "text-destructive")} title={status ? String(status) : undefined}>
             {title}
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">{body}</p>
+          {body ? <p className="mt-1 text-xs text-muted-foreground">{body}</p> : null}
           <p className="mt-1 text-xs text-muted-foreground">
             <RequestIdCopy requestId={requestId} fallback="请求编号未记录，可复制时间与操作路径反馈" />
           </p>
@@ -671,18 +672,6 @@ export function ErrorStateBlock({
               <RefreshCw className="h-3.5 w-3.5" />
               重试
             </ConsoleButton>
-            {expired && (
-              <Button
-                size="sm"
-                outlined
-                onClick={() => {
-                  if (typeof window !== "undefined") window.location.href = "/login";
-                }}
-                data-testid="auth-reload-exit"
-              >
-                去登录
-              </Button>
-            )}
           </div>
         </div>
       </CardContent>
