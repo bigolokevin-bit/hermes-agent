@@ -2931,3 +2931,72 @@ $ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 
 边界：只新增 web/src/modules/knowledge/knowledge.filters.test.tsx 与本证据；零产品改动；
 显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
 「test(console): knowledge filter url guards」。
+
+# KNW5 追加 R125：跨面同值护栏纳入 kn7 抽屉 + 抽屉缺值句式收口（2026-11-20 BJT）
+
+安全门：toplevel 相符、porcelain 空、显式 refspec fetch 后 merge 实测 tip 即预期
+`d7965c2a`（wave-33 代次，知识面 delta 空）。
+
+## 一、既有覆盖核查（先查后写，未造重复用例）
+
+```text
+$ git grep -n kn7 -- kn.parity.test.ts
+  :188  holds the mutex matrix (doc preview / kn7 drawer / sdoc expand) …   ← 只锁互斥，无逐字段
+$ 主测试 :212-217 / :806 / :2257 —— 抽屉断言全是固定夹具绝对值（PDF/2.4 MB/15:10），无跨面对账
+$ knowledge.updated.test.tsx（R76）三面 updatedText——表格/行内预览口径，抽屉不在其列
+结论：抽屉的逐字段跨面 parity = 真缺口（维度 A）；抽屉缺值句式独立一套 = 真缺陷（维度 B）；
+「打开预览零额外请求」对行内预览成立、对抽屉不成立（R49 详情读，维度 C 按实测口径断言）。
+```
+
+## 二、真缺陷与修复（同单，前后对照）
+
+```text
+缺陷：DocPreviewDrawer 四字段（文档名/类型/大小/更新）缺值时自一套文案——文本「—」、
+  title 裸 hint（如「上游没有给出文档类型」）或「这条不在当前已加载的列表里」；
+  而两处行内预览按 R70 走 previewField：「该字段未返回」+「<字段>：<原因>」。
+  同一条记录、同为预览面，两套缺值话术并存在屏。
+修复（仅动抽屉这一处，复用同一 helper previewField，零新文案）：
+  改前 dd：title={row ? (row.atHint ?? undefined) : "…列表里"} > {row?.at ?? "—"}
+  改后 dd：title={fUpdated.title} > {fUpdated.text}
+    fUpdated = previewField("更新", row !== null && row.atHint === null, row?.at ?? "—",
+                            row?.atHint ?? "这条不在当前已加载的列表里")
+  在场值文本与 title 逐字不变（type 在场 title 仍=typeRaw；名/大小/更新在场 title 仍=无）
+  ——91 条既有用例（含 :212-217/:806/:2257 在场值 pin）修复后原样全绿，未改一条断言。
+表格列不在收口范围：表格口径是「—」+ updatedText/hint title（R75/R76 设计），维持。
+```
+
+## 三、新护栏（knowledge.parity.test.tsx，3 用例）
+
+```text
+A) 四面在场值逐字同（检索表列=详情表列=行内预览=抽屉，toBe 链 + 逐字示例锁
+   PDF / 2.4 MB / 2026-11-19 15:10 / 员工手册.pdf）；短码三源一致：
+   kn-doc-preview-code === docLine 第 5 列 === shortId("d_p1")="DP1"；
+   抽屉 dl title 逐字 "d_p1"（全 id 只在 title）；表体+抽屉正文零裸 id。
+B) 缺字段（d_p2 无名外全缺）：两处行内预览与抽屉三预览面「该字段未返回」逐字同、
+   title 逐字同（如「更新：上游没有给出更新时间」）；表列仍「—」+R76 缺失句（设计差）。
+C) 请求计数实测（与派工字面差异声明）：行内预览开合 +0（复用已载）；抽屉每次打开
+   +1 == /agent-api/api/documents/d_p1（R49 既有详情读，非本单引入、纯测试单不改产品）；
+   开着不动零追加；关闭 +0；关→开不叠加（两次打开=该 URL 恰 2 次）；SPACES/文档表
+   读取全程不随抽屉复读。
+```
+
+## 验证尾行（R125）
+```text
+$ npx vitest run src/modules/knowledge   → 6 files / 94 tests passed（基线 91 + 护栏 3）
+$ npx vitest run                         → 192 files / 2519 tests passed（+8 文件为 merge 的
+  wave-33 他模块内容，全绿非退化）
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning；本单曾有
+  1 条 unused(click) error 提交前清零）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r125-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn3/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort/kn-gates/kn-doc-copy*/kn-space-preview/
+kn-type 全族在 94/94 与全仓 2519/2519 中通过（抽屉修复后的在场值路径零测试改动即证同值）。
+```
+未测如实：带登录会话真实屏（详情读真实信封 404 未接入态与 mock 同构；护栏锁渲染口径）；
+抽屉对「不在已加载列表」doc 的缺值句（row=null 分支）仅由 previewField 直调语义覆盖，
+DOM 路径未单测（需构造列表外 doc=，本单夹具未含）。
+边界：改 web/src/modules/knowledge/{KnowledgeModulePage.tsx(仅 DocPreviewDrawer 四 dd 渲染),
+knowledge.parity.test.tsx(新增)} 与本证据；显式路径 add；无 force/amend/--no-verify/
+git add -A；未并 main、未重建 9122；单 commit「test(console): knowledge cross-face parity guards」
+（含 B 维度一处真缺陷修复，按派工「测出真缺陷同单修并注明前后」条款）。

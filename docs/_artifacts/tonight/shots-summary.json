@@ -9,8 +9,8 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 1612,
-    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 北京时间 2026-11-20 18:21 近 24 小时 近 7 天 近",
+    "textLen": 1798,
+    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 北京时间 2026-11-20 18:41 近 24 小时 近 7 天 近",
     "hasMainEl": true,
     "ok": true
   },
@@ -33,97 +33,97 @@
     {
       "route": "#/approvals",
       "viewport": "1440",
-      "chars": 742,
+      "chars": 889,
       "hasMainEl": true
     },
     {
       "route": "#/approvals",
       "viewport": "375",
-      "chars": 742,
+      "chars": 889,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=history",
       "viewport": "1440",
-      "chars": 1812,
+      "chars": 2021,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=history",
       "viewport": "375",
-      "chars": 1812,
+      "chars": 2021,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=mine",
       "viewport": "1440",
-      "chars": 742,
+      "chars": 889,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=mine",
       "viewport": "375",
-      "chars": 742,
+      "chars": 889,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=mine",
       "viewport": "1440",
-      "chars": 742,
+      "chars": 889,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=mine",
       "viewport": "375",
-      "chars": 742,
+      "chars": 889,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=release",
       "viewport": "1440",
-      "chars": 742,
+      "chars": 889,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=release",
       "viewport": "375",
-      "chars": 742,
+      "chars": 889,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=policy",
       "viewport": "1440",
-      "chars": 742,
+      "chars": 889,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=policy",
       "viewport": "375",
-      "chars": 742,
+      "chars": 889,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=release",
       "viewport": "1440",
-      "chars": 742,
+      "chars": 889,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=release",
       "viewport": "375",
-      "chars": 742,
+      "chars": 889,
       "hasMainEl": true
     },
     {
       "route": "#/audit",
       "viewport": "1440",
-      "chars": 7728,
+      "chars": 7647,
       "hasMainEl": true
     },
     {
       "route": "#/audit",
       "viewport": "375",
-      "chars": 7728,
+      "chars": 7647,
       "hasMainEl": true
     },
     {
@@ -357,7 +357,7 @@
     {
       "route": "#/knowledge",
       "viewport": "1440",
-      "chars": 608,
+      "chars": 469,
       "hasMainEl": true
     },
     {
@@ -375,7 +375,7 @@
     {
       "route": "#/knowledge?tab=citations",
       "viewport": "375",
-      "chars": 689,
+      "chars": 359,
       "hasMainEl": true
     },
     {
@@ -393,7 +393,7 @@
     {
       "route": "#/knowledge?tab=ingest",
       "viewport": "1440",
-      "chars": 396,
+      "chars": 939,
       "hasMainEl": true
     },
     {
@@ -429,7 +429,7 @@
     {
       "route": "#/knowledge?tab=sources",
       "viewport": "1440",
-      "chars": 714,
+      "chars": 939,
       "hasMainEl": true
     },
     {
@@ -453,7 +453,7 @@
     {
       "route": "#/org",
       "viewport": "1440",
-      "chars": 75,
+      "chars": 394,
       "hasMainEl": true
     },
     {
@@ -465,13 +465,13 @@
     {
       "route": "#/overview",
       "viewport": "1440",
-      "chars": 1612,
+      "chars": 1798,
       "hasMainEl": true
     },
     {
       "route": "#/overview",
       "viewport": "375",
-      "chars": 1612,
+      "chars": 1798,
       "hasMainEl": true
     },
     {
@@ -501,13 +501,13 @@
     {
       "route": "#/system",
       "viewport": "1440",
-      "chars": 617,
+      "chars": 1186,
       "hasMainEl": true
     },
     {
       "route": "#/system",
       "viewport": "375",
-      "chars": 1179,
+      "chars": 1197,
       "hasMainEl": true
     },
     {
@@ -525,37 +525,37 @@
     {
       "route": "#/system?tab=events",
       "viewport": "1440",
-      "chars": 7728,
+      "chars": 7647,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events",
       "viewport": "375",
-      "chars": 7728,
+      "chars": 7647,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "1440",
-      "chars": 7728,
+      "chars": 7647,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "375",
-      "chars": 7728,
+      "chars": 7647,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=retention",
       "viewport": "1440",
-      "chars": 7728,
+      "chars": 7647,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=retention",
       "viewport": "375",
-      "chars": 7728,
+      "chars": 7647,
       "hasMainEl": true
     },
     {
@@ -621,13 +621,13 @@
     {
       "route": "#/work?tab=runs",
       "viewport": "1440",
-      "chars": 1685,
+      "chars": 1767,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=runs",
       "viewport": "375",
-      "chars": 1657,
+      "chars": 1739,
       "hasMainEl": true
     }
   ],
@@ -644,11 +644,11 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "d7965c2a",
+  "headHash": "76090480",
   "exitCode": 0,
-  "entry": "assets/index--5QIE39w.js",
-  "entrySha256": "9be3cba8ec181eca5316e34f41d7074d638d0054277982177ea4bd490a6827f6",
+  "entry": "assets/index-AUgdk60e.js",
+  "entrySha256": "1b1aff39bc9bfcae6d3e361402de527fdb7020cc003a350c50694697df7aa856",
   "entryBytes": 167498,
-  "servedEntryBefore": "index--5QIE39w.js",
-  "servedEntryAfter": "index--5QIE39w.js"
+  "servedEntryBefore": "index-AUgdk60e.js",
+  "servedEntryAfter": "index-AUgdk60e.js"
 }
