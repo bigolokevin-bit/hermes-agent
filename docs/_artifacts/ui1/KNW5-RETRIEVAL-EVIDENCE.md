@@ -2586,3 +2586,63 @@ kn-space-preview / kn.parity 零破。
 边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
 package·lock / web-scripts / ops；未并 main、未重建 9122；显式路径 add；无 force / amend /
 `--no-verify`；单 commit「feat(console): knowledge document type filter」。
+
+# KNW5 追加 R75（wave-29）：知识三面「最近更新」呈现收单一 helper（updated.ts）（2026-11-20 BJT）
+
+安全闸：toplevel 相符、porcelain 空、显式 refspec fetch 后 merge 实测 tip 即预期 `54f3dcfc`
+（纯账本章笔，代次 `86cb2ede`），零冲突、知识面 delta 空；merge 与 feature 分笔不成立——
+本次为 fast-forward 链上的单 commit。
+
+## 一、收口位点与语义保留位点（按派工写清）
+
+```text
+收口（值+title 全出 updatedText）：
+  ① 空间列表时间格 knw5-space-time（前缀标签「最近同步/最近更新」按记录键仍由 syncMomentOf
+     选择，保留在调用方；值本体与 title 来自 helper）
+  ② 空间详情文档更新列 kn3-docs-updated
+  ③ 全库检索命中更新列 kn6-search-updated
+  knowledge.ts 内 spaceOf/docOf 的 .at 字段值同步走 updatedText（复制文本、计数口径
+  因此与三列天然同值）；atReason/atHint 判定从「at 真值」改为「at 非 —」——修掉一处
+  因接入 helper 而引入的回归（缺失句被恒真值吞掉，测试当场抓到）。
+按语义保留（不硬套）：
+  · knM 台账与「数据截至」行的 asOf（knAsOfFacts/stampOf/newestOf）——数据截至语义；
+  · ingest 任务时间（taskOf）与检索记录时间（retrievalOf）——登记/处理时间语义；
+  · 行内预览与复制文本里「更新」字段的 title 仍走 hint 句（预览面不在三处表格列范围）。
+```
+
+## 二、口径与逐字读数
+
+```text
+updatedText(iso)：合法 ISO → 北京时间到分 `YYYY-MM-DD HH:mm` + title `时间 <原样ISO>（UTC）`；
+缺失/非法 → 值「—」+ title 逐字「上游未返回时间；不用本机时间顶替。」（两句固定，由同一
+函数决定；本机时钟零参与）。
+三面同一记录（2026-11-14T06:33:18+08:00）实测：检索列与详情列值逐字等、title 逐字等
+（`时间 2026-11-14T06:33:18+08:00（UTC）`）；空间列剥前缀后同值、title 同句。
+非 ISO（yesterday）与缺失：三处同落「—」+同一缺失句（parity 用例断言）。
+```
+
+## 三、有意口径改动（测试 pin 同步，非回归）
+
+```text
+检索列在场 title：旧 null（不写理由不写原样）→ 新「时间 <ISO>（UTC）」（R75 在场句）。
+三列缺失 title：旧「上游没有给出更新时间/上游没有给出时间」→ 新统一缺失句；
+  hint 字段本身保留原句（预览/复制等位点不动）。
+```
+
+## 验证尾行（R75）
+```text
+$ npx vitest run src/modules/knowledge   → 3 files / 70 tests passed（基线 69 + 三面时间 parity 1）
+$ npx vitest run                         → 169 files / 2352 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-updatedist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零额外请求：helper 纯函数；parity 用例全程 fetchMock 只有两轮 render 的既有读取。
+kn3 / kn6–kn9 / knB / knD–knN / kn-sort / kn-gates / kn.parity / kn-doc-preview /
+kn-space-preview / knL / knM 零破。
+```
+未测如实：带登录会话的三面真实数据屏（静态 preview 无会话，落诚实非 ready 态；真实值口径
+由 parity 夹具 + 单测逐字锁定）；行内预览/复制位点的 title 本单明确不收口（语义保留）。
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；显式路径 add；无 force/amend/
+`--no-verify`/`git add -A`；未并 main、未重建 9122；单 commit
+「feat(console): unify knowledge updated-at presentation」。

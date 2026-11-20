@@ -26,6 +26,7 @@ vi.mock("@/modules/models/fetchJson", () => ({
 }));
 
 import KnowledgeModulePage from "./KnowledgeModulePage";
+import { UPDATED_MISSING_TITLE, updatedText } from "./updated";
 
 const SPACES = "/agent-api/api/knowledge/spaces?limit=20";
 const DOCUMENTS_PLAIN = "/agent-api/api/documents?limit=50";
@@ -270,5 +271,65 @@ describe("knowledge cross-surface parity (kn6-search-* vs kn3-docs-*)", () => {
     // 两处 title 同一句：「当前已加载 N 条，不是全量」（N=本面加载数）
     expect(q('knF-copy')?.getAttribute("title") ?? "").toContain("当前已加载 2 条，不是全量；");
     expect(q('knG-copy')?.getAttribute("title") ?? "").toContain("当前已加载 2 条，不是全量；");
+  });
+
+  it("renders the same 最近更新 value and title identically across the three surfaces (one helper, three call sites)", async () => {
+    const ISO = "2026-11-14T06:33:18+08:00";
+    const BAD = "yesterday";
+    const doc = { documentId: "u1", fileName: "同一时刻文档.pdf", mimeType: "pdf", sizeBytes: 10, updatedAt: ISO };
+    const docBad = { documentId: "u2", fileName: "坏时刻文档.txt", mimeType: "txt", updatedAt: BAD };
+    const docNone = { documentId: "u3", fileName: "无时刻文档.md", mimeType: "md" };
+    const rows = [doc, docBad, docNone];
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES)
+        return Promise.resolve({
+          asOf: "2026-11-20T07:00:00Z",
+          items: [
+            { spaceId: "sp_u", name: "时刻空间", docCount: 3, lastSyncAt: ISO },
+            { spaceId: "sp_bad", name: "坏时空间", docCount: 1, updatedAt: BAD },
+            { spaceId: "sp_none", name: "无时空间", docCount: 1 },
+          ],
+        });
+      if (url === DOCUMENTS_PLAIN || url === docsUrlFor("sp_u")) return Promise.resolve({ asOf: "2026-11-20T07:00:00Z", documents: rows });
+      return fail(404, "这个数据接口还没有接入。", "rid-up-x");
+    });
+    // 三面不同屏（列表 ↔ 详情路由互斥）：分两轮读数，值与 title 各自与 helper 对账
+    await render("/knowledge?tab=spaces&space=sp_u");
+    await act(async () => {});
+    const searchRows = '[data-testid="kn6-search-row"]';
+    const docRows = '[data-testid="kn3-docs-row"]';
+    const expected = updatedText(ISO);
+
+    // 在场时刻：三面值与 title 逐字同 helper 输出
+    // 检索面 u1、详情面 u1：DOM 排序随 sortDocs；取 title 含该 ISO 的那行
+    const searchUpdated = [...container.querySelectorAll(searchRows)].map((r) => r.querySelector('[data-testid="kn6-search-updated"]'));
+    const docUpdated = [...container.querySelectorAll(docRows)].map((r) => r.querySelector('[data-testid="kn3-docs-updated"]'));
+    const sU1 = searchUpdated.find((n) => (n?.getAttribute("title") ?? "").includes(ISO));
+    const dU1 = docUpdated.find((n) => (n?.getAttribute("title") ?? "").includes(ISO));
+    expect(sU1?.textContent?.trim()).toBe(expected.value);
+    expect(dU1?.textContent?.trim()).toBe(expected.value);
+    expect(dU1?.getAttribute("title")).toBe(sU1?.getAttribute("title"));
+    expect(sU1?.getAttribute("title")).toBe(`时间 ${ISO}（UTC）`);
+
+    // 非 ISO（yesterday）与缺失：详情两表同落「—」+同一缺失句 title
+    for (const nodes of [searchUpdated, docUpdated]) {
+      const bad = nodes.find((n) => (n?.textContent ?? "").trim() === "—");
+      expect(bad?.getAttribute("title")).toBe(UPDATED_MISSING_TITLE);
+    }
+    expect(updatedText(BAD)).toEqual({ value: "—", title: UPDATED_MISSING_TITLE });
+
+    // 切到列表面：空间时间格同 title 句式、值剥前缀后逐字等 helper
+    await render("/knowledge?tab=spaces");
+    await act(async () => {});
+    const spaceTimes = [...container.querySelectorAll('[data-testid="knw5-space-time"]')];
+    expect(spaceTimes.length).toBe(3);
+    const spU = spaceTimes.find((n) => (n.getAttribute("title") ?? "").includes(ISO));
+    expect(spU?.getAttribute("title")).toBe(`时间 ${ISO}（UTC）`);
+    const [label, value] = (spU?.textContent ?? "").split("：");
+    expect(["最近同步", "最近更新"].includes(label.trim())).toBe(true);
+    expect(value.trim()).toBe(expected.value);
+    const badSpace = spaceTimes.find((n) => (n.getAttribute("title") ?? "") === UPDATED_MISSING_TITLE);
+    expect(badSpace).toBeTruthy();
+    expect((badSpace?.textContent ?? "").replace(/[^—]/g, "")).toBe("—");
   });
 });
