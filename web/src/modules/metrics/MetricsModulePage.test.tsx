@@ -4,7 +4,7 @@
 // no raw field names or HTTP codes reach the page.
 import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { MemoryRouter, useLocation } from 'react-router';
+import { MemoryRouter, useLocation, useNavigationType } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiError } from '@/lib/api-error';
@@ -16,7 +16,7 @@ vi.mock('@/lib/clipboard', () => ({ copyTextToClipboard: clip.copyTextToClipboar
 
 import { MetricsModulePage } from './MetricsModulePage';
 import { CALIBER_NOTES } from './metrics';
-import { csvFileName, shareCsvFileName } from './metrics';
+import { costCaliber, csvFileName, shareCsvFileName } from './metrics';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -3862,7 +3862,10 @@ describe('metAG — copy the source summary', () => {
 
     expect(q('metAG-copy-status')?.textContent).toBe('复制没成功');
     const fallback = q('metAG-copy-fallback-text') as HTMLTextAreaElement;
+    // Same source as the clipboard call, and never an empty box.
     expect(fallback.value).toBe(body);
+    expect(fallback.value).not.toBe('');
+    expect(clip.copyTextToClipboard).toHaveBeenLastCalledWith(fallback.value);
     expect(fallback.value.split('\n')).toHaveLength(6);
   });
 
@@ -3885,8 +3888,8 @@ describe('metAH — the tables say how many rows they really show', () => {
     expect(rows).toBeGreaterThan(0);
 
     const note = q('metAH-cap-note');
-    expect(note?.textContent).toContain(`表内全量渲染，共 ${rows} 行`);
-    expect(note?.textContent).toContain('没有截断');
+    expect(note?.textContent).toContain(`宽表逐行全量渲染，共 ${rows} 行`);
+    expect(note?.textContent).toContain('导出与屏上逐行一致');
     expect(note?.getAttribute('title')).toContain('判据');
     expect(q('met6-cat-source')?.textContent).toContain(`${rows} 行`);
     // No invented truncation wording.
@@ -3899,10 +3902,35 @@ describe('metAH — the tables say how many rows they really show', () => {
     expect(rows).toBe(3);
 
     const note = q('metAH-cap-note-share');
-    expect(note?.textContent).toContain(`表内全量渲染，共 ${rows} 行`);
+    expect(note?.textContent).toContain(`宽表逐行全量渲染，共 ${rows} 行`);
     expect(note?.getAttribute('title')).toContain('metA-export-count');
     expect(q('metA-export-count')?.textContent).toBe(`可导出 ${rows} 行`);
     expect(note?.textContent).not.toMatch(/前\s*\d+\s*行/);
+  });
+
+  it('names the two short lists that do stop early, each with its own reason', async () => {
+    const prices = Array.from({ length: 6 }, (_, index) => ({
+      model: `model-${index}`,
+      provider: 'local',
+      input_per_million: 0.1,
+      output_per_million: 0.2,
+    }));
+    await mount(
+      usageRouter({ pricing: () => Promise.resolve({ prices, asOf: '2026-11-19T20:12:00.000Z' }) }),
+    );
+
+    const snapshot = q('metAH-cap-note-snapshot');
+    expect(snapshot?.textContent).toContain('前 8 行');
+    expect(snapshot?.textContent).toContain('导出明细 CSV');
+    expect(snapshot?.getAttribute('title')).toContain('前 8 行');
+
+    const pricing = q('metAH-cap-note-pricing');
+    expect(pricing?.textContent).toContain('前 5 行');
+    expect(pricing?.textContent).toContain('不导出价目');
+    expect(pricing?.getAttribute('title')).toContain('前 5 行');
+
+    // No blanket claim survives anywhere on the page.
+    expect(visibleText()).not.toContain('没有截断');
   });
 
   it('adds no read of its own', async () => {
@@ -4528,5 +4556,165 @@ describe('metAP — the three faces of the run count, spelled out', () => {
     expect(face('metAP-detail')).toBe(face('metT-detail-total-count'));
     // The switch refetches its own batch; the caliber line adds nothing to it.
     expect(urls().length).toBeGreaterThan(before);
+  });
+});
+
+describe('metAQ — the address compatibility matrix', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+  const loc = (): string => q('met7-loc')?.textContent ?? '';
+  const scope = (): string => q('metAL-scope')?.textContent ?? '';
+  const note = (): HTMLElement | null => q('metAQ-url-note');
+
+  function KeyProbe(): ReactNode {
+    const location = useLocation();
+    const navigation = useNavigationType();
+    return (
+      <>
+        <p data-testid="metAQ-loc-key">{location.key}</p>
+        <p data-testid="metAQ-nav-type">{navigation}</p>
+      </>
+    );
+  }
+
+  const page = (
+    <>
+      <MetricsModulePage />
+      <LocationProbe />
+      <KeyProbe />
+    </>
+  );
+
+  it('renders the legacy heat alias exactly like the canonical key', async () => {
+    const historyBefore = window.history.length;
+
+    await render('/metrics?w=4', page);
+    await waitFor(() => loc() === '?heat=4', 'legacy key folded into heat');
+
+    expect(q('met5-window-4')?.getAttribute('aria-pressed')).toBe('true');
+    expect(scope()).toContain('热力');
+    expect(q('metAQ-url-note')).toBeNull();
+    // replace, not push: the fold rewrites the entry instead of stacking one.
+    expect(q('metAQ-nav-type')?.textContent).toBe('REPLACE');
+    expect(q('metAQ-loc-key')?.textContent).toBeTruthy();
+    expect(window.history.length).toBe(historyBefore);
+  });
+
+  it('lets the older groupBy spelling drive the detail view too', async () => {
+    await render('/metrics?groupBy=employee', page);
+    await waitFor(
+      () => loc().includes('view=employee') && loc().includes('groupBy=employee'),
+      'detail view written back',
+    );
+    expect(scope()).toContain('分组 按员工');
+    expect(q('metAO-filename-detail')?.textContent).toContain('-employee-');
+
+    // The opposite direction stays put: the share grouping is its own choice,
+    // so a link naming only the detail view must not move the share table.
+    await render('/metrics?view=employee', page);
+    await waitFor(() => q('metAP-heat') !== null, 'settled');
+    expect(loc()).toContain('view=employee');
+    expect(loc()).not.toContain('groupBy=');
+    expect(scope()).toContain('分组 按模型');
+    expect(q('metAO-filename-detail')?.textContent).toContain('-employee-');
+  });
+
+  it('falls back to the defaults for unusable values and says how many it ignored', async () => {
+    await render('/metrics?window=9y&heat=abc&sort=zzz&dsort=xxx&keep=1', page);
+    await waitFor(() => loc().includes('keep=1') && !loc().includes('9y'), 'unknown values folded away');
+
+    expect(q('met6-window-24h')?.getAttribute('aria-pressed')).toBe('true');
+    expect(q('met5-window-1')?.getAttribute('aria-pressed')).toBe('true');
+
+    expect(note()).not.toBeNull();
+    expect(note()?.textContent).toBe('已忽略无效参数 4 个');
+    const hint = note()?.getAttribute('title') ?? '';
+    for (const pair of ['window=9y', 'heat=abc', 'sort=zzz', 'dsort=xxx']) expect(hint).toContain(pair);
+    // Unrelated keys are none of our business.
+    expect(loc()).toContain('keep=1');
+    expect(note()?.textContent ?? '').not.toContain('/');
+  });
+
+  it('keeps the same words on screen as the canonical link', async () => {
+    await render('/metrics?w=12&view=model', page);
+    await waitFor(() => loc().includes('heat=12'), 'heat canonical');
+    const aliasScope = scope();
+    const aliasRuns = q('metAP-heat')?.textContent;
+
+    await render('/metrics?heat=12&view=model&groupBy=model', page);
+    await waitFor(() => q('metAP-heat') !== null, 'canonical settled');
+    expect(scope()).toBe(aliasScope);
+    expect(q('metAP-heat')?.textContent).toBe(aliasRuns);
+  });
+
+  it('reads nothing extra while folding the address', async () => {
+    const start = urls().length;
+    await render('/metrics?w=4&window=7d', page);
+    await waitFor(() => loc() === '?window=7d&heat=4', 'folded');
+    const aliasCount = urls().length - start;
+
+    const beforeCanonical = urls().length;
+    await render('/metrics?heat=4&window=7d', page);
+    await waitFor(() => q('metAP-heat') !== null, 'canonical settled');
+    expect(urls().length - beforeCanonical).toBe(aliasCount);
+  });
+});
+
+describe('metAS — three cost faces on one line', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+
+  it('says the three faces agree only when all three are known and equal', () => {
+    const same = costCaliber({ day: 4, month: 4, usage: 4, usageMissing: null });
+    expect(same.verdict).toBe('三面一致');
+    expect(same.known).toBe(3);
+    expect(same.pairs.every((pair) => pair.diff === 0)).toBe(true);
+
+    const apart = costCaliber({ day: 0, month: 0.132696, usage: 4, usageMissing: null });
+    expect(apart.verdict).toBe('口径不同，见逐对差值');
+    expect(apart.pairs.map((pair) => pair.label)).toEqual(['日累计−月累计', '日累计−模型聚合', '月累计−模型聚合']);
+    expect(apart.widest).toBe('日累计−模型聚合');
+    expect(apart.title).toContain('/api/budget-usage');
+    expect(apart.title).toContain('/api/hermes-usage');
+  });
+
+  it('reads day and month from the ledger and shows «—» for an unread usage face', async () => {
+    await mount(usageRouter());
+
+    expect(q('metAS-cost-caliber')).not.toBeNull();
+    expect(q('metAS-day')?.textContent).toBe(q('met6-cost-value')?.textContent);
+    expect(q('metAS-day')?.textContent).toBe('$0.00');
+    expect(q('metAS-month')?.textContent).toBe('$0.13');
+    // Nothing read the model aggregate in this batch: «—», not $0.00.
+    expect(q('metAS-usage')?.textContent).toBe('—');
+    expect(q('metAS-verdict')?.textContent).toBe('有面缺数（2/3）');
+    expect(q('metAS-cost-caliber')?.getAttribute('title')).toContain('不按 0 记');
+    expect(q('metAS-cost-caliber')?.getAttribute('title')).toContain('不发新请求');
+  });
+
+  it('prints every pair difference and names the widest when the faces disagree', async () => {
+    await mountShare(SHARE_USAGE);
+
+    expect(q('metAS-usage')?.textContent).toBe('$4.00');
+    expect(q('metAS-verdict')?.textContent).toBe('口径不同，见逐对差值');
+    const delta = q('metAS-cost-delta')?.textContent ?? '';
+    expect(delta).toContain('日累计−月累计');
+    expect(delta).toContain('日累计−模型聚合 -$4.00');
+    expect(delta).toContain('月累计−模型聚合 -$3.87');
+    expect(q('metAS-cost-caliber')?.textContent).toContain('差值最大：日累计−模型聚合');
+  });
+
+  it('explains the usage face in employee grouping instead of inventing a number', async () => {
+    await mountShare(SHARE_USAGE, '/metrics?groupBy=employee');
+
+    expect(q('metAS-usage')?.textContent).toBe('—');
+    const title = q('metAS-cost-caliber')?.getAttribute('title') ?? '';
+    expect(title).toContain('按员工');
+    expect(title).toContain('模型聚合');
+  });
+
+  it('adds no read of its own', async () => {
+    await mount(usageRouter());
+    const before = urls().length;
+    expect(q('metAS-cost-caliber')).not.toBeNull();
+    expect(urls().length).toBe(before);
   });
 });
