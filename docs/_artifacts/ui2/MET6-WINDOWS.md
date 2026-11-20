@@ -366,3 +366,19 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 - 验证：定向 `src/modules/metrics` 2 files / **130 passed**（基线 126，+4）；全量 **137 files / 1602 passed**（基线 1598）；`tsc -b . --noEmit` 全仓 55 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metU` → entry `assets/index-89hAyraB.js` sha256 `dd05bead81200b5705a8a8fcd3982c9b7778a38a2b93e2fc5630b7c4ab6afc77`，entry 内 `metU-copy-total` 命中 0，chunk `assets/MetricsModulePage-BMM35ITN.js`：`metU-copy-total`=1、`metU-consistency-note`=1。
 - 两处逐字对照（`SHARE_USAGE`）：表尾 `13` / `$4.00` / `100.0%` ↔ 摘要行 `合计：运行 13 · 成本 $4.00 · 占比 100.0%` ↔ `metU-copy-total` 同串。
 - 未测项：屏幕阅读器对 sr-only 摘要行的实际播报未人工走查；真浏览器 375 下说明段换行未走查。
+
+## 导出附合计注释行（metV，2026-11-20）
+
+两处导出（明细 `met6-export`、分摊 `metA-export`）在数据行之后各写一条注释行，数值与屏上合计行同一份渲染结果。
+
+- 形态：`# 合计：…`，单行、原样写入，不经 CSV 引号转义——即使值里带逗号（如 `1,234`）也不会被拆成多列或被误读成数据行。实现：`metrics.ts` 的 `withTotalsNote(body, totalLine)` 直接在 CSV 正文后追加 `\r\n# <totalLine>`。
+- 取值：分摊文件用 `summaryTotalLine`（metU 里由 `shareTotals` 渲染，与 `metT-total-row-share` 同源）；明细文件用 `detailTotalLine`（metT 的 `detailTotals` 渲染，与 `metT-total-row` 同源）。两处都没有第二次求和或第二次格式化。
+- 顺序：数据行 → 合计注释行 → 缺块注记行（`# 本次导出缺少 N 块：…` 恒为最后一行）；三层都不计入「可导出 N 行」。
+- 行数一致性（实测，`SHARE_USAGE`）：屏上表体 3 行，`metA-export-count` 显示「可导出 3 行」，文件去掉注释行后为表头 + 3 行 = 4 行；明细（`usageRouter` 默认账本 2 行）：屏上 2 行、`met6-cat-source` 与 `metR-export-state` 都写 2 行、文件表头 + 2 行 + 注释。
+- 空窗口：只有表头 + `# 合计：该窗口无可渲染行` 两行，不写「运行 0」之类。
+- 零与缺失：可读的 0 在注释里仍是 `$0.00`；读不到的列仍是「—」（明细默认账本示例：`# 合计：成本 $0.00 · 次数 — · 占比 —`）。
+- 屏上说明：`metV-export-total-note`（导出按钮旁）写明注释行的位置与「不计入可导出行数」。
+- `as_of`/`window` 列语义与位置未变（明细仍在第 9、10 列，分摊仍在末两列）。
+- 验证：定向 `src/modules/metrics` 2 files / **134 passed**（基线 130，+4）；全量 **137 files / 1606 passed**（基线 1602）；`tsc -b . --noEmit` 全仓 55 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metV` → entry `assets/index-q40dkrMb.js` sha256 `56d5613ec507f1b4bf39d31a336902c523f854cd57fe6d98fd7d8b593f73087b`，entry 内 `metV-export-total-note` 命中 0，chunk `assets/MetricsModulePage-Bj3YiHg-.js` 命中 1。
+- 既有断言的处理：十处「CSV 总行数」原先等于表头+数据（+注记），现按语义改为「数据行数」口径（测试内 `dataOnly()` 过滤 `#` 注释行），未放宽任何数值断言；metN R4 的列序断言同样只比较数据行。
+- 未测项：Excel/Numbers 打开时对 `#` 开头行的呈现未人工走查；真浏览器 375 下导出按钮旁的说明换行未走查。

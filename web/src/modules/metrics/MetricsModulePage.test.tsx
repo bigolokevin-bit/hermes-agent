@@ -47,6 +47,9 @@ const text = (): string => document.body.textContent ?? '';
 const urls = (): string[] => api.fetchJsonStrict.mock.calls.map((call) => String(call[0]));
 const settled = (): boolean => document.querySelector('.met5-skeleton') === null;
 
+/** Data rows only: a «#» comment line (totals, gap note) is never a data row. */
+const dataOnly = (lines: string[]): string[] => lines.filter((line) => !line.startsWith('#'));
+
 function activityBody(): Record<string, unknown> {
   const cells: { dow: number; hour: number; count: number }[] = [];
   for (let dow = 1; dow <= 7; dow += 1) {
@@ -540,8 +543,8 @@ describe('MetricsModulePage — export and delta', () => {
     const text = await (captured.blob as Blob).text();
     const lines = text.replace(/^\uFEFF/, '').split('\r\n');
     expect(lines[0]).toBe('员工,支出USD,次数,占比%,账本截至,窗口,窗口开始,窗口结束,as_of,window');
-    // Two ledger rows on screen → header + two data rows.
-    expect(lines).toHaveLength(3);
+    // Two ledger rows on screen → header + two data rows; the totals line is a comment.
+    expect(dataOnly(lines)).toHaveLength(3);
     expect(lines[1]).toContain('小鲤 · AAAABBBB');
     expect(lines[1]).toContain('0.30');
     expect(lines[1]).toContain('75');
@@ -1069,7 +1072,7 @@ describe('metA — export the current cost view', () => {
     expect(lines[0]).toBe('group,runs,cost_usd,share_pct,as_of,window');
     const onScreen = document.querySelectorAll('[data-testid^="met8-row-"]').length;
     expect(onScreen).toBe(2);
-    expect(lines).toHaveLength(onScreen + 1);
+    expect(dataOnly(lines)).toHaveLength(onScreen + 1);
     expect(lines[1].split(',')).toEqual(['小鲤', '7', '3.00', '75.0', '2026-11-19T03:20:00.000Z', '24h']);
     expect(lines[2].split(',')).toEqual(['小满', '3', '1.00', '25.0', '2026-11-19T03:20:00.000Z', '24h']);
     click.mockRestore();
@@ -1122,7 +1125,7 @@ describe('metA — export the current cost view', () => {
       button.click();
     });
     const lines = (await (captured.blob as Blob).text()).replace(/^\uFEFF/, '').split('\r\n').filter(Boolean);
-    expect(lines).toHaveLength(1);
+    expect(dataOnly(lines)).toHaveLength(1);
     expect(lines[0]).toBe('group,runs,cost_usd,share_pct,as_of,window');
     click.mockRestore();
   });
@@ -1177,7 +1180,7 @@ describe('metF — exported files carry as_of and window', () => {
 
     const lines = await csvLines(captured.blob);
     expect(lines[0]).toBe('group,runs,cost_usd,share_pct,as_of,window');
-    expect(lines).toHaveLength(onScreen + 1);
+    expect(dataOnly(lines)).toHaveLength(onScreen + 1);
     const cells = lines[1].split(',');
     expect(cells.at(-2)).toBe('2026-11-19T20:12:00.000Z');
     expect(cells.at(-1)).toBe('24h');
@@ -1214,7 +1217,7 @@ describe('metF — exported files carry as_of and window', () => {
     const lines = await csvLines(captured.blob);
     expect(lines[0].split(',').at(-2)).toBe('as_of');
     expect(lines[0].split(',').at(-1)).toBe('window');
-    expect(lines).toHaveLength(onScreen + 1);
+    expect(dataOnly(lines)).toHaveLength(onScreen + 1);
     const cells = lines[1].split(',');
     expect(cells.at(-2)).toBe('2026-11-19T03:20:00.000Z');
     expect(cells.at(-1)).toBe('24h');
@@ -1797,8 +1800,9 @@ describe('metI — exports under partial failure', () => {
     });
     const rows = await lines();
     expect(rows[0].split(',').slice(-2)).toEqual(['as_of', 'window']);
-    // header + the rows already counted on screen + one note line.
-    expect(rows).toHaveLength(onScreen + 2);
+    // header + the rows on screen + one totals comment + one gap note.
+    expect(rows).toHaveLength(onScreen + 3);
+    expect(dataOnly(rows)).toHaveLength(onScreen + 1);
 
     const note = rows.at(-1) ?? '';
     expect(note).toContain('# 本次导出缺少 1 块：运行统计');
@@ -1832,7 +1836,7 @@ describe('metI — exports under partial failure', () => {
       (q('metA-export') as HTMLButtonElement).click();
     });
     const rows = await lines();
-    expect(rows).toHaveLength(shown + 1);
+    expect(dataOnly(rows)).toHaveLength(shown + 1);
     expect(rows[0]).toBe('group,runs,cost_usd,share_pct,as_of,window');
   });
 
@@ -2320,7 +2324,7 @@ describe('metO — number format consistency', () => {
     // Pair 1: $1,234.50 on screen ↔ 1234.50 in the file. Pair 2: 1,234 ↔ 1234.
     expect(big.slice(0, 3)).toEqual(['big', '1234', '1234.50']);
     expect(bulk.slice(0, 3)).toEqual(['bulk', '1200', '1000.00']);
-    expect(lines.every((line) => !line.includes('$'))).toBe(true);
+    expect(dataOnly(lines).every((line) => !line.includes('$'))).toBe(true);
     click.mockRestore();
   });
 
@@ -2575,7 +2579,8 @@ describe('metP — detail table sorting', () => {
       .filter((line) => line.length > 0);
     expect(nonEmpty[0]).toContain('as_of,window');
     expect(nonEmpty[nonEmpty.length - 1].startsWith('# 本次导出缺少 1 块：运行统计（')).toBe(true);
-    expect(nonEmpty.length).toBe(labels.length + 2);
+    expect(dataOnly(nonEmpty)).toHaveLength(labels.length + 1);
+    expect(nonEmpty.length).toBe(labels.length + 3);
     click.mockRestore();
   });
 });
@@ -2789,7 +2794,7 @@ describe('metR — export and copy availability under failure states', () => {
       .replace(/^\uFEFF/, '')
       .split('\r\n')
       .filter(Boolean);
-    expect(detailLines).toHaveLength(1);
+    expect(dataOnly(detailLines)).toHaveLength(1);
     expect(detailLines[0]).toContain('as_of,window');
 
     await act(async () => {
@@ -2799,7 +2804,7 @@ describe('metR — export and copy availability under failure states', () => {
       .replace(/^\uFEFF/, '')
       .split('\r\n')
       .filter(Boolean);
-    expect(shareLines).toHaveLength(1);
+    expect(dataOnly(shareLines)).toHaveLength(1);
     click.mockRestore();
   });
 });
@@ -2982,8 +2987,9 @@ describe('metT — totals row and rounding note', () => {
       (q('metA-export') as HTMLButtonElement).click();
     });
     const lines = (await (captured.blob as Blob).text()).replace(/^\uFEFF/, '').split('\r\n');
-    expect(lines).toHaveLength(rows.length + 1);
+    expect(dataOnly(lines)).toHaveLength(rows.length + 1);
     expect(lines.some((line) => line.startsWith('合计'))).toBe(false);
+    expect(lines.filter((line) => line.startsWith('# 合计：')).length).toBe(1);
   });
 
   it('sums the detail table from the rendered rows and keeps unreadable columns at —', async () => {
@@ -3094,5 +3100,112 @@ describe('metU — the copied summary and the totals row are one number', () => 
     expect(body).toContain('合计：该窗口无可渲染行');
     expect(q('metU-copy-total')?.textContent).toBe('合计：该窗口无可渲染行');
     expect(body).not.toContain('合计：运行 0');
+  });
+});
+
+describe('metV — exports carry the totals as a comment line', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+  const dataLines = (lines: string[]): string[] => lines.filter((line) => !line.startsWith('#'));
+
+  function captureDownload(): { captured: { blob: Blob | null; name: string | null } } {
+    const captured: { blob: Blob | null; name: string | null } = { blob: null, name: null };
+    Object.assign(URL, {
+      createObjectURL: vi.fn((blob: Blob) => {
+        captured.blob = blob;
+        return 'blob:metV';
+      }),
+      revokeObjectURL: vi.fn(),
+    });
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      captured.name = this.download;
+    });
+    return { captured };
+  }
+
+  const readLines = async (blob: Blob | null): Promise<string[]> =>
+    (await (blob as Blob).text()).replace(/^\uFEFF/, '').split('\r\n').filter(Boolean);
+
+  it('adds one comment line to the share file, before any gap note and outside the row count', async () => {
+    const { captured } = captureDownload();
+    await mountShare(SHARE_USAGE);
+    const onScreen = document.querySelectorAll('[data-testid^="met7-row-"]').length;
+    const shownCount = q('metA-export-count')?.textContent;
+
+    await act(async () => {
+      (q('metA-export') as HTMLButtonElement).click();
+    });
+
+    const lines = await readLines(captured.blob);
+    expect(dataLines(lines)).toHaveLength(onScreen + 1); // header + rows
+    expect(dataLines(lines).length - 1).toBe(onScreen);
+    expect(shownCount).toBe(`可导出 ${onScreen} 行`);
+
+    const comment = lines.at(-1) ?? '';
+    expect(comment).toBe('# 合计：运行 13 · 成本 $4.00 · 占比 100.0%');
+    expect(comment).toBe(`# ${q('metU-copy-total')?.textContent}`);
+    // Same strings the footer shows.
+    expect(comment).toContain(String(q('metT-share-total-runs')?.textContent));
+    expect(comment).toContain(String(q('metT-share-total-cost')?.textContent));
+    expect(comment).toContain(String(q('metT-share-total-share')?.textContent));
+    expect(q('metV-export-total-note')?.textContent).toContain('合计注释行');
+  });
+
+  it('adds the footer numbers to the detail file and keeps them out of the data rows', async () => {
+    const { captured } = captureDownload();
+    await mount(usageRouter());
+    const onScreen = document.querySelectorAll('[data-testid^="met6-row-"]').length;
+    expect(onScreen).toBeGreaterThan(0);
+
+    await act(async () => {
+      (q('met6-export') as HTMLButtonElement).click();
+    });
+
+    const lines = await readLines(captured.blob);
+    expect(dataLines(lines)).toHaveLength(onScreen + 1);
+    expect(q('met6-cat-source')?.textContent).toContain(`${onScreen} 行`);
+    expect(q('metR-export-state')?.textContent).toContain(`明细可导 ${onScreen} 行`);
+
+    const comment = lines.at(-1) ?? '';
+    expect(comment).toBe(
+      `# 合计：成本 ${q('metT-detail-total-cost')?.textContent} · 次数 ${q('metT-detail-total-count')?.textContent} · 占比 ${q('metT-detail-total-share')?.textContent}`,
+    );
+    // A readable zero stays $0.00 in the comment; an unreadable column stays «—».
+    expect(comment).toContain('成本 $0.00');
+    expect(comment).toContain('次数 —');
+  });
+
+  it('keeps the totals comment above the gap note so the note stays the last line', async () => {
+    const { captured } = captureDownload();
+    const router = usageRouter();
+    await mount((url) =>
+      url.includes('run-stats')
+        ? Promise.reject(new ApiError('boom', { status: 500, body: '', url, requestId: 'req-metV-stats' }))
+        : router(url),
+    );
+
+    await act(async () => {
+      (q('met6-export') as HTMLButtonElement).click();
+    });
+
+    const lines = await readLines(captured.blob);
+    expect(lines.at(-1)).toContain('# 本次导出缺少 1 块：运行统计');
+    expect(lines.at(-2)).toContain('# 合计：成本');
+    expect(dataLines(lines).some((line) => line.includes('本次导出缺少'))).toBe(false);
+  });
+
+  it('writes the empty-window wording instead of a zero when there is no row', async () => {
+    const { captured } = captureDownload();
+    await mountShare({ by_model: [] });
+
+    expect(q('metA-export-count')?.textContent).toBe('可导出 0 行');
+    await act(async () => {
+      (q('metA-export') as HTMLButtonElement).click();
+    });
+
+    const lines = await readLines(captured.blob);
+    expect(lines).toHaveLength(2);
+    expect(lines[0]).toBe('group,runs,cost_usd,share_pct,as_of,window');
+    expect(lines[1]).toBe('# 合计：该窗口无可渲染行');
+    expect(lines.join('\n')).not.toMatch(/合计：运行 0/);
   });
 });

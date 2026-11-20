@@ -47,6 +47,7 @@ import {
   sourceStaleness,
   SOURCE_STALE_MS,
   withGapNote,
+  withTotalsNote,
   type ExportGap,
   ledgerAsOf,
   ledgerTotal,
@@ -1277,6 +1278,16 @@ export function MetricsModulePage() {
     detailRows.map((line) => line.costUsd),
     breakdownView.kind === 'ready' ? breakdownView.total : null,
   );
+  // metV — the footer and the exported comment line read one rendering of the totals.
+  const detailTotals = {
+    cost: formatUsd(detailCostTotal),
+    count: detailCountTotal === null ? '—' : String(detailCountTotal),
+    share: formatSharePct(detailShareTotal),
+  };
+  const detailTotalLine =
+    detailRows.length > 0
+      ? `合计：成本 ${detailTotals.cost} · 次数 ${detailTotals.count} · 占比 ${detailTotals.share}`
+      : '合计：该窗口无可渲染行';
   const exportable = detailRows.length > 0;
   const ariaSortFor = (key: DetailSort): 'ascending' | 'descending' | 'none' =>
     detailSort === key ? (detailDir === 'asc' ? 'ascending' : 'descending') : 'none';
@@ -1324,7 +1335,7 @@ export function MetricsModulePage() {
       batchAsOf,
       usageWindow.id,
     ]);
-    const body = withGapNote(toCsv(header, rows), detailGaps);
+    const body = withGapNote(withTotalsNote(toCsv(header, rows), detailTotalLine), detailGaps);
     const blob = new Blob([`\uFEFF${body}`], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
@@ -1341,15 +1352,18 @@ export function MetricsModulePage() {
     // ?sort/?dir, default cost descending). The file never re-sorts.
     if (pageFailed || shareView.kind !== 'ready') return;
     const shareBody = withGapNote(
-      shareCsv(
-        shareRows.map((row) => ({
-          name: row.model,
-          runs: row.runs,
-          costUsd: row.costUsd,
-          sharePct: row.sharePct,
-          asOf: isoOrNull(shareView.value.asOf),
-          window: usageWindow.id,
-        })),
+      withTotalsNote(
+        shareCsv(
+          shareRows.map((row) => ({
+            name: row.model,
+            runs: row.runs,
+            costUsd: row.costUsd,
+            sharePct: row.sharePct,
+            asOf: isoOrNull(shareView.value.asOf),
+            window: usageWindow.id,
+          })),
+        ),
+        summaryTotalLine,
       ),
       shareGaps,
     );
@@ -1853,6 +1867,9 @@ export function MetricsModulePage() {
                             : '暂不可用'
                       }`}
                 </span>
+                <span className="metI-gap" data-testid="metV-export-total-note">
+                  两份导出都会在数据行之后、缺块注记之前附一条以「#」开头的合计注释行：它的数字与屏上合计行逐字相同，不计入「可导出 N 行」，也不进数据行。
+                </span>
               </div>
             </div>
 
@@ -1941,13 +1958,13 @@ export function MetricsModulePage() {
                       <tr className="metT-total" data-testid="metT-total-row">
                         <th scope="row">合计</th>
                         <td className="met6-num" data-testid="metT-detail-total-cost" title="表体各行支出相加；读不到的格子不计入，也不按 0 算">
-                          {formatUsd(detailCostTotal)}
+                          {detailTotals.cost}
                         </td>
                         <td className="met6-num" data-testid="metT-detail-total-count" title="表体各行次数相加；读不到的格子不计入">
-                          {detailCountTotal ?? '—'}
+                          {detailTotals.count}
                         </td>
                         <td className="met6-num" data-testid="metT-detail-total-share" title="按未舍入的原值合计，逐行进位不影响这里">
-                          {formatSharePct(detailShareTotal)}
+                          {detailTotals.share}
                         </td>
                         <td className="met6-num">—</td>
                       </tr>

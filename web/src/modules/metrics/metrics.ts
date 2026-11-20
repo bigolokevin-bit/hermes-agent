@@ -875,6 +875,15 @@ export function exportGapNote(gaps: ExportGap[]): string | null {
 }
 
 /** The note rides in its own row; RFC 4180 escaping still applies. */
+/**
+ * Append the totals comment line after the data rows. It is written raw, never
+ * as a CSV cell, so a value holding a comma can never turn it into a data row —
+ * and it still reads as a comment to anyone parsing the file.
+ */
+export function withTotalsNote(body: string, totalLine: string): string {
+  return `${body}\r\n# ${totalLine}`;
+}
+
 export function withGapNote(body: string, gaps: ExportGap[]): string {
   const note = exportGapNote(gaps);
   return note === null ? body : `${body}\r\n${csvCell(note)}`;
