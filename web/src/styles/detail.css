@@ -46,9 +46,12 @@
 
 .ui-c-head-sub {
   margin: 0;
+  min-width: 0;
   font-size: var(--font-size-1);
   line-height: var(--line-height-3);
   color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 /* 区块右上入口位：始终与标题同排右对齐，窄档整组换到第二行，不撑破宽度 */

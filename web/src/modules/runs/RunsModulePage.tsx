@@ -170,14 +170,14 @@ function UpstreamLine({ raw }: { raw?: string }): ReactNode {
   const [copied, setCopied] = useState<"idle" | "done" | "failed">("idle");
   if (!raw) return <Dashed reason="这条运行没有带上游编号" />;
   return (
-    <span className="flex min-w-0 flex-col items-start gap-0.5">
-      <span className="flex min-w-0 flex-wrap items-center gap-1.5" data-testid="run5-detail-upstream" title={raw}>
-        <span className="min-w-0 break-words">{runCode(raw)}</span>
+    <span className="flex min-w-0 flex-col items-start gap-1">
+      <span className="flex min-w-0 flex-wrap items-center gap-2" data-testid="run5-detail-upstream" title={raw}>
+        <span className="ui-c-id">{runCode(raw)}</span>
         <button
           type="button"
           aria-label="复制上游运行编号"
           title="复制完整编号（供运行时侧排查）"
-          className="inline-flex shrink-0 items-center text-xs text-muted-foreground underline underline-offset-2"
+          className="ui-c-field-actions inline-flex shrink-0 items-center underline underline-offset-2"
           onClick={() => {
             void copyTextToClipboard(raw).then((ok) => {
               setCopied(ok ? "done" : "failed");
