@@ -16,6 +16,7 @@ vi.mock('@/lib/clipboard', () => ({ copyTextToClipboard: clip.copyTextToClipboar
 
 import { MetricsModulePage } from './MetricsModulePage';
 import { CALIBER_NOTES } from './metrics';
+import { csvFileName, shareCsvFileName } from './metrics';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -542,7 +543,7 @@ describe('MetricsModulePage — export and delta', () => {
     });
 
     expect(click).toHaveBeenCalledTimes(1);
-    expect(captured.name).toMatch(/^metrics-employee-24h-\d{8}-\d{4}\.csv$/);
+    expect(captured.name).toMatch(/^metrics-detail-24h-employee-cost-desc-\d{8}-\d{4}\.csv$/);
     const text = await (captured.blob as Blob).text();
     const lines = text.replace(/^\uFEFF/, '').split('\r\n');
     expect(lines[0]).toBe('员工,支出USD,次数,占比%,账本截至,窗口,窗口开始,窗口结束,as_of,window');
@@ -1070,7 +1071,7 @@ describe('metA — export the current cost view', () => {
     });
 
     expect(click).toHaveBeenCalledTimes(1);
-    expect(captured.name).toMatch(/^metrics-24h-employee-\d{8}-\d{4}\.csv$/);
+    expect(captured.name).toMatch(/^metrics-share-24h-employee-cost-desc-\d{8}-\d{4}\.csv$/);
     const lines = (await (captured.blob as Blob).text()).replace(/^\uFEFF/, '').split('\r\n');
     expect(lines[0]).toBe('group,runs,cost_usd,share_pct,as_of,window');
     const onScreen = document.querySelectorAll('[data-testid^="met8-row-"]').length;
@@ -1111,7 +1112,7 @@ describe('metA — export the current cost view', () => {
 
     const lines = (await (captured.blob as Blob).text()).replace(/^\uFEFF/, '').split('\r\n');
     expect(lines[1]).toBe('"a,""b""",1,2.00,100.0,,24h');
-    expect(captured.name).toMatch(/^metrics-24h-model-\d{8}-\d{4}\.csv$/);
+    expect(captured.name).toMatch(/^metrics-share-24h-model-cost-desc-\d{8}-\d{4}\.csv$/);
     click.mockRestore();
   });
 
@@ -1187,7 +1188,7 @@ describe('metF — exported files carry as_of and window', () => {
     const cells = lines[1].split(',');
     expect(cells.at(-2)).toBe('2026-11-19T20:12:00.000Z');
     expect(cells.at(-1)).toBe('24h');
-    expect(captured.name).toMatch(/^metrics-24h-model-\d{8}-\d{4}\.csv$/);
+    expect(captured.name).toMatch(/^metrics-share-24h-model-cost-desc-\d{8}-\d{4}\.csv$/);
   });
 
   it('leaves as_of empty when the answer carried none, and never stamps the local clock', async () => {
@@ -3902,5 +3903,82 @@ describe('metAH — the tables say how many rows they really show', () => {
     const before = urls().length;
     expect(q('metAH-cap-note')).not.toBeNull();
     expect(urls().length).toBe(before);
+  });
+});
+
+describe('metAI — export file names carry window, group, sort and direction', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+
+  function captureDownload(): { captured: { blob: Blob | null; name: string | null } } {
+    const captured: { blob: Blob | null; name: string | null } = { blob: null, name: null };
+    Object.assign(URL, {
+      createObjectURL: vi.fn((blob: Blob) => {
+        captured.blob = blob;
+        return 'blob:metAI';
+      }),
+      revokeObjectURL: vi.fn(),
+    });
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      captured.name = this.download;
+    });
+    return { captured };
+  }
+
+  it('names the detail file with the default sort pair and only legal characters', async () => {
+    const { captured } = captureDownload();
+    await mount(usageRouter());
+
+    await act(async () => {
+      (q('met6-export') as HTMLButtonElement).click();
+    });
+
+    const name = captured.name ?? '';
+    expect(name).toMatch(/^metrics-detail-24h-employee-cost-desc-\d{8}-\d{4}\.csv$/);
+    expect(name).toMatch(/^[a-z0-9.-]+$/);
+    expect(name).not.toMatch(/[/:\s\u4e00-\u9fff]/);
+  });
+
+  it('follows ?dsort/?ddir in the detail name', async () => {
+    const { captured } = captureDownload();
+    await mount(usageRouter(), '/metrics?dsort=runs&ddir=asc');
+
+    await act(async () => {
+      (q('met6-export') as HTMLButtonElement).click();
+    });
+
+    expect(captured.name).toMatch(/^metrics-detail-24h-employee-runs-asc-\d{8}-\d{4}\.csv$/);
+  });
+
+  it('names the share file the same way and never collides with the detail one', async () => {
+    const now = new Date('2026-11-20T09:30:00.000Z');
+    const detail = csvFileName('employee', '24h', 'cost', 'desc', now);
+    const share = shareCsvFileName('model', '24h', 'cost', 'desc', now);
+    expect(detail).toBe('metrics-detail-24h-employee-cost-desc-20261120-1730.csv');
+    expect(share).toBe('metrics-share-24h-model-cost-desc-20261120-1730.csv');
+    expect(share).not.toBe(detail);
+    expect(`${detail}${share}`).toMatch(/^[a-z0-9.-]+$/);
+
+    const { captured } = captureDownload();
+    await mountShare(SHARE_USAGE, '/metrics?sort=model&dir=asc');
+    await act(async () => {
+      (q('metA-export') as HTMLButtonElement).click();
+    });
+    expect(captured.name).toMatch(/^metrics-share-24h-model-[a-z]+-asc-\d{8}-\d{4}\.csv$/);
+  });
+
+  it('states the rule on screen and leaves the CSV header untouched', async () => {
+    const { captured } = captureDownload();
+    await mount(usageRouter());
+
+    const note = q('metAI-filename-note');
+    expect(note?.getAttribute('title')).toContain('命名规则');
+    expect(note?.getAttribute('title')).toContain('cost-desc');
+    expect(note?.textContent).toContain('metrics-detail');
+
+    await act(async () => {
+      (q('metA-export') as HTMLButtonElement).click();
+    });
+    const text = (await (captured.blob as Blob).text()).replace(/^\uFEFF/, '');
+    expect(text.split('\r\n')[0]).toBe('group,runs,cost_usd,share_pct,as_of,window');
   });
 });

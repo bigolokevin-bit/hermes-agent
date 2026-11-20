@@ -515,3 +515,15 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 - 既有护栏未动：`metrics.export-parity.test.ts`（metAC 10 例）保持原样，CSV 行数仍等于 M。
 - 验证：定向 `src/modules/metrics` 3 files / **180 passed**（原 177，+3）；全量 **137 files / 1703 passed**（原 1700）；`tsc -b . --noEmit` 全仓 58 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metAH` → entry `assets/index-gCw9agdb.js` sha256 `e48f4b56de38b57edd1ce14edc21118926d87a5af5f890dde90294e91256ee0c`，entry 内 `metAH-cap-note` 命中 0，chunk `assets/MetricsModulePage-B9ULZATw.js` 命中 1。
 - 未测项：真实后端若对账本/用量做服务端分页（本仓代码未见分页参数），当前文案不会自动改写；员工目录 `limit=200` 的名单上限仍由既有的账本截断提示承担，本单未改口径。
+
+## 导出文件名口径（metAI，2026-11-20）
+
+两份 CSV 的文件名现在自带「窗口 / 分组 / 排序 / 生成时刻」，同一时刻导出也不会互相覆盖。
+
+- 模板：明细 `metrics-detail-<window>-<group>-<sort>-<dir>-<YYYYMMDD-HHmm>.csv`；分摊 `metrics-share-<window>-<group>-<sort>-<dir>-<YYYYMMDD-HHmm>.csv`。时间戳为北京时间到分（`beijingFileStamp`），窗口取 `24h|7d|30d`，分组取 `employee|model`。
+- 排序：明细的 `sort` 来自 `?dsort/?ddir`（默认 `cost-desc`，未动过排序时就是这四个字母）；分摊来自 `?sort/?dir`（默认 `cost-desc`，`sort=model` 时为 `model-asc|desc`）。因此「同窗口同分组但排序不同」的两份文件也不会同名。
+- 字符集：`fileToken` 把非 `[a-z0-9]` 统一折叠成 `-` 并去首尾横线，整名匹配 `^[a-z0-9.-]+$`，不含斜杠、冒号、空白与中文。
+- 实测两枚（同一时刻 `2026-11-20T09:30Z` = 北京 17:30）：`metrics-detail-24h-employee-cost-desc-20261120-1730.csv` 与 `metrics-share-24h-model-cost-desc-20261120-1730.csv`，两者不相等；`?dsort=runs&ddir=asc` 时明细名为 `…-runs-asc-…`，`?sort=model&dir=asc` 时分摊名匹配 `^metrics-share-24h-model-[a-z]+-asc-`。
+- 屏上说明：`metAI-filename-note`（导出按钮旁）给出两个模板与「含窗口、分组、排序与生成时刻」，title 写完整规则；CSV 内容、表头、行数零改动，metAC 的行数/注释/`as_of`/`window` 断言未动。
+- 验证：定向 `src/modules/metrics` 3 files / **184 passed**（原 180，+4）；全量 **137 files / 1799 passed**（wave-19 上游抬高总数，本单前 1703）；`tsc -b . --noEmit` 全仓 67 条既存、`modules/metrics` 0；build `--outDir /tmp/build-metAI` → entry `assets/index-CQVVvpbM.js` sha256 `4c76d28a555065fa517a4ad4e67fc2a6851e228ed19295e48ccf27a6184d8b63`，entry 内 `metAI-filename-note` 命中 0，chunk `assets/MetricsModulePage-Cn2kglU2.js` 命中 1。
+- 未测项：不同浏览器/系统对下载文件名中连字符与大小写的保留未逐端走查；跨日边界（23:59 生成）未构造样例。

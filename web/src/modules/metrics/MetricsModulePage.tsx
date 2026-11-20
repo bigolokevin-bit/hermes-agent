@@ -1430,7 +1430,7 @@ export function MetricsModulePage() {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = csvFileName(viewMode, usageWindow.id, new Date());
+    anchor.download = csvFileName(viewMode, usageWindow.id, detailSort, detailDir, new Date());
     document.body.append(anchor);
     anchor.click();
     anchor.remove();
@@ -1461,7 +1461,7 @@ export function MetricsModulePage() {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = shareCsvFileName(groupBy, usageWindow.id, new Date());
+    anchor.download = shareCsvFileName(groupBy, usageWindow.id, sortKey, sortDir, new Date());
     document.body.append(anchor);
     anchor.click();
     anchor.remove();
@@ -2004,6 +2004,13 @@ export function MetricsModulePage() {
                             ? '读取中'
                             : '暂不可用'
                       }`}
+                </span>
+                <span
+                  className="metI-gap"
+                  data-testid="metAI-filename-note"
+                  title="命名规则：metrics-detail-<窗口>-<分组>-<排序>-<方向>-<YYYYMMDD-HHmm>.csv 与 metrics-share-<窗口>-<分组>-<排序>-<方向>-<YYYYMMDD-HHmm>.csv；没动过排序时按 cost-desc 写；文件名只用小写字母、数字、短横与点，同一时刻两份文件名必然不同。"
+                >
+                  导出文件名：明细 metrics-detail-…、分摊 metrics-share-…，含窗口、分组、排序与生成时刻。
                 </span>
                 <span className="metI-gap" data-testid="metV-export-total-note">
                   两份导出都会在数据行之后、缺块注记之前附一条以「#」开头的合计注释行：它的数字与屏上合计行逐字相同，不计入「可导出 N 行」，也不进数据行。

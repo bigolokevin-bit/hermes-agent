@@ -890,9 +890,31 @@ export function withGapNote(body: string, gaps: ExportGap[]): string {
 }
 
 /** `metrics-employee-7d-20261120-0931.csv` in Beijing time. */
-export function csvFileName(view: 'employee' | 'model', window: UsageWindowId, now: Date): string {
-  const stamp = formatBeijing(now.toISOString(), now).replace(/[-:]/g, '').replace(' ', '-');
-  return `metrics-${view}-${window}-${stamp}.csv`;
+/** File names carry only lowercase ASCII: a dot, a dash and digits, nothing else. */
+function fileToken(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function beijingFileStamp(now: Date): string {
+  return formatBeijing(now.toISOString(), now).replace(/[-:]/g, '').replace(' ', '-');
+}
+
+/**
+ * metrics-detail-<window>-<group>-<sort>-<dir>-<YYYYMMDD-HHmm>.csv
+ * The sort pair is always present; an untouched table writes `cost-desc`.
+ */
+export function csvFileName(
+  view: 'employee' | 'model',
+  window: UsageWindowId,
+  sort: DetailSort,
+  dir: SortDir,
+  now: Date,
+): string {
+  const parts = ['metrics', 'detail', window, view, sort, dir].map(fileToken);
+  return `${parts.join('-')}-${beijingFileStamp(now)}.csv`;
 }
 
 /**
@@ -965,9 +987,19 @@ export function shareCsv(rows: ShareCsvRow[]): string {
 }
 
 /** `metrics-24h-model-20261120-0655.csv` in Beijing time. */
-export function shareCsvFileName(group: 'model' | 'employee', window: UsageWindowId, now: Date): string {
-  const stamp = formatBeijing(now.toISOString(), now).replace(/[-:]/g, '').replace(' ', '-');
-  return `metrics-${window}-${group}-${stamp}.csv`;
+/**
+ * metrics-share-<window>-<group>-<sort>-<dir>-<YYYYMMDD-HHmm>.csv
+ * Same shape as the detail file, so the two can never collide.
+ */
+export function shareCsvFileName(
+  group: 'model' | 'employee',
+  window: UsageWindowId,
+  sort: 'model' | 'cost' | 'runs',
+  dir: SortDir,
+  now: Date,
+): string {
+  const parts = ['metrics', 'share', window, group, sort, dir].map(fileToken);
+  return `${parts.join('-')}-${beijingFileStamp(now)}.csv`;
 }
 
 
