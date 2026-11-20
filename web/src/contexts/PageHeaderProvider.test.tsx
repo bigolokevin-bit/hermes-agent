@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes, useNavigate } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PageHeaderProvider } from "./PageHeaderProvider";
 import { usePageHeader } from "./usePageHeader";
+import { clearSessionExpired, markSessionExpired } from "@/lib/session-expiry";
 import ChannelsPage from "@/pages/ChannelsPage";
 import FilesPage from "@/pages/FilesPage";
 
@@ -86,6 +87,8 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root.unmount());
   container.remove();
+  // 横幅读的是模块级 store：别让一次失活漏进下一个用例。
+  await act(async () => clearSessionExpired());
 });
 
 describe("page header ownership", () => {
@@ -122,5 +125,23 @@ describe("page header ownership", () => {
     expect(header().textContent).toBe("/delayed");
     await click("Mount page");
     expect(header().textContent).toContain("Other action");
+  });
+
+  // 设计车道 ①：这条布局是全站「会话已过期」横幅唯一的挂载点 —— 顶栏之后、内容之前，
+  // 一个页面只出现一条；页面自己不再自绘失效卡（见 shell/SessionExpiredBanner.tsx）。
+  it("mounts exactly one session-expiry banner, right after the header", async () => {
+    await renderAt("/empty");
+    expect(container.querySelectorAll('[data-testid="session-expired-banner"]')).toHaveLength(0);
+    await act(async () => markSessionExpired());
+    const banners = container.querySelectorAll('[data-testid="session-expired-banner"]');
+    expect(banners).toHaveLength(1);
+    const box = banners[0];
+    expect(box.getAttribute("role")).toBe("alert");
+    expect(header().parentElement?.contains(box)).toBe(true);
+    expect(box.previousElementSibling).toBe(header());
+    expect(container.querySelector("main")?.contains(box)).toBe(false);
+    // 换页不重复挂载：横幅跟着布局走，内容区自己不再画一条。
+    await click("Channels");
+    expect(container.querySelectorAll('[data-testid="session-expired-banner"]')).toHaveLength(1);
   });
 });

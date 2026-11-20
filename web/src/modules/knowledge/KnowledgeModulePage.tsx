@@ -438,12 +438,24 @@ function Surface<T>({
           <Button size="sm" outlined onClick={onRetry} title={retryTitle("error")} data-testid={`${testid}-retry`}>
             重试
           </Button>
+          {/* 设计车道 ④：错态铺本面自己的占位条（knw5-skeleton，无可见文字）。 */}
+          <div className="knw5-skeleton" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </div>
         </div>
       ) : null}
 
       {value && value.rows.length === 0 ? (
         <div className="knw5-empty" data-testid={`${testid}-empty`} role="status">
           {empty(value)}
+          {/* 设计车道 ④：空态同样铺占位条，375 不再是一屏一句 + 大片空白。 */}
+          <div className="knw5-skeleton" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </div>
         </div>
       ) : null}
 

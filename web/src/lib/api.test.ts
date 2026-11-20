@@ -9,6 +9,7 @@ import {
   getManagementProfile,
   setManagementProfile,
 } from "./api";
+import { clearSessionExpired, isSessionExpired } from "./session-expiry";
 
 const reloadMocks = vi.hoisted(() => ({
   attemptDashboardTokenReloadOnce: vi.fn(() => false),
@@ -125,6 +126,52 @@ describe("fetchJSON", () => {
     await expect(fetchJSON("/api/status")).resolves.toEqual({ ok: true });
 
     expect(reloadMocks.clearDashboardTokenReloadAttempt).toHaveBeenCalledTimes(1);
+  });
+});
+
+// 设计车道 ①：全站「会话已过期」横幅的唯一置位点。规则要窄 —— 登录流程与身份探测的
+// 401 说的是「这次没登上／还没登」，把它们算成失活会让登录页自己冒出横幅。
+describe("session-expiry signal", () => {
+  const unauthorized = vi.fn(async () => ({
+    ok: false,
+    status: 401,
+    statusText: "Unauthorized",
+    clone: () => ({ json: async () => ({}) }),
+    text: async () => JSON.stringify({ error: "unauthenticated", request_id: "req-401" }),
+    headers: new Headers({ "x-request-id": "req-401" }),
+  }));
+
+  afterEach(() => {
+    clearSessionExpired();
+  });
+
+  it("a business 401 lights the shared signal", async () => {
+    vi.stubGlobal("fetch", unauthorized);
+    await expect(fetchJSON("/agent-api/api/approvals")).rejects.toMatchObject({ status: 401 });
+    expect(isSessionExpired()).toBe(true);
+  });
+
+  it("the identity probe and the sign-in flow never light it", async () => {
+    vi.stubGlobal("fetch", unauthorized);
+    await expect(
+      api.getAuthMe().catch((err: unknown) => err),
+    ).resolves.toMatchObject({ status: 401 });
+    await expect(
+      fetchJSON("/auth/login", { method: "POST", body: "{}" }),
+    ).rejects.toMatchObject({ status: 401 });
+    expect(isSessionExpired()).toBe(false);
+  });
+
+  it("a 2xx proves the session is live and closes the episode", async () => {
+    vi.stubGlobal("fetch", unauthorized);
+    await expect(fetchJSON("/api/status")).rejects.toMatchObject({ status: 401 });
+    expect(isSessionExpired()).toBe(true);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ json: async () => ({ ok: true }), ok: true, status: 200 })),
+    );
+    await expect(fetchJSON("/api/status")).resolves.toEqual({ ok: true });
+    expect(isSessionExpired()).toBe(false);
   });
 });
 

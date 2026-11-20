@@ -226,7 +226,7 @@ export function SecurityModulePage(): ReactNode {
           </div>
         </CardContent>
       </Card>
-      <p className="sec5-note" data-testid="sec5-summary" data-count={counts}>已读取 {counts} 项安全配置；缺失或未知项不按 0 计算。</p>
+      <p className="sec5-note" data-testid="sec5-summary" data-count={counts}>已读取 {counts} 项安全配置；读不到的项不会按 0 统计。</p>
     </section>
   );
 }

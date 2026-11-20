@@ -1364,12 +1364,22 @@ export function RunsModulePage() {
       >
         {countsKnown
           ? `本页 ${rows.length} 次 · 失败 ${failedCount} · 运行中 ${runningCount}（仅本页已加载，最多 ${PAGE_LIMIT} 条，不是全量统计）`
-          : "本页 — 次 · 失败 — · 运行中 —（暂时读不到运行数据，数字不作零处理）"}
+          : "本页 — 次 · 失败 — · 运行中 —（暂时读不到运行数据，请稍后重试）"}
         {phase === "ready" && cursor ? "；服务说这一页之外还有更多" : ""}
         {unreadable > 0 && countsKnown
-          ? `；另有 ${unreadable} 条回的内容没有可读的运行编号，没有算在上面`
+          ? `；另有 ${unreadable} 条这次没有返回有效的运行编号，没有算在上面`
           : ""}
       </p>
+      {countsKnown ? null : (
+        // 设计车道⑤：技术口径从主句撤下，收进「详情」折叠（样式参照 pages/SystemPage.tsx 的原生 details 先例）。
+        <details className="text-xs text-muted-foreground" data-testid="run5-counts-detail">
+          <summary className="cursor-pointer">详情</summary>
+          <p className="mt-1">
+            读取没有成功之前数字不作零处理：这里写「—」，不按 0 算。
+            {failure?.requestId ? `请求编号：${failure.requestId}` : ""}
+          </p>
+        </details>
+      )}
 
       <p
         className="min-w-0 break-words text-xs text-muted-foreground"
@@ -1493,7 +1503,7 @@ export function RunsModulePage() {
                 className="min-w-0 cursor-not-allowed rounded-md border border-border px-2.5 py-1 text-left text-xs text-muted-foreground opacity-60"
                 title="这个环境的控制台只读：实测写请求一律被拒（POST /api/run-retry → HTTP 405 console.read_only），读路径上也没有这条路由（GET → 404 console.unknown_route）。所以这里只说明语义，点它不会发起任何请求。"
               >
-                重试 · 新建一次运行（当前环境只读，写入口未开放）
+                重试 · 新建一次运行（当前环境只读，不能在这里修改）
               </button>
               <p className="max-w-prose min-w-0 break-words text-xs text-muted-foreground">
                 重试的语义是新建一次运行并生成新编号，新编号会出现在详情页顶部的运行编号里；原运行不会被改写、复用或取消。实测本环境的控制台只接受 GET/HEAD（POST 一律 405），

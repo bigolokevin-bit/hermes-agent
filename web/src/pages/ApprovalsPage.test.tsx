@@ -159,4 +159,16 @@ describe("ApprovalsPage rows", () => {
     expect(text()).not.toMatch(/\b503\b/);
     expect(labels()).toContain("重试");
   });
+
+  it("设计车道 ①: 401 不再自绘登录失效卡，只回落通用错误（那句话归全站横幅）", async () => {
+    await mountWith(async () => {
+      throw new ApiError("unauthenticated", { status: 401, body: "", url: "/x", requestId: "apr-401" });
+    });
+    expect(text()).not.toContain("登录状态已失效");
+    expect(text()).not.toContain("需要登录");
+    expect(document.querySelector('[data-testid="auth-reload-exit"]')).toBeNull();
+    expect(text()).toContain("审批申请没能加载出来");
+    expect(text()).toContain("请求编号：apr-401");
+    expect(labels()).toContain("重试");
+  });
 });
