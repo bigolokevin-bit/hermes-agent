@@ -589,3 +589,12 @@ export function approvalDetailFrom(payload: unknown): ApprovalDetail | null {
     technical,
   };
 }
+
+/** R59: keyword search is local-only — the read port ignores q/keyword/title
+ * (measured: all three return the same full set). Searching exactly the
+ * fields rendered on screen keeps the filter honest about what it matches. */
+export function approvalsRowSearchText(row: ApprovalRow): string {
+  return [row.title, row.reason ?? "", row.rawId ?? "", row.status.label, row.risk.label]
+    .join(" ")
+    .toLowerCase();
+}

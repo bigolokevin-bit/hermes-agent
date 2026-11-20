@@ -545,3 +545,28 @@ describe("paging", () => {
     expect(text()).toContain("对外发送本周报表");
   });
 });
+
+describe("R59 pending queue search (apv8-*)", () => {
+  it("carries the same local search box with a stated scope and no extra fetches", async () => {
+    await mount(queue(), "/approvals?tab=pending");
+    expect(document.querySelector('[data-testid="apv8-search"]')).toBeTruthy();
+    expect(document.querySelector('[data-testid="apv8-scope-note"]')?.textContent).toContain("条内搜索");
+    const box = document.querySelector('[data-testid="apv8-search"]') as HTMLInputElement;
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+    const before = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      setter.call(box, "本周");
+      box.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(api.fetchJSON.mock.calls.length).toBe(before);
+    expect(document.querySelectorAll('[data-testid^="apr5-row-ap"]').length).toBeGreaterThan(0);
+    await act(async () => {
+      setter.call(box, "nomatch-xyz");
+      box.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(api.fetchJSON.mock.calls.length).toBe(before);
+    expect(document.querySelector('[data-testid="apv8-search-empty"]')?.textContent).toContain("没有匹配的审批");
+    const urls = api.fetchJSON.mock.calls.map((c) => String(c[0]));
+    expect(urls.some((u) => u.includes("q=nomatch"))).toBe(false); // 关键字从不进请求
+  });
+});

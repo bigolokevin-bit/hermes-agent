@@ -733,3 +733,51 @@ describe("R50 queue summary bar", () => {
   });
 });
 
+describe("R59 approvals queue search (apv8-*)", () => {
+  const typeInto = async (value: string) => {
+    const box = document.querySelector('[data-testid="apv8-search"]') as HTMLInputElement;
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+    await act(async () => {
+      setter.call(box, value);
+      box.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  };
+  const rowCards = () => document.querySelectorAll('[data-testid^="apr5-row-ap"]');
+
+  it("typing filters the loaded rows locally with zero new requests and mirrors in the counts", async () => {
+    await mount();
+    expect(document.querySelector('[data-testid="apv8-search"]')).toBeTruthy();
+    expect(document.querySelector('[data-testid="apv8-scope-note"]')?.textContent).toContain("仅在当前已加载 8 条内搜索");
+    expect(document.querySelector('[data-testid="apv8-scope-note"]')?.getAttribute("title")).toContain("q/keyword/title");
+    expect(rowCards()).toHaveLength(8);
+    const before = api.fetchJSON.mock.calls.length;
+    await typeInto("预算");
+    expect(api.fetchJSON.mock.calls.length).toBe(before); // 本地过滤=零新请求
+    expect(rowCards()).toHaveLength(1);
+    expect((document.querySelector('[data-testid="apv5-count"]') as HTMLElement).textContent).toBe("1");
+    expect(document.body.textContent).toContain("关键字过滤中");
+    expect(document.querySelector('[data-testid="apv6-summary"]')).toBeTruthy();
+  });
+
+  it("no match states the honest local result and the clear button restores the list", async () => {
+    await mount(undefined, "/approvals?tab=history&q=nomatch-xyz");
+    const empty = document.querySelector('[data-testid="apv8-search-empty"]');
+    expect(empty).toBeTruthy();
+    expect(empty?.textContent).toContain("没有匹配的审批");
+    expect(empty?.textContent).toContain("nomatch-xyz");
+    const clear = Array.from(document.querySelectorAll("button")).find((b) => (b.textContent ?? "").includes("清空搜索"))!;
+    await act(async () => {
+      clear.click();
+    });
+    expect(document.querySelector('[data-testid="apv8-search-empty"]')).toBeNull();
+    expect(rowCards()).toHaveLength(8);
+    expect((document.querySelector('[data-testid="apv8-search"]') as HTMLInputElement).value).toBe("");
+  });
+
+  it("a pasted ?q= deep link reopens straight into the filtered view", async () => {
+    await mount(undefined, "/approvals?tab=history&q=预算");
+    expect(rowCards()).toHaveLength(1);
+    expect((document.querySelector('[data-testid="apv8-search"]') as HTMLInputElement).value).toBe("预算");
+    expect((document.querySelector('[data-testid="apv5-count"]') as HTMLElement).textContent).toBe("1");
+  });
+});

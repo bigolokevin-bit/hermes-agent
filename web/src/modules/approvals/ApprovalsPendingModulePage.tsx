@@ -28,6 +28,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { failureInfo, isWriteUnavailable, postDecision, type Verdict } from "./api";
 import { writeFailure, type FailureCopy } from "./copy";
 import type { ApprovalRow } from "./model";
+import { approvalsRowSearchText } from "./model";
 import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel } from "./states";
 import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
 import { QueueSummaryBar } from "./QueueSummaryBar";
@@ -60,6 +61,24 @@ export function ApprovalsPendingModulePage(): ReactNode {
   const detail = useApprovalDetail(selected, forced);
 
   const pendingCount = useMemo(() => list.rows.filter((row) => row.status.pending).length, [list.rows]);
+
+  // R59: keyword search is a local filter over the loaded rows (the read
+  // port ignores q/keyword/title — measured), so typing never fetches.
+  const q = params.get("q") ?? "";
+  const setQ = useCallback(
+    (value: string) => {
+      const draft = new URLSearchParams(params);
+      if (value) draft.set("q", value);
+      else draft.delete("q");
+      setParams(draft, { replace: true });
+    },
+    [params, setParams],
+  );
+  const visibleRows = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    if (!needle) return list.rows;
+    return list.rows.filter((row) => approvalsRowSearchText(row).includes(needle));
+  }, [list.rows, q]);
 
   const openRow = useCallback(
     (row: ApprovalRow) => {
@@ -204,8 +223,32 @@ export function ApprovalsPendingModulePage(): ReactNode {
 
   return (
     <div className="flex min-w-0 w-full max-w-full flex-col gap-3" data-testid="apr5-page-pending">
-      <QueueSummaryBar phase={list.phase} rows={list.rows} scope="queue" />
+      <QueueSummaryBar phase={list.phase} rows={visibleRows} scope="queue" />
       <QueueCsvExport rows={list.rows} tab="pending" status="pending" />
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5" role="group" data-testid="apv8-search-group" aria-label="搜索审批">
+        <input
+          type="search"
+          aria-label="搜索审批"
+          data-testid="apv8-search"
+          className="min-w-0 flex-1 rounded-sm border border-border bg-transparent px-2 py-1 text-xs"
+          placeholder="关键字（标题/理由/编号）"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+        {q ? (
+          <Button size="sm" outlined data-testid="apv8-search-clear" onClick={() => setQ("")}>
+            清空搜索
+          </Button>
+        ) : null}
+      </div>
+      <p
+        className="min-w-0 break-words text-xs text-muted-foreground"
+        data-testid="apv8-scope-note"
+        title="实测：GET /api/approvals 带 q/keyword/title 任一参数都返回同一全量（200，8 条同集合），后台不做关键字过滤；为避免「假服务端搜索」，这里只做前端本地过滤。"
+      >
+        仅在当前已加载 {list.rows.length} 条内搜索；关键字是前端本地过滤，不产生新请求（实测后台 q/keyword/title 参数被忽略）。
+      </p>
+
 
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
         <p className="min-w-0 break-words text-xs text-muted-foreground" aria-live="polite">
@@ -217,7 +260,9 @@ export function ApprovalsPendingModulePage(): ReactNode {
                 ? "审批申请暂不可用"
                 : list.phase === "error"
                   ? "审批申请读取失败"
-                  : `已显示 ${list.rows.length} 条申请，其中 ${pendingCount} 条待处理${list.next ? "，下面还有更多" : ""}`}
+                  : q
+                    ? `已显示 ${visibleRows.length} / ${list.rows.length} 条申请，其中 ${visibleRows.filter((row) => row.status.pending).length} 条待处理（关键字过滤中）`
+                    : `已显示 ${list.rows.length} 条申请，其中 ${pendingCount} 条待处理${list.next ? "，下面还有更多" : ""}`}
         </p>
         {list.phase !== "denied" ? (
           <Button
@@ -264,7 +309,20 @@ export function ApprovalsPendingModulePage(): ReactNode {
 
           {list.phase === "ready" ? (
             <>
-              {list.rows.map((row) => (
+              {q && visibleRows.length === 0 ? (
+                <Card className="border-border bg-card" data-testid="apv8-search-empty">
+                  <CardContent className="min-w-0 space-y-2 p-4 text-sm">
+                    <p>没有匹配的审批。</p>
+                    <p className="text-xs text-muted-foreground">
+                      这是前端本地过滤的真实结果：当前已加载 {list.rows.length} 条里没有包含「{q.trim()}」的行；可清空搜索或换服务器筛选条件。
+                    </p>
+                    <Button size="sm" outlined onClick={() => setQ("")}>
+                      清空搜索
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : null}
+              {visibleRows.map((row) => (
                 <ApprovalRowCard
                   key={row.key}
                   row={row}
@@ -275,7 +333,9 @@ export function ApprovalsPendingModulePage(): ReactNode {
 
               {list.unreadable > 0 ? (
                 <p className="min-w-0 break-words text-xs text-warning">
-                  有 {list.unreadable} / {list.rows.length + list.unreadable} 条记录缺少可显示的内容，未列在上面。
+                  {q
+                    ? `另有 ${list.unreadable} 条缺少可显示内容的记录，不参与关键字搜索。`
+                    : `有 ${list.unreadable} / ${list.rows.length + list.unreadable} 条记录缺少可显示的内容，未列在上面。`}
                 </p>
               ) : null}
 
