@@ -392,3 +392,51 @@
   overflow-wrap: anywhere;
   word-break: normal;
 }
+
+/* ------------------------------------------------------------------ *
+ * UI-C2: 员工详情首屏五区锚点条 + 身份区两列栅格
+ * ------------------------------------------------------------------ */
+
+.ui-c-anchors {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.ui-c-anchor {
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: transparent;
+  padding: var(--space-1) var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-1);
+  line-height: var(--line-height-1);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.ui-c-anchor:hover,
+.ui-c-anchor:focus-visible {
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
+
+.uic2-target {
+  scroll-margin-top: 5rem;
+}
+
+.ui-c-subhead {
+  padding: var(--space-3) var(--space-4) 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-1);
+  font-weight: 600;
+  line-height: var(--line-height-1);
+}
+
+/* 身份/组织/生命周期区保持两列标签值栅格，1440 不放宽为三列。 */
+@media (min-width: 640px) {
+  .ui-c-fields--two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

@@ -1037,6 +1037,15 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
   const name = overview.phase === "ready" ? pickString(overview.data.name) : null;
   const titleJob = overview.phase === "ready" ? pickString(overview.data.title, overview.data.role, overview.data.position) : null;
   const lifecycle = overview.phase === "ready" ? pickString(overview.data.lifecycleState, overview.data.lifecycle) : null;
+  // UI-C2: 头部补部门。三态与列表桶/身份卡共用同一 departmentView helper，
+  // 禁第二套判据；未 ready 时整段不渲，不占「—」位。
+  const headerDept =
+    overview.phase === "ready"
+      ? departmentView(
+          "department" in overview.data,
+          typeof overview.data.department === "string" ? overview.data.department : null,
+        )
+      : null;
 
   const header = (
     <header className="flex min-w-0 flex-wrap items-center gap-3">
@@ -1044,7 +1053,14 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
         <h1 className="truncate font-mondwest text-xl" title={empId || undefined}>
           {name ? `${name} · ${shortCode(empId)}` : empId ? `员工 · ${shortCode(empId)}` : "员工详情"}
         </h1>
-        <p className="truncate text-xs text-white/50">{dash(titleJob)}</p>
+        <p className="flex min-w-0 flex-wrap gap-x-2 text-xs text-white/50">
+          <span className="min-w-0">{dash(titleJob)}</span>
+          {headerDept ? (
+            <span className="min-w-0" title={headerDept.title ?? undefined}>
+              部门 · {headerDept.label}
+            </span>
+          ) : null}
+        </p>
       </div>
       {overview.phase === "ready" ? (
         <Badge tone={lifecycleTone(lifecycle)}>{lifecycleLabel(lifecycle)}</Badge>
@@ -1296,34 +1312,66 @@ function IdentityCard({ d, empId }: { d: Rec; empId: string }) {
         <div className="ui-c-head">
           <h3 className="ui-c-head-title">身份与组织</h3>
         </div>
-        <dl className="ui-c-fields">
-          <IdentityField id="name" label="姓名" title={name ? undefined : FIELD_MISSING_TITLE}>
-            {name ?? FIELD_MISSING}
-          </IdentityField>
-          <IdentityField id="code" label="工号" title={empId}>
-            员工 · {shortCode(empId)}
-          </IdentityField>
-          <IdentityField id="role" label="角色" title={role ? undefined : FIELD_MISSING_TITLE}>
-            {role ?? FIELD_MISSING}
-          </IdentityField>
-          <IdentityField id="department" label="部门" title={dept.title ?? undefined}>
-            {dept.label}
-          </IdentityField>
-          <IdentityField id="state" label="在职态" title={stateRaw ? `原始值：${stateRaw}` : FIELD_MISSING_TITLE}>
-            {stateLabel}
-          </IdentityField>
-          <IdentityField id="reports" label="汇报对象" title={reportsTo ? undefined : "后台没有回传这位员工的汇报对象。"}>
-            {reportsValue}
-          </IdentityField>
-          <IdentityField id="created" label="创建时间" num title={created ? "北京时间，精确到分" : FIELD_MISSING_TITLE}>
-            {created ? beijing(created) : FIELD_MISSING}
-          </IdentityField>
-          <IdentityField id="rid" label="请求编号" title={ridRaw ? undefined : FIELD_MISSING_TITLE}>
-            <RequestIdCopy requestId={ridRaw ?? null} fallback={fieldMissing("请求编号")} />
-          </IdentityField>
-        </dl>
+        {/* UI-C2: 首屏五区锚点在此卡分三段（身份/组织/生命周期），字段、
+            testid、缺值话术零改动，只按区归组；权限与最近活跃区不在 HEAD
+            的本卡里，锚点分别落能力权限分区与在岗卡（见锚点条）。 */}
+        <div id="uic2-zone-identity" className="uic2-target">
+          <h4 className="ui-c-subhead">身份</h4>
+          <dl className="ui-c-fields ui-c-fields--two">
+            <IdentityField id="name" label="姓名" title={name ? undefined : FIELD_MISSING_TITLE}>
+              {name ?? FIELD_MISSING}
+            </IdentityField>
+            <IdentityField id="code" label="工号" title={empId}>
+              员工 · {shortCode(empId)}
+            </IdentityField>
+            <IdentityField id="role" label="角色" title={role ? undefined : FIELD_MISSING_TITLE}>
+              {role ?? FIELD_MISSING}
+            </IdentityField>
+            <IdentityField id="rid" label="请求编号" title={ridRaw ? undefined : FIELD_MISSING_TITLE}>
+              <RequestIdCopy requestId={ridRaw ?? null} fallback={fieldMissing("请求编号")} />
+            </IdentityField>
+          </dl>
+        </div>
+        <div id="uic2-zone-org" className="uic2-target">
+          <h4 className="ui-c-subhead">组织</h4>
+          <dl className="ui-c-fields ui-c-fields--two">
+            <IdentityField id="department" label="部门" title={dept.title ?? undefined}>
+              {dept.label}
+            </IdentityField>
+            <IdentityField id="reports" label="汇报对象" title={reportsTo ? undefined : "后台没有回传这位员工的汇报对象。"}>
+              {reportsValue}
+            </IdentityField>
+          </dl>
+        </div>
+        <div id="uic2-zone-lifecycle" className="uic2-target">
+          <h4 className="ui-c-subhead">生命周期</h4>
+          <dl className="ui-c-fields ui-c-fields--two">
+            <IdentityField id="state" label="在职态" title={stateRaw ? `原始值：${stateRaw}` : FIELD_MISSING_TITLE}>
+              {stateLabel}
+            </IdentityField>
+            <IdentityField id="created" label="创建时间" num title={created ? "北京时间，精确到分" : FIELD_MISSING_TITLE}>
+              {created ? beijing(created) : FIELD_MISSING}
+            </IdentityField>
+          </dl>
+        </div>
       </CardContent>
     </Card>
+  );
+}
+
+/** UI-C2: 首屏锚点条。在页五区用滚动锚（不改路由表）；「权限」在 HEAD 没有
+ * 独立首屏承载，如实落到已接线的「能力与权限」分区（真 Link，非假锚）。 */
+function AnchorChip({ targetId, label }: { targetId: string; label: string }) {
+  return (
+    <button
+      type="button"
+      className="ui-c-anchor"
+      onClick={() =>
+        document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" })
+      }
+    >
+      {label}
+    </button>
   );
 }
 
@@ -1382,7 +1430,22 @@ function OverviewZone({ state, onRetry, empId }: { state: OverviewState; onRetry
   ];
   return (
     <div className="min-w-0 space-y-4" data-testid="ed5-overview-wrap">
+      {/* UI-C2: 五区锚点条（身份/组织/生命周期/权限/最近活跃）。 */}
+      <nav aria-label="详情五区锚点" className="ui-c-anchors">
+        <AnchorChip targetId="uic2-zone-identity" label="身份" />
+        <AnchorChip targetId="uic2-zone-org" label="组织" />
+        <AnchorChip targetId="uic2-zone-lifecycle" label="生命周期" />
+        <Link
+          className="ui-c-anchor ui-c-anchor--link"
+          title="该区的承载在 HEAD 是独立分区，这里直达「能力与权限」真数据面。"
+          to={`/employees/${encodeURIComponent(empId)}?zone=capability`}
+        >
+          权限
+        </Link>
+        <AnchorChip targetId="uic2-zone-recent" label="最近活跃" />
+      </nav>
       <IdentityCard d={d} empId={empId} />
+      <div id="uic2-zone-recent" className="uic2-target">
       <Card className="min-w-0" data-testid="ed5-overview">
         <CardContent className="p-0">
           <div className="ui-c-head">
@@ -1400,6 +1463,7 @@ function OverviewZone({ state, onRetry, empId }: { state: OverviewState; onRetry
           </dl>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }
