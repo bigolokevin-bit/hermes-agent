@@ -1159,3 +1159,11 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - shots auth 102/102 failures=[] obs=0 obsR=[] distinct=23（上代 24，-1）envOnly=25（上代 27，-2）；anon auxiliary=true 102/102 obs=0 distinct=23 envOnly=51（持平）。三键两 summary 全值 entry='assets/index-BANGt8ne.js'/167490/1dc7d2c4…、ceAuthority=login-state。
 - 脚本复用形：盘现算 stamp 版对代次不敏感（HEAD rev-parse 现算、entry 名同代未变），本轮 sed 仅 wave24→wave26 文件名两处生效，验证配方免改头成立。
 - 环境：BFF 8092 pid 58224（b3b0f16）未动；9122 v4_proxy 95667 未动；caddy 28034 未动；web/src 未碰；fa7c2155 已盖不重做、无 amend/force。
+
+## 一〇六轮 · 波次代次九件重章 @ 86cb2ede（entry ncYAf9bW，2026-11-20 15:5x-16:0x）
+
+- 代次现查：LOCAL=ls-remote=86cb2ede5284（ANCH=0）、porc 0 脏；磁盘 entry assets/index-ncYAf9bW.js 167490B sha256 d02a166bd982b195…60ee27db ✓、CSS 仍 index-C8_UHqSf.css 133688B 未变；9122 served=index-ncYAf9bW.js，served before==after 未漂。
+- 九腿全 exit=0，九件全 ok=true 盖 headHash=86cb2ede：ia-html/react routes=51/tabsAll=23/chatHosts=1/modules=8；lint-fake v=[]；lint-reuse v=0 exempt=1（chat→T40）；state-quad 20/20；crawl-anon DL0/CE0/PE0 routesCE=51（401 归因）；crawl-auth DL0/CE0/PE0 **routesCE=23（上代 26，-3 好转）**；redirects=24 归因 notes 不判红。
+- shots auth 102/102 failures=[] obs=0 obsR=[] distinct=23 envOnly=25（持平）；anon auxiliary=true 102/102 failures=[] **obs=1（#/work 单条，上代 0，+1 如实登记不入判据）** distinct=23 envOnly=51。obs 两枚分开记：auth=0 / anon=1。
+- 三键两 summary 全值 entry='assets/index-ncYAf9bW.js'/167490/d02a166b…、servedEntryBefore==After='index-ncYAf9bW.js'、ceAuthority=login-state（anon 亦带）。
+- 环境：BFF 8092 pid 58224（b3b0f16）未动；9122 v4_proxy 未动；caddy 28034 未动；web/src 未碰；2ab2d218 已盖不重做、无 amend/force。

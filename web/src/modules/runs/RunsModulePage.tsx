@@ -76,6 +76,7 @@ import {
   defaultRunDir,
   elapsedMinute,
   employeeLabel,
+  effectiveListGate,
   listActionGate,
   parseRunDir,
   parseRunSort,
@@ -106,6 +107,7 @@ import {
   eventStatus,
   eventElapsed,
 } from "./runs";
+import { asOfCell } from "../metrics/asof";
 import { forcedStateOf, useRunsData } from "./useRunsData";
 import { useRunDetail, type DetailOutcome } from "./useRunDetail";
 import { COST_CALIBER_TEXT, costCaliberTitle } from "../metrics/costCaliberNote";
@@ -250,6 +252,8 @@ function RunPreviewPanel({ row, names, index }: { row: RunRow; names: Map<string
           size="sm"
           outlined
           data-testid="run-row-copy"
+          aria-disabled={false}
+          title="复制这一行屏上已渲染的七个字段"
           onClick={() => {
             const text = runRowText(row, names);
             setCopyBody(text);
@@ -308,6 +312,9 @@ function RunListCopy({
   const [body, setBody] = useState("");
   const [exportStatus, setExportStatus] = useState<"idle" | "done" | "failed">("idle");
   const empty = rows.length === 0;
+  // One object per action: disabled, aria-disabled and the reason come from it.
+  const copyState = effectiveListGate(copyGate, empty, "当前列表没有行，没有可复制的文本");
+  const exportState = effectiveListGate(exportGate, empty, "当前列表没有行，没有可导出的 CSV");
   // One name, computed when the filter changes: the preview and the download
   // both read this string, so they cannot disagree about the minute.
   const fileName = useMemo(
@@ -339,15 +346,14 @@ function RunListCopy({
       <Button
         size="sm"
         outlined
-        disabled={copyGate.disabled || empty}
+        disabled={copyState.disabled}
+        aria-disabled={copyState.disabled}
         onClick={copy}
         data-testid="run-list-copy"
         title={
-          copyGate.disabled
-            ? copyGate.title
-            : empty
-              ? "当前列表没有行，没有可复制的文本"
-              : `复制当前列表为纯文本：表头加 ${rows.length} 行；当前已加载 ${rows.length} 行，不是全量（每页最多 ${PAGE_LIMIT} 条）`
+          copyState.disabled
+            ? copyState.title
+            : `复制当前列表为纯文本：表头加 ${rows.length} 行；当前已加载 ${rows.length} 行，不是全量（每页最多 ${PAGE_LIMIT} 条）`
         }
       >
         <Copy className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
@@ -356,15 +362,14 @@ function RunListCopy({
       <Button
         size="sm"
         outlined
-        disabled={exportGate.disabled || empty}
+        disabled={exportState.disabled}
+        aria-disabled={exportState.disabled}
         onClick={exportCsv}
         data-testid="run-list-export"
         title={
-          exportGate.disabled
-            ? exportGate.title
-            : empty
-              ? "当前列表没有行，没有可导出的 CSV"
-              : `导出当前列表为 CSV：表头加 ${rows.length} 行；当前已加载 ${rows.length} 行，不是全量（每页最多 ${PAGE_LIMIT} 条）`
+          exportState.disabled
+            ? exportState.title
+            : `导出当前列表为 CSV：表头加 ${rows.length} 行；当前已加载 ${rows.length} 行，不是全量（每页最多 ${PAGE_LIMIT} 条）`
         }
       >
         <Download className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
@@ -970,7 +975,9 @@ export function RunsModulePage() {
     setParams(filterReset.next, { replace: true, state: locationState ?? null });
   };
   const data = useRunsData(forced, { status, sinceKey, employeeId: employee });
-  const { phase, rows, cursor, answeredBy, unreadable, failure, forced: isForced } = data;
+  const { phase, rows, cursor, asOf, asOfSource, answeredBy, unreadable, failure, forced: isForced } =
+    data;
+  const asof = asOfCell(asOf, asOfSource);
 
   // Sorting is local: the list route accepts no sort parameter (see runs.ts
   // askListRoute), so this only reorders the rows already on screen.
@@ -1174,21 +1181,33 @@ export function RunsModulePage() {
           </p>
         </div>
         <div className="flex min-w-0 flex-wrap items-end gap-2" role="group" aria-label="运行筛选" data-testid="run5-filters">
-          <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="run5-filter-window">
+          <div
+            className="flex min-w-0 flex-col gap-1 text-xs"
+            role="group"
+            aria-label="时间范围"
+            data-testid="run5-filter-window"
+            title={isForced ? forcedTitle : "换时间范围会重新向服务要一次数据，其余筛选保持不变"}
+          >
             <span className="text-muted-foreground">时间范围</span>
-            <select
-              id="run5-filter-window"
-              data-testid="run5-filter-window"
-              className="h-8 min-w-0 max-w-40 rounded-md border border-border bg-transparent px-2 text-sm"
-              value={sinceKey}
-              title={isForced ? forcedTitle : "换时间范围会重新向服务要一次数据"}
-              onChange={(event) => setParam("window", event.target.value)}
-            >
+            <div className="flex min-w-0 flex-wrap gap-1">
               {SINCE_OPTIONS.map((option) => (
-                <option key={option.key} value={option.key}>{option.label}</option>
+                <button
+                  key={option.key}
+                  type="button"
+                  data-testid={`run-window-${option.key}`}
+                  aria-pressed={option.key === sinceKey}
+                  className={
+                    option.key === sinceKey
+                      ? "rounded-md border border-border bg-muted px-2.5 py-1 text-xs font-medium"
+                      : "rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground"
+                  }
+                  onClick={() => setParam("window", option.key)}
+                >
+                  {option.label}
+                </button>
               ))}
-            </select>
-          </label>
+            </div>
+          </div>
           <label className="flex min-w-0 flex-col gap-1 text-xs" htmlFor="run5-filter-status">
             <span className="text-muted-foreground">状态</span>
             <select
@@ -1282,6 +1301,14 @@ export function RunsModulePage() {
         {unreadable > 0 && countsKnown
           ? `；另有 ${unreadable} 条回的内容没有可读的运行编号，没有算在上面`
           : ""}
+      </p>
+
+      <p
+        className="min-w-0 break-words text-xs text-muted-foreground"
+        data-testid="run-asof-line"
+      >
+        采集时刻 <span data-testid="run-asof" title={asof.title}>{asof.text}</span>
+        （上游给了才显示；没给就是「—」，不拿本机时间顶替）
       </p>
 
       {detail.k === "loading" ? (
@@ -1445,6 +1472,7 @@ export function RunsModulePage() {
       ) : null}
       {phase === "ready" ? (
         <ListRows
+          key={sinceKey}
           rows={sortedRows}
           names={names}
           hrefOf={hrefOf}
@@ -1470,7 +1498,7 @@ export function RunsModulePage() {
           仅在当前已加载 {sortedRows.length} 行内排序；服务端读口不接受排序参数，点表头不会重新读取。
         </p>
       ) : null}
-      {phase !== "loading" ? (
+      {forced === null && phase !== "loading" ? (
         <RunListCopy
           rows={sortedRows}
           names={names}

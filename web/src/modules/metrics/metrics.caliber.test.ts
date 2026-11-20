@@ -219,7 +219,7 @@ describe('metN — R2: the collection time is a top-level ISO instant or nothing
     expect(asofCells.length).toBeGreaterThan(0);
     for (const cell of asofCells) {
       expect(cell.textContent).toBe('—');
-      expect(cell.getAttribute('title')).toBe('上游未返回采集时刻');
+      expect(cell.getAttribute('title')).toBe('上游未返回采集时刻；不用本机时间顶替。');
     }
 
     await shareDownload();

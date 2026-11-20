@@ -4466,6 +4466,104 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect(fetchMock.mock.calls.length).toBe(urlsRepro);
   });
 
+  it("maps the live BFF document contract honestly into buckets (ktype, numeric type, snake time): no invented labels", async () => {
+    // 活体实测（BFF b3b0f16 / space_id=1）原样夹具：type/kind 为数字 0、无 size、
+    // 时间 updated_at/updatedAt 带 +08:00、信封是 count/hasMore/cursor（无 nextCursor 别名）。
+    const SPACE = { asOf: "2026-11-20T07:05:58Z", asOfSource: "bff-read-time", spaces: [
+      { space_id: "1", name: "seakoi-p0-8-probe", kind: "normal", document_count: 1, last_sync_at: "2026-11-14T06:33:18+08:00" },
+    ], items: [
+      { space_id: "1", name: "seakoi-p0-8-probe", kind: "normal", document_count: 1, last_sync_at: "2026-11-14T06:33:18+08:00" },
+    ] };
+    const LIVE_DOCS = {
+      asOf: "2026-11-20T07:05:58Z",
+      asOfSource: "bff-read-time",
+      count: 2,
+      hasMore: false,
+      cursor: null,
+      documents: [
+        { id: "2", document_id: "2", name: "seakoi-p08-doc-1.txt", description: "P0-8 测试文档", type: 0, kind: 0, state: null, status: null, is_released: false, collection_name: null, updated_at: "2026-11-14T06:33:18+08:00", updatedAt: "2026-11-14T06:33:18+08:00", created_at: "2026-11-14T06:33:18+08:00" },
+        { id: "3", document_id: "3", name: "只有名字的文档", description: null, state: null },
+      ],
+    };
+    fetchMock.mockClear();
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SPACE);
+      if (url.startsWith("/agent-api/api/documents?") && url.includes("spaceId=1")) return Promise.resolve(LIVE_DOCS);
+      return fail(404, "这个数据接口还没有接入。", "rid-l2-x");
+    });
+    await render("/knowledge?tab=spaces&space=1");
+    await act(async () => {});
+    const btns = () => [...container.querySelectorAll("button")].filter((b) => (b.getAttribute("data-testid") ?? "").startsWith("kn-type-"));
+    const cell = (i: number, t: string) => [...container.querySelectorAll('[data-testid="kn3-docs-row"]')][i]?.querySelector(`[data-testid="${t}"]`);
+    const loc = () => byTestid("loc")?.textContent ?? "";
+    const params = () => new URLSearchParams(loc().slice(loc().indexOf("?") + 1));
+
+    // 数字 type=0：人话映射查不到 → 「其他类型」，原始值只进 title；禁猜 0=txt
+    expect((cell(0, "kn3-docs-type")?.textContent ?? "")).toBe("其他类型");
+    expect(cell(0, "kn3-docs-type")?.getAttribute("title")).toBe("0");
+    // 无 size/无时间字段：缺就是缺，不编 0、不编时刻
+    expect((cell(1, "kn3-docs-size")?.textContent ?? "")).toBe("—");
+    expect((cell(1, "kn3-docs-updated")?.textContent ?? "")).toBe("—");
+    // updated_at +08:00 → BJT 到分（同一时刻原样）
+    expect((cell(0, "kn3-docs-updated")?.textContent ?? "")).toContain("2026-11-14 06:33");
+    // 桶：全部(2)、其他类型(1)、未标注类型(1)；Σ=行数=data-len
+    console.log("BTNS", btns().map((b) => b.getAttribute("data-testid")+"|"+b.textContent).join(" ;; "));
+    expect((btns()[1]?.textContent ?? "")).toContain("其他类型");
+    expect((btns()[2]?.textContent ?? "")).toContain("未标注类型");
+    expect(byTestid("kn-type-all-count")?.textContent).toBe("2");
+    expect(attr("kn3-docs", "data-len")).toBe("2");
+
+    const urlsBase = fetchMock.mock.calls.length;
+    // 点「其他类型」：写 ktype，URL 无旧 type；q/排序不在场也不误写
+    await clickNth("kn-type-1", 0);
+    expect(params().get("ktype")).toBe("其他类型");
+    expect(params().has("type")).toBe(false);
+    expect(attr("kn3-docs", "data-len")).toBe("1");
+    // 信封键名与前端不同（count/hasMore/cursor 而非 nextCursor/total）→ 分页诚实显示无游标，不猜页数
+    expect((byTestid("knE-page-more")?.textContent ?? "")).toContain("无分页游标");
+    expect(fetchMock.mock.calls.length).toBe(urlsBase); // 切桶 0 新请求
+
+    // 组合不清除：带 q+ksort 的粘链 → 换桶/清桶全程 q/ksort/kdir 不动
+    const uCombo = fetchMock.mock.calls.length;
+    await render("/knowledge?tab=spaces&space=1&q=%E6%96%87%E6%A1%A3&ksort=name&kdir=desc&ktype=%E5%85%B6%E4%BB%96%E7%B1%BB%E5%9E%8B");
+    await act(async () => {});
+    const uComboAfterRender = fetchMock.mock.calls.length; // render 自带既有读取
+    void uCombo;
+    expect(params().get("q")).toBe("文档");
+    expect(btns()[1]?.getAttribute("aria-pressed")).toBe("true");
+    await clickNth("kn-type-2", 0);
+    expect(params().get("q")).toBe("文档");
+    expect(params().get("ksort")).toBe("name");
+    expect(params().get("kdir")).toBe("desc");
+    expect(params().get("ktype")).toBe("未标注类型");
+    // 同桶再点清除：ktype 删干净、无 type 残留、其余参数原样
+    await clickNth("kn-type-2", 0);
+    expect(params().has("ktype")).toBe(false);
+    expect(params().has("type")).toBe(false);
+    expect(params().get("q")).toBe("文档");
+    expect(params().get("ksort")).toBe("name");
+    expect(fetchMock.mock.calls.length).toBe(uComboAfterRender); // 换桶/清桶 0 新请求
+
+    // 旧链 type= 兜底：选中态生效；清桶把 type 一并删（旧参数不复活）
+    await render("/knowledge?tab=spaces&space=1&type=%E6%9C%AA%E6%A0%87%E6%B3%A8%E7%B1%BB%E5%9E%8B");
+    await act(async () => {});
+    expect(btns()[2]?.getAttribute("aria-pressed")).toBe("true");
+    console.log("PROBE2", "btns=", btns().map((b) => b.textContent).join("/"), "loc=", loc(), "gap=", (byTestid("kn-type-empty")?.textContent ?? "").slice(0, 40), "rows=", container.querySelectorAll('[data-testid="kn3-docs-row"]').length);
+    expect(attr("kn3-docs", "data-len")).toBe("1");
+    const uOld = fetchMock.mock.calls.length;
+    await clickNth("kn-type-2", 0); // 同桶再点 = 清除（兜底读的旧 type 一并删，不复活）
+    expect(loc()).not.toContain("type");
+    expect(fetchMock.mock.calls.length).toBe(uOld); // 清桶 0 新请求
+
+    // 该类型无文档：文案含「该类型下没有文档」+已加载 N，非真空句
+    await render("/knowledge?tab=spaces&space=1&ktype=%E5%8E%8B%E7%BC%A9%E5%8C%85");
+    await act(async () => {});
+    const gap = byTestid("kn-type-empty")?.textContent ?? "";
+    expect(gap).toContain("该类型下没有文档");
+    expect(gap).toContain("当前已加载 2 条里没有「压缩包」");
+    expect(gap).not.toContain("该空间暂无文档");
+  });
+
   it("filters the space document list by type buckets (kn-type-*): counts, aria-pressed, URL, cursor reset, honest states", async () => {
     const SPACE = { asOf: "2026-11-19T07:00:00Z", items: [{ spaceId: "sp_hr", name: "人事制度空间" }] };
     const P1 = {
@@ -4551,7 +4649,7 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     await act(async () => {});
     await click("knE-page-more");
     const bucket4 = bucketOf(4);
-    expect(bucket4?.textContent ?? "").toContain("未归类");
+    expect(bucket4?.textContent ?? "").toContain("未标注类型");
 
     // ---------- 筛无匹配：kn-type-empty 文案 + 清类型出口，与「该空间暂无文档」可分 ----------
     await render("/knowledge?tab=spaces&space=sp_hr&type=%E5%8E%8B%E7%BC%A9%E5%8C%85"); // 压缩包

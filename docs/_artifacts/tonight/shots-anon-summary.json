@@ -33,13 +33,13 @@
     {
       "route": "#/approvals",
       "viewport": "1440",
-      "chars": 682,
+      "chars": 714,
       "hasMainEl": true
     },
     {
       "route": "#/approvals",
       "viewport": "375",
-      "chars": 682,
+      "chars": 714,
       "hasMainEl": true
     },
     {
@@ -57,61 +57,61 @@
     {
       "route": "#/approvals?tab=mine",
       "viewport": "1440",
-      "chars": 682,
+      "chars": 714,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=mine",
       "viewport": "375",
-      "chars": 682,
+      "chars": 714,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=mine",
       "viewport": "1440",
-      "chars": 682,
+      "chars": 714,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=mine",
       "viewport": "375",
-      "chars": 682,
+      "chars": 714,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=release",
       "viewport": "1440",
-      "chars": 682,
+      "chars": 714,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=release",
       "viewport": "375",
-      "chars": 682,
+      "chars": 714,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=policy",
       "viewport": "1440",
-      "chars": 682,
+      "chars": 714,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=policy",
       "viewport": "375",
-      "chars": 682,
+      "chars": 714,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=release",
       "viewport": "1440",
-      "chars": 682,
+      "chars": 714,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=release",
       "viewport": "375",
-      "chars": 682,
+      "chars": 714,
       "hasMainEl": true
     },
     {
@@ -129,13 +129,13 @@
     {
       "route": "#/capabilities",
       "viewport": "1440",
-      "chars": 359,
+      "chars": 389,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities",
       "viewport": "375",
-      "chars": 359,
+      "chars": 389,
       "hasMainEl": true
     },
     {
@@ -165,13 +165,13 @@
     {
       "route": "#/capabilities?tab=tools",
       "viewport": "1440",
-      "chars": 385,
+      "chars": 415,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=tools",
       "viewport": "375",
-      "chars": 385,
+      "chars": 415,
       "hasMainEl": true
     },
     {
@@ -621,18 +621,20 @@
     {
       "route": "#/work?tab=runs",
       "viewport": "1440",
-      "chars": 422,
+      "chars": 461,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=runs",
       "viewport": "375",
-      "chars": 422,
+      "chars": 461,
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 0,
-  "consoleErrorRoutesObservedByShots": [],
+  "consoleErrorsObservedByShots": 1,
+  "consoleErrorRoutesObservedByShots": [
+    "#/work"
+  ],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
@@ -642,12 +644,12 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "2ab2d218",
+  "headHash": "86cb2ede",
   "exitCode": 0,
-  "entry": "assets/index-BANGt8ne.js",
-  "entrySha256": "1dc7d2c4f3e883c748b054e41846c27a0673a421b6e5e4f9d71a6ec5f5fa2da5",
+  "entry": "assets/index-ncYAf9bW.js",
+  "entrySha256": "d02a166bd982b195696e8ddbbf49dd801a8560eff25ab828e0db041b60ee27db",
   "entryBytes": 167490,
-  "servedEntryBefore": "index-BANGt8ne.js",
-  "servedEntryAfter": "index-BANGt8ne.js",
+  "servedEntryBefore": "index-ncYAf9bW.js",
+  "servedEntryAfter": "index-ncYAf9bW.js",
   "auxiliary": true
 }

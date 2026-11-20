@@ -10,7 +10,7 @@
   "oversize": [],
   "rootBaseline": {
     "textLen": 1612,
-    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 北京时间 2026-11-20 14:51 近 24 小时 近 7 天 近",
+    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 北京时间 2026-11-20 15:51 近 24 小时 近 7 天 近",
     "hasMainEl": true,
     "ok": true
   },
@@ -33,13 +33,13 @@
     {
       "route": "#/approvals",
       "viewport": "1440",
-      "chars": 703,
+      "chars": 735,
       "hasMainEl": true
     },
     {
       "route": "#/approvals",
       "viewport": "375",
-      "chars": 703,
+      "chars": 735,
       "hasMainEl": true
     },
     {
@@ -57,85 +57,85 @@
     {
       "route": "#/approvals?tab=mine",
       "viewport": "1440",
-      "chars": 703,
+      "chars": 735,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=mine",
       "viewport": "375",
-      "chars": 703,
+      "chars": 735,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=mine",
       "viewport": "1440",
-      "chars": 703,
+      "chars": 735,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=mine",
       "viewport": "375",
-      "chars": 703,
+      "chars": 735,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=release",
       "viewport": "1440",
-      "chars": 703,
+      "chars": 735,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=release",
       "viewport": "375",
-      "chars": 703,
+      "chars": 735,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=policy",
       "viewport": "1440",
-      "chars": 703,
+      "chars": 735,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=policy",
       "viewport": "375",
-      "chars": 703,
+      "chars": 735,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=release",
       "viewport": "1440",
-      "chars": 703,
+      "chars": 735,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=release",
       "viewport": "375",
-      "chars": 703,
+      "chars": 735,
       "hasMainEl": true
     },
     {
       "route": "#/audit",
       "viewport": "1440",
-      "chars": 6705,
+      "chars": 6619,
       "hasMainEl": true
     },
     {
       "route": "#/audit",
       "viewport": "375",
-      "chars": 6705,
+      "chars": 6619,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities",
       "viewport": "1440",
-      "chars": 341,
+      "chars": 357,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities",
       "viewport": "375",
-      "chars": 341,
+      "chars": 357,
       "hasMainEl": true
     },
     {
@@ -165,13 +165,13 @@
     {
       "route": "#/capabilities?tab=tools",
       "viewport": "1440",
-      "chars": 428,
+      "chars": 458,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=tools",
       "viewport": "375",
-      "chars": 428,
+      "chars": 458,
       "hasMainEl": true
     },
     {
@@ -339,7 +339,7 @@
     {
       "route": "#/identity?tab=roles",
       "viewport": "375",
-      "chars": 138,
+      "chars": 194,
       "hasMainEl": true
     },
     {
@@ -363,7 +363,7 @@
     {
       "route": "#/knowledge",
       "viewport": "375",
-      "chars": 469,
+      "chars": 590,
       "hasMainEl": true
     },
     {
@@ -375,7 +375,7 @@
     {
       "route": "#/knowledge?tab=citations",
       "viewport": "375",
-      "chars": 689,
+      "chars": 359,
       "hasMainEl": true
     },
     {
@@ -399,7 +399,7 @@
     {
       "route": "#/knowledge?tab=ingest",
       "viewport": "375",
-      "chars": 396,
+      "chars": 903,
       "hasMainEl": true
     },
     {
@@ -429,7 +429,7 @@
     {
       "route": "#/knowledge?tab=sources",
       "viewport": "1440",
-      "chars": 939,
+      "chars": 396,
       "hasMainEl": true
     },
     {
@@ -525,37 +525,37 @@
     {
       "route": "#/system?tab=events",
       "viewport": "1440",
-      "chars": 6705,
+      "chars": 6619,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events",
       "viewport": "375",
-      "chars": 6705,
+      "chars": 6619,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "1440",
-      "chars": 6705,
+      "chars": 6619,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "375",
-      "chars": 6705,
+      "chars": 6619,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=retention",
       "viewport": "1440",
-      "chars": 6705,
+      "chars": 6619,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=retention",
       "viewport": "375",
-      "chars": 6705,
+      "chars": 6619,
       "hasMainEl": true
     },
     {
@@ -591,7 +591,7 @@
     {
       "route": "#/work",
       "viewport": "375",
-      "chars": 205,
+      "chars": 1956,
       "hasMainEl": true
     },
     {
@@ -621,13 +621,13 @@
     {
       "route": "#/work?tab=runs",
       "viewport": "1440",
-      "chars": 1597,
+      "chars": 1636,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=runs",
       "viewport": "375",
-      "chars": 1569,
+      "chars": 302,
       "hasMainEl": true
     }
   ],
@@ -642,11 +642,11 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "2ab2d218",
+  "headHash": "86cb2ede",
   "exitCode": 0,
-  "entry": "assets/index-BANGt8ne.js",
-  "entrySha256": "1dc7d2c4f3e883c748b054e41846c27a0673a421b6e5e4f9d71a6ec5f5fa2da5",
+  "entry": "assets/index-ncYAf9bW.js",
+  "entrySha256": "d02a166bd982b195696e8ddbbf49dd801a8560eff25ab828e0db041b60ee27db",
   "entryBytes": 167490,
-  "servedEntryBefore": "index-BANGt8ne.js",
-  "servedEntryAfter": "index-BANGt8ne.js"
+  "servedEntryBefore": "index-ncYAf9bW.js",
+  "servedEntryAfter": "index-ncYAf9bW.js"
 }

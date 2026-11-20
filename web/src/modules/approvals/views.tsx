@@ -67,6 +67,7 @@ export function ApprovalRowCard({
   row,
   selected,
   onOpen,
+  index,
   previewOpen,
   onTogglePreview,
   active,
@@ -78,6 +79,8 @@ export function ApprovalRowCard({
   selected: boolean;
   onOpen: () => void;
   /** R60: 行内就地展开预览 — 纯本地数据，不打开详情抽屉、不发任何请求。 */
+  /** R52-obs: the toggle anchor is positional; the full id rides data-record. */
+  index: number;
   previewOpen: boolean;
   onTogglePreview: () => void;
   /** R73: roving tabindex — 仅当前行入 tab 序；方向键导航由页层处理。 */
@@ -140,7 +143,8 @@ export function ApprovalRowCard({
           <button
             ref={toggleRef}
             type="button"
-            data-testid={`apv9-toggle-${row.key}`}
+            data-testid={`apv9-toggle-${index}`}
+            data-record={row.key}
             aria-expanded={previewOpen}
             title="就地展开预览（不打开详情，不产生新请求）"
             className="shrink-0 rounded-sm border border-white/15 p-1 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-1 focus-visible:outline-primary/40"

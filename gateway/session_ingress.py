@@ -84,7 +84,8 @@ async def admit_message(authority, event):
             del authority.waiters[receipt.admission_id]
         if adopters.get(receipt.admission_id) is event:
             del adopters[receipt.admission_id]
-        return None if status == 'terminal' else pause_notice(authority, receipt.ref, 'unknown_execution')
+        return None if status == 'terminal' else await _pause_outcome_for_chat(
+            authority, receipt.ref, 'unknown_execution', getattr(event, 'source', None))
     if accepted is not None and not accepted.done():
         accepted.set_result(None)
     try:
@@ -97,7 +98,8 @@ async def admit_message(authority, event):
                     'queued for moved, so it was dropped. Send it again to continue.')
         if row is not None:
             note_busy_parked(event)  # still queued (saved): answered after the pause, not dropped
-        return pause_notice(authority, receipt.ref, exc.reason)
+        return await _pause_outcome_for_chat(
+            authority, receipt.ref, exc.reason, getattr(event, 'source', None))
     finally:
         if adopters.get(receipt.admission_id) is event:
             del adopters[receipt.admission_id]
@@ -237,29 +239,54 @@ async def _release_turn_marker(authority, event):
 def pause_notice(authority, ref, reason):
     """The committed input stays queued behind a paused FIFO (a turn lost across an owner
     restart, or a head the preflight refused). Tell the platform user once per pause episode
-    through the ordinary reply path; later messages onto the same pause are admitted silently."""
+    through the ordinary reply path; later messages onto the same pause are admitted silently.
+    Sync, DM/plain-chat copy only: group chats never reach this — see
+    ``_pause_outcome_for_chat``."""
     live = authority.sessions[ref.session_id]
     if live.pause_notified:
         return None
     live.pause_notified = True
     if reason == 'runtime_draining':
-        # Transient: the row runs when the restarted owner drains it, so /reset would be wrong advice.
-        return '⏳ Hermes is restarting — your message is saved and will be answered when it is back.'
+        # Transient: the row runs when the restarted owner drains it, so any "start over"
+        # advice would be wrong here.
+        return '⏳ Hermes 正在重启——你的消息已保存，恢复后会自动回答。'
     if reason == 'session_busy':
         # Transient: queued behind work already running on this conversation (a worker execution).
-        return '⏳ Your message is saved and will be answered when the work running in this conversation finishes.'
+        return '⏳ 你的消息已保存，这条会话上正在执行的工作结束后会自动回答。'
     if reason == 'unknown_execution':
-        # GW-10: the way out is in this chat. /discard acknowledges the lost turn (never replayed)
-        # through the same fenced resolve_unknown as Desktop/TUI, and the saved messages then run.
-        # Slack registers no native /discard (its slash cap): the umbrella `/hermes discard` reaches it.
-        slack = getattr(getattr(live.source, 'platform', None), 'value', None) == 'slack'
-        discard = '/hermes discard' if slack else '/discard'
-        return ('⏸️ This conversation is paused: a previous turn did not finish when Hermes restarted, '
-                f'and only you know whether to send it again. Your message is saved. Send {discard} to drop '
-                'the lost turn and continue (it is not re-run), or /reset to start a fresh conversation.')
-    cause = f'a queued message could not be re-authorized ({reason})'
-    return (f'⏸️ This conversation is paused: {cause}. Your message is saved but will not be answered here. '
-            'Send /reset to start a fresh conversation, or ask the operator to resume this one.')
+        # GW-10, L7 rewording (2026-11-20 裁定): group chats never see this text (auto-discard
+        # upstream); DM copy is Chinese and must contain no slash command. The lost turn is
+        # dropped the moment the user asks to continue; on messaging the ask routes through the
+        # same fenced resolve_unknown as Desktop/TUI, and the saved messages then run.
+        return ('⏸️ 这条会话已暂停：Hermes 重启时上一轮没有跑完，你的消息已经保存。'
+                '发送「继续」，我会丢弃那轮未完成的内容并重新开始回答。')
+    cause = f'队列中的消息无法重新授权（{reason}）'
+    return (f'⏸️ 这条会话已暂停：{cause}。你的消息已经保存，但这条会话暂时不会回答它。'
+            '发送「重新开始」可以开启全新会话，或联系运维恢复这条会话。')
+
+
+async def _pause_outcome_for_chat(authority, ref, reason, source):
+    """L7 裁定 (2026-11-20): a paused session in a GROUP chat discards its lost turns by
+    itself and says nothing to the room.
+
+    ``discard_lost_turns`` is the existing ``/discard`` path (fenced ``resolve_unknown``
+    per unknown row; never replays them) — once it commits, the saved followers run, so
+    the queue continues without any user command. Every pause reason is covered: for the
+    transient ones the discard is a no-op (no ``unknown`` rows) and only the notice is
+    suppressed; the message stays queued and drains normally. ``pause_notice`` itself
+    stays sync and untouched — the await lives here, at the two ``admit_message`` call
+    sites. Non-group chats (``chat_type`` != ``"group"``, e.g. ``"dm"``/``"channel"``)
+    keep the once-per-episode notice with the Chinese, command-free copy.
+    """
+    if getattr(source, "chat_type", None) != "group":
+        return pause_notice(authority, ref, reason)
+    from gateway.slash_commands_session import discard_lost_turns
+    await discard_lost_turns(authority, ref.session_id)
+    logger.info(
+        "paused_session_auto_discarded: chat=%s reason=group_chat",
+        getattr(source, "chat_id", None) or ref.session_id,
+    )
+    return None
 
 
 def row_turn_author(policy, row):

@@ -100,6 +100,7 @@ export function RiskQuickFilter({
       <p
         className="min-w-0 break-words text-xs text-muted-foreground"
         data-testid="apv-risk-scope-note"
+        data-apv-risk-scope-note="local-filter"
         title="实测本页读口带 risk=high 与不带时返回完全相同的行集（同 id 序；risk/window/since 三键同判）——后台不做风险档过滤。为避免假筛选，这里只对已加载的行做前端本地过滤，切换不产生新请求；严重风险（critical）没有独立档位，在「全部」下照常显示。"
       >
         按当前已加载 {rows.length} 条统计，不是全量；风险档切换不发新请求。

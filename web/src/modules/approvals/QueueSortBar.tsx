@@ -95,6 +95,7 @@ export function QueueSortBar({
         <p
           className="min-w-0 break-words text-xs text-muted-foreground"
           data-testid="apv-sort-scope-note"
+        data-apv-sort-scope-note="local-sort"
           title="实测：本页读口带 sort/order 或 orderBy/dir 任一组合都与不带时返回同一合同一顺序（即本页已加载行的原序）；后台不做服务端排序，所以这里只重排已加载行。"
         >
           仅在当前已加载 {loadedCount} 条内排序；不是服务端排序（读口忽略排序参数，实测同序同集合），缺值的行恒排末。

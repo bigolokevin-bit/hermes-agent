@@ -184,7 +184,8 @@ async def test_messaging_pause_notice_names_discard_and_discard_resumes_the_fifo
     store, authority, head_id, _follower_id = await _lost_head_then_restart(tmp_path, monkeypatch, executed, _person_head)
     try:
         notice = pause_notice(authority, SessionRef('p', 's'), 'unknown_execution')
-        assert '/discard' in notice and 'restarted' in notice, notice
+        assert '「继续」' in notice and '重启' in notice, notice
+        assert '/discard' not in notice and '/reset' not in notice, notice
         reply = await discard_lost_turns(authority, 's')
         assert '1' in reply and 'discard' in reply.lower(), reply
         live = authority.sessions['s']

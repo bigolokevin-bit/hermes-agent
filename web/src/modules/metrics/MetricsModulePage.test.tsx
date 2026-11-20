@@ -1296,10 +1296,10 @@ describe('metB — source freshness', () => {
     expect(document.querySelector('[data-testid="metB-source-table"]')).toBeTruthy();
     // 20:12Z is 04:12 the next day in Beijing.
     expect(metBCell('run-stats')?.textContent).toBe('2026-11-20 04:12');
-    expect(metBCell('run-stats')?.getAttribute('title')).toBe('采集时刻来自 bff');
+    expect(metBCell('run-stats')?.getAttribute('title')).toBe('采集时刻 2026-11-19T20:12:00.000Z（UTC） · 来源 bff');
     // run-activity returns no asOf: must stay blank, never the local clock.
     expect(metBCell('run-activity')?.textContent).toBe('—');
-    expect(metBCell('run-activity')?.getAttribute('title')).toBe('上游未返回采集时刻');
+    expect(metBCell('run-activity')?.getAttribute('title')).toBe('上游未返回采集时刻；不用本机时间顶替。');
     expect(document.querySelector('[data-testid="metB-source-state-run-stats"]')?.textContent).toBe('正常');
   });
 
@@ -1308,7 +1308,7 @@ describe('metB — source freshness', () => {
     await openSources();
 
     expect(metBCell('run-stats')?.textContent).toBe('—');
-    expect(metBCell('run-stats')?.getAttribute('title')).toBe('上游未返回采集时刻');
+    expect(metBCell('run-stats')?.getAttribute('title')).toBe('上游未返回采集时刻；不用本机时间顶替。');
     expect(metBCell('run-stats')?.textContent).not.toMatch(/\d{4}-\d{2}-\d{2}/);
   });
 
@@ -4815,5 +4815,119 @@ describe('met-heat-legend — heat legend and gap note', () => {
     // 切热力窗只多一次 run-activity 读取，不重发其它读口。
     expect(urls().length - before).toBe(1);
     expect(urls().slice(before).every((url) => url.includes('/api/run-activity'))).toBe(true);
+  });
+});
+
+describe('met-output — one visible line says the export or copy happened', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+
+  function captureDownload(): { captured: { blob: Blob | null; name: string | null } } {
+    const captured: { blob: Blob | null; name: string | null } = { blob: null, name: null };
+    Object.assign(URL, {
+      createObjectURL: vi.fn((blob: Blob) => {
+        captured.blob = blob;
+        return 'blob:met-output';
+      }),
+      revokeObjectURL: vi.fn(),
+    });
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      captured.name = this.download;
+    });
+    return { captured };
+  }
+
+  it('announces each of the four actions with its own sentence, and reads nothing new', async () => {
+    captureDownload();
+    await mountShare(SHARE_USAGE);
+    await openSources();
+    const before = urls().length;
+
+    await act(async () => {
+      q('met6-export')?.click();
+    });
+    const detail = q('met-output-detail-export')?.textContent ?? '';
+    expect(detail).toContain('已导出明细');
+    expect(q('met-output-status')?.getAttribute('role')).toBe('status');
+    expect(q('met-output-status')?.getAttribute('aria-live')).toBe('polite');
+
+    await act(async () => {
+      q('metA-export')?.click();
+    });
+    const share = q('met-output-share-export')?.textContent ?? '';
+    expect(share).toContain('已导出分摊');
+
+    await act(async () => {
+      q('metL-copy')?.click();
+    });
+    await waitFor(() => (q('met-output-copy-summary')?.textContent ?? '').includes('已复制摘要'), 'summary copy announced');
+    const summary = q('met-output-copy-summary')?.textContent ?? '';
+
+    await act(async () => {
+      q('metAG-copy-sources')?.click();
+    });
+    await waitFor(() => (q('met-output-copy-sources')?.textContent ?? '').includes('已复制数据来源摘要'), 'sources copy announced');
+    const sources = q('met-output-copy-sources')?.textContent ?? '';
+
+    // Four distinct sentences, never one shared string.
+    const sentences = [detail, share, summary, sources];
+    expect(new Set(sentences).size).toBe(4);
+    expect(detail).not.toBe(share);
+    expect(summary).not.toBe(sources);
+
+    expect(urls().length).toBe(before);
+  });
+
+  it('repeats no sentence for the same signature, and counts only real announcements', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-20T09:30:00.000Z'));
+    captureDownload();
+    await mountShare(SHARE_USAGE);
+
+    await act(async () => {
+      q('met6-export')?.click();
+    });
+    const firstSeq = q('met-output-status')?.getAttribute('data-seq');
+    expect(firstSeq).toBe('1');
+
+    await act(async () => {
+      q('met6-export')?.click();
+    });
+    expect(q('met-output-status')?.getAttribute('data-seq')).toBe(firstSeq);
+
+    await act(async () => {
+      q('metA-export')?.click();
+    });
+    expect(q('met-output-status')?.getAttribute('data-seq')).toBe('2');
+    expect(q('met-output-status')?.getAttribute('data-action')).toBe('share-export');
+    vi.useRealTimers();
+  });
+
+  it('keeps the export failure sentence and a copyable request id line', async () => {
+    Object.assign(URL, {
+      createObjectURL: vi.fn(() => {
+        throw new Error('no blob');
+      }),
+      revokeObjectURL: vi.fn(),
+    });
+    await mountShare(SHARE_USAGE);
+    await act(async () => {
+      q('met6-export')?.click();
+    });
+    const failure = q('met-output-detail-export')?.textContent ?? '';
+    expect(failure.startsWith('导出没成功')).toBe(true);
+    expect(q('met-output-status')?.getAttribute('data-tone')).toBe('fail');
+    expect(q('met5-request-id')?.textContent ?? '').toContain('未记录编号');
+  });
+
+  it('announces nothing when the actions are disabled', async () => {
+    const down = (url: string) =>
+      Promise.reject(new ApiError('down', { status: 500, body: '', url, requestId: 'req-met-output-down' }));
+    await mount(down);
+    expect((q('metL-copy') as HTMLButtonElement | null)?.disabled).toBe(true);
+    await act(async () => {
+      q('metL-copy')?.click();
+      q('met6-export')?.click();
+    });
+    expect(q('met-output-status')).toBeNull();
   });
 });

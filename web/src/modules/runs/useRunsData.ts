@@ -40,6 +40,8 @@ export const PENDING_LIST: ListState = {
   phase: "loading",
   rows: [],
   cursor: null,
+  asOf: null,
+  asOfSource: null,
   answeredBy: null,
   unreadable: 0,
   failure: null,
