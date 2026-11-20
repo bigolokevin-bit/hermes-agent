@@ -5474,3 +5474,55 @@ kn-doc-preview*/导出 absent 标记 + R215 既有三例复跑同绿（断言零
 未测如实：带登录会话真屏；denied 帧锚互斥（本轮只打 empty/error 两帧，denied 与
 error 同族由 R187 口径外推、未实锁）；⑤(b) 错误帧 sort 头禁用整句（红线④点名引用
 R210/R187，不扩）。
+
+# KNW5 追加 R232：抽屉错误态 × 导出隔离护栏（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `cafd2d81`
+（wave-75）、基线先跑 47/222 全绿 Errors 0、目标文件确认缺席再动笔。零产品文件改动。
+新增 knowledge.detail.error.export.test.tsx 三例（本体）。
+
+## 名实换算与查重（引用不重写）
+
+```text
+「详情」=kn7 抽屉（?doc= 深链；每开恰 1 详情读——R49/R196）；**404 走 unwired 分支**
+（kn7-preview-unwired、error 锚 null——R183①②:126-128 锁的锚名，本例沿用）；无真 CSV
+（四件套源级 0——R190①:113-119，本轮 spy 全帧 0）→「导出」=knF-copy 数据行；行钮
+-space- 族；kn-doc-copy 非行数。①「翻页/排序仍可用」腿由 R221②:149-166 锁 → 引用，
+本文件把该窗推进 M=51 三值 + 导出全文互等（导出侧新位）。**③「换代」不成立（红线⑤）**：
+重试只读详情、列表不动——按实断言导出文本逐字==重试前快照 + 列表读集合逐字不动 +
+详情读 1→2（计数引 R183③:135-158），禁造列表刷新，文件头与本节双记录。
+引用：R183①②:107-133/③:135-158/④（错误态行内复制钮 ENABLED 现实位）、
+R221①:133/②:149-166/③（重试增量 [P1URL] 列表腿）/④:193（双失败 cap 过渡）、
+R230①:133-152（无故障抽屉三值）、R231⑤⑥（空/错帧互斥与三值链）、R216（51 行夹具）、
+R210/R211/R142/R190。
+新增维（点名）：A 抽屉 500 窗 × 追加至 M=51：三值 [51,51,51]+首行逐字==屏上首行+
+  错误帧导出全文 toBe 干净帧同数据快照（零传染跨渲染互等）；
+B 抽屉 404(unwired) 帧：cap 整句逐字==开抽屉前快照（R183 只锁在场性、R231③ 锁列表
+  故障帧 null——健康列表×抽屉故障的「不动性」首次）+ knF disabled=false 实锁 + 点击
+  写满 50 行三值 + 文本与干净帧逐字互等；
+C 重试成功后导出文本逐字==重试前（红线⑤换算位）+ 列表读 join 逐字不动 + 详情读恰 +1。
+```
+
+## 三例读数与验证尾行（R232）
+
+```text
+① DRAWER 挂载即 500：kn7-preview-error 在场、kn3-docs-error null；窗内 -more 追加
+  P2 恰 1 次 → 51 行；knF [51,51,51]、lines[0]==首行；干净帧同数据导出逐字==errText。
+  ② 健康帧 cap 含「本页最多显示 50 篇（当前已加载 50 篇；复制清单也只含这些篇）」
+  （-more 子文本允许并入）；404 帧 unwired 在场、error null、cap toBe 快照、knF 不
+  禁用、三值 [50,50,50]、文本逐字==text0。③ 重试：锚消失、详情读 1→2、listUrls 逐字
+  ==、导出逐字==text0、表体 50 不动。createObjectURL 三帧全 0。
+$ npx vitest run src/modules/knowledge → 48 files / 225 tests passed（222+3），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0；build /tmp/knw-r232-dist exit 0
+$ 全仓 → 358 files / 3200 passed 全绿（无豁免、无已知红需点名）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knE-page-*/knF/knG/knI/knL-copy*/kn-row-copy*/
+kn-row-copy-space*/kn-doc-copy*/kn-doc-preview*/kn7-preview*/kn3-page-cap/kn-sort*/
+kn-type*/kn-gates/kn-space-preview*/导出 absent 标记 + 既有 47 套全绿。过程自纠两处
+（② 首跑按 error 锚断言 404 帧——查实 R183 unwired 分支后按实锚修；未用辅助 okDetail
+触发 eslint/tsc 双红，删后复绿），产品零触碰。
+```
+未测如实：带登录会话真屏；404×重试成功过渡（③ 用 500 重试链，unwired 态是否有重试钮
+未查——R183④ 域外不扩）；抽屉 500 窗内改排序后导出与排序态同序的链（R221② 锁翻序零
+请求、R214 锁列标准，本轮未叠）。
