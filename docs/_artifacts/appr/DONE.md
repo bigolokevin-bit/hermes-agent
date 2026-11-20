@@ -1255,3 +1255,9 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 坑五连记：①q 夹具字段必含检索词（R88 复证——ap_p 真值 title=「等待你点头的发布」，用「预算」仍滤空，改「发布」绿）；②python 插入模板 %s 占位未替换=恒 return 静默早退假绿（修后 case3/4 曾侥幸绿=教训：模板占位符落盘后必 grep 残留）；③re.sub 换串造出 "?tab=tab=history" 双前缀损坏（全局替换后必 grep 结果形态）；④手灌快照 search 必须与 location.search 同形（?tab=… 起头、无 pathname——URLSearchParams 会把 "/approvals?tab" 当键）；⑤pending 详情体 testid=apd5-detail（ApprovalDetailBody 默认）≠history 页级覆写 apr5-detail——跨页 waitFor testid 必先读调用点。
 - 验证：定向 approvals 5 files/**162 passed**（既有 157 零破+R94 5 新）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **162 files/2257 passed**（基线 2252+5）。
 - 零破：apv5–9/apd6–apd10/apr5/state/sort/export/toggle/live/reset/risk/since/chip 与 ed8-appr-*（既有用例全绿为证）；三档=aside/列表既有形态学报（jsdom 不可测）；9122==94076a05 禁重建，活体跳转读数待并入后代次。
+
+## V1 认人绑定契约（只读调查，产物=V1-identity-link-contract.md，2026-11-20）
+
+- 纯只读：seakoi-agent-os 仓未改一字节；未执行任何写请求/启停服务。产物单文件 docs/_artifacts/appr/V1-identity-link-contract.md（契约与校验/最小 POST body+失败码表/resolve 判定链/风险与回退+证据行号索引）。
+- 关键发现：E8 body 没有 appId 字段——link.app_id 取自部署注入 SEAKOI_DOMAIN_APP_ID（默认 feishu_default_app ≠ cli_aa7fa29bceb95c16）；写前必须确认部署 env 现值，否则 link 建成 E9 也永不匹配。E9 幂等=messageId:eventType（换消息才能看到 unknown=false）；resolve 的 employeeId 出自 workstation 非 link；subjectUserId 不校验=ownerUserId（源码仅要求非空）。
+- 工单 @1473@ 四问全答；写这一步仍需 L0/用户批准（安全边界）。
