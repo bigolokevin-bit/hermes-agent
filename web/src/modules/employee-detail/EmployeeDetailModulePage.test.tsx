@@ -1170,3 +1170,19 @@ describe("R93 approvals zone state parity with the queue", () => {
     expect(card?.querySelector("p")?.textContent).toBe(APPROVAL_EMPTY_SENTENCE);
   });
 });
+
+describe("R52-obs employee approvals scope carrier", () => {
+  it("the fixed-cap sentence hangs on a real data attribute", async () => {
+    mockApi((url) =>
+      url.includes("/api/approvals")
+        ? Promise.resolve({
+            items: [{ approvalId: "ap_c81", status: "pending", title: "口径载体单", createdAt: "2026-11-18T04:00:00Z" }],
+          })
+        : Promise.resolve({}),
+    );
+    await renderAt(page, at("approvals"));
+    const scope = container.querySelector('[data-testid="ed8-appr-scope"]');
+    expect(scope, "cap sentence").toBeTruthy();
+    expect(scope!.getAttribute("data-ed8-appr-scope")).toBe("aggregate-cap-20");
+  });
+});
