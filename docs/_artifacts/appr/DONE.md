@@ -1293,3 +1293,12 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 
 - 只读调查完成，零产品码/零写请求/零启停；结论文件=docs/_artifacts/appr/V2-knowledge-latest-version-link.md。
 - 判定=kn7「最新版本」深链**不可行，标未实现（非未接通）**：BFF /api/documents（b3b0f16 server.py L1333-1390）行键无 version/revision/current_version 任何版本字段，is_released 仅 bool 旗标；?revision=/?version= 均不存在=禁编假参数。唯一诚实近似=按 updated_at 排序取最新（排序语义非版本）。真做版本=Bisheng 上游功能缺口，不自裁。
+
+## R100 审批行详情复制（apd11-*）
+- 交付=RowDetailCopy.tsx 新（rowDetailText 单点七行拼装+Button apd11-copy/status/fallback 三件套）+两页 ActorBuckets 行后常驻挂载 `<RowDetailCopy row={visibleRows.find((r) => r.key === previewKey) ?? null} />`。基线=Already up to date @111536df（代次 1683d467/章笔 f1b509b9）。
+- 落点裁决：工单「行内预览面板加」与「未展开时按钮 disabled」要求按钮常驻 DOM（面板内则无该态）→放两页常驻筛选区，disabled 态与启用态同源（previewKey 派生行对象，零新请求）。
+- 文本口径：标题/状态人话/风险档=行对象逐字；提交/更新时间=row.submittedAt/decidedAt（raw ISO）→epochOf→timeTitle 绝对句「绝对 YYYY-MM-DD HH:mm:ss（北京时间） · ISO <raw>」（R76 相对时间 helper 单点）；缺值句走 stateCopy 单点（FIELD_MISSING_SENTENCE/APPROVAL_RID_MISSING）；审批人=labels join「、」缺=该字段未返回。与 apd8-copy（链路文本）、apv7-export（CSV）语义三分。
+- aria-live 契约处置：工单要显式 role=status aria-live=polite；本仓 R86 契约=全页唯一显式播报器 apv-live（R88 用例锁计数=1）。沿用 role=status（隐式 polite）不加显式 aria-live，用例断 [aria-live=polite] 仍恰 1。
+- 读数：history 夹具 ap_r100（高/郑涛/req-r100-1/createdAt 02:00Z→绝对 10:00:00，无 decided 键→更新时间该字段未返回）written 七行逐字+计数锁；pending 队列行 ap_9F3A1111（未标注风险/提交 09:20:00 绝对句/审批人与 rid 均该字段未返回）同款；未展开 disabled+title 逐字「先展开一行审批再复制」；剪贴板拒→readOnly textarea value 逐字同。
+- 坑（必记）：新钮文案含「详情」二字 ⇒ pending 既有用例 buttonNamed("详情")（includes 查找）被「复制预览详情」抢占致详情没打开=1 FAIL；修法=该用例改 textContent.trim()==="详情" 精确查找（DetailsDisclosure states.tsx L147 钮文本本就精确）。教训=页级加钮必 grep 短文案钮查找函数（buttonNamed/text() 抢占族）。
+- 验证=定向 approvals 8 files/185 passed；tsc 本域 0 红；assert-ia 两模式 exit0；全量 175 files/2404 passed。三档=既有 flex-wrap gap-2+break-words 形态学报（jsdom 不可测）；9122==1683d467 系禁重建，活体复制读数待并入后代次。
