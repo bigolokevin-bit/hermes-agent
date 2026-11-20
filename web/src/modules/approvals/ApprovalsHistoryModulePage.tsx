@@ -29,6 +29,7 @@ import { STATUS_FILTERS, approvalSortKeyOf, approvalsRowSearchText, isKnownStatu
 import { actionGates, announcement } from "./gates";
 import { QueueSummaryBar } from "./QueueSummaryBar";
 import { clearFilterParams, hasActiveFilters, resetTitle } from "./FilterReset";
+import { FilterSummary } from "./FilterSummary";
 import { PermalinkCopy } from "./PermalinkCopy";
 import { BackToList, restoreListScroll, saveListScroll } from "./BackToList";
 import { QueueCsvExport } from "./QueueCsvExport";
@@ -244,6 +245,16 @@ export function ApprovalsHistoryModulePage(): ReactNode {
     setParams(draft, { replace: true });
   }, [params, setParams]);
   const filterState = hasActiveFilters(params);
+  // R91: one chip per active filter; removal reuses the same diff plumbing.
+  const removeFilterKeys = useCallback(
+    (keys: readonly string[]) => {
+      const draft = new URLSearchParams(params);
+      for (const key of keys) draft.delete(key);
+      setParams(draft, { replace: true });
+    },
+    [params, setParams],
+  );
+
 
   const openRow = useCallback(
     (row: { rawId: string | null }) => {
@@ -395,6 +406,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
         >
           重置筛选{filterState.active ? `（${filterState.count}）` : ""}
         </button>
+        <FilterSummary params={params} onRemove={removeFilterKeys} />
       </div>
       <QueueSummaryBar phase={list.phase} rows={visibleRows} scope="history" singleStatus={status} />
       <QueueCsvExport rows={visibleRows} tab="history" status={status} phase={list.phase} sort={asort} dir={asort ? adir : null} />

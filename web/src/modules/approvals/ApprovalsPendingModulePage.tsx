@@ -34,6 +34,7 @@ import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useAppr
 import { actionGates, announcement } from "./gates";
 import { QueueSummaryBar } from "./QueueSummaryBar";
 import { clearFilterParams, hasActiveFilters, resetTitle } from "./FilterReset";
+import { FilterSummary } from "./FilterSummary";
 import { PermalinkCopy } from "./PermalinkCopy";
 import { BackToList, restoreListScroll, saveListScroll } from "./BackToList";
 import { QueueCsvExport } from "./QueueCsvExport";
@@ -67,6 +68,16 @@ export function ApprovalsPendingModulePage(): ReactNode {
   // no status URL dimension, so clearing the rest never refetches (measured
   // in tests: local params never reach the server query).
   const filterState = hasActiveFilters(params);
+  // R91: one chip per active filter; removal reuses the same diff plumbing.
+  const removeFilterKeys = useCallback(
+    (keys: readonly string[]) => {
+      const draft = new URLSearchParams(params);
+      for (const key of keys) draft.delete(key);
+      setParams(draft, { replace: true });
+    },
+    [params, setParams],
+  );
+
   const clearFilters = useCallback(() => {
     const draft = new URLSearchParams(params);
     clearFilterParams(draft);
@@ -377,6 +388,7 @@ export function ApprovalsPendingModulePage(): ReactNode {
         >
           重置筛选{filterState.active ? `（${filterState.count}）` : ""}
         </button>
+        <FilterSummary params={params} onRemove={removeFilterKeys} />
       </div>
       <QueueSummaryBar phase={list.phase} rows={visibleRows} scope="queue" />
       <QueueCsvExport rows={visibleRows} tab="pending" status="pending" phase={list.phase} sort={asort} dir={asort ? adir : null} />

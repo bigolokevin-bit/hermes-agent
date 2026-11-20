@@ -2371,3 +2371,69 @@ describe("R90 filter reset (apv-reset-filters)", () => {
     expect(btn.getAttribute("title")).toBe("当前没有可清除的筛选条件");
   });
 });
+
+describe("R91 filter summary chips (apv-chip-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+  const urls = (): string[] => api.fetchJSON.mock.calls.map((c) => String(c[0]));
+
+  it("renders human labels; removing status refetches once, removing sort stays local", async () => {
+    await mount(
+      async (url: string) => {
+        const u = String(url);
+        if (u.includes("/api/approval?id=")) return {};
+        return u.includes("status=")
+          ? { items: [{ approvalId: "ap_one", title: "筛选中的第一条", status: "pending", createdAt: "2026-11-19T01:00:00Z" }] }
+          : { items: [
+              { approvalId: "ap_one", title: "筛选中的第一条", status: "pending", createdAt: "2026-11-19T01:00:00Z" },
+              { approvalId: "ap_two", title: "全部态的第二条", status: "approved", decidedAt: "2026-11-19T02:00:00Z", createdAt: "2026-11-18T02:00:00Z" },
+            ] };
+      },
+      "/approvals?tab=history&status=pending&asort=title&adir=desc",
+    );
+    expect(qa("apv-filter-summary"), "summary row").toBeTruthy();
+    expect(qa("apv-chip-status")?.textContent).toContain("状态：待处理");
+    expect(qa("apv-chip-sort")?.textContent).toContain("排序：标题降序");
+    expect(qa("apv5-count")?.textContent).toBe("1");
+    const before = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      (qa("apv-chip-remove-status") as HTMLButtonElement).click();
+    });
+    await waitFor(() => api.fetchJSON.mock.calls.length === before + 1, "status removal refetches once");
+    expect(urls()[before]).not.toContain("status=");
+    expect(urls()[before]).not.toContain("cursor=");
+    await waitFor(() => qa("apv5-count")?.textContent === "2", "same-source recount");
+    expect(qa("apv7-export-count")?.textContent).toContain("共 2 行");
+    expect(qa("apv-chip-status"), "status chip gone").toBeNull();
+    await act(async () => {
+      (qa("apv-chip-remove-sort") as HTMLButtonElement).click();
+    });
+    await act(async () => {});
+    expect(api.fetchJSON.mock.calls.length, "sort removal is local").toBe(before + 1);
+    expect(qa("apv-chip-sort"), "sort chip gone").toBeNull();
+    expect(qa("apv-filter-summary"), "nothing left renders no row").toBeNull();
+  });
+
+  it("an unrecognised value still shows verbatim with the stated title", async () => {
+    await mount(async (url: string) => {
+      if (String(url).includes("/api/approval?id=")) return {};
+      return { items: [{ approvalId: "ap_u9", title: "正常单", status: "pending", createdAt: "2026-11-19T01:00:00Z" }] };
+    }, "/approvals?tab=history&risk=purple");
+    expect(qa("apv-chip-risk")?.textContent).toContain("purple");
+    expect(qa("apv-chip-risk")?.getAttribute("title")).toContain("该值未被识别");
+    const before = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      (qa("apv-chip-remove-risk") as HTMLButtonElement).click();
+    });
+    await act(async () => {});
+    expect(api.fetchJSON.mock.calls.length, "unknown risk is still a local param").toBe(before);
+    expect(qa("apv-chip-risk")).toBeNull();
+  });
+
+  it("a clean view renders no summary row at all", async () => {
+    await mount(async (url: string) => {
+      if (String(url).includes("/api/approval?id=")) return {};
+      return { items: [] };
+    }, "/approvals?tab=history");
+    expect(qa("apv-filter-summary")).toBeNull();
+  });
+});

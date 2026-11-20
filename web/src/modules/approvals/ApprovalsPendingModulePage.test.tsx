@@ -812,3 +812,19 @@ describe("R90 pending filter reset (apv-reset-filters)", () => {
     expect(qa("apv-reset-filters")?.getAttribute("title")).toBe("当前没有可清除的筛选条件");
   });
 });
+
+describe("R91 pending filter chips (apv-chip-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+
+  it("removing the search chip on the pending queue never refetches", async () => {
+    await mount(queue(), "/approvals?tab=pending&q=9F3A");
+    expect(qa("apv-chip-q")?.textContent).toContain("搜索：9F3A");
+    const before = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      (qa("apv-chip-remove-q") as HTMLButtonElement).click();
+    });
+    await act(async () => {});
+    expect(api.fetchJSON.mock.calls.length, "q is local on the queue too").toBe(before);
+    expect(qa("apv-filter-summary")).toBeNull();
+  });
+});

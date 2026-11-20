@@ -1214,3 +1214,12 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - cursor 裁决（DONE 记录）：清 status→listUrl 变→hook 重建恰 1 次新取数且天然无 cursor（第一页）；纯本地参（q/actor/since/risk/asort/adir）清除不触 fetch、服务端游标属已加载基底的续页状态不被污染=不强制 reload。用例锁两形态：history 全参一点=恰 +1 且 fresh url 无 status=/cursor=；pending 双本地参一点=+0 请求。
 - 测试 history 2+pending 1（全参 7 项 enabled→点后回归 disabled+title 逐字 RESET_NONE=URL 清空等效断言法——history 测试无 LocProbe，DONE 注明；apv5–9/apd5–10/apr5/actor/nav/gates/state/sort/export/toggle/live/page 零破=既有 142 全绿为证）。定向 approvals 4 files/**145 passed**（142+3）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **159 files/2195 passed**（基线 2192+3）。
 - 三档=apv-reset-row flex-wrap 形态学报；9122==9813d7af 禁重建，活体读数待并入后代次。R91 摘要条与本单共用 FILTER_PARAM_KEYS/hasActiveFilters（禁两套已立约）。
+
+## R91 审批筛选摘要条 chips（apv-chip-*，2026-11-20）
+
+- 基线：显式 refspec fetch + merge = Already up to date @656dbdb6（章面 0c1b94c3/代次 9813d7af），toplevel ✓ porc=0；重发三件套 grep apv-filter-summary=0。
+- 实现=新 FilterSummary.tsx：chipsFor(params) 按 R90 FILTER_PARAM_KEYS 同源派生 chip——status→statusView 人话（未知=原值+title「该值未被识别：X（仍可移除）」）/q→搜索原文/actor→审批人 人员·短码（title=全 handle，与 R74 分桶轨同形制不裸 human:）/since→SINCE_OPTIONS label（未知=原值+title）/risk→RISK_KNOWN（high/medium/low/critical/none；未知值如 purple=原值上屏+title）/asort+adir=合成一枚「排序：标题降序」移除同删两参。chip 容器=apv-chip-<key>，×=真 button apv-chip-remove-<key>（aria-label=移除筛选：X，focus-visible token）。无可移除项=整条不渲染（选择「不渲染」而非空占位行——顶部只留重置钮，DONE 说明此选择）。
+- 「分页游标」维不渲 chip：游标=服务端已加载基底的续页状态非筛选选择，移除筛选/重置的回第一页语义已由 R90 cursor 裁决承担（status 维删=refetch 天然无 cursor；本地维=+0 请求）。与 apv-reset-filters 共用同一参数表与 helper（chipsFor 只读 FILTER_PARAM_KEYS 同源参数集，无第二套）。
+- 移除动作=removeFilterKeys(draft 差分 delete+replace)，与 choose/pickX 同一管道；计数/导出/汇总条/分桶沿 visibleRows 链同源重算（用例贴改前改后：apv5-count 1→2、apv7-export-count 共 1→共 2 行随 status chip 移除联动）。
+- 测试 history 3+pending 1：全参 chips 人话+移除 status=恰 +1 且新 url 无 status=/cursor=+chip 消失+全删后 summary=null；移除 sort/purple risk/pending q=+0 请求（本地维锁）；unknown purple 原文上屏+title 识别句；零筛选无行。定向 approvals 4 files/**149 passed**（145+4 一次全绿）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **159 files/2199 passed**（基线 2195+4）。
+- 零破：apv5–9/apd6–apd10/apr5/state/sort/export/toggle/live/reset/risk/since（既有 145 全绿为证）；三档=chip 行 flex-wrap+truncate 形态学报；9122==9813d7af 活体读数待并入后代次。
