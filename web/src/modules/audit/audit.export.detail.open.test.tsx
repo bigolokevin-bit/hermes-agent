@@ -20,6 +20,13 @@
 //    行数/计数，从未把两次捕获的原文摆在一起比。
 // 现状登记：工单② 「列表不重取」与现状相悖 —— 换窗是服务端问题，恰重取一次（R161/R243① 持有账本），
 // 详情则【不】为换窗再问（detailReads 不变）。
+//
+// R247（同文件追加两枚，工单①已覆盖只回证据：R208 :335 开态四面逐字、R222 :305 开态三角）：
+// ② 抽屉【开着】时把窄窗换成宽窗（?window=30d 语境）——导出换代出宽窗集合，详情【不】同步换代：
+//    现状是抽屉冻结在打开那一刻的读数（R229②/R245① 两处钉过；工单「详情内容同步换代」≠现状，按现状钉并登记）；
+//    关闭零请求（R196/R240③ 持有，这里换宽窗语境复跑）。
+// ③ 详情 500 时导出【照旧可点】且文件只含列表行、不含错误面板专属文本；可读句+rid+重试恰 +1 本体归
+//    R222④（audit.detail.counts.test.tsx :408-430），本波净新增=错误展示期间的那一次导出击。
 
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -29,6 +36,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const api = vi.hoisted(() => ({ fetchJSON: vi.fn() }));
 vi.mock("@/lib/api", () => ({ fetchJSON: api.fetchJSON }));
 
+import { ApiError } from "@/lib/api-error";
 import AuditEventsModulePage from "@/modules/audit/AuditEventsModulePage";
 import { CSV_HEADER } from "@/modules/audit/csv";
 
@@ -42,6 +50,10 @@ const ROW_N = "evt_r245_nova_000001";
 const ROW_M = "evt_r245_mike_00000001";
 const ROW_G = "evt_r245_golf_000001";
 const OLD_DAY_TEXT = "2026-11-02";
+const RID_FAIL = "rid-r247-d500";
+
+const mode = { failDetailOnce: false };
+let detailTries = 0;
 
 interface Row {
   eventId: string;
@@ -249,6 +261,15 @@ function answer(): void {
   api.fetchJSON.mockImplementation(async (url) => {
     const target = String(url);
     if (target.startsWith("/agent-api/api/audit-detail")) {
+      detailTries += 1;
+      if (mode.failDetailOnce && detailTries === 1) {
+        throw new ApiError("detail down", {
+          status: 500,
+          body: "{}",
+          url: target,
+          requestId: RID_FAIL,
+        });
+      }
       const found = ALL.find((row) => paramOf(target, "id") === row.eventId);
       return { audit: found ?? ALL[0] };
     }
@@ -259,6 +280,8 @@ function answer(): void {
 
 beforeEach(() => {
   api.fetchJSON.mockReset();
+  mode.failDetailOnce = false;
+  detailTries = 0;
   answer();
   watchBlobs();
 });
@@ -330,5 +353,89 @@ describe("R245 - the file the list hands over does not remember the drawer", () 
     // 两次导出击都零请求：账本只多了开抽屉的那一次详情读。
     expect(urls().length).toBe(ledger.length + 1);
     expect(urls().slice(ledger.length).filter((url) => url.startsWith("/agent-api/api/audit?"))).toHaveLength(0);
+  });
+});
+
+describe("R247 - widening the window with the drawer open", () => {
+  it("gives the file the wider set while the open drawer keeps its frozen reading", async () => {
+    await render("/audit?window=7d&limit=25");
+    expect(paintedRows()).toEqual([ROW_N, ROW_M]);
+    await openRecord(ROW_N);
+    expect(detailReads()).toBe(1);
+    const before = await exportRecords();
+    expect(before).toHaveLength(2);
+
+    const asks = listReads();
+    const drawerReads = detailReads();
+    await clickNodeSync("aud01-filter-window-30d", "the 30d tier");
+    await waitFor(() => listReads() === asks + 1, "the wide window was asked for");
+    const read = urls()[urls().length - 1] ?? "";
+    expect(spanOf(read)).toBeGreaterThanOrEqual(29);
+    expect(paramOf(read, "window")).toBeNull();
+    // 现状登记：工单②「详情内容同步换代」≠现状 —— 抽屉冻结在打开那一刻的读数
+    // （R229②/R245① 同规，此处反向：窄换宽）。
+    expect(node("aud02-detail")).not.toBeNull();
+    expect(markValue("audJ-time-detail")).toBe("2026-11-19 09:20:00");
+    expect(detailReads()).toBe(drawerReads);
+    // 列表恰重取一次（账本归 R161/R243①）；文件换代带出宽窗才有的那一行。
+    expect(listReads()).toBe(2);
+    expect(paintedRows()).toEqual([ROW_N, ROW_M, ROW_G]);
+    expect(shownCount()).toBe(3);
+    const after = await exportRecords();
+    expect(after).toHaveLength(3);
+    expect(after.map((cells) => cells[COL_RID])).toContain(`req-${ROW_G}`);
+    // 临时取证：关闭后账本多了什么。
+    // 现状登记：工单②「关闭零请求」≠现状 —— 从列表推入的抽屉，关闭走 navigate(-1)
+    // 回到开抽屉前那条地址（档位钮换窗改了栈顶之后），列表要补问一次旧档；
+    // 抽屉本身不再被问（detailReads 不动）。无换窗语境的关闭账本体归 R196/R240③。
+    const ledger = urls().length;
+    const asksNow = listReads();
+    await closeRecord();
+    await waitFor(() => listReads() === asksNow + 1, "the close caught the list up");
+    expect(urls().slice(ledger)).toEqual([
+      expect.stringContaining("/agent-api/api/audit?"),
+    ]);
+    expect(spanOf(urls()[urls().length - 1] ?? "")).toBeLessThan(29);
+    expect(detailReads()).toBe(drawerReads);
+  });
+});
+
+describe("R247 - a broken detail does not contaminate the export", () => {
+  it("hands over only the list rows while the error face is shown, then retries once", async () => {
+    mode.failDetailOnce = true;
+    await render("/audit?window=7d&limit=25");
+    expect(listReads()).toBe(1);
+    await clickNodeSync(`aud01-cell-${ROW_N}-type`, `row ${ROW_N}`);
+    await waitFor(() => node("aud02-detail-error") !== null, "the detail error face");
+    // 句+rid+可复制控件本体归 R222④，这里只复跑现状。
+    expect(textOf("aud02-detail-error")).toContain("这条事件没能加载出来");
+    expect(textOf("aud02-detail-error-request-id")).toContain(RID_FAIL);
+    expect(node("aud02-detail-error-request-id-value")).not.toBeNull();
+    const asks = listReads();
+    const calls = urls().length;
+    const records = await exportRecords();
+    // 净新增现状：详情坏了，文件仍只认列表的账——两行、按序、没有错误面板文本。
+    expect(records).toHaveLength(paintedRows().length);
+    expect(shownCount()).toBe(records.length);
+    expect(records.map((cells) => cells[COL_RID])).toEqual([`req-${ROW_N}`, `req-${ROW_M}`]);
+    expect(exportText()).not.toContain("这条事件没能加载出来");
+    expect(exportText()).not.toContain(RID_FAIL);
+    expect(listReads()).toBe(asks);
+    expect(urls().length).toBe(calls);
+    // 重试恰 +1（本体 R222④），之后三值不变。
+    const panel = node("aud02-detail-error");
+    expect(panel).not.toBeNull();
+    const retry = Array.from(panel!.querySelectorAll("button")).find(
+      (element) => element.textContent?.includes("重试") ?? false,
+    );
+    expect(retry, "retry button").not.toBeNull();
+    await act(async () => {
+      (retry as HTMLElement).dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await waitFor(() => node("aud02-detail") !== null, "the retry painted the detail");
+    expect(node("aud02-detail-error")).toBeNull();
+    expect(detailReads()).toBe(2);
+    expect(listReads()).toBe(asks);
+    expect(shownCount()).toBe(paintedRows().length);
   });
 });
