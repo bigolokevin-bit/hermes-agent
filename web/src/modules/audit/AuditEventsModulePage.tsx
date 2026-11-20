@@ -95,6 +95,26 @@ function resetPagingAndFolds(draft: URLSearchParams): void {
   draft.delete("tech");
 }
 
+/**
+ * audP: the same reset for a page-size change, EXCEPT the deep link.
+ *
+ * `?event=` is not a fold the person opened on this page — it is the link they
+ * arrived with, a pointer at one record. Changing how many rows a page holds is
+ * a decision about the page, and silently dropping the pointer would mean the
+ * page decided to forget why the person is here. The located row may or may not
+ * be inside the new, larger/smaller set; that is what the 深链档 already says
+ * out loud (「已定位」 / 「在服务端还在，只是不在当前页」 / 「不存在或已过期」),
+ * so keeping the key costs nothing and lying about it costs the link.
+ *
+ * Turning a page (下一页/上一页) still drops the fold and the pointer: aud8/aud9
+ * registered 翻页＝换页, and this round was asked only about the size selector.
+ */
+function resetPagingKeepingLink(draft: URLSearchParams): void {
+  draft.delete("cursor");
+  draft.delete("preview");
+  draft.delete("tech");
+}
+
 export function AuditFilterBar({
   windowChoice,
   customFrom,
@@ -1319,7 +1339,10 @@ function AuditEventsSurface(): ReactNode {
   const setPageSize = useCallback(
     (next: number) => {
       const draft = new URLSearchParams(params);
-      resetPagingAndFolds(draft);
+      // audP: a new size is a new page, so the cursor stack goes and page 1
+      // starts — but an arrived-with `?event=` pointer stays. Only the person
+      // closing the定位 (or changing a filter) takes it away.
+      resetPagingKeepingLink(draft);
       draft.set("limit", String(next));
       setParams(draft, { replace: true, state: locationState ?? null });
     },
@@ -1665,6 +1688,23 @@ function AuditEventsSurface(): ReactNode {
           focus, and which question's mark was dropped for being another
           question's place. Empty attributes mean nothing happened — the
           restore never claims a position it did not apply. */}
+      {/* audP: the combination, readable. What the size selector shows, what was
+          asked of the service, which page and cursor stack that implies, and
+          whether an arrived-with deep link is still holding its place. Nothing
+          here is inferred: an empty `data-aud-limit-event` means no pointer was
+          on the address, 「不在本页」 means the pointer survived but the row is
+          not inside what this page loaded. */}
+      <span
+        aria-hidden="true"
+        data-testid="aud-limit-restore"
+        data-aud-limit-size={String(effectiveLimit)}
+        data-aud-limit-asked={String(sizeReading.asked)}
+        data-aud-limit-page={String(pageNo)}
+        data-aud-limit-cursors={String(cursors.length)}
+        data-aud-limit-event={deepLinkId ?? ""}
+        data-aud-limit-located={deepLinkId === null ? "" : deepLinkRow ? "在本页已展开" : "不在本页"}
+      />
+
       <span
         aria-hidden="true"
         data-testid="audL-scroll"

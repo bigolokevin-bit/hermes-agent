@@ -103,6 +103,14 @@ export function PermalinkCopy({ eventId }: { eventId: string | null }): ReactNod
       <span className="min-w-0 break-words text-xs text-muted-foreground" aria-live="polite" data-testid="audE-link-status">
         {state === "copied" ? "链接已复制" : state === "manual" ? "剪贴板不可用，这个链接可以直接选中复制" : ""}
       </span>
+      {/* audP: what the fixed link does NOT carry, said where it is handed out.
+          The permalink pins ONE record; the window, the size, the filters and
+          the paging are this screen's business and stay here. Whoever opens the
+          link arrives with the defaults and lands in the 深链档, which is the
+          honest reading — not a copy of the sender's page. */}
+      <span className="min-w-0 basis-full break-words text-xs text-muted-foreground" data-testid="audE-link-scope">
+        这条链接只钉住这一条事件：不带这一页的时间窗、每页条数与筛选。粘出去的人会用默认档读到它，命中就在页里展开，读不到会说明原因，不会看到我这边的页。
+      </span>
       {state === "manual" && link ? (
         <textarea
           readOnly

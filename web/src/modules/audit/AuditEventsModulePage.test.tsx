@@ -4450,3 +4450,220 @@ describe("audO - long values get one line and the whole text", () => {
     expect(text()).not.toContain("展开全文");
   });
 });
+
+/**
+ * audP — 深链 `?event=` 与每页条数 `?limit=` 的组合复原。
+ * 断言的是：limit=25/50/100 各自与深链共存时选择器与定位的复原值；进入详情再从
+ * 「返回列表」出口回来后，条数、时间窗、操作者/资源/动作、页码与游标原样复原；
+ * 深链不存在时说「该事件不存在或已过期」并给可复制 rid，且一个筛选键都不掉；
+ * 切条数回第 1 页、清游标、重取恰一次，并且**不清掉 arrival 带的 ?event=**；
+ * 服务把条数 clamp 到更小时选择器显示生效值，深链仍在。
+ * 每条腿都贴 urls() 分前缀计数。
+ */
+describe("audP - the deep link survives the page size", () => {
+  const ITEM = (id: string): unknown => ({
+    eventId: id,
+    action: "task.created",
+    occurredAt: "2026-11-19T01:20:00Z",
+    outcome: "succeeded",
+    actor: { type: "system", id: "employee-api" },
+    resource: { type: "task", id: `ts_${id}` },
+    requestId: `req-${id}`,
+  });
+  const P = (n: number): unknown[] => Array.from({ length: n }, (_u, i) => ITEM(`evt_p${i + 1}`));
+
+  const auditReads = (): number => urls().filter((u) => /^\/agent-api\/api\/audit\?/.test(u)).length;
+  const detailReads = (): number => urls().filter((u) => u.startsWith("/agent-api/api/audit-detail")).length;
+  const probe = (name: string): string | null =>
+    document.querySelector("[data-testid='aud-limit-restore']")?.getAttribute(name) ?? null;
+  const sizeShown = (): string => document.querySelector<HTMLSelectElement>("[data-testid='audH-page-size']")!.value;
+
+  /** A service that honours `limit` the way the ledger does: it answers n rows. */
+  function honoringLimit(n: number): (url: string) => Promise<unknown> {
+    return async (url: string) => {
+      const asked = new URLSearchParams(String(url).split("?")[1] ?? "");
+      const size = Number(asked.get("limit") ?? "50");
+      const first = asked.get("cursor") === null;
+      // 第二页也真有行（游标腿要能打开一条记录），只是不再往后翻
+      return { items: first ? P(Math.min(size, n)) : P(2), nextCursor: first && n > size ? "cur_page2" : null };
+    };
+  }
+
+  async function mountProbed(entry: string, handler: (url: string) => Promise<unknown>): Promise<void> {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(handler);
+    await render(entry, <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await waitFor(() => !skeleton(), "first page settled");
+  }
+
+  async function pickSize(size: string): Promise<void> {
+    const node = document.querySelector<HTMLSelectElement>("[data-testid='audH-page-size']")!;
+    await act(async () => {
+      node.value = size;
+      node.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
+  }
+
+  async function openRecord(id = "evt_p1"): Promise<void> {
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>(`[data-testid='aud01-row-${id}'] button`)?.click();
+    });
+    await waitFor(() => locationText().includes("detail="), "the record opened");
+  }
+
+  async function back(): Promise<void> {
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud8-back-to-list']")?.click();
+    });
+    await waitFor(() => !locationText().includes("detail="), "back on the list");
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+  }
+
+  it.each([
+    ["25", 3, "evt_p1"],
+    ["50", 3, "evt_p1"],
+    ["100", 3, "evt_p2"],
+  ])("limit=%s with a deep link replays: size shown, page 1, the row located", async (size, n, target) => {
+    await mountProbed(`/audit?window=7d&limit=${size}&event=${target}`, honoringLimit(n));
+    expect(sizeShown()).toBe(size);
+    expect(probe("data-aud-limit-asked")).toBe(size);
+    expect(probe("data-aud-limit-page")).toBe("1");
+    expect(probe("data-aud-limit-cursors")).toBe("0");
+    expect(probe("data-aud-limit-event")).toBe(target);
+    expect(probe("data-aud-limit-located")).toBe("在本页已展开");
+    expect(document.querySelector("[data-testid='aud9-deeplink-found']")).not.toBeNull();
+    expect(document.querySelector(`[data-testid='aud6-preview-${target}']`)).not.toBeNull();
+    expect(document.querySelector<HTMLButtonElement>(`[data-testid='aud6-toggle-${target}']`)!.getAttribute("aria-expanded")).toBe("true");
+    expect(lastUrl()).toContain(`limit=${size}`);
+    expect(auditReads()).toBe(1);
+    expect(detailReads()).toBe(0);
+  });
+
+  it("the way back restores the size, the window, the filters and the cursor stack", async () => {
+    const entry =
+      "/audit?window=custom&from=2026-11-17T01%3A00%3A00.000Z&to=2026-11-17T02%3A30%3A00.000Z" +
+      "&type=task.created&actor=employee-api&resource=ts_evt_p2&limit=25&cursor=cur_page1&event=evt_p2";
+    const three = [
+      { label: "①25 条+深链+游标", handler: honoringLimit(3) },
+      { label: "②50 条", handler: honoringLimit(4) },
+      { label: "③100 条", handler: honoringLimit(5) },
+    ];
+    for (const leg of three) {
+      await mountProbed(entry, leg.handler);
+      const address = locationText();
+      const sizeBefore = sizeShown();
+      await openRecord("evt_p2");
+      await back();
+      // 逐字回到进去之前那条地址：条数、窗、类型、操作者、资源、游标、深链
+      expect(locationText(), leg.label).toBe(address);
+      expect(sizeShown(), leg.label).toBe(sizeBefore);
+      expect(document.querySelector<HTMLInputElement>("[data-testid='aud01-filter-operator']")!.value).toBe("employee-api");
+      expect(document.querySelector<HTMLInputElement>("[data-testid='aud8-filter-resource']")!.value).toBe("ts_evt_p2");
+      expect(document.querySelector<HTMLInputElement>("[data-testid='aud01-filter-type']")!.value).toBe("task.created");
+      expect(probe("data-aud-limit-cursors"), leg.label).toBe("1");
+      expect(probe("data-aud-limit-page"), leg.label).toBe("2");
+      expect(probe("data-aud-limit-event"), leg.label).toBe("evt_p2");
+      // 列表读口在整趟里只发过第一次那一条；返回不重问
+      expect(auditReads(), leg.label).toBe(1);
+      expect(detailReads(), leg.label).toBe(1);
+      // 深链的展开态也回来了
+      expect(document.querySelector("[data-testid='aud6-preview-evt_p2']"), leg.label).not.toBeNull();
+    }
+  });
+
+  it("switching the size starts page 1, drops the cursor and keeps the arrived link", async () => {
+    await mountProbed("/audit?window=7d&limit=50&cursor=cur_page1&event=evt_p1", honoringLimit(3));
+    expect(probe("data-aud-limit-cursors")).toBe("1");
+    const before = auditReads();
+    await pickSize("100");
+    expect(locationText()).toContain("limit=100");
+    expect(locationText()).not.toContain("cursor=");
+    expect(locationText()).toContain("event=evt_p1");
+    expect(probe("data-aud-limit-cursors")).toBe("0");
+    expect(probe("data-aud-limit-page")).toBe("1");
+    expect(probe("data-aud-limit-event")).toBe("evt_p1");
+    // 恰一次重取，且发出去的就是新条数
+    expect(auditReads()).toBe(before + 1);
+    expect(lastUrl()).toContain("limit=100");
+    // 定位仍在：这一条在新页里，展开态由 ?event= 自己撑着
+    expect(probe("data-aud-limit-located")).toBe("在本页已展开");
+    expect(document.querySelector("[data-testid='aud9-deeplink-found']")).not.toBeNull();
+  });
+
+  it("a clamped size and a deep link stay honest together", async () => {
+    const clamp = async (url: string): Promise<unknown> => {
+      const asked = new URLSearchParams(String(url).split("?")[1] ?? "");
+      if (asked.get("limit") === "100") return { items: P(50), limit: 50, nextCursor: null };
+      return { items: P(50), nextCursor: null };
+    };
+    await mountProbed("/audit?window=7d&limit=100&event=evt_p7", clamp);
+    // 生效值回显，不是愿望值
+    expect(sizeShown()).toBe("50");
+    expect(probe("data-aud-limit-size")).toBe("50");
+    expect(probe("data-aud-limit-asked")).toBe("100");
+    expect(document.querySelector("[data-testid='audH-clamp-note']")!.textContent).toContain("请求按每页 100 条发出");
+    // 地址仍是人带来的那条：limit=100 与 event 都没被动过
+    expect(locationText()).toContain("limit=100");
+    expect(locationText()).toContain("event=evt_p7");
+    expect(probe("data-aud-limit-event")).toBe("evt_p7");
+    expect(auditReads()).toBe(1);
+  });
+
+  it("an event that is not in this page says so without clearing a single filter", async () => {
+    const entry =
+      "/audit?window=24h&type=task.created&actor=employee-api&resource=ts_evt_p1&limit=25&cursor=cur_page1&event=evt_absent_000001";
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url) => {
+      if (String(url).startsWith("/agent-api/api/audit-detail")) {
+        throw new ApiError("gone", { status: 404, body: '{"code":"audit.event_not_found"}', url, requestId: "rid-p-404" });
+      }
+      return { items: P(2), nextCursor: "cur_page2" };
+    });
+    await render(entry, <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await waitFor(() => document.querySelector("[data-testid='aud9-event-missing']") !== null, "the missing leg");
+    expect(text()).toContain("该事件不存在或已过期");
+    expect(document.querySelector("[data-testid='aud9-event-rid']")!.textContent).toContain("rid-p-404");
+    // 一个筛选键都没被顺手清掉
+    for (const key of ["window=24h", "type=task.created", "actor=employee-api", "resource=ts_evt_p1", "limit=25", "cursor=cur_page1"]) {
+      expect(locationText()).toContain(key);
+    }
+    expect(sizeShown()).toBe("25");
+    expect(probe("data-aud-limit-located")).toBe("不在本页");
+    expect(auditReads()).toBe(1);
+    expect(detailReads()).toBe(1);
+  });
+
+  it("the fixed link says out what it does not carry, in both legs", async () => {
+    await mountProbed("/audit?window=7d&limit=25&event=evt_p1", honoringLimit(3));
+    const preview = document.querySelector("[data-testid='aud6-preview-evt_p1']")!;
+    const scope = preview.querySelector("[data-testid='audE-link-scope']")!;
+    expect(scope.textContent).toContain("不带这一页的时间窗、每页条数与筛选");
+    // 复制到的仍然只是那条事件链接（audE 口径未回归）
+    const clip: { calls: string[] } = { calls: [] };
+    Object.defineProperty(window, "isSecureContext", { configurable: true, value: true });
+    Object.defineProperty(window.navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: async (text: string) => void clip.calls.push(text) },
+    });
+    const before = urls();
+    await act(async () => {
+      preview.querySelector<HTMLButtonElement>("[data-testid='audE-link']")!.click();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+    expect(clip.calls[0]).toBe(`${window.location.origin}/audit?event=evt_p1`);
+    expect(urls()).toEqual(before);
+  });
+});
