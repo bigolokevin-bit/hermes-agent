@@ -110,7 +110,18 @@ export function FilterSummary({
   onRemove: (keys: readonly string[]) => void;
 }) {
   const chips = chipsFor(params);
-  if (chips.length === 0) return null;
+  /* 折叠态这一行是「当前按什么看」的唯一读数：有值逐项显示（状态/时间/风险
+     各一枚），空值不能变成「什么都没有」——没有筛选本身也是生效条件，明说
+     「全部」。读数行用独立 testid，chips 行的「空时整条不渲染」契约不变。 */
+  if (chips.length === 0)
+    return (
+      <span
+        className="min-w-0 break-words text-xs text-muted-foreground"
+        data-testid="apv-filter-summary-all"
+      >
+        生效条件：全部
+      </span>
+    );
   return (
     <div
       className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs"
@@ -132,7 +143,7 @@ export function FilterSummary({
             chip.unknownValue !== null ? "border-warning/50" : "border-white/15"
           }`}
         >
-          <span className="max-w-40 truncate">{chip.label}</span>
+          <span className="min-w-0 break-words">{chip.label}</span>
           <button
             type="button"
             aria-label={`移除筛选：${chip.label}`}
