@@ -2405,3 +2405,17 @@ built /private/tmp/health-r38/index.html
 - 验证：新文件 7/7；定向 `src/modules/{capabilities,skills,tools}` 18 files / 166 passed；全量 `npx vitest run` **198 files / 2555 passed, 0 failed**；`tsc -b . --noEmit` exit 2，本域 grep 0（基线仅 approvals/employee-detail/employees）。`capF`/`cap-row-copy-*`/`cap-row-*`/stateAnchor/R117 深链既有断言全绿。
 - 三档未重跑：纯测试、零 markup/CSS delta，几何证据沿用 R93 实测（同 ① 纪律披露）。
 - 边界：只加 `capabilities.empty.test.tsx` + 本节 DONE；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未 install、未并 main、未 force/amend/--no-verify。
+
+## R95 / sys-filters-url-guards — /system 标签与时间窗 URL 保参护栏（R135，纯测试）
+
+- 基线：显式 refspec fetch 后 `git merge --no-ff origin/lane/hermes-console` → 合并笔 `1456d150`（上游 `6e6ebf32` = 代次 `76090480` 纯账本章笔，150 files 全在 `docs/_artifacts/tonight/**`；`git diff --name-only HEAD^1 HEAD -- web/src/modules/health` 为空）。未 reset --hard，工作树开工前干净。
+- 现查既有覆盖（先 grep 纪律）：`modules/audit/AuditEventsModulePage.test.tsx` 已钉住 window 的 URL 快照（:266 `/audit?window=7d`、:1155-1190 `window=24h`/`window=24h&type=task.created`）、custom 的 from/to 复原（:870、:1754）、R39 记录即历史项（:1000-1030）、五参深链（:1197、:1213、:1432）、切 custom 后 location 保 window（:1730-1741）、参数字典快照（:1679）；`src/shell/console.test.tsx` 已钉 TAB_ALIAS 落正典 pane 与 `?state=` 四态，但**没有任何非法 `?tab=` 用例**。故本文件只补四个缺口，不重写既有断言。
+- ①请求参逐字：冻结时钟 `NOW=2026-11-20T06:00:00Z` 挂 `/system?tab=events&window=24h`，屏上 `aria-pressed` 落在 24h，恰 1 条列表读，其 `from/to` 逐字等于 `windowBounds("24h", NOW)`，location 与粘贴地址字节同，页锚 `agent-v2-page-audit` 在。既有测试只查 URL，没查「请求 vs 屏上」同源。
+- ②写 window 保 tab 且不新增历史：双 entry 挂载后点 7d，参数字典恰 `{tab:"events", window:"7d"}`，末条读等于 `windowBounds("7d", NOW)`；点 `probe-back` 直接退回 `/system?tab=events`（window 消失）——证明该写是 `replace`。产品事实：只有开记录（`:1025`）用 `replace:false` 推历史，其余 15 处筛选写全带 `replace:true`。首稿误按 R39 推历史断言，已按产品改判并在用例注释留痕。
+- ②b 切 tab 保 window：挂 `ConsoleModulePage module="system"`（无 live，pane 出占位）于 `/system?tab=health&window=24h`，点 `[role="tab"][data-tab="events"]` 后 tab=events 而 window=24h 字节不动（shell `preserve` memo 只剥 tab/view/zone）。
+- ③非法枚举：`resolveTab("system","__nope__")` → `{tab:"__nope__",view:""}`，页面 `active = tabs.find(...) ?? tabs[0]` 落第一格「系统健康」且 URL 一字不改；`?window=__nope__` 经 `filterWindowOf` 静默回落 `DEFAULT_WINDOW="7d"`，屏上 pressed=7d、读用 7d 边界，而地址里的 `window=__nope__` 原样保留（页面只读不写该参）。
+- ④重挂同 URL：同 entry 二次挂载（不重置 spy）后新增的读序列与首次逐字相等、条数与顺序一致 ⇒ 无重复取数、无参数漂移。
+- 披露三条：其一，派工单指定路径在 `modules/health/`，但该面机制实际住在 `modules/audit/AuditEventsModulePage` + shell（health 模块无事件表、无 window 参），故本文件跨模块 import 并按单据落在 health 目录；其二，单据点名的 `sys-evt-copy-*` 本代不存在（R124 放弃：health 无事件表），无从破起，如实记录；其三，三档未跑——纯测试、零 markup/CSS delta，几何证据沿用 R93 实测。
+- 附带修复：本文件 `waitFor` 原用 `Date.now()` 做 3000 ms 截止，而 ①②③b④ 冻结 `Date` → 截止永不触发，用例② 空转到 vitest 15 s 强杀并污染后续用例（③/③b/④ 全空白）。改为 600 次 × 5 ms 真实 sleep 的迭代上限，与冻结时钟免疫；隔离跑证实四例各自本可通过，级联是超时副作用。零产品码改动。
+- 验证：新文件 6/6；定向 `src/modules/health src/modules/audit src/shell` **40 files / 584 passed**（`sys-refresh`/`sys-updated-at`/`sys-row-copy-*`/R112 与既有 audit、shell 用例全绿）；全量 `npx vitest run` **199 files / 2561 passed, 0 failed**（基线 198/2555 → +1 file / +6 tests）；`tsc -b . --noEmit` exit 2，health/audit/shell grep **0**，错误仅限 approvals / employee-detail / employees 基线。
+- 边界：只加 `web/src/modules/health/system.filters.test.tsx` + 本节 DONE；未碰 App.tsx/shell/routes/registry/package·lock/web-scripts/ops（shell 与 audit 源码只读、只在测试里挂载）；未 install、未并 main、未 force/amend/--no-verify。
