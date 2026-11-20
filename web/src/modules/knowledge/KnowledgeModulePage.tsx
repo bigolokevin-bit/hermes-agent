@@ -44,6 +44,7 @@ import {
 import { blockedReasonByState, faceGates, retryTitle, type GateSurfaceState } from "./copyGates";
 import { updatedText } from "./updated";
 import {
+  DOCUMENTS_LIMIT,
   CITATIONS_URL,
   DOCUMENTS_URL,
   KNOWLEDGE_GAP,
@@ -2410,6 +2411,23 @@ function SpaceDetailSurface({
               onPermalink={handlePermalink}
               sdocOpen={sdocOpen}
             />
+
+            {/* R108 — 单页上限常驻句：N 与取数 limit 同一常量，M 与屏上可见行同一集合
+                （复制清单走同一 shown），三处读数同源；游标口径跟分页条一致，不编造翻页。 */}
+            <p
+              className="knw5-sub"
+              data-testid="kn3-page-cap"
+              title={`limit=${DOCUMENTS_LIMIT}；${
+                cursorOffered
+                  ? "上游回答给了分页游标，翻页走旁边的分页条。"
+                  : "上游回答没给可用的分页游标：暂不支持翻页，本页上限句不假装还有下一页。"
+              }`}
+            >
+              {`本页最多显示 ${DOCUMENTS_LIMIT} 篇（当前已加载 ${shown.length > 0 ? shown.length : "—"} 篇；复制清单也只含这些篇）`}
+              {shown.length === DOCUMENTS_LIMIT ? (
+                <span data-testid="kn3-page-cap-more">可能还有更多，改用全库检索或收窄类型筛选</span>
+              ) : null}
+            </p>
 
             {/* R54 — 游标分页条：读数只来自信封给的字段；缺什么就说什么不可用，一律不推算。 */}
             <div className="knE-page-bar" data-testid="knE-page-bar">

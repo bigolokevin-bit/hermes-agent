@@ -2751,3 +2751,60 @@ $ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 
 边界：只改 web/src/modules/knowledge/**（页面/CSS/测试）与本证据；显式路径 add；
 无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
 「feat(console): knowledge space row deep link」。
+
+# KNW5 追加 R108：空间详情文档列表单页上限诚实化（kn3-page-cap）（2026-11-20 BJT）
+
+安全门：toplevel 相符、porcelain 空、显式 refspec fetch 后 merge 实测 tip `f1b509b9`
+（即预期章笔，Already up to date）。
+
+## 一、limit 现查（N 的来源）
+
+```text
+$ git grep -n "limit" -- web/src/modules/knowledge（非测试命中节选）
+  knowledge.ts:138  DOCUMENTS_URL = "/agent-api/api/documents?limit=50"   ← 改前字面量
+  knowledge.ts:164  documentsUrl():      params.set("limit", "50")
+  knowledge.ts:175  documentsPageUrl():  params.set("limit", "50")
+N = 50。本轮把三处收成单一常量 DOCUMENTS_LIMIT=50（knowledge.ts:139），取数 URL 与
+屏上限句同源；URL 输出字符串逐字不变（测试 URL 常量零改动）。
+与 knE-page-*（R54 游标分页条）口径关系：两 bar 并存但语义不同、互不矛盾——
+  knE 说「总数/已显示与游标信封」（total/nextCursor 只认信封字段，缺则「总数不可用/
+  无分页游标」）；kn3-page-cap 说「本次请求的单页上限 N=50 与屏上可见行数 M」。
+  上限句的游标半句直接读同一个 cursorOffered（信封游标字段在场否），措辞跟分页条一致
+  （「暂不支持翻页」），不另起第二套翻页说法。testid 保留双轨不合并：knE-page-count
+  （信封读数）与 kn3-page-cap（请求上限）回答的是两个问题，弃任一都会丢既有 pin。
+```
+
+## 二、常驻句与读数（逐字）
+
+```text
+值：本页最多显示 50 篇（当前已加载 M 篇；复制清单也只含这些篇）
+  ——M=shown.length（屏上可见行，与复制清单同一集合）；M 为 0/未读到渲染「—」，不写 0
+  （实现上 ready-空集走 knN 空态分支，上限句整体不渲染，「—」为防御分支）。
+追加句（M==N 才在场）：可能还有更多，改用全库检索或收窄类型筛选（kn3-page-cap-more）
+title：limit=50；上游回答没给可用的分页游标：暂不支持翻页，本页上限句不假装还有下一页。
+  （cursorOffered 为真时换「翻页走旁边的分页条」句——两句由同一在场判定选出，不编造。）
+三同源实证（测试断言）：复制清单数据行数 == kn3-docs 表 data-len == 屏上
+  kn3-docs-row 计数 == 常驻句里的 M（夹具 3 行：3==3==3==3）。
+三态不渲染：empty（ready 0 行）/ error(500) / denied(403) 下 kn3-page-cap 与
+  -more 均 toBeNull（常驻句在 gate 的 render 分支内，非 ready-非空 即整段缺席）。
+零额外请求：上限句为纯屏上派生——ready 渲染后 DOCS_SPACE 计数 +1 是详情槽位自身
+  既有读取，点常驻句后 urls() 排序快照逐字不变。
+```
+
+## 验证尾行（R108）
+```text
+$ npx vitest run src/modules/knowledge   → 4 files / 82 tests passed（基线 78 + R108 4）
+$ npx vitest run                         → 174 files / 2403 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r108-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn3、kn6–kn9、knB–knO（含 knE-page-*）、kn-sort、kn-gates、kn.parity、
+kn-space-preview 全族 82/82 通过；DOCUMENTS_URL 重构后输出串逐字不变，URL pin 零改动。
+```
+未测如实：带登录会话的真实详情屏（静态 preview 无会话；句文本/三同源/三态由夹具逐字
+锁定）；「读口是否真吃 cursor」本轮仍未实测（R74 只证信封别名错位），故 title 用
+「信封在场判定」的动态措辞而非断言服务端能力。
+边界：只改 web/src/modules/knowledge/** 与本证据；显式路径 add；无 force/amend/
+--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「feat(console): knowledge space docs page cap honesty」。

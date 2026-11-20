@@ -4796,3 +4796,109 @@ describe("R102 — space row deep link (kn-space-open / kn-space-nolink)", () =>
     expect(u1.filter((x) => x === DOCS_SPACE)).toHaveLength(1);
   });
 });
+
+// ---------- R108：空间详情文档列表的单页上限诚实化（kn3-page-cap 常驻句） ----------
+describe("R108 — space docs page cap (kn3-page-cap / -more)", () => {
+  const N = 50; // 与 DOCUMENTS_LIMIT 同源的字面值：若常量漂移，本用例与句内数字一起红
+  const mkDocs = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({
+      documentId: `d${i}`,
+      fileName: `封顶文档 ${String(i + 1).padStart(2, "0")}.pdf`,
+      mimeType: "pdf",
+      sizeBytes: 10,
+      updatedAt: "2026-11-19T07:00:00Z",
+    }));
+  const SP = {
+    asOf: "2026-11-19T08:00:00Z",
+    items: [{ spaceId: "sp_hr", name: "人事制度空间", docCount: 2, status: "synced" }],
+  };
+  const wireDocs = (body: unknown) =>
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SP);
+      if (url === DOCS_SPACE) return Promise.resolve(body);
+      if (url === DOCUMENTS_PLAIN) return Promise.resolve({ documents: [] });
+      return fail(404, "这个数据接口还没有接入。", "rid-r108");
+    });
+  const capText = () => (byTestid("kn3-page-cap")?.textContent ?? "").replace(/\s+/g, " ");
+
+  it("renders the standing cap sentence with N from the limit constant and M from the visible rows; title states limit and the honest cursor verdict", async () => {
+    wireDocs({ asOf: "2026-11-19T08:00:00Z", documents: mkDocs(2) });
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    const cap = byTestid("kn3-page-cap");
+    expect(cap).toBeTruthy();
+    expect(capText()).toContain(`本页最多显示 ${N} 篇（当前已加载 2 篇；复制清单也只含这些篇）`);
+    // M 与屏上同一集合：可见行数、表体 data-len、常驻句里的数字三者一致
+    expect(container.querySelectorAll('[data-testid="kn3-docs-row"]').length).toBe(2);
+    expect(attr("kn3-docs", "data-len")).toBe("2");
+    // 行数 < N：不渲染追加句
+    expect(byTestid("kn3-page-cap-more")).toBeNull();
+    // title：limit 写清；这份信封没给游标 → 「暂不支持翻页」，不编造翻页能力
+    expect(attr("kn3-page-cap", "title")).toBe(
+      `limit=${N}；上游回答没给可用的分页游标：暂不支持翻页，本页上限句不假装还有下一页。`,
+    );
+  });
+
+  it("appends the maybe-more sentence exactly at the cap (M == N) and not below it", async () => {
+    wireDocs({ asOf: "2026-11-19T08:00:00Z", documents: mkDocs(N) });
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    expect(byTestid("kn3-page-cap-more")).toBeTruthy();
+    expect((byTestid("kn3-page-cap-more")?.textContent ?? "")).toContain("可能还有更多，改用全库检索或收窄类型筛选");
+    expect(capText()).toContain(`当前已加载 ${N} 篇`);
+    wireDocs({ asOf: "2026-11-19T08:00:00Z", documents: mkDocs(N - 1) });
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    expect(byTestid("kn3-page-cap-more")).toBeNull();
+    expect(capText()).toContain(`当前已加载 ${N - 1} 篇`);
+  });
+
+  it("copy list row count == M == data-len == visible rows (one row set, three readings)", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    wireDocs({ asOf: "2026-11-19T08:00:00Z", documents: mkDocs(3) });
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    await click("knF-copy");
+    expect(writeText).toHaveBeenCalledTimes(1);
+    const lines = String(writeText.mock.calls[0][0]).split("\n");
+    const dataLines = lines.length - 2; // 头行 + 尾换行
+    expect(dataLines).toBe(3);
+    expect(attr("kn3-docs", "data-len")).toBe(String(dataLines));
+    expect(capText()).toContain(`当前已加载 ${dataLines} 篇`);
+    expect(container.querySelectorAll('[data-testid="kn3-docs-row"]').length).toBe(dataLines);
+  });
+
+  it("empty / error / denied states render neither the cap nor the maybe-more sentence, and the cap adds zero requests", async () => {
+    // 空集（ready 但 0 行）
+    wireDocs({ asOf: "2026-11-19T08:00:00Z", documents: [] });
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    expect(byTestid("kn3-page-cap")).toBeNull();
+    expect(byTestid("kn3-page-cap-more")).toBeNull();
+    // error（500）
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SP);
+      if (url === DOCS_SPACE) return fail(500, "上游读取失败。", "rid-r108-err");
+      if (url === DOCUMENTS_PLAIN) return Promise.resolve({ documents: [] });
+      return fail(404, "这个数据接口还没有接入。", "rid-r108");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    expect(byTestid("kn3-page-cap")).toBeNull();
+    expect(byTestid("kn3-page-cap-more")).toBeNull();
+    // denied（403≡404 口径）
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SP);
+      if (url === DOCS_SPACE) return fail(403, "没有权限读取这个空间。", "rid-r108-deny");
+      if (url === DOCUMENTS_PLAIN) return Promise.resolve({ documents: [] });
+      return fail(404, "这个数据接口还没有接入。", "rid-r108");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    expect(byTestid("kn3-page-cap")).toBeNull();
+    expect(byTestid("kn3-page-cap-more")).toBeNull();
+    // 零额外请求：ready 态渲染后读口计数只 +1（详情自身的既有读取），后续只读动作零增量
+    const beforeCap = urlsCalled().filter((x) => x === DOCS_SPACE).length;
+    wireDocs({ asOf: "2026-11-19T08:00:00Z", documents: mkDocs(2) });
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    const u = urlsCalled().slice().sort();
+    expect(u.filter((x) => x === DOCS_SPACE)).toHaveLength(beforeCap + 1);
+    expect(byTestid("kn3-page-cap")).toBeTruthy();
+    await click("kn3-page-cap");
+    expect(urlsCalled().slice().sort()).toEqual(u); // 上限句是纯文字：点它不发请求
+  });
+});
