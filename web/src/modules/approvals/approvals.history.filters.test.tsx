@@ -48,6 +48,7 @@ vi.mock("@nous-research/ui", () => ({
 
 import { fetchJSON } from "@/lib/api";
 import ApprovalsHistoryModulePage from "@/modules/approvals/ApprovalsHistoryModulePage";
+import { selectDisabled, selectValue } from "@/shell/selectHarness";
 
 const mock = vi.mocked(fetchJSON);
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -181,10 +182,14 @@ describe("R129 history filter url guards", () => {
     expect(first).not.toContain("window=");
     expect(first).not.toContain("cursor=");
     // window 控件=摆设：恒 disabled、不被深链回填（现状记录，非缺陷修复）。
-    const win = q("apv5-filter-window") as HTMLSelectElement | null;
+    const win = q("apv5-filter-window");
     expect(win, "window control exists").toBeTruthy();
-    expect(win!.disabled, "window filter stays honestly disabled").toBe(true);
-    expect(win!.value, "window is not backfilled").toBe("");
+    // wave-36 moved this control onto ConsoleSelect, so the trigger is a BUTTON:
+    // `.disabled` is still real, but `.value` on a button is ALWAYS the empty
+    // string — the old 「not backfilled」 claim had stopped testing anything.
+    // `data-value` is what the control actually holds.
+    expect(selectDisabled("apv5-filter-window"), "window filter stays honestly disabled").toBe(true);
+    expect(selectValue("apv5-filter-window"), "window is not backfilled").toBe("");
     // URL 不被前端改写（保参回放能力保留）。
     expect(lastSearch()).toBe("?tab=history&window=7d&status=approved");
     // status 维「回填」=八态组高亮投影。

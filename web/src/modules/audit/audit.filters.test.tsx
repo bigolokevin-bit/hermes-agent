@@ -11,6 +11,11 @@
 //  · audit.deeplink.test.tsx (R113) 只管 event 这一个键的增删；这里管 event 与筛选共存时开详情后的整体保参。
 //
 // 每条护栏只读屏幕与 mock 的请求串，不产生任何额外请求。
+//
+// R166 修红：wave-36 把筛选控件从原生 <select> 换成了 ConsoleSelect（合入的自定义下拉那一项改动），
+// testid 现在落在 trigger button 上，`.value` 恒为空串。所以四个取值断言改走仓内既有的
+// `@/shell/selectHarness`（runs.filters.test.tsx 同一手法），断言的对象与强度一个字没减：
+// 仍是「控件此刻持有的机器值」。日期两栏仍是真 <input>，`.value` 照旧。
 
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -23,6 +28,9 @@ vi.mock("@/lib/api", () => ({ fetchJSON: api.fetchJSON }));
 import AuditEventsModulePage from "@/modules/audit/AuditEventsModulePage";
 import { beijingInputValue, customBounds } from "@/modules/audit/window";
 import { PAGE_LIMIT } from "@/modules/audit/api";
+// The sanctioned way to read a ConsoleSelect: `selectValue` is the control's own
+// machine value (`data-value`), `selectText` the label a person sees.
+import { selectText, selectValue } from "@/shell/selectHarness";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -96,6 +104,7 @@ function paramOf(url: string, key: string): string | null {
   return found;
 }
 
+/** Only for the two real `<input>`s; a ConsoleSelect is read through the harness. */
 const valueOf = (testId: string): string | null =>
   (document.querySelector(`[data-testid='${testId}']`) as HTMLInputElement | HTMLSelectElement | null)?.value ?? null;
 const textOf = (testId: string): string | null =>
@@ -172,10 +181,10 @@ describe("R133 - a pasted filter set fills every control and goes out verbatim",
     // the two instants come back as Beijing wall clock, which is what the control speaks
     expect(valueOf("aud01-custom-from")).toBe(beijingInputValue(FROM));
     expect(valueOf("aud01-custom-to")).toBe(beijingInputValue(TO));
-    expect(valueOf("aud01-filter-type")).toBe("task.created");
-    expect(valueOf("aud01-filter-operator")).toBe(ACTOR);
-    expect(valueOf("aud8-filter-resource")).toBe(RESOURCE);
-    expect(valueOf("audH-page-size")).toBe("25");
+    expect(selectValue("aud01-filter-type")).toBe("task.created");
+    expect(selectValue("aud01-filter-operator")).toBe(ACTOR);
+    expect(selectValue("aud8-filter-resource")).toBe(RESOURCE);
+    expect(selectValue("audH-page-size")).toBe("25");
     // and the address itself was not rewritten by opening it
     expect(pairs()).toEqual(
       [
@@ -221,9 +230,9 @@ describe("R133 - changing only the window changes only the window", () => {
     expect(listReads()).toBe(before + 1);
     // what the person did not touch is still there, in the same spelling
     expect(pairs()).toEqual(["actor=user:2f3a4b5c6d7e8f90", "limit=100", "type=task.created", "window=30d"]);
-    expect(valueOf("aud01-filter-type")).toBe("task.created");
-    expect(valueOf("aud01-filter-operator")).toBe(ACTOR);
-    expect(valueOf("audH-page-size")).toBe("100");
+    expect(selectValue("aud01-filter-type")).toBe("task.created");
+    expect(selectValue("aud01-filter-operator")).toBe(ACTOR);
+    expect(selectValue("audH-page-size")).toBe("100");
     expect(textOf("aud2-page")).toContain("第 1 页");
     const url = lastListRead();
     expect(paramOf(url, "action")).toBe("task.created");
@@ -270,7 +279,7 @@ describe("R133 - a value this panel cannot use is said, not silently rewritten",
     const note = textOf("audH-clamp-note") ?? "";
     expect(note).toContain("-1");
     expect(note).toContain("没有把它发出去");
-    expect(valueOf("audH-page-size")).toBe(String(PAGE_LIMIT));
+    expect(selectValue("audH-page-size")).toBe(String(PAGE_LIMIT));
     expect(listReads()).toBe(1);
     expect(paramOf(lastListRead(), "limit")).toBe(String(PAGE_LIMIT));
     for (const anchor of ["agent-v2-page-audit", "aud01-filters", "aud2-pagination", "aud5-export-bar"]) {
@@ -339,6 +348,29 @@ describe("R133 - the deep link and the filters open a record without spending a 
     expect(listReads()).toBe(listBefore);
     expect(detailReads()).toBe(1);
     expect(paramOf(lastListRead(), "resourceId")).toBe(RESOURCE);
-    expect(valueOf("audH-page-size")).toBe("25");
+    expect(selectValue("audH-page-size")).toBe("25");
+  });
+});
+
+describe("R166 - the shape the picker really has, since these guards read it", () => {
+  it("holds the machine value in data-value and shows the human label on the trigger", async () => {
+    answer();
+    await render(`/audit${SEVEN}`);
+    const node = document.querySelector("[data-testid='aud01-filter-type']");
+    // 产品当前真实形制：testid 落在 trigger BUTTON 上，role=combobox，机器值在 data-value，
+    // 收起时 aria-expanded=false；选项是 role=option（本用例不展开，只读合上的形态）。
+    expect(node?.tagName).toBe("BUTTON");
+    expect(node?.getAttribute("role")).toBe("combobox");
+    expect(node?.getAttribute("data-value")).toBe("task.created");
+    expect(node?.getAttribute("aria-expanded")).toBe("false");
+    expect(selectValue("aud01-filter-type")).toBe("task.created");
+    // what a person reads is still the Chinese label, never the machine code
+    expect(selectText("aud01-filter-type")).toContain("创建任务");
+    expect(selectValue("aud01-filter-operator")).toBe(ACTOR);
+    expect(selectValue("aud8-filter-resource")).toBe(RESOURCE);
+    expect(selectValue("audH-page-size")).toBe("25");
+    // and this is exactly why the four guards went red: the retired native protocol
+    // reads an empty string off a button — the value was never lost, only mis-addressed.
+    expect((node as unknown as HTMLSelectElement | null)?.value ?? null).toBe("");
   });
 });

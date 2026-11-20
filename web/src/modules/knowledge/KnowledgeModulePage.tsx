@@ -2754,14 +2754,19 @@ function SearchDocTable({
   openKey,
   needle,
   tabIndexFor,
+  indexBase = 0,
 }: {
   rows: DocRow[];
   docLink: (key: string) => string;
   openKey: string;
   needle: string;
   tabIndexFor: (index: number) => number;
+  indexBase?: number;
 }): ReactNode {
   // R132 — 列表级行复制（主 tab 检索表）：持有派工原名 id；空间详情侧带 -space- 后缀。
+  // R169 实测修复（真缺陷）：本表按空间分组渲染、每组一个实例——改前 index={index}
+  // 组内各自起 0，跨组同屏 testid 重号（违反唯一性与「i 连续 0..M-1」交付语义）；
+  // 改后 index={indexBase + index}，偏移与 roving 的 tabIndexFor(start + index) 同源。
   const rowCopy = useRowCopyBar("kn-row-copy-status", "kn-row-copy-fallback");
   return (
     <div className="k3-docs-wrap">
@@ -2818,7 +2823,7 @@ function SearchDocTable({
                     {updatedText(row.atRaw).value}
                   </span>
                 </td>
-                <RowCopyButton doc={row} index={index} testidPrefix="kn-row-copy" onCopy={rowCopy.copy} />
+                <RowCopyButton doc={row} index={indexBase + index} testidPrefix="kn-row-copy" onCopy={rowCopy.copy} />
               </tr>
             );
           })}
@@ -3039,6 +3044,7 @@ function DocumentNameSearch({
                           openKey={openKey}
                           needle={text}
                           tabIndexFor={(index) => roving.tabIndexFor(start + index)}
+                          indexBase={start}
                         />
                       )}
                     </div>
