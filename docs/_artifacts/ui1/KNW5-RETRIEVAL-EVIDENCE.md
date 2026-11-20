@@ -5117,3 +5117,47 @@ kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort*/kn-gates/kn7-preview*/导出 absent �
 ```
 未测如实：带登录会话真屏（mock 代证）；knL-copy-meta/permalink 与清单行对（抽屉区非
 本派工三面范围）；① 检索面 knG 行「所属空间」列与屏上格的对账（R200② 已锁，未重铺）。
+
+# KNW5 追加 R224：浮层×筛选变更过渡护栏（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `d5c886f5`、
+基线先跑 41/200 全绿 Errors 0、目标文件确认缺席再动笔。零产品文件改动。新增
+knowledge.preview.filter.transition.test.tsx 三例（本体）。
+
+## 名实换算与新增维（文件头同步）
+
+```text
+换算：无 ?preview=（grep 0，行内预览=本地态 previewKey）→ ①落真实带 URL 浮层=抽屉
+doc=；?type=pdf→?ktype=；「切筛选取数/清筛选恰 1 次」实测 0 次——按真实计数断言；
+「浮层若原开则已关闭」与产品不符（清筛选不动 doc，面板存续）按现状断言并记差异；
+cap 有行随 M 更新整句、筛空不渲染（R108/R157/R187 引用）。
+查重引用：R196④/R222④（同筛选态开合免疫）、R207(a)（换代）、R218、R138/R190④、
+R149/R183/R205/R217/R223。
+新增维：(a) 抽屉打开态下切类型桶的交互过渡——面板存续 + 行出局 dd 落「类型：这条不在
+当前已加载的列表里」（previewField 合成句式，实测修正）+ cap 随新 M 整句更新 + URL
+doc 与 ktype 双参并立（R222④ 只在同筛选态开合，桶变更×浮层无 pin）；
+(b) 非法枚举筛空→清除回退全程 urls 零增量 + 空态句与 data-len "0" 同源 + 面板存续
+无错误锚。
+```
+
+## 三例读数与验证尾行（R224）
+
+```text
+① 切「表格」后：doc=d_a 与 ktype=表格 并立、行 [B 表.xlsx]、panel 在、dd「该字段未
+返回」+title 合成句、cap 逐字「本页最多显示 50 篇（当前已加载 1 篇；复制清单也只含
+这些篇）」、-more null。② 关闭后：只删 doc（ktype 留场）、行名/钮号 [0] 与关前逐字
+等、urls c0→c0 零增量。③ 深链 ktype=__nope__+doc：0 行、data-len "0"、kn-type-empty
+在、cap null、面板在而无错误锚；kn-type-clear 后行 2、钮 [0,1]、cap 回整句、urls
+全程零增量、无 cursor=、面板存续（与派工预期差异按现状记）。
+$ npx vitest run src/modules/knowledge → 42 files / 203 tests passed（基线 200+3），
+  grep unhandled = 0
+$ npx eslint → 0 errors（1 既有 warning）；模块 tsc → 0；build /tmp/knw-r224-dist exit 0
+$ 全仓 → 332 files / 3122 passed 全绿（无豁免）
+$ 三档：1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn-row-copy*/kn-row-copy-space*/kn-doc-copy*/kn3*/kn3-page-cap/knE-page-*/
+kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort*/kn-gates/kn7-preview*/kn-type*/导出 absent
+标记 + 既有 41 套全绿。过程记录：dd title 期望初版漏 previewField 前缀，按实测真值
+修正（产品零触碰）；占位变量残留两处清除。
+```
+未测如实：带登录会话真屏；行内预览（本地态）×桶切换不写 URL 的免疫（R196④ 同路径）；
+`sdoc=` 展开浮层的同过渡（换算说明已注，本轮按派工择 doc= 落地）。
