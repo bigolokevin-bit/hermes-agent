@@ -76,3 +76,11 @@
 - 批次失效：`cancelRefresh()` 递增版本号，迟到批整批丢弃（不写数据、不写 updated-at）；当前页面无范围/页签切换，卡片重试走 `reload()`（先失效在途批）。
 - 验证：duty 4 files / 65 passed；全量 148 files / 1939 passed；tsc 本域 0；eslint 0 error / 3 既有 warning；entry `assets/index-Da4OMXQN.js` sha256 `c52cb60a056bec5e81aa976d45ad9b9905ce1de17b6ce298c0024349012d18ba`（entry 内 marker 0），chunk `DutyPage-CT9bI_bq.js` marker 1。
 - 未测：真实浏览器下挂起批与手动刷新交错未走查（jsdom 用单测闸门覆盖）；375/1440 未实机。
+
+## 动作闸门单点化（duty gates，2026-11-20）
+
+- 新增 `web/src/modules/duty/dutyGates.ts`：`dutyGates({loading,refreshing,allFailed})` 一次派生 `{refresh,retry,copy,link}` 四个 `{enabled,title}`，页面通过 `DutyGatesContext` 下发；`CopyRid` 与 `StateLine` 的重试按钮只读这里，各卡不再自带措辞。
+- 矩阵：加载中 → 刷新/重试可用、复制禁用（「还在读取，暂时没有可复制的请求编号」）；单口失败 → 刷新与其余卡照常、失败卡 retry/copy 可用；整页全失败 → 刷新仍可用（重取即恢复路径）、逐卡复制禁用（「整页都没有读出来，先重取这一批；编号仍在卡上可见」）；刷新在途 → 刷新可点但 aria-busy（二次点击由 useDutyData 同步吞掉），retry/copy 统一禁用且 title 以「更新中」开头。
+- 链接只做导航，恒可用（`link.enabled` 恒 true），不因失败或忙态阻断。空集不当不可用：复制只在有请求编号时可点，0 行数据不参与闸门。
+- 测试：`dutyPage.test.tsx` 新增 describe 5 例（纯函数四态矩阵 + 首读中刷新可点 + 单口失败局部可用 + 全失败复制禁用 + busy 二次点击被吞且 retry/copy 带同一原因）。定向 4 files / 70 passed；全量 148 files / 1944 passed；tsc 本域 0；eslint 0 error / 3 既有 warning；build entry `assets/index-B2ll4AVq.js` sha256 `df60d45b7922ab73daaafe7f78cb828cee2ac8e2d0e108d52290961ddc0fd140`，entry 内 `duty-gates-scope`=0，`DutyPage-*.js` 命中 1。
+- 未测：真实浏览器 busy 期间键盘操作未走查；375/1440 未实机。

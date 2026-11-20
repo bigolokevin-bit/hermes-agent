@@ -12,6 +12,7 @@ vi.mock("@/lib/api", () => ({
 }));
 
 import DutyPage from "./DutyPage";
+import { dutyGates } from "./dutyGates";
 import MatrixView from "./MatrixView";
 
 let container: HTMLDivElement;
@@ -373,5 +374,133 @@ describe("DutyPage refresh", () => {
     await act(async () => {});
     expect(container.querySelector('[data-testid="duty-refresh-error"]')).toBeNull();
     expect(container.querySelector('[data-testid="duty-updated-at"]')).toBeTruthy();
+  });
+});
+
+describe("DutyPage action gates", () => {
+  const btn = (sel: string) => container.querySelector(sel) as HTMLButtonElement | null;
+
+  it("derives one matrix for refresh, retry, copy and links", () => {
+    const loading = dutyGates({ loading: true, refreshing: false, allFailed: false });
+    expect(loading.refresh.enabled).toBe(true);
+    expect(loading.retry.enabled).toBe(true);
+    expect(loading.copy.enabled).toBe(false);
+    expect(loading.copy.title).toContain("还在读取");
+    expect(loading.link.enabled).toBe(true);
+
+    const ready = dutyGates({ loading: false, refreshing: false, allFailed: false });
+    expect(ready.retry.enabled && ready.copy.enabled && ready.refresh.enabled).toBe(true);
+
+    const busy = dutyGates({ loading: false, refreshing: true, allFailed: false });
+    expect(busy.refresh.enabled).toBe(true);
+    expect(busy.retry.enabled).toBe(false);
+    expect(busy.copy.enabled).toBe(false);
+    expect(busy.retry.title).toContain("更新中");
+
+    const down = dutyGates({ loading: false, refreshing: false, allFailed: true });
+    expect(down.refresh.enabled).toBe(true);
+    expect(down.copy.enabled).toBe(false);
+    expect(down.copy.title).toContain("整页");
+  });
+
+  it("keeps refresh clickable while the first read is still running", async () => {
+    let release: (() => void) | null = null;
+    fetchJSON.mockImplementation(
+      (url: string) =>
+        new Promise((resolve) => {
+          if (url.includes("/employees?") && !release) {
+            release = () => resolve(ok(url));
+            return;
+          }
+          resolve(ok(url));
+        }),
+    );
+    await act(async () => {
+      root.render(<MemoryRouter><DutyPage /></MemoryRouter>);
+    });
+    await act(async () => {});
+    const refresh = btn('[data-testid="duty-refresh"]');
+    expect(refresh).toBeTruthy();
+    expect(refresh?.disabled).toBe(false);
+    expect(container.querySelector('[data-testid="ov6-rid-copy"]')).toBeNull();
+    await act(async () => {
+      release?.();
+    });
+    await act(async () => {});
+  });
+
+  it("leaves a single failed card retryable and copyable while other cards keep their numbers", async () => {
+    fetchJSON.mockImplementation((url: string) => {
+      if (url.includes("/budget-usage")) {
+        return Promise.reject(new ApiError("budget source down", { status: 500, body: "", url, requestId: "req-gate-1" }));
+      }
+      return Promise.resolve(ok(url));
+    });
+    await render(<DutyPage />);
+    const refresh = btn('[data-testid="duty-refresh"]');
+    expect(refresh?.disabled).toBe(false);
+    const retries = [...container.querySelectorAll("button")].filter((b) => b.textContent?.includes("重试"));
+    expect(retries.length).toBeGreaterThan(0);
+    expect(retries.every((b) => !(b as HTMLButtonElement).disabled)).toBe(true);
+    const copy = btn('[data-testid="ov6-rid-copy"]');
+    expect(copy).toBeTruthy();
+    expect(copy?.disabled).toBe(false);
+    expect(container.querySelector('[data-testid="ov6-kpi-runs"]')?.textContent).toContain("2");
+  });
+
+  it("keeps refresh as the way back when every block failed, and holds the copies", async () => {
+    fetchJSON.mockImplementation((url: string) =>
+      Promise.reject(new ApiError("all down", { status: 502, body: "", url, requestId: "req-gate-all" })),
+    );
+    await render(<DutyPage />);
+    expect(btn('[data-testid="duty-refresh"]')?.disabled).toBe(false);
+    const copies = [...container.querySelectorAll('[data-testid="ov6-rid-copy"]')] as HTMLButtonElement[];
+    expect(copies.length).toBeGreaterThan(0);
+    expect(copies.every((c) => c.disabled)).toBe(true);
+    expect(copies[0].title).toContain("整页");
+  });
+
+  it("while a refresh is in flight, retry and copy are held with one reason and a second press is swallowed", async () => {
+    let hold = false;
+    let release: (() => void) | null = null;
+    const urls: string[] = [];
+    fetchJSON.mockImplementation((url: string) => {
+      urls.push(url);
+      if (url.includes("/budget-usage")) {
+        return Promise.reject(new ApiError("budget source down", { status: 500, body: "", url, requestId: "req-gate-2" }));
+      }
+      if (hold && url.includes("/workbench/summary")) {
+        hold = false;
+        return new Promise((resolve) => {
+          release = () => resolve(ok(url));
+        });
+      }
+      return Promise.resolve(ok(url));
+    });
+    await render(<DutyPage />);
+    const before = urls.length;
+    hold = true;
+    await act(async () => {
+      btn('[data-testid="duty-refresh"]')?.click();
+    });
+    await act(async () => {});
+    expect(btn('[data-testid="duty-refresh"]')?.getAttribute("aria-busy")).toBe("true");
+    const mid = urls.length;
+    await act(async () => {
+      btn('[data-testid="duty-refresh"]')?.click();
+    });
+    await act(async () => {});
+    expect(urls.length).toBe(mid);
+    const retry = [...container.querySelectorAll("button")].find((b) => b.textContent?.includes("重试"));
+    expect((retry as HTMLButtonElement).disabled).toBe(true);
+    expect(retry?.getAttribute("title")).toContain("更新中");
+    const copy = btn('[data-testid="ov6-rid-copy"]');
+    expect(copy?.disabled).toBe(true);
+    expect(copy?.getAttribute("title")).toContain("更新中");
+    await act(async () => {
+      release?.();
+    });
+    await act(async () => {});
+    expect(urls.length).toBeGreaterThan(before);
   });
 });

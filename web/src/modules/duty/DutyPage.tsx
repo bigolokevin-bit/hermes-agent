@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { ArrowRight, RefreshCw, ShieldCheck } from "lucide-react";
 import { Badge } from "@nous-research/ui/ui/components/badge";
@@ -33,20 +33,28 @@ import type {
   TaskRow,
 } from "./types";
 import { useDutyData } from "./useDutyData";
+import { DUTY_GATES_OPEN, dutyGates, type DutyGates } from "./dutyGates";
 import "./duty.css";
 
 type Tone = "default" | "destructive" | "outline" | "secondary" | "success" | "warning";
 
+/** One gate set for every action on the page; see dutyGates.ts. */
+const DutyGatesContext = createContext<DutyGates>(DUTY_GATES_OPEN);
+const useDutyGates = () => useContext(DutyGatesContext);
+
 function CopyRid({ id, testId = "ov6-rid-copy" }: { id: string; testId?: string }) {
   const [state, setState] = useState<"idle" | "done" | "failed">("idle");
+  const gate = useDutyGates().copy;
   return (
     <button
       type="button"
       className="duty-req-copy"
       data-testid={testId}
       aria-label={`复制请求编号 ${id}`}
-      title="把请求编号复制给支持人员"
+      title={gate.title ?? "把请求编号复制给支持人员"}
+      disabled={!gate.enabled}
       onClick={() => {
+        if (!gate.enabled) return;
         void copyTextToClipboard(id).then((ok) => setState(ok ? "done" : "failed"));
       }}
     >
@@ -72,6 +80,7 @@ function StateLine({
   emptyLink?: string;
   children: ReactNode;
 }) {
+  const retryGate = useDutyGates().retry;
   if (state.k === "loading") {
     return (
       <div className="duty-skeleton" aria-busy="true" aria-label={loadingText}>
@@ -95,7 +104,14 @@ function StateLine({
             "本次请求未记录编号，可复制时间与操作路径反馈"
           )}
         </p>
-        <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
+        <Button
+          size="sm"
+          outlined
+          onClick={onRetry}
+          disabled={!retryGate.enabled}
+          title={retryGate.title ?? undefined}
+          prefix={<RefreshCw className="h-3.5 w-3.5" />}
+        >
           重试
         </Button>
       </div>
@@ -717,6 +733,12 @@ function HealthStrip({
 
 export default function DutyPage() {
   const { data, reload, loading, refreshState } = useDutyData();
+  // One derivation for refresh / retry / copy / links. Every block failed in
+  // the same batch only when the first read is done and every loadable errored.
+  const loadableValues = Object.values(data);
+  const allFailed =
+    !loading && loadableValues.length > 0 && loadableValues.every((v) => v.k === "error");
+  const gates = dutyGates({ loading, refreshing: refreshState.refreshing, allFailed });
 
   const forced = (() => {
     const match = window.location.hash.match(/[?&]state=([^&]+)/);
@@ -758,7 +780,9 @@ export default function DutyPage() {
     data.stats.k === "ready" ? lifecycleTotal(data.stats.data) : null;
 
   return (
+    <DutyGatesContext.Provider value={gates}>
     <div className="duty-page" data-testid="ov6-page" data-duty-testid="duty-page">
+      <span data-testid="duty-gates-scope" data-gates="refresh,retry,copy,link" hidden />
       <header className="duty-head">
         <div className="duty-title">
           <ShieldCheck className="h-5 w-5" aria-hidden />
@@ -806,7 +830,8 @@ export default function DutyPage() {
             size="sm"
             outlined
             onClick={refreshState.refresh}
-            disabled={loading}
+            disabled={!gates.refresh.enabled}
+            title={gates.refresh.title ?? undefined}
             aria-busy={refreshState.refreshing}
             data-testid="duty-refresh"
             prefix={
@@ -875,5 +900,6 @@ export default function DutyPage() {
         <RecentCard runs={data.recentRuns} onRetry={reload} />
       </div>
     </div>
+    </DutyGatesContext.Provider>
   );
 }
