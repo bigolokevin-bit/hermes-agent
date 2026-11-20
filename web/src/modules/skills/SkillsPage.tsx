@@ -109,10 +109,10 @@ function leavePreview() {
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
-function Cell({ value, reason }: { value: string | null; reason: string }) {
+function Cell({ value, reason, title }: { value: string | null; reason: string; title?: string | null }) {
   return (
     <span className="skl4-cell">
-      <span className={value ? "" : "skl4-missing"}>{value ?? "—"}</span>
+      <span className={value ? "" : "skl4-missing"} title={title ?? (!value ? reason : undefined)}>{value ?? "—"}</span>
       {!value ? <span className="skl4-reason">{reason}</span> : null}
     </span>
   );
@@ -338,7 +338,7 @@ export function SkillsPage() {
                     <tr data-testid={`skl4-row-${row.id}`} title={row.id}>
                       <td>
                         <span className="skl4-cell">
-                          <span className={row.name === "—" ? "skl4-missing" : ""}>{row.name}</span>
+                          <span className={row.name === "—" ? "skl4-missing" : ""} title={row.nameReason ?? undefined}>{row.name}</span>
                           {row.nameReason ? <span className="skl4-reason">{row.nameReason}</span> : null}
                           {row.version ? <span className="skl4-reason">版本 {row.version}</span> : null}
                           <button
@@ -353,7 +353,7 @@ export function SkillsPage() {
                         </span>
                       </td>
                       <td><Cell value={row.source} reason={row.sourceReason} /></td>
-                      <td><Cell value={row.status} reason={row.statusReason} /></td>
+                      <td><Cell value={row.status} reason={row.statusReason} title={row.statusRaw} /></td>
                       <td><Cell value={row.updatedAt} reason={row.updatedAtReason} /></td>
                       <td><Badge tone="outline">{row.scope}</Badge></td>
                     </tr>
@@ -362,9 +362,14 @@ export function SkillsPage() {
                         <td colSpan={5}>
                           <CapabilityRowDetail
                             name={row.name === "—" ? null : row.name}
+                            nameReason={row.nameReason}
                             type={row.source}
+                            typeReason={row.sourceReason}
                             enabled={row.status}
+                            enabledReason={row.statusReason}
+                            enabledTitle={row.statusRaw}
                             updatedAt={row.updatedAt}
+                            updatedReason={row.updatedAtReason}
                             endpoint="/agent-api/api/skills"
                             asOf={page.asOf}
                             asOfReason={page.asOfReason ?? ""}

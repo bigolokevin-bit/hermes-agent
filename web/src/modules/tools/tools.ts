@@ -45,6 +45,8 @@ export interface ToolRow {
   /** Top-level ISO asOf of the payload that produced this row. */
   asOf: string | null;
   asOfReason: string | null;
+  /** Actual route that answered this row, filled by fetchFirst. */
+  endpoint: string;
   rawId: string | null;
   detail: string[];
   failure?: string | null;
@@ -295,7 +297,8 @@ function toolsetRows(value: unknown, index: number, stamp: RowStamp): ToolRow[] 
   if (!rawName && !label) return [];
   const key = rawName ?? label ?? `toolset-${index}`;
   const groupName = (rawName ? TOOLSET_LABEL[rawName] : null) ?? label ?? rawName ?? "工具集";
-  const enabled = bool(rec.enabled ?? rec.available);
+  const enabledRaw = rec.enabled ?? rec.available;
+  const enabled = bool(enabledRaw);
   const configured = bool(rec.configured);
   const tools = Array.isArray(rec.tools) ? rec.tools.map(text).filter((x): x is string => x !== null) : [];
   const platform = pick(rec, ["platform_label", "platform"]);
@@ -306,8 +309,12 @@ function toolsetRows(value: unknown, index: number, stamp: RowStamp): ToolRow[] 
     type: groupName,
     typeReason: null,
     status: (enabled === true ? "enabled" : enabled === false ? "disabled" : "unknown") as ToolRow["status"],
-    statusRaw: enabled === null ? null : String(enabled),
-    statusReason: enabled === null ? "接口没有说明这个工具集是否启用。" : null,
+    statusRaw: enabledRaw === undefined || enabledRaw === null ? null : String(enabledRaw),
+    statusReason: enabled === null
+      ? enabledRaw === undefined || enabledRaw === null
+        ? "接口没有说明这个工具集是否启用。"
+        : "接口给出的启用值未归类。"
+      : null,
     credential: cred.state,
     credentialRaw: cred.raw,
     credentialReason: cred.reason,
@@ -317,6 +324,7 @@ function toolsetRows(value: unknown, index: number, stamp: RowStamp): ToolRow[] 
     updatedAtReason: updated.reason,
     asOf: stamp.asOf,
     asOfReason: stamp.asOfReason,
+    endpoint: "",
     ...failureOf(rec),
     source: "toolset" as const,
   };
@@ -343,7 +351,8 @@ function serverRow(value: unknown, index: number, stamp: RowStamp): ToolRow | nu
   if (!rec) return null;
   const rawName = pick(rec, ["name", "displayName", "display_name", "title", "label", "id"]);
   if (!rawName) return null;
-  const enabled = bool(rec.enabled);
+  const enabledRaw = rec.enabled;
+  const enabled = bool(enabledRaw);
   const transport = pick(rec, ["transport", "type"]) ?? "unknown";
   const auth = pick(rec, ["auth"]);
   const env = record(rec.env);
@@ -373,8 +382,12 @@ function serverRow(value: unknown, index: number, stamp: RowStamp): ToolRow | nu
     type: `MCP · ${TRANSPORT_LABEL[transport.toLowerCase()] ?? "其他传输"}`,
     typeReason: null,
     status: enabled === true ? "enabled" : enabled === false ? "disabled" : "unknown",
-    statusRaw: enabled === null ? null : String(enabled),
-    statusReason: enabled === null ? "接口没有说明这个连接是否启用。" : null,
+    statusRaw: enabledRaw === undefined || enabledRaw === null ? null : String(enabledRaw),
+    statusReason: enabled === null
+      ? enabledRaw === undefined || enabledRaw === null
+        ? "接口没有说明这个连接是否启用。"
+        : "接口给出的启用值未归类。"
+      : null,
     credential: credential.state,
     credentialRaw: credential.raw,
     credentialReason: credential.reason,
@@ -384,6 +397,7 @@ function serverRow(value: unknown, index: number, stamp: RowStamp): ToolRow | nu
     updatedAtReason: updated.reason,
     asOf: stamp.asOf,
     asOfReason: stamp.asOfReason,
+    endpoint: "",
     ...failureOf(rec),
     rawId: rawName,
     detail,
@@ -410,7 +424,11 @@ function flatToolRow(value: unknown, index: number, stamp: RowStamp): ToolRow | 
     typeReason: rawType ? null : "接口没有提供类型或来源。",
     status: enabled === true ? "enabled" : enabled === false ? "disabled" : "unknown",
     statusRaw: enabledRaw === undefined || enabledRaw === null ? null : String(enabledRaw),
-    statusReason: enabled === null ? "接口没有说明这个工具是否启用。" : null,
+    statusReason: enabled === null
+      ? enabledRaw === undefined || enabledRaw === null
+        ? "接口没有说明这个工具是否启用。"
+        : "接口给出的启用值未归类。"
+      : null,
     credential: cred.state,
     credentialRaw: cred.raw,
     credentialReason: cred.reason,
@@ -420,6 +438,7 @@ function flatToolRow(value: unknown, index: number, stamp: RowStamp): ToolRow | 
     updatedAtReason: updated.reason,
     asOf: stamp.asOf,
     asOfReason: stamp.asOfReason,
+    endpoint: "",
     ...failureOf(rec),
     rawId: rawName,
     detail: [`工具标识：${rawName}`],
@@ -486,7 +505,7 @@ async function fetchFirst(
     try {
       const rows = reader(await fetchJsonStrict(path));
       if (rows === null) throw new Error("服务回答的内容不是一份清单");
-      return rows;
+      return rows.map((row) => ({ ...row, endpoint: path }));
     } catch (err) {
       const status = err instanceof ApiError ? err.status : -1;
       // 403/404 and a 200 HTML shell all mean “this route is not wired here”.

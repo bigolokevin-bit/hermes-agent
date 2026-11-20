@@ -160,6 +160,9 @@ describe("SkillsPage", () => {
     expect(count.textContent).toContain("—");
     expect(count.textContent).not.toContain("0");
     expect(count.getAttribute("title")).toContain("GAP-SKL4-01");
+    const copy = container.querySelector<HTMLButtonElement>('[data-testid="capC-copy"]')!;
+    expect(copy.disabled).toBe(true);
+    expect(copy.title).toContain("没有可复制");
   });
 
   it("renders 403 and 404 with the same neutral body and no status code", async () => {
@@ -280,7 +283,7 @@ describe("SkillsPage", () => {
     expect(details).toHaveLength(1);
     expect(details[0]!.textContent).toContain("资料整理");
     expect(details[0]!.textContent).toContain("/agent-api/api/skills");
-    expect(container.querySelector("[data-testid='cap7-detail-asof']")?.textContent).toContain("该字段未返回");
+    expect(container.querySelector("[data-testid='cap7-detail-asof']")?.textContent).toContain("—");
     expect(container.querySelector("[data-testid='cap7-detail-asof']")?.getAttribute("title")).toContain("没有 asOf");
     expect(window.location.search).toBe(searchBefore);
 
@@ -379,9 +382,43 @@ describe("SkillsPage", () => {
     await render();
     await act(async () => container.querySelector<HTMLButtonElement>("[data-testid='cap7-detail-toggle']")!.click());
     const asof = container.querySelector("[data-testid='cap7-detail-asof']");
-    expect(asof?.textContent).toBe("该字段未返回");
+    expect(asof?.textContent).toBe("—");
     expect(asof?.getAttribute("title")).toContain("不是 ISO");
     expect(container.textContent).not.toContain("2026/11/19");
+  });
+
+  it("keeps name, source, status and update time identical across row, detail and copy", async () => {
+    window.history.replaceState({}, "", "/capabilities?tab=skills");
+    fetchJsonStrict.mockResolvedValue({
+      items: [{ skillId: "s1", name: "资料整理", scope: "tenant-shared", status: "mystery", updatedAt: "not-a-date" }],
+    });
+    await render();
+
+    const row = container.querySelector('[data-testid="skl4-row-s1"]')!;
+    const cells = row.querySelectorAll("td");
+    expect(cells[2]!.textContent).toContain("待核实");
+    expect(cells[2]!.querySelector("[title]")?.getAttribute("title")).toBe("mystery");
+    expect(cells[3]!.textContent).toContain("—");
+    expect(cells[3]!.querySelector("[title]")?.getAttribute("title")).toContain("无法识别");
+
+    await act(async () => container.querySelector<HTMLButtonElement>("[data-testid='cap7-detail-toggle']")!.click());
+    const detail = container.querySelector("[data-testid='cap7-detail-skills']")!;
+    expect(container.querySelector("[data-testid='cap7-detail-name']")?.textContent).toBe("资料整理");
+    expect(container.querySelector("[data-testid='cap7-detail-type']")?.textContent).toBe("类型：团队共享");
+    expect(container.querySelector("[data-testid='cap7-detail-enabled']")?.textContent).toBe("待核实");
+    expect(container.querySelector("[data-testid='cap7-detail-enabled']")?.getAttribute("title")).toContain("mystery");
+    expect(container.querySelector("[data-testid='cap7-detail-updated']")?.textContent).toBe("—");
+    expect(container.querySelector("[data-testid='cap7-detail-updated']")?.getAttribute("title")).toContain("无法识别");
+    expect(container.querySelector("[data-testid='cap7-detail-asof']")?.textContent).toBe("—");
+    expect(container.querySelector("[data-testid='cap7-detail-asof']")?.getAttribute("title")).toContain("没有 asOf");
+    expect(container.querySelector("[data-testid='cap7-detail-endpoint']")?.textContent).toBe("/agent-api/api/skills");
+    expect(detail.textContent).toContain("资料整理");
+
+    const beforeCopy = fetchJsonStrict.mock.calls.length;
+    await act(async () => container.querySelector<HTMLButtonElement>("[data-testid='capC-copy']")!.click());
+    const copied = String(clipboard.copyTextToClipboard.mock.calls[0][0]).split("\n");
+    expect(copied[1]).toBe("资料整理,类型：团队共享,待核实,—");
+    expect(fetchJsonStrict.mock.calls.length).toBe(beforeCopy);
   });
 
   it("leaks no engineering names or raw ids into the page", async () => {

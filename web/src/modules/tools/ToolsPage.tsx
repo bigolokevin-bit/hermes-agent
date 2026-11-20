@@ -123,7 +123,7 @@ function Row({ row, open, onToggle }: { row: ToolRow; open: boolean; onToggle: (
         <span className="flex min-w-0 flex-col items-end gap-0.5">
           <Badge
             tone={row.status === "enabled" ? "success" : row.status === "disabled" ? "destructive" : "secondary"}
-            title={row.statusReason ?? undefined}
+            title={[row.statusRaw, row.statusReason].filter(Boolean).join(" · ") || undefined}
           >
             <span data-testid="tol5-status"><span data-testid="tl3-status">{STATUS_LABEL[row.status]}</span></span>
           </Badge>
@@ -138,10 +138,15 @@ function Row({ row, open, onToggle }: { row: ToolRow; open: boolean; onToggle: (
     {open ? (
       <CapabilityRowDetail
         name={row.name}
+        nameReason={row.nameReason}
         type={kindLabel(row)}
+        typeReason={row.typeReason}
         enabled={STATUS_LABEL[row.status]}
+        enabledReason={row.statusReason}
+        enabledTitle={row.statusRaw}
         updatedAt={row.updatedAt}
-        endpoint={row.source === "mcp" ? "/api/mcp/servers" : "/api/tools/toolsets"}
+        updatedReason={row.updatedAtReason}
+        endpoint={row.endpoint || (row.source === "mcp" ? "/api/mcp/servers" : "/api/tools/toolsets")}
         asOf={row.asOf}
         asOfReason={row.asOfReason ?? "这次读数没有带采集时刻。"}
         testid="cap7-detail-tools"

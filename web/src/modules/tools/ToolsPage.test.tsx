@@ -238,6 +238,9 @@ describe("failures and gaps", () => {
     expect(document.querySelector("[data-testid='tol5-denied']")?.getAttribute("title")).toBe("GAP-04");
     expect(document.querySelector("[data-testid='cap9-state-unavailable']")).toBeTruthy();
     expect(document.querySelector("[data-testid='cap9-state-denied']")).toBeNull();
+    const copy = document.querySelector<HTMLButtonElement>('[data-testid="capC-copy"]')!;
+    expect(copy.disabled).toBe(true);
+    expect(copy.title).toContain("没有可复制");
   });
 
   it("a 200 empty payload is an honest 0, not a not-wired state", async () => {
@@ -342,9 +345,9 @@ describe("row detail", () => {
     expect(details).toHaveLength(1);
     expect(details[0]!.textContent).toContain("网页搜索");
     expect(details[0]!.textContent).toContain("/api/tools/toolsets");
-    expect(document.querySelector("[data-testid='cap7-detail-asof']")?.textContent).toContain("该字段未返回");
+    expect(document.querySelector("[data-testid='cap7-detail-asof']")?.textContent).toContain("—");
     expect(document.querySelector("[data-testid='cap7-detail-asof']")?.getAttribute("title")).toContain("没有顶层采集时刻");
-    expect(document.querySelector("[data-testid='cap7-detail-updated']")?.textContent).toContain("该字段未返回");
+    expect(document.querySelector("[data-testid='cap7-detail-updated']")?.textContent).toContain("—");
 
     await act(async () => toggles[5]!.click());
     details = [...document.querySelectorAll("[data-testid='cap7-detail-tools']")];
@@ -356,6 +359,41 @@ describe("row detail", () => {
     await act(async () => toggles[5]!.click());
     expect(document.querySelectorAll("[data-testid='cap7-detail-tools']")).toHaveLength(0);
     expect(rows()).toHaveLength(6);
+  });
+
+  it("keeps name, type, status and update time identical across row, detail and copy", async () => {
+    const handler = (url?: string) => {
+      if (!url) return Promise.resolve({ servers: [] });
+      if (url === "/api/tools/toolsets") {
+        return Promise.resolve([{ name: "ghost", label: "Ghost", enabled: "mystery", tools: ["ghost_tool"] }]);
+      }
+      if (url.includes("/api/mcp/servers")) return Promise.resolve({ servers: [] });
+      return Promise.reject(new ApiError("missing", { status: 404, body: "{}", url }));
+    };
+    await mount(handler);
+    const row = rows()[0]!;
+    expect(row.querySelector("[data-testid='tol5-name']")?.textContent).toBe("ghost tool");
+    expect(row.querySelector("[data-testid='tol5-type']")?.textContent).toBe("内置 · Ghost");
+    expect(row.querySelector("[data-testid='tol5-status']")?.textContent).toBe("待核实");
+    expect(row.querySelector("[data-testid='tol5-status']")?.closest("[title]")?.getAttribute("title")).toContain("mystery");
+    expect(row.querySelector("[data-testid='tl3-updated']")?.textContent).toContain("最近更新：—");
+
+    await act(async () => document.querySelector<HTMLButtonElement>("[data-testid='cap7-detail-toggle']")!.click());
+    expect(document.querySelector("[data-testid='cap7-detail-name']")?.textContent).toBe("ghost tool");
+    expect(document.querySelector("[data-testid='cap7-detail-type']")?.textContent).toBe("内置 · Ghost");
+    expect(document.querySelector("[data-testid='cap7-detail-enabled']")?.textContent).toBe("待核实");
+    expect(document.querySelector("[data-testid='cap7-detail-enabled']")?.getAttribute("title")).toContain("mystery");
+    expect(document.querySelector("[data-testid='cap7-detail-updated']")?.textContent).toBe("—");
+    expect(document.querySelector("[data-testid='cap7-detail-updated']")?.getAttribute("title")).toContain("没有提供最近更新时间");
+    expect(document.querySelector("[data-testid='cap7-detail-asof']")?.textContent).toBe("—");
+    expect(document.querySelector("[data-testid='cap7-detail-asof']")?.getAttribute("title")).toContain("没有顶层采集时刻");
+    expect(document.querySelector("[data-testid='cap7-detail-endpoint']")?.textContent).toBe("/api/tools/toolsets");
+
+    const beforeCopy = api.fetchJsonStrict.mock.calls.length;
+    await act(async () => document.querySelector<HTMLButtonElement>("[data-testid='capC-copy']")!.click());
+    const copied = String(clipboard.copyTextToClipboard.mock.calls[0][0]).split("\n");
+    expect(copied[1]).toBe("ghost tool,内置 · Ghost,待核实,—");
+    expect(api.fetchJsonStrict.mock.calls.length).toBe(beforeCopy);
   });
 
   it("shows only a top-level ISO asOf from the inventory payload", async () => {

@@ -1941,3 +1941,19 @@ built /private/tmp/health-r38/index.html
   - 两 tab 复制后状态均为「已复制 1 行」，无 fallback。
 - 验证：定向 `skills+tools+capabilities` → **6 files / 62 passed**；全量 **139 files / 1677 passed**；tsc 本域 0（仅基线 employee-detail/employees 报错）。
 - 边界：仅改 `web/src/modules/{capabilities,skills,tools}/**` + DONE；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未并 main、未重建 9122。
+
+## R63 — /capabilities 行详情与复制字段一致性（cap7/capC/列表行）
+
+- 基线：显式 refspec fetch 后 `git merge origin/lane/hermes-console`（tip `b797bc98`，代码代次 `053da5c4`）→ Already up to date；未 reset。
+- 改前/改后：
+  1. 行详情缺值原显示 `该字段未返回`，与列表/复制的 `—` 不同；现统一为 `—`，原因只进 title。
+  2. 技能未知启用态列表/详情没有原值 title；现 `待核实` + title 显示上游原值（如 `mystery`）。
+  3. 工具集启用值为无法归类的字符串时，statusRaw 丢失、title 只写「没有说明」；现保留原值并写「接口给出的启用值未归类。」。
+  4. 工具详情读口路径原为按来源硬编码；现由 `fetchFirst` 记录实际应答路径（`row.endpoint`），详情显示真实路径。
+- 改后逐字段实测（同一份数据，1440/1280/375 三档一致）：
+  - 技能：列表 `待核实`（title `mystery`）/ 更新 `—`；详情 `资料整理 | 类型：团队共享 | 待核实 | — | /agent-api/api/skills | —`；复制行 `资料整理,类型：团队共享,待核实,—`。
+  - 工具：列表 `待核实`（title `mystery · 接口给出的启用值未归类。`）/ 更新 `—`；详情 `ghost tool | 内置 · Ghost | 待核实 | — | /api/tools/toolsets | —`；复制行 `ghost tool,内置 · Ghost,待核实,—`。
+  - 采集时刻均只取顶层 ISO `asOf`；缺失为 `—`，title 给出原因；`asOfSource` 仅进 title；本机时钟不入。
+- 新增一致性用例：技能/工具各一条，覆盖「未知状态原值 title + 更新缺值 + 缺 asOf」；另在 404 用例断言复制按钮 disabled 且 title 说明原因。
+- 验证：定向 `skills+tools+capabilities` → **6 files / 64 passed**；全量 **139 files / 1679 passed**；tsc 本域 0（仅基线 employee-detail/employees 报错）；三档 `bodySW=bodyCW=视口`。
+- 边界：仅改 `web/src/modules/{capabilities,skills,tools}/**` + DONE；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未并 main、未重建 9122。
