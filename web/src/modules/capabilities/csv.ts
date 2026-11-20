@@ -16,8 +16,11 @@ function cell(value: string | null | undefined): string {
   return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
-export function toCsv(rows: readonly CsvRow[]): string {
+export function toCsv(rows: readonly CsvRow[], note: string | null = null): string {
   const lines = [CSV_HEADER.join(","), ...rows.map((row) => [row.name, row.type, row.enabled, row.updated_at].map(cell).join(","))];
+  // A trailing single-column `#` line carries the export caliber. It is a
+  // comment, not a data row: data row count stays rows.length either way.
+  if (note) lines.push(`#${note}`);
   return `${lines.join("\r\n")}\r\n`;
 }
 

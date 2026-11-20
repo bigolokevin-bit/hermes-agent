@@ -73,6 +73,26 @@ export function derivePageScope({
   };
 }
 
+/** The one sentence describing what an export of the current list covers. The
+ * CSV trailing `#` note, the export button title and the on-screen note all
+ * read this, so the export caliber can never drift from the list caliber.
+ * Wording follows the mode: a full render never says 已加载, a capped page
+ * never says 全量. */
+export function exportScopeNote(scope: PageScopeView): string {
+  if (scope.mode === "loading") {
+    return "列表仍在读取，本次导出不代表任何总数";
+  }
+  if (scope.mode === "unavailable") {
+    return `读口未接入，无法判断总数；本次导出屏上 ${scope.shown} 行，不代表全量`;
+  }
+  if (scope.mode === "capped") {
+    return scope.total === null
+      ? `本次导出为当前已加载 ${scope.shown} 项，读口未回传总数，不是全量`
+      : `本次导出为当前已加载 ${scope.shown} 项，读口回传总数 ${scope.total} 项，不是全量`;
+  }
+  return `本次导出为表内全量，共 ${scope.shown} 项`;
+}
+
 export function CapabilityPageScope({
   scope,
   testid = "cap-page-scope",

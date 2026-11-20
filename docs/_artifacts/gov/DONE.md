@@ -2280,3 +2280,30 @@ built /private/tmp/health-r38/index.html
 - 测试：新增 `RowCopy.test.tsx`（六行文本、缺失 `—`、成功「已复制」、剪贴板拒绝 fallback 逐字同）；skills/tools 详情测试补「展开前无按钮 / 展开后有 / Esc 收起后无」；定向 10 files / 96 passed；全量 163 files / 2249 passed；tsc 仅基线错误，本域 0。
 - DOM（临时 harness，已删除）：1440/1280/375 `vw=bodySW=bodyCW`；skills 复制 6 行（采集 `2026-11-19 14:00`，fetch 1→1）；tools 复制 6 行（最近更新/采集均 `—`，fetch 5→5）；两 tab 均无 fallback、无横溢。
 - 边界：仅 `modules/{capabilities,skills,tools}/**` + DONE；未改 App/shell/routes/registry/package·lock/web-scripts/ops；未 install、未并 main、未重建 9122；禁 force/amend/--no-verify。
+
+## R85 / R52 OBS 整改 — sys-matrix-copy-status 可见反馈（`feat(console): system copy status visible feedback`）
+
+- 基线：显式 refspec fetch + `git merge --no-ff origin/lane/hermes-console`（禁 reset），HEAD 由 `cd826f7d` 到 merge `46160f47`；上游带入 appr/aud/ui2 工件与 `tests/gateway/test_c1_forward_latch.py`。
+- ① 状态节点：`SourceMatrix.tsx:206` 的 `sys-matrix-copy-status` 补 `role="status"`（原只有 `aria-live="polite"`）；成功 `已复制 N 行`、失败文案按派工单改为 **「复制失败，可手动选择文本」**（原「复制失败，已展开手动复制」）。同帧只播一次：把 `matrixCopyState` + `matrixCopiedRows` 两个 useState 合成**单个对象 state** `matrixCopy{state,rows}`，一次 `setMatrixCopy` 落地，避免两段文案分帧触发两次播报；早退分支（无 `navigator.clipboard`）与 catch 分支同样单点 set。
+- ② 复制内容吃搜索与排序态：`matrixText = toMatrixText(sortedRows)`，`sortedRows = sortSourceRows(searchedRows, sort)` —— 即 `sys-search` 的 q 与 `sys13` 排序共同决定行序，行序 == 表体。实测两组首末行（jsdom 取证后已删临时落盘）：
+  - 组一（无搜索，点 `sys13-sort-state` 升序）首行 `系统健康清单\t/agent-api/api/health\t成功\t2 ms\t2026-11-19 23:17`，末行 `控制台服务探针\t/agent-api/api/__health-probe__\t读口未接入\t2 ms\t—`，表头 `口径名\t路径\t状态\t耗时\t采集时刻`。
+  - 组二（`?q=探针` 命中 3 行 + `sys13-sort-asof`）首行 `域服务探针\t/agent-api/api/skills\t成功\t0 ms\t2026-11-20 06:15`，末行 `Hermes 运行时探针\t/agent-api/api/hermes-summary\t失败\t0 ms\t—`；被搜索滤掉的 `系统健康清单` 不在文本内。
+- ③ 新增断言（`SourceMatrix.test.tsx`）：`role=status`/`aria-live=polite` 存在；空闲态 textContent 为空，点击后非空且等于 `已复制 <表体行数> 行`；失败态文案与成功态**不同**且非空，同时 `sys-matrix-copy-fallback` 只读 textarea 在位；两态下 `api.fetchJSON` 调用数与点击前**完全一致**；搜索+排序组的复制行序逐行等于 `sys6-row-*` 表体顺序、行数 = 表体行数 + 表头。
+- 验证：定向 `src/modules/health` → **8 files / 70 passed**；全量 → 166 files / 2306 passed + **1 failed**（`src/modules/approvals/ApprovalsPendingModulePage.test.tsx > pending queue states > error says it in a sentence...`，单独跑该文件 **36/36 通过** ⇒ 上游自带用例在全量并发下的串扰，非本域、非本轮改动引起；本域写域只有 health）。`tsc -b . --noEmit` exit 2，错误只在 approvals/employee-detail/employees 基线，`modules/health` 0 条。
+- 三档口径（偏离披露）：本轮**未重跑浏览器三档实测**。原因：改动只在既有 `.sys10-status` span 内换文案与加 ARIA 属性，未动类名、容器结构、CSS 或行列布局（`counts.css`/`sys*.css` 零改动），宽度溢出行为不可能因此变化；jsdom 断言与视口无关。如需 1440/1280/375 的像素级复测，请下令，我按既有 harness 补测。
+- 边界：写域只有 `web/src/modules/health/**` + `docs/_artifacts/gov/DONE.md`；未碰 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未 install、未并 main、未重建 9122；禁 force/amend/--no-verify。
+
+## R86 / cap-export-scope-parity — /capabilities 导出口径与列表口径联动（`feat(console): capabilities export scope parity`）
+
+- 基线：显式 refspec fetch + `git merge --no-ff origin/lane/hermes-console`（禁 reset），HEAD 由 `29544c97` 到 merge `eee6693a`；上游 tip `f54b8a37`（gateway `channel_event_bridge.py` 发送者 open_id + 新 `tests/gateway/test_channel_event_sender_ids.py`），页面代次仍 `fa7c2155`。
+- ① 行数来源现查结论（改前）：**skills 已经同源** —— `SkillsPage.tsx` 的 `exportRows = sortedRows.map(...)` 与 `derivePageScope({shown: sortedRows.length, total, nextCursor})` 都取自 `sortedRows`（= q 过滤 + `capA` 排序后的数组），所以导出 N 与 `cap-page-scope` N 必然相等。**tools 不同源但同数** —— `pageScope.shown` 取 `visibleRows.length`，导出取 `displayRows = [...toolRows, ...mcpRows]`（`source` 只有 toolset|mcp 两值，分区穷尽 ⇒ 长度恒等，但数组身份不同，将来任一侧加分组过滤就会分叉）。本轮把 tools 的 `shown` 收紧为 `displayRows.length`，让两侧引用同一数组而不只是恰好相等。
+- ② 措辞单点：新增 `pageScope.tsx:76-94 exportScopeNote(scope)`，按 mode 派生唯一一句；三个消费点全部读它 —— CSV 末行 `#${note}`（`csv.ts toCsv(rows, note=null)`，`#` 开头单列注释行，**不计入数据行**）、`cap6-export` 的 title（仅 `gate.enabled` 时追加 ` · ${note}`，空态门控句保持逐字不变）、`cap-export-name` 的预览 title 尾部 `导出口径：${note}`。屏上新增 `cap-export-scope-note`（`data-mode`/`data-shown`，title 说明「同时写进 CSV 末行的 # 注记，注记不计入数据行」）。措辞按 mode 分流：capped → 「本次导出为当前已加载 N 项，读口回传总数 M 项，不是全量」（无 total 则「读口未回传总数」）；full → 「本次导出为表内全量，共 N 项」；unavailable → 「读口未接入，无法判断总数；本次导出屏上 N 行，不代表全量」；loading → 「列表仍在读取，本次导出不代表任何总数」。
+- ③ 全量分支如实写：`/agent-api/api/skills` 实测不回传 `total`/`nextCursor` ⇒ mode=full，注记写「表内全量，共 N 项」，**不含「已加载」字样**（`pageScope.test.ts` 用 `not.toContain("已加载")` 钉死）。「已加载 / 不是全量」只在读口真带分页信号时出现，本轮用 harness 造 `total:57 + nextCursor:"cur_2"` 与 jsdom mock 各验一次。
+- ④ 三方同源断言（②③两支 + 既有支）：skills 过滤支与 tools 搜索支各自断言 `cap-export-scope-note` 文本 == CSV 末行去掉 `#`、`data-shown` == 表体行数 == `cap-page-scope` 内的数字 == CSV 非 `#` 行数减表头；`cap6-export` title 含该句。`csv.test.ts` 钉住「加注记后数据行数不变」。零额外请求：两侧导出前后 `urls()` / `fetchJsonStrict` 计数不变（tools 搜索支仍为 6）。
+- ⑤ 零破坏与三档实测（临时 Vite+CDP harness，取证后已删）：`cap4–capH/skl4/tl3/sys*` 全量套件绿；三档 × 三页共 9 组合，`vw == body.scrollWidth == body.clientWidth`（1440/1280/375 精确），无横溢：
+  - skills-full：rows=2，scope「表内全量渲染，共 2 项」，note「本次导出为表内全量，共 2 项」，CSV 数据行 3（表头+2）末行 `#本次导出为表内全量，共 2 项`，fetch 1→1。
+  - skills-capped：rows=2，scope「本页按读口单页上限显示 2 项，总数以读口回传为准」，note「本次导出为当前已加载 2 项，读口回传总数 57 项，不是全量」，CSV 末行同句，fetch 1→1。
+  - tools：rows=1，note「本次导出为表内全量，共 1 项」，CSV 数据行 2，fetch 5→5。
+- 验证：定向 `src/modules/{capabilities,skills,tools}` → **10 files / 103 passed**；全量 → **166 files / 2314 passed**（0 failed，approvals 那条上游串扰本轮未复现）；`tsc -b . --noEmit` exit 2，错误只在 approvals/employee-detail/employees 基线，本域 0 条。
+- 诚实披露：派工单引用的「已加载 N 项」不是 `cap-page-scope` 的实际文案 —— 屏上真实字符串是「表内全量渲染，共 N 项」/「本页按读口单页上限显示 N 项，总数以读口回传为准」，「仅在当前已加载 N 项内搜索」属于 `cap5-scope-note`（搜索作用域）。本轮按真实 mode 出措辞，没有为贴合派工单而改列表既有文案。另外注记在**空列表**时仍然渲染并写「共 0 项」（与 `cap-page-scope` 的 0 口径一致），只有按钮 title 不加注记（保持门控空态句逐字）。
+- 边界：写域只有 `web/src/modules/{capabilities,skills,tools}/**` + `docs/_artifacts/gov/DONE.md`（11 文件）；未碰 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未 install、未并 main、未重建 9122；禁 force/amend/--no-verify。

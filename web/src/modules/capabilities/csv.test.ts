@@ -33,4 +33,17 @@ describe("capabilities CSV", () => {
     expect(exportFilename({ tab: "skills", q: "web:search", sort: "name", dir: "asc" }, now)).toContain("-skills-default-name-asc-");
     expect(exportFilename({ tab: "skills", q: "Web.Search", sort: "type", dir: "DESC" }, now)).toContain("-skills-web.search-type-desc-");
   });
+
+  it("appends the scope note as a single # comment line without touching the data rows", () => {
+    const note = "本次导出为当前已加载 3 项，读口回传总数 57 项，不是全量";
+    const plain = toCsv(rows);
+    const withNote = toCsv(rows, note);
+    expect(withNote.endsWith("\r\n")).toBe(true);
+    expect(withNote.startsWith(plain)).toBe(true);
+    expect(withNote.trimEnd().split("\r\n").slice(-1)[0]).toBe(`#${note}`);
+    expect(withNote.split("\r\n").filter((line) => !line.startsWith("#")).length).toBe(
+      plain.split("\r\n").filter((line) => !line.startsWith("#")).length,
+    );
+    expect(toCsv(rows, null)).toBe(plain);
+  });
 });
