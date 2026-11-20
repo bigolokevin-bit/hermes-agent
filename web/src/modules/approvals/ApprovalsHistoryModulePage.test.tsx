@@ -580,6 +580,7 @@ describe("R54 CSV export", () => {
       amount: null,
       reason: null,
       risk: riskView(null),
+      requestId: null,
       ...over,
     } as unknown as ApprovalRow);
 
@@ -587,12 +588,16 @@ describe("R54 CSV export", () => {
     const csv = buildApprovalsCsv([
       mkRow({ title: '预算, 含"引号"' }),
       mkRow({ rawId: "ap_Y", title: "无时间", clock: null, risk: riskView("high") }),
+      // R107: 带 rid 的行——correlation 恒=审批单号，rid 有值原样、缺=空字段。
+      mkRow({ rawId: "ap_Z", title: "带编号", requestId: "req-z-1" }),
     ]);
     const lines = csv.replace(/^\uFEFF/, "").split("\r\n");
-    expect(lines[0]).toBe("id,title,status,risk,updated_at");
+    expect(lines[0]).toBe("id,title,status,risk,updated_at,correlation,rid");
     expect(lines[1]).toContain('"预算, 含""引号"""');
-    expect(lines[1].endsWith(",2026-11-19 09:20")).toBe(true);
-    expect(lines[2].endsWith(",高风险,")).toBe(true); // risk 屏上值；updated_at 缺=空，不补 0
+    // R107: 末尾两列=correlation(单号),rid(缺=空)。
+    expect(lines[1].endsWith(",2026-11-19 09:20,ap_X,")).toBe(true);
+    expect(lines[2].endsWith(",高风险,,ap_Y,")).toBe(true); // risk 屏上值；updated_at 缺=空不补 0，rid 缺=空
+    expect(lines[3].endsWith(",ap_Z,req-z-1")).toBe(true);
     expect(csvEscape("plain")).toBe("plain");
     // R75 契约：五段名（tab/status/sort/dir/时刻），未排序=default。
     expect(
@@ -2545,5 +2550,80 @@ describe("R52-obs dom carriers and anchor naming", () => {
       expect(el, name).toBeTruthy();
       expect(el!.getAttribute(`data-${name}`), `${name} attribute`).toBe(value);
     }
+  });
+});
+
+describe("R100 row detail copy (apd11-*)", () => {
+  const R100_ROW = {
+    approvalId: "ap_r100",
+    title: "季度预算上调",
+    status: "pending",
+    riskLevel: "high",
+    createdAt: "2026-11-19T02:00:00Z",
+    approvers: [{ userId: "human:7", name: "郑涛" }],
+    requestId: "req-r100-1",
+  };
+  const R100_TEXT = [
+    "标题：季度预算上调",
+    "状态：待处理",
+    "风险档：高风险",
+    "提交时间：绝对 2026-11-19 10:00:00（北京时间） · ISO 2026-11-19T02:00:00Z",
+    "更新时间：该字段未返回",
+    "审批人：郑涛",
+    "请求编号：req-r100-1",
+  ].join("\n");
+  const r100Handler = async (url: string): Promise<unknown> => {
+    if (url.includes("/api/approval?id=")) return {};
+    return { items: [R100_ROW] };
+  };
+  const q100 = (id: string): HTMLElement | null =>
+    document.querySelector(`[data-testid="${id}"]`);
+  const toggle100 = (): HTMLButtonElement =>
+    document.querySelector(
+      '[data-testid^="apv9-toggle-"][data-record="ap_r100"]',
+    ) as HTMLButtonElement;
+
+  it("R100: the copy button waits collapsed with its reason on screen", async () => {
+    await mount(r100Handler);
+    const btn = q100("apd11-copy") as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
+    expect(btn.getAttribute("title")).toBe("先展开一行审批再复制");
+  });
+
+  it("R100: expanding a row makes the copy text byte-exact with zero extra requests", async () => {
+    await mount(r100Handler);
+    const base = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      toggle100().click();
+    });
+    expect(api.fetchJSON.mock.calls.length).toBe(base);
+    const writeText = stubClipboard();
+    const btn = q100("apd11-copy") as HTMLButtonElement;
+    expect(btn.disabled).toBe(false);
+    await act(async () => {
+      btn.click();
+    });
+    expect(writeText.mock.calls[0]?.[0]).toBe(R100_TEXT);
+    await waitFor(() => (q100("apd11-copy-status")?.textContent ?? "") === "已复制");
+    expect(api.fetchJSON.mock.calls.length).toBe(base);
+    expect(document.querySelectorAll('[aria-live="polite"]')).toHaveLength(1);
+  });
+
+  it("R100: a refused clipboard falls back to a read-only textarea, byte-identical", async () => {
+    await mount(r100Handler);
+    await act(async () => {
+      toggle100().click();
+    });
+    Object.defineProperty(window.navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: vi.fn(async () => { throw new Error("denied"); }) },
+    });
+    await act(async () => {
+      (q100("apd11-copy") as HTMLButtonElement).click();
+    });
+    await waitFor(() => !!q100("apd11-copy-fallback"));
+    const area = q100("apd11-copy-fallback") as HTMLTextAreaElement;
+    expect(area.readOnly).toBe(true);
+    expect(area.value).toBe(R100_TEXT);
   });
 });

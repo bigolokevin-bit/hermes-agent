@@ -19,3 +19,8 @@ export const APPROVAL_DENIED_BODY =
 export const APPROVAL_RETRY_LABEL = "重试";
 /** rid 缺位兜底句（与 RequestIdCopyField 同值单点）。 */
 export const APPROVAL_RID_FALLBACK = "本次请求未记录编号，可复制时间与操作路径反馈";
+
+/** R99: 字段缺值通用句——预览/详情/审计链接三处缺值载体共用（禁字面量散落）。 */
+export const FIELD_MISSING_SENTENCE = "该字段未返回";
+/** R99: rid 缺值句（行内预览与详情的请求编号位同值单点）。 */
+export const APPROVAL_RID_MISSING = "请求编号：该字段未返回";

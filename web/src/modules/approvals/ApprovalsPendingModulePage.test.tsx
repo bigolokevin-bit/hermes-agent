@@ -308,7 +308,10 @@ describe("pending queue states", () => {
     expect(text().replace(nameEl, "")).not.toContain("pending");
     expect(text()).not.toContain("message_send");
 
-    const disclosure = buttonNamed("详情");
+    // R100：页级新增「复制预览详情」钮——短文案查找改精确匹配，防抢占。
+    const disclosure = Array.from(document.querySelectorAll("button")).find(
+      (b) => (b.textContent ?? "").trim() === "详情",
+    );
     expect(disclosure).toBeTruthy();
     await act(async () => {
       (disclosure as HTMLButtonElement).click();
@@ -868,5 +871,45 @@ describe("R93 pending tab status semantics (apv-status-note)", () => {
     expect(qa("apv-chip-status")).toBeNull();
     const listUrls = api.fetchJSON.mock.calls.map((c) => String(c[0])).filter((u) => u.includes("/api/approvals"));
     expect(listUrls.length).toBe(1);
+  });
+});
+
+describe("R100 row detail copy (apd11-*)", () => {
+  const P100_TEXT = [
+    "标题：对外发送本周报表",
+    "状态：待处理",
+    "风险档：未标注风险",
+    "提交时间：绝对 2026-11-19 09:20:00（北京时间） · ISO 2026-11-19T01:20:00Z",
+    "更新时间：该字段未返回",
+    "审批人：该字段未返回",
+    "请求编号：该字段未返回",
+  ].join("\n");
+
+  it("R100: pending mirrors the gate collapsed, then copies the loaded row with zero requests", async () => {
+    await mount(queue());
+    const btn = document.querySelector('[data-testid="apd11-copy"]') as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
+    expect(btn.getAttribute("title")).toBe("先展开一行审批再复制");
+    const base = api.fetchJSON.mock.calls.length;
+    const toggle = document.querySelector(
+      '[data-testid^="apv9-toggle-"][data-record="ap_9F3A1111"]',
+    ) as HTMLButtonElement;
+    await act(async () => {
+      toggle.click();
+    });
+    expect(btn.disabled).toBe(false);
+    const writeText = vi.fn(async () => {});
+    Object.defineProperty(window.navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    await act(async () => {
+      btn.click();
+    });
+    expect(writeText.mock.calls[0]?.[0]).toBe(P100_TEXT);
+    await waitFor(
+      () => (document.querySelector('[data-testid="apd11-copy-status"]')?.textContent ?? "") === "已复制",
+    );
+    expect(api.fetchJSON.mock.calls.length).toBe(base);
   });
 });

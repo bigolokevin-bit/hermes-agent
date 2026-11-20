@@ -41,6 +41,7 @@ import { BackToList, restoreListScroll, saveListScroll } from "./BackToList";
 import { QueueCsvExport } from "./QueueCsvExport";
 import { QueueSortBar } from "./QueueSortBar";
 import { ActorBuckets } from "./ActorBuckets";
+import { RowDetailCopy } from "./RowDetailCopy";
 import { SinceQuickFilter, isSinceValue, withinSince } from "./SinceQuickFilter";
 import { RiskQuickFilter, isRiskValue, withinRisk, type RiskValue } from "./RiskQuickFilter";
 import { ApprovalDetailBody, ApprovalRowCard } from "./views";
@@ -466,6 +467,7 @@ export function ApprovalsPendingModulePage(): ReactNode {
 
       <QueueSortBar phase={list.phase} sort={asort} dir={adir} loadedCount={list.rows.length} onCycle={cycleSort} />
       <ActorBuckets rows={riskBaseRows} phase={list.phase} actor={actor} onPick={pickActor} />
+      <RowDetailCopy row={visibleRows.find((r) => r.key === previewKey) ?? null} />
       <SinceQuickFilter phase={list.phase} since={since} loadedCount={list.rows.length} onPick={pickSince} />
       <RiskQuickFilter rows={actorBaseRows} phase={list.phase} risk={risk} onPick={pickRisk} />
 

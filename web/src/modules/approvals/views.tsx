@@ -21,6 +21,7 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { themedBody } from "@/lib/utils";
 import { humanizeHandles, money, type ApprovalDetail, type ApprovalRow } from "./model";
 import { DetailsDisclosure, RequestIdCopyField } from "./states";
+import { APPROVAL_RID_MISSING, FIELD_MISSING_SENTENCE } from "./stateCopy";
 import { RelativeTime } from "./RelativeTime";
 import { shortRef } from "@/modules/tasks/tasksBoard";
 
@@ -258,7 +259,7 @@ export function ApprovalRowCard({
               <Field
                 label="风险档"
                 value={row.risk.label}
-                reason={row.risk.raw ?? "该字段未返回"}
+                reason={row.risk.raw ?? FIELD_MISSING_SENTENCE}
               />
               <Field
                 label="更新时间"
@@ -284,14 +285,14 @@ export function ApprovalRowCard({
                     ? row.approvers.raw ?? undefined
                     : row.approvers.raw
                       ? `该字段未返回姓名（原值：${row.approvers.raw}）`
-                      : "该字段未返回"
+                      : FIELD_MISSING_SENTENCE
                 }
               />
             </dl>
             <p className="mt-2 min-w-0 break-words text-xs">
               <RequestIdCopyField
                 requestId={row.requestId}
-                fallback="请求编号：该字段未返回"
+                fallback={APPROVAL_RID_MISSING}
               />
             </p>
             {/* R88: 预览内也给出固定链接（同一条审批的直达地址）。 */}
@@ -641,7 +642,7 @@ export function ApprovalDetailBody({
                 </button>
               </>
             ) : (
-              <span data-testid="apd5-request-id-missing" title="这条记录没有带回请求编号">该字段未返回</span>
+              <span data-testid="apd5-request-id-missing" title="这条记录没有带回请求编号">{FIELD_MISSING_SENTENCE}</span>
             )}
           </dd>
         </div>
@@ -719,11 +720,11 @@ export function ApprovalDetailBody({
         ) : (
           <p className="min-w-0 break-words" data-testid="apd9-audit-note">
             审计跳转
-            <NoSeg reason="该字段未返回（审批单号没有回传，无法拼出过滤链接，禁编造 id）。" />
+            <NoSeg reason={`${FIELD_MISSING_SENTENCE}（审批单号没有回传，无法拼出过滤链接，禁编造 id）。`} />
           </p>
         )}
         <p className="min-w-0 break-words">
-          <RequestIdCopyField requestId={detail.requestId} fallback="请求编号：该字段未返回" />
+          <RequestIdCopyField requestId={detail.requestId} fallback={APPROVAL_RID_MISSING} />
           {" "}
           <span className="text-muted-foreground">审计页没找到对应事件时，可用上面的单号/请求编号在台账里人工检索。</span>
         </p>
