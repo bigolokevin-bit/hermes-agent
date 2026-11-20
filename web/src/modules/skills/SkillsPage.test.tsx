@@ -6,6 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const fetchJsonStrict = vi.fn();
 vi.mock("@/modules/models/fetchJson", () => ({ fetchJsonStrict: (...args: unknown[]) => fetchJsonStrict(...args) }));
+const clipboard = vi.hoisted(() => ({ copyTextToClipboard: vi.fn() }));
+vi.mock("@/lib/clipboard", () => ({ copyTextToClipboard: clipboard.copyTextToClipboard }));
 vi.mock("@nous-research/ui", () => ({
   Badge: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
   Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => <button {...props}>{children}</button>,
@@ -28,6 +30,8 @@ beforeEach(() => {
   fetchJsonStrict.mockReset();
   resetCapabilityCounts();
   resetSkillsTabState();
+  clipboard.copyTextToClipboard.mockReset();
+  clipboard.copyTextToClipboard.mockResolvedValue(true);
   window.history.replaceState({}, "", "/");
 });
 afterEach(() => { act(() => root.unmount()); container.remove(); });
@@ -332,6 +336,15 @@ describe("SkillsPage", () => {
     const defaultLines = csvDefault.trim().split("\r\n");
     expect(defaultLines[1]).toMatch(/^B2,/);
     expect(defaultLines[3]).toMatch(/^C3,/);
+
+    const beforeCopy = fetchJsonStrict.mock.calls.length;
+    await act(async () => container.querySelector<HTMLButtonElement>("[data-testid='capC-copy']")!.click());
+    expect(container.querySelector("[data-testid='capC-copy-status']")!.textContent).toBe("已复制 3 行");
+    const copied = String(clipboard.copyTextToClipboard.mock.calls[0][0]);
+    expect(copied.split("\n")[0]).toBe("name,type,enabled,updated_at");
+    expect(copied.split("\n")[1]).toMatch(/^B2,/);
+    expect(copied.split("\n")[3]).toMatch(/^C3,/);
+    expect(fetchJsonStrict.mock.calls.length).toBe(beforeCopy);
   });
 
   it("reads only a top-level ISO asOf for the detail and keeps asOfSource in the title", async () => {

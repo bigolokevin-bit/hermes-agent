@@ -188,3 +188,36 @@
     white-space: normal;
   }
 }
+
+/* capC — copy the current list as plain text */
+.capC-copy-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+.capC-copy-status {
+  color: var(--color-muted-foreground);
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.capC-copy-fallback {
+  flex: 1 1 100%;
+  width: 100%;
+  min-height: 5.5rem;
+  margin-top: 0.4rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-muted);
+  color: var(--color-foreground);
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.6875rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+@media (max-width: 560px) {
+  .capC-copy-wrap { width: 100%; flex-wrap: wrap; }
+  .capC-copy-status { white-space: normal; }
+}

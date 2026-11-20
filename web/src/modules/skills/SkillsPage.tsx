@@ -19,6 +19,7 @@ import { CapabilityCounts, publishCapabilityCount } from "../capabilities/counts
 import { CapabilityRowDetail } from "../capabilities/rowDetail";
 import { CapabilitySearch } from "../capabilities/search";
 import { CapabilityExport } from "../capabilities/csvExport";
+import { CapabilityCopy } from "../capabilities/listCopy";
 import { applySort, ariaSort, cycleSort, readSort, sortRows, type SortKey } from "../capabilities/sorting";
 import { useEnsureTabParam } from "../capabilities/tabParam";
 import "./skills.css";
@@ -223,6 +224,19 @@ export function SkillsPage() {
     });
   }, [page.k, visibleRows.length]);
 
+  const exportRows = sortedRows.map((row) => ({
+    name: row.name === "—" ? null : row.name,
+    type: row.source,
+    enabled: row.status,
+    updated_at: row.updatedAt,
+  }));
+  const copyRows = sortedRows.map((row) => ({
+    name: row.name,
+    type: row.source,
+    enabled: row.status,
+    updated_at: row.updatedAt,
+  }));
+
   return (
     <section className="skl4-page" data-testid="skl4-page" data-fixture={fixture ?? undefined}>
       <CapabilityCounts />
@@ -233,15 +247,8 @@ export function SkillsPage() {
           <p className="skl4-sub">已登记的技能、共享范围与版本状态。只读。</p>
         </div>
         <div className="skl4-actions">
-          <CapabilityExport
-            tab="skills"
-            rows={sortedRows.map((row) => ({
-              name: row.name === "—" ? null : row.name,
-              type: row.source,
-              enabled: row.status,
-              updated_at: row.updatedAt,
-            }))}
-          />
+          <CapabilityExport tab="skills" rows={exportRows} />
+          <CapabilityCopy rows={copyRows} />
           <span className="capA-export-note" data-testid="capA-export-order-note">导出按当前排序与搜索</span>
           <Button
             size="sm"

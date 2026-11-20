@@ -11,6 +11,8 @@ import { ApiError } from "@/lib/api-error";
 
 const api = vi.hoisted(() => ({ fetchJsonStrict: vi.fn() }));
 vi.mock("@/modules/models/fetchJson", () => ({ fetchJsonStrict: api.fetchJsonStrict }));
+const clipboard = vi.hoisted(() => ({ copyTextToClipboard: vi.fn() }));
+vi.mock("@/lib/clipboard", () => ({ copyTextToClipboard: clipboard.copyTextToClipboard }));
 
 import { ToolsPage } from "./ToolsPage";
 import { resetToolsTabState } from "./useToolsData";
@@ -114,6 +116,8 @@ beforeEach(() => {
   api.fetchJsonStrict.mockReset();
   resetCapabilityCounts();
   resetToolsTabState();
+  clipboard.copyTextToClipboard.mockReset();
+  clipboard.copyTextToClipboard.mockResolvedValue(true);
 });
 afterEach(() => {
   act(() => root?.unmount());
@@ -427,6 +431,14 @@ describe("sortable columns", () => {
     expect(document.querySelector("[aria-sort='ascending']")).toBeNull();
     expect(document.querySelector("[aria-sort='none']")?.textContent).toContain("名称");
     expect(order()[0]).toContain("B2");
+    expect(api.fetchJsonStrict).toHaveBeenCalledTimes(4);
+    await act(async () => document.querySelector<HTMLButtonElement>("[data-testid='capC-copy']")!.click());
+    expect(document.querySelector("[data-testid='capC-copy-status']")!.textContent).toBe("已复制 3 行");
+    const copied = String(clipboard.copyTextToClipboard.mock.calls[0][0]);
+    expect(copied.split("\n")[0]).toBe("name,type,enabled,updated_at");
+    expect(copied.split("\n")[1]).toMatch(/^B2,内置 · /);
+    expect(copied.split("\n")[1]).toContain(",正常,");
+    expect(copied.split("\n")[3]).toMatch(/^C3,/);
     expect(api.fetchJsonStrict).toHaveBeenCalledTimes(4);
   });
 });

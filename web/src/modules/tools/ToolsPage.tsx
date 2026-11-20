@@ -31,6 +31,7 @@ import { forcedStateOf, readOpenTool, rememberOpenTool, useToolsData } from "./u
 import { CapabilityCounts, publishCapabilityCount } from "../capabilities/counts";
 import { CapabilitySearch } from "../capabilities/search";
 import { CapabilityExport } from "../capabilities/csvExport";
+import { CapabilityCopy } from "../capabilities/listCopy";
 import { applySort, ariaSort, cycleSort, readSort, sortRows, type SortKey } from "../capabilities/sorting";
 import { CapabilityRowDetail } from "../capabilities/rowDetail";
 import { useEnsureTabParam } from "../capabilities/tabParam";
@@ -383,6 +384,20 @@ export function ToolsPage(): ReactNode {
     );
   })();
 
+  const displayRows = [...toolRows, ...mcpRows];
+  const exportRows = displayRows.map((row) => ({
+    name: row.name,
+    type: row.type,
+    enabled: row.status,
+    updated_at: row.updatedAt,
+  }));
+  const copyRows = displayRows.map((row) => ({
+    name: row.name,
+    type: kindLabel(row),
+    enabled: STATUS_LABEL[row.status],
+    updated_at: row.updatedAt,
+  }));
+
   return (
     <section className="flex min-w-0 w-full max-w-full flex-col" data-testid="tl3-page">
     <CapabilityCounts />
@@ -400,15 +415,8 @@ export function ToolsPage(): ReactNode {
           </p>
         </div>
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <CapabilityExport
-            tab="tools"
-            rows={[...toolRows, ...mcpRows].map((row) => ({
-              name: row.name,
-              type: row.type,
-              enabled: row.status,
-              updated_at: row.updatedAt,
-            }))}
-          />
+          <CapabilityExport tab="tools" rows={exportRows} />
+          <CapabilityCopy rows={copyRows} />
           <span className="capA-export-note" data-testid="capA-export-order-note">导出按当前排序与搜索</span>
           <Button
             size="sm"

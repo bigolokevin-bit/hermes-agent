@@ -1928,3 +1928,16 @@ built /private/tmp/health-r38/index.html
 - URL：skills `?tab=skills&q=资料&sort=name&dir=asc`；tools `?tab=tools&q=资料&sort=name&dir=asc`；切回 skills 时 `tab` 由页面补回，其余参数不变。`aria-sort` 仍只出现在可排序列。
 - 验证：定向 `skills+tools+capabilities` → **5 files / 58 passed**；全量 **138 files / 1673 passed**；tsc 本域 0（仅基线 employee-detail/employees 报错）。DOM 1440/1280/375 `vw=bodySW=bodyCW=1440/1280/375`；截图 `docs/_artifacts/gov/shots/capTab-{1440,1280,375}.png`。
 - 边界：仅改 `web/src/modules/{capabilities,skills,tools}/**` + DONE/截图；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未并 main、未重建 9122。
+
+## R62 — 能力面行复制为纯文本（capC）
+
+- 基线：显式 refspec fetch 后 `git merge origin/lane/hermes-console`（tip `b797bc98`，代码代次 `053da5c4`）→ merge `4e1a9ddb`；未 reset。
+- 行为：skills / tools 两 tab 通用「复制列表」`capC-copy`。文本固定表头 `name,type,enabled,updated_at`，随后按当前 tab + 当前搜索 + 当前排序的屏上行序逐行输出；值逐字取屏上（类型/来源人话、启用态人话、更新北京时间到分），缺值「—」不补 0。纯前端投影，复制不触发任何请求。
+- 成功：`capC-copy-status` 以 `aria-live` 报「已复制 N 行」；剪贴板拒绝：同文案只读 textarea `capC-copy-fallback`，内容与剪贴板文本逐字相同；无行时按钮 disabled，title「当前视图没有可复制的行」。
+- DOM（真实 shell `ConsoleModulePage`，临时 harness 已删除；Vite 5478 / Chrome 9278；`?q=资料&sort=name&dir=asc` / `?q=网页&sort=name&dir=asc`）：
+  - 1440/1280/375 均 `vw=bodySW=bodyCW=pageSW=pageCW=1440/1280/375`。
+  - skills：1 行，复制文本 `name,type,enabled,updated_at\n资料整理,平台内置,正常,2026-11-19 11:00`；请求 **1 → 1**。
+  - tools：1 行，复制文本 `name,type,enabled,updated_at\n网页搜索,内置 · 网页搜索与抓取,正常,—`；请求 **4 → 4**。
+  - 两 tab 复制后状态均为「已复制 1 行」，无 fallback。
+- 验证：定向 `skills+tools+capabilities` → **6 files / 62 passed**；全量 **139 files / 1677 passed**；tsc 本域 0（仅基线 employee-detail/employees 报错）。
+- 边界：仅改 `web/src/modules/{capabilities,skills,tools}/**` + DONE；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未并 main、未重建 9122。
