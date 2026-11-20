@@ -302,7 +302,7 @@ describe("failures and gaps", () => {
     expect(document.querySelector("[data-testid='cap9-state-empty']")).toBeTruthy();
     expect(document.querySelector("[data-testid='capF-state-empty']")).toBeTruthy();
     expect(document.querySelector("[data-testid='capF-state-empty']")?.textContent).toContain("读口已接入，本次返回 0 条");
-    expect(document.querySelector("[data-testid='capF-state-empty-text']")?.textContent).toBe("读口已接入，本次返回 0 条；不补样例。");
+    expect(document.querySelector("[data-testid='capF-state-empty-text']")?.textContent).toBe("读口已接入，本次返回 0 条；工具与 MCP 清单没有返回任何条目，这里不补样例行。");
     expect(document.querySelector("[data-testid='tol5-page']")?.getAttribute("data-cap-state")).toBe("empty");
     expect(document.querySelector("[data-testid='tol5-denied']")).toBeNull();
     const count = document.querySelector("[data-testid='cap4-count-tools']")!;
