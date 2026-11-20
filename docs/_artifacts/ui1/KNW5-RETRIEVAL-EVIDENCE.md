@@ -4753,3 +4753,56 @@ $ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 
 边界：只改 docs/_artifacts/ui1/KNW5-RETRIEVAL-EVIDENCE.md 一个文件；显式路径 add；
 无 force/amend/--no-verify/git add -A；单 commit
 「test(console): knowledge space paging value guards」（evidence-only 实质，message 照派工）。
+
+# KNW5 追加 R217：预览/详情同帧 parity 护栏（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做（HEAD 即 R216 本体链 `70c667f4`）、显式 refspec fetch 后 merge
+实测 tip 即预期 `6dc311ea`（Already up to date）；基线先跑 34/176 全绿无 Errors 再动笔。
+零产品文件改动（无新缺陷）。新增 knowledge.preview.detail.test.tsx 四例（本体，非 docs-only）。
+
+## 名实换算（按产品现状）
+
+```text
+· 无独立"详情页"路由：唯一详情面 = 遮罩抽屉 kn7-preview-*（?doc=）——派工"预览抽屉与
+  详情页"为同一面，对照腿落真实四处：抽屉 dd × 列表格 × 行钮 kn-row-copy-space-<i> ×
+  kn-doc-copy 单控件（非行数）。
+· 缺值两套口径为产品定版：表格/复制行「—」、预览/抽屉 previewField「该字段未返回」+
+  「<字段>：<原因>」title——禁统一，本文件 ② 同帧并测两套。
+· 导出族不存在（createObjectURL/text/csv/download= 0，仅 data-export="absent"）、无
+  ?source= 控件——未造任何控件。
+```
+
+## 查重与新增维
+
+```text
+引用：R204 detail.parity ①/②（六路链与两套句收口）、R196（开 1 关 0/序列不变）、
+R183/R206（500/404 句+rid+不卸载+复制串不污染+dl title）、R125C/R149、R213/R215/R216。
+①②③为同帧基线整体复跑（不声称新发现）。
+新增维=(a) 抽屉 404 错误态后行内预览仍可用且逐字同干净态：R206 只锁 500 窗内复制串；
+本文件 ④ 锁 404 + 关抽屉 → kn-doc-preview-* 照常展开、四字段+短码格与干净态采集值
+逐字等、kn-doc-copy 整串 toBe 干净样张、期间列表行序 ["全项手册.pdf","缺项档"] 与
+钮序列 [0,1] 逐字不变；rid 复制钮实测在场（unwired 分支含 RequestId 钮），点击
+writeText 恰收 'rid-r217-gone'。
+```
+
+## 验证尾行（R217）
+```text
+$ npx vitest run src/modules/knowledge   → 35 files / 180 tests passed（基线 176 + 4 ≥177），
+  全输出 grep unhandled|Errors = 0（clipboard 桩全 Promise 返回，R214 教训守住）
+$ npx vitest run                         → 305 files / 3042 tests passed 全绿（无豁免）
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r217-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn3*/knE-page-*/kn-row-copy*/kn-row-copy-space*/kn-doc-copy*/kn-doc-preview*/
+kn-space-preview*/kn7-preview-*/kn-type*/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort*/
+kn-gates/kn3-page-cap 与既有 34 套全绿。
+读数：① 五字段样张 ["全项手册.pdf","PDF","2.4 MB","2026-11-19 15:10","DFULL1"] 四处互等、
+  dl title=d_full1、正文无裸 id/短码；② 缺值行同帧两式 + 全页无 undefined/null/d_ id；
+  ③ 列表首读恰 1、开抽屉增量=[DETAIL_A]、行内开合与关抽屉均 0 增量；④ 如上。
+```
+未测如实：带登录会话真 404 详情信封（mock 代证）；④ 的 404 窗内「切另一行预览」多行
+矩阵（单行开合已锁）；isSecureContext 的 fallback 选抄路径（属 lib/clipboard，非本模块）。
+边界：只新增 web/src/modules/knowledge/knowledge.preview.detail.test.tsx 与本证据；
+显式路径 add；无 force/amend/--no-verify/git add -A；单 commit
+「test(console): knowledge preview detail parity guards」。
