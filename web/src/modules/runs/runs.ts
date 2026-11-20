@@ -38,6 +38,8 @@
 import { ApiError } from "@/lib/api-error";
 import { fetchJSON } from "@/lib/api";
 
+import { readAsOf } from "../metrics/asof";
+
 /**
  * The gap this page belongs to. GAP-01…GAP-08 are already carried by other
  * panes in `web/src/**` and `docs/_artifacts/**` (checked before claiming),
@@ -53,6 +55,9 @@ export const SINCE_OPTIONS = [
   { key: "24h", label: "近 24 小时", hours: 24 },
   { key: "7d", label: "近 7 天", hours: 24 * 7 },
   { key: "30d", label: "近 30 天", hours: 24 * 30 },
+  // 「全部时间」是一条真实的时间范围：不设下界。读口只认 since（起点），
+  // 所以这里用纪元起点，而不是省略参数——省略会让 BFF 按 request.missing_filter 拒绝。
+  { key: "all", label: "全部时间", hours: null },
 ] as const;
 
 export type SinceKey = (typeof SINCE_OPTIONS)[number]["key"];
@@ -64,7 +69,11 @@ export function sinceKeyOf(raw: string | null): SinceKey {
 }
 
 export function sinceIso(key: SinceKey): string {
-  const hours = SINCE_OPTIONS.find((option) => option.key === key)?.hours ?? 24;
+  const option = SINCE_OPTIONS.find((entry) => entry.key === key);
+  // 「全部时间」: no lower bound at all — the epoch, never `undefined`/omitted,
+  // because the read route rejects a call without a usable window.
+  if (option && option.hours === null) return new Date(0).toISOString();
+  const hours = option?.hours ?? 24;
   return new Date(Date.now() - hours * 3600_000).toISOString();
 }
 
@@ -106,6 +115,10 @@ export interface ListState {
   phase: Phase;
   rows: RunRow[];
   cursor: string | null;
+  /** Top-level collection instant the answer carried, if any (ISO, UTC). */
+  asOf: string | null;
+  /** Who produced that instant; title only, never visible text. */
+  asOfSource: string | null;
   /** The route whose answer produced this state; null = nothing answered. */
   answeredBy: string | null;
   /** Rows dropped because the answer carried no readable run id. */
@@ -189,7 +202,14 @@ export function errorInfo(err: unknown): ErrorInfo {
 
 /** What one route answered, folded into a ListState. */
 type RouteAnswer =
-  | { k: "list"; items: unknown[]; cursor: string | null; answeredBy: string }
+  | {
+      k: "list";
+      items: unknown[];
+      cursor: string | null;
+      answeredBy: string;
+      asOf: string | null;
+      asOfSource: string | null;
+    }
   | { k: "absent"; error: ErrorInfo }
   | { k: "failed"; error: ErrorInfo };
 
@@ -221,7 +241,15 @@ async function askListRoute(path: string, q: ListQuery): Promise<RouteAnswer> {
     return { k: "failed", error: info };
   }
   if (rec(body) && Array.isArray(body.items)) {
-    return { k: "list", items: body.items, cursor: str(body.nextCursor) ?? null, answeredBy: path };
+    const stamp = readAsOf(body);
+    return {
+      k: "list",
+      items: body.items,
+      cursor: str(body.nextCursor) ?? null,
+      answeredBy: path,
+      asOf: stamp.asOf,
+      asOfSource: stamp.source,
+    };
   }
   // A 2xx that is not a list shape says so; it never paints invented rows.
   return {
@@ -250,6 +278,8 @@ export async function loadRuns(q: ListQuery): Promise<ListState> {
         phase: rows.length ? "ready" : "empty",
         rows,
         cursor: answer.cursor,
+        asOf: answer.asOf,
+        asOfSource: answer.asOfSource,
         answeredBy: answer.answeredBy,
         unreadable,
         failure: null,
@@ -260,6 +290,8 @@ export async function loadRuns(q: ListQuery): Promise<ListState> {
         phase: answer.error.status === 403 ? "denied" : "error",
         rows: [],
         cursor: null,
+        asOf: null,
+        asOfSource: null,
         answeredBy: null,
         unreadable: 0,
         failure: {
@@ -278,6 +310,8 @@ export async function loadRuns(q: ListQuery): Promise<ListState> {
     phase: "denied",
     rows: [],
     cursor: null,
+    asOf: null,
+    asOfSource: null,
     answeredBy: null,
     unreadable: 0,
     failure: {
@@ -907,6 +941,16 @@ export function listActionGate(
         export: { disabled: false, title: "导出当前列表为 CSV" },
       };
   }
+}
+
+/**
+ * Fold "this page has no rows" into the phase gate, so `disabled`, `aria-disabled`
+ * and the sentence in `title` are always one decision. Callers render all three
+ * attributes from the returned value and never recompute the reason.
+ */
+export function effectiveListGate(gate: ListGate, empty: boolean, reason: string): ListGate {
+  if (gate.disabled || !empty) return gate;
+  return { disabled: true, title: reason };
 }
 
 /* ── shareable filter source ───────────────────────────────────────── */

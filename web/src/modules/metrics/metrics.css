@@ -1185,3 +1185,21 @@
   font-size: 12px;
   line-height: 1.5;
 }
+
+/* met-output — the visible half of the export/copy feedback. */
+.met-output {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.met-output[data-tone='fail'] {
+  border-color: var(--color-destructive, var(--color-border));
+}
