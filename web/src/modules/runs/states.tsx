@@ -141,6 +141,7 @@ export function TechnicalDisclosure({
 export function LoadingPanel({ fixture }: Marked): ReactNode {
   return (
     <div className="flex min-w-0 flex-col gap-2" data-testid="run5-loading" aria-busy="true" {...fixtureAttr(fixture)}>
+      <span hidden data-testid="run-state-loading" data-phase="loading" />
       {[0, 1, 2, 3].map((row) => (
         <div key={row} className="animate-pulse rounded-md border border-border bg-card px-4 py-4" aria-hidden="true">
           <div className="h-3 w-1/3 rounded-sm bg-muted" />
@@ -156,16 +157,38 @@ export function LoadingPanel({ fixture }: Marked): ReactNode {
  * from a failure: the panel says so, gives the reason, and names the next
  * step instead of leaving a blank area.
  */
-export function EmptyPanel({ onRetry, fixture }: Marked & { onRetry: () => void }): ReactNode {
+export function EmptyPanel({
+  onRetry,
+  onClear,
+  kind,
+  fixture,
+}: Marked & { onRetry: () => void; onClear?: () => void; kind: "window" | "filter" }): ReactNode {
+  const filtered = kind === "filter";
   return (
     <Card className="border-border bg-card" data-testid="run5-empty" {...fixtureAttr(fixture)}>
       <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
+        <span hidden data-testid="run-state-empty" data-phase="empty" />
         <Inbox className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
-        <p className={`min-w-0 break-words text-sm ${themedBody}`}>服务回答了，这个时间窗口里确实没有运行</p>
-        <p className="max-w-prose break-words text-xs text-muted-foreground">
-          这是读取成功后的空清单，不代表接口坏了，也不代表运行丢了。下一步：把时间范围放宽一档，
-          或等待新的运行产生后重新读取。
+        <p className={`min-w-0 break-words text-sm ${themedBody}`} data-testid="run-state-empty-text">
+          {filtered ? "当前筛选下没有运行记录" : "服务回答了，这个时间窗口里确实没有运行"}
         </p>
+        <p className="max-w-prose break-words text-xs text-muted-foreground">
+          {filtered
+            ? "读取是成功的：状态或负责人筛选把这一页筛空了。清空筛选就能看到这个时间范围里的全部运行。"
+            : "这是读取成功后的空清单，不代表接口坏了，也不代表运行丢了。下一步：把时间范围放宽一档，或等待新的运行产生后重新读取。"}
+        </p>
+        {filtered && onClear ? (
+          <Button
+            size="sm"
+            outlined
+            onClick={onClear}
+            disabled={Boolean(fixture)}
+            title={fixture ? "复现腿不发起真实请求，去掉 ?state= 即为真实读取" : "清空状态与负责人筛选，保留时间范围"}
+            data-testid="run-state-clear"
+          >
+            清空筛选
+          </Button>
+        ) : null}
         <Button
           size="sm"
           outlined
@@ -207,19 +230,24 @@ export function ErrorPanel({
           <span className="min-w-0 break-words">{title}</span>
         </div>
         <p className="max-w-prose break-words text-xs text-muted-foreground">{failure.sentence}</p>
-        <RequestIdLine requestId={failure.requestId} testId={`${testId}-request-id`} />
+        <span hidden data-testid="run-state-error" data-phase="error" />
+        <span data-testid="run-state-rid">
+          <RequestIdLine requestId={failure.requestId} testId={`${testId}-request-id`} />
+        </span>
         {failure.technical ? <TechnicalDisclosure lines={[failure.technical]} testId={`${testId}-details`} /> : null}
-        <Button
-          size="sm"
-          outlined
-          onClick={onRetry}
-          disabled={Boolean(fixture)}
-          title={fixture ? "复现腿不发起真实请求，去掉 ?state= 即为真实读取" : "再向服务要一次"}
-          prefix={<RefreshCw className="h-3.5 w-3.5" />}
-          data-testid={`${testId}-retry`}
-        >
-          重试
-        </Button>
+        <span data-testid="run-state-retry" data-disabled={fixture ? "1" : "0"}>
+          <Button
+            size="sm"
+            outlined
+            onClick={onRetry}
+            disabled={Boolean(fixture)}
+            title={fixture ? "复现腿不发起真实请求，去掉 ?state= 即为真实读取" : "再向服务要一次"}
+            prefix={<RefreshCw className="h-3.5 w-3.5" />}
+            data-testid={`${testId}-retry`}
+          >
+            重试
+          </Button>
+        </span>
       </CardContent>
     </Card>
   );
@@ -244,6 +272,7 @@ export function DeniedPanel({
       {...fixtureAttr(fixture)}
     >
       <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
+        <span hidden data-testid="run-state-denied" data-phase="denied" />
         <ShieldAlert className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
         <p className={`min-w-0 break-words text-sm ${themedBody}`}>现在看不到运行记录</p>
         <p className="max-w-prose break-words text-xs text-muted-foreground">

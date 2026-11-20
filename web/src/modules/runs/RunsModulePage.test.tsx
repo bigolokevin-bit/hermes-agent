@@ -1123,3 +1123,103 @@ describe("runs list copy", () => {
     expect(statusText()).not.toContain("已复制");
   });
 });
+
+describe("run-state — one answer per phase", () => {
+  const q = (id: string): Element | null => document.querySelector(`[data-testid='${id}']`);
+  const qs = <T extends Element>(id: string): T | null => document.querySelector(`[data-testid='${id}']`) as T | null;
+
+  it("loading draws the fixed skeleton and the state marker", async () => {
+    api.fetchJSON.mockImplementation(() => new Promise(() => undefined));
+    await render("/runs");
+    await waitFor(() => q("run-state-loading") !== null, "loading marker");
+    expect(q("run-state")?.getAttribute("data-phase")).toBe("loading");
+    const skeleton = q("run5-loading");
+    expect(skeleton?.children.length).toBe(5);
+    expect(q("run-list-copy")).toBeNull();
+  });
+
+  it("an unfiltered empty answer says the window really was empty", async () => {
+    api.fetchJSON.mockImplementation(okList([]));
+    await render("/runs");
+    await waitFor(() => q("run5-empty") !== null, "empty");
+    expect(q("run-state")?.getAttribute("data-phase")).toBe("empty");
+    expect(q("run-state-empty-text")?.textContent).toContain("服务回答了");
+    expect(q("run-state-clear")).toBeNull();
+    const copy = qs<HTMLButtonElement>("run-list-copy");
+    expect(copy?.disabled).toBe(true);
+    expect(copy?.title).toContain("没有行");
+  });
+
+  it("a filtered empty answer explains the filter and clears it", async () => {
+    api.fetchJSON.mockImplementation(okList([]));
+    await render("/runs?status=failed&window=7d", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => q("run5-empty") !== null, "filtered empty");
+    expect(q("run-state-empty-text")?.textContent).toContain("当前筛选下没有运行记录");
+    const clear = qs<HTMLButtonElement>("run-state-clear");
+    expect(clear).not.toBeNull();
+    const before = urls().length;
+    await act(async () => {
+      clear?.click();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(document.querySelector("[data-testid='probe-location']")?.textContent ?? "").not.toContain("status=");
+    const after = urls().slice(before);
+    expect(after.every((url) => !url.includes("status="))).toBe(true);
+    expect(after.every((url) => url.includes("since="))).toBe(true);
+  });
+
+  it("error keeps one retry, copies the request id and asks exactly once more", async () => {
+    api.fetchJSON.mockImplementation(async (url: string) => {
+      throw new ApiError("no", { status: 500, body: "{}", url, requestId: "req-run-state" });
+    });
+    await render("/runs?status=failed");
+    await waitFor(() => q("run-state-error") !== null, "error");
+    expect(q("run-state")?.getAttribute("data-phase")).toBe("error");
+    expect(q("run-state-rid")?.textContent).toContain("req-run-state");
+    expect(q("run5-counts")?.textContent).toContain("—");
+    expect(q("run5-counts")?.getAttribute("title")).toContain("不把读不到当成 0");
+    const copy = qs<HTMLButtonElement>("run-list-copy");
+    expect(copy?.disabled).toBe(true);
+    expect(copy?.title).toContain("先重试");
+    const retry = qs<HTMLButtonElement>("run5-error-retry");
+    expect(q("run-state-retry")?.getAttribute("data-disabled")).toBe("0");
+    const before = urls().length;
+    await act(async () => {
+      retry?.click();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(urls().length - before).toBe(1);
+    expect(q("run5-error")).not.toBeNull();
+  });
+
+  it("denied is one body for 403 and 404 and keeps the four filters in the address", async () => {
+    const bodyFor = async (status: number): Promise<string> => {
+      api.fetchJSON.mockReset();
+      api.fetchJSON.mockImplementation(async (url: string) => {
+        throw new ApiError("no", { status, body: "{}", url, requestId: "req-denied" });
+      });
+      await render(
+        "/runs?status=failed&window=7d&employee=emp_aaaabbbbcccc",
+        <><RunsModulePage /><HistoryProbe /></>,
+      );
+      await waitFor(() => q("run5-denied") !== null, `denied ${status}`);
+      return q("run5-denied")?.textContent ?? "";
+    };
+    const first = await bodyFor(403);
+    const second = await bodyFor(404);
+    expect(first).toBe(second);
+    expect(q("run-state")?.getAttribute("data-phase")).toBe("denied");
+    expect(q("run-state-denied")).not.toBeNull();
+    const loc = document.querySelector("[data-testid='probe-location']")?.textContent ?? "";
+    expect(loc).toContain("status=failed");
+    expect(loc).toContain("window=7d");
+    expect(loc).toContain("employee=emp_aaaabbbbcccc");
+    const copy = qs<HTMLButtonElement>("run-list-copy");
+    expect(copy?.disabled).toBe(true);
+    expect(copy?.title).toContain("看不到");
+  });
+});

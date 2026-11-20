@@ -179,3 +179,13 @@
 - 测试 3 例：两行逐字比对（含表头、零成本与缺时间行，正文不含 `rn_`/`emp_` 原值）+ 零请求；剪贴板拒绝→textarea 同文；空列表 disabled + title。
 - 验证：runs 2 files / 84 passed（基线 81）；全量 151 files / 2028 passed（基线 2025）；tsc grep modules/runs = 0；eslint exit 0；build exit 0，chunk `RunsModulePage-*.js` 内 `run-list-copy`=1，entry 0。
 - 未测：真实浏览器长列表选中与 375 折行。
+
+## 四态统一（runs state，2026-11-20）
+
+- 新增 `run-state`（隐藏，`data-phase=loading|empty|error|denied`）与四个阶段标记 `run-state-loading/empty/error/denied`；`run-state-empty-text`、`run-state-clear`、`run-state-rid`、`run-state-retry`（`data-disabled` 记录 fixture 腿）。
+- empty 分两种：无筛选（`/api/runs` 读过且确实没有运行）给原文案；带 `status`/`employee` 筛选时写「当前筛选下没有运行记录…读取是成功的」，并给 `run-state-clear`「清空筛选」（删 `status`/`employee`，保留 `window` 与其它参数，`replace`）。
+- error：人话 + 可复制请求编号（`RequestIdLine`）+ 重试；403 与 404 仍共用一个 DOM 体（`run5-denied` 逐字相同）。denied 下四参（window/status/state/employee）保留在地址与后续重试请求里；行不渲染（整页替换，沿用 T15 的既有四态口径，已与刀令「保已加载行」差异一并记入回执）。
+- 单点 helper `listActionGate(phase)` 统一「复制清单」「行内预览」两处可用性：loading/empty/error/denied 全 disabled + 人话 title，ready 才可用；计数位未知阶段写「—」+ title「不把读不到当成 0」。
+- 测试 5 例：loading 骨架 4 块不变且无复制；无筛选空 vs 筛选空（清空后请求无 `status=`）；error rid + 计数「—」+ 重试恰 +1 请求；403/404 同体且四参保留；复制/预览 disabled 的 title 一致。
+- 验证：runs 2 files / 89 passed（+5）；全量 151 files / 2033 passed；tsc 本域 0；eslint 本域 exit 0（修掉一处 redundant Boolean）。
+- 未测：真实浏览器 375 折行、Esc/焦点走查；`?state=` fixture 腿的键盘行为。

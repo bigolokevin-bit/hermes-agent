@@ -70,6 +70,8 @@ import {
   costText,
   elapsedMinute,
   employeeLabel,
+  listActionGate,
+  type ListGate,
   eventLabel,
   failureSummary,
   isToolEvent,
@@ -232,7 +234,7 @@ function RunPreviewPanel({ row, names, index }: { row: RunRow; names: Map<string
 const GRID =
   "grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,0.7fr)_minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,0.9fr)_minmax(0,1.1fr)_minmax(0,1fr)_auto]";
 
-function RunListCopy({ rows, names }: { rows: RunRow[]; names: Map<string, string> }): ReactNode {
+function RunListCopy({ rows, names, gate }: { rows: RunRow[]; names: Map<string, string>; gate: ListGate }): ReactNode {
   const [status, setStatus] = useState<"idle" | "done" | "failed">("idle");
   const [body, setBody] = useState("");
   const empty = rows.length === 0;
@@ -246,13 +248,15 @@ function RunListCopy({ rows, names }: { rows: RunRow[]; names: Map<string, strin
       <Button
         size="sm"
         outlined
-        disabled={empty}
+        disabled={gate.disabled || empty}
         onClick={copy}
         data-testid="run-list-copy"
         title={
-          empty
-            ? "当前列表没有行，没有可复制的文本"
-            : `复制当前列表为纯文本：表头加 ${rows.length} 行；当前已加载 ${rows.length} 行，不是全量（每页最多 ${PAGE_LIMIT} 条）`
+          gate.disabled
+            ? gate.title
+            : empty
+              ? "当前列表没有行，没有可复制的文本"
+              : `复制当前列表为纯文本：表头加 ${rows.length} 行；当前已加载 ${rows.length} 行，不是全量（每页最多 ${PAGE_LIMIT} 条）`
         }
       >
         <Copy className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
@@ -289,6 +293,7 @@ function ListRows({
   rows,
   names,
   hrefOf,
+  previewGate,
 }: {
   rows: RunRow[];
   names: Map<string, string>;
@@ -300,6 +305,7 @@ function ListRows({
    * copied link reloads into the same record.
    */
   hrefOf: (runId: string) => string;
+  previewGate: ListGate;
 }): ReactNode {
   const [openId, setOpenId] = useState<string | null>(null);
   const toggleRefs = useRef(new Map<string, HTMLButtonElement>());
@@ -380,6 +386,8 @@ function ListRows({
                       else toggleRefs.current.delete(row.runId);
                     }}
                     onClick={() => setOpenId(open ? null : row.runId)}
+                    disabled={previewGate.disabled}
+                    title={previewGate.title}
                   >
                     {open ? "收起预览" : "展开预览"}
                   </button>
@@ -640,6 +648,14 @@ export function RunsModulePage() {
   const failedCount = rows.filter((row) => row.status === "failed").length;
   const runningCount = rows.filter((row) => row.status === "running").length;
   const countsKnown = phase === "ready" || phase === "empty";
+  const listGate = listActionGate(phase);
+  const filtersNarrow = Boolean(status) || Boolean(employee);
+  const clearFilters = () => {
+    const next = new URLSearchParams(params);
+    next.delete("status");
+    next.delete("employee");
+    setParams(next, { replace: true, state: { fromList: true } });
+  };
 
   const technical = [
     answeredBy ? `由这条读取回答：${answeredBy}` : null,
@@ -729,7 +745,16 @@ export function RunsModulePage() {
         {statusLine}
       </p>
 
-      <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="run5-counts">
+      <span hidden data-testid="run-state" data-phase={phase} />
+      <p
+        className="min-w-0 break-words text-xs text-muted-foreground"
+        data-testid="run5-counts"
+        title={
+          countsKnown
+            ? "计数只统计这一页已加载的行，不是全量。"
+            : "读取成功之前不报计数：这里写「—」，不把读不到当成 0。"
+        }
+      >
         {countsKnown
           ? `本页 ${rows.length} 次 · 失败 ${failedCount} · 运行中 ${runningCount}（仅本页已加载，最多 ${PAGE_LIMIT} 条，不是全量统计）`
           : "本页 — 次 · 失败 — · 运行中 —（暂时读不到运行数据，数字不作零处理）"}
@@ -861,7 +886,12 @@ export function RunsModulePage() {
 
       {phase === "loading" ? <LoadingPanel fixture={forced ?? undefined} /> : null}
       {phase === "empty" ? (
-        <EmptyPanel onRetry={reloadList} fixture={forced ?? undefined} />
+        <EmptyPanel
+          onRetry={reloadList}
+          onClear={clearFilters}
+          kind={filtersNarrow ? "filter" : "window"}
+          fixture={forced ?? undefined}
+        />
       ) : null}
       {phase === "error" ? (
         <ErrorPanel
@@ -873,8 +903,8 @@ export function RunsModulePage() {
       {phase === "denied" ? (
         <DeniedPanel requestId={failure?.requestId ?? null} fixture={forced ?? undefined} />
       ) : null}
-      {phase === "ready" ? <ListRows rows={rows} names={names} hrefOf={hrefOf} /> : null}
-      {phase === "ready" || phase === "empty" ? <RunListCopy rows={rows} names={names} /> : null}
+      {phase === "ready" ? <ListRows rows={rows} names={names} hrefOf={hrefOf} previewGate={listGate.preview} /> : null}
+      {phase !== "loading" ? <RunListCopy rows={rows} names={names} gate={listGate.copy} /> : null}
 
       {phase === "ready" && rows.length > 0 ? (
         <TechnicalDisclosure lines={technical} testId="run5-list-details" />

@@ -799,3 +799,39 @@ export function runListText(rows: RunRow[], names: Map<string, string>): string 
   }
   return lines.join("\n");
 }
+
+/** One decision per phase, so no two entries on the pane disagree about whether the list is usable. */
+export interface ListGate {
+  disabled: boolean;
+  title: string;
+}
+
+export function listActionGate(phase: ListState["phase"]): { copy: ListGate; preview: ListGate } {
+  switch (phase) {
+    case "loading":
+      return {
+        copy: { disabled: true, title: "还在读取运行记录：等这一页读完再复制。" },
+        preview: { disabled: true, title: "还在读取运行记录：等这一页读完再展开。" },
+      };
+    case "empty":
+      return {
+        copy: { disabled: true, title: "这一页没有行：没有可复制的文本。" },
+        preview: { disabled: true, title: "这一页没有行：没有可展开的预览。" },
+      };
+    case "error":
+      return {
+        copy: { disabled: true, title: "这次读取没有成功：先重试，读到数据再复制。" },
+        preview: { disabled: true, title: "这次读取没有成功：先重试，读到数据再展开。" },
+      };
+    case "denied":
+      return {
+        copy: { disabled: true, title: "当前看不到运行记录：没有可复制的文本。" },
+        preview: { disabled: true, title: "当前看不到运行记录：没有可展开的预览。" },
+      };
+    default:
+      return {
+        copy: { disabled: false, title: "复制当前列表为纯文本" },
+        preview: { disabled: false, title: "展开这一行的预览" },
+      };
+  }
+}
