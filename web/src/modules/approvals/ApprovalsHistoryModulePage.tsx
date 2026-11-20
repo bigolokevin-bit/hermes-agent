@@ -408,6 +408,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
           <Button
             size="sm"
             outlined
+            className="shrink-0 whitespace-nowrap"
             onClick={list.reload}
             data-testid="apv-gates-refresh"
             title={actionGates(list.phase, list.rows.length).retry.title}
@@ -647,6 +648,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
                 <Button
                   size="sm"
                   outlined
+                  className="shrink-0 whitespace-nowrap"
                   data-testid="apv-page-more"
                   disabled={!list.next || list.loadingMore}
                   onClick={list.loadMore}

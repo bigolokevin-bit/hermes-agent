@@ -402,6 +402,7 @@ export function DecisionTrail({ detail }: { detail: ApprovalDetail }): ReactNode
           <Button
             size="sm"
             outlined
+            className="shrink-0 whitespace-nowrap"
             data-testid="apd8-copy"
             disabled={emptyTrail}
             title={
@@ -634,17 +635,19 @@ export function ApprovalDetailBody({
         </div>
         <div className="ui-c-field" data-testid="apd5-field-request-id">
           <dt className="ui-c-field-label">请求编号</dt>
-          <dd className="ui-c-field-value">
+          {/* P1-375-5 × UI-C2: 栅格类负责排版，flex-wrap 让长编号就地折行、
+              复制钮豁免收缩不被挤出可视区；值与 testid 不动。 */}
+          <dd className="ui-c-field-value flex min-w-0 flex-wrap items-center gap-1">
             {detail.requestId ? (
               <>
-                <code className="ui-c-id" data-testid="apd5-request-id" title={detail.requestId}>
+                <code className="ui-c-id min-w-0 break-all" data-testid="apd5-request-id" title={detail.requestId}>
                   {detail.requestId}
                 </code>
                 <button
                   type="button"
                   aria-label="复制请求编号"
                   data-testid="apd5-copy-detail-request-id"
-                  className="ui-c-field-actions ml-1 underline underline-offset-2"
+                  className="ui-c-field-actions ml-1 shrink-0 whitespace-nowrap underline underline-offset-2"
                   onClick={() => {
                     void navigator.clipboard?.writeText(detail.requestId ?? "");
                   }}

@@ -69,7 +69,7 @@ export function RequestIdCopyField({
       <button
         type="button"
         data-testid="apr5-copy-request-id"
-        className="rounded-sm border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-1 focus-visible:outline-primary/40"
+        className="shrink-0 whitespace-nowrap rounded-sm border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-1 focus-visible:outline-primary/40"
         onClick={copy}
       >
         复制
@@ -141,7 +141,9 @@ export function DetailsDisclosure({
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
-        className="inline-flex items-center gap-1 text-muted-foreground underline underline-offset-2"
+        // P1-375-4: 命中区 ≥44px（1440/375 同修，此前实测只有 15px 高）；
+        // ≤767 独立成行占满一行，md 起恢复行内链接形态，桌面结构不动。
+        className="inline-flex min-h-[44px] w-full items-center gap-1 text-muted-foreground underline underline-offset-2 md:w-auto"
       >
         {open ? <ChevronUp className="h-3 w-3" aria-hidden="true" /> : <ChevronDown className="h-3 w-3" aria-hidden="true" />}
         详情
@@ -230,7 +232,7 @@ export function ErrorPanel({
         <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="apv-state-rid"><RequestIdCopyField requestId={failure.requestId} fallback={APPROVAL_RID_FALLBACK} /></p>
         {failure.technical ? <DetailsDisclosure lines={[failure.technical]} testId={`${testId}-details`} /> : null}
         <span data-testid="apv-state-retry">
-          <Button size="sm" outlined onClick={onRetry} data-testid={retryTestId ?? `${testId}-retry`} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
+          <Button size="sm" outlined className="shrink-0 whitespace-nowrap" onClick={onRetry} data-testid={retryTestId ?? `${testId}-retry`} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
             {APPROVAL_RETRY_LABEL}
           </Button>
         </span>

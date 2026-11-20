@@ -49,8 +49,10 @@ export function RiskQuickFilter({
   onPick: (value: RiskValue | null) => void;
 }) {
   const ready = phase === "ready";
+  // P1-375-2: 375 下整条允许换行（容器已 flex-wrap）；chip 本身豁免收缩并
+  // 禁内层换行，杜绝「全部 8」被挤成逐字竖排。
   const chip =
-    "h-6 min-w-0 rounded-md border px-2 focus-visible:outline focus-visible:outline-1 focus-visible:outline-primary/40 " +
+    "h-6 shrink-0 whitespace-nowrap rounded-md border px-2 focus-visible:outline focus-visible:outline-1 focus-visible:outline-primary/40 " +
     (ready ? "hover:bg-muted/40" : "cursor-not-allowed opacity-60");
   const onClass = "border-primary/60 text-foreground";
   const offClass = "border-border text-muted-foreground";

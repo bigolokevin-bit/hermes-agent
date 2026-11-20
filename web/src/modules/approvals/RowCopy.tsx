@@ -51,6 +51,7 @@ export function RowCopy({ row, index }: { row: ApprovalRow; index: number }) {
       <Button
         size="sm"
         outlined
+        className="shrink-0 whitespace-nowrap"
         data-testid={`apr-row-copy-${index}`}
         aria-label={`复制${label}这一行`}
         title="复制这一行的六段纯文本（单号/标题/状态/风险/更新时间/短码）；只读已加载行数据，不产生请求。"
