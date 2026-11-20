@@ -1,0 +1,248 @@
+/*
+ * UI-C lane · 详情页表现层原具 (detail-surface presentation primitives).
+ *
+ * Scope: the four detail carriers only — 员工详情 / 审批详情 / 运行详情 /
+ * 任务详情. Pure presentation and information organisation: section heads,
+ * label-value grids, numeric alignment, long-id wrapping, 375 stacking.
+ * No business logic, no data fetching, no testid, no route change.
+ *
+ * Tokens only (docs/design/UI-RUBRIC.md §一): every value below is a
+ * --space / --font-size / --line-height / --font-weight / --color / --border
+ * reference from web/src/shell/tokens.css. No literal spacing or colour is
+ * introduced here; when a number is missing from the ladder, the ladder is
+ * wrong and UI-A owns that fix, not this file.
+ *
+ * Imported once from shell/console.tsx, next to the table-density.css
+ * precedent, so it is a stylesheet — never a component contract.
+ */
+
+/* ------------------------------------------------------------------ *
+ * 区块头 · 标题在左，复制/导出等次级入口收到右上
+ * ------------------------------------------------------------------ */
+
+.ui-c-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: var(--border-1);
+}
+
+.ui-c-head-title {
+  margin: 0;
+  font-size: var(--font-size-2);
+  line-height: var(--line-height-1);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+}
+
+.ui-c-head-sub {
+  margin: 0;
+  font-size: var(--font-size-1);
+  line-height: var(--line-height-3);
+  color: var(--color-text-muted);
+}
+
+/* 区块右上入口位：始终与标题同排右对齐，窄档整组换到第二行，不撑破宽度 */
+.ui-c-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+/* ------------------------------------------------------------------ *
+ * 标签-值：卡片式字段栅格（身份卡族）
+ * ------------------------------------------------------------------ */
+
+.ui-c-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-4);
+}
+
+@media (min-width: 640px) {
+  .ui-c-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-6);
+    row-gap: var(--space-3);
+  }
+}
+
+@media (min-width: 1280px) {
+  .ui-c-fields {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.ui-c-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.ui-c-field-label {
+  min-width: 0;
+  font-size: var(--font-size-1);
+  line-height: var(--line-height-1);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-muted);
+}
+
+/* 值域：折行不截断（长 id / 文件名整串可读），且不撑破容器 */
+.ui-c-field-value {
+  min-width: 0;
+  margin: 0;
+  font-size: var(--font-size-3);
+  line-height: var(--line-height-3);
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+/* ------------------------------------------------------------------ *
+ * 标签-值：行式两列栅格（摘要行族）· 375 纵向堆叠
+ * ------------------------------------------------------------------ */
+
+.ui-c-rows {
+  display: grid;
+  margin: 0;
+}
+
+.ui-c-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+}
+
+/* 行与行之间只用 1px 令牌分隔线：无斑马纹、无行阴影 */
+.ui-c-row + .ui-c-row {
+  border-top: var(--border-1);
+}
+
+@media (min-width: 640px) {
+  .ui-c-row {
+    grid-template-columns: var(--ui-c-row-cols, 8rem minmax(0, 1fr));
+    align-items: baseline;
+    column-gap: var(--space-4);
+  }
+}
+
+.ui-c-row-label {
+  min-width: 0;
+  font-size: var(--font-size-1);
+  line-height: var(--line-height-2);
+  color: var(--color-text-muted);
+}
+
+.ui-c-row-value {
+  display: block;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--font-size-3);
+  line-height: var(--line-height-3);
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+/* ------------------------------------------------------------------ *
+ * 数字 / 时间 / 长 id 对齐
+ * ------------------------------------------------------------------ */
+
+/* 一切数字与时间走等宽数字，纵向可比 */
+.ui-c-num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* 长 id：等宽、整串折行不拆词，绝不把容器顶宽 */
+.ui-c-id {
+  font-family: var(--mono);
+  font-size: var(--font-size-1);
+  line-height: var(--line-height-3);
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+/* 表头行（能力/会话等内嵌小表）：与令牌分隔线同源 */
+.ui-c-colhead {
+  display: none;
+  grid-template-columns: var(--ui-c-cols, minmax(0, 1fr));
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: var(--border-1);
+  font-size: var(--font-size-1);
+  line-height: var(--line-height-2);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+}
+
+@media (min-width: 768px) {
+  .ui-c-colhead {
+    display: grid;
+  }
+}
+
+/* 内嵌小表的一行（能力/权限族）：md 以下堆叠并带字段名前缀，
+   保证「1」「低」这类裸值在 375 上仍然语义可读。 */
+.ui-c-cell-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+}
+
+.ui-c-cell-row + .ui-c-cell-row {
+  border-top: var(--border-1);
+}
+
+.ui-c-cell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.ui-c-cell-label {
+  font-size: var(--font-size-1);
+  line-height: var(--line-height-2);
+  color: var(--color-text-muted);
+}
+
+.ui-c-cell-value {
+  display: block;
+  min-width: 0;
+  font-size: var(--font-size-3);
+  line-height: var(--line-height-3);
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.ui-c-cell-value--minor {
+  font-size: var(--font-size-1);
+  line-height: var(--line-height-2);
+  color: var(--color-text-muted);
+}
+
+@media (min-width: 768px) {
+  .ui-c-cell-row {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.8fr) minmax(0, 1fr);
+    align-items: baseline;
+    column-gap: var(--space-2);
+  }
+
+  .ui-c-cell-label {
+    display: none;
+  }
+}

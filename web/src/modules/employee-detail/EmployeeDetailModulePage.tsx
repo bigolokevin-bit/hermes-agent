@@ -1251,11 +1251,11 @@ function useOverview(empId: string, nonce: number): OverviewState {
   return state;
 }
 
-function IdentityField({ id, label, children, title }: { id: string; label: string; children: React.ReactNode; title?: string | null }) {
+function IdentityField({ id, label, children, title, num }: { id: string; label: string; children: React.ReactNode; title?: string | null; num?: boolean }) {
   return (
-    <div className="min-w-0">
-      <dt className="text-xs text-white/45">{label}</dt>
-      <dd className="min-w-0 truncate text-sm" data-testid={`ed1-identity-${id}`} title={title ?? undefined}>
+    <div className="ui-c-field">
+      <dt className="ui-c-field-label">{label}</dt>
+      <dd className={num ? "ui-c-field-value ui-c-num" : "ui-c-field-value"} data-testid={`ed1-identity-${id}`} title={title ?? undefined}>
         {children}
       </dd>
     </div>
@@ -1293,7 +1293,10 @@ function IdentityCard({ d, empId }: { d: Rec; empId: string }) {
   return (
     <Card className="min-w-0" data-testid="ed1-identity">
       <CardContent className="p-0">
-        <dl className="grid gap-x-6 gap-y-3 px-4 py-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="ui-c-head">
+          <h3 className="ui-c-head-title">身份与组织</h3>
+        </div>
+        <dl className="ui-c-fields">
           <IdentityField id="name" label="姓名" title={name ? undefined : FIELD_MISSING_TITLE}>
             {name ?? FIELD_MISSING}
           </IdentityField>
@@ -1312,7 +1315,7 @@ function IdentityCard({ d, empId }: { d: Rec; empId: string }) {
           <IdentityField id="reports" label="汇报对象" title={reportsTo ? undefined : "后台没有回传这位员工的汇报对象。"}>
             {reportsValue}
           </IdentityField>
-          <IdentityField id="created" label="创建时间" title={created ? "北京时间，精确到分" : FIELD_MISSING_TITLE}>
+          <IdentityField id="created" label="创建时间" num title={created ? "北京时间，精确到分" : FIELD_MISSING_TITLE}>
             {created ? beijing(created) : FIELD_MISSING}
           </IdentityField>
           <IdentityField id="rid" label="请求编号" title={ridRaw ? undefined : FIELD_MISSING_TITLE}>
@@ -1369,24 +1372,27 @@ function OverviewZone({ state, onRetry, empId }: { state: OverviewState; onRetry
   }
   const d = state.data;
   const budget = isRecord(d.budget) ? d.budget : null;
-  const rows: Array<{ label: string; value: string; raw?: string | null }> = [
+  const rows: Array<{ label: string; value: string; raw?: string | null; num?: boolean }> = [
     { label: "身份", value: pickString(d.name) ? `${pickString(d.name)} · ${shortCode(empId)}` : `员工 · ${shortCode(empId)}`, raw: empId },
     { label: "岗位", value: dash(pickString(d.title, d.role, d.position)) },
     { label: "在岗状态", value: lifecycleLabel(pickString(d.lifecycleState, d.lifecycle)) },
     { label: "责任人", value: actorLabel(pickString(d.ownerUserId, d.owner, d.ownerName)) },
-    { label: "最近活动", value: beijing(pickString(d.lastActiveAt, d.updatedAt, d.updated_at)) },
-    { label: "月度预算", value: money(pickNumber(d.monthlyBudgetUsd, budget?.monthlyCostUsd)) },
+    { label: "最近活动", value: beijing(pickString(d.lastActiveAt, d.updatedAt, d.updated_at)), num: true },
+    { label: "月度预算", value: money(pickNumber(d.monthlyBudgetUsd, budget?.monthlyCostUsd)), num: true },
   ];
   return (
     <div className="min-w-0 space-y-4" data-testid="ed5-overview-wrap">
       <IdentityCard d={d} empId={empId} />
-      <Card data-testid="ed5-overview">
+      <Card className="min-w-0" data-testid="ed5-overview">
         <CardContent className="p-0">
-          <dl className="divide-y divide-white/5">
+          <div className="ui-c-head">
+            <h3 className="ui-c-head-title">在岗与最近活跃</h3>
+          </div>
+          <dl className="ui-c-rows">
             {rows.map((r) => (
-              <div key={r.label} className="grid grid-cols-1 gap-1 px-4 py-3 sm:grid-cols-[8rem_minmax(0,1fr)] sm:items-center">
-                <dt className="text-xs text-white/45">{r.label}</dt>
-                <dd className="min-w-0 truncate text-sm" title={r.raw ?? undefined}>
+              <div key={r.label} className="ui-c-row">
+                <dt className="ui-c-row-label">{r.label}</dt>
+                <dd className={r.num ? "ui-c-row-value ui-c-num" : "ui-c-row-value"} title={r.raw ?? undefined}>
                   {r.value}
                 </dd>
               </div>
@@ -1428,22 +1434,31 @@ function CapabilityZone({ resource, onRetry }: { resource: Resource<CapabilityRo
     );
   }
   return (
-    <Card data-testid="ed5-capability">
+    <Card className="min-w-0" data-testid="ed5-capability">
       <CardContent className="p-0">
-        <div className="hidden grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,1fr)] gap-2 border-b border-white/10 px-4 py-2 text-xs text-white/45 md:grid">
+        <div className="ui-c-head">
+          <h3 className="ui-c-head-title">能力与权限</h3>
+        </div>
+        <div className="ui-c-colhead">
           <span>能力</span>
           <span>风险级别</span>
           <span>来源</span>
         </div>
-        <ul className="divide-y divide-white/5">
+        <ul className="min-w-0">
           {resource.data.map((row, i) => (
-            <li key={`${row.capability ?? "cap"}-${i}`} className="grid grid-cols-1 gap-1 px-4 py-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,1fr)] md:items-center md:gap-2">
-              <span className="min-w-0 truncate text-sm">
-                <Gauge className="mr-2 inline h-4 w-4 text-white/40" />
-                {row.capability ?? "待核实"}
+            <li key={`${row.capability ?? "cap"}-${i}`} className="ui-c-cell-row">
+              <span className="ui-c-cell">
+                <Gauge aria-hidden="true" className="h-4 w-4 shrink-0 self-center text-[var(--color-text-muted)]" />
+                <span className="ui-c-cell-value">{row.capability ?? "待核实"}</span>
               </span>
-              <span className="text-xs text-white/60">{row.risk ?? "待核实"}</span>
-              <span className="truncate text-xs text-white/45">{row.scope ?? "待核实"}</span>
+              <span className="ui-c-cell">
+                <span className="ui-c-cell-label">风险级别</span>
+                <span className="ui-c-cell-value ui-c-cell-value--minor">{row.risk ?? "待核实"}</span>
+              </span>
+              <span className="ui-c-cell">
+                <span className="ui-c-cell-label">来源</span>
+                <span className="ui-c-cell-value ui-c-cell-value--minor">{row.scope ?? "待核实"}</span>
+              </span>
             </li>
           ))}
         </ul>
@@ -1486,7 +1501,7 @@ function ApprovalsZone({ resource, onRetry }: { resource: Resource<ApprovalRow[]
     return (
       <>
         {live}
-        /* R93: 与队列 DeniedPanel 同一句族（stateCopy 单点）；403≡404 同体。 */
+        {/* R93: 与队列 DeniedPanel 同一句族（stateCopy 单点）；403≡404 同体。 */}
         <Card data-testid="ed5-approvals-denied">
           <CardContent className="flex flex-col items-start gap-3 p-5">
             <ShieldAlert className="h-5 w-5 text-amber-400" />
