@@ -4465,4 +4465,123 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
     expect((container.querySelector('[data-testid="kn-doc-permalink-status"]')?.textContent ?? "")).toContain("复制失败");
     expect(fetchMock.mock.calls.length).toBe(urlsRepro);
   });
+
+  it("filters the space document list by type buckets (kn-type-*): counts, aria-pressed, URL, cursor reset, honest states", async () => {
+    const SPACE = { asOf: "2026-11-19T07:00:00Z", items: [{ spaceId: "sp_hr", name: "人事制度空间" }] };
+    const P1 = {
+      asOf: "2026-11-19T07:00:00Z",
+      documents: [
+        { documentId: "d1", fileName: "员工手册.pdf", mimeType: "pdf", sizeBytes: 100, updatedAt: "2026-11-19T07:00:00Z" },
+        { documentId: "d2", fileName: "薪酬表.xlsx", docType: "xlsx", sizeBytes: 200, updatedAt: "2026-11-19T06:00:00Z" },
+      ],
+      nextCursor: "c2",
+    };
+    const P2 = {
+      asOf: "2026-11-19T07:00:00Z",
+      documents: [
+        { documentId: "d3", fileName: "考勤制度.doc", docType: "doc", sizeBytes: 300, updatedAt: "2026-11-19T05:00:00Z" },
+        { documentId: "d4", fileName: "无类型文件", sizeBytes: 400, updatedAt: "2026-11-19T04:00:00Z" },
+      ],
+      nextCursor: null,
+    };
+    const routes = (url: string) => {
+      if (url === SPACES) return Promise.resolve(SPACE);
+      if (url.startsWith("/agent-api/api/documents?") && url.includes("spaceId=sp_hr")) {
+        if (url.includes("cursor=c2")) return Promise.resolve(P2);
+        return Promise.resolve(P1);
+      }
+      return fail(404, "这个数据接口还没有接入。", "rid-t-x");
+    };
+    fetchMock.mockClear();
+    fetchMock.mockImplementation(routes);
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    await act(async () => {});
+    const bucketOf = (i: number) => byTestid(`kn-type-${i}`) as HTMLButtonElement | null;
+    const allBtn = () => byTestid("kn-type-all") as HTMLButtonElement | null;
+    const loc = () => (byTestid("loc")?.textContent ?? "");
+    const urls = () => fetchMock.mock.calls.length;
+
+    // ---------- 桶读数：名+计数、Σ=行数、all 选中 ----------
+    expect(allBtn()?.getAttribute("aria-pressed")).toBe("true");
+    expect((allBtn()?.textContent ?? "")).toContain("全部");
+    expect((byTestid("kn-type-all-count")?.textContent ?? "")).toBe("2");
+    expect(bucketOf(1)?.textContent ?? "").toContain("PDF");
+    expect((byTestid("kn-type-count-1")?.textContent ?? "")).toBe("1");
+    expect((byTestid("kn-type-count-2")?.textContent ?? "")).toBe("1"); // 表格
+    expect(allBtn()?.disabled).toBe(false);
+    expect([...[bucketOf(1)!, bucketOf(2)!].map((b) => b.getAttribute("tabindex"))].every((t) => t === null || t === "0" || t === "-1")).toBe(true); // 无正数 tabindex
+
+    const urlsBefore = urls();
+
+    // ---------- 点选：本地过滤；?type= 进 URL；与 q/ksort/kdir 组合互不清除 ----------
+    await type("kn3-docs-filter-input", "手册"); // 本地筛选，不进 URL（与 R55 一致）
+    await click("kn-sort-size"); // ksort=size&kdir=desc 进地址
+    const withSort = loc();
+    expect(withSort).toContain("ksort=size");
+    await click("kn-type-1"); // 点 PDF 桶 → ?type= 进 URL
+    expect(loc()).toContain("type=PDF");
+    expect(loc()).toContain("ksort=size"); // 类型切换不动排序参数
+    expect(attr("kn3-docs", "data-len")).toBe("1"); // 计数与列表同源
+    expect(urls()).toBe(urlsBefore); // 全程零新请求
+
+    // ---------- 同桶再点 = 回全部（type 清除） ----------
+    await click("kn-type-1");
+    expect(loc()).not.toContain("type=");
+    expect(allBtn()?.getAttribute("aria-pressed")).toBe("true");
+
+    // ---------- 切类型重置游标分页：先清筛选，翻第二页，切类型回第一页 ----------
+    await type("kn3-docs-filter-input", "");
+    await click("knE-page-more");
+    const rowsAfterMore = [...container.querySelectorAll('[data-testid="kn3-docs-row"]')].length;
+    expect(rowsAfterMore).toBe(4);
+    await click("kn-type-2"); // 表格桶
+    expect(container.querySelectorAll('[data-testid="kn3-docs-row"]')).toHaveLength(1);
+    expect(byTestid("knE-page-count")?.textContent ?? "").toContain("已显示 2 篇"); // 累加页已清、回第一页，baseRows
+    expect(urls()).toBe(urlsBefore + 1); // 点页本身读一次 P2（R54 既有设计）；切桶重置游标不再追加
+
+    // ---------- 粘链 + 刷新复现选中态与行数 ----------
+    await render("/knowledge?tab=spaces&space=sp_hr&type=表格");
+    await act(async () => {});
+    expect(bucketOf(2)?.getAttribute("aria-pressed")).toBe("true");
+    expect(attr("kn3-docs", "data-len")).toBe("1");
+    expect(container.querySelectorAll('[data-testid="kn3-docs-row"]')).toHaveLength(1);
+
+    // ---------- 缺类型行归「未归类」桶 ----------
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    await act(async () => {});
+    await click("knE-page-more");
+    const bucket4 = bucketOf(4);
+    expect(bucket4?.textContent ?? "").toContain("未归类");
+
+    // ---------- 筛无匹配：kn-type-empty 文案 + 清类型出口，与「该空间暂无文档」可分 ----------
+    await render("/knowledge?tab=spaces&space=sp_hr&type=%E5%8E%8B%E7%BC%A9%E5%8C%85"); // 压缩包
+    await act(async () => {});
+    expect(byTestid("kn-type-empty")).toBeTruthy();
+    expect(byTestid("kn-type-empty")?.textContent ?? "").not.toContain("该空间暂无文档");
+    expect(byTestid("kn-type-clear")).toBeTruthy();
+    await click("kn-type-clear");
+    expect(loc()).not.toContain("type=");
+    expect(container.querySelectorAll('[data-testid="kn3-docs-row"]')).toHaveLength(2);
+
+    // ---------- 非 ready：整排 disabled + 原因句（读自 copyGates 同表）+ 计数不显示数字 ----------
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SPACE);
+      return fail(404, "这个数据接口还没有接入。", "rid-t-404");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    await act(async () => {});
+    // 未接入聚合不到类型：只剩「全部」桶按钮且 disabled；原因句读自 copyGates 同表；计数「—」
+    const bucketBtns = () =>
+      [...container.querySelectorAll("button")].filter((b) => (b.getAttribute("data-testid") ?? "").startsWith("kn-type-"));
+    expect(bucketBtns()).toHaveLength(1);
+    const allOnly = allBtn() as HTMLButtonElement;
+    expect(allOnly?.disabled).toBe(true);
+    expect((allOnly.getAttribute("title") ?? "")).toContain("当前不可筛选：");
+    expect((allOnly.getAttribute("title") ?? "")).toContain("没有权限");
+    expect((byTestid("kn-type-all-count")?.textContent ?? "")).toBe("—");
+    const urls404 = urls();
+    await click("kn-type-all");
+    expect(loc()).not.toContain("type=");
+    expect(urls()).toBe(urls404); // 禁用态被触发也不改 URL、不发请求
+  });
 });

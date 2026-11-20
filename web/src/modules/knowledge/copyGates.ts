@@ -53,6 +53,10 @@ export interface EntryGates {
 const FAILED_TEXT = "复制失败，已展开可选文本，可手动复制";
 
 /** 短原因表：403 与 404 同句；loading/error/login 各自一句。ready 无原因。 */
+/** R73 — 导出给类型桶复用：非 ready 时禁用原因句与复制条同源（不造第二套措辞）。 */
+export { blockedReasonByState };
+
+/** 短原因表：403 与 404 同句（反枚举）。ready 无原因。 */
 function blockedReasonByState(state: GateSurfaceState): string | null {
   switch (state) {
     case "loading":

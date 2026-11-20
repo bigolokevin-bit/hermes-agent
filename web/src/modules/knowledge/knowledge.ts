@@ -1620,6 +1620,34 @@ export function groupRowsBySpace(rows: DocRow[]): SpaceGroup[] {
 }
 
 /* ------------------------------------------------------------------ *
+ * R73 — 类型桶聚合（纯派生，不发请求）：对已加载文档（分页累加后的全集）按屏上
+ * 人话类型（docTypeLabel 词表：PDF / Word 文档 / 表格 / 演示文稿 / Markdown /
+ * 文本 / 结构化数据 / 网页 / 图片 / 其他类型）计数；缺类型行归「未归类」；
+ * 「全部」桶计数 = 传入行数（与列表/计数位同源）；桶序 = 「全部」置首，其余按
+ * 人话值首现序。「全部」是桶名，不是标识；不新造英文枚举上屏。
+ * ------------------------------------------------------------------ */
+
+export interface TypeBucket {
+  label: string;
+  count: number;
+}
+
+export function docTypeBuckets(rows: DocRow[]): TypeBucket[] {
+  const out: TypeBucket[] = [
+    { label: "全部", count: rows.length },
+  ];
+  const by = new Map<string, number>();
+  for (const row of rows) {
+    const label = row.type !== "—" ? row.type : "未归类";
+    by.set(label, (by.get(label) ?? 0) + 1);
+  }
+  for (const [label, count] of by) {
+    out.push({ label, count });
+  }
+  return out;
+}
+
+/* ------------------------------------------------------------------ *
  * R57 — 空间清单「复制清单」的文本：同样是纯屏上数据。首行明写这份清单只
  * 覆盖已加载的空间（读口 limit=20、没有分页游标），绝不冒充全库；有检索词时
  * 第二行写明是筛后行。列值取屏上原样：文档数缺「—」（原因仍在屏上，不另编），

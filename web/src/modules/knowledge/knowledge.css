@@ -1094,8 +1094,54 @@
   font-size: 0.6875rem;
   resize: vertical;
 }
+/* R73 — 类型桶：flex-wrap 不横溢；aria-pressed 选中态高亮；:focus-visible 走现成 token；
+   不新增正 tabindex。 */
+.kn-type-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  min-width: 0;
+  gap: 6px 8px;
+  margin: 8px 0 2px;
+}
+.kn-type-bucket {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 0.75rem;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-foreground);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.kn-type-bucket[aria-pressed="true"] {
+  border-color: var(--color-primary);
+  background: var(--color-muted);
+  color: var(--color-primary);
+}
+.kn-type-bucket:disabled {
+  color: var(--color-muted-foreground);
+  cursor: not-allowed;
+}
+.kn-type-bucket:focus-visible {
+  outline: 2px solid var(--color-ring, var(--color-border));
+  outline-offset: 2px;
+}
+.kn-type-count {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.6875rem;
+  color: var(--color-muted-foreground);
+}
 @media (max-width: 560px) {
   .knO-copy { width: 100%; }
+}
+@media (max-width: 560px) {
+  .kn-type-bucket { flex: 1 1 auto; justify-content: center; }
 }
 
 /* R61 — 数据来源与新鲜度台账：默认收起；长路径在窄屏断词，表格走既有 knw5-scroll，不新增横溢。 */
