@@ -2685,3 +2685,69 @@ $ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 
 边界：只动 `web/src/modules/knowledge/knowledge.updated.test.tsx`（新增）与本证据文件；
 零产品行为改动；显式路径 add；无 force / amend / `--no-verify` / `git add -A`；
 单 commit「test(console): knowledge updated-at caliber guards」。
+
+# KNW5 追加 R102：空间行 → 空间详情真锚点 deep link（kn-space-open / kn-space-nolink）（2026-11-20 BJT）
+
+安全门：toplevel 相符、porcelain 空、显式 refspec fetch 后 merge 实测 tip `f1b509b9`
+（预期章笔；知识面 delta 空——150 文件全在他模块），零冲突。
+
+## 一、入口机制现查（回执贴命中）
+
+```text
+$ git grep -n "panel=spaces" -- web/src/modules/knowledge
+  KnowledgeModulePage.test.tsx:3594:    expect(pasted).toContain("panel=spaces");
+$ grep -n "spaceLink" KnowledgeModulePage.tsx（节选）
+  3334:  const spaceLink = (id: string) => { keepBase() → set panel=spaces → set space=id → delete doc }
+  935:  data-testid="knw5-space-link" to={spaceLink(row.id)}   ← 改前
+结论：空间详情是查询态槽位（无 /knowledge/:spaceId 路由），落点 /knowledge?tab=spaces
+&panel=spaces&space=<id>；行内早已是真 <a href>（react-router Link），kn3-docs-* 由
+?space= 挂载的 SpaceDetailSurface 渲染。
+```
+
+## 二、本轮改动（改名收口，不造第二个链接）
+
+```text
+① testid 更名 knw5-space-link → kn-space-open（页面×2：Link + roving 选择器
+   a[data-testid=…]；CSS focus-visible 选择器×1；测试×13 全同步）。一行一链不重复。
+② 无标识行副文本加 data-testid="kn-space-nolink"，title 改逐字「该空间没有可用标识」
+   （原「上游没有给出这个空间的标识」；2848 行另一处空间组标签不在本单范围，保留）。
+③ 不加 target="_blank"：react-router 对带 target 的 Link 跳过拦截，会砸掉同页 Enter/
+   点击进详情；真 a[href] + 未修饰点击本身即支持 Ctrl/Cmd/中键新标签（等同可新标签方案）。
+```
+
+## 三、R102 新用例（4 条，KnowledgeModulePage.test.tsx 末 describe）
+
+```text
+锚点：2 有标识行各 1 真 A、href 逐字 /knowledge?tab=spaces&panel=spaces&space=sp_hr、
+  roving tabindex 含 0 且全在 {0,-1}、点击后 loc 含 space=sp_hr（Enter 走同一真 href，
+  jsdom 不模拟原生回车激活，按本文件既有口径以 href+click 同源断言）。
+互斥：先开 kn-space-preview-0 再点链接 → 预览节点全树（含 portal）0 个、详情 loc 落定；
+  直接点链接 → 预览从未挂载、kn3-docs-row 在场。反向不互斥成立。
+nolink：无 id 行 0 链接、kn-space-nolink SPAN、title 逐字「该空间没有可用标识」、
+  点击不写剪贴板（writeText 未调用）、行内无伪造 space= 链接、URL 不变。
+零额外请求：列表面渲染后 urls()=[documents?limit=50|spaces?limit=20]（R52 预载口径），
+  预览开合 + 本地关键词键入后逐字不变；点链后新增读取仅详情槽位既有集
+  {spaces 复读给面包屑, 该空间文档表}，未知 URL 零出现。
+```
+
+过程记录（非缺陷）：批量替换 `kn-sort-name` 双点行时误伤两处既有测试（str.replace 全量
+替换），当场被 knF/kn-sort 两条测试抓到并按 HEAD 原文恢复；本单未改动任何产品行为
+（testid/文案/选择器之外零逻辑改动），全仓测试为证。
+
+## 验证尾行（R102）
+```text
+$ npx vitest run src/modules/knowledge   → 4 files / 78 tests passed（基线 74 + R102 4）
+$ npx vitest run                         → 174 files / 2399 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r102-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn3、kn6–kn9、knB–knO、kn-sort、kn-gates、kn.parity、kn-space-preview 全族在
+  78/78 与全仓 2399/2399 中逐条通过（knw5 族测试同步更名后语义原样，非放宽断言）。
+```
+未测如实：带登录会话的真实列表面（静态 preview 无会话落非 ready 态；href/互斥/nolink
+由 jsdom 用例逐字锁定）；浏览器原生「Enter 激活 a[href]」与 Ctrl/Cmd/中键新标签是 UA
+行为，jsdom 不模拟，按 href 在场 + 同源 click 落点断言代替。
+边界：只改 web/src/modules/knowledge/**（页面/CSS/测试）与本证据；显式路径 add；
+无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「feat(console): knowledge space row deep link」。

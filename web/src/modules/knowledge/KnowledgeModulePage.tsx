@@ -932,7 +932,7 @@ function SpaceTable({
                     {row.id ? (
                       <Link
                         className="knw5-name knw5-rowlink"
-                        data-testid="knw5-space-link"
+                        data-testid="kn-space-open"
                         to={spaceLink(row.id)}
                         tabIndex={tabIndexFor(index)}
                         aria-current={active === index ? "true" : undefined}
@@ -945,7 +945,8 @@ function SpaceTable({
                         <span className="knw5-name" data-testid="knw5-space-name">
                           <Highlight text={row.name} needle={needle} testid="kn9-mark-space" />
                         </span>
-                        <span className="knw5-sub" title="上游没有给出这个空间的标识">
+                        {/* R102：无标识行不给链接，只给这块文本；不写剪贴板、不造 id。 */}
+                        <span className="knw5-sub" data-testid="kn-space-nolink" title="该空间没有可用标识">
                           — 点不进文档列表
                         </span>
                       </>
@@ -1126,7 +1127,7 @@ function SpacesSurface({
   const loaded = surface.state.kind === "ready" ? surface.state.value.rows : [];
   const needle = text.trim().toLowerCase();
   const shown = needle === "" ? loaded : loaded.filter((row) => row.name.toLowerCase().includes(needle) || row.source.toLowerCase().includes(needle));
-  const roving = useRovingRows("kn8", 'a[data-testid="knw5-space-link"]');
+  const roving = useRovingRows("kn8", 'a[data-testid="kn-space-open"]');
   const clear = () => {
     setDraft({ from: keyword, text: "" });
     onClearKeyword();
