@@ -23,7 +23,7 @@ import { Compass } from "lucide-react";
 
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 
-import { DeniedPanel, ErrorPanel, LoadingPanel } from "./states";
+import { DeniedPanel, DetailCopy, ErrorPanel, LoadingPanel } from "./states";
 import { AuditEventDetailBody } from "./views";
 import { useAuditDetail } from "./useAuditData";
 
@@ -53,6 +53,8 @@ export function AuditDetailModulePage(): ReactNode {
             <p className="max-w-prose break-words text-xs text-muted-foreground">
               从「审计事件」列表里点开一条，或者直接在这条链接后面带上事件编号。这里不会猜要读哪一条，也不会先给一份别人的记录。
             </p>
+            {/* R121: the same honest disabled control on the standalone page. */}
+            <DetailCopy event={null} />
           </CardContent>
         </Card>
       );

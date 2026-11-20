@@ -27,6 +27,8 @@ import { useEnsureTabParam } from "../capabilities/tabParam";
 import { captureTabView, focusTabButton, noteTabMount, restoreTabView } from "../capabilities/tabView";
 import { RowMissingNotice, listHref, rowHref, rowTargetFor, withRowTarget, withoutRowTarget } from "../capabilities/rowLink";
 import { CapStateAnchor, stateAnchor } from "../capabilities/stateAnchor";
+import { CapabilityRowCopyButton, type CapRowCopyResult } from "../capabilities/rowCopyButton";
+import { capRowCopyText } from "../capabilities/rowCopyText";
 import "./skills.css";
 
 type State =
@@ -132,6 +134,8 @@ export function SkillsPage() {
   const [attempt, setAttempt] = useState(0);
   const [openSkill, setOpenSkill] = useState<string | null>(() => cachedSkillsOpen);
   const [rovingKey, setRovingKey] = useState<string | null>(null);
+  // One result for the whole table: only the last-copied row shows its node.
+  const [rowCopyResult, setRowCopyResult] = useState<CapRowCopyResult | null>(null);
   const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
   const rootRef = useRef<HTMLElement | null>(null);
   const fixture = currentFixtureState();
@@ -495,6 +499,7 @@ export function SkillsPage() {
                       </button>
                     </th>
                     <th scope="col">共享范围</th>
+                    {sortedRows.length > 0 ? <th scope="col">复制</th> : null}
                   </tr>
                 </thead>
                 <tbody>
@@ -555,10 +560,28 @@ export function SkillsPage() {
                       <td><Cell value={row.status} reason={row.statusReason} title={row.statusRaw} /></td>
                       <td><Cell value={row.updatedAt} reason={row.updatedAtReason} /></td>
                       <td><Badge tone="outline">{row.scope}</Badge></td>
+                      {sortedRows.length > 0 ? (
+                        <td>
+                          <CapabilityRowCopyButton
+                            index={index}
+                            rowKey={row.id}
+                            name={row.name === "—" ? "未署名条目" : row.name}
+                            text={capRowCopyText({
+                              name: row.name,
+                              type: row.source,
+                              status: row.status,
+                              calls: null,
+                              id: row.id,
+                            })}
+                            result={rowCopyResult}
+                            onResult={setRowCopyResult}
+                          />
+                        </td>
+                      ) : null}
                     </tr>
                     {openSkill === row.id ? (
                       <tr data-testid="cap7-detail-row-skills">
-                        <td colSpan={5}>
+                        <td colSpan={sortedRows.length > 0 ? 6 : 5}>
                           <span className="sr-only" data-testid="cap-row-expanded" />
                           <CapabilityRowDetail
                             name={row.name === "—" ? null : row.name}
