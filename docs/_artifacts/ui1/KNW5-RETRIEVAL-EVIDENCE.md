@@ -4619,3 +4619,57 @@ $ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 
 无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
 「test(console): knowledge export column dual-standard guards」（evidence-only 实质，
 message 照派工原文）。
+
+# KNW5 追加 R213：全局面 × 空间详情面 parity 护栏（纯测试单，重开后续完）（2026-11-21 BJT）
+
+安全门：porcelain 空起做（HEAD 即 R214 清零笔 `1389c038`）、显式 refspec fetch 后 merge
+实测 tip `4937d63e`（比暂停时 `d7c95f80` 新，如实记录；知识面 delta 空）。WIP 自 /tmp
+保全件移回续写（未从头重写）。零产品文件改动（无真缺陷）。
+
+## 查重与四腿判定
+
+```text
+①四字段跨面逐字 —— 已锁：kn.parity.ts:138-141（R70 名/类型/大小/更新 text+title）+
+  R200 columns:125（短码为复制独有列的差集）→ 引用不重写；本文件行钮文本对覆盖短码跨面。
+②同词两面行集 —— 新写：全局面 q=手册 与详情面本地名筛「手册」行集逐元素等
+  （["A 手册.pdf","C 运维手册.pdf"]）；器械差异如实记录（q 属搜索框、名筛属组件态，
+  详情清筛不串命中面）——不伪称跨面筛选等价。
+③跨面同文档行钮整串 toBe —— 新写：kn-row-copy-0（全局）==kn-row-copy-space-0（详情）
+  整串逐字（docSingleCopy 同源的跨面直接证据，此前 R204/R208/R209 只各自单面）；
+  复制零请求（cursor= 零命中 + 点钮前后计数相等）。
+④详情翻页不串全局面 —— 新写（按派工字面造 51 笔）：P1 恰满 DOCUMENTS_LIMIT=50 →
+  cap 句「本页最多显示 50 篇（当前已加载 50 篇…）」+ kn3-page-cap-more 在场；
+  点 knE-page-more 增量恰 [P2URL]，命中面行名序列与 data-len 逐字不动；翻页后
+  M 可变位 50→51、50 常量位不动、满页提示退场；全局面 kn6-search-table 内零 knE-page-*
+  （无翻页能力，禁双侧宣称）；全局面本就无上限句（kn3-page-cap 全文档仅 1 个属详情面）。
+名实红线复述：kn-space-page-cap 不存在（R187 断言过缺席）；两面同屏共存（R132 实证）；
+无 ?source=；导出仅 data-export="absent"。
+```
+
+## 过程记录（测试自纠，非产品缺陷）
+
+```text
+上一轮 ④ 卡点根因查明：①旧断言写 `[data-testid="knE-page"]` 精确匹配（族实际是
+knE-page-bar/-count/-more… 前缀族）恒 0；②旧 fixture 只有 2 笔，未满足派工「>上限」
+字面——改 51 笔跨页夹具。两处均测试侧修正，产品零触碰（分页条本身在 ready 非空即渲染，
+与行数是否满页无关——cap-more 提示才与 M==50 挂钩，两事各锁各的）。
+```
+
+## 验证尾行（R213）
+```text
+$ npx vitest run src/modules/knowledge   → 32 files / 169 tests passed（基线 166 + 3），尾行无 Errors
+$ npx vitest run                         → 297+ files / 3010 tests passed 全绿（无豁免，0 Errors）
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r213-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn3*/kn6–kn9/knB/knD/knF/knG/knI/knL-copy*/kn-sort*/kn-gates/kn-row-copy*/
+kn-row-copy-space*/kn-doc-copy*/kn-doc-preview*/kn-space-preview*/kn3-page-cap(含 -more)/
+knE-page-*/kn7-preview-*/kn-type* + 既有 31 套全绿。
+/tmp 保全件收尾后删除（内容已入库，无第二副本）。
+```
+未测如实：带登录会话真实 51 笔屏（跨页以 mock 信封代证）；q×ktype 双器械同时在场时
+两面各自的组合筛选矩阵（器械单动已锁，组合非本文件四腿范围）。
+边界：只新增 web/src/modules/knowledge/knowledge.space.parity.test.tsx 与本证据；
+显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「test(console): knowledge space and global parity guards」。
