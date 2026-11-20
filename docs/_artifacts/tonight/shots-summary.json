@@ -10,7 +10,7 @@
   "oversize": [],
   "rootBaseline": {
     "textLen": 1612,
-    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 北京时间 2026-11-20 15:51 近 24 小时 近 7 天 近",
+    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 北京时间 2026-11-20 16:51 近 24 小时 近 7 天 近",
     "hasMainEl": true,
     "ok": true
   },
@@ -117,13 +117,13 @@
     {
       "route": "#/audit",
       "viewport": "1440",
-      "chars": 6619,
+      "chars": 6769,
       "hasMainEl": true
     },
     {
       "route": "#/audit",
       "viewport": "375",
-      "chars": 6619,
+      "chars": 6769,
       "hasMainEl": true
     },
     {
@@ -177,13 +177,13 @@
     {
       "route": "#/employees",
       "viewport": "1440",
-      "chars": 558,
+      "chars": 570,
       "hasMainEl": true
     },
     {
       "route": "#/employees",
       "viewport": "375",
-      "chars": 532,
+      "chars": 544,
       "hasMainEl": true
     },
     {
@@ -369,13 +369,13 @@
     {
       "route": "#/knowledge?tab=citations",
       "viewport": "1440",
-      "chars": 707,
+      "chars": 359,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=citations",
       "viewport": "375",
-      "chars": 359,
+      "chars": 689,
       "hasMainEl": true
     },
     {
@@ -423,13 +423,13 @@
     {
       "route": "#/knowledge?tab=scope",
       "viewport": "375",
-      "chars": 590,
+      "chars": 469,
       "hasMainEl": true
     },
     {
       "route": "#/knowledge?tab=sources",
       "viewport": "1440",
-      "chars": 396,
+      "chars": 939,
       "hasMainEl": true
     },
     {
@@ -525,37 +525,37 @@
     {
       "route": "#/system?tab=events",
       "viewport": "1440",
-      "chars": 6619,
+      "chars": 6769,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events",
       "viewport": "375",
-      "chars": 6619,
+      "chars": 6769,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "1440",
-      "chars": 6619,
+      "chars": 6769,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=events&view=anomaly",
       "viewport": "375",
-      "chars": 6619,
+      "chars": 6769,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=retention",
       "viewport": "1440",
-      "chars": 6619,
+      "chars": 6769,
       "hasMainEl": true
     },
     {
       "route": "#/system?tab=retention",
       "viewport": "375",
-      "chars": 6619,
+      "chars": 6769,
       "hasMainEl": true
     },
     {
@@ -609,7 +609,7 @@
     {
       "route": "#/work?tab=cron",
       "viewport": "1440",
-      "chars": 1956,
+      "chars": 205,
       "hasMainEl": true
     },
     {
@@ -621,20 +621,20 @@
     {
       "route": "#/work?tab=runs",
       "viewport": "1440",
-      "chars": 1636,
+      "chars": 1639,
       "hasMainEl": true
     },
     {
       "route": "#/work?tab=runs",
       "viewport": "375",
-      "chars": 302,
+      "chars": 1611,
       "hasMainEl": true
     }
   ],
   "consoleErrorsObservedByShots": 0,
   "consoleErrorRoutesObservedByShots": [],
   "ceAuthority": "login-state",
-  "routesWithEnvOnlyConsoleErrors": 25,
+  "routesWithEnvOnlyConsoleErrors": 26,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
   "overflowing": [],
   "driver": {
@@ -642,11 +642,11 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "86cb2ede",
+  "headHash": "1683d467",
   "exitCode": 0,
-  "entry": "assets/index-ncYAf9bW.js",
-  "entrySha256": "d02a166bd982b195696e8ddbbf49dd801a8560eff25ab828e0db041b60ee27db",
+  "entry": "assets/index-B5UGOr-b.js",
+  "entrySha256": "75c655dce293d35a3b5341c976ead50a9fa0be48c27343dc5acb228f5946953b",
   "entryBytes": 167490,
-  "servedEntryBefore": "index-ncYAf9bW.js",
-  "servedEntryAfter": "index-ncYAf9bW.js"
+  "servedEntryBefore": "index-B5UGOr-b.js",
+  "servedEntryAfter": "index-B5UGOr-b.js"
 }
