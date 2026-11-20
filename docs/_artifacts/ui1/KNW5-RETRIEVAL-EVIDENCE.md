@@ -5675,3 +5675,51 @@ kn-doc-copy*/kn7-preview*/kn3-page-cap/kn-sort*/kn-type*/kn-gates/导出 absent 
 ```
 未测如实：cap「在场支」在筛空态的存在性（已实测不存在，不再宣称）；ksort 旧 sort/dir
 兜底 × 导出链（兜底回填引 R118①，导出侧未扩）；翻页态×翻序组合（R229 地盘）。
+
+# KNW5 追加 R236：抽屉开合三帧导出等值 × 怪名四载体 × 空集文案两分支（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：按派工顺序先独立提交 R235（`763d1bb3`，其证据段含 **R234③ 分支说明更正**：
+叠加筛空帧 cap 实测为 null，当轮回执「在场逐字」为误述、断言两分支皆钉死无错），再跑
+R236：porcelain 空起做、merge 实测 tip 即预期 `5583fe36`、基线先跑 51/234 全绿 Errors
+0、目标文件确认缺席再动笔。零产品文件改动。新增 knowledge.export.open.detail.test.tsx
+三例（本体）。
+
+## 名实换算与查重（引用不重写）
+
+```text
+无真 CSV（R190①:113-119 源码级）→「导出」=knF/knG 数据行，spy 全程 0；「详情打开态」
+=kn7 抽屉（?doc=）——腿①不宣称全零：列表读集合逐字 + 详情读增量如实（实测**重开再 +1**，
+总数恰 2，无缓存旁路）；腿②「RFC4180 往返」不可兑现：产品纯文本拼接——按实断言**原样
+逐字**（无引号翻倍/无截断），并留哨兵声明「将来落 CSV 转义本组转红」；腿③「cap 显 0」
+不可兑现→两帧实测 null（true-0 引 R108/R157/R187/R231②；纯名筛空帧本轮独立入锁）。
+引用：R190①（怪名行钮单载体:127-138——格/knF/knG 互等与跨检索面未锁）、R190④/R231②
+（共同尾「没有可复制」——两翼判别句头未分锁）、R230①②、R233②（开→关双帧——重开第三
+帧未锁）、R234③/R235③（叠加筛空位）、R200②/R209/R223/R214②/R232/R132/R169。
+新增维（点名）：A 开→关→重开**三帧导出逐字等值** + 详情读恰 2 + 列表集合全程逐字；
+B 怪名（逗号+引号+真实换行）**四载体原样**（格折叠不丢/行钮/knF/knG）+ knG 物理行数
+后果 5（R190 详情版跨到检索面首锁）+ 全串无 ""；C 空集**文案两分支判别**（「接口回答
+里没有文档」×「本地筛选没有留下行」各自在位、互不冒充）+ 各帧 cap null + 裸 0 扫描 +
+零写零请求。
+```
+
+## 验证尾行（R236）
+
+```text
+① textClosed==textOpen==textReopen（逐字）；detail d_n1 读 2 次；listUrls 全程逐字；
+  关后 loc 无 doc=。② WEIRD_NAME（含 \n）在 btn/knF/knG 三串逐字 in、四串均无 ""、
+  knG split("\n") 长 5、格文本折叠后含「报,告」「第二行.pdf」。③ 服务端空：title 含
+  「接口回答里没有文档」且不含筛句、cap null、点击零写零请求；名筛空：含筛句不含接口
+  句、cap null、零写；裸 0 扫描 0；spy 全轮 0。
+$ npx vitest run src/modules/knowledge → 52 files / 237 tests passed（234+3），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0；build /tmp/knw-r236-dist exit 0
+$ 全仓 → 372 files / 3230 passed 全绿（无已知红需点名）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knE-page-*/knF/knG/knI/knL*/kn-row-copy*/kn-row-copy-space*/
+kn-doc-copy*/kn7-preview*/kn3-page-cap/kn-sort*/kn-type*/kn-gates/导出 absent 标记 +
+既有 51 套全绿。过程自纠两处（①②同款 mockClear 后索引错位→统一顺次索引；未用辅助
+rowNames/btnCount 触发 lint/tsc 双红→删，setter 内联改守形写法），产品零触碰。
+```
+未测如实：带登录会话真屏；检索面怪名行钮 kn-row-copy-<i> 串（本轮 knG 面已锁，行钮
+面 R190 详情版引用）；「已复制」播报态在三帧间保持/失效（R219/R221 地盘）；CSV 落地
+时的断言翻转属预置哨兵非现状。
