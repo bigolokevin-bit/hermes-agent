@@ -926,3 +926,33 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 测试：usageApi 替身按 from/to 窗长（==86400000→day 腿）分腿；既有用例腿数 3→4；新 2 用例=①两条 run-stats URL from/to 匹配完整 ISO 正则且不含 from=YYYY-MM&（月末跨月边界另测）②vi.spyOn(Date,"now") 固定到 2026-12-31T20:00Z（BJT 2027-01-01 04:00）→month 腿 from=2027-01-01T00:00:00.000Z to=2027-02-01T00:00:00.000Z（12 月翻年边界）。定向 employee-detail 48 passed；tsc --noEmit 本模块 0 error；全量 **137 files/1603 passed**（基线 1601+2）。
 - 口径修正（本域事实）：今日运行数与本月运行数各取自己窗口 totals.runs（原桶匹配语义废除）；runsTitle 缺值句同步改「今日窗/本月窗没有返回 runs 合计：缺值不作 0」；asOf/成本列口径零改动。
 - 未测项：9122 禁重建（R45 取证代次），页面活体四态读数待修复合入后代次；本轮权威=活体 API 双腿 200 + jsdom 48 用例。
+
+## R63 — /employees 行内预览（emp-row-preview-*）
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console → tip 053da5c4（代次 053da5c4，wave-18 已含）；toplevel ✓ porc=0。
+- 实现（web/src/modules/employees/EmployeesModulePage.tsx）：行 li 内 Link 之外新增独立 toggle 按钮（emp-row-preview-toggle-<id>，aria-expanded，ChevronRight rotate-90，onClick 单键翻转，onKeyDown Escape 收起且焦点即在本钮=焦点回原行）；展开体 RowPreview（emp-row-preview-<id>，role=region）六字段=姓名（缺「该字段未返回」+title）/工号短码（员工 · 8位码，title=全 id）/在职态（lifecycleLabel，未知→待核实，title=原始值）/角色职称（row.title 缺=该字段未返回）/最近活跃（beijingMinute BJT 到分，缺=该字段未返回）/请求编号（RequestIdCopy requestId=null → fallback「请求编号：该字段未返回」——列表读口行无 requestId 键，实测行 keys=[employeeId,tenantId,name,title,lifecycleState,ownerUserId,updatedAt,department,enrichment]）。页级 previewKey 单 state=同时仅一行；URL 零改动（不触 patchParams）；刷新回收起（React state 天然）。零额外请求=只读已有行对象。
+- 测试（EmployeesModulePage.test.tsx 新 describe 2 用例）：①展开读数+fetchJSON 计数前后不变锁+aria-expanded false→true+Escape（先 toggle.focus()——jsdom click 不移动焦点，键盘场景焦点本在钮上）→收起+activeElement=toggle；②同时仅一行+URL data-last-search 不变+缺 title 行「该字段未返回」。定向 employees 2 files/18 passed。
+- 坑（本笔实证）：python rfind("});") 追加 describe 会把新块插进最后一个 describe 内部并吞掉其收尾——插入点必须在文件最末 `});` 之后，或补回被吞的 describe 收尾（本次修复=anchor `});\n\nconst twoRows` 处补一行 `});`）。
+- 验证：定向 18 passed；tsc 本域零红；assert-ia 两模式 exit 0；全量 1671 passed 0 失败（merge 后基线含他人用例）。三档横溢=形态学报（toggle shrink-0 在 flex 行外列、preview dl grid minmax(0)+truncate，jsdom 不可测三档）。9122==053da5c4 代次活体展开读数待并入后代次（禁重建）。
+
+## R65 审批行内预览与详情字段一致性（apv9 vs apd5/apd6，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @c65d8ce0（b797bc98 已含），toplevel ✓ porc=0；代次 053da5c4。
+- 逐字段对照结论（改前→改后，同单两屏取值）：
+  1. 风险档缺值：预览「—」 vs 详情徽标「未标注风险」（model.ts riskView(null).label）→ 预览改直读 row.risk.label（riskView 同源），缺字段口径=该 Field title「该字段未返回」；有值两处同词（活体 ap_123DE49B：两处 riskLevel=high 同值）。
+  2. 更新时间：预览原 row.clock（pending 行=处理期限 expiresAt、settled=decidedAt??deadline）与详情「决定时间」(decidedAt 键序无 deadline 兜底) 异值 → rowFrom 新出 `decided: beijing(pick(rec, DECIDED_KEYS))`（与 detailFrom.decided 同键序同助手）；预览更新时间=decided??「—」；行主体 dl 的「处理期限/处理于」既有形态未动（不属重叠字段）。活体同单 decidedAt=2026-11-17T13:09:04.322Z 两读口一致 ✓。
+  3. rid 键序：row 原 [requestId,request_id] vs 详情 [requestId,request_id,consoleRequestId] → row 对齐三键（仅带 consoleRequestId 的行不再误显「该字段未返回」；用例 req-cr-65 两屏同显）。
+  4. 标题/状态/审批人：两处本就同助手（humanSentence(TITLE_KEYS)/statusView(STATUS_KEYS)/approverLabels），零改动。
+- 活体差异如实报（非前端可修）：本代次上游详情体 keys 无 requestId/consoleRequestId（GET /api/approval?id= 实测 keys=action…tenantId,ttl），列表行 requestId=审批单号本身；两屏各读自各自 payload，前端不跨读口拼数（禁编造）。
+- 口径锁：预览缺字段=「该字段未返回」（值/题头 textContent 或 title），详情缺段=「该段无记录」（DecisionTrail NoSeg）；新用例断言两串不互混（pv 不含「该段无记录」、trail 缺段仍「该段无记录」）。
+- 测试：ApprovalsHistoryModulePage.test.tsx 新 describe "R65 preview-detail parity (apv9 vs apd5/apd6)" 3 用例（pending 同值+展开两次 fetchJSON 计数不变零请求锁 / settled decidedAt 两屏同「2026-11-19 10:00」==apd5-field-decided-at / 缺风险行两处「未标注风险」同词+「请求编号：该字段未返回」）。定向 approvals 3 files/83 passed；tsc 本域 0 红；assert-ia 两模式 exit0；全量尾行见下条（基线 137 files/1671，+3）。
+- 零破：apv9-*/apd6-*/apd7-*/apv5–8/apr5/ed*/emp-list*（既有 80 用例全绿为证）；三档=Field dl grid min-w-0 既有形态学报（jsdom 不可测）；9122==053da5c4 活体两屏 DOM 读数待并入后代次。
+- 队列注记：R64（employees 复制为纯文本）与 R58（employees 分页）仍未交付。
+
+## R64 员工列表复制为纯文本（emp-list-copy，2026-11-20 补交）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @5dd273f3（b797bc98 已含），toplevel ✓ porc=0；代码代次 053da5c4。
+- 实现（modules/employees/EmployeesModulePage.tsx）：纯函数 buildEmployeesCopyText(rows)=表头 `name,employee_no,lifecycle,last_active` + sortedItems 屏上行序逐行 csvCell（RFC4180：含逗号/引号/换行加引号双写）；值逐字取屏上=displayName/`员工 · shortCode`（title 全 id 语义在行卡列，文本只出短码）/lifecycleLabel（default 待核实）/beijingMinute ?? 「—」（缺不补 0）；ListCopyButton 挂 header 刷新钮旁（role=group）：emp-list-copy 钮（disabled=rows 空；title=「范围=当前已加载 N 人，不是全量；零额外请求」/空态「当前已加载 0 人：没有可复制的行。」）+emp-list-copy-status aria-live=「已复制 N 行」（N=数据行数不含表头）/拒→「剪贴板写入被拒绝…」+emp-list-copy-fallback 只读 textarea（value 与目标逐字相同 onFocus select）。clipboard 缺失（无 writeText）也落 failed 分支禁静默。
+- 零额外请求=组件只吃 sortedItems/state.items 现数据；用例锁 fetchJSON.mock.calls 点击前后相等。
+- 测试：新 describe 4 用例 append 文件最末（tail-safe）——2 行逐字读数（员工 · 217A91BA/待核实/2026-11-17 13:52/在岗/无裸 emp_/已复制 2 行/无 fallback）；逗号名转义「"小鲤, 带头"」+屏上姓名列同源；reject→textarea readOnly 3 段；空列表 disabled+title「当前已加载 0 人」。定向 employees 2 files/22 passed；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **138 files/1678 passed**（基线 1674+4）。
+- 零破：emp-list-*/emp-row-preview-*/ed*/apv5–9/apd6/apd7/apr5（既有用例全绿为证）；三档=header flex-wrap+span.contents 既有形态学报（jsdom 不可测）；9122==053da5c4 禁重建，活体复制读数待并入后代次。
+- 队列注记：R58（employees 分页）仍未交付。

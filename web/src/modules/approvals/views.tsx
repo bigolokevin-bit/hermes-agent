@@ -176,15 +176,18 @@ export function ApprovalRowCard({
                 value={row.status.label}
                 reason={row.status.raw ?? "原始状态值未返回"}
               />
+              {/* R65 parity: the risk reads exactly what the detail badge
+                * reads (riskView 同值，缺值=「未标注风险」)；时间走 decided —
+                * 与详情的「决定时间」同一键序同一助手。缺字段口径=「该字段未返回」。 */}
               <Field
                 label="风险档"
-                value={row.risk.raw ? row.risk.label : "—"}
+                value={row.risk.label}
                 reason={row.risk.raw ? undefined : "该字段未返回"}
               />
               <Field
                 label="更新时间"
-                value={row.clock ?? "—"}
-                reason={row.clock ? "北京时间，精确到分" : MISSING_TIME}
+                value={row.decided ?? "—"}
+                reason={row.decided ? "北京时间，精确到分" : "该字段未返回"}
               />
               <Field
                 label="审批人"

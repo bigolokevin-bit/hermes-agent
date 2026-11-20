@@ -368,3 +368,184 @@ describe("R62 column sorting (emp-list-sort-*)", () => {
     expect(rowOrder()).toEqual(["emp_CCCC3333DDDD4444", "emp_AAAA1111BBBB2222", "emp_BBBB2222CCCC3333"]);
   });
 });
+
+const twoRows = {
+  items: [
+    ...rowsBody.items,
+    {
+      employeeId: "emp_CCCC3333DDDD4444EEEE5555",
+      name: "阿朝",
+      lifecycleState: "active",
+      ownerUserId: "2",
+      updatedAt: "2026-11-18T01:30:00.000Z",
+      department: "增长组",
+      enrichment: null,
+    },
+  ],
+};
+
+describe("R63 inline row preview (emp-row-preview-*)", () => {
+  it("expands from the row data alone — zero extra requests, honest fields, Esc refocuses", async () => {
+    fetchJSON.mockImplementation(() => Promise.resolve(twoRows));
+    await render("/employees");
+    const callsBefore = fetchJSON.mock.calls.length;
+    const toggle = q("emp-row-preview-toggle-emp_217A91BA995044DFBB3E2E940B") as HTMLButtonElement;
+    expect(toggle).toBeTruthy();
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    await act(async () => {
+      toggle.click();
+    });
+    expect(fetchJSON.mock.calls.length).toBe(callsBefore); // 禁额外请求
+    const preview = q("emp-row-preview-emp_217A91BA995044DFBB3E2E940B");
+    expect(preview).toBeTruthy();
+    expect(preview.textContent).toContain("小鲤");
+    expect(preview.textContent).toContain("员工 · 217A91BA");
+    expect(preview.textContent).toContain("待核实"); // weird_state → 待核实，title 带原值
+    expect(preview.textContent).toContain("内容编辑");
+    expect(preview.textContent).toContain("2026-11-17 13:52"); // BJT 到分
+    expect(preview.textContent).toContain("请求编号：该字段未返回");
+    expect(preview.textContent).not.toContain("emp_217A91BA995044DFBB3E2E940B "); // 屏上文本不铺裸全 id
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    // Esc 收起且焦点回原钮（键盘场景：焦点本就在钮上）
+    toggle.focus();
+    await act(async () => {
+      toggle.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    expect(q("emp-row-preview-emp_217A91BA995044DFBB3E2E940B")).toBeNull();
+    expect(document.activeElement).toBe(toggle);
+  });
+
+  it("at most one row is open; the URL never moves; a missing title states 该字段未返回", async () => {
+    fetchJSON.mockImplementation(() => Promise.resolve(twoRows));
+    const searchBefore = document.body.getAttribute("data-last-search");
+    await render("/employees");
+    const t1 = q("emp-row-preview-toggle-emp_217A91BA995044DFBB3E2E940B") as HTMLButtonElement;
+    const t2 = q("emp-row-preview-toggle-emp_CCCC3333DDDD4444EEEE5555") as HTMLButtonElement;
+    await act(async () => {
+      t1.click();
+    });
+    expect(q("emp-row-preview-emp_217A91BA995044DFBB3E2E940B")).toBeTruthy();
+    await act(async () => {
+      t2.click();
+    });
+    expect(q("emp-row-preview-emp_217A91BA995044DFBB3E2E940B")).toBeNull(); // 同时仅一行
+    const p2 = q("emp-row-preview-emp_CCCC3333DDDD4444EEEE5555");
+    expect(p2).toBeTruthy();
+    expect(p2.textContent).toContain("该字段未返回"); // 阿朝无 title
+    expect(p2.getAttribute("title") ?? document.body.textContent).toBeTruthy();
+    expect(document.body.getAttribute("data-last-search")).toBe(searchBefore ?? ""); // URL 零改动
+    expect(document.body.getAttribute("data-last-search")).toBe("");
+  });
+});
+
+describe("R64 employees list copy as text (emp-list-copy)", () => {
+  const twoRows = {
+    items: [
+      ...rowsBody.items,
+      { employeeId: "emp_2B2C2D2E4F506172", name: "阿朝", title: "增长", lifecycleState: "active", updatedAt: "2026-11-18T05:52:48.030Z", department: "增长组" },
+    ],
+  };
+
+  const stubClipboard = (impl?: (t: string) => Promise<void>) => {
+    const written: string[] = [];
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: impl
+          ? impl
+          : async (t: string) => {
+              written.push(t);
+            },
+      },
+    });
+    return written;
+  };
+
+  it("copies the on-screen rows verbatim without any extra request", async () => {
+    fetchJSON.mockImplementation(() => Promise.resolve(twoRows));
+    await render("/employees");
+    await act(async () => {
+      flushTimers();
+    });
+    const callsBefore = fetchJSON.mock.calls.length;
+    const written = stubClipboard();
+    const btn = q("emp-list-copy") as HTMLButtonElement | null;
+    expect(btn, "copy button on screen").toBeTruthy();
+    expect(btn!.disabled, "ready list enables copy").toBe(false);
+    expect(btn!.title).toContain("当前已加载 2 人");
+    await act(async () => {
+      btn!.click();
+    });
+    await act(async () => {});
+    expect(fetchJSON.mock.calls.length, "copy never fetches").toBe(callsBefore);
+    expect(written.length).toBe(1);
+    const lines = written[0].split("\n");
+    expect(lines[0]).toBe("name,employee_no,lifecycle,last_active");
+    expect(lines).toHaveLength(3); // 表头 + 屏上 2 人
+    expect(lines[1]).toContain("小鲤");
+    expect(lines[1]).toContain("员工 · 217A91BA");
+    expect(lines[1]).toContain("待核实"); // weird_state → 人话 default
+    expect(lines[1]).toContain("2026-11-17 13:52"); // BJT 到分
+    expect(lines[2]).toContain("阿朝");
+    expect(lines[2]).toContain("在岗");
+    expect(written[0]).not.toContain("emp_"); // 禁裸工号全量
+    expect(q("emp-list-copy-status")?.textContent).toContain("已复制 2 行");
+    expect(q("emp-list-copy-fallback")).toBeNull();
+  });
+
+  it("escapes a comma-bearing name and keeps it verbatim on both paths", async () => {
+    fetchJSON.mockImplementation(() =>
+      Promise.resolve({
+        items: [{ ...rowsBody.items[0], name: "小鲤, 带头" }],
+      }),
+    );
+    await render("/employees");
+    await act(async () => {
+      flushTimers();
+    });
+    const written = stubClipboard();
+    const btn = q("emp-list-copy") as HTMLButtonElement;
+    await act(async () => {
+      btn.click();
+    });
+    await act(async () => {});
+    expect(written[0]).toContain('"小鲤, 带头"'); // RFC4180 转义
+    // 屏上姓名列与复制行同源
+    const nameCell = document.querySelector('[data-testid="emp-l-row-emp_217A91BA995044DFBB3E2E940B"]');
+    expect(nameCell?.textContent).toContain("小鲤, 带头");
+  });
+
+  it("falls back to a read-only textarea when the clipboard refuses", async () => {
+    fetchJSON.mockImplementation(() => Promise.resolve(twoRows));
+    await render("/employees");
+    await act(async () => {
+      flushTimers();
+    });
+    stubClipboard(async () => {
+      throw new Error("denied");
+    });
+    const btn = q("emp-list-copy") as HTMLButtonElement;
+    await act(async () => {
+      btn.click();
+    });
+    await act(async () => {});
+    expect(q("emp-list-copy-status")?.textContent).toContain("手动复制");
+    const area = q("emp-list-copy-fallback") as HTMLTextAreaElement | null;
+    expect(area, "fallback textarea").toBeTruthy();
+    expect(area!.readOnly).toBe(true);
+    expect(area!.value.split("\n")).toHaveLength(3);
+    expect(area!.value).toContain("员工 · 217A91BA");
+  });
+
+  it("disables with a stated reason when nothing is loaded", async () => {
+    fetchJSON.mockImplementation(() => Promise.resolve({ items: [] }));
+    await render("/employees");
+    await act(async () => {
+      flushTimers();
+    });
+    const btn = q("emp-list-copy") as HTMLButtonElement | null;
+    expect(btn, "button still rendered in empty state").toBeTruthy();
+    expect(btn!.disabled).toBe(true);
+    expect(btn!.title).toContain("当前已加载 0 人");
+  });
+});

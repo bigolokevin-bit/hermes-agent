@@ -396,6 +396,9 @@ export interface ApprovalRow {
   /** R60: inline preview fields, parsed from the list row payload itself. */
   approvers: { labels: string[]; raw: string | null };
   requestId: string | null;
+  /** R65 parity: exactly what the detail reads as 「决定时间」 — same keys,
+   * same helper, so the preview and the detail can never disagree. */
+  decided: string | null;
 }
 
 const ID_KEYS = ["approvalId", "approval_id", "id", "uuid"] as const;
@@ -434,7 +437,10 @@ function rowFrom(item: unknown, index: number): ApprovalRow | null {
     reason: humanSentence(pickText(rec, REASON_KEYS)),
     risk: riskView(pickText(rec, ["riskLevel", "risk_level", "risk"])),
     approvers: approverLabels(rec),
-    requestId: pickText(rec, ["requestId", "request_id"]),
+    // R65: same key order as approvalDetailFrom — a ticket that only
+    // carries consoleRequestId must not read missing here and present there.
+    requestId: pickText(rec, ["requestId", "request_id", "consoleRequestId"]),
+    decided: beijing(pick(rec, DECIDED_KEYS)),
   };
 }
 
