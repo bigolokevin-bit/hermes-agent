@@ -480,3 +480,14 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 - 验证：`src/modules/metrics` **3 files / 171 passed**（原 167，+4）；全量 **137 files / 1694 passed**（原 1690）；`tsc -b . --noEmit` 全仓 58 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metAD` → entry `assets/index-C9RYivhE.js` sha256 `acca73cc2ff3f79f4ef93bfb5e4daa4496fa9cfcfb7eff15ce7350ddbbad8df0`，entry 内 `metAD-note` 命中 0，chunk `assets/MetricsModulePage-B-biV7Jz.js` 命中 1。
 - 既有断言调整：一处「整页不含 $0.00」改为「成本卡不含 $0.00」，因为 sr-only 口径说明会合法地引用 `$0.00` 作为「真 0」的写法——范围收紧而非放宽。
 - 未测项：真实读屏（VoiceOver/NVDA）对 `aria-describedby` 的朗读顺序与实际停顿未走查。
+
+## 粘性表头与不折行的数值（metAF，2026-11-20）
+
+两张宽表的表头在滚动时留在表顶，数值列不再被挤成两行或省略号。
+
+- 表头：`<thead className="metAF-sticky-detail" data-testid="metAF-sticky-detail">`（明细）与 `metAF-sticky-share`（分摊）；CSS `position: sticky; top: 0; z-index: 0; background: var(--color-card)`。首列仍由 metW 的 `td:first-child/th:first-child` 锚定并带 `z-index: 1`，表头首格 `z-index: 2`——三层层级明确（表头 0 < 首列 1 < 左上角 2），不会互相遮挡。
+- 数值列：新类 `metAF-nowrap` 加在六个数值表头（明细 支出/次数/占比、分摊 运行数/成本/占比），CSS `white-space: nowrap; font-variant-numeric: tabular-nums`；表体数值格经 `.metW-table tbody td.met6-num` 同样 nowrap + 等宽数字，因此 375 下数字保持一行，由容器横向滚动而不是截断加省略号。
+- 兼容：与既有 `.met6-num` 合并为同一 `className`（中途曾出现重复 `className` 属性导致 `met6-num` 被吞，已在同单修掉，tsc 与测试均覆盖该点）。
+- 断言（不起浏览器）：两只 thead 的 tagName/class/testid 存在，`.metAF-nowrap` 至少 3 个元素且均为 TH/TD，三个分摊数值表头的 class 同时含 `met6-num` 与 `metAF-nowrap`。
+- 验证：`src/modules/metrics` **3 files / 173 passed**（原 171，+2）；全量 **137 files / 1696 passed**（原 1694）；`tsc -b . --noEmit` 全仓 58 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metAF` → entry `assets/index-BerrBqsL.js` sha256 `3339cb3170dd7d80eb2f565edc26c8f29ed8162effd1620f1688cddb8eec37b9`，entry 内 `metAF-sticky` 命中 0，chunk `assets/MetricsModulePage-BRMjOkzZ.js` 命中 1。
+- 未测项：真浏览器里纵向滚动时表头贴合、首列与表头交角的重叠关系与 375 下数字实际宽度未人工走查（容器纵向高度通常不滚动，粘性表头主要在窄容器下生效）。

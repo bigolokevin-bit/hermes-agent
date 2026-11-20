@@ -2051,20 +2051,20 @@ export function MetricsModulePage() {
                   onKeyDown={handleTableScrollKeys}
                 >
                   <table className="met6-table" data-testid="met6-table">
-                    <thead>
+                    <thead className="metAF-sticky-detail" data-testid="metAF-sticky-detail">
                       <tr>
                         <th scope="col">{breakdownView.view === 'model' ? '模型' : '员工'}</th>
-                        <th scope="col" aria-sort={ariaSortFor('cost')} title="金额单位：美元（USD），两位小数" data-testid="metO-fmt-th-spend">
+                        <th scope="col" aria-sort={ariaSortFor('cost')} title="金额单位：美元（USD），两位小数" className="metAF-nowrap" data-testid="metO-fmt-th-spend">
                           <button type="button" className="met6-sort" data-testid="metP-sort-cost" onClick={() => chooseDetailSort('cost')} aria-label="按支出排序">
                             支出（USD）
                           </button>
                         </th>
-                        <th scope="col" aria-sort={ariaSortFor('runs')} title="调用次数，单位：次" data-testid="metO-fmt-th-count">
+                        <th scope="col" aria-sort={ariaSortFor('runs')} title="调用次数，单位：次" className="metAF-nowrap" data-testid="metO-fmt-th-count">
                           <button type="button" className="met6-sort" data-testid="metP-sort-runs" onClick={() => chooseDetailSort('runs')} aria-label="按次数排序">
                             次数（次）
                           </button>
                         </th>
-                        <th scope="col" className="met6-num" aria-sort={ariaSortFor('share')} data-testid="metG-a11y-th-share" title="占本窗口合计的比例，单位：百分比，一位小数">
+                        <th scope="col" className="met6-num metAF-nowrap" aria-sort={ariaSortFor('share')}  data-testid="metG-a11y-th-share" title="占本窗口合计的比例，单位：百分比，一位小数">
                           <button type="button" className="met6-sort" data-testid="metP-sort-share" onClick={() => chooseDetailSort('share')} aria-label="按占比排序">
                             占比（%）
                           </button>
@@ -2530,7 +2530,7 @@ export function MetricsModulePage() {
                 >
                   <table className="met6-table" data-testid={`${sharePrefix}-table`}>
                     <caption className="metG-caption" data-testid="metG-a11y-caption">{`成本分摊：${usageWindow.label} · ${groupBy === 'employee' ? '按员工' : '按模型'} · 按${sortColumnLabel}${sortDir === 'asc' ? '升序' : '降序'}排列`}</caption>
-                    <thead>
+                    <thead className="metAF-sticky-share" data-testid="metAF-sticky-share">
                       <tr>
                         <th scope="col" aria-sort={sortKey === 'model' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
                           <button
@@ -2543,17 +2543,17 @@ export function MetricsModulePage() {
                             {sortKey === 'model' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
                           </button>
                         </th>
-                        <th scope="col" className="met6-num" data-testid="metG-a11y-th-runs" data-metO-unit="次" title="运行计数，单位：次" aria-sort={sortKey === 'runs' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                        <th scope="col" className="met6-num metAF-nowrap"  data-testid="metG-a11y-th-runs" data-metO-unit="次" title="运行计数，单位：次" aria-sort={sortKey === 'runs' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
                           <button type="button" className="met7-sort" onClick={() => chooseSort('runs')} data-testid={`${sharePrefix}-sort-runs`}>
                             运行数{sortKey === 'runs' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
                           </button>
                         </th>
-                        <th scope="col" className="met6-num" data-testid="metG-a11y-th-cost" data-metO-unit="USD" title="金额单位：美元（USD），两位小数" aria-sort={sortKey === 'cost' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                        <th scope="col" className="met6-num metAF-nowrap"  data-testid="metG-a11y-th-cost" data-metO-unit="USD" title="金额单位：美元（USD），两位小数" aria-sort={sortKey === 'cost' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
                           <button type="button" className="met7-sort" onClick={() => chooseSort('cost')} data-testid={`${sharePrefix}-sort-cost`}>
                             成本{sortKey === 'cost' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
                           </button>
                         </th>
-                        <th scope="col" title="占本窗口可分摊实扣的比例，单位：百分比，一位小数" data-testid="metO-fmt-th-pct">占比（%）</th>
+                        <th scope="col" title="占本窗口可分摊实扣的比例，单位：百分比，一位小数" className="metAF-nowrap" data-testid="metO-fmt-th-pct">占比（%）</th>
                         <th scope="col">运行</th>
                       </tr>
                     </thead>

@@ -3756,3 +3756,42 @@ describe('metAD — each card points at its caliber note', () => {
     expect(urls().length).toBe(before);
   });
 });
+
+describe('metAF — sticky table heads and figures that keep one line', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+
+  it('marks both heads sticky and keeps the numeric columns nowrap', async () => {
+    await mount(usageRouter());
+
+    const detailHead = q('metAF-sticky-detail');
+    expect(detailHead?.tagName).toBe('THEAD');
+    expect(detailHead?.className).toContain('metAF-sticky-detail');
+    // The scroll container still anchors the first column, so the two sticky
+    // axes are declared in the same scope.
+    const detailScroll = q('metW-scroll-detail');
+    expect(detailScroll?.className).toContain('metW-table');
+
+    const numeric = document.querySelectorAll('.metAF-nowrap');
+    expect(numeric.length).toBeGreaterThanOrEqual(3);
+    for (const cell of Array.from(numeric)) {
+      expect(['TH', 'TD']).toContain(cell.tagName);
+    }
+    // The two header cells the sort keys live in keep both the numeric and the
+    // nowrap class (no duplicated className swallowed one of them).
+    expect(q('metG-a11y-th-share')?.className).toContain('met6-num');
+    expect(q('metG-a11y-th-share')?.className).toContain('metAF-nowrap');
+    expect(q('metO-fmt-th-spend')?.className).toContain('metAF-nowrap');
+    expect(q('metO-fmt-th-count')?.className).toContain('metAF-nowrap');
+  });
+
+  it('does the same for the share table', async () => {
+    await mountShare(SHARE_USAGE);
+
+    const shareHead = q('metAF-sticky-share');
+    expect(shareHead?.tagName).toBe('THEAD');
+    expect(q('metW-scroll-share')?.className).toContain('metW-table');
+    expect(q('metG-a11y-th-runs')?.className).toContain('metAF-nowrap');
+    expect(q('metG-a11y-th-cost')?.className).toContain('metAF-nowrap');
+    expect(q('metO-fmt-th-pct')?.className).toContain('metAF-nowrap');
+  });
+});
