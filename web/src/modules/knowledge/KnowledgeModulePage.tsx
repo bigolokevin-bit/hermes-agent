@@ -44,7 +44,12 @@ import {
   SEARCH_UNWIRED_HUMAN,
   SPACE_DOC_UNWIRED_HEAD,
   SPACE_DOC_UNWIRED_HUMAN,
+  ariaSort,
   docScopeNote,
+  docSortCol,
+  docSortDir,
+  docSortLandDir,
+  sortDocs,
   spaceScopeNote,
   SPACES_UNWIRED_HEAD,
   SPACES_UNWIRED_HUMAN,
@@ -78,6 +83,8 @@ import {
   type CitationRow,
   type DocDetailRow,
   type DocRow,
+  type DocSortCol,
+  type DocSortDir,
   type IngestTaskRow,
   type KnowledgeRow,
   type KnowledgeTab,
@@ -118,18 +125,24 @@ const CrumbReport = createContext<(crumb: DeepCrumb | null) => void>(() => {});
 type Surf<T> =
   | { kind: "loading" }
   | { kind: "ready"; value: SurfaceValue<T> }
-  | { kind: "unwired"; requestId: string | null }
+  | { kind: "unwired"; requestId: string | null; denied: boolean }
   | { kind: "login" }
   | { kind: "error"; message: string; requestId: string | null };
 
 const GENERIC_FAILURE = "这次没能读到知识数据，请稍后重试。";
 
-/** 401 is its own body; 403 and 404 share one; everything else is a failure. */
+/**
+ * 401 is its own body. 403 and 404 share ONE identical honest body (anti-enumeration:
+ * the readable text never reveals which), but the read still remembers whether it was a
+ * permission denial or a missing read, so a machine-checkable `knD-state-*` marker can be
+ * attached without changing a single visible character.
+ */
 function toSurf(cause: unknown): Surf<never> {
   const api = cause instanceof ApiError ? cause : null;
   const status = api?.status ?? null;
   if (status === 401) return { kind: "login" };
-  if (status === 403 || status === 404) return { kind: "unwired", requestId: api?.requestId ?? null };
+  if (status === 403 || status === 404)
+    return { kind: "unwired", requestId: api?.requestId ?? null, denied: status === 403 };
   const message = api?.message?.trim();
   // A message the service wrote for people is safe to show; anything else is not.
   return { kind: "error", message: message && !/\d{3}/.test(message) ? message : GENERIC_FAILURE, requestId: api?.requestId ?? null };
@@ -238,6 +251,11 @@ interface SurfaceProps<T> {
   /** 未接入正文的说法；每个面点名自己的读口，403 与 404 仍共用同一份。 */
   unwiredHead?: string;
   unwiredHuman?: string;
+  /**
+   * 只对 `/knowledge` 的空间列表与 `/knowledge/:spaceId` 的文档列表打开：给「读不到」
+   * 与「真 0」各挂一个机器可判的 knD-state-* 标记（可见正文一字不改，403 与 404 同体）。
+   */
+  honestState?: boolean;
 }
 
 /** The four states, once, for every surface on the page. */
@@ -250,9 +268,20 @@ function Surface<T>({
   render,
   unwiredHead = "未接入",
   unwiredHuman = UNWIRED_HUMAN,
+  honestState = false,
 }: SurfaceProps<T>): ReactNode {
   const value = state.kind === "ready" ? state.value : null;
   const stamp = value?.stamp ?? null;
+  // 机器可判的诚实态标记：不可用 / 无权 / 真 0，各一个 testid；不渲染任何可见文字。
+  const honestMarker = !honestState
+    ? null
+    : state.kind === "unwired"
+      ? state.denied
+        ? "knD-state-denied"
+        : "knD-state-unavailable"
+      : value && value.rows.length === 0
+        ? "knD-state-empty"
+        : null;
   // A read that DID give a collection time says nothing else about time: the reason
   // line only appears when the time is genuinely missing.
   const stampReason = value
@@ -276,6 +305,8 @@ function Surface<T>({
         来源：{SURFACE_SOURCE[source]} · 数据截至 {stamp ?? "未知"}
         <Reason>{stampReason}</Reason>
       </p>
+
+      {honestMarker ? <span data-testid={honestMarker} className="knD-marker" aria-hidden="true" /> : null}
 
       {state.kind === "loading" ? <Skeleton testid={`${testid}-loading`} /> : null}
 
@@ -947,6 +978,7 @@ function SpacesSurface({
       <Surface
         testid="knw5-spaces"
         source="spaces"
+        honestState
         state={surface.state.kind === "ready" ? { kind: "ready", value: { ...surface.state.value, rows: shown } } : surface.state}
         onRetry={surface.retry}
         unwiredHead={SPACES_UNWIRED_HEAD}
@@ -1177,39 +1209,78 @@ function DocPreviewDrawer({
  * row's own detail, which either links to the original or says why it cannot be opened.
  * The name box filters only what this read already returned, and says so on screen.
  */
+/** A row plus the key it was opened with. The key comes from the load order, so
+    sorting never moves which row a drawer or link points at. */
+interface DocEntry {
+  row: DocRow;
+  key: string;
+}
+
+function SortableHead({
+  col,
+  label,
+  sort,
+  dir,
+  onSort,
+}: {
+  col: DocSortCol;
+  label: string;
+  sort: DocSortCol;
+  dir: DocSortDir;
+  onSort: (col: DocSortCol) => void;
+}): ReactNode {
+  const active = sort === col;
+  return (
+    <th scope="col" className="knC-th" aria-sort={ariaSort(col, sort, dir)}>
+      <button
+        type="button"
+        className="knC-sort"
+        data-testid={`knC-sort-${col}`}
+        onClick={() => onSort(col)}
+        aria-label={`按${label}排序`}
+      >
+        <span className="knC-sort-label">{label}</span>
+        <span className="knC-mark" aria-hidden="true">
+          {active ? (dir === "asc" ? "▲" : "▼") : "↕"}
+        </span>
+      </button>
+    </th>
+  );
+}
+
 function DocTable({
-  rows,
+  entries,
   docLink,
   openKey,
   needle,
+  sort,
+  dir,
+  onSort,
 }: {
-  rows: DocRow[];
+  entries: DocEntry[];
   docLink: (key: string) => string;
   openKey: string;
   needle: string;
+  sort: DocSortCol;
+  dir: DocSortDir;
+  onSort: (col: DocSortCol) => void;
 }): ReactNode {
   return (
     <div className="kn3-docs-wrap">
       <table className="knw5-table kn3-docs-table" data-testid="kn3-docs-table">
         <thead>
           <tr>
-            <th scope="col">文档名</th>
+            <SortableHead col="name" label="文档名" sort={sort} dir={dir} onSort={onSort} />
             <th scope="col">类型</th>
-            <th scope="col">大小</th>
-            <th scope="col">更新</th>
+            <SortableHead col="size" label="大小" sort={sort} dir={dir} onSort={onSort} />
+            <SortableHead col="updated" label="更新" sort={sort} dir={dir} onSort={onSort} />
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, index) => {
-            const key = row.id !== "" ? row.id : `row-${index}`;
+          {entries.map(({ row, key }) => {
             const isOpen = openKey !== "" && openKey === key;
             return (
-              <tr
-                key={key}
-                data-testid="kn3-docs-row"
-                data-open={isOpen ? "1" : "0"}
-                title={row.id || undefined}
-              >
+              <tr key={key} data-testid="kn3-docs-row" data-open={isOpen ? "1" : "0"} title={row.id || undefined}>
                 <td data-label="文档名">
                   <Link className="kn3-docs-name" data-testid="kn3-docs-name" to={docLink(key)} title={row.nameHint ?? undefined}>
                     <Highlight text={row.name} needle={needle} testid="kn9-mark-doc" />
@@ -1246,6 +1317,9 @@ function SpaceDetailSurface({
   docLink,
   backLink,
   spaceSelfLink,
+  sort,
+  dir,
+  onSort,
   onCloseDoc,
 }: {
   nonce: string;
@@ -1254,9 +1328,21 @@ function SpaceDetailSurface({
   docLink: (key: string) => string;
   backLink: string;
   spaceSelfLink: string;
+  sort: DocSortCol;
+  dir: DocSortDir;
+  onSort: (col: DocSortCol) => void;
   onCloseDoc: () => void;
 }): ReactNode {
   const [filter, setFilter] = useState("");
+  // 换一个空间：本地筛选要清掉，别把上一个空间的筛选结果当成这个空间的现状。
+  // 行与错误本就随读口键（含 spaceId）更换而回到骨架，不会残留。
+  const prevSpace = useRef(spaceId);
+  useEffect(() => {
+    if (prevSpace.current !== spaceId) {
+      prevSpace.current = spaceId;
+      setFilter("");
+    }
+  }, [spaceId]);
   // 空间名不靠 URL 回显：它来自指定空间读口。读不到就用短码，原因放 title。
   const names = useSurface<SpaceRow>(
     () => fetchJsonStrict(SPACES_URL).then(readSpaces),
@@ -1275,10 +1361,14 @@ function SpaceDetailSurface({
   );
   const filterKey = filter.trim().toLowerCase();
   const rows = surface.state.kind === "ready" ? surface.state.value.rows : [];
-  const shown = filterKey === "" ? rows : rows.filter((row) => row.name.toLowerCase().includes(filterKey));
+  // 先按读入顺序定死每行的 key，再本地排序：排序只换显示次序，绝不动抽屉与链接的落点。
+  const keyed: DocEntry[] = (filterKey === "" ? rows : rows.filter((row) => row.name.toLowerCase().includes(filterKey))).map(
+    (row, index) => ({ row, key: row.id !== "" ? row.id : `row-${index}` }),
+  );
+  const shown = sortDocs(keyed, sort, dir, (entry) => entry.row);
   const shownValue =
-    surface.state.kind === "ready" ? { ...surface.state.value, rows: shown } : null;
-  const openRow = shown.find((row, index) => (row.id !== "" ? row.id : `row-${index}`) === openDoc) ?? null;
+    surface.state.kind === "ready" ? { ...surface.state.value, rows: shown.map((entry) => entry.row) } : null;
+  const openRow = shown.find((entry) => entry.key === openDoc)?.row ?? null;
 
   const openKeyCode = shortId(openDoc);
   const docLabel = openRow?.name ?? (openKeyCode ? `文档 · ${openKeyCode}` : "");
@@ -1326,6 +1416,7 @@ function SpaceDetailSurface({
       <Surface
         testid="kn3-docs"
         source="space-docs"
+        honestState
         state={
           surface.state.kind === "ready" && shownValue ? { kind: "ready", value: shownValue } : surface.state
         }
@@ -1342,7 +1433,17 @@ function SpaceDetailSurface({
             </p>
           )
         }
-        render={(value) => <DocTable rows={value.rows} docLink={docLink} openKey={openDoc} needle={filter} />}
+        render={() => (
+          <DocTable
+            entries={shown}
+            docLink={docLink}
+            openKey={openDoc}
+            needle={filter}
+            sort={sort}
+            dir={dir}
+            onSort={onSort}
+          />
+        )}
       />
       {openDoc !== "" ? (
         <DocPreviewDrawer nonce={nonce} docId={openDoc} row={openRow} onClose={onCloseDoc} />
@@ -1911,6 +2012,9 @@ export default function KnowledgeModulePage() {
   const spaceId = sp.get("space") ?? "";
   const openDoc = sp.get("doc") ?? "";
   const openSearchDoc = sp.get("sdoc") ?? "";
+  // 文档列表排序也只在地址里：刷新、粘贴 URL、前进后退都能复现，且换排序不再问服务。
+  const sortCol = docSortCol(sp.get("sort"));
+  const sortDir = docSortDir(sp.get("dir"));
   const [nonce, setNonce] = useState("0");
   const [deepCrumb, setDeepCrumb] = useState<DeepCrumb | null>(null);
   const reportCrumb = useCallback((next: DeepCrumb | null) => {
@@ -1938,6 +2042,9 @@ export default function KnowledgeModulePage() {
     next.delete("space");
     next.delete("doc");
     next.delete("sdoc");
+    // 排序只属于某个空间的文档列表；换页签就清掉，避免地址里残留用不上的排序参数。
+    next.delete("sort");
+    next.delete("dir");
     setSp(next);
   };
 
@@ -1989,6 +2096,15 @@ function containerQuery(key: string): HTMLElement | null {
     const next = new URLSearchParams(sp);
     next.delete("q");
     next.delete("sdoc");
+    setSp(next);
+  };
+
+  // 点同一列在升/降间翻转，点别的列落到它各自的默认方向；只改地址，不触发任何读取。
+  const applySort = (col: DocSortCol) => {
+    const next = new URLSearchParams(sp);
+    const dir: DocSortDir = col === sortCol ? (sortDir === "asc" ? "desc" : "asc") : docSortLandDir(col);
+    next.set("sort", col);
+    next.set("dir", dir);
     setSp(next);
   };
 
@@ -2156,6 +2272,9 @@ function containerQuery(key: string): HTMLElement | null {
                     docLink={docLink}
                     backLink={backLink}
                     spaceSelfLink={spaceSelfLink}
+                    sort={sortCol}
+                    dir={sortDir}
+                    onSort={applySort}
                     onCloseDoc={closeDocDrawer}
                   />
                 )

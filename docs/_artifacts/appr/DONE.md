@@ -869,3 +869,60 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 测试：R57 describe 6 用例（3 请求计数+全带 employeeId+period 断言、month 行 13/$0.12/asof 2026-11-20 07:58+title bff-read-time、day 双缺值「—」+title、屏上无裸 0.121198、真 0 vs 缺失可区分、空集句、error 冒号 rid+req-copy+重试、403 与 404 两个 it 同体+不回显路径）。定向 employee-detail 46 passed；全量 132 files/1476 passed；assert-ia 两模式 exit0（headHash 3f40f615）；tsc 本域零红。
 - 三档横溢=jsdom 不可测，形态学报：grid 全 minmax(0)+min-w-0 truncate、375 档 grid-cols-1 堆叠（ed8/ed9 同构已验）。9122==6a02ed58 禁重建：页面活体读数待并入后代次，本轮 jsdom 挂载链为权威。
 - 坑补记（lefthook 实拦）：react-hooks/purity 把 render 体内的 Date.now() 判 error 拦下 commit——BJT 今日字符串改在 effect 里算好随 ready state 携带（state.today）；effect 体 setState(loading) 只是 warning 可过。修后复测 46 passed，commit aa651e8e 推送 3f40f615..aa651e8e。
+
+## R59 — 审批队列搜索（apv8-*，pending + history 两 tab）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = **7173b7c6**（现网代次，entry index-B6GI2nKC.js）；toplevel ✓ porc=0。禁 reset 纪律遵守（R58 未在此列，见下注）。
+- 实测三键（ego 只读，9122==7173b7c6）：GET /api/approvals?status=all&limit=50→200 n=8；`q=message.send`→200/8、`keyword=`→200/8、`title=`→200/8，**三者与不带键完全同集合=后台丢参不做关键字过滤**⇒按工单走本地过滤分支，禁假服务端搜索。
+- 实现（modules/approvals/）：①model.ts 新 export approvalsRowSearchText(row)=title+reason+rawId+status.label+risk.label 拼合小写。②两页同构：q=params.get("q")??""（URL 唯一状态源，刷新/分享复现）、setQ 写/删 ?q=（replace）；visibleRows=useMemo(list.rows.filter(includes))；搜索框 div role=group apv8-search-group（input apv8-search + q 非空时 apv8-search-clear「清空搜索」）插在 QueueCsvExport 后；apv8-scope-note=「仅在当前已加载 N 条内搜索；关键字是前端本地过滤，不产生新请求」+title 带三键实测细节。③联动同源：行 map、apv5-count、aria-live 读数（q 非空=「已显示 V / N 条…（关键字过滤中）」）、QueueSummaryBar rows={visibleRows}（apv6 计数随动）、QueueCsvExport rows={visibleRows}（导出=屏上口径）、unreadable 注行 q 非空改「另有 U 条…不参与关键字搜索」。④ready&&q&&visibleRows.length===0→Card apv8-search-empty「没有匹配的审批。」+本地过滤真实结果句+清空出口；列表本身 empty 走既有 EmptyPanel 不动；四态/rid 可复制/403≡404 沿用零改。⑤pending 页「这些单都已经处理过」全量口径 Card 不动（非列表语义）。⑥切 tab 是否保留 ?q= 由壳层 tab 链接机制决定（写域外），未动；页内刷新/分享复现已锁测试。
+- 测试：history 3 用例（框+注脚上屏、键入「预算」fetchJSON 调用数不变=零新请求锁+行 8→1+apv5-count=1+「关键字过滤中」+apv6-summary 在；&q=nomatch-xyz 直达→apv8-search-empty+清空恢复 8 行；&q=预算 直达过滤态复现）+pending 1 用例（键入「本周」零新请求、nomatch→apv8-search-empty、urls 永不含 q=nomatch=关键字从不进请求）。行计数选择器用 '[data-testid^="apr5-row-ap"]'（apr5-row-details-* 撞前缀坑既有）。定向 approvals 3 files/72 passed（68 既有零破+4 新）；全量 137 files/1590 passed（含 merge 带入的 wave-17 他人用例）；assert-ia 两模式 exit0 51/22/1/8（headHash 7173b7c6）；tsc 本域零红。
+- 三档横溢=jsdom 不可测，形态学报：apv8-search-group flex-wrap gap-1.5 沿用 apv5-filter 组已验形态，input min-w-0。
+- **R58 注记（待拍板）**：员工列表分页与总数诚实化单在 lane 上无交付记录（EmployeesModulePage 无 loadMore/emp-list-page-*），上一窗口设计完成后中断未落地；本窗按队列先做了 R59。R58 设计（真游标 loadMore+去重追加、无 total→「总数不可用」+title、到底 disabled+「已到末页」、emp-list-page-* 族、活体已实测 limit=2→2 行+cursor→1 新行无重复/末页无 nextCursor 键）仍有效，等令可续。
+
+
+## R60 · 审批列表行内展开预览（apv9-*）— commit 待生成（基线 merge f259528d，现网代次 7173b7c6）
+
+- **裁决**：工单「点行展开」与既有「点行→详情」（openRow 写 ?id=+发 /api/approval?id=，R55 刚验收的 card.click()→apr5-detail 契约）冲突，且工单要求展开不改 URL+apd6/apd7/apr5 零破。按审计先例=**行内独立 toggle 按钮**（apv9-toggle-<key>，ChevronRight 图标，aria-expanded，button 天然 tabIndex/Enter/Space/焦点可见）承载展开，行主体点击语义不动。活证据=pending 既有 4 个 decision-writes 用例（openTicket 走行内按钮选择器）同步为 `button:not([data-testid^='apv9'])` 后全绿=行→详情契约保留。
+- **禁额外请求实证**：用例锁 `api.fetchJSON.mock.calls.length` 展开前后不变（只用列表已加载行数据，零新请求）。
+- **字段增量**：model.ts ApprovalRow 加 `approvers: approverLabels(rec)`（复用 R31-obs 既有解析，裸机器值→「人员」）与 `requestId: pickText(rec,["requestId","request_id"])`——活体列表行 keys 本就含两键（R49 读数）。preview=标题/状态人话（title=raw 或缺）/风险档（缺「—」+title「该字段未返回」）/更新时间 BJT 到分（row.clock，缺=服务未提供该时间）/审批人（labels join、缺「—」）/请求编号=RequestIdCopyField 可复制（冒号形制 apr5-copy-request-id；缺=「请求编号：该字段未返回」）。
+- **交互**：同时仅一行（页级 previewKey 单 state）；Escape 收起+焦点回 toggle（closeRefocus，用例断 document.activeElement）；打开详情（openRow）互斥收起预览；URL/筛选/页码/tab 零改动；刷新回收起（React state 天然，不持久化不编造）。
+- **测试**：history 3 用例（真值行夹具 ap_v1=郑涛/req-v1-9/2026-11-19 10:00/高风险；缺值行=「该字段未返回」；互斥一行）+pending 1 用例（ap_9F3A1111 展开含「对外发送本周报表」无裸 human:/emp_）。定向 approvals 3 files/76 passed（72+4）；全量 137 files/1594 passed（基线 1590+4）；assert-ia 两模式 exit0 51/22/1/8；tsc 本域零红。
+- **三档无横溢**：jsdom 不可测，形态学报——toggle 在既有 flex-wrap gap-x-2 行内，preview dl 全 min-w-0+truncate。
+- **9122==7173b7c6 禁重建**：行内展开活体读数待并入后代次；本轮 jsdom DOM 读数为权威。
+- 坑记：①history/pending 测试文件尾部插入必须核对原文件最外层 `})`（rfind 吃掉致 describe 嵌套+Babel 假象）②history 测试无 q() 助手=用 document.querySelector ③锚点缩进/形态必须先 sed 实读。
+
+
+## R61 · 审批详情决策链路复制为纯文本（apd8-*）— 基线 merge bf0ea98a 上，现网代次 7173b7c6
+
+- 实现（views.tsx DecisionTrail 尾部，pending/history 共享详情体）：`trailToText(detail)` 按屏上同序拼多行纯文本=提交行（requester.label 屏上口径）→ 各决策节点（who·verdict·时间·意见；缺时间「该段无记录」、缺意见「未填」）→ 未行动审批人待办行 → 终态行；**不含关联段**（该段承载 run/task 标识与证据路由说明，工单复制枚举=提交人/时间、节点、终态，纯文本禁内部 id）。文案口径与 NoSeg/屏上完全一致，禁编造顺序（服务顺序权威沿 R46）。
+- 复制钮 `apd8-copy`（Button outlined）：点击 navigator.clipboard.writeText(copyText)；成功 `apd8-copy-status`（aria-live=polite）显「已复制」；剪贴板不可用/拒绝 → status 显「剪贴板写入被拒绝，可用下方文本框手动复制。」+ `apd8-fallback` readOnly textarea（value=同文本，onFocus 全选，title 说明兜底口径）。**空链路**（decisions=0 且无待办审批人）= disabled + title「服务没有返回任何决策节点，也没有待办审批人：没有可复制的链路。」（无 nodes 也无 pending 时文本只剩提交/终态两行，无链路可交）。
+- **禁额外请求实证**：用例锁点击复制前后 `api.fetchJSON.mock.calls.length` 不变（复制只读屏上已渲染 detail 对象，零新请求）。
+- 实测读数（jsdom，夹具 TRAIL_SAMPLE）：提交 · 成员 · 9 · 2026-11-19 09:00 / 节点 1 · 郑涛 · 通过 · 2026-11-19 09:50 · 意见：可以，按计划轮换。/ 节点 2 · 人员 · 通过 · 2026-11-19 09:55 · 意见：未填（裸 human:8 无姓名=屏上同口径「人员」）/ 阿朝 · 待办 · 该段无记录 · 意见：未填 / 终态 · 已通过 · 2026-11-19 10:00；文本无 human:/emp_/ap_t8 裸值断言在。
+- 测试：history 3 用例（真值复制成功+计数锁/拒绝→fallback readOnly+value+status/空链路 disabled+title）+ pending 1 用例（queue() 详情抽屉 trail 在、apd8-copy/status 存在）。定向 approvals 3 files/80 passed（76+4）；全量 137 files/1598 passed（基线 1594+4）；assert-ia 两模式 exit0 51/22/1/8；tsc 本域零红。坑记：requestedBy={type,id} 的 human:9 屏上 label=「成员 · 9」（personFrom 名词=成员，非「人员」——人员=decisionEntries maskHandle 口径）；pending.test 无 openTicket 助手=直接 click apr5-row-ap_9F3A1111。
+- testid：apd8-copy/apd8-copy-status/apd8-fallback 新增；apd6/apd7/apv5–apv9/apr5/ed*/emp-list* 零破（定向全绿为证）。三档横溢=形态学报（copy 行在既有 min-w-0 flex-wrap，textarea w-full min-w-0）。9122==7173b7c6 禁重建：活体复制读数待并入后代次；本轮 jsdom clipboard 回环为权威。
+
+## R62 · 员工列表列排序与筛选组合（emp-list-sort-*）— feat(console): employees list column sorting
+
+基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @b1d52a0d（38793c9a/代次 7173b7c6），toplevel ✓ porc=0。
+
+- **服务端排序实测被丢（ego 9122==7173b7c6）**：GET /api/employees?limit=50 基线 200 n=3 顺序 [217A91:QA2契约验证, 86A81C:AgentOS产品助理, 016685:AgentOS产品助理]；带 sort=name&order=desc / sortBy=lifecycleState / sort=createdAt&dir=asc 三组均 200 同序同集合 ⇒ 读口白名单（keyword,lifecycleState,limit,cursor,expand）无排序参数 ⇒ **本地排序分支确定**，表下 `emp-list-sort-scope-note` 明写「排序仅在当前已加载 N 条内生效（本地排序；后台排序参数实测被忽略，不是全量排序）」+ title 带三组实测（EmployeesModulePage.tsx）。
+- **四列真按钮**：员工(姓名)/短码(工号)/状态(在职态原始值)/最近活跃(时间) = SortHeader（role=columnheader 上 aria-sort 三态 none/ascending/descending、内 button type=button、lucide ArrowUp/ArrowDown/ArrowUpDown、focus-visible outline、原生 Enter/Space）。三态循环：列首点 asc → 再点 desc → 三击清除回服务端原序。
+- **创建时间口径诚实**：列表读口行字段实测无 createdAt（R53 读数），屏上无该列 ⇒ 不造假列；时间排序落在既有「最近活跃」（updatedAt）列，列头 title 注明。
+- **null/缺失排末不当 0**：sortValue 缺值→null，比较器 null 恒排末（升降序皆然）；用例锁缺姓名行 asc 末位。
+- **与 ?q=&lifecycle= 组合**：sort/dir 经既有 patchParams（URLSearchParams(params) 差分）读写 ⇒ 点排序保留 q/lifecycle，切筛选/清空钮只删 q/lifecycle 保留 sort；粘 URL ?q=…&lifecycle=active&sort=name&dir=desc 直达复现（fetch 恰 1 条带 keyword+lifecycleState，行序=desc+首行对照断言）。
+- **禁假排序/零新请求**：排序为纯本地 useMemo（sortedItems），行 map 换 sortedItems；用例锁点击前后 fetchJSON 计数不变。
+- **分页游标重置**：R58 分页从未交付（页面无 cursor/loadMore 形态，单页 limit=50）⇒ 无游标可重置，排序不触发重取，天然无跨序拼接；如实记此决定。
+- testid：emp-list-sort-{name,code,state,time} + emp-list-sort-scope-note 新增；emp-list-*/emp-l-*/employees-* 与 ed*/apd*/apv*/apr5 零破（定向 employees 16 passed=13+3；全量 137 files/1601 passed=基线 1598+3；assert-ia 两模式 exit0；tsc 本域零红）。
+- 三档横溢=形态学报（列头 button 在既有 grid 模板 span 位内 inline-flex min-w-0，无新增宽度）；jsdom 不测三档。9122==7173b7c6 禁重建，活体排序读数待并入后代次（读口实测已贴）。
+
+## R45-P0 · 员工成本区 run-stats ISO 窗口修复（fix(console): employee usage run-stats iso range）
+
+- 根因（R45 终判 FAIL 单点）：EmployeeDetailModulePage.tsx UsageZone effect 把 monthPeriod=dayPeriod.slice(0,7)（"2026-11"）直接当 run-stats 的 from 传出去；BFF 要完整 ISO-8601 → 422 Invalid isoformat string（rid c77c1b03030e4092bee2c59eafeaa666）→ Promise.all 恒 reject → ed10-usage 永停 error。
+- 修法（最小面）：from/to 一律 Date.UTC 拼完整 UTC ISO——day 腿=当日 00:00:00.000Z→次日 00:00:00.000Z；month 腿=当月首日→次月首日（Date.UTC(y,mo,1) 在 12 月自动翻次年）。run-stats 拆两腿（今日行读今日窗 totals.runs、本月行读本月窗 totals.runs），旧「桶列表匹配今天桶」逻辑删除；budget-usage period=YYYY-MM-DD/YYYY-MM 两 URL 一字未动；bucket=day 不变；testid/路由/其它模块零改动。ready 形态 stats→statsDay/statsMonth。
+- 活体复测（ego 只读 9122==7173b7c6，未截断原文）：
+  - /agent-api/api/run-stats?employeeId=emp_86A81CE8FF6F42E187BCF2B540&from=2026-11-20T00:00:00.000Z&to=2026-11-21T00:00:00.000Z&bucket=day → **200** totals={runs:0,costUsd:0}（今日窗真 0）
+  - /agent-api/api/run-stats?employeeId=emp_86A81CE8FF6F42E187BCF2B540&from=2026-11-01T00:00:00.000Z&to=2026-12-01T00:00:00.000Z&bucket=day → **200** totals={runs:13,costUsd:0.121198}
+  - 冒号在 query 中原样发送（合法字符，服务端 datetime 正常解析——以上 200 即实证）。
+- 测试：usageApi 替身按 from/to 窗长（==86400000→day 腿）分腿；既有用例腿数 3→4；新 2 用例=①两条 run-stats URL from/to 匹配完整 ISO 正则且不含 from=YYYY-MM&（月末跨月边界另测）②vi.spyOn(Date,"now") 固定到 2026-12-31T20:00Z（BJT 2027-01-01 04:00）→month 腿 from=2027-01-01T00:00:00.000Z to=2027-02-01T00:00:00.000Z（12 月翻年边界）。定向 employee-detail 48 passed；tsc --noEmit 本模块 0 error；全量 **137 files/1603 passed**（基线 1601+2）。
+- 口径修正（本域事实）：今日运行数与本月运行数各取自己窗口 totals.runs（原桶匹配语义废除）；runsTitle 缺值句同步改「今日窗/本月窗没有返回 runs 合计：缺值不作 0」；asOf/成本列口径零改动。
+- 未测项：9122 禁重建（R45 取证代次），页面活体四态读数待修复合入后代次；本轮权威=活体 API 双腿 200 + jsdom 48 用例。

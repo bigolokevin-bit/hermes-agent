@@ -7,15 +7,17 @@
  * the text of the page — they live in `title` attributes and the 「详情」
  * disclosure, which is collapsed by default.
  */
-import type { ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
+import { ChevronRight } from "lucide-react";
 import { Link } from "react-router";
 
 import { Badge } from "@nous-research/ui/ui/components/badge";
+import { Button } from "@nous-research/ui/ui/components/button";
 import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 
 import { themedBody } from "@/lib/utils";
 import { humanizeHandles, money, type ApprovalDetail, type ApprovalRow } from "./model";
-import { DetailsDisclosure } from "./states";
+import { DetailsDisclosure, RequestIdCopyField } from "./states";
 import { shortRef } from "@/modules/tasks/tasksBoard";
 
 /** A label/value pair that never overflows its column at 375px. */
@@ -51,11 +53,21 @@ export function ApprovalRowCard({
   row,
   selected,
   onOpen,
+  previewOpen,
+  onTogglePreview,
 }: {
   row: ApprovalRow;
   selected: boolean;
   onOpen: () => void;
+  /** R60: 行内就地展开预览 — 纯本地数据，不打开详情抽屉、不发任何请求。 */
+  previewOpen: boolean;
+  onTogglePreview: () => void;
 }): ReactNode {
+  const toggleRef = useRef<HTMLButtonElement | null>(null);
+  const closeRefocus = (): void => {
+    if (previewOpen) onTogglePreview();
+    toggleRef.current?.focus();
+  };
   return (
     <Card
       className={`border-border bg-card ${selected ? "ring-1 ring-primary/60" : ""}`}
@@ -74,6 +86,31 @@ export function ApprovalRowCard({
     >
       <CardContent className="flex min-w-0 flex-col gap-2 px-4 py-3">
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <button
+            ref={toggleRef}
+            type="button"
+            data-testid={`apv9-toggle-${row.key}`}
+            aria-expanded={previewOpen}
+            title="就地展开预览（不打开详情，不产生新请求）"
+            className="shrink-0 rounded-sm border border-white/15 p-1 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-1 focus-visible:outline-primary/40"
+            onClick={(event) => {
+              event.stopPropagation();
+              onTogglePreview();
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                event.preventDefault();
+                event.stopPropagation();
+                closeRefocus();
+              }
+            }}
+          >
+            <ChevronRight
+              className={`h-3.5 w-3.5 transition-transform ${previewOpen ? "rotate-90" : ""}`}
+              aria-hidden="true"
+            />
+            <span className="sr-only">行内预览</span>
+          </button>
           <button
             type="button"
             onClick={(event) => {
@@ -115,6 +152,61 @@ export function ApprovalRowCard({
         ) : null}
 
         <div onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+        {previewOpen ? (
+          <div
+            data-testid={`apv9-preview-${row.key}`}
+            role="region"
+            aria-label="行内预览"
+            className="min-w-0 rounded-sm border border-white/10 bg-white/[0.03] p-3"
+            onClick={(event) => {
+              event.stopPropagation();
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                event.preventDefault();
+                event.stopPropagation();
+                closeRefocus();
+              }
+            }}
+          >
+            <p className={`break-words text-sm ${themedBody}`}>{row.title}</p>
+            <dl className="mt-2 grid min-w-0 gap-1.5 text-xs">
+              <Field
+                label="状态"
+                value={row.status.label}
+                reason={row.status.raw ?? "原始状态值未返回"}
+              />
+              <Field
+                label="风险档"
+                value={row.risk.raw ? row.risk.label : "—"}
+                reason={row.risk.raw ? undefined : "该字段未返回"}
+              />
+              <Field
+                label="更新时间"
+                value={row.clock ?? "—"}
+                reason={row.clock ? "北京时间，精确到分" : MISSING_TIME}
+              />
+              <Field
+                label="审批人"
+                value={row.approvers.labels.length > 0 ? row.approvers.labels.join("、") : "—"}
+                reason={
+                  row.approvers.labels.length > 0
+                    ? row.approvers.raw ?? undefined
+                    : row.approvers.raw
+                      ? `该字段未返回姓名（原值：${row.approvers.raw}）`
+                      : "该字段未返回"
+                }
+              />
+            </dl>
+            <p className="mt-2 min-w-0 break-words text-xs">
+              <RequestIdCopyField
+                requestId={row.requestId}
+                fallback="请求编号：该字段未返回"
+              />
+            </p>
+          </div>
+        ) : null}
+
         <DetailsDisclosure
           testId={`apr5-row-details-${row.key}`}
           lines={[
@@ -146,9 +238,58 @@ function NoSeg({ reason }: { reason: string }) {
   );
 }
 
+/**
+ * R61 apd8 — the trail as human-readable text, in exactly the order the
+ * screen shows it. Raw ids never enter the copy; missing segments keep the
+ * 「该段无记录」 wording, missing comments keep 「未填」. Nothing new is
+ * asked of the server — this reads only the detail already on screen.
+ */
+function trailToText(detail: ApprovalDetail): string {
+  const lines: string[] = [
+    `提交 · ${detail.requester.label} · ${detail.submitted ?? "该段无记录"}`,
+  ];
+  if (detail.decisions.length === 0) {
+    lines.push("审批节点 · 该段无记录");
+  } else {
+    detail.decisions.forEach((entry, index) => {
+      lines.push(
+        `节点 ${index + 1} · ${entry.who} · ${entry.verdict} · ${entry.at ?? "该段无记录"} · 意见：${entry.note ?? "未填"}`,
+      );
+    });
+  }
+  const pending = detail.approvers.labels.filter(
+    (label) => !detail.decisions.some((entry) => entry.who === label),
+  );
+  for (const label of pending) lines.push(`${label} · 待办 · 该段无记录 · 意见：未填`);
+  lines.push(`终态 · ${detail.status.label}${detail.decided ? ` · ${detail.decided}` : ""}`);
+  return lines.join("\n");
+}
+
 export function DecisionTrail({ detail }: { detail: ApprovalDetail }): ReactNode {
   const acted = detail.decisions;
   const pending = detail.approvers.labels.filter((label) => !acted.some((entry) => entry.who === label));
+  const copyText = useMemo(() => trailToText(detail), [detail]);
+  const emptyTrail = acted.length === 0 && pending.length === 0;
+  const [copyState, setCopyState] = useState<"idle" | "done" | "failed">("idle");
+  const [showFallback, setShowFallback] = useState(false);
+  const copyTrail = () => {
+    const clip = navigator.clipboard;
+    if (!clip?.writeText) {
+      setCopyState("failed");
+      setShowFallback(true);
+      return;
+    }
+    clip.writeText(copyText).then(
+      () => {
+        setCopyState("done");
+        setShowFallback(false);
+      },
+      () => {
+        setCopyState("failed");
+        setShowFallback(true);
+      },
+    );
+  };
   return (
     <section
       className="flex min-w-0 flex-col gap-1"
@@ -225,6 +366,41 @@ export function DecisionTrail({ detail }: { detail: ApprovalDetail }): ReactNode
           </span>
         </li>
       </ol>
+      <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2 text-xs">
+        <Button
+          size="sm"
+          outlined
+          data-testid="apd8-copy"
+          disabled={emptyTrail}
+          title={
+            emptyTrail
+              ? "服务没有返回任何决策节点，也没有待办审批人：没有可复制的链路。"
+              : "按屏上同序复制为纯文本；只读屏上已有数据，不产生新请求。"
+          }
+          onClick={copyTrail}
+        >
+          复制为纯文本
+        </Button>
+        <span data-testid="apd8-copy-status" aria-live="polite" className="text-muted-foreground">
+          {copyState === "done"
+            ? "已复制"
+            : copyState === "failed"
+              ? "剪贴板写入被拒绝，可用下方文本框手动复制。"
+              : ""}
+        </span>
+      </div>
+      {showFallback ? (
+        <textarea
+          data-testid="apd8-fallback"
+          readOnly
+          rows={8}
+          aria-label="决策链路文本（手动复制）"
+          title="剪贴板不可用时的兜底：全选后手动复制；文本与屏上链路同序同口径。"
+          className="w-full min-w-0 rounded-sm border border-border bg-transparent p-2 font-mono text-xs"
+          value={copyText}
+          onFocus={(e) => e.currentTarget.select()}
+        />
+      ) : null}
     </section>
   );
 }

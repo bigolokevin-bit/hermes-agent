@@ -4,7 +4,7 @@
 // aggregates whole weeks, so there is no 24-hour window here. Absent cells stay
 // absent (—); only a returned count of 0 is a real zero. No count is inferred
 // from another endpoint, and no raw field name or HTTP status reaches the page.
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { Copy, RefreshCw } from 'lucide-react';
 
@@ -47,6 +47,7 @@ import {
   sourceStaleness,
   SOURCE_STALE_MS,
   withGapNote,
+  withTotalsNote,
   type ExportGap,
   ledgerAsOf,
   ledgerTotal,
@@ -64,9 +65,11 @@ import {
   shareCsv,
   shareCsvFileName,
   shareOfCosts,
+  shareOfWhole,
   runsDrill,
   shortCode,
   sortModelCost,
+  sumOrNull,
   toCsv,
   usageTone,
   shareOf,
@@ -109,6 +112,27 @@ type PageState =
 type Forced = 'loading' | 'empty' | 'error' | 'denied';
 
 const EMPTY_ACTIVITY: Activity = { cells: [], max: null, from: null, to: null, tz: 'Asia/Shanghai' };
+
+const TABLE_SCROLL_STEP = 48;
+
+/**
+ * metW — a wide table is a scroll region first: arrow keys move it sideways the
+ * same way a drag does, and Home returns to the first column. Nothing else is
+ * intercepted, so Tab and the page's own scrolling keep working.
+ */
+function handleTableScrollKeys(event: KeyboardEvent<HTMLDivElement>): void {
+  const node = event.currentTarget;
+  if (event.key === 'ArrowRight') {
+    node.scrollLeft = Math.max(0, node.scrollLeft + TABLE_SCROLL_STEP);
+    event.preventDefault();
+  } else if (event.key === 'ArrowLeft') {
+    node.scrollLeft = Math.max(0, node.scrollLeft - TABLE_SCROLL_STEP);
+    event.preventDefault();
+  } else if (event.key === 'Home') {
+    node.scrollLeft = 0;
+    event.preventDefault();
+  }
+}
 
 function readForced(params: URLSearchParams): Forced | null {
   const raw = params.get('state');
@@ -1182,16 +1206,43 @@ export function MetricsModulePage() {
         })()
       : [];
   const sharePrefix = groupBy === 'employee' ? 'met8' : 'met7';
+  const shareRunsTotal = sumOrNull(shareRows.map((row) => row.runs));
+  const shareCostTotal = sumOrNull(shareRows.map((row) => row.costUsd));
+  const sharePctTotal = shareOfWhole(shareRows.map((row) => row.costUsd), shareCostTotal);
+  // metU — one rendering of the totals serves both the table footer and the
+  // copied summary, so the two can never drift apart.
+  const shareTotals = {
+    runs: formatCount(shareRunsTotal),
+    cost: formatUsd(shareCostTotal),
+    share: formatSharePct(sharePctTotal),
+  };
+  const summaryTotalLine =
+    shareRows.length > 0
+      ? `合计：运行 ${shareTotals.runs} · 成本 ${shareTotals.cost} · 占比 ${shareTotals.share}`
+      : '合计：该窗口无可渲染行';
   const sortColumnLabel = sortKey === 'runs' ? '运行数' : sortKey === 'cost' ? '成本' : groupBy === 'employee' ? '员工' : '模型';
   const shareTotal = shareView.kind === 'ready' ? shareView.value.rows.reduce<number | null>((sum, row) => {
     if (row.costUsd === null) return sum;
     return (sum ?? 0) + row.costUsd;
   }, null) : null;
 
+  // metS — a group switch keeps the time window and the share-table sort, but
+  // the detail table's own sort returns to its default (cost, descending) and
+  // says so once. `sort=model` always means the name column, so it stays valid
+  // in both groups.
+  const [groupResetNote, setGroupResetNote] = useState(false);
+  const dropDetailSort = (query: URLSearchParams): boolean => {
+    const had = query.has('dsort') || query.has('ddir');
+    query.delete('dsort');
+    query.delete('ddir');
+    return had;
+  };
   const chooseGroupBy = (next: 'model' | 'employee') => {
+    if (next === groupBy) return;
     const query = new URLSearchParams(params);
     if (next === 'employee') query.set('groupBy', 'employee');
     else query.delete('groupBy');
+    setGroupResetNote(dropDetailSort(query));
     setParams(query, { replace: true });
   };
 
@@ -1220,43 +1271,71 @@ export function MetricsModulePage() {
   // One ordered array feeds both the table and its export. The file is written
   // row by row from this array, so it can never disagree with what the table
   // shows — no re-reading, no sorting from a different source, no object keys.
-  // metQ — one polite announcement per status change. The copyable request id
-  // lives in the card, never inside this live region.
+  // metQ/metR — one polite sentence per status change. The copyable request id
+  // lives in the card, never inside this live region, and the text is derived
+  // rather than stored so an unchanged status cannot be announced twice.
   const liveUnavailable = usageBlocks.filter((block) => block.kind === 'unavailable').length;
-  const liveSignature = [
-    usageView.kind,
-    usageBlocks.map((block) => block.kind).join(','),
-    usageQuiet ? 'quiet' : 'loud',
-    breakdownView.kind,
-    heatView.kind,
-    budgetView.kind,
-    shareView.kind,
-  ].join('|');
-  const [liveMessage, setLiveMessage] = useState('');
-  const liveSeen = useRef('');
-  useEffect(() => {
-    if (liveSeen.current === liveSignature) return;
-    liveSeen.current = liveSignature;
-    if (usageView.kind !== 'ready') return;
-    if (usageDown) {
-      setLiveMessage('这一页的数据暂时都读不到，卡片上写着原因，可以重试。');
-      return;
-    }
-    if (liveUnavailable > 0) {
-      setLiveMessage(`有 ${liveUnavailable} 项数据暂时读不到，卡片上写着原因。`);
-      return;
-    }
-    if (usageQuiet) {
-      setLiveMessage('这个时间窗没有运行记录，也没有实扣。');
-      return;
-    }
-    setLiveMessage('数据已更新，卡片和下方的表格都读到了。');
-  }, [liveSignature, usageView.kind, usageDown, liveUnavailable, usageQuiet]);
+  const liveMessage =
+    usageView.kind !== 'ready'
+      ? ''
+      : usageDown
+        ? '这一页的数据暂时都读不到，卡片上写着原因，可以重试。'
+        : liveUnavailable > 0
+          ? `有 ${liveUnavailable} 项数据暂时读不到，卡片上写着原因。`
+          : usageQuiet
+            ? '这个时间窗没有运行记录，也没有实扣。'
+            : '数据已更新，卡片和下方的表格都读到了。';
 
   const detailLines = breakdownView.kind === 'ready' ? breakdownView.lines : [];
   const detailSort: DetailSort = parseDetailSort(params.get('dsort')) ?? 'cost';
   const detailDir: SortDir = params.get('ddir') === 'asc' ? 'asc' : 'desc';
   const detailRows = sortDetailLines(detailLines, detailSort, detailDir);
+  // metT — the totals row is summed from the very rows the body renders, so a
+  // reader can add them up and land on the same numbers. Sorting never moves it
+  // or changes it, and a column nobody could read totals to «—», not 0.
+  const detailCostTotal = sumOrNull(detailRows.map((line) => line.costUsd));
+  const detailCountTotal = sumOrNull(detailRows.map((line) => line.count));
+  const detailShareTotal = shareOfWhole(
+    detailRows.map((line) => line.costUsd),
+    breakdownView.kind === 'ready' ? breakdownView.total : null,
+  );
+  // metV — the footer and the exported comment line read one rendering of the totals.
+  // metX — three readings of «how many runs»: the activity window total, the
+  // sum of the heat cells, and the detail table's count total. All three come
+  // from this batch; the note below says where they agree and where they do not.
+  const heatCountSum = grid
+    ? sumOrNull(grid.rows.flatMap((row) => row.cells.filter((cell) => cell.present).map((cell) => cell.count)))
+    : null;
+  const heatWindowTotal = grid && grid.presentCells > 0 ? grid.total : null;
+  const detailCountSum = detailCountTotal;
+  const countDelta = heatCountSum !== null && detailCountSum !== null ? detailCountSum - heatCountSum : null;
+  const heatGapReason =
+    view.kind === 'error'
+      ? '热力这次没读出来，不按 0 记'
+      : view.kind === 'loading'
+        ? '热力还在读取，暂时没有数'
+        : '这次读取没有带回任何可求和的格子，不按 0 记';
+  const windowRunsReason = heatWindowTotal === null ? heatGapReason : undefined;
+  const heatRunsReason = heatCountSum === null ? heatGapReason : undefined;
+  const detailRunsReason =
+    detailCountSum !== null
+      ? undefined
+      : viewMode === 'employee'
+        ? '账本只记金额与用量，不记运行次数'
+        : breakdownView.kind !== 'ready'
+          ? '成本明细这次没有读出来'
+          : '明细没有可求和的次数';
+  const deltaReason = countDelta === null ? '三处没有同时读到数，算不出差' : undefined;
+
+  const detailTotals = {
+    cost: formatUsd(detailCostTotal),
+    count: detailCountTotal === null ? '—' : String(detailCountTotal),
+    share: formatSharePct(detailShareTotal),
+  };
+  const detailTotalLine =
+    detailRows.length > 0
+      ? `合计：成本 ${detailTotals.cost} · 次数 ${detailTotals.count} · 占比 ${detailTotals.share}`
+      : '合计：该窗口无可渲染行';
   const exportable = detailRows.length > 0;
   const ariaSortFor = (key: DetailSort): 'ascending' | 'descending' | 'none' =>
     detailSort === key ? (detailDir === 'asc' ? 'ascending' : 'descending') : 'none';
@@ -1275,19 +1354,23 @@ export function MetricsModulePage() {
   // Only the blocks this file actually pulls columns from are named in its note:
   // a source nobody exported from is not a gap in the file.
   const pageFailed = usageDown;
-  const detailGaps: ExportGap[] =
-    usageReady && usageReady.stats.kind === 'unavailable'
+  const detailGaps: ExportGap[] = [
+    ...(breakdownView.kind === 'unavailable'
+      ? [{ label: '成本明细', reason: breakdownView.reason }]
+      : []),
+    ...(usageReady && usageReady.stats.kind === 'unavailable'
       ? [{ label: '运行统计', reason: usageReady.stats.reason }]
-      : [];
+      : []),
+  ];
   const shareGaps: ExportGap[] = [];
 
   const exportCsv = () => {
-    if (breakdownView.kind !== 'ready' || detailRows.length === 0) return;
+    if (pageFailed) return;
     const header =
       viewMode === 'model'
         ? ['模型', '支出USD', '次数', '占比%', '读取于', '窗口', '窗口开始', '窗口结束', 'as_of', 'window']
         : ['员工', '支出USD', '次数', '占比%', '账本截至', '窗口', '窗口开始', '窗口结束', 'as_of', 'window'];
-    const batchAsOf = isoOrNull(breakdownView.asOf);
+    const batchAsOf = isoOrNull(breakdownView.kind === 'ready' ? breakdownView.asOf : null);
     const rows = detailRows.map((line) => [
       line.label,
       usdDigits(line.costUsd),
@@ -1300,7 +1383,7 @@ export function MetricsModulePage() {
       batchAsOf,
       usageWindow.id,
     ]);
-    const body = withGapNote(toCsv(header, rows), detailGaps);
+    const body = withGapNote(withTotalsNote(toCsv(header, rows), detailTotalLine), detailGaps);
     const blob = new Blob([`\uFEFF${body}`], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
@@ -1315,17 +1398,20 @@ export function MetricsModulePage() {
   const exportShare = () => {
     // Same array the share table renders, in the same order (already sorted by
     // ?sort/?dir, default cost descending). The file never re-sorts.
-    if (shareView.kind !== 'ready' || shareRows.length === 0) return;
+    if (pageFailed || shareView.kind !== 'ready') return;
     const shareBody = withGapNote(
-      shareCsv(
-        shareRows.map((row) => ({
-          name: row.model,
-          runs: row.runs,
-          costUsd: row.costUsd,
-          sharePct: row.sharePct,
-          asOf: isoOrNull(shareView.value.asOf),
-          window: usageWindow.id,
-        })),
+      withTotalsNote(
+        shareCsv(
+          shareRows.map((row) => ({
+            name: row.model,
+            runs: row.runs,
+            costUsd: row.costUsd,
+            sharePct: row.sharePct,
+            asOf: isoOrNull(shareView.value.asOf),
+            window: usageWindow.id,
+          })),
+        ),
+        summaryTotalLine,
       ),
       shareGaps,
     );
@@ -1341,9 +1427,11 @@ export function MetricsModulePage() {
   };
 
   const chooseView = (next: 'employee' | 'model') => {
+    if (next === viewMode) return;
     const query = new URLSearchParams(params);
     if (next === 'employee') query.delete('view');
     else query.set('view', next);
+    setGroupResetNote(dropDetailSort(query));
     setParams(query, { replace: true });
   };
 
@@ -1376,6 +1464,7 @@ export function MetricsModulePage() {
       .sort()
       .at(-1) ?? null;
   const copySummary = () => {
+    if (pageFailed || usageView.kind !== 'ready') return;
     const text = metricsSummaryText({
       windowId: usageWindow.id,
       windowLabel: usageWindow.label,
@@ -1384,13 +1473,17 @@ export function MetricsModulePage() {
       groupBy,
       asOf: summaryAsOf,
       generatedAt: new Date().toISOString(),
+      totalLine: summaryTotalLine,
     });
     setSummaryText(text);
     void copyTextToClipboard(text).then((ok) => setSummaryStatus(ok ? 'done' : 'failed'));
   };
 
   return (
-    <main className="met5-page" data-testid="met5-page">
+    <main className="met5-page" id="metY-main" tabIndex={-1} data-testid="met5-page">
+      <a className="metY-skip" href="#metY-main" data-testid="metY-skiplink">
+        跳到主要内容
+      </a>
       <p className="sr-only" role="status" aria-live="polite" data-testid="metQ-live">
         {liveMessage}
       </p>
@@ -1400,10 +1493,30 @@ export function MetricsModulePage() {
           <p>按星期与小时看运行都落在什么时段。没有记录的格子显示「—」，不补 0。</p>
         </div>
         <div className="met5-acts">
-          <Button size="sm" outlined onClick={copySummary} data-testid="metL-copy">
+          <Button
+            size="sm"
+            outlined
+            disabled={pageFailed || usageView.kind !== 'ready'}
+            title={
+              pageFailed
+                ? '整页读取失败，摘要里的数字不完整，先重试上面的读取。'
+                : usageView.kind !== 'ready'
+                  ? '还没读到运行数据，读到之后才能复制摘要。'
+                  : '把当前窗口的关键数字复制成纯文本。'
+            }
+            onClick={copySummary}
+            data-testid="metL-copy"
+          >
             <Copy className="size-3.5" aria-hidden="true" />
             复制摘要
           </Button>
+          <span className="metR-state" data-testid="metR-copy-state">
+            {pageFailed
+              ? '摘要不可复制：整页读取失败'
+              : usageView.kind !== 'ready'
+                ? '摘要不可复制：还没读到运行数据'
+                : '摘要可复制'}
+          </span>
           <Button
             size="sm"
             outlined
@@ -1416,6 +1529,9 @@ export function MetricsModulePage() {
           </Button>
           <span className="metL-status" role="status" aria-live="polite" data-testid="metL-copy-status">
             {summaryStatus === 'done' ? '已复制' : summaryStatus === 'failed' ? '复制没成功' : ''}
+          </span>
+          <span className="sr-only" data-testid="metU-copy-total">
+            {summaryTotalLine}
           </span>
         </div>
       </div>
@@ -1768,13 +1884,13 @@ export function MetricsModulePage() {
                 <Button
                   size="sm"
                   outlined
-                  disabled={pageFailed || !exportable}
+                  disabled={pageFailed}
                   title={
                     pageFailed
                       ? '整页读取失败，这份导出暂时不生成；先重试上面的读取，读到数据再导。'
                       : exportable
                         ? '导出明细 CSV：当前窗口与当前分类下账本逐行的实扣明细，不是分摊汇总。'
-                        : '当前没有可导出的行：账本没有实扣行或上游没有给出模型行'
+                        : '当前窗口没有明细行：导出的文件只写表头，缺块会在末尾注明。'
                   }
                   onClick={exportCsv}
                   data-testid="met6-export"
@@ -1783,7 +1899,7 @@ export function MetricsModulePage() {
                 </Button>
                 {breakdownView.kind === 'unavailable' ? (
                   <span className="metI-gap" data-testid="metI-detail-blocked">
-                    成本明细这次没读出来，明细导出暂不生成。
+                    成本明细这次没读出来：导出文件只写表头，并在末尾注明缺这一块。
                   </span>
                 ) : null}
                 {detailGaps.length > 0 ? (
@@ -1791,6 +1907,20 @@ export function MetricsModulePage() {
                     本次导出缺少：{detailGaps.map((gap) => gap.label).join('、')}——文件末尾会写明原因，缺的列留空，不填 0。
                   </span>
                 ) : null}
+                <span className="metR-state" data-testid="metR-export-state">
+                  {pageFailed
+                    ? '导出：整页读取失败，两处 CSV 都暂停'
+                    : `导出：明细可导 ${detailRows.length} 行${detailGaps.length > 0 ? `（含 ${detailGaps.length} 处缺块注记）` : ''}；分摊${
+                        shareView.kind === 'ready'
+                          ? `可导 ${shareRows.length} 行`
+                          : shareView.kind === 'loading'
+                            ? '读取中'
+                            : '暂不可用'
+                      }`}
+                </span>
+                <span className="metI-gap" data-testid="metV-export-total-note">
+                  两份导出都会在数据行之后、缺块注记之前附一条以「#」开头的合计注释行：它的数字与屏上合计行逐字相同，不计入「可导出 N 行」，也不进数据行。
+                </span>
               </div>
             </div>
 
@@ -1835,7 +1965,20 @@ export function MetricsModulePage() {
 
             {breakdownView.kind === 'ready' && breakdownView.lines.length > 0 ? (
               <>
-                <div className="met6-table-scroll">
+                <p className="metW-scroll-hint" data-testid="metW-scroll-hint">
+                  左右滑动查看全部列
+                </p>
+                <a className="metY-skip" href="#metY-after-detail" data-testid="metY-skip-detail">
+                  跳到明细表后面的说明
+                </a>
+                <div
+                  className="met6-table-scroll metW-table"
+                  role="region"
+                  tabIndex={0}
+                  aria-label="成本明细表，可横向滚动"
+                  data-testid="metW-scroll-detail"
+                  onKeyDown={handleTableScrollKeys}
+                >
                   <table className="met6-table" data-testid="met6-table">
                     <thead>
                       <tr>
@@ -1875,12 +2018,35 @@ export function MetricsModulePage() {
                         </tr>
                       ))}
                     </tbody>
+                    <tfoot>
+                      <tr className="metT-total" data-testid="metT-total-row">
+                        <th scope="row">合计</th>
+                        <td className="met6-num" data-testid="metT-detail-total-cost" title="表体各行支出相加；读不到的格子不计入，也不按 0 算">
+                          {detailTotals.cost}
+                        </td>
+                        <td className="met6-num" data-testid="metT-detail-total-count" title="表体各行次数相加；读不到的格子不计入">
+                          {detailTotals.count}
+                        </td>
+                        <td className="met6-num" data-testid="metT-detail-total-share" title="按未舍入的原值合计，逐行进位不影响这里">
+                          {detailTotals.share}
+                        </td>
+                        <td className="met6-num">—</td>
+                      </tr>
+                    </tfoot>
                   </table>
                 </div>
+                {groupResetNote && !pageFailed ? (
+                  <p className="met6-hint" data-testid="metS-reset-note">
+                    切换分组后，明细排序已回到默认的成本降序；时间窗与分摊的排序、分组选择保持不变。
+                  </p>
+                ) : null}
                 <p className="met6-hint" data-testid="metP-export-order-note">
                   表头可以点着换排序：默认按支出从高到低；缺数据的行总是排在最后，真实的 0 照常参与排序。导出文件按屏上现在的顺序写，行数与这里列出的行数一致。
                 </p>
-                <p className="met6-source" data-testid="met6-cat-source">
+                <p className="met6-hint" data-testid="metT-rounding-note-detail">
+                  占比逐行按一位小数四舍五入，合计按未舍入的原值相加，因此合计恰好是全部可读部分之和（占满时即 100%），不会因为逐行进位变成 99.9% 或 100.1%；合计行不参与排序。导出文件的行仍是逐行明细，合计不写进数据行。
+                </p>
+                <p className="met6-source" id="metY-after-detail" tabIndex={-1} data-testid="met6-cat-source">
                   来源：{breakdownView.source} · 截至{' '}
                   {breakdownView.asOf ? formatBeijing(breakdownView.asOf) : '—'}
                   {' · 合计 '}
@@ -2222,13 +2388,17 @@ export function MetricsModulePage() {
               <Button
                 size="sm"
                 outlined
-                disabled={pageFailed || shareRows.length === 0}
+                disabled={pageFailed || shareView.kind !== 'ready'}
                 title={
                   pageFailed
                     ? '整页读取失败，这份导出暂时不生成；先重试上面的读取，读到数据再导。'
-                    : shareRows.length === 0
-                      ? '当前视图无可导出数据'
-                      : '导出分摊 CSV：当前窗口、分组与排序下的聚合行，含成本与占比，不是账本逐行明细。'
+                    : shareView.kind === 'loading'
+                      ? '分摊数据还在读取，读到之后才能导出。'
+                      : shareView.kind === 'unavailable'
+                        ? `这份分摊现在读不到，导出暂不生成：${shareView.reason}`
+                        : shareRows.length === 0
+                          ? '当前视图没有分摊行：导出的文件只写表头，计数仍显示 0 行。'
+                          : '导出分摊 CSV：当前窗口、分组与排序下的聚合行，含成本与占比，不是账本逐行明细。'
                 }
                 onClick={exportShare}
                 data-testid="metA-export"
@@ -2273,7 +2443,20 @@ export function MetricsModulePage() {
             ) : null}
             {shareView.kind === 'ready' && shareRows.length > 0 ? (
               <>
-                <div className="met6-table-scroll">
+                <p className="metW-scroll-hint" data-testid="metW-scroll-hint-share">
+                  左右滑动查看全部列
+                </p>
+                <a className="metY-skip" href="#metY-after-share" data-testid="metY-skip-share">
+                  跳到分摊表后面的说明
+                </a>
+                <div
+                  className="met6-table-scroll metW-table"
+                  role="region"
+                  tabIndex={0}
+                  aria-label="成本分摊表，可横向滚动"
+                  data-testid="metW-scroll-share"
+                  onKeyDown={handleTableScrollKeys}
+                >
                   <table className="met6-table" data-testid={`${sharePrefix}-table`}>
                     <caption className="metG-caption" data-testid="metG-a11y-caption">{`成本分摊：${usageWindow.label} · ${groupBy === 'employee' ? '按员工' : '按模型'} · 按${sortColumnLabel}${sortDir === 'asc' ? '升序' : '降序'}排列`}</caption>
                     <thead>
@@ -2348,15 +2531,36 @@ export function MetricsModulePage() {
                         </tr>
                       ))}
                     </tbody>
+                    <tfoot>
+                      <tr className="metT-total" data-testid="metT-total-row-share">
+                        <th scope="row">合计</th>
+                        <td className="met6-num" data-testid="metT-share-total-runs" title="表体各行运行数相加；读不到的格子不计入">
+                          {shareTotals.runs}
+                        </td>
+                        <td className="met6-num" data-testid="metT-share-total-cost" title="表体各行成本相加；读不到的格子不计入，也不按 0 算">
+                          {shareTotals.cost}
+                        </td>
+                        <td className="met6-num" data-testid="metT-share-total-share" title="按未舍入的原值合计，逐行进位不影响这里">
+                          {shareTotals.share}
+                        </td>
+                        <td className="met6-num">—</td>
+                      </tr>
+                    </tfoot>
                   </table>
                 </div>
-                <p className="met6-source" data-testid={`${sharePrefix}-source`}>
+                <p className="met6-source" id="metY-after-share" tabIndex={-1} data-testid={`${sharePrefix}-source`}>
                   来源：{groupBy === 'employee' ? '员工账本' : '模型用量'} · 截至{' '}
                   {shareView.value.asOf ? formatBeijing(shareView.value.asOf) : '—'} · 窗口 {shareView.value.days} 天 · 可读实扣合计{' '}
                   <span className="font-mono">{formatUsd(shareTotal)}</span>
                 </p>
                 <p className="met6-hint" data-testid={`${sharePrefix}-hint`}>
                   占比按可读到的实扣金额归一，合计 100%；缺金额的行不参与分摊，显示「—」。排序写在地址里，刷新与前进后退都保留。
+                </p>
+                <p className="met6-hint" data-testid="metU-consistency-note">
+                  上面的「复制摘要」里有一行合计，和这张表的合计行是同一处算出来的：{summaryTotalLine.replace(/^合计：/, '')}。缺失的格子写「—」，整表没有可渲染的行时不造合计。
+                </p>
+                <p className="met6-hint" data-testid="metT-rounding-note">
+                  占比逐行按一位小数四舍五入，合计按未舍入的原值相加，因此合计恰好是全部可读部分之和（占满时即 100%），不会因为逐行进位变成 99.9% 或 100.1%；合计行不参与排序。导出文件的行仍是逐行明细，合计不写进数据行。
                 </p>
                 <p className="met6-hint" data-testid="metO-fmt-note">
                   数字口径：计数与金额按千分位分组（如 1,234 与 $1,234.56），占比保留一位小数（如 12.3%）；金额只以美元（USD）记，次数只以次记，不再混用别的单位。缺失显示「—」，真实的零显示 0 或 $0.00。导出文件沿用同一套小数位，只去掉符号与千分位，方便程序读取。
@@ -2397,6 +2601,28 @@ export function MetricsModulePage() {
         ))}
       </div>
       <p className="met5-note">这个读取口按整周汇总，24 小时窗口不单独提供；最近 30 天按 4 周展示。</p>
+
+      <p className="met6-hint" data-testid="metX-consistency-note">
+        运行数三处对照：窗口总运行{' '}
+        <span data-testid="metX-window-runs" title={windowRunsReason}>
+          {heatWindowTotal ?? '—'}
+        </span>
+        {' · '}热力格求和{' '}
+        <span data-testid="metX-heat-runs" title={heatRunsReason}>
+          {heatCountSum ?? '—'}
+        </span>
+        {' · '}明细合计{' '}
+        <span data-testid="metX-detail-runs" title={detailRunsReason}>
+          {detailCountSum ?? '—'}
+        </span>
+        {' · '}差{' '}
+        <span data-testid="metX-delta" title={deltaReason}>
+          {countDelta ?? '—'}
+        </span>
+        。三处都取自这一次读取、不发新请求；热力按{' '}
+        {view.kind === 'ready' ? windowRangeLabel(view.activity) : '本期'}，明细按 {usageWindow.label}
+        ，口径不同，数值不一致时以各自卡片为准。
+      </p>
 
       {view.kind === 'loading' ? (
         <Card data-testid="met5-loading">
