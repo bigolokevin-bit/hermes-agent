@@ -71,6 +71,7 @@
 - **E1 `--color-primary: var(--fg)`** — 骨架无独立强调色相；值班台主次靠「实底 vs 描线」承载（`ConsoleButton` primary 即 cream 实底 + `--bg` 反色文字）。语义层如实映射，不改视觉。
 - **E2 骨架原始名（`--bg/--fg/--line/--r/--r-sm` 等）保留为值源与旧页面兼容**，不算页面自造值；其中 `--r:6px` **不入**圆角档（档位以 `--radius-*` 为准）。旧页面迁移属 shell 项，不在令牌项内。
 - **E3 骨架超出口径名单的变量（`--sunk/--line-3/--line-strong/--fg-3/--fg-4/--serif`）** 仅供既有页面读值；新代码禁用，浅主题落地时在本层覆盖。
+- **E4 行内档按钮高 28px 不强行补到 32px 命中区**（补高会破坏三档比例）：命中区由容器保障——表内行高 40px 天然 ≥32px 目标，宽度下限用 `--btn-hit-min`；`ConsoleButton` 焦点环为 `--focus-ring`（2px primary + 2px offset）。
 
 ## 二、UI-QA 评审表（每 20 分钟一拍）
 

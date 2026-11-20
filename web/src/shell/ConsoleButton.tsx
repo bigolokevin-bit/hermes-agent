@@ -31,7 +31,7 @@ export type ConsoleButtonVariant = "primary" | "secondary" | "ghost";
 
 export interface ConsoleButtonProps {
   variant?: ConsoleButtonVariant;
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "lg";
   children: ReactNode;
   onClick?: () => void;
   type?: "button" | "submit";
@@ -42,9 +42,13 @@ export interface ConsoleButtonProps {
   "aria-label"?: string;
 }
 
-const SIZES: Record<"sm" | "md", string> = {
-  sm: "px-3 py-1 text-xs",
-  md: "px-3.5 py-1.5 text-sm",
+/* UI-RUBRIC v1 §7 heights ride the tokens: inline 28 / default 32 / dialog 36.
+ * Hit-area rule (32×32) is met at the row level for the 28px inline tier —
+ * registered as exception E4 in docs/design/UI-RUBRIC.md. */
+const SIZES: Record<"sm" | "md" | "lg", { cls: string; h: string }> = {
+  sm: { cls: "px-3 text-xs", h: "var(--btn-h-inline)" },
+  md: { cls: "px-3.5 text-sm", h: "var(--btn-h)" },
+  lg: { cls: "px-4 text-sm", h: "var(--btn-h-dialog)" },
 };
 
 export function ConsoleButton({
@@ -95,16 +99,22 @@ export function ConsoleButton({
       title={title}
       data-testid={testId}
       aria-label={ariaLabel}
+      aria-disabled={disabled || undefined}
       className={[
-        "inline-flex items-center justify-center gap-1.5 rounded-sm border",
+        "inline-flex items-center justify-center gap-2 rounded-sm border",
         "tracking-normal",
-        SIZES[size],
+        SIZES[size].cls,
         tier.hover,
-        "focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2",
+        "focus-visible:[outline:var(--focus-ring)] focus-visible:outline-offset-2",
         disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer",
         className ?? "",
       ].join(" ")}
-      style={{ ...tier.style, letterSpacing: "normal" }}
+      style={{
+        ...tier.style,
+        letterSpacing: "normal",
+        height: SIZES[size].h,
+        minWidth: "var(--btn-hit-min)",
+      }}
     >
       {children}
     </button>
