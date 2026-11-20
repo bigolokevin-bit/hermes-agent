@@ -906,6 +906,15 @@ function beijingFileStamp(now: Date): string {
  * metrics-detail-<window>-<group>-<sort>-<dir>-<YYYYMMDD-HHmm>.csv
  * The sort pair is always present; an untouched table writes `cost-desc`.
  */
+export function csvFileStem(
+  view: 'employee' | 'model',
+  window: UsageWindowId,
+  sort: DetailSort,
+  dir: SortDir,
+): string {
+  return ['metrics', 'detail', window, view, sort, dir].map(fileToken).join('-');
+}
+
 export function csvFileName(
   view: 'employee' | 'model',
   window: UsageWindowId,
@@ -913,8 +922,7 @@ export function csvFileName(
   dir: SortDir,
   now: Date,
 ): string {
-  const parts = ['metrics', 'detail', window, view, sort, dir].map(fileToken);
-  return `${parts.join('-')}-${beijingFileStamp(now)}.csv`;
+  return `${csvFileStem(view, window, sort, dir)}-${beijingFileStamp(now)}.csv`;
 }
 
 /**
@@ -991,6 +999,15 @@ export function shareCsv(rows: ShareCsvRow[]): string {
  * metrics-share-<window>-<group>-<sort>-<dir>-<YYYYMMDD-HHmm>.csv
  * Same shape as the detail file, so the two can never collide.
  */
+export function shareCsvStem(
+  group: 'model' | 'employee',
+  window: UsageWindowId,
+  sort: 'model' | 'cost' | 'runs',
+  dir: SortDir,
+): string {
+  return ['metrics', 'share', window, group, sort, dir].map(fileToken).join('-');
+}
+
 export function shareCsvFileName(
   group: 'model' | 'employee',
   window: UsageWindowId,
@@ -998,8 +1015,7 @@ export function shareCsvFileName(
   dir: SortDir,
   now: Date,
 ): string {
-  const parts = ['metrics', 'share', window, group, sort, dir].map(fileToken);
-  return `${parts.join('-')}-${beijingFileStamp(now)}.csv`;
+  return `${shareCsvStem(group, window, sort, dir)}-${beijingFileStamp(now)}.csv`;
 }
 
 

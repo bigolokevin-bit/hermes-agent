@@ -591,3 +591,20 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 - 验证：定向 `src/modules/metrics` 4 files / **205 passed**（原 202，+3）；全量 **145 files / 1820 passed**（原 1817）；`tsc` 全仓 67 条既存、`modules/metrics` 0。
 - build `--outDir /tmp/build-metAN` → entry `assets/index-BXi0_KhO.js` sha256 `fae63b3721dd787f2e85adec8bbd68df995289ee3bcd96e913b4ddc8ad2932ec`（entry 内 `metAN-empty-guide`=0），chunk `assets/MetricsModulePage-D5dXb8_c.js` 命中 1。
 - 未测项：真浏览器 375 换行与粘链首屏视觉未走查；空窗与「账本有行但金额为 0」的边界（真 0 数据）仍按数据展示，不触发引导。
+
+## 导出文件名与屏上口径同值（metAO，2026-11-20）
+
+`metAL-scope` 与两处导出文件名读同一组参数，逐要素同值：
+
+- 明细：`metrics-detail-<window>-<view>-<dsort>-<ddir>-<生成时刻>.csv`
+- 分摊：`metrics-share-<window>-<group>-<sort>-<dir>-<生成时刻>.csv`
+- 屏上 `metAO-filename-bar` 给两枚预览（`metAO-filename-detail` / `metAO-filename-share`），生成时刻位写 `<生成时刻>`，实际文件名在导出时按北京时间到分填位；预览全文进 `title`，375 下 `code` 单行省略号截断、由 `title` 与复制兜底。
+- 两表各用各的键：`?dsort/?ddir` 只进明细名，`?sort/?dir` 只进分摊名；互不串用。实测：`?dsort=runs&ddir=asc` → `metrics-detail-24h-employee-runs-asc-…` 且分摊仍 `metrics-share-24h-model-cost-desc-…`；`?sort=model&dir=asc` → `metrics-share-24h-model-model-asc-…` 且明细仍 `…-cost-desc-…`。
+- 默认值即 URL 派生值：不加参数时明细 `employee`（`?view` 缺省分支）、分摊 `model`，两侧排序都是 `cost-desc`；`metAL-reset` 清九键后两枚预览立即回到这批默认值，不残留任何上一次的键。
+- 粘链直达按 URL 派生：`?window=30d&groupBy=employee` → `metrics-detail-30d-employee-cost-desc-…` / `metrics-share-30d-employee-cost-desc-…`，不是默认值。
+- 零额外请求：预览为纯派生，挂载后 60ms 内 `urls()` 不变。
+- 纯函数：`csvFileStem` / `shareCsvStem`（`fileToken` 归一化），`csvFileName` / `shareCsvFileName` 复用同一 stem，故屏上预览与实际下载名只差生成时刻。
+
+验证：定向 `src/modules/metrics` 4 files / 210 passed（原 205，+5）；全量 145 files / 1825 passed（原 1820）；`tsc -b . --noEmit` 全仓 67 条既存、`modules/metrics` 0。
+
+未测项：真浏览器 375 下长文件名的省略号宽度未目视走查（CSS `text-overflow: ellipsis` + `title` 已就位）。

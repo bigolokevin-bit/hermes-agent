@@ -4348,3 +4348,86 @@ describe('metAN — empty window guide', () => {
     expect(document.querySelector('[data-testid="met5-page"]')?.textContent).not.toContain('本窗没有运行记录');
   });
 });
+
+describe('metAO — the file names and the scope line carry the same four values', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+  const scope = (): string => q('metAL-scope')?.textContent ?? '';
+  const detailFile = (): string => q('metAO-filename-detail')?.textContent ?? '';
+  const shareFile = (): string => q('metAO-filename-share')?.textContent ?? '';
+  const STAMP = '<生成时刻>.csv';
+  const FULL = '/metrics?window=7d&groupBy=employee&view=model&dsort=runs&ddir=asc&sort=model&dir=asc';
+
+  it('agrees element by element with the scope line', async () => {
+    await mountShare(SHARE_USAGE, FULL);
+
+    expect(scope()).toContain('时间窗 最近 7 天');
+    expect(scope()).toContain('分组 按员工');
+    expect(scope()).toContain('明细 次数 升序');
+    expect(scope()).toContain('分摊 员工 升序');
+
+    expect(detailFile()).toBe(`metrics-detail-7d-model-runs-asc-${STAMP}`);
+    expect(shareFile()).toBe(`metrics-share-7d-employee-model-asc-${STAMP}`);
+
+    // window / group / sort key / sort direction all line up with the words above.
+    expect(detailFile()).toContain('-7d-');
+    expect(shareFile()).toContain('-7d-');
+    expect(shareFile()).toContain('-employee-');
+    expect(detailFile()).toContain('-runs-asc-');
+    expect(shareFile()).toContain('-model-asc-');
+    // The full name is in title, so a truncated 375 line still reveals it.
+    expect(q('metAO-filename-detail')?.getAttribute('title')).toBe(detailFile());
+    expect(q('metAO-filename-share')?.getAttribute('title')).toBe(shareFile());
+  });
+
+  it('keeps the two tables on their own sort keys', async () => {
+    await mountShare(SHARE_USAGE, '/metrics?dsort=runs&ddir=asc');
+    expect(detailFile()).toBe(`metrics-detail-24h-employee-runs-asc-${STAMP}`);
+    // The share table was not touched: it keeps the default cost-desc.
+    expect(shareFile()).toBe(`metrics-share-24h-model-cost-desc-${STAMP}`);
+
+    await mountShare(SHARE_USAGE, '/metrics?sort=model&dir=asc');
+    expect(shareFile()).toBe(`metrics-share-24h-model-model-asc-${STAMP}`);
+    expect(detailFile()).toBe(`metrics-detail-24h-employee-cost-desc-${STAMP}`);
+  });
+
+  it('falls back to the defaults the moment the scope is reset', async () => {
+    await mountShare(SHARE_USAGE, FULL);
+    const before = urls().length;
+
+    await act(async () => {
+      (q('metAL-reset') as HTMLButtonElement).click();
+    });
+    await waitFor(() => detailFile().includes('-24h-employee-cost-desc-'), 'file name back to defaults');
+
+    expect(detailFile()).toBe(`metrics-detail-24h-employee-cost-desc-${STAMP}`);
+    expect(shareFile()).toBe(`metrics-share-24h-model-cost-desc-${STAMP}`);
+    expect(scope()).toContain('时间窗 最近 24 小时');
+    expect(scope()).toContain('分组 按模型');
+    expect(detailFile()).not.toContain('7d');
+    expect(detailFile()).not.toContain('runs');
+    // Reading the file names off the address costs nothing beyond the reset refetch.
+    expect(urls().length).toBeGreaterThanOrEqual(before);
+  });
+
+  it('derives a pasted link from the address, not from the defaults', async () => {
+    await mountShare(SHARE_USAGE, '/metrics?window=30d&groupBy=employee');
+    expect(detailFile()).toBe(`metrics-detail-30d-employee-cost-desc-${STAMP}`);
+    expect(shareFile()).toBe(`metrics-share-30d-employee-cost-desc-${STAMP}`);
+  });
+
+  it('adds no request of its own', async () => {
+    await mountShare(SHARE_USAGE, '/metrics?window=7d');
+    const bar = q('metAO-filename-bar');
+    expect(bar).not.toBeNull();
+    expect(bar?.querySelectorAll('[data-testid^="metAO-filename-"]').length).toBe(2);
+
+    // Reading the two names off the address fires nothing; the batch already
+    // counted above is the same one a page without this bar would send.
+    const before = urls().length;
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 60));
+    });
+    expect(urls().length).toBe(before);
+    expect(detailFile()).toBe(`metrics-detail-7d-employee-cost-desc-${STAMP}`);
+  });
+});

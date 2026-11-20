@@ -28,6 +28,7 @@ import {
   cellRangeLabel,
   chunkIds,
   csvFileName,
+  csvFileStem,
   deltaOf,
   formatDeltaCount,
   formatDeltaUsd,
@@ -69,6 +70,7 @@ import {
   sortDetailLines,
   shareCsv,
   shareCsvFileName,
+  shareCsvStem,
   shareOfCosts,
   shareOfWhole,
   runsDrill,
@@ -1430,6 +1432,11 @@ export function MetricsModulePage() {
     ` · 分摊 ${shareSortLabel} ${sortDir === 'asc' ? '升序' : '降序'}` +
     ` · 热力 ${activeWindow.label}`;
 
+  // metAO — the two export file names, derived from the very same URL values the
+  // scope line reads, so the four tokens can never drift apart.
+  const detailFilePreview = `${csvFileStem(viewMode, usageWindow.id, detailSort, detailDir)}-<生成时刻>.csv`;
+  const shareFilePreview = `${shareCsvStem(groupBy, usageWindow.id, sortKey, sortDir)}-<生成时刻>.csv`;
+
   const resetScope = () => {
     cancelRefresh();
     const query = new URLSearchParams(params);
@@ -1778,6 +1785,21 @@ export function MetricsModulePage() {
           >
           回到默认视图
         </Button>
+      </div>
+
+      <div className="metAO-bar" data-testid="metAO-filename-bar">
+        <span className="metAO-file">
+          <span className="metAO-file-label">明细导出文件</span>
+          <code className="metAO-file-code" data-testid="metAO-filename-detail" title={detailFilePreview}>
+            {detailFilePreview}
+          </code>
+        </span>
+        <span className="metAO-file">
+          <span className="metAO-file-label">分摊导出文件</span>
+          <code className="metAO-file-code" data-testid="metAO-filename-share" title={shareFilePreview}>
+            {shareFilePreview}
+          </code>
+        </span>
       </div>
 
       <p className="metAM-note" data-testid="metAM-matrix-note">
