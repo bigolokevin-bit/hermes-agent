@@ -257,7 +257,8 @@ describe("pending queue states", () => {
     expect(text()).toContain("审批申请没能加载出来");
     expect(text()).toContain("审批服务在处理时出了错");
     expect(text()).toContain("请求编号：b6g1c2d3");
-    expect(text()).not.toContain("503");
+    // 文件名预览常驻（R75 apv-export-name），BJT HHmm 可能撞 503 字样——先剥文件名再断，语义不变（L461 同款）
+    expect(text().replace(/-\d{8}-\d{4}\.csv/g, "")).not.toContain("503");
     expect(document.querySelector("[data-testid='apr5-error']")).toBeTruthy();
     expect(shownRequestId()).toBe("b6g1c2d3");
     // the copy control writes the SAME string that is shown
