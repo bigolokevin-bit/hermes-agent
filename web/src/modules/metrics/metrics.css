@@ -969,3 +969,85 @@
   outline: 2px solid var(--color-ring);
   outline-offset: 2px;
 }
+
+/* ---- metZ: heat summary copy ------------------------------------------- */
+.metZ-heat-copy {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ---- metAB: the caliber notes at the foot of the page ------------------ */
+.metAB {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.metAB-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.metAB-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.metAB-item {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--color-muted-foreground);
+  overflow-wrap: anywhere;
+}
+
+.metAB-name {
+  color: var(--color-foreground);
+  font-weight: 600;
+}
+
+.metAB-path {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+/* ---- metAF: sticky table head and figures that never wrap -------------- */
+/* The head sticks to the top of the scroll box; the first column keeps a
+   higher z-index so the two sticky axes never cut into each other. */
+.metW-table thead.metAF-sticky-detail th,
+.metW-table thead.metAF-sticky-share th {
+  position: sticky;
+  top: 0;
+  z-index: 0;
+  background: var(--color-card);
+}
+
+.metW-table thead.metAF-sticky-detail th:first-child,
+.metW-table thead.metAF-sticky-share th:first-child {
+  left: 0;
+  z-index: 2;
+}
+
+/* Four numeric columns per table: counts, money, share and the ledger stamp.
+   They keep one line and aligned digits; the table scrolls instead of
+   truncating the number with an ellipsis. */
+.metAF-nowrap {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.metW-table tbody td.met6-num {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}

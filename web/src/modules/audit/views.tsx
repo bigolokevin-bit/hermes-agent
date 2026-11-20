@@ -16,7 +16,9 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { themedBody, themedChrome } from "@/lib/utils";
 import type { AuditChange, AuditDetail, AuditRow, VerifyResult } from "./model";
 import { beijingSeconds, maskSensitive } from "./model";
-import { CopyValue, TechnicalDisclosure } from "./states";
+import { CopyValue, DeniedPanel, ErrorPanel, LoadingPanel, PermalinkCopy, SummaryCopy, TechnicalDisclosure } from "./states";
+import type { FailureCopy } from "./copy";
+import { summaryFromDetail, summaryFromRow } from "./summary";
 
 const MISSING_TIME = "服务未提供该时间";
 const MISSING_VALUE = "服务未提供该信息";
@@ -236,6 +238,11 @@ export function AuditEventDetailBody({
           />
         </div>
         <p className="min-w-0 break-words text-xs text-muted-foreground">以上时间均为北京时间，精确到秒。</p>
+        {/* audC: the 结论行, from the same builder the inline preview uses. */}
+        <SummaryCopy line={summaryFromDetail(detail, beijingSeconds(detail.occurredAtRaw) ?? detail.occurredAt)} />
+        {/* audE: the fixed link for this record, built from the identifier the
+            answer itself carried — never from a guessed one. */}
+        <PermalinkCopy eventId={detail.rawId} />
       </Section>
 
       <Section title="操作者">
@@ -433,9 +440,20 @@ export function AuditRowPreview({
   row,
   testId,
   detailHref,
+  record,
 }: {
   row: AuditRow;
   testId: string;
+  /**
+   * audF: the record read this row's own 「打开详情」 answers, when it is the
+   * record that is open. `null` means no read is attached to this preview, so
+   * the preview says nothing about states it does not have.
+   */
+  record?: {
+    phase: "idle" | "loading" | "ready" | "error" | "denied";
+    failure: FailureCopy | null;
+    onRetry: () => void;
+  } | null;
   /**
    * aud8: where 「打开详情」 goes. The list passes a link that carries its own
    * reading state (window, type, cursor stack, folds) so returning lands back
@@ -507,6 +525,28 @@ export function AuditRowPreview({
           </a>
         ) : null}
       </div>
+      {/* audC: the same 结论行 the detail offers, built by the same function,
+          so both legs copy one sentence for one event. */}
+      <SummaryCopy line={summaryFromRow(row, at)} />
+      {/* audE: and the same fixed link for the same record. */}
+      <PermalinkCopy eventId={row.rawId} />
+      {/* audF: the state of the record read this row points at, in the same
+          panels and the same sentences the record pane uses. */}
+      {record && record.phase !== "idle" && record.phase !== "ready" ? (
+        record.phase === "loading" ? (
+          <LoadingPanel testId="audF-preview-loading" slot="preview" />
+        ) : record.phase === "denied" ? (
+          <DeniedPanel failure={record.failure} testId="audF-preview-denied" slot="preview" />
+        ) : (
+          <ErrorPanel
+            failure={record.failure ?? { sentence: "这条事件的详情没能加载出来。", requestId: null, technical: null }}
+            onRetry={record.onRetry}
+            title="这条事件没能加载出来"
+            testId="audF-preview-error"
+            slot="preview"
+          />
+        )
+      ) : null}
     </div>
   );
 }
@@ -517,12 +557,18 @@ export function AuditTypeSummary({
   onToggle,
   groups,
   total,
+  selected,
+  onPick,
   testId = "aud7-types",
 }: {
   open: boolean;
   onToggle: () => void;
   groups: { key: string; label: string; count: number }[];
   total: number;
+  /** audD: the type the ledger is currently filtered by (its raw code). */
+  selected: string;
+  /** audD: picking a bucket is the type filter; picking the pressed one again clears it. */
+  onPick: (code: string) => void;
   testId?: string;
 }): ReactNode {
   if (total === 0) return null;
@@ -551,25 +597,59 @@ export function AuditTypeSummary({
         </span>
       </div>
       {open ? (
-        <ul className="flex min-w-0 flex-col gap-1" id={testId + "-panel"} data-testid={testId + "-panel"}>
-          {groups.map((group) => {
-            const share =
-              group.count >= total
-                ? 100
-                : Math.max(1, Math.min(99, Math.floor((group.count / total) * 100)));
-            return (
-              <li
-                key={group.key}
-                className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-xs"
-                data-testid={testId + "-row"}
-              >
-                <span className="min-w-0 break-words" title={group.key}>{group.label}</span>
-                <span className="shrink-0 font-mono" data-testid={testId + "-count"}>{group.count}</span>
-                <span className="shrink-0 text-muted-foreground" data-testid={testId + "-share"}>{String(share) + "%"}</span>
-              </li>
-            );
-          })}
-        </ul>
+        <>
+          <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="audD-filter-hint">
+            点一个类型就按这个桶的类型去读（与时间窗、操作者、资源、页码一起组合），再点一次回到全部类型。下面的计数只数这一页已加载的记录。
+          </p>
+          <ul className="flex min-w-0 flex-col gap-1" id={testId + "-panel"} data-testid={testId + "-panel"}>
+            {groups.map((group) => {
+              const share =
+                group.count >= total
+                  ? 100
+                  : Math.max(1, Math.min(99, Math.floor((group.count / total) * 100)));
+              const active = group.key === selected;
+              return (
+                <li
+                  key={group.key}
+                  className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-xs"
+                  data-testid={testId + "-row"}
+                >
+                  {/* audD: the bucket IS the filter. A real button, so Enter and
+                      Space do what a click does, and `aria-pressed` says which
+                      type the ledger is answering right now. The code the
+                      button hands over is the same value the row was counted
+                      under, so the count and the filter cannot disagree. */}
+                  <button
+                    type="button"
+                    aria-pressed={active}
+                    title={`按这一类去读（原值 ${group.key}）；再点一次回到全部类型`}
+                    className={`min-w-0 flex-1 rounded-md px-1.5 py-1 text-left hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
+                      active ? "border border-primary/60 text-foreground" : "text-muted-foreground"
+                    }`}
+                    data-testid={`audD-bucket-${group.key}`}
+                    onClick={() => onPick(group.key)}
+                    // audD: the keyboard reaches the same filter. preventDefault
+                    // keeps the browser's own button activation from firing a
+                    // second pick on the same keystroke.
+                    onKeyDown={(event) => {
+                      if (event.key !== "Enter" && event.key !== " " && event.key !== "Spacebar") return;
+                      event.preventDefault();
+                      onPick(group.key);
+                    }}
+                  >
+                    <span className="min-w-0 break-words">{group.label}</span>
+                  </button>
+                  <span className="shrink-0 font-mono" data-testid={testId + "-count"}>
+                    {group.count}
+                  </span>
+                  <span className="shrink-0 text-muted-foreground" data-testid={testId + "-share"}>
+                    {String(share) + "%"}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </>
       ) : null}
     </section>
   );

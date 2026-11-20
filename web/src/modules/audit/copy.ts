@@ -22,6 +22,12 @@ export interface FailureCopy {
   requestId: string | null;
   /** Multi-line technical text for the disclosure only. */
   technical: string | null;
+  /**
+   * audF: the status that produced this sentence, kept so a panel can tell an
+   * unwired route from a closed one WITHOUT splitting 403 and 404 apart on
+   * screen. Never printed.
+   */
+  status?: number;
 }
 
 /**
@@ -37,7 +43,7 @@ export function readFailure(err: unknown, info: { status: number; requestId: str
   else if (status === 429) sentence = "请求太频繁了，请稍等一会儿再试。";
   else if (status >= 500) sentence = "审计服务在处理时出了错，请稍后重试。";
   else sentence = humanSentence(errorMessage(err)) ?? "读取审计事件时出了问题，请稍后重试。";
-  return { sentence, requestId: info.requestId, technical: info.technical };
+  return { sentence, requestId: info.requestId, technical: info.technical, status: info.status };
 }
 
 /** The answer arrived but is not shaped like a list: a failure, not an empty ledger. */

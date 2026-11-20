@@ -14,6 +14,7 @@ export type SkillRow = {
   source: string | null;
   sourceReason: string;
   status: string | null;
+  statusRaw: string | null;
   statusReason: string;
   updatedAt: string | null;
   updatedAtReason: string;
@@ -146,6 +147,7 @@ export function readSkills(body: unknown): SkillsRead {
       source,
       sourceReason,
       status,
+      statusRaw: rawStatus,
       statusReason,
       updatedAt,
       updatedAtReason: updatedAt ? "" : updatedRaw ? "更新时间无法识别" : "台账列表未提供更新时间",

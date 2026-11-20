@@ -420,3 +420,98 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 - 零新请求：链接只做页内跳转，测试断言聚焦前后 `urls()` 长度不变。
 - 验证：定向 `src/modules/metrics` 2 files / **146 passed**（基线 142，+4）；全量 **137 files / 1618 passed**（基线 1614）；`tsc -b . --noEmit` 全仓 55 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metY` → entry `assets/index-BIvWvNTC.js` sha256 `4be1529960f738edbbf6b7054e0ce5daaabc41b3e155ed634065705c1cd102e1`，entry 内 `metY-skiplink` 命中 0，chunk `assets/MetricsModulePage-CcfclHKN.js`：`metY-skiplink`=1、`metY-main`=1。
 - 未测项：真浏览器里按 Tab 后链接的可见样式与跳转后的滚动定位未人工走查；Safari 对 `:focus-visible` 与 clip 组合的表现未复核。
+
+## 复制热力摘要（metZ，2026-11-20）
+
+热力卡上方新增「复制热力摘要」`metZ-copy-heat`，把这一窗热力的关键数字复制成纯文本；即使热力读失败也能复制，只是内容会如实写「不可比较」。
+
+- 文本七行：`热力摘要` / `窗口：<label>（<weeks>w）` / `日期区间：<windowRangeLabel 或 —>` / `总运行：<grid.total 或 —>` / `最高：<周几> <n> 次` / `最低：<周几> <n> 次` / `覆盖：<有数据的天数> / 7 天`；热力不可用时每项为「—」，并追加一行「说明：这次没有可用的热力格子，以上几项不可比较，不按 0 记。」
+- 同源：新增 `heatSummaryParts(grid)` 作为唯一派生；`heatGridSummary`（屏上 `metK-heat-summary`）与 `heatCopyText`（剪贴板）都读这一个 parts，`总运行` 同时就是 `met5-count` 与 `grid.total`。不重复求和、不补 0、不拿本机时钟填日期区间（失败时区间写「—」）。
+- 零新请求：复制只读组件内 state；测试断言点击前后 `urls()` 长度不变，切到 4 周热力窗后只多出该窗自己的读，文本窗口 id 随之变为 `4w`。
+- 反馈与回退：成功 `metZ-copy-status`（role=status, aria-live=polite）显示「已复制」；剪贴板被拒时显示「复制没成功」并给出 `metZ-copy-fallback` 里的只读 textarea（`metZ-copy-fallback-text`），内容与要复制的文本逐字相同。
+- 验证：定向 `src/modules/metrics` 2 files / **150 passed**（基线 146，+4）；全量 **137 files / 1673 passed**（基线 1618，含 wave-18 上游新增用例）；`tsc -b . --noEmit` 全仓 58 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metZ` → entry `assets/index-C5TeO2dY.js` sha256 `5034df0fd828c5916aa979aba4e4ba483c822bd95aa36d1704381219d44bfaaa`，entry 内 `metZ-copy-heat` 命中 0，chunk `assets/MetricsModulePage-BoK0nIJN.js` 命中 1。
+- 未测项：真浏览器剪贴板权限弹窗下的回退路径未走查；375 下按钮与说明的换行未人工走查。
+
+## 热力窗写进地址（metAA，2026-11-20）
+
+热力卡的周窗从 `?w=` 迁到自己的键 `?heat=`，刷新、前进后退、粘链接都能回到同一个窗口。
+
+- 读：`windowOf(params.get('heat') ?? params.get('w'))`——旧链接里的 `w` 仍被接受（向后兼容），但新写入只用 `heat`。
+- 写：`chooseWindow(next)` 复制现有参数后 `set('heat', …)` 并 `delete('w')`，因此 `?window/?view/?sort/?dsort/?ddir` 一律保留，切换热力窗不会重置明细视图或排序。
+- 只重取一个读口：切换（含切回）各只发一次 `run-activity`，`run-stats`、`employees`、`budget-usage`、`hermes-usage` 新增请求数均为 0（测试按批次计数断言）。
+- 不清其它卡片：原先 `weeks` 变化会清空整个新鲜度记录，现改为只删 `run-activity` 那一条；其它读口的采集时刻、各卡片数字与分摊表行都留在屏上。实测切换后 `met6-runs-value` 与 `met7-row-zeta` 文本不变，`metB-source-asof-run-stats` 仍显示原采集时刻。
+- 提示：`metAA-heat-window` 一行写明「热力窗口写在地址里：最近 7 天（heat=1）。刷新、前进后退和分享链接都会回到同一个窗口，其它卡片与筛选保持原样。」
+- 验证：定向 `src/modules/metrics` 2 files / **154 passed**（基线 150，+4）；全量 **137 files / 1677 passed**（基线 1673）；`tsc -b . --noEmit` 全仓 59 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metAA` → entry `assets/index-qaYHscOn.js` sha256 `9a84a59c07d79cfd2c16848d9f44e2d5d63a8cf2f79acc78ab218b6e23e3d12c`，entry 内 `metAA-heat-window` 命中 0，chunk `assets/MetricsModulePage-BXXjPOcY.js` 命中 1。
+- 未测项：真浏览器前进/后退时的滚动位置与热力格选中态恢复未走查（选中格在切换时按设计清空）；375 下这一行的换行未人工走查。
+
+## 页尾口径说明（metAB，2026-11-20）
+
+页面底部新增折叠块 `metAB-notes`：把六个读口的口径写成文字，读者不必逐卡推断。
+
+- 结构：原生 `<button data-testid="metAB-notes-toggle" aria-expanded aria-controls="metAB-notes-body">口径说明</button>`，默认收起（body 不渲染）；展开后每个读口一行 `metAB-note-<key>`：口径名 / 实际路径 / `计算范围：…` / `缺值策略：…`。
+- 内容来源：`metrics.ts` 新增静态表 `CALIBER_NOTES`（六项与 `SOURCE_CATALOG` 同键同路径），文案复述既有口径——运行活动「按整周汇总，不提供 24 小时切分；缺格「—」不补 0」、运行统计「所选时间窗与上一周期同长」、员工目录「只用于编号换人名，缺名显「员工 · 短码」」、账本「按日/月账本行累加，缺「—」真 0 `$0.00`，不用单价乘用量」、价目表「标价不等于扣费」、Hermes 用量「天数跟随时间窗，缺次数「—」」；末尾一句统一写明「采集时刻只取上游顶层 ISO，缺失「—」，不拿本机时间顶替；两份导出沿用同一套处理」。
+- 一致性：测试把 `metB-source-table` 与 `metAB-notes-body` 的同一路径（`/api/run-stats`、`/api/budget-usage`、`/api/models/pricing`）逐条对照，并断言 `$0.00`、`不补 0`、「不拿本机时间顶替」确实出现。
+- 不改状态：展开/收起不写 URL（`met7-loc` 前后相同）、不发请求（`urls()` 前后相同）、不清空任何卡片或新鲜度块；折叠后 `metB-source-table` 仍在。
+- 验证：定向 `src/modules/metrics` 2 files / **157 passed**（基线 154，+3）；全量 **137 files / 1680 passed**（基线 1677）；`tsc -b . --noEmit` 全仓 58 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metAB` → entry `assets/index-CE_eqhLj.js` sha256 `eeed0cc6ec3645be807ad468bf243c45b85fdac6061c63c46a60c5ed33528196`，entry 内 `metAB-notes` 命中 0，chunk `assets/MetricsModulePage-CMjnDoV9.js` 命中 1。
+- 未测项：375 下六条说明的长段落折行与滚动高度未人工走查；屏幕阅读器对折叠块的播报未走查。
+
+## 屏上与 CSV 逐值对账护栏（metAC，2026-11-20）
+
+新增 `web/src/modules/metrics/metrics.export-parity.test.ts`，把「屏上 ↔ 两份 CSV」的六条约定钉成回归断言；本轮**未改产品代码**（构建 entry 与上一刀完全相同，可作为旁证）。
+
+- P1 行数：明细 CSV 数据行 = `met6-cat-source` 的 N = 表体行数（本例 2）；分摊 = `metA-export-count` = 表体行数。
+- P2 合计注释：`# 合计：成本 … · 次数 … · 占比 …`（明细）与 `# 合计：运行 … · 成本 … · 占比 …`（分摊）逐字等于表尾单元格；`# 本次导出缺少 1 块：运行统计` 恒为最后一行；两类注释都不计入数据行。
+- P3 采集时刻：上游顶层 ISO 才进 `as_of` 列（有值时逐行回声 `2026-11-19T20:12:00.000Z`）；假时钟设到 2031 后，`metB-source-asof-*` 全部为「—」，CSV 该列全空且全文不含 2031。页面自身「读取于」仍可显示当下时间——那是读取时刻，不是数据时刻。
+- P4 窗口列：默认写 `24h`；点 7 天后再导出写 `7d`，屏上 `met6-window-7d` 同步按下。
+- P5 零与缺失：屏上 `$0.00` / 「—」，文件 `0.00` / 空字段（员工视图 `$ 与千分位` 去装饰后仍可解析）。
+- P6 行序：默认成本降序与 `?dsort=runs&ddir=asc` 两组，CSV 首列顺序都等于表体首列顺序。
+- 断言全部走真实导出入口（点击按钮 + mock `URL.createObjectURL` 取 Blob），不起浏览器；BOM 仍按字节 `EF BB BF` 校验。
+- 验证：`src/modules/metrics` **3 files / 167 passed**（原 157，+10）；全量 **137 files / 1690 passed**（原 1680）；`tsc -b . --noEmit` 全仓 58 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metAC` → entry `assets/index-CE_eqhLj.js` sha256 `eeed0cc6ec3645be807ad468bf243c45b85fdac6061c63c46a60c5ed33528196`（与 metAB 构建产物一致，说明本轮只增测试）。
+- 未测项：真实后端 `as_of` 形态（六别名之外的变体）未联调；Safari/Firefox 下载文件名未走查。
+
+## 卡片与口径说明的读屏关联（metAD，2026-11-20）
+
+五张卡（运行/成本/趋势/价格/热力）都带 `aria-describedby`，焦点落到卡上时读屏会把「口径名 + 缺值策略」一并读出来。
+
+- 方式：选择「sr-only 副本」而非依赖折叠块——`metAB` 默认收起时正文并不渲染，若只靠它，五张卡的引用会指向不存在的 id。现在页面顶部固定渲染一组隐藏段落，id 为 `metAD-note-<key>`（`run-stats`、`budget-usage`、`pricing`、`run-activity` 四个），内容由 `CALIBER_NOTES` 同一份数据生成：`<口径名>。缺值策略：<missing>`。
+- 卡片映射：运行 → `metAD-note-run-stats`；成本 → `metAD-note-budget-usage`；趋势 → `metAD-note-run-stats`（与运行同一读口，故共用一条说明）；价格 → `metAD-note-pricing`；热力 → `metAD-note-run-activity`。
+- 单一文案来源：页尾 `metAB` 展开后仍用 `CALIBER_NOTES` 渲染，测试对比 `metAB-note-run-stats` 与 `metAD-note-run-stats` 含同一条 `missing` 文本，并逐字校验 sr-only 段落等于 `${label}。缺值策略：${missing}`。
+- 视觉与请求：sr-only 段落不占版式、不改任何卡片外观；只在渲染期读静态常量，测试断言卡上聚焦前后 `urls()` 长度不变。
+- 验证：`src/modules/metrics` **3 files / 171 passed**（原 167，+4）；全量 **137 files / 1694 passed**（原 1690）；`tsc -b . --noEmit` 全仓 58 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metAD` → entry `assets/index-C9RYivhE.js` sha256 `acca73cc2ff3f79f4ef93bfb5e4daa4496fa9cfcfb7eff15ce7350ddbbad8df0`，entry 内 `metAD-note` 命中 0，chunk `assets/MetricsModulePage-B-biV7Jz.js` 命中 1。
+- 既有断言调整：一处「整页不含 $0.00」改为「成本卡不含 $0.00」，因为 sr-only 口径说明会合法地引用 `$0.00` 作为「真 0」的写法——范围收紧而非放宽。
+- 未测项：真实读屏（VoiceOver/NVDA）对 `aria-describedby` 的朗读顺序与实际停顿未走查。
+
+## 粘性表头与不折行的数值（metAF，2026-11-20）
+
+两张宽表的表头在滚动时留在表顶，数值列不再被挤成两行或省略号。
+
+- 表头：`<thead className="metAF-sticky-detail" data-testid="metAF-sticky-detail">`（明细）与 `metAF-sticky-share`（分摊）；CSS `position: sticky; top: 0; z-index: 0; background: var(--color-card)`。首列仍由 metW 的 `td:first-child/th:first-child` 锚定并带 `z-index: 1`，表头首格 `z-index: 2`——三层层级明确（表头 0 < 首列 1 < 左上角 2），不会互相遮挡。
+- 数值列：新类 `metAF-nowrap` 加在六个数值表头（明细 支出/次数/占比、分摊 运行数/成本/占比），CSS `white-space: nowrap; font-variant-numeric: tabular-nums`；表体数值格经 `.metW-table tbody td.met6-num` 同样 nowrap + 等宽数字，因此 375 下数字保持一行，由容器横向滚动而不是截断加省略号。
+- 兼容：与既有 `.met6-num` 合并为同一 `className`（中途曾出现重复 `className` 属性导致 `met6-num` 被吞，已在同单修掉，tsc 与测试均覆盖该点）。
+- 断言（不起浏览器）：两只 thead 的 tagName/class/testid 存在，`.metAF-nowrap` 至少 3 个元素且均为 TH/TD，三个分摊数值表头的 class 同时含 `met6-num` 与 `metAF-nowrap`。
+- 验证：`src/modules/metrics` **3 files / 173 passed**（原 171，+2）；全量 **137 files / 1696 passed**（原 1694）；`tsc -b . --noEmit` 全仓 58 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metAF` → entry `assets/index-BerrBqsL.js` sha256 `3339cb3170dd7d80eb2f565edc26c8f29ed8162effd1620f1688cddb8eec37b9`，entry 内 `metAF-sticky` 命中 0，chunk `assets/MetricsModulePage-BRMjOkzZ.js` 命中 1。
+- 未测项：真浏览器里纵向滚动时表头贴合、首列与表头交角的重叠关系与 375 下数字实际宽度未人工走查（容器纵向高度通常不滚动，粘性表头主要在窄容器下生效）。
+
+## 复制来源摘要（metAG，2026-11-20）
+
+新鲜度块（metB）旁新增「复制来源摘要」`metAG-copy-sources`：把这张表说成纯文本，一行一个读口。
+
+- 文本：按 metB 当前行序（`sourceRows(sources)` 的 `SOURCE_CATALOG` 顺序），每行 `口径名 · 实际路径 · 采集时刻 · 状态`；采集时刻只取该读口顶层 ISO（缺失写「—」，不用本机时钟）；状态三词与表内一致（正常/降级/读不到）。`sourceSummaryText(rows)` 与表格共用同一批 `SourceRow`，不重新取数。
+- 反馈：成功 `metAG-copy-status`（role=status, aria-live=polite）显示「已复制 N 行」（N = 行数，实测 6）；剪贴板被拒显示「复制没成功」并给 `metAG-copy-fallback` 内只读 textarea（`metAG-copy-fallback-text`），内容与目标逐字相同。
+- 全失败：所有已发起的读口都失败时按钮 `disabled`，title「所有读口都没读出来，没有可复制的来源摘要」；「还没请求过」的读口按降级处理，不触发禁用（否则会把「尚未读取」误报成失败）。
+- 安全：文本只含口径名、站点内路径、时间与状态词；测试断言不含 `token`/`bearer`/`authorization`。
+- 零新请求：点击前后 `urls()` 长度不变（测试断言）。
+- 验证：`src/modules/metrics` **3 files / 177 passed**（原 173，+4）；全量 **137 files / 1700 passed**（原 1696）；`tsc -b . --noEmit` 全仓 58 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metAG` → entry `assets/index-C2OuvqzZ.js` sha256 `0c352483753e5f67e8e2baaaf12fd0535cfba16b0a19f98e7c2cca834190a0fe`，entry 内 `metAG-copy-sources` 命中 0，chunk `assets/MetricsModulePage-CkjPbDjF.js` 命中 1。
+- 踩坑：起初用「所有行都 down」判禁用，但从未请求的读口会被 `sourceRows` 记作降级，导致全失败时按钮仍是可点——改为「已发起的行全为 down」后符合预期。
+- 未测项：真实剪贴板权限弹窗与 375 下按钮/说明换行未人工走查。
+
+## 表内行数诚实化（metAH，2026-11-20）
+
+先核对了两张表的取数路径：`detailRows` 直接来自当前批的 `breakdownView.lines`（模型用量全量行 / 员工账本聚合行），`shareRows` 来自当前批的 `shareView.value.rows` 再仅做排序；组件里没有针对这两张表的 `slice`、`limit` 或行数上限（代码里仅有的 `slice` 用在月度快照前 8 行与价目表前 5 行，与本表无关）。因此**按实况写「全量渲染」，不编造截断**。
+
+- 明细表下新增 `metAH-cap-note`：「表内全量渲染，共 N 行；导出与屏上一致，没有截断。」N 取 `detailRows.length`，与 `met6-cat-source` 的「N 行」同源；`title` 写明判据（当前批次、无 slice/上限、与来源行计数同源）。
+- 分摊表下新增 `metAH-cap-note-share`：「表内全量渲染，共 N 行；导出含同一批行，没有截断。」N 取 `shareRows.length`，与 `metA-export-count` 的「可导出 N 行」同源；`title` 注明与 metA-export-count 同源。
+- 零新请求：两条说明只读渲染期已有的数组长度，测试断言挂载后 `urls()` 长度不变。
+- 既有护栏未动：`metrics.export-parity.test.ts`（metAC 10 例）保持原样，CSV 行数仍等于 M。
+- 验证：定向 `src/modules/metrics` 3 files / **180 passed**（原 177，+3）；全量 **137 files / 1703 passed**（原 1700）；`tsc -b . --noEmit` 全仓 58 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metAH` → entry `assets/index-gCw9agdb.js` sha256 `e48f4b56de38b57edd1ce14edc21118926d87a5af5f890dde90294e91256ee0c`，entry 内 `metAH-cap-note` 命中 0，chunk `assets/MetricsModulePage-B9ULZATw.js` 命中 1。
+- 未测项：真实后端若对账本/用量做服务端分页（本仓代码未见分页参数），当前文案不会自动改写；员工目录 `limit=200` 的名单上限仍由既有的账本截断提示承担，本单未改口径。

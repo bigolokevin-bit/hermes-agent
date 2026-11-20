@@ -45,6 +45,25 @@ export interface ToolsState {
 
 type Settled = Omit<ToolsState, "reload" | "forced">;
 
+// The capabilities tab strip unmounts the inactive page. Keep the last settled
+// read and the expanded row so a return restores the same view immediately and
+// does not read the two endpoints again. Explicit refresh/retry still fetches.
+let cachedTools: Settled | null = null;
+let cachedOpenTool: string | null = null;
+
+export function resetToolsTabState() {
+  cachedTools = null;
+  cachedOpenTool = null;
+}
+
+export function readOpenTool(): string | null {
+  return cachedOpenTool;
+}
+
+export function rememberOpenTool(key: string | null) {
+  cachedOpenTool = key;
+}
+
 const PENDING: Settled = {
   phase: "loading",
   rows: [],
@@ -120,17 +139,24 @@ function classify(results: PromiseSettledResult<ToolRow[]>[]): Settled {
 
 export function useToolsData(forced: ForcedState | null): ToolsState {
   const [attempt, setAttempt] = useState(0);
-  const [read, setRead] = useState<{ attempt: number; settled: Settled } | null>(null);
+  const [read, setRead] = useState<{ attempt: number; settled: Settled } | null>(() =>
+    cachedTools ? { attempt: 0, settled: cachedTools } : null,
+  );
 
   const reload = useCallback(() => setAttempt((value) => value + 1), []);
 
   useEffect(() => {
     if (forced !== null) return;
+    if (attempt === 0 && cachedTools) return;
     let alive = true;
     const asked = attempt;
     void (async () => {
       const results = await Promise.allSettled([fetchInventory(), fetchServers()]);
-      if (alive) setRead({ attempt: asked, settled: classify(results) });
+      if (alive) {
+        const settled = classify(results);
+        cachedTools = settled;
+        setRead({ attempt: asked, settled });
+      }
     })();
     return () => {
       alive = false;

@@ -172,3 +172,13 @@
     width: 100%;
   }
 }
+/* Roving row focus: keyboard focus stays visible without inventing a new colour. */
+.skl4-table tbody tr[tabindex]:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: -2px;
+}
+
+/* capF: keep the state area from jumping between loading, empty and error. */
+.capF-state {
+  min-height: 220px;
+}

@@ -8,7 +8,7 @@
  * never 0. Credentials are only ever 已配置 / 未配置 / 未知 — no token value is
  * read or printed. Disabled and unknown rows stay visible but dimmed.
  */
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
 import { Check, Copy, Inbox, RefreshCw, ShieldAlert, TriangleAlert } from "lucide-react";
 
@@ -27,12 +27,14 @@ import {
   type FailureCopy,
   type ToolRow,
 } from "./tools";
-import { forcedStateOf, useToolsData } from "./useToolsData";
+import { forcedStateOf, readOpenTool, rememberOpenTool, useToolsData } from "./useToolsData";
 import { CapabilityCounts, publishCapabilityCount } from "../capabilities/counts";
 import { CapabilitySearch } from "../capabilities/search";
 import { CapabilityExport } from "../capabilities/csvExport";
+import { CapabilityCopy } from "../capabilities/listCopy";
 import { applySort, ariaSort, cycleSort, readSort, sortRows, type SortKey } from "../capabilities/sorting";
 import { CapabilityRowDetail } from "../capabilities/rowDetail";
+import { useEnsureTabParam } from "../capabilities/tabParam";
 import "./tools.css";
 
 
@@ -74,12 +76,33 @@ function kindLabel(row: ToolRow): string {
   return `内置 · ${row.type}`;
 }
 
-function Row({ row, open, onToggle }: { row: ToolRow; open: boolean; onToggle: () => void }): ReactNode {
+function Row({
+  row,
+  open,
+  onToggle,
+  tabIndex,
+  setRowRef,
+  onFocus,
+  onKeyDown,
+}: {
+  row: ToolRow;
+  open: boolean;
+  onToggle: () => void;
+  tabIndex: number;
+  setRowRef: (node: HTMLDivElement | null) => void;
+  onFocus: () => void;
+  onKeyDown: (event: ReactKeyboardEvent<HTMLDivElement>) => void;
+}): ReactNode {
   const dimmed = row.status !== "enabled";
   return (
     <>
     <div
-      className={`flex min-w-0 flex-wrap items-start justify-between gap-x-4 gap-y-2 border-b border-border px-4 py-3 last:border-b-0 ${dimmed ? "opacity-60" : ""}`}
+      ref={setRowRef}
+      tabIndex={tabIndex}
+      aria-expanded={open}
+      onFocus={onFocus}
+      onKeyDown={onKeyDown}
+      className={`tol5-row flex min-w-0 flex-wrap items-start justify-between gap-x-4 gap-y-2 border-b border-border px-4 py-3 last:border-b-0 ${dimmed ? "opacity-60" : ""}`}
       data-testid="tol5-row"
       data-status={row.status}
       data-source={row.source}
@@ -121,7 +144,7 @@ function Row({ row, open, onToggle }: { row: ToolRow; open: boolean; onToggle: (
         <span className="flex min-w-0 flex-col items-end gap-0.5">
           <Badge
             tone={row.status === "enabled" ? "success" : row.status === "disabled" ? "destructive" : "secondary"}
-            title={row.statusReason ?? undefined}
+            title={[row.statusRaw, row.statusReason].filter(Boolean).join(" · ") || undefined}
           >
             <span data-testid="tol5-status"><span data-testid="tl3-status">{STATUS_LABEL[row.status]}</span></span>
           </Badge>
@@ -136,10 +159,15 @@ function Row({ row, open, onToggle }: { row: ToolRow; open: boolean; onToggle: (
     {open ? (
       <CapabilityRowDetail
         name={row.name}
+        nameReason={row.nameReason}
         type={kindLabel(row)}
+        typeReason={row.typeReason}
         enabled={STATUS_LABEL[row.status]}
+        enabledReason={row.statusReason}
+        enabledTitle={row.statusRaw}
         updatedAt={row.updatedAt}
-        endpoint={row.source === "mcp" ? "/api/mcp/servers" : "/api/tools/toolsets"}
+        updatedReason={row.updatedAtReason}
+        endpoint={row.endpoint || (row.source === "mcp" ? "/api/mcp/servers" : "/api/tools/toolsets")}
         asOf={row.asOf}
         asOfReason={row.asOfReason ?? "这次读数没有带采集时刻。"}
         testid="cap7-detail-tools"
@@ -163,12 +191,13 @@ function FailurePanel({
   return (
     <Card
       role="alert"
-      className={denied ? "border-border bg-card" : "border-destructive/40 bg-destructive/5"}
+      className={denied ? "capF-state border-border bg-card" : "capF-state border-destructive/40 bg-destructive/5"}
       data-testid={denied ? "tol5-denied" : login ? "tol5-login" : "tol5-error"}
       title={denied ? GAP : failure?.technical ?? undefined}
     >
       <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-6">
         <span className="sr-only" data-testid={denied ? "tl3-denied" : login ? "tl3-login" : "tl3-error"} />
+        <span className="sr-only" data-testid={denied ? "capF-state-unavailable" : login ? "capF-state-login" : "capF-state-error"} />
         {denied ? (
           <span className="sr-only" data-testid={failure?.status === 403 ? "cap9-state-denied" : "cap9-state-unavailable"} />
         ) : null}
@@ -192,9 +221,11 @@ function FailurePanel({
         ) : null}
         <RequestId failure={failure} />
         <span className="contents" data-testid="tl3-retry">
-          <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />} data-testid="tol5-retry">
-            重试
-          </Button>
+          <span className="contents" data-testid="capF-retry">
+            <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />} data-testid="tol5-retry">
+              重试
+            </Button>
+          </span>
         </span>
       </CardContent>
     </Card>
@@ -203,12 +234,22 @@ function FailurePanel({
 
 export function ToolsPage(): ReactNode {
   const [params, setParams] = useSearchParams();
-  const [openTool, setOpenTool] = useState<string | null>(null);
+  useEnsureTabParam("tools");
+  const [openTool, setOpenTool] = useState<string | null>(() => readOpenTool());
+  const [rovingKey, setRovingKey] = useState<string | null>(null);
+  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  useEffect(() => {
+    rememberOpenTool(openTool);
+  }, [openTool]);
 
   useEffect(() => {
     if (!openTool) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpenTool(null);
+      if (event.key === "Escape") {
+        setOpenTool(null);
+        rowRefs.current[openTool]?.focus();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -226,6 +267,39 @@ export function ToolsPage(): ReactNode {
   const unknown = sortedRows.filter((row) => row.status === "unknown").length;
   const toolRows = sortedRows.filter((row) => row.source === "toolset");
   const mcpRows = sortedRows.filter((row) => row.source === "mcp");
+  const keyRows = [...toolRows, ...mcpRows];
+  const activeToolKey =
+    rovingKey && keyRows.some((row) => row.key === rovingKey)
+      ? rovingKey
+      : keyRows[0]?.key ?? null;
+  const onRowKeyDown = (
+    event: ReactKeyboardEvent<HTMLDivElement>,
+    row: ToolRow,
+    index: number,
+  ) => {
+    if (event.target !== event.currentTarget) return;
+    const move = (nextIndex: number) => {
+      const target = keyRows[nextIndex];
+      if (!target) return;
+      event.preventDefault();
+      setRovingKey(target.key);
+      rowRefs.current[target.key]?.focus();
+    };
+    if (event.key === "ArrowDown") move(Math.min(index + 1, keyRows.length - 1));
+    else if (event.key === "ArrowUp") move(Math.max(index - 1, 0));
+    else if (event.key === "Home") move(0);
+    else if (event.key === "End") move(keyRows.length - 1);
+    else if (event.key === "Enter") {
+      event.preventDefault();
+      setOpenTool((current) => (current === row.key ? null : row.key));
+    } else if (event.key === "Escape") {
+      if (openTool === row.key) {
+        event.preventDefault();
+        setOpenTool(null);
+      }
+      rowRefs.current[row.key]?.focus();
+    }
+  };
   const onSort = (key: SortKey) => {
     const next = cycleSort(sort, key);
     const search = new URLSearchParams(params);
@@ -284,8 +358,9 @@ export function ToolsPage(): ReactNode {
   const body = (() => {
     if (phase === "loading") {
       return (
-        <div className="flex min-w-0 flex-col gap-2" data-testid="tol5-loading" aria-busy="true" data-fixture={forced ?? undefined}>
+        <div className="capF-state flex min-w-0 flex-col gap-2" data-testid="tol5-loading" aria-busy="true" data-fixture={forced ?? undefined}>
           <span className="sr-only" data-testid="tl3-loading" />
+          <span className="sr-only" data-testid="capF-state-loading" />
           {[0, 1, 2, 3].map((row) => (
             <div key={row} className="animate-pulse rounded-md border border-border bg-card px-4 py-4" aria-hidden="true">
               <div className="h-3 w-1/3 rounded-sm bg-muted" />
@@ -300,10 +375,11 @@ export function ToolsPage(): ReactNode {
     if (phase === "error") return <FailurePanel kind="error" failure={tools.failure} onRetry={retry} />;
     if (phase === "empty") {
       return (
-        <Card className="border-border bg-card" data-testid="tol5-empty" data-fixture={forced ?? undefined}>
+        <Card className="capF-state border-border bg-card" data-testid="tol5-empty" data-fixture={forced ?? undefined}>
           <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
             <span className="sr-only" data-testid="tl3-empty" />
             <span className="sr-only" data-testid="cap9-state-empty" />
+            <span className="sr-only" data-testid="capF-state-empty" />
             <Inbox className="h-6 w-6 text-muted-foreground" aria-hidden />
             <p className={`min-w-0 break-words text-sm ${themedBody}`}>服务已响应，清单里没有工具或 MCP 连接</p>
             <p className="min-w-0 break-words text-xs text-muted-foreground">读口已接入，本次返回 0 条；不补样例。</p>
@@ -353,7 +429,18 @@ export function ToolsPage(): ReactNode {
             <div className="border-b border-border px-4 py-2 text-xs text-muted-foreground" data-testid="tol5-tools-head">
               工具与工具集：{toolRows.length} 条
             </div>
-            {toolRows.length ? toolRows.map((row) => <Row row={row} key={row.key} open={openTool === row.key} onToggle={() => setOpenTool(openTool === row.key ? null : row.key)} />) : (
+            {toolRows.length ? toolRows.map((row, index) => (
+              <Row
+                row={row}
+                key={row.key}
+                open={openTool === row.key}
+                onToggle={() => setOpenTool(openTool === row.key ? null : row.key)}
+                tabIndex={row.key === activeToolKey ? 0 : -1}
+                setRowRef={(node) => { rowRefs.current[row.key] = node; }}
+                onFocus={() => setRovingKey(row.key)}
+                onKeyDown={(event) => onRowKeyDown(event, row, index)}
+              />
+            )) : (
               <p className="px-4 py-4 text-xs text-muted-foreground" data-testid="tol5-tools-empty">
                 工具目录已响应，没有列出工具。
               </p>
@@ -366,7 +453,18 @@ export function ToolsPage(): ReactNode {
             <div className="border-b border-border px-4 py-2 text-xs text-muted-foreground">
               MCP 连接：{mcpRows.length} 个
             </div>
-            {mcpRows.length ? mcpRows.map((row) => <Row row={row} key={row.key} open={openTool === row.key} onToggle={() => setOpenTool(openTool === row.key ? null : row.key)} />) : (
+            {mcpRows.length ? mcpRows.map((row, index) => (
+              <Row
+                row={row}
+                key={row.key}
+                open={openTool === row.key}
+                onToggle={() => setOpenTool(openTool === row.key ? null : row.key)}
+                tabIndex={row.key === activeToolKey ? 0 : -1}
+                setRowRef={(node) => { rowRefs.current[row.key] = node; }}
+                onFocus={() => setRovingKey(row.key)}
+                onKeyDown={(event) => onRowKeyDown(event, row, toolRows.length + index)}
+              />
+            )) : (
               <p className="px-4 py-4 text-xs text-muted-foreground" data-testid="tol5-mcp-empty">
                 服务已响应，没有登记 MCP 连接；这不是加载失败。
               </p>
@@ -377,6 +475,20 @@ export function ToolsPage(): ReactNode {
     );
   })();
 
+  const displayRows = [...toolRows, ...mcpRows];
+  const exportRows = displayRows.map((row) => ({
+    name: row.name,
+    type: row.type,
+    enabled: row.status,
+    updated_at: row.updatedAt,
+  }));
+  const copyRows = displayRows.map((row) => ({
+    name: row.name,
+    type: kindLabel(row),
+    enabled: STATUS_LABEL[row.status],
+    updated_at: row.updatedAt,
+  }));
+
   return (
     <section className="flex min-w-0 w-full max-w-full flex-col" data-testid="tl3-page">
     <CapabilityCounts />
@@ -385,6 +497,7 @@ export function ToolsPage(): ReactNode {
       data-testid="tol5-page"
       data-page="tools"
       data-fixture={forced ?? undefined}
+      data-cap-state={phase === "denied" ? "unavailable" : phase}
     >
       <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-2">
         <div className="min-w-0">
@@ -394,15 +507,8 @@ export function ToolsPage(): ReactNode {
           </p>
         </div>
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <CapabilityExport
-            tab="tools"
-            rows={[...toolRows, ...mcpRows].map((row) => ({
-              name: row.name,
-              type: row.type,
-              enabled: row.status,
-              updated_at: row.updatedAt,
-            }))}
-          />
+          <CapabilityExport tab="tools" rows={exportRows} />
+          <CapabilityCopy rows={copyRows} />
           <span className="capA-export-note" data-testid="capA-export-order-note">导出按当前排序与搜索</span>
           <Button
             size="sm"
