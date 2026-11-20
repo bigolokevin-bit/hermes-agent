@@ -73,6 +73,7 @@ import {
   clearDashboardTokenReloadAttempt,
 } from "@/lib/dashboard-auth-reload";
 import { apiErrorFromNetworkFailure, apiErrorFromResponse, authExpiredError, AUTH_NAVIGATION_GRACE_MS } from "@/lib/api-error";
+import { clearSessionExpired, markSessionExpired } from "@/lib/session-expiry";
 import type { AutomationBlueprint } from "@/lib/automation-blueprints";
 
 // Ephemeral session token for protected endpoints.
@@ -138,6 +139,27 @@ function withManagementProfile(url: string): string {
   return `${url}${sep}profile=${encodeURIComponent(scope)}`;
 }
 
+/**
+ * Design lane ①: which 401s mean 「the session you were using has expired」.
+ *
+ * The sign-in flow and the identity probe answer 401 by design — a wrong
+ * password, or a first paint before anyone has signed in. Those are NOT a lost
+ * session, and the gate's `/auth/*` round-trips never go through this wrapper
+ * anyway. Every other request through here is a business call, and its 401 is
+ * what lights the single app-wide 「会话已过期」 banner
+ * (`@/lib/session-expiry` → `shell/SessionExpiredBanner`).
+ */
+const SESSION_EXPIRY_EXEMPT_PREFIXES = [
+  "/auth/",
+  "/api/auth/", // getAuthMe — the unauthenticated-first-paint probe
+  "/agent-api/api/auth/",
+];
+
+function isSessionExpiryExempt(url: string): boolean {
+  const path = url.split("?")[0];
+  return SESSION_EXPIRY_EXEMPT_PREFIXES.some((prefix) => path.startsWith(prefix));
+}
+
 export async function fetchJSON<T>(
   url: string,
   init?: RequestInit,
@@ -176,12 +198,17 @@ export async function fetchJSON<T>(
     throw err;
   }
   if (res.status === 401) {
+    // Design lane ①: one shared signal replaces the four per-page expiry cards.
+    // Presentation only — the structured error below still rejects exactly as
+    // before, so every caller's own state machine is untouched.
+    if (!isSessionExpiryExempt(url)) markSessionExpired();
     // R7.1 item 1: the console surfaces (/overview /employees /matrix
-    // /approvals /runs /audit) render their own honest「需要登录」state with a
-    // retry and an exit. On those paths a 401 must NOT trigger a login
-    // redirect or a stale-token reload — either one leaves the surface on an
-    // endless Loading skeleton or a blank screen. Fall through to the
-    // structured error below instead.
+    // /approvals /runs /audit) render their own error state with a retry. On
+    // those paths a 401 must NOT trigger a login redirect or a stale-token
+    // reload — either one leaves the surface on an endless Loading skeleton or a
+    // blank screen. Fall through to the structured error below instead. (Since
+    // design lane ① those surfaces no longer repeat the expiry sentence: the
+    // banner lit just above is the one place that says it.)
     if (!CONSOLE_SURFACE_PATH_RE.test(window.location.pathname)) {
       // Phase 6: the gated middleware emits a structured envelope so the
       // SPA can full-page-navigate to /login on session expiry. Parse it,
@@ -241,6 +268,10 @@ export async function fetchJSON<T>(
     // current ``window.__HERMES_SESSION_TOKEN__`` is valid, so the next
     // 401 — if any — should be allowed to trigger its own reload cycle.
     clearDashboardTokenReloadAttempt();
+    // Design lane ①: the same proof closes the expiry episode — a 2xx means the
+    // session is live, so the banner must not sit there any longer, and the next
+    // real expiry is a NEW episode that surfaces again after a dismissal.
+    clearSessionExpired();
   }
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);

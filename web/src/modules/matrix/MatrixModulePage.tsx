@@ -264,13 +264,13 @@ export function MatrixModulePage() {
           {phase === "error" ? (
             <div className="flex flex-col items-center gap-2 py-10 text-center" data-testid="mtx5-error">
               <TriangleAlert className="size-8 text-rose-300/80" aria-hidden="true" />
-              <p className="text-sm text-white/80">
-                {errorNote?.detail?.startsWith("需要登录") ? "需要登录" : "这份矩阵没能读出来"}
-              </p>
+              <p className="text-sm text-white/80">这份矩阵没能读出来</p>
+              {/* 设计车道 ①：401 不再自绘「需要登录」专属卡（含 auth-reload-exit 出口）。
+                  全站只有顶部一条 SessionExpiredBanner 说「会话已过期」（lib/session-expiry
+                  置位），同一状态不再同屏双播。errorNote.detail 里 `lib/api-error` 给 401 的
+                  那句人话因此也不上屏，这里只留通用错误 + 请求编号 + 重试。 */}
               <p className="max-w-md text-xs text-white/50">
-                {errorNote?.detail?.startsWith("需要登录")
-                  ? "这个页面的登录状态已经失效。重新登录后就能继续查看，这些内容不会丢失。"
-                  : "刚才的读取没有改动任何东西，可以重试一次。"}
+                刚才的读取没有改动任何东西，可以重试一次。
               </p>
               <p className="text-xs text-white/40">
                 <RequestIdCopy requestId={errorNote?.requestId} fallback="本次请求未记录编号，可复制时间与操作路径反馈" />
@@ -278,16 +278,6 @@ export function MatrixModulePage() {
               <Button size="sm" outlined onClick={retry} data-testid="mtx5-error-retry">
                 重试
               </Button>
-              {errorNote?.detail?.startsWith("需要登录") ? (
-                <Button
-                  size="sm"
-                  outlined
-                  data-testid="auth-reload-exit"
-                  onClick={() => window.location.reload()}
-                >
-                  刷新重新登录
-                </Button>
-              ) : null}
             </div>
           ) : null}
 

@@ -138,6 +138,13 @@
   width: 48%;
 }
 
+/* 设计车道 ④ — 空/错态里复用同一把占位条：那两块是 align-items:flex-start
+ * 的列，骨架不显式给宽就塌成 0。100% + 子条百分比宽，375 下不出横向溢出。 */
+.knw5-empty .knw5-skeleton,
+.knw5-error .knw5-skeleton {
+  width: 100%;
+}
+
 @keyframes knw5-pulse {
   50% {
     opacity: 0.45;

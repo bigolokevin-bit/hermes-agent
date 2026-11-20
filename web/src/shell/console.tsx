@@ -63,6 +63,7 @@ import {
 } from "./fixtures";
 import EmployeeDetailWorkbench from "../modules/employee-detail/EmployeeDetailWorkbench";
 import { ConsoleButton } from "./ConsoleButton";
+import { StatePlaceholder } from "./StatePlaceholder";
 import { copyTextToClipboard } from "@/lib/clipboard";
 
 /* ------------------------------------------------------------------ *
@@ -216,6 +217,8 @@ function StateBlock({ state, rid }: { state: PaneForced; rid?: string | null }) 
         <span className="text-xs" style={{ color: "var(--fg-3)" }}>
           强制态：?state=loading
         </span>
+        {/* 设计车道 ④：loading 帧给骨架，Suspense 落点不再是一屏一句话。 */}
+        <StatePlaceholder rows={4} />
         <StateActions retry={false} />
       </div>
     );
@@ -227,6 +230,8 @@ function StateBlock({ state, rid }: { state: PaneForced; rid?: string | null }) 
         <span className="text-xs" style={{ color: "var(--fg-3)" }}>
           强制态：?state=empty（不伪造样例数据）
         </span>
+        {/* 设计车道 ④：空帧的占位条只说「这里本该有行」，不伪造内容。 */}
+        <StatePlaceholder />
         <StateActions retry={false} />
       </div>
     );
@@ -239,6 +244,8 @@ function StateBlock({ state, rid }: { state: PaneForced; rid?: string | null }) 
         <span className="text-xs" style={{ color: "var(--fg-3)" }}>
           强制态：?state=error
         </span>
+        {/* 设计车道 ④：错帧也留骨架位，重试后画面不跳版。 */}
+        <StatePlaceholder />
         <StateActions retry />
       </div>
     );
@@ -251,6 +258,8 @@ function StateBlock({ state, rid }: { state: PaneForced; rid?: string | null }) 
       <span className="text-xs" style={{ color: "var(--fg-3)" }}>
         强制态：?state=denied
       </span>
+      {/* 设计车道 ④：denied 帧同样留占位条，画面不是一屏一句话。 */}
+      <StatePlaceholder />
       <StateActions retry />
     </div>
   );
@@ -275,6 +284,8 @@ function AuditorDeniedBlock() {
       <span className="text-xs" style={{ color: "var(--fg-3)" }}>
         审计员（roView）不可进入 defaults/models 的写入面；退出视角请移除 ?roview=1。
       </span>
+      {/* 设计车道 ④：整页 403 也铺占位条（min-h-16rem 不该空到一屏一句）。 */}
+      <StatePlaceholder rows={4} />
       <StateActions retry={false} />
     </div>
   );
