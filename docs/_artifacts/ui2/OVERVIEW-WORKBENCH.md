@@ -415,3 +415,13 @@ R52 OBS 整改：`disabled` 与 `aria-disabled` 说同一句话，与 `title` �
 - **登记一处时序依赖**：`/metrics` 判定刷新失败靠 `sourcesRef` 在 `Promise.allSettled` 后 0ms 内被 React flush；测试里给非 run-stats 请求加 40ms 延迟（“keep one slow sibling in flight”）把该时序固定住，否则失败会被误判为成功。这是测试手法，产品代码未动。
 - 验证：单文件 4 passed；定向 runs+metrics 11 files / 399 passed；全量 171 files / **2364 passed**（基线 2360）；`tsc` 两域 0；`eslint` exit 0（0 error / 10 warning，多出的 1 条来自新测试文件）；build exit 0（entry 内 `run-refresh-bar`=0，`RunsModulePage-*.js`=1）。
 - 未测：真实浏览器下两页刷新按钮的视觉同步；移除 chip 触发取消的路径（与切窗共用 `cancel()`，本单只覆盖切窗）。
+
+## 空态与筛选空态互斥（runs empty exclusivity，2026-11-20）
+
+`/runs` 有两种「没有行」，产物必须互斥；本单只加测试，未改产品行为。
+
+- 真无运行（无 `status`、无 `employee`）：只渲 `run-empty-guide`——一句人话 + 两个真链接（`/work?tab=board`、`/metrics`，均为 `<a href>` 无 onclick）+ 「清空筛选看全部」的提示；`run-state-clear` 必须为 null，`run5-empty` 文案是「服务回答了，这个时间窗口里确实没有运行」，且不出现 `$0.00`、不出现筛选空态那句。
+- 筛选无匹配（`?status=failed&window=7d`）：只渲 `run-state-clear`（「清空筛选」），`run-empty-guide` 必须为 null，文案为「当前筛选下没有运行记录」；点清空后地址保留 `window=7d`、去掉 `status`，并重发一次 `/api/runs`，且**最后一次**请求不再带 `status=failed`（清空前那次带 status 属正常，不能拿历史全量请求做判据）。
+- 读口失败：`run-state-error` 出现，`run-empty-guide`、`run-state-clear`、`run-state-empty` 三者全为 null（失败不算空），给 `run-state-rid` 与 `run5-error-retry`。
+- 验证：单文件 3 passed；定向 runs 6 files / 158 passed；全量 175 files / **2398 passed**；`tsc` 本域 0；`eslint src/modules/runs` exit 0；build exit 0（entry 内 `run-empty-guide`=0，`RunsModulePage-*.js`=1）。
+- 未测：真实浏览器 375 下引导三段与两个链接的触控间距。
