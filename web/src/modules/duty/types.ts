@@ -81,7 +81,8 @@ export interface RunTotals {
 
 export interface RunBucket {
   bucketStart: string;
-  runs: number;
+  /** null means the read model had no value for this bucket — not a real zero. */
+  runs: number | null;
   succeeded?: number;
   failed?: number;
   costUsd?: number;

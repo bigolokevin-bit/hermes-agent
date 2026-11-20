@@ -436,7 +436,8 @@ function TrendCard({ stats, onRetry }: { stats: Loadable<RunStatsBody>; onRetry:
   const buckets = stats.k === "ready" ? dailyBuckets(stats.data) : [];
   const summary = trendSummary(buckets);
   const peak = summary.peak;
-  const max = Math.max(1, ...buckets.map((b) => b.runs));
+  // A bucket without a reading keeps its slot on the axis but never counts as 0.
+  const max = Math.max(1, ...buckets.map((b) => b.runs ?? 0));
   const failed = stats.k === "error";
   const summaryTitle = failed
     ? `这次没能读取近 14 天趋势：${stats.message}${stats.requestId ? `（请求编号 ${stats.requestId}）` : ""}；不把缺数当 0。`
@@ -446,12 +447,14 @@ function TrendCard({ stats, onRetry }: { stats: Loadable<RunStatsBody>; onRetry:
       <StateLine state={stats} onRetry={onRetry}>
         <p className="duty-num">
           {totals ? totals.runs : "—"}
-          <em>{peak ? `次 · 峰值 ${peak.runs}` : "次"}</em>
+          <em>{peak ? `次 · 峰值 ${peak.runs ?? "—"}` : "次"}</em>
         </p>
         <p className="duty-say">
           {summary.empty
             ? "所选窗口没有运行记录"
-            : `日均 ${(summary.total === null ? 0 : summary.total / buckets.length).toFixed(1)} 次${peak ? `；峰值在 ${peak.label}` : ""}`}
+            : summary.total === null
+              ? "日均 — 次；这一批有日期没有读数"
+              : `日均 ${(summary.total / buckets.length).toFixed(1)} 次${peak ? `；峰值在 ${peak.label}` : ""}`}
         </p>
         <svg
           className="duty-chart"
@@ -467,7 +470,7 @@ function TrendCard({ stats, onRetry }: { stats: Loadable<RunStatsBody>; onRetry:
             points={buckets
               .map((b, i) => {
                 const x = buckets.length === 1 ? 300 : 8 + (i * 584) / (buckets.length - 1);
-                const y = 100 - (b.runs / max) * 84;
+                const y = 100 - ((b.runs ?? 0) / max) * 84;
                 return `${x},${y}`;
               })
               .join(" ")}
@@ -500,11 +503,11 @@ function TrendCard({ stats, onRetry }: { stats: Loadable<RunStatsBody>; onRetry:
           "该区间没有运行记录"
         ) : (
           <>
-            近 14 天：首日 {summary.first?.label} <span data-testid="duty-trend-first">{summary.first?.runs}</span> 次 · 末日{" "}
-            {summary.last?.label} <span data-testid="duty-trend-last">{summary.last?.runs}</span> 次 · 峰值{" "}
-            {summary.peak?.label} <span data-testid="duty-trend-peak">{summary.peak?.runs}</span> 次 · 最低{" "}
-            {summary.low?.label} <span data-testid="duty-trend-low">{summary.low?.runs}</span> 次 · 合计{" "}
-            <span data-testid="duty-trend-total">{summary.total}</span> 次
+            近 14 天：首日 {summary.first?.label} <span data-testid="duty-trend-first">{summary.first?.runs ?? "—"}</span> 次 · 末日{" "}
+            {summary.last?.label} <span data-testid="duty-trend-last">{summary.last?.runs ?? "—"}</span> 次 · 峰值{" "}
+            {summary.peak?.label} <span data-testid="duty-trend-peak">{summary.peak?.runs ?? "—"}</span> 次 · 最低{" "}
+            {summary.low?.label} <span data-testid="duty-trend-low">{summary.low?.runs ?? "—"}</span> 次 · 合计{" "}
+            <span data-testid="duty-trend-total">{summary.total ?? "—"}</span> 次
           </>
         )}
       </p>
@@ -529,11 +532,11 @@ function TrendCard({ stats, onRetry }: { stats: Loadable<RunStatsBody>; onRetry:
               </tr>
             </thead>
             <tbody>
-              {!failed
+              {!failed && !summary.empty
                 ? buckets.map((b) => (
                     <tr key={b.label}>
                       <td>{b.label}</td>
-                      <td>{b.runs}</td>
+                      <td>{b.runs ?? "—"}</td>
                     </tr>
                   ))
                 : null}

@@ -521,7 +521,10 @@ describe("DutyPage trend accessibility", () => {
     expect(figure?.getAttribute("aria-describedby")).toBe("duty-trend-summary");
     const summary = q('[data-testid="duty-trend-summary"]')?.textContent ?? "";
     expect(summary).toContain("首日 11/17 1 次");
-    expect(summary).toContain("末日 11/18 2 次");
+    // metAG-style caliber: the third day came back without a value, so it keeps
+    // its slot on the axis and its reading is «—», not 0 or the previous day.
+    expect(summary).toContain("末日 11/19");
+    expect(q('[data-testid="duty-trend-last"]')?.textContent).toBe("—");
     expect(summary).toContain("峰值 11/18 2 次");
     expect(summary).toContain("最低 11/17 1 次");
     expect(q('[data-testid="duty-trend-total"]')?.textContent).toBe("3");
@@ -547,7 +550,7 @@ describe("DutyPage trend accessibility", () => {
     expect(table).not.toBeNull();
     expect(table?.querySelector("caption")?.textContent).toContain("北京时间");
     expect([...table!.querySelectorAll("th")].map((th) => th.getAttribute("scope"))).toEqual(["col", "col"]);
-    expect(table!.querySelectorAll("tbody tr")).toHaveLength(2);
+    expect(table!.querySelectorAll("tbody tr")).toHaveLength(3);
     expect(urls.length).toBe(before);
     await click(toggle);
     expect(toggle?.getAttribute("aria-expanded")).toBe("false");

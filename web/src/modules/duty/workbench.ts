@@ -38,14 +38,17 @@ export function isoOrNull(v: unknown): string | null {
   return Number.isFinite(Date.parse(v)) ? v : null;
 }
 
+const ASOF_KEYS = ["asOf", "as_of", "collectedAt", "collected_at", "generatedAt", "generated_at"] as const;
+
 export function readStamp(body: unknown): WorkbenchStamp {
   const b = isRecord(body) ? body : {};
+  const stamp = ASOF_KEYS.map((key) => isoOrNull(b[key])).find((value) => value !== null) ?? null;
   const degradedRaw = Array.isArray(b.degraded) ? b.degraded : [];
   const degraded = degradedRaw
     .map((d) => (isRecord(d) ? text(d.error) ?? text(d.source) : null))
     .filter((x): x is string => x !== null);
   return {
-    asOf: isoOrNull(b.asOf),
+    asOf: stamp,
     asOfSource: text(b.asOfSource),
     available: typeof b.available === "boolean" ? b.available : null,
     degraded,
@@ -117,16 +120,17 @@ export function timeseriesStats(body: unknown): RunStatsBody {
   const buckets: RunBucket[] = [];
   for (const point of points) {
     if (!isRecord(point)) continue;
-    const runs = num(point.value);
     const bucketStart = text(point.ts);
-    if (runs === null || bucketStart === null) continue;
-    buckets.push({ bucketStart, runs });
+    if (bucketStart === null) continue;
+    // A null value is «no reading for this bucket», not 0: keep the point so the
+    // axis keeps its length, and let the trend summary skip it.
+    buckets.push({ bucketStart, runs: num(point.value) });
   }
   const totalsValue =
     isRecord(body) && isRecord(body.totals) ? num(body.totals.value) : null;
+  const known = buckets.filter((b): b is typeof b & { runs: number } => b.runs !== null);
   const runs =
-    totalsValue ??
-    (buckets.length > 0 ? buckets.reduce((sum, b) => sum + (b.runs ?? 0), 0) : null);
+    totalsValue ?? (known.length > 0 ? known.reduce((sum, b) => sum + b.runs, 0) : null);
   return {
     asOf: stamp.asOf ?? undefined,
     totals: runs === null ? undefined : ({ runs } as RunStatsBody["totals"]),

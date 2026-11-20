@@ -93,3 +93,17 @@
 - 单口失败：摘要五项全「—」，title 写失败原因与请求编号，并声明「不把缺数当 0」；其余卡片不受影响。
 - 测试：新增 4 例（摘要同源、键盘展开零请求、空窗、单口失败）；定向 4 files/74 passed，全量 148 files/1948 passed；tsc 本域 0；eslint 0 error/3 既有 warning。
 - 未测：真实浏览器 Tab/Enter 走查与 375/1440 视觉未实机。
+
+## 趋势/汇总聚合护栏（duty aggregate，2026-11-20）
+
+新增 `web/src/modules/duty/duty.aggregate.test.ts`（8 例，纯测试为主）：摘要五项由当前 timeseries 批派生并与表体逐行求和一致（1/2/14 桶三形）；空批与全 null 批走「该区间没有运行记录」且表体零行，不把空当 0；缺值点保留轴位、不进峰值/最低/合计，表体该行写「—」；`queue available:false` 的待审计数不进任何求和、显示「—」+原因；单口失败只坏对应卡（run-activity 失败不影响趋势；timeseries 失败才五项全「—」+原因与请求编号）；asOf 六别名→北京时间到分，假时钟 2031 不上屏。
+
+同单修出的两处真缺陷（改前/改后）：
+1. `aggregate.dailyBuckets` 原把缺失读数 `num(b.runs) ?? 0` 补成 0，`trendSummary` 再按 0 求和 → 现 `runs: number | null`：缺值不进峰值/最低/合计，轴位保留，表体写「—」；全 null 批与空批同走「没有运行记录」。
+2. `workbench.readStamp` 原只认顶层 `asOf` → 现认六个别名（`asOf/as_of/collectedAt/collected_at/generatedAt/generated_at`），与页面 `asOfOf` 口径一致。
+
+既有 dutyPage 趋势用例同步两处期望：末日改为「11/19 —」（缺值桶保留轴位），展开表 3 行；非放宽，语义收紧。
+
+验证：`vitest run src/modules/duty` 5 files / 82 passed（基线 74）；全量 149 files / 1956 passed（基线 1948）；`tsc` 本域 0；`eslint src/modules/duty` 0 error / 3 既有 warning；build `--outDir /tmp/build-dutyagg` exit 0，entry `assets/index-DfKOIw-B.js` sha256 `f57cc84c2c6df1a74f95a9cf0a74e9fa3d613638b67dd0fa46c36084943bd62e`，entry 内 `duty-trend-table-toggle`=0，chunk `DutyPage-tloxPclH.js`=1。
+
+未测：真实 BFF null 点/全 null 批分布未抽样；375/1440 实机未复核。
