@@ -1,7 +1,7 @@
 {
   "script": "lint-reuse",
   "root": "web/src/modules",
-  "scanned": 414,
+  "scanned": 451,
   "reuseMarkers": 28,
   "chatHostFiles": [
     {
@@ -85,6 +85,9 @@
   "violations": [],
   "count": 0,
   "ok": true,
-  "headHash": "43d83d65",
-  "exitCode": 0
+  "headHash": "c1063feb",
+  "exitCode": 0,
+  "carriedFrom": "ec12d3e7",
+  "carried": true,
+  "stampNote": "wave-80 两笔纯测试，entry sha 与 CSS 逐字节未变；本件未重跑，证据沿用 ec12d3e7 代"
 }

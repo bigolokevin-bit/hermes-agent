@@ -51,6 +51,11 @@ async function render(entry: string): Promise<void> {
 }
 
 const text = (): string => document.body.textContent ?? "";
+
+/** 导出文件名预览带着真实时钟（`…-YYYYMMDD-HHmm.csv`），它的数字会落进整页文本；
+ * 状态码类的「不出现」断言必须先剥掉文件名字形，否则分钟撞上 0403/0404/0500 就是假红。
+ * 只改用例：产品文本与文件名预览本身都不动。 */
+const textNoFileName = (): string => text().replace(/-\d{8}-\d{4}\.csv/g, "");
 const rows = (): Element[] => [...document.querySelectorAll("[data-testid='tol5-row']")];
 
 async function downloadedName(): Promise<string> {
@@ -262,7 +267,7 @@ describe("failures and gaps", () => {
     expect(document.querySelector("[data-testid='cap-gates-counts']")?.getAttribute("data-enabled")).toBe("false");
     expect(document.querySelector("[data-testid='cap-gates-sort']")?.getAttribute("data-enabled")).toBe("false");
     expect(document.querySelector("[data-testid='cap-gates-detail']")?.getAttribute("data-enabled")).toBe("false");
-    expect(text()).not.toMatch(/\/api\/|403|GAP-04/);
+    expect(textNoFileName()).not.toMatch(/\/api\/|403|GAP-04/);
   });
 
   it("both 404 routes use the same neutral not-wired body as 403", async () => {
@@ -272,7 +277,7 @@ describe("failures and gaps", () => {
     expect(rows()).toHaveLength(0);
     expect(text()).toContain("工具读口未接入");
     expect(text()).toContain("请求编号：req-deny");
-    expect(text()).not.toMatch(/\/api\/|403|404|GAP-04|字段示例/);
+    expect(textNoFileName()).not.toMatch(/\/api\/|403|404|GAP-04|字段示例/);
     expect(document.querySelector("[data-testid='tol5-denied']")?.getAttribute("title")).toBe("GAP-04");
     expect(document.querySelector("[data-testid='cap9-state-unavailable']")).toBeTruthy();
     expect(document.querySelector("[data-testid='cap9-state-denied']")).toBeNull();
@@ -385,7 +390,7 @@ describe("failures and gaps", () => {
     expect(document.querySelector("[data-testid='tol5-page']")?.getAttribute("data-cap-state")).toBe("error");
     expect(text()).toContain("请求编号：req-tol5");
     expect(text()).toContain("处理时出了错");
-    expect(text()).not.toMatch(/500|boom|\/api\//);
+    expect(textNoFileName()).not.toMatch(/500|boom|\/api\//);
     const count = document.querySelector("[data-testid='cap4-count-tools']")!;
     expect(count.textContent).toContain("—");
     expect(count.textContent).not.toContain("0");

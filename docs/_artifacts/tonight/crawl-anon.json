@@ -231,10 +231,10 @@
       "source": "DETAIL_TAB",
       "kind": "detail-zone",
       "verdict": "content-ok",
-      "mainChars": 64,
+      "mainChars": 140,
       "hasMainEl": true,
       "httpStatus": 200,
-      "consoleErrors": 1,
+      "consoleErrors": 3,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
       "headSample": "工作台 配置 任务 运行 证据 员工 · EMPLOYEE — 返回 总览 任务 运行 审批 概"
@@ -762,7 +762,7 @@
   "routesWithConsoleErrors": 51,
   "parseErrors": [],
   "ok": true,
-  "headHash": "43d83d65",
+  "headHash": "c1063feb",
   "exitCode": 0,
   "counts": {
     "probed": 75,
@@ -773,5 +773,8 @@
       "spa-hash": 75
     }
   },
-  "ceAuthority": "login-state"
+  "ceAuthority": "login-state",
+  "carriedFrom": "ec12d3e7",
+  "carried": true,
+  "stampNote": "wave-80 两笔纯测试，entry sha 与 CSS 逐字节未变；本件未重跑，证据沿用 ec12d3e7 代"
 }

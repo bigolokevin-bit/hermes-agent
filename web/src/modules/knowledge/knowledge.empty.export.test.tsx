@@ -93,6 +93,7 @@ describe("knowledge empty-state export counters & search-face rid guards (R215, 
   afterEach(() => {
     act(() => root.unmount());
     container.remove();
+    vi.unstubAllGlobals(); // R231 收紧（红线⑦纪律位；不改任何既有断言）
   });
 
   it("② real-zero rows: the counters read 0 条/0 篇 sentences — never a bare 「0」 digit standing alone; copiers disabled with 「没有可复制」 titles (cap absence cited R108/R157, not re-locked)", async () => {
@@ -189,5 +190,84 @@ describe("knowledge empty-state export counters & search-face rid guards (R215, 
     expect(hitBtns).toBe(hitRows);
     // 全程快照逐字：清/开筛选零增量（首屏读取条数如实——不宣称也不制造重取）
     expect(urls().slice().sort().join("|")).toBe(u0);
+  });
+
+  // R231 追加（同文件、不重建不覆盖）——三腿比对：①空面（cap null/双 disabled/title/
+  // 零请求/spy 0/计数位「—」）R215②:98-123 全覆盖、②rid 复制 R215④+R210、错误站
+  // knF disabled+title 帧 R230③ —— 均只引用。以下两条只打未锁位：
+  it("⑤ (R231 新增维) 空帧/错误帧**同面锚互斥**（knN-empty ↔ kn3-docs-error 不同时在场）+ 错误帧 -space- 钮族 0 节点 + 空帧双族钮 0、双复制器零写", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    Object.defineProperty(window, "isSecureContext", { value: true, configurable: true });
+    const hitBtnCount = () =>
+      [...document.querySelectorAll('button[data-testid^="kn-row-copy-"]')].filter(
+        (b) => !(b.getAttribute("data-testid") ?? "").includes("-space-"),
+      ).length;
+    // (a) 空帧：错误锚缺席（互斥·空侧）+ 两族钮 0 + knG title（R215② 只锁了 knG
+    //     disabled，title 位此处补齐）+ 点击零写（R215② 未桩剪贴板，本轮收紧）
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SP);
+      if (url === DOCUMENTS_PLAIN || url === docsUrlFor("sp_x")) return Promise.resolve({ asOf: SP.asOf, documents: [] });
+      return fail(404, "这个数据接口还没有接入。", "rid-r231-e");
+    });
+    await render(DETAIL);
+    expect(q("knN-empty-text-space-docs")).toBeTruthy();
+    expect(q("kn3-docs-error")).toBeNull(); // 同面互斥（R187② 锁的是跨面不卸载，同面互斥首次）
+    expect(container.querySelectorAll('button[data-testid^="kn-row-copy-space-"]').length).toBe(0);
+    expect(hitBtnCount()).toBe(0);
+    expect((q("knG-copy") as HTMLButtonElement)?.getAttribute("title")).toContain("没有可复制");
+    const c0 = urls().length;
+    await click("knF-copy");
+    await click("knG-copy");
+    expect(writeText).not.toHaveBeenCalled(); // 空态点击零写（收紧位）
+    expect(urls().length).toBe(c0);
+    // (b) 错误帧：空态锚缺席（互斥·错侧）+ 钮族 0 节点（红线④口径的详情面当帧 pin；
+    //     knF disabled+title 帧引 R230③ 不复写；排序头禁用句引 R210/R187 口径不扩）
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SP);
+      if (url === DOCUMENTS_PLAIN) return Promise.resolve({ asOf: SP.asOf, documents: [A, B] });
+      if (url === docsUrlFor("sp_x")) return fail(500, "上游读取失败，请稍后重试。", "rid-r231-l");
+      return fail(404, "这个数据接口还没有接入。", "rid-r231-x");
+    });
+    await render(DETAIL);
+    expect(q("kn3-docs-error")).toBeTruthy();
+    expect(q("knN-empty-text-space-docs")).toBeNull(); // 互斥·错侧（新增维）
+    expect(container.querySelectorAll('button[data-testid^="kn-row-copy-space-"]').length).toBe(0); // 错误帧复制族 0 节点（非 disabled——渲染位实锁）
+    expect(createObjectUrl).not.toHaveBeenCalled(); // 全帧 blob 零调用
+  });
+
+  it("⑥ (R231 新增维) 筛空恢复后**三值链**：表体==行钮==knF 数据行（R215③ 只链到钮==行两值，导出行数未入链）+ createObjectURL 全程 0（红线②换算：「只在恢复后调用」不可兑现——无导出机制，按现状钉零）+ urls 逐字不变", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    Object.defineProperty(window, "isSecureContext", { value: true, configurable: true });
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SP);
+      if (url === DOCUMENTS_PLAIN || url === docsUrlFor("sp_x")) return Promise.resolve({ asOf: SP.asOf, documents: [A, B] });
+      return fail(404, "这个数据接口还没有接入。", "rid-r231-f");
+    });
+    await render(DETAIL);
+    const u0 = urls().slice().sort().join("|");
+    const box = container.querySelector('[data-testid="kn3-docs-filter-input"]') as HTMLInputElement;
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+    await act(async () => {
+      setter?.call(box, "手册");
+      box.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => {});
+    expect(container.querySelectorAll('[data-testid="kn3-docs-row"]').length).toBe(1); // 筛中段
+    await act(async () => {
+      setter?.call(box, "");
+      box.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => {});
+    const rows = container.querySelectorAll('[data-testid="kn3-docs-row"]').length;
+    const btns = container.querySelectorAll('button[data-testid^="kn-row-copy-space-"]').length;
+    await click("knF-copy");
+    const lines = String(writeText.mock.calls[0][0]).split("\n").slice(1, -1);
+    expect([rows, btns, lines.length]).toEqual([2, 2, 2]); // 三值同帧（第三值首次入链）
+    const firstOnScreen = (container.querySelector('[data-testid="kn3-docs-row"] [data-testid="kn3-docs-name"]')?.textContent ?? "").trim();
+    expect(lines[0].split(" | ")[0]).toBe(firstOnScreen); // 恢复后首行==屏上首行（序无关，链全量而非筛中残留）
+    expect(createObjectUrl).not.toHaveBeenCalled(); // 换算位：全程 0（无导出机制，R190① 不变量同源）
+    expect(urls().slice().sort().join("|")).toBe(u0); // 清筛选零请求（红线⑤；禁「恰 1 次」话术）
   });
 });

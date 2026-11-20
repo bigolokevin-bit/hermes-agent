@@ -439,7 +439,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
         >
           重置筛选{filterState.active ? `（${filterState.count}）` : ""}
         </button>
-        <FilterSummary params={params} onRemove={removeFilterKeys} />
+        <FilterSummary params={params} onRemove={removeFilterKeys} phase={list.phase} />
       </div>
       <QueueSummaryBar phase={list.phase} rows={visibleRows} scope="history" singleStatus={status} />
       <QueueCsvExport rows={visibleRows} tab="history" status={status} phase={list.phase} sort={asort} dir={asort ? adir : null} />
