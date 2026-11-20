@@ -2405,3 +2405,43 @@ built /private/tmp/health-r38/index.html
 - 验证：新文件 7/7；定向 `src/modules/{capabilities,skills,tools}` 18 files / 166 passed；全量 `npx vitest run` **198 files / 2555 passed, 0 failed**；`tsc -b . --noEmit` exit 2，本域 grep 0（基线仅 approvals/employee-detail/employees）。`capF`/`cap-row-copy-*`/`cap-row-*`/stateAnchor/R117 深链既有断言全绿。
 - 三档未重跑：纯测试、零 markup/CSS delta，几何证据沿用 R93 实测（同 ① 纪律披露）。
 - 边界：只加 `capabilities.empty.test.tsx` + 本节 DONE；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未 install、未并 main、未 force/amend/--no-verify。
+
+## R95 / sys-filters-url-guards — /system 标签与时间窗 URL 保参护栏（R135，纯测试）
+
+- 基线：显式 refspec fetch 后 `git merge --no-ff origin/lane/hermes-console` → 合并笔 `1456d150`（上游 `6e6ebf32` = 代次 `76090480` 纯账本章笔，150 files 全在 `docs/_artifacts/tonight/**`；`git diff --name-only HEAD^1 HEAD -- web/src/modules/health` 为空）。未 reset --hard，工作树开工前干净。
+- 现查既有覆盖（先 grep 纪律）：`modules/audit/AuditEventsModulePage.test.tsx` 已钉住 window 的 URL 快照（:266 `/audit?window=7d`、:1155-1190 `window=24h`/`window=24h&type=task.created`）、custom 的 from/to 复原（:870、:1754）、R39 记录即历史项（:1000-1030）、五参深链（:1197、:1213、:1432）、切 custom 后 location 保 window（:1730-1741）、参数字典快照（:1679）；`src/shell/console.test.tsx` 已钉 TAB_ALIAS 落正典 pane 与 `?state=` 四态，但**没有任何非法 `?tab=` 用例**。故本文件只补四个缺口，不重写既有断言。
+- ①请求参逐字：冻结时钟 `NOW=2026-11-20T06:00:00Z` 挂 `/system?tab=events&window=24h`，屏上 `aria-pressed` 落在 24h，恰 1 条列表读，其 `from/to` 逐字等于 `windowBounds("24h", NOW)`，location 与粘贴地址字节同，页锚 `agent-v2-page-audit` 在。既有测试只查 URL，没查「请求 vs 屏上」同源。
+- ②写 window 保 tab 且不新增历史：双 entry 挂载后点 7d，参数字典恰 `{tab:"events", window:"7d"}`，末条读等于 `windowBounds("7d", NOW)`；点 `probe-back` 直接退回 `/system?tab=events`（window 消失）——证明该写是 `replace`。产品事实：只有开记录（`:1025`）用 `replace:false` 推历史，其余 15 处筛选写全带 `replace:true`。首稿误按 R39 推历史断言，已按产品改判并在用例注释留痕。
+- ②b 切 tab 保 window：挂 `ConsoleModulePage module="system"`（无 live，pane 出占位）于 `/system?tab=health&window=24h`，点 `[role="tab"][data-tab="events"]` 后 tab=events 而 window=24h 字节不动（shell `preserve` memo 只剥 tab/view/zone）。
+- ③非法枚举：`resolveTab("system","__nope__")` → `{tab:"__nope__",view:""}`，页面 `active = tabs.find(...) ?? tabs[0]` 落第一格「系统健康」且 URL 一字不改；`?window=__nope__` 经 `filterWindowOf` 静默回落 `DEFAULT_WINDOW="7d"`，屏上 pressed=7d、读用 7d 边界，而地址里的 `window=__nope__` 原样保留（页面只读不写该参）。
+- ④重挂同 URL：同 entry 二次挂载（不重置 spy）后新增的读序列与首次逐字相等、条数与顺序一致 ⇒ 无重复取数、无参数漂移。
+- 披露三条：其一，派工单指定路径在 `modules/health/`，但该面机制实际住在 `modules/audit/AuditEventsModulePage` + shell（health 模块无事件表、无 window 参），故本文件跨模块 import 并按单据落在 health 目录；其二，单据点名的 `sys-evt-copy-*` 本代不存在（R124 放弃：health 无事件表），无从破起，如实记录；其三，三档未跑——纯测试、零 markup/CSS delta，几何证据沿用 R93 实测。
+- 附带修复：本文件 `waitFor` 原用 `Date.now()` 做 3000 ms 截止，而 ①②③b④ 冻结 `Date` → 截止永不触发，用例② 空转到 vitest 15 s 强杀并污染后续用例（③/③b/④ 全空白）。改为 600 次 × 5 ms 真实 sleep 的迭代上限，与冻结时钟免疫；隔离跑证实四例各自本可通过，级联是超时副作用。零产品码改动。
+- 验证：新文件 6/6；定向 `src/modules/health src/modules/audit src/shell` **40 files / 584 passed**（`sys-refresh`/`sys-updated-at`/`sys-row-copy-*`/R112 与既有 audit、shell 用例全绿）；全量 `npx vitest run` **199 files / 2561 passed, 0 failed**（基线 198/2555 → +1 file / +6 tests）；`tsc -b . --noEmit` exit 2，health/audit/shell grep **0**，错误仅限 approvals / employee-detail / employees 基线。
+- 边界：只加 `web/src/modules/health/system.filters.test.tsx` + 本节 DONE；未碰 App.tsx/shell/routes/registry/package·lock/web-scripts/ops（shell 与 audit 源码只读、只在测试里挂载）；未 install、未并 main、未 force/amend/--no-verify。
+
+## R96 / cap-count-parity — /capabilities 计数与筛选后行数三值同源护栏（纯测试）
+
+- 基线：显式 refspec fetch + `git merge --no-ff origin/lane/hermes-console` → 合并笔 `88dd4f1b`，上游 tip `862154eb`（派工单点名 `18ec9cfb`，已核为 HEAD 祖先，随 tip 一并并入）。上游 delta 落在 approvals/audit/employees/knowledge/metrics/runs 与 tonight 证据，`git diff --name-only HEAD^1 HEAD -- web/src/modules/{capabilities,skills,tools}` 为空——本写域零重叠。
+- 现查既有用例（派工纪律）：R128 `rowcopybtn` 已钉 q 筛选后按钮与表体同序、空集零按钮；R130 `empty` 已钉无匹配锚逐字、双闸禁用共因句、清空恢复行数与按钮、深链不改 URL；R88 `filterparity` 已钉 `cap-page-scope` N 三方锁步与「0 条」/「—」分支；R87 `rowparity` 已钉 scope==表体==导出。缺口 = `cap4-count-*` 数值进入同一等式、工具侧分区计数、真实 0 的空集计数断言——本轮只补这三处，零重复用例。
+- 三处陈旧前提如实更正：① `capF` 没有计数面（`capF-*` 全是状态锚家族），计数面实名 `cap4-count-skills`/`cap4-count-tools`（值位 `—`/数字，状态位 未取数/加载中/有源/有源（空）/无源）；② capabilities 无类型筛选，只有名称 `cap5-search`，「按类型筛选」按 `?q=` 实现；③ 无子表下钻，唯一下钻是行展开 `cap7-detail-tools`，「返回上层复原」实现为展开/收起往返后全部数值逐字还原。
+- 关键语义（现查非假设）：`publishCapabilityCount` 发布的 value 是 **visibleRows.length**——计数跟随筛选后可见行，不跟已加载行；故 `?q=报` 下 `cap4-count-skills`「2」而 `cap5-scope-note`「仅在当前已加载 3 项内搜索」，两者并存是口径不是矛盾。
+- 用例四例（`capabilities.counts.test.tsx`）：①未筛 技能3==表体3==按钮3==scope 3，未访问 tab 保持「—/未取数」，点击零新请求；②`?q=报` 三者同步到 2 且 ≠3；工具 5==5==5==5 再按首名前两字筛，三者等于筛后数；③分区「工具与工具集：3 条」==`tol5-list` 内行数、MCP 卡文案含「MCP 连接：2 个」、分区和==表体==`cap4`==按钮==scope，展开/收起往返后六值逐字还原；④筛空与真空两条路径同口径：行数 0、按钮 0、`cap4`「0」+「有源（空）」、`cap6-export-count`「0 条」、双闸 disabled 共因句「当前没有可导出的条目。」，点击不触剪贴板、reads 不变。
+- 坑（本轮实测）：`[data-testid^='cap-row-copy-']` 前缀选择器会同时命中行详情复制组件的 `cap-row-copy-status` 节点（展开一行后计数 6≠5）——按行复制按钮计数必须 `button[data-testid^='cap-row-copy-']'` 限定标签；同一文件二次挂载 skills 会吃模块缓存（`cachedSkillsState`），要验真实空 payload 必须先 `resetSkillsTabState()`。
+- 验证：新文件 4/4；定向三域 **19 files / 170 passed**；全量 **208 files / 2622 passed, 0 failed**（上游并笔抬基线）；`tsc -b . --noEmit` exit 2，本域 grep 0，错误仅限 approvals / employee-detail / employees 基线。零产品码改动。
+- 三档 N/A：纯测试、零 markup/CSS 增量，几何证据沿用 R93 实测（先例 R91/R94/R95）。
+- 边界：只新增 `web/src/modules/capabilities/capabilities.counts.test.tsx` 与本节；未碰 App.tsx / shell / routes / registry / package·lock / web-scripts / ops；未 install、未并 main、未 force/amend/--no-verify。
+
+## R97 / sys-state-isolation — /system 四态与读源失败不互相污染护栏（task @558@ / R145）
+
+- 基线：显式 refspec fetch 后上游 tip 仍是 `862154eb`（与派工单所指一致），`git merge --no-ff origin/lane/hermes-console` 报 Already up to date —— 该代次已由 R140 基线 `88dd4f1b` 带入；起点 HEAD `1a805d13`，工作树 0 脏。未用 reset。
+- 现查既有用例：`system.refresh.test.tsx`（R112）四例已锁「读时刻≠数据时刻」「刷新失败保留旧批 + 不写 `sys-updated-at` + 错误态带 rid 与重试」「busy 连点只发一批（`sys-busy-note` 计数 1、按钮 `.disabled`）」「单探针失败只坏该探针面」；`SystemHealthSurface.test.tsx` 已锁 `sys-state-*` 面板自身（error 带 `sys-state-rid`/`-rid-copy`/`-retry`，denied 无重试，empty / empty-filter 带清除）。本文件只补四处缺口。
+- 缺口 a（文案不变）：按 testid 快照三张表每一行的整段 textContent，失败前后逐行比对 —— R112 只比行数与采集时刻。①例中断言「只有 `hlt5-row-runtime` 与 `sys6-row-runtime` 两行变动」，其余全部逐字相同。
+- 缺口 b（rid 不外渗）：失败请求编号只出现在它自己的面上；①例逐行断言兄弟行不含「请求编号」也不含该 rid，②例逐行断言没有任何数据行吞下列表读的 `req-list-500`（该 rid 只在 `sys-refresh-error` / `sys-refresh-request-id` 里）。
+- 缺口 c（busy 期零污染）：连点后除计数外，还断言无 `sys-refresh-error`、无 `sys-updated-at`、无 `sys-state-state`，且整张快照 `toEqual` 刷新前（一行一字节都没动），释放后 `sys-updated-at` 恰好 1 个、`sys-busy-note` 消失。
+- 缺口 d（恢复即换代）：R112 的重试复用同一份 payload，换代从未被证明。④例用三份数据（2 源 → 探针 500 → 3 源）断言 `sys3-row-*` 变成 a/b/c 三行、`sys3-asof` 落到新时刻、原错误行不再含「异常」与短 rid、`sys6-asof-runtime` 恢复「2026-11-19 10:45」、`sys6-row-runtime` 回到 ok，四读口计数各 3 次。
+- 坑（首轮 2 例因此失败，非产品缺陷）：耗时列是每次读取用 `performance.now()` 实测的，整行 textContent 快照会被 1 ms→0 ms 抖动打穿（首轮 `sys6-row-console/health/domain` 全被判为「漂移」）。快照把 `\d+ ms` 折成 `<n> ms`，比对只针对名称/状态/端点/数据时刻。
+- 如实披露：①派工单零破清单里的 `sys-evt-copy-*` 本代不存在（R124 放弃：health 模块无事件表），无从破起；②`sys-state-*` 确实存在（`SystemStatePanel.tsx`），本例只断言它**不**因单探针失败而出现——这正是不互相污染的判据；③①的「含 rid」按既有口径断言为 8 位短码（`"req-isolate-500".slice(0,8)`），与 R112 一致，不另造口径。
+- 验证：新文件 4/4；`npx vitest run src/modules/health` → 12 files / 89 passed（原 11/85）；`./node_modules/.bin/tsc -b . --noEmit` exit 2，`modules/health` grep 0，错误仅限 approvals / employee-detail / employees 基线；全量 `npx vitest run` → **209 files / 2626 passed, 0 failed**（原 208/2622，+1 文件 +4 例），已知上游 flake 本轮未复现。
+- 三档 N/A：纯测试，零 markup/CSS 改动，几何证据沿 R93（1440/1280/375 无横溢）。
+- 边界：只新增 `web/src/modules/health/system.state.isolation.test.tsx` 与本节；未碰 App.tsx / shell / routes / registry / package·lock / web-scripts / ops，未改任何产品码，未 install，未并 main，未 force / amend / --no-verify。

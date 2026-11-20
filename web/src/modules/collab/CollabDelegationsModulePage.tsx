@@ -255,7 +255,7 @@ function ListRows({ rows }: { rows: DelegationRow[] }): ReactNode {
   return (
     <Card className="min-w-0 border-border bg-card" data-testid="col5-table">
       <CardContent className="p-0">
-        <div className={`hidden ${GRID} border-b border-border px-4 py-2 text-xs uppercase tracking-wide text-muted-foreground sm:grid`}>
+        <div className={`hidden ${GRID} border-b border-border px-4 py-2 text-xs text-muted-foreground sm:grid`}>
           {STACK_LABELS.map((label) => (
             <span key={label}>{label}</span>
           ))}

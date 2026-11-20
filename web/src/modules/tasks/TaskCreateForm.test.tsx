@@ -12,6 +12,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter } from "react-router";
 
 import { ApiError } from "@/lib/api-error";
+import { pickOption } from "@/shell/selectHarness";
 
 import { TaskCreateForm } from "./TaskCreateForm";
 
@@ -74,13 +75,8 @@ function renderForm(nameMap: Record<string, string> = {}) {
   return { onCreated, onClose };
 }
 
-function setValue(el: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement, value: string) {
-  const proto =
-    el instanceof HTMLSelectElement
-      ? HTMLSelectElement.prototype
-      : el instanceof HTMLTextAreaElement
-        ? HTMLTextAreaElement.prototype
-        : HTMLInputElement.prototype;
+function setValue(el: HTMLInputElement | HTMLTextAreaElement, value: string) {
+  const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
   const setter = Object.getOwnPropertyDescriptor(proto, "value")?.set;
   act(() => {
     setter?.call(el, value);
@@ -123,10 +119,7 @@ describe("TaskCreateForm (T-create)", () => {
       container.querySelector<HTMLInputElement>('[data-testid="tsk4-create-title"]')!,
       "整理巡检报告",
     );
-    setValue(
-      container.querySelector<HTMLSelectElement>('[data-testid="tsk4-create-assignee"]')!,
-      "emp_1a2b3c4d",
-    );
+    await pickOption("tsk4-create-assignee", "小鲤");
     submit();
     await flush();
 

@@ -922,23 +922,23 @@ export default function SystemPage() {
           <CardContent className="py-4">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-3 gap-x-6 text-sm">
               <div>
-                <div className="text-xs uppercase tracking-wider text-muted-foreground">操作系统</div>
+                <div className="text-xs text-muted-foreground">操作系统</div>
                 <div>{joinPresent(stats?.os, stats?.os_release)}</div>
               </div>
               <div>
-                <div className="text-xs uppercase tracking-wider text-muted-foreground">系统架构</div>
+                <div className="text-xs text-muted-foreground">系统架构</div>
                 <div>{stats?.arch || NOT_PROVIDED_LABEL}</div>
               </div>
               <div>
-                <div className="text-xs uppercase tracking-wider text-muted-foreground">主机名</div>
+                <div className="text-xs text-muted-foreground">主机名</div>
                 <div className="truncate">{stats?.hostname || NOT_PROVIDED_LABEL}</div>
               </div>
               <div>
-                <div className="text-xs uppercase tracking-wider text-muted-foreground">Python 版本</div>
+                <div className="text-xs text-muted-foreground">Python 版本</div>
                 <div>{joinPresent(stats?.python_impl, stats?.python_version)}</div>
               </div>
               <div>
-                <div className="text-xs uppercase tracking-wider text-muted-foreground">Hermes 版本</div>
+                <div className="text-xs text-muted-foreground">Hermes 版本</div>
                 <div className="flex items-center gap-2">
                   <span>{stats?.hermes_version ? `v${stats.hermes_version}` : NOT_PROVIDED_LABEL}</span>
                   {canUpdateHermes &&
@@ -968,7 +968,7 @@ export default function SystemPage() {
               </div>
               {stats?.memory && (
                 <div>
-                  <div className="text-xs uppercase tracking-wider text-muted-foreground">内存</div>
+                  <div className="text-xs text-muted-foreground">内存</div>
                   <div>
                     {formatBytes(stats.memory.used)} / {formatBytes(stats.memory.total)} ({stats.memory.percent}%)
                   </div>
@@ -986,13 +986,13 @@ export default function SystemPage() {
               )}
               {typeof stats?.uptime_seconds === "number" && (
                 <div>
-                  <div className="text-xs uppercase tracking-wider text-muted-foreground">运行时长</div>
+                  <div className="text-xs text-muted-foreground">运行时长</div>
                   <div>{formatDuration(stats.uptime_seconds)}</div>
                 </div>
               )}
               {stats?.load_avg && stats.load_avg.length >= 3 && (
                 <div>
-                  <div className="text-xs uppercase tracking-wider text-muted-foreground">平均负载</div>
+                  <div className="text-xs text-muted-foreground">平均负载</div>
                   <div>{stats.load_avg.map((n) => n.toFixed(2)).join(" / ")}</div>
                 </div>
               )}

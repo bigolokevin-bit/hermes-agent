@@ -245,6 +245,21 @@ code { font-size: 0.875rem; }
     2px 2px;
 }
 
+/* CJK tracking fix. The DS Button's cva base bakes in `text-display …
+   tracking-[0.2em]` (plus `tracking-[0.15em]` at size sm) — display-face
+   letter spacing meant for short Latin eyebrows, which reads as 「重 试」/
+   「刷 新」 on the console's Chinese labels. Utility classes outrank an
+   element rule, so this needs !important to land. The scope is deliberately
+   the whole document, NOT `:lang(zh-CN)`: measured in the served build,
+   `document.documentElement.lang` is "en" at runtime (the i18n provider
+   rewrites lang from the UI locale) while the console's Chinese copy is
+   frozen IA data that ignores locale — so a language-scoped rule never
+   matched. Cost accepted on purpose: Latin buttons lose their display-face
+   tracking too. */
+:is(button, [role="button"], summary) {
+  letter-spacing: normal !important;
+}
+
 /* RTL support — Arabic and any future right-to-left locale. The i18n provider
    sets `dir` on <html>; Tailwind v4's logical spacing utilities (ms-/me-,
    ps-/pe-) and logical properties then flip automatically. Scoped so the

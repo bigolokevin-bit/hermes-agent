@@ -43,6 +43,7 @@ import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel } from
 import { APPROVAL_EMPTY_SENTENCE } from "./stateCopy";
 import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
 import { ApprovalDetailBody, ApprovalRowCard } from "./views";
+import { ConsoleSelect } from "@/shell/ConsoleSelect";
 
 const FORCED_STATES: readonly string[] = ["loading", "empty", "error", "denied"];
 
@@ -512,15 +513,16 @@ export function ApprovalsHistoryModulePage(): ReactNode {
             </Button>
           );
         })}
-        <select
+        <ConsoleSelect
           aria-label="按时间窗筛选"
           data-testid="apv5-filter-window"
+          value=""
+          onChange={() => undefined}
           disabled
           title="后台尚未开放时间窗筛选：带 window=24h/since=… 实测与不带参同集合，为避免假过滤此项暂不提供。"
           className="rounded-md border border-white/15 bg-transparent px-2 py-1 text-xs text-muted-foreground opacity-60"
-        >
-          <option value="">时间窗：暂不可筛</option>
-        </select>
+          options={[{ value: "", label: "时间窗：暂不可筛" }]}
+        />
       </div>
 
       {!known ? (

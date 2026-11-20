@@ -28,6 +28,7 @@ vi.mock("@nous-research/ui", () => ({
 }));
 
 import { ConsoleModulePage } from "@/shell/console";
+import { pickOption, selectValue } from "@/shell/selectHarness";
 import { EmployeesModulePage } from "./EmployeesModulePage";
 
 let container: HTMLDivElement;
@@ -108,17 +109,12 @@ describe("/employees mount chain (R38)", () => {
     });
     await mountRoute("/employees?lifecycle=paused");
     await settle();
-    expect((q("employees-lifecycle") as HTMLSelectElement).value).toBe("paused");
+    expect(selectValue("employees-lifecycle")).toBe("paused");
     expect(document.querySelectorAll('[data-testid^="emp-l-row-"]').length).toBe(1);
     const urls = fetchJSON.mock.calls.map((c) => String(c[0]));
     expect(urls[0]).toContain("lifecycleState=paused");
     // switch to active → server filters → 1 row (小鲤), URL follows on a fresh mount:
-    const select = q("employees-lifecycle") as HTMLSelectElement;
-    const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set;
-    await act(async () => {
-      setter?.call(select, "active");
-      select.dispatchEvent(new Event("change", { bubbles: true }));
-    });
+    await pickOption("employees-lifecycle", "在岗");
     await settle();
     expect(document.querySelectorAll('[data-testid^="emp-l-row-"]').length).toBe(1);
     expect(q("emp-l-name-link-emp_AAAA1111BBBB2222CCCC3333")).toBeTruthy();

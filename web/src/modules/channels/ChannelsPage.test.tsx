@@ -14,6 +14,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api-error";
 import { sourceUrl } from "./channels";
+import { pickOption } from "@/shell/selectHarness";
 
 const api = vi.hoisted(() => ({ fetchJSON: vi.fn() }));
 vi.mock("@/lib/api", () => ({ fetchJSON: api.fetchJSON }));
@@ -545,22 +546,13 @@ describe("the controls change what is asked", () => {
   it("each status choice rebuilds the URL, and the three URLs differ", async () => {
     await mount(byUrl);
     const before = urls();
-    const select = document.querySelector<HTMLSelectElement>("[data-testid='chn4-filter-status']")!;
-
-    await act(async () => {
-      select.value = "available";
-      select.dispatchEvent(new Event("change", { bubbles: true }));
-    });
+    await pickOption("chn4-filter-status", "已接入");
     await waitFor(() => !skeleton(), "filtered read settled");
     const afterAvailable = urls();
     expect(afterAvailable).toContain("/agent-api/api/messaging/platforms?limit=50&status=available");
     expect(afterAvailable.at(-1)).not.toBe(before.at(-1));
 
-    await act(async () => {
-      const next = document.querySelector<HTMLSelectElement>("[data-testid='chn4-filter-status']")!;
-      next.value = "unavailable";
-      next.dispatchEvent(new Event("change", { bubbles: true }));
-    });
+    await pickOption("chn4-filter-status", "未接入与未知");
     await waitFor(() => !skeleton(), "second filtered read settled");
     const asked = urls();
     expect(asked).toContain("/agent-api/api/messaging/platforms?limit=50");
@@ -572,11 +564,7 @@ describe("the controls change what is asked", () => {
   it("the filtered choice really changes the rows, not just the address", async () => {
     await mount(byUrl);
     expect(statusRows()).toBe(3);
-    const select = document.querySelector<HTMLSelectElement>("[data-testid='chn4-filter-status']")!;
-    await act(async () => {
-      select.value = "available";
-      select.dispatchEvent(new Event("change", { bubbles: true }));
-    });
+    await pickOption("chn4-filter-status", "已接入");
     await waitFor(() => !skeleton(), "filtered read settled");
     // the platform list itself now holds only the connected one …
     expect(statusRows()).toBe(1);
@@ -594,11 +582,7 @@ describe("the controls change what is asked", () => {
 
   it("the ledger is re-asked too, not repainted from the last answer", async () => {
     await mount(byUrl);
-    const select = document.querySelector<HTMLSelectElement>("[data-testid='chn4-filter-status']")!;
-    await act(async () => {
-      select.value = "disabled";
-      select.dispatchEvent(new Event("change", { bubbles: true }));
-    });
+    await pickOption("chn4-filter-status", "未启用");
     await waitFor(() => !skeleton(), "filtered read settled");
     const asked = urls();
     // every source carries the condition, so no part of the page is a leftover

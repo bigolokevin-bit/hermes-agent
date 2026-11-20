@@ -15,6 +15,8 @@ import { ApiError } from "@/lib/api-error";
 const api = vi.hoisted(() => ({ fetchJSON: vi.fn() }));
 vi.mock("@/lib/api", () => ({ fetchJSON: api.fetchJSON }));
 
+import { pickOption } from "@/shell/selectHarness";
+import { USAGE_WINDOWS } from "./usage";
 import { UsagePage } from "./UsagePage";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -50,12 +52,10 @@ const skeleton = (): boolean => document.querySelector(".animate-pulse") !== nul
 const el = (testId: string): Element | null => document.querySelector(`[data-testid='${testId}']`);
 
 async function pickWindow(key: string): Promise<void> {
-  const select = el("usg4-window") as HTMLSelectElement | null;
-  expect(select).toBeTruthy();
-  await act(async () => {
-    select!.value = key;
-    select!.dispatchEvent(new Event("change", { bubbles: true }));
-  });
+  // The window control is a hand-drawn listbox: pick the option by its label,
+  // the same path a keyboard user takes.
+  const label = USAGE_WINDOWS.find((item) => item.key === key)?.label ?? key;
+  await pickOption("usg4-window", label);
   await waitFor(() => !skeleton(), `settled after window ${key}`);
 }
 
@@ -293,7 +293,7 @@ describe("the ?state= repro legs", () => {
       expect(text()).toContain(`?state=${state}`);
       expect(text()).toContain("GAP-07");
       expect((el("usg4-reload") as HTMLButtonElement | null)?.disabled).toBe(true);
-      expect((el("usg4-window") as HTMLSelectElement | null)?.disabled).toBe(true);
+      expect((el("usg4-window") as HTMLButtonElement | null)?.disabled).toBe(true);
       expect(el(`usg4-${state}`)).toBeTruthy();
     });
   }

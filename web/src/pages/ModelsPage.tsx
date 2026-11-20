@@ -45,6 +45,7 @@ import { ModelPickerDialog } from "@/components/ModelPickerDialog";
 import { ModelReloadConfirm } from "@/components/ModelReloadConfirm";
 import { errorMessage } from "@/lib/api-error";
 import { assignmentToPickerCurrent } from "@/lib/model-picker-current";
+import { ConsoleSelect } from "@/shell/ConsoleSelect";
 
 const PERIODS = [
   { label: "7d", days: 7 },
@@ -850,13 +851,12 @@ function MoaModelsModal({
           </p>
 
           <div className="flex flex-wrap items-center gap-2">
-            <select
+            <ConsoleSelect
               className="border border-border bg-background px-2 py-1 text-xs"
               value={selected}
-              onChange={(event) => setSelected(event.target.value)}
-            >
-              {presetNames.map((name) => <option key={name} value={name}>{name}</option>)}
-            </select>
+              onChange={(next) => setSelected(next)}
+              options={presetNames.map((name) => ({ value: name, label: name }))}
+            />
             <Button size="sm" outlined onClick={() => setDraft((prev) => ({ ...prev, default_preset: selected }))}>Set default</Button>
             <Button size="sm" ghost disabled={presetNames.length <= 1} onClick={deletePreset}>Delete</Button>
             <input

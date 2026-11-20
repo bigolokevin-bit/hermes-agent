@@ -18,6 +18,7 @@ import { csrfFailureCopy, csrfWriteHeaders } from "@/lib/csrf";
 import { RequestIdCopy } from "@/components/RequestIdCopy";
 
 import { employeeLabel, errorInfo, shortRef } from "./tasksBoard";
+import { ConsoleSelect } from "@/shell/ConsoleSelect";
 
 const CREATE_URL = "/agent-api/api/tasks";
 
@@ -189,19 +190,16 @@ export function TaskCreateForm({
 
           <label className="flex min-w-0 flex-col gap-1 text-xs">
             <span className="text-muted-foreground">指派给</span>
-            <select
+            <ConsoleSelect
               className="min-w-0 rounded-sm border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white/90"
               value={assignee}
-              onChange={(e) => setAssignee(e.target.value)}
+              onChange={(next) => setAssignee(next)}
               data-testid="tsk4-create-assignee"
-            >
-              <option value="">暂不指派</option>
-              {employeeIds.map((id) => (
-                <option key={id} value={id}>
-                  {employeeLabel(id, nameMap[id])}
-                </option>
-              ))}
-            </select>
+              options={[
+                { value: "", label: "暂不指派" },
+                ...employeeIds.map((id) => ({ value: id, label: employeeLabel(id, nameMap[id]) })),
+              ]}
+            />
             {employeeIds.length === 0 ? (
               <span className="text-muted-foreground">
                 员工目录还没读到，可先不指派，创建后再在看板里核对。
@@ -211,16 +209,17 @@ export function TaskCreateForm({
 
           <label className="flex min-w-0 flex-col gap-1 text-xs">
             <span className="text-muted-foreground">优先级</span>
-            <select
+            <ConsoleSelect
               className="min-w-0 rounded-sm border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white/90"
               value={priority}
-              onChange={(e) => setPriority(e.target.value)}
+              onChange={(next) => setPriority(next)}
               data-testid="tsk4-create-priority"
-            >
-              <option value="normal">普通</option>
-              <option value="high">高</option>
-              <option value="low">低</option>
-            </select>
+              options={[
+                { value: "normal", label: "普通" },
+                { value: "high", label: "高" },
+                { value: "low", label: "低" },
+              ]}
+            />
           </label>
 
           <label className="flex min-w-0 flex-col gap-1 text-xs">
