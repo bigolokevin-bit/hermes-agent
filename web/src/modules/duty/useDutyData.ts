@@ -18,6 +18,7 @@ import {
   timeseriesStats,
 } from "./workbench";
 import { beijingDayWindow, daysAgoWindow } from "./format";
+import { diffDuty, type DutyDelta } from "./dutyDelta";
 import { DEFAULT_DUTY_RANGE, dutyRange, type DutyRangeId } from "./dutyRange";
 import type {
   ActivityBody,
@@ -52,6 +53,8 @@ export interface DutyRefresh {
   /** Read time of the last successful refresh; never a data time. */
   refreshAt: string | null;
   refreshError: { message: string; requestId: string | null } | null;
+  /** Card-by-card changes between the last two batches; null until a refresh succeeds. */
+  refreshDelta: DutyDelta | null;
   refresh: () => void;
   cancelRefresh: () => void;
 }
@@ -185,6 +188,8 @@ export function useDutyData(rangeId: DutyRangeId = DEFAULT_DUTY_RANGE): {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshAt, setRefreshAt] = useState<string | null>(null);
   const [refreshError, setRefreshError] = useState<DutyRefresh["refreshError"]>(null);
+  const [refreshDelta, setRefreshDelta] = useState<DutyDelta | null>(null);
+  const dataRef = useRef<DutyData>(initial());
   const busyRef = useRef(false);
   const versionRef = useRef(0);
   // Range changes bring their own generation counter: a late answer from the
@@ -195,8 +200,13 @@ export function useDutyData(rangeId: DutyRangeId = DEFAULT_DUTY_RANGE): {
   rangeRef.current = rangeId;
 
   useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
+  useEffect(() => {
     let alive = true;
     setData(initial());
+    setRefreshDelta(null);
     void collect(rangeRef.current).then((batch) => {
       if (alive) setData(batch);
     });
@@ -219,7 +229,9 @@ export function useDutyData(rangeId: DutyRangeId = DEFAULT_DUTY_RANGE): {
     busyRef.current = false;
     setRefreshing(false);
     setRefreshError(null);
+    setRefreshDelta(null);
     setRefreshAt(null);
+    setRefreshDelta(null);
     setData((prev) => ({ ...prev, stats14: loading(), activity: loading() }));
     void Promise.all([
       load(async () => timeseriesStats(await fetchWorkbenchTimeseries({ range: dutyRange(rangeId).tsRange, bucket: "day" }))),
@@ -235,11 +247,16 @@ export function useDutyData(rangeId: DutyRangeId = DEFAULT_DUTY_RANGE): {
     busyRef.current = true;
     setRefreshing(true);
     setRefreshError(null);
+    setRefreshDelta(null);
+    const before = dataRef.current;
     const version = versionRef.current;
     void collect(rangeRef.current).then((batch) => {
       // A cancelled batch must not write a stale screen or a read stamp.
       if (version !== versionRef.current) return;
       setData((prev) => ({ ...prev, ...batch }));
+      // A failed card drops out of the comparison (it reads as missing, not 0),
+      // the cards that did answer still report their change.
+      setRefreshDelta(diffDuty(before, batch));
       const failed = Object.values(batch).find(
         (v): v is Extract<Loadable<unknown>, { k: "error" }> => v.k === "error",
       );
@@ -258,6 +275,7 @@ export function useDutyData(rangeId: DutyRangeId = DEFAULT_DUTY_RANGE): {
     busyRef.current = false;
     setRefreshing(false);
     setRefreshError(null);
+    setRefreshDelta(null);
   }, []);
 
   const reload = useCallback(() => {
@@ -270,6 +288,6 @@ export function useDutyData(rangeId: DutyRangeId = DEFAULT_DUTY_RANGE): {
     data,
     reload,
     loading: loadingAny,
-    refreshState: { refreshing, refreshAt, refreshError, refresh, cancelRefresh },
+    refreshState: { refreshing, refreshAt, refreshError, refreshDelta, refresh, cancelRefresh },
   };
 }

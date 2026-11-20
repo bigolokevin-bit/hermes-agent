@@ -152,3 +152,12 @@
 - 零改动各卡既有取数、`ov6-*` 24 枚与 duty-refresh/gates/range/trend/notes 全族未动。
 - 验证：duty 5 files / 94 passed（基线 90）；全量 151 files / 2017 passed（基线 2013）；tsc 本域 0；eslint 0 error / 4 既有 warning。
 - 未测：真实浏览器用中键/Cmd 打开新标签的焦点行为；375 下链接与标题同行的折行（样式沿用既有 `.duty-link`）。
+
+## 刷新异动摘要（duty changed，2026-11-20）
+
+- 手点「刷新」成功后，`duty-refresh-bar` 内新增一行 `duty-changed`（`aria-live="polite"`）：逐项「卡片名 旧值 → 新值」，最多三条，其余以 `duty-changed-more` 写「另有 N 项变化」。
+- 对比项：今日运行（workbench summary runs）、今日成本（budget-usage 日账 costUsd 求和，USD）、待我处理（workbench queue total）、区间运行（timeseries 汇总）、阻塞项（tasks 行数）。全部取自刷新前后两批**已读**数据，`diffDuty()` 纯函数比较，零额外请求。
+- 口径：无变化不渲染（禁「无变化」噪音）；首载与 reload 不算变化（只有点刷新才比）；某卡本批失败/缺值则该项整条不进对比，不写 0；切时间范围清空基线（`refreshDelta` 置 null）；金额与屏上同一 `usd()`（真 0 `$0.00`、缺失「—」）。
+- testid：`duty-changed`、`duty-changed-<key>`（today-runs/cost/pending/trend/blocked）、`duty-changed-more`。
+- 测试 4 例：五处变化只列三条 + 另有 2 项；同值不渲染；成本卡 500 时该项缺席且全文无 `$0.00`、其它项照常；切 7d 后该行消失。验证：duty 5 files / 98 passed（基线 94），全量 151 files / 2021 passed（基线 2017），tsc 本域 0，eslint 0 error / 4 既有 warning。
+- 未测：真实浏览器 aria-live 播报节奏、375 折行。

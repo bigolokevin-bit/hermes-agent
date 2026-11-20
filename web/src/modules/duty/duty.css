@@ -700,3 +700,7 @@
     flex-wrap: wrap;
   }
 }
+
+.duty-changed {
+  color: var(--color-foreground);
+}

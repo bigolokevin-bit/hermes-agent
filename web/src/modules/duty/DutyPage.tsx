@@ -1036,6 +1036,21 @@ export default function DutyPage() {
             刷新完成于 北京时间 {beijing(refreshState.refreshAt)}（读取时刻，不是数据时刻）
           </p>
         ) : null}
+        {!refreshState.refreshing &&
+        refreshState.refreshDelta &&
+        refreshState.refreshDelta.items.length > 0 ? (
+          <p className="duty-note duty-changed" data-testid="duty-changed" aria-live="polite">
+            {refreshState.refreshDelta.items.map((item, index) => (
+              <span key={item.key} data-testid={`duty-changed-${item.key}`}>
+                {index > 0 ? "；" : ""}
+                {item.text}
+              </span>
+            ))}
+            {refreshState.refreshDelta.more > 0 ? (
+              <span data-testid="duty-changed-more">；另有 {refreshState.refreshDelta.more} 项变化</span>
+            ) : null}
+          </p>
+        ) : null}
         {!refreshState.refreshing && refreshState.refreshError ? (
           <div className="duty-refresh-error" data-testid="duty-refresh-error">
             <span>这次刷新没成功：{refreshState.refreshError.message}</span>

@@ -852,3 +852,126 @@ describe("DutyPage card drill links", () => {
     expect(link!.getAttribute("href")).toBe("/capabilities");
   });
 });
+
+describe("DutyPage refresh delta summary", () => {
+  type Phase = { runs: number; cost: number; pending: number; trend: number; blocked: number; costFail?: boolean };
+  const basePhase: Phase = { runs: 2, cost: 1.5, pending: 1, trend: 3, blocked: 1 };
+
+  function wire(phase: Phase) {
+    fetchJSON.mockImplementation((url: string) => {
+      if (url.includes("/budget-usage")) {
+        if (phase.costFail) {
+          return Promise.reject(new ApiError("boom", { status: 500, body: "", url, requestId: "req-delta-1" }));
+        }
+        return Promise.resolve({ items: [{ employeeId: "emp_1", costUsd: phase.cost }], missingEmployeeIds: [] });
+      }
+      if (url.includes("/workbench/summary")) {
+        return Promise.resolve({
+          asOf: WB_ASOF,
+          asOfSource: "bff-aggregation-read-time",
+          available: true,
+          degraded: [],
+          kpis: [
+            { key: "runs", label: "运行数", unit: "次", value: phase.runs, available: true },
+            { key: "costUsd", label: "成本", unit: "USD", value: phase.cost, available: true },
+            { key: "pendingApprovals", label: "待审批", unit: "条", value: phase.pending, available: true },
+          ],
+        });
+      }
+      if (url.includes("/workbench/queue")) {
+        return Promise.resolve({
+          asOf: WB_ASOF,
+          asOfSource: "bff-read-time",
+          available: true,
+          total: phase.pending,
+          items: [],
+          degraded: [],
+        });
+      }
+      if (url.includes("/workbench/timeseries")) {
+        return Promise.resolve({
+          asOf: WB_ASOF,
+          asOfSource: "bff-read-time",
+          available: true,
+          points: [{ ts: "2026-11-18T00:00:00.000Z", label: "11-18", value: phase.trend }],
+          totals: { metric: "runs", value: phase.trend },
+        });
+      }
+      if (url.includes("/approval-stats")) return Promise.resolve({ pending: phase.pending, dueSoon: 0 });
+      if (url.includes("/tasks")) {
+        return Promise.resolve({
+          items: Array.from({ length: phase.blocked }, (_, i) => ({ taskId: `tsk_${i}`, title: "整理周报", status: "blocked" })),
+        });
+      }
+      return Promise.resolve(ok(url));
+    });
+  }
+
+  async function clickRefresh() {
+    const button = container.querySelector('[data-testid="duty-refresh"]') as HTMLButtonElement;
+    await act(async () => {
+      button.click();
+    });
+    await act(async () => {});
+    await new Promise((r) => setTimeout(r, 20));
+    await act(async () => {});
+  }
+
+  it("lists at most three changed cards and counts the rest", async () => {
+    const phase: Phase = { ...basePhase };
+    wire(phase);
+    await render(<DutyPage />);
+    expect(container.querySelector('[data-testid="duty-changed"]')).toBeNull();
+    phase.runs = 5;
+    phase.cost = 4;
+    phase.pending = 0;
+    phase.trend = 9;
+    phase.blocked = 3;
+    await clickRefresh();
+    const line = container.querySelector('[data-testid="duty-changed"]') as HTMLParagraphElement;
+    expect(line).not.toBeNull();
+    expect(line.getAttribute("aria-live")).toBe("polite");
+    expect(line.textContent).toContain("今日运行 2 → 5");
+    expect(line.textContent).toContain("今日成本 $1.50 → $4.00");
+    expect(line.textContent).toContain("待我处理 1 → 0");
+    expect(line.querySelectorAll("[data-testid^='duty-changed-']")).toHaveLength(4);
+    expect(container.querySelector('[data-testid="duty-changed-more"]')?.textContent).toContain("另有 2 项变化");
+    expect(line.textContent).not.toContain("区间运行");
+  });
+
+  it("renders nothing when a refresh brings the same readings", async () => {
+    wire({ ...basePhase });
+    await render(<DutyPage />);
+    await clickRefresh();
+    expect(container.querySelector('[data-testid="duty-changed"]')).toBeNull();
+  });
+
+  it("leaves a failed card out instead of reporting a drop to zero", async () => {
+    const phase: Phase = { ...basePhase };
+    wire(phase);
+    await render(<DutyPage />);
+    phase.runs = 5;
+    phase.costFail = true;
+    await clickRefresh();
+    expect(container.querySelector('[data-testid="duty-changed-cost"]')).toBeNull();
+    expect(container.querySelector('[data-testid="duty-changed-today-runs"]')?.textContent).toContain("2 → 5");
+    expect(container.querySelector('[data-testid="duty-changed"]')?.textContent).not.toContain("$0.00");
+  });
+
+  it("resets the baseline when the time range changes", async () => {
+    const phase: Phase = { ...basePhase };
+    wire(phase);
+    await render(<DutyPage />);
+    phase.runs = 5;
+    await clickRefresh();
+    expect(container.querySelector('[data-testid="duty-changed"]')).not.toBeNull();
+    const range = container.querySelector('[data-testid="duty-range-7d"]') as HTMLButtonElement;
+    await act(async () => {
+      range.click();
+    });
+    await act(async () => {});
+    await new Promise((r) => setTimeout(r, 20));
+    await act(async () => {});
+    expect(container.querySelector('[data-testid="duty-changed"]')).toBeNull();
+  });
+});
