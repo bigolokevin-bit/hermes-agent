@@ -534,10 +534,25 @@ function ListRows({
 }): ReactNode {
   const [openId, setOpenId] = useState<string | null>(null);
   const toggleRefs = useRef(new Map<string, HTMLButtonElement>());
+  // Roving tabindex: exactly one row is in the tab order, arrows move focus
+  // between rows, Enter/Space toggles that row's preview. Inner links and
+  // buttons keep their native Tab stops, so nothing becomes unreachable.
+  const [activeIndex, setActiveIndex] = useState(0);
+  const rowRefs = useRef<Array<HTMLLIElement | null>>([]);
+  const lastIndex = Math.max(0, rows.length - 1);
+  const tabStop = Math.min(activeIndex, lastIndex);
+  const focusRow = (next: number) => {
+    const target = Math.max(0, Math.min(next, lastIndex));
+    setActiveIndex(target);
+    rowRefs.current[target]?.focus();
+  };
   const close = useCallback((rowId: string) => {
     setOpenId(null);
-    toggleRefs.current.get(rowId)?.focus();
-  }, []);
+    const index = rows.findIndex((row) => row.runId === rowId);
+    const row = index >= 0 ? rowRefs.current[index] : null;
+    if (row) row.focus();
+    else toggleRefs.current.get(rowId)?.focus();
+  }, [rows]);
   return (
     <Card className="min-w-0 border-border bg-card" data-testid="run5-table">
       <CardContent className="p-0">
@@ -560,15 +575,46 @@ function ListRows({
             return (
               <li
                 key={row.runId}
-                className={`min-w-0${isSelected ? " bg-muted/40" : ""}`}
+                ref={(node) => {
+                  rowRefs.current[index] = node;
+                }}
+                role="group"
+                tabIndex={index === tabStop ? 0 : -1}
+                aria-expanded={open}
+                aria-controls={open ? `run-row-preview-${index}` : undefined}
+                aria-label={`${runCode(row.runId)}：${statusLabel(row.status)}`}
+                className={`min-w-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2${isSelected ? " bg-muted/40" : ""}`}
                 data-testid={base}
                 data-status={row.status ?? "unknown"}
                 data-selected={isSelected ? "1" : undefined}
                 aria-current={isSelected ? "true" : undefined}
                 onKeyDown={(event) => {
-                  if (!open || event.key !== "Escape") return;
-                  event.stopPropagation();
-                  close(row.runId);
+                  if (event.key === "Escape") {
+                    if (!open) return;
+                    event.stopPropagation();
+                    close(row.runId);
+                    return;
+                  }
+                  // Keys pressed inside the row's own controls keep their native
+                  // behaviour; only the row carrier itself drives arrow navigation.
+                  if (event.target !== event.currentTarget) return;
+                  if (event.key === "ArrowDown") {
+                    event.preventDefault();
+                    focusRow(index + 1);
+                  } else if (event.key === "ArrowUp") {
+                    event.preventDefault();
+                    focusRow(index - 1);
+                  } else if (event.key === "Home") {
+                    event.preventDefault();
+                    focusRow(0);
+                  } else if (event.key === "End") {
+                    event.preventDefault();
+                    focusRow(lastIndex);
+                  } else if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    if (previewGate.disabled) return;
+                    setOpenId(open ? null : row.runId);
+                  }
                 }}
               >
                 <div className={GRID}>

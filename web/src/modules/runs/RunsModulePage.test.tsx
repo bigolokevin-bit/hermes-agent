@@ -949,7 +949,7 @@ describe("R40 — per-event status and duration", () => {
 
 /* ── runs row preview ────────────────────────────────────────────────
  * The preview is a reading of the row the list already has: no second read,
- * no client clock, one open at a time, Escape hands focus back to its toggle.
+ * no client clock, one open at a time, Escape hands focus back to its row.
  */
 describe("runs row preview", () => {
   const RUN_C = {
@@ -1016,7 +1016,7 @@ describe("runs row preview", () => {
     expect(urls().filter((url) => url.includes("/api/runs"))).toHaveLength(1);
   });
 
-  it("closes on Escape and hands focus back to the toggle", async () => {
+  it("closes on Escape and hands focus back to the row", async () => {
     api.fetchJSON.mockImplementation(okList([RUN_C]));
     await render("/runs");
     await waitFor(() => rowNodes() === 1, "one row");
@@ -1027,7 +1027,7 @@ describe("runs row preview", () => {
       preview(0)?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     });
     expect(preview(0)).toBeNull();
-    expect(document.activeElement).toBe(toggle(0));
+    expect(document.activeElement).toBe(document.querySelector("[data-testid='run5-row-0']"));
   });
 
   it("names missing fields instead of filling them in", async () => {
@@ -1950,5 +1950,100 @@ describe("run row copy", () => {
     expect(box.value).toBe(expected);
     expect(box.readOnly).toBe(true);
     expect(document.querySelector("[data-testid='run-row-copy-status']")?.textContent).toContain("复制没成功");
+  });
+});
+
+/* ── roving tabindex over the list rows ───────────────────────────── */
+
+describe("runs list keyboard navigation", () => {
+  const rowEl = (i: number): HTMLLIElement =>
+    document.querySelector(`[data-testid='run5-row-${i}']`) as HTMLLIElement;
+  const toggleEl = (i: number): HTMLButtonElement =>
+    document.querySelector(`[data-testid='run-row-toggle-${i}']`) as HTMLButtonElement;
+  const press = async (el: Element, key: string): Promise<void> => {
+    await act(async () => {
+      el.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+    });
+  };
+
+  it("keeps one tab stop and moves it with arrows, Home and End", async () => {
+    const RUN_K = {
+      runId: "rn_01M7822KEYBOARD0000000003",
+      status: "running",
+      costStatus: "missing",
+      startedAt: "2026-11-18T05:00:00Z",
+    };
+    api.fetchJSON.mockImplementation(okList([RUN_A, RUN_B, RUN_K]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 3, "three rows");
+    const before = urls().length;
+
+    expect(rowEl(0).tabIndex).toBe(0);
+    expect(rowEl(1).tabIndex).toBe(-1);
+    expect(rowEl(2).tabIndex).toBe(-1);
+    expect(rowEl(0).getAttribute("role")).toBe("group");
+    expect(rowEl(0).getAttribute("aria-expanded")).toBe("false");
+
+    rowEl(0).focus();
+    await press(rowEl(0), "ArrowDown");
+    expect(document.activeElement).toBe(rowEl(1));
+    expect(rowEl(1).tabIndex).toBe(0);
+    expect(rowEl(0).tabIndex).toBe(-1);
+
+    await press(rowEl(1), "End");
+    expect(document.activeElement).toBe(rowEl(2));
+    await press(rowEl(2), "ArrowDown"); // already last: stays put
+    expect(document.activeElement).toBe(rowEl(2));
+    await press(rowEl(2), "Home");
+    expect(document.activeElement).toBe(rowEl(0));
+    await press(rowEl(0), "ArrowUp"); // already first: stays put
+    expect(document.activeElement).toBe(rowEl(0));
+
+    // Keys pressed inside the row's own controls do not move the row focus.
+    toggleEl(0).focus();
+    await press(toggleEl(0), "ArrowDown");
+    expect(document.activeElement).toBe(toggleEl(0));
+    expect(urls().length).toBe(before);
+  });
+
+  it("toggles the preview with Enter and keeps both aria-expanded in step", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A, RUN_B]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 2, "two rows");
+    const before = urls().length;
+
+    rowEl(0).focus();
+    await press(rowEl(0), "Enter");
+    expect(document.querySelector("[data-testid='run-row-preview-0']")).not.toBeNull();
+    expect(rowEl(0).getAttribute("aria-expanded")).toBe("true");
+    expect(toggleEl(0).getAttribute("aria-expanded")).toBe("true");
+    expect(rowEl(0).getAttribute("aria-controls")).toBe("run-row-preview-0");
+
+    await press(rowEl(1), " "); // space opens the second row, the first closes
+    expect(document.querySelector("[data-testid='run-row-preview-0']")).toBeNull();
+    expect(document.querySelector("[data-testid='run-row-preview-1']")).not.toBeNull();
+    expect(rowEl(1).getAttribute("aria-expanded")).toBe("true");
+    expect(toggleEl(1).getAttribute("aria-expanded")).toBe("true");
+    expect(rowEl(0).getAttribute("aria-expanded")).toBe("false");
+
+    await press(rowEl(1), "Escape");
+    expect(document.querySelector("[data-testid='run-row-preview-1']")).toBeNull();
+    expect(document.activeElement).toBe(rowEl(1));
+    expect(urls().length).toBe(before); // no extra read, and the URL never moved
+    expect(document.querySelector("[data-testid='probe-location']")).toBeNull();
+  });
+
+  it("does not attach row navigation outside the ready list", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs?state=error");
+    await waitFor(
+      () => document.querySelector("[data-testid='run-state']")?.getAttribute("data-phase") === "error",
+      "error state",
+    );
+    expect(document.querySelector("[data-testid='run5-row-0']")).toBeNull();
+    // Only real controls remain in the tab order; no row carrier is focusable.
+    const retry = document.querySelector("[data-testid='run5-error-retry']") as HTMLElement | null;
+    expect(retry?.tabIndex).toBe(0);
+    expect(document.querySelector("[data-testid='run-list-copy']")).not.toBeNull();
   });
 });

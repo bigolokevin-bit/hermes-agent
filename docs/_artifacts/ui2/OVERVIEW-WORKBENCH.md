@@ -316,3 +316,13 @@
 - 零额外请求：复制只读当前行的 `row` 与员工目录映射；打开预览、复制、再复制前后 `urls()` 与 `/api/runs` 次数均不变（用例断言）。
 - 验证：runs 3 files / 126 passed（基线 123，+3）；全量 161 files / 2237 passed（基线 2195，上游本波抬高）；`tsc` 本域 0（全仓既存 79）；`eslint src/modules/runs` exit 0；build exit 0，entry 内 `run-row-copy`=0，`RunsModulePage-*.js` 内 =1。
 - 未测：真实浏览器 375 下复制条与脚注的折行、系统剪贴板权限弹窗路径。
+
+## 列表键盘导航（runs keyboard navigation，2026-11-20）
+
+- 行载体 `li` 持 roving tabindex：当前行 `0`、其余 `-1`；`↑/↓/Home/End` 在行间移焦（首尾夹紧），只在焦点落在行本身时处理，行内「查看」链接与预览开关保留原生 Tab 与按键行为。
+- `Enter`/`Space` 展开或收起该行预览（与既有「同时只开一行」一致）；`Esc` 收起并把焦点还给触发行。
+- `aria-expanded` 在行载体与 `run-row-toggle-*` 两处同值；展开时行载体同时给 `aria-controls=run-row-preview-<i>`，行有 `aria-label`（运行短码 + 状态）与 `role="group"`；焦点环沿用既有 outline token。
+- 加载/错误/空态不渲染行列表，因此不挂任何方向键监听；URL 不写、刷新即收起（`openId` 只在组件 state）。
+- 零新增请求（三例均断言 `urls()` 与 `/api/runs` 次数不变）。
+- 契约变更：旧用例曾断言 Esc 后焦点在预览开关上，本版按新契约改为「焦点回触发行」，断言随之更新。
+- 验证：`vitest run src/modules/runs` 3 files / 129 passed（基线 126）；全量 162 files / 2242 passed（基线 2239）；`tsc` 本域 0；`eslint` exit 0；build 通过，entry 内 `run-row-toggle` 命中 0、`RunsModulePage-*.js` 命中 1。
