@@ -14,7 +14,7 @@
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 23,
+  "distinctMainHeads": 24,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -33,13 +33,13 @@
     {
       "route": "#/approvals",
       "viewport": "1440",
-      "chars": 721,
+      "chars": 466,
       "hasMainEl": true
     },
     {
       "route": "#/approvals",
       "viewport": "375",
-      "chars": 721,
+      "chars": 466,
       "hasMainEl": true
     },
     {
@@ -57,61 +57,61 @@
     {
       "route": "#/approvals?tab=mine",
       "viewport": "1440",
-      "chars": 721,
+      "chars": 466,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=mine",
       "viewport": "375",
-      "chars": 721,
+      "chars": 466,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=mine",
       "viewport": "1440",
-      "chars": 721,
+      "chars": 466,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=mine",
       "viewport": "375",
-      "chars": 721,
+      "chars": 466,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=release",
       "viewport": "1440",
-      "chars": 721,
+      "chars": 466,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=pending&view=release",
       "viewport": "375",
-      "chars": 721,
+      "chars": 466,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=policy",
       "viewport": "1440",
-      "chars": 721,
+      "chars": 466,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=policy",
       "viewport": "375",
-      "chars": 721,
+      "chars": 466,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=release",
       "viewport": "1440",
-      "chars": 721,
+      "chars": 466,
       "hasMainEl": true
     },
     {
       "route": "#/approvals?tab=release",
       "viewport": "375",
-      "chars": 721,
+      "chars": 466,
       "hasMainEl": true
     },
     {
@@ -231,7 +231,7 @@
     {
       "route": "#/employees/:employeeId?zone=evidence",
       "viewport": "375",
-      "chars": 42,
+      "chars": 66,
       "hasMainEl": true
     },
     {
@@ -642,12 +642,12 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "e901fabb",
+  "headHash": "cdcffc02",
   "exitCode": 0,
-  "entry": "assets/index-B2obRC-_.js",
-  "entrySha256": "80400aa1f423f5ef144c9bfb8d57e9cbc2b3e2e5debd30d3743cf73eafb7f331",
+  "entry": "assets/index-B9a3D86z.js",
+  "entrySha256": "c99e9c38e7b5672580c1034b26dda1e02ee4b1fe3a4733e45a11f038c4f5d81c",
   "entryBytes": 171507,
-  "servedEntryBefore": "index-B2obRC-_.js",
-  "servedEntryAfter": "index-B2obRC-_.js",
+  "servedEntryBefore": "index-B9a3D86z.js",
+  "servedEntryAfter": "index-B9a3D86z.js",
   "auxiliary": true
 }

@@ -1254,3 +1254,19 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 九腿全 exit=0，九件 9/9 头==e901fabb bad=[]：ia-html/react {51,22,1,8}；lint-fake v=[]；lint-reuse v=0 exempt=1；state-quad 20/20；crawl-anon/auth DL0/CE0/PE0 routesCE 51/51（401 归因）；redirects=24 notes 归因。
 - shots auth 102/102 failures=[] obs=0 obsR=[] distinct=23 envOnly=51；anon aux=true 102/102 obs=0（上代 cron 1 条消失，好转）distinct=23（上代 24，-1 如实）envOnly=51；ceAuthority=login-state 双腿。
 - 环境：9122 v4_proxy 95667 / caddy 8183 28034 / BFF 8092 12048@603a23e9 未动；web/src 未碰；零凭据明文。R60 结案引用不变，本单只做账本。
+
+## 一二轮 · 波次代次九件重章 @ 6d20d6f4（entry B2obRC-_ 未换代，2026-11-21 00:1x-00:2x）
+
+- 代次现查：LOCAL=ls-remote=6d20d6f4bb40、porc 0 脏；wave-46 三笔全纯测试并入，entry/CSS 未换代：assets/index-B2obRC-_.js 171507B sha256 80400aa1…f331 盘现算==卡面逐字、CSS index-D5E8gF20.css 137743B、9122 served 拍前后同值未漂。
+- 九腿全 exit=0，九件 9/9=={6d20d6f4:9} bad=[]：ia-html/react ok、lint-fake v=[]、lint-reuse v=0 exempt=1（chat→T40）、state-quad 20/20、crawl-anon/auth DL0/CE0/PE0 routesCE 51/51（401 归因）、redirects=24 notes 归因不判红。
+- shots auth 102/102 failures=[] obs=0 distinct=24（上代 23，+1 如实）envOnly=51；anon aux=true 102/102 obs=0（cron 噪音续零）distinct=24（+1）envOnly=51；三键=entry assets/index-B2obRC-_.js / 80400aa1f423…f331 / 171507，servedEntryBefore==After 同值；ceAuthority=login-state。
+- e901fabb 章笔 4de2e276 已盖留档不重做；R60 结案引用（33c2b838，executor=D signer=unsigned），本单只做账本不写 PASS/已验收、未动 ACC 判词节。
+- 环境：9122 v4_proxy 95667 / caddy 8183 28034 / BFF 8092 12048@603a23e9 未动；web/src 未碰；零凭据明文；无 amend/force。
+
+## 一三三轮 · 波次代次九件重章 @ cdcffc02（entry B9a3D86z，2026-11-21 00:2x-00:3x）
+
+- 代次现查：LOCAL=ls-remote=cdcffc02e011（ANCH=0）、porc 0 脏；entry assets/index-B9a3D86z.js 171507B sha256 c99e9c38…d81c == 9122 == 磁盘（UI-B 筛选折叠生效⇒本代换代）；CSS index-D5E8gF20.css 137743B 未换代；21/21 路由 200。
+- 九腿全 exit=0（/tmp/wave47-exits.txt）、heads 9/9==cdcffc02、终检单 JSON 全过：ia-html/react {51,22,1,8}；lint-fake v=[]；lint-reuse v=0 exempt=1（chat→T40）；state-quad 20/20；crawl-anon/auth DL0/CE0/PE0 routesCE 51/51（401 归因）；redirects=24 归因 notes。
+- shots auth 102/102 failures=[] obs=0 obsR=[] distinct=24 envOnly=51；anon auxiliary=true 102/102 obs=0 distinct=24 envOnly=51——与上代 6d20d6f4 读数全等（换代未引观测漂移，如实）。三键=assets/index-B9a3D86z.js / c99e9c38e7b5672580c1034b26dda1e02ee4b1fe3a4733e45a11f038c4f5d81c / 171507，served before==after 未漂，ceAuthority=login-state。
+- R60 案已结案（qa-verify 33c2b838，executor=D signer=unsigned）：本节只记账本，未动 ACC 判词节。6d20d6f4 章 c99160c7 已盖不重做；无 amend/force。
+- 环境：9122 v4_proxy 95667、caddy 8183 28034、BFF 8092 pid 12048@603a23e9 均未动；web/src 未碰；零凭据明文。

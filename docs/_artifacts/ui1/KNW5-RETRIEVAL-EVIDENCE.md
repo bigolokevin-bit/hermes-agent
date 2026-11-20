@@ -4252,3 +4252,55 @@ kn3-page-cap/knE-page-*/kn6-search-*/knF/knG/knI/knL-copy*/kn7-preview-* + 既�
 参考）：a) 抽屉 error 窗口内「行钮文本==开抽屉前快照」的复制串级不变量（行序/钮 id 已由
 R196④ 锁，复制串未单锁）；b) 「详情 404 时抽屉 dl title 仍=全 id」的 404 变体（R204 只在
 成功链锁过 title）。
+
+# KNW5 追加 R206：预览请求契约余量护栏（纯测试单）（2026-11-21 BJT）
+
+安全门：porcelain 空起做（HEAD 即 R205 链）、显式 refspec fetch 后 merge 实测 tip
+即预期 `6d20d6f4`（知识面 delta 空；目标文件确认原不存在）。零产品文件改动（无新缺陷）。
+
+## 四腿查重判定（引用 vs 新写）
+
+```text
+已锁引用：①首屏恰 1 次列表读、无 cursor=——主测 knE 段 :2531 + R149 requests.test.tsx
+  ①②；②抽屉开 +1/列表腿不重取（R125C:180-188、R149④ listSet、R183③）、切文档每次 +1
+  各指自身（R149④+R196③）、行内预览链 0（R125B/R149③/R196④）；③关闭零请求（R125C/
+  R196④）与行序/钮 id 不变（R196④）；④500 句+rid+保列表+重试恰 +1+成功就位（R183①③）。
+真缺口（本文件 2 例，均含 R205 判定书预留的两处窄面）：
+· ③参数面：关抽屉后 loc **逐字回**到开前（仅 doc= 消失，q/ktype/space/tab/panel 一字
+  未动）+ 行内预览开合全程 loc 一字不动（产品注释 R67/R68 声明的语义，测试侧首次落钉
+  ——grep 此前无任何 loc 断言命中）。
+· ④(a)：详情 500 错误窗口内，行钮复制串与 kn-doc-copy 串均与**干净样张逐字相等**
+  （错误不污染屏上数据与 docSingleCopy 链）；④(b)：404 变体下抽屉 dl[title]="d_full1"
+  （全 id 仅在 title）+ 抽屉正文无裸 id——R204 只锁过成功链的 title。
+```
+
+## 关键读数
+
+```text
+③开抽屉 loc 恰好多一段 "&doc=d_full1"；kn7-preview-close 后 loc toBe 开前逐字
+  （"?tab=spaces&panel=spaces&space=sp_x&q=%E5%A4%A7&ktype=PDF"）；行内开→关两轮
+  loc 始终逐字同；spaces/docs(sp_x) 读条数全程 = 开抽屉前（列表腿零重取）。
+④干净样张：行钮串===kn-doc-copy 串（writeText 两次 toBe）；500 窗（error 锚在场）
+  再取两串仍逐字等样张；404 窗 unwired 在场、dl title 逐字 "d_full1"、panel 正文
+  无 "d_full1"。缺值/两式与 403≡404 产品定版未触。
+```
+
+## 验证尾行（R206）
+```text
+$ npx vitest run src/modules/knowledge   → 26 files / 155 tests passed（基线 153 + 2）
+$ npx vitest run                         → 272 files / 2927 tests passed 全绿（无豁免项）
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning；本单曾有
+  1 条 unused(detailUrl) 提交前清零）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r206-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn3*/kn-row-copy*/kn-row-copy-space*/kn-doc-copy*/kn-doc-preview*/kn-space-preview*/
+kn3-page-cap/knE-page-*/kn6-search-*/knF/knG/knI/knL-copy*/kn7-preview-* + 既有 25 套全绿。
+过程记录：测试自纠三处（ktype=PDF 桶外行不可见换 PDF 行、defineProperty 的 clipboard
+  值需包 { writeText } 对象、babel 语法 configurable 挪进对象字面量），产品零触碰。
+```
+未测如实：带登录会话真实屏（窄面 (b) 的 404 真信封未接）；「重开抽屉 title 更新后再关」
+的多轮 loc 往返（单轮开→关已逐字锁，多轮语义同路径）。
+边界：只新增 web/src/modules/knowledge/knowledge.preview.requests2.test.tsx 与本证据；
+显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「test(console): knowledge preview request contract guards」。

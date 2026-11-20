@@ -49,13 +49,13 @@
       "source": "CONSOLE_TABS",
       "kind": "tab",
       "verdict": "content-ok",
-      "mainChars": 700,
+      "mainChars": 454,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 2,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 重置筛选 待办视图只列待办，status 筛选"
+      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 筛选条件（无） 汇总（与列表同源）： 待办 —"
     },
     {
       "route": "#/approvals?tab=history",
@@ -75,65 +75,65 @@
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 700,
+      "mainChars": 454,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 2,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 重置筛选 待办视图只列待办，status 筛选"
+      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 筛选条件（无） 汇总（与列表同源）： 待办 —"
     },
     {
       "route": "#/approvals?tab=pending&view=mine",
       "source": "VIEW_DEEP_LINKS",
       "kind": "view",
       "verdict": "content-ok",
-      "mainChars": 700,
+      "mainChars": 454,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 2,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 重置筛选 待办视图只列待办，status 筛选"
+      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 筛选条件（无） 汇总（与列表同源）： 待办 —"
     },
     {
       "route": "#/approvals?tab=pending&view=release",
       "source": "VIEW_DEEP_LINKS",
       "kind": "view",
       "verdict": "content-ok",
-      "mainChars": 700,
+      "mainChars": 454,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 2,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 重置筛选 待办视图只列待办，status 筛选"
+      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 筛选条件（无） 汇总（与列表同源）： 待办 —"
     },
     {
       "route": "#/approvals?tab=policy",
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 700,
+      "mainChars": 454,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 2,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 重置筛选 待办视图只列待办，status 筛选"
+      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 筛选条件（无） 汇总（与列表同源）： 待办 —"
     },
     {
       "route": "#/approvals?tab=release",
       "source": "COMPAT_TABS",
       "kind": "compat-tab",
       "verdict": "content-ok",
-      "mainChars": 700,
+      "mainChars": 454,
       "hasMainEl": true,
       "httpStatus": 200,
       "consoleErrors": 2,
       "consoleErrorEnv": "auth-required-401",
       "evalError": null,
-      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 重置筛选 待办视图只列待办，status 筛选"
+      "headSample": "运营 · 控制台 审批与发布门 待处理 历史决策 筛选条件（无） 汇总（与列表同源）： 待办 —"
     },
     {
       "route": "#/audit",
@@ -762,7 +762,7 @@
   "routesWithConsoleErrors": 51,
   "parseErrors": [],
   "ok": true,
-  "headHash": "e901fabb",
+  "headHash": "cdcffc02",
   "exitCode": 0,
   "counts": {
     "probed": 75,

@@ -109,6 +109,17 @@ const removeChip = async (key: string): Promise<void> => {
   await act(async () => {});
 };
 
+/** P0-③: 筛选控件默认收起——面板里的控件（含 apv-status-note 口径句）
+ *  要先点开 disclosure 才在屏上；chips/汇总条是折叠态读数，不需展开。 */
+const openFilters = async (): Promise<void> => {
+  const toggle = q("apv-filter-toggle") as HTMLButtonElement | null;
+  expect(toggle, "filter disclosure present").toBeTruthy();
+  await act(async () => {
+    toggle!.click();
+  });
+  await waitFor(() => toggle!.getAttribute("aria-expanded") === "true", "filter panel opened");
+};
+
 const isoAgo = (ms: number) => new Date(Date.now() - ms).toISOString();
 const HOUR = 3_600_000;
 
@@ -217,6 +228,7 @@ describe("R98 filter-url contract: pending tab", () => {
     // 数据腿恒 pending（R93b）：status 被进入即移除，不引发第二次取数
     expect(listCalls(), "exactly one list read on entry").toBe(1);
     expect(urls().find((u) => u.includes("/api/approvals"))).toContain("status=pending");
+    await openFilters();
     expect(q("apv-status-note"), "常驻口径句").toBeTruthy();
     expect(q("apv-chip-status"), "status chip dropped with the param").toBeNull();
   });
