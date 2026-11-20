@@ -1873,3 +1873,82 @@ describe("run filter reset", () => {
     expect((document.querySelector("[data-testid='run-reset-filters']") as HTMLButtonElement).disabled).toBe(true);
   });
 });
+
+/* ── one row, copied in the words the preview already shows ───────── */
+
+describe("run row copy", () => {
+  const RUN_C = {
+    runId: "rn_01M7822COPYROW000000001",
+    status: "completed",
+    costStatus: "upstream",
+    costUsd: 0,
+    startedAt: "2026-11-18T02:00:00Z",
+    endedAt: "2026-11-18T02:11:00Z",
+    employeeId: "emp_aaaabbbbcccc",
+  };
+  const RUN_D = { runId: "rn_01M7822COPYROW000000002", costStatus: "unknown", costUsd: null };
+  const open = (index: number) =>
+    act(async () => {
+      (document.querySelector(`[data-testid='run-row-toggle-${index}']`) as HTMLButtonElement).click();
+    });
+  const copyRow = () =>
+    act(async () => {
+      (document.querySelector("[data-testid='run-row-copy']") as HTMLButtonElement).click();
+    });
+  const rowFields = (index: number): string[] => [
+    document.querySelector(`[data-testid='run5-row-${index}-code']`)?.textContent ?? "",
+    ...["status", "started", "ended", "elapsed", "cost", "employee"].map(
+      (key) => document.querySelector(`[data-testid='run-row-preview-${index}-${key}'] dd`)?.textContent ?? "",
+    ),
+  ];
+
+  it("copies the seven rendered fields and the list copy reads the same ones", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_C]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 1, "one row");
+    const reads = api.fetchJSON.mock.calls.filter((call) => String(call[0]).includes("/api/runs")).length;
+    expect(document.querySelector("[data-testid='run-row-copy']")).toBeNull(); // 预览没开就没有这个钮
+    await open(0);
+    const expected = rowFields(0).join(" · ");
+    expect(expected.startsWith("运行 · 0001")).toBe(true);
+    await copyRow();
+    expect(clip.copyTextToClipboard.mock.calls.at(-1)?.[0]).toBe(expected);
+    expect(document.querySelector("[data-testid='run-row-copy-status']")?.textContent).toBe("已复制");
+    // 列表复制用同一组字段，只是分隔符不同
+    await act(async () => {
+      (document.querySelector("[data-testid='run-list-copy']") as HTMLButtonElement).click();
+    });
+    const listLine = String(clip.copyTextToClipboard.mock.calls.at(-1)?.[0] ?? "").split("\n")[1] ?? "";
+    expect(listLine).toBe(rowFields(0).join(","));
+    expect(api.fetchJSON.mock.calls.filter((call) => String(call[0]).includes("/api/runs")).length).toBe(reads);
+  });
+
+  it("says 该字段未返回 instead of leaving a hole, and keeps the zero and the dash apart", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_D]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 1, "one row");
+    await open(0);
+    await copyRow();
+    const text = String(clip.copyTextToClipboard.mock.calls.at(-1)?.[0] ?? "");
+    expect(text).toContain("该字段未返回");
+    expect(text).toContain("未指派");
+    expect(text).not.toContain("$0.00");
+    // 状态/开始/结束三处写「该字段未返回」，耗时与成本仍是「—」：两种缺值不混写
+    expect(text.split(" · ").filter((part) => part === "—").length).toBe(2);
+  });
+
+  it("offers the text in a read-only box when the clipboard refuses", async () => {
+    clip.copyTextToClipboard.mockImplementationOnce(() => Promise.resolve(false));
+    api.fetchJSON.mockImplementation(okList([RUN_C]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 1, "one row");
+    await open(0);
+    const expected = rowFields(0).join(" · ");
+    await copyRow();
+    await waitFor(() => document.querySelector("[data-testid='run-row-copy-fallback-text']") !== null, "fallback");
+    const box = document.querySelector("[data-testid='run-row-copy-fallback-text']") as HTMLTextAreaElement;
+    expect(box.value).toBe(expected);
+    expect(box.readOnly).toBe(true);
+    expect(document.querySelector("[data-testid='run-row-copy-status']")?.textContent).toContain("复制没成功");
+  });
+});

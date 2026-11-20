@@ -92,6 +92,7 @@ import {
   resultRefHref,
   runCode,
   runPreview,
+  runRowText,
   shortId,
   sinceKeyOf,
   statusFilterOf,
@@ -215,6 +216,8 @@ function CostCell({ row, testId }: { row: RunRow; testId: string }): ReactNode {
  */
 function RunPreviewPanel({ row, names, index }: { row: RunRow; names: Map<string, string>; index: number }): ReactNode {
   const view = runPreview(row, names);
+  const [copyState, setCopyState] = useState<"idle" | "done" | "failed">("idle");
+  const [copyBody, setCopyBody] = useState("");
   const fields: Array<{ key: string; label: string; field: { text: string; title: string } }> = [
     { key: "status", label: "状态", field: view.status },
     { key: "started", label: "开始", field: view.started },
@@ -240,6 +243,43 @@ function RunPreviewPanel({ row, names, index }: { row: RunRow; names: Map<string
       <p className="mt-2 min-w-0 break-words text-[11px] leading-tight text-muted-foreground">
         预览只读：六项都取自这一行已读到的数据，打开或收起都不会再发一次请求。
       </p>
+      <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+        <Button
+          size="sm"
+          outlined
+          data-testid="run-row-copy"
+          onClick={() => {
+            const text = runRowText(row, names);
+            setCopyBody(text);
+            copyTextToClipboard(text).then((ok) => setCopyState(ok ? "done" : "failed"));
+          }}
+        >
+          复制这一行
+        </Button>
+        <span
+          role="status"
+          aria-live="polite"
+          className="min-w-0 break-words text-xs text-muted-foreground"
+          data-testid="run-row-copy-status"
+        >
+          {copyState === "done"
+            ? "已复制"
+            : copyState === "failed"
+              ? "复制没成功：下面的文本可以自己选中复制"
+              : "复制的是这一行屏上已渲染的七个字段。"}
+        </span>
+      </div>
+      {copyState === "failed" ? (
+        <div className="mt-2 min-w-0" data-testid="run-row-copy-fallback">
+          <textarea
+            readOnly
+            value={copyBody}
+            aria-label="这一行的纯文本"
+            data-testid="run-row-copy-fallback-text"
+            className="min-h-16 w-full resize-y rounded-md border border-border bg-transparent p-2 font-mono text-xs"
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

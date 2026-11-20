@@ -305,3 +305,14 @@
 - 复位写 `{replace:true}`，不新增历史条目；`run-notes`、`run-sort-*`、`run-list-*`、`run-row-preview-*`、`run5-*` 全部保留。
 - 测试：describe「run filter reset」4 例；runs 3 files / 123 passed（基线 119）。
 - 未测：真实浏览器 375/1440 下按钮与下拉同一行的折行。
+
+## 行内预览复制该行（run row copy，2026-11-20）
+
+`/runs` 的展开行里多了一个「复制这一行」：把该行**屏上已渲染**的七个字段拼成一行纯文本，走剪贴板。
+
+- 单一格式函数：`runs.ts` 的 `runRowFields(row, names, mode)` 输出七字段（运行短码 / 状态 / 开始 / 结束 / 耗时 / 成本 / 员工）。`runRowText()` 用 `label` 模式拼 ` · `，供预览内复制；`runListText()` 用 `dash` 模式拼逗号，即列表复制与 CSV 行——两个表面同源，不会各写一套措辞。`label` 模式下状态/开始/结束缺失写「该字段未返回」，耗时与成本仍写「—」；`dash` 模式保持列表复制既有契约（「—」）。
+- testid：`run-row-copy`、`run-row-copy-status`（`role=status` + `aria-live=polite`，「已复制」）、失败时 `run-row-copy-fallback` + 只读 `run-row-copy-fallback-text`（内容与剪贴板参数逐字相同）。
+- 按钮只在展开预览里渲染（订单给了二选一）：没打开预览时 DOM 里没有这个钮，不存在「点了没反应」的死控件。
+- 零额外请求：复制只读当前行的 `row` 与员工目录映射；打开预览、复制、再复制前后 `urls()` 与 `/api/runs` 次数均不变（用例断言）。
+- 验证：runs 3 files / 126 passed（基线 123，+3）；全量 161 files / 2237 passed（基线 2195，上游本波抬高）；`tsc` 本域 0（全仓既存 79）；`eslint src/modules/runs` exit 0；build exit 0，entry 内 `run-row-copy`=0，`RunsModulePage-*.js` 内 =1。
+- 未测：真实浏览器 375 下复制条与脚注的折行、系统剪贴板权限弹窗路径。
