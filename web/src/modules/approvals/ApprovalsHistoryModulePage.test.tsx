@@ -2627,3 +2627,109 @@ describe("R100 row detail copy (apd11-*)", () => {
     expect(area.value).toBe(R100_TEXT);
   });
 });
+
+describe("R127 row copy (apr-row-copy-*)", () => {
+  const RC1 = {
+    approvalId: "ap_r127",
+    title: "budget review Q4",
+    status: "approved",
+    riskLevel: "high",
+    approvers: [{ userId: "human:7", name: "郑涛" }],
+    requestId: "req-abc12345",
+    createdAt: "2026-11-19T01:00:00Z",
+    decidedAt: "2026-11-19T02:00:00Z",
+  };
+  const RC2 = {
+    approvalId: "ap_r128",
+    title: "key rotation",
+    status: "pending",
+    createdAt: "2026-11-19T03:00:00Z",
+  };
+  const serveRows = async (): Promise<unknown> => ({ items: [RC1, RC2] });
+  const stubClipboard = (writeText: (t: string) => Promise<void>) => {
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+  };
+  const RC1_TEXT = [
+    "单号：ap_r127",
+    "标题：budget review Q4",
+    `状态：${statusView("approved").label}`,
+    `风险：${riskView("high").label}`,
+    "更新时间：2026-11-19 10:00",
+    "短码：abc12345",
+  ].join("\n");
+
+  it("copies the six labelled segments of its own row without any extra request", async () => {
+    const written: string[] = [];
+    stubClipboard(async (t) => {
+      written.push(t);
+    });
+    await mount(serveRows);
+    const btn = document.querySelector('[data-testid="apr-row-copy-0"]') as HTMLButtonElement | null;
+    expect(btn, "row one copy button").toBeTruthy();
+    expect(btn!.getAttribute("aria-label") ?? "", "aria-label names the row").toContain("budget review Q4");
+    const before = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      btn!.click();
+    });
+    await act(async () => {});
+    const status = btn!.parentElement?.querySelector('[data-testid="apr-row-copy-status"]');
+    expect(status?.textContent, "copied feedback").toBe("已复制");
+    expect(written[0], "six labelled segments verbatim").toBe(RC1_TEXT);
+    expect(written[0], "never the raw request id").not.toContain("req-abc12345");
+    expect(document.querySelector('[data-testid="apr-row-copy-fallback"]'), "no fallback on success").toBeNull();
+    expect(api.fetchJSON.mock.calls.length, "copy never refetches").toBe(before);
+  });
+
+  it("missing fields fall to — and the unlabelled-risk word, never a fake 0", async () => {
+    const written: string[] = [];
+    stubClipboard(async (t) => {
+      written.push(t);
+    });
+    await mount(serveRows);
+    const btn = document.querySelector('[data-testid="apr-row-copy-1"]') as HTMLButtonElement;
+    await act(async () => {
+      btn.click();
+    });
+    await act(async () => {});
+    expect(written[0]).toContain("更新时间：—");
+    expect(written[0]).toContain("短码：—");
+    expect(written[0]).toContain(`风险：${riskView(null).label}`);
+    expect(written[0], "no invented zero anywhere").not.toMatch(/：\s*0(\.0+)?\s*$/m);
+  });
+
+  it("the button index follows the visible row order when sorting flips", async () => {
+    await mount(serveRows);
+    const first = document.querySelector('[data-testid="apr-row-copy-0"]') as HTMLButtonElement;
+    expect(first.getAttribute("aria-label") ?? "").toContain("budget review Q4");
+    const sortBtn = document.querySelector('[data-testid="apv-sort-title"]') as HTMLButtonElement | null;
+    expect(sortBtn, "title sort button").toBeTruthy();
+    await act(async () => {
+      sortBtn.click(); // asc —— 服务端序本已升序
+    });
+    await act(async () => {
+      sortBtn.click(); // desc —— 行序翻转
+    });
+    await act(async () => {});
+    const rowIds = Array.from(document.querySelectorAll('[data-testid^="apr5-row-ap"]')).map((el) =>
+      el.getAttribute("data-testid"),
+    );
+    expect(rowIds[0], "desc flips the first row").toBe("apr5-row-ap_r128");
+    const after = document.querySelector('[data-testid="apr-row-copy-0"]') as HTMLButtonElement;
+    expect(after.getAttribute("aria-label") ?? "", "copy-0 follows the new first row").toContain("key rotation");
+  });
+
+  it("a refused clipboard falls back to a textarea with the byte-identical text", async () => {
+    stubClipboard(() => Promise.reject(new Error("denied")));
+    await mount(serveRows);
+    const btn = document.querySelector('[data-testid="apr-row-copy-0"]') as HTMLButtonElement;
+    await act(async () => {
+      btn.click();
+    });
+    await waitFor(() => !!document.querySelector('[data-testid="apr-row-copy-fallback"]'), "fallback textarea");
+    const status = btn.parentElement?.querySelector('[data-testid="apr-row-copy-status"]');
+    expect(status?.textContent ?? "").toContain("手动复制");
+    const area = document.querySelector('[data-testid="apr-row-copy-fallback"]') as HTMLTextAreaElement;
+    expect(area.readOnly, "fallback is read-only").toBe(true);
+    expect(area.value, "fallback text is byte-identical to the copy target").toBe(RC1_TEXT);
+  });
+});
