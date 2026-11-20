@@ -676,3 +676,14 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 - 测试（`MetricsModulePage.test.tsx` describe「metAS」5 例）：纯函数三面相等/不等与 pairs 顺序、widest；默认路由下 `metAS-day === met6-cost-value`（`$0.00`）、`metAS-month = $0.13`、`metAS-usage = —`、verdict「有面缺数（2/3）」、title 含「不按 0 记」「不发新请求」；`mountShare(SHARE_USAGE)` 三面齐全 → `metAS-usage = $4.00`、verdict 口径不同、delta 含三对且 `日累计−模型聚合 -$4.00`、正文含「差值最大：日累计−模型聚合」；`?groupBy=employee` 时 usage 为「—」且 title 说明按员工未读模型聚合；挂载后 `urls()` 计数不变（零额外请求）。
 - 验证：定向 `src/modules/metrics` 4 files / 226 passed（原 221）；全量 147 files / 1926 passed（原 1921）；tsc 全仓 69 条既存、`modules/metrics` 0。build `--outDir /tmp/build-metAS`：entry `assets/index-u67lQpLo.js` sha256 `289a35532c5b6f9b426f0d7d7b43e9ec7d3c2272bc07f798d0c3ce58491dce12`，entry 内 `metAS-cost-delta`=0，chunk `MetricsModulePage-CJGRiM0y.js`=1。
 - 未测项：真实 BFF 三面的实际数值未联调（本页只做现算）；切窗后三面随批重算仅由单测覆盖，未在真浏览器逐窗核对；模型聚合在本批未读时只能给「—」，不会自动补读。
+
+## 热力卡图例与缺口说明（heat legend + gap note，2026-11-20）
+
+- 图例：热力卡内新增 `met-heat-legend`（默认显示），两个色块＝「有运行」「无数据」，并附一句 `HEAT_LEGEND_TEXT`：「格内颜色是该时段（星期几×小时）的运行次数；空白格=这一格没有数据，不计入合计。」既有 `met5-legend`（四档强度 + 0 次 + 接口未返回）保留不动。
+- 缺口说明：`HeatGrid` 增 `missingCells = 168 - presentCells`（接口没返回的格，与真实的 0 分开）；`heatGapNoteText(n)` 仅在 n>0 时给「本窗有 N 格空缺，合计只加有数据的格。」，页面渲染 `met-heat-gap-note`，无缺口时该行不渲染。
+- 与订单一处已登记差异：订单原文写「N 天空缺」「格内数字是该日运行次数」，而本卡是 7×24 的「星期几×小时」网格（168 格，格内不显示数字，强度用颜色／点表示）。按实际网格写成「格／时段」，N 仍严格等于 `present=false` 的格数（与订单断言一致），避免在屏上把 168 格说成「天」。
+- 同源：合计仍取 `grid.total`（只加 `present` 的格），与 `metX-heat-runs`（`heatCountSum`）逐值相等；真实的 0 计入合计，缺格不计入也不当 0。
+- 零额外请求：图例与缺口说明都是渲染期现算，切热力窗只多发一次 `run-activity`。
+- 测试（describe「met-heat-legend — heat legend and gap note」4 例）：图例常显且零追加请求；缺 1 格 → N=1 且 `met5-count` = `metX-heat-runs` = 有数据格求和；补齐 168 格 → 缺口行消失、真实 0 仍计入；1→4 周切换缺口 2→1，且该批只多一条 `/api/run-activity`。
+- 验证：定向 `src/modules/metrics` 4 files / 232 passed（基线 228）；全量 159 files / 2184 passed（基线 2180）；`tsc` 本域 0（全仓既存 79）；`eslint` exit 0（0 error / 9 既有 warning）；build exit 0，entry `assets/index-CKW2g5do.js` sha256 `c60786e95bce0ffe757da6cb4b237dd6655cafae968a1961acd76962ce2db35f`（仅自查），entry 内 `met-heat-legend`=0，`MetricsModulePage-CGR6VJ4a.js` 内 `met-heat-legend`=1、`met-heat-gap-note`=1。
+- 未测：真实浏览器 375/1440 下图例句折行与色块对齐。

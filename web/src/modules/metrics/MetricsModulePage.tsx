@@ -42,6 +42,8 @@ import {
   formatUsd,
   heatCellLabel,
   heatCopyText,
+  HEAT_LEGEND_TEXT,
+  heatGapNoteText,
   CALIBER_NOTES,
   caliberNoteText,
   heatSummaryParts,
@@ -1486,6 +1488,9 @@ export function MetricsModulePage() {
     ? sumOrNull(grid.rows.flatMap((row) => row.cells.filter((cell) => cell.present).map((cell) => cell.count)))
     : null;
   const heatWindowTotal = grid && grid.presentCells > 0 ? grid.total : null;
+  // HEAT — the legend is constant; the gap sentence only exists when this very
+  // batch left cells unreturned. Count is cells, never days, never a sum of 0.
+  const heatGapNote = grid ? heatGapNoteText(grid.missingCells) : null;
   const detailCountSum = detailCountTotal;
   const countDelta = heatCountSum !== null && detailCountSum !== null ? detailCountSum - heatCountSum : null;
 
@@ -3237,6 +3242,13 @@ export function MetricsModulePage() {
             data-testid="met5-heatmap"
           >
             <CardContent className="space-y-3 p-4 md:p-6">
+              <div className="met5-legend met-heat-legend" data-testid="met-heat-legend">
+                <span className="met5-swatch is-l2" aria-hidden="true" />
+                <span>有运行</span>
+                <span className="met5-swatch is-missing" aria-hidden="true" />
+                <span>无数据</span>
+                <span className="met-heat-legend-text">{HEAT_LEGEND_TEXT}</span>
+              </div>
               <div className="met5-legend" data-testid="met5-legend">
                 <span>少</span>
                 {[1, 2, 3, 4].map((level) => (
@@ -3285,6 +3297,11 @@ export function MetricsModulePage() {
                   </div>
                 </div>
               </div>
+              {heatGapNote ? (
+                <p className="met5-hint" data-testid="met-heat-gap-note" title="按这一批热力格里接口没返回的格子计数；缺格不进合计，也不当 0。">
+                  {heatGapNote}
+                </p>
+              ) : null}
               <p id="metK-heat-summary" className="sr-only" data-testid="metK-heat-summary">
                 {heatSummary}
               </p>

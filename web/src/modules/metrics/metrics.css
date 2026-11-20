@@ -1171,3 +1171,17 @@
 .metAP-face {
   white-space: nowrap;
 }
+
+/* HEAT — legend sentence wraps under its two swatches; never pushes the grid wide. */
+.met-heat-legend {
+  flex-wrap: wrap;
+  align-items: center;
+}
+.met-heat-legend-text {
+  flex: 1 1 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--color-muted-foreground);
+  font-size: 12px;
+  line-height: 1.5;
+}

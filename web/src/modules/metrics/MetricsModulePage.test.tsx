@@ -17,7 +17,7 @@ vi.mock('@/lib/clipboard', () => ({ copyTextToClipboard: clip.copyTextToClipboar
 import { MetricsModulePage } from './MetricsModulePage';
 import { COST_CALIBER_TEXT } from './costCaliberNote';
 import { CALIBER_NOTES } from './metrics';
-import { costCaliber, csvFileName, shareCsvFileName } from './metrics';
+import { HEAT_LEGEND_TEXT, costCaliber, csvFileName, shareCsvFileName } from './metrics';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -4749,5 +4749,71 @@ describe('met-cost-caliber-note — cross-page cost caliber', () => {
     expect(title).toContain('/runs');
     // 静态说明：不新增读口。
     expect(urls().filter((u) => u.includes('/api/')).length).toBeGreaterThan(0);
+  });
+});
+
+describe('met-heat-legend — heat legend and gap note', () => {
+  const bodyCell = (dow: number, hour: number, count: number) => ({ dow, hour, count });
+  const sumPresent = (body: Record<string, unknown>): number => {
+    const cells = body.cells as { count?: unknown }[];
+    return cells.reduce<number>((sum, cell) => (typeof cell.count === 'number' ? sum + cell.count : sum), 0);
+  };
+  const heatRouter = (forActivity: (url: string) => Record<string, unknown>) => {
+    const base = usageRouter();
+    return (url: string): Promise<unknown> =>
+      url.includes('/api/run-activity') ? Promise.resolve(forActivity(url)) : base(url);
+  };
+  const q = (testId: string): HTMLElement | null => document.querySelector(`[data-testid="${testId}"]`);
+
+  it('always shows the legend and adds no request', async () => {
+    await mount(usageRouter());
+    const legend = q('met-heat-legend');
+    expect(legend).not.toBeNull();
+    expect(legend?.textContent).toContain(HEAT_LEGEND_TEXT);
+    expect(legend?.querySelectorAll('.met5-swatch').length).toBe(2);
+    expect(legend?.querySelector('.met5-swatch.is-missing')).not.toBeNull();
+    // 静态图例：挂载完成后不再追加任何读口。
+    const before = urls().length;
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 40));
+    });
+    expect(urls().length).toBe(before);
+  });
+
+  it('counts the missing cells and keeps the total on the returned ones', async () => {
+    await mount(usageRouter());
+    // 夹具里 dow2/hour3 这一格从未返回；其余 167 格都有值（含一各真实的 0）。
+    const note = q('met-heat-gap-note');
+    expect(note?.textContent).toBe('本窗有 1 格空缺，合计只加有数据的格。');
+    const total = sumPresent(activityBody());
+    expect(q('met5-count')?.textContent).toBe(String(total));
+    expect(q('metX-heat-runs')?.textContent).toBe(String(total));
+  });
+
+  it('hides the gap note when every cell came back, and counts the odd 0', async () => {
+    const body = activityBody();
+    (body.cells as unknown[]).push(bodyCell(2, 3, 3));
+    await mount(heatRouter(() => body));
+    expect(q('met-heat-gap-note')).toBeNull();
+    expect(q('met5-count')?.textContent).toBe(String(sumPresent(body)));
+    expect(q('metX-heat-runs')?.textContent).toBe(String(sumPresent(body)));
+  });
+
+  it('recomputes the gap count when the heat window changes', async () => {
+    const twoMissing = activityBody();
+    const cells = twoMissing.cells as { dow: number; hour: number; count: number }[];
+    twoMissing.cells = cells.filter((cell) => !(cell.dow === 5 && cell.hour === 10));
+    await mount(heatRouter((url) => (url.includes('weeks=4') ? activityBody() : twoMissing)));
+    expect(q('met-heat-gap-note')?.textContent).toBe('本窗有 2 格空缺，合计只加有数据的格。');
+    const before = urls().length;
+    await act(async () => {
+      (q('met5-window-4') as HTMLButtonElement).click();
+    });
+    await waitFor(() => (q('met5-window-4')?.getAttribute('aria-pressed') ?? '') === 'true', 'four weeks');
+    await waitFor(() => q('met-heat-gap-note')?.textContent?.includes('1 格') ?? false, 'gap recomputed');
+    expect(q('met-heat-gap-note')?.textContent).toBe('本窗有 1 格空缺，合计只加有数据的格。');
+    // 切热力窗只多一次 run-activity 读取，不重发其它读口。
+    expect(urls().length - before).toBe(1);
+    expect(urls().slice(before).every((url) => url.includes('/api/run-activity'))).toBe(true);
   });
 });
