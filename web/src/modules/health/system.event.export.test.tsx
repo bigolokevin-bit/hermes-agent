@@ -36,6 +36,14 @@
 //
 // 冻结族零破：`aud01-*` / `aud2-*` / `aud5-export*` / `audC-copy*` / `aud-detail-copy*` /
 // `sys*` 全族只读不改；本文件不新增任何 testid。
+//
+// R222 增量（同一派工单的第三张单；①②④ 与 ③ 的前半已由 R221 本文件四例钉死，
+// 见 :232/:267/:306/:356，本轮不重写）：
+// - ③ 的新子句「时间不混 `sys-updated-at`」：`sys-updated-at` 是 health 页刷新条的锚
+//   （systemRefresh.tsx），事件面上不存在 —— `git grep -n "sys-updated-at" -- web/src`
+//   在产品码里只剩 rowCopy.ts:13 一句注脚。按现状钉两件事：本面零枚该锚；CSV 数据行
+//   永不携带读取时钟（假时钟 2031 下逐格验），而文件名戳是本表唯一被允许的读取时刻。
+// - `sys-evt-copy-*` 不存在已是第 18 条道（本轮 grep 命中 11 处，全是既有注脚）。
 
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -379,5 +387,43 @@ describe("R221 ④ — 空集不交文件（在带 tab 的组合地址上复核 
     expect(capturedName).toBe("");
     expect(urls()).toHaveLength(before);
     expect(textOf("aud01-export-status")).toBe("");
+  });
+});
+
+describe("R222 ③ 补 — 数据行里没有读取时钟：文件名才是戳，屏上锚不属于本面", () => {
+  it("under a 2031 clock the file rows keep the events' own instants, no sys-updated-at anchor exists on this surface, and the export click asks for nothing", async () => {
+    vi.useFakeTimers({ now: new Date("2031-03-01T00:00:00.000Z"), toFake: ["Date"] });
+    await mount("/system?tab=events&window=30d");
+    // 派工单点名的刷新锚住在 health 页（systemRefresh.tsx），事件面上一枚都不该有：
+    // 先证明「无处可混」，再去验数据行本身——比对着一个不存在的锚比字符串更诚实。
+    expect(all("[data-testid='sys-updated-at']"), "本面不该出现刷新时刻锚").toEqual([]);
+    expect(all("[data-testid^='sys-refresh']"), "刷新条整族都不在本面").toEqual([]);
+
+    const rows = paintedRows();
+    expect(rows).toHaveLength(3);
+    const screenTimes = rows.map(
+      (rowTestid) => cellValue(`aud01-cell-${rowTestid.replace("aud01-row-", "")}-time`),
+    );
+    for (const value of screenTimes) {
+      expect(value, "屏上时间格是事件自己的 2026 时刻，不是 2031 的读取时钟").toMatch(
+        /^2026-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/,
+      );
+    }
+
+    captureDownload();
+    const before = urls().length;
+    await clickNode("aud01-export", "导出");
+    const records = csvRecords(captured).slice(1);
+    expect(records).toHaveLength(rows.length);
+    records.forEach((line, index) => {
+      expect(line[0], `第 ${index + 1} 行的时间格仍是事件自己的时刻`).toBe(screenTimes[index]!.slice(0, 16));
+      expect(line.join(","), `第 ${index + 1} 行任何一格都不该有读取年份`).not.toContain("2031");
+    });
+    expect(captured, "整个文件不许出现读取时钟的年份").not.toContain("2031");
+    expect(captured, "刷新话术也不该渗进事件文件").not.toContain("刷新完成于");
+    // 文件名戳是本表唯一被允许的读取时刻 token：它跟着假时钟走。
+    expect(capturedName).toMatch(/^audit-.+-20310301-0800\.csv$/);
+    expect(urls(), "导出点击零请求").toHaveLength(before);
+    expect(listReads(), "整场只有首载那一问").toHaveLength(1);
   });
 });
