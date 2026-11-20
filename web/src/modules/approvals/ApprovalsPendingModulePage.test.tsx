@@ -326,7 +326,7 @@ describe("pending queue states", () => {
 
 describe("decision writes", () => {
   const openTicket = async () => {
-    const opener = document.querySelector("[data-testid='apr5-row-ap_9F3A1111'] button") as HTMLButtonElement;
+    const opener = document.querySelector("[data-testid='apr5-row-ap_9F3A1111'] button:not([data-testid^='apv9'])") as HTMLButtonElement;
     await act(async () => {
       opener.click();
     });
@@ -569,4 +569,21 @@ describe("R59 pending queue search (apv8-*)", () => {
     const urls = api.fetchJSON.mock.calls.map((c) => String(c[0]));
     expect(urls.some((u) => u.includes("q=nomatch"))).toBe(false); // 关键字从不进请求
   });
-});
+
+  // R60: 行内预览与历史页同构——展开只读已加载行，不发请求、不改 URL。
+  it("R60: pending rows expand an inline preview without any extra request", async () => {
+    await mount(queue());
+    const calls = api.fetchJSON.mock.calls.length;
+    const toggle = document.querySelector<HTMLButtonElement>('[data-testid="apv9-toggle-ap_9F3A1111"]');
+    expect(toggle).toBeTruthy();
+    await act(async () => {
+      toggle.click();
+    });
+    expect(api.fetchJSON.mock.calls.length).toBe(calls);
+    const preview = document.querySelector('[data-testid="apv9-preview-ap_9F3A1111"]');
+    expect(preview?.textContent).toContain("对外发送本周报表");
+    expect(preview?.textContent).not.toContain("human:");
+    expect(preview?.textContent).not.toContain("emp_");
+  });
+
+})

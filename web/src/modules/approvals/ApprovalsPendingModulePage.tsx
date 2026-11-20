@@ -49,6 +49,8 @@ export function ApprovalsPendingModulePage(): ReactNode {
   const forced = forcedStateOf(params.get("state"));
 
   const [selected, setSelected] = useState<string | null>(() => params.get("id"));
+  // R60: at most one row shows its inline preview; it never touches URL/filters.
+  const [previewKey, setPreviewKey] = useState<string | null>(null);
   // A row that carries no id can be listed but never opened; saying so beats
   // guessing an identifier for it.
   const [unaddressable, setUnaddressable] = useState(false);
@@ -82,6 +84,8 @@ export function ApprovalsPendingModulePage(): ReactNode {
 
   const openRow = useCallback(
     (row: ApprovalRow) => {
+      // R60: 打开详情与行内预览互斥，收起所有预览。
+      setPreviewKey(null);
       setRefused(null);
       setComment("");
       setConfirming(null);
@@ -328,6 +332,10 @@ export function ApprovalsPendingModulePage(): ReactNode {
                   row={row}
                   selected={row.rawId !== null && row.rawId === selected}
                   onOpen={() => openRow(row)}
+                  previewOpen={previewKey === row.key}
+                  onTogglePreview={() =>
+                    setPreviewKey((current) => (current === row.key ? null : row.key))
+                  }
                 />
               ))}
 

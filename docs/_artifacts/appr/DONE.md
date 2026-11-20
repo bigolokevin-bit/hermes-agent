@@ -878,3 +878,15 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 测试：history 3 用例（框+注脚上屏、键入「预算」fetchJSON 调用数不变=零新请求锁+行 8→1+apv5-count=1+「关键字过滤中」+apv6-summary 在；&q=nomatch-xyz 直达→apv8-search-empty+清空恢复 8 行；&q=预算 直达过滤态复现）+pending 1 用例（键入「本周」零新请求、nomatch→apv8-search-empty、urls 永不含 q=nomatch=关键字从不进请求）。行计数选择器用 '[data-testid^="apr5-row-ap"]'（apr5-row-details-* 撞前缀坑既有）。定向 approvals 3 files/72 passed（68 既有零破+4 新）；全量 137 files/1590 passed（含 merge 带入的 wave-17 他人用例）；assert-ia 两模式 exit0 51/22/1/8（headHash 7173b7c6）；tsc 本域零红。
 - 三档横溢=jsdom 不可测，形态学报：apv8-search-group flex-wrap gap-1.5 沿用 apv5-filter 组已验形态，input min-w-0。
 - **R58 注记（待拍板）**：员工列表分页与总数诚实化单在 lane 上无交付记录（EmployeesModulePage 无 loadMore/emp-list-page-*），上一窗口设计完成后中断未落地；本窗按队列先做了 R59。R58 设计（真游标 loadMore+去重追加、无 total→「总数不可用」+title、到底 disabled+「已到末页」、emp-list-page-* 族、活体已实测 limit=2→2 行+cursor→1 新行无重复/末页无 nextCursor 键）仍有效，等令可续。
+
+
+## R60 · 审批列表行内展开预览（apv9-*）— commit 待生成（基线 merge f259528d，现网代次 7173b7c6）
+
+- **裁决**：工单「点行展开」与既有「点行→详情」（openRow 写 ?id=+发 /api/approval?id=，R55 刚验收的 card.click()→apr5-detail 契约）冲突，且工单要求展开不改 URL+apd6/apd7/apr5 零破。按审计先例=**行内独立 toggle 按钮**（apv9-toggle-<key>，ChevronRight 图标，aria-expanded，button 天然 tabIndex/Enter/Space/焦点可见）承载展开，行主体点击语义不动。活证据=pending 既有 4 个 decision-writes 用例（openTicket 走行内按钮选择器）同步为 `button:not([data-testid^='apv9'])` 后全绿=行→详情契约保留。
+- **禁额外请求实证**：用例锁 `api.fetchJSON.mock.calls.length` 展开前后不变（只用列表已加载行数据，零新请求）。
+- **字段增量**：model.ts ApprovalRow 加 `approvers: approverLabels(rec)`（复用 R31-obs 既有解析，裸机器值→「人员」）与 `requestId: pickText(rec,["requestId","request_id"])`——活体列表行 keys 本就含两键（R49 读数）。preview=标题/状态人话（title=raw 或缺）/风险档（缺「—」+title「该字段未返回」）/更新时间 BJT 到分（row.clock，缺=服务未提供该时间）/审批人（labels join、缺「—」）/请求编号=RequestIdCopyField 可复制（冒号形制 apr5-copy-request-id；缺=「请求编号：该字段未返回」）。
+- **交互**：同时仅一行（页级 previewKey 单 state）；Escape 收起+焦点回 toggle（closeRefocus，用例断 document.activeElement）；打开详情（openRow）互斥收起预览；URL/筛选/页码/tab 零改动；刷新回收起（React state 天然，不持久化不编造）。
+- **测试**：history 3 用例（真值行夹具 ap_v1=郑涛/req-v1-9/2026-11-19 10:00/高风险；缺值行=「该字段未返回」；互斥一行）+pending 1 用例（ap_9F3A1111 展开含「对外发送本周报表」无裸 human:/emp_）。定向 approvals 3 files/76 passed（72+4）；全量 137 files/1594 passed（基线 1590+4）；assert-ia 两模式 exit0 51/22/1/8；tsc 本域零红。
+- **三档无横溢**：jsdom 不可测，形态学报——toggle 在既有 flex-wrap gap-x-2 行内，preview dl 全 min-w-0+truncate。
+- **9122==7173b7c6 禁重建**：行内展开活体读数待并入后代次；本轮 jsdom DOM 读数为权威。
+- 坑记：①history/pending 测试文件尾部插入必须核对原文件最外层 `})`（rfind 吃掉致 describe 嵌套+Babel 假象）②history 测试无 q() 助手=用 document.querySelector ③锚点缩进/形态必须先 sed 实读。

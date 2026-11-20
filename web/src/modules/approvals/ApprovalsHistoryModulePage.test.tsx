@@ -780,4 +780,82 @@ describe("R59 approvals queue search (apv8-*)", () => {
     expect((document.querySelector('[data-testid="apv8-search"]') as HTMLInputElement).value).toBe("预算");
     expect((document.querySelector('[data-testid="apv5-count"]') as HTMLElement).textContent).toBe("1");
   });
-});
+
+  describe("R60 inline row preview (apv9-*)", () => {
+    const ROWS_META = {
+      items: [
+        {
+          approvalId: "ap_v1",
+          type: "policy_update",
+          status: "approved",
+          requestedBy: "human:5",
+          action: "rotate.secret",
+          riskLevel: "high",
+          approvers: [{ userId: "human:7", name: "郑涛" }],
+          requestId: "req-v1-9",
+          createdAt: "2026-11-19T01:00:00Z",
+          decidedAt: "2026-11-19T02:00:00Z",
+        },
+      ],
+    };
+
+    it("expands in place from the row payload only — no new request, honest missing fields", async () => {
+      await mount(async (url) =>
+        url.includes("/api/approvals") ? ROWS_META : { items: [] },
+      );
+      const calls = api.fetchJSON.mock.calls.length;
+      const toggle = (document.querySelector as (sel: string) => HTMLButtonElement | null)('[data-testid="apv9-toggle-ap_v1"]');
+      expect(toggle).toBeTruthy();
+      expect(toggle.getAttribute("aria-expanded")).toBe("false");
+      await act(async () => {
+        toggle.click();
+      });
+      expect(api.fetchJSON.mock.calls.length).toBe(calls); // 禁额外请求：数据全来自已加载行
+      const preview = (document.querySelector as (sel: string) => HTMLElement | null)('[data-testid="apv9-preview-ap_v1"]');
+      expect(preview?.textContent).toContain("rotate.secret");
+      expect(preview?.textContent).toContain("郑涛");
+      expect(preview?.textContent).toContain("req-v1-9");
+      expect(preview?.textContent).toContain("2026-11-19 10:00"); // BJT 到分
+      expect(preview?.textContent).toContain("高");
+      expect((document.querySelector as (sel: string) => HTMLButtonElement | null)('[data-testid="apv9-toggle-ap_v1"]')?.getAttribute("aria-expanded")).toBe("true");
+      // 展开不是打开详情：详情抽屉没被唤起。
+      expect(document.querySelector("[data-testid='apr5-detail']")).toBeNull();
+      // Esc 收起且焦点回到行内开关。
+      await act(async () => {
+        (document.querySelector as (sel: string) => HTMLButtonElement | null)('[data-testid="apv9-toggle-ap_v1"]')?.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
+        );
+      });
+      expect(document.querySelector('[data-testid="apv9-preview-ap_v1"]')).toBeNull();
+      expect(document.activeElement?.getAttribute("data-testid")).toBe("apv9-toggle-ap_v1");
+    });
+
+    it("falls back to 该字段未返回 when the row carries no approvers or request id", async () => {
+      await mount(); // 默认 8 态夹具：无 approvers/requestId 键
+      const toggle = (document.querySelector as (sel: string) => HTMLButtonElement | null)('[data-testid="apv9-toggle-ap_p"]');
+      await act(async () => {
+        toggle?.click();
+      });
+      const preview = (document.querySelector as (sel: string) => HTMLElement | null)('[data-testid="apv9-preview-ap_p"]');
+      expect(preview?.textContent).toContain("该字段未返回");
+      expect(preview?.textContent).toContain("请求编号");
+      expect(preview?.textContent).not.toContain("human:");
+    });
+
+    it("keeps at most one preview open", async () => {
+      await mount();
+      const first = (document.querySelector as (sel: string) => HTMLButtonElement | null)('[data-testid="apv9-toggle-ap_p"]');
+      await act(async () => {
+        first?.click();
+      });
+      expect(document.querySelector('[data-testid="apv9-preview-ap_p"]')).toBeTruthy();
+      const second = (document.querySelector as (sel: string) => HTMLButtonElement | null)('[data-testid="apv9-toggle-ap_a"]');
+      await act(async () => {
+        second?.click();
+      });
+      expect(document.querySelector('[data-testid="apv9-preview-ap_p"]')).toBeNull();
+      expect(document.querySelector('[data-testid="apv9-preview-ap_a"]')).toBeTruthy();
+    });
+  });
+
+})

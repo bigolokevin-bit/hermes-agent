@@ -87,6 +87,8 @@ export function ApprovalsHistoryModulePage(): ReactNode {
   }, [list.rows, q]);
   const [selected, setSelected] = useState<string | null>(() => params.get("id"));
   const [unaddressable, setUnaddressable] = useState(false);
+  // R60: at most one row shows its inline preview; it never touches URL/filters.
+  const [previewKey, setPreviewKey] = useState<string | null>(null);
   const detail = useApprovalDetail(selected, forced);
 
   const choose = useCallback(
@@ -105,6 +107,8 @@ export function ApprovalsHistoryModulePage(): ReactNode {
   const openRow = useCallback(
     (row: { rawId: string | null }) => {
       // R55: remember where the list was, so 返回列表 can put us back there.
+      // R60: 打开详情与行内预览互斥，收起所有预览。
+      setPreviewKey(null);
       saveListScroll("approvals-history-scroll");
       setUnaddressable(row.rawId === null);
       setSelected(row.rawId);
@@ -369,6 +373,10 @@ export function ApprovalsHistoryModulePage(): ReactNode {
                   row={row}
                   selected={row.rawId !== null && row.rawId === selected}
                   onOpen={() => openRow(row)}
+                  previewOpen={previewKey === row.key}
+                  onTogglePreview={() =>
+                    setPreviewKey((current) => (current === row.key ? null : row.key))
+                  }
                 />
               ))}
 
