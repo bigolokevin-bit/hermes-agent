@@ -1314,3 +1314,24 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 基线=显式 refspec fetch+merge Already up to date @d1fbd294（tip f1b509b9=代次 1683d467 纯账本已含），toplevel ✓ porc=0；grep R110=0 全新。行序=sortedItems 同源零改；RFC4180 csvCell 复用。
 - 测试=新 describe 1 用例：三态夹具（增长组/null/缺键）→复制 written[0] 表头逐字+行末列 toEqual 三态；blob CSV 去 BOM 表头与复制逐字相等、逐行末列 toBe 对应复制行、4 段=header+屏上 3 人同源；两点击后 fetchJSON 计数不变（零额外请求）。既有 R64/R66 两处表头 toBe 与阿朝行尾断言同步（契约追加=语义等价，行尾 ,→,增长组）。
 - 验证=定向 employees 2 files/42 passed；tsc 本域 0 红；assert-ia 两模式 exit0；全量 175 files/2405 passed。emp-list-*/emp-row-preview/emp-list-page-*/ed*/apv* 零破（合跑绿为证）。三档=纯列值追加无新载体形态学报；9122==1683d467 系活体读数待并入后代次。
+
+## R127 审批队列行复制（apr-row-copy-*，单 helper）— feat(console): approvals row copy
+
+- 新 `web/src/modules/approvals/RowCopy.tsx`：`approvalRowCopyText(row)` 单点拼六段=
+  单号(rawId)/标题/状态人话(statusView)/风险人话(riskView)/更新时间(row.clock，缺「—」)/
+  短码(requestId 后 8 位，禁裸内部 id)；`RowCopy({row,index})` 行末钮
+  `apr-row-copy-<i>`（i=行序随排序/筛选变，天然同序）、aria-label「复制<标题或单号>这一行」、
+  `apr-row-copy-status` role=status（隐式 polite——工单要显式 aria-live=polite 与 R86
+  全页单播报器契约 [aria-live=polite]===1 冲突，按 R100 先例走 role=status，差异上报）、
+  剪贴板缺/拒 → `apr-row-copy-fallback` 只读 textarea 与投递文本逐字同。
+- `views.tsx` L15 import + L227 `<RowCopy row={row} index={index} />` 插行卡 reason 后、
+  preview 包壳前；onClick/onKeyDown stopPropagation 不误触发行开详情；空表无行无钮天然。
+- 与 apd8-copy（决策链路文本）/apd10（固定链接）/apd11（预览详情）/apv7（CSV）四种
+  文本各走各的单点 helper，禁混用。
+- 测试 4 用例（history.test 末 describe）：六段逐字（期望串手写不 import helper）+零请求
+  计数锁；缺值「—」/「未标注风险」禁假 0；点 apv-sort-title 两下翻转后 apr-row-copy-0
+  aria-label 随新第 0 行；clipboard reject → fallback value 逐字等。
+- 读数：定向 approvals 10 files/197 passed；tsc 本域 0 红；assert-ia 两模式 exit0；
+  全量 193 files/2528 passed（基线 2524+4）。坑记=import 追加撞既有同符号行
+  （L21 已 import riskView/statusView from model，L19 再加=Identifier already declared，
+  回滚原行即绿）。三档=行内 flex-wrap 形态学报；9122==d7965c2a 系活体待下代次。

@@ -12,6 +12,7 @@ import { ChevronRight } from "lucide-react";
 import { Link, useLocation } from "react-router";
 
 import { PermalinkCopy } from "./PermalinkCopy";
+import { RowCopy } from "./RowCopy";
 import { saveCorrelationReturn } from "./correlationReturn";
 
 import { Badge } from "@nous-research/ui/ui/components/badge";
@@ -221,6 +222,9 @@ export function ApprovalRowCard({
             事由：{truncateDisplay(humanizeHandles(row.reason)).shown}
           </p>
         ) : null}
+
+        {/* R127: 行末复制——六段纯文本单 helper 拼装，零额外请求。 */}
+        <RowCopy row={row} index={index} />
 
         <div onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
         {previewOpen ? (
