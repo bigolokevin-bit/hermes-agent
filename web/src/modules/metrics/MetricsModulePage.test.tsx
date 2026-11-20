@@ -3611,3 +3611,78 @@ describe('metAA — the heat window lives in the address', () => {
     expect(q('met5-window-4')?.getAttribute('aria-pressed')).toBe('true');
   });
 });
+
+describe('metAB — the caliber notes at the foot of the page', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+
+  it('stays collapsed by default and opens from a native button', async () => {
+    await mountShare(SHARE_USAGE);
+
+    const toggle = q('metAB-notes-toggle') as HTMLButtonElement;
+    expect(toggle.tagName).toBe('BUTTON');
+    expect(toggle.getAttribute('type')).toBe('button');
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle.getAttribute('aria-controls')).toBe('metAB-notes-body');
+    expect(q('metAB-notes-body')).toBeNull();
+  });
+
+  it('lists every read with its path, scope and missing-value policy', async () => {
+    await mountShare(SHARE_USAGE);
+    const before = urls().length;
+    const location = q('met7-loc')?.textContent;
+
+    await act(async () => {
+      (q('metAB-notes-toggle') as HTMLButtonElement).click();
+    });
+
+    const body = q('metAB-notes-body');
+    expect(body).not.toBeNull();
+    expect(q('metAB-notes-toggle')?.getAttribute('aria-expanded')).toBe('true');
+    expect(document.querySelectorAll('[data-testid^="metAB-note-"]')).toHaveLength(6);
+
+    for (const path of [
+      '/api/run-activity',
+      '/api/run-stats',
+      '/api/employees',
+      '/api/budget-usage',
+      '/api/models/pricing',
+      '/api/hermes-usage',
+    ]) {
+      expect(body?.textContent).toContain(path);
+    }
+    expect(body?.textContent).toContain('计算范围：');
+    expect(body?.textContent).toContain('缺值策略：');
+    expect(body?.textContent).toContain('不拿本机时间顶替');
+    expect(body?.textContent).toContain('$0.00');
+    expect(body?.textContent).toContain('不补 0');
+
+    // Opening it writes nothing and reads nothing.
+    expect(urls().length).toBe(before);
+    expect(q('met7-loc')?.textContent).toBe(location);
+  });
+
+  it('agrees with the freshness block on each read path and closes again', async () => {
+    await mountShare(SHARE_USAGE);
+    await openSources();
+    const freshness = q('metB-source-table')?.textContent ?? '';
+
+    await act(async () => {
+      (q('metAB-notes-toggle') as HTMLButtonElement).click();
+    });
+
+    for (const path of ['/api/run-stats', '/api/budget-usage', '/api/models/pricing']) {
+      expect(freshness).toContain(path);
+      expect(q('metAB-notes-body')?.textContent).toContain(path);
+    }
+    const runsValue = q('met6-runs-value')?.textContent;
+
+    await act(async () => {
+      (q('metAB-notes-toggle') as HTMLButtonElement).click();
+    });
+    expect(q('metAB-notes-body')).toBeNull();
+    expect(q('metAB-notes-toggle')?.getAttribute('aria-expanded')).toBe('false');
+    // Collapsing shows nothing new and leaves the cards as they were.
+    expect(q('met6-runs-value')?.textContent).toBe(runsValue);
+    expect(q('metB-source-table')).not.toBeNull();
+  });
+});

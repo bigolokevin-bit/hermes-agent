@@ -40,6 +40,7 @@ import {
   formatUsd,
   heatCellLabel,
   heatCopyText,
+  CALIBER_NOTES,
   heatSummaryParts,
   heatDayRows,
   heatFromStats,
@@ -389,6 +390,7 @@ export function MetricsModulePage() {
   const [summaryStatus, setSummaryStatus] = useState<'idle' | 'done' | 'failed'>('idle');
   const [heatCopyStatus, setHeatCopyStatus] = useState<'idle' | 'done' | 'failed'>('idle');
   const [heatCopyBody, setHeatCopyBody] = useState('');
+  const [notesOpen, setNotesOpen] = useState(false);
   const [summaryText, setSummaryText] = useState('');
   const [sources, setSources] = useState<Record<string, SourceStamp>>({});
   const [sourcesOpen, setSourcesOpen] = useState(false);
@@ -2975,6 +2977,37 @@ export function MetricsModulePage() {
           </p>
         )}
       </section>
+      <section className="metAB" data-testid="metAB-notes">
+        <button
+          type="button"
+          className="metB-toggle"
+          aria-expanded={notesOpen}
+          aria-controls="metAB-notes-body"
+          data-testid="metAB-notes-toggle"
+          onClick={() => setNotesOpen((open) => !open)}
+        >
+          口径说明
+        </button>
+        <p className="met5-note">每个读口的名字、实际路径、计算范围，以及缺值怎么显示。</p>
+        {notesOpen ? (
+          <div id="metAB-notes-body" className="metAB-body" data-testid="metAB-notes-body">
+            <ul className="metAB-list">
+              {CALIBER_NOTES.map((note) => (
+                <li key={note.key} className="metAB-item" data-testid={`metAB-note-${note.key}`}>
+                  <p className="metAB-name">{note.label}</p>
+                  <p className="metAB-path">{note.path}</p>
+                  <p>计算范围：{note.scope}</p>
+                  <p>缺值策略：{note.missing}</p>
+                </li>
+              ))}
+            </ul>
+            <p className="met6-hint">
+              采集时刻只取上游顶层返回的 ISO 时间；上游没给就是「—」，不拿本机时间顶替。两份导出沿用同一套处理：真 0 写 0 或 $0.00，缺失留空。
+            </p>
+          </div>
+        ) : null}
+      </section>
+
     </main>
   );
 }

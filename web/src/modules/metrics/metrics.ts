@@ -1109,6 +1109,64 @@ export type SourceKey =
 
 export type SourceDescriptor = { key: SourceKey; label: string; path: string };
 
+/** One row of the page's caliber notes: what each read means and how it fails. */
+export type CaliberNote = {
+  key: SourceKey;
+  label: string;
+  path: string;
+  scope: string;
+  missing: string;
+};
+
+/**
+ * The written caliber under the page. It restates what the cards, the freshness
+ * block and the two CSV exports already do; it is static text, not a new read.
+ */
+export const CALIBER_NOTES: CaliberNote[] = [
+  {
+    key: 'run-activity',
+    label: '运行活动热力',
+    path: '/api/run-activity',
+    scope: '按整周汇总，周数由热力窗口决定；不提供单独的 24 小时切分。',
+    missing: '接口没返回的格子记「—」，不补 0；接口返回的 0 就是这一小时真的没跑。',
+  },
+  {
+    key: 'run-stats',
+    label: '运行统计',
+    path: '/api/run-stats',
+    scope: '按所选时间窗（最近 24 小时 / 7 天 / 30 天）与上一周期同长对比。',
+    missing: '缺的字段记「—」；真实的 0 记 0，不拿上一周期顶替。',
+  },
+  {
+    key: 'employees',
+    label: '员工目录',
+    path: '/api/employees',
+    scope: '目录全量（一次最多 200 条），只用于把员工编号换成人名与岗位。',
+    missing: '目录里没有的编号显示「员工 · 短码」，不显示裸编号。',
+  },
+  {
+    key: 'budget-usage',
+    label: '平台扣费账本',
+    path: '/api/budget-usage',
+    scope: '按日或按月账本行，在所选时间窗内逐日累加。',
+    missing: '账本没记的金额记「—」，真 0 记 $0.00；金额只取账本实扣，不用单价乘用量反推。',
+  },
+  {
+    key: 'pricing',
+    label: '模型价目表',
+    path: '/api/models/pricing',
+    scope: '价目表快照；单价是标价，不代表实际扣费。',
+    missing: '没有单价记「—」，也不拿扣费反推单价。',
+  },
+  {
+    key: 'hermes-usage',
+    label: 'Hermes 用量',
+    path: '/api/hermes-usage',
+    scope: '按模型用量，天数跟随所选时间窗。',
+    missing: '没给次数记「—」，不补 0；占比按可读到的部分归一。',
+  },
+];
+
 export const SOURCE_CATALOG: SourceDescriptor[] = [
   { key: 'run-activity', label: '运行活动热力', path: '/api/run-activity' },
   { key: 'run-stats', label: '运行统计', path: '/api/run-stats' },

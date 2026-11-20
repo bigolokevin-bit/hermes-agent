@@ -443,3 +443,14 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 - 提示：`metAA-heat-window` 一行写明「热力窗口写在地址里：最近 7 天（heat=1）。刷新、前进后退和分享链接都会回到同一个窗口，其它卡片与筛选保持原样。」
 - 验证：定向 `src/modules/metrics` 2 files / **154 passed**（基线 150，+4）；全量 **137 files / 1677 passed**（基线 1673）；`tsc -b . --noEmit` 全仓 59 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metAA` → entry `assets/index-qaYHscOn.js` sha256 `9a84a59c07d79cfd2c16848d9f44e2d5d63a8cf2f79acc78ab218b6e23e3d12c`，entry 内 `metAA-heat-window` 命中 0，chunk `assets/MetricsModulePage-BXXjPOcY.js` 命中 1。
 - 未测项：真浏览器前进/后退时的滚动位置与热力格选中态恢复未走查（选中格在切换时按设计清空）；375 下这一行的换行未人工走查。
+
+## 页尾口径说明（metAB，2026-11-20）
+
+页面底部新增折叠块 `metAB-notes`：把六个读口的口径写成文字，读者不必逐卡推断。
+
+- 结构：原生 `<button data-testid="metAB-notes-toggle" aria-expanded aria-controls="metAB-notes-body">口径说明</button>`，默认收起（body 不渲染）；展开后每个读口一行 `metAB-note-<key>`：口径名 / 实际路径 / `计算范围：…` / `缺值策略：…`。
+- 内容来源：`metrics.ts` 新增静态表 `CALIBER_NOTES`（六项与 `SOURCE_CATALOG` 同键同路径），文案复述既有口径——运行活动「按整周汇总，不提供 24 小时切分；缺格「—」不补 0」、运行统计「所选时间窗与上一周期同长」、员工目录「只用于编号换人名，缺名显「员工 · 短码」」、账本「按日/月账本行累加，缺「—」真 0 `$0.00`，不用单价乘用量」、价目表「标价不等于扣费」、Hermes 用量「天数跟随时间窗，缺次数「—」」；末尾一句统一写明「采集时刻只取上游顶层 ISO，缺失「—」，不拿本机时间顶替；两份导出沿用同一套处理」。
+- 一致性：测试把 `metB-source-table` 与 `metAB-notes-body` 的同一路径（`/api/run-stats`、`/api/budget-usage`、`/api/models/pricing`）逐条对照，并断言 `$0.00`、`不补 0`、「不拿本机时间顶替」确实出现。
+- 不改状态：展开/收起不写 URL（`met7-loc` 前后相同）、不发请求（`urls()` 前后相同）、不清空任何卡片或新鲜度块；折叠后 `metB-source-table` 仍在。
+- 验证：定向 `src/modules/metrics` 2 files / **157 passed**（基线 154，+3）；全量 **137 files / 1680 passed**（基线 1677）；`tsc -b . --noEmit` 全仓 58 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metAB` → entry `assets/index-CE_eqhLj.js` sha256 `eeed0cc6ec3645be807ad468bf243c45b85fdac6061c63c46a60c5ed33528196`，entry 内 `metAB-notes` 命中 0，chunk `assets/MetricsModulePage-CMjnDoV9.js` 命中 1。
+- 未测项：375 下六条说明的长段落折行与滚动高度未人工走查；屏幕阅读器对折叠块的播报未走查。
