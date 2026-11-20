@@ -14,7 +14,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api-error";
 
 const api = vi.hoisted(() => ({ fetchJSON: vi.fn() }));
+const clip = vi.hoisted(() => ({ copyTextToClipboard: vi.fn((text: string) => Promise.resolve(Boolean(text))) }));
 vi.mock("@/lib/api", () => ({ fetchJSON: api.fetchJSON }));
+vi.mock("@/lib/clipboard", () => ({ copyTextToClipboard: clip.copyTextToClipboard }));
 
 import { RunsModulePage } from "./RunsModulePage";
 
@@ -1041,5 +1043,83 @@ describe("runs row preview", () => {
     expect(field(0, "cost")?.textContent).toContain("—");
     expect(preview(0)?.textContent).not.toContain("$0.00");
     expect(field(0, "employee")?.textContent).toContain("未指派");
+  });
+});
+
+/* ── list copy as plain text ───────────────────────────────────────── */
+describe("runs list copy", () => {
+  const COPY_A = {
+    runId: "rn_01M7822COPY0000000001",
+    status: "completed",
+    costStatus: "upstream",
+    costUsd: 0,
+    startedAt: "2026-11-18T02:00:00Z",
+    endedAt: "2026-11-18T02:11:00Z",
+    employeeId: "emp_aaaabbbbcccc",
+  };
+  const COPY_B = {
+    runId: "rn_01M7822COPY0000000002",
+    status: "running",
+    costStatus: "unknown",
+    costUsd: null,
+    startedAt: "2026-11-18T03:30:00Z",
+  };
+  const HEADER = "run,status,started,ended,elapsed,cost,employee";
+  const LINE_A = "运行 · 0001,成功,2026-11-18 10:00,2026-11-18 10:11,11 分钟,$0.00,员工 · AAAABBBB";
+  const LINE_B = "运行 · 0002,运行中,2026-11-18 11:30,—,—,—,未指派";
+
+  const copyButton = (): HTMLButtonElement =>
+    document.querySelector("[data-testid='run-list-copy']") as HTMLButtonElement;
+  const statusText = (): string =>
+    document.querySelector("[data-testid='run-list-copy-status']")?.textContent ?? "";
+
+  afterEach(() => {
+    clip.copyTextToClipboard.mockReset();
+    clip.copyTextToClipboard.mockImplementation((text: string) => Promise.resolve(Boolean(text)));
+  });
+
+  it("copies the rows on screen with a header, and asks the service nothing", async () => {
+    api.fetchJSON.mockImplementation(okList([COPY_A, COPY_B]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 2, "two rows");
+    const asked = urls().length;
+    await act(async () => {
+      copyButton().click();
+    });
+    await waitFor(() => statusText().includes("已复制"), "copy done");
+    expect(clip.copyTextToClipboard).toHaveBeenCalledTimes(1);
+    expect(clip.copyTextToClipboard.mock.calls[0][0]).toBe([HEADER, LINE_A, LINE_B].join("\n"));
+    expect(statusText()).toContain("已复制 2 行");
+    expect(document.querySelector("[data-testid='run-list-copy-status']")?.getAttribute("aria-live")).toBe("polite");
+    expect(urls().length).toBe(asked);
+    expect(urls().filter((url) => url.includes("/api/runs"))).toHaveLength(1);
+    const text = clip.copyTextToClipboard.mock.calls[0][0] as string;
+    expect(text).not.toContain("rn_01M7822COPY");
+    expect(text).not.toContain("emp_aaaabbbbcccc");
+  });
+
+  it("falls back to a read-only textarea with the same text when the clipboard refuses", async () => {
+    clip.copyTextToClipboard.mockImplementation(() => Promise.resolve(false));
+    api.fetchJSON.mockImplementation(okList([COPY_A]));
+    await render("/runs");
+    await waitFor(() => rowNodes() === 1, "one row");
+    await act(async () => {
+      copyButton().click();
+    });
+    await waitFor(() => document.querySelector("[data-testid='run-list-copy-fallback-text']") !== null, "fallback");
+    const area = document.querySelector("[data-testid='run-list-copy-fallback-text']") as HTMLTextAreaElement;
+    expect(area.value).toBe([HEADER, LINE_A].join("\n"));
+    expect(area.readOnly).toBe(true);
+    expect(statusText()).toContain("复制没成功");
+    expect(statusText()).not.toContain("已复制");
+  });
+
+  it("disables the button when the list has no rows", async () => {
+    api.fetchJSON.mockImplementation(okList([]));
+    await render("/runs");
+    await waitFor(() => document.querySelector("[data-testid='run-list-copy']") !== null, "copy bar");
+    expect(copyButton().disabled).toBe(true);
+    expect(copyButton().getAttribute("title")).toContain("没有可复制的文本");
+    expect(statusText()).not.toContain("已复制");
   });
 });

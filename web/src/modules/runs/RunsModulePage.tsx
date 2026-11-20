@@ -59,6 +59,7 @@ import {
 } from "./states";
 import {
   PAGE_LIMIT,
+  runListText,
   SINCE_OPTIONS,
   STATUS_KEYS,
   askedLine,
@@ -230,6 +231,59 @@ function RunPreviewPanel({ row, names, index }: { row: RunRow; names: Map<string
 
 const GRID =
   "grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,0.7fr)_minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,0.9fr)_minmax(0,1.1fr)_minmax(0,1fr)_auto]";
+
+function RunListCopy({ rows, names }: { rows: RunRow[]; names: Map<string, string> }): ReactNode {
+  const [status, setStatus] = useState<"idle" | "done" | "failed">("idle");
+  const [body, setBody] = useState("");
+  const empty = rows.length === 0;
+  const copy = () => {
+    const text = runListText(rows, names);
+    setBody(text);
+    void copyTextToClipboard(text).then((ok) => setStatus(ok ? "done" : "failed"));
+  };
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2" data-testid="run-list-copy-bar">
+      <Button
+        size="sm"
+        outlined
+        disabled={empty}
+        onClick={copy}
+        data-testid="run-list-copy"
+        title={
+          empty
+            ? "当前列表没有行，没有可复制的文本"
+            : `复制当前列表为纯文本：表头加 ${rows.length} 行；当前已加载 ${rows.length} 行，不是全量（每页最多 ${PAGE_LIMIT} 条）`
+        }
+      >
+        <Copy className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+        复制为纯文本
+      </Button>
+      <span
+        className="min-w-0 text-xs text-muted-foreground"
+        role="status"
+        aria-live="polite"
+        data-testid="run-list-copy-status"
+      >
+        {status === "done"
+          ? `已复制 ${rows.length} 行`
+          : status === "failed"
+            ? "复制没成功：下面的文本可以自己选中复制"
+            : "复制的是屏上这一页的行，只读、不改任何记录。"}
+      </span>
+      {status === "failed" ? (
+        <div className="w-full min-w-0" data-testid="run-list-copy-fallback">
+          <textarea
+            readOnly
+            value={body}
+            aria-label="列表纯文本"
+            data-testid="run-list-copy-fallback-text"
+            className="h-28 w-full resize-y rounded-md border border-border bg-card p-2 font-mono text-xs text-foreground"
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 function ListRows({
   rows,
@@ -820,6 +874,7 @@ export function RunsModulePage() {
         <DeniedPanel requestId={failure?.requestId ?? null} fixture={forced ?? undefined} />
       ) : null}
       {phase === "ready" ? <ListRows rows={rows} names={names} hrefOf={hrefOf} /> : null}
+      {phase === "ready" || phase === "empty" ? <RunListCopy rows={rows} names={names} /> : null}
 
       {phase === "ready" && rows.length > 0 ? (
         <TechnicalDisclosure lines={technical} testId="run5-list-details" />

@@ -169,3 +169,13 @@
 - 行为：同时只开一行；Esc 收起并把焦点交回展开按钮；URL 零改动；打开/收起/切换都不发请求（仅读行内已有数据，测试断言 `urls()` 计数不变）。
 - 验证：`vitest run src/modules/runs` 2 files / 81 passed；全量 151 files / 2025 passed（上一单 2021）；tsc 本域 0；eslint 本域 exit 0。build chunk `RunsModulePage-*.js` 命中 1。
 - 未测：真实浏览器 375 折行、键盘 Tab 走查。
+
+## 列表复制为纯文本（runs list copy，2026-11-20）
+
+- 位置：`/runs` 列表卡下方 `run-list-copy-bar`；按钮 `run-list-copy`（空列表 disabled，title 写「当前列表没有行，没有可复制的文本」），状态 `run-list-copy-status`（`role=status` + `aria-live="polite"`，成功「已复制 N 行」），剪贴板被拒时 `run-list-copy-fallback` 内只读 `run-list-copy-fallback-text`，内容与尝试复制的文本逐字相同。
+- 文本：表头 `run,status,started,ended,elapsed,cost,employee` 加屏上每一行（顺序即屏上顺序）；运行用短码「运行 · 后4位」（不含 `rn_` 原值），状态人话（未列出的词「待核实」），时间北京时间到分，耗时只在开始与结束两端都在时算、否则「—」（不拿本机时间补一端），成本只认 costStatus（真 0 `$0.00`、缺失「—」），员工 8 位短码。
+- 零额外请求：`runListText()` 只读 `rows` 与已载入的员工名表；测试断言复制前后 `urls()` 不变、`/api/runs` 恰 1 次。
+- 分页口径：按钮 title 明写「当前已加载 N 行，不是全量（每页最多 30 条）」——复制的是屏上这一页。
+- 测试 3 例：两行逐字比对（含表头、零成本与缺时间行，正文不含 `rn_`/`emp_` 原值）+ 零请求；剪贴板拒绝→textarea 同文；空列表 disabled + title。
+- 验证：runs 2 files / 84 passed（基线 81）；全量 151 files / 2028 passed（基线 2025）；tsc grep modules/runs = 0；eslint exit 0；build exit 0，chunk `RunsModulePage-*.js` 内 `run-list-copy`=1，entry 0。
+- 未测：真实浏览器长列表选中与 375 折行。

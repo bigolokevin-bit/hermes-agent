@@ -766,3 +766,36 @@ export function runPreview(row: RunRow, names: Map<string, string>): RunPreview 
 
   return { status, started, ended, elapsed, cost, employee };
 }
+
+/* ── list copy: the same rows, as plain text ─────────────────────────────── */
+
+/** Column names of the copied text; the header row is exactly this. */
+export const RUN_LIST_HEADER = ["run", "status", "started", "ended", "elapsed", "cost", "employee"] as const;
+
+/**
+ * Renders the rows the list already holds as plain text. Nothing is re-read:
+ * no clock, no request, no page beyond what is on screen.
+ */
+export function runListText(rows: RunRow[], names: Map<string, string>): string {
+  const lines: string[] = [RUN_LIST_HEADER.join(",")];
+  for (const row of rows) {
+    const start = beijingMinute(row.startedAt);
+    const end = beijingMinute(row.endedAt);
+    // Two ends or nothing: a half-known span is never closed with `Date.now()`.
+    const elapsed = start.text && end.text ? elapsedMinute(row.startedAt, row.endedAt).text ?? "—" : "—";
+    const cost = costState(row) === "known" ? costText(row) : "—";
+    const status = row.status ? statusLabel(row.status) : "—";
+    lines.push(
+      [
+        runCode(row.runId),
+        status,
+        start.text ?? "—",
+        end.text ?? "—",
+        elapsed,
+        cost,
+        employeeLabel(row.employeeId, names),
+      ].join(","),
+    );
+  }
+  return lines.join("\n");
+}
