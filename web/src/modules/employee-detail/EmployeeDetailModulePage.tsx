@@ -30,6 +30,14 @@ import { priorityLabel, short8, statusLabel } from "@/modules/tasks/tasksBoard";
 import { riskView, statusView } from "@/modules/approvals/model";
 import { RelativeTime } from "@/modules/approvals/RelativeTime";
 import { announcement } from "@/modules/approvals/gates";
+import {
+  APPROVAL_DENIED_BODY,
+  APPROVAL_DENIED_TITLE,
+  APPROVAL_EMPTY_SENTENCE,
+  APPROVAL_FAILED_TITLE,
+  APPROVAL_RETRY_LABEL,
+  APPROVAL_RID_FALLBACK,
+} from "@/modules/approvals/stateCopy";
 // R68 parity: the list row preview and this identity card share ONE
 // missing-field wording source and ONE lifecycle vocabulary.
 import { FIELD_MISSING, FIELD_MISSING_TITLE, fieldMissing, lifecycleLabel as rosterLifecycleLabel } from "@/modules/employees/EmployeesModulePage";
@@ -1462,7 +1470,7 @@ function ApprovalsZone({ resource, onRetry }: { resource: Resource<ApprovalRow[]
       <>
         {live}
         <ZoneEmpty
-        title="当前没有审批事项"
+        title={APPROVAL_EMPTY_SENTENCE}
         hint="审批读口暂不支持按员工筛选；这是按你的登录身份返回（全部状态）下的空集，不是把缺失当 0。"
         testid="ed5-approvals-empty"
         />
@@ -1473,7 +1481,21 @@ function ApprovalsZone({ resource, onRetry }: { resource: Resource<ApprovalRow[]
     return (
       <>
         {live}
-        <ZoneDenied title="审批" message={resource.message} requestId={resource.requestId} onRetry={onRetry} testid="ed5-approvals-denied" />
+        /* R93: 与队列 DeniedPanel 同一句族（stateCopy 单点）；403≡404 同体。 */
+        <Card data-testid="ed5-approvals-denied">
+          <CardContent className="flex flex-col items-start gap-3 p-5">
+            <ShieldAlert className="h-5 w-5 text-amber-400" />
+            <p className="text-sm">{APPROVAL_DENIED_TITLE}</p>
+            <p className="text-xs text-white/55">{APPROVAL_DENIED_BODY}</p>
+            <p className="font-mono text-xs text-white/45">
+              <RequestIdCopy requestId={resource.requestId ?? null} fallback={APPROVAL_RID_FALLBACK} />
+            </p>
+            <Button size="sm" outlined onClick={onRetry}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              {APPROVAL_RETRY_LABEL}
+            </Button>
+          </CardContent>
+        </Card>
       </>
     );
   }
@@ -1481,13 +1503,21 @@ function ApprovalsZone({ resource, onRetry }: { resource: Resource<ApprovalRow[]
     return (
       <>
         {live}
-        <ZoneError
-        title="审批"
-        message={resource.phase === "error" ? resource.message : ""}
-        requestId={resource.phase === "error" ? resource.requestId : null}
-        onRetry={onRetry}
-        testid="ed5-approvals-error"
-        />
+        /* R93: 首句与队列 ErrorPanel 同值（stateCopy 单点）；动态原因句各读口自出。 */
+        <Card data-testid="ed5-approvals-error">
+          <CardContent className="flex flex-col items-start gap-3 p-5">
+            <TriangleAlert className="h-5 w-5 text-amber-400" />
+            <p className="text-sm">{APPROVAL_FAILED_TITLE}</p>
+            <p className="text-xs text-white/55">{resource.phase === "error" ? resource.message : ""}</p>
+            <p className="font-mono text-xs text-white/45">
+              <RequestIdCopy requestId={resource.phase === "error" ? resource.requestId : null} fallback={APPROVAL_RID_FALLBACK} />
+            </p>
+            <Button size="sm" outlined onClick={onRetry}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              {APPROVAL_RETRY_LABEL}
+            </Button>
+          </CardContent>
+        </Card>
       </>
     );
   }

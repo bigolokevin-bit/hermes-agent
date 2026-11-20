@@ -95,6 +95,14 @@ export function RequestIdCopyField({
 const CONTACT_ADMIN_HREF = "mailto:workspace-admin@hermes.local?subject=Hermes%20%E6%8E%A7%E5%88%B6%E5%8F%B0%E9%97%AE%E9%A2%98%E5%8F%8D%E9%A6%88";
 
 /** The exit row shared by the zero-result and denied panels: a real route home. */
+import {
+  APPROVAL_DENIED_BODY,
+  APPROVAL_DENIED_TITLE,
+  APPROVAL_FAILED_TITLE,
+  APPROVAL_RID_FALLBACK,
+  APPROVAL_RETRY_LABEL,
+} from "./stateCopy";
+
 function PanelExits({ testId }: { testId: string }): ReactNode {
   return (
     <div className="flex min-w-0 flex-wrap items-center justify-center gap-2" data-testid={testId}>
@@ -201,7 +209,7 @@ export function EmptyPanel({
 export function ErrorPanel({
   failure,
   onRetry,
-  title = "审批申请没能加载出来",
+  title = APPROVAL_FAILED_TITLE,
   testId = "apr5-error",
   retryTestId,
 }: Marked & { failure: FailureCopy; onRetry: () => void; title?: string; testId?: string; retryTestId?: string }): ReactNode {
@@ -219,11 +227,11 @@ export function ErrorPanel({
           <span className="min-w-0 break-words">{title}</span>
         </div>
         <p className="max-w-prose break-words text-xs text-muted-foreground">{failure.sentence}</p>
-        <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="apv-state-rid"><RequestIdCopyField requestId={failure.requestId} fallback="本次请求未记录编号，可复制时间与操作路径反馈" /></p>
+        <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="apv-state-rid"><RequestIdCopyField requestId={failure.requestId} fallback={APPROVAL_RID_FALLBACK} /></p>
         {failure.technical ? <DetailsDisclosure lines={[failure.technical]} testId={`${testId}-details`} /> : null}
         <span data-testid="apv-state-retry">
           <Button size="sm" outlined onClick={onRetry} data-testid={retryTestId ?? `${testId}-retry`} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
-            重试
+            {APPROVAL_RETRY_LABEL}
           </Button>
         </span>
       </CardContent>
@@ -243,12 +251,9 @@ export function DeniedPanel({ failure }: Marked & { failure: FailureCopy | null 
     >
       <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center" data-testid="apv-state-denied">
         <ShieldAlert className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
-        <p className={`min-w-0 break-words text-sm ${themedBody}`}>暂时无法查看审批申请</p>
-        <p className="max-w-prose break-words text-xs text-muted-foreground">
-          这块内容要么尚未对你开放，要么当前环境还没有提供它。这里不会显示任何猜测的内容。
-          需要处理审批时，请联系工作区管理员为你开通。
-        </p>
-        <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="apv-state-rid"><RequestIdCopyField requestId={failure?.requestId ?? null} fallback="本次请求未记录编号，可复制时间与操作路径反馈" /></p>
+        <p className={`min-w-0 break-words text-sm ${themedBody}`}>{APPROVAL_DENIED_TITLE}</p>
+        <p className="max-w-prose break-words text-xs text-muted-foreground">{APPROVAL_DENIED_BODY}</p>
+        <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="apv-state-rid"><RequestIdCopyField requestId={failure?.requestId ?? null} fallback={APPROVAL_RID_FALLBACK} /></p>
         <PanelExits testId="apr5-denied-exits" />
       </CardContent>
     </Card>
@@ -260,7 +265,7 @@ export function InlineFailure({
   failure,
   action = "这次操作没有成功",
   onRetry,
-  retryLabel = "重试",
+  retryLabel = APPROVAL_RETRY_LABEL,
   testId = "apr5-inline-failure",
 }: {
   failure: FailureCopy;
@@ -277,7 +282,7 @@ export function InlineFailure({
       data-testid={testId}
     >
       <p className="max-w-prose break-words text-xs text-destructive">{`${action}：${failure.sentence}`}</p>
-      <p className="min-w-0 break-words text-xs text-muted-foreground"><RequestIdCopyField requestId={failure.requestId} fallback="本次请求未记录编号，可复制时间与操作路径反馈" /></p>
+      <p className="min-w-0 break-words text-xs text-muted-foreground"><RequestIdCopyField requestId={failure.requestId} fallback={APPROVAL_RID_FALLBACK} /></p>
       <div className="flex flex-wrap items-center gap-2">
         {failure.technical ? <DetailsDisclosure lines={[failure.technical]} testId={`${testId}-details`} /> : null}
         {onRetry ? (
