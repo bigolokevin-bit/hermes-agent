@@ -15,12 +15,8 @@
     "ok": true
   },
   "distinctMainHeads": 24,
-  "routesWithEmptyMain": [
-    "#/capabilities?tab=channels"
-  ],
-  "routesWithoutMainEl": [
-    "#/capabilities?tab=channels"
-  ],
+  "routesWithEmptyMain": [],
+  "routesWithoutMainEl": [],
   "mainCharsByRoute": [
     {
       "route": "#/access",
@@ -145,14 +141,14 @@
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "1440",
-      "chars": 113,
+      "chars": 10,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "375",
-      "chars": 0,
-      "hasMainEl": false
+      "chars": 10,
+      "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=models",
@@ -223,7 +219,7 @@
     {
       "route": "#/employees/:employeeId?zone=config",
       "viewport": "375",
-      "chars": 42,
+      "chars": 66,
       "hasMainEl": true
     },
     {
@@ -247,7 +243,7 @@
     {
       "route": "#/employees/:employeeId?zone=runs",
       "viewport": "375",
-      "chars": 42,
+      "chars": 66,
       "hasMainEl": true
     },
     {
@@ -646,12 +642,11 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "1bc3a760",
+  "headHash": "072f023d",
   "exitCode": 0,
-  "entry": "assets/index-DGa9lwCA.js",
-  "entrySha256": "491634556c9faf2d517ec314b26c3cf8ef3148e3f60f00e906ff5edb66d8f993",
+  "entry": "assets/index-k52YwKjs.js",
+  "entrySha256": "bb0e0004f14543690789c03f027fba9f94d0cc524b6890c7e73a3582840d349b",
   "entryBytes": 170969,
-  "servedEntryBefore": "index-DGa9lwCA.js",
-  "servedEntryAfter": "index-DGa9lwCA.js",
-  "note": "首跑 exit=1（1 条 fonts 等待超时）；取证脚本复位后同代次重跑 exit=0 / 102-102 / failures=[]（/tmp/wave37-exits.txt SHOTS-R2-exit=0）"
+  "servedEntryBefore": "index-k52YwKjs.js",
+  "servedEntryAfter": "index-k52YwKjs.js"
 }
