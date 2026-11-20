@@ -2236,3 +2236,12 @@ built /private/tmp/health-r38/index.html
 - Verification: health/version targeted **9 files / 76 passed**; full **159 files / 2175 passed**; tsc baseline approvals/employee-detail/employees only, own domain 0.
 - DOM 1440/1280/375 health+version: `vw=bodySW=bodyCW`; busy note exact; old rows retained (4 health / 2 version); updated-at `刷新完成于 2026-11-20 12:33（读取时刻，不是数据时刻）`; no error; no overflow.
 - Boundaries: only `modules/health/**`, `modules/version/**`, DONE; no App/shell/routes/registry/package·lock/web-scripts/ops; no install/force/amend/--no-verify; no main merge; no 9122 rebuild.
+
+## R82 / /system 页尾口径说明块（sys-notes）
+
+- 基线 merge `6d519d91`（章面 `0c1b94c3` / 代码代次 `9813d7af`，上游 `ee64b4f0`）。
+- 新增 `web/src/modules/health/SystemCaliberNotes.tsx`：原生 `<button type="button">` 折叠，默认收起且 `sys-notes-body` 不渲染；展开后六行 `sys-note-<key>`（服务列表 + 读源矩阵四读口 + 版本面健康行 + 模型价格表），每行四段：口径名 · 实际路径 · 计算范围 · 缺值策略。读源矩阵四行由 `sourceReads.ts` 的 `sourceDefinitions()` 单点派生，无第二套路径文案；任务文案写“六读口”，现实现矩阵实为四读口，本单补齐版本面两行后总数六行，未臆造两行矩阵读口。
+- 缺值策略统一为 `缺值显示—，不当 0；采集时刻只取上游顶层 ISO，缺失显示—，不拿本机时间顶替。`；并有一句说明服务健康状态与读源可达性口径不同，不能互相替代。
+- 挂载：`HealthPage.tsx` 在 `<SourceMatrix />` 后；`VersionPage.tsx` 在价格卡后（两 tab 每次只挂一个，testid 不重复）。展开/收起零新请求。
+- 验证：定向 `SystemCaliberNotes.test.tsx + health + version` → 10 files / 78 passed；全量 `160 files / 2177 passed`；tsc 仅基线 approvals/employee-detail/employees 错误，health/version 0。DOM（临时 harness，已删）1440/1280/375 两 tab：收起 `sys-notes-body=false`；展开 `aria-expanded=true`、6 行、策略两短语命中；请求计数 health 4→4、version 2→2；body 无横溢（375 bodySW/CW 364，视口 375）。
+- 写域仅 `modules/health/**`、`modules/version/**` + `docs/_artifacts/gov/**`；未改 App/shell/routes/registry/package·lock/web-scripts/ops；未安装、未并 main、未重建 9122。

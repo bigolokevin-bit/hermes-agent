@@ -6,6 +6,7 @@ import { currentFixtureState, fixtureView, type FixtureState } from "../../shell
 import { PILOT_ROW, PROBE_DEFINITIONS, probeResult, summarize, type ProbeRow, type ProbeStatus } from "./health";
 import { SystemHealthSurface } from "./SystemHealthSurface";
 import { SourceMatrix } from "./SourceMatrix";
+import { SystemCaliberNotes } from "./SystemCaliberNotes";
 import { SystemRefreshBar, useRefreshCoordinator } from "./systemRefresh";
 import {
   failureRead,
@@ -238,6 +239,7 @@ export function HealthPage() {
         </CardContent></Card>
       )}
       <SourceMatrix />
+      <SystemCaliberNotes />
     </section>
   );
 }

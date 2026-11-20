@@ -48,7 +48,7 @@ describe("VersionPage", () => {
     expect(container.textContent).not.toContain("0.0.0");
     const controls = [...container.querySelectorAll("button, input, select, textarea")];
     // The real copy control is read-only; every write-shaped control stays planned.
-    const planned = controls.filter((el) => el.getAttribute("data-testid") !== "ver-copy" && el.getAttribute("data-testid") !== "sys-refresh");
+    const planned = controls.filter((el) => el.getAttribute("data-testid") !== "ver-copy" && el.getAttribute("data-testid") !== "sys-refresh" && el.getAttribute("data-testid") !== "sys-notes-toggle");
     expect(planned.every((el) => el.getAttribute("data-planned") === "1" && el.getAttribute("aria-disabled") === "true")).toBe(true);
     expect(container.querySelector('[data-testid="ver4-planned-export"]')?.getAttribute("title")).toContain("还没有接上");
   });

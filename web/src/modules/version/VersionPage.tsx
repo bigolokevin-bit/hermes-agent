@@ -6,6 +6,7 @@ import { MODELS_GAP, fmtStamp, fmtUnitPrice, readPrices, type ModelPriceRow } fr
 import { currentFixtureState, fixtureView } from "../../shell/fixtures";
 import { readBuildRows, readDependencyRows, type BuildEnv, type BuildRow, type DependencyRow } from "./version";
 import { VersionHealthSurface } from "./VersionHealthSurface";
+import { SystemCaliberNotes } from "../health/SystemCaliberNotes";
 import { SystemRefreshBar, useRefreshCoordinator } from "../health/systemRefresh";
 
 type State = { k: "loading" } | { k: "empty" } | { k: "error"; requestId: string | null } | { k: "ready"; build: BuildRow[]; dependencies: DependencyRow[] };
@@ -239,6 +240,7 @@ export function VersionPage() {
           <p className="text-xs text-white/40">单价是价目表标价；实际扣费在「模型与单价」页的账本卡，不用单价乘次数推算。</p>
         </CardContent>
       </Card> : null}
+      <SystemCaliberNotes />
     </section>
   );
 }
