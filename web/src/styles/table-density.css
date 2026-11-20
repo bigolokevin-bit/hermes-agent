@@ -57,3 +57,20 @@
 
 /* 禁斑马纹：实测基线无任何 nth-child 条纹背景源，无需覆写规则；
  * 若未来出现，在此处以 transparent 覆盖。 */
+
+/* 审计账本：本仓 /audit 无 HTML table（账本行为 role=listitem 卡片流），
+ * 40/36 行高契约不适用；此处只把 dl 字段条间隙收上 4px 档
+ * （基线 gap-x-5 为 20px 非法档）、卡内 chip 间隙 6px 归 8px 档，
+ * 并给时间/RID 数字字段补 tabular-nums。列对齐在卡片流不适用。 */
+[data-tab="events"] dl {
+  column-gap: var(--space-4);
+  row-gap: var(--space-1);
+}
+
+[data-tab="events"] dd {
+  gap: var(--space-2);
+}
+
+[data-tab="events"] [data-testid="aud3-time"] {
+  font-variant-numeric: tabular-nums;
+}
