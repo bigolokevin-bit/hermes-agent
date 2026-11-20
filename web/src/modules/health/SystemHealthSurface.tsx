@@ -342,31 +342,47 @@ export function SystemHealthSurface({ preview = null, onRetry }: { preview?: Pre
           </div>
         </div>
 
-        {svc && state.k !== "loading" ? (
-          linkedRow ? (
-            <p className="sys14-link-note" data-testid="sys14-link-target" role="status">
-              已定位到「{linkedRow.name ?? linkedRow.key}」。
-              <a
-                href="#/system?tab=health"
-                data-testid="sys14-link-clear"
-                onClick={(event) => { event.preventDefault(); clearService(); }}
-              >
-                清除定位
-              </a>
-            </p>
-          ) : (
-            <div className="sys14-link-missing" data-testid="sys14-link-missing" title={SERVICE_GAP} role="status">
-              <b>该服务不在当前清单里</b>
-              <span>{linkReason}</span>
-              <a
-                href="#/system?tab=health"
-                data-testid="sys14-link-clear"
-                onClick={(event) => { event.preventDefault(); clearService(); }}
-              >
-                回到全部服务
-              </a>
-            </div>
-          )
+        {svc ? (
+          <div
+            data-testid="sys14-link"
+            data-state={state.k === "loading" ? "loading" : linkedRow ? "target" : "missing"}
+          >
+            {state.k === "loading" ? (
+              <p className="sys14-link-note" data-testid="sys14-link-loading" role="status">
+                正在定位「{svc}」…
+                <a
+                  href="#/system?tab=health"
+                  data-testid="sys14-link-clear"
+                  onClick={(event) => { event.preventDefault(); clearService(); }}
+                >
+                  取消定位
+                </a>
+              </p>
+            ) : linkedRow ? (
+              <p className="sys14-link-note" data-testid="sys14-link-target" role="status">
+                已定位到「{linkedRow.name ?? linkedRow.key}」。
+                <a
+                  href="#/system?tab=health"
+                  data-testid="sys14-link-clear"
+                  onClick={(event) => { event.preventDefault(); clearService(); }}
+                >
+                  清除定位
+                </a>
+              </p>
+            ) : (
+              <div className="sys14-link-missing" data-testid="sys14-link-missing" title={SERVICE_GAP} role="status">
+                <b>该服务不在当前清单里</b>
+                <span>{linkReason}</span>
+                <a
+                  href="#/system?tab=health"
+                  data-testid="sys14-link-clear"
+                  onClick={(event) => { event.preventDefault(); clearService(); }}
+                >
+                  回到全部服务
+                </a>
+              </div>
+            )}
+          </div>
         ) : null}
 
         {state.k === "loading" ? (

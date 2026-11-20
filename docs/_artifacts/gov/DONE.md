@@ -2203,3 +2203,13 @@ built /private/tmp/health-r38/index.html
   点击前后 `fetchJsonStrict` 计数 1→1；屏上不含 `bff-read-time`，仅 `ver5-health-asof` title 含。
 - 验证原始 stdout：`npx vitest run src/modules/version` → 2 files / 17 passed；`npx vitest run` → **153 files / 2021 passed**；`tsc -b . --noEmit` → exit 2，23 行均为基础 approvals/employee-detail/employees 旧错，本域 0。
 - 边界：仅 `modules/version/**` + 本 DONE；未改 App/shell/routes/registry/package·lock/web-scripts/ops；未 install/main merge/9122 rebuild；未引工作树 entry/sha。
+
+## R79 / sys14 wiring verdict — `/system?svc=` deep link
+
+- Baseline: explicit SSH fetch + `git merge --no-ff origin/lane/hermes-console` → merge `837be907`; upstream chapter `0c1b94c3` / code generation `9813d7af`. No reset.
+- Source: `git grep -n "svc" -- web/src/modules/health` found `SystemHealthSurface.tsx` sys14 state/read/target/notice blocks, `serviceLink.ts`, health CSS and 6 tests. App `/system` route uses `SystemAwareTabs` → `ConsoleModulePage module="system" live={{ health: <HealthConsolePage/> }}`; `overriddenPaths` is built only from `tab.override` and no manifest overrides `/system`. So the feature is mounted in source.
+- Live 9122 served build: `HealthPage-ph_8V3JF.js` contains `sys14-link-target` / `sys14-link-missing` / `sys3-row`. DOM at `#/system?svc=console` (also `/system?svc=console` and path+hash form) contains `sys14-link-missing` twice, `sys3-gap` and 系统健康. R49's “three generations not mounted” is a false negative (sampled before the health read settles, or looked for a stable `sys14-link` marker that did not exist during loading).
+- Fix: wrap the svc notice in a stable `data-testid="sys14-link"` with `data-state="loading|target|missing"`; render `sys14-link-loading` while the health read is pending, with `sys14-link-clear` preserving all other params. When ready the existing target/missing notice renders unchanged. No extra request; manual row click still clears stale svc.
+- Tests: `cd web && npx vitest run src/modules/health` → **7 files / 56 passed**; full `npx vitest run` → **159 files / 2172 passed**; tsc exit 2 with 37 baseline approvals/employee-detail/employees lines, zero health/version errors.
+- DOM widths (served 9122, no rebuild): 1440/1280/375 `vw=bodySW=bodyCW=1440/1280/375`; `sys14-link-missing` present at all three.
+- Boundaries: only `web/src/modules/health/**` + DONE; no App/shell/routes/registry/package·lock/web-scripts/ops; no install/force/amend/--no-verify; no main merge; no 9122 rebuild.
