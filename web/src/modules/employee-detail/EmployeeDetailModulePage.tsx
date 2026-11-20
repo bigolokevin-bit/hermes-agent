@@ -27,6 +27,8 @@ import { Badge, Button, Card, CardContent } from "@nous-research/ui";
 
 import { RequestIdCopy } from "@/components/RequestIdCopy";
 import { priorityLabel, short8, statusLabel } from "@/modules/tasks/tasksBoard";
+import { riskView, statusView } from "@/modules/approvals/model";
+import { RelativeTime } from "@/modules/approvals/RelativeTime";
 // R68 parity: the list row preview and this identity card share ONE
 // missing-field wording source and ONE lifecycle vocabulary.
 import { FIELD_MISSING, FIELD_MISSING_TITLE, fieldMissing, lifecycleLabel as rosterLifecycleLabel } from "@/modules/employees/EmployeesModulePage";
@@ -134,40 +136,6 @@ function lifecycleTone(value?: string | null): "success" | "warning" | undefined
   if (value === "active") return "success";
   if (value === "paused" || value === "suspended") return "warning";
   return undefined;
-}
-
-/** 风险档人话：只认上游回传的已知档；缺值「—」+原因，未知值「待核实」。 */
-function riskLabel(value: string | null): { text: string; title?: string } {
-  switch (value) {
-    case "high":
-      return { text: "高风险" };
-    case "medium":
-      return { text: "中风险" };
-    case "low":
-      return { text: "低风险" };
-    case null:
-      return { text: "—", title: "上游没有回传风险等级" };
-    default:
-      return { text: "待核实", title: `未识别的风险等级「${value}」，不猜测` };
-  }
-}
-
-function approvalStatusLabel(value: string | null): string {
-  switch (value) {
-    case "pending":
-      return "待审批";
-    case "approved":
-      return "已通过";
-    case "rejected":
-      return "已驳回";
-    case "cancelled":
-      return "已撤回";
-    case "processing":
-      return "流转中";
-    default:
-      // 未识别的审批状态不猜：与全站一致标「待核实」。
-      return "待核实";
-  }
 }
 
 function approvalStatusTone(value: string | null): "success" | "warning" | "destructive" | undefined {
@@ -301,7 +269,8 @@ function readApprovals(body: unknown): ApprovalRow[] {
   return itemsOf(body).map((item) => ({
     ref: pickString(item.taskId, item.taskRef, item.refId, item.approvalId, item.id),
     status: pickString(item.status, item.state),
-    title: pickString(item.title, item.type, item.name, item.category),
+    // R78 parity: same head keys as the queue TITLE_KEYS (type/category kept as tail extras).
+    title: pickString(item.title, item.summary, item.subject, item.actionLabel, item.action, item.name, item.tool, item.request, item.type, item.category),
     at: pickString(item.createdAt, item.created_at, item.submittedAt, item.applyTime),
     updatedAt: pickString(item.updatedAt, item.updated_at, item.decidedAt, item.changedAt),
     risk: pickString(item.riskLevel, item.risk_level, item.risk),
@@ -1503,24 +1472,28 @@ function ApprovalsZone({ resource, onRetry }: { resource: Resource<ApprovalRow[]
           <span>事项</span>
           <span>状态</span>
           <span>风险档</span>
-          <span title="口径：更新时间 updatedAt（缺则回退提交时间），按北京时间到分">更新时间</span>
+          <span title="口径：更新时间 updatedAt（缺则回退提交时间），与审批队列同一相对时间显示；悬停看绝对北京时间到秒与 ISO 原文">更新时间</span>
         </div>
         <ul className="divide-y divide-white/5">
           {resource.data.map((row, i) => {
             const label = row.title ?? (row.ref ? `审批单 · ${shortCode(row.ref)}` : "审批事项");
-            const risk = riskLabel(row.risk);
-            const updated = row.updatedAt ?? row.at;
+            // R78 parity: 队列单点助手 riskView/statusView/RelativeTime — 同值同句。
+            const risk = riskView(row.risk);
+            const sv = statusView(row.status);
+            // R78 parity: 更新时间与队列同一来源键（不再回退提交时间）；
+            // 缺值=RelativeTime 的「该字段未返回」句，两处同形制。
+            const updated = row.updatedAt;
             const inner = (
               <>
                 <span className="min-w-0 truncate text-sm" data-testid={`ed8-appr-title-${i}`}>{label}</span>
-                <span data-testid={`ed8-appr-status-${i}`} title={row.status ?? undefined}>
-                  <Badge tone={approvalStatusTone(row.status)}>{approvalStatusLabel(row.status)}</Badge>
+                <span data-testid={`ed8-appr-status-${i}`} title={sv.raw ?? "原始状态值未返回"}>
+                  <Badge tone={approvalStatusTone(row.status)}>{sv.label}</Badge>
                 </span>
-                <span className="text-xs text-white/55" data-testid={`ed8-appr-risk-${i}`} title={risk.title}>
-                  {risk.text}
+                <span className="text-xs text-white/55" data-testid={`ed8-appr-risk-${i}`} title={risk.raw ?? "该字段未返回"}>
+                  {risk.label}
                 </span>
-                <span className="font-mono text-xs text-white/55" data-testid={`ed8-appr-time-${i}`} title={row.updatedAt === null ? "上游没有回传更新时间，此处显示提交时间" : undefined}>
-                  {beijing(updated)}
+                <span className="font-mono text-xs text-white/55">
+                  <RelativeTime iso={updated} testid={`ed8-appr-time-${i}`} />
                 </span>
               </>
             );

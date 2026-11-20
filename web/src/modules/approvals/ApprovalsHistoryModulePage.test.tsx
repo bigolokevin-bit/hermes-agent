@@ -14,6 +14,7 @@ const api = vi.hoisted(() => ({ fetchJSON: vi.fn() }));
 vi.mock("@/lib/api", () => ({ fetchJSON: api.fetchJSON }));
 
 import ApprovalsHistoryModulePage from "@/modules/approvals/ApprovalsHistoryModulePage";
+import { epochOf, relativeBeijing, timeTitle } from "@/modules/approvals/RelativeTime";
 import { STATUS_FILTERS } from "@/modules/approvals/model";
 import { approvalsCsvName, buildApprovalsCsv, csvEscape, csvNamePart } from "@/modules/approvals/QueueCsvExport";
 import { riskView, statusView, type ApprovalRow } from "@/modules/approvals/model";
@@ -269,7 +270,8 @@ describe("the eight states", () => {
     await mount();
     await pick("approved");
     expect(text()).toContain("处理于");
-    expect(text()).toContain("2026-11-17 10:00");
+    // R76: 屏上是相对读数，绝对时间恒在 title（到秒）里。
+    expect(document.querySelector("[data-testid='apv-time-row-ap_a']")?.getAttribute("title") ?? "").toContain("2026-11-17 10:00:00");
     expect(text()).not.toContain("处理期限");
   });
 });
@@ -473,10 +475,12 @@ describe("history whole-panel states", () => {
     });
     await waitFor(() => document.querySelector("[data-testid='apd6-trail']") !== null, "trail mounted");
     const trail = document.querySelector("[data-testid='apd6-trail']");
-    expect(trail?.textContent).toContain("提交 · 张三 · 2026-11-18 10:30");
+    expect(trail?.textContent).toContain("提交 · 张三 ·");
+    expect(document.querySelector("[data-testid='apv-time-detail-submitted']")?.getAttribute("title") ?? "").toContain("2026-11-18 10:30:00");
     expect(document.querySelector("[data-testid='apd6-step-node-0']")?.textContent).toContain(
-      "节点 1 · 张三 · 通过 · 2026-11-18 11:00 · 意见：未填",
+      "节点 1 · 张三 · 通过 ·",
     );
+    expect(document.querySelector("[data-testid='apv-time-detail-node-0']")?.getAttribute("title") ?? "").toContain("2026-11-18 11:00:00");
     expect(document.querySelector("[data-testid='apd6-step-node-1']")).toBeNull();
     const pending = document.querySelector("[data-testid='apd6-step-pending-0']");
     expect(pending?.textContent).toContain("小鲤");
@@ -512,9 +516,9 @@ describe("history whole-panel states", () => {
     });
     await waitFor(() => document.querySelector("[data-testid='apd6-trail']") !== null, "trail mounted");
     const run = document.querySelector("[data-testid='apd6-link-run']") as HTMLAnchorElement | null;
-    expect(run?.getAttribute("href")).toBe("/runs/run_217A91BA995044DF");
+    expect(run?.getAttribute("href")).toBe("/runs?run=run_217A91BA995044DF");
     const task = document.querySelector("[data-testid='apd6-link-task']") as HTMLAnchorElement | null;
-    expect(task?.getAttribute("href")).toBe("/tasks/tk_217A91BA995044DF");
+    expect(task?.getAttribute("href")).toBe("/work?tab=board&task=tk_217A91BA995044DF");
     expect(document.querySelector("[data-testid='apd6-step-node-0']")?.textContent).toContain("意见：可以");
   });
 
@@ -821,7 +825,8 @@ describe("R59 approvals queue search (apv8-*)", () => {
       expect(preview?.textContent).toContain("rotate.secret");
       expect(preview?.textContent).toContain("郑涛");
       expect(preview?.textContent).toContain("req-v1-9");
-      expect(preview?.textContent).toContain("2026-11-19 10:00"); // BJT 到分
+      // R76: 相对读数；绝对到秒与 ISO 原文在 title。
+      expect(document.querySelector("[data-testid='apv-time-preview-ap_v1']")?.getAttribute("title") ?? "").toContain("2026-11-19 10:00:00");
       expect(preview?.textContent).toContain("高");
       expect((document.querySelector as (sel: string) => HTMLButtonElement | null)('[data-testid="apv9-toggle-ap_v1"]')?.getAttribute("aria-expanded")).toBe("true");
       // 展开不是打开详情：详情抽屉没被唤起。
@@ -1032,8 +1037,8 @@ describe("R65 preview-detail parity (apv9 vs apd5/apd6)", () => {
     // Field 的 title（不混入正文），且「该字段未返回/该段无记录」两处不互混。
     expect(pvText).not.toContain("该段无记录");
     expect(
-      document.querySelector("[data-testid='apv9-preview-ap_p65'] [title='该字段未返回']"),
-    ).toBeTruthy();
+      document.querySelector("[data-testid='apv-time-preview-ap_p65']")?.textContent,
+    ).toBe("该字段未返回");
     const decided = document.querySelector("[data-testid='apd5-field-decided-at']");
     expect(decided?.textContent).toContain("—");
     // 预览「更新时间」不再拿处理期限冒充：expiresAt 的时间不得上屏
@@ -1047,8 +1052,9 @@ describe("R65 preview-detail parity (apv9 vs apd5/apd6)", () => {
     await act(async () => {
       toggle!.click();
     });
-    const pvText = previewOf("ap_s65")?.textContent ?? "";
-    expect(pvText).toContain("2026-11-19 10:00");
+    previewOf("ap_s65");
+    const pvTitle = document.querySelector("[data-testid='apv-time-preview-ap_s65']")?.getAttribute("title") ?? "";
+    expect(pvTitle).toContain("2026-11-19 10:00:00");
     const card = document.querySelector("[data-testid='apr5-row-ap_s65']") as HTMLElement | null;
     await act(async () => {
       card!.click();
@@ -1635,5 +1641,382 @@ describe("R75 export filename contract (apv-export-name)", () => {
     });
     await waitFor(() => (qa("apv-export-name")!.textContent ?? "").includes("-pending-default-default-"), "default name");
     expect(api.fetchJSON.mock.calls.length, "still zero extra fetches").toBe(before);
+  });
+});
+
+describe("R76 relative time presentation (apv-time-*)", () => {
+  it("pure helpers: five relative bands, future fallback and strict parsing", () => {
+    const base = Date.UTC(2026, 10, 20, 2, 0, 0); // 02:00Z = 10:00 BJT
+    expect(relativeBeijing(base - 30_000, base)).toBe("刚刚");
+    expect(relativeBeijing(base - 5 * 60_000, base)).toBe("5 分钟前");
+    expect(relativeBeijing(base - 3 * 3_600_000, base)).toBe("3 小时前");
+    expect(relativeBeijing(base - 2 * 86_400_000, base)).toBe("2 天前");
+    // >7 天退回绝对到分（北京，不依赖本机 TZ）
+    expect(relativeBeijing(base - 8 * 86_400_000, base)).toBe("2026-11-12 10:00");
+    // 未来时间（处理期限常见）不编「N 后」，退回绝对
+    expect(relativeBeijing(base + 86_400_000, base)).toBe("2026-11-21 10:00");
+    expect(epochOf("not a date")).toBeNull();
+    expect(epochOf(null)).toBeNull();
+    expect(timeTitle(base, "2026-11-20T02:00:00Z")).toBe(
+      "绝对 2026-11-20 10:00:00（北京时间） · ISO 2026-11-20T02:00:00Z",
+    );
+  });
+
+  it("one record, one verbatim title across row / preview / trail", async () => {
+    const ROW76 = {
+      approvalId: "ap_t76",
+      title: "轮换窗口",
+      status: "approved",
+      createdAt: "2026-11-18T01:00:00Z",
+      decidedAt: "2026-11-18T02:00:00Z",
+      approvers: [{ userId: "human:7", name: "郑涛" }],
+      decisions: [{ userId: "human:7", name: "郑涛", verdict: "approve", decidedAt: "2026-11-18T02:00:00Z" }],
+    };
+    await mount(
+      async (url: string) => {
+        if (String(url).includes("/api/approval?id=")) return ROW76;
+        return { items: [ROW76] };
+      },
+      "/approvals?tab=history",
+    );
+    const toggle = document.querySelector("[data-testid='apv9-toggle-ap_t76']") as HTMLButtonElement | null;
+    expect(toggle, "row rendered").toBeTruthy();
+    const before = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      toggle!.click();
+    });
+    expect(api.fetchJSON.mock.calls.length, "time rendering fetches nothing").toBe(before);
+    // 打开详情会收起预览（R60 互斥），先把预览侧读数存下来。
+    const pvTitle = document.querySelector("[data-testid='apv-time-preview-ap_t76']")?.getAttribute("title") ?? "";
+    expect(pvTitle).toContain("2026-11-18 10:00:00");
+    const card = document.querySelector("[data-testid='apr5-row-ap_t76']") as HTMLElement | null;
+    await act(async () => {
+      card!.click();
+    });
+    await waitFor(() => !!document.querySelector("[data-testid='apd6-trail']"), "trail");
+    const title = (sel: string) => document.querySelector(sel)?.getAttribute("title") ?? "";
+    const rowClock = title("[data-testid='apv-time-row-ap_t76']");
+    const pv = pvTitle;
+    const final = title("[data-testid='apv-time-detail-final']");
+    const node = title("[data-testid='apv-time-detail-node-0']");
+    expect(rowClock).toContain("2026-11-18 10:00:00");
+    expect(pv).toBe(rowClock);
+    expect(final).toBe(rowClock);
+    expect(node).toBe(rowClock);
+    const subRow = title("[data-testid='apv-time-row-submitted-ap_t76']");
+    const subTrail = title("[data-testid='apv-time-detail-submitted']");
+    expect(subRow).toContain("2026-11-18 09:00:00");
+    expect(subTrail).toBe(subRow);
+    expect(api.fetchJSON.mock.calls.length, "still no extra request").toBeGreaterThan(before - 1);
+  });
+});
+
+describe("R77 time-range quick filter (apv-since-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+  const isoAgo = (ms: number) => new Date(Date.now() - ms).toISOString();
+  const DAY = 24 * 3_600_000;
+  const TIME_ROWS = {
+    items: [
+      { approvalId: "ap_t24", title: "刚提的变更", status: "pending", createdAt: isoAgo(2 * 3_600_000) },
+      { approvalId: "ap_t7", title: "三天前的变更", status: "pending", createdAt: isoAgo(3 * DAY) },
+      { approvalId: "ap_t60", title: "两月前的变更", status: "pending", createdAt: isoAgo(60 * DAY) },
+      { approvalId: "ap_tn", title: "没带时间的变更", status: "pending" },
+    ],
+  };
+  const listOnly = async (url: string) => {
+    if (String(url).includes("/api/approval?id=")) return {};
+    return TIME_ROWS;
+  };
+  const rowCount = () => document.querySelectorAll('[data-testid^="apr5-row-ap_t"]').length;
+
+  it("chips filter the loaded rows locally with zero new requests, both ways", async () => {
+    await mount(listOnly, "/approvals?tab=history");
+    await waitFor(() => rowCount() === 4, "four rows first");
+    expect(qa("apv-since-all")?.getAttribute("aria-pressed")).toBe("true");
+    expect(qa("apv-since-scope-note")?.textContent).toContain("按当前已加载 4 条统计，不是全量");
+    const before = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      (qa("apv-since-24h") as HTMLButtonElement).click();
+    });
+    await waitFor(() => rowCount() === 1, "24h window");
+    expect(qa("apr5-row-ap_t24"), "only the fresh ticket stays").toBeTruthy();
+    expect(api.fetchJSON.mock.calls.length, "chip click never refetches").toBe(before);
+    expect(qa("apv-since-24h")?.getAttribute("aria-pressed")).toBe("true");
+    await act(async () => {
+      (qa("apv-since-7d") as HTMLButtonElement).click();
+    });
+    await waitFor(() => rowCount() === 2, "7d window");
+    await act(async () => {
+      (qa("apv-since-7d") as HTMLButtonElement).click();
+    });
+    await waitFor(() => rowCount() === 4, "same chip toggles off");
+    expect(api.fetchJSON.mock.calls.length, "still zero extra requests end to end").toBe(before);
+  });
+
+  it("a pasted ?since= replays; the server request never carries it", async () => {
+    await mount(listOnly, "/approvals?tab=history&since=7d");
+    await waitFor(() => rowCount() === 2, "replay 7d");
+    expect(qa("apv-since-7d")?.getAttribute("aria-pressed")).toBe("true");
+    const prev = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      (document.querySelector('[data-testid="apv5-filter-status-pending"]') as HTMLButtonElement).click();
+    });
+    await waitFor(() => api.fetchJSON.mock.calls.length > prev, "status refetch");
+    const fresh = api.fetchJSON.mock.calls.slice(prev).map((c) => String(c[0]));
+    expect(fresh.some((u) => u.includes("status=pending")), fresh.join("|")).toBe(true);
+    expect(fresh.every((u) => !u.includes("since=")), "本地参数不上服务端请求").toBe(true);
+    // since 活在组件里：返回的行仍按 7d 窗过滤
+    await waitFor(() => rowCount() === 2, "since survives the queue filter");
+  });
+
+  it("no row in the window gets its own card and clear exit", async () => {
+    await mount(
+      async (url: string) => {
+        if (String(url).includes("/api/approval?id=")) return {};
+        return { items: [TIME_ROWS.items[2]] };
+      },
+      "/approvals?tab=history&since=24h",
+    );
+    await waitFor(() => !!qa("apv-since-empty"), "no-match card");
+    expect(qa("apv-since-empty")?.textContent).toContain("该时间范围内没有审批");
+    await act(async () => {
+      (qa("apv-since-clear") as HTMLButtonElement).click();
+    });
+    await waitFor(() => !!qa("apr5-row-ap_t60"), "row back after clear");
+    expect(qa("apv-since-empty"), "card gone").toBeNull();
+  });
+
+  it("non-ready phases disable all four chips with the gates sentence", async () => {
+    await mount(async (url: string) => {
+      if (String(url).includes("/api/approval?id=")) return {};
+      throw new ApiError("boom", { status: 500, body: "", url: "/agent-api/api/approvals", requestId: "req-r77-500" });
+    }, "/approvals?tab=history");
+    await waitFor(() => !!qa("apv-state-error"), "error panel");
+    for (const id of ["apv-since-24h", "apv-since-7d", "apv-since-30d", "apv-since-all"]) {
+      const btn = qa(id) as HTMLButtonElement | null;
+      expect(btn, id).toBeTruthy();
+      expect((btn as HTMLButtonElement).disabled, `${id} gated`).toBe(true);
+      expect(btn.getAttribute("title")).toContain("不能按时间范围筛选：列表读取失败");
+    }
+  });
+});
+
+describe("R79 cursor pagination and honest total (apv-page-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+  const rows = (n: number, from = 1) =>
+    Array.from({ length: n }, (_, i) => ({
+      approvalId: `ap_g${from + i}`,
+      title: `变更 ${from + i}`,
+      status: "pending",
+      createdAt: "2026-11-19T02:00:00Z",
+    }));
+  const twoPages = async (url: string) => {
+    const u = String(url);
+    if (u.includes("/api/approval?id=")) return {};
+    if (u.includes("status=approved")) return { items: rows(1, 3) };
+    if (u.includes("cursor=cg2")) return { items: [...rows(1, 2), ...rows(1, 1)] }; // 新行+重复行
+    return { items: rows(1, 1), nextCursor: "cg2" };
+  };
+
+  it("states 「总数不可用」, pages with the real cursor and dedupes appended rows", async () => {
+    await mount(twoPages, "/approvals?tab=history");
+    await waitFor(() => !!qa("apr5-row-ap_g1"), "page one");
+    expect(qa("apv-page-count")?.textContent).toBe("总数不可用 · 已显示 1 条");
+    expect(qa("apv-page-count")?.getAttribute("title")).toContain("无 total 键");
+    const more = qa("apv-page-more") as HTMLButtonElement;
+    expect(more.disabled).toBe(false);
+    expect(qa("apv-page-end"), "not at end yet").toBeNull();
+    await act(async () => {
+      more.click();
+    });
+    await waitFor(() => !!qa("apv-page-end"), "end chip");
+    const calls = api.fetchJSON.mock.calls.map((c) => String(c[0])).filter((u) => u.includes("/api/approvals"));
+    expect(calls.some((u) => u.includes("cursor=cg2")), calls.join("|")).toBe(true);
+    expect(document.querySelectorAll('[data-testid^="apr5-row-ap_g"]').length, "duplicate row suppressed").toBe(2);
+    expect((qa("apv-page-more") as HTMLButtonElement).disabled, "more disabled at end").toBe(true);
+    expect(qa("apv-page-more")?.getAttribute("title")).toContain("已到末页");
+    expect(qa("apv-page-count")?.textContent).toBe("总数不可用 · 已显示 2 条");
+  });
+
+  it("a status switch resets the list and never carries the stale cursor", async () => {
+    await mount(twoPages, "/approvals?tab=history");
+    await waitFor(() => !!qa("apr5-row-ap_g1"), "page one");
+    await act(async () => {
+      (qa("apv-page-more") as HTMLButtonElement).click();
+    });
+    await waitFor(() => !!qa("apv-page-end"), "loaded page two");
+    const prev = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      (document.querySelector('[data-testid="apv5-filter-status-approved"]') as HTMLButtonElement).click();
+    });
+    await waitFor(() => api.fetchJSON.mock.calls.length > prev, "refetch");
+    const fresh = api.fetchJSON.mock.calls.slice(prev).map((c) => String(c[0])).filter((u) => u.includes("/api/approvals"));
+    expect(fresh.every((u) => !u.includes("cursor=")), fresh.join("|")).toBe(true);
+    await waitFor(() => !!qa("apr5-row-ap_g3"), "rows replaced");
+    expect(qa("apr5-row-ap_g1"), "stale page gone").toBeNull();
+    expect(qa("apv-page-count")?.textContent).toBe("总数不可用 · 已显示 1 条");
+  });
+});
+
+describe("R80 long value truncation (apv-trunc-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+  const LONG_TITLE = "变".repeat(70);
+  const LONG_REASON = "由".repeat(75);
+  const LONG_NOTE = "备".repeat(85);
+  const TR_ROW = {
+    approvalId: "ap_tr1",
+    title: LONG_TITLE,
+    status: "approved",
+    decidedAt: "2026-11-18T02:00:00Z",
+    reason: LONG_REASON,
+    approvers: [{ userId: "human:7", name: "郑涛" }],
+  };
+  const TR_DETAIL = {
+    approvalId: "ap_tr1",
+    title: LONG_TITLE,
+    status: "approved",
+    requestedBy: { type: "human", id: "human:7" },
+    action: "rotate.secret",
+    reason: LONG_REASON,
+    createdAt: "2026-11-18T01:00:00Z",
+    decidedAt: "2026-11-18T02:00:00Z",
+    approvers: [{ userId: "human:7", name: "郑涛" }],
+    decisions: [{ userId: "human:7", name: "郑涛", decision: "approve", at: "2026-11-18T01:50:00Z", comment: LONG_NOTE }],
+  };
+  const mountTr = () =>
+    mount(
+      async (url: string) => {
+        if (String(url).includes("/api/approval?id=")) return TR_DETAIL;
+        return { items: [TR_ROW] };
+      },
+      "/approvals?tab=history",
+    );
+
+  it("over-long values show the clipped text with the full value in title; short values get neither", async () => {
+    await mountTr();
+    const before = api.fetchJSON.mock.calls.length;
+    const rowTitle = qa("apv-trunc-row-title-ap_tr1") as HTMLElement | null;
+    expect(rowTitle, "row title carrier").toBeTruthy();
+    expect(rowTitle!.textContent).toBe("变".repeat(59) + "…");
+    expect(rowTitle!.getAttribute("title"), "title 恒全文").toBe(LONG_TITLE);
+    const rowReason = qa("apv-trunc-row-reason-ap_tr1") as HTMLElement | null;
+    expect(rowReason!.getAttribute("title")).toBe(LONG_REASON);
+    expect(rowReason!.textContent).toContain("事由：");
+    // 行内预览与行卡同截同 title（同一 helper 单点）
+    await act(async () => {
+      (qa("apv9-toggle-ap_tr1") as HTMLButtonElement).click();
+    });
+    const pvTitle = qa("apv-trunc-preview-title-ap_tr1") as HTMLElement | null;
+    expect(pvTitle, "preview title carrier").toBeTruthy();
+    expect(pvTitle!.textContent).toBe(rowTitle!.textContent);
+    expect(pvTitle!.getAttribute("title")).toBe(rowTitle!.getAttribute("title"));
+    expect(api.fetchJSON.mock.calls.length, "truncation never fetches").toBe(before);
+    // 短值：不加省略号也不加 title
+    await mount(async () => ({ items: [{ approvalId: "ap_short", title: "预算上调", status: "pending", createdAt: "2026-11-19T01:00:00Z" }] }), "/approvals?tab=history");
+    const shortTitle = qa("apv-trunc-row-title-ap_short") as HTMLElement | null;
+    expect(shortTitle!.textContent).toBe("预算上调");
+    expect(shortTitle!.hasAttribute("title"), "short value carries no title").toBe(false);
+    expect(qa("apv-trunc-row-reason-ap_short"), "no reason no carrier").toBeNull();
+  });
+
+  it("copy and CSV keep the FULL value, matching the title attribute verbatim", async () => {
+    await mountTr();
+    await act(async () => {
+      (document.querySelector('[data-testid="apr5-row-ap_tr1"]') as HTMLElement).click();
+    });
+    await waitFor(() => !!qa("apd6-trail"), "trail");
+    const node = qa("apv-trunc-note-0") as HTMLElement | null;
+    expect(node, "trail note carrier").toBeTruthy();
+    expect(node!.textContent).toBe("备".repeat(59) + "…");
+    expect(node!.getAttribute("title")).toBe(LONG_NOTE);
+    const dtTitle = qa("apv-trunc-detail-title") as HTMLElement | null;
+    expect(dtTitle!.getAttribute("title")).toBe(LONG_TITLE);
+    expect(dtTitle!.textContent).toBe("变".repeat(59) + "…");
+    // 复制为纯文本＝全文（不是截断值）
+    const written: string[] = [];
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: async (t: string) => { written.push(t); } },
+    });
+    await act(async () => {
+      (qa("apd8-copy") as HTMLButtonElement).click();
+    });
+    await waitFor(() => (qa("apd8-copy-status")?.textContent ?? "").includes("已复制"), "copied");
+    // 链路文本=提交/节点/终态行（不含标题行），节点意见与 title 逐字同全文
+    expect(written[0]).toContain(LONG_NOTE);
+    expect(written[0]).not.toContain("…");
+    // 导出 CSV 同样全文，并与行卡 title 逐字相等
+    const orig = URL.createObjectURL;
+    const blobs: Blob[] = [];
+    URL.createObjectURL = ((b: Blob) => {
+      blobs.push(b);
+      return "blob:stub";
+    }) as typeof URL.createObjectURL;
+    try {
+      await act(async () => {
+        (qa("apv7-export") as HTMLButtonElement).click();
+      });
+    } finally {
+      URL.createObjectURL = orig;
+    }
+    expect(blobs.length).toBe(1);
+    const csv = await blobs[0].text();
+    // CSV 表头契约（R54）无 reason 列；title 全文与行卡 title 属性同源
+    expect(csv).toContain(LONG_TITLE);
+    expect((qa("apv-trunc-row-title-ap_tr1") as HTMLElement).getAttribute("title")).toBe(LONG_TITLE);
+  });
+});
+
+describe("R82 approval audit correlation (apd9-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+  const C82_DETAIL = {
+    approvalId: "ap_c82",
+    tenantId: "t_seakoi_pilot",
+    title: "轮换部署密钥",
+    status: "approved",
+    action: "rotate.secret",
+    requestId: "req-c82-1",
+    runId: "rn_c82run",
+    taskId: "tk_c82task",
+    createdAt: "2026-11-19T01:00:00Z",
+    decidedAt: "2026-11-19T02:00:00Z",
+    approvers: [{ userId: "human:7", name: "郑涛" }],
+    decisions: [{ userId: "human:7", decision: "approve", at: "2026-11-19T02:00:00Z" }],
+  };
+  const handlerFor = (detailBody: Record<string, unknown>) => async (url: string) => {
+    if (String(url).includes("/api/approval?id=")) return detailBody;
+    return { items: [] };
+  };
+
+  it("gives a real audit filter link derived from the approval id, with the rid as a search lead", async () => {
+    await mount(handlerFor(C82_DETAIL), "/approvals?tab=history&id=ap_c82");
+    await waitFor(() => !!qa("apr5-detail"), "detail open");
+    const after = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+    expect(api.fetchJSON.mock.calls.length, "correlation block fetches nothing").toBe(after);
+    const link = qa("apd9-audit-link") as HTMLAnchorElement | null;
+    expect(link, "audit link present").toBeTruthy();
+    expect(link!.getAttribute("href")).toBe("/audit?resource=ap_c82");
+    expect(link!.getAttribute("title")).toContain("resourceId 真过滤");
+    const detailText = qa("apr5-detail")?.textContent ?? "";
+    expect(detailText).toContain("req-c82-1");
+    expect(qa("apr5-copy-request-id"), "rid copyable").toBeTruthy();
+    // R48b 口径的 run 真链 + /tasks 重定向不再是目标
+    expect((qa("apd6-link-run") as HTMLAnchorElement).getAttribute("href")).toBe("/runs?run=rn_c82run");
+    expect((qa("apd6-link-task") as HTMLAnchorElement).getAttribute("href")).toBe("/work?tab=board&task=tk_c82task");
+    expect(detailText).not.toContain("human:");
+  });
+
+  it("without run/task the honest none branches stay; the audit link still rides the id", async () => {
+    const MIN = { ...C82_DETAIL, approvalId: "ap_c82min" };
+    delete (MIN as Record<string, unknown>).runId;
+    delete (MIN as Record<string, unknown>).taskId;
+    await mount(handlerFor(MIN), "/approvals?tab=history&id=ap_c82min");
+    await waitFor(() => !!qa("apr5-detail"), "detail open");
+    expect(qa("apd6-link-run-none")).toBeTruthy();
+    expect(qa("apd6-link-task-none")).toBeTruthy();
+    expect((qa("apd9-audit-link") as HTMLAnchorElement).getAttribute("href")).toBe("/audit?resource=ap_c82min");
   });
 });

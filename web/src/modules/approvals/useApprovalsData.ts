@@ -26,6 +26,7 @@ export interface ListApi {
   /** Rows the answer carried but that could not be read — counted, never shown as data. */
   unreadable: number;
   next: string | null;
+  total: number | null;
   failure: FailureCopy | null;
   /** A later page failed while the loaded rows stay on screen. */
   pageFailure: FailureCopy | null;
@@ -52,6 +53,7 @@ const INITIAL: ListState = {
   rows: [],
   unreadable: 0,
   next: null,
+  total: null,
   failure: null,
   pageFailure: null,
   loadingMore: false,
@@ -106,9 +108,13 @@ export function useApprovalsList(status: string | null, forced: ForcedState): Li
           nextRef.current = page.next && page.next !== cursor ? page.next : null;
           setState((prev) => ({
             phase: !append && page.rows.length === 0 && page.unreadable === 0 ? "empty" : "ready",
-            rows: append ? [...prev.rows, ...page.rows] : page.rows,
+            // R79: 追加按行键去重——游标失效被服务端回退到第一页时禁重复行。
+            rows: append
+              ? [...prev.rows, ...page.rows.filter((row) => !prev.rows.some((old) => old.key === row.key))]
+              : page.rows,
             unreadable: append ? prev.unreadable + page.unreadable : page.unreadable,
             next: nextRef.current,
+            total: page.total ?? (append ? prev.total : null),
             failure: null,
             pageFailure: append ? prev.pageFailure : null,
             loadingMore: false,

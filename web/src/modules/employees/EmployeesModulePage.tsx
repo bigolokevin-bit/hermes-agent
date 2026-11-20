@@ -46,6 +46,9 @@ type State = {
 
 const PAGE_SIZE = 50;
 
+/** R81: 「未标注部门」桶的 URL 键（真实部门名不会等于它）。 */
+const NONE_DEPT = "__none__";
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -466,6 +469,9 @@ export function EmployeesModulePage() {
   // step reopens exactly the same answer.
   const q = params.get("q") ?? "";
   const lifecycle = params.get("lifecycle") ?? "";
+  // R81: 部门是本地维度——读口实测 department=/dept= 丢参（三组同集合），
+  // ?dept= 只作用在已加载行上，切换不发请求、不污染服务端游标。
+  const dept = params.get("dept");
   const [keyword, setKeyword] = useState(q);
   const [debounced, setDebounced] = useState(q);
   const [reload, setReload] = useState(0);
@@ -562,7 +568,7 @@ export function EmployeesModulePage() {
     return { active, limited, paused };
   }, [state.items]);
 
-  const filtered = Boolean(q || lifecycle);
+  const filtered = Boolean(q || lifecycle || dept);
 
   // R62: column sorting. Measured GET /api/employees with sort=name&order=desc,
   // sortBy=lifecycleState or sort=createdAt&dir=asc all return the same order
@@ -590,6 +596,25 @@ export function EmployeesModulePage() {
       return va.localeCompare(vb, "zh-Hans-CN") * factor;
     });
   }, [state.items, sort, sortActive, dir]);
+  // R81: 部门分桶从已加载行现算；缺部门的行归「未标注部门」一桶并计数。
+  const deptBuckets = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const row of state.items) {
+      const key = row.department?.trim() || NONE_DEPT;
+      map.set(key, (map.get(key) ?? 0) + 1);
+    }
+    return [...map.entries()].sort(
+      (a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "zh-Hans-CN"),
+    );
+  }, [state.items]);
+  const visibleItems = useMemo(
+    () =>
+      dept === null
+        ? sortedItems
+        : sortedItems.filter((row) => (row.department?.trim() || NONE_DEPT) === dept),
+    [sortedItems, dept],
+  );
+
   const retry = () => setReload((n) => n + 1);
 
   // R58: real cursor paging. Same filter query plus the server's nextCursor;
@@ -633,16 +658,16 @@ export function EmployeesModulePage() {
             data-testid="emp-list-count"
             title={
               state.phase === "ready"
-                ? "计数与列表同源：同一份服务端返回的行数"
+                ? "计数与列表同源：当前屏上行数（服务端返回经本地部门过滤）"
                 : phaseReason(state.phase) ?? undefined
             }
           >
-            {state.phase === "ready" ? state.items.length : "—"}
+            {state.phase === "ready" ? visibleItems.length : "—"}
           </span>
         </div>
         <span className="flex min-w-0 flex-wrap items-center gap-2">
-          <ListCopyButton rows={sortedItems} totalLoaded={state.items.length} phase={state.phase} />
-          <ListExportButton rows={sortedItems} totalLoaded={state.items.length} phase={state.phase} />
+          <ListCopyButton rows={visibleItems} totalLoaded={state.items.length} phase={state.phase} />
+          <ListExportButton rows={visibleItems} totalLoaded={state.items.length} phase={state.phase} />
           <Button size="sm" outlined onClick={retry} data-testid="employees-refresh">
           <RefreshCw className="mr-2 h-4 w-4" />
           刷新
@@ -704,6 +729,53 @@ export function EmployeesModulePage() {
             <option value="suspended">停用</option>
           </select>
           </span>
+          <div
+            className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs"
+            role="group"
+            aria-label="部门"
+            data-testid="emp-list-dept-rail"
+          >
+            <span className="text-muted-foreground">部门：</span>
+            <button
+              type="button"
+              data-testid="emp-list-dept-all"
+              aria-pressed={dept === null}
+              disabled={state.phase !== "ready"}
+              title={state.phase === "ready" ? "显示全部部门" : `不能按部门筛选：${phaseReason(state.phase)}；恢复列表后自动可用。`}
+              onClick={() => patchParams({ dept: null })}
+              className="h-6 min-w-0 rounded-md border border-white/15 px-2 hover:bg-white/5 focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/60 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              全部
+            </button>
+            {deptBuckets.map(([key, count], i) => (
+              <button
+                key={key}
+                type="button"
+                data-testid={`emp-list-dept-${i}`}
+                aria-pressed={dept === key}
+                disabled={state.phase !== "ready"}
+                title={
+                  state.phase !== "ready"
+                    ? `不能按部门筛选：${phaseReason(state.phase)}；恢复列表后自动可用。`
+                    : key === NONE_DEPT
+                      ? "只看没有部门信息的行（本地过滤，不发新请求）"
+                      : `筛选部门「${key}」（本地过滤，不发新请求）`
+                }
+                onClick={() => patchParams({ dept: dept === key ? null : key })}
+                className="h-6 min-w-0 max-w-full truncate rounded-md border border-white/15 px-2 hover:bg-white/5 focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/60 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {key === NONE_DEPT ? "未标注部门" : key}{" "}
+                <b className="font-mono">{state.phase === "ready" ? count : "—"}</b>
+              </button>
+            ))}
+          </div>
+          <p
+            className="min-w-0 break-words text-xs text-muted-foreground"
+            data-testid="emp-list-dept-scope-note"
+            title="实测 GET /api/employees 带 department= 或 dept= 都返回同一全量（200，3 条同集合），后台不做部门过滤；为避免假筛选，这里只对已加载的行做前端本地过滤，切换不产生新请求、也不影响服务端游标。"
+          >
+            按当前已加载 {state.items.length} 人统计，不是全量；部门切换是前端本地过滤，不发新请求。
+          </p>
           {filtered ? (
             <Button
               size="sm"
@@ -711,7 +783,7 @@ export function EmployeesModulePage() {
               onClick={() => {
                 setKeyword("");
                 setDebounced("");
-                patchParams({ q: null, lifecycle: null });
+                patchParams({ q: null, lifecycle: null, dept: null });
               }}
               data-testid="employees-clear"
             >
@@ -794,7 +866,7 @@ export function EmployeesModulePage() {
                 onClick={() => {
                   setKeyword("");
                   setDebounced("");
-                  patchParams({ q: null, lifecycle: null });
+                  patchParams({ q: null, lifecycle: null, dept: null });
                 }}
               >
                 清除筛选
@@ -804,6 +876,19 @@ export function EmployeesModulePage() {
         </Card>
       ) : null}
 
+      {dept !== null && state.phase === "ready" && visibleItems.length === 0 ? (
+        <Card data-testid="emp-list-dept-empty">
+          <CardContent className="min-w-0 space-y-2 p-4 text-sm">
+            <p>该部门下没有员工。</p>
+            <p className="text-xs text-muted-foreground">
+              这是当前已加载 {state.items.length} 人里的真实结果：没有部门等于该筛选值的行（缺部门的行归「未标注部门」桶）；可清空部门筛选。
+            </p>
+            <Button size="sm" outlined data-testid="emp-list-dept-clear" onClick={() => patchParams({ dept: null })}>
+              清空部门筛选
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
       {state.phase === "ready" ? (
         <Card data-testid="employees-table">
           <CardContent className="p-0">
@@ -825,7 +910,7 @@ export function EmployeesModulePage() {
             </p>
             <div data-testid="emp-list-nav" role="grid" aria-label="员工列表（方向键浏览行，Enter 展开预览）">
             <ul className="divide-y divide-white/5" data-testid="emp-l-list" data-emp-list-rows="true">
-              {sortedItems.map((row) => (
+              {visibleItems.map((row) => (
                 <li key={row.employeeId} data-testid={`employees-row-${row.employeeId}`}>
                   <div className="flex min-w-0 items-stretch">
                     <button
@@ -853,11 +938,11 @@ export function EmployeesModulePage() {
                       if (el) rowRefs.current.set(row.employeeId, el);
                       else rowRefs.current.delete(row.employeeId);
                     }}
-                    tabIndex={(activeRowKey ?? sortedItems[0]?.employeeId) === row.employeeId ? 0 : -1}
+                    tabIndex={(activeRowKey ?? visibleItems[0]?.employeeId) === row.employeeId ? 0 : -1}
                     aria-expanded={previewKey === row.employeeId}
                     onFocus={() => setActiveRowKey(row.employeeId)}
                     onKeyDown={(e) => {
-                      const ids = sortedItems.map((r) => r.employeeId);
+                      const ids = visibleItems.map((r) => r.employeeId);
                       const i = ids.indexOf(row.employeeId);
                       if (e.key === "ArrowDown") {
                         e.preventDefault();
