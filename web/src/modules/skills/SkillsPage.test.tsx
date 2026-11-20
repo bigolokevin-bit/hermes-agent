@@ -14,6 +14,7 @@ vi.mock("@nous-research/ui", () => ({
 }));
 import { ApiError } from "@/lib/api-error";
 import { SkillsPage } from "./SkillsPage";
+import { resetSkillsTabState } from "./SkillsPage";
 import { resetCapabilityCounts } from "../capabilities/counts";
 
 let container: HTMLDivElement;
@@ -26,6 +27,7 @@ beforeEach(() => {
   root = createRoot(container);
   fetchJsonStrict.mockReset();
   resetCapabilityCounts();
+  resetSkillsTabState();
   window.history.replaceState({}, "", "/");
 });
 afterEach(() => { act(() => root.unmount()); container.remove(); });
@@ -382,5 +384,55 @@ describe("SkillsPage", () => {
     expect(text()).not.toContain("HTTP");
     expect(text()).not.toMatch(/\bGAP-/);
     expect(text()).not.toContain("skill-12345678");
+  });
+
+  it("keeps the current tab, query and sort in the URL when the tab is the default", async () => {
+    window.history.replaceState({}, "", "/capabilities?q=%E8%B5%84%E6%96%99&sort=name&dir=asc");
+    fetchJsonStrict.mockResolvedValue({
+      asOf: "2026-11-19T06:00:00Z",
+      items: [
+        { skillId: "s1", name: "资料整理", scope: "tenant-shared" },
+        { skillId: "s2", name: "质检", scope: "unused" },
+      ],
+    });
+    await render();
+    await act(async () => {});
+
+    const params = new URLSearchParams(container.querySelector("[data-testid='cap8-location']")?.textContent ?? "");
+    expect(params.get("tab")).toBe("skills");
+    expect(params.get("q")).toBe("资料");
+    expect(params.get("sort")).toBe("name");
+    expect(params.get("dir")).toBe("asc");
+    expect(container.querySelectorAll("[data-testid^='skl4-row-']")).toHaveLength(1);
+    expect(text()).toContain("资料整理");
+    expect(text()).not.toContain("质检");
+  });
+
+  it("restores the settled rows and the open detail after a remount without another read", async () => {
+    window.history.replaceState({}, "", "/capabilities?tab=skills");
+    fetchJsonStrict.mockResolvedValue({
+      asOf: "2026-11-19T06:00:00Z",
+      items: [
+        { skillId: "s1", name: "资料整理", scope: "tenant-shared", version: "2" },
+        { skillId: "s2", name: "质检", scope: "unused", version: "1" },
+      ],
+    });
+    await render();
+    expect(fetchJsonStrict).toHaveBeenCalledTimes(1);
+
+    await act(async () => container.querySelector<HTMLButtonElement>("[data-testid='cap7-detail-toggle']")!.click());
+    expect(container.querySelectorAll("[data-testid='cap7-detail-skills']")).toHaveLength(1);
+
+    const entry = window.location.pathname + window.location.search;
+    await act(async () => root.unmount());
+    root = createRoot(container);
+    await act(async () => {
+      root.render(<MemoryRouter initialEntries={[entry]}><LocationProbe /><SkillsPage /></MemoryRouter>);
+    });
+    await act(async () => {});
+
+    expect(container.querySelectorAll("[data-testid^='skl4-row-']")).toHaveLength(2);
+    expect(container.querySelectorAll("[data-testid='cap7-detail-skills']")).toHaveLength(1);
+    expect(fetchJsonStrict).toHaveBeenCalledTimes(1);
   });
 });

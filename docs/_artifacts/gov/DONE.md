@@ -1914,3 +1914,17 @@ built /private/tmp/health-r38/index.html
 - 验证：health **4 files / 27 passed**；全量 **138 files / 1594 passed**；tsc 本域 0（仅基线 employee-detail/employees 错误）。
 - DOM（临时 harness，已删除；Vite 5476 / Chrome 9276）：1440/1280/375 均 `vw=docSW=bodySW=bodyCW`；矩阵 4 行；复制按钮可用、title「复制当前矩阵为纯文本；不会再发请求」；点击后状态「已复制」且无 fallback；请求计数 **4 → 4**。截图 `docs/_artifacts/gov/shots/sys10-{1440,1280,375}.png`。
 - 边界：仅改 `web/src/modules/health/**` + DONE/截图；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未并 main、未重建 9122。
+
+## R61 — /capabilities tab 切换保态（capTab）
+
+- 基线：显式 refspec fetch 后 `git merge origin/lane/hermes-console`（tip `053da5c4`，代码代次 `053da5c4`）→ merge `2de37223`；未 reset。
+- 行为：skills↔tools 切 tab 时 shell 保留 `q`/`sort`/`dir`；两页新增模块级快照（仅缓存已落定读结果 + 展开行），切回立即复原且**不重复取数**；显式刷新/重试仍重新读取。skills 默认 tab 现在也写 `tab=skills` 进 URL（`useEnsureTabParam`），tools 同理；不覆盖其他 tab 值。
+- 展开行：skills `openSkill`、tools `openTool` 随快照恢复；Escape 仍可收起。计数条由恢复后的可见行重新发布，不闪旧 tab 的数字。
+- 请求计数（真实 shell `ConsoleModulePage`，临时 harness 已删除；Vite 5477 / Chrome 9277）：
+  - 首次 skills：1 次（`/agent-api/api/skills`）。
+  - 首次切 tools：+6 次（两条逻辑读取各走 3 个候选：`/agent-api/api/tools`、`/api/tools`、`/agent-api/api/tools/toolsets`、`/api/tools/toolsets`、`/agent-api/api/mcp/servers`、`/api/mcp/servers`），累计 7。
+  - 切回 skills：+0（累计 7），展开的 skills 详情仍为 1。
+  - 再切 tools：+0（累计 7），展开的 tools 详情仍为 1。
+- URL：skills `?tab=skills&q=资料&sort=name&dir=asc`；tools `?tab=tools&q=资料&sort=name&dir=asc`；切回 skills 时 `tab` 由页面补回，其余参数不变。`aria-sort` 仍只出现在可排序列。
+- 验证：定向 `skills+tools+capabilities` → **5 files / 58 passed**；全量 **138 files / 1673 passed**；tsc 本域 0（仅基线 employee-detail/employees 报错）。DOM 1440/1280/375 `vw=bodySW=bodyCW=1440/1280/375`；截图 `docs/_artifacts/gov/shots/capTab-{1440,1280,375}.png`。
+- 边界：仅改 `web/src/modules/{capabilities,skills,tools}/**` + DONE/截图；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未并 main、未重建 9122。

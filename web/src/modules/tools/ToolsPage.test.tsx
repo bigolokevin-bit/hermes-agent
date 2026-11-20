@@ -13,6 +13,7 @@ const api = vi.hoisted(() => ({ fetchJsonStrict: vi.fn() }));
 vi.mock("@/modules/models/fetchJson", () => ({ fetchJsonStrict: api.fetchJsonStrict }));
 
 import { ToolsPage } from "./ToolsPage";
+import { resetToolsTabState } from "./useToolsData";
 import { publishCapabilityCount, resetCapabilityCounts } from "../capabilities/counts";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -112,6 +113,7 @@ const failed = (status: number, url: string, requestId?: string) => (called?: st
 beforeEach(() => {
   api.fetchJsonStrict.mockReset();
   resetCapabilityCounts();
+  resetToolsTabState();
 });
 afterEach(() => {
   act(() => root?.unmount());
@@ -469,6 +471,36 @@ describe("local name search", () => {
     expect(clear).toBeTruthy();
     await act(async () => clear?.click());
     await waitFor(() => rows().length === 6, "rows restored");
+    expect(urls()).toHaveLength(6);
+  });
+});
+
+describe("tab state memory", () => {
+  it("keeps the current tab, query and sort in the URL when the tab is the default", async () => {
+    await mount(answer, "/capabilities?q=%E7%BD%91%E9%A1%B5&sort=name&dir=asc");
+    const params = new URLSearchParams(document.querySelector("[data-testid='cap8-location']")?.textContent ?? "");
+    expect(params.get("tab")).toBe("tools");
+    expect(params.get("q")).toBe("网页");
+    expect(params.get("sort")).toBe("name");
+    expect(params.get("dir")).toBe("asc");
+    expect(rows()).toHaveLength(2);
+    expect(text()).toContain("网页搜索");
+    expect(text()).not.toContain("创建看板");
+  });
+
+  it("restores the settled rows and the open detail after a remount without another read", async () => {
+    await mount();
+    expect(urls()).toHaveLength(6);
+    const toggle = document.querySelector<HTMLButtonElement>("[data-testid='cap7-detail-toggle']");
+    expect(toggle).toBeTruthy();
+    await act(async () => toggle?.click());
+    expect(document.querySelectorAll("[data-testid='cap7-detail-tools']")).toHaveLength(1);
+
+    await render("/capabilities?tab=tools");
+    await waitFor(() => !document.querySelector(".animate-pulse"), "settled again");
+
+    expect(rows()).toHaveLength(6);
+    expect(document.querySelectorAll("[data-testid='cap7-detail-tools']")).toHaveLength(1);
     expect(urls()).toHaveLength(6);
   });
 });

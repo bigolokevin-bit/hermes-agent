@@ -27,12 +27,13 @@ import {
   type FailureCopy,
   type ToolRow,
 } from "./tools";
-import { forcedStateOf, useToolsData } from "./useToolsData";
+import { forcedStateOf, readOpenTool, rememberOpenTool, useToolsData } from "./useToolsData";
 import { CapabilityCounts, publishCapabilityCount } from "../capabilities/counts";
 import { CapabilitySearch } from "../capabilities/search";
 import { CapabilityExport } from "../capabilities/csvExport";
 import { applySort, ariaSort, cycleSort, readSort, sortRows, type SortKey } from "../capabilities/sorting";
 import { CapabilityRowDetail } from "../capabilities/rowDetail";
+import { useEnsureTabParam } from "../capabilities/tabParam";
 import "./tools.css";
 
 
@@ -203,7 +204,12 @@ function FailurePanel({
 
 export function ToolsPage(): ReactNode {
   const [params, setParams] = useSearchParams();
-  const [openTool, setOpenTool] = useState<string | null>(null);
+  useEnsureTabParam("tools");
+  const [openTool, setOpenTool] = useState<string | null>(() => readOpenTool());
+
+  useEffect(() => {
+    rememberOpenTool(openTool);
+  }, [openTool]);
 
   useEffect(() => {
     if (!openTool) return;

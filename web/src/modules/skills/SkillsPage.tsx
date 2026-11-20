@@ -20,6 +20,7 @@ import { CapabilityRowDetail } from "../capabilities/rowDetail";
 import { CapabilitySearch } from "../capabilities/search";
 import { CapabilityExport } from "../capabilities/csvExport";
 import { applySort, ariaSort, cycleSort, readSort, sortRows, type SortKey } from "../capabilities/sorting";
+import { useEnsureTabParam } from "../capabilities/tabParam";
 import "./skills.css";
 
 type State =
@@ -27,6 +28,18 @@ type State =
   | { k: "empty" }
   | { k: "error"; message: string; requestId: string | null; gap: string | null; status: number | null }
   | { k: "ready"; rows: SkillRow[]; asOf: string | null; asOfReason: string | null; asOfTitle: string | null };
+
+// The capabilities tab strip unmounts the inactive page. Keep the last settled
+// read and the expanded row in module memory so switching back shows the same
+// view immediately, without reading the ledger again. A manual refresh still
+// calls `load` because it increments `attempt` past 0.
+let cachedSkillsState: State | null = null;
+let cachedSkillsOpen: string | null = null;
+
+export function resetSkillsTabState() {
+  cachedSkillsState = null;
+  cachedSkillsOpen = null;
+}
 
 function requestIdOf(error: unknown): string | null {
   if (error instanceof ApiError && error.requestId) return error.requestId;
@@ -106,17 +119,22 @@ function Cell({ value, reason }: { value: string | null; reason: string }) {
 
 export function SkillsPage() {
   const [sp, setSp] = useSearchParams();
+  useEnsureTabParam("skills");
   const q = (sp.get("q") ?? "").trim();
   const sort = readSort(sp);
-  const [state, setState] = useState<State>({ k: "loading" });
+  const [state, setState] = useState<State>(() => cachedSkillsState ?? { k: "loading" });
   const [attempt, setAttempt] = useState(0);
-  const [openSkill, setOpenSkill] = useState<string | null>(null);
+  const [openSkill, setOpenSkill] = useState<string | null>(() => cachedSkillsOpen);
   const fixture = currentFixtureState();
   const forced = forcedState(fixture, currentFixtureRid());
   const retry = () => {
     if (fixture) leavePreview();
     setAttempt((value) => value + 1);
   };
+
+  useEffect(() => {
+    cachedSkillsOpen = openSkill;
+  }, [openSkill]);
 
   useEffect(() => {
     if (!openSkill) return;
@@ -140,24 +158,31 @@ export function SkillsPage() {
         reason: null,
         gap: null,
       });
-      setState(rows.length ? { k: "ready", rows, asOf, asOfReason, asOfTitle } : { k: "empty" });
+      const next: State = rows.length
+        ? { k: "ready", rows, asOf, asOfReason, asOfTitle }
+        : { k: "empty" };
+      cachedSkillsState = next;
+      setState(next);
     } catch (error) {
       if (!signal.live) return;
       const gap = error instanceof ApiError && (error.status === 403 || error.status === 404) ? SKILLS_GAP : null;
       const message = messageFor(error);
       publishCapabilityCount("skills", { value: null, source: "missing", reason: message, gap });
-      setState({
+      const next: State = {
         k: "error",
         message,
         requestId: requestIdOf(error),
         gap,
         status: error instanceof ApiError ? error.status : null,
-      });
+      };
+      cachedSkillsState = next;
+      setState(next);
     }
   }, []);
 
   useEffect(() => {
     if (forced) return;
+    if (attempt === 0 && cachedSkillsState) return;
     const signal = { live: true };
     void load(signal);
     return () => {
