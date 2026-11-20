@@ -5161,3 +5161,46 @@ kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort*/kn-gates/kn7-preview*/kn-type*/导出
 ```
 未测如实：带登录会话真屏；行内预览（本地态）×桶切换不写 URL 的免疫（R196④ 同路径）；
 `sdoc=` 展开浮层的同过渡（换算说明已注，本轮按派工择 doc= 落地）。
+
+# KNW5 追加 R225：预览打开态行复制序列/播报器归属护栏（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `f7009e21`、
+基线先跑 42/203 全绿 Errors 0、目标文件确认缺席再动笔。零产品文件改动。新增
+knowledge.preview.rowcopy.sequence.test.tsx 三例（本体）。
+
+## 名实与查重（引用不重写）
+
+```text
+三面族名：派工三例全落空间详情面——钮=kn-row-copy-space-<i>（检索面 kn-row-copy-<i>
+不参与本文件的预览/分页/cap 面）；播报器每面单具（R167 已锁形状 → 引用）；无 ?preview=
+（本地 previewKey，R68）；③ 按 R216 先例 51 行跨页夹具（P1 恰 50）。
+引用：R132（后缀族/重编）、R167（单具形状+键盘）、R169（跨组不重号）、R196④（预览
+开合行序/钮快照）、R214（双列标准）、R216①（append 后 [0..50] 连续+cap 整句——③照
+派工要求复跑该断言并注明引用）、R223/R224。
+新增维（逐例点名）：① 预览打开态下「钮 i 宿主行==表体第 i 行」几何对（closest("tr")
+逐位，R216 只数序列连续未锁行内归属）+ 打开态跨面播报器归属（点详情面钮→
+kn-row-copy-space-status「已复制」而检索面 status 保持空）；② 关闭预览后播报器
+文本保持（R167 只锁播报不锁关后留存位）+ 行序/钮/cap 逐字 + urls c0→c0 零增量；
+③ append 后新行（册 51.pdf）钮文本与 knF 清单第 51 行**逐字直对**（新行入链）+
+开新行预览再点钮归属仍独响。
+```
+
+## 三例读数与验证尾行（R225）
+
+```text
+① 首屏 50 钮 [0..49]；row0/1 宿主行几何对成立；点钮 idx1 → 详情面播报「已复制」、
+  检索面 ""、writeText 1。② 关预览：播报保持「已复制」、行名/钮/cap（50 篇整句）
+  逐字、urls 2→2（读后前后计数）零增量。③ append：钮 [0..50] 连续 51、cap 逐字
+  「本页最多显示 50 篇（当前已加载 51 篇；复制清单也只含这些篇）」、idx50 串首列
+  「册 51.pdf」toBe fLines[50]、fLines 51 行、cursor= 请求全程恰 1。
+$ npx vitest run src/modules/knowledge → 43 files / 206 tests passed（203+3），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0；build /tmp/knw-r225-dist exit 0
+$ 全仓 → 337 files / 3136 passed 全绿（无豁免）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn-row-copy*/kn-row-copy-space*/kn-doc-copy*/kn3*/kn3-page-cap/knE-page-*/
+kn-type*/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort*/kn-gates/kn7-preview*/导出 absent
+标记 + 既有 42 套全绿。过程自纠两处（自反哨兵废行、首屏 50 行非 2 行的预期），产品零触碰。
+```
+未测如实：带登录会话真 51 行屏（mock 代证）；② 的「重开预览后播报复位」未锁（关后
+保持已锁，开→再关循环无新语义）；检索面自身预览/归属（该面无行内预览宿主，名实已注）。
