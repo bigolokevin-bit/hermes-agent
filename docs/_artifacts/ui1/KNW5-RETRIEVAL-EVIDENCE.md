@@ -2646,3 +2646,42 @@ kn-space-preview / knL / knM 零破。
 边界：只改 `web/src/modules/knowledge/**` 与本证据目录；显式路径 add；无 force/amend/
 `--no-verify`/`git add -A`；未并 main、未重建 9122；单 commit
 「feat(console): unify knowledge updated-at presentation」。
+
+# KNW5 追加 R76：「最近更新」口径护栏（纯测试单）（2026-11-20 BJT）
+
+安全门：toplevel 相符、porcelain 空、显式 refspec fetch 后 merge 实测 tip 即预期 `1683d467`
+（wave 内容在他模块，知识面 delta 空）。本单**零产品文件改动**（提交仅新增
+`knowledge.updated.test.tsx` 与本证据追加）。
+
+## 护栏与读数
+
+```text
+① 三面同值：喂同一 ISO `2026-11-14T06:33:18+08:00`——检索命中列与详情文档列渲染逐字相等，
+   且 === updatedText(ISO).value === `2026-11-14 06:33`；空间列剥语义前缀（最近同步）后同值。
+   口径注：+08:00 的原生就是北京时区，到分钟仍 06:33；测试初稿把它当 UTC 期望成 14:33，
+   两处失败全部是**测试期望错、产品正确**，按 helper 实际输出修正期望（改前/改后=期望值，
+   非产品改动）。
+② 三态：非法 `yesterday`、空串 ""、字段缺失——两张表各 3 行落「—」、title 逐字
+   「上游未返回时间；不用本机时间顶替。」×3；列表面同样 3 行同句。假系统时钟
+   vi.useFakeTimers 钉在 2031-03-04 渲染：整页（详情面与列表面两轮）文本均无 "2031"——
+   本机时钟零参与有实证。
+③ title 对应：在场 cell title 逐字 `时间 2026-11-14T06:33:18+08:00（UTC）`（含原样 ISO），
+   值 = 同一时刻北京到分 06:33；三面同一 title 句式。
+④ 零额外请求：三面渲染后，连点排序两下、类型桶开合、行内预览开合、台账展开收起、复制
+   共 9 个只读动作——fetchMock 计数与 urls() 排序快照逐字不变。
+```
+
+## 验证尾行（R76）
+```text
+$ npx vitest run src/modules/knowledge   → 4 files / 74 tests passed（基线 70 + 护栏 4）
+$ npx vitest run                         → 174 files / 2395 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning；本单新增的
+  4 条 unused 变量错误为测试文件自身残留，提交前已清零）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-upd-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+```
+未测如实：带登录会话的真实数据屏（静态 preview 无会话；口径由本护栏的显式 ISO 夹具逐字锁定）。
+边界：只动 `web/src/modules/knowledge/knowledge.updated.test.tsx`（新增）与本证据文件；
+零产品行为改动；显式路径 add；无 force / amend / `--no-verify` / `git add -A`；
+单 commit「test(console): knowledge updated-at caliber guards」。
