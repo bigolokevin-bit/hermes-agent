@@ -5526,3 +5526,57 @@ kn-type*/kn-gates/kn-space-preview*/导出 absent 标记 + 既有 47 套全绿�
 未测如实：带登录会话真屏；404×重试成功过渡（③ 用 500 重试链，unwired 态是否有重试钮
 未查——R183④ 域外不扩）；抽屉 500 窗内改排序后导出与排序态同序的链（R221② 锁翻序零
 请求、R214 锁列标准，本轮未叠）。
+
+# KNW5 追加 R233：抽屉双载体 × 列表导出字段级对账（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 `Already up to date`
+（上游 tip `cafd2d81` 已在库内，与派工预期一致）、基线先跑 48/225 全绿 Errors 0、
+目标文件确认缺席再动笔。零产品文件改动。新增
+knowledge.detail.list.export.columns.test.tsx 三例（本体）。
+
+## 名实换算与查重（引用不重写）
+
+```text
+无真 CSV（源级四件套 0——R190①:113-119）→「列表导出 CSV」=knF-copy 5 列数据行；
+「详情面板」=kn7 抽屉（?doc=，无独立路由）。①腿参与载体声明：(A) 展示 dd
+（kn7-preview-field-name/type/size/updated）与 (B) knL-copy-meta 六行
+（docMetaCopyText：文档名/所属空间/类型/大小/更新/文档短码）——差异集如实：所属空间
+为 (B) 独有（knF 无此列；空间列在检索面 knG@2——R71）；原文位置/source/status 属 (A)
+非 knF 字段，不参与对账、不判缺。**缺值两口径不统一（产品定版）**：有值字段三方逐字
+toBe；缺值字段三书各表其身——表格/复制行「—」（含 knL 的「类型：—」行随复制口径）、
+抽屉 dd「该字段未返回」+「类型：<原因>」title（R70）。createObjectURL/Blob spy 三腿
+全程 0（文件头注记「无导出机制，两口径不统一」）。
+引用：R190①④、R200②、R220、R223、R226①（表×钮×清单三面人话互等+裸值负扫——抽屉双
+载体未入链）、R230①（开帧三值+快照——无关帧复测与计数同帧）、R231②③、R232、
+R204①/R209/R214②/R197/R49/R196。
+新增维（点名）：A 五字段三方字段级对账（dd==knF 列==knL 行；短码 m(5)==f1[4] 且非全
+id）+ 抽屉帧裸 MIME/裸字节负扫（application/* 与 2516582 在 表体+面板 可见全文 0）；
+B 开帧与关帧各取三值 [2,2,2]+首行同源+逐行互等，开恰 +1 详情读（且 urls 总增恰 1）、
+关 0 增（R49/R196 计数在导出帧的复现）；C true-0 列表×?doc= 深链双复制器同帧
+（knF disabled+「没有可复制」×knL-copy-meta disabled+「不在已加载」句模块套件首锁）+
+双点击零写零请求 + cap null。
+```
+
+## 三例读数与验证尾行（R233）
+
+```text
+① D1：f1 恰 5 列；[ddName,ddType,ddSize,ddUpd]==f1[0..3]；meta 六行、m(0/2/3/4)==
+  f1[0..3]、m(5)==f1[4]!="d_manual_m"；ddType=="PDF"、ddSize=="2.4 MB"；负扫两态
+  0 命中；D2：dd 双「该字段未返回」+title 含「类型：」、f2[1..2]==["—","—"]、格
+  「—」、meta2[2]=="类型：—"、meta2[3]=="大小：—"。② 开：doc=d_manual_m、详情读
+  +1 且 urls 总 +1、三值 [2,2,2]、首行同源；关：doc 消失、urls 不再增、三值 [2,2,2]、
+  closedLines toEqual openLines。③ 双 disabled、双 title 各含其句、双点击 writeText 0、
+  urls 不变、cap null、spy 0。
+$ npx vitest run src/modules/knowledge → 49 files / 228 tests passed（225+3），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0；build /tmp/knw-r233-dist exit 0
+$ 全仓 → 359 files / 3203 passed 全绿（无豁免、无已知红需点名）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knE-page-*/knF/knG/knI/knL*/kn-row-copy*/
+kn-row-copy-space*/kn-doc-copy*/kn-doc-preview*/kn7-preview*/kn3-page-cap/kn-sort*/
+kn-type*/kn-gates/导出 absent 标记 + 既有 48 套全绿。三例一次全过（仅删一条自拟废
+哨兵行），产品零触碰。
+```
+未测如实：带登录会话真屏；(A) 原文位置/source/status 与详情体的字段链（非 knF 字段，
+声明不参与）；检索面 knG 六列×抽屉对账（本轮限定详情面双载体，knG 口径引 R71/R200②）；
+短码大小写形制正则未钉（引 R197 位，本轮只锁三方互等+非全 id）。
