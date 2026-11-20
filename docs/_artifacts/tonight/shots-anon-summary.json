@@ -14,7 +14,7 @@
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 24,
+  "distinctMainHeads": 23,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -219,7 +219,7 @@
     {
       "route": "#/employees/:employeeId?zone=config",
       "viewport": "375",
-      "chars": 66,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -243,7 +243,7 @@
     {
       "route": "#/employees/:employeeId?zone=runs",
       "viewport": "375",
-      "chars": 66,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -642,12 +642,12 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "804ad319",
+  "headHash": "d7c95f80",
   "exitCode": 0,
-  "entry": "assets/index-BPuvjew0.js",
-  "entrySha256": "1d3a4c4a89737bf4bfa51b76d704c218d10c4e31aa8f6003983e25b50a3f52be",
+  "entry": "assets/index-BtrO4nd2.js",
+  "entrySha256": "0053699f77dcd5c43a670ddd36d9f0a01aba88c60be4e996cda93bd797e3f5d0",
   "entryBytes": 171948,
-  "servedEntryBefore": "index-BPuvjew0.js",
-  "servedEntryAfter": "index-BPuvjew0.js",
+  "servedEntryBefore": "index-BtrO4nd2.js",
+  "servedEntryAfter": "index-BtrO4nd2.js",
   "auxiliary": true
 }
