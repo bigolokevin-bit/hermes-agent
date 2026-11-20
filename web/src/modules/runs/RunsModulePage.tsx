@@ -59,6 +59,9 @@ import {
 } from "./states";
 import {
   PAGE_LIMIT,
+  pageCapMoreText,
+  pageCapText,
+  pageCapTitle,
   runCsvFileName,
   runListCsv,
   runListText,
@@ -1363,6 +1366,19 @@ export function RunsModulePage() {
         {unreadable > 0 && countsKnown
           ? `；另有 ${unreadable} 条回的内容没有可读的运行编号，没有算在上面`
           : ""}
+      </p>
+
+      <p
+        className="min-w-0 break-words text-xs text-muted-foreground"
+        data-testid="run-page-cap"
+        title={pageCapTitle()}
+      >
+        {pageCapText()}（当前已加载 {countsKnown ? rows.length : "—"} 行；这一页的复制与导出也用同一个行数，不报全量）
+        {phase === "ready" && rows.length === PAGE_LIMIT ? (
+          <span className="ml-2" data-testid="run-page-cap-more">
+            {pageCapMoreText()}
+          </span>
+        ) : null}
       </p>
 
       <p

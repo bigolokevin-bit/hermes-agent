@@ -425,3 +425,14 @@ R52 OBS 整改：`disabled` 与 `aria-disabled` 说同一句话，与 `title` �
 - 读口失败：`run-state-error` 出现，`run-empty-guide`、`run-state-clear`、`run-state-empty` 三者全为 null（失败不算空），给 `run-state-rid` 与 `run5-error-retry`。
 - 验证：单文件 3 passed；定向 runs 6 files / 158 passed；全量 175 files / **2398 passed**；`tsc` 本域 0；`eslint src/modules/runs` exit 0；build exit 0（entry 内 `run-empty-guide`=0，`RunsModulePage-*.js`=1）。
 - 未测：真实浏览器 375 下引导三段与两个链接的触控间距。
+
+## 单页上限诚实化（runs page cap，2026-11-20）
+
+`/api/runs` 每次只取 `limit=30`（`runs.ts:51 PAGE_LIMIT`，`askListRoute` 行 223 拼 `since + limit`，行 230 仅在有 cursor 时追加）。页面从不跟进 `nextCursor`，所以屏上只能有一个口径：一页。
+
+- 常驻行 `run-page-cap`：「本页最多显示 30 条（当前已加载 N 行；这一页的复制与导出也用同一个行数，不报全量）」。N 直接取 `rows.length`，与 `run-list-export-count` 的「可导出 N 行」和 `run-list-copy` 的 title「当前已加载 N 行」同源；读不到时写「—」，不写 0。
+- title 写明读口参数：`since + limit=30`（可带 `status` / `employeeId` / `cursor`），读口用 `nextCursor` 表示还有更多，但本页只读第一页、暂不提供翻页，读满 30 行不代表全部运行。title 里刻意不写站点路径与状态码，避免 403/404 同体用例把工程语言扫出来（首版写 `/agent-api/...` 即被该断言拦下）。
+- 满页提示：`phase==='ready' && rows.length===PAGE_LIMIT` 时追加 `run-page-cap-more`「可能还有更多，收窄筛选或换窗口」；少于 30 行不渲染。
+- 原有 `run5-counts`「仅本页已加载，最多 30 条，不是全量统计」与 `run5-status` 的服务端「还有更多」提示均保留，未改文案。
+- 验证：`runs.pagecap.test.tsx` 3 例（30 行→常驻句 + 满页提示 + 导出/复制同数；2 行→无常驻提示、数仍同源；500→「当前已加载 — 行」且无满页提示）。定向 runs 7 files / 161 passed；全量 176 files / 2401 passed；`tsc` 本域 0；`eslint src/modules/runs` exit 0（1 条既存 unused-disable warning）；build exit 0（entry 内 `run-page-cap`=0，`RunsModulePage-CczfD3ZM.js`=1）。
+- 未测：真实浏览器 375 下常驻句与满页提示同行折行；读口真的给出 `nextCursor` 时（本页不跟进，只影响 `run5-status` 的「还有更多」尾句）。

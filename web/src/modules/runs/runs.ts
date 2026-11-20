@@ -50,6 +50,25 @@ export const GAP = "GAP-09";
 /** Page size asked for; the on-screen denominator is stated against it. */
 export const PAGE_LIMIT = 30;
 
+/**
+ * One page, stated once, for every reader of the list.
+ *
+ * The read口 (`/agent-api/api/runs`) takes since + limit and answers with
+ * `nextCursor` when there is more; this page never follows that cursor, so the
+ * honest sentence is「最多 30 条」rather than an implied total.
+ */
+export function pageCapText(): string {
+  return `本页最多显示 ${PAGE_LIMIT} 条`;
+}
+
+export function pageCapMoreText(): string {
+  return "可能还有更多，收窄筛选或换窗口";
+}
+
+export function pageCapTitle(): string {
+  return `运行列表读口按 since + limit=${PAGE_LIMIT} 取数（可带 status / employeeId / cursor）。读口用 nextCursor 表示这一页之外还有更多，但本页只读第一页，暂不提供翻页；读满 ${PAGE_LIMIT} 行不代表全部运行，复制与导出的行数也只算这一页。`;
+}
+
 /** Time-window filter. The ISO instant is computed when the ask happens. */
 export const SINCE_OPTIONS = [
   { key: "24h", label: "近 24 小时", hours: 24 },
