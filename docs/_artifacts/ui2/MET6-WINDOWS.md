@@ -556,3 +556,15 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 - 既有 `met5-refresh`「刷新」按钮保留未动（它是整页 attempt 递增的老入口）；`metAK-*` 为新增。
 - 验证：定向 `src/modules/metrics` **4 files / 195 passed**（原 190，+5）；全量 **137 files / 1810 passed**（原 1805）；`tsc -b . --noEmit` 全仓 67 条既存、`modules/metrics` 0；build `--outDir /tmp/build-metAK` → entry `assets/index-KvAaJzx0.js` sha256 `8f0de8c69b29c734edc42e8b6262d2b72983800d2239f7c35ef86d764ad39892`，entry 内 `metAK-refresh` 命中 0，chunk `assets/MetricsModulePage-sDZlo_Yl.js` 命中 1。
 - 未测项：真浏览器里长网络下「更新中…」的持续时长与快速连点手感未走查；刷新期间切窗后滚动位置未复核。
+
+## 当前视图范围条与一键复位（metAL，2026-11-20）
+
+页首新增一行 `metAL-scope`，把当前视图的四个要素直接摊开：时间窗 / 分组 / 明细排序 / 分摊排序 / 热力窗。
+
+- 全部从 URL 派生（`usageWindow`、`groupBy`、`detailSort/detailDir`、`sortKey/sortDir`、`activeWindow`），没有为此新增任何 state；因此粘同一个 URL 刷新，这行逐字复现，切窗/切分组/切排序/切热力窗也在同一渲染帧更新（不滞后一批）。
+- 文案形态：`当前视图：时间窗 <label> · 分组 <按员工|按模型> · 明细 <成本|次数|占比> <升序|降序> · 分摊 <运行数|成本|员工|模型> <升序|降序> · 热力 <label>`。
+- `metAL-reset`「回到默认视图」：清掉 `window / groupBy / view / dsort / ddir / sort / dir / heat / w` 九个键后只改 URL；不调用 `refreshAll`、不 bump `attempt`，所以只由既有 effect 重取受影响读口，不是全页重取。实测从全参起步重置：`run-activity` +1（仅热力窗 4→1）、`run-stats` +2（当前窗+上一窗，属同一批）、`employees` +4、`budget-usage` +4，总增 15，明显小于首载总量。
+- 回显本身零请求：渲染前后 `urls()` 不变。
+- tab 序：`metAL-reset` 落在第 4 位（`metY-skiplink → metL-copy → met5-refresh → metAL-reset → metAK-refresh → …`），metQ 的落点断言已同步。
+- 验证：定向 `src/modules/metrics` **4 files / 198 passed**（原 195，+3）；全量 **145 files / 1813 passed**（原 1810）；`tsc -b . --noEmit` 全仓 67 条既存、`modules/metrics` 0；build `--outDir /tmp/build-metAL` → entry `assets/index-B1ZZIqPO.js` sha256 `f7ef98d9ff6a3cdce7aa6b50c8165d00ef19a2805c333bc671c0c2359b353fc4`，entry 内 `metAL-scope` 命中 0，chunk `assets/MetricsModulePage-iD1kX6Cz.js` 命中 1。
+- 未测项：375 下范围条多段换行的实际断点未人工走查；中文排序词在窄屏是否截断未走查。

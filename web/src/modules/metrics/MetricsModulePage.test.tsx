@@ -2621,10 +2621,11 @@ describe('metQ — keyboard access and status announcements', () => {
 
     // Keyboard walk: the first nine landings in DOM order. The skip link is
     // first on purpose (metY); everything after it keeps its old place.
-    expect(focusableTestIds().slice(0, 9)).toEqual([
+    expect(focusableTestIds().slice(0, 10)).toEqual([
       'metY-skiplink',
       'metL-copy',
       'met5-refresh',
+      'metAL-reset',
       'metAK-refresh',
       'met6-window-24h',
       'met6-window-7d',
@@ -4136,5 +4137,66 @@ describe('metAK — one manual refresh, one batch', () => {
     await waitIdle();
     // The late answer never becomes a refresh stamp.
     expect(q('metAK-updated-at')).toBeNull();
+  });
+});
+
+describe('metAL — the scope line and one-click reset', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+  const loc = (): string => q('met7-loc')?.textContent ?? '';
+  const scope = (): string => q('metAL-scope')?.textContent ?? '';
+  const countOf = (since: number, needle: string): number =>
+    urls().slice(since).filter((url) => url.includes(needle)).length;
+
+  const FULL = '/metrics?window=7d&groupBy=employee&view=model&dsort=runs&ddir=asc&sort=model&dir=asc&heat=4';
+
+  it('reads all four parts straight from the address', async () => {
+    await mountShare(SHARE_USAGE, FULL);
+    const before = urls().length;
+
+    expect(scope()).toContain('时间窗 最近 7 天');
+    expect(scope()).toContain('分组 按员工');
+    expect(scope()).toContain('明细 次数 升序');
+    expect(scope()).toContain('分摊 员工 升序');
+    expect(scope()).toContain('热力');
+    expect(q('met5-window-4')?.getAttribute('aria-pressed')).toBe('true');
+    expect(q('met6-window-7d')?.getAttribute('aria-pressed')).toBe('true');
+    // Rendering the line reads nothing.
+    expect(urls().length).toBe(before);
+  });
+
+  it('follows a window switch in the same render', async () => {
+    await mountShare(SHARE_USAGE);
+
+    await act(async () => {
+      (q('met6-window-30d') as HTMLButtonElement).click();
+    });
+
+    expect(scope()).toContain('时间窗 最近 30 天');
+    expect(q('met6-window-30d')?.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('resets every scope key, repaints the line, and refetches only the affected reads', async () => {
+    await mountShare(SHARE_USAGE, FULL);
+    const before = urls().length;
+
+    await act(async () => {
+      (q('metAL-reset') as HTMLButtonElement).click();
+    });
+    await waitFor(() => scope().includes('时间窗 最近 24 小时'), 'scope back to defaults');
+
+    for (const key of ['window=', 'groupBy=', 'view=', 'dsort=', 'ddir=', 'sort=', 'dir=', 'heat=', 'w=']) {
+      expect(loc()).not.toContain(key);
+    }
+    expect(scope()).toContain('分组 按模型');
+    expect(scope()).toContain('明细 成本 降序');
+    expect(scope()).toContain('分摊 成本 降序');
+    expect(q('met5-window-1')?.getAttribute('aria-pressed')).toBe('true');
+    expect(q('met6-window-24h')?.getAttribute('aria-pressed')).toBe('true');
+
+    // Only the reads whose inputs changed: one heat read, one usage/ledger batch.
+    expect(countOf(before, 'run-activity')).toBe(1);
+    expect(countOf(before, 'run-stats')).toBe(2);
+    expect(countOf(before, 'employees')).toBe(4);
+    expect(urls().length - before).toBeLessThan(before);
   });
 });

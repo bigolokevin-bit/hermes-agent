@@ -1419,6 +1419,27 @@ export function MetricsModulePage() {
   const detailLines = breakdownView.kind === 'ready' ? breakdownView.lines : [];
   const detailSort: DetailSort = parseDetailSort(params.get('dsort')) ?? 'cost';
   const detailDir: SortDir = params.get('ddir') === 'asc' ? 'asc' : 'desc';
+
+  // metAL — the four things that decide what this page is showing, read straight
+  // from the address so a pasted link reproduces the same line.
+  const detailSortLabel = detailSort === 'cost' ? '成本' : detailSort === 'runs' ? '次数' : '占比';
+  const shareSortLabel = sortKey === 'runs' ? '运行数' : sortKey === 'cost' ? '成本' : groupBy === 'employee' ? '员工' : '模型';
+  const scopeLine =
+    `当前视图：时间窗 ${usageWindow.label} · 分组 ${groupBy === 'employee' ? '按员工' : '按模型'}` +
+    ` · 明细 ${detailSortLabel} ${detailDir === 'asc' ? '升序' : '降序'}` +
+    ` · 分摊 ${shareSortLabel} ${sortDir === 'asc' ? '升序' : '降序'}` +
+    ` · 热力 ${activeWindow.label}`;
+
+  const resetScope = () => {
+    cancelRefresh();
+    const query = new URLSearchParams(params);
+    for (const key of ['window', 'groupBy', 'view', 'dsort', 'ddir', 'sort', 'dir', 'heat', 'w']) {
+      query.delete(key);
+    }
+    setGroupResetNote(false);
+    setParams(query, { replace: true });
+  };
+
   const detailRows = sortDetailLines(detailLines, detailSort, detailDir);
   // metT — the totals row is summed from the very rows the body renders, so a
   // reader can add them up and land on the same numbers. Sorting never moves it
@@ -1692,6 +1713,15 @@ export function MetricsModulePage() {
             {summaryTotalLine}
           </span>
         </div>
+      </div>
+
+      <div className="metAL-bar">
+        <p className="metAL-scope" data-testid="metAL-scope">
+          {scopeLine}
+        </p>
+        <Button size="sm" outlined onClick={resetScope} data-testid="metAL-reset">
+          回到默认视图
+        </Button>
       </div>
 
       <div className="metAK-bar" data-testid="metAK-bar">

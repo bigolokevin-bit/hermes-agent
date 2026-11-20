@@ -1078,3 +1078,19 @@
   color: var(--color-muted-foreground);
   overflow-wrap: anywhere;
 }
+
+/* ---- metAL: the current-scope line and its reset ----------------------- */
+.metAL-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.metAL-scope {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-muted-foreground);
+  overflow-wrap: anywhere;
+}
