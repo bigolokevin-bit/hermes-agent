@@ -1161,6 +1161,17 @@ export default function EmployeeDetailModulePage({ employeeId }: { employeeId?: 
         })}
       </div>
 
+      {/* UI-C2 权限区回条：其余四区承载在总览页，如实回链总览顶部（不在本页造假锚）。 */}
+      {zone === "capability" ? (
+        <nav aria-label="分区回条（权限区）" className="ui-c-anchors">
+          <span className="ui-c-anchor ui-c-anchor--active" aria-current="true">权限</span>
+          <Link className="ui-c-anchor" to={`/employees/${enc}`}>身份</Link>
+          <Link className="ui-c-anchor" to={`/employees/${enc}`}>组织</Link>
+          <Link className="ui-c-anchor" to={`/employees/${enc}`}>生命周期</Link>
+          <Link className="ui-c-anchor" to={`/employees/${enc}`}>最近活跃</Link>
+        </nav>
+      ) : null}
+
       {zone === "overview" ? <OverviewZone state={overview} onRetry={() => retry("overview")} empId={empId} /> : null}
       {zone === "capability" ? (
         <CapabilityZone resource={capability} onRetry={() => retry("capability")} />
