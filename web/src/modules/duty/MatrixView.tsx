@@ -132,8 +132,8 @@ export default function MatrixView() {
           <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-6">
             <ShieldQuestion className="h-5 w-5 text-muted-foreground" aria-hidden />
             <p className="text-sm">能力矩阵未接入</p>
-            <p className="max-w-prose break-words text-xs text-muted-foreground" title="GAP-06：能力矩阵 BFF 路由尚未部署">
-              后台还没有提供这份矩阵（数据源尚未接入）。这里不展示任何占位数据；接入后本页自动显示真数据。
+            <p className="max-w-prose break-words text-xs text-muted-foreground" title="GAP-06：上游矩阵读口 /v1/matrix/employees 未就绪；BFF 已提供 /api/matrix 转发，页面不回落到样例">
+              上游的矩阵读口还没有就绪（BFF 的转发路由已在）。这里不展示任何占位数据；读口上线后本页自动显示真数据。
             </p>
             <Button size="sm" outlined onClick={() => load()} prefix={<RefreshCw className="h-3.5 w-3.5" />}>
               重试
@@ -272,7 +272,7 @@ export default function MatrixView() {
       )}
 
       <p className="duty-note">
-        覆盖分母只算在岗员工；缺口只对设了业务下限的资源成立。矩阵接口未接入时整块标注未接入，不展示占位数据。
+        覆盖分母只算在岗员工；缺口只对设了业务下限的资源成立。矩阵读口未就绪时整块标注未接入，不展示占位数据。
       </p>
       <Link className="duty-link" to="/employees">
         去员工列表

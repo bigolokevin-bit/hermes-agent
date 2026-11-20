@@ -245,6 +245,10 @@ describe("MatrixView", () => {
     await render(<MatrixView />);
     expect(container.querySelector('[data-testid="matrix-unwired"]')).toBeTruthy();
     expect(container.textContent).toContain("能力矩阵未接入");
+    // GAP-06 now names the upstream read port; the BFF relay already exists.
+    expect(container.textContent).toContain("上游的矩阵读口");
+    // No sample data ships with the module: nothing may carry data-fixture.
+    expect(container.querySelector("[data-fixture]")).toBeNull();
     expect(container.textContent).not.toContain("样例");
     expect(container.textContent).not.toContain("陈可");
   });
