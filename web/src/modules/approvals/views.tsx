@@ -33,6 +33,7 @@ function Field({
   reason,
   tone,
   num,
+  muted,
   testId,
 }: {
   label: string;
@@ -42,12 +43,18 @@ function Field({
   tone?: ReactNode;
   /** 数字与时间字段：等宽数字，纵向可比（UI-RUBRIC §一·数字与时间） */
   num?: boolean;
+  /** 辅助值（时间/风险档）：降为次级色，与事由同级；
+   * 待处理页行内层级的落点见 approvals-density.css（历史页不受影响）。 */
+  muted?: boolean;
   testId?: string;
 }): ReactNode {
   return (
     <div className="ui-c-field" data-testid={testId}>
       <dt className="ui-c-field-label">{label}</dt>
-      <dd className={num ? "ui-c-field-value ui-c-num" : "ui-c-field-value"} title={reason}>
+      <dd
+        className={`ui-c-field-value${num ? " ui-c-num" : ""}${muted ? " density-value-muted" : ""}`}
+        title={reason}
+      >
         {value}
         {tone}
       </dd>
@@ -181,7 +188,7 @@ export function ApprovalRowCard({
             className="min-w-0 flex-1 break-words text-left text-sm hover:underline"
           >
             <span
-              className={themedBody}
+              className={`${themedBody} density-row-title`}
               data-testid={`apv-trunc-row-title-${row.key}`}
               title={truncateDisplay(row.title).full ?? undefined}
             >
@@ -204,16 +211,26 @@ export function ApprovalRowCard({
             value={row.worker.label}
             reason={row.worker.raw ?? (row.worker.label === "—" ? "服务未提供执行员工。" : undefined)}
           />
-          {/* R76: 相对时间+title 绝对/ISO——与预览、决策链路同一 helper 同一输入。 */}
+          {/* R76: 相对时间+title 绝对/ISO——与预览、决策链路同一 helper 同一输入。
+           * P1 层级：两个时间只作辅助信息（次级色+等宽数字），主次留给标题与金额。 */}
           <Field
             label="提交"
+            num
+            muted
             value={<RelativeTime iso={row.submittedAt} testid={`apv-time-row-submitted-${row.key}`} />}
           />
           <Field
             label={row.clockLabel}
+            num
+            muted
             value={<RelativeTime iso={row.clockAt} testid={`apv-time-row-${row.key}`} />}
           />
-          <Field label="涉及金额" value={money(row.amount)} reason={row.amount === null ? MISSING_AMOUNT : undefined} />
+          <Field
+            label="涉及金额"
+            num
+            value={money(row.amount)}
+            reason={row.amount === null ? MISSING_AMOUNT : undefined}
+          />
         </dl>
 
         {row.reason ? (
@@ -265,11 +282,13 @@ export function ApprovalRowCard({
                 * 与详情的「决定时间」同一键序同一助手。缺字段口径=「该字段未返回」。 */}
               <Field
                 label="风险档"
+                muted
                 value={row.risk.label}
                 reason={row.risk.raw ?? FIELD_MISSING_SENTENCE}
               />
               <Field
                 label="更新时间"
+                num
                 value={<RelativeTime iso={row.decidedAt} testid={`apv-time-preview-${row.key}`} />}
               />
               <Field

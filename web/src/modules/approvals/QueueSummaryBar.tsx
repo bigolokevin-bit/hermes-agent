@@ -87,7 +87,7 @@ export function QueueSummaryBar({
         if (count === null) {
           return (
             <span key={bucket.value} data-testid={`apv6-summary-${bucket.value}`} title={missingReason ?? "计数不可得"}>
-              {bucket.label} <b className="font-mono">—</b>
+              {bucket.label} <b className="font-mono tabular-nums">—</b>
             </span>
           );
         }
@@ -99,7 +99,7 @@ export function QueueSummaryBar({
             title="点击＝把该状态写进既有的 ?status= 筛选（刷新与分享可复现）"
             className="text-muted-foreground underline-offset-2 hover:underline focus-visible:underline"
           >
-            {bucket.label} <b className="font-mono text-foreground">{count}</b>
+            {bucket.label} <b className="font-mono text-foreground tabular-nums">{count}</b>
           </Link>
         );
       })}
@@ -115,7 +115,7 @@ export function QueueSummaryBar({
             }
             className="text-muted-foreground"
           >
-            {bucket.label} <b className="font-mono text-foreground">{count ?? "—"}</b>
+            {bucket.label} <b className="font-mono text-foreground tabular-nums">{count ?? "—"}</b>
           </span>
         );
       })}

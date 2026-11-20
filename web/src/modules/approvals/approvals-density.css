@@ -19,3 +19,19 @@
 [data-testid="apr5-page-history"] [data-testid^="apr5-row-"] {
   min-height: var(--table-row-h);
 }
+
+/* P1 2026-11-21：待处理页行内层级（锚在 apr5-page-pending，历史页像素不变）。
+ * 标题抬起字重成为主信息；两个时间值（提交/clock）与预览「风险档」降为
+ * 辅助灰，与事由同级。层级只写颜色/字重，字号与行高仍归 detail.css 令牌。
+ * 多一级页面锚是必要的：.ui-c-field-value 给 dd 定了前景色，而 layer 外
+ * 普通规则胜过 Tailwind 工具类，只加 text-muted-foreground 会被它压掉。 */
+[data-testid="apr5-page-pending"] [data-testid^="apr5-row-"] .density-row-title {
+  /* Mondwest 只注册 400（实测 400..700 墨迹同宽，合成 bold 不生效），字重抬不起来；
+   * 行内字号唯一是 13.125px——抬到值档 14px 让标题拿到行内字号王座。 */
+  font-size: 14px;
+}
+
+
+[data-testid="apr5-page-pending"] [data-testid^="apr5-row-"] .density-value-muted {
+  color: var(--color-text-muted);
+}
