@@ -1428,3 +1428,65 @@ $ npx vite build --outDir /tmp/knw21-dist → exit 0（R53，产物只落 /tmp�
 边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
 package·lock / web-scripts / ops；显式路径提交（无 `git add -A`）；无 force / amend / `--no-verify`；
 两笔 commit 分开（先 R52 后 R53），未混写。
+
+# KNW5 追加 R54：文档列表游标分页（testid `knE-page-*`）（2026-11-20 BJT）
+
+续作说明：本车道接手时被取消会话留下 `KnowledgeModulePage.tsx` / `knowledge.ts` 两处未提交半成品
+（分页状态与信封解析已写、UI 未接线且遗留一个 `rows` 引用编译错）。全部保留、在其上补完，
+未 reset、未 checkout 丢弃；新增防过期回写（代次计数：排序/筛选/换空间/刷新时，在路上的下一页
+回答作废，不并回列表）。
+
+## 一、探针（cookie 只在 curl 命令内拼 Header，值零回显；9122 只读、未重启、未重建）
+
+```text
+HTTP 404  rid 646eac0d  /agent-api/api/documents?limit=50&spaceId=sp_hr
+   body[:120] {"code": "documents.read_not_wired", "message": "本环境未接入文档读口…前端请显「未接入」"…
+   行数 0（响应里没有行数组）  nextCursor 字段：无   total 字段：无
+
+HTTP 404  rid 61ded63f  /agent-api/api/documents?limit=50&spaceId=sp_hr&cursor=c2
+   同上 documents.read_not_wired（路由在 query 处理前被拦，cursor 今天与 spaceId 一样不改回答）
+   行数 0   nextCursor 字段：无   total 字段：无
+```
+
+线上因此走诚实不可用态（`knD-state-unavailable`，R53 口径），分页条不出现、不冒充；
+分页行为在 wired fixture（vitest 桩信封）下逐态实测，见下。
+
+## 二、分页口径（都只认信封给的字段，测试实测）
+
+```text
+取数       下一页 = /api/documents?limit=50&spaceId=<id>&cursor=<服务端给的游标>；
+           第一页与 documentsUrl 完全同串（无 cursor），仍走 surface 四态与 knD 标记。
+           绝不对本地数组切片假翻页，也绝不做滚动自动加载。
+筛前/加载后  fixture：页1 读 2 行 → 点「显示更多」并回 1 行 → 共加载 3 行；
+           重复行检查：三行 documentId 全集 size==3（按 id 去重；上游坏 cursor 静默重放首页时
+           一行都不并回，进 knE-page-stale「游标已过期」并停止加载，给「重新读取列表」出口）。
+总数        信封给 total → 「共 N 篇 / 已显示 M 篇」（翻页后 2→3 与 total 对账）；
+           信封不给 total → 「已显示 M 篇 · 总数不可用」+ title 写明原因，加载到 3 也不冒充「共 3 篇」
+           ——M 是加载后真实行数，绝不参与推算 N。
+到末页      只认信封明说（有 nextCursor 字段且为 null）：按钮 disabled +「已到末页」+ 机器标记
+           knE-page-end；字段整个缺失（今天线上的形状）→ 按钮「无分页游标」disabled，不谎称末页。
+重置        排序 / 本地筛选 / 换空间 / 刷新变化 → 清空已累加页、游标退回第一页给的那个，0 新请求
+           （R52「点表头不再问服务」计数 1→1 不破）；URL 只保 ?sort/?dir/?q=，分页不进地址。
+失败        下一页 403≡404 逐字同体 + 可复制 rid（knE-page-request-id）+ 重试只再取这一页
+           （首页与空间名读口计数不连带）；401 单独正文；已显示列表不受影响。
+键盘        分页条里只有真 BUTTON[type=button]（显示更多/重试/重新读取列表），Tab 可达、Enter 原生触发。
+```
+
+testid 新增 `knE-page-bar` / `knE-page-count` / `knE-page-more` / `knE-page-end` /
+`knE-page-error` / `knE-page-request-id` / `knE-page-retry` / `knE-page-stale` / `knE-page-reload`。
+`knE-page-end` 沿用 knD-marker 手法（aria-hidden、display:none、不出字、不参与布局）。
+kn3 / kn6 / kn7 / kn8 / kn9 / knB / knC / knD / knw5 全套既有断言零改零破。
+分页条为 flex-wrap 行、无固定宽；本轮未重建 9122，三宽度横溢未做浏览器复测（构建产物只落 /tmp）。
+
+## 验证尾行（R54）
+```text
+$ npx vitest run src/modules/knowledge   → 2 files / 47 tests passed（含新增游标分页六段测试）
+$ npx vitest run                         → 137 files / 1589 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（1 条 react-hooks/set-state-in-effect warning，
+  条件变化时重置分页状态即为此形态，非 error，不压 gate）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw22-dist → exit 0（产物只落 /tmp）
+```
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
+无 force / amend / `--no-verify`；单 commit「feat(console): knowledge documents pagination」。

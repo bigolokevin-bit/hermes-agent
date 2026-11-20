@@ -842,3 +842,20 @@
 .knD-marker {
   display: none;
 }
+
+/* R54 — 游标分页条：一行放不下就换行，375 下不出横向溢出；计数与按钮都不给固定宽。 */
+.knE-page-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  min-width: 0;
+  gap: 8px 12px;
+  margin-top: 10px;
+}
+.knE-page-bar .knw5-empty,
+.knE-page-bar .knw5-error {
+  flex-basis: 100%;
+}
+.knE-marker {
+  display: none;
+}

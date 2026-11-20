@@ -164,6 +164,18 @@ export function documentsUrl(spaceId: string): string {
   params.set("spaceId", spaceId);
   return `/agent-api/api/documents?${params.toString()}`;
 }
+/**
+ * The same document read, one page at a time. The first page has no cursor (identical to
+ * documentsUrl's query order); a later page carries the server's `cursor`. We ask the
+ * server to page — we never slice a locally loaded array to fake "more".
+ */
+export function documentsPageUrl(spaceId: string, cursor: string | null): string {
+  const params = new URLSearchParams();
+  params.set("limit", "50");
+  params.set("spaceId", spaceId);
+  if (cursor) params.set("cursor", cursor);
+  return `/agent-api/api/documents?${params.toString()}`;
+}
 export const RECORDS_URL = "/agent-api/api/audit?action=kb.read&limit=50";
 /**
  * The session list the citation scan reads. The canonical console-session collection is
@@ -386,6 +398,32 @@ export interface SurfaceValue<T> {
   stampReason: string | null;
   /** Sessions actually read, for a surface that had to read sessions to find rows. */
   scanned: number | null;
+  /** 游标分页信封（只有文档读口给）。缺字段时 hasMore/totalKnown 皆 false——不猜下一页，也不猜总数。 */
+  page?: DocPage;
+}
+
+/**
+ * Cursor pagination facts read off the envelope. The live contract does NOT return a
+ * total, so `totalKnown` is only true when the answer actually carried one — we never
+ * derive a total from the number of rows loaded. `cursorFieldPresent` separates「nextCursor
+ * was null (last page)」from「the field was absent (pagination unknown)」.
+ */
+export interface DocPage {
+  nextCursor: string | null;
+  cursorFieldPresent: boolean;
+  hasMore: boolean;
+  total: number | null;
+  totalKnown: boolean;
+}
+
+function pageOf(body: unknown): DocPage {
+  const rec = isRecord(body) ? body : null;
+  const cursorFieldPresent = !!rec && ("nextCursor" in rec || "next_cursor" in rec);
+  const nextCursor = rec ? pickString(rec.nextCursor, rec.next_cursor) : null;
+  const hasMore = cursorFieldPresent && nextCursor !== null;
+  const totalKnown = !!rec && ("total" in rec || "totalCount" in rec || "total_count" in rec);
+  const total = totalKnown ? pickNumber(rec?.total, rec?.totalCount, rec?.total_count) : null;
+  return { nextCursor, cursorFieldPresent, hasMore, total, totalKnown };
 }
 
 const BJT = new Intl.DateTimeFormat("sv-SE", {
@@ -1402,14 +1440,15 @@ function docOf(row: Rec): DocRow {
 export function readSpaceDocuments(body: unknown): SurfaceValue<DocRow> {
   const envelope = stampOf(body);
   const rows = rowsOf(body);
-  if (rows === null) return { rows: [], ...envelope, scanned: null };
+  const page = pageOf(body);
+  if (rows === null) return { rows: [], ...envelope, scanned: null, page };
   const mapped = rows.map(docOf);
   const newest = newestOf(
     mapped.map((row) => row.atRaw),
     envelope,
     "上游响应没有带采集时间，文档也没有给出可用时间，数据截至时间未知。",
   );
-  return { rows: mapped, ...newest, scanned: null };
+  return { rows: mapped, ...newest, scanned: null, page };
 }
 
 /* ------------------------------------------------------------------ *

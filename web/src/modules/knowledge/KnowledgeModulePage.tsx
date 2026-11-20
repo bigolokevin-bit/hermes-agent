@@ -67,6 +67,7 @@ import {
   INGEST_STATUS_URL,
   documentDetailUrl,
   documentsUrl,
+  documentsPageUrl,
   initialTab,
   readCitations,
   readDocDetail,
@@ -83,6 +84,7 @@ import {
   type CitationRow,
   type DocDetailRow,
   type DocRow,
+  type DocPage,
   type DocSortCol,
   type DocSortDir,
   type IngestTaskRow,
@@ -1360,15 +1362,90 @@ function SpaceDetailSurface({
     `space-docs|${nonce}|${spaceId}`,
   );
   const filterKey = filter.trim().toLowerCase();
-  const rows = surface.state.kind === "ready" ? surface.state.value.rows : [];
+  const baseRows = surface.state.kind === "ready" ? surface.state.value.rows : [];
+  const meta1: DocPage | undefined = surface.state.kind === "ready" ? surface.state.value.page : undefined;
+
+  // ---- 游标分页累积：只累加第一页之后的页；第一页仍走 surface，保留四态与 knD 标记 ----
+  const [moreRows, setMoreRows] = useState<DocRow[]>([]);
+  const [cursor, setCursor] = useState<string | null>(null);
+  // 游标事实只认「最近一页」的信封（pageMeta）：是否还有下一页、是否到末页、
+  // 信封里到底有没有 cursor 字段，都来自服务端回答，绝不本地推断。
+  const [pageMeta, setPageMeta] = useState<DocPage | null>(null);
+  const [moreState, setMoreState] = useState<"idle" | "loading" | "error">("idle");
+  // 下一页读取失败：403/404/500 共用同一份正文（同体），401 单独；rid 可复制、可重试。
+  const [moreErr, setMoreErr] = useState<"login" | "failed" | null>(null);
+  const [moreRid, setMoreRid] = useState<string | null>(null);
+  const [stale, setStale] = useState(false); // 坏/过期 cursor 重放：不合并、停止加载
+  // 条件代次：排序/筛选/空间/刷新一变，还在路上的那一页回答就作废，不得再并回列表。
+  const pageGen = useRef(0);
+
+  const hasMore = pageMeta?.hasMore ?? false;
+  const cursorOffered = pageMeta?.cursorFieldPresent ?? false;
+
+  // 排序、检索条件、空间或刷新变化 → 清空已累加的后续页、游标退回第一页给的那个。
+  // 第一页已在内存里，这一步不重新请求，所以点表头仍是 0 新请求（R52 口径不破）。
+  useEffect(() => {
+    pageGen.current += 1;
+    setMoreRows([]);
+    setCursor(meta1?.nextCursor ?? null);
+    setPageMeta(meta1 ?? null);
+    setMoreState("idle");
+    setMoreErr(null);
+    setMoreRid(null);
+    setStale(false);
+  }, [spaceId, nonce, sort, dir, filter, surface.state.kind, meta1]);
+
+  // 合并第一页与已加载的后续页；按 id 去重，挡上游坏 cursor 静默重放首页造成的重复行。
+  const combined: DocRow[] = moreRows.length === 0 ? baseRows : [...baseRows, ...moreRows];
   // 先按读入顺序定死每行的 key，再本地排序：排序只换显示次序，绝不动抽屉与链接的落点。
-  const keyed: DocEntry[] = (filterKey === "" ? rows : rows.filter((row) => row.name.toLowerCase().includes(filterKey))).map(
-    (row, index) => ({ row, key: row.id !== "" ? row.id : `row-${index}` }),
-  );
-  const shown = sortDocs(keyed, sort, dir, (entry) => entry.row);
+  const keyedAll: DocEntry[] = combined.map((row, index) => ({
+    row,
+    key: row.id !== "" ? row.id : `row-${index}`,
+  }));
+  const filtered = filterKey === "" ? keyedAll : keyedAll.filter((entry) => entry.row.name.toLowerCase().includes(filterKey));
+  const shown = sortDocs(filtered, sort, dir, (entry) => entry.row);
   const shownValue =
     surface.state.kind === "ready" ? { ...surface.state.value, rows: shown.map((entry) => entry.row) } : null;
   const openRow = shown.find((entry) => entry.key === openDoc)?.row ?? null;
+
+  // 下一页只由按钮显式触发，绝不做滚动自动加载；失败后按钮仍是这个入口（重试=再点）。
+  const loadMore = () => {
+    if (!hasMore || moreState === "loading" || cursor === null) return;
+    const gen = pageGen.current;
+    const seen = new Set(combined.map((row) => row.id).filter((id) => id !== ""));
+    setMoreState("loading");
+    setMoreErr(null); // 旧错误随这次发起作废：成功就消失，失败会由 catch 重新落
+    setMoreRid(null);
+    fetchJsonStrict(documentsPageUrl(spaceId, cursor))
+      .then((body: unknown) => {
+        if (pageGen.current !== gen) return; // 条件已变，这页过期：不并回、不改游标
+        const val = readSpaceDocuments(body);
+        const fresh = val.rows.filter((row) => row.id === "" || !seen.has(row.id));
+        if (val.rows.length > 0 && fresh.length === 0) {
+          // 上游对坏/过期 cursor 静默返回首页：不合并、停止，给本地化文案与重载首页入口。
+          setStale(true);
+        } else {
+          setMoreRows((cur) => [...cur, ...fresh]);
+          setCursor(val.page?.nextCursor ?? null);
+        }
+        setPageMeta(val.page ?? null);
+        setMoreState("idle");
+      })
+      .catch((cause: unknown) => {
+        if (pageGen.current !== gen) return;
+        const surf = toSurf(cause);
+        setMoreState("idle");
+        setMoreErr(surf.kind === "login" ? "login" : "failed");
+        setMoreRid(surf.kind === "unwired" || surf.kind === "error" ? surf.requestId : null);
+      });
+  };
+
+  // 计数：M 是筛前/加载后真正读到的条数；total 只认信封给的，缺就「总数不可用」，绝不按 M 推算。
+  const loaded = combined.length;
+  const totalKnown = meta1?.totalKnown ?? false;
+  const total = meta1?.total ?? null;
+  // 到末页只认信封明说（有 cursor 字段且 nextCursor 为 null）；字段缺失=无法判断，不谎称末页。
+  const atEnd = baseRows.length > 0 && cursorOffered && !hasMore && !stale && moreErr === null;
 
   const openKeyCode = shortId(openDoc);
   const docLabel = openRow?.name ?? (openKeyCode ? `文档 · ${openKeyCode}` : "");
@@ -1428,21 +1505,94 @@ function SpaceDetailSurface({
             <p>该空间暂无文档。接口已响应，这份列表里没有文档；这只说明这份回答是空的，不下别的结论，也不给数量。</p>
           ) : (
             <p>
-              本地筛选没有匹配：这份列表里有 {rows.length} 份文档，按「{filter.trim()}」一条都没留下。
+              本地筛选没有匹配：这份列表里有 {loaded} 份文档，按「{filter.trim()}」一条都没留下。
               这是筛完的结果，不是空间没有文档。
             </p>
           )
         }
         render={() => (
-          <DocTable
-            entries={shown}
-            docLink={docLink}
-            openKey={openDoc}
-            needle={filter}
-            sort={sort}
-            dir={dir}
-            onSort={onSort}
-          />
+          <>
+            <DocTable
+              entries={shown}
+              docLink={docLink}
+              openKey={openDoc}
+              needle={filter}
+              sort={sort}
+              dir={dir}
+              onSort={onSort}
+            />
+
+            {/* R54 — 游标分页条：读数只来自信封给的字段；缺什么就说什么不可用，一律不推算。 */}
+            <div className="knE-page-bar" data-testid="knE-page-bar">
+              <span
+                className="knw5-sub"
+                data-testid="knE-page-count"
+                title={
+                  totalKnown
+                    ? "总数取自上游信封里的 total。"
+                    : "上游回答没有给总数；这里只报实际读到的条数，不按已加载条数推算总数。"
+                }
+              >
+                {totalKnown ? `共 ${total} 篇 / 已显示 ${loaded} 篇` : `已显示 ${loaded} 篇 · 总数不可用`}
+              </span>
+              <Button
+                size="sm"
+                outlined
+                onClick={loadMore}
+                disabled={!hasMore || moreState === "loading" || stale}
+                aria-busy={moreState === "loading" ? "true" : undefined}
+                title={
+                  hasMore
+                    ? "按服务端给的游标再取下一页，只在这个按钮上触发。"
+                    : cursorOffered
+                      ? "信封给了游标字段且下一页为空：这就是末页。"
+                      : "上游回答没给分页游标：有多少页无法判断，不猜、也不谎称末页。"
+                }
+                data-testid="knE-page-more"
+              >
+                {moreState === "loading"
+                  ? "正在加载…"
+                  : stale
+                    ? "游标已过期"
+                    : hasMore
+                      ? moreErr !== null
+                        ? "再试下一页"
+                        : "显示更多"
+                      : cursorOffered
+                        ? "已到末页"
+                        : "无分页游标"}
+              </Button>
+              {/* 到末页的机器可判标记：与 knD-marker 同一手法，不出字、不参与布局。 */}
+              {atEnd ? <span data-testid="knE-page-end" className="knE-marker" aria-hidden="true" /> : null}
+
+              {stale ? (
+                <div className="knw5-empty" data-testid="knE-page-stale" role="status">
+                  <b>翻页游标已过期</b>
+                  <span className="knw5-wrap">
+                    下一页返回的是已经读过的内容，已停止继续加载；下面显示的列表不受影响，没有重复行。
+                  </span>
+                  <Button size="sm" outlined onClick={surface.retry} data-testid="knE-page-reload">
+                    重新读取列表
+                  </Button>
+                </div>
+              ) : null}
+
+              {moreErr !== null ? (
+                <div className="knw5-error" data-testid="knE-page-error" role="alert">
+                  <b>{moreErr === "login" ? "需要登录" : "下一页读取失败"}</b>
+                  <span className="knw5-wrap">
+                    {moreErr === "login"
+                      ? "登录状态已经失效，这一页没有读到；已显示的列表不受影响，重新登录或再试可继续。"
+                      : "这一页没有读到；已显示的列表不受影响，再试只取这一页。"}
+                  </span>
+                  <RequestId id={moreRid} testid="knE-page-request-id" />
+                  <Button size="sm" outlined onClick={loadMore} data-testid="knE-page-retry">
+                    重试
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          </>
         )}
       />
       {openDoc !== "" ? (

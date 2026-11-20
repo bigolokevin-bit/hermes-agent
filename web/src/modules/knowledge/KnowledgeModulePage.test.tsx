@@ -2490,4 +2490,180 @@ describe("KnowledgeModulePage — real-data surfaces", () => {
       }
     }
   });
+
+  it("pages the space document list by cursor (knE-*): honest total, condition reset, replay guard, 403≡404 retry", async () => {
+    const SPACE = { asOf: "2026-11-19T07:00:00Z", items: [{ spaceId: "sp_hr", name: "人事制度空间" }] };
+    const P1 = {
+      asOf: "2026-11-19T07:00:00Z",
+      nextCursor: "c2",
+      documents: [
+        { documentId: "d_a", fileName: "A 手册.pdf", sizeBytes: 100, updatedAt: "2026-11-19T03:00:00Z" },
+        { documentId: "d_b", fileName: "B 表.xlsx", sizeBytes: 5000, updatedAt: "2026-11-19T09:00:00Z" },
+      ],
+    };
+    const P2 = {
+      asOf: "2026-11-19T07:00:00Z",
+      nextCursor: null,
+      documents: [{ documentId: "d_c", fileName: "C 说明.txt", sizeBytes: 2000, updatedAt: "2026-11-19T05:00:00Z" }],
+    };
+    const P1URL = docsUrlFor("sp_hr"); // 第一页与 documentsUrl 完全同串（无 cursor）
+    const P2URL = `${P1URL}&cursor=c2`;
+    const rowCount = () => container.querySelectorAll('[data-testid="kn3-docs-row"]').length;
+    const countText = () => (byTestid("knE-page-count")?.textContent ?? "").replace(/\s+/g, " ");
+    const moreBtn = () => byTestid("knE-page-more") as HTMLButtonElement | null;
+    const cursorCalls = () => urlsCalled().filter((u: string) => u.includes("cursor=")).length;
+
+    // ---------- A. 信封给了 total：共 N / 已显示 M，翻页后到末页 ----
+    fetchMock.mockClear();
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SPACE);
+      if (url === P1URL) return Promise.resolve({ ...P1, total: 3 });
+      if (url === P2URL) return Promise.resolve({ ...P2, total: 3 });
+      return fail(404, "这个数据接口还没有接入。", "rid-e-x");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    expect(rowCount()).toBe(2);
+    expect(countText()).toBe("共 3 篇 / 已显示 2 篇");
+    expect(moreBtn()?.disabled).toBe(false);
+    expect((moreBtn()?.textContent ?? "")).toContain("显示更多");
+    expect(moreBtn()?.tagName).toBe("BUTTON");
+    expect(byTestid("knE-page-end")).toBeNull();
+    expect(cursorCalls()).toBe(0); // 第一页绝不带 cursor：还是那一次 documentsUrl 读取
+
+    await click("knE-page-more");
+    expect(urlsCalled().filter((u: string) => u === P2URL)).toHaveLength(1);
+    expect(rowCount()).toBe(3);
+    expect(countText()).toBe("共 3 篇 / 已显示 3 篇");
+    // 无重复行：三行 id 各不相同
+    const ids = [...container.querySelectorAll('[data-testid="kn3-docs-row"]')].map((tr) => tr.getAttribute("title"));
+    expect(new Set(ids).size).toBe(3);
+    expect(moreBtn()?.disabled).toBe(true);
+    expect((moreBtn()?.textContent ?? "")).toContain("已到末页");
+    expect(byTestid("knE-page-end")).toBeTruthy();
+    expect(attr("kn3-docs", "data-state")).toBe("ready");
+
+    // ---------- B. 排序/筛选变化：列表与游标重置回第一页，0 新请求；再翻是新的 cursor 读取 ----
+    const callsBeforeSort = fetchMock.mock.calls.length;
+    await click("knC-sort-name");
+    expect(fetchMock.mock.calls.length).toBe(callsBeforeSort); // 重置不重新问服务（R52 口径）
+    expect(rowCount()).toBe(2);
+    expect(countText()).toBe("共 3 篇 / 已显示 2 篇");
+    expect(byTestid("knE-page-end")).toBeNull();
+    expect((byTestid("loc")?.textContent ?? "")).toContain("sort=name");
+    expect((byTestid("loc")?.textContent ?? "")).toContain("dir=asc");
+    await click("knE-page-more");
+    expect(cursorCalls()).toBe(2); // A 段一次 + 重置后再翻页一次
+    expect(rowCount()).toBe(3);
+
+    // 本地筛选同样重置累加页（筛前口径不变：M 仍是加载到的条数）
+    await type("kn3-docs-filter-input", "A");
+    expect(rowCount()).toBe(1);
+    expect(countText()).toBe("共 3 篇 / 已显示 2 篇");
+    await type("kn3-docs-filter-input", "");
+    expect(rowCount()).toBe(2);
+
+    // ---------- C. 无 total：总数不可用 + title，绝不用 M 推算 ----
+    fetchMock.mockClear();
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SPACE);
+      if (url === P1URL) return Promise.resolve(P1);
+      if (url === P2URL) return Promise.resolve(P2);
+      return fail(404, "这个数据接口还没有接入。", "rid-e-x");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    expect(countText()).toBe("已显示 2 篇 · 总数不可用");
+    expect((byTestid("knE-page-count")?.getAttribute("title") ?? "")).toContain("不按已加载条数推算");
+    await click("knE-page-more");
+    expect(countText()).toBe("已显示 3 篇 · 总数不可用"); // 加载到 3 也不冒充「共 3 篇」
+    expect(countText()).not.toContain("共");
+
+    // ---------- D. 信封没有 cursor 字段（今天线上读口的形状）：不谎称末页、不发 cursor 请求 ----
+    const FLAT = { asOf: "2026-11-19T07:00:00Z", documents: P1.documents };
+    fetchMock.mockClear();
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SPACE);
+      if (url === P1URL) return Promise.resolve(FLAT);
+      return fail(404, "这个数据接口还没有接入。", "rid-e-x");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    expect((moreBtn()?.textContent ?? "")).toContain("无分页游标");
+    expect(moreBtn()?.disabled).toBe(true);
+    expect(byTestid("knE-page-end")).toBeNull();
+    expect(cursorCalls()).toBe(0);
+    expect(rowCount()).toBe(2);
+
+    // ---------- E. 坏 cursor 重放首页：不并回、停止、无重复行 ----
+    fetchMock.mockClear();
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SPACE);
+      if (url === P1URL) return Promise.resolve(P1);
+      if (url === P2URL) return Promise.resolve(P1); // 上游对过期 cursor 静默返回首页
+      return fail(404, "这个数据接口还没有接入。", "rid-e-x");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    await click("knE-page-more");
+    expect(cursorCalls()).toBe(1); // 确实问了一次，只是结果不并回
+    expect(rowCount()).toBe(2); // 一行都没并进来
+    expect(byTestid("knE-page-stale")).toBeTruthy();
+    expect(moreBtn()?.disabled).toBe(true);
+    expect((moreBtn()?.textContent ?? "")).toContain("游标已过期");
+    expect(byTestid("knE-page-end")).toBeNull(); // 过期 ≠ 末页，不谎称到底
+
+    // ---------- F. 下一页失败：403≡404 同体、可复制 rid、只重试这一页 ----
+    const bodyOf = (node: Element | null) =>
+      Array.from(node?.querySelectorAll("b, .knw5-wrap") ?? [])
+        .map((part) => part.textContent ?? "")
+        .join(" ")
+        .replace(/\s+/g, " ");
+    fetchMock.mockClear();
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SPACE);
+      if (url === P1URL) return Promise.resolve(P1);
+      if (url === P2URL) return fail(403, "没有查看这项数据的权限。", "rid-more-denied");
+      return fail(404, "这个数据接口还没有接入。", "rid-e-x");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    await click("knE-page-more");
+    const deniedErr = byTestid("knE-page-error");
+    expect(deniedErr).toBeTruthy();
+    expect(container.textContent ?? "").toContain("请求编号：rid-more-denied");
+    expect(rowCount()).toBe(2); // 已显示的列表不受影响
+    expect(byTestid("knE-page-retry")).toBeTruthy();
+
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SPACE);
+      if (url === P1URL) return Promise.resolve(P1);
+      if (url === P2URL) return fail(404, "这个数据接口还没有接入。", "rid-more-gone");
+      return fail(404, "这个数据接口还没有接入。", "rid-e-x");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    await click("knE-page-more");
+    expect(bodyOf(byTestid("knE-page-error"))).toBe(bodyOf(deniedErr)); // 403 与 404 逐字同体
+
+    // 重试成功：先失败进错误态，再只重发下一页这一个请求，首页与空间读口不连带
+    fetchMock.mockClear();
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SPACE);
+      if (url === P1URL) return Promise.resolve(P1);
+      if (url === P2URL) return fail(500, "数据服务暂时没有响应，请稍后重试。", "rid-more-busy");
+      return fail(404, "这个数据接口还没有接入。", "rid-e-x");
+    });
+    await render("/knowledge?tab=spaces&space=sp_hr");
+    await click("knE-page-more");
+    expect(byTestid("knE-page-error")).toBeTruthy();
+    const p1CallsBefore = urlsCalled().filter((u: string) => u === P1URL).length;
+    // 换回答：不再渲染重来，只点「重试」
+    fetchMock.mockImplementation((url: string) => {
+      if (url === SPACES) return Promise.resolve(SPACE);
+      if (url === P1URL) return Promise.resolve(P1);
+      if (url === P2URL) return Promise.resolve(P2);
+      return fail(404, "这个数据接口还没有接入。", "rid-e-x");
+    });
+    await click("knE-page-retry");
+    expect(urlsCalled().filter((u: string) => u === P1URL).length).toBe(p1CallsBefore); // 不重发首页
+    expect(urlsCalled().filter((u: string) => u === SPACES).length).toBe(1); // 不重发空间名
+    expect(byTestid("knE-page-error")).toBeNull();
+    expect(rowCount()).toBe(3);
+    expect(countText()).toBe("已显示 3 篇 · 总数不可用");
+  });
 });
