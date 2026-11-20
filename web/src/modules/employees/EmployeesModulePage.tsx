@@ -47,6 +47,11 @@ type State = {
 
 const PAGE_SIZE = 50;
 
+/** ② / ③ 数据与动作的形状分工：计数用胶囊（等宽数字、无 hover、不可点），
+ *  动作才用按钮三级。标题行与导出组共用同一枚形状，避免「共 N 行」被读成幽灵按钮。 */
+const COUNT_CHIP =
+  "inline-flex h-6 items-center justify-center whitespace-nowrap rounded-full bg-white/5 px-2 text-xs tabular-nums text-white/60";
+
 /** R81: 「未标注部门」桶的 URL 键（真实部门名不会等于它）。 */
 const NONE_DEPT = "__none__";
 
@@ -382,12 +387,12 @@ function ListCopyButton({ rows, totalLoaded, phase }: { rows: EmployeeRow[]; tot
     );
   };
   return (
-    <span className="flex min-w-0 flex-wrap items-center gap-2" role="group" aria-label="复制列表">
+    <span className="flex min-w-0 flex-wrap items-center gap-[var(--space-2)]" role="group" aria-label="复制列表">
       <Button
         size="sm"
-        outlined
         data-testid="emp-list-copy"
         disabled={empty || phase !== "ready"}
+        className="bg-transparent text-white/70 shadow-none hover:bg-white/5 hover:text-white active:invert-0"
         onClick={copy}
         title={
           phase !== "ready"
@@ -462,7 +467,7 @@ function ListExportButton({ rows, totalLoaded, phase }: { rows: EmployeeRow[]; t
     URL.revokeObjectURL(url);
   };
   return (
-    <span className="flex min-w-0 flex-wrap items-center gap-2" role="group" aria-label="导出 CSV">
+    <span className="flex min-w-0 flex-wrap items-center gap-[var(--space-2)]" role="group" aria-label="导出 CSV">
       <Button
         size="sm"
         outlined
@@ -479,7 +484,8 @@ function ListExportButton({ rows, totalLoaded, phase }: { rows: EmployeeRow[]; t
       >
         导出 CSV
       </Button>
-      <span data-testid="emp-list-export-count" className="text-xs text-white/55" title="行数与屏上列表同源">
+      {/* 计数不是动作：胶囊形状、等宽数字，不再夹在两个按钮之间冒充幽灵按钮。 */}
+      <span data-testid="emp-list-export-count" className={COUNT_CHIP} title="行数与屏上列表同源">
         共 {rows.length} 行
       </span>
     </span>
@@ -642,6 +648,10 @@ export function EmployeesModulePage() {
 
   const retry = () => setReload((n) => n + 1);
 
+  // ③ 「加载更多」在没有下一页（或非 ready）时保留文案与原因，但既不响应、
+  // 也不进 tab 序列：原生 disabled 已不可聚焦，这里再显式坐实 tabIndex=-1。
+  const moreDisabled = state.phase !== "ready" || !state.nextCursor || state.loadingMore;
+
   // R58: real cursor paging. Same filter query plus the server's nextCursor;
   // appended rows are deduplicated by employeeId (never repeat a row).
   const loadMore = () => {
@@ -674,12 +684,14 @@ export function EmployeesModulePage() {
 
   return (
     <section className="space-y-4" data-testid="employees-module">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Users className="h-5 w-5 text-white/70" />
+      <header className="flex flex-col gap-[var(--space-3)] sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-[var(--space-4)]">
+        <div className="flex min-w-0 flex-wrap items-center gap-[var(--space-2)]">
+          <Users className="h-5 w-5 shrink-0 text-white/70" />
           <h1 className="font-mondwest text-xl">数字员工</h1>
+          {/* 裸数字不再直接挂在标题末字后面：计数是数据，用胶囊承载，
+              和右侧动作簇（按钮）在形状层面分开。 */}
           <span
-            className="text-sm text-white/50"
+            className={COUNT_CHIP}
             data-testid="emp-list-count"
             title={
               state.phase === "ready"
@@ -691,27 +703,40 @@ export function EmployeesModulePage() {
           </span>
         </div>
         {/* 375：操作组（复制/导出/共N行/刷新）不再与标题挤同一行，独占一行换行。 */}
-        <span className="flex min-w-0 flex-wrap items-center gap-2 max-md:w-full">
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-[var(--space-2)] max-md:w-full sm:justify-end">
           <ListCopyButton rows={visibleItems} totalLoaded={state.items.length} phase={state.phase} />
           <ListExportButton rows={visibleItems} totalLoaded={state.items.length} phase={state.phase} />
-          <Button size="sm" outlined onClick={retry} data-testid="employees-refresh">
-          <RefreshCw className="mr-2 h-4 w-4" />
-          刷新
-        </Button>
-        </span>
+          <Button size="sm" onClick={retry} data-testid="employees-refresh">
+            <RefreshCw className="mr-2 h-4 w-4" aria-hidden="true" />
+            刷新
+          </Button>
+        </div>
       </header>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3" data-testid="employees-summary">
+      <div className="grid grid-cols-1 gap-[var(--space-3)] sm:grid-cols-3" data-testid="employees-summary">
         <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-white/50">在岗 / 受限 / 暂停</p>
-            <p className="mt-1 text-sm" data-testid="status">
-              {counts.active} · {counts.limited} · {counts.paused}
-            </p>
+          <CardContent className="p-[var(--space-4)]">
+            {/* ① 每个数字自带标签：三列各自成组，标签在上、数字在下。
+                原本合并的一行「在岗 / 受限 / 暂停」正是没有对应关系的那一环，
+                这里拆成三个 <dt>，词不变、各自贴住自己的数。 */}
+            <dl className="grid grid-cols-3 gap-[var(--space-2)]" data-testid="status">
+              <div className="flex min-w-0 flex-col gap-[var(--space-1)]">
+                <dt className="whitespace-nowrap text-xs text-white/50">在岗</dt>
+                <dd className="text-base font-medium tabular-nums">{counts.active}</dd>
+              </div>
+              <div className="flex min-w-0 flex-col gap-[var(--space-1)]">
+                <dt className="whitespace-nowrap text-xs text-white/50">受限</dt>
+                <dd className="text-base font-medium tabular-nums">{counts.limited}</dd>
+              </div>
+              <div className="flex min-w-0 flex-col gap-[var(--space-1)]">
+                <dt className="whitespace-nowrap text-xs text-white/50">暂停</dt>
+                <dd className="text-base font-medium tabular-nums">{counts.paused}</dd>
+              </div>
+            </dl>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-[var(--space-4)]">
             <p className="text-xs text-white/50">下一步</p>
             <p className="mt-1 text-sm" data-testid="next-action">
               {counts.paused > 0 ? "处理暂停或停用的员工" : "查看员工明细"}
@@ -719,7 +744,7 @@ export function EmployeesModulePage() {
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-[var(--space-4)]">
             <p className="text-xs text-white/50">责任人</p>
             <p className="mt-1 text-sm" data-testid="owner">
               各部门负责人
@@ -1047,7 +1072,7 @@ export function EmployeesModulePage() {
       ) : null}
 
       {/* R69: 分页条常驻——非 ready 态下「加载更多」以 disabled+原因存在，不隐身。 */}
-      <div className="flex min-w-0 flex-wrap items-center gap-2 px-1 text-xs" data-testid="emp-list-page">
+      <div className="flex min-w-0 flex-wrap items-center gap-[var(--space-2)] px-1 text-xs" data-testid="emp-list-page">
         <span
           data-testid="emp-list-page-count"
           className="text-white/55"
@@ -1068,8 +1093,11 @@ export function EmployeesModulePage() {
         <Button
           size="sm"
           outlined
+          className="disabled:bg-transparent disabled:opacity-50 disabled:shadow-[inset_-1px_-1px_0_0_#00000080,inset_1px_1px_0_0_#ffffff80]"
           data-testid="emp-list-page-more"
-          disabled={state.phase !== "ready" || !state.nextCursor || state.loadingMore}
+          disabled={moreDisabled}
+          aria-disabled={moreDisabled || undefined}
+          tabIndex={moreDisabled ? -1 : undefined}
           onClick={loadMore}
           title={
             state.phase !== "ready"
