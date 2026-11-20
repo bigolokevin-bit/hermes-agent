@@ -504,3 +504,14 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 - 验证：`src/modules/metrics` **3 files / 177 passed**（原 173，+4）；全量 **137 files / 1700 passed**（原 1696）；`tsc -b . --noEmit` 全仓 58 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metAG` → entry `assets/index-C2OuvqzZ.js` sha256 `0c352483753e5f67e8e2baaaf12fd0535cfba16b0a19f98e7c2cca834190a0fe`，entry 内 `metAG-copy-sources` 命中 0，chunk `assets/MetricsModulePage-CkjPbDjF.js` 命中 1。
 - 踩坑：起初用「所有行都 down」判禁用，但从未请求的读口会被 `sourceRows` 记作降级，导致全失败时按钮仍是可点——改为「已发起的行全为 down」后符合预期。
 - 未测项：真实剪贴板权限弹窗与 375 下按钮/说明换行未人工走查。
+
+## 表内行数诚实化（metAH，2026-11-20）
+
+先核对了两张表的取数路径：`detailRows` 直接来自当前批的 `breakdownView.lines`（模型用量全量行 / 员工账本聚合行），`shareRows` 来自当前批的 `shareView.value.rows` 再仅做排序；组件里没有针对这两张表的 `slice`、`limit` 或行数上限（代码里仅有的 `slice` 用在月度快照前 8 行与价目表前 5 行，与本表无关）。因此**按实况写「全量渲染」，不编造截断**。
+
+- 明细表下新增 `metAH-cap-note`：「表内全量渲染，共 N 行；导出与屏上一致，没有截断。」N 取 `detailRows.length`，与 `met6-cat-source` 的「N 行」同源；`title` 写明判据（当前批次、无 slice/上限、与来源行计数同源）。
+- 分摊表下新增 `metAH-cap-note-share`：「表内全量渲染，共 N 行；导出含同一批行，没有截断。」N 取 `shareRows.length`，与 `metA-export-count` 的「可导出 N 行」同源；`title` 注明与 metA-export-count 同源。
+- 零新请求：两条说明只读渲染期已有的数组长度，测试断言挂载后 `urls()` 长度不变。
+- 既有护栏未动：`metrics.export-parity.test.ts`（metAC 10 例）保持原样，CSV 行数仍等于 M。
+- 验证：定向 `src/modules/metrics` 3 files / **180 passed**（原 177，+3）；全量 **137 files / 1703 passed**（原 1700）；`tsc -b . --noEmit` 全仓 58 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metAH` → entry `assets/index-gCw9agdb.js` sha256 `e48f4b56de38b57edd1ce14edc21118926d87a5af5f890dde90294e91256ee0c`，entry 内 `metAH-cap-note` 命中 0，chunk `assets/MetricsModulePage-B9ULZATw.js` 命中 1。
+- 未测项：真实后端若对账本/用量做服务端分页（本仓代码未见分页参数），当前文案不会自动改写；员工目录 `limit=200` 的名单上限仍由既有的账本截断提示承担，本单未改口径。

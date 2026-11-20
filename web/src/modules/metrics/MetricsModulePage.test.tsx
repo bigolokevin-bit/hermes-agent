@@ -3867,3 +3867,40 @@ describe('metAG — copy the source summary', () => {
     expect(button.getAttribute('title')).toContain('所有读口都没读出来');
   });
 });
+
+describe('metAH — the tables say how many rows they really show', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+
+  it('states the full row count for the detail table, from the same count as the source line', async () => {
+    await mount(usageRouter());
+    const rows = document.querySelectorAll('[data-testid^="met6-row-"]').length;
+    expect(rows).toBeGreaterThan(0);
+
+    const note = q('metAH-cap-note');
+    expect(note?.textContent).toContain(`表内全量渲染，共 ${rows} 行`);
+    expect(note?.textContent).toContain('没有截断');
+    expect(note?.getAttribute('title')).toContain('判据');
+    expect(q('met6-cat-source')?.textContent).toContain(`${rows} 行`);
+    // No invented truncation wording.
+    expect(note?.textContent).not.toMatch(/前\s*\d+\s*行/);
+  });
+
+  it('does the same for the share table and keeps it equal to the export count', async () => {
+    await mountShare(SHARE_USAGE);
+    const rows = document.querySelectorAll('[data-testid^="met7-row-"]').length;
+    expect(rows).toBe(3);
+
+    const note = q('metAH-cap-note-share');
+    expect(note?.textContent).toContain(`表内全量渲染，共 ${rows} 行`);
+    expect(note?.getAttribute('title')).toContain('metA-export-count');
+    expect(q('metA-export-count')?.textContent).toBe(`可导出 ${rows} 行`);
+    expect(note?.textContent).not.toMatch(/前\s*\d+\s*行/);
+  });
+
+  it('adds no read of its own', async () => {
+    await mount(usageRouter());
+    const before = urls().length;
+    expect(q('metAH-cap-note')).not.toBeNull();
+    expect(urls().length).toBe(before);
+  });
+});

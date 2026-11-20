@@ -2142,6 +2142,13 @@ export function MetricsModulePage() {
                   </span>
                   {` · ${detailRows.length} 行`}
                 </p>
+                <p
+                  className="met6-hint"
+                  data-testid="metAH-cap-note"
+                  title={`判据：明细行取自当前批次，组件里没有 slice 或行数上限；这里的 ${detailRows.length} 行与上方来源行的计数同源。`}
+                >
+                  表内全量渲染，共 {detailRows.length} 行；导出与屏上一致，没有截断。
+                </p>
                 {breakdownView.note ? <p className="met6-hint">{breakdownView.note}</p> : null}
               </>
             ) : null}
@@ -2639,6 +2646,13 @@ export function MetricsModulePage() {
                   来源：{groupBy === 'employee' ? '员工账本' : '模型用量'} · 截至{' '}
                   {shareView.value.asOf ? formatBeijing(shareView.value.asOf) : '—'} · 窗口 {shareView.value.days} 天 · 可读实扣合计{' '}
                   <span className="font-mono">{formatUsd(shareTotal)}</span>
+                </p>
+                <p
+                  className="met6-hint"
+                  data-testid="metAH-cap-note-share"
+                  title={`判据：分摊行取自当前批次，只做排序，没有 slice 或行数上限；这里的 ${shareRows.length} 行与 metA-export-count 同源。`}
+                >
+                  表内全量渲染，共 {shareRows.length} 行；导出含同一批行，没有截断。
                 </p>
                 <p className="met6-hint" data-testid={`${sharePrefix}-hint`}>
                   占比按可读到的实扣金额归一，合计 100%；缺金额的行不参与分摊，显示「—」。排序写在地址里，刷新与前进后退都保留。
