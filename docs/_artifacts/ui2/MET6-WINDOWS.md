@@ -735,3 +735,11 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 - 表头与表尾各补一格，合计行仍只加表体的可读数值。
 - 验证：定向 metrics 6 files / 247 passed；全量 177 files / 2409 passed；`tsc` 本域 0；`eslint src/modules/metrics` exit 0（9 条既存 warning）；build exit 0（entry 内 `met-row-copy`=0，`MetricsModulePage-*.js`=1）。
 - 未测：真实浏览器 375 下多一列后的横向滚动宽度；系统剪贴板权限弹窗。
+
+## 导出与复制同源护栏（R116，2026-11-20）
+
+- 新增 `web/src/modules/metrics/metrics.export.test.tsx`（5 例）：明细 CSV 的数据行数、`met6-table` 表体行数、`met-row-copy-*` 按钮数三值相等（同一夹具 3 行）；导出顺序跟随 `?dsort/?ddir`（asc 首行=小鲤、desc 首行=小满，文件首列与屏上第一行同名）；真 0 与缺失在文件与复制里各自成立；导出与复制全程 `fetchJsonStrict` 调用数不变；无行时导出 disabled + title 且不渲染任何行复制按钮。
+- **改前/改后（口径收紧，R116 ⑤ 覆盖 metR 的旧口径）**：改前明细导出在「有窗口、无明细行」时仍可点，文件只写表头，`metAM` 说明句写「时间窗没有数据时，导出只写表头、复制照常」；改后 `gates.detailExport.enabled` 追加 `&& exportable`，`exportCsv` 也短路，空明细一律 disabled，title 改为「当前窗口没有明细行：没有可导出的数据；空窗口用屏上的计数说明，不导一个只含表头的文件。」，`metAM-matrix-note` 同步改为「时间窗没有明细行时，明细导出停下、摘要复制照常（分摊为空仍可导出只含表头的文件）」。分摊导出（metA）保持原样：空分摊仍可导表头。随之为两处旧断言改口（`metR` 空窗用例与 `metAM` cell 3），属语义收紧，非放宽。
+- 格式分层沿用 metO：屏上 `$0.00` / `0.0%`，CSV 写机器数位（真 0 为 `0.00`，占比按上游原值 `0` / `100`，不带 `%`），缺失在两边分别写空字段与「—」；两者取同一行对象，不各自重算。
+- 验证：定向 metrics 7 files / 252 passed；全量 184 files / 2474 passed；`tsc` 本域 0；`eslint src/modules/metrics` exit 0（9 条既存 warning）；build exit 0（entry 内 `met-row-copy`=0，`MetricsModulePage-*.js`=1）。
+- 未测：真实浏览器 375 下表格与行复制列宽；系统剪贴板权限拒绝弹窗。

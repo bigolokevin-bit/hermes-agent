@@ -1612,7 +1612,7 @@ export function MetricsModulePage() {
   const shareGaps: ExportGap[] = [];
 
   const exportCsv = () => {
-    if (pageFailed) return;
+    if (pageFailed || !exportable) return;
     const header =
       viewMode === 'model'
         ? ['模型', '支出USD', '次数', '占比%', '读取于', '窗口', '窗口开始', '窗口结束', 'as_of', 'window']
@@ -1794,14 +1794,14 @@ export function MetricsModulePage() {
     refresh: { enabled: true, title: refreshBusy ? '这一批还在读，按钮不会重复发请求。' : '重新读取当前窗口与当前分组的全部读口。' },
     scope: { enabled: !refreshBusy, title: refreshBusy ? '刷新进行中，视图切换等这一批结束。' : null },
     detailExport: {
-      enabled: !refreshBusy && !pageFailed,
+      enabled: !refreshBusy && !pageFailed && exportable,
       title: refreshBusy
         ? '刷新进行中，导出等这一批结束。'
         : pageFailed
           ? '整页读取失败，这份导出暂时不生成；先重试上面的读取，读到数据再导。'
           : exportable
             ? '导出明细 CSV：当前窗口与当前分类下账本逐行的实扣明细，不是分摊汇总。'
-            : '当前窗口没有明细行：导出的文件只写表头，缺块会在末尾注明。',
+            : '当前窗口没有明细行：没有可导出的数据；空窗口用屏上的计数说明，不导一个只含表头的文件。',
     },
     shareExport: {
       enabled: !refreshBusy && !pageFailed && shareView.kind === 'ready',
@@ -1932,7 +1932,7 @@ export function MetricsModulePage() {
       </div>
 
       <p className="metAM-note" data-testid="metAM-matrix-note">
-        可用性一句话：整页都读不出来的时候，只留「刷新」可用，导出与复制一起停下；只有某一块读不出来的时候，用到它的导出与复制停下，单卡重试照常；时间窗没有数据时，导出只写表头、复制照常；刷新进行中，除刷新本身外都不点，刷新也不会重复发请求。
+        可用性一句话：整页都读不出来的时候，只留「刷新」可用，导出与复制一起停下；只有某一块读不出来的时候，用到它的导出与复制停下，单卡重试照常；时间窗没有明细行时，明细导出停下、摘要复制照常（分摊为空仍可导出只含表头的文件）；刷新进行中，除刷新本身外都不点，刷新也不会重复发请求。
       </p>
 
       {output ? (
