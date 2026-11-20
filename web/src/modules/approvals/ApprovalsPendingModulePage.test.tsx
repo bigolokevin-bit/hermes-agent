@@ -579,7 +579,7 @@ describe("R59 pending queue search (apv8-*)", () => {
   it("R60: pending rows expand an inline preview without any extra request", async () => {
     await mount(queue());
     const calls = api.fetchJSON.mock.calls.length;
-    const toggle = document.querySelector<HTMLButtonElement>('[data-testid="apv9-toggle-ap_9F3A1111"]');
+    const toggle = document.querySelector<HTMLButtonElement>('[data-testid^="apv9-toggle-"][data-record="ap_9F3A1111"]');
     expect(toggle).toBeTruthy();
     await act(async () => {
       toggle.click();
@@ -843,5 +843,30 @@ describe("R94 pending correlation return", () => {
     expect(qa("apv8-search")?.getAttribute("value")).toBe("本周");
     expect(scrolled.mock.calls.some((c) => c[1] === 321)).toBe(true);
     expect(rawCorrelationReturn()).toBeNull();
+  });
+});
+
+describe("R93 pending tab status semantics (apv-status-note)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+
+  it("a pasted ?status= is dropped from the address and the note explains where it applies", async () => {
+    await mount(queue(), "/approvals?tab=pending&status=expired");
+    await waitFor(() => !!qa("apv-status-note"), "note");
+    expect(qa("apv-status-note")?.textContent).toContain("待办视图只列待办");
+    expect(qa("apv-status-note")?.getAttribute("title")).toContain("pending");
+    // chip 投影：status 参已从地址移除后不再渲染「状态」chip（列表本就没按它过滤）
+    await waitFor(() => !qa("apv-chip-status"), "status chip gone");
+    const listUrls = api.fetchJSON.mock.calls.map((c) => String(c[0])).filter((u) => u.includes("/api/approvals"));
+    expect(listUrls.length, "dropping the dead param never refetches the queue").toBe(1);
+    expect(listUrls[0]).toContain("status=pending");
+    expect(listUrls[0]).not.toContain("status=expired");
+  });
+
+  it("a clean pending entry keeps the note and touches nothing extra", async () => {
+    await mount(queue(), "/approvals?tab=pending");
+    await waitFor(() => !!qa("apv-status-note"), "note resident");
+    expect(qa("apv-chip-status")).toBeNull();
+    const listUrls = api.fetchJSON.mock.calls.map((c) => String(c[0])).filter((u) => u.includes("/api/approvals"));
+    expect(listUrls.length).toBe(1);
   });
 });

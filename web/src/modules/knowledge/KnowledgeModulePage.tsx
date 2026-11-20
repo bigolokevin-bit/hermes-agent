@@ -83,6 +83,7 @@ import {
   docMetaCopyText,
   docTypeBuckets,
   groupRowsBySpace,
+  typeBucketLabel,
   previewField,
   documentDetailUrl,
   documentsUrl,
@@ -2170,8 +2171,7 @@ function SpaceDetailSurface({
   }));
   const nameFiltered = filterKey === "" ? keyedAll : keyedAll.filter((entry) => entry.row.name.toLowerCase().includes(filterKey));
   // R73 — 类型桶本地过滤：人话值为桶键，缺类型归「未归类」；「全部」= 不过滤。
-  const bucketOf = (row: DocRow) => (row.type !== "—" ? row.type : "未归类");
-  const filtered = typeKey === "" ? nameFiltered : nameFiltered.filter((entry) => bucketOf(entry.row) === typeKey);
+  const filtered = typeKey === "" ? nameFiltered : nameFiltered.filter((entry) => typeBucketLabel(entry.row) === typeKey);
   const buckets = docTypeBuckets(combined); // 计数基于已加载全集（combined），与可见行同源可核对
   const shown = sortDocs(filtered, sort, dir, (entry) => entry.row);
   const shownValue =
@@ -2366,7 +2366,7 @@ function SpaceDetailSurface({
         empty={() =>
           typeKey !== "" ? (
             <p data-testid="kn-type-empty">
-              这份已加载列表里没有「{typeKey}」类型的文档。
+              该类型下没有文档：当前已加载 {combined.length} 条里没有「{typeKey}」类型的文档。
               这是类型筛选的结果，不代表空间没有文档。
               <button type="button" className="knw5-drill" data-testid="kn-type-clear" onClick={() => onCommitType("")}>
                 清除类型筛选
@@ -3273,8 +3273,9 @@ export default function KnowledgeModulePage() {
   const sortDirRaw = sp.get("kdir") ?? sp.get("dir");
   const sortDir: DocSortDir =
     sortDirRaw !== null ? docSortDir(sortDirRaw) : sortCol === "updated" ? "desc" : docSortLandDir(sortCol);
-  // R73 — 类型桶进 URL：?type= 人话值；粘链/刷新复现，切类型/清类型不动其余参数。
-  const typeKey = sp.get("type") ?? "";
+  // R73/R74 — 类型桶进 URL：本面真值键是 ?ktype=（人话值；粘链/刷新复现），旧 ?type= 只读兜底；
+  // 写只写 ktype，清除时 ktype/type 一并删——q/ksort/kdir/space/doc 全程不动。
+  const typeKey = sp.get("ktype") ?? sp.get("type") ?? "";
   const [nonce, setNonce] = useState("0");
   const [deepCrumb, setDeepCrumb] = useState<DeepCrumb | null>(null);
   const reportCrumb = useCallback((next: DeepCrumb | null) => {
@@ -3308,6 +3309,7 @@ export default function KnowledgeModulePage() {
     next.delete("ksort");
     next.delete("kdir");
     next.delete("type"); // R73：类型桶同属文档列表，换页签一并清掉
+    next.delete("ktype"); // R74：新键同上
     setSp(next);
   };
 
@@ -3382,12 +3384,15 @@ function containerQuery(key: string): HTMLElement | null {
   };
 
   // R73 — 类型桶写 URL：只动 type，q/ksort/kdir/面包屑/分页等其余参数原样保留；「全部」不写参数。
+  // R73/R74 — 类型桶写 URL：只写 ktype；同桶再点=清除时 ktype 与旧 type 一并删（否则兜底读
+  // 会让旧参数复活）；其余参数原样保留。「全部」态不写参数。
   const commitType = (key: string) => {
     const next = new URLSearchParams(sp);
     if (key === "" || key === typeKey) {
+      next.delete("ktype");
       next.delete("type");
     } else {
-      next.set("type", key);
+      next.set("ktype", key);
     }
     setSp(next);
   };

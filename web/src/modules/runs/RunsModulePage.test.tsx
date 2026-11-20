@@ -1341,8 +1341,8 @@ describe("runs filter source", () => {
   };
   const runsCalls = (): number =>
     api.fetchJSON.mock.calls.filter(([url]) => String(url).includes("/api/runs")).length;
-  const windowSelect = (): HTMLSelectElement =>
-    document.querySelector("[data-testid='run5-filter-window']") as HTMLSelectElement;
+  const pressedWindow = (): string =>
+    document.querySelector("[data-testid^='run-window-'][aria-pressed='true']")?.getAttribute("data-testid") ?? "";
   const statusSelect = (): HTMLSelectElement =>
     document.querySelector("[data-testid='run5-filter-status']") as HTMLSelectElement;
 
@@ -1356,7 +1356,7 @@ describe("runs filter source", () => {
     await render("/runs?window=30d&status=failed&employee=emp_aaaabbbbcccc");
     await waitFor(() => pathNode() !== null, "source line");
     expect(pathNode().textContent).toBe("/runs?window=30d&status=failed&employee=emp_aaaabbbbcccc");
-    expect(windowSelect().value).toBe("30d");
+    expect(pressedWindow()).toBe("run-window-30d");
     expect(statusSelect().value).toBe("failed");
     const asked = api.fetchJSON.mock.calls.map(([url]) => String(url)).find((url) => url.includes("/api/runs")) ?? "";
     expect(asked).toContain("status=failed");
@@ -1394,7 +1394,7 @@ describe("runs filter source", () => {
     expect(notes.some((n) => n.includes("时间范围「zz」未识别") && n.includes("近 7 天"))).toBe(true);
     expect(notes.some((n) => n.includes("状态「zz」未识别"))).toBe(true);
     expect(notes.some((n) => n.includes("预览参数「zz」未识别"))).toBe(true);
-    expect(windowSelect().value).toBe("7d");
+    expect(pressedWindow()).toBe("run-window-7d");
     expect(statusSelect().value).toBe("");
     expect(document.querySelector("[data-testid='probe-location']")?.textContent).toContain("window=zz");
   });
@@ -1404,8 +1404,7 @@ describe("runs filter source", () => {
     await render("/runs");
     await waitFor(() => runsCalls() === 1, "first read");
     await act(async () => {
-      windowSelect().value = "24h";
-      windowSelect().dispatchEvent(new Event("change", { bubbles: true }));
+      (document.querySelector("[data-testid='run-window-24h']") as HTMLButtonElement).click();
     });
     await waitFor(() => runsCalls() === 2, "one more read");
     await new Promise((resolve) => setTimeout(resolve, 40));
@@ -1675,7 +1674,7 @@ describe("run-notes — footer caliber block", () => {
     // 成本行与屏上的成本口径说明共用同一常量，不存在第二套措辞。
     expect(cost).toContain(COST_CALIBER_TEXT);
     expect(document.querySelector("[data-testid='run-note-elapsed']")?.textContent ?? "").toContain("不拿本机时间补");
-    expect(document.querySelector("[data-testid='run-note-asOf']")?.textContent ?? "").toContain("不拿本机时间顶替");
+    expect(document.querySelector("[data-testid='run-note-asOf']")?.textContent ?? "").toContain("不用本机时间顶替");
     expect(document.querySelector("[data-testid='run-note-window']")?.textContent ?? "").toContain("/api/runs");
     expect(document.querySelector("[data-testid='run-note-state']")?.textContent ?? "").toContain("不读写口");
 
@@ -2044,7 +2043,9 @@ describe("runs list keyboard navigation", () => {
     // Only real controls remain in the tab order; no row carrier is focusable.
     const retry = document.querySelector("[data-testid='run5-error-retry']") as HTMLElement | null;
     expect(retry?.tabIndex).toBe(0);
-    expect(document.querySelector("[data-testid='run-list-copy']")).not.toBeNull();
+    // Reproduction legs render no real entry points at all, so nothing can be
+    // half-disabled there.
+    expect(document.querySelector("[data-testid='run-list-copy']")).toBeNull();
   });
 });
 
@@ -2192,5 +2193,179 @@ describe("runs empty state guide", () => {
     expect(guide()).toBeNull();
     expect(document.querySelector("[data-testid='run-state-empty']")).toBeNull();
     expect(text()).toContain("req-empty-1");
+  });
+});
+
+/* ── aria-disabled always says what disabled says, with one reason ── */
+
+describe("runs export aria parity", () => {
+  const btn = (id: string): HTMLButtonElement | null =>
+    document.querySelector(`[data-testid='${id}']`) as HTMLButtonElement | null;
+  const state = (id: string) => {
+    const node = btn(id);
+    return {
+      disabled: node?.disabled ?? null,
+      aria: node?.getAttribute("aria-disabled") ?? null,
+      title: node?.getAttribute("title") ?? "",
+    };
+  };
+
+  it("keeps aria-disabled, disabled and the reason in step for every phase", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A, RUN_B]));
+    await render("/runs", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => rowNodes() === 2, "two rows");
+    for (const id of ["run-list-copy", "run-list-export"]) {
+      const s = state(id);
+      expect(s.disabled).toBe(false);
+      expect(s.aria).toBe("false");
+      expect(s.title.length).toBeGreaterThan(0);
+    }
+
+    // Loading renders no entry points at all: nothing can be half-disabled.
+    api.fetchJSON.mockImplementation(() => new Promise(() => {}));
+    await render("/runs", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => document.querySelector("[data-testid='run5-loading']") !== null, "skeleton");
+    expect(btn("run-list-copy")).toBeNull();
+    expect(btn("run-list-export")).toBeNull();
+
+    // A real failure keeps the bar, disabled, with one sentence and a matching aria.
+    api.fetchJSON.mockImplementation(() =>
+      Promise.reject(new ApiError("down", { status: 500, body: "", url: "/api/runs", requestId: "req-aria-1" })),
+    );
+    await render("/runs", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => document.querySelector("[data-testid='run-state-error']") !== null, "error panel");
+    for (const id of ["run-list-copy", "run-list-export"]) {
+      const s = state(id);
+      expect(s.disabled).toBe(true);
+      expect(s.aria).toBe("true");
+      expect(s.title).toContain("先重试");
+    }
+
+    // Real empty: disabled, aria true, and the reason names the empty page.
+    api.fetchJSON.mockImplementation(okList([]));
+    await render("/runs", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => document.querySelector("[data-testid='run-state-empty']") !== null, "empty panel");
+    for (const id of ["run-list-copy", "run-list-export"]) {
+      const s = state(id);
+      expect(s.disabled).toBe(true);
+      expect(s.aria).toBe("true");
+      expect(s.title).toContain("没有行");
+    }
+
+    // Reproduction legs render no real buttons: nothing can disagree there either.
+    for (const entry of ["/runs?state=error", "/runs?state=denied", "/runs?state=empty"]) {
+      await render(entry, <><RunsModulePage /><HistoryProbe /></>);
+      expect(btn("run-list-copy")).toBeNull();
+      expect(btn("run-list-export")).toBeNull();
+      expect(document.querySelector("[data-testid^='run-state']")).not.toBeNull();
+    }
+  });
+
+  it("marks the per-row copy as enabled and answers zero requests", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A, RUN_B]));
+    await render("/runs", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => rowNodes() === 2, "two rows");
+    const reads = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      (document.querySelector("[data-testid='run-row-toggle-0']") as HTMLButtonElement).click();
+    });
+    await waitFor(() => btn("run-row-copy") !== null, "preview copy");
+    const s = state("run-row-copy");
+    expect(s.disabled).toBe(false);
+    expect(s.aria).toBe("false");
+    expect(s.title).toContain("复制这一行");
+    expect(api.fetchJSON.mock.calls.length).toBe(reads);
+  });
+
+  it("keeps a real empty list disabled with the empty-row reason", async () => {
+    api.fetchJSON.mockImplementation(okList([]));
+    await render("/runs", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => document.querySelector("[data-testid='run-state-empty']") !== null, "empty");
+    for (const id of ["run-list-copy", "run-list-export"]) {
+      const s = state(id);
+      expect(s.disabled).toBe(true);
+      expect(s.aria).toBe("true");
+      expect(s.title).toContain("没有行");
+    }
+    expect(document.querySelector("[data-testid='run-empty-guide']")).not.toBeNull();
+  });
+});
+
+/* ── one window control, four real choices ───────────────────────── */
+describe("runs time window selector", () => {
+  const probe = (): string => document.querySelector("[data-testid='probe-location']")?.textContent ?? "";
+  const btn = (key: string): HTMLButtonElement =>
+    document.querySelector(`[data-testid='run-window-${key}']`) as HTMLButtonElement;
+  const pressed = (): string[] =>
+    Array.from(document.querySelectorAll("[data-testid^='run-window-']"))
+      .filter((node) => node.getAttribute("aria-pressed") === "true")
+      .map((node) => node.getAttribute("data-testid") ?? "");
+  const reads = (route: string): string[] =>
+    api.fetchJSON.mock.calls.map(([url]) => String(url)).filter((url) => url.includes(route));
+
+  it("offers four native buttons, defaults to 7d, and writes only the window key", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A, RUN_B]));
+    await render("/runs?status=failed&employee=emp_aaaabbbbcccc&rsort=started&rdir=desc&keep=1", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => rowNodes() === 2, "two rows");
+    for (const key of ["24h", "7d", "30d", "all"]) {
+      expect(btn(key).tagName).toBe("BUTTON");
+      expect(btn(key).getAttribute("type")).toBe("button");
+    }
+    expect(pressed()).toEqual(["run-window-7d"]);
+
+    const before = reads("/api/runs").length;
+    const otherBefore = api.fetchJSON.mock.calls.length - before;
+    await act(async () => {
+      btn("30d").click();
+    });
+    await waitFor(() => probe().includes("window=30d"), "window in url");
+    expect(pressed()).toEqual(["run-window-30d"]);
+    expect(probe()).toContain("status=failed");
+    expect(probe()).toContain("employee=emp_aaaabbbbcccc");
+    expect(probe()).toContain("rsort=started");
+    expect(probe()).toContain("keep=1");
+    // exactly one new list read; nothing else is asked again
+    expect(reads("/api/runs").length).toBe(before + 1);
+    expect(api.fetchJSON.mock.calls.length - reads("/api/runs").length).toBe(otherBefore);
+    expect(reads("/api/runs").at(-1)).toContain("since=");
+  });
+
+  it("sends an unbounded since when 全部时间 is picked", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => rowNodes() === 1, "one row");
+    await act(async () => {
+      btn("all").click();
+    });
+    await waitFor(() => probe().includes("window=all"), "all in url");
+    expect(reads("/api/runs").at(-1)).toContain("since=1970-01-01T00%3A00%3A00.000Z");
+    expect(pressed()).toEqual(["run-window-all"]);
+  });
+
+  it("falls back to 7d on an unknown value without rewriting the address", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs?window=xxx&status=failed", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => rowNodes() === 1, "one row");
+    expect(pressed()).toEqual(["run-window-7d"]);
+    expect(probe()).toContain("window=xxx");
+    const note = document.querySelector("[data-testid='run-source-note']")?.textContent ?? "";
+    expect(note).toContain("未识别");
+    expect(reads("/api/runs").at(-1)).toContain("since=");
+  });
+
+  it("collapses an open preview when the window changes", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A, RUN_B]));
+    await render("/runs", <><RunsModulePage /><HistoryProbe /></>);
+    await waitFor(() => rowNodes() === 2, "two rows");
+    await act(async () => {
+      (document.querySelector("[data-testid='run-row-toggle-0']") as HTMLButtonElement).click();
+    });
+    expect(document.querySelector("[data-testid='run-row-preview-0']")).not.toBeNull();
+    await act(async () => {
+      btn("24h").click();
+    });
+    await waitFor(() => rowNodes() === 2, "rows back");
+    expect(document.querySelector("[data-testid='run-row-preview-0']")).toBeNull();
+    expect(reads("/api/runs").length).toBe(2);
   });
 });

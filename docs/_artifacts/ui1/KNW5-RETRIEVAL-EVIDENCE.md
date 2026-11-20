@@ -2514,3 +2514,75 @@ kn.parity 既有断言零改零破（含 R72 knC→kn-sort 改名后续测试）
 边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
 package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
 无 force / amend / `--no-verify`；单 commit「feat(console): knowledge document type filter」。
+
+# KNW5 追加 R74：类型筛选接真数据复验（BFF 换代后活体实测 → 走向 A）（2026-11-20 BJT）
+
+安全闸：toplevel 相符、porcelain 空、显式 refspec fetch 后 merge 实到 tip `f54b8a37`
+（比 R73 的 `0ac8bf4b` 基线更新，按实测合并，零冲突、知识面 delta 空）。merge commit 与本
+feature commit 分笔。
+
+## 一、活体实测原始读数（cookie 只在 curl 内拼 header，零打印；9122 只读未动）
+
+```text
+GET /agent-api/api/knowledge/spaces?limit=20
+  HTTP 200 · 顶层键 [asOf, asOfSource, count, cursor, hasMore, probe_notes, rows, source, spaces]
+  spaces 长度 3 · 首条键 [description, document_count, kind, last_sync_at, name, space_id]
+  取 space_id=1（seakoi-p0-8-probe）继续探文档：
+
+GET /agent-api/api/knowledge/spaces/1/documents?limit=50   → HTTP 404（嵌套形态仍不认）
+GET /agent-api/api/documents?limit=50&spaceId=1           → HTTP 200 ← 主读口通了
+GET /agent-api/api/knowledge/documents?limit=50&spaceId=1 → HTTP 200（别名口同形）
+  200 体顶层键 [asOf, asOfSource, count, cursor, documents, hasMore, rows, source]
+  documents 长度 1 · item 原始键 [collection_name, created_at, description, document_id, id,
+    is_released, kind, name, state, status, type, updatedAt, updated_at]
+  样例值：name="seakoi-p08-doc-1.txt"；type=0、kind=0（**数字枚举，不是 mime/扩展名字符串**）；
+    size/sizeBytes 无此键；时间 updated_at=updatedAt="2026-11-14T06:33:18+08:00"；
+    信封 hasMore=false、cursor=null、count=1、asOfSource="bff-read-time"。
+```
+
+判读与不臆造边界：
+- 上一轮记的两形态 404 已不复现——本轮重新实测，按新事实走**走向 A**（读口可用）。
+- `type: 0` 是数字：前端 pickString 原本会把它读成缺失、谎报「该字段未返回」。修正为
+  数字照原样转字符串进 raw → 人话映射查不到 → 「其他类型」，`title="0"`。**不猜 0 的
+  含义**（不映射成 txt，尽管文件名带 .txt）。
+- 无 size 键 → 大小格如实「—」/「该字段未返回」，不编 0。
+- 时间键 `updated_at/updatedAt` 带 +08:00：现有 momentOf 别名已覆盖，BJT 到分原样
+  （2026-11-14 06:33）。
+- 信封别名差距：BFF 给 `count/hasMore/cursor`，前端 R54 页信封读的是
+  `nextCursor/next_cursor/total/totalCount/total_count`——不匹配，knE 诚实显示
+  「无分页游标 / 总数不可用」（测试锁读数）。本轮**不扩分页别名**（不在单内，避免顺手改），
+  差距如实挂账。
+
+## 二、本笔改动（在 R73 桶基础上收敛口径，非新功能）
+
+```text
+参数口径  本面真值键改 ?ktype=：读取 ktype→旧 type 兜底（旧粘贴链继续生效）；写只写 ktype；
+          清除时 ktype/type 一并删（防兜底读让旧参数复活）；q/ksort/kdir/space/doc 全程
+          不动（组合实测）；换页签两键都清。
+桶名      缺/空类型桶按派工定名「未标注类型」；标签单点 typeBucketLabel(row)——桶聚合与
+          过滤比较共用一个函数（R73 曾两处各写字面量，测出「未归类/未标注类型」分裂：
+          桶显示 1 行、过滤 0 行——本笔修复，改前读数见测试提交注）。
+数字类型  docOf 的 typeRaw 兼容数字枚举（String(0)）→「其他类型」+title 原始值。
+空态两句  ktype 在场且组合后无行：「该类型下没有文档：当前已加载 N 条里没有「X」类型的
+          文档。」（同覆盖单桶为 0 与筛无匹配两种，非真空句「该空间暂无文档」可分）+ 清除出口。
+非 ready  计数「—」+title；原因句走 copyGates 同表；不造桶不造数。
+```
+
+## 验证尾行（R74）
+```text
+$ npx vitest run src/modules/knowledge   → 3 files / 69 tests passed（基线 68 + 活体契约夹具 1）
+$ npx vitest run                         → 166 files / 2306 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-type2-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 全等
+零额外请求：切桶/清桶/组合粘链各段 fetchMock 与前后快照逐字相等（render 自带的既有读取
+按段单列，不误计入动作）。
+kn3 / kn6–kn9 / knB / knD / knF / knG / knI / knL / knO / kn-sort / kn-gates / kn-doc-preview /
+kn-space-preview / kn.parity 零破。
+```
+未测如实：真实登录态下 space=1 端到端屏（preview 无会话，落未接入诚实态，由活体 curl +
+组件级真契约夹具两路覆盖）；BFF 分页信封别名差距留待单开一轮（不在本单范围，读数已挂账）。
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；未并 main、未重建 9122；显式路径 add；无 force / amend /
+`--no-verify`；单 commit「feat(console): knowledge document type filter」。

@@ -351,3 +351,41 @@
 - 零额外请求：引导渲染与点两个链接后 `urls()` 长度不变（点击只是路由跳转，`/runs` 不发新读）。
 - 验证：定向 runs 3 files / 135 passed（基线 132）；全量 162 files / **2248 passed**（基线 2245）；`tsc` 本域 0；`eslint src/modules/runs` exit 0；build exit 0（entry 内 `run-empty-guide` = 0，`RunsModulePage-*.js` = 1）。
 - 未测：真实浏览器 375 下引导三段文字折行与两个链接的触控间距。
+
+## 导出/复制按钮的 aria 同步（runs export aria parity，2026-11-20）
+
+R52 OBS 整改：`disabled` 与 `aria-disabled` 说同一句话，与 `title` 里的原因同源。
+
+- 单点：`runs.ts` 新增 `effectiveListGate(gate, empty, reason)`，把「这一页没有行」折进阶段闸门；返回的 `ListGate` 同时喂 `disabled`、`aria-disabled` 与 `title`，按钮不再各自拼条件。
+- 覆盖：`run-list-copy`、`run-list-export`（条内两钮）、`run-row-copy`（预览内，`aria-disabled={false}` + `title="复制这一行屏上已渲染的七个字段"`，只在预览展开时存在）。
+- 四态实测（jsdom）：ready → `disabled=false` / `aria-disabled="false"` / title 为可操作说明；真实 500 → `true` / `"true"` /「…先重试…」；真实空列表（200 + `items: []`）→ `true` / `"true"` /「…没有行…」；loading → 条整体不渲染。
+- `?state=` 复现腿：不再渲染 `run-list-copy-bar`（真实入口零渲染，因此不存在半禁用的按钮）；`run-empty-guide`、`run-state-*` 与既有无障碍标记照旧。既有「复现腿仍有复制钮」的断言随契约改写为「必须不存在」。
+- 零额外请求：展开预览、读属性、断言前后 `fetchJSON` 调用数不变。
+- 验证：定向 runs 3 files / 138 passed（基线 135）；全量 166 files / **2308 passed**（上游本波抬高）；`tsc` 本域 0；`eslint src/modules/runs` exit 0；build exit 0（entry 内 `run-list-export`=0，chunk `RunsModulePage-*.js` 内 `aria-disabled`=1）。
+- 未测：真实浏览器读屏软件对 `aria-disabled` 的播报顺序；375 下条内两钮折行。
+
+## 时间窗选择器（runs time window，2026-11-20）
+
+`?window=` 以前只在深链里被读；现在页头有四个真按钮，地址仍是唯一事实源。
+
+- testid：容器沿用 `run5-filter-window`（原 `<select>` 换成 `role="group" aria-label="时间范围"` 的分段组），选项为 `run-window-24h` / `run-window-7d` / `run-window-30d` / `run-window-all`，全部 `button[type="button"]` + `aria-pressed`；默认 `7d`，与既有读取口径一致。既有 `run5-filter-window` 之一处测试由「设 select 值」改为「点按钮」，属契约随 UI 形态改写。
+- 落地址：点击写 `?window=<key>`，与 `status/employee/state/rsort/rdir` 互不清除；默认 7d 仍可显式写 `window=7d`（不清键，保持用户意图可分享）。
+- 全部时间：`all` 是一条真实范围——`sinceIso('all')` 返回纪元起点 `1970-01-01T00:00:00.000Z`，而不是省略 `since`（读口缺窗口会 400 `request.missing_filter`），实测 `/api/runs since=1970-01-01…`。
+- 重取范围：切换恰 +1 次 `/api/runs`，`/api/run-stats` 等其它读口零新增（测试按路由分别计数）。
+- 行内预览：`ListRows` 以 `key={sinceKey}` 重挂，切窗后展开态自然收起（不用 effect 里 setState），`run-row-copy` 等出口按新批 gates 重算。
+- 非法值：`?window=xxx` 回落 7d、`aria-pressed` 在 7d，**不静默改写地址**（地址仍是 `window=xxx`），`run-source-note` 写「时间范围「xxx」未识别，按近 7 天读取」（沿用 `runSource()` 既有语义）。
+- 四态：loading 骨架、真实空（`run-empty-guide`）、筛选空（`run-state-clear`）、error（rid + 重试）都只随新批刷新，不因切窗错乱。
+- 验证：定向 runs 3 files / 142 passed（基线 138）；全量 **2316 passed**；`tsc` 本域 0；`eslint src/modules/runs` exit 0；build exit 0（entry 内「全部时间」=0，`RunsModulePage-*.js` 内 =1；testid 为模板拼接故不入 bundle 字面量）。
+- 未测：真实浏览器 375 下四个按钮与状态下拉的换行密度；键盘 Tab 顺序的人工走查。
+
+## 窗口契约回归护栏（runs window guards，2026-11-20）
+
+`runs.window.test.ts` 把「地址里的窗口」与「请求里的 `since`」钉在一起，纯测试，无产品改动。
+
+- 映射：`24h/7d/30d` 的 `since` 与 `Date.now()` 差分别落在 1/7/30 天（容差 ±2 分钟）；`all` 必须发 `since=1970-01-01T00:00:00.000Z`，**绝不省略** `since`——省略会被读口判成 400 `request.missing_filter`。四档各自的按钮 `aria-pressed` 同步。
+- 组合参数：`?window=7d&status=failed&employee=…&rsort=started&rdir=desc&keep=1` 上点 `run-window-30d` 后，地址五项原样保留，`/api/runs` 恰 +1，`/api/employees` 与 `/api/run-stats` 零新增。
+- 非法值：`?window=xxx` 按 7d 读数且 `run-window-7d` pressed，但地址保持 `window=xxx`（不改写），`run-source-note` 含「未识别」「近 7 天」。
+- 默认：无 `?window=` 时按 7d 读数，地址不自动补 `window=7d`。
+- 复现腿：`?state=empty` 下选择器自洽（恰一枚 pressed），真入口（`run-list-copy`）不渲染，零请求；点 `run-window-24h` 只改地址（`state=empty&window=24h`），仍零请求、面板仍为 empty。
+- 验证：定向 runs 4 files / 147 passed（基线 142）；全量 **2321 passed**；`tsc` 本域 0；`eslint src/modules/runs` exit 0；build exit 0（entry 内「全部时间」=0，`RunsModulePage-*.js`=1）。
+- 未测：真实浏览器 375 折行；读口在极限窗口下的服务端行为（1970 起点只由本用例断言请求形状）。
