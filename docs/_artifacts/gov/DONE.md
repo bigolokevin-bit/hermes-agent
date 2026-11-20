@@ -2016,3 +2016,18 @@ built /private/tmp/health-r38/index.html
   - 三档：1440 `vw=bodySW=bodyCW=1440`，page 1438/1438，table 1408/1408；1280 全部 1280，page 1278/1278，table 1248/1248；375 `body 375/375`，page 373/373，table 及 `.sys6-scroll` **760/343**（仅表内滚动）；无页面横溢。
 - 验证：`npx vitest run src/modules/health` → **5 files / 32 passed**；全量 `npx vitest run` → **145 files / 1800 passed**；`tsc -b . --noEmit` → exit 2，20 行均为既有基线（approvals/employee-detail/employees），`modules/health|sourceSort|SourceMatrix` 0 行。
 - 边界：仅 `web/src/modules/health/{SourceMatrix.tsx,sourceSort.ts,sourceSort.test.ts,SourceMatrix.test.tsx,health.css}` + 本 DONE；未改 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未 install/force/amend/--no-verify。
+
+## R68 / sys14 — /system 服务深链定位（2026-11-20）
+
+- 基线：显式 refspec fetch `origin/lane/hermes-console`（tip `3c7f70f6`，代码代次 `cca9cf7e`）后 `git merge --no-ff` → Already up to date；未 reset，未并 main，未重建 9122。
+- 变更：新增 `web/src/modules/health/serviceLink.ts`（读/写 `svc`、键名与显示名归一匹配、GAP-SYS14-01）；`SystemHealthSurface.tsx` 支持 `?svc=<key|name>`：
+  - 命中后自动展开 `sys4-detail-*`、置 `aria-current=true` 与 `is-svc-target` 高亮，`scrollIntoView({block:'center'})`；刷新/粘 URL 可复现。
+  - 未命中或读口失败时显示 `sys14-link-missing`「该服务不在当前清单里」+ 人话原因 + 去处，`GAP-SYS14-01` 仅在 title；真实清单行数不变，不补行。
+  - 清除定位/关闭详情只删除 `svc`，保留 `tab/ssort/sdir` 等参数；Esc、行切换与“清除定位”都能撤掉深链；无 `?svc=` 时点行展开行为不变。
+- 读数（临时 harness 已删除；Vite 5486 / Chrome CDP 9286；真实 `HealthPage` + 健康/三探针 stub）：
+  - 1440/1280/375 均 `vw=bodySW=bodyCW=pageSW=pageCW=1440/1280/375`，无横溢。
+  - `?svc=runtime&ssort=state&sdir=desc`：3 行，`sys4-detail-runtime=1`，目标行 `aria-current=true`、`is-svc-target`，提示「已定位到「Hermes 运行时」」，URL 原样；请求 **4**（一次原有健康 + 三探针），排序不新增请求。
+  - 点“清除定位”：URL 变为 `#/system?tab=health&ssort=state&sdir=desc`（仅去 `svc`），详情关闭，请求仍 **4**。
+  - `?svc=ghost&ssort=ms&sdir=asc`：3 行不增，`sys14-link-missing` 含「该服务不在当前清单里」「没有匹配」「不补行」，title `GAP-SYS14-01`，无 `aria-current`，请求 **4**；点提示去处后仅去 `svc`，保留 `ssort/sdir`。
+- 验证：`npx vitest run src/modules/health` → **5 files / 36 passed**；全量 `npx vitest run` → **145 files / 1804 passed**；`tsc -b . --noEmit` → exit 2，20 行均为既有基线（approvals/employee-detail/employees），本域 0 行。
+- 边界：仅 `web/src/modules/health/{SystemHealthSurface.tsx,serviceLink.ts,SystemHealthSurface.test.tsx,health.css}` + 本 DONE；未改 App.tsx/shell/routes/registry/package·lock/web-scripts/ops；未 install/force/amend/--no-verify。

@@ -559,3 +559,47 @@
   font-size: 0.6875rem;
   text-decoration: none;
 }
+
+/* sys14 — svc deep link */
+.sys14-link-note,
+.sys14-link-missing {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 8px;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-muted);
+  color: var(--color-foreground);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.sys14-link-note a,
+.sys14-link-missing a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.sys14-link-note a:focus-visible,
+.sys14-link-missing a:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.sys14-link-missing {
+  border-left: 3px solid var(--color-warning);
+}
+
+.sys14-link-missing b {
+  font-weight: 600;
+}
+
+.sys3-row[aria-current="true"] td {
+  background: var(--color-muted);
+  box-shadow: inset 3px 0 var(--color-primary);
+}

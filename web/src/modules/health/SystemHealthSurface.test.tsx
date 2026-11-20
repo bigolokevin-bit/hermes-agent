@@ -49,7 +49,10 @@ const HEALTH = {
   ],
 };
 
-beforeEach(() => { api.fetchJSON.mockReset(); });
+beforeEach(() => {
+  api.fetchJSON.mockReset();
+  window.history.replaceState({}, "", "/");
+});
 afterEach(() => {
   act(() => root?.unmount());
   root = null;
@@ -250,5 +253,81 @@ describe("SystemHealthSurface row detail", () => {
     });
     expect(container.querySelector("[data-testid='sys4-detail-console']")).toBeNull();
     expect(window.location.search).toBe("");
+  });
+});
+
+describe("SystemHealthSurface svc deep link", () => {
+  it("opens the matching row, marks it current, scrolls it into view and clears only svc on close", async () => {
+    const scroll = vi.fn();
+    const proto = HTMLElement.prototype as unknown as { scrollIntoView?: (arg?: ScrollIntoViewOptions) => void };
+    const original = proto.scrollIntoView;
+    proto.scrollIntoView = scroll;
+    try {
+      api.fetchJSON.mockResolvedValue(HEALTH);
+      window.history.replaceState({}, "", "/#/system?tab=health&ssort=state&sdir=desc&svc=console");
+      await render();
+      await waitFor(() => !!container.querySelector("[data-testid='sys4-detail-console']"), "deep-link detail");
+
+      const row = container.querySelector<HTMLElement>("[data-testid='sys3-row-console']")!;
+      expect(row.getAttribute("aria-current")).toBe("true");
+      expect(row.className).toContain("is-svc-target");
+      expect(container.querySelector("[data-testid='sys14-link-target']")?.textContent).toContain("控制台服务(BFF)");
+      await waitFor(() => scroll.mock.calls.length > 0, "scrollIntoView");
+      expect(api.fetchJSON).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      });
+      expect(container.querySelector("[data-testid='sys4-detail-console']")).toBeNull();
+      expect(window.location.hash).toBe("#/system?tab=health&ssort=state&sdir=desc");
+      expect(window.location.hash).not.toContain("svc=");
+      expect(api.fetchJSON).toHaveBeenCalledTimes(1);
+    } finally {
+      if (original) proto.scrollIntoView = original;
+      else delete proto.scrollIntoView;
+    }
+  });
+
+  it("matches a service by its human name", async () => {
+    api.fetchJSON.mockResolvedValue(HEALTH);
+    window.history.replaceState({}, "", `/#/system?tab=health&svc=${encodeURIComponent("Hermes 运行时")}`);
+    await render();
+    await waitFor(() => !!container.querySelector("[data-testid='sys4-detail-runtime']"), "named deep link");
+    expect(container.querySelector("[data-testid='sys3-row-runtime']")?.getAttribute("aria-current")).toBe("true");
+    expect(api.fetchJSON).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a human missing notice without inventing a row, and clearing keeps other params", async () => {
+    api.fetchJSON.mockResolvedValue(HEALTH);
+    window.history.replaceState({}, "", "/#/system?tab=health&ssort=ms&sdir=asc&svc=ghost");
+    await render();
+    await waitFor(() => !!container.querySelector("[data-testid='sys14-link-missing']"), "missing notice");
+    const notice = container.querySelector("[data-testid='sys14-link-missing']")!;
+    expect(notice.textContent).toContain("该服务不在当前清单里");
+    expect(notice.textContent).toContain("ghost");
+    expect(notice.textContent).toContain("没有匹配");
+    expect(notice.getAttribute("title")).toBe("GAP-SYS14-01");
+    expect(container.querySelectorAll("[data-testid^='sys3-row-']")).toHaveLength(3);
+    expect(api.fetchJSON).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      (container.querySelector("[data-testid='sys14-link-clear']") as HTMLAnchorElement).click();
+    });
+    expect(container.querySelector("[data-testid='sys14-link-missing']")).toBeNull();
+    expect(window.location.hash).toBe("#/system?tab=health&ssort=ms&sdir=asc");
+    expect(api.fetchJSON).toHaveBeenCalledTimes(1);
+  });
+
+  it("explains that an unavailable read port cannot locate the requested service", async () => {
+    api.fetchJSON.mockRejectedValue(new ApiError("failed", { status: 404, body: "{}", url: "/agent-api/api/health", requestId: "req-sys14" }));
+    window.history.replaceState({}, "", "/#/system?tab=health&svc=console");
+    await render();
+    await waitFor(() => !!container.querySelector("[data-testid='sys3-gap']"), "gap");
+    const notice = container.querySelector("[data-testid='sys14-link-missing']")!;
+    expect(notice.textContent).toContain("该服务不在当前清单里");
+    expect(notice.textContent).toContain("健康读口未接入");
+    expect(notice.textContent).toContain("console");
+    expect(notice.getAttribute("title")).toBe("GAP-SYS14-01");
+    expect(api.fetchJSON).toHaveBeenCalledTimes(1);
   });
 });
