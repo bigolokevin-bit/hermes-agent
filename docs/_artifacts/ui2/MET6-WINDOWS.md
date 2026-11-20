@@ -515,3 +515,114 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 - 既有护栏未动：`metrics.export-parity.test.ts`（metAC 10 例）保持原样，CSV 行数仍等于 M。
 - 验证：定向 `src/modules/metrics` 3 files / **180 passed**（原 177，+3）；全量 **137 files / 1703 passed**（原 1700）；`tsc -b . --noEmit` 全仓 58 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metAH` → entry `assets/index-gCw9agdb.js` sha256 `e48f4b56de38b57edd1ce14edc21118926d87a5af5f890dde90294e91256ee0c`，entry 内 `metAH-cap-note` 命中 0，chunk `assets/MetricsModulePage-B9ULZATw.js` 命中 1。
 - 未测项：真实后端若对账本/用量做服务端分页（本仓代码未见分页参数），当前文案不会自动改写；员工目录 `limit=200` 的名单上限仍由既有的账本截断提示承担，本单未改口径。
+
+## 导出文件名口径（metAI，2026-11-20）
+
+两份 CSV 的文件名现在自带「窗口 / 分组 / 排序 / 生成时刻」，同一时刻导出也不会互相覆盖。
+
+- 模板：明细 `metrics-detail-<window>-<group>-<sort>-<dir>-<YYYYMMDD-HHmm>.csv`；分摊 `metrics-share-<window>-<group>-<sort>-<dir>-<YYYYMMDD-HHmm>.csv`。时间戳为北京时间到分（`beijingFileStamp`），窗口取 `24h|7d|30d`，分组取 `employee|model`。
+- 排序：明细的 `sort` 来自 `?dsort/?ddir`（默认 `cost-desc`，未动过排序时就是这四个字母）；分摊来自 `?sort/?dir`（默认 `cost-desc`，`sort=model` 时为 `model-asc|desc`）。因此「同窗口同分组但排序不同」的两份文件也不会同名。
+- 字符集：`fileToken` 把非 `[a-z0-9]` 统一折叠成 `-` 并去首尾横线，整名匹配 `^[a-z0-9.-]+$`，不含斜杠、冒号、空白与中文。
+- 实测两枚（同一时刻 `2026-11-20T09:30Z` = 北京 17:30）：`metrics-detail-24h-employee-cost-desc-20261120-1730.csv` 与 `metrics-share-24h-model-cost-desc-20261120-1730.csv`，两者不相等；`?dsort=runs&ddir=asc` 时明细名为 `…-runs-asc-…`，`?sort=model&dir=asc` 时分摊名匹配 `^metrics-share-24h-model-[a-z]+-asc-`。
+- 屏上说明：`metAI-filename-note`（导出按钮旁）给出两个模板与「含窗口、分组、排序与生成时刻」，title 写完整规则；CSV 内容、表头、行数零改动，metAC 的行数/注释/`as_of`/`window` 断言未动。
+- 验证：定向 `src/modules/metrics` 3 files / **184 passed**（原 180，+4）；全量 **137 files / 1799 passed**（wave-19 上游抬高总数，本单前 1703）；`tsc -b . --noEmit` 全仓 67 条既存、`modules/metrics` 0；build `--outDir /tmp/build-metAI` → entry `assets/index-CQVVvpbM.js` sha256 `4c76d28a555065fa517a4ad4e67fc2a6851e228ed19295e48ccf27a6184d8b63`，entry 内 `metAI-filename-note` 命中 0，chunk `assets/MetricsModulePage-Cn2kglU2.js` 命中 1。
+- 未测项：不同浏览器/系统对下载文件名中连字符与大小写的保留未逐端走查；跨日边界（23:59 生成）未构造样例。
+
+## 复制/摘要/文件名契约护栏（metAJ，2026-11-20）
+
+新增 `web/src/modules/metrics/metrics.copy-parity.test.ts`（6 例，C1–C5），把已经交付的复制与命名口径钉住；同时修正了一处真实不一致。
+
+- C1 来源摘要：先展开 metB，再点 `metAG-copy-sources`，复制文本与 `metB-source-row-*` 逐行同序同段——每行由 `口径名 · 路径 · 采集时刻 · 状态词` 四段拼成，采集时刻取 `metB-source-asof-<key>` 的纯时间（滞后徽标不混入），状态词限定在「正常/降级/读不到」三词内。行数与 `已复制 N 行` 一致。
+- C2 两份摘要互不串味：view 摘要含「运行分析摘要」且不含「热力摘要」，热力摘要反之；缺值时分别写「实扣金额：—」「总运行：—」并带「不可比较」，全文不出现 `$0.00` 冒充缺失（真 0 才会写 `$0.00`）。
+- C3 文件名契约：`csvFileName('employee','24h','cost','desc', 2026-11-20T09:30Z)` = `metrics-detail-24h-employee-cost-desc-20261120-1730.csv`；`shareCsvFileName('model','24h','cost','desc', 同一时刻)` = `metrics-share-24h-model-cost-desc-20261120-1730.csv`。同窗同组三种排序三名互不相同；整名匹配 `^[a-z0-9.-]+$`，不含空白、斜杠、冒号与中文。
+- C4 口径说明同文：metAB 展开后逐 key 比较 `metAD-note-<key>` 与 `metAB-note-<key>` 的 textContent，要求逐字相等（`run-stats`、`budget-usage`、`pricing`、`run-activity`）。
+- C5 零新请求：上述四组操作前后 `urls()` 长度均不变。
+
+**发现并修复（同单）**：改前 sr-only 为 `${label}。缺值策略：${missing}`，而页尾 item 的 textContent 是四段无分隔拼接（`${label}${path}计算范围：${scope}缺值策略：${missing}`），二者并不相等。改后新增 `caliberNoteText(note)`＝`${label}。${path}。计算范围：${scope}。缺值策略：${missing}。`，sr-only 直接用它；页尾四项各自补句号（`${label}。` / `${path}。` / `计算范围：${scope}。` / `缺值策略：${missing}。`），使两处 textContent 逐字相同。连带：sr-only 现在含 `/api` 路径，原本两处「页面无 /api」断言改为对 `visibleText()`（剔除 `.sr-only` 的可见文本）断言，意图不变。
+
+- 验证：定向 `src/modules/metrics` **4 files / 190 passed**（原 184，+6）；全量 **137 files / 1805 passed**（原 1799）；`tsc -b . --noEmit` 全仓 67 条既存、`modules/metrics` 0。
+- build `--outDir /tmp/build-metAJ` → entry `assets/index-BOZO53Tv.js` sha256 `61300afc5168e388899985604363f06b8150eb4df4c988de0de5ee2433a856fc`（较 metAI 的 `index-CQVVvpbM.js` 有变化，原因是本单的口径修正，不是测试文件）、entry 内无 metAJ 标记、chunk `assets/MetricsModulePage-CPDNiCwU.js` 命中「计算范围：」2 处。
+- 未测项：真实读屏下的朗读停顿未走查；剪贴板权限弹窗路径沿用既有未测项。
+
+## 手动刷新语义（metAK，2026-11-20）
+
+页首新增「刷新」`metAK-refresh`：点一次，把当前窗口与当前分组整批重取一遍，卡片不会先被清空。
+
+- 一次点击 = 一批：`refreshAll()` 用新的 `signal` 同时跑七个 loader（运行活动、用量与成本、明细、热力、预算、窗口对比、分摊），`Promise.allSettled` 收口。实测按读口种类计数与首次加载完全相同（`run-stats` 仍是当前窗+上一窗两条，其余按窗口与分组而定），没有重复触发。二次点击由 `refreshBusyRef` 闸门直接返回：三连点只发出一批（`urls()` 增量等于一批）。
+- busy 期间：按钮 `aria-busy=true`，页首 `metAK-busy-note` 显示「更新中…（卡片先保留上一次读到的数据）」，role=status aria-live；`shownState/shownUsage/...` 在 busy 且有快照时取快照，七个派生视图全部走同一层，所以数字与表格不闪空、不出现骨架。
+- 成功：`metAK-updated-at` 写「刷新完成于 <北京时间到分>（读取时刻，不是数据时刻）」——与各卡片的采集时刻 asOf 分开标注，绝不把读取时刻当数据时刻。
+- 失败：整批里只要有一个读口记了新的错误，就显示 `metAK-error`「这次刷新没成功，页面保留上一次读到的数据。」+ 可复制的请求编号 + `metAK-refresh-retry`「再试」；失败的卡片仍按 metD/metH 既有语义显示自己的原因与单卡重试，不改那两处。
+- 切窗/切分组：`chooseGroupBy`、`chooseView`、`chooseUsageWindow`、`chooseWindow`（热力窗）都会 `cancelRefresh()`（把在途 signal 置 `live=false` 并清 busy/快照），晚到的批被丢弃——测试用挂起 promise 验证切窗后 `metAK-updated-at` 仍为空。
+- 既有 `met5-refresh`「刷新」按钮保留未动（它是整页 attempt 递增的老入口）；`metAK-*` 为新增。
+- 验证：定向 `src/modules/metrics` **4 files / 195 passed**（原 190，+5）；全量 **137 files / 1810 passed**（原 1805）；`tsc -b . --noEmit` 全仓 67 条既存、`modules/metrics` 0；build `--outDir /tmp/build-metAK` → entry `assets/index-KvAaJzx0.js` sha256 `8f0de8c69b29c734edc42e8b6262d2b72983800d2239f7c35ef86d764ad39892`，entry 内 `metAK-refresh` 命中 0，chunk `assets/MetricsModulePage-sDZlo_Yl.js` 命中 1。
+- 未测项：真浏览器里长网络下「更新中…」的持续时长与快速连点手感未走查；刷新期间切窗后滚动位置未复核。
+
+## 当前视图范围条与一键复位（metAL，2026-11-20）
+
+页首新增一行 `metAL-scope`，把当前视图的四个要素直接摊开：时间窗 / 分组 / 明细排序 / 分摊排序 / 热力窗。
+
+- 全部从 URL 派生（`usageWindow`、`groupBy`、`detailSort/detailDir`、`sortKey/sortDir`、`activeWindow`），没有为此新增任何 state；因此粘同一个 URL 刷新，这行逐字复现，切窗/切分组/切排序/切热力窗也在同一渲染帧更新（不滞后一批）。
+- 文案形态：`当前视图：时间窗 <label> · 分组 <按员工|按模型> · 明细 <成本|次数|占比> <升序|降序> · 分摊 <运行数|成本|员工|模型> <升序|降序> · 热力 <label>`。
+- `metAL-reset`「回到默认视图」：清掉 `window / groupBy / view / dsort / ddir / sort / dir / heat / w` 九个键后只改 URL；不调用 `refreshAll`、不 bump `attempt`，所以只由既有 effect 重取受影响读口，不是全页重取。实测从全参起步重置：`run-activity` +1（仅热力窗 4→1）、`run-stats` +2（当前窗+上一窗，属同一批）、`employees` +4、`budget-usage` +4，总增 15，明显小于首载总量。
+- 回显本身零请求：渲染前后 `urls()` 不变。
+- tab 序：`metAL-reset` 落在第 4 位（`metY-skiplink → metL-copy → met5-refresh → metAL-reset → metAK-refresh → …`），metQ 的落点断言已同步。
+- 验证：定向 `src/modules/metrics` **4 files / 198 passed**（原 195，+3）；全量 **145 files / 1813 passed**（原 1810）；`tsc -b . --noEmit` 全仓 67 条既存、`modules/metrics` 0；build `--outDir /tmp/build-metAL` → entry `assets/index-B1ZZIqPO.js` sha256 `f7ef98d9ff6a3cdce7aa6b50c8165d00ef19a2805c333bc671c0c2359b353fc4`，entry 内 `metAL-scope` 命中 0，chunk `assets/MetricsModulePage-iD1kX6Cz.js` 命中 1。
+- 未测项：375 下范围条多段换行的实际断点未人工走查；中文排序词在窄屏是否截断未走查。
+
+## 可用性矩阵（metAM，2026-11-20）
+
+把刷新、视图范围条与复位、两处导出、摘要复制、单卡重试收进同一张矩阵，由页面一处 `gates` 对象统一给出 `{enabled, title}`，各钮只读它，不再各自计算判据。
+
+- 整页失败（全部读口 down）：`metAK-refresh` 可点（唯一回退路）、`metAL-reset` 与视图切换可点；`met6-export`、`metA-export`、`metL-copy` 全 disabled，title 同为「整页读取失败…先重试上面的读取」。
+- 单块降级：刷新可点；明细导出按 metR 现口径仍可导（title 含「账本逐行」）、摘要可复制；出事那张卡的「重试这一项」可点。
+- 空窗：刷新、两处导出（header-only，计数「可导出 0 行」）、摘要复制都可用。
+- 刷新进行中：`metAK-refresh` 保持可点但 `aria-busy=true`，二次点击被闸门忽略、不叠加请求；导出、复制、复位、单卡重试统一 disabled，title 含「这一批」。
+
+屏上说明为 `metAM-matrix-note`（一行话覆盖四格）。验证：定向 `src/modules/metrics` **4 files / 202 passed**（原 198，+4）；全量 **145 files / 1817 passed**（原 1813）；`tsc` 全仓 67 条既存、`modules/metrics` 0；build entry `assets/index-dI2moWxe.js` sha256 `ebae4f11cb1e57aa55029db838fc6d61aebeb94d079fa259d97f63c130ebc255`（entry 内 metAM=0），chunk `MetricsModulePage-iw5R3p63.js` 命中 1。零额外请求：矩阵只读既有派生值，回显不触发取数。未测项：真浏览器 375 下说明行换行未走查。
+
+## 全空页引导（metAN，2026-11-20）
+
+- 判据复用既有 `usageQuiet`：运行统计与账本两个读口都成功，且运行数为 0、分桶为空、账本行为空——即「本窗真的没有运行，也没有实扣」。读口失败不走这里（`usageDown` 为真时 `usageQuiet` 必为假），错误仍由 metH/metD 的既有错误态承担。
+- 页首 `metAN-empty-guide`：标题「本窗没有运行记录」；两句人话说明卡片保留「—」、不拿空当 0 求和、不编零元汇总；给两个真实路由链接 `/runs`（运行列表）与 `/work`（工作台）——两条路由已 `git grep` 核实注册在 `web/src/App.tsx`（`/runs` 340/392 行、`/work` 379/1192 行），并在 `web/src/shell/routes.ts:151/153` 有 `#/work` 条目，不是死链；末句指路既有时间窗控件。
+- 零额外请求：引导完全由已有状态派生，挂载后 50ms 内 `urls()` 计数不变。
+- 引导正文不提金额符号，空窗时 `met6-cost-value` 仍是「—」。
+- 样式：`.metAN-guide`（边框+圆角+`--color-muted` 底，flex column）、`.metAN-title` 13px 600、`.metAN-body` 12px muted + `overflow-wrap:anywhere`，375 下自然换行。
+- 测试：新增 describe「metAN — empty window guide」3 例（空窗显引导+两个 href+零请求+无金额符号；正常窗口无引导；全失败无引导）。
+- 验证：定向 `src/modules/metrics` 4 files / **205 passed**（原 202，+3）；全量 **145 files / 1820 passed**（原 1817）；`tsc` 全仓 67 条既存、`modules/metrics` 0。
+- build `--outDir /tmp/build-metAN` → entry `assets/index-BXi0_KhO.js` sha256 `fae63b3721dd787f2e85adec8bbd68df995289ee3bcd96e913b4ddc8ad2932ec`（entry 内 `metAN-empty-guide`=0），chunk `assets/MetricsModulePage-D5dXb8_c.js` 命中 1。
+- 未测项：真浏览器 375 换行与粘链首屏视觉未走查；空窗与「账本有行但金额为 0」的边界（真 0 数据）仍按数据展示，不触发引导。
+
+## 导出文件名与屏上口径同值（metAO，2026-11-20）
+
+`metAL-scope` 与两处导出文件名读同一组参数，逐要素同值：
+
+- 明细：`metrics-detail-<window>-<view>-<dsort>-<ddir>-<生成时刻>.csv`
+- 分摊：`metrics-share-<window>-<group>-<sort>-<dir>-<生成时刻>.csv`
+- 屏上 `metAO-filename-bar` 给两枚预览（`metAO-filename-detail` / `metAO-filename-share`），生成时刻位写 `<生成时刻>`，实际文件名在导出时按北京时间到分填位；预览全文进 `title`，375 下 `code` 单行省略号截断、由 `title` 与复制兜底。
+- 两表各用各的键：`?dsort/?ddir` 只进明细名，`?sort/?dir` 只进分摊名；互不串用。实测：`?dsort=runs&ddir=asc` → `metrics-detail-24h-employee-runs-asc-…` 且分摊仍 `metrics-share-24h-model-cost-desc-…`；`?sort=model&dir=asc` → `metrics-share-24h-model-model-asc-…` 且明细仍 `…-cost-desc-…`。
+- 默认值即 URL 派生值：不加参数时明细 `employee`（`?view` 缺省分支）、分摊 `model`，两侧排序都是 `cost-desc`；`metAL-reset` 清九键后两枚预览立即回到这批默认值，不残留任何上一次的键。
+- 粘链直达按 URL 派生：`?window=30d&groupBy=employee` → `metrics-detail-30d-employee-cost-desc-…` / `metrics-share-30d-employee-cost-desc-…`，不是默认值。
+- 零额外请求：预览为纯派生，挂载后 60ms 内 `urls()` 不变。
+- 纯函数：`csvFileStem` / `shareCsvStem`（`fileToken` 归一化），`csvFileName` / `shareCsvFileName` 复用同一 stem，故屏上预览与实际下载名只差生成时刻。
+
+验证：定向 `src/modules/metrics` 4 files / 210 passed（原 205，+5）；全量 145 files / 1825 passed（原 1820）；`tsc -b . --noEmit` 全仓 67 条既存、`modules/metrics` 0。
+
+未测项：真浏览器 375 下长文件名的省略号宽度未目视走查（CSS `text-overflow: ellipsis` + `title` 已就位）。
+
+## 运行数口径三面对齐（metAP，2026-11-20）
+
+一行话 `metAP-runs-caliber` 把「运行数」在三个面上的口径写清，逐面标数据源与筛选条件：
+
+- 热力面 `metAP-heat`：`/api/run-activity?weeks=N&tz=Asia/Shanghai`，整周窗口汇总，**含未成功的运行**，未返回的格不计入；与卡片 `met5-count` 同值。
+- 明细面 `metAP-detail`：模型视图 `/api/hermes-usage`（按模型的调用次数，`api_calls`），员工视图 `/api/budget-usage` 账本（只记金额与用量，**不记录运行次数**，故该面为「—」）；与 `metT-detail-total-count` 同值。
+- 运行页面 `metAP-runs`：`/api/runs?since=…&limit=…` 是**分页列表**，列表条数有上限，不等于窗口总数；本页不另发该请求，故固定显「—」并在 title 点名原因。
+
+尾句三种：两面已知且相等 →「热力与明细一致；运行页未核对，见 title」；不等 →「口径不同，见 title」（title 写差值 D 与「属口径差，不是数据错误」）；缺数 →「有面缺数，见 title」（如员工视图，或热力还没读出来）。
+
+`title` 收全部工程信息（三条路径、筛选条件、limit 语义、差值），可见行只写人话数字——零工程语言不破。缺失不按 0：热力/明细缺数一律「—」，差值算不出时 title 明写「算不出差，也不按 0 记」。
+
+零额外请求：三面全部读现有 payload 派生（`heatWindowTotal` / `detailCountSum` / 固定 `—`），挂载后 60ms 内 `urls()` 不变。
+
+验证：定向 `src/modules/metrics` 4 files / 215 passed（原 210，+5）；全量 145 files / 1830 passed（原 1825）；`tsc -b . --noEmit` 全仓 67 条既存、`modules/metrics` 0。
+
+未测项：真实后端上三面的实际数值差未用线上数据复算（历史上 run-stats 与 `/runs` 条数差 1 的先例仍在记忆里），本单只保证每面读数与它自己的来源一致、并在差存在时如实标出。

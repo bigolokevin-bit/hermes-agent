@@ -890,9 +890,39 @@ export function withGapNote(body: string, gaps: ExportGap[]): string {
 }
 
 /** `metrics-employee-7d-20261120-0931.csv` in Beijing time. */
-export function csvFileName(view: 'employee' | 'model', window: UsageWindowId, now: Date): string {
-  const stamp = formatBeijing(now.toISOString(), now).replace(/[-:]/g, '').replace(' ', '-');
-  return `metrics-${view}-${window}-${stamp}.csv`;
+/** File names carry only lowercase ASCII: a dot, a dash and digits, nothing else. */
+function fileToken(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function beijingFileStamp(now: Date): string {
+  return formatBeijing(now.toISOString(), now).replace(/[-:]/g, '').replace(' ', '-');
+}
+
+/**
+ * metrics-detail-<window>-<group>-<sort>-<dir>-<YYYYMMDD-HHmm>.csv
+ * The sort pair is always present; an untouched table writes `cost-desc`.
+ */
+export function csvFileStem(
+  view: 'employee' | 'model',
+  window: UsageWindowId,
+  sort: DetailSort,
+  dir: SortDir,
+): string {
+  return ['metrics', 'detail', window, view, sort, dir].map(fileToken).join('-');
+}
+
+export function csvFileName(
+  view: 'employee' | 'model',
+  window: UsageWindowId,
+  sort: DetailSort,
+  dir: SortDir,
+  now: Date,
+): string {
+  return `${csvFileStem(view, window, sort, dir)}-${beijingFileStamp(now)}.csv`;
 }
 
 /**
@@ -965,9 +995,27 @@ export function shareCsv(rows: ShareCsvRow[]): string {
 }
 
 /** `metrics-24h-model-20261120-0655.csv` in Beijing time. */
-export function shareCsvFileName(group: 'model' | 'employee', window: UsageWindowId, now: Date): string {
-  const stamp = formatBeijing(now.toISOString(), now).replace(/[-:]/g, '').replace(' ', '-');
-  return `metrics-${window}-${group}-${stamp}.csv`;
+/**
+ * metrics-share-<window>-<group>-<sort>-<dir>-<YYYYMMDD-HHmm>.csv
+ * Same shape as the detail file, so the two can never collide.
+ */
+export function shareCsvStem(
+  group: 'model' | 'employee',
+  window: UsageWindowId,
+  sort: 'model' | 'cost' | 'runs',
+  dir: SortDir,
+): string {
+  return ['metrics', 'share', window, group, sort, dir].map(fileToken).join('-');
+}
+
+export function shareCsvFileName(
+  group: 'model' | 'employee',
+  window: UsageWindowId,
+  sort: 'model' | 'cost' | 'runs',
+  dir: SortDir,
+  now: Date,
+): string {
+  return `${shareCsvStem(group, window, sort, dir)}-${beijingFileStamp(now)}.csv`;
 }
 
 
@@ -1122,6 +1170,12 @@ export type CaliberNote = {
  * The written caliber under the page. It restates what the cards, the freshness
  * block and the two CSV exports already do; it is static text, not a new read.
  */
+/** The one sentence a caliber note reads as, shared by the foot block and the
+ *  screen-reader copies the cards point at — the two must stay verbatim equal. */
+export function caliberNoteText(note: CaliberNote): string {
+  return `${note.label}。${note.path}。计算范围：${note.scope}。缺值策略：${note.missing}。`;
+}
+
 export const CALIBER_NOTES: CaliberNote[] = [
   {
     key: 'run-activity',
@@ -1496,4 +1550,42 @@ export function metricsSummaryText(input: MetricsSummaryInput): string {
     `采集时刻：${asOf ? formatBeijing(asOf) : '—'}`,
     `生成时刻：${formatBeijing(input.generatedAt)}（北京时间）`,
   ].join('\n');
+}
+
+// metAP — one sentence for «how many runs», naming where each face comes from and
+// why the faces need not agree. Everything is derived from the batch already on
+// screen; nothing here issues a read.
+export type RunsCaliberInput = {
+  heat: number | null;
+  heatRange: string;
+  detail: number | null;
+  detailRange: string;
+  detailSource: string;
+  delta: number | null;
+};
+
+export function runsCaliberLine(input: RunsCaliberInput): string {
+  const face = (value: number | null): string => (value === null ? '—' : String(value));
+  const bothKnown = input.heat !== null && input.detail !== null;
+  const tail = bothKnown
+    ? input.heat === input.detail
+      ? '｜热力与明细一致；运行页未核对，见 title'
+      : '｜口径不同，见 title'
+    : '｜有面缺数，见 title';
+  return `运行数口径：热力 ${face(input.heat)} · 明细 ${face(input.detail)} · 运行页 —${tail}`;
+}
+
+export function runsCaliberTitle(input: RunsCaliberInput): string {
+  const parts = [
+    `热力：来源 /api/run-activity，按 ${input.heatRange} 的整周窗口汇总接口返回的格子（含未成功的运行）；没返回的格子不计入，也不按 0 记。`,
+    `明细：来源 ${input.detailSource}，按 ${input.detailRange} 分组求和${
+      input.detail === null ? '；这一面没有可求和的值' : ''
+    }。`,
+    '运行页：来源 /api/runs?since=…&limit=…，按时间窗分页列出且每页有上限；那里的条数是「这一页列出的行」，不等于窗口总数。',
+    '这一页不另发运行列表读取，所以运行页一栏固定写「—」；要核对请打开运行页，按同一时间窗对照。',
+    input.delta === null
+      ? '热力和明细没有同时读到数，算不出差，也不按 0 记。'
+      : `热力与明细差 ${input.delta}（热力减明细）：两处的筛选与聚合不同，属口径差，不是数据错误。`,
+  ];
+  return parts.join(' ');
 }
