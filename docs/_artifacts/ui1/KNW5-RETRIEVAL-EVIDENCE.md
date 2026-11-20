@@ -3000,3 +3000,56 @@ DOM 路径未单测（需构造列表外 doc=，本单夹具未含）。
 knowledge.parity.test.tsx(新增)} 与本证据；显式路径 add；无 force/amend/--no-verify/
 git add -A；未并 main、未重建 9122；单 commit「test(console): knowledge cross-face parity guards」
 （含 B 维度一处真缺陷修复，按派工「测出真缺陷同单修并注明前后」条款）。
+
+# KNW5 追加 R131：分页×筛选组合护栏（纯测试单）（2026-11-20 BJT）
+
+安全门：toplevel 相符、porcelain 空、显式 refspec fetch 后 merge 实测 tip 即预期 `76090480`
+（知识面 delta 空）。零产品文件改动（提交仅新增 knowledge.paging.test.tsx 与本证据追加）。
+
+## 复用边界（先 grep 后写，锁过的不重写）
+
+```text
+主测 knE 段（KnowledgeModulePage.test.tsx :2503-2667）已锁：第一页不带 cursor（:2514）、
+排序/名称筛选重置+计数文本（:2556-2563）、无 total「总数不可用」（:2573-2578）、
+无游标字段态（:2588-2592）、坏 cursor 不并回（:2596-2610）、403≡404 同体/rid 在场/
+旧行保留/重试后并回（:2612-2667）、末页文案「已到末页」（:2541）。
+R118（knowledge.filters.test.tsx）已锁：切类型后游标复位翻转、URL 无 cursor 参数。
+R108 已锁：kn3-page-cap 49/50 边界与单页三值。
+派工两个名字核实不存在：kn-list-copy 无（清单复制是 knF-copy 族）；导出族无——
+页面仅 data-export="absent" 标记（KnowledgeModulePage.tsx:1297/:1630/:2630），
+第④项按三值相等落，且加锁 gate 的 data-export==="absent"。
+本文件新增组合：①第 2 页后切 ktype 的行替换（第 2 页独有行按标识出局 +
+「无旧 cursor 重放」全程计数 + 计数文本回 M=2）；②末页态 cap 与 knE 计数同屏互等
+（M 两句 toBe 对账）+ more 按钮实测「在场、disabled、文本已到末页」（非隐藏）；
+③失败窗口静置零自动重发 + 重试整段增量恰 1 条且 URL 逐字 ==P2URL + 并入行按身份断言；
+④两页合并态 knF-copy 行数==可见行==data-len==cap M（R108 只测了单页态）。
+```
+
+## 关键读数
+
+```text
+①切桶「表格」后：knE-page-count 逐字「已显示 2 篇 · 总数不可用」、屏上零「C 说明」零 d_c、
+  cursor= 请求全程恰 1 次（无旧 cursor 重放）；本地切桶增量 0。
+②末页：disabled=true + txt「已到末页」+ knE-page-end 在场；cap「本页最多显示 50 篇
+  （当前已加载 3 篇；复制清单也只含这些篇）」，-more 不在场（3<50），cap M==count 读数=3。
+③500 后 rid「请求编号：rid-r131-500」在场、旧 2 行仍在、静置零重发；重试 added 恰
+  [P2URL]、P1 计数不涨；成功后 3 行且含「C 说明.txt」行。
+④复制行数 3 == rowCount 3 == data-len "3" == cap M；gate data-export="absent"。
+```
+
+## 验证尾行（R131）
+```text
+$ npx vitest run src/modules/knowledge   → 7 files / 98 tests passed（基线 94 + 组合 4）
+$ npx vitest run                         → 196 files / 2540 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r131-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn3/kn6–kn9/knB/knD/knF/knG/knI/knL/kn-sort/kn-gates/kn-doc-copy*/kn-doc-preview/
+kn-space-preview/kn-type/kn3-page-cap/knE-page-* 全族通过。过程两处测试自身错（选择器
+误传全串、无效表达式行）提交前已清，产品零改动。
+```
+未测如实：带登录会话真实分页屏（游标翻页走 mock 信封 nextCursor=c2 代证）；
+stale/游标过期路径未重复（主测 E 段已锁）。
+边界：只新增本测试与本证据；显式路径 add；无 force/amend/--no-verify/git add -A；
+未并 main、未重建 9122；单 commit「test(console): knowledge paging guards」。
