@@ -1109,6 +1109,64 @@ export type SourceKey =
 
 export type SourceDescriptor = { key: SourceKey; label: string; path: string };
 
+/** One row of the page's caliber notes: what each read means and how it fails. */
+export type CaliberNote = {
+  key: SourceKey;
+  label: string;
+  path: string;
+  scope: string;
+  missing: string;
+};
+
+/**
+ * The written caliber under the page. It restates what the cards, the freshness
+ * block and the two CSV exports already do; it is static text, not a new read.
+ */
+export const CALIBER_NOTES: CaliberNote[] = [
+  {
+    key: 'run-activity',
+    label: '运行活动热力',
+    path: '/api/run-activity',
+    scope: '按整周汇总，周数由热力窗口决定；不提供单独的 24 小时切分。',
+    missing: '接口没返回的格子记「—」，不补 0；接口返回的 0 就是这一小时真的没跑。',
+  },
+  {
+    key: 'run-stats',
+    label: '运行统计',
+    path: '/api/run-stats',
+    scope: '按所选时间窗（最近 24 小时 / 7 天 / 30 天）与上一周期同长对比。',
+    missing: '缺的字段记「—」；真实的 0 记 0，不拿上一周期顶替。',
+  },
+  {
+    key: 'employees',
+    label: '员工目录',
+    path: '/api/employees',
+    scope: '目录全量（一次最多 200 条），只用于把员工编号换成人名与岗位。',
+    missing: '目录里没有的编号显示「员工 · 短码」，不显示裸编号。',
+  },
+  {
+    key: 'budget-usage',
+    label: '平台扣费账本',
+    path: '/api/budget-usage',
+    scope: '按日或按月账本行，在所选时间窗内逐日累加。',
+    missing: '账本没记的金额记「—」，真 0 记 $0.00；金额只取账本实扣，不用单价乘用量反推。',
+  },
+  {
+    key: 'pricing',
+    label: '模型价目表',
+    path: '/api/models/pricing',
+    scope: '价目表快照；单价是标价，不代表实际扣费。',
+    missing: '没有单价记「—」，也不拿扣费反推单价。',
+  },
+  {
+    key: 'hermes-usage',
+    label: 'Hermes 用量',
+    path: '/api/hermes-usage',
+    scope: '按模型用量，天数跟随所选时间窗。',
+    missing: '没给次数记「—」，不补 0；占比按可读到的部分归一。',
+  },
+];
+
 export const SOURCE_CATALOG: SourceDescriptor[] = [
   { key: 'run-activity', label: '运行活动热力', path: '/api/run-activity' },
   { key: 'run-stats', label: '运行统计', path: '/api/run-stats' },
@@ -1207,6 +1265,22 @@ export type SourceRow = SourceDescriptor & {
  * `ok`; one that answered without one is `degraded` (the payload is usable but
  * we cannot say how fresh it is); one that failed to answer is `down`.
  */
+/** One line per read, in the order the freshness table shows them. */
+const SOURCE_STATE_WORD: Record<SourceRow['state'], string> = {
+  ok: '正常',
+  degraded: '降级',
+  down: '读不到',
+};
+
+export function sourceSummaryText(rows: SourceRow[]): string {
+  return rows
+    .map(
+      (row) =>
+        `${row.label} · ${row.path} · ${row.asOf === null ? '—' : formatBeijing(row.asOf)} · ${SOURCE_STATE_WORD[row.state]}`,
+    )
+    .join('\n');
+}
+
 export function sourceRows(stamps: Record<string, SourceStamp>): SourceRow[] {
   return SOURCE_CATALOG.map((descriptor) => {
     const stamp = stamps[descriptor.key] ?? EMPTY_SOURCE_STAMP;
@@ -1281,10 +1355,24 @@ export function heatDayRows(grid: HeatGrid): HeatDayRow[] {
 }
 
 /** One sentence an assistive reader can announce for the whole heat grid. */
-export function heatGridSummary(grid: HeatGrid): string {
+export type HeatSummaryParts = {
+  total: number | null;
+  peakLabel: string | null;
+  peakRuns: number | null;
+  lowLabel: string | null;
+  lowRuns: number | null;
+  coveredDays: number;
+  spanDays: number;
+};
+
+/**
+ * The one derivation behind both the on-screen heat summary and its copied
+ * text, so the two can never quote different numbers.
+ */
+export function heatSummaryParts(grid: HeatGrid): HeatSummaryParts {
   const days = heatDayRows(grid).filter((day): day is HeatDayRow & { runs: number } => day.runs !== null);
   if (grid.total === null || days.length === 0) {
-    return '运行热力：接口没有返回可用的格子，没有总数可报，也不按 0 补。';
+    return { total: null, peakLabel: null, peakRuns: null, lowLabel: null, lowRuns: null, coveredDays: 0, spanDays: 7 };
   }
   let high = days[0];
   let low = days[0];
@@ -1292,7 +1380,48 @@ export function heatGridSummary(grid: HeatGrid): string {
     if (day.runs > high.runs) high = day;
     if (day.runs < low.runs) low = day;
   }
-  return `运行热力：总运行 ${grid.total} 次；最高 ${high.label} ${high.runs} 次；最低 ${low.label} ${low.runs} 次；覆盖 ${days.length} / 7 天。`;
+  return {
+    total: grid.total,
+    peakLabel: high.label,
+    peakRuns: high.runs,
+    lowLabel: low.label,
+    lowRuns: low.runs,
+    coveredDays: days.length,
+    spanDays: 7,
+  };
+}
+
+export function heatGridSummary(grid: HeatGrid): string {
+  const parts = heatSummaryParts(grid);
+  if (parts.total === null || parts.coveredDays === 0) {
+    return '运行热力：接口没有返回可用的格子，没有总数可报，也不按 0 补。';
+  }
+  return `运行热力：总运行 ${parts.total} 次；最高 ${parts.peakLabel} ${parts.peakRuns} 次；最低 ${parts.lowLabel} ${parts.lowRuns} 次；覆盖 ${parts.coveredDays} / ${parts.spanDays} 天。`;
+}
+
+export type HeatCopyInput = {
+  weeks: number;
+  windowLabel: string;
+  /** The range the activity endpoint reported; null when the read failed. */
+  rangeLabel: string | null;
+  parts: HeatSummaryParts;
+};
+
+/** The plain-text heat summary that `metZ-copy-heat` puts on the clipboard. */
+export function heatCopyText(input: HeatCopyInput): string {
+  const { parts } = input;
+  const missing = parts.total === null || parts.coveredDays === 0;
+  const range = input.rangeLabel;
+  return [
+    '热力摘要',
+    `窗口：${input.windowLabel}（${input.weeks}w）`,
+    `日期区间：${range && range.length > 0 ? range : '—'}`,
+    `总运行：${missing ? '—' : parts.total}`,
+    `最高：${missing ? '—' : `${parts.peakLabel} ${parts.peakRuns} 次`}`,
+    `最低：${missing ? '—' : `${parts.lowLabel} ${parts.lowRuns} 次`}`,
+    `覆盖：${missing ? '—' : `${parts.coveredDays} / ${parts.spanDays} 天`}`,
+    ...(missing ? ['说明：这次没有可用的热力格子，以上几项不可比较，不按 0 记。'] : []),
+  ].join('\n');
 }
 
 /** Date + count + strength band — the same facts the colour carries. */

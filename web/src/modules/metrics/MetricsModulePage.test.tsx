@@ -15,6 +15,7 @@ vi.mock('@/modules/models/fetchJson', () => ({ fetchJsonStrict: api.fetchJsonStr
 vi.mock('@/lib/clipboard', () => ({ copyTextToClipboard: clip.copyTextToClipboard }));
 
 import { MetricsModulePage } from './MetricsModulePage';
+import { CALIBER_NOTES } from './metrics';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -339,7 +340,9 @@ describe('MetricsModulePage — usage & cost (met6)', () => {
     expect(document.querySelector('[data-testid="met6-cost-value"]')?.textContent).toBe('—');
     expect(document.querySelector('[data-testid="met6-cost-month"]')?.textContent).toBe('—');
     expect(text()).toContain('今天还没有账本实扣记录');
-    expect(text()).not.toContain('$0.00');
+    // The card itself holds no invented zero (the sr-only caliber note may
+    // quote $0.00 as the policy for a real zero).
+    expect(document.querySelector('[data-testid="met6-cost"]')?.textContent).not.toContain('$0.00');
     expect(document.querySelector('[data-testid="met6-cost-rows"]')).toBeNull();
   });
 
@@ -3439,6 +3442,465 @@ describe('metY — skip links around the page and the two wide tables', () => {
     const before = urls().length;
     (q('metY-skiplink') as HTMLAnchorElement).focus();
     (q('metY-skip-detail') as HTMLAnchorElement).focus();
+    expect(urls().length).toBe(before);
+  });
+});
+
+describe('metZ — copy the heat summary', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+
+  async function copyHeat(): Promise<string> {
+    clip.copyTextToClipboard.mockClear();
+    await act(async () => {
+      (q('metZ-copy-heat') as HTMLButtonElement).click();
+    });
+    await waitFor(() => (q('metZ-copy-status')?.textContent ?? '') !== '', 'heat copy status');
+    return String(clip.copyTextToClipboard.mock.calls[0][0]);
+  }
+
+  it('copies the numbers the heat card shows, without reading anything again', async () => {
+    await mount(usageRouter());
+    const before = urls().length;
+
+    const body = await copyHeat();
+
+    expect(urls().length).toBe(before);
+    expect(q('metZ-copy-status')?.textContent).toBe('已复制');
+    expect(q('metZ-copy-fallback')).toBeNull();
+
+    const summary = q('metK-heat-summary')?.textContent ?? '';
+    expect(q('met5-count')?.textContent).toBe('332');
+    expect(summary).toContain('总运行 332 次');
+    expect(summary).toContain('最高 周三 50 次');
+    expect(summary).toContain('最低 周二 45 次');
+    expect(summary).toContain('覆盖 7 / 7 天');
+
+    expect(body).toContain('热力摘要');
+    expect(body).toContain('窗口：最近 7 天（1w）');
+    expect(body).toContain('日期区间：2026-11-13 00:00 — 2026-11-19 23:59');
+    expect(body).toContain('总运行：332');
+    expect(body).toContain('最高：周三 50 次');
+    expect(body).toContain('最低：周二 45 次');
+    expect(body).toContain('覆盖：7 / 7 天');
+    expect(body).not.toContain('不可比较');
+  });
+
+  it('moves to the next heat window and copies that window id', async () => {
+    await mount(usageRouter());
+
+    await act(async () => {
+      (q('met5-window-4') as HTMLButtonElement).click();
+    });
+    await waitFor(() => (q('met5-window-4')?.getAttribute('aria-pressed') ?? '') === 'true', 'four weeks');
+
+    const body = await copyHeat();
+    expect(body).toContain('（4w）');
+    expect(body).toContain('总运行：332');
+  });
+
+  it('keeps the same text in a read-only box when the clipboard refuses', async () => {
+    await mount(usageRouter());
+    clip.copyTextToClipboard.mockImplementationOnce(() => Promise.resolve(false));
+
+    const body = await copyHeat();
+
+    expect(q('metZ-copy-status')?.textContent).toBe('复制没成功');
+    const fallback = q('metZ-copy-fallback-text') as HTMLTextAreaElement;
+    expect(fallback.value).toBe(body);
+    expect(fallback.value).toContain('最高：周三 50 次');
+  });
+
+  it('writes — and says the values cannot be compared when the heat read failed', async () => {
+    const base = usageRouter();
+    await mount((url) =>
+      url.includes('run-activity')
+        ? Promise.reject(new ApiError('boom', { status: 500, body: '', url, requestId: 'req-metZ-heat' }))
+        : base(url),
+    );
+
+    const body = await copyHeat();
+
+    expect(body).toContain('日期区间：—');
+    expect(body).toContain('总运行：—');
+    expect(body).toContain('最高：—');
+    expect(body).toContain('最低：—');
+    expect(body).toContain('覆盖：—');
+    expect(body).toContain('不可比较');
+    // No zero standing in for a missing read, and no local clock for the range.
+    expect(body).not.toContain('总运行：0');
+    expect(body).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+  });
+});
+
+describe('metAA — the heat window lives in the address', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+  const loc = (): string => q('met7-loc')?.textContent ?? '';
+
+  const countOf = (from: number, needle: string): number =>
+    urls().slice(from).filter((url) => url.includes(needle)).length;
+
+  it('shows which window the address holds and keeps it off the other keys', async () => {
+    await mountShare(SHARE_USAGE, '/metrics?window=7d&view=model&sort=model&dsort=runs');
+
+    expect(q('metAA-heat-window')?.textContent).toContain('heat=1');
+    expect(q('met5-window-1')?.getAttribute('aria-pressed')).toBe('true');
+    // The unrelated keys are untouched.
+    expect(loc()).toContain('window=7d');
+    expect(loc()).toContain('view=model');
+    expect(loc()).toContain('sort=model');
+    expect(loc()).toContain('dsort=runs');
+  });
+
+  it('writes heat= and rereads only the heat endpoint once per switch', async () => {
+    await mountShare(SHARE_USAGE, '/metrics?window=7d&view=model&sort=model');
+    const before = urls().length;
+
+    await act(async () => {
+      (q('met5-window-4') as HTMLButtonElement).click();
+    });
+    await waitFor(() => (q('met5-window-4')?.getAttribute('aria-pressed') ?? '') === 'true', '4w selected');
+
+    expect(loc()).toContain('heat=4');
+    expect(loc()).not.toContain('w=4');
+    expect(loc()).toContain('window=7d');
+    expect(loc()).toContain('view=model');
+    expect(loc()).toContain('sort=model');
+    expect(q('metAA-heat-window')?.textContent).toContain('heat=4');
+    expect(countOf(before, 'run-activity')).toBe(1);
+    expect(countOf(before, 'run-stats')).toBe(0);
+    expect(countOf(before, 'employees')).toBe(0);
+    expect(countOf(before, 'budget-usage')).toBe(0);
+    expect(countOf(before, 'hermes-usage')).toBe(0);
+
+    const mid = urls().length;
+    await act(async () => {
+      (q('met5-window-1') as HTMLButtonElement).click();
+    });
+    await waitFor(() => (q('met5-window-1')?.getAttribute('aria-pressed') ?? '') === 'true', 'back to 1w');
+
+    expect(loc()).toContain('heat=1');
+    expect(countOf(mid, 'run-activity')).toBe(1);
+    expect(countOf(mid, 'run-stats')).toBe(0);
+  });
+
+  it('leaves the other cards holding their data when the heat window changes', async () => {
+    const base = usageRouter();
+    await mount((url) =>
+      url.includes('run-stats')
+        ? Promise.resolve({ ...(statsFor(url) as Record<string, unknown>), asOf: '2026-11-19T20:12:00.000Z', asOfSource: 'bff' })
+        : base(url),
+    );
+    const runsBefore = q('met6-runs-value')?.textContent;
+    const shareRowBefore = q('met7-row-zeta')?.textContent;
+
+    await act(async () => {
+      (q('met5-window-4') as HTMLButtonElement).click();
+    });
+    await waitFor(() => (q('met5-window-4')?.getAttribute('aria-pressed') ?? '') === 'true', '4w selected');
+
+    expect(q('met6-runs-value')?.textContent).toBe(runsBefore);
+    expect(q('met7-row-zeta')?.textContent).toBe(shareRowBefore);
+    // The freshness block keeps the stamps of the reads it already had.
+    await openSources();
+    expect(q('metB-source-asof-run-stats')?.textContent).not.toBe('—');
+  });
+
+  it('restores the window from a pasted link and still honours the old w key', async () => {
+    await mount(usageRouter(), '/metrics?heat=12');
+    expect(q('met5-window-12')?.getAttribute('aria-pressed')).toBe('true');
+    expect(q('metAA-heat-window')?.textContent).toContain('heat=12');
+
+    await mount(usageRouter(), '/metrics?w=4');
+    expect(q('met5-window-4')?.getAttribute('aria-pressed')).toBe('true');
+  });
+});
+
+describe('metAB — the caliber notes at the foot of the page', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+
+  it('stays collapsed by default and opens from a native button', async () => {
+    await mountShare(SHARE_USAGE);
+
+    const toggle = q('metAB-notes-toggle') as HTMLButtonElement;
+    expect(toggle.tagName).toBe('BUTTON');
+    expect(toggle.getAttribute('type')).toBe('button');
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle.getAttribute('aria-controls')).toBe('metAB-notes-body');
+    expect(q('metAB-notes-body')).toBeNull();
+  });
+
+  it('lists every read with its path, scope and missing-value policy', async () => {
+    await mountShare(SHARE_USAGE);
+    const before = urls().length;
+    const location = q('met7-loc')?.textContent;
+
+    await act(async () => {
+      (q('metAB-notes-toggle') as HTMLButtonElement).click();
+    });
+
+    const body = q('metAB-notes-body');
+    expect(body).not.toBeNull();
+    expect(q('metAB-notes-toggle')?.getAttribute('aria-expanded')).toBe('true');
+    expect(document.querySelectorAll('[data-testid^="metAB-note-"]')).toHaveLength(6);
+
+    for (const path of [
+      '/api/run-activity',
+      '/api/run-stats',
+      '/api/employees',
+      '/api/budget-usage',
+      '/api/models/pricing',
+      '/api/hermes-usage',
+    ]) {
+      expect(body?.textContent).toContain(path);
+    }
+    expect(body?.textContent).toContain('计算范围：');
+    expect(body?.textContent).toContain('缺值策略：');
+    expect(body?.textContent).toContain('不拿本机时间顶替');
+    expect(body?.textContent).toContain('$0.00');
+    expect(body?.textContent).toContain('不补 0');
+
+    // Opening it writes nothing and reads nothing.
+    expect(urls().length).toBe(before);
+    expect(q('met7-loc')?.textContent).toBe(location);
+  });
+
+  it('agrees with the freshness block on each read path and closes again', async () => {
+    await mountShare(SHARE_USAGE);
+    await openSources();
+    const freshness = q('metB-source-table')?.textContent ?? '';
+
+    await act(async () => {
+      (q('metAB-notes-toggle') as HTMLButtonElement).click();
+    });
+
+    for (const path of ['/api/run-stats', '/api/budget-usage', '/api/models/pricing']) {
+      expect(freshness).toContain(path);
+      expect(q('metAB-notes-body')?.textContent).toContain(path);
+    }
+    const runsValue = q('met6-runs-value')?.textContent;
+
+    await act(async () => {
+      (q('metAB-notes-toggle') as HTMLButtonElement).click();
+    });
+    expect(q('metAB-notes-body')).toBeNull();
+    expect(q('metAB-notes-toggle')?.getAttribute('aria-expanded')).toBe('false');
+    // Collapsing shows nothing new and leaves the cards as they were.
+    expect(q('met6-runs-value')?.textContent).toBe(runsValue);
+    expect(q('metB-source-table')).not.toBeNull();
+  });
+});
+
+describe('metAD — each card points at its caliber note', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+  const CARDS: Array<[string, string]> = [
+    ['met6-runs', 'metAD-note-run-stats'],
+    ['met6-cost', 'metAD-note-budget-usage'],
+    ['met6-trend', 'metAD-note-run-stats'],
+    ['met6-price', 'metAD-note-pricing'],
+    ['met5-heatmap', 'metAD-note-run-activity'],
+  ];
+
+  const noteFor = (key: string) => {
+    const note = CALIBER_NOTES.find((entry) => entry.key === key);
+    expect(note).toBeTruthy();
+    return note!;
+  };
+
+  it('describes all five cards, and the text is the one CALIBER_NOTES holds', async () => {
+    await mount(usageRouter());
+
+    for (const [cardId, noteId] of CARDS) {
+      const card = q(cardId);
+      expect(card?.getAttribute('aria-describedby')).toBe(noteId);
+      const target = document.getElementById(noteId);
+      expect(target).not.toBeNull();
+      const key = noteId.replace('metAD-note-', '');
+      const note = noteFor(key);
+      expect(target?.textContent).toBe(`${note.label}。缺值策略：${note.missing}`);
+    }
+    // Two cards may share one read: runs and trend both come from run-stats.
+    expect(q('met6-runs')?.getAttribute('aria-describedby')).toBe(q('met6-trend')?.getAttribute('aria-describedby'));
+  });
+
+  it('keeps the notes readable while the foot block is still collapsed', async () => {
+    await mount(usageRouter());
+
+    expect(q('metAB-notes-body')).toBeNull();
+    for (const key of ['run-stats', 'budget-usage', 'pricing', 'run-activity']) {
+      const note = document.getElementById(`metAD-note-${key}`);
+      expect(note).not.toBeNull();
+      expect(note?.textContent).toContain('缺值策略：');
+    }
+  });
+
+  it('reads the same sentence the foot block shows when it is opened', async () => {
+    await mount(usageRouter());
+    await act(async () => {
+      (q('metAB-notes-toggle') as HTMLButtonElement).click();
+    });
+
+    const foot = q('metAB-note-run-stats')?.textContent ?? '';
+    const sr = q('metAD-note-run-stats')?.textContent ?? '';
+    const note = noteFor('run-stats');
+    expect(foot).toContain(note.missing);
+    expect(sr).toContain(note.missing);
+    expect(sr).toContain(note.label);
+  });
+
+  it('adds no read of its own', async () => {
+    await mount(usageRouter());
+    const before = urls().length;
+    for (const [cardId] of CARDS) {
+      (q(cardId) as HTMLElement).focus();
+    }
+    expect(urls().length).toBe(before);
+  });
+});
+
+describe('metAF — sticky table heads and figures that keep one line', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+
+  it('marks both heads sticky and keeps the numeric columns nowrap', async () => {
+    await mount(usageRouter());
+
+    const detailHead = q('metAF-sticky-detail');
+    expect(detailHead?.tagName).toBe('THEAD');
+    expect(detailHead?.className).toContain('metAF-sticky-detail');
+    // The scroll container still anchors the first column, so the two sticky
+    // axes are declared in the same scope.
+    const detailScroll = q('metW-scroll-detail');
+    expect(detailScroll?.className).toContain('metW-table');
+
+    const numeric = document.querySelectorAll('.metAF-nowrap');
+    expect(numeric.length).toBeGreaterThanOrEqual(3);
+    for (const cell of Array.from(numeric)) {
+      expect(['TH', 'TD']).toContain(cell.tagName);
+    }
+    // The two header cells the sort keys live in keep both the numeric and the
+    // nowrap class (no duplicated className swallowed one of them).
+    expect(q('metG-a11y-th-share')?.className).toContain('met6-num');
+    expect(q('metG-a11y-th-share')?.className).toContain('metAF-nowrap');
+    expect(q('metO-fmt-th-spend')?.className).toContain('metAF-nowrap');
+    expect(q('metO-fmt-th-count')?.className).toContain('metAF-nowrap');
+  });
+
+  it('does the same for the share table', async () => {
+    await mountShare(SHARE_USAGE);
+
+    const shareHead = q('metAF-sticky-share');
+    expect(shareHead?.tagName).toBe('THEAD');
+    expect(q('metW-scroll-share')?.className).toContain('metW-table');
+    expect(q('metG-a11y-th-runs')?.className).toContain('metAF-nowrap');
+    expect(q('metG-a11y-th-cost')?.className).toContain('metAF-nowrap');
+    expect(q('metO-fmt-th-pct')?.className).toContain('metAF-nowrap');
+  });
+});
+
+describe('metAG — copy the source summary', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+
+  async function copySources(): Promise<string> {
+    clip.copyTextToClipboard.mockClear();
+    await act(async () => {
+      (q('metAG-copy-sources') as HTMLButtonElement).click();
+    });
+    await waitFor(() => (q('metAG-copy-status')?.textContent ?? '') !== '', 'copy status');
+    return String(clip.copyTextToClipboard.mock.calls[0][0]);
+  }
+
+  it('copies one line per read, matching the rows on screen', async () => {
+    await mount(usageRouter());
+    await openSources();
+    const before = urls().length;
+
+    const body = await copySources();
+
+    expect(urls().length).toBe(before);
+    const lines = body.split('\n');
+    expect(lines).toHaveLength(6);
+    expect(q('metAG-copy-status')?.textContent).toBe('已复制 6 行');
+
+    const row = q('metB-source-row-run-stats');
+    const label = row?.querySelector('.metB-name')?.textContent;
+    const path = row?.querySelector('.metB-path')?.textContent;
+    const asof = q('metB-source-asof-run-stats')?.textContent;
+    const state = q('metB-source-state-run-stats')?.textContent;
+    expect(lines[1]).toBe(`${label} · ${path} · ${asof} · ${state}`);
+    expect(body).toContain('/api/run-activity');
+    expect(body).toContain('/api/models/pricing');
+    // Nothing credential-shaped rides along.
+    expect(body).not.toMatch(/token|bearer|authorization/i);
+  });
+
+  it('writes — for a missing collection time and never the local clock', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2031-03-04T05:06:07.000Z'));
+    await mount(usageRouter());
+    await openSources();
+
+    const body = await copySources();
+
+    expect(q('metB-source-asof-run-activity')?.textContent).toBe('—');
+    expect(body.split('\n')[0]).toContain('· — ·');
+    expect(body).not.toContain('2031');
+  });
+
+  it('keeps the same text in a read-only box when the clipboard refuses', async () => {
+    await mount(usageRouter());
+    await openSources();
+    clip.copyTextToClipboard.mockImplementationOnce(() => Promise.resolve(false));
+
+    const body = await copySources();
+
+    expect(q('metAG-copy-status')?.textContent).toBe('复制没成功');
+    const fallback = q('metAG-copy-fallback-text') as HTMLTextAreaElement;
+    expect(fallback.value).toBe(body);
+    expect(fallback.value.split('\n')).toHaveLength(6);
+  });
+
+  it('disables itself with a reason when every read failed', async () => {
+    await mount(() => Promise.reject(new ApiError('boom', { status: 500, body: '', url: 'x', requestId: 'req-metAG' })));
+    await waitFor(() => q('metB-source-toggle') !== null, 'sources seen');
+
+    const button = q('metAG-copy-sources') as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(button.getAttribute('title')).toContain('所有读口都没读出来');
+  });
+});
+
+describe('metAH — the tables say how many rows they really show', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+
+  it('states the full row count for the detail table, from the same count as the source line', async () => {
+    await mount(usageRouter());
+    const rows = document.querySelectorAll('[data-testid^="met6-row-"]').length;
+    expect(rows).toBeGreaterThan(0);
+
+    const note = q('metAH-cap-note');
+    expect(note?.textContent).toContain(`表内全量渲染，共 ${rows} 行`);
+    expect(note?.textContent).toContain('没有截断');
+    expect(note?.getAttribute('title')).toContain('判据');
+    expect(q('met6-cat-source')?.textContent).toContain(`${rows} 行`);
+    // No invented truncation wording.
+    expect(note?.textContent).not.toMatch(/前\s*\d+\s*行/);
+  });
+
+  it('does the same for the share table and keeps it equal to the export count', async () => {
+    await mountShare(SHARE_USAGE);
+    const rows = document.querySelectorAll('[data-testid^="met7-row-"]').length;
+    expect(rows).toBe(3);
+
+    const note = q('metAH-cap-note-share');
+    expect(note?.textContent).toContain(`表内全量渲染，共 ${rows} 行`);
+    expect(note?.getAttribute('title')).toContain('metA-export-count');
+    expect(q('metA-export-count')?.textContent).toBe(`可导出 ${rows} 行`);
+    expect(note?.textContent).not.toMatch(/前\s*\d+\s*行/);
+  });
+
+  it('adds no read of its own', async () => {
+    await mount(usageRouter());
+    const before = urls().length;
+    expect(q('metAH-cap-note')).not.toBeNull();
     expect(urls().length).toBe(before);
   });
 });

@@ -39,12 +39,16 @@ import {
   formatUnitPrice,
   formatUsd,
   heatCellLabel,
+  heatCopyText,
+  CALIBER_NOTES,
+  heatSummaryParts,
   heatDayRows,
   heatFromStats,
   heatGridSummary,
   isoOrNull,
   metricsSummaryText,
   sourceStaleness,
+  sourceSummaryText,
   SOURCE_STALE_MS,
   withGapNote,
   withTotalsNote,
@@ -112,6 +116,10 @@ type PageState =
 type Forced = 'loading' | 'empty' | 'error' | 'denied';
 
 const EMPTY_ACTIVITY: Activity = { cells: [], max: null, from: null, to: null, tz: 'Asia/Shanghai' };
+
+/** Cards that quote a read: two cards may describe the same read (trend and
+ *  runs both come from run-stats), so the list is of keys, not of cards. */
+const CARD_NOTE_KEYS: ReadonlyArray<string> = ['run-stats', 'budget-usage', 'pricing', 'run-activity'];
 
 const TABLE_SCROLL_STEP = 48;
 
@@ -368,7 +376,9 @@ export function MetricsModulePage() {
   const groupBy: 'model' | 'employee' = params.get('groupBy') === 'employee' ? 'employee' : 'model';
   const sortKey = parseSortKey(params.get('sort'));
   const sortDir = parseSortDir(params.get('dir'), sortKey);
-  const activeWindow = windowOf(params.get('w'));
+  // metAA — the heat window lives in its own `heat` key; `w` is only read as a
+  // fallback for links copied before this change.
+  const activeWindow = windowOf(params.get('heat') ?? params.get('w'));
   const weeks = activeWindow.weeks;
   const [state, setState] = useState<PageState>({ kind: 'loading' });
   const [usage, setUsage] = useState<UsageState>({ kind: 'loading' });
@@ -383,6 +393,11 @@ export function MetricsModulePage() {
   const [selected, setSelected] = useState<{ dow: number; hour: number } | null>(null);
   const [heatTableOpen, setHeatTableOpen] = useState(false);
   const [summaryStatus, setSummaryStatus] = useState<'idle' | 'done' | 'failed'>('idle');
+  const [heatCopyStatus, setHeatCopyStatus] = useState<'idle' | 'done' | 'failed'>('idle');
+  const [heatCopyBody, setHeatCopyBody] = useState('');
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [sourceCopyStatus, setSourceCopyStatus] = useState<'idle' | 'done' | 'failed'>('idle');
+  const [sourceCopyBody, setSourceCopyBody] = useState('');
   const [summaryText, setSummaryText] = useState('');
   const [sources, setSources] = useState<Record<string, SourceStamp>>({});
   const [sourcesOpen, setSourcesOpen] = useState(false);
@@ -655,7 +670,18 @@ export function MetricsModulePage() {
   useEffect(() => {
     sourceEpoch.current += 1;
     setSources((prev) => (Object.keys(prev).length === 0 ? prev : {}));
-  }, [attempt, usageWindow.id, viewMode, groupBy, weeks]);
+  }, [attempt, usageWindow.id, viewMode, groupBy]);
+
+  // metAA — switching the heat window only invalidates the heat read. The other
+  // blocks keep the stamps they already had, so their cards are not emptied.
+  useEffect(() => {
+    setSources((prev) => {
+      if (prev['run-activity'] === undefined) return prev;
+      const next = { ...prev };
+      delete next['run-activity'];
+      return next;
+    });
+  }, [weeks]);
 
   const loadBreakdown = useCallback(
     async (signal: { live: boolean }, windowId: UsageWindowId, view: 'employee' | 'model') => {
@@ -1032,6 +1058,22 @@ export function MetricsModulePage() {
   const grid = view.kind === 'ready' ? buildHeatGrid(view.activity) : null;
   const heatDays = grid ? heatDayRows(grid) : [];
   const heatSummary = grid ? heatGridSummary(grid) : '';
+
+  // metZ — the heat summary goes to the clipboard from the same parts that draw
+  // the on-screen sentence and the met5-count card; no reading is issued here.
+  const copyHeatSummary = () => {
+    const parts = grid
+      ? heatSummaryParts(grid)
+      : { total: null, peakLabel: null, peakRuns: null, lowLabel: null, lowRuns: null, coveredDays: 0, spanDays: 7 };
+    const text = heatCopyText({
+      weeks,
+      windowLabel: WINDOWS.find((item) => item.weeks === weeks)?.label ?? `最近 ${weeks} 周`,
+      rangeLabel: view.kind === 'ready' ? windowRangeLabel(view.activity) : null,
+      parts,
+    });
+    setHeatCopyBody(text);
+    void copyTextToClipboard(text).then((ok) => setHeatCopyStatus(ok ? 'done' : 'failed'));
+  };
   const selectedCell = selected && grid ? grid.rows[selected.dow - 1]?.cells[selected.hour] ?? null : null;
 
   const forcedDown = {
@@ -1445,12 +1487,26 @@ export function MetricsModulePage() {
   const chooseWindow = (nextWeeks: number) => {
     setSelected(null);
     const next = new URLSearchParams(params);
-    next.set('w', String(nextWeeks));
+    next.set('heat', String(nextWeeks));
+    next.delete('w');
     setParams(next, { replace: true });
   };
 
   const sourceList = sourceRows(sources);
   const newestSource = latestSourceAsOf(sourceList);
+
+  // metAG — the copied source summary is the freshness table in words; it reads
+  // the rows already on screen and asks the service for nothing.
+  // Disabled only when nothing was readable: a source this page never asked for
+  // yet is «degraded», not a failure, and must not flip the button either way.
+  const sourceCopyDisabled =
+    sourceList.length > 0 && sourceList.filter((row) => sources[row.key] !== undefined).every((row) => row.state === 'down');
+  const copySourceSummary = () => {
+    if (sourceCopyDisabled || sourceList.length === 0) return;
+    const text = sourceSummaryText(sourceList);
+    setSourceCopyBody(text);
+    void copyTextToClipboard(text).then((ok) => setSourceCopyStatus(ok ? 'done' : 'failed'));
+  };
 
   // metL — the plain-text summary repeats what this page already shows. Both
   // numbers and the collection time come from the batch in hand; the copy
@@ -1484,6 +1540,13 @@ export function MetricsModulePage() {
       <a className="metY-skip" href="#metY-main" data-testid="metY-skiplink">
         跳到主要内容
       </a>
+      <div className="sr-only">
+        {CALIBER_NOTES.filter((note) => CARD_NOTE_KEYS.includes(note.key)).map((note) => (
+          <p key={note.key} id={`metAD-note-${note.key}`} data-testid={`metAD-note-${note.key}`}>
+            {note.label}。缺值策略：{note.missing}
+          </p>
+        ))}
+      </div>
       <p className="sr-only" role="status" aria-live="polite" data-testid="metQ-live">
         {liveMessage}
       </p>
@@ -1630,7 +1693,13 @@ export function MetricsModulePage() {
           ) : null}
 
           <div className="met6-grid">
-            <Card className="met6-card metQ-card" tabIndex={0} id="metQ-card-focus-runs" data-testid="met6-runs">
+            <Card
+              className="met6-card metQ-card"
+              tabIndex={0}
+              id="metQ-card-focus-runs"
+              aria-describedby="metAD-note-run-stats"
+              data-testid="met6-runs"
+            >
               <CardContent className="space-y-1 p-4">
                 <p className="met6-label">{usageWindow.label}运行</p>
                 <p className="met6-value" data-testid="met6-runs-value">
@@ -1673,7 +1742,13 @@ export function MetricsModulePage() {
               </CardContent>
             </Card>
 
-            <Card className="met6-card metQ-card" tabIndex={0} id="metQ-card-focus-cost" data-testid="met6-cost">
+            <Card
+              className="met6-card metQ-card"
+              tabIndex={0}
+              id="metQ-card-focus-cost"
+              aria-describedby="metAD-note-budget-usage"
+              data-testid="met6-cost"
+            >
               <CardContent className="space-y-1 p-4">
                 <p className="met6-label">实扣金额（账本）</p>
                 <p className="met6-value" data-testid="met6-cost-value">
@@ -1755,7 +1830,13 @@ export function MetricsModulePage() {
               </CardContent>
             </Card>
 
-            <Card className="met6-card metQ-card" tabIndex={0} id="metQ-card-focus-trend" data-testid="met6-trend">
+            <Card
+              className="met6-card metQ-card"
+              tabIndex={0}
+              id="metQ-card-focus-trend"
+              aria-describedby="metAD-note-run-stats"
+              data-testid="met6-trend"
+            >
               <CardContent className="space-y-1 p-4">
                 <p className="met6-label">{usageWindow.label}趋势</p>
                 {spark && spark.observed > 0 ? (
@@ -1817,7 +1898,13 @@ export function MetricsModulePage() {
               </CardContent>
             </Card>
 
-            <Card className="met6-card metQ-card" tabIndex={0} id="metQ-card-focus-price" data-testid="met6-price">
+            <Card
+              className="met6-card metQ-card"
+              tabIndex={0}
+              id="metQ-card-focus-price"
+              aria-describedby="metAD-note-pricing"
+              data-testid="met6-price"
+            >
               <CardContent className="space-y-1 p-4">
                 <p className="met6-label">单价（价目表）</p>
                 {usageReady && usageReady.pricing.kind === 'ready' && usageReady.pricing.value.rows.length > 0 ? (
@@ -1980,20 +2067,20 @@ export function MetricsModulePage() {
                   onKeyDown={handleTableScrollKeys}
                 >
                   <table className="met6-table" data-testid="met6-table">
-                    <thead>
+                    <thead className="metAF-sticky-detail" data-testid="metAF-sticky-detail">
                       <tr>
                         <th scope="col">{breakdownView.view === 'model' ? '模型' : '员工'}</th>
-                        <th scope="col" aria-sort={ariaSortFor('cost')} title="金额单位：美元（USD），两位小数" data-testid="metO-fmt-th-spend">
+                        <th scope="col" aria-sort={ariaSortFor('cost')} title="金额单位：美元（USD），两位小数" className="metAF-nowrap" data-testid="metO-fmt-th-spend">
                           <button type="button" className="met6-sort" data-testid="metP-sort-cost" onClick={() => chooseDetailSort('cost')} aria-label="按支出排序">
                             支出（USD）
                           </button>
                         </th>
-                        <th scope="col" aria-sort={ariaSortFor('runs')} title="调用次数，单位：次" data-testid="metO-fmt-th-count">
+                        <th scope="col" aria-sort={ariaSortFor('runs')} title="调用次数，单位：次" className="metAF-nowrap" data-testid="metO-fmt-th-count">
                           <button type="button" className="met6-sort" data-testid="metP-sort-runs" onClick={() => chooseDetailSort('runs')} aria-label="按次数排序">
                             次数（次）
                           </button>
                         </th>
-                        <th scope="col" className="met6-num" aria-sort={ariaSortFor('share')} data-testid="metG-a11y-th-share" title="占本窗口合计的比例，单位：百分比，一位小数">
+                        <th scope="col" className="met6-num metAF-nowrap" aria-sort={ariaSortFor('share')}  data-testid="metG-a11y-th-share" title="占本窗口合计的比例，单位：百分比，一位小数">
                           <button type="button" className="met6-sort" data-testid="metP-sort-share" onClick={() => chooseDetailSort('share')} aria-label="按占比排序">
                             占比（%）
                           </button>
@@ -2054,6 +2141,13 @@ export function MetricsModulePage() {
                     {formatUsd(breakdownView.total)}
                   </span>
                   {` · ${detailRows.length} 行`}
+                </p>
+                <p
+                  className="met6-hint"
+                  data-testid="metAH-cap-note"
+                  title={`判据：明细行取自当前批次，组件里没有 slice 或行数上限；这里的 ${detailRows.length} 行与上方来源行的计数同源。`}
+                >
+                  表内全量渲染，共 {detailRows.length} 行；导出与屏上一致，没有截断。
                 </p>
                 {breakdownView.note ? <p className="met6-hint">{breakdownView.note}</p> : null}
               </>
@@ -2459,7 +2553,7 @@ export function MetricsModulePage() {
                 >
                   <table className="met6-table" data-testid={`${sharePrefix}-table`}>
                     <caption className="metG-caption" data-testid="metG-a11y-caption">{`成本分摊：${usageWindow.label} · ${groupBy === 'employee' ? '按员工' : '按模型'} · 按${sortColumnLabel}${sortDir === 'asc' ? '升序' : '降序'}排列`}</caption>
-                    <thead>
+                    <thead className="metAF-sticky-share" data-testid="metAF-sticky-share">
                       <tr>
                         <th scope="col" aria-sort={sortKey === 'model' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
                           <button
@@ -2472,17 +2566,17 @@ export function MetricsModulePage() {
                             {sortKey === 'model' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
                           </button>
                         </th>
-                        <th scope="col" className="met6-num" data-testid="metG-a11y-th-runs" data-metO-unit="次" title="运行计数，单位：次" aria-sort={sortKey === 'runs' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                        <th scope="col" className="met6-num metAF-nowrap"  data-testid="metG-a11y-th-runs" data-metO-unit="次" title="运行计数，单位：次" aria-sort={sortKey === 'runs' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
                           <button type="button" className="met7-sort" onClick={() => chooseSort('runs')} data-testid={`${sharePrefix}-sort-runs`}>
                             运行数{sortKey === 'runs' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
                           </button>
                         </th>
-                        <th scope="col" className="met6-num" data-testid="metG-a11y-th-cost" data-metO-unit="USD" title="金额单位：美元（USD），两位小数" aria-sort={sortKey === 'cost' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                        <th scope="col" className="met6-num metAF-nowrap"  data-testid="metG-a11y-th-cost" data-metO-unit="USD" title="金额单位：美元（USD），两位小数" aria-sort={sortKey === 'cost' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
                           <button type="button" className="met7-sort" onClick={() => chooseSort('cost')} data-testid={`${sharePrefix}-sort-cost`}>
                             成本{sortKey === 'cost' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
                           </button>
                         </th>
-                        <th scope="col" title="占本窗口可分摊实扣的比例，单位：百分比，一位小数" data-testid="metO-fmt-th-pct">占比（%）</th>
+                        <th scope="col" title="占本窗口可分摊实扣的比例，单位：百分比，一位小数" className="metAF-nowrap" data-testid="metO-fmt-th-pct">占比（%）</th>
                         <th scope="col">运行</th>
                       </tr>
                     </thead>
@@ -2553,6 +2647,13 @@ export function MetricsModulePage() {
                   {shareView.value.asOf ? formatBeijing(shareView.value.asOf) : '—'} · 窗口 {shareView.value.days} 天 · 可读实扣合计{' '}
                   <span className="font-mono">{formatUsd(shareTotal)}</span>
                 </p>
+                <p
+                  className="met6-hint"
+                  data-testid="metAH-cap-note-share"
+                  title={`判据：分摊行取自当前批次，只做排序，没有 slice 或行数上限；这里的 ${shareRows.length} 行与 metA-export-count 同源。`}
+                >
+                  表内全量渲染，共 {shareRows.length} 行；导出含同一批行，没有截断。
+                </p>
                 <p className="met6-hint" data-testid={`${sharePrefix}-hint`}>
                   占比按可读到的实扣金额归一，合计 100%；缺金额的行不参与分摊，显示「—」。排序写在地址里，刷新与前进后退都保留。
                 </p>
@@ -2601,6 +2702,34 @@ export function MetricsModulePage() {
         ))}
       </div>
       <p className="met5-note">这个读取口按整周汇总，24 小时窗口不单独提供；最近 30 天按 4 周展示。</p>
+      <p className="met6-hint" data-testid="metAA-heat-window">
+        热力窗口写在地址里：{activeWindow.label}（heat={weeks}）。刷新、前进后退和分享链接都会回到同一个窗口，其它卡片与筛选保持原样。
+      </p>
+
+      <div className="metZ-heat-copy">
+        <Button size="sm" outlined onClick={copyHeatSummary} data-testid="metZ-copy-heat">
+          <Copy className="size-3.5" aria-hidden="true" />
+          复制热力摘要
+        </Button>
+        <span className="metL-status" role="status" aria-live="polite" data-testid="metZ-copy-status">
+          {heatCopyStatus === 'done' ? '已复制' : heatCopyStatus === 'failed' ? '复制没成功' : ''}
+        </span>
+      </div>
+
+      {heatCopyStatus === 'failed' ? (
+        <div className="metL-fallback" data-testid="metZ-copy-fallback">
+          <p>
+            这次没能写入剪贴板，可能是浏览器没有给权限。下面这段文字可以直接选中复制，内容与刚才要复制的一样。
+          </p>
+          <textarea
+            readOnly
+            value={heatCopyBody}
+            aria-label="热力摘要文本"
+            data-testid="metZ-copy-fallback-text"
+            onFocus={(event) => event.currentTarget.select()}
+          />
+        </div>
+      ) : null}
 
       <p className="met6-hint" data-testid="metX-consistency-note">
         运行数三处对照：窗口总运行{' '}
@@ -2694,7 +2823,13 @@ export function MetricsModulePage() {
             </Card>
           </div>
 
-          <Card className="metQ-card" tabIndex={0} id="metQ-card-focus-heatmap" data-testid="met5-heatmap">
+          <Card
+            className="metQ-card"
+            tabIndex={0}
+            id="metQ-card-focus-heatmap"
+            aria-describedby="metAD-note-run-activity"
+            data-testid="met5-heatmap"
+          >
             <CardContent className="space-y-3 p-4 md:p-6">
               <div className="met5-legend" data-testid="met5-legend">
                 <span>少</span>
@@ -2820,7 +2955,36 @@ export function MetricsModulePage() {
               <span className="met5-note">
                 最近采集 {newestSource ? formatBeijing(newestSource) : '—'} · {sourceList.length} 个读口
               </span>
+              <Button
+                size="sm"
+                outlined
+                disabled={sourceCopyDisabled}
+                title={sourceCopyDisabled ? '所有读口都没读出来，没有可复制的来源摘要' : '把这张表的内容复制成纯文本'}
+                onClick={copySourceSummary}
+                data-testid="metAG-copy-sources"
+              >
+                <Copy className="size-3.5" aria-hidden="true" />
+                复制来源摘要
+              </Button>
+              <span className="metL-status" role="status" aria-live="polite" data-testid="metAG-copy-status">
+                {sourceCopyStatus === 'done' ? `已复制 ${sourceList.length} 行` : sourceCopyStatus === 'failed' ? '复制没成功' : ''}
+              </span>
             </div>
+
+            {sourceCopyStatus === 'failed' ? (
+              <div className="metL-fallback" data-testid="metAG-copy-fallback">
+                <p>
+                  这次没能写入剪贴板，可能是浏览器没有给权限。下面这段文字可以直接选中复制，内容与刚才要复制的一样。
+                </p>
+                <textarea
+                  readOnly
+                  value={sourceCopyBody}
+                  aria-label="数据来源摘要文本"
+                  data-testid="metAG-copy-fallback-text"
+                  onFocus={(event) => event.currentTarget.select()}
+                />
+              </div>
+            ) : null}
             {sourcesOpen ? (
               <div className="metB-wrap">
                 <div
@@ -2913,6 +3077,37 @@ export function MetricsModulePage() {
           </p>
         )}
       </section>
+      <section className="metAB" data-testid="metAB-notes">
+        <button
+          type="button"
+          className="metB-toggle"
+          aria-expanded={notesOpen}
+          aria-controls="metAB-notes-body"
+          data-testid="metAB-notes-toggle"
+          onClick={() => setNotesOpen((open) => !open)}
+        >
+          口径说明
+        </button>
+        <p className="met5-note">每个读口的名字、实际路径、计算范围，以及缺值怎么显示。</p>
+        {notesOpen ? (
+          <div id="metAB-notes-body" className="metAB-body" data-testid="metAB-notes-body">
+            <ul className="metAB-list">
+              {CALIBER_NOTES.map((note) => (
+                <li key={note.key} className="metAB-item" data-testid={`metAB-note-${note.key}`}>
+                  <p className="metAB-name">{note.label}</p>
+                  <p className="metAB-path">{note.path}</p>
+                  <p>计算范围：{note.scope}</p>
+                  <p>缺值策略：{note.missing}</p>
+                </li>
+              ))}
+            </ul>
+            <p className="met6-hint">
+              采集时刻只取上游顶层返回的 ISO 时间；上游没给就是「—」，不拿本机时间顶替。两份导出沿用同一套处理：真 0 写 0 或 $0.00，缺失留空。
+            </p>
+          </div>
+        ) : null}
+      </section>
+
     </main>
   );
 }
