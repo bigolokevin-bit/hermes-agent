@@ -134,7 +134,8 @@ describe("pending queue states", () => {
     expect(text()).toContain("待处理");
     expect(text()).toContain("李思");
     expect(text()).toContain("员工 · 8812");
-    expect(text()).toContain("2026-11-19 09:20");
+    // R76: 提交时间的绝对到秒在 title。
+    expect(document.querySelector("[data-testid='apv-time-row-submitted-ap_9F3A1111']")?.getAttribute("title") ?? "").toContain("2026-11-19 09:20:00");
     expect(text()).toContain("$25.00");
     expect(text()).toContain("已显示 1 条申请，其中 1 条待处理");
   });
@@ -707,5 +708,38 @@ describe("R74 pending actor buckets (apv-actor-*)", () => {
       await waitFor(() => !!qa("apr5-row-ap_9F3A1111"), "row back");
     }
     expect(document.body.textContent).not.toContain("human:");
+  });
+});
+
+describe("R77 pending time range (apv-since-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+
+  it("the pending tab carries the same rail with zero new requests", async () => {
+    await mount(queue(), "/approvals?tab=pending");
+    await waitFor(() => !!qa("apv-since-rail"), "rail");
+    const before = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      (qa("apv-since-24h") as HTMLButtonElement).click();
+    });
+    expect(api.fetchJSON.mock.calls.length, "chip never refetches").toBe(before);
+    await act(async () => {
+      (qa("apv-since-all") as HTMLButtonElement).click();
+    });
+    expect(api.fetchJSON.mock.calls.length, "clearing never refetches").toBe(before);
+    expect(qa("apv-since-scope-note")?.textContent).toContain("不是全量");
+  });
+});
+
+describe("R79 pending pagination rail (apv-page-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+
+  it("the pending tab shows the same rail: no-total sentence, end state disabled", async () => {
+    await mount(queue(), "/approvals?tab=pending");
+    await waitFor(() => !!qa("apv-page"), "rail");
+    expect(qa("apv-page-count")?.textContent).toContain("总数不可用");
+    const more = qa("apv-page-more") as HTMLButtonElement;
+    expect(more.disabled, "queue fits one page — no cursor").toBe(true);
+    expect(more.getAttribute("title")).toContain("已到末页");
+    expect(qa("apv-page-end")?.textContent).toBe("已到末页");
   });
 });

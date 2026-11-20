@@ -410,6 +410,9 @@ export interface ApprovalRow {
   requestId: string | null;
   /** R71: raw ISO 决定时间（排序键用；屏上仍走 decided 人话）。 */
   decidedAt: string | null;
+  /** R76: 相对时间 helper 的 raw 输入（与 submitted/clock 同源）。 */
+  submittedAt: string | null;
+  clockAt: string | null;
   /** R65 parity: exactly what the detail reads as 「决定时间」 — same keys,
    * same helper, so the preview and the detail can never disagree. */
   decided: string | null;
@@ -447,8 +450,14 @@ function rowFrom(item: unknown, index: number): ApprovalRow | null {
     requester: requesterView(rec),
     worker: workerView(rec),
     submitted: beijing(pick(rec, SUBMITTED_KEYS)),
+    // R76: raw ISO 原文（相对显示的单一输入）；屏上人话仍走上面的助手。
+    submittedAt: pickText(rec, SUBMITTED_KEYS),
     clock,
     clockLabel: status.pending ? "处理期限" : "处理于",
+    // R76: clock 的 raw 源与 clock 同一选择逻辑。
+    clockAt: status.pending
+      ? pickText(rec, DEADLINE_KEYS)
+      : (pickText(rec, DECIDED_KEYS) ?? pickText(rec, DEADLINE_KEYS)),
     amount: pickNumber(rec, AMOUNT_KEYS),
     reason: humanSentence(pickText(rec, REASON_KEYS)),
     risk: riskView(pickText(rec, ["riskLevel", "risk_level", "risk"])),
@@ -468,6 +477,8 @@ export interface ApprovalPage {
   unreadable: number;
   next: string | null;
 }
+  /* R79: 读口顶层无 total 键（实测 keys=[items,nextCursor]）——解析 total/count
+   * 以备契约升级，缺省恒 null；UI 禁按已加载条数推算。 */
 
 /** null = the answer is not a list at all, which is a failure, not an empty queue. */
 export function approvalsPageFrom(payload: unknown): ApprovalPage | null {
@@ -495,10 +506,14 @@ export function approvalsPageFrom(payload: unknown): ApprovalPage | null {
     if (row) rows.push(row);
     else unreadable += 1;
   });
-  return { rows, unreadable, next };
+  const totalRaw = (payload as Record<string, unknown>).total ?? (payload as Record<string, unknown>).count;
+  const total = typeof totalRaw === "number" && Number.isFinite(totalRaw) ? totalRaw : null;
+  return { rows, unreadable, next, total };
 }
 
 export interface DecisionEntry {
+  /** R76: 决策时间的 raw ISO（at 的单一输入）。 */
+  atRaw: string | null;
   who: string;
   whoRaw: string | null;
   verdict: string;
@@ -519,6 +534,10 @@ export interface ApprovalDetail {
   submitted: string | null;
   deadline: string | null;
   decided: string | null;
+  /** R76: raw ISO（trail 与详情时间列共用相对 helper 的单一输入）。 */
+  submittedAt: string | null;
+  deadlineAt: string | null;
+  decidedAt: string | null;
   remaining: { text: string; overdue: boolean } | null;
   amount: number | null;
   reason: string | null;
@@ -555,6 +574,7 @@ function decisionEntries(rec: Record<string, unknown>): DecisionEntry[] {
       verdict: verdictLabel(verdictRaw),
       verdictRaw,
       at: beijing(pick(one, ["decidedAt", "decided_at", "at", "createdAt", "ts"])),
+      atRaw: pickText(one, ["decidedAt", "decided_at", "at", "createdAt", "ts"]),
       note: humanSentence(pickText(one, ["comment", "note", "reason"])),
     });
   }
@@ -599,6 +619,9 @@ export function approvalDetailFrom(payload: unknown): ApprovalDetail | null {
     submitted: beijing(pick(body, SUBMITTED_KEYS)),
     deadline: beijing(pick(body, DEADLINE_KEYS)),
     decided: beijing(pick(body, DECIDED_KEYS)),
+    submittedAt: pickText(body, SUBMITTED_KEYS),
+    deadlineAt: pickText(body, DEADLINE_KEYS),
+    decidedAt: pickText(body, DECIDED_KEYS),
     remaining: countdown(pickNumber(body, ["remainingSeconds", "remaining_seconds", "ttlRemaining"])),
     amount: pickNumber(body, AMOUNT_KEYS),
     reason: humanSentence(pickText(body, REASON_KEYS)),

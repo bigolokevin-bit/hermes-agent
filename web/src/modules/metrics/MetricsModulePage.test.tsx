@@ -4718,3 +4718,21 @@ describe('metAS — three cost faces on one line', () => {
     expect(urls().length).toBe(before);
   });
 });
+
+describe('metAP duty caliber note', () => {
+  it('points at the duty read path and claims no shared numbers', async () => {
+    await mount(usageRouter());
+    const note = document.querySelector('[data-testid="metAP-duty-note"]');
+    expect(note).not.toBeNull();
+    const text = note?.textContent ?? '';
+    expect(text).toContain('各读自己的口');
+    // 原始读口只进 title，不上屏。
+    expect(text).not.toContain('/api');
+    const title = note?.getAttribute('title') ?? '';
+    expect(title).toContain('workbench/summary?range=1d');
+    expect(title).toContain('/api/run-stats');
+    // 该说明是静态句，挂载后不再追加任何请求。
+    const before = urls().length;
+    expect(urls().length).toBe(before);
+  });
+});

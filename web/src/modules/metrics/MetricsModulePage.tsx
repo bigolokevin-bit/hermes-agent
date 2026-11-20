@@ -3112,6 +3112,14 @@ export function MetricsModulePage() {
         </span>
       </p>
 
+      <p
+        className="met6-hint metAP-duty-note"
+        data-testid="metAP-duty-note"
+        title="值班台的今日运行读 workbench/summary?range=1d（BFF 聚合的一日运行数），这一页的运行数读 /api/run-stats 当前时间窗；两页各读自己的口，跨页数值以各自卡片为准，为了对上不改任何一侧的取数。"
+      >
+        值班台的「今日运行」读的是 BFF 聚合的一日运行数，这一页读运行统计的当前时间窗；两页各读自己的口，跨页数值以各自卡片为准，为了对上不改任何一侧的取数。
+      </p>
+
       <p className="met6-hint metAS-line" data-testid="metAS-cost-caliber" title={costCaliberView.title}>
         <span className="metAS-face">
           日累计 <span data-testid="metAS-day">{formatUsd(costCaliberView.faces[0].value)}</span>

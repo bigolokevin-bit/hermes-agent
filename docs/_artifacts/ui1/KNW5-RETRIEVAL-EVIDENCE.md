@@ -1977,3 +1977,307 @@ $ npx vite build --outDir /tmp/knw32-dist → exit 0
 边界：只改 `web/src/modules/knowledge/**` 与本证据目录（3 files）；显式路径提交；
 无 force / amend / `--no-verify` / `git add -A`；未并 main、未重建 9122；
 merge（5630ffce）与单 fix commit 分开。
+
+# KNW5 追加 R64：复制/导出族收成单点 gates（testid `kn-gates-*`）（2026-11-20 BJT）
+
+安全闸：toplevel 相符、porcelain 空、显式 refspec fetch 后 merge 实到章面 `957704be`
+（含既有全部代次），零冲突；merge 对 `web/src/modules/knowledge` 的 delta 为空；
+合后基线先跑一遍再动工。
+
+## 一、结构
+
+```text
+新文件 copyGates.ts = 唯一的「能不能/为什么/怎么说」出处：
+  faceGates(input{face,state,rows,filterText,loadedTotal}, act) →
+    copy {enabled,title,reason} · retry {enabled,title} · exportEntry(恒 absent)
+    · status(aria-live 句) · fallback(兜底锚渲染与否) · lines{text,title}
+  四入口 knI/knF/knG/knL 各读各面；Surface 与各重试按钮的 title 走同一 retryTitle()。
+删除：R62 落地的页内 copyBlockNotice/blockedCopyReason/COPY_BLOCKED_BY_KIND——页面
+  不再持有第二套文案分支（grep 页文件无「还在读取，还没有可复制」等本地句式）。
+markers：kn-gates-kn{I,F,G,L}（data-enabled/data-reason/data-retry-enabled/
+  data-export="absent"），display:none，零可见变化（knD-marker 同手法）。
+导出族：本模块无导出入口（git grep 核实），gates 表显式 absent 句，不造新功能。
+```
+
+## 二、六格 × 四入口读数（定向测试逐字断言摘要）
+
+```text
+格        knI 空间列表                 knG 全库检索                 knF 详情文档                 knL 抽屉
+loading   disabled·「列表还在读取」    同左·尾词「结果」句           同 knG 句式                 （不适用：抽屉开必有行/无行）
+ready     enabled·面用途句·计数N行/条  enabled·计数N条               enabled·计数N行              enabled·「已复制」
+empty真0  disabled·「这份回答里没有空间」title 逐字「当前没有可复制的空间」不变  「…没有文档」  title 逐字「当前没有可复制的结果」不变  不适用        rows0·「这条文档不在已加载的列表里」
+筛空      disabled·「筛选后没有留下的空间」                        动态逐字句(带份数与词)·「筛选后没有留下的文档」      同型        （不适用）
+error     disabled·「这次读取没有成功」=三入口同句同灭              同左                          同左                    （详情错不碍行复制——gates 明写）
+denied403 与 unwired404 同句同权「读口未接入或没有权限」；retry title「重试这一次读取：<原因>」同源
+一致性    同一面失败时 copy/retry/计数/兜底四读同一函数一次判出；非 ready 兜底必不渲染（OBS-6 由结构保证，
+          不再靠各处自觉）。ready-0 时复制 disabled + 面句式 title（R55/56/57 逐字句原样保留在表内）。
+```
+
+## 三、真实浏览器三档（不重建 9122 的替代路径，如实记录）
+
+```text
+方式：vite preview 服务构建产物（输出仅 /tmp/knw33-dist，端口 4180，用完即杀）+ headless
+Chrome(CDP) 实测 http://localhost:4180/knowledge?tab=spaces（该环境无 agent-api，三面落
+error 态——正是 disabled 条形态的测量对象）。读数：
+  1440 vw=1440 bodySW=1440 docSW=1440 · 1280 全等 · 375 全等 → 无横溢
+  同页 DOM 复核：knw5-page 在、markers=「kn-gates-knG:false:这次读取没有成功」等与按钮
+  disabled=true 逐项一致（真实 Chrome 下 gates 读数与结构一致）。
+既有 jsdom 定向测试另覆盖六格×四入口全表。
+```
+
+零额外请求：gates 为纯函数；测试在 loading/ready/empty/筛空/denied/error/复制/排序切换
+各段断言 fetchMock 计数前后不变；真实浏览器测量用的静态产物无任何后端可打，行为同源。
+kn3/kn6–knN/knw5 零破：既有 57 例逐字断言（含 R55/56/57 面句式 title、OBS-6 状态句、
+R59 焦点、R63 链接）全绿；本轮新增 1 例（58/58）。零写入口、四态与 403≡404 不退化。
+
+## 验证尾行（R64）
+```text
+$ npx vitest run src/modules/knowledge   → 2 files / 58 tests passed
+$ npx vitest run                         → 147 files / 1917 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw33-dist → exit 0；preview 4180 + CDP 测量后进程已清理
+```
+边界：只改 `web/src/modules/knowledge/**`（含新增 copyGates.ts）与本证据目录；未动 App.tsx /
+shell / routes / registry / package·lock / web-scripts / ops；未并 main、未重启或重建 9122；
+显式路径提交（无 `git add -A`）；无 force / amend / `--no-verify`；merge（957704be）与单
+feature commit「feat(console): knowledge copy action gates」分开。
+
+# KNW5 追加 R65：全库文档名搜索按空间分组（testid `kn-group-*`）（2026-11-20 BJT）
+
+安全闸：toplevel 相符、porcelain 空、显式 refspec fetch 后 merge 实到章面 `a5832d15`
+（代次含既有全部），零冲突；merge 对本知识面 delta 为空；合后基线 58/58 先绿再动工。
+
+## 一、口径
+
+```text
+派生       分组是对「筛后 shown」的纯派生（knowledge.ts groupRowsBySpace）：组序=首现序、
+           组内行保持既有序；不另发请求、不动 URL。命中读口今天不接受 q（R51 探针口径），
+           筛选与分组都发生在同一份已加载数据上。
+计数同源   组头逐组「N 项」之和 === 该面 shown/总数 === Surface data-len === kn9 计数句同源。
+           派工写的 `kn8-count` 是空间列表面的计数；本面（文档名搜索）的对应总数元素是
+           `kn9-count-docs`，映射如实声明于此，断言按后者执行（测试逐字读数）。
+组头       真 BUTTON：aria-expanded + aria-controls 指组行容器 id（kn-group-rows-<n>，
+           折叠时容器常在、id 不落空）；title 放全空间 id（屏上不见 sp_）；名缺用既有
+           人话短码标签「空间 · SPFIN」；无空间行归「—」组。折叠纯视图态存组件本地：
+           不改 ?q=、不重取（实测 fetchMock 前后计数不变）、文案「折叠/展开」翻转。
+行         组内行与原表逐列同口径：真 a[href]（sdoc= 深链）、类型人话、大小人话、
+           更新 BJT 到分、缺「—」+title 原因；SearchDocTable 原组件复用，非再造一条表。
+roving     折叠的组不挂行 → DOM 序=可见序，tabIndexFor 按「前面已展开组的行数」累计偏移，
+           实测跨组 ↓ 走位不乱、同时只有一个 tabindex=0；Esc 回搜索框原样。
+空态       0 命中走既有 kn6-search-empty（「没有匹配的文档…本地筛选…」+清除关键词），
+           不新增空态文案；未接入/失败面（Surface 非 ready 分支）根本不渲染组。
+单路径     分组只长在页顶「按文档名搜索」面（唯一 render 路径）；retrieval 页的检索命中面
+           （knw5-search*）实测不含任何 kn-group 节点，仍是原表原诚实态——一处实现，一处使用。
+复制       knG 复制句仍按「命中顺序」（读入序）——与 R56 派工文本口径逐字一致；分组是视图
+           呈现，不改变清单内容（集合相同，证据在此明说）。
+```
+
+## 二、三档
+
+```text
+CDP headless Chrome 打 vite preview 静态产物（输出仅 /tmp，端口用毕即杀）：
+  /knowledge?tab=spaces&q=员工：1440/1280/375 三档 vw==bodySW==docSW 全等（该屏含页顶搜索面板）。
+  如实记录：preview 无登录会话，搜索面在真实屏上落 error 诚实态，组行态未能在该静态屏复现
+  （CDP Fetch 打桩被 shell 鉴权链挡下，属 preview 环境限制，非功能缺口）；组行态布局由
+  组件级测试（行数/组序/tabindex 分布）+ 现成 flex-wrap 规约保证。9122 按约束未重建，
+  组行态真实浏览器三档复测列入未测项。
+```
+
+kn3 / kn6–kn9 / knB–knN / knw5 既有断言零破（58 例基线原样绿，含 kn6 全部旧测、roving、
+复制 gates、空态）；本轮 +1 例（59）。无写入口、无新请求、四态与 403≡404 不退化。
+
+## 验证尾行（R65）
+```text
+$ npx vitest run src/modules/knowledge   → 2 files / 59 tests passed
+$ npx vitest run                         → 150 files / 1989 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-group-dist → exit 0（产物只落 /tmp，preview/CDP 进程已清理）
+```
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
+无 force / amend / `--no-verify`；merge 与单 feature commit 分开。
+
+# KNW5 追加 R66：空间文档列表四列排序与单一表头（testid `kn-sort-*`）（2026-11-20 BJT）
+
+安全闸：toplevel 相符、porcelain 空、显式 refspec fetch；上游 tip 即派工章面 `a5832d15`
+（代码代次 `60a4a429`），merge 为 Already up to date——本笔只有 feature commit。
+
+## 一、后端探针（cookie 只在 curl 命令内拼 Header，值零回显；9122 只读、未重启、未重建）
+
+```text
+HTTP 404  rid f9ced4ad  /agent-api/api/documents?limit=50&spaceId=sp_hr                    documents.read_not_wired  行数 0
+HTTP 404  rid ac606a3c  …&sort=name                                                          同上  行数 0  顺序无差别（无行可差）
+HTTP 404  rid 78c18c10  …&sort=name&order=asc                                               同上  行数 0
+HTTP 404  rid 2ac23a99  …&orderBy=name&order=desc                                           同上  行数 0
+```
+读口今天 fail-closed，sort/order/orderBy 带与不带回答逐字一致 → **声明本地排序**，
+表下 `kn-sort-scope-note` 逐字「仅在当前已加载 N 篇内排序…不会再发请求」（N=筛前行数实测）。
+
+## 二、与 R52 的收口（改名路线，侦察属实）
+
+```text
+testid：表头按钮由 `knC-sort-<col>` 改名为派工指定的 `kn-sort-<col>`（模块外零引用，
+  grep 全仓核实）；既有测试引用同步改名，断言语义未动。knC-sort/knC-th 的 CSS 类名保留
+  （focus-visible 走现成 token，未新增样式面）。类型列从纯 th 升级为第四可排列。
+  派工零破清单 knB–knN 若按字面含 knC：本轮未破的是 knC 的行为与断言，改名仅动 testid
+  字符串——两处既有 knC 相关测试（R52 排序、R54/R55 翻页重置点表头）全部原语义通过。
+URL：本面真值改走 `?ksort=&kdir=`；`?sort=&dir=` 只作读兜底（旧粘贴链继续生效，实测
+  sort=size&dir=asc 复现同序），默认态与清除态都不写参数。清除（同列第三点）只删
+  ksort/kdir，地址里原有 sort/dir 原样保留（如实后果：无 ksort 时旧 sort/dir 兜底重新生效）；
+  q/面包屑/panel 等全程不动。切页签把四键一并清掉（R52 口径延伸）。
+周期：四列统一「首点落本列默认方向 → 再点翻向 → 第三点清除」；R52 的两击断言
+  （name asc→desc、size desc→asc、updated desc→asc）逐条兼容，全绿。
+```
+
+## 三、行为读数（定向测试逐字断言）
+
+```text
+缺值恒末位：类型缺（D 行）asc/desc 都末位；大小缺同（不当 0）；时间缺同（R52 既有）。
+稳定序：同值行（两 PDF、同 300B）在 asc 与 desc 里都保持读入相对序（A 前 B 后实测）。
+键盘：四按钮都是 BUTTON[type=button]；Enter/Space 由 onKeyDown 显式接管并 preventDefault
+  （一次按键一次翻态，浏览器不再叠加原生激活），defaultPrevented=true 实测；focus-visible
+  走 .knC-sort:focus-visible 现成 token。
+零请求：三态整周期 + 键盘段 + 复制段 fetchMock 计数全程不变（urlsBefore 快照逐段核对）。
+复制同序：knF-copy 首行/末行 == 表体首/末行——name/asc 与默认 updated/desc 两组各贴。
+单一表头：ready 且有可见行 = 真表头四按钮 enabled、表头条不渲染；
+  loading/error/unwired/denied/login/真空/筛空 = 表头条四按钮全 disabled + 逐字原因 title
+  （未接入句对 403/404 同一句），点它不改 URL 零请求，口径注此时不出现——全页任何状态
+  表头恰好一套（真实 Chrome 复核：strip=1、heads 四枚皆 d）。
+```
+
+三档：vite preview(/tmp/knw-sort-dist，用毕即杀)+headless Chrome CDP 实测详情屏（无后端
+恰为表头条形态）1440/1280/375 `vw==bodySW==docSW` 全等。未测如实：真浏览器 Enter/Space
+原生激活链（jsdom 以显式 keydown 断言替代）、ready 行态三档（preview 无会话读不到行）、
+真机剪贴板权限弹窗。kn3/kn6–knN/knw5 零破：60 例（基线 59 + 本轮 1）全绿。
+
+## 验证尾行（R66）
+```text
+$ npx vitest run src/modules/knowledge   → 2 files / 60 tests passed
+$ npx vitest run                         → 150 files / 1990 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-sort-dist → exit 0（preview/CDP 进程已清理）
+```
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
+无 force / amend / `--no-verify`；单 commit「feat(console): knowledge document list sorting」。
+
+# KNW5 追加 R67：空间文档列表的行内预览（testid `kn-doc-preview-*`）（2026-11-20 BJT）
+
+安全闸：toplevel 相符、porcelain 空、显式 refspec fetch；上游 tip 仍 `a5832d15`（章面即此，
+代次 60a4a429），merge 为 Already up to date——本笔只有 feature commit。
+
+## 一、路径选择（派工要求显式写明）
+
+**选「专用控件」路线**：行名 `kn3-docs-name` 保持为抽屉入口（真 `a[href]`→`?doc=`，R49/R58
+语义零动）；行内预览由每行文档名单元格里的专用真 BUTTON `kn-doc-preview-toggle` 开合，
+携 `aria-expanded` + `aria-controls` 指向该行的预览容器（id `kn-doc-preview-<key>`，收起时
+容器不挂载、展开时 id 必在场）。没有把行本身改成 toggle，也没有第二套表头/入口。
+
+## 二、口径与实测读数
+
+```text
+内容     预览只取该行已有数据，五行逐字：文档名（人话名）/ 类型人话 / 大小人话 /
+         更新 BJT 到分 / 短码。缺字段给「该字段未返回」+ title 点名哪个字段没回
+         （实测缺字段行 d_b2：类型/大小/更新三格「该字段未返回」，title 各含字段名），
+         不编、不借别行、不写 0。短码 = 标识人话尾段大写（d_b2→「DB2」），全 id 只在
+         title（实测 title="d_b2"）；预览容器可见文本实测不含 "doc_"、不含裸 id。
+视图态   previewKey 存组件本地：不进 URL——展开/收起/Esc 全程 loc 逐字不变（实测）；
+         刷新同址回来全部收起（实测）。切空间即清（带上的预览不带进下个空间）。
+单行     同时至多一行展开：换行展开自动收起前一行（aria-expanded 逐钮实测 true→false）。
+Esc      展开态 Esc = 收起且焦点守在原钮（activeElement data-testid=kn-doc-preview-toggle
+         实测），事件 stopPropagation 不再触到 roving 的「Esc 回搜索框」；收起态 Esc
+         保持既有 roving 语义（交还列表原行为）。
+互斥     B→A 双向锁死：抽屉开着点预览钮 = 静默关抽屉（只删 doc=，不抢焦点——焦点留在钮上，
+         实测 panel 消失 + loc 无 doc= + 预览在场 + activeElement=该钮）；预览开着点行名 =
+         开抽屉并收起预览（实测 panel 在场 + 容器 0 + aria-expanded=false）。同屏至多一个
+         详情面。
+roving   toggle 与行名同行同权（共用 tabIndexFor）：未进 roving 两者都无显式属性；进入后
+         活动行的名+钮=0、其余行两者=-1（实测）。↑/↓/Home/End/Esc(框) 语义零动，
+         ArrowDown 仍走行序列（实测焦点链）。focus-visible 走现成 token（钮自带 outline 规则）。
+零请求   展开/收起/Esc/单行切换/互斥两向全程 fetchMock 计数不变（各段快照实测）；预览不发
+         详情读、不动列表读；互斥关抽屉只是删参。
+```
+
+testid 新增恰为 `kn-doc-preview-*` 一家：toggle / 容器（kn-doc-preview）/ 字段
+（-name/-type/-size/-updated/-code）/ 预览行（-row）；行加 `data-preview` 读数。
+kn3 / kn6 / kn7 / kn8 / kn9 / knB / knD / knF / knG / knI / knL / kn-sort / kn-gates 零破
+（61 例 = 基线 60 + 本轮 1，全绿；含 R49 抽屉回归、R58 roving、R66 排序、R64 gates）。
+
+## 三档
+
+静态产物 + headless Chrome CDP：详情屏 1440/1280/375 `vw==bodySW==docSW` 全等（构建输出仅
+/tmp，测量进程用毕即杀）。未测如实：行内预览的行态真实屏三档（无登录会话时列表落诚实
+错误态；预览仅在组件级 jsdom 断言覆盖）；真机鼠标焦点落焦行为以显式 focus 合成断言替代。
+
+## 验证尾行（R67）
+```text
+$ npx vitest run src/modules/knowledge   → 2 files / 61 tests passed
+$ npx vitest run                         → 150 files / 1991 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-rowprev-dist → exit 0
+```
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
+无 force / amend / `--no-verify`；单 commit「feat(console): knowledge document row preview」。
+
+# KNW5 追加 R68：空间列表行内预览（testid `kn-space-preview-*`）（2026-11-20 BJT）
+
+安全闸：toplevel 相符、porcelain 空、显式 refspec fetch；上游 tip 仍章面 `a5832d15`
+（代次 60a4a429），merge 为 Already up to date——本笔只有 feature commit。e2130b4f（文档行内
+预览）已核可，本轮同范式复制到空间列表行。
+
+## 一、口径（与 kn-doc-preview 同族规）
+
+```text
+控件       每行文档名单元格内专用 BUTTON `kn-space-toggle-<i>`（aria-expanded/aria-controls
+           指向同行 `kn-space-preview-<i>`）；容器常挂载、收起用 hidden——aria-controls
+           永不指空。行名 `knw5-space-link` 的下钻导航零动（专用控件路线，同 R67 声明）。
+内容       四格全取已加载 SpaceRow，不发任何新请求：
+           · 空间名：有→人话名；缺名有标识→「空间 · 短码」+ title 全 id；全缺→「该字段未返回」
+             + title 点名空间名缺。屏面实测无裸 sp_。
+           · 文档数：有（含真 0 逐字「0 篇」——真实零值口径不动）；缺→「—」+title 原因。
+           · 最近更新：有→屏上同款前缀 +BJT 到分（「最近同步：2026-11-19 14:20」）；
+             缺→「该字段未返回」+title。
+           · 短码：标识尾段大写（sp_hr→SPHR），全 id 只在 title；无标识→「该字段未返回」。
+视图态     previewKey 存本面本地：开/关/Esc 全程 loc 逐字不变（快照比对）；刷新同址全收起；
+           进详情、切页签随组件卸载自然清零。同时至多一行（换行自动收前一行，逐钮 aria 实测）。
+Esc        展开态：收起 + 焦点守本钮（activeElement=kn-space-toggle-3 实测）+ stopPropagation
+           （不触 roving 的「Esc 回搜索框」）；收起态：Esc 交还既有列表语义。
+互斥锁     四方逐对：
+           · vs 检索行内展开（?sdoc=）：开预览→静默删 sdoc=（实测 URL 落净）；点命中行开
+             sdoc→预览作废（state 比较的渲染期调整形态，非 effect 非 ref）。双向实测。
+           · vs 文档行预览 / kn7 抽屉：路由结构互斥（列表与详情不同屏；进详情列表卸载、
+             预览态清零），实测 DOM 无 kn-space-toggle-*。
+           任何互斥切换都不清不属于被关面的参数（q/ksort/kdir/space 原样）。
+roving     toggle 与行名同行同权（共用 tabIndexFor，0/-1 分布实测），无正数 tabindex；
+           ↑/↓/Home/End/Esc(框) 语义零动；ArrowDown 焦点仍落行名链接。
+```
+
+## 三档与零破
+
+真实浏览器（headless Chrome + 静态产物预览，端口/进程用毕即杀）：`/knowledge?tab=spaces`
+1440/1280/375 `vw==bodySW==docSW` 全等。预览行为态本身在 preview 无会话屏落错误态，
+行态真实屏三档由 hidden 容器+既有表格布局保证、jsdom 断言覆盖，未复测项如下如实列出。
+kn3 / kn6 / kn7 / kn8 / kn9 / knB / knD / knF / knG / knI / knL / kn-sort / kn-gates /
+kn-doc-preview 零破：62 例 = 基线 61 + 本轮 1 全绿；全仓 150 files / 1992 passed。
+本轮修 lint 一处形态问题：渲染期互斥调整先写成 ref 比较（触发 3 条
+no-access-ref-during-render warning），改为官方 state 比较形态后回到既有 1 条 warning。
+
+未测如实：行态（展开预览）真实浏览器三档与真机鼠标聚焦行为（静态预览无登录会话；以 jsdom
+断言替代）；真机剪贴板不在本单范围。
+
+## 验证尾行（R68）
+```text
+$ npx vitest run src/modules/knowledge   → 2 files / 62 tests passed
+$ npx vitest run                         → 150 files / 1992 tests passed
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-sp-dist → exit 0
+```
+边界：只改 `web/src/modules/knowledge/**` 与本证据目录；未动 App.tsx / shell / routes / registry /
+package·lock / web-scripts / ops；未并 main、未重启或重建 9122；显式路径提交（无 `git add -A`）；
+无 force / amend / `--no-verify`；单 commit「feat(console): knowledge space row preview」。

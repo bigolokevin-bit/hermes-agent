@@ -943,3 +943,82 @@ describe("R69 list state consistency (emp-list-state-*)", () => {
     expect(bars).toHaveLength(5);
   });
 });
+
+describe("R81 department filter (emp-list-dept-*)", () => {
+  const deptRows = {
+    items: [
+      { employeeId: "emp_217A91BA995044DFBB3E2E940B", name: "小鲤", title: "内容编辑", lifecycleState: "active", updatedAt: "2026-11-17T05:52:48.030Z", department: null },
+      { employeeId: "emp_2B2C2D2E4F506172", name: "阿朝", title: "增长", lifecycleState: "active", updatedAt: "2026-11-18T05:52:48.030Z", department: "增长组" },
+    ],
+  };
+  const rowCount = () => document.querySelectorAll('[data-testid^="emp-l-row-emp_"]').length;
+  const bucketFor = (label: string) =>
+    Array.from(document.querySelectorAll('[data-testid^="emp-list-dept-"]')).find(
+      (b) => (b.getAttribute("title") ?? "").includes(label),
+    ) as HTMLButtonElement | undefined;
+
+  it("buckets count loaded rows and switching filters locally with zero new requests", async () => {
+    fetchJSON.mockImplementation(async () => deptRows);
+    await render("/employees?lifecycle=active");
+    await flushTimers();
+    expect(q("emp-list-dept-rail")).toBeTruthy();
+    expect(q("emp-list-dept-all")?.getAttribute("aria-pressed")).toBe("true");
+    expect(q("emp-list-dept-scope-note")?.textContent).toContain("按当前已加载 2 人统计，不是全量");
+    const urlsBefore = fetchJSON.mock.calls.map((c) => String(c[0]));
+    expect(urlsBefore.every((u) => !u.includes("dept=") && u.includes("lifecycleState=active"))).toBe(true);
+    const n0 = fetchJSON.mock.calls.length;
+    const chao = bucketFor("筛选部门「增长组」");
+    expect(chao, "增长组 bucket").toBeTruthy();
+    await act(async () => {
+      chao!.click();
+    });
+    await act(async () => {});
+    expect(fetchJSON.mock.calls.length, "dept switch never refetches").toBe(n0);
+    expect(rowCount()).toBe(1);
+    expect(q("emp-l-row-emp_2B2C2D2E4F506172")).toBeTruthy();
+    expect(q("emp-list-count")?.textContent).toBe("1");
+    expect(q("emp-list-dept-all")?.getAttribute("aria-pressed")).toBe("false");
+    expect(lastSearch()).toContain("lifecycle=active");
+    expect(lastSearch()).toContain("dept=");
+    // 「全部」回到未过滤视图；未标注部门桶也在轨上（缺部门=一桶并计数）
+    const none = bucketFor("只看没有部门信息的行");
+    expect(none, "unlabeled bucket").toBeTruthy();
+    await act(async () => {
+      (q("emp-list-dept-all") as HTMLButtonElement).click();
+    });
+    await act(async () => {});
+    expect(rowCount()).toBe(2);
+    expect(fetchJSON.mock.calls.length).toBe(n0);
+  });
+
+  it("a pasted dept deep link replays; an unknown dept gets its card and clear exit", async () => {
+    fetchJSON.mockImplementation(async () => deptRows);
+    await render("/employees?dept=__none__");
+    await flushTimers();
+    expect(rowCount()).toBe(1);
+    expect(q("emp-l-row-emp_217A91BA995044DFBB3E2E940B")).toBeTruthy();
+    await render("/employees?dept=%E5%AD%98%E5%9C%A8%E4%B8%8D%E4%BA%86%E7%9A%84%E9%83%A8");
+    await flushTimers();
+    expect(q("emp-list-dept-empty")).toBeTruthy();
+    expect(q("emp-list-dept-empty")?.textContent).toContain("该部门下没有员工");
+    await act(async () => {
+      (q("emp-list-dept-clear") as HTMLButtonElement).click();
+    });
+    await flushTimers();
+    expect(rowCount()).toBe(2);
+    expect(q("emp-list-dept-empty")).toBeNull();
+  });
+
+  it("non-ready phases disable the rail with the single-source reason sentence", async () => {
+    fetchJSON.mockImplementation(() =>
+      Promise.reject(new ApiError("boom", { status: 500, body: "{}", url: "/agent-api/api/employees", requestId: "req-r81-500" })),
+    );
+    await render("/employees");
+    await flushTimers();
+    const all = q("emp-list-dept-all") as HTMLButtonElement | null;
+    expect(all, "rail present in error").toBeTruthy();
+    expect(all!.disabled).toBe(true);
+    expect(all!.getAttribute("title")).toContain("不能按部门筛选");
+    expect(q("emp-list-dept-scope-note")?.textContent).toContain("按当前已加载 0 人");
+  });
+});

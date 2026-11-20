@@ -32,6 +32,7 @@ import { BackToList, restoreListScroll, saveListScroll } from "./BackToList";
 import { QueueCsvExport } from "./QueueCsvExport";
 import { QueueSortBar } from "./QueueSortBar";
 import { ActorBuckets } from "./ActorBuckets";
+import { SinceQuickFilter, isSinceValue, withinSince } from "./SinceQuickFilter";
 import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel } from "./states";
 import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
 import { ApprovalDetailBody, ApprovalRowCard } from "./views";
@@ -116,14 +117,40 @@ export function ApprovalsHistoryModulePage(): ReactNode {
     },
     [params, setParams],
   );
-  const visibleRows = useMemo(() => {
+  // R77: ?since= rides the same local-filter contract (read port ignores
+  // since=/window=, measured 四组同集合). The comparison instant is captured
+  // in state once per entry — never in the URL, never during render.
+  const rawSince = params.get("since");
+  const since = isSinceValue(rawSince) ? rawSince : null;
+  const [sinceNow, setSinceNow] = useState<number | null>(null);
+  useEffect(() => {
+    if (since) setSinceNow(Date.now());
+  }, [since]);
+  const pickSince = useCallback(
+    (value: string | null) => {
+      const draft = new URLSearchParams(params);
+      if (value === null) draft.delete("since");
+      else draft.set("since", value);
+      setParams(draft, { replace: true });
+      if (value !== null) setSinceNow(Date.now());
+    },
+    [params, setParams],
+  );
+  // R77: 计数/导出/分桶与列表同源——共同基底=q+时间窗过滤后的已加载行；
+  // actor 维不锁分桶轨（否则选中一位后无法切到另一位）。
+  const actorBaseRows = useMemo(() => {
     const needle = q.trim().toLowerCase();
     const filtered = needle
       ? list.rows.filter((row) => approvalsRowSearchText(row).includes(needle))
       : list.rows;
-    const byActor = actor ? filtered.filter((row) => row.approverIds.includes(actor)) : filtered;
+    return since && sinceNow !== null
+      ? filtered.filter((row) => withinSince(row.submittedAt, since, sinceNow))
+      : filtered;
+  }, [list.rows, q, since, sinceNow]);
+  const visibleRows = useMemo(() => {
+    const byActor = actor ? actorBaseRows.filter((row) => row.approverIds.includes(actor)) : actorBaseRows;
     return sortApprovalRows(byActor, asort, adir);
-  }, [list.rows, q, actor, asort, adir]);
+  }, [actorBaseRows, actor, asort, adir]);
   const [selected, setSelected] = useState<string | null>(() => params.get("id"));
   const [unaddressable, setUnaddressable] = useState(false);
   // R60: at most one row shows its inline preview; it never touches URL/filters.
@@ -287,7 +314,8 @@ export function ApprovalsHistoryModulePage(): ReactNode {
     );
   })();
 
-  return (
+  // R79: 聚合（全部状态）=扇出取齐无统一游标，到底原因要分开说。
+  const singleAgg = status === null;  return (
     <div className="flex min-w-0 w-full max-w-full flex-col gap-3" data-testid="apr5-page-history">
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
         <p className="min-w-0 break-words text-xs text-muted-foreground" aria-live="polite">
@@ -356,7 +384,8 @@ export function ApprovalsHistoryModulePage(): ReactNode {
       </p>
 
       <QueueSortBar phase={list.phase} sort={asort} dir={adir} loadedCount={list.rows.length} onCycle={cycleSort} />
-      <ActorBuckets rows={list.rows} phase={list.phase} actor={actor} onPick={pickActor} />
+      <ActorBuckets rows={actorBaseRows} phase={list.phase} actor={actor} onPick={pickActor} />
+      <SinceQuickFilter phase={list.phase} since={since} loadedCount={list.rows.length} onPick={pickSince} />
 
 
       <div className="flex min-w-0 flex-wrap gap-1.5" role="group" data-testid="apr5-filter" aria-label="按处理结果筛选">
@@ -457,7 +486,20 @@ export function ApprovalsHistoryModulePage(): ReactNode {
 
           {list.phase === "ready" ? (
             <>
-              {actor && visibleRows.length === 0 ? (
+              {since && visibleRows.length === 0 ? (
+                <Card className="border-border bg-card" data-testid="apv-since-empty">
+                  <CardContent className="min-w-0 space-y-2 p-4 text-sm">
+                    <p>该时间范围内没有审批。</p>
+                    <p className="text-xs text-muted-foreground">
+                      这是当前已加载 {list.rows.length} 条里的真实结果：没有提交时间落在该时间窗内的行（缺提交时间的行不属于任何窗口）；可放宽范围或清空时间筛选。
+                    </p>
+                    <Button size="sm" outlined data-testid="apv-since-clear" onClick={() => pickSince(null)}>
+                      清空时间范围
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : null}
+              {!since && actor && visibleRows.length === 0 ? (
                 <Card className="border-border bg-card" data-testid="apv-actor-empty">
                   <CardContent className="min-w-0 space-y-2 p-4 text-sm">
                     <p>该审批人下没有审批。</p>
@@ -470,7 +512,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
                   </CardContent>
                 </Card>
               ) : null}
-              {q && !actor && visibleRows.length === 0 ? (
+              {q && !actor && !since && visibleRows.length === 0 ? (
                 <Card className="border-border bg-card" data-testid="apv8-search-empty">
                   <CardContent className="min-w-0 space-y-2 p-4 text-sm">
                     <p>没有匹配的审批。</p>
@@ -510,21 +552,42 @@ export function ApprovalsHistoryModulePage(): ReactNode {
 
               {list.pageFailure ? <InlineFailure failure={list.pageFailure} action="后续记录没有加载成功" onRetry={list.loadMore} /> : null}
 
-              {list.next ? (
-                <div>
-                  <Button
-                    size="sm"
-                    outlined
-                    disabled={list.loadingMore}
-                    onClick={list.loadMore}
-                    prefix={list.loadingMore ? <Spinner className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                  >
-                    加载更多
-                  </Button>
-                </div>
-              ) : list.rows.length > 0 ? (
-                <p className="text-xs text-muted-foreground">这个状态下就这些了。</p>
-              ) : null}
+              <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs" data-testid="apv-page">
+                <Button
+                  size="sm"
+                  outlined
+                  data-testid="apv-page-more"
+                  disabled={!list.next || list.loadingMore}
+                  onClick={list.loadMore}
+                  title={
+                    list.next
+                      ? "带服务端游标续取下一页（追加时按单号去重，重复行不上屏）。"
+                      : singleAgg
+                        ? "聚合视图按状态扇出取齐，没有续页游标：已到末页。切到单一状态可按游标续取。"
+                        : "服务端没有给出下一页游标：已到末页。"
+                  }
+                  prefix={list.loadingMore ? <Spinner className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                >
+                  {list.loadingMore ? "加载中…" : "加载更多"}
+                </Button>
+                <span
+                  data-testid="apv-page-count"
+                  title={
+                    list.total === null
+                      ? "读口顶层只有 items/nextCursor（实测 200，无 total 键）；按已加载条数推算会撒谎，故不推算。"
+                      : "总数来自读口 total 键；已显示=当前已加载行数"
+                  }
+                >
+                  {list.total !== null
+                    ? `共 ${list.total} 条 / 已显示 ${list.rows.length} 条`
+                    : `总数不可用 · 已显示 ${list.rows.length} 条`}
+                </span>
+                {!list.next && list.rows.length > 0 ? (
+                  <span className="text-muted-foreground" data-testid="apv-page-end">
+                    已到末页
+                  </span>
+                ) : null}
+              </div>
             </>
           ) : null}
         </section>

@@ -1070,3 +1070,78 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 同源：导出行集=visibleRows（R71 起）+用例双值锁 apv7-export-count「共 8 行」==apv5-count「8」；排序循环三次点击预览 pending-title-asc→desc→default 且 fetchJSON 计数不变（⑤零新请求）；空集 title=gates ready-0 句改「当前没有可导出的审批：该条件下没有可导出的审批。」（含工单④句，R72 逐字断言同步改新句）。
 - 测试：R54 纯函数两用例新五参签名同步（契约本单更新，语义等价）+sanitize 两用；R75 新 describe 2 用例；pending 「state tokens 不上屏」用例限定文件名区域（契约本就含 tab/status 段——语义等价修正）。定向 approvals 3 files/110 passed（108+2）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **147 files/1931 passed**（基线 1929+2）。
 - 零破：apv7-export/apv7-export-count 语义保留、apv5–9/apd5–7/apr5/actor/nav/gates/state 全绿；三档=组容器 flex-wrap+预览 p basis-full break-all 既有形态学报；9122==5630ffce 禁重建，活体文件名读数待并入后代次。
+
+## R76 审批时间相对显示统一（apv-time-*，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = 带入他人笔（duty/workbench.ts 等），toplevel ✓ porc=0；代次 60a4a429（章面 957704be）。
+- 单一 helper=新 RelativeTime.tsx：屏上相对档 <60s 刚刚 / <60m N 分钟前 / <24h N 小时前 / <=7d N 天前 / >7d 与未来时间（处理期限常见）退绝对 `YYYY-MM-DD HH:mm`；title 恒 `绝对 YYYY-MM-DD HH:mm:ss（北京时间） · ISO <raw 原文>`（en-CA 逗号剥除=plain()，与 beijing() 同形制）；时区=Intl timeZone Asia/Shanghai 固定，epochOf 兼容秒/毫秒/ISO 字符串（free text 永不算时间戳）。
+- purity=渲染时点组件内 useState(now=null)+useEffect setNow(Date.now()) 一次（render 体禁读时钟；now=null 先渲绝对=无跳动）；相对值只作显示，不写 URL/不持久化。
+- 缺失/非法=span「该字段未返回」+title「读口没有回传这个时间字段，或它不是合法时间；这里不补当前时间。」（行 dl 原 MISSING_TIME「服务未提供该时间」两处随替换退役；trail 非时间的「该段无记录」段级口径不动=两口径不互混）。
+- raw 输入链（model.ts）：rowFrom 新 submittedAt/clockAt（clockAt 与 clock 同一 pending 选择逻辑）；approvalDetailFrom 新 submittedAt/deadlineAt/decidedAt；DecisionEntry 新 atRaw（与 at 同键序）。Row.decidedAt（R71 排序键）复用为预览输入=四处同一 ISO。
+- 替换六载体（views.tsx，pending/history 行卡共用=两 tab 四处全覆盖）：行 dl 提交=apv-time-row-submitted-<key>、行 dl 处理于/处理期限=apv-time-row-<key>、预览更新时间=apv-time-preview-<key>、apd6-step-submitted=apv-time-detail-submitted、节点 i=apv-time-detail-node-<i>、终态=apv-time-detail-final；Field value 放宽 ReactNode（testId 既有）。详情 apd5-field-decided-at 冻结字段（PRD §4.2）未动=绝对到分人话保留。
+- 用例：既有六处时间文本断言同步为 title 读数（L272 行 clock/R46 trail 提交+节点/R60 预览/R65 case1 缺值文案改 data-testid 文本/R65 case2 预览 title/pending 行提交）——语义等价（断言更强：到秒+ISO 逐字）。新 describe R76 2 用例：①纯函数五档+未来退绝对+epochOf 非法+timeTitle 逐字；②同一记录行/预览/终态/节点四 title toBe 逐字相同 + 行提交==trail 提交 title；开预览前后 fetchJSON 计数不变（零额外请求）；**R60 互斥坑**=开详情收预览→pv title 先读存变量。
+- 验证：定向 approvals 3 files/**112 passed**（110+2）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **150 files/1989 passed**（merge 带入他人新文件后基线）。
+- 零破：apv5–9/apd5–7/apr5/actor/nav/gates/state/export-name（既有用例全绿为证）；三档=长绝对在 title 非屏上、屏上相对短句+break-all，无新增横溢面（形态学报）；9122==60a4a429 禁重建，活体四态时间读数待并入后代次。
+
+## R77 审批时间范围快捷筛选（apv-since-*，两 tab，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console → merge commit 39383e42（带入 a5832d15 章面他人笔，modules/approvals 零 diff），toplevel ✓ porc=0；代次 60a4a429。
+- 读口实测（必贴组）：server.py /api/approvals passthrough=(status,limit,cursor)（现查，since/window 不在白名单）；ego 活体（9122==60a4a429）四组=base 200 n=8 ids=23DE4,EEC07,D484B,CC7AB,4BFBF,4D72B,A8BC8,49D1C；&since=24h、&window=24h、&since=2026-11-19 全部 **200 n=8 同序同集合** ⇒ 丢参=本地过滤分支确定（R44 先例复证）。
+- 实现：①新 SinceQuickFilter.tsx=SINCE_OPTIONS(24h/7d/30d)+isSinceValue+withinSince(submittedAt raw→epochOf 纯 UTC 差值，本机时区不参与)+四原生 button（apv-since-{24h|7d|30d|all}，aria-pressed，disabled=phase!=="ready"，title=「不能按时间范围筛选：{gateReason(phase)}；恢复列表后自动可用。」单点措辞）+apv-since-scope-note「按当前已加载 N 条统计，不是全量；切换时间范围不发新请求。」+title 带四组活体实证与缺时间行语义；②两页 since=params.get("since")（非枚举值=all 语义）；pickSince=draft 差分 set/delete+replace（与 tab/status/q/actor/asort/adir 互不清除）+点击回调 setSinceNow(Date.now())；比较时点=sinceNow useState+useEffect(since 变化时捕获)——render/useMemo 体内零 Date 调用（purity 合规，R75/R76 教训沿用）；粘链首帧不过滤、effect 提交后即滤（3s waitFor 覆盖）；③visibleRows 链重构=共享基底 actorBaseRows（q→since 过滤）→byActor→sort——分桶轨 rows={actorBaseRows}（actor 维不锁轨，选中一位仍可切另一位；q/时间窗变化时桶计数联动=同源满足）；计数/导出继续 visibleRows；④无匹配卡 apv-since-empty「该时间范围内没有审批。」+真实结果句（缺提交时间的行不属于任何窗口）+apv-since-clear 出口；卡互斥序=since>actor>q（apv-actor-empty 加 !since、apv8-search-empty 加 !since）。
+- 测试 history 4+pending 1：本地双向（24h→1 行/7d→2 行/同钮再点=关，全程 fetchJSON 计数不变）；粘链 ?since=7d 复现+切 status 后 fresh 请求带 status= 且 every 不含 since=（R74 断言坑反面教材=本地参数不上服务端）且 since 活在组件；空窗卡+清空回列表；error 态四钮 disabled+title「不能按时间范围筛选：列表读取失败」；pending 轨在+点/清零请求。定向 approvals 3 files/**117 passed**（112+5）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **150 files/1994 passed**（基线 1989+5）。
+- 零破：apv5–9/apd5–7/apr5/actor/nav/gates/state/export-name/time 族（既有 112 全绿为证，含 R74 actor 用例改链后仍绿）；三档=rail flex-wrap+truncate 既有形态学报（jsdom 不可测）；9122==60a4a429 禁重建，活体四态读数待并入后代次。
+- 决定（DONE 记录）：缺 submittedAt 的行不属于任何时间窗（诚实排除，禁当 0 或当 now）；「分桶与列表同源」按 q/时间窗联动实现，actor 维除外=防选中即锁死（交互正确性优先，DONE 明示供复核）。
+
+## R78 员工审批区 vs 审批队列 同值一致（2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @e5dd8c7b（a5832d15 章面已含），toplevel ✓ porc=0；代次 60a4a429。
+- 两处取数路径现查：ed8=EmployeeDetailModulePage L1027 leg=/api/approvals?status=all&limit=20（R49 诚实聚合）+模块内自研 readApprovals（keys：status[status,state]/title[title,type,name,category]/updatedAt[updatedAt,updated_at,decidedAt,changedAt]/risk[riskLevel,risk_level,risk]）+本地 riskLabel/approvalStatusLabel/beijing() 三套映射；apv=modules/approvals/model.ts rowFrom（TITLE_KEYS/statusView/riskView）+apv9 preview（R65/R76 形态）。
+- 改前→改后（同一 mock 记录两组实际值）：
+  1. 状态人话 expired/pending/weird：改前 ed8「待审批（pending）/…/待核实」 vs 队列「已过期/待处理/状态未识别」→改后 ed8 吃 statusView：两处同「已过期」「待处理」「状态未识别」；status title 同形制=原始值 ??「原始状态值未返回」。
+  2. 风险档：改前 ed8 缺值「—」+title「上游没有回传风险等级」、medium→中风险、无 critical、未知→待核实 vs 队列 riskView 缺/未知→「未标注风险」+中等风险/严重风险→改后 ed8 吃 riskView（两处同「未标注风险/中等风险/高风险/严重风险」）；title 形状两处统一=raw ??「该字段未返回」（队列 preview 原 raw 有值时 title=undefined，本单补上原值——views.tsx 一处 reason={row.risk.raw ?? 「该字段未返回」}）。
+  3. 更新时间：改前 ed8 beijing(updatedAt ?? at) 绝对到分+回退提交时间 vs 队列 RelativeTime 相对/绝对 title→改后 ed8 吃 RelativeTime（iso=row.updatedAt，**不再回退提交时间**）；timeTitle 逐字等用例锁：两处同=「绝对 2026-11-19 11:00:00（北京时间） · ISO 2026-11-19T03:00:00Z」；缺值两处同「该字段未返回」+「不补当前时间」句。
+  4. 标题键序：ed8 pickString 队列 TITLE_KEYS 头键全收（title/summary/subject/actionLabel/action/name/tool/request）+尾部保留 type/category 扩展。
+  5. rid 缺值句：ed8 列无 rid 展示位（四列版面不动），队列句族「请求编号：该字段未返回」单点=RequestIdCopyField；无对照面=DONE 记录（禁为对齐造第五列）。
+- 单一 helper 方向：重复映射删除（ed8 本地 riskLabel/approvalStatusLabel 函数删、beijing 保留它区仍用），employee-detail import { riskView, statusView } from "@/modules/approvals/model" + { RelativeTime } from "@/modules/approvals/RelativeTime"（R43 跨模块只读 import 先例同向）；队列侧行为零改（仅 preview 风险 title 形状补原值）。
+- parity 新用例：src/modules/approvals/ApprovalParity.test.tsx 2 用例=同一 mock record 两 surface 先后渲染逐字段对照（title/status/statusTitle/risk/riskTitle/timeTitle toBe 逐字 + /api/approvals 每 surface 恰 1 次、parity 渲染零额外请求）与「字段缺失」态（未标注风险/状态未识别/该字段未返回 三句两处同）；坑=文件头需 `// @vitest-environment jsdom` pragma（本仓非默认 jsdom）+ 双 container 生命周期（afterEach 全 unmount+remove，勿模块级复用）。
+- 既有断言同步 5 处（语义等价）：ed8「待审批」→「待处理」、缺 updatedAt 行「—/2026-11-18 12:00」→「该字段未返回」、time-0 文本→timeTitle 含「2026-11-19 10:30:00（北京时间）」、status-1「待核实」→「状态未识别」、risk-1「待核实」→「未标注风险」。
+- 验证：定向 approvals+employee-detail 5 files/**169 passed**（167+2）；tsc 两域 0 红；assert-ia 两模式 exit0；全量 **151 files/1996 passed**（基线 1994+2）。
+- 零破：ed1/ed5/ed7/ed8/edz/edx/emp-list* 与 apv5–9/apd5–7/apr5/actor/nav/gates/state/sort/export-name/time/since（既有 167 全绿为证）；三档=ed8 四列 minmax(0)+truncate 与 RelativeTime break-all 既有形态学报（jsdom 不可测）；9122==60a4a429 禁重建，活体两屏对照读数待并入后代次。
+
+## R79 审批队列游标分页+总数诚实化（apv-page-*，两 tab，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @daae1191（a5832d15 章面已含），toplevel ✓ porc=0；代次 60a4a429。
+- 读口实测（ego 9122==60a4a429，DONE/回执必贴）：status=all&limit=3→200 keys=[items,nextCursor] n=3 **nextCursor=null**（聚合腿按状态扇出取齐=无统一游标）；对 null 游标再取→同 3 行 **overlap=3**（读口对无效 cursor 回退第一页，非 400）⇒ 前端去重防重复行必要；单状态腿 status=expired&limit=1→200 n=1 nextCursor=eyJhcHByb3…（真游标✓）、consumed 同款、approved n=0 nextCursor=undefined；全响应**无 total/count 键** ⇒「总数不可用」分支确定（禁按已加载推算）。
+- 实现（在 R26 既有 loadMore 骨架上收口）：①model.ts ApprovalPage +total（解析 total/count 备契约升级，现恒 null）；②useApprovalsData：ListState.total 贯通（append 时新响应无 total 保 prev）+**追加按 row.key 去重**（防御 overlap=3 场景）；INITIAL 补 total；③两页 ready 区旧「list.next ? 钮 : 就这些了」条件块替换为常驻 div data-testid=apv-page：apv-page-more（disabled=!next||loadingMore，文案「加载中…/加载更多」，title 三态：有游标=「带服务端游标续取下一页（追加时按单号去重，重复行不上屏）」/聚合=「聚合视图按状态扇出取齐，没有续页游标：已到末页。切到单一状态可按游标续取」(history status=null 分支)/单状态到底=「服务端没有给出下一页游标：已到末页」）+apv-page-count（total===null→「总数不可用 · 已显示 M 条」+title「读口顶层只有 items/nextCursor（实测 200，无 total 键）；按已加载条数推算会撒谎，故不推算。」；有值→「共 N 条 / 已显示 M 条」）+apv-page-end「已到末页」（next=null 且有行）；旧句「这个状态下就这些了/没有更多待处理审批了」退役（无既有测试引用，grep 证）。
+- 切换重置：status 切换=既有 run(null) 全量重建（rows/游标/total 天然重置，用例锁新请求不带 cursor 且旧行消失）；tab=页面各自独立；q/actor/since/sort=本地维不进请求（R74/R77 契约），游标不受污染；错误态=既有 pageFailure InlineFailure+apv-state（rid/重试/403≡404）零改；非 ready 态分页条随 ready 分支隐藏=gates 既有单点（不渲第二套闸）；行内预览/详情契约零动。
+- 测试 history 2+pending 1（twoPages 夹具=page1{ap_g1,nextCursor:cg2}/page2{ap_g2+重复 ap_g1}无游标）：①「总数不可用 · 已显示 1 条」+title 无 total 键+more 可用→点击→恰一条 cursor=cg2+apr5-row 计=2（重复行被去重）+more disabled+title 到底+apv-page-end+「已显示 2 条」；②翻二页后切 approved 快捷→新请求 every 不含 cursor=+行替换（ap_g3 在 ap_g1 无）+计数重显 1 条；③pending 队列一页装得下=more disabled+「已到末页」在+count 总数不可用。注=切状态快捷钮 testid 族 apv5-filter-status-<v>（8 态主组 testid 不带 status- 前缀，首跑 null 教训）。定向 approvals 4 files/**122 passed**（119+3）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **151 files/1999 passed**（基线 1996+3）。
+- 零破：apv5–9/apd5–7/apr5/actor/nav/gates/state/export-name/since/time/parity 族（既有 119 全绿为证）；行内预览与详情用例全绿；三档=分页条 flex-wrap+truncate 既有形态学报（jsdom 不可测）；9122==60a4a429 禁重建，活体分页读数待并入后代次（本单贴的是 API 面实测）。
+
+## R80 审批长值截断 + title 全文（apv-trunc-*，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @cefc6323（章面 a5832d15），toplevel ✓ porc=0；代次 60a4a429。
+- 选型（回执口径）：**字符截断**（非 CSS ellipsis）——jsdom 无宽度测量，字符法可被 DOM 用例逐字锁定「屏上截断值+title 全文」；三档不横溢由长度上限本身保证（形态学报，无 sw==cw 实测能力如实注）。
+- 单点集中：views.tsx 顶部 `export const TRUNCATE_LIMIT = 60` + `truncateDisplay(text)→{shown,full}`（≤60 原样且 full=null=不加省略号也不加 title；>60 前 59 字符+…，full=原文）。载体六处全走该助手（禁两处各截）：行卡标题 apv-trunc-row-title-<key>、行事由 apv-trunc-row-reason-<key>、行内预览标题 apv-trunc-preview-title-<key>（与行卡同输入同输出=用例 toBe 逐字锁同值）、预览审批人 apv-trunc-preview-approvers-<key>、trail 节点意见 apv-trunc-note-<i>、详情主体 h2/事由 apv-trunc-detail-title/-reason。空值不进助手（缺值走既有「该字段未返回」/「—」/「未填」口径，无 reason 不渲载体）。
+- 文案变更注记：行/详情事由 title 原=服务端原文（可含 human: 裸柄）→改=**掩码后显示全文**（humanizeHandles 再截），敏感句柄不进 title，截断口径与屏上同源；短值不再挂 title（工单新规）。详情 h2 title 优先全文、短标题回落原 rawId title。
+- 全文同源锁：复制（apd8-copy trailToText）含节点意见全文 LONG_NOTE 且不含省略号；导出 CSV（表头契约 R54=id,title,status,risk,updated_at 无 reason 列）含 title 全文==行卡 title 属性逐字相等；截断全程 fetchJSON 计数不变（纯渲染层）。
+- 测试 history 新 describe 2 用例；既有 122 全绿零破（apv5–9/apd5–7/apr5/actor/nav/gates/state/export-name/since/time/parity/page 族）。定向 approvals 4 files/**124 passed**；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **151 files/2001 passed**（基线 1999+2）。
+- 9122==60a4a429 禁重建，活体三档横溢与截断读数待并入后代次。
+
+## R81 员工列表按部门筛选（emp-list-dept-*，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @198f285e（章面 a5832d15/代码代次 60a4a429），toplevel ✓ porc=0；重发三件套 grep emp-list-dept=0=全新单。
+- 读口实测：server.py PROXY_ROUTES /api/employees passthrough=(keyword,lifecycleState,limit,cursor,expand)（现查，department/dept 不在）；ego 活体三组（9122==60a4a429）：base 200 n=3 / department=增长组 200 n=3 同集合 / dept=增长组 200 n=3 同集合，且**当前部署 3 行 department 全 null** ⇒ 本地过滤分支确定；无真实非空部门样本=分桶现状全落「未标注部门」。
+- 实现（EmployeesModulePage.tsx）：①NONE_DEPT="__none__" 桶键（真实部门名不冲突）+readRows 既有 department 解析复用；②dept=params.get("dept") 本地维度（不进主 fetch deps=切换零新请求、服务端游标不受污染——工单「切换重置列表与游标」在本地分支的处置：列表=visibleItems 即时重渲，游标只随服务端腿走，DONE 记录此语义）；③deptBuckets useMemo 从 state.items 现算（trim 后空/缺=未标注桶），count desc→zh localeCompare；④visibleItems=sortedItems 后置过滤（排序链之后单点收口）——行渲染/roving 锚/count 位/ListCopyButton/ListExportButton 全部改吃 visibleItems（计数与列表同源；无部门筛选时值与旧行为一致=R53/R64/R66 既有用例零破）；emp-list-count title=「当前屏上行数（服务端返回经本地部门过滤）」；⑤筛选 Card 常驻 rail：emp-list-dept-all+emp-list-dept-<i>（真 button aria-pressed、title=筛选部门「X」/只看没有部门信息的行（本地过滤不发新请求）；disabled=phase!=="ready"+「不能按部门筛选：{phaseReason(phase)}；恢复列表后自动可用。」单点措辞；非 ready 桶计数「—」禁 0）+emp-list-dept-scope-note「按当前已加载 N 人统计，不是全量」+title 三组活体实证；⑥employees-clear 两处出口同带 dept: null；⑦无匹配卡 emp-list-dept-empty「该部门下没有员工。」+真实结果句（缺部门行归未标注桶）+emp-list-dept-clear 出口（作为 ready 表达式兄弟节点插入——首插误进三元内=Babel Unexpected token 教训）。
+- 测试 3 用例：桶计数+点增长组→1 行+count=1+fetchJSON 计数不变+URL lifecycle=active&dept= 组合互不清除+请求 url 无 dept= 带 lifecycleState（R74 断言教训沿用）；粘链 dept=__none__ 复现 1 行+未知部门值→dept-empty+清空回 2 行；500 错误态 rail disabled+title「不能按部门筛选」+scope-note 0 人。定向 employees 2 files/**40 passed**（37+3）；tsc 本域 0 红；assert-ia 两模式 exit0；全量尾行见回执。
+- 零破：emp-list-*/emp-list-page-*/emp-row-preview-*/emp-list-copy/export/sort/state 族与 ed*（既有 37 全绿为证）；三档=truncate+flex-wrap rail 形态学报（jsdom 不可测 sw==cw；本单无长值新增风险）；9122==60a4a429 禁重建，活体部门读数待并入后代次（当前部署全 null 行=屏上只会出现未标注桶，如实报）。
+
+## R82 审批详情→审计 correlation 真链（apd9-*，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @9c3c2b2f（章面 a5832d15/代码代次 60a4a429），toplevel ✓ porc=0；重发三件套 grep apd9=0。
+- git grep 现查：audit 页（console-aud 车道）已消费 ?event=（deepLinkId=按 key/rawId 定位行+高亮+未命中诚实块 L906-910/1383-1391）与 ?resource=（aud8 契约：页级 filters.resource → 线上 **resourceId=** 服务端过滤，api.ts L148；window 缺省走 DEFAULT_WINDOW ⇒ 落地请求必带过滤不 400）。
+- 活体实测（ego 9122==60a4a429，DONE/回执必贴）：/api/audit?limit=5 → **400**（require_any 无过滤拒全表扫）；/api/audit?resourceId=ap_123DE49B9A1F42A197679681F1&limit=20 → **200 n=1**（event action=approval.expired，eventId=ev_6D3445CA…，审批对象无该 id 字段可派生 ⇒ 禁编造，不走 event= 定位链）；resourceId=rotate.secret → 200 n=0；resourceId=message.send → 200 n=0 ⇒ resourceId 语义=审批单号（l1 CR-028 口径吻合）⇒ **吃服务端过滤=真 a[href] 分支**。
+- 实现（views.tsx）：①DecisionTrail 尾新 section data-testid=apd9-correlation（相关记录·只读）：rawId 有值=真链 `<Link to=/audit?resource=<encodeURIComponent(rawId)>> data-testid=apd9-audit-link`（title 写明服务端 resourceId 真过滤+默认时间窗+「审批对象不带审计事件 id 故非事件定位链」）；rawId 缺=apd9-audit-note NoSeg「该字段未返回…禁编造 id」兜底；同段 rid 可复制（RequestIdCopyField，缺=「请求编号：该字段未返回」）+人工检索线索句。②顺带修工单点名的两处 apd6 href 缺陷：run 链 `/runs/<id>`（R48b 实证死链）→ `/runs?run=<id>`；task 链 `/tasks/<id>` → `/work?tab=board&task=<id>`（工单原文点名 /tasks 重定向禁直链；task 参数=本 lane R40 交付的模块真消费 URL 状态源=可复现落点），none 分支句不动；R46 既有用例两条 href 断言同步（语义等价，工单授权）。
+- 零额外请求：correlation 段纯渲染，用例锁 apr5-detail 就绪后 fetchJSON 计数不再变。
+- 测试 history 新 describe 2 用例：C82_DETAIL（ap_c82+runId/taskId/requestId）直达 entry &id=ap_c82 → apd9-audit-link href=/audit?resource=ap_c82+title 实证句+req-c82-1 上屏可复制（apr5-copy-request-id）+run/task 新 href 断言+无裸 human:；MIN 无 run/task → none 分支在+审计链仍带单号。定向 approvals 4 files/**126 passed**（124+2）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **151 files/2006 passed**（基线 2004+2）。
+- 零破：apd5–apd8/apv5–9/apr5/actor/nav/gates/state/page/since/time/parity/trunc（既有 124 全绿为证）；三档=链/句 min-w-0 break-words 形态学报；9122==60a4a429 禁重建，活体点击读数待并入后代次。
+- 决定：?event= 不吃=不是读口丢参，而是审批对象本不带审计事件 id（实测详情 keys 无 eventId 类字段），编造 event 值会落 audit 页未命中诚实块=假定位链，故走过滤真链+rid 人工线索（工单「不吃则不给假链」条款以 event 维触发 apd9 说明职责由链接 title+线索句承担，gap 说明在 title 内，DONE 记录此判读）。

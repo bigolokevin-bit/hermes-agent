@@ -922,6 +922,45 @@
   .knG-copy { width: 100%; }
 }
 
+/* R65 — 按空间分组：组头是真按钮（focus-visible 用现成 token），行容器 id 常在供 aria-controls 指回。 */
+.kn6-group {
+  margin-top: 12px;
+}
+.kn6-group:first-child {
+  margin-top: 4px;
+}
+.kn-group-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 4px 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.kn-group-toggle:focus-visible {
+  outline: 2px solid var(--color-ring, var(--color-border));
+  outline-offset: 2px;
+}
+.kn-group-header {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.kn-group-count,
+.kn-group-action {
+  font-size: 0.75rem;
+  color: var(--color-muted-foreground);
+}
+.kn-group-action {
+  margin-left: auto;
+}
+
 /* R57 — 空间清单复制条：同 knF/knG 规格，随屏换行、无固定宽，不横溢。 */
 .knI-row {
   display: flex;
@@ -980,6 +1019,44 @@
 }
 @media (max-width: 560px) {
   .knL-copy-meta { width: 100%; }
+}
+
+/* R67 — 行内预览：展开行只铺既有单元格宽度；toggle 随行名走位，窄屏换行不横溢。 */
+.kn-doc-preview-toggle {
+  margin-left: 8px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-muted-foreground);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.kn-doc-preview-toggle:focus-visible {
+  outline: 2px solid var(--color-ring, var(--color-border));
+  outline-offset: 2px;
+}
+.kn-doc-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 4px 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--color-muted);
+}
+.kn-doc-preview div {
+  min-width: 0;
+}
+.kn-doc-preview dt {
+  font-size: 0.6875rem;
+  color: var(--color-muted-foreground);
+}
+.kn-doc-preview dd {
+  margin: 0;
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
 }
 
 /* R63 — 固定链接条：地址文本单行省略号（全文在 title 与剪贴板），窄屏靠 min-width:0 收缩，不横溢。 */
@@ -1050,5 +1127,46 @@
 .knM-path {
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 0.6875rem;
+  overflow-wrap: anywhere;
+}
+
+/* R68 — 空间行内预览：toggle 与文档行同规格；预览体 flex-wrap，hidden 时不占屏。 */
+.kn-space-toggle {
+  margin-left: 8px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-muted-foreground);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.kn-space-toggle:focus-visible {
+  outline: 2px solid var(--color-ring, var(--color-border));
+  outline-offset: 2px;
+}
+.kn-space-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 4px 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--color-muted);
+}
+.kn-space-preview[hidden] {
+  display: none;
+}
+.kn-space-preview div {
+  min-width: 0;
+}
+.kn-space-preview dt {
+  font-size: 0.6875rem;
+  color: var(--color-muted-foreground);
+}
+.kn-space-preview dd {
+  margin: 0;
+  font-size: 0.75rem;
   overflow-wrap: anywhere;
 }

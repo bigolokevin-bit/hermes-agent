@@ -36,9 +36,9 @@
  * 「技术详情」. The run id reads 「运行 · 后4位」 with a copy affordance;
  * the full value lives in the title and the clipboard, not on the surface.
  */
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
-import { Check, Copy, RefreshCw, X } from "lucide-react";
+import { Check, Copy, Download, RefreshCw, X } from "lucide-react";
 
 import { Badge } from "@nous-research/ui/ui/components/badge";
 import { Button } from "@nous-research/ui/ui/components/button";
@@ -59,6 +59,10 @@ import {
 } from "./states";
 import {
   PAGE_LIMIT,
+  runCsvFileName,
+  runListCsv,
+  runListText,
+  runSource,
   SINCE_OPTIONS,
   STATUS_KEYS,
   askedLine,
@@ -67,8 +71,16 @@ import {
   costReason,
   costState,
   costText,
+  defaultRunDir,
   elapsedMinute,
   employeeLabel,
+  listActionGate,
+  parseRunDir,
+  parseRunSort,
+  sortRunRows,
+  type ListGate,
+  type RunSortDir,
+  type RunSortKey,
   eventLabel,
   failureSummary,
   isToolEvent,
@@ -77,6 +89,7 @@ import {
   eventSummary,
   resultRefHref,
   runCode,
+  runPreview,
   shortId,
   sinceKeyOf,
   statusFilterOf,
@@ -191,16 +204,222 @@ function CostCell({ row, testId }: { row: RunRow; testId: string }): ReactNode {
   );
 }
 
+/**
+ * The inline preview of one list row. Every value is derived from the row the
+ * list already read — opening it asks the service nothing. The toggle owns
+ * `aria-expanded`/`aria-controls`; Escape closes and hands focus back.
+ */
+function RunPreviewPanel({ row, names, index }: { row: RunRow; names: Map<string, string>; index: number }): ReactNode {
+  const view = runPreview(row, names);
+  const fields: Array<{ key: string; label: string; field: { text: string; title: string } }> = [
+    { key: "status", label: "状态", field: view.status },
+    { key: "started", label: "开始", field: view.started },
+    { key: "ended", label: "结束", field: view.ended },
+    { key: "elapsed", label: "耗时", field: view.elapsed },
+    { key: "cost", label: "成本（美元）", field: view.cost },
+    { key: "employee", label: "负责人", field: view.employee },
+  ];
+  return (
+    <div
+      id={`run-row-preview-${index}`}
+      className="min-w-0 border-t border-border bg-muted/20 px-4 py-3"
+      data-testid={`run-row-preview-${index}`}
+    >
+      <dl className="grid min-w-0 grid-cols-1 gap-x-4 gap-y-1.5 text-xs sm:grid-cols-2 lg:grid-cols-3">
+        {fields.map(({ key, label, field }) => (
+          <div key={key} className="min-w-0" data-testid={`run-row-preview-${index}-${key}`} title={field.title}>
+            <dt className="text-muted-foreground">{label}</dt>
+            <dd className="m-0 min-w-0 break-words">{field.text}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="mt-2 min-w-0 break-words text-[11px] leading-tight text-muted-foreground">
+        预览只读：六项都取自这一行已读到的数据，打开或收起都不会再发一次请求。
+      </p>
+    </div>
+  );
+}
+
 const GRID =
   "grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,0.7fr)_minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,0.9fr)_minmax(0,1.1fr)_minmax(0,1fr)_auto]";
+
+function RunListCopy({
+  rows,
+  names,
+  copyGate,
+  exportGate,
+  windowKey,
+  statusKey,
+}: {
+  rows: RunRow[];
+  names: Map<string, string>;
+  copyGate: ListGate;
+  exportGate: ListGate;
+  windowKey: string | null;
+  statusKey: string | null;
+}): ReactNode {
+  const [status, setStatus] = useState<"idle" | "done" | "failed">("idle");
+  const [body, setBody] = useState("");
+  const [exportStatus, setExportStatus] = useState<"idle" | "done" | "failed">("idle");
+  const empty = rows.length === 0;
+  // One name, computed when the filter changes: the preview and the download
+  // both read this string, so they cannot disagree about the minute.
+  const fileName = useMemo(
+    () => runCsvFileName(windowKey, statusKey, new Date()),
+    [windowKey, statusKey],
+  );
+  const exportCsv = () => {
+    try {
+      const blob = new Blob([`\uFEFF${runListCsv(rows, names)}`], { type: "text/csv;charset=utf-8" });
+      const href = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = href;
+      anchor.download = fileName;
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(href);
+      setExportStatus("done");
+    } catch {
+      setExportStatus("failed");
+    }
+  };
+  const copy = () => {
+    const text = runListText(rows, names);
+    setBody(text);
+    void copyTextToClipboard(text).then((ok) => setStatus(ok ? "done" : "failed"));
+  };
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2" data-testid="run-list-copy-bar">
+      <Button
+        size="sm"
+        outlined
+        disabled={copyGate.disabled || empty}
+        onClick={copy}
+        data-testid="run-list-copy"
+        title={
+          copyGate.disabled
+            ? copyGate.title
+            : empty
+              ? "当前列表没有行，没有可复制的文本"
+              : `复制当前列表为纯文本：表头加 ${rows.length} 行；当前已加载 ${rows.length} 行，不是全量（每页最多 ${PAGE_LIMIT} 条）`
+        }
+      >
+        <Copy className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+        复制为纯文本
+      </Button>
+      <Button
+        size="sm"
+        outlined
+        disabled={exportGate.disabled || empty}
+        onClick={exportCsv}
+        data-testid="run-list-export"
+        title={
+          exportGate.disabled
+            ? exportGate.title
+            : empty
+              ? "当前列表没有行，没有可导出的 CSV"
+              : `导出当前列表为 CSV：表头加 ${rows.length} 行；当前已加载 ${rows.length} 行，不是全量（每页最多 ${PAGE_LIMIT} 条）`
+        }
+      >
+        <Download className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+        导出 CSV
+      </Button>
+      <span className="min-w-0 text-xs text-muted-foreground" data-testid="run-list-export-count" data-rows={rows.length}>
+        可导出 {rows.length} 行
+      </span>
+      <code className="min-w-0 break-all font-mono text-xs text-muted-foreground" data-testid="run-export-name" title={fileName}>
+        {fileName}
+      </code>
+      <span
+        className="min-w-0 text-xs text-muted-foreground"
+        role="status"
+        aria-live="polite"
+        data-testid="run-list-export-status"
+      >
+        {exportStatus === "done" ? `已导出 ${rows.length} 行` : exportStatus === "failed" ? "导出没成功：这份文件没有生成" : ""}
+      </span>
+      <span
+        className="min-w-0 text-xs text-muted-foreground"
+        role="status"
+        aria-live="polite"
+        data-testid="run-list-copy-status"
+      >
+        {status === "done"
+          ? `已复制 ${rows.length} 行`
+          : status === "failed"
+            ? "复制没成功：下面的文本可以自己选中复制"
+            : "复制的是屏上这一页的行，只读、不改任何记录。"}
+      </span>
+      {status === "failed" ? (
+        <div className="w-full min-w-0" data-testid="run-list-copy-fallback">
+          <textarea
+            readOnly
+            value={body}
+            aria-label="列表纯文本"
+            data-testid="run-list-copy-fallback-text"
+            className="h-28 w-full resize-y rounded-md border border-border bg-card p-2 font-mono text-xs text-foreground"
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * A sortable column header: the wrapper carries aria-sort, the control is a
+ * real button so Enter and Space work without extra key handling.
+ */
+function SortHeader({
+  label,
+  sortKey,
+  active,
+  dir,
+  onSort,
+  disabled,
+}: {
+  label: string;
+  sortKey: RunSortKey;
+  active: RunSortKey | null;
+  dir: RunSortDir;
+  onSort: (key: RunSortKey) => void;
+  disabled: boolean;
+}): ReactNode {
+  const isActive = active === sortKey;
+  const ariaSort = isActive ? (dir === "asc" ? "ascending" : "descending") : "none";
+  return (
+    <span role="columnheader" aria-sort={ariaSort} className="min-w-0">
+      <button
+        type="button"
+        data-testid={`run-sort-${sortKey}`}
+        className="min-w-0 break-words text-left uppercase tracking-wide underline-offset-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-60"
+        aria-label={`按${label}排序${isActive ? (dir === "asc" ? "（当前升序）" : "（当前降序）") : ""}`}
+        title={disabled ? "这一页还没有读出行，暂时不能排序。" : isActive ? "再点一次换方向；只在已加载的行内排序。" : "在这一页已加载的行内排序。"}
+        disabled={disabled}
+        onClick={() => onSort(sortKey)}
+      >
+        {label}
+        {isActive ? <span aria-hidden="true">{dir === "asc" ? " ↑" : " ↓"}</span> : null}
+      </button>
+    </span>
+  );
+}
 
 function ListRows({
   rows,
   names,
   hrefOf,
+  previewGate,
+  sortKey,
+  sortDir,
+  onSort,
+  sortDisabled,
 }: {
   rows: RunRow[];
   names: Map<string, string>;
+  sortKey: RunSortKey | null;
+  sortDir: RunSortDir;
+  onSort: (key: RunSortKey) => void;
+  sortDisabled: boolean;
   /**
    * R29: a row is a real anchor whose href keeps the path shape QA counts
    * (`a[href*="/runs/"]`) without inventing a route. The address is
@@ -209,12 +428,24 @@ function ListRows({
    * copied link reloads into the same record.
    */
   hrefOf: (runId: string) => string;
+  previewGate: ListGate;
 }): ReactNode {
+  const [openId, setOpenId] = useState<string | null>(null);
+  const toggleRefs = useRef(new Map<string, HTMLButtonElement>());
+  const close = useCallback((rowId: string) => {
+    setOpenId(null);
+    toggleRefs.current.get(rowId)?.focus();
+  }, []);
   return (
     <Card className="min-w-0 border-border bg-card" data-testid="run5-table">
       <CardContent className="p-0">
         <div className={`hidden ${GRID} border-b border-border px-4 py-2 text-xs uppercase tracking-wide text-muted-foreground sm:grid`}>
-          <span>运行</span><span>状态</span><span>开始</span><span>耗时</span><span>成本（美元）</span><span>负责人</span><span>失败原因</span><span aria-hidden="true"></span>
+          <span>运行</span>
+          <SortHeader label="状态" sortKey="status" active={sortKey} dir={sortDir} onSort={onSort} disabled={sortDisabled} />
+          <SortHeader label="开始" sortKey="started" active={sortKey} dir={sortDir} onSort={onSort} disabled={sortDisabled} />
+          <SortHeader label="耗时" sortKey="elapsed" active={sortKey} dir={sortDir} onSort={onSort} disabled={sortDisabled} />
+          <SortHeader label="成本（美元）" sortKey="cost" active={sortKey} dir={sortDir} onSort={onSort} disabled={sortDisabled} />
+          <span>负责人</span><span>失败原因</span><span aria-hidden="true"></span>
         </div>
         <ul className="divide-y divide-border">
           {rows.map((row, index) => {
@@ -222,8 +453,20 @@ function ListRows({
             const elapsed = elapsedMinute(row.startedAt, row.endedAt);
             const reason = failureSummary(row);
             const base = `run5-row-${index}`;
+            const open = openId === row.runId;
             return (
-              <li key={row.runId} className={GRID} data-testid={base} data-status={row.status ?? "unknown"}>
+              <li
+                key={row.runId}
+                className="min-w-0"
+                data-testid={base}
+                data-status={row.status ?? "unknown"}
+                onKeyDown={(event) => {
+                  if (!open || event.key !== "Escape") return;
+                  event.stopPropagation();
+                  close(row.runId);
+                }}
+              >
+                <div className={GRID}>
                 <RunCodeCell row={row} testId={`${base}-code`} />
                 <span className="min-w-0 self-center">
                   <Badge tone={statusTone(row.status)} data-testid={`${base}-status`}>{statusLabel(row.status)}</Badge>
@@ -249,16 +492,36 @@ function ListRows({
                 <span className="min-w-0 self-center break-words" data-testid={`${base}-reason`} title={reason.reason || undefined}>
                   {reason.text}
                 </span>
-                <Link
-                  className="self-center justify-self-end rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground no-underline hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-                  to={hrefOf(row.runId)}
-                  state={{ fromList: true }}
-                  data-testid={`${base}-open`}
-                  data-run-id={row.runId}
-                  aria-label={`查看 ${runCode(row.runId)} 的详情与事件`}
-                >
-                  查看
-                </Link>
+                <div className="flex min-w-0 flex-col items-end gap-1 self-center">
+                  <Link
+                    className="rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground no-underline hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                    to={hrefOf(row.runId)}
+                    state={{ fromList: true }}
+                    data-testid={`${base}-open`}
+                    data-run-id={row.runId}
+                    aria-label={`查看 ${runCode(row.runId)} 的详情与事件`}
+                  >
+                    查看
+                  </Link>
+                  <button
+                    type="button"
+                    className="rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                    data-testid={`run-row-toggle-${index}`}
+                    aria-expanded={open}
+                    aria-controls={`run-row-preview-${index}`}
+                    ref={(node) => {
+                      if (node) toggleRefs.current.set(row.runId, node);
+                      else toggleRefs.current.delete(row.runId);
+                    }}
+                    onClick={() => setOpenId(open ? null : row.runId)}
+                    disabled={previewGate.disabled}
+                    title={previewGate.title}
+                  >
+                    {open ? "收起预览" : "展开预览"}
+                  </button>
+                </div>
+                </div>
+                {open ? <RunPreviewPanel row={row} names={names} index={index} /> : null}
               </li>
             );
           })}
@@ -399,6 +662,50 @@ function DetailField({ label, children }: { label: string; children: ReactNode }
   );
 }
 
+
+function RunSourceBar({ source }: { source: ReturnType<typeof runSource> }) {
+  const [status, setStatus] = useState<"idle" | "done" | "failed">("idle");
+  const body = source.path;
+  const copy = () => {
+    copyTextToClipboard(body).then((ok) => setStatus(ok ? "done" : "failed"));
+  };
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs" data-testid="run-source">
+      <span className="text-muted-foreground">当前筛选可分享形态</span>
+      <code className="min-w-0 break-all text-[11px]" data-testid="run-source-path" title={body}>
+        {body}
+      </code>
+      {source.active ? null : (
+        <span className="text-muted-foreground" data-testid="run-source-none">
+          未设置筛选（按默认近 7 天读取）
+        </span>
+      )}
+      {source.notes.map((note) => (
+        <span className="text-muted-foreground" key={note} data-testid="run-source-note">
+          {note}
+        </span>
+      ))}
+      <Button size="sm" outlined onClick={copy} data-testid="run-filter-copy" title="复制当前地址里的筛选条件，不含主机与凭据">
+        复制筛选条件
+      </Button>
+      <span role="status" aria-live="polite" data-testid="run-filter-copy-status" className="text-muted-foreground">
+        {status === "done" ? "已复制筛选条件" : status === "failed" ? "复制没成功：下面的文本可以自己选中复制" : ""}
+      </span>
+      {status === "failed" ? (
+        <div className="w-full" data-testid="run-filter-copy-fallback">
+          <textarea
+            readOnly
+            value={body}
+            aria-label="筛选条件文本"
+            data-testid="run-filter-copy-fallback-text"
+            className="h-16 w-full resize-none rounded-md border border-border bg-transparent p-2 font-mono text-[11px]"
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function RunsModulePage() {
   const [params, setParams] = useSearchParams();
   const { pathname, state: locationState } = useLocation();
@@ -423,9 +730,36 @@ export function RunsModulePage() {
   // Deep-link only: `?employee=` narrows the list through the accepted employeeId
   // parameter. No filter control exists for it, so no dead control is implied.
   const employee = forced === null ? (params.get("employee")?.trim() || null) : null;
+  const source = runSource({
+    windowRaw: params.get("window"),
+    window: sinceKey,
+    statusRaw: params.get("status"),
+    status,
+    employee,
+    stateRaw: params.get("state"),
+    state: forced,
+  });
 
   const data = useRunsData(forced, { status, sinceKey, employeeId: employee });
   const { phase, rows, cursor, answeredBy, unreadable, failure, forced: isForced } = data;
+
+  // Sorting is local: the list route accepts no sort parameter (see runs.ts
+  // askListRoute), so this only reorders the rows already on screen.
+  const rsort = parseRunSort(params.get("rsort"));
+  const rdir = parseRunDir(params.get("rdir"), rsort);
+  const sortedRows = useMemo(
+    () => (rsort ? sortRunRows(rows, rsort, rdir) : rows),
+    [rows, rsort, rdir],
+  );
+  const chooseSort = (key: RunSortKey) => {
+    // One write for both keys: two setParam calls would both start from the
+    // same params snapshot and the second would drop the first.
+    const next = new URLSearchParams(params);
+    const dir = rsort === key ? (rdir === "asc" ? "desc" : "asc") : defaultRunDir(key);
+    next.set("rsort", key);
+    next.set("rdir", dir);
+    setParams(next, { replace: true, state: locationState ?? null });
+  };
 
   const [readTick, setReadTick] = useState(0);
   const detail = useRunDetail(selected, readTick);
@@ -513,6 +847,14 @@ export function RunsModulePage() {
   const failedCount = rows.filter((row) => row.status === "failed").length;
   const runningCount = rows.filter((row) => row.status === "running").length;
   const countsKnown = phase === "ready" || phase === "empty";
+  const listGate = listActionGate(phase);
+  const filtersNarrow = Boolean(status) || Boolean(employee);
+  const clearFilters = () => {
+    const next = new URLSearchParams(params);
+    next.delete("status");
+    next.delete("employee");
+    setParams(next, { replace: true, state: { fromList: true } });
+  };
 
   const technical = [
     answeredBy ? `由这条读取回答：${answeredBy}` : null,
@@ -602,7 +944,18 @@ export function RunsModulePage() {
         {statusLine}
       </p>
 
-      <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="run5-counts">
+      <RunSourceBar source={source} />
+
+      <span hidden data-testid="run-state" data-phase={phase} />
+      <p
+        className="min-w-0 break-words text-xs text-muted-foreground"
+        data-testid="run5-counts"
+        title={
+          countsKnown
+            ? "计数只统计这一页已加载的行，不是全量。"
+            : "读取成功之前不报计数：这里写「—」，不把读不到当成 0。"
+        }
+      >
         {countsKnown
           ? `本页 ${rows.length} 次 · 失败 ${failedCount} · 运行中 ${runningCount}（仅本页已加载，最多 ${PAGE_LIMIT} 条，不是全量统计）`
           : "本页 — 次 · 失败 — · 运行中 —（暂时读不到运行数据，数字不作零处理）"}
@@ -734,7 +1087,12 @@ export function RunsModulePage() {
 
       {phase === "loading" ? <LoadingPanel fixture={forced ?? undefined} /> : null}
       {phase === "empty" ? (
-        <EmptyPanel onRetry={reloadList} fixture={forced ?? undefined} />
+        <EmptyPanel
+          onRetry={reloadList}
+          onClear={clearFilters}
+          kind={filtersNarrow ? "filter" : "window"}
+          fixture={forced ?? undefined}
+        />
       ) : null}
       {phase === "error" ? (
         <ErrorPanel
@@ -746,7 +1104,33 @@ export function RunsModulePage() {
       {phase === "denied" ? (
         <DeniedPanel requestId={failure?.requestId ?? null} fixture={forced ?? undefined} />
       ) : null}
-      {phase === "ready" ? <ListRows rows={rows} names={names} hrefOf={hrefOf} /> : null}
+      {phase === "ready" ? (
+        <ListRows
+          rows={sortedRows}
+          names={names}
+          hrefOf={hrefOf}
+          previewGate={listGate.preview}
+          sortKey={rsort}
+          sortDir={rdir}
+          onSort={chooseSort}
+          sortDisabled={false}
+        />
+      ) : null}
+      {rsort !== null && phase === "ready" ? (
+        <p className="min-w-0 break-words text-xs text-muted-foreground" data-testid="run-sort-scope-note">
+          仅在当前已加载 {sortedRows.length} 行内排序；服务端读口不接受排序参数，点表头不会重新读取。
+        </p>
+      ) : null}
+      {phase !== "loading" ? (
+        <RunListCopy
+          rows={sortedRows}
+          names={names}
+          copyGate={listGate.copy}
+          exportGate={listGate.export}
+          windowKey={params.get("window")}
+          statusKey={params.get("status")}
+        />
+      ) : null}
 
       {phase === "ready" && rows.length > 0 ? (
         <TechnicalDisclosure lines={technical} testId="run5-list-details" />

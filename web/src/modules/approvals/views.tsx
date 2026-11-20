@@ -18,6 +18,7 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { themedBody } from "@/lib/utils";
 import { humanizeHandles, money, type ApprovalDetail, type ApprovalRow } from "./model";
 import { DetailsDisclosure, RequestIdCopyField } from "./states";
+import { RelativeTime } from "./RelativeTime";
 import { shortRef } from "@/modules/tasks/tasksBoard";
 
 /** A label/value pair that never overflows its column at 375px. */
@@ -29,7 +30,7 @@ function Field({
   testId,
 }: {
   label: string;
-  value: string;
+  value: ReactNode;
   /** Why the value is missing; shown as the `title` so the gap is explainable. */
   reason?: string;
   tone?: ReactNode;
@@ -44,6 +45,16 @@ function Field({
       </dd>
     </div>
   );
+}
+
+// R80: 长值单行截断——阈值与字符截断形态集中在这一处；行卡/行内预览/详情主体/
+// trail 全走同一助手，屏上显截断值、title 恒全文（与复制/导出的全文同源同值）。
+// 不超过阈值不加省略号也不加 title；空值走各自既有缺值口径，不进本助手。
+export const TRUNCATE_LIMIT = 60;
+
+export function truncateDisplay(text: string): { shown: string; full: string | null } {
+  if (text.length <= TRUNCATE_LIMIT) return { shown: text, full: null };
+  return { shown: `${text.slice(0, TRUNCATE_LIMIT - 1)}…`, full: text };
 }
 
 const MISSING_TIME = "服务未提供该时间";
@@ -157,7 +168,13 @@ export function ApprovalRowCard({
             title={row.rawId ?? undefined}
             className="min-w-0 flex-1 break-words text-left text-sm hover:underline"
           >
-            <span className={themedBody}>{row.title}</span>
+            <span
+              className={themedBody}
+              data-testid={`apv-trunc-row-title-${row.key}`}
+              title={truncateDisplay(row.title).full ?? undefined}
+            >
+              {truncateDisplay(row.title).shown}
+            </span>
           </button>
           <Badge tone={row.status.tone} title={row.status.raw ?? undefined}>
             {row.status.label}
@@ -175,17 +192,26 @@ export function ApprovalRowCard({
             value={row.worker.label}
             reason={row.worker.raw ?? (row.worker.label === "—" ? "服务未提供执行员工。" : undefined)}
           />
-          <Field label="提交" value={row.submitted ?? "—"} reason={row.submitted ? undefined : MISSING_TIME} />
+          {/* R76: 相对时间+title 绝对/ISO——与预览、决策链路同一 helper 同一输入。 */}
+          <Field
+            label="提交"
+            value={<RelativeTime iso={row.submittedAt} testid={`apv-time-row-submitted-${row.key}`} />}
+          />
           <Field
             label={row.clockLabel}
-            value={row.clock ?? "—"}
-            reason={row.clock ? undefined : MISSING_TIME}
+            value={<RelativeTime iso={row.clockAt} testid={`apv-time-row-${row.key}`} />}
           />
           <Field label="涉及金额" value={money(row.amount)} reason={row.amount === null ? MISSING_AMOUNT : undefined} />
         </dl>
 
         {row.reason ? (
-          <p className="min-w-0 break-words text-xs text-muted-foreground" title={row.reason}>事由：{humanizeHandles(row.reason)}</p>
+          <p
+            className="min-w-0 break-words text-xs text-muted-foreground"
+            data-testid={`apv-trunc-row-reason-${row.key}`}
+            title={truncateDisplay(humanizeHandles(row.reason)).full ?? undefined}
+          >
+            事由：{truncateDisplay(humanizeHandles(row.reason)).shown}
+          </p>
         ) : null}
 
         <div onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
@@ -206,7 +232,13 @@ export function ApprovalRowCard({
               }
             }}
           >
-            <p className={`break-words text-sm ${themedBody}`}>{row.title}</p>
+            <p
+              className={`break-words text-sm ${themedBody}`}
+              data-testid={`apv-trunc-preview-title-${row.key}`}
+              title={truncateDisplay(row.title).full ?? undefined}
+            >
+              {truncateDisplay(row.title).shown}
+            </p>
             <dl className="mt-2 grid min-w-0 gap-1.5 text-xs">
               <Field
                 label="状态"
@@ -219,16 +251,27 @@ export function ApprovalRowCard({
               <Field
                 label="风险档"
                 value={row.risk.label}
-                reason={row.risk.raw ? undefined : "该字段未返回"}
+                reason={row.risk.raw ?? "该字段未返回"}
               />
               <Field
                 label="更新时间"
-                value={row.decided ?? "—"}
-                reason={row.decided ? "北京时间，精确到分" : "该字段未返回"}
+                value={<RelativeTime iso={row.decidedAt} testid={`apv-time-preview-${row.key}`} />}
               />
               <Field
                 label="审批人"
-                value={row.approvers.labels.length > 0 ? row.approvers.labels.join("、") : "—"}
+                value={
+                  row.approvers.labels.length > 0
+                    ? (() => {
+                        const joined = row.approvers.labels.join("、");
+                        const t = truncateDisplay(joined);
+                        return (
+                          <span data-testid={`apv-trunc-preview-approvers-${row.key}`} title={t.full ?? undefined}>
+                            {t.shown}
+                          </span>
+                        );
+                      })()
+                    : "—"
+                }
                 reason={
                   row.approvers.labels.length > 0
                     ? row.approvers.raw ?? undefined
@@ -340,7 +383,7 @@ export function DecisionTrail({ detail }: { detail: ApprovalDetail }): ReactNode
       <ol className="flex min-w-0 flex-col gap-1 text-xs">
         <li className="min-w-0 break-words" data-testid="apd6-step-submitted" title={detail.requester.raw ?? undefined}>
           提交 · {detail.requester.label} ·{" "}
-          {detail.submitted ?? <NoSeg reason={MISSING_TIME} />}
+          <RelativeTime iso={detail.submittedAt} testid="apv-time-detail-submitted" />
         </li>
         {acted.length === 0 ? (
           <li className="min-w-0 break-words" data-testid="apd6-step-nodes-none">
@@ -355,7 +398,14 @@ export function DecisionTrail({ detail }: { detail: ApprovalDetail }): ReactNode
               title={entry.whoRaw ?? undefined}
             >
               节点 {index + 1} · {entry.who} · {entry.verdict} ·{" "}
-              {entry.at ?? <NoSeg reason="这个节点没有带回决策时间。" />} · 意见：{entry.note ?? "未填"}
+              <RelativeTime iso={entry.atRaw} testid={`apv-time-detail-node-${index}`} /> · 意见：
+              {entry.note == null ? (
+                "未填"
+              ) : (
+                <span data-testid={`apv-trunc-note-${index}`} title={truncateDisplay(entry.note).full ?? undefined}>
+                  {truncateDisplay(entry.note).shown}
+                </span>
+              )}
             </li>
           ))
         )}
@@ -371,14 +421,19 @@ export function DecisionTrail({ detail }: { detail: ApprovalDetail }): ReactNode
         ))}
         <li className="min-w-0 break-words" data-testid="apd6-step-final" title={detail.status.raw ?? undefined}>
           终态 · {detail.status.label}
-          {detail.decided ? ` · ${detail.decided}` : ""}
+          {detail.decidedAt ? (
+            <>
+              {" · "}
+              <RelativeTime iso={detail.decidedAt} testid="apv-time-detail-final" />
+            </>
+          ) : ""}
         </li>
         <li className="min-w-0 break-words" data-testid="apd6-step-links">
           关联：{" "}
           {detail.runId ? (
             <Link
               className="underline underline-offset-2"
-              to={`/runs/${encodeURIComponent(detail.runId)}`}
+              to={`/runs?run=${encodeURIComponent(detail.runId)}`}
               title={detail.runId}
               data-testid="apd6-link-run"
             >
@@ -391,7 +446,7 @@ export function DecisionTrail({ detail }: { detail: ApprovalDetail }): ReactNode
           {detail.taskId ? (
             <Link
               className="underline underline-offset-2"
-              to={`/tasks/${encodeURIComponent(detail.taskId)}`}
+              to={`/work?tab=board&task=${encodeURIComponent(detail.taskId)}`}
               title={detail.taskId}
               data-testid="apd6-link-task"
             >
@@ -462,8 +517,12 @@ export function ApprovalDetailBody({
   return (
     <div className="flex min-w-0 flex-col gap-3" data-testid={testId}>
       <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-        <h2 className={`min-w-0 flex-1 break-words text-sm ${themedBody}`} title={detail.rawId ?? undefined}>
-          {detail.title}
+        <h2
+          className={`min-w-0 flex-1 break-words text-sm ${themedBody}`}
+          title={truncateDisplay(detail.title).full ?? detail.rawId ?? undefined}
+          data-testid="apv-trunc-detail-title"
+        >
+          {truncateDisplay(detail.title).shown}
         </h2>
         <Badge tone={detail.status.tone} title={detail.status.raw ?? undefined}>
           {detail.status.label}
@@ -574,7 +633,13 @@ export function ApprovalDetailBody({
       </dl>
 
       {detail.reason ? (
-        <p className="min-w-0 break-words text-xs text-muted-foreground" title={detail.reason ?? undefined}>事由：{humanizeHandles(detail.reason)}</p>
+        <p
+          className="min-w-0 break-words text-xs text-muted-foreground"
+          data-testid="apv-trunc-detail-reason"
+          title={truncateDisplay(humanizeHandles(detail.reason)).full ?? undefined}
+        >
+          事由：{truncateDisplay(humanizeHandles(detail.reason)).shown}
+        </p>
       ) : null}
 
       {/* R28 item 2: the approver slot is always present; empty means a
@@ -618,6 +683,36 @@ export function ApprovalDetailBody({
       </section>
 
       <DecisionTrail detail={detail} />
+
+      {/* R82: 审计台账真链——audit 读口按 resourceId=审批单号真过滤
+        * （活体实测：resourceId=ap_… → 200 n=1 命中 approval.expired；
+        * resourceId=资源路径 → 200 n=0；limit 单参 → 400 需过滤）。
+        * 页级消费 ?resource= → 线上 resourceId=（aud8 契约），并带默认时间窗。
+        * ?event= 需要审计事件 id——审批对象不带该字段，禁编造：这里给的是
+        * 过滤真链，不是假事件定位链。 */}
+      <section className="flex min-w-0 flex-col gap-1 text-xs" data-testid="apd9-correlation" aria-label="相关记录">
+        <h3 className="text-xs font-medium text-muted-foreground">相关记录 · 只读</h3>
+        {detail.rawId ? (
+          <Link
+            className="min-w-0 break-words underline underline-offset-2"
+            to={`/audit?resource=${encodeURIComponent(detail.rawId)}`}
+            title="打开审计台账并按该审批单号过滤（服务端 resourceId 真过滤，默认时间窗；审批对象不带审计事件 id，故这不是按事件行的定位链）。"
+            data-testid="apd9-audit-link"
+          >
+            在审计中查看相关记录
+          </Link>
+        ) : (
+          <p className="min-w-0 break-words" data-testid="apd9-audit-note">
+            审计跳转
+            <NoSeg reason="该字段未返回（审批单号没有回传，无法拼出过滤链接，禁编造 id）。" />
+          </p>
+        )}
+        <p className="min-w-0 break-words">
+          <RequestIdCopyField requestId={detail.requestId} fallback="请求编号：该字段未返回" />
+          {" "}
+          <span className="text-muted-foreground">审计页没找到对应事件时，可用上面的单号/请求编号在台账里人工检索。</span>
+        </p>
+      </section>
 
       <DetailsDisclosure testId={`${testId}-details`} lines={details} />
 
