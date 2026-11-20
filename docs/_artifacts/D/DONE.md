@@ -1346,3 +1346,10 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 九腿：ia-html/react {51,22,1,8}（tabsAll=23）、lint-fake v=[]、lint-reuse v=0 e=1（chat→T40）、state-quad 真重跑 20/20 overflowing 无、crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）、redirects=24 notes 归因。
 - shots 波折：驱动主腿 03:14 起 #/sessions-1440 png 停更 10 分钟挂死判据命中（上代 #/sessions 同点位先例）⇒ kill 63219 后单腿复跑 AUTH-RC=0；anon 腿并行双跑取后一次 exit=0。本代读数 auth 102/102 failures=[] **obs=1（#/capabilities?tab=channels 复现；上代 access+channels 两条，access 收敛）** distinct=24 envOnly=51；anon aux=true 102/102 **obs=1（#/system）** distinct=23 envOnly=51；obs 分面如实不入判据。三键 BgHnOrEo/0f21441d…fe3/172121、servedEntryBefore==After、ceAuthority=login-state。
 - 终检 heads 9/9=={65882219:9} bad=[] 全 ok=true exit=0；单文件单 JSON+exitCode+os.replace。d9fae7ce(6dc311ea) 章留档不重做；无 amend/force；R60 结案仅引用未动 ACC 判词节；web/src/9122/BFF/caddy/qa-verify 未动；零凭据明文。
+
+## 一五〇轮 · 波次代次九件重章 @ 4f2f4e54（entry anDq62Is / CSS DAaO_lbE 双换代，2026-11-21 03:4x）
+
+- 代次现查：LOCAL=ls-remote=4f2f4e54c742（wave-61 十笔并入；37a84999 在链 ANCE=0，『上代漏推』指控证伪——03:30 push 当时 ls-remote 已一致，后续系 heartbeat 并入）。盘 entry assets/index-anDq62Is.js 172175B sha256 9b712a4e…cae94、CSS assets/index-DAaO_lbE.css 144777B sha 8a9acf6a…01692 双逐字==卡面；9122 served 同值；21/21 路由 200。
+- 九腿全 exit=0（/tmp/wave62-exits.txt），heads 9/9=={4f2f4e54:9} bad=[] 全 ok=true：ia-html/react {51,22,1,8}（tabsAll=23）；lint-fake v=[]；lint-reuse v=0 exempt=1（chat→T40）；state-quad 20/20 真重跑非 carried；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）；redirects=24 notes 归因不判红。
+- shots auth 102/102 failures=[] **obs=0 obsR=[]（上代 1 条 channels 已收敛=好转）** distinct=24 envOnly=51；anon auxiliary=true 102/102 **obs=0（上代 #/system 条消失）** distinct=23 envOnly=51；三键=anDq62Is/9b712a4e 全串/172175，servedEntryBefore==After=index-anDq62Is.js，ceAuthority=login-state 双腿。
+- 65882219 章 37a84999 不重做；R60 已结案仅引用，未动 ACC 判词节；web/src/9122/BFF/caddy/qa-verify 未动；零凭据明文；无 amend/force。
