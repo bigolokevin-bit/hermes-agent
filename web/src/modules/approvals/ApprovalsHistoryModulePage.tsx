@@ -33,6 +33,7 @@ import { QueueCsvExport } from "./QueueCsvExport";
 import { QueueSortBar } from "./QueueSortBar";
 import { ActorBuckets } from "./ActorBuckets";
 import { SinceQuickFilter, isSinceValue, withinSince } from "./SinceQuickFilter";
+import { RiskQuickFilter, isRiskValue, withinRisk, type RiskValue } from "./RiskQuickFilter";
 import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel } from "./states";
 import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
 import { ApprovalDetailBody, ApprovalRowCard } from "./views";
@@ -136,6 +137,18 @@ export function ApprovalsHistoryModulePage(): ReactNode {
     },
     [params, setParams],
   );
+  // R83: ?risk= 是本地风险档维（读口丢参实测复证）；七参互不清除、粘链复现。
+  const rawRisk = params.get("risk");
+  const risk = isRiskValue(rawRisk) ? rawRisk : null;
+  const pickRisk = useCallback(
+    (value: RiskValue | null) => {
+      const draft = new URLSearchParams(params);
+      if (value === null) draft.delete("risk");
+      else draft.set("risk", value);
+      setParams(draft, { replace: true });
+    },
+    [params, setParams],
+  );
   // R77: 计数/导出/分桶与列表同源——共同基底=q+时间窗过滤后的已加载行；
   // actor 维不锁分桶轨（否则选中一位后无法切到另一位）。
   const actorBaseRows = useMemo(() => {
@@ -147,10 +160,15 @@ export function ApprovalsHistoryModulePage(): ReactNode {
       ? filtered.filter((row) => withinSince(row.submittedAt, since, sinceNow))
       : filtered;
   }, [list.rows, q, since, sinceNow]);
+  // R83: 风险档过滤与 actor 同级；分桶轨基线含 risk 不含 actor。
+  const riskBaseRows = useMemo(
+    () => (risk ? actorBaseRows.filter((row) => withinRisk(row, risk)) : actorBaseRows),
+    [actorBaseRows, risk],
+  );
   const visibleRows = useMemo(() => {
-    const byActor = actor ? actorBaseRows.filter((row) => row.approverIds.includes(actor)) : actorBaseRows;
+    const byActor = actor ? riskBaseRows.filter((row) => row.approverIds.includes(actor)) : riskBaseRows;
     return sortApprovalRows(byActor, asort, adir);
-  }, [actorBaseRows, actor, asort, adir]);
+  }, [riskBaseRows, actor, asort, adir]);
   const [selected, setSelected] = useState<string | null>(() => params.get("id"));
   const [unaddressable, setUnaddressable] = useState(false);
   // R60: at most one row shows its inline preview; it never touches URL/filters.
@@ -384,8 +402,9 @@ export function ApprovalsHistoryModulePage(): ReactNode {
       </p>
 
       <QueueSortBar phase={list.phase} sort={asort} dir={adir} loadedCount={list.rows.length} onCycle={cycleSort} />
-      <ActorBuckets rows={actorBaseRows} phase={list.phase} actor={actor} onPick={pickActor} />
+      <ActorBuckets rows={riskBaseRows} phase={list.phase} actor={actor} onPick={pickActor} />
       <SinceQuickFilter phase={list.phase} since={since} loadedCount={list.rows.length} onPick={pickSince} />
+      <RiskQuickFilter rows={actorBaseRows} phase={list.phase} risk={risk} onPick={pickRisk} />
 
 
       <div className="flex min-w-0 flex-wrap gap-1.5" role="group" data-testid="apr5-filter" aria-label="按处理结果筛选">
@@ -428,15 +447,6 @@ export function ApprovalsHistoryModulePage(): ReactNode {
             </Button>
           );
         })}
-        <select
-          aria-label="按风险档筛选"
-          data-testid="apv5-filter-risk"
-          disabled
-          title="后台尚未开放风险档筛选：带 risk=high 实测仍返回与该参数无关的全量集合（status=all 下 8 条同集），为避免假过滤此项暂不提供。"
-          className="rounded-md border border-white/15 bg-transparent px-2 py-1 text-xs text-muted-foreground opacity-60"
-        >
-          <option value="">风险档：暂不可筛</option>
-        </select>
         <select
           aria-label="按时间窗筛选"
           data-testid="apv5-filter-window"
@@ -486,7 +496,20 @@ export function ApprovalsHistoryModulePage(): ReactNode {
 
           {list.phase === "ready" ? (
             <>
-              {since && visibleRows.length === 0 ? (
+              {risk && visibleRows.length === 0 ? (
+                <Card className="border-border bg-card" data-testid="apv-risk-empty">
+                  <CardContent className="min-w-0 space-y-2 p-4 text-sm">
+                    <p>该风险档下没有审批。</p>
+                    <p className="text-xs text-muted-foreground">
+                      这是当前已加载 {list.rows.length} 条里的真实结果：没有命中该风险档的行（严重风险没有独立档位，在「全部」下照常显示）；可只清空风险档，其余筛选保留。
+                    </p>
+                    <Button size="sm" outlined data-testid="apv-risk-clear" onClick={() => pickRisk(null)}>
+                      清空风险档
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : null}
+              {!risk && since && visibleRows.length === 0 ? (
                 <Card className="border-border bg-card" data-testid="apv-since-empty">
                   <CardContent className="min-w-0 space-y-2 p-4 text-sm">
                     <p>该时间范围内没有审批。</p>
@@ -499,7 +522,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
                   </CardContent>
                 </Card>
               ) : null}
-              {!since && actor && visibleRows.length === 0 ? (
+              {!risk && !since && actor && visibleRows.length === 0 ? (
                 <Card className="border-border bg-card" data-testid="apv-actor-empty">
                   <CardContent className="min-w-0 space-y-2 p-4 text-sm">
                     <p>该审批人下没有审批。</p>
@@ -512,7 +535,7 @@ export function ApprovalsHistoryModulePage(): ReactNode {
                   </CardContent>
                 </Card>
               ) : null}
-              {q && !actor && !since && visibleRows.length === 0 ? (
+              {q && !actor && !since && !risk && visibleRows.length === 0 ? (
                 <Card className="border-border bg-card" data-testid="apv8-search-empty">
                   <CardContent className="min-w-0 space-y-2 p-4 text-sm">
                     <p>没有匹配的审批。</p>

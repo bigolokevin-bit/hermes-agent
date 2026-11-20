@@ -38,6 +38,7 @@ import { QueueCsvExport } from "./QueueCsvExport";
 import { QueueSortBar } from "./QueueSortBar";
 import { ActorBuckets } from "./ActorBuckets";
 import { SinceQuickFilter, isSinceValue, withinSince } from "./SinceQuickFilter";
+import { RiskQuickFilter, isRiskValue, withinRisk, type RiskValue } from "./RiskQuickFilter";
 import { ApprovalDetailBody, ApprovalRowCard } from "./views";
 
 const VERDICT_LABEL: Record<Verdict, string> = { approve: "批准", reject: "驳回" };
@@ -133,6 +134,18 @@ export function ApprovalsPendingModulePage(): ReactNode {
     },
     [params, setParams],
   );
+  // R83: ?risk= 是本地风险档维（读口丢参实测复证）；七参互不清除、粘链复现。
+  const rawRisk = params.get("risk");
+  const risk = isRiskValue(rawRisk) ? rawRisk : null;
+  const pickRisk = useCallback(
+    (value: RiskValue | null) => {
+      const draft = new URLSearchParams(params);
+      if (value === null) draft.delete("risk");
+      else draft.set("risk", value);
+      setParams(draft, { replace: true });
+    },
+    [params, setParams],
+  );
   // R77: 计数/导出/分桶与列表同源——共同基底=q+时间窗过滤后的已加载行；
   // actor 维不锁分桶轨（否则选中一位后无法切到另一位）。
   const actorBaseRows = useMemo(() => {
@@ -144,10 +157,15 @@ export function ApprovalsPendingModulePage(): ReactNode {
       ? filtered.filter((row) => withinSince(row.submittedAt, since, sinceNow))
       : filtered;
   }, [list.rows, q, since, sinceNow]);
+  // R83: 风险档过滤与 actor 同级；分桶轨基线含 risk 不含 actor。
+  const riskBaseRows = useMemo(
+    () => (risk ? actorBaseRows.filter((row) => withinRisk(row, risk)) : actorBaseRows),
+    [actorBaseRows, risk],
+  );
   const visibleRows = useMemo(() => {
-    const byActor = actor ? actorBaseRows.filter((row) => row.approverIds.includes(actor)) : actorBaseRows;
+    const byActor = actor ? riskBaseRows.filter((row) => row.approverIds.includes(actor)) : riskBaseRows;
     return sortApprovalRows(byActor, asort, adir);
-  }, [actorBaseRows, actor, asort, adir]);
+  }, [riskBaseRows, actor, asort, adir]);
 
   const openRow = useCallback(
     (row: ApprovalRow) => {
@@ -362,8 +380,9 @@ export function ApprovalsPendingModulePage(): ReactNode {
       </p>
 
       <QueueSortBar phase={list.phase} sort={asort} dir={adir} loadedCount={list.rows.length} onCycle={cycleSort} />
-      <ActorBuckets rows={actorBaseRows} phase={list.phase} actor={actor} onPick={pickActor} />
+      <ActorBuckets rows={riskBaseRows} phase={list.phase} actor={actor} onPick={pickActor} />
       <SinceQuickFilter phase={list.phase} since={since} loadedCount={list.rows.length} onPick={pickSince} />
+      <RiskQuickFilter rows={actorBaseRows} phase={list.phase} risk={risk} onPick={pickRisk} />
 
 
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
@@ -431,7 +450,20 @@ export function ApprovalsPendingModulePage(): ReactNode {
 
           {list.phase === "ready" ? (
             <>
-              {since && visibleRows.length === 0 ? (
+              {risk && visibleRows.length === 0 ? (
+                <Card className="border-border bg-card" data-testid="apv-risk-empty">
+                  <CardContent className="min-w-0 space-y-2 p-4 text-sm">
+                    <p>该风险档下没有审批。</p>
+                    <p className="text-xs text-muted-foreground">
+                      这是当前已加载 {list.rows.length} 条里的真实结果：没有命中该风险档的行（严重风险没有独立档位，在「全部」下照常显示）；可只清空风险档，其余筛选保留。
+                    </p>
+                    <Button size="sm" outlined data-testid="apv-risk-clear" onClick={() => pickRisk(null)}>
+                      清空风险档
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : null}
+              {!risk && since && visibleRows.length === 0 ? (
                 <Card className="border-border bg-card" data-testid="apv-since-empty">
                   <CardContent className="min-w-0 space-y-2 p-4 text-sm">
                     <p>该时间范围内没有审批。</p>
@@ -444,7 +476,7 @@ export function ApprovalsPendingModulePage(): ReactNode {
                   </CardContent>
                 </Card>
               ) : null}
-              {!since && actor && visibleRows.length === 0 ? (
+              {!risk && !since && actor && visibleRows.length === 0 ? (
                 <Card className="border-border bg-card" data-testid="apv-actor-empty">
                   <CardContent className="min-w-0 space-y-2 p-4 text-sm">
                     <p>该审批人下没有审批。</p>
@@ -457,7 +489,7 @@ export function ApprovalsPendingModulePage(): ReactNode {
                   </CardContent>
                 </Card>
               ) : null}
-              {q && !actor && !since && visibleRows.length === 0 ? (
+              {q && !actor && !since && !risk && visibleRows.length === 0 ? (
                 <Card className="border-border bg-card" data-testid="apv8-search-empty">
                   <CardContent className="min-w-0 space-y-2 p-4 text-sm">
                     <p>没有匹配的审批。</p>

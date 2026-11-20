@@ -222,11 +222,10 @@ describe("the eight states", () => {
     expect(chip("pending").getAttribute("aria-pressed")).toBe("true");
     expect(document.querySelector("[data-testid='apv5-count']")?.textContent).toBe("1");
     expect(text()).toContain("已显示 1 条「待处理」记录");
-    // Risk and window are stated, never faked: disabled with the measured
-    // reason in the title.
-    const risk = document.querySelector("[data-testid='apv5-filter-risk']") as HTMLSelectElement;
-    expect(risk.disabled).toBe(true);
-    expect(risk.title).toContain("假过滤");
+    // R83: 风险档已升级为本地筛选轨（apv-risk-*，五钮带计数与范围句）；
+    // 时间窗 select 仍按 R44 口径 disabled+实测原因，不假过滤。
+    expect(document.querySelector("[data-testid='apv5-filter-risk']"), "stale risk select gone").toBeNull();
+    expect(document.querySelector("[data-testid='apv-risk-rail']"), "risk rail mounted").toBeTruthy();
     const win = document.querySelector("[data-testid='apv5-filter-window']") as HTMLSelectElement;
     expect(win.disabled).toBe(true);
   });
@@ -2018,5 +2017,86 @@ describe("R82 approval audit correlation (apd9-*)", () => {
     expect(qa("apd6-link-run-none")).toBeTruthy();
     expect(qa("apd6-link-task-none")).toBeTruthy();
     expect((qa("apd9-audit-link") as HTMLAnchorElement).getAttribute("href")).toBe("/audit?resource=ap_c82min");
+  });
+});
+
+describe("R83 risk local filter (apv-risk-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+  const RISK_ROWS = {
+    items: [
+      { approvalId: "ap_rh", title: "密钥轮换", status: "pending", riskLevel: "high", createdAt: "2026-11-19T01:00:00Z" },
+      { approvalId: "ap_rm", title: "预算上调", status: "pending", riskLevel: "medium", createdAt: "2026-11-19T02:00:00Z" },
+      { approvalId: "ap_rn", title: "报表导出", status: "pending", createdAt: "2026-11-19T03:00:00Z" },
+      { approvalId: "ap_rc", title: "发布窗口", status: "pending", riskLevel: "critical", createdAt: "2026-11-19T04:00:00Z" },
+    ],
+  };
+  const riskOnly = async (url: string) => {
+    if (String(url).includes("/api/approval?id=")) return {};
+    return RISK_ROWS;
+  };
+  const rowCount = () => document.querySelectorAll('[data-testid^="apr5-row-ap_r"]').length;
+
+  it("chips count the loaded rows and filter locally; critical rides only 全部", async () => {
+    await mount(riskOnly, "/approvals?tab=history");
+    await waitFor(() => rowCount() === 4, "four rows");
+    expect(qa("apv-risk-scope-note")?.textContent).toContain("按当前已加载 4 条统计，不是全量");
+    expect(qa("apv-risk-scope-note")?.getAttribute("title")).toContain("risk=high");
+    expect(qa("apv-risk-high")?.textContent).toContain("高 1");
+    expect(qa("apv-risk-none")?.textContent).toContain("未标注 1");
+    const before = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      (qa("apv-risk-high") as HTMLButtonElement).click();
+    });
+    await waitFor(() => rowCount() === 1, "high window");
+    expect(qa("apr5-row-ap_rh"), "only the high row stays").toBeTruthy();
+    expect(api.fetchJSON.mock.calls.length, "chip click never refetches").toBe(before);
+    expect(urls().every((u) => !u.includes("risk=")), "risk= never reaches the server").toBe(true);
+    expect(qa("apv-risk-all")?.getAttribute("aria-pressed")).toBe("false");
+    await act(async () => {
+      (qa("apv-risk-all") as HTMLButtonElement).click();
+    });
+    await waitFor(() => rowCount() === 4, "back to all");
+    expect(qa("apr5-row-ap_rc"), "critical shows under 全部").toBeTruthy();
+    await act(async () => {
+      (qa("apv-risk-none") as HTMLButtonElement).click();
+    });
+    await waitFor(() => rowCount() === 1, "none bucket");
+    expect(qa("apr5-row-ap_rn")).toBeTruthy();
+    expect(api.fetchJSON.mock.calls.length).toBe(before);
+  });
+
+  it("a pasted ?risk= replays and combines without clearing the other params", async () => {
+    await mount(riskOnly, "/approvals?tab=history&status=pending&risk=medium");
+    await waitFor(() => !!qa("apr5-row-ap_rm"), "risk replay");
+    expect(rowCount()).toBe(1);
+    expect(qa("apv-risk-medium")?.getAttribute("aria-pressed")).toBe("true");
+    // 队列筛选与风险档共存：请求只带 status=，不带 risk=
+    expect(urls().some((u) => u.includes("status=pending") && !u.includes("risk=")), urls().join("|")).toBe(true);
+  });
+
+  it("no hit in the tier gets its own card; clearing keeps q and status", async () => {
+    await mount(riskOnly, "/approvals?tab=history&status=pending&q=不存在检索&risk=high");
+    await waitFor(() => !!qa("apv-risk-empty"), "risk no-match card");
+    expect(qa("apv-risk-empty")?.textContent).toContain("该风险档下没有审批");
+    await act(async () => {
+      (qa("apv-risk-clear") as HTMLButtonElement).click();
+    });
+    // 清空只删 risk：q 与 status 还在 → 换 q 空态卡出场
+    await waitFor(() => !!qa("apv8-search-empty"), "q card takes over");
+    expect((qa("apv8-search") as HTMLInputElement).value).toBe("不存在检索");
+  });
+
+  it("non-ready phases disable all five chips with the gates sentence", async () => {
+    await mount(async (url: string) => {
+      if (String(url).includes("/api/approval?id=")) return {};
+      throw new ApiError("boom", { status: 500, body: "", url: "/agent-api/api/approvals", requestId: "req-r83-500" });
+    }, "/approvals?tab=history");
+    await waitFor(() => !!qa("apv-state-error"), "error panel");
+    for (const id of ["apv-risk-all", "apv-risk-high", "apv-risk-medium", "apv-risk-low", "apv-risk-none"]) {
+      const btn = qa(id) as HTMLButtonElement | null;
+      expect(btn, id).toBeTruthy();
+      expect((btn as HTMLButtonElement).disabled, `${id} gated`).toBe(true);
+      expect(btn.getAttribute("title")).toContain("不能按风险档筛选：列表读取失败");
+    }
   });
 });

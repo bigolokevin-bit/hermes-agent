@@ -743,3 +743,22 @@ describe("R79 pending pagination rail (apv-page-*)", () => {
     expect(qa("apv-page-end")?.textContent).toBe("已到末页");
   });
 });
+
+describe("R83 pending risk rail (apv-risk-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+
+  it("the pending tab carries the same rail with zero new requests", async () => {
+    await mount(queue(), "/approvals?tab=pending");
+    await waitFor(() => !!qa("apv-risk-rail"), "rail");
+    const before = api.fetchJSON.mock.calls.length;
+    await act(async () => {
+      (qa("apv-risk-high") as HTMLButtonElement).click();
+    });
+    expect(api.fetchJSON.mock.calls.length, "chip never refetches").toBe(before);
+    await act(async () => {
+      (qa("apv-risk-all") as HTMLButtonElement).click();
+    });
+    expect(api.fetchJSON.mock.calls.length, "clearing never refetches").toBe(before);
+    expect(qa("apv-risk-scope-note")?.textContent).toContain("不是全量");
+  });
+});
