@@ -547,7 +547,8 @@ describe("R64 employees list copy as text (emp-list-copy)", () => {
     const btn = q("emp-list-copy") as HTMLButtonElement | null;
     expect(btn, "button still rendered in empty state").toBeTruthy();
     expect(btn!.disabled).toBe(true);
-    expect(btn!.title).toContain("当前已加载 0 人");
+    // R69: 空集态的 title 走统一的 phase 原因句。
+    expect(btn!.title).toContain("不能复制");
   });
 });
 
@@ -739,7 +740,8 @@ describe("R66 employees list CSV export (emp-list-export)", () => {
     const btn = q("emp-list-export") as HTMLButtonElement | null;
     expect(btn, "button still rendered in empty state").toBeTruthy();
     expect(btn!.disabled).toBe(true);
-    expect(btn!.title).toContain("当前已加载 0 人");
+    // R69: 空集态的 title 走统一的 phase 原因句。
+    expect(btn!.title).toContain("不能导出");
   });
 });
 
@@ -855,5 +857,89 @@ describe("R68 preview wording parity", () => {
     expect(pv?.getAttribute("aria-label"), "preview region").toBe("行内预览");
     expect(pv?.innerHTML).toContain(FIELD_MISSING_TITLE); // 缺值 title 走同一句（属性，不在 textContent）
     expect(pv?.textContent).not.toContain("—"); // 不再有第二套缺值写法
+  });
+});
+
+describe("R69 list state consistency (emp-list-state-*)", () => {
+  const failWith = (init: { status: number; requestId?: string }) => {
+    fetchJSON.mockImplementation(() =>
+      Promise.reject(
+        new ApiError("boom", {
+          status: init.status,
+          body: "{}",
+          url: "/agent-api/api/employees",
+          requestId: init.requestId,
+        }),
+      ),
+    );
+  };
+  const disabledTitle = (id: string) => {
+    const el = q(id) as HTMLButtonElement | null;
+    expect(el, `${id} present`).toBeTruthy();
+    expect(el!.disabled, `${id} disabled`).toBe(true);
+    return el!.title;
+  };
+
+  it("error state: plain reason + copyable rid + retry, three controls disabled with stated causes, no fake 0", async () => {
+    failWith({ status: 502, requestId: "req-r69" });
+    await render("/employees?q=zz&lifecycle=active&sort=name&dir=desc");
+    expect(q("emp-list-state")?.getAttribute("data-phase")).toBe("error");
+    expect(q("emp-list-state-error"), "state card").toBeTruthy();
+    expect(q("emp-list-state-rid")?.textContent).toContain("req-r69");
+    expect(q("req-copy"), "rid is copyable").toBeTruthy();
+    expect(q("emp-list-state-retry")?.textContent).toContain("重试");
+    expect(q("emp-list-count")?.textContent).toBe("—");
+    expect(q("emp-list-count")?.getAttribute("title")).toContain("没能加载");
+    expect(disabledTitle("emp-list-copy")).toContain("不能复制");
+    expect(disabledTitle("emp-list-export")).toContain("不能导出");
+    expect(disabledTitle("emp-list-page-more")).toContain("不能续取");
+    expect(q("emp-list-page-end")).toBeNull();
+    expect(q("emp-list-page-count")?.textContent).toContain("总数不可读");
+    // 错误态不吞 URL：筛选/排序参数原样保留。
+    expect(document.body.getAttribute("data-last-search")).toBe(
+      "?q=zz&lifecycle=active&sort=name&dir=desc",
+    );
+  });
+
+  it("empty splits into two honest messages with the clear exit only for the filtered one", async () => {
+    fetchJSON.mockImplementation(() => Promise.resolve({ items: [] }));
+    await render("/employees?q=nomatch");
+    expect(q("emp-list-state-empty"), "state card").toBeTruthy();
+    expect(q("emp-list-state-empty-text")?.textContent).toBe("没有匹配的员工");
+    expect(q("emp-list-state-clear"), "filtered empty offers the clear exit").toBeTruthy();
+    expect(q("emp-list-count")?.textContent).toBe("—");
+    expect(q("emp-list-count")?.getAttribute("title")).toContain("真实空集");
+    expect(disabledTitle("emp-list-copy")).toContain("不能复制");
+
+    await render("/employees");
+    expect(q("emp-list-state-empty-text")?.textContent).toBe("还没有数字员工");
+    expect(q("emp-list-state-clear"), "plain empty has no filter to clear").toBeNull();
+  });
+
+  it("403 and 404 keep one identical denied body and lock the controls", async () => {
+    failWith({ status: 403 });
+    await render("/employees");
+    expect(q("emp-list-state-denied"), "denied card").toBeTruthy();
+    expect(q("emp-list-state-error"), "denied is not an error card").toBeNull();
+    const deniedText = q("employees-denied")?.textContent ?? "";
+    expect(deniedText).toContain("没有查看权限");
+    expect(disabledTitle("emp-list-page-more")).toContain("没有查看权限");
+
+    failWith({ status: 404 });
+    await render("/employees");
+    expect(q("employees-denied")?.textContent).toBe(deniedText);
+  });
+
+  it("loading keeps the state container honest: skeleton phase, no controls live, no count", async () => {
+    fetchJSON.mockImplementation(() => new Promise(() => {}));
+    await render("/employees");
+    expect(q("emp-list-state")?.getAttribute("data-phase")).toBe("loading");
+    expect(q("emp-list-state-loading"), "skeleton card").toBeTruthy();
+    expect(q("emp-list-count")?.textContent).toBe("—");
+    expect(disabledTitle("emp-list-copy")).toContain("加载中");
+    expect(disabledTitle("emp-list-page-more")).toContain("加载中");
+    // 骨架固定 5 行等高（不跳动的形态学断言）：行高一致。
+    const bars = document.querySelectorAll('[data-testid="emp-list-state-loading"] .animate-pulse');
+    expect(bars).toHaveLength(5);
   });
 });

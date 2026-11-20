@@ -324,7 +324,23 @@ function buildEmployeesCopyText(rows: EmployeeRow[]): { text: string; count: num
   return { text: [COPY_HEADER, ...lines].join("\n"), count: lines.length };
 }
 
-function ListCopyButton({ rows, totalLoaded }: { rows: EmployeeRow[]; totalLoaded: number }) {
+/** R69: 非 ready 态下计数位与复制/导出/加载更多统一的原因句。 */
+function phaseReason(phase: Phase): string | null {
+  switch (phase) {
+    case "loading":
+      return "加载中：没有可计数的行，这里以「—」占位而不是 0。";
+    case "denied":
+      return "没有查看权限（或读口未接入）：计数不作 0 处理，也不提供复制/导出/续取。";
+    case "error":
+      return "列表没能加载：计数不作 0 处理，也不提供复制/导出/续取。";
+    case "empty":
+      return "读口如实返回 0 人（真实空集）：计数位沿用「—」约定，不是缺数。";
+    default:
+      return null;
+  }
+}
+
+function ListCopyButton({ rows, totalLoaded, phase }: { rows: EmployeeRow[]; totalLoaded: number; phase: Phase }) {
   const [status, setStatus] = useState<"idle" | "done" | "failed">("idle");
   const { text, count } = useMemo(() => buildEmployeesCopyText(rows), [rows]);
   const empty = rows.length === 0;
@@ -345,12 +361,14 @@ function ListCopyButton({ rows, totalLoaded }: { rows: EmployeeRow[]; totalLoade
         size="sm"
         outlined
         data-testid="emp-list-copy"
-        disabled={empty}
+        disabled={empty || phase !== "ready"}
         onClick={copy}
         title={
-          empty
-            ? "当前已加载 0 人：没有可复制的行。"
-            : `按当前排序与筛选后的屏上行序复制；范围=当前已加载 ${totalLoaded} 人，不是全量；零额外请求。`
+          phase !== "ready"
+            ? `不能复制：${phaseReason(phase)}`
+            : empty
+              ? "当前已加载 0 人：没有可复制的行。"
+              : `按当前排序与筛选后的屏上行序复制；范围=当前已加载 ${totalLoaded} 人，不是全量；零额外请求。`
         }
       >
         复制列表
@@ -401,7 +419,7 @@ export function buildEmployeesCsv(rows: EmployeeRow[]): string {
   return `\uFEFF${[COPY_HEADER, ...lines].join("\r\n")}\r\n`;
 }
 
-function ListExportButton({ rows, totalLoaded }: { rows: EmployeeRow[]; totalLoaded: number }) {
+function ListExportButton({ rows, totalLoaded, phase }: { rows: EmployeeRow[]; totalLoaded: number; phase: Phase }) {
   const empty = rows.length === 0;
   const exportCsv = () => {
     if (typeof URL.createObjectURL !== "function") return;
@@ -421,12 +439,14 @@ function ListExportButton({ rows, totalLoaded }: { rows: EmployeeRow[]; totalLoa
         size="sm"
         outlined
         data-testid="emp-list-export"
-        disabled={empty}
+        disabled={empty || phase !== "ready"}
         onClick={exportCsv}
         title={
-          empty
-            ? "当前已加载 0 人：没有可导出的行。"
-            : `导出当前已加载 ${totalLoaded} 人，不是全量；行序与屏上一致，纯前端生成零新端点。`
+          phase !== "ready"
+            ? `不能导出：${phaseReason(phase)}`
+            : empty
+              ? "当前已加载 0 人：没有可导出的行。"
+              : `导出当前已加载 ${totalLoaded} 人，不是全量；行序与屏上一致，纯前端生成零新端点。`
         }
       >
         导出 CSV
@@ -523,7 +543,7 @@ export function EmployeesModulePage() {
         });
       })
       .catch((err: unknown) => {
-        if (!cancelled) setState(errorState(err));
+        if (!cancelled) setState((prev) => ({ ...errorState(err), items: prev.items }));
       });
     return () => {
       cancelled = true;
@@ -599,7 +619,7 @@ export function EmployeesModulePage() {
           };
         });
       })
-      .catch((err: unknown) => setState(errorState(err)));
+      .catch((err: unknown) => setState((prev) => ({ ...errorState(err), items: prev.items })));
   };
 
   return (
@@ -608,15 +628,21 @@ export function EmployeesModulePage() {
         <div className="flex items-center gap-2">
           <Users className="h-5 w-5 text-white/70" />
           <h1 className="font-mondwest text-xl">数字员工</h1>
-          {state.phase === "ready" ? (
-            <span className="text-sm text-white/50" data-testid="emp-list-count" title="计数与列表同源：同一份服务端返回的行数">
-              {state.items.length}
-            </span>
-          ) : null}
+          <span
+            className="text-sm text-white/50"
+            data-testid="emp-list-count"
+            title={
+              state.phase === "ready"
+                ? "计数与列表同源：同一份服务端返回的行数"
+                : phaseReason(state.phase) ?? undefined
+            }
+          >
+            {state.phase === "ready" ? state.items.length : "—"}
+          </span>
         </div>
         <span className="flex min-w-0 flex-wrap items-center gap-2">
-          <ListCopyButton rows={sortedItems} totalLoaded={state.items.length} />
-          <ListExportButton rows={sortedItems} totalLoaded={state.items.length} />
+          <ListCopyButton rows={sortedItems} totalLoaded={state.items.length} phase={state.phase} />
+          <ListExportButton rows={sortedItems} totalLoaded={state.items.length} phase={state.phase} />
           <Button size="sm" outlined onClick={retry} data-testid="employees-refresh">
           <RefreshCw className="mr-2 h-4 w-4" />
           刷新
@@ -702,9 +728,11 @@ export function EmployeesModulePage() {
         关键字与在职态筛选走服务端真参数（命中数与本页计数同源）；不是「仅在当前已加载 N 人内搜索」的本地过滤。
       </p>
 
+      {/* R69: 四态+分页条统一容器，data-phase 供自动化锁定当前态。 */}
+      <div className="space-y-4" data-testid="emp-list-state" data-phase={state.phase}>
       {state.phase === "loading" ? (
         <Card data-testid="employees-loading">
-          <CardContent className="space-y-2 p-4">
+          <CardContent className="space-y-2 p-4" data-testid="emp-list-state-loading">
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="h-10 animate-pulse rounded bg-white/5" />
             ))}
@@ -714,7 +742,7 @@ export function EmployeesModulePage() {
 
       {state.phase === "denied" ? (
         <Card data-testid="employees-denied">
-          <CardContent className="flex flex-col items-start gap-3 p-5">
+          <CardContent className="flex flex-col items-start gap-3 p-5" data-testid="emp-list-state-denied">
             <ShieldAlert className="h-5 w-5 text-amber-400" />
             <p className="text-sm">员工列表暂不可见</p>
             <p className="text-xs text-white/55">
@@ -730,29 +758,31 @@ export function EmployeesModulePage() {
 
       {state.phase === "error" ? (
         <Card data-testid="employees-error" data-emp-list-page-error="true">
-          <CardContent className="flex flex-col items-start gap-3 p-5">
+          <CardContent className="flex flex-col items-start gap-3 p-5" data-testid="emp-list-state-error">
             <TriangleAlert className="h-5 w-5 text-amber-400" />
             <p className="text-sm">员工列表没能加载出来</p>
             <p className="text-xs text-white/55">{state.message || humanizeStatus(state.status)}</p>
-            <p className="font-mono text-xs text-white/45">
+            <p className="font-mono text-xs text-white/45" data-testid="emp-list-state-rid">
               <RequestIdCopy
                 requestId={state.requestId}
                 fallback="本次请求未记录编号，可复制时间与操作路径反馈"
               />
             </p>
-            <Button size="sm" outlined onClick={retry} data-testid="employees-error-retry">
-              <RefreshCw className="mr-2 h-4 w-4" />
-              重试
-            </Button>
+            <span data-testid="emp-list-state-retry">
+              <Button size="sm" outlined onClick={retry} data-testid="employees-error-retry">
+                <RefreshCw className="mr-2 h-4 w-4" />
+                重试
+              </Button>
+            </span>
           </CardContent>
         </Card>
       ) : null}
 
       {state.phase === "empty" ? (
         <Card data-testid="employees-empty" data-emp-list-empty="true">
-          <CardContent className="flex flex-col items-center gap-3 p-8 text-center">
+          <CardContent className="flex flex-col items-center gap-3 p-8 text-center" data-testid="emp-list-state-empty">
             <Inbox className="h-6 w-6 text-white/40" />
-            <p className="text-sm" data-testid="emp-list-empty-text">{filtered ? "没有匹配的员工" : "还没有数字员工"}</p>
+            <p className="text-sm" data-testid="emp-list-empty-text"><span data-testid="emp-list-state-empty-text">{filtered ? "没有匹配的员工" : "还没有数字员工"}</span></p>
             <p className="text-xs text-white/50">
               {filtered ? "换个关键词或放宽筛选条件后再试。" : "员工创建后会出现在这里。"}
             </p>
@@ -760,6 +790,7 @@ export function EmployeesModulePage() {
               <Button
                 size="sm"
                 outlined
+                data-testid="emp-list-state-clear"
                 onClick={() => {
                   setKeyword("");
                   setDebounced("");
@@ -894,33 +925,50 @@ export function EmployeesModulePage() {
               ))}
             </ul>
             </div>
-            <div className="flex min-w-0 flex-wrap items-center gap-2 border-t border-white/5 px-4 py-3 text-xs" data-testid="emp-list-page">
-              <span
-                data-testid="emp-list-page-count"
-                className="text-white/55"
-                title={state.total === null ? "读口顶层只有 items/nextCursor（实测 200，无 total 键）；按已加载条数推算会撒谎，故不推算。" : undefined}
-              >
-                {state.total === null
-                  ? `总数不可用 · 已显示 ${state.items.length} 人`
-                  : `共 ${state.total} 人 / 已显示 ${state.items.length} 人`}
-              </span>
-              <Button
-                size="sm"
-                outlined
-                data-testid="emp-list-page-more"
-                disabled={!state.nextCursor || state.loadingMore}
-                onClick={loadMore}
-                title={state.nextCursor ? "带服务端游标续取下一页（追加按工号去重）" : "服务端没有给出下一页游标：已到末页。"}
-              >
-                {state.loadingMore ? "加载中…" : "加载更多"}
-              </Button>
-              {state.nextCursor === null && state.items.length > 0 ? (
-                <span data-testid="emp-list-page-end" className="text-white/45">已到末页</span>
-              ) : null}
-            </div>
           </CardContent>
         </Card>
       ) : null}
+
+      {/* R69: 分页条常驻——非 ready 态下「加载更多」以 disabled+原因存在，不隐身。 */}
+      <div className="flex min-w-0 flex-wrap items-center gap-2 px-1 text-xs" data-testid="emp-list-page">
+        <span
+          data-testid="emp-list-page-count"
+          className="text-white/55"
+          title={
+            state.phase !== "ready"
+              ? phaseReason(state.phase) ?? undefined
+              : state.total === null
+                ? "读口顶层只有 items/nextCursor（实测 200，无 total 键）；按已加载条数推算会撒谎，故不推算。"
+                : undefined
+          }
+        >
+          {state.phase !== "ready"
+            ? "总数不可读 · 已显示 — 人"
+            : state.total === null
+              ? `总数不可用 · 已显示 ${state.items.length} 人`
+              : `共 ${state.total} 人 / 已显示 ${state.items.length} 人`}
+        </span>
+        <Button
+          size="sm"
+          outlined
+          data-testid="emp-list-page-more"
+          disabled={state.phase !== "ready" || !state.nextCursor || state.loadingMore}
+          onClick={loadMore}
+          title={
+            state.phase !== "ready"
+              ? `不能续取：${phaseReason(state.phase)}`
+              : state.nextCursor
+                ? "带服务端游标续取下一页（追加按工号去重）"
+                : "服务端没有给出下一页游标：已到末页。"
+          }
+        >
+          {state.loadingMore ? "加载中…" : "加载更多"}
+        </Button>
+        {state.phase === "ready" && state.nextCursor === null && state.items.length > 0 ? (
+          <span data-testid="emp-list-page-end" className="text-white/45">已到末页</span>
+        ) : null}
+      </div>
+      </div>
     </section>
   );
 }
