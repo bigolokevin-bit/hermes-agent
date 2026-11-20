@@ -50,6 +50,7 @@ import { eventTypeChoices } from "./model";
 import type { ListFilters } from "./api";
 import { PAGE_LIMIT, PAGE_SIZE_CHOICES, readPageSize } from "./api";
 import { filterSummaryLineOf, hasFilterSummary } from "./filterSummary";
+import { applyScroll, clearScrollMark, readScrollMark, readScrollY, saveScrollMark, scrollFingerprint } from "./scrollMemory";
 import type { AuditRow } from "./model";
 import { downloadCsv, downloadText, exportName, filteredCsvText, filterSnapshotExportName } from "./csv";
 import {
@@ -74,6 +75,9 @@ import {
  * one — every window choice always sends a real `from`+`to` pair.
  */
 const WINDOW_FILTER_CHOICES = FILTER_WINDOW_CHOICES;
+
+/** audL: the three quick windows, spelled out again inside the custom card. */
+const WINDOW_PRESET_CHOICES = FILTER_WINDOW_CHOICES.filter((item) => item.value !== "custom");
 
 /**
  * aud8: a new question or a new page is a new answer set, so the cursor stack
@@ -189,6 +193,36 @@ export function AuditFilterBar({
                 onChange={(event) => onCustomTo(event.target.value)}
               />
             </label>
+          </div>
+          {/* audL: the custom card carries its own quick presets, because a
+              person who got here by typing instants should be able to leave by
+              one click. These are NOT a second window control: each button is
+              the same setter the quick group above uses, so `?window=` moves,
+              `from`/`to` drop, and one read follows. Nothing here is pressed
+              while the custom range is open — the pressed one lives in the
+              group above, which is what `aria-pressed` on those mirrors. */}
+          <div
+            className="flex min-w-0 flex-wrap items-center gap-2"
+            role="group"
+            aria-label="自定义区间的快捷预设"
+            data-testid="audB-presets"
+            title="这三个与上方时间窗快捷档同源：点一下就离开自定义区间，重读一次，对应的快捷档随之按下"
+          >
+            <span className="min-w-0 text-xs text-muted-foreground">快捷预设</span>
+            {WINDOW_PRESET_CHOICES.map((item) => (
+              <button
+                key={item.value}
+                type="button"
+                data-testid={`audB-preset-${item.value}`}
+                aria-pressed={windowChoice === item.value}
+                className={`h-8 min-w-0 rounded-md border px-2 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
+                  windowChoice === item.value ? "border-primary text-foreground" : "border-border text-muted-foreground hover:bg-muted/40"
+                }`}
+                onClick={() => onWindowChange(item.value)}
+              >
+                {item.label}
+              </button>
+            ))}
           </div>
           {/* audB: the range is a draft until it is applied. Typing two
               instants must not fire a read per keystroke — the question the
@@ -877,9 +911,30 @@ function AuditEventsSurface(): ReactNode {
     null,
   );
 
+  // audM: the question being read, as one string. Navigation state is not in
+  // it, so opening a record is not a new question and the place the list stood
+  // still belongs to the question being read.
+  const fingerprint = scrollFingerprint(params);
+  const lastFingerprint = useRef(fingerprint);
+  const scrollProbe = useRef<HTMLSpanElement | null>(null);
+  // The mark is spent once: applied, then dropped, so a later return to the
+  // same question does not yank the window back to a place nobody left it at.
+  const restoreArmed = useRef(false);
+
+  const say = (name: string, value: string): void => {
+    scrollProbe.current?.setAttribute(name, value);
+  };
+
   const openRow = useCallback(
     (rawId: string | null) => {
       setUnaddressable(rawId === null);
+      // audM: remember where the list stood, and which row was walked into.
+      // A row without an identifier opens no record, so there is no way back
+      // to remember — and a mark nobody can spend is just a stale promise.
+      // audM: the mark is saved by the effect below, on the way INTO any
+      // record — this row, the preview's own link, or a pasted record address.
+      // A row without an identifier opens no record, so nothing is remembered.
+      if (rawId === null) say("data-audl-saved", "这一行没有标识，没有可回去的详情");
       const draft = new URLSearchParams(params);
       draft.delete("id");
       if (rawId === null) draft.delete("detail");
@@ -890,6 +945,80 @@ function AuditEventsSurface(): ReactNode {
     },
     [params, setParams],
   );
+
+  // audM: the way in and the way back, for every path into a record — this
+  // row's own handle, the preview's 「打开详情」 link, or a pasted record
+  // address. The mark is saved when a record becomes the thing being read, and
+  // spent when the list is the thing being read again.
+  const previousSelected = useRef<string | null>(selected);
+  const mountedWithRecord = useRef(selected !== null);
+  useEffect(() => {
+    if (lastFingerprint.current !== fingerprint) {
+      // A different question is a different place. The mark left behind is
+      // dropped, never applied here: 「换个筛选还回到刚才的滚动条」 is how a
+      // list starts lying about where a record is.
+      clearScrollMark(lastFingerprint.current);
+      say("data-audl-cleared", lastFingerprint.current);
+      lastFingerprint.current = fingerprint;
+      restoreArmed.current = false;
+    }
+    if (mountedWithRecord.current) {
+      // This load started inside a record — a pasted address or a full page
+      // navigation from the preview's link. The list was never on screen in
+      // this load, so any mark is somebody else's position: drop it and say
+      // so instead of pretending a return has a place to go back to.
+      mountedWithRecord.current = false;
+      clearScrollMark(fingerprint);
+      restoreArmed.current = false;
+      say("data-audl-cleared", "整页加载直接落在记录上，这一页没有离开过列表");
+      return;
+    }
+    const was = previousSelected.current;
+    previousSelected.current = selected;
+    if (selected && !was) {
+      const standing = readScrollY();
+      saveScrollMark(fingerprint, { y: standing, rowKey: selected });
+      restoreArmed.current = true;
+      say("data-audl-saved", `${standing}|${selected}`);
+      return;
+    }
+    const wentBack = was !== null && selected === null;
+    if (!wentBack) return;
+    if (params.get("event")) {
+      // The deep link owns its own arrival: it locates a row, and a window
+      // thrown back to an old offset would fight that.
+      clearScrollMark(fingerprint);
+      restoreArmed.current = false;
+      say("data-audl-restored", "深链定位优先，不回到旧位置");
+      return;
+    }
+    if (!restoreArmed.current) return;
+    // The rows have to be on screen before a position or a focus means
+    // anything; an empty or failed answer keeps the person where they are.
+    if (list.phase !== "ready" || visibleRows.length === 0) return;
+    const mark = readScrollMark(fingerprint);
+    restoreArmed.current = false;
+    if (!mark) {
+      say("data-audl-restored", "没有留下可回去的位置");
+      return;
+    }
+    clearScrollMark(fingerprint);
+    applyScroll(mark.y);
+    say("data-audl-restored", String(mark.y));
+    if (!mark.rowKey) {
+      say("data-audl-focus", "留下的行标识为空，焦点留在原处");
+      return;
+    }
+    const node = document.querySelector<HTMLElement>(`[data-audk-row='${mark.rowKey}']`);
+    if (node) {
+      // The focus is what moves the roving stop (the row answers it with its
+      // own onFocus), so there is no second copy of that state to keep in step.
+      node.focus();
+      say("data-audl-focus", mark.rowKey);
+    } else {
+      say("data-audl-focus", `${mark.rowKey} 不在这一页`);
+    }
+  }, [fingerprint, list.phase, params, selected, visibleRows.length]);
 
   const closeDetail = useCallback(() => {
     setUnaddressable(false);
@@ -1420,14 +1549,33 @@ function AuditEventsSurface(): ReactNode {
         {restoredLine}
       </p>
 
+      {/* audM: a probe line, not prose. It carries what was saved when a
+          record was opened, what the way back restored, which row got the
+          focus, and which question's mark was dropped for being another
+          question's place. Empty attributes mean nothing happened — the
+          restore never claims a position it did not apply. */}
+      <span
+        aria-hidden="true"
+        data-testid="audL-scroll"
+        ref={scrollProbe}
+        data-audl-fingerprint={fingerprint}
+      />
+
       <AuditUrlFilterChips actor={actor} resource={resource} onClear={clearUrlFilter} />
 
-      {/* audG: the question itself, shareable. Hidden while nothing has been
-          read yet (loading) and while the ledger is closed (denied): a summary
-          of a question nobody was able to answer would be a claim about it. */}
-      {customInvalid || list.phase === "ready" || list.phase === "empty" || list.phase === "error" ? (
-        <FilterSummaryCopy line={filterSummary} available={hasFilterSummary(summaryInput)} />
-      ) : null}
+      {/* audL: the summary control is PERMANENT, and that is its mount
+          condition, written where a person and a probe can both read it. It is
+          off (with the reason on the button) when the address carries no
+          reading question at all — the default quick window alone is nothing to
+          hand over — and it is live in every state of the ledger, including
+          loading and denied: the question this page asked exists before the
+          answer does, and a refused read is exactly what a ticket needs. */}
+      <FilterSummaryCopy
+        line={filterSummary}
+        available={hasFilterSummary(summaryInput)}
+        phase={list.phase}
+        pending={customInvalid}
+      />
 
       {/* The window check lives on the list too, and it says exactly one of
           four things: asking, the real counts, 本环境未启用 + why + where, or a

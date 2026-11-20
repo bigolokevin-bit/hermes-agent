@@ -3093,3 +3093,45 @@ Untested: the four-state body lengths are jsdom readings, not browser pixels; th
 - 新增 testid：`audK-list` `audK-row-<key>`（另用 `data-audk-row` / `data-audk-roving` / `data-audk-open` 承载停靠点与展开态）。
 - 门禁：vitest `src/modules/audit` **exit 0**（**15** files / **307** tests = 基线 15/299 + 8 条键盘全链路用例）；`pnpm exec tsc -b . --noEmit` 共 **67** errors（= 本机当前地板，改动前后同数、增量 0）且 `modules/audit` **0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings。
 - 活体腿沿用已知不可用实测（未重跑）：9122 无身份头 **401 `console.unauthenticated`**、8092 **404 `console.not_found`**；键盘链路与请求计数证据全部为 jsdom 用例（fireEvent keydown + activeElement + tabIndex 分布），不依赖浏览器、未假装活体。
+
+## Audit filter copy mount and range presets (audL, 2026-11-20, base 5630ffce)
+
+- 写域：`web/src/modules/audit/{AuditEventsModulePage.tsx,states.tsx,AuditEventsModulePage.test.tsx}` + 本节（3 个源文件，≤15 文件/≤1500 行）。App.tsx / shell / routes / registry / package·lock / web scripts / ops 未碰。基线：显式 refspec fetch 后 merge（wave-20）已在 HEAD，上游对 modules/audit 零改动，porc=0。
+- **① audG 挂载条件：改为常驻（工单推荐方案）**。此前是「读到东西才挂」，两轮探针因此找不到控件；现在 `audG-filter-copy-block`/`audG-filter-copy` 在事件列表面上**恒在**，可用性只看地址，不看台账脸色：
+  - 挂载条件（原文已写进按钮 `title` 与卡内 `audG-filter-copy-rule` 两处）：地址里带任一读法即可复制 —— 自定义区间（`window=custom`）、事件类型 `?type=`、操作者 `?actor=`、资源 `?resource=`、每页条数 `?limit=`（非默认档）、或已在第 2 页以后（`?cursor=` 栈非空）；这些都空时（只剩默认「最近 7 天」）→ `disabled` + `aria-disabled=true` + title 以「当前没有筛选条件可复制」开头并补一句为什么（沿用 audG 既有那句锚，另加「控件常驻，只是没内容可给」），点它不写剪贴板。
+  - 与状态的关系明确登记：**加载中 / 空集 / 失败 / 403 被拒都照样可复制**（前提是地址里有读法）——摘要是「这一页问了什么」，问题在回答之前就存在；被拒的那一条恰恰是工单最需要转出去的问题，其 title 会带上当前状态名（正在读取 / 该条件下无事件 / 读取没有完成 / 暂时无法查看审计事件）。
+  - 两种情况读数（用例 `the control is permanent…` 逐档断言 present/disabled）：`ready-无筛选` → `{present:true, disabled:true}`；`loading-有筛选`、`ready-有筛选`、`empty-有筛选`、`denied-有筛选` → 全部 `{present:true, disabled:false}`。另一条用例 `a denied ledger still hands out the question that was refused` 在 403 面板后点复制，剪贴板收到 `…actorId=employee-api…` 且 `操作者：employee-api` 在文本里，`urls()` 长度不变（复制不补发请求）。
+  - 既有用例的同步改动（口径升级必然触碰，testid 与结构零破）：`loading/denied 无控件` 那条旧断言改写为常驻断言；无筛选那条的 title 断言由 `toBe("当前没有筛选条件可复制")` 改为 `toContain(同一句)`（句子仍在，只是后面多了原因）。
+- **② audB 快捷预设**：自定义区间卡内新增 `audB-presets` 组（`role="group"` + aria-label + title 写明同源），三个真按钮 `audB-preset-24h`/`-7d`/`-30d`，`onClick` 直接调用**同一个 `onWindowChange`**（与上方快捷档 `aud01-filter-window-*` 同一 setter、同一 `?window=` 事实源，不是第二套时间控件）。读数：自定义里点 `audB-preset-24h` → 地址 `window=24h` 且 `from/to` 被清掉、`type` 等业务键保留、重取**恰一次**（`/agent-api/api/audit?` 计数 before+1）、镜像一致（`aud01-filter-window-24h` 转 `aria-pressed=true`、`-custom` 转 false，预设行随自定义卡一起消失，故 `audB-preset-24h` 此时不存在）；点 `audB-preset-30d` 时游标栈被丢弃、`aud2-page` 从「第 3 页」回到「第 1 页」、同样恰 1 次；自定义卡打开时三个预设都是 `aria-pressed=false`（此刻按下的是上方「自定义」），这句话在组 title 里写明。
+- **不变式**：`?window=custom` 直达仍成立（冷挂载 `window=custom&from=&to=` 回填 09:00/10:30、`aud01-filter-window-custom` pressed、预设 3 个、只 1 次读）；反向/半填区间锚不变（`aud01-custom-hint` 与 `audB-range-error`「开始时间不能晚于结束时间」都在，应用被拒不发请求，预设能一步逃出未完成区间）；已经在档上再点同一档 = **0 次**重发（地址没变就不重问，用例锁）。零额外请求：所有预设/复制/镜像用例都贴了 `listReads()` 计数，复制腿贴 `urls()` 逐字长度不变。
+- **零破**：`aud01*`、`aud2*`–`audK*` 全家族与页级 `agent-v2-page-audit*`、`agent-v2-page-audit-detail*` 未改名未删节点；起算 307 条一条未红（现 314 = 307 + 7）。四态、每态 rid、403≡404 同体、零写入口、三档结构（预设与快捷档同族同 token：`h-8 min-w-0 rounded-md border … focus-visible:outline-2`，未新增颜色；规则行 `basis-full break-words`）无回退。浏览器像素三档仍未走查（活体腿不可用），不声称已验。
+- 新增 testid：`audB-presets` `audB-preset-24h` `audB-preset-7d` `audB-preset-30d` `audG-filter-copy-rule`（`audG-filter-copy`/`-status`/`-fallback`/`-block` 原样）。
+- 门禁：vitest `src/modules/audit` **exit 0**（**15** files / **314** tests）；`pnpm exec tsc -b . --noEmit` 共 **69** errors（= wave-20 后本机地板，改动前后同数、增量 0）且 `modules/audit` **0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings。
+- 活体腿沿用已知不可用实测（未重跑）：9122 无身份头 **401 `console.unauthenticated`**、8092 **404 `console.not_found`**；①②两处读数均为 jsdom 腿（present/disabled 分布、aria-pressed 镜像、分前缀请求计数），未假装活体。
+
+## Audit audL addendum: probe readings for the two legs (2026-11-20, same commit)
+
+- ① 常驻后的两档实读（jsdom 逐档断言 present/disabled，`audG-filter-copy`）：`window=7d` 无任何口径 → `{present:true, disabled:true}`，title 首句仍是「当前没有筛选条件可复制」，卡内规则行 `audG-filter-copy-rule` 同时在屏；`window=7d&type=task.created` 在 **加载中 / 已读到 / 空表 / 403 被拒** 四档都是 `{present:true, disabled:false}`。403 那一档点复制，剪贴板收到含 `actorId=employee-api` 与「操作者：employee-api」的一行，`urls()` 长度不变。
+- ② 预设的两档实读：自定义卡里 `audB-preset-24h/7d/30d` 三个都是 `BUTTON` 且此刻 `aria-pressed=false`（按下的是上方「自定义」，组 title 写明同源关系）；点 `audB-preset-24h` → `window=24h`、`from/to` 清除、`type` 保留、上方 `aud01-filter-window-24h` 转 `true`、`-custom` 转 `false`、分前缀计数 `+1`；点 `audB-preset-30d`（带 `cursor=cur_page1&cursor=cur_page2` 的第 3 页）→ 游标栈清空、`aud2-page` 回「第 1 页」、计数 `+1`；已在 `7d` 时再点 `aud01-filter-window-7d` → 计数 `+0`（地址没变就不重问）。
+
+## Audit list scroll and expand restore (audM-scroll, 2026-11-20, base abd1cd6a)
+
+- 写域：`web/src/modules/audit/{scrollMemory.ts,scrollMemory.test.ts,AuditEventsModulePage.tsx,AuditEventsModulePage.test.tsx}` + 本节（4 文件，≤15 文件/≤1500 行：diff 约 +470）。App.tsx / shell / routes / registry / package·lock / web scripts / ops 未碰。基线：显式 refspec fetch + merge 已由总控完成（tip 957704be 已在 HEAD 内，上游对 modules/audit 零改动），porc=0。
+- **编号口径**：本单工单点名新增前缀 `audL-*`（上一单 audL 的新增只占了 `audB-preset-*` 与 `audG-filter-copy-rule`，`audL-*` 本身未占用），故照工单用 `audL-*` 前缀，节名用 `audM-scroll` 区分本轮语义。
+- **既有行为先探针、缺什么补什么**：展开态**不缺**——`?preview=` 自 aud8 起就落地址，`返回列表`（aud8 的 `aud8-back-to-list`，走 `navigate(-1)`）把条目恢复原样，本轮用例只是把这层锁死：返回后 `aud6-preview-evt_7c1f2a3b4d5e6f70` 在屏、`aud6-toggle-evt_7c1f2a3b4d5e6f70` 的 `aria-expanded="true"`、地址仍含 `preview=`。缺的是**滚动位**与**焦点归还**（地址装不下，浏览器只在同源整页返回时自己管一次），本轮补的就是这两件，没有重复造第三套展开态。
+- **滚动位**：新增 `scrollMemory.ts`，sessionStorage 键 `audm-scroll:<读法指纹>`，值 `{y, rowKey}`。指纹= `window|from|to|type|actor|resource|limit|cursor 栈`，**故意不含** `detail`/`preview`/`event`/`tech`：打开一条记录不是换了问题，否则永远没有可回去的位置。存储不可用/值坏/负数/非数字一律当作「没有位置」，绝不臆造（`scrollMemory.test.ts` 逐条锁）。
+- **存与取的时机**（`AuditEventsSurface` 内一处 effect，覆盖全部入径：行按钮 `openRow`、预览里的「打开详情」、粘进来的记录地址）：`selected` 由空变有 → 存 `readScrollY()` + 行标识；由有变空 → 花掉一次（`applyScroll(y)` + `document.querySelector("[data-audk-row=<key>]").focus()`，停靠点由行自己的 `onFocus` 跟着走，不再存第二份状态）→ `clearScrollMark` 记账一次只用一次。
+- **两组读数**（jsdom 替身口径：`window.scrollY` 设为已知值、`window.scrollTo` 换成记账 spy；读数同时落在 `audL-scroll` 的 `data-audl-saved / -restored / -focus / -cleared / -fingerprint` 属性上）：
+  - ① `?window=7d&preview=evt_7c1f2a3b4d5e6f70`，scrollY=500 → 进详情：`data-audl-saved="500|evt_7c1f2a3b4d5e6f70"`、指纹 `window=7d|from=|to=|type=|actor=|resource=|limit=|cursor=`、此时 `scrollTo` 调用 0 次（存不动窗口）；点「返回列表」→ `scrollTo` 实收 `[[0,500]]`、`data-audl-restored="500"`、`data-audl-focus="evt_7c1f2a3b4d5e6f70"`、`document.activeElement` 的 `data-audk-row` 就是这一行；再进（scrollY 改 120）再回 → `scrollTo` 变 `[[0,500],[0,120]]`、`data-audl-restored="120"`（记号一次花一次，不重复甩人回旧位置）。
+  - ② 403 那一档：详情读回 403 `console.forbidden`，「返回列表」后 `scrollTo=[[0,420]]`、`actor=employee-api` 与 `preview=` 都还在、预览面板仍在 —— 被拒的记录不吞位置。
+- **边界读数**：
+  - 换筛选：记录打开中点 `aud01-filter-window-24h` → `data-audl-cleared` 等于旧指纹、`sessionStorage` 里那条键为 `null`、`scrollTo` 仍 0 次（别的问题的位置不甩到这一页）；顺带实测登记：`返回列表` 走 aud8 的「记录是它自己的一条历史条目」语义，会落回打开记录时那一问（`window=7d`），改档写进的是被 replace 的记录条目（可分享/可刷新仍带 `window=24h`）——本轮不破该契约，只如实登记。
+  - 换页：`aud01-load-more` 后同样清（`data-audl-cleared`=旧指纹、键为 null）；清空操作者（`aud8-actor-clear`）同样清，且 `sessionStorage.length===0`。
+  - `?event=` 深链：`/audit?window=7d&event=evt_8d2e3f4051627384` 定位展开后，进详情再返回 → `scrollTo` 0 次、`data-audl-restored="深链定位优先，不回到旧位置"`，行仍由深链自己展开（aud9 腿不回归）。
+  - 整页直接落在记录上（粘 `/audit?window=7d&detail=…`，tab 里留有旧记号）：本轮明确丢弃旧记号（`data-audl-cleared="整页加载直接落在记录上，这一页没有离开过列表"`、键为 null、`scrollTo` 0 次）——这一趟列表从没上过屏，位置不是它可以承诺的东西；同一趟里再走一次「进详情→返回」则正常恢复 `[[0,500]]`。
+  - 无标识行（`{action, occurredAt, outcome}`）：`openRow(null)` 走 `aud02-detail-unaddressable`，不存记号（`data-audl-saved="这一行没有标识，没有可回去的详情"`、`sessionStorage.length===0`）。
+- **零额外请求**：整趟「进详情→返回」`urls()` 里 `/agent-api/api/audit?` 恰 1 条、`audit-detail` 恰 1 条（记录本体该发的）、`audit-verify` 0 条；返回这一步 0 条新增（用例按前缀过滤逐条比对，并断言去掉 detail 读后与进详情前的 `urls()` 数组完全相等）。存/取/清记号本身只碰 sessionStorage，不发请求。
+- **零破**：`aud01*`、`aud2*`–`audL*`（含 audA 焦点/精度腿、audK 漫游停靠点与 `data-audk-row`、aud8 `aud8-back-to-list`、audB 预设、audG 摘要、audL 常驻探针）与页级 `agent-v2-page-audit*` 未改名未删节点；起算 15 files/314 全绿（现 16 files/330 = 314 + 16）。四态、每态 rid、403≡404 同体、零写入口无回退；新增探针 span 是 `aria-hidden` 空 span，屏幕文字与三档布局未受影响（浏览器像素三档仍未走查，见下）。
+- 新增 testid：`audL-scroll`（属性 `data-audl-fingerprint/-saved/-restored/-focus/-cleared`）。
+- 门禁：vitest `src/modules/audit` **exit 0**（**16** files / **330** tests）；`pnpm exec tsc -b . --noEmit` 共 **69** errors（= wave-20 后本机地板，改动前后同数、增量 0）且 `modules/audit` **0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings（中途两条新警告已消：effect 里 `setRovingKey` 改为让行的 `onFocus` 自己带走停靠点；`openRow` 依赖里多余的 `fingerprint` 移除）。
+- 活体腿沿用已知不可用实测（未重跑）：9122 无身份头 **401 `console.unauthenticated`**、8092 **404 `console.not_found`**。滚动位读数是 jsdom 替身口径（scrollY 设定值 + scrollTo spy + 探针属性），**不是**真浏览器 scrollY 实测；真浏览器里这两个值要一次带会话的活体腿才能贴，本轮未假装。
