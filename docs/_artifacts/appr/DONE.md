@@ -926,3 +926,10 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 测试：usageApi 替身按 from/to 窗长（==86400000→day 腿）分腿；既有用例腿数 3→4；新 2 用例=①两条 run-stats URL from/to 匹配完整 ISO 正则且不含 from=YYYY-MM&（月末跨月边界另测）②vi.spyOn(Date,"now") 固定到 2026-12-31T20:00Z（BJT 2027-01-01 04:00）→month 腿 from=2027-01-01T00:00:00.000Z to=2027-02-01T00:00:00.000Z（12 月翻年边界）。定向 employee-detail 48 passed；tsc --noEmit 本模块 0 error；全量 **137 files/1603 passed**（基线 1601+2）。
 - 口径修正（本域事实）：今日运行数与本月运行数各取自己窗口 totals.runs（原桶匹配语义废除）；runsTitle 缺值句同步改「今日窗/本月窗没有返回 runs 合计：缺值不作 0」；asOf/成本列口径零改动。
 - 未测项：9122 禁重建（R45 取证代次），页面活体四态读数待修复合入后代次；本轮权威=活体 API 双腿 200 + jsdom 48 用例。
+
+## R63 — /employees 行内预览（emp-row-preview-*）
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console → tip 053da5c4（代次 053da5c4，wave-18 已含）；toplevel ✓ porc=0。
+- 实现（web/src/modules/employees/EmployeesModulePage.tsx）：行 li 内 Link 之外新增独立 toggle 按钮（emp-row-preview-toggle-<id>，aria-expanded，ChevronRight rotate-90，onClick 单键翻转，onKeyDown Escape 收起且焦点即在本钮=焦点回原行）；展开体 RowPreview（emp-row-preview-<id>，role=region）六字段=姓名（缺「该字段未返回」+title）/工号短码（员工 · 8位码，title=全 id）/在职态（lifecycleLabel，未知→待核实，title=原始值）/角色职称（row.title 缺=该字段未返回）/最近活跃（beijingMinute BJT 到分，缺=该字段未返回）/请求编号（RequestIdCopy requestId=null → fallback「请求编号：该字段未返回」——列表读口行无 requestId 键，实测行 keys=[employeeId,tenantId,name,title,lifecycleState,ownerUserId,updatedAt,department,enrichment]）。页级 previewKey 单 state=同时仅一行；URL 零改动（不触 patchParams）；刷新回收起（React state 天然）。零额外请求=只读已有行对象。
+- 测试（EmployeesModulePage.test.tsx 新 describe 2 用例）：①展开读数+fetchJSON 计数前后不变锁+aria-expanded false→true+Escape（先 toggle.focus()——jsdom click 不移动焦点，键盘场景焦点本在钮上）→收起+activeElement=toggle；②同时仅一行+URL data-last-search 不变+缺 title 行「该字段未返回」。定向 employees 2 files/18 passed。
+- 坑（本笔实证）：python rfind("});") 追加 describe 会把新块插进最后一个 describe 内部并吞掉其收尾——插入点必须在文件最末 `});` 之后，或补回被吞的 describe 收尾（本次修复=anchor `});\n\nconst twoRows` 处补一行 `});`）。
+- 验证：定向 18 passed；tsc 本域零红；assert-ia 两模式 exit 0；全量 1671 passed 0 失败（merge 后基线含他人用例）。三档横溢=形态学报（toggle shrink-0 在 flex 行外列、preview dl grid minmax(0)+truncate，jsdom 不可测三档）。9122==053da5c4 代次活体展开读数待并入后代次（禁重建）。

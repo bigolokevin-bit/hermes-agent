@@ -368,3 +368,73 @@ describe("R62 column sorting (emp-list-sort-*)", () => {
     expect(rowOrder()).toEqual(["emp_CCCC3333DDDD4444", "emp_AAAA1111BBBB2222", "emp_BBBB2222CCCC3333"]);
   });
 });
+
+const twoRows = {
+  items: [
+    ...rowsBody.items,
+    {
+      employeeId: "emp_CCCC3333DDDD4444EEEE5555",
+      name: "阿朝",
+      lifecycleState: "active",
+      ownerUserId: "2",
+      updatedAt: "2026-11-18T01:30:00.000Z",
+      department: "增长组",
+      enrichment: null,
+    },
+  ],
+};
+
+describe("R63 inline row preview (emp-row-preview-*)", () => {
+  it("expands from the row data alone — zero extra requests, honest fields, Esc refocuses", async () => {
+    fetchJSON.mockImplementation(() => Promise.resolve(twoRows));
+    await render("/employees");
+    const callsBefore = fetchJSON.mock.calls.length;
+    const toggle = q("emp-row-preview-toggle-emp_217A91BA995044DFBB3E2E940B") as HTMLButtonElement;
+    expect(toggle).toBeTruthy();
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    await act(async () => {
+      toggle.click();
+    });
+    expect(fetchJSON.mock.calls.length).toBe(callsBefore); // 禁额外请求
+    const preview = q("emp-row-preview-emp_217A91BA995044DFBB3E2E940B");
+    expect(preview).toBeTruthy();
+    expect(preview.textContent).toContain("小鲤");
+    expect(preview.textContent).toContain("员工 · 217A91BA");
+    expect(preview.textContent).toContain("待核实"); // weird_state → 待核实，title 带原值
+    expect(preview.textContent).toContain("内容编辑");
+    expect(preview.textContent).toContain("2026-11-17 13:52"); // BJT 到分
+    expect(preview.textContent).toContain("请求编号：该字段未返回");
+    expect(preview.textContent).not.toContain("emp_217A91BA995044DFBB3E2E940B "); // 屏上文本不铺裸全 id
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    // Esc 收起且焦点回原钮（键盘场景：焦点本就在钮上）
+    toggle.focus();
+    await act(async () => {
+      toggle.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    expect(q("emp-row-preview-emp_217A91BA995044DFBB3E2E940B")).toBeNull();
+    expect(document.activeElement).toBe(toggle);
+  });
+
+  it("at most one row is open; the URL never moves; a missing title states 该字段未返回", async () => {
+    fetchJSON.mockImplementation(() => Promise.resolve(twoRows));
+    const searchBefore = document.body.getAttribute("data-last-search");
+    await render("/employees");
+    const t1 = q("emp-row-preview-toggle-emp_217A91BA995044DFBB3E2E940B") as HTMLButtonElement;
+    const t2 = q("emp-row-preview-toggle-emp_CCCC3333DDDD4444EEEE5555") as HTMLButtonElement;
+    await act(async () => {
+      t1.click();
+    });
+    expect(q("emp-row-preview-emp_217A91BA995044DFBB3E2E940B")).toBeTruthy();
+    await act(async () => {
+      t2.click();
+    });
+    expect(q("emp-row-preview-emp_217A91BA995044DFBB3E2E940B")).toBeNull(); // 同时仅一行
+    const p2 = q("emp-row-preview-emp_CCCC3333DDDD4444EEEE5555");
+    expect(p2).toBeTruthy();
+    expect(p2.textContent).toContain("该字段未返回"); // 阿朝无 title
+    expect(p2.getAttribute("title") ?? document.body.textContent).toBeTruthy();
+    expect(document.body.getAttribute("data-last-search")).toBe(searchBefore ?? ""); // URL 零改动
+    expect(document.body.getAttribute("data-last-search")).toBe("");
+  });
+});
+

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { ArrowDown, ArrowUp, ArrowUpDown, Inbox, RefreshCw, Search, ShieldAlert, TriangleAlert, Users } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight, Inbox, RefreshCw, Search, ShieldAlert, TriangleAlert, Users } from "lucide-react";
 import { Badge, Button, Card, CardContent } from "@nous-research/ui";
 
 import { RequestIdCopy } from "@/components/RequestIdCopy";
@@ -225,6 +225,62 @@ function errorState(err: unknown): State {
   };
 }
 
+/** R63: a missing field is stated, never invented. */
+const FIELD_MISSING = "该字段未返回";
+
+/** R63: inline row preview — built only from the list row already loaded,
+ * so expanding never fires a request. Same shape as apv9's preview. */
+function RowPreview({ row }: { row: EmployeeRow }) {
+  const missing = (label: string) => `${label}：${FIELD_MISSING}`;
+  return (
+    <div
+      data-testid={`emp-row-preview-${row.employeeId}`}
+      role="region"
+      aria-label="行内预览"
+      className="border-t border-white/5 px-4 pb-3 pt-2 text-xs"
+    >
+      <dl className="grid min-w-0 grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="flex min-w-0 gap-1.5">
+          <dt className="shrink-0 text-white/40">姓名</dt>
+          <dd className="min-w-0 truncate" title={row.name?.trim() ? undefined : "列表读口没有回传该字段。"}>
+            {row.name?.trim() ?? FIELD_MISSING}
+          </dd>
+        </div>
+        <div className="flex min-w-0 gap-1.5">
+          <dt className="shrink-0 text-white/40">工号短码</dt>
+          <dd className="min-w-0 truncate font-mono" title={row.employeeId}>
+            员工 · {shortCode(row.employeeId)}
+          </dd>
+        </div>
+        <div className="flex min-w-0 gap-1.5">
+          <dt className="shrink-0 text-white/40">在职态</dt>
+          <dd className="min-w-0 truncate" title={row.lifecycleState?.trim() ? `原始值：${row.lifecycleState}` : "列表读口没有回传该字段。"}>
+            {lifecycleLabel(row.lifecycleState)}
+          </dd>
+        </div>
+        <div className="flex min-w-0 gap-1.5">
+          <dt className="shrink-0 text-white/40">角色/职称</dt>
+          <dd className="min-w-0 truncate" title={row.title?.trim() ? undefined : "列表读口没有回传该字段。"}>
+            {row.title?.trim() ?? FIELD_MISSING}
+          </dd>
+        </div>
+        <div className="flex min-w-0 gap-1.5">
+          <dt className="shrink-0 text-white/40">最近活跃</dt>
+          <dd className="min-w-0 truncate font-mono" title={beijingMinute(row.updatedAt) ? "口径：updatedAt，北京时间到分。" : "列表读口没有回传该字段。"}>
+            {beijingMinute(row.updatedAt) ?? FIELD_MISSING}
+          </dd>
+        </div>
+        <div className="flex min-w-0 gap-1.5">
+          <dt className="shrink-0 text-white/40">请求编号</dt>
+          <dd className="min-w-0">
+            <RequestIdCopy requestId={null} fallback={missing("请求编号")} />
+          </dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
+
 export function EmployeesModulePage() {
   const [params, setParams] = useSearchParams();
   const forced = params.get("state");
@@ -237,6 +293,9 @@ export function EmployeesModulePage() {
   const [debounced, setDebounced] = useState(q);
   const [reload, setReload] = useState(0);
   const [state, setState] = useState<State>({ phase: "loading", items: [], status: 0 });
+  // R63: at most one row carries the inline preview (page-local state:
+  // the URL is untouched and a reload collapses everything back).
+  const [previewKey, setPreviewKey] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebounced(keyword.trim()), 300);
@@ -526,11 +585,29 @@ export function EmployeesModulePage() {
             <ul className="divide-y divide-white/5" data-testid="emp-l-list" data-emp-list-rows="true">
               {sortedItems.map((row) => (
                 <li key={row.employeeId} data-testid={`employees-row-${row.employeeId}`}>
+                  <div className="flex min-w-0 items-stretch">
+                    <button
+                      type="button"
+                      data-testid={`emp-row-preview-toggle-${row.employeeId}`}
+                      aria-expanded={previewKey === row.employeeId}
+                      aria-label={`行内预览：${displayName(row)}`}
+                      title="就地展开预览（不跳转、不产生新请求；Esc 或再点收起）"
+                      className="flex shrink-0 items-center border-r border-white/5 px-2 text-white/40 hover:text-white/80 focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/60"
+                      onClick={() => setPreviewKey((k) => (k === row.employeeId ? null : row.employeeId))}
+                      onKeyDown={(e) => {
+                        if (e.key === "Escape") {
+                          e.preventDefault();
+                          setPreviewKey(null); // focus already sits on this button
+                        }
+                      }}
+                    >
+                      <ChevronRight className={`h-3.5 w-3.5 transition-transform ${previewKey === row.employeeId ? "rotate-90" : ""}`} />
+                    </button>
                   <span data-testid={`emp-l-row-${row.employeeId}`} className="contents">
                   <Link
                     to={`/employees/${encodeURIComponent(row.employeeId)}`}
                     data-testid={`emp-l-name-link-${row.employeeId}`}
-                    className="grid grid-cols-1 gap-1 px-4 py-3 hover:bg-white/5 md:grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)_minmax(0,0.7fr)_minmax(0,0.7fr)_minmax(0,1fr)_minmax(0,0.6fr)_minmax(0,0.8fr)] md:items-center md:gap-2"
+                    className="grid min-w-0 flex-1 grid-cols-1 gap-1 px-4 py-3 hover:bg-white/5 md:grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)_minmax(0,0.7fr)_minmax(0,0.7fr)_minmax(0,1fr)_minmax(0,0.6fr)_minmax(0,0.8fr)] md:items-center md:gap-2"
                   >
                     <span className="min-w-0">
                       <span className="block truncate text-sm">{displayName(row)}</span>
@@ -568,6 +645,8 @@ export function EmployeesModulePage() {
                     </span>
                   </Link>
                   </span>
+                  </div>
+                  {previewKey === row.employeeId ? <RowPreview row={row} /> : null}
                 </li>
               ))}
             </ul>
