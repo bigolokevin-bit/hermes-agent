@@ -2175,3 +2175,19 @@ built /private/tmp/health-r38/index.html
 - DOM（1440/1280/375，skills+tools）：body/page 均等于视口；skills `capabilities-skills-a1-name-asc-20261120-1139.csv`，tools `capabilities-tools-default-name-asc-20261120-1139.csv`；预览 title 四要素齐全；导出按钮可用、搜索可用。
 - 单测锁定：skills `?q=a1&sort=name&dir=asc` 预览→下载同名→点排序为 desc 预览/下载更新，fetch 1→1；tools `?q=网页` 折叠为 default，排序 desc 后预览/下载更新，fetch 计数不变；csv 单测覆盖 tab/q/sort/dir、中文/空格/冒号折叠、大小写与 BJT。
 - 边界：只改 `modules/capabilities|skills|tools/**` + 本 DONE；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未安装依赖；无 force/amend/--no-verify。
+
+## R77 / asOf 三态回归护栏（纯测试，2026-11-20）
+- 任务：新增 `web/src/modules/health/asof.presentation.test.ts`，只加测试，不改产品行为；基线 `38cd088b`（章面 `a5832d15` / 代次 `60a4a429`，merge 已 up to date）。
+- 回归点：
+  - 六个顶层别名 `asOf/as_of/collectedAt/collected_at/generatedAt/generated_at` 均输出同一北京时间到分，`readHealth`、`readSystemHealth`、`topLevelIsoAsOf`、`readTopAsOf` 的 value/title 逐字相等。
+  - 空串、`2026-13-40`、无时区裸日期、缺键：`—`，title 恰为 `上游没带采集时刻，不用本机时间顶替`；假时钟 2031 下不混入当前时间。
+  - 未来数据 `2031-03-04T00:00:00Z` 显示 `2031-03-04 08:00`，不隐藏；假时钟 2031-06-06 时屏上仍是数据日期，不出现本机时钟值。
+  - `asOfSource=bff-read-time` 只在 title；正文（ver5/sys3/sys6/sys8/cap7）不含该词。
+  - 载体覆盖：ver5 `ver5-health-asof`、sys3 `sys3-asof`、sys6 `sys6-asof-health`、sys8 `sys8-asof-health`、cap7 `cap7-detail-asof`；同一 helper title 逐字一致。
+  - 请求计数：ver5 1 次（health 优先，不回落 version）；sys3 1 次；HealthPage 4 次（health + 3 探针）；cap7 纯组件 0 次。
+- 验证原始 stdout：
+  - `npx vitest run src/modules/health/asof.presentation.test.ts` → 1 file / 5 tests passed。
+  - `npx vitest run src/modules/health src/modules/version` → 9 files / 69 tests passed。
+  - `npx vitest run` → **153 files / 2018 tests passed**。
+  - `tsc -b . --noEmit` → exit 2，均为基础 approvals/employee-detail/employees 旧错；本文件 0 错。
+- 边界：仅新增测试文件 + 本 DONE；未改产品代码、App/shell/routes/registry/package·lock/web-scripts/ops；未 install/main merge/9122 rebuild；未引工作树 entry/sha。
