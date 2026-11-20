@@ -2191,3 +2191,15 @@ built /private/tmp/health-r38/index.html
   - `npx vitest run` → **153 files / 2018 tests passed**。
   - `tsc -b . --noEmit` → exit 2，均为基础 approvals/employee-detail/employees 旧错；本文件 0 错。
 - 边界：仅新增测试文件 + 本 DONE；未改产品代码、App/shell/routes/registry/package·lock/web-scripts/ops；未 install/main merge/9122 rebuild；未引工作树 entry/sha。
+
+## R78｜/capabilities?tab=version 复制版本信息（ver-copy）
+
+- 基线：`a5832d15` / 代次 `60a4a429`；显式 refspec fetch 后 merge 为 Already up to date，无 reset。
+- 实现：新增 `web/src/modules/version/versionCopy.ts`（固定表头 `服务名 | 版本或构建标识 | 健康态 | 采集时刻`，按屏上版本表行序；缺失 `—`，不补 0；采集时刻只取屏上 `health.view.asOf`，不使用本机时钟，不写 `asOfSource`）；`VersionHealthSurface` 增 `ver-copy` / `ver-copy-status` / `ver-copy-fallback`，`aria-live` 播报「已复制 N 行」，剪贴板拒绝时展开逐字相同的只读 textarea；整面 loading/empty/gap/login/error 时按钮 disabled+title 原因（GAP 仅 title）。
+- 读数：1440/1280/375 `bodySW=bodyCW=视口`、`pageSW=pageCW`（1438/1278/373）；两行复制文本逐字为
+  `服务名 | 版本或构建标识 | 健康态 | 采集时刻`
+  `控制台服务（BFF） | 9.9.9 | 正常 | 2026-11-19 23:17`
+  `工作进程 | — | 降级 | 2026-11-19 23:17`
+  点击前后 `fetchJsonStrict` 计数 1→1；屏上不含 `bff-read-time`，仅 `ver5-health-asof` title 含。
+- 验证原始 stdout：`npx vitest run src/modules/version` → 2 files / 17 passed；`npx vitest run` → **153 files / 2021 passed**；`tsc -b . --noEmit` → exit 2，23 行均为基础 approvals/employee-detail/employees 旧错，本域 0。
+- 边界：仅 `modules/version/**` + 本 DONE；未改 App/shell/routes/registry/package·lock/web-scripts/ops；未 install/main merge/9122 rebuild；未引工作树 entry/sha。

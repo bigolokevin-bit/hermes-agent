@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Badge, Button, Card, CardContent } from "@nous-research/ui";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import { fetchJsonStrict } from "../models/fetchJson";
+import { versionCopyText } from "./versionCopy";
 import {
   HEALTH_API_PATH,
   HEALTH_GAP,
@@ -84,6 +86,8 @@ export function VersionHealthSurface({ preview = null }: { preview?: Preview }) 
   const [version, setVersion] = useState<VersionState>(preview === "loading" ? { k: "loading" } : preview === "empty" ? { k: "empty" } : preview === "error" ? { k: "error", message: "预览：版本表读取失败。", requestId: null } : { k: "loading" });
   const [health, setHealth] = useState<HealthState>({ k: "loading" });
   const [reload, setReload] = useState(0);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
+  const [copiedRows, setCopiedRows] = useState(0);
 
   useEffect(() => {
     if (preview !== null) return;
@@ -134,13 +138,62 @@ export function VersionHealthSurface({ preview = null }: { preview?: Preview }) 
     };
   }, [preview, reload]);
 
+  const copyRows = version.k === "ready" ? version.rows : [];
+  const copyText = versionCopyText(copyRows, health.k === "ready" ? health.view.asOf : null);
+  const copyDisabled = version.k !== "ready" || copyRows.length === 0;
+  const copyTitle = version.k === "loading"
+    ? "正在读取组件版本；读取完成后才能复制。"
+    : version.k === "empty"
+      ? "当前没有可复制的版本行。"
+      : version.k === "gap"
+        ? `版本读口未接入：${version.message}；请到审批中心提交开通申请（${VERSION_GAP}）。`
+        : version.k === "login"
+          ? "需要重新登录后才能复制版本信息。"
+          : version.k === "error"
+            ? `版本表读取失败：${version.message}；请求编号：${version.requestId ?? "未提供"}；重试成功后才能复制。`
+            : "复制当前版本面为纯文本；不会再发请求。";
+  const copy = async () => {
+    if (copyDisabled) return;
+    if (await copyTextToClipboard(copyText)) {
+      setCopiedRows(copyRows.length);
+      setCopyState("copied");
+      return;
+    }
+    setCopyState("failed");
+  };
+
   return (
     <Card data-testid="ver5-page">
       <CardContent className="space-y-3 p-4">
         <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-sm font-medium text-white/85">组件版本与健康</h2>
-          <span className="text-xs text-white/45">来源：健康读口（版本/构建标识）· 版本读口（回退）</span>
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <span className="text-xs text-white/45" data-testid="ver-copy-status" role="status" aria-live="polite">
+              {copyState === "copied" ? `已复制 ${copiedRows} 行` : copyState === "failed" ? "复制失败，已展开手动复制" : ""}
+            </span>
+            <Button
+              size="sm"
+              outlined
+              disabled={copyDisabled}
+              aria-disabled={copyDisabled ? "true" : undefined}
+              title={copyTitle}
+              data-testid="ver-copy"
+              onClick={() => void copy()}
+            >
+              复制版本信息
+            </Button>
+          </div>
         </div>
+        {copyState === "failed" ? (
+          <textarea
+            className="w-full rounded border border-white/15 bg-white/5 p-2 font-mono text-xs text-white/80"
+            data-testid="ver-copy-fallback"
+            aria-label="手动复制版本信息"
+            readOnly
+            rows={Math.min(8, copyRows.length + 1)}
+            value={copyText}
+          />
+        ) : null}
         <HealthLine state={health} />
 
         {version.k === "loading" ? (
