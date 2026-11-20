@@ -468,3 +468,15 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 - 断言全部走真实导出入口（点击按钮 + mock `URL.createObjectURL` 取 Blob），不起浏览器；BOM 仍按字节 `EF BB BF` 校验。
 - 验证：`src/modules/metrics` **3 files / 167 passed**（原 157，+10）；全量 **137 files / 1690 passed**（原 1680）；`tsc -b . --noEmit` 全仓 58 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metAC` → entry `assets/index-CE_eqhLj.js` sha256 `eeed0cc6ec3645be807ad468bf243c45b85fdac6061c63c46a60c5ed33528196`（与 metAB 构建产物一致，说明本轮只增测试）。
 - 未测项：真实后端 `as_of` 形态（六别名之外的变体）未联调；Safari/Firefox 下载文件名未走查。
+
+## 卡片与口径说明的读屏关联（metAD，2026-11-20）
+
+五张卡（运行/成本/趋势/价格/热力）都带 `aria-describedby`，焦点落到卡上时读屏会把「口径名 + 缺值策略」一并读出来。
+
+- 方式：选择「sr-only 副本」而非依赖折叠块——`metAB` 默认收起时正文并不渲染，若只靠它，五张卡的引用会指向不存在的 id。现在页面顶部固定渲染一组隐藏段落，id 为 `metAD-note-<key>`（`run-stats`、`budget-usage`、`pricing`、`run-activity` 四个），内容由 `CALIBER_NOTES` 同一份数据生成：`<口径名>。缺值策略：<missing>`。
+- 卡片映射：运行 → `metAD-note-run-stats`；成本 → `metAD-note-budget-usage`；趋势 → `metAD-note-run-stats`（与运行同一读口，故共用一条说明）；价格 → `metAD-note-pricing`；热力 → `metAD-note-run-activity`。
+- 单一文案来源：页尾 `metAB` 展开后仍用 `CALIBER_NOTES` 渲染，测试对比 `metAB-note-run-stats` 与 `metAD-note-run-stats` 含同一条 `missing` 文本，并逐字校验 sr-only 段落等于 `${label}。缺值策略：${missing}`。
+- 视觉与请求：sr-only 段落不占版式、不改任何卡片外观；只在渲染期读静态常量，测试断言卡上聚焦前后 `urls()` 长度不变。
+- 验证：`src/modules/metrics` **3 files / 171 passed**（原 167，+4）；全量 **137 files / 1694 passed**（原 1690）；`tsc -b . --noEmit` 全仓 58 条既存、`modules/metrics` 0 条；build `--outDir /tmp/build-metAD` → entry `assets/index-C9RYivhE.js` sha256 `acca73cc2ff3f79f4ef93bfb5e4daa4496fa9cfcfb7eff15ce7350ddbbad8df0`，entry 内 `metAD-note` 命中 0，chunk `assets/MetricsModulePage-B-biV7Jz.js` 命中 1。
+- 既有断言调整：一处「整页不含 $0.00」改为「成本卡不含 $0.00」，因为 sr-only 口径说明会合法地引用 `$0.00` 作为「真 0」的写法——范围收紧而非放宽。
+- 未测项：真实读屏（VoiceOver/NVDA）对 `aria-describedby` 的朗读顺序与实际停顿未走查。

@@ -15,6 +15,7 @@ vi.mock('@/modules/models/fetchJson', () => ({ fetchJsonStrict: api.fetchJsonStr
 vi.mock('@/lib/clipboard', () => ({ copyTextToClipboard: clip.copyTextToClipboard }));
 
 import { MetricsModulePage } from './MetricsModulePage';
+import { CALIBER_NOTES } from './metrics';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -339,7 +340,9 @@ describe('MetricsModulePage — usage & cost (met6)', () => {
     expect(document.querySelector('[data-testid="met6-cost-value"]')?.textContent).toBe('—');
     expect(document.querySelector('[data-testid="met6-cost-month"]')?.textContent).toBe('—');
     expect(text()).toContain('今天还没有账本实扣记录');
-    expect(text()).not.toContain('$0.00');
+    // The card itself holds no invented zero (the sr-only caliber note may
+    // quote $0.00 as the policy for a real zero).
+    expect(document.querySelector('[data-testid="met6-cost"]')?.textContent).not.toContain('$0.00');
     expect(document.querySelector('[data-testid="met6-cost-rows"]')).toBeNull();
   });
 
@@ -3684,5 +3687,72 @@ describe('metAB — the caliber notes at the foot of the page', () => {
     // Collapsing shows nothing new and leaves the cards as they were.
     expect(q('met6-runs-value')?.textContent).toBe(runsValue);
     expect(q('metB-source-table')).not.toBeNull();
+  });
+});
+
+describe('metAD — each card points at its caliber note', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+  const CARDS: Array<[string, string]> = [
+    ['met6-runs', 'metAD-note-run-stats'],
+    ['met6-cost', 'metAD-note-budget-usage'],
+    ['met6-trend', 'metAD-note-run-stats'],
+    ['met6-price', 'metAD-note-pricing'],
+    ['met5-heatmap', 'metAD-note-run-activity'],
+  ];
+
+  const noteFor = (key: string) => {
+    const note = CALIBER_NOTES.find((entry) => entry.key === key);
+    expect(note).toBeTruthy();
+    return note!;
+  };
+
+  it('describes all five cards, and the text is the one CALIBER_NOTES holds', async () => {
+    await mount(usageRouter());
+
+    for (const [cardId, noteId] of CARDS) {
+      const card = q(cardId);
+      expect(card?.getAttribute('aria-describedby')).toBe(noteId);
+      const target = document.getElementById(noteId);
+      expect(target).not.toBeNull();
+      const key = noteId.replace('metAD-note-', '');
+      const note = noteFor(key);
+      expect(target?.textContent).toBe(`${note.label}。缺值策略：${note.missing}`);
+    }
+    // Two cards may share one read: runs and trend both come from run-stats.
+    expect(q('met6-runs')?.getAttribute('aria-describedby')).toBe(q('met6-trend')?.getAttribute('aria-describedby'));
+  });
+
+  it('keeps the notes readable while the foot block is still collapsed', async () => {
+    await mount(usageRouter());
+
+    expect(q('metAB-notes-body')).toBeNull();
+    for (const key of ['run-stats', 'budget-usage', 'pricing', 'run-activity']) {
+      const note = document.getElementById(`metAD-note-${key}`);
+      expect(note).not.toBeNull();
+      expect(note?.textContent).toContain('缺值策略：');
+    }
+  });
+
+  it('reads the same sentence the foot block shows when it is opened', async () => {
+    await mount(usageRouter());
+    await act(async () => {
+      (q('metAB-notes-toggle') as HTMLButtonElement).click();
+    });
+
+    const foot = q('metAB-note-run-stats')?.textContent ?? '';
+    const sr = q('metAD-note-run-stats')?.textContent ?? '';
+    const note = noteFor('run-stats');
+    expect(foot).toContain(note.missing);
+    expect(sr).toContain(note.missing);
+    expect(sr).toContain(note.label);
+  });
+
+  it('adds no read of its own', async () => {
+    await mount(usageRouter());
+    const before = urls().length;
+    for (const [cardId] of CARDS) {
+      (q(cardId) as HTMLElement).focus();
+    }
+    expect(urls().length).toBe(before);
   });
 });

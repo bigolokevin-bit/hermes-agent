@@ -116,6 +116,10 @@ type Forced = 'loading' | 'empty' | 'error' | 'denied';
 
 const EMPTY_ACTIVITY: Activity = { cells: [], max: null, from: null, to: null, tz: 'Asia/Shanghai' };
 
+/** Cards that quote a read: two cards may describe the same read (trend and
+ *  runs both come from run-stats), so the list is of keys, not of cards. */
+const CARD_NOTE_KEYS: ReadonlyArray<string> = ['run-stats', 'budget-usage', 'pricing', 'run-activity'];
+
 const TABLE_SCROLL_STEP = 48;
 
 /**
@@ -1520,6 +1524,13 @@ export function MetricsModulePage() {
       <a className="metY-skip" href="#metY-main" data-testid="metY-skiplink">
         跳到主要内容
       </a>
+      <div className="sr-only">
+        {CALIBER_NOTES.filter((note) => CARD_NOTE_KEYS.includes(note.key)).map((note) => (
+          <p key={note.key} id={`metAD-note-${note.key}`} data-testid={`metAD-note-${note.key}`}>
+            {note.label}。缺值策略：{note.missing}
+          </p>
+        ))}
+      </div>
       <p className="sr-only" role="status" aria-live="polite" data-testid="metQ-live">
         {liveMessage}
       </p>
@@ -1666,7 +1677,13 @@ export function MetricsModulePage() {
           ) : null}
 
           <div className="met6-grid">
-            <Card className="met6-card metQ-card" tabIndex={0} id="metQ-card-focus-runs" data-testid="met6-runs">
+            <Card
+              className="met6-card metQ-card"
+              tabIndex={0}
+              id="metQ-card-focus-runs"
+              aria-describedby="metAD-note-run-stats"
+              data-testid="met6-runs"
+            >
               <CardContent className="space-y-1 p-4">
                 <p className="met6-label">{usageWindow.label}运行</p>
                 <p className="met6-value" data-testid="met6-runs-value">
@@ -1709,7 +1726,13 @@ export function MetricsModulePage() {
               </CardContent>
             </Card>
 
-            <Card className="met6-card metQ-card" tabIndex={0} id="metQ-card-focus-cost" data-testid="met6-cost">
+            <Card
+              className="met6-card metQ-card"
+              tabIndex={0}
+              id="metQ-card-focus-cost"
+              aria-describedby="metAD-note-budget-usage"
+              data-testid="met6-cost"
+            >
               <CardContent className="space-y-1 p-4">
                 <p className="met6-label">实扣金额（账本）</p>
                 <p className="met6-value" data-testid="met6-cost-value">
@@ -1791,7 +1814,13 @@ export function MetricsModulePage() {
               </CardContent>
             </Card>
 
-            <Card className="met6-card metQ-card" tabIndex={0} id="metQ-card-focus-trend" data-testid="met6-trend">
+            <Card
+              className="met6-card metQ-card"
+              tabIndex={0}
+              id="metQ-card-focus-trend"
+              aria-describedby="metAD-note-run-stats"
+              data-testid="met6-trend"
+            >
               <CardContent className="space-y-1 p-4">
                 <p className="met6-label">{usageWindow.label}趋势</p>
                 {spark && spark.observed > 0 ? (
@@ -1853,7 +1882,13 @@ export function MetricsModulePage() {
               </CardContent>
             </Card>
 
-            <Card className="met6-card metQ-card" tabIndex={0} id="metQ-card-focus-price" data-testid="met6-price">
+            <Card
+              className="met6-card metQ-card"
+              tabIndex={0}
+              id="metQ-card-focus-price"
+              aria-describedby="metAD-note-pricing"
+              data-testid="met6-price"
+            >
               <CardContent className="space-y-1 p-4">
                 <p className="met6-label">单价（价目表）</p>
                 {usageReady && usageReady.pricing.kind === 'ready' && usageReady.pricing.value.rows.length > 0 ? (
@@ -2758,7 +2793,13 @@ export function MetricsModulePage() {
             </Card>
           </div>
 
-          <Card className="metQ-card" tabIndex={0} id="metQ-card-focus-heatmap" data-testid="met5-heatmap">
+          <Card
+            className="metQ-card"
+            tabIndex={0}
+            id="metQ-card-focus-heatmap"
+            aria-describedby="metAD-note-run-activity"
+            data-testid="met5-heatmap"
+          >
             <CardContent className="space-y-3 p-4 md:p-6">
               <div className="met5-legend" data-testid="met5-legend">
                 <span>少</span>
