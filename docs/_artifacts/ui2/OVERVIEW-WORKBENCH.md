@@ -278,3 +278,17 @@
 - 三条用例：收起态与展开七行（含成本行逐字等于 COST_CALIBER_TEXT）、开合零请求、复现腿不渲染。
 - 验证：runs 3 files / 115 passed（基线 112）；全量 159 files / 2187 passed（基线 2184）；tsc 本域 0（全仓既存 79 条）；eslint exit 0（0 error / 9 既有 warning）。
 - 未测：真实浏览器 375/1440 展开后七行的折行与长路径断行。
+
+## 行固定链接（runs permalink，2026-11-20）
+
+`/runs` 复制控件 `run-permalink` 只把地址栏已有参数与当前 `run` 标识串成一条链接，不新增读口。
+
+- **链接形状**：`/runs/?window=…&status=…&employee=…&state=…&rsort=…&rdir=…&run=<id>`；页面既有 `hrefOf()` 同一函数产出，与每行「查看」锚点同源（`?run=` 是运行详情页消费的参数，先 `git grep "run="` 现查确认，非路径式 `/runs/<id>`）。
+- **复现读数**（jsdom，订单要求的 URL → 行 → 是否展开）：入口 `/runs/?window=7d&status=failed&rsort=started&rdir=desc&run=rn_01M7822XN781D2S9JASH5TX1XZ` → 命中 `run5-row-0` 且 `data-selected="1"` / `aria-current="true"`，`run5-detail` 详情卡自动打开；行内预览抽屉**不**自动展开（`openId` 起始为 null，需点「展开预览」）。即：链接复现同一筛选/排序并选中该运行，展开的是详情而非预览。
+- **零额外请求**：复制前后 `urls()` 长度不变、`/api/runs` 调用次数不变（测试断言）。状态区 `run-permalink-status`（role=status aria-live=polite）成功写「链接已复制」。
+- **无选中运行**：`run-permalink` disabled，title 逐字「先选中一条运行再复制」；点击不发任何请求，也不调剪贴板。
+- **剪贴板拒绝**：`run-permalink-fallback` 内只读 `run-permalink-fallback-text`，值与尝试复制的链接逐字相同。
+- **复现腿**：`?state=` 四态下整块不渲染（复现腿不读写口）。
+- 新增 testid：`run-permalink`/`run-permalink-bar`/`run-permalink-status`/`run-permalink-fallback`/`run-permalink-fallback-text`；既有 `run-*` 全族零破。
+- 验证：runs 3 files / 119 passed（基线 115）；全量 159 files / 2191 passed（基线 2187）；`tsc` 本域 0（全仓既存 79）；`eslint src/modules/runs` exit 0；build exit 0，entry 内 `run-permalink`=0，`RunsModulePage-*.js` 命中 1。
+- 未测：真实浏览器 375/1440 下按钮与状态句折行；跨页粘贴到新标签的实际跳转（jsdom 只验 URL 形状与选中态）。

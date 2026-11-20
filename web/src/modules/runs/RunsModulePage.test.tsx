@@ -1710,3 +1710,76 @@ describe("run-notes — footer caliber block", () => {
     expect(document.querySelector("[data-testid='run-notes']")).toBeNull();
   });
 });
+
+/* ── the row permalink (frozen URL shape, no extra read) ──────────── */
+
+describe("run permalink", () => {
+  it("copies the open run's link with every current parameter kept", async () => {
+    api.fetchJSON.mockImplementation(detailOk({}));
+    const entry = `/runs/?window=7d&status=failed&rsort=started&rdir=desc&run=${encodeURIComponent(DETAIL.runId)}`;
+    await render(entry);
+    await waitFor(() => document.querySelector("[data-testid='run5-detail']") !== null, "detail");
+    await waitFor(() => rowNodes() === 1, "one row");
+    // The address reproduces this page: the same row is marked and its detail is open.
+    const row = document.querySelector("[data-testid='run5-row-0']");
+    expect(row?.getAttribute("data-selected")).toBe("1");
+    expect(row?.getAttribute("aria-current")).toBe("true");
+    const before = urls().length;
+    const reads = api.fetchJSON.mock.calls.filter((call) => String(call[0]).includes("/api/runs")).length;
+    const button = document.querySelector("[data-testid='run-permalink']") as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
+    await act(async () => {
+      button.click();
+    });
+    const copied = clip.copyTextToClipboard.mock.calls.at(-1)?.[0] as string;
+    expect(copied).toBe(
+      `/runs/?window=7d&status=failed&rsort=started&rdir=desc&run=${encodeURIComponent(DETAIL.runId)}`,
+    );
+    expect(copied.startsWith("/runs/?")).toBe(true);
+    expect(document.querySelector("[data-testid='run-permalink-status']")?.textContent).toContain("链接已复制");
+    expect(urls().length).toBe(before);
+    expect(api.fetchJSON.mock.calls.filter((call) => String(call[0]).includes("/api/runs")).length).toBe(reads);
+  });
+
+  it("is disabled with a reason until a run is selected", async () => {
+    api.fetchJSON.mockImplementation(okList([RUN_A]));
+    await render("/runs?window=7d");
+    await waitFor(() => rowNodes() === 1, "one row");
+    const button = document.querySelector("[data-testid='run-permalink']") as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(button.getAttribute("title")).toBe("先选中一条运行再复制");
+    const before = urls().length;
+    const copies = clip.copyTextToClipboard.mock.calls.length;
+    await act(async () => {
+      button.click();
+    });
+    expect(clip.copyTextToClipboard.mock.calls.length).toBe(copies);
+    expect(urls().length).toBe(before);
+  });
+
+  it("hands the same string to a read-only field when the clipboard refuses", async () => {
+    clip.copyTextToClipboard.mockImplementationOnce(() => Promise.resolve(false));
+    api.fetchJSON.mockImplementation(detailOk({}));
+    await render(`/runs/?window=7d&run=${encodeURIComponent(DETAIL.runId)}`);
+    await waitFor(() => document.querySelector("[data-testid='run5-detail']") !== null, "detail");
+    const button = document.querySelector("[data-testid='run-permalink']") as HTMLButtonElement;
+    await act(async () => {
+      button.click();
+    });
+    const fallback = document.querySelector("[data-testid='run-permalink-fallback-text']") as HTMLTextAreaElement;
+    expect(fallback).toBeTruthy();
+    expect(fallback.readOnly).toBe(true);
+    expect(fallback.value).toBe(
+      `/runs/?window=7d&run=${encodeURIComponent(DETAIL.runId)}`,
+    );
+    expect(document.querySelector("[data-testid='run-permalink-status']")?.textContent).toContain("没复制成功");
+  });
+
+  it("stays off the repro legs, which read nothing", async () => {
+    api.fetchJSON.mockImplementation(async () => {
+      throw new Error("repro legs ask nothing");
+    });
+    await render("/runs?state=empty");
+    expect(document.querySelector("[data-testid='run-permalink']")).toBeNull();
+  });
+});

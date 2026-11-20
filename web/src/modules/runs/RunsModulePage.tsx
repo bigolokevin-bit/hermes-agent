@@ -368,6 +368,61 @@ function RunListCopy({
 }
 
 /**
+ * The permalink for the run currently selected in the address bar (`?run=`).
+ * It only re-strings parameters that are already on screen, so copying adds no
+ * request; pasting it back lands on the same filters and the same record.
+ */
+function RunPermalink({ href }: { href: string | null }): ReactNode {
+  const [status, setStatus] = useState<"idle" | "done" | "failed">("idle");
+  const [body, setBody] = useState("");
+  const disabled = href === null;
+  const copy = () => {
+    if (href === null) return;
+    setBody(href);
+    copyTextToClipboard(href).then((ok) => setStatus(ok ? "done" : "failed"));
+  };
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="run-permalink-bar">
+      <Button
+        size="sm"
+        outlined
+        onClick={copy}
+        disabled={disabled}
+        data-testid="run-permalink"
+        title={
+          disabled
+            ? "先选中一条运行再复制"
+            : "复制这条运行的链接：保留当前筛选、排序与运行标识，粘到地址栏会回到同一页并选中它。"
+        }
+      >
+        <Copy className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+        复制运行链接
+      </Button>
+      <span className="min-w-0 text-xs text-muted-foreground" role="status" aria-live="polite" data-testid="run-permalink-status">
+        {status === "done"
+          ? "链接已复制"
+          : status === "failed"
+            ? "链接没复制成功：下面的文本可以自己选中复制"
+            : disabled
+              ? "选中一条运行（展开或打开详情）之后才能复制它的链接。"
+              : "只拼地址栏已有参数，复制或粘贴都不会再读一次服务。"}
+      </span>
+      {status === "failed" ? (
+        <div className="w-full min-w-0" data-testid="run-permalink-fallback">
+          <textarea
+            readOnly
+            value={body}
+            aria-label="运行链接"
+            data-testid="run-permalink-fallback-text"
+            className="h-16 w-full resize-y rounded-md border border-border bg-card p-2 font-mono text-xs text-foreground"
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/**
  * A sortable column header: the wrapper carries aria-sort, the control is a
  * real button so Enter and Space work without extra key handling.
  */
@@ -415,6 +470,7 @@ function ListRows({
   sortDir,
   onSort,
   sortDisabled,
+  selectedId,
 }: {
   rows: RunRow[];
   names: Map<string, string>;
@@ -422,6 +478,8 @@ function ListRows({
   sortDir: RunSortDir;
   onSort: (key: RunSortKey) => void;
   sortDisabled: boolean;
+  /** The run the address bar points at (`?run=`); that row is marked, not expanded. */
+  selectedId: string | null;
   /**
    * R29: a row is a real anchor whose href keeps the path shape QA counts
    * (`a[href*="/runs/"]`) without inventing a route. The address is
@@ -456,12 +514,15 @@ function ListRows({
             const reason = failureSummary(row);
             const base = `run5-row-${index}`;
             const open = openId === row.runId;
+            const isSelected = selectedId !== null && selectedId === row.runId;
             return (
               <li
                 key={row.runId}
-                className="min-w-0"
+                className={`min-w-0${isSelected ? " bg-muted/40" : ""}`}
                 data-testid={base}
                 data-status={row.status ?? "unknown"}
+                data-selected={isSelected ? "1" : undefined}
+                aria-current={isSelected ? "true" : undefined}
                 onKeyDown={(event) => {
                   if (!open || event.key !== "Escape") return;
                   event.stopPropagation();
@@ -1162,6 +1223,7 @@ export function RunsModulePage() {
           names={names}
           hrefOf={hrefOf}
           previewGate={listGate.preview}
+          selectedId={selected}
           sortKey={rsort}
           sortDir={rdir}
           onSort={chooseSort}
@@ -1192,6 +1254,8 @@ export function RunsModulePage() {
           statusKey={params.get("status")}
         />
       ) : null}
+
+      {forced === null ? <RunPermalink href={selected ? hrefOf(selected) : null} /> : null}
 
       {phase === "ready" && rows.length > 0 ? (
         <TechnicalDisclosure lines={technical} testId="run5-list-details" />
