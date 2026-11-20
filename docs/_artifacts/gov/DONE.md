@@ -1957,3 +1957,16 @@ built /private/tmp/health-r38/index.html
 - 新增一致性用例：技能/工具各一条，覆盖「未知状态原值 title + 更新缺值 + 缺 asOf」；另在 404 用例断言复制按钮 disabled 且 title 说明原因。
 - 验证：定向 `skills+tools+capabilities` → **6 files / 64 passed**；全量 **139 files / 1679 passed**；tsc 本域 0（仅基线 employee-detail/employees 报错）；三档 `bodySW=bodyCW=视口`。
 - 边界：仅改 `web/src/modules/{capabilities,skills,tools}/**` + DONE；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未并 main、未重建 9122。
+
+## R64 — /capabilities 列表行键盘导航
+
+- 基线：显式 refspec fetch 后 `git merge origin/lane/hermes-console`（tip `b797bc98`，代码代次 `053da5c4`）→ Already up to date；未 reset。
+- 行为：skills 的 `<tr>` 与 tools 的 `.tol5-row` 采用 roving tabindex（可见行中仅一行 `0`，其余 `-1`）；`↑/↓` 移到相邻行、`Home/End` 到首末行并转移焦点；`Enter` 展开/收起该行 `cap7-detail-*`；`Esc` 收起并把焦点送回该行；行上 `aria-expanded` 与详情可见性同步。读口失败/无行时不渲染任何 `tabindex` 行，也不接管方向键，搜索框、重试与复制按钮保持正常 Tab。
+- 焦点可见：行 `:focus-visible` 使用现有 `var(--color-ring)`，2px outline，内侧偏移；未新造颜色。375 不依赖悬停。
+- 三档 DOM（真实 shell `ConsoleModulePage`，临时 harness 已删除；Vite 5481 / Chrome CDP 9281）：
+  - skills 2 行：初始 tabIndex `[0,-1]`；↓ 后焦点 `skl4-row-s2`，tabIndex `[-1,0]`；Enter 后 `cap7-detail-skills=1`、`aria-expanded=true`、`:focus-visible=true`、outline `solid 2px color(srgb 1 0.901961 0.796078)`；Esc 后详情 0、`aria-expanded=false`、焦点回 `skl4-row-s2`。
+  - tools 2 行：初始 `[0,-1]`；End 后 tabIndex `[-1,0]`；Enter 后 `cap7-detail-tools=1`、`aria-expanded=true`、焦点环同上；Esc 后详情 0、`aria-expanded=false`、焦点回到该行。
+  - 请求计数：skills **1 → 1**；tools **6 → 6**；键盘操作未发任何请求。
+  - 三档宽度：skills/tools 均 `vw=bodySW=bodyCW=1440/1280/375`，无横溢。
+- 验证：定向 `skills+tools+capabilities` → **6 files / 66 passed**；全量 **139 files / 1681 passed**；tsc 本域 0 错误（仅基线 approvals/employee-detail/employees 11 行既有错误）。
+- 边界：仅改 `web/src/modules/{skills,tools}/**`（含各自 CSS/测试）+ DONE；未碰 App/shell/routes/registry/package·lock/web-scripts/ops；未并 main、未重建 9122。

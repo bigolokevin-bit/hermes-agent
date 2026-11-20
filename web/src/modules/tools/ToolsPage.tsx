@@ -8,7 +8,7 @@
  * never 0. Credentials are only ever 已配置 / 未配置 / 未知 — no token value is
  * read or printed. Disabled and unknown rows stay visible but dimmed.
  */
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
 import { Check, Copy, Inbox, RefreshCw, ShieldAlert, TriangleAlert } from "lucide-react";
 
@@ -76,12 +76,33 @@ function kindLabel(row: ToolRow): string {
   return `内置 · ${row.type}`;
 }
 
-function Row({ row, open, onToggle }: { row: ToolRow; open: boolean; onToggle: () => void }): ReactNode {
+function Row({
+  row,
+  open,
+  onToggle,
+  tabIndex,
+  setRowRef,
+  onFocus,
+  onKeyDown,
+}: {
+  row: ToolRow;
+  open: boolean;
+  onToggle: () => void;
+  tabIndex: number;
+  setRowRef: (node: HTMLDivElement | null) => void;
+  onFocus: () => void;
+  onKeyDown: (event: ReactKeyboardEvent<HTMLDivElement>) => void;
+}): ReactNode {
   const dimmed = row.status !== "enabled";
   return (
     <>
     <div
-      className={`flex min-w-0 flex-wrap items-start justify-between gap-x-4 gap-y-2 border-b border-border px-4 py-3 last:border-b-0 ${dimmed ? "opacity-60" : ""}`}
+      ref={setRowRef}
+      tabIndex={tabIndex}
+      aria-expanded={open}
+      onFocus={onFocus}
+      onKeyDown={onKeyDown}
+      className={`tol5-row flex min-w-0 flex-wrap items-start justify-between gap-x-4 gap-y-2 border-b border-border px-4 py-3 last:border-b-0 ${dimmed ? "opacity-60" : ""}`}
       data-testid="tol5-row"
       data-status={row.status}
       data-source={row.source}
@@ -212,6 +233,8 @@ export function ToolsPage(): ReactNode {
   const [params, setParams] = useSearchParams();
   useEnsureTabParam("tools");
   const [openTool, setOpenTool] = useState<string | null>(() => readOpenTool());
+  const [rovingKey, setRovingKey] = useState<string | null>(null);
+  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useEffect(() => {
     rememberOpenTool(openTool);
@@ -220,7 +243,10 @@ export function ToolsPage(): ReactNode {
   useEffect(() => {
     if (!openTool) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpenTool(null);
+      if (event.key === "Escape") {
+        setOpenTool(null);
+        rowRefs.current[openTool]?.focus();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -238,6 +264,39 @@ export function ToolsPage(): ReactNode {
   const unknown = sortedRows.filter((row) => row.status === "unknown").length;
   const toolRows = sortedRows.filter((row) => row.source === "toolset");
   const mcpRows = sortedRows.filter((row) => row.source === "mcp");
+  const keyRows = [...toolRows, ...mcpRows];
+  const activeToolKey =
+    rovingKey && keyRows.some((row) => row.key === rovingKey)
+      ? rovingKey
+      : keyRows[0]?.key ?? null;
+  const onRowKeyDown = (
+    event: ReactKeyboardEvent<HTMLDivElement>,
+    row: ToolRow,
+    index: number,
+  ) => {
+    if (event.target !== event.currentTarget) return;
+    const move = (nextIndex: number) => {
+      const target = keyRows[nextIndex];
+      if (!target) return;
+      event.preventDefault();
+      setRovingKey(target.key);
+      rowRefs.current[target.key]?.focus();
+    };
+    if (event.key === "ArrowDown") move(Math.min(index + 1, keyRows.length - 1));
+    else if (event.key === "ArrowUp") move(Math.max(index - 1, 0));
+    else if (event.key === "Home") move(0);
+    else if (event.key === "End") move(keyRows.length - 1);
+    else if (event.key === "Enter") {
+      event.preventDefault();
+      setOpenTool((current) => (current === row.key ? null : row.key));
+    } else if (event.key === "Escape") {
+      if (openTool === row.key) {
+        event.preventDefault();
+        setOpenTool(null);
+      }
+      rowRefs.current[row.key]?.focus();
+    }
+  };
   const onSort = (key: SortKey) => {
     const next = cycleSort(sort, key);
     const search = new URLSearchParams(params);
@@ -365,7 +424,18 @@ export function ToolsPage(): ReactNode {
             <div className="border-b border-border px-4 py-2 text-xs text-muted-foreground" data-testid="tol5-tools-head">
               工具与工具集：{toolRows.length} 条
             </div>
-            {toolRows.length ? toolRows.map((row) => <Row row={row} key={row.key} open={openTool === row.key} onToggle={() => setOpenTool(openTool === row.key ? null : row.key)} />) : (
+            {toolRows.length ? toolRows.map((row, index) => (
+              <Row
+                row={row}
+                key={row.key}
+                open={openTool === row.key}
+                onToggle={() => setOpenTool(openTool === row.key ? null : row.key)}
+                tabIndex={row.key === activeToolKey ? 0 : -1}
+                setRowRef={(node) => { rowRefs.current[row.key] = node; }}
+                onFocus={() => setRovingKey(row.key)}
+                onKeyDown={(event) => onRowKeyDown(event, row, index)}
+              />
+            )) : (
               <p className="px-4 py-4 text-xs text-muted-foreground" data-testid="tol5-tools-empty">
                 工具目录已响应，没有列出工具。
               </p>
@@ -378,7 +448,18 @@ export function ToolsPage(): ReactNode {
             <div className="border-b border-border px-4 py-2 text-xs text-muted-foreground">
               MCP 连接：{mcpRows.length} 个
             </div>
-            {mcpRows.length ? mcpRows.map((row) => <Row row={row} key={row.key} open={openTool === row.key} onToggle={() => setOpenTool(openTool === row.key ? null : row.key)} />) : (
+            {mcpRows.length ? mcpRows.map((row, index) => (
+              <Row
+                row={row}
+                key={row.key}
+                open={openTool === row.key}
+                onToggle={() => setOpenTool(openTool === row.key ? null : row.key)}
+                tabIndex={row.key === activeToolKey ? 0 : -1}
+                setRowRef={(node) => { rowRefs.current[row.key] = node; }}
+                onFocus={() => setRovingKey(row.key)}
+                onKeyDown={(event) => onRowKeyDown(event, row, toolRows.length + index)}
+              />
+            )) : (
               <p className="px-4 py-4 text-xs text-muted-foreground" data-testid="tol5-mcp-empty">
                 服务已响应，没有登记 MCP 连接；这不是加载失败。
               </p>

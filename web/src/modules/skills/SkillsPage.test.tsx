@@ -3,6 +3,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 
 const fetchJsonStrict = vi.fn();
 vi.mock("@/modules/models/fetchJson", () => ({ fetchJsonStrict: (...args: unknown[]) => fetchJsonStrict(...args) }));
@@ -162,6 +163,7 @@ describe("SkillsPage", () => {
     expect(count.getAttribute("title")).toContain("GAP-SKL4-01");
     const copy = container.querySelector<HTMLButtonElement>('[data-testid="capC-copy"]')!;
     expect(copy.disabled).toBe(true);
+    expect(container.querySelectorAll("tr[data-testid^='skl4-row-'][tabindex]")).toHaveLength(0);
     expect(copy.title).toContain("没有可复制");
   });
 
@@ -484,5 +486,57 @@ describe("SkillsPage", () => {
     expect(container.querySelectorAll("[data-testid^='skl4-row-']")).toHaveLength(2);
     expect(container.querySelectorAll("[data-testid='cap7-detail-skills']")).toHaveLength(1);
     expect(fetchJsonStrict).toHaveBeenCalledTimes(1);
+  });
+
+  it("moves row focus with arrows, Home and End, and toggles detail with Enter without another read", async () => {
+    window.history.replaceState({}, "", "/capabilities?tab=skills");
+    fetchJsonStrict.mockResolvedValue({
+      asOf: "2026-11-19T06:00:00Z",
+      items: [
+        { skillId: "s1", name: "资料整理", scope: "tenant-shared", version: "2" },
+        { skillId: "s2", name: "质检", scope: "unused", version: "1" },
+      ],
+    });
+    await render();
+    const calls = fetchJsonStrict.mock.calls.length;
+    const rows = [...container.querySelectorAll<HTMLElement>("tr[data-testid^='skl4-row-']")];
+    expect(rows).toHaveLength(2);
+    expect(rows[0].tabIndex).toBe(0);
+    expect(rows[1].tabIndex).toBe(-1);
+
+    const press = async (node: HTMLElement, key: string) => {
+      await act(async () => {
+        node.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+      });
+    };
+
+    await act(async () => rows[0].focus());
+    expect(document.activeElement).toBe(rows[0]);
+
+    await press(rows[0], "ArrowDown");
+    expect(document.activeElement).toBe(rows[1]);
+    expect(rows[1].tabIndex).toBe(0);
+    expect(rows[0].tabIndex).toBe(-1);
+
+    await press(rows[1], "Home");
+    expect(document.activeElement).toBe(rows[0]);
+    await press(rows[0], "End");
+    expect(document.activeElement).toBe(rows[1]);
+    await press(rows[1], "ArrowUp");
+    expect(document.activeElement).toBe(rows[0]);
+    await press(rows[0], "ArrowDown");
+
+    await press(rows[1], "Enter");
+    expect(container.querySelectorAll("[data-testid='cap7-detail-skills']")).toHaveLength(1);
+    expect(rows[1].getAttribute("aria-expanded")).toBe("true");
+
+    await press(rows[1], "Escape");
+    expect(container.querySelectorAll("[data-testid='cap7-detail-skills']")).toHaveLength(0);
+    expect(rows[1].getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).toBe(rows[1]);
+    expect(fetchJsonStrict.mock.calls.length).toBe(calls);
+    const css = readFileSync(`${process.cwd()}/src/modules/skills/skills.css`, "utf8");
+    expect(css).toContain("tr[tabindex]:focus-visible");
+    expect(css).toContain("var(--color-ring)");
   });
 });

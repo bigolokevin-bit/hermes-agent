@@ -5,3 +5,9 @@
 .tol5-page .arc-border {
   display: none;
 }
+
+/* Roving row focus: keyboard focus stays visible without inventing a new colour. */
+.tol5-row:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: -2px;
+}

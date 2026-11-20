@@ -6,6 +6,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 
 import { ApiError } from "@/lib/api-error";
 
@@ -241,6 +242,7 @@ describe("failures and gaps", () => {
     const copy = document.querySelector<HTMLButtonElement>('[data-testid="capC-copy"]')!;
     expect(copy.disabled).toBe(true);
     expect(copy.title).toContain("没有可复制");
+    expect(document.querySelectorAll("[data-testid='tol5-row'][tabindex]")).toHaveLength(0);
   });
 
   it("a 200 empty payload is an honest 0, not a not-wired state", async () => {
@@ -552,5 +554,49 @@ describe("tab state memory", () => {
     expect(rows()).toHaveLength(6);
     expect(document.querySelectorAll("[data-testid='cap7-detail-tools']")).toHaveLength(1);
     expect(urls()).toHaveLength(6);
+  });
+
+  it("moves row focus with arrows, Home and End, and toggles detail with Enter without another read", async () => {
+    await mount();
+    const calls = api.fetchJsonStrict.mock.calls.length;
+    const list = rows() as HTMLElement[];
+    expect(list).toHaveLength(6);
+    expect(list[0].tabIndex).toBe(0);
+    expect(list[1].tabIndex).toBe(-1);
+
+    const press = async (node: HTMLElement, key: string) => {
+      await act(async () => {
+        node.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+      });
+    };
+
+    await act(async () => list[0].focus());
+    expect(document.activeElement).toBe(list[0]);
+
+    await press(list[0], "ArrowDown");
+    expect(document.activeElement).toBe(list[1]);
+    expect(list[1].tabIndex).toBe(0);
+    expect(list[0].tabIndex).toBe(-1);
+
+    await press(list[1], "Home");
+    expect(document.activeElement).toBe(list[0]);
+    await press(list[0], "End");
+    expect(document.activeElement).toBe(list[5]);
+    await press(list[5], "ArrowUp");
+    expect(document.activeElement).toBe(list[4]);
+    await press(list[4], "ArrowDown");
+
+    await press(list[5], "Enter");
+    expect(document.querySelectorAll("[data-testid='cap7-detail-tools']")).toHaveLength(1);
+    expect(list[5].getAttribute("aria-expanded")).toBe("true");
+
+    await press(list[5], "Escape");
+    expect(document.querySelectorAll("[data-testid='cap7-detail-tools']")).toHaveLength(0);
+    expect(list[5].getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).toBe(list[5]);
+    expect(api.fetchJsonStrict.mock.calls.length).toBe(calls);
+    const css = readFileSync(`${process.cwd()}/src/modules/tools/tools.css`, "utf8");
+    expect(css).toContain(".tol5-row:focus-visible");
+    expect(css).toContain("var(--color-ring)");
   });
 });

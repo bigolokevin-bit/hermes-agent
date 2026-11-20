@@ -5,7 +5,7 @@
 // payload, so those cells are "—" with a reason; no value is invented and no
 // sample row is shown. A missing route is reported as 未接入 with the GAP id
 // only in a tooltip. No raw field name or HTTP status reaches the page.
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { RefreshCw } from "lucide-react";
 import { useSearchParams } from "react-router";
 
@@ -126,6 +126,8 @@ export function SkillsPage() {
   const [state, setState] = useState<State>(() => cachedSkillsState ?? { k: "loading" });
   const [attempt, setAttempt] = useState(0);
   const [openSkill, setOpenSkill] = useState<string | null>(() => cachedSkillsOpen);
+  const [rovingKey, setRovingKey] = useState<string | null>(null);
+  const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
   const fixture = currentFixtureState();
   const forced = forcedState(fixture, currentFixtureRid());
   const retry = () => {
@@ -140,7 +142,10 @@ export function SkillsPage() {
   useEffect(() => {
     if (!openSkill) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpenSkill(null);
+      if (event.key === "Escape") {
+        setOpenSkill(null);
+        rowRefs.current[openSkill]?.focus();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -202,6 +207,38 @@ export function SkillsPage() {
     : page.k === "ready" ? page.rows : [];
   const sortedRows = sortRows(visibleRows, sort, (row: SkillRow, key) =>
     key === "name" ? row.name : key === "type" ? row.source : row.updatedAt);
+  const activeSkillKey =
+    rovingKey && sortedRows.some((row) => row.id === rovingKey)
+      ? rovingKey
+      : sortedRows[0]?.id ?? null;
+  const onRowKeyDown = (
+    event: ReactKeyboardEvent<HTMLTableRowElement>,
+    row: SkillRow,
+    index: number,
+  ) => {
+    if (event.target !== event.currentTarget) return;
+    const move = (nextIndex: number) => {
+      const target = sortedRows[nextIndex];
+      if (!target) return;
+      event.preventDefault();
+      setRovingKey(target.id);
+      rowRefs.current[target.id]?.focus();
+    };
+    if (event.key === "ArrowDown") move(Math.min(index + 1, sortedRows.length - 1));
+    else if (event.key === "ArrowUp") move(Math.max(index - 1, 0));
+    else if (event.key === "Home") move(0);
+    else if (event.key === "End") move(sortedRows.length - 1);
+    else if (event.key === "Enter") {
+      event.preventDefault();
+      setOpenSkill((current) => (current === row.id ? null : row.id));
+    } else if (event.key === "Escape") {
+      if (openSkill === row.id) {
+        event.preventDefault();
+        setOpenSkill(null);
+      }
+      rowRefs.current[row.id]?.focus();
+    }
+  };
   const onSort = (key: SortKey) => {
     const next = cycleSort(sort, key);
     const params = new URLSearchParams(sp);
@@ -333,9 +370,17 @@ export function SkillsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedRows.map((row) => (
+                  {sortedRows.map((row, index) => (
                     <Fragment key={row.id}>
-                    <tr data-testid={`skl4-row-${row.id}`} title={row.id}>
+                    <tr
+                      data-testid={`skl4-row-${row.id}`}
+                      title={row.id}
+                      ref={(node) => { rowRefs.current[row.id] = node; }}
+                      tabIndex={row.id === activeSkillKey ? 0 : -1}
+                      aria-expanded={openSkill === row.id}
+                      onFocus={() => setRovingKey(row.id)}
+                      onKeyDown={(event) => onRowKeyDown(event, row, index)}
+                    >
                       <td>
                         <span className="skl4-cell">
                           <span className={row.name === "—" ? "skl4-missing" : ""} title={row.nameReason ?? undefined}>{row.name}</span>
