@@ -1204,3 +1204,11 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 读数（与上代 d7965c2a 差如实）：ia {51,23,1,8}；fake v=[]；reuse v=0 exempt=1；quad 20/20；crawl-anon 0/0/0 routesCE=51(401 归因)；crawl-auth 0/0/0 routesCE=26（持平）；redirects=24 notes 归因；shots auth 102/102 failures=[] obs=1（#/capabilities?tab=tools 与上代同型，R52 诚实 502 信封方向，如实不入判据）distinct=23 envOnly=25；anon aux=true 102/102 **obs=0（上代 1，cron 噪音本轮未现，好转）** distinct=23 envOnly=51；三键两 summary 全值（entry/sha 1b1aff39…/167498，servedEntryBefore==After=index-AUgdk60e.js，ceAuthority=login-state）。
 - R52 并注：ls-remote lane/L7-r32-models-pricing=603a23e9cfb4 现证在远端（branch -r --contains 空系本地 remote-tracking 未 fetch，非未推）；pytest『388 passed in 9.17s』exit=0；8092 pid 12048（lstart 18:16:51）。
 - 环境：9122 v4_proxy 95667 未动；caddy 28034 未动；web/src 未碰；零凭据明文；d7965c2a 已盖不重做、无 amend/force。
+
+## 一一二轮 · 波次代次九件重章 @ 18ec9cfb（entry+CSS 双换代 Boj2h4Jf/CXvVY0of，2026-11-20 19:1x-19:2x）
+
+- 代次现查：LOCAL=ls-remote=18ec9cfbe98b（ANCH=0，wave-35 五线并入 5b194eef，R58=PASS）、porc 0 脏。**双换代**：entry assets/index-Boj2h4Jf.js 167498B sha256 4c2b53eac434b642…8cd40e == index.html == 9122 served == 磁盘；CSS assets/index-CXvVY0of.css 133706B（上代 C8_UHqSf 133688，设计车道样式生效，浅色面本代现测）。
+- 九腿全 exit=0（/tmp/wave35-exits.txt），served before==after=index-Boj2h4Jf.js 未漂；九件 9/9 ok=true 盖 18ec9cfb。
+- 读数（与上代 76090480 差如实）：ia {51,23,1,8}；fake v=[]；reuse v=0 exempt=1；quad 20/20；crawl-anon 0/0/0 routesCE=51(401 归因)；crawl-auth 0/0/0 **routesCE=23（上代 26，-3 好转）**；redirects=24 notes；shots auth 102/102 failures=[] obs=1（#/capabilities?tab=tools 与前两代同型，R52 信封方向如实不入判据）**distinct=24（上代 23，+1 与 CSS 换代样式面一致）** envOnly=25；anon aux=true 102/102 obs=0 distinct=23 envOnly=51；三键两 summary 全值（4c2b53ea…/167498，servedEntryBefore==After=index-Boj2h4Jf.js，ceAuthority=login-state）。
+- R52 附件复交：远端 lane/L7-r32-models-pricing tip=603a23e9cfb4（ls-remote 现证）；pytest『388 passed in 9.17s』exit=0。
+- 环境：9122 v4_proxy 95667/caddy 28034/BFF 12048 未动；web/src 未碰；零凭据明文；76090480 已盖不重做、无 amend/force。

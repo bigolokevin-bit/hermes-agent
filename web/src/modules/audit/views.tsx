@@ -25,7 +25,7 @@ import {
   joinTitles,
   truncatedView,
 } from "./truncation";
-import { AuditResourceCell, AuditResourceLink, CopyValue, DeniedPanel, ErrorPanel, LoadingPanel, PermalinkCopy, SummaryCopy, TechnicalDisclosure } from "./states";
+import { AuditResourceCell, AuditResourceLink, CopyValue, DetailCopy, DeniedPanel, ErrorPanel, LoadingPanel, PermalinkCopy, SummaryCopy, TechnicalDisclosure } from "./states";
 import { copyLinkGate } from "./auditGates";
 import type { FailureCopy } from "./copy";
 import { summaryFromDetail, summaryFromRow } from "./summary";
@@ -396,6 +396,13 @@ export function AuditEventDetailBody({
         <p className="min-w-0 break-words text-xs text-muted-foreground">以上时间均为北京时间，精确到秒。</p>
         {/* audC: the 结论行, from the same builder the inline preview uses. */}
         <SummaryCopy line={summaryFromDetail(detail, beijingSeconds(detail.occurredAtRaw) ?? detail.occurredAt)} />
+
+        {/* R121: the same event, as ONE line, copied from the record pane. The text
+         * is built by a single helper (detailCopy.ts) out of the values the model
+         * already parsed for THIS screen — 时间 · 操作者 · 动作 · 资源 · 同一次操作 —
+         * so the words a person pastes cannot be a second, luckier reading of the
+         * record. It sends nothing: a copy is not a reason to ask again. */}
+        <DetailCopy event={detail} />
         {/* audE: the fixed link for this record, built from the identifier the
             answer itself carried — never from a guessed one. */}
         {/* audQ: availability comes from the same gates the ledger uses; a
