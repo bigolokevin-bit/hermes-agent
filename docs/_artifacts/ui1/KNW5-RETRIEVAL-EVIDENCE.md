@@ -3919,3 +3919,57 @@ rid 复制件点击交互（「请求编号：」上屏已锁，复制行为属 
 边界：只新增 web/src/modules/knowledge/knowledge.space.error.test.tsx 与本证据；
 显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
 「test(console): knowledge space error guards」。
+
+# KNW5 追加 R190：导出 CSV 转义与列序护栏（纯测试单）（2026-11-20 BJT）
+
+安全门：porcelain 空起做（HEAD 即 R187 链）、显式 refspec fetch 后 merge 实测 tip
+即预期 `394caf35`（wave-41 窗口，知识面 delta 空）。零产品文件改动、**未造任何控件**。
+
+## CSV 缺席复核（跑前 git grep 计数）
+
+```text
+createObjectURL=0、text/csv=0、download==0（本模块）；data-export="absent" 现 4 处；
+knowledge.ts:1452 的 csv 仅是文档类型标签「表格（CSV）」。按 R142 先例「导出」腿
+映射真实表样产物 knF-copy（详情）/knG-copy（检索），①另把缺席锁成源码级不变量。
+```
+
+## 四腿读数与查重
+
+```text
+① 源码级：page/core/copyGates 三文件文本均无 createObjectURL/text/csv/download=/new Blob
+  （readFileSync 走 process.cwd()，注释已注明 import.meta.url 在 vitest 非 file-URL）；
+  gate data-export="absent" 在场。怪名『报,告"表\n第二行.pdf』经 kn-row-copy-space-0
+  投递：toContain(原名整串)✓、无 '""' 引号翻倍✓、未截断✓；**换行照原样入行**的
+  后果事实一并锁（split("\n") 长度 4）——将来若加转义，护栏先红逼对齐口径。
+② 表头实测逐字（去排序箭头字形）：详情面 [文档名,类型,大小,更新,操作]；
+  DOC_LINE_HEADER 逐字 [文档名,类型,大小,更新,短码]；knF 复制表头 === join(" | ")；
+  检索面屏上 [文档名,所属空间,类型,大小,更新,操作] 且 knG 复制表头第 2 位固定
+  「所属空间」（R71 唯一列差异的列序侧收口）。
+③ 缺项行：屏上 type/size/updated 三格逐字「—」，同钮复制行逐字
+  「缺项档 | — | — | — | DM」；整串无 undefined/null、无空字段（无 " |  | "）。
+④ 空集：knF-copy disabled + title 含「没有可复制」（全句 R138 逐字锁过 → 引用）、
+  点击 writeText 0 调用、urls 计数不变；检索面 knG-copy 同口径 disabled + 零写零增；
+  createObjectURL spy 四腿全程 0 调用（每腿末复查 + ④收口）。
+查重引用：R114/R132/R142（复制同源/拒写 fallback）、R125（跨面同值含缺值句）、
+R149/R164（请求契约/参集合）、R152/R157/R169（三值/四读互等）、R167（键盘焦点）、
+R183/R187（空≠错锚互斥）。新维度=源码缺席不变量、原字符转义事实、列序逐字对账、
+blob-URL 零调用。过程两处测试自纠（gate 断言需置于 render 后、表头含箭头字形），
+一处初版断言设想错误（以为竖线首段可锚名字前缀——换行先断物理行），改为锁后果事实。
+```
+
+## 验证尾行（R190）
+```text
+$ npx vitest run src/modules/knowledge   → 21 files / 143 tests passed（基线 139 + 4）
+$ npx vitest run                         → 252 files / 2845 tests passed 全绿（无豁免项）
+$ npx eslint src/modules/knowledge       → exit 0（仅 R54 既有 1 条 warning）
+$ npx tsc -b . --noEmit | grep modules/knowledge → 0 错
+$ npx vite build --outDir /tmp/knw-r190-dist → exit 0
+$ 三档（vite preview + headless Chrome CDP，用毕即杀）：1440/1280/375 vw==bodySW==docSW 全等
+零破：kn3*/kn6*/kn-row-copy*/kn-doc-copy*/kn-space-*/kn-type*/kn-sort*/kn-gates*/
+kn3-page-cap/knE-page-*/导出标记 全族通过。
+```
+未测如实：带登录会话真实屏（怪名以 mock 投递文本代证，无真实含换行的 fileName 样本）；
+「若产品将来真加 CSV」的正向转义行为（本护栏只锁现状与缺席，不预测未来实现）。
+边界：只新增 web/src/modules/knowledge/knowledge.export.escape.test.tsx 与本证据；
+显式路径 add；无 force/amend/--no-verify/git add -A；未并 main、未重建 9122；单 commit
+「test(console): knowledge export csv escaping guards」。
