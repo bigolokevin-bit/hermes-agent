@@ -1360,3 +1360,12 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 九腿全 exit=0（/tmp/wave63-exits.txt 无挂死无复跑），heads 9/9=={43d83d65:9} bad=[] 全 ok=true：ia-html/react {51,22,1,8}（tabsAll=23）；lint-fake v=[]；lint-reuse v=0 exempt=1（chat→T40）；state-quad 20/20 真重跑非 carried；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）；redirects=24 notes 归因。
 - shots auth 102/102 failures=[] **obs=1（#/capabilities?tab=channels；上代 0/0 后本代复现单条，如实不入判据）** distinct=25（上代 24，+1）envOnly=51；anon auxiliary=true 102/102 obs=0 distinct=23 envOnly=51；三键=SBrq-NLu/e7a12b56 全串/172175，servedEntryBefore==After=index-SBrq-NLu.js，ceAuthority=login-state 双腿。
 - 4f2f4e54 章 08fe4abe 不重做；R60 仅引用未动 ACC 判词节；web/src/9122/BFF/caddy/qa-verify 未动；零凭据明文；无 amend/force。
+
+## 一五二轮 · 波次代次九件重章 @ 6c41d271（entry xok1NNVT / w63–w66 解封补盖，2026-11-21 04:40-04:5x）
+
+- 解冻令（04:05 裁定满足）：V1 两刀入 main bafb5d0e（d7cdab3c 诚实文案 + 3cd43f7e 出站去重），scheduler 88666/88668 lstart 04:36:59 晚于 commit。本波只盖最新代次 6c41d271（remote 6c41d271cf3a 现查==ls-remote）；中间代次 3c3150d1、d5c886f5 明记 **unsealed 不重章**。
+- 冻结处置注记：04:05 冻结令到达时 wave-63 驱动已跑约 4 分钟（28 M 部分腿产物留盘未提交），随后被 heartbeat merge reset 吞回——本波开工时盘九件={43d83d65:9} 无混值无 None，即卡面『None 清零』天然成立；无既有已提交证据被改动。
+- 代次现查：盘 entry assets/index-xok1NNVT.js 172175B sha256 ecb509400e7c3ea7…c15c9 逐字==卡面（w64/w65 曾换代，本代卡面记『未换代』系相对 w65 读数，与 w63 CnNU3t1p 不同名——以盘现算为准）；CSS IyhtleuY 145872B 同值；9122 served==磁盘；21/21 路由。
+- 九件 9/9=={6c41d271:9} bad=[] 全 ok/exit=0（驱动 /tmp/wave66-exits.txt 九腿全 0，served 拍前后同值未漂）：ia-html{51,22,tabsAll:23,1,8}/react{51,22,1,8}；lint-fake v=[]；lint-reuse v0 e1（chat→T40）；state-quad 20/20 真刷新非 carried；crawl-anon/auth DL0/CE0/PE0 routesCE=51/51（401 归因）redirects=24 notes。
+- shots 本代真跑：auth 102/102 failures=[] **obs=0 obsR=[]（上代 #/capabilities?tab=channels 本代不复现=收敛，ENV 归因见 ui-qa R-OBS1-43d83d65.md）** distinct=25 envOnly=51；anon aux=true 102/102 obs=0 distinct=23 envOnly=51；三键 xok1NNVT/ecb50940…/172175、servedEntryBefore==After、ceAuthority=login-state 双腿。
+- 环境：9122 v4_proxy 95667、caddy 28034、BFF 8092 12048@603a23e9 未动；web/src 未碰；R60 结案仅引用；43d83d65 章 14ec85ec 不重做；无 amend/force。
