@@ -377,3 +377,15 @@ R52 OBS 整改：`disabled` 与 `aria-disabled` 说同一句话，与 `title` �
 - 四态：loading 骨架、真实空（`run-empty-guide`）、筛选空（`run-state-clear`）、error（rid + 重试）都只随新批刷新，不因切窗错乱。
 - 验证：定向 runs 3 files / 142 passed（基线 138）；全量 **2316 passed**；`tsc` 本域 0；`eslint src/modules/runs` exit 0；build exit 0（entry 内「全部时间」=0，`RunsModulePage-*.js` 内 =1；testid 为模板拼接故不入 bundle 字面量）。
 - 未测：真实浏览器 375 下四个按钮与状态下拉的换行密度；键盘 Tab 顺序的人工走查。
+
+## 窗口契约回归护栏（runs window guards，2026-11-20）
+
+`runs.window.test.ts` 把「地址里的窗口」与「请求里的 `since`」钉在一起，纯测试，无产品改动。
+
+- 映射：`24h/7d/30d` 的 `since` 与 `Date.now()` 差分别落在 1/7/30 天（容差 ±2 分钟）；`all` 必须发 `since=1970-01-01T00:00:00.000Z`，**绝不省略** `since`——省略会被读口判成 400 `request.missing_filter`。四档各自的按钮 `aria-pressed` 同步。
+- 组合参数：`?window=7d&status=failed&employee=…&rsort=started&rdir=desc&keep=1` 上点 `run-window-30d` 后，地址五项原样保留，`/api/runs` 恰 +1，`/api/employees` 与 `/api/run-stats` 零新增。
+- 非法值：`?window=xxx` 按 7d 读数且 `run-window-7d` pressed，但地址保持 `window=xxx`（不改写），`run-source-note` 含「未识别」「近 7 天」。
+- 默认：无 `?window=` 时按 7d 读数，地址不自动补 `window=7d`。
+- 复现腿：`?state=empty` 下选择器自洽（恰一枚 pressed），真入口（`run-list-copy`）不渲染，零请求；点 `run-window-24h` 只改地址（`state=empty&window=24h`），仍零请求、面板仍为 empty。
+- 验证：定向 runs 4 files / 147 passed（基线 142）；全量 **2321 passed**；`tsc` 本域 0；`eslint src/modules/runs` exit 0；build exit 0（entry 内「全部时间」=0，`RunsModulePage-*.js`=1）。
+- 未测：真实浏览器 375 折行；读口在极限窗口下的服务端行为（1970 起点只由本用例断言请求形状）。
