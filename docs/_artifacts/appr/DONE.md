@@ -1027,3 +1027,15 @@ apv7-export-group/export/export-count 新增；apv5/apv6/apr5/apd6/ed*/emp-list/
 - 同源联动：QueueCsvExport rows 由 list.rows 改 **visibleRows**（默认态首末=c9,b9 服务端序；?asort=status&adir=asc 组 blob 首行 ap_a9 末行 ap_c9=表体同序，用例双组锁）；QueueSummaryBar 桶计数与排序无关（approved=1 两态相等锁）。
 - 测试：history 3 用例（三态循环+缺时间行恒末+计数不变零请求锁 / 粘 asort&adir URL 复现+CSV 逐行对照+汇总不变 / error 态控件 disabled+原因 title+注脚隐藏）+pending 1 用例（ready 启用+点击零 refetch+注脚）。定向 approvals 3 files/94 passed（90+4）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **144 files/1823 passed**（基线 1819+4）。
 - 零破：apv5–apv9/apd5–apd7/apr5/ed*/emp-*（既有 90 用例全绿为证）；Enter/Space=原生 button 语义（jsdom dispatch Enter 不经 onClick 的框架差异在断言中如实注记，键盘可达由 type=button+可聚焦保证）；三档=控件 flex-wrap+note min-w-0 形态学报；9122==cca9cf7e 禁重建，活体排序 DOM 读数待并入后代次。
+
+## R72 审批面动作可用性矩阵（apv-gates-*，单点集中，2026-11-20）
+
+- 基线：显式 refspec fetch + merge origin/lane/hermes-console = Already up to date @9d9bd874（章面 3c7f70f6），toplevel ✓ porc=0；代次 cca9cf7e。
+- 新文件 gates.ts（98 行）=六入口唯一派生：`gateReason(phase)` 一套措辞（loading=「正在读取列表」/error=「列表读取失败」/denied=「没有读取权限（或该面尚未开放）」/empty=「读口返回的是真实空集」）+ `actionGates(phase, rowCount)` 返回 {export,sort,toggle,detail,summary,retry} 各 {enabled,title}。
+- 接线（禁再各钮自算）：QueueCsvExport 删 csvPhaseReason→吃 gates.export（ready 且 0 行=「该条件下没有可导出的审批。」逐字）；QueueSortBar 删 phaseReason→吃 gates.sort（**矩阵②修正：empty 下排序改可用**，此前 disabled=phase!==ready 违例本单收掉）+组件尾新增 apv-gates-note 一行（矩阵口径说明，title 列六入口）；QueueSummaryBar unavailable() 改拼 gateReason（前/后缀不动语义，「计数不作 0」「真实空集」等 R70 断言保过）；两页刷新钮=apv-gates-refresh + disabled/title 均派生 gates.retry。
+- apv9-toggle/apd6/apd7 入口=非 ready 列表不渲行/aside 不选中（入口不存在=最强 gating，用例锁 loading 无 toggle）；apv6 桶非 ready 显「—」span 无链接（现状已派生自 down，本单收措辞）。
+- 矩阵逐格断言（新 describe 5 用例）：loading=export/sort/refresh 全 disabled 且 title 同含「正在读取」+summary 桶 title 同句+无行无 toggle；empty=export disabled(真实空集)/sort enabled/apr5-retry 与 apv-state-retry 不出现/refresh enabled；error=apr5-retry 在+export/sort disabled 含「读取失败」+risk 桶同句；denied=refresh 钮本身不渲（phase!=="denied" 既有）+apr5-retry 不出现+export/sort disabled 含「没有读取权限」+无「批准」写路径钮；ready+apv8 过滤 0 行=export disabled 标题逐字=「该条件下没有可导出的审批。」+键入前后 fetchJSON 计数不变（gates 零请求）。
+- 既有措辞断言同步 2 处（R70 1124/1288「列表没能加载」→「列表读取失败」，语义等价=gates 单点句）。
+- 测试坑：qa(id) 助手会包 `[data-testid="…"]`，前缀选择器需直调 document.querySelector（SyntaxError Invalid selector 一次即修）。
+- 验证：定向 approvals 3 files/99 passed（94+5）；tsc 本域 0 红；assert-ia 两模式 exit0；全量 **144 files/1828 passed**（基线 1823+5）。
+- 零破：apv5–apv9/apd5–apd7/apr5/apv-state-* 既有族（94→99 全绿为证）；文件数=8（gates.ts+三组件+两页+两测…=7+DONE）≤15 ✓；三档=note/p 在既有 flex-col 内形态学报；9122==cca9cf7e 禁重建，活体矩阵读数待并入后代次。

@@ -1121,7 +1121,7 @@ describe("R70 queue state consistency (apv-state-*)", () => {
     expect(qa("apr5-retry"), "existing retry testid kept").toBeTruthy();
     const btn = qa("apv7-export") as HTMLButtonElement;
     expect(btn.disabled, "export gated on error").toBe(true);
-    expect(btn.title).toContain("不能导出：列表没能加载");
+    expect(btn.title).toContain("不能导出：列表读取失败"); // R72 gateReason 单点
     expect(qa("apv7-export-count")?.textContent).toBe("—");
     expect(qa("apv6-summary-risk-high")?.getAttribute("title"), "risk bucket title").toContain("列表读取失败");
     // denied/error 面不画行：预览入口不存在
@@ -1285,7 +1285,100 @@ describe("R71 queue column sorting (apv-sort-*)", () => {
     const btn = qa("apv-sort-status") as HTMLButtonElement | null;
     expect(btn, "sort bar still visible for disabled semantics").toBeTruthy();
     expect(btn!.disabled).toBe(true);
-    expect(btn!.title).toContain("不能排序：列表没能加载");
+    expect(btn!.title).toContain("不能排序：列表读取失败"); // R72 gateReason 单点
     expect(qa("apv-sort-scope-note"), "no scope note while gated").toBeNull();
+  });
+});
+
+describe("R72 action availability matrix (apv-gates-*)", () => {
+  const qa = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+  const dis = (id: string) => (qa(id) as HTMLButtonElement | null)?.disabled;
+  const ttl = (id: string) => (qa(id) as HTMLButtonElement | null)?.title ?? "";
+
+  it("loading: every gated action disabled, one reason family", async () => {
+    api.fetchJSON.mockImplementation(() => new Promise(() => {}));
+    await render("/approvals?tab=history", <ApprovalsHistoryModulePage />);
+    await waitFor(() => !!qa("apv-state"), "state container");
+    expect(qa("apv-gates-note"), "matrix note on screen").toBeTruthy();
+    for (const id of ["apv7-export", "apv-sort-title", "apv-gates-refresh"]) {
+      expect(dis(id), id).toBe(true);
+      expect(ttl(id), `${id} reason`).toContain("正在读取");
+    }
+    expect(qa("apv6-summary-pending")?.getAttribute("title")).toContain("正在读取");
+    expect(document.querySelector('[data-testid^="apv9-toggle-"]'), "no rows while loading").toBeNull();
+  });
+
+  it("empty: export/toggle gated, sort stays alive, no retry control appears", async () => {
+    await mount(
+      async (url: string) => (String(url).includes("/api/approval?id=") ? {} : { items: [] }),
+      "/approvals?tab=history&status=pending",
+    );
+    await waitFor(() => !!qa("apv-state-empty"), "empty panel");
+    expect(dis("apv7-export")).toBe(true);
+    expect(ttl("apv7-export")).toContain("真实空集");
+    expect(dis("apv-sort-title"), "sort remains usable in a true empty set").toBe(false);
+    expect(qa("apr5-retry"), "retry belongs to error only").toBeNull();
+    expect(qa("apv-state-retry")).toBeNull();
+    expect(dis("apv-gates-refresh")).toBe(false);
+  });
+
+  it("error: retry alive, everything else gated with the same reason", async () => {
+    await mount(
+      async (url: string) => {
+        if (String(url).includes("/api/approval?id=")) return {};
+        throw new ApiError("boom", { status: 500, body: "", url: "u", requestId: "req-r72-500" });
+      },
+      "/approvals?tab=history",
+    );
+    await waitFor(() => !!qa("apv-state-error"), "error panel");
+    expect(qa("apr5-retry"), "retry usable on error").toBeTruthy();
+    for (const id of ["apv7-export", "apv-sort-title"]) {
+      expect(dis(id), id).toBe(true);
+      expect(ttl(id), id).toContain("读取失败");
+    }
+    expect(qa("apv6-summary-risk-high")?.getAttribute("title")).toContain("读取失败");
+  });
+
+  it("denied: every action gated and no path beyond retry appears", async () => {
+    await mount(
+      async (url: string) => {
+        if (String(url).includes("/api/approval?id=")) return {};
+        throw new ApiError("nope", { status: 403, body: "", url: "u", requestId: "req-r72-403" });
+      },
+      "/approvals?tab=history",
+    );
+    await waitFor(() => !!qa("apv-state-denied"), "denied panel");
+    expect(qa("apv-gates-refresh"), "denied hides the refresh button").toBeNull();
+    expect(qa("apr5-retry"), "denied offers no retry").toBeNull();
+    expect(dis("apv7-export")).toBe(true);
+    expect(ttl("apv7-export")).toContain("没有读取权限");
+    expect(dis("apv-sort-title")).toBe(true);
+    expect(ttl("apv-sort-title")).toContain("没有读取权限");
+    expect(
+      Array.from(document.querySelectorAll("button")).some((b) => (b.textContent ?? "").includes("批准")),
+      "no write action under denied",
+    ).toBe(false);
+  });
+
+  it("ready with a zero-row filter: export disabled with the exact sentence, gates never fetch", async () => {
+    await mount(
+      async (url: string) =>
+        String(url).includes("/api/approval?id=")
+          ? {}
+          : { items: [{ approvalId: "ap_g1", title: "轮换密钥", status: "pending", createdAt: "2026-11-19T01:00:00Z" }] },
+      "/approvals?tab=history",
+    );
+    await waitFor(() => !!qa("apr5-row-ap_g1"), "row on screen");
+    const calls = api.fetchJSON.mock.calls.length;
+    const input = qa("apv8-search") as HTMLInputElement;
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    await act(async () => {
+      setter?.call(input, "无此内容zz");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await waitFor(() => !!qa("apv8-search-empty"), "zero visible rows");
+    expect(dis("apv7-export")).toBe(true);
+    expect(ttl("apv7-export")).toBe("该条件下没有可导出的审批。");
+    expect(api.fetchJSON.mock.calls.length, "gates never fetch").toBe(calls);
   });
 });

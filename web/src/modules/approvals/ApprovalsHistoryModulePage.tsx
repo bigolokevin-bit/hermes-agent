@@ -26,6 +26,7 @@ import { Card, CardContent } from "@nous-research/ui/ui/components/card";
 import { Spinner } from "@nous-research/ui/ui/components/spinner";
 
 import { STATUS_FILTERS, approvalSortKeyOf, approvalsRowSearchText, isKnownStatus, sortApprovalRows, type ApprovalSortDir, type ApprovalSortKey } from "./model";
+import { actionGates } from "./gates";
 import { QueueSummaryBar } from "./QueueSummaryBar";
 import { BackToList, restoreListScroll, saveListScroll } from "./BackToList";
 import { QueueCsvExport } from "./QueueCsvExport";
@@ -254,7 +255,9 @@ export function ApprovalsHistoryModulePage(): ReactNode {
             size="sm"
             outlined
             onClick={list.reload}
-            disabled={list.phase === "loading"}
+            data-testid="apv-gates-refresh"
+            title={actionGates(list.phase, list.rows.length).retry.title}
+            disabled={!actionGates(list.phase, list.rows.length).retry.enabled}
             prefix={
               list.phase === "loading" ? (
                 <Spinner className="h-3.5 w-3.5" />

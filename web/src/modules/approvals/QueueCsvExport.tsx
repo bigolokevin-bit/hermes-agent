@@ -9,6 +9,7 @@
  */
 import { Button } from "@nous-research/ui/ui/components/button";
 
+import { actionGates } from "./gates";
 import type { ApprovalRow } from "./model";
 
 const CSV_HEADER = ["id", "title", "status", "risk", "updated_at"] as const;
@@ -58,15 +59,6 @@ export function downloadCsv(name: string, csv: string): void {
 
 type Phase = "loading" | "empty" | "ready" | "error" | "denied";
 
-/** R70: 非 ready 态的导出闸——原因句与汇总条同一族口径。 */
-function csvPhaseReason(phase: Phase): string {
-  if (phase === "loading") return "数据还在读取";
-  if (phase === "error") return "列表没能加载";
-  if (phase === "denied") return "没有读取权限";
-  if (phase === "empty") return "读口返回的是真实空集，没有可导出的行";
-  return "";
-}
-
 export function QueueCsvExport({
   rows,
   tab,
@@ -79,6 +71,8 @@ export function QueueCsvExport({
   phase?: Phase;
 }) {
   const count = rows.length;
+  // R72: 可用性矩阵单点派生（不再各钮自算措辞）。
+  const gate = actionGates(phase, count).export;
   const blocked = phase !== "ready";
   return (
     <span className="flex min-w-0 items-center gap-1.5" data-testid="apv7-export-group">
@@ -86,14 +80,8 @@ export function QueueCsvExport({
         size="sm"
         outlined
         data-testid="apv7-export"
-        disabled={blocked || count === 0}
-        title={
-          blocked
-            ? `不能导出：${csvPhaseReason(phase)}；恢复列表后自动可用。`
-            : count === 0
-              ? "当前筛选下没有可导出的行，导出暂不可用。"
-              : `导出当前已显示的 ${count} 行为 CSV（纯前端 Blob，零新后端端点；updated_at 用屏上同一值）。文件名时间=导出时刻（北京时间）。`
-        }
+        disabled={!gate.enabled}
+        title={gate.enabled ? `${gate.title}文件名时间=导出时刻（北京时间）。` : gate.title}
         onClick={() => downloadCsv(approvalsCsvName(tab, status), buildApprovalsCsv(rows))}
       >
         导出 CSV

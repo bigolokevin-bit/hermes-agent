@@ -31,6 +31,7 @@ import type { ApprovalRow } from "./model";
 import { approvalSortKeyOf, approvalsRowSearchText, sortApprovalRows, type ApprovalSortDir, type ApprovalSortKey } from "./model";
 import { DeniedPanel, EmptyPanel, ErrorPanel, InlineFailure, LoadingPanel } from "./states";
 import { useApprovalDetail, useApprovalsList, type ForcedState } from "./useApprovalsData";
+import { actionGates } from "./gates";
 import { QueueSummaryBar } from "./QueueSummaryBar";
 import { BackToList, restoreListScroll, saveListScroll } from "./BackToList";
 import { QueueCsvExport } from "./QueueCsvExport";
@@ -297,7 +298,9 @@ export function ApprovalsPendingModulePage(): ReactNode {
             size="sm"
             outlined
             onClick={list.reload}
-            disabled={list.phase === "loading" || inFlight}
+            data-testid="apv-gates-refresh"
+            title={actionGates(list.phase, list.rows.length).retry.title}
+            disabled={!actionGates(list.phase, list.rows.length).retry.enabled || inFlight}
             prefix={
               list.phase === "loading" ? (
                 <Spinner className="h-3.5 w-3.5" />
