@@ -15,8 +15,12 @@
     "ok": true
   },
   "distinctMainHeads": 24,
-  "routesWithEmptyMain": [],
-  "routesWithoutMainEl": [],
+  "routesWithEmptyMain": [
+    "#/sessions"
+  ],
+  "routesWithoutMainEl": [
+    "#/sessions"
+  ],
   "mainCharsByRoute": [
     {
       "route": "#/access",
@@ -141,13 +145,13 @@
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "1440",
-      "chars": 113,
+      "chars": 10,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "375",
-      "chars": 113,
+      "chars": 10,
       "hasMainEl": true
     },
     {
@@ -219,7 +223,7 @@
     {
       "route": "#/employees/:employeeId?zone=config",
       "viewport": "375",
-      "chars": 146,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -495,8 +499,8 @@
     {
       "route": "#/sessions",
       "viewport": "375",
-      "chars": 1,
-      "hasMainEl": true
+      "chars": 0,
+      "hasMainEl": false
     },
     {
       "route": "#/system",
@@ -642,7 +646,7 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "da5c815e",
+  "headHash": "e2ef3793",
   "exitCode": 0,
   "entry": "assets/index-C3gNfEdn.js",
   "entrySha256": "40628e155a318c5da2a661fd0adabd7035c10b9575a8274d18511c9b7578e9cb",
