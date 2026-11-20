@@ -779,6 +779,94 @@ export function parseSortDir(raw: string | null, key: ModelCostSort): SortDir {
   return key === 'model' ? 'asc' : 'desc';
 }
 
+// ---- METAQ: URL compatibility matrix ---------------------------------------
+
+/** Canonical keys the page reads; everything else in the address is left alone. */
+export const METRICS_QUERY_KEYS = ['window', 'view', 'groupBy', 'dsort', 'ddir', 'sort', 'dir', 'heat'] as const;
+
+export interface MetricsQueryAnyway {
+  query: string;
+  ignored: string[];
+  changed: boolean;
+}
+
+const MODES = ['employee', 'model'] as const;
+const DETAIL_SORTS = ['runs', 'cost', 'share'] as const;
+const SHARE_SORTS = ['runs', 'cost', 'model'] as const;
+const DIRECTIONS = ['asc', 'desc'] as const;
+
+const oneOf = (value: string | null, allowed: readonly string[]): value is string =>
+  value !== null && allowed.includes(value);
+
+/**
+ * Read every known key, fold the legacy aliases into their canonical spelling
+ * and hand back the address the page wants plus the values it had to ignore.
+ * Unknown keys are never touched: only the metrics keys are ours.
+ */
+export function normalizeMetricsQuery(search: string): MetricsQueryAnyway {
+  const source = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
+  const out = new URLSearchParams(source);
+  const ignored: string[] = [];
+
+  const drop = (key: string, raw: string): void => {
+    out.delete(key);
+    ignored.push(`${key}=${raw}`);
+  };
+
+  const windowRaw = source.get('window');
+  if (windowRaw !== null && !WINDOW_PRESETS.some((preset) => preset.id === windowRaw)) drop('window', windowRaw);
+
+  // `w` is the pre-metAA spelling of the heat window; `heat` wins when both are there.
+  const heatValid = (value: string | null): value is string =>
+    value !== null && WINDOWS.some((window) => String(window.weeks) === value);
+  const heatRaw = source.get('heat');
+  const legacyRaw = source.get('w');
+  let heatValue: string | null = null;
+  if (heatValid(heatRaw)) heatValue = heatRaw;
+  else if (heatRaw !== null) drop('heat', heatRaw);
+  if (heatValid(legacyRaw)) {
+    out.delete('w');
+    if (heatValue === null) heatValue = legacyRaw;
+  } else if (legacyRaw !== null) {
+    drop('w', legacyRaw);
+  }
+  if (heatValue !== null) out.set('heat', heatValue);
+
+  const viewRaw = source.get('view');
+  if (viewRaw !== null && !oneOf(viewRaw, MODES)) drop('view', viewRaw);
+  const groupRaw = source.get('groupBy');
+  if (groupRaw !== null && !oneOf(groupRaw, MODES)) drop('groupBy', groupRaw);
+
+  // `groupBy` is the older spelling of the detail axis, so a link that names it
+  // alone also drives the detail table. The reverse stays one-way on purpose:
+  // the detail view and the share grouping are separate choices on this page
+  // (metS), and filling groupBy from view would silently move the share table.
+  const viewOk = oneOf(out.get('view'), MODES);
+  const groupOk = oneOf(out.get('groupBy'), MODES);
+  if (groupOk && !viewOk) out.set('view', out.get('groupBy') as string);
+
+  const dsortRaw = source.get('dsort');
+  if (dsortRaw !== null && !oneOf(dsortRaw, DETAIL_SORTS)) drop('dsort', dsortRaw);
+  const ddirRaw = source.get('ddir');
+  if (ddirRaw !== null && !oneOf(ddirRaw, DIRECTIONS)) drop('ddir', ddirRaw);
+  const sortRaw = source.get('sort');
+  if (sortRaw !== null && !oneOf(sortRaw, SHARE_SORTS)) drop('sort', sortRaw);
+  const dirRaw = source.get('dir');
+  if (dirRaw !== null && !oneOf(dirRaw, DIRECTIONS)) drop('dir', dirRaw);
+
+  return {
+    query: out.toString(),
+    ignored,
+    changed: out.toString() !== source.toString(),
+  };
+}
+
+/** One line above the page when the address carried values the page could not use. */
+export function ignoredParamsNote(ignored: string[]): string | null {
+  if (ignored.length === 0) return null;
+  return `已忽略无效参数 ${ignored.length} 个`;
+}
+
 // ---- METP: detail table sorting --------------------------------------------
 
 export type DetailSort = 'runs' | 'cost' | 'share';

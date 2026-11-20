@@ -4,7 +4,7 @@
 // no raw field names or HTTP codes reach the page.
 import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { MemoryRouter, useLocation } from 'react-router';
+import { MemoryRouter, useLocation, useNavigationType } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiError } from '@/lib/api-error';
@@ -4528,5 +4528,105 @@ describe('metAP — the three faces of the run count, spelled out', () => {
     expect(face('metAP-detail')).toBe(face('metT-detail-total-count'));
     // The switch refetches its own batch; the caliber line adds nothing to it.
     expect(urls().length).toBeGreaterThan(before);
+  });
+});
+
+describe('metAQ — the address compatibility matrix', () => {
+  const q = (id: string): HTMLElement | null => document.querySelector(`[data-testid="${id}"]`);
+  const loc = (): string => q('met7-loc')?.textContent ?? '';
+  const scope = (): string => q('metAL-scope')?.textContent ?? '';
+  const note = (): HTMLElement | null => q('metAQ-url-note');
+
+  function KeyProbe(): ReactNode {
+    const location = useLocation();
+    const navigation = useNavigationType();
+    return (
+      <>
+        <p data-testid="metAQ-loc-key">{location.key}</p>
+        <p data-testid="metAQ-nav-type">{navigation}</p>
+      </>
+    );
+  }
+
+  const page = (
+    <>
+      <MetricsModulePage />
+      <LocationProbe />
+      <KeyProbe />
+    </>
+  );
+
+  it('renders the legacy heat alias exactly like the canonical key', async () => {
+    const historyBefore = window.history.length;
+
+    await render('/metrics?w=4', page);
+    await waitFor(() => loc() === '?heat=4', 'legacy key folded into heat');
+
+    expect(q('met5-window-4')?.getAttribute('aria-pressed')).toBe('true');
+    expect(scope()).toContain('热力');
+    expect(q('metAQ-url-note')).toBeNull();
+    // replace, not push: the fold rewrites the entry instead of stacking one.
+    expect(q('metAQ-nav-type')?.textContent).toBe('REPLACE');
+    expect(q('metAQ-loc-key')?.textContent).toBeTruthy();
+    expect(window.history.length).toBe(historyBefore);
+  });
+
+  it('lets the older groupBy spelling drive the detail view too', async () => {
+    await render('/metrics?groupBy=employee', page);
+    await waitFor(
+      () => loc().includes('view=employee') && loc().includes('groupBy=employee'),
+      'detail view written back',
+    );
+    expect(scope()).toContain('分组 按员工');
+    expect(q('metAO-filename-detail')?.textContent).toContain('-employee-');
+
+    // The opposite direction stays put: the share grouping is its own choice,
+    // so a link naming only the detail view must not move the share table.
+    await render('/metrics?view=employee', page);
+    await waitFor(() => q('metAP-heat') !== null, 'settled');
+    expect(loc()).toContain('view=employee');
+    expect(loc()).not.toContain('groupBy=');
+    expect(scope()).toContain('分组 按模型');
+    expect(q('metAO-filename-detail')?.textContent).toContain('-employee-');
+  });
+
+  it('falls back to the defaults for unusable values and says how many it ignored', async () => {
+    await render('/metrics?window=9y&heat=abc&sort=zzz&dsort=xxx&keep=1', page);
+    await waitFor(() => loc().includes('keep=1') && !loc().includes('9y'), 'unknown values folded away');
+
+    expect(q('met6-window-24h')?.getAttribute('aria-pressed')).toBe('true');
+    expect(q('met5-window-1')?.getAttribute('aria-pressed')).toBe('true');
+
+    expect(note()).not.toBeNull();
+    expect(note()?.textContent).toBe('已忽略无效参数 4 个');
+    const hint = note()?.getAttribute('title') ?? '';
+    for (const pair of ['window=9y', 'heat=abc', 'sort=zzz', 'dsort=xxx']) expect(hint).toContain(pair);
+    // Unrelated keys are none of our business.
+    expect(loc()).toContain('keep=1');
+    expect(note()?.textContent ?? '').not.toContain('/');
+  });
+
+  it('keeps the same words on screen as the canonical link', async () => {
+    await render('/metrics?w=12&view=model', page);
+    await waitFor(() => loc().includes('heat=12'), 'heat canonical');
+    const aliasScope = scope();
+    const aliasRuns = q('metAP-heat')?.textContent;
+
+    await render('/metrics?heat=12&view=model&groupBy=model', page);
+    await waitFor(() => q('metAP-heat') !== null, 'canonical settled');
+    expect(scope()).toBe(aliasScope);
+    expect(q('metAP-heat')?.textContent).toBe(aliasRuns);
+  });
+
+  it('reads nothing extra while folding the address', async () => {
+    const start = urls().length;
+    await render('/metrics?w=4&window=7d', page);
+    await waitFor(() => loc() === '?window=7d&heat=4', 'folded');
+    const aliasCount = urls().length - start;
+
+    const beforeCanonical = urls().length;
+    await render('/metrics?heat=4&window=7d', page);
+    await waitFor(() => q('metAP-heat') !== null, 'canonical settled');
+    expect(urls().length - beforeCanonical).toBe(aliasCount);
   });
 });

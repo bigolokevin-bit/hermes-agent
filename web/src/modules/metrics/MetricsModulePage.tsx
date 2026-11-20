@@ -108,6 +108,8 @@ import {
   type SourceStamp,
   type UsageWindowId,
   runsCaliberTitle,
+  normalizeMetricsQuery,
+  ignoredParamsNote,
 } from './metrics';
 import './metrics.css';
 
@@ -384,6 +386,13 @@ export function MetricsModulePage() {
   // fallback for links copied before this change.
   const activeWindow = windowOf(params.get('heat') ?? params.get('w'));
   const weeks = activeWindow.weeks;
+  const urlNormalization = normalizeMetricsQuery(params.toString());
+  // The unusable values are folded away from the address; keep the first list so
+  // the note does not blink out in the render that follows the rewrite.
+  const [ignoredParams] = useState<string[]>(() =>
+    normalizeMetricsQuery(params.toString()).ignored,
+  );
+  const ignoredNote = ignoredParamsNote(ignoredParams);
   const [state, setState] = useState<PageState>({ kind: 'loading' });
   const [usage, setUsage] = useState<UsageState>({ kind: 'loading' });
   const [breakdown, setBreakdown] = useState<BreakdownState>({ kind: 'loading' });
@@ -393,6 +402,16 @@ export function MetricsModulePage() {
   const [share, setShare] = useState<ShareState>({ kind: 'loading' });
   const [heatAt, setHeatAt] = useState<string>(new Date().toISOString());
   const [attempt, setAttempt] = useState(0);
+  // Fold aliases and unusable values into the canonical spelling once, on the
+  // link the page was opened with. Later view/groupBy choices stay independent,
+  // so this must not run again after the first rewrite.
+  const normalizedOnce = useRef(false);
+  useEffect(() => {
+    if (normalizedOnce.current) return;
+    normalizedOnce.current = true;
+    if (!urlNormalization.changed) return;
+    setParams(new URLSearchParams(urlNormalization.query), { replace: true });
+  }, [urlNormalization, setParams]);
   const [retryingBlock, setRetryingBlock] = useState<UsageBlockKind | null>(null);
   const [selected, setSelected] = useState<{ dow: number; hour: number } | null>(null);
   const [heatTableOpen, setHeatTableOpen] = useState(false);
@@ -1801,6 +1820,15 @@ export function MetricsModulePage() {
           回到默认视图
         </Button>
       </div>
+      {ignoredNote ? (
+        <p
+          className="met6-hint metAQ-note"
+          data-testid="metAQ-url-note"
+          title={ignoredParams.join('、')}
+        >
+          {ignoredNote}
+        </p>
+      ) : null}
 
       <div className="metAO-bar" data-testid="metAO-filename-bar">
         <span className="metAO-file">

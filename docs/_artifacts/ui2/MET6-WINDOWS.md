@@ -626,3 +626,27 @@ metR 三态口径未变：导出/复制的可用性只由整页失败或各自�
 验证：定向 `src/modules/metrics` 4 files / 215 passed（原 210，+5）；全量 145 files / 1830 passed（原 1825）；`tsc -b . --noEmit` 全仓 67 条既存、`modules/metrics` 0。
 
 未测项：真实后端上三面的实际数值差未用线上数据复算（历史上 run-stats 与 `/runs` 条数差 1 的先例仍在记忆里），本单只保证每面读数与它自己的来源一致、并在差存在时如实标出。
+
+## URL 兼容矩阵与归一（metAQ，2026-11-20）
+
+挂载时对地址做一次归一，之后不再改写（用户后续每次点击各写自己的键）：
+
+| 规范键 | 别名 / 兼容 | 合法值 | 非法时 |
+|---|---|---|---|
+| `window` | — | `24h` `7d` `30d` | 丢弃并记入忽略清单 |
+| `heat` | 旧键 `w`（`heat` 优先，`w` 并归为 `heat`） | `1` `4` `12` | 丢弃并记入忽略清单 |
+| `groupBy` | 写入 `view`（`groupBy` 是明细轴的旧拼法） | `employee` `model` | 丢弃并记入忽略清单 |
+| `view` | — | `employee` `model` | 丢弃并记入忽略清单 |
+| `dsort` / `ddir` | — | `runs` `cost` `share` / `asc` `desc` | 丢弃并记入忽略清单 |
+| `sort` / `dir` | — | `runs` `cost` `model` / `asc` `desc` | 丢弃并记入忽略清单 |
+
+- 别名直达等价：`?w=4` 归一为 `?heat=4`，与直接 `?heat=4` 渲染同一热力窗；`?w=12&view=model` 与 `?heat=12&view=model&groupBy=model` 的 `metAL-scope` 与 `metAP-heat` 逐字相等。
+- **单向兼容（知情契约）**：`?groupBy=employee` 会补写 `view=employee`（明细面同值）；反向 `?view=employee` 不补 `groupBy`——明细视角与分摊分组是两个独立选择（metS 契约为准），自动回填会把分摊表静默切组。
+- 未知/非法值不崩：回落默认，并在 `metAQ-url-note` 写「已忽略无效参数 N 个」，`title` 列出每对 `key=原值`；与页面无关的参数原样保留。
+- 归一用 `setParams(..., { replace: true })`：`useNavigationType()` 实测为 `REPLACE`，`window.history.length` 前后不变，不新增历史条目。
+- 归一不额外取数：别名链接与规范链接的请求增量逐项相等（同一批读口，只差参数值）。
+- `metAL-scope` 与 `metAO-filename-*` 读的是归一后的参数，故回显与地址一致。
+
+验证：定向 `src/modules/metrics` 4 files / 220 passed（原 215，+5）；全量 145 files / 1835 passed（原 1830）；`tsc -b . --noEmit` 全仓 67 条既存、`modules/metrics` 0。
+
+未测项：真浏览器前进/后退在多次切参后的历史栈形态未逐项走查（已用 `useNavigationType` 与 `history.length` 覆盖归一瞬间）。
