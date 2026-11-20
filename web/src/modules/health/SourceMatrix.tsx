@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useState } from "react";
 import { Card, CardContent } from "@nous-research/ui";
 import { redactError } from "./systemHealth";
+import { COPY_SCOPE_TEXT, withCopyScope } from "./copyScope";
 import {
   SOURCE_STATUS_LABEL as STATUS_LABEL,
   SYS6_GAP,
@@ -155,7 +156,7 @@ export function SourceMatrix() {
             className="sys7-export sys10-copy"
             data-testid="sys10-copy"
             disabled={copyDisabled}
-            title={copyDisabled ? matrixBlockTitle ?? "当前没有可复制的读口行" : "复制当前矩阵为纯文本；不会再发请求"}
+            title={withCopyScope(copyDisabled ? matrixBlockTitle ?? "当前没有可复制的读口行" : "复制当前矩阵为纯文本；不会再发请求")}
             onClick={() => { void copyMatrix(); }}
           >
             复制矩阵
@@ -166,6 +167,7 @@ export function SourceMatrix() {
           <span className="sys7-count" data-testid="sys7-export-count">{exportDisabled ? "—" : `${exportRows.length} 行`}</span>
           <span className="sys7-note">导出与屏上矩阵同源：姓名、路径、人话状态、耗时、响应顶层 ISO 采集时刻；缺失留空，不补 0，也不用本机时钟。</span>
         </div>
+        <p className="sys7-note sys-copy-scope" data-testid="sys-copy-scope">{COPY_SCOPE_TEXT}</p>
         {copyState === "failed" ? (
           <textarea
             className="sys10-fallback"

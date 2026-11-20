@@ -2213,3 +2213,14 @@ built /private/tmp/health-r38/index.html
 - Tests: `cd web && npx vitest run src/modules/health` → **7 files / 56 passed**; full `npx vitest run` → **159 files / 2172 passed**; tsc exit 2 with 37 baseline approvals/employee-detail/employees lines, zero health/version errors.
 - DOM widths (served 9122, no rebuild): 1440/1280/375 `vw=bodySW=bodyCW=1440/1280/375`; `sys14-link-missing` present at all three.
 - Boundaries: only `web/src/modules/health/**` + DONE; no App/shell/routes/registry/package·lock/web-scripts/ops; no install/force/amend/--no-verify; no main merge; no 9122 rebuild.
+
+## R80 /system copy scope disclosure (2026-11-20)
+
+- Baseline: explicit SSH refspec fetch + `git merge origin/lane/hermes-console` → merge `affe1006`; upstream chapter `0c1b94c3` / code `9813d7af`; no reset.
+- Added shared `web/src/modules/health/copyScope.ts`: `COPY_SCOPE_TEXT = "复制的是当前展开/当前排序下的已加载行，不是全量。"`; `withCopyScope()` appends once (idempotent, strips trailing punctuation).
+- `SourceMatrix.tsx`: `sys10-copy` title now `withCopyScope("<enabled/disabled reason>")`; visible read-only `sys-copy-scope` line after the matrix actions. Existing `sys7-export`/`sys10-copy`/`sys10-fallback` behavior, disabled reasons and zero-request copy unchanged.
+- `VersionHealthSurface.tsx`: `scopedCopyTitle = withCopyScope(copyTitle)` on `ver-copy`; same visible `sys-copy-scope` line after the header. Existing `ver-copy`/`ver-copy-status`/fallback and 404 disabled reason unchanged.
+- Tests: `SourceMatrix.test.tsx` asserts exact scope text, title contains scope, and copied data-line order equals table body order (`rowIds()` + `sys6-name-*`) with first/last checks; `VersionHealthSurface.test.tsx` asserts exact scope text, title contains scope on ready and on 404 disabled. Both keep clipboard fallback and zero-fetch assertions.
+- Verification: `cd web && npx vitest run src/modules/health src/modules/version` → **9 files / 73 passed**; full `npx vitest run` → **159 files / 2172 passed**; `./node_modules/.bin/tsc -b . --noEmit` → only baseline approvals/employee-detail/employees errors, own domain 0.
+- DOM: temporary Vite/Chrome harness (deleted; Vite 5502 / Chrome 9302) at 1440/1280/375: health and version both `vw=bodySW=bodyCW=1440/1280/375`; `sys-copy-scope` exact text on both; `sys10-copy`/`ver-copy` titles both end with the same scope sentence and are enabled; health matrix default name-asc 4 rows first `控制台服务探针` last `Hermes 运行时探针`; version table 2 rows first `控制台服务（BFF）9.9.9—正常` last `工作进程——降级`; no horizontal overflow.
+- Boundaries: only `modules/health/**` + `modules/version/**` + DONE; no App/shell/routes/registry/package·lock/web-scripts/ops; no install; no main merge; no 9122 rebuild; no force/amend/--no-verify. Working-tree entry/sha not cited.

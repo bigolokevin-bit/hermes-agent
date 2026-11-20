@@ -3,6 +3,7 @@ import { Badge, Button, Card, CardContent } from "@nous-research/ui";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import { fetchJsonStrict } from "../models/fetchJson";
 import { versionCopyText } from "./versionCopy";
+import { COPY_SCOPE_TEXT, withCopyScope } from "../health/copyScope";
 import {
   HEALTH_API_PATH,
   HEALTH_GAP,
@@ -152,6 +153,7 @@ export function VersionHealthSurface({ preview = null }: { preview?: Preview }) 
           : version.k === "error"
             ? `版本表读取失败：${version.message}；请求编号：${version.requestId ?? "未提供"}；重试成功后才能复制。`
             : "复制当前版本面为纯文本；不会再发请求。";
+  const scopedCopyTitle = withCopyScope(copyTitle);
   const copy = async () => {
     if (copyDisabled) return;
     if (await copyTextToClipboard(copyText)) {
@@ -176,7 +178,7 @@ export function VersionHealthSurface({ preview = null }: { preview?: Preview }) 
               outlined
               disabled={copyDisabled}
               aria-disabled={copyDisabled ? "true" : undefined}
-              title={copyTitle}
+              title={scopedCopyTitle}
               data-testid="ver-copy"
               onClick={() => void copy()}
             >
@@ -184,6 +186,7 @@ export function VersionHealthSurface({ preview = null }: { preview?: Preview }) 
             </Button>
           </div>
         </div>
+        <p className="text-xs text-white/45" data-testid="sys-copy-scope">{COPY_SCOPE_TEXT}</p>
         {copyState === "failed" ? (
           <textarea
             className="w-full rounded border border-white/15 bg-white/5 p-2 font-mono text-xs text-white/80"
