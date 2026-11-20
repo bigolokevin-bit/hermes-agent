@@ -50,6 +50,7 @@ import { eventTypeChoices } from "./model";
 import type { ListFilters } from "./api";
 import { PAGE_LIMIT, PAGE_SIZE_CHOICES, readPageSize } from "./api";
 import { filterSummaryLineOf, hasFilterSummary } from "./filterSummary";
+import { auditGatesOf, gateMirror } from "./auditGates";
 import type { SortColumn, SortState } from "./sorting";
 import { SORT_COLUMNS, ariaSort, nextSort, sortReading, sortRows, sortStateOf } from "./sorting";
 import { applyScroll, clearScrollMark, readScrollMark, readScrollY, saveScrollMark, scrollFingerprint } from "./scrollMemory";
@@ -1388,16 +1389,9 @@ function AuditEventsSurface(): ReactNode {
 
   // aud9: everything on screen and everything exported follows the rows the
   // person is actually looking at, not the raw page the service returned.
-  const canExport = list.phase === "ready" && listedRows.length > 0;
+
 
   const windowLabel = WINDOW_FILTER_CHOICES.find((item) => item.value === windowChoice)?.label ?? "最近 7 天";
-
-  const exportOff = customInvalid || list.phase !== "ready" || listedRows.length === 0;
-  const exportTitle = exportOff
-    ? customInvalid
-      ? "自定义时间窗不完整，没有可导出的记录"
-      : "当前筛选没有可导出的记录"
-    : "导出当前筛选结果为 CSV（北京时间）";
 
   const statusLine = (() => {
     if (customInvalid) return "自定义时间窗还不完整：两栏都填好且开始早于结束才会去读";
@@ -1551,6 +1545,23 @@ function AuditEventsSurface(): ReactNode {
   };
   const filterSummary = filterSummaryLineOf(summaryInput);
 
+  // audQ: one object decides every entry's availability — the two exports, the
+  // two copy controls, the row fold and the retry — with the sentences that
+  // used to be written separately in each widget. Derived only from what the
+  // screen already holds: no request, no side effect, no second truth.
+  const gates = auditGatesOf({
+    phase: list.phase,
+    customInvalid,
+    rows: listedRows.length,
+    question: hasFilterSummary(summaryInput),
+    record: detail.phase,
+    hasIdentifier: listedRows.some((row) => row.rawId !== null),
+  });
+  // audQ: the availability and the reason come from the gates, not from a
+  // ternary living next to the button.
+  const exportOff = !gates.exportCsv.enabled;
+  const exportTitle = gates.exportCsv.title;
+
   return (
     <div className="flex min-w-0 w-full max-w-full flex-col gap-3" data-testid="agent-v2-page-audit" data-page="audit">
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
@@ -1588,7 +1599,9 @@ function AuditEventsSurface(): ReactNode {
               size="sm"
               outlined
               onClick={list.reload}
-              disabled={list.phase === "loading"}
+              disabled={!gates.retry.enabled}
+              aria-disabled={!gates.retry.enabled}
+              title={gates.retry.title}
               data-testid="aud01-refresh"
               prefix={list.phase === "loading" ? <Spinner className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" />}
             >
@@ -1618,9 +1631,9 @@ function AuditEventsSurface(): ReactNode {
               filteredCsvText(listedRows),
             )
           }
-          disabled={!canExport}
-          aria-disabled={!canExport}
-          title={canExport ? "导出当前筛选为 CSV（北京时间）" : "当前筛选无事件可导出"}
+          disabled={!gates.exportFiltered.enabled}
+          aria-disabled={!gates.exportFiltered.enabled}
+          title={gates.exportFiltered.title}
           data-testid="aud5-export"
           prefix={<Download className="h-3.5 w-3.5" />}
         >
@@ -1694,6 +1707,11 @@ function AuditEventsSurface(): ReactNode {
           here is inferred: an empty `data-aud-limit-event` means no pointer was
           on the address, 「不在本页」 means the pointer survived but the row is
           not inside what this page loaded. */}
+      {/* audQ: the whole decision, readable at a glance. `on`/`off` per entry,
+          so a probe sees the matrix without poking at five widgets — and can
+          prove one failure is never on in one place and off in another. */}
+      <span aria-hidden="true" data-testid="aud-gates" {...gateMirror(gates)} />
+
       <span
         aria-hidden="true"
         data-testid="aud-limit-restore"
@@ -1721,12 +1739,7 @@ function AuditEventsSurface(): ReactNode {
           hand over — and it is live in every state of the ledger, including
           loading and denied: the question this page asked exists before the
           answer does, and a refused read is exactly what a ticket needs. */}
-      <FilterSummaryCopy
-        line={filterSummary}
-        available={hasFilterSummary(summaryInput)}
-        phase={list.phase}
-        pending={customInvalid}
-      />
+      <FilterSummaryCopy line={filterSummary} gate={gates.copyFilter} rule={gates.copyFilterRule} />
 
       {/* The window check lives on the list too, and it says exactly one of
           four things: asking, the real counts, 本环境未启用 + why + where, or a
@@ -1979,6 +1992,7 @@ function AuditEventsSurface(): ReactNode {
                     className="w-full rounded-md px-2 py-1 text-left text-xs text-muted-foreground hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
                     aria-expanded={openPreview === row.key}
                     aria-controls={"aud6-preview-" + row.key}
+                    title={gates.toggle.title}
                     data-testid={"aud6-toggle-" + row.key}
                     onClick={() => setFold("preview", row.key)}
                     // audA: Enter on the row's own handle opens the preview.

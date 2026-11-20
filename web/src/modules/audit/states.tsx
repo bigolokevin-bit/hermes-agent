@@ -20,8 +20,9 @@ import { copyTextToClipboard } from "@/lib/clipboard";
 import { requestIdLine, type FailureCopy } from "./copy";
 import { STATE_LABEL, stateMark, unwiredReasonFor, type StatePhase, type StateSlot } from "./stateCopy";
 import { SUMMARY_COPY_LABEL } from "./summary";
-import { PERMALINK_COPY_LABEL, PERMALINK_MISSING_TITLE, permalinkFromEvent } from "./permalink";
-import { FILTER_SUMMARY_COPY_LABEL, FILTER_SUMMARY_EMPTY_TITLE } from "./filterSummary";
+import { PERMALINK_COPY_LABEL, permalinkFromEvent } from "./permalink";
+import type { Gate } from "./auditGates";
+import { FILTER_SUMMARY_COPY_LABEL } from "./filterSummary";
 
 /**
  * audC: the 结论行 copy control, rendered by BOTH legs (the inline row preview
@@ -75,8 +76,12 @@ export function SummaryCopy({ line }: { line: string }): ReactNode {
  * the identifier is the one already on screen, and when a row carries none the
  * control is disabled instead of inventing one.
  */
-export function PermalinkCopy({ eventId }: { eventId: string | null }): ReactNode {
+export function PermalinkCopy({ eventId, gate }: { eventId: string | null; gate: Gate }): ReactNode {
   const link = permalinkFromEvent(eventId);
+  // audQ: enabled/disabled and the reason are handed in by auditGates — the
+  // component no longer decides for itself, so a preview and the pane beside it
+  // cannot disagree about one failure.
+  const ready = gate.enabled && link !== null;
   const [state, setState] = useState<"idle" | "copied" | "manual">("idle");
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="audE-link-block">
@@ -84,15 +89,15 @@ export function PermalinkCopy({ eventId }: { eventId: string | null }): ReactNod
         size="sm"
         outlined
         aria-label={PERMALINK_COPY_LABEL}
-        title={link ? "复制这一条事件的固定链接（粘出去可回到同一事件），不向服务发任何请求" : PERMALINK_MISSING_TITLE}
+        title={gate.title}
         data-testid="audE-link"
-        disabled={link === null}
-        aria-disabled={link === null}
+        disabled={!ready}
+        aria-disabled={!ready}
         prefix={
           state === "copied" ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Link className="h-3.5 w-3.5" aria-hidden="true" />
         }
         onClick={() => {
-          if (!link) return;
+          if (!ready || !link) return;
           void copyTextToClipboard(link).then((ok) => {
             setState(ok ? "copied" : "manual");
           });
@@ -125,15 +130,6 @@ export function PermalinkCopy({ eventId }: { eventId: string | null }): ReactNod
   );
 }
 
-/** What each ledger state is called on the copy control's own title. */
-const PHASE_WORDS: Record<"loading" | "ready" | "empty" | "error" | "denied", string> = {
-  loading: "正在读取",
-  ready: "已读到记录",
-  empty: "该条件下无事件",
-  error: "读取没有完成",
-  denied: "暂时无法查看审计事件",
-};
-
 /**
  * audG: the current reading question, in one shareable line — plus the path
  * this page really asked. Same three states as the other copy controls, and
@@ -142,32 +138,24 @@ const PHASE_WORDS: Record<"loading" | "ready" | "empty" | "error" | "denied", st
  */
 export function FilterSummaryCopy({
   line,
-  available,
-  phase,
-  pending,
+  gate,
+  rule,
 }: {
   line: string | null;
-  /** The address carries at least one reading question. */
-  available: boolean;
-  /** The ledger's own state, named on the control so the rule is legible. */
-  phase?: "loading" | "ready" | "empty" | "error" | "denied";
-  /** A half-filled custom range: nothing has been asked with it yet. */
-  pending?: boolean;
+  /** audQ: the derived availability and its sentence, from auditGates. */
+  gate: Gate;
+  /** audQ: the mount rule printed on the card, also from auditGates. */
+  rule: string;
 }): ReactNode {
   const [state, setState] = useState<"idle" | "copied" | "manual">("idle");
-  const ready = available && line !== null;
+  const ready = gate.enabled && line !== null;
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="audG-filter-copy-block">
       <Button
         size="sm"
         outlined
         aria-label={FILTER_SUMMARY_COPY_LABEL}
-        title={
-          ready
-            ? // audL: the mount rule, in the button's own words.
-              `常驻控件，现在可以复制：这一页带着${phase ? `「${PHASE_WORDS[phase]}」` : "某种"}读法与至少一个筛选口径（时间窗、自定义区间、类型、操作者、资源、每页条数或页码）。复制的是口径与这一页实际请求的相对路径，不含地址前缀与任何凭据，也不再向服务发一次请求。`
-            : `${FILTER_SUMMARY_EMPTY_TITLE}：这一页只有默认时间窗，没有自定义区间、类型、操作者、资源、每页条数或页码可交代。控件常驻，只是没内容可给。${pending ? "（自定义区间还没应用）" : ""}`
-        }
+        title={gate.title}
         data-testid="audG-filter-copy"
         disabled={!ready}
         aria-disabled={!ready}
@@ -179,7 +167,7 @@ export function FilterSummaryCopy({
           )
         }
         onClick={() => {
-          if (!line) return;
+          if (!ready || !line) return;
           void copyTextToClipboard(line).then((ok) => {
             setState(ok ? "copied" : "manual");
           });
@@ -194,7 +182,7 @@ export function FilterSummaryCopy({
           is already off. A permanent control that explains itself once is
           cheaper than a probe wondering why nothing is there. */}
       <span className="min-w-0 basis-full break-words text-xs text-muted-foreground" data-testid="audG-filter-copy-rule">
-        这个控件常驻。地址里带着任一读法（自定义区间、事件类型、操作者、资源、每页条数或页码）时就能复制；只有默认时间窗时它在这里但按不动，原因写在按钮上。
+        {rule}
       </span>
       {state === "manual" && line ? (
         <textarea

@@ -4667,3 +4667,159 @@ describe("audP - the deep link survives the page size", () => {
     expect(urls()).toEqual(before);
   });
 });
+
+/**
+ * audQ — 动作可用性单点。三处入口（导出、复制筛选摘要、复制固定链接、行内展开、
+ * 重试）的 enabled 与 title 由 `auditGates.ts` 一处派生；这里断言的是矩阵落在
+ * 真实控件上：同一状态里不会一处可点一处 disabled，`aud-gates` 镜像与实际控件
+ * 逐格一致，且整趟断言不发任何请求。
+ */
+describe("audQ - one gate table drives every widget", () => {
+  const mirror = (name: string): string | null =>
+    document.querySelector("[data-testid='aud-gates']")?.getAttribute(name) ?? null;
+
+  const flag = (testId: string): string => {
+    const node = document.querySelector<HTMLButtonElement>(`[data-testid='${testId}']`);
+    if (!node) return "absent";
+    return node.disabled ? "off" : "on";
+  };
+
+  async function mountGates(handler: (url: string) => Promise<unknown>, entry = "/audit?window=7d&type=task.created"): Promise<void> {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(handler);
+    await render(entry, <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await waitFor(() => !skeleton() || document.querySelector("[data-testid='aud01-loading']") !== null, "the state settled");
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+  }
+
+  it("① loading: exports/fold/link off, retry live, mirror agreeing with the widgets", async () => {
+    let release: ((value: unknown) => void) | null = null;
+    await mountGates(() => new Promise((resolve) => { release = resolve; }));
+    expect(mirror("data-aud-gates-phase")).toBe("loading");
+    expect(flag("aud01-export")).toBe("off");
+    expect(flag("aud5-export")).toBe("off");
+    expect(flag("aud01-refresh")).toBe("on");
+    expect(mirror("data-aud-gates-retry")).toBe("on");
+    // audQ 行为变化：loading 期重试可用（工单口径），按下才重发
+    const reads = urls().length;
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud01-refresh']")?.click();
+    });
+    expect(urls().length).toBe(reads + 1);
+    await act(async () => {
+      release?.({ items: EVENTS.items, nextCursor: null });
+    });
+    await waitFor(() => !skeleton(), "ready");
+    expect(mirror("data-aud-gates-phase")).toBe("ready");
+    expect(flag("aud01-export")).toBe("on");
+    expect(flag("aud5-export")).toBe("on");
+    expect(mirror("data-aud-gates-toggle")).toBe("on");
+    expect(document.querySelector("[data-testid='aud6-toggle-evt_7c1f2a3b4d5e6f70']")).not.toBeNull();
+  });
+
+  it("② empty: the export says why, the summary stays copyable, no fold to open", async () => {
+    await mountGates(async () => ({ items: [], nextCursor: null }));
+    expect(mirror("data-aud-gates-phase")).toBe("empty");
+    expect(flag("aud01-export")).toBe("off");
+    expect(flag("aud5-export")).toBe("off");
+    expect(document.querySelector("[data-testid='aud5-export']")!.getAttribute("title")).toBe("当前筛选无事件可导出");
+    expect(document.querySelectorAll("[data-testid^='aud6-toggle-']")).toHaveLength(0);
+    expect(mirror("data-aud-gates-toggle")).toBe("off");
+    expect(mirror("data-aud-gates-copy-link")).toBe("off");
+    // 真空 ≠ 不可用：口径还在地址上，所以摘要仍可复制
+    expect(flag("audG-filter-copy")).toBe("on");
+    expect(mirror("data-aud-gates-copy-filter")).toBe("on");
+  });
+
+  it("③ error: every row-facing entry is off at once, with rid and retry on the panel", async () => {
+    await mountGates(async (url) => {
+      throw new ApiError("down", { status: 503, body: "{}", url: String(url), requestId: "rid-q" });
+    });
+    await waitFor(() => document.querySelector("[data-testid='aud01-error']") !== null, "the error panel");
+    expect(mirror("data-aud-gates-phase")).toBe("error");
+    for (const entry of ["data-aud-gates-export", "data-aud-gates-export-filtered", "data-aud-gates-toggle", "data-aud-gates-copy-link"]) {
+      expect(mirror(entry)).toBe("off");
+    }
+    expect(flag("aud01-export")).toBe("off");
+    expect(flag("aud5-export")).toBe("off");
+    expect(document.querySelector("[data-testid='aud01-error-sentence']")!.textContent).toContain("审计服务在处理时出了错");
+    expect(document.querySelector("[data-testid='aud01-error-request-id']")!.textContent).toContain("rid-q");
+    expect(flag("aud01-refresh")).toBe("on");
+  });
+
+  it("④ denied: the same set of doors closes, and the address keeps every key", async () => {
+    const entry = "/audit?window=24h&type=task.created&actor=employee-api&limit=25&cursor=cur_page1&preview=evt_7c1f2a3b4d5e6f70";
+    await mountGates(async (url) => {
+      throw new ApiError("closed", { status: 403, body: '{"code":"console.forbidden"}', url: String(url), requestId: "rid-q2" });
+    }, entry);
+    await waitFor(() => document.querySelector("[data-testid='aud01-denied']") !== null, "the denied body");
+    const denied403 = document.querySelector("[data-testid='aud01-denied']")!.textContent ?? "";
+    // 保筛选与页码：地址一个键都没掉
+    for (const key of ["window=24h", "type=task.created", "actor=employee-api", "limit=25", "cursor=cur_page1", "preview=evt_7c1f2a3b4d5e6f70"]) {
+      expect(locationText()).toContain(key);
+    }
+    const mirrorAfterDenial = ["data-aud-gates-export", "data-aud-gates-export-filtered", "data-aud-gates-toggle"].map(mirror);
+    const same = await (async () => {
+      api.fetchJSON.mockReset();
+      api.fetchJSON.mockImplementation(async (url) => {
+        throw new ApiError("gone", { status: 404, body: '{"code":"console.unknown_route"}', url: String(url), requestId: "rid-q2" });
+      });
+      await render(entry, <AuditEventsModulePage />);
+      await waitFor(() => document.querySelector("[data-testid='aud01-denied']") !== null, "the 404 body");
+      return document.querySelector("[data-testid='aud01-denied']")!.textContent ?? "";
+    })();
+    // 403≡404 同体：两条状态码给的是同一份话
+    expect(same).toBe(denied403);
+    expect(mirrorAfterDenial).toEqual(["off", "off", "off"]);
+  });
+
+  it("one failed record closes both of its doors, never just one", async () => {
+    api.fetchJSON.mockReset();
+    api.fetchJSON.mockImplementation(async (url) => {
+      if (String(url).startsWith("/agent-api/api/audit-detail")) {
+        throw new ApiError("closed", { status: 403, body: '{"code":"console.forbidden"}', url: String(url), requestId: "rid-q3" });
+      }
+      return EVENTS;
+    });
+    await render("/audit?window=7d&preview=evt_7c1f2a3b4d5e6f70&detail=evt_7c1f2a3b4d5e6f70", <>
+      <AuditEventsModulePage />
+      <LocationProbe />
+    </>);
+    await waitFor(() => document.querySelector("[data-testid='audF-preview-denied']") !== null, "the preview says it was refused");
+    // 预览里那枚固定链接：详情被拒 → 关
+    const link = document.querySelector<HTMLButtonElement>(
+      "[data-testid='aud6-preview-evt_7c1f2a3b4d5e6f70'] [data-testid='audE-link']",
+    )!;
+    expect(link.disabled).toBe(true);
+    expect(link.getAttribute("title")).toContain("这一条现在读不到");
+    // 抽屉那侧同样是拒绝体，没有一处还让人以为能复制
+    expect(document.querySelector("[data-testid='aud02-detail-denied']")).not.toBeNull();
+    expect(document.querySelector("[data-testid='aud02-detail']")).toBeNull();
+    // 台账那一读没被这些判定重发过
+    expect(auditReadUrls()).toHaveLength(1);
+  });
+
+  function auditReadUrls(): string[] {
+    return urls().filter((u) => /^\/agent-api\/api\/audit\?/.test(u));
+  }
+
+  it("reading the gates costs nothing", async () => {
+    await mountGates(async () => ({ items: EVENTS.items, nextCursor: null }));
+    const before = urls();
+    expect(mirror("data-aud-gates-phase")).toBe("ready");
+    expect(flag("aud01-export")).toBe("on");
+    expect(flag("audG-filter-copy")).toBe("on");
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud6-toggle-evt_7c1f2a3b4d5e6f70']")?.click();
+    });
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-testid='aud6-toggle-evt_7c1f2a3b4d5e6f70']")?.click();
+    });
+    expect(urls()).toEqual(before);
+  });
+});

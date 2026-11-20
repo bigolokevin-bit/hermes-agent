@@ -3192,3 +3192,29 @@ Untested: the four-state body lengths are jsdom readings, not browser pixels; th
 - 四态与三档：`audit?`/detail 分前缀计数在上述每条腿都贴；深链不存在腿与返回腿都不新增台账读；`aud-limit-restore` 是 `aria-hidden` 空 span，屏幕文本与布局未变（三档无横溢仍为结构口径——`min-w-0`/`flex-wrap`，jsdom 无量宽，未做真浏览器走查）。403≡404 同体、每态 rid、零写入口沿用 audF/audL 未退化。
 - 门禁：vitest `src/modules/audit` **exit 0**（18 files/**363**）；`pnpm exec tsc -b . --noEmit` 共 **69** errors（= 本机地板，改动前后同数、增量 0）且 `modules/audit` **0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings。
 - 活体腿沿用不可用（未重跑）：9122 无身份头 **401 `console.unauthenticated`**、8092 **404 `console.not_found`**；上述全部读数为 vitest 腿 + URL 构造（limit 与 clamp 由真按参数回答的 mock 给出），未假装活体。
+
+## Audit action availability gates (audQ, 2026-11-20, base d34f0572)
+
+- 写域：`web/src/modules/audit/{auditGates.ts,auditGates.test.ts,states.tsx,views.tsx,AuditEventsModulePage.tsx,AuditEventsModulePage.test.tsx}` + 本节（6 文件，diff ≈ +600/−54，≤15 文件/≤1500 行）。App/shell/routes/registry/package·lock/web-scripts/ops 与其它模块未碰；基线：显式 refspec fetch 后 merge = Already up to date，porc=0；单 commit。
+- **收口清单（哪些私有措辞被删、并入哪一处）**：`auditGates.ts` 现在拥有全部「可用/不可用 + 那句话」的判定与字符串——
+  - `aud01-export` 原来在页面里用 `exportOff`/`exportTitle` 两行三元式；`aud5-export` 另有 `canExport` + 自己的一条三元 title；现在两者只读 `gates.exportCsv` / `gates.exportFiltered`（enabled 同源、话术同源，两枚按钮各自保留自己被用例钉住的那句原文）。
+  - `audG-filter-copy`（states.tsx）原先自己算 `ready = available && line!==null`、自己拼「常驻控件…/当前没有筛选条件可复制…」两句话、自己写卡上那句挂载规则；现在只接 `gate`（`{enabled,title}`）与 `rule` 两个来自 gates 的入参，组件内不再有任何可用性判定或相应措辞（`PHASE_WORDS` 常量随之下线，`FILTER_SUMMARY_EMPTY_TITLE`/`PERMALINK_MISSING_TITLE` 的引用也收进 gates——`PERMALINK_MISSING_TITLE` 由 gates 从 permalink.ts 取用，仍是同一字符串）。
+  - `audE-link`（states.tsx `PermalinkCopy`）原来只看 `link===null`；现在看 `gate.enabled`（gate 由 `copyLinkGate(recordPhase, hasIdentifier)` 在预览与详情两处算出）。
+  - `aud6-toggle` 原来没有任何 disabled/title 口径；现在 title 来自 `gates.toggle`。
+  - `aud01-refresh`（重试）原来 `disabled={list.phase==="loading"}`；现在 `!gates.retry.enabled`。
+- **矩阵读数（三处×四态，`aud-gates` 镜像 + 真实控件逐格对齐）**：
+  - ① **loading**：`aud01-export` off、`aud5-export` off、`aud6-toggle-*` 不存在（镜像 toggle=off、copy-link=off）、`aud01-refresh` **on**；按下刷新 → `urls()` +1（用户动作触发，不自动重发）。
+  - ② **empty（真空）**：两枚导出 off 且 title 仍是「当前筛选无事件可导出」；屏上无 `aud6-toggle-*`；`audG-filter-copy` **on**（地址带着 `type=task.created` 的口径，素材仍在）；`data-aud-gates-copy-link`=off（没有一行可以钉）。
+  - ③ **error(503)**：export/export-filtered/toggle/copy-link 四格镜像全 off，实际按钮同样 off；面板侧「审计服务在处理时出了错…」+ 可复制 rid（`aud01-error-request-id` 含 rid-q）+ 重试可用（refresh on）。
+  - ④ **denied(403≡404)**：export/export-filtered/toggle 同样整组 off；`aud01-denied` 在 403 与 404 下 textContent 逐字相等（同体未退化）；地址六键 `window=24h/type/actor/limit=25/cursor=cur_page1/preview=evt_7c1f…` 一个都没掉（denied 不清参，沿用 audF/aud8）。
+  - 追加一致性腿：`?preview=<id>&detail=<id>` 且详情读口 403 时，预览里那枚 `audE-link` **disabled**（title「这一条现在读不到…」）且同侧抽屉是拒绝体、没有可复制的记录 —— 正是工单要点名消灭的「一处 disabled 一处可点」。
+- **行为变化登记**：
+  - 1) loading 期重试由 disabled 改为 **可用**（工单 ① 明确；按下确实重发该读口恰一次，计数已贴）。工具条 `aud01-refresh` 在 denied 时仍不渲染——拒绝体自带「再读一次」出口（audF/audL 既有实现与用例），避免同一状态出现两枚重试。
+  - 2) 固定链接新增「详情读口未完成/失败/被拒即关」的判定；此前只要行上有 id 就可点。这是本单为「同一失败同一可用面」所做的实际收敛，非文案变化。
+  - 3) 空集语义按实况写清：**真空(empty)≠不可用(unwired)**。摘要复制引用的是地址与已发出的请求路径，与行集无关，故 loading/empty/error/denied 四态都仍可复制（`audG` 既有契约与用例保留）；本台账读口没有独立 unwired 档——路由缺失回 404 即进 denied 同体，`未接入` 标记由 audF 那层给（`auditGates.AuditGates.phase` 因此只取五档，注释写明）。工单 ①/④ 的「复制禁」与这条既有契约冲突处，按 orchestrator 授权「按实况定并写清」取此解并在此登记。
+  - 4) 翻页仍清 `preview/event/tech`（aud8/aud9 语义，本单未动）；切条数保留 `?event=`（audP 语义，未回退）。
+- **零副作用**：`auditGates.ts` 是纯派生（无 fetch、无 URL 写、无 storage）；单测里所有话术矩阵都断言不含 `/agent-api`、`console.*`、`audit-events`、状态码数字与 testid 名；页面腿在读写镜像与点开展开后断言 `urls()` 逐字相等（除 ① 中用户主动按重试那一次）。
+- **零破**：新增 `aud-gates`（镜像 span，属性 `data-aud-gates-phase|-export|-export-filtered|-copy-filter|-copy-link|-toggle|-retry`）；`aud01*`、`aud2*`–`audP*`（含 `aud5-export*`、`aud6-toggle/preview-*`、`audE-link*`、`audF-state-*`、`audG-filter-copy*`、`audH-page-size`、`audJ-*`、`audK-list/row`、`audL-scroll`、`audN-*`、`aud-trunc*`、`aud-limit-restore`）与页级 `agent-v2-page-audit*` 未改名未删节点；既有用例的措辞断言未改一处（措辞只是换了产地）。起算 18 files/**363** 全绿 → 现 **19 files / 378**（+15：`auditGates.test.ts` 9 条矩阵与不变式 + 页面 audQ 6 条落控件的矩阵）。
+- 三档：新增件只有一个 `aria-hidden` 空 span（镜像），屏幕文本与布局未变；`min-w-0 flex-wrap` 口径沿用，浏览器像素三档仍未实测（活体腿不可用）。
+- 门禁：vitest `src/modules/audit` **exit 0**（19 files/**378**）；`pnpm exec tsc -b . --noEmit` 共 **69** errors（= 本机地板，改动前后同数、增量 0）且 `modules/audit` **0**；`eslint src/modules/audit` **0 errors** / 4 既有 warnings。
+- 活体腿沿用不可用（未重跑）：9122 无身份头 **401 `console.unauthenticated`**、8092 **404 `console.not_found`**；矩阵读数全部来自 vitest 腿与 gates 纯函数断言。

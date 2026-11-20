@@ -26,6 +26,7 @@ import {
   truncatedView,
 } from "./truncation";
 import { CopyValue, DeniedPanel, ErrorPanel, LoadingPanel, PermalinkCopy, SummaryCopy, TechnicalDisclosure } from "./states";
+import { copyLinkGate } from "./auditGates";
 import type { FailureCopy } from "./copy";
 import { summaryFromDetail, summaryFromRow } from "./summary";
 
@@ -385,7 +386,9 @@ export function AuditEventDetailBody({
         <SummaryCopy line={summaryFromDetail(detail, beijingSeconds(detail.occurredAtRaw) ?? detail.occurredAt)} />
         {/* audE: the fixed link for this record, built from the identifier the
             answer itself carried — never from a guessed one. */}
-        <PermalinkCopy eventId={detail.rawId} />
+        {/* audQ: availability comes from the same gates the ledger uses; a
+            record that is on screen answered, so the link is for real. */}
+        <PermalinkCopy eventId={detail.rawId} gate={copyLinkGate("ready", detail.rawId !== null)} />
       </Section>
 
       <Section title="操作者">
@@ -702,7 +705,13 @@ export function AuditRowPreview({
           so both legs copy one sentence for one event. */}
       <SummaryCopy line={summaryFromRow(row, at)} />
       {/* audE: and the same fixed link for the same record. */}
-      <PermalinkCopy eventId={row.rawId} />
+      {/* audQ: the preview's link follows the record read this row points at —
+          while that read is outstanding, failed or refused the link is off here
+          too, so the two legs can never disagree about one failure. */}
+      <PermalinkCopy
+        eventId={row.rawId}
+        gate={copyLinkGate(record?.phase ?? "idle", row.rawId !== null)}
+      />
       {/* audF: the state of the record read this row points at, in the same
           panels and the same sentences the record pane uses. */}
       {record && record.phase !== "idle" && record.phase !== "ready" ? (
