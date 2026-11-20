@@ -213,7 +213,9 @@ describe("R115 employees filter URL contract", () => {
     const firstQuery = firstCalls[0];
     const rowsFirst = document.querySelectorAll('[data-testid^="emp-l-row-"]').length;
     const valueFirst = (q("employees-search") as HTMLInputElement).value;
-    const selectFirst = (q("employees-lifecycle") as HTMLSelectElement).value;
+    // A ConsoleSelect button's `.value` is always "", so this pair of reads had
+    // become '' === ''. data-value is the choice the control actually holds.
+    const selectFirst = selectValue("employees-lifecycle");
     // A fresh root over the same URL is the refresh equivalent.
     await render(entry);
     await act(async () => {
@@ -224,7 +226,7 @@ describe("R115 employees filter URL contract", () => {
     expect(secondCalls, "one query per mount, nothing extra").toHaveLength(2);
     expect(secondCalls[1]).toBe(firstQuery);
     expect((q("employees-search") as HTMLInputElement).value).toBe(valueFirst);
-    expect((q("employees-lifecycle") as HTMLSelectElement).value).toBe(selectFirst);
+    expect(selectValue("employees-lifecycle")).toBe(selectFirst);
     expect(document.querySelectorAll('[data-testid^="emp-l-row-"]')).toHaveLength(rowsFirst);
   });
 

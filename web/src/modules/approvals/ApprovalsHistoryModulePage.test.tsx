@@ -227,7 +227,9 @@ describe("the eight states", () => {
     // 时间窗 select 仍按 R44 口径 disabled+实测原因，不假过滤。
     expect(document.querySelector("[data-testid='apv5-filter-risk']"), "stale risk select gone").toBeNull();
     expect(document.querySelector("[data-testid='apv-risk-rail']"), "risk rail mounted").toBeTruthy();
-    const win = document.querySelector("[data-testid='apv5-filter-window']") as HTMLSelectElement;
+    // ConsoleSelect since wave-36: the testid sits on the trigger button, so the
+    // gate is `button.disabled` — reading it as a <select> was the retired protocol.
+    const win = document.querySelector("[data-testid='apv5-filter-window']") as HTMLButtonElement;
     expect(win.disabled).toBe(true);
   });
 
