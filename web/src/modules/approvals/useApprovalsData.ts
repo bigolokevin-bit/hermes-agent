@@ -121,13 +121,17 @@ export function useApprovalsList(status: string | null, forced: ForcedState): Li
             setState((prev) => ({ ...prev, pageFailure: failure, loadingMore: false }));
             return;
           }
-          // Denied and error both clear the rows: nothing may sit above the panel.
+          // R70: denied/error keep the loaded rows in state (filters, the URL
+          // and the queue survive the panel); the render layer still shows
+          // only the panel, never stale rows above it.
           nextRef.current = null;
-          setState({
+          setState((prev) => ({
             ...INITIAL,
             phase: isDenied(failureInfo(err).status) ? "denied" : "error",
             failure,
-          });
+            rows: prev.rows,
+            unreadable: prev.unreadable,
+          }));
         }
       })();
     },

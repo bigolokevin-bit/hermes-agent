@@ -131,7 +131,7 @@ describe("EmployeeDetailModulePage — identity card (R45)", () => {
     await renderAt(page, at());
     expect(qid("ed1-identity")).toBeTruthy();
     expect(qid("ed1-identity-name")?.textContent).toBe("AgentOS 产品助理");
-    expect(qid("ed1-identity-code")?.textContent).toBe("A3F1B2C4");
+    expect(qid("ed1-identity-code")?.textContent).toBe("员工 · A3F1B2C4");
     expect(qid("ed1-identity-code")?.getAttribute("title")).toBe(EMP);
     expect(qid("ed1-identity-role")?.textContent).toBe("产品助理（数字员工 · Pilot）");
     expect(qid("ed1-identity-state")?.textContent).toBe("在岗");
@@ -164,11 +164,13 @@ describe("EmployeeDetailModulePage — identity card (R45)", () => {
     );
     await renderAt(page, at());
     expect(qid("ed1-identity-state")?.textContent).toBe("待核实");
-    expect(qid("ed1-identity-state")?.getAttribute("title")).toBe("weird_state");
-    for (const id of ["name", "role", "reports", "created"]) {
-      expect(qid(`ed1-identity-${id}`)?.textContent).toBe("—");
-      expect(qid(`ed1-identity-${id}`)?.getAttribute("title")).toContain("后台没有回传");
+    expect(qid("ed1-identity-state")?.getAttribute("title")).toBe("原始值：weird_state");
+    for (const id of ["name", "role", "created"]) {
+      expect(qid(`ed1-identity-${id}`)?.textContent).toBe("该字段未返回");
+      expect(qid(`ed1-identity-${id}`)?.getAttribute("title")).toContain("读口没有回传该字段");
     }
+    // R68: 读口没有 requestId 键时，请求编号与列表预览同句口径。
+    expect(qid("ed1-identity-rid")?.textContent).toContain("请求编号：该字段未返回");
     expect(container.textContent).not.toMatch(/\?\? 0|undefined|null/);
   });
 });
@@ -970,5 +972,43 @@ describe("EmployeeDetailModulePage — usage zone R57", () => {
     expect(monthLeg).toBeTruthy();
     expect(monthLeg).toContain("from=2027-01-01T00:00:00.000Z");
     expect(monthLeg).toContain("to=2027-02-01T00:00:00.000Z");
+  });
+});
+
+describe("R68 preview↔identity parity (edx-parity)", () => {
+  const qid = (id: string) => container.querySelector(`[data-testid="${id}"]`);
+  it("a full record reads the same words on the identity card as the list preview uses", async () => {
+    mockApi((url) =>
+      url.includes(`/api/employees/${encodeURIComponent(EMP)}`)
+        ? Promise.resolve({
+            id: EMP,
+            name: "小鲤",
+            title: "内容编辑",
+            lifecycleState: "weird_state",
+            updatedAt: "2026-11-17T05:52:48.030Z",
+            createdAt: "2026-11-14T02:15:00Z",
+          })
+        : silent502(url),
+    );
+    await renderAt(page, at());
+    expect(qid("ed1-identity-name")?.textContent).toBe("小鲤");
+    expect(qid("ed1-identity-code")?.textContent).toBe("员工 · A3F1B2C4"); // 与行内预览同形制
+    expect(qid("ed1-identity-code")?.getAttribute("title")).toBe(EMP); // title 全 id
+    expect(qid("ed1-identity-state")?.textContent).toBe("待核实");
+    expect(qid("ed1-identity-state")?.getAttribute("title")).toBe("原始值：weird_state");
+    expect(qid("ed1-identity-role")?.textContent).toBe("内容编辑");
+    expect(qid("ed1-identity-created")?.textContent).toBe("2026-11-14 10:15"); // BJT 到分
+    expect(qid("ed1-identity-rid")?.textContent).toContain("请求编号：该字段未返回");
+    expect(qid("ed1-identity-rid")?.getAttribute("title")).toContain("读口没有回传该字段");
+  });
+
+  it("a 404 read never fakes an identity card — fields only come from the payload", async () => {
+    mockApi((url) =>
+      url.includes(`/api/employees/${encodeURIComponent(EMP)}`)
+        ? missing(url)
+        : silent502(url),
+    );
+    await renderAt(page, at());
+    expect(qid("ed1-identity"), "no card on 404").toBeNull();
   });
 });
