@@ -13,6 +13,7 @@ vi.mock("@/lib/api", () => ({
 
 import DutyPage from "./DutyPage";
 import { dutyGates } from "./dutyGates";
+import { runsCaliber } from "./runsCaliber";
 import MatrixView from "./MatrixView";
 
 let container: HTMLDivElement;
@@ -699,5 +700,99 @@ describe("DutyPage time range", () => {
     });
     expect(q('[data-testid="duty-trend-total"]')?.textContent).toBe("30");
     expect(container.textContent).toContain("近 30 天运行");
+  });
+});
+
+describe("DutyPage runs caliber", () => {
+  const q = (sel: string) => container.querySelector(sel);
+
+  it("shows this card's value, both read paths and the batch stamp without extra requests", async () => {
+    fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
+    await render(<DutyPage />);
+    const before = fetchJSON.mock.calls.length;
+    const line = q('[data-testid="duty-runs-caliber"]');
+    expect(line).not.toBeNull();
+    expect(q('[data-testid="duty-runs-value"]')?.textContent).toBe("2");
+    expect(q('[data-testid="ov6-kpi-runs"]')?.textContent).toContain("2");
+    expect(q('[data-testid="duty-runs-asof"]')?.textContent).toBe("2026-11-18 14:00");
+    const text = line?.textContent ?? "";
+    expect(text).toContain("workbench/summary?range=1d");
+    expect(text).toContain("/api/run-stats");
+    expect(q('[data-testid="duty-runs-verdict"]')?.textContent).toContain("不在本页取");
+    const title = line?.getAttribute("title") ?? "";
+    expect(title).toContain("workbench/summary?range=1d");
+    expect(title).toContain("/api/run-stats");
+    expect(title).toContain("不另发请求");
+    expect(fetchJSON.mock.calls.length).toBe(before);
+  });
+
+  it("keeps the three verdicts apart in the pure helper", () => {
+    const equal = runsCaliber({ duty: 3, metrics: 3, dutyAsOfText: "2026-11-18 14:00" });
+    expect(equal.verdict).toBe("equal");
+    expect(equal.compare).toBe("与 /metrics 同源一致（3）");
+
+    const diff = runsCaliber({ duty: 3, metrics: 5, dutyAsOfText: "2026-11-18 14:00" });
+    expect(diff.verdict).toBe("different");
+    expect(diff.compare).toBe("本卡 3 · /metrics 5｜口径不同，见 title");
+
+    const missing = runsCaliber({ duty: null, metrics: null, dutyAsOfText: "—" });
+    expect(missing.verdict).toBe("missing");
+    expect(missing.compare).toContain("没读到运行数");
+    expect(missing.title).toContain("不当作 0");
+  });
+});
+
+describe("DutyPage caliber notes", () => {
+  const q = (sel: string) => container.querySelector(sel);
+
+  it("stays collapsed by default and does not fire a request", async () => {
+    fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
+    await render(<DutyPage />);
+    const before = fetchJSON.mock.calls.length;
+    const toggle = q('[data-testid="duty-notes-toggle"]') as HTMLButtonElement | null;
+    expect(toggle).not.toBeNull();
+    expect(toggle?.getAttribute("aria-expanded")).toBe("false");
+    expect(toggle?.getAttribute("aria-controls")).toBe("duty-notes-body");
+    expect(q('[data-testid="duty-notes-body"]')).toBeNull();
+    expect(q('[data-testid="duty-note-today-runs"]')).toBeNull();
+    expect(fetchJSON.mock.calls.length).toBe(before);
+  });
+
+  it("opens eight rows of area · path · scope · missing and closes again for free", async () => {
+    fetchJSON.mockImplementation((url: string) => Promise.resolve(ok(url)));
+    await render(<DutyPage />);
+    const before = fetchJSON.mock.calls.length;
+    await act(async () => {
+      (q('[data-testid="duty-notes-toggle"]') as HTMLButtonElement).click();
+    });
+    const toggle = q('[data-testid="duty-notes-toggle"]');
+    expect(toggle?.getAttribute("aria-expanded")).toBe("true");
+    const keys = [
+      "today-runs",
+      "trend",
+      "readiness",
+      "cost",
+      "recent-runs",
+      "pending",
+      "blockers",
+      "matrix",
+    ];
+    for (const key of keys) {
+      const row = q(`[data-testid="duty-note-${key}"]`);
+      expect(row).not.toBeNull();
+      const text = row?.textContent ?? "";
+      expect(text).toContain("·");
+      expect(text).toMatch(/「—」|「待核实」|「该区间没有运行记录」/);
+    }
+    expect(q('[data-testid="duty-note-today-runs"]')?.textContent).toContain(
+      "workbench/summary?range=1d",
+    );
+    expect(q('[data-testid="duty-note-matrix"]')?.textContent).toContain("待核实");
+    expect(fetchJSON.mock.calls.length).toBe(before);
+    await act(async () => {
+      (q('[data-testid="duty-notes-toggle"]') as HTMLButtonElement).click();
+    });
+    expect(q('[data-testid="duty-notes-body"]')).toBeNull();
+    expect(fetchJSON.mock.calls.length).toBe(before);
   });
 });

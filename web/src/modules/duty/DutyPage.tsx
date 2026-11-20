@@ -19,6 +19,8 @@ import {
   trendSummary,
 } from "./aggregate";
 import { beijing, beijingHour, beijingWeekday, dashed, duration, shortId, usd } from "./format";
+import { runsCaliber } from "./runsCaliber";
+import { DUTY_NOTES } from "./dutyNotes";
 import type {
   ActivityBody,
   ApprovalRow,
@@ -340,6 +342,12 @@ function RunStatusBadge({ status }: { status?: string }) {
 
 function TodayRunsCard({ stats, runs, onRetry }: { stats: Loadable<RunStatsBody>; runs: Loadable<RunRow[]>; onRetry: () => void }) {
   const totals = stats.k === "ready" ? runTotals(stats.data) : null;
+  const caliberAsOf = stats.k === "ready" ? asOfOf(stats.data) : null;
+  const caliber = runsCaliber({
+    duty: totals ? totals.runs : null,
+    metrics: null,
+    dutyAsOfText: beijing(caliberAsOf),
+  });
   return (
     <HCard
       title="今日运行"
@@ -377,6 +385,13 @@ function TodayRunsCard({ stats, runs, onRetry }: { stats: Loadable<RunStatsBody>
           <p className="duty-note">最近运行明细尚未返回，合计仍以服务端为准。</p>
         )}
         <p className="duty-note">今日 00:00 起 · 北京时间 · 合计来自服务端窗口统计</p>
+        <p className="duty-runs-caliber" data-testid="duty-runs-caliber" title={caliber.title}>
+          运行数口径：本卡{" "}
+          <span data-testid="duty-runs-value">{totals ? totals.runs : "—"}</span> 次 · 读口
+          workbench/summary?range=1d · /metrics 读 /api/run-stats 当前窗 · 采集时刻{" "}
+          <span data-testid="duty-runs-asof">{beijing(caliberAsOf)}</span>｜
+          <span data-testid="duty-runs-verdict">{caliber.compare}</span>
+        </p>
       </StateLine>
     </HCard>
   );
@@ -819,6 +834,43 @@ function HealthStrip({
   );
 }
 
+function DutyNotes() {
+  const [open, setOpen] = useState(false);
+  return (
+    <section className="duty-notes" data-testid="duty-notes">
+      <button
+        type="button"
+        className="duty-notes-toggle"
+        data-testid="duty-notes-toggle"
+        aria-expanded={open}
+        aria-controls="duty-notes-body"
+        onClick={() => setOpen((value) => !value)}
+      >
+        口径说明：每个区块读哪个口、算哪一段、缺值怎么显示
+        <span aria-hidden="true">{open ? "收起" : "展开"}</span>
+      </button>
+      {open ? (
+        <div className="duty-notes-body" id="duty-notes-body" data-testid="duty-notes-body">
+          {DUTY_NOTES.map((note) => (
+            <p key={note.key} className="duty-note-row" data-testid={`duty-note-${note.key}`}>
+              <b>{note.area}</b>
+              {" · "}
+              <code>{note.path}</code>
+              {" · "}
+              {note.scope}
+              {" · "}
+              {note.missing}
+            </p>
+          ))}
+          <p className="duty-notes-foot">
+            展开与收起不发请求：这里写的都是各卡已经在用的读口，折叠块本身不取数。
+          </p>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 export default function DutyPage() {
   const [params, setParams] = useSearchParams();
   const rangeId = parseDutyRange(params.get(DUTY_RANGE_PARAM));
@@ -1010,6 +1062,8 @@ export default function DutyPage() {
         <PendingCard stats={data.approvalStats} approvals={data.approvals} onRetry={reload} />
         <RecentCard runs={data.recentRuns} onRetry={reload} />
       </div>
+
+      <DutyNotes />
     </div>
     </DutyGatesContext.Provider>
   );

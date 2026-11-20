@@ -116,3 +116,18 @@
 - 测试：默认 14d 两读口各一次且参数正确；切 7d 仅 timeseries(range=7d)+run-activity(weeks=1) 各一次、其余路径零新增；粘链 `?range=30d` 选中并显示「近 30 天运行」，切回默认后 URL 清空；7d 迟到批不覆盖 30d（终值 30）。
 - 验证：duty 5 files / 86 passed（前 82）；全量 151 files / 2008 passed（前 149/1956，含上游 wave-21 增量）；tsc 本域 0；eslint 0 error / 4 warnings（新增 1 条为既有 `react-hooks/set-state-in-effect` 同款写法：切换范围时把两张卡置回 loading）。
 - 未测：真实浏览器快速连点四个范围的人眼观感、375/1440 实机未复核。
+
+## 跨页「今日运行」口径对照（2026-11-20）
+
+- 新增 `web/src/modules/duty/runsCaliber.ts`：`runsCaliber({ duty, metrics, dutyAsOfText })` 返回 `{ verdict, compare, title }`，四态 `equal | different | unread | missing`。
+- `/duty` 今日运行卡新增 `duty-runs-caliber` 一行：本卡值（`duty-runs-value`，与 `ov6-kpi-runs` 同源）+ 两读口（workbench/summary?range=1d 与 /api/run-stats 当前窗）+ 采集时刻（`duty-runs-asof`，只取顶层 ISO → 北京时间到分，缺「—」）+ 对照句（`duty-runs-verdict`）。
+- 本页不代 `/metrics` 取数（零额外请求），因此常态输出为「/metrics 的读数不在本页取｜口径见 title」；「同源一致」与「本卡 N · /metrics M」两句由纯函数在两侧读数都在手上时产出，已有单测钉死。
+- `/metrics` 侧新增 `metAP-duty-note`：静态一句，指向 duty 的读口；原始路径只进 title，不上屏（页面有零工程语言断言）。
+- 测试：duty 新增 2 例（行内容与零请求、纯函数三态），metrics 新增 1 例（note 文案与 title）。定向 9 files / 317 passed。
+
+## 值班台口径说明块（duty notes，2026-11-20）
+
+- 新增 `web/src/modules/duty/dutyNotes.ts`：`DUTY_NOTES` 单表常量，八条（今日运行 / 趋势 / 可上岗 / 成本 / 最近运行 / 待我处理 / 阻塞 / 矩阵），每条四段「口径名 · 实际读口 · 时间窗或计算范围 · 缺值策略」；缺值策略统一含「缺值显示「—」，不当 0」，涉及采集时刻的两条另含「不拿本机时间顶替」。
+- `DutyPage` 页尾新增 `DutyNotes`：原生 button `duty-notes-toggle`（`aria-expanded` / `aria-controls="duty-notes-body"`），默认收起、body 与八行都不渲染；展开后每行 `duty-note-<key>`。文案全部来自同一个常量，不另写第二套。
+- 展开/收起零新请求（测试断言 `fetchJSON` 调用数前后相等）；版式不动，仅页尾一节折叠块。
+- 测试：duty 新增 2 例（默认收起且零请求、展开八行与收起）。定向 9 files / 317 passed。
