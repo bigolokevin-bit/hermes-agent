@@ -1,207 +1,138 @@
-# R-OBS-f4bd0505 — 当代 obs 双面只读归因（auth obs=2 / anon obs=1）
+# R-OBS-f4bd0505 — 当代（headHash `f4bd0505`）双面 obs 只读归因
 
-取证时间：2026-11-21 11:0x（北京时间）。工作树：`lane/console-ui-qa`，HEAD `0f125bd6`（merge `origin/lane/hermes-console` tip `068833bc` = wave-98）。
-派单口径：只读、禁改产品码、禁重启服务、禁发群。现网基址 `http://100.117.184.117:8183`（非 127.0.0.1）。
+取证时间：2026-11-21 10:4x（北京时间）。工作树：`lane/console-ui-qa`，基线 `0f125bd6`（= `origin/lane/hermes-console` tip `068833bc` 的并入合并）。
+方式：**只读**。未改任何产品码 / testid，未重启服务，未发群消息。
 
 ## 0. 结论摘要
 
-| 路由 | 台账 auth err | 台账 anon err | 我 auth（有效 opsadmin 态） | 我 anon | 归因（三选一） |
-|---|---|---|---|---|---|
-| `#/access` | 10（1440）/ 5（375） | 11（1440）/ 5（375） | **4 行，全 404**，product=0 | **5 行，全 401**，product=0 | **ENV**（`/agent-api/api/v1/*` 404 = 上游未接线读口；无登录态时同批端点变 401 + `/auth/whoami`）。非产品码。 |
-| `#/employees/:employeeId?zone=config` | 3（1440）/ 2（375） | 未列入 anon obs | **1 行，404**，product=0 | **3 行，全 401**，product=0 | **ENV**（URL 属 `/agent-api/`、`/auth/`）。404 源于**占位 id 本就无实体**（字面量 `:employeeId` → `%3AemployeeId`），非产品码。 |
-| 合计 | obs=2 / obs=1 | | 8 次采样 product 恒 0 | 8 次采样 product 恒 0 | **ENV；同源复用 R-OBS-2** |
+派单口径：auth obs=2（`#/access`、`#/employees/:employeeId?zone=config`）、anon obs=1（`#/access`）。
+去重后唯一路由 2 条，两面各重走，**8 次采样，product console error 恒 0，`pageerror` 0，`requestfailed` 0，无 `net::ERR_ABORTED`、无 reload 风暴、无非 401/404 状态码**。
 
-三条 obs 条目（auth 两条 + anon 一条）去重后是两条唯一路由，本次两条全部双面复现。无 pageerror、无 requestfailed、无非 401/404 状态码、无 reload 风暴（`navsPerRun` 恒 `[4,4]`）。
+逐条三选一（ENV / 产品 / 上游）= **两条路由、两面全部 ENV**：全部 console 原文都是 `Failed to load resource: … 401 (Unauthorized)` 或 `404 (Not Found)`，URL 全部属 `/auth/*` 与 `/agent-api/api/*`；有效 opsadmin 登录态下残留的 404 是**上游未接线读口**（页面自身走 `ac3-gap` / `ed5-overview-notfound` 合规态），匿名态则是网关鉴权层 401。
 
-## 1. 台账原文（当代 f4bd0505）
+## 1. 台账原文（`docs/_artifacts/tonight/`）
 
-`docs/_artifacts/tonight/shots-summary.json`（auth 面）关键字段：
+`shots-summary.json`（auth 面）关键字段：`headHash=f4bd0505`、`base=http://127.0.0.1:9122`、`mode=auth`、`authStateFile=/Users/kevin_studio/.local/state/sekoi-ops/v4-auth-state.json`、`entry=assets/index-CU42UJPm.js`（`servedEntryBefore/After` 同值）、`entryBytes=172175`、`entrySha256=4091450088012896197537528507068219745031690568876253916437700935`、`routesEnumerated=51`、`expectedShots=102`、`producedShots=102`、`failures=[]`、`consoleErrorsObservedByShots=2`、`consoleErrorRoutesObservedByShots=["#/access","#/employees/:employeeId?zone=config"]`、`routesWithConsoleErrors` 同上、`routesWithEnvOnlyConsoleErrors=50`、`ceAuthority=login-state`、`overflowing=[]`、`ok=true`、`exitCode=0`、`auxiliary=true`。
 
-```
-base = http://127.0.0.1:9122
-mode = auth
-authStateFile = /Users/kevin_studio/.local/state/sekoi-ops/v4-auth-state.json
-headHash = f4bd0505
-entry / servedEntryBefore / servedEntryAfter = assets/index-CU42UJPm.js
-entryBytes = 172175
-entrySha256 = 4091450088012896197537528507068219745031690568876253916437700935
-routesEnumerated = 51
-consoleErrorsObservedByShots = 2
-consoleErrorRoutesObservedByShots = ["#/access", "#/employees/:employeeId?zone=config"]
-routesWithConsoleErrors = 同上
-routesWithEnvOnlyConsoleErrors = 50
-ceAuthority = login-state
-envAttribution = 401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径
-overflowing = []
-ok = true   exitCode = 0   auxiliary = true
-```
+`shots-anon-summary.json`（anon 面）：同 `headHash=f4bd0505`、同 `base`、同 `entry`、`authStateFile=null`、`consoleErrorsObservedByShots=1`、`consoleErrorRoutesObservedByShots=["#/access"]`、`routesWithEnvOnlyConsoleErrors=51`、`ok=true`、`exitCode=0`。
 
-`docs/_artifacts/tonight/shots-anon-summary.json`（anon 面）关键字段：
+`shots-index.md`（auth 面）逐字行（列序 `route | label | vp | HTTP | main chars | main>0 | empty? | error? | overflow px | differsFromRoot | png bytes | console err`）：
 
 ```
-base = http://127.0.0.1:9122      mode = anon      authStateFile = null
-headHash = f4bd0505               entry / served = assets/index-CU42UJPm.js
-consoleErrorsObservedByShots = 1
-consoleErrorRoutesObservedByShots = ["#/access"]
-routesWithConsoleErrors = ["#/access"]
-routesWithEnvOnlyConsoleErrors = 51
-ceAuthority = login-state         ok = true   exitCode = 0
-```
-
-两面 summary 的键列表里都**没有 `consoleErrorSample`**（该字段只存在于 `docs/_artifacts/tonight/shots.mjs:420-422` 的逐行 JSON，不落 summary）→ 台账侧无法给出字节级原文与堆栈，属取证边界（见 §7）。
-
-`shots-index.md`（auth 面）逐字行，列序 `route | label | vp | HTTP | main chars | main>0 | empty? | error? | overflow px | differsFromRoot | png bytes | console err`：
-
-```
-L10 | `#/access` | 角色与权限 | 1440 | 200 | 199 | yes | - | - | 0 | yes | 63181 | 10 |
-L11 | `#/access` | 角色与权限 | 375 | 200 | 201 | yes | - | - | 0 | yes | 45006 | 5 |
-L48 | `#/employees/:employeeId?zone=config` | 员工档案 | 1440 | 200 | 42 | yes | - | yes | 0 | yes | 50174 | 3 |
-L49 | `#/employees/:employeeId?zone=config` | 员工档案 | 375 | 200 | 42 | yes | - | yes | 0 | yes | 20013 | 2 |
+| `#/access` | 角色与权限 | 1440 | 200 | 199 | yes | - | - | 0 | yes | 63181 | 10 |
+| `#/access` | 角色与权限 | 375 | 200 | 201 | yes | - | - | 0 | yes | 45006 | 5 |
+| `#/employees/:employeeId?zone=config` | 员工档案 | 1440 | 200 | 42 | yes | - | yes | 0 | yes | 50174 | 3 |
+| `#/employees/:employeeId?zone=config` | 员工档案 | 375 | 200 | 42 | yes | - | yes | 0 | yes | 20013 | 2 |
 ```
 
 `shots-anon-index.md`（anon 面）逐字行：
 
 ```
-L10 | `#/access` | 角色与权限 | 1440 | 200 | 199 | yes | - | - | 0 | yes | 63240 | 11 |
-L11 | `#/access` | 角色与权限 | 375 | 200 | 199 | yes | - | - | 0 | yes | 45785 | 5 |
+| `#/access` | 角色与权限 | 1440 | 200 | 199 | yes | - | - | 0 | yes | 63240 | 11 |
+| `#/access` | 角色与权限 | 375 | 200 | 199 | yes | - | - | 0 | yes | 45785 | 5 |
 ```
 
-台账计数（auth access 10/5、config 3/2；anon access 11/5）高于我的单次采样计数（4/4、1/1；5/5、3/3），原因是台账按视口逐行累计且 auth 面用的仍是**过期 v4 登录态**（§7）。二者语义一致，不存在「台账看到而我看不到的错误种类」。
-
-## 2. 复现命令原文
-
-脚本 `/private/var/folders/2b/bnpsyz450pn98w375q_803yw0000gn/T/opencode/obs-6632f340.mjs`（严格复刻 `shots.mjs` 匿名/登录路径：每组合全新 context、`slice(0,160)` 后判 `ENV_NOISE_RE`、`navs` 计数侦测 reload 风暴）。
+## 2. 复现命令（原文，全部 rc=0、stderr 为空）
 
 ```bash
-# 1) auth 面 = 有效 opsadmin 登录态
+cd /private/var/folders/2b/bnpsyz450pn98w375q_803yw0000gn/T/opencode
 ROUTES='#/access||#/employees/:employeeId?zone=config' MODE=auth REPS=1 \
-  node obs-6632f340.mjs > ofbd-auth.out 2> ofbd-auth.err      # rc=0，5789B，err 0B
-
-# 2) anon 面 = 不传 storageState + 门旗标（同 shots.mjs:256/:279-280）
+  node obs-6632f340.mjs > ofbd-auth.out 2> ofbd-auth.err
 ROUTES='#/access||#/employees/:employeeId?zone=config' MODE=anon GATED=1 REPS=1 \
-  node obs-6632f340.mjs > ofbd-anon.out 2> ofbd-anon.err      # rc=0，7107B，err 0B
+  node obs-6632f340.mjs > ofbd-anon.out 2> ofbd-anon.err
 ```
 
-两面各 2 路由 × 2 视口（1440×900 / 375×812）= 共 8 次采样。产物在 `/private/var/folders/2b/bnpsyz450pn98w375q_803yw0000gn/T/opencode/`。
+脚本 `obs-6632f340.mjs` 与 `docs/_artifacts/tonight/shots.mjs` 同口径：每 (route, viewport) 全新 context；`goto(BASE + '/' + route, {waitUntil:'domcontentloaded'})`；main innerText 长度稳定轮询；`console` 事件原文先 `slice(0,160)` 再用 `ENV_NOISE_RE = /\b(401|404)\s*\((Unauthorized|Not Found)\)/`（:255）判定；`pageerror` 一律记 product；`MODE=auth` 用 `~/.local/state/sekoi-ops/ui-qa-auth-state.json`（现网有效登录态），`MODE=anon` 完全不传 storageState。`BASE` 默认 `http://100.117.184.117:8183`。
 
-## 3. 逐条 console 原文
+## 3. 逐条 console 原文（现网 8183，两视口 1440x900 / 375x812）
 
-### 3.1 auth 面（有效 opsadmin 登录态，served entry `index-OCLu6KCF.js`）
+### 3.1 auth 面（有效 opsadmin 登录态）
 
-`#/access` — 两视口均 `http=200 navs=4 lines=4 product=0 main=194 landed=http://100.117.184.117:8183/identity?tab=roles`。四行原文逐字相同：
-
-```
-Failed to load resource: the server responded with a status of 404 (Not Found)
-```
-
-来源（1440 档行序）：
+`#/access`（两视口同构，`http=200 navs=4 product=0 lines=4 landed=/identity?tab=roles main=194 entry=index-OCLu6KCF.js`）：
 
 ```
-[1] … @ http://100.117.184.117:8183/agent-api/api/v1/user/list:0:0
-[2] … @ http://100.117.184.117:8183/agent-api/api/v1/user/all:0:0
-[3] … @ http://100.117.184.117:8183/agent-api/api/v1/role/list?page=1&limit=200:0:0
-[4] … @ http://100.117.184.117:8183/agent-api/api/v1/roles?page=1&limit=200:0:0
+Failed to load resource: the server responded with a status of 404 (Not Found)  @ http://100.117.184.117:8183/agent-api/api/v1/user/list:0
+Failed to load resource: the server responded with a status of 404 (Not Found)  @ http://100.117.184.117:8183/agent-api/api/v1/user/all:0
+Failed to load resource: the server responded with a status of 404 (Not Found)  @ http://100.117.184.117:8183/agent-api/api/v1/role/list?page=1&limit=200:0
+Failed to load resource: the server responded with a status of 404 (Not Found)  @ http://100.117.184.117:8183/agent-api/api/v1/roles?page=1&limit=200:0
 ```
 
-375 档同四枚端点、行序为 `user/list → role/list → user/all → roles`（并发 fetch 竞速，行序不定）。
-TESTIDS = `ac3-page, ac3-tab-roles, ac3-tab-members, ac3-tab-admins, ac3-gap`。
-MAIN_TEXT（194 字符，逐字）=「治理 · 控制台 人员与访问 人员目录 组织与部门 角色与权限 访问控制 角色、成员与管理员 · 只读 刷新 角色 — 成员 — 管理员 — 未接入 角色与权限待核实：上游角色接口尚未接入本控制台。接入后这里会自动显示真实角色。 去审批中心提交开通申请 权限来源按人话显示；角色或来源缺失时写「—（来源未提供）」，不补 0。 本页只读，不提供授权、撤销或角色编辑入口。 返回组织与人员」。
+页面正文（main 194）含「角色与权限待核实：上游角色接口尚未接入本控制台」，testid `ac3-page,ac3-tab-roles,ac3-tab-members,ac3-tab-admins,ac3-gap` → 合规「未接入」态，不是崩溃态。
 
-`#/employees/:employeeId?zone=config` — 两视口均 `http=200 navs=4 lines=1 product=0 main=130 landed=…/employees/:employeeId/config`。唯一一行：
+`#/employees/:employeeId?zone=config`（两视口同构，`lines=1 product=0 main=130 landed=/employees/:employeeId/config`）：
 
 ```
-Failed to load resource: the server responded with a status of 404 (Not Found)
-  @ http://100.117.184.117:8183/agent-api/api/employees/%3AemployeeId:0:0
+Failed to load resource: the server responded with a status of 404 (Not Found)  @ http://100.117.184.117:8183/agent-api/api/employees/%3AemployeeId:0
 ```
 
-TESTIDS = `ed5-module, edx-back, edz-nav, edz-nav-overview, edz-nav-tasks, edz-nav-runs, edz-nav-approvals, ed5-tabs, ed5-overview-notfound, req-copy`。
-MAIN_TEXT 尾段（逐字）=「…员工不存在或无权查看。 请求编号： 45fb52348a1d4b1ba9f4ed99a73a2872 复制 返回员工列表」（375 档同句式，rid `66905a26aef14e569071010de67006ef`）。
+正文（main 130）「员工不存在或无权查看。 请求编号： … 返回员工列表」，testid `ed5-overview-notfound` → 前端 fallback 态。
 
-### 3.2 anon 面
+### 3.2 anon 面（不带任何登录态）
 
-`#/access` — 两视口均 `lines=5 product=0 main=201 landed=…/identity?tab=roles`。五行原文逐字相同：
+`#/access`（两视口 `lines=5 product=0 main=201 landed=/identity?tab=roles cookie=true`），全部 `401 (Unauthorized)`，来源 = 上述四枚 v1 端点 + `/auth/whoami`。正文 testid `ac3-request-id`，文案「重新登录后回到这个页面，即可继续查看」+ 32 位请求编号。
 
-```
-Failed to load resource: the server responded with a status of 401 (Unauthorized)
-```
-
-来源 = `/auth/whoami` + 上述四枚 v1 端点（1440 序：whoami, role/list, user/list, user/all, roles；375 序：whoami, user/list, role/list, roles, user/all）。
-TESTIDS = `ac3-page, ac3-tab-roles, ac3-tab-members, ac3-tab-admins, ac3-request-id`；MAIN_TEXT 含「重新登录后回到这个页面，即可继续查看。 请求编号 9c67b1c3eb6d4762b273a2afdeecbce9复制 重试」（375 档 rid `321d4014bb234a3dbf5e102bce534821`）。
-
-`#/employees/:employeeId?zone=config` — 两视口均 `lines=3 product=0 main=146 landed=…/employees/:employeeId/config`。三行全 401，来源：
-
-```
-/auth/whoami
-/agent-api/api/employees/%3AemployeeId
-/agent-api/api/matrix?employee=%3AemployeeId
-```
-
-TESTIDS 末段 `ed5-overview-error, req-copy`；MAIN_TEXT 含「员工档案没能加载出来 重新登录后回到这个页面，即可继续查看。 请求编号： 069a9fb3266248c6a30e4abaa48f0caa 复制 重试」（375 档 rid `5e1a26a29fa8413cab5cb22cff23cd33`）。
+`#/employees/:employeeId?zone=config`（两视口 `lines=3 product=0 main=146 landed=/employees/:employeeId/config`），全部 `401 (Unauthorized)`，来源 `/auth/whoami` + `/agent-api/api/employees/%3AemployeeId` + `/agent-api/api/matrix?employee=%3AemployeeId`。正文 testid `ed5-overview-error`，文案「员工档案没能加载出来 重新登录后回到这个页面，即可继续查看」+ 请求编号。
 
 ### 3.3 交叉核对
 
-- pageerror 标记行（`    ## `）：两文件均无命中 → **0 条**。
-- requestfailed 标记行（`    !! `）：两文件均无命中 → **0 条**（本次没有 reload 风暴，与上一代 v4 过期态下的 `[100,250] 行 / navs [24,54]` 形成对照）。
-- 4xx 聚合（`    ~~ `）：只出现 401 与 404 两种状态，无 403/5xx。
-- SUMMARY 逐字：
-  `auth|#/access samples=2 linesPerRun=[4,4] navsPerRun=[4,4] productLinesTotal=0 mainChars=[194]`
-  `auth|#/employees/:employeeId?zone=config samples=2 linesPerRun=[1,1] navsPerRun=[4,4] productLinesTotal=0 mainChars=[130]`
-  `anon|#/access samples=2 linesPerRun=[5,5] navsPerRun=[4,4] productLinesTotal=0 mainChars=[201]`
-  `anon|#/employees/:employeeId?zone=config samples=2 linesPerRun=[3,3] navsPerRun=[4,4] productLinesTotal=0 mainChars=[146]`
-  四组 `productTexts` 全为 `[]`。
+```
+SUMMARY（auth）  productLinesTotal=0 × 2 路由；texts 唯一一句 404；无 ## 堆栈行、无 !! 中断行
+SUMMARY（anon）  productLinesTotal=0 × 2 路由；texts 唯一一句 401；同上
+```
 
-## 4. 逐路由归因（三选一 + 源码定位）
+`navsPerRun` 恒 [4,4] → 无 reload 死循环（与 6632f340 代 channels 那格 4840 行的风暴形态明显不同）。
 
-### 4.1 `#/access` → ENV
+## 4. 逐路由三选一归因（含源码定位）
 
-- 有效登录态：4 条 404，URL 全属 `/agent-api/api/v1/*`；页面渲染的是**合规未接入态**（`ac3-gap`，正文「上游角色接口尚未接入本控制台」），不是崩溃也不是产品抛错。归因 = **ENV/上游未接线读口**。
-- 匿名态：同四枚端点变 401，并多出 `/auth/whoami` 一条 → 完全由「缺登录态」决定，与 4.1 第一条是同一组端点的两种表现。
-- 源码定位：路由别名 `web/src/shell/routes.ts:266`（`#/access` = `kind:'compat-module'`、`to:'#/identity?tab=roles'`、`visible:false`）；端点清单 `web/src/modules/access/access.ts:30-38`（`PEOPLE_ENDPOINTS = ["/agent-api/api/v1/user/list", "/agent-api/api/v1/user/all"]`、`ROLE_ENDPOINTS = ["/agent-api/api/v1/role/list?page=1&limit=200", "/agent-api/api/v1/roles?page=1&limit=200"]`，两组候选在一次页面加载里全部尝试 → 天然 4 条失败行）。
-- **非产品码**：`git grep -n 'console\.error' -- web/src` 命中 0 文件，产品侧不产生任何 `console.error`；本次也无 pageerror。
+| 路由 | 面 | 原文首行 | 状态 | URL | 归因 |
+|---|---|---|---|---|---|
+| `#/access` | auth | `…404 (Not Found)` | 404 ×4 | `/agent-api/api/v1/{user/list,user/all,role/list,roles}` | **ENV（上游未接线读口）** |
+| `#/access` | anon | `…401 (Unauthorized)` | 401 ×5 | 上述四枚 + `/auth/whoami` | **ENV（网关鉴权 401）** |
+| `…?zone=config` | auth | `…404 (Not Found)` | 404 ×1 | `/agent-api/api/employees/%3AemployeeId` | **ENV + 占位 id 本就无实体** |
+| `…?zone=config` | anon | `…401 (Unauthorized)` | 401 ×3 | `/auth/whoami` + `employees/%3AemployeeId` + `matrix?employee=%3AemployeeId` | **ENV（网关鉴权 401）** |
 
-### 4.2 `#/employees/:employeeId?zone=config` → ENV（且台账导航形态导致必现）
+源码侧证据（用于排除「产品」选项）：
 
-- 有效登录态 1 条 404：`/agent-api/api/employees/%3AemployeeId`。`%3A` 即 `:` —— 台账与本次复现都**按字面量 `:employeeId` 导航**（`shots.mjs` 不做参数替换，本脚本同样不做），因此请求指向一个必然不存在的员工；前端据此渲染 `ed5-overview-notfound`「员工不存在或无权查看」。**该路由本就无实体**，属占位符导航产物，不是产品缺陷。
-- 匿名态 3 条 401：`/auth/whoami` + 同一枚 `employees/%3AemployeeId` + `/agent-api/api/matrix?employee=%3AemployeeId`；前端切到 `ed5-overview-error`。
-- 源码定位：`web/src/shell/routes.ts:223` 一带 detail-zone 注册；`web/src/modules/employee-detail/EmployeeDetailModulePage.tsx:1219`（`/agent-api/api/employees/${encodeURIComponent(empId)}`）、`:1011`/`:1248`（`/agent-api/api/matrix?employee=${enc}`）。
-- 与上一件对照：`zone=config` 与 `zone=evidence` 的行集**逐字同构**（仅请求编号值随运行时变化）→ 同一机制，不同分区。
+1. `git grep -n 'console\.error' -- web/src` = **0 命中**（HEAD `0f125bd6` 现场核，非沿用）。本区间（`fefa2a07..0f125bd6`）web/src 非测试改动只有 `modules/metrics/MetricsModulePage.tsx`、`modules/skills/SkillsPage.tsx`、`modules/tools/ToolsPage.tsx` 三处，与这两条路由无关。
+2. `web/src/modules/access/access.ts:31-37`：`PEOPLE_ENDPOINTS=['/agent-api/api/v1/user/list','/agent-api/api/v1/user/all']`、`ROLE_ENDPOINTS=['/agent-api/api/v1/role/list?page=1&limit=200','/agent-api/api/v1/roles?page=1&limit=200']` —— 两组各两枚候选**一次加载全部尝试**，所以匿名态天然 4 连击 + `whoami` = 5 行；404 来自上游 v1 路由未接入，页面按 `ac3-gap`（`web/src/modules/access/AccessModulePage.tsx:237`）显式声明「上游角色接口尚未接入」。
+3. `web/src/shell/routes.ts:266`：`#/access` = `#/identity?tab=roles` 的 `compat-module` 别名（`kind:'compat-module'`、`visible:false`、`to:'#/identity?tab=roles'`）→ 台账以 `#/access` 记键，现网实际落地 `/identity?tab=roles`。这与上一代红灯载体记作 `#/identity?tab=roles` 是**同一页面**，不是新故障面。
+4. `web/src/modules/employee-detail/EmployeeDetailModulePage.tsx:1219`（`/agent-api/api/employees/${encodeURIComponent(empId)}`）、`:1011`/`:1248`（`/agent-api/api/matrix?employee=`）：`shots.mjs` **不做参数替换**（`git grep -n employeeId -- docs/_artifacts/tonight/shots.mjs` 无命中），因此请求里带字面量 `%3AemployeeId`，本就指向不存在的员工 → 有效态 404 → `ed5-overview-notfound`；匿名态网关先行 401 → `ed5-overview-error`。**属台账导航形态缺陷，非产品缺陷。**
 
-## 5. auth 面 obs 与 anon 面 obs 的关系
+## 5. auth 面与 anon 面的关系（为什么两条面同源）
 
-台账 auth 面 `authStateFile` 指向 `/Users/kevin_studio/.local/state/sekoi-ops/v4-auth-state.json`（该态 JWT 已过期，历次取证实测为 401 风暴源）。因此**台账的 auth 面在这一代事实上介于两者之间**：`#/access` 计 10 行（1440）高于我有效态的 4 行、接近我匿名态的 5 行 × 视口累计；`?zone=config` 计 3 行恰与我匿名态的 3 行同值（有效态只有 1 行 404）。
-派单要求的「auth 带 opsadmin storageState」我用的是有效态 `~/.local/state/sekoi-ops/ui-qa-auth-state.json`，因此我的 auth 行数是**产品真实登录用户会看到的下限**（只有未接线读口的 404），而台账数字里混有登录态失效带来的 401。两种口径下 product 都为 0，归因不变。
+台账 auth 面用的 `authStateFile` 是 `~/.local/state/sekoi-ops/v4-auth-state.json`（mtime 2026-11-19 19:12，JWT `exp=1795173121`，取证时已过期 ≈14 小时）。过期态在网关侧等价于「无登录态」，故台账 auth 面 `#/access` 的 10 行里必然混有 401，而我用**有效** opsadmin 态跑同一路由只剩 4 行纯 404（读口未接线）—— 这正是本代 auth 面 obs 的机制：**obs 非零不表示产品回归，而是失效登录态把 ENV 401 灌进 auth 面**。台账 `ceAuthority=login-state` 与 `envAttribution=401/404 … env (no login session at proxy)` 已自我声明这一点。
+
+台账 auth 面 `#/access` 1440 记 10 行、anon 记 11 行，均高于我的单次采样（4 / 5）：台账每路由跑多遍且叠加过期态重试，行数不可与单次采样直接对减；两面 obs 判定（`consoleErrorsObservedByShots` 按「有 product 行的路由条数」计）与我复现的 **product=0** 之间的差额，机制上只可能来自不含 `401 (…)/404 (…)` 字样的瞬时行（重试中断 / `net::ERR_ABORTED`）或一次瞬时 `pageerror` —— 我在 8 次采样里一条都没观测到，故按不可复现项登记（见 §7）。
 
 ## 6. 同源判定
 
-| 对象 | 本件路由 | 判定 |
-|---|---|---|
-| `docs/_artifacts/ui-qa/R-OBS-2-7de87bc0.md` | `#/access`、`#/employees/:employeeId?zone=*` | **完全同源**：同四枚 v1 端点、同 `%3AemployeeId` 占位 id 结论、同 `ac3-gap`/`ed5-overview-*` 前端态 → **同源复用 R-OBS-2**，本次原文见 §3。 |
-| `docs/_artifacts/ui-qa/R-OBS-03cd4658.md` | `#/access`（auth 4 行 404 / anon 5 行 401）、`?zone=evidence`（1 行 404 / 3 行 401） | 同源，仅把 `evidence` 换成 `config`；行集与状态逐字同构。 |
-| `R-OBS-6c4f3385.md`、`R-OBS-ANON-IDENTITY.md`、`R-OBS-ANON-AUDIT.md`、`R-OBS-ANON-2-86496824.md`、`R-OBS1-attribution.md`、`R-OBS1-43d83d65.md` | 同族 | 同族同因：网关鉴权层 401 / 未接线读口 404。obs 载体路由逐代换名（channels → audit → identity?tab=roles → approvals+models → access+evidence → access+config），实为 §6 别名与占位 id 的轮替出名。 |
-| 产品码 | — | 连续九件取证，产品侧证据恒零（`console.error` 零命中 + 无 pageerror/堆栈/非 401-404 状态码）。 |
+| 参照件 | 代次 | 本件相关性 | 判定 |
+|---|---|---|---|
+| `R-OBS-2-7de87bc0.md` | 7de87bc0 | 同样点名 `#/access` 与 `#/employees/:employeeId?zone=*`，端点清单、404/401 语义、`ed5-overview-*` 前端态逐字相同 | **同源复用 R-OBS-2** |
+| `R-OBS-03cd4658.md` | 03cd4658 | 其 `?zone=evidence` 与本件 `?zone=config` 行集同构（占位 id + 同一员工读口），`#/access` 完全一致 | 同源 |
+| `R-OBS-6c4f3385.md` | 6c4f3385 | anon 面 `#/access` 5 行清单一致 | 同源 |
+| `R-OBS1-attribution.md` / `R-OBS1-43d83d65.md` | 更早 | channels 面 401/404 同族（本件未含 channels，代次已收敛） | 同族 |
 
-## 7. 取证边界
+九件谱系合起来：**红灯载体路由在换代间换名（多为 `routes.ts` 别名同页换名），而产品侧静态证据始终为零**。
 
-1. **代次不一致**：台账 entry = `assets/index-CU42UJPm.js`；我 curl 与复现读到的现网 served entry = `assets/index-OCLu6KCF.js`（更新一代）。本次结论按现网新一代成立，对台账那一代的适用性以端点清单与路由别名为准（两代间这些源码位置未变）。
-2. **base 不一致**：两面台账 `base = http://127.0.0.1:9122`，派单要求现网 8183。我按派单只跑现网；9122 只作历史旁证，其登录态另有一份（见第 3 条）。
-3. **台账 auth 态已过期**：`v4-auth-state.json` 的 JWT 早已过期（历次实测），导致台账 auth 面语义向 anon 塌陷（§5）。
-4. **台账不落逐行原文**：summary 无 `consoleErrorSample` 键，index 只有计数列 → 无法给出台账侧字节级原文与堆栈。
-5. **计数口径**：`ENV_NOISE_RE = /\b(401|404)\s*\((Unauthorized|Not Found)\)/`（`shots.mjs:255`）且先 `m.text().slice(0,160)` 再判（`:286`）→ 403/5xx、`net::ERR_*`、被截断的长文本都会被计入 product。本代两面 `routesWithEnvOnlyConsoleErrors` 分别 50/51，说明 51 条路由普遍有 ENV 噪声，obs 只取决于哪几条恰好混进一条非 ENV 行。
-6. **行序不稳定**：并发 fetch 导致同一批端点的报错次序在视口/采样间漂移；按行计数因而不是稳定量。
-7. **占位 id 路由**：`#/:employeeId` 类路由在台账与本次复现里都以字面量导航，其 404 属导航形态产物，不能当作产品缺陷；若要评估该页真实表现需带真实员工 id。
-8. **未改动任何东西**：无产品码/testid 改动、无服务重启、无群消息；本次只做浏览器只读采样与 git/文档写入。
+## 7. 取证边界（如实声明）
 
-## 8. 建议（不改码，供流程决策）
+1. **代次不一致**：台账 `entry=assets/index-CU42UJPm.js`（两面 `servedEntryBefore/After` 同值），而现网 curl 实测与我复现读到的 served entry 均为 `index-OCLu6KCF.js` → 本件复现跑在**比台账更新的一代**。
+2. **base 不一致**：两面台账 `base=http://127.0.0.1:9122`，派单要求现网 `100.117.184.117:8183`；我按要求只跑现网，未复跑 9122。
+3. 台账 `consoleErrorSample` 字段不存在于 summary 与 index（只有计数列）→ 无法给出被计为 product 的那 1 行的字节级原文与堆栈。
+4. `ENV_NOISE_RE` 只识别 Chrome 的两种 reason-phrase 文案（`401 (Unauthorized)` / `404 (Not Found)`），**403、5xx、`net::ERR_ABORTED` 一律漏判为 product**。
+5. 台账 auth 面用已过期 v4 登录态 → auth 与 anon 在网关侧等价。
+6. 派单提到的「`f4bd0505` / `37b6481e` 两代同入口产物」：两面台账 `headHash` 只有 `f4bd0505`，`37b6481e` 未出现在当代台账；派单另提「板旧核销笔 `2051131b` 属更早代，当代不收敛」，属台账核销口径与代次绑定的问题，本件不改核销账。
+7. 本件为只读取证：未改产品码 / testid / 统计口径，未重启服务。
 
-1. 台账 `base` 统一到现网 `8183`，或至少在 summary 里显式标注「本地快照口」，避免与派单口径反复冲突。
-2. auth 面换成有效登录态（或在 summary 中把该字段命名改为 `stale-login-state`），否则「auth obs」与「anon obs」不可分辨，obs 会持续逐代换路由。
-3. `ENV_NOISE_RE` 扩识别 `net::ERR_*`、403/5xx，并把 product 计数分列 `console` 与 `pageerror` 两类，减少「瞬时行导致红灯搬家」。
-4. 逐路由原文落盘（`consoleErrorSample` 进 summary 或旁挂 jsonl），使红灯可在文档中直接归因，而不必每次外部重跑。
-5. 对 `:employeeId` 这类参数化路由，台账先做 id 替换再导航；否则该族路由的 obs 永远是占位 id 噪声。
+## 8. 建议（不改码，供上游决定）
+
+1. `shots.mjs` 的 `ENV_NOISE_RE` 补识别 `net::ERR_*` 与 403/5xx，并把 `pageerror` 与 console 行分列计数，避免瞬时中断被记成 product。
+2. 台账逐行落盘 console 原文（`consoleErrorSample` 进 summary 或独立 JSON），否则 obs 非零每次都要外部重跑归因。
+3. 台账 auth 面 `authStateFile` 改指向有效登录态（或至少在 summary 里带 cookie `exp` 与取证时刻的差值），消除「auth≈anon」假红灯。
+4. 台账 base 统一到现网 8183，或在 summary 里显式区分「本地代理台账」与「现网台账」。
+5. 台账 hash 形态路由（`#/access`、`#/employees/:employeeId?zone=config`）建议按 `routes.ts` 别名归一并做参数替换，消除同页换名与占位 id 造成的 obs 漂移。
 
 ## 9. 复现产物
 
-- `ofbd-auth.out`（5789B）/ `ofbd-auth.err`（0B）
-- `ofbd-anon.out`（7107B）/ `ofbd-anon.err`（0B）
-- 脚本：`obs-6632f340.mjs`（同目录，`ROUTES` 用 `||` 分隔，env `MODE/REPS/GATED/BASE/STATE/EXTRA_WAIT`）
-- 上一代产物（未复用其读数）：`o03-auth.out`、`o03-anon.out`、`o03-v4.out`、`obs6c4f-anon.out`
+`/private/var/folders/2b/bnpsyz450pn98w375q_803yw0000gn/T/opencode/`：`ofbd-auth.out`（5789 B）、`ofbd-anon.out`（7107 B），同名 `.err` 均为 0 B。
