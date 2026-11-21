@@ -402,6 +402,52 @@ function ConsoleModulesFrame({
   );
 }
 
+// n5: ONE preserve rule for every console link, outer tab strip and detail zone
+// strip alike (three leaks of this class already shipped: P0 n1 stamped panel
+// on every outer tab, n2 then dropped it from the tab that owns it, n4 found the
+// same leak on the zone leg). Keeping the rule in one function is what stops a
+// fourth: a new link family calls `linkSearch` and inherits the table below.
+//
+// Structural keys (tab/view/zone) are each strip's own addressing — they never
+// ride along. `panel` addresses an inner panel of one knowledge tab, so it is
+// re-attached only by the link that owns it (the active outer tab); no detail
+// zone owns it, so the zone family passes ownsPanel=false. Everything else —
+// state, rid, roview and module business params — survives on every link,
+// because both panes read them through usePaneForced/usePaneRid.
+const STRUCTURAL_KEYS: readonly string[] = ["tab", "view", "zone"];
+
+function splitPreserve(sp: URLSearchParams): {
+  preserve: Record<string, string>;
+  panel: string | null;
+} {
+  const keep: Record<string, string> = {};
+  let panelValue: string | null = null;
+  for (const [key, value] of sp.entries()) {
+    if (key === "panel") {
+      panelValue = value;
+      continue;
+    }
+    if (!STRUCTURAL_KEYS.includes(key)) keep[key] = value;
+  }
+  return { preserve: keep, panel: panelValue };
+}
+
+function linkSearch(
+  sp: URLSearchParams,
+  tab: string,
+  view: string,
+  zone: string,
+  ownsPanel: boolean,
+): string {
+  const { preserve, panel } = splitPreserve(sp);
+  return searchFor(
+    tab,
+    view,
+    zone,
+    ownsPanel && panel ? { ...preserve, panel } : preserve,
+  );
+}
+
 function ConsoleTabStrip({
   module,
   activeTabId,
@@ -414,24 +460,6 @@ function ConsoleTabStrip({
     [module],
   );
   const [sp] = useSearchParams();
-  // n3: `panel` addresses an inner panel of one tab. It must not ride along on
-  // every outer tab link (that was the P0 n1 leak), but dropping it outright
-  // also destroyed the address a tab owns: `?panel=` and `?state=`/`?rid=` could
-  // no longer coexist on one URL. So `panel` is collected separately and only
-  // re-attached to the link of the tab that owns it, while state/rid stay in the
-  // shared preserve (four-state legs).
-  const { preserve, panel } = useMemo(() => {
-    const keep: Record<string, string> = {};
-    let panelValue: string | null = null;
-    for (const [key, value] of sp.entries()) {
-      if (key === "panel") {
-        panelValue = value;
-        continue;
-      }
-      if (key !== "tab" && key !== "view" && key !== "zone") keep[key] = value;
-    }
-    return { preserve: keep, panel: panelValue };
-  }, [sp]);
   return (
     <div
       role="tablist"
@@ -441,17 +469,10 @@ function ConsoleTabStrip({
     >
       {tabs.map((tab) => {
         const active = tab.tabId === activeTabId;
-        // n3: the owning (active) tab keeps its `panel` on its own link, so a
-        // deep link such as ?tab=spaces&panel=retrieval&state=error survives a
-        // reload and a click on itself; every other outer tab still drops it.
+        // n5: owning tab keeps its panel; see linkSearch.
         const to = {
           pathname: pathFor(tab),
-          search: searchFor(
-            tab.tab ?? "",
-            "",
-            "",
-            active && panel ? { ...preserve, panel } : preserve,
-          ),
+          search: linkSearch(sp, tab.tab ?? "", "", "", active),
         };
         return (
           <NavLink
@@ -591,19 +612,6 @@ export function ConsoleEmployeeDetailPage({
   // ZONE_ALIAS overview/chat spellings).
   const showWorkbench = zone === undefined && normalized === "workbench";
 
-  const preserveDetail = useMemo(() => {
-    const keep: Record<string, string> = {};
-    for (const [key, value] of sp.entries()) {
-      // n4: `panel` addresses an inner panel of the knowledge tab. No detail
-      // zone owns it (the five zones are workbench/config/tasks/runs/evidence),
-      // so a knowledge deep link that detoured through the outer strip would
-      // otherwise stamp a stale, unread ?panel= on every zone address. state
-      // and rid stay preserved: this pane reads them through usePaneForced.
-      if (key !== "zone" && key !== "panel") keep[key] = value;
-    }
-    return keep;
-  }, [sp]);
-
   const detailContent: ReactNode = DetailModulePage ? (
     <Suspense fallback={<StateBlock state="loading" />}>
       <DetailModulePage employeeId={employeeId} />
@@ -619,7 +627,8 @@ export function ConsoleEmployeeDetailPage({
 
   const zoneHref = (z: DetailZone): { pathname: string; search: string } => ({
     pathname: `/employees/${encodeURIComponent(employeeId || "_")}`,
-    search: searchFor("", "", z, preserveDetail),
+    // n5: same rule as the outer strip; no zone owns ?panel= so ownsPanel=false.
+    search: linkSearch(sp, "", "", z, false),
   });
 
   return (
