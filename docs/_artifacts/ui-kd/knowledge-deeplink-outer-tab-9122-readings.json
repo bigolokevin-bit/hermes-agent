@@ -1,0 +1,518 @@
+[
+  {
+    "leg": "sources",
+    "url": "http://127.0.0.1:9122/#/knowledge?tab=sources",
+    "textLen": 703,
+    "cold": {
+      "url": "http://127.0.0.1:9122/knowledge?tab=sources&panel=ingest",
+      "search": "?tab=sources&panel=ingest",
+      "hash": "",
+      "outer": [
+        {
+          "tabId": "spaces",
+          "label": "知识空间",
+          "selected": false
+        },
+        {
+          "tabId": "sources",
+          "label": "数据源",
+          "selected": true
+        },
+        {
+          "tabId": "evidence",
+          "label": "审计证据",
+          "selected": false
+        }
+      ],
+      "entry": "/assets/index-DiNZbuB-.js",
+      "outerSelected": {
+        "tabId": "sources",
+        "label": "数据源",
+        "selected": true
+      },
+      "panelDataTab": "ingest",
+      "innerSelected": {
+        "testid": "knw5-tab-ingest",
+        "label": "数据接入",
+        "selected": true
+      },
+      "inner": [
+        {
+          "testid": "knw5-tab-spaces",
+          "label": "空间台账",
+          "selected": false
+        },
+        {
+          "testid": "knw5-tab-ingest",
+          "label": "数据接入",
+          "selected": true
+        },
+        {
+          "testid": "knw5-tab-retrieval",
+          "label": "检索",
+          "selected": false
+        },
+        {
+          "testid": "knw5-tab-evidence",
+          "label": "运行事件引用",
+          "selected": false
+        }
+      ],
+      "faces": [
+        "文档命中",
+        "接入健康",
+        "接入任务",
+        "接入对象"
+      ]
+    },
+    "viaClick": {
+      "url": "http://127.0.0.1:9122/knowledge?tab=sources",
+      "search": "?tab=sources",
+      "hash": "",
+      "outer": [
+        {
+          "tabId": "spaces",
+          "label": "知识空间",
+          "selected": false
+        },
+        {
+          "tabId": "sources",
+          "label": "数据源",
+          "selected": true
+        },
+        {
+          "tabId": "evidence",
+          "label": "审计证据",
+          "selected": false
+        }
+      ],
+      "entry": "/assets/index-DiNZbuB-.js",
+      "outerSelected": {
+        "tabId": "sources",
+        "label": "数据源",
+        "selected": true
+      },
+      "panelDataTab": "ingest",
+      "innerSelected": {
+        "testid": "knw5-tab-ingest",
+        "label": "数据接入",
+        "selected": true
+      },
+      "inner": [
+        {
+          "testid": "knw5-tab-spaces",
+          "label": "空间台账",
+          "selected": false
+        },
+        {
+          "testid": "knw5-tab-ingest",
+          "label": "数据接入",
+          "selected": true
+        },
+        {
+          "testid": "knw5-tab-retrieval",
+          "label": "检索",
+          "selected": false
+        },
+        {
+          "testid": "knw5-tab-evidence",
+          "label": "运行事件引用",
+          "selected": false
+        }
+      ],
+      "faces": [
+        "文档命中",
+        "接入健康",
+        "接入任务",
+        "接入对象"
+      ]
+    },
+    "pageErrors": []
+  },
+  {
+    "leg": "ingest",
+    "url": "http://127.0.0.1:9122/#/knowledge?tab=ingest",
+    "textLen": 703,
+    "cold": {
+      "url": "http://127.0.0.1:9122/knowledge?tab=sources&panel=ingest",
+      "search": "?tab=sources&panel=ingest",
+      "hash": "",
+      "outer": [
+        {
+          "tabId": "spaces",
+          "label": "知识空间",
+          "selected": false
+        },
+        {
+          "tabId": "sources",
+          "label": "数据源",
+          "selected": true
+        },
+        {
+          "tabId": "evidence",
+          "label": "审计证据",
+          "selected": false
+        }
+      ],
+      "entry": "/assets/index-DiNZbuB-.js",
+      "outerSelected": {
+        "tabId": "sources",
+        "label": "数据源",
+        "selected": true
+      },
+      "panelDataTab": "ingest",
+      "innerSelected": {
+        "testid": "knw5-tab-ingest",
+        "label": "数据接入",
+        "selected": true
+      },
+      "inner": [
+        {
+          "testid": "knw5-tab-spaces",
+          "label": "空间台账",
+          "selected": false
+        },
+        {
+          "testid": "knw5-tab-ingest",
+          "label": "数据接入",
+          "selected": true
+        },
+        {
+          "testid": "knw5-tab-retrieval",
+          "label": "检索",
+          "selected": false
+        },
+        {
+          "testid": "knw5-tab-evidence",
+          "label": "运行事件引用",
+          "selected": false
+        }
+      ],
+      "faces": [
+        "文档命中",
+        "接入健康",
+        "接入任务",
+        "接入对象"
+      ]
+    },
+    "viaClick": {
+      "url": "http://127.0.0.1:9122/knowledge?tab=sources",
+      "search": "?tab=sources",
+      "hash": "",
+      "outer": [
+        {
+          "tabId": "spaces",
+          "label": "知识空间",
+          "selected": false
+        },
+        {
+          "tabId": "sources",
+          "label": "数据源",
+          "selected": true
+        },
+        {
+          "tabId": "evidence",
+          "label": "审计证据",
+          "selected": false
+        }
+      ],
+      "entry": "/assets/index-DiNZbuB-.js",
+      "outerSelected": {
+        "tabId": "sources",
+        "label": "数据源",
+        "selected": true
+      },
+      "panelDataTab": "ingest",
+      "innerSelected": {
+        "testid": "knw5-tab-ingest",
+        "label": "数据接入",
+        "selected": true
+      },
+      "inner": [
+        {
+          "testid": "knw5-tab-spaces",
+          "label": "空间台账",
+          "selected": false
+        },
+        {
+          "testid": "knw5-tab-ingest",
+          "label": "数据接入",
+          "selected": true
+        },
+        {
+          "testid": "knw5-tab-retrieval",
+          "label": "检索",
+          "selected": false
+        },
+        {
+          "testid": "knw5-tab-evidence",
+          "label": "运行事件引用",
+          "selected": false
+        }
+      ],
+      "faces": [
+        "文档命中",
+        "接入健康",
+        "接入任务",
+        "接入对象"
+      ]
+    },
+    "pageErrors": []
+  },
+  {
+    "leg": "retrieval",
+    "url": "http://127.0.0.1:9122/#/knowledge?tab=retrieval",
+    "textLen": 654,
+    "cold": {
+      "url": "http://127.0.0.1:9122/knowledge?panel=retrieval",
+      "search": "?panel=retrieval",
+      "hash": "",
+      "outer": [
+        {
+          "tabId": "spaces",
+          "label": "知识空间",
+          "selected": true
+        },
+        {
+          "tabId": "sources",
+          "label": "数据源",
+          "selected": false
+        },
+        {
+          "tabId": "evidence",
+          "label": "审计证据",
+          "selected": false
+        }
+      ],
+      "entry": "/assets/index-DiNZbuB-.js",
+      "outerSelected": {
+        "tabId": "spaces",
+        "label": "知识空间",
+        "selected": true
+      },
+      "panelDataTab": "retrieval",
+      "innerSelected": {
+        "testid": "knw5-tab-retrieval",
+        "label": "检索",
+        "selected": true
+      },
+      "inner": [
+        {
+          "testid": "knw5-tab-spaces",
+          "label": "空间台账",
+          "selected": false
+        },
+        {
+          "testid": "knw5-tab-ingest",
+          "label": "数据接入",
+          "selected": false
+        },
+        {
+          "testid": "knw5-tab-retrieval",
+          "label": "检索",
+          "selected": true
+        },
+        {
+          "testid": "knw5-tab-evidence",
+          "label": "运行事件引用",
+          "selected": false
+        }
+      ],
+      "faces": [
+        "文档命中",
+        "检索命中",
+        "读取记录"
+      ]
+    },
+    "viaClick": {
+      "url": "http://127.0.0.1:9122/knowledge?panel=retrieval",
+      "search": "?panel=retrieval",
+      "hash": "",
+      "outer": [
+        {
+          "tabId": "spaces",
+          "label": "知识空间",
+          "selected": true
+        },
+        {
+          "tabId": "sources",
+          "label": "数据源",
+          "selected": false
+        },
+        {
+          "tabId": "evidence",
+          "label": "审计证据",
+          "selected": false
+        }
+      ],
+      "entry": "/assets/index-DiNZbuB-.js",
+      "outerSelected": {
+        "tabId": "spaces",
+        "label": "知识空间",
+        "selected": true
+      },
+      "panelDataTab": "retrieval",
+      "innerSelected": {
+        "testid": "knw5-tab-retrieval",
+        "label": "检索",
+        "selected": true
+      },
+      "inner": [
+        {
+          "testid": "knw5-tab-spaces",
+          "label": "空间台账",
+          "selected": false
+        },
+        {
+          "testid": "knw5-tab-ingest",
+          "label": "数据接入",
+          "selected": false
+        },
+        {
+          "testid": "knw5-tab-retrieval",
+          "label": "检索",
+          "selected": true
+        },
+        {
+          "testid": "knw5-tab-evidence",
+          "label": "运行事件引用",
+          "selected": false
+        }
+      ],
+      "faces": [
+        "文档命中",
+        "检索命中",
+        "读取记录"
+      ]
+    },
+    "pageErrors": []
+  },
+  {
+    "leg": "panel-retrieval",
+    "url": "http://127.0.0.1:9122/#/knowledge?panel=retrieval",
+    "textLen": 654,
+    "cold": {
+      "url": "http://127.0.0.1:9122/knowledge?panel=retrieval",
+      "search": "?panel=retrieval",
+      "hash": "",
+      "outer": [
+        {
+          "tabId": "spaces",
+          "label": "知识空间",
+          "selected": true
+        },
+        {
+          "tabId": "sources",
+          "label": "数据源",
+          "selected": false
+        },
+        {
+          "tabId": "evidence",
+          "label": "审计证据",
+          "selected": false
+        }
+      ],
+      "entry": "/assets/index-DiNZbuB-.js",
+      "outerSelected": {
+        "tabId": "spaces",
+        "label": "知识空间",
+        "selected": true
+      },
+      "panelDataTab": "retrieval",
+      "innerSelected": {
+        "testid": "knw5-tab-retrieval",
+        "label": "检索",
+        "selected": true
+      },
+      "inner": [
+        {
+          "testid": "knw5-tab-spaces",
+          "label": "空间台账",
+          "selected": false
+        },
+        {
+          "testid": "knw5-tab-ingest",
+          "label": "数据接入",
+          "selected": false
+        },
+        {
+          "testid": "knw5-tab-retrieval",
+          "label": "检索",
+          "selected": true
+        },
+        {
+          "testid": "knw5-tab-evidence",
+          "label": "运行事件引用",
+          "selected": false
+        }
+      ],
+      "faces": [
+        "文档命中",
+        "检索命中",
+        "读取记录"
+      ]
+    },
+    "viaClick": {
+      "url": "http://127.0.0.1:9122/knowledge?panel=retrieval",
+      "search": "?panel=retrieval",
+      "hash": "",
+      "outer": [
+        {
+          "tabId": "spaces",
+          "label": "知识空间",
+          "selected": true
+        },
+        {
+          "tabId": "sources",
+          "label": "数据源",
+          "selected": false
+        },
+        {
+          "tabId": "evidence",
+          "label": "审计证据",
+          "selected": false
+        }
+      ],
+      "entry": "/assets/index-DiNZbuB-.js",
+      "outerSelected": {
+        "tabId": "spaces",
+        "label": "知识空间",
+        "selected": true
+      },
+      "panelDataTab": "retrieval",
+      "innerSelected": {
+        "testid": "knw5-tab-retrieval",
+        "label": "检索",
+        "selected": true
+      },
+      "inner": [
+        {
+          "testid": "knw5-tab-spaces",
+          "label": "空间台账",
+          "selected": false
+        },
+        {
+          "testid": "knw5-tab-ingest",
+          "label": "数据接入",
+          "selected": false
+        },
+        {
+          "testid": "knw5-tab-retrieval",
+          "label": "检索",
+          "selected": true
+        },
+        {
+          "testid": "knw5-tab-evidence",
+          "label": "运行事件引用",
+          "selected": false
+        }
+      ],
+      "faces": [
+        "文档命中",
+        "检索命中",
+        "读取记录"
+      ]
+    },
+    "pageErrors": []
+  }
+]
