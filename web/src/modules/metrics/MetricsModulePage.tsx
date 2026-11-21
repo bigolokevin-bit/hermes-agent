@@ -2068,7 +2068,10 @@ export function MetricsModulePage() {
                 <div data-testid="metD-card-rid">
                   <RequestId id={usageLeadRid} />
                 </div>
-                <Button size="sm" outlined onClick={() => setAttempt((value) => value + 1)} data-testid="met6-retry">
+                {/* UI-B 错误态组合：卡内唯一主操作=重试（抬起实心）；rid 复制与技术信息
+                    （gap 只进 title tooltip）为既有达标现状，本笔实测复核。denied 腿共用本卡，
+                    重试同相抬起。单卡小错误腿与刷新条不抬起：整页读不出时「刷新」仍是唯一出口（R207）。 */}
+                <Button size="sm" onClick={() => setAttempt((value) => value + 1)} data-testid="met6-retry">
                   重试
                 </Button>
               </CardContent>
@@ -3296,7 +3299,9 @@ export function MetricsModulePage() {
             </div>
             <div className="metH-card-acts">
               <CardRetryButton busy={refreshBusy} onClick={retryHeat} testId="metH-card-retry-heat" />
-              <Button size="sm" outlined onClick={() => setAttempt((value) => value + 1)} data-testid="met5-retry">
+              {/* UI-B 错误态组合：卡内唯一主操作=「全部重试」（抬起实心），
+                  单项重试保持次级；互斥=view.kind 单值枚举 by construction。 */}
+              <Button size="sm" onClick={() => setAttempt((value) => value + 1)} data-testid="met5-retry">
                 全部重试
               </Button>
             </div>

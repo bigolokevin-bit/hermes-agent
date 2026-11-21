@@ -1571,3 +1571,10 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 六件 assert 现值==068833bc 注 headHash=8ff6d30d+carriedFrom="068833bc"+carried=true+stampNote+写后回读；state-quad 本代真跑 sampled=20 passed=20 head=8ff6d30d 非 carried。
 - shots 双腿本代真跑（11:00:07→11:03:20）：auth 102/102 failures=[] **obs=2 routes=['#/access','#/capabilities?tab=channels']**（上代 obs=0，+2 如实不入判据，channels 条系历史 ENV 同源路由复现）distinct=24 envOnly=51；anon aux **obs=2 routes=['#/access','#/approvals?tab=policy']**（上代 1 #/knowledge?tab=retrieval 收敛、access 复现+policy 新出）distinct=25 envOnly=51；三键+served 两端同值+ceAuthority=login-state，routesWithConsoleErrors 全自产非编造。
 - TALLY {'8ff6d30d': 9} count 9 BAD=[]（None 清零）；ac525de5（068833bc 章）不重做；无 amend/force；detached push HEAD 映射形；web/src/9122/BFF/caddy/qa-verify/ACC 判词节未动。
+
+## 一九四轮 · 波次代次九件重章 @ c621295b（六件 carriedFrom=8ff6d30d + shots/quad 本代真跑，2026-11-21 11:1x）
+
+- wave-100 四笔全纯测试（appr R273/gov R251/ui1 R255 隔离/aud R266 排序稳定）并入 c621295b（remote c621295b6 现查==ls-remote）；entry/CSS 均未换代（OCLu6KCF/172175/cdf9958a…3567；Cpi0jJKL/146111，==9122==磁盘）。
+- 六件 assert 现值==8ff6d30d 注 headHash=c621295b+carriedFrom="8ff6d30d"+carried=true+stampNote+写后回读；state-quad 本代真跑 sampled=20 passed=20 head=c621295b 非 carried。
+- shots 双腿本代真跑（11:12:10→11:15:19）：auth 102/102 failures=[] **obs=2 routes=['#/approvals?tab=history','#/capabilities?tab=channels']**（上代 access+channels → history 替换 access，channels 延续）distinct=25 envOnly=51；anon aux **obs=2 routes=['#/approvals?tab=history','#/system']**（上代 access+policy → history+system，均 ENV 类波动如实记录非判据）distinct=24 envOnly=51；三键+served 两端同值+ceAuthority=login-state，routesWithConsoleErrors 全自产非编造。
+- TALLY {'c621295b': 9} count 9 BAD=[]（None 清零）；b3acbf9d（8ff6d30d 章）不重做；无 amend/force；detached push HEAD 映射形；web/src/9122/BFF/caddy/qa-verify/ACC 判词节未动。

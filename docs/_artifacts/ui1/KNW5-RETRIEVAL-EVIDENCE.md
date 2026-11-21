@@ -6507,3 +6507,140 @@ kn-doc-copy*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent 
 未测如实：带登录会话真屏；③ 缺值行在 updated/type 列排序下的落位（只锁 size 列——
 缺 size 才有列义定位问题）；清除拍后再点回默认方向的三拍循环完整态（R235② 走过
 默认↔翻向，三拍全环未单例）。
+
+# KNW5 追加 R255：全局×详情导出筛选参数互不串写——A→B→A 往返闭环与逐阶段读账本（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge——上游再前进：派工记录值
+`068833bc`、fetch 实测 `ac525de5`（如实记），merge 无冲突、knowledge delta 实测零；
+基线先跑 66/273 全绿 Errors 0、目标文件确认缺席再动笔。零产品文件改动。新增
+knowledge.export.cross.filter.isolation.test.tsx 两例（本体）。
+
+## 裁决与名实（file:line）
+
+```text
+引用不复写：跨面行等式 R214②:158/R226①-b/R233；单面链同源 R142①:124/R209③/R197①；
+单步免疫 R228①（详情动作→全局三快照）、R253②（排序跨面三物）、R242②（q→详情）；
+cap 位 R164/R242①/R244；换代弃页 R207/R244γ′δ′/R247①；空集门 R138/R190④/R231②⑤/
+R236③；钮连续 R132/R169。
+派工措辞按实驳回/换算：①「?type/?source 残留」——两面具无此字面参数（全局只有 ?q=，
+详情 ?ktype=；无 ?source= 控件未造）→ 以「对侧参数绝不进入本侧导出」+URL/密钥集实检
+证隔离；③「两侧都有 cap」半不成立——**全局面 cap 计数实测 0**、详情面四值当帧复跑；
+「两侧零额外读」半不成立——**实测读账本：开空间 +2（spaces 面板重读 + docs
+{limit,spaceId}）、返回 +1（spaces 重读）、三次复制 +0**，按阶段如实计数。
+新增维（点名）：把既往单步免疫串成**同一实例 A→B→A 往返闭环**——全局 knG 基线快照
+→ 开空间甲+切 PDF 桶（链==本面屏上、四值 [2,2,2,2]、cap 在场 1）→ kn3-docs-back
+返回再导出 **与最初快照逐字回环**（ktype 不回染）+ **cap 随面翻转 1→0** + 闭环读
+账本；例② 反向深链态（space+ktype）返回后 knG 恢复全行集（**xlsx 在场=ktype 零串写**）
++ 逐位行钮==清单行（一般式引 R226①-b）。
+```
+
+## 验证尾行（R255）
+
+```text
+① A：urls 2、knG 快照 [全局一,全局二]、cap 0；B：开空间 slice==[SPACES, P1]、
+  桶后详情 [甲册,甲档] 无全局行、四值 [2,2,2,2]、cap 1；A'：space 消失、knG toBe
+  基线、urls 恒 readsB+1。② 返回后 [全局一,全局二]（xlsx 在场）、链==屏上、cap 0、
+  钮 0/1 首段==行。
+$ npx vitest run src/modules/knowledge → 67 files / 275 tests passed（273+2），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0
+$ build /tmp/knw-r255-dist → exit 0；全仓 → 428 files / 3368 passed **零红**
+  （metrics 跨日两条本轮未复现，不视为已修复）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/kn8/knB/knD/knE-page-*/knF/knG/knI/knL*/kn-row-copy*/
+kn-row-copy-space*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent + 既有 66 套绿。
+过程自纠两处（读账本两次探查：开 +2/回 +1 皆既存合法读，按实重写并声明禁全零话术），
+产品零触碰。
+```
+未测如实：带登录会话真屏；返回后 URL 的 ktype 留存字面断言（只锁导出纯度，URL 位
+留他轮）；空间切换至**第二**空间（sp_y）的账本（同型外推）；行内预览/sdoc 态下闭环
+（三态浮层叠加超预算）。
+
+# KNW5 追加 R256：三腿查重全锁判定 + 唯一真缺口新维（51 追加帧×抽屉三方首行+双帧钮序+阶段账本）（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge——上游 `b3acbf9d`（wave-99），
+HEAD 非其祖先 → 普通 merge commit（**未用 `-B`**）、knowledge delta 实测零、无冲突；
+基线先跑 67/275 全绿 Errors 0、目标文件确认缺席再动笔。零产品文件改动。新增
+knowledge.space.export.preview.test.tsx 一例（本体；三腿主体为头注裁决位）。
+
+## 三腿裁决（file:line）
+
+```text
+①主面全锁：R248①(space.export.filters:135-160)+R249①(export.space.paging:140-156
+  含三方首行-无抽屉)+R252①(叠载五量)+R226①/R142①:124 → 不复写；行钮面映射声明
+  （派工 kn-row-copy-<i> 在详情面实名 -space- 族，R132/R169）。
+②全锁：R230①(抽屉开帧三值+全文 toBe 开前)+R233②(开关双帧行名/三值互等)+R236①
+  (三帧互等+详情读账本)+R196③④/R149 → 不复写；?preview= 不存在映射声明。
+③第二口径不存在（docLine 单源，两侧同「—」）且已锁：R200②/R226①②/R190③/R233①
+  （抽屉侧第三式「该字段未返回」+title 另族）→ 不复写；kn-space-page-cap 不存在→
+  kn3-page-cap（null 态 R108/R157/R187）。
+真缺口新维（本例钉死）：R239① 抽屉×51 未点行钮做三方、R249① 三方无抽屉、双帧**钮
+id 序列**与 cap 的 51 帧+抽屉组合互等、读账本**按阶段分离**（开 +1 且末条==详情读、
+关 +0、导出 +0）——合并单例首锁。读数：append 后 M=51、开抽屉 doc=p1_01、urls 恰 +1
+==detailUrl(p1_01)、三方首行 [0]=屏上=链首、51 链==屏上、四值 [51,51,51,51]、关帧
+钮序逐字等、cap 双帧 51、导出段 +0、createObjectURL 0 调用。
+```
+
+## 门禁尾行（R256）
+
+```text
+$ npx vitest run src/modules/knowledge → 68 files / 276 tests passed（275+1 ≥276），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0
+$ build /tmp/knw-r256-dist → exit 0；全仓 → 431 files / 3372 passed **零红**
+  （metrics 跨日两条本轮未复现，不视为已修复）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knE-page-*/knF/knG/knI/knL*/kn-row-copy*/kn-row-copy-space*/
+kn7-preview*/kn-doc-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent +
+既有 67 套全绿。过程自纠一处（clipStub 加 spy 返回时脚本改坏函数体→整函数重写，
+测试逻辑未变），产品零触碰。
+```
+未测如实：带登录会话真屏；②③的补充组合（如错误窗内抽屉开关账本——R232/R239③
+分帧地盘）；重开抽屉第三帧的 51 规模账本（R236① 系 2 行帧，规模位外推）。
+
+# KNW5 追加 R257：true-0×knE-page 全族零渲染 + 详情 500 帧全局导出全文零染（两真缺口；三腿其余引用）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `c621295b`
+（HEAD 非其祖先 → merge commit；**未用 `-B`**）、knowledge delta 零、无冲突；基线先跑
+68/276 全绿 Errors 0、目标文件确认缺席再动笔。零产品文件改动。新增
+knowledge.space.export.empty.test.tsx 两例（本体）。
+
+## 三腿裁决（file:line）与两真缺口
+
+```text
+①门体全锁：R138②④+R190④(escape:190-205)+R231②⑤+R236③(open.detail:182-210)；
+  换算照落：kn-space-page-cap 不存在→kn3-page-cap，true-0 实测 **null 非 0**
+  （R108/R157/R187）。②主体全锁：R221①②+R232①(detail.error.export:152-176 knF 侧)
+  +R187①③+R183③。③全锁：R187②+R231⑤+R232③+R221④（**cap null→整句过渡位已被
+  R221④锁**——派工候选驳回）。
+新增维 A（grep 实证零 pin）：true-0 详情帧 `[data-testid^="knE-page-"]` **整族
+  （bar/count/more/end/stale/error/retry）0 渲染同帧**——既往只在检索面锁过无分页
+  （R164），空空间详情面全族缺席从未断；配 cap null + 禁裸 0 扫描 + knF disabled/
+  「没有可复制」+ 双族行钮 0 节点（非 disabled）+ 点击零写零请求 + spy 0（门体最小
+  引用位在场复跑）。
+新增维 B（grep 实证零 pin）：**详情 500（?doc= 深链错锚+rid 可投）帧内，全局面
+  knG 导出全文 toBe 无抽屉基线 + hit 行名逐字 + 列表读各恰 1、详情读恰 1（失败不
+  自动重试）**——R232① 只做过 knF 侧互等，knG 全文跨抽屉故障位未锁。
+换算声明：无真 CSV→「导出」=knF/knG 数据行、kn-list-copy 不存在、spy 全程 0；
+「显 0」驳回为 null；重试契约引 R183③ 不复写；clip 桩 Promise+unstub、
+isSecureContext=true 走 https 复制主路径（R210）。
+```
+
+## 验证尾行（R257）
+
+```text
+A：knE-page 族计数 0、cap null、裸 0 扫描 0、knF disabled+句、双族钮 0、点击零写、
+  urls 恒、spy 0。B：基线 knG 快照 [全局一,全局二]；故障帧错锚在场、rid 投递
+  rid-r257-d、knG toBe 基线、hits 不动、spaces/plain/p1 各 1、d_1 详情读 1、spy 0。
+$ npx vitest run src/modules/knowledge → 69 files / 278 tests passed（276+2 ≥277），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0
+$ build /tmp/knw-r257-dist → exit 0；全仓 → 435 files / 3381 passed **零红**
+  （metrics 跨日两条本轮未复现，不视为已修复）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knE-page-*/knF/knG/knI/knL*/kn-row-copy*/kn-row-copy-space*/
+kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent + 既有 68 套全绿。
+两例一次全过、零自纠轮，产品零触碰。
+```
+未测如实：带登录会话真屏；A 帧 knG 侧（检索面读空列表）门细节（R190④/R231② 地盘，
+本例聚焦详情面全族位）；B 的错误恢复后 knG 再快照环（过渡位属 R221④ 地盘不扩）。
