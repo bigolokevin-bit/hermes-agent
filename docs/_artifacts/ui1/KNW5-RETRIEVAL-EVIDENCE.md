@@ -6111,3 +6111,47 @@ kn-doc-copy*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent 
 未测如实：带登录会话真屏；cap M 在「筛空」帧的存在性（null 已由 R234③/主套件分支
 处理，本笔只锁非空两值 51/2）；名筛先打再 append（γ′ 为 append 先、名筛后向，反向
 顺序未测）；q 键移除帧（R157② 地盘）。
+
+# KNW5 追加 R245：详情故障窗内切筛链位 + 404/500 导出无差异 + 清筛五读同帧（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge——**上游较派工预期再前进**：
+实测 tip `de847835`（派工写 `7de87bc0`），knowledge delta 实测为空（git diff --stat 无
+输出）、无冲突、如实记录；基线先跑 60/258 全绿 Errors 0、目标文件确认缺席再动笔。
+零产品文件改动。新增 knowledge.detail.export.empty.test.tsx 三例（本体）。
+
+## 四腿判定（file:line；已覆盖禁复写）与新增维
+
+```text
+①＝全锁 R232①(detail.error.export:152-176)+R232②（404 unwired cap 冻结+不禁用+互等）
+  → 本笔补两子维：α、β。②＝互斥锁于 R231⑤/R183①②/R224①，清筛文本位锁于 R235③ →
+  本笔 γ 五读并置。③＝R239②（抽屉开×切桶过渡态）已锁 → α 只打其**错误窗内**版本。
+  ④＝全锁 R190④:190-205/R231②⑤/R236③:182-210 → 引用不复写。
+新增维（点名三条）：α 详情 500 窗内切类型桶：面板存续（R224① 窗内合并）+ 导出名链
+  逐字==新屏上链（窗内链位从未测）+ 钮 [0] 重建 + cap M=1（R244γ′ 在屏语义沿用）+
+  urls 全程逐字零新请求；β 同数据**三帧**（500 抽屉/404 抽屉/无抽屉）knF 全文互等 +
+  两错误分支 knF 均 disabled=false + cap 两错误帧逐字（跨错误**分支类型**无差异——
+  R232 各测单边）；γ 清名筛后五读同帧 cap M==data-len==表体==钮数==导出链长==3 +
+  链==屏上（R215③/R235③ 之外的并置首锁）。
+换算声明：?type→?ktype；清筛零请求（实测，未造「恰 1 次」）；无真 CSV→导出=knF、
+  spy 0；kn-list-copy 不存在；404→unwired 锚名（R183）；cap null 态引 R108/R157/R187。
+```
+
+## 验证尾行（R245）
+
+```text
+α error 锚在场→切「表格」：panel 在场、集 [丙表.xlsx]、钮 [0]、capM==1、链==屏上、
+  urls join 逐字。β text404 toBe text500 toBe 无抽屉基线；两分支 disabled false；
+  cap500==cap404。γ 筛中 [甲,乙]→清空：五读集合大小=1 且 ==3、链==屏上、cap 在场。
+$ npx vitest run src/modules/knowledge → 61 files / 261 tests passed（258+3），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0；build /tmp/knw-r245-dist exit 0
+$ 全仓 → 400 files：399 passed + 2 tests failed = **既有域外点名**
+  （MetricsModulePage.test.tsx 7d/30d 与 sparkline，Date.now() 跨 UTC 日界，禁修禁豁免）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knE-page-*/knF/knG/knI/knL*/kn-row-copy*/kn-row-copy-space*/
+kn-doc-copy*/kn7-preview*/kn-doc-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/
+导出 absent 标记 + 既有 60 套全绿。三例一次全过、零自纠轮，产品零触碰。
+```
+未测如实：带登录会话真屏；β 的 denied/非法枚举分支导出无差异外推（error/unwired 两
+分支已测，同族由 R231 地盘）；γ 的 ktype 叠筛五读（R244 覆盖其 M 位，五读并置仅纯名筛）；
+错误窗内切排序链位（R241α 清错帧之外未叠）。
