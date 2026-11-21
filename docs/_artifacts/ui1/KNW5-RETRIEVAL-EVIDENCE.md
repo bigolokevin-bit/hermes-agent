@@ -6738,3 +6738,51 @@ C 复原计数取全集 4），产品零触碰。
 未测如实：带登录会话真屏；kn8-global-clear（空间列表面清除器）的同型 URL 实态未测
 （择面纪律：本例取所在面 kn6 位）；aria-sort 其余列向（name/type/updated）未遍；
 「清除后重打同词」回填环未叠。
+
+# KNW5 追加 R260：缺值三态×交集×双面六载体并置 + 全缺行检索面镜像（纯测试单·本体交付；腿③判定引用）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge——上游较派工再前进：派工值
+`7cb41601`、fetch 实测 `fc498772`（如实记）；HEAD 非其祖先 → 普通 merge commit
+（**未用 `-B`**）、knowledge delta 零、无冲突；基线先跑 71/283 全绿 Errors 0、目标
+文件确认缺席再动笔。零产品文件改动。新增
+knowledge.export.missing.triple.test.tsx 两例（本体；腿③为文件尾判定注释位）。
+
+## 三腿裁决（file:line）与两新增维
+
+```text
+腿①「列表复制 vs 导出逐格」双口径**驳回**（docLine 单源、两侧皆「—」——差异记头注
+  与本节）；单面全缺位已锁 R190③(escape:171-188)、三面互等已锁 R226②(:143-172)→
+  真新增 A：**交集帧（ktype=PDF×q=人事）两缺行六载体并置**——详情 3 格/行钮/knF ×
+  检索 3 格/行钮/knG：[PDF,—,—] 逐格、「跨面同文档行钮串逐字互等」（R226①-b 系满值
+  行、缺值位零 pin）、两面三值 [2,2,2] 同帧、urls join 逐字、无 undefined/空字段；
+  实测注记：ktype 在场时全缺行 F 按「缺值不占桶」出局详情面、检索面（只吃 q）仍在场
+  ——桶/面语义并置直证。
+腿②交集三值＝A 已并入；引用 R248①:135-160/R249①/R142①:124/R164①:122/R215③。
+腿③空集门＝全锁引用不复写：R190④:190-205+R231②⑤+R236③:182-210；「上限句」在空帧
+  按实 null（R108/R157/R187）；本文件 spy 由 clipStub 注入、A/B 帧保持 0 调用面。
+新增维 B：**全缺行（三缺）检索面三载体首锁**——hit 格 [—,—,—]、行钮串实测 5 列
+  「人事全缺 | — | — | — | DF」（短码不吞、无空字段）、knG 去所属空间@2 == 行钮全串
+  （R226①-b 形制的全缺镜像）、详情面同文档行钮**同串互等**（双面单源直证）。
+红线沿用：无 ?source=（换算 ktype×q）、无真 CSV→knF/knG、本地零请求禁「恰 1 次」、
+两式缺值不统一、clip 桩 Promise+unstub、jsdom isSecureContext。
+```
+
+## 验证尾行（R260）
+
+```text
+A：交集详情 [P,OK] 三值 2、knF 行==行钮串、检索 [P,F] 三值 2、跨面钮串 toBe、
+  knG 行去列 [PDF,—,—]、urls 逐字。B：hit 格三「—」、钮串 5 列逐字、knG 去列==钮串、
+  详情钮同串、短码 /^[A-Z0-9]+$/。
+$ npx vitest run src/modules/knowledge → 72 files / 285 tests passed（283+2 ≥284），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0
+$ build /tmp/knw-r260-dist → exit 0；全仓 → 443 files / 3398 passed **零红**
+  （metrics 跨日两条本轮未复现，不视为已修复）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knE-page-*/knF/knG/knI/knL*/kn-row-copy*/kn-row-copy-space*/
+kn-doc-copy*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent +
+既有 71 套全绿。过程自纠三处（A 夹具 updatedAt 笔误按「两缺」定义删；B 行钮形制经
+探查按实 5 列断言；B 帧需 space= 在场详情表才渲染），产品零触碰。
+```
+未测如实：带登录会话真屏；全缺行在抽屉/预览第三式（R233① 地盘）；`?sdoc=` 命中展开
+侧全缺镜像（同族外推未叠）；腿③纯引用未复测。
