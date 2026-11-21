@@ -85,9 +85,9 @@
   "violations": [],
   "count": 0,
   "ok": true,
-  "headHash": "068833bc",
+  "headHash": "8ff6d30d",
   "exitCode": 0,
-  "carriedFrom": "37b6481e",
+  "carriedFrom": "068833bc",
   "carried": true,
-  "stampNote": "wave-98 三笔（gov R249/ui1 R253/ui-b metrics 空态），entry 换代 OCLu6KCF/CSS 未变；本件未重跑，证据沿用 37b6481e 波（unsealed intermediate，其盘值系 f4bd0505 章 carried 版）"
+  "stampNote": "wave-99 两笔全纯测试（ui1 R254/aud R265 missing-field pairs），entry sha 与 CSS 逐字节未变（OCLu6KCF/Cpi0jJKL）；本件未重跑，证据沿用 068833bc 代"
 }

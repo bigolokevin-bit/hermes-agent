@@ -6507,3 +6507,51 @@ kn-doc-copy*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent 
 未测如实：带登录会话真屏；③ 缺值行在 updated/type 列排序下的落位（只锁 size 列——
 缺 size 才有列义定位问题）；清除拍后再点回默认方向的三拍循环完整态（R235② 走过
 默认↔翻向，三拍全环未单例）。
+
+# KNW5 追加 R255：全局×详情导出筛选参数互不串写——A→B→A 往返闭环与逐阶段读账本（纯测试单·本体交付）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge——上游再前进：派工记录值
+`068833bc`、fetch 实测 `ac525de5`（如实记），merge 无冲突、knowledge delta 实测零；
+基线先跑 66/273 全绿 Errors 0、目标文件确认缺席再动笔。零产品文件改动。新增
+knowledge.export.cross.filter.isolation.test.tsx 两例（本体）。
+
+## 裁决与名实（file:line）
+
+```text
+引用不复写：跨面行等式 R214②:158/R226①-b/R233；单面链同源 R142①:124/R209③/R197①；
+单步免疫 R228①（详情动作→全局三快照）、R253②（排序跨面三物）、R242②（q→详情）；
+cap 位 R164/R242①/R244；换代弃页 R207/R244γ′δ′/R247①；空集门 R138/R190④/R231②⑤/
+R236③；钮连续 R132/R169。
+派工措辞按实驳回/换算：①「?type/?source 残留」——两面具无此字面参数（全局只有 ?q=，
+详情 ?ktype=；无 ?source= 控件未造）→ 以「对侧参数绝不进入本侧导出」+URL/密钥集实检
+证隔离；③「两侧都有 cap」半不成立——**全局面 cap 计数实测 0**、详情面四值当帧复跑；
+「两侧零额外读」半不成立——**实测读账本：开空间 +2（spaces 面板重读 + docs
+{limit,spaceId}）、返回 +1（spaces 重读）、三次复制 +0**，按阶段如实计数。
+新增维（点名）：把既往单步免疫串成**同一实例 A→B→A 往返闭环**——全局 knG 基线快照
+→ 开空间甲+切 PDF 桶（链==本面屏上、四值 [2,2,2,2]、cap 在场 1）→ kn3-docs-back
+返回再导出 **与最初快照逐字回环**（ktype 不回染）+ **cap 随面翻转 1→0** + 闭环读
+账本；例② 反向深链态（space+ktype）返回后 knG 恢复全行集（**xlsx 在场=ktype 零串写**）
++ 逐位行钮==清单行（一般式引 R226①-b）。
+```
+
+## 验证尾行（R255）
+
+```text
+① A：urls 2、knG 快照 [全局一,全局二]、cap 0；B：开空间 slice==[SPACES, P1]、
+  桶后详情 [甲册,甲档] 无全局行、四值 [2,2,2,2]、cap 1；A'：space 消失、knG toBe
+  基线、urls 恒 readsB+1。② 返回后 [全局一,全局二]（xlsx 在场）、链==屏上、cap 0、
+  钮 0/1 首段==行。
+$ npx vitest run src/modules/knowledge → 67 files / 275 tests passed（273+2），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0
+$ build /tmp/knw-r255-dist → exit 0；全仓 → 428 files / 3368 passed **零红**
+  （metrics 跨日两条本轮未复现，不视为已修复）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/kn8/knB/knD/knE-page-*/knF/knG/knI/knL*/kn-row-copy*/
+kn-row-copy-space*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent + 既有 66 套绿。
+过程自纠两处（读账本两次探查：开 +2/回 +1 皆既存合法读，按实重写并声明禁全零话术），
+产品零触碰。
+```
+未测如实：带登录会话真屏；返回后 URL 的 ktype 留存字面断言（只锁导出纯度，URL 位
+留他轮）；空间切换至**第二**空间（sp_y）的账本（同型外推）；行内预览/sdoc 态下闭环
+（三态浮层叠加超预算）。

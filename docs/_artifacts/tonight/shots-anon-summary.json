@@ -9,8 +9,8 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 1061,
-    "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 近 24 小时 近 7 天 近 14 天 近 30 天 刷",
+    "textLen": 1026,
+    "head": "运营 · 控制台 运营总览 值班台用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 近 24 小时 近 7 天 近 14 天 近 30 天 刷新",
     "hasMainEl": true,
     "ok": true
   },
@@ -21,7 +21,7 @@
     {
       "route": "#/access",
       "viewport": "1440",
-      "chars": 201,
+      "chars": 199,
       "hasMainEl": true
     },
     {
@@ -93,7 +93,7 @@
     {
       "route": "#/approvals?tab=policy",
       "viewport": "1440",
-      "chars": 466,
+      "chars": 451,
       "hasMainEl": true
     },
     {
@@ -231,7 +231,7 @@
     {
       "route": "#/employees/:employeeId?zone=evidence",
       "viewport": "375",
-      "chars": 66,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -249,7 +249,7 @@
     {
       "route": "#/employees/:employeeId?zone=tasks",
       "viewport": "1440",
-      "chars": 146,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -405,7 +405,7 @@
     {
       "route": "#/knowledge?tab=retrieval",
       "viewport": "1440",
-      "chars": 506,
+      "chars": 508,
       "hasMainEl": true
     },
     {
@@ -631,9 +631,10 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 1,
+  "consoleErrorsObservedByShots": 2,
   "consoleErrorRoutesObservedByShots": [
-    "#/knowledge?tab=retrieval"
+    "#/access",
+    "#/approvals?tab=policy"
   ],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
@@ -644,7 +645,7 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "068833bc",
+  "headHash": "8ff6d30d",
   "exitCode": 0,
   "entry": "assets/index-OCLu6KCF.js",
   "entrySha256": "cdf9958a3085c280e6933498d56c6d30a435ef6bef2035633206356af61e3567",
@@ -652,7 +653,8 @@
   "servedEntryBefore": "index-OCLu6KCF.js",
   "servedEntryAfter": "index-OCLu6KCF.js",
   "routesWithConsoleErrors": [
-    "#/knowledge?tab=retrieval"
+    "#/access",
+    "#/approvals?tab=policy"
   ],
   "auxiliary": true
 }

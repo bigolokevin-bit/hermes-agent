@@ -1564,3 +1564,10 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 三腿并行 10:54:36 起跑→10:57:16 全齐：quad sampled=20 passed=20 head=068833bc 真跑非 carried；shots 双腿本代真跑（entry sha 全串断言过）：**auth 102/102 failures=[] obs=0 routes=[] distinct=24 envOnly=51**（上代 auth=2 全收敛=好转）；anon aux 102/102 **obs=1 [#/knowledge?tab=retrieval]（上代 #/access 收敛、本代 retrieval 条新出，均 ENV 类如实不入判据）** distinct=25 envOnly=51；三键+servedEntryBefore==After='index-OCLu6KCF.js'+ceAuthority=login-state。
 - 六件 carriedFrom="37b6481e"+carried=true+stampNote（链关系明记：37b6481e unsealed 未 commit，其盘值系 f4bd0505 章 carried 版）；TALLY {'068833bc': 9} count 9 BAD=[]（None 清零、isinstance 恰九件）。
 - a0033213（f4bd0505 章）不重做；无 amend/force；push 走 HEAD 映射形；web/src/9122/BFF/caddy/qa-verify/ACC 判词节未动。
+
+## 一九三轮 · 波次代次九件重章 @ 8ff6d30d（六件 carriedFrom=068833bc + shots/quad 本代真跑，2026-11-21 11:0x）
+
+- wave-99 两笔全纯测试（ui1 R254/aud R265 missing-field pairs）并入 8ff6d30d（remote 8ff6d30d25f 现查==ls-remote）；entry/CSS 均未换代（OCLu6KCF/172175/cdf9958a…3567；Cpi0jJKL/146111，==9122==磁盘）。
+- 六件 assert 现值==068833bc 注 headHash=8ff6d30d+carriedFrom="068833bc"+carried=true+stampNote+写后回读；state-quad 本代真跑 sampled=20 passed=20 head=8ff6d30d 非 carried。
+- shots 双腿本代真跑（11:00:07→11:03:20）：auth 102/102 failures=[] **obs=2 routes=['#/access','#/capabilities?tab=channels']**（上代 obs=0，+2 如实不入判据，channels 条系历史 ENV 同源路由复现）distinct=24 envOnly=51；anon aux **obs=2 routes=['#/access','#/approvals?tab=policy']**（上代 1 #/knowledge?tab=retrieval 收敛、access 复现+policy 新出）distinct=25 envOnly=51；三键+served 两端同值+ceAuthority=login-state，routesWithConsoleErrors 全自产非编造。
+- TALLY {'8ff6d30d': 9} count 9 BAD=[]（None 清零）；ac525de5（068833bc 章）不重做；无 amend/force；detached push HEAD 映射形；web/src/9122/BFF/caddy/qa-verify/ACC 判词节未动。
