@@ -233,21 +233,21 @@
   width: 100%;
   min-width: 720px;
   border-collapse: collapse;
-  font-size: 0.76rem;
+  font-size: var(--font-size-2);
 }
 
 .knw5-table th,
 .knw5-table td {
-  padding: 9px 12px;
-  border-bottom: 1px solid var(--color-border);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border-subtle);
   text-align: left;
   vertical-align: top;
 }
 
 .knw5-table th {
   color: var(--color-muted-foreground);
-  font-size: 0.66rem;
-  font-weight: 500;
+  font-size: var(--font-size-1);
+  font-weight: var(--font-weight-medium);
   letter-spacing: 0.04em;
 }
 
@@ -274,9 +274,10 @@
   min-width: 0;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
-  gap: 12px;
-  padding: 11px 0;
-  border-bottom: 1px solid var(--color-border);
+  gap: var(--space-3);
+  min-height: var(--table-row-h);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border-subtle);
 }
 
 .knw5-ref:last-child {
@@ -287,7 +288,7 @@
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 5px;
+  gap: var(--space-1);
 }
 
 .knw5-ref-title,
@@ -296,13 +297,13 @@
   min-width: 0;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 10px;
+  gap: var(--space-1) var(--space-2);
   overflow-wrap: anywhere;
 }
 
 .knw5-ref-meta {
   color: var(--color-muted-foreground);
-  font-size: 0.68rem;
+  font-size: var(--font-size-1);
 }
 
 /* 摘要 is shown clamped, with the full text kept in its title. */
@@ -311,11 +312,11 @@
   min-width: 0;
   margin: 0;
   overflow: hidden;
-  font-size: 0.74rem;
-  line-height: 1.45;
+  font-size: var(--font-size-2);
+  line-height: var(--line-height-2);
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
 }
 
 /* Row side: the drill button and the original's entry, stacked, never squeezed. */
@@ -324,7 +325,7 @@
   min-width: 0;
   flex-direction: column;
   align-items: flex-start;
-  gap: 6px;
+  gap: var(--space-1);
 }
 
 .knw5-drill {
@@ -333,8 +334,8 @@
   background: transparent;
   color: var(--color-foreground);
   cursor: pointer;
-  font-size: 0.68rem;
-  padding: 3px 8px;
+  font-size: var(--font-size-1);
+  padding: var(--space-1) var(--space-2);
 }
 
 /* The drill is a row-wide band: it sits under both columns of its own row. */
@@ -343,12 +344,12 @@
   min-width: 0;
   grid-column: 1 / -1;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 18px;
-  margin: 2px 0 0;
-  padding: 10px 0 2px;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  padding: var(--space-2) 0 0;
   border-top: 1px dashed var(--color-border);
-  font-size: 0.72rem;
-  line-height: 1.5;
+  font-size: var(--font-size-1);
+  line-height: var(--line-height-2);
 }
 
 .knw5-ref-detail > div {
@@ -360,7 +361,7 @@
 
 .knw5-ref-detail dt {
   color: var(--color-muted-foreground);
-  font-size: 0.66rem;
+  font-size: var(--font-size-1);
   letter-spacing: 0.04em;
 }
 
@@ -377,8 +378,8 @@
   flex-direction: column;
   gap: 2px;
   color: var(--color-muted-foreground);
-  font-size: 0.68rem;
-  line-height: 1.4;
+  font-size: var(--font-size-1);
+  line-height: var(--line-height-2);
   overflow-wrap: anywhere;
 }
 
@@ -410,8 +411,8 @@
   display: block;
   min-width: 0;
   color: var(--color-muted-foreground);
-  font-size: 0.68rem;
-  line-height: 1.4;
+  font-size: var(--font-size-1);
+  line-height: var(--line-height-2);
   overflow-wrap: anywhere;
 }
 
@@ -474,22 +475,22 @@
   }
 
   .knw5-table tr {
-    padding: 9px 0;
-    border-bottom: 1px solid var(--color-border);
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--color-border-subtle);
   }
 
   .knw5-table td {
     display: grid;
-    grid-template-columns: 84px minmax(0, 1fr);
-    gap: 8px;
-    padding: 3px 0;
+    grid-template-columns: minmax(0, 5.25rem) minmax(0, 1fr);
+    gap: var(--space-2);
+    padding: var(--space-1) 0;
     border-bottom: 0;
   }
 
   .knw5-table td::before {
     content: attr(data-label);
     color: var(--color-muted-foreground);
-    font-size: 0.66rem;
+    font-size: var(--font-size-1);
   }
 
   /* Every value in a stacked cell sits in the second column; only the
@@ -1305,4 +1306,40 @@
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+/* ── 页面车道 A · 列表密度加档（次要字段收敛）─────────────────────────────
+   为什么单列一段：UI-RUBRIC 的字体阶梯把 --font-size-2(13px) 定为「表格正文」、
+   --font-size-1(12px) 留给表头与次要信息。知识模块原先所有列共用同一字号，
+   一行里主次等重，扫读没有锚点；approvals 用的是 label-12 / value-13 分档。
+   这里把纯值列（类型/来源/规模/计数/时间）降一档并取次要色，名称列升为主字段锚点，
+   行高仍由共享 table-density 域锁在 --table-row-h(40px)，状态/判定/结果列不动
+   ——它们承载 Badge 的语义色，降色会让徽标洗白。 */
+.knw5-table td:is(
+    [data-label="类型"],
+    [data-label="来源"],
+    [data-label="规模"],
+    [data-label="文档数"],
+    [data-label="条目数"],
+    [data-label="大小"],
+    [data-label="时间"],
+    [data-label="更新"],
+    [data-label="更新时间"],
+    [data-label="最近同步"],
+    [data-label="采集时刻"]
+  ) {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-1);
+}
+
+.knw5-table td:is([data-label="名称"], [data-label="空间名称"], [data-label="文档名"]) {
+  color: var(--color-foreground);
+  font-size: var(--font-size-2);
+}
+
+/* 主字段只在链接/名称节点上加字重：整格加粗会把第二行 (.knw5-sub) 一起带重。 */
+.knw5-table td:is([data-label="名称"], [data-label="空间名称"], [data-label="文档名"])
+  :is(.knw5-name, .knw5-rowlink, .kn3-docs-name) {
+  color: var(--color-foreground);
+  font-weight: var(--font-weight-medium);
 }
