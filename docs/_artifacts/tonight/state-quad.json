@@ -1,7 +1,7 @@
 {
   "base": "http://127.0.0.1:9122",
   "method": "playwright hash-form /#/<route>?state=<s>; hook=[data-fixture]+[data-testid=shell-fixture-badge] (web/src/shell/fixtures.ts)",
-  "headHash": "03cd4658",
+  "headHash": "dc9341dd",
   "sampled": 20,
   "passed": 20,
   "rows": [
@@ -187,5 +187,8 @@
     }
   ],
   "exitCode": 0,
-  "ok": true
+  "ok": true,
+  "carriedFrom": "03cd4658",
+  "carried": true,
+  "stampNote": "wave-93 四笔全纯测试，entry sha 与 CSS 逐字节未变；本件未重跑，证据沿用 03cd4658 代"
 }

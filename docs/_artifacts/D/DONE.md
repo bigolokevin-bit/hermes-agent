@@ -1539,3 +1539,5 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 六件 carriedFrom="df4b4112"+carried=true+stampNote+写后回读；state-quad 真跑 20/20 非 carried（head=03cd4658）；shots 双腿 09:43:12→09:47:56 真跑 102/102 failures=[]。
 - obs 自产：**auth=2（#/access、#/capabilities?tab=channels——上代 0 复现，如实不入判据）** distinct=25 envOnly=51；anon aux=3（#/access、#/employees/:employeeId?zone=evidence、#/work）distinct=26 envOnly=50。routesWithConsoleErrors 全按自产写入，无 unknown 无编造。
 - TALLY {'03cd4658': 9} count 9 BAD=[]（None 清零）；30b41a25（df4b4112 章）不重做；无 amend/force；push 走 HEAD 映射形；只做账本未写 PASS、ACC 判词节未动；web/src/9122/BFF/caddy/qa-verify 未碰。
+
+2026-11-21 10:1x 章笔 dc9341dd（wave-93）：四笔全纯测试，entry assets/index-Chru2g4H.js 172175B sha bb6f679c… 与 CSS Cpi0jJKL 146111B 均未换代。六件（assert-ia×2、crawl×2、lint×2、state-quad）未重跑，按 carriedFrom=03cd4658 沿用；shots 双面在本代入口产物上采集（entry sha 与 03cd4658 逐字节相同），headHash 由 L0 校正为 dc9341dd；auth 面 obs=1 但脚本未落路由，routesWithConsoleErrors 记 ["unknown"]，禁编造。
