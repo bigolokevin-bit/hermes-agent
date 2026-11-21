@@ -347,6 +347,59 @@ describe("ConsoleModulePage pane contract", () => {
     }
   });
 
+  // n5 (unified rule, outer family): the preserve table is now one function
+  // (linkSearch) shared with the zone family, so the criterion is expressed as
+  // data — panel × state × rid — instead of one hand-written URL per round.
+  it("n5: outer tab links follow the shared table across panel × state × rid", () => {
+    const PANELS = ["retrieval", "evidence"] as const;
+    const STATES = ["error", "empty", "loading"] as const;
+    const RIDS: (string | null)[] = ["abc12345", null];
+    let urls = 0;
+    let links = 0;
+    for (const panelKey of PANELS) {
+      for (const state of STATES) {
+        for (const rid of RIDS) {
+          const query = [
+            "tab=spaces",
+            `panel=${panelKey}`,
+            `state=${state}`,
+            rid === null ? "" : `rid=${rid}`,
+          ]
+            .filter(Boolean)
+            .join("&");
+          remountAt(<ConsoleModulePage module="knowledge" />, `/knowledge?${query}`);
+          urls += 1;
+          const pane = container.querySelector(".pane");
+          expect(pane?.getAttribute("data-tab")).toBe("spaces");
+          expect(pane?.getAttribute("data-state")).toBe(state);
+          if (state === "error" && rid !== null) {
+            // rid only reaches the screen on the error/denied legs
+            expect(pane?.querySelector("[data-testid='state-rid']")?.textContent).toBe(rid);
+          }
+          let active = 0;
+          let others = 0;
+          for (const t of Array.from(container.querySelectorAll("[role='tab']"))) {
+            const href = t.getAttribute("href") ?? "";
+            links += 1;
+            expect(href).toContain(`state=${state}`);
+            if (rid !== null) expect(href).toContain(`rid=${rid}`);
+            if (t.getAttribute("aria-selected") === "true") {
+              active += 1;
+              expect(href).toContain(`panel=${panelKey}`);
+            } else {
+              others += 1;
+              expect(href).not.toContain("panel=");
+            }
+          }
+          expect(active).toBe(1);
+          expect(others).toBeGreaterThan(0);
+        }
+      }
+    }
+    expect(urls).toBe(PANELS.length * STATES.length * RIDS.length);
+    expect(links).toBeGreaterThanOrEqual(urls * 2);
+  });
+
   // T42 item 2: the forced-state legs must be reproducible on ALL eight
   // console tabs, and item 1's honest exits (retry + back, or back alone)
   // must be present in every forced pane.
@@ -439,6 +492,71 @@ describe("ConsoleEmployeeDetailPage (hidden 23rd pane)", () => {
     const pane = container.querySelector(".pane");
     expect(pane?.getAttribute("data-tabname")).toBe("详情");
     expect(container.querySelectorAll('[role="tab"][data-zone]').length).toBe(5);
+  });
+
+  // n5 (unified rule, zone family): same table as the outer leg, driven over
+  // zone × state × panel × rid, and every fixture URL also carries foreign
+  // structural keys `tab=matrix&view=v` — the keys the outer family owns. No
+  // zone owns ?panel=, so the panel column must never land on a zone address in
+  // any combination; and a zone address must never inherit another family's
+  // structural keys either (that is what the shared table adds over n4).
+  // state/rid survive throughout.
+  it("n5: detail zone links follow the shared table across zone × state × panel × rid", async () => {
+    const ZONES = ["workbench", "config", "tasks", "runs", "evidence"] as const;
+    const STATES = ["error", "empty", "loading"] as const;
+    const PANELS: (string | null)[] = ["retrieval", null];
+    const RIDS: (string | null)[] = ["abc12345", null];
+    const routes = detailRoute({ fallback: <div data-testid="existing-detail" /> });
+    let urls = 0;
+    let links = 0;
+    for (const zone of ZONES) {
+      for (const state of STATES) {
+        for (const panelKey of PANELS) {
+          for (const rid of RIDS) {
+            const query = [
+              `zone=${zone}`,
+              `state=${state}`,
+              panelKey === null ? "" : `panel=${panelKey}`,
+              rid === null ? "" : `rid=${rid}`,
+              "tab=matrix",
+              "view=v",
+            ]
+              .filter(Boolean)
+              .join("&");
+            await remountAtAsync(routes, `/employees/emp_9f3a4b7c?${query}`);
+            urls += 1;
+            const pane = container.querySelector(".pane");
+            expect(pane?.getAttribute("data-state")).toBe(state);
+            if (state === "error" && rid !== null) {
+              expect(pane?.querySelector("[data-testid='state-rid']")?.textContent).toBe(rid);
+            }
+            let active = 0;
+            let others = 0;
+            for (const z of Array.from(
+              container.querySelectorAll<HTMLAnchorElement>('[role="tab"][data-zone]'),
+            )) {
+              const href = z.getAttribute("href") ?? "";
+              links += 1;
+              expect(href).not.toContain("panel=");
+              expect(href).not.toContain("tab=");
+              expect(href).not.toContain("view=");
+              expect(href).toContain(`state=${state}`);
+              if (rid !== null) expect(href).toContain(`rid=${rid}`);
+              if (z.getAttribute("aria-selected") === "true") {
+                active += 1;
+                expect(href).toContain(`zone=${zone}`);
+              } else {
+                others += 1;
+              }
+            }
+            expect(active).toBe(1);
+            expect(others).toBeGreaterThan(0);
+          }
+        }
+      }
+    }
+    expect(urls).toBe(ZONES.length * STATES.length * PANELS.length * RIDS.length);
+    expect(links).toBeGreaterThanOrEqual(urls * 2);
   });
 
   // n4 (P0 n1 residual, detail leg): no zone owns ?panel=, so a knowledge panel
