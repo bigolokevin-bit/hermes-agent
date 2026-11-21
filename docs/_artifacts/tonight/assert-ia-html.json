@@ -42,9 +42,9 @@
     }
   ],
   "ok": true,
-  "headHash": "7cb41601",
+  "headHash": "fb7a2a8c",
   "exitCode": 0,
-  "carriedFrom": "1af5c41f",
+  "carriedFrom": "7cb41601",
   "carried": true,
-  "stampNote": "wave-106 八笔并入（gov/ui1/ui-b/ui-a/ui-qa），entry 换代 CBaod-sX 但本件未重跑，证据沿用 1af5c41f 代；6d3c060b/210270a8 中间代次不重章"
+  "stampNote": "wave-108 并入后 entry/CSS 双换代（0rhpOHmI/B7znF4xN）；本件未重跑，证据沿用 7cb41601 代（80bc8f62 为中间代次不重章）"
 }
