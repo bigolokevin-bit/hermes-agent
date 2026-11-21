@@ -6644,3 +6644,49 @@ kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent + 既有 68 �
 ```
 未测如实：带登录会话真屏；A 帧 knG 侧（检索面读空列表）门细节（R190④/R231② 地盘，
 本例聚焦详情面全族位）；B 的错误恢复后 knG 再快照环（过渡位属 R221④ 地盘不扩）。
+
+# KNW5 追加 R258：行内预览先开×追加存续 + 抽屉×切桶序/账本同帧（两真缺口；腿③判定引用）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `32a60f7b`
+（普通 merge、**未用 `-B`**、knowledge delta 零、无冲突）；基线先跑 69/278 全绿
+Errors 0、目标文件确认缺席再动笔。零产品文件改动。新增
+knowledge.preview.paging.test.tsx 两例（本体；③为文件尾判定注释位）。
+
+## 三腿裁决（file:line）与新增维
+
+```text
+宿主声明：腿①=行内预览 kn-doc-preview-*（本地 previewKey，?preview= 不存在）；
+腿②=kn7 抽屉 ?doc=（每次打开恰 +1 既存详情读、关 0——R49/R256）。
+①主体引 R225①②③（几何/复原/append 后开预览）；**真缺口 A**：行内预览**先开**再点
+  -more 的同帧——预览块存续且字段逐字不变 + 详情读全链恒 0（与抽屉账本分离）+
+  url 增量恰 [P2URL] + loc 无 cursor + 追加去重 Set 51 + 钮 [0..50] + cap M=51。
+②主体引 R224①(preview.filter.transition:125-140 双参同址/面板存续/换代/缺失句/
+  cap)——**现状裁决=面板存续保留（实测非猜测）**；**真缺口 B′**：并入序与账本角——
+  钮自 0 重建 [0]==表体一一对应 + 全程 urls join 逐字（零新请求）+ 详情读计数不新增
+  （切桶不重取）同帧。
+③**全锁不复写**：页 2 500 保行+rid+重试恰 +1+序号不重复＝R237③
+  (rowcopy.triple:193-224——窗内钮 [0..49] 连续即「不重复」断言本体) + R247② +
+  R239③ + R131③/R216④。
+红线照落：行钮面映射（派工 kn-row-copy-<i> 在详情面实名 -space- 族）；kn-doc-copy
+非行数；cap 50/M、null 态非 0；本地切桶零请求禁「恰 1 次」；无真 CSV→导出=knF、
+spy 0；缺值两式、短码尾段；clip 桩 Promise+unstub（Errors 0）。
+```
+
+## 验证尾行（R258）
+
+```text
+① 预览快照 toBe 追加后、详情读 0 条、P2 恰 1、urls u0+1、names 51 去重、钮 [0..50]、
+  capM 51、loc 无 cursor。② 切桶后 doc=d_a+ktype 同在、panel 在场、[B 表.xlsx]、
+  钮 [0]、urls join 逐字、详情读恒 1。
+$ npx vitest run src/modules/knowledge → 70 files / 280 tests passed（278+2 ≥279），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0
+$ build /tmp/knw-r258-dist → exit 0；全仓 → 437 files / 3385 passed **零红**
+  （metrics 跨日两条本轮未复现，不视为已修复）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knE-page-*/knF/knG/kn-row-copy*/kn-row-copy-space*/
+kn-doc-preview*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent +
+既有 69 套全绿。两例一次全过、零自纠轮，产品零触碰。
+```
+未测如实：带登录会话真屏；①追加后在预览内点 kn-doc-copy 的串对账（R223 地盘）；
+②出局文档缺失句（R224① 已锁不复写）；抽屉×追加双宿主同帧（宿主分离声明覆盖）。

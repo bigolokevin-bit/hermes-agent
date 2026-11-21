@@ -9,13 +9,13 @@
   flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
 }
 .ppl5-actions {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 .ppl5-grid {
   display: grid;
@@ -24,18 +24,18 @@
   align-items: center;
 }
 .ppl5-thead {
-  padding: 8px 16px;
-  border-bottom: 1px solid color-mix(in srgb, white 5%, transparent);
-  color: color-mix(in srgb, white 40%, transparent);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-text) 5%, transparent);
+  color: color-mix(in srgb, var(--color-text) 40%, transparent);
   font-size: 11px;
 }
 .ppl5-row {
-  padding: 8px 16px;
+  padding: var(--space-2) var(--space-4);
 }
 .ppl5-reason {
   display: block;
   margin-top: 2px;
-  color: color-mix(in srgb, white 35%, transparent);
+  color: color-mix(in srgb, var(--color-text) 35%, transparent);
   font-size: 10px;
 }
 .ppl5-state {
@@ -43,32 +43,32 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 10px;
-  padding: 16px;
+  padding: var(--space-4);
 }
 .ppl5-state-head {
   display: flex;
   align-items: center;
-  gap: 8px;
-  color: color-mix(in srgb, white 80%, transparent);
+  gap: var(--space-2);
+  color: color-mix(in srgb, var(--color-text) 80%, transparent);
   font-size: 13px;
 }
 .ppl5-state-body {
   margin: 0;
   max-width: 68ch;
-  color: color-mix(in srgb, white 45%, transparent);
+  color: color-mix(in srgb, var(--color-text) 45%, transparent);
   font-size: 12px;
   line-height: 1.6;
 }
 .ppl5-req {
   display: inline-flex;
   flex-wrap: wrap;
-  gap: 4px;
-  color: color-mix(in srgb, white 50%, transparent);
+  gap: var(--space-1);
+  color: color-mix(in srgb, var(--color-text) 50%, transparent);
   font-size: 11px;
 }
 .ppl5-req button {
-  border: 1px solid color-mix(in srgb, white 15%, transparent);
-  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--color-text) 15%, transparent);
+  border-radius: var(--radius-1);
   background: transparent;
   padding: 1px 5px;
   color: inherit;
@@ -87,5 +87,30 @@
   }
   .ppl5-row > span:not(:first-child)::before {
     content: attr(data-label);
+  }
+}
+
+/* UI-A table density (docs/design/UI-RUBRIC.md). /identity people roster is a
+ * grid row shell, not an HTML table, so the 40/36 contract maps to row
+ * min-height (precedent: audit/approvals/employees). No sub-surface exists,
+ * so the 36 tier is not applicable. Zebra stripes: divide-y separators only,
+ * no stripe source. 375 stays safe: all columns are minmax fr ratios and the
+ * page already carries overflow-x clip plus the <=760px card fallback. */
+.ppl5-thead {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-1);
+  font-weight: var(--font-weight-medium);
+}
+.ppl5-row {
+  min-height: var(--table-row-h);
+}
+@media (min-width: 761px) {
+  /* Time column: right align plus tabular figures, header included. */
+  .ppl5-thead > span:last-child,
+  .ppl5-row > [data-label="最后活跃"] {
+    text-align: right;
+  }
+  .ppl5-row > [data-label="最后活跃"] {
+    font-variant-numeric: tabular-nums;
   }
 }
