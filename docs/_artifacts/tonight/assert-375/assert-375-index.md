@@ -63,3 +63,5 @@ matrix(#/employees?tab=matrix) present=true ok=true
 改键注（L0 2026-11-22）：本账本 headHash 一律改键 196f19fd（wave-132）；旧 wave-131 @d2cc49fe 条目作废不重章，pending 标注制照旧，不追不等等 aud。
 
 重键注（L0 2026-11-22 · wave-134）：本账本 headHash 重键现查值 6edcba4d（前端 lane/hermes-console，含 L2 6149cfa8 + L5 a5610d61；后端 l0-board main=37e28a1b 记入 stampNote）；旧 d2cc49fe/196f19fd 条目作废不重章，pending 标注制照旧，不追不等等盖章。
+
+改键说明（L0 定脸令 2026-11-22）：本账本 headHash=6edcba4d 为重键令当时前端 tip；前端现已冻结于 a382334c（wave-135 #1）至 aud 盖章落地，账本按令不重章、不再追改，待盖章代次以 D1 新 RAW 到齐后整体重组。
