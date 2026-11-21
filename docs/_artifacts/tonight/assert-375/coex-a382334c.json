@@ -1,0 +1,68 @@
+{
+  "face": "a382334c",
+  "capturedAt": "2026-11-21T21:48:55.429Z",
+  "base": "http://127.0.0.1:9122",
+  "viewport": "375x812 fullPage",
+  "rows": [
+    {
+      "hash": "#/knowledge?tab=spaces&panel=retrieval&state=loading&rid=abc12345",
+      "requestedState": "loading",
+      "navError": null,
+      "url": "/knowledge?panel=retrieval&state=loading&rid=abc12345",
+      "offscreenLeft": 65,
+      "mainLen": 55,
+      "elementsChecked": 110,
+      "maxRight": 375,
+      "violCount": 0,
+      "urlKeepsPanel": true,
+      "urlKeepsState": true,
+      "urlKeepsRid": true,
+      "png": "knowledge-panel-loading-375.png"
+    },
+    {
+      "hash": "#/knowledge?tab=spaces&panel=retrieval&state=empty&rid=abc12345",
+      "requestedState": "empty",
+      "navError": null,
+      "url": "/knowledge?panel=retrieval&state=empty&rid=abc12345",
+      "offscreenLeft": 65,
+      "mainLen": 62,
+      "elementsChecked": 109,
+      "maxRight": 375,
+      "violCount": 0,
+      "urlKeepsPanel": true,
+      "urlKeepsState": true,
+      "urlKeepsRid": true,
+      "png": "knowledge-panel-empty-375.png"
+    },
+    {
+      "hash": "#/knowledge?tab=spaces&panel=retrieval&state=error&rid=abc12345",
+      "requestedState": "error",
+      "navError": null,
+      "url": "/knowledge?panel=retrieval&state=error&rid=abc12345",
+      "offscreenLeft": 65,
+      "mainLen": 74,
+      "elementsChecked": 114,
+      "maxRight": 375,
+      "violCount": 0,
+      "urlKeepsPanel": true,
+      "urlKeepsState": true,
+      "urlKeepsRid": true,
+      "png": "knowledge-panel-error-375.png"
+    },
+    {
+      "hash": "#/knowledge?tab=spaces&panel=retrieval&state=ready&rid=abc12345",
+      "requestedState": "ready",
+      "navError": null,
+      "url": "/knowledge?panel=retrieval&state=ready&rid=abc12345",
+      "offscreenLeft": 65,
+      "mainLen": 526,
+      "elementsChecked": 184,
+      "maxRight": 375,
+      "violCount": 0,
+      "urlKeepsPanel": true,
+      "urlKeepsState": true,
+      "urlKeepsRid": true,
+      "png": "knowledge-panel-ready-375.png"
+    }
+  ]
+}
