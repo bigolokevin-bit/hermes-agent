@@ -64,9 +64,9 @@
     }
   ],
   "ok": true,
-  "headHash": "6632f340",
+  "headHash": "03cd4658",
   "exitCode": 0,
-  "carriedFrom": "dabefc7a",
+  "carriedFrom": "df4b4112",
   "carried": true,
-  "stampNote": "wave-88 七笔全纯测试，entry sha 与 CSS 逐字节未变（CUhV51_R/p9FlH27O 同 w87）；本件未重跑，证据沿用 dabefc7a 代"
+  "stampNote": "wave-91 三笔全纯测试（appr R264/R265 + aud R259），entry sha 与 CSS 逐字节未变（Chru2g4H/Cpi0jJKL）；本件未重跑，证据沿用 df4b4112 代"
 }
