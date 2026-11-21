@@ -1,5 +1,5 @@
 /**
- * `/knowledge` — 知识空间、数据接入、检索、证据与引用。
+ * `/knowledge` — 内层四面：空间台账、数据接入、检索、运行事件引用（外层入口名见 shell/routes.ts）。
  *
  * The page is seven real reads: knowledge spaces, the designated data-source read
  * answered as 接入任务, document登记, the knowledge search read, the retrieval audit
@@ -4003,7 +4003,7 @@ function containerQuery(key: string): HTMLElement | null {
         检索与引用只展示上游给出的原文位置，打不开时直接说明原因。
       </p>
       <Link className="knw5-link" to="/knowledge?tab=spaces&panel=evidence" data-testid="knw5-goto-evidence">
-        看证据与引用
+        看运行事件引用
         <ArrowRight className="h-3.5 w-3.5" aria-hidden />
       </Link>
     </div>
