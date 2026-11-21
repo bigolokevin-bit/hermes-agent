@@ -2054,8 +2054,12 @@ export function MetricsModulePage() {
           {usageDown ? (
             <div data-testid="metH-page-error">
             <Card data-testid={usageDenied ? 'met6-denied' : 'met6-error'}>
-              <CardContent className="space-y-2 p-6">
-                <p className="font-medium">{usageDenied ? '这几项数据暂时读不到' : '这次没能读取用量与成本'}</p>
+              {/* UI-B 错误态细化：留白走令牌（数值不变，口径与 collab/approvals 系一致）、
+                * 标题抬到 text-base 台阶（Mondwest 死字重，字号是唯一可靠层级手段）。
+                * 互斥=usageDown/空态分支单值 if 链；rid 可复制（RequestId 复制钮）与
+                * 技术信息只进 title tooltip 为既有达标，本笔截图实测复核。 */}
+              <CardContent className="flex min-w-0 flex-col gap-[var(--space-2)] px-[var(--space-4)] py-[var(--space-6)]">
+                <p className="text-base font-medium">{usageDenied ? '这几项数据暂时读不到' : '这次没能读取用量与成本'}</p>
                 <p className="text-sm text-muted-foreground" data-testid="metD-card-reason">
                   {usageLeadReason ??
                     (usageDenied
@@ -3291,8 +3295,10 @@ export function MetricsModulePage() {
 
       {view.kind === 'error' ? (
         <Card data-testid="met5-error">
-          <CardContent className="space-y-2 p-6">
-            <p className="font-medium">这次没能读取运行活动</p>
+          {/* UI-B 错误态细化：同 met6 口径——令牌留白（数值不变）+ 标题 text-base 台阶；
+            * 唯一实心主操作=「全部重试」（上笔已抬起），单项 CardRetryButton 保持次级。 */}
+          <CardContent className="flex min-w-0 flex-col gap-[var(--space-2)] px-[var(--space-4)] py-[var(--space-6)]">
+            <p className="text-base font-medium">这次没能读取运行活动</p>
             <div data-testid="metH-card-error-heat">
               <p className="text-sm text-muted-foreground" title={view.gap ?? undefined}>{view.message}</p>
               <RequestId id={view.requestId} />

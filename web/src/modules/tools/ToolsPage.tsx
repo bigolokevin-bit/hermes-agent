@@ -245,7 +245,11 @@ function FailurePanel({
       data-testid={denied ? "tol5-denied" : login ? "tol5-login" : "tol5-error"}
       title={denied ? GAP : failure?.technical ?? undefined}
     >
-      <CardContent className="flex min-w-0 flex-col items-start gap-2 px-4 py-6">
+      {/* UI-B 错误态组合：留白走令牌（数值不变，px-4/gap-2=space-2、py-6=space-6）；
+        * 「重试」抬起为卡内唯一实心主操作（tl3-apply 是链接、不占按钮位）；互斥=页面
+        * 相位单值分支（error 卡与空态卡不同相渲染）、rid 可复制（RequestId 复制钮）与
+        * 技术信息只进卡 title tooltip 为既有达标，本笔截图实测复核。testid/文案 0 改动。 */}
+      <CardContent className="flex min-w-0 flex-col items-start gap-[var(--space-2)] px-[var(--space-4)] py-[var(--space-6)]">
         <span className="sr-only" data-testid={denied ? "tl3-denied" : login ? "tl3-login" : "tl3-error"} />
         <div className="flex min-w-0 items-start gap-2">
           {denied ? <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /> : <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />}
@@ -271,7 +275,7 @@ function FailurePanel({
         <RequestId failure={failure} />
         <span className="contents" data-testid="tl3-retry">
           <span className="contents" data-testid="capF-retry">
-            <Button size="sm" outlined onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />} data-testid="tol5-retry">
+            <Button size="sm" onClick={onRetry} prefix={<RefreshCw className="h-3.5 w-3.5" />} data-testid="tol5-retry">
               重试
             </Button>
           </span>
