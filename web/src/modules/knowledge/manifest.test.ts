@@ -14,12 +14,32 @@ describe('knowledge deep-link boot normalisation', () => {
     window.history.replaceState({}, '', '/knowledge');
   });
 
-  it('keeps panel=ingest when reloading a normalised URL', async () => {
+  // UX r7 判词①：外层高亮只看 ?tab=，所以面板必须和它的外层 Tab 同源。
+  it('re-pins the owning outer tab when an old flat address is reloaded', async () => {
     window.history.replaceState({}, '', '/knowledge?tab=spaces&panel=ingest');
     await import('./manifest');
     const params = new URLSearchParams(window.location.search);
-    expect(params.get('tab')).toBe('spaces');
+    expect(params.get('tab')).toBe('sources');
     expect(params.get('panel')).toBe('ingest');
+  });
+
+  it('leaves an address that is already aligned alone', async () => {
+    for (const url of [
+      '/knowledge?tab=sources&panel=ingest',
+      '/knowledge?tab=spaces&panel=retrieval',
+      '/knowledge?tab=spaces&panel=evidence',
+    ]) {
+      vi.resetModules();
+      window.history.replaceState({}, '', url);
+      await import('./manifest');
+      expect(window.location.search).toBe(url.slice(url.indexOf('?')));
+    }
+  });
+
+  it('does not absorb the outer 审计证据 address', async () => {
+    window.history.replaceState({}, '', '#/knowledge?tab=evidence');
+    await import('./manifest');
+    expect(window.location.hash).toBe('#/knowledge?tab=evidence');
   });
 
   it('keeps panel=retrieval and panel=evidence on reload', async () => {
@@ -40,22 +60,22 @@ describe('knowledge deep-link boot normalisation', () => {
   });
 
   it('normalises the hash spelling of a knowledge deep link', async () => {
-    const cases: [string, string][] = [
-      ['#/knowledge?tab=ingest', 'ingest'],
-      ['#/knowledge?tab=sources', 'ingest'],
-      ['#/knowledge?tab=retrieval', 'retrieval'],
-      ['#/knowledge?tab=citations', 'evidence'],
-      ['#/knowledge?tab=evidence', 'evidence'],
-      ['#/knowledge?tab=scope', 'spaces'],
+    // 外层高亮只看 ?tab=，所以归一结果里 tab 必须是该面板的外层 Tab（r7 判词①）。
+    const cases: [string, string, string][] = [
+      ['#/knowledge?tab=ingest', 'sources', 'ingest'],
+      ['#/knowledge?tab=sources', 'sources', 'ingest'],
+      ['#/knowledge?tab=retrieval', 'spaces', 'retrieval'],
+      ['#/knowledge?tab=citations', 'spaces', 'evidence'],
+      ['#/knowledge?tab=scope', 'spaces', 'spaces'],
     ];
-    for (const [hash, panel] of cases) {
+    for (const [hash, tab, panel] of cases) {
       vi.resetModules();
       window.history.replaceState({}, '', `/${hash}`);
       await import('./manifest');
       const next = window.location.hash;
       expect(next.startsWith('#/knowledge?')).toBe(true);
       const params = new URLSearchParams(next.slice('#/knowledge?'.length));
-      expect(params.get('tab')).toBe('spaces');
+      expect(params.get('tab')).toBe(tab);
       expect(params.get('panel')).toBe(panel);
     }
   });
@@ -77,9 +97,9 @@ describe('knowledge deep-link boot normalisation', () => {
   });
 
   it('keeps a hash panel on reload and leaves other modules alone', async () => {
-    window.history.replaceState({}, '', '/#/knowledge?tab=spaces&panel=ingest');
+    window.history.replaceState({}, '', '/#/knowledge?tab=sources&panel=ingest');
     await import('./manifest');
-    expect(window.location.hash).toBe('#/knowledge?tab=spaces&panel=ingest');
+    expect(window.location.hash).toBe('#/knowledge?tab=sources&panel=ingest');
 
     vi.resetModules();
     window.history.replaceState({}, '', '/#/employees?tab=matrix');
