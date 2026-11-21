@@ -1571,3 +1571,23 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 六件 assert 现值==068833bc 注 headHash=8ff6d30d+carriedFrom="068833bc"+carried=true+stampNote+写后回读；state-quad 本代真跑 sampled=20 passed=20 head=8ff6d30d 非 carried。
 - shots 双腿本代真跑（11:00:07→11:03:20）：auth 102/102 failures=[] **obs=2 routes=['#/access','#/capabilities?tab=channels']**（上代 obs=0，+2 如实不入判据，channels 条系历史 ENV 同源路由复现）distinct=24 envOnly=51；anon aux **obs=2 routes=['#/access','#/approvals?tab=policy']**（上代 1 #/knowledge?tab=retrieval 收敛、access 复现+policy 新出）distinct=25 envOnly=51；三键+served 两端同值+ceAuthority=login-state，routesWithConsoleErrors 全自产非编造。
 - TALLY {'8ff6d30d': 9} count 9 BAD=[]（None 清零）；ac525de5（068833bc 章）不重做；无 amend/force；detached push HEAD 映射形；web/src/9122/BFF/caddy/qa-verify/ACC 判词节未动。
+
+## 一九四轮 · 波次代次九件重章 @ c621295b（六件 carriedFrom=8ff6d30d + shots/quad 本代真跑，2026-11-21 11:1x）
+
+- wave-100 四笔全纯测试（appr R273/gov R251/ui1 R255 隔离/aud R266 排序稳定）并入 c621295b（remote c621295b6 现查==ls-remote）；entry/CSS 均未换代（OCLu6KCF/172175/cdf9958a…3567；Cpi0jJKL/146111，==9122==磁盘）。
+- 六件 assert 现值==8ff6d30d 注 headHash=c621295b+carriedFrom="8ff6d30d"+carried=true+stampNote+写后回读；state-quad 本代真跑 sampled=20 passed=20 head=c621295b 非 carried。
+- shots 双腿本代真跑（11:12:10→11:15:19）：auth 102/102 failures=[] **obs=2 routes=['#/approvals?tab=history','#/capabilities?tab=channels']**（上代 access+channels → history 替换 access，channels 延续）distinct=25 envOnly=51；anon aux **obs=2 routes=['#/approvals?tab=history','#/system']**（上代 access+policy → history+system，均 ENV 类波动如实记录非判据）distinct=24 envOnly=51；三键+served 两端同值+ceAuthority=login-state，routesWithConsoleErrors 全自产非编造。
+- TALLY {'c621295b': 9} count 9 BAD=[]（None 清零）；b3acbf9d（8ff6d30d 章）不重做；无 amend/force；detached push HEAD 映射形；web/src/9122/BFF/caddy/qa-verify/ACC 判词节未动。
+
+## 一九五轮 · 波次代次九件重章 @ 1af5c41f（改锚令：c964fb3d 盖章轮作废记中间代次；七件 carriedFrom=c621295b + shots 双腿本窗真跑读数，2026-11-21 11:2x）
+
+- 改锚卡到：目标代次 c964fb3d→1af5c41f（wave-102 两笔纯测试 merge，entry/css 与 c964fb3d 相同：CE4DkLMF/172175/af5f2e640ff45536…；c964fb3d 未 commit 的注章被切树打回，中间代次不重章合规处置）。
+- 12 分钟硬限一次成：shots 双腿采用 11:20:51→11:23:23 本窗真跑产物（禁 churn 重跑）——auth 102/102 obs=1 ['#/identity?tab=tenant']、anon aux 102/102 obs=1 同路由（routesWithConsoleErrors 自产非编造；对照上代 history/channels/system 全收敛）；served 两端同值新 entry、ceAuthority=login-state。七件（含 state-quad，其 c964fb3d 真跑读数同 entry 代沿用）carriedFrom=c621295b+carried+卡定 stampNote。
+- TALLY {'1af5c41f': 9} count 9 BAD=[]；无 amend/force；detached push HEAD 映射；web/src/9122/BFF/caddy/qa-verify/ACC 判词节未动；只做账本禁写 PASS。
+
+## 一九六轮 · 波次代次九件重章 @ 7cb41601（entry 换代 CBaod-sX；六件 carriedFrom=1af5c41f + shots 双腿/quad 本代真跑，2026-11-21 11:4x）
+
+- wave-106 八笔并入（gov 05f87f2f / ui1 a13fb733 / ui-b 943df1f4+5f81d922 / ui-a 2e14e3bf+549577c3+5e0e206b / ui-qa 9e0f6eff），remote 7cb41601a1 现查==ls-remote；entry 换代 **CBaod-sX/172175/31f3043e…64f7**（==9122==磁盘），CSS 未变 Cpi0jJKL/146111。6d3c060b、210270a8 记中间代次不重章（未盖不补）。
+- 六件 assert 现值==1af5c41f 注 headHash=7cb41601+carriedFrom="1af5c41f"+carried=true+stampNote+回读全过；state-quad 本代真跑 sampled=20 passed=20 head=7cb41601 非 carried。
+- shots 双腿本代真跑（11:44:54→11:48:45）：auth 102/102 failures=[] **obs=1 ['#/access']** distinct=25 envOnly=51；anon aux 102/102 **obs=1 ['#/system']** distinct=23 envOnly=51（上代双面 #/identity?tab=tenant 全收敛，本轮两条系 ENV 波动如实记录不入判据，routesWithConsoleErrors 自产非编造）；三键+served 两端同值+ceAuthority=login-state。
+- TALLY {'7cb41601': 9} count 9 BAD=[]；32a60f7b（1af5c41f 章）不重做；无 amend/force；detached push HEAD 映射形；web/src/9122/BFF/caddy/qa-verify/ACC 判词节未动。
