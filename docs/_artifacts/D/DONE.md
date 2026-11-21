@@ -1496,3 +1496,10 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 三腿并行 08:31:42→08:35:38 全齐：quad sampled=20 passed=20 head=7de87bc0 真刷新；shots auth 102/102 failures=[] **obs=2（#/access、#/capabilities?tab=channels；上代 evidence 路由本代不复现、channels 复现，按自产写）** distinct=25 envOnly=51；anon aux 102/102 **obs=3（#/access、#/employees、#/knowledge?tab=scope；上代 2，+1 如实不入判据）** distinct=26 envOnly=51；routesWithConsoleErrors=自产数组非编造（卡面预期路由未复现属读数差非违规）；三键+served 两端同值+ceAuthority=login-state。
 - TALLY {'7de87bc0': 9} count 9 BAD=[]（glob+isinstance 恰九件，None 清零；逐件写后回读）。
 - c48491b4（86496824 章）不重做；无 amend/force；web/src/9122/BFF/caddy/qa-verify/ACC 判词节未动。
+
+## 一七一轮 · 波次代次九件重章 @ de847835（六件 carried + shots/quad 本代真跑，2026-11-21 08:3x）
+
+- wave-86 两笔纯测试并入 de847835（remote de8478355089 现查==ls-remote）；entry/CSS 与 w85 逐字节相同（BeCxh3sC/172175/39311c09…59b3；IyhtleuY/145872/6af1066f…，==9122==磁盘）。
+- 六件 carriedFrom="7de87bc0"+carried=true+stampNote+写后回读；state-quad 真跑 20/20 非 carried（head=de847835）；shots 双腿本代真跑 08:38:20→08:39:15 齐（ok=true 断言过、driver 形同 w85，55 秒完成系浏览器热态）。
+- obs 自产：auth=1（#/access；上代 2，channels 条不复现=收敛）routesWithConsoleErrors=['#/access']；anon aux=2（#/access、#/work；上代 3，employees/knowledge-scope 条消失、#/work 新增，如实不入判据）。distinct 26/23、envOnly 51/51、三键+served 两端同值+ceAuthority=login-state。
+- TALLY {'de847835': 9} count 9 BAD=[]（None 清零）；728a22de（7de87bc0 章）不重做；无 amend/force；push 走 HEAD 映射形；web/src/9122/BFF/caddy/qa-verify/ACC 判词节未动。

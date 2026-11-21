@@ -14,13 +14,9 @@
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 25,
-  "routesWithEmptyMain": [
-    "#/sessions"
-  ],
-  "routesWithoutMainEl": [
-    "#/sessions"
-  ],
+  "distinctMainHeads": 26,
+  "routesWithEmptyMain": [],
+  "routesWithoutMainEl": [],
   "mainCharsByRoute": [
     {
       "route": "#/access",
@@ -145,13 +141,13 @@
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "1440",
-      "chars": 113,
+      "chars": 10,
       "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "375",
-      "chars": 10,
+      "chars": 113,
       "hasMainEl": true
     },
     {
@@ -259,7 +255,7 @@
     {
       "route": "#/employees/:employeeId?zone=tasks",
       "viewport": "375",
-      "chars": 42,
+      "chars": 146,
       "hasMainEl": true
     },
     {
@@ -493,13 +489,13 @@
     {
       "route": "#/sessions",
       "viewport": "1440",
-      "chars": 0,
-      "hasMainEl": false
+      "chars": 1,
+      "hasMainEl": true
     },
     {
       "route": "#/sessions",
       "viewport": "375",
-      "chars": 10,
+      "chars": 1,
       "hasMainEl": true
     },
     {
@@ -635,10 +631,9 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 2,
+  "consoleErrorsObservedByShots": 1,
   "consoleErrorRoutesObservedByShots": [
-    "#/access",
-    "#/capabilities?tab=channels"
+    "#/access"
   ],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
@@ -649,7 +644,7 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "7de87bc0",
+  "headHash": "de847835",
   "exitCode": 0,
   "entry": "assets/index-BeCxh3sC.js",
   "entrySha256": "39311c09c21a77c82acc58f6a4cb04683e461865026fafc323d53188eec659b3",
@@ -657,7 +652,6 @@
   "servedEntryBefore": "index-BeCxh3sC.js",
   "servedEntryAfter": "index-BeCxh3sC.js",
   "routesWithConsoleErrors": [
-    "#/access",
-    "#/capabilities?tab=channels"
+    "#/access"
   ]
 }
