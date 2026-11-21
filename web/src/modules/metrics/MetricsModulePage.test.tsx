@@ -203,11 +203,23 @@ const STATS_24H = {
   totals: { runs: 0, succeeded: 0, failed: 0, running: 0, sampleCount: 0, successRate: null },
 };
 
+/**
+ * The page computes its window from `new Date()` and `sparkSlots` (metrics.ts) drops
+ * any bucket outside it, so a fixture that names fixed calendar days leaves the
+ * window as soon as the clock passes them — the 7d sample below expired on
+ * 2026-11-21T00:00Z and the chart then correctly draws nothing. These anchors move
+ * with the clock so the assertions test the chart's arithmetic, not the date.
+ */
+const BUCKET_DAY_MS = 86_400_000;
+const dayBucket = (daysBack: number): string =>
+  new Date(Date.now() - daysBack * BUCKET_DAY_MS).toISOString();
+
 const STATS_7D = {
   from: '2026-11-12T16:00:00.000Z',
   to: '2026-11-19T16:00:00.000Z',
   bucket: 'day',
-  buckets: [{ bucketStart: '2026-11-14T00:00:00.000Z', runs: 13 }],
+  // Two days back: inside the 168-hour window whatever day the suite runs on.
+  buckets: [{ bucketStart: dayBucket(2), runs: 13 }],
   totals: { runs: 13, succeeded: 12, failed: 0, running: 1, sampleCount: 12, successRate: 1 },
 };
 
@@ -216,8 +228,8 @@ const STATS_30D = {
   to: '2026-11-19T16:00:00.000Z',
   bucket: 'day',
   buckets: [
-    { bucketStart: '2026-11-13T00:00:00.000Z', runs: 1 },
-    { bucketStart: '2026-11-14T00:00:00.000Z', runs: 13 },
+    { bucketStart: dayBucket(20), runs: 1 },
+    { bucketStart: dayBucket(3), runs: 13 },
   ],
   totals: { runs: 14, succeeded: 13, failed: 0, running: 1, sampleCount: 13, successRate: 1 },
 };
