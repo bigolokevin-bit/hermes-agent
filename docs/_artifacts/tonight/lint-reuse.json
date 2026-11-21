@@ -85,9 +85,9 @@
   "violations": [],
   "count": 0,
   "ok": true,
-  "headHash": "1af5c41f",
+  "headHash": "7cb41601",
   "exitCode": 0,
-  "carriedFrom": "c621295b",
+  "carriedFrom": "1af5c41f",
   "carried": true,
-  "stampNote": "本代仅两笔纯测试，entry/css 与 c964fb3d 相同；本件沿用上代读数"
+  "stampNote": "wave-106 八笔并入（gov/ui1/ui-b/ui-a/ui-qa），entry 换代 CBaod-sX 但本件未重跑，证据沿用 1af5c41f 代；6d3c060b/210270a8 中间代次不重章"
 }
