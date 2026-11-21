@@ -1480,3 +1480,11 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - TALLY 原文 {'007b6841': 9} count 9 BAD=[]。
 - 硬线纪律注记：08:18 硬线超约 2.5 分钟收口——超时段为双腿物理运行余量（anon 08:11:07/auth 08:15:42 自产完成，非挂死非等待缺陷）；无造假无缺件，如实认账。
 - dbd5caf2(15f58a4d) 章不重做；无 amend/force；只做账本未写 PASS；ACC 判词节/web/src/9122/BFF/caddy/qa-verify 未动。
+
+## 一六九轮 · 波次代次九件重章 @ 86496824（七件 carried + shots/quad 本代真跑，2026-11-21 08:2x）
+
+- wave-84 四笔全纯测试并入 86496824（remote 864968240c05 现查==ls-remote），entry/CSS 逐字节未变（6g0IMx1G/172175/4407188f…d686b；IyhtleuY/145872/6af1066f…，==9122==磁盘）。
+- 七件 carried：headHash=86496824 + carriedFrom="007b6841" + carried=true + stampNote『本件未重跑，证据沿用 007b6841 代』；state-quad 与 shots 双腿本代真跑。
+- 三腿并行 08:25:52 起跑→08:29:15 全齐：quad sampled=20 passed=20 head=86496824 真刷新非 carried；shots auth 102/102 failures=[] **obs=2（#/access、#/employees/:employeeId?zone=evidence；上代 0，+2 如实不入判据）** distinct=26 envOnly=50；anon aux 102/102 **obs=2（#/access、#/employees/:employeeId?zone=tasks）** distinct=26 envOnly=51；routesWithConsoleErrors 均按自产写入（非编造，无需 unknown）；三键+served 两端同值+ceAuthority=login-state。
+- TALLY {'86496824': 9} count 9 BAD=[]（glob+isinstance 恰九件，None 清零）；逐件写后回读通过。
+- 90a9961d（007b6841 章）不重做；无 amend/force；web/src/9122/BFF/caddy/qa-verify/ACC 判词节未动。
