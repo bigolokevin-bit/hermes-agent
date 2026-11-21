@@ -802,6 +802,29 @@
  *   长错误文本 overflow-wrap: anywhere、sys6 读源矩阵行高 40（共享 [data-tab] 域）。
  * 本笔缺口：sys3 健康事件表按子表口径收 36px。与共享域同分，!important 压过。
  * 斑马纹：本文件无 even/odd 背景源。375：sys6-scroll 既有横滚壳保持。 */
+/* UI-A 2026-11-21 wave-70 口径调整：主控派单指定本表行高回主表 40
+ * （覆盖上笔 36 判定）；显式声明与共享 [data-tab] 域同值，去掉 !important。 */
 [data-testid="sys3-table"] tbody > tr {
-  height: var(--table-row-h-compact) !important;
+  height: var(--table-row-h);
+}
+
+/* UI-A 2026-11-21 wave-70：/system 表头粘性与时刻列对齐补档。
+ * 表头底边 1px 分隔线已由上方 sys3-table th border-bottom 提供；
+ * 粘性配方沿 metrics metAF-sticky 先例（同 background 令牌、同 z 层）。
+ * 最近检查时刻列（第 4 列）右对齐 + 等宽数字，与响应耗时列同口径；
+ * 长文本单行省略与 title 全量：名称与版本列 sys15-trunc + tsx title 既有，
+ * 空表不塌陷：visibleRows 为空时由 SystemStatePanel 状态版替换整表渲染。
+ * 375：sys3-scroll 既有横滚壳 + scrollhint，min-width 760 保持。 */
+.sys3-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 0;
+  background: var(--color-card);
+}
+
+.sys3-table td[data-testid="sys3-checked"],
+.sys3-table thead th:nth-child(4) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
