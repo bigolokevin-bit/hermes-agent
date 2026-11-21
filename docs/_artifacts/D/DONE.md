@@ -1503,3 +1503,10 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 六件 carriedFrom="7de87bc0"+carried=true+stampNote+写后回读；state-quad 真跑 20/20 非 carried（head=de847835）；shots 双腿本代真跑 08:38:20→08:39:15 齐（ok=true 断言过、driver 形同 w85，55 秒完成系浏览器热态）。
 - obs 自产：auth=1（#/access；上代 2，channels 条不复现=收敛）routesWithConsoleErrors=['#/access']；anon aux=2（#/access、#/work；上代 3，employees/knowledge-scope 条消失、#/work 新增，如实不入判据）。distinct 26/23、envOnly 51/51、三键+served 两端同值+ceAuthority=login-state。
 - TALLY {'de847835': 9} count 9 BAD=[]（None 清零）；728a22de（7de87bc0 章）不重做；无 amend/force；push 走 HEAD 映射形；web/src/9122/BFF/caddy/qa-verify/ACC 判词节未动。
+
+## 一七二轮 · 波次代次九件重章 @ dabefc7a（六件 carried + shots/quad 本代真跑，2026-11-21 08:4x-08:5x）
+
+- wave-87 三笔并入 dabefc7a（remote dabefc7a3221 现查==ls-remote）：aud 68624bf2 审计导出守卫 / ui-b 52230693 work 空态 / b5d69769 work 错态。entry/CSS 双换代现算==卡面：CUhV51_R/172175/90b85591…450e、p9FlH27O/145927/adbc44a9…3bc7，==9122==磁盘。
+- 六件 carriedFrom="de847835"+carried=true+stampNote（表现层换代但判据未重跑，如实标注）+写后回读；state-quad 真跑 20/20 head=dabefc7a 非 carried；shots 双腿本代真跑（08:47:04→08:51:07，anon 08:47:58/auth 08:51:00）102/102 failures=[]。
+- obs 双腿均 **0**（routesWithConsoleErrors=[] 自产空数组非编造；上代 auth=1/anon=2 条本代全收敛，与 ui-b work 空/错态修复方向一致）；distinct 24/23、envOnly 51/51、三键+served 两端 CUhV51_R+ceAuthority=login-state。
+- TALLY {'dabefc7a': 9} count 9 BAD=[]（None 清零）；9dc5dbf2（de847835 章）不重做；push HEAD 映射形；无 amend/force；只做账本未写 PASS；ACC 判词节/web/src/9122/BFF/caddy/qa-verify 未动。
