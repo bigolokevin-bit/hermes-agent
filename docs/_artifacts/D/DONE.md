@@ -1517,3 +1517,11 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 六件 carriedFrom="dabefc7a"+carried=true+stampNote+写后回读；state-quad 真跑 20/20 非 carried；shots 双腿 09:01:47→09:04:22 全齐 102/102 failures=[]。
 - obs 自产：auth=2（#/access、#/capabilities?tab=channels；上代 1，channels 复现）；anon aux=4（#/access、#/system?tab=retention、#/work、#/work?tab=cron；上代 2，+2 如实不入判据）。routesWithConsoleErrors 均按自产写入，无 unknown。distinct 25/24、envOnly 51/51、三键+served 两端同值+ceAuthority=login-state。
 - TALLY {'6632f340': 9} count 9 BAD=[]；2ff75d80（dabefc7a 章）不重做；无 amend/force；push 走 HEAD 映射形；web/src/9122/BFF/caddy/qa-verify/ACC 判词节未动。
+
+## 一七四轮 · 波次代次九件重章 @ 6c4f3385（六件 carried + shots/quad 本代真跑，2026-11-21 09:1x）
+
+- 锚更交代：上拍卡面 6d74775a 对象不存在已挂起回执（090622）；L0 重新封波三笔（appr 959ed901 R263 / aud cf92ebcc / ui1 dac78e22）并入 **6c4f3385**（remote 6c4f33850bc8 现查==ls-remote，cat-file=commit，checkout 后 LOCAL=merge(lane): dac78e22）。
+- entry/CSS 均未换代：CUhV51_R/172175/90b85591…450e==卡面==9122==磁盘；CSS p9FlH27O 145927 盘读 adbc44a939c17697（卡面 a4… 系截断旧记，以盘为权威，已在回执注记）。
+- 六件 carriedFrom="6632f340"+carried=true+stampNote『wave-89 三笔…entry sha 与 CSS 逐字节未变；本件未重跑，证据沿用 6632f340 代』+写后回读；state-quad 真跑 20/20 head=6c4f3385 非 carried；shots 双腿本代真跑（三腿并行 nohup 09:14:36→09:17:52 ALL-DONE）102/102 failures=[]。
+- obs 自产：auth=2（#/access、#/capabilities?tab=channels，与上代同型）routesWithConsoleErrors 同写；anon aux=3（#/access、#/employees/:employeeId?zone=config、#/knowledge?tab=sources；上代 4→3 好转：retention/work/cron 收敛、config/knowledge-sources 新出，如实不入判据）；双腿三键+served 两端同值+ceAuthority=login-state，无 unknown。
+- TALLY {'6c4f3385': 9} count 9 BAD=[]（None 清零）。e81c4f74（6632f340 章）不重做；无 amend/force；push 走 HEAD 映射形；只做账本未写 PASS；ACC 判词节/web/src/9122/BFF/caddy/qa-verify 未动。

@@ -9,19 +9,23 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 983,
+    "textLen": 1037,
     "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 近 24 小时 近 7 天 近 14 天 近 30 天 刷",
     "hasMainEl": true,
     "ok": true
   },
   "distinctMainHeads": 25,
-  "routesWithEmptyMain": [],
-  "routesWithoutMainEl": [],
+  "routesWithEmptyMain": [
+    "#/capabilities?tab=channels"
+  ],
+  "routesWithoutMainEl": [
+    "#/capabilities?tab=channels"
+  ],
   "mainCharsByRoute": [
     {
       "route": "#/access",
       "viewport": "1440",
-      "chars": 201,
+      "chars": 199,
       "hasMainEl": true
     },
     {
@@ -147,8 +151,8 @@
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "375",
-      "chars": 113,
-      "hasMainEl": true
+      "chars": 0,
+      "hasMainEl": false
     },
     {
       "route": "#/capabilities?tab=models",
@@ -231,7 +235,7 @@
     {
       "route": "#/employees/:employeeId?zone=evidence",
       "viewport": "375",
-      "chars": 146,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -243,7 +247,7 @@
     {
       "route": "#/employees/:employeeId?zone=runs",
       "viewport": "375",
-      "chars": 66,
+      "chars": 42,
       "hasMainEl": true
     },
     {
@@ -489,7 +493,7 @@
     {
       "route": "#/sessions",
       "viewport": "1440",
-      "chars": 10,
+      "chars": 1,
       "hasMainEl": true
     },
     {
@@ -645,7 +649,7 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "6632f340",
+  "headHash": "6c4f3385",
   "exitCode": 0,
   "entry": "assets/index-CUhV51_R.js",
   "entrySha256": "90b855919855bbea84bf7c34aed3197c20d75269f2525cf4bfc0a94fdd9c450e",
