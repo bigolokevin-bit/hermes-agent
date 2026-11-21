@@ -42,9 +42,9 @@
     }
   ],
   "ok": true,
-  "headHash": "dc9341dd",
+  "headHash": "e66ceba3",
   "exitCode": 0,
-  "carriedFrom": "03cd4658",
+  "carriedFrom": "dc9341dd",
   "carried": true,
-  "stampNote": "wave-93 四笔全纯测试，entry sha 与 CSS 逐字节未变；本件未重跑，证据沿用 03cd4658 代"
+  "stampNote": "wave-94 两笔全纯测试（appr R269/aud R262 与 window-copy），entry sha 与 CSS 逐字节未变（Chru2g4H/Cpi0jJKL）；本件未重跑，证据沿用 dc9341dd 代"
 }
