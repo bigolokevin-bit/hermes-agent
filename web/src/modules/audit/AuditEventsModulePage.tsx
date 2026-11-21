@@ -1902,6 +1902,16 @@ function AuditEventsSurface(): ReactNode {
                 nextStep="把时间窗放宽一格，或换一种事件类型再看。这个窗口确实没有记录，本身就是筛选后的真实答案——服务不接受不带任何筛选条件的全表扫描，所以这里始终有一个时间窗。"
                 onRefresh={list.reload}
                 testId="aud01-empty"
+                // 单一主操作=清筛选：优先对应面板标题所述的那一维，处理函数
+                // 复用卡下两条既有出口各自的（不新增复合清除）；另一维的具名
+                // 出口仍在卡下原处。
+                clear={
+                  windowChoice === "custom"
+                    ? { label: "清空区间，回到最近 7 天", onClear: clearCustom }
+                    : eventType
+                      ? { label: "清掉类型筛选，回到全部类型", onClear: () => setType("") }
+                      : undefined
+                }
               />
               {/* audB: the empty answer carries its own way out, named for the
                   window that produced it. 清空区间 drops the custom range and
