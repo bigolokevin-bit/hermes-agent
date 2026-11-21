@@ -170,9 +170,13 @@ export function EmptyPanel({
 }): ReactNode {
   return (
     <Card className="border-border bg-card" data-testid="col5-empty" {...fixtureAttr(fixture)}>
-      <CardContent className="flex min-w-0 flex-col items-center gap-2 px-4 py-10 text-center">
+      {/* UI-B 空态组合：py-10(40px) 不在留白令牌清单，改 space-8(32px)；主张句走
+        * text-base 台阶（Mondwest 只注册 400 face，字号是本主题唯一可靠的层级手段）；
+        * 「重新读取」抬起为卡内唯一实心主操作——本页只读且 filtered=false 无可筛维度，
+        * 空清单的出口就是重新向服务要一次。testid 与全部文案 0 改动。 */}
+      <CardContent className="flex min-w-0 flex-col items-center gap-[var(--space-2)] px-[var(--space-4)] py-[var(--space-8)] text-center">
         <Inbox className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
-        <p className={`min-w-0 break-words text-sm ${themedBody}`}>
+        <p className={`min-w-0 break-words text-base ${themedBody}`}>
           {filtered ? "这个筛选条件下没有委托" : "读取成功，这个租户目前没有委托记录"}
         </p>
         <p className="max-w-prose break-words text-xs text-muted-foreground">
@@ -185,7 +189,6 @@ export function EmptyPanel({
         </p>
         <Button
           size="sm"
-          outlined
           onClick={onRetry}
           disabled={Boolean(fixture)}
           title={fixture ? "复现腿不发起真实请求，去掉 ?state= 即为真实读取" : "重新向服务要一次委托清单"}
