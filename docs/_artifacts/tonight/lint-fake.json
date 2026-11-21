@@ -9,9 +9,9 @@
   },
   "violations": [],
   "ok": true,
-  "headHash": "7de87bc0",
+  "headHash": "de847835",
   "exitCode": 0,
-  "carriedFrom": "86496824",
+  "carriedFrom": "7de87bc0",
   "carried": true,
-  "stampNote": "wave-85 仅 UI-B 三笔表现层，entry 换代 BeCxh3sC/CSS 未变；本件未重跑，证据沿用 86496824 代"
+  "stampNote": "wave-86 两笔全纯测试，entry sha 与 CSS 逐字节未变（BeCxh3sC/IyhtleuY 同 w85）；本件未重跑，证据沿用 7de87bc0 代"
 }
