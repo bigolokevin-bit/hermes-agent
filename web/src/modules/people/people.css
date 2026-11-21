@@ -48,6 +48,14 @@
   gap: var(--space-3);
   padding: var(--space-8) var(--space-4);
 }
+/* UI-B 空态组合补齐：卡内主操作（ppl5-retry / ppl5-nomatch-clear，均为 .ppl5-state
+ * 直接子 BUTTON）命中区抬到 44px——27.5px 本体 + 上下各 8.25px 不可见外扩，视觉 0 改变；
+ * RequestId 复制钮在 span.ppl5-req 内、非直接子，不受影响。 */
+.ppl5-state > button::after {
+  content: "";
+  position: absolute;
+  inset: -8.25px;
+}
 .ppl5-state-head {
   display: flex;
   align-items: center;

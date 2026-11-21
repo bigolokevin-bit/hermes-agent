@@ -14,13 +14,9 @@
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 26,
-  "routesWithEmptyMain": [
-    "#/capabilities?tab=channels"
-  ],
-  "routesWithoutMainEl": [
-    "#/capabilities?tab=channels"
-  ],
+  "distinctMainHeads": 25,
+  "routesWithEmptyMain": [],
+  "routesWithoutMainEl": [],
   "mainCharsByRoute": [
     {
       "route": "#/access",
@@ -151,8 +147,8 @@
     {
       "route": "#/capabilities?tab=channels",
       "viewport": "375",
-      "chars": 0,
-      "hasMainEl": false
+      "chars": 10,
+      "hasMainEl": true
     },
     {
       "route": "#/capabilities?tab=models",
@@ -235,7 +231,7 @@
     {
       "route": "#/employees/:employeeId?zone=evidence",
       "viewport": "375",
-      "chars": 42,
+      "chars": 66,
       "hasMainEl": true
     },
     {
@@ -259,55 +255,55 @@
     {
       "route": "#/employees/:employeeId?zone=tasks",
       "viewport": "375",
-      "chars": 146,
+      "chars": 42,
       "hasMainEl": true
     },
     {
       "route": "#/identity",
       "viewport": "1440",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity",
       "viewport": "375",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=admins",
       "viewport": "1440",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=admins",
       "viewport": "375",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=binding",
       "viewport": "1440",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=binding",
       "viewport": "375",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=checks",
       "viewport": "1440",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=checks",
       "viewport": "375",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
@@ -325,13 +321,13 @@
     {
       "route": "#/identity?tab=people&view=admins",
       "viewport": "1440",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=people&view=admins",
       "viewport": "375",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
@@ -349,13 +345,13 @@
     {
       "route": "#/identity?tab=tenant",
       "viewport": "1440",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=tenant",
       "viewport": "375",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
@@ -457,13 +453,13 @@
     {
       "route": "#/org",
       "viewport": "1440",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/org",
       "viewport": "375",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
@@ -493,7 +489,7 @@
     {
       "route": "#/sessions",
       "viewport": "1440",
-      "chars": 10,
+      "chars": 1,
       "hasMainEl": true
     },
     {
@@ -648,16 +644,13 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "8d0725d4",
+  "headHash": "1314045e",
   "exitCode": 0,
-  "entry": "assets/index-0rhpOHmI.js",
-  "entrySha256": "35b3907c1ae79830b697ecab6786f2617311b84965b5b7f03db952f98f2a1d64",
+  "entry": "assets/index-bXNYODp-.js",
+  "entrySha256": "d97f66f8d162401bfce4ef4ae5d0c1ca97021cdfc85e966cce283e80b5c6c66b",
   "entryBytes": 172175,
-  "css": "assets/index-B7znF4xN.css",
-  "cssSha256": "0ac2884f70bbe6de2112c325494f75aa3264b54ab38ae12a5d59c4328f0f47c4",
-  "cssBytes": 146328,
-  "servedEntryBefore": "index-0rhpOHmI.js",
-  "servedEntryAfter": "index-0rhpOHmI.js",
+  "servedEntryBefore": "index-bXNYODp-.js",
+  "servedEntryAfter": "index-bXNYODp-.js",
   "routesWithConsoleErrors": [
     "#/capabilities?tab=channels"
   ]
