@@ -137,7 +137,9 @@ const click = (el: Element | null): void => {
  *  - cursor=pc-2：P2（追加后屏上 2 行）；
  *  - 无 status（chip 移除/重置后的腿）：F1,F2,F3 全量。
  */
-const P1 = { approvalId: "ap_r238p1", status: "pending", title: "游标页一号", createdAt: "2026-11-18T01:00:00Z" };
+// P1-A2 ③ 配套：risk=high 深链案要求首屏仍有可见行（分页条只服务有行状态），
+// 给游标页一号补 riskLevel=high，其余用例不受该字段影响。
+const P1 = { approvalId: "ap_r238p1", status: "pending", title: "游标页一号", createdAt: "2026-11-18T01:00:00Z", riskLevel: "high" };
 const P2 = { approvalId: "ap_r238p2", status: "pending", title: "游标页二号", createdAt: "2026-11-18T02:00:00Z" };
 const F1 = { approvalId: "ap_r238f1", status: "approved", title: "全量一号", decidedAt: "2026-11-18T03:00:00Z", riskLevel: "low" };
 const F2 = { approvalId: "ap_r238f2", status: "rejected", title: "全量二号", decidedAt: "2026-11-18T04:00:00Z", riskLevel: "high" };

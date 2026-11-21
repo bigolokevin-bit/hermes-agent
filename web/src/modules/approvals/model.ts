@@ -10,20 +10,12 @@
  *      attribute or the 「详情」 disclosure only.
  */
 
+import { epochOf, plainMinute } from "./RelativeTime";
+
 /** The tones the vendored Badge accepts (its own union is not exported). */
 export type Tone = "default" | "destructive" | "outline" | "secondary" | "success" | "warning";
 
 // ── Formatting ───────────────────────────────────────────────────────
-
-const BEIJING = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "Asia/Shanghai",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  hourCycle: "h23",
-});
 
 const USD = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -32,17 +24,18 @@ const USD = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2,
 });
 
-/** Beijing wall clock to the minute; null when the value is absent or unreadable. */
+/**
+ * Beijing wall clock to the minute; null when the value is absent or unreadable.
+ *
+ * P1-A2 ①：epoch 解析与 Intl 格式化都委托 RelativeTime 的单点
+ * （epochOf + plainMinute），列表相对读数与详情绝对读数不再各算各的钟。
+ */
 export function beijing(value: unknown): string | null {
   const raw = textOf(value);
   if (!raw) return null;
-  let date: Date;
-  if (/^\d{9,10}$/.test(raw)) date = new Date(Number(raw) * 1000);
-  else if (/^\d{11,13}$/.test(raw)) date = new Date(Number(raw));
-  else if (/^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2})?/.test(raw)) date = new Date(raw);
-  else return null; // free text is not a timestamp
-  if (Number.isNaN(date.getTime())) return null;
-  return BEIJING.format(date).replace(/,\s*/, " ");
+  const ms = epochOf(raw);
+  if (ms === null) return null;
+  return plainMinute(ms);
 }
 
 /** Money in USD, the unit the ledger answers in. Missing is `—`, not `$0.00`. */
@@ -600,6 +593,14 @@ export function approvalDetailFrom(payload: unknown): ApprovalDetail | null {
   const requestId = pickText(body, ["requestId", "request_id", "consoleRequestId"]);
   if (actionHash) technical.push(`操作指纹：${actionHash}`);
   if (requestId) technical.push(`请求编号：${requestId}`);
+  // P1-A2 ①: 「剩 X」与绝对/相对读数走同一把尺——有可读的 deadline 原值时
+  // 现场推导剩余；服务端 remainingSeconds 只是快照（两次取数之间已走表），
+  // 降级为无 deadline 时的回退腿。
+  const deadlineMs = epochOf(pickText(body, DEADLINE_KEYS));
+  const remainingSeconds =
+    deadlineMs !== null
+      ? Math.floor((deadlineMs - Date.now()) / 1000)
+      : pickNumber(body, ["remainingSeconds", "remaining_seconds", "ttlRemaining"]);
   return {
     rawId,
     title: title ?? "未写明事由的申请",
@@ -622,7 +623,7 @@ export function approvalDetailFrom(payload: unknown): ApprovalDetail | null {
     submittedAt: pickText(body, SUBMITTED_KEYS),
     deadlineAt: pickText(body, DEADLINE_KEYS),
     decidedAt: pickText(body, DECIDED_KEYS),
-    remaining: countdown(pickNumber(body, ["remainingSeconds", "remaining_seconds", "ttlRemaining"])),
+    remaining: countdown(remainingSeconds),
     amount: pickNumber(body, AMOUNT_KEYS),
     reason: humanSentence(pickText(body, REASON_KEYS)),
     decisions: decisionEntries(body),

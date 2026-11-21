@@ -357,12 +357,19 @@ describe("decision writes", () => {
   };
 
   it("opens the ticket through the detail route", async () => {
-    await mount(queue());
+    // P1-A2 ① — 同源读数：详情带上可读的 deadline（此刻起约 67 分钟后），同时
+    // 服务端 ttl 快照故意给成 1 天。「剩…」必须由 deadline 现场推导，不回吐快照。
+    await mount(async (url) => {
+      if (url.startsWith("/agent-api/api/approval?")) {
+        return { ...DETAIL, remainingSeconds: 99999, expiresAt: new Date(Date.now() + 4050 * 1000).toISOString() };
+      }
+      return queue()(url);
+    });
     await openTicket();
     expect(urls()).toContain("/agent-api/api/approval?id=ap_9F3A1111");
     expect(text()).toContain("高风险");
     expect(text()).toContain("对外发送消息");
-    expect(text()).toContain("剩 1 小时 7 分");
+    expect(text()).toMatch(/剩 1 小时/);
     expect(text()).not.toContain("th_0123456789abcdef");
   });
 
@@ -712,11 +719,13 @@ describe("R79 pending pagination rail (apv-page-*)", () => {
   it("the pending tab shows the same rail: no-total sentence, end state disabled", async () => {
     await mount(queue(), "/approvals?tab=pending");
     await waitFor(() => !!qa("apv-page"), "rail");
-    expect(qa("apv-page-count")?.textContent).toContain("总数不可用");
+    // P1-A2 ② — 改判：无 total 且已到末页时只出一句「已到末页 · 已显示 N 条」，
+    // 「总数不可用」与「已到末页」不再并存；end chip 在此腿退出。
+    expect(qa("apv-page-count")?.textContent, "末页单句，不并存").toBe("已到末页 · 已显示 1 条");
     const more = qa("apv-page-more") as HTMLButtonElement;
     expect(more.disabled, "queue fits one page — no cursor").toBe(true);
     expect(more.getAttribute("title")).toContain("已到末页");
-    expect(qa("apv-page-end")?.textContent).toBe("已到末页");
+    expect(qa("apv-page-end"), "end chip retired when total unavailable").toBeNull();
   });
 });
 
