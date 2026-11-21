@@ -1,0 +1,57 @@
+# assert-375 index（L0 P0 判据纠偏令 · 新判据）
+
+| route | verdict | viol | scrollOvf | domOvf(旧) | pngH | main |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| #/access | NOT_MEASURED | 0 | 0 | 0 | 812 | 201 |
+| #/approvals | PASS | 0 | 0 | 0 | 1036 | 466 |
+| #/approvals?tab=history | PASS | 0 | 0 | 0 | 1163 | 530 |
+| #/approvals?tab=mine | PASS | 0 | 0 | 0 | 1036 | 466 |
+| #/approvals?tab=pending&view=mine | PASS | 0 | 0 | 0 | 1036 | 466 |
+| #/approvals?tab=pending&view=release | PASS | 0 | 0 | 0 | 1036 | 466 |
+| #/approvals?tab=policy | PASS | 0 | 0 | 0 | 1036 | 466 |
+| #/approvals?tab=release | PASS | 0 | 0 | 0 | 1036 | 466 |
+| #/audit | PASS | 0 | 0 | 0 | 1289 | 673 |
+| #/capabilities | PASS | 0 | 0 | 0 | 937 | 355 |
+| #/capabilities?tab=channels | NOT_MEASURED | 0 | 0 | 0 | - | 10 |
+| #/capabilities?tab=models | NOT_MEASURED | 0 | 0 | 0 | 812 | 178 |
+| #/capabilities?tab=tools | PASS | 0 | 0 | 0 | 874 | 390 |
+| #/employees | PASS | 0 | 0 | 0 | 1004 | 296 |
+| #/employees?tab=matrix | NOT_MEASURED | 0 | 0 | 0 | 812 | 213 |
+| #/employees/:employeeId | NOT_MEASURED | 0 | 0 | 0 | 812 | 42 |
+| #/employees/:employeeId?zone=config | NOT_MEASURED | 0 | 0 | 0 | 812 | 42 |
+| #/employees/:employeeId?zone=evidence | NOT_MEASURED | 0 | 0 | 0 | 812 | 42 |
+| #/employees/:employeeId?zone=runs | NOT_MEASURED | 0 | 0 | 0 | 812 | 42 |
+| #/employees/:employeeId?zone=tasks | NOT_MEASURED | 0 | 0 | 0 | 812 | 42 |
+| #/identity | NOT_MEASURED | 0 | 0 | 0 | 812 | 154 |
+| #/identity?tab=admins | NOT_MEASURED | 0 | 0 | 0 | 812 | 154 |
+| #/identity?tab=binding | NOT_MEASURED | 0 | 0 | 0 | 812 | 154 |
+| #/identity?tab=checks | NOT_MEASURED | 0 | 0 | 0 | 812 | 154 |
+| #/identity?tab=departments | NOT_MEASURED | 0 | 0 | 0 | 812 | 143 |
+| #/identity?tab=people&view=admins | NOT_MEASURED | 0 | 0 | 0 | 812 | 154 |
+| #/identity?tab=roles | NOT_MEASURED | 0 | 0 | 0 | 812 | 201 |
+| #/identity?tab=tenant | NOT_MEASURED | 0 | 0 | 0 | 812 | 154 |
+| #/knowledge | PASS | 0 | 0 | 0 | 1275 | 549 |
+| #/knowledge?tab=citations | PASS | 0 | 0 | 0 | 1160 | 477 |
+| #/knowledge?tab=evidence | PASS | 0 | 0 | 0 | 1160 | 477 |
+| #/knowledge?tab=ingest | PASS | 0 | 0 | 0 | 1312 | 553 |
+| #/knowledge?tab=retrieval | PASS | 0 | 0 | 0 | 1245 | 508 |
+| #/knowledge?tab=scope | PASS | 0 | 0 | 0 | 1275 | 549 |
+| #/knowledge?tab=sources | PASS | 0 | 0 | 0 | 1312 | 553 |
+| #/metrics | NOT_MEASURED | 0 | 0 | 0 | 812 | 818 |
+| #/org | NOT_MEASURED | 0 | 0 | 0 | 812 | 154 |
+| #/overview | PASS | 0 | 0 | 0 | 2394 | 1061 |
+| #/overview?tab=usage | NOT_MEASURED | 0 | 0 | 0 | 812 | 136 |
+| #/sessions | NOT_MEASURED | 0 | 0 | 0 | - | 10 |
+| #/system | PASS | 0 | 0 | 0 | 2325 | 948 |
+| #/system?tab=defaults | NOT_MEASURED | 0 | 0 | 0 | 812 | 125 |
+| #/system?tab=events | PASS | 0 | 0 | 0 | 1289 | 673 |
+| #/system?tab=events&view=anomaly | PASS | 0 | 0 | 0 | 1289 | 673 |
+| #/system?tab=retention | PASS | 0 | 0 | 0 | 1289 | 673 |
+| #/system?tab=security | PASS | 0 | 0 | 0 | 1065 | 293 |
+| #/system?tab=version | PASS | 0 | 0 | 0 | 1506 | 588 |
+| #/work | NOT_MEASURED | 0 | 0 | 0 | 812 | 281 |
+| #/work?tab=board&view=cron | NOT_MEASURED | 0 | 0 | 0 | 812 | 261 |
+| #/work?tab=cron | NOT_MEASURED | 0 | 0 | 0 | 812 | 281 |
+| #/work?tab=runs | PASS | 0 | 0 | 0 | 1615 | 483 |
+
+matrix(#/employees?tab=matrix) present=true ok=false
