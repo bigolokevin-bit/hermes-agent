@@ -6246,3 +6246,44 @@ kn-doc-copy*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent 
 ```
 未测如实：带登录会话真屏；①与旧 `?type=` 兜底键深链起点帧的等值（兜底回填引
 R118①/R240①，48 规模起点未双链并测）；②③若上游行为变动需回补探针（本笔纯引用位）。
+
+# KNW5 追加 R249：M=51 追加帧三方首行并置（①唯一残余；②③全锁判定引用）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `03cd4658`
+（无冲突、knowledge delta 空）、基线先跑 63/264 全绿 Errors 0、目标文件确认缺席再动笔。
+零产品文件改动。新增 knowledge.export.space.paging.test.tsx 一例（本体；②③不复写）。
+
+## 三腿裁决（file:line）
+
+```text
+① 主体已锁 R229①(export.paged:140-156 三值 51+首行/末行+全名链+cursor 请求线+cap) +
+  R216①:134-148 + R197①:138-155 + R248①(space.export.filters:131 起 48 起点帧三方首行)。
+  唯一残余=**三方首行并置在 M=51 追加帧**（R229① 只两方位；R248① 三方在无追加 48 帧）
+  → 本笔落此：钮 0 串首段==屏上首行==knF 链首 + 三值 [51,51,51] + P2 恰一 + loc 无
+  cursor + 复制段 urls 恒 4（spaces+plain+p1+p2，零新请求）。
+② **全锁**：R237②(rowcopy.triple:170-191)+R244γ′/δ′(paging.filters)+R247①
+  (export.paging.filter:~140 48 弃页三方+capM48)+R235③/R239②/R131① → 不复写。
+③ **全锁**：R237③(:193-224)+R238C(paging.triple:162)+R247②(ktype 48 基数窗+入链 49)
+  +R239③(detail.paging)+R216④/R131③ → 不复写。
+红线照落：kn-space-page-cap 不存在（R187）、上限句=kn3-page-cap 50/M=在屏（R244γ′）；
+无真 CSV→导出=knF 数据行、kn-list-copy 不存在、spy 全程 0；?type=pdf→?ktype=PDF（本笔
+不涉切桶仅声明）；cursor 只在组件态；本地零请求禁「恰 1 次」；clip 桩 Promise+unstub。
+新增维点名 1 条：三方首行 × M=51 追加帧并置。
+```
+
+## 验证尾行（R249）
+
+```text
+① append P2 恰 1、loc 无 cursor、51 行、btnHead==names[0]==链首、三值 [51,51,51]、
+  urls 恒 4。
+$ npx vitest run src/modules/knowledge → 64 files / 265 tests passed（264+1），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0；build /tmp/knw-r249-dist exit 0
+$ 全仓 → 413 files / 3330 passed **全绿零红**（metrics 跨日两条本轮未现，不视为已修复）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knE-page-*/knF/knG/knI/knL*/kn-row-copy*/kn-row-copy-space*/
+kn-doc-copy*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent + 既有
+63 套全绿。一例一次全过、零自纠轮，产品零触碰。
+```
+未测如实：带登录会话真屏；三方首行在排序切换后帧（R235②/R240① 各锁部分位，三方并置
+未叠）；②③纯引用位若上游行为变动需回补探针。
