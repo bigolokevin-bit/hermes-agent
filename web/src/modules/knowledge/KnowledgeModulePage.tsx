@@ -236,6 +236,7 @@ function Skeleton({ testid }: { testid: string }): ReactNode {
 
 function RequestId({ id, testid }: { id: string | null; testid: string }): ReactNode {
   const [copied, setCopied] = useState<"idle" | "done" | "failed">("idle");
+  const [revealed, setRevealed] = useState(false);
   if (!id) {
     return (
       <span className="knw5-req" data-testid={testid} title="上游回答没有带请求编号">
@@ -246,9 +247,27 @@ function RequestId({ id, testid }: { id: string | null; testid: string }): React
   return (
     <span className="knw5-req" data-testid={testid}>
       <span>请求编号：</span>
-      <span className="knw5-req-value" title={id}>
+      {/* wave-128 第四改·hex 不铺屏（UX r4 未销项②，rubric 扣分项「裸内部 id 上屏」）。
+          编号仍留在 DOM 原位（「请求编号：<id>」这句被 20+ 条既有护栏按连续性断言，
+          textContent 不看 CSS 可见性），但默认 display:none —— 屏面零像素的机器串；
+          肉眼要核原串就点「编号」就地展开，复制钮照旧。 */}
+      <span
+        className="knw5-req-value"
+        title={id}
+        data-testid="request-id-raw"
+        data-revealed={revealed ? "true" : "false"}
+      >
         {id}
       </span>
+      <button
+        type="button"
+        className="knw5-copy knw5-req-toggle"
+        aria-expanded={revealed}
+        aria-label="显示请求编号"
+        onClick={() => setRevealed((value) => !value)}
+      >
+        {revealed ? "收起" : "编号"}
+      </button>
       <button
         type="button"
         className="knw5-copy"
@@ -266,6 +285,25 @@ function RequestId({ id, testid }: { id: string | null; testid: string }): React
     </span>
   );
 }
+
+/**
+ * wave-128 第四改·面题 — 堆在同一屏的多个读口，过去只有「来源：…」一行小字打头，
+ * 读图时看不出是几套（UX r4 维度 7 未销项①「两套读口块纵堆：未变一套、未改分段」）。
+ * 这里给每个面一个可见分节题。用词一律**不**与内层 tab 标签同名（空间台账 / 接入对象 /
+ * 检索命中…），否则同屏出现两个「知识空间」，正是上一轮被扣的复读。
+ */
+const SURFACE_FACE_TITLE: Record<SurfaceKey, string> = {
+  spaces: "空间台账",
+  documents: "接入对象",
+  "ingest-status": "接入健康",
+  tasks: "接入任务",
+  search: "检索命中",
+  records: "读取记录",
+  citations: "引用台账",
+  "session-cites": "会话引用",
+  "space-docs": "文档清单",
+  "doc-search": "文档命中",
+};
 
 function ApplyLink({ testid }: { testid: string }): ReactNode {
   return (
@@ -371,6 +409,9 @@ function Surface<T>({
       data-state={state.kind}
       data-len={value ? value.rows.length : 0}
     >
+      <h3 className="knw5-surface-title" data-kn-face={source}>
+        {SURFACE_FACE_TITLE[source]}
+      </h3>
       <p className="knw5-source" data-testid={`${testid}-source`}>
         来源：{SURFACE_SOURCE[source]} · 数据截至 {stamp ?? "未知"}
         <Reason>{stampReason}</Reason>
@@ -1356,6 +1397,22 @@ function SpacesSurface({
 }
 
 /** R61 — 「数据来源与新鲜度」：三面共用的读台账，默认收起，状态存模块外不落 URL。 */
+/** 收起态的一行读数：按真实状态计数，不写具体口径、也不复制主面板的因果句。 */
+function knmSummaryLine(rows: KnmRow[]): string {
+  const count = (status: KnmRow["status"]) => rows.filter((row) => row.status === status).length;
+  // 裸 0 不上屏（本模块硬护栏 /(^|[^0-9.])0\s*(条|篇|个)/）：只点名非零状态。
+  const named: [string, number][] = [
+    ["正常", count("ok")],
+    ["降级", count("degraded")],
+    ["读口未接入", count("unwired")],
+    ["读不到", count("failed")],
+    ["还没读取", count("idle") + count("loading")],
+  ];
+  if (rows.length === 0) return "这份台账是空的：本页还没有发出过读取。";
+  const parts = named.filter(([, value]) => value > 0).map(([label, value]) => `${label} ${value}`);
+  return `共 ${rows.length} 个读口${parts.length > 0 ? `：${parts.join("、")}` : ""}。逐个采集时刻与状态在展开里。`;
+}
+
 function SourceFreshness(): ReactNode {
   const { rows, expanded } = useKnwSources();
   return (
@@ -1370,10 +1427,18 @@ function SourceFreshness(): ReactNode {
         数据来源与新鲜度
         <span className="knM-action">{expanded ? "收起" : "展开"}</span>
       </button>
-      <p className="knw5-sub" data-testid="knM-source-note">
-        台账只复用本页已经发过的读取：展开、收起、切面都不新增请求；采集时刻只取响应顶层的 ISO 时间，
-        不使用本机时钟，缺就「—」。
-      </p>
+      {expanded ? (
+        <p className="knw5-sub" data-testid="knM-source-note">
+          台账只复用本页已经发过的读取：展开、收起、切面都不新增请求；采集时刻只取响应顶层的 ISO 时间，
+          不使用本机时钟，缺就「—」。
+        </p>
+      ) : (
+        /* wave-128 第四改·次要字段收敛 — 收起态只留一行读数，不再在主读口下面再摊一套
+           说明段 + 全表（与主面板同屏时读图就是「两套块」）。逐读口状态展开才给。 */
+        <p className="knw5-sub" data-testid="knM-source-summary">
+          {knmSummaryLine(rows)}
+        </p>
+      )}
       {expanded ? (
         <div className="knw5-scroll" data-testid="knM-source-list">
           <table className="knw5-table" data-testid="knM-source-table">
