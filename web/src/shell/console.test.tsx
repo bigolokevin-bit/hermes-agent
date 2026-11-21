@@ -125,6 +125,44 @@ describe("ConsoleModulePage pane contract", () => {
     );
   });
 
+  it("P0 n1 ①: knowledge 数据源 is a live slot, never the planned dead-end", () => {
+    renderAt(
+      <ConsoleModulePage module="knowledge" live={{ sources: <div data-testid="kn-live" /> }} />,
+      "/knowledge?tab=sources",
+    );
+    const pane = container.querySelector(".pane");
+    expect(pane?.getAttribute("data-tab")).toBe("sources");
+    expect(pane?.getAttribute("data-state")).toBe("ready");
+    expect(pane?.querySelector('[data-testid="kn-live"]')).not.toBeNull();
+    expect(pane?.querySelector("[data-planned]")).toBeNull();
+  });
+
+  it("P0 n1 ②: ?tab=retrieval resolves onto the knowledge module tab, not evidence", () => {
+    renderAt(
+      <ConsoleModulePage module="knowledge" live={{ spaces: <div data-testid="kn-spaces" /> }} />,
+      "/knowledge?tab=retrieval",
+    );
+    const pane = container.querySelector(".pane");
+    expect(pane?.getAttribute("data-tab")).toBe("spaces");
+    expect(pane?.getAttribute("data-state")).toBe("ready");
+    expect(pane?.querySelector('[data-testid="kn-spaces"]')).not.toBeNull();
+  });
+
+  it("P0 n1 ③: outer evidence tab no longer shares the inner panel's name", () => {
+    renderAt(
+      <ConsoleModulePage
+        module="knowledge"
+        live={{ evidence: <div />, spaces: <div /> }}
+      />,
+      "/knowledge",
+    );
+    const labels = Array.from(container.querySelectorAll("[role='tab']")).map(
+      (n) => n.textContent,
+    );
+    expect(labels).toContain("审计证据");
+    expect(labels).not.toContain("证据与引用");
+  });
+
   it("R32 item 2: /employees carries emp-l-page", () => {
     renderAt(<ConsoleModulePage module="employees" live={{ list: <div data-testid="live-list" /> }} />, "/employees");
     expect(container.querySelector('[data-testid="emp-l-page"]')).toBeTruthy();

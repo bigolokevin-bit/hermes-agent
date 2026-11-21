@@ -1202,7 +1202,7 @@ export default function App() {
                         element={
                           <ConsoleModulePage
                             module="knowledge"
-                            live={{ evidence: <EvidenceConsolePage />, spaces: <KnowledgeConsolePage /> }}
+                            live={{ evidence: <EvidenceConsolePage />, spaces: <KnowledgeConsolePage />, sources: <KnowledgeConsolePage /> }}
                           />
                         }
                       />

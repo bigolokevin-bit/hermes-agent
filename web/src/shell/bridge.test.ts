@@ -43,7 +43,10 @@ describe("console hash bridge arbitration (stage 2)", () => {
   it("normalizes tab-level compat rows onto canonical targets", () => {
     expect(target("#/knowledge?tab=scope")).toBe("/knowledge");
     expect(target("#/knowledge?tab=ingest")).toBe("/knowledge?tab=sources");
-    expect(target("#/knowledge?tab=citations")).toBe("/knowledge?tab=evidence");
+    // P0 n1: retrieval/citations address the knowledge module's own panels
+    // through ?panel=; they are no longer aliased onto the outer evidence tab.
+    expect(target("#/knowledge?tab=retrieval")).toBe("/knowledge?tab=spaces&panel=retrieval");
+    expect(target("#/knowledge?tab=citations")).toBe("/knowledge?tab=spaces&panel=evidence");
     expect(target("#/identity?tab=tenant")).toBe("/identity");
     expect(target("#/identity?tab=admins")).toBe("/identity?tab=people&view=admins");
     expect(target("#/approvals?tab=mine")).toBe("/approvals?tab=pending&view=mine");
