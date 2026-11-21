@@ -410,6 +410,123 @@ for (const row of target) {
     }
   }
 
+  // 字体等待旁路复测腿（L0 授权「字体等待绕过腿」，只动脚本不动产品）：
+  // 截图死于 font/Timeout 时，另开一个 fresh context，用 route 拦掉字体文件让
+  // 挂起的 @font-face 立即落定，再按同一判据梯子复测；判据阈值不变、FAIL 优先不变。
+  let fontBypass = false;
+  if (verdict === 'NOT_MEASURED' && !dims && mainLen > 0 && navError && /Timeout|font/i.test(navError)) {
+    fontBypass = true;
+    try {
+      const fbCtx = await browser.newContext({
+        viewport: { width: VW, height: VH },
+        ...(AUTH_STATE ? { storageState: AUTH_STATE } : {}),
+      });
+      if (!AUTH_STATE) await fbCtx.addInitScript(GATED_FLAG_INIT);
+      await fbCtx.route('**/*', (route) => {
+        const u = route.request().url();
+        if (/\.(?:woff2?|ttf|otf|eot)(?:[?#]|$)/i.test(u)) {
+          void route.abort();
+        } else {
+          void route.continue();
+        }
+      });
+      const fbPage = await fbCtx.newPage();
+      const fbH = row.hash.startsWith('#') ? row.hash : `#${row.hash}`;
+      const fbNav = fbH.includes(':employeeId') ? fbH.replace(':employeeId', 'EMP-01') : fbH;
+      await fbPage.goto(`${BASE}/${fbNav}`, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+      let fbPrev = -1;
+      const fbT0 = Date.now();
+      while (Date.now() - fbT0 < 4000) {
+        await fbPage.waitForTimeout(150);
+        const l = await fbPage
+          .evaluate(() => (document.querySelector('main')?.innerText || '').trim().length)
+          .catch(() => 0);
+        if (l > 0 && l === fbPrev) {
+          mainLen = l;
+          break;
+        }
+        fbPrev = l;
+      }
+      probe = await fbPage.evaluate(PROBE, VW).catch(() => null);
+      await fbPage.evaluate(() => document.fonts.ready.then(() => true)).catch(() => false);
+      await fbPage.screenshot({ path: file, fullPage: true, timeout: 45_000 });
+      bytes = statSync(file).size;
+      dims = pngDims(file);
+      if (dims && dims.h <= VH) {
+        const grow = await fbPage
+          .evaluate(() => {
+            const de = document.documentElement;
+            const force = (el) => {
+              el.style.setProperty('overflow', 'visible', 'important');
+              el.style.setProperty('height', 'auto', 'important');
+              el.style.setProperty('max-height', 'none', 'important');
+              el.style.setProperty('min-height', '0', 'important');
+            };
+            force(de);
+            force(document.body);
+            const rootEl = document.getElementById('root');
+            if (rootEl) force(rootEl);
+            let required = de.scrollHeight;
+            let scrollers = 0;
+            for (const el of document.querySelectorAll('body *')) {
+              const cs = getComputedStyle(el);
+              if (!/(auto|scroll)/.test(cs.overflowY)) continue;
+              if (el.scrollHeight <= el.clientHeight + 1) continue;
+              force(el);
+              let p = el.parentElement;
+              while (p && p !== de) {
+                force(p);
+                p = p.parentElement;
+              }
+              scrollers += 1;
+              required = Math.max(required, el.scrollHeight + (window.innerHeight - el.clientHeight));
+            }
+            return { required: Math.min(required, 10_000), scrollers };
+          })
+          .catch(() => null);
+        if (grow && grow.required > VH) {
+          expanded = true;
+          scrollerCount = grow.scrollers;
+          targetHeight = grow.required;
+          try {
+            await fbPage.setViewportSize({ width: VW, height: grow.required });
+            await fbPage.waitForTimeout(400);
+            await fbPage.screenshot({ path: file, fullPage: true, timeout: 45_000 });
+            bytes = statSync(file).size;
+            dims = pngDims(file);
+          } catch {
+            /* 保留复测腿首拍 */
+          }
+        } else if (grow) {
+          expanded = true;
+          scrollerCount = grow.scrollers;
+          targetHeight = grow.required;
+          contentFit = true;
+        }
+      }
+      navError = null;
+      await fbCtx.close();
+    } catch (e) {
+      navError = `font-bypass: ${String(e.message ?? e).slice(0, 140)}`;
+    }
+    // 撤销原 NM 计数，按同一判据梯子重判（FAIL 优先）
+    notMeasured -= 1;
+    if (probe && (probe.violCount > 0 || probe.scrollOverflowCount > 0)) {
+      verdict = 'FAIL';
+      red += 1;
+    } else if (!probe || !dims) {
+      verdict = 'NOT_MEASURED';
+      notMeasured += 1;
+    } else if (dims.h <= VH && contentFit) {
+      verdict = 'PASS';
+    } else if (dims.h <= VH) {
+      verdict = 'NOT_MEASURED';
+      notMeasured += 1;
+    } else {
+      verdict = 'PASS';
+    }
+  }
+
   index.push({
     hash: row.hash,
     label: row.label,
@@ -433,6 +550,7 @@ for (const row of target) {
     scrollOverflowCount: probe ? probe.scrollOverflowCount : null,
     scrollOverflow: probe ? probe.scrollOverflow : [],
     domOverflowPx: probe ? probe.domOverflowPx : null, // 旧判据辅助对照位
+    fontBypass,
     consoleErrorsProduct,
   });
   await ctx.close();
