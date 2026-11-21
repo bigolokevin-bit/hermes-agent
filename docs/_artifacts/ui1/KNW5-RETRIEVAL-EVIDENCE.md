@@ -6202,3 +6202,47 @@ kn-doc-copy*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent 
 基数 48→? 组合未测）；cap M 在「窗内」帧的存在性本笔未单独钉（窗在挂载即筛帧，
 cap 全程在场，两值 48/49 已顺带记录）；②中 ktype 在场 append 失败后「回全部」再
 重试的链基数变化未叠。
+
+# KNW5 追加 R248：深链 ktype 48 规模起点帧三值+三方首行（①唯一残余；②③全锁判定引用）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge——**上游 tip 实测 `e81c4f74`
+较派工写的 `6632f340` 更新**（按实测如实记录；knowledge delta 空、无冲突）；基线先跑
+62/263 全绿 Errors 0、目标文件确认缺席再动笔。零产品文件改动。新增
+knowledge.space.export.filters.test.tsx 一例（本体；②③全锁不复写）。
+
+## 三腿裁决（file:line）
+
+```text
+① 主体已锁（R243α 三方首行 2 行小集+点击叠筛；R247① 页 2 弃页后 48 规模；R234②
+  深链两方位）→ 唯一残余=「**深链直接挂载、非点击、非弃页起点**」的 48 规模帧——
+  本笔落此：三值 [48,48,48]、钮 0..47 连续（筛后重排）、三方首行同帧、全链==屏上、
+  cap M=48（R244γ′ 语义）、首屏恰三读且 spaceId 键集 {limit,spaceId}、深链零追加读、
+  两复制零新请求。
+② **全锁**：R243β(filters.rowcopy:~185 移除向：名筛存活+序重建+链==屏上+零请求) +
+  R244δ′(paging.filters:~175 页 2 移除向不回) + R237②(rowcopy.triple:170-191 回全部
+  0..49+cap 回落) + R229③/R235③/R131① → 不复写。
+③ **全锁**：R237③(rowcopy.triple:193-224)+R238C(paging.triple:162)+R247②
+  (ktype 在场窗 48 基数冻结+入链 49)+R239③(detail.paging)+R231⑤/R216④/R131③ → 不复写。
+换算照落：无 ?source=（→?ktype=PDF 深链，未造）；无真 CSV→导出=knF、kn-list-copy
+不存在、spy 全程 0；-space- 族 indexBase；cap 50/M=在屏；本地零请求（禁「恰 1 次」）；
+clip 桩 Promise+unstub。真新增维（点名 1 条）：①的「非点击、非弃页、大基数」起点帧
+形制钉死（R243α 形制在该起点位的规模版首锁）。
+```
+
+## 验证尾行（R248）
+
+```text
+① 48 行全 pdf、表体==data-len 48、首屏 urls==3、键集两笔全 {limit,spaceId}、
+  btnHead==names[0]==链首、钮 [0..47]、链==屏上、capM 48、复制段 urls 不变。
+$ npx vitest run src/modules/knowledge → 63 files / 264 tests passed（263+1），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0；build /tmp/knw-r248-dist exit 0
+$ 全仓 → 405 files / 3315 passed **全绿零红**（metrics 跨日两条本轮未现，如实记录，
+  不视为其已修复——其 Date.now() 依赖仍在）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knE-page-*/knF/knG/knI/knL*/kn-row-copy*/kn-row-copy-space*/
+kn-doc-copy*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent + 既有
+62 套全绿。一例一次全过、零自纠轮，产品零触碰。
+```
+未测如实：带登录会话真屏；①与旧 `?type=` 兜底键深链起点帧的等值（兜底回填引
+R118①/R240①，48 规模起点未双链并测）；②③若上游行为变动需回补探针（本笔纯引用位）。
