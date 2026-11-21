@@ -6832,3 +6832,49 @@ kn-type*/kn-sort*/kn-gates/导出 absent + 既有 72 套全绿。过程自纠一
 未测如实：带登录会话真屏；真并发（同帧双 Promise 竞速）——jsdom 串行派发下「交替+
 跨面免疫」为可测最大并发形态，微任务级竞态未造；详情面按钮（-space-）被拒×检索面
 成功的镜像方向（同族单侧已钉）；fallback 期间再改筛选的状态收敛（超预算不扩）。
+
+# KNW5 追加 R262：抽屉开态切桶「链+序+账本」三合一帧 + 关态四帧回环（纯测试单·本体交付；腿②全锁引用）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge 实测 tip 即预期 `8d0725d4`
+（普通 merge commit、**未用 `-B`**、knowledge delta 零、无冲突）；基线先跑 73/287
+全绿 Errors 0、目标文件确认缺席再动笔。零产品文件改动。新增
+knowledge.export.detail.filter.isolation.test.tsx 两例（本体）。
+
+## 三腿裁决（file:line）与两新增维
+
+```text
+① 两个**半帧**已各锁一角、从未同帧：R239②(export.detail.paging:165-176 面板存续+
+  导出链==新屏上+旧行出局+listUrls；无钮序/详情读位) 与 R258②(preview.requests2 B′
+  钮自 0 重建+urls join+详情读恒 1；未点 knF 做链)——**新增维 A：三合一**：同例并钉
+  链==屏上 ∧ 钮 [0] 重建 ∧ **全量** urls join 逐字 ∧ 详情读恒 1 ∧ doc/ktype 同址 ∧
+  出局文档「该字段未返回」第三式（引 R224①:134 不复写整链）。
+②「详情失败时导出只含列表行+三值」＝**全锁不复写**：R232①(detail.error.export:
+  152-176 抽屉 500 窗×M=51 三值+跨渲染全文互等)+R232②(404 unwired cap 冻结+不禁用+
+  三值)+R245α(窗内切筛链==屏上)。
+③ 两半帧首尾合拢：R230①(前==开 文本) 与 R236①(开==关==重开+关 urls +0；未取开前
+  基线、未比钮序)——**新增维 B：四帧回环**：T(前)==T(开)==T(关) 逐字三点 + 钮序
+  前==关 复原 + cap 三帧不动 + 关 +0 请求。
+换算照落：无 ?source=（点桶即写 ktype，旧 type 兜底）；「切桶只重取一次」**驳回**为
+零（urls join 逐字实测）；无真 CSV→导出=knF、kn-list-copy 不存在、spy 全程 0；
+「详情」=kn7 抽屉（开 +1 既存详情读、关 0——R49/R196），行内预览/?sdoc= 宿主未混；
+行钮分面 -space-、kn-doc-copy 非行数；cap 50/M、null 态；clip 桩 Promise+unstub。
+```
+
+## 验证尾行（R262）
+
+```text
+A：doc=d_a+ktype 同址、panel 在场、集 [B 表.xlsx]、链==屏上、钮 [0]、urls join 逐字、
+  详情读恒 1、dd「该字段未返回」。B：textOpen/textClosed 双 toBe textPre、钮序前==关、
+  cap 三帧逐字、关 urls 恒。
+$ npx vitest run src/modules/knowledge → 74 files / 289 tests passed（287+2 ≥288），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0
+$ build /tmp/knw-r262-dist → exit 0；全仓 → 451 files / 3417 passed **零红**
+  （metrics 跨日两条本轮未复现，不视为已修复）
+$ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：kn3*/kn6–kn9/knB/knD/knE-page-*/knF/knG/knI/knL*/kn-row-copy*/kn-row-copy-space*/
+kn-doc-copy*/kn7-preview*/kn3-page-cap/kn-type*/kn-sort*/kn-gates/导出 absent + 既有
+73 套全绿。两例一次全过、零自纠轮，产品零触碰。
+```
+未测如实：带登录会话真屏；A 帧切回「全部」后钮序回 [0..2] 的并链（两向各半已锁，
+往返合一未测）；B 重开第五帧（R236① 三帧地盘）；腿②纯引用未复测。
