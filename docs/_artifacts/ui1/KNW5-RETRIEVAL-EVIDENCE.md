@@ -6335,3 +6335,40 @@ $ 三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
 ```
 未测如实：带登录会话真屏；②残余位（深链起始再切桶代际）如上清单；metrics 跨日红
 仍未修（域外）。
+
+# KNW5 追加 R251：抽屉开态切桶四量同帧 + 关帧零请求/钮序重述 + 列表 500 现状合并帧（同文件追加，R206 两例逐字保留）（2026-11-21 BJT）
+
+安全门：porcelain 空起做、显式 refspec fetch 后 merge（上游含 wave-93 线，merge 已在
+库、knowledge delta 零）；目标文件为 R206 在库文件（174 行 2 例）→ **同文件追加**，
+③④ 逐字未动（仅 afterEach 补 unstubAllGlobals 纪律位）；最终 299 行 5 例。
+零产品改动。腿①换算照落：?preview= 不存在（行内预览=本地 previewKey，R206③ 锁）→
+取 ?doc= 抽屉；「恰 1 次重取列表」**驳回为 0**（本地派生）；URL 保两参=doc=&ktype=
+同址；「详情不重取」为真（计数不变=1）。
+
+## 三例裁决与读数
+
+```text
+⑤ 新增维（唯一真缝四量同帧——R224① 双参+面板+换代、R224② 关后总 urls、R239②
+  listUrls+导出，三段各锁一角）：健康抽屉开态点「表格」→ 总 urls join 逐字（列表零
+  增量且**详情读计数恒 1**）+ doc&ktype 同址 + 面板存续 + 换代 [丙表] 无全项手册 +
+  knF 1 行丙表。⑥ 腿②同帧重述（健康开态关抽屉：urls 逐字 + 行名与 -space- 钮 id
+  序列逐字等；引 R196④:104-124/R206③，此帧 R196④ 系行内链、非重复）。⑦ 腿③按现状
+  合并帧：列表 500——-space- 钮与 preview-toggle 均渲染 **0 节点（非 disabled，差异
+  按实记录）**、kn3-docs-error+「请求编号：rid-r251-list」、排序头 disabled+逐字
+  「这次没有读到这份列表，现在不能排序。」（句体引 error.isolation:199）、rid 投递
+  逐字、重试恰 +1 且末条=P1URL。clip 桩全 Promise + afterEach unstub（Errors 0）。
+```
+
+## 门禁尾行（R251）
+
+```text
+$ npx vitest run src/modules/knowledge → 64 files / 268 tests passed（265+3 ≥268），
+  grep unhandled = 0
+$ eslint → 0 errors（1 既有 warning）；模块 tsc → 0
+$ build /tmp/knw-r251b-dist → exit 0；全仓 → 418 files / 3345 passed 零红（metrics
+  跨日两条本轮未复现）；三档 1440/1280/375 vw==bodySW==docSW 全等（用毕即杀）
+零破：R206 两例逐字 + 既有 63 套全绿；产品零触碰。过程自纠两处（⑤ 局部夹具补 xlsx
+使「表格」桶在场——D_MISS 按「缺值不占桶」不入；txt 未定义改内联 norm）。
+```
+未测如实：带登录会话真屏；⑥与 R196④ 的行内预览变体互不覆盖（各自帧已钉）；⑦的
+unwired（404）变体排序句「这份列表没读到…」未并入本帧（error.isolation 地盘）。
