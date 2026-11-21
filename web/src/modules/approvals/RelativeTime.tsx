@@ -62,6 +62,15 @@ export function timeTitle(ms: number, iso: string): string {
   return `绝对 ${plain(SEC, new Date(ms))}（北京时间） · ISO ${iso}`;
 }
 
+/**
+ * P1-A2 ① — the single Beijing-to-minute formatter for /approvals. model.ts
+ * `beijing()` now delegates here, so the list's relative reading and the
+ * detail's absolute reading come from one clock parse and one Intl instance.
+ */
+export function plainMinute(ms: number): string {
+  return plain(MINUTE, new Date(ms));
+}
+
 export const TIME_MISSING = "该字段未返回";
 const TIME_MISSING_TITLE = "读口没有回传这个时间字段，或它不是合法时间；这里不补当前时间。";
 

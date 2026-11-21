@@ -206,9 +206,125 @@ describe('the four states', () => {
 
   it('gates on the console session without sending a request', async () => {
     delete (window as { __HERMES_SESSION_TOKEN__?: string }).__HERMES_SESSION_TOKEN__;
+    vi.stubGlobal('fetch', whoamiStub({ status: 401 }));
     await render();
     expect(q('ev5-login')).toBeTruthy();
     expect(container.textContent).toContain('需要登录');
     expect(api.fetchJSON).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+});
+
+// P0-1 (UX r1): the pane must reach the same session verdict as the shell's
+// identity widget — the injected token OR a 2xx /auth/whoami. These cases pin
+// both halves and the traps (fallback HTML, dead auth route) that must read
+// as logged-out instead of false-green.
+function whoamiStub(init: { status?: number; json?: unknown; reject?: boolean }) {
+  return vi.fn((url: string) => {
+    if (!String(url).includes('/auth/whoami')) {
+      return Promise.reject(new Error(`unexpected fetch: ${url}`));
+    }
+    if (init.reject) return Promise.reject(new TypeError('Failed to fetch'));
+    const status = init.status ?? 200;
+    const body =
+      init.json === undefined
+        ? null
+        : typeof init.json === 'string'
+          ? init.json
+          : JSON.stringify(init.json);
+    return Promise.resolve(
+      new Response(body, {
+        status,
+        headers: typeof init.json === 'string' ? { 'content-type': 'text/html' } : undefined,
+      }),
+    );
+  });
+}
+
+describe('session verdict is the same source as the shell (P0-1)', () => {
+  beforeEach(() => {
+    delete (window as { __HERMES_SESSION_TOKEN__?: string }).__HERMES_SESSION_TOKEN__;
+  });
+
+  it('a cookie-authed session (whoami 2xx, no token) reads citations — never 需要登录', async () => {
+    vi.stubGlobal('fetch', whoamiStub({ json: { display: 'opsadmin' } }));
+    api.fetchJSON.mockResolvedValue({ events: [EVENT] });
+    await render();
+    expect(q('ev5-login')).toBeNull();
+    expect(container.textContent).not.toContain('需要登录');
+    expect(q(`ev5-row-${EVENT.eventId}`)).toBeTruthy();
+    vi.unstubAllGlobals();
+  });
+
+  it('a 401 whoami shows the login state and sends no data read', async () => {
+    vi.stubGlobal('fetch', whoamiStub({ status: 401 }));
+    await render();
+    expect(q('ev5-login')).toBeTruthy();
+    expect(api.fetchJSON).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it('the 200-HTML SPA fallback on /auth/whoami reads as logged-out, not as a session', async () => {
+    vi.stubGlobal('fetch', whoamiStub({ json: '<!doctype html><html><body>index</body></html>' }));
+    await render();
+    expect(q('ev5-login')).toBeTruthy();
+    expect(api.fetchJSON).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it('an unreachable auth route fails closed into the login state', async () => {
+    vi.stubGlobal('fetch', whoamiStub({ reject: true }));
+    await render();
+    expect(q('ev5-login')).toBeTruthy();
+    expect(api.fetchJSON).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it('waits for the verdict before any read, saying so honestly', async () => {
+    let release: ((v: Response) => void) | null = null;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        () =>
+          new Promise<Response>((resolve) => {
+            release = resolve;
+          }),
+      ),
+    );
+    await render();
+    expect(q('ev5-checking')).toBeTruthy();
+    expect(container.textContent).toContain('正在确认登录状态');
+    expect(api.fetchJSON).not.toHaveBeenCalled();
+    release?.(
+      new Response(JSON.stringify({ display: 'opsadmin' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+    api.fetchJSON.mockResolvedValue({ events: [EVENT] });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    await act(async () => {});
+    expect(q('ev5-checking')).toBeNull();
+    expect(q(`ev5-row-${EVENT.eventId}`)).toBeTruthy();
+    vi.unstubAllGlobals();
+  });
+
+  it('「重新检查登录状态」 re-probes and recovers into the list', async () => {
+    const stub = whoamiStub({ status: 401 });
+    vi.stubGlobal('fetch', stub);
+    await render();
+    expect(q('ev5-login')).toBeTruthy();
+    vi.unstubAllGlobals();
+    vi.stubGlobal('fetch', whoamiStub({ json: { display: 'opsadmin' } }));
+    api.fetchJSON.mockResolvedValue({ events: [EVENT] });
+    await act(async () => {
+      (q('ev5-login-retry') as HTMLButtonElement).click();
+    });
+    await act(async () => {});
+    expect(q(`ev5-row-${EVENT.eventId}`)).toBeTruthy();
+    expect(q('ev5-login')).toBeNull();
+    vi.unstubAllGlobals();
   });
 });

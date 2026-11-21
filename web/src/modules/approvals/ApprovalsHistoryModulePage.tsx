@@ -684,6 +684,9 @@ export function ApprovalsHistoryModulePage(): ReactNode {
 
               {list.pageFailure ? <InlineFailure failure={list.pageFailure} action="后续记录没有加载成功" onRetry={list.loadMore} /> : null}
 
+              {/* P1-A2 ③②：分页 footer 状态机——有可见行才出分页条；过滤 miss/空态由空卡说话，
+                  不留死钮。「总数不可用」与「已到末页」互斥：无 total 且已到末页时只说一句末页话。 */}
+              {visibleRows.length > 0 ? (
               <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs" data-testid="apv-page">
                 <Button
                   size="sm"
@@ -706,21 +709,26 @@ export function ApprovalsHistoryModulePage(): ReactNode {
                 <span
                   data-testid="apv-page-count"
                   title={
-                    list.total === null
-                      ? "读口响应顶层只有 items/nextCursor（无 total 键，实测本页响应）；按已加载条数推算会撒谎，故不推算。"
-                      : "总数来自读口 total 键；已显示=当前已加载行数"
+                    list.total !== null
+                      ? "总数来自读口 total 键；已显示=当前已加载行数"
+                      : list.next
+                        ? "读口响应顶层只有 items/nextCursor（无 total 键，实测本页响应）；按已加载条数推算会撒谎，故不推算。"
+                        : "读口没有回传 total 键；服务端已无下一页游标，屏上这些就是全部取到的记录。"
                   }
                 >
                   {list.total !== null
                     ? `共 ${list.total} 条 / 已显示 ${list.rows.length} 条`
-                    : `总数不可用 · 已显示 ${list.rows.length} 条`}
+                    : list.next
+                      ? `总数不可用 · 已显示 ${list.rows.length} 条`
+                      : `已到末页 · 已显示 ${list.rows.length} 条`}
                 </span>
-                {!list.next && list.rows.length > 0 ? (
+                {!list.next && list.total !== null ? (
                   <span className="text-muted-foreground" data-testid="apv-page-end">
                     已到末页
                   </span>
                 ) : null}
               </div>
+              ) : null}
             </>
           ) : null}
         </section>
