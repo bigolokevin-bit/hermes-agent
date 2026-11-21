@@ -45,6 +45,8 @@ vi.mock("@nous-research/ui", () => ({
 
 import { MatrixModulePage } from "./MatrixModulePage";
 
+import { MATRIX_FIXTURE, readMatrixPayload } from "./matrix";
+
 let container: HTMLDivElement;
 let root: Root;
 
@@ -85,6 +87,15 @@ function missing(requestId: string | null): ApiError {
   });
 }
 
+function forbidden(requestId: string): ApiError {
+  return new ApiError("forbidden", {
+    status: 403,
+    body: '{"detail":"permission denied"}',
+    url: "/agent-api/api/matrix",
+    requestId,
+  });
+}
+
 function expired(requestId: string): ApiError {
   return new ApiError(
     "需要登录：这个页面的登录状态已经失效。重新登录后就能继续查看。",
@@ -97,24 +108,36 @@ function expired(requestId: string): ApiError {
   );
 }
 
-describe("MatrixModulePage (R7.1 item 2 — live endpoint, no fixture fallback)", () => {
+// The heading used to read 「live endpoint, no fixture fallback」. P0 n3 reopened
+// that fallback for 404／连不上 only, so the honest title of this block is what it
+// now checks: live answers stay unlabelled, and a sample answer must say so.
+describe("MatrixModulePage (R7.1 item 2, restated by P0 n3 — live is live, sample is labelled)", () => {
   it("fetches the live matrix endpoint", async () => {
     fetchJSON.mockResolvedValue({ employees: [], capabilities: [] });
     await renderPage();
     expect(fetchJSON).toHaveBeenCalledWith("/agent-api/api/matrix");
   });
 
-  it("a 404 stays an honest not-connected state: no fixture table, request id shown", async () => {
+  // 复述，不删除：这条腿钉的是 R7.1 item 2「404 不许出样例表」。P0 n3 按
+  // PRD §12 把这扇门反过来接上（404／连不上 = 接口未接入 → 样例门），所以
+  // 原断言里「不许有样例」的一半改成「样例必须被明确标成样例」：根节点
+  // data-fixture、示例数据角标、说明条、失败原因与那一次读取的请求编号都要在
+  // 面上；「不许用样例冒充真数据」这一半仍然成立，见下面 (a)(b) 两条。
+  it("a 404 opens the fixture door: the table is reviewable and unmistakably sample data", async () => {
     fetchJSON.mockRejectedValue(missing("req-77"));
     await renderPage();
     const text = container.textContent ?? "";
-    expect(container.querySelector('[data-testid="mtx5-denied"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="mtx5-denied"]')).toBeNull();
+    expect(
+      container.querySelector('[data-testid="mtx5-module"]')?.getAttribute("data-fixture"),
+    ).toBe("1");
+    expect(text).toContain("示例数据");
+    expect(container.querySelector('[data-testid="mtx5-fixture-note"]')).not.toBeNull();
+    expect(text).toContain("真实矩阵接口还没接上");
+    // 主任务（组织级覆盖缺口）在当前构建里可达：汇总与表体都渲出来了。
+    expect(container.querySelector('[data-testid="mtx5-summary"]')).not.toBeNull();
+    expect(text).toContain("接口未接入");
     expect(text).toContain("请求编号：req-77");
-    expect(text).not.toContain("示例数据");
-    expect(text).not.toContain("还没接上，这张表");
-    expect(container.querySelector("[data-fixture='1']")).toBeNull();
-    expect(container.querySelector('[data-testid="mtx5-fixture-note"]')).toBeNull();
-    expect(container.querySelector('[data-testid="mtx5-summary"]')).toBeNull();
   });
 
   it("设计车道 ①: an anonymous 401 falls back to the generic error state — no per-page expiry card", async () => {
@@ -171,5 +194,87 @@ describe("MatrixModulePage (R7.1 item 2 — live endpoint, no fixture fallback)"
       btn.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     expect(container.textContent).toContain("复制失败，请手动选择");
+  });
+});
+
+describe("MatrixModulePage (P0 n3 — PRD §12 fixture door: sample data is reviewable and always labelled)", () => {
+  // 三条换真门判据，逐条可在代码/测试里核对（代码侧见
+  // MatrixModulePage.tsx 的 404/0 分支注释）：
+  //  (a) 200 且解析成功 = 真数据：readMatrixPayload 一律盖
+  //      origin:'matrix'，角标／说明条／data-fixture 自动消失；
+  //  (b) 403 权限类绝不落样例；
+  //  (c) 角标只有 payload.origin 一个来源，摘角标只能走真门
+  //      （DONE.md:49「删掉 fixture 兜底分支即可」）。
+  const fixtureCells = MATRIX_FIXTURE.employees.flatMap((employee) => employee.cells);
+  const tally = {
+    granted: fixtureCells.filter((cell) => cell.state === "granted").length,
+    denied: fixtureCells.filter((cell) => cell.state === "denied").length,
+    unknown: fixtureCells.filter((cell) => cell.state === "unknown").length,
+  };
+
+  it("(a) a live 200 leaves no badge, no note and no fixture attribute", async () => {
+    fetchJSON.mockResolvedValue({
+      capabilities: [{ capabilityId: "cap.run.inspect", label: "查看运行" }],
+      employees: [
+        { employeeId: "emp_aaaabbbbcccc", name: "小鲤", cells: { "cap.run.inspect": true } },
+      ],
+    });
+    await renderPage();
+    const text = container.textContent ?? "";
+    expect(text).not.toContain("示例数据");
+    expect(container.querySelector("[data-fixture='1']")).toBeNull();
+    expect(container.querySelector('[data-testid="mtx5-fixture-note"]')).toBeNull();
+    expect(container.querySelector('[data-testid="mtx5-fixture-reason"]')).toBeNull();
+    expect(container.querySelector('[data-testid="mtx5-summary"]')).not.toBeNull();
+    // 判据 (a) 的根据本身：解析成功就是真代次，不由 UI 猜。
+    expect(readMatrixPayload({ employees: [], capabilities: [] }).origin).toBe("matrix");
+  });
+
+  it("(b) a 403 is a permission state: no fixture table, and the copy says permission only", async () => {
+    fetchJSON.mockRejectedValue(forbidden("req-403"));
+    await renderPage();
+    const text = container.textContent ?? "";
+    expect(container.querySelector('[data-testid="mtx5-denied"]')).not.toBeNull();
+    expect(text).toContain("你的账号还没有查看这份矩阵的权限");
+    expect(text).not.toContain("这页不存在");
+    expect(text).not.toContain("示例数据");
+    expect(container.querySelector("[data-fixture='1']")).toBeNull();
+    expect(container.querySelector('[data-testid="mtx5-fixture-note"]')).toBeNull();
+    expect(container.querySelector('[data-testid="mtx5-summary"]')).toBeNull();
+    expect(text).toContain("请求编号：req-403");
+  });
+
+  it("an unreachable endpoint opens the same door, names the reason and invents no request id", async () => {
+    fetchJSON.mockRejectedValue(new Error("ECONNREFUSED"));
+    await renderPage();
+    const text = container.textContent ?? "";
+    expect(
+      container.querySelector('[data-testid="mtx5-module"]')?.getAttribute("data-fixture"),
+    ).toBe("1");
+    expect(text).toContain("示例数据");
+    expect(text).toContain("网络或网关没有应答");
+    expect(container.querySelector('[data-testid="req-copy-fallback"]')).not.toBeNull();
+    expect(text).toContain("未记录编号");
+  });
+
+  it("the fixture door really is the main task: every sample employee by every capability", async () => {
+    fetchJSON.mockRejectedValue(missing("req-77"));
+    await renderPage();
+    expect(
+      container.querySelectorAll('[data-testid^="mtx5-row-emp_fixture"]'),
+    ).toHaveLength(MATRIX_FIXTURE.employees.length);
+    expect(container.querySelectorAll('[data-testid^="mtx5-cell-emp_fixture"]')).toHaveLength(
+      MATRIX_FIXTURE.employees.length * MATRIX_FIXTURE.capabilities.length,
+    );
+    const text = container.textContent ?? "";
+    expect(text).toContain(
+      `已授权 ${tally.granted} / 未授权 ${tally.denied} / 待核实 ${tally.unknown}`,
+    );
+    // 样例的采集时刻是 null：读取时间不编。
+    expect(text).toContain("读取于 —");
+    // 「待核实」仍然按 GAP 呈现，不猜授权。
+    expect(
+      container.querySelector('[data-gap="1"]'),
+    ).not.toBeNull();
   });
 });

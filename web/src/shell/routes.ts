@@ -242,7 +242,12 @@ const COMPAT_TABS: readonly ConsoleRoute[] = [
   // #33-#46 — 14 tab-level compat (TAB_ALIAS, skeleton L5260-5265). The
   // `to` column transcribes appendix A's "→target(view=…)" notation.
   { hash: '#/knowledge?tab=scope', path: '/knowledge', module: 'knowledge', tabId: 'spaces', kind: 'compat-tab', visible: false, label: '知识空间', dataSource: '随目标', tab: 'scope', to: '#/knowledge' },
-  { hash: '#/knowledge?tab=ingest', path: '/knowledge', module: 'knowledge', tabId: 'sources', kind: 'compat-tab', visible: false, label: '数据源', dataSource: '随目标', tab: 'ingest', to: '#/knowledge?tab=sources' },
+  // UX r7 判词① (secondary landing): this row now names the panel it lands on,
+  // so every panel-bearing compat row declares its owning outer tabId and
+  // PANEL_TABS below has no second truth table. Same target pane as before:
+  // knowledge's initialTab reads ?panel= first, and panel=ingest resolves to
+  // the very tab that `tab=sources` already resolved to.
+  { hash: '#/knowledge?tab=ingest', path: '/knowledge', module: 'knowledge', tabId: 'sources', kind: 'compat-tab', visible: false, label: '数据源', dataSource: '随目标', tab: 'ingest', to: '#/knowledge?tab=sources&panel=ingest' },
   { hash: '#/knowledge?tab=retrieval', path: '/knowledge', module: 'knowledge', tabId: 'spaces', kind: 'compat-tab', visible: false, label: '检索', dataSource: '随目标', tab: 'retrieval', to: '#/knowledge?tab=spaces&panel=retrieval' },
   { hash: '#/knowledge?tab=citations', path: '/knowledge', module: 'knowledge', tabId: 'spaces', kind: 'compat-tab', visible: false, label: '证据与引用', dataSource: '随目标', tab: 'citations', to: '#/knowledge?tab=spaces&panel=evidence' },
   { hash: '#/identity?tab=tenant', path: '/identity', module: 'identity', tabId: 'people', kind: 'compat-tab', visible: false, label: '人员目录', dataSource: '随目标', tab: 'tenant', to: '#/identity' },
@@ -570,3 +575,27 @@ if (!countsOk) {
       `redirects=${REDIRECTS.length}/24 modules=${CONSOLE_MODULES.length}/8`,
   );
 }
+
+/* ------------------------------------------------------------------ *
+ * Panel ownership, DERIVED from the compat rows so there is no second
+ * truth table to drift.
+ *
+ * A `?panel=` value addresses an inner panel of exactly one outer tab. The
+ * compat rows already declare which one, because each row's own `tabId` is
+ * the tab its `to` address lands on. Reading the map back out of ROUTE_TABLE
+ * is what lets the shell align the strip's selected tab with the surface
+ * actually rendered (UX r7 判词①, secondary landing) without importing any
+ * module's internals — the shell never looks at a manifest or a TAB_LABEL.
+ * ------------------------------------------------------------------ */
+export const PANEL_TABS: Readonly<
+  Partial<Record<ConsoleModule, Readonly<Record<string, string>>>>
+> = (() => {
+  const acc: Record<string, Record<string, string>> = {};
+  for (const row of ROUTE_TABLE) {
+    if (row.kind !== 'compat-tab' && row.kind !== 'compat-module') continue;
+    const panel = parseHash(row.to ?? '').params.panel;
+    if (panel === undefined) continue;
+    acc[row.module] = { ...(acc[row.module] ?? {}), [panel]: row.tabId };
+  }
+  return acc as Partial<Record<ConsoleModule, Readonly<Record<string, string>>>>;
+})();
