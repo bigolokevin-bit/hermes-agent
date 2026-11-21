@@ -14,7 +14,7 @@
     "hasMainEl": true,
     "ok": true
   },
-  "distinctMainHeads": 23,
+  "distinctMainHeads": 24,
   "routesWithEmptyMain": [],
   "routesWithoutMainEl": [],
   "mainCharsByRoute": [
@@ -207,7 +207,7 @@
     {
       "route": "#/employees/:employeeId",
       "viewport": "375",
-      "chars": 42,
+      "chars": 146,
       "hasMainEl": true
     },
     {
@@ -219,7 +219,7 @@
     {
       "route": "#/employees/:employeeId?zone=config",
       "viewport": "375",
-      "chars": 42,
+      "chars": 66,
       "hasMainEl": true
     },
     {
@@ -255,55 +255,55 @@
     {
       "route": "#/employees/:employeeId?zone=tasks",
       "viewport": "375",
-      "chars": 42,
+      "chars": 66,
       "hasMainEl": true
     },
     {
       "route": "#/identity",
       "viewport": "1440",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity",
       "viewport": "375",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=admins",
       "viewport": "1440",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=admins",
       "viewport": "375",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=binding",
       "viewport": "1440",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=binding",
       "viewport": "375",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=checks",
       "viewport": "1440",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=checks",
       "viewport": "375",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
@@ -321,13 +321,13 @@
     {
       "route": "#/identity?tab=people&view=admins",
       "viewport": "1440",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=people&view=admins",
       "viewport": "375",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
@@ -345,13 +345,13 @@
     {
       "route": "#/identity?tab=tenant",
       "viewport": "1440",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/identity?tab=tenant",
       "viewport": "375",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
@@ -453,13 +453,13 @@
     {
       "route": "#/org",
       "viewport": "1440",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
       "route": "#/org",
       "viewport": "375",
-      "chars": 151,
+      "chars": 154,
       "hasMainEl": true
     },
     {
@@ -642,16 +642,13 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "8d0725d4",
+  "headHash": "a2a6b0d3",
   "exitCode": 0,
-  "entry": "assets/index-0rhpOHmI.js",
-  "entrySha256": "35b3907c1ae79830b697ecab6786f2617311b84965b5b7f03db952f98f2a1d64",
+  "entry": "assets/index-AUJDWHSD.js",
+  "entrySha256": "0d9b1183a6d14ba561ded34ccbb7c42a6fc2ffb128d55679fe6df22c57b57885",
   "entryBytes": 172175,
-  "css": "assets/index-B7znF4xN.css",
-  "cssSha256": "0ac2884f70bbe6de2112c325494f75aa3264b54ab38ae12a5d59c4328f0f47c4",
-  "cssBytes": 146328,
-  "servedEntryBefore": "index-0rhpOHmI.js",
-  "servedEntryAfter": "index-0rhpOHmI.js",
+  "servedEntryBefore": "index-AUJDWHSD.js",
+  "servedEntryAfter": "index-AUJDWHSD.js",
   "routesWithConsoleErrors": [],
   "auxiliary": true
 }
