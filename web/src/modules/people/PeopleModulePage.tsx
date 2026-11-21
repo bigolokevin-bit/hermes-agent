@@ -252,7 +252,9 @@ function StateShell({
       {body ? <p className="ppl5-state-body">{body}</p> : null}
       {children}
       {onRetry ? (
-        <Button size="sm" outlined onClick={onRetry} data-testid="ppl5-retry">
+        // UI-B 状态组合：StateShell 的卡内动作抬起为唯一实心主操作（去 outlined），
+        // 页头 ppl5-refresh 保持描边次级，同屏不出现双实心。
+        <Button size="sm" onClick={onRetry} data-testid="ppl5-retry">
           <RefreshCw className="h-3.5 w-3.5" aria-hidden />
           重试
         </Button>
@@ -371,12 +373,18 @@ export default function PeopleModulePage() {
             onRetry={() => setReload((n) => n + 1)}
           />
         ) : rows.length === 0 ? (
+          // UI-B 空态组合：筛空腿的根因是搜索词，单一主操作=清空搜索（新锚
+          // ppl5-nomatch-clear，既有 testid 0 改名）；文案原样保留。
           <StateShell
             testid="ppl5-nomatch"
             icon={<Inbox className="h-4 w-4 text-white/30" aria-hidden />}
             title={`没有匹配「${query.trim()}」的人员`}
             body="换个关键词试试；清空搜索可看全部名单。"
-          />
+          >
+            <Button size="sm" onClick={() => setQuery("")} data-testid="ppl5-nomatch-clear">
+              清空搜索
+            </Button>
+          </StateShell>
         ) : (
           <Card className="border-white/5 bg-white/[0.02]">
             <CardContent className="p-0" data-testid="ppl5-list">
