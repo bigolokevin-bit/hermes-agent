@@ -9,9 +9,9 @@
   },
   "violations": [],
   "ok": true,
-  "headHash": "f4bd0505",
+  "headHash": "8ff6d30d",
   "exitCode": 0,
-  "carriedFrom": "e66ceba3",
+  "carriedFrom": "068833bc",
   "carried": true,
-  "stampNote": "wave-96 两笔全纯测试（appr R271/ui1 R252），entry CF-7ZVka 同 96d769e5 代未再换代、CSS 未变；本件未重跑，证据沿用 e66ceba3 代（96d769e5 波注章被改锚切树打回，本拍自 e66ceba3 仓内态直接重注）"
+  "stampNote": "wave-99 两笔全纯测试（ui1 R254/aud R265 missing-field pairs），entry sha 与 CSS 逐字节未变（OCLu6KCF/Cpi0jJKL）；本件未重跑，证据沿用 068833bc 代"
 }
