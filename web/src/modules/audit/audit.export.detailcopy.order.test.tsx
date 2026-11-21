@@ -381,7 +381,7 @@ describe("R272 - the sentence and the file row stay one honest pair", () => {
     // 两套口径互缺：CSV 的 结果 列没有句子对应段；句子的关联尾没有 CSV 列。
     expect(row![COL.result], "the file carries the outcome word").toBe(RESULT_WORD);
     expect(line, "the sentence never borrows the 结果 word").not.toContain(RESULT_WORD);
-    expect(CSV_HEADER.indexOf("关联"), "the file has no correlation column").toBe(-1);
+    expect((CSV_HEADER as readonly string[]).indexOf("关联"), "the file has no correlation column").toBe(-1);
     for (const cells of records) expect(cells).toHaveLength(CSV_HEADER.length);
     for (const cells of records) {
       for (const one of cells) {
