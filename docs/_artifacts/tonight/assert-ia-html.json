@@ -42,9 +42,9 @@
     }
   ],
   "ok": true,
-  "headHash": "33437932",
+  "headHash": "a2a6b0d3",
   "exitCode": 0,
-  "carriedFrom": "8d0725d4",
+  "carriedFrom": "33437932",
   "carried": true,
-  "stampNote": "wave-110 四笔（R304/R262/identity 错态/docs）entry 换代 3NtB-rbj 但本件未重跑，证据沿用 8d0725d4 代；CSS 未换代"
+  "stampNote": "wave-111 并入后 entry 换代 AUJDWHSD（CSS 未换代 B7znF4xN）；本件未重跑，证据沿用 33437932 代"
 }

@@ -9,14 +9,18 @@
   "failures": [],
   "oversize": [],
   "rootBaseline": {
-    "textLen": 1044,
+    "textLen": 1061,
     "head": "运营 · 控制台 运营总览 值班台 用量与成本 值班台 运营总览 · 只读 采集时刻 —（北京时间） 近 24 小时 近 7 天 近 14 天 近 30 天 刷",
     "hasMainEl": true,
     "ok": true
   },
   "distinctMainHeads": 24,
-  "routesWithEmptyMain": [],
-  "routesWithoutMainEl": [],
+  "routesWithEmptyMain": [
+    "#/sessions"
+  ],
+  "routesWithoutMainEl": [
+    "#/sessions"
+  ],
   "mainCharsByRoute": [
     {
       "route": "#/access",
@@ -489,14 +493,14 @@
     {
       "route": "#/sessions",
       "viewport": "1440",
-      "chars": 10,
+      "chars": 1,
       "hasMainEl": true
     },
     {
       "route": "#/sessions",
       "viewport": "375",
-      "chars": 1,
-      "hasMainEl": true
+      "chars": 0,
+      "hasMainEl": false
     },
     {
       "route": "#/system",
@@ -631,10 +635,8 @@
       "hasMainEl": true
     }
   ],
-  "consoleErrorsObservedByShots": 1,
-  "consoleErrorRoutesObservedByShots": [
-    "#/capabilities?tab=channels"
-  ],
+  "consoleErrorsObservedByShots": 0,
+  "consoleErrorRoutesObservedByShots": [],
   "ceAuthority": "login-state",
   "routesWithEnvOnlyConsoleErrors": 51,
   "envAttribution": "401/404 Failed-to-load-resource = env (no login session at proxy); see crawl-routes env=auth-required-401 同口径",
@@ -644,14 +646,12 @@
     "chromium": "/Users/kevin_studio/Library/Caches/ms-playwright/chromium-1255/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
   },
   "ok": true,
-  "headHash": "33437932",
+  "headHash": "a2a6b0d3",
   "exitCode": 0,
-  "entry": "assets/index-3NtB-rbj.js",
-  "entrySha256": "1e63e327c7677e7875d4ef3848487041489c2f9bf3789a9663fa9e2875443d7e",
+  "entry": "assets/index-AUJDWHSD.js",
+  "entrySha256": "0d9b1183a6d14ba561ded34ccbb7c42a6fc2ffb128d55679fe6df22c57b57885",
   "entryBytes": 172175,
-  "servedEntryBefore": "index-3NtB-rbj.js",
-  "servedEntryAfter": "index-3NtB-rbj.js",
-  "routesWithConsoleErrors": [
-    "#/capabilities?tab=channels"
-  ]
+  "servedEntryBefore": "index-AUJDWHSD.js",
+  "servedEntryAfter": "index-AUJDWHSD.js",
+  "routesWithConsoleErrors": []
 }
