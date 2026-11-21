@@ -437,7 +437,10 @@ export function SkillsPage() {
       ) : null}
 
       {page.k === "error" ? (
-        <Card className="capF-state"><CardContent className="space-y-3 p-6" data-testid="skl4-error" role="alert">
+        <Card className="capF-state"><CardContent className="flex min-w-0 flex-col gap-[var(--space-3)] px-[var(--space-6)] py-[var(--space-6)]" data-testid="skl4-error" role="alert">
+          {/* UI-B 错误态组合：space-y-3/p-6 换等价令牌留白（数值不变）；「重试」抬起为
+            * 卡内唯一实心主操作，skl4-apply 是链接不占按钮位；互斥=page.k 单值枚举、
+            * rid 可复制、技术 gap 进锚点 title 为既有达标，截图实测复核。 */}
           {(page.status === 403 || page.status === 404) ? (
             <span className="sr-only" data-testid={page.status === 403 ? "cap9-state-denied" : "cap9-state-unavailable"} />
           ) : null}
@@ -455,7 +458,7 @@ export function SkillsPage() {
           <RequestId id={page.requestId} />
           <div className="skl4-actions">
             <span className="contents" data-testid="capF-retry">
-              <Button size="sm" outlined onClick={retry} data-testid="skl4-retry">重试</Button>
+              <Button size="sm" onClick={retry} data-testid="skl4-retry">重试</Button>
             </span>
             {page.gap ? <a className="skl4-apply" href="#/approvals" data-testid="skl4-apply">提交开通申请</a> : null}
           </div>

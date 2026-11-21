@@ -1584,3 +1584,17 @@ L0 卡：新代次发布 4bfb31ef（merge aud closeout + T27 tools/MCP + gov T22
 - 改锚卡到：目标代次 c964fb3d→1af5c41f（wave-102 两笔纯测试 merge，entry/css 与 c964fb3d 相同：CE4DkLMF/172175/af5f2e640ff45536…；c964fb3d 未 commit 的注章被切树打回，中间代次不重章合规处置）。
 - 12 分钟硬限一次成：shots 双腿采用 11:20:51→11:23:23 本窗真跑产物（禁 churn 重跑）——auth 102/102 obs=1 ['#/identity?tab=tenant']、anon aux 102/102 obs=1 同路由（routesWithConsoleErrors 自产非编造；对照上代 history/channels/system 全收敛）；served 两端同值新 entry、ceAuthority=login-state。七件（含 state-quad，其 c964fb3d 真跑读数同 entry 代沿用）carriedFrom=c621295b+carried+卡定 stampNote。
 - TALLY {'1af5c41f': 9} count 9 BAD=[]；无 amend/force；detached push HEAD 映射；web/src/9122/BFF/caddy/qa-verify/ACC 判词节未动；只做账本禁写 PASS。
+
+## 一九六轮 · 波次代次九件重章 @ 7cb41601（entry 换代 CBaod-sX；六件 carriedFrom=1af5c41f + shots 双腿/quad 本代真跑，2026-11-21 11:4x）
+
+- wave-106 八笔并入（gov 05f87f2f / ui1 a13fb733 / ui-b 943df1f4+5f81d922 / ui-a 2e14e3bf+549577c3+5e0e206b / ui-qa 9e0f6eff），remote 7cb41601a1 现查==ls-remote；entry 换代 **CBaod-sX/172175/31f3043e…64f7**（==9122==磁盘），CSS 未变 Cpi0jJKL/146111。6d3c060b、210270a8 记中间代次不重章（未盖不补）。
+- 六件 assert 现值==1af5c41f 注 headHash=7cb41601+carriedFrom="1af5c41f"+carried=true+stampNote+回读全过；state-quad 本代真跑 sampled=20 passed=20 head=7cb41601 非 carried。
+- shots 双腿本代真跑（11:44:54→11:48:45）：auth 102/102 failures=[] **obs=1 ['#/access']** distinct=25 envOnly=51；anon aux 102/102 **obs=1 ['#/system']** distinct=23 envOnly=51（上代双面 #/identity?tab=tenant 全收敛，本轮两条系 ENV 波动如实记录不入判据，routesWithConsoleErrors 自产非编造）；三键+served 两端同值+ceAuthority=login-state。
+- TALLY {'7cb41601': 9} count 9 BAD=[]；32a60f7b（1af5c41f 章）不重做；无 amend/force；detached push HEAD 映射形；web/src/9122/BFF/caddy/qa-verify/ACC 判词节未动。
+
+## 一九七轮 · 波次代次九件重章 @ fb7a2a8c（entry/CSS 双换代 0rhpOHmI/B7znF4xN，2026-11-21 12:0x）
+
+- wave-108（merge 0a03aed6）双换代：entry=0rhpOHmI/172175/35b3907c1ae79830…f2a1d64、CSS=B7znF4xN/146328/0ac2884f70bbe6de…0f47c4（上代 CBaod-sX/Cpi0jJKL 作废，盘现算==卡面==9122 双值）。80bc8f62（wave-107）为中间代次不重章：其窗注章被 checkout 打回属预期，未 commit 零污染；fc498772（7cb41601 章）不重做。
+- 六件 assert 现值==7cb41601 注 headHash=fb7a2a8c+carriedFrom="7cb41601"+carried=true+stampNote（双换代但本件未重跑）+写后回读全过；state-quad 本代真跑 sampled=20 passed=20 head=fb7a2a8c 非 carried。
+- shots 双腿本代真跑（12:04:22→12:07:16）：auth 102/102 failures=[] **obs=1 routes=['#/access']**（与上上代 7cb41601 的 auth 读数同路由，如实非编造）distinct=26 envOnly=51；anon aux **obs=1 routes=['#/access']**（上代 #/system 收敛至 access，与 auth 面合流）distinct=24 envOnly=51；三键含 css 双键+served 两端同值 0rhpOHmI+ceAuthority=login-state。
+- TALLY {'fb7a2a8c': 9} count 9 BAD=[]（None 清零）；无 amend/force；detached push HEAD 映射形；web/src/9122/BFF/caddy/qa-verify/ACC 判词节未动。
