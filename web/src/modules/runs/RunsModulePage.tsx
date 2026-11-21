@@ -1314,29 +1314,37 @@ export function RunsModulePage() {
               ]}
             />
           </label>
-          <Button
-            size="sm"
-            outlined
-            className="shrink-0 whitespace-nowrap"
-            onClick={reloadList}
-            disabled={phase === "loading" || isForced}
-            title={forcedTitle ?? "重新向服务要一次运行记录"}
-            data-testid="run5-refresh"
-            prefix={phase === "loading" ? <Spinner className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" />}
+          {/* wave-125：读取动作自成一组，375 档不再与时间芯片、状态选择器穿插换行。 */}
+          <div
+            className="flex min-w-0 flex-wrap items-center gap-1"
+            role="group"
+            aria-label="读取动作"
+            data-testid="run5-filter-actions"
           >
-            重新读取
-          </Button>
-          <Button
-            size="sm"
-            outlined
-            className="shrink-0 whitespace-nowrap"
-            onClick={resetFilters}
-            disabled={filterReset.removed.length === 0}
-            data-testid="run-reset-filters"
-            title={resetTitle ?? "当前没有可清除的筛选条件"}
-          >
-            清除筛选
-          </Button>
+            <Button
+              size="sm"
+              outlined
+              className="shrink-0 whitespace-nowrap"
+              onClick={reloadList}
+              disabled={phase === "loading" || isForced}
+              title={forcedTitle ?? "重新向服务要一次运行记录"}
+              data-testid="run5-refresh"
+              prefix={phase === "loading" ? <Spinner className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            >
+              重新读取
+            </Button>
+            <Button
+              size="sm"
+              outlined
+              className="shrink-0 whitespace-nowrap"
+              onClick={resetFilters}
+              disabled={filterReset.removed.length === 0}
+              data-testid="run-reset-filters"
+              title={resetTitle ?? "当前没有可清除的筛选条件"}
+            >
+              清除筛选
+            </Button>
+          </div>
         </div>
         {filterChips.length > 0 ? (
           <div
@@ -1686,18 +1694,26 @@ export function RunsModulePage() {
           仅在当前已加载 {sortedRows.length} 行内排序；服务端读口不接受排序参数，点表头不会重新读取。
         </p>
       ) : null}
+      {/* wave-125：复制/导出/链接是同一层级的次级动作，收进一条操作栏；
+          375 档下不再各自占一条散行，主按钮仍只有页首「刷新」一个。 */}
       {forced === null && phase !== "loading" ? (
-        <RunListCopy
-          rows={sortedRows}
-          names={names}
-          copyGate={listGate.copy}
-          exportGate={listGate.export}
-          windowKey={params.get("window")}
-          statusKey={params.get("status")}
-        />
+        <div
+          className="flex min-w-0 flex-col gap-2 rounded-md border border-border bg-card p-2"
+          role="group"
+          aria-label="列表操作"
+          data-testid="run5-utility-bar"
+        >
+          <RunListCopy
+            rows={sortedRows}
+            names={names}
+            copyGate={listGate.copy}
+            exportGate={listGate.export}
+            windowKey={params.get("window")}
+            statusKey={params.get("status")}
+          />
+          <RunPermalink href={selected ? hrefOf(selected) : null} />
+        </div>
       ) : null}
-
-      {forced === null ? <RunPermalink href={selected ? hrefOf(selected) : null} /> : null}
 
       {phase === "ready" && rows.length > 0 ? (
         <TechnicalDisclosure lines={technical} testId="run5-list-details" />
