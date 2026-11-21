@@ -222,6 +222,31 @@ function CostCell({ row, testId }: { row: RunRow; testId: string }): ReactNode {
 const NUM_KEYS = new Set(["started", "ended", "elapsed", "cost"]);
 
 /**
+ * P1-B4（UX r2）：窄档卡内字段名。<sm 时列表是卡片形态、没有表头，
+ * 值裸堆会丢掉列语义；复用 apr 卡片模式 ui-c-field/ui-c-field-label 给
+ * 每个字段配一行微缩 label。≥sm 由表头承担语义，label 即隐藏。只动表现
+ * 层：值节点自身的 testid、title 与文本一字不改。
+ */
+function CardField({
+  label,
+  labelTestId,
+  children,
+}: {
+  label: string;
+  labelTestId: string;
+  children: ReactNode;
+}): ReactNode {
+  return (
+    <span className="ui-c-field min-w-0 justify-center">
+      <span className="ui-c-field-label sm:hidden" data-testid={labelTestId}>
+        {label}
+      </span>
+      {children}
+    </span>
+  );
+}
+
+/**
  * The inline preview of one list row. Every value is derived from the row the
  * list already read — opening it asks the service nothing. The toggle owns
  * `aria-expanded`/`aria-controls`; Escape closes and hands focus back.
@@ -643,31 +668,45 @@ function ListRows({
                 }}
               >
                 <div className={GRID}>
-                <RunCodeCell row={row} testId={`${base}-code`} />
-                <span className="min-w-0 self-center">
-                  <Badge tone={statusTone(row.status)} data-testid={`${base}-status`}>{statusLabel(row.status)}</Badge>
-                </span>
-                <span className="min-w-0 self-center break-words" data-testid={`${base}-start`} title={row.startedAt ?? undefined}>
-                  {start.text ?? <Dashed reason={start.reason} />}
-                </span>
-                <span className="min-w-0 self-center break-words" data-testid={`${base}-elapsed`} title={elapsed.reason || undefined}>
-                  {elapsed.text ?? <Dashed reason={elapsed.reason} />}
-                </span>
-                <CostCell row={row} testId={`${base}-cost`} />
-                <span
-                  className="min-w-0 self-center break-words"
-                  data-testid={`${base}-employee`}
-                  title={
-                    row.employeeId
-                      ? row.employeeId
-                      : "这条运行没有带回负责人；不代填、不猜"
-                  }
-                >
-                  {employeeLabel(row.employeeId, names)}
-                </span>
-                <span className="min-w-0 self-center break-words" data-testid={`${base}-reason`} title={reason.reason || undefined}>
-                  {reason.text}
-                </span>
+                <CardField label="运行" labelTestId={`run5-fieldlabel-code-${index}`}>
+                  <RunCodeCell row={row} testId={`${base}-code`} />
+                </CardField>
+                <CardField label="状态" labelTestId={`run5-fieldlabel-status-${index}`}>
+                  <span className="min-w-0">
+                    <Badge tone={statusTone(row.status)} data-testid={`${base}-status`}>{statusLabel(row.status)}</Badge>
+                  </span>
+                </CardField>
+                <CardField label="开始" labelTestId={`run5-fieldlabel-start-${index}`}>
+                  <span className="min-w-0 break-words" data-testid={`${base}-start`} title={row.startedAt ?? undefined}>
+                    {start.text ?? <Dashed reason={start.reason} />}
+                  </span>
+                </CardField>
+                <CardField label="耗时" labelTestId={`run5-fieldlabel-elapsed-${index}`}>
+                  <span className="min-w-0 break-words" data-testid={`${base}-elapsed`} title={elapsed.reason || undefined}>
+                    {elapsed.text ?? <Dashed reason={elapsed.reason} />}
+                  </span>
+                </CardField>
+                <CardField label="成本" labelTestId={`run5-fieldlabel-cost-${index}`}>
+                  <CostCell row={row} testId={`${base}-cost`} />
+                </CardField>
+                <CardField label="负责人" labelTestId={`run5-fieldlabel-employee-${index}`}>
+                  <span
+                    className="min-w-0 break-words"
+                    data-testid={`${base}-employee`}
+                    title={
+                      row.employeeId
+                        ? row.employeeId
+                        : "这条运行没有带回负责人；不代填、不猜"
+                    }
+                  >
+                    {employeeLabel(row.employeeId, names)}
+                  </span>
+                </CardField>
+                <CardField label="失败原因" labelTestId={`run5-fieldlabel-reason-${index}`}>
+                  <span className="min-w-0 break-words" data-testid={`${base}-reason`} title={reason.reason || undefined}>
+                    {reason.text}
+                  </span>
+                </CardField>
                 <div className="col-span-2 flex min-w-0 flex-col items-stretch gap-1 self-center sm:col-span-1 sm:items-end">
                   <Link
                     className="flex min-h-[44px] w-full items-center justify-center rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground no-underline hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 sm:w-auto"
